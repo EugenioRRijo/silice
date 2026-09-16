@@ -18,11 +18,11 @@ Tres acopios, cada uno en su propia base (asi ninguna lista de precios de un dom
    motor de costos (funcion pura, la verdad de terreno) se comparan contra la prediccion del
    sistema de reglas de `ml.prediction` y las tres metricas obligatorias salen de ahi.
 3. **Evaluacion telecom** (`evaluar_sobre_telecom`, Sesion M4.1): el unico dominio ademas de civil
-   con un historico **real** de `CambioPrecio` (lista ARENAZA 18/05/2026 -> referencia MaPreX
+   con un historico **observado** de `CambioPrecio` (lista ARENAZA 18/05/2026 -> referencia MaPreX
    09/07/2026, Sesion M1.3). Los 40 PU de los dos presupuestos ARENAZA valorados con la lista
    ARENAZA son la base; valorados con la lista MaPreX son la verdad de terreno; la regla predice
    con las variaciones de ese historico. Industrial y sistemas no tienen historico (una sola lista
-   real cada uno): se declaran **no evaluables**, no se inventa uno.
+   publicada cada uno): se declaran **no evaluables**, no se inventa uno.
 
 La seccion de texto (`generar_informe`) es pura y la cubren `tests/unit/test_resultados_ml.py` y
 `tests/unit/test_resultados_ml_multidominio.py`; este script solo acopia los datos y escribe el
@@ -95,7 +95,7 @@ _CIEN = Decimal(100)
 
 @dataclass(frozen=True)
 class EvaluacionDominio:
-    """Lo que la regla produjo sobre el historico real de un dominio (RF-28 y RF-29)."""
+    """Lo que la regla produjo sobre el historico observado de un dominio (RF-28 y RF-29)."""
 
     dominio: str
     lista_base: str
@@ -113,7 +113,7 @@ class EvaluacionDominio:
 
 
 #: Por que un dominio no se evalua: se declara en el informe, no se omite.
-SIN_HISTORICO = "sin historico de variaciones: una sola lista de precios real (M2.2 / M3.2)"
+SIN_HISTORICO = "sin historico de variaciones: una sola lista de precios publicada (M2.2 / M3.2)"
 
 
 # ---------------------------------------------------------------------------------------------
@@ -206,7 +206,7 @@ def evaluar_sobre_linea_base(
 
 
 # ---------------------------------------------------------------------------------------------
-# 3. Evaluacion telecom (M4.1): el unico historico real fuera de civil
+# 3. Evaluacion telecom (M4.1): el unico historico observado fuera de civil
 # ---------------------------------------------------------------------------------------------
 
 
@@ -328,7 +328,7 @@ def generar_informe(
         "como **limitacion** del trabajo, no como logro: no hay datos suficientes para entrenar",
         "ni validar un modelo de aprendizaje (la tabla de degradacion existe exactamente para",
         "este caso). La compuerta G2 queda cruzada con esta evidencia; tras el sprint",
-        "multidominio la limitacion esta demostrada con catalogos reales en los cuatro dominios,",
+        "multidominio la limitacion esta demostrada con catalogos poblados en los cuatro dominios,",
         "no con ausencia de datos (compuerta GM4, PLAN_MULTIDOMINIO §2).",
         "",
         "## Regla declarada",
@@ -384,7 +384,8 @@ def _seccion_por_dominio(por_dominio: Mapping[str, EvaluacionDominio | str]) -> 
         "",
         "## Metricas por dominio (Sesion M4.1)",
         "",
-        "Solo se evalua donde hay un historico real de `CambioPrecio` entre dos listas de precios",
+        "Solo se evalua donde hay un historico observado de `CambioPrecio` entre dos listas de "
+        "precios",
         "fechadas; donde no lo hay se declara, no se fabrica.",
         "",
         "| Dominio | Historico | Partidas | Cambios de precio | MAPE | RMSE | R2 | AACE |",
@@ -409,7 +410,8 @@ def _seccion_por_dominio(por_dominio: Mapping[str, EvaluacionDominio | str]) -> 
             f"### {dominio}: partidas cuyo PU cambio con la lista nueva "
             f"({len(con_cambio)} de {evaluacion.partidas})",
             "",
-            "| Partida | PU base | PU real (lista nueva) | PU estimado | Rango de sensibilidad |",
+            "| Partida | PU base | PU observado (lista nueva) | PU estimado | "
+            "Rango de sensibilidad |",
             "|---|---|---|---|---|",
         ]
         for prediccion in con_cambio:

@@ -11,7 +11,7 @@ no todavía:** se declara como supuesto, con esta redacción literal y sin cita 
 > jornada de 8 h para convertir jornal en tarifa horaria; correspondencia rol del APU ↔ fila del
 > tabulador; productividad HH/PF; reparto de horas por rol; estructura de costos sin prestaciones
 > ni bono sobre honorarios profesionales. El autor los confirma o corrige; ninguno bloquea GM3,
-> cuyo criterio es «tarifas reales (CIV o encuesta fechada) y productividad HH/PF con fuente
+> cuyo criterio es «tarifas publicadas (CIV o encuesta fechada) y productividad HH/PF con fuente
 > declarada».
 
 ## Archivos

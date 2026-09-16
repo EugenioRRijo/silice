@@ -149,7 +149,7 @@ registrar el resultado en la bitácora.
 
 "No te repitas": cada hecho, regla o dato del sistema tiene **una sola representación autorizada**;
 todo lo demás la importa, la enlaza o se deriva de ella. En un trabajo con documentos, código, pruebas
-y datos de un caso real, la duplicación es la forma más rápida de que dos lugares se contradigan
+y datos de un caso didáctico, la duplicación es la forma más rápida de que dos lugares se contradigan
 delante del jurado.
 
 ### 5.1 Fuentes únicas de verdad

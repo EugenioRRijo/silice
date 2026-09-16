@@ -42,7 +42,7 @@ Detalle y evidencia reproducible en [plan_pruebas.md](plan_pruebas.md) y
 Las Bases del anteproyecto listan **cinco** reglas de verificación; el diseño implementó siete.
 R6 (criterio de depreciación) reproduce el hallazgo 7 del caso y no ha generado objeción; R7 es
 la adición de fondo: comprueba que cada monto del plan de trabajo coincide con el de su partida.
-Su valor empírico está demostrado — sobre el caso real detecta las cinco discrepancias día a día
+Su valor empírico está demostrado — sobre el caso didáctico detecta las cinco discrepancias día a día
 que explican la brecha de 11,11 USD del hallazgo 3 (bitácora de I4, «hallazgo adicional 9»).
 **Si se rechaza:** cambian RF‑21/RF‑22, el indicador 1 pasa a contarse sobre seis reglas y la
 raíz del hallazgo 3 queda sin regla que la explique. **Recomendación: aprobar.**
@@ -69,7 +69,7 @@ está demostrado; dejarlo como nota lo subvendería.
 
 ### D4. Fuente primaria del FCAS (600 %)
 
-El factor de costos asociados al salario (6,00) proviene de los APU reales del caso
+El factor de costos asociados al salario (6,00) proviene de los APU del caso didáctico
 (`data/linea_base/APUS_CLINICA.pdf`); falta la **cita normativa** venezolana (LOTTT y
 contratación colectiva vigente) que lo respalde en el capítulo del marco teórico. No afecta al
 software (es un parámetro, no una constante del motor). **Se pide al tutor:** orientación sobre

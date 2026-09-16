@@ -2,7 +2,7 @@
 
 Entrada del adaptador `AdaptadorTelecom` (`adapters/telecom/adaptador.py`, Sesión I5): una topología
 de red pequeña (rack, dos switches, cuatro puntos de acceso WiFi, un UPS, cinco enlaces de cable
-UTP), derivada de los dos presupuestos reales de ARENAZA:
+UTP), derivada de los dos presupuestos didácticos de ARENAZA:
 `data/samples/telecom/Presupuesto_1_ARENAZA.pdf` (instalación de puntos WiFi, 14 renglones,
 1 109,29 USD) y `data/samples/telecom/Presupuesto_2_ARENAZA.pdf` (red y CCTV con rack, 26 renglones,
 5 410,73 USD); ambos leídos con `python -c "import fitz; ..."` (PyMuPDF global, no está en el venv de
@@ -35,7 +35,7 @@ uv).
 ## Procedencia de cada nodo (tabla nodo → fuente)
 
 Ningún PDF de ARENAZA es una topología de red (con nodos y tramos identificados): son listas de
-materiales. Cada nodo de la muestra toma su **tipo y cantidad de equipo** de un renglón real de uno
+materiales. Cada nodo de la muestra toma su **tipo y cantidad de equipo** de un renglón de uno
 de los dos PDF; ninguno inventa una cantidad que no esté en la fuente.
 
 | Nodo(s) | Descripción | Fuente | Renglón del PDF | Cantidad en el PDF |

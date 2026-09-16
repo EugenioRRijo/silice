@@ -10,7 +10,7 @@ importa y (a) escribe los CSV a partir de ellos, (b) verifica el fixture contra 
 PDF, recien extraido con PyMuPDF, cada vez que corre. Mismo patron que `scripts/seed.py`, el
 unico modulo fuera de `tests/` que importa `tests.fixtures.apu_linea_base` (linea base civil):
 un script de infraestructura puede importar un fixture de pruebas cuando ese fixture es,
-deliberadamente, la unica copia de un dato real del dominio.
+deliberadamente, la unica copia de un dato del dominio.
 
 PyMuPDF no es dependencia del proyecto (mismo criterio que `scripts/extraer_maprex.py`, Sesion
 M0.2: los PDF son evidencia de una sola sesion, no un flujo de la aplicacion). Ejecutar con:

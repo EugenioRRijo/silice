@@ -222,7 +222,7 @@ trae un `README.md` con origen, vigencia y supuestos de sus precios; las reglas 
 (referencia, no ronda vigente; tasa única 633,3644 Bs/USD del 01/07/2026) están en
 `data/precios/maprex_2026-07/README.md`. Una cotización de campo nueva no se edita en ningún
 fixture: se registra según [protocolo_precios.md](protocolo_precios.md) y entra por UC‑02 como
-lista fechada, lo que abre el histórico real de `CambioPrecio` del dominio. La API sirve el
+lista fechada, lo que abre el histórico de `CambioPrecio` del dominio. La API sirve el
 catálogo de otro dominio apuntando `APU_BASE` a su base (`sqlite:///data/apu_telecom.db`).
 
 ## 9. Decisiones que conviene conocer antes de tocar nada

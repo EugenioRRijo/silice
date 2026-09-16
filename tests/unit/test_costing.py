@@ -33,7 +33,7 @@ def _codigo(apu):
 
 @pytest.mark.parametrize("apu", lb.APUS_LINEA_BASE, ids=_codigo)
 def test_precio_unitario_reproduce_la_linea_base(apu, parametros_linea_base):
-    """Los cinco APU reales, con tolerancia de 0,01 sobre el precio unitario."""
+    """Los cinco APU de la línea base, con tolerancia de 0,01 sobre el precio unitario."""
     resultado = _motor()(apu, parametros_linea_base)
     esperado = lb.PRECIO_UNITARIO_ESPERADO[apu.codigo_partida]
     assert abs(resultado.precio_unitario - esperado) <= TOLERANCIA, (

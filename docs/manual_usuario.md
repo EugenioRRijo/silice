@@ -31,7 +31,7 @@ No hay más pasos (RNF‑07). Notas:
    uv run python scripts/seed.py
    ```
 
-   Los otros tres dominios tienen su propio catálogo, con precios reales y fechados, cada uno en
+   Los otros tres dominios tienen su propio catálogo, con precios publicados y fechados, cada uno en
    su base (opcional; cada comando imprime el presupuesto del dominio y su informe de auditoría):
 
    ```
@@ -137,7 +137,7 @@ exactos. El detalle por partida de cada escenario se despliega debajo, con los h
 propia auditoría (que se genera siempre).
 
 El presupuesto base **nunca** se altera y ningún escenario se guarda: al cambiar de presupuesto
-la comparación se descarta. Para convertir un escenario en presupuesto real se usa la
+la comparación se descarta. Para convertir un escenario en presupuesto vigente se usa la
 actualización de precios (UC‑02) con la lista correspondiente. Por software, la misma operación
 está en `POST /presupuestos/{codigo}/escenarios` (API) y en `core.budget.generar_escenario`
 (Python).

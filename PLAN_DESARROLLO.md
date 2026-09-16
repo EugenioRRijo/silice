@@ -4,6 +4,11 @@ Sistema de generación y auditoría de Análisis de Precios Unitarios multidomin
 
 Este plan traduce los siete incrementos del plan de implementación a sesiones concretas de trabajo. Cada sesión tiene objetivo, prompt sugerido, criterio de cierre y commit esperado.
 
+> **Errata (2026‑09‑15).** Este plan llamaba «reales» a los cinco APU y al presupuesto auditado del
+> caso de la clínica. Son un **ejercicio académico ficticio**: la línea base normativa de las
+> pruebas y un caso didáctico en la tesis. El texto quedó corregido en la sesión de limpieza; la
+> fuente única de la naturaleza de los datos es [CLAUDE.md §1](CLAUDE.md#1-qué-es-este-proyecto).
+
 ---
 
 ## Antes de empezar
@@ -155,7 +160,7 @@ Esta sesión va **antes** de implementar el motor. Es deliberado.
 
 ```
 Lee la sección 4 de CLAUDE.md, que contiene la especificación exacta
-del cálculo y cinco APU reales verificados.
+del cálculo y los cinco APU verificados de la línea base.
 
 Crea tests/fixtures/apu_linea_base.py con los cinco casos como datos
 de prueba, y tests/unit/test_costing.py con las pruebas que verifiquen
@@ -216,7 +221,7 @@ Implementa core/budget/ que a partir de una lista de ItemComputo y del
 catálogo genere el presupuesto completo y la curva de inversión.
 
 La curva debe cerrar exactamente en el total del presupuesto. Escribe
-una prueba que lo verifique, porque en el presupuesto auditado real
+una prueba que lo verifique, porque en el presupuesto auditado
 cerraba en 99.30 % y esa es una de las siete inconsistencias que el
 sistema debe evitar por construcción.
 
@@ -322,7 +327,7 @@ Cada regla debe quedar registrada como expresión trazable, de modo que
 el informe pueda mostrar de qué regla salió cada cantidad.
 
 Prueba: con a=0.80, h=0.80, e=0.10 el concreto debe dar 0.224 m3 y el
-encofrado 4.48 m2. En el presupuesto real auditado se usaron 0.415 y
+encofrado 4.48 m2. En el presupuesto auditado se usaron 0.415 y
 5.92 respectivamente, que son dos de las siete inconsistencias.
 ```
 
@@ -343,7 +348,7 @@ impacto y referencia al origen_id involucrado.
 El informe de auditoría se genera siempre, sin que el usuario lo solicite.
 
 Prueba de aceptación crítica: crear en tests/fixtures un presupuesto que
-reproduzca las siete inconsistencias del caso real auditado, y verificar
+reproduzca las siete inconsistencias del caso didáctico auditado, y verificar
 que el sistema las detecta todas.
 ```
 
@@ -501,7 +506,7 @@ Total, 20 sesiones de trabajo.
 
 ## Los tres momentos que definen el trabajo
 
-**Sesión I0.3.** Cuando pasen las cinco pruebas del motor de costos, el núcleo está validado contra datos reales. Todo lo demás se construye encima con confianza.
+**Sesión I0.3.** Cuando pasen las cinco pruebas del motor de costos, el núcleo está validado contra la línea base auditada. Todo lo demás se construye encima con confianza.
 
 **Sesión I3.1, compuerta G1.** Si la extracción IFC falla, se sabe en la semana 19, con los incrementos I0, I1 e I2 ya entregados y nueve semanas por delante. Nunca se pierde el trabajo.
 
@@ -512,5 +517,5 @@ Total, 20 sesiones de trabajo.
 ## Continuación
 
 Este plan se completó el 2026‑08‑31 (20 de 20 sesiones). Su continuación — poblar los dominios
-telecom, industrial y sistemas con catálogos, presupuestos auditados y precios reales de la
+telecom, industrial y sistemas con catálogos, presupuestos auditados y precios publicados de la
 fuente natural de cada ingeniería — está en [PLAN_MULTIDOMINIO.md](PLAN_MULTIDOMINIO.md).

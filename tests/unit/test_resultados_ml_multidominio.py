@@ -1,9 +1,10 @@
 """Sesion M4.1: la seccion por dominio de `docs/resultados_ml.md` (compuerta GM4).
 
-`generar_informe` sigue siendo pura: con `por_dominio` tabula, para cada dominio distinto de civil,
-sus metricas sobre el historico real (telecom) o el motivo por el que no se evalua (industrial y
-sistemas: una sola lista real). Los conteos nuevos siguen todos por debajo del umbral, asi que la
-tecnica sigue siendo reglas y la limitacion sigue declarada, ahora con catalogos reales.
+`generar_informe` sigue siendo pura: con `por_dominio` tabula, para cada dominio distinto de
+civil, sus metricas sobre el historico observado (telecom) o el motivo por el que no se evalua
+(industrial y sistemas: una sola lista publicada). Los conteos nuevos siguen todos por debajo
+del umbral, asi que la tecnica sigue siendo reglas y la limitacion sigue declarada, ahora con
+catalogos poblados.
 """
 
 from __future__ import annotations

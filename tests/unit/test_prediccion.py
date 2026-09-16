@@ -1,7 +1,7 @@
 """Sesion I6.3: prediccion de precio por sistema de reglas (UC-07, compuerta G2).
 
 La compuerta G2 (CLAUDE.md §8.1) elige la tecnica por el conteo de registros de APU del dominio:
-`tecnica_para` ES esa tabla hecha codigo (meta M5 de `scripts/meta_i6.py`). Con los conteos reales
+`tecnica_para` ES esa tabla hecha codigo (meta M5 de `scripts/meta_i6.py`). Con los conteos
 del proyecto (civil = 5, el resto 0) toca **sistema de reglas con analisis de sensibilidad,
 declarado como limitacion** (metas M6 y M7).
 

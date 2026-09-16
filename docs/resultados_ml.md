@@ -18,7 +18,7 @@ Todos los dominios estan por debajo de los 50 registros: la tecnica de
 como **limitacion** del trabajo, no como logro: no hay datos suficientes para entrenar
 ni validar un modelo de aprendizaje (la tabla de degradacion existe exactamente para
 este caso). La compuerta G2 queda cruzada con esta evidencia; tras el sprint
-multidominio la limitacion esta demostrada con catalogos reales en los cuatro dominios,
+multidominio la limitacion esta demostrada con catalogos poblados en los cuatro dominios,
 no con ausencia de datos (compuerta GM4, PLAN_MULTIDOMINIO §2).
 
 ## Regla declarada
@@ -52,18 +52,18 @@ Ningun precio construido se desvia del estimado fuera del rango declarado (-20 %
 
 ## Metricas por dominio (Sesion M4.1)
 
-Solo se evalua donde hay un historico real de `CambioPrecio` entre dos listas de precios
+Solo se evalua donde hay un historico observado de `CambioPrecio` entre dos listas de precios
 fechadas; donde no lo hay se declara, no se fabrica.
 
 | Dominio | Historico | Partidas | Cambios de precio | MAPE | RMSE | R2 | AACE |
 |---|---|---|---|---|---|---|---|
-| industrial | sin historico de variaciones: una sola lista de precios real (M2.2 / M3.2) | — | — | no evaluable | — | — | — |
-| sistemas | sin historico de variaciones: una sola lista de precios real (M2.2 / M3.2) | — | — | no evaluable | — | — | — |
+| industrial | sin historico de variaciones: una sola lista de precios publicada (M2.2 / M3.2) | — | — | no evaluable | — | — | — |
+| sistemas | sin historico de variaciones: una sola lista de precios publicada (M2.2 / M3.2) | — | — | no evaluable | — | — | — |
 | telecom | Precios ARENAZA (2026-05-18) -> Precios MaPreX 2026-07 (2026-07-09) | 40 | 5 | 27.83 % | 28.16 USD | 0.8866 | 38 hallazgo(s) |
 
 ### telecom: partidas cuyo PU cambio con la lista nueva (8 de 40)
 
-| Partida | PU base | PU real (lista nueva) | PU estimado | Rango de sensibilidad |
+| Partida | PU base | PU observado (lista nueva) | PU estimado | Rango de sensibilidad |
 |---|---|---|---|---|
 | TC-P1-03 | 3.33 | 2.62 | 4.18 | [2.62, 8.01] |
 | TC-P1-10 | 5.05 | 6.79 | 6.35 | [3.98, 12.16] |

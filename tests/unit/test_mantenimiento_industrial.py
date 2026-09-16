@@ -1,6 +1,7 @@
-"""El catálogo de mantenimiento industrial (Sesión M2.1): al menos tres partidas `MNT-*` de activos
-reales de `activos_planta.csv`, costeadas con la referencia MaPreX jul‑2026 como proxy declarado
-(degradación GM2, `data/industrial/fuentes/README.md`) y sin transcribir ningún precio.
+"""El catálogo de mantenimiento industrial (Sesión M2.1): al menos tres partidas `MNT-*` de
+activos del inventario construido `activos_planta.csv`, costeadas con la referencia MaPreX
+jul‑2026 como proxy declarado (degradación GM2, `data/industrial/fuentes/README.md`) y sin
+transcribir ningún precio.
 
 Los precios unitarios esperados se calcularon **a mano** con la fórmula de CLAUDE.md §4 antes de
 correr el motor (rendimiento 1, parámetros por defecto del contrato) y se fijan aquí como regresión

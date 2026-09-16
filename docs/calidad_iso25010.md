@@ -66,7 +66,7 @@ aporta a esa evaluación: hallazgos en español con severidad, impacto cuantific
 `origen_id` involucrados; UI multipágina con los flujos implementados y visor 3D del modelo; API
 autodocumentada (OpenAPI en `docs/api.json`).
 
-**Veredicto: pendiente de medición** (riesgo bajo: el informe se diseñó desde el caso real).
+**Veredicto: pendiente de medición** (riesgo bajo: el informe se diseñó desde el caso didáctico).
 
 ## 5. Mantenibilidad
 

@@ -61,7 +61,7 @@ alcance de F.1. La brecha se cerró el mismo día — `core/budget/escenarios.py
    adaptadores, ml); `tests/integration/` prueba flujos completos sobre SQLite real (sembrar →
    elaborar → auditar → actualizar precios → reconstruir a fecha).
 3. **Exactitud decimal.** Los importes se comparan como `Decimal` exactos; la única tolerancia
-   admitida es ± 0,01 sobre el precio unitario de los cinco APU reales (CLAUDE.md §4).
+   admitida es ± 0,01 sobre el precio unitario de los cinco APU de la línea base (CLAUDE.md §4).
 4. **Arquitectura como prueba.** `test_arquitectura.py` (65 casos, uno más por cada módulo que
    nace: el cierre de UC‑08 añadió el suyo solo) falla si un adaptador importa
    de `core` algo distinto de `core.contracts`: la hipótesis central se vigila en cada corrida.

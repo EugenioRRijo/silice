@@ -2,7 +2,7 @@
 
 Sistema de generación y auditoría de Análisis de Precios Unitarios (APU) multidominio, asistido por
 modelo BIM‑5D y aprendizaje automático. Trabajo de grado; caso de estudio: obra civil del sistema de
-drenaje de una clínica (caso de ejemplo con contenido y formato reales de APU, no una obra ejecutada;
+drenaje de una clínica (ejercicio académico ficticio con el contenido y el formato de un APU venezolano, no una obra ejecutada;
 ver [docs/linea_base.md](docs/linea_base.md)).
 
 La hipótesis central del trabajo es que **un núcleo de costeo y verificación puede permanecer intacto

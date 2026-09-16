@@ -11,9 +11,9 @@ Total esperado, calculado **a mano** antes de correr el flujo: 145 PF (27 + 19 +
 + 27 + 12 + 4, `data/samples/sistemas/README.md`) × 110,992365 USD/PF (README de
 `data/sistemas/fuentes/`) = 16 093,892925 USD. Se fija como regresión exacta.
 
-UC‑02 en este dominio: la única lista real es el tabulador con el que se sembró el catálogo;
+UC‑02 en este dominio: la única lista publicada es el tabulador con el que se sembró el catálogo;
 cargar la lista canónica crea una lista nueva sin cambios de precio y la prueba lo afirma en vez
-de fabricar un histórico. El histórico real empieza con una encuesta salarial TI fechada.
+de fabricar un histórico. El histórico empieza con una encuesta salarial TI fechada.
 """
 
 from __future__ import annotations

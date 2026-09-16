@@ -146,7 +146,7 @@ motor — por eso la plantilla telecom solo trae filas `material`.
 El catálogo de insumos es una **lista tentativa** de repuestos, servicios/herramientas y técnicos
 plausibles por cada uno de los diez activos de `data/samples/industrial/activos_planta.csv` — no
 proviene de una orden de trabajo real, a diferencia de los insumos civil (línea base auditada) o
-telecom (presupuestos ARENAZA reales). Se marca así explícitamente porque el brief de esta sesión no
+telecom (presupuestos didácticos ARENAZA). Se marca así explícitamente porque el brief de esta sesión no
 tiene todavía cotizaciones de campo que confirmen qué repuesto exacto corresponde a cada activo; la
 ronda de cotizaciones de la Fase M0 la reemplazará o la confirmará insumo por insumo:
 `data/industrial/plantilla_precios.csv` (sección 2.5).
@@ -182,7 +182,7 @@ de la literatura citada del marco teórico, nunca de una estimación del autor.
 
 Los tres listados de julio 2026 (`data/precios/maprex_2026-07/`) ya están en el repositorio como
 referencia puntual de un mes pasado. Esta carta no pide ese listado — ya se tiene —, pide la **serie
-mensual** (histórico continuo), que es lo que UC‑02 necesita para construir `CambioPrecio` real a lo
+mensual** (histórico continuo), que es lo que UC‑02 necesita para construir `CambioPrecio` a lo
 largo del tiempo en vez de una sola foto de julio. Para firma del tutor.
 
 ```
@@ -204,7 +204,7 @@ desarrollo de sistemas).
 
 El trabajo ya incorporó, como referencia puntual, los listados de materiales, equipos y mano de obra
 de MaPreX correspondientes a julio de 2026, aportados por el autor. Para que el sistema pueda
-construir y validar un histórico real de variación de precios (y no solo un contraste de un único
+construir y validar un histórico de variación de precios (y no solo un contraste de un único
 mes), solicitamos formalmente acceso académico continuo a la **serie mensual** de estos listados —o,
 alternativamente, autorización para recibir y conservar como evidencia académica los listados
 mensuales sucesivos— durante el período de desarrollo y evaluación del trabajo de grado, con los

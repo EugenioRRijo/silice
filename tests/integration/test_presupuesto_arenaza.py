@@ -1,6 +1,6 @@
 """Los dos presupuestos ARENAZA reproducidos desde SQLite (Sesión M1.2).
 
-Segunda línea base real de la tesis, en otro dominio y con otra política de costeo: el catálogo
+Segunda línea base didáctica de la tesis, en otro dominio y con otra política de costeo: el catálogo
 telecom se carga en SQLite con `scripts/seed_telecom.py`, se reconstruyen las `ComposicionAPU` de
 las 40 partidas `TC-*` desde la base y el motor puro `core.costing.calcular_apu` las valora. El
 total de cada presupuesto debe coincidir con el impreso en el PDF (1 109,29 y 5 410,73 USD) dentro

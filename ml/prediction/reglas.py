@@ -1,7 +1,7 @@
 """Prediccion de precio unitario por sistema de reglas (UC-07, Sesion I6.3, compuerta G2).
 
 La compuerta G2 (CLAUDE.md §8.1) elige la tecnica por el conteo de registros de APU del dominio;
-`tecnica_para` es esa tabla hecha codigo. Con los conteos reales del proyecto (civil = 5, el resto
+`tecnica_para` es esa tabla hecha codigo. Con los conteos del proyecto (civil = 5, el resto
 0) corresponde el **sistema de reglas con analisis de sensibilidad, declarado como limitacion**:
 no hay datos para entrenar nada, y este modulo no lo disimula.
 

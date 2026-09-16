@@ -1,11 +1,11 @@
-# PLAN_MULTIDOMINIO.md — Datos reales para las demás ingenierías
+# PLAN_MULTIDOMINIO.md — Catálogos y precios publicados para las demás ingenierías
 
 Continuación del [PLAN_DESARROLLO.md](PLAN_DESARROLLO.md) (completo, 20 de 20 sesiones). Aquel
 plan demostró la **mecánica** multidominio: cuatro adaptadores extraen cantidades trazables y el
 núcleo quedó intacto (indicador 4). Este plan cubre lo que quedó declarado en la compuerta G2:
 los dominios telecom, industrial y sistemas tienen **cero registros de APU y cero listas de
-precios reales**. El objetivo es que cada ingeniería entre por la misma puerta que civil — con
-catálogo, composiciones, presupuesto auditado y lista de precios real y fechada — usando su
+precios publicados**. El objetivo es que cada ingeniería entre por la misma puerta que civil — con
+catálogo, composiciones, presupuesto auditado y lista de precios publicada y fechada — usando su
 fuente natural de precios, que es distinta en cada dominio.
 
 **Qué demuestra.** La generalización de la tesis en su segunda mitad: el PLAN original probó que
@@ -16,11 +16,18 @@ se escribe el hallazgo en `docs/bitacora/` (CLAUDE.md §9); el análisis de la p
 obra de ARENAZA ya mostró que no hace falta
 ([bitácora I5‑telecom](docs/bitacora/2026-08-29-I5-telecom.md), hallazgo 1, opción 1).
 
+> **Errata (2026‑09‑15).** Este plan se escribió llamando «reales» a los presupuestos de ARENAZA y
+> a los datos de los cuatro dominios. Son **ejercicios académicos ficticios**; lo publicado y
+> fechado son las listas de precios de referencia (MaPreX jul‑2026 y el tabulador del CIV). El
+> texto quedó corregido en la sesión de limpieza; los mensajes de commit citados más abajo se
+> conservan tal como se hicieron, porque son historia. La fuente única de la naturaleza de los
+> datos es [CLAUDE.md §1](CLAUDE.md#1-qué-es-este-proyecto).
+
 ---
 
 ## 0. Situación de partida (2026‑08‑31, actualizada 2026‑09‑02)
 
-| Dominio | Adaptador | Catálogo/APU | Precios reales | Fuente natural |
+| Dominio | Adaptador | Catálogo/APU | Precios publicados | Fuente natural |
 |---|---|---|---|---|
 | civil | ✔ IFC + tabular | ✔ 5 APU auditados | línea base 28/04/2026; ✔ referencia MaPreX jul‑2026 en el repo; falta ronda vigente | MaPreX/Lulowin, cotizaciones, convención colectiva |
 | telecom | ✔ topología CSV | 0 | **✔ ya en el repo**: 2 presupuestos ARENAZA (14 + 26 renglones, 1 109,29 y 5 410,73 USD) + referencia MaPreX jul‑2026 para contraste | distribuidores de redes; los PDF ARENAZA; MaPreX |
@@ -63,13 +70,13 @@ PDF), que convierte al dominio en el **segundo caso de auditoría** de la tesis.
 | Compuerta | Criterio de cruce | Degradación declarada si falla | Estado |
 |---|---|---|---|
 | **GM1** (telecom, tras M1.3) | El presupuesto ARENAZA se reproduce del catálogo ± 0,01 y la auditoría detecta la inconsistencia 80/90 m | sin degradación posible: los datos ya están en el repo | CRUZADA |
-| **GM2** (industrial, tras M2.2) | Presupuesto de mantenimiento con ≥ 3 activos costeados con precios cotizados reales | si no llegan cotizaciones: precios de contrato/factura histórica aportados por el autor, con origen declarado; siguiente instancia: referencia nacional MaPreX jul‑2026 (`data/precios/maprex_2026-07/`) declarada como proxy fechado; última instancia, solo para insumos ausentes en MaPreX: referencia internacional (RSMeans/Richardson) | CRUZADA‑CON‑DEGRADACIÓN |
-| **GM3** (sistemas, tras M3.2) | Presupuesto del alcance funcional costeado con tarifas reales (CIV o encuesta fechada) y productividad HH/PF con fuente | el tabulador CIV jul‑2026 ya está en el repo (listado MO de MaPreX, estructurado en M0.2); si un rol no aparece ahí: encuesta salarial fechada; la productividad HH/PF siempre se toma de benchmark declarado (ISBSG o literatura), nunca inventada | CRUZADA |
+| **GM2** (industrial, tras M2.2) | Presupuesto de mantenimiento con ≥ 3 activos costeados con precios cotizados | si no llegan cotizaciones: precios de contrato/factura histórica aportados por el autor, con origen declarado; siguiente instancia: referencia nacional MaPreX jul‑2026 (`data/precios/maprex_2026-07/`) declarada como proxy fechado; última instancia, solo para insumos ausentes en MaPreX: referencia internacional (RSMeans/Richardson) | CRUZADA‑CON‑DEGRADACIÓN |
+| **GM3** (sistemas, tras M3.2) | Presupuesto del alcance funcional costeado con tarifas publicadas (CIV o encuesta fechada) y productividad HH/PF con fuente | el tabulador CIV jul‑2026 ya está en el repo (listado MO de MaPreX, estructurado en M0.2); si un rol no aparece ahí: encuesta salarial fechada; la productividad HH/PF siempre se toma de benchmark declarado (ISBSG o literatura), nunca inventada | CRUZADA |
 | **GM4** (cierre, tras M4.1) | Recuento G2 regenerado por dominio y `resultados_ml.md` reflejando los dominios poblados | — (informativa) | CRUZADA |
 
 Los cuatro dominios seguirán < 50 registros: la técnica de `ml/prediction/` **sigue siendo
 reglas** y la limitación **sigue declarada**. Este plan no promete revertir G2; promete que la
-limitación quede demostrada con datos reales en vez de con ausencia de datos.
+limitación quede demostrada con catálogos poblados en vez de con ausencia de datos.
 
 ---
 
@@ -151,7 +158,7 @@ corrugado del presupuesto 2 registra 80 en computos y 90 en presupuesto.
 
 ```
 Construye las ComposicionAPU de las partidas TC-* desde el fixture: materiales
-con los precios reales de ARENAZA; la política de mano de obra "50 % del total"
+con los precios impresos en ARENAZA; la política de mano de obra "50 % del total"
 se representa con la OPCION 1 del hallazgo 1 de la bitácora I5-telecom (una
 LineaManoObra sintética armada por la capa de catálogo ANTES de llamar al
 motor; el motor puro no cambia). Equipos según los renglones que correspondan.
@@ -166,7 +173,7 @@ reproducido coincide con el PDF ± 0.01; git diff --stat core/ vacío.
 
 **Commit.** `feat(telecom): catalogo y presupuesto arenaza reproducido desde sqlite`
 
-### Sesión M1.3 — Auditoría telecom y UC‑02 real (compuerta GM1)
+### Sesión M1.3 — Auditoría telecom y UC‑02 con listas fechadas (compuerta GM1)
 
 ```
 Audita el presupuesto ARENAZA con R1-R7: la inconsistencia 80/90 m debe salir
@@ -175,10 +182,10 @@ en otro dominio). Documenta qué reglas aplican y cuáles reportan INFO por no
 tener datos en este dominio (R5 es volumétrica-civil: que reporte INFO es el
 comportamiento correcto de RF-23, no un defecto a corregir).
 
-Carga una lista de precios telecom real y fechada (los precios ARENAZA como
+Carga una lista de precios telecom fechada (los precios ARENAZA como
 lista 1; la referencia MaPreX jul-2026 estructurada en M0.2 como lista 2 —
-primer contraste de mercado real del proyecto; si llegan cotizaciones de
-distribuidores, lista 3) y corre UC-02: primer histórico de CambioPrecio real
+primer contraste de mercado del proyecto; si llegan cotizaciones de
+distribuidores, lista 3) y corre UC-02: primer histórico de CambioPrecio
 fuera de civil.
 
 Criterio de cierre: 80/90 detectado; UC-02 telecom en verde; GM1 CRUZADA.
@@ -226,7 +233,7 @@ precios con evidencia; GM2 CRUZADA (o degradación documentada).
 ### Sesión M3.1 — Tarifas y productividad con fuente
 
 ```
-Estructura las tarifas reales: HH por rol desde el tabulador CIV jul-2026 ya
+Estructura las tarifas publicadas: HH por rol desde el tabulador CIV jul-2026 ya
 estructurado en M0.2 (43 filas P-1..P-10; incluye ingeniero computista y
 analistas), complementado si existe con encuesta salarial TI fechada
 (evidencia adicional en data/sistemas/fuentes/), y productividad HH por punto
@@ -277,7 +284,7 @@ docs/calidad_iso25010.md si algún veredicto cambia.
 ```
 Actualiza: manuales (fuentes de precios por dominio y cómo cargar cada
 catálogo), docs/tesis/plan_redaccion.md (capítulo IV §9 y capítulo V: la
-generalización ahora se redacta con cuatro presupuestos reales, no con uno),
+generalización ahora se redacta con cuatro presupuestos auditados, no con uno),
 esqueleto si D3 lo pide, y la bitácora final del plan con el estado de las
 cuatro compuertas GM.
 ```
@@ -292,7 +299,7 @@ cuatro compuertas GM.
 |---|---|---|---|
 | M0 Protocolo | 2 | protocolo + plantillas + carta; referencia MaPreX estructurada por dominio | — (la evidencia MaPreX ya está en el repo) |
 | M1 Telecom | 3 | catálogo, presupuesto y auditoría ARENAZA; contraste MaPreX; GM1 | nada externo (datos en el repo) |
-| M2 Industrial | 2 | mantenimiento costeado real; GM2 | cotizaciones del autor (M0); degradación MaPreX disponible |
+| M2 Industrial | 2 | mantenimiento costeado; GM2 | cotizaciones del autor (M0); degradación MaPreX disponible |
 | M3 Sistemas | 2 | puntos de función costeados; GM3 | tabulador CIV ya en el repo (M0.2); encuesta TI opcional |
 | M4 Consolidación | 2 | G2 regenerada, docs al día; GM4 | M1–M3 |
 
@@ -305,7 +312,7 @@ al cierre.
 ## Los tres momentos que definen este plan
 
 **Sesión M1.2.** Cuando el presupuesto ARENAZA se reproduzca ± 0,01 desde SQLite, la tesis tiene
-su **segunda línea base real**, en otro dominio y con otra política de costeo, sin haber tocado
+su **segunda línea base didáctica**, en otro dominio y con otra política de costeo, sin haber tocado
 el motor.
 
 **Sesión M1.3.** Cuando la auditoría marque los 80/90 m del tubo corrugado con sus `origen_id`,

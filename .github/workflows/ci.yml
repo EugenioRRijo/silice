@@ -1,6 +1,8 @@
 # Integracion continua (spec: docs/superpowers/specs/2026-09-14-ci-integracion-continua-design.md).
 # Cuatro garantias: suite + ruff en Linux sin omitidas, guardia del nucleo, cobertura de core/
 # >= 80 % y artefactos reproducibles, y la suite tambien en Windows (RNF-06, RNF-07).
+# Desde la sesion de limpieza (2026-09-15) se suma la meta de datos: ninguna afirmacion de la
+# documentacion presenta como reales los APU y presupuestos didacticos del repositorio.
 name: CI
 
 on:
@@ -67,6 +69,9 @@ jobs:
               ;;
           esac
           uv run --no-sync python scripts/guardia_nucleo.py --base "$base"
+
+      - name: Meta de datos (naturaleza de los datos, CLAUDE.md seccion 1)
+        run: uv run --no-sync python scripts/meta_datos.py
 
   pruebas:
     name: pruebas (${{ matrix.os }})

@@ -1,13 +1,13 @@
-"""Auditoría del presupuesto telecom ARENAZA + primer UC‑02 real fuera de civil (Sesión M1.3).
+"""Auditoría del presupuesto telecom ARENAZA + primer UC‑02 fuera de civil (Sesión M1.3).
 
 Compuerta GM1: las siete reglas de verificación (CLAUDE.md §7) corren sobre el presupuesto
 ARENAZA armado en la Sesión M1.2 (`scripts.seed_telecom.presupuesto_arenaza`) y el hallazgo 80/90
 del tubo corrugado (presupuesto 2, renglón 5: 80 m en "Computos metricos" vs 90 m en
 "Presupuesto", `data/telecom/fuentes/README.md`) sale del informe de auditoría con su `origen_id`,
-en vez de vivir solo en la documentación. Además, dos listas de precios reales y fechadas —
+en vez de vivir solo en la documentación. Además, dos listas de precios fechadas —
 `data/telecom/fuentes/lista_arenaza.csv` (18/05/2026) y `lista_maprex_2026-07.csv` (09/07/2026,
 derivada de `data/precios/maprex_2026-07/referencia_telecom.csv`) — se cargan por el flujo UC‑02
-existente (`core.catalog.precios`, Sesión I1) y producen el primer histórico real de `CambioPrecio`
+existente (`core.catalog.precios`, Sesión I1) y producen el primer histórico de `CambioPrecio`
 fuera del dominio civil.
 
 Qué regla detecta el 80/90 y por qué: la Sesión M1.2 dejó las dos cantidades del tubo en
@@ -160,7 +160,7 @@ def test_las_listas_uc02_excluyen_las_lineas_de_ajuste():
 
 
 # ---------------------------------------------------------------------------------------------
-# (d) UC‑02: dos listas reales y fechadas producen el primer historico de CambioPrecio en telecom
+# (d) UC‑02: dos listas fechadas producen el primer historico de CambioPrecio en telecom
 # ---------------------------------------------------------------------------------------------
 
 

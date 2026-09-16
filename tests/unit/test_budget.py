@@ -3,9 +3,9 @@
 El presupuesto se arma con las cantidades del caso auditado y los cinco APU de la línea base, así
 que su total debe reproducir los 1 586,61 USD del PDF con la tolerancia de ± 0,01 de CLAUDE.md §4.
 
-La curva es el punto crítico de la sesión: en el presupuesto real cerraba en 99,30 % (hallazgo 3), y
-aquí debe cerrar exactamente en el total **por construcción**, incluso repartiendo con montos
-redondeados a dos decimales.
+La curva es el punto crítico de la sesión: en el presupuesto del caso didáctico cerraba en 99,30 %
+(hallazgo 3), y aquí debe cerrar exactamente en el total **por construcción**, incluso repartiendo
+con montos redondeados a dos decimales.
 
 Ningún dato se repite: cantidades, APU y totales vienen de `tests.fixtures.apu_linea_base` a través
 de `tests.fixtures.computo_auditado` (principio DRY de CLAUDE.md §2).

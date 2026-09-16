@@ -2,7 +2,7 @@
 
 Continuación de [PLAN_DESARROLLO.md](PLAN_DESARROLLO.md) (20 de 20 sesiones) y de
 [PLAN_MULTIDOMINIO.md](PLAN_MULTIDOMINIO.md) (11 de 11). Aquellos planes dejaron un núcleo que
-costea, audita y contrasta presupuestos de cuatro dominios con precios reales y fechados. Este plan
+costea, audita y contrasta presupuestos de cuatro dominios con precios publicados y fechados. Este plan
 agrega **una IA que arma el presupuesto a partir de las necesidades del usuario** sin que el núcleo
 cambie y sin que la IA fije una sola cifra: la IA interpreta y elige; el núcleo calcula y audita.
 

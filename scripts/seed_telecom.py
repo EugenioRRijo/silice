@@ -45,11 +45,11 @@ Los cuatro mecanismos de los renglones que el PDF no cierra
    impreso está cotizado **por tubo de 30 m**, no por metro: el propio PDF anota "3*99,75". La
    partida conserva la unidad y la cantidad impresas (90 m) y su APU compra ``1/30`` de tubo por
    metro al precio impreso: ``(1/30) x 99,75 = 3,325 USD/m`` y ``90 x 3,325 = 299,25`` ✓. Así se
-   conservan a la vez el precio de mercado real (99,75 por tubo, que es lo que valdrá contrastar
-   con MaPreX en M1.3) y el total impreso. El renglón del presupuesto 2 (donde "Presupuesto" imprime
-   90 m y "Computos metricos" imprime 80 m del mismo tubo) declara además `regla =
-   REGLA_TUBO_CORRUGADO`, para que la Sesión M1.3 audite la discrepancia con la regla de
-   verificación R1 (ver `item_de`).
+   conservan a la vez el precio impreso en la fuente (99,75 por tubo, que es lo que valdrá
+   contrastar con MaPreX en M1.3) y el total impreso. El renglón del presupuesto 2 (donde
+   "Presupuesto" imprime 90 m y "Computos metricos" imprime 80 m del mismo tubo) declara
+   además `regla = REGLA_TUBO_CORRUGADO`, para que la Sesión M1.3 audite la discrepancia con
+   la regla de verificación R1 (ver `item_de`).
 2. **P2 renglones 14 y 18** (1 446,65 vs 5 x 289,00 = 1 445,00; 303,93 vs 7 x 42,99 = 300,93). El
    total impreso contradice la multiplicación **en la fuente**. Se reproduce el total impreso
    añadiendo al APU una segunda línea de material declarada, cuya descripción empieza por

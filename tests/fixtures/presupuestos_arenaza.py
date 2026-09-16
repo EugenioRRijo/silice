@@ -1,8 +1,8 @@
-"""Los dos presupuestos reales de ARENAZA (telecom), transcritos renglon a renglon.
+"""Los dos presupuestos didacticos de ARENAZA (telecom), transcritos renglon a renglon.
 
 Fuente primaria: `data/samples/telecom/Presupuesto_1_ARENAZA.pdf` (14 renglones, 1 109,29 USD)
 y `Presupuesto_2_ARENAZA.pdf` (26 renglones, 5 410,73 USD), ambos con fecha 18/05/2026. Es la
-segunda linea base real de la tesis, en otro dominio (CLAUDE.md seccion 1): la primera es
+segunda linea base didactica de la tesis, en otro dominio (CLAUDE.md seccion 1): la primera es
 `tests/fixtures/apu_linea_base.py` (civil).
 
 Direccion CSV <-> fixture (decision de esta sesion, brief Sesion M1.1 paso 4): el CSV NO se

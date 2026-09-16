@@ -12,10 +12,11 @@ El total esperado se calculó **a mano** antes de correr el flujo: Σ (frecuenci
 precio unitario manual de la Sesión M2.1 = 20 × 214,652631875 + 30 × 154,33506 +
 20 × 147,82922825 + 30 × 208,146863375 = 18 124,094903750 USD. Se fija como regresión exacta.
 
-Sobre UC‑02 en este dominio: la única lista real es la referencia MaPreX con la que se sembró el
-catálogo; cargar la lista canónica por UC‑02 crea una lista nueva **sin cambios de precio**
-(misma fuente), y así se afirma explícitamente: ningún `CambioPrecio` se fabrica con datos que no
-existen. El histórico industrial real empieza con la primera cotización de campo del autor.
+Sobre UC‑02 en este dominio: la única lista publicada es la referencia MaPreX con la que se
+sembró el catálogo; cargar la lista canónica por UC‑02 crea una lista nueva **sin cambios de
+precio** (misma fuente), y así se afirma explícitamente: ningún `CambioPrecio` se fabrica con
+datos que no existen. El histórico industrial empieza con la primera cotización de campo del
+autor.
 """
 
 from __future__ import annotations
