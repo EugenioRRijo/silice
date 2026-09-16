@@ -8,6 +8,7 @@ __pycache__/
 .mypy_cache/
 .coverage
 htmlcov/
+reporte-pruebas.xml
 
 # Bases de datos locales (SQLite se regenera con scripts/seed.py)
 *.db

@@ -108,6 +108,14 @@ uv run ruff check .
 uv run python scripts/medir_rnf03.py
 ```
 
+**Integración continua** (desde 2026‑09‑15, `.github/workflows/ci.yml`): cada PR y cada push a
+`main` ejecutan en runners de GitHub el job `calidad` (ruff y `scripts/guardia_nucleo.py`, que
+aplica la regla de la hipótesis central al rango del cambio) y el job `pruebas` en Linux y
+Windows (todos los extras, `pytest -W error` y `scripts/verificar_omitidas.py`, que exige 0
+omitidas). En Linux, además, se exige la cobertura de `core/` ≥ 80 % y que `docs/api.json` y
+`docs/resultados_ml.md` se regeneren sin diferencias. Cada paso tiene su comando local
+equivalente en [manual_tecnico.md](manual_tecnico.md) §2.
+
 ## 8. Especificación de casos: trazabilidad RF → prueba
 
 Una fila por RF; el enunciado y el criterio de aceptación están en la fila homónima de
@@ -161,7 +169,7 @@ Cobertura adicional no exigida por RF: `test_generador_ifc.py` (1), `test_visor3
 | RNF‑04 usabilidad | juicio de expertos Likert ≥ 4/5: instrumento por aplicar con el tutor | pendiente |
 | RNF‑05 núcleo cerrado | `git diff --stat core/` vacío tras I5 y tras cada adaptador; `test_arquitectura.py` verde | cumple |
 | RNF‑06 cobertura | `core/` 98,10 % (meta ≥ 80 %); detalle en §10 | cumple |
-| RNF‑07 portabilidad | `uv sync` sin pasos manuales en Windows 11; Linux pendiente | parcial |
+| RNF‑07 portabilidad | `uv sync --locked` sin pasos manuales; suite completa en verde en Windows 11 (local) y en Linux y Windows por CI ([run 34969162933](https://github.com/EugenioRRijo/tesis-apu-multidominio/actions/runs/34969162933), 2026‑09‑15) | cumple |
 | RNF‑08 seguridad | inspección: 0 credenciales versionadas, 0 llamadas de red en operación (excepción declarada: descarga inicial del modelo, cacheada) | cumple |
 | RNF‑09 compatibilidad IFC | G1 con salvedad: exacto contra modelo programático; faltan exports de ≥ 2 modeladores | parcial |
 

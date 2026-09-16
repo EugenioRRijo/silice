@@ -1,0 +1,115 @@
+# Integracion continua (spec: docs/superpowers/specs/2026-09-14-ci-integracion-continua-design.md).
+# Cuatro garantias: suite + ruff en Linux sin omitidas, guardia del nucleo, cobertura de core/
+# >= 80 % y artefactos reproducibles, y la suite tambien en Windows (RNF-06, RNF-07).
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  HF_HUB_DISABLE_SYMLINKS_WARNING: "1"
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  calidad:
+    name: calidad (ruff + guardia del nucleo)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout con historia completa
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Instalar uv
+        uses: astral-sh/setup-uv@v10.1.0 # sin etiqueta flotante v10: version exacta
+        with:
+          version: "0.11.9"
+          enable-cache: true
+
+      - name: Entorno minimo (grupo dev)
+        run: uv sync --locked --only-group dev
+
+      - name: Ruff
+        run: uv run --no-sync ruff check .
+
+      - name: Guardia del nucleo
+        env:
+          EVENTO: ${{ github.event_name }}
+          BASE_PR: ${{ github.base_ref }}
+          ANTES: ${{ github.event.before }}
+        run: |
+          case "$EVENTO" in
+            pull_request)
+              base="origin/$BASE_PR"
+              ;;
+            push)
+              if [ -z "$ANTES" ] || [ "$ANTES" = "0000000000000000000000000000000000000000" ]; then
+                echo "::notice::primer push de la rama: no hay rango que evaluar"
+                exit 0
+              fi
+              base="$ANTES"
+              ;;
+            *)
+              base="origin/main"
+              ;;
+          esac
+          uv run --no-sync python scripts/guardia_nucleo.py --base "$base"
+
+  pruebas:
+    name: pruebas (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Instalar uv
+        uses: astral-sh/setup-uv@v10.1.0 # sin etiqueta flotante v10: version exacta
+        with:
+          version: "0.11.9"
+          enable-cache: true
+
+      - name: Cache del modelo de similitud
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/huggingface
+          key: hf-${{ runner.os }}-paraphrase-multilingual-MiniLM-L12-v2
+
+      - name: Entorno completo (todos los extras)
+        run: uv sync --locked --all-extras
+
+      - name: Suite (pytest -W error)
+        run: >-
+          uv run --no-sync pytest -W error -p no:cacheprovider
+          --junitxml=reporte-pruebas.xml
+          --cov=core --cov=ml --cov=api --cov=adapters --cov-report=term
+
+      - name: Sin pruebas omitidas
+        run: uv run --no-sync python scripts/verificar_omitidas.py reporte-pruebas.xml
+
+      - name: Cobertura de core >= 80 % (RNF-06)
+        if: runner.os == 'Linux'
+        run: uv run --no-sync coverage report --include="core/*" --fail-under=80
+
+      - name: Artefactos reproducibles
+        if: runner.os == 'Linux'
+        run: |
+          uv run --no-sync python scripts/exportar_openapi.py
+          uv run --no-sync python scripts/generar_resultados_ml.py
+          git diff --exit-code -- docs/api.json docs/resultados_ml.md

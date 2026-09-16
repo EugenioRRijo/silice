@@ -28,6 +28,18 @@ uv run pytest -W error                                    # la suite (advertenci
 uv run ruff check .                                       # estilo (E, F, W, I, B, UP, N)
 ```
 
+**Integración continua.** `.github/workflows/ci.yml` repite en GitHub, en cada PR y en cada push a
+`main`, lo que se verifica en local: el job `calidad` en Linux y el job `pruebas` en Linux y
+Windows. Cada paso se reproduce así:
+
+| Paso de CI | Comando local |
+|---|---|
+| Ruff | `uv run ruff check .` |
+| Guardia del núcleo | `uv run python scripts/guardia_nucleo.py --base <rama base>` (0 cumple, 1 viola, 2 base inválida) |
+| Suite sin omitidas | `uv run pytest -W error --junitxml=reporte-pruebas.xml` y luego `uv run python scripts/verificar_omitidas.py reporte-pruebas.xml` |
+| Cobertura de `core/` ≥ 80 % | `uv run coverage report --include="core/*" --fail-under=80` (tras la suite con `--cov=core`) |
+| Reproducibles | `uv run python scripts/exportar_openapi.py`, `uv run python scripts/generar_resultados_ml.py` y `git diff --exit-code -- docs/api.json docs/resultados_ml.md` |
+
 Convenciones: código, docstrings y commits en español (identificadores sin tildes);
 Conventional Commits (`feat(core): …`); `Decimal` en todo número monetario o dimensional —
 nunca `float` — y redondeo solo al presentar; una rama por incremento y bitácora por sprint.

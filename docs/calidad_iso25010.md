@@ -90,12 +90,15 @@ de unidades en `contracts.unidades`, línea base en el fixture); toda cantidad l
 
 ## 6. Portabilidad (RNF‑07)
 
-Instalación con `uv sync` (+ extras) sin pasos manuales, verificada en Windows 11. Sin rutas
-codificadas ni dependencias del sistema operativo en el código propio. La verificación en Linux
-está **pendiente**; nada en las dependencias (SQLAlchemy, SQLite, scikit‑learn, ifcopenshell) la
-hace improbable.
+Instalación con `uv sync --locked` (+ extras) sin pasos manuales. Se verificó primero en Windows 11
+(equipo de desarrollo) y, desde 2026‑09‑15, la integración continua lo verifica en cada PR en
+runners de GitHub con Linux (`ubuntu-latest`) y Windows (`windows-latest`, Windows Server 2025):
+suite completa de 490 pruebas con `-W error` y 0 omitidas en ambos sistemas
+([run 34969162933](https://github.com/EugenioRRijo/tesis-apu-multidominio/actions/runs/34969162933)).
+Portar no exigió ningún cambio de código ni de pruebas: no hay rutas codificadas ni dependencias
+del sistema operativo en el código propio.
 
-**Veredicto: parcial** (verificado en una de las dos plataformas declaradas).
+**Veredicto: cumple** (las dos plataformas declaradas, con evidencia automatizada en cada cambio).
 
 ## 7. Seguridad (RNF‑08)
 
@@ -125,10 +128,10 @@ p. ej. Revit y Bonsai) sigue abierta; la alternativa tabular documentada existe 
 | Eficiencia de desempeño | < 5 s con ≤ 100 partidas | **1,17 s** con 100 partidas | cumple |
 | Usabilidad | Likert ≥ 4/5 | instrumento por aplicar (Fase 6) | pendiente |
 | Mantenibilidad | `core/` intacto; cobertura ≥ 80 % | diff vacío + 65 pruebas; **98,05 %** | cumple |
-| Portabilidad | 0 pasos manuales, Windows y Linux | Windows ✔; Linux pendiente | parcial |
+| Portabilidad | 0 pasos manuales, Windows y Linux | Windows ✔ (local y CI); Linux ✔ (CI) | cumple |
 | Seguridad | 0 credenciales, 0 red | 0 y 0 (excepción declarada) | cumple |
 | Compatibilidad | IFC de ≥ 2 modeladores | exacto contra modelo programático | parcial |
 
-Cinco características cumplen su meta con evidencia automatizada o medida; una espera una medición
-humana (usabilidad) y dos quedan parciales por brechas declaradas desde las compuertas (Linux,
-IFC real). Ninguna brecha es silenciosa: todas tienen dueño, causa y bitácora.
+Seis características cumplen su meta con evidencia automatizada o medida; una espera una medición
+humana (usabilidad) y una queda parcial por una brecha declarada desde su compuerta (IFC real).
+Ninguna brecha es silenciosa: todas tienen dueño, causa y bitácora.
