@@ -1,9 +1,14 @@
 # `data/telecom/fuentes/` — presupuestos ARENAZA estructurados
 
 Sesión M1.1 del [PLAN_MULTIDOMINIO.md](../../../PLAN_MULTIDOMINIO.md). Esta carpeta guarda la
-estructuración renglón a renglón de los dos presupuestos reales de ARENAZA (telecom), la
-segunda línea base real de la tesis (la primera es el caso civil de la clínica,
-`data/linea_base/`).
+estructuración renglón a renglón de los dos presupuestos ARENAZA (telecom). Son **ejercicios
+académicos ficticios**, como el caso civil de la clínica (`data/linea_base/`): documentos con el
+formato de la práctica, no presupuestos de una obra ejecutada ni precios reales
+([CLAUDE.md §1](../../../CLAUDE.md)).
+
+> **Errata (2026‑09‑15).** Las sesiones M1.1–M4.2 los trataron como «presupuestos reales» y
+> «segunda línea base real». Esa afirmación queda corregida aquí y en la fuente única; las
+> bitácoras de esas sesiones conservan la redacción de su fecha.
 
 A diferencia de la carpeta `data/<dominio>/fuentes/` que describe
 [`docs/protocolo_precios.md`](../../../docs/protocolo_precios.md) §1.3 (evidencia de campo de
@@ -17,7 +22,7 @@ transcripción completa de un presupuesto ya existente en el repositorio como ev
 |---|---|---|
 | `presupuesto_1_arenaza.csv` | Los 14 renglones de la tabla "Presupuesto" de `Presupuesto_1_ARENAZA.pdf` (presupuesto 001) | `scripts/extraer_arenaza.py` |
 | `presupuesto_2_arenaza.csv` | Los 26 renglones de la tabla "Presupuesto" de `Presupuesto_2_ARENAZA.pdf` (presupuesto 002) | `scripts/extraer_arenaza.py` |
-| `lista_arenaza.csv` | Lista 1 de UC‑02 (Sesión M1.3): los 27 precios de mercado ARENAZA, vigencia 18/05/2026 | `scripts/derivar_listas_telecom.py` |
+| `lista_arenaza.csv` | Lista 1 de UC‑02 (Sesión M1.3): los 27 precios del ejercicio ARENAZA, vigencia declarada 18/05/2026 | `scripts/derivar_listas_telecom.py` |
 | `lista_maprex_2026-07.csv` | Lista 2 de UC‑02 (Sesión M1.3): la referencia MaPreX de julio 2026 de los 5 insumos con equivalencia defendible, vigencia 09/07/2026 | `scripts/derivar_listas_telecom.py` |
 
 **Cabecera exacta:** `renglon,descripcion,unidad,cantidad,precio_unitario,total,origen`, con
@@ -130,7 +135,7 @@ en vez de escribir un CSV no verificado.
 
 ## Listas de precios canónicas para UC‑02 (Sesión M1.3)
 
-La Sesión M1.3 (auditoría telecom y UC‑02 real, compuerta GM1) añade a esta carpeta las dos
+La Sesión M1.3 (auditoría telecom y UC‑02 con las dos listas del dominio, compuerta GM1) añade a esta carpeta las dos
 listas de precios del dominio en el formato canónico de UC‑02 (`tipo,insumo,unidad,precio`,
 `core.catalog.precios.COLUMNAS_ARCHIVO`). Las genera `scripts/derivar_listas_telecom.py` y
 **ninguna de las dos transcribe un precio**: la lista 1 sale de las composiciones de
@@ -144,8 +149,9 @@ listas de precios del dominio en el formato canónico de UC‑02 (`tipo,insumo,u
 | `lista_maprex_2026-07.csv` | 2 — referencia MaPreX jul‑2026 | **09/07/2026** (`fecha_vigencia` de `materiales.pdf` en `referencia_telecom.csv`) | 5 | `referencia_telecom.csv`, convertido desde Bs con la tasa 633,3644 Bs/USD (01/07/2026) |
 
 Cargadas en ese orden por UC‑02 (`crear_lista_desde_archivo` y luego `registrar_cambios`)
-producen el **primer histórico real de `CambioPrecio` fuera del dominio civil**: cinco cambios
-fechados el 09/07/2026 (`tests/integration/test_auditoria_arenaza.py`).
+producen el **primer histórico de `CambioPrecio` fuera del dominio civil**: cinco cambios
+fechados el 09/07/2026 (`tests/integration/test_auditoria_arenaza.py`). Es un histórico entre los
+precios de un ejercicio académico y una referencia publicada, no entre dos listas de mercado.
 
 ### Lista 1: qué entra y qué queda fuera
 

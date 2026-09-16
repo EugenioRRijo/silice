@@ -2,7 +2,8 @@
 
 Sistema de generación y auditoría de Análisis de Precios Unitarios (APU) multidominio, asistido por
 modelo BIM‑5D y aprendizaje automático. Trabajo de grado; caso de estudio: obra civil del sistema de
-drenaje de una clínica.
+drenaje de una clínica (caso de ejemplo con contenido y formato reales de APU, no una obra ejecutada;
+ver [docs/linea_base.md](docs/linea_base.md)).
 
 La hipótesis central del trabajo es que **un núcleo de costeo y verificación puede permanecer intacto
 mientras se agregan dominios (civil, telecom, industrial, sistemas) mediante adaptadores**. La prueba
@@ -44,7 +45,7 @@ Toda la suite está en verde (versión alpha 0.1, sprint del 2026‑08‑29). Qu
 | `tests/unit/test_contracts.py` | invariantes de los contratos (`Decimal`, unidades normalizadas, dataclasses inmutables) | 0 |
 | `tests/unit/test_arquitectura.py` | `core/` no importa adaptadores, ML, UI ni API; los adaptadores solo importan `core.contracts` | 0 |
 | `tests/unit/test_linea_base.py` | integridad del caso auditado (`tests/fixtures/apu_linea_base.py`) | 0 |
-| `tests/unit/test_costing.py` | el motor reproduce los cinco APU reales ± 0,01 | I0.3 |
+| `tests/unit/test_costing.py` | el motor reproduce los cinco APU de la línea base ± 0,01 | I0.3 |
 | `tests/unit/test_meta_alpha.py` | las funciones puras de `scripts/meta_alpha.py` | alpha |
 | `tests/unit/test_reglas_civil.py` | 0,224 m3 y 4,48 m2 por tanquilla; adaptador tabular | I3.2 |
 | `tests/unit/test_verification.py` | evaluador, texto, directivas y las siete reglas sobre el presupuesto auditado | I4 |

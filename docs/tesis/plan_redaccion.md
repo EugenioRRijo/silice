@@ -56,13 +56,18 @@ listas para elegir.
 Secciones: planteamiento · formulación (pregunta principal y secundarias, Bases §2.4) ·
 objetivos (general + OE1–OE6, **más OE7 según D3**) · justificación · alcance y delimitación.
 
-- **La evidencia empírica es el arma del capítulo:** el presupuesto real de 1 586,61 USD con
-  **siete inconsistencias** documentadas una a una en [linea_base.md](../linea_base.md) (curva
-  que cierra en 99,30 %, encofrado 5,92 vs 4,48 m², concreto 0,415 vs 0,224 m³, «mts» vs
-  «Pieza», 3/4" vs 4", 9,74 m³ excavados vs 1,30 rellenados, depreciación 1,00 vs 0,03). El
-  planteamiento no argumenta en abstracto: muestra el caso.
-- **Delimitación honesta:** caso de estudio único (drenaje de una clínica), dominio sanitario
-  como línea base, extensión multidominio según D3, datos de mercado escasos (declarado en G2).
+- **La evidencia va en dos planos**
+  ([spec del Sprint R1](../superpowers/specs/2026-09-15-sprint-r1-capitulos-design.md) §3). La
+  **literatura** sostiene, con citas verificadas, que el problema ocurre en la práctica. El
+  **caso didáctico** de la clínica, un ejercicio académico ficticio de 1 586,61 USD
+  ([CLAUDE.md §1](../../CLAUDE.md)), muestra el **mecanismo** con siete inconsistencias
+  documentadas en [linea_base.md](../linea_base.md) (curva que cierra en 99,30 %, encofrado 5,92
+  vs 4,48 m², concreto 0,415 vs 0,224 m³, «mts» vs «Pieza», 3/4" vs 4", 9,74 m³ excavados vs
+  1,30 rellenados, depreciación 1,00 vs 0,03). El planteamiento no argumenta en abstracto, pero
+  tampoco presenta el caso como obra real.
+- **Delimitación honesta:** caso de estudio único y didáctico (drenaje de una clínica), dominio
+  sanitario como línea base, extensión multidominio según D3, datos de mercado escasos (declarado
+  en G2) y **validación con presupuestos reales como limitación** hasta que se suministren.
 - Figuras: tabla de las siete inconsistencias con montos; foto/plano del caso si las Bases lo traen.
 
 ### Capítulo II — Marco teórico
@@ -112,7 +117,7 @@ El más largo. Orden sugerido (el mismo del PLAN, que es el orden causal):
 4. **Motor de costos** — la fórmula (CLAUDE.md §4) y los dos errores clásicos que las pruebas
    vigilan (materiales divididos por rendimiento; administración y utilidad sumadas). La línea
    base como oráculo: pruebas antes que implementación.
-5. **Presupuesto y curva** — cierre al 100 % por construcción (el caso real cerraba al 99,30 %).
+5. **Presupuesto y curva** — cierre al 100 % por construcción (el caso didáctico cerraba al 99,30 %).
 6. **Actualización masiva de precios (UC‑02)** — recalcular sin editar composiciones; histórico
    de cambios e incidencias (el dato que luego alimenta ML).
 7. **Adaptador civil** — IFC (G1, con su salvedad) y reglas paramétricas con expresión y
@@ -189,21 +194,17 @@ y se buscan sus usos en los capítulos.
 | Recálculo masivo | 1,17 s / 100 partidas | `uv run python scripts/medir_rnf03.py` |
 | Suite y cobertura | 395 pruebas · núcleo 98,05 % | `uv run pytest -W error --cov=core` → [plan_pruebas.md §10](../plan_pruebas.md) |
 | Total del caso | 1 586,61 USD · curva 99,30 % | [linea_base.md](../linea_base.md) · `data/linea_base/APUS_CLINICA.pdf` |
+| Siete inconsistencias del caso didáctico (magnitudes) | encofrado 5,92 vs 4,48 m² (+32 %) · concreto 0,415 vs 0,224 m³ (+85 %) · curva 1 575,50 USD, 11,11 USD sin conciliar · relleno 1,30 vs ≈ 8,6 m³ · depreciación 0,03 vs 1,00 | [linea_base.md §5](../linea_base.md) · `tests/fixtures/apu_linea_base.py` |
+| Dimensiones del caso didáctico | 24 m de PVC de 4" · cuatro tanquillas de 0,80 × 0,80 × 0,80 m con paredes de 0,10 m · cinco partidas | [linea_base.md §1](../linea_base.md) · `tests/fixtures/apu_linea_base.py` |
+| Parámetros de costo del caso didáctico | FCAS 6,00 (600 %) · bono de alimentación 1,00 USD por obrero y día · administración 15 % · utilidad 10 %, en cascada | `core/contracts/apu.py` (`ParametrosCosto`) · [CLAUDE.md §4](../../CLAUDE.md) |
+| Umbrales de la compuerta G2 (técnica según datos) | más de 200 registros por dominio: XGBoost con bosques aleatorios como contraste · de 50 a 200: razonamiento basado en casos · menos de 50: sistema de reglas con análisis de sensibilidad | [CLAUDE.md §8.1](../../CLAUDE.md) · `ml/prediction/reglas.py` (`tecnica_para`) |
+| Inconsistencia del ejercicio ARENAZA | tubo corrugado 80 m (cómputo) vs 90 m (presupuesto) | [data/telecom/fuentes/README.md](../../data/telecom/fuentes/README.md) · `uv run pytest tests/integration/test_auditoria_arenaza.py` |
 | Metas de sprint | 12/12 | `uv run python scripts/meta_i6.py` |
 | Conteo G2 | civil 5 · resto 0 (< 50) | [resultados_ml.md](../resultados_ml.md) |
 | Predicciones del caso | tabla PU base/estimado/rango | [resultados_ml.md](../resultados_ml.md) |
 
 ## 6. Tablero de avance
 
-Se actualiza al cerrar cada sesión de redacción (una fila por capítulo, como la bitácora de un
-sprint):
-
-| Capítulo | Archivo | Estado | Bloqueado por |
-|---|---|---|---|
-| IV. Desarrollo | `capitulos/04-desarrollo.md` | pendiente | — |
-| V. Resultados | `capitulos/05-resultados.md` | pendiente | juicio de expertos (parcial, declarable) |
-| III. Metodológico | `capitulos/03-marco-metodologico.md` | pendiente | — |
-| II. Marco teórico | `capitulos/02-marco-teorico.md` | pendiente | D4 (como nota) |
-| I. El problema | `capitulos/01-el-problema.md` | pendiente | D3 (objetivos en dos variantes) |
-| Conclusiones | `capitulos/06-conclusiones.md` | pendiente | capítulos IV y V |
-| Introducción | `capitulos/00-introduccion.md` | pendiente | todo lo demás |
+El tablero vive en un solo lugar: [capitulos/README.md](capitulos/README.md) (índice y estado de
+los capítulos, con el resumen del proyecto para quien llega de nuevo). Se actualiza al cerrar
+cada sesión de redacción, como la bitácora de un sprint.

@@ -7,8 +7,8 @@ supuestos declarados. Este índice solo dice qué hay y qué adaptador lo consum
 |---|---|---|---|---|
 | `civil/tanquillas_y_zanja.csv` | civil | `adapters/civil/tabular.py` (`AdaptadorCivilTabular`) | dos filas (4 tanquillas de 0,80 × 0,80 × 0,80 m, pared 0,10 m; zanja de 24 m × 0,40 × 0,80 con PVC 4") que reproducen la geometría de la línea base; emite 6 `ItemComputo` con regla y parámetros, incluido el relleno con su balance `{LB-01-EXC} - {LB-04-CON} - {LB-02-TUB} * f` | I3.2, 4b |
 | `telecom/topologia_arenaza.csv` | telecom | `adapters/telecom/adaptador.py` (`AdaptadorTelecom`) | 8 nodos (rack, 2 switches, 4 puntos de acceso, UPS) y 5 enlaces UTP con longitud y reserva, derivados de los dos presupuestos ARENAZA | I5 |
-| `telecom/Presupuesto_1_ARENAZA.pdf` | telecom / sistemas | — (evidencia) | presupuesto real de puntos WiFi (14 renglones, 1 109,29 USD) | I5 |
-| `telecom/Presupuesto_2_ARENAZA.pdf` | telecom / sistemas | — (evidencia) | presupuesto real de red y CCTV con rack (26 renglones, 5 410,73 USD) | I5 |
+| `telecom/Presupuesto_1_ARENAZA.pdf` | telecom / sistemas | — (evidencia) | presupuesto de puntos WiFi, ejercicio académico ficticio (14 renglones, 1 109,29 USD) | I5 |
+| `telecom/Presupuesto_2_ARENAZA.pdf` | telecom / sistemas | — (evidencia) | presupuesto de red y CCTV con rack, ejercicio académico ficticio (26 renglones, 5 410,73 USD) | I5 |
 | `industrial/activos_planta.csv` | industrial | `adapters/industrial/adaptador.py` (`AdaptadorIndustrial`) | 10 activos de planta con frecuencia anual de intervención y horizonte; la cantidad es intervenciones en el horizonte | I5 |
 | `sistemas/alcance_funcional.csv` | sistemas | `adapters/sistemas/adaptador.py` (`AdaptadorSistemas`) | 9 casos de uso en 3 módulos con entradas, salidas, consultas, archivos e interfaces; la cantidad son puntos de función sin ajustar | I5 |
 | `precios/lista_2026-06-01.csv` | — (transversal) | `core/catalog/precios.py` (UC‑02) | lista de precios de muestra: cemento 15 → 18, arena 30 → 33, resto igual que la línea base | I1 |
