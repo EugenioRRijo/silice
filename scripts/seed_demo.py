@@ -372,12 +372,13 @@ def sembrar_demo(sesion: Session, caso: CasoDemo | None = None) -> models.Proyec
 
     La lista nueva **hereda todos los precios de la vigente** antes de cargar ninguna composicion,
     igual que exige `core.catalog.precios.crear_lista_desde_archivo`: "la lista nueva nace con
-    todos los precios de la anterior". Esa funcion no sirve aqui porque exige una lista anterior y
-    lanza `CatalogoIncompleto` si no la hay, mientras que este sembrador tiene que funcionar
-    tambien sobre una base vacia (decision documentada en el brief de la Tarea 2; coste si es
-    equivocado: cinco lineas que migrar a `core/catalog/precios.py` el dia que un tercer creador
-    de listas las necesite). Si la base esta vacia -- sin ninguna lista vigente a `caso.fecha` --
-    no hay nada que heredar y `Catalogo.lista_vigente` lanza `CatalogoIncompleto` tal cual.
+    todos los precios de la anterior". Esa funcion no sirve aqui porque exige una ruta de archivo
+    (`leer_lista_precios`) que este caso de demostracion no tiene -- `caso` lo construye
+    `construir_caso_demo()` en Python, no un archivo tabular -- (decision documentada en el brief
+    de la Tarea 2; coste si es equivocado: cinco lineas que migrar a `core/catalog/precios.py` el
+    dia que un tercer creador de listas las necesite). Este sembrador **no** funciona sobre una
+    base vacia: igual que `crear_lista_desde_archivo`, exige una lista vigente a `caso.fecha` de la
+    que heredar; si no hay ninguna, `Catalogo.lista_vigente` lanza `CatalogoIncompleto` tal cual.
     """
     caso = caso if caso is not None else construir_caso_demo()
 

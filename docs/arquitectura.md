@@ -843,6 +843,16 @@ Las dependencias **internas** de `core/` no son libres de dirección pero sí de
 el orquestador (usa costing, verification y catalog) y `core.contracts` es hoja. `test_arquitectura.py`
 vigila las dos fronteras externas, no esta estratificación interna, que se mantiene por revisión.
 
+`scripts/` no aparece en el diagrama porque no es un componente arquitectónico (no lo vigila
+`test_arquitectura.py`, hallazgo de la auditoría de la rama completa, 2026‑09‑23): es un conjunto de
+utilidades de siembra y simulación que hoy tiene dependencia en los dos sentidos con `ui`, sin ciclo de
+módulos. `ui/paginas/actualizacion.py` importa `scripts.seed` (reutiliza `sembrar` para la demo desde la
+pantalla) y `ui/paginas/simulador.py` importa `scripts.simular_lista`; en sentido contrario,
+`scripts/simular_corpus.py` importa `ui.composicion` (reutiliza `buscar_referencia` para sortear
+insumos del corpus simulado). No hay ciclo porque ninguno de los tres módulos importados
+(`scripts.seed`, `scripts.simular_lista`, `ui.composicion`) importa de vuelta al paquete que lo
+importa.
+
 ## 5. Vista física
 
 Ejecución **local, sin servidor y sin credenciales** (RNF‑08 de
