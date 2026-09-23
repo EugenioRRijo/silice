@@ -31,7 +31,7 @@ from core.budget import (
     guardar_presupuesto,
     plan_secuencial,
 )
-from core.catalog import Catalogo, crear_lista_desde_archivo, leer_lista_precios
+from core.catalog import Catalogo, crear_lista_desde_archivo, leer_lista_precios, registrar_cambios
 from scripts.seed import NOMBRE_PROYECTO, sembrar
 from tests.fixtures import apu_linea_base as linea_base
 from tests.fixtures.actualizacion_uc02 import (
@@ -265,6 +265,34 @@ def test_crear_lista_actualiza_todas_las_variantes_homonimas(sesion, tmp_path):
     }
     assert precios_actualizados.keys() == variantes_antes
     assert all(precio == Decimal("50") for precio in precios_actualizados.values())
+
+
+def test_un_precio_anterior_nulo_no_hace_fallar_el_registro_de_cambios(sesion, tmp_path):
+    """INV‑004: un precio 0 es válido (`leer_lista_precios` acepta no negativos), así que la
+    variación con base nula no puede lanzar `DivisionByZero` en medio de UC‑02.
+    """
+    donado = tmp_path / "cemento_donado.csv"
+    donado.write_text(f"tipo,insumo,unidad,precio\nmaterial,{CEMENTO},saco,0\n", encoding="utf-8")
+    intermedia = crear_lista_desde_archivo(
+        sesion,
+        donado,
+        nombre="Lista con cemento donado",
+        moneda=linea_base.MONEDA,
+        fecha_vigencia=date(2026, 5, 15),
+    ).lista
+    nueva = crear_lista_desde_archivo(
+        sesion, MUESTRA, nombre=NOMBRE_LISTA_NUEVA, moneda=linea_base.MONEDA,
+        fecha_vigencia=FECHA_NUEVA,
+    ).lista
+
+    cambios = {
+        cambio.insumo.descripcion: cambio
+        for cambio in registrar_cambios(sesion, intermedia, nueva)
+    }
+
+    assert cambios[CEMENTO].precio_anterior == Decimal("0")
+    assert cambios[CEMENTO].variacion == Decimal("0")
+    assert cambios[ARENA].variacion == VARIACIONES[ARENA]
 
 
 # ---------------------------------------------------------------------------------------------

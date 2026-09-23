@@ -40,7 +40,7 @@ from core.budget.persistencia import (
 )
 from core.budget.presupuesto import ResultadoElaboracion, elaborar
 from core.catalog import Catalogo
-from core.catalog.precios import registrar_cambios
+from core.catalog.precios import registrar_cambios, variacion_relativa
 from core.contracts.presupuesto import PartidaPresupuestada, Presupuesto
 
 __all__ = ["COLUMNAS_COMPARATIVO", "Comparativo", "actualizar_precios"]
@@ -208,7 +208,7 @@ def _registrar_incidencias(
             partida_id=partida.id,
             precio_unitario_anterior=precios_anteriores[partida.codigo],
             precio_unitario_nuevo=precios_nuevos[partida.codigo],
-            variacion=_variacion(
+            variacion=variacion_relativa(
                 precios_anteriores[partida.codigo], precios_nuevos[partida.codigo]
             ),
         )
@@ -301,11 +301,6 @@ def _fila(
         "total_nuevo": nuevo.total,
         "incidencia_pct": _porcentaje(nuevo.total - anterior.total, total_anterior),
     }
-
-
-def _variacion(anterior: Decimal, nuevo: Decimal) -> Decimal:
-    """Fracción (nuevo − anterior) / anterior: la fórmula de docs/modelo_datos.md §6."""
-    return (nuevo - anterior) / anterior if anterior else CERO
 
 
 def _porcentaje(variacion: Decimal, base: Decimal) -> Decimal:

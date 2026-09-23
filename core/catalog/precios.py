@@ -58,6 +58,7 @@ __all__ = [
     "insumos_afectados",
     "leer_lista_precios",
     "registrar_cambios",
+    "variacion_relativa",
 ]
 
 #: Columnas obligatorias del archivo de precios.
@@ -104,6 +105,23 @@ class ResumenLista:
     desconocidos: tuple[PrecioLeido, ...] = ()
 
 
+_CERO = Decimal(0)
+
+
+def variacion_relativa(anterior: Decimal, nuevo: Decimal) -> Decimal:
+    """Fracción (nuevo − anterior) / anterior: la fórmula de docs/modelo_datos.md §6.
+
+    Única definición del sistema (INV‑004): la usan `CambioDetectado.variacion` y la incidencia por
+    partida de `core.budget.actualizacion`.
+
+    **Base nula.** Con `anterior == 0` la variación relativa no está definida. Política declarada:
+    devuelve 0, y el registro conserva `precio_anterior = 0`, que es lo que distingue ese caso de
+    un precio que no cambió. Un precio 0 es válido (`leer_lista_precios` acepta cualquier no
+    negativo), así que la fórmula no puede lanzar `DivisionByZero` en medio de UC‑02.
+    """
+    return (nuevo - anterior) / anterior if anterior else _CERO
+
+
 @dataclass(frozen=True, slots=True)
 class CambioDetectado:
     """Un insumo cuyo precio difiere entre dos listas, antes de persistirlo."""
@@ -114,8 +132,8 @@ class CambioDetectado:
 
     @property
     def variacion(self) -> Decimal:
-        """Fracción (nuevo − anterior) / anterior, como la define docs/modelo_datos.md §6."""
-        return (self.precio_nuevo - self.precio_anterior) / self.precio_anterior
+        """Fracción (nuevo − anterior) / anterior, con la política de base nula declarada."""
+        return variacion_relativa(self.precio_anterior, self.precio_nuevo)
 
 
 # ---------------------------------------------------------------------------------------------
