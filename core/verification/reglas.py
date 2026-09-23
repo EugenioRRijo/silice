@@ -1,8 +1,11 @@
 """Las siete reglas de verificación de consistencia (CLAUDE.md §7).
 
 Cada regla es una clase `ReglaVerificacion` que recibe un `Presupuesto` y devuelve una lista de
-`Hallazgo`. Ninguna lanza excepciones por datos: un balance inevaluable o una referencia rota son
-hallazgos, no fallos del programa.
+`Hallazgo`. Ninguna lanza excepciones por datos. A una regla que le falta un dato (un parámetro
+ausente, una referencia de balance rota) la informa como INFO «regla no evaluable» (RF‑23, UC‑05
+flujo 3a); un dato erróneo (sintaxis, valor que no es `Decimal`, desborde) es un ERROR; R2 y R7
+sin plan de trabajo se declaran «no aplicables» (UC‑05 flujo 2a). Ningún hallazgo interrumpe a las
+demás reglas.
 
 Ninguna regla conoce un dominio. No hay aquí un nombre de partida, una unidad concreta ni un código
 del caso de estudio: todo lo que una regla necesita saber del dominio se lo dice el propio
@@ -45,7 +48,9 @@ from core.verification.expresiones import (
 from core.verification.texto import formatear_decimal, normalizar_texto, pares_numero_unidad, tokens
 
 __all__ = [
+    "NO_APLICABLE",
     "REGLAS",
+    "REGLA_NO_EVALUABLE",
     "BalanceVolumetrico",
     "CierreCurvaInversion",
     "CoherenciaDimensional",
@@ -56,6 +61,13 @@ __all__ = [
 ]
 
 _CERO = Decimal(0)
+
+#: Prefijo de un hallazgo INFO de una regla a la que le falta un dato para evaluarse: un parámetro
+#: ausente o una referencia no resuelta (RF‑23, UC‑05 flujo 3a). Un dato erróneo (sintaxis, valor
+#: que no es `Decimal`, desborde) no es «no evaluable»: es un ERROR.
+REGLA_NO_EVALUABLE = "regla no evaluable"
+#: Con qué se declaran R2 y R7 cuando el presupuesto no trae plan de trabajo (UC‑05 flujo 2a).
+NO_APLICABLE = "no aplicable"
 
 
 def _num(valor: Decimal) -> str:
@@ -134,7 +146,23 @@ class TrazabilidadGeometrica(ReglaVerificacion):
         item = partida.item
         try:
             esperado = evaluar(item.regla or "", item.parametros)
-        except (ExpresionInvalida, ParametroFaltante) as error:
+        except ParametroFaltante as error:
+            # RF‑23, UC‑05 3a: falta un dato para evaluar la regla; se informa y no bloquea.
+            return [
+                Hallazgo(
+                    regla=self.codigo,
+                    severidad=Severidad.INFO,
+                    descripcion=(
+                        f"{REGLA_NO_EVALUABLE}: la regla declarada por {item.codigo_partida} "
+                        f"({item.regla!r}) no se puede evaluar: falta el parametro {error}"
+                    ),
+                    origen_ids=(item.origen_id,),
+                    valor_observado=item.cantidad,
+                )
+            ]
+        except ExpresionInvalida as error:
+            # Un dato erróneo (sintaxis, valor que no es `Decimal`, desborde): el cómputo no es
+            # trazable y el presupuesto no cumple.
             return [
                 Hallazgo(
                     regla=self.codigo,
@@ -187,7 +215,8 @@ class CierreCurvaInversion(ReglaVerificacion):
                     regla=self.codigo,
                     severidad=Severidad.INFO,
                     descripcion=(
-                        "el presupuesto no declara curva de inversion: no hay cierre que verificar"
+                        f"R2 {NO_APLICABLE}: el presupuesto no declara curva de inversion, "
+                        "no hay cierre que verificar"
                     ),
                 )
             ]
@@ -407,6 +436,7 @@ class BalanceVolumetrico(ReglaVerificacion):
                     ids,
                     f"referencia no resuelta: el balance {balance!r} cita la partida "
                     f"{error.args[0]!r}, que no esta en el presupuesto",
+                    Severidad.INFO,
                 )
             ]
 
@@ -417,9 +447,23 @@ class BalanceVolumetrico(ReglaVerificacion):
                 if nombre in item.parametros
             }
             esperado = evaluar(expandido, valores)
-        except (ExpresionInvalida, ParametroFaltante) as error:
+        except ParametroFaltante as error:
             return [
-                self._inevaluable(item, ids, f"el balance {balance!r} no se puede evaluar: {error}")
+                self._inevaluable(
+                    item,
+                    ids,
+                    f"el balance {balance!r} no se puede evaluar: falta el parametro {error}",
+                    Severidad.INFO,
+                )
+            ]
+        except ExpresionInvalida as error:
+            return [
+                self._inevaluable(
+                    item,
+                    ids,
+                    f"el balance {balance!r} no se puede evaluar: {error}",
+                    Severidad.ERROR,
+                )
             ]
 
         observado = cantidades[item.codigo_partida]
@@ -446,11 +490,16 @@ class BalanceVolumetrico(ReglaVerificacion):
         )
         return hallazgos
 
-    def _inevaluable(self, item: ItemComputo, ids: tuple[str, ...], detalle: str) -> Hallazgo:
+    def _inevaluable(
+        self, item: ItemComputo, ids: tuple[str, ...], detalle: str, severidad: Severidad
+    ) -> Hallazgo:
+        """RF‑23: un dato ausente es INFO «regla no evaluable»; uno erróneo, ERROR. Las demás
+        reglas siguen en ambos casos."""
+        prefijo = f"{REGLA_NO_EVALUABLE}: " if severidad is Severidad.INFO else ""
         return Hallazgo(
             regla=self.codigo,
-            severidad=Severidad.ERROR,
-            descripcion=f"{item.codigo_partida}: {detalle}",
+            severidad=severidad,
+            descripcion=f"{prefijo}{item.codigo_partida}: {detalle}",
             origen_ids=ids,
             valor_observado=item.cantidad,
         )
@@ -554,7 +603,16 @@ class ConciliacionPresupuestoPlan(ReglaVerificacion):
 
     def evaluar(self, presupuesto: Presupuesto) -> list[Hallazgo]:
         if not presupuesto.curva:
-            return []  # R2 ya informa que no hay curva
+            return [
+                Hallazgo(
+                    regla=self.codigo,
+                    severidad=Severidad.INFO,
+                    descripcion=(
+                        f"R7 {NO_APLICABLE}: el presupuesto no declara plan de trabajo, no hay "
+                        "montos que conciliar con sus partidas"
+                    ),
+                )
+            ]
 
         componentes = _componentes_conexas(
             len(presupuesto.curva), len(presupuesto.partidas), self._enlazar(presupuesto)

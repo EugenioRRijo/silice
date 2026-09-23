@@ -37,6 +37,7 @@ from core.verification.expresiones import (
     nombres_de,
     sustituir_codigos,
 )
+from core.verification.reglas import NO_APLICABLE, REGLA_NO_EVALUABLE
 from core.verification.texto import es_numero, normalizar_texto, pares_numero_unidad, tokens
 from tests.fixtures import apu_linea_base as linea_base
 from tests.fixtures.computo_auditado import origen_de
@@ -259,6 +260,7 @@ def test_r2_no_reporta_acumulados_rotos_en_una_curva_bien_sumada(presupuesto):
 def test_r2_informa_cuando_no_hay_curva(presupuesto):
     hallazgos = CierreCurvaInversion().evaluar(replace(presupuesto, curva=()))
     assert [h.severidad for h in hallazgos] == [Severidad.INFO]
+    assert NO_APLICABLE in hallazgos[0].descripcion
 
 
 def test_r3_reporta_unidad_original_mts(presupuesto):
@@ -369,8 +371,11 @@ def test_r7_advierte_de_una_partida_que_no_esta_en_el_plan(presupuesto):
     }
 
 
-def test_r7_no_reporta_nada_si_el_presupuesto_no_declara_curva(presupuesto):
-    assert ConciliacionPresupuestoPlan().evaluar(replace(presupuesto, curva=())) == []
+def test_r7_se_declara_no_aplicable_si_el_presupuesto_no_declara_curva(presupuesto):
+    """UC‑05, flujo 2a: sin plan de trabajo R7 se declara no aplicable en el informe (INV‑012)."""
+    hallazgos = ConciliacionPresupuestoPlan().evaluar(replace(presupuesto, curva=()))
+    assert [h.severidad for h in hallazgos] == [Severidad.INFO]
+    assert NO_APLICABLE in hallazgos[0].descripcion
 
 
 # ---------------------------------------------------------------------------------------------
@@ -395,8 +400,13 @@ def test_r1_reporta_la_regla_que_no_puede_evaluar(presupuesto):
         linea_base.APU_EXCAVACION.codigo_partida,
         regla="longitud * inexistente",
     )
-    hallazgos = _errores(TrazabilidadGeometrica().evaluar(roto))
-    assert any("no se puede evaluar" in h.descripcion for h in hallazgos)
+    origen = origen_de(linea_base.APU_EXCAVACION.codigo_partida)
+    hallazgos = [
+        h for h in TrazabilidadGeometrica().evaluar(roto) if h.origen_ids == (origen,)
+    ]
+    assert [h.severidad for h in hallazgos] == [Severidad.INFO]  # RF‑23, UC‑05 3a
+    assert REGLA_NO_EVALUABLE in hallazgos[0].descripcion
+    assert "no se puede evaluar" in hallazgos[0].descripcion
 
 
 def test_r1_exige_igualdad_exacta_cuando_la_regla_da_cero(presupuesto):
@@ -439,8 +449,9 @@ def test_r5_reporta_una_referencia_de_balance_no_resuelta(presupuesto):
         linea_base.APU_RELLENO.codigo_partida,
         especificaciones={directivas.CLAVE_BALANCE: "{XX-99} - 1"},
     )
-    hallazgos = _errores(BalanceVolumetrico().evaluar(roto))
-    assert len(hallazgos) == 1
+    hallazgos = BalanceVolumetrico().evaluar(roto)
+    assert [h.severidad for h in hallazgos] == [Severidad.INFO]
+    assert REGLA_NO_EVALUABLE in hallazgos[0].descripcion
     assert "referencia no resuelta" in hallazgos[0].descripcion
 
 
@@ -452,8 +463,9 @@ def test_r5_reporta_un_balance_que_no_puede_evaluar(presupuesto):
             directivas.CLAVE_BALANCE: f"{{{linea_base.APU_EXCAVACION.codigo_partida}}} - falta"
         },
     )
-    hallazgos = _errores(BalanceVolumetrico().evaluar(roto))
-    assert len(hallazgos) == 1
+    hallazgos = BalanceVolumetrico().evaluar(roto)
+    assert [h.severidad for h in hallazgos] == [Severidad.INFO]
+    assert REGLA_NO_EVALUABLE in hallazgos[0].descripcion
     assert "no se puede evaluar" in hallazgos[0].descripcion
 
 
