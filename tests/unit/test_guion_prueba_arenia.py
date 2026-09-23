@@ -1,16 +1,25 @@
 """El guion manual no escribe en `data/apu.db` (INV‑065, bloqueante; spec de cierre §4).
 
-Lee `docs/guion_prueba_arenia.md` como texto y comprueba tres cosas:
+Lee `docs/guion_prueba_arenia.md` como texto y comprueba cuatro cosas:
 
 - toda orden de siembra lleva `--db` con una base propia **en la misma línea** que la orden: la
   comprobación es línea a línea, así que una orden partida con `--db` en la línea siguiente cuenta
   como orden sin base (el guion escribe cada orden en una sola línea);
 - la preparación anota y comprueba la base de trabajo;
+- la preparación ejecuta CP‑01…CP‑06 desde una copia desechable del repositorio (`git worktree
+  add`/`remove`): hasta que la Tarea 12 de U1 llegue, la aplicación abre `data/apu.db` de la carpeta
+  desde la que corre en el primer renderizado de cada página, antes de que se pueda escribir otra
+  ruta, así que ni sembrar en `data/prueba_arenia.db` ni escribir el campo **Archivo SQLite**
+  bastan por sí solos;
 - la precondición de cada caso CP‑01…CP‑06 manda abrir la base de prueba en el campo
   **Archivo SQLite**, porque la aplicación vuelve a `data/apu.db` en cada recarga.
 
-Cuando la Tarea 12 de U1 (fase C3) reescriba esas precondiciones podrá migrar la corrección a
-`ARENIA_CASO`, que esta prueba también acepta, pero no volver en silencio a la ruta por defecto.
+Cuando la Tarea 12 de U1 (fase C3, con `ARENIA_CASO` leído por `ui/caso.py`) reescriba esas
+precondiciones podrá migrar la corrección a `ARENIA_CASO`, que esta prueba también acepta, y podrá
+retirar la copia desechable, pero no volver en silencio a la ruta por defecto.
+
+Límite conocido: esta prueba lee el texto del guion, no ejecuta la aplicación; comprueba que la
+instrucción está escrita, no que quien la siga la respete.
 """
 
 from __future__ import annotations
@@ -25,6 +34,8 @@ GUION = RAIZ / "docs" / "guion_prueba_arenia.md"
 BASE_DE_PRUEBA = "data/prueba_arenia.db"
 BASE_DE_TRABAJO = "data/apu.db"
 CASO_ABIERTO = "ARENIA_CASO"
+CREAR_COPIA_DESECHABLE = "git worktree add"
+BORRAR_COPIA_DESECHABLE = "git worktree remove"
 
 #: Los encabezados de los casos usan el guion no separable U+2011 («### CP‑01 — …»).
 _ENCABEZADO_DE_CASO = re.compile(r"^### CP‑(0[1-7]) ", re.MULTILINE)
@@ -69,6 +80,18 @@ def test_la_preparacion_anota_y_comprueba_la_base_de_trabajo():
     assert "**Al terminar la prueba.**" in preparacion
     assert f"`{BASE_DE_TRABAJO}` al empezar" in registro
     assert f"`{BASE_DE_TRABAJO}` sin cambios al terminar" in registro
+
+
+def test_la_preparacion_usa_una_copia_desechable_del_repositorio():
+    """La app abre `data/apu.db` de la carpeta en el primer renderizado: solo una copia desechable
+    del repositorio evita tocarlo, antes de que se pueda escribir otra ruta (INV‑065, ronda 1)."""
+    preparacion = _seccion(_texto(), "## 4. Entorno y preparación", "## 5.")
+    assert CREAR_COPIA_DESECHABLE in preparacion, (
+        f"la preparacion debe crear una copia desechable con `{CREAR_COPIA_DESECHABLE}`"
+    )
+    assert BORRAR_COPIA_DESECHABLE in preparacion, (
+        f"la preparacion debe borrar la copia desechable con `{BORRAR_COPIA_DESECHABLE}`"
+    )
 
 
 @pytest.mark.parametrize("caso", ["CP-01", "CP-02", "CP-03", "CP-04", "CP-05", "CP-06"])

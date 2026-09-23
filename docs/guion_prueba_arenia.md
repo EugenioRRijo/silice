@@ -46,15 +46,30 @@ obtuvieron en Windows 11 con Python 3.13 y Streamlit 1.62.0.
 > `--db data/prueba_arenia.db`, y cada caso le recuerda escribir esa base en la barra lateral.
 
 **Antes de empezar (protección de la base de trabajo).** Anote en la sección 8 si existe
-`data/apu.db` y, si existe, su fecha y hora de modificación. En PowerShell:
+`data/apu.db` **en esta copia de trabajo** (la carpeta del repositorio en la que está parado ahora,
+no la copia desechable del paso 1) y, si existe, su fecha y hora de modificación. En PowerShell:
 `Get-Item data/apu.db | Select-Object LastWriteTime`; en bash: `ls -l --time-style=full-iso data/apu.db`.
 Si no existe, anote «no existe».
 
-1. En una terminal, en la carpeta del repositorio, instale las dependencias de la interfaz y del
-   aprendizaje automático:
+1. **Cree una copia desechable del repositorio y trabaje sobre ella, nunca sobre esta copia de
+   trabajo.** Hasta que la Tarea 12 de U1 (fase C3, con `ARENIA_CASO` leído por `ui/caso.py`)
+   reemplace esta barrera, la aplicación abre `data/apu.db` de la carpeta desde la que se ejecuta en
+   el primer renderizado de cada página —antes de que se pueda escribir ninguna otra ruta—, así que
+   solo ejecutar la prueba fuera de esta copia de trabajo evita tocar su `data/apu.db`. Desde la raíz
+   del repositorio:
 
    ```
+   git worktree add ../tesis-prueba-manual HEAD
+   cd ../tesis-prueba-manual
    uv sync --extra ui --extra ml
+   ```
+
+   Ejecute el resto de esta sección y los casos CP‑01…CP‑06 **dentro de `../tesis-prueba-manual`**.
+   Al terminar toda la prueba (después del paso «Al terminar la prueba», más abajo), vuelva a la
+   copia de trabajo original y borre la copia desechable:
+
+   ```
+   git worktree remove ../tesis-prueba-manual
    ```
 
 2. Siembre la base de prueba (línea base de la clínica, las tres partidas de demostración y el
@@ -87,9 +102,11 @@ Si no existe, anote «no existe».
 **Orden de ejecución.** Los casos se ejecutan en orden, de CP‑01 a CP‑06, sobre una base recién
 sembrada: CP‑02 y CP‑03 continúan donde terminó CP‑01. Si repite la prueba, vuelva al paso 2.
 
-**Al terminar la prueba.** Repita la comprobación de «Antes de empezar» y anótela en la sección 8:
-`data/apu.db` debe seguir igual que al empezar (o seguir sin existir). Si cambió, la ejecución es
-**FALLA** aunque todos los casos hayan pasado: la prueba tocó la base de trabajo.
+**Al terminar la prueba.** Vuelva a la copia de trabajo original (`cd` fuera de
+`../tesis-prueba-manual`) y repita allí la comprobación de «Antes de empezar»; anótela en la sección
+8: `data/apu.db` **de esta copia de trabajo** debe seguir igual que al empezar (o seguir sin
+existir). Si cambió, la ejecución es **FALLA** aunque todos los casos hayan pasado: la prueba tocó la
+base de trabajo. Por último, borre la copia desechable (paso 1).
 
 ## 5. Cómo leer los números y cómo anotar
 
