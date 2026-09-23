@@ -188,7 +188,7 @@ git commit -m "docs(plan): plan del recorrido guiado y streamlit minimo 1.36" -m
 ### Task 2: La ERS — UC‑12, RF‑36 a RF‑43, RNF‑10 y la enmienda de la reserva
 
 **Files:**
-- Modify: `docs/ERS.md` (siete lugares: nota de cabecera `:13-18`; tabla §2.2 `:85-96`; sección
+- Modify: `docs/ERS.md` (diez lugares: nota de cabecera `:13-18`; tabla §2.2 `:85-96`; sección
   UC‑12 tras UC‑11, antes de `### 2.3` `:352`; tabla de actores §2.3 `:354-359`; §3.1 `:382-383`;
   párrafo de numeración §3.2 `:392-398`; tabla de RF tras la fila RF‑35 `:435`; tabla de cobertura
   `:458-460`; tabla de RNF tras RNF‑09 `:474`; matriz §4 tras UC‑11 `:497` y su párrafo RNF `:499-502`)
