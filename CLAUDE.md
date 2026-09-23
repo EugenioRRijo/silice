@@ -235,7 +235,8 @@ tutor antes de I0.3. Los esqueletos ya existen; se completan en las Sesiones 0.1
   contrato es insuficiente. Ambas cosas son hallazgos de la investigación: se escriben en
   `docs/bitacora/`, no se parchean.
 - No modificar `tests/unit/test_costing.py` para ponerlo en verde: se implementa `core/costing/`.
-- Estado esperado de la suite hasta I0.3: todo verde salvo `test_costing.py`, que falla con
-  `ImportError` (siete pruebas). Es correcto y deliberado.
+- Estado esperado de la suite: todo verde con `uv run pytest -W error --strict-markers`. Desde la
+  Sesión I0.3 ninguna prueba está roja a propósito; el marcador `rojo_esperado` se retiró en C1 del
+  cierre (INV‑007).
 - Al cerrar una sesión: verificar el criterio de cierre, ejecutar `uv run pytest` y
   `uv run ruff check .`, hacer el commit indicado en el PLAN y anotar la bitácora del sprint.
