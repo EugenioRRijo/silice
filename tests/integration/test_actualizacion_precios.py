@@ -34,6 +34,14 @@ from core.budget import (
 from core.catalog import Catalogo, crear_lista_desde_archivo, leer_lista_precios
 from scripts.seed import NOMBRE_PROYECTO, sembrar
 from tests.fixtures import apu_linea_base as linea_base
+from tests.fixtures.actualizacion_uc02 import (
+    ARENA,
+    CEMENTO,
+    INCREMENTO_PU_CONCRETO,
+    INCREMENTO_TOTAL,
+    PRECIOS_NUEVOS,
+    VARIACIONES,
+)
 from tests.fixtures.computo_auditado import items_auditados
 
 RAIZ = Path(__file__).resolve().parents[2]
@@ -45,18 +53,6 @@ NOMBRE_LISTA_NUEVA = "Lista de precios 01/06/2026"
 CONCRETO = linea_base.APU_CONCRETO.codigo_partida
 CODIGOS = [apu.codigo_partida for apu in linea_base.APUS_LINEA_BASE]
 
-# Lo que sube la muestra y la fracción de variación que exige docs/modelo_datos.md §6:
-# (nuevo − anterior) / anterior.
-CEMENTO = "Cemento Portland"
-ARENA = "Arena lavada"
-PRECIOS_NUEVOS = {CEMENTO: Decimal("18"), ARENA: Decimal("33")}
-VARIACIONES = {CEMENTO: Decimal("0.2"), ARENA: Decimal("0.1")}
-
-# 7,5 sacos × (18 − 15) + 0,45 m3 × (33 − 30) = 23,85 USD de material por m3 de concreto; el
-# incremento atraviesa administración y utilidad en cascada: 23,85 × 1,15 × 1,10 = 30,17025.
-INCREMENTO_PU_CONCRETO = Decimal("30.17025")
-# El cómputo auditado lleva 1,66 m3 de concreto: 1,66 × 30,17025 = 50,082615.
-INCREMENTO_TOTAL = Decimal("50.082615")
 # Variación del precio unitario del concreto, en porcentaje y con cuatro decimales.
 VARIACION_PU_CONCRETO_PCT = Decimal("12.4342")
 

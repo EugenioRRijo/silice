@@ -41,7 +41,6 @@ from scripts.seed_sistemas import (
 from tests.fixtures import tarifas_sistemas as sis
 
 TOTAL_PF = Decimal("145")
-PRECIO_UNITARIO_PF = Decimal("110.992365")
 #: Calculado a mano (ver docstring del módulo).
 TOTAL_ESPERADO = Decimal("16093.892925")
 CASOS_DE_USO = 9
@@ -89,7 +88,7 @@ def test_total_estable_calculado_a_mano(sesion_sistemas):
     assert presupuesto.total > 0
     assert presupuesto.total == TOTAL_ESPERADO
     for partida in presupuesto.partidas:
-        assert partida.resultado.precio_unitario == PRECIO_UNITARIO_PF
+        assert partida.resultado.precio_unitario == sis.PRECIO_UNITARIO_PF_ESPERADO
 
 
 def test_el_catalogo_reproduce_el_apu_por_punto_de_funcion(sesion_sistemas):

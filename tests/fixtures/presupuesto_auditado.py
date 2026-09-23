@@ -36,15 +36,12 @@ from core.verification.expresiones import evaluar, sustituir_codigos
 from core.verification.texto import normalizar_texto
 from tests.fixtures import apu_linea_base as linea_base
 from tests.fixtures.computo_auditado import composiciones_linea_base, items_auditados
+from tests.fixtures.computo_civil import FACTOR_VOLUMEN_TUBERIA
 
 # Excavación de la zanja más los fosos de las cuatro tanquillas: la memoria del PDF suma ambos
 # términos para llegar a los 9,74 m3 del presupuesto. No es ninguna de las reglas del adaptador
 # civil (que separa zanja y tanquilla en dos ítems), por eso se declara aquí.
 REGLA_EXCAVACION_TOTAL = "longitud * ancho * profundidad + n * foso"
-
-# Sección de la tubería de 4 pulgadas, en m3 por metro lineal: 0,7854 × 0,1016² (la constante 0,7854
-# es la que declara `adapters.civil.reglas.REGLA_VOLUMEN_TUBERIA`; 0,1016 m = 4 pulg).
-FACTOR_VOLUMEN_TUBERIA = "0.0081"
 
 TOLERANCIA_BALANCE = "0.05"
 

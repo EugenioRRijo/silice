@@ -23,23 +23,14 @@ from adapters.civil.tabular import AdaptadorCivilTabular
 from core.contracts import Dominio, OrigenTipo
 from core.verification.expresiones import evaluar, sustituir_codigos
 from tests.fixtures import apu_linea_base as linea_base
-
-# Supuestos de esta muestra, declarados en data/samples/civil/README.md: la memoria auditada no fija
-# margen de excavación ni espesor de fondo bajo la tanquilla.
-SOBREANCHO = Decimal("0.10")
-ESPESOR_FONDO = Decimal("0.10")
-DIAMETRO_TUBERIA_M = Decimal("0.1016")  # 4 pulg, coherente con DIAMETRO_TUBERIA_PROYECTO
-DESPERDICIO_TUBERIA = Decimal("0.05")
-
-# Un solo código por partida (principio DRY): se reutilizan los de la línea base en vez de inventar
-# códigos nuevos, porque este adaptador no decide códigos (los recibe el llamador).
-CODIGOS = {
-    "concreto": linea_base.APU_CONCRETO.codigo_partida,
-    "encofrado": linea_base.APU_ENCOFRADO.codigo_partida,
-    "excavacion": linea_base.APU_EXCAVACION.codigo_partida,
-    "tuberia": linea_base.APU_TUBERIA.codigo_partida,
-    "relleno": linea_base.APU_RELLENO.codigo_partida,
-}
+from tests.fixtures.computo_civil import (
+    CODIGOS,
+    DESPERDICIO_TUBERIA,
+    DIAMETRO_TUBERIA_M,
+    ESPESOR_FONDO,
+    SOBREANCHO,
+)
+from tests.fixtures.presupuesto_auditado import BALANCE_RELLENO
 
 RUTA_MUESTRA = (
     Path(__file__).resolve().parents[2] / "data" / "samples" / "civil" / "tanquillas_y_zanja.csv"
@@ -109,7 +100,7 @@ def test_los_items_son_trazables():
             excavacion=Decimal("11.28"),
             concreto=Decimal("0.896"),
             volumen_tuberia=Decimal("0.2"),
-            balance="{LB-01-EXC} - {LB-04-CON} - {LB-02-TUB} * 0.008107338624",
+            balance=BALANCE_RELLENO,
         ),
     ]
 
