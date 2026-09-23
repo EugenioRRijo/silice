@@ -249,8 +249,12 @@ class Catalogo:
                 )
             ).one_or_none()
             if ejecucion is None:
-                raise CatalogoIncompleto(
-                    f"no hay ninguna ejecución con referencia {rendimiento.referencia_ejecucion!r}"
+                # `LookupError` y no `CatalogoIncompleto`: la ejecución es un recurso que no existe
+                # (404 en la API), no un precio o rendimiento que falte para reconstruir un APU.
+                raise LookupError(
+                    "no hay ninguna ejecución con referencia "
+                    f"{rendimiento.referencia_ejecucion!r}: registre la obra antes de medir "
+                    "sobre ella"
                 )
         modelo = a_modelo_rendimiento(rendimiento, partida, ejecucion)
         self._sesion.add(modelo)

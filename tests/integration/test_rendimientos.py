@@ -30,7 +30,7 @@ from core.catalog import (
     registrar_ejecucion,
     registrar_rendimiento,
 )
-from core.contracts.apu import TipoRendimiento
+from core.contracts.apu import Rendimiento, TipoRendimiento
 from tests.fixtures import apu_linea_base as linea_base
 
 EXCAVACION = linea_base.APU_EXCAVACION.codigo_partida  # sembrada con su rendimiento estimado
@@ -118,6 +118,46 @@ def test_partida_inexistente_se_rechaza(sesion):
         registrar_rendimiento(
             sesion, "NO-EXISTE", valor=Decimal("10"), tipo=TipoRendimiento.ESTIMADO, fecha=FECHA
         )
+
+
+def test_el_registro_del_modulo_delega_en_el_del_catalogo(sesion, monkeypatch):
+    """INV‑005: una sola implementación del registro, la de `Catalogo`."""
+    llamadas = []
+    original = Catalogo.registrar_rendimiento
+
+    def espia(self, rendimiento):
+        llamadas.append(rendimiento)
+        return original(self, rendimiento)
+
+    monkeypatch.setattr(Catalogo, "registrar_rendimiento", espia)
+    registrado = registrar_rendimiento(
+        sesion, EXCAVACION, valor=Decimal("75"), tipo=TipoRendimiento.ESTIMADO, fecha=FECHA
+    )
+
+    assert llamadas == [registrado]
+
+
+def test_una_ejecucion_inexistente_se_rechaza_igual_por_las_dos_puertas(sesion):
+    contrato = Rendimiento(
+        codigo_partida=EXCAVACION,
+        valor=Decimal("70"),
+        tipo=TipoRendimiento.MEDIDO,
+        fecha=FECHA,
+        referencia_ejecucion="OBRA-FANTASMA",
+    )
+    with pytest.raises(LookupError, match="registre la obra") as desde_catalogo:
+        Catalogo(sesion).registrar_rendimiento(contrato)
+    with pytest.raises(LookupError, match="registre la obra") as desde_modulo:
+        registrar_rendimiento(
+            sesion,
+            EXCAVACION,
+            valor=Decimal("70"),
+            tipo=TipoRendimiento.MEDIDO,
+            fecha=FECHA,
+            referencia_ejecucion="OBRA-FANTASMA",
+        )
+    assert type(desde_catalogo.value) is LookupError
+    assert type(desde_modulo.value) is LookupError
 
 
 def test_dispersion_exacta_y_con_tipos_contados(sesion, ejecucion):

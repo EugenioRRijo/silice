@@ -4,9 +4,9 @@ El aporte del caso de uso es la trazabilidad: un rendimiento MEDIDO nace de una 
 registrada (obra real, referencia única) y esa procedencia viaja con él hasta el contrato
 (`Rendimiento.referencia_ejecucion`). La invariante «MEDIDO exige referencia» vive en el contrato
 (`core.contracts.apu.Rendimiento`, CLAUDE.md §5) y en la base
-(`ck_rendimiento_medido_exige_ejecucion`); este módulo la aplica en la frontera construyendo el
-contrato **antes** de tocar la base, y además exige que la referencia apunte a una ejecución que
-exista (trazabilidad total, CLAUDE.md §2).
+(`ck_rendimiento_medido_exige_ejecucion`); este módulo construye el contrato **antes** de tocar la
+base y delega el registro en `Catalogo.registrar_rendimiento`, que exige que la referencia apunte
+a una ejecución que exista (trazabilidad total, CLAUDE.md §2).
 
 La dispersión (RF‑26) es aritmética de `Decimal`: número de observaciones, media, mínimo y máximo,
 más el desglose estimado/medido — estimado y medido nunca se mezclan sin declararse. La media es la
@@ -109,8 +109,9 @@ def registrar_rendimiento(
     """Registra un rendimiento y devuelve el `Rendimiento` del contrato ya persistido.
 
     El contrato se construye primero: sus invariantes (valor > 0, MEDIDO exige referencia)
-    rechazan la petición antes de tocar la base. `LookupError` si la partida no existe o la
-    referencia no corresponde a ninguna ejecución registrada.
+    rechazan la petición antes de tocar la base. El registro lo hace
+    `Catalogo.registrar_rendimiento`, la única implementación (INV‑005), que lanza `LookupError`
+    si la partida no existe o la referencia no corresponde a ninguna ejecución registrada.
     """
     contrato = Rendimiento(
         codigo_partida=codigo_partida,
@@ -120,30 +121,7 @@ def registrar_rendimiento(
         condiciones=condiciones,
         referencia_ejecucion=referencia_ejecucion,
     )
-    partida = Catalogo(session).partida(codigo_partida)
-
-    ejecucion = None
-    if referencia_ejecucion is not None:
-        ejecucion = session.scalars(
-            select(models.Ejecucion).where(models.Ejecucion.referencia == referencia_ejecucion)
-        ).one_or_none()
-        if ejecucion is None:
-            raise LookupError(
-                f"no hay ninguna ejecución con referencia {referencia_ejecucion!r}: "
-                "registre la obra antes de medir sobre ella"
-            )
-
-    modelo = models.Rendimiento(
-        partida_id=partida.id,
-        valor=contrato.valor,
-        tipo=contrato.tipo.value,
-        fecha=contrato.fecha,
-        condiciones=contrato.condiciones,
-        ejecucion_id=ejecucion.id if ejecucion is not None else None,
-    )
-    session.add(modelo)
-    session.flush()
-    return a_rendimiento(modelo)
+    return a_rendimiento(Catalogo(session).registrar_rendimiento(contrato))
 
 
 def dispersion_rendimientos(session: Session, codigo_partida: str) -> DispersionRendimiento | None:
