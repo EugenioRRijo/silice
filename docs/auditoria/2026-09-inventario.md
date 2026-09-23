@@ -35,7 +35,9 @@ sin aval del tutor, spec §4) · promovido (menor que Eugenio sube a corrección
 Los parciales sumaban 73 hallazgos (0 bloqueantes, 39 importantes, 34 menores). Tras fundir cinco
 pares que describen el mismo hecho quedan **68** (0 bloqueantes, 36 importantes, 32 menores). La
 columna «Origen» conserva los identificadores provisionales. Orden: severidad y, dentro de ella, fase
-destino (C1 → C2 → C3 → C4 → Red). Ninguna severidad se cambió en esta consolidación (Tarea 5).
+destino (C1 → C2 → C3 → C4 → Red). Ninguna severidad se cambió en la consolidación; la verificación
+independiente (Tarea 5, §5) subió INV‑065 a bloqueante, sin falsos positivos: quedan **68**
+(1 bloqueante, 36 importantes, 31 menores).
 
 **Fusiones:**
 
@@ -58,6 +60,7 @@ en la columna de corrección.
 
 | ID | Origen | Capa | Principio | Severidad | Evidencia | Hallazgo | Corrección propuesta | Fase destino | Estado |
 |---|---|---|---|---|---|---|---|---|---|
+| INV-065 | docs-normativos-20 | docs (cruza: scripts) | Pérdida de datos / pruebas (aislamiento: `data/apu.db`) | bloqueante | `docs/guion_prueba_arenia.md:57,59-63`; CP‑07 figura como caso de prueba en `docs/plan_pruebas.md:214` | El camino principal del guion de CP‑07, un caso de prueba del plan, ejecuta `seed_demo.py --reiniciar` (`drop_all`, `scripts/seed_demo.py:479-480`) sobre `data/apu.db`, la base de trabajo; la base aparte queda como variante 2b. Una prueba que escribe en `data/apu.db` es bloqueante (spec §4) | Hacer de `--db data/prueba_arenia.db` el camino principal. Cara documental de INV‑050. Debe cerrarse antes de ejecutar CP‑07 en Med | C4 | abierto |
 | INV-001 | core-01 | core | Invariantes de los contratos (§5) | importante | `core/contracts/apu.py:193`; `core/contracts/item_computo.py:54` (sin coerción en `:39-40`) | `Rendimiento` e `ItemComputo` comparan el enum con `is` sin convertir la entrada: con la cadena en vez del miembro se saltan sus invariantes (`Rendimiento` «medido» sin `referencia_ejecucion`; `ItemComputo` «regla» sin `regla`; comprobado). Ningún llamador actual pasa cadenas | Convertir en `__post_init__` con `TipoRendimiento(...)`, `OrigenTipo(...)` y `Dominio(...)`, como `LineaManoObra` (`apu.py:99`). **Cambia un contrato de `core/contracts/`: expediente en `docs/bitacora/` y aval del tutor** | C1 | abierto |
 | INV-002 | core-02 | core | Decimal (principio 3) / contratos §5 | importante | `core/contracts/item_computo.py:42,57`; `core/contracts/apu.py:161-170`; `core/contracts/presupuesto.py:33-39`; `core/contracts/verificacion.py:28-38` | `ItemComputo.parametros`, los montos de `ResultadoAPU`, `PuntoCurva` y los campos numéricos de `Hallazgo` no exigen `Decimal` ni signo (se aceptan `1.5`, `-2.0`, `0.1`; comprobado). No se detectó uso real de `float` | Aplicar `_exigir_decimal`/`_no_negativo` (`apu.py:13-23`) a esos campos. **Cambia contratos de `core/contracts/`: expediente y aval del tutor.** Complementa a INV‑003 | C1 | abierto |
 | INV-003 | core-03 | core | Informe siempre (principio 7) | importante | `core/verification/expresiones.py:125-138`; `core/verification/reglas.py:137`; promesa en `reglas.py:4-5` | Un valor no `Decimal` en `ItemComputo.parametros` lanza `TypeError` dentro de R1; sale de `auditar` y `elaborar` aborta sin presupuesto ni informe (comprobado) | Convertir `TypeError` en `ExpresionInvalida` en `_evaluar_binario` y `_evaluar_nodo`, para que R1 y R5 lo reporten como hallazgo | C1 | abierto |
@@ -122,7 +125,6 @@ en la columna de corrección.
 | INV-062 | docs-normativos-17 | docs | Coherencia documental | menor | `docs/metodologia.md:238`; `docs/calidad_iso25010.md:76`; `docs/plan_pruebas.md:44` frente a `PLAN_DESARROLLO.md:517-519`, `PLAN_CIERRE.md:31-32` | Las mediciones pendientes siguen asignadas a la Fase 6, ya cerrada | Reasignarlas a Med con enlace a PLAN_CIERRE | C4 | abierto |
 | INV-063 | docs-normativos-18 | docs | Coherencia documental | menor | `docs/ERS.md:7` frente a `PLAN_DESARROLLO.md:79`; `docs/dossier_g0.md:4` frente a `:44-186` | «Al menos 23 RF» frente a «al menos 20 RF»; el dossier dice «ocho decisiones» y son nueve | Unificar citando el PLAN; «nueve decisiones» | C4 | abierto |
 | INV-064 | docs-normativos-19 | docs | Coherencia documental | menor | `docs/linea_base.md:81,94-96` frente a `docs/dossier_g0.md:56` | Dos defectos distintos llevan el número 8, y queda un párrafo previo a I3.2 | Renumerar o nombrar el defecto de D2 sin ordinal; tiempo pasado | C4 | abierto |
-| INV-065 | docs-normativos-20 | docs (cruza: scripts) | Coherencia documental / pérdida de datos | menor | `docs/guion_prueba_arenia.md:57,59-63` | El camino principal del guion ejecuta `seed_demo.py --reiniciar` sobre `data/apu.db`; la base aparte queda como variante 2b | Hacer de `--db data/prueba_arenia.db` el camino principal. Cara documental de INV‑050 | C4 | abierto |
 | INV-066 | docs-normativos-21 | docs | Coherencia documental | menor | `PLAN_ASISTENTE.md:1-20` frente a la spec de cierre `:60` | PLAN_ASISTENTE no dice que quedó fuera del límite (trabajo futuro) | Nota de vigencia que enlace la spec §2 | C4 | abierto |
 | INV-067 | docs-normativos-22 | docs | Coherencia documental | menor | `docs/calidad_iso25010.md:25-29,43` | El veredicto cita «tres RF no esenciales declarados arriba»; solo se declara RF‑16, que es esencial | Corregir la frase al actualizar las cifras (INV‑031) | C4 | abierto |
 | INV-068 | docs-tesis-05 | docs | DRY / citación T8 | menor | `docs/tesis/referencias.md:521,534` | La nota de la entrada AACE 2020 aún justifica el sufijo «b», que dejó de hacer falta al corregir el año de la 56R‑08; no llega al texto de la tesis | Corregir la nota interna | Red | abierto |
@@ -130,11 +132,12 @@ en la columna de corrección.
 ## 4. Propuesta de triage para GC0
 
 Propuesta del consolidador para que Eugenio la apruebe o la modifique en GC0 (spec §4, «Triage»).
-Ninguna severidad se cambia aquí.
+Ninguna severidad se cambia aquí; los conteos ya reflejan la verificación de la Tarea 5 (§5).
 
 ### (a) Bloqueantes e importantes: entran
 
-No hay bloqueantes. Los 36 importantes entran, por fase:
+Un bloqueante: **INV‑065** (C4; se cierra antes de ejecutar CP‑07 en Med). Los 36 importantes entran,
+por fase:
 
 - **C1 (15):** INV‑001, INV‑002 (cambian contratos: expediente y aval), INV‑003, INV‑004, INV‑005,
   INV‑006 (contrato en C1; subtarea de migración en C2), INV‑007, INV‑008, INV‑009, INV‑010, INV‑011
@@ -144,12 +147,11 @@ No hay bloqueantes. Los 36 importantes entran, por fase:
 - **C4 (8):** INV‑026, INV‑027, INV‑028, INV‑029, INV‑030, INV‑031 (subtarea en Red), INV‑032, INV‑033.
 - **Red (3):** INV‑034, INV‑035, INV‑036.
 
-### (b) Menores que se propone promover (21)
+### (b) Menores que se propone promover (20)
 
 | ID | Fase | Por qué |
 |---|---|---|
-| INV‑050 | C3 | Riesgo de pérdida de datos: `--reiniciar` borra sin confirmar la base de trabajo por defecto |
-| INV‑065 | C4 | Riesgo de pérdida de datos: el guion manda ejecutar ese `--reiniciar` sobre `data/apu.db` |
+| INV‑050 | C3 | Riesgo de pérdida de datos: `--reiniciar` borra sin confirmar la base de trabajo por defecto; su cara documental, INV‑065, ya es bloqueante |
 | INV‑044 | C3 | La parte de `ui/` ya está en U1; la de `scripts/` es una línea en `seed_demo.py`, que INV‑050 ya toca |
 | INV‑049 | C3 | Barato; mismos cuatro sembradores que INV‑050 |
 | INV‑045 | C3 | Barato; `componer.py` lo reescribe la Tarea 11 de U1 |
@@ -187,11 +189,46 @@ en otra fase se anotan en (a).
 | C1 | 0 | 15 | 4 | 19 | 0 | 4 |
 | C2 | 0 | 3 | 2 | 5 | 2 | 0 |
 | C3 | 0 | 7 | 10 | 17 | 7 | 3 |
-| C4 | 0 | 8 | 15 | 23 | 12 | 3 |
+| C4 | 1 | 8 | 14 | 23 | 11 | 3 |
 | Red | 0 | 3 | 1 | 4 | 0 | 1 |
-| **Total** | **0** | **36** | **32** | **68** | **21** | **11** |
+| **Total** | **1** | **36** | **31** | **68** | **20** | **11** |
 
-Si se aprueba la propuesta, entran 57 hallazgos (36 importantes y 21 menores promovidos) y 11 van al
-capítulo de limitaciones.
+Si se aprueba la propuesta, entran 57 hallazgos (1 bloqueante, 36 importantes y 20 menores
+promovidos) y 11 van al capítulo de limitaciones.
 
 ## 5. Registro de cambios de severidad (Tarea 5)
+
+Verificador independiente (no fue auditor ni consolidador), sobre la evidencia del commit
+`cc2243c` (`git show cc2243c:<ruta>`; el código de `HEAD` es idéntico en `core`, `adapters`, `ml`,
+`api`, `ui`, `scripts` y `tests`). Las afirmaciones «comprobado» de INV‑001, INV‑002 e INV‑003 se
+reprodujeron en un intérprete sin tocar ninguna base.
+
+**Filas verificadas: 44.** Los 36 importantes (no había bloqueantes) y 8 menores: la muestra de uno de
+cada cinco en orden (INV‑041, INV‑046, INV‑051, INV‑056, INV‑061, INV‑066) más INV‑050 e INV‑065
+(reinicio destructivo y `data/apu.db`). La muestra no tuvo ningún falso positivo, así que no fue
+necesario verificar el resto de los menores.
+
+**Dictámenes:** 43 confirmados · 1 severidad corregida · 0 falsos positivos.
+
+| ID | Antes | Después | Motivo (spec §4) |
+|---|---|---|---|
+| INV‑065 | menor | **bloqueante** | «Una prueba que escribe en `data/apu.db` es bloqueante (pérdida de datos)». CP‑07 es un caso de prueba del plan (`docs/plan_pruebas.md:214`, RNF‑10), y el camino principal de su guion (`docs/guion_prueba_arenia.md:57`) ejecuta `seed_demo.py --reiniciar`, que hace `drop_all` (`scripts/seed_demo.py:479-480`) sobre la ruta por defecto `data/apu.db` (`:123`), la base de trabajo de la UI. Seguir el guion al pie de la letra borra esa base |
+
+**Confirmados con matiz, sin cambio de severidad:**
+
+- INV‑050 (menor): el reinicio es una opción explícita, que su ayuda describe como destructiva
+  («borra el esquema»), y que los sembradores escriban en `data/apu.db` por defecto es diseño
+  declarado (`README.md:29`, `CLAUDE.md` §6). Ninguna prueba automatizada ni la CI invoca un
+  sembrador sin `--db` (`git grep` sobre `tests/` y `.github/`). El riesgo se materializa por el
+  guion, que ya es bloqueante (INV‑065).
+- INV‑006 (importante): la copia del núcleo y la del adaptador civil son un precio declarado
+  (`docs/arquitectura.md:930`, ADR 8). Las otras tres copias no lo son, y la spec §4 nombra este
+  mismo caso como hallazgo.
+- INV‑022 (importante): hoy la prueba no escribe en `data/apu.db`: el defecto es que falta la
+  afirmación que lo garantiza. Por eso no es bloqueante; queda en el valor por defecto de pruebas.
+- INV‑032 (importante): la tabla de `README.md:44-59` enumera archivo → qué comprueba, sin RF ni
+  estado. El hallazgo se sostiene con las dos copias de la ERS (`:447-488`, `:543-556`) y
+  `plan_pruebas.md` §8, que ya divergen (INV‑027).
+- INV‑027, INV‑028, INV‑036 e INV‑054 (este último fuera de la muestra) tocan D5, la salvedad G1 y la
+  salvedad RNF‑07 del dossier. No las duplican: registran contradicciones entre documentos que el
+  dossier no capturó (spec §4).
