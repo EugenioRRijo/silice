@@ -3,7 +3,7 @@
 **Fuente única del backlog del cierre** ([spec, §4](../superpowers/specs/2026-09-23-plan-cierre-tesis-design.md)).
 Inventario **vivo**: se agregan aquí los hallazgos que aparezcan después de C0 hasta la condición F3.
 
-**Commit auditado:** `<pendiente: se fija en la Tarea 3>` · **Fecha:** 2026‑09‑23 · **Estado:** borrador (C0)
+**Commit auditado:** `cc2243cd5a7efd3b20dc82fe586484a6ef01fea8` · **Fecha:** 2026‑09‑23 · **Estado:** borrador (C0)
 
 ## 1. Cobertura por capa
 
