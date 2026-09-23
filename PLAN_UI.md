@@ -12,6 +12,9 @@ Continúa a [PLAN_PROTOTIPO.md](PLAN_PROTOTIPO.md), que cerró 12 de 12 metas, y
 Frase de origen (Eugenio, 2026‑09‑22): «no sé qué hacer y no hay un camino para llevar al usuario de
 la mano». Este plan no agrega capacidades: agrega **orientación**.
 
+**Objetivo al que responde:** medir la usabilidad de ISO/IEC 25010, la única característica sin
+medición del proyecto, mediante RNF‑10 y CP‑07.
+
 **Dependencia dura.** U1 no empieza hasta que el PR #7 esté auditado y fusionado en `main`.
 
 ## Sesiones
@@ -20,7 +23,7 @@ la mano». Este plan no agrega capacidades: agrega **orientación**.
 |---|---|---|
 | U0.1 | ERS: UC‑12, RF‑36…RF‑43, actor «usuario nuevo / evaluador», RNF‑10, enmienda de la reserva de RF‑32 | ERS sin contradicción interna |
 | U0.2 | RNF‑10 en calidad y plan de pruebas; bloque B del anexo A; CP‑07 redactado antes de ejecutarse; `streamlit>=1.36` | **GU0** |
-| U1.1 | Reasentar sobre `main`; salvaguarda de aislamiento de `data/apu.db` | salvaguarda observada en rojo y en verde |
+| U1.1 | Comprobar la integración con `main` (merge `216acca`); salvaguarda de aislamiento de `data/apu.db` | salvaguarda observada en rojo y en verde |
 | U1.2 | `ui/recorridos.py` y `ui/caso.py` | pruebas puras verdes |
 | U1.3 | Pantalla de Inicio con estado vacío sembrable | `AppTest` verde |
 | U1.4 | `ui/app.py`: dos secciones, Inicio por defecto, marco común | `AppTest` verde |
@@ -34,15 +37,17 @@ la mano». Este plan no agrega capacidades: agrega **orientación**.
 Fuente única: [docs/superpowers/specs/2026-09-23-ui-recorrido-guiado-design.md §3.7 y
 §7](docs/superpowers/specs/2026-09-23-ui-recorrido-guiado-design.md).
 
-- **B — asistente de cinco pasos (fase U2).** Un asistente paso a paso que lleva de la mano por el
-  trabajo completo, apoyado en el caso abierto, el marco y los recorridos que construye A (por eso A
-  va primero: un asistente escrito antes que el caso abierto tendría que inventárselo). **Se ejecuta
-  solo si CP‑07 resulta FALLA**, y su alcance —cuáles son los cinco pasos y qué los compone— lo fijan
-  los puntos de detención registrados en CP‑07, no se decide antes de medir. Compuerta GU2: la de
-  GU1 más `ui/paginas/componer.py` sin cambios salvo extracción de fragmentos.
-- **C — rediseño de navegación (fase U3).** Pulido de navegación y redacción de la interfaz (incluida
-  la ortografía con tildes de los rótulos, que U1 deja sin tildes por coherencia). **Requiere
-  decisión expresa de Eugenio**, cualquiera sea el resultado de CP‑07.
+- **B — asistente de cinco pasos (fase U2).** Un asistente paso a paso —retoma la motivación de
+  Eugenio del 2026‑09‑22 («llevar al usuario de la mano»)— apoyado en el caso abierto, el marco y
+  los recorridos que construye A (por eso A va primero: un asistente escrito antes que el caso
+  abierto tendría que inventárselo). **Se ejecuta solo si CP‑07 resulta FALLA**, y su alcance
+  —cuáles son los cinco pasos y qué los compone— lo fijan los puntos de detención registrados en
+  CP‑07, no se decide antes de medir. Compuerta GU2: la de GU1 más `ui/paginas/componer.py` sin
+  cambios salvo extracción de fragmentos.
+- **C — pulido de navegación y redacción (fase U3).** Pulido de navegación y redacción de la interfaz
+  (incluida la ortografía con tildes de los rótulos, que U1 deja sin tildes por coherencia — Global
+  Constraints del plan detallado, no de la spec). **Requiere decisión expresa de Eugenio**,
+  cualquiera sea el resultado de CP‑07.
 
 B y C son una secuencia, no un compromiso: si CP‑07 resulta PASA, U2 no se ejecuta.
 
