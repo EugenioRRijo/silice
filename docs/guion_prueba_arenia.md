@@ -245,14 +245,19 @@ obra sube solo `0.0958333…` y el precio unitario `0.1212291…`.
 1. En Codigo escriba `DEMO-01-INST` y pulse Enter. Observe el campo de rendimiento.
 2. Cambie el rendimiento a `80` y pulse Enter.
 3. En **Condiciones del rendimiento** escriba `condiciones de prueba del guion` y pulse fuera del
-   campo. Observe el botón **Guardar composicion**. **No lo pulse:** guardar aquí cambiaría la partida
-   de demostración que usan CP‑05 y CP‑06.
+   campo. Observe el botón **Guardar composicion**. **No lo pulse:** el caso solo observa la
+   advertencia. (Con la cabecera en blanco no se guardaría nada; con la cabecera completa, guardar
+   registraría el rendimiento `80` en la partida de demostración que usan CP‑05 y CP‑06. Guardar
+   sobre una partida existente con las tres tablas vacías, o con otra unidad u otra descripción que
+   las registradas, muestra un error rojo y no escribe nada.)
 4. Cambie el rendimiento a `55` y pulse Enter.
 
 **Resultado esperado**
 
 - Paso 1: el rendimiento aparece precargado con `60` (la observación más reciente) y **no** hay
-  advertencia.
+  advertencia. Las tres tablas de insumos aparecen **precargadas** con la composición guardada de
+  la partida (UC‑11, paso 1): 3 materiales, 2 equipos y 2 líneas de mano de obra, una a `jornal` y
+  otra a `destajo`.
 - Paso 2: aparece el aviso amarillo `el rendimiento 80 se aparta del comportamiento observado de la
   partida: rango [50, 60] en 2 observaciones (0 medidas); el registro se completa igualmente`.
   (En el desglose aparece también el aviso azul `La unidad no puede estar vacía`, porque en este
