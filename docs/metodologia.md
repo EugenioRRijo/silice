@@ -117,6 +117,13 @@ registrar el resultado en la bitácora.
 - [ ] Si la sesión tocó `adapters/` o `ml/`: `git diff --stat core/` vacío.
 - [ ] Commit convencional con el mensaje del PLAN; bitácora actualizada.
 - [ ] Toda constante o dato nuevo tiene un único lugar (sección 5).
+- [ ] Ningún RF, matriz o bitácora queda contradiciendo el código. Porque: la ERS del prototipo
+      quedó en «pendiente» durante todo el sprint hasta que la auditoría del PR #7 lo corrigió
+      (`docs/bitacora/2026-09-16-sprint-prototipo.md`, «Auditoría de rama completa»).
+- [ ] Cada paso numerado y cada flujo alternativo de un caso de uso cita la prueba o el caso manual
+      que lo demuestra (regla de `docs/plan_pruebas.md` §8.1). Porque: el paso 1 de UC‑11 estaba
+      escrito y nunca se implementó, y ninguna prueba lo reclamaba, hasta esa misma auditoría
+      (`docs/bitacora/2026-09-16-sprint-prototipo.md`, «Auditoría de rama completa»).
 
 ### 3.5 Mapa sprint ↔ sesiones
 
@@ -202,6 +209,11 @@ delante del jurado.
 | Etiquetas | una por compuerta cruzada: `g0-docs`, `g-nucleo`, `g1-ifc`, `g-nucleo-intacto`, `g2-datos` |
 | Entorno | `uv sync`; extras por capa (`--extra civil`, `--extra ml`, `--extra ui --extra api`) |
 | Datos | `data/linea_base/` es evidencia primaria y no se edita; `data/samples/` se versiona; las bases SQLite se regeneran con `scripts/seed.py` |
+| Un PR por fase | Se fusiona en su compuerta, con etiqueta. Porque: el PR #7 vivió una semana abierto con 49 commits y necesitó una auditoría de ~11 000 líneas antes de poder fusionarse (`docs/bitacora/2026-09-16-sprint-prototipo.md`, «Auditoría de rama completa») |
+| Ratificación de las decisiones del agente | Toda decisión tomada durante la ejecución («ruling») queda en la bitácora con su costo si es errónea y se ratifica por Eugenio al cruzar la compuerta; sin ratificación la compuerta no se cruza. Porque: las decisiones del controlador de la auditoría del PR #7 y del sprint de UI quedaron registradas sin esa ratificación explícita (`docs/bitacora/2026-09-16-sprint-prototipo.md`, «Auditoría de rama completa»; `docs/bitacora/2026-09-23-sprint-ui.md`, «Decisiones del controlador») |
+| La CI es la fuente de verdad de las cifras | Toda cifra de pruebas que vaya a la tesis cita su corrida de CI. Porque: un entorno local sin el extra `ml` dio 656 pruebas en lugar de las 673 registradas al cerrar el sprint del prototipo (`docs/bitacora/2026-09-16-sprint-prototipo.md`, «Auditoría de rama completa»; recuento local en `docs/bitacora/2026-09-23-sprint-ui.md`) |
+| Un frente de código a la vez | Ninguno nuevo que no responda a un objetivo específico (`docs/tesis/esqueleto_tesis.md` §2, «Matriz de trazabilidad») o indicador (sección 8) de la tesis. Porque: el PR #7 acumuló las fases P0 a P5 en un solo frente, lo que exigió una auditoría de ~11 000 líneas antes de fusionar (`docs/bitacora/2026-09-16-sprint-prototipo.md`, «Auditoría de rama completa») |
+| La validación humana precede a la automática | En las decisiones de fondo, el tutor (compuertas G0 y decisiones D‑n) y las pruebas con personas (CP‑07) son las verificaciones independientes. Porque: los cuatro encargos que auditaron el PR #7 comparten el mismo modelo y sus puntos ciegos (`docs/bitacora/2026-09-16-sprint-prototipo.md`, «Auditoría de rama completa») |
 
 ---
 

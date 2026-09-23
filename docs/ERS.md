@@ -15,7 +15,15 @@
 > rango que arranca en **RF‑32** quedan vacantes/reservados: los reserva
 > [PLAN_ASISTENTE.md](../PLAN_ASISTENTE.md) (Sesión A0.1, aún no ejecutada) para el asistente de
 > presupuestos con IA; esta sesión continúa la numeración en UC‑10 y RF‑33 para no colisionar con esa
-> reserva.
+> reserva (enmendado en la Sesión U0.1, ver la nota siguiente).
+> **Extensión del sprint de UI (Sesión U0.1, compuerta GU0, [PLAN_UI.md](../PLAN_UI.md)):** se
+> agregan UC‑12, los RF‑36 a RF‑43 —para un total de **42 RF**— y el requisito no funcional
+> RNF‑10. **La reserva de UC‑09 queda reducida a RF‑32 solamente:** RF‑33 a RF‑35 ya los tomó
+> UC‑10/UC‑11, de modo que la reserva de un rango contiguo estaba rota antes de este sprint. Los
+> demás requisitos de UC‑09 continuarán, al ejecutarse la Sesión A0.1 de
+> [PLAN_ASISTENTE.md](../PLAN_ASISTENTE.md), a partir del siguiente al número más alto asignado (hoy
+> RF‑44); esta enmienda prevalece sobre la instrucción «numera desde RF‑32» de
+> PLAN_ASISTENTE.md:71‑73, que queda desactualizada hasta que A0.1 la corrija.
 
 | Campo | Valor |
 |---|---|
@@ -94,6 +102,7 @@ produce presupuesto, curva de inversión, informe de auditoría y exportación a
 | UC‑08 | Generar escenarios de sensibilidad | F.1 |
 | UC‑10 | Componer una partida | P0.1 (declarado), P1–P2 |
 | UC‑11 | Editar una partida compuesta | P0.1 (declarado), P1–P2 |
+| UC‑12 | Recorrer la aplicación guiado desde el Inicio | U0.1 (declarado), U1 |
 
 UC‑09 queda vacante en este documento: [PLAN_ASISTENTE.md](../PLAN_ASISTENTE.md) (Sesión A0.1, aún no
 ejecutada) lo reserva para «Generar presupuesto asistido desde las necesidades del usuario». UC‑10 y
@@ -351,6 +360,33 @@ implementados en `core/contracts/`.
   histórico de la partida, distinguible del nuevo; ningún otro presupuesto ya emitido que reutilizó
   esta partida se altera retroactivamente.
 
+#### UC‑12 — Recorrer la aplicación guiado desde el Inicio
+
+- **Actor principal:** usuario nuevo / evaluador. **Actor secundario:** proyectista / estimador.
+- **Precondiciones:** la aplicación está instalada y arrancada; el usuario no recibió explicación
+  previa del sistema.
+- **Flujo principal**
+  1. El usuario abre la aplicación; el sistema muestra la pantalla de Inicio (RF‑36).
+  2. El sistema muestra en la barra lateral, en solo lectura, el caso abierto y su estado (RF‑39).
+  3. El usuario confirma el archivo del caso o abre otro; el sistema lo fija para toda la sesión y
+     ninguna otra pantalla vuelve a pedirlo (RF‑38).
+  4. El usuario elige uno de los tres recorridos declarados (RF‑37).
+  5. En cada pantalla del recorrido, el sistema indica en qué paso está y ofrece el paso siguiente
+     (RF‑41); el menú agrupa las pantallas por oficio y en el orden del trabajo (RF‑42).
+  6. El usuario completa el último paso y obtiene el resultado del recorrido (por ejemplo, el
+     presupuesto en Excel con su hoja de auditoría).
+- **Flujos alternativos**
+  - *1a. Modo entrega activo:* el menú omite la sección Investigación; ninguna pantalla de Trabajo
+    queda inaccesible (RF‑43).
+  - *3a. El caso no existe o no tiene partidas:* el sistema lo declara y ofrece cargar el caso de
+    demostración; nunca ofrece reiniciar la base (RF‑40).
+  - *3b. El archivo no se puede leer como base de datos:* el sistema lo informa con un mensaje, sin
+    traza, y el usuario abre otro.
+  - *5a. El usuario abre una pantalla que no pertenece al recorrido activo:* el sistema no muestra
+    paso siguiente en ella (RF‑41).
+- **Postcondiciones:** el usuario llegó al resultado del recorrido; la base solo cambió por las
+  acciones que el propio usuario ejecutó (la siembra del paso 3a, guardar, elaborar).
+
 ### 2.3 Características de los usuarios
 
 | Actor | Descripción | UC principales |
@@ -359,6 +395,7 @@ implementados en `core/contracts/`.
 | Auditor | revisa presupuestos de terceros | UC‑05, 07 |
 | Residente de obra | registra rendimientos medidos | UC‑06 |
 | Administrador del catálogo | mantiene partidas, insumos y listas de precios | UC‑02, 03 |
+| Usuario nuevo / evaluador | abre la aplicación por primera vez —tribunal, tutor o presupuestista recién llegado— y necesita orientarse sin formación previa | UC‑12 |
 
 ### 2.4 Restricciones
 - Todo monto y cantidad en `Decimal` (CLAUDE.md §2).
@@ -381,8 +418,9 @@ reconocimiento de planos.
 ## 3. Requisitos específicos
 
 ### 3.1 Interfaces externas
-- **Usuario:** interfaz web local (Streamlit) con los diez casos de uso declarados en este documento
-  (UC‑01 a UC‑08, UC‑10 y UC‑11; UC‑09 vacante, ver sección 2.2).
+- **Usuario:** interfaz web local (Streamlit) con los once casos de uso declarados en este documento
+  (UC‑01 a UC‑08 y UC‑10 a UC‑12; UC‑09 vacante, ver sección 2.2), con una pantalla de Inicio que
+  lleva al usuario por recorridos guiados (UC‑12).
 - **Software:** API REST (FastAPI) con esquema OpenAPI en `docs/api.json`.
 - **Archivos de entrada:** IFC 4 (dominio civil), CSV de topología (telecom), registro de activos
   (industrial), alcance funcional (sistemas), listas de precios CSV/XLSX.
@@ -394,10 +432,15 @@ Cada RF es una afirmación comprobable, con prioridad (Esencial / Deseable / Opc
 origina, el incremento que lo implementa y un criterio de aceptación con la prueba que lo demuestra.
 Numeración: RF‑01 a RF‑03 se conservan como se escribieron en el esqueleto (son los tres requisitos
 transversales del núcleo); de RF‑04 en adelante los requisitos van agrupados por caso de uso en orden
-ascendente de UC. Los números no se reutilizan: si un RF se retira, su número queda vacante. **RF‑32
-queda vacante**: [PLAN_ASISTENTE.md](../PLAN_ASISTENTE.md) (Sesión A0.1, aún no ejecutada) lo reserva
-para los requisitos de UC‑09; por eso los RF nuevos de esta sesión (UC‑10 y UC‑11, Sesión P0.1 de
-[PLAN_PROTOTIPO.md](../PLAN_PROTOTIPO.md)) continúan en RF‑33.
+ascendente de UC. Los números no se reutilizan: si un RF se retira, su número queda vacante.
+**RF‑32 queda vacante**: [PLAN_ASISTENTE.md](../PLAN_ASISTENTE.md) (Sesión A0.1, aún no ejecutada)
+lo reserva para UC‑09. Los RF de UC‑10 y UC‑11 (Sesión P0.1 de
+[PLAN_PROTOTIPO.md](../PLAN_PROTOTIPO.md)) continuaron en RF‑33, y los de UC‑12 (Sesión U0.1 de
+[PLAN_UI.md](../PLAN_UI.md)) en RF‑36. La reserva es **de RF‑32 solamente**: los demás requisitos
+de UC‑09 tomarán, al ejecutarse A0.1, la numeración a partir del siguiente al número más alto
+asignado (hoy RF‑44). Esta enmienda prevalece sobre la instrucción «numera desde RF‑32» de
+[PLAN_ASISTENTE.md](../PLAN_ASISTENTE.md):71‑73, que queda desactualizada hasta que la Sesión A0.1
+la corrija.
 
 | RF | Enunciado | Prioridad | UC | Incremento | Criterio de aceptación |
 |---|---|---|---|---|---|
@@ -435,6 +478,14 @@ para los requisitos de UC‑09; por eso los RF nuevos de esta sesión (UC‑10 y
 | RF‑33 | El sistema no persistirá una composición cuyo rendimiento no haya sido declarado explícitamente junto con sus condiciones | Esencial | UC‑10, 11 | P1.2, P2.2 | cumplido en los dos caminos del catálogo: `tests/integration/test_persistencia.py::test_cargar_composicion_sin_condiciones_lanza_valueerror` (P2.2, `Catalogo.cargar_composicion`) y `::test_reemplazar_composicion_exige_condiciones_no_vacias` (P1.2, `Catalogo.reemplazar_composicion`); cumplido en la pantalla: `tests/unit/test_ui_componer.py::test_sin_condiciones_el_boton_de_guardar_esta_deshabilitado` (P4.1, el botón «Guardar composicion» nace deshabilitado sin condiciones y se habilita al declararlas) y `::test_sin_rendimiento_guardar_no_persiste_nada` (con condiciones pero sin rendimiento, el botón guarda habilitado pero no persiste nada) |
 | RF‑34 | La modalidad de la mano de obra se declara por línea: jornal o destajo | Esencial | UC‑10, 11 | P1.1, P2.2 | cumplido en el núcleo y el catálogo: `tests/unit/test_costing_destajo.py` (P1.1, `ModalidadManoObra` en `core/contracts/apu.py`, columna Modalidad de `LineaManoObra`) y `tests/integration/test_persistencia.py::test_la_modalidad_a_destajo_sobrevive_el_viaje_por_el_catalogo` (persistencia y lectura); cumplido en la composición pura: `tests/unit/test_composicion.py` (P2.1, `ui/composicion.py` acepta y valida la modalidad por fila); cumplido en la pantalla: la columna Modalidad de la tabla de mano de obra en `ui/paginas/componer.py` (P2.2, `st.column_config.SelectboxColumn`), ejercitada por `tests/unit/test_ui_componer.py::test_teclear_el_codigo_de_una_partida_guardada_precarga_sus_tres_tablas` (jornal y destajo conviven en la misma partida precargada) y por `tests/integration/test_composicion_extremo_a_extremo.py::test_el_caso_de_demostracion_mezcla_jornal_y_destajo_en_una_partida` |
 | RF‑35 | El precio sugerido desde la referencia de mercado es editable por quien presupuesta | Esencial | UC‑10 | P2.3 | cumplido: `tests/unit/test_composicion.py` (`test_buscar_referencia_*`, P2.3, la referencia MaPreX sugiere) y `::test_el_precio_sugerido_por_la_referencia_es_editable_y_el_calculo_lo_refleja` (auditoría del PR #7: el precio de la fila sigue siendo un campo editable, nunca de solo lectura, y `core.costing.calcular_apu` refleja el precio editado, no el sugerido) |
+| RF‑36 | La interfaz abrirá en la pantalla de Inicio, cualquiera que sea el orden del resto del menú | Esencial | UC‑12 | U1 | pendiente: `tests/unit/test_ui_app.py` — el Inicio es la página por defecto por identidad, no por posición, y la ruta vacía que Streamlit da a la página por defecto se traduce a `inicio` |
+| RF‑37 | Los recorridos guiados se declararán una sola vez, en un módulo sin Streamlit ni base de datos, y el destino de cada paso será la ruta de una página registrada | Esencial | UC‑12 | U1 | pendiente: `tests/unit/test_ui_recorridos.py` — integridad de enlaces: todo `paso.pagina` está en `{p.ruta_url for p in paginas_visibles(False)}` y en las visibles en modo entrega |
+| RF‑38 | El archivo de la base se fijará una vez por sesión y todas las pantallas operarán sobre ese mismo caso; ninguna pantalla distinta del Inicio pedirá la ruta | Esencial | UC‑12 | U1 | pendiente: `tests/unit/test_ui_caso.py` — resolución sesión → entorno → constante; `RUTA_BASE_POR_DEFECTO` definida una sola vez en `ui/`; `tests/unit/test_ui_app.py` — ninguna página salvo el Inicio pide la ruta |
+| RF‑39 | El sistema mostrará en toda pantalla, en solo lectura, el caso abierto y su estado: existencia del archivo, número de partidas, número de insumos y si hay lista de precios vigente | Esencial | UC‑12 | U1 | pendiente: `tests/unit/test_ui_caso.py` (estado sobre base inexistente, vacía, sembrada e ilegible, sin traza) y `tests/unit/test_ui_app.py` (`AppTest`: el marco pinta el estado en cada una de las diez pantallas) |
+| RF‑40 | Cuando el caso abierto no exista o no contenga partidas, el Inicio lo declarará y ofrecerá cargar el caso de demostración, sin exponer nunca la opción de reiniciar la base | Esencial | UC‑12 | U1 | pendiente: `tests/unit/test_ui_inicio.py` (estado vacío, siembra, botón ausente con partidas) y `tests/unit/test_ui_caso.py` (el literal del flag de reinicio no aparece en ningún archivo de `ui/`) |
+| RF‑41 | Cada pantalla del recorrido activo mostrará su paso siguiente y la posición del usuario en el recorrido, tomados de la declaración única de recorridos; una pantalla que no pertenezca a ningún recorrido no mostrará ninguno de los dos | Deseable | UC‑12 | U1 | pendiente: `tests/unit/test_ui_recorridos.py` (`paso_siguiente` y `Recorrido.posicion`) y `tests/unit/test_ui_app.py` (`AppTest`: botón «Siguiente» y su destino) |
+| RF‑42 | El menú presentará cada pantalla con el nombre de su oficio, agrupada en dos secciones —Trabajo e Investigación— en el orden del trabajo real; el código del caso de uso permanecerá visible como subtítulo | Deseable | UC‑12 | U1 | pendiente: `tests/unit/test_ui_app.py` — secciones y orden sin Streamlit; ningún título lleva código de UC; `AppTest`: el subtítulo «Caso de uso …» en las cinco pantallas que tienen uno |
+| RF‑43 | Con el modo entrega activo, ninguna pantalla de Trabajo quedará inaccesible | Esencial | UC‑12 | U1 | pendiente: `tests/unit/test_ui_app.py` (la sección Trabajo es idéntica con y sin modo entrega) y `tests/unit/test_ui_recorridos.py` (ningún paso sale de Trabajo) |
 
 Los archivos citados pertenecen al conjunto de pruebas acordado para el proyecto: en `tests/unit/`,
 `test_costing.py`, `test_contracts.py`, `test_linea_base.py`, `test_arquitectura.py`, `test_budget.py`,
@@ -445,7 +496,8 @@ Sesión 0.1; los demás los crea el incremento indicado en su fila. Los RF poste
 I6.2, I6.3, F.1 y, en su momento, RF‑33 a RF‑35 del sprint del prototipo) declaran su criterio medible
 antes de que exista la prueba que lo cierra: el archivo se nombra al abrir esa sesión, no antes. RF‑33 a
 RF‑35 siguieron ese patrón al declararse en la Sesión P0.1 y ya pasaron de pendiente a cumplido, con las
-pruebas y conteos de la tabla anterior (Fases P2 a P4 del sprint del prototipo).
+pruebas y conteos de la tabla anterior (Fases P2 a P4 del sprint del prototipo). RF‑36 a RF‑43 (U0.1)
+nombran ya su archivo de prueba, que crea U1.
 
 Cobertura por caso de uso (mínimos exigidos por el criterio de cierre entre paréntesis):
 
@@ -461,7 +513,8 @@ Cobertura por caso de uso (mínimos exigidos por el criterio de cierre entre par
 | UC‑08 | RF‑30, RF‑31 | 2 (≥ 2) |
 | UC‑10 | RF‑33, RF‑34, RF‑35 | 3 (sin mínimo declarado; UC nuevo, Sesión P0.1) |
 | UC‑11 | RF‑33, RF‑34 | 2 (sin mínimo declarado; UC nuevo, Sesión P0.1) |
-| **Total** | RF‑01 … RF‑31, RF‑33 … RF‑35 (RF‑32 vacante — reservado a UC‑09; RF‑03 traza a dos UC; RF‑33 y RF‑34 trazan a UC‑10 y UC‑11) | **34** |
+| UC‑12 | RF‑36, RF‑37, RF‑38, RF‑39, RF‑40, RF‑41, RF‑42, RF‑43 | 8 (sin mínimo declarado; UC nuevo, Sesión U0.1) |
+| **Total** | RF‑01 … RF‑31, RF‑33 … RF‑43 (RF‑32 vacante — reservado a UC‑09; RF‑03 traza a dos UC; RF‑33 y RF‑34 trazan a UC‑10 y UC‑11) | **42** |
 
 ### 3.3 Requisitos no funcionales (ISO/IEC 25010)
 
@@ -476,6 +529,7 @@ Cobertura por caso de uso (mínimos exigidos por el criterio de cierre entre par
 | Portabilidad | RNF‑07 instalación con `uv sync` en Windows y Linux | pasos manuales | 0 |
 | Seguridad | RNF‑08 ejecución local: el sistema no requiere credenciales, no invoca servicios externos en tiempo de ejecución y los datos residen en un archivo SQLite del equipo del usuario | credenciales versionadas; llamadas de red durante la operación | 0 y 0; única excepción, la descarga inicial del modelo de `sentence-transformers` (I2), que se declara y se cachea localmente |
 | Compatibilidad | RNF‑09 entrada IFC 4 de cualquier modelador | archivos de ≥ 2 herramientas (p. ej. Revit y Bonsai) | cantidades extraídas iguales al cálculo manual en ambos; pendiente de la compuerta G1 (I3.1), cuya alternativa es la entrada tabular documentada |
+| Usabilidad | RNF‑10 capacidad de aprendizaje de la interfaz: una persona que nunca vio la aplicación llega sola del Inicio a un presupuesto en Excel con su hoja de auditoría | caso con persona CP‑07 ([guion_prueba_arenia.md](guion_prueba_arenia.md)) y bloque B del anexo A de [dossier_g0.md](dossier_g0.md) | en cada uno de los dos escenarios de CP‑07 (CP‑07 pasa solo si pasan ambos): sin ayuda, ≤ 20 min, bloque B ≥ 4,0 y ningún ítem < 3 |
 
 ### 3.4 Reglas de negocio
 Fórmula de cálculo: [CLAUDE.md §4](../CLAUDE.md#4-especificación-del-cálculo-y-línea-base).
@@ -499,11 +553,13 @@ Criterios de degradación del módulo predictivo: [CLAUDE.md §8.1](../CLAUDE.md
 | UC‑08 | RF‑30, RF‑31 | `tests/unit/test_escenarios.py` y `tests/integration/test_api_escenarios.py` (`core/budget/escenarios.py`, `POST /presupuestos/{codigo}/escenarios`, página `ui/paginas/escenarios.py`; sin persistir: el mecanismo de UC‑02) | cierre UC‑08 (2026‑08‑31) | 2 (apoyo) |
 | UC‑10 | RF‑16 (satisfecho), RF‑33, RF‑34, RF‑35 | cumplidas (declaradas pendientes al cerrar la Sesión P0.1, sin prueba todavía): `tests/integration/test_persistencia.py::test_cargar_composicion_sin_condiciones_lanza_valueerror` y `::test_reemplazar_composicion_exige_condiciones_no_vacias` (P1.2, P2.2); `tests/unit/test_costing_destajo.py` (P1.1); `tests/unit/test_composicion.py` (P2.1, P2.3, incluida `test_el_precio_sugerido_por_la_referencia_es_editable_y_el_calculo_lo_refleja`); `tests/unit/test_ui_componer.py` (P4.1) | P0.1 (declarado), P1–P4 ([PLAN_PROTOTIPO.md](../PLAN_PROTOTIPO.md)) | prototipo de entrega AREN.IA, fuera de los cinco indicadores de [docs/metodologia.md §8](metodologia.md#8-indicadores-de-la-tesis) |
 | UC‑11 | RF‑33, RF‑34 | cumplida (declarada pendiente al cerrar la Sesión P0.1, sin prueba todavía): `tests/integration/test_persistencia.py::test_reemplazar_composicion_exige_condiciones_no_vacias` (P1.2, `Catalogo.reemplazar_composicion`); paso 1 (precarga de las tres tablas antes de reemplazar, hallazgo de la auditoría del PR #7 corregido en `b4f7321`): `tests/unit/test_ui_componer.py::test_teclear_el_codigo_de_una_partida_guardada_precarga_sus_tres_tablas` y `::test_guardar_sin_ninguna_linea_sobre_una_partida_existente_no_borra_su_desglose` | P0.1 (declarado), P1.2, P2.2 | prototipo de entrega AREN.IA, fuera de los cinco indicadores de [docs/metodologia.md §8](metodologia.md#8-indicadores-de-la-tesis) |
+| UC‑12 | RF‑36, RF‑37, RF‑38, RF‑39, RF‑40, RF‑41, RF‑42, RF‑43 | pendientes: `tests/unit/test_ui_recorridos.py`, `tests/unit/test_ui_caso.py`, `tests/unit/test_ui_inicio.py`, `tests/unit/test_ui_app.py` (U1); CP‑07 para RNF‑10 | U0.1 (declarado), U1 ([PLAN_UI.md](../PLAN_UI.md)) | fuera de los cinco indicadores de [docs/metodologia.md §8](metodologia.md#8-indicadores-de-la-tesis); aporta la medición de usabilidad de [calidad_iso25010.md §4](calidad_iso25010.md) |
 
 Correspondencia RNF → verificación: RNF‑01 y RNF‑02 se comprueban en UC‑01 y UC‑02 (RF‑06, RF‑14);
 RNF‑03 en UC‑02 (RF‑11); RNF‑04 con el juicio de expertos sobre el informe de UC‑05; RNF‑05 con RF‑09;
 RNF‑06 y RNF‑07 en la Sesión F.2; RNF‑08 por inspección del repositorio y de las dependencias;
-RNF‑09 en la compuerta G1 (RF‑04).
+RNF‑09 en la compuerta G1 (RF‑04). RNF‑10 con el caso con persona CP‑07, en la compuerta GU1 de
+[PLAN_UI.md](../PLAN_UI.md); RNF‑04 es un requisito distinto y sigue pendiente.
 
 La columna "Indicador" enlaza con [docs/metodologia.md §8](metodologia.md#8-indicadores-de-la-tesis) y
 con la matriz de [docs/tesis/esqueleto_tesis.md](tesis/esqueleto_tesis.md).

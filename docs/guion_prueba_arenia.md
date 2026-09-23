@@ -15,6 +15,8 @@ RF citados viven una sola vez en la [ERS](ERS.md) y aquí no se repiten.
 - **Fuera de alcance:** las demás pantallas de la aplicación (salvo la consulta del *Catalogo* en
   CP‑02) y todo lo que ya prueban las pruebas automatizadas del [plan de pruebas](plan_pruebas.md).
 
+CP‑07 (sprint de UI, [PLAN_UI.md](../PLAN_UI.md)) es de otra naturaleza: no lo ejecuta quien anota, sino una persona que nunca vio la aplicación, y mide RNF‑10.
+
 ## 2. Elementos a probar
 
 | Elemento | Qué es |
@@ -352,6 +354,138 @@ parte de lo que se prueba (principio 7 de [CLAUDE.md](../CLAUDE.md)).
 |---|---|
 | | |
 
+### CP‑07 — Una persona nueva llega sola del Inicio al Excel auditado
+
+- **Objetivo:** medir si una persona que nunca vio la aplicación, sin explicación previa y sin que
+  nadie la guíe, llega desde el Inicio hasta un presupuesto en Excel con su hoja de auditoría.
+- **Trazabilidad:** UC‑12; RF‑36 a RF‑43; **RNF‑10**; compuerta GU1 de [PLAN_UI.md](../PLAN_UI.md).
+- **Naturaleza:** caso con persona. Hay dos papeles: el **participante**, que usa la aplicación, y
+  el **observador**, que prepara, lee la consigna, cronometra y anota. El observador no es
+  participante.
+- **Participantes:** dos personas distintas, una por escenario. Ninguna vio antes la aplicación ni
+  sus documentos; la persona del escenario B tampoco debe haber presenciado la sesión del escenario
+  A. Se anota su perfil, no su nombre: profesión, años de experiencia con presupuestos de obra, si
+  ha usado aplicaciones web de datos.
+- **Escenarios:**
+  - **A — base sembrada:** mide el recorrido.
+  - **B — base vacía:** mide además el estado vacío y la siembra desde la interfaz.
+
+**Preparación (el observador, antes de que llegue el participante)**
+
+1. Instale las dependencias si no lo ha hecho ya (sección 4, paso 1, en la raíz del repositorio):
+   `uv sync --extra ui --extra ml`.
+2. Base **exclusiva** de la prueba, nunca `data/apu.db`. Anote si `data/apu.db` existe y su fecha de
+   modificación: es la protección para confirmar, al terminar, que la prueba no lo tocó. Escenario
+   A: borre `data/cp07/escenario_a.db` si existe (de una corrida anterior) y siembre:
+   `uv run python scripts/seed_demo.py --db data/cp07/escenario_a.db`; compruebe en la terminal la
+   misma salida que el paso 2 de la sección 4: `Partida: 8`, `Total: 4131.10 USD` y
+   `Auditoria: 3 hallazgo(s), CUMPLE`. Escenario B: compruebe que `data/cp07/escenario_b.db` **no**
+   existe (bórrelo si quedó de una corrida anterior). Los `*.db` están ignorados por git.
+3. Antes de arrancar, limpie el modo entrega: CP‑07 se ejecuta en modo normal. En bash,
+   `unset ARENIA_MODO_ENTREGA`; en PowerShell,
+   `Remove-Item Env:ARENIA_MODO_ENTREGA -ErrorAction SilentlyContinue`.
+4. Arranque la aplicación apuntando a esa base. En bash:
+   `ARENIA_CASO=data/cp07/escenario_a.db uv run python -m streamlit run ui/app.py`;
+   en PowerShell: `$env:ARENIA_CASO = "data/cp07/escenario_a.db"; uv run python -m streamlit run ui/app.py`
+   (en el escenario B, `escenario_b.db`).
+5. Compruebe que el navegador abrió en **Inicio** y que la barra lateral, bajo **Caso abierto**,
+   nombra la base del escenario. Cierre toda otra pestaña.
+6. Vacíe la carpeta de descargas del navegador, o anote su contenido para distinguir después el
+   archivo nuevo.
+7. Tenga a mano el cronómetro, esta hoja de registro y el bloque B del anexo A de
+   [dossier_g0.md](dossier_g0.md), impreso.
+
+**Consigna literal** — se lee tal cual, una sola vez, sin agregar nada:
+
+> «Esta aplicación sirve para armar y auditar presupuestos de obra. Le pido que, sin ayuda,
+> obtenga un presupuesto en Excel que incluya su auditoría y que, al terminar, me diga cuántos
+> hallazgos tiene esa auditoría. Puede pensar en voz alta. Yo solo voy a observar y a tomar notas.»
+
+**Guion del observador**
+
+1. Ponga en marcha el cronómetro al terminar de leer la consigna.
+2. **No conteste preguntas sobre la aplicación.** Respuesta fija a cualquier pregunta: «Haga lo que
+   haría si yo no estuviera». Anote cada pregunta con su minuto: cuentan para el registro.
+3. Anote cada **punto de detención**: 30 s o más sin una **acción nueva** —clic, escritura o cambio
+   de pantalla; mover el ratón o desplazarse por la página no cuenta—, o una frase del tipo «no sé
+   qué hacer». Registre minuto, pantalla y lo que dijo la persona. Son la entrada de U2 si el caso
+   resulta FALLA.
+4. **Qué cuenta como ayuda:** cualquier indicación sobre qué pulsar, adónde ir o qué significa un
+   término, y cualquier gesto que confirme o niegue que va bien. Repetir la consigna literal **no**
+   cuenta como ayuda.
+5. **Si el participante sale del caso abierto** (cambia el archivo en la barra lateral o abre otro
+   caso): eso tampoco cuenta como ayuda; anote el minuto y la ruta que abrió. El estado final se
+   comprueba siempre sobre la base del escenario (`escenario_a.db` o `escenario_b.db`), nunca sobre
+   la que haya quedado abierta al final.
+6. **Oferta única de ayuda:** si pasan 3 minutos sin avanzar —sin cambiar de pantalla ni producir
+   un resultado nuevo—, diga una sola vez: «¿Quiere que le ayude?». Si acepta, la sesión queda
+   **asistida** y el veredicto ya es FALLA; se continúa hasta una condición de parada para registrar
+   el resto. Si no acepta, no se vuelve a ofrecer.
+
+**Condiciones de parada** (la primera que ocurra)
+
+1. El participante alcanza el estado final (éxito).
+2. Se cumplen **20 minutos** desde el fin de la consigna (el cronómetro corre hasta el estado final;
+   ver «Estado final observable», más abajo).
+3. Pasan **5 minutos sin una acción nueva** (abandono; definición del punto 3 del guion del
+   observador).
+4. El participante declara que se rinde.
+5. La aplicación muestra una traza de error o deja de responder: el escenario es **FALLA**, se
+   registra como defecto con la pantalla y el texto visible, y no se reinicia la aplicación.
+
+**Estado final observable.** El cronómetro corre desde el fin de la consigna hasta que se cumplen
+estos dos puntos; abrir el archivo y contestar el bloque B ocurren después y no cuentan para el
+tiempo:
+
+- En la carpeta de descargas existe `presupuesto_<codigo>*.xlsx` (el navegador agrega « (1)» si ya
+  había un archivo con ese nombre).
+- El participante dice, de palabra, un número de hallazgos.
+
+Con el cronómetro ya detenido, el observador abre el archivo y comprueba sus **cuatro hojas**, en
+este orden: *Presupuesto*, *APU*, *Curva* y *Auditoria*, y compara el número que dijo el
+participante contra la hoja *Auditoria* de **ese mismo archivo** — la referencia es esa hoja, no el
+informe en pantalla, que es solo apoyo (en el escenario A la base sembrada ya trae el presupuesto
+`DEMO-001`: no lo confunda con el que acaba de producir el participante). Solo en el escenario B: la
+barra lateral, bajo **Caso abierto**, informa más de cero partidas. Repita también la comprobación
+de la preparación sobre `data/apu.db` (existencia y fecha de modificación) y compárela con la
+anotada al inicio.
+
+**Al terminar:** el participante contesta a solas el **bloque B** del anexo A (en el escenario A,
+B4 se marca «no aplica»). El observador no mira mientras lo contesta.
+
+**Criterio de aceptación, declarado antes de ejecutar.** Un escenario **PASA** si y solo si: se
+alcanzó el estado final **sin ayuda**; **dentro de los 20 minutos**; y el promedio del bloque B es
+**≥ 4,0 sin ningún ítem por debajo de 3**. **FALLA** en cualquier otro caso, sin negociar. **CP‑07
+PASA si y solo si pasan los dos escenarios.** Una FALLA no cancela el sprint: es el dato de la
+tesis y la entrada de la fase U2, cuyo alcance lo fijan los puntos de detención.
+
+Los umbrales de 20, 5 y 3 minutos **son decisiones de este caso, no medidas**: se declaran para que
+el veredicto no dependa del criterio del observador, y se revisan con evidencia tras la primera
+ejecución, dejando constancia en [docs/bitacora/](bitacora/).
+
+**Hoja de registro** (una hoja, una columna por escenario)
+
+| Campo | Escenario A | Escenario B |
+|---|---|---|
+| Perfil del participante (sin nombre) | | |
+| Fecha y hora de inicio | | |
+| Commit probado (`git log -1 --oneline`) | | |
+| Sistema operativo y navegador | | |
+| Tiempo total (min; desde el fin de la consigna hasta el estado final) | | |
+| Número de preguntas al observador | | |
+| Oferta de ayuda: minuto · ¿aceptada? | | |
+| Puntos de detención (minuto · pantalla · qué dijo) | | |
+| Condición de parada (1–5) | | |
+| Archivo obtenido y sus hojas | | |
+| Hallazgos que dijo · hallazgos de la hoja Auditoria | | |
+| `data/apu.db` sin cambios al terminar (sí/no) | | |
+| Partidas al terminar (solo B) | — | |
+| Bloque B: B1 · B2 · B3 · B4 · B5 · B6 · B7 · promedio | | |
+| Campo abierto | | |
+| Veredicto del escenario | | |
+
+**Veredicto de CP‑07:** ____ (PASA solo si ambos escenarios PASAN)
+
 ## 7. Trazabilidad CP → UC / RF
 
 | Caso | UC | RF | Otros |
@@ -362,6 +496,7 @@ parte de lo que se prueba (principio 7 de [CLAUDE.md](../CLAUDE.md)).
 | CP‑04 | UC‑06, UC‑11 | RF‑26, RF‑27, RF‑33 | — |
 | CP‑05 | UC‑01 | RF‑06, RF‑07, RF‑08, RF‑34 | hojas de `core/budget/excel.py` |
 | CP‑06 | UC‑01, UC‑05 | RF‑02, RF‑21, RF‑23 | principio 7 de CLAUDE.md §2 |
+| CP‑07 | UC‑12 | RF‑36 a RF‑43 | RNF‑10; bloque B del anexo A de [dossier_g0.md](dossier_g0.md); compuerta GU1 |
 
 ## 8. Registro de la ejecución
 
