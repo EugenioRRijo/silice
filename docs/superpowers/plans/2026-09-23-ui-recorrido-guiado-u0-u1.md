@@ -77,6 +77,9 @@ SQLAlchemy 2 · pytest (`-W error --strict-markers`) · ruff · uv
 5. **«Abrir este caso» con el campo vacío.** Se espera un mensaje y el caso anterior intacto, no un
    caso `Path("")` que apunte al directorio actual. Prueba en la Tarea 9
    (`test_abrir_un_caso_vacio_avisa_y_conserva_el_anterior`).
+6. **La posición en el recorrido que pinta la barra lateral** (RF‑41 ampliado en GU0) no tenía
+   prueba en la versión original del plan: la trazabilidad por paso de §8.1 lo detectó. Prueba en
+   la Tarea 11.
 
 ---
 
@@ -636,12 +639,10 @@ git commit -m "docs(bitacora): compuerta gu0 del sprint de ui" -m "Co-Authored-B
 - Produces: fixture de sesión `_base_real_intacta` (autouse) y la constante `RUTA_BASE_REAL` en
   `tests/conftest.py`, que las Tareas 8 a 11 dan por activas.
 
-- [ ] **Step 1: Reasentar `inc/PLAN-ui` sobre `main`**
-
-Run: `git fetch origin && git log --oneline -1 main && git rebase main && git log --oneline -8`
-Expected: el rebase termina sin conflictos (la rama solo lleva documentos, `PLAN_UI.md`,
-`pyproject.toml` y `uv.lock`). Si `uv.lock` choca, resolver aceptando el de `main` y repetir la
-Tarea 1, pasos 2–4. Después: `ls ui/paginas/componer.py` existe.
+- [ ] **Step 1: Comprobar la integración con `main`.** La rama ya se integró con `main` por merge
+  (`216acca`, 2026‑09‑23): el rebase chocaba commit a commit con las correcciones de la auditoría
+  del PR #7 en ERS y plan de pruebas, y un merge los resolvió en una sola pasada. Comprobar:
+  `git log --oneline -1 main` está contenido en la rama (`git merge-base --is-ancestor main HEAD`).
 
 - [ ] **Step 2: Estado de partida en verde**
 
@@ -2205,6 +2206,12 @@ def test_ninguna_pantalla_distinta_del_inicio_pide_la_ruta(monkeypatch, base_sem
     assert not any("SQLite" in rotulo for rotulo in rotulos), rotulos
 
 
+def test_la_barra_lateral_indica_el_paso_del_recorrido(monkeypatch, base_sembrada) -> None:
+    at = _marco(monkeypatch, base_sembrada, "catalogo", {CLAVE_RECORRIDO: NOMBRE_DEMOSTRACION})
+    leyendas = [leyenda.value for leyenda in at.sidebar.caption]
+    assert "Paso 1 de 2: Ver el catalogo del caso" in leyendas
+
+
 def test_el_boton_siguiente_lleva_al_paso_que_sigue(monkeypatch, base_sembrada) -> None:
     at = _marco(monkeypatch, base_sembrada, "catalogo", {CLAVE_RECORRIDO: NOMBRE_DEMOSTRACION})
     boton = at.button(key=CLAVE_BOTON_SIGUIENTE)
@@ -2351,12 +2358,16 @@ Run: `grep -n "Componer partida\|Actualizacion de precios\|Elaborar presupuesto 
   y uno por uno) y en `docs/ERS.md` cambiar el prefijo «pendiente:» de RF‑36…RF‑43 por
   «cumplido (U1):»; en `docs/plan_pruebas.md` §8 llenar «Casos» y poner «verde».
 
-- [ ] **Step 4: Comprobar**
+- [ ] **Step 4: Recorrer la tabla de `docs/plan_pruebas.md` §8.1 y comprobar con
+  `grep -n "def <nombre>" tests/` que cada prueba citada existe; pasar cada fila a "verde" o, si
+  falta, detenerse: un paso de UC‑12 sin prueba es un hallazgo, no una fila por corregir.**
+
+- [ ] **Step 5: Comprobar**
 
 Run: `grep -n "Componer partida (UC\|Archivo SQLite" docs/manual_usuario.md docs/guion_prueba_arenia.md; uv run pytest tests/unit/test_meta_prototipo.py tests/unit/test_meta_datos.py -q`
 Expected: el `grep` no imprime nada; las metas siguen verdes.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
 git add docs/manual_usuario.md docs/guion_prueba_arenia.md docs/ERS.md docs/plan_pruebas.md
