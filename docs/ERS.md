@@ -15,13 +15,15 @@
 > rango que arranca en **RF‑32** quedan vacantes/reservados: los reserva
 > [PLAN_ASISTENTE.md](../PLAN_ASISTENTE.md) (Sesión A0.1, aún no ejecutada) para el asistente de
 > presupuestos con IA; esta sesión continúa la numeración en UC‑10 y RF‑33 para no colisionar con esa
-> reserva.
+> reserva (enmendado en la Sesión U0.1, ver la nota siguiente).
 > **Extensión del sprint de UI (Sesión U0.1, compuerta GU0, [PLAN_UI.md](../PLAN_UI.md)):** se
 > agregan UC‑12, los RF‑36 a RF‑43 —para un total de **42 RF**— y el requisito no funcional
 > RNF‑10. **La reserva de UC‑09 queda reducida a RF‑32 solamente:** RF‑33 a RF‑35 ya los tomó
 > UC‑10/UC‑11, de modo que la reserva de un rango contiguo estaba rota antes de este sprint. Los
-> demás requisitos de UC‑09 continuarán desde el número libre más alto cuando se ejecute la Sesión
-> A0.1 de [PLAN_ASISTENTE.md](../PLAN_ASISTENTE.md).
+> demás requisitos de UC‑09 continuarán, al ejecutarse la Sesión A0.1 de
+> [PLAN_ASISTENTE.md](../PLAN_ASISTENTE.md), a partir del siguiente al número más alto asignado (hoy
+> RF‑44); esta enmienda prevalece sobre la instrucción «numera desde RF‑32» de
+> PLAN_ASISTENTE.md:71‑73, que queda desactualizada hasta que A0.1 la corrija.
 
 | Campo | Valor |
 |---|---|
@@ -433,7 +435,10 @@ ascendente de UC. Los números no se reutilizan: si un RF se retira, su número 
 lo reserva para UC‑09. Los RF de UC‑10 y UC‑11 (Sesión P0.1 de
 [PLAN_PROTOTIPO.md](../PLAN_PROTOTIPO.md)) continuaron en RF‑33, y los de UC‑12 (Sesión U0.1 de
 [PLAN_UI.md](../PLAN_UI.md)) en RF‑36. La reserva es **de RF‑32 solamente**: los demás requisitos
-de UC‑09 tomarán el número libre más alto al ejecutarse A0.1.
+de UC‑09 tomarán, al ejecutarse A0.1, la numeración a partir del siguiente al número más alto
+asignado (hoy RF‑44). Esta enmienda prevalece sobre la instrucción «numera desde RF‑32» de
+[PLAN_ASISTENTE.md](../PLAN_ASISTENTE.md):71‑73, que queda desactualizada hasta que la Sesión A0.1
+la corrija.
 
 | RF | Enunciado | Prioridad | UC | Incremento | Criterio de aceptación |
 |---|---|---|---|---|---|
@@ -474,9 +479,9 @@ de UC‑09 tomarán el número libre más alto al ejecutarse A0.1.
 | RF‑36 | La interfaz abrirá en la pantalla de Inicio, cualquiera que sea el orden del resto del menú | Esencial | UC‑12 | U1 | pendiente: `tests/unit/test_ui_app.py` — el Inicio es la página por defecto por identidad, no por posición, y la ruta vacía que Streamlit da a la página por defecto se traduce a `inicio` |
 | RF‑37 | Los recorridos guiados se declararán una sola vez, en un módulo sin Streamlit ni base de datos, y el destino de cada paso será la ruta de una página registrada | Esencial | UC‑12 | U1 | pendiente: `tests/unit/test_ui_recorridos.py` — integridad de enlaces: todo `paso.pagina` está en `{p.ruta_url for p in paginas_visibles(False)}` y en las visibles en modo entrega |
 | RF‑38 | El archivo de la base se fijará una vez por sesión y todas las pantallas operarán sobre ese mismo caso; ninguna pantalla distinta del Inicio pedirá la ruta | Esencial | UC‑12 | U1 | pendiente: `tests/unit/test_ui_caso.py` — resolución sesión → entorno → constante; `RUTA_BASE_POR_DEFECTO` definida una sola vez en `ui/`; `tests/unit/test_ui_app.py` — ninguna página salvo el Inicio pide la ruta |
-| RF‑39 | El sistema mostrará en toda pantalla, en solo lectura, el caso abierto y su estado: existencia del archivo, número de partidas, número de insumos y si hay lista de precios vigente | Esencial | UC‑12 | U1 | pendiente: `tests/unit/test_ui_caso.py` (estado sobre base inexistente, vacía, sembrada e ilegible) y `tests/unit/test_ui_app.py` (`AppTest`: el marco pinta el estado en cada una de las diez pantallas) |
+| RF‑39 | El sistema mostrará en toda pantalla, en solo lectura, el caso abierto y su estado: existencia del archivo, número de partidas, número de insumos y si hay lista de precios vigente | Esencial | UC‑12 | U1 | pendiente: `tests/unit/test_ui_caso.py` (estado sobre base inexistente, vacía, sembrada e ilegible, sin traza) y `tests/unit/test_ui_app.py` (`AppTest`: el marco pinta el estado en cada una de las diez pantallas) |
 | RF‑40 | Cuando el caso abierto no exista o no contenga partidas, el Inicio lo declarará y ofrecerá cargar el caso de demostración, sin exponer nunca la opción de reiniciar la base | Esencial | UC‑12 | U1 | pendiente: `tests/unit/test_ui_inicio.py` (estado vacío, siembra, botón ausente con partidas) y `tests/unit/test_ui_caso.py` (el literal del flag de reinicio no aparece en ningún archivo de `ui/`) |
-| RF‑41 | Cada pantalla del recorrido activo mostrará su paso siguiente, tomado de la declaración única de recorridos; una pantalla que no pertenezca a ningún recorrido no lo mostrará | Deseable | UC‑12 | U1 | pendiente: `tests/unit/test_ui_recorridos.py` (`paso_siguiente`) y `tests/unit/test_ui_app.py` (`AppTest`: botón «Siguiente» y su destino) |
+| RF‑41 | Cada pantalla del recorrido activo mostrará su paso siguiente y la posición del usuario en el recorrido, tomados de la declaración única de recorridos; una pantalla que no pertenezca a ningún recorrido no mostrará ninguno de los dos | Deseable | UC‑12 | U1 | pendiente: `tests/unit/test_ui_recorridos.py` (`paso_siguiente`) y `tests/unit/test_ui_app.py` (`AppTest`: botón «Siguiente» y su destino) |
 | RF‑42 | El menú presentará cada pantalla con el nombre de su oficio, agrupada en dos secciones —Trabajo e Investigación— en el orden del trabajo real; el código del caso de uso permanecerá visible como subtítulo | Deseable | UC‑12 | U1 | pendiente: `tests/unit/test_ui_app.py` — secciones y orden sin Streamlit; ningún título lleva código de UC; `AppTest`: el subtítulo «Caso de uso …» en las cinco pantallas que tienen uno |
 | RF‑43 | Con el modo entrega activo, ninguna pantalla de Trabajo quedará inaccesible | Esencial | UC‑12 | U1 | pendiente: `tests/unit/test_ui_app.py` (la sección Trabajo es idéntica con y sin modo entrega) y `tests/unit/test_ui_recorridos.py` (ningún paso sale de Trabajo) |
 
@@ -487,7 +492,8 @@ Los archivos citados pertenecen al conjunto de pruebas acordado para el proyecto
 `test_auditoria_7_de_7.py` y `test_actualizacion_precios.py`. Los cuatro primeros existen al cerrar la
 Sesión 0.1; los demás los crea el incremento indicado en su fila. Los RF posteriores al núcleo (I2, I6.1,
 I6.2, I6.3, F.1 y, ahora, RF‑33 a RF‑35 del sprint del prototipo) declaran su criterio medible y marcan la
-prueba como pendiente: el archivo se nombra al abrir esa sesión, no antes.
+prueba como pendiente: el archivo se nombra al abrir esa sesión, no antes. RF‑36 a RF‑43 (U0.1)
+nombran ya su archivo de prueba, que crea U1.
 
 Cobertura por caso de uso (mínimos exigidos por el criterio de cierre entre paréntesis):
 
@@ -519,7 +525,7 @@ Cobertura por caso de uso (mínimos exigidos por el criterio de cierre entre par
 | Portabilidad | RNF‑07 instalación con `uv sync` en Windows y Linux | pasos manuales | 0 |
 | Seguridad | RNF‑08 ejecución local: el sistema no requiere credenciales, no invoca servicios externos en tiempo de ejecución y los datos residen en un archivo SQLite del equipo del usuario | credenciales versionadas; llamadas de red durante la operación | 0 y 0; única excepción, la descarga inicial del modelo de `sentence-transformers` (I2), que se declara y se cachea localmente |
 | Compatibilidad | RNF‑09 entrada IFC 4 de cualquier modelador | archivos de ≥ 2 herramientas (p. ej. Revit y Bonsai) | cantidades extraídas iguales al cálculo manual en ambos; pendiente de la compuerta G1 (I3.1), cuya alternativa es la entrada tabular documentada |
-| Usabilidad | RNF‑10 capacidad de aprendizaje de la interfaz: una persona que nunca vio la aplicación llega sola del Inicio a un presupuesto en Excel con su hoja de auditoría | caso con persona CP‑07 ([guion_prueba_arenia.md](guion_prueba_arenia.md)) y bloque B del anexo A de [dossier_g0.md](dossier_g0.md) | llega sin ayuda en ≤ 20 min, y el bloque B promedia ≥ 4,0 sin ningún ítem por debajo de 3; RNF‑04 es un requisito distinto y sigue pendiente |
+| Usabilidad | RNF‑10 capacidad de aprendizaje de la interfaz: una persona que nunca vio la aplicación llega sola del Inicio a un presupuesto en Excel con su hoja de auditoría | caso con persona CP‑07 ([guion_prueba_arenia.md](guion_prueba_arenia.md)) y bloque B del anexo A de [dossier_g0.md](dossier_g0.md) | en cada uno de los dos escenarios de CP‑07 (CP‑07 pasa solo si pasan ambos): sin ayuda, ≤ 20 min, bloque B ≥ 4,0 y ningún ítem < 3 |
 
 ### 3.4 Reglas de negocio
 Fórmula de cálculo: [CLAUDE.md §4](../CLAUDE.md#4-especificación-del-cálculo-y-línea-base).
@@ -549,7 +555,7 @@ Correspondencia RNF → verificación: RNF‑01 y RNF‑02 se comprueban en UC�
 RNF‑03 en UC‑02 (RF‑11); RNF‑04 con el juicio de expertos sobre el informe de UC‑05; RNF‑05 con RF‑09;
 RNF‑06 y RNF‑07 en la Sesión F.2; RNF‑08 por inspección del repositorio y de las dependencias;
 RNF‑09 en la compuerta G1 (RF‑04). RNF‑10 con el caso con persona CP‑07, en la compuerta GU1 de
-[PLAN_UI.md](../PLAN_UI.md).
+[PLAN_UI.md](../PLAN_UI.md); RNF‑04 es un requisito distinto y sigue pendiente.
 
 La columna "Indicador" enlaza con [docs/metodologia.md §8](metodologia.md#8-indicadores-de-la-tesis) y
 con la matriz de [docs/tesis/esqueleto_tesis.md](tesis/esqueleto_tesis.md).
