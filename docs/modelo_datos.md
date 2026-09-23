@@ -78,6 +78,7 @@ antes de decidir si reutiliza un insumo o crea una variante.
 | `insumo_id` | int | FK → `Insumo.id` | no | |
 | `cantidad` | Decimal | — | no | ≥ 0 |
 | `depreciacion` | Decimal | — | sí | solo equipos; (0, 1]. Varía entre APU para el mismo insumo (hallazgo 7) |
+| `modalidad` | str(10) | — | sí | solo mano de obra; ∈ {jornal, destajo}; NULL se lee como jornal |
 | `orden` | int | — | no | preserva el orden del PDF; sin él las tuplas del contrato no se reconstruyen iguales |
 
 **`Rendimiento`** — unidades de partida por día, con su procedencia.
@@ -328,6 +329,7 @@ erDiagram
         int insumo_id FK
         decimal cantidad
         decimal depreciacion
+        string modalidad
         int orden
     }
     RENDIMIENTO {

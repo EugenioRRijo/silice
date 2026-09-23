@@ -40,6 +40,28 @@ DESCRIPCION_PROYECTO = (
 ORIGEN_LISTA = "APUS_CLINICA.pdf"
 RUTA_POR_DEFECTO = "data/apu.db"
 
+#: Condiciones bajo las que se estimo cada rendimiento de la linea base.
+#:
+#: Son supuestos declarados de un caso didactico, no mediciones de obra ejecutada: nadie cronometro
+#: una cuadrilla real. Se escriben para que la siembra de la base sea trazable, siguiendo la misma
+#: exigencia que la pantalla de composicion (fase P2) le hara a cualquier rendimiento nuevo.
+CONDICIONES_LINEA_BASE: dict[str, str] = {
+    "LB-01-EXC": (
+        "cuadrilla de cinco obreros (operador de equipo y dos choferes incluidos), excavacion "
+        "mecanizada con retroexcavadora y acarreo en camion de volteo"
+    ),
+    "LB-02-TUB": "cuadrilla de tres obreros, tuberia PVC de 4 pulgadas, zanja abierta y nivelada",
+    "LB-03-ENC": "cuadrilla de cuatro obreros, encofrado de madera reutilizable, paredes rectas",
+    "LB-04-CON": (
+        "cuadrilla de seis obreros, concreto dosificado y mezclado en sitio con mezcladora, "
+        "consolidado con vibrador de concreto"
+    ),
+    "LB-05-REL": (
+        "cuadrilla de seis obreros, material granular en sitio, compactacion mecanizada con "
+        "compactadora tipo sapo y agua para control de humedad"
+    ),
+}
+
 _TABLAS_DEL_RESUMEN = (
     models.Partida,
     models.Insumo,
@@ -73,7 +95,13 @@ def sembrar(sesion: Session) -> models.Proyecto:
 
     catalogo = Catalogo(sesion)
     for apu in linea_base.APUS_LINEA_BASE:
-        catalogo.cargar_composicion(apu, lista, Dominio.CIVIL, linea_base.FECHA_LINEA_BASE)
+        catalogo.cargar_composicion(
+            apu,
+            lista,
+            Dominio.CIVIL,
+            linea_base.FECHA_LINEA_BASE,
+            CONDICIONES_LINEA_BASE[apu.codigo_partida],
+        )
 
     sesion.commit()
     return proyecto

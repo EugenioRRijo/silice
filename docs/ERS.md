@@ -5,11 +5,17 @@
 > Estado: **completo, pendiente de revisión del tutor (compuerta G0, [docs/metodologia.md §2.2](metodologia.md#22-compuertas))**.
 > Redactado en la Sesión 0.1 de [PLAN_DESARROLLO.md](../PLAN_DESARROLLO.md). Criterio de cierre exigido:
 > al menos 23 RF numerados con prioridad y trazabilidad al caso de uso, y matriz de trazabilidad
-> completa. Resultado: **31 RF** (sección 3.2) y matriz de la sección 4.
+> completa. Resultado original: **31 RF** (sección 3.2) y matriz de la sección 4.
 > Este documento no reproduce datos que tienen fuente única: enlaza [CLAUDE.md](../CLAUDE.md),
 > [docs/linea_base.md](linea_base.md) y [docs/metodologia.md](metodologia.md) (principio DRY,
 > [metodologia.md §5](metodologia.md#5-dry)). Tras cruzar G0 quedan congelados los ocho casos de uso y
 > sus requerimientos funcionales numerados.
+> **Extensión posterior a G0 (Sesión P0.1, compuerta GP0, [PLAN_PROTOTIPO.md](../PLAN_PROTOTIPO.md)):**
+> se agregan UC‑10 y UC‑11 y los RF‑33 a RF‑35, para un total de **34 RF**. El número **UC‑09** y el
+> rango que arranca en **RF‑32** quedan vacantes/reservados: los reserva
+> [PLAN_ASISTENTE.md](../PLAN_ASISTENTE.md) (Sesión A0.1, aún no ejecutada) para el asistente de
+> presupuestos con IA; esta sesión continúa la numeración en UC‑10 y RF‑33 para no colisionar con esa
+> reserva.
 
 | Campo | Valor |
 |---|---|
@@ -86,6 +92,16 @@ produce presupuesto, curva de inversión, informe de auditoría y exportación a
 | UC‑06 | Registrar y consultar rendimientos reales de obra ejecutada | I6.2 |
 | UC‑07 | Contrastar el precio construido con el precio de mercado | I6.3 |
 | UC‑08 | Generar escenarios de sensibilidad | F.1 |
+| UC‑10 | Componer una partida | P0.1 (declarado), P1–P2 |
+| UC‑11 | Editar una partida compuesta | P0.1 (declarado), P1–P2 |
+
+UC‑09 queda vacante en este documento: [PLAN_ASISTENTE.md](../PLAN_ASISTENTE.md) (Sesión A0.1, aún no
+ejecutada) lo reserva para «Generar presupuesto asistido desde las necesidades del usuario». UC‑10 y
+UC‑11 se declararon en la Sesión P0.1 del sprint del prototipo AREN.IA
+([PLAN_PROTOTIPO.md](../PLAN_PROTOTIPO.md)); su implementación en `ui/composicion.py` y
+`ui/paginas/componer.py`, de las Fases P1 y P2 de ese plan, está cumplida (el sprint cerró con sus doce
+metas en verde el 2026‑09‑21, `docs/bitacora/2026-09-16-sprint-prototipo.md`); ver RF‑33 a RF‑35 (§3.2)
+y la matriz de trazabilidad (§4) para las pruebas.
 
 Los tipos citados en los flujos (`ItemComputo`, `ComposicionAPU`, `ResultadoAPU`, `Presupuesto`,
 `Hallazgo`, `Rendimiento`) son los de [CLAUDE.md §5](../CLAUDE.md#5-contratos-de-interfaz-corecontracts),
@@ -280,11 +296,66 @@ implementados en `core/contracts/`.
     escenario del que proviene.
 - **Postcondiciones:** escenarios guardados con sus parámetros; el presupuesto base permanece inalterado.
 
+#### UC‑10 — Componer una partida
+
+- **Actor principal:** proyectista / estimador.
+- **Precondiciones:** el catálogo tiene insumos disponibles; hay una referencia de precios de mercado
+  cargada (p. ej. MaPreX) para el buscador de apoyo; la partida no tiene composición previa.
+- **Flujo principal**
+  1. El proyectista declara el código, la descripción y la unidad de la partida.
+  2. El proyectista arma la tabla de materiales: insumo, unidad, cantidad de consumo por unidad de
+     partida y precio.
+  3. El proyectista arma la tabla de equipos: insumo, cantidad, precio y factor de depreciación.
+  4. El proyectista arma la tabla de mano de obra: insumo, cantidad, sueldo o precio por unidad
+     instalada, y la modalidad de cada línea (jornal o destajo).
+  5. El proyectista declara el rendimiento de la partida (unidades de partida por día) junto con sus
+     condiciones.
+  6. El sistema calcula el `ResultadoAPU` con `calcular_apu` sobre la composición en memoria y muestra
+     el desglose y el precio unitario en vivo, sin necesidad de guardar.
+  7. El proyectista guarda la composición.
+  8. El sistema la persiste asociada a su rendimiento declarado y a sus condiciones.
+- **Flujos alternativos**
+  - *2a/3a/4a. Fila vacía en alguna tabla:* se descarta sin error.
+  - *2b/3b/4b. El proyectista usa el buscador de la referencia de mercado:* el sistema propone
+    descripción, unidad, precio y, para equipos, el factor de depreciación; el precio sugerido queda
+    editable por quien presupuesta, porque la referencia de mercado no es verdad.
+  - *5a. El rendimiento no se declara, o se declara sin sus condiciones:* el sistema no persiste la
+    composición; el paso 7 queda bloqueado.
+  - *7a. La partida ya existe con composición:* el sistema no crea una segunda composición; ofrece
+    editar la existente (UC‑11).
+- **Postcondiciones:** la partida queda persistida con su composición, su rendimiento y sus
+  condiciones declaradas; el precio unitario es reproducible evaluando `calcular_apu` sobre lo
+  guardado.
+
+#### UC‑11 — Editar una partida compuesta
+
+- **Actor principal:** proyectista / estimador.
+- **Precondiciones:** la partida existe en el catálogo y tiene una composición y un rendimiento
+  vigente.
+- **Flujo principal**
+  1. El proyectista abre la partida existente; el sistema precarga sus tres tablas de insumos y su
+     rendimiento vigente con sus condiciones.
+  2. El proyectista modifica insumos, cantidades, precios o la modalidad de alguna línea de mano de
+     obra.
+  3. El proyectista declara un rendimiento nuevo con sus condiciones.
+  4. El sistema recalcula el desglose y el precio unitario en vivo sobre la composición modificada.
+  5. El proyectista guarda.
+  6. El sistema reemplaza la composición vigente: borra las líneas anteriores, registra el
+     rendimiento nuevo y conserva el rendimiento anterior en el histórico de la partida.
+- **Flujos alternativos**
+  - *3a. El proyectista no declara un rendimiento nuevo con sus condiciones:* el sistema no permite
+    guardar (misma regla que UC‑10, paso 5).
+  - *6a. La partida no existe en el catálogo:* el sistema rechaza el reemplazo; ese caso es UC‑10, no
+    UC‑11.
+- **Postcondiciones:** la composición vigente es la nueva; el rendimiento anterior queda en el
+  histórico de la partida, distinguible del nuevo; ningún otro presupuesto ya emitido que reutilizó
+  esta partida se altera retroactivamente.
+
 ### 2.3 Características de los usuarios
 
 | Actor | Descripción | UC principales |
 |---|---|---|
-| Proyectista / estimador | elabora y actualiza presupuestos | UC‑01, 02, 03, 04, 08 |
+| Proyectista / estimador | elabora y actualiza presupuestos | UC‑01, 02, 03, 04, 08, 10, 11 |
 | Auditor | revisa presupuestos de terceros | UC‑05, 07 |
 | Residente de obra | registra rendimientos medidos | UC‑06 |
 | Administrador del catálogo | mantiene partidas, insumos y listas de precios | UC‑02, 03 |
@@ -310,7 +381,8 @@ reconocimiento de planos.
 ## 3. Requisitos específicos
 
 ### 3.1 Interfaces externas
-- **Usuario:** interfaz web local (Streamlit) con los ocho casos de uso.
+- **Usuario:** interfaz web local (Streamlit) con los diez casos de uso declarados en este documento
+  (UC‑01 a UC‑08, UC‑10 y UC‑11; UC‑09 vacante, ver sección 2.2).
 - **Software:** API REST (FastAPI) con esquema OpenAPI en `docs/api.json`.
 - **Archivos de entrada:** IFC 4 (dominio civil), CSV de topología (telecom), registro de activos
   (industrial), alcance funcional (sistemas), listas de precios CSV/XLSX.
@@ -322,7 +394,10 @@ Cada RF es una afirmación comprobable, con prioridad (Esencial / Deseable / Opc
 origina, el incremento que lo implementa y un criterio de aceptación con la prueba que lo demuestra.
 Numeración: RF‑01 a RF‑03 se conservan como se escribieron en el esqueleto (son los tres requisitos
 transversales del núcleo); de RF‑04 en adelante los requisitos van agrupados por caso de uso en orden
-ascendente de UC. Los números no se reutilizan: si un RF se retira, su número queda vacante.
+ascendente de UC. Los números no se reutilizan: si un RF se retira, su número queda vacante. **RF‑32
+queda vacante**: [PLAN_ASISTENTE.md](../PLAN_ASISTENTE.md) (Sesión A0.1, aún no ejecutada) lo reserva
+para los requisitos de UC‑09; por eso los RF nuevos de esta sesión (UC‑10 y UC‑11, Sesión P0.1 de
+[PLAN_PROTOTIPO.md](../PLAN_PROTOTIPO.md)) continúan en RF‑33.
 
 | RF | Enunciado | Prioridad | UC | Incremento | Criterio de aceptación |
 |---|---|---|---|---|---|
@@ -341,7 +416,7 @@ ascendente de UC. Los números no se reutilizan: si un RF se retira, su número 
 | RF‑13 | El sistema emitirá un informe comparativo entre la versión anterior y la nueva, por partida y total, en variación absoluta y porcentual | Esencial | UC‑02 | I1 | `tests/integration/test_actualizacion_precios.py`: la suma de las variaciones por partida iguala la variación del total |
 | RF‑14 | El sistema reconstruirá cualquier presupuesto con los precios vigentes en la fecha en que fue elaborado | Esencial | UC‑02 | I1 | `tests/integration/test_persistencia.py::test_precios_se_reconstruyen_a_fecha` y `tests/integration/test_actualizacion_precios.py`: la reconstrucción a la fecha original es idéntica al presupuesto emitido (RNF‑02) |
 | RF‑15 | El sistema devolverá, para una descripción en texto libre, las tres partidas del catálogo más similares con su puntaje de similitud del coseno | Esencial | UC‑03 | I2 | `tests/unit/test_normalizacion.py::test_propuestas_ordenadas_por_puntaje_y_sobre_el_umbral`: a lo sumo tres, orden descendente, ninguna bajo `UMBRAL_POR_DEFECTO` |
-| RF‑16 | Al aceptar una propuesta, el sistema precargará su composición y su rendimiento, conservando la referencia a la partida de origen y el puntaje que la propuso | Esencial | UC‑03 | I2 | precarga cubierta en `ui/paginas/similares.py` (desglose, rendimiento, origen y puntaje visibles); la **persistencia** de la partida nueva espera al flujo de creación de partidas, inexistente en todo UC implementado — hallazgo en `docs/bitacora/2026-08-31-I2-normalizacion.md` |
+| RF‑16 | Al aceptar una propuesta, el sistema precargará su composición y su rendimiento, conservando la referencia a la partida de origen y el puntaje que la propuso | Esencial | UC‑03 | I2 | precarga cubierta en `ui/paginas/similares.py` (desglose, rendimiento, origen y puntaje visibles); la **persistencia** de la partida nueva, antes bloqueada por la falta de un flujo de creación de partidas (hallazgo en `docs/bitacora/2026-08-31-I2-normalizacion.md` y decisión D5 de `docs/dossier_g0.md`), queda **satisfecha por UC‑10** (Sesión P0.1; implementación en las Fases P1–P2 de [PLAN_PROTOTIPO.md](../PLAN_PROTOTIPO.md)) |
 | RF‑17 | El sistema reconocerá al menos el 80 % de las partidas de un presupuesto conocido al normalizar sus descripciones | Esencial | UC‑03 | I2 | `tests/unit/test_normalizacion.py::test_acepta_al_menos_80_por_ciento_del_presupuesto_conocido`: ≥ 80 % de la línea base parafraseada reconocida en el primer puesto |
 | RF‑18 | El sistema derivará las cantidades del dominio civil de reglas paramétricas declaradas, registrando en cada `ItemComputo` la expresión evaluada y los parámetros usados | Esencial | UC‑04 | I3.2 | `tests/unit/test_reglas_civil.py`: con a = 0,80, h = 0,80, e = 0,10 el concreto da 0,224 m3 y el encofrado 4,48 m2, y ambos ítems traen `regla` y `parametros` |
 | RF‑19 | Al modificar un parámetro dimensional o el conteo de elementos, el sistema reevaluará las reglas afectadas y recalculará cantidades, precios y curva sin intervención manual | Esencial | UC‑04 | I3.2 | `tests/unit/test_reglas_civil.py`: cambiar el ancho de la tanquilla altera las cantidades derivadas de esa dimensión y ninguna otra |
@@ -357,6 +432,9 @@ ascendente de UC. Los números no se reutilizan: si un RF se retira, su número 
 | RF‑29 | El sistema contrastará el precio construido con el estimado, expresará la desviación en porcentaje y marcará como atípicos los precios que se aparten del histórico | Esencial | UC‑07 | I6.1, I6.3 | marcado de atípicos cubierto: `tests/unit/test_anomalias.py` (`precios_atipicos` sobre el histórico de variaciones); contraste cubierto (I6.3): `tests/unit/test_prediccion.py` — desviación en porcentaje y `Hallazgo` de severidad ADVERTENCIA fuera del rango declarado de la clase 3 de AACE |
 | RF‑30 | El sistema generará escenarios variando `ParametrosCosto` o precios de insumos y recalculará el presupuesto completo sin alterar el presupuesto base | Deseable | UC‑08 | F.1 | cubierto (cierre UC‑08, 2026‑08‑31): `tests/unit/test_escenarios.py` — el presupuesto base y las composiciones quedan intactos, y cada partida del escenario se verifica contra `calcular_apu` (el motor como verdad de terreno); por HTTP, `tests/integration/test_api_escenarios.py` — `POST /presupuestos/{codigo}/escenarios` no persiste ninguna versión y responde 422 ante un parámetro fuera de rango (flujo 1a) |
 | RF‑31 | El sistema comparará varios escenarios entre sí y con el presupuesto base en una tabla exportable | Opcional | UC‑08 | F.1 | cubierto (cierre UC‑08, 2026‑08‑31): `tests/unit/test_escenarios.py` — la tabla trae el base y una fila por escenario con total, variación absoluta y porcentual, y se exporta (`to_csv`); en la UI, la página «Escenarios (UC‑08)» presenta la tabla con detalle por partida y descarga CSV |
+| RF‑33 | El sistema no persistirá una composición cuyo rendimiento no haya sido declarado explícitamente junto con sus condiciones | Esencial | UC‑10, 11 | P1.2, P2.2 | cumplido en los dos caminos del catálogo: `tests/integration/test_persistencia.py::test_cargar_composicion_sin_condiciones_lanza_valueerror` (P2.2, `Catalogo.cargar_composicion`) y `::test_reemplazar_composicion_exige_condiciones_no_vacias` (P1.2, `Catalogo.reemplazar_composicion`); cumplido en la pantalla: `tests/unit/test_ui_componer.py::test_sin_condiciones_el_boton_de_guardar_esta_deshabilitado` (P4.1, el botón «Guardar composicion» nace deshabilitado sin condiciones y se habilita al declararlas) y `::test_sin_rendimiento_guardar_no_persiste_nada` (con condiciones pero sin rendimiento, el botón guarda habilitado pero no persiste nada) |
+| RF‑34 | La modalidad de la mano de obra se declara por línea: jornal o destajo | Esencial | UC‑10, 11 | P1.1, P2.2 | cumplido en el núcleo y el catálogo: `tests/unit/test_costing_destajo.py` (P1.1, `ModalidadManoObra` en `core/contracts/apu.py`, columna Modalidad de `LineaManoObra`) y `tests/integration/test_persistencia.py::test_la_modalidad_a_destajo_sobrevive_el_viaje_por_el_catalogo` (persistencia y lectura); cumplido en la composición pura: `tests/unit/test_composicion.py` (P2.1, `ui/composicion.py` acepta y valida la modalidad por fila); cumplido en la pantalla: la columna Modalidad de la tabla de mano de obra en `ui/paginas/componer.py` (P2.2, `st.column_config.SelectboxColumn`), ejercitada por `tests/unit/test_ui_componer.py::test_teclear_el_codigo_de_una_partida_guardada_precarga_sus_tres_tablas` (jornal y destajo conviven en la misma partida precargada) y por `tests/integration/test_composicion_extremo_a_extremo.py::test_el_caso_de_demostracion_mezcla_jornal_y_destajo_en_una_partida` |
+| RF‑35 | El precio sugerido desde la referencia de mercado es editable por quien presupuesta | Esencial | UC‑10 | P2.3 | cumplido: `tests/unit/test_composicion.py` (`test_buscar_referencia_*`, P2.3, la referencia MaPreX sugiere) y `::test_el_precio_sugerido_por_la_referencia_es_editable_y_el_calculo_lo_refleja` (auditoría del PR #7: el precio de la fila sigue siendo un campo editable, nunca de solo lectura, y `core.costing.calcular_apu` refleja el precio editado, no el sugerido) |
 
 Los archivos citados pertenecen al conjunto de pruebas acordado para el proyecto: en `tests/unit/`,
 `test_costing.py`, `test_contracts.py`, `test_linea_base.py`, `test_arquitectura.py`, `test_budget.py`,
@@ -364,8 +442,10 @@ Los archivos citados pertenecen al conjunto de pruebas acordado para el proyecto
 `test_adapter_sistemas.py`; en `tests/integration/`, `test_persistencia.py`, `test_presupuesto_linea_base.py`,
 `test_auditoria_7_de_7.py` y `test_actualizacion_precios.py`. Los cuatro primeros existen al cerrar la
 Sesión 0.1; los demás los crea el incremento indicado en su fila. Los RF posteriores al núcleo (I2, I6.1,
-I6.2, I6.3 y F.1) declaran su criterio medible y marcan la prueba como pendiente: el archivo se nombra al
-abrir esa sesión, no antes.
+I6.2, I6.3, F.1 y, en su momento, RF‑33 a RF‑35 del sprint del prototipo) declaran su criterio medible
+antes de que exista la prueba que lo cierra: el archivo se nombra al abrir esa sesión, no antes. RF‑33 a
+RF‑35 siguieron ese patrón al declararse en la Sesión P0.1 y ya pasaron de pendiente a cumplido, con las
+pruebas y conteos de la tabla anterior (Fases P2 a P4 del sprint del prototipo).
 
 Cobertura por caso de uso (mínimos exigidos por el criterio de cierre entre paréntesis):
 
@@ -379,7 +459,9 @@ Cobertura por caso de uso (mínimos exigidos por el criterio de cierre entre par
 | UC‑06 | RF‑25, RF‑26, RF‑27 | 3 (≥ 3) |
 | UC‑07 | RF‑28, RF‑29 | 2 (≥ 2) |
 | UC‑08 | RF‑30, RF‑31 | 2 (≥ 2) |
-| **Total** | RF‑01 … RF‑31 (RF‑03 traza a dos UC) | **31** |
+| UC‑10 | RF‑33, RF‑34, RF‑35 | 3 (sin mínimo declarado; UC nuevo, Sesión P0.1) |
+| UC‑11 | RF‑33, RF‑34 | 2 (sin mínimo declarado; UC nuevo, Sesión P0.1) |
+| **Total** | RF‑01 … RF‑31, RF‑33 … RF‑35 (RF‑32 vacante — reservado a UC‑09; RF‑03 traza a dos UC; RF‑33 y RF‑34 trazan a UC‑10 y UC‑11) | **34** |
 
 ### 3.3 Requisitos no funcionales (ISO/IEC 25010)
 
@@ -415,6 +497,8 @@ Criterios de degradación del módulo predictivo: [CLAUDE.md §8.1](../CLAUDE.md
 | UC‑06 | RF‑25, RF‑26, RF‑27 | `tests/unit/test_contracts.py` (invariante de `Rendimiento`, I0.1); `tests/unit/test_anomalias.py` (detección de desviación, I6.1); `tests/integration/test_rendimientos.py` y `tests/integration/test_api_rendimientos.py` (registro, dispersión y advertencia, I6.2) | I0.1, I6.1, I6.2 | 2 |
 | UC‑07 | RF‑28, RF‑29 | `tests/unit/test_anomalias.py` (precios atípicos, I6.1); `tests/unit/test_prediccion.py` y `tests/unit/test_resultados_ml.py` (estimación, métricas y contraste AACE, I6.3; `docs/resultados_ml.md`) | I6.1, I6.3 | 5 |
 | UC‑08 | RF‑30, RF‑31 | `tests/unit/test_escenarios.py` y `tests/integration/test_api_escenarios.py` (`core/budget/escenarios.py`, `POST /presupuestos/{codigo}/escenarios`, página `ui/paginas/escenarios.py`; sin persistir: el mecanismo de UC‑02) | cierre UC‑08 (2026‑08‑31) | 2 (apoyo) |
+| UC‑10 | RF‑16 (satisfecho), RF‑33, RF‑34, RF‑35 | cumplidas (declaradas pendientes al cerrar la Sesión P0.1, sin prueba todavía): `tests/integration/test_persistencia.py::test_cargar_composicion_sin_condiciones_lanza_valueerror` y `::test_reemplazar_composicion_exige_condiciones_no_vacias` (P1.2, P2.2); `tests/unit/test_costing_destajo.py` (P1.1); `tests/unit/test_composicion.py` (P2.1, P2.3, incluida `test_el_precio_sugerido_por_la_referencia_es_editable_y_el_calculo_lo_refleja`); `tests/unit/test_ui_componer.py` (P4.1) | P0.1 (declarado), P1–P4 ([PLAN_PROTOTIPO.md](../PLAN_PROTOTIPO.md)) | prototipo de entrega AREN.IA, fuera de los cinco indicadores de [docs/metodologia.md §8](metodologia.md#8-indicadores-de-la-tesis) |
+| UC‑11 | RF‑33, RF‑34 | cumplida (declarada pendiente al cerrar la Sesión P0.1, sin prueba todavía): `tests/integration/test_persistencia.py::test_reemplazar_composicion_exige_condiciones_no_vacias` (P1.2, `Catalogo.reemplazar_composicion`); paso 1 (precarga de las tres tablas antes de reemplazar, hallazgo de la auditoría del PR #7 corregido en `b4f7321`): `tests/unit/test_ui_componer.py::test_teclear_el_codigo_de_una_partida_guardada_precarga_sus_tres_tablas` y `::test_guardar_sin_ninguna_linea_sobre_una_partida_existente_no_borra_su_desglose` | P0.1 (declarado), P1.2, P2.2 | prototipo de entrega AREN.IA, fuera de los cinco indicadores de [docs/metodologia.md §8](metodologia.md#8-indicadores-de-la-tesis) |
 
 Correspondencia RNF → verificación: RNF‑01 y RNF‑02 se comprueban en UC‑01 y UC‑02 (RF‑06, RF‑14);
 RNF‑03 en UC‑02 (RF‑11); RNF‑04 con el juicio de expertos sobre el informe de UC‑05; RNF‑05 con RF‑09;

@@ -66,17 +66,37 @@ class LineaEquipo:
         return self.cantidad * self.precio * self.depreciacion
 
 
+class ModalidadManoObra(StrEnum):
+    """Cómo se remunera una línea de mano de obra.
+
+    JORNAL es el salario por unidad de tiempo: recibe el factor de costos asociados al salario y
+    el bono de alimentación, y se divide entre el rendimiento.
+    DESTAJO es el salario por unidad de obra del artículo 114 de la LOTTT: entra completo al
+    precio unitario. Bajo esta modalidad, `sueldo` NO es un sueldo diario sino el precio por
+    unidad de partida (decisión D9; ver docs/bitacora/2026-09-16-P0-hallazgo-destajo.md).
+    """
+
+    JORNAL = "jornal"
+    DESTAJO = "destajo"
+
+
 @dataclass(frozen=True, slots=True)
 class LineaManoObra:
-    """Una categoría de obrero del APU. `cantidad` = número de obreros; `sueldo` = jornal diario."""
+    """Una categoría de obrero del APU. `cantidad` = número de obreros.
+
+    `sueldo` es el jornal diario bajo la modalidad JORNAL, o el precio por unidad de partida bajo
+    la modalidad DESTAJO (artículo 114 de la LOTTT; ver `ModalidadManoObra`).
+    """
 
     descripcion: str
     cantidad: Decimal
     sueldo: Decimal
+    modalidad: ModalidadManoObra = ModalidadManoObra.JORNAL
 
     def __post_init__(self) -> None:
         _no_negativo("cantidad", self.cantidad)
         _no_negativo("sueldo", self.sueldo)
+        object.__setattr__(self, "modalidad", ModalidadManoObra(self.modalidad))
 
     @property
     def total(self) -> Decimal:
@@ -108,7 +128,15 @@ class ComposicionAPU:
 
     @property
     def total_obreros(self) -> Decimal:
-        return sum((linea.cantidad for linea in self.mano_obra), Decimal(0))
+        """Obreros que devengan bono de alimentación: las líneas a destajo no cuentan."""
+        return sum(
+            (
+                linea.cantidad
+                for linea in self.mano_obra
+                if linea.modalidad is ModalidadManoObra.JORNAL
+            ),
+            Decimal(0),
+        )
 
 
 @dataclass(frozen=True, slots=True)

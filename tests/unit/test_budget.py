@@ -13,6 +13,7 @@ de `tests.fixtures.computo_auditado` (principio DRY de CLAUDE.md §2).
 
 from __future__ import annotations
 
+from datetime import date
 from decimal import Decimal
 
 import pytest
@@ -27,6 +28,9 @@ from core.budget import (
     plan_secuencial,
 )
 from core.budget.curva import PlanInvalido
+from core.contracts.apu import ComposicionAPU, LineaManoObra, ModalidadManoObra, ParametrosCosto
+from core.contracts.dominio import Dominio
+from core.contracts.item_computo import ItemComputo, OrigenTipo
 from core.verification.directivas import codigos_en_etiqueta
 from core.verification.informe import InformeAuditoria
 from tests.fixtures import apu_linea_base as linea_base
@@ -213,3 +217,59 @@ def test_exportar_excel_escribe_cuatro_hojas(tmp_path):
     assert abs(total_escrito - linea_base.TOTAL_PRESUPUESTO_AUDITADO) <= TOLERANCIA
     assert libro["Curva"].max_row == len(resultado.presupuesto.curva) + 1
     assert libro["Auditoria"].max_row == len(resultado.informe.hallazgos) + 1
+
+
+def test_hoja_apu_muestra_la_modalidad_de_mano_de_obra(tmp_path):
+    """La columna Modalidad evita el malentendido de la decision D9: bajo destajo, `sueldo` es el
+    precio por unidad de partida, no un jornal diario, y quien audite el libro debe poder verlo."""
+    item = ItemComputo(
+        codigo_partida="X-01",
+        descripcion="Partida con mano de obra mixta",
+        unidad="m2",
+        cantidad=Decimal("1"),
+        origen_id="TEST-MODALIDAD-01",
+        origen_tipo=OrigenTipo.MANUAL,
+        dominio=Dominio.CIVIL,
+    )
+    apu = ComposicionAPU(
+        codigo_partida="X-01",
+        descripcion="Partida con mano de obra mixta",
+        unidad="m2",
+        rendimiento=Decimal("50"),
+        mano_obra=(
+            LineaManoObra("Ayudante a jornal", Decimal("2"), Decimal("3")),
+            LineaManoObra(
+                "Instalador a destajo",
+                Decimal("1"),
+                Decimal("6"),
+                ModalidadManoObra.DESTAJO,
+            ),
+        ),
+    )
+    resultado = elaborar(
+        [item],
+        {"X-01": apu},
+        ParametrosCosto(),
+        codigo="PRES-TEST-MODALIDAD",
+        fecha=date(2026, 9, 20),
+    )
+    ruta = tmp_path / "modalidad.xlsx"
+
+    exportar_excel(resultado.presupuesto, resultado.informe, ruta)
+
+    hoja = load_workbook(ruta)["APU"]
+    filas = list(hoja.iter_rows(values_only=True))
+    indice_encabezado = next(i for i, fila in enumerate(filas) if fila[0] == "Mano de obra")
+    encabezado = filas[indice_encabezado]
+    fila_jornal = filas[indice_encabezado + 1]
+    fila_destajo = filas[indice_encabezado + 2]
+
+    assert "Modalidad" in encabezado
+    assert encabezado[-1] == "Total"
+    assert fila_jornal[-2] == "jornal"
+    assert fila_destajo[-2] == "destajo"
+    # El Total de esta tabla es cantidad x sueldo (igual que en materiales y equipos), no el
+    # aporte con FCAS y bono que va en el resumen: aqui coincide en 6.00 para ambas lineas
+    # (2 obreros x 3 = 1 destajista x 6), pero por razones distintas segun la modalidad.
+    assert fila_jornal[-1] == Decimal("6.00")
+    assert fila_destajo[-1] == Decimal("6.00")

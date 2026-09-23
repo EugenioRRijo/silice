@@ -95,7 +95,8 @@ suite estuvo deliberadamente roja en `test_costing.py` (marcador `rojo_esperado`
 
 **Entregables:** este plan, [calidad_iso25010.md](calidad_iso25010.md), la bitácora de la sesión,
 el reporte de cobertura (sección 10) y `scripts/medir_rnf03.py` (evidencia reproducible del
-RNF‑03).
+RNF‑03). Desde la Sesión P4.2, además, el [guion de prueba manual de AREN.IA](guion_prueba_arenia.md)
+(casos CP‑01 a CP‑06 de la pantalla de componer, para quien pruebe sin programar).
 
 **Entorno de la ejecución registrada:** equipo de desarrollo con Windows 11 Home (10.0.26200),
 Python 3.13.2, `uv` con extras `ui`, `api`, `civil` y `ml`, SQLite local, modelo de
@@ -150,8 +151,11 @@ archivo en la corrida registrada (total de la suite: 392).
 | RF‑29 | `test_anomalias.py` (`precios_atipicos`); `test_prediccion.py` (desviación % y hallazgo fuera del rango AACE clase 3) | — | verde |
 | RF‑30 | `tests/unit/test_escenarios.py` (parámetros verificados contra el motor; base y composiciones intactos); `tests/integration/test_api_escenarios.py` (`POST /presupuestos/{codigo}/escenarios`: nada se persiste, 422 ante parámetro fuera de rango) | 6 + 3 | verde |
 | RF‑31 | `tests/unit/test_escenarios.py` (tabla base + una fila por escenario, exportada a CSV; detalle por partida); la página «Escenarios (UC‑08)» cubierta por humo en `test_ui_importable.py` | — | verde |
+| RF‑33 | `tests/integration/test_persistencia.py` (`test_cargar_composicion_sin_condiciones_lanza_valueerror`, `test_reemplazar_composicion_exige_condiciones_no_vacias`: los dos caminos del catálogo); `tests/unit/test_ui_componer.py` (P4.1: el botón «Guardar composicion» nace deshabilitado sin condiciones y se habilita al declararlas; con condiciones pero sin rendimiento, el botón guarda habilitado pero no persiste nada) | 27 + 5 | verde |
+| RF‑34 | `tests/unit/test_composicion.py` (`composicion_desde_tablas` acepta y valida la modalidad por fila); `tests/integration/test_persistencia.py::test_la_modalidad_a_destajo_sobrevive_el_viaje_por_el_catalogo`; `tests/integration/test_composicion_extremo_a_extremo.py::test_el_caso_de_demostracion_mezcla_jornal_y_destajo_en_una_partida` (jornal y destajo en una misma partida, por el camino de la pantalla) | 24 + 27 + 14 | verde |
+| RF‑35 | `tests/unit/test_composicion.py` (`test_buscar_referencia_*`, 5 pruebas: la referencia MaPreX sugiere; `test_el_precio_sugerido_por_la_referencia_es_editable_y_el_calculo_lo_refleja`, 1 prueba: el precio de la fila sigue siendo un campo editable, nunca de solo lectura, y `core.costing.calcular_apu` refleja el precio editado, no el sugerido) | 34 | verde |
 
-**Resumen:** 30 de 31 RF con prueba automatizada en verde; RF‑16 parcial (su parte de UI está
+**Resumen:** 33 de 34 RF con prueba automatizada en verde; RF‑16 parcial (su parte de UI está
 cubierta, su persistencia espera un flujo que no existe — hallazgo registrado). **Los 26 RF
 esenciales tienen prueba en verde y ningún RF queda sin prueba.**
 

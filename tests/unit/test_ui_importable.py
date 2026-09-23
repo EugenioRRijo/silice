@@ -6,6 +6,7 @@ def test_las_paginas_se_importan_sin_efectos():
         "ui.app",
         "ui.paginas.actualizacion",
         "ui.paginas.catalogo",
+        "ui.paginas.componer",
         "ui.paginas.elaborar",
         "ui.paginas.escenarios",
         "ui.paginas.historico",

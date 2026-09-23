@@ -46,6 +46,8 @@ UMBRAL_SEGUNDOS = Decimal("5")
 AUMENTO = Decimal("1.10")
 CODIGO_BASE = "001"
 CODIGO_NUEVO = "002"
+#: RF-33 (spec §3.3): esta es una carga sintetica para medir tiempos, no un rendimiento de obra.
+CONDICIONES_SINTETICAS = "carga sintetica de la medicion RNF-03; no es un rendimiento de obra"
 
 
 def replicar_catalogo(catalogo: Catalogo, partidas_objetivo: int) -> list[str]:
@@ -64,7 +66,7 @@ def replicar_catalogo(catalogo: Catalogo, partidas_objetivo: int) -> list[str]:
                 break
             copia = replace(apu, codigo_partida=f"{apu.codigo_partida}-R{replica:02d}")
             catalogo.cargar_composicion(
-                copia, lista, Dominio.CIVIL, linea_base.FECHA_LINEA_BASE
+                copia, lista, Dominio.CIVIL, linea_base.FECHA_LINEA_BASE, CONDICIONES_SINTETICAS
             )
             codigos.append(copia.codigo_partida)
     return codigos

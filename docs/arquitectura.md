@@ -247,7 +247,8 @@ classDiagram
         +lista_vigente(fecha) models_ListaPrecios
         +composicion(codigo_partida, fecha, lista) ComposicionAPU
         +composiciones(codigos, fecha) dict~str, ComposicionAPU~
-        +cargar_composicion(composicion, lista, dominio, fecha_rendimiento) ResumenCarga
+        +cargar_composicion(composicion, lista, dominio, fecha_rendimiento, condiciones) ResumenCarga
+        +reemplazar_composicion(composicion, lista, dominio, fecha_rendimiento, condiciones) ResumenCarga
         +registrar_rendimiento(rendimiento Rendimiento) models_Rendimiento
     }
     class mapeo {
@@ -259,7 +260,7 @@ classDiagram
         +a_modelo_insumo(linea, codigo) models_Insumo
         +a_modelo_lineas(lineas, partida, insumos) list~models_ComposicionAPU~
         +a_modelo_rendimiento(rendimiento, partida, ejecucion) models_Rendimiento
-        +a_modelo_rendimiento_estimado(composicion, partida, fecha) models_Rendimiento
+        +a_modelo_rendimiento_estimado(composicion, partida, fecha, condiciones) models_Rendimiento
     }
     class sesion {
         <<module>>
@@ -395,6 +396,15 @@ class Catalogo:
         lista: models.ListaPrecios,
         dominio: Dominio,
         fecha_rendimiento: date,
+        condiciones: str,
+    ) -> ResumenCarga
+    def reemplazar_composicion(
+        self,
+        composicion: ComposicionAPU,
+        lista: models.ListaPrecios,
+        dominio: Dominio,
+        fecha_rendimiento: date,
+        condiciones: str,
     ) -> ResumenCarga
     def registrar_rendimiento(self, rendimiento: Rendimiento) -> models.Rendimiento
 
@@ -617,6 +627,27 @@ El adaptador civil añade sus reglas paramétricas como texto trazable
 `REGLA_EXCAVACION_ZANJA`, `REGLA_TUBERIA`, `REGLA_VOLUMEN_TUBERIA`, `REGLA_RELLENO` en
 `adapters/civil/reglas.py`) y las evalúa con `adapters/civil/evaluador.py::evaluar_regla`.
 
+### 2.4 Composición de partidas en la UI (`ui/composicion.py`, Sesión P2.1)
+
+`ui/composicion.py` es **lógica pura probada sin Streamlit**: arma y valida una `ComposicionAPU` a
+partir de las líneas que el proyectista teclea (UC‑10, UC‑11) — incluida la modalidad de mano de
+obra por línea de la decisión D9 ([dossier_g0.md](dossier_g0.md#d9-modalidad-de-mano-de-obra-por-linea-cambio-a-un-contrato-declarado-estable))
+— y se prueba con `tests/unit/` como el resto del núcleo, sin depender de un `AppTest` ni de un
+servidor Streamlit.
+
+`ui/paginas/componer.py` **solo pinta**: llama a `ui/composicion.py` para el cálculo y la
+validación y a `core.catalog.Catalogo` para persistir, sin lógica de negocio propia. Es el mismo
+reparto que ya usan las páginas existentes — `ui/paginas/similares.py` separa la composición
+(`ml.normalization`) de la pintura, y `ui/paginas/visor.py` aísla el import perezoso del extra
+`civil` del resto de la página.
+
+Las ayudas de aprendizaje automático (la referencia de precio de mercado sugerida, RF‑35) se
+invocan **desde `ui/`, con importación perezosa, nunca desde `core/`**: mismo criterio que
+`ml.normalization` en `_cargar_normalizacion()` de `ui/paginas/similares.py` y que el resto de
+`ml/` en la API (`docs/bitacora/2026-08-31-sprint-i6.md`). `core/` no importa `ml` (ADR 2,
+CLAUDE.md §2); si `ui/composicion.py` llegara a necesitar que el núcleo conociera `ml`, sería un
+hallazgo para documentar en `docs/bitacora/`, no un import que se agrega en silencio.
+
 ## 3. Vista de proceso
 
 El sistema es de **un solo proceso y un solo hilo**: no hay concurrencia que documentar, y esa es una
@@ -811,6 +842,16 @@ Regla de dependencia: ninguna flecha entra a `core/` desde fuera, y ninguna sale
 Las dependencias **internas** de `core/` no son libres de dirección pero sí de capa: `core.budget` es
 el orquestador (usa costing, verification y catalog) y `core.contracts` es hoja. `test_arquitectura.py`
 vigila las dos fronteras externas, no esta estratificación interna, que se mantiene por revisión.
+
+`scripts/` no aparece en el diagrama porque no es un componente arquitectónico (no lo vigila
+`test_arquitectura.py`, hallazgo de la auditoría de la rama completa, 2026‑09‑23): es un conjunto de
+utilidades de siembra y simulación que hoy tiene dependencia en los dos sentidos con `ui`, sin ciclo de
+módulos. `ui/paginas/actualizacion.py` importa `scripts.seed` (reutiliza `sembrar` para la demo desde la
+pantalla) y `ui/paginas/simulador.py` importa `scripts.simular_lista`; en sentido contrario,
+`scripts/simular_corpus.py` importa `ui.composicion` (reutiliza `buscar_referencia` para sortear
+insumos del corpus simulado). No hay ciclo porque ninguno de los tres módulos importados
+(`scripts.seed`, `scripts.simular_lista`, `ui.composicion`) importa de vuelta al paquete que lo
+importa.
 
 ## 5. Vista física
 

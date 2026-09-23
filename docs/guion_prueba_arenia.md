@@ -1,0 +1,387 @@
+# Guion de prueba manual de AREN.IA (IEEE 829) — Sesión P4.2
+
+Especificación de casos de prueba manuales para la pantalla **Componer partida (UC‑10 / UC‑11)**
+del prototipo AREN.IA (`ui/paginas/componer.py`). Está escrita para una persona que **no programa**:
+cada caso dice qué hacer, paso a paso, y qué debe ver en pantalla. Complementa el
+[plan de pruebas](plan_pruebas.md), que cubre las pruebas automatizadas; los enunciados de los UC y
+RF citados viven una sola vez en la [ERS](ERS.md) y aquí no se repiten.
+
+## 1. Identificador y alcance
+
+- **Identificador:** GP‑ARENIA‑001, versión de la Sesión P4.2 (2026‑09‑21).
+- **Alcance:** el recorrido completo de la pantalla de componer: componer una partida desde cero con
+  la referencia MaPreX, editarla, una línea de mano de obra a destajo, la advertencia de rendimiento
+  fuera de rango, la exportación a Excel y la lectura del informe de auditoría.
+- **Fuera de alcance:** las demás pantallas de la aplicación (salvo la consulta del *Catalogo* en
+  CP‑02) y todo lo que ya prueban las pruebas automatizadas del [plan de pruebas](plan_pruebas.md).
+
+## 2. Elementos a probar
+
+| Elemento | Qué es |
+|---|---|
+| `ui/paginas/componer.py` | la pantalla que se prueba (UC‑10 componer, UC‑11 editar) |
+| `ui/composicion.py` | el buscador de la referencia MaPreX y la lectura de las tablas |
+| `core/budget/excel.py` | el libro de Excel con sus cuatro hojas |
+| `scripts/seed_demo.py` | la siembra que deja la base lista para la prueba |
+
+## 3. Naturaleza de los datos
+
+**Los datos sembrados son didácticos, no de obra ejecutada.** Las cinco partidas `LB-*` de la
+clínica y las tres partidas `DEMO-*` son ejercicios académicos ficticios; los precios de la
+referencia MaPreX son una referencia publicada que se usa como sugerencia. La declaración completa
+vive una sola vez en [CLAUDE.md §1](../CLAUDE.md#1-qué-es-este-proyecto). La partida `PRUEBA-01-TUB`
+que se compone en este guion es, igualmente, un caso de prueba.
+
+## 4. Entorno y preparación
+
+**Requisitos:** la copia del repositorio, `uv` instalado y un navegador. Los resultados esperados se
+obtuvieron en Windows 11 con Python 3.13 y Streamlit 1.62.0.
+
+> **Atención: `--reiniciar` borra la base de datos** antes de sembrarla de nuevo. Úselo sobre una
+> base de prueba, **nunca sobre una base con trabajo propio**. Si su `data/apu.db` tiene trabajo que
+> quiere conservar, siga la variante con otra base (paso 2b).
+
+1. En una terminal, en la carpeta del repositorio, instale las dependencias de la interfaz y del
+   aprendizaje automático:
+
+   ```
+   uv sync --extra ui --extra ml
+   ```
+
+2. Siembre la base de prueba (línea base de la clínica, las tres partidas de demostración y el
+   presupuesto de ejemplo `DEMO-001`):
+
+   ```
+   uv run python scripts/seed_demo.py --reiniciar
+   ```
+
+   **2b (variante con otra base).** `uv run python scripts/seed_demo.py --db data/prueba_arenia.db
+   --reiniciar`. En ese caso, en cada página que abra (y después de cada recarga con F5), escriba
+   `data/prueba_arenia.db` en el campo **Archivo SQLite** de la barra lateral: el campo vuelve a
+   `data/apu.db` cada vez que la página se recarga.
+
+   **Comprobación de la preparación.** Al terminar, la terminal debe mostrar, entre otras, estas
+   líneas: `Partida: 8`, `Total: 4131.10 USD` y `Auditoria: 3 hallazgo(s), CUMPLE`. Si no aparecen,
+   detenga la prueba y anótelo en la sección 8.
+
+3. Abra la aplicación:
+
+   ```
+   uv run python -m streamlit run ui/app.py
+   ```
+
+   Se abre el navegador. En el menú lateral, elija **Componer partida (UC-10 / UC-11)**.
+
+**Orden de ejecución.** Los casos se ejecutan en orden, de CP‑01 a CP‑06, sobre una base recién
+sembrada: CP‑02 y CP‑03 continúan donde terminó CP‑01. Si repite la prueba, vuelva al paso 2.
+
+## 5. Cómo leer los números y cómo anotar
+
+- La pantalla muestra los importes **sin redondear** (por ejemplo `20.11369894402000`): el sistema
+  calcula con decimales exactos y solo redondea al presentar un informe. Compare **todas las cifras
+  que da el resultado esperado**; los ceros finales de más o de menos no cuentan. Entre paréntesis
+  se da el valor redondeado a dos decimales como ayuda de lectura.
+- El separador decimal en pantalla es el **punto**.
+- **Veredicto:** escriba **PASA** si todo lo que dice el resultado esperado se observó, y **FALLA**
+  si algo no coincide; en ese caso copie en *Resultado obtenido* lo que vio (una captura de pantalla
+  ayuda).
+- Los recuadros de **sugerencia** de AREN.IA (por ejemplo, «Partidas similares del catalogo» al
+  escribir una descripción) pueden aparecer; son de solo lectura y no forman parte del veredicto
+  salvo que el caso los mencione.
+
+## 6. Casos de prueba
+
+### CP‑01 — Componer una partida desde cero con el buscador MaPreX
+
+- **Objetivo:** componer una partida nueva tomando sus seis insumos de la referencia MaPreX y ver su
+  precio unitario en vivo, antes de guardar.
+- **Trazabilidad:** UC‑10; RF‑01, RF‑33, RF‑35.
+- **Precondición:** base recién sembrada (sección 4) y la página *Componer partida* abierta, con las
+  tablas vacías.
+
+**Pasos**
+
+1. En **Materiales**, en el campo *Buscar en la referencia MaPreX (materiales)*, escriba
+   `tubo pvc` y pulse Enter. En *Resultado* deje elegida la primera opción,
+   `TUBO PVC A.N. D=4" / 110 MM E = 2,2 MM NORMA — 13.9291 USD/m · ref. PLOA38`, y pulse
+   **Usar esta fila**.
+2. Repita el paso 1 con `pegamento` (una sola opción: `PEGAMENTO PARA PVC  1/4 GL TANGIT  O SIM —
+   34.5694 USD/env · ref. MT539`).
+3. En **Equipos**, con su propio buscador, repita con `segueta` y después con `herramientas`.
+4. En **Mano de obra**, con su propio buscador, repita con `albanil` y después con `ayudante`.
+5. Complete la cantidad de cada fila (doble clic en la celda), sin tocar ninguna otra columna:
+
+   | Tabla | Fila | Columna | Valor |
+   |---|---|---|---|
+   | Materiales | TUBO PVC A.N. D=4"… | Consumo por unidad | `1.05` |
+   | Materiales | PEGAMENTO PARA PVC… | Consumo por unidad | `0.02` |
+   | Equipos | SEGUETA AJUSTABLE (ARCO) | cantidad | `1` |
+   | Equipos | HERRAMIENTAS MENORES | cantidad | `1` |
+   | Mano de obra | ALBAÑIL DE 1RA -N5 | cantidad | `1` |
+   | Mano de obra | AYUDANTE - TABULADOR CONSTRUCCION -N2 | cantidad | `2` |
+
+6. En **Cabecera de la partida** escriba: Codigo `PRUEBA-01-TUB`, Descripcion
+   `Colocacion de tuberia PVC de 4 pulgadas`, Unidad `m`. Deje Dominio en `civil` y la Fecha de hoy.
+7. En **Rendimiento — unidades por día** escriba `100`.
+8. Observe el **Desglose en vivo** y el botón **Guardar composicion**.
+9. En **Condiciones del rendimiento** escriba `cuadrilla de un albanil y dos ayudantes; condiciones
+   de prueba del guion, no proviene de una ejecucion medida` y pulse fuera del campo.
+10. Pulse **Guardar composicion**.
+
+**Resultado esperado**
+
+- Pasos 1 a 4: cada búsqueda encuentra resultados; bajo el selector aparece la procedencia
+  (`Referencia MaPreX: PLOA38` para la tubería) y cada **Usar esta fila** agrega una fila con
+  descripción, unidad y precio ya llenos y la cantidad **en blanco**. `tubo pvc` ofrece dos opciones
+  (la segunda es un tubo de electricidad de 1"); las demás búsquedas, una. Los precios y los factores
+  de depreciación que se agregan son: tubería `13.9291`, pegamento `34.5694`, segueta `34.5694` con
+  depreciación `0.022000`, herramientas menores `14.3046` con depreciación `1.000000`, albañil
+  `2.1877` y ayudante `1.7816`. Todas las celdas de precio se pueden editar (RF‑35), aunque en este
+  caso no se editan.
+- Paso 8: el desglose muestra
+
+  | Métrica | Valor esperado |
+  |---|---|
+  | Materiales | `15.316943` |
+  | Equipos | `0.1506512680` |
+  | Mano de obra | `0.432563` |
+  | Costo directo | `15.9001572680` |
+  | Con administracion | `18.285180858200` |
+  | **Precio unitario** | **`20.11369894402000`** (≈ 20,11) |
+
+  y **Guardar composicion está deshabilitado** (gris) porque faltan las condiciones (RF‑33).
+- Paso 9: el botón **Guardar composicion** se habilita.
+- Paso 10: aparece el mensaje verde
+  `Composicion guardada para la partida PRUEBA-01-TUB: precio unitario 20.11369894402000.`
+
+| Resultado obtenido | Veredicto |
+|---|---|
+| | |
+
+### CP‑02 — Editar la partida de CP‑01 (UC‑11)
+
+- **Objetivo:** guardar de nuevo la misma partida con otro rendimiento y comprobar que se edita, no
+  se duplica, y que el historial de rendimientos gana una observación.
+- **Trazabilidad:** UC‑11; RF‑26, RF‑27, RF‑33.
+- **Precondición:** CP‑01 terminado con PASA, en la misma pestaña y sin recargar la página.
+
+**Pasos**
+
+1. Observe el campo **Rendimiento — unidades por día**.
+2. Cambie el rendimiento a `120` y pulse Enter.
+3. Pulse **Guardar composicion**.
+4. Para comprobar el historial, cambie el rendimiento a `150` y pulse Enter. **No guarde.**
+5. Vuelva a escribir `120` en el rendimiento (así queda listo para CP‑03).
+6. Abra una **segunda pestaña** del navegador con la misma dirección de la aplicación y, en ella,
+   elija **Catalogo** en el menú lateral. Observe la tabla **Partidas**. Cierre esa pestaña y vuelva
+   a la primera.
+
+**Resultado esperado**
+
+- Paso 1: el campo muestra `100`, el rendimiento guardado en CP‑01, precargado desde el historial.
+- Paso 2: **Precio unitario** `19.99073793585000000000000000` (≈ 19,99). Aparece además el aviso
+  azul de la ayuda 4 de AREN.IA: `El precio construido cae dentro del rango de la clase 3 de AACE
+  International frente a la estimacion por reglas.`
+- Paso 3: mensaje verde `Composicion guardada para la partida PRUEBA-01-TUB: precio unitario
+  19.99073793585000000000000000.`
+- Paso 4: aparece el aviso amarillo `el rendimiento 150 se aparta del comportamiento observado de la
+  partida: rango [100, 120] en 2 observaciones (0 medidas); el registro se completa igualmente`.
+  **«2 observaciones»** es la prueba de que el historial ganó un rendimiento (100 y 120).
+- Paso 6: la tabla **Partidas** tiene **9** filas (las 8 sembradas más `PRUEBA-01-TUB`) y
+  `PRUEBA-01-TUB` aparece **una sola vez**: guardar dos veces editó la partida, no la duplicó.
+
+| Resultado obtenido | Veredicto |
+|---|---|
+| | |
+
+### CP‑03 — Una línea a destajo junto a otra a jornal
+
+- **Objetivo:** ver cuánto sube el precio unitario al agregar una línea de mano de obra a destajo,
+  y por qué no lleva FCAS ni bono de alimentación (decisión D9 del [dossier G0](dossier_g0.md)).
+- **Trazabilidad:** UC‑10 / UC‑11; RF‑01, RF‑34.
+- **Precondición:** CP‑02 terminado, en la misma pestaña: la partida `PRUEBA-01-TUB` en pantalla con
+  rendimiento `120` y **Precio unitario** `19.99073793585000000000000000`. Si el rendimiento no
+  está en `120`, escríbalo.
+
+**Pasos**
+
+1. En la tabla **Mano de obra**, agregue una fila (el **+** bajo la tabla) y escriba: descripcion
+   `Instalador a destajo`, cantidad `1`, sueldo `1.50`, y en modalidad elija `destajo`.
+2. Observe **Mano de obra** y **Precio unitario** en el desglose en vivo.
+3. En esa misma fila, cambie la modalidad a `jornal`.
+4. Observe de nuevo el desglose.
+5. **No guarde.** (El caso solo observa; la partida guardada en CP‑02 no cambia.)
+
+**Resultado esperado**
+
+| Estado | Mano de obra | Precio unitario |
+|---|---|---|
+| Antes del paso 1 | `0.3604691666666666666666666667` | `19.99073793585000000000000000` (≈ 19,99) |
+| Paso 2 (la fila a **destajo**) | `1.860469166666666666666666667` | `21.88823793585000000000000000` (≈ 21,89) |
+| Paso 4 (la misma fila a **jornal**) | `0.4563025` | `20.11196710251666666666666666` (≈ 20,11) |
+
+**Por qué.** A destajo, `1.50` no es un jornal diario: es lo que se paga **por cada metro
+instalado** (artículo 114 de la LOTTT, decisión D9). Por eso entra completo a la mano de obra, que
+sube exactamente `1.50`: sin multiplicarse por (1 + FCAS), sin bono de alimentación y sin dividirse
+entre el rendimiento. El precio unitario sube `1.8975` (1,50 con administración y utilidad en
+cascada: 1,50 × 1,15 × 1,10). La misma línea declarada a jornal se trata como un obrero más de la
+cuadrilla: su sueldo lleva el FCAS y el bono, y todo se divide entre los 120 m por día; la mano de
+obra sube solo `0.0958333…` y el precio unitario `0.1212291…`.
+
+| Resultado obtenido | Veredicto |
+|---|---|
+| | |
+
+### CP‑04 — Un rendimiento fuera de rango en `DEMO-01-INST` (RF‑27)
+
+- **Objetivo:** comprobar que un rendimiento que se aparta de lo observado dispara la advertencia
+  RF‑27 y que, aun así, guardar sigue habilitado.
+- **Trazabilidad:** UC‑06, UC‑11; RF‑26, RF‑27, RF‑33.
+- **Precondición:** base sembrada (la partida `DEMO-01-INST` trae dos observaciones de rendimiento:
+  50 y 60 m por día). Recargue la página con **F5** para empezar con las tablas vacías.
+
+**Pasos**
+
+1. En Codigo escriba `DEMO-01-INST` y pulse Enter. Observe el campo de rendimiento.
+2. Cambie el rendimiento a `80` y pulse Enter.
+3. En **Condiciones del rendimiento** escriba `condiciones de prueba del guion` y pulse fuera del
+   campo. Observe el botón **Guardar composicion**. **No lo pulse:** el caso solo observa la
+   advertencia. (Con la cabecera en blanco no se guardaría nada; con la cabecera completa, guardar
+   registraría el rendimiento `80` en la partida de demostración que usan CP‑05 y CP‑06. Guardar
+   sobre una partida existente con las tres tablas vacías, o con otra unidad u otra descripción que
+   las registradas, muestra un error rojo y no escribe nada.)
+4. Cambie el rendimiento a `55` y pulse Enter.
+
+**Resultado esperado**
+
+- Paso 1: el rendimiento aparece precargado con `60` (la observación más reciente) y **no** hay
+  advertencia. Las tres tablas de insumos aparecen **precargadas** con la composición guardada de
+  la partida (UC‑11, paso 1): 3 materiales, 2 equipos y 2 líneas de mano de obra, una a `jornal` y
+  otra a `destajo`.
+- Paso 2: aparece el aviso amarillo `el rendimiento 80 se aparta del comportamiento observado de la
+  partida: rango [50, 60] en 2 observaciones (0 medidas); el registro se completa igualmente`.
+  (En el desglose aparece también el aviso azul `La unidad no puede estar vacía`, porque en este
+  caso no se compone la partida: es esperado y no forma parte del veredicto.)
+- Paso 3: el aviso amarillo sigue visible y **Guardar composicion está habilitado**: la advertencia
+  informa, no bloquea (RF‑27).
+- Paso 4: el aviso amarillo **desaparece** (55 está dentro del rango [50, 60]).
+
+| Resultado obtenido | Veredicto |
+|---|---|
+| | |
+
+### CP‑05 — Exportar a Excel
+
+- **Objetivo:** elaborar un presupuesto con las tres partidas de demostración, descargarlo en Excel
+  y comprobar sus cuatro hojas y la columna *Modalidad*.
+- **Trazabilidad:** UC‑01; RF‑06, RF‑07, RF‑08, RF‑34.
+- **Precondición:** base sembrada y CP‑04 terminado **sin guardar**. Recargue la página con **F5**.
+  Excel o LibreOffice Calc para abrir el libro.
+
+**Pasos**
+
+1. Baje a **Cantidades de obra**. Agregue tres filas (el **+** bajo la tabla) con estos valores
+   (la columna codigo_partida se elige de una lista):
+
+   | codigo_partida | cantidad | origen_id |
+   |---|---|---|
+   | `DEMO-01-INST` | `180` | `DEMO-TRAMO-01` |
+   | `DEMO-02-VALV` | `4` | `DEMO-VALVULAS-01` |
+   | `DEMO-03-PRUEBA` | `180` | `DEMO-PRUEBA-01` |
+
+2. En **Elaborar presupuesto** deje los valores por defecto: Codigo del presupuesto `P-001`, Fecha
+   del presupuesto la de hoy y Moneda `USD`.
+3. Pulse **Elaborar y auditar**.
+4. Pulse **Exportar a Excel** y abra el archivo descargado.
+5. En el libro, recorra las pestañas de las hojas y, en la hoja **APU**, busque la tabla de mano de
+   obra de `DEMO-01-INST`.
+
+**Resultado esperado**
+
+- Paso 3: aparece **Presupuesto elaborado** con **Total del presupuesto** `4131.10 USD` (el mismo
+  total que la siembra imprimió para `DEMO-001`) y el botón **Exportar a Excel**.
+- Paso 4: el archivo se llama `presupuesto_P-001.xlsx`.
+- Paso 5: el libro tiene **cuatro hojas**, en este orden: **Presupuesto**, **APU**, **Curva** y
+  **Auditoria**. En la hoja **APU**, la tabla de mano de obra de cada partida tiene los encabezados
+  `Mano de obra | Obreros | Sueldo | Modalidad | Total`. Para `DEMO-01-INST`:
+
+  | Mano de obra | Obreros | Sueldo | Modalidad | Total |
+  |---|---|---|---|---|
+  | Supervisor de cuadrilla | 1 | 8 | jornal | 8 |
+  | Cuadrilla instaladora a destajo | 1 | 3.5 | destajo | 3.5 |
+
+  (según el programa y su configuración, los números pueden verse con otro separador decimal o con
+  ceros de más, por ejemplo `8,00`; el valor es el mismo). Los precios unitarios de las tres partidas son `18.85` (DEMO-01-INST), `129.35` (DEMO-02-VALV)
+  y `1.23` (DEMO-03-PRUEBA).
+
+| Resultado obtenido | Veredicto |
+|---|---|
+| | |
+
+### CP‑06 — Leer el informe de auditoría
+
+- **Objetivo:** comprobar que el informe de auditoría aparece siempre, sin pedirlo, y leer cuántos
+  hallazgos tiene y de qué severidad.
+- **Trazabilidad:** UC‑01, UC‑05; RF‑02, RF‑21, RF‑23.
+- **Precondición:** CP‑05 terminado, en la misma pestaña.
+
+**Pasos**
+
+1. Bajo **Presupuesto elaborado**, observe el resumen por severidad.
+2. Baje a **Informe de auditoria** y léalo completo.
+
+**Resultado esperado**
+
+- Paso 1: una sola métrica, **ADVERTENCIA** con valor **3**. No hay hallazgos de otra severidad.
+- Paso 2: el informe se titula `Informe de auditoria del presupuesto P-001` y dice
+  `Hallazgos: 3 · Resultado: CUMPLE`. La tabla de hallazgos tiene **tres filas**, todas de la regla
+  **R1** con severidad **ADVERTENCIA**, una por partida, en este orden:
+
+  | # | Partida | Observado | Qué dice |
+  |---|---|---|---|
+  | 1 | DEMO-03-PRUEBA | 180.00 | `la cantidad de DEMO-03-PRUEBA (180 m) es manual y no declara la regla que la produjo: no es derivable ni reproducible` |
+  | 2 | DEMO-01-INST | 180.00 | `la cantidad de DEMO-01-INST (180 m) es manual y no declara la regla que la produjo: no es derivable ni reproducible` |
+  | 3 | DEMO-02-VALV | 4.00 | `la cantidad de DEMO-02-VALV (4 unidad) es manual y no declara la regla que la produjo: no es derivable ni reproducible` |
+
+**Cómo se lee.** Las tres cantidades se escribieron a mano en CP‑05; ninguna viene de una regla
+paramétrica ni de un modelo IFC. La regla R1 (trazabilidad geométrica) lo hace constar como
+advertencia, no como error: el presupuesto **cumple**. Que el informe aparezca sin haberlo pedido es
+parte de lo que se prueba (principio 7 de [CLAUDE.md](../CLAUDE.md)).
+
+| Resultado obtenido | Veredicto |
+|---|---|
+| | |
+
+## 7. Trazabilidad CP → UC / RF
+
+| Caso | UC | RF | Otros |
+|---|---|---|---|
+| CP‑01 | UC‑10 | RF‑01, RF‑33, RF‑35 | referencia MaPreX |
+| CP‑02 | UC‑11 | RF‑26, RF‑27, RF‑33 | ayuda 4 de AREN.IA (contraste AACE) |
+| CP‑03 | UC‑10, UC‑11 | RF‑01, RF‑34 | decisión D9 ([dossier_g0.md](dossier_g0.md)) |
+| CP‑04 | UC‑06, UC‑11 | RF‑26, RF‑27, RF‑33 | — |
+| CP‑05 | UC‑01 | RF‑06, RF‑07, RF‑08, RF‑34 | hojas de `core/budget/excel.py` |
+| CP‑06 | UC‑01, UC‑05 | RF‑02, RF‑21, RF‑23 | principio 7 de CLAUDE.md §2 |
+
+## 8. Registro de la ejecución
+
+| Campo | Valor |
+|---|---|
+| Persona que prueba | |
+| Fecha | |
+| Commit probado (`git log -1 --oneline`) | |
+| Sistema operativo y navegador | |
+| Comprobación de la preparación (sección 4, paso 2) | |
+| Casos PASA / FALLA | |
+| Observaciones | |
+
+## 9. Procedencia de los resultados esperados
+
+Todos los resultados esperados de la sección 6 se obtuvieron **ejecutando el sistema** el
+2026‑09‑21 sobre el commit `617861b`, contra una base temporal sembrada con
+`scripts/seed_demo.py` (nunca contra `data/apu.db`), recorriendo la pantalla con
+`streamlit.testing.v1.AppTest` como en `tests/unit/test_ui_componer.py`: las búsquedas de CP‑01 se
+hicieron en la propia pantalla (buscador, *Resultado* y *Usar esta fila*), y las cantidades de las
+tablas, que `AppTest` no puede teclear, se sembraron con las mismas filas que produce el buscador.
+Los guiones auxiliares no forman parte del repositorio. Si una versión posterior del sistema cambia
+un valor, este guion se actualiza volviendo a ejecutar el recorrido, no a mano.

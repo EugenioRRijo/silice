@@ -216,6 +216,10 @@ MARCA_AJUSTE = "Ajuste total impreso"
 #: declarar "esta cantidad debe coincidir con la de Computos metricos" sin inventar un mecanismo
 #: nuevo en `core/`.
 REGLA_TUBO_CORRUGADO = "cantidad_computos"
+#: RF-33 (spec §3.3): declara que este rendimiento no viene de una ejecucion medida.
+CONDICIONES_RENDIMIENTO = (
+    "rendimiento estimado del ejercicio academico ARENAZA; no proviene de una ejecucion medida"
+)
 
 
 # ---------------------------------------------------------------------------------------------
@@ -461,7 +465,9 @@ def sembrar_telecom(sesion: Session) -> models.Proyecto:
     catalogo = Catalogo(sesion)
     for numero in sorted(PRESUPUESTOS):
         for composicion in composiciones_arenaza(numero).values():
-            catalogo.cargar_composicion(composicion, lista, Dominio.TELECOM, FECHA_ARENAZA)
+            catalogo.cargar_composicion(
+                composicion, lista, Dominio.TELECOM, FECHA_ARENAZA, CONDICIONES_RENDIMIENTO
+            )
 
     sesion.commit()
     return proyecto

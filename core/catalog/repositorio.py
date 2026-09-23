@@ -141,6 +141,7 @@ class Catalogo:
         lista: models.ListaPrecios,
         dominio: Dominio,
         fecha_rendimiento: date,
+        condiciones: str,
     ) -> ResumenCarga:
         """Persiste un APU del contrato: partida, insumos, precios, líneas y rendimiento estimado.
 
@@ -150,8 +151,19 @@ class Catalogo:
         **No es reentrante.** Si la partida ya tiene composición cargada, lanza `ValueError` en vez
         de añadir un segundo juego de líneas: duplicarlas dejaría un APU con insumos repetidos y un
         segundo rendimiento estimado de la misma fecha, y hacerlo en silencio sería peor que fallar.
-        Reemplazar una composición existente es una operación distinta, todavía no implementada.
+        Reemplazar una composición existente es `reemplazar_composicion`, una operación distinta.
+
+        RF‑33 (`docs/ERS.md`, UC‑10; spec §3.3): el sistema no persiste una composición cuyo
+        rendimiento no haya sido declarado explícitamente junto con sus condiciones. Por eso
+        `condiciones` es obligatorio (`ValueError` si viene vacío o solo espacios), igual que en
+        `reemplazar_composicion`, y se rechaza antes de tocar la sesión: dejar la partida creada
+        y fallar después habría dejado una partida huérfana, sin composición ni rendimiento.
         """
+        if not condiciones.strip():
+            raise ValueError(
+                "cargar_composicion exige las condiciones del rendimiento (RF-33): el sistema no "
+                "persiste una composición cuyo rendimiento no se declare junto con ellas"
+            )
         partida = self._buscar_partida(composicion.codigo_partida)
         if partida is None:
             partida = a_modelo_partida(composicion, dominio)
@@ -163,12 +175,67 @@ class Catalogo:
                 "volver a cargarla (reemplazarla en silencio duplicaría sus líneas)"
             )
 
-        resumen = ResumenCarga(partida=partida)
-        lineas = lineas_de(composicion)
-        insumos = [self._resolver_insumo(linea, lista, resumen) for linea in lineas]
-        self._sesion.add_all(a_modelo_lineas(lineas, partida, insumos))
-        self._sesion.add(a_modelo_rendimiento_estimado(composicion, partida, fecha_rendimiento))
+        resumen = self._cargar_lineas(partida, composicion, lista)
+        self._sesion.add(
+            a_modelo_rendimiento_estimado(composicion, partida, fecha_rendimiento, condiciones)
+        )
         self._sesion.flush()
+        return resumen
+
+    def reemplazar_composicion(
+        self,
+        composicion: ComposicionAPU,
+        lista: models.ListaPrecios,
+        dominio: Dominio,
+        fecha_rendimiento: date,
+        condiciones: str,
+    ) -> ResumenCarga:
+        """Sustituye el desglose de una partida y, si algo cambió, registra un rendimiento nuevo.
+
+        RF‑33 (`docs/ERS.md`, UC‑11): el sistema no persiste una composición cuyo rendimiento no
+        haya sido declarado explícitamente junto con sus condiciones. Por eso `condiciones` es
+        obligatorio (`ValueError` si viene vacío o solo espacios) y nunca se delega en un valor
+        por defecto silencioso como hacía `a_modelo_rendimiento_estimado` antes de este arreglo
+        (revisión final del ramal, arreglo 1: cada edición de UC‑11 dejaba un `Rendimiento` con
+        `condiciones=''`).
+
+        El rendimiento nuevo se registra **solo si el valor o las condiciones cambiaron** respecto
+        del último rendimiento de la partida (arreglo 2 de la misma revisión): registrar uno
+        idéntico en cada edición no es evidencia, es ruido que contamina la dispersión de
+        `core.catalog.rendimientos` (varianza cero tras la primera edición sin cambios) y dispara
+        `advertencia_rendimiento` ante cualquier valor futuro. El rendimiento anterior, cuando sí
+        cambia algo, NO se pisa: queda en el histórico, porque la serie de rendimientos de una
+        partida es evidencia (UC‑11). No hace `commit`: eso es de la capa que llama, como en
+        `cargar_composicion`.
+
+        `dominio` se acepta por simetría de firma con `cargar_composicion` y no se usa: la
+        partida ya existe y su dominio no cambia al corregir su desglose.
+
+        `.clear()` fuerza la carga de la colección `partida.composicion` (hace falta para saber
+        qué borrar). `_cargar_lineas` inserta las líneas nuevas con `partida_id` explícito
+        (`a_modelo_lineas`), sin pasar por esa colección ORM, así que tras el `flush()` la
+        colección en memoria queda vacía y obsoleta: una lectura posterior de `partida.composicion`
+        (p. ej. `Catalogo.composicion()`, que la recorre para reconstruir el contrato) vería cero
+        líneas aunque ya estén en la base. Se expira el atributo para que la próxima lectura
+        dispare una consulta nueva en vez de servir la colección cacheada.
+        """
+        if not condiciones.strip():
+            raise ValueError(
+                "reemplazar_composicion exige las condiciones del rendimiento (RF-33): el "
+                "sistema no persiste una composición cuyo rendimiento no se declare junto con "
+                "ellas"
+            )
+        partida = self._buscar_partida(composicion.codigo_partida)
+        if partida is None:
+            raise LookupError(
+                f"no se puede reemplazar la composición de {composicion.codigo_partida}: "
+                "la partida no existe en el catálogo"
+            )
+        partida.composicion.clear()
+        self._sesion.flush()
+        self._sesion.expire(partida, ["composicion"])
+        resumen = self._cargar_lineas(partida, composicion, lista)
+        self._registrar_rendimiento_si_cambia(partida, composicion, fecha_rendimiento, condiciones)
         return resumen
 
     def registrar_rendimiento(self, rendimiento: Rendimiento) -> models.Rendimiento:
@@ -223,6 +290,57 @@ class Catalogo:
             )
             is not None
         )
+
+    def _cargar_lineas(
+        self,
+        partida: models.Partida,
+        composicion: ComposicionAPU,
+        lista: models.ListaPrecios,
+    ) -> ResumenCarga:
+        """Persiste líneas, insumos y precios de una partida ya creada.
+
+        No toca el rendimiento: `cargar_composicion` y `reemplazar_composicion` lo registran cada
+        uno a su manera (el primero, uno nuevo siempre; el segundo, RF‑33, solo si algo cambió).
+        """
+        resumen = ResumenCarga(partida=partida)
+        lineas = lineas_de(composicion)
+        insumos = [self._resolver_insumo(linea, lista, resumen) for linea in lineas]
+        self._sesion.add_all(a_modelo_lineas(lineas, partida, insumos))
+        self._sesion.flush()
+        return resumen
+
+    def _registrar_rendimiento_si_cambia(
+        self,
+        partida: models.Partida,
+        composicion: ComposicionAPU,
+        fecha: date,
+        condiciones: str,
+    ) -> None:
+        """Añade un rendimiento ESTIMADO solo si el valor o las condiciones cambiaron (arreglo 2).
+
+        Compara contra el último rendimiento ESTIMADO de la partida (el más reciente por fecha e
+        id), no contra el último de cualquier tipo: el consumidor que importa es `composicion()`,
+        que reconstruye el APU con `_rendimiento_estimado`, filtrado estrictamente por
+        `tipo == ESTIMADO`. Comparar contra el último de cualquier tipo (incluido un MEDIDO
+        registrado entre medio con `registrar_rendimiento`) podía concluir que «no cambió nada» y
+        omitir el ESTIMADO nuevo aunque el MEDIDO no sea lo que `composicion()` lee: el rendimiento
+        vigente quedaba obsoleto en silencio. Repetir un rendimiento idéntico tampoco es evidencia:
+        es la misma patología que el ruling de la siembra (`scripts/seed.py`) evitó a propósito
+        para la línea base, reintroducida aquí por cada edición de UC‑11 antes de este arreglo.
+        """
+        historico = self.rendimientos(composicion.codigo_partida)
+        estimados = [r for r in historico if r.tipo is TipoRendimiento.ESTIMADO]
+        anterior = estimados[-1] if estimados else None
+        if (
+            anterior is not None
+            and anterior.valor == composicion.rendimiento
+            and anterior.condiciones == condiciones
+        ):
+            return
+        self._sesion.add(
+            a_modelo_rendimiento_estimado(composicion, partida, fecha, condiciones)
+        )
+        self._sesion.flush()
 
     def _resolver_insumo(
         self, linea: LineaCatalogo, lista: models.ListaPrecios, resumen: ResumenCarga

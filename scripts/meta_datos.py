@@ -53,6 +53,7 @@ DOCUMENTOS_HISTORICOS: tuple[str, ...] = (
 CARPETAS_EXCLUIDAS: tuple[str, ...] = (
     ".claude/",
     ".git/",
+    ".superpowers/",
     ".venv/",
     "docs/bitacora/",
     "docs/superpowers/",

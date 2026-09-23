@@ -135,12 +135,19 @@ def test_se_vigila_la_documentacion_del_proyecto():
 def test_no_se_vigilan_los_registros_fechados_ni_los_capitulos():
     """Bitacoras, specs y planes de sprints ya ejecutados registran lo que se sabia en su fecha;
     los capitulos los vigila `meta_redaccion.py` (R7), y `.venv` no es del proyecto.
+
+    `.superpowers/` tampoco lo es: es el cuaderno de trabajo de los agentes, no esta rastreado por
+    git (vive en `.git/info/exclude`) y no viaja con ninguna fusion. Vigilarlo hacia fallar D1 por
+    una frase de un informe efimero -- «una fila real del CSV», dicho de una fila que existe en el
+    archivo-- mientras la documentacion del proyecto estaba limpia. Un control que falla por
+    borradores que nadie publica ensena a ignorar sus fallos.
     """
     for relativo in (
         "docs/bitacora/2026-09-02-M4.1-recuento-g2.md",
         "docs/superpowers/specs/2026-09-15-sprint-r1-capitulos-design.md",
         "docs/superpowers/plans/2026-09-02-sprint-multidominio.md",
         "docs/tesis/capitulos/01-el-problema.md",
+        ".superpowers/sdd/un-plan/task-2-report.md",
         ".venv/Lib/site-packages/algo.md",
         "scripts/meta_datos.py",
     ):

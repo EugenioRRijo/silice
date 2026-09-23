@@ -75,6 +75,28 @@ contratación colectiva vigente) que lo respalde en el capítulo del marco teór
 software (es un parámetro, no una constante del motor). **Se pide al tutor:** orientación sobre
 la fuente citable, o su aval para declararlo «parámetro del caso de estudio».
 
+**Actualización (Sesión P0.1, 2026‑09‑16).** Verificado contra fuente primaria: el FCAS del 600 %
+**no tiene fuente normativa publicada**. No lo publican el Colegio de Ingenieros de Venezuela, la
+Cámara Venezolana de la Construcción, COVENIN ni MaPreX — y la propia Convención Colectiva de
+Trabajo para la Rama de la Industria de la Construcción (Gaceta Oficial N.º 6.752 Extraordinario,
+6 de julio de 2023) no menciona el FCAS ni la expresión «costos asociados al salario»
+(`docs/bitacora/2026-09-15-referencias-pendientes.md`). Los valores publicados que sí se
+encontraron son un rango de **198 % a 293 %** (Chacín, 2008, trabajo de grado de la Universidad
+Rafael Urdaneta, `docs/fuentes/Chacin_2008_FCAS_URU.pdf`) y de **78 % a 2 386 %** según qué
+cláusulas se incluyan (Dodi Scovino y Salas Caraballo, 2019, trabajo de grado de la Universidad
+José Antonio Páez, `docs/fuentes/Dodi_Salas_2019_FCAS_UJAP.pdf`, cálculo dominado por la
+hiperinflación de 2018). **Recomendación (se mantiene y se refuerza): declararlo parámetro
+configurable de la línea base del caso de estudio, no valor normativo**, citando el rango
+publicado en el marco teórico.
+
+**Hallazgo relacionado, a favor de la fórmula vigente del motor.** La Cláusula 20 de la misma
+convención colectiva dice que el beneficio que respalda el bono de alimentación *«no tiene
+carácter salarial, a ningún efecto legal o contractual»*
+(`docs/fuentes/CCT_Construccion_GO_6752_Ext_2023-07-06.txt`, líneas 837‑840). El motor
+(`core/costing/motor.py`) ya suma el bono aparte del bloque de sueldos y **no** lo multiplica por
+`(1 + fcas)` (ver la fórmula de CLAUDE.md §4: `bono × Σ cantidad`, fuera del paréntesis que sí
+lleva FCAS). La decisión de diseño resulta estar normativamente respaldada; no requiere cambio.
+
 ### D5. Flujo de creación de partidas (RF‑16 y familia)
 
 El hallazgo más recurrente del proyecto (I2, I6, F.2): la persistencia de RF‑16 (guardar una
@@ -107,6 +129,57 @@ Riesgo documentado en [metodologia.md §9](metodologia.md): el término «gemelo
 impreciso para este sistema (no hay sincronización bidireccional con la obra). ERS y
 arquitectura lo declaran como BIM‑5D (a lo sumo «sombra digital»). **Se pide:** confirmar esa
 terminología para el anteproyecto y la defensa.
+
+### D9. Modalidad de mano de obra por linea (cambio a un contrato declarado estable)
+
+RF‑34 (`docs/ERS.md`) exige que la modalidad de mano de obra se declare por línea: jornal o
+destajo. La verificación contra el contrato
+([bitácora de la Sesión P0.1](bitacora/2026-09-16-P0-hallazgo-destajo.md)) confirma que no se
+puede expresar hoy: `LineaManoObra` (`core/contracts/apu.py`) solo modela `descripcion`,
+`cantidad` y `sueldo`, sin campo que distinga una línea a destajo de una línea a jornal, y
+`calcular_apu` (`core/costing/motor.py`) aplica `(1 + fcas)`, suma el bono por obrero y divide
+entre el rendimiento a **toda** línea de `composicion.mano_obra` por igual. El destajo no es una
+preferencia de interfaz: la LOTTT lo tipifica como forma de estipular el salario (artículo 114,
+`docs/fuentes/LOTTT_GO_6076_Ext_2012-05-07.txt`, líneas 2276‑2283: *«se entenderá que el salario
+ha sido estipulado por unidad de obra, por pieza o a destajo, cuando se toma en cuenta la obra
+realizada por el trabajador o trabajadora, sin usar como medida el tiempo empleado para
+ejecutarla»*) y la Convención Colectiva de Trabajo para la Rama de la Industria de la Construcción
+la regula para el sector (cláusula 1, `docs/fuentes/CCT_Construccion_GO_6752_Ext_2023-07-06.txt`,
+líneas 60‑65: *«es aquel que ejecuta su trabajo por metro, por unidad de obra, por pieza o por
+tarea, cuyo salario o pago no podrá ser inferior al previsto en el Tabulador de Oficios y Salarios
+que forma parte de esta Convención»*). `LineaManoObra` y `calcular_apu` están en la lista de
+contratos congelados de CLAUDE.md §5; por eso, en vez de parcharlos en silencio, la sesión P0.1 se
+detuvo (CLAUDE.md §9) y eleva el hallazgo aquí. No compromete la hipótesis central: una modalidad
+salarial no es un dominio (CLAUDE.md §1) y `scripts/guardia_nucleo.py` solo falla si un commit
+toca `core/` junto con `adapters/` o `ml/`.
+
+**Opciones:** (1) modalidad por línea dentro del contrato — `ModalidadManoObra` (`StrEnum`
+`JORNAL`/`DESTAJO`) como campo nuevo, con valor por defecto, en `LineaManoObra`, y `calcular_apu`
+separando la suma: jornal sigue la fórmula actual, destajo entra completo sin FCAS ni bono ni
+división entre rendimiento; (2) sueldo sintético armado fuera del núcleo, con el precedente de
+`scripts/seed_telecom.py` (líneas 81‑100, que despeja el `sueldo` de una `LineaManoObra` sintética
+para alcanzar un total conocido) — no aplica aquí porque el destajo no tiene un total que despejar,
+es una rama de cálculo distinta que el motor tendría que aplicar de todos modos; (3) no
+implementarlo y declararlo limitación del prototipo — descartada porque deja RF‑34 sin cumplir y
+bloquea permanentemente el caso de uso que lo motivó; (4) una cuarta categoría `subcontratos`
+paralela a materiales/equipos/mano_obra — toca `core/` con más superficie que la opción 1 y
+tergiversa la naturaleza jurídica del destajo, que la LOTTT clasifica como forma de estipular el
+salario, no como subcontrato civil.
+
+**Recomendación: opción 1.** Es aditiva y retrocompatible: con el valor por defecto
+(`ModalidadManoObra.JORNAL`) ninguna composición existente cambia y la línea base
+(`tests/fixtures/apu_linea_base.py`) reproduce el mismo precio unitario hasta el último decimal.
+A implementar en la Fase P1 del sprint del prototipo (meta P4 de `scripts/meta_prototipo.py`).
+
+**Riesgo declarado (auditoría de rama completa, 2026‑09‑23), sin cambio de código.** La modalidad
+vive en la línea (`LineaManoObra.modalidad`), pero el precio vive en el insumo, identificado por
+(tipo, descripción, unidad) (`core/catalog/repositorio.py::_resolver_insumo`) — la modalidad no es
+parte de esa clave. Un obrero homónimo a jornal y a destajo (misma descripción, mismo tipo
+`mano_obra`) comparte insumo, de modo que una actualización masiva de precios (UC‑02) o un
+escenario (`core/budget/escenarios.py`, que empareja por `linea.descripcion`, líneas 154 y 166‑180)
+le aplicaría el mismo precio a las dos modalidades, aunque una de ellas sea en realidad una tarifa
+por unidad de obra y no un sueldo diario. Queda declarado como limitación del prototipo, pendiente
+del aval del tutor junto con el resto de esta decisión.
 
 ## 4. Salvedades declaradas (informativas, no requieren decisión)
 

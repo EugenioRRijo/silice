@@ -81,6 +81,10 @@ DESCRIPCION_PROYECTO = (
 )
 NOMBRE_LISTA = "Tabulador CIV 2026-07 (sistemas)"
 ORIGEN_LISTA = "data/precios/maprex_2026-07/referencia_sistemas.csv"
+#: RF-33 (spec §3.3): declara que este rendimiento no viene de una ejecucion medida.
+CONDICIONES_RENDIMIENTO = (
+    "rendimiento estimado del caso didactico SIS-001; no proviene de una ejecucion medida"
+)
 #: El alcance funcional no numera presupuestos; el prefijo lo distingue de 001, TC-* y MNT-*.
 CODIGO_PRESUPUESTO = "SIS-001"
 RUTA_ALCANCE = RAIZ / "data" / "samples" / "sistemas" / "alcance_funcional.csv"
@@ -140,7 +144,9 @@ def sembrar_sistemas(sesion: Session) -> models.Proyecto:
 
     catalogo = Catalogo(sesion)
     for composicion in composiciones_sistemas().values():
-        catalogo.cargar_composicion(composicion, lista, Dominio.SISTEMAS, FECHA_TABULADOR)
+        catalogo.cargar_composicion(
+            composicion, lista, Dominio.SISTEMAS, FECHA_TABULADOR, CONDICIONES_RENDIMIENTO
+        )
 
     sesion.commit()
     return proyecto

@@ -27,9 +27,10 @@ uv sync                                   # crea .venv e instala dependencias ba
 uv run pytest                             # suite de pruebas
 uv run ruff check .                       # estilo
 uv run python scripts/seed.py             # carga la línea base en data/apu.db (idempotente; --reiniciar para recrear)
+# ^ si su data/apu.db es anterior a P2, añada la columna `modalidad` con ALTER TABLE o use --reiniciar (docs/bitacora/2026-09-20-P2-hallazgo-migraciones.md)
 uv run python scripts/meta_alpha.py       # estado de las 12 metas del sprint alpha (OK/FALLA/PENDIENTE)
 uv sync --extra ui                        # instala Streamlit
-uv run streamlit run ui/app.py            # UI mínima: actualización masiva de precios (UC-02) e informe de auditoría
+uv run python -m streamlit run ui/app.py            # UI mínima: actualización masiva de precios (UC-02) e informe de auditoría
 ```
 
 > OneDrive sincroniza todo lo que hay en esta carpeta, incluido `.venv/`. Para evitarlo, antes de

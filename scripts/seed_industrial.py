@@ -80,6 +80,10 @@ DESCRIPCION_PROYECTO = (
 )
 NOMBRE_LISTA = "Referencia MaPreX 2026-07 (industrial)"
 ORIGEN_LISTA = "data/precios/maprex_2026-07/referencia_industrial.csv"
+#: RF-33 (spec §3.3): declara que este rendimiento no viene de una ejecucion medida.
+CONDICIONES_RENDIMIENTO = (
+    "rendimiento estimado del caso didactico MNT-001; no proviene de una ejecucion medida"
+)
 #: El registro de activos no numera presupuestos; el prefijo lo distingue del 001 civil y TC-*.
 CODIGO_PRESUPUESTO = "MNT-001"
 RUTA_ACTIVOS = RAIZ / "data" / "samples" / "industrial" / "activos_planta.csv"
@@ -150,7 +154,9 @@ def sembrar_industrial(sesion: Session) -> models.Proyecto:
 
     catalogo = Catalogo(sesion)
     for composicion in mnt.COMPOSICIONES_MNT.values():
-        catalogo.cargar_composicion(composicion, lista, Dominio.INDUSTRIAL, FECHA_REFERENCIA)
+        catalogo.cargar_composicion(
+            composicion, lista, Dominio.INDUSTRIAL, FECHA_REFERENCIA, CONDICIONES_RENDIMIENTO
+        )
 
     sesion.commit()
     return proyecto

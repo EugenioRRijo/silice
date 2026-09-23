@@ -86,6 +86,25 @@ Algunas descripciones de MaPreX vienen truncadas por el ancho fijo de columna de
 rol es largo). Se conservan tal como las imprime el PDF —no se completan por conjetura— y se marcan
 en `notas` con «descripcion truncada en el PDF».
 
+## Lista canónica en USD (`lista_maprex_usd.csv`)
+
+`scripts/lista_maprex_usd.py` deriva de los cuatro CSV de referencia anteriores el formato de
+cuatro columnas que exige el cargador de UC‑02 (`tipo,insumo,unidad,precio`,
+`core.catalog.precios.COLUMNAS_ARCHIVO`), copiando como texto la columna `precio_usd` ya calculada
+arriba, sin volver a tocar bolívares. Sirve para cargar MaPreX como una lista de precios más y
+contrastarla con lo que compone el sistema.
+
+**ADVERTENCIA para `tipo=equipo`:** el `precio` de esta lista es el valor de reposición del activo
+completo, no una tarifa diaria de uso. Ejemplo, la fila
+`equipo,CAMION VOLTEO 8 M3 FORD 7000 O SIM,dia,113244.4451`: no dice que el camión cueste
+113 244,4451 USD por día — ese número es lo que cuesta comprarlo nuevo. La tarifa diaria aproximada
+sale de multiplicarlo por el `factor_depreciacion` del CSV crudo (`referencia_civil.csv`, columna
+`factor_depreciacion = 0,004000` para ese camión): 113 244,4451 × 0,004 ≈ 453 USD/día. El formato
+canónico de cuatro columnas no tiene dónde poner ese factor: quien componga un APU con un equipo de
+esta lista debe traer `factor_depreciacion` del CSV crudo correspondiente, igual que lo exige
+`LineaEquipo.depreciacion` (`core/contracts/apu.py`) y la regla **R6** (`CriterioDepreciacion`),
+que pide que el factor viva declarado en la composición, no en la lista de precios.
+
 ## Depreciación MaPreX de los equipos de la línea base
 
 Criterio externo y fechado para la regla **R6** (`CriterioDepreciacion`): el factor Cop/Depr. de

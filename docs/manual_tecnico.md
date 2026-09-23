@@ -57,7 +57,7 @@ El estado de las pruebas y la cobertura vigente están en [plan_pruebas.md](plan
 | `adapters/{civil,telecom,industrial,sistemas}` | fuente de cada dominio → `ItemComputo` | sección 4 |
 | `ml/` | normalización, anomalías, predicción | no conoce la base de datos: recibe datos planos |
 | `api/` | FastAPI sobre el núcleo | montos como texto; OpenAPI exportado a `docs/api.json` |
-| `ui/` | Streamlit multipágina | solo presentación; llama a `core` directo |
+| `ui/` | Streamlit multipágina | solo presentación; llama a `core` directo. La composición de APU a mano vive en la capa pura `ui/composicion.py` (sección 10.2) |
 | `scripts/` | operaciones reproducibles | tabla en la sección 8 |
 
 El flujo completo de UC‑01: `AdaptadorDominio.extraer(fuente)` → `list[ItemComputo]` →
@@ -171,6 +171,8 @@ Los dos puntos que más preguntas generan:
   «a su fecha» usa la lista de precios vigente en esa fecha (RNF‑02, 100 % exacto).
 - **Rendimiento medido ≠ estimado:** el medido exige clave foránea a una `Ejecucion` real; la
   invariante vive en el contrato y en el esquema.
+- **No hay herramienta de migraciones:** `create_all` crea tablas ausentes pero nunca altera una
+  existente. Cambiar una columna exige la regla de la sección 10.5.
 
 ## 7. `ml/` y sus compuertas
 
@@ -198,7 +200,10 @@ limitación). Conteo G2 y métricas por dominio, reproducibles:
 | `scripts/exportar_openapi.py` | `docs/api.json` |
 | `scripts/generar_resultados_ml.py` | `docs/resultados_ml.md` (conteo G2 y métricas RF‑28 por dominio) |
 | `scripts/medir_rnf03.py` | evidencia de RNF‑03 (100 partidas, umbral 5 s) |
-| `scripts/meta_alpha.py`, `scripts/meta_i6.py`, `scripts/meta_multidominio.py` | evaluación automática de metas de sprint |
+| `scripts/seed_demo.py` | en una sola orden: línea base, las tres partidas `DEMO-*` (caso didáctico de AREN.IA) con su lista heredando los precios de la vigente, y el presupuesto `DEMO-001` guardado con su informe (idempotente; `--db`, `--reiniciar`) |
+| `scripts/lista_maprex_usd.py` | `data/precios/maprex_2026-07/lista_maprex_usd.csv`, la referencia MaPreX en el formato canónico `tipo,insumo,unidad,precio` (en equipos, `precio` es el valor del activo, no una tarifa diaria) |
+| `scripts/simular_corpus.py` | corpus **simulado** de partidas `SIM-*` para pruebas de volumen de la interfaz, siempre en una base nueva (sección 10.4) |
+| `scripts/meta_alpha.py`, `scripts/meta_i6.py`, `scripts/meta_multidominio.py`, `scripts/meta_prototipo.py` | evaluación automática de metas de sprint (`meta_prototipo.py --hasta P<n>` evalúa por fases) |
 
 PyMuPDF no es dependencia del proyecto: los dos extractores se ejecutan con
 `uv run --with pymupdf python scripts/<extractor>.py` y ninguna prueba lo importa. Sus salidas
@@ -241,3 +246,107 @@ catálogo de otro dominio apuntando `APU_BASE` a su base (`sqlite:///data/apu_te
 - Los hallazgos abiertos del proyecto (flujo de creación de partidas para RF‑16, IFC real para
   G1, Linux para RNF‑07) están en las bitácoras de [bitacora/](bitacora/) — leerlas antes de
   «arreglar» algo que en realidad es una limitación declarada.
+
+## 10. El prototipo AREN.IA: composición de APU a mano (sprint P0–P5)
+
+El sprint del prototipo añadió la pantalla que compone y edita una partida a mano (UC‑10 y UC‑11
+de la [ERS](ERS.md), RF‑33 a RF‑35). El diseño y su porqué están en la
+[spec](superpowers/specs/2026-09-16-prototipo-composicion-apu-design.md); la vista lógica de la
+capa nueva, en [arquitectura.md §2.4](arquitectura.md#24-composición-de-partidas-en-la-ui-uicomposicionpy-sesión-p21);
+el recorrido del sprint, en la [bitácora de cierre](bitacora/2026-09-16-sprint-prototipo.md).
+Esta sección solo recoge lo que quien mantenga el código necesita saber.
+
+### 10.1 La modalidad de mano de obra (decisión D9)
+
+`LineaManoObra` lleva un campo `modalidad: ModalidadManoObra` (`StrEnum` con `JORNAL` y
+`DESTAJO`), con `JORNAL` por defecto. `__post_init__` coacciona el texto (`"destajo"` →
+`DESTAJO`) y rechaza cualquier otro valor con `ValueError`. El motor separa la suma:
+
+```
+mano_obra_jornal  = ( Σ cantidad × sueldo × (1 + FCAS) + bono × Σ cantidad ) / rendimiento   ← solo JORNAL
+mano_obra_destajo =   Σ cantidad × sueldo                                                   ← solo DESTAJO, completo
+mano_obra         = mano_obra_jornal + mano_obra_destajo
+```
+
+Bajo `DESTAJO`, `sueldo` no es un jornal diario sino el **precio por unidad de partida** del
+artículo 114 de la LOTTT: no recibe FCAS ni bono ni se divide entre el rendimiento, y
+`ComposicionAPU.total_obreros` (la base del bono) cuenta solo las líneas a jornal. El fundamento
+normativo y las cuatro opciones evaluadas están en la [decisión D9 del dossier](dossier_g0.md) y en
+la [bitácora del hallazgo](bitacora/2026-09-16-P0-hallazgo-destajo.md); no se repiten aquí.
+
+**Por qué no afecta a la hipótesis central.** La hipótesis dice que `core/` no cambia al añadir un
+**dominio**; D9 es un vacío de la estructura de costos venezolana, no un dominio, y ningún
+adaptador cambió. El cambio es aditivo y retrocompatible: con todo a `JORNAL` el motor da los
+mismos `Decimal` que antes, y `tests/unit/test_costing.py` y `tests/fixtures/apu_linea_base.py`
+no se tocaron. Siguen vigentes las dos guardias de la sección 1: la prueba de arquitectura y
+`scripts/guardia_nucleo.py`, que falla si un commit toca `core/` junto con `adapters/` o `ml/`.
+
+La modalidad se persiste en la columna `composicion_apu.modalidad` (anulable: `NULL` se lee como
+`jornal`, `core/catalog/mapeo.py`) y aparece como columna *Modalidad* en la hoja APU del Excel
+(`core/budget/excel.py`).
+
+### 10.2 Contratos y funciones nuevos
+
+| Pieza | Dónde | Qué hace |
+|---|---|---|
+| `ModalidadManoObra` | `core.contracts` (reexportado en su `__all__`) | la enumeración de la sección 10.1 |
+| `Catalogo.reemplazar_composicion(composicion, lista, dominio, fecha_rendimiento, condiciones) -> ResumenCarga` | `core/catalog/repositorio.py` | UC‑11: sustituye el desglose de una partida existente; registra un rendimiento ESTIMADO nuevo **solo si** cambia el valor o las condiciones respecto del último estimado, sin pisar el histórico |
+| `Catalogo.cargar_composicion(..., condiciones)` | ídem | UC‑10: `condiciones` pasó a ser obligatorio (RF‑33); vacío lanza `ValueError` **antes** de crear la partida, así que no deja partida huérfana |
+| `ui/composicion.py` | capa pura de la interfaz | `composicion_desde_tablas`, `formulario_vacio`, `item_desde_cantidad` (origen `MANUAL`), `buscar_referencia` y `FilaReferencia` (los cuatro CSV de la referencia MaPreX), `fila_*_desde_referencia`, y las cuatro ayudas (`sugerir_partidas_similares`, `advertencia_precio_atipico`, `veredicto_ml_rendimiento`, `contrastar_precio_con_reglas`) con `ml` importado de forma perezosa |
+
+`ui/composicion.py` recibe filas de texto (`dict[str, str]`) y devuelve tipos del contrato; los
+errores (`ComposicionInvalida`) dicen tabla, fila y campo. **No importa `streamlit` ni `pandas`**,
+ni siquiera dentro de una función: lo vigila la meta P7 de `scripts/meta_prototipo.py`. La página
+`ui/paginas/componer.py` solo pinta y decide entre `cargar_composicion` y `reemplazar_composicion`.
+
+### 10.3 Probar la interfaz con `AppTest`
+
+`tests/unit/test_ui_componer.py` son las primeras pruebas del repositorio que ejecutan una pantalla
+(`streamlit.testing.v1.AppTest`, Streamlit 1.62). Corren dentro de la CI normal con `-W error`,
+sin `filterwarnings` ni marcador. Lo que hay que saber para escribir otra:
+
+- **El guion es de dos líneas:** `AppTest.from_string("from ui.paginas.componer import render\nrender()\n")`.
+  `AppTest.from_function(render)` no sirve: serializa el cuerpo y pierde los globales del módulo.
+- **`AppTest` no puede teclear en `st.data_editor`.** Las tablas se siembran en
+  `st.session_state[f"{clave}__filas"]` (`componer_materiales__filas`, `componer_equipos__filas`,
+  `componer_mano_obra__filas`, `componer_cantidades__filas`) **antes del primer `at.run()`**; sembrar
+  después no surte efecto porque el editor conserva su estado.
+- **Desvío de la base.** Se parcha `RUTA_BASE_POR_DEFECTO` sobre el **objeto módulo** que devuelve
+  `importlib.import_module("ui.paginas.componer")` (el de `sys.modules`, que es el que ejecuta
+  `AppTest`), no con una ruta de texto, y se afirma `base.exists()` tras el primer `run()`: si el
+  desvío fallara, la prueba falla ruidosamente en vez de escribir en `data/apu.db`. La ruta de texto
+  se abandonó porque un aislamiento defectuoso de otra prueba dejaba el atributo del paquete
+  `ui.paginas` desincronizado de `sys.modules` (hallazgo en la [bitácora de
+  cierre](bitacora/2026-09-16-sprint-prototipo.md)).
+- **El doble de la ayuda 1.** Con catálogo no vacío y descripción tecleada, `sugerir_partidas_similares`
+  carga `sentence-transformers`; las pruebas la sustituyen por `lambda *_: []` en el mismo objeto
+  módulo.
+- Los widgets se localizan por su rótulo (`"Codigo"`, `"Descripcion"`, `"Unidad"`,
+  `componer.RENDIMIENTO_ETIQUETA`); las pruebas que guardan siembran antes la base temporal con
+  `scripts.seed_demo.main(["--db", ...])`, y todo motor que abre una prueba se cierra con
+  `motor.dispose()` (en Windows un archivo abierto no se puede borrar).
+
+Lo que `AppTest` no cubre (teclear en las celdas, la experiencia de uso) lo cubre el
+[guion de prueba manual](guion_prueba_arenia.md), con resultados esperados obtenidos por ejecución.
+
+### 10.4 El corpus simulado y su cuarentena
+
+`scripts/simular_corpus.py --db <ruta nueva> [--n 200] [--semilla 42]` genera partidas `SIM-*`
+**simuladas** para probar la interfaz con volumen: combina filas de la referencia MaPreX con
+cantidades y rendimientos sorteados desde enteros (`Decimal(entero) / Decimal(100)`, nunca
+`float`), con la misma capa pura que usa la pantalla. No es dato de mercado ni de obra y no cuenta
+para ninguna compuerta, en particular para G2. La cuarentena tiene dos capas: `main` se niega si
+el archivo de `--db` ya existe (el corpus nunca se mezcla con una base de trabajo) y la meta P11
+falla si algún módulo de `ml/` menciona el generador o el corpus. Todas las partidas se cargan como
+`Dominio.CIVIL` aunque sus insumos vengan de las cuatro referencias MaPreX: el dominio del corpus
+no describe su origen.
+
+### 10.5 La regla de las migraciones
+
+El proyecto no tiene Alembic: `Base.metadata.create_all` crea las tablas ausentes y **no altera**
+las existentes, así que una columna nueva no llega a las bases ya sembradas y la interfaz falla
+con `OperationalError`. Pasó con `modalidad` en la fase P2
+([bitácora del hallazgo](bitacora/2026-09-20-P2-hallazgo-migraciones.md), con las dos salidas:
+`ALTER TABLE … ADD COLUMN` aditivo o volver a sembrar con `--reiniciar`). **Regla:** toda sesión que
+añada o cambie una columna de `core/models/entidades.py` declara en su plan, antes de escribir el
+código, qué les pasa a las bases que ya existen en disco.

@@ -80,6 +80,10 @@ Convenciones operativas:
 | Sesiones | Una sesión por incremento, `/clear` entre ellas; modo plan antes de cambios grandes |
 | Entorno | `uv sync` · `uv run pytest` · `uv run ruff check .` |
 | Idioma | Código, docstrings, docs y commits en español; identificadores sin tildes |
+| Worktrees | Uno por sprint en `.claude/worktrees/<nombre-corto>`; se borra al fusionar. Solo coexisten el checkout principal y el worktree del sprint vigente: varios worktrees vivos a la vez es lo que dejó `main` dos semanas desactualizado |
+| Fusión | Un PR por incremento **contra `main`**, fusionado en cuanto la CI esté verde. No acumular pilas: `gh pr merge` fusiona en la base *actual* del PR, así que una pila hay que reorientarla con `gh pr edit <n> --base main` antes de fusionar, o se fusiona cada PR dentro de su padre y `main` no recibe nada |
+| Etiquetas | Una por compuerta cruzada (`g0-docs`, `g1-ifc`, `g2-datos`…) y una **base por sprint** (`i6-base`, `m-base`, `a-base`, `r-base`, `p-base`) que sirve de referencia a `git diff <base> --stat -- core/` |
+| Metas | `scripts/meta_<sprint>.py` audita las metas del sprint; una fase se cruza con `--hasta <fase>` en OK **y** la compuerta anotada en `docs/bitacora/` |
 
 ---
 

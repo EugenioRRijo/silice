@@ -28,7 +28,7 @@ from adapters.civil.tabular import AdaptadorCivilTabular
 from adapters.industrial.adaptador import AdaptadorIndustrial
 from adapters.sistemas.adaptador import AdaptadorSistemas
 from adapters.telecom.adaptador import AdaptadorTelecom
-from core.budget import elaborar, generar_presupuesto, plan_secuencial
+from core.budget import elaborar, exportar_excel, generar_presupuesto, plan_secuencial
 from core.catalog import Catalogo, abrir_sesion, crear_esquema, crear_motor
 from core.contracts import AdaptadorDominio, Dominio, ItemComputo, ParametrosCosto
 from core.verification.informe import DECIMALES_PRESENTACION
@@ -262,6 +262,16 @@ def _mostrar_resultado(resultado) -> None:
     st.subheader("Presupuesto elaborado")
     total = formatear_decimal(resultado.presupuesto.total, DECIMALES_PRESENTACION)
     st.metric("Total del presupuesto", f"{total} {resultado.presupuesto.moneda}")
+
+    with tempfile.TemporaryDirectory() as carpeta:
+        ruta = Path(carpeta) / f"presupuesto_{resultado.presupuesto.codigo}.xlsx"
+        libro = exportar_excel(resultado.presupuesto, resultado.informe, ruta)
+        st.download_button(
+            "Exportar a Excel",
+            data=libro.read_bytes(),
+            file_name=libro.name,
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
 
     st.subheader("Informe de auditoría")
     st.markdown(resultado.informe.a_markdown())

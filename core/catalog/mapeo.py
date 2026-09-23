@@ -26,6 +26,7 @@ from core.contracts.apu import (
     LineaEquipo,
     LineaManoObra,
     LineaMaterial,
+    ModalidadManoObra,
     Rendimiento,
     TipoRendimiento,
 )
@@ -78,7 +79,16 @@ def a_composicion(
                 LineaEquipo(insumo.descripcion, linea.cantidad, precio, linea.depreciacion)
             )
         else:
-            mano_obra.append(LineaManoObra(insumo.descripcion, linea.cantidad, precio))
+            mano_obra.append(
+                LineaManoObra(
+                    insumo.descripcion,
+                    linea.cantidad,
+                    precio,
+                    ModalidadManoObra(linea.modalidad)
+                    if linea.modalidad
+                    else ModalidadManoObra.JORNAL,
+                )
+            )
 
     return ComposicionAPU(
         codigo_partida=partida.codigo,
@@ -116,7 +126,8 @@ class LineaCatalogo:
 
     Aplana las tres tuplas del contrato (materiales, equipos, mano de obra) en la secuencia única y
     ordenada que persiste `models.ComposicionAPU`, y unifica los tres nombres del importe unitario
-    (`precio` de material y equipo, `sueldo` de mano de obra) en uno solo.
+    (`precio` de material y equipo, `sueldo` de mano de obra) en uno solo. `modalidad` solo la
+    llevan las líneas de mano de obra, igual que `depreciacion` solo la llevan los equipos.
     """
 
     tipo: models.TipoInsumo
@@ -125,6 +136,7 @@ class LineaCatalogo:
     precio: Decimal
     cantidad: Decimal
     depreciacion: Decimal | None
+    modalidad: ModalidadManoObra | None = None
 
 
 def lineas_de(composicion: ComposicionAPU) -> list[LineaCatalogo]:
@@ -163,6 +175,7 @@ def lineas_de(composicion: ComposicionAPU) -> list[LineaCatalogo]:
             precio=obrero.sueldo,
             cantidad=obrero.cantidad,
             depreciacion=None,
+            modalidad=obrero.modalidad,
         )
         for obrero in composicion.mano_obra
     ]
@@ -208,6 +221,7 @@ def a_modelo_lineas(
             insumo_id=insumo.id,
             cantidad=linea.cantidad,
             depreciacion=linea.depreciacion,
+            modalidad=linea.modalidad.value if linea.modalidad is not None else None,
             orden=orden,
         )
         for orden, (linea, insumo) in enumerate(zip(lineas, insumos, strict=True))
@@ -231,12 +245,19 @@ def a_modelo_rendimiento(
 
 
 def a_modelo_rendimiento_estimado(
-    composicion: ComposicionAPU, partida: models.Partida, fecha: date
+    composicion: ComposicionAPU, partida: models.Partida, fecha: date, condiciones: str
 ) -> models.Rendimiento:
     """El rendimiento ESTIMADO que declara un APU del contrato, listo para persistir.
 
     Pasa por `contracts.Rendimiento` a propósito: así el valor queda validado por las invariantes
     del contrato (mayor que cero) antes de tocar la base de datos.
+
+    `condiciones` no tiene valor por defecto a propósito: RF‑33 (spec §3.3) exige que ningún
+    rendimiento se persista sin declarar junto a él las condiciones en que se estimó, y los dos
+    caminos que llaman a esta función —`cargar_composicion` y `reemplazar_composicion`— la exigen
+    y la validan antes de llegar aquí. Un valor por defecto habría dejado abierta la puerta que
+    RF‑33 quiere cerrada: que un llamador nuevo la omita y persista un `Rendimiento` con
+    `condiciones=''` en silencio.
     """
     return a_modelo_rendimiento(
         Rendimiento(
@@ -244,6 +265,7 @@ def a_modelo_rendimiento_estimado(
             valor=composicion.rendimiento,
             tipo=TipoRendimiento.ESTIMADO,
             fecha=fecha,
+            condiciones=condiciones,
         ),
         partida,
     )

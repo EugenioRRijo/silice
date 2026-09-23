@@ -7,6 +7,10 @@ presupuesto se lee en centavos, mientras que los `Decimal` del modelo conservan 
 
 El libro lleva siempre la hoja de auditoría, aunque el presupuesto no tenga hallazgos: el informe se
 entrega siempre (principio 7 de CLAUDE.md §2).
+
+La tabla de mano de obra de la hoja APU incluye la columna Modalidad: bajo DESTAJO, `sueldo` no es
+un sueldo diario sino el precio por unidad de partida del artículo 114 de la LOTTT (decisión D9), y
+un Excel que no distingue las dos modalidades invita al malentendido que D9 existe para evitar.
 """
 
 from __future__ import annotations
@@ -115,13 +119,14 @@ def _bloque_apu(hoja: Worksheet, partida: PartidaPresupuestada) -> None:
             ]
         )
 
-    _encabezado(hoja, ["Mano de obra", "Obreros", "Sueldo", "Total"])
+    _encabezado(hoja, ["Mano de obra", "Obreros", "Sueldo", "Modalidad", "Total"])
     for obrero in apu.mano_obra:
         hoja.append(
             [
                 obrero.descripcion,
                 _redondear(obrero.cantidad),
                 _redondear(obrero.sueldo),
+                obrero.modalidad.value,
                 _redondear(obrero.total),
             ]
         )

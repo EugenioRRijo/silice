@@ -17,7 +17,7 @@ unica definicion de presentacion del sistema.
 from __future__ import annotations
 
 from dataclasses import replace
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal
 from pathlib import Path
 
 import streamlit as st
@@ -37,6 +37,7 @@ from core.catalog import Catalogo, abrir_sesion, crear_esquema, crear_motor
 from core.contracts import ParametrosCosto
 from core.verification.informe import DECIMALES_PRESENTACION
 from core.verification.texto import formatear_decimal
+from ui.composicion import decimal_desde_texto
 
 TITULO = "Escenarios (UC-08)"
 RUTA_BASE_POR_DEFECTO = "data/apu.db"
@@ -131,10 +132,12 @@ def _formulario(modelo, base, catalogo: Catalogo, parametros_base: ParametrosCos
 
     parametros = replace(
         parametros_base,
-        **{campo: _decimal(texto, campo) for campo, texto in textos.items()},
+        **{campo: decimal_desde_texto(texto, campo) for campo, texto in textos.items()},
     )
     precios = {
-        str(fila.insumo).strip(): _decimal(str(fila.precio_nuevo), f"precio de {fila.insumo}")
+        str(fila.insumo).strip(): decimal_desde_texto(
+            str(fila.precio_nuevo), f"precio de {fila.insumo}"
+        )
         for fila in precios_tabla.itertuples(index=False)
         if str(fila.insumo).strip()
     }
@@ -186,14 +189,3 @@ def _presentar(tabla: DataFrame) -> DataFrame:
     for columna in presentada.columns:
         presentada[columna] = [_celda(valor) for valor in presentada[columna]]
     return presentada
-
-
-def _decimal(texto: str, campo: str) -> Decimal:
-    """`Decimal` desde el texto del formulario, con el campo culpable en el mensaje."""
-    try:
-        valor = Decimal(texto.strip())
-    except InvalidOperation as error:
-        raise ValueError(f"{campo}: {texto!r} no es un numero decimal valido") from error
-    if not valor.is_finite():
-        raise ValueError(f"{campo}: {texto!r} no es un monto finito")
-    return valor

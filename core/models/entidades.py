@@ -97,7 +97,12 @@ class Insumo(Base):
 
 
 class ComposicionAPU(Base):
-    """Una línea del desglose: qué insumo, cuánto y con qué depreciación (si es equipo)."""
+    """Una línea del desglose: qué insumo, cuánto y con qué depreciación (si es equipo).
+
+    `depreciacion` y `modalidad` son ambas anulables porque cada una la lleva un solo tipo de
+    insumo: `depreciacion` los equipos, `modalidad` la mano de obra. `NULL` en `modalidad` se lee
+    como `jornal`, el valor por defecto del contrato.
+    """
 
     __tablename__ = "composicion_apu"
     __table_args__ = (Index("ix_composicion_partida_orden", "partida_id", "orden"),)
@@ -107,6 +112,7 @@ class ComposicionAPU(Base):
     insumo_id: Mapped[int] = mapped_column(ForeignKey("insumo.id"))
     cantidad: Mapped[Decimal] = mapped_column(DecimalExacto)
     depreciacion: Mapped[Decimal | None] = mapped_column(DecimalExacto, default=None)
+    modalidad: Mapped[str | None] = mapped_column(String(10), default=None)
     orden: Mapped[int] = mapped_column(Integer)
 
     partida: Mapped[Partida] = relationship(back_populates="composicion")
