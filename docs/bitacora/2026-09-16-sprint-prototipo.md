@@ -23,10 +23,11 @@ ayudas de `ml/` cableadas a la pantalla, y el recorrido completo hasta el presup
 Excel. Todo lo que el sprint siembra o simula es un **caso didáctico o simulado**, no obra ejecutada
 ([CLAUDE.md §1](../../CLAUDE.md)).
 
-**Cumplido.** Las tres compuertas cruzadas, meta del sprint **12/12**, suite con **673** pruebas y
-0 omitidas. El núcleo cambió en **siete** archivos, con expediente previo (D9) y sin romper la
-línea base; ninguno de los cambios lo pidió un dominio nuevo, así que la hipótesis central queda
-intacta (sección «El cambio al núcleo»).
+**Cumplido.** Las tres compuertas cruzadas, meta del sprint **12/12**, suite con **690** pruebas y
+0 omitidas (673 al cerrar P5; 690 tras la auditoría de la rama completa, sección «Auditoría de rama
+completa» más abajo). El núcleo cambió en **siete** archivos, con expediente previo (D9) y sin
+romper la línea base; ninguno de los cambios lo pidió un dominio nuevo, así que la hipótesis central
+queda intacta (sección «El cambio al núcleo»).
 
 ## Compuertas
 
@@ -65,10 +66,11 @@ pidió un dominio, ningún adaptador se tocó, `tests/unit/test_costing.py` y
 | P2.2–P2.4 pantalla, buscador y ayudas | `a8714b3`, `adc60a5`, `a6763bf`, `3da1391` | esta bitácora |
 | P3 flujo completo (GP1) | `9f1f3be`, `dfaaeb9`, `2ae725b`, `1558587`, `f884044` | esta bitácora |
 | P4 pruebas (GP2) | `b16ce5e` AppTest, `617861b` siembra en una orden, `1789f12` guion manual, `6f824b6` corpus en cuarentena | [guion_prueba_arenia.md](../guion_prueba_arenia.md) |
-| P5 cierre | `a634fda` modo entrega y el commit de esta bitácora | [manual de usuario §3.7](../manual_usuario.md), [manual técnico §10](../manual_tecnico.md) |
+| P5 cierre | `a634fda` modo entrega, `649e7b9` el commit de cierre de esta bitácora y `a478cfc` (arranque de la aplicación, hallazgo 7, post cierre) | [manual de usuario §3.7](../manual_usuario.md), [manual técnico §10](../manual_tecnico.md) |
 
-La rama suma 48 commits sobre `p-base` con el de esta bitácora (siete de ellos son planes
-ejecutables `docs(plan)`).
+La rama sumaba 48 commits sobre `p-base` al cerrar P5 (siete de ellos son planes ejecutables
+`docs(plan)`); con la auditoría de la rama completa (sección siguiente) y el de esta bitácora,
+suma 56 (`git log --oneline 471b3e2..HEAD | wc -l`).
 
 ## Hallazgos del sprint
 
@@ -116,18 +118,27 @@ ejecutables `docs(plan)`).
    nada que heredar), y tras el `flush()` de la lista nueva, copiar
    `models.PrecioInsumo(lista_id=lista.id, insumo_id=p.insumo_id, precio=p.precio)` por cada
    precio de `anterior`. No se aplicó en este sprint.
-7. **La lista MaPreX no se importó al catálogo** (decisión de la Tarea 2 de P4). La pantalla ya
+7. **`streamlit run` a secas no arrancaba la aplicación, con la suite en verde** — otro caso de
+   «suite verde con la interfaz rota», como el hallazgo 3 de las migraciones. Las nueve páginas se
+   registraban con una función llamada `render`, y `st.navigation` rechazaba la aplicación entera
+   por ruta URL repetida; además, `streamlit run` a secas no pone la raíz del repositorio en
+   `sys.path`, así que `import ui` fallaba. Ninguna prueba unitaria arrancaba `ui/app.py` completo.
+   Corregido en `a478cfc` (cierre de P5): cada `DefinicionPagina` declara su `ruta_url` (el nombre
+   de su módulo), la documentación pasa a `python -m streamlit run`, y dos pruebas nuevas arrancan
+   `ui/app.py` con `AppTest.from_file`, en modo normal y en modo entrega. Hallazgo de la auditoría
+   de la rama completa (2026‑09‑23).
+8. **La lista MaPreX no se importó al catálogo** (decisión de la Tarea 2 de P4). La pantalla ya
    ofrece la referencia completa por el buscador, que lee los CSV directamente; y
    `crear_lista_desde_archivo` solo actualiza precios de insumos **ya catalogados**, así que con
    `lista_maprex_usd.csv` los 111 insumos habrían salido como desconocidos sin añadir nada.
-8. **En la lista MaPreX, el precio de un equipo es el valor del activo, no una tarifa diaria.** Lo
+9. **En la lista MaPreX, el precio de un equipo es el valor del activo, no una tarifa diaria.** Lo
    que lo lleva a costo diario es la depreciación de la composición (R6 exige que viva ahí). Se
    documentó en el script y en el README de la referencia en vez de convertir el dato, que se
    habría aplicado dos veces (`bee9132`).
-9. **El corpus simulado se carga entero como `Dominio.CIVIL`** (`DOMINIO_CORPUS`) aunque sus filas
-   salen de las cuatro referencias MaPreX: el dominio no describe su origen. Está en cuarentena
-   (base propia obligatoria y meta P11), no alimenta `ml/` ni cuenta para G2.
-10. **La advertencia de rendimiento RF‑27 no podía dispararse en la base sembrada**
+10. **El corpus simulado se carga entero como `Dominio.CIVIL`** (`DOMINIO_CORPUS`) aunque sus filas
+    salen de las cuatro referencias MaPreX: el dominio no describe su origen. Está en cuarentena
+    (base propia obligatoria y meta P11), no alimenta `ml/` ni cuenta para G2.
+11. **La advertencia de rendimiento RF‑27 no podía dispararse en la base sembrada**
     (`MINIMO_OBSERVADO_PARA_ADVERTIR = 2` y ninguna partida tenía dos observaciones). La siembra de
     demostración deja ahora dos en `DEMO-01-INST`, y el caso CP‑04 del guion la ejercita.
 
@@ -148,8 +159,8 @@ ejecutables `docs(plan)`).
 
 | Indicador | Cierre |
 |---|---|
-| Pruebas con `-W error --strict-markers` | **673** pasan, **0 omitidas**, 0 fallan (95,7 s; recuento de `--junitxml`) |
-| Evolución registrada | 559 + 4 omitidas sin extra `ml` (cierre P1) → 598 con todos los extras (auditoría P2) → 633 (cierre P2) → 648 (GP1) → 669 (GP2) → 673 |
+| Pruebas con `-W error --strict-markers` | **690** pasan, **0 omitidas**, 0 fallan (101,72 s; resumen de `pytest -v`, que sí lo imprime en este entorno) |
+| Evolución registrada | 559 + 4 omitidas sin extra `ml` (cierre P1) → 598 con todos los extras (auditoría P2) → 633 (cierre P2) → 648 (GP1) → 669 (GP2) → 673 (cierre P5) → 676 con `a478cfc` → 689 con el encargo A de la auditoría de la rama completa (UC‑11: editar no borra el desglose) → 690 con este encargo (B: RF‑35 editable) |
 | `ruff check .` | limpio |
 | `guardia_nucleo.py --base p-base` | código 0 (sin commits que toquen `adapters/` o `ml/`) |
 | `git diff p-base --stat -- core/` | 7 archivos, +217 / −18 |
@@ -192,7 +203,8 @@ ejecutables `docs(plan)`).
 
 ## Estado final
 
-- `uv run --no-sync pytest -q -W error --strict-markers`: **673 passed**, 0 omitidas.
+- `uv run --no-sync pytest -q -W error --strict-markers`: **690 passed**, 0 omitidas (673 al cerrar
+  P5; ver «Auditoría de rama completa» para la evolución hasta 690).
 - `uv run --no-sync ruff check .`: limpio.
 - `uv run --no-sync python scripts/guardia_nucleo.py --base p-base`: código 0.
 - `uv run --no-sync python scripts/meta_datos.py`: 3/3.
@@ -201,6 +213,56 @@ ejecutables `docs(plan)`).
 
 ## Integración
 
-Rama empujada hasta `6f824b6` al cruzar GP2 (autorizado por Eugenio). `a634fda` y el commit de
-esta bitácora quedan por empujar, y el PR #7 por actualizar para describir las fases P0 a P5.
+Rama empujada hasta `6f824b6` al cruzar GP2 (autorizado por Eugenio); `a634fda`, `649e7b9` (cierre
+de P5) y `a478cfc` (arranque de la aplicación, hallazgo 7) se empujaron después y son el estado
+actual de `origin/inc/PLAN-prototipo`. Desde `b4f7321` (encargo A de la auditoría de la rama
+completa) hasta el commit de esta bitácora — el encargo B — quedan por empujar, y el PR #7 por
+actualizar para describir las fases P0 a P5 y la auditoría.
 **Sin fusionar a `main`**: la fusión la decide Eugenio después de la auditoría.
+
+## Auditoría de rama completa (2026‑09‑23)
+
+Pautada por Eugenio antes de fusionar el PR #7 (sección «Pendientes de Eugenio»), con revisores por
+encargo (regla vigente desde el 2026‑09‑23: la aprobación de esos encargos es la compuerta, no el
+bloque de auditoría del 20/09).
+
+- **Cuatro encargos:** arquitecto, pruebas y calidad, requisitos, verificador de hechos.
+- **Veredictos:** tres «fusionar tras correcciones», uno «aprueba con correcciones»; ninguno
+  bloqueante.
+- **Hallazgo importante — encargo A (UC‑11):** editar una partida existente borraba su desglose en
+  vez de precargar las tres tablas (paso 1 de UC‑11 sin cumplir pese a que RF‑33/RF‑34 lo daban por
+  hecho). Corregido en `b4f7321` (`ui/composicion.py`: `filas_desde_composicion` y
+  `motivo_para_no_reemplazar`; `ui/paginas/componer.py`: precarga tras la cabecera y guarda que
+  rechaza con `st.error` si hay motivo) y documentado en `bb37656`; 13 pruebas nuevas
+  (`tests/unit/test_composicion.py`, `tests/unit/test_ui_componer.py`), suite 676 → 689.
+- **Correcciones de este encargo (B, documentación y menores):**
+  1. Prueba de editabilidad del precio sugerido, RF‑35 (`cb19e1c`): 689 → 690.
+  2. `docs/ERS.md` al día, RF‑33 a RF‑35 y UC‑10/UC‑11 de pendiente a cumplido (`b9c638f`).
+  3. Decimales exactos en `test_costing_destajo.py` y fase roja NULL→JORNAL en
+     `test_persistencia.py` (`df9bfc0`).
+  4. Dependencia `ui`↔`scripts` documentada en `docs/arquitectura.md`, docstring corregido de
+     `scripts/seed_demo.py::sembrar_demo`, riesgo declarado en D9 (`docs/dossier_g0.md`) — sin
+     cambiar `PAQUETES_FUERA_DEL_NUCLEO` (`f4aab50`).
+  5. Esta sección y el resto de esta bitácora (commit de este encargo).
+- **Diferido con registro** (no se corrige en esta ronda):
+  - Salvaguarda global de `data/apu.db` y `calidad_iso25010.md`: los resuelve el sprint de UI
+    (`PLAN_UI.md`, sesiones U1.1 y U0 — rama `inc/PLAN-ui`, worktree `.claude/worktrees/ui`, no
+    presente en esta rama).
+  - Mensaje de error de RF‑33 duplicado entre `Catalogo.cargar_composicion` y
+    `Catalogo.reemplazar_composicion` (`core/catalog/repositorio.py:162-166` y `:222-227`); no se
+    reabre el núcleo por un mensaje.
+  - Carpeta de la referencia MaPreX (`data/precios/maprex_2026-07`) duplicada entre
+    `ui/composicion.py:398-406` (`_CARPETA_REFERENCIA`) y `scripts/lista_maprex_usd.py:65-69`
+    (`CARPETA`) — línea corregida contra el archivo real; el hallazgo original la citaba en
+    `ui/composicion.py:304-313`.
+  - Etiqueta de la técnica de la compuerta G2 que muestra la ayuda 4
+    (`ui/paginas/componer.py:~570`), calculada con partidas `DEMO-`/`SIM-` en vez de solo datos
+    reales.
+  - El destajo no tiene `AppTest` que lo teclee y guarde por la pantalla: solo se ejercita por
+    precarga de lectura (`test_teclear_el_codigo_de_una_partida_guardada_precarga_sus_tres_tablas`).
+  - Ninguna prueba corre contra un archivo de esquema antiguo real; la de la migración
+    (hallazgo 3, y su fase roja de este encargo) solo simula la columna en `NULL`.
+  - Herencia de precios en los tres sembradores restantes, sin corregir (hallazgo 6).
+  - El mensaje del commit `b32926b` dice «cinco fases»; `PLAN_PROTOTIPO.md` tiene seis, P0 a P5.
+
+**D9 sigue pendiente del aval del tutor** (sección «Pendientes del tutor»).
