@@ -9,8 +9,10 @@ en [plan_pruebas.md](plan_pruebas.md) §9–§10; aquí se interpreta.
 > redacción (2026‑08‑31): 395 pruebas, 30 de 31 RF, cobertura de `core/` 98,05 % (§5). El propio §6
 > cita, sin reconciliar, 490 pruebas de la CI desde 2026‑09‑15. [plan_pruebas.md §10](plan_pruebas.md)
 > registra después 479 (2026‑09‑14) y [§9](plan_pruebas.md) cobertura de `core/` 98,10 %; el cierre
-> del sprint del prototipo llegó a 673 pruebas
-> ([docs/bitacora/2026-09-16-sprint-prototipo.md](bitacora/2026-09-16-sprint-prototipo.md)). La ERS
+> del sprint del prototipo (Fase P5) llegó a 673 pruebas y la auditoría de rama completa que precedió
+> a la fusión del PR #7 la llevó a **690** (CI [run 35893754650](https://github.com/EugenioRRijo/tesis-apu-multidominio/actions/runs/35893754650),
+> verde sobre `main`; detalle en
+> [docs/bitacora/2026-09-16-sprint-prototipo.md](bitacora/2026-09-16-sprint-prototipo.md)). La ERS
 > pasó de 31 a **42 RF** y de 9 a **10 RNF** en la Sesión U0.1 del sprint de UI
 > ([PLAN_UI.md](../PLAN_UI.md)). Se actualizan todas estas cifras juntas al cerrar la compuerta GU1;
 > hasta entonces, la fuente vigente de cada conteo es la bitácora citada arriba, no este documento.

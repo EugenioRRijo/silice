@@ -175,6 +175,16 @@ salario, no como subcontrato civil.
 (`tests/fixtures/apu_linea_base.py`) reproduce el mismo precio unitario hasta el último decimal.
 A implementar en la Fase P1 del sprint del prototipo (meta P4 de `scripts/meta_prototipo.py`).
 
+**Riesgo declarado (auditoría de rama completa, 2026‑09‑23), sin cambio de código.** La modalidad
+vive en la línea (`LineaManoObra.modalidad`), pero el precio vive en el insumo, identificado por
+(tipo, descripción, unidad) (`core/catalog/repositorio.py::_resolver_insumo`) — la modalidad no es
+parte de esa clave. Un obrero homónimo a jornal y a destajo (misma descripción, mismo tipo
+`mano_obra`) comparte insumo, de modo que una actualización masiva de precios (UC‑02) o un
+escenario (`core/budget/escenarios.py`, que empareja por `linea.descripcion`, líneas 154 y 166‑180)
+le aplicaría el mismo precio a las dos modalidades, aunque una de ellas sea en realidad una tarifa
+por unidad de obra y no un sueldo diario. Queda declarado como limitación del prototipo, pendiente
+del aval del tutor junto con el resto de esta decisión.
+
 ## 4. Salvedades declaradas (informativas, no requieren decisión)
 
 - **G1 con salvedad:** el adaptador IFC reproduce exacto el cálculo manual (0,224 m³), pero

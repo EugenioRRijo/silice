@@ -8,14 +8,20 @@ from decimal import Decimal
 
 import pytest
 
-from core.contracts import Dominio, ModalidadManoObra, OrigenTipo
+from core.contracts import Dominio, ModalidadManoObra, OrigenTipo, ParametrosCosto
+from core.costing import calcular_apu
 from ui.composicion import (
     ComposicionInvalida,
     FilaReferencia,
     buscar_referencia,
     composicion_desde_tablas,
     decimal_desde_texto,
+    fila_equipos_desde_referencia,
+    fila_mano_obra_desde_referencia,
+    fila_materiales_desde_referencia,
+    filas_desde_composicion,
     item_desde_cantidad,
+    motivo_para_no_reemplazar,
 )
 
 MATERIALES = [{"descripcion": "Cemento", "unidad": "saco", "cantidad": "7.5", "precio": "8.00"}]
@@ -274,3 +280,189 @@ def test_buscar_referencia_todo_numero_es_decimal_construido_desde_texto():
     assert type(mano_obra.bono_bs) is Decimal
     assert type(mano_obra.precio_usd) is Decimal
     assert mano_obra.factor_depreciacion is None
+
+
+def test_el_precio_sugerido_por_la_referencia_es_editable_y_el_calculo_lo_refleja():
+    """RF‑35: la referencia MaPreX sugiere, nunca decide (spec §3.4). `fila_materiales_desde_
+    referencia`/`fila_equipos_desde_referencia`/`fila_mano_obra_desde_referencia` solo proponen el
+    precio como texto de la celda; si la persona lo cambia antes de guardar,
+    `composicion_desde_tablas` acepta la fila con el precio nuevo y `core.costing.calcular_apu` lo
+    refleja, no el sugerido.
+    """
+    referencia_material = FilaReferencia(
+        tipo="material",
+        descripcion="Cemento",
+        unidad="saco",
+        precio_usd=Decimal("8.00"),
+        factor_depreciacion=None,
+        bono_bs=None,
+        ref_maprex="REF-MAT",
+    )
+    referencia_equipo = FilaReferencia(
+        tipo="equipo",
+        descripcion="Vibrador",
+        unidad="dia",
+        precio_usd=Decimal("300.00"),
+        factor_depreciacion=Decimal("0.03"),
+        bono_bs=None,
+        ref_maprex="REF-EQU",
+    )
+    referencia_mano_obra = FilaReferencia(
+        tipo="mano_obra",
+        descripcion="Albanil",
+        unidad="jornal",
+        precio_usd=Decimal("12.50"),
+        factor_depreciacion=None,
+        bono_bs=Decimal("1.00"),
+        ref_maprex="REF-MO",
+    )
+
+    fila_material = fila_materiales_desde_referencia(referencia_material)
+    fila_equipo = fila_equipos_desde_referencia(referencia_equipo)
+    fila_mano_obra = fila_mano_obra_desde_referencia(referencia_mano_obra)
+
+    # El precio sugerido llega como texto de la celda (no como Decimal, no de solo lectura): sigue
+    # siendo el mismo campo que la persona puede teclear encima, igual que si lo hubiera escrito.
+    assert fila_material["precio"] == "8.00"
+    assert fila_equipo["precio"] == "300.00"
+    assert fila_mano_obra["sueldo"] == "12.50"
+    assert all(
+        isinstance(valor, str)
+        for valor in (fila_material["precio"], fila_equipo["precio"], fila_mano_obra["sueldo"])
+    )
+
+    # La persona edita las tres celdas de precio antes de guardar (y completa la cantidad, que la
+    # referencia no sugiere: spec §3.4, solo describe el insumo, no cuanto se usa).
+    fila_material = {**fila_material, "cantidad": "2", "precio": "9.50"}
+    fila_equipo = {**fila_equipo, "cantidad": "1", "precio": "320.00"}
+    fila_mano_obra = {**fila_mano_obra, "cantidad": "1", "sueldo": "15.00", "modalidad": "jornal"}
+
+    composicion = composicion_desde_tablas(
+        "P-RF35",
+        "Prueba de editabilidad del precio sugerido",
+        "m3",
+        "10",
+        [fila_material],
+        [fila_equipo],
+        [fila_mano_obra],
+    )
+
+    # La fila se acepta con el precio nuevo, no con el sugerido.
+    assert composicion.materiales[0].precio == Decimal("9.50")
+    assert composicion.equipos[0].precio == Decimal("320.00")
+    assert composicion.mano_obra[0].sueldo == Decimal("15.00")
+
+    resultado = calcular_apu(composicion, ParametrosCosto())
+
+    # Si `composicion_desde_tablas` hubiera ignorado la edicion y colado el precio sugerido
+    # (8.00 USD/saco), el resultado seria 16.00, no 19.00: afirmar primero el sugerido hace fallar
+    # esta prueba, lo que demuestra que el campo es editable de verdad, no de solo lectura.
+    assert resultado.materiales == Decimal("19.00")
+    assert resultado.materiales != Decimal("2") * referencia_material.precio_usd
+
+
+# --- UC-11: guarda antes de reemplazar y precarga de las tres tablas (auditoria del PR #7) -------
+
+#: La partida "registrada" de estas pruebas: la de `test_una_tabla_valida_...`, ya en el catalogo.
+DESCRIPCION_REGISTRADA = "Vaciado de concreto"
+UNIDAD_REGISTRADA = "m3"
+
+
+def _edicion(
+    descripcion=DESCRIPCION_REGISTRADA,
+    unidad=UNIDAD_REGISTRADA,
+    materiales=MATERIALES,
+    equipos=EQUIPOS,
+    mano_obra=MANO_OBRA,
+):
+    return composicion_desde_tablas(
+        "LB-04-VAC", descripcion, unidad, "8", materiales, equipos, mano_obra
+    )
+
+
+def test_una_edicion_con_la_misma_cabecera_y_lineas_se_puede_reemplazar():
+    assert motivo_para_no_reemplazar(DESCRIPCION_REGISTRADA, UNIDAD_REGISTRADA, _edicion()) is None
+
+
+def test_una_edicion_sin_ninguna_linea_no_reemplaza():
+    motivo = motivo_para_no_reemplazar(
+        DESCRIPCION_REGISTRADA,
+        UNIDAD_REGISTRADA,
+        _edicion(materiales=[], equipos=[], mano_obra=[]),
+    )
+
+    assert motivo is not None
+    assert "LB-04-VAC" in motivo
+    assert "ninguna linea" in motivo
+
+
+def test_basta_una_linea_en_cualquiera_de_las_tres_tablas():
+    solo_mano_obra = _edicion(materiales=[], equipos=[])
+
+    motivo = motivo_para_no_reemplazar(DESCRIPCION_REGISTRADA, UNIDAD_REGISTRADA, solo_mano_obra)
+
+    assert motivo is None
+
+
+def test_otra_unidad_no_reemplaza_y_dice_la_registrada():
+    motivo = motivo_para_no_reemplazar(
+        DESCRIPCION_REGISTRADA, UNIDAD_REGISTRADA, _edicion(unidad="m2")
+    )
+
+    assert motivo is not None
+    assert "'m3'" in motivo
+
+
+def test_una_unidad_equivalente_no_es_otra_unidad():
+    """`m³` y `m3` son la misma unidad (`core.contracts.unidades`), no un cambio de cabecera."""
+    assert motivo_para_no_reemplazar(DESCRIPCION_REGISTRADA, "m³", _edicion(unidad="m3")) is None
+
+
+def test_otra_descripcion_no_reemplaza_y_dice_la_registrada():
+    motivo = motivo_para_no_reemplazar(
+        DESCRIPCION_REGISTRADA, UNIDAD_REGISTRADA, _edicion(descripcion="Vaciado de losa")
+    )
+
+    assert motivo is not None
+    assert f"'{DESCRIPCION_REGISTRADA}'" in motivo
+
+
+def test_los_espacios_de_borde_de_la_descripcion_no_son_otra_descripcion():
+    edicion = _edicion(descripcion=f"  {DESCRIPCION_REGISTRADA} ")
+
+    assert motivo_para_no_reemplazar(DESCRIPCION_REGISTRADA, UNIDAD_REGISTRADA, edicion) is None
+
+
+def test_filas_desde_composicion_es_la_ida_y_vuelta_de_composicion_desde_tablas():
+    """Precargar las tablas (UC-11, paso 1) y volver a leerlas reproduce la misma composicion."""
+    composicion = _edicion()
+
+    materiales, equipos, mano_obra = filas_desde_composicion(composicion)
+
+    assert mano_obra[1]["modalidad"] == "destajo"
+    celdas = [valor for fila in materiales + equipos + mano_obra for valor in fila.values()]
+    assert all(isinstance(valor, str) for valor in celdas)
+    assert (
+        composicion_desde_tablas(
+            composicion.codigo_partida,
+            composicion.descripcion,
+            composicion.unidad,
+            "8",
+            materiales,
+            equipos,
+            mano_obra,
+        )
+        == composicion
+    )
+
+
+def test_filas_desde_composicion_escribe_los_decimales_sin_exponente():
+    composicion = _edicion(
+        equipos=[
+            {"descripcion": "Vibrador", "cantidad": "1E+2", "precio": "300", "depreciacion": "1"}
+        ]
+    )
+
+    _, (equipo,), _ = filas_desde_composicion(composicion)
+
+    assert equipo["cantidad"] == "100"

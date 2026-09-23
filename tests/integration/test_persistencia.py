@@ -583,17 +583,54 @@ def test_una_linea_sin_modalidad_persistida_vuelve_como_jornal(sesion):
     en `docs/bitacora/2026-09-20-P2-hallazgo-migraciones.md`. Lo que esta prueba sí garantiza es la
     rama NULL→JORNAL de `core/catalog/mapeo.py:87-89`, que es la que hace legibles las filas viejas
     una vez aplicado el `ALTER TABLE`.
+
+    La línea base solo trae JORNAL (CLAUDE.md §4): sin sembrar aquí una línea a DESTAJO, poner en
+    NULL cualquier fila y esperar JORNAL no tenía fase roja, porque JORNAL ya era su modalidad. Se
+    siembra una partida mixta (mismo patrón que
+    `test_la_modalidad_a_destajo_sobrevive_el_viaje_por_el_catalogo`), se comprueba que vuelve como
+    DESTAJO, y solo entonces se pone en NULL en la base para comprobar que decae a JORNAL.
     """
+    catalogo = Catalogo(sesion)
+    lista = catalogo.lista_vigente(linea_base.FECHA_LINEA_BASE)
+    mixto = contracts.ComposicionAPU(
+        codigo_partida="LB-98-NUL",
+        descripcion="Partida de prueba para la migracion de modalidad",
+        unidad="m2",
+        rendimiento=Decimal("20"),
+        mano_obra=(
+            contracts.LineaManoObra(
+                "Friso a destajo (migracion)",
+                Decimal("1"),
+                Decimal("6.00"),
+                contracts.ModalidadManoObra.DESTAJO,
+            ),
+        ),
+    )
+    catalogo.cargar_composicion(
+        mixto,
+        lista,
+        contracts.Dominio.CIVIL,
+        linea_base.FECHA_LINEA_BASE,
+        "composicion de prueba para la migracion NULL->JORNAL",
+    )
+    sesion.flush()
+
+    antes = Catalogo(sesion).composicion("LB-98-NUL", fecha=linea_base.FECHA_LINEA_BASE)
+    assert [obrero.modalidad for obrero in antes.mano_obra] == [
+        contracts.ModalidadManoObra.DESTAJO
+    ], "la fila debe empezar a destajo para que la prueba pueda fallar"
+
     linea = sesion.scalars(
         select(models.ComposicionAPU)
         .join(models.Insumo)
+        .join(models.Partida)
+        .where(models.Partida.codigo == "LB-98-NUL")
         .where(models.Insumo.tipo == models.TipoInsumo.MANO_OBRA)
-        .order_by(models.ComposicionAPU.id)
-    ).first()
+    ).one()
     linea.modalidad = None
     sesion.flush()
 
-    vuelta = Catalogo(sesion).composicion(linea.partida.codigo)
+    vuelta = Catalogo(sesion).composicion("LB-98-NUL", fecha=linea_base.FECHA_LINEA_BASE)
 
     assert all(
         obrero.modalidad is contracts.ModalidadManoObra.JORNAL for obrero in vuelta.mano_obra

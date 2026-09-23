@@ -326,3 +326,143 @@ def test_de_componer_a_excel_desde_la_pantalla(monkeypatch, tmp_path):
 
     assert _por_rotulo(at.metric, "Total del presupuesto").value == total_esperado
     assert len(at.get("download_button")) == 1
+
+
+# -------------------------------------------------------------------------------------------
+# 6. Editar una partida existente (UC-11) no puede borrarle el desglose (auditoria del PR #7)
+# -------------------------------------------------------------------------------------------
+#
+# `DEMO-01-INST` es la partida sembrada por `scripts/seed_demo.py` (caso didactico, CLAUDE.md §1):
+# 3 materiales, 2 equipos y 2 lineas de mano de obra (una a jornal y otra a destajo). Estas pruebas
+# abren la pantalla **sin** sembrar las tablas: son las que la precarga debe llenar.
+
+CODIGO_DEMO = "DEMO-01-INST"
+CLAVES_TABLAS = (
+    "componer_materiales__filas",
+    "componer_equipos__filas",
+    "componer_mano_obra__filas",
+)
+
+
+def _filas_guardadas(base: Path, codigo: str) -> dict[str, list[dict[str, str]]]:
+    """Las tres tablas de lo que el catalogo tiene guardado para `codigo`, con los convertidores de
+    `tests/integration/test_composicion_extremo_a_extremo.py` (independientes de la pantalla)."""
+    with _catalogo_en(base) as catalogo:
+        return _filas_de_apu(catalogo.composicion(codigo))
+
+
+def _cabecera_guardada(base: Path, codigo: str):
+    with _catalogo_en(base) as catalogo:
+        return catalogo.composicion(codigo)
+
+
+def _editar_demo(monkeypatch, base: Path, *, unidad: str | None = None) -> AppTest:
+    """Teclea el codigo de `DEMO-01-INST` (la precarga ocurre en ese rerun) y luego su cabecera
+    registrada (o `unidad`, si se pide otra) y unas condiciones de prueba."""
+    guardada = _cabecera_guardada(base, CODIGO_DEMO)
+    at = _pantalla(monkeypatch, base, {})
+    _por_rotulo(at.text_input, "Codigo").set_value(CODIGO_DEMO)
+    at.run()
+    assert not at.exception
+    _por_rotulo(at.text_input, "Descripcion").set_value(guardada.descripcion)
+    unidad_tecleada = unidad if unidad is not None else guardada.unidad
+    _por_rotulo(at.text_input, "Unidad").set_value(unidad_tecleada)
+    at.text_area[0].set_value(CONDICIONES_DE_PRUEBA)
+    at.run()
+    assert not at.exception
+    return at
+
+
+def _reemplazar_tablas(at: AppTest, filas: dict[str, list[dict[str, str]]]) -> None:
+    """Simula que la persona edita las tablas (`st.data_editor` no se teclea desde `AppTest`): las
+    filas nuevas y el borrado de la bitacora de ediciones de cada `st.data_editor`, que es la via
+    documentada para imponerle un contenido nuevo (`ui/paginas/componer.py::_tabla_con_busqueda`).
+    """
+    for clave, valor in filas.items():
+        at.session_state[clave] = valor
+        widget = clave.removesuffix("__filas")
+        if widget in at.session_state:
+            del at.session_state[widget]
+
+
+def test_teclear_el_codigo_de_una_partida_guardada_precarga_sus_tres_tablas(monkeypatch, tmp_path):
+    """UC-11, paso 1: las tres tablas de insumos (con la modalidad) llegan precargadas."""
+    base = tmp_path / "sembrada.db"
+    _sembrar_base(base)
+    esperado = _filas_guardadas(base, CODIGO_DEMO)
+
+    at = _pantalla(monkeypatch, base, {})
+    for clave in CLAVES_TABLAS:
+        assert at.session_state[clave] == [], "antes de teclear el codigo las tablas estan vacias"
+
+    _por_rotulo(at.text_input, "Codigo").set_value(CODIGO_DEMO)
+    at.run()
+    assert not at.exception
+
+    for clave in CLAVES_TABLAS:
+        assert at.session_state[clave] == esperado[clave], clave
+    assert {fila["modalidad"] for fila in at.session_state["componer_mano_obra__filas"]} == {
+        "jornal",
+        "destajo",
+    }
+
+
+def test_guardar_sin_ninguna_linea_sobre_una_partida_existente_no_borra_su_desglose(
+    monkeypatch, tmp_path
+):
+    base = tmp_path / "sembrada.db"
+    _sembrar_base(base)
+    antes = _filas_guardadas(base, CODIGO_DEMO)
+
+    at = _editar_demo(monkeypatch, base)
+    _reemplazar_tablas(at, {clave: [] for clave in CLAVES_TABLAS})
+    at.run()
+    assert not at.exception
+
+    _por_rotulo(at.button, "Guardar composicion").click()
+    at.run()
+    assert not at.exception
+
+    assert at.error, "se esperaba un error al guardar una composicion sin lineas"
+    assert "ninguna linea" in at.error[0].value
+    assert not at.success
+    assert _filas_guardadas(base, CODIGO_DEMO) == antes
+
+
+def test_guardar_con_otra_unidad_sobre_una_partida_existente_no_la_cambia(monkeypatch, tmp_path):
+    base = tmp_path / "sembrada.db"
+    _sembrar_base(base)
+    antes = _filas_guardadas(base, CODIGO_DEMO)
+    unidad_registrada = _cabecera_guardada(base, CODIGO_DEMO).unidad
+
+    at = _editar_demo(monkeypatch, base, unidad="m2")
+    _por_rotulo(at.button, "Guardar composicion").click()
+    at.run()
+    assert not at.exception
+
+    assert at.error, "se esperaba un error al guardar con otra unidad"
+    assert repr(unidad_registrada) in at.error[0].value
+    assert not at.success
+    assert _cabecera_guardada(base, CODIGO_DEMO).unidad == unidad_registrada
+    assert _filas_guardadas(base, CODIGO_DEMO) == antes
+
+
+def test_editar_una_cantidad_y_guardar_reemplaza_la_composicion(monkeypatch, tmp_path):
+    """El flujo normal de UC-11 sigue funcionando: precarga, se cambia una cantidad y se guarda."""
+    base = tmp_path / "sembrada.db"
+    _sembrar_base(base)
+    filas = _filas_guardadas(base, CODIGO_DEMO)
+    filas["componer_equipos__filas"][0]["cantidad"] = "2"
+
+    at = _editar_demo(monkeypatch, base)
+    _reemplazar_tablas(at, {"componer_equipos__filas": filas["componer_equipos__filas"]})
+    at.run()
+    assert not at.exception
+
+    _por_rotulo(at.button, "Guardar composicion").click()
+    at.run()
+    assert not at.exception
+
+    assert not at.error
+    assert at.success
+    assert _filas_guardadas(base, CODIGO_DEMO) == filas
