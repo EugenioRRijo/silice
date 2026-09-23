@@ -13,6 +13,7 @@ de `tests.fixtures.computo_auditado` (principio DRY de CLAUDE.md §2).
 
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import date
 from decimal import Decimal
 
@@ -193,6 +194,28 @@ def test_elaborar_siempre_devuelve_informe():
     assert sin_plan.presupuesto.curva == ()
     assert con_plan.presupuesto.total_curva == con_plan.presupuesto.total
     assert con_plan.informe.codigo_presupuesto == linea_base.CODIGO_PRESUPUESTO
+
+
+def test_elaborar_con_un_parametro_no_decimal_emite_presupuesto_e_informe():
+    """Principio 7 (INV‑003): datos degradados dan hallazgos, nunca un presupuesto sin informe."""
+    excavacion = linea_base.APU_EXCAVACION.codigo_partida
+    items = tuple(
+        replace(item, regla="longitud * 2", parametros={"longitud": 1.5})
+        if item.codigo_partida == excavacion
+        else item
+        for item in items_auditados()
+    )
+
+    resultado = elaborar(
+        items,
+        composiciones_linea_base(),
+        linea_base.PARAMETROS_LINEA_BASE,
+        codigo=linea_base.CODIGO_PRESUPUESTO,
+        fecha=linea_base.FECHA_LINEA_BASE,
+    )
+
+    assert abs(resultado.presupuesto.total - linea_base.TOTAL_PRESUPUESTO_AUDITADO) <= TOLERANCIA
+    assert any("'longitud'" in h.descripcion for h in resultado.informe.por_regla()["R1"])
 
 
 def test_exportar_excel_escribe_cuatro_hojas(tmp_path):

@@ -39,6 +39,7 @@ from core.verification.expresiones import (
 )
 from core.verification.texto import es_numero, normalizar_texto, pares_numero_unidad, tokens
 from tests.fixtures import apu_linea_base as linea_base
+from tests.fixtures.computo_auditado import origen_de
 from tests.fixtures.presupuesto_auditado import (
     BALANCE_RELLENO,
     presupuesto_con_siete_inconsistencias,
@@ -538,6 +539,44 @@ def test_r5_reporta_un_balance_que_desborda_en_vez_de_reventar_auditar(presupues
     assert len(hallazgos) == 1
     assert hallazgos[0].severidad is Severidad.ERROR
     assert "no se puede evaluar" in hallazgos[0].descripcion
+
+
+@pytest.mark.parametrize("regla", ["longitud * 2", "longitud"])
+def test_r1_reporta_un_parametro_que_no_es_decimal_en_vez_de_reventar_auditar(presupuesto, regla):
+    """Principio 7 (INV‑003): un `float` en `ItemComputo.parametros` no saca a `auditar` con
+    `TypeError`. Con la expresión compuesta fallaba la aritmética; con el nombre solo, la
+    comparación posterior contra la cantidad `Decimal`. En ambos casos R1 lo informa y sigue.
+    """
+    roto = _con_item(
+        presupuesto,
+        linea_base.APU_EXCAVACION.codigo_partida,
+        regla=regla,
+        parametros={"longitud": 1.5},
+    )
+    informe = auditar(roto)
+    origen = origen_de(linea_base.APU_EXCAVACION.codigo_partida)
+    hallazgos = [h for h in informe.hallazgos if h.regla == "R1" and h.origen_ids == (origen,)]
+    assert len(hallazgos) == 1
+    # Un dato erróneo, no ausente: sigue siendo ERROR también después de INV‑012 (Tarea 8).
+    assert hallazgos[0].severidad >= Severidad.ERROR
+    assert "'longitud'" in hallazgos[0].descripcion
+    assert "float" in hallazgos[0].descripcion
+
+
+def test_r5_reporta_un_parametro_que_no_es_decimal_en_vez_de_reventar_auditar(presupuesto):
+    roto = _con_item(
+        presupuesto,
+        linea_base.APU_RELLENO.codigo_partida,
+        especificaciones={
+            directivas.CLAVE_BALANCE: f"{{{linea_base.APU_EXCAVACION.codigo_partida}}} - holgura"
+        },
+        parametros={"holgura": 0.5},
+    )
+    informe = auditar(roto)
+    hallazgos = [h for h in informe.hallazgos if h.regla == "R5"]
+    assert len(hallazgos) == 1
+    assert hallazgos[0].severidad >= Severidad.ERROR
+    assert "'holgura'" in hallazgos[0].descripcion
 
 
 # ---------------------------------------------------------------------------------------------
