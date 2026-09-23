@@ -248,6 +248,8 @@ bloque de auditoría del 20/09).
   - Salvaguarda global de `data/apu.db` y `calidad_iso25010.md`: los resuelve el sprint de UI
     (`PLAN_UI.md`, sesiones U1.1 y U0 — rama `inc/PLAN-ui`, worktree `.claude/worktrees/ui`, no
     presente en esta rama).
+  - Ruta de base por defecto (`RUTA_BASE_POR_DEFECTO = "data/apu.db"`) repetida en ocho páginas UI
+    y en scripts; el sprint de UI (`PLAN_UI.md`, U1.5) la centraliza en `ui/caso.py`.
   - Mensaje de error de RF‑33 duplicado entre `Catalogo.cargar_composicion` y
     `Catalogo.reemplazar_composicion` (`core/catalog/repositorio.py:162-166` y `:222-227`); no se
     reabre el núcleo por un mensaje.
@@ -258,11 +260,22 @@ bloque de auditoría del 20/09).
   - Etiqueta de la técnica de la compuerta G2 que muestra la ayuda 4
     (`ui/paginas/componer.py:~570`), calculada con partidas `DEMO-`/`SIM-` en vez de solo datos
     reales.
-  - El destajo no tiene `AppTest` que lo teclee y guarde por la pantalla: solo se ejercita por
-    precarga de lectura (`test_teclear_el_codigo_de_una_partida_guardada_precarga_sus_tres_tablas`).
+  - El destajo se ejerce por precarga de lectura (`test_teclear_el_codigo_de_una_partida_guardada_precarga_sus_tres_tablas`)
+    y en `test_editar_una_cantidad_y_guardar_reemplaza_la_composicion` (`tests/unit/test_ui_componer.py`),
+    que guarda `DEMO-01-INST` por la pantalla; esa partida tiene una línea de destajo cuya modalidad
+    se verifica tras guardar. Lo que falta es un `AppTest` que teclee una fila de destajo nueva.
+  - Puntos menores de usabilidad del UC‑11, diferidos por la compuerta de revisión:
+    - la precarga no rellena el encabezado (descripción ni unidad), ni las condiciones del rendimiento;
+    - si la partida existente no tiene precio en la lista actual (`CatalogoIncompleto`), no se precarga nada;
+    - al pasar de un código existente a uno nuevo, las filas anteriores quedan en las tablas (útil como «copiar una partida», pero no documentado en el guion);
+    - `cargar_composicion` aún acepta una composición vacía para una partida NUEVA;
+    - la precarga precifica con la lista de hoy;
+    - la comparación de descripción es estricta salvo por espacios al borde.
   - Ninguna prueba corre contra un archivo de esquema antiguo real; la de la migración
     (hallazgo 3, y su fase roja de este encargo) solo simula la columna en `NULL`.
   - Herencia de precios en los tres sembradores restantes, sin corregir (hallazgo 6).
   - El mensaje del commit `b32926b` dice «cinco fases»; `PLAN_PROTOTIPO.md` tiene seis, P0 a P5.
+
+Re-revisión acotada de las correcciones (a478cfc..e150d37): arquitecto y pruebas y calidad — se puede fusionar; 690 pruebas en verde, `data/apu.db` intacto. Condición: empujar y confirmar la CI sobre el nuevo HEAD antes de fusionar. Tras la fusión, la primera sesión es U1.1 de `PLAN_UI.md` (salvaguarda de aislamiento).
 
 **D9 sigue pendiente del aval del tutor** (sección «Pendientes del tutor»).
