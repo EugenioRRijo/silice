@@ -163,7 +163,7 @@ archivo en la corrida registrada (total de la suite: 392).
 | RF‑38 | `tests/unit/test_ui_caso.py` (una sola ruta por defecto); `tests/unit/test_ui_app.py` (ninguna página salvo el Inicio pide la ruta) | — | pendiente (U1) |
 | RF‑39 | `tests/unit/test_ui_caso.py`; `tests/unit/test_ui_app.py` (indicador en las diez pantallas) | — | pendiente (U1) |
 | RF‑40 | `tests/unit/test_ui_inicio.py`; `tests/unit/test_ui_caso.py` (sin flag de reinicio en `ui/`) | — | pendiente (U1) |
-| RF‑41 | `tests/unit/test_ui_recorridos.py`; `tests/unit/test_ui_app.py` (botón «Siguiente») | — | pendiente (U1) |
+| RF‑41 | `tests/unit/test_ui_recorridos.py` (`paso_siguiente` y `Recorrido.posicion`); `tests/unit/test_ui_app.py` (botón «Siguiente») | — | pendiente (U1) |
 | RF‑42 | `tests/unit/test_ui_app.py` (secciones, orden, subtítulo de caso de uso) | — | pendiente (U1) |
 | RF‑43 | `tests/unit/test_ui_app.py`; `tests/unit/test_ui_recorridos.py` | — | pendiente (U1) |
 
