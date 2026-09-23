@@ -9,16 +9,20 @@
 **Architecture:** C1 corrige el núcleo sin tocar los contratos (`git diff --stat main -- core/contracts` vacío de principio a fin).
 
 - **Fuera de `core/`.** La salvaguarda vive en `tests/conftest.py` y la guardia en `tests/unit/test_arquitectura.py`. El guion manual se corrige y queda vigilado por una prueba que lo lee como texto.
-- **`core/verification/`.** El evaluador rechaza parámetros que no son `Decimal` (INV‑003). Una regla que no se puede evaluar pasa a informarse como INFO «regla no evaluable», y R7 se declara no aplicable cuando no hay plan (INV‑012).
+- **`core/verification/`.** El evaluador rechaza parámetros que no son `Decimal` (INV‑003). Una regla a la que le falta un dato (parámetro ausente en R1 y R5, referencia no resuelta en R5) pasa a informarse como INFO «regla no evaluable»; una expresión inválida (sintaxis, valor que no es `Decimal`, desborde) sigue siendo ERROR. R2 y R7 se declaran «no aplicables» como INFO cuando no hay plan (INV‑012).
 - **`core/catalog/`.** Queda una sola fórmula de variación (INV‑004) y una sola puerta de registro de rendimientos (INV‑005).
 - **`core/budget/`.**
-  - `elaborar` pasa a ser el único punto del protocolo «presupuesto valorado → plan → curva → auditoría»: acepta `plan=plan_secuencial` (INV‑069).
-  - Un ítem sin partida queda pendiente y el informe lo declara, sin tocar ningún contrato (INV‑013).
-  - Módulo nuevo `diferencial.py` para RF‑20 (INV‑011).
-  - `descartar_version` para UC‑02 7a (INV‑015).
+  - `elaborar` pasa a ser el único punto del protocolo «presupuesto valorado → plan → curva → auditoría»: acepta `plan=plan_secuencial` (INV‑069), y `actualizar_precios` acepta el mismo tipo de plan.
+  - Un ítem sin partida queda pendiente y el informe lo declara, sin tocar ningún contrato (INV‑013). `actualizar_precios` y `generar_escenario` conservan su precondición estricta: exigen composición para todo renglón.
+- **Documentos.** RF‑20 se declara «no implementado; declarado en limitaciones» en `docs/ERS.md` y `docs/plan_pruebas.md` (INV‑011).
 - **Llamadores.** Los cinco llamadores del protocolo en `ui/`, `api/` y `scripts/` se migran en commits separados.
-- **Pruebas.** Las fixtures ganan nombres, sin cambiar ningún valor de la línea base (INV‑008, INV‑009). Se agregan las pruebas que faltaban (INV‑011, INV‑014, INV‑015).
+- **Pruebas.** Las fixtures ganan nombres, sin cambiar ningún valor de la línea base (INV‑008, INV‑009). Se agregan las pruebas que faltaban (INV‑011, INV‑014, INV‑015 2b) y una prueba permanente de la salvaguarda.
 - **Contratos.** INV‑001, INV‑002 e INV‑006 se resuelven con expediente, aval pendiente del tutor y el estado «aceptado por decisión de arquitectura registrada».
+
+**Decisiones de Eugenio antes de ejecutar (2026‑09‑23).** Mandan sobre el resto del plan y sobre las dos revisiones (`.superpowers/sdd/plan-c1/arq.md` y `qa.md`), que este plan ya incorpora.
+
+1. **UC‑02 7a (descartar una versión) sale de C1.** En C1, INV‑015 solo agrega la prueba de UC‑02 2b. El flujo 7a (función y botón, fiel a la ERS «se marca como descartada», y que nunca descarte una versión que no sea la última) queda como subtarea de C3 en la fila de INV‑015 del inventario (Tarea 13, paso 2). La ERS **no** se enmienda para ajustarla al código.
+2. **RF‑20 no se implementa.** Por la corrección de INV‑011 aprobada en GC0, RF‑20 se declara «no implementado». C1 escribe las pruebas de RF‑19 y de los pasos de UC‑04 que existen, y corrige el «verde» falso de RF‑20 en `docs/ERS.md` y `docs/plan_pruebas.md` a «no implementado; declarado en limitaciones». RF‑20 entra en la lista de limitaciones del inventario, §4 (c). Con eso INV‑011 se cierra en C1 (Tarea 12).
 
 **Tech Stack:** Python 3.13 · SQLAlchemy 2 · pytest (`-W error --strict-markers`) · ruff · uv · Streamlit 1.62 (`AppTest`) · FastAPI (`TestClient`) · Markdown
 
@@ -54,23 +58,22 @@
 - **Commits** en Conventional Commits, en español y **sin tildes en el asunto**. Terminan con `Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>`.
 - **Alcance congelado** (spec §2): solo correcciones que cierran un hallazgo y apuntan a un RF, RNF, contrato o documento existente. Toda duda se registra en la bitácora y la decide Eugenio en GC1.
 - **Regla de reparto** (spec §2): desde C1, por cada sesión de código hay al menos una de redacción (fase Red). Se anota en la bitácora, fuera de este plan.
-- **Convención de los textos.** Docstrings y comentarios siguen la del archivo que se edita: con tildes en `core/` y en `tests/fixtures/`; sin tildes donde el archivo no las usa (`ui/`, `scripts/seed_demo.py`, cuerpos de commit).
+- **Convención de los textos.** Docstrings y comentarios siguen la del archivo que se edita: con tildes en `core/`, en `tests/fixtures/`, en `tests/conftest.py` y en `ui/paginas/elaborar.py`; sin tildes donde el archivo o el bloque no las usa (el comentario de `ui/paginas/componer.py`, `scripts/seed_demo.py`, `scripts/generar_resultados_ml.py`, cuerpos de commit).
 - **Push y PR solo con permiso expreso de Eugenio.**
 
 ## Review Focus
 
-1. **El veredicto `cumple` cambia en dos casos.**
-   - INV‑012: una regla inevaluable pasa de ERROR a INFO, así que un presupuesto que antes daba NO CUMPLE solo por eso ahora CUMPLE.
+1. **El veredicto `cumple` y los conteos de hallazgos cambian.**
+   - INV‑012: solo una regla a la que le falta un dato (parámetro ausente, referencia no resuelta de R5) pasa de ERROR a INFO, así que un presupuesto que antes daba NO CUMPLE solo por eso ahora CUMPLE. Una expresión inválida (sintaxis, `float`, desborde) sigue siendo ERROR.
+   - INV‑012, efecto en los conteos: **todo presupuesto sin curva gana un INFO de R7** («R7 no aplicable»), además del INFO de R2 que ya tenía. Cambian los números de hallazgos que se muestran sin filtrar por severidad: la API (`api/rutas/presupuestos.py:269`, escenarios), la interfaz, `scripts/seed_industrial.py:261`, `scripts/seed_sistemas.py:254` y el libro de Excel. El veredicto no cambia porque es INFO. La Tarea 8, paso 5, lo mide antes y después.
+   - Ese INFO de R7 no lleva `origen_ids`: `tests/integration/test_auditoria_7_de_7.py:63` lo exime junto a R2 (Tarea 8).
    - INV‑013: un ítem pendiente es un ERROR `PENDIENTE`.
-   - Se espera que la línea base (1 586,61) y el 7 de 7 no se muevan, y que la demostración siga imprimiendo `Auditoria: 3 hallazgo(s), CUMPLE`. Se comprueba en las Tareas 8, 11 y 14.
+   - Se espera que la línea base (1 586,61) y el 7 de 7 no se muevan, y que la demostración siga imprimiendo `Auditoria: 3 hallazgo(s), CUMPLE` (tiene plan, así que R7 no entra en la rama «no aplicable»). Se comprueba en las Tareas 8, 11 y 14.
 2. **`elaborar(plan=...)` acepta una secuencia o una función.**
-   - El discriminante es `callable(plan)`.
+   - El discriminante es `callable(plan)`. `actualizar_precios(plan=...)` acepta lo mismo.
    - Los cinco llamadores migrados deben producir exactamente lo mismo que antes: total de la API, libro de Excel, salida de `seed_demo.py` y `docs/resultados_ml.md` sin diferencias (Tarea 11).
-3. **La salvaguarda tiene un límite conocido.** Compara existencia y `mtime_ns` al abrir y al cerrar la sesión. Una prueba que *cree y borre* `data/apu.db` dentro de la misma sesión, cuando no existía, no se detecta. OneDrive podría tocar el `mtime` de una base existente y dar un falso positivo. El revisor de pruebas debe ponderar ambos casos (Tarea 1).
-4. **`descartar_version` borra en cascada.**
-   - Deben desaparecer los renglones, la curva, los hallazgos y los `item_computo` de la versión descartada.
-   - Deben conservarse `CambioPrecio`, `IncidenciaCambio` y la lista nueva, con `PRAGMA foreign_keys=ON`.
-   - La versión anterior debe seguir reconstruyéndose (Tarea 13).
+3. **La salvaguarda tiene un límite conocido.** Compara existencia, `mtime_ns` y tamaño al abrir y al cerrar la sesión, y una prueba permanente con `pytester` la observa en verde y en rojo sobre una ruta temporal (Tarea 1). Sigue sin detectarse una prueba que *cree y borre* `data/apu.db` dentro de la misma sesión cuando no existía. OneDrive podría tocar el `mtime` de una base existente y dar un falso positivo. No se adopta la variante autouse por función: la bisección por archivo del paso 5 ya localiza al culpable. El revisor de pruebas debe ponderar los tres puntos.
+4. **INV‑013 no relaja a los otros dos llamadores del núcleo.** `actualizar_precios` y `generar_escenario` siguen lanzando `ValueError` ante un renglón sin composición, antes de elaborar y de guardar; cada una tiene su prueba (Tarea 11). `scripts/medir_rnf03.py:117` pide las composiciones al catálogo para los mismos códigos que elabora, así que no puede generar pendientes y no cambia.
 5. **El factor exacto de la tubería (INV‑009) cambia el esperado de R5.** Pasa de 7,8856 a 7,88542… m³. R5 debe seguir marcando el hallazgo 6 del 7 de 7, `test_r5_no_reporta_nada_si_el_balance_se_cumple` debe seguir dentro de tolerancia y ninguna otra prueba puede fijar el valor viejo (Tarea 5).
 
 ---
@@ -80,21 +83,21 @@
 | Archivo | Tarea | Responsabilidad |
 |---|---|---|
 | `PLAN_CIERRE.md`, este documento, `docs/bitacora/2026-09-23-cierre.md` | 0, 14 | Enlace al plan; sección C1 y compuerta GC1 de la bitácora |
-| `tests/conftest.py` | 1 | Salvaguarda de sesión de `data/apu.db` |
+| `tests/conftest.py`, `tests/unit/test_salvaguarda.py` (nuevo) | 1 | Salvaguarda de sesión de `data/apu.db` y su prueba permanente con `pytester` |
 | `tests/unit/test_arquitectura.py`, `tests/unit/test_meta_asistente.py` | 1 | INV‑010: la guardia cubre `scripts` y `tests` |
-| `docs/auditoria/2026-09-inventario.md` | 1, 3, 11, 12, 13, 14 | Revisión H2; filas nuevas; estados |
+| `docs/auditoria/2026-09-inventario.md` | 1, 3, 11, 12, 13, 14 | Revisión H2; filas nuevas; subtarea C3 de INV‑015; RF‑20 en §4 (c); estados |
 | `docs/guion_prueba_arenia.md`, `tests/unit/test_guion_prueba_arenia.py` (nuevo) | 2 | INV‑065 |
 | `docs/bitacora/2026-09-23-C1-expedientes.md` (nuevo), `docs/tesis/revisiones/2026-09-paquete-tutor.md` | 3 | Expedientes; INV‑001, 002 y 006 al tutor |
 | `pyproject.toml`, `tests/unit/test_costing.py`, `CLAUDE.md` | 4 | INV‑007 |
 | `tests/fixtures/actualizacion_uc02.py` (nuevo), `tests/fixtures/computo_civil.py` (nuevo), `tests/fixtures/tarifas_sistemas.py`, `tests/fixtures/presupuesto_auditado.py` y sus consumidores | 5 | INV‑009 |
 | `tests/fixtures/apu_linea_base.py` y los consumidores citados por INV‑008 | 6 | INV‑008 |
 | `core/verification/expresiones.py`, `tests/unit/test_verification.py`, `tests/unit/test_budget.py` | 7 | INV‑003 |
-| `core/verification/reglas.py`, `tests/unit/test_verification.py` | 8 | INV‑012 |
+| `core/verification/reglas.py`, `tests/unit/test_verification.py`, `tests/integration/test_auditoria_7_de_7.py` | 8 | INV‑012 |
 | `core/catalog/precios.py`, `core/budget/actualizacion.py`, `tests/unit/test_variacion_precio.py` (nuevo), `tests/integration/test_actualizacion_precios.py` | 9 | INV‑004 |
 | `core/catalog/rendimientos.py`, `core/catalog/repositorio.py`, `tests/integration/test_rendimientos.py` | 10 | INV‑005 |
-| `core/budget/presupuesto.py`, `core/budget/__init__.py`, `tests/unit/test_budget.py`; `ui/paginas/elaborar.py`, `ui/paginas/componer.py`; `api/rutas/presupuestos.py`; `scripts/seed_demo.py`, `scripts/generar_resultados_ml.py` | 11 | INV‑013 + INV‑069 (núcleo, y tres commits de llamadores) |
-| `core/budget/diferencial.py` (nuevo), `core/budget/__init__.py`, `tests/unit/test_budget.py`, `tests/unit/test_reglas_civil.py`, `tests/unit/test_recalculo_uc04.py` (nuevo) | 12 | INV‑011 |
-| `core/budget/actualizacion.py`, `core/budget/__init__.py`, `tests/integration/test_actualizacion_precios.py` | 13 | INV‑014 + INV‑015 |
+| `core/budget/presupuesto.py`, `core/budget/__init__.py`, `core/budget/actualizacion.py`, `core/budget/escenarios.py`, `tests/unit/test_budget.py`, `tests/unit/test_escenarios.py`, `tests/integration/test_actualizacion_precios.py`; `ui/paginas/elaborar.py`, `ui/paginas/componer.py`; `api/rutas/presupuestos.py`; `scripts/seed_demo.py`, `scripts/generar_resultados_ml.py` | 11 | INV‑013 + INV‑069 (núcleo, y tres commits de llamadores) |
+| `tests/unit/test_reglas_civil.py`, `tests/unit/test_recalculo_uc04.py` (nuevo), `docs/ERS.md:466`, `docs/plan_pruebas.md:147`, `docs/auditoria/2026-09-inventario.md` | 12 | INV‑011 (RF‑20 declarado no implementado) |
+| `tests/integration/test_actualizacion_precios.py`, `docs/auditoria/2026-09-inventario.md` | 13 | INV‑014 + INV‑015 (2b; 7a a C3) |
 | — | 14 | Compuerta GC1 |
 
 ---
@@ -102,17 +105,21 @@
 ### Task 0: Punto de partida
 
 **Files:**
-- Create: `docs/superpowers/plans/2026-09-23-cierre-c1-nucleo.md` (este documento)
+- Ya en la rama: `docs/superpowers/plans/2026-09-23-cierre-c1-nucleo.md` (este documento; `a62daef` y la corrección tras la revisión)
 - Modify: `PLAN_CIERRE.md:11`, `docs/bitacora/2026-09-23-cierre.md` (sección nueva al final)
 
 **Interfaces:**
-- Consumes: `main` en `384a7fa`, con el inventario aprobado en GC0.
+- Consumes: `main` en `384a7fa`, con el inventario aprobado en GC0, más los dos commits del plan.
 - Produces: el recuento de pruebas de partida (`N0`), que citan las Tareas 1 y 14.
 
 - [ ] **Step 1: Comprobar rama y base**
 
-Run: `git rev-parse --abbrev-ref HEAD && git merge-base --is-ancestor main HEAD && echo base-ok && git log --oneline -1 && ls data/*.db 2>/dev/null || echo "sin bases locales"`
-Expected: `inc/cierre-C1`, luego `base-ok`, luego `384a7fa merge: cierre fase c0 inventario y paquete para el tutor (#10)` y `sin bases locales`. En este worktree `data/apu.db` **no existe**, y la Tarea 1, paso 5 depende de ese dato.
+Run: `git rev-parse --abbrev-ref HEAD && git merge-base --is-ancestor main HEAD && echo base-ok && git log --oneline -3 && git status --short && (ls data/*.db 2>/dev/null || echo "sin bases locales")`
+Expected:
+- `inc/cierre-C1`, luego `base-ok`.
+- Los tres commits, del más reciente al más antiguo: `docs(plan): plan de c1 corregido tras la revision y las decisiones de eugenio`, `a62daef docs(plan): plan detallado de la fase c1 del cierre` y `384a7fa merge: cierre fase c0 inventario y paquete para el tutor (#10)`. El plan ya está confirmado; esta tarea no lo vuelve a agregar.
+- `git status --short` vacío.
+- La lista de bases locales, o `sin bases locales`. Se anota en la bitácora (paso 4) si `data/apu.db` existe. Ningún paso de C1 la crea, la borra ni la modifica, exista o no: la salvaguarda se prueba sobre rutas temporales (Tarea 1).
 
 - [ ] **Step 2: Estado de partida en verde**
 
@@ -138,16 +145,20 @@ Expected: verde y ruff limpio. Anotar el número de pruebas (`N0`); en C0 fueron
 [docs/superpowers/plans/2026-09-23-cierre-c1-nucleo.md](../superpowers/plans/2026-09-23-cierre-c1-nucleo.md).
 
 **Estado de partida:** `uv run pytest -W error --strict-markers -q` → N0 pruebas, 0 fallos, 0
-omitidas; `ruff check .` limpio.
+omitidas; `ruff check .` limpio. `data/apu.db` al empezar: EXISTE_O_NO.
+
+**Decisiones de Eugenio antes de ejecutar (2026‑09‑23):** UC‑02 7a sale de C1 y queda como
+subtarea de C3 en la fila de INV‑015; RF‑20 no se implementa y se declara «no implementado;
+declarado en limitaciones» (ver el plan, al principio).
 ```
 
-(Sustituir `N0` por el número del paso 2.)
+(Sustituir `N0` por el número del paso 2, y `EXISTE_O_NO` por «existe» o «no existe» según el paso 1.)
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add docs/superpowers/plans/2026-09-23-cierre-c1-nucleo.md PLAN_CIERRE.md docs/bitacora/2026-09-23-cierre.md
-git commit -m "docs(plan): plan detallado de la fase c1 del cierre" -m "Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>"
+git add PLAN_CIERRE.md docs/bitacora/2026-09-23-cierre.md
+git commit -m "docs(plan): enlaza el plan de c1 y abre su seccion en la bitacora" -m "Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>"
 ```
 
 ---
@@ -156,6 +167,7 @@ git commit -m "docs(plan): plan detallado de la fase c1 del cierre" -m "Co-Autho
 
 **Files:**
 - Modify: `tests/conftest.py` (archivo completo abajo)
+- Create: `tests/unit/test_salvaguarda.py`
 - Modify: `tests/unit/test_arquitectura.py:1-8,17` y prueba nueva al final
 - Modify: `tests/unit/test_meta_asistente.py:190-191`
 - Modify: `docs/auditoria/2026-09-inventario.md` (§1, fila «Universo excluido» de `ci.yml`/`pyproject.toml`; filas nuevas si la revisión H2 halla algo)
@@ -164,9 +176,98 @@ git commit -m "docs(plan): plan detallado de la fase c1 del cierre" -m "Co-Autho
 - Consumes: nada.
 - Produces:
   - La fixture de sesión autouse `_base_real_intacta` y la constante `RUTA_BASE_REAL` en `tests/conftest.py`, que todas las tareas siguientes dan por activas.
+  - `huella(ruta)` y `vigilar_base(ruta)` en `tests/conftest.py`: la lógica de la salvaguarda separada de la fixture, para probarla sobre una ruta temporal.
+  - El complemento `pytester` activo en la suite (`pytest_plugins` de `tests/conftest.py`).
   - `PAQUETES_FUERA_DEL_NUCLEO = ("adapters", "ml", "ui", "api", "scripts", "tests")`.
 
-- [ ] **Step 1: Escribir la salvaguarda.** Es el código de la Tarea 6, paso 3, del plan de UI, que la spec §5 trae a C1. Reemplazar `tests/conftest.py` completo por:
+**Ningún paso de esta tarea toca `data/apu.db`.** La salvaguarda se observa en rojo y en verde con una prueba permanente que corre sesiones de pytest aparte (`pytester`) sobre un archivo de `tmp_path`. No hay experimento desechable ni `rm` de la base real: en el checkout principal esa base existe y es de trabajo.
+
+- [ ] **Step 1: Escribir la prueba permanente de la salvaguarda (rojo).** Crear `tests/unit/test_salvaguarda.py`:
+
+```python
+"""La salvaguarda de `data/apu.db` (`tests/conftest.py`) observada en verde y en rojo.
+
+Cada caso corre una sesión de pytest aparte (`pytester`) con la misma lógica de la fixture
+(`vigilar_base`), pero apuntando a un archivo de `tmp_path`: la base real no se toca ni siquiera
+para demostrar que la salvaguarda muerde (INV‑065; hallazgo Q1 de la revisión del plan de C1).
+
+Los tres casos: una base intacta deja pasar la sesión; una base que una prueba crea la hace
+fallar; una base existente que una prueba modifica la hace fallar aunque conserve el `mtime`,
+porque el tamaño también entra en la huella.
+"""
+
+from __future__ import annotations
+
+CONFTEST_INTERNO = '''
+from pathlib import Path
+
+import pytest
+
+from tests.conftest import vigilar_base
+
+RUTA = Path({ruta!r})
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _base_intacta():
+    yield from vigilar_base(RUTA)
+'''
+
+
+def _correr(pytester, ruta, cuerpo):
+    """Una sesión con la salvaguarda sobre `ruta` y una sola prueba que ejecuta `cuerpo`."""
+    pytester.makeconftest(CONFTEST_INTERNO.format(ruta=str(ruta)))
+    pytester.makepyfile(
+        test_interna=(
+            "import os\n"
+            "from pathlib import Path\n\n"
+            f"RUTA = Path({str(ruta)!r})\n\n\n"
+            "def test_interna():\n"
+            f"    {cuerpo}\n"
+        )
+    )
+    return pytester.runpytest("-p", "no:cacheprovider")
+
+
+def test_una_base_intacta_deja_pasar_la_sesion(pytester, tmp_path):
+    ruta = tmp_path / "apu.db"
+    ruta.write_bytes(b"base")
+
+    resultado = _correr(pytester, ruta, "assert RUTA.read_bytes() == b'base'")
+
+    resultado.assert_outcomes(passed=1)
+
+
+def test_una_base_creada_por_una_prueba_hace_fallar_la_sesion(pytester, tmp_path):
+    ruta = tmp_path / "apu.db"
+
+    resultado = _correr(pytester, ruta, "RUTA.touch()")
+
+    resultado.assert_outcomes(passed=1, errors=1)
+    resultado.stdout.fnmatch_lines(["*la suite modifico*antes (False, None, None)*"])
+
+
+def test_una_base_modificada_hace_fallar_la_sesion_aunque_conserve_el_mtime(pytester, tmp_path):
+    """El tamaño entra en la huella: una escritura que restaura el `mtime`, o que cae en la misma
+    marca de tiempo de un sistema de archivos de baja resolución, sigue detectándose."""
+    ruta = tmp_path / "apu.db"
+    ruta.write_bytes(b"base")
+    marca = ruta.stat().st_mtime_ns
+
+    resultado = _correr(
+        pytester,
+        ruta,
+        f"RUTA.write_bytes(b'base modificada'); os.utime(RUTA, ns=({marca}, {marca}))",
+    )
+
+    resultado.assert_outcomes(passed=1, errors=1)
+    resultado.stdout.fnmatch_lines(["*la suite modifico*"])
+```
+
+Run: `uv run pytest tests/unit/test_salvaguarda.py -q -W error --strict-markers -p no:cacheprovider`
+Expected: `3 errors`, con `fixture 'pytester' not found`: el complemento todavía no está activo y `vigilar_base` no existe.
+
+- [ ] **Step 2: Escribir la salvaguarda.** Es el código de la Tarea 6, paso 3, del plan de UI, que la spec §5 trae a C1, con dos cambios de la revisión: el tamaño entra en la huella y la lógica sale de la fixture a `vigilar_base`, para que la prueba del paso 1 ejercite exactamente el mismo código. Reemplazar `tests/conftest.py` completo por:
 
 ```python
 """Fixtures compartidas de la suite.
@@ -174,37 +275,56 @@ git commit -m "docs(plan): plan detallado de la fase c1 del cierre" -m "Co-Autho
 Los datos viven en tests/fixtures/apu_linea_base.py (única copia, principio DRY).
 """
 
+from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
 
 from tests.fixtures import apu_linea_base as linea_base
 
+#: `pytester` corre sesiones de pytest aparte: con él, `tests/unit/test_salvaguarda.py` observa la
+#: salvaguarda en rojo sin tocar la base real.
+pytest_plugins = ["pytester"]
+
 #: La base de trabajo del repositorio. Ninguna prueba puede crearla, borrarla ni escribir en ella:
-#: el sprint del prototipo dejo `UI-01-TUB` dentro por una prueba de interfaz mal desviada
-#: (hallazgo 5 de su bitacora de cierre), y una convencion escrita en docstrings no lo impidio.
+#: el sprint del prototipo dejó `UI-01-TUB` dentro por una prueba de interfaz mal desviada
+#: (hallazgo 5 de su bitácora de cierre), y una convención escrita en docstrings no lo impidió.
 RUTA_BASE_REAL = Path(__file__).resolve().parents[1] / "data" / "apu.db"
 
 
-def _huella(ruta: Path) -> tuple[bool, int | None]:
-    """Existencia y `mtime` en nanosegundos: cualquier escritura de SQLite cambia el segundo."""
+def huella(ruta: Path) -> tuple[bool, int | None, int | None]:
+    """Existencia, `mtime` en nanosegundos y tamaño del archivo.
+
+    El tamaño cubre la escritura que no mueve el `mtime` (una marca restaurada o un sistema de
+    archivos de baja resolución).
+    """
     if not ruta.exists():
-        return (False, None)
-    return (True, ruta.stat().st_mtime_ns)
+        return (False, None, None)
+    estado = ruta.stat()
+    return (True, estado.st_mtime_ns, estado.st_size)
+
+
+def vigilar_base(ruta: Path) -> Iterator[None]:
+    """Cuerpo de la salvaguarda: falla si la huella de `ruta` cambió entre la apertura y el cierre.
+
+    Separado de la fixture para que `tests/unit/test_salvaguarda.py` lo ejercite sobre una ruta
+    temporal.
+    """
+    antes = huella(ruta)
+    yield
+    despues = huella(ruta)
+    if despues != antes:
+        pytest.fail(
+            f"la suite modifico {ruta} (antes {antes}, despues {despues}): alguna prueba "
+            "no desvio su base a tmp_path",
+            pytrace=False,
+        )
 
 
 @pytest.fixture(scope="session", autouse=True)
 def _base_real_intacta():
-    """Falla la sesion entera si alguna prueba creo, borro o modifico `data/apu.db`."""
-    antes = _huella(RUTA_BASE_REAL)
-    yield
-    despues = _huella(RUTA_BASE_REAL)
-    if despues != antes:
-        pytest.fail(
-            f"la suite modifico {RUTA_BASE_REAL} (antes {antes}, despues {despues}): alguna prueba "
-            "no desvio su base a tmp_path",
-            pytrace=False,
-        )
+    """Falla la sesión entera si alguna prueba creó, borró o modificó `data/apu.db`."""
+    yield from vigilar_base(RUTA_BASE_REAL)
 
 
 @pytest.fixture(scope="session")
@@ -227,39 +347,25 @@ def curva_auditada():
     return linea_base.CURVA_AUDITADA
 ```
 
-- [ ] **Step 2: Ver la salvaguarda en rojo con una prueba desechable.** Crear `tests/unit/test_zz_salvaguarda_desechable.py`:
+- [ ] **Step 3: La prueba de la salvaguarda en verde, y comprobar que el tamaño muerde**
 
-```python
-from tests.conftest import RUTA_BASE_REAL
-
-
-def test_escribe_en_la_base_real():
-    RUTA_BASE_REAL.parent.mkdir(parents=True, exist_ok=True)
-    RUTA_BASE_REAL.touch()
-```
-
-Run: `uv run pytest tests/unit/test_zz_salvaguarda_desechable.py -q -p no:cacheprovider`
-Expected: `1 passed, 1 error`, con el mensaje «la suite modifico … data/apu.db (antes (False, None), despues (True, …))».
-
-- [ ] **Step 3: Deshacer el experimento.** `data/apu.db` no existía (Tarea 0, paso 1), así que se borran los dos archivos.
-
-Run: `rm tests/unit/test_zz_salvaguarda_desechable.py data/apu.db && git status --short`
-Expected: solo aparece `M tests/conftest.py`.
+Run: `uv run pytest tests/unit/test_salvaguarda.py -q -W error --strict-markers -p no:cacheprovider && git status --short`
+Expected: `3 passed`, y `git status` muestra solo `M tests/conftest.py` y `?? tests/unit/test_salvaguarda.py`. **Comprobar que muerde:** en `huella`, cambiar temporalmente `estado.st_size` por `None` y volver a correr. Debe fallar solo `test_una_base_modificada_hace_fallar_la_sesion_aunque_conserve_el_mtime` (`1 failed, 2 passed`). Restaurar la línea.
 
 - [ ] **Step 4: La suite completa pasa con la salvaguarda**
 
 Run: `uv run pytest -W error --strict-markers -q`
-Expected: verde, `N0` pruebas. **Si falla por la salvaguarda**, es un hallazgo real: una prueba existente escribe en `data/apu.db`.
+Expected: verde, `N0 + 3` pruebas. **Si falla por la salvaguarda**, es un hallazgo real: una prueba existente escribe en `data/apu.db`.
 - Se identifica bisecando por archivo (`uv run pytest <archivo> -q -p no:cacheprovider`).
 - Se corrige esa prueba para que use `tmp_path`.
 - Se registra como fila nueva del inventario, bloqueante según spec §4.
-- Nunca se relaja la salvaguarda.
+- Nunca se relaja la salvaguarda, y nunca se borra ni se restaura `data/apu.db` a mano para ponerla en verde: el estado de la base lo decide Eugenio.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add tests/conftest.py
-git commit -m "test: salvaguarda que falla la sesion si una prueba toca data/apu.db" -m "Tarea 6, paso 3, del plan de UI, movida al inicio de C1 por la spec de cierre (seccion 5). Observada en rojo con una prueba desechable y en verde con la suite completa." -m "Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>"
+git add tests/conftest.py tests/unit/test_salvaguarda.py
+git commit -m "test: salvaguarda que falla la sesion si una prueba toca data/apu.db" -m "Tarea 6, paso 3, del plan de UI, movida al inicio de C1 por la spec de cierre (seccion 5). La huella suma el tamano al mtime; una prueba permanente con pytester la observa en verde y en rojo sobre una ruta temporal, sin tocar la base real." -m "Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>"
 ```
 
 - [ ] **Step 6: INV‑010, comprobar primero quién depende del literal.**
@@ -363,7 +469,9 @@ git commit -m "docs(auditoria): revision de ci.yml y pyproject.toml por la capa 
 
 Lee `docs/guion_prueba_arenia.md` como texto y comprueba tres cosas:
 
-- toda orden de siembra lleva `--db` con una base propia;
+- toda orden de siembra lleva `--db` con una base propia **en la misma línea** que la orden: la
+  comprobación es línea a línea, así que una orden partida con `--db` en la línea siguiente cuenta
+  como orden sin base (el guion escribe cada orden en una sola línea);
 - la preparación anota y comprueba la base de trabajo;
 - la precondición de cada caso CP‑01…CP‑06 manda abrir la base de prueba en el campo
   **Archivo SQLite**, porque la aplicación vuelve a `data/apu.db` en cada recarga.
@@ -797,21 +905,39 @@ después, al comparar con la cantidad (`reglas.py:151`). Con la validación en e
 
 **Ratificar:** la desviación de la redacción literal.
 
-### B.2 INV-012: regla no evaluable, INFO y no ERROR; R7 no aplicable sin plan
+### B.2 INV-012: regla no evaluable por falta de datos, INFO; R2 y R7 no aplicables sin plan
 
-**Corrección.** Manda la ERS: RF‑23 y UC‑05 3a piden INFO «regla no evaluable», y UC‑05 2a pide
-declarar R7 no aplicable sin plan. R1 y R5 pasan de ERROR a INFO con el texto «regla no
-evaluable», y R7 sin curva emite INFO «R7 no aplicable». Regla y prueba cambian en el mismo commit;
-la ERS no cambia.
+**Corrección.** Manda la ERS: RF‑23 y UC‑05 3a piden INFO «regla no evaluable» cuando una regla
+no tiene los datos que necesita, y UC‑05 2a pide declarar R7 no aplicable sin plan. Se distingue
+el dato que **falta** del dato que **está mal**:
 
-**Alternativa descartada.** Cambiar la ERS a ERROR. Sería modificar un requisito esencial para
-ajustarlo al código.
+- INFO «regla no evaluable»: `ParametroFaltante` en R1 y en R5, y la referencia no resuelta del
+  balance de R5 (cita una partida que no está en el presupuesto).
+- Sigue siendo ERROR: `ExpresionInvalida` en R1 y R5, es decir, sintaxis no analizable, un
+  parámetro que no es `Decimal` (INV‑003) y el desborde aritmético. Es un dato erróneo, no uno
+  ausente, y un presupuesto con un dato erróneo no cumple.
+- R2 y R7 sin curva emiten INFO «no aplicable». R2 ya era INFO: solo cambia su texto.
 
-**Efecto.** Un presupuesto que era NO CUMPLE *solo* por una regla inevaluable pasa a CUMPLE. El
-presupuesto del 7 de 7 tiene curva y todas sus reglas son evaluables, así que no cambia; se
-comprueba en la Tarea 8.
+Regla y prueba cambian en el mismo commit; la ERS no cambia. Las pruebas de desborde
+(`tests/unit/test_verification.py:526,539`) no cambian, y la del `float` (Tarea 7) afirma
+severidad ≥ ERROR.
 
-**Ratificar:** la severidad INFO y su efecto sobre `cumple`.
+**Alternativas descartadas.**
+
+| Alternativa | Por qué no |
+|---|---|
+| Cambiar la ERS a ERROR | Sería modificar un requisito esencial para ajustarlo al código |
+| INFO para todo lo inevaluable, `ExpresionInvalida` incluida | Un `float`, una sintaxis rota o un desborde son datos erróneos: bajar a INFO dejaría CUMPLE un presupuesto con datos corruptos (revisión de arquitectura del plan, hallazgo 1) |
+| ADVERTENCIA para `ExpresionInvalida` | Admisible por la revisión; se prefiere ERROR porque no cambia ningún veredicto actual |
+
+**Efecto.** Un presupuesto que era NO CUMPLE *solo* por un parámetro o una referencia ausentes
+pasa a CUMPLE. Todo presupuesto sin curva gana un INFO de R7, así que los conteos de hallazgos sin
+filtrar suben en uno (API, interfaz, sembradores, Excel); ese INFO no lleva `origen_ids` y
+`tests/integration/test_auditoria_7_de_7.py:63` lo exime junto a R2. El presupuesto del 7 de 7
+tiene curva y todas sus reglas son evaluables, así que no cambia; se comprueba en la Tarea 8.
+
+**Ratificar:** la severidad INFO solo para lo ausente, ERROR para lo inválido, y su efecto sobre
+`cumple` y sobre los conteos.
 
 ### B.3 INV-004: dos fórmulas de variación que difieren con base nula
 
@@ -845,6 +971,14 @@ entran al presupuesto ni al total, van en `ResultadoElaboracion.pendientes` (el 
 código `PENDIENTE` y severidad ERROR. `Presupuesto` no cambia (`core/contracts/presupuesto.py:41-46`).
 `generar_presupuesto` sigue exigiendo composición: es el paso intermedio (INV‑037, a limitaciones).
 
+**Precondición estricta que se conserva.** `actualizar_precios` (`core/budget/actualizacion.py:140`)
+y `generar_escenario` (`core/budget/escenarios.py:91`) llaman a `elaborar` y hoy dependen de que
+`elaborar` lance `ValueError` ante un renglón sin composición. Revalorar o simular un presupuesto
+no puede perder renglones en silencio, así que ambas exigen composición para todo renglón **antes**
+de elaborar y de guardar, con `exigir_composiciones`, la misma comprobación de
+`generar_presupuesto`. Cada una tiene su prueba. `scripts/medir_rnf03.py:117` no cambia: pide las
+composiciones al catálogo para los mismos códigos que elabora.
+
 **Fuera de C1.** La propuesta de las tres partidas similares (UC‑03) es de `ui/`. La interfaz y la
 API piden hoy las composiciones al catálogo, que lanza `KeyError` ante una partida desconocida, así
 que 3a no se alcanza de punta a punta: se registra como hallazgo nuevo para C2 y C3.
@@ -857,7 +991,10 @@ que 3a no se alcanza de punta a punta: se registra como hallazgo nuevo para C2 y
 (`plan=plan_secuencial`), y absorbe el borrador. Los llamadores migran en commits separados:
 `ui/paginas/elaborar.py`, `ui/paginas/componer.py`, `api/rutas/presupuestos.py`,
 `scripts/seed_demo.py` y un quinto sitio que el inventario no citaba,
-`scripts/generar_resultados_ml.py:158-167`.
+`scripts/generar_resultados_ml.py:158-167`. `actualizar_precios(plan=...)` pasa a aceptar el mismo
+tipo (`Sequence[PeriodoPlan] | GeneradorPlan | None`), porque delega en `elaborar`; así
+`scripts/generar_resultados_ml.py:191` pasa `plan=plan_secuencial` en vez de calcularlo sobre la
+versión anterior.
 
 **Alternativa descartada.** Una función nueva `elaborar_con_plan_secuencial`: sería un segundo punto
 de entrada para el mismo hecho.
@@ -865,34 +1002,50 @@ de entrada para el mismo hecho.
 **Ratificar:** que el punto único sea `elaborar` con `plan` invocable, y la inclusión del quinto
 llamador.
 
-### B.7 INV-011: RF‑20 sin implementación
+### B.7 INV-011: RF‑20 sin implementación, declarado en limitaciones
 
 **Hallazgo al planificar.** RF‑19 tiene capacidad (las reglas paramétricas de `adapters/civil/reglas.py`
 se reevalúan) y solo le falta la prueba. RF‑20 **no tiene implementación**: `_comparar`
 (`core/budget/actualizacion.py:267-303`) es privado, supone los mismos renglones y no da el
-diferencial de cantidad.
+diferencial de cantidad. Aun así, `docs/ERS.md:466` y `docs/plan_pruebas.md:147` lo presentan
+como cubierto por una prueba de `tests/unit/test_budget.py` que no existe, y el plan de pruebas lo
+marca «verde».
 
-**Corrección.** Módulo nuevo `core/budget/diferencial.py` (`diferencial_por_partida`), que
-implementa el RF existente. Por la spec §2 es corrección, no capacidad nueva.
+**Corrección (decisión de Eugenio del 2026‑09‑23).** La corrección de INV‑011 aprobada en GC0 dice
+«si RF‑20 no tiene implementación, declararlo sin cumplir». C1 no implementa `diferencial.py`, que
+sería el tercer comparador del núcleo (junto a `actualizacion._comparar` y
+`escenarios.comparar_por_partida`) y no tendría llamador en `ui/` ni en `api/`. En su lugar:
+
+- escribe la prueba de RF‑19 y la de los pasos 1 a 4 de UC‑04, que sí existen;
+- corrige el «verde» falso de RF‑20 en `docs/ERS.md` y `docs/plan_pruebas.md` a «no implementado;
+  declarado en limitaciones», sin cambiar el texto del requisito;
+- agrega RF‑20 a la lista de limitaciones del inventario, §4 (c).
+
+Es una corrección documental dentro de C1, así que INV‑011 se cierra en C1.
 
 **Fuera de C1.** Los flujos alternativos 1a, 2a y 2b de UC‑04 viven en la capa de adaptadores (o no
 existen). Se registran como hallazgo nuevo para C2 y C4.
 
-**Ratificar:** implementar RF‑20 en C1.
+**Ratificado:** por Eugenio el 2026‑09‑23, antes de ejecutar.
 
-### B.8 INV-015: UC‑02 7a
+### B.8 INV-015: UC‑02 7a, fuera de C1
 
 **Hallazgo al planificar.** «Descartar» hoy es no confirmar la transacción. Eso también deshace los
-`CambioPrecio`, contra 7a («el registro de cambios se conserva»).
+`CambioPrecio`, contra 7a («se marca como descartada, pero el registro de cambios se conserva»,
+`docs/ERS.md:170`). La interfaz no ofrece descartar.
 
-**Corrección.** `core.budget.descartar_version` borra la versión nueva (renglones, curva, hallazgos
-y sus `item_computo`) y conserva la lista, `CambioPrecio` e `IncidenciaCambio`.
+**Corrección (decisión de Eugenio del 2026‑09‑23).** C1 no implementa 7a. En C1, INV‑015 solo
+agrega la prueba de UC‑02 2b. El flujo 7a queda como **subtarea de C3** en la fila de INV‑015 del
+inventario: una función del núcleo y un botón en la página de actualización, fieles a la ERS
+(«se marca como descartada»; el registro de cambios se conserva), que nunca descarten una versión
+que no sea la última del presupuesto. La ERS **no** se enmienda para ajustarla al código; la forma
+de la marca la fija el plan de C3.
 
-**Fuera de C1.** «Se marca como descartada» exige una columna nueva en `presupuesto`, es decir, una
-migración, fuera del límite (spec §2). La interfaz no ofrece hoy descartar. Ambas cosas se
-registran como hallazgo nuevo para C3 y C4.
+**Alternativa descartada.** Una `descartar_version` en C1 que borre la versión: contradice la ERS,
+excede lo aprobado para INV‑015 («una prueba por flujo alternativo»), no tendría llamador hasta C3
+y borraría cualquier versión, incluida la base (revisión de arquitectura del plan, hallazgo 2).
 
-**Ratificar:** borrar en vez de marcar.
+**Ratificado:** por Eugenio el 2026‑09‑23, antes de ejecutar.
 ````
 
 - [ ] **Step 3: Estado en el inventario.** En `docs/auditoria/2026-09-inventario.md`, en las filas que empiezan con `| INV-001 |` y `| INV-002 |`, reemplazar la cola `| C1 | abierto |` por:
@@ -1015,15 +1168,12 @@ git commit -m "docs(claude): la suite esperada es toda verde desde i0.3" -m "Cie
 
 - [ ] **Step 1: Consumidores primero (rojo).**
 
-En `tests/unit/test_escenarios.py`, reemplazar `:38-40` por:
+En `tests/unit/test_escenarios.py`, borrar `:39-40` (`PRECIOS_UC02 = …` e `INCREMENTO_PU_CONCRETO = …`), conservar en `:38` el comentario `# Escenario de precios del caso UC‑02: solo cemento y arena suben, solo el concreto los usa.` y agregar al bloque de imports, tras `from tests.fixtures import apu_linea_base as linea_base` (`:33`), sin `noqa`:
 
 ```python
-# Escenario de precios del caso UC‑02: solo cemento y arena suben, solo el concreto los usa.
-from tests.fixtures.actualizacion_uc02 import INCREMENTO_PU_CONCRETO  # noqa: E402
-from tests.fixtures.actualizacion_uc02 import PRECIOS_NUEVOS as PRECIOS_UC02  # noqa: E402
+from tests.fixtures.actualizacion_uc02 import INCREMENTO_PU_CONCRETO
+from tests.fixtures.actualizacion_uc02 import PRECIOS_NUEVOS as PRECIOS_UC02
 ```
-
-Mejor todavía: mover esas dos importaciones al bloque de imports (tras `from tests.fixtures import apu_linea_base as linea_base`, `:33`) sin `noqa` y dejar en `:38` solo el comentario.
 
 En `tests/integration/test_actualizacion_precios.py`:
 - Borrar `:48-59`: el comentario, `CEMENTO`, `ARENA`, `PRECIOS_NUEVOS`, `VARIACIONES`, los dos comentarios, `INCREMENTO_PU_CONCRETO` e `INCREMENTO_TOTAL`.
@@ -1121,15 +1271,17 @@ INCREMENTO_TOTAL = INCREMENTO_PU_CONCRETO * _CANTIDAD_CONCRETO
 - Los cuatro supuestos están declarados en `data/samples/civil/README.md`. La memoria auditada no
   fija margen de excavación, espesor de fondo, diámetro en metros ni desperdicio de tubería.
 - El factor de sección de la tubería no se transcribe: se evalúa con la misma expresión que declara
-  el adaptador (`adapters.civil.reglas.REGLA_VOLUMEN_TUBERIA`).
+  el adaptador (`adapters.civil.reglas.REGLA_VOLUMEN_TUBERIA`), pero con el evaluador del núcleo
+  (`core.verification.expresiones.evaluar`), el mismo con que R1 y R5 comprueban esas cantidades.
+  La copia del adaptador (`adapters/civil/evaluador.py`) es una de las cinco de INV‑006.
 """
 
 from __future__ import annotations
 
 from decimal import Decimal
 
-from adapters.civil.evaluador import evaluar_regla
 from adapters.civil.reglas import REGLA_VOLUMEN_TUBERIA
+from core.verification.expresiones import evaluar
 from tests.fixtures import apu_linea_base as linea_base
 
 CODIGOS = {
@@ -1148,7 +1300,7 @@ DESPERDICIO_TUBERIA = Decimal("0.05")
 #: Volumen de un metro de tubería de 4 pulg (m3/m): 0,7854 × 0,1016² = 0,008107338624, evaluado
 #: con la expresión del adaptador. Antes, la fixture del presupuesto auditado lo escribía truncado
 #: a 0,0081 y la prueba del adaptador, completo: dos precisiones del mismo dato.
-FACTOR_VOLUMEN_TUBERIA = evaluar_regla(
+FACTOR_VOLUMEN_TUBERIA = evaluar(
     REGLA_VOLUMEN_TUBERIA, {"longitud": Decimal("1"), "diametro": DIAMETRO_TUBERIA_M}
 )
 ```
@@ -1211,8 +1363,8 @@ git commit -m "test: una sola copia de los esperados compartidos" -m "Cierra INV
 `tests/integration/test_api.py`, en el bloque de imports:
 
 ```python
-from core.verification.informe import DECIMALES_PRESENTACION
-from core.verification.texto import formatear_decimal
+from decimal import ROUND_HALF_UP, Decimal
+
 from tests.fixtures import apu_linea_base as linea_base
 from tests.fixtures.actualizacion_uc02 import INCREMENTO_TOTAL
 from tests.fixtures.computo_civil import CODIGOS as CODIGOS_CIVIL
@@ -1229,12 +1381,11 @@ Reemplazos en `test_api.py`:
     assert len(detalle["partidas"]) == len(linea_base.PRESUPUESTO_AUDITADO)
 ```
 
-- `:138`:
+- `:138`. El oráculo se calcula aparte de la API: redondeo a céntimos con `ROUND_HALF_UP`, sin `formatear_decimal`, que es la función con que la propia API formatea (usarla haría la aserción tautológica). Con los valores de la línea base da `"1636.70"`, el literal de hoy:
 
 ```python
-    assert cuerpo["total_nuevo"] == formatear_decimal(
-        linea_base.TOTAL_EXACTO_LINEA_BASE + INCREMENTO_TOTAL, DECIMALES_PRESENTACION
-    )
+    total_nuevo = linea_base.TOTAL_EXACTO_LINEA_BASE + INCREMENTO_TOTAL
+    assert cuerpo["total_nuevo"] == str(total_nuevo.quantize(Decimal("0.01"), ROUND_HALF_UP))
 ```
 
 - `:140` → `    assert filas[linea_base.APU_CONCRETO.codigo_partida]["variacion_pct"] != "0"`
@@ -1320,6 +1471,12 @@ def test_precio_de_insumo_lee_la_transcripcion_del_pdf():
     assert lb.precio_de_insumo("Cemento Portland") == concreto["Cemento Portland"]
     with pytest.raises(KeyError, match="Cemento blanco"):
         lb.precio_de_insumo("Cemento blanco")
+
+
+def test_precio_de_insumo_rechaza_un_homonimo_con_precios_distintos():
+    """`Pala` vale 10 en un APU y 15 en otro (docs/modelo_datos.md §6): no hay un precio único."""
+    with pytest.raises(ValueError, match="Pala"):
+        lb.precio_de_insumo("Pala")
 ```
 
 Run: `uv run pytest tests/unit/test_costing_destajo.py tests/integration/test_api.py tests/unit/test_adapter_civil_ifc.py tests/unit/test_generador_ifc.py tests/integration/test_actualizacion_precios.py tests/integration/test_persistencia.py tests/integration/test_rendimientos.py tests/integration/test_api_rendimientos.py tests/unit/test_linea_base.py -q`
@@ -1334,15 +1491,26 @@ CODIGOS_LINEA_BASE = tuple(apu.codigo_partida for apu in APUS_LINEA_BASE)
 def precio_de_insumo(descripcion: str) -> Decimal:
     """Precio con que la línea base transcribe un material o equipo, buscado por su descripción.
 
-    Devuelve el de la primera línea que lo nombra, en el orden de `APUS_LINEA_BASE`. No sirve para
-    los homónimos con precio distinto (`Pala`, `Agua`…; docs/modelo_datos.md §6): ahí el precio
-    depende del APU y se lee de la línea concreta.
+    Solo sirve para un insumo con un único precio en toda la línea base. Los homónimos con precio
+    distinto (`Pala`, `Agua`, `Cinta métrica`, `Nivel de mano`; docs/modelo_datos.md §6) lanzan
+    `ValueError`: ahí el precio depende del APU y se lee de la línea concreta. `KeyError` si
+    ninguna línea lo nombra.
     """
-    for apu in APUS_LINEA_BASE:
-        for linea in (*apu.materiales, *apu.equipos):
-            if linea.descripcion == descripcion:
-                return linea.precio
-    raise KeyError(f"la linea base no transcribe ningun insumo {descripcion!r}")
+    precios = {
+        linea.precio
+        for apu in APUS_LINEA_BASE
+        for linea in (*apu.materiales, *apu.equipos)
+        if linea.descripcion == descripcion
+    }
+    if not precios:
+        raise KeyError(f"la linea base no transcribe ningun insumo {descripcion!r}")
+    if len(precios) > 1:
+        raise ValueError(
+            f"el insumo {descripcion!r} tiene precios distintos segun el APU "
+            f"({', '.join(str(precio) for precio in sorted(precios))}): leer la linea concreta"
+        )
+    (precio,) = precios
+    return precio
 ```
 
 Tras `PRECIO_UNITARIO_ESPERADO = {…}` (`:177-183`):
@@ -1385,7 +1553,7 @@ cifras o códigos, INV‑008), scripts/seed.py (Sesión I0.4) y las fixtures der
 - [ ] **Step 3: Verde, con la línea base intacta**
 
 Run: `uv run pytest tests/unit/test_costing_destajo.py tests/integration/test_api.py tests/unit/test_adapter_civil_ifc.py tests/unit/test_generador_ifc.py tests/integration/test_actualizacion_precios.py tests/integration/test_persistencia.py tests/integration/test_rendimientos.py tests/integration/test_api_rendimientos.py tests/unit/test_linea_base.py tests/unit/test_costing.py tests/integration/test_auditoria_7_de_7.py -q -W error --strict-markers && uv run pytest -W error --strict-markers -q && uv run ruff check .`
-Expected: todo verde. La suite completa suma dos pruebas nuevas.
+Expected: todo verde. La suite completa suma tres pruebas nuevas.
 
 - [ ] **Step 4: Commit**
 
@@ -1425,6 +1593,8 @@ def test_r1_reporta_un_parametro_que_no_es_decimal_en_vez_de_reventar_auditar(pr
     origen = origen_de(linea_base.APU_EXCAVACION.codigo_partida)
     hallazgos = [h for h in informe.hallazgos if h.regla == "R1" and h.origen_ids == (origen,)]
     assert len(hallazgos) == 1
+    # Un dato erróneo, no ausente: sigue siendo ERROR también después de INV‑012 (Tarea 8).
+    assert hallazgos[0].severidad >= Severidad.ERROR
     assert "'longitud'" in hallazgos[0].descripcion
     assert "float" in hallazgos[0].descripcion
 
@@ -1441,6 +1611,7 @@ def test_r5_reporta_un_parametro_que_no_es_decimal_en_vez_de_reventar_auditar(pr
     informe = auditar(roto)
     hallazgos = [h for h in informe.hallazgos if h.regla == "R5"]
     assert len(hallazgos) == 1
+    assert hallazgos[0].severidad >= Severidad.ERROR
     assert "'holgura'" in hallazgos[0].descripcion
 ```
 
@@ -1513,33 +1684,63 @@ git commit -m "fix(verificacion): un parametro que no es decimal se reporta y no
 
 ---
 
-### Task 8: INV‑012, regla no evaluable como INFO y R7 no aplicable sin plan
+### Task 8: INV‑012, regla no evaluable por falta de datos como INFO, y R2 y R7 no aplicables sin plan
 
 **Files:**
-- Modify: `core/verification/reglas.py:1-17,47-58,137-149,183-193,449-456,555-557`
-- Test: `tests/unit/test_verification.py:258-260,371-372,391-398,435-471,515-540`
+- Modify: `core/verification/reglas.py:1-17,47-58,137-149,183-193,403-411,413-425,449-456,555-557`
+- Test: `tests/unit/test_verification.py:258-260,371-372,391-398,435-456`
+- Test: `tests/integration/test_auditoria_7_de_7.py:14-16,54-66`
 
 **Interfaces:**
 - Consumes: expediente B.2; RF‑23, UC‑05 2a y 3a (`docs/ERS.md:234,238,469`), sin cambios en la ERS.
 - Produces:
   - `core.verification.reglas.REGLA_NO_EVALUABLE = "regla no evaluable"` y `NO_APLICABLE = "no aplicable"`.
-  - R1 y R5 emiten INFO al no poder evaluar; R2 y R7 sin curva emiten INFO «no aplicable».
+  - R1 y R5 emiten INFO «regla no evaluable» ante `ParametroFaltante`, y R5 también ante una referencia no resuelta. `ExpresionInvalida` (sintaxis, valor que no es `Decimal`, desborde) sigue siendo ERROR.
+  - R2 y R7 sin curva emiten INFO «no aplicable».
+
+**Qué cambia de severidad y qué no.** Comprobado con `core.verification.expresiones.evaluar` al revisar el plan:
+
+| Prueba | Dato | Excepción | Severidad tras C1 |
+|---|---|---|---|
+| `test_r1_reporta_la_regla_que_no_puede_evaluar` (`:391-398`) | `"longitud * inexistente"` | `ParametroFaltante` | INFO |
+| `test_r5_reporta_una_referencia_de_balance_no_resuelta` (`:435-443`) | `"{XX-99} - 1"` | referencia no resuelta | INFO |
+| `test_r5_reporta_un_balance_que_no_puede_evaluar` (`:446-456`) | `"{LB-01-EXC} - falta"` | `ParametroFaltante` | INFO |
+| `test_r5_reporta_un_balance_sin_llaves_en_vez_de_lanzar` (`:459-471`) | `"LB-01-EXC - …"` | `ExpresionInvalida` (no analizable) | ERROR, sin cambios |
+| `test_r1_…_que_desborda_…` y `test_r5_…_que_desborda_…` (`:515-540`) | `"1e999999 * 1e999999"` | `ExpresionInvalida` (desborde) | ERROR, sin cambios |
+| Las dos del `float` (Tarea 7) | `1.5`, `0.5` | `ExpresionInvalida` | ERROR (afirman ≥ ERROR) |
 
 - [ ] **Step 1: ¿Mueve la línea base o el 7 de 7?** Primero, por lectura:
   - `test_auditoria_7_de_7.py:23-39` cuenta solo hallazgos de severidad ≥ ERROR.
   - El presupuesto de las siete inconsistencias trae `CURVA_AUDITADA`, así que R7 no entra en la rama «sin curva».
   - Todas sus reglas son evaluables, así que ninguna pasa por la rama inevaluable.
-  - Conclusión: no debe moverse. Se fija la referencia corriendo antes:
+  - Conclusión: no debe moverse. Se fija la referencia corriendo antes, y se anotan las líneas de auditoría de los sembradores de industrial y sistemas, que elaboran sin plan (Review Focus, punto 1):
 
-Run: `uv run pytest tests/integration/test_auditoria_7_de_7.py tests/unit/test_costing.py tests/unit/test_budget.py::test_presupuesto_reproduce_1586_61 -q -W error`
-Expected: verde, y anotar el resultado.
+Run:
 
-- [ ] **Step 2: Pruebas que fallan.** En `tests/unit/test_verification.py`, agregar `from core.verification.reglas import NO_APLICABLE, REGLA_NO_EVALUABLE` al bloque de imports y el ayudante tras `_errores` (`:59-60`):
+```bash
+uv run pytest tests/integration/test_auditoria_7_de_7.py tests/unit/test_costing.py tests/unit/test_budget.py::test_presupuesto_reproduce_1586_61 -q -W error
+TMP_C1=$(mktemp -d)
+uv run python scripts/seed_industrial.py --db "$TMP_C1/industrial.db" | grep "^Auditoria:"
+uv run python scripts/seed_sistemas.py --db "$TMP_C1/sistemas.db" | grep "^Auditoria:"
+rm -rf "$TMP_C1"
+```
+
+Expected: verde, y dos líneas `Auditoria: N hallazgo(s), CUMPLE|NO CUMPLE`. Anotar el resultado y las dos líneas (se comparan en el paso 6). El `rm -rf` solo borra el directorio temporal que acaba de crear `mktemp`.
+
+- [ ] **Step 2: Las constantes primero, sin cambiar ninguna severidad.** En `core/verification/reglas.py`, `__all__` suma `"NO_APLICABLE"` y `"REGLA_NO_EVALUABLE"`, y tras `_CERO = Decimal(0)` (`:58`) se agrega:
 
 ```python
-def _no_evaluables(hallazgos):
-    return [hallazgo for hallazgo in hallazgos if REGLA_NO_EVALUABLE in hallazgo.descripcion]
+#: Prefijo de un hallazgo INFO de una regla a la que le falta un dato para evaluarse: un parámetro
+#: ausente o una referencia no resuelta (RF‑23, UC‑05 flujo 3a). Un dato erróneo (sintaxis, valor
+#: que no es `Decimal`, desborde) no es «no evaluable»: es un ERROR.
+REGLA_NO_EVALUABLE = "regla no evaluable"
+#: Con qué se declaran R2 y R7 cuando el presupuesto no trae plan de trabajo (UC‑05 flujo 2a).
+NO_APLICABLE = "no aplicable"
 ```
+
+Así la fase roja del paso 4 falla por comportamiento y no por importación.
+
+- [ ] **Step 3: Pruebas que fallan.** En `tests/unit/test_verification.py`, agregar `from core.verification.reglas import NO_APLICABLE, REGLA_NO_EVALUABLE` al bloque de imports. (`origen_de` ya se importó en la Tarea 7.)
 
 Reemplazar `test_r2_informa_cuando_no_hay_curva` (`:258-260`) por:
 
@@ -1560,65 +1761,108 @@ def test_r7_se_declara_no_aplicable_si_el_presupuesto_no_declara_curva(presupues
     assert NO_APLICABLE in hallazgos[0].descripcion
 ```
 
-Reemplazar las aserciones de las seis pruebas de datos degradados:
+Reemplazar las aserciones de las tres pruebas de datos ausentes. Cada una filtra por el ítem alterado, sin filtrar por severidad, para que la fase roja muestre la severidad de hoy:
+
 - `test_r1_reporta_la_regla_que_no_puede_evaluar` (`:397-398`):
 
 ```python
-    hallazgos = _no_evaluables(TrazabilidadGeometrica().evaluar(roto))
+    origen = origen_de(linea_base.APU_EXCAVACION.codigo_partida)
+    hallazgos = [
+        h for h in TrazabilidadGeometrica().evaluar(roto) if h.origen_ids == (origen,)
+    ]
     assert [h.severidad for h in hallazgos] == [Severidad.INFO]  # RF‑23, UC‑05 3a
+    assert REGLA_NO_EVALUABLE in hallazgos[0].descripcion
     assert "no se puede evaluar" in hallazgos[0].descripcion
 ```
 
 - `test_r5_reporta_una_referencia_de_balance_no_resuelta` (`:441-443`):
 
 ```python
-    hallazgos = _no_evaluables(BalanceVolumetrico().evaluar(roto))
+    hallazgos = BalanceVolumetrico().evaluar(roto)
     assert [h.severidad for h in hallazgos] == [Severidad.INFO]
+    assert REGLA_NO_EVALUABLE in hallazgos[0].descripcion
     assert "referencia no resuelta" in hallazgos[0].descripcion
 ```
 
-- `test_r5_reporta_un_balance_que_no_puede_evaluar` (`:454-456`) y `test_r5_reporta_un_balance_sin_llaves_en_vez_de_lanzar` (`:469-471`), cada una:
+- `test_r5_reporta_un_balance_que_no_puede_evaluar` (`:454-456`):
 
 ```python
-    hallazgos = _no_evaluables(BalanceVolumetrico().evaluar(roto))
+    hallazgos = BalanceVolumetrico().evaluar(roto)
     assert [h.severidad for h in hallazgos] == [Severidad.INFO]
+    assert REGLA_NO_EVALUABLE in hallazgos[0].descripcion
     assert "no se puede evaluar" in hallazgos[0].descripcion
 ```
 
-- `test_r1_reporta_una_regla_que_desborda_en_vez_de_reventar_auditar` (`:526`) y `test_r5_reporta_un_balance_que_desborda_en_vez_de_reventar_auditar` (`:539`): `assert hallazgos[0].severidad is Severidad.ERROR` pasa a `assert hallazgos[0].severidad is Severidad.INFO`.
+`test_r5_reporta_un_balance_sin_llaves_en_vez_de_lanzar` y las dos de desborde (`:526`, `:539`) **no cambian**: son las que vigilan que `ExpresionInvalida` siga siendo ERROR.
 
-Run: `uv run pytest tests/unit/test_verification.py -q -W error --strict-markers`
-Expected: primero `ImportError: cannot import name 'NO_APLICABLE' from 'core.verification.reglas'` (error de colección).
+En `tests/integration/test_auditoria_7_de_7.py`, agregar `from core.verification.reglas import NO_APLICABLE` al bloque de imports y reemplazar `test_todo_hallazgo_de_partida_referencia_un_origen_trazable` (`:54-66`) por:
 
-- [ ] **Step 3: Implementación.** En `core/verification/reglas.py`, el párrafo del docstring (`:3-5`) pasa a:
+```python
+def test_todo_hallazgo_de_partida_referencia_un_origen_trazable():
+    """Trazabilidad total (CLAUDE.md §2.6): salvo el cierre de la curva y la declaración de R7 no
+    aplicable (INV‑012), que son propiedades del presupuesto completo, todo hallazgo referencia
+    orígenes que el informe sabe atribuir.
+    """
+    presupuesto = presupuesto_con_siete_inconsistencias()
+    informe = auditar(presupuesto)
+    codigos = {partida.item.codigo_partida for partida in presupuesto.partidas}
+
+    for hallazgo in informe.hallazgos:
+        if hallazgo.regla == "R2":
+            continue
+        if hallazgo.regla == "R7" and NO_APLICABLE in hallazgo.descripcion:
+            continue
+        assert hallazgo.origen_ids, hallazgo.descripcion
+        assert informe.partida_de(hallazgo) in codigos, hallazgo.descripcion
+```
+
+- [ ] **Step 4: Ver el rojo de comportamiento**
+
+Run: `uv run pytest tests/unit/test_verification.py tests/integration/test_auditoria_7_de_7.py -q -W error --strict-markers`
+Expected: `5 failed`, todas por `AssertionError` de comportamiento, ninguna de importación:
+- las dos de R1 y R5 con parámetro ausente y la de referencia no resuelta: `[<Severidad.ERROR: …>] == [<Severidad.INFO: …>]`;
+- la de R7: `[] == [<Severidad.INFO: …>]`;
+- la de R2: ya es INFO, falla en `assert NO_APLICABLE in …` porque el texto no lo dice.
+La de `test_auditoria_7_de_7.py` pasa (el presupuesto trae curva): la exención es preventiva.
+
+- [ ] **Step 5: Implementación de las severidades.** En `core/verification/reglas.py`, el párrafo del docstring (`:3-5`) pasa a:
 
 ```python
 Cada regla es una clase `ReglaVerificacion` que recibe un `Presupuesto` y devuelve una lista de
-`Hallazgo`. Ninguna lanza excepciones por datos: un balance inevaluable o una referencia rota son
-hallazgos INFO «regla no evaluable» (RF‑23, UC‑05 flujo 3a), y R2 y R7 sin plan de trabajo se
-declaran «no aplicables» (UC‑05 flujo 2a). Ninguno interrumpe a las demás reglas.
+`Hallazgo`. Ninguna lanza excepciones por datos. A una regla que le falta un dato (un parámetro
+ausente, una referencia de balance rota) la informa como INFO «regla no evaluable» (RF‑23, UC‑05
+flujo 3a); un dato erróneo (sintaxis, valor que no es `Decimal`, desborde) es un ERROR; R2 y R7
+sin plan de trabajo se declaran «no aplicables» (UC‑05 flujo 2a). Ningún hallazgo interrumpe a las
+demás reglas.
 ```
 
-`__all__` suma `"NO_APLICABLE"` y `"REGLA_NO_EVALUABLE"`, y tras `_CERO = Decimal(0)` (`:58`) se agrega:
+R1, rama `except` (`:137-149`), partida en dos:
 
 ```python
-#: Prefijo de un hallazgo INFO de una regla que no pudo evaluarse (RF‑23, UC‑05 flujo 3a).
-REGLA_NO_EVALUABLE = "regla no evaluable"
-#: Con qué se declaran R2 y R7 cuando el presupuesto no trae plan de trabajo (UC‑05 flujo 2a).
-NO_APLICABLE = "no aplicable"
-```
-
-R1, rama `except` (`:137-149`):
-
-```python
-        except (ExpresionInvalida, ParametroFaltante) as error:
+        except ParametroFaltante as error:
+            # RF‑23, UC‑05 3a: falta un dato para evaluar la regla; se informa y no bloquea.
             return [
                 Hallazgo(
                     regla=self.codigo,
                     severidad=Severidad.INFO,
                     descripcion=(
                         f"{REGLA_NO_EVALUABLE}: la regla declarada por {item.codigo_partida} "
-                        f"({item.regla!r}) no se puede evaluar: {error}"
+                        f"({item.regla!r}) no se puede evaluar: falta el parametro {error}"
+                    ),
+                    origen_ids=(item.origen_id,),
+                    valor_observado=item.cantidad,
+                )
+            ]
+        except ExpresionInvalida as error:
+            # Un dato erróneo (sintaxis, valor que no es `Decimal`, desborde): el cómputo no es
+            # trazable y el presupuesto no cumple.
+            return [
+                Hallazgo(
+                    regla=self.codigo,
+                    severidad=Severidad.ERROR,
+                    descripcion=(
+                        f"la regla declarada por {item.codigo_partida} no se puede evaluar "
+                        f"({item.regla!r}): {error}"
                     ),
                     origen_ids=(item.origen_id,),
                     valor_observado=item.cantidad,
@@ -1635,15 +1879,64 @@ R2, descripción sin curva (`:189-191`):
                     ),
 ```
 
+R5, las dos ramas de `_verificar`. La referencia no resuelta (`:403-411`) pasa a:
+
+```python
+        except ParametroFaltante as error:
+            return [
+                self._inevaluable(
+                    item,
+                    ids,
+                    f"referencia no resuelta: el balance {balance!r} cita la partida "
+                    f"{error.args[0]!r}, que no esta en el presupuesto",
+                    Severidad.INFO,
+                )
+            ]
+```
+
+y la evaluación (`:413-425`) pasa a:
+
+```python
+        try:
+            valores = {
+                nombre: item.parametros[nombre]
+                for nombre in nombres_de(expandido)
+                if nombre in item.parametros
+            }
+            esperado = evaluar(expandido, valores)
+        except ParametroFaltante as error:
+            return [
+                self._inevaluable(
+                    item,
+                    ids,
+                    f"el balance {balance!r} no se puede evaluar: falta el parametro {error}",
+                    Severidad.INFO,
+                )
+            ]
+        except ExpresionInvalida as error:
+            return [
+                self._inevaluable(
+                    item,
+                    ids,
+                    f"el balance {balance!r} no se puede evaluar: {error}",
+                    Severidad.ERROR,
+                )
+            ]
+```
+
 R5, `_inevaluable` (`:449-456`):
 
 ```python
-    def _inevaluable(self, item: ItemComputo, ids: tuple[str, ...], detalle: str) -> Hallazgo:
-        """RF‑23: un balance que no se puede evaluar se informa como INFO y las demás siguen."""
+    def _inevaluable(
+        self, item: ItemComputo, ids: tuple[str, ...], detalle: str, severidad: Severidad
+    ) -> Hallazgo:
+        """RF‑23: un dato ausente es INFO «regla no evaluable»; uno erróneo, ERROR. Las demás
+        reglas siguen en ambos casos."""
+        prefijo = f"{REGLA_NO_EVALUABLE}: " if severidad is Severidad.INFO else ""
         return Hallazgo(
             regla=self.codigo,
-            severidad=Severidad.INFO,
-            descripcion=f"{REGLA_NO_EVALUABLE}: {item.codigo_partida}: {detalle}",
+            severidad=severidad,
+            descripcion=f"{prefijo}{item.codigo_partida}: {detalle}",
             origen_ids=ids,
             valor_observado=item.cantidad,
         )
@@ -1665,21 +1958,32 @@ R7, sin curva (`:556-557`):
             ]
 ```
 
-- [ ] **Step 4: Verde**
+Run: `uv run pytest tests/unit/test_verification.py tests/integration/test_auditoria_7_de_7.py -q -W error --strict-markers`
+Expected: verde, incluidas sin cambios la prueba sin llaves, las dos de desborde y las dos del `float`.
 
-Run: `uv run pytest tests/unit/test_verification.py -q -W error --strict-markers`
-Expected: verde.
+- [ ] **Step 6: La línea base y el 7 de 7 no se movieron; los dominios siguen cumpliendo; los conteos suben solo por R7**
 
-- [ ] **Step 5: La línea base y el 7 de 7 no se movieron; los dominios siguen cumpliendo**
-
-Run: `uv run pytest tests/integration/test_auditoria_7_de_7.py tests/unit/test_costing.py tests/unit/test_budget.py::test_presupuesto_reproduce_1586_61 tests/integration/test_presupuesto_industrial.py tests/integration/test_presupuesto_sistemas.py tests/integration/test_civil_verificacion.py tests/integration/test_seed_demo.py -q -W error --strict-markers && uv run pytest -W error --strict-markers -q && uv run ruff check .`
-Expected: todo verde, y el mismo resultado del 7 de 7 que en el paso 1.
-
-- [ ] **Step 6: Commit**
+Run:
 
 ```bash
-git add core/verification/reglas.py tests/unit/test_verification.py
-git commit -m "fix(verificacion): regla no evaluable como info y r7 no aplicable sin plan" -m "Cierra INV-012: regla y prueba se alinean con RF-23 y UC-05 2a y 3a, que no cambian. La linea base y el 7 de 7 no se mueven; ver expediente B.2." -m "Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>"
+uv run pytest tests/integration/test_auditoria_7_de_7.py tests/unit/test_costing.py tests/unit/test_budget.py::test_presupuesto_reproduce_1586_61 tests/integration/test_presupuesto_industrial.py tests/integration/test_presupuesto_sistemas.py tests/integration/test_civil_verificacion.py tests/integration/test_seed_demo.py tests/integration/test_api_escenarios.py -q -W error --strict-markers
+TMP_C1=$(mktemp -d)
+uv run python scripts/seed_industrial.py --db "$TMP_C1/industrial.db" | grep "^Auditoria:"
+uv run python scripts/seed_sistemas.py --db "$TMP_C1/sistemas.db" | grep "^Auditoria:"
+rm -rf "$TMP_C1"
+uv run pytest -W error --strict-markers -q && uv run ruff check .
+```
+
+Expected:
+- Todo verde, y el mismo resultado del 7 de 7 que en el paso 1.
+- Cada línea `Auditoria:` de los sembradores conserva su veredicto. Su número de hallazgos es el del paso 1 más 1 si ese presupuesto no tiene curva (el INFO «R7 no aplicable»), o el mismo si la tiene. Cualquier otra diferencia es un hallazgo: se detiene la tarea y se registra.
+- Si alguna prueba de la API o de la interfaz fija un número de hallazgos sin filtrar por severidad, falla aquí por el INFO de R7: se actualiza ese número en la misma prueba, con un comentario que cite INV‑012, y se anota en la bitácora.
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add core/verification/reglas.py tests/unit/test_verification.py tests/integration/test_auditoria_7_de_7.py
+git commit -m "fix(verificacion): regla sin datos como info y r2 y r7 no aplicables sin plan" -m "Cierra INV-012: regla y prueba se alinean con RF-23 y UC-05 2a y 3a, que no cambian. Solo el parametro ausente y la referencia no resuelta pasan a INFO; la expresion invalida (sintaxis, float, desborde) sigue en ERROR. R7 sin plan emite INFO sin origen, eximido en la prueba de trazabilidad del 7 de 7. Ver expediente B.2." -m "Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>"
 ```
 
 ---
@@ -1923,13 +2227,14 @@ INV‑069 e INV‑013 tocan la misma función: se corrigen juntos en el núcleo 
 
 **Files:**
 - Modify: `core/budget/presupuesto.py` (archivo completo abajo), `core/budget/__init__.py:5-13,37,39-59`
-- Test: `tests/unit/test_budget.py:22-35,95-107` y tres pruebas nuevas
+- Modify: `core/budget/actualizacion.py:41,103-110,112-129,133-148` (precondición estricta y tipo de `plan`), `core/budget/escenarios.py:36,82-91` (precondición estricta)
+- Test: `tests/unit/test_budget.py:22-35,95-107` y tres pruebas nuevas; `tests/unit/test_escenarios.py` (una prueba nueva); `tests/integration/test_actualizacion_precios.py` (dos pruebas nuevas)
 - Callers, en commits separados:
   - `ui/paginas/elaborar.py:31,227-248`
   - `ui/paginas/componer.py:34-40,766,799-822`
   - `api/rutas/presupuestos.py:39-50,85-96`
   - `scripts/seed_demo.py:83-89,172-173,344-361`
-  - `scripts/generar_resultados_ml.py:47-53,158-167`
+  - `scripts/generar_resultados_ml.py:47-53,158-167,191`
 - Modify: `docs/auditoria/2026-09-inventario.md` (filas nuevas)
 
 **Interfaces:**
@@ -1937,6 +2242,8 @@ INV‑069 e INV‑013 tocan la misma función: se corrigen juntos en el núcleo 
 - Produces:
   - `elaborar(..., plan: Sequence[PeriodoPlan] | GeneradorPlan | None = None) -> ResultadoElaboracion`.
   - `ResultadoElaboracion.pendientes: tuple[ItemComputo, ...]`, `CODIGO_PENDIENTE = "PENDIENTE"` y `GeneradorPlan = Callable[[Presupuesto], Sequence[PeriodoPlan]]`, exportados desde `core.budget`.
+  - `core.budget.presupuesto.exigir_composiciones(items, composiciones) -> None`: la precondición estricta (`ValueError` con la lista de códigos), única copia, que usan `generar_presupuesto`, `actualizar_precios` y `generar_escenario`.
+  - `actualizar_precios(..., plan: Sequence[PeriodoPlan] | GeneradorPlan | None = None)`.
 
 - [ ] **Step 1: ¿Mueve la línea base o el 7 de 7?** Por lectura:
   - El 7 de 7 audita `presupuesto_con_siete_inconsistencias()` sin pasar por `elaborar`.
@@ -1970,7 +2277,12 @@ Agregar tras ella:
 
 ```python
 def test_un_item_sin_partida_queda_pendiente_y_el_informe_lo_declara():
-    """UC‑01, flujo 3a (INV‑013): no suma al total, no entra al plan, el informe lo declara."""
+    """UC‑01, flujo 3a (INV‑013): no suma al total, no entra al plan, el informe lo declara.
+
+    Los ítems auditados ya dan errores de R1 (hallazgos 1 y 2 de la línea base), así que
+    `not informe.cumple` no probaría nada. La prueba compara contra la elaboración de los mismos
+    ítems sin el huérfano: el presupuesto es idéntico y el único hallazgo nuevo es el `PENDIENTE`.
+    """
     composiciones = composiciones_linea_base()
     huerfano = linea_base.APU_RELLENO.codigo_partida
     del composiciones[huerfano]
@@ -1978,24 +2290,30 @@ def test_un_item_sin_partida_queda_pendiente_y_el_informe_lo_declara():
     total_huerfano = sum(
         (p.total for p in completo.partidas if p.item.codigo_partida == huerfano), Decimal(0)
     )
-
-    resultado = elaborar(
-        items_auditados(),
-        composiciones,
-        linea_base.PARAMETROS_LINEA_BASE,
+    argumentos = dict(
         codigo=linea_base.CODIGO_PRESUPUESTO,
         fecha=linea_base.FECHA_LINEA_BASE,
         plan=plan_secuencial,
     )
 
+    resultado = elaborar(
+        items_auditados(), composiciones, linea_base.PARAMETROS_LINEA_BASE, **argumentos
+    )
+    sin_huerfano = elaborar(
+        [item for item in items_auditados() if item.codigo_partida != huerfano],
+        composiciones_linea_base(),
+        linea_base.PARAMETROS_LINEA_BASE,
+        **argumentos,
+    )
+
     assert [item.codigo_partida for item in resultado.pendientes] == [huerfano]
-    assert huerfano not in {p.item.codigo_partida for p in resultado.presupuesto.partidas}
+    assert resultado.presupuesto == sin_huerfano.presupuesto
     assert resultado.presupuesto.total == completo.total - total_huerfano
     assert resultado.presupuesto.total_curva == resultado.presupuesto.total
     (declarado,) = resultado.informe.por_regla()[CODIGO_PENDIENTE]
+    assert resultado.informe.hallazgos == sin_huerfano.informe.hallazgos + (declarado,)
     assert declarado.severidad is Severidad.ERROR
     assert resultado.informe.partida_de(declarado) == huerfano
-    assert not resultado.informe.cumple
 
 
 def test_sin_ninguna_partida_valorable_el_informe_se_emite_igual():
@@ -2044,8 +2362,79 @@ def test_elaborar_acepta_el_plan_como_funcion_del_presupuesto_valorado():
     assert con_funcion.pendientes == ()
 ```
 
-Run: `uv run pytest tests/unit/test_budget.py -q -W error --strict-markers`
-Expected: error de colección `ImportError: cannot import name 'CODIGO_PENDIENTE' from 'core.budget'`.
+Las precondiciones estrictas de los otros dos llamadores del núcleo (expediente B.5). En `tests/unit/test_escenarios.py`, sumar `import pytest` al bloque de imports y agregar al final:
+
+```python
+def test_un_escenario_exige_composicion_para_todo_renglon_del_base():
+    """INV‑013 no relaja UC‑08: un escenario que perdiera un renglón en silencio dejaría de ser
+    comparable con su base. `generar_escenario` exige composición antes de elaborar."""
+    incompletas = {codigo: apu for codigo, apu in COMPOSICIONES.items() if codigo != CONCRETO}
+    with pytest.raises(ValueError, match=CONCRETO):
+        generar_escenario(
+            "sin-concreto", _base(), incompletas, linea_base.PARAMETROS_LINEA_BASE
+        )
+```
+
+En `tests/integration/test_actualizacion_precios.py`, sumar `generar_curva` al import de `core.budget`, agregar `from core.budget import actualizacion as modulo_actualizacion` (con alias: el nombre `actualizacion` ya es una fixture de este módulo) y agregar en la sección «Actualización del presupuesto»:
+
+```python
+def test_uc02_exige_composicion_para_todo_renglon_antes_de_guardar(
+    sesion, presupuesto_001, lista_nueva, monkeypatch
+):
+    """INV‑013 no relaja UC‑02: la precondición corre antes de elaborar y de guardar.
+
+    Las composiciones de `actualizar_precios` salen del catálogo para todos los códigos del
+    presupuesto, así que un faltante no se puede provocar con datos: se provoca quitando el
+    concreto justo en la precondición, y se comprueba que no quedó ninguna versión guardada.
+    """
+    original = modulo_actualizacion.exigir_composiciones
+
+    def sin_concreto(items, composiciones):
+        recortadas = {codigo: apu for codigo, apu in composiciones.items() if codigo != CONCRETO}
+        original(items, recortadas)
+
+    monkeypatch.setattr(modulo_actualizacion, "exigir_composiciones", sin_concreto)
+
+    with pytest.raises(ValueError, match=CONCRETO):
+        actualizar_precios(
+            sesion,
+            NOMBRE_PROYECTO,
+            linea_base.CODIGO_PRESUPUESTO,
+            lista_nueva.lista,
+            CODIGO_NUEVO,
+            plan=plan_secuencial,
+        )
+    with pytest.raises(KeyError, match=CODIGO_NUEVO):
+        cargar_presupuesto(sesion, NOMBRE_PROYECTO, CODIGO_NUEVO, Catalogo(sesion))
+
+
+def test_uc02_acepta_el_plan_como_funcion_del_presupuesto_valorado(
+    sesion, presupuesto_001, lista_nueva
+):
+    """INV‑069: `actualizar_precios` acepta el mismo `GeneradorPlan` que `elaborar`. El plan
+    secuencial no depende de los montos, así que calcularlo sobre la versión nueva da la misma
+    curva que calcularlo sobre la anterior, como hacían los llamadores."""
+    nuevo, _ = actualizar_precios(
+        sesion,
+        NOMBRE_PROYECTO,
+        linea_base.CODIGO_PRESUPUESTO,
+        lista_nueva.lista,
+        CODIGO_NUEVO,
+        plan=plan_secuencial,
+    )
+
+    esperada = generar_curva(nuevo.presupuesto, plan_secuencial(presupuesto_001.presupuesto))
+    assert nuevo.presupuesto.curva == tuple(esperada)
+    assert nuevo.presupuesto.total_curva == nuevo.presupuesto.total
+```
+
+Partir en varias líneas lo que supere los 100 caracteres.
+
+Run: `uv run pytest tests/unit/test_budget.py tests/unit/test_escenarios.py tests/integration/test_actualizacion_precios.py -q -W error --strict-markers`
+Expected:
+- `test_budget.py`: error de colección `ImportError: cannot import name 'CODIGO_PENDIENTE' from 'core.budget'`.
+- `test_actualizacion_precios.py`: `test_uc02_exige_…` falla con `AttributeError: <module 'core.budget.actualizacion'> has no attribute 'exigir_composiciones'`, y `test_uc02_acepta_…` falla porque `elaborar` todavía trata la función como una secuencia (`TypeError`).
+- `test_escenarios.py`: la prueba nueva **pasa** hoy, porque `elaborar` todavía lanza `ValueError`. Es una prueba de regresión: se comprueba que muerde en el paso 4.
 
 - [ ] **Step 3: Implementación.** Reemplazar `core/budget/presupuesto.py` completo por:
 
@@ -2085,6 +2474,7 @@ __all__ = [
     "GeneradorPlan",
     "ResultadoElaboracion",
     "elaborar",
+    "exigir_composiciones",
     "generar_presupuesto",
 ]
 
@@ -2122,9 +2512,7 @@ def generar_presupuesto(
     Lanza `ValueError` con la lista de códigos si alguna cantidad no tiene composición de APU: un
     presupuesto incompleto es un presupuesto sin precio, no un presupuesto con ceros.
     """
-    faltantes = _codigos_sin_composicion(items, composiciones)
-    if faltantes:
-        raise ValueError("no hay composicion de APU para las partidas: " + ", ".join(faltantes))
+    exigir_composiciones(items, composiciones)
 
     partidas = tuple(
         PartidaPresupuestada(
@@ -2203,6 +2591,20 @@ def _declarar_pendientes(
     )
 
 
+def exigir_composiciones(
+    items: Sequence[ItemComputo], composiciones: Mapping[str, ComposicionAPU]
+) -> None:
+    """Precondición estricta: toda partida citada por `items` tiene composición en `composiciones`.
+
+    Lanza `ValueError` con la lista de códigos que faltan. La usan `generar_presupuesto` y los
+    llamadores del núcleo que no pueden perder renglones en silencio (`actualizar_precios`,
+    `generar_escenario`); `elaborar` no la usa, porque deja pendientes (UC‑01, flujo 3a).
+    """
+    faltantes = _codigos_sin_composicion(items, composiciones)
+    if faltantes:
+        raise ValueError("no hay composicion de APU para las partidas: " + ", ".join(faltantes))
+
+
 def _codigos_sin_composicion(
     items: Sequence[ItemComputo], composiciones: Mapping[str, ComposicionAPU]
 ) -> list[str]:
@@ -2226,13 +2628,45 @@ from core.budget.presupuesto import (
 )
 ```
 
-- `__all__` suma `"CODIGO_PENDIENTE"` y `"GeneradorPlan"`.
+- `__all__` suma `"CODIGO_PENDIENTE"` y `"GeneradorPlan"`. `exigir_composiciones` no se reexporta: la usan solo los módulos de `core/budget/`.
 - En el docstring (`:9`), el ejemplo pasa a `    resultado = elaborar(items, composiciones, parametros, codigo="001", fecha=hoy, plan=plan_secuencial)`.
 
-- [ ] **Step 4: Verde**
+En `core/budget/actualizacion.py`:
+- `:41` pasa a `from core.budget.presupuesto import GeneradorPlan, ResultadoElaboracion, elaborar, exigir_composiciones` (partido entre paréntesis si supera los 100 caracteres).
+- En la firma de `actualizar_precios` (`:109`), `plan: Sequence[PeriodoPlan] | None = None,` pasa a `plan: Sequence[PeriodoPlan] | GeneradorPlan | None = None,`.
+- En su docstring, la línea `:119` (`    mueve son los precios. Sin `plan` no lleva curva y la regla R2 lo hace constar como INFO.`) se sustituye por:
 
-Run: `uv run pytest tests/unit/test_budget.py -q -W error --strict-markers`
-Expected: verde.
+```python
+    mueve son los precios. `plan` es el plan de trabajo ya escrito o una función que lo calcula
+    sobre el presupuesto valorado (`plan=plan_secuencial`), como en `elaborar`. Sin `plan` no
+    lleva curva, y R2 y R7 lo declaran no aplicable como INFO.
+
+    Exige composición para todo renglón del presupuesto anterior antes de elaborar y de guardar
+    (`exigir_composiciones`): revalorar no puede dejar renglones pendientes en silencio (INV‑013).
+```
+
+  El resto del docstring no cambia.
+- Tras el diccionario `composiciones = {…}` (`:133-136`) y antes de `nuevo = elaborar(` se agrega:
+
+```python
+    exigir_composiciones(items, composiciones)
+```
+
+En `core/budget/escenarios.py`:
+- `:36` pasa a `from core.budget.presupuesto import elaborar, exigir_composiciones`.
+- En `generar_escenario`, el docstring suma al final la frase «Exige composición para todo renglón del base (`ValueError`): un escenario con renglones pendientes no sería comparable con su base (INV‑013).», y antes de `resultado = elaborar(` se agrega:
+
+```python
+    items = [partida.item for partida in base.partidas]
+    exigir_composiciones(items, ajustadas)
+```
+
+  y el primer argumento de `elaborar` pasa de `[partida.item for partida in base.partidas]` a `items`.
+
+- [ ] **Step 4: Verde, y la precondición de escenarios muerde**
+
+Run: `uv run pytest tests/unit/test_budget.py tests/unit/test_escenarios.py tests/integration/test_actualizacion_precios.py -q -W error --strict-markers`
+Expected: verde. **Comprobar que muerde:** comentar temporalmente `exigir_composiciones(items, ajustadas)` en `core/budget/escenarios.py` y volver a correr `tests/unit/test_escenarios.py`. Debe fallar `test_un_escenario_exige_composicion_para_todo_renglon_del_base` con `DID NOT RAISE <class 'ValueError'>`: sin la precondición, el concreto quedaría pendiente en silencio. Restaurar la línea.
 
 - [ ] **Step 5: Línea base, 7 de 7 y suite; ningún llamador cambió todavía**
 
@@ -2242,8 +2676,8 @@ Expected: todo verde.
 - [ ] **Step 6: Commit del núcleo, solo `core/` y `tests/`**
 
 ```bash
-git add core/budget/presupuesto.py core/budget/__init__.py tests/unit/test_budget.py
-git commit -m "fix(budget): elaborar es el punto unico del protocolo y deja pendientes los items sin partida" -m "Cierra en el nucleo INV-069 (plan como funcion del presupuesto valorado) e INV-013 por la ruta sin contrato: pendientes en ResultadoElaboracion y un hallazgo PENDIENTE en el informe. Ver expedientes B.5 y B.6." -m "Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>"
+git add core/budget/presupuesto.py core/budget/__init__.py core/budget/actualizacion.py core/budget/escenarios.py tests/unit/test_budget.py tests/unit/test_escenarios.py tests/integration/test_actualizacion_precios.py
+git commit -m "fix(budget): elaborar es el punto unico del protocolo y deja pendientes los items sin partida" -m "Cierra en el nucleo INV-069 (plan como funcion del presupuesto valorado, tambien en actualizar_precios) e INV-013 por la ruta sin contrato: pendientes en ResultadoElaboracion y un hallazgo PENDIENTE en el informe. actualizar_precios y generar_escenario conservan la precondicion estricta con exigir_composiciones. Ver expedientes B.5 y B.6." -m "Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>"
 ```
 
 - [ ] **Step 7: Llamadores de `ui/`.** En `ui/paginas/elaborar.py:31`, el import pasa a `from core.budget import elaborar, exportar_excel, plan_secuencial`. El bloque `:225-251` (desde `codigos_unicos = …` hasta `return`) pasa a:
@@ -2261,10 +2695,10 @@ git commit -m "fix(budget): elaborar es el punto unico del protocolo y deja pend
                 plan=plan_secuencial,
             )
     except (LookupError, ValueError, ArithmeticError, SQLAlchemyError) as error:
-        # `LookupError` (`CatalogoIncompleto`) si falta la composicion de alguna partida del
-        # computo (por ejemplo, un dominio sin catalogo cargado); `ValueError` (`PlanInvalido`) del
-        # plan de trabajo; `ArithmeticError`/`SQLAlchemyError` por simetria con el mismo criterio
-        # de `ui/paginas/actualizacion.py`.
+        # `LookupError` (`CatalogoIncompleto`) si falta la composición de alguna partida del
+        # cómputo (por ejemplo, un dominio sin catálogo cargado); `ValueError` (`PlanInvalido`)
+        # del plan de trabajo; `ArithmeticError`/`SQLAlchemyError` por simetría con el mismo
+        # criterio de `ui/paginas/actualizacion.py`.
         st.session_state[CLAVE_RESULTADO] = None
         st.error(str(error))
         return
@@ -2358,12 +2792,14 @@ En `scripts/generar_resultados_ml.py`, borrar `generar_presupuesto,` del import 
     )
 ```
 
+y, en la llamada a `actualizar_precios` (`:185-192`), `plan=plan_secuencial(resultado.presupuesto),` (`:191`) pasa a `plan=plan_secuencial,` (el tipo ampliado del paso 3; el plan secuencial no depende de los montos, así que la curva es la misma).
+
 Run: `uv run pytest tests/integration/test_seed_demo.py tests/unit/test_resultados_ml.py -q -W error --strict-markers && uv run ruff check scripts && TMP_C1=$(mktemp -d) && uv run python scripts/seed_demo.py --db "$TMP_C1/demo.db" | grep -E "Partida: 8|Total: 4131.10 USD|Auditoria: 3 hallazgo\(s\), CUMPLE" && rm -rf "$TMP_C1" && uv run python scripts/generar_resultados_ml.py && git diff --exit-code -- docs/resultados_ml.md`
 Expected: verde. Aparecen las tres líneas de la demostración, y `docs/resultados_ml.md` queda sin diferencias (salida 0).
 
 ```bash
 git add scripts/seed_demo.py scripts/generar_resultados_ml.py
-git commit -m "refactor(scripts): la demostracion y los resultados de ml elaboran con plan=plan_secuencial" -m "Llamadores de INV-069 en scripts/, en commit separado; generar_resultados_ml.py era un quinto sitio del protocolo que el inventario no citaba." -m "Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>"
+git commit -m "refactor(scripts): la demostracion y los resultados de ml elaboran con plan=plan_secuencial" -m "Llamadores de INV-069 en scripts/, en commit separado; generar_resultados_ml.py era un quinto sitio del protocolo que el inventario no citaba, y su actualizacion de precios tambien pasa plan=plan_secuencial." -m "Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>"
 ```
 
 - [ ] **Step 10: Ningún sitio fuera de `core/budget` escribe el protocolo**
@@ -2390,21 +2826,22 @@ git commit -m "docs(auditoria): hallazgos visibles al unificar el protocolo de e
 
 ---
 
-### Task 12: INV‑011, RF‑19 con prueba, RF‑20 implementado y UC‑04 trazado
+### Task 12: INV‑011, RF‑19 con prueba, UC‑04 trazado y RF‑20 declarado no implementado
 
 **Files:**
-- Create: `core/budget/diferencial.py`, `tests/unit/test_recalculo_uc04.py`
-- Modify: `core/budget/__init__.py`
-- Test: `tests/unit/test_reglas_civil.py` (prueba nueva de RF‑19), `tests/unit/test_budget.py` (dos pruebas de RF‑20)
-- Modify: `docs/auditoria/2026-09-inventario.md` (fila nueva)
+- Create: `tests/unit/test_recalculo_uc04.py`
+- Test: `tests/unit/test_reglas_civil.py` (prueba nueva de RF‑19)
+- Modify: `docs/ERS.md:466` (fila de RF‑20), `docs/plan_pruebas.md:147` (fila de RF‑20)
+- Modify: `docs/auditoria/2026-09-inventario.md` (§4 (c) y una fila nueva)
 
 **Interfaces:**
-- Consumes: expediente B.7; `tests.fixtures.computo_civil` (Tarea 5); `elaborar(plan=plan_secuencial)` (Tarea 11).
-- Produces: `core.budget.DiferencialPartida` y `core.budget.diferencial_por_partida(anterior: Presupuesto, recalculado: Presupuesto) -> tuple[DiferencialPartida, ...]`.
+- Consumes: expediente B.7 (decisión de Eugenio del 2026‑09‑23); `tests.fixtures.computo_civil` (Tarea 5); `elaborar(plan=plan_secuencial)` (Tarea 11).
+- Produces: ninguna interfaz nueva. `core/` no cambia en esta tarea.
 
 **¿Existe la capacidad?**
 - RF‑19: **sí**. `adapters/civil/reglas.computar_tanquillas` reevalúa sus expresiones con los parámetros nuevos (`:41-108`). Solo falta la prueba, que se escribe y se comprueba que muerde.
-- RF‑20: **no**. `_comparar` (`core/budget/actualizacion.py:267-303`) es privado, supone los mismos renglones (`zip(..., strict=True)`) y no da el diferencial de cantidad. Se implementa por el RF existente; spec §2: es corrección.
+- UC‑04, pasos 1 a 4: **sí**, componiendo las reglas del adaptador con `elaborar(plan=plan_secuencial)`. Solo falta la prueba.
+- RF‑20 (UC‑04, paso 5): **no**. `_comparar` (`core/budget/actualizacion.py:267-303`) es privado, supone los mismos renglones (`zip(..., strict=True)`) y no da el diferencial de cantidad. Por decisión de Eugenio (expediente B.7) no se implementa: se declara «no implementado; declarado en limitaciones», y se corrige el «verde» falso de la ERS y del plan de pruebas.
 
 - [ ] **Step 1: RF‑19, la prueba de su criterio.** En `tests/unit/test_reglas_civil.py`, sumar `REGLA_CONCRETO_TANQUILLA`, `REGLA_ENCOFRADO_TANQUILLA` y `REGLA_EXCAVACION_TANQUILLA` al import de `adapters.civil.reglas` y agregar:
 
@@ -2450,182 +2887,16 @@ def test_cambiar_el_ancho_altera_solo_las_cantidades_que_dependen_de_el():
 Run: `uv run pytest tests/unit/test_reglas_civil.py -q -W error --strict-markers -k ancho`
 Expected: `1 passed`, porque la capacidad existe. **Comprobar que muerde:** cambiar temporalmente `a=ancho_nuevo` por `a=geometria["a"]` en `despues` y volver a correr. Debe fallar con `assert set() == {…}`. Restaurar la línea.
 
-- [ ] **Step 2: RF‑20, pruebas que fallan.** En `tests/unit/test_budget.py`, sumar `diferencial_por_partida` al import de `core.budget` y agregar:
+- [ ] **Step 2: UC‑04, pasos 1 a 4 de punta a punta.** Crear `tests/unit/test_recalculo_uc04.py`:
 
 ```python
-def test_la_suma_de_los_diferenciales_por_partida_iguala_la_diferencia_de_totales():
-    """RF‑20 (UC‑04, paso 5; INV‑011): cantidad, precio unitario y total por partida."""
-    anterior = _presupuesto()
-    concreto = linea_base.APU_CONCRETO.codigo_partida
-    duplicado = tuple(
-        replace(item, cantidad=item.cantidad * 2) if item.codigo_partida == concreto else item
-        for item in items_auditados()
-    )
-    recalculado = generar_presupuesto(
-        duplicado,
-        composiciones_linea_base(),
-        linea_base.PARAMETROS_LINEA_BASE,
-        codigo=f"{linea_base.CODIGO_PRESUPUESTO}-R",
-        fecha=linea_base.FECHA_LINEA_BASE,
-        moneda=linea_base.MONEDA,
-    )
+"""UC‑04 de punta a punta, pasos 1 a 4 (RF‑19; INV‑011): cambiar el ancho de las tanquillas y
+recalcular precios, curva y auditoría.
 
-    filas = diferencial_por_partida(anterior, recalculado)
-
-    assert [fila.codigo_partida for fila in filas] == [
-        linea.codigo_partida for linea in linea_base.PRESUPUESTO_AUDITADO
-    ]
-    assert sum((fila.diferencia_total for fila in filas), Decimal(0)) == (
-        recalculado.total - anterior.total
-    )
-    (fila_concreto,) = [fila for fila in filas if fila.codigo_partida == concreto]
-    assert fila_concreto.diferencia_cantidad == fila_concreto.cantidad_anterior
-    assert fila_concreto.diferencia_precio_unitario == Decimal(0)
-    assert fila_concreto.diferencia_total == fila_concreto.total_anterior
-    assert all(fila.diferencia_total == 0 for fila in filas if fila.codigo_partida != concreto)
-
-
-def test_una_partida_que_desaparece_entra_al_diferencial_con_cero_y_sin_precio():
-    anterior = _presupuesto()
-    relleno = linea_base.APU_RELLENO.codigo_partida
-    sin_relleno = generar_presupuesto(
-        tuple(item for item in items_auditados() if item.codigo_partida != relleno),
-        composiciones_linea_base(),
-        linea_base.PARAMETROS_LINEA_BASE,
-        codigo=f"{linea_base.CODIGO_PRESUPUESTO}-R",
-        fecha=linea_base.FECHA_LINEA_BASE,
-    )
-
-    (fila,) = [
-        fila
-        for fila in diferencial_por_partida(anterior, sin_relleno)
-        if fila.codigo_partida == relleno
-    ]
-
-    assert fila.cantidad_nueva == Decimal(0)
-    assert fila.total_nuevo == Decimal(0)
-    assert fila.precio_unitario_nuevo is None
-    assert fila.diferencia_precio_unitario is None
-    assert fila.diferencia_total == -fila.total_anterior
-```
-
-Run: `uv run pytest tests/unit/test_budget.py -q -W error --strict-markers`
-Expected: error de colección `ImportError: cannot import name 'diferencial_por_partida' from 'core.budget'`.
-
-- [ ] **Step 3: Implementación.** Crear `core/budget/diferencial.py`:
-
-```python
-"""RF‑20 (UC‑04, paso 5): el diferencial entre una versión del presupuesto y su recálculo.
-
-Cuando cambia un parámetro dimensional (RF‑19), el presupuesto se vuelve a elaborar y el usuario
-necesita ver qué cambió **por partida**: cantidad, precio unitario y total. Este módulo compara dos
-`Presupuesto` ya elaborados; no recalcula nada, así que es una función pura sobre contratos.
-
-La comparación es por **código de partida**, no por renglón. Un cambio de alcance puede partir o
-fundir renglones (dos tanquillas que pasan a ser tres, una zanja que se divide), y el código es lo
-único estable entre las dos versiones. Varios renglones del mismo código se suman; comparten precio
-unitario porque comparten APU. Una partida que solo existe en una de las dos versiones aparece con
-cantidad y total cero del otro lado, y sin precio unitario.
-
-Devuelve dataclasses con `Decimal`, no un `DataFrame`: la presentación decide el formato (INV‑040).
-"""
-
-from __future__ import annotations
-
-from collections.abc import Sequence
-from dataclasses import dataclass
-from decimal import Decimal
-
-from core.contracts.presupuesto import PartidaPresupuestada, Presupuesto
-
-__all__ = ["DiferencialPartida", "diferencial_por_partida"]
-
-CERO = Decimal(0)
-
-
-@dataclass(frozen=True, slots=True)
-class DiferencialPartida:
-    """Una partida en las dos versiones. `None` en un precio unitario: la partida no estaba."""
-
-    codigo_partida: str
-    cantidad_anterior: Decimal
-    cantidad_nueva: Decimal
-    precio_unitario_anterior: Decimal | None
-    precio_unitario_nuevo: Decimal | None
-    total_anterior: Decimal
-    total_nuevo: Decimal
-
-    @property
-    def diferencia_cantidad(self) -> Decimal:
-        return self.cantidad_nueva - self.cantidad_anterior
-
-    @property
-    def diferencia_precio_unitario(self) -> Decimal | None:
-        """Sin precio en alguna de las dos versiones no hay diferencia que calcular."""
-        if self.precio_unitario_anterior is None or self.precio_unitario_nuevo is None:
-            return None
-        return self.precio_unitario_nuevo - self.precio_unitario_anterior
-
-    @property
-    def diferencia_total(self) -> Decimal:
-        return self.total_nuevo - self.total_anterior
-
-
-def diferencial_por_partida(
-    anterior: Presupuesto, recalculado: Presupuesto
-) -> tuple[DiferencialPartida, ...]:
-    """Una fila por código de partida, en el orden en que aparece por primera vez (primero los de
-    `anterior`, después los nuevos de `recalculado`).
-
-    La suma de `diferencia_total` de todas las filas es exactamente
-    `recalculado.total - anterior.total`: los dos lados suman los mismos `Decimal` sin redondear.
-    """
-    antes = _por_codigo(anterior.partidas)
-    despues = _por_codigo(recalculado.partidas)
-    return tuple(
-        _fila(codigo, antes.get(codigo), despues.get(codigo))
-        for codigo in dict.fromkeys([*antes, *despues])
-    )
-
-
-#: Lo que una versión dice de una partida: cantidad total, precio unitario y total.
-_Resumen = tuple[Decimal, Decimal, Decimal]
-
-
-def _por_codigo(partidas: Sequence[PartidaPresupuestada]) -> dict[str, _Resumen]:
-    resumen: dict[str, _Resumen] = {}
-    for partida in partidas:
-        codigo = partida.item.codigo_partida
-        cantidad, precio, total = resumen.get(
-            codigo, (CERO, partida.resultado.precio_unitario, CERO)
-        )
-        resumen[codigo] = (cantidad + partida.item.cantidad, precio, total + partida.total)
-    return resumen
-
-
-def _fila(codigo: str, antes: _Resumen | None, despues: _Resumen | None) -> DiferencialPartida:
-    cantidad_anterior, pu_anterior, total_anterior = antes or (CERO, None, CERO)
-    cantidad_nueva, pu_nuevo, total_nuevo = despues or (CERO, None, CERO)
-    return DiferencialPartida(
-        codigo_partida=codigo,
-        cantidad_anterior=cantidad_anterior,
-        cantidad_nueva=cantidad_nueva,
-        precio_unitario_anterior=pu_anterior,
-        precio_unitario_nuevo=pu_nuevo,
-        total_anterior=total_anterior,
-        total_nuevo=total_nuevo,
-    )
-```
-
-En `core/budget/__init__.py`, agregar `from core.budget.diferencial import DiferencialPartida, diferencial_por_partida` (tras el import de `curva`) y sumar `"DiferencialPartida"` y `"diferencial_por_partida"` a `__all__`.
-
-Run: `uv run pytest tests/unit/test_budget.py -q -W error --strict-markers`
-Expected: verde.
-
-- [ ] **Step 4: UC‑04, pasos 1 a 5 de punta a punta.** Crear `tests/unit/test_recalculo_uc04.py`:
-
-```python
-"""UC‑04 de punta a punta (RF‑19 y RF‑20; INV‑011): cambiar el ancho de las tanquillas y recalcular.
+El paso 5 (RF‑20, el diferencial por partida contra la versión anterior) no tiene implementación:
+está declarado «no implementado» en la ERS y en el plan de pruebas, y en las limitaciones
+(decisión de Eugenio del 2026‑09‑23). Esta prueba compara los renglones de las dos versiones por su
+cuenta, sin presentarlo como si fuera RF‑20.
 
 Los ítems vienen de las reglas paramétricas del adaptador civil con los supuestos de la muestra
 (`tests/fixtures/computo_civil.py`); los precios, de la línea base. Se usan tanquillas y tubería,
@@ -2638,8 +2909,7 @@ from __future__ import annotations
 from decimal import Decimal
 
 from adapters.civil.reglas import computar_tanquillas, computar_zanja
-from core.budget import diferencial_por_partida, elaborar, plan_secuencial
-from core.contracts import Severidad
+from core.budget import elaborar, plan_secuencial
 from tests.fixtures import apu_linea_base as linea_base
 from tests.fixtures.computo_auditado import composiciones_linea_base
 from tests.fixtures.computo_civil import (
@@ -2689,53 +2959,94 @@ def _elaborar(ancho: Decimal, codigo: str):
     )
 
 
-def test_uc04_recalcula_precios_curva_y_auditoria_y_presenta_el_diferencial():
+def _por_codigo(presupuesto):
+    """Un renglón por código: en este cómputo ningún código se repite."""
+    return {partida.item.codigo_partida: partida for partida in presupuesto.partidas}
+
+
+def test_uc04_recalcula_precios_curva_y_auditoria_al_cambiar_el_ancho():
     anterior = _elaborar(GEOMETRIA["a"], "UC04-1")
     nuevo = _elaborar(ANCHO_NUEVO, "UC04-2")
+    antes = _por_codigo(anterior.presupuesto)
+    despues = _por_codigo(nuevo.presupuesto)
 
-    filas = diferencial_por_partida(anterior.presupuesto, nuevo.presupuesto)
-
-    # Paso 3: se recalculan las partidas afectadas y ninguna otra.
-    assert {fila.codigo_partida for fila in filas if fila.diferencia_total != 0} == {
+    # Pasos 1 y 2: los ítems nuevos traen la expresión y el parámetro cambiado.
+    assert antes.keys() == despues.keys()
+    for clave in ("concreto", "encofrado", "excavacion"):
+        item = despues[CODIGOS[clave]].item
+        assert item.regla and item.parametros["a"] == ANCHO_NUEVO
+    # Paso 3: se recalculan las partidas afectadas y ninguna otra; el precio unitario no cambia
+    # porque el APU es el mismo.
+    assert {codigo for codigo in antes if antes[codigo].total != despues[codigo].total} == {
         CODIGOS["concreto"],
         CODIGOS["encofrado"],
         CODIGOS["excavacion"],
     }
-    assert all(fila.diferencia_precio_unitario == 0 for fila in filas)  # mismo APU
+    assert all(
+        antes[codigo].resultado.precio_unitario == despues[codigo].resultado.precio_unitario
+        for codigo in antes
+    )
+    assert nuevo.presupuesto.total == sum(
+        (partida.total for partida in nuevo.presupuesto.partidas), Decimal(0)
+    )
     # Paso 4: curva regenerada que cierra en el total nuevo, y verificación ejecutada otra vez.
+    # Ningún hallazgo de R1, de ninguna severidad: tras INV‑012 un parámetro ausente sería INFO y
+    # un filtro por ERROR lo dejaría pasar.
     assert nuevo.presupuesto.total_curva == nuevo.presupuesto.total
     assert nuevo.informe.codigo_presupuesto == "UC04-2"
-    assert not [
-        h for h in nuevo.informe.hallazgos if h.regla == "R1" and h.severidad >= Severidad.ERROR
-    ]
-    # Paso 5: el diferencial por partida suma la diferencia de totales.
-    assert sum((fila.diferencia_total for fila in filas), Decimal(0)) == (
-        nuevo.presupuesto.total - anterior.presupuesto.total
-    )
+    assert not [h for h in nuevo.informe.hallazgos if h.regla == "R1"]
     assert nuevo.pendientes == ()
 ```
 
 Run: `uv run pytest tests/unit/test_recalculo_uc04.py -q -W error --strict-markers`
-Expected: `1 passed`. **Comprobar que muerde:** reemplazar temporalmente `_elaborar(ANCHO_NUEVO, "UC04-2")` por `_elaborar(GEOMETRIA["a"], "UC04-2")`; debe fallar la primera aserción con `set() == {…}`. Restaurar.
+Expected: `1 passed`. **Comprobar que muerde:** reemplazar temporalmente `_elaborar(ANCHO_NUEVO, "UC04-2")` por `_elaborar(GEOMETRIA["a"], "UC04-2")`; debe fallar la aserción del paso 3 con `set() == {…}`. Restaurar.
 
-- [ ] **Step 5: Línea base, 7 de 7, suite y lint**
-
-Run: `uv run pytest tests/unit/test_costing.py tests/integration/test_auditoria_7_de_7.py -q -W error --strict-markers && uv run pytest -W error --strict-markers -q && uv run ruff check . && git diff --stat main -- adapters ml`
-Expected: verde, limpio y diff vacío.
-
-- [ ] **Step 6: Commits.** Primero las pruebas de RF‑19 y UC‑04 (solo `tests/`), después RF‑20 (`core/` y su prueba).
+- [ ] **Step 3: Commit de las pruebas (solo `tests/`)**
 
 ```bash
 git add tests/unit/test_reglas_civil.py tests/unit/test_recalculo_uc04.py
-git commit -m "test: rf-19 y los pasos de uc-04 con prueba propia" -m "Parte de INV-011: la prueba de RF-19 es la de su criterio en la ERS (cambiar el ancho altera solo lo que depende de el); la de UC-04 traza los pasos 1 a 5." -m "Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>"
-git add core/budget/diferencial.py core/budget/__init__.py tests/unit/test_budget.py
-git commit -m "fix(budget): diferencial por partida entre una version y su recalculo" -m "Parte de INV-011: RF-20 no tenia implementacion; se implementa el RF existente (spec de cierre, seccion 2). Ver expediente B.7." -m "Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>"
+git commit -m "test: rf-19 y los pasos 1 a 4 de uc-04 con prueba propia" -m "Parte de INV-011: la prueba de RF-19 es la de su criterio en la ERS (cambiar el ancho altera solo lo que depende de el); la de UC-04 traza los pasos 1 a 4. RF-20 (paso 5) no tiene implementacion y se declara en el commit siguiente." -m "Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>"
 ```
 
-- [ ] **Step 7: Registrar los flujos de UC‑04 que C1 no cierra.** Agregar al final de §3 del inventario (siguiente ID libre):
+- [ ] **Step 4: RF‑20, corregir el «verde» falso.** El texto del requisito no cambia; solo su estado.
+
+En `docs/ERS.md`, la fila de RF‑20 (`:466`) pasa a:
 
 ```markdown
-| INV-0NN | planificación de C1 (Tarea 12; expediente B.7) | adapters (cruza: core, docs) | Trazabilidad (UC‑04) | importante | `docs/ERS.md:211-215` (flujos 1a, 2a, 2b) frente a `adapters/civil/reglas.py:41-198`, `core/contracts/item_computo.py:52-53` | Los flujos alternativos de UC‑04 no tienen implementación: nada informa que un parámetro no participa en ninguna regla (1a); nada empareja por GlobalId al reimportar un IFC (2a); una cantidad negativa se rechaza con `ValueError` del contrato, en vez de conservar la anterior y emitir un hallazgo de R5 (2b) | Implementar 1a y 2b en la capa de adaptadores, sin cambiar `core/`, y 2a con `diferencial_por_partida` por `origen_id`; o declararlos sin cumplir en la ERS §3.2 y en plan_pruebas §8 | C2 (adaptadores) + C4 (documentos) | abierto |
+| RF‑20 | El sistema presentará el diferencial entre la versión anterior y la recalculada: cantidad, precio unitario y total por partida | Deseable | UC‑04 | I3.2 | **No implementado; declarado en limitaciones** (INV‑011, fase C1 del cierre; decisión del 2026‑09‑23). Criterio previsto: la suma de los diferenciales por partida iguala la diferencia de totales |
+```
+
+En `docs/plan_pruebas.md`, la fila de RF‑20 (`:147`) pasa a:
+
+```markdown
+| RF‑20 | — (ninguna prueba: el requisito no tiene implementación; INV‑011) | — | no implementado; declarado en limitaciones |
+```
+
+En `docs/auditoria/2026-09-inventario.md`, §4 (c) («El resto: a limitaciones»), agregar al final del párrafo que empieza con `INV‑037 (C1; se corrige de hecho…`:
+
+```markdown
+Además, **RF‑20** (diferencial por partida, UC‑04 paso 5) queda **no implementado; declarado en
+limitaciones**: la corrección de INV‑011 aprobada en GC0 lo preveía si no tenía implementación, y
+Eugenio lo decidió el 2026‑09‑23. La ERS (RF‑20) y el plan de pruebas (§8) lo dicen desde C1.
+```
+
+Run: `uv run pytest -W error --strict-markers -q && uv run ruff check . && git diff --stat main -- core adapters ml && grep -n "RF‑20" docs/ERS.md docs/plan_pruebas.md`
+Expected:
+- Suite verde (las metas y pruebas que leen la ERS o el plan de pruebas como texto siguen pasando) y ruff limpio.
+- `git diff --stat main -- core adapters ml` solo muestra los archivos de `core/` de las Tareas 7 a 11; ninguno de esta tarea, y nada en `adapters` ni `ml`.
+- El `grep` muestra `docs/ERS.md:466` con «No implementado», las dos filas de trazabilidad de UC‑04 (`:509`, `:549`), que citan el requisito sin declararlo verde, y `docs/plan_pruebas.md:147` con «no implementado».
+
+- [ ] **Step 5: Commit de los documentos**
+
+```bash
+git add docs/ERS.md docs/plan_pruebas.md docs/auditoria/2026-09-inventario.md
+git commit -m "docs(ers): rf-20 declarado no implementado y en limitaciones" -m "Cierra INV-011 junto al commit anterior: la ERS y el plan de pruebas daban RF-20 por verde citando una prueba que no existe. Correccion aprobada en GC0 y decision de Eugenio del 2026-09-23; ver expediente B.7." -m "Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>"
+```
+
+- [ ] **Step 6: Registrar los flujos de UC‑04 que C1 no cierra.** Agregar al final de §3 del inventario (siguiente ID libre):
+
+```markdown
+| INV-0NN | planificación de C1 (Tarea 12; expediente B.7) | adapters (cruza: core, docs) | Trazabilidad (UC‑04) | importante | `docs/ERS.md:211-215` (flujos 1a, 2a, 2b) frente a `adapters/civil/reglas.py:41-198`, `core/contracts/item_computo.py:52-53` | Los flujos alternativos de UC‑04 no tienen implementación: nada informa que un parámetro no participa en ninguna regla (1a); nada empareja por GlobalId al reimportar un IFC (2a); una cantidad negativa se rechaza con `ValueError` del contrato, en vez de conservar la anterior y emitir un hallazgo de R5 (2b) | Implementar 1a y 2b en la capa de adaptadores, sin cambiar `core/`, y 2a emparejando por `origen_id`; o declararlos sin cumplir en la ERS §3.2 y en plan_pruebas §8 | C2 (adaptadores) + C4 (documentos) | abierto |
 ```
 
 ```bash
@@ -2745,22 +3056,21 @@ git commit -m "docs(auditoria): flujos alternativos de uc-04 pendientes para c2 
 
 ---
 
-### Task 13: INV‑014 e INV‑015, RF‑11, RF‑12, UC‑02 2b y 7a con prueba propia
+### Task 13: INV‑014 e INV‑015, RF‑11, RF‑12 y UC‑02 2b con prueba propia; 7a a C3
 
 **Files:**
-- Test: `tests/integration/test_actualizacion_precios.py` (cuatro pruebas nuevas)
-- Modify: `core/budget/actualizacion.py:46` (`__all__`) y función nueva tras `actualizar_precios`; `core/budget/__init__.py:20`
-- Modify: `docs/auditoria/2026-09-inventario.md` (fila nueva)
+- Test: `tests/integration/test_actualizacion_precios.py` (tres pruebas nuevas)
+- Modify: `docs/auditoria/2026-09-inventario.md` (fila INV‑015: subtarea de C3)
 
 **Interfaces:**
-- Consumes: expediente B.8; `elaborar(plan=plan_secuencial)` (Tarea 11); `tests.fixtures.actualizacion_uc02` (Tarea 5); `apu_linea_base.precio_de_insumo` (Tarea 6).
-- Produces: `core.budget.descartar_version(session, proyecto_nombre: str, codigo_nuevo: str) -> None`.
+- Consumes: expediente B.8 (decisión de Eugenio del 2026‑09‑23); `elaborar(plan=plan_secuencial)` (Tarea 11); `tests.fixtures.actualizacion_uc02` (Tarea 5); `apu_linea_base.precio_de_insumo` (Tarea 6).
+- Produces: ninguna interfaz nueva. `core/` no cambia en esta tarea.
 
 **¿Existe la capacidad?**
 - RF‑11, RF‑12 y UC‑02 2b: **sí**. RF‑11: `actualizar_precios` nunca edita composiciones. RF‑12: el registro se persiste. 2b: `crear_lista_desde_archivo` compara por unidad normalizada y devuelve la fila en `desconocidos`. Se escriben las pruebas y se comprueba que muerden.
-- UC‑02 7a: **no**. Descartar sin confirmar también deshace `CambioPrecio`. Se implementa.
+- UC‑02 7a: **no**, y **no se implementa en C1** (decisión de Eugenio, expediente B.8). Queda como subtarea de C3 en la fila de INV‑015 (paso 2). La ERS no se toca.
 
-- [ ] **Step 1: Pruebas de las capacidades existentes.** En `tests/integration/test_actualizacion_precios.py`, sumar al import `from core.catalog import Catalogo, abrir_sesion, crear_esquema, crear_lista_desde_archivo, crear_motor, leer_lista_precios` y agregar en la sección «Actualización del presupuesto»:
+- [ ] **Step 1: Pruebas de las capacidades existentes.** En `tests/integration/test_actualizacion_precios.py`, el import de `core.catalog` pasa a `from core.catalog import Catalogo, abrir_sesion, crear_esquema, crear_lista_desde_archivo, crear_motor, leer_lista_precios, registrar_cambios` (partido entre paréntesis; `registrar_cambios` viene de la Tarea 9) y agregar en la sección «Actualización del presupuesto»:
 
 ```python
 def _estructura(composicion):
@@ -2892,7 +3202,7 @@ def test_una_fila_con_unidad_no_equivalente_se_rechaza_y_las_demas_se_procesan(
     assert precios[ARENA] == PRECIOS_NUEVOS[ARENA]
 ```
 
-Sumar `elaborar` y `guardar_presupuesto` al import de `core.budget` si faltan.
+`elaborar` y `guardar_presupuesto` ya están en el import de `core.budget`.
 
 Run: `uv run pytest tests/integration/test_actualizacion_precios.py -q -W error --strict-markers -k "no_edita or releen or no_equivalente"`
 Expected: `3 passed`. **Comprobar que cada una muerde**, restaurando después de cada cambio:
@@ -2908,98 +3218,23 @@ Expected: `3 passed`. **Comprobar que cada una muerde**, restaurando después de
 - (RF‑12) Comentar el segundo `sesion.commit()`. Debe fallar con `set() == {…}`.
 - (2b) Cambiar `m3,99` por `saco,99`. Debe fallar la aserción de `desconocidos`.
 
+Run después: `uv run pytest tests/unit/test_costing.py tests/integration/test_auditoria_7_de_7.py -q -W error && uv run pytest -W error --strict-markers -q && uv run ruff check . && git diff --stat HEAD -- core`
+Expected: todo verde, y el último `diff` vacío: esta tarea no toca `core/`.
+
 ```bash
 git add tests/integration/test_actualizacion_precios.py
-git commit -m "test(budget): rf-11, rf-12 y uc-02 2b con prueba propia" -m "Parte de INV-014 e INV-015: las capacidades existian; las pruebas se observaron mordiendo con una alteracion temporal." -m "Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>"
+git commit -m "test(budget): rf-11, rf-12 y uc-02 2b con prueba propia" -m "Cierra INV-014 y la parte de C1 de INV-015: las capacidades existian; las pruebas se observaron mordiendo con una alteracion temporal. UC-02 7a queda para C3 por decision de Eugenio (expediente B.8)." -m "Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>"
 ```
 
-- [ ] **Step 2: UC‑02 7a, prueba que falla.** Sumar `descartar_version` al import de `core.budget` y agregar:
-
-```python
-def test_descartar_la_version_nueva_conserva_el_registro_de_cambios(
-    sesion, presupuesto_001, actualizacion
-):
-    """UC‑02, flujo 7a (INV‑015): la versión nueva desaparece; los `CambioPrecio`, sus
-    `IncidenciaCambio` y la lista nueva se conservan porque alimentan el histórico de I6."""
-    incidencias = len(sesion.scalars(select(models.IncidenciaCambio)).all())
-
-    descartar_version(sesion, NOMBRE_PROYECTO, CODIGO_NUEVO)
-    sesion.commit()
-
-    with pytest.raises(KeyError, match=CODIGO_NUEVO):
-        cargar_presupuesto(sesion, NOMBRE_PROYECTO, CODIGO_NUEVO, Catalogo(sesion))
-    assert len(sesion.scalars(select(models.CambioPrecio)).all()) == len(PRECIOS_NUEVOS)
-    assert len(sesion.scalars(select(models.IncidenciaCambio)).all()) == incidencias
-    huerfanos = sesion.scalars(
-        select(models.ItemComputo).where(models.ItemComputo.presupuesto_id.is_(None))
-    ).all()
-    assert huerfanos == []
-    anterior = cargar_presupuesto(
-        sesion, NOMBRE_PROYECTO, linea_base.CODIGO_PRESUPUESTO, Catalogo(sesion)
-    )
-    assert anterior == presupuesto_001.presupuesto
-```
-
-Run: `uv run pytest tests/integration/test_actualizacion_precios.py -q -W error --strict-markers`
-Expected: error de colección `ImportError: cannot import name 'descartar_version' from 'core.budget'`.
-
-- [ ] **Step 3: Implementación.** En `core/budget/actualizacion.py`, `__all__` (`:46`) pasa a `["COLUMNAS_COMPARATIVO", "Comparativo", "actualizar_precios", "descartar_version"]`. Tras `actualizar_precios` (`:160`) se agrega:
-
-```python
-def descartar_version(session: Session, proyecto_nombre: str, codigo_nuevo: str) -> None:
-    """UC‑02, flujo 7a: el usuario descarta la versión nueva y el registro de cambios se conserva.
-
-    Borra de la sesión el presupuesto `codigo_nuevo`: sus renglones, su curva y sus hallazgos caen
-    por cascada, y sus `ItemComputo` se borran aquí para no dejar filas huérfanas. Quedan intactos
-    la lista nueva, sus `CambioPrecio` y sus `IncidenciaCambio`, que alimentan el histórico del
-    módulo predictivo. «Marcarla como descartada» exigiría una columna nueva (una migración, fuera
-    del límite del cierre): se borra (expediente B.8 de C1).
-
-    No confirma la transacción, como `actualizar_precios`: la confirma la capa que representa la
-    decisión del usuario. `KeyError` si esa versión no existe.
-    """
-    modelo = _buscar(session, proyecto_nombre, codigo_nuevo)
-    items = list(modelo.items_computo)
-    session.delete(modelo)
-    for item in items:
-        session.delete(item)
-    session.flush()
-```
-
-En `core/budget/__init__.py:20`:
-
-```python
-from core.budget.actualizacion import (
-    COLUMNAS_COMPARATIVO,
-    Comparativo,
-    actualizar_precios,
-    descartar_version,
-)
-```
-
-y `__all__` suma `"descartar_version"`.
-
-- [ ] **Step 4: Verde, línea base, suite y lint**
-
-Run: `uv run pytest tests/integration/test_actualizacion_precios.py tests/integration/test_api.py -q -W error --strict-markers && uv run pytest tests/unit/test_costing.py tests/integration/test_auditoria_7_de_7.py -q -W error && uv run pytest -W error --strict-markers -q && uv run ruff check .`
-Expected: todo verde. Si SQLite rechaza el borrado por una clave foránea, el orden de borrado del *unit of work* no alcanzó. En ese caso, borrar primero los renglones (`for partida in list(modelo.partidas): session.delete(partida)`) y hacer `flush` antes de los ítems, sin tocar el esquema.
-
-- [ ] **Step 5: Commit**
-
-```bash
-git add core/budget/actualizacion.py core/budget/__init__.py tests/integration/test_actualizacion_precios.py
-git commit -m "fix(budget): descartar la version nueva de uc-02 conserva el registro de cambios" -m "Cierra INV-015 (7a) junto a las pruebas del commit anterior. Descartar sin confirmar deshacia tambien los CambioPrecio; ver expediente B.8." -m "Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>"
-```
-
-- [ ] **Step 6: Registrar lo que C1 no cierra de 7a.** Agregar al final de §3 del inventario (siguiente ID libre):
+- [ ] **Step 2: Registrar 7a como subtarea de C3 en la fila de INV‑015.** En `docs/auditoria/2026-09-inventario.md`, en la fila que empieza con `| INV-015 |`, reemplazar la cola `| C1 | abierto |` por:
 
 ```markdown
-| INV-0NN | planificación de C1 (Tarea 13; expediente B.8) | ui (cruza: api, docs) | Trazabilidad (UC‑02 7a) | importante | `ui/paginas/actualizacion.py:207-223` (confirma siempre que hay cambios); `docs/ERS.md:170` («se marca como descartada») | La interfaz no ofrece descartar la versión nueva, y la ERS promete una marca que el modelo no tiene: la columna exigiría una migración, fuera del límite (spec §2). `core.budget.descartar_version` ya conserva el historial | Botón «Descartar versión» en la página de actualización que llame a `descartar_version` y confirme (C3); en la ERS, 7a dice «se elimina la versión nueva; el registro de cambios se conserva» (C4) | C3 (ui) + C4 (ERS) | abierto |
+| C1 (2b) + C3 (7a) — **subtarea de C3 (decisión de Eugenio del 2026‑09‑23; [expediente B.8](../bitacora/2026-09-23-C1-expedientes.md)):** función del núcleo y botón «Descartar versión» en la página de actualización, fieles a la ERS (`docs/ERS.md:170`: «se marca como descartada», y el registro de cambios se conserva), que nunca descarten una versión que no sea la última del presupuesto; la ERS no se enmienda | abierto |
 ```
 
 ```bash
 git add docs/auditoria/2026-09-inventario.md
-git commit -m "docs(auditoria): la interfaz de uc-02 7a queda para c3 y la ers para c4" -m "Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>"
+git commit -m "docs(auditoria): uc-02 7a queda como subtarea de c3 en inv-015" -m "Decision de Eugenio del 2026-09-23: en C1, INV-015 solo agrega la prueba de 2b; 7a (funcion y boton, fieles a la ERS, sin descartar nunca una version que no sea la ultima) va a C3. La ERS no se enmienda." -m "Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>"
 ```
 
 ---
@@ -3039,15 +3274,15 @@ Expected: los dos diff vacíos, la guardia con código 0 y ninguna línea `MEZCL
 
 - [ ] **Step 4: Suite completa, lint y salvaguarda activa**
 
-Run: `uv run pytest -W error --strict-markers -q && uv run ruff check . && grep -n "_base_real_intacta" tests/conftest.py`
-Expected: verde, limpio, y la fixture presente. Anotar el número de pruebas (`N1`) frente a `N0`.
+Run: `uv run pytest -W error --strict-markers -q && uv run ruff check . && uv run pytest tests/unit/test_salvaguarda.py -q -W error --strict-markers -p no:cacheprovider && grep -n "_base_real_intacta\|pytest_plugins" tests/conftest.py`
+Expected: verde, limpio; `3 passed` en la prueba de la salvaguarda (verde con la base intacta, rojo con la base creada y con la base modificada sin cambio de `mtime`), y la fixture y el complemento presentes. Anotar el número de pruebas (`N1`) frente a `N0`.
 
 - [ ] **Step 5: Estados del inventario.** Con `git log --format="%h %s" main..HEAD`, reemplazar la columna «Estado» de estas filas:
-  - `cerrado (<hash>)`, con el commit que cierra cada una: INV‑065 (Tarea 2), INV‑010 (Tarea 1, paso 9), INV‑007 (Tarea 4, pasos 5 y 7: citar los dos), INV‑009 (Tarea 5), INV‑008 (Tarea 6), INV‑003 (Tarea 7), INV‑012 (Tarea 8), INV‑004 (Tarea 9), INV‑005 (Tarea 10), INV‑013 e INV‑069 (Tarea 11, commit del núcleo y los tres de llamadores), INV‑014 (Tarea 13, paso 1) e INV‑015 (Tarea 13, pasos 1 y 5).
-  - INV‑011: `abierto: la parte de C1 cerrada en <hash RF‑19/UC‑04> y <hash RF‑20>; queda la subtarea documental de C4 (ERS §3.2 y plan_pruebas §8)`.
+  - `cerrado (<hash>)`, con el commit que cierra cada una: INV‑065 (Tarea 2), INV‑010 (Tarea 1, paso 9), INV‑007 (Tarea 4, pasos 5 y 7: citar los dos), INV‑009 (Tarea 5), INV‑008 (Tarea 6), INV‑003 (Tarea 7), INV‑012 (Tarea 8), INV‑004 (Tarea 9), INV‑005 (Tarea 10), INV‑013 e INV‑069 (Tarea 11, commit del núcleo y los tres de llamadores), INV‑014 (Tarea 13, paso 1) e INV‑011 (Tarea 12, pasos 3 y 5: las pruebas de RF‑19 y UC‑04, y la declaración de RF‑20 como no implementado; citar los dos).
+  - INV‑015: `abierto: la parte de C1 (2b) cerrada en <hash de la Tarea 13, paso 1>; queda la subtarea de C3 (7a), decisión de Eugenio del 2026‑09‑23`.
   - INV‑001, INV‑002 e INV‑006 conservan el estado de la Tarea 3.
 
-  En el párrafo de conteos de §3 (`:48-56`), agregar al final: «La fase C1 agrega INV‑0NN a INV‑0MM (Tareas 1, 11, 12 y 13 del plan de C1) y cierra los hallazgos de su fase según esta columna.»
+  En el párrafo de conteos de §3 (`:48-56`), agregar al final: «La fase C1 agrega INV‑0NN a INV‑0MM (Tareas 1, 11 y 12 del plan de C1) y cierra los hallazgos de su fase según esta columna; INV‑015 conserva la subtarea de C3 (7a).»
 
 - [ ] **Step 6: Bitácora.** Agregar a la sección «Fase C1 — núcleo» de `docs/bitacora/2026-09-23-cierre.md`:
   - (a) La tabla de hallazgos de C1: ID → estado → commit.
@@ -3057,25 +3292,25 @@ Expected: verde, limpio, y la fixture presente. Anotar el número de pruebas (`N
   - (e) Los veredictos de los cuatro encargos (paso 7).
   - (f) La ejecución de la aplicación por Eugenio (paso 8).
   - (g) Las sesiones de redacción (fase Red) hechas durante C1, por la regla de reparto de la spec §2.
-  - (h) La línea `**GC1: cruzada el AAAA‑MM‑DD.**`, con la fecha real.
+  - (h) La línea `**GC1: pendiente de CI.** Criterios locales cumplidos y dictámenes ratificados el AAAA‑MM‑DD; falta la CI verde en ubuntu-latest y windows-latest (paso 11).`, con la fecha real. GC1 **no** se declara cruzada en este commit: la CI es parte del criterio (Global Constraints).
 
 ```markdown
 ### Decisiones de C1 pendientes de ratificación
 
 | # | Decisión | Motivo | Costo si es errónea | Ratificada por Eugenio |
 |---|---|---|---|---|
-| C1‑1 | INV‑012: una regla inevaluable es INFO «regla no evaluable», no ERROR; R2 y R7 sin plan se declaran «no aplicables» | Manda la ERS (RF‑23, UC‑05 2a y 3a); la prueba estaba alineada con el código y no con el requisito | Un presupuesto que era NO CUMPLE solo por una regla rota pasa a CUMPLE; revertir es cambiar tres severidades | |
-| C1‑2 | INV‑013: el ítem sin partida queda pendiente, con un hallazgo `PENDIENTE` de severidad ERROR; `generar_presupuesto` sigue lanzando `ValueError` | Ruta sin contrato del inventario; un presupuesto incompleto no cumple | Si el tutor prefiere ADVERTENCIA, se cambia una severidad | |
-| C1‑3 | INV‑069: el punto único es `elaborar(plan=función)`, no una función nueva; se migró también `scripts/generar_resultados_ml.py` | Un solo punto de entrada para un solo hecho; el quinto sitio repetía el protocolo | Ninguno en el resultado: las salidas son idénticas (Tarea 11, paso 9) | |
+| C1‑1 | INV‑012: solo el dato **ausente** (parámetro faltante en R1 y R5, referencia no resuelta en R5) es INFO «regla no evaluable»; el dato **inválido** (`ExpresionInvalida`: sintaxis, `float`, desborde) sigue en ERROR; R2 y R7 sin plan se declaran «no aplicables» como INFO | Manda la ERS (RF‑23, UC‑05 2a y 3a); la prueba estaba alineada con el código y no con el requisito. Bajar también lo inválido dejaría CUMPLE un presupuesto con datos corruptos (revisión de arquitectura, hallazgo 1) | Un presupuesto que era NO CUMPLE solo por un dato ausente pasa a CUMPLE; todo presupuesto sin curva gana un INFO de R7 en los conteos. Alternativa: ADVERTENCIA para lo inválido; revertir es cambiar tres severidades | |
+| C1‑2 | INV‑013: el ítem sin partida queda pendiente, con un hallazgo `PENDIENTE` de severidad ERROR; `generar_presupuesto`, `actualizar_precios` y `generar_escenario` siguen lanzando `ValueError` (precondición estricta `exigir_composiciones`) | Ruta sin contrato del inventario; un presupuesto incompleto no cumple, y revalorar o simular no puede perder renglones en silencio | Si el tutor prefiere ADVERTENCIA, se cambia una severidad | |
+| C1‑3 | INV‑069: el punto único es `elaborar(plan=función)`, no una función nueva; `actualizar_precios(plan=...)` acepta el mismo tipo; se migró también `scripts/generar_resultados_ml.py` | Un solo punto de entrada para un solo hecho; el quinto sitio repetía el protocolo | Ninguno en el resultado: las salidas son idénticas (Tarea 11, paso 9) | |
 | C1‑4 | INV‑004: con precio anterior 0, la variación es 0 | La columna no admite nulo y cambiar el esquema es una migración | Un análisis de variaciones puede leer 0 donde no hay variación definida; `precio_anterior = 0` lo delata | |
 | C1‑5 | INV‑005: la excepción única es `LookupError` y no `CatalogoIncompleto` | La API conserva el 404 de un recurso inexistente | Ninguno funcional | |
 | C1‑6 | INV‑003: la validación va en el nodo de nombre y no en `_evaluar_binario` | Cubre también la expresión de un solo nombre; evita un `except` muerto | Ninguno | |
-| C1‑7 | INV‑011: RF‑20 se implementa en `core/budget/diferencial.py` como corrección; los flujos 1a, 2a y 2b de UC‑04 pasan a C2 y C4 | RF‑20 existe en la ERS (spec §2); los flujos son de la capa de adaptadores | Si se juzga capacidad nueva, se revierte un commit y RF‑20 se declara sin cumplir | |
-| C1‑8 | INV‑015: descartar borra la versión nueva en vez de marcarla | La marca exige una migración (spec §2) | La ERS dice «marca» hasta C4 | |
+| C1‑7 | INV‑011: RF‑20 **no** se implementa; se declara «no implementado; declarado en limitaciones» en la ERS, el plan de pruebas y el inventario §4 (c); los flujos 1a, 2a y 2b de UC‑04 pasan a C2 y C4 | Corrección de INV‑011 aprobada en GC0 («si RF‑20 no tiene implementación, declararlo sin cumplir»); un `diferencial.py` sería el tercer comparador del núcleo y no tendría llamador | Un requisito deseable queda sin cumplir y declarado | sí, Eugenio, 2026‑09‑23 (antes de ejecutar) |
+| C1‑8 | INV‑015: en C1 solo la prueba de 2b; 7a (función y botón, fieles a la ERS «se marca como descartada», sin descartar nunca una versión que no sea la última) es subtarea de C3; la ERS no se enmienda | Lo aprobado en GC0 era una prueba por flujo; borrar la versión contradecía la ERS y no tenía llamador hasta C3 | Descartar sigue deshaciendo los `CambioPrecio` hasta C3 | sí, Eugenio, 2026‑09‑23 (antes de ejecutar) |
 | C1‑9 | INV‑001, INV‑002 e INV‑006: aceptados por decisión de arquitectura registrada, pendientes del aval | Cambian contratos (spec §4); expedientes A.1 a A.3 | Si el tutor avala, se reabren y se corrigen antes de `v1.0-tesis` | |
 | C1‑10 | INV‑008 se limita a las líneas citadas, más tres líneas de la misma aserción; INV‑009 hace exacto el factor de la tubería (7,8856 → 7,88542… m³ esperados en R5) | Alcance del inventario; un dato con dos precisiones | Quedan literales de la línea base en `test_persistencia.py` fuera del alcance | |
 | C1‑11 | La tarea de expedientes va tercera y no al final | La respuesta del tutor es el camino crítico de F2 | Ninguno | |
-| C1‑12 | Los hallazgos nuevos de C1 (`plan_secuencial` con códigos repetidos, UC‑01 3a en la interfaz y la API, flujos de UC‑04, UC‑02 7a en la interfaz) quedan abiertos en su fase; el de `plan_secuencial` se corrige en C1 solo si Eugenio lo decide aquí | Alcance de C1 fijado en GC0 | Si se decide corregirlo ahora, es una tarea más en `core/budget/curva.py` | |
+| C1‑12 | Los hallazgos nuevos de C1 (`plan_secuencial` con códigos repetidos, UC‑01 3a en la interfaz y la API, flujos de UC‑04) quedan abiertos en su fase; el de `plan_secuencial` se corrige en C1 solo si Eugenio lo decide aquí | Alcance de C1 fijado en GC0 | Si se decide corregirlo ahora, es una tarea más en `core/budget/curva.py` | |
 ```
 
 - [ ] **Step 7: Los cuatro encargos, en paralelo y en segundo plano.** Una llamada `Agent` por encargo, las cuatro en el mismo mensaje, todas sobre `git diff main..HEAD` más la spec, el inventario y los expedientes. Cada prompt incluye:
@@ -3092,13 +3327,13 @@ Expected: verde, limpio, y la fixture presente. Anotar el número de pruebas (`N
 - [ ] **Step 8: Eugenio ejecuta la aplicación y ratifica** (spec §6).
   - El guion ya está corregido (Tarea 2; condición de cierre de INV‑065).
   - Eugenio sigue `docs/guion_prueba_arenia.md` §4 con `data/prueba_arenia.db`, ejecuta CP‑05 y CP‑06 (el cambio principal: la elaboración con `plan=plan_secuencial` y el informe siempre presente) y comprueba al terminar que `data/apu.db` no cambió.
-  - Después ratifica cada fila de la tabla del paso 6. Sin ratificación, la compuerta no se cruza.
+  - Después ratifica cada fila de la tabla del paso 6 que aún no lo esté (C1‑7 y C1‑8 ya las decidió el 2026‑09‑23). Sin ratificación, la compuerta no se cruza.
 
-- [ ] **Step 9: Commit**
+- [ ] **Step 9: Commit (GC1 pendiente de CI)**
 
 ```bash
 git add docs/auditoria/2026-09-inventario.md docs/bitacora/2026-09-23-cierre.md
-git commit -m "docs(bitacora): compuerta gc1 del cierre" -m "Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>"
+git commit -m "docs(bitacora): compuerta gc1 del cierre, pendiente de ci" -m "Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>"
 ```
 
 - [ ] **Step 10: Push y PR, solo con permiso expreso de Eugenio.**
@@ -3116,7 +3351,25 @@ EOF
 
 Si la etiqueta `gc1` no existe, se crea con `gh label create gc1` (también con permiso).
 
-Expected: `gh pr checks` muestra `ubuntu-latest` y `windows-latest` en verde. La fusión es con merge commit y la decide Eugenio (spec §6).
+Run después: `gh pr checks --watch`
+Expected: `ubuntu-latest` y `windows-latest` en verde. Si alguno falla, GC1 sigue pendiente: se corrige en un commit propio, se empuja (con el mismo permiso) y se repite este paso.
+
+- [ ] **Step 11: Declarar GC1 cruzada, solo con la CI en verde.** En la sección «Fase C1 — núcleo» de `docs/bitacora/2026-09-23-cierre.md`, reemplazar la línea `**GC1: pendiente de CI.** …` del paso 6 (h) por:
+
+```markdown
+**GC1: cruzada el AAAA‑MM‑DD.** CI verde en `ubuntu-latest` y `windows-latest` sobre el commit
+HASH_CI (PR #NUMERO_PR); criterios locales y dictámenes ratificados según las secciones anteriores.
+```
+
+(Sustituir la fecha real, el hash corto del commit que la CI probó y el número del PR.)
+
+```bash
+git add docs/bitacora/2026-09-23-cierre.md
+git commit -m "docs(bitacora): gc1 cruzada con la ci en verde" -m "Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>"
+git push
+```
+
+El `push` va con el permiso del paso 10. La fusión es con merge commit y la decide Eugenio (spec §6).
 
 ---
 
@@ -3137,19 +3390,41 @@ Expected: `gh pr checks` muestra `ubuntu-latest` y `windows-latest` en verde. La
 | INV‑008 | 6 | completo en las líneas citadas |
 | INV‑009 | 5 | completo |
 | INV‑010 | 1 | completo |
-| INV‑011 | 12 | RF‑19 con prueba, RF‑20 implementado, pasos 1‑5 de UC‑04 trazados; queda la subtarea de C4 |
-| INV‑012 | 8 | completo |
-| INV‑013 | 11 | completo en el núcleo por la ruta sin contrato |
+| INV‑011 | 12 | completo: RF‑19 con prueba, pasos 1‑4 de UC‑04 trazados, RF‑20 declarado «no implementado; declarado en limitaciones» en la ERS, el plan de pruebas y el inventario §4 (c) (decisión de Eugenio) |
+| INV‑012 | 8 | completo: INFO solo para lo ausente, ERROR para lo inválido; R2 y R7 no aplicables; exención de R7 en el 7 de 7 |
+| INV‑013 | 11 | completo en el núcleo por la ruta sin contrato, con la precondición estricta conservada en `actualizar_precios` y `generar_escenario` |
 | INV‑014 | 13 | completo |
-| INV‑015 | 13 | completo en el núcleo (2b con prueba, 7a implementado) |
-| INV‑069 | 11 | completo: núcleo más cinco llamadores en tres commits separados |
+| INV‑015 | 13 | parte de C1 completa (2b con prueba); 7a registrado como subtarea de C3 en su fila (decisión de Eugenio) |
+| INV‑069 | 11 | completo: núcleo más cinco llamadores en tres commits separados; `actualizar_precios` acepta el mismo tipo de plan |
 | Pendiente H2 de GC0 | 1, paso 10 | revisión de solo lectura |
+
+**Cobertura de las revisiones del plan** (`.superpowers/sdd/plan-c1/arq.md` y `qa.md`) **y de las decisiones de Eugenio:**
+
+| Punto | Dónde |
+|---|---|
+| arq 1 (INFO solo para lo ausente; `ExpresionInvalida` en ERROR; desborde sin cambios; `float` ≥ ERROR) | Tarea 7, paso 1; Tarea 8; expediente B.2; dictamen C1‑1 |
+| arq 2 (`descartar_version`) | Decisión 1 de Eugenio: fuera de C1; expediente B.8; Tarea 13, paso 2; dictamen C1‑8 |
+| arq 3 (`diferencial.py`) | Decisión 2 de Eugenio: RF‑20 no implementado; expediente B.7; Tarea 12, pasos 4 y 5; dictamen C1‑7 |
+| arq 4 (precondición estricta en `actualizar_precios` y `generar_escenario`, con pruebas; `medir_rnf03.py:117`) | Tarea 11, pasos 2 a 4; expediente B.5; Review Focus 4 |
+| arq 5 (INFO de R7 en los conteos; exención en `test_auditoria_7_de_7.py:63`; sembradores) | Review Focus 1; Tarea 8, pasos 1, 3 y 6 |
+| arq 6 (la fixture usa `core.verification.expresiones.evaluar`) | Tarea 5, paso 3 |
+| arq 7 y qa 5 (prueba del ítem pendiente que discrimina) | Tarea 11, paso 2 |
+| arq 8 y qa 8 (`actualizar_precios` acepta `GeneradorPlan`; `generar_resultados_ml.py:191`) | Tarea 11, pasos 2, 3 y 9; expediente B.6 |
+| arq 9 (Tarea 0 sobre `a62daef`; tildes de `ui/paginas/elaborar.py`) | Tarea 0, pasos 1 y 5; Tarea 11, paso 7; Global Constraints |
+| qa 1 (prueba permanente con `pytester`, tres casos, `st_size`; sin `rm` de la base real) | Tarea 1, pasos 1 a 5; Tarea 14, paso 4; Review Focus 3 |
+| qa 2 (GC1 cruzada solo con CI verde, en commit aparte) | Tarea 14, pasos 6 (h), 9, 10 y 11 |
+| qa 3 (oráculo independiente en `test_api.py:138`) | Tarea 6, paso 1 |
+| qa 4 (rojo de comportamiento en la Tarea 8) | Tarea 8, pasos 2 a 4 |
+| qa 6 (UC‑04 sin ningún hallazgo de R1) | Tarea 12, paso 2 |
+| qa 7 (`precio_de_insumo` rechaza homónimos con precios distintos) | Tarea 6, pasos 1 y 2 |
+| qa 8 (una sola opción en la Tarea 5, paso 1; docstring de `--db` en la misma línea) | Tarea 5, paso 1; Tarea 2, paso 1 |
 
 **Lo que no se pudo planificar en concreto, y por qué:**
 
 - **Hallazgos de la revisión H2 (Tarea 1, paso 10).** No se conocen hasta leer los archivos con el criterio de la capa `tests`. El plan da la lista de preguntas y el formato de fila, no el texto de filas que aún no existen.
-- **Flujos 1a, 2a y 2b de UC‑04.** No tienen implementación y su lugar natural es `adapters/`, que C1 no puede tocar junto con `core/`. Se registran para C2 y C4 (Tarea 12, paso 7).
-- **UC‑02 7a en la interfaz, y la «marca» de descartada.** La primera es de `ui/` (C3). La segunda exige una migración de esquema, fuera del límite de la spec §2 (Tarea 13, paso 6).
+- **Flujos 1a, 2a y 2b de UC‑04.** No tienen implementación y su lugar natural es `adapters/`, que C1 no puede tocar junto con `core/`. Se registran para C2 y C4 (Tarea 12, paso 6).
+- **RF‑20 (UC‑04, paso 5).** No tiene implementación y, por decisión de Eugenio, C1 no la escribe: queda «no implementado; declarado en limitaciones» (Tarea 12, pasos 4 y 5).
+- **UC‑02 7a completo (función y botón).** Por decisión de Eugenio es una subtarea de C3, registrada en la fila de INV‑015 (Tarea 13, paso 2): fiel a la ERS («se marca como descartada»), sin descartar nunca una versión que no sea la última. La forma de la marca la fija el plan de C3; la ERS no se enmienda.
 - **UC‑01 3a de punta a punta.** La interfaz y la API piden composiciones al catálogo, que lanza `KeyError` antes de llegar a `elaborar`, y la propuesta de tres partidas similares (UC‑03) es de `ui/` (Tarea 11, paso 11).
 - **`plan_secuencial` con códigos repetidos.** Es un defecto de `core/` descubierto al planificar, no un hallazgo aprobado en GC0. Se reproduce y se registra (Tarea 11, paso 11), pero su corrección no se planifica: la decide Eugenio en GC1 (dictamen C1‑12).
 - **Recuentos exactos de pruebas.** No se fijan: el plan manda anotar `N0` y `N1` y compararlos, en lugar de inventar cifras.
