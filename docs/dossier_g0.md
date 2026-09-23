@@ -15,6 +15,10 @@ Los tres entregables documentales de la Fase 0 ([CLAUDE.md §8.3](../CLAUDE.md))
 | [modelo_datos.md](modelo_datos.md) | ER + decisiones | completo; implementado y probado desde I0.4 |
 | [arquitectura.md](arquitectura.md) | vistas 4+1 | completo; la hipótesis central verificada empíricamente |
 
+*Vigencia (2026‑09‑23):* la fila de la ERS describe el estado en G0 (2026‑08‑31) y no se reescribe;
+tras la Sesión U0.1 del sprint de UI ([PLAN_UI.md](../PLAN_UI.md)) la ERS suma UC‑12 y llega a
+**42 RF y 10 RNF**.
+
 Los tres se escribieron en la Fase 0 y **el sistema completo se construyó después sobre ellos sin
 que ninguna sesión los invalidara**: las actualizaciones posteriores fueron de trazabilidad
 (marcar RF como cubiertos), nunca de fondo. Esa estabilidad es el mejor argumento a favor de
