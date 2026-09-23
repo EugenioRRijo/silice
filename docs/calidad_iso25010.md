@@ -5,10 +5,15 @@ y metas declaradas en [ERS.md §3.3](ERS.md#33-requisitos-no-funcionales-isoiec-
 numérica (corrida de la suite, cobertura, medición de desempeño) está registrada **una sola vez**
 en [plan_pruebas.md](plan_pruebas.md) §9–§10; aquí se interpreta.
 
-> **Nota de vigencia (2026‑09‑23).** Las cifras de pruebas de este documento son de su redacción
-> (2026‑08‑31, 395 pruebas). [plan_pruebas.md §10](plan_pruebas.md) registra 479 (2026‑09‑14) y el
-> cierre del sprint del prototipo, 673. Se actualizan todas juntas al cerrar la compuerta GU1 de
-> [PLAN_UI.md](../PLAN_UI.md); hasta entonces, la fuente vigente del conteo es la última bitácora.
+> **Nota de vigencia (2026‑09‑23).** Las cifras de pruebas y de RF de este documento son de su
+> redacción (2026‑08‑31): 395 pruebas, 30 de 31 RF, cobertura de `core/` 98,05 % (§5). El propio §6
+> cita, sin reconciliar, 490 pruebas de la CI desde 2026‑09‑15. [plan_pruebas.md §10](plan_pruebas.md)
+> registra después 479 (2026‑09‑14) y [§9](plan_pruebas.md) cobertura de `core/` 98,10 %; el cierre
+> del sprint del prototipo llegó a 673 pruebas
+> ([docs/bitacora/2026-09-16-sprint-prototipo.md](bitacora/2026-09-16-sprint-prototipo.md)). La ERS
+> pasó de 31 a **42 RF** y de 9 a **10 RNF** en la Sesión U0.1 del sprint de UI
+> ([PLAN_UI.md](../PLAN_UI.md)). Se actualizan todas estas cifras juntas al cerrar la compuerta GU1;
+> hasta entonces, la fuente vigente de cada conteo es la bitácora citada arriba, no este documento.
 
 Fecha de la evaluación: 2026‑08‑31, sobre `main` en `02f961a` (cierre del sprint I6);
 actualizada el mismo día tras el cierre de UC‑08 (`inc/UC08-escenarios`).
@@ -143,7 +148,7 @@ p. ej. Revit y Bonsai) sigue abierta; la alternativa tabular documentada existe 
 | Adecuación funcional | clase 3 AACE; RF cubiertos | desviación 0,00 %; 30/31 RF en verde (26/26 esenciales); 7 de 7 | cumple |
 | Fiabilidad | reproducibilidad 100 % | comparación exacta en verde; 395/395 | cumple |
 | Eficiencia de desempeño | < 5 s con ≤ 100 partidas | **1,17 s** con 100 partidas | cumple |
-| Usabilidad | RNF‑04 Likert ≥ 4/5 sobre el informe; RNF‑10 CP‑07 sin ayuda en ≤ 20 min y bloque B ≥ 4,0 | RNF‑04: instrumento por aplicar (Fase 6); RNF‑10: CP‑07 por ejecutar (GU1) | pendiente |
+| Usabilidad | RNF‑04 Likert ≥ 4/5 sobre el informe; RNF‑10 CP‑07 sin ayuda en ≤ 20 min, bloque B ≥ 4,0 y ningún ítem < 3 | RNF‑04: instrumento por aplicar (Fase 6); RNF‑10: CP‑07 por ejecutar (GU1) | pendiente |
 | Mantenibilidad | `core/` intacto; cobertura ≥ 80 % | diff vacío + 65 pruebas; **98,05 %** | cumple |
 | Portabilidad | 0 pasos manuales, Windows y Linux | Windows ✔ (local y CI); Linux ✔ (CI) | cumple |
 | Seguridad | 0 credenciales, 0 red | 0 y 0 (excepción declarada) | cumple |
