@@ -412,10 +412,10 @@ parte de lo que se prueba (principio 7 de [CLAUDE.md](../CLAUDE.md)).
    caso): eso tampoco cuenta como ayuda; anote el minuto y la ruta que abrió. El estado final se
    comprueba siempre sobre la base del escenario (`escenario_a.db` o `escenario_b.db`), nunca sobre
    la que haya quedado abierta al final.
-6. **Oferta única de ayuda:** si pasan 3 minutos sin una acción nueva (definición del punto 3), diga
-   una sola vez: «¿Quiere que le ayude?». Si acepta, la sesión queda **asistida** y el veredicto ya
-   es FALLA; se continúa hasta una condición de parada para registrar el resto. Si no acepta, no se
-   vuelve a ofrecer.
+6. **Oferta única de ayuda:** si pasan 3 minutos sin avanzar —sin cambiar de pantalla ni producir
+   un resultado nuevo—, diga una sola vez: «¿Quiere que le ayude?». Si acepta, la sesión queda
+   **asistida** y el veredicto ya es FALLA; se continúa hasta una condición de parada para registrar
+   el resto. Si no acepta, no se vuelve a ofrecer.
 
 **Condiciones de parada** (la primera que ocurra)
 
@@ -441,7 +441,9 @@ este orden: *Presupuesto*, *APU*, *Curva* y *Auditoria*, y compara el número qu
 participante contra la hoja *Auditoria* de **ese mismo archivo** — la referencia es esa hoja, no el
 informe en pantalla, que es solo apoyo (en el escenario A la base sembrada ya trae el presupuesto
 `DEMO-001`: no lo confunda con el que acaba de producir el participante). Solo en el escenario B: la
-barra lateral, bajo **Caso abierto**, informa más de cero partidas.
+barra lateral, bajo **Caso abierto**, informa más de cero partidas. Repita también la comprobación
+de la preparación sobre `data/apu.db` (existencia y fecha de modificación) y compárela con la
+anotada al inicio.
 
 **Al terminar:** el participante contesta a solas el **bloque B** del anexo A (en el escenario A,
 B4 se marca «no aplica»). El observador no mira mientras lo contesta.
@@ -470,7 +472,8 @@ ejecución, dejando constancia en [docs/bitacora/](bitacora/).
 | Puntos de detención (minuto · pantalla · qué dijo) | | |
 | Condición de parada (1–5) | | |
 | Archivo obtenido y sus hojas | | |
-| Hallazgos que dijo · hallazgos del informe | | |
+| Hallazgos que dijo · hallazgos de la hoja Auditoria | | |
+| `data/apu.db` sin cambios al terminar (sí/no) | | |
 | Partidas al terminar (solo B) | — | |
 | Bloque B: B1 · B2 · B3 · B4 · B5 · B6 · B7 · promedio | | |
 | Campo abierto | | |
