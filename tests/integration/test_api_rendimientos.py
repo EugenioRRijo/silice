@@ -11,10 +11,15 @@ deja un rendimiento estimado de 80 m3/dia en LB-01-EXC.
 
 from __future__ import annotations
 
+from decimal import Decimal
+
 import pytest
 from fastapi.testclient import TestClient
 
-EXCAVACION = "LB-01-EXC"
+from tests.fixtures import apu_linea_base as linea_base
+
+EXCAVACION = linea_base.APU_EXCAVACION.codigo_partida
+SEMBRADO = linea_base.APU_EXCAVACION.rendimiento
 RUTA_RENDIMIENTOS = f"/partidas/{EXCAVACION}/rendimientos"
 
 
@@ -119,7 +124,7 @@ def test_get_trae_historico_dispersion_y_propuesta(cliente):
 
     dispersion = cuerpo["dispersion"]
     assert dispersion["observaciones"] == 3
-    assert dispersion["media"] == "80"  # (80 + 75 + 85) / 3, Decimal exacto como texto
+    assert dispersion["media"] == str((SEMBRADO + Decimal("75") + Decimal("85")) / 3)
     assert dispersion["minimo"] == "75" and dispersion["maximo"] == "85"
     assert dispersion["medidos"] == 1 and dispersion["estimados"] == 2
 

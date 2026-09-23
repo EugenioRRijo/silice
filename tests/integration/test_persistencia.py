@@ -82,7 +82,7 @@ def test_precios_se_reconstruyen_a_fecha(sesion):
     sesion.flush()
 
     def cemento(fecha: date) -> Decimal:
-        composicion = catalogo.composicion("LB-04-CON", fecha=fecha)
+        composicion = catalogo.composicion(linea_base.APU_CONCRETO.codigo_partida, fecha=fecha)
         return next(
             linea.precio
             for linea in composicion.materiales
@@ -91,7 +91,7 @@ def test_precios_se_reconstruyen_a_fecha(sesion):
 
     assert catalogo.lista_vigente(date(2026, 5, 1)).id == base.id
     assert catalogo.lista_vigente(date(2026, 6, 15)).id == nueva.id
-    assert cemento(date(2026, 5, 1)) == Decimal("15")
+    assert cemento(date(2026, 5, 1)) == linea_base.precio_de_insumo("Cemento Portland")
     assert cemento(date(2026, 6, 15)) == Decimal("18")
 
 

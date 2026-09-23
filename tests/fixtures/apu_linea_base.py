@@ -4,8 +4,9 @@
 Fuente primaria: data/linea_base/APUS_CLINICA.pdf (presupuesto 001, 28/04/2026, USD).
 Versión narrativa: docs/linea_base.md.
 
-Consumidores: tests/unit/test_costing.py, tests/unit/test_linea_base.py, scripts/seed.py
-(Sesión I0.4) y la fixture de las siete inconsistencias de la Sesión I4.
+Consumidores: toda la suite (las pruebas importan los nombres de este módulo en vez de repetir
+cifras o códigos, INV‑008), scripts/seed.py (Sesión I0.4) y las fixtures derivadas de
+tests/fixtures/.
 
 Los códigos de partida llevan el prefijo LB- (línea base) porque los códigos COVENIN 2000
 definitivos se asignan al cargar el catálogo en la Sesión I0.4; ninguna prueba debe depender de
@@ -173,6 +174,34 @@ APU_RELLENO = ComposicionAPU(
 
 APUS_LINEA_BASE = (APU_EXCAVACION, APU_TUBERIA, APU_ENCOFRADO, APU_CONCRETO, APU_RELLENO)
 
+CODIGOS_LINEA_BASE = tuple(apu.codigo_partida for apu in APUS_LINEA_BASE)
+
+
+def precio_de_insumo(descripcion: str) -> Decimal:
+    """Precio con que la línea base transcribe un material o equipo, buscado por su descripción.
+
+    Solo sirve para un insumo con un único precio en toda la línea base. Los homónimos con precio
+    distinto (`Pala`, `Agua`, `Cinta métrica`, `Nivel de mano`; docs/modelo_datos.md §6) lanzan
+    `ValueError`: ahí el precio depende del APU y se lee de la línea concreta. `KeyError` si
+    ninguna línea lo nombra.
+    """
+    precios = {
+        linea.precio
+        for apu in APUS_LINEA_BASE
+        for linea in (*apu.materiales, *apu.equipos)
+        if linea.descripcion == descripcion
+    }
+    if not precios:
+        raise KeyError(f"la linea base no transcribe ningun insumo {descripcion!r}")
+    if len(precios) > 1:
+        raise ValueError(
+            f"el insumo {descripcion!r} tiene precios distintos segun el APU "
+            f"({', '.join(str(precio) for precio in sorted(precios))}): leer la linea concreta"
+        )
+    (precio,) = precios
+    return precio
+
+
 # Precio unitario que muestra el PDF para cada APU ("Total Final"). Tolerancia de prueba: ± 0,01.
 PRECIO_UNITARIO_ESPERADO = {
     "LB-01-EXC": Decimal("8.60"),
@@ -180,6 +209,18 @@ PRECIO_UNITARIO_ESPERADO = {
     "LB-03-ENC": Decimal("33.24"),
     "LB-04-CON": Decimal("242.64"),
     "LB-05-REL": Decimal("52.58"),
+}
+
+# El mismo precio unitario con el `Decimal` exacto que produce el motor (comprobado contra
+# `calcular_apu`): lo usan las pruebas que caracterizan que el motor no cambió ni un decimal y que
+# comparan por igualdad, no con la tolerancia de ± 0,01 de la fuente externa. Antes vivía en
+# `tests/unit/test_costing_destajo.py` (INV‑008).
+PRECIO_UNITARIO_EXACTO = {
+    "LB-01-EXC": Decimal("8.600418750"),
+    "LB-02-TUB": Decimal("10.1933700"),
+    "LB-03-ENC": Decimal("33.237875000"),
+    "LB-04-CON": Decimal("242.63965000"),
+    "LB-05-REL": Decimal("52.57656250"),
 }
 
 # Subtotales que muestra el PDF, para localizar en qué paso falla el motor si un PU no coincide.
@@ -290,6 +331,16 @@ PRESUPUESTO_AUDITADO = (
     ),
 )
 TOTAL_PRESUPUESTO_AUDITADO = Decimal("1586.61")
+
+# Total del presupuesto 001 con los precios unitarios exactos del motor: el que calculan
+# `generar_presupuesto` y la API antes de redondear. A dos decimales es el 1 586,61 del PDF.
+TOTAL_EXACTO_LINEA_BASE = sum(
+    (
+        linea.cantidad * PRECIO_UNITARIO_EXACTO[linea.codigo_partida]
+        for linea in PRESUPUESTO_AUDITADO
+    ),
+    Decimal(0),
+)
 
 CURVA_AUDITADA = (
     PuntoCurva("Día 1 Excavación", Decimal("82.98"), Decimal("82.98")),

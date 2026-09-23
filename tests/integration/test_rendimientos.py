@@ -31,8 +31,10 @@ from core.catalog import (
     registrar_rendimiento,
 )
 from core.contracts.apu import TipoRendimiento
+from tests.fixtures import apu_linea_base as linea_base
 
-EXCAVACION = "LB-01-EXC"  # sembrada con rendimiento estimado de 80 m3/dia
+EXCAVACION = linea_base.APU_EXCAVACION.codigo_partida  # sembrada con su rendimiento estimado
+SEMBRADO = linea_base.APU_EXCAVACION.rendimiento
 FECHA = date(2026, 7, 1)
 
 
@@ -143,7 +145,7 @@ def test_dispersion_exacta_y_con_tipos_contados(sesion, ejecucion):
 
     assert dispersion is not None
     assert dispersion.observaciones == 4  # el 80 sembrado + los tres registrados
-    assert dispersion.media == Decimal("81.75")  # (80 + 75 + 82 + 90) / 4, exacto
+    assert dispersion.media == (SEMBRADO + Decimal("75") + Decimal("82") + Decimal("90")) / 4
     assert dispersion.minimo == Decimal("75")
     assert dispersion.maximo == Decimal("90")
     assert dispersion.medidos == 1 and dispersion.estimados == 3
@@ -190,7 +192,7 @@ def test_propuesta_sin_medidos_cae_al_estimado_mas_reciente(sesion):
 
     assert propuesta is not None
     assert propuesta.rendimiento.tipo is TipoRendimiento.ESTIMADO
-    assert propuesta.rendimiento.valor == Decimal("80")  # el sembrado
+    assert propuesta.rendimiento.valor == SEMBRADO
 
 
 def test_registrar_no_confirma_la_transaccion(sesion):

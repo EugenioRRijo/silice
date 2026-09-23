@@ -200,8 +200,8 @@ def test_crear_lista_copia_los_precios_anteriores_y_sobrescribe_los_del_archivo(
     precios = {precio.insumo.descripcion: precio.precio for precio in nueva.precios}
     assert precios[CEMENTO] == PRECIOS_NUEVOS[CEMENTO]
     assert precios[ARENA] == PRECIOS_NUEVOS[ARENA]
-    assert precios["Piedra picada"] == Decimal("35")
-    assert precios["Retroexcavadora"] == Decimal("200")
+    assert precios["Piedra picada"] == linea_base.precio_de_insumo("Piedra picada")
+    assert precios["Retroexcavadora"] == linea_base.precio_de_insumo("Retroexcavadora")
 
 
 def test_crear_lista_reporta_los_insumos_desconocidos_sin_crearlos(
@@ -301,8 +301,8 @@ def test_registra_un_cambio_de_precio_por_insumo_afectado(sesion, actualizacion)
         assert cambio.variacion == VARIACIONES[descripcion]
         assert cambio.fecha == FECHA_NUEVA
         assert cambio.lista_nueva.nombre == NOMBRE_LISTA_NUEVA
-    assert por_insumo[CEMENTO].precio_anterior == Decimal("15")
-    assert por_insumo[ARENA].precio_anterior == Decimal("30")
+    assert por_insumo[CEMENTO].precio_anterior == linea_base.precio_de_insumo(CEMENTO)
+    assert por_insumo[ARENA].precio_anterior == linea_base.precio_de_insumo(ARENA)
 
 
 def test_registra_la_incidencia_de_cada_cambio_en_el_concreto(
