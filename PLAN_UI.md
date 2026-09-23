@@ -29,6 +29,23 @@ la mano». Este plan no agrega capacidades: agrega **orientación**.
 | U2 | Asistente de cinco pasos. **Solo si CP‑07 resulta FALLA**; su alcance lo fijan los puntos de detención registrados | GU2 |
 | U3 | Pulido de navegación y redacción. **Requiere decisión expresa de Eugenio** | — |
 
+## Enfoques B y C: qué son y cuándo se activan
+
+Fuente única: [docs/superpowers/specs/2026-09-23-ui-recorrido-guiado-design.md §3.7 y
+§7](docs/superpowers/specs/2026-09-23-ui-recorrido-guiado-design.md).
+
+- **B — asistente de cinco pasos (fase U2).** Un asistente paso a paso que lleva de la mano por el
+  trabajo completo, apoyado en el caso abierto, el marco y los recorridos que construye A (por eso A
+  va primero: un asistente escrito antes que el caso abierto tendría que inventárselo). **Se ejecuta
+  solo si CP‑07 resulta FALLA**, y su alcance —cuáles son los cinco pasos y qué los compone— lo fijan
+  los puntos de detención registrados en CP‑07, no se decide antes de medir. Compuerta GU2: la de
+  GU1 más `ui/paginas/componer.py` sin cambios salvo extracción de fragmentos.
+- **C — rediseño de navegación (fase U3).** Pulido de navegación y redacción de la interfaz (incluida
+  la ortografía con tildes de los rótulos, que U1 deja sin tildes por coherencia). **Requiere
+  decisión expresa de Eugenio**, cualquiera sea el resultado de CP‑07.
+
+B y C son una secuencia, no un compromiso: si CP‑07 resulta PASA, U2 no se ejecuta.
+
 ## Compuertas
 
 - **GU0:** requisitos escritos; CP‑07 redactado antes de ejecutarse; documentos sin contradicción
