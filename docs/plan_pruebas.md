@@ -9,7 +9,7 @@ caso de prueba cita su RF; los enunciados de los RF viven **una sola vez** en
 
 - **Identificador:** PP‑APU‑001, versión de la Sesión F.2 (2026‑08‑31).
 - **Alcance:** todo el software del repositorio (`core/`, `adapters/`, `ml/`, `api/`, `ui/`,
-  `scripts/`) contra los RF‑01…RF‑31 y RNF‑01…RNF‑09 de la ERS.
+  `scripts/`) contra los RF‑01…RF‑43 (RF‑32 vacante) y RNF‑01…RNF‑10 de la ERS.
 - **Referencias:** [CLAUDE.md](../CLAUDE.md) (constitución), [ERS.md](ERS.md) (IEEE 830),
   [metodologia.md](metodologia.md) (indicadores y trazabilidad),
   [linea_base.md](linea_base.md) (caso auditado), bitácoras en [bitacora/](bitacora/).
@@ -35,7 +35,7 @@ Elementos:
 
 ## 3. Características a probar y a no probar
 
-**A probar:** los 31 RF de la ERS (matriz de la sección 8) y los RNF verificables por software o
+**A probar:** los 42 RF de la ERS (matriz de la sección 8) y los RNF verificables por software o
 por medición (RNF‑01, 02, 03, 05, 06, 08; sección 9).
 
 **A no probar en esta sesión, con causa:**
@@ -44,8 +44,8 @@ por medición (RNF‑01, 02, 03, 05, 06, 08; sección 9).
   instrumento se aplica con el tutor (Fase 6). No es automatizable.
 - **RNF‑10 (capacidad de aprendizaje de la interfaz):** no es automatizable; se mide con el caso con
   persona CP‑07 de [guion_prueba_arenia.md](guion_prueba_arenia.md) en la compuerta GU1 de
-  [PLAN_UI.md](../PLAN_UI.md). Sus requisitos funcionales RF‑36 a RF‑43 **sí** tienen prueba
-  automatizada (sección 8).
+  [PLAN_UI.md](../PLAN_UI.md). Sus requisitos funcionales RF‑36 a RF‑43 **sí** tendrán prueba
+  automatizada (sección 8, pendiente de U1).
 - **RNF‑07 en Linux:** la instalación con `uv sync` está verificada solo en Windows 11; la
   corrida en Linux queda declarada como pendiente.
 - **RNF‑09 (IFC de ≥ 2 modeladores):** la compuerta G1 se cruzó con salvedad — el adaptador civil
@@ -170,8 +170,9 @@ archivo en la corrida registrada (total de la suite: 392).
 **Resumen:** 33 de 34 RF anteriores al
 sprint de UI con prueba automatizada en verde; RF‑36 a RF‑43 declarados en U0 con su archivo de
 prueba nombrado y pendientes de U1. RF‑16 parcial (su parte de UI está
-cubierta, su persistencia espera un flujo que no existe — hallazgo registrado). **Los 26 RF
-esenciales tienen prueba en verde y ningún RF queda sin prueba.**
+cubierta, su persistencia espera un flujo que no existe — hallazgo registrado). **Los RF esenciales
+anteriores al sprint de UI tienen prueba en verde; RF‑36 a RF‑43 tienen su archivo de prueba nombrado
+y quedan pendientes de U1.**
 
 Cobertura adicional no exigida por RF: `test_generador_ifc.py` (1), `test_visor3d.py` (4),
 `test_openapi.py` (2), `test_simulador.py` (2), `test_api.py` (14), `test_civil_verificacion.py`
