@@ -30,7 +30,7 @@ Cada una es comprobable por un tercero.
 |---|---|---|
 | F1 | Cada objetivo tiene su producto y cada indicador está medido | cada fila de la matriz de `docs/tesis/esqueleto_tesis.md` §2 —incluidas la fila transversal y OE7 si el tutor elige la variante A de D3— tiene su producto en el repositorio; **cada indicador 1–5** (`docs/metodologia.md` §8) tiene valor, fecha y fuente (corrida de CI o registro de medición) en el capítulo V y en `docs/tesis/plan_redaccion.md` §5; `docs/calidad_iso25010.md` §9 sin ningún veredicto *pendiente*, y todo veredicto *parcial* (hoy RNF‑09) declarado en el capítulo de limitaciones |
 | F2 | El tutor académico designado validó lo que el proyecto decidió sin él | constancia en `docs/tesis/revisiones/` de: la compuerta G0 (validación **retroactiva**: `docs/metodologia.md` §2.2 la pedía antes de I0.3), **todas** las decisiones D1–D9 de `docs/dossier_g0.md` §3 y la elección AACE 18R‑97 frente a 56R‑08 (`docs/tesis/revisiones/R1-capitulo-2.md`) |
-| F3 | El software queda congelado en la etiqueta **`v1.0-tesis`** | la etiqueta se pone sobre un commit de `main` cuya corrida de CI (Linux y Windows) está verde y se cita por su enlace —la CI no corre sobre etiquetas (`.github/workflows/ci.yml`)—; línea base 1 586,61 USD y 7 de 7; **cero** hallazgos bloqueantes o importantes abiertos en el inventario vivo (§4), salvo los *aceptados por decisión de arquitectura registrada*; los menores, en el capítulo de limitaciones |
+| F3 | El software queda congelado en la etiqueta **`v1.0-tesis`** | la etiqueta se pone sobre un commit de `main` cuya corrida de CI (Linux y Windows) está verde y se cita por su enlace —la CI no corre sobre etiquetas (`.github/workflows/ci.yml`)—; línea base 1 586,61 USD y 7 de 7; **cero** hallazgos bloqueantes o importantes abiertos en el inventario vivo (§4); la única excepción son los *aceptados por decisión de arquitectura registrada*, estado restringido por §4 a los hallazgos cuyo cierre exige cambiar un contrato y cuyo aval del tutor está pendiente o fue negado, cada uno declarado con su expediente en el capítulo de limitaciones; los menores, en ese mismo capítulo |
 | F4 | El documento de tesis está completo | capítulos I–V, conclusiones e introducción según `docs/tesis/plan_redaccion.md`; por capítulo, **el acta** con la lista de cotejo de `docs/tesis/rubrica_tutor.md` sin ningún «no cumple» **y la constancia del tutor académico designado**, que la rúbrica no sustituye; toda cifra cita su corrida de CI o su medición |
 | F5 | La trazabilidad cierra | `docs/plan_pruebas.md` §8 contiene la matriz por paso de **todos** los casos de uso (ampliando la §8.1 de UC‑12): cada paso y cada flujo alternativo cita su prueba o caso manual, en verde o registrado |
 
@@ -137,7 +137,10 @@ por fase —el contrato en C1, la migración de los adaptadores en C2—, porque
 `core/` con `adapters/` o `ml/` en un commit. El PR de C1 puede ajustar a quienes llaman desde `ui/`,
 `scripts/` o `api/`, en commits separados. Si la corrección exige cambiar un contrato de
 `core/contracts/`, espera el aval del tutor; mientras tanto, el hallazgo puede quedar **aceptado por
-decisión de arquitectura registrada** (con su expediente), estado que no bloquea F3.
+decisión de arquitectura registrada** (con su expediente), estado que no bloquea F3. Ese estado es
+**exclusivo** de los hallazgos cuyo cierre exige cambiar un contrato de `core/contracts/` y cuyo aval
+del tutor está pendiente o fue negado; ningún otro hallazgo puede declararse aceptado. Si el tutor da el
+aval antes de `v1.0-tesis`, el hallazgo vuelve a quedar abierto y se corrige.
 
 **Triage:** entran a las fases de corrección los bloqueantes y los importantes; los menores, solo si
 Eugenio los promueve al aprobar el inventario. El resto va al capítulo de limitaciones.
