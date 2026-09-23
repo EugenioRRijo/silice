@@ -32,6 +32,7 @@ from core.contracts.apu import (
 )
 from core.contracts.dominio import Dominio
 from core.contracts.item_computo import ItemComputo, OrigenTipo
+from core.contracts.unidades import unidades_equivalentes
 from core.contracts.verificacion import Hallazgo
 from core.verification.texto import normalizar_texto
 
@@ -291,6 +292,105 @@ def item_desde_cantidad(
         # `origen_id` no vacío ya lo exige el contrato (toda cantidad debe ser trazable); aquí
         # solo se traduce la excepción.
         raise ComposicionInvalida(str(error)) from error
+
+
+# --- Editar una partida existente (UC-11): precarga y guarda antes de reemplazar -----------------
+#
+# Auditoria del PR #7: la pantalla arrancaba siempre con las tres tablas vacias (el paso 1 de UC-11,
+# "el sistema precarga sus tres tablas de insumos", no estaba implementado) y guardar sobre una
+# partida existente llamaba a `Catalogo.reemplazar_composicion` con lo que hubiera en pantalla, que
+# borra las lineas sin impedir una composicion de cero lineas y no actualiza ni la descripcion ni
+# la unidad de la partida. Las dos decisiones viven aqui, puras; `ui/paginas/componer.py` solo
+# pinta y llama. `core/` no se toca (CLAUDE.md §9).
+
+
+def _decimal_como_texto(valor: Decimal) -> str:
+    """El `Decimal` tal como lo teclea una persona: notacion fija, sin exponente ni perder escala.
+
+    Mismo criterio que `tests/integration/test_composicion_extremo_a_extremo.py::_texto`:
+    `str(Decimal("1E+2"))` da `"1E+2"`, que ninguna pantalla muestra.
+    """
+    return f"{valor:f}"
+
+
+def filas_desde_composicion(
+    composicion: ComposicionAPU,
+) -> tuple[list[dict[str, str]], list[dict[str, str]], list[dict[str, str]]]:
+    """Las tres tablas de texto de la pantalla a partir de una composicion (UC-11, paso 1).
+
+    Es la inversa de `composicion_desde_tablas`: mismas claves por fila (materiales `descripcion`,
+    `unidad`, `cantidad`, `precio`; equipos `descripcion`, `cantidad`, `precio`, `depreciacion`;
+    mano de obra `descripcion`, `cantidad`, `sueldo`, `modalidad`), todo como texto, de modo que
+    volver a leerlas reproduce la misma composicion.
+    """
+    materiales = [
+        {
+            "descripcion": linea.descripcion,
+            "unidad": linea.unidad,
+            "cantidad": _decimal_como_texto(linea.cantidad),
+            "precio": _decimal_como_texto(linea.precio),
+        }
+        for linea in composicion.materiales
+    ]
+    equipos = [
+        {
+            "descripcion": linea.descripcion,
+            "cantidad": _decimal_como_texto(linea.cantidad),
+            "precio": _decimal_como_texto(linea.precio),
+            "depreciacion": _decimal_como_texto(linea.depreciacion),
+        }
+        for linea in composicion.equipos
+    ]
+    mano_obra = [
+        {
+            "descripcion": linea.descripcion,
+            "cantidad": _decimal_como_texto(linea.cantidad),
+            "sueldo": _decimal_como_texto(linea.sueldo),
+            "modalidad": linea.modalidad.value,
+        }
+        for linea in composicion.mano_obra
+    ]
+    return materiales, equipos, mano_obra
+
+
+def motivo_para_no_reemplazar(
+    descripcion_registrada: str,
+    unidad_registrada: str,
+    composicion: ComposicionAPU,
+) -> str | None:
+    """Por que no se debe reemplazar la composicion de una partida existente, o `None` si se puede.
+
+    Se evalua antes de `Catalogo.reemplazar_composicion` (UC-11) con la descripcion y la unidad que
+    la partida tiene en el catalogo:
+
+    - una composicion sin ninguna linea en las tres tablas no reemplaza nada: borraria el desglose
+      de la partida (el defecto reproducido con `DEMO-01-INST`, 3/2/2 -> 0/0/0);
+    - la cabecera de una partida existente no se edita por esta via: `reemplazar_composicion` solo
+      sustituye lineas y rendimiento, asi que una unidad o una descripcion distintas se
+      descartarian en silencio. Las unidades se comparan con `unidades_equivalentes` (`m³` es
+      `m3`), no por igualdad de texto; la descripcion, sin los espacios de borde.
+    """
+    codigo = composicion.codigo_partida
+    if not (composicion.materiales or composicion.equipos or composicion.mano_obra):
+        return (
+            f"la partida {codigo} ya existe y la composicion no tiene ninguna linea de insumo: "
+            "guardarla borraria su desglose. Declare al menos una linea en materiales, equipos "
+            "o mano de obra."
+        )
+    if not unidades_equivalentes(composicion.unidad, unidad_registrada):
+        return (
+            f"la partida {codigo} ya existe con la unidad {unidad_registrada!r} y la cabecera dice "
+            f"{composicion.unidad!r}: la cabecera de una partida existente no se edita desde esta "
+            "pantalla. Escriba la unidad registrada o use otro codigo para una partida nueva."
+        )
+    if composicion.descripcion.strip() != descripcion_registrada.strip():
+        return (
+            f"la partida {codigo} ya existe con la descripcion {descripcion_registrada!r} y la "
+            f"cabecera dice {composicion.descripcion!r}: la cabecera de una partida existente no "
+            "se edita desde esta pantalla. Escriba la descripcion registrada o use otro codigo "
+            "para una partida nueva."
+        )
+    return None
 
 
 # --- Búsqueda en la referencia MaPreX (Tarea 2, UC-10/UC-11) -----------------------------------

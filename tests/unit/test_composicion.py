@@ -15,7 +15,9 @@ from ui.composicion import (
     buscar_referencia,
     composicion_desde_tablas,
     decimal_desde_texto,
+    filas_desde_composicion,
     item_desde_cantidad,
+    motivo_para_no_reemplazar,
 )
 
 MATERIALES = [{"descripcion": "Cemento", "unidad": "saco", "cantidad": "7.5", "precio": "8.00"}]
@@ -274,3 +276,110 @@ def test_buscar_referencia_todo_numero_es_decimal_construido_desde_texto():
     assert type(mano_obra.bono_bs) is Decimal
     assert type(mano_obra.precio_usd) is Decimal
     assert mano_obra.factor_depreciacion is None
+
+
+# --- UC-11: guarda antes de reemplazar y precarga de las tres tablas (auditoria del PR #7) -------
+
+#: La partida "registrada" de estas pruebas: la de `test_una_tabla_valida_...`, ya en el catalogo.
+DESCRIPCION_REGISTRADA = "Vaciado de concreto"
+UNIDAD_REGISTRADA = "m3"
+
+
+def _edicion(
+    descripcion=DESCRIPCION_REGISTRADA,
+    unidad=UNIDAD_REGISTRADA,
+    materiales=MATERIALES,
+    equipos=EQUIPOS,
+    mano_obra=MANO_OBRA,
+):
+    return composicion_desde_tablas(
+        "LB-04-VAC", descripcion, unidad, "8", materiales, equipos, mano_obra
+    )
+
+
+def test_una_edicion_con_la_misma_cabecera_y_lineas_se_puede_reemplazar():
+    assert motivo_para_no_reemplazar(DESCRIPCION_REGISTRADA, UNIDAD_REGISTRADA, _edicion()) is None
+
+
+def test_una_edicion_sin_ninguna_linea_no_reemplaza():
+    motivo = motivo_para_no_reemplazar(
+        DESCRIPCION_REGISTRADA,
+        UNIDAD_REGISTRADA,
+        _edicion(materiales=[], equipos=[], mano_obra=[]),
+    )
+
+    assert motivo is not None
+    assert "LB-04-VAC" in motivo
+    assert "ninguna linea" in motivo
+
+
+def test_basta_una_linea_en_cualquiera_de_las_tres_tablas():
+    solo_mano_obra = _edicion(materiales=[], equipos=[])
+
+    motivo = motivo_para_no_reemplazar(DESCRIPCION_REGISTRADA, UNIDAD_REGISTRADA, solo_mano_obra)
+
+    assert motivo is None
+
+
+def test_otra_unidad_no_reemplaza_y_dice_la_registrada():
+    motivo = motivo_para_no_reemplazar(
+        DESCRIPCION_REGISTRADA, UNIDAD_REGISTRADA, _edicion(unidad="m2")
+    )
+
+    assert motivo is not None
+    assert "'m3'" in motivo
+
+
+def test_una_unidad_equivalente_no_es_otra_unidad():
+    """`m³` y `m3` son la misma unidad (`core.contracts.unidades`), no un cambio de cabecera."""
+    assert motivo_para_no_reemplazar(DESCRIPCION_REGISTRADA, "m³", _edicion(unidad="m3")) is None
+
+
+def test_otra_descripcion_no_reemplaza_y_dice_la_registrada():
+    motivo = motivo_para_no_reemplazar(
+        DESCRIPCION_REGISTRADA, UNIDAD_REGISTRADA, _edicion(descripcion="Vaciado de losa")
+    )
+
+    assert motivo is not None
+    assert f"'{DESCRIPCION_REGISTRADA}'" in motivo
+
+
+def test_los_espacios_de_borde_de_la_descripcion_no_son_otra_descripcion():
+    edicion = _edicion(descripcion=f"  {DESCRIPCION_REGISTRADA} ")
+
+    assert motivo_para_no_reemplazar(DESCRIPCION_REGISTRADA, UNIDAD_REGISTRADA, edicion) is None
+
+
+def test_filas_desde_composicion_es_la_ida_y_vuelta_de_composicion_desde_tablas():
+    """Precargar las tablas (UC-11, paso 1) y volver a leerlas reproduce la misma composicion."""
+    composicion = _edicion()
+
+    materiales, equipos, mano_obra = filas_desde_composicion(composicion)
+
+    assert mano_obra[1]["modalidad"] == "destajo"
+    celdas = [valor for fila in materiales + equipos + mano_obra for valor in fila.values()]
+    assert all(isinstance(valor, str) for valor in celdas)
+    assert (
+        composicion_desde_tablas(
+            composicion.codigo_partida,
+            composicion.descripcion,
+            composicion.unidad,
+            "8",
+            materiales,
+            equipos,
+            mano_obra,
+        )
+        == composicion
+    )
+
+
+def test_filas_desde_composicion_escribe_los_decimales_sin_exponente():
+    composicion = _edicion(
+        equipos=[
+            {"descripcion": "Vibrador", "cantidad": "1E+2", "precio": "300", "depreciacion": "1"}
+        ]
+    )
+
+    _, (equipo,), _ = filas_desde_composicion(composicion)
+
+    assert equipo["cantidad"] == "100"

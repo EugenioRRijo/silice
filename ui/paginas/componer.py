@@ -67,8 +67,10 @@ from ui.composicion import (
     fila_equipos_desde_referencia,
     fila_mano_obra_desde_referencia,
     fila_materiales_desde_referencia,
+    filas_desde_composicion,
     formulario_vacio,
     item_desde_cantidad,
+    motivo_para_no_reemplazar,
     sugerir_partidas_similares,
     veredicto_ml_rendimiento,
 )
@@ -95,6 +97,16 @@ CLAVE_RESULTADO = "componer_resultado_elaboracion"
 CLAVE_LIBRO = "componer_libro_excel"
 CLAVE_NOMBRE_LIBRO = "componer_nombre_libro"
 
+#: Clave de `st.session_state` con el codigo para el que ya se precargaron las tres tablas (UC-11,
+#: paso 1): la precarga ocurre una sola vez por codigo, para no pisar lo que la persona edite
+#: despues, y se repite solo si el codigo tecleado cambia.
+CLAVE_CODIGO_PRECARGADO = "componer_codigo_precargado"
+
+#: Clave de cada `st.data_editor` de insumos; sus filas viven en `f"{clave}__filas"`.
+CLAVE_MATERIALES = "componer_materiales"
+CLAVE_EQUIPOS = "componer_equipos"
+CLAVE_MANO_OBRA = "componer_mano_obra"
+
 
 def render() -> None:
     """Cabecera de la partida, tres tablas de insumos, desglose en vivo y boton de guardado."""
@@ -102,8 +114,8 @@ def render() -> None:
     st.caption(
         "Componga una partida a mano: declare su cabecera y sus tres tablas de insumos, vea el "
         "precio unitario desglosarse en vivo (sin necesidad de guardar) y guarde la composicion. "
-        "Si la partida ya existe, guardar reemplaza su composicion vigente (UC-11); si no existe, "
-        "la crea (UC-10)."
+        "Si la partida ya existe, sus tablas se precargan al teclear su codigo y guardar reemplaza "
+        "su composicion vigente (UC-11); si no existe, la crea (UC-10)."
     )
 
     ruta = Path(st.sidebar.text_input("Archivo SQLite", value=RUTA_BASE_POR_DEFECTO))
@@ -132,6 +144,10 @@ def _pagina(sesion: Session) -> None:
     catalogo = Catalogo(sesion)
 
     _sugerencias_similares(catalogo, dominio, descripcion)
+
+    # Antes de pintar las tablas y en la misma ejecucion en que se teclea el codigo: la cabecera
+    # se pinta primero, asi que aqui ya se conoce el codigo de esta ejecucion.
+    _precargar_tablas(catalogo, codigo)
 
     rendimiento_texto = _rendimiento(sesion, codigo)
     condiciones = st.text_area(
@@ -191,6 +207,35 @@ def _cabecera() -> tuple[str, str, str, Dominio, date]:
     )
     fecha = columnas_dominio[1].date_input("Fecha", value=date.today())
     return codigo, descripcion, unidad, dominio, fecha
+
+
+def _precargar_tablas(catalogo: Catalogo, codigo: str) -> None:
+    """UC-11, paso 1: precarga las tres tablas de insumos de una partida que ya existe.
+
+    Solo cuando el codigo tecleado cambia respecto del de la ultima precarga
+    (`CLAVE_CODIGO_PRECARGADO`): asi las ediciones de la persona sobreviven a los reruns, y teclear
+    otro codigo existente vuelve a precargar. Un codigo nuevo (UC-10), una partida sin lineas o un
+    catalogo sin lista de precios vigente no precargan nada: las tablas quedan como estaban.
+    Borrar la clave de cada `st.data_editor` es la via documentada para imponerle un contenido
+    nuevo (ver `_tabla_con_busqueda`).
+    """
+    codigo = codigo.strip()
+    if st.session_state.get(CLAVE_CODIGO_PRECARGADO) == codigo:
+        return
+    st.session_state[CLAVE_CODIGO_PRECARGADO] = codigo
+    if not codigo:
+        return
+    try:
+        composicion = catalogo.composicion(codigo)
+    except (KeyError, CatalogoIncompleto):
+        return
+    tablas = filas_desde_composicion(composicion)
+    if not any(tablas):
+        return
+    claves = (CLAVE_MATERIALES, CLAVE_EQUIPOS, CLAVE_MANO_OBRA)
+    for clave, filas in zip(claves, tablas, strict=True):
+        st.session_state[f"{clave}__filas"] = filas
+        st.session_state.pop(clave, None)
 
 
 def _rendimiento(sesion: Session, codigo: str) -> str:
@@ -342,7 +387,7 @@ def _tablas_de_insumos() -> tuple[list[dict], list[dict], list[dict]]:
         "Materiales",
         "material",
         COLUMNAS_MATERIALES,
-        "componer_materiales",
+        CLAVE_MATERIALES,
         fila_materiales_desde_referencia,
         column_config={"cantidad": st.column_config.TextColumn(CONSUMO_ETIQUETA)},
     )
@@ -351,7 +396,7 @@ def _tablas_de_insumos() -> tuple[list[dict], list[dict], list[dict]]:
         "Equipos",
         "equipo",
         COLUMNAS_EQUIPOS,
-        "componer_equipos",
+        CLAVE_EQUIPOS,
         fila_equipos_desde_referencia,
     )
 
@@ -359,7 +404,7 @@ def _tablas_de_insumos() -> tuple[list[dict], list[dict], list[dict]]:
         "Mano de obra",
         "mano_obra",
         COLUMNAS_MANO_OBRA,
-        "componer_mano_obra",
+        CLAVE_MANO_OBRA,
         fila_mano_obra_desde_referencia,
         column_config={
             # Sin `default`: una fila nueva debe quedar en blanco en las cuatro columnas (igual
@@ -599,13 +644,23 @@ def _guardar(
     fecha: date,
     condiciones: str,
 ) -> None:
-    """Persiste la composicion (UC-10 si la partida no existe, UC-11 si ya existe) y confirma."""
+    """Persiste la composicion (UC-10 si la partida no existe, UC-11 si ya existe) y confirma.
+
+    Sobre una partida existente, `motivo_para_no_reemplazar` decide antes de escribir: una
+    composicion sin lineas borraria el desglose, y una cabecera distinta se descartaria en silencio
+    (`reemplazar_composicion` solo sustituye lineas y rendimiento). En ambos casos, `st.error` y
+    nada se escribe.
+    """
     lista = catalogo.lista_vigente(fecha)
     try:
-        catalogo.partida(composicion.codigo_partida)
+        partida = catalogo.partida(composicion.codigo_partida)
     except KeyError:
         catalogo.cargar_composicion(composicion, lista, dominio, fecha, condiciones)
     else:
+        motivo = motivo_para_no_reemplazar(partida.descripcion, partida.unidad, composicion)
+        if motivo is not None:
+            st.error(motivo)
+            return
         catalogo.reemplazar_composicion(composicion, lista, dominio, fecha, condiciones)
     sesion.commit()
 
