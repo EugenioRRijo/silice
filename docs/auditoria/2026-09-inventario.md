@@ -32,7 +32,7 @@ cobertura.
 | `data/` | 37 | Datos de entrada y muestras; se auditan por las pruebas que los consumen |
 | `docs/api.json` | 1 | Esquema OpenAPI generado por `scripts/exportar_openapi.py`; lo vigila `tests/unit/test_openapi.py` |
 | `docs/auditoria/` | 1 | Este inventario (los parciales se crearon después del commit auditado) |
-| `.github/workflows/ci.yml`, `pyproject.toml` | 2 | **Pendientes de revisión en C1 por la capa `tests`** (configuración de la suite y de la CI); no se auditaron en C0 |
+| `.github/workflows/ci.yml`, `pyproject.toml` | 2 | Revisados en C1 por la capa `tests` (Tarea 1, paso 10, del plan de C1); hallazgos: ninguno nuevo; el marcador `rojo_esperado` ya es INV‑007 |
 | `.gitignore`, `.python-version`, `uv.lock` | 3 | Configuración del entorno sin lógica propia |
 
 ## 2. Riesgo ya rastreado (no se duplica como hallazgo)
