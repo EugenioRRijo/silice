@@ -42,6 +42,10 @@ por medición (RNF‑01, 02, 03, 05, 06, 08; sección 9).
 
 - **RNF‑04 (usabilidad del informe):** requiere juicio de expertos con escala Likert; el
   instrumento se aplica con el tutor (Fase 6). No es automatizable.
+- **RNF‑10 (capacidad de aprendizaje de la interfaz):** no es automatizable; se mide con el caso con
+  persona CP‑07 de [guion_prueba_arenia.md](guion_prueba_arenia.md) en la compuerta GU1 de
+  [PLAN_UI.md](../PLAN_UI.md). Sus requisitos funcionales RF‑36 a RF‑43 **sí** tienen prueba
+  automatizada (sección 8).
 - **RNF‑07 en Linux:** la instalación con `uv sync` está verificada solo en Windows 11; la
   corrida en Linux queda declarada como pendiente.
 - **RNF‑09 (IFC de ≥ 2 modeladores):** la compuerta G1 se cruzó con salvedad — el adaptador civil
@@ -154,8 +158,18 @@ archivo en la corrida registrada (total de la suite: 392).
 | RF‑33 | `tests/integration/test_persistencia.py` (`test_cargar_composicion_sin_condiciones_lanza_valueerror`, `test_reemplazar_composicion_exige_condiciones_no_vacias`: los dos caminos del catálogo); `tests/unit/test_ui_componer.py` (P4.1: el botón «Guardar composicion» nace deshabilitado sin condiciones y se habilita al declararlas; con condiciones pero sin rendimiento, el botón guarda habilitado pero no persiste nada) | 27 + 5 | verde |
 | RF‑34 | `tests/unit/test_composicion.py` (`composicion_desde_tablas` acepta y valida la modalidad por fila); `tests/integration/test_persistencia.py::test_la_modalidad_a_destajo_sobrevive_el_viaje_por_el_catalogo`; `tests/integration/test_composicion_extremo_a_extremo.py::test_el_caso_de_demostracion_mezcla_jornal_y_destajo_en_una_partida` (jornal y destajo en una misma partida, por el camino de la pantalla) | 24 + 27 + 14 | verde |
 | RF‑35 | `tests/unit/test_composicion.py` (`test_buscar_referencia_*`, 6 pruebas: la referencia MaPreX sugiere y el precio de la fila sigue siendo un campo editable, nunca de solo lectura) | 24 | verde |
+| RF‑36 | `tests/unit/test_ui_app.py` (Inicio por defecto por identidad; ruta vacía → `inicio`) | — | pendiente (U1) |
+| RF‑37 | `tests/unit/test_ui_recorridos.py` (integridad de enlaces con y sin modo entrega) | — | pendiente (U1) |
+| RF‑38 | `tests/unit/test_ui_caso.py` (una sola ruta por defecto); `tests/unit/test_ui_app.py` (ninguna página salvo el Inicio pide la ruta) | — | pendiente (U1) |
+| RF‑39 | `tests/unit/test_ui_caso.py`; `tests/unit/test_ui_app.py` (indicador en las diez pantallas) | — | pendiente (U1) |
+| RF‑40 | `tests/unit/test_ui_inicio.py`; `tests/unit/test_ui_caso.py` (sin flag de reinicio en `ui/`) | — | pendiente (U1) |
+| RF‑41 | `tests/unit/test_ui_recorridos.py`; `tests/unit/test_ui_app.py` (botón «Siguiente») | — | pendiente (U1) |
+| RF‑42 | `tests/unit/test_ui_app.py` (secciones, orden, subtítulo de caso de uso) | — | pendiente (U1) |
+| RF‑43 | `tests/unit/test_ui_app.py`; `tests/unit/test_ui_recorridos.py` | — | pendiente (U1) |
 
-**Resumen:** 33 de 34 RF con prueba automatizada en verde; RF‑16 parcial (su parte de UI está
+**Resumen:** 33 de 34 RF anteriores al
+sprint de UI con prueba automatizada en verde; RF‑36 a RF‑43 declarados en U0 con su archivo de
+prueba nombrado y pendientes de U1. RF‑16 parcial (su parte de UI está
 cubierta, su persistencia espera un flujo que no existe — hallazgo registrado). **Los 26 RF
 esenciales tienen prueba en verde y ningún RF queda sin prueba.**
 
@@ -176,6 +190,7 @@ Cobertura adicional no exigida por RF: `test_generador_ifc.py` (1), `test_visor3
 | RNF‑07 portabilidad | `uv sync --locked` sin pasos manuales; suite completa en verde en Windows 11 (local) y en Linux y Windows por CI ([run 34969162933](https://github.com/EugenioRRijo/tesis-apu-multidominio/actions/runs/34969162933), 2026‑09‑15) | cumple |
 | RNF‑08 seguridad | inspección: 0 credenciales versionadas, 0 llamadas de red en operación (excepción declarada: descarga inicial del modelo, cacheada) | cumple |
 | RNF‑09 compatibilidad IFC | G1 con salvedad: exacto contra modelo programático; faltan exports de ≥ 2 modeladores | parcial |
+| RNF‑10 aprendizaje de la interfaz | caso con persona CP‑07 ([guion_prueba_arenia.md](guion_prueba_arenia.md)), dos escenarios con personas distintas, bloque B del anexo A | pendiente (GU1) |
 
 ## 10. Registro de la ejecución (2026‑09‑14)
 

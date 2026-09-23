@@ -217,3 +217,32 @@ Campo abierto: *¿qué le falta o le sobra al informe para serle útil en su tra
 **Registro:** promedio por ítem y global, n de expertos, fecha y versión del informe evaluado;
 el resultado se incorpora a [calidad_iso25010.md §4](calidad_iso25010.md) y al capítulo de
 resultados.
+
+### Bloque B. Recorrido de la interfaz (RNF‑10)
+
+Agregado en la Sesión U0.2 de [PLAN_UI.md](../PLAN_UI.md). El cuestionario de arriba es el
+**bloque A**: se conserva intacto y sigue siendo el instrumento de RNF‑04. El bloque B lo contesta
+la persona que ejecutó el caso CP‑07 de [guion_prueba_arenia.md](guion_prueba_arenia.md), al
+terminar y sin el observador mirando. **Su promedio es propio y nunca se promedia con el del
+bloque A.** Misma escala: 1 = totalmente en desacuerdo · 3 = neutral · 5 = totalmente de acuerdo.
+
+| # | Afirmación | Vigila | 1–5 |
+|---|---|---|---|
+| B1 | Al abrir la aplicación entendí para qué sirve y por dónde empezar | D‑1, D‑4 | |
+| B2 | Los nombres del menú me dijeron qué hace cada pantalla sin abrirlas | D‑4 | |
+| B3 | En todo momento supe sobre qué archivo de datos estaba trabajando | D‑2 | |
+| B4 | Cuando no había datos, la aplicación me dijo qué pasaba y cómo salir | D‑3 | |
+| B5 | Al terminar una pantalla supe cuál era el paso siguiente | D‑5 | |
+| B6 | El orden de las pantallas se parece al orden en que se hace el trabajo | D‑6 | |
+| B7 | Volvería a recorrer esto solo, sin que nadie me acompañara | global | |
+
+Los códigos D‑1 a D‑6 son los defectos de orientación de la
+[spec del recorrido guiado, §1](superpowers/specs/2026-09-23-ui-recorrido-guiado-design.md).
+B4 solo se contesta en el escenario B de CP‑07 (base vacía); en el escenario A se anota «no aplica»
+y el promedio se calcula sobre seis ítems.
+
+Campo abierto: *¿en qué momento no supo qué hacer, y qué le habría ayudado?*
+
+**Registro:** además de los ítems, **tiempo total** (min) y **número de preguntas al observador**;
+promedio del bloque B, n, fecha, commit probado y escenario. El resultado se incorpora a
+[calidad_iso25010.md §4](calidad_iso25010.md) como medición de RNF‑10.
