@@ -166,16 +166,18 @@ El **final** se alcanza con F1–F5 cumplidas: no hay fase posterior.
 se parte en **GU1a** (U1 completa sin CP‑07: línea base, suite verde en ambos sistemas, salvaguarda,
 `core/` sin cambios, cuatro encargos) y **GU1b** (CP‑07 ejecutado y registrado, en Med). También mueve
 la Tarea 6, paso 3 (la salvaguarda) a C1, y la restricción global del plan detallado sobre `api/` deja
-de aplicar a C2. C4 actualiza en consecuencia `PLAN_UI.md`, la ERS (correspondencia RNF‑10 → GU1b),
-`docs/calidad_iso25010.md` §4/§9 y el plan detallado (Tareas 6 y 13 y su restricción global). Fuera de
-eso, la spec de la UI no se reabre: B y C siguen condicionales.
+de aplicar a C2. **El primer commit de `inc/cierre-C3`, antes de la Tarea 7,** ajusta `PLAN_UI.md` y el
+plan detallado: Tareas 6 y 13 (la salvaguarda ya existe desde C1, CP‑07 sale de la Tarea 13 a Med), la
+rama `inc/cierre-C3`, la compuerta GU1a y la restricción global sobre `api/`. C4 actualiza solo los
+documentos derivados: la ERS (correspondencia RNF‑10 → GU1b) y `docs/calidad_iso25010.md` §4/§9. Fuera
+de eso, la spec de la UI no se reabre: B y C siguen condicionales.
 
 ## 6. Organización del trabajo
 
 - **Ramas sin apilar.** Antes de abrir la rama de C0 se fusiona el PR #8 **con merge commit** (no
   squash) y después el PR de esta spec (`inc/PLAN-cierre`). Cada fase abre su rama **desde `main`**
   (`inc/cierre-C0`, `inc/cierre-C1`, …) después de fusionar la anterior; nunca apilada. U1 vive solo en
-  `inc/cierre-C3`: el plan detallado se ajusta para referirse a esa rama en vez de `inc/PLAN-ui`.
+  `inc/cierre-C3`: el plan detallado se ajusta en el primer commit de esa rama (§5, enmienda).
 - **Un PR por fase**, fusionado al cruzar su compuerta, con etiqueta de compuerta (`gc0`, `gc1`, …).
 - **Subagentes:** un implementador por tarea; al cerrar la fase, los cuatro encargos de ingeniería de
   sistemas en paralelo (requisitos, arquitectura, pruebas y calidad, verificación de hechos).
