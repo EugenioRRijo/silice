@@ -1462,6 +1462,14 @@ def test_una_base_inexistente_muestra_el_estado_vacio_sin_crearla(monkeypatch, t
     assert not base.exists()
 
 
+def test_una_base_existente_sin_partidas_ofrece_sembrar(monkeypatch, tmp_path: Path) -> None:
+    base = tmp_path / "vacia.db"
+    base.touch()
+    at = _inicio(monkeypatch, base)
+    assert any("no tiene partidas" in info.value for info in at.info)
+    assert _por_rotulo(at.button, ROTULO_SEMBRAR)
+
+
 def test_la_siembra_deja_la_base_utilizable(monkeypatch, tmp_path: Path) -> None:
     base = tmp_path / "nueva.db"
     at = _inicio(monkeypatch, base, tiempo=TIEMPO_SIEMBRA)
@@ -1626,7 +1634,7 @@ def _elegir_recorrido() -> None:
 - [ ] **Step 4: Ver el verde**
 
 Run: `uv run pytest tests/unit/test_ui_inicio.py -q -W error && uv run ruff check ui/paginas/inicio.py tests/unit/test_ui_inicio.py`
-Expected: 8 passed; ruff limpio. Si `test_la_siembra_deja_la_base_utilizable` agota el tiempo en
+Expected: 9 passed; ruff limpio. Si `test_la_siembra_deja_la_base_utilizable` agota el tiempo en
 Windows, medir con `--durations=5` y subir `TIEMPO_SIEMBRA`; **no** sustituir la siembra por un doble:
 lo que se prueba es que la siembra real deja la base utilizable.
 
