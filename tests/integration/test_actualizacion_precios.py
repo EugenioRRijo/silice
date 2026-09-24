@@ -596,11 +596,10 @@ def test_los_cambios_de_precio_se_releen_tras_cerrar_la_sesion(tmp_path):
     motor = crear_motor(url)
     try:
         with abrir_sesion(motor) as sesion:
-            cambios = {
-                cambio.insumo.descripcion: cambio
-                for cambio in sesion.scalars(select(models.CambioPrecio))
-            }
+            filas = list(sesion.scalars(select(models.CambioPrecio)))
+            cambios = {cambio.insumo.descripcion: cambio for cambio in filas}
             assert set(cambios) == set(PRECIOS_NUEVOS)
+            assert len(filas) == len(PRECIOS_NUEVOS)
             for descripcion, cambio in cambios.items():
                 assert cambio.precio_anterior == linea_base.precio_de_insumo(descripcion)
                 assert cambio.precio_nuevo == PRECIOS_NUEVOS[descripcion]
