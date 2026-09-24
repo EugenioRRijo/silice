@@ -119,8 +119,9 @@ def _elaborado(monkeypatch, base: Path) -> AppTest:
     """La pantalla con los items de la linea base mas T-99, tras pulsar «Elaborar presupuesto»."""
     caso = importlib.import_module("ui.caso")
     monkeypatch.setattr(caso, "RUTA_BASE_POR_DEFECTO", str(base))
-    # `raising=False`: el rojo es el `st.error` de la pagina, no un AttributeError al preparar.
-    monkeypatch.setattr("ui.elaboracion.propuestas_de_pendientes", _propuestas_fijas, raising=False)
+    # Sin `raising=False` (Q-4 de la revision de A4): si la funcion cambiara de nombre, el parche
+    # fallaria aqui en vez de fijar en silencio un atributo que la pagina no llama.
+    monkeypatch.setattr("ui.elaboracion.propuestas_de_pendientes", _propuestas_fijas)
     at = AppTest.from_string(SCRIPT, default_timeout=120)
     at.session_state[CLAVE_ITEMS] = _items()
     at.run()
@@ -357,3 +358,44 @@ def test_aplicar_sin_items_no_rompe(monkeypatch, base_sembrada):
     at.button(key="elaborar_aplicar_0").click().run()
     assert not at.exception, [e.value for e in at.exception]
     assert any("vuelva a elaborar" in e.value for e in at.error), at.error
+
+
+def test_aplicar_con_otros_items_no_rompe(monkeypatch, base_sembrada):
+    """O-1 de la revision de A4: la otra mitad de la guarda. Tras extraer otro computo (una lista
+    no vacia sin T-99) sigue a la vista el resultado anterior; aceptar su propuesta es un error
+    visible, no el `ValueError` de `aceptar_propuesta`."""
+    at = _elaborado(monkeypatch, base_sembrada)
+    at.session_state[CLAVE_ITEMS] = list(items_auditados())
+    at.button(key="elaborar_aplicar_0").click().run()
+    assert not at.exception, [e.value for e in at.exception]
+    assert any("vuelva a elaborar" in e.value for e in at.error), at.error
+    assert at.session_state[CLAVE_ITEMS] == list(items_auditados())  # nada se acepto
+
+
+# --- una falla real del modelo llega a la pantalla (Q-4 de la revision de A4) ----------------
+
+
+def test_sin_el_extra_el_pendiente_se_declara_sin_propuestas(monkeypatch, base_sembrada):
+    """Sin doble de `propuestas_de_pendientes`: el modelo falla donde falla de verdad
+    (`_cargar_modelo`, con `ModuleNotFoundError`), y la pantalla declara la falla del pendiente
+    sin selector ni excepcion."""
+
+    def _sin_extra(*_args, **_kwargs):
+        raise ModuleNotFoundError("No module named 'sentence_transformers'")
+
+    caso = importlib.import_module("ui.caso")
+    monkeypatch.setattr(caso, "RUTA_BASE_POR_DEFECTO", str(base_sembrada))
+    monkeypatch.setattr("ml.normalization.normalizador._cargar_modelo", _sin_extra)
+    at = AppTest.from_string(SCRIPT, default_timeout=120)
+    at.session_state[CLAVE_ITEMS] = _items()
+    at.run()
+    _por_rotulo(at.button, ROTULO_ELABORAR).click().run()
+
+    assert not at.exception, [e.value for e in at.exception]
+    assert not at.error, [e.value for e in at.error]
+    assert any(m.value.startswith("**T-99**") for m in at.markdown)
+    assert "elaborar_propuesta_0" not in [s.key for s in at.selectbox]
+    assert ROTULO_APLICAR not in [boton.label for boton in at.button]
+    assert any(c.value.startswith("ImportError: No module named") for c in at.caption), [
+        c.value for c in at.caption
+    ]
