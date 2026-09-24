@@ -200,7 +200,8 @@ PROHIBIDOS_EN_UI: dict[str, tuple[str, ...]] = {
         "streamlit", "pandas", "ui.caso", "sqlalchemy", "core.catalog", "core.budget",
     ),
     "ui/elaboracion.py": ("streamlit", "pandas", "ui.caso"),
-    "ui/resultado.py": ("sqlalchemy.orm", "core.costing"),
+    # ARQ-A2: el fragmento pinta; no abre la base ni lee el catalogo.
+    "ui/resultado.py": ("sqlalchemy.orm", "core.costing", "core.catalog"),
 }
 
 
@@ -223,6 +224,8 @@ def _imports_de_ejecucion(ruta: Path) -> set[str]:
             importados.update(alias.name for alias in nodo.names)
         elif isinstance(nodo, ast.ImportFrom) and nodo.module and nodo.level == 0:
             importados.add(nodo.module)
+            # `from core import costing` importa el submodulo `core.costing` (QA-A2).
+            importados.update(f"{nodo.module}.{alias.name}" for alias in nodo.names)
     return importados
 
 
