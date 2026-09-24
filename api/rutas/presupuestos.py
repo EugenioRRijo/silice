@@ -44,7 +44,6 @@ from core.budget import (
     elaborar,
     exportar_excel,
     generar_escenario,
-    generar_presupuesto,
     guardar_presupuesto,
     plan_secuencial,
 )
@@ -82,9 +81,6 @@ def crear_presupuesto(
     )
     parametros = _parametros_costo(peticion)
 
-    borrador = generar_presupuesto(
-        items, composiciones, parametros, peticion.codigo, peticion.fecha, peticion.moneda
-    )
     resultado = elaborar(
         items,
         composiciones,
@@ -92,7 +88,7 @@ def crear_presupuesto(
         peticion.codigo,
         peticion.fecha,
         peticion.moneda,
-        plan=plan_secuencial(borrador),
+        plan=plan_secuencial,
     )
     guardar_presupuesto(
         sesion,
