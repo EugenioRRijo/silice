@@ -1,6 +1,6 @@
 # Guion de prueba manual de AREN.IA (IEEE 829) — Sesión P4.2
 
-Especificación de casos de prueba manuales para la pantalla **Componer partida (UC‑10 / UC‑11)**
+Especificación de casos de prueba manuales para la pantalla **Componer una partida** (UC‑10 / UC‑11)
 del prototipo AREN.IA (`ui/paginas/componer.py`). Está escrita para una persona que **no programa**:
 cada caso dice qué hacer, paso a paso, y qué debe ver en pantalla. Complementa el
 [plan de pruebas](plan_pruebas.md), que cubre las pruebas automatizadas; los enunciados de los UC y
@@ -9,7 +9,9 @@ RF citados viven una sola vez en la [ERS](ERS.md) y aquí no se repiten.
 ## 1. Identificador y alcance
 
 - **Identificador:** GP‑ARENIA‑001, versión de la Sesión P4.2 (2026‑09‑21), corregida en la fase C1
-  del cierre (INV‑065: la prueba trabaja sobre su propia base, nunca sobre `data/apu.db`).
+  del cierre (INV‑065: la prueba trabaja sobre su propia base, nunca sobre `data/apu.db`) y puesta
+  al día en la fase C3 (U1: el caso se abre una vez, con `ARENIA_CASO`; nombres de pantalla nuevos;
+  INV‑045: la pantalla presenta dos decimales).
 - **Alcance:** el recorrido completo de la pantalla de componer: componer una partida desde cero con
   la referencia MaPreX, editarla, una línea de mano de obra a destajo, la advertencia de rendimiento
   fuera de rango, la exportación a Excel y la lectura del informe de auditoría.
@@ -43,7 +45,8 @@ obtuvieron en Windows 11 con Python 3.13 y Streamlit 1.62.0.
 > **Esta prueba trabaja sobre su propia base, `data/prueba_arenia.db`, y nunca sobre
 > `data/apu.db`**, la base de trabajo de la aplicación. La siembra con `--reiniciar` borra la base
 > que se le indica antes de volver a sembrarla: por eso toda orden de este guion lleva
-> `--db data/prueba_arenia.db`, y cada caso le recuerda escribir esa base en la barra lateral.
+> `--db data/prueba_arenia.db`, y la aplicación se abre con `ARENIA_CASO=data/prueba_arenia.db`,
+> que fija ese caso para todas las pantallas (sección 4, paso 3).
 
 **Antes de empezar (protección de la base de trabajo).** Anote en la sección 8 si existe
 `data/apu.db` **en esta copia de trabajo** (la carpeta del repositorio en la que está parado ahora,
@@ -52,11 +55,11 @@ no la copia desechable del paso 1) y, si existe, su fecha y hora de modificació
 Si no existe, anote «no existe».
 
 1. **Cree una copia desechable del repositorio y trabaje sobre ella, nunca sobre esta copia de
-   trabajo.** Hasta que la Tarea 12 de U1 (fase C3, con `ARENIA_CASO` leído por `ui/caso.py`)
-   reemplace esta barrera, la aplicación abre `data/apu.db` de la carpeta desde la que se ejecuta en
-   el primer renderizado de cada página —antes de que se pueda escribir ninguna otra ruta—, así que
-   solo ejecutar la prueba fuera de esta copia de trabajo evita tocar su `data/apu.db`. Desde la raíz
-   del repositorio:
+   trabajo.** Desde U1 (fase C3) la aplicación abre el caso que nombra `ARENIA_CASO` (`ui/caso.py`)
+   en todas las pantallas, pero la copia desechable se conserva como segunda barrera: si la
+   variable faltara o tuviera una errata, la aplicación abriría `data/apu.db` de la carpeta desde la
+   que se ejecuta. Trabajar fuera de esta copia de trabajo evita tocar su `data/apu.db` en cualquier
+   caso. Desde la raíz del repositorio:
 
    ```
    git worktree add ../tesis-prueba-manual HEAD
@@ -87,17 +90,23 @@ Si no existe, anote «no existe».
    líneas: `Partida: 8`, `Total: 4131.10 USD` y `Auditoria: 3 hallazgo(s), CUMPLE`. Si no aparecen,
    detenga la prueba y anótelo en la sección 8.
 
-3. Abra la aplicación:
+3. Abra la aplicación con el caso de prueba. En bash:
 
    ```
-   uv run python -m streamlit run ui/app.py
+   ARENIA_CASO=data/prueba_arenia.db uv run python -m streamlit run ui/app.py
    ```
 
-   Se abre el navegador. En el menú lateral, elija **Componer partida (UC-10 / UC-11)**.
+   En PowerShell:
 
-   En la barra lateral, escriba `data/prueba_arenia.db` en el campo **Archivo SQLite** y pulse
-   Enter. **El campo vuelve a `data/apu.db` cada vez que se recarga la página (F5) o se abre otra
-   pestaña**: cada caso le indica cuándo escribirlo de nuevo.
+   ```
+   $env:ARENIA_CASO = "data/prueba_arenia.db"; uv run python -m streamlit run ui/app.py
+   ```
+
+   Se abre el navegador en **Inicio**. Compruebe que la barra lateral, bajo **Caso abierto**, nombra
+   `data/prueba_arenia.db` y que su resumen empieza por `8 partidas`. Si nombra otra base, cierre
+   la aplicación y vuelva a arrancarla con la variable. Después, en el menú lateral (sección
+   **Trabajo**), elija **Componer una partida**. Recargar la página (F5) o abrir otra pestaña **no**
+   cambia el caso abierto: la variable lo mantiene.
 
 **Orden de ejecución.** Los casos se ejecutan en orden, de CP‑01 a CP‑06, sobre una base recién
 sembrada: CP‑02 y CP‑03 continúan donde terminó CP‑01. Si repite la prueba, vuelva al paso 2.
@@ -110,10 +119,10 @@ base de trabajo. Por último, borre la copia desechable (paso 1).
 
 ## 5. Cómo leer los números y cómo anotar
 
-- La pantalla muestra los importes **sin redondear** (por ejemplo `20.11369894402000`): el sistema
-  calcula con decimales exactos y solo redondea al presentar un informe. Compare **todas las cifras
-  que da el resultado esperado**; los ceros finales de más o de menos no cuentan. Entre paréntesis
-  se da el valor redondeado a dos decimales como ayuda de lectura.
+- La pantalla muestra los importes con **dos decimales** (por ejemplo `20.11`): el sistema calcula
+  con decimales exactos y solo redondea al presentar (INV‑045). Donde ayuda a entender un caso, el
+  resultado esperado da entre paréntesis el valor exacto que calculó el sistema; compare en pantalla
+  el de dos decimales.
 - El separador decimal en pantalla es el **punto**.
 - **Veredicto:** escriba **PASA** si todo lo que dice el resultado esperado se observó, y **FALLA**
   si algo no coincide; en ese caso copie en *Resultado obtenido* lo que vio (una captura de pantalla
@@ -129,8 +138,9 @@ base de trabajo. Por último, borre la copia desechable (paso 1).
 - **Objetivo:** componer una partida nueva tomando sus seis insumos de la referencia MaPreX y ver su
   precio unitario en vivo, antes de guardar.
 - **Trazabilidad:** UC‑10; RF‑01, RF‑33, RF‑35.
-- **Precondición:** base recién sembrada (sección 4) y la página *Componer partida* abierta, con las
-  tablas vacías y `data/prueba_arenia.db` escrita en el campo **Archivo SQLite** de la barra lateral.
+- **Precondición:** base recién sembrada (sección 4) y la página *Componer una partida* abierta, con
+  las tablas vacías y `data/prueba_arenia.db` bajo **Caso abierto** en la barra lateral (la
+  aplicación arrancó con `ARENIA_CASO`, sección 4, paso 3).
 
 **Pasos**
 
@@ -173,19 +183,19 @@ base de trabajo. Por último, borre la copia desechable (paso 1).
   caso no se editan.
 - Paso 8: el desglose muestra
 
-  | Métrica | Valor esperado |
-  |---|---|
-  | Materiales | `15.316943` |
-  | Equipos | `0.1506512680` |
-  | Mano de obra | `0.432563` |
-  | Costo directo | `15.9001572680` |
-  | Con administracion | `18.285180858200` |
-  | **Precio unitario** | **`20.11369894402000`** (≈ 20,11) |
+  | Métrica | Valor esperado | Valor exacto del sistema |
+  |---|---|---|
+  | Materiales | `15.32` | 15.316943 |
+  | Equipos | `0.15` | 0.1506512680 |
+  | Mano de obra | `0.43` | 0.432563 |
+  | Costo directo | `15.90` | 15.9001572680 |
+  | Con administracion | `18.29` | 18.285180858200 |
+  | **Precio unitario** | **`20.11`** | 20.11369894402000 |
 
   y **Guardar composicion está deshabilitado** (gris) porque faltan las condiciones (RF‑33).
 - Paso 9: el botón **Guardar composicion** se habilita.
 - Paso 10: aparece el mensaje verde
-  `Composicion guardada para la partida PRUEBA-01-TUB: precio unitario 20.11369894402000.`
+  `Composicion guardada para la partida PRUEBA-01-TUB: precio unitario 20.11.`
 
 | Resultado obtenido | Veredicto |
 |---|---|
@@ -196,8 +206,8 @@ base de trabajo. Por último, borre la copia desechable (paso 1).
 - **Objetivo:** guardar de nuevo la misma partida con otro rendimiento y comprobar que se edita, no
   se duplica, y que el historial de rendimientos gana una observación.
 - **Trazabilidad:** UC‑11; RF‑26, RF‑27, RF‑33.
-- **Precondición:** CP‑01 terminado con PASA, en la misma pestaña y sin recargar la página: el campo
-  **Archivo SQLite** sigue diciendo `data/prueba_arenia.db`.
+- **Precondición:** CP‑01 terminado con PASA, en la misma pestaña y sin recargar la página, con
+  `data/prueba_arenia.db` bajo **Caso abierto** en la barra lateral.
 
 **Pasos**
 
@@ -207,18 +217,19 @@ base de trabajo. Por último, borre la copia desechable (paso 1).
 4. Para comprobar el historial, cambie el rendimiento a `150` y pulse Enter. **No guarde.**
 5. Vuelva a escribir `120` en el rendimiento (así queda listo para CP‑03).
 6. Abra una **segunda pestaña** del navegador con la misma dirección de la aplicación y, en ella,
-   elija **Catalogo** en el menú lateral. En la barra lateral de esa pestaña escriba
-   `data/prueba_arenia.db` en el campo **Archivo SQLite** y pulse Enter (la pestaña nueva empieza en
-   `data/apu.db`). Observe la tabla **Partidas**. Cierre esa pestaña y vuelva a la primera.
+   elija **Catalogo de partidas e insumos** en el menú lateral. Compruebe que la barra lateral de
+   esa pestaña también muestra `data/prueba_arenia.db` bajo **Caso abierto** (la variable
+   `ARENIA_CASO` lo fija para toda pestaña nueva). Observe la tabla **Partidas**. Cierre esa pestaña
+   y vuelva a la primera.
 
 **Resultado esperado**
 
 - Paso 1: el campo muestra `100`, el rendimiento guardado en CP‑01, precargado desde el historial.
-- Paso 2: **Precio unitario** `19.99073793585000000000000000` (≈ 19,99). Aparece además el aviso
+- Paso 2: **Precio unitario** `19.99` (exacto: 19.99073793585). Aparece además el aviso
   azul de la ayuda 4 de AREN.IA: `El precio construido cae dentro del rango de la clase 3 de AACE
   International frente a la estimacion por reglas.`
 - Paso 3: mensaje verde `Composicion guardada para la partida PRUEBA-01-TUB: precio unitario
-  19.99073793585000000000000000.`
+  19.99.`
 - Paso 4: aparece el aviso amarillo `el rendimiento 150 se aparta del comportamiento observado de la
   partida: rango [100, 120] en 2 observaciones (0 medidas); el registro se completa igualmente`.
   **«2 observaciones»** es la prueba de que el historial ganó un rendimiento (100 y 120).
@@ -235,8 +246,8 @@ base de trabajo. Por último, borre la copia desechable (paso 1).
   y por qué no lleva FCAS ni bono de alimentación (decisión D9 del [dossier G0](dossier_g0.md)).
 - **Trazabilidad:** UC‑10 / UC‑11; RF‑01, RF‑34.
 - **Precondición:** CP‑02 terminado, en la misma pestaña: la partida `PRUEBA-01-TUB` en pantalla con
-  rendimiento `120` y **Precio unitario** `19.99073793585000000000000000`, y el campo **Archivo
-  SQLite** en `data/prueba_arenia.db`. Si el rendimiento no está en `120`, escríbalo.
+  rendimiento `120` y **Precio unitario** `19.99`, con `data/prueba_arenia.db` bajo **Caso abierto**
+  en la barra lateral. Si el rendimiento no está en `120`, escríbalo.
 
 **Pasos**
 
@@ -249,19 +260,20 @@ base de trabajo. Por último, borre la copia desechable (paso 1).
 
 **Resultado esperado**
 
-| Estado | Mano de obra | Precio unitario |
-|---|---|---|
-| Antes del paso 1 | `0.3604691666666666666666666667` | `19.99073793585000000000000000` (≈ 19,99) |
-| Paso 2 (la fila a **destajo**) | `1.860469166666666666666666667` | `21.88823793585000000000000000` (≈ 21,89) |
-| Paso 4 (la misma fila a **jornal**) | `0.4563025` | `20.11196710251666666666666666` (≈ 20,11) |
+| Estado | Mano de obra | Precio unitario | Valores exactos del sistema |
+|---|---|---|---|
+| Antes del paso 1 | `0.36` | `19.99` | 0.36046916… · 19.99073793585 |
+| Paso 2 (la fila a **destajo**) | `1.86` | `21.89` | 1.86046916… · 21.88823793585 |
+| Paso 4 (la misma fila a **jornal**) | `0.46` | `20.11` | 0.4563025 · 20.11196710251… |
 
 **Por qué.** A destajo, `1.50` no es un jornal diario: es lo que se paga **por cada metro
 instalado** (artículo 114 de la LOTTT, decisión D9). Por eso entra completo a la mano de obra, que
 sube exactamente `1.50`: sin multiplicarse por (1 + FCAS), sin bono de alimentación y sin dividirse
 entre el rendimiento. El precio unitario sube `1.8975` (1,50 con administración y utilidad en
-cascada: 1,50 × 1,15 × 1,10). La misma línea declarada a jornal se trata como un obrero más de la
-cuadrilla: su sueldo lleva el FCAS y el bono, y todo se divide entre los 120 m por día; la mano de
-obra sube solo `0.0958333…` y el precio unitario `0.1212291…`.
+cascada: 1,50 × 1,15 × 1,10; en pantalla, de `19.99` a `21.89`). La misma línea declarada a jornal
+se trata como un obrero más de la cuadrilla: su sueldo lleva el FCAS y el bono, y todo se divide
+entre los 120 m por día; la mano de obra sube solo `0.0958333…` (en pantalla, de `0.36` a `0.46`) y
+el precio unitario `0.1212291…` (de `19.99` a `20.11`).
 
 | Resultado obtenido | Veredicto |
 |---|---|
@@ -273,9 +285,9 @@ obra sube solo `0.0958333…` y el precio unitario `0.1212291…`.
   RF‑27 y que, aun así, guardar sigue habilitado.
 - **Trazabilidad:** UC‑06, UC‑11; RF‑26, RF‑27, RF‑33.
 - **Precondición:** base sembrada (la partida `DEMO-01-INST` trae dos observaciones de rendimiento:
-  50 y 60 m por día). Recargue la página con **F5** para empezar con las tablas vacías y escriba de
-  nuevo `data/prueba_arenia.db` en el campo **Archivo SQLite** (la recarga lo devolvió a
-  `data/apu.db`).
+  50 y 60 m por día). Recargue la página con **F5** para empezar con las tablas vacías y compruebe
+  que sigue `data/prueba_arenia.db` bajo **Caso abierto** en la barra lateral (la recarga no cambia
+  el caso: lo mantiene `ARENIA_CASO`).
 
 **Pasos**
 
@@ -313,8 +325,8 @@ obra sube solo `0.0958333…` y el precio unitario `0.1212291…`.
   y comprobar sus cuatro hojas y la columna *Modalidad*.
 - **Trazabilidad:** UC‑01; RF‑06, RF‑07, RF‑08, RF‑34.
 - **Precondición:** base sembrada y CP‑04 terminado **sin guardar**. Recargue la página con **F5** y
-  escriba de nuevo `data/prueba_arenia.db` en el campo **Archivo SQLite**. Excel o LibreOffice Calc
-  para abrir el libro.
+  compruebe que sigue `data/prueba_arenia.db` bajo **Caso abierto** en la barra lateral. Excel o
+  LibreOffice Calc para abrir el libro.
 
 **Pasos**
 
@@ -361,8 +373,8 @@ obra sube solo `0.0958333…` y el precio unitario `0.1212291…`.
 - **Objetivo:** comprobar que el informe de auditoría aparece siempre, sin pedirlo, y leer cuántos
   hallazgos tiene y de qué severidad.
 - **Trazabilidad:** UC‑01, UC‑05; RF‑02, RF‑21, RF‑23.
-- **Precondición:** CP‑05 terminado, en la misma pestaña y con `data/prueba_arenia.db` en el campo
-  **Archivo SQLite**.
+- **Precondición:** CP‑05 terminado, en la misma pestaña y con `data/prueba_arenia.db` bajo **Caso
+  abierto** en la barra lateral.
 
 **Pasos**
 
@@ -393,17 +405,18 @@ parte de lo que se prueba (principio 7 de [CLAUDE.md](../CLAUDE.md)).
 
 ### CP‑07 — Una persona nueva llega sola del Inicio al Excel auditado
 
-> **CP‑07 no es ejecutable hasta U1.** Su preparación arranca la aplicación con `ARENIA_CASO`,
-> que ninguna parte de la aplicación lee todavía: lo leerá `ui/caso.py` en la Tarea 12 de U1
-> (fase C3). Hasta entonces la aplicación ignora esa variable y abre `data/apu.db` de la carpeta
-> desde la que corre, y puede crearlo o escribir en él. Si aun así hubiera que ejecutarlo antes de
-> U1, se ejecuta **dentro de la copia desechable de la sección 4** (paso 1,
+> **CP‑07 es ejecutable desde U1 y se ejecuta en la fase Med (GU1b).** La fase C3 lo dejó listo:
+> `ui/caso.py` lee `ARENIA_CASO` y la aplicación abre el caso de cada escenario en todas las
+> pantallas. La medición con personas no es de C3: C3 cierra la compuerta GU1a (U1 completa sin
+> CP‑07) y la medición cierra GU1b en Med. Con la misma protección de INV‑065 que los demás casos,
+> se ejecuta **dentro de la copia desechable de la sección 4** (paso 1,
 > `git worktree add ../tesis-prueba-manual HEAD`), nunca en la copia de trabajo, y se hacen las
 > comprobaciones de `data/apu.db` de «Antes de empezar» y «Al terminar la prueba» de esa sección.
 
 - **Objetivo:** medir si una persona que nunca vio la aplicación, sin explicación previa y sin que
   nadie la guíe, llega desde el Inicio hasta un presupuesto en Excel con su hoja de auditoría.
-- **Trazabilidad:** UC‑12; RF‑36 a RF‑43; **RNF‑10**; compuerta GU1 de [PLAN_UI.md](../PLAN_UI.md).
+- **Trazabilidad:** UC‑12; RF‑36 a RF‑43; **RNF‑10**; compuerta GU1b de [PLAN_UI.md](../PLAN_UI.md)
+  (fase Med; GU1a cierra U1 sin este caso).
 - **Naturaleza:** caso con persona. Hay dos papeles: el **participante**, que usa la aplicación, y
   el **observador**, que prepara, lee la consigna, cronometra y anota. El observador no es
   participante.
@@ -541,7 +554,7 @@ ejecución, dejando constancia en [docs/bitacora/](bitacora/).
 | CP‑04 | UC‑06, UC‑11 | RF‑26, RF‑27, RF‑33 | — |
 | CP‑05 | UC‑01 | RF‑06, RF‑07, RF‑08, RF‑34 | hojas de `core/budget/excel.py` |
 | CP‑06 | UC‑01, UC‑05 | RF‑02, RF‑21, RF‑23 | principio 7 de CLAUDE.md §2 |
-| CP‑07 | UC‑12 | RF‑36 a RF‑43 | RNF‑10; bloque B del anexo A de [dossier_g0.md](dossier_g0.md); compuerta GU1 |
+| CP‑07 | UC‑12 | RF‑36 a RF‑43 | RNF‑10; bloque B del anexo A de [dossier_g0.md](dossier_g0.md); compuerta GU1b (Med) |
 
 ## 8. Registro de la ejecución
 
@@ -567,3 +580,12 @@ hicieron en la propia pantalla (buscador, *Resultado* y *Usar esta fila*), y las
 tablas, que `AppTest` no puede teclear, se sembraron con las mismas filas que produce el buscador.
 Los guiones auxiliares no forman parte del repositorio. Si una versión posterior del sistema cambia
 un valor, este guion se actualiza volviendo a ejecutar el recorrido, no a mano.
+
+**Puesta al día de la fase C3 (2026‑09‑24).** INV‑045 cambió solo la presentación: la pantalla de
+componer pasa los importes por `formatear_decimal(valor, 2)`. Se volvió a ejecutar CP‑01 con
+`AppTest` contra una base temporal sembrada con `scripts/seed_demo.py`: sus seis métricas y el
+mensaje de guardado salen con dos decimales y coinciden con el redondeo de los valores exactos
+anteriores. Los valores de dos decimales de CP‑02 y CP‑03 se obtuvieron aplicando esa misma
+función a los valores exactos que el sistema produjo en `617861b`, que se conservan entre
+paréntesis; el cálculo no cambió (la línea base sigue en 1 586,61 USD y 7 de 7). Si la próxima
+ejecución manual encuentra una diferencia, manda la ejecución.

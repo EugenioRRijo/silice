@@ -158,21 +158,21 @@ archivo en la corrida registrada (total de la suite: 392).
 | RF‑33 | `tests/integration/test_persistencia.py` (`test_cargar_composicion_sin_condiciones_lanza_valueerror`, `test_reemplazar_composicion_exige_condiciones_no_vacias`: los dos caminos del catálogo); `tests/unit/test_ui_componer.py` (P4.1: el botón «Guardar composicion» nace deshabilitado sin condiciones y se habilita al declararlas; con condiciones pero sin rendimiento, el botón guarda habilitado pero no persiste nada) | 27 + 5 | verde |
 | RF‑34 | `tests/unit/test_composicion.py` (`composicion_desde_tablas` acepta y valida la modalidad por fila); `tests/integration/test_persistencia.py::test_la_modalidad_a_destajo_sobrevive_el_viaje_por_el_catalogo`; `tests/integration/test_composicion_extremo_a_extremo.py::test_el_caso_de_demostracion_mezcla_jornal_y_destajo_en_una_partida` (jornal y destajo en una misma partida, por el camino de la pantalla) | 24 + 27 + 14 | verde |
 | RF‑35 | `tests/unit/test_composicion.py` (`test_buscar_referencia_*`, 5 pruebas: la referencia MaPreX sugiere; `test_el_precio_sugerido_por_la_referencia_es_editable_y_el_calculo_lo_refleja`, 1 prueba: el precio de la fila sigue siendo un campo editable, nunca de solo lectura, y `core.costing.calcular_apu` refleja el precio editado, no el sugerido) | 34 | verde |
-| RF‑36 | `tests/unit/test_ui_app.py` (Inicio por defecto por identidad; ruta vacía → `inicio`) | — | pendiente (U1) |
-| RF‑37 | `tests/unit/test_ui_recorridos.py` (integridad de enlaces con y sin modo entrega) | — | pendiente (U1) |
-| RF‑38 | `tests/unit/test_ui_caso.py` (una sola ruta por defecto); `tests/unit/test_ui_app.py` (ninguna página salvo el Inicio pide la ruta) | — | pendiente (U1) |
-| RF‑39 | `tests/unit/test_ui_caso.py`; `tests/unit/test_ui_app.py` (indicador en las diez pantallas) | — | pendiente (U1) |
-| RF‑40 | `tests/unit/test_ui_inicio.py`; `tests/unit/test_ui_caso.py` (sin flag de reinicio en `ui/`) | — | pendiente (U1) |
-| RF‑41 | `tests/unit/test_ui_recorridos.py` (`paso_siguiente` y `Recorrido.posicion`); `tests/unit/test_ui_app.py` (botón «Siguiente») | — | pendiente (U1) |
-| RF‑42 | `tests/unit/test_ui_app.py` (secciones, orden, subtítulo de caso de uso) | — | pendiente (U1) |
-| RF‑43 | `tests/unit/test_ui_app.py`; `tests/unit/test_ui_recorridos.py` | — | pendiente (U1) |
+| RF‑36 | `tests/unit/test_ui_app.py` (Inicio por defecto por identidad; ruta vacía → `inicio`) | 21 | verde |
+| RF‑37 | `tests/unit/test_ui_recorridos.py` (la declaración única, sin Streamlit); `tests/unit/test_ui_app.py` (integridad de enlaces con y sin modo entrega) | 13 + 21 | verde |
+| RF‑38 | `tests/unit/test_ui_caso.py` (una sola ruta por defecto); `tests/unit/test_ui_app.py` (ninguna página salvo el Inicio pide la ruta) | 13 + 21 | verde |
+| RF‑39 | `tests/unit/test_ui_caso.py`; `tests/unit/test_ui_app.py` (indicador en las diez pantallas) | 13 + 21 | verde |
+| RF‑40 | `tests/unit/test_ui_inicio.py`; `tests/unit/test_ui_caso.py` (sin flag de reinicio en `ui/`) | 9 + 13 | verde |
+| RF‑41 | `tests/unit/test_ui_recorridos.py` (`paso_siguiente` y `Recorrido.posicion`); `tests/unit/test_ui_app.py` (botón «Siguiente») | 13 + 21 | verde |
+| RF‑42 | `tests/unit/test_ui_app.py` (secciones, orden, subtítulo de caso de uso) | 21 | verde |
+| RF‑43 | `tests/unit/test_ui_app.py` (la sección Trabajo intacta en modo entrega; ningún paso sale de Trabajo) | 21 | verde |
 
 **Resumen:** 33 de 34 RF anteriores al
-sprint de UI con prueba automatizada en verde; RF‑36 a RF‑43 declarados en U0 con su archivo de
-prueba nombrado y pendientes de U1. RF‑16 parcial (su parte de UI está
+sprint de UI con prueba automatizada en verde; RF‑36 a RF‑43, declarados en U0, en verde desde U1
+(fase C3 del cierre). En esas ocho filas, «Casos» cuenta las funciones `def test_` de cada archivo;
+`test_ui_app.py` suma 38 casos al contar sus parámetros. RF‑16 parcial (su parte de UI está
 cubierta, su persistencia espera un flujo que no existe — hallazgo registrado). **Los RF esenciales
-anteriores al sprint de UI tienen prueba en verde; RF‑36 a RF‑43 tienen su archivo de prueba nombrado
-y quedan pendientes de U1.**
+anteriores al sprint de UI y RF‑36 a RF‑43 tienen prueba en verde.**
 
 Cobertura adicional no exigida por RF: `test_generador_ifc.py` (1), `test_visor3d.py` (4),
 `test_openapi.py` (2), `test_simulador.py` (2), `test_api.py` (14), `test_civil_verificacion.py`
@@ -187,16 +187,16 @@ prueba lo reclamaba.
 
 | Paso de UC‑12 | RF | Prueba o caso | Estado |
 |---|---|---|---|
-| 1 abre en Inicio | RF‑36 | `tests/unit/test_ui_app.py::test_la_aplicacion_arranca_en_el_inicio`, `::test_la_ruta_vacia_de_la_pagina_por_defecto_es_el_inicio` | pendiente (U1) |
-| 2 caso abierto en la barra lateral | RF‑39 | `tests/unit/test_ui_app.py::test_cada_pantalla_muestra_el_caso_abierto_y_su_titulo`; `tests/unit/test_ui_caso.py::test_resumen_de_cada_estado` | pendiente (U1) |
-| 3 fija el caso para la sesión | RF‑38 | `tests/unit/test_ui_inicio.py::test_abrir_otro_caso_lo_fija_en_la_clave_propia`; `tests/unit/test_ui_app.py::test_ninguna_pantalla_distinta_del_inicio_pide_la_ruta` | pendiente (U1) |
-| 4 elige un recorrido | RF‑37 | `tests/unit/test_ui_inicio.py::test_el_inicio_ofrece_los_tres_recorridos`, `::test_elegir_un_recorrido_lo_fija_en_la_clave_propia` | pendiente (U1) |
-| 5 posición y paso siguiente; menú por oficio | RF‑41, RF‑42 | `tests/unit/test_ui_app.py::test_la_barra_lateral_indica_el_paso_del_recorrido` (nueva en el plan, Tarea 11), `::test_el_boton_siguiente_lleva_al_paso_que_sigue`, `::test_desde_el_inicio_el_siguiente_es_el_primer_paso`, `::test_sin_modo_entrega_dos_secciones_en_el_orden_del_trabajo` | pendiente (U1) |
-| 6 obtiene el resultado del recorrido | RNF‑10 | CP‑07 (`docs/guion_prueba_arenia.md`) | pendiente (U1) |
-| 1a modo entrega | RF‑43 | `tests/unit/test_ui_app.py::test_modo_entrega_omite_investigacion_y_conserva_todo_trabajo`, `::test_la_aplicacion_arranca_en_modo_entrega`; `tests/unit/test_ui_recorridos.py::test_ningun_paso_sale_de_la_seccion_trabajo` | pendiente (U1) |
-| 3a caso vacío: siembra sin reinicio | RF‑40 | `tests/unit/test_ui_inicio.py::test_una_base_inexistente_muestra_el_estado_vacio_sin_crearla`, `::test_la_siembra_deja_la_base_utilizable`, `::test_con_partidas_no_se_ofrece_sembrar`, `::test_una_base_existente_sin_partidas_ofrece_sembrar`; `tests/unit/test_ui_caso.py::test_ningun_archivo_de_ui_contiene_el_flag_de_reinicio`, `::test_estado_de_una_base_vacia` | pendiente (U1) |
-| 3b archivo ilegible | RF‑39 | `tests/unit/test_ui_inicio.py::test_un_archivo_ilegible_se_informa_sin_ofrecer_sembrar`; `tests/unit/test_ui_caso.py::test_estado_de_un_archivo_que_no_es_sqlite_es_un_error_sin_traza` | pendiente (U1) |
-| 5a pantalla fuera del recorrido | RF‑41 | `tests/unit/test_ui_app.py::test_una_pantalla_fuera_del_recorrido_no_muestra_siguiente` | pendiente (U1) |
+| 1 abre en Inicio | RF‑36 | `tests/unit/test_ui_app.py::test_la_aplicacion_arranca_en_el_inicio`, `::test_la_ruta_vacia_de_la_pagina_por_defecto_es_el_inicio` | verde |
+| 2 caso abierto en la barra lateral | RF‑39 | `tests/unit/test_ui_app.py::test_cada_pantalla_muestra_el_caso_abierto_y_su_titulo`; `tests/unit/test_ui_caso.py::test_resumen_de_cada_estado` | verde |
+| 3 fija el caso para la sesión | RF‑38 | `tests/unit/test_ui_inicio.py::test_abrir_otro_caso_lo_fija_en_la_clave_propia`; `tests/unit/test_ui_app.py::test_ninguna_pantalla_distinta_del_inicio_pide_la_ruta` | verde |
+| 4 elige un recorrido | RF‑37 | `tests/unit/test_ui_inicio.py::test_el_inicio_ofrece_los_tres_recorridos`, `::test_elegir_un_recorrido_lo_fija_en_la_clave_propia` | verde |
+| 5 posición y paso siguiente; menú por oficio | RF‑41, RF‑42 | `tests/unit/test_ui_app.py::test_la_barra_lateral_indica_el_paso_del_recorrido`, `::test_el_boton_siguiente_lleva_al_paso_que_sigue`, `::test_desde_el_inicio_el_siguiente_es_el_primer_paso`, `::test_sin_modo_entrega_dos_secciones_en_el_orden_del_trabajo` | verde |
+| 6 obtiene el resultado del recorrido | RNF‑10 | CP‑07 (`docs/guion_prueba_arenia.md`) | ejecutable; se mide en Med (GU1b) |
+| 1a modo entrega | RF‑43 | `tests/unit/test_ui_app.py::test_modo_entrega_omite_investigacion_y_conserva_todo_trabajo`, `::test_la_aplicacion_arranca_en_modo_entrega`, `::test_ningun_paso_sale_de_la_seccion_trabajo` | verde |
+| 3a caso vacío: siembra sin reinicio | RF‑40 | `tests/unit/test_ui_inicio.py::test_una_base_inexistente_muestra_el_estado_vacio_sin_crearla`, `::test_la_siembra_deja_la_base_utilizable`, `::test_con_partidas_no_se_ofrece_sembrar`, `::test_una_base_existente_sin_partidas_ofrece_sembrar`; `tests/unit/test_ui_caso.py::test_ningun_archivo_de_ui_contiene_el_flag_de_reinicio`, `::test_estado_de_una_base_vacia` | verde |
+| 3b archivo ilegible | RF‑39 | `tests/unit/test_ui_inicio.py::test_un_archivo_ilegible_se_informa_sin_ofrecer_sembrar`; `tests/unit/test_ui_caso.py::test_estado_de_un_archivo_que_no_es_sqlite_es_un_error_sin_traza` | verde |
+| 5a pantalla fuera del recorrido | RF‑41 | `tests/unit/test_ui_app.py::test_una_pantalla_fuera_del_recorrido_no_muestra_siguiente` | verde |
 
 ## 9. Trazabilidad RNF → verificación
 
