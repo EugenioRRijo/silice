@@ -782,3 +782,21 @@ def test_con_tres_versiones_solo_se_descarta_la_ultima(sesion, actualizacion, li
     marca = descartar_version(sesion, NOMBRE_PROYECTO, "003", FECHA_NUEVA)
     assert marca.presupuesto.codigo == "003"
     assert _contar(sesion, models.DescarteVersion) == 1
+
+
+def test_borrar_una_version_descartada_borra_su_marca_en_cascada(sesion, actualizacion):
+    """GC3, M‑2 de pruebas: el `ondelete="CASCADE"` de `descarte_version` se comprueba por
+    comportamiento, no solo en el esquema. Con `PRAGMA foreign_keys=ON` (el de `crear_motor`),
+    borrar el presupuesto marcado elimina su `DescarteVersion`.
+    """
+    sesion.commit()
+    assert sesion.connection().exec_driver_sql("PRAGMA foreign_keys").scalar_one() == 1
+    marca = descartar_version(sesion, NOMBRE_PROYECTO, CODIGO_NUEVO, FECHA_NUEVA)
+    sesion.commit()
+    assert _contar(sesion, models.DescarteVersion) == 1
+
+    sesion.delete(marca.presupuesto)
+    sesion.commit()
+    sesion.expunge_all()
+
+    assert _contar(sesion, models.DescarteVersion) == 0
