@@ -393,6 +393,14 @@ parte de lo que se prueba (principio 7 de [CLAUDE.md](../CLAUDE.md)).
 
 ### CP‑07 — Una persona nueva llega sola del Inicio al Excel auditado
 
+> **CP‑07 no es ejecutable hasta U1.** Su preparación arranca la aplicación con `ARENIA_CASO`,
+> que ninguna parte de la aplicación lee todavía: lo leerá `ui/caso.py` en la Tarea 12 de U1
+> (fase C3). Hasta entonces la aplicación ignora esa variable y abre `data/apu.db` de la carpeta
+> desde la que corre, y puede crearlo o escribir en él. Si aun así hubiera que ejecutarlo antes de
+> U1, se ejecuta **dentro de la copia desechable de la sección 4** (paso 1,
+> `git worktree add ../tesis-prueba-manual HEAD`), nunca en la copia de trabajo, y se hacen las
+> comprobaciones de `data/apu.db` de «Antes de empezar» y «Al terminar la prueba» de esa sección.
+
 - **Objetivo:** medir si una persona que nunca vio la aplicación, sin explicación previa y sin que
   nadie la guíe, llega desde el Inicio hasta un presupuesto en Excel con su hoja de auditoría.
 - **Trazabilidad:** UC‑12; RF‑36 a RF‑43; **RNF‑10**; compuerta GU1 de [PLAN_UI.md](../PLAN_UI.md).

@@ -1,6 +1,6 @@
 """El guion manual no escribe en `data/apu.db` (INV‑065, bloqueante; spec de cierre §4).
 
-Lee `docs/guion_prueba_arenia.md` como texto y comprueba cuatro cosas:
+Lee `docs/guion_prueba_arenia.md` como texto y comprueba cinco cosas:
 
 - toda orden de siembra lleva `--db` con una base propia **en la misma línea** que la orden: la
   comprobación es línea a línea, así que una orden partida con `--db` en la línea siguiente cuenta
@@ -12,7 +12,10 @@ Lee `docs/guion_prueba_arenia.md` como texto y comprueba cuatro cosas:
   ruta, así que ni sembrar en `data/prueba_arenia.db` ni escribir el campo **Archivo SQLite**
   bastan por sí solos;
 - la precondición de cada caso CP‑01…CP‑06 manda abrir la base de prueba en el campo
-  **Archivo SQLite**, porque la aplicación vuelve a `data/apu.db` en cada recarga.
+  **Archivo SQLite**, porque la aplicación vuelve a `data/apu.db` en cada recarga;
+- CP‑07 se declara no ejecutable hasta U1: arranca la aplicación con `ARENIA_CASO`, que nadie lee
+  antes de la Tarea 12, y si se ejecutara antes debe hacerse desde la copia desechable de la
+  sección 4 (observación Q1 de GC1).
 
 Cuando la Tarea 12 de U1 (fase C3, con `ARENIA_CASO` leído por `ui/caso.py`) reescriba esas
 precondiciones podrá migrar la corrección a `ARENIA_CASO`, que esta prueba también acepta, y podrá
@@ -107,3 +110,12 @@ def test_la_segunda_pestana_de_cp02_tambien_abre_la_base_de_prueba():
     """La pestaña nueva empieza en la ruta por defecto: el paso 6 de CP‑02 la corrige."""
     pasos = _seccion(_casos()["CP-02"], "**Pasos**", "**Resultado esperado**")
     assert BASE_DE_PRUEBA in pasos or CASO_ABIERTO in pasos
+
+
+def test_cp07_se_declara_no_ejecutable_hasta_u1():
+    """CP‑07 arranca la app con `ARENIA_CASO`, que ninguna parte lee hasta la Tarea 12 de U1:
+    ejecutado hoy en la raíz crearía o tocaría `data/apu.db` (observación Q1 de GC1)."""
+    cp07 = _seccion(_texto(), "### CP‑07 ", "## 7.")
+    assert "no es ejecutable hasta U1" in cp07
+    assert "Tarea 12" in cp07
+    assert "copia desechable de la sección 4" in cp07
