@@ -40,6 +40,7 @@ from __future__ import annotations
 import argparse
 import sys
 from collections.abc import Sequence
+from decimal import Decimal
 from pathlib import Path
 
 # Igual que en scripts/seed.py: ejecutado como `python scripts/...`, sys.path[0] es scripts/ y
@@ -53,7 +54,7 @@ from sqlalchemy.orm import Session  # noqa: E402
 
 from adapters.industrial import AdaptadorIndustrial  # noqa: E402
 from core import models  # noqa: E402
-from core.budget import generar_presupuesto  # noqa: E402
+from core.budget import ResultadoElaboracion, generar_presupuesto  # noqa: E402
 from core.catalog import (  # noqa: E402
     Catalogo,
     CatalogoIncompleto,
@@ -69,6 +70,8 @@ from core.contracts import (  # noqa: E402
     Presupuesto,
 )
 from core.verification import auditar  # noqa: E402
+from core.verification.informe import DECIMALES_PRESENTACION  # noqa: E402
+from core.verification.texto import formatear_decimal  # noqa: E402
 from tests.fixtures import mantenimiento_industrial as mnt  # noqa: E402
 
 FECHA_REFERENCIA = mnt.FECHA_REFERENCIA
@@ -242,29 +245,43 @@ def main(argv: Sequence[str] | None = None) -> int:
 def _imprimir_resumen(sesion: Session, ruta: Path, proyecto: models.Proyecto) -> None:
     lista = lista_industrial(sesion)
     presupuesto = presupuesto_industrial(sesion)
-    informe = auditar(presupuesto)
     print(f"Base de datos: {ruta}")
     print(f"Proyecto: {proyecto.nombre} ({proyecto.dominio})")
     print(
         f"Lista de precios: {lista.nombre} ({lista.moneda}, vigente desde {lista.fecha_vigencia}) "
         "- proxy MaPreX, degradacion GM2 declarada"
     )
-    print(f"Presupuesto {presupuesto.codigo} ({len(presupuesto.partidas)} partidas):")
-    for partida in presupuesto.partidas:
-        print(
-            f"  {partida.item.codigo_partida} [{partida.item.origen_id}] "
-            f"{partida.item.cantidad:f} {partida.item.unidad} x "
-            f"{partida.resultado.precio_unitario:.2f} = {partida.total:.2f} {MONEDA}"
-        )
-    print(f"  Total: {presupuesto.total:.2f} {MONEDA}")
-    print(
-        f"Auditoria: {len(informe.hallazgos)} hallazgo(s), "
-        f"{'CUMPLE' if informe.cumple else 'NO CUMPLE'}"
-    )
+    print(resumen(ResultadoElaboracion(presupuesto, auditar(presupuesto)), MONEDA))
     pendientes = items_sin_catalogo()
     print(f"Activos sin partida en el catalogo (pendientes de cotizacion): {len(pendientes)}")
     for item in pendientes:
         print(f"  {item.origen_id} {item.codigo_partida}: {item.descripcion}")
+
+
+def _monto(valor: Decimal) -> str:
+    return formatear_decimal(valor, DECIMALES_PRESENTACION)
+
+
+def resumen(resultado: ResultadoElaboracion, moneda: str) -> str:
+    """El texto del presupuesto que imprime `main`: partidas, total y auditoria.
+
+    Los montos se redondean con la fuente unica de presentacion (`formatear_decimal` con
+    `DECIMALES_PRESENTACION`, `ROUND_HALF_UP`), no con `:.2f`, que redondea al par (INV-049).
+    """
+    presupuesto = resultado.presupuesto
+    lineas = [f"Presupuesto {presupuesto.codigo} ({len(presupuesto.partidas)} partidas):"]
+    lineas += [
+        f"  {partida.item.codigo_partida} [{partida.item.origen_id}] "
+        f"{partida.item.cantidad:f} {partida.item.unidad} x "
+        f"{_monto(partida.resultado.precio_unitario)} = {_monto(partida.total)} {moneda}"
+        for partida in presupuesto.partidas
+    ]
+    lineas.append(f"  Total: {_monto(presupuesto.total)} {moneda}")
+    lineas.append(
+        f"Auditoria: {len(resultado.informe.hallazgos)} hallazgo(s), "
+        f"{'CUMPLE' if resultado.informe.cumple else 'NO CUMPLE'}"
+    )
+    return "\n".join(lineas)
 
 
 if __name__ == "__main__":

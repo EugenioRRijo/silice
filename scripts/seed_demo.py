@@ -105,6 +105,8 @@ from core.contracts import (  # noqa: E402
     ParametrosCosto,
     TipoRendimiento,
 )
+from core.verification.informe import DECIMALES_PRESENTACION  # noqa: E402
+from core.verification.texto import formatear_decimal  # noqa: E402
 from scripts import seed  # noqa: E402
 
 NOMBRE_PROYECTO = "AREN.IA: caso de demostracion (linea de agua potable, didactico)"
@@ -523,25 +525,38 @@ def _imprimir_resumen(
             f"  mano de obra {len(composicion.mano_obra)} ({modalidades})"
         )
 
-    resultado = elaborar_caso_demo(caso)
-    print(
-        f"Presupuesto {resultado.presupuesto.codigo} "
-        f"({len(resultado.presupuesto.partidas)} partidas):"
-    )
-    for partida in resultado.presupuesto.partidas:
-        print(
-            f"  {partida.item.codigo_partida} [{partida.item.origen_id}] "
-            f"{partida.item.cantidad:f} {partida.item.unidad} x "
-            f"{partida.resultado.precio_unitario:.2f} = {partida.total:.2f} {caso.moneda}"
-        )
-    print(f"  Total: {resultado.presupuesto.total:.2f} {caso.moneda}")
-    print("Curva de inversion:")
-    for punto in resultado.presupuesto.curva:
-        print(f"  {punto.periodo}: {punto.monto:.2f} (acumulado {punto.acumulado:.2f})")
-    print(
+    print(resumen(elaborar_caso_demo(caso), caso.moneda))
+
+
+def _monto(valor: Decimal) -> str:
+    return formatear_decimal(valor, DECIMALES_PRESENTACION)
+
+
+def resumen(resultado: ResultadoElaboracion, moneda: str) -> str:
+    """El texto del presupuesto que imprime `main`: partidas, total, curva y auditoria.
+
+    Los montos se redondean con la fuente unica de presentacion (`formatear_decimal` con
+    `DECIMALES_PRESENTACION`, `ROUND_HALF_UP`), no con `:.2f`, que redondea al par (INV-049).
+    """
+    presupuesto = resultado.presupuesto
+    lineas = [f"Presupuesto {presupuesto.codigo} ({len(presupuesto.partidas)} partidas):"]
+    lineas += [
+        f"  {partida.item.codigo_partida} [{partida.item.origen_id}] "
+        f"{partida.item.cantidad:f} {partida.item.unidad} x "
+        f"{_monto(partida.resultado.precio_unitario)} = {_monto(partida.total)} {moneda}"
+        for partida in presupuesto.partidas
+    ]
+    lineas.append(f"  Total: {_monto(presupuesto.total)} {moneda}")
+    lineas.append("Curva de inversion:")
+    lineas += [
+        f"  {punto.periodo}: {_monto(punto.monto)} (acumulado {_monto(punto.acumulado)})"
+        for punto in presupuesto.curva
+    ]
+    lineas.append(
         f"Auditoria: {len(resultado.informe.hallazgos)} hallazgo(s), "
         f"{'CUMPLE' if resultado.informe.cumple else 'NO CUMPLE'}"
     )
+    return "\n".join(lineas)
 
 
 if __name__ == "__main__":

@@ -26,7 +26,11 @@ if str(RAIZ) not in sys.path:
     sys.path.insert(0, str(RAIZ))
 
 from core.catalog import Catalogo, abrir_sesion, crear_motor  # noqa: E402
+from core.verification.informe import DECIMALES_PRESENTACION  # noqa: E402
 from scripts.seed import RUTA_POR_DEFECTO  # noqa: E402
+
+#: El paso del precio simulado: los mismos dos decimales de la presentacion (INV-049).
+PASO_DE_PRESENTACION = Decimal(1).scaleb(-DECIMALES_PRESENTACION)
 
 
 def simular(
@@ -57,7 +61,7 @@ def simular(
         pb_sorteado = generador.randint(-pb_max, pb_max)
         factor_variacion = 1 + Decimal(pb_sorteado) / Decimal(10000)
         precio_nuevo = precio * factor_variacion
-        precio_nuevo = precio_nuevo.quantize(Decimal("0.01"))
+        precio_nuevo = precio_nuevo.quantize(PASO_DE_PRESENTACION)
 
         resultados.append((tipo, insumo, unidad, precio_nuevo))
 
