@@ -113,3 +113,43 @@ la API todavía con `_proponedor`, corrido sin red (`HF_HUB_OFFLINE=1`,
 
 Mordida del commit de la API (`_pendientes` con `propuestas=[]` sin llamar a `propuestas_para`):
 fallan el cableado, los siete casos de `caplog` y `test_la_propuesta_real_reconoce_la_partida_de_la_misma_descripcion`.
+
+## C3.2 INV‑015 7a: descartar la versión revalorada conserva el historial
+
+**Problema y origen.** Están en el expediente B.8 de C1
+([docs/bitacora/2026-09-23-C1-expedientes.md](2026-09-23-C1-expedientes.md), «B.8 INV-015»), que
+aquí no se repite: «descartar» hoy es no confirmar la transacción, que también deshace los
+`CambioPrecio`, contra UC‑02 7a («se marca como descartada, pero el registro de cambios se
+conserva», `docs/ERS.md:170`). Eugenio decidió la segunda excepción de `core/` en C3 (D1 = A,
+2026‑09‑24).
+
+**Diseño.** Un solo commit de `core/`, asunto
+`feat(budget): descartar la version revalorada conserva el historial`, que toca **solo** los cinco
+archivos autorizados (`core/models/entidades.py`, `core/models/__init__.py`,
+`core/catalog/sesion.py`, `core/budget/actualizacion.py`, `core/budget/__init__.py`) más sus pruebas
+en `tests/integration/test_actualizacion_precios.py` y `tests/integration/test_persistencia.py`:
+
+- **Tabla `descarte_version`** (`models.DescarteVersion`): `presupuesto_id` es clave primaria **y**
+  foránea a `presupuesto.id` con `ondelete="CASCADE"`, así que es única por presupuesto y no bloquea
+  el borrado de un presupuesto con `PRAGMA foreign_keys=ON` (`core/catalog/sesion.py:51`, A‑11); y
+  `fecha`. Es **aditiva**: `crear_esquema` (`create_all`) la agrega a una base existente sin tocar
+  las otras quince tablas, así que no es una migración de esquema (spec §2). Dictamen C3‑1.
+  El docstring de `core/models/entidades.py:1` y el de `crear_esquema` (`core/catalog/sesion.py:31`)
+  pasan de «quince» a «dieciséis».
+- **`descartar_version(session, proyecto_nombre, codigo_presupuesto, fecha)`** en
+  `core/budget/actualizacion.py`, exportada en `core.budget`:
+  - «Última versión» es el presupuesto de mayor `id` del proyecto, siempre que haya al menos otro
+    anterior. El presupuesto base nunca se descarta (`ValueError`), ni una versión que no sea la
+    última, ni una ya descartada (`ValueError`).
+  - La versión descartada **sigue guardada y cargándose como documento**: la marca no borra nada.
+    Los `CambioPrecio` y las `IncidenciaCambio` que la produjeron se conservan (`docs/ERS.md:170`).
+  - No confirma la transacción: la confirma el llamador (la página de actualización, en el commit de
+    `ui/` de la pista A), como con `actualizar_precios`.
+- **Fuera de este commit:** el botón «Descartar version» (`ui/paginas/actualizacion.py`, pista A) y
+  los documentos derivados (`docs/modelo_datos.md`, `docs/arquitectura.md`), en commits aparte.
+
+**Línea base.** Intacta: `tests/fixtures/apu_linea_base.py` no se edita y el conjunto de la línea
+base sigue en `27 0 0 0`. Ninguna prueba de persistencia previa cambia: el diff de
+`test_persistencia.py` y `test_actualizacion_precios.py` solo agrega líneas.
+
+**Ratificar en GC3:** la tabla aditiva (dictamen C3‑1) y la regla de «última versión».
