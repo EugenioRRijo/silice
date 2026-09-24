@@ -165,6 +165,38 @@ def test_2b_una_cantidad_nula_se_rechaza_y_conserva_la_anterior():
     assert not [h for h in resultado.informe.hallazgos if h.regla == "R5"]
 
 
+def test_2b_el_rechazo_es_atomico_por_objeto():
+    """Decisión de Eugenio en GC2 (C2‑6): si una regla del objeto da una cantidad inválida, el
+    objeto entero conserva su versión anterior. Oráculo a mano con `a = 0.05` en T‑01 (e = 0.10,
+    h = 0.80, n = 4, sobreancho = 0.10, espesor_fondo = 0.10):
+
+    - concreto = 4 × (0.05² − (0.05 − 0.20)²) × 0.80 = 4 × (0.0025 − 0.0225) × 0.80 = −0.064;
+    - encofrado = 4 × (4 × 0.05 × 0.80 + 4 × (−0.15) × 0.80) = 4 × (0.16 − 0.48) = −1.28;
+    - excavación = 4 × (0.05 + 0.20)² × (0.80 + 0.10) = 4 × 0.0625 × 0.90 = 0.225, válida.
+
+    Rechazar solo concreto y encofrado dejaría la excavación con a = 0.05 y los otros dos con
+    a = 0.80 en el mismo objeto: geometría incoherente. Los tres conservan la anterior, y el
+    relleno, rebalanceado con lo que quedó, no cambia.
+    """
+    anteriores = _anteriores()
+    de_la_tanquilla = tuple(item for item in anteriores if item.origen_id == "T-01")
+
+    recalculo = recalcular(anteriores, {"T-01": {"a": Decimal("0.05")}}, CODIGOS)
+
+    assert recalculo.items == tuple(anteriores)
+    assert recalculo.rechazados == de_la_tanquilla
+
+
+def test_1a_un_cambio_dirigido_al_relleno_se_rechaza():
+    """El relleno es un valor derivado de los totales: sus parámetros no se editan, como
+    `diametro`. Antes se descartaba sin aviso al rebalancearlo (revisión de arquitectura de GC2)."""
+    anteriores = _anteriores()
+    (relleno,) = [item for item in anteriores if item.codigo_partida == CODIGOS["relleno"]]
+
+    with pytest.raises(ValueError, match="relleno.*derivado"):
+        recalcular(anteriores, {relleno.origen_id: {"excavacion": Decimal("20")}}, CODIGOS)
+
+
 def test_2b_un_relleno_negativo_se_rechaza_y_r5_lo_declara():
     anteriores = _anteriores()
     (relleno,) = [item for item in anteriores if item.codigo_partida == CODIGOS["relleno"]]
