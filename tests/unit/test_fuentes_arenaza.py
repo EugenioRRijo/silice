@@ -11,7 +11,8 @@ from tests.fixtures.presupuestos_arenaza import (
     TUBO_CORRUGADO,
 )
 
-CARPETA = Path("data/telecom/fuentes")
+RAIZ = Path(__file__).resolve().parents[2]
+CARPETA = RAIZ / "data" / "telecom" / "fuentes"
 
 
 def _total_csv(nombre):

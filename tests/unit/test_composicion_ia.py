@@ -14,14 +14,11 @@ doble que lanza `ImportError`, nunca con `skipif`).
 
 from __future__ import annotations
 
-import builtins
-import sys
 from decimal import Decimal
 from types import SimpleNamespace
 
-import pytest
-
 from core.contracts import Hallazgo, Severidad
+from tests.fixtures.sin_extra import SinExtra
 from ui.composicion import (
     ContrasteAace,
     advertencia_precio_atipico,
@@ -348,8 +345,8 @@ def test_ninguna_ayuda_modifica_las_filas_ni_la_composicion_resultante():
 # ---------------------------------------------------------------------------------------------
 
 #: Modulos que un import perezoso mal hecho dejaria en cache con `ml` ya cargado; se limpian antes
-#: y se restauran despues (mismo patron que `tests/unit/test_visor3d.py::_SinIfcopenshell` para el
-#: extra `civil`).
+#: y se restauran despues (el mismo gestor `tests.fixtures.sin_extra.SinExtra`
+#: que usa `tests/unit/test_visor3d.py` para el extra `civil`).
 _MODULOS_RELACIONADOS_CON_ML = (
     "ml",
     "ml.normalization",
@@ -363,69 +360,16 @@ _MODULOS_RELACIONADOS_CON_ML = (
 )
 
 
-class _SinExtraML:
-    """Bloquea `import ml` (y sus submodulos) con un `ImportError`, para que un import a nivel de
-    modulo mal hecho en `ui.composicion` o `ui.paginas.componer` se delate de inmediato. Restaura
-    el cache de modulos original al salir, para no afectar otras pruebas de la suite.
-    """
-
-    def __init__(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        self._monkeypatch = monkeypatch
-
-    def __enter__(self) -> None:
-        self._respaldo = {
-            nombre: sys.modules[nombre]
-            for nombre in _MODULOS_RELACIONADOS_CON_ML
-            if nombre in sys.modules
-        }
-        for nombre in _MODULOS_RELACIONADOS_CON_ML:
-            sys.modules.pop(nombre, None)
-
-        import_original = builtins.__import__
-
-        def import_bloqueado(nombre, *args, **kwargs):
-            if nombre == "ml" or nombre.startswith("ml."):
-                raise ImportError(f"simulado: extra ml no instalado ({nombre})")
-            return import_original(nombre, *args, **kwargs)
-
-        self._monkeypatch.setattr(builtins, "__import__", import_bloqueado)
-
-    def __exit__(self, *excepcion: object) -> None:
-        for nombre in _MODULOS_RELACIONADOS_CON_ML:
-            sys.modules.pop(nombre, None)
-        sys.modules.update(self._respaldo)
-        # Arreglo de la Tarea 1 (P4.1, `tests/unit/test_ui_componer.py`): `sys.modules.pop`/
-        # `.update` restauran la entrada de `sys.modules`, pero NO el atributo del paquete padre
-        # (p. ej. `ui.paginas.componer`, el atributo, no la clave del diccionario). El `import`
-        # perezoso de mas arriba (dentro del `with`) deja ese atributo apuntando a la copia fria
-        # sin `ml`; sin este paso queda asi para el resto de la sesion de pytest, y cualquier
-        # prueba posterior que resuelva por una ruta de texto (`monkeypatch.setattr("ui.paginas.
-        # componer.X", ...)`, que resuelve por ese atributo via `getattr`, no por `sys.modules`)
-        # parcha la copia huerfana en vez de la que de verdad se ejecuta. Se sincroniza cada
-        # atributo de paquete con lo que quedo en `sys.modules` (o se borra, si el modulo no
-        # existia antes de `__enter__`).
-        for nombre in _MODULOS_RELACIONADOS_CON_ML:
-            if "." not in nombre:
-                continue  # modulo de nivel superior: no hay atributo de paquete padre que fijar
-            nombre_paquete, atributo = nombre.rsplit(".", 1)
-            paquete = sys.modules.get(nombre_paquete)
-            if paquete is None:
-                continue  # el paquete padre tampoco esta cargado: nada que sincronizar
-            if nombre in sys.modules:
-                setattr(paquete, atributo, sys.modules[nombre])
-            elif hasattr(paquete, atributo):
-                delattr(paquete, atributo)
-
-
 def test_la_pagina_de_componer_se_importa_sin_el_extra_ml(monkeypatch):
     """RF de arranque (spec §3.7): la interfaz sigue arrancando sin el extra `ml`; las cuatro
     ayudas simplemente no aparecen (cada una degrada a "sin sugerencia" al intentar usarse).
     """
     import importlib
 
-    with _SinExtraML(monkeypatch):
+    with SinExtra(monkeypatch, ("ml",), _MODULOS_RELACIONADOS_CON_ML):
         modulo_composicion = importlib.import_module("ui.composicion")
         modulo_pagina = importlib.import_module("ui.paginas.componer")
 
-    assert modulo_composicion is not None
-    assert modulo_pagina is not None
+    # INV-024: `is not None` no afirma nada; se exige el punto de entrada de cada modulo.
+    assert callable(modulo_composicion.sugerir_partidas_similares)
+    assert callable(modulo_pagina.render)

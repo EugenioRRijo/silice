@@ -16,7 +16,13 @@ def test_es_determinista_con_la_misma_semilla():
 
 def test_respeta_el_filtro_y_el_formato():
     filas = simular(PRECIOS, Decimal("10"), semilla=1, solo={"Cemento Portland"})
-    assert [f[1] for f in filas if f[3] != Decimal("15.00")] in (["Cemento Portland"], [])
+    nuevos = {insumo: precio for _tipo, insumo, _unidad, precio in filas}
+    # INV-025: con la semilla fija la variacion es exacta; la lista vacia ya no se acepta.
+    assert [i for i, precio in nuevos.items() if precio != PRECIOS[i][2]] == ["Cemento Portland"]
+    # Arena no se pidio: no sale en la lista simulada (conserva su precio vigente). Esta asercion
+    # cae con el filtro retirado sea cual sea el sorteo.
+    assert list(nuevos) == ["Cemento Portland"]
+    assert "Arena lavada" not in nuevos
     for _tipo, _insumo, _unidad, precio in filas:
         assert isinstance(precio, Decimal) and precio >= 0
         assert precio == precio.quantize(Decimal("0.01"))

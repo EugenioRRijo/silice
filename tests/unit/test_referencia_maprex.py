@@ -3,7 +3,8 @@ import csv
 from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
 
-CARPETA = Path("data/precios/maprex_2026-07")
+RAIZ = Path(__file__).resolve().parents[2]
+CARPETA = RAIZ / "data" / "precios" / "maprex_2026-07"
 ARCHIVOS = ["referencia_civil.csv", "referencia_telecom.csv",
             "referencia_industrial.csv", "referencia_sistemas.csv"]
 TASA = Decimal("633.3644")
