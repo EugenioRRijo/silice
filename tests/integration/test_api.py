@@ -566,3 +566,48 @@ def test_si_todos_los_items_quedan_pendientes_el_presupuesto_sale_vacio_y_no_cum
     pendientes = [h for h in guardado.hallazgos if h.regla == "PENDIENTE"]
     assert len(pendientes) == 2
     assert all(h.severidad >= 3 for h in pendientes)  # ERROR: el informe no cumple
+
+
+def test_el_informe_recargado_declara_el_pendiente(cliente, items_payload, monkeypatch):
+    """INV-080 por HTTP: el informe que se vuelve a pedir (`GET .../informe`) es el del documento
+    emitido. El presupuesto se emitio con un item sin partida y su informe lo declaraba; recargado,
+    tiene que seguir declarandolo (RF-02, «al producir o cargar»)."""
+    monkeypatch.setitem(sys.modules, "ml.normalization", None)  # sin propuestas: no importa aqui
+    creado = cliente.post(
+        "/presupuestos",
+        json=_cuerpo("API-REC-INF", [*items_payload, _item_sin_partida("Foso nuevo")]),
+    )
+    assert creado.status_code == 201
+
+    r = cliente.get("/presupuestos/API-REC-INF/informe")
+
+    assert r.status_code == 200
+    assert "PENDIENTE" in r.text
+    assert CODIGO_SIN_PARTIDA in r.text and "PEND-01" in r.text
+
+
+def test_el_excel_recargado_declara_el_pendiente_en_la_auditoria(
+    cliente, items_payload, monkeypatch
+):
+    """INV-080 por HTTP: la hoja de auditoria del libro descargado (`GET .../excel`) declara el
+    pendiente del documento emitido. El libro se abre desde los bytes de la respuesta (QA-16)."""
+    from io import BytesIO
+
+    from openpyxl import load_workbook
+
+    from core.budget.excel import HOJA_AUDITORIA
+
+    monkeypatch.setitem(sys.modules, "ml.normalization", None)
+    creado = cliente.post(
+        "/presupuestos",
+        json=_cuerpo("API-REC-XLS", [*items_payload, _item_sin_partida("Foso nuevo")]),
+    )
+    assert creado.status_code == 201
+
+    r = cliente.get("/presupuestos/API-REC-XLS/excel")
+
+    assert r.status_code == 200
+    hoja = load_workbook(BytesIO(r.content))[HOJA_AUDITORIA]
+    celdas = [str(celda) for fila in hoja.iter_rows(values_only=True) for celda in fila]
+    assert "PENDIENTE" in celdas
+    assert any(CODIGO_SIN_PARTIDA in celda and "PEND-01" in celda for celda in celdas)

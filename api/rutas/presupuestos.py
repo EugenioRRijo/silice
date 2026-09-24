@@ -45,6 +45,7 @@ from core import models
 from core.budget import (
     Comparativo,
     actualizar_precios,
+    cargar_elaboracion,
     cargar_presupuesto,
     comparar_por_partida,
     elaborar,
@@ -56,7 +57,6 @@ from core.budget import (
 from core.catalog import Catalogo
 from core.contracts import Dominio, ItemComputo, OrigenTipo, ParametrosCosto
 from core.contracts.presupuesto import Presupuesto
-from core.verification import auditar
 from core.verification.informe import DECIMALES_PRESENTACION, InformeAuditoria
 from core.verification.texto import formatear_decimal
 
@@ -117,6 +117,7 @@ def crear_presupuesto(
         proyecto=proyecto,
         lista=catalogo.lista_vigente(peticion.fecha),
         parametros=parametros,
+        pendientes=resultado.pendientes,
     )
     sesion.commit()
 
@@ -472,8 +473,12 @@ def _buscar_modelo(sesion: Session, codigo: str, proyecto: str | None = None) ->
 def _cargar(
     sesion: Session, codigo: str, proyecto: str | None = None
 ) -> tuple[Presupuesto, InformeAuditoria]:
-    """El presupuesto reconstruido desde el catálogo y su informe de auditoría, recién evaluado."""
+    """El presupuesto reconstruido desde el catálogo y su informe de auditoría, recién evaluado.
+
+    El informe es el del documento emitido (`cargar_elaboracion`): vuelve a declarar los ítems que
+    quedaron pendientes al elaborar (UC-01 3a), así que `/informe` y `/excel` no pueden declarar
+    CUMPLE un presupuesto emitido NO CUMPLE (INV-080).
+    """
     modelo = _buscar_modelo(sesion, codigo, proyecto)
-    catalogo = Catalogo(sesion)
-    presupuesto = cargar_presupuesto(sesion, modelo.proyecto.nombre, codigo, catalogo)
-    return presupuesto, auditar(presupuesto)
+    elaboracion = cargar_elaboracion(sesion, modelo.proyecto.nombre, codigo, Catalogo(sesion))
+    return elaboracion.presupuesto, elaboracion.informe
