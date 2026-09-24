@@ -24,30 +24,50 @@ la opción (a) en GC2 y su alcance amplio en C3 (D4 = A, 2026‑09‑24).
 - `guardar_presupuesto(..., pendientes: Sequence[ItemComputo] = ())` persiste cada pendiente como
   `models.ItemComputo` del presupuesto **sin renglón** (ninguna `partida_presupuestada` lo cita). El
   esquema no cambia: `item_computo.presupuesto_id` ya existe (`core/models/entidades.py:317`).
-- `guardar_presupuesto` lanza `ValueError` si un pendiente no tiene su hallazgo `PENDIENTE` en el
-  informe (regla `CODIGO_PENDIENTE` con el código de la partida y el `origen_id` del ítem en
-  `origen_ids`): persistir un pendiente que el documento emitido no declara sería guardar una
-  recarga que dice más que el documento.
+- `guardar_presupuesto` exige la correspondencia **en los dos sentidos**, con `ValueError`, por la
+  clave `(codigo_partida, origen_id)` que define un solo ayudante (`_clave_pendiente`, en
+  `core/budget/presupuesto.py`, el mismo que redacta los `origen_ids` del hallazgo):
+  - un pendiente sin su hallazgo `CODIGO_PENDIENTE` en el informe: persistirlo haría que la recarga
+    dijera **más** que el documento emitido;
+  - un hallazgo `CODIGO_PENDIENTE` del informe sin su pendiente en `pendientes`: la recarga diría
+    **menos**, y un documento emitido NO CUMPLE podría recargarse CUMPLE, que es el síntoma de
+    C2.1. Con esta segunda guarda, olvidar `pendientes=` en un llamador nuevo falla al guardar en
+    vez de perder el pendiente en silencio (ronda de corrección 1 de B1, dictámenes A1 y R‑1).
 - `cargar_elaboracion(session, proyecto_nombre, codigo, catalogo) -> ResultadoElaboracion`, pública
   en `core.budget`:
-  - `presupuesto` sale de `cargar_presupuesto`, que no cambia de firma ni de retorno (el contrato
-    `Presupuesto` es estable, CLAUDE.md §5);
+  - `presupuesto` es la misma reconstrucción de `cargar_presupuesto`, que no cambia de firma ni de
+    retorno (el contrato `Presupuesto` es estable, CLAUDE.md §5), sobre una sola búsqueda de la
+    fila;
   - `pendientes`: los `item_computo` del presupuesto sin `partida_presupuestada`, ordenados por `id`
-    (el orden en que se guardaron, que es el de `ResultadoElaboracion.pendientes`);
+    (el orden en que se guardaron, que es el de `ResultadoElaboracion.pendientes`). Los lee un
+    ayudante privado único, `_cargar_pendientes`, que comparte `actualizar_precios`;
   - `informe = _declarar_pendientes(auditar(presupuesto), pendientes)`. `_declarar_pendientes` se
     importa desde `core.budget.presupuesto` con un comentario que lo justifica, como hace el
     precedente `core/budget/actualizacion.py:32-40` con `_buscar` y `_parametros_de`: es la única
     definición del hallazgo `PENDIENTE` y duplicarla sería repetirla.
 - `actualizar_precios` arrastra los pendientes del base (D4 = A): carga el base con
-  `cargar_elaboracion`, aplica `exigir_composiciones` solo sobre los ítems **valorados**, vuelve a
-  elaborar los valorados más los pendientes (así `elaborar` los declara en el informe nuevo) y guarda
-  la versión nueva con `pendientes`. El comparativo (`_comparar`, `zip(strict=True)`) sigue
-  recorriendo solo las partidas valoradas de las dos versiones, que son las mismas y en el mismo
-  orden.
+  `cargar_presupuesto` y sus pendientes con `_cargar_pendientes` (sin reauditarlo), aplica
+  `exigir_composiciones` solo sobre los ítems **valorados**, vuelve a elaborar los valorados más los
+  pendientes (así `elaborar` los declara en el informe nuevo) y guarda la versión nueva con
+  `pendientes`. El comparativo (`_comparar`, `zip(strict=True)`) sigue recorriendo solo las partidas
+  valoradas de las dos versiones, que son las mismas y en el mismo orden.
+- **Al revalorar, un pendiente sigue pendiente aunque la lista nueva ya tenga su partida** (D4 = A):
+  las composiciones se piden solo para las partidas valoradas del base, así que revalorar no valora
+  pendientes. Valorarlos es volver a elaborar (UC‑01), no revalorar (UC‑02).
 
-**Límite declarado.** Los presupuestos guardados antes de este cambio no tienen pendientes
-persistidos: su recarga no los inventa y su informe recargado sigue siendo el de `auditar`. Queda en
-el docstring de `cargar_elaboracion` y en el dictamen C3‑3.
+**Límite declarado: datos anteriores.** Los presupuestos guardados antes de este cambio no tienen
+pendientes persistidos: su recarga no los inventa y su informe recargado sigue siendo el de
+`auditar`. Pero sus hallazgos `PENDIENTE` sí quedaron guardados con el documento emitido, así que
+en esas bases `GET /presupuestos/{codigo}/informe` puede todavía decir CUMPLE sobre un documento
+emitido NO CUMPLE: es una **no conformidad residual con RF‑02**, limitada a bases locales creadas
+antes del commit (la CI y las pruebas siembran bases nuevas). Queda en el docstring de
+`cargar_elaboracion` y en el dictamen C3‑3.
+
+**Límite del oráculo de las pruebas.** Las entradas de las pruebas (la línea base auditada más
+`XX-99-NUE`) ya son NO CUMPLE sin el pendiente, por los siete hallazgos de la línea base: las
+pruebas fijan que el hallazgo `PENDIENTE` se recarga (conjunto de hallazgos igual al emitido y al
+persistido), pero no reproducen el síntoma exacto de C2.1, un documento que **solo** por el
+pendiente pasa de CUMPLE a NO CUMPLE.
 
 **Alcance de D4 = A.** Recarga y revaloración, **no** escenarios. Los escenarios son INV‑083
 (Hecho 11 del plan): su parte de `ui/` va en la Tarea 11, paso 8 (pista A), con
@@ -63,10 +83,13 @@ es INV‑083.
 **Línea base.** Intacta: `tests/fixtures/apu_linea_base.py` no se edita y el conjunto de la línea
 base sigue en `27 0 0 0`. Un presupuesto sin pendientes se guarda y se recarga exactamente como
 antes: el parámetro nuevo vale `()` por defecto y la recarga sin pendientes devuelve
-`auditar(cargar_presupuesto(...))`.
+`auditar(cargar_presupuesto(...))`. Ningún llamador actual guarda un informe con `PENDIENTE` sin
+`pendientes`: los sembradores y scripts (`scripts/seed_demo.py`, `scripts/generar_resultados_ml.py`,
+`scripts/medir_rnf03.py`) elaboran solo partidas del catálogo, y la API pasa `pendientes`; el
+recuento completo lo confirma.
 
-**Ratificar en GC3:** el `ValueError` ante un pendiente no declarado y el límite de los datos
-anteriores al cambio.
+**Ratificar en GC3:** la guarda en dos sentidos (`ValueError`), el pendiente que sigue pendiente al
+revalorar y el límite de los datos anteriores al cambio.
 
 ## Nota de la Tarea 10b (INV‑081, api): rojo declarado de la reescritura de `test_api.py`
 
