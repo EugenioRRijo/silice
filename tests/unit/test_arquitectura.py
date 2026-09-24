@@ -53,7 +53,8 @@ def _es_core_fuera_de_contracts(modulo: str) -> bool:
 
 
 @pytest.mark.parametrize("archivo", _archivos("ml"), ids=_ruta)
-def test_fuera_del_nucleo_solo_se_importa_core_contracts(archivo):
+def test_ml_solo_importa_core_contracts_del_nucleo(archivo):
+    """ml/ importa de core solo core.contracts; adapters/ lo vigila su propia guardia (INV-018)."""
     prohibidos = [m for m in _imports(archivo) if _es_core_fuera_de_contracts(m)]
     assert not prohibidos, (
         f"{_ruta(archivo)} importa {prohibidos}; solo se permite core.contracts "
