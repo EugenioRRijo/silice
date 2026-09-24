@@ -87,11 +87,11 @@ def texto_de_celda(fila: Mapping[str, object], clave: str) -> str:
     Es la unica lectura de celdas de tabla de `ui/` (INV-046): la usan estas funciones y
     `ui.elaboracion.items_desde_filas`.
 
-    El tipo declarado de `fila` es `Mapping[str, str]`, pero `st.data_editor` con
-    `num_rows="dynamic"` (docstring líneas 6-8) entrega `None` o NaN en las celdas de una fila
-    recién añadida en blanco: `str(None)` es `"None"` y `str(float("nan"))` es `"nan"`, y ninguno
-    de los dos es vacío para `str.strip()`. Esta es la frontera donde ambos se normalizan a
-    cadena vacía, antes de que lleguen a `_fila_vacia` o a cualquier conversión.
+    El tipo declarado de `fila` es `Mapping[str, object]`: las celdas suelen ser texto, pero
+    `st.data_editor` con `num_rows="dynamic"` (docstring líneas 6-8) entrega `None` o NaN en las
+    celdas de una fila recién añadida en blanco: `str(None)` es `"None"` y `str(float("nan"))`
+    es `"nan"`, y ninguno de los dos es vacío para `str.strip()`. Esta es la frontera donde ambos
+    se normalizan a cadena vacía, antes de que lleguen a `_fila_vacia` o a cualquier conversión.
     """
     valor = fila.get(clave)
     if valor is None:
