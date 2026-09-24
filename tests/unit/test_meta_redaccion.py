@@ -1,7 +1,8 @@
 """Pruebas de `scripts/meta_redaccion.py` (Sprint R1: capitulos I y II).
 
-Funciones puras sobre texto sintetico: ninguna prueba lee el disco del repositorio ni ejecuta
-procesos (las de INV-075 escriben su tesis sintetica en `tmp_path`). Los
+Funciones puras sobre texto sintetico: ninguna prueba escribe en el repositorio ni ejecuta
+procesos. Las de INV-075 escriben su tesis sintetica en `tmp_path` y, al evaluar las 12 metas,
+leen sin modificarlas las demas fuentes reales de la meta (rubrica, actas y CLAUDE.md). Los
 casos negativos imitan los errores que un tutor marcaria: una seccion que falta, OE7 en la
 variante equivocada, primera persona, una cita sin referencia, una referencia pendiente sin marca,
 un caso didactico presentado como real y "gemelo digital" fuera de su delimitacion.
@@ -413,7 +414,7 @@ def _tesis_sintetica(monkeypatch: pytest.MonkeyPatch, tmp_path, capitulo_4: str)
     referencias.write_text(REFERENCIAS, encoding="utf-8")
     monkeypatch.setattr(meta, "RUTA_CAPITULO_1", carpeta / "01-el-problema.md")
     monkeypatch.setattr(meta, "RUTA_CAPITULO_2", carpeta / "02-marco-teorico.md")
-    monkeypatch.setattr(meta, "CARPETA_CAPITULOS", carpeta, raising=False)
+    monkeypatch.setattr(meta, "CARPETA_CAPITULOS", carpeta)
     monkeypatch.setattr(meta, "RUTA_REFERENCIAS", referencias)
 
 
