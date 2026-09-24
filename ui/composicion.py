@@ -11,6 +11,10 @@ capa de dominio.
 Las filas son diccionarios de texto (las claves que produce cada tabla de la pantalla), nunca
 `Decimal` ni objetos del contrato: el usuario escribe texto y esta capa es la única que decide qué
 significa "vacío" y qué mensaje de error señala la fila y el campo culpables.
+
+Depende de `core.costing` solo para `desglose` (`calcular_apu` es una función pura) y **no escribe
+en la base**: la persistencia de una composición vive en `ui/elaboracion.guardar_composicion`
+(INV-043, fase C3). Lo vigila `tests/unit/test_arquitectura.py`.
 """
 
 from __future__ import annotations
@@ -29,16 +33,28 @@ from core.contracts.apu import (
     LineaManoObra,
     LineaMaterial,
     ModalidadManoObra,
+    ParametrosCosto,
+    ResultadoAPU,
 )
 from core.contracts.dominio import Dominio
 from core.contracts.item_computo import ItemComputo, OrigenTipo
 from core.contracts.unidades import unidades_equivalentes
 from core.contracts.verificacion import Hallazgo
+from core.costing import calcular_apu
 from core.verification.texto import normalizar_texto
 
 if TYPE_CHECKING:
     from ml.anomaly import VeredictoRendimiento
     from ml.normalization import PartidaSimilar
+
+
+def desglose(composicion: ComposicionAPU) -> ResultadoAPU:
+    """El desglose de costos de `composicion` con los parametros por defecto (CLAUDE.md §4).
+
+    Es lo que la pagina de componer muestra en vivo, contrasta y confirma al guardar: una funcion
+    pura (`calcular_apu`), sin base de datos.
+    """
+    return calcular_apu(composicion, ParametrosCosto())
 
 
 class ComposicionInvalida(ValueError):  # noqa: N818

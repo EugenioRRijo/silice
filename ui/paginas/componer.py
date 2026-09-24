@@ -5,11 +5,13 @@ siembra llamaban a `Catalogo.cargar_composicion`
 (`docs/superpowers/specs/2026-09-16-prototipo-composicion-apu-design.md` §1) y ninguna de las ocho
 paginas existentes permitia armar una partida desde cero.
 
-No contiene logica de dominio: toda vive en `ui/composicion.py`, que es lo unico verificable sin
-Streamlit porque el repositorio todavia no tiene pruebas de interfaz (spec §4). Esta pagina solo
-pinta: abre la sesion, arma las tres tablas con `st.data_editor`, llama a `composicion_desde_tablas`
-y a `calcular_apu` para el desglose en vivo, y decide entre `Catalogo.cargar_composicion` (la
-partida no existe, UC-10) y `Catalogo.reemplazar_composicion` (ya existe, UC-11).
+No contiene logica de dominio ni orquesta (INV-043, fase C3): la composicion y su desglose viven
+en `ui/composicion.py` (puro), la persistencia y la elaboracion en `ui/elaboracion.py`, y el
+presupuesto elaborado lo pinta `ui/resultado.py`. Esta pagina solo pinta: abre la sesion, arma las
+tres tablas con `st.data_editor`, llama a `composicion_desde_tablas` y a `desglose` para el
+desglose en vivo, guarda con `guardar_composicion` (UC-10 si la partida no existe, UC-11 si ya
+existe) y confirma con `sesion.commit()` solo si hubo resultado. En tiempo de ejecucion no importa
+`core.costing`, `core.budget` ni `sqlalchemy.orm` (`tests/unit/test_arquitectura.py`).
 
 El vocabulario de los dos campos de "rendimiento" no se comparte a proposito (spec §3.2): la nota de
 campo que origino este trabajo llama "rendimiento" tanto al consumo de material por unidad de obra
@@ -23,11 +25,11 @@ from __future__ import annotations
 from collections.abc import Callable, Sequence
 from datetime import date
 from decimal import Decimal
+from typing import TYPE_CHECKING
 
 import streamlit as st
 from pandas import DataFrame
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import Session
 
 from core.catalog import (
     Catalogo,
@@ -42,8 +44,7 @@ from core.catalog import (
     dispersion_rendimientos,
     proponer_rendimiento,
 )
-from core.contracts import ComposicionAPU, Dominio, ItemComputo, ModalidadManoObra, ParametrosCosto
-from core.costing import calcular_apu
+from core.contracts import ComposicionAPU, Dominio, ItemComputo, ModalidadManoObra
 from ui.caso import ruta_caso
 from ui.composicion import (
     ComposicionInvalida,
@@ -53,23 +54,27 @@ from ui.composicion import (
     composicion_desde_tablas,
     contrastar_precio_con_reglas,
     decimal_desde_texto,
+    desglose,
     etiqueta_referencia,
     fila_equipos_desde_referencia,
     fila_mano_obra_desde_referencia,
     fila_materiales_desde_referencia,
     filas_desde_composicion,
     formulario_vacio,
-    motivo_para_no_reemplazar,
     sugerir_partidas_similares,
     veredicto_ml_rendimiento,
 )
 from ui.elaboracion import (
     COLUMNAS_CANTIDADES,
     elaborar_desde_catalogo,
+    guardar_composicion,
     items_desde_filas,
     libro_excel,
 )
 from ui.resultado import mostrar_elaboracion
+
+if TYPE_CHECKING:
+    from sqlalchemy.orm import Session
 
 RENDIMIENTO_ETIQUETA = "Rendimiento — unidades por día"
 CONSUMO_ETIQUETA = "Consumo por unidad"
@@ -457,7 +462,7 @@ def _desglose_en_vivo(
             st.info(str(error))
         return None
 
-    resultado = calcular_apu(composicion, ParametrosCosto())
+    resultado = desglose(composicion)
     columnas = st.columns(6)
     columnas[0].metric("Materiales", str(resultado.materiales))
     columnas[1].metric("Equipos", str(resultado.equipos))
@@ -598,13 +603,13 @@ def _contraste_aace(
     ese punto de partida y esta ayuda no aparece.
     """
     try:
-        pu_anterior = calcular_apu(catalogo.composicion(codigo), ParametrosCosto()).precio_unitario
+        pu_anterior = desglose(catalogo.composicion(codigo)).precio_unitario
     except (KeyError, CatalogoIncompleto):
         return
 
     variaciones = [cambio.variacion for cambio in cambios_precio(sesion)]
     registros = len(catalogo.partidas(dominio))
-    pu_construido = calcular_apu(composicion, ParametrosCosto()).precio_unitario
+    pu_construido = desglose(composicion).precio_unitario
 
     contraste = contrastar_precio_con_reglas(
         codigo, pu_construido, pu_anterior, variaciones, registros
@@ -635,30 +640,19 @@ def _guardar(
     fecha: date,
     condiciones: str,
 ) -> None:
-    """Persiste la composicion (UC-10 si la partida no existe, UC-11 si ya existe) y confirma.
+    """Persiste la composicion con `guardar_composicion` y confirma solo si hubo resultado.
 
-    Sobre una partida existente, `motivo_para_no_reemplazar` decide antes de escribir: una
-    composicion sin lineas borraria el desglose, y una cabecera distinta se descartaria en silencio
-    (`reemplazar_composicion` solo sustituye lineas y rendimiento). En ambos casos, `st.error` y
-    nada se escribe.
+    Sobre una partida existente, `motivo_para_no_reemplazar` decide antes de escribir (dentro de
+    `guardar_composicion`): si hay motivo, `st.error` y nada se escribe ni se confirma.
     """
-    lista = catalogo.lista_vigente(fecha)
-    try:
-        partida = catalogo.partida(composicion.codigo_partida)
-    except KeyError:
-        catalogo.cargar_composicion(composicion, lista, dominio, fecha, condiciones)
-    else:
-        motivo = motivo_para_no_reemplazar(partida.descripcion, partida.unidad, composicion)
-        if motivo is not None:
-            st.error(motivo)
-            return
-        catalogo.reemplazar_composicion(composicion, lista, dominio, fecha, condiciones)
+    guardado = guardar_composicion(catalogo, composicion, dominio, fecha, condiciones)
+    if guardado.resultado is None:
+        st.error(guardado.motivo)
+        return
     sesion.commit()
-
-    resultado = calcular_apu(composicion, ParametrosCosto())
     st.success(
         f"Composicion guardada para la partida {composicion.codigo_partida}: precio unitario "
-        f"{resultado.precio_unitario}."
+        f"{guardado.resultado.precio_unitario}."
     )
 
 

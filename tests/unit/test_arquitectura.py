@@ -194,7 +194,7 @@ def test_toda_carpeta_de_adapters_tiene_su_regla():
 #: Lo que cada modulo de ui/ no importa en tiempo de ejecucion (fuera de `if TYPE_CHECKING:`).
 #: Reglas de interfaz del plan de C3 (Global Constraints) e INV-043 para la pagina de componer.
 PROHIBIDOS_EN_UI: dict[str, tuple[str, ...]] = {
-    "ui/paginas/componer.py": ("core.budget", "tempfile"),
+    "ui/paginas/componer.py": ("core.budget", "core.costing", "sqlalchemy.orm", "tempfile"),
     # RA-2: "no escribe en la base" vigilado tambien por core.catalog, core.budget y sqlalchemy.
     "ui/composicion.py": (
         "streamlit", "pandas", "ui.caso", "sqlalchemy", "core.catalog", "core.budget",
