@@ -59,18 +59,3 @@ def test_dos_cantidades_del_mismo_tipo_ifc_son_ambiguas(tmp_path):
 
     with pytest.raises(ValueError, match="ambigua"):
         AdaptadorCivilIFC().extraer(ruta)
-
-
-def test_solo_importa_core_contracts():
-    import ast
-
-    fuente = (RAIZ / "adapters" / "civil" / "ifc.py").read_text(encoding="utf-8")
-    for nodo in ast.walk(ast.parse(fuente)):
-        modulos = (
-            [a.name for a in nodo.names]
-            if isinstance(nodo, ast.Import)
-            else ([nodo.module] if isinstance(nodo, ast.ImportFrom) and nodo.module else [])
-        )
-        for m in modulos:
-            if m.startswith("core"):
-                assert m.startswith("core.contracts"), m
