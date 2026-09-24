@@ -93,7 +93,8 @@ fuentes de datos · criterios de validación · metodología de desarrollo.
 - El corazón ya está escrito: [metodologia.md](../metodologia.md) (Scrum‑Cascada, DRY, sesiones,
   Definition of Done, indicadores §8, riesgos y compuertas §9). El capítulo lo **narra**, no lo
   duplica.
-- **Instrumentos, con nombre y apellido:** pruebas automatizadas (pytest, 395 casos, `-W error`),
+- **Instrumentos, con nombre y apellido:** pruebas automatizadas (pytest con `-W error`; el conteo
+  vigente y su corrida de CI, en la sección 5),
   metas de sprint automatizadas (`scripts/meta_alpha.py`, 12/12), observación estructurada
   (indicador 3), juicio de expertos (instrumento Likert del
   [dossier G0, anexo A](../dossier_g0.md)), medición reproducible de desempeño
@@ -106,15 +107,21 @@ fuentes de datos · criterios de validación · metodología de desarrollo.
 
 ### Capítulo IV — Desarrollo de la propuesta
 
-El más largo. Orden sugerido (el mismo del PLAN, que es el orden causal):
+El más largo. Orden sugerido (el mismo del PLAN, que es el orden causal). **Nota de vigencia
+(2026‑09‑23, INV‑034):** los conteos de este guion son los de la ERS vigente, no los de G0 (8 UC,
+31 RF, 9 RNF, ocho pantallas); la fuente única de los conteos es [docs/ERS.md](../ERS.md) y la tabla
+de la sección 5. Borrador escrito: [capitulos/04-desarrollo.md](capitulos/04-desarrollo.md).
 
-1. **Requerimientos** — ERS: 8 UC, 31 RF, 9 RNF; el criterio de aceptación medible por RF.
+1. **Requerimientos** — ERS: once UC (UC‑09 vacante), 42 RF (RF‑32 vacante), 10 RNF; el criterio de
+   aceptación medible por RF.
 2. **Modelo de datos** — decisiones que valen la pena contar: versionado híbrido (congelar y
    recomputar), variantes de insumos homónimos (el octavo defecto → candidata R8, D2),
    rendimiento medido con clave foránea a la ejecución.
 3. **Arquitectura** — núcleo cerrado / adaptadores abiertos; los contratos como única frontera;
-   las dos guardias automáticas (65 pruebas de arquitectura + `git diff --stat core/`).
-4. **Motor de costos** — la fórmula (CLAUDE.md §4) y los dos errores clásicos que las pruebas
+   las dos guardias automáticas (las pruebas de `tests/unit/test_arquitectura.py`, conteo en la
+   sección 5, + `scripts/guardia_nucleo.py` en la CI).
+4. **Motor de costos** — la fórmula (la de jornal en CLAUDE.md §4; la vigente, con destajo, en el
+   docstring de `core/costing/motor.py` y la decisión D9; desfase registrado en INV‑074) y los dos errores clásicos que las pruebas
    vigilan (materiales divididos por rendimiento; administración y utilidad sumadas). La línea
    base como oráculo: pruebas antes que implementación.
 5. **Presupuesto y curva** — cierre al 100 % por construcción (el caso didáctico cerraba al 99,30 %).
@@ -128,8 +135,9 @@ El más largo. Orden sugerido (el mismo del PLAN, que es el orden causal):
    en el manual técnico.
 10. **Módulos ML** — normalización (umbral 0,5; RF‑17 5/5), anomalías (Isolation Forest,
     semilla 42, abstención con n < 8), predicción (G2 → reglas con sensibilidad, limitación).
-11. **Interfaz y API** — ocho pantallas, ocho UC; montos como texto en la frontera JSON;
-    escenarios UC‑08 sin persistencia (D6).
+11. **Interfaz y API** — nueve pantallas en `main` (diez cuando U1 agregue el Inicio de UC‑12,
+    RF‑39); la API con 18 operaciones sobre 14 rutas; montos como texto en la frontera JSON; escenarios UC‑08 sin
+    persistencia (D6).
 
 Cada sección: el problema → la decisión → la evidencia (prueba o bitácora). Las bitácoras de
 `docs/bitacora/` son la memoria de las decisiones: citarlas como anexo H.
@@ -143,20 +151,24 @@ Un apartado por indicador, con su cifra y su procedencia (tabla de la sección 5
 | 1. Inconsistencias | **7 de 7** detectadas, una por regla; más los hallazgos adicionales 8 (precio no uniforme, D2) y 9 (las cinco discrepancias diarias que explican la brecha de 11,11 USD, sustento de R7/D1) |
 | 2. Exactitud | desviación **0,00 %** frente a la línea base corregida; muy dentro de clase 3 AACE (−20 %/+30 %) |
 | 3. Tiempo | recálculo de 100 partidas en **1,17 s** (meta < 5 s); el cronometraje manual vs automatizado queda como medición de la defensa (observación estructurada) |
-| 4. Extensibilidad | `git diff --stat core/` **vacío** tras telecom, industrial y sistemas; 65 pruebas de arquitectura lo re‑verifican en cada corrida |
+| 4. Extensibilidad | `git diff --stat core/` **vacío** tras telecom, industrial y sistemas; las pruebas de arquitectura (conteo en la sección 5) lo re‑verifican en cada corrida |
 | 5. Desempeño predictivo | MAPE **12,46 %** · RMSE **5,10 USD** · R² **0,9974** — presentados como resultado de la **degradación declarada** (reglas), no como logro de ML |
 
-Además: la evaluación ISO/IEC 25010 (tabla de veredictos de
-[calidad_iso25010.md](../calidad_iso25010.md): 5 cumplen, 1 pendiente, 2 parciales — contarlo
-así, con las brechas a la vista, es más fuerte que esconderlas), el plan IEEE 829 (395 pruebas,
-cobertura núcleo 98,05 %) y el juicio de expertos cuando se aplique (anexo A del dossier).
+Además: la evaluación ISO/IEC 25010, con el conteo de veredictos tal como lo da su fuente única,
+la tabla de [calidad_iso25010.md §9](../calidad_iso25010.md) (no se reproduce aquí: se cita; contarlo
+con las brechas a la vista es más fuerte que esconderlas), el plan IEEE 829 (suite y cobertura según
+la sección 5, con su corrida de CI) y el juicio de expertos cuando se aplique (anexo A del dossier).
 
 ### Conclusiones y recomendaciones
 
 - Responder la pregunta principal y las cinco secundarias **una por una** (la tabla del
   esqueleto §4 dice dónde está cada respuesta; conclusión sin pregunta es relleno).
 - **Limitaciones = las salvedades del dossier §4**, con nombre: G1 (IFC programático), G2
-  (degradación por datos), RNF‑04 y RNF‑07 pendientes, RF‑16 acotado (según D5).
+  (degradación por datos), RNF‑04 pendiente (juicio de expertos), RNF‑09 parcial (G1 contra un
+  modelo programático) y RNF‑10 pendiente (CP‑07), con su fuente en
+  [plan_pruebas.md §9](../plan_pruebas.md) y [calidad_iso25010.md §4, §8 y §9](../calidad_iso25010.md);
+  RF‑16 acotado (según D5); RF‑20 no implementado (decisión C1‑7). RNF‑07 ya no es limitación: la
+  CI lo verifica en Linux y Windows en cada cambio.
 - **Recomendaciones que ya tienen semilla en el repo:** regla R8 (D2), flujo de creación de
   partidas (D5), IFC de modeladores reales, conectores de listas de precios (cada conector
   produce una lista que entra por UC‑02), evolución hacia sombra digital con rendimientos
@@ -185,14 +197,25 @@ Nada de esto impide empezar: el orden de la sección 2 existe precisamente para 
 Toda cifra del texto sale de aquí. Si una medición se repite y cambia, se actualiza esta tabla
 y se buscan sus usos en los capítulos.
 
-| Cifra | Valor (31/08/2026) | Comando / fuente |
+Valores medidos el 31/08/2026 salvo que la fila indique otra fecha o corrida. Las cifras de pruebas
+y cobertura citan su corrida de CI ([metodologia.md §6](../metodologia.md)).
+
+| Cifra | Valor | Comando / fuente |
 |---|---|---|
 | Inconsistencias detectadas | 7 de 7 | `uv run pytest tests/integration/test_auditoria_7_de_7.py` |
 | Desviación vs línea base | 0,00 % (± 0,01 por PU) | `uv run pytest tests/unit/test_costing.py tests/integration/test_presupuesto_linea_base.py` |
-| Núcleo intacto | diff vacío | `git diff --stat <rama-adaptador> -- core/` · `tests/unit/test_arquitectura.py` (65 casos) |
+| Precios unitarios de la línea base | excavación 8,60 · tubería 10,19 · encofrado 33,24 · concreto 242,64 · relleno 52,58 USD (precios del caso al 28/04/2026; reproducidos en la CI del 2026‑09‑23) | [CLAUDE.md §4](../../CLAUDE.md) · `tests/fixtures/apu_linea_base.py` · `uv run pytest tests/unit/test_costing.py` (7 casos: los cinco PU y los dos errores clásicos) |
+| Núcleo intacto | diff vacío | `git diff --stat <rama-adaptador> -- core/` · `uv run python scripts/guardia_nucleo.py --base main` |
+| Pruebas de arquitectura | 66 casos (2026‑09‑23, verificación de GC1) | `uv run pytest --collect-only -q tests/unit/test_arquitectura.py` · [bitácora del cierre, GC1](../bitacora/2026-09-23-cierre.md) |
 | MAPE · RMSE · R² | 12,46 % · 5,10 USD · 0,9974 | `uv run python scripts/generar_resultados_ml.py` → [resultados_ml.md](../resultados_ml.md) |
-| Recálculo masivo | 1,17 s / 100 partidas | `uv run python scripts/medir_rnf03.py` |
-| Suite y cobertura | 395 pruebas · núcleo 98,05 % | `uv run pytest -W error --cov=core` → [plan_pruebas.md §10](../plan_pruebas.md) |
+| Recálculo masivo | 1,17 s / 100 partidas (31/08/2026, equipo de desarrollo); repetición del 23/09/2026 en otro equipo, tras la corrección del núcleo: 1,34 s. Depende del equipo; se vuelve a medir al congelar | `uv run python scripts/medir_rnf03.py` · [bitácora F.2](../bitacora/2026-08-31-F2-plan-pruebas.md) · [acta R2, T6.1](revisiones/R2-capitulo-4.md) |
+| Suite y cobertura | 735 pruebas, 0 omitidas, en Linux y Windows · cobertura de `core/` 98 % (2026‑09‑23) | CI del PR #11, [corrida 35950215309](https://github.com/EugenioRRijo/tesis-apu-multidominio/actions/runs/35950215309) (`pytest -W error --cov=core …` y `coverage report --include="core/*"`) |
+| Requerimientos de la ERS | once UC (UC‑09 vacante) · 42 RF (RF‑32 vacante) · 10 RNF (ERS vigente al 2026‑09‑23, tras la extensión de U0.1) | [docs/ERS.md](../ERS.md) §2.2, §3.2 y §3.3 |
+| Interfaz y API en `main` | nueve pantallas · 18 operaciones sobre 14 rutas (código de `main` en `f1dda36`, 2026‑09‑23) | `ui/app.py` (`PAGINAS`) · `api/rutas/` · [docs/api.json](../api.json) (`uv run python scripts/exportar_openapi.py`) |
+| Actualización de precios (UC‑02) sobre la línea base | concreto +30,17025 USD/m³ en el PU y +50,082615 USD en el total; los demás renglones sin cambio (verificado en la CI del 2026‑09‑23, corrida [35950215309](https://github.com/EugenioRRijo/tesis-apu-multidominio/actions/runs/35950215309)) | `tests/fixtures/actualizacion_uc02.py` · `uv run pytest tests/integration/test_actualizacion_precios.py` |
+| Supuestos de la muestra civil | sobreancho de excavación 0,10 m · espesor de fondo 0,10 m (supuestos declarados el 2026‑08‑29) | [data/samples/civil/README.md](../../data/samples/civil/README.md) |
+| Aceptación de RF‑17 | 5 de 5 partidas parafraseadas en el primer puesto (umbral 0,5; criterio ≥ 80 %; corrida de cierre del 2026‑08‑31) | `uv run pytest tests/unit/test_normalizacion.py` · [bitácora I2](../bitacora/2026-08-31-I2-normalizacion.md) |
+| Presupuestos multidominio (didácticos o construidos) | ARENAZA 1 109,29 y 5 410,73 USD · `MNT-001` 18 124,09 USD · `SIS-001` 16 093,89 USD (verificado en la CI del 2026‑09‑23, corrida [35950215309](https://github.com/EugenioRRijo/tesis-apu-multidominio/actions/runs/35950215309)) | `uv run pytest tests/integration/test_presupuesto_arenaza.py tests/integration/test_presupuesto_industrial.py tests/integration/test_presupuesto_sistemas.py` · `tests/fixtures/presupuestos_arenaza.py` |
 | Total del caso | 1 586,61 USD · curva 99,30 % | [linea_base.md](../linea_base.md) · `data/linea_base/APUS_CLINICA.pdf` |
 | Siete inconsistencias del caso didáctico (magnitudes) | encofrado 5,92 vs 4,48 m² (+32 %) · concreto 0,415 vs 0,224 m³ (+85 %) · curva 1 575,50 USD, 11,11 USD sin conciliar · relleno 1,30 vs ≈ 8,6 m³ · depreciación 0,03 vs 1,00 | [linea_base.md §5](../linea_base.md) · `tests/fixtures/apu_linea_base.py` |
 | Dimensiones del caso didáctico | 24 m de PVC de 4" · cuatro tanquillas de 0,80 × 0,80 × 0,80 m con paredes de 0,10 m · cinco partidas | [linea_base.md §1](../linea_base.md) · `tests/fixtures/apu_linea_base.py` |
@@ -200,7 +223,7 @@ y se buscan sus usos en los capítulos.
 | Umbrales de la compuerta G2 (técnica según datos) | más de 200 registros por dominio: XGBoost con bosques aleatorios como contraste · de 50 a 200: razonamiento basado en casos · menos de 50: sistema de reglas con análisis de sensibilidad | [CLAUDE.md §8.1](../../CLAUDE.md) · `ml/prediction/reglas.py` (`tecnica_para`) |
 | Inconsistencia del ejercicio ARENAZA | tubo corrugado 80 m (cómputo) vs 90 m (presupuesto) | [data/telecom/fuentes/README.md](../../data/telecom/fuentes/README.md) · `uv run pytest tests/integration/test_auditoria_arenaza.py` |
 | Metas de sprint | 12/12 | `uv run python scripts/meta_i6.py` |
-| Conteo G2 | civil 5 · resto 0 (< 50) | [resultados_ml.md](../resultados_ml.md) |
+| Conteo G2 | civil 5 · telecom 40 · industrial 4 · sistemas 9 (todos < 50; recuento multidominio M4.1) | [resultados_ml.md](../resultados_ml.md) (`uv run python scripts/generar_resultados_ml.py`) |
 | Predicciones del caso | tabla PU base/estimado/rango | [resultados_ml.md](../resultados_ml.md) |
 
 ## 6. Tablero de avance
