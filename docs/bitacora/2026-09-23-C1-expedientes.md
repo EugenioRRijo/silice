@@ -116,7 +116,7 @@ balance negativo siga produciendo el informe (prueba de aceptación del inventar
 | Alternativa | Por qué no |
 |---|---|
 | Validar solo en las fronteras (adaptadores, API) | Los contratos son la única forma que cruza paquetes; validar afuera repite la regla |
-| `_no_negativo` también en `Hallazgo` | Rompe R5 y R7, que informan desviaciones negativas por diseño (dictamen R7 de GC0) |
+| `_no_negativo` también en `Hallazgo` | Rompe R5, que informa desviaciones negativas por diseño (`core/verification/reglas.py:475`; dictamen R7 de GC0). En R7 el impacto usa `abs()` (`:681`, `:696`, `:711`): un negativo solo es plausible si `PuntoCurva.monto` no se valida, que es justo lo que plantea INV‑002 |
 
 **Costo de hacerlo:** cuatro contratos «estables» cambian, más el módulo de validación compartido
 y las pruebas. Existe el riesgo del último período negativo, a comprobar antes.
