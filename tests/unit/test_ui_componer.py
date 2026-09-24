@@ -24,11 +24,12 @@ desechables contra `f884044`, no supuesto):
    texto: `monkeypatch.setattr(caso, "RUTA_BASE_POR_DEFECTO", str(base))` antes del primer
    `run()`. La forma de texto
    (`monkeypatch.setattr("ui.paginas.componer.RUTA_BASE_POR_DEFECTO", ...)`) se abandonó adrede:
-   `tests/unit/test_composicion_ia.py::_SinExtraML` deja el atributo `componer` del paquete
-   `ui.paginas` apuntando a una copia fría que `sys.modules` ya no usa (diagnosticado en la Tarea
-   1; el arreglo de raíz vive en ese archivo). `monkeypatch.setattr` con una ruta de texto resuelve
-   por ese atributo de paquete (`getattr`) y aterriza en la copia huérfana sin ningún efecto;
-   parchar el objeto de `sys.modules` directamente no depende de ese atributo.
+   el antiguo `_SinExtraML` de `tests/unit/test_composicion_ia.py` dejaba el atributo `componer`
+   del paquete `ui.paginas` apuntando a una copia fría que `sys.modules` ya no usa (diagnosticado
+   en la Tarea 1). Su sucesor, `tests.fixtures.sin_extra.SinExtra` (INV-021), sincroniza los
+   atributos de paquete al salir, pero la regla se conserva. `monkeypatch.setattr` con una ruta
+   de texto resuelve por ese atributo de paquete (`getattr`) y aterriza en la copia huérfana sin
+   ningún efecto; parchar el objeto de `sys.modules` directamente no depende de ese atributo.
 3. La ayuda 1 (`sugerir_partidas_similares`) carga `sentence-transformers` en cuanto el catálogo no
    está vacío y hay una descripción tecleada: se sustituye por un doble que no sugiere nada.
 4. Los widgets se localizan por su rótulo (`_por_rotulo`), salvo las condiciones del rendimiento,
@@ -95,8 +96,9 @@ def _pantalla(monkeypatch, base: Path, filas: dict[str, list[dict[str, str]]]) -
     Parcha el **objeto módulo** de `sys.modules["ui.paginas.componer"]` (el que `importlib.
     import_module` devuelve, el mismo que ejecuta `AppTest` al resolver `from ui.paginas.componer
     import render`), no una ruta de texto: ver el hecho verificado 2, arriba, y el informe de la
-    Tarea 1 para el porqué (`tests/unit/test_composicion_ia.py::_SinExtraML` deja el atributo del
-    paquete desincronizado de `sys.modules`, y una ruta de texto resuelve por ese atributo).
+    Tarea 1 para el porqué (un gestor de extras que saca módulos de `sys.modules` puede dejar el
+    atributo del paquete desincronizado, y una ruta de texto resuelve por ese atributo; hoy es
+    `tests.fixtures.sin_extra.SinExtra`, que los sincroniza al salir).
     """
     caso = importlib.import_module("ui.caso")
     monkeypatch.setattr(caso, "RUTA_BASE_POR_DEFECTO", str(base))
