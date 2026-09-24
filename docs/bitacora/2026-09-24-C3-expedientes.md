@@ -23,7 +23,7 @@ la opción (a) en GC2 y su alcance amplio en C3 (D4 = A, 2026‑09‑24).
 
 - `guardar_presupuesto(..., pendientes: Sequence[ItemComputo] = ())` persiste cada pendiente como
   `models.ItemComputo` del presupuesto **sin renglón** (ninguna `partida_presupuestada` lo cita). El
-  esquema no cambia: `item_computo.presupuesto_id` ya existe (`core/models/entidades.py:317`).
+  esquema no cambia: `item_computo.presupuesto_id` ya existe (`core/models/entidades.py:336`).
 - `guardar_presupuesto` exige la correspondencia **en los dos sentidos**, con `ValueError`, por la
   clave `(codigo_partida, origen_id)` que define un solo ayudante (`_clave_pendiente`, en
   `core/budget/presupuesto.py`, el mismo que redacta los `origen_ids` del hallazgo):
@@ -43,7 +43,7 @@ la opción (a) en GC2 y su alcance amplio en C3 (D4 = A, 2026‑09‑24).
     ayudante privado único, `_cargar_pendientes`, que comparte `actualizar_precios`;
   - `informe = _declarar_pendientes(auditar(presupuesto), pendientes)`. `_declarar_pendientes` se
     importa desde `core.budget.presupuesto` con un comentario que lo justifica, como hace el
-    precedente `core/budget/actualizacion.py:32-40` con `_buscar` y `_parametros_de`: es la única
+    precedente `core/budget/actualizacion.py:33-44` con `_buscar` y `_parametros_de`: es la única
     definición del hallazgo `PENDIENTE` y duplicarla sería repetirla.
 - `actualizar_precios` arrastra los pendientes del base (D4 = A): carga el base con
   `cargar_presupuesto` y sus pendientes con `_cargar_pendientes` (sin reauditarlo), aplica
