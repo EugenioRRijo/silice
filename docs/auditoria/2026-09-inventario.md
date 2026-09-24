@@ -158,6 +158,9 @@ en la columna de corrección.
 | INV-073 | planificación de C1 (Tarea 12; expediente B.7) | adapters (cruza: core, docs) | Trazabilidad (UC‑04) | importante | `docs/ERS.md:211-215` (flujos 1a, 2a, 2b) frente a `adapters/civil/reglas.py:41-198`, `core/contracts/item_computo.py:52-53` | Los flujos alternativos de UC‑04 no tienen implementación: nada informa que un parámetro no participa en ninguna regla (1a); nada empareja por GlobalId al reimportar un IFC (2a); una cantidad negativa se rechaza con `ValueError` del contrato, en vez de conservar la anterior y emitir un hallazgo de R5 (2b) | Implementar 1a y 2b en la capa de adaptadores, sin cambiar `core/`, y 2a emparejando por `origen_id`; o declararlos sin cumplir en la ERS §3.2 y en plan_pruebas §8 | C2 (adaptadores) + C4 (documentos) | abierto |
 | INV-074 | acta R2 del capítulo IV (T6.2) | docs | Coherencia documental / DRY | importante | `CLAUDE.md:97` (`bono × Σ cantidad`, sin línea de destajo) frente a `core/costing/motor.py:3-13` (docstring: jornal y destajo separados, bono por los obreros a jornal) | La especificación del cálculo de `CLAUDE.md` §4, declarada fuente única de la fórmula, no contiene la modalidad a destajo que el motor calcula desde la decisión D9; el capítulo IV la atribuía a `CLAUDE.md` §4. Con todas las líneas a jornal las dos formulaciones coinciden. Hermano de INV‑057 (la tabla de contratos omite `ModalidadManoObra`) | Actualizar `CLAUDE.md` §4 con la fórmula del docstring del motor, o declarar allí que la de destajo vive en el motor por D9 (pendiente del aval del tutor); el capítulo IV ya cita el docstring y la bitácora del destajo | C4 | abierto |
 | INV-075 | acta R2 del capítulo IV (T11.1) | scripts (cruza: tests, docs) | Trazabilidad | importante | `scripts/meta_redaccion.py:31-32,465-470` (solo `01-el-problema.md` y `02-marco-teorico.md`) | Las metas R4–R8 (voz impersonal, citas, referencias pendientes, datos presentados como reales, «gemelo digital») no leen `04-desarrollo.md`: un 12/12 no dice nada del capítulo IV, que se verificó a mano y con un script ad hoc en la revisión R2 | Extender R4–R8 a todo capítulo presente en `docs/tesis/capitulos/`, con una prueba en `tests/unit/test_meta_redaccion.py` que primero falle sobre el capítulo IV. Es código de `scripts/`: no se toca desde la redacción | C3 | abierto |
+| INV-076 | redacción del capítulo IV (§4.8.1) | api/ui (cruza) | Trazabilidad | importante | `docs/ERS.md:99,219-244` (UC‑05, precondición y flujo principal, paso 1: «el auditor selecciona el presupuesto o importa el archivo del tercero»); `docs/ERS.md:470` (RF‑24, Esencial: «El sistema importará un presupuesto de un tercero en formato tabular... para poder auditarlo»); `api/rutas/presupuestos.py:70` y `ui/paginas/componer.py:785` (auditan solo el presupuesto que el propio sistema elabora, UC‑01, a partir de `ItemComputo` ya extraídos); `tests/fixtures/presupuesto_auditado.py:137-145` (`presupuesto_con_siete_inconsistencias` construye el `Presupuesto` en memoria); `docs/tesis/capitulos/04-desarrollo.md:680-681` (el propio capítulo ya lo admite); `grep -i "importar\|tercero" ui/ api/` sin ningún punto de entrada de negocio (comprobado) | Ni una ruta de `api/rutas/` ni una página de `ui/paginas/` ofrecen la importación de un presupuesto tabular ajeno que exigen UC‑05 y RF‑24 (Esencial); lo único que la ejercita es la fixture de pruebas, que instancia los `ItemComputo` directamente en Python sin leer archivo alguno. El capítulo IV, §4.8.1, ya declara la brecha con las mismas palabras, así que no es una contradicción documental: es una función esencial sin implementar | Como RF‑24 es esencial, no corresponde declararlo en limitaciones ni dejarlo «a decidir por Eugenio»: implementar en C3 una ruta de importación tabular (API, p. ej. `POST /presupuestos/importar`; UI, una página o control que la invoque) que construya el `Presupuesto` a partir de un archivo ajeno conservando sus unidades, como ya hace la fixture, y lo pase a `auditar`. Coordinar con INV‑075 (misma fase) y actualizar `docs/tesis/capitulos/04-desarrollo.md` §4.8.1 al cerrar el hallazgo | C3 | abierto |
+| INV-077 | redacción del capítulo IV (§4.10.1) | ui | Coherencia documental (RNF‑08) | importante | `ui/paginas/visor.py:4-10,52-53,152-160` (`URL_THREE_JS = f"https://cdnjs.cloudflare.com/ajax/libs/three.js/{VERSION_THREE_JS}/three.min.js"`, incrustada como `<script src="__URL_THREE__">` en el `st.components.v1.html`, cargada por el navegador en cada render del visor); `docs/ERS.md:530` (RNF‑08: «no invoca servicios externos en tiempo de ejecución»; única excepción declarada, la descarga del modelo de `sentence-transformers`, que se cachea localmente); `docs/tesis/capitulos/04-desarrollo.md:817-819` (el capítulo IV solo declara esa misma excepción del modelo de ML) | El visor 3D carga three.js desde `cdnjs.cloudflare.com` en tiempo de ejecución, una llamada de red que ni la ERS ni el capítulo IV declaran junto a RNF‑08: su única excepción registrada es la descarga (cacheada) del modelo de `sentence-transformers`, un caso distinto (del lado del servidor Python, no del navegador, y con caché local) | Declarar la excepción en RNF‑08 (`docs/ERS.md`, junto a la del modelo) y en `docs/tesis/capitulos/04-desarrollo.md` §4.10.1, o vendorizar `three.min.js` en el repositorio para que el visor no dependa de la red | C4 | abierto |
+| INV-078 | revisión R2 del capítulo IV (T4.1, observación remitida al capítulo II) | docs (tesis) | Coherencia documental | importante | `docs/tesis/capitulos/02-marco-teorico.md:150-154` (§2.3.2: «Quien lo calcula y lo publica es el Colegio de Ingenieros de Venezuela»); `docs/dossier_g0.md:74,82-94` (D4, verificado contra fuente primaria: «No lo publican el Colegio de Ingenieros de Venezuela, la Cámara Venezolana de la Construcción, COVENIN ni MaPreX»; rangos publicados de Chacín, 2008, 198-293 %, y Dodi Scovino y Salas Caraballo, 2019, 78-2386 %); `docs/tesis/revisiones/R2-capitulo-4.md:113,141-148` (T4.1, aplicada en el capítulo IV; observación remitida al capítulo II, sin aplicar allí); `docs/tesis/capitulos/02-marco-teorico.md` y `docs/tesis/referencias.md` sin ninguna cita de Chacín ni de Dodi Scovino y Salas Caraballo (comprobado) | El capítulo II, §2.3.2, sigue diciendo que el CIV «lo calcula y lo publica» [el FCAS], apoyado en una fuente que el propio párrafo describe como referencial; D4 verificó lo contrario contra la fuente primaria y documenta dos rangos publicados que el capítulo II no cita. El capítulo IV ya se alineó con D4 (T4.1); la propia acta de esa revisión remite la observación al capítulo II, que sigue sin corregirse | Alinear §2.3.2 con D4: sustituir «lo calcula y lo publica» por la formulación que ya usa el capítulo IV, §4.4.1 («el Colegio de Ingenieros de Venezuela... publica factores de referencia»), y citar los rangos de Chacín (2008) y de Dodi Scovino y Salas Caraballo (2019), añadiéndolos a `docs/tesis/referencias.md` | Red | abierto |
 
 ## 4. Propuesta de triage para GC0
 
@@ -170,7 +173,7 @@ Los conteos reflejan la verificación de la Tarea 5 y las correcciones de GC0 (�
 ### (a) Bloqueantes e importantes: entran
 
 Un bloqueante: **INV‑065** (C1, junto a la salvaguarda; se cierra antes de cualquier ejecución del
-guion). Los 51 importantes entran, por fase (cuadra con (d)):
+guion). Los 56 importantes entran, por fase (cuadra con (d)):
 
 - **C1 (17):** INV‑001, INV‑002 (cambian contratos: expediente y aval), INV‑003, INV‑004, INV‑005,
   INV‑006 (contrato en C1; subtarea de migración en C2, que depende del aval), INV‑007, INV‑008,
@@ -179,12 +182,14 @@ guion). Los 51 importantes entran, por fase (cuadra con (d)):
   separados), INV‑071 (agregado en C1; corregido en C1 por decisión de Eugenio en GC1).
 - **C2 (5):** INV‑016, INV‑017, INV‑018, INV‑072 (subtarea de `ui/` en C3), INV‑073 (subtarea
   documental en C4); INV‑072 e INV‑073 se agregaron en C1.
-- **C3 (9):** INV‑019, INV‑020, INV‑021, INV‑022, INV‑023, INV‑024, INV‑025, INV‑043 (exige enmendar
-  la Tarea 11 de U1 en el primer commit de C3), INV‑075 (agregado en la revisión R2 del capítulo IV).
-- **C4 (19):** INV‑026, INV‑027, INV‑028, INV‑029, INV‑030, INV‑031 (subtarea en Red), INV‑032,
+- **C3 (10):** INV‑019, INV‑020, INV‑021, INV‑022, INV‑023, INV‑024, INV‑025, INV‑043 (exige enmendar
+  la Tarea 11 de U1 en el primer commit de C3), INV‑075 (agregado en la revisión R2 del capítulo IV),
+  INV‑076 (agregado en la redacción del capítulo IV, §4.8.1).
+- **C4 (20):** INV‑026, INV‑027, INV‑028, INV‑029, INV‑030, INV‑031 (subtarea en Red), INV‑032,
   INV‑033, INV‑054, INV‑057, INV‑058, INV‑060, INV‑061, INV‑062, INV‑063, INV‑064, INV‑067, INV‑070, INV‑074 (agregado en la revisión R2 del
-  capítulo IV).
-- **Red (3):** INV‑034, INV‑035, INV‑036.
+  capítulo IV), INV‑077 (agregado en la redacción del capítulo IV, §4.10.1).
+- **Red (4):** INV‑034, INV‑035, INV‑036, INV‑078 (agregado en la revisión R2 del capítulo IV, T4.1,
+  observación remitida al capítulo II).
 
 ### (b) Menores que se propone promover (12)
 
@@ -218,23 +223,25 @@ Eugenio lo decidió el 2026‑09‑23. La ERS (RF‑20) y el plan de pruebas (§
 
 Cada hallazgo se cuenta en su fase principal (la primera de la columna «Fase destino»); las subtareas
 en otra fase se anotan en (a). Recontado con un script ad hoc sobre la tabla de §3, igual que en la
-Tarea 5 de C0, tras agregar INV‑071 a INV‑073 (nota de §3).
+Tarea 5 de C0, tras agregar INV‑071 a INV‑078 (nota de §3).
 
 | Fase | Bloqueante | Importante | Menor | Total | Menores promovidos | Menores a limitaciones |
 |---|---|---|---|---|---|---|
 | C1 | 1 | 17 | 4 | 22 | 0 | 4 |
 | C2 | 0 | 5 | 2 | 7 | 1 | 1 |
-| C3 | 0 | 9 | 9 | 18 | 7 | 2 |
-| C4 | 0 | 19 | 5 | 24 | 4 | 1 |
-| Red | 0 | 3 | 1 | 4 | 0 | 1 |
-| **Total** | **1** | **53** | **21** | **75** | **12** | **9** |
+| C3 | 0 | 10 | 9 | 19 | 7 | 2 |
+| C4 | 0 | 20 | 5 | 25 | 4 | 1 |
+| Red | 0 | 4 | 1 | 5 | 0 | 1 |
+| **Total** | **1** | **56** | **21** | **78** | **12** | **9** |
 
-Con la propuesta de GC0 (§4 (a)-(c), sin variación tras C1) entran 64 hallazgos (1 bloqueante, 51
+Con la propuesta de GC0 (§4 (a)-(c), sin variación tras C1) entran 69 hallazgos (1 bloqueante, 56
 importantes y 12 menores promovidos) y 9 van al capítulo de limitaciones. INV‑071 cuenta en C1:
 Eugenio ratificó su corrección en GC1 y quedó cerrado en C1 (3c026da); INV‑072 e INV‑073 cuentan en C2, su
 primera fase destino. La revisión R2 del capítulo IV (fase Red) agrega INV‑074 (C4) e INV‑075 (C3),
 ambos importantes, a partir de las observaciones T6.2 y T11.1 de su
-[acta](../tesis/revisiones/R2-capitulo-4.md).
+[acta](../tesis/revisiones/R2-capitulo-4.md). La redacción del capítulo IV agrega, además, INV‑076
+(C3, §4.8.1) e INV‑077 (C4, §4.10.1); la misma acta R2 agrega INV‑078 (Red, T4.1), observación
+remitida al capítulo II. Los tres son importantes.
 
 La fase C1 agrega INV‑071 a INV‑073 (Tareas 1, 11 y 12 del plan de C1) y cierra los hallazgos de su
 fase según esta columna; INV‑015 conserva la subtarea de C3 (7a).
