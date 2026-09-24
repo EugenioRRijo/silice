@@ -338,8 +338,9 @@ NORMALIZADOR = "ml.normalization.normalizador"
 
 
 def _sin_extra(nombre):
-    """Como falla de verdad el extra `ml` ausente: al importar sentence-transformers."""
-    raise ImportError("simulado: sin sentence-transformers")
+    """Como falla de verdad el extra `ml` ausente: `from sentence_transformers import ...` dentro de
+    `_cargar_modelo` lanza `ModuleNotFoundError`, subclase de `ImportError`."""
+    raise ModuleNotFoundError("No module named 'sentence_transformers'")
 
 
 def _cuerpo(codigo, items):
