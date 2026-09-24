@@ -11,7 +11,14 @@ efectos: ni archivos creados ni llamadas a Streamlit sin runtime.
 from tests.fixtures.subproceso import importar_en_limpio
 from ui.app import PAGINAS
 
-MODULOS_SIN_PAGINA = ("ui.app", "ui.caso", "ui.recorridos", "ui.composicion")
+MODULOS_SIN_PAGINA = (
+    "ui.app",
+    "ui.caso",
+    "ui.recorridos",
+    "ui.composicion",
+    "ui.elaboracion",
+    "ui.resultado",
+)
 
 
 def test_las_paginas_se_importan_sin_efectos(tmp_path):

@@ -20,23 +20,15 @@ unidades por dia": nunca la misma palabra para las dos cosas.
 
 from __future__ import annotations
 
-import tempfile
 from collections.abc import Callable, Sequence
 from datetime import date
 from decimal import Decimal
-from pathlib import Path
 
 import streamlit as st
 from pandas import DataFrame
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from core.budget import (
-    ResultadoElaboracion,
-    elaborar,
-    exportar_excel,
-    plan_secuencial,
-)
 from core.catalog import (
     Catalogo,
     CatalogoIncompleto,
@@ -52,8 +44,6 @@ from core.catalog import (
 )
 from core.contracts import ComposicionAPU, Dominio, ItemComputo, ModalidadManoObra, ParametrosCosto
 from core.costing import calcular_apu
-from core.verification.informe import DECIMALES_PRESENTACION
-from core.verification.texto import formatear_decimal
 from ui.caso import ruta_caso
 from ui.composicion import (
     ComposicionInvalida,
@@ -69,24 +59,28 @@ from ui.composicion import (
     fila_materiales_desde_referencia,
     filas_desde_composicion,
     formulario_vacio,
-    item_desde_cantidad,
     motivo_para_no_reemplazar,
     sugerir_partidas_similares,
     veredicto_ml_rendimiento,
 )
+from ui.elaboracion import (
+    COLUMNAS_CANTIDADES,
+    elaborar_desde_catalogo,
+    items_desde_filas,
+    libro_excel,
+)
+from ui.resultado import mostrar_elaboracion
 
 RENDIMIENTO_ETIQUETA = "Rendimiento — unidades por día"
 CONSUMO_ETIQUETA = "Consumo por unidad"
 CODIGO_PRESUPUESTO_POR_DEFECTO = "P-001"
 MONEDA_POR_DEFECTO = "USD"
-MIME_EXCEL = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
 #: Columnas de cada tabla de insumos: la clave interna que espera `composicion_desde_tablas`
 #: (contrato), no el rotulo que se ve en pantalla (presentacion).
 COLUMNAS_MATERIALES = ("descripcion", "unidad", "cantidad", "precio")
 COLUMNAS_EQUIPOS = ("descripcion", "cantidad", "precio", "depreciacion")
 COLUMNAS_MANO_OBRA = ("descripcion", "cantidad", "sueldo", "modalidad")
-COLUMNAS_CANTIDADES = ("codigo_partida", "cantidad", "origen_id")
 
 #: Claves de `st.session_state` para el resultado de elaboracion y el libro de Excel ya generado
 #: (paso 3): se guardan aparte de las filas de la tabla para que la descarga sobreviva a los
@@ -187,7 +181,7 @@ def _pagina(sesion: Session) -> None:
 
     items = _cantidades_de_obra(catalogo)
     _elaborar_presupuesto(catalogo, items)
-    _mostrar_resultado_presupuesto(st.session_state.get(CLAVE_RESULTADO))
+    _mostrar_resultado_presupuesto()
 
 
 def _cabecera() -> tuple[str, str, str, Dominio, date]:
@@ -718,45 +712,10 @@ def _cantidades_de_obra(catalogo: Catalogo) -> list[ItemComputo]:
     filas = editado.to_dict("records")
     st.session_state[clave_filas] = filas
 
-    items: list[ItemComputo] = []
-    for indice, fila in enumerate(filas, start=1):
-        codigo, cantidad_texto, origen_id = (
-            _celda_de_cantidad(fila, clave) for clave in COLUMNAS_CANTIDADES
-        )
-        if not codigo and not cantidad_texto and not origen_id:
-            continue  # fila dinamica todavia en blanco: no es un error, es el estado normal
-        if not codigo or codigo not in por_codigo:
-            st.warning(f"cantidades de obra, fila {indice}: seleccione una partida del catalogo")
-            continue
-        partida = por_codigo[codigo]
-        try:
-            items.append(
-                item_desde_cantidad(
-                    codigo=codigo,
-                    descripcion=partida.descripcion,
-                    unidad=partida.unidad,
-                    cantidad=cantidad_texto,
-                    origen_id=origen_id,
-                    dominio=Dominio(partida.dominio),
-                )
-            )
-        except ComposicionInvalida as error:
-            st.warning(f"cantidades de obra, fila {indice}: {error}")
-
+    items, avisos = items_desde_filas(filas, por_codigo)
+    for aviso in avisos:
+        st.warning(aviso)
     return items
-
-
-def _celda_de_cantidad(fila: dict, clave: str) -> str:
-    """Una celda de la tabla de cantidades como texto, sin el `None`/`nan` que deja una fila nueva.
-
-    Mismo criterio que `ui.composicion._texto` (privada, no importable desde aqui): `st.data_editor`
-    con `num_rows="dynamic"` entrega `None` o NaN en las celdas de una fila recien agregada.
-    """
-    valor = fila.get(clave)
-    if valor is None:
-        return ""
-    texto = str(valor).strip()
-    return "" if texto.lower() == "nan" else texto
 
 
 def _elaborar_presupuesto(catalogo: Catalogo, items: list[ItemComputo]) -> None:
@@ -793,17 +752,9 @@ def _elaborar(
     moneda: str,
 ) -> None:
     """Genera el presupuesto y su curva, lo audita siempre y prepara el libro de Excel (paso 3)."""
-    codigos_unicos = list(dict.fromkeys(item.codigo_partida for item in items))
     try:
-        composiciones = catalogo.composiciones(codigos_unicos, fecha=fecha_presupuesto)
-        resultado = elaborar(
-            items,
-            composiciones,
-            ParametrosCosto(),
-            codigo=codigo_presupuesto,
-            fecha=fecha_presupuesto,
-            moneda=moneda,
-            plan=plan_secuencial,
+        resultado = elaborar_desde_catalogo(
+            catalogo, items, codigo_presupuesto, fecha_presupuesto, moneda
         )
     except (LookupError, ValueError, ArithmeticError, SQLAlchemyError) as error:
         # `LookupError` (`CatalogoIncompleto`) si no hay lista de precios vigente a esa fecha;
@@ -814,47 +765,18 @@ def _elaborar(
         st.error(str(error))
         return
 
-    with tempfile.TemporaryDirectory() as carpeta:
-        ruta = Path(carpeta) / f"presupuesto_{resultado.presupuesto.codigo}.xlsx"
-        libro = exportar_excel(resultado.presupuesto, resultado.informe, ruta)
-        st.session_state[CLAVE_LIBRO] = libro.read_bytes()
-        st.session_state[CLAVE_NOMBRE_LIBRO] = libro.name
-
+    libro, nombre_libro = libro_excel(resultado)
+    st.session_state[CLAVE_LIBRO] = libro
+    st.session_state[CLAVE_NOMBRE_LIBRO] = nombre_libro
     st.session_state[CLAVE_RESULTADO] = resultado
 
 
-def _mostrar_resultado_presupuesto(resultado: ResultadoElaboracion | None) -> None:
-    """Totales, resumen por severidad, el informe de auditoria (siempre) y la descarga (paso 3).
-
-    El informe se muestra tenga hallazgos o no: el informe de auditoria se genera siempre, sin que
-    el usuario lo pida (principio 7 de CLAUDE.md §2), y eso es principio del proyecto, no
-    preferencia de pantalla.
-    """
-    if resultado is None:
-        return
-
-    st.subheader("Presupuesto elaborado")
-    total = formatear_decimal(resultado.presupuesto.total, DECIMALES_PRESENTACION)
-    st.metric("Total del presupuesto", f"{total} {resultado.presupuesto.moneda}")
-
-    resumen_severidad = resultado.informe.por_severidad()
-    if resumen_severidad:
-        columnas_severidad = st.columns(len(resumen_severidad))
-        for columna, (severidad, total_hallazgos) in zip(
-            columnas_severidad, resumen_severidad.items(), strict=True
-        ):
-            columna.metric(severidad.name, total_hallazgos)
-    else:
-        st.success("Sin hallazgos: la auditoria no encontro ninguna inconsistencia.")
-
+def _mostrar_resultado_presupuesto() -> None:
+    """El presupuesto elaborado, si lo hay, con el fragmento comun de `ui/resultado.py` (paso 3)."""
+    resultado = st.session_state.get(CLAVE_RESULTADO)
     libro = st.session_state.get(CLAVE_LIBRO)
-    if libro is not None:
-        st.download_button(
-            "Exportar a Excel",
-            data=libro,
-            file_name=st.session_state.get(CLAVE_NOMBRE_LIBRO),
-            mime=MIME_EXCEL,
-        )
-
-    st.subheader("Informe de auditoria")
-    st.markdown(resultado.informe.a_markdown())
+    if resultado is None or libro is None:
+        return
+    mostrar_elaboracion(
+        resultado, libro, st.session_state.get(CLAVE_NOMBRE_LIBRO), prefijo="componer"
+    )

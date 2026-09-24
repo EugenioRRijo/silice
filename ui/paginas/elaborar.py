@@ -28,12 +28,13 @@ from adapters.civil.tabular import AdaptadorCivilTabular
 from adapters.industrial.adaptador import AdaptadorIndustrial
 from adapters.sistemas.adaptador import AdaptadorSistemas
 from adapters.telecom.adaptador import AdaptadorTelecom
-from core.budget import elaborar, exportar_excel, plan_secuencial
 from core.catalog import Catalogo, abrir_sesion, crear_esquema, crear_motor
-from core.contracts import AdaptadorDominio, Dominio, ItemComputo, ParametrosCosto
+from core.contracts import AdaptadorDominio, Dominio, ItemComputo
 from core.verification.informe import DECIMALES_PRESENTACION
 from core.verification.texto import formatear_decimal
 from ui.caso import ruta_caso
+from ui.elaboracion import elaborar_desde_catalogo, libro_excel
+from ui.resultado import mostrar_elaboracion
 
 CODIGO_POR_DEFECTO = "P-001"
 MONEDA_POR_DEFECTO = "USD"
@@ -216,17 +217,12 @@ def _elaborar(parametros: dict[str, object], items: list[ItemComputo]) -> None:
     try:
         crear_esquema(motor)
         with abrir_sesion(motor) as sesion:
-            catalogo = Catalogo(sesion)
-            codigos_unicos = list(dict.fromkeys(item.codigo_partida for item in items))
-            composiciones = catalogo.composiciones(codigos_unicos, fecha=parametros["fecha"])
-            resultado = elaborar(
+            resultado = elaborar_desde_catalogo(
+                Catalogo(sesion),
                 items,
-                composiciones,
-                ParametrosCosto(),
-                codigo=str(parametros["codigo"]),
-                fecha=parametros["fecha"],
-                moneda=str(parametros["moneda"]),
-                plan=plan_secuencial,
+                str(parametros["codigo"]),
+                parametros["fecha"],
+                str(parametros["moneda"]),
             )
     except (LookupError, ValueError, ArithmeticError, SQLAlchemyError) as error:
         # `LookupError` (`CatalogoIncompleto`) si falta la composición de alguna partida del
@@ -245,20 +241,5 @@ def _elaborar(parametros: dict[str, object], items: list[ItemComputo]) -> None:
 def _mostrar_resultado(resultado) -> None:
     if resultado is None:
         return
-
-    st.subheader("Presupuesto elaborado")
-    total = formatear_decimal(resultado.presupuesto.total, DECIMALES_PRESENTACION)
-    st.metric("Total del presupuesto", f"{total} {resultado.presupuesto.moneda}")
-
-    with tempfile.TemporaryDirectory() as carpeta:
-        ruta = Path(carpeta) / f"presupuesto_{resultado.presupuesto.codigo}.xlsx"
-        libro = exportar_excel(resultado.presupuesto, resultado.informe, ruta)
-        st.download_button(
-            "Exportar a Excel",
-            data=libro.read_bytes(),
-            file_name=libro.name,
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        )
-
-    st.subheader("Informe de auditoría")
-    st.markdown(resultado.informe.a_markdown())
+    libro, nombre_libro = libro_excel(resultado)
+    mostrar_elaboracion(resultado, libro, nombre_libro, prefijo="elaborar")

@@ -1,0 +1,112 @@
+"""Orquestacion de la elaboracion desde la interfaz, sin Streamlit (INV-043, fase C3).
+
+Antes vivia dentro de `ui/paginas/componer.py`, que asi pintaba, orquestaba «cantidades ->
+elaborar -> exportar», calculaba y persistia a la vez (criterio S, spec de cierre §4). Aqui queda
+la orquestacion contra `core.budget` y `core.catalog`; las paginas solo pintan y deciden los
+mensajes. Sin Streamlit, sin `pandas` y sin `ui.caso`: cada funcion recibe lo que necesita y se
+prueba como funcion (`tests/unit/test_elaboracion.py`). Lo vigila
+`tests/unit/test_arquitectura.py::test_ui_respeta_sus_importaciones_prohibidas`.
+
+Es el unico modulo de `ui/` sin pagina que escribe en la base (regla A-2 del plan de C3).
+"""
+
+from __future__ import annotations
+
+import tempfile
+from collections.abc import Mapping, Sequence
+from datetime import date
+from pathlib import Path
+from typing import TYPE_CHECKING
+
+from core.budget import ResultadoElaboracion, elaborar, exportar_excel, plan_secuencial
+from core.contracts import Dominio, ItemComputo, ParametrosCosto
+from ui.composicion import ComposicionInvalida, item_desde_cantidad
+
+if TYPE_CHECKING:
+    from core.catalog import Catalogo
+    from core.models import Partida
+
+#: Columnas de la tabla de cantidades de obra: la clave interna de cada fila, no su rotulo.
+COLUMNAS_CANTIDADES = ("codigo_partida", "cantidad", "origen_id")
+
+
+def items_desde_filas(
+    filas: Sequence[Mapping[str, object]], partidas_por_codigo: Mapping[str, Partida]
+) -> tuple[list[ItemComputo], list[str]]:
+    """Las filas de la tabla de cantidades de obra como `ItemComputo`, mas un aviso por fila mala.
+
+    El origen es obligatorio (una cantidad sin origen no es trazable, y `item_desde_cantidad` la
+    rechaza: no es un dato, es un hallazgo). El dominio de cada item es el que ya declara la
+    cabecera de esa partida en el catalogo (`models.Partida.dominio`). Una fila todavia en blanco
+    no es un aviso: es el estado normal de una tabla dinamica.
+    """
+    items: list[ItemComputo] = []
+    avisos: list[str] = []
+    for indice, fila in enumerate(filas, start=1):
+        codigo, cantidad_texto, origen_id = (
+            _celda_de_cantidad(fila, clave) for clave in COLUMNAS_CANTIDADES
+        )
+        if not codigo and not cantidad_texto and not origen_id:
+            continue  # fila dinamica todavia en blanco: no es un error, es el estado normal
+        if not codigo or codigo not in partidas_por_codigo:
+            avisos.append(f"cantidades de obra, fila {indice}: seleccione una partida del catalogo")
+            continue
+        partida = partidas_por_codigo[codigo]
+        try:
+            items.append(
+                item_desde_cantidad(
+                    codigo=codigo,
+                    descripcion=partida.descripcion,
+                    unidad=partida.unidad,
+                    cantidad=cantidad_texto,
+                    origen_id=origen_id,
+                    dominio=Dominio(partida.dominio),
+                )
+            )
+        except ComposicionInvalida as error:
+            avisos.append(f"cantidades de obra, fila {indice}: {error}")
+    return items, avisos
+
+
+def _celda_de_cantidad(fila: Mapping[str, object], clave: str) -> str:
+    """Una celda de la tabla de cantidades como texto, sin el `None`/`nan` que deja una fila nueva.
+
+    Mismo criterio que `ui.composicion._texto` (privada, no importable desde aqui): `st.data_editor`
+    con `num_rows="dynamic"` entrega `None` o NaN en las celdas de una fila recien agregada.
+    """
+    valor = fila.get(clave)
+    if valor is None:
+        return ""
+    texto = str(valor).strip()
+    return "" if texto.lower() == "nan" else texto
+
+
+def elaborar_desde_catalogo(
+    catalogo: Catalogo, items: Sequence[ItemComputo], codigo: str, fecha: date, moneda: str
+) -> ResultadoElaboracion:
+    """Elabora y audita el presupuesto de `items` con las composiciones del catalogo a `fecha`.
+
+    Con `plan_secuencial` (una partida por dia, en el orden del presupuesto): sin plan la curva no
+    existe y R2 lo hace constar; con este plan trivial la curva cierra exactamente en el total y R2
+    y R7 quedan limpias. Pide las composiciones de todos los codigos de `items`: un codigo que el
+    catalogo no tiene lanza `KeyError`, que la pagina muestra como mensaje.
+    """
+    codigos_unicos = list(dict.fromkeys(item.codigo_partida for item in items))
+    composiciones = catalogo.composiciones(codigos_unicos, fecha=fecha)
+    return elaborar(
+        list(items),
+        composiciones,
+        ParametrosCosto(),
+        codigo=codigo,
+        fecha=fecha,
+        moneda=moneda,
+        plan=plan_secuencial,
+    )
+
+
+def libro_excel(resultado: ResultadoElaboracion) -> tuple[bytes, str]:
+    """El libro de Excel del presupuesto elaborado (con su hoja de auditoria) y su nombre."""
+    with tempfile.TemporaryDirectory() as carpeta:
+        ruta = Path(carpeta) / f"presupuesto_{resultado.presupuesto.codigo}.xlsx"
+        libro = exportar_excel(resultado.presupuesto, resultado.informe, ruta)
+        return libro.read_bytes(), libro.name

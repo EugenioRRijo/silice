@@ -189,3 +189,52 @@ def test_toda_carpeta_de_adapters_tiene_su_regla():
         and archivo.relative_to(RAIZ / "adapters").parts[0] not in TERCEROS_POR_ADAPTADOR
     ]
     assert not sueltos, f"{sueltos} no estan bajo ningun paquete de TERCEROS_POR_ADAPTADOR"
+
+
+#: Lo que cada modulo de ui/ no importa en tiempo de ejecucion (fuera de `if TYPE_CHECKING:`).
+#: Reglas de interfaz del plan de C3 (Global Constraints) e INV-043 para la pagina de componer.
+PROHIBIDOS_EN_UI: dict[str, tuple[str, ...]] = {
+    "ui/paginas/componer.py": ("core.budget", "tempfile"),
+    # RA-2: "no escribe en la base" vigilado tambien por core.catalog, core.budget y sqlalchemy.
+    "ui/composicion.py": (
+        "streamlit", "pandas", "ui.caso", "sqlalchemy", "core.catalog", "core.budget",
+    ),
+    "ui/elaboracion.py": ("streamlit", "pandas", "ui.caso"),
+    "ui/resultado.py": ("sqlalchemy.orm", "core.costing"),
+}
+
+
+def _imports_de_ejecucion(ruta: Path) -> set[str]:
+    """Modulos importados fuera de `if TYPE_CHECKING:` (AST), tambien los perezosos."""
+    arbol = ast.parse(ruta.read_text(encoding="utf-8"))
+    solo_tipado = {
+        id(nodo)
+        for bloque in ast.walk(arbol)
+        if isinstance(bloque, ast.If)
+        and ast.unparse(bloque.test) in {"TYPE_CHECKING", "typing.TYPE_CHECKING"}
+        for sentencia in bloque.body
+        for nodo in ast.walk(sentencia)
+    }
+    importados: set[str] = set()
+    for nodo in ast.walk(arbol):
+        if id(nodo) in solo_tipado:
+            continue
+        if isinstance(nodo, ast.Import):
+            importados.update(alias.name for alias in nodo.names)
+        elif isinstance(nodo, ast.ImportFrom) and nodo.module and nodo.level == 0:
+            importados.add(nodo.module)
+    return importados
+
+
+@pytest.mark.parametrize("modulo", sorted(PROHIBIDOS_EN_UI))
+def test_ui_respeta_sus_importaciones_prohibidas(modulo):
+    """INV-043 (criterio S, spec de cierre §4) y reglas de interfaz de C3: cada modulo de ui/
+    importa solo lo que su responsabilidad pide."""
+    importados = _imports_de_ejecucion(RAIZ / modulo)
+    prohibidos = {
+        nombre
+        for nombre in importados
+        for prefijo in PROHIBIDOS_EN_UI[modulo]
+        if nombre == prefijo or nombre.startswith(prefijo + ".")
+    }
+    assert not prohibidos, f"{modulo} importa {sorted(prohibidos)}"
