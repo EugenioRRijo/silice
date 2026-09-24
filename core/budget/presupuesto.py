@@ -2,8 +2,9 @@
 
 `generar_presupuesto` cose las tres piezas del núcleo sin conocer ningún dominio: recibe los
 `ItemComputo` que produjo un adaptador, las composiciones del catálogo y los parámetros de costo, y
-llama al motor puro `core.costing.calcular_apu` una vez por renglón. Es un paso intermedio: exige
-composición para todo ítem.
+llama al motor puro `core.costing.calcular_apu` una vez por renglón. Es un paso intermedio, sin
+valor de entrega: exige composición para todo ítem y devuelve un presupuesto sin informe, así que
+se entrega siempre con `elaborar` (INV‑037).
 
 `elaborar` es el flujo completo de la Sesión I0.5: presupuesto, curva y **auditoría siempre**, sin
 que el usuario la pida (principio 7 de CLAUDE.md §2). Por eso devuelve `ResultadoElaboracion`, que
@@ -68,6 +69,9 @@ def generar_presupuesto(
 ) -> Presupuesto:
     """Un `PartidaPresupuestada` por ítem, en el orden recibido, con su precio recién calculado.
 
+    Paso intermedio, sin valor de entrega: el presupuesto que devuelve no lleva informe de
+    auditoría. Entregar siempre con `elaborar` (principio 7 de CLAUDE.md §2; INV‑037).
+
     Lanza `ValueError` con la lista de códigos si alguna cantidad no tiene composición de APU: un
     presupuesto incompleto es un presupuesto sin precio, no un presupuesto con ceros.
     """
@@ -105,6 +109,10 @@ def elaborar(
     hallazgo `CODIGO_PENDIENTE` de severidad ERROR. `ResultadoElaboracion.pendientes` los devuelve
     para que quien llama proponga partidas similares (UC‑03). Un plan ya escrito que reparta una
     partida pendiente lanza `PlanInvalido`, como cualquier código desconocido.
+
+    Si todos los ítems quedan pendientes, el presupuesto sale vacío (sin partidas, total 0) y el
+    informe no cumple: lleva un `CODIGO_PENDIENTE` de severidad ERROR por ítem. Aunque se pase
+    `plan`, no hay curva que repartir, y R2 y R7 se declaran no aplicables (INFO).
     """
     valorables = [item for item in items if item.codigo_partida in composiciones]
     pendientes = tuple(item for item in items if item.codigo_partida not in composiciones)
