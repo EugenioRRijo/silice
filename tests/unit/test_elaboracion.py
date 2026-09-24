@@ -30,7 +30,9 @@ from tests.fixtures.apu_linea_base import (
     TOTAL_EXACTO_LINEA_BASE,
 )
 from tests.fixtures.computo_auditado import items_auditados
+from ui.composicion import desglose
 from ui.elaboracion import (
+    Guardado,
     elaborar_desde_catalogo,
     guardar_composicion,
     items_desde_filas,
@@ -173,7 +175,7 @@ def test_una_partida_nueva_se_persiste_y_se_relee(tmp_path: Path) -> None:
         guardado = guardar_composicion(
             Catalogo(sesion), nueva, Dominio.CIVIL, FECHA_LINEA_BASE, CONDICIONES
         )
-        sesion.commit()  # sin `commit` en ui/elaboracion.py: lo decide la pagina
+        sesion.commit()  # la prueba confirma, como la pagina: guardar_composicion no lo hace
     assert guardado.motivo is None
     assert guardado.resultado.precio_unitario.quantize(Decimal("0.01")) == (
         PRECIO_UNITARIO_ESPERADO["LB-02-TUB"]
@@ -185,3 +187,26 @@ def test_una_partida_nueva_se_persiste_y_se_relee(tmp_path: Path) -> None:
         len(APU_TUBERIA.equipos),
         len(APU_TUBERIA.mano_obra),
     )
+
+
+def test_guardar_no_confirma_el_commit_es_de_la_pagina(tmp_path: Path) -> None:
+    """Regla A-2 del plan de C3: `guardar_composicion` escribe pero no confirma. Sin `commit`
+    del llamador, un motor propio no encuentra la partida nueva."""
+    base = _sembrar(tmp_path / "caso.db")
+    nueva = dataclasses.replace(APU_TUBERIA, codigo_partida="XX-02-NUE")
+    with _sesion(base) as sesion:
+        guardado = guardar_composicion(
+            Catalogo(sesion), nueva, Dominio.CIVIL, FECHA_LINEA_BASE, CONDICIONES
+        )
+    assert guardado.resultado is not None  # se escribio en la sesion, pero no se confirmo
+    with _catalogo(base) as catalogo, pytest.raises(KeyError):
+        catalogo.partida("XX-02-NUE")
+
+
+def test_guardado_lleva_exactamente_uno_de_los_dos() -> None:
+    with pytest.raises(ValueError, match="exactamente uno"):
+        Guardado()
+    with pytest.raises(ValueError, match="exactamente uno"):
+        Guardado(resultado=desglose(APU_TUBERIA), motivo="un motivo")
+    assert Guardado(motivo="un motivo").resultado is None
+    assert Guardado(resultado=desglose(APU_TUBERIA)).motivo is None
