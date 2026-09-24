@@ -13,6 +13,7 @@ Es el unico modulo de `ui/` sin pagina que escribe en la base (regla A-2 del pla
 
 from __future__ import annotations
 
+import dataclasses
 import tempfile
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
@@ -22,6 +23,7 @@ from typing import TYPE_CHECKING
 
 from core.budget import ResultadoElaboracion, elaborar, exportar_excel, plan_secuencial
 from core.contracts import ComposicionAPU, Dominio, ItemComputo, ParametrosCosto, ResultadoAPU
+from ui import composicion as _composicion
 from ui.composicion import (
     ComposicionInvalida,
     desglose,
@@ -32,6 +34,7 @@ from ui.composicion import (
 if TYPE_CHECKING:
     from core.catalog import Catalogo
     from core.models import Partida
+    from ml.normalization import PartidaSimilar
 
 #: Columnas de la tabla de cantidades de obra: la clave interna de cada fila, no su rotulo.
 COLUMNAS_CANTIDADES = ("codigo_partida", "cantidad", "origen_id")
@@ -95,10 +98,18 @@ def elaborar_desde_catalogo(
 
     Con `plan_secuencial` (una partida por dia, en el orden del presupuesto): sin plan la curva no
     existe y R2 lo hace constar; con este plan trivial la curva cierra exactamente en el total y R2
-    y R7 quedan limpias. Pide las composiciones de todos los codigos de `items`: un codigo que el
-    catalogo no tiene lanza `KeyError`, que la pagina muestra como mensaje.
+    y R7 quedan limpias.
+
+    UC-01 3a (INV-072): pide solo las composiciones de los codigos que el catalogo tiene, el mismo
+    criterio que `api/rutas/presupuestos.py`. Un item sin partida no lanza: `elaborar` lo deja en
+    `ResultadoElaboracion.pendientes` y el informe lo declara con un hallazgo `PENDIENTE`.
     """
-    codigos_unicos = list(dict.fromkeys(item.codigo_partida for item in items))
+    existentes = {partida.codigo for partida in catalogo.partidas()}
+    codigos_unicos = [
+        codigo
+        for codigo in dict.fromkeys(item.codigo_partida for item in items)
+        if codigo in existentes
+    ]
     composiciones = catalogo.composiciones(codigos_unicos, fecha=fecha)
     return elaborar(
         list(items),
@@ -156,3 +167,53 @@ def guardar_composicion(
             return Guardado(motivo=motivo)
         catalogo.reemplazar_composicion(composicion, lista, dominio, fecha, condiciones)
     return Guardado(resultado=desglose(composicion))
+
+
+# --- UC-01 3a: los pendientes, sus propuestas y la aceptacion (INV-072, D6) --------------------
+
+
+@dataclass(frozen=True, slots=True)
+class PendienteConPropuestas:
+    """Un item pendiente y las partidas similares que se le proponen (o por que no las hay)."""
+
+    item: ItemComputo
+    similares: tuple[PartidaSimilar, ...] = ()
+    falla: str | None = None
+
+
+def propuestas_de_pendientes(
+    partidas: Mapping[str, str], pendientes: Sequence[ItemComputo]
+) -> tuple[PendienteConPropuestas, ...]:
+    """Una entrada por pendiente, en su orden, con las partidas del catalogo parecidas a su
+    descripcion (`partidas`: codigo -> descripcion). Sin pendientes devuelve `()` sin cargar nada.
+
+    **Cuerpo provisional (Tarea 7 del plan de C3):** llama a
+    `ui.composicion.sugerir_partidas_similares` una vez por pendiente, con su criterio de error de
+    hoy (una falla da una lista vacia), y por eso construye un indice semantico por pendiente. Lo
+    corrige 10c, que pasa el cuerpo a `ml.normalization.propuestas_para`: un solo normalizador por
+    llamada y el emparejamiento que comparte la API. La firma y el tipo de retorno no cambian.
+    """
+    if not pendientes:
+        return ()
+    return tuple(
+        PendienteConPropuestas(
+            item=pendiente,
+            similares=tuple(
+                _composicion.sugerir_partidas_similares(partidas, pendiente.descripcion)
+            ),
+        )
+        for pendiente in pendientes
+    )
+
+
+def aceptar_propuesta(
+    items: Sequence[ItemComputo], pendiente: ItemComputo, codigo_elegido: str
+) -> list[ItemComputo]:
+    """UC-01 3a (D6): el item `pendiente` pasa a la partida propuesta que el usuario acepto. Los
+    demas items no cambian; si `pendiente` no esta entre `items`, ValueError."""
+    if pendiente not in items:
+        raise ValueError(f"el item {pendiente.origen_id!r} no esta entre los items a elaborar")
+    return [
+        dataclasses.replace(item, codigo_partida=codigo_elegido) if item == pendiente else item
+        for item in items
+    ]

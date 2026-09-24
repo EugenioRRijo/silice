@@ -11,6 +11,13 @@ de partida en la fuente: recibe un mapeo `codigos` del llamador (`adapters/civil
 pantalla deja que el usuario elija esos codigos entre las partidas civiles ya cargadas en el
 catalogo, en vez de inventar codigos que el catalogo no tiene (regla del contrato congelado,
 CLAUDE.md §5: los codigos de partida son del catalogo, no del adaptador).
+
+UC-01 3a (INV-072, D6): un item cuyo codigo no esta en el catalogo no aborta la elaboracion: queda
+pendiente, el informe lo declara y la pantalla propone partidas similares
+(`ui.elaboracion.propuestas_de_pendientes`, calculadas una vez por elaboracion). Si el usuario
+acepta una, `ui.elaboracion.aceptar_propuesta` reasigna el item y se vuelve a elaborar. Las dos se
+llaman como atributos del modulo `ui.elaboracion`, para que las pruebas las parchen donde se
+resuelven.
 """
 
 from __future__ import annotations
@@ -32,14 +39,16 @@ from core.catalog import Catalogo, abrir_sesion, crear_esquema, crear_motor
 from core.contracts import AdaptadorDominio, Dominio, ItemComputo
 from core.verification.informe import DECIMALES_PRESENTACION
 from core.verification.texto import formatear_decimal
+from ui import elaboracion
 from ui.caso import ruta_caso
-from ui.elaboracion import elaborar_desde_catalogo, libro_excel
 from ui.resultado import mostrar_elaboracion
 
 CODIGO_POR_DEFECTO = "P-001"
 MONEDA_POR_DEFECTO = "USD"
 CLAVE_ITEMS = "elaborar_items"
 CLAVE_RESULTADO = "elaborar_resultado"
+#: Las propuestas para los pendientes de la elaboracion guardada en `CLAVE_RESULTADO`.
+CLAVE_PROPUESTAS = "elaborar_propuestas"
 
 #: Adaptadores sin parametros propios: el dominio y el archivo bastan para construirlos.
 _ADAPTADORES_SIN_CODIGOS: dict[Dominio, type[AdaptadorDominio]] = {
@@ -84,7 +93,7 @@ def render() -> None:
         with st.spinner("Elaborando..."):
             _elaborar(parametros, items)
 
-    _mostrar_resultado(st.session_state.get(CLAVE_RESULTADO))
+    _mostrar_resultado(parametros)
 
 
 # ---------------------------------------------------------------------------------------------
@@ -217,29 +226,52 @@ def _elaborar(parametros: dict[str, object], items: list[ItemComputo]) -> None:
     try:
         crear_esquema(motor)
         with abrir_sesion(motor) as sesion:
-            resultado = elaborar_desde_catalogo(
-                Catalogo(sesion),
+            catalogo = Catalogo(sesion)
+            resultado = elaboracion.elaborar_desde_catalogo(
+                catalogo,
                 items,
                 str(parametros["codigo"]),
                 parametros["fecha"],
                 str(parametros["moneda"]),
             )
+            partidas = {partida.codigo: partida.descripcion for partida in catalogo.partidas()}
     except (LookupError, ValueError, ArithmeticError, SQLAlchemyError) as error:
-        # `LookupError` (`CatalogoIncompleto`) si falta la composición de alguna partida del
-        # cómputo (por ejemplo, un dominio sin catálogo cargado); `ValueError` (`PlanInvalido`)
+        # `LookupError` (`CatalogoIncompleto`) si no hay lista de precios vigente a esa fecha (un
+        # item sin partida ya no lanza: queda pendiente, UC-01 3a); `ValueError` (`PlanInvalido`)
         # del plan de trabajo; `ArithmeticError`/`SQLAlchemyError` por simetría con el mismo
         # criterio de `ui/paginas/actualizacion.py`.
         st.session_state[CLAVE_RESULTADO] = None
+        st.session_state[CLAVE_PROPUESTAS] = ()
         st.error(str(error))
         return
     finally:
         motor.dispose()
 
     st.session_state[CLAVE_RESULTADO] = resultado
+    st.session_state[CLAVE_PROPUESTAS] = elaboracion.propuestas_de_pendientes(
+        partidas, resultado.pendientes
+    )
 
 
-def _mostrar_resultado(resultado) -> None:
+def _mostrar_resultado(parametros: dict[str, object]) -> None:
+    resultado = st.session_state.get(CLAVE_RESULTADO)
     if resultado is None:
         return
-    libro, nombre_libro = libro_excel(resultado)
-    mostrar_elaboracion(resultado, libro, nombre_libro, prefijo="elaborar")
+    libro, nombre_libro = elaboracion.libro_excel(resultado)
+    eleccion = mostrar_elaboracion(
+        resultado,
+        libro,
+        nombre_libro,
+        prefijo="elaborar",
+        propuestas=st.session_state.get(CLAVE_PROPUESTAS, ()),
+    )
+    if eleccion is None:
+        return
+    # D6: el item pendiente pasa a la partida aceptada y se vuelve a elaborar con la lista guardada.
+    pendiente, codigo_elegido = eleccion
+    st.session_state[CLAVE_ITEMS] = elaboracion.aceptar_propuesta(
+        st.session_state[CLAVE_ITEMS], pendiente, codigo_elegido
+    )
+    with st.spinner("Elaborando..."):
+        _elaborar(parametros, st.session_state[CLAVE_ITEMS])
+    st.rerun()
