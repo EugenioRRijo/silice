@@ -104,3 +104,139 @@ def test_catalogo_vacio_no_propone_sin_error(normalizador):
 def test_cuantos_acota_el_numero_de_propuestas(normalizador):
     propuestas = normalizador.similares(CATALOGO["LB-04-CON"], cuantos=1)
     assert len(propuestas) == 1 and propuestas[0].codigo == "LB-04-CON"
+
+
+# ---------------------------------------------------------------------------------------------
+# INV-081: el criterio unico de fallas para proponer partidas similares (C3, Tarea 10a)
+# ---------------------------------------------------------------------------------------------
+# Ninguna de estas pruebas carga el modelo: el extra ausente, el modelo ausente y los pesos
+# corruptos se simulan parchando `_cargar_modelo`, que el `NormalizadorPartidas` real llama desde
+# su `__init__`; la falla al consultar, con un `NormalizadorPartidas` doble en el submodulo.
+
+#: El registrador del criterio unico: la API y ui/ ya no registran sus propios avisos.
+REGISTRADOR = "ml.normalization.normalizador"
+
+#: Las cuatro fallas declaradas de UC-03, escritas aqui a mano (no se toman de la tupla que se
+#: prueba): extra ausente, modelo ausente o sin red, identificador invalido, pesos corruptos.
+FALLAS_DECLARADAS = (ImportError, OSError, ValueError, RuntimeError)
+
+
+def _que_lanza(error):
+    def _cargar_modelo(nombre):
+        raise error
+
+    return _cargar_modelo
+
+
+def _normalizador_doble(similares=None, error=None, construcciones=None):
+    """Un `NormalizadorPartidas` doble: cuenta construcciones y responde o lanza al consultar."""
+
+    class _Doble:
+        def __init__(self, partidas):
+            if construcciones is not None:
+                construcciones.append(dict(partidas))
+
+        def similares(self, descripcion):
+            if error is not None:
+                raise error
+            return list(similares or [])
+
+    return _Doble
+
+
+def _avisos(caplog):
+    return [registro for registro in caplog.records if registro.name == REGISTRADOR]
+
+
+def test_las_fallas_declaradas_son_las_cuatro_de_uc03():
+    from ml.normalization import FALLAS_DE_LA_PROPUESTA
+
+    assert set(FALLAS_DE_LA_PROPUESTA) == set(FALLAS_DECLARADAS)
+
+
+@pytest.mark.parametrize("falla", FALLAS_DECLARADAS, ids=lambda falla: falla.__name__)
+def test_una_falla_declarada_al_construir_deja_la_propuesta_vacia(falla, monkeypatch, caplog):
+    import logging
+
+    from ml.normalization import Propuesta, proponedor
+
+    monkeypatch.setattr(f"{REGISTRADOR}._cargar_modelo", _que_lanza(falla("simulada")))
+
+    with caplog.at_level(logging.WARNING, logger=REGISTRADOR):
+        propuesta = proponedor(CATALOGO)("Excavacion de un foso")
+
+    assert propuesta == Propuesta((), f"{falla.__name__}: simulada")
+    (aviso,) = _avisos(caplog)
+    assert aviso.levelno == logging.WARNING and falla.__name__ in aviso.getMessage()
+
+
+@pytest.mark.parametrize("falla", FALLAS_DECLARADAS, ids=lambda falla: falla.__name__)
+def test_una_falla_declarada_al_consultar_deja_la_propuesta_vacia(falla, monkeypatch, caplog):
+    import logging
+
+    from ml.normalization import Propuesta, proponedor
+
+    doble = _normalizador_doble(error=falla("simulada"))
+    monkeypatch.setattr(f"{REGISTRADOR}.NormalizadorPartidas", doble)
+
+    with caplog.at_level(logging.WARNING, logger=REGISTRADOR):
+        propuesta = proponedor(CATALOGO)("Excavacion de un foso")
+
+    assert propuesta == Propuesta((), f"{falla.__name__}: simulada")
+    (aviso,) = _avisos(caplog)
+    assert falla.__name__ in aviso.getMessage() and "Excavacion de un foso" in aviso.getMessage()
+
+
+def test_un_error_que_no_es_una_falla_declarada_se_propaga(monkeypatch):
+    """Solo las cuatro fallas se tratan como «sin propuestas»: un `KeyError` es un defecto."""
+    from ml.normalization import proponedor
+
+    monkeypatch.setattr(f"{REGISTRADOR}._cargar_modelo", _que_lanza(KeyError("al construir")))
+    with pytest.raises(KeyError, match="al construir"):
+        proponedor(CATALOGO)
+
+    monkeypatch.setattr(
+        f"{REGISTRADOR}.NormalizadorPartidas", _normalizador_doble(error=KeyError("al consultar"))
+    )
+    proponer = proponedor(CATALOGO)
+    with pytest.raises(KeyError, match="al consultar"):
+        proponer("Excavacion de un foso")
+
+
+def test_la_propuesta_lleva_los_similares_sin_falla(monkeypatch):
+    from ml.normalization import PartidaSimilar, Propuesta, proponedor
+
+    similar = PartidaSimilar("LB-01-EXC", CATALOGO["LB-01-EXC"], 0.91)
+    monkeypatch.setattr(f"{REGISTRADOR}.NormalizadorPartidas", _normalizador_doble([similar]))
+
+    assert proponedor(CATALOGO)("Excavacion de un foso") == Propuesta((similar,))
+
+
+def test_propuestas_para_construye_un_solo_normalizador_y_conserva_el_orden(monkeypatch):
+    """El unico emparejamiento de pendientes con propuestas (A-4): uno por llamada."""
+    from types import SimpleNamespace
+
+    from ml.normalization import PartidaSimilar, Propuesta, propuestas_para
+
+    construcciones = []
+    similar = PartidaSimilar("LB-01-EXC", CATALOGO["LB-01-EXC"], 0.91)
+    doble = _normalizador_doble([similar], construcciones=construcciones)
+    monkeypatch.setattr(f"{REGISTRADOR}.NormalizadorPartidas", doble)
+    primero = SimpleNamespace(descripcion="Foso nuevo")
+    segundo = SimpleNamespace(descripcion="Muro nuevo")
+
+    pares = propuestas_para(CATALOGO, [primero, segundo])
+
+    assert construcciones == [CATALOGO]
+    assert pares == ((primero, Propuesta((similar,))), (segundo, Propuesta((similar,))))
+
+
+def test_propuestas_para_sin_pendientes_no_construye_ninguno(monkeypatch):
+    from ml.normalization import propuestas_para
+
+    construcciones = []
+    doble = _normalizador_doble(construcciones=construcciones)
+    monkeypatch.setattr(f"{REGISTRADOR}.NormalizadorPartidas", doble)
+
+    assert propuestas_para(CATALOGO, []) == ()
+    assert construcciones == []
