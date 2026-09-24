@@ -28,7 +28,7 @@ from adapters.civil.tabular import AdaptadorCivilTabular
 from adapters.industrial.adaptador import AdaptadorIndustrial
 from adapters.sistemas.adaptador import AdaptadorSistemas
 from adapters.telecom.adaptador import AdaptadorTelecom
-from core.budget import elaborar, exportar_excel, generar_presupuesto, plan_secuencial
+from core.budget import elaborar, exportar_excel, plan_secuencial
 from core.catalog import Catalogo, abrir_sesion, crear_esquema, crear_motor
 from core.contracts import AdaptadorDominio, Dominio, ItemComputo, ParametrosCosto
 from core.verification.informe import DECIMALES_PRESENTACION
@@ -224,14 +224,6 @@ def _elaborar(parametros: dict[str, object], items: list[ItemComputo]) -> None:
             catalogo = Catalogo(sesion)
             codigos_unicos = list(dict.fromkeys(item.codigo_partida for item in items))
             composiciones = catalogo.composiciones(codigos_unicos, fecha=parametros["fecha"])
-            borrador = generar_presupuesto(
-                items,
-                composiciones,
-                ParametrosCosto(),
-                codigo=str(parametros["codigo"]),
-                fecha=parametros["fecha"],
-                moneda=str(parametros["moneda"]),
-            )
             resultado = elaborar(
                 items,
                 composiciones,
@@ -239,13 +231,13 @@ def _elaborar(parametros: dict[str, object], items: list[ItemComputo]) -> None:
                 codigo=str(parametros["codigo"]),
                 fecha=parametros["fecha"],
                 moneda=str(parametros["moneda"]),
-                plan=plan_secuencial(borrador),
+                plan=plan_secuencial,
             )
     except (LookupError, ValueError, ArithmeticError, SQLAlchemyError) as error:
         # `LookupError` (`CatalogoIncompleto`) si falta la composición de alguna partida del
-        # cómputo (por ejemplo, un dominio sin catálogo cargado); `ValueError` de
-        # `generar_presupuesto` o `plan_secuencial`; `ArithmeticError`/`SQLAlchemyError` por
-        # simetría con el mismo criterio de `ui/paginas/actualizacion.py`.
+        # cómputo (por ejemplo, un dominio sin catálogo cargado); `ValueError` (`PlanInvalido`)
+        # del plan de trabajo; `ArithmeticError`/`SQLAlchemyError` por simetría con el mismo
+        # criterio de `ui/paginas/actualizacion.py`.
         st.session_state[CLAVE_RESULTADO] = None
         st.error(str(error))
         return
