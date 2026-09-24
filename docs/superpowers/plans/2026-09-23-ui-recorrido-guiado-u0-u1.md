@@ -2177,9 +2177,11 @@ git commit -m "feat(ui): menu en dos secciones con inicio por defecto y marco co
 **Files:**
 - Modify: `ui/paginas/actualizacion.py`, `catalogo.py`, `componer.py`, `elaborar.py`,
   `escenarios.py`, `historico.py`, `similares.py`, `simulador.py`, `visor.py`
-- Modify: `tests/unit/test_ui_componer.py:21-30` (docstring, hecho 2), `:90-115` (`_pantalla`;
-  parche `:100-101`, mensaje `:106-110`); anclas vigentes sobre `58ee828` (enmienda de C3)
+- Modify: `tests/unit/test_ui_componer.py:21-30` (docstring, hecho 2), `:91-113` (`_pantalla`;
+  parche `:100-101`, mensaje `:107-111`); anclas vigentes sobre `58ee828` (enmienda de C3)
 - Modify: `tests/unit/test_ui_app.py` (agrega las pruebas del marco por pantalla)
+- Create (enmienda de C3, 11b y 11c): `ui/elaboracion.py`, `ui/resultado.py` y
+  `tests/unit/test_elaboracion.py`; el detalle, en la Tarea 6 del plan de C3
 
 **Interfaces:**
 - Consumes: `ui.caso.ruta_caso() -> Path` (Tarea 8); `ui.app.marco`, `pagina_por_ruta`,
@@ -2327,7 +2329,7 @@ archivo ya habría quedado escrito). El visor es la única pantalla que no abre 
   Tras migrar, quitar `from pathlib import Path` de las páginas donde quede sin uso (ruff lo
   señalará con `F401`).
 
-- [ ] **Step 4: Migrar el arnés de `tests/unit/test_ui_componer.py`.** En `_pantalla` (`:90-115`),
+- [ ] **Step 4: Migrar el arnés de `tests/unit/test_ui_componer.py`.** En `_pantalla` (`:91-113`),
   sustituir:
 
 ```python
@@ -2510,16 +2512,17 @@ sus pruebas; ninguna marca; guardia con código 0; suite y ruff verdes. Anotar e
   hasta que aprueben.
 
 - [ ] **Step 6: CP‑07 con dos personas — pasa a Med (GU1b), enmienda de C3; no se ejecuta en
-  C3.** Lo ejecuta Eugenio como observador, siguiendo al pie de la letra `docs/guion_prueba_arenia.md` CP‑07, un escenario por persona. Llenar la hoja de
-  registro; calcular el veredicto con el criterio declarado; **no** modificar el criterio después
-  de medir.
+  C3.** Lo ejecuta Eugenio como observador, siguiendo al pie de la letra
+  `docs/guion_prueba_arenia.md` CP‑07, un escenario por persona. Llenar la hoja de registro;
+  calcular el veredicto con el criterio declarado; **no** modificar el criterio después de medir.
 
 - [ ] **Step 7: Registrar.** **Enmienda de C3:** en C3 solo se registra en la bitácora la línea
   `**GU1a: cruzada el <fecha>.**` (con los resultados de los pasos 1 a 5); lo que sigue sobre
   CP‑07 lo hace Med (GU1b). En Med: en `docs/calidad_iso25010.md` §4 reemplazar «Veredicto:
-  pendiente de medición» de RNF‑10 por el resultado (n, perfiles, tiempos, promedios del bloque B, veredicto) y
-  actualizar su fila de §9 y la nota de vigencia con el conteo de pruebas del paso 2. En la
-  bitácora: resultados del paso 6 y la línea `**GU1b: cruzada el <fecha>. CP‑07: PASA|FALLA.**`
+  pendiente de medición» de RNF‑10 por el resultado (n, perfiles, tiempos, promedios del bloque
+  B, veredicto) y actualizar su fila de §9 y la nota de vigencia con el conteo de pruebas del
+  commit probado en Med. En la bitácora: resultados del paso 6 y la línea
+  `**GU1b: cruzada el <fecha>. CP‑07: PASA|FALLA.**`
   Si FALLA: copiar los puntos de detención a una sección «Alcance de U2» y **no** empezar U2 sin
   que Eugenio lo confirme.
 
@@ -2537,6 +2540,6 @@ git commit -m "docs(bitacora): compuerta gu1b y resultado de cp-07" -m "Co-Autho
 ## Fases U2 y U3
 
 No se detallan aquí a propósito. **U2** solo existe si CP‑07 resulta FALLA, y su alcance lo fijan
-los puntos de detención registrados en Med (GU1b; antes, Tarea 13): escribir sus tareas hoy sería inventarlas. Se
-planifica en un documento propio con la skill `superpowers:writing-plans` al cerrar GU1b (Med). **U3**
-requiere decisión expresa de Eugenio.
+los puntos de detención registrados en Med (GU1b; antes, Tarea 13): escribir sus tareas hoy
+sería inventarlas. Se planifica en un documento propio con la skill `superpowers:writing-plans` al
+cerrar GU1b (Med). **U3** requiere decisión expresa de Eugenio.

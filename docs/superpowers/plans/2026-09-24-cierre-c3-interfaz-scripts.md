@@ -60,7 +60,10 @@ Contradicen o precisan el encargo; mandan sobre el resto del plan. `git diff --s
    - pide una ruta o un control nuevos, que spec §2 llama capacidad nueva si no están en la ERS;
    - la postcondición de UC‑05 («informe persistido») choca con `guardar_presupuesto`, que exige que cada partida exista en el catálogo (`core/budget/persistencia.py:71`).
 6. **La guardia del núcleo mira las ramas fusionadas.** `scripts/meta_alpha.py:449-481` (`_ramas_adaptador`) marca FALLA si una fusión de la línea principal **agrega** un archivo bajo `adapters/` o `ml/` y el rango cambia `core/`. C3 cambia `core/`, así que **ningún commit de C3 puede agregar un archivo bajo `ml/` ni `adapters/`**. La CI corre esa guardia (`.github/workflows/ci.yml:55-71`).
-7. **La meta P8 del prototipo depende de un literal.** P8 (`scripts/meta_prototipo.py:216-223`) busca el literal `'ui.paginas.componer'` en `tests/unit/test_ui_importable.py`. La reescritura de la Tarea 10 del plan de UI lo borra, y P8 pasaría de 12/12 a FALLA (hoy 12/12, comprobado).
+7. **La meta P8 del prototipo depende de un literal.** P8 (`scripts/meta_prototipo.py:216-224`)
+   busca el literal `'ui.paginas.componer'` en `tests/unit/test_ui_importable.py`. La reescritura de
+   la Tarea 10 del plan de UI lo borra, y P8 pasaría de OK a PENDIENTE (la meta, de 12/12 a 11/12;
+   hoy 12/12, comprobado).
 8. **`tests/unit/test_guion_prueba_arenia.py:115-121` fija que CP‑07 «no es ejecutable hasta U1».** La Tarea 12 de UI debe reescribirla a propósito.
 9. **El paso 7 de la Tarea 6 de UI (qué hacer con `UI-01-TUB` en `.claude/worktrees/prototipo/data/apu.db`) no constaba decidido** en ninguna bitácora de C1. Resuelto por D7 = (b): base sucia de un worktree retirado; no se ejecuta nada sobre ella.
 10. **INV‑052 exige editar archivos protegidos:** `tests/integration/test_composicion_extremo_a_extremo.py`, que el plan de UI declara intocable, y `tests/integration/test_auditoria_7_de_7.py`, del conjunto de la línea base. Solo se mueven ayudas, sin tocar aserciones. La Tarea 1 enmienda la restricción.
@@ -204,7 +207,9 @@ uv run pytest -W error --strict-markers -q -p no:cacheprovider --junitxml=report
 
 ### Anclas del plan de UI, refrescadas contra `dd5a13a` (vigentes en `58ee828`)
 
-C1 y C2 cambiaron `ui/` al migrar `elaborar` (INV‑069) y en `componer.py`. `main` no toca `ui/` después de `f1dda36`, y entre `dd5a13a` y `58ee828` no cambió ningún archivo de código. La Tarea 0, paso 2, las vuelve a comprobar.
+C1 cambió `ui/` (`bdf7859`, INV‑069: `elaborar.py` y `componer.py`); C2 no la tocó. `main` no toca
+`ui/` después de `f1dda36`, y entre `dd5a13a` y `58ee828` no cambió ningún archivo de código. La
+Tarea 0, paso 2, las vuelve a comprobar.
 
 | Plan de UI | Ancla vieja | Ancla vigente |
 |---|---|---|
@@ -217,13 +222,13 @@ C1 y C2 cambiaron `ui/` al migrar `elaborar` (INV‑069) y en `componer.py`. `ma
 | T11 `elaborar.py` | `:98-99` | `:98-99` (`:37-38`, `:54`; diccionario `:110`) |
 | T11 `simulador.py` | `:50-51` | `:50-51` (`:24-25`, `:32`) |
 | T11 `visor.py` | — | `TITULO` `:49`, `st.title` `:76` |
-| T11 `test_ui_componer.py` | `:14-30`, `:92-112` | docstring, hecho 2: **`:21-30`**; `_pantalla`: **`:90-115`** (parche `:100-101`, mensaje `:106-110`) |
+| T11 `test_ui_componer.py` | `:14-30`, `:92-112` | docstring, hecho 2: **`:21-30`**; `_pantalla`: **`:91-113`** (parche `:100-101`, mensaje `:107-111`) |
 | T10 `ui/app.py` | todo salvo `modo_entrega_activo` | vigente (`:1-135`; `modo_entrega_activo` `:104-112`) |
 | T10 `test_ui_app.py` | reescritura | vigente: hoy 7 funciones (`:44`, `:49`, `:54`, `:60`, `:88`, `:94`, `:99`); `_aplicacion` `:80-85` (INV‑022) |
 | T12 `manual_usuario.md` | `:99` | **tabla `:97-105`**; `:44`, `:174`, `:260`, `:290` |
 | T12 `guion_prueba_arenia.md` | `:3`, `:73` | `:3`; preparación §4 **`:38-110`**; CP‑07 `:394-533`; «Archivo SQLite» en `:98`, `:133`, `:200`, `:211`, `:277`, `:316`, `:365` |
 | INV‑043 | `componer.py:29,32,55,111-193,639-665,682-834` | `:29`, `:32`, `:54` (`calcular_apu`), `:110-192`, `:638-670` (`_guardar`), `:673-862` (orquestación UC‑01) |
-| INV‑045 | `componer.py:56-57,471-476,521-553,668-670,848` | `:470-475`, `:520-556`, `:667-670`, `:848` |
+| INV‑045 | `componer.py:56-57,471-476,521-553,668-670,848` | `:55-56` (importaciones), `:470-475`, `:514-558`, `:667-670`, `:848` |
 | INV‑046 | `componer.py:752-762` | `:751-761` (`_celda_de_cantidad`); `ui/composicion.py:68-81` (`_texto`) |
 | INV‑072 | `elaborar.py:225-226`; `componer.py:798-800` | `elaborar.py:225-226`; `componer.py:798-800` |
 | INV‑081 | `api:352-391`; `ui/composicion.py:618-623`; `similares.py:80-88` | vigentes |
@@ -402,11 +407,12 @@ El orden obligado: B se fusiona **antes** de 11 (paso 8), 12 (ui y documentos) y
 
 - [ ] **Step 1: Rama, base y estado**
 
-Run: `git rev-parse --abbrev-ref HEAD && git merge-base --is-ancestor main HEAD && echo base-ok && git log --oneline -4 main && git status --short && (ls data/*.db 2>/dev/null || echo "sin bases locales") && git worktree list && git merge-base --is-ancestor inc/tesis-cap4 main && echo cap4-en-main && git tag --points-at 241fa45`
+Run: `git rev-parse --abbrev-ref HEAD && git merge-base --is-ancestor main HEAD && echo base-ok && git log --oneline -4 main && git status --short && (ls data/*.db 2>/dev/null || echo "sin bases locales") && git worktree list && git merge-base --is-ancestor inc/tesis-cap4 main && echo cap4-en-main && git tag --points-at 58ee828`
 
 Expected:
 - `inc/cierre-C3`, `base-ok` y `cap4-en-main`.
-- En el log, `58ee828 merge: cierre c2 adaptadores ml y api (#13)` en la cabeza de `main`, y `gc2` como etiqueta de `241fa45`.
+- En el log, `58ee828 merge: cierre c2 adaptadores ml y api (#13)` en la cabeza de `main`, y `gc2`
+  como etiqueta de `58ee828`.
 - `git status --short` sin más que este plan sin versionar (`?? docs/superpowers/plans/2026-09-24-cierre-c3-interfaz-scripts.md`).
 - Anotar si `data/apu.db` existe y su fecha de modificación.
 - Anotar los worktrees vivos; al planificar son cuatro (el checkout principal, `cierre-C3`, `prototipo` y `ui`). **No se borra ninguno**: lo decide Eugenio. Sobre `prototipo` no se ejecuta nada (D7).
@@ -469,7 +475,9 @@ Expected: 12/12, 12/12 y OK. Anotarlo.
   - (d) **Mapa de archivos.** La fila 6 pasa a «hecha en C1». La fila 11 suma `ui/elaboracion.py`, `ui/resultado.py`, `ui/composicion.py` y `tests/unit/test_arquitectura.py`. La fila 13 pasa a «Compuerta GU1a; CP‑07 en Med».
   - (e) **Tarea 6.** Encabezado `(hecha en C1: 9f6b72b, 10e3a10; paso 7 decidido en C3: D7 = (b))` y casillas marcadas, incluida la 7, con la nota «base sucia de un worktree retirado; no se ejecuta nada sobre ella».
   - (f) **Tarea 10.** Sumar los pasos de INV‑022, INV‑023 y P8 (Tarea 5 de este plan) y refrescar anclas.
-  - (g) **Tarea 11.** La tabla del paso 3 con las anclas vigentes y el paso 4 con `:90-115`. Pasos nuevos 8 a 12: la extracción de INV‑043 (11b y 11c, D5 = A), que remiten a la Tarea 6 de este plan. La frase de GC0: «esa extracción la hace la Tarea 11 y nadie más».
+  - (g) **Tarea 11.** La tabla del paso 3 con las anclas vigentes y el paso 4 con `:91-113`. Pasos
+    nuevos 8 a 12: la extracción de INV‑043 (11b y 11c, D5 = A), que remiten a la Tarea 6 de este
+    plan. La frase de GC0: «esa extracción la hace la Tarea 11 y nadie más».
   - (h) **Tarea 12.** Anclas: manual `:97-105`; guion `:38-110` y `:394-533`. Paso nuevo: reescribir a propósito `test_cp07_se_declara_no_ejecutable_hasta_u1`, y conservar la corrección de INV‑065 (nunca volver a `data/apu.db`).
   - (i) **Tarea 13** pasa a «Compuerta GU1a».
     - El paso 2 remite al criterio de `core/` de la Tarea 18, paso 3 (dos commits).
