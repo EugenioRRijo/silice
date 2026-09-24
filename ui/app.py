@@ -12,6 +12,14 @@ El paso siguiente lo pinta el marco, no las paginas: `st.switch_page` necesita e
 destino, que solo existe dentro de `main()`, y una pagina que importara `ui.app` para obtenerlo
 crearia un ciclo. El grafo queda `ui.app -> ui.paginas.* -> ui.caso -> core.catalog`, aciclico.
 
+Debajo de las paginas hay una capa sin pantalla (INV-043, fase C3): `ui.elaboracion` orquesta
+«cantidades -> elaborar -> exportar» y guarda composiciones sin confirmar (sin Streamlit);
+`ui.composicion` convierte tablas en el contrato y calcula el desglose (puro, no escribe en la
+base); y `ui.resultado` es el fragmento de Streamlit que pinta un presupuesto elaborado. El grafo
+sigue aciclico: `ui.paginas.* -> ui.elaboracion -> ui.composicion -> core.costing`, y
+`ui.paginas.* -> ui.resultado`. Lo que cada una no importa lo fija
+`tests/unit/test_arquitectura.py::test_ui_respeta_sus_importaciones_prohibidas`.
+
 Cada pagina expone `def render() -> None` sin efectos al importarse. Este modulo tampoco construye
 objetos de Streamlit al importarse: `st.Page` y `st.navigation` solo dentro de `main()`, que corre
 cuando la app se ejecuta de verdad (`if __name__ == "__main__"`); lo comprueba
