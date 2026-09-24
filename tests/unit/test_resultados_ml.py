@@ -16,11 +16,12 @@ import pytest
 pytest.importorskip("sklearn")  # scripts/generar_resultados_ml.py importa ml (extra `ml`)
 
 
-def _informe() -> str:
+def _informe(conteos: dict[str, int] | None = None) -> str:
     from ml.prediction import PrediccionPrecio, contrastar_aace, metricas
     from scripts.generar_resultados_ml import generar_informe
 
-    conteos = {"civil": 5, "telecom": 0, "industrial": 0, "sistemas": 0}
+    if conteos is None:
+        conteos = {"civil": 5, "telecom": 0, "industrial": 0, "sistemas": 0}
     estimados = {"LB-04-CON": Decimal("279.04")}
     reales = {"LB-04-CON": Decimal("272.81")}
     predicciones = [
@@ -74,3 +75,14 @@ def test_el_informe_tabula_las_predicciones_con_su_rango():
     assert "LB-04-CON" in informe
     assert "279.04" in informe  # estimado
     assert "266.90" in informe and "291.17" in informe  # rango de sensibilidad
+
+
+def test_con_un_dominio_en_el_umbral_el_informe_no_afirma_que_todos_estan_por_debajo():
+    """INV-079: el parrafo de G2 se deriva de los conteos. Con telecom en 50 registros (el umbral de
+    CLAUDE.md §8.1, que ya dicta razonamiento basado en casos) no puede afirmar que todos los
+    dominios estan por debajo de 50 ni declarar la tecnica de reglas como la que dicta la tabla."""
+    informe = _informe({"civil": 5, "telecom": 50, "industrial": 4, "sistemas": 9})
+
+    assert "| telecom | 50 | casos |" in informe  # oraculo a mano desde la tabla de §8.1
+    assert "Todos los dominios estan por debajo" not in informe
+    assert "Al menos un dominio alcanza los 50 registros" in informe
