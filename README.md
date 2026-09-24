@@ -27,7 +27,7 @@ uv sync                                   # crea .venv e instala dependencias ba
 uv run pytest                             # suite de pruebas
 uv run ruff check .                       # estilo
 uv run python scripts/seed.py             # carga la línea base en data/apu.db (idempotente; recrear: --reiniciar --confirmar)
-# ^ sobre la base por defecto, --reiniciar exige --confirmar; con --db <ruta> basta --reiniciar
+# ^ sobre la base por defecto, --reiniciar exige --confirmar; con --db hacia otra ruta basta --reiniciar
 # ^ si su data/apu.db es anterior a P2, añada la columna `modalidad` con ALTER TABLE o use --reiniciar --confirmar (docs/bitacora/2026-09-20-P2-hallazgo-migraciones.md)
 uv run python scripts/meta_alpha.py       # estado de las 12 metas del sprint alpha (OK/FALLA/PENDIENTE)
 uv sync --extra ui                        # instala Streamlit

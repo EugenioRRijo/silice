@@ -2,13 +2,16 @@
 
 Cada archivo `.py` de esta carpeta tiene su fila aquí, salvo `__init__.py`, que es el paquete y se
 documenta en su propio docstring. Lo vigila `tests/unit/test_scripts_documentados.py` (INV‑051).
-Todos se ejecutan desde la raíz del repositorio con `uv run python scripts/<nombre>.py`; el detalle
-de sus opciones está en el docstring de cada uno.
+Se ejecutan desde la raíz del repositorio con `uv run python scripts/<nombre>.py`, salvo los que
+piden algo más: `--with pymupdf` (`extraer_maprex.py`, `extraer_arenaza.py`) o el extra `civil`
+(`generar_tanquilla_ifc.py`, `uv sync --extra civil`). El detalle de sus opciones está en el
+docstring de cada uno.
 
 ## Siembra de bases SQLite
 
 `--db <ruta>` elige otra base y `--reiniciar` borra el esquema antes de recrearlo. Sobre la ruta
-por defecto, `--reiniciar` exige además `--confirmar` (INV‑050).
+por defecto, `--reiniciar` exige además `--confirmar` (INV‑050), también si esa ruta se
+escribe con `--db`; con `--db` hacia otra ruta basta `--reiniciar`.
 
 | Script | Qué hace | Sesión o dominio |
 |---|---|---|
@@ -24,9 +27,9 @@ por defecto, `--reiniciar` exige además `--confirmar` (INV‑050).
 |---|---|---|
 | `extraer_maprex.py` | extrae de los tres listados MaPreX de julio de 2026 las referencias de precios por dominio en `data/precios/maprex_2026-07/` (necesita `--with pymupdf`) | M0.2 · todos |
 | `lista_maprex_usd.py` | deriva, de las cuatro referencias MaPreX por dominio, la lista de precios en el formato canónico de UC‑02 (`tipo,insumo,unidad,precio`) | UC‑02 · todos |
-| `extraer_arenaza.py` | genera y verifica contra los PDF los dos CSV de presupuestos ARENAZA en `data/telecom/fuentes/` | M1.1 · telecom |
+| `extraer_arenaza.py` | genera y verifica contra los PDF los dos CSV de presupuestos ARENAZA en `data/telecom/fuentes/` (necesita `--with pymupdf`) | M1.1 · telecom |
 | `derivar_listas_telecom.py` | deriva las dos listas de precios canónicas de UC‑02 del dominio telecom (ARENAZA y MaPreX) | M1.3 · telecom |
-| `generar_tanquilla_ifc.py` | genera `data/samples/tanquilla.ifc`, el modelo IFC de muestra de la compuerta G1 | I3.1 · civil |
+| `generar_tanquilla_ifc.py` | genera `data/samples/tanquilla.ifc`, el modelo IFC de muestra de la compuerta G1 (necesita el extra `civil`) | I3.1 · civil |
 
 ## Simulación y medición
 
@@ -43,7 +46,7 @@ La CI los regenera y los compara con `git diff --exit-code`.
 | Script | Qué hace | Sesión o dominio |
 |---|---|---|
 | `exportar_openapi.py` | exporta el esquema OpenAPI de la aplicación FastAPI a `docs/api.json` | F.1 · api |
-| `generar_resultados_ml.py` | genera `docs/resultados_ml.md`: compuerta G2 y métricas del módulo predictivo (RF‑28) | I6 · ml |
+| `generar_resultados_ml.py` | genera `docs/resultados_ml.md`: compuerta G2 y métricas del módulo predictivo (RF‑28) | I6.3 y M4.1 · ml |
 
 ## Guardias de la CI
 
