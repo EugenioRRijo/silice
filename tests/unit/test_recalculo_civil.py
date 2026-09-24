@@ -153,6 +153,16 @@ def test_2b_una_cantidad_nula_se_rechaza_y_conserva_la_anterior():
 
     assert recalculo.items == tuple(anteriores)
     assert recalculo.rechazados == de_la_tanquilla
+    resultado = elaborar(
+        recalculo.items,
+        composiciones_linea_base(),
+        linea_base.PARAMETROS_LINEA_BASE,
+        codigo="UC04-2B-NULA",
+        fecha=linea_base.FECHA_LINEA_BASE,
+        moneda=linea_base.MONEDA,
+        plan=plan_secuencial,
+    )
+    assert not [h for h in resultado.informe.hallazgos if h.regla == "R5"]
 
 
 def test_2b_un_relleno_negativo_se_rechaza_y_r5_lo_declara():

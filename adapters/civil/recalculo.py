@@ -15,7 +15,8 @@ lleva (RF‑18, RF‑19). Los flujos alternativos de `docs/ERS.md` (UC‑04):
   al auditar, y **solo cuando el rechazado es el relleno**: el relleno conservado deja de cuadrar
   con su directiva de balance. Si el rechazado es otro ítem (la tanquilla con `n = 0`), conserva su
   cantidad anterior, el relleno se rebalancea con ella y R5 cuadra: el rechazo se informa solo en
-  `Recalculo.rechazados`.
+  `Recalculo.rechazados`. El rechazo es por ítem, no por objeto: si una regla del objeto da una
+  cantidad válida y otra no, solo el ítem de la inválida conserva su valor anterior.
 
 El paso 5 (RF‑20, el diferencial) no está implementado: se declaró en limitaciones en C1.
 
