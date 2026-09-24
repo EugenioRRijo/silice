@@ -52,8 +52,8 @@ _UNARIOS = (ast.UAdd, ast.USub)
 def evaluar(expresion: str, valores: Mapping[str, Decimal]) -> Decimal:
     """Evalúa `expresion` con `valores` y devuelve un `Decimal` exacto.
 
-    Lanza `ExpresionInvalida` ante cualquier construcción no aritmética y `ParametroFaltante` si
-    la expresión usa un nombre que no está en `valores`.
+    Lanza `ExpresionInvalida` ante cualquier construcción no aritmética o si un parámetro usado no
+    es `Decimal`, y `ParametroFaltante` si la expresión usa un nombre que no está en `valores`.
     """
     return _evaluar_nodo(_analizar(expresion).body, expresion, valores)
 
@@ -111,7 +111,15 @@ def _evaluar_nodo(nodo: ast.AST, fuente: str, valores: Mapping[str, Decimal]) ->
     if isinstance(nodo, ast.Name):
         if nodo.id not in valores:
             raise ParametroFaltante(nodo.id)
-        return valores[nodo.id]
+        valor = valores[nodo.id]
+        if not isinstance(valor, Decimal):
+            # Un `float` en los parámetros haría fallar la aritmética (o la comparación posterior
+            # de R1) con `TypeError`, fuera del alcance de las reglas: el informe no se emitiría
+            # (principio 7 de CLAUDE.md §2). Aquí se convierte en un dato inválido reportable.
+            raise ExpresionInvalida(
+                f"el parametro {nodo.id!r} no es Decimal sino {type(valor).__name__}"
+            )
+        return valor
     if isinstance(nodo, ast.Constant):
         return _evaluar_constante(nodo, fuente)
     raise ExpresionInvalida(f"nodo no permitido en una expresion trazable: {type(nodo).__name__}")

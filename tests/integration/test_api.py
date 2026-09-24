@@ -2,10 +2,15 @@
 
 from __future__ import annotations
 
+from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
+
+from tests.fixtures import apu_linea_base as linea_base
+from tests.fixtures.actualizacion_uc02 import INCREMENTO_TOTAL
+from tests.fixtures.computo_civil import CODIGOS as CODIGOS_CIVIL
 
 RAIZ = Path(__file__).resolve().parents[2]
 MUESTRA_PRECIOS = RAIZ / "data" / "samples" / "precios" / "lista_2026-06-01.csv"
@@ -31,7 +36,7 @@ def test_partidas_lista_las_cinco_de_la_linea_base(cliente):
     r = cliente.get("/partidas")
     assert r.status_code == 200
     codigos = {p["codigo"] for p in r.json()}
-    assert {"LB-01-EXC", "LB-02-TUB", "LB-03-ENC", "LB-04-CON", "LB-05-REL"} <= codigos
+    assert set(linea_base.CODIGOS_LINEA_BASE) <= codigos
 
 
 def test_insumos_traen_precio_vigente_como_texto(cliente):
@@ -74,20 +79,13 @@ def _items_payload():
 
 def test_computo_civil_desde_la_muestra(cliente):
     ruta = RAIZ / "data" / "samples" / "civil" / "tanquillas_y_zanja.csv"
-    codigos = {
-        "excavacion": "LB-01-EXC",
-        "tuberia": "LB-02-TUB",
-        "encofrado": "LB-03-ENC",
-        "concreto": "LB-04-CON",
-        "relleno": "LB-05-REL",
-    }
     import json
 
     with ruta.open("rb") as f:
         r = cliente.post(
             "/computos/civil",
             files={"archivo": (ruta.name, f, "text/csv")},
-            data={"codigos": json.dumps(codigos)},
+            data={"codigos": json.dumps(CODIGOS_CIVIL)},
         )
     assert r.status_code == 200 and len(r.json()) == 6
     assert all(i["origen_id"] for i in r.json())
@@ -105,10 +103,11 @@ def test_elaborar_presupuesto_por_http_reproduce_el_total_auditado(cliente):
         },
     )
     assert r.status_code == 201
-    assert r.json()["total"] == "1586.61"  # texto exacto
+    assert r.json()["total"] == str(linea_base.TOTAL_PRESUPUESTO_AUDITADO)  # texto exacto
     assert r.json()["hallazgos"] >= 7  # audita siempre
     detalle = cliente.get("/presupuestos/API-001").json()
-    assert detalle["total"] == "1586.61" and len(detalle["partidas"]) == 5
+    assert detalle["total"] == str(linea_base.TOTAL_PRESUPUESTO_AUDITADO)
+    assert len(detalle["partidas"]) == len(linea_base.PRESUPUESTO_AUDITADO)
     assert "Informe" in cliente.get("/presupuestos/API-001/informe").text
     assert cliente.get("/presupuestos/API-001/excel").content[:2] == b"PK"
 
@@ -135,9 +134,10 @@ def test_actualizacion_por_http_solo_revalora_el_concreto(cliente):
     )
     assert r.status_code == 200
     cuerpo = r.json()
-    assert cuerpo["total_nuevo"] == "1636.70"
+    total_nuevo = linea_base.TOTAL_EXACTO_LINEA_BASE + INCREMENTO_TOTAL
+    assert cuerpo["total_nuevo"] == str(total_nuevo.quantize(Decimal("0.01"), ROUND_HALF_UP))
     filas = {f["codigo_partida"]: f for f in cuerpo["filas"]}
-    assert filas["LB-04-CON"]["variacion_pct"] != "0"
+    assert filas[linea_base.APU_CONCRETO.codigo_partida]["variacion_pct"] != "0"
     assert sum(1 for f in cuerpo["filas"] if f["variacion_pct"] not in ("0", "0.00")) == 1
 
 
@@ -253,7 +253,8 @@ def test_codigo_de_presupuesto_repetido_en_dos_proyectos_no_revienta_en_500(clie
 
     # Con 'proyecto': cada ruta resuelve sin ambiguedad, sobre el proyecto indicado.
     detalle = cliente.get("/presupuestos/COL-001", params={"proyecto": "Segundo proyecto"})
-    assert detalle.status_code == 200 and detalle.json()["total"] == "1586.61"
+    assert detalle.status_code == 200
+    assert detalle.json()["total"] == str(linea_base.TOTAL_PRESUPUESTO_AUDITADO)
     assert (
         cliente.get(
             "/presupuestos/COL-001/informe", params={"proyecto": "Drenaje de la clínica"}
@@ -335,6 +336,7 @@ def test_computo_civil_desde_un_modelo_ifc(cliente):
     assert r.status_code == 200
     items = r.json()
     assert len(items) == 1
-    assert items[0]["cantidad"] == "0.224"
-    assert items[0]["codigo_partida"] == "LB-04-CON"
+    concreto = linea_base.APU_CONCRETO.codigo_partida
+    assert items[0]["cantidad"] == str(linea_base.CANTIDAD_POR_TANQUILLA_MEMORIA[concreto])
+    assert items[0]["codigo_partida"] == concreto
     assert items[0]["origen_tipo"] == "ifc"

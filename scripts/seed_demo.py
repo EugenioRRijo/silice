@@ -83,7 +83,6 @@ from core import models  # noqa: E402
 from core.budget import (  # noqa: E402
     ResultadoElaboracion,
     elaborar,
-    generar_presupuesto,
     guardar_presupuesto,
     plan_secuencial,
 )
@@ -169,8 +168,8 @@ CONDICIONES_DEMO: dict[str, str] = {
 class CasoDemo:
     """Empaqueta el caso completo: composiciones, cantidades de obra y como presupuestarlas.
 
-    `composiciones` y `items` viajan emparejados por `codigo_partida`: `generar_presupuesto` (y
-    `elaborar`, que ademas encurva y audita siempre) los consume directo, sin transformacion.
+    `composiciones` y `items` viajan emparejados por `codigo_partida`: `elaborar` los consume
+    directo (encurva y audita siempre), sin transformacion.
     """
 
     composiciones: tuple[ComposicionAPU, ...]
@@ -342,14 +341,6 @@ def elaborar_caso_demo(caso: CasoDemo) -> ResultadoElaboracion:
     `guardar_presupuesto_demo` y `tests/integration/test_seed_demo.py`.
     """
     composiciones_por_codigo = {apu.codigo_partida: apu for apu in caso.composiciones}
-    borrador = generar_presupuesto(
-        caso.items,
-        composiciones_por_codigo,
-        caso.parametros,
-        codigo=caso.codigo_presupuesto,
-        fecha=caso.fecha,
-        moneda=caso.moneda,
-    )
     return elaborar(
         caso.items,
         composiciones_por_codigo,
@@ -357,7 +348,7 @@ def elaborar_caso_demo(caso: CasoDemo) -> ResultadoElaboracion:
         codigo=caso.codigo_presupuesto,
         fecha=caso.fecha,
         moneda=caso.moneda,
-        plan=plan_secuencial(borrador),
+        plan=plan_secuencial,
     )
 
 

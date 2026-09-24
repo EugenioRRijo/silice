@@ -13,6 +13,7 @@ from __future__ import annotations
 
 from core.contracts import Severidad
 from core.verification import auditar
+from core.verification.reglas import NO_APLICABLE
 from tests.fixtures.apu_linea_base import HALLAZGOS_ADICIONALES, INCONSISTENCIAS
 from tests.fixtures.presupuesto_auditado import (
     presupuesto_con_siete_inconsistencias,
@@ -52,8 +53,9 @@ def test_detecta_los_hallazgos_adicionales_8_y_9():
 
 
 def test_todo_hallazgo_de_partida_referencia_un_origen_trazable():
-    """Trazabilidad total (CLAUDE.md §2.6): salvo el cierre de la curva, que es una propiedad del
-    presupuesto completo, todo hallazgo referencia orígenes que el informe sabe atribuir.
+    """Trazabilidad total (CLAUDE.md §2.6): salvo el cierre de la curva y la declaración de R7 no
+    aplicable (INV‑012), que son propiedades del presupuesto completo, todo hallazgo referencia
+    orígenes que el informe sabe atribuir.
     """
     presupuesto = presupuesto_con_siete_inconsistencias()
     informe = auditar(presupuesto)
@@ -61,6 +63,14 @@ def test_todo_hallazgo_de_partida_referencia_un_origen_trazable():
 
     for hallazgo in informe.hallazgos:
         if hallazgo.regla == "R2":
+            continue
+        # Salto defensivo: el fixture trae curva, así que R7 no entra hoy en la rama «no
+        # aplicable». Se conserva para que la prueba no dependa de ese detalle del fixture.
+        if (
+            hallazgo.regla == "R7"
+            and NO_APLICABLE in hallazgo.descripcion
+            and hallazgo.severidad is Severidad.INFO
+        ):
             continue
         assert hallazgo.origen_ids, hallazgo.descripcion
         assert informe.partida_de(hallazgo) in codigos, hallazgo.descripcion

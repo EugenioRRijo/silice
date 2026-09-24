@@ -187,8 +187,11 @@ def test_protocolo_ausente_pendiente():
 
 
 def test_guardia_de_arquitectura_segun_la_tupla_vigilada():
-    actual = 'PAQUETES_FUERA_DEL_NUCLEO = ("adapters", "ml", "ui", "api")'
-    ampliada = 'PAQUETES_FUERA_DEL_NUCLEO = ("adapters", "ml", "ui", "api", "asistente")'
+    actual = 'PAQUETES_FUERA_DEL_NUCLEO = ("adapters", "ml", "ui", "api", "scripts", "tests")'
+    ampliada = (
+        'PAQUETES_FUERA_DEL_NUCLEO = ("adapters", "ml", "ui", "api", "scripts", "tests", '
+        '"asistente")'
+    )
 
     assert meta.evaluar_guardia_arquitectura(actual)[0] is Estado.PENDIENTE
     assert meta.evaluar_guardia_arquitectura(ampliada)[0] is Estado.OK

@@ -1,7 +1,8 @@
-from decimal import Decimal
 from pathlib import Path
 
 import pytest
+
+from tests.fixtures import apu_linea_base as linea_base
 
 pytest.importorskip("ifcopenshell")
 
@@ -15,8 +16,10 @@ def test_g1_lo_extraido_coincide_con_el_calculo_manual():
     items = AdaptadorCivilIFC().extraer(MUESTRA)
     assert len(items) == 1
     item = items[0]
-    assert item.cantidad == Decimal("0.224")  # (0.8^2 - 0.6^2) * 0.8, calculo manual
-    assert item.unidad == "m3" and item.codigo_partida == "LB-04-CON"
+    concreto = linea_base.APU_CONCRETO.codigo_partida
+    # (0.8^2 - 0.6^2) * 0.8: la memoria de calculo de la linea base, por tanquilla
+    assert item.cantidad == linea_base.CANTIDAD_POR_TANQUILLA_MEMORIA[concreto]
+    assert item.unidad == "m3" and item.codigo_partida == concreto
     assert item.origen_tipo.value == "ifc" and len(item.origen_id) == 22  # GlobalId IFC
 
 

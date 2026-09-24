@@ -8,7 +8,8 @@ RF citados viven una sola vez en la [ERS](ERS.md) y aquí no se repiten.
 
 ## 1. Identificador y alcance
 
-- **Identificador:** GP‑ARENIA‑001, versión de la Sesión P4.2 (2026‑09‑21).
+- **Identificador:** GP‑ARENIA‑001, versión de la Sesión P4.2 (2026‑09‑21), corregida en la fase C1
+  del cierre (INV‑065: la prueba trabaja sobre su propia base, nunca sobre `data/apu.db`).
 - **Alcance:** el recorrido completo de la pantalla de componer: componer una partida desde cero con
   la referencia MaPreX, editarla, una línea de mano de obra a destajo, la advertencia de rendimiento
   fuera de rango, la exportación a Excel y la lectura del informe de auditoría.
@@ -39,28 +40,48 @@ que se compone en este guion es, igualmente, un caso de prueba.
 **Requisitos:** la copia del repositorio, `uv` instalado y un navegador. Los resultados esperados se
 obtuvieron en Windows 11 con Python 3.13 y Streamlit 1.62.0.
 
-> **Atención: `--reiniciar` borra la base de datos** antes de sembrarla de nuevo. Úselo sobre una
-> base de prueba, **nunca sobre una base con trabajo propio**. Si su `data/apu.db` tiene trabajo que
-> quiere conservar, siga la variante con otra base (paso 2b).
+> **Esta prueba trabaja sobre su propia base, `data/prueba_arenia.db`, y nunca sobre
+> `data/apu.db`**, la base de trabajo de la aplicación. La siembra con `--reiniciar` borra la base
+> que se le indica antes de volver a sembrarla: por eso toda orden de este guion lleva
+> `--db data/prueba_arenia.db`, y cada caso le recuerda escribir esa base en la barra lateral.
 
-1. En una terminal, en la carpeta del repositorio, instale las dependencias de la interfaz y del
-   aprendizaje automático:
+**Antes de empezar (protección de la base de trabajo).** Anote en la sección 8 si existe
+`data/apu.db` **en esta copia de trabajo** (la carpeta del repositorio en la que está parado ahora,
+no la copia desechable del paso 1) y, si existe, su fecha y hora de modificación. En PowerShell:
+`Get-Item data/apu.db | Select-Object LastWriteTime`; en bash: `ls -l --time-style=full-iso data/apu.db`.
+Si no existe, anote «no existe».
+
+1. **Cree una copia desechable del repositorio y trabaje sobre ella, nunca sobre esta copia de
+   trabajo.** Hasta que la Tarea 12 de U1 (fase C3, con `ARENIA_CASO` leído por `ui/caso.py`)
+   reemplace esta barrera, la aplicación abre `data/apu.db` de la carpeta desde la que se ejecuta en
+   el primer renderizado de cada página —antes de que se pueda escribir ninguna otra ruta—, así que
+   solo ejecutar la prueba fuera de esta copia de trabajo evita tocar su `data/apu.db`. Desde la raíz
+   del repositorio:
 
    ```
+   git worktree add ../tesis-prueba-manual HEAD
+   cd ../tesis-prueba-manual
    uv sync --extra ui --extra ml
    ```
 
+   Ejecute el resto de esta sección y los casos CP‑01…CP‑06 **dentro de `../tesis-prueba-manual`**.
+   Al terminar toda la prueba (después del paso «Al terminar la prueba», más abajo), vuelva a la
+   copia de trabajo original y borre la copia desechable:
+
+   ```
+   git worktree remove ../tesis-prueba-manual
+   ```
+
 2. Siembre la base de prueba (línea base de la clínica, las tres partidas de demostración y el
-   presupuesto de ejemplo `DEMO-001`):
+   presupuesto de ejemplo `DEMO-001`) en su propio archivo:
 
    ```
-   uv run python scripts/seed_demo.py --reiniciar
+   uv run python scripts/seed_demo.py --db data/prueba_arenia.db --reiniciar
    ```
 
-   **2b (variante con otra base).** `uv run python scripts/seed_demo.py --db data/prueba_arenia.db
-   --reiniciar`. En ese caso, en cada página que abra (y después de cada recarga con F5), escriba
-   `data/prueba_arenia.db` en el campo **Archivo SQLite** de la barra lateral: el campo vuelve a
-   `data/apu.db` cada vez que la página se recarga.
+   `--reiniciar` borra `data/prueba_arenia.db` antes de sembrarla, de modo que cada repetición
+   empieza de la misma base. **No ejecute nunca la orden sin `--db`:** sin esa opción apunta a
+   `data/apu.db`.
 
    **Comprobación de la preparación.** Al terminar, la terminal debe mostrar, entre otras, estas
    líneas: `Partida: 8`, `Total: 4131.10 USD` y `Auditoria: 3 hallazgo(s), CUMPLE`. Si no aparecen,
@@ -74,8 +95,18 @@ obtuvieron en Windows 11 con Python 3.13 y Streamlit 1.62.0.
 
    Se abre el navegador. En el menú lateral, elija **Componer partida (UC-10 / UC-11)**.
 
+   En la barra lateral, escriba `data/prueba_arenia.db` en el campo **Archivo SQLite** y pulse
+   Enter. **El campo vuelve a `data/apu.db` cada vez que se recarga la página (F5) o se abre otra
+   pestaña**: cada caso le indica cuándo escribirlo de nuevo.
+
 **Orden de ejecución.** Los casos se ejecutan en orden, de CP‑01 a CP‑06, sobre una base recién
 sembrada: CP‑02 y CP‑03 continúan donde terminó CP‑01. Si repite la prueba, vuelva al paso 2.
+
+**Al terminar la prueba.** Vuelva a la copia de trabajo original (`cd` fuera de
+`../tesis-prueba-manual`) y repita allí la comprobación de «Antes de empezar»; anótela en la sección
+8: `data/apu.db` **de esta copia de trabajo** debe seguir igual que al empezar (o seguir sin
+existir). Si cambió, la ejecución es **FALLA** aunque todos los casos hayan pasado: la prueba tocó la
+base de trabajo. Por último, borre la copia desechable (paso 1).
 
 ## 5. Cómo leer los números y cómo anotar
 
@@ -99,7 +130,7 @@ sembrada: CP‑02 y CP‑03 continúan donde terminó CP‑01. Si repite la prue
   precio unitario en vivo, antes de guardar.
 - **Trazabilidad:** UC‑10; RF‑01, RF‑33, RF‑35.
 - **Precondición:** base recién sembrada (sección 4) y la página *Componer partida* abierta, con las
-  tablas vacías.
+  tablas vacías y `data/prueba_arenia.db` escrita en el campo **Archivo SQLite** de la barra lateral.
 
 **Pasos**
 
@@ -165,7 +196,8 @@ sembrada: CP‑02 y CP‑03 continúan donde terminó CP‑01. Si repite la prue
 - **Objetivo:** guardar de nuevo la misma partida con otro rendimiento y comprobar que se edita, no
   se duplica, y que el historial de rendimientos gana una observación.
 - **Trazabilidad:** UC‑11; RF‑26, RF‑27, RF‑33.
-- **Precondición:** CP‑01 terminado con PASA, en la misma pestaña y sin recargar la página.
+- **Precondición:** CP‑01 terminado con PASA, en la misma pestaña y sin recargar la página: el campo
+  **Archivo SQLite** sigue diciendo `data/prueba_arenia.db`.
 
 **Pasos**
 
@@ -175,8 +207,9 @@ sembrada: CP‑02 y CP‑03 continúan donde terminó CP‑01. Si repite la prue
 4. Para comprobar el historial, cambie el rendimiento a `150` y pulse Enter. **No guarde.**
 5. Vuelva a escribir `120` en el rendimiento (así queda listo para CP‑03).
 6. Abra una **segunda pestaña** del navegador con la misma dirección de la aplicación y, en ella,
-   elija **Catalogo** en el menú lateral. Observe la tabla **Partidas**. Cierre esa pestaña y vuelva
-   a la primera.
+   elija **Catalogo** en el menú lateral. En la barra lateral de esa pestaña escriba
+   `data/prueba_arenia.db` en el campo **Archivo SQLite** y pulse Enter (la pestaña nueva empieza en
+   `data/apu.db`). Observe la tabla **Partidas**. Cierre esa pestaña y vuelva a la primera.
 
 **Resultado esperado**
 
@@ -202,8 +235,8 @@ sembrada: CP‑02 y CP‑03 continúan donde terminó CP‑01. Si repite la prue
   y por qué no lleva FCAS ni bono de alimentación (decisión D9 del [dossier G0](dossier_g0.md)).
 - **Trazabilidad:** UC‑10 / UC‑11; RF‑01, RF‑34.
 - **Precondición:** CP‑02 terminado, en la misma pestaña: la partida `PRUEBA-01-TUB` en pantalla con
-  rendimiento `120` y **Precio unitario** `19.99073793585000000000000000`. Si el rendimiento no
-  está en `120`, escríbalo.
+  rendimiento `120` y **Precio unitario** `19.99073793585000000000000000`, y el campo **Archivo
+  SQLite** en `data/prueba_arenia.db`. Si el rendimiento no está en `120`, escríbalo.
 
 **Pasos**
 
@@ -240,7 +273,9 @@ obra sube solo `0.0958333…` y el precio unitario `0.1212291…`.
   RF‑27 y que, aun así, guardar sigue habilitado.
 - **Trazabilidad:** UC‑06, UC‑11; RF‑26, RF‑27, RF‑33.
 - **Precondición:** base sembrada (la partida `DEMO-01-INST` trae dos observaciones de rendimiento:
-  50 y 60 m por día). Recargue la página con **F5** para empezar con las tablas vacías.
+  50 y 60 m por día). Recargue la página con **F5** para empezar con las tablas vacías y escriba de
+  nuevo `data/prueba_arenia.db` en el campo **Archivo SQLite** (la recarga lo devolvió a
+  `data/apu.db`).
 
 **Pasos**
 
@@ -277,8 +312,9 @@ obra sube solo `0.0958333…` y el precio unitario `0.1212291…`.
 - **Objetivo:** elaborar un presupuesto con las tres partidas de demostración, descargarlo en Excel
   y comprobar sus cuatro hojas y la columna *Modalidad*.
 - **Trazabilidad:** UC‑01; RF‑06, RF‑07, RF‑08, RF‑34.
-- **Precondición:** base sembrada y CP‑04 terminado **sin guardar**. Recargue la página con **F5**.
-  Excel o LibreOffice Calc para abrir el libro.
+- **Precondición:** base sembrada y CP‑04 terminado **sin guardar**. Recargue la página con **F5** y
+  escriba de nuevo `data/prueba_arenia.db` en el campo **Archivo SQLite**. Excel o LibreOffice Calc
+  para abrir el libro.
 
 **Pasos**
 
@@ -325,7 +361,8 @@ obra sube solo `0.0958333…` y el precio unitario `0.1212291…`.
 - **Objetivo:** comprobar que el informe de auditoría aparece siempre, sin pedirlo, y leer cuántos
   hallazgos tiene y de qué severidad.
 - **Trazabilidad:** UC‑01, UC‑05; RF‑02, RF‑21, RF‑23.
-- **Precondición:** CP‑05 terminado, en la misma pestaña.
+- **Precondición:** CP‑05 terminado, en la misma pestaña y con `data/prueba_arenia.db` en el campo
+  **Archivo SQLite**.
 
 **Pasos**
 
@@ -355,6 +392,14 @@ parte de lo que se prueba (principio 7 de [CLAUDE.md](../CLAUDE.md)).
 | | |
 
 ### CP‑07 — Una persona nueva llega sola del Inicio al Excel auditado
+
+> **CP‑07 no es ejecutable hasta U1.** Su preparación arranca la aplicación con `ARENIA_CASO`,
+> que ninguna parte de la aplicación lee todavía: lo leerá `ui/caso.py` en la Tarea 12 de U1
+> (fase C3). Hasta entonces la aplicación ignora esa variable y abre `data/apu.db` de la carpeta
+> desde la que corre, y puede crearlo o escribir en él. Si aun así hubiera que ejecutarlo antes de
+> U1, se ejecuta **dentro de la copia desechable de la sección 4** (paso 1,
+> `git worktree add ../tesis-prueba-manual HEAD`), nunca en la copia de trabajo, y se hacen las
+> comprobaciones de `data/apu.db` de «Antes de empezar» y «Al terminar la prueba» de esa sección.
 
 - **Objetivo:** medir si una persona que nunca vio la aplicación, sin explicación previa y sin que
   nadie la guíe, llega desde el Inicio hasta un presupuesto en Excel con su hoja de auditoría.
@@ -507,6 +552,8 @@ ejecución, dejando constancia en [docs/bitacora/](bitacora/).
 | Commit probado (`git log -1 --oneline`) | |
 | Sistema operativo y navegador | |
 | Comprobación de la preparación (sección 4, paso 2) | |
+| `data/apu.db` al empezar (existe · fecha de modificación) | |
+| `data/apu.db` sin cambios al terminar (sí/no) | |
 | Casos PASA / FALLA | |
 | Observaciones | |
 

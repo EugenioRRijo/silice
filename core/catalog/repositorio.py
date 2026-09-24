@@ -239,18 +239,27 @@ class Catalogo:
         return resumen
 
     def registrar_rendimiento(self, rendimiento: Rendimiento) -> models.Rendimiento:
-        """Persiste un rendimiento del contrato. Un MEDIDO exige una `Ejecucion` ya registrada."""
+        """Persiste un rendimiento del contrato. Un MEDIDO exige una `Ejecucion` ya registrada.
+
+        Una referencia presente (aunque sea de un ESTIMADO) debe apuntar a una ejecución que
+        exista; una vacía o en blanco nunca lo hace, porque `registrar_ejecucion` las rechaza, y
+        lanza el mismo `LookupError`.
+        """
         partida = self.partida(rendimiento.codigo_partida)
         ejecucion = None
-        if rendimiento.referencia_ejecucion:
-            ejecucion = self._sesion.scalars(
-                select(models.Ejecucion).where(
-                    models.Ejecucion.referencia == rendimiento.referencia_ejecucion
-                )
-            ).one_or_none()
+        if rendimiento.referencia_ejecucion is not None:
+            referencia = rendimiento.referencia_ejecucion
+            if referencia.strip():
+                ejecucion = self._sesion.scalars(
+                    select(models.Ejecucion).where(models.Ejecucion.referencia == referencia)
+                ).one_or_none()
             if ejecucion is None:
-                raise CatalogoIncompleto(
-                    f"no hay ninguna ejecución con referencia {rendimiento.referencia_ejecucion!r}"
+                # `LookupError` y no `CatalogoIncompleto`: la ejecución es un recurso que no existe
+                # (404 en la API), no un precio o rendimiento que falte para reconstruir un APU.
+                raise LookupError(
+                    "no hay ninguna ejecución con referencia "
+                    f"{rendimiento.referencia_ejecucion!r}: registre la obra antes de medir "
+                    "sobre ella"
                 )
         modelo = a_modelo_rendimiento(rendimiento, partida, ejecucion)
         self._sesion.add(modelo)

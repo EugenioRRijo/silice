@@ -1,11 +1,10 @@
-"""Pruebas del motor de costos (Sesión I0.2). Fallan con ImportError hasta que exista core.costing.
+"""Pruebas del motor de costos contra los cinco APU de la línea base (Sesiones I0.2 e I0.3).
 
-Estado esperado hasta la Sesión I0.3: siete fallos por `ImportError`. Es deliberado
-(CLAUDE.md §2, principio 5): la línea base verificada existe antes que el motor, y el motor se
-escribe para pasarla. Estas pruebas NO se modifican para ponerlas en verde; se implementa
-`core.costing.calcular_apu`.
+Se escribieron antes que el motor (CLAUDE.md §2, principio 5): la línea base verificada existía
+antes que `core.costing`, y el motor se escribió para pasarlas sin modificarlas. Están en verde
+desde la Sesión I0.3 y siguen sin modificarse para ponerlas en verde (CLAUDE.md §9).
 
-Contrato esperado del motor:
+Contrato del motor:
     calcular_apu(composicion: ComposicionAPU, parametros: ParametrosCosto) -> ResultadoAPU
 """
 
@@ -16,8 +15,6 @@ import pytest
 from tests.fixtures import apu_linea_base as lb
 
 TOLERANCIA = Decimal("0.01")
-
-pytestmark = pytest.mark.rojo_esperado
 
 
 def _motor():

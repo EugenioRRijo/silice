@@ -83,10 +83,15 @@ def con_curva(presupuesto: Presupuesto, curva: Sequence[PuntoCurva]) -> Presupue
 
 
 def plan_secuencial(presupuesto: Presupuesto, formato: str = FORMATO_PERIODO) -> list[PeriodoPlan]:
-    """Plan trivial: una partida por período, ejecutada al 100 %, en el orden del presupuesto."""
+    """Plan trivial: una partida por período, ejecutada al 100 %, en el orden del presupuesto.
+
+    Un período por **código** de partida, en el orden de su primera aparición: varios renglones del
+    mismo código se ejecutan juntos, igual que `_totales_por_codigo` los acumula (INV‑071).
+    """
+    codigos = dict.fromkeys(partida.item.codigo_partida for partida in presupuesto.partidas)
     return [
-        (formato.format(n=numero), ((partida.item.codigo_partida, FRACCION_COMPLETA),))
-        for numero, partida in enumerate(presupuesto.partidas, start=1)
+        (formato.format(n=numero), ((codigo, FRACCION_COMPLETA),))
+        for numero, codigo in enumerate(codigos, start=1)
     ]
 
 

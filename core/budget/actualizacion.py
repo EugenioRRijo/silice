@@ -38,9 +38,14 @@ from core.budget.persistencia import (
     cargar_presupuesto,
     guardar_presupuesto,
 )
-from core.budget.presupuesto import ResultadoElaboracion, elaborar
+from core.budget.presupuesto import (
+    GeneradorPlan,
+    ResultadoElaboracion,
+    elaborar,
+    exigir_composiciones,
+)
 from core.catalog import Catalogo
-from core.catalog.precios import registrar_cambios
+from core.catalog.precios import registrar_cambios, variacion_relativa
 from core.contracts.presupuesto import PartidaPresupuestada, Presupuesto
 
 __all__ = ["COLUMNAS_COMPARATIVO", "Comparativo", "actualizar_precios"]
@@ -106,7 +111,7 @@ def actualizar_precios(
     codigo_presupuesto: str,
     lista_nueva: models.ListaPrecios,
     codigo_nuevo: str,
-    plan: Sequence[PeriodoPlan] | None = None,
+    plan: Sequence[PeriodoPlan] | GeneradorPlan | None = None,
 ) -> tuple[ResultadoElaboracion, Comparativo]:
     """Revalora un presupuesto con `lista_nueva` y lo guarda como versión `codigo_nuevo`.
 
@@ -116,7 +121,12 @@ def actualizar_precios(
 
     El presupuesto nuevo se fecha en la vigencia de `lista_nueva`, que es cuando pasan a valer esos
     precios, y conserva la moneda y los cuatro parámetros de costo del anterior: lo único que se
-    mueve son los precios. Sin `plan` no lleva curva y la regla R2 lo hace constar como INFO.
+    mueve son los precios. `plan` es el plan de trabajo ya escrito o una función que lo calcula
+    sobre el presupuesto valorado (`plan=plan_secuencial`), como en `elaborar`. Sin `plan` no
+    lleva curva, y R2 y R7 lo declaran no aplicable como INFO.
+
+    Exige composición para todo renglón del presupuesto anterior antes de elaborar y de guardar
+    (`exigir_composiciones`): revalorar no puede dejar renglones pendientes en silencio (INV‑013).
 
     No confirma la transacción: como `guardar_presupuesto`, la deja abierta para que el llamador
     acepte la versión nueva o la descarte (UC‑02, flujo 7a). Quien confirma decide mirando
@@ -137,6 +147,7 @@ def actualizar_precios(
         codigo: catalogo.composicion(codigo, fecha=lista_nueva.fecha_vigencia, lista=lista_nueva)
         for codigo in dict.fromkeys(item.codigo_partida for item in items)
     }
+    exigir_composiciones(items, composiciones)
     nuevo = elaborar(
         items,
         composiciones,
@@ -208,7 +219,7 @@ def _registrar_incidencias(
             partida_id=partida.id,
             precio_unitario_anterior=precios_anteriores[partida.codigo],
             precio_unitario_nuevo=precios_nuevos[partida.codigo],
-            variacion=_variacion(
+            variacion=variacion_relativa(
                 precios_anteriores[partida.codigo], precios_nuevos[partida.codigo]
             ),
         )
@@ -301,11 +312,6 @@ def _fila(
         "total_nuevo": nuevo.total,
         "incidencia_pct": _porcentaje(nuevo.total - anterior.total, total_anterior),
     }
-
-
-def _variacion(anterior: Decimal, nuevo: Decimal) -> Decimal:
-    """Fracción (nuevo − anterior) / anterior: la fórmula de docs/modelo_datos.md §6."""
-    return (nuevo - anterior) / anterior if anterior else CERO
 
 
 def _porcentaje(variacion: Decimal, base: Decimal) -> Decimal:

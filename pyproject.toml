@@ -47,6 +47,3 @@ known-first-party = ["core", "adapters", "ml", "ui", "api", "tests", "scripts"]
 testpaths = ["tests"]
 pythonpath = ["."]
 addopts = "-q --strict-markers"
-markers = [
-    "rojo_esperado: pruebas que deben fallar hasta que exista la implementacion indicada en su docstring",
-]

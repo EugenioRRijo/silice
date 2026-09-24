@@ -20,19 +20,6 @@ from core.contracts.apu import (
 from core.costing import calcular_apu
 from tests.fixtures import apu_linea_base as lb
 
-#: Los cinco precios unitarios verificados de la linea base (CLAUDE.md SS4), con el mismo `Decimal`
-#: exacto que produce el motor (comprobado contra `calcular_apu` antes de fijarlo aqui): comparar
-#: por igualdad exacta, no por tolerancia prestada de `test_precio_unitario_reproduce_la_linea_base`
-#: (`tests/unit/test_costing.py`), que existe para admitir redondeos de una fuente externa, no para
-#: esta caracterizacion de que el motor no cambio ni un decimal.
-PRECIO_UNITARIO_EXACTO = {
-    "LB-01-EXC": Decimal("8.600418750"),
-    "LB-02-TUB": Decimal("10.1933700"),
-    "LB-03-ENC": Decimal("33.237875000"),
-    "LB-04-CON": Decimal("242.63965000"),
-    "LB-05-REL": Decimal("52.57656250"),
-}
-
 
 def _mixta() -> ComposicionAPU:
     """Una partida con un ayudante a jornal y un instalador a destajo."""
@@ -128,5 +115,5 @@ def test_la_linea_base_no_se_mueve():
     """
     for apu in lb.APUS_LINEA_BASE:
         resultado = calcular_apu(apu, lb.PARAMETROS_LINEA_BASE)
-        esperado = PRECIO_UNITARIO_EXACTO[apu.codigo_partida]
+        esperado = lb.PRECIO_UNITARIO_EXACTO[apu.codigo_partida]
         assert resultado.precio_unitario == esperado, apu.codigo_partida

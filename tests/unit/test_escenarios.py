@@ -20,6 +20,8 @@ from __future__ import annotations
 from dataclasses import replace
 from decimal import Decimal
 
+import pytest
+
 from core.budget import (
     COLUMNAS_ESCENARIOS,
     comparar_escenarios,
@@ -31,13 +33,11 @@ from core.contracts.dominio import Dominio
 from core.contracts.item_computo import ItemComputo, OrigenTipo
 from core.costing import calcular_apu
 from tests.fixtures import apu_linea_base as linea_base
+from tests.fixtures.actualizacion_uc02 import INCREMENTO_PU_CONCRETO
+from tests.fixtures.actualizacion_uc02 import PRECIOS_NUEVOS as PRECIOS_UC02
 
 COMPOSICIONES = {apu.codigo_partida: apu for apu in linea_base.APUS_LINEA_BASE}
 CONCRETO = linea_base.APU_CONCRETO.codigo_partida
-
-# Escenario de precios del caso UC‑02: solo cemento y arena suben, solo el concreto los usa.
-PRECIOS_UC02 = {"Cemento Portland": Decimal("18"), "Arena lavada": Decimal("33")}
-INCREMENTO_PU_CONCRETO = Decimal("30.17025")
 
 
 def _items():
@@ -80,6 +80,7 @@ def test_escenario_de_parametros_recalcula_cada_partida_contra_el_motor():
     assert escenario.parametros == parametros
 
 
+# Escenario de precios del caso UC‑02: solo cemento y arena suben, solo el concreto los usa.
 def test_escenario_de_precios_sube_solo_las_partidas_afectadas():
     base = _base()
 
@@ -180,3 +181,13 @@ def test_comparativo_por_partida_del_escenario():
     assert fila_concreto["pu_nuevo"] - fila_concreto["pu_anterior"] == INCREMENTO_PU_CONCRETO
     assert comparativo.total_nuevo - comparativo.total_anterior == INCREMENTO_PU_CONCRETO
     assert comparativo.insumos_afectados == 2
+
+
+def test_un_escenario_exige_composicion_para_todo_renglon_del_base():
+    """INV‑013 no relaja UC‑08: un escenario que perdiera un renglón en silencio dejaría de ser
+    comparable con su base. `generar_escenario` exige composición antes de elaborar."""
+    incompletas = {codigo: apu for codigo, apu in COMPOSICIONES.items() if codigo != CONCRETO}
+    with pytest.raises(ValueError, match=CONCRETO):
+        generar_escenario(
+            "sin-concreto", _base(), incompletas, linea_base.PARAMETROS_LINEA_BASE
+        )

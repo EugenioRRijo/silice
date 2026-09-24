@@ -66,6 +66,11 @@ DESCRIPCION_PLANTILLA = "Un punto de funcion no ajustado (IFPUG) de software a m
 #: Honorarios profesionales: sin prestaciones ni bono (ver «Supuestos»).
 PARAMETROS_SISTEMAS = ParametrosCosto(fcas=Decimal("0"), bono_alimentacion=Decimal("0"))
 
+#: Precio unitario de un punto de función **calculado a mano** con la fórmula de CLAUDE.md §4 antes
+#: de correr el motor (README de `data/sistemas/fuentes/`). Es un resultado esperado, no un precio
+#: de entrada: única copia para las pruebas de M3.1 y M3.2 (INV‑009).
+PRECIO_UNITARIO_PF_ESPERADO = Decimal("110.992365")
+
 #: Rol del APU -> Ref del tabulador CIV (supuesto (b)); el orden es el de la lista canónica.
 REF_POR_ROL: dict[str, str] = {
     "analista": "DIS019",

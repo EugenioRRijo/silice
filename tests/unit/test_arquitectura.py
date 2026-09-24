@@ -1,7 +1,7 @@
 """Hace ejecutable la hipótesis central (CLAUDE.md §1 y §2).
 
 - adapters/ y ml/ importan de `core` únicamente `core.contracts`;
-- core/ no importa adapters, ml, ui ni api;
+- core/ no importa adapters, ml, ui, api, scripts ni tests (ningún paquete de primer nivel);
 - core/contracts solo depende de la biblioteca estándar.
 
 Complementa a `git diff --stat core/` (Sesión I5): vigila la dependencia, no solo el cambio.
@@ -14,7 +14,7 @@ from pathlib import Path
 import pytest
 
 RAIZ = Path(__file__).resolve().parents[2]
-PAQUETES_FUERA_DEL_NUCLEO = ("adapters", "ml", "ui", "api")
+PAQUETES_FUERA_DEL_NUCLEO = ("adapters", "ml", "ui", "api", "scripts", "tests")
 
 
 def _archivos(paquete: str) -> list[Path]:
@@ -69,3 +69,16 @@ def test_los_contratos_solo_usan_la_biblioteca_estandar(archivo):
     assert not externos, (
         f"{_ruta(archivo)} depende de {externos}; los contratos no llevan terceros."
     )
+
+
+def test_la_guardia_cubre_todo_paquete_de_primer_nivel_fuera_del_nucleo():
+    """INV-010: la tupla vigilada no puede olvidar un paquete del repositorio.
+
+    Todo directorio de primer nivel con `__init__.py`, salvo `core`, es un paquete que el nucleo no
+    puede importar (CLAUDE.md §2; spec de cierre §4, criterio D: `core/` no importa de `adapters/`,
+    `ml/`, `ui/`, `api/` ni `scripts/`). `tests` entra porque tambien es importable
+    (`tests/__init__.py`). Un paquete nuevo (p. ej. `asistente`) hace fallar esta prueba hasta
+    que se agrega a la tupla.
+    """
+    paquetes = {inicio.parent.name for inicio in RAIZ.glob("*/__init__.py")} - {"core"}
+    assert paquetes == set(PAQUETES_FUERA_DEL_NUCLEO)

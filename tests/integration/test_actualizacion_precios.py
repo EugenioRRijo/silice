@@ -27,13 +27,31 @@ from core.budget import (
     actualizar_precios,
     cargar_presupuesto,
     elaborar,
+    generar_curva,
     generar_presupuesto,
     guardar_presupuesto,
     plan_secuencial,
 )
-from core.catalog import Catalogo, crear_lista_desde_archivo, leer_lista_precios
+from core.budget import actualizacion as modulo_actualizacion
+from core.catalog import (
+    Catalogo,
+    abrir_sesion,
+    crear_esquema,
+    crear_lista_desde_archivo,
+    crear_motor,
+    leer_lista_precios,
+    registrar_cambios,
+)
 from scripts.seed import NOMBRE_PROYECTO, sembrar
 from tests.fixtures import apu_linea_base as linea_base
+from tests.fixtures.actualizacion_uc02 import (
+    ARENA,
+    CEMENTO,
+    INCREMENTO_PU_CONCRETO,
+    INCREMENTO_TOTAL,
+    PRECIOS_NUEVOS,
+    VARIACIONES,
+)
 from tests.fixtures.computo_auditado import items_auditados
 
 RAIZ = Path(__file__).resolve().parents[2]
@@ -45,18 +63,6 @@ NOMBRE_LISTA_NUEVA = "Lista de precios 01/06/2026"
 CONCRETO = linea_base.APU_CONCRETO.codigo_partida
 CODIGOS = [apu.codigo_partida for apu in linea_base.APUS_LINEA_BASE]
 
-# Lo que sube la muestra y la fracción de variación que exige docs/modelo_datos.md §6:
-# (nuevo − anterior) / anterior.
-CEMENTO = "Cemento Portland"
-ARENA = "Arena lavada"
-PRECIOS_NUEVOS = {CEMENTO: Decimal("18"), ARENA: Decimal("33")}
-VARIACIONES = {CEMENTO: Decimal("0.2"), ARENA: Decimal("0.1")}
-
-# 7,5 sacos × (18 − 15) + 0,45 m3 × (33 − 30) = 23,85 USD de material por m3 de concreto; el
-# incremento atraviesa administración y utilidad en cascada: 23,85 × 1,15 × 1,10 = 30,17025.
-INCREMENTO_PU_CONCRETO = Decimal("30.17025")
-# El cómputo auditado lleva 1,66 m3 de concreto: 1,66 × 30,17025 = 50,082615.
-INCREMENTO_TOTAL = Decimal("50.082615")
 # Variación del precio unitario del concreto, en porcentaje y con cuatro decimales.
 VARIACION_PU_CONCRETO_PCT = Decimal("12.4342")
 
@@ -204,8 +210,8 @@ def test_crear_lista_copia_los_precios_anteriores_y_sobrescribe_los_del_archivo(
     precios = {precio.insumo.descripcion: precio.precio for precio in nueva.precios}
     assert precios[CEMENTO] == PRECIOS_NUEVOS[CEMENTO]
     assert precios[ARENA] == PRECIOS_NUEVOS[ARENA]
-    assert precios["Piedra picada"] == Decimal("35")
-    assert precios["Retroexcavadora"] == Decimal("200")
+    assert precios["Piedra picada"] == linea_base.precio_de_insumo("Piedra picada")
+    assert precios["Retroexcavadora"] == linea_base.precio_de_insumo("Retroexcavadora")
 
 
 def test_crear_lista_reporta_los_insumos_desconocidos_sin_crearlos(
@@ -271,6 +277,34 @@ def test_crear_lista_actualiza_todas_las_variantes_homonimas(sesion, tmp_path):
     assert all(precio == Decimal("50") for precio in precios_actualizados.values())
 
 
+def test_un_precio_anterior_nulo_no_hace_fallar_el_registro_de_cambios(sesion, tmp_path):
+    """INV‑004: un precio 0 es válido (`leer_lista_precios` acepta no negativos), así que la
+    variación con base nula no puede lanzar `DivisionByZero` en medio de UC‑02.
+    """
+    donado = tmp_path / "cemento_donado.csv"
+    donado.write_text(f"tipo,insumo,unidad,precio\nmaterial,{CEMENTO},saco,0\n", encoding="utf-8")
+    intermedia = crear_lista_desde_archivo(
+        sesion,
+        donado,
+        nombre="Lista con cemento donado",
+        moneda=linea_base.MONEDA,
+        fecha_vigencia=date(2026, 5, 15),
+    ).lista
+    nueva = crear_lista_desde_archivo(
+        sesion, MUESTRA, nombre=NOMBRE_LISTA_NUEVA, moneda=linea_base.MONEDA,
+        fecha_vigencia=FECHA_NUEVA,
+    ).lista
+
+    cambios = {
+        cambio.insumo.descripcion: cambio
+        for cambio in registrar_cambios(sesion, intermedia, nueva)
+    }
+
+    assert cambios[CEMENTO].precio_anterior == Decimal("0")
+    assert cambios[CEMENTO].variacion == Decimal("0")
+    assert cambios[ARENA].variacion == VARIACIONES[ARENA]
+
+
 # ---------------------------------------------------------------------------------------------
 # Actualización del presupuesto
 # ---------------------------------------------------------------------------------------------
@@ -305,8 +339,8 @@ def test_registra_un_cambio_de_precio_por_insumo_afectado(sesion, actualizacion)
         assert cambio.variacion == VARIACIONES[descripcion]
         assert cambio.fecha == FECHA_NUEVA
         assert cambio.lista_nueva.nombre == NOMBRE_LISTA_NUEVA
-    assert por_insumo[CEMENTO].precio_anterior == Decimal("15")
-    assert por_insumo[ARENA].precio_anterior == Decimal("30")
+    assert por_insumo[CEMENTO].precio_anterior == linea_base.precio_de_insumo(CEMENTO)
+    assert por_insumo[ARENA].precio_anterior == linea_base.precio_de_insumo(ARENA)
 
 
 def test_registra_la_incidencia_de_cada_cambio_en_el_concreto(
@@ -418,6 +452,187 @@ def test_el_presupuesto_nuevo_queda_persistido_con_su_lista(sesion, lista_nueva,
     assert modelo.fcas == linea_base.PARAMETROS_LINEA_BASE.fcas
     assert modelo.utilidad == linea_base.PARAMETROS_LINEA_BASE.utilidad
     assert len(modelo.hallazgos) == len(nuevo.informe.hallazgos)
+
+
+def test_uc02_exige_composicion_para_todo_renglon_antes_de_guardar(
+    sesion, presupuesto_001, lista_nueva, monkeypatch
+):
+    """INV‑013 no relaja UC‑02: la precondición corre antes de elaborar y de guardar.
+
+    Las composiciones de `actualizar_precios` salen del catálogo para todos los códigos del
+    presupuesto, así que un faltante no se puede provocar con datos: se provoca quitando el
+    concreto justo en la precondición, y se comprueba que no quedó ninguna versión guardada.
+    """
+    original = modulo_actualizacion.exigir_composiciones
+
+    def sin_concreto(items, composiciones):
+        recortadas = {codigo: apu for codigo, apu in composiciones.items() if codigo != CONCRETO}
+        original(items, recortadas)
+
+    monkeypatch.setattr(modulo_actualizacion, "exigir_composiciones", sin_concreto)
+
+    with pytest.raises(ValueError, match=CONCRETO):
+        actualizar_precios(
+            sesion,
+            NOMBRE_PROYECTO,
+            linea_base.CODIGO_PRESUPUESTO,
+            lista_nueva.lista,
+            CODIGO_NUEVO,
+            plan=plan_secuencial,
+        )
+    with pytest.raises(KeyError, match=CODIGO_NUEVO):
+        cargar_presupuesto(sesion, NOMBRE_PROYECTO, CODIGO_NUEVO, Catalogo(sesion))
+
+
+def test_uc02_acepta_el_plan_como_funcion_del_presupuesto_valorado(
+    sesion, presupuesto_001, lista_nueva
+):
+    """INV‑069: `actualizar_precios` acepta el mismo `GeneradorPlan` que `elaborar`. El plan
+    secuencial no depende de los montos, así que calcularlo sobre la versión nueva da la misma
+    curva que calcularlo sobre la anterior, como hacían los llamadores."""
+    nuevo, _ = actualizar_precios(
+        sesion,
+        NOMBRE_PROYECTO,
+        linea_base.CODIGO_PRESUPUESTO,
+        lista_nueva.lista,
+        CODIGO_NUEVO,
+        plan=plan_secuencial,
+    )
+
+    esperada = generar_curva(nuevo.presupuesto, plan_secuencial(presupuesto_001.presupuesto))
+    assert nuevo.presupuesto.curva == tuple(esperada)
+    assert nuevo.presupuesto.total_curva == nuevo.presupuesto.total
+
+
+def _estructura(composicion):
+    """Lo que UC‑02 no puede tocar: rendimiento, líneas, cantidades, depreciaciones y
+    modalidades."""
+    return (
+        composicion.rendimiento,
+        tuple(
+            (linea.descripcion, linea.unidad, linea.cantidad) for linea in composicion.materiales
+        ),
+        tuple(
+            (linea.descripcion, linea.cantidad, linea.depreciacion) for linea in composicion.equipos
+        ),
+        tuple(
+            (linea.descripcion, linea.cantidad, linea.modalidad) for linea in composicion.mano_obra
+        ),
+    )
+
+
+def test_uc02_no_edita_ninguna_composicion(sesion, presupuesto_001, lista_nueva):
+    """RF‑11 (INV‑014): las composiciones quedan idénticas; solo cambia la lista que las valora."""
+    catalogo = Catalogo(sesion)
+    antes = {
+        codigo: catalogo.composicion(codigo, fecha=linea_base.FECHA_LINEA_BASE)
+        for codigo in CODIGOS
+    }
+    lineas_antes = len(sesion.scalars(select(models.ComposicionAPU)).all())
+
+    actualizar_precios(
+        sesion,
+        NOMBRE_PROYECTO,
+        linea_base.CODIGO_PRESUPUESTO,
+        lista_nueva.lista,
+        CODIGO_NUEVO,
+        plan=plan_secuencial(presupuesto_001.presupuesto),
+    )
+
+    assert len(sesion.scalars(select(models.ComposicionAPU)).all()) == lineas_antes
+    for codigo in CODIGOS:
+        despues = catalogo.composicion(codigo, fecha=linea_base.FECHA_LINEA_BASE)
+        assert despues == antes[codigo], codigo
+        con_lista_nueva = catalogo.composicion(codigo, fecha=FECHA_NUEVA)
+        assert _estructura(con_lista_nueva) == _estructura(antes[codigo]), codigo
+
+
+def test_los_cambios_de_precio_se_releen_tras_cerrar_la_sesion(tmp_path):
+    """RF‑12 (INV‑014): un registro por insumo, recuperable desde otra sesión y otro motor."""
+    url = f"sqlite:///{(tmp_path / 'uc02.db').as_posix()}"
+    motor = crear_motor(url)
+    try:
+        crear_esquema(motor)
+        with abrir_sesion(motor) as sesion:
+            proyecto = sembrar(sesion)
+            catalogo = Catalogo(sesion)
+            resultado = elaborar(
+                items_auditados(),
+                catalogo.composiciones(CODIGOS, fecha=linea_base.FECHA_LINEA_BASE),
+                linea_base.PARAMETROS_LINEA_BASE,
+                codigo=linea_base.CODIGO_PRESUPUESTO,
+                fecha=linea_base.FECHA_LINEA_BASE,
+                moneda=linea_base.MONEDA,
+                plan=plan_secuencial,
+            )
+            guardar_presupuesto(
+                sesion,
+                resultado.presupuesto,
+                resultado.informe,
+                proyecto=proyecto,
+                lista=catalogo.lista_vigente(linea_base.FECHA_LINEA_BASE),
+                parametros=linea_base.PARAMETROS_LINEA_BASE,
+            )
+            sesion.commit()
+            nueva = crear_lista_desde_archivo(
+                sesion,
+                MUESTRA,
+                nombre=NOMBRE_LISTA_NUEVA,
+                moneda=linea_base.MONEDA,
+                fecha_vigencia=FECHA_NUEVA,
+            )
+            actualizar_precios(
+                sesion,
+                NOMBRE_PROYECTO,
+                linea_base.CODIGO_PRESUPUESTO,
+                nueva.lista,
+                CODIGO_NUEVO,
+                plan=plan_secuencial(resultado.presupuesto),
+            )
+            sesion.commit()
+    finally:
+        motor.dispose()
+
+    motor = crear_motor(url)
+    try:
+        with abrir_sesion(motor) as sesion:
+            filas = list(sesion.scalars(select(models.CambioPrecio)))
+            cambios = {cambio.insumo.descripcion: cambio for cambio in filas}
+            assert set(cambios) == set(PRECIOS_NUEVOS)
+            assert len(filas) == len(PRECIOS_NUEVOS)
+            for descripcion, cambio in cambios.items():
+                assert cambio.precio_anterior == linea_base.precio_de_insumo(descripcion)
+                assert cambio.precio_nuevo == PRECIOS_NUEVOS[descripcion]
+                assert cambio.variacion == VARIACIONES[descripcion]
+                assert cambio.fecha == FECHA_NUEVA
+                assert {i.partida.codigo for i in cambio.incidencias} == {CONCRETO}
+    finally:
+        motor.dispose()
+
+
+def test_una_fila_con_unidad_no_equivalente_se_rechaza_y_las_demas_se_procesan(
+    sesion, presupuesto_001, tmp_path
+):
+    """UC‑02, flujo 2b (INV‑015): la fila se rechaza y se reporta en `desconocidos`, el insumo
+    conserva su precio anterior, y la fila con una grafía equivalente (m³ ≡ m3) se procesa."""
+    archivo = tmp_path / "unidades.csv"
+    archivo.write_text(
+        f"tipo,insumo,unidad,precio\nmaterial,{CEMENTO},m3,99\nmaterial,{ARENA},m³,33\n",
+        encoding="utf-8",
+    )
+
+    resumen = crear_lista_desde_archivo(
+        sesion,
+        archivo,
+        nombre=NOMBRE_LISTA_NUEVA,
+        moneda=linea_base.MONEDA,
+        fecha_vigencia=FECHA_NUEVA,
+    )
+
+    assert [(p.descripcion, p.unidad) for p in resumen.desconocidos] == [(CEMENTO, "m3")]
+    precios = {precio.insumo.descripcion: precio.precio for precio in resumen.lista.precios}
+    assert precios[CEMENTO] == linea_base.precio_de_insumo(CEMENTO)
+    assert precios[ARENA] == PRECIOS_NUEVOS[ARENA]
 
 
 # ---------------------------------------------------------------------------------------------

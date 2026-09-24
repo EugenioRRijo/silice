@@ -35,7 +35,6 @@ from core.budget import (
     ResultadoElaboracion,
     elaborar,
     exportar_excel,
-    generar_presupuesto,
     plan_secuencial,
 )
 from core.catalog import (
@@ -763,7 +762,7 @@ def _celda_de_cantidad(fila: dict, clave: str) -> str:
 
 
 def _elaborar_presupuesto(catalogo: Catalogo, items: list[ItemComputo]) -> None:
-    """Boton de elaboracion (paso 2): `elaborar(...)` con `plan=plan_secuencial(borrador)`.
+    """Boton de elaboracion (paso 2): `elaborar(..., plan=plan_secuencial)`.
 
     Igual que `ui/paginas/elaborar.py`: sin plan la curva no existe y R2 lo hace constar; con este
     plan trivial (una partida por dia, en el orden del presupuesto) la curva cierra exactamente en
@@ -799,14 +798,6 @@ def _elaborar(
     codigos_unicos = list(dict.fromkeys(item.codigo_partida for item in items))
     try:
         composiciones = catalogo.composiciones(codigos_unicos, fecha=fecha_presupuesto)
-        borrador = generar_presupuesto(
-            items,
-            composiciones,
-            ParametrosCosto(),
-            codigo=codigo_presupuesto,
-            fecha=fecha_presupuesto,
-            moneda=moneda,
-        )
         resultado = elaborar(
             items,
             composiciones,
@@ -814,11 +805,11 @@ def _elaborar(
             codigo=codigo_presupuesto,
             fecha=fecha_presupuesto,
             moneda=moneda,
-            plan=plan_secuencial(borrador),
+            plan=plan_secuencial,
         )
     except (LookupError, ValueError, ArithmeticError, SQLAlchemyError) as error:
         # `LookupError` (`CatalogoIncompleto`) si no hay lista de precios vigente a esa fecha;
-        # `ValueError` de `generar_presupuesto` o `plan_secuencial`; `ArithmeticError` y
+        # `ValueError` (`PlanInvalido`) del plan de trabajo; `ArithmeticError` y
         # `SQLAlchemyError` por el mismo criterio que `ui/paginas/elaborar.py`.
         st.session_state[CLAVE_RESULTADO] = None
         st.session_state[CLAVE_LIBRO] = None

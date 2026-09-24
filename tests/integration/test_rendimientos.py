@@ -30,9 +30,11 @@ from core.catalog import (
     registrar_ejecucion,
     registrar_rendimiento,
 )
-from core.contracts.apu import TipoRendimiento
+from core.contracts.apu import Rendimiento, TipoRendimiento
+from tests.fixtures import apu_linea_base as linea_base
 
-EXCAVACION = "LB-01-EXC"  # sembrada con rendimiento estimado de 80 m3/dia
+EXCAVACION = linea_base.APU_EXCAVACION.codigo_partida  # sembrada con su rendimiento estimado
+SEMBRADO = linea_base.APU_EXCAVACION.rendimiento
 FECHA = date(2026, 7, 1)
 
 
@@ -104,6 +106,32 @@ def test_referencia_de_ejecucion_inexistente_se_rechaza(sesion):
         )
 
 
+@pytest.mark.parametrize("referencia", ["", "   "])
+def test_referencia_de_ejecucion_vacia_se_rechaza_por_las_dos_puertas(sesion, referencia):
+    """Una referencia presente pero vacia no apunta a ninguna ejecucion (`registrar_ejecucion`
+    rechaza las vacias): `LookupError` (404 en la API) y nada se registra, como antes de INV-005.
+    Un ESTIMADO no la exige, pero si la trae debe ser valida."""
+    contrato = Rendimiento(
+        codigo_partida=EXCAVACION,
+        valor=Decimal("70"),
+        tipo=TipoRendimiento.ESTIMADO,
+        fecha=FECHA,
+        referencia_ejecucion=referencia,
+    )
+    with pytest.raises(LookupError, match="registre la obra"):
+        Catalogo(sesion).registrar_rendimiento(contrato)
+    with pytest.raises(LookupError, match="registre la obra"):
+        registrar_rendimiento(
+            sesion,
+            EXCAVACION,
+            valor=Decimal("70"),
+            tipo=TipoRendimiento.ESTIMADO,
+            fecha=FECHA,
+            referencia_ejecucion=referencia,
+        )
+    assert len(Catalogo(sesion).rendimientos(EXCAVACION)) == 1  # solo el sembrado
+
+
 def test_valor_no_positivo_se_rechaza(sesion):
     with pytest.raises(ValueError, match="mayor que cero"):
         registrar_rendimiento(
@@ -116,6 +144,46 @@ def test_partida_inexistente_se_rechaza(sesion):
         registrar_rendimiento(
             sesion, "NO-EXISTE", valor=Decimal("10"), tipo=TipoRendimiento.ESTIMADO, fecha=FECHA
         )
+
+
+def test_el_registro_del_modulo_delega_en_el_del_catalogo(sesion, monkeypatch):
+    """INV‑005: una sola implementación del registro, la de `Catalogo`."""
+    llamadas = []
+    original = Catalogo.registrar_rendimiento
+
+    def espia(self, rendimiento):
+        llamadas.append(rendimiento)
+        return original(self, rendimiento)
+
+    monkeypatch.setattr(Catalogo, "registrar_rendimiento", espia)
+    registrado = registrar_rendimiento(
+        sesion, EXCAVACION, valor=Decimal("75"), tipo=TipoRendimiento.ESTIMADO, fecha=FECHA
+    )
+
+    assert llamadas == [registrado]
+
+
+def test_una_ejecucion_inexistente_se_rechaza_igual_por_las_dos_puertas(sesion):
+    contrato = Rendimiento(
+        codigo_partida=EXCAVACION,
+        valor=Decimal("70"),
+        tipo=TipoRendimiento.MEDIDO,
+        fecha=FECHA,
+        referencia_ejecucion="OBRA-FANTASMA",
+    )
+    with pytest.raises(LookupError, match="registre la obra") as desde_catalogo:
+        Catalogo(sesion).registrar_rendimiento(contrato)
+    with pytest.raises(LookupError, match="registre la obra") as desde_modulo:
+        registrar_rendimiento(
+            sesion,
+            EXCAVACION,
+            valor=Decimal("70"),
+            tipo=TipoRendimiento.MEDIDO,
+            fecha=FECHA,
+            referencia_ejecucion="OBRA-FANTASMA",
+        )
+    assert type(desde_catalogo.value) is LookupError
+    assert type(desde_modulo.value) is LookupError
 
 
 def test_dispersion_exacta_y_con_tipos_contados(sesion, ejecucion):
@@ -143,7 +211,7 @@ def test_dispersion_exacta_y_con_tipos_contados(sesion, ejecucion):
 
     assert dispersion is not None
     assert dispersion.observaciones == 4  # el 80 sembrado + los tres registrados
-    assert dispersion.media == Decimal("81.75")  # (80 + 75 + 82 + 90) / 4, exacto
+    assert dispersion.media == (SEMBRADO + Decimal("75") + Decimal("82") + Decimal("90")) / 4
     assert dispersion.minimo == Decimal("75")
     assert dispersion.maximo == Decimal("90")
     assert dispersion.medidos == 1 and dispersion.estimados == 3
@@ -190,7 +258,7 @@ def test_propuesta_sin_medidos_cae_al_estimado_mas_reciente(sesion):
 
     assert propuesta is not None
     assert propuesta.rendimiento.tipo is TipoRendimiento.ESTIMADO
-    assert propuesta.rendimiento.valor == Decimal("80")  # el sembrado
+    assert propuesta.rendimiento.valor == SEMBRADO
 
 
 def test_registrar_no_confirma_la_transaccion(sesion):

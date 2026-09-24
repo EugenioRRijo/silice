@@ -28,7 +28,6 @@ CUANTO = Decimal("0.0001")
 
 #: Calculados a mano antes de correr el motor (README, «El APU de un punto de función»).
 COSTO_DIRECTO_ESPERADO = Decimal("87.741")
-PRECIO_UNITARIO_ESPERADO = Decimal("110.992365")
 
 
 def _referencia() -> dict[str, dict[str, str]]:
@@ -83,7 +82,7 @@ def test_el_apu_de_un_punto_de_funcion_fijado_por_regresion_manual():
 
     assert resultado.precio_unitario > 0
     assert resultado.costo_directo == COSTO_DIRECTO_ESPERADO
-    assert resultado.precio_unitario == PRECIO_UNITARIO_ESPERADO
+    assert resultado.precio_unitario == sis.PRECIO_UNITARIO_PF_ESPERADO
 
 
 def test_cantidad_por_jornal_equivale_a_horas_por_tarifa_horaria():
@@ -119,7 +118,7 @@ def test_composicion_para_un_caso_de_uso_conserva_las_lineas():
     assert composicion.rendimiento == sis.RENDIMIENTO_PF
     assert composicion.mano_obra == sis.APU_PUNTO_FUNCION.mano_obra
     resultado = calcular_apu(composicion, sis.PARAMETROS_SISTEMAS)
-    assert resultado.precio_unitario == PRECIO_UNITARIO_ESPERADO
+    assert resultado.precio_unitario == sis.PRECIO_UNITARIO_PF_ESPERADO
 
 
 def test_lista_canonica_de_tarifas_coincide_con_el_fixture():

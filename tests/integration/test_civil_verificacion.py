@@ -28,16 +28,7 @@ from core.verification.directivas import CLAVE_BALANCE
 from core.verification.expresiones import evaluar, sustituir_codigos
 from tests.fixtures import apu_linea_base as linea_base
 from tests.fixtures.computo_auditado import composiciones_linea_base
-
-# Un solo código por partida (principio DRY): se reutilizan los de la línea base, igual que en
-# tests/unit/test_reglas_civil.py, porque este adaptador no decide códigos (los recibe el llamador).
-CODIGOS = {
-    "concreto": linea_base.APU_CONCRETO.codigo_partida,
-    "encofrado": linea_base.APU_ENCOFRADO.codigo_partida,
-    "excavacion": linea_base.APU_EXCAVACION.codigo_partida,
-    "tuberia": linea_base.APU_TUBERIA.codigo_partida,
-    "relleno": linea_base.APU_RELLENO.codigo_partida,
-}
+from tests.fixtures.computo_civil import CODIGOS
 
 RUTA_MUESTRA = (
     Path(__file__).resolve().parents[2] / "data" / "samples" / "civil" / "tanquillas_y_zanja.csv"
