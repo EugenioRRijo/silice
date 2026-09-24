@@ -10,7 +10,8 @@ Uso::
 
     uv run python scripts/seed_sistemas.py                 # crea data/apu_sistemas.db
     uv run python scripts/seed_sistemas.py --db /tmp/x.db  # otra ruta
-    uv run python scripts/seed_sistemas.py --reiniciar     # borra el esquema y lo vuelve a crear
+    uv run python scripts/seed_sistemas.py --db /tmp/x.db --reiniciar  # reinicia otra base
+    uv run python scripts/seed_sistemas.py --reiniciar --confirmar    # reinicia la base por defecto
 
 Flujo de extremo a extremo (compuerta GM3)
 ==========================================
@@ -73,6 +74,7 @@ from core.contracts import (  # noqa: E402
 from core.verification import auditar  # noqa: E402
 from core.verification.informe import DECIMALES_PRESENTACION  # noqa: E402
 from core.verification.texto import formatear_decimal  # noqa: E402
+from scripts.seed import motivo_para_no_reiniciar  # noqa: E402
 from tests.fixtures import tarifas_sistemas as sis  # noqa: E402
 
 FECHA_TABULADOR = sis.FECHA_TABULADOR
@@ -216,7 +218,18 @@ def main(argv: Sequence[str] | None = None) -> int:
     analizador.add_argument(
         "--reiniciar", action="store_true", help="borra el esquema antes de crearlo de nuevo"
     )
+    analizador.add_argument(
+        "--confirmar",
+        action="store_true",
+        help="necesario para --reiniciar sobre la ruta por defecto (INV-050)",
+    )
     argumentos = analizador.parse_args(argv)
+    motivo = motivo_para_no_reiniciar(
+        argumentos.db, argumentos.reiniciar, argumentos.confirmar, RUTA_POR_DEFECTO
+    )
+    if motivo is not None:
+        print(motivo, file=sys.stderr)
+        return 2
 
     ruta = Path(argumentos.db)
     motor = crear_motor(f"sqlite:///{ruta.as_posix()}")

@@ -48,7 +48,8 @@ Uso::
 
     uv run python scripts/seed_demo.py                 # crea/actualiza data/apu.db
     uv run python scripts/seed_demo.py --db /tmp/x.db  # otra ruta
-    uv run python scripts/seed_demo.py --reiniciar     # borra el esquema y lo vuelve a crear
+    uv run python scripts/seed_demo.py --db /tmp/x.db --reiniciar  # reinicia otra base
+    uv run python scripts/seed_demo.py --reiniciar --confirmar    # reinicia la base por defecto
 
 Deja sembrados, todo idempotente: los cinco APU ``LB-*`` de la linea base, las tres partidas
 ``DEMO-*``, las dos listas de precios (la de la linea base y la de la demostracion, que hereda
@@ -463,7 +464,18 @@ def main(argv: Sequence[str] | None = None) -> int:
     analizador.add_argument(
         "--reiniciar", action="store_true", help="borra el esquema antes de crearlo de nuevo"
     )
+    analizador.add_argument(
+        "--confirmar",
+        action="store_true",
+        help="necesario para --reiniciar sobre la ruta por defecto (INV-050)",
+    )
     argumentos = analizador.parse_args(argv)
+    motivo = seed.motivo_para_no_reiniciar(
+        argumentos.db, argumentos.reiniciar, argumentos.confirmar, RUTA_POR_DEFECTO
+    )
+    if motivo is not None:
+        print(motivo, file=sys.stderr)
+        return 2
 
     caso = construir_caso_demo()
     ruta = Path(argumentos.db)

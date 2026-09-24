@@ -7,7 +7,8 @@ lo hace a propósito: ese fixture es la única copia de la línea base en todo e
 Uso:
     uv run python scripts/seed.py                 # crea data/apu.db
     uv run python scripts/seed.py --db /tmp/x.db  # otra ruta
-    uv run python scripts/seed.py --reiniciar     # borra el esquema y lo vuelve a crear
+    uv run python scripts/seed.py --db /tmp/x.db --reiniciar     # reinicia otra base
+    uv run python scripts/seed.py --reiniciar --confirmar       # reinicia la base por defecto
 """
 
 from __future__ import annotations
@@ -107,6 +108,27 @@ def sembrar(sesion: Session) -> models.Proyecto:
     return proyecto
 
 
+def motivo_para_no_reiniciar(
+    ruta: str, reiniciar: bool, confirmar: bool, por_defecto: str
+) -> str | None:
+    """Por que no se debe reiniciar `ruta`, o `None` si se puede (INV-050).
+
+    `--reiniciar` borra todas las tablas. Sobre la base por defecto (la de trabajo, la que abre la
+    aplicacion) exige ademas `--confirmar`; sobre cualquier otra ruta pasada con `--db` basta
+    `--reiniciar`. Las rutas se comparan resueltas, asi que `--db data/apu.db` explicito tambien
+    cuenta como la ruta por defecto.
+    """
+    if not reiniciar or confirmar:
+        return None
+    if Path(ruta).resolve() != Path(por_defecto).resolve():
+        return None
+    return (
+        f"--reiniciar borraria todas las tablas de la base por defecto ({por_defecto}). "
+        "Repita la orden con --confirmar si de verdad quiere vaciarla, o use --db <ruta> para "
+        "reiniciar otra base."
+    )
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     analizador = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     analizador.add_argument(
@@ -117,7 +139,18 @@ def main(argv: Sequence[str] | None = None) -> int:
     analizador.add_argument(
         "--reiniciar", action="store_true", help="borra el esquema antes de crearlo de nuevo"
     )
+    analizador.add_argument(
+        "--confirmar",
+        action="store_true",
+        help="necesario para --reiniciar sobre la ruta por defecto (INV-050)",
+    )
     argumentos = analizador.parse_args(argv)
+    motivo = motivo_para_no_reiniciar(
+        argumentos.db, argumentos.reiniciar, argumentos.confirmar, RUTA_POR_DEFECTO
+    )
+    if motivo is not None:
+        print(motivo, file=sys.stderr)
+        return 2
 
     ruta = Path(argumentos.db)
     motor = crear_motor(f"sqlite:///{ruta.as_posix()}")
