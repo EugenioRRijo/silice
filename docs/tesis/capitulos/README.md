@@ -29,8 +29,8 @@ multidominio**, asistido por modelo BIM‑5D y aprendizaje automático.
   automáticamente** con siete reglas (R1–R7) generando siempre el informe de auditoría, y
   contrasta los precios con el mercado mediante ML.
 - **La hipótesis arquitectónica.** El núcleo (`core/`) no cambia al agregar dominios (civil,
-  telecom, industrial, sistemas): se demuestra con `git diff --stat core/` vacío y 65 pruebas
-  de arquitectura ([CLAUDE.md](../../../CLAUDE.md) — hipótesis central).
+  telecom, industrial, sistemas): se demuestra con `git diff --stat core/` vacío y las pruebas
+  de arquitectura de `tests/unit/test_arquitectura.py` ([CLAUDE.md](../../../CLAUDE.md) — hipótesis central).
 - **Los resultados ya medidos** (procedencia y regeneración en
   [plan_redaccion.md §5](../plan_redaccion.md#5-cifras-citables-y-cómo-regenerarlas)):
   7 de 7 inconsistencias detectadas · desviación 0,00 % vs línea base corregida · recálculo de
@@ -45,7 +45,7 @@ Estados: `pendiente` → `en redacción` → `borrador completo` → `revisado p
 
 | Orden de escritura | Capítulo | Archivo | Qué contiene | Estado | Última revisión | Bloqueado por |
 |---|---|---|---|---|---|---|
-| 1.º | IV. Desarrollo de la propuesta | `04-desarrollo.md` | requerimientos, modelo de datos, arquitectura, motor, verificación R1–R7, adaptadores, ML, UI/API | pendiente | — | — |
+| 1.º | IV. Desarrollo de la propuesta | `04-desarrollo.md` | requerimientos, modelo de datos, arquitectura, motor, verificación R1–R7, adaptadores, ML, UI/API | borrador completo (fase Red; pendiente la revisión con la lista de cotejo) | 2026-09-23 | figuras hasta regenerar arquitectura y modelo de datos (C4); decisiones G0, D1–D9, AACE e INV‑001/002/006 del tutor (declaradas como pendientes) |
 | 2.º | V. Resultados y evaluación | `05-resultados.md` | los cinco indicadores con cifra y procedencia; ISO/IEC 25010; IEEE 829 | pendiente | — | juicio de expertos (parcial, declarable) |
 | 3.º | III. Marco metodológico | `03-marco-metodologico.md` | tipo y diseño, fases, instrumentos, compuertas como decisión metodológica | pendiente | — | — |
 | 4.º | II. Marco teórico | `02-marco-teorico.md` | antecedentes, BIM‑5D, sombra digital, estructura del APU, ML, NLP, verificación por reglas, bases normativas, términos | borrador completo (revisado con la lista de cotejo, [acta R1](../revisiones/R1-capitulo-2.md)) | 2026-09-15 | D4 (como nota); práctica AACE 18R‑97 o 56R‑08; referencias pendientes marcadas |
