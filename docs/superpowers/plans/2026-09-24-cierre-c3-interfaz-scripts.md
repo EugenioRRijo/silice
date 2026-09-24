@@ -146,7 +146,7 @@ uv run pytest -W error --strict-markers -q -p no:cacheprovider --junitxml=report
 
 1. **Las dos excepciones de `core/` son exactas y no disparan la guardia de ramas.**
    - Exactamente dos commits tocan `core/`: el de INV‑080 (solo `core/budget/*`) y el de INV‑015 7a (solo los cinco archivos de la Tarea 12), ninguno con otra capa salvo `tests/`. La línea base sigue en `27 0 0 0`, el mismo conjunto que GC1 y GC2.
-   - La tabla `descarte_version` es aditiva: `crear_esquema` la agrega a una base existente sin tocar las otras quince, y ninguna prueba de persistencia previa cambia (el diff de `test_persistencia.py` y `test_actualizacion_precios.py` solo agrega líneas: Tarea 18, paso 3). Su clave foránea lleva `ondelete="CASCADE"` (A‑11).
+   - La tabla `descarte_version` es aditiva: `crear_esquema` la agrega a una base existente sin tocar las otras quince, y ninguna prueba de persistencia previa cambia (el diff de `test_persistencia.py` y `test_actualizacion_precios.py` solo agrega líneas, salvo las dos líneas de import de `test_persistencia.py` que ruff amplió con `inspect` y `crear_esquema`: Tarea 18, paso 3, QA‑20). Su clave foránea lleva `ondelete="CASCADE"` (A‑11).
    - Ninguna fusión cambia `core/` por su cuenta: `git diff-tree --cc` de cada fusión sobre `core/` sale vacío (A‑7, QA‑2).
    - Ningún archivo agregado bajo `ml/` ni `adapters/` en toda la rama, ni en los sub‑worktrees. Si se agregara, la fusión en `main` haría fallar `guardia_nucleo.py` en la CI (Hecho 6). Se comprueba después de cada fusión y en la Tarea 18, también contra una fusión de prueba en `main` (QA‑3).
    - El ayudante de INV‑081 va **dentro** de `ml/normalization/normalizador.py`.
@@ -1560,7 +1560,12 @@ C3 no escribe código de INV‑076. La Tarea 1, paso 7, ya dejó la fila «en du
 ```bash
 bash .superpowers/sdd/2026-09-24-cierre-c3/guardia_gc3.sh 2; echo "codigo: $?"
 B=$(git merge-base main HEAD)
-git diff -U0 "$B..HEAD" -- tests/integration/test_persistencia.py tests/integration/test_actualizacion_precios.py | grep '^-[^-]' | grep -v '^-from \|^-import '
+PREVIAS="tests/integration/test_persistencia.py tests/integration/test_actualizacion_precios.py"
+diff <(git diff -U0 "$B..HEAD" -- $PREVIAS | grep '^-[^-]') - <<'FIN' && echo "qa20: ok"
+-from sqlalchemy import func, select
+-from core.catalog import Catalogo, CatalogoIncompleto, abrir_sesion, crear_motor
+FIN
+git diff -U0 "$B..HEAD" -- $PREVIAS | grep -cxF -e '+from sqlalchemy import func, inspect, select' -e '+from core.catalog import Catalogo, CatalogoIncompleto, abrir_sesion, crear_esquema, crear_motor'
 ```
 
   El guion es el de la sección «Orquestación por roles», completo. Comprueba:
@@ -1575,11 +1580,13 @@ git diff -U0 "$B..HEAD" -- tests/integration/test_persistencia.py tests/integrat
   Expected:
   - `codigo: 0`, y en la salida exactamente dos `TOCA-CORE`: `fix(budget): la recarga del informe conserva los items pendientes` (INV‑080) y `feat(budget): descartar la version revalorada conserva el historial` (INV‑015 7a). Ninguna otra marca (`MEZCLA`, `FUERA-DE-080`, `FUERA-DE-7A`, `NO-AUTORIZADO`, `ASUNTOS`, `FUSION-TOCA-CORE`, `AGREGADO-EN-ML-O-ADAPTERS`, `GUARDIA-EN-LA-RAMA`, `GUARDIA-CONTRA-MAIN`, `FUSION-DE-PRUEBA-CON-MAIN-EN-CONFLICTO`, `LINEA-BASE-EDITADA`) y `marcas: 0`.
   - En el `--stat` de `core/` que imprime el guion, solo `core/budget/*`, `core/models/entidades.py`, `core/models/__init__.py` y `core/catalog/sesion.py`.
-  - El `grep '^-[^-]' | grep -v '^-from \|^-import '` sale **vacío** (QA‑20): el diff de las dos
-    pruebas de persistencia previas solo agrega líneas, salvo las de import, así que ninguna
-    prueba anterior cambió. Se toleran las líneas de import que se quitan: ruff (I001) fusionó dos
-    en `test_persistencia.py` al agregar las pruebas de INV‑015 7a (revisión de B3, R‑2). Ninguna
-    aserción cambia.
+  - `qa20: ok` y el conteo final en `2` (QA‑20): el diff de las dos pruebas de persistencia
+    previas solo agrega líneas, salvo **exactamente** estas dos, que cambian por un superconjunto
+    de nombres. Al agregar las pruebas de INV‑015 7a, ruff (I001) **amplió** dos líneas de import
+    existentes de `test_persistencia.py`: `from sqlalchemy import func, select` ganó `inspect` y
+    `from core.catalog import …` ganó `crear_esquema`. Cualquier otra línea quitada, incluido un
+    import redirigido, hace fallar el `diff`. Ninguna aserción cambia (revisión de B3, R‑2, y de
+    A5, M‑2).
   - **Cualquier otra salida: GC3 no se cruza.**
 - [ ] **Step 4: Suite y artefactos.**
   - El recuento: `N1 0 0 0`.
@@ -1743,7 +1750,7 @@ Dictámenes sobre la versión sin commit de este plan: arquitectura (`.superpowe
 | QA‑17 | menor | Tarea 10b: rojo declarado de la reescritura `caplog` antes de cambiar la API |
 | QA‑18 | menor | Tarea 7, paso 1: total igual a `formatear_decimal(TOTAL_EXACTO_LINEA_BASE, DECIMALES_PRESENTACION)` |
 | QA‑19 | menor | Tarea 12, paso 6: el rojo es estructural (`TypeError`) y lo cubre la mordida del paso 8 |
-| QA‑20 | menor | Tarea 18, paso 3: `git diff -U0 …` filtrado con `grep '^-[^-]'`, sin las líneas de import quitadas (`^-from ` y `^-import `), vacío, sobre `test_persistencia.py` y `test_actualizacion_precios.py`; tolera las dos líneas de import que ruff (I001) fusionó (revisión de B3, R‑2) |
+| QA‑20 | menor | Tarea 18, paso 3: las líneas quitadas del `git diff -U0 …` sobre `test_persistencia.py` y `test_actualizacion_precios.py` son exactamente las dos de import que ruff (I001) amplió con `inspect` y `crear_esquema`, cada una con su línea nueva (revisión de B3, R‑2, y de A5, M‑2) |
 | RA‑1 | menor | Tarea 7, Interfaces: `ui/resultado.py` importa `PendienteConPropuestas` bajo `if TYPE_CHECKING:` (re-revisión de arquitectura, R‑1) |
 | RA‑2 | menor | Tarea 6, paso 8: `PROHIBIDOS_EN_UI["ui/composicion.py"]` suma `sqlalchemy`, `core.catalog` y `core.budget`; sigue en verde hoy (R‑2) |
 | RQ‑1 | menor | Tarea 12, paso 2: la prueba nueva reusa `_contar` de `tests/integration/test_persistencia.py:35`, sin redefinirlo (re-revisión de pruebas, R‑1) |
