@@ -354,3 +354,10 @@ con `OperationalError`. Pasó con `modalidad` en la fase P2
 defecto exige `--confirmar` y con `--db` hacia otra ruta no). **Regla:** toda sesión que
 añada o cambie una columna de `core/models/entidades.py` declara en su plan, antes de escribir el
 código, qué les pasa a las bases que ya existen en disco.
+
+La fase C3 dejó un caso de esa regla sin migración, declarado: desde `04ca90d` (INV‑080) un
+presupuesto se guarda con sus ítems pendientes (UC‑01 3a), y su recarga devuelve el informe
+emitido. Una base guardada **antes** de ese commit no tiene los pendientes persistidos: la recarga
+no los inventa y el informe recargado es la reauditoría de los renglones valorados, que puede decir
+CUMPLE sobre un documento que se emitió NO CUMPLE (no conformidad residual con RF‑02, dictamen
+C3‑3). Para que su informe recargado declare los pendientes, esa base se vuelve a sembrar.

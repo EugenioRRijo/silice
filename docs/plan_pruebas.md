@@ -130,7 +130,7 @@ archivo en la corrida registrada (total de la suite: 392).
 | RF | Prueba(s) que lo demuestran | Casos | Resultado |
 |---|---|---|---|
 | RF‑01 | `tests/unit/test_costing.py` (5 APU ± 0,01, errores vigilados: materiales sin dividir por rendimiento, cascada admin→utilidad) | 7 | verde |
-| RF‑02 | `tests/integration/test_auditoria_7_de_7.py`; `elaborar` audita siempre (`tests/integration/test_presupuesto_linea_base.py`) | 4 + 9 | verde |
+| RF‑02 | `tests/integration/test_auditoria_7_de_7.py`; `elaborar` audita siempre (`tests/integration/test_presupuesto_linea_base.py`); la recarga declara los pendientes del documento emitido (C3, INV‑080): `tests/integration/test_recarga_con_pendientes.py` y, por HTTP, `/informe` y `/excel` en `tests/integration/test_api.py` (`test_el_informe_recargado_declara_el_pendiente`, `test_el_excel_recargado_declara_el_pendiente_en_la_auditoria`) | 4 + 9 + 7 + 2 | verde; residuo en bases guardadas antes de `04ca90d` ([manual técnico](manual_tecnico.md)) |
 | RF‑03 | `tests/unit/test_contracts.py` (`TestItemComputo`: sin `origen_id` se rechaza; REGLA sin expresión se rechaza); `tests/unit/test_linea_base.py` | 8 + 14 | verde |
 | RF‑04 | `tests/unit/test_arquitectura.py`; `tests/unit/test_adapter_civil_ifc.py` (`origen_id` = GlobalId) | 65 + 3 | verde, con la salvedad G1 (§3) |
 | RF‑05 | `tests/integration/test_persistencia.py` (los 5 APU recuperados dan los mismos PU que el fixture) | 14 | verde |
