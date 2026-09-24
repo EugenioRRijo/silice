@@ -486,15 +486,25 @@ def capitulos_presentes(carpeta: Path) -> dict[str, str]:
     El README de la carpeta y cualquier archivo que no empiece por dos digitos y guion no cuentan.
     Es la entrada de R4-R8, que asi revisan todo capitulo presente y no solo el I y el II
     (INV-075). Una carpeta ausente no tiene capitulos.
+
+    Lanza `ValueError` si dos archivos llevan el mismo numero (`04-desarrollo.md` y
+    `04-borrador.md`): uno pisaria al otro sin aviso y un borrador podria esconder el capitulo.
     """
     if not carpeta.is_dir():
         return {}
-    capitulos = {}
+    capitulos: dict[str, str] = {}
+    archivos: dict[str, str] = {}
     for ruta in sorted(carpeta.glob("*.md")):
         coincidencia = _ARCHIVO_CAPITULO.match(ruta.name)
-        if coincidencia is not None:
-            nombre = f"capitulo {_romano(int(coincidencia.group(1)))}"
-            capitulos[nombre] = ruta.read_text(encoding="utf-8")
+        if coincidencia is None:
+            continue
+        nombre = f"capitulo {_romano(int(coincidencia.group(1)))}"
+        if nombre in archivos:
+            raise ValueError(
+                f"dos archivos para el {nombre}: {archivos[nombre]} y {ruta.name}"
+            )
+        archivos[nombre] = ruta.name
+        capitulos[nombre] = ruta.read_text(encoding="utf-8")
     return capitulos
 
 

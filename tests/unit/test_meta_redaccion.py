@@ -455,3 +455,13 @@ def test_capitulos_presentes_numera_en_romano_y_excluye_el_readme(tmp_path):
         "capitulo IV": "04-desarrollo.md",
         "capitulo X": "10-otro.md",
     }
+
+
+def test_dos_capitulos_con_el_mismo_numero_se_rechazan(tmp_path):
+    # Un borrador con el numero de un capitulo no puede esconderlo: ambos caerian en la misma
+    # clave y el segundo en orden alfabetico pisaria al primero sin aviso.
+    (tmp_path / "04-desarrollo.md").write_text("capitulo real", encoding="utf-8")
+    (tmp_path / "04-borrador.md").write_text("borrador", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="04-borrador.md.*04-desarrollo.md"):
+        meta.capitulos_presentes(tmp_path)
