@@ -154,7 +154,12 @@ from core.contracts import (  # noqa: E402
 from core.costing import calcular_apu  # noqa: E402
 from core.verification import auditar  # noqa: E402
 from core.verification.directivas import CLAVE_UNIDAD_ORIGINAL  # noqa: E402
-from scripts.seed import linea_auditoria, monto, motivo_para_no_reiniciar  # noqa: E402
+from scripts.seed import (  # noqa: E402
+    agregar_opciones_de_reinicio,
+    linea_auditoria,
+    monto,
+    negar_reinicio,
+)
 from tests.fixtures import presupuestos_arenaza as arenaza  # noqa: E402
 from tests.fixtures.presupuestos_arenaza import RenglonPresupuesto  # noqa: E402
 
@@ -539,21 +544,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         default=RUTA_POR_DEFECTO,
         help=f"ruta del archivo SQLite (por defecto {RUTA_POR_DEFECTO})",
     )
-    analizador.add_argument(
-        "--reiniciar", action="store_true", help="borra el esquema antes de crearlo de nuevo"
-    )
-    analizador.add_argument(
-        "--confirmar",
-        action="store_true",
-        help="necesario para --reiniciar sobre la ruta por defecto (INV-050)",
-    )
+    agregar_opciones_de_reinicio(analizador)
     argumentos = analizador.parse_args(argv)
-    motivo = motivo_para_no_reiniciar(
-        argumentos.db, argumentos.reiniciar, argumentos.confirmar, RUTA_POR_DEFECTO
-    )
-    if motivo is not None:
-        print(motivo, file=sys.stderr)
-        return 2
+    negado = negar_reinicio(argumentos, RUTA_POR_DEFECTO)
+    if negado is not None:
+        return negado
 
     ruta = Path(argumentos.db)
     motor = crear_motor(f"sqlite:///{ruta.as_posix()}")

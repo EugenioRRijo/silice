@@ -459,21 +459,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         default=RUTA_POR_DEFECTO,
         help=f"ruta del archivo SQLite (por defecto {RUTA_POR_DEFECTO})",
     )
-    analizador.add_argument(
-        "--reiniciar", action="store_true", help="borra el esquema antes de crearlo de nuevo"
-    )
-    analizador.add_argument(
-        "--confirmar",
-        action="store_true",
-        help="necesario para --reiniciar sobre la ruta por defecto (INV-050)",
-    )
+    seed.agregar_opciones_de_reinicio(analizador)
     argumentos = analizador.parse_args(argv)
-    motivo = seed.motivo_para_no_reiniciar(
-        argumentos.db, argumentos.reiniciar, argumentos.confirmar, RUTA_POR_DEFECTO
-    )
-    if motivo is not None:
-        print(motivo, file=sys.stderr)
-        return 2
+    negado = seed.negar_reinicio(argumentos, RUTA_POR_DEFECTO)
+    if negado is not None:
+        return negado
 
     caso = construir_caso_demo()
     ruta = Path(argumentos.db)
