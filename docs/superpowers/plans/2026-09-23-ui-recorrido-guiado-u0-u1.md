@@ -1704,7 +1704,7 @@ git commit -m "feat(ui): pantalla de inicio con estado vacio sembrable" -m "RF-3
 > - **Paso 2 + INV‑023 + P8:** `test_ui_importable.py` importa los módulos en un proceso limpio con
 >   la ayuda única `tests/fixtures/subproceso.py::importar_en_limpio` (A‑13), afirma que no se crean
 >   archivos ni se llama a Streamlit sin runtime, y **conserva el literal `ui.paginas.componer`**
->   que busca la meta P8 (`scripts/meta_prototipo.py:216-223`).
+>   que busca la meta P8 (`scripts/meta_prototipo.py:216-224`).
 > - **Paso 3 + debilidad de INV‑023 en las dos direcciones:** con una mutación temporal en
 >   `ui/paginas/historico.py`, la prueba vieja pasa y la nueva falla; se restaura.
 > - **Paso 7:** el cuerpo del commit agrega `Cierra INV-022 e INV-023; conserva el literal de la

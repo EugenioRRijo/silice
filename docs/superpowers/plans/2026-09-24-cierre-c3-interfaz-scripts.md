@@ -43,7 +43,7 @@ Con todo eso se cruza la compuerta **GC3 = GU1a**.
 
 ## Hechos verificados al planificar (sobre `dd5a13a`; revisados el 2026‑09‑24 sobre `main` = `58ee828`)
 
-Contradicen o precisan el encargo; mandan sobre el resto del plan. `git diff --stat dd5a13a 58ee828 -- core/ ui/ api/ ml/ scripts/ tests/` sale vacío: entre la planificación y la apertura de C3 solo cambiaron documentos, así que las anclas de código siguen vigentes.
+Contradicen o precisan el encargo; mandan sobre el resto del plan. `git diff --stat dd5a13a 58ee828 -- core/ ui/ api/ ml/ scripts/ tests/` sale vacío: entre la planificación y la apertura de C3 solo cambiaron documentos, así que las anclas de código siguen vigentes. **Aviso (GC3):** las anclas de los Hechos 3, 5, 8, 11 y 12, las de la tabla «Anclas del plan de UI» y `docs/manual_tecnico.md:350` (Mapa de archivos) son las de `58ee828`, y C3 las desplazó o consumió: no se citan desde `HEAD`; siguen vigentes en `HEAD` los Hechos 4, 6 y 7 y `core/budget/escenarios.py:71-111` (Hecho 11).
 
 1. **Resuelto: `inc/tesis-cap4` está en `main`.**
    - Es el PR #12, merge `5630f5b` del 2026‑09‑24; `git merge-base --is-ancestor inc/tesis-cap4 main` da éxito sobre `58ee828`.
