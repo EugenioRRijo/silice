@@ -33,7 +33,15 @@ from core.budget import (
     plan_secuencial,
 )
 from core.budget import actualizacion as modulo_actualizacion
-from core.catalog import Catalogo, crear_lista_desde_archivo, leer_lista_precios, registrar_cambios
+from core.catalog import (
+    Catalogo,
+    abrir_sesion,
+    crear_esquema,
+    crear_lista_desde_archivo,
+    crear_motor,
+    leer_lista_precios,
+    registrar_cambios,
+)
 from scripts.seed import NOMBRE_PROYECTO, sembrar
 from tests.fixtures import apu_linea_base as linea_base
 from tests.fixtures.actualizacion_uc02 import (
@@ -494,6 +502,138 @@ def test_uc02_acepta_el_plan_como_funcion_del_presupuesto_valorado(
     esperada = generar_curva(nuevo.presupuesto, plan_secuencial(presupuesto_001.presupuesto))
     assert nuevo.presupuesto.curva == tuple(esperada)
     assert nuevo.presupuesto.total_curva == nuevo.presupuesto.total
+
+
+def _estructura(composicion):
+    """Lo que UC‑02 no puede tocar: rendimiento, líneas, cantidades, depreciaciones y
+    modalidades."""
+    return (
+        composicion.rendimiento,
+        tuple(
+            (linea.descripcion, linea.unidad, linea.cantidad) for linea in composicion.materiales
+        ),
+        tuple(
+            (linea.descripcion, linea.cantidad, linea.depreciacion) for linea in composicion.equipos
+        ),
+        tuple(
+            (linea.descripcion, linea.cantidad, linea.modalidad) for linea in composicion.mano_obra
+        ),
+    )
+
+
+def test_uc02_no_edita_ninguna_composicion(sesion, presupuesto_001, lista_nueva):
+    """RF‑11 (INV‑014): las composiciones quedan idénticas; solo cambia la lista que las valora."""
+    catalogo = Catalogo(sesion)
+    antes = {
+        codigo: catalogo.composicion(codigo, fecha=linea_base.FECHA_LINEA_BASE)
+        for codigo in CODIGOS
+    }
+    lineas_antes = len(sesion.scalars(select(models.ComposicionAPU)).all())
+
+    actualizar_precios(
+        sesion,
+        NOMBRE_PROYECTO,
+        linea_base.CODIGO_PRESUPUESTO,
+        lista_nueva.lista,
+        CODIGO_NUEVO,
+        plan=plan_secuencial(presupuesto_001.presupuesto),
+    )
+
+    assert len(sesion.scalars(select(models.ComposicionAPU)).all()) == lineas_antes
+    for codigo in CODIGOS:
+        despues = catalogo.composicion(codigo, fecha=linea_base.FECHA_LINEA_BASE)
+        assert despues == antes[codigo], codigo
+        con_lista_nueva = catalogo.composicion(codigo, fecha=FECHA_NUEVA)
+        assert _estructura(con_lista_nueva) == _estructura(antes[codigo]), codigo
+
+
+def test_los_cambios_de_precio_se_releen_tras_cerrar_la_sesion(tmp_path):
+    """RF‑12 (INV‑014): un registro por insumo, recuperable desde otra sesión y otro motor."""
+    url = f"sqlite:///{(tmp_path / 'uc02.db').as_posix()}"
+    motor = crear_motor(url)
+    try:
+        crear_esquema(motor)
+        with abrir_sesion(motor) as sesion:
+            proyecto = sembrar(sesion)
+            catalogo = Catalogo(sesion)
+            resultado = elaborar(
+                items_auditados(),
+                catalogo.composiciones(CODIGOS, fecha=linea_base.FECHA_LINEA_BASE),
+                linea_base.PARAMETROS_LINEA_BASE,
+                codigo=linea_base.CODIGO_PRESUPUESTO,
+                fecha=linea_base.FECHA_LINEA_BASE,
+                moneda=linea_base.MONEDA,
+                plan=plan_secuencial,
+            )
+            guardar_presupuesto(
+                sesion,
+                resultado.presupuesto,
+                resultado.informe,
+                proyecto=proyecto,
+                lista=catalogo.lista_vigente(linea_base.FECHA_LINEA_BASE),
+                parametros=linea_base.PARAMETROS_LINEA_BASE,
+            )
+            sesion.commit()
+            nueva = crear_lista_desde_archivo(
+                sesion,
+                MUESTRA,
+                nombre=NOMBRE_LISTA_NUEVA,
+                moneda=linea_base.MONEDA,
+                fecha_vigencia=FECHA_NUEVA,
+            )
+            actualizar_precios(
+                sesion,
+                NOMBRE_PROYECTO,
+                linea_base.CODIGO_PRESUPUESTO,
+                nueva.lista,
+                CODIGO_NUEVO,
+                plan=plan_secuencial(resultado.presupuesto),
+            )
+            sesion.commit()
+    finally:
+        motor.dispose()
+
+    motor = crear_motor(url)
+    try:
+        with abrir_sesion(motor) as sesion:
+            cambios = {
+                cambio.insumo.descripcion: cambio
+                for cambio in sesion.scalars(select(models.CambioPrecio))
+            }
+            assert set(cambios) == set(PRECIOS_NUEVOS)
+            for descripcion, cambio in cambios.items():
+                assert cambio.precio_anterior == linea_base.precio_de_insumo(descripcion)
+                assert cambio.precio_nuevo == PRECIOS_NUEVOS[descripcion]
+                assert cambio.variacion == VARIACIONES[descripcion]
+                assert cambio.fecha == FECHA_NUEVA
+                assert {i.partida.codigo for i in cambio.incidencias} == {CONCRETO}
+    finally:
+        motor.dispose()
+
+
+def test_una_fila_con_unidad_no_equivalente_se_rechaza_y_las_demas_se_procesan(
+    sesion, presupuesto_001, tmp_path
+):
+    """UC‑02, flujo 2b (INV‑015): la fila se rechaza y se reporta en `desconocidos`, el insumo
+    conserva su precio anterior, y la fila con una grafía equivalente (m³ ≡ m3) se procesa."""
+    archivo = tmp_path / "unidades.csv"
+    archivo.write_text(
+        f"tipo,insumo,unidad,precio\nmaterial,{CEMENTO},m3,99\nmaterial,{ARENA},m³,33\n",
+        encoding="utf-8",
+    )
+
+    resumen = crear_lista_desde_archivo(
+        sesion,
+        archivo,
+        nombre=NOMBRE_LISTA_NUEVA,
+        moneda=linea_base.MONEDA,
+        fecha_vigencia=FECHA_NUEVA,
+    )
+
+    assert [(p.descripcion, p.unidad) for p in resumen.desconocidos] == [(CEMENTO, "m3")]
+    precios = {precio.insumo.descripcion: precio.precio for precio in resumen.lista.precios}
+    assert precios[CEMENTO] == linea_base.precio_de_insumo(CEMENTO)
+    assert precios[ARENA] == PRECIOS_NUEVOS[ARENA]
 
 
 # ---------------------------------------------------------------------------------------------
