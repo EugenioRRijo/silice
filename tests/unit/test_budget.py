@@ -16,10 +16,12 @@ from __future__ import annotations
 from dataclasses import replace
 from datetime import date
 from decimal import Decimal
+from pathlib import Path
 
 import pytest
 from openpyxl import load_workbook
 
+from adapters.civil.tabular import AdaptadorCivilTabular
 from core.budget import (
     CODIGO_PENDIENTE,
     con_curva,
@@ -38,6 +40,7 @@ from core.verification.directivas import codigos_en_etiqueta
 from core.verification.informe import InformeAuditoria
 from tests.fixtures import apu_linea_base as linea_base
 from tests.fixtures.computo_auditado import composiciones_linea_base, items_auditados
+from tests.fixtures.computo_civil import CODIGOS as CODIGOS_CIVIL
 
 TOLERANCIA = Decimal("0.01")
 CENTIMO = Decimal("0.01")
@@ -45,6 +48,9 @@ COMPLETO = Decimal("1")
 MITAD = Decimal("0.5")
 
 HOJAS_ESPERADAS = ["Presupuesto", "APU", "Curva", "Auditoria"]
+MUESTRA_CIVIL = (
+    Path(__file__).resolve().parents[2] / "data" / "samples" / "civil" / "tanquillas_y_zanja.csv"
+)
 
 
 def _presupuesto():
@@ -153,6 +159,32 @@ def test_un_item_sin_partida_queda_pendiente_y_el_informe_lo_declara():
     assert otros == sin_huerfano.informe.hallazgos
     assert declarado.severidad is Severidad.ERROR
     assert resultado.informe.partida_de(declarado) == huerfano
+
+
+def test_el_pendiente_se_atribuye_a_su_partida_aunque_comparta_origen_id():
+    """El adaptador civil tabular da un mismo `origen_id` (la fila `T-01`) al concreto, al
+    encofrado y a la excavación. Sin composición de concreto, el `PENDIENTE` de esa fila debe
+    atribuirse al concreto, no a la partida valorada que comparte el origen. Sin plan: la muestra
+    repite `LB-01-EXC` y `plan_secuencial` no lo admite todavía (INV‑071)."""
+    items = AdaptadorCivilTabular(codigos=CODIGOS_CIVIL).extraer(MUESTRA_CIVIL)
+    concreto = linea_base.APU_CONCRETO.codigo_partida
+    composiciones = composiciones_linea_base()
+    del composiciones[concreto]
+
+    resultado = elaborar(
+        items,
+        composiciones,
+        linea_base.PARAMETROS_LINEA_BASE,
+        codigo=linea_base.CODIGO_PRESUPUESTO,
+        fecha=linea_base.FECHA_LINEA_BASE,
+    )
+
+    (declarado,) = resultado.informe.por_regla()[CODIGO_PENDIENTE]
+    (pendiente,) = resultado.pendientes
+    assert any(
+        partida.item.origen_id == pendiente.origen_id for partida in resultado.presupuesto.partidas
+    )
+    assert resultado.informe.partida_de(declarado) == concreto
 
 
 def test_sin_ninguna_partida_valorable_el_informe_se_emite_igual():

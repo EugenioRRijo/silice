@@ -123,6 +123,13 @@ def _declarar_pendientes(
 
     ERROR y no ADVERTENCIA: un presupuesto al que le falta una partida no cumple, aunque la
     verificación no bloquee su emisión (UC‑01, flujo 7a).
+
+    El hallazgo cita primero el código de la partida y luego el `origen_id`, y el índice gana la
+    identidad `codigo -> codigo`, como hace R6 (`core.verification.informe._indice_de_partidas`).
+    Así `partida_de` lo atribuye a la partida pendiente aunque su `origen_id` lo comparta un ítem
+    valorado de otra partida (el adaptador civil tabular da la misma fila `T-01` al concreto, al
+    encofrado y a la excavación), porque en el índice del informe ese origen ya apunta a esa otra
+    partida.
     """
     if not pendientes:
         return informe
@@ -135,7 +142,7 @@ def _declarar_pendientes(
                 f"cita la partida {item.codigo_partida}, que no tiene composicion de APU: queda "
                 "pendiente y no suma al total"
             ),
-            origen_ids=(item.origen_id,),
+            origen_ids=(item.codigo_partida, item.origen_id),
             valor_observado=item.cantidad,
         )
         for item in pendientes
@@ -145,6 +152,7 @@ def _declarar_pendientes(
         hallazgos=informe.hallazgos + declarados,
         partida_por_origen={
             **{item.origen_id: item.codigo_partida for item in pendientes},
+            **{item.codigo_partida: item.codigo_partida for item in pendientes},
             **informe.partida_por_origen,
         },
     )
