@@ -43,9 +43,9 @@ por medición (RNF‑01, 02, 03, 05, 06, 08; sección 9).
 - **RNF‑04 (usabilidad del informe):** requiere juicio de expertos con escala Likert; el
   instrumento se aplica con el tutor (Fase 6). No es automatizable.
 - **RNF‑10 (capacidad de aprendizaje de la interfaz):** no es automatizable; se mide con el caso con
-  persona CP‑07 de [guion_prueba_arenia.md](guion_prueba_arenia.md) en la compuerta GU1 de
-  [PLAN_UI.md](../PLAN_UI.md). Sus requisitos funcionales RF‑36 a RF‑43 **sí** tendrán prueba
-  automatizada (sección 8, pendiente de U1).
+  persona CP‑07 de [guion_prueba_arenia.md](guion_prueba_arenia.md) en la compuerta GU1b (fase Med)
+  de [PLAN_UI.md](../PLAN_UI.md). Sus requisitos funcionales RF‑36 a RF‑43 **sí** tienen prueba
+  automatizada, en verde (sección 8, U1).
 - **RNF‑07 en Linux:** la instalación con `uv sync` está verificada solo en Windows 11; la
   corrida en Linux queda declarada como pendiente.
 - **RNF‑09 (IFC de ≥ 2 modeladores):** la compuerta G1 se cruzó con salvedad — el adaptador civil
@@ -211,7 +211,7 @@ prueba lo reclamaba.
 | RNF‑07 portabilidad | `uv sync --locked` sin pasos manuales; suite completa en verde en Windows 11 (local) y en Linux y Windows por CI ([run 34969162933](https://github.com/EugenioRRijo/tesis-apu-multidominio/actions/runs/34969162933), 2026‑09‑15) | cumple |
 | RNF‑08 seguridad | inspección: 0 credenciales versionadas, 0 llamadas de red en operación (excepción declarada: descarga inicial del modelo, cacheada) | cumple |
 | RNF‑09 compatibilidad IFC | G1 con salvedad: exacto contra modelo programático; faltan exports de ≥ 2 modeladores | parcial |
-| RNF‑10 aprendizaje de la interfaz | caso con persona CP‑07 ([guion_prueba_arenia.md](guion_prueba_arenia.md)), dos escenarios con personas distintas, bloque B del anexo A | pendiente (GU1) |
+| RNF‑10 aprendizaje de la interfaz | caso con persona CP‑07 ([guion_prueba_arenia.md](guion_prueba_arenia.md)), dos escenarios con personas distintas, bloque B del anexo A | pendiente (GU1b, fase Med) |
 
 ## 10. Registro de la ejecución (2026‑09‑14)
 

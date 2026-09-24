@@ -559,7 +559,7 @@ Criterios de degradación del módulo predictivo: [CLAUDE.md §8.1](../CLAUDE.md
 Correspondencia RNF → verificación: RNF‑01 y RNF‑02 se comprueban en UC‑01 y UC‑02 (RF‑06, RF‑14);
 RNF‑03 en UC‑02 (RF‑11); RNF‑04 con el juicio de expertos sobre el informe de UC‑05; RNF‑05 con RF‑09;
 RNF‑06 y RNF‑07 en la Sesión F.2; RNF‑08 por inspección del repositorio y de las dependencias;
-RNF‑09 en la compuerta G1 (RF‑04). RNF‑10 con el caso con persona CP‑07, en la compuerta GU1 de
+RNF‑09 en la compuerta G1 (RF‑04). RNF‑10 con el caso con persona CP‑07, en la compuerta GU1b (fase Med) de
 [PLAN_UI.md](../PLAN_UI.md); RNF‑04 es un requisito distinto y sigue pendiente.
 
 La columna "Indicador" enlaza con [docs/metodologia.md §8](metodologia.md#8-indicadores-de-la-tesis) y
