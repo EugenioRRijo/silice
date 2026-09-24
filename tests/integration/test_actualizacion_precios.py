@@ -758,3 +758,27 @@ def test_una_version_no_se_descarta_dos_veces(sesion, actualizacion):
     descartar_version(sesion, NOMBRE_PROYECTO, CODIGO_NUEVO, FECHA_NUEVA)
     with pytest.raises(ValueError, match="ya esta descartada"):
         descartar_version(sesion, NOMBRE_PROYECTO, CODIGO_NUEVO, FECHA_NUEVA)
+
+
+def test_con_tres_versiones_solo_se_descarta_la_ultima(sesion, actualizacion, lista_nueva):
+    """GC3, M‑2 de requisitos: con dos versiones «no es la última» coincide con «es la primera».
+
+    Con tres (001, 002 y 003) la intermedia no es ni la primera ni la última: descartarla da
+    `ValueError` y la 003 sí se descarta (fila INV‑015: nunca una versión que no sea la última).
+    """
+    nuevo, _ = actualizacion
+    actualizar_precios(
+        sesion,
+        NOMBRE_PROYECTO,
+        CODIGO_NUEVO,
+        lista_nueva.lista,
+        "003",
+        plan=plan_secuencial(nuevo.presupuesto),
+    )
+    sesion.commit()
+
+    with pytest.raises(ValueError, match="ultima version"):
+        descartar_version(sesion, NOMBRE_PROYECTO, CODIGO_NUEVO, FECHA_NUEVA)
+    marca = descartar_version(sesion, NOMBRE_PROYECTO, "003", FECHA_NUEVA)
+    assert marca.presupuesto.codigo == "003"
+    assert _contar(sesion, models.DescarteVersion) == 1
