@@ -47,7 +47,6 @@ from sqlalchemy.orm import Session  # noqa: E402
 from core.budget import (  # noqa: E402
     actualizar_precios,
     elaborar,
-    generar_presupuesto,
     guardar_presupuesto,
     plan_secuencial,
 )
@@ -155,14 +154,11 @@ def evaluar_sobre_linea_base(
         fecha=linea_base.FECHA_LINEA_BASE,
         moneda=linea_base.MONEDA,
     )
-    borrador = generar_presupuesto(
-        items, composiciones, linea_base.PARAMETROS_LINEA_BASE, **argumentos
-    )
     resultado = elaborar(
         items,
         composiciones,
         linea_base.PARAMETROS_LINEA_BASE,
-        plan=plan_secuencial(borrador),
+        plan=plan_secuencial,
         **argumentos,
     )
     guardar_presupuesto(
@@ -188,7 +184,7 @@ def evaluar_sobre_linea_base(
         linea_base.CODIGO_PRESUPUESTO,
         resumen.lista,
         "002",
-        plan=plan_secuencial(resultado.presupuesto),
+        plan=plan_secuencial,
     )
 
     pus_base = {
