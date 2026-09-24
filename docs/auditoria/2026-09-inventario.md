@@ -156,6 +156,8 @@ en la columna de corrección.
 | INV-071 | planificación de C1 (Tarea 11) | core (cruza: ui) | Requisito (UC‑01) | importante | `core/budget/curva.py:85-90` (`plan_secuencial`), `:117-140` (`_validar`); `data/samples/civil/tanquillas_y_zanja.csv` (dos ítems `LB-01-EXC`: tanquilla y zanja) | `plan_secuencial` crea un período por **renglón** con fracción 1; con dos renglones del mismo código la fracción suma 2 y `generar_curva` lanza `PlanInvalido`. Elaborar la muestra civil tabular desde la interfaz falla (reproducido en C1) | `plan_secuencial` agrupa por código: un período por código distinto, en orden de primera aparición. Se corrige en `core/` | C1 (ratificado por Eugenio en GC1, 2026‑09‑23) | cerrado (3c026da) |
 | INV-072 | planificación de C1 (Tarea 11; expediente B.5) | ui (cruza: api) | Trazabilidad (UC‑01 3a) | importante | `ui/paginas/elaborar.py:225-226`, `ui/paginas/componer.py:798-800`, `api/rutas/presupuestos.py:79-81` frente a `core/catalog/repositorio.py:73-78,128-134` | El núcleo ya deja pendiente un ítem sin partida (INV‑013), pero la interfaz y la API piden antes las composiciones al catálogo, que lanza `KeyError` ante una partida desconocida: 3a no se alcanza de punta a punta, y la propuesta de tres partidas similares (UC‑03) no existe en ese flujo | Pedir composiciones solo de las partidas existentes y mostrar `ResultadoElaboracion.pendientes` con sus propuestas; persistir o re‑derivar los ítems pendientes al guardar/cargar (hoy el hallazgo PENDIENTE guardado apunta a un origen_id sin línea guardada); en commits de `ui/` y `api/` | C2 (api) + C3 (ui) | abierto |
 | INV-073 | planificación de C1 (Tarea 12; expediente B.7) | adapters (cruza: core, docs) | Trazabilidad (UC‑04) | importante | `docs/ERS.md:211-215` (flujos 1a, 2a, 2b) frente a `adapters/civil/reglas.py:41-198`, `core/contracts/item_computo.py:52-53` | Los flujos alternativos de UC‑04 no tienen implementación: nada informa que un parámetro no participa en ninguna regla (1a); nada empareja por GlobalId al reimportar un IFC (2a); una cantidad negativa se rechaza con `ValueError` del contrato, en vez de conservar la anterior y emitir un hallazgo de R5 (2b) | Implementar 1a y 2b en la capa de adaptadores, sin cambiar `core/`, y 2a emparejando por `origen_id`; o declararlos sin cumplir en la ERS §3.2 y en plan_pruebas §8 | C2 (adaptadores) + C4 (documentos) | abierto |
+| INV-074 | acta R2 del capítulo IV (T6.2) | docs | Coherencia documental / DRY | importante | `CLAUDE.md:97` (`bono × Σ cantidad`, sin línea de destajo) frente a `core/costing/motor.py:3-13` (docstring: jornal y destajo separados, bono por los obreros a jornal) | La especificación del cálculo de `CLAUDE.md` §4, declarada fuente única de la fórmula, no contiene la modalidad a destajo que el motor calcula desde la decisión D9; el capítulo IV la atribuía a `CLAUDE.md` §4. Con todas las líneas a jornal las dos formulaciones coinciden. Hermano de INV‑057 (la tabla de contratos omite `ModalidadManoObra`) | Actualizar `CLAUDE.md` §4 con la fórmula del docstring del motor, o declarar allí que la de destajo vive en el motor por D9 (pendiente del aval del tutor); el capítulo IV ya cita el docstring y la bitácora del destajo | C4 | abierto |
+| INV-075 | acta R2 del capítulo IV (T11.1) | scripts (cruza: tests, docs) | Trazabilidad | importante | `scripts/meta_redaccion.py:31-32,465-470` (solo `01-el-problema.md` y `02-marco-teorico.md`) | Las metas R4–R8 (voz impersonal, citas, referencias pendientes, datos presentados como reales, «gemelo digital») no leen `04-desarrollo.md`: un 12/12 no dice nada del capítulo IV, que se verificó a mano y con un script ad hoc en la revisión R2 | Extender R4–R8 a todo capítulo presente en `docs/tesis/capitulos/`, con una prueba en `tests/unit/test_meta_redaccion.py` que primero falle sobre el capítulo IV. Es código de `scripts/`: no se toca desde la redacción | C3 | abierto |
 
 ## 4. Propuesta de triage para GC0
 
@@ -177,10 +179,11 @@ guion). Los 51 importantes entran, por fase (cuadra con (d)):
   separados), INV‑071 (agregado en C1; corregido en C1 por decisión de Eugenio en GC1).
 - **C2 (5):** INV‑016, INV‑017, INV‑018, INV‑072 (subtarea de `ui/` en C3), INV‑073 (subtarea
   documental en C4); INV‑072 e INV‑073 se agregaron en C1.
-- **C3 (8):** INV‑019, INV‑020, INV‑021, INV‑022, INV‑023, INV‑024, INV‑025, INV‑043 (exige enmendar
-  la Tarea 11 de U1 en el primer commit de C3).
-- **C4 (18):** INV‑026, INV‑027, INV‑028, INV‑029, INV‑030, INV‑031 (subtarea en Red), INV‑032,
-  INV‑033, INV‑054, INV‑057, INV‑058, INV‑060, INV‑061, INV‑062, INV‑063, INV‑064, INV‑067, INV‑070.
+- **C3 (9):** INV‑019, INV‑020, INV‑021, INV‑022, INV‑023, INV‑024, INV‑025, INV‑043 (exige enmendar
+  la Tarea 11 de U1 en el primer commit de C3), INV‑075 (agregado en la revisión R2 del capítulo IV).
+- **C4 (19):** INV‑026, INV‑027, INV‑028, INV‑029, INV‑030, INV‑031 (subtarea en Red), INV‑032,
+  INV‑033, INV‑054, INV‑057, INV‑058, INV‑060, INV‑061, INV‑062, INV‑063, INV‑064, INV‑067, INV‑070, INV‑074 (agregado en la revisión R2 del
+  capítulo IV).
 - **Red (3):** INV‑034, INV‑035, INV‑036.
 
 ### (b) Menores que se propone promover (12)
@@ -221,15 +224,17 @@ Tarea 5 de C0, tras agregar INV‑071 a INV‑073 (nota de §3).
 |---|---|---|---|---|---|---|
 | C1 | 1 | 17 | 4 | 22 | 0 | 4 |
 | C2 | 0 | 5 | 2 | 7 | 1 | 1 |
-| C3 | 0 | 8 | 9 | 17 | 7 | 2 |
-| C4 | 0 | 18 | 5 | 23 | 4 | 1 |
+| C3 | 0 | 9 | 9 | 18 | 7 | 2 |
+| C4 | 0 | 19 | 5 | 24 | 4 | 1 |
 | Red | 0 | 3 | 1 | 4 | 0 | 1 |
-| **Total** | **1** | **51** | **21** | **73** | **12** | **9** |
+| **Total** | **1** | **53** | **21** | **75** | **12** | **9** |
 
 Con la propuesta de GC0 (§4 (a)-(c), sin variación tras C1) entran 64 hallazgos (1 bloqueante, 51
 importantes y 12 menores promovidos) y 9 van al capítulo de limitaciones. INV‑071 cuenta en C1:
 Eugenio ratificó su corrección en GC1 y quedó cerrado en C1 (3c026da); INV‑072 e INV‑073 cuentan en C2, su
-primera fase destino.
+primera fase destino. La revisión R2 del capítulo IV (fase Red) agrega INV‑074 (C4) e INV‑075 (C3),
+ambos importantes, a partir de las observaciones T6.2 y T11.1 de su
+[acta](../tesis/revisiones/R2-capitulo-4.md).
 
 La fase C1 agrega INV‑071 a INV‑073 (Tareas 1, 11 y 12 del plan de C1) y cierra los hallazgos de su
 fase según esta columna; INV‑015 conserva la subtarea de C3 (7a).
