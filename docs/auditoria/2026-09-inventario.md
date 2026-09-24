@@ -213,6 +213,10 @@ guion). Los 57 importantes entran, por fase (cuadra con (d)):
 | INV‑056 | C4 | Barato; INV‑032 ya edita `README.md` |
 | INV‑059 | C4 | Barato; arquitectura §4 se regenera en INV‑029 |
 
+Esta lista es la aprobada en GC0 y se conserva como registro. En GC2 se promovieron además tres menores
+nuevos, que llevan el total de promovidos a 15 en el recuento de (d): INV‑079 (C2, cerrado), INV‑081
+(C3) e INV‑082 (C4).
+
 ### (c) El resto: a limitaciones (9)
 
 INV‑037 (C1; se corrige de hecho si se cierra INV‑069, que ya entra), INV‑038 (C1+C2; exige un
