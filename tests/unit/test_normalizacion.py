@@ -240,3 +240,22 @@ def test_propuestas_para_sin_pendientes_no_construye_ninguno(monkeypatch):
 
     assert propuestas_para(CATALOGO, []) == ()
     assert construcciones == []
+
+
+def test_la_falla_lleva_el_nombre_de_la_falla_declarada_que_la_atrapo(monkeypatch, caplog):
+    """Sin el extra, la importacion real lanza `ModuleNotFoundError` (subclase de `ImportError`):
+    la `falla` se rotula con la falla **declarada** que la atrapo, `ImportError`, que es el prefijo
+    que distingue «sin el extra» de un modelo roto (revision de B2, A-1)."""
+    import logging
+
+    from ml.normalization import Propuesta, proponedor
+
+    error = ModuleNotFoundError("No module named 'sentence_transformers'")
+    monkeypatch.setattr(f"{REGISTRADOR}._cargar_modelo", _que_lanza(error))
+
+    with caplog.at_level(logging.WARNING, logger=REGISTRADOR):
+        propuesta = proponedor(CATALOGO)("Excavacion de un foso")
+
+    assert propuesta == Propuesta((), "ImportError: No module named 'sentence_transformers'")
+    (aviso,) = _avisos(caplog)
+    assert "ImportError" in aviso.getMessage()

@@ -207,4 +207,8 @@ def propuestas_para[P: TieneDescripcion](
 
 
 def _falla(error: Exception) -> str:
-    return f"{type(error).__name__}: {error}"
+    """`"Tipo: mensaje"`, con el nombre de la falla **declarada** que la atrapó, no el de su
+    subclase: sin el extra, la importación lanza `ModuleNotFoundError` y la falla es `ImportError`,
+    el prefijo con que quien presenta la propuesta distingue «sin el extra» de un modelo roto."""
+    declarada = next(falla for falla in FALLAS_DE_LA_PROPUESTA if isinstance(error, falla))
+    return f"{declarada.__name__}: {error}"
