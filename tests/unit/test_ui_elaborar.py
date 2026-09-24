@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import dataclasses
 import importlib
-from datetime import date
 from decimal import Decimal
 from pathlib import Path
 
@@ -28,6 +27,7 @@ from core.verification.informe import DECIMALES_PRESENTACION
 from core.verification.texto import formatear_decimal
 from scripts.seed import sembrar
 from tests.fixtures.apu_linea_base import (
+    FECHA_LINEA_BASE,
     MONEDA,
     PARAMETROS_LINEA_BASE,
     PRECIO_UNITARIO_EXACTO,
@@ -87,7 +87,7 @@ def _total_por_el_nucleo(items: list[ItemComputo]) -> str:
         composiciones_linea_base(),
         PARAMETROS_LINEA_BASE,
         codigo=CODIGO_PRESUPUESTO,
-        fecha=date.today(),
+        fecha=FECHA_LINEA_BASE,  # metadato del presupuesto: no entra en el total
         moneda=MONEDA,
         plan=plan_secuencial,
     )
@@ -224,7 +224,7 @@ def test_sin_pendientes_no_hay_propuestas_ni_se_carga_nada(monkeypatch) -> None:
 # --- el fragmento sin propuestas: la regresion de componer (A-3) ----------------------------
 
 
-def _fragmento(con_similares: bool) -> None:
+def _fragmento(variante: str) -> None:
     from datetime import date
     from decimal import Decimal
 
@@ -253,23 +253,56 @@ def _fragmento(con_similares: bool) -> None:
         fecha=date(2026, 4, 28),
     )
     similares = (PartidaSimilar("LB-02-TUB", "Tuberia PVC 4 pulgadas", 0.91),)
-    propuestas = (
-        (PendienteConPropuestas(item=pendiente, similares=similares),) if con_similares else ()
-    )
+    propuestas = {
+        # la pagina de componer: no propone
+        "ninguna": (),
+        # produccion sin el extra `ml`: una entrada sin similares (Q-1 de la revision de A4)
+        "sin_similares": (
+            PendienteConPropuestas(item=pendiente, falla="ImportError: falta el extra ml"),
+        ),
+        "con_similares": (PendienteConPropuestas(item=pendiente, similares=similares),),
+    }[variante]
     mostrar_elaboracion(
         resultado, b"", "presupuesto_P-001.xlsx", prefijo="prueba", propuestas=propuestas
     )
 
 
 def test_sin_propuestas_el_fragmento_no_ofrece_selector() -> None:
-    at = AppTest.from_function(_fragmento, kwargs={"con_similares": False}, default_timeout=60)
-    at.run()
-    assert not at.exception, [e.value for e in at.exception]
-    assert any(m.value.startswith("**T-99**") for m in at.markdown)
-    assert len(at.selectbox) == 0
-    assert ROTULO_APLICAR not in [boton.label for boton in at.button]
+    for variante in ("ninguna", "sin_similares"):
+        at = AppTest.from_function(_fragmento, kwargs={"variante": variante}, default_timeout=60)
+        at.run()
+        assert not at.exception, [e.value for e in at.exception]
+        assert any(m.value.startswith("**T-99**") for m in at.markdown), variante
+        assert len(at.selectbox) == 0, variante
+        assert ROTULO_APLICAR not in [boton.label for boton in at.button], variante
+    # sin similares, la falla se declara
+    assert "ImportError: falta el extra ml" in [c.value for c in at.caption]
 
-    at = AppTest.from_function(_fragmento, kwargs={"con_similares": True}, default_timeout=60)
+    at = AppTest.from_function(_fragmento, kwargs={"variante": "con_similares"}, default_timeout=60)
     at.run()
     assert not at.exception, [e.value for e in at.exception]
     assert len(at.selectbox) == 1
+    assert ROTULO_APLICAR in [boton.label for boton in at.button]
+
+
+# --- las propuestas se calculan una vez por elaboracion (Q-3 de la revision de A4) -----------
+
+
+def test_las_propuestas_se_calculan_una_vez_por_elaboracion(monkeypatch, base_sembrada):
+    llamadas: list[int] = []
+
+    def _contadas(partidas, pendientes):
+        llamadas.append(len(pendientes))
+        return _propuestas_fijas(partidas, pendientes)
+
+    caso = importlib.import_module("ui.caso")
+    monkeypatch.setattr(caso, "RUTA_BASE_POR_DEFECTO", str(base_sembrada))
+    monkeypatch.setattr("ui.elaboracion.propuestas_de_pendientes", _contadas)
+    at = AppTest.from_string(SCRIPT, default_timeout=120)
+    at.session_state[CLAVE_ITEMS] = _items()
+    at.run()
+    _por_rotulo(at.button, ROTULO_ELABORAR).click().run()
+    assert llamadas == [1]
+    at.run()  # otro render sin volver a elaborar
+    at.run()
+    assert llamadas == [1]
