@@ -77,13 +77,16 @@ def _hallazgos_de(regla: str, informe: InformeAuditoria) -> list:
 @pytest.mark.parametrize("numero", (1, 2))
 def test_la_auditoria_corre_sobre_el_presupuesto_telecom_completo(sesion_telecom, numero):
     presupuesto = presupuesto_arenaza(sesion_telecom, numero)
+    antes = repr(presupuesto)
 
     informe = auditar(presupuesto)
 
     assert isinstance(informe, InformeAuditoria)
     assert informe.codigo_presupuesto == presupuesto.codigo
-    # El informe no altera el presupuesto auditado (RF‑23): mismas partidas, mismo total.
-    assert presupuesto.total == presupuesto_arenaza(sesion_telecom, numero).total
+    # El informe no altera el presupuesto auditado (RF‑23; INV‑016): el mismo objeto, campo por
+    # campo, antes y después de auditar. `repr` recorre los contratos anidados, incluidos los
+    # `MappingProxyType` de parámetros y especificaciones, que `copy.deepcopy` no puede copiar.
+    assert repr(presupuesto) == antes
 
 
 # ---------------------------------------------------------------------------------------------
@@ -131,15 +134,14 @@ def test_r5_no_reporta_error_sin_balance_declarado(sesion_telecom, numero):
     así que R5 no tiene nada que evaluar: su implementación realiza el "sin datos" como una lista
     vacía (mismo comportamiento que fija `tests/unit/test_verification.py::
     test_r5_no_reporta_nada_si_el_balance_se_cumple` para el caso civil sin balance a verificar),
-    no como un `Hallazgo` INFO explícito. Lo que importa para RF‑23 y se fija aquí es la garantía
-    de fondo: nunca ERROR ni CRITICO por falta de datos.
+    no como un `Hallazgo` INFO explícito. Lo que importa para RF‑23 es la garantía de fondo, nunca
+    ERROR ni CRITICO por falta de datos, y la lista vacía ya la fija (INV‑016).
     """
     informe = auditar(presupuesto_arenaza(sesion_telecom, numero))
 
     hallazgos_r5 = _hallazgos_de("R5", informe)
 
     assert hallazgos_r5 == []
-    assert all(h.severidad not in (Severidad.ERROR, Severidad.CRITICO) for h in hallazgos_r5)
 
 
 # ---------------------------------------------------------------------------------------------
