@@ -1,15 +1,17 @@
 """Rutas de presupuestos por HTTP: elaborar, consultar, exportar y actualizar precios.
 
-UC-01 (`POST /presupuestos`, a partir de `ItemComputo` ya extraídos), UC-05 (el informe de
-auditoría, que se genera siempre) y UC-02 (`POST /presupuestos/{codigo}/actualizacion`). Los montos
-se presentan siempre con dos decimales (`core.verification.informe.DECIMALES_PRESENTACION`), la
-misma cifra que usa `ui/app.py` y la exportación a Excel: esta capa no inventa su propio redondeo.
+UC-01 (`POST /presupuestos`, a partir de `ItemComputo` ya extraídos; un ítem sin partida queda
+pendiente y se lista con sus partidas similares, flujo 3a), UC-05 (el informe de auditoría, que se
+genera siempre) y UC-02 (`POST /presupuestos/{codigo}/actualizacion`). Los montos se presentan
+siempre con dos decimales (`core.verification.informe.DECIMALES_PRESENTACION`), la misma cifra que
+usa `ui/app.py` y la exportación a Excel: esta capa no inventa su propio redondeo.
 """
 
 from __future__ import annotations
 
 import os
 import tempfile
+from collections.abc import Callable, Sequence
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, status
@@ -28,11 +30,13 @@ from api.esquemas import (
     EscenariosRespuesta,
     FilaComparativoRespuesta,
     ItemComputoPeticion,
+    ItemPendienteRespuesta,
     PartidaPresupuestadaRespuesta,
     PresupuestoCreadoRespuesta,
     PresupuestoDetalleRespuesta,
     PresupuestoPeticion,
     PresupuestoResumenRespuesta,
+    PropuestaPartidaRespuesta,
     decimal_desde_texto,
 )
 from core import models
@@ -67,7 +71,8 @@ _CAMPOS_PARAMETROS = ("fcas", "bono_alimentacion", "administracion", "utilidad")
 def crear_presupuesto(
     sesion: SesionDep, peticion: PresupuestoPeticion
 ) -> PresupuestoCreadoRespuesta:
-    """Elabora el presupuesto (UC-01), lo audita siempre (UC-05) y lo guarda."""
+    """Elabora el presupuesto (UC-01), lo audita siempre (UC-05) y lo guarda; los ítems sin
+    partida quedan pendientes (flujo 3a)."""
     proyecto = sesion.scalars(
         select(models.Proyecto).where(models.Proyecto.nombre == peticion.proyecto)
     ).one_or_none()
@@ -76,8 +81,12 @@ def crear_presupuesto(
 
     items = [_a_item_computo(item) for item in peticion.items]
     catalogo = Catalogo(sesion)
+    # UC-01, flujo 3a (INV-072): solo se piden composiciones de las partidas que existen; las
+    # demás las deja pendientes `elaborar`, en vez de abortar con el KeyError del catálogo (404).
+    catalogadas = {partida.codigo for partida in catalogo.partidas()}
     composiciones = catalogo.composiciones(
-        dict.fromkeys(item.codigo_partida for item in items), fecha=peticion.fecha
+        dict.fromkeys(item.codigo_partida for item in items if item.codigo_partida in catalogadas),
+        fecha=peticion.fecha,
     )
     parametros = _parametros_costo(peticion)
 
@@ -104,6 +113,7 @@ def crear_presupuesto(
         codigo=resultado.presupuesto.codigo,
         total=formatear_decimal(resultado.presupuesto.total, DECIMALES_PRESENTACION),
         hallazgos=len(resultado.informe.hallazgos),
+        pendientes=_pendientes(catalogo, resultado.pendientes),
     )
 
 
@@ -295,6 +305,58 @@ def _a_item_computo(item: ItemComputoPeticion) -> ItemComputo:
         },
         especificaciones=dict(item.especificaciones),
     )
+
+
+def _pendientes(
+    catalogo: Catalogo, pendientes: Sequence[ItemComputo]
+) -> list[ItemPendienteRespuesta]:
+    """UC-01, flujo 3a: cada ítem sin partida con las partidas más similares del catálogo (UC-03).
+
+    La cantidad viaja exacta (como en `ItemComputoRespuesta`), no redondeada: quien acepta una
+    propuesta vuelve a enviar este mismo ítem con el código elegido.
+    """
+    if not pendientes:
+        return []
+    proponer = _proponedor(catalogo)
+    return [
+        ItemPendienteRespuesta(
+            codigo_partida=item.codigo_partida,
+            descripcion=item.descripcion,
+            unidad=item.unidad,
+            cantidad=str(item.cantidad),
+            origen_id=item.origen_id,
+            propuestas=[
+                PropuestaPartidaRespuesta(
+                    codigo=similar.codigo, descripcion=similar.descripcion, puntaje=similar.puntaje
+                )
+                for similar in proponer(item.descripcion)
+            ],
+        )
+        for item in pendientes
+    ]
+
+
+def _proponedor(catalogo: Catalogo) -> Callable[[str], Sequence]:
+    """`similares` del normalizador de UC-03 sobre el catálogo, o una propuesta vacía.
+
+    La propuesta es una ayuda, no una condición: sin el extra `ml`, o sin el modelo de similitud en
+    la caché local (precondición de UC-03, `docs/ERS.md`), el ítem queda pendiente y el informe lo
+    declara igual. Ante la falta del extra es el criterio de `rutas/rendimientos._veredicto_bosque`
+    (que solo atrapa `ImportError`); aquí se atrapan además `OSError` (modelo ausente, sin red) y
+    `ValueError` (`HFValidationError` de Hugging Face es su subclase), que de otro modo llegarían
+    como 500 o 422 después de guardar el presupuesto. El `except` cubre solo la construcción del
+    normalizador, no `similares`. Solo se construye si hay pendientes: cargar el modelo cuesta
+    segundos dentro de la petición, y la primera vez puede descargarlo.
+    """
+    try:
+        from ml.normalization import NormalizadorPartidas
+
+        normalizador = NormalizadorPartidas(
+            {partida.codigo: partida.descripcion for partida in catalogo.partidas()}
+        )
+    except (ImportError, OSError, ValueError):
+        return lambda _descripcion: []
+    return normalizador.similares
 
 
 def _parametros_costo(peticion: PresupuestoPeticion) -> ParametrosCosto:

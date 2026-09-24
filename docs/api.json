@@ -353,7 +353,7 @@
           "presupuestos"
         ],
         "summary": "Crear Presupuesto",
-        "description": "Elabora el presupuesto (UC-01), lo audita siempre (UC-05) y lo guarda.",
+        "description": "Elabora el presupuesto (UC-01), lo audita siempre (UC-05) y lo guarda; los ítems sin\npartida quedan pendientes (flujo 3a).",
         "operationId": "crear_presupuesto_presupuestos_post",
         "requestBody": {
           "content": {
@@ -1564,6 +1564,48 @@
         "title": "ItemComputoRespuesta",
         "description": "Un `ItemComputo` extraído por un adaptador (UC-01), con cantidad y parámetros exactos."
       },
+      "ItemPendienteRespuesta": {
+        "properties": {
+          "codigo_partida": {
+            "type": "string",
+            "title": "Codigo Partida"
+          },
+          "descripcion": {
+            "type": "string",
+            "title": "Descripcion"
+          },
+          "unidad": {
+            "type": "string",
+            "title": "Unidad"
+          },
+          "cantidad": {
+            "type": "string",
+            "title": "Cantidad"
+          },
+          "origen_id": {
+            "type": "string",
+            "title": "Origen Id"
+          },
+          "propuestas": {
+            "items": {
+              "$ref": "#/components/schemas/PropuestaPartidaRespuesta"
+            },
+            "type": "array",
+            "title": "Propuestas"
+          }
+        },
+        "type": "object",
+        "required": [
+          "codigo_partida",
+          "descripcion",
+          "unidad",
+          "cantidad",
+          "origen_id",
+          "propuestas"
+        ],
+        "title": "ItemPendienteRespuesta",
+        "description": "Un ítem sin partida en el catálogo (UC‑01, flujo 3a): no suma al total y el informe lo\ndeclara. Para aceptar una propuesta se vuelve a enviar el ítem con ese código. `propuestas`\nqueda vacía sin el extra `ml` o sin el modelo de similitud en la caché local."
+      },
       "ListaRespuesta": {
         "properties": {
           "nombre": {
@@ -1675,6 +1717,13 @@
           "hallazgos": {
             "type": "integer",
             "title": "Hallazgos"
+          },
+          "pendientes": {
+            "items": {
+              "$ref": "#/components/schemas/ItemPendienteRespuesta"
+            },
+            "type": "array",
+            "title": "Pendientes"
           }
         },
         "type": "object",
@@ -1684,7 +1733,7 @@
           "hallazgos"
         ],
         "title": "PresupuestoCreadoRespuesta",
-        "description": "Lo que confirma la elaboración: el total (dos decimales) y cuántos hallazgos audita."
+        "description": "Lo que confirma la elaboración: el total (dos decimales), cuántos hallazgos audita y los\nítems que quedaron pendientes por no tener partida en el catálogo (UC‑01, flujo 3a)."
       },
       "PresupuestoDetalleRespuesta": {
         "properties": {
@@ -1824,6 +1873,30 @@
         ],
         "title": "PresupuestoResumenRespuesta",
         "description": "Cabecera de un presupuesto guardado: código y total, para el listado."
+      },
+      "PropuestaPartidaRespuesta": {
+        "properties": {
+          "codigo": {
+            "type": "string",
+            "title": "Codigo"
+          },
+          "descripcion": {
+            "type": "string",
+            "title": "Descripcion"
+          },
+          "puntaje": {
+            "type": "number",
+            "title": "Puntaje"
+          }
+        },
+        "type": "object",
+        "required": [
+          "codigo",
+          "descripcion",
+          "puntaje"
+        ],
+        "title": "PropuestaPartidaRespuesta",
+        "description": "Una partida del catálogo parecida a la de un ítem pendiente (UC‑03, RF‑15).\n\nEl puntaje es una similitud adimensional del coseno, no un monto: viaja como número\n(`ml/normalization/normalizador.py`, la excepción declarada a la regla `Decimal`)."
       },
       "PropuestaRendimientoRespuesta": {
         "properties": {

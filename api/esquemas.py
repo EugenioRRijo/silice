@@ -128,12 +128,39 @@ class PresupuestoPeticion(BaseModel):
     utilidad: str | None = None
 
 
+class PropuestaPartidaRespuesta(BaseModel):
+    """Una partida del catálogo parecida a la de un ítem pendiente (UC‑03, RF‑15).
+
+    El puntaje es una similitud adimensional del coseno, no un monto: viaja como número
+    (`ml/normalization/normalizador.py`, la excepción declarada a la regla `Decimal`).
+    """
+
+    codigo: str
+    descripcion: str
+    puntaje: float
+
+
+class ItemPendienteRespuesta(BaseModel):
+    """Un ítem sin partida en el catálogo (UC‑01, flujo 3a): no suma al total y el informe lo
+    declara. Para aceptar una propuesta se vuelve a enviar el ítem con ese código. `propuestas`
+    queda vacía sin el extra `ml` o sin el modelo de similitud en la caché local."""
+
+    codigo_partida: str
+    descripcion: str
+    unidad: str
+    cantidad: str
+    origen_id: str
+    propuestas: list[PropuestaPartidaRespuesta]
+
+
 class PresupuestoCreadoRespuesta(BaseModel):
-    """Lo que confirma la elaboración: el total (dos decimales) y cuántos hallazgos audita."""
+    """Lo que confirma la elaboración: el total (dos decimales), cuántos hallazgos audita y los
+    ítems que quedaron pendientes por no tener partida en el catálogo (UC‑01, flujo 3a)."""
 
     codigo: str
     total: str
     hallazgos: int
+    pendientes: list[ItemPendienteRespuesta] = Field(default_factory=list)
 
 
 class PartidaPresupuestadaRespuesta(BaseModel):

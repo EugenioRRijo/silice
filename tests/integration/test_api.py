@@ -2,8 +2,13 @@
 
 from __future__ import annotations
 
+import sys
 from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
+from types import SimpleNamespace
+
+import pytest
+from sqlalchemy import select
 
 from tests.fixtures import apu_linea_base as linea_base
 from tests.fixtures.actualizacion_uc02 import INCREMENTO_TOTAL
@@ -310,3 +315,155 @@ def test_computo_civil_desde_un_modelo_ifc(cliente):
     assert items[0]["cantidad"] == str(linea_base.CANTIDAD_POR_TANQUILLA_MEMORIA[concreto])
     assert items[0]["codigo_partida"] == concreto
     assert items[0]["origen_tipo"] == "ifc"
+
+
+CODIGO_SIN_PARTIDA = "XX-99-NUE"
+
+
+def _item_sin_partida(descripcion):
+    """Un item cuya partida no existe en el catalogo (UC-01, flujo 3a)."""
+    return {
+        "codigo_partida": CODIGO_SIN_PARTIDA,
+        "descripcion": descripcion,
+        "unidad": "m3",
+        "cantidad": "2.5",
+        "origen_id": "PEND-01",
+        "origen_tipo": "manual",
+        "dominio": "civil",
+    }
+
+
+def _cuerpo(codigo, items):
+    return {
+        "codigo": codigo,
+        "fecha": "2026-04-28",
+        "moneda": "USD",
+        "proyecto": "Drenaje de la clínica",
+        "items": items,
+    }
+
+
+def test_un_item_sin_partida_queda_pendiente_por_http(cliente, sesion, items_payload, monkeypatch):
+    """UC-01, flujo 3a, por HTTP (INV-072): el item sin partida no aborta la elaboracion. Queda
+    pendiente, no suma al total, el informe lo declara (y se persiste) y la respuesta lo lista con
+    las partidas similares que propone UC-03. El normalizador es un doble: esta prueba verifica el
+    cableado, no la similitud (esa la cubre la prueba con el modelo real, mas abajo).
+    """
+    from core import models
+
+    recibidas = {}
+    propuesta = SimpleNamespace(codigo="LB-01-EXC", descripcion="Excavacion", puntaje=0.91)
+
+    class _NormalizadorDoble:
+        def __init__(self, partidas):
+            recibidas.update(partidas)
+
+        def similares(self, descripcion):
+            return [propuesta]
+
+    monkeypatch.setitem(
+        sys.modules, "ml.normalization", SimpleNamespace(NormalizadorPartidas=_NormalizadorDoble)
+    )
+
+    base = cliente.post("/presupuestos", json=_cuerpo("API-BASE", items_payload))
+    r = cliente.post(
+        "/presupuestos",
+        json=_cuerpo("API-3A", [*items_payload, _item_sin_partida("Excavacion de un foso nuevo")]),
+    )
+
+    assert r.status_code == 201
+    cuerpo = r.json()
+    assert cuerpo["total"] == str(linea_base.TOTAL_PRESUPUESTO_AUDITADO)  # no suma al total
+    assert cuerpo["hallazgos"] == base.json()["hallazgos"] + 1  # el informe lo declara
+    assert base.json()["pendientes"] == []
+    (pendiente,) = cuerpo["pendientes"]
+    assert pendiente["codigo_partida"] == CODIGO_SIN_PARTIDA
+    assert pendiente["origen_id"] == "PEND-01" and pendiente["cantidad"] == "2.5"
+    assert pendiente["propuestas"] == [
+        {"codigo": "LB-01-EXC", "descripcion": "Excavacion", "puntaje": 0.91}
+    ]
+    assert set(linea_base.CODIGOS_LINEA_BASE) <= set(recibidas)  # propone sobre el catalogo
+    # Postcondicion de UC-01: el informe persistido lleva la declaracion del pendiente.
+    guardado = sesion.scalars(
+        select(models.Presupuesto).where(models.Presupuesto.codigo == "API-3A")
+    ).one()
+    assert [h.regla for h in guardado.hallazgos if h.regla == "PENDIENTE"] == ["PENDIENTE"]
+
+
+def test_sin_el_extra_ml_el_pendiente_queda_sin_propuestas(cliente, items_payload, monkeypatch):
+    """La propuesta es una ayuda, no una condicion: sin `ml` el item sigue pendiente."""
+    monkeypatch.setitem(sys.modules, "ml.normalization", None)  # import -> ImportError
+
+    r = cliente.post(
+        "/presupuestos",
+        json=_cuerpo("API-3A-SIN-ML", [*items_payload, _item_sin_partida("Foso nuevo")]),
+    )
+
+    assert r.status_code == 201
+    assert r.json()["pendientes"][0]["propuestas"] == []
+
+
+@pytest.mark.parametrize(
+    "error",
+    [OSError("sin modelo en la cache local"), ValueError("identificador de modelo invalido")],
+    ids=["sin-modelo", "identificador-invalido"],
+)
+def test_sin_el_modelo_el_pendiente_queda_sin_propuestas(
+    cliente, items_payload, monkeypatch, error
+):
+    """INV-072: el extra `ml` esta, pero el modelo no se puede cargar. Sin cache y sin red,
+    sentence-transformers lanza `OSError`; un identificador que Hugging Face rechaza lanza
+    `HFValidationError`, subclase de `ValueError`, que `api/main.py` convertiria en 422. La ruta
+    no responde 500 ni 422: el item sigue pendiente y sin propuestas."""
+
+    class _NormalizadorSinModelo:
+        def __init__(self, partidas):
+            raise error
+
+    monkeypatch.setitem(
+        sys.modules,
+        "ml.normalization",
+        SimpleNamespace(NormalizadorPartidas=_NormalizadorSinModelo),
+    )
+
+    r = cliente.post(
+        "/presupuestos",
+        json=_cuerpo(
+            f"API-3A-{type(error).__name__}", [*items_payload, _item_sin_partida("Foso nuevo")]
+        ),
+    )
+
+    assert r.status_code == 201
+    (pendiente,) = r.json()["pendientes"]
+    assert pendiente["codigo_partida"] == CODIGO_SIN_PARTIDA
+    assert pendiente["propuestas"] == []
+
+
+def test_la_propuesta_real_reconoce_la_partida_de_la_misma_descripcion(
+    cliente, items_payload, monkeypatch
+):
+    """Con el modelo de similitud real (RF-15): una descripcion identica a la de una partida del
+    catalogo la pone primera. Oraculo independiente del modelo: textos iguales, coseno 1."""
+    pytest.importorskip("sentence_transformers")
+    monkeypatch.setenv("HF_HUB_DISABLE_SYMLINKS_WARNING", "1")
+    from ml.normalization import NormalizadorPartidas
+
+    try:
+        NormalizadorPartidas({})
+    except OSError as error:  # mismo criterio que tests/unit/test_normalizacion.py
+        pytest.skip(f"el modelo de similitud no esta disponible localmente: {error}")
+
+    codigo = linea_base.APU_EXCAVACION.codigo_partida
+    excavacion = next(p for p in cliente.get("/partidas").json() if p["codigo"] == codigo)
+
+    r = cliente.post(
+        "/presupuestos",
+        json=_cuerpo("API-3A-REAL", [*items_payload, _item_sin_partida(excavacion["descripcion"])]),
+    )
+
+    assert r.status_code == 201  # antes de leer el cuerpo: un 404 no tiene `pendientes`
+    propuestas = r.json()["pendientes"][0]["propuestas"]
+    assert 1 <= len(propuestas) <= 3
+    assert propuestas[0]["codigo"] == codigo
+    puntajes = [p["puntaje"] for p in propuestas]
+    assert puntajes == sorted(puntajes, reverse=True)
