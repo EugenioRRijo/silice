@@ -164,8 +164,24 @@ Con `ARENIA_CASO=<ruta>` la aplicación abre ese caso sin pasar por el Inicio.
    un número, lo dice con archivo y fila), detecta qué insumos cambiaron y recalcula **todos**
    los APU afectados sin editar ninguna composición.
 3. Revisar el **comparativo** (precio unitario antes/después por partida, incidencia en el
-   total) y el informe de auditoría de la versión nueva; confirmar para guardarla o descartarla.
-   Cada cambio queda en el histórico con precio anterior, nuevo, variación y fecha.
+   total) y el informe de auditoría de la versión nueva. Si algún insumo cambió de precio, la
+   versión nueva ya quedó guardada con el código de la barra lateral; si ninguno cambió, no se
+   guarda nada (UC‑02, flujo 3a). Cada cambio queda en el histórico con precio anterior, nuevo,
+   variación y fecha.
+4. **Descartar la versión (UC‑02, flujo 7a).** Debajo del informe aparece el botón **Descartar
+   version**, solo si en esta misma ejecución de la página se acaba de guardar una versión nueva:
+   no aparece tras el flujo 3a ni para versiones guardadas antes. El botón **marca** la versión
+   como descartada; no la borra: sigue guardada y se puede cargar como documento, y su historial
+   de cambios de precio se conserva. La marca vale para la base del caso donde se guardó la
+   versión, aunque después se abra otro caso. Tras pulsarlo, la página dice que la versión quedó
+   descartada y el botón desaparece.
+
+   Límites: la marca **no se deshace** desde la interfaz, y las demás páginas (histórico,
+   escenarios) no la muestran. Solo se descarta la última versión guardada del proyecto, nunca
+   el primer presupuesto, y una sola vez; en otro caso la página muestra el motivo. El sistema no
+   guarda de qué presupuesto salió una versión, así que no distingue una versión revalorada de un
+   segundo presupuesto elaborado aparte en el mismo proyecto: por eso el botón solo se ofrece para
+   la versión que acaba de guardar esta página.
 
 La decisión de guardar se toma con el número de **insumos afectados**, no con la variación del
 total: una lista puede cambiar insumos que este presupuesto no usa (variación 0) y el cambio
