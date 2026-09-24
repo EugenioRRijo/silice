@@ -46,9 +46,12 @@ def test_ui_app_y_el_visor_se_importan_sin_ifcopenshell(monkeypatch):
         modulo_visor = importlib.import_module("ui.paginas.visor")
         modulo_3d = importlib.import_module("ui.visor3d")
 
-    assert modulo_app is not None
-    assert modulo_visor is not None
-    assert modulo_3d is not None
+    # INV-024: `is not None` no afirma nada (import_module nunca devuelve None); se exige que cada
+    # modulo exponga su punto de entrada. Que el extra no se cargue lo afirma
+    # `tests/unit/test_extras_perezosos.py`, en un proceso limpio.
+    assert callable(modulo_app.main)
+    assert callable(modulo_visor.render)
+    assert callable(modulo_3d.mallas)
 
 
 def test_el_gestor_deja_sincronizado_el_atributo_del_paquete(monkeypatch):

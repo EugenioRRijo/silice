@@ -370,5 +370,6 @@ def test_la_pagina_de_componer_se_importa_sin_el_extra_ml(monkeypatch):
         modulo_composicion = importlib.import_module("ui.composicion")
         modulo_pagina = importlib.import_module("ui.paginas.componer")
 
-    assert modulo_composicion is not None
-    assert modulo_pagina is not None
+    # INV-024: `is not None` no afirma nada; se exige el punto de entrada de cada modulo.
+    assert callable(modulo_composicion.sugerir_partidas_similares)
+    assert callable(modulo_pagina.render)
