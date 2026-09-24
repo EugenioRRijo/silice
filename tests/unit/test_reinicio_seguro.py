@@ -120,3 +120,11 @@ def test_reiniciar_otra_base_no_pide_confirmar(tmp_path: Path) -> None:
 
 def test_sin_reiniciar_no_hay_motivo() -> None:
     assert seed.motivo_para_no_reiniciar("data/apu.db", False, False, "data/apu.db") is None
+
+
+@pytest.mark.parametrize("ruta", ["data/apu.db", "./data/../data/apu.db"])
+def test_la_ruta_por_defecto_explicita_tambien_exige_confirmar(ruta: str) -> None:
+    # Las rutas se comparan resueltas: escribir la ruta por defecto con --db, o con un rodeo, no
+    # evita la confirmacion. Funcion pura: no abre ninguna base.
+    assert seed.motivo_para_no_reiniciar(ruta, True, False, "data/apu.db") is not None
+    assert seed.motivo_para_no_reiniciar(ruta, True, True, "data/apu.db") is None
