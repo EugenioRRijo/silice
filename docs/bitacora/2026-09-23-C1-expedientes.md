@@ -94,8 +94,10 @@ def __post_init__(self) -> None:
     _no_negativo("monto", self.monto)
     _no_negativo("acumulado", self.acumulado)
 
-# Hallazgo.__post_init__: tipo sin signo, porque R5 y R7 producen negativos por diseño
-# (core/verification/reglas.py:419, 431-444, 623-626):
+# Hallazgo.__post_init__: tipo sin signo. R5 produce negativos por diseño: su diferencia lleva
+# signo y su valor esperado sale del balance (core/verification/reglas.py:475). R7 toma abs() en
+# el impacto (:681, :696, :711) y solo arrastra el signo de los montos que copia a
+# valor_observado y valor_esperado:
 for nombre in ("impacto", "valor_observado", "valor_esperado"):
     valor = getattr(self, nombre)
     if valor is not None:
@@ -128,7 +130,7 @@ declarado en limitaciones.
 ### A.3 INV-006: el evaluador de expresiones en cinco copias
 
 **Problema.** El evaluador aritmético de expresiones trazables existe cinco veces:
-`core/verification/expresiones.py` (159 líneas) y `adapters/{civil,industrial,sistemas,telecom}/evaluador.py`
+`core/verification/expresiones.py` (167 líneas) y `adapters/{civil,industrial,sistemas,telecom}/evaluador.py`
 (74, 79, 60 y 66 líneas). Las copias civil e industrial son idénticas salvo el docstring. Es deuda
 declarada: la ADR 8 y §6.1 de `docs/arquitectura.md:930,944` declaran dos copias, y las bitácoras de
 I5 las otras tres. La propia ADR 8 prevé su cierre en `core.contracts.expresiones`.
@@ -246,7 +248,7 @@ cambió».
 inexistente es `LookupError`, con el mensaje que orienta al usuario.
 
 **Alternativa descartada.** Unificar en `CatalogoIncompleto`. La API la traduce a 409
-(`api/main.py:26-29`) y hoy responde 404 (`tests/integration/test_api_rendimientos.py:77`); una
+(`api/main.py:26-29`) y hoy responde 404 (`tests/integration/test_api_rendimientos.py:82`); una
 ejecución que no existe es un recurso ausente, no un catálogo incompleto.
 
 **Ratificar:** que la excepción única sea `LookupError`.
@@ -259,8 +261,8 @@ entran al presupuesto ni al total, van en `ResultadoElaboracion.pendientes` (el 
 código `PENDIENTE` y severidad ERROR. `Presupuesto` no cambia (`core/contracts/presupuesto.py:42-47`).
 `generar_presupuesto` sigue exigiendo composición: es el paso intermedio (INV‑037, a limitaciones).
 
-**Precondición estricta que se conserva.** `actualizar_precios` (`core/budget/actualizacion.py:140`)
-y `generar_escenario` (`core/budget/escenarios.py:91`) llaman a `elaborar` y hoy dependen de que
+**Precondición estricta que se conserva.** `actualizar_precios` (`core/budget/actualizacion.py:151`)
+y `generar_escenario` (`core/budget/escenarios.py:95`) llaman a `elaborar` y hoy dependen de que
 `elaborar` lance `ValueError` ante un renglón sin composición. Revalorar o simular un presupuesto
 no puede perder renglones en silencio, así que ambas exigen composición para todo renglón **antes**
 de elaborar y de guardar, con `exigir_composiciones`, la misma comprobación de
@@ -281,7 +283,7 @@ que 3a no se alcanza de punta a punta: se registra como hallazgo nuevo para C2 y
 `scripts/seed_demo.py` y un quinto sitio que el inventario no citaba,
 `scripts/generar_resultados_ml.py:158-167`. `actualizar_precios(plan=...)` pasa a aceptar el mismo
 tipo (`Sequence[PeriodoPlan] | GeneradorPlan | None`), porque delega en `elaborar`; así
-`scripts/generar_resultados_ml.py:191` pasa `plan=plan_secuencial` en vez de calcularlo sobre la
+`scripts/generar_resultados_ml.py:187` pasa `plan=plan_secuencial` en vez de calcularlo sobre la
 versión anterior.
 
 **Alternativa descartada.** Una función nueva `elaborar_con_plan_secuencial`: sería un segundo punto
