@@ -405,16 +405,21 @@ def test_sin_el_extra_ml_el_pendiente_queda_sin_propuestas(cliente, items_payloa
 
 @pytest.mark.parametrize(
     "error",
-    [OSError("sin modelo en la cache local"), ValueError("identificador de modelo invalido")],
-    ids=["sin-modelo", "identificador-invalido"],
+    [
+        OSError("sin modelo en la cache local"),
+        ValueError("identificador de modelo invalido"),
+        RuntimeError("archivo de pesos corrupto"),
+    ],
+    ids=["sin-modelo", "identificador-invalido", "pesos-corruptos"],
 )
 def test_sin_el_modelo_el_pendiente_queda_sin_propuestas(
     cliente, items_payload, monkeypatch, error
 ):
     """INV-072: el extra `ml` esta, pero el modelo no se puede cargar. Sin cache y sin red,
     sentence-transformers lanza `OSError`; un identificador que Hugging Face rechaza lanza
-    `HFValidationError`, subclase de `ValueError`, que `api/main.py` convertiria en 422. La ruta
-    no responde 500 ni 422: el item sigue pendiente y sin propuestas."""
+    `HFValidationError`, subclase de `ValueError`, que `api/main.py` convertiria en 422; un
+    archivo de pesos corrupto hace que `torch.load` lance `RuntimeError`. La ruta no responde 500
+    ni 422: el item sigue pendiente y sin propuestas."""
 
     class _NormalizadorSinModelo:
         def __init__(self, partidas):
@@ -467,3 +472,79 @@ def test_la_propuesta_real_reconoce_la_partida_de_la_misma_descripcion(
     assert propuestas[0]["codigo"] == codigo
     puntajes = [p["puntaje"] for p in propuestas]
     assert puntajes == sorted(puntajes, reverse=True)
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        ImportError("dependencia perezosa ausente"),
+        OSError("tokenizador ausente"),
+        ValueError("entrada rechazada"),
+        RuntimeError("fallo del modelo al codificar"),
+    ],
+    ids=["import", "os", "valor", "ejecucion"],
+)
+def test_si_similares_falla_el_pendiente_queda_sin_propuestas(
+    cliente, items_payload, monkeypatch, error
+):
+    """El normalizador se construye, pero `similares` falla al codificar la descripcion: la
+    ruta no responde 500 despues de guardar. Ese item queda sin propuestas y sigue pendiente."""
+
+    class _NormalizadorQueFallaAlProponer:
+        def __init__(self, partidas):
+            pass
+
+        def similares(self, descripcion):
+            raise error
+
+    monkeypatch.setitem(
+        sys.modules,
+        "ml.normalization",
+        SimpleNamespace(NormalizadorPartidas=_NormalizadorQueFallaAlProponer),
+    )
+
+    r = cliente.post(
+        "/presupuestos",
+        json=_cuerpo(
+            f"API-3A-SIM-{type(error).__name__}",
+            [*items_payload, _item_sin_partida("Foso nuevo")],
+        ),
+    )
+
+    assert r.status_code == 201
+    (pendiente,) = r.json()["pendientes"]
+    assert pendiente["codigo_partida"] == CODIGO_SIN_PARTIDA
+    assert pendiente["propuestas"] == []
+
+
+def test_si_todos_los_items_quedan_pendientes_el_presupuesto_sale_vacio_y_no_cumple(
+    cliente, sesion, monkeypatch
+):
+    """UC-01 3a en el extremo: ningun item tiene partida. La elaboracion no aborta (201), el
+    total es 0, todos los items se listan como pendientes y el informe emitido no cumple.
+    Oraculo del veredicto: el informe guardado lleva un `PENDIENTE` de severidad ERROR (3) por
+    item, y un solo hallazgo ERROR basta para NO CUMPLE (CLAUDE.md, principio 7)."""
+    from core import models
+
+    monkeypatch.setitem(sys.modules, "ml.normalization", None)  # sin propuestas: no importa aqui
+    items = [
+        {**_item_sin_partida("Foso nuevo"), "origen_id": "PEND-01"},
+        {**_item_sin_partida("Muro nuevo"), "codigo_partida": "XX-98-NUE", "origen_id": "PEND-02"},
+    ]
+
+    r = cliente.post("/presupuestos", json=_cuerpo("API-3A-TODOS", items))
+
+    assert r.status_code == 201
+    cuerpo = r.json()
+    assert cuerpo["total"] == "0.00"
+    assert [(p["codigo_partida"], p["origen_id"]) for p in cuerpo["pendientes"]] == [
+        (CODIGO_SIN_PARTIDA, "PEND-01"),
+        ("XX-98-NUE", "PEND-02"),
+    ]
+    guardado = sesion.scalars(
+        select(models.Presupuesto).where(models.Presupuesto.codigo == "API-3A-TODOS")
+    ).one()
+    assert guardado.partidas == []
+    pendientes = [h for h in guardado.hallazgos if h.regla == "PENDIENTE"]
+    assert len(pendientes) == 2
+    assert all(h.severidad >= 3 for h in pendientes)  # ERROR: el informe no cumple

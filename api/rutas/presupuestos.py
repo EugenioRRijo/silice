@@ -61,6 +61,9 @@ from core.verification.texto import formatear_decimal
 router = APIRouter(tags=["presupuestos"])
 
 _CAMPOS_PARAMETROS = ("fcas", "bono_alimentacion", "administracion", "utilidad")
+# Fallas de UC-03 que dejan un ítem pendiente sin propuestas en vez de responder 500 o 422
+# (`_proponedor`): extra `ml` ausente, modelo ausente, identificador inválido, pesos corruptos.
+_FALLAS_DE_LA_PROPUESTA = (ImportError, OSError, ValueError, RuntimeError)
 
 
 @router.post(
@@ -344,9 +347,11 @@ def _proponedor(catalogo: Catalogo) -> Callable[[str], Sequence]:
     declara igual. Ante la falta del extra es el criterio de `rutas/rendimientos._veredicto_bosque`
     (que solo atrapa `ImportError`); aquí se atrapan además `OSError` (modelo ausente, sin red) y
     `ValueError` (`HFValidationError` de Hugging Face es su subclase), que de otro modo llegarían
-    como 500 o 422 después de guardar el presupuesto. El `except` cubre solo la construcción del
-    normalizador, no `similares`. Solo se construye si hay pendientes: cargar el modelo cuesta
-    segundos dentro de la petición, y la primera vez puede descargarlo.
+    como 500 o 422 después de guardar el presupuesto, y `RuntimeError` (un archivo de pesos
+    corrupto hace fallar `torch.load`). Las mismas fallas se atrapan en la construcción del
+    normalizador y en cada llamada a `similares`: la que falla deja sin propuestas solo a su ítem.
+    Solo se construye si hay pendientes: cargar el modelo cuesta segundos dentro de la petición, y
+    la primera vez puede descargarlo.
     """
     try:
         from ml.normalization import NormalizadorPartidas
@@ -354,9 +359,16 @@ def _proponedor(catalogo: Catalogo) -> Callable[[str], Sequence]:
         normalizador = NormalizadorPartidas(
             {partida.codigo: partida.descripcion for partida in catalogo.partidas()}
         )
-    except (ImportError, OSError, ValueError):
+    except _FALLAS_DE_LA_PROPUESTA:
         return lambda _descripcion: []
-    return normalizador.similares
+
+    def proponer(descripcion: str) -> Sequence:
+        try:
+            return normalizador.similares(descripcion)
+        except _FALLAS_DE_LA_PROPUESTA:
+            return []
+
+    return proponer
 
 
 def _parametros_costo(peticion: PresupuestoPeticion) -> ParametrosCosto:
