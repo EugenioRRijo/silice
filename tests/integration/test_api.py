@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import sys
 from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
 from types import SimpleNamespace
@@ -333,6 +332,16 @@ def _item_sin_partida(descripcion):
     }
 
 
+#: El submodulo del criterio unico de UC-03 (INV-081): los dobles se parchan ahi, porque
+#: `proponedor` resuelve `NormalizadorPartidas` y `_cargar_modelo` en su propio modulo.
+NORMALIZADOR = "ml.normalization.normalizador"
+
+
+def _sin_extra(nombre):
+    """Como falla de verdad el extra `ml` ausente: al importar sentence-transformers."""
+    raise ImportError("simulado: sin sentence-transformers")
+
+
 def _cuerpo(codigo, items):
     return {
         "codigo": codigo,
@@ -361,9 +370,7 @@ def test_un_item_sin_partida_queda_pendiente_por_http(cliente, sesion, items_pay
         def similares(self, descripcion):
             return [propuesta]
 
-    monkeypatch.setitem(
-        sys.modules, "ml.normalization", SimpleNamespace(NormalizadorPartidas=_NormalizadorDoble)
-    )
+    monkeypatch.setattr(f"{NORMALIZADOR}.NormalizadorPartidas", _NormalizadorDoble)
     from core.catalog import Catalogo
 
     consultas = []
@@ -403,7 +410,7 @@ def test_un_item_sin_partida_queda_pendiente_por_http(cliente, sesion, items_pay
 
 def test_sin_el_extra_ml_el_pendiente_queda_sin_propuestas(cliente, items_payload, monkeypatch):
     """La propuesta es una ayuda, no una condicion: sin `ml` el item sigue pendiente."""
-    monkeypatch.setitem(sys.modules, "ml.normalization", None)  # import -> ImportError
+    monkeypatch.setattr(f"{NORMALIZADOR}._cargar_modelo", _sin_extra)
 
     r = cliente.post(
         "/presupuestos",
@@ -436,13 +443,9 @@ def test_sin_el_modelo_el_pendiente_queda_sin_propuestas(
         def __init__(self, partidas):
             raise error
 
-    monkeypatch.setitem(
-        sys.modules,
-        "ml.normalization",
-        SimpleNamespace(NormalizadorPartidas=_NormalizadorSinModelo),
-    )
+    monkeypatch.setattr(f"{NORMALIZADOR}.NormalizadorPartidas", _NormalizadorSinModelo)
 
-    with caplog.at_level("WARNING", logger="api.rutas.presupuestos"):
+    with caplog.at_level("WARNING", logger=NORMALIZADOR):
         r = cliente.post(
             "/presupuestos",
             json=_cuerpo(
@@ -455,7 +458,7 @@ def test_sin_el_modelo_el_pendiente_queda_sin_propuestas(
     assert pendiente["codigo_partida"] == CODIGO_SIN_PARTIDA
     assert pendiente["propuestas"] == []
     # Observabilidad (GC2): la falla no se traga en silencio; el aviso nombra su tipo.
-    (aviso,) = [a for a in caplog.records if a.name == "api.rutas.presupuestos"]
+    (aviso,) = [a for a in caplog.records if a.name == NORMALIZADOR]
     assert aviso.levelname == "WARNING" and type(error).__name__ in aviso.getMessage()
 
 
@@ -512,13 +515,9 @@ def test_si_similares_falla_el_pendiente_queda_sin_propuestas(
         def similares(self, descripcion):
             raise error
 
-    monkeypatch.setitem(
-        sys.modules,
-        "ml.normalization",
-        SimpleNamespace(NormalizadorPartidas=_NormalizadorQueFallaAlProponer),
-    )
+    monkeypatch.setattr(f"{NORMALIZADOR}.NormalizadorPartidas", _NormalizadorQueFallaAlProponer)
 
-    with caplog.at_level("WARNING", logger="api.rutas.presupuestos"):
+    with caplog.at_level("WARNING", logger=NORMALIZADOR):
         r = cliente.post(
             "/presupuestos",
             json=_cuerpo(
@@ -531,7 +530,7 @@ def test_si_similares_falla_el_pendiente_queda_sin_propuestas(
     (pendiente,) = r.json()["pendientes"]
     assert pendiente["codigo_partida"] == CODIGO_SIN_PARTIDA
     assert pendiente["propuestas"] == []
-    (aviso,) = [a for a in caplog.records if a.name == "api.rutas.presupuestos"]
+    (aviso,) = [a for a in caplog.records if a.name == NORMALIZADOR]
     assert aviso.levelname == "WARNING" and type(error).__name__ in aviso.getMessage()
 
 
@@ -544,7 +543,7 @@ def test_si_todos_los_items_quedan_pendientes_el_presupuesto_sale_vacio_y_no_cum
     item, y un solo hallazgo ERROR basta para NO CUMPLE (CLAUDE.md, principio 7)."""
     from core import models
 
-    monkeypatch.setitem(sys.modules, "ml.normalization", None)  # sin propuestas: no importa aqui
+    monkeypatch.setattr(f"{NORMALIZADOR}._cargar_modelo", _sin_extra)  # sin propuestas aqui
     items = [
         {**_item_sin_partida("Foso nuevo"), "origen_id": "PEND-01"},
         {**_item_sin_partida("Muro nuevo"), "codigo_partida": "XX-98-NUE", "origen_id": "PEND-02"},
@@ -572,7 +571,7 @@ def test_el_informe_recargado_declara_el_pendiente(cliente, items_payload, monke
     """INV-080 por HTTP: el informe que se vuelve a pedir (`GET .../informe`) es el del documento
     emitido. El presupuesto se emitio con un item sin partida y su informe lo declaraba; recargado,
     tiene que seguir declarandolo (RF-02, «al producir o cargar»)."""
-    monkeypatch.setitem(sys.modules, "ml.normalization", None)  # sin propuestas: no importa aqui
+    monkeypatch.setattr(f"{NORMALIZADOR}._cargar_modelo", _sin_extra)  # sin propuestas aqui
     creado = cliente.post(
         "/presupuestos",
         json=_cuerpo("API-REC-INF", [*items_payload, _item_sin_partida("Foso nuevo")]),
@@ -597,7 +596,7 @@ def test_el_excel_recargado_declara_el_pendiente_en_la_auditoria(
 
     from core.budget.excel import HOJA_AUDITORIA
 
-    monkeypatch.setitem(sys.modules, "ml.normalization", None)
+    monkeypatch.setattr(f"{NORMALIZADOR}._cargar_modelo", _sin_extra)
     creado = cliente.post(
         "/presupuestos",
         json=_cuerpo("API-REC-XLS", [*items_payload, _item_sin_partida("Foso nuevo")]),
