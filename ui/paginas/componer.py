@@ -54,6 +54,7 @@ from core.contracts import ComposicionAPU, Dominio, ItemComputo, ModalidadManoOb
 from core.costing import calcular_apu
 from core.verification.informe import DECIMALES_PRESENTACION
 from core.verification.texto import formatear_decimal
+from ui.caso import ruta_caso
 from ui.composicion import (
     ComposicionInvalida,
     FilaReferencia,
@@ -74,8 +75,6 @@ from ui.composicion import (
     veredicto_ml_rendimiento,
 )
 
-TITULO = "Componer partida (UC-10 / UC-11)"
-RUTA_BASE_POR_DEFECTO = "data/apu.db"
 RENDIMIENTO_ETIQUETA = "Rendimiento — unidades por día"
 CONSUMO_ETIQUETA = "Consumo por unidad"
 CODIGO_PRESUPUESTO_POR_DEFECTO = "P-001"
@@ -109,7 +108,6 @@ CLAVE_MANO_OBRA = "componer_mano_obra"
 
 def render() -> None:
     """Cabecera de la partida, tres tablas de insumos, desglose en vivo y boton de guardado."""
-    st.title(TITULO)
     st.caption(
         "Componga una partida a mano: declare su cabecera y sus tres tablas de insumos, vea el "
         "precio unitario desglosarse en vivo (sin necesidad de guardar) y guarde la composicion. "
@@ -117,7 +115,7 @@ def render() -> None:
         "su composicion vigente (UC-11); si no existe, la crea (UC-10)."
     )
 
-    ruta = Path(st.sidebar.text_input("Archivo SQLite", value=RUTA_BASE_POR_DEFECTO))
+    ruta = ruta_caso()
     motor = crear_motor(f"sqlite:///{ruta.as_posix()}")
     try:
         crear_esquema(motor)

@@ -19,9 +19,10 @@ desechables contra `f884044`, no supuesto):
    `at.run()` (la página solo inicializa esa clave si no existe; sembrar después de que la tabla ya
    se pintó no surte efecto).
 2. La base se desvía sin tocar código de producción, parchando el **objeto módulo** que devuelve
-   `importlib.import_module("ui.paginas.componer")` (el que vive en `sys.modules`, que es el que
-   ejecuta `AppTest`), no una ruta de texto: `monkeypatch.setattr(pagina,
-   "RUTA_BASE_POR_DEFECTO", str(base))` antes del primer `run()`. La forma de texto
+   `importlib.import_module("ui.caso")`, donde vive la única `RUTA_BASE_POR_DEFECTO` desde el
+   sprint de UI (el que vive en `sys.modules`, que es el que ejecuta `AppTest`), no una ruta de
+   texto: `monkeypatch.setattr(caso, "RUTA_BASE_POR_DEFECTO", str(base))` antes del primer
+   `run()`. La forma de texto
    (`monkeypatch.setattr("ui.paginas.componer.RUTA_BASE_POR_DEFECTO", ...)`) se abandonó adrede:
    `tests/unit/test_composicion_ia.py::_SinExtraML` deja el atributo `componer` del paquete
    `ui.paginas` apuntando a una copia fría que `sys.modules` ya no usa (diagnosticado en la Tarea
@@ -97,17 +98,17 @@ def _pantalla(monkeypatch, base: Path, filas: dict[str, list[dict[str, str]]]) -
     Tarea 1 para el porqué (`tests/unit/test_composicion_ia.py::_SinExtraML` deja el atributo del
     paquete desincronizado de `sys.modules`, y una ruta de texto resuelve por ese atributo).
     """
+    caso = importlib.import_module("ui.caso")
+    monkeypatch.setattr(caso, "RUTA_BASE_POR_DEFECTO", str(base))
     pagina = importlib.import_module("ui.paginas.componer")
-    monkeypatch.setattr(pagina, "RUTA_BASE_POR_DEFECTO", str(base))
     monkeypatch.setattr(pagina, "sugerir_partidas_similares", lambda *_: [])
     at = AppTest.from_string(SCRIPT, default_timeout=60)
     for clave, valor in filas.items():
         at.session_state[clave] = valor
     at.run()
     assert base.exists(), (
-        f"la redireccion de RUTA_BASE_POR_DEFECTO no surtio efecto: {base} no existe tras el "
-        "primer run (la pantalla habria creado el esquema ahi); revisar si algo dejo "
-        "sys.modules['ui.paginas.componer'] desincronizado del atributo del paquete ui.paginas"
+        f"la redireccion de ui.caso.RUTA_BASE_POR_DEFECTO no surtio efecto: {base} no existe "
+        "tras el primer run (la pantalla habria creado el esquema ahi)"
     )
     assert not at.exception, f"la pantalla no debia fallar al abrir: {at.exception}"
     return at

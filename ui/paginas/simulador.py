@@ -20,16 +20,14 @@ from pandas import DataFrame
 
 from core.catalog import Catalogo, abrir_sesion, crear_esquema, crear_motor
 from scripts.simular_lista import simular
+from ui.caso import ruta_caso
 
-TITULO = "Generar lista de prueba (simulador)"
-RUTA_BASE_POR_DEFECTO = "data/apu.db"
 COLUMNAS_CSV = ("tipo", "insumo", "unidad", "precio")
 CLAVE_RESULTADO = "resultado_simulador"
 
 
 def render() -> None:
     """Formulario en la barra lateral; vista previa y descarga del CSV en el cuerpo."""
-    st.title(TITULO)
     st.caption(
         "Toma la lista de precios vigente del catalogo y aplica variaciones deterministas segun "
         "una semilla, en el formato tipo,insumo,unidad,precio. Herramienta de prueba, no una "
@@ -47,16 +45,13 @@ def render() -> None:
 
 def _formulario() -> dict[str, object]:
     with st.sidebar:
-        st.header("Base de datos")
-        ruta = st.text_input("Archivo SQLite", value=RUTA_BASE_POR_DEFECTO)
-
         st.header("Simulacion")
         semilla = st.number_input("Semilla", min_value=0, value=42, step=1)
         variacion_max = st.text_input("Variacion maxima (%)", value="5")
         insumos = st.text_input("Insumos (separados por coma; vacio = todos)", value="")
 
     return {
-        "ruta": Path(ruta),
+        "ruta": ruta_caso(),
         "semilla": int(semilla),
         "variacion_max": variacion_max,
         "insumos": insumos,

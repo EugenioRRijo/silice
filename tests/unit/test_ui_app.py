@@ -15,12 +15,15 @@ from __future__ import annotations
 import importlib
 from pathlib import Path
 
+import pytest
 from streamlit.testing.v1 import AppTest
 
 from tests.conftest import RUTA_BASE_REAL, huella
 from ui.app import (
+    CLAVE_BOTON_SIGUIENTE,
     PAGINA_INICIO,
     PAGINAS,
+    ROTULO_SIGUIENTE,
     SECCION_INVESTIGACION,
     SECCION_TRABAJO,
     VARIABLE_MODO_ENTREGA,
@@ -30,8 +33,9 @@ from ui.app import (
     ruta_actual,
     secciones_visibles,
 )
+from ui.caso import CLAVE_RECORRIDO, estado_caso, resumen_caso
 from ui.paginas.inicio import ROTULO_RECORRIDO
-from ui.recorridos import RECORRIDOS, RUTA_INICIO
+from ui.recorridos import NOMBRE_DEMOSTRACION, RECORRIDOS, RUTA_INICIO
 
 TITULOS_TRABAJO = (
     "Inicio",
@@ -173,3 +177,104 @@ def test_la_aplicacion_arranca_en_modo_entrega(monkeypatch, tmp_path: Path) -> N
     at = _aplicacion(monkeypatch, tmp_path)
     assert not at.exception, [excepcion.value for excepcion in at.exception]
     assert at.title[0].value == "Inicio"
+
+
+# --- el marco alrededor de cada pantalla (RF-38, RF-39, RF-41, RF-42) --------------------------
+#
+# `AppTest` no puede navegar entre paginas definidas por callable (spec de UI, §6): cada pantalla se
+# pinta por separado dentro de `marco()`, con el caso fijado en un temporal y un `ir_a` que solo
+# registra el destino en la sesion.
+
+SCRIPT_MARCO = """
+import streamlit as st
+from ui.app import marco, pagina_por_ruta
+definicion = pagina_por_ruta({ruta!r})
+
+def ir_a(destino):
+    st.session_state["destino"] = destino
+
+marco(definicion, definicion.render, ir_a)
+"""
+
+
+@pytest.fixture(scope="module")
+def base_sembrada(tmp_path_factory) -> Path:
+    from core.catalog import abrir_sesion, crear_esquema, crear_motor
+    from scripts.seed import sembrar
+
+    base = tmp_path_factory.mktemp("marco") / "caso.db"
+    motor = crear_motor(f"sqlite:///{base.as_posix()}")
+    try:
+        crear_esquema(motor)
+        with abrir_sesion(motor) as sesion:
+            sembrar(sesion)
+            sesion.commit()
+    finally:
+        motor.dispose()
+    return base
+
+
+def _marco(monkeypatch, base: Path, ruta: str, estado: dict[str, object] | None = None) -> AppTest:
+    caso = importlib.import_module("ui.caso")
+    monkeypatch.setattr(caso, "RUTA_BASE_POR_DEFECTO", str(base))
+    at = AppTest.from_string(SCRIPT_MARCO.format(ruta=ruta), default_timeout=120)
+    for clave, valor in (estado or {}).items():
+        at.session_state[clave] = valor
+    at.run()
+    assert not at.exception, [excepcion.value for excepcion in at.exception]
+    return at
+
+
+@pytest.mark.parametrize("ruta", [pagina.ruta_url for pagina in PAGINAS])
+def test_cada_pantalla_muestra_el_caso_abierto_y_su_titulo(
+    monkeypatch, base_sembrada, ruta
+) -> None:
+    at = _marco(monkeypatch, base_sembrada, ruta)
+    leyendas = [leyenda.value for leyenda in at.sidebar.caption]
+    assert str(base_sembrada) in leyendas
+    assert resumen_caso(estado_caso(base_sembrada)) in leyendas
+    definicion = pagina_por_ruta(ruta)
+    assert [titulo.value for titulo in at.title] == [definicion.titulo]
+    if definicion.caso_uso is not None:
+        assert f"Caso de uso {definicion.caso_uso}" in [c.value for c in at.main.caption]
+
+
+@pytest.mark.parametrize(
+    "ruta", [pagina.ruta_url for pagina in PAGINAS if pagina.ruta_url != "inicio"]
+)
+def test_ninguna_pantalla_distinta_del_inicio_pide_la_ruta(
+    monkeypatch, base_sembrada, ruta
+) -> None:
+    at = _marco(monkeypatch, base_sembrada, ruta)
+    rotulos = [campo.label for campo in at.text_input]
+    assert not any("SQLite" in rotulo for rotulo in rotulos), rotulos
+
+
+def test_la_barra_lateral_indica_el_paso_del_recorrido(monkeypatch, base_sembrada) -> None:
+    at = _marco(monkeypatch, base_sembrada, "catalogo", {CLAVE_RECORRIDO: NOMBRE_DEMOSTRACION})
+    leyendas = [leyenda.value for leyenda in at.sidebar.caption]
+    assert "Paso 1 de 2: Ver el catalogo del caso" in leyendas
+
+
+def test_el_boton_siguiente_lleva_al_paso_que_sigue(monkeypatch, base_sembrada) -> None:
+    at = _marco(monkeypatch, base_sembrada, "catalogo", {CLAVE_RECORRIDO: NOMBRE_DEMOSTRACION})
+    boton = at.button(key=CLAVE_BOTON_SIGUIENTE)
+    assert boton.label == ROTULO_SIGUIENTE.format("Elaborar, auditar y exportar")
+    boton.click().run()
+    assert at.session_state["destino"] == "componer"
+
+
+def test_desde_el_inicio_el_siguiente_es_el_primer_paso(monkeypatch, base_sembrada) -> None:
+    at = _marco(monkeypatch, base_sembrada, "inicio", {CLAVE_RECORRIDO: NOMBRE_DEMOSTRACION})
+    at.button(key=CLAVE_BOTON_SIGUIENTE).click().run()
+    assert at.session_state["destino"] == "catalogo"
+
+
+def test_en_el_ultimo_paso_no_hay_siguiente(monkeypatch, base_sembrada) -> None:
+    at = _marco(monkeypatch, base_sembrada, "componer", {CLAVE_RECORRIDO: NOMBRE_DEMOSTRACION})
+    assert CLAVE_BOTON_SIGUIENTE not in {boton.key for boton in at.button}
+
+
+def test_una_pantalla_fuera_del_recorrido_no_muestra_siguiente(monkeypatch, base_sembrada) -> None:
+    at = _marco(monkeypatch, base_sembrada, "historico", {CLAVE_RECORRIDO: NOMBRE_DEMOSTRACION})
+    assert CLAVE_BOTON_SIGUIENTE not in {boton.key for boton in at.button}

@@ -42,9 +42,8 @@ from core.catalog import (
 from core.verification.informe import DECIMALES_PRESENTACION
 from core.verification.texto import formatear_decimal
 from scripts.seed import NOMBRE_PROYECTO, sembrar
+from ui.caso import ruta_caso
 
-TITULO = "Actualizacion masiva de precios (UC-02)"
-RUTA_BASE_POR_DEFECTO = "data/apu.db"
 CODIGO_BASE_POR_DEFECTO = "001"
 CODIGO_NUEVO_POR_DEFECTO = "002"
 MONEDA_POR_DEFECTO = "USD"
@@ -79,7 +78,6 @@ class Presentacion:
 
 def render() -> None:
     """Pantalla unica: parametros en la barra lateral, archivo y resultados en el cuerpo."""
-    st.title(TITULO)
     st.caption(
         "Carga una lista de precios nueva (CSV o XLSX con las columnas tipo, insumo, unidad y "
         "precio) y el sistema revalora el presupuesto guardado, registra que cambio y audita la "
@@ -105,9 +103,9 @@ def _barra_lateral() -> dict[str, object]:
     """Los datos que necesita `actualizar_precios`, con la linea base como valor por defecto."""
     with st.sidebar:
         st.header("Base de datos")
-        ruta = st.text_input("Archivo SQLite", value=RUTA_BASE_POR_DEFECTO)
+        ruta = ruta_caso()
         if st.button("Sembrar la linea base"):
-            _sembrar(Path(ruta))
+            _sembrar(ruta)
 
         st.header("Presupuesto")
         proyecto = st.text_input("Proyecto", value=NOMBRE_PROYECTO)
@@ -120,7 +118,7 @@ def _barra_lateral() -> dict[str, object]:
         nombre = st.text_input("Nombre de la lista", value=f"Lista {vigencia:%d/%m/%Y}")
 
     return {
-        "ruta": Path(ruta),
+        "ruta": ruta,
         "proyecto": proyecto,
         "codigo": codigo,
         "codigo_nuevo": codigo_nuevo,

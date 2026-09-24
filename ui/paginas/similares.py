@@ -20,7 +20,6 @@ solo se comprueba importable.
 
 from __future__ import annotations
 
-from pathlib import Path
 from types import ModuleType
 from typing import TYPE_CHECKING
 
@@ -32,12 +31,11 @@ from core.catalog import Catalogo, CatalogoIncompleto, abrir_sesion, crear_esque
 from core.contracts.apu import ComposicionAPU
 from core.verification.informe import DECIMALES_PRESENTACION
 from core.verification.texto import formatear_decimal
+from ui.caso import ruta_caso
 
 if TYPE_CHECKING:
     from ml.normalization import PartidaSimilar
 
-TITULO = "Partidas similares (UC-03)"
-RUTA_BASE_POR_DEFECTO = "data/apu.db"
 _MENSAJE_SIN_EXTRA_ML = (
     "Las propuestas de partidas similares necesitan el extra 'ml' (sentence-transformers): "
     "instala con 'uv sync --extra ml' y vuelve a intentar."
@@ -55,7 +53,6 @@ def _cargar_normalizacion() -> ModuleType | None:
 
 def render() -> None:
     """Descripcion en texto libre -> tres propuestas con puntaje, desglose y rendimiento."""
-    st.title(TITULO)
     st.caption(
         "Escribe la descripcion de la partida: el sistema propone las mas parecidas del catalogo "
         "para reutilizar su desglose y su rendimiento (similitud semantica, sin entrenamiento)."
@@ -66,7 +63,7 @@ def render() -> None:
         st.error(_MENSAJE_SIN_EXTRA_ML)
         return
 
-    ruta = Path(st.sidebar.text_input("Archivo SQLite", value=RUTA_BASE_POR_DEFECTO))
+    ruta = ruta_caso()
     descripcion = st.text_input("Descripcion de la partida", value="")
     if not descripcion.strip():
         st.info("Escribe una descripcion para buscar partidas similares.")

@@ -37,10 +37,9 @@ from core.catalog import Catalogo, abrir_sesion, crear_esquema, crear_motor
 from core.contracts import ParametrosCosto
 from core.verification.informe import DECIMALES_PRESENTACION
 from core.verification.texto import formatear_decimal
+from ui.caso import ruta_caso
 from ui.composicion import decimal_desde_texto
 
-TITULO = "Escenarios (UC-08)"
-RUTA_BASE_POR_DEFECTO = "data/apu.db"
 _CAMPOS_PARAMETROS = ("fcas", "bono_alimentacion", "administracion", "utilidad")
 _ESTADO_ESCENARIOS = "uc08_escenarios"
 _ESTADO_BASE = "uc08_base"
@@ -48,13 +47,12 @@ _ESTADO_BASE = "uc08_base"
 
 def render() -> None:
     """Selector de presupuesto, formulario de supuestos y tabla comparativa de RF-31."""
-    st.title(TITULO)
     st.caption(
         "Recalcula un presupuesto guardado variando parametros de costo o precios de insumos. "
         "El presupuesto base no se altera y ningun escenario se guarda."
     )
 
-    ruta = Path(st.sidebar.text_input("Archivo SQLite", value=RUTA_BASE_POR_DEFECTO))
+    ruta = ruta_caso()
     motor = crear_motor(f"sqlite:///{ruta.as_posix()}")
     try:
         crear_esquema(motor)

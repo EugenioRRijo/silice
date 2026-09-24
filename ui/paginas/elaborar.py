@@ -33,9 +33,8 @@ from core.catalog import Catalogo, abrir_sesion, crear_esquema, crear_motor
 from core.contracts import AdaptadorDominio, Dominio, ItemComputo, ParametrosCosto
 from core.verification.informe import DECIMALES_PRESENTACION
 from core.verification.texto import formatear_decimal
+from ui.caso import ruta_caso
 
-TITULO = "Elaborar presupuesto (UC-01)"
-RUTA_BASE_POR_DEFECTO = "data/apu.db"
 CODIGO_POR_DEFECTO = "P-001"
 MONEDA_POR_DEFECTO = "USD"
 CLAVE_ITEMS = "elaborar_items"
@@ -51,7 +50,6 @@ _ADAPTADORES_SIN_CODIGOS: dict[Dominio, type[AdaptadorDominio]] = {
 
 def render() -> None:
     """Selector de dominio y archivo; tabla de cómputo; botón de elaboración e informe."""
-    st.title(TITULO)
     st.caption(
         "Elige un dominio, carga su archivo de muestra (data/samples/<dominio>/) y extrae el "
         "cómputo con el adaptador correspondiente; luego elabora el presupuesto, que se audita "
@@ -95,9 +93,6 @@ def render() -> None:
 
 def _barra_lateral() -> dict[str, object]:
     with st.sidebar:
-        st.header("Base de datos")
-        ruta = st.text_input("Archivo SQLite", value=RUTA_BASE_POR_DEFECTO)
-
         st.header("Cómputo")
         dominio = st.selectbox("Dominio", list(Dominio), format_func=lambda d: d.value)
 
@@ -107,7 +102,7 @@ def _barra_lateral() -> dict[str, object]:
         moneda = st.text_input("Moneda", value=MONEDA_POR_DEFECTO)
 
     return {
-        "ruta": Path(ruta),
+        "ruta": ruta_caso(),
         "dominio": dominio,
         "codigo": codigo,
         "fecha": fecha,

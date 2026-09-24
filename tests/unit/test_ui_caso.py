@@ -6,6 +6,7 @@ sesion si alguna toca `data/apu.db`.
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 from core.catalog import abrir_sesion, crear_esquema, crear_motor
@@ -141,3 +142,12 @@ def test_ningun_archivo_de_ui_contiene_el_flag_de_reinicio() -> None:
         if "--reiniciar" in archivo.read_text(encoding="utf-8")
     ]
     assert con_flag == []
+
+
+def test_la_ruta_por_defecto_se_define_una_sola_vez_en_ui() -> None:
+    definiciones = [
+        archivo.relative_to(RAIZ).as_posix()
+        for archivo in sorted((RAIZ / "ui").rglob("*.py"))
+        if re.search(r"^RUTA_BASE_POR_DEFECTO\s*=", archivo.read_text(encoding="utf-8"), re.M)
+    ]
+    assert definiciones == ["ui/caso.py"]

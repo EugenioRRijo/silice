@@ -46,7 +46,6 @@ from ui.visor3d import mallas
 if TYPE_CHECKING:
     from adapters.civil.ifc import AdaptadorCivilIFC
 
-TITULO = "Visor 3D"
 RUTA_POR_DEFECTO = "data/samples/tanquilla.ifc"
 ALTURA_VISOR = 480
 VERSION_THREE_JS = "r128"
@@ -73,7 +72,6 @@ def _cargar_dependencias_civiles() -> tuple[ModuleType, type[AdaptadorCivilIFC]]
 
 def render() -> None:
     """Selector de archivo IFC; visor three.js y tabla de cómputo lado a lado."""
-    st.title(TITULO)
     st.caption(
         "Carga un modelo IFC y compara su geometria con el cómputo que extrae el adaptador civil: "
         "cada malla del visor corresponde a una fila de la tabla, unidas por el GlobalId (regla R1 "
