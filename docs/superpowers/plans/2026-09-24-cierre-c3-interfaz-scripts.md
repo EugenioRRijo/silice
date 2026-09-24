@@ -1560,7 +1560,7 @@ C3 no escribe código de INV‑076. La Tarea 1, paso 7, ya dejó la fila «en du
 ```bash
 bash .superpowers/sdd/2026-09-24-cierre-c3/guardia_gc3.sh 2; echo "codigo: $?"
 B=$(git merge-base main HEAD)
-git diff -U0 "$B..HEAD" -- tests/integration/test_persistencia.py tests/integration/test_actualizacion_precios.py | grep '^-[^-]'
+git diff -U0 "$B..HEAD" -- tests/integration/test_persistencia.py tests/integration/test_actualizacion_precios.py | grep '^-[^-]' | grep -v '^-from \|^-import '
 ```
 
   El guion es el de la sección «Orquestación por roles», completo. Comprueba:
@@ -1575,7 +1575,11 @@ git diff -U0 "$B..HEAD" -- tests/integration/test_persistencia.py tests/integrat
   Expected:
   - `codigo: 0`, y en la salida exactamente dos `TOCA-CORE`: `fix(budget): la recarga del informe conserva los items pendientes` (INV‑080) y `feat(budget): descartar la version revalorada conserva el historial` (INV‑015 7a). Ninguna otra marca (`MEZCLA`, `FUERA-DE-080`, `FUERA-DE-7A`, `NO-AUTORIZADO`, `ASUNTOS`, `FUSION-TOCA-CORE`, `AGREGADO-EN-ML-O-ADAPTERS`, `GUARDIA-EN-LA-RAMA`, `GUARDIA-CONTRA-MAIN`, `FUSION-DE-PRUEBA-CON-MAIN-EN-CONFLICTO`, `LINEA-BASE-EDITADA`) y `marcas: 0`.
   - En el `--stat` de `core/` que imprime el guion, solo `core/budget/*`, `core/models/entidades.py`, `core/models/__init__.py` y `core/catalog/sesion.py`.
-  - El `grep '^-[^-]'` sale **vacío** (QA‑20): el diff de las dos pruebas de persistencia previas solo agrega líneas, así que ninguna prueba anterior cambió.
+  - El `grep '^-[^-]' | grep -v '^-from \|^-import '` sale **vacío** (QA‑20): el diff de las dos
+    pruebas de persistencia previas solo agrega líneas, salvo las de import, así que ninguna
+    prueba anterior cambió. Se toleran las líneas de import que se quitan: ruff (I001) fusionó dos
+    en `test_persistencia.py` al agregar las pruebas de INV‑015 7a (revisión de B3, R‑2). Ninguna
+    aserción cambia.
   - **Cualquier otra salida: GC3 no se cruza.**
 - [ ] **Step 4: Suite y artefactos.**
   - El recuento: `N1 0 0 0`.
@@ -1739,7 +1743,7 @@ Dictámenes sobre la versión sin commit de este plan: arquitectura (`.superpowe
 | QA‑17 | menor | Tarea 10b: rojo declarado de la reescritura `caplog` antes de cambiar la API |
 | QA‑18 | menor | Tarea 7, paso 1: total igual a `formatear_decimal(TOTAL_EXACTO_LINEA_BASE, DECIMALES_PRESENTACION)` |
 | QA‑19 | menor | Tarea 12, paso 6: el rojo es estructural (`TypeError`) y lo cubre la mordida del paso 8 |
-| QA‑20 | menor | Tarea 18, paso 3: `git diff -U0 …` filtrado con `grep '^-[^-]'`, vacío, sobre `test_persistencia.py` y `test_actualizacion_precios.py` |
+| QA‑20 | menor | Tarea 18, paso 3: `git diff -U0 …` filtrado con `grep '^-[^-]'`, sin las líneas de import quitadas (`^-from ` y `^-import `), vacío, sobre `test_persistencia.py` y `test_actualizacion_precios.py`; tolera las dos líneas de import que ruff (I001) fusionó (revisión de B3, R‑2) |
 | RA‑1 | menor | Tarea 7, Interfaces: `ui/resultado.py` importa `PendienteConPropuestas` bajo `if TYPE_CHECKING:` (re-revisión de arquitectura, R‑1) |
 | RA‑2 | menor | Tarea 6, paso 8: `PROHIBIDOS_EN_UI["ui/composicion.py"]` suma `sqlalchemy`, `core.catalog` y `core.budget`; sigue en verde hoy (R‑2) |
 | RQ‑1 | menor | Tarea 12, paso 2: la prueba nueva reusa `_contar` de `tests/integration/test_persistencia.py:35`, sin redefinirlo (re-revisión de pruebas, R‑1) |
