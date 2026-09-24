@@ -587,5 +587,16 @@ componer pasa los importes por `formatear_decimal(valor, 2)`. Se volvió a ejecu
 mensaje de guardado salen con dos decimales y coinciden con el redondeo de los valores exactos
 anteriores. Los valores de dos decimales de CP‑02 y CP‑03 se obtuvieron aplicando esa misma
 función a los valores exactos que el sistema produjo en `617861b`, que se conservan entre
-paréntesis; el cálculo no cambió (la línea base sigue en 1 586,61 USD y 7 de 7). Si la próxima
-ejecución manual encuentra una diferencia, manda la ejecución.
+paréntesis; el cálculo no cambió (la línea base sigue en 1 586,61 USD y 7 de 7).
+
+**CP‑02 y CP‑03 no se volvieron a ejecutar en C3.** Es una **excepción declarada** a la regla del
+párrafo anterior («se actualiza volviendo a ejecutar el recorrido, no a mano»). La causa: en esos
+casos el rendimiento se vuelve a teclear después de guardar, y el `text_input` del rendimiento, que
+no lleva clave, se vuelve a montar tras el guardado; `AppTest` no sigue ese campo y no toma el
+valor retecleado. Sus números de dos decimales se comprobaron por otra ruta: se rehicieron las
+composiciones con `core.costing.calcular_apu` y se redondearon con `formatear_decimal`, y coinciden.
+Pero el **recorrido** que ejercitan cambió desde `617861b`: la precarga al editar (`b4f7321`), la
+puerta única para registrar rendimientos, de donde salen las «2 observaciones» y el 100 precargado
+(`3d9d4f0`), el guardado fuera de la página (`03c1ae0`) y la presentación (`934e835`). La
+precarga, el historial de observaciones y los avisos de CP‑02 y CP‑03 quedan **a confirmar**: se
+re‑ejecutan en la fase Med (GU1b). Si esa ejecución encuentra una diferencia, manda la ejecución.
