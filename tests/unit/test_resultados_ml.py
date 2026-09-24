@@ -48,18 +48,25 @@ def _informe() -> str:
 def test_el_informe_declara_conteo_tecnica_y_metricas():
     informe = _informe()
 
-    # Compuerta G2: el conteo por dominio y la tecnica que dicta CLAUDE.md §8.1.
-    for dominio in ("civil", "telecom", "industrial", "sistemas"):
-        assert dominio in informe
-    assert "5" in informe and "50" in informe  # el conteo civil y el umbral de la tabla
-    assert "reglas" in informe.lower()
+    # Compuerta G2 (INV-017): la fila exacta de cada dominio con su conteo y la tecnica que dicta
+    # la tabla de CLAUDE.md §8.1 (menos de 50 registros: reglas). Oraculo escrito a mano desde esa
+    # tabla, no con `tecnica_para`: una fila con otro conteo u otra tecnica no pasa.
+    assert "| civil | 5 | reglas |" in informe
+    for dominio in ("industrial", "sistemas", "telecom"):
+        assert f"| {dominio} | 0 | reglas |" in informe
 
-    # RF-28: las tres metricas obligatorias, presentes y con nombre.
-    for metrica in ("MAPE", "RMSE", "R2"):
-        assert metrica in informe
+    # RF-28: las tres metricas obligatorias, con su fila exacta. Oraculo a mano sobre `_informe()`
+    # (un solo par estimado/real de LB-04-CON):
+    # - MAPE = |279.04 - 272.81| / 272.81 = 6.23 / 272.81 = 0.022836..., es decir 2.28 %;
+    # - RMSE = raiz(6.23 ** 2) = 6.23 USD;
+    # - R2 no se define con un solo real (varianza nula): el informe lo dice con palabras.
+    assert "| MAPE | 2.28 % |" in informe
+    assert "| RMSE | 6.23 USD |" in informe
+    assert "| R2 | sin varianza en los reales |" in informe
 
-    # La tecnica de reglas se declara como limitacion, no como logro (CLAUDE.md §8.1).
-    assert "limitacion" in informe.lower() or "limitación" in informe.lower()
+    # La tecnica de reglas se declara como limitacion, no como logro (CLAUDE.md §8.1): la frase
+    # exacta, no la palabra suelta, que tambien aparece en otros parrafos del informe.
+    assert "como **limitacion** del trabajo, no como logro" in informe
 
 
 def test_el_informe_tabula_las_predicciones_con_su_rango():
