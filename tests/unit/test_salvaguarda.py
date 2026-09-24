@@ -7,9 +7,14 @@ para demostrar que la salvaguarda muerde (INV‑065; hallazgo Q1 de la revisión
 Los tres casos: una base intacta deja pasar la sesión; una base que una prueba crea la hace
 fallar; una base existente que una prueba modifica la hace fallar aunque conserve el `mtime`,
 porque el tamaño también entra en la huella.
+
+Un cuarto caso vigila la fixture real: que siga activa para toda prueba (`autouse=True`) y que
+apunte a `data/apu.db` (observación Q2 de GC1).
 """
 
 from __future__ import annotations
+
+from tests.conftest import RUTA_BASE_REAL
 
 CONFTEST_INTERNO = '''
 from pathlib import Path
@@ -75,3 +80,10 @@ def test_una_base_modificada_hace_fallar_la_sesion_aunque_conserve_el_mtime(pyte
 
     resultado.assert_outcomes(passed=1, errors=1)
     resultado.stdout.fnmatch_lines(["*la suite modifico*"])
+
+
+def test_la_salvaguarda_real_vigila_data_apu_db_en_toda_prueba(request):
+    """Esta prueba no pide `_base_real_intacta`: si la recibe es porque la fixture es `autouse`.
+    Sin `autouse=True` la salvaguarda seguiría definida, pero ninguna prueba la activaría."""
+    assert "_base_real_intacta" in request.fixturenames
+    assert RUTA_BASE_REAL.parts[-2:] == ("data", "apu.db")
