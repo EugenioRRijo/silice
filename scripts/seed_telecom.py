@@ -154,9 +154,7 @@ from core.contracts import (  # noqa: E402
 from core.costing import calcular_apu  # noqa: E402
 from core.verification import auditar  # noqa: E402
 from core.verification.directivas import CLAVE_UNIDAD_ORIGINAL  # noqa: E402
-from core.verification.informe import DECIMALES_PRESENTACION  # noqa: E402
-from core.verification.texto import formatear_decimal  # noqa: E402
-from scripts.seed import motivo_para_no_reiniciar  # noqa: E402
+from scripts.seed import monto, motivo_para_no_reiniciar  # noqa: E402
 from tests.fixtures import presupuestos_arenaza as arenaza  # noqa: E402
 from tests.fixtures.presupuestos_arenaza import RenglonPresupuesto  # noqa: E402
 
@@ -592,10 +590,6 @@ def _imprimir_resumen(sesion: Session, ruta: Path, proyecto: models.Proyecto) ->
         )
 
 
-def _monto(valor: Decimal) -> str:
-    return formatear_decimal(valor, DECIMALES_PRESENTACION)
-
-
 def resumen(
     resultado: ResultadoElaboracion,
     moneda: str,
@@ -607,25 +601,24 @@ def resumen(
 
     Ademas del total reproducido, el caso telecom imprime dos datos propios, que se pasan con
     nombre: el total `impreso` en el PDF (con la diferencia) y el `total_con_mano_obra` sintetica
-    de la politica del PDF. Los montos se redondean con la fuente unica de presentacion
-    (`formatear_decimal` con `DECIMALES_PRESENTACION`, `ROUND_HALF_UP`), no con `:.2f`, que
-    redondea al par (INV-049).
+    de la politica del PDF. Los montos se redondean con `seed.monto`, la fuente unica de
+    presentacion (INV-049).
     """
     presupuesto = resultado.presupuesto
     linea = (
         f"Presupuesto {presupuesto.codigo} ({len(presupuesto.partidas)} partidas): "
-        f"reproducido {_monto(presupuesto.total)} {moneda}"
+        f"reproducido {monto(presupuesto.total)} {moneda}"
     )
     if impreso is not None:
         linea += (
-            f" | impreso en el PDF {_monto(impreso)} {moneda}"
-            f" | diferencia {_monto(presupuesto.total - impreso)}"
+            f" | impreso en el PDF {monto(impreso)} {moneda}"
+            f" | diferencia {monto(presupuesto.total - impreso)}"
         )
     lineas = [linea]
     if total_con_mano_obra is not None:
         lineas.append(
             f"  con la mano de obra del PDF ({FRACCION_MANO_OBRA:.0%} del total): "
-            f"{_monto(total_con_mano_obra)} {moneda}"
+            f"{monto(total_con_mano_obra)} {moneda}"
         )
     return "\n".join(lineas)
 

@@ -29,7 +29,11 @@ from core.catalog import Catalogo, abrir_sesion, crear_motor  # noqa: E402
 from core.verification.informe import DECIMALES_PRESENTACION  # noqa: E402
 from scripts.seed import RUTA_POR_DEFECTO  # noqa: E402
 
-#: El paso del precio simulado: los mismos dos decimales de la presentacion (INV-049).
+#: El paso del precio simulado: los mismos dos decimales de la presentacion (INV-049). Solo el
+#: paso: el `quantize` que lo usa no fija `rounding`, asi que aplica el modo del contexto
+#: (`ROUND_HALF_EVEN`), no el `ROUND_HALF_UP` de `formatear_decimal`. Es a proposito: lo que se
+#: redondea es un precio que se guarda en la lista simulada, no un texto que se presenta, y
+#: cambiar el modo alteraria las series ya generadas con cada semilla.
 PASO_DE_PRESENTACION = Decimal(1).scaleb(-DECIMALES_PRESENTACION)
 
 

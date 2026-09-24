@@ -106,8 +106,6 @@ from core.contracts import (  # noqa: E402
     ParametrosCosto,
     TipoRendimiento,
 )
-from core.verification.informe import DECIMALES_PRESENTACION  # noqa: E402
-from core.verification.texto import formatear_decimal  # noqa: E402
 from scripts import seed  # noqa: E402
 
 NOMBRE_PROYECTO = "AREN.IA: caso de demostracion (linea de agua potable, didactico)"
@@ -540,34 +538,18 @@ def _imprimir_resumen(
     print(resumen(elaborar_caso_demo(caso), caso.moneda))
 
 
-def _monto(valor: Decimal) -> str:
-    return formatear_decimal(valor, DECIMALES_PRESENTACION)
-
-
 def resumen(resultado: ResultadoElaboracion, moneda: str) -> str:
     """El texto del presupuesto que imprime `main`: partidas, total, curva y auditoria.
 
-    Los montos se redondean con la fuente unica de presentacion (`formatear_decimal` con
-    `DECIMALES_PRESENTACION`, `ROUND_HALF_UP`), no con `:.2f`, que redondea al par (INV-049).
+    Los montos se redondean con `seed.monto`, la fuente unica de presentacion (INV-049).
     """
-    presupuesto = resultado.presupuesto
-    lineas = [f"Presupuesto {presupuesto.codigo} ({len(presupuesto.partidas)} partidas):"]
-    lineas += [
-        f"  {partida.item.codigo_partida} [{partida.item.origen_id}] "
-        f"{partida.item.cantidad:f} {partida.item.unidad} x "
-        f"{_monto(partida.resultado.precio_unitario)} = {_monto(partida.total)} {moneda}"
-        for partida in presupuesto.partidas
-    ]
-    lineas.append(f"  Total: {_monto(presupuesto.total)} {moneda}")
+    lineas = seed.lineas_presupuesto(resultado.presupuesto, moneda)
     lineas.append("Curva de inversion:")
     lineas += [
-        f"  {punto.periodo}: {_monto(punto.monto)} (acumulado {_monto(punto.acumulado)})"
-        for punto in presupuesto.curva
+        f"  {punto.periodo}: {seed.monto(punto.monto)} (acumulado {seed.monto(punto.acumulado)})"
+        for punto in resultado.presupuesto.curva
     ]
-    lineas.append(
-        f"Auditoria: {len(resultado.informe.hallazgos)} hallazgo(s), "
-        f"{'CUMPLE' if resultado.informe.cumple else 'NO CUMPLE'}"
-    )
+    lineas.append(seed.linea_auditoria(resultado.informe))
     return "\n".join(lineas)
 
 

@@ -42,7 +42,6 @@ from __future__ import annotations
 import argparse
 import sys
 from collections.abc import Sequence
-from decimal import Decimal
 from pathlib import Path
 
 # Igual que en scripts/seed.py: ejecutado como `python scripts/...`, sys.path[0] es scripts/ y
@@ -72,9 +71,11 @@ from core.contracts import (  # noqa: E402
     Presupuesto,
 )
 from core.verification import auditar  # noqa: E402
-from core.verification.informe import DECIMALES_PRESENTACION  # noqa: E402
-from core.verification.texto import formatear_decimal  # noqa: E402
-from scripts.seed import motivo_para_no_reiniciar  # noqa: E402
+from scripts.seed import (  # noqa: E402
+    linea_auditoria,
+    lineas_presupuesto,
+    motivo_para_no_reiniciar,
+)
 from tests.fixtures import tarifas_sistemas as sis  # noqa: E402
 
 FECHA_TABULADOR = sis.FECHA_TABULADOR
@@ -260,29 +261,13 @@ def _imprimir_resumen(sesion: Session, ruta: Path, proyecto: models.Proyecto) ->
     print(resumen(ResultadoElaboracion(presupuesto, auditar(presupuesto)), MONEDA))
 
 
-def _monto(valor: Decimal) -> str:
-    return formatear_decimal(valor, DECIMALES_PRESENTACION)
-
-
 def resumen(resultado: ResultadoElaboracion, moneda: str) -> str:
     """El texto del presupuesto que imprime `main`: partidas, total y auditoria.
 
-    Los montos se redondean con la fuente unica de presentacion (`formatear_decimal` con
-    `DECIMALES_PRESENTACION`, `ROUND_HALF_UP`), no con `:.2f`, que redondea al par (INV-049).
+    Los montos se redondean con `seed.monto`, la fuente unica de presentacion (INV-049).
     """
-    presupuesto = resultado.presupuesto
-    lineas = [f"Presupuesto {presupuesto.codigo} ({len(presupuesto.partidas)} partidas):"]
-    lineas += [
-        f"  {partida.item.codigo_partida} [{partida.item.origen_id}] "
-        f"{partida.item.cantidad:f} {partida.item.unidad} x "
-        f"{_monto(partida.resultado.precio_unitario)} = {_monto(partida.total)} {moneda}"
-        for partida in presupuesto.partidas
-    ]
-    lineas.append(f"  Total: {_monto(presupuesto.total)} {moneda}")
-    lineas.append(
-        f"Auditoria: {len(resultado.informe.hallazgos)} hallazgo(s), "
-        f"{'CUMPLE' if resultado.informe.cumple else 'NO CUMPLE'}"
-    )
+    lineas = lineas_presupuesto(resultado.presupuesto, moneda)
+    lineas.append(linea_auditoria(resultado.informe))
     return "\n".join(lineas)
 
 

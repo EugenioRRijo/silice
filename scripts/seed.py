@@ -16,6 +16,7 @@ from __future__ import annotations
 import argparse
 import sys
 from collections.abc import Sequence
+from decimal import Decimal
 from pathlib import Path
 
 # Ejecutado como `python scripts/seed.py`, sys.path[0] es scripts/, no la raíz del repositorio, y
@@ -30,7 +31,11 @@ from sqlalchemy.orm import Session  # noqa: E402
 
 from core import models  # noqa: E402
 from core.catalog import Catalogo, abrir_sesion, crear_esquema, crear_motor  # noqa: E402
+from core.contracts import Presupuesto  # noqa: E402
 from core.contracts.dominio import Dominio  # noqa: E402
+from core.verification import InformeAuditoria  # noqa: E402
+from core.verification.informe import DECIMALES_PRESENTACION  # noqa: E402
+from core.verification.texto import formatear_decimal  # noqa: E402
 from tests.fixtures import apu_linea_base as linea_base  # noqa: E402
 
 NOMBRE_PROYECTO = "Drenaje de la clínica"
@@ -126,6 +131,38 @@ def motivo_para_no_reiniciar(
         f"--reiniciar borraria todas las tablas de la base por defecto ({por_defecto}). "
         "Repita la orden con --confirmar si de verdad quiere vaciarla, o use --db <ruta> para "
         "reiniciar otra base."
+    )
+
+
+# ---------------------------------------------------------------------------------------------
+# Resumen impreso de los sembradores (INV-049): una sola forma de redondear y de listar
+# ---------------------------------------------------------------------------------------------
+
+
+def monto(valor: Decimal) -> str:
+    """Un monto como texto, con la fuente unica de presentacion (`formatear_decimal` con
+    `DECIMALES_PRESENTACION`, `ROUND_HALF_UP`), no con `:.2f`, que redondea al par (INV-049)."""
+    return formatear_decimal(valor, DECIMALES_PRESENTACION)
+
+
+def lineas_presupuesto(presupuesto: Presupuesto, moneda: str) -> list[str]:
+    """Encabezado, una linea por partida y el total: lo comun al `resumen` de los sembradores."""
+    lineas = [f"Presupuesto {presupuesto.codigo} ({len(presupuesto.partidas)} partidas):"]
+    lineas += [
+        f"  {partida.item.codigo_partida} [{partida.item.origen_id}] "
+        f"{partida.item.cantidad:f} {partida.item.unidad} x "
+        f"{monto(partida.resultado.precio_unitario)} = {monto(partida.total)} {moneda}"
+        for partida in presupuesto.partidas
+    ]
+    lineas.append(f"  Total: {monto(presupuesto.total)} {moneda}")
+    return lineas
+
+
+def linea_auditoria(informe: InformeAuditoria) -> str:
+    """La linea del informe de auditoria, que todo resumen imprime (principio 7, CLAUDE.md §2)."""
+    return (
+        f"Auditoria: {len(informe.hallazgos)} hallazgo(s), "
+        f"{'CUMPLE' if informe.cumple else 'NO CUMPLE'}"
     )
 
 
