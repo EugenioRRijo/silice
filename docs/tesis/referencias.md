@@ -561,6 +561,58 @@ https://datalaing.com/site/wp-content/uploads/2023/07/convencion-colectiva-de-la
 - **Forma de cita:** documento legal; en el texto, «(Convención Colectiva de la Industria de la
   Construcción, 2023)».
 
+### Ley Orgánica del Trabajo, los Trabajadores y las Trabajadoras (2012)
+
+Ley Orgánica del Trabajo, los Trabajadores y las Trabajadoras, Decreto N.º 8.938, Gaceta Oficial de
+la República Bolivariana de Venezuela N.º 6.076 Extraordinario (2012).
+
+- **Estado:** verificada
+- **Verificación:** texto de la Gaceta Oficial N.º 6.076 Extraordinario, Caracas, lunes 7 de mayo
+  de 2012, en `docs/fuentes/LOTTT_GO_6076_Ext_2012-05-07.pdf` y su transcripción `.txt`, leído el
+  2026‑09‑23; procedencia (sitio del Ministerio del Poder Popular para el Proceso Social de Trabajo)
+  y número de decreto registrados en `docs/fuentes/README.md`.
+- **Afirmación contrastada:** el artículo 114 dice que «se entenderá que el salario ha sido
+  estipulado por unidad de obra, por pieza o a destajo, cuando se toma en cuenta la obra realizada
+  por el trabajador o trabajadora, sin usar como medida el tiempo empleado para ejecutarla», y que su
+  base de cálculo no puede ser inferior a la que correspondería por unidad de tiempo. Es lo que el
+  capítulo IV (§4.4.3) le atribuye.
+- **Falta:** URL estable de la fuente oficial; el archivo del repositorio se descargó del sitio del
+  ministerio, pero la dirección no quedó registrada.
+- **Forma de cita:** documento legal; en el texto, «(Ley Orgánica del Trabajo, los Trabajadores y
+  las Trabajadoras, 2012, art. 114)».
+
+### Listados de precios MaPreX de julio de 2026 (datos de autoría por verificar)
+
+Datos observados en los archivos, no una referencia completa: tres listados impresos el 13/07/2026
+desde el programa MaPreX, versión 26.0.0.1, base de datos `BDLaing08072026.mdb`, con los títulos
+«Listado de materiales», «Listado de equipos» y «Listado de mano de obra»
+(`data/precios/maprex_2026-07/`, descritos en su `README.md`).
+
+- **Estado:** pendiente
+- **Falta:** confirmar el autor institucional (el editor del programa es DataLaing Ingeniería,
+  véase DataLaing (s.f.), pero los listados no lo declaran como autor), el título con que se
+  publican y si existe una forma de consulta pública. Mientras tanto, el capítulo IV cita el
+  programa (DataLaing, s.f.) y nombra los listados por su ruta en el repositorio, sin citarlos.
+
+### IEEE 830 (datos por verificar)
+
+- **Estado:** pendiente
+- **Falta:** todos los datos bibliográficos. El repositorio solo la nombra («IEEE 830‑1998» en
+  `docs/ERS.md` §1.4) y no contiene el documento. No se cita hasta verificarla en la fuente.
+
+### Kruchten, vistas 4+1 (datos por verificar)
+
+- **Estado:** pendiente
+- **Falta:** todos los datos bibliográficos. El repositorio solo nombra el modelo («vistas 4+1 de
+  Kruchten», `docs/arquitectura.md`) y no contiene el artículo. No se cita hasta verificarlo.
+
+### ISO/IEC 25010 (datos por verificar)
+
+- **Estado:** pendiente
+- **Falta:** todos los datos bibliográficos, incluida la edición que se usa. El repositorio la
+  nombra (`docs/ERS.md` §1.4, `docs/calidad_iso25010.md`) y no contiene la norma. No se cita hasta
+  verificarla.
+
 ---
 
 ## Consultadas y no citadas
