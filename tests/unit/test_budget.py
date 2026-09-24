@@ -21,6 +21,7 @@ import pytest
 from openpyxl import load_workbook
 
 from core.budget import (
+    CODIGO_PENDIENTE,
     con_curva,
     elaborar,
     exportar_excel,
@@ -32,6 +33,7 @@ from core.budget.curva import PlanInvalido
 from core.contracts.apu import ComposicionAPU, LineaManoObra, ModalidadManoObra, ParametrosCosto
 from core.contracts.dominio import Dominio
 from core.contracts.item_computo import ItemComputo, OrigenTipo
+from core.contracts.verificacion import Severidad
 from core.verification.directivas import codigos_en_etiqueta
 from core.verification.informe import InformeAuditoria
 from tests.fixtures import apu_linea_base as linea_base
@@ -94,6 +96,8 @@ def test_cada_renglon_reproduce_el_total_auditado():
 
 
 def test_codigo_sin_composicion_lanza_valueerror():
+    """`generar_presupuesto` es el paso intermedio: exige composición para todo ítem. El flujo 3a
+    de UC‑01 (ítem pendiente) lo implementa `elaborar`: ver la prueba siguiente."""
     composiciones = composiciones_linea_base()
     huerfano = linea_base.APU_RELLENO.codigo_partida
     del composiciones[huerfano]
@@ -106,6 +110,95 @@ def test_codigo_sin_composicion_lanza_valueerror():
             codigo=linea_base.CODIGO_PRESUPUESTO,
             fecha=linea_base.FECHA_LINEA_BASE,
         )
+
+
+def test_un_item_sin_partida_queda_pendiente_y_el_informe_lo_declara():
+    """UC‑01, flujo 3a (INV‑013): no suma al total, no entra al plan, el informe lo declara.
+
+    Los ítems auditados ya dan errores de R1 (hallazgos 1 y 2 de la línea base), así que
+    `not informe.cumple` no probaría nada. La prueba compara contra la elaboración de los mismos
+    ítems sin el huérfano: el presupuesto es idéntico y el único hallazgo nuevo es el `PENDIENTE`.
+    """
+    composiciones = composiciones_linea_base()
+    huerfano = linea_base.APU_RELLENO.codigo_partida
+    del composiciones[huerfano]
+    completo = _presupuesto()
+    total_huerfano = sum(
+        (p.total for p in completo.partidas if p.item.codigo_partida == huerfano), Decimal(0)
+    )
+    argumentos = dict(
+        codigo=linea_base.CODIGO_PRESUPUESTO,
+        fecha=linea_base.FECHA_LINEA_BASE,
+        plan=plan_secuencial,
+    )
+
+    resultado = elaborar(
+        items_auditados(), composiciones, linea_base.PARAMETROS_LINEA_BASE, **argumentos
+    )
+    sin_huerfano = elaborar(
+        [item for item in items_auditados() if item.codigo_partida != huerfano],
+        composiciones_linea_base(),
+        linea_base.PARAMETROS_LINEA_BASE,
+        **argumentos,
+    )
+
+    assert [item.codigo_partida for item in resultado.pendientes] == [huerfano]
+    assert resultado.presupuesto == sin_huerfano.presupuesto
+    assert resultado.presupuesto.total == completo.total - total_huerfano
+    assert resultado.presupuesto.total_curva == resultado.presupuesto.total
+    (declarado,) = resultado.informe.por_regla()[CODIGO_PENDIENTE]
+    # `InformeAuditoria` ordena sus hallazgos por gravedad y regla: el `PENDIENTE` no queda al
+    # final. Sin él, el informe es exactamente el de la elaboración sin el huérfano.
+    otros = tuple(hallazgo for hallazgo in resultado.informe.hallazgos if hallazgo is not declarado)
+    assert otros == sin_huerfano.informe.hallazgos
+    assert declarado.severidad is Severidad.ERROR
+    assert resultado.informe.partida_de(declarado) == huerfano
+
+
+def test_sin_ninguna_partida_valorable_el_informe_se_emite_igual():
+    resultado = elaborar(
+        items_auditados(),
+        {},
+        linea_base.PARAMETROS_LINEA_BASE,
+        codigo=linea_base.CODIGO_PRESUPUESTO,
+        fecha=linea_base.FECHA_LINEA_BASE,
+        plan=plan_secuencial,
+    )
+
+    assert resultado.presupuesto.partidas == ()
+    assert resultado.presupuesto.total == Decimal(0)
+    assert len(resultado.pendientes) == len(linea_base.PRESUPUESTO_AUDITADO)
+    assert len(resultado.informe.por_regla()[CODIGO_PENDIENTE]) == len(
+        linea_base.PRESUPUESTO_AUDITADO
+    )
+
+
+def test_elaborar_acepta_el_plan_como_funcion_del_presupuesto_valorado():
+    """INV‑069: el protocolo borrador → `plan_secuencial` → `elaborar` vive en `elaborar`."""
+    argumentos = dict(
+        codigo=linea_base.CODIGO_PRESUPUESTO,
+        fecha=linea_base.FECHA_LINEA_BASE,
+        moneda=linea_base.MONEDA,
+    )
+    con_funcion = elaborar(
+        items_auditados(),
+        composiciones_linea_base(),
+        linea_base.PARAMETROS_LINEA_BASE,
+        plan=plan_secuencial,
+        **argumentos,
+    )
+    con_lista = elaborar(
+        items_auditados(),
+        composiciones_linea_base(),
+        linea_base.PARAMETROS_LINEA_BASE,
+        plan=plan_secuencial(_presupuesto()),
+        **argumentos,
+    )
+
+    assert con_funcion.presupuesto == con_lista.presupuesto
+    assert con_funcion.informe.hallazgos == con_lista.informe.hallazgos
+    assert con_funcion.presupuesto.total_curva == con_funcion.presupuesto.total
+    assert con_funcion.pendientes == ()
 
 
 def test_curva_cierra_exactamente_en_el_total():

@@ -6,7 +6,9 @@ Flujo completo de la Sesión I0.5::
 
     from core.budget import elaborar, exportar_excel, plan_secuencial
 
-    resultado = elaborar(items, composiciones, parametros, codigo="001", fecha=hoy)
+    resultado = elaborar(
+        items, composiciones, parametros, codigo="001", fecha=hoy, plan=plan_secuencial
+    )
     exportar_excel(resultado.presupuesto, resultado.informe, Path("presupuesto.xlsx"))
 
 `elaborar` audita siempre: no existe forma de obtener el presupuesto sin su informe (principio 7 de
@@ -34,13 +36,21 @@ from core.budget.escenarios import (
 )
 from core.budget.excel import exportar_excel
 from core.budget.persistencia import cargar_presupuesto, guardar_presupuesto
-from core.budget.presupuesto import ResultadoElaboracion, elaborar, generar_presupuesto
+from core.budget.presupuesto import (
+    CODIGO_PENDIENTE,
+    GeneradorPlan,
+    ResultadoElaboracion,
+    elaborar,
+    generar_presupuesto,
+)
 
 __all__ = [
+    "CODIGO_PENDIENTE",
     "COLUMNAS_COMPARATIVO",
     "COLUMNAS_ESCENARIOS",
     "Comparativo",
     "Escenario",
+    "GeneradorPlan",
     "PeriodoPlan",
     "PlanInvalido",
     "ResultadoElaboracion",

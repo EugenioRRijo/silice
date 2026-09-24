@@ -27,10 +27,12 @@ from core.budget import (
     actualizar_precios,
     cargar_presupuesto,
     elaborar,
+    generar_curva,
     generar_presupuesto,
     guardar_presupuesto,
     plan_secuencial,
 )
+from core.budget import actualizacion as modulo_actualizacion
 from core.catalog import Catalogo, crear_lista_desde_archivo, leer_lista_precios, registrar_cambios
 from scripts.seed import NOMBRE_PROYECTO, sembrar
 from tests.fixtures import apu_linea_base as linea_base
@@ -442,6 +444,56 @@ def test_el_presupuesto_nuevo_queda_persistido_con_su_lista(sesion, lista_nueva,
     assert modelo.fcas == linea_base.PARAMETROS_LINEA_BASE.fcas
     assert modelo.utilidad == linea_base.PARAMETROS_LINEA_BASE.utilidad
     assert len(modelo.hallazgos) == len(nuevo.informe.hallazgos)
+
+
+def test_uc02_exige_composicion_para_todo_renglon_antes_de_guardar(
+    sesion, presupuesto_001, lista_nueva, monkeypatch
+):
+    """INV‑013 no relaja UC‑02: la precondición corre antes de elaborar y de guardar.
+
+    Las composiciones de `actualizar_precios` salen del catálogo para todos los códigos del
+    presupuesto, así que un faltante no se puede provocar con datos: se provoca quitando el
+    concreto justo en la precondición, y se comprueba que no quedó ninguna versión guardada.
+    """
+    original = modulo_actualizacion.exigir_composiciones
+
+    def sin_concreto(items, composiciones):
+        recortadas = {codigo: apu for codigo, apu in composiciones.items() if codigo != CONCRETO}
+        original(items, recortadas)
+
+    monkeypatch.setattr(modulo_actualizacion, "exigir_composiciones", sin_concreto)
+
+    with pytest.raises(ValueError, match=CONCRETO):
+        actualizar_precios(
+            sesion,
+            NOMBRE_PROYECTO,
+            linea_base.CODIGO_PRESUPUESTO,
+            lista_nueva.lista,
+            CODIGO_NUEVO,
+            plan=plan_secuencial,
+        )
+    with pytest.raises(KeyError, match=CODIGO_NUEVO):
+        cargar_presupuesto(sesion, NOMBRE_PROYECTO, CODIGO_NUEVO, Catalogo(sesion))
+
+
+def test_uc02_acepta_el_plan_como_funcion_del_presupuesto_valorado(
+    sesion, presupuesto_001, lista_nueva
+):
+    """INV‑069: `actualizar_precios` acepta el mismo `GeneradorPlan` que `elaborar`. El plan
+    secuencial no depende de los montos, así que calcularlo sobre la versión nueva da la misma
+    curva que calcularlo sobre la anterior, como hacían los llamadores."""
+    nuevo, _ = actualizar_precios(
+        sesion,
+        NOMBRE_PROYECTO,
+        linea_base.CODIGO_PRESUPUESTO,
+        lista_nueva.lista,
+        CODIGO_NUEVO,
+        plan=plan_secuencial,
+    )
+
+    esperada = generar_curva(nuevo.presupuesto, plan_secuencial(presupuesto_001.presupuesto))
+    assert nuevo.presupuesto.curva == tuple(esperada)
+    assert nuevo.presupuesto.total_curva == nuevo.presupuesto.total
 
 
 # ---------------------------------------------------------------------------------------------

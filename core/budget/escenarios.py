@@ -33,7 +33,7 @@ from pandas import DataFrame
 # variación porcentual y la tabla por renglón tienen una sola definición (CLAUDE.md §2.1) y
 # duplicarlas aquí sería repetirla. Mismo patrón que `actualizacion` con `persistencia`.
 from core.budget.actualizacion import Comparativo, _comparar, _porcentaje
-from core.budget.presupuesto import elaborar
+from core.budget.presupuesto import elaborar, exigir_composiciones
 from core.contracts.apu import ComposicionAPU, ParametrosCosto
 from core.contracts.presupuesto import Presupuesto
 from core.verification.informe import InformeAuditoria
@@ -80,7 +80,9 @@ def generar_escenario(
 
     El escenario conserva los renglones del base (mismos ítems, mismo orden, misma fecha y
     moneda); su código es `«base»-«nombre»` para que ningún informe lo confunda con el base.
-    El base no se altera: todos los contratos involucrados son inmutables.
+    El base no se altera: todos los contratos involucrados son inmutables. Exige composición
+    para todo renglón del base (`ValueError`): un escenario con renglones pendientes no sería
+    comparable con su base (INV‑013).
     """
     precios = dict(precios or {})
     ajustadas = (
@@ -88,8 +90,10 @@ def generar_escenario(
         if precios
         else dict(composiciones)
     )
+    items = [partida.item for partida in base.partidas]
+    exigir_composiciones(items, ajustadas)
     resultado = elaborar(
-        [partida.item for partida in base.partidas],
+        items,
         ajustadas,
         parametros,
         codigo=f"{base.codigo}-{nombre}",
