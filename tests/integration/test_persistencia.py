@@ -12,11 +12,11 @@ from datetime import date
 from decimal import Decimal
 
 import pytest
-from sqlalchemy import func, select
+from sqlalchemy import func, inspect, select
 from sqlalchemy.exc import IntegrityError
 
 from core import contracts, models
-from core.catalog import Catalogo, CatalogoIncompleto, abrir_sesion, crear_motor
+from core.catalog import Catalogo, CatalogoIncompleto, abrir_sesion, crear_esquema, crear_motor
 from scripts.seed import main, sembrar
 from tests.fixtures import apu_linea_base as linea_base
 
@@ -635,3 +635,26 @@ def test_una_linea_sin_modalidad_persistida_vuelve_como_jornal(sesion):
     assert all(
         obrero.modalidad is contracts.ModalidadManoObra.JORNAL for obrero in vuelta.mano_obra
     )
+
+
+def test_crear_esquema_agrega_descarte_version_a_una_base_existente(tmp_path):
+    """Expediente C3.2: la tabla es aditiva; una base creada sin ella la recibe sin perder datos."""
+    motor = crear_motor(f"sqlite:///{(tmp_path / 'anterior.db').as_posix()}")
+    try:
+        anteriores = [t for t in models.Base.metadata.sorted_tables if t.name != "descarte_version"]
+        models.Base.metadata.create_all(motor, tables=anteriores)
+        with abrir_sesion(motor) as sesion:
+            sembrar(sesion)
+            sesion.commit()  # QA-1: `sembrar` solo hace flush y `abrir_sesion` revierte al cerrar
+            partidas = _contar(sesion, models.Partida)
+
+        crear_esquema(motor)
+
+        assert "descarte_version" in inspect(motor).get_table_names()
+        with abrir_sesion(motor) as sesion:
+            assert _contar(sesion, models.Partida) == partidas == len(linea_base.APUS_LINEA_BASE)
+        # A-11: borrar un presupuesto no queda bloqueado por su marca (PRAGMA foreign_keys=ON).
+        (clave,) = inspect(motor).get_foreign_keys("descarte_version")
+        assert clave["options"].get("ondelete") == "CASCADE"
+    finally:
+        motor.dispose()

@@ -20,6 +20,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass
+from datetime import date
 from decimal import Decimal
 
 from pandas import DataFrame
@@ -51,7 +52,7 @@ from core.catalog import Catalogo
 from core.catalog.precios import registrar_cambios, variacion_relativa
 from core.contracts.presupuesto import PartidaPresupuestada, Presupuesto
 
-__all__ = ["COLUMNAS_COMPARATIVO", "Comparativo", "actualizar_precios"]
+__all__ = ["COLUMNAS_COMPARATIVO", "Comparativo", "actualizar_precios", "descartar_version"]
 
 #: Columnas del comparativo, en el orden en que se presentan.
 COLUMNAS_COMPARATIVO = (
@@ -176,6 +177,40 @@ def actualizar_precios(
     cambios = registrar_cambios(session, lista_anterior, lista_nueva)
     _registrar_incidencias(session, cambios, anterior, nuevo.presupuesto)
     return nuevo, _comparar(anterior, nuevo.presupuesto, len(cambios))
+
+
+def descartar_version(
+    session: Session, proyecto_nombre: str, codigo_presupuesto: str, fecha: date
+) -> models.DescarteVersion:
+    """UC‑02, flujo 7a: marca como descartada la última versión guardada del proyecto.
+
+    La versión sigue guardada y cargándose como documento, y el historial de cambios que la
+    produjo (`CambioPrecio`, `IncidenciaCambio`) se conserva (`docs/ERS.md:170`). Solo se descarta
+    el último presupuesto guardado del proyecto (el de mayor `id`), si el proyecto tiene al menos
+    otro anterior, y una sola vez; en otro caso, `ValueError`. Así el primer presupuesto del
+    proyecto nunca se descarta. Límite (expediente C3.2): el esquema no guarda de qué presupuesto
+    salió una versión, así que la función no distingue una versión revalorada de un segundo
+    presupuesto elaborado aparte en el mismo proyecto; quien la llama (la página de actualización)
+    solo la ofrece para la versión que acaba de guardar `actualizar_precios`. No confirma la
+    transacción: como `actualizar_precios`, la confirma el llamador.
+    """
+    modelo = _buscar(session, proyecto_nombre, codigo_presupuesto)
+    versiones = session.scalars(
+        select(models.Presupuesto.id)
+        .where(models.Presupuesto.proyecto_id == modelo.proyecto_id)
+        .order_by(models.Presupuesto.id)
+    ).all()
+    if len(versiones) < 2 or modelo.id != versiones[-1]:
+        raise ValueError(
+            f"solo se descarta la ultima version revalorada del proyecto {proyecto_nombre!r}, "
+            f"y {codigo_presupuesto!r} no lo es"
+        )
+    if session.get(models.DescarteVersion, modelo.id) is not None:
+        raise ValueError(f"la version {codigo_presupuesto!r} ya esta descartada")
+    marca = models.DescarteVersion(presupuesto_id=modelo.id, fecha=fecha)
+    session.add(marca)
+    session.flush()
+    return marca
 
 
 # ---------------------------------------------------------------------------------------------

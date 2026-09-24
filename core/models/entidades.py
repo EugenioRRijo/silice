@@ -1,4 +1,4 @@
-"""Las quince entidades de docs/modelo_datos.md, en SQLAlchemy 2.0.
+"""Las dieciséis entidades de docs/modelo_datos.md, en SQLAlchemy 2.0.
 
 Siete nombres coinciden a propósito con tipos de `core.contracts` (`ComposicionAPU`,
 `ItemComputo`, `Rendimiento`, `Presupuesto`, `PartidaPresupuestada`, `PuntoCurva`, `Hallazgo`):
@@ -298,6 +298,25 @@ class Presupuesto(Base):
         back_populates="presupuesto", cascade="all, delete-orphan"
     )
     items_computo: Mapped[list[ItemComputo]] = relationship(back_populates="presupuesto")
+
+
+class DescarteVersion(Base):
+    """UC‑02, flujo 7a: la versión revalorada que el usuario descartó.
+
+    Es una marca, no un borrado: la versión sigue guardada y cargándose como documento, y el
+    historial de cambios que la produjo (`CambioPrecio`, `IncidenciaCambio`) se conserva porque
+    alimenta el histórico del módulo predictivo (`docs/ERS.md:170`). Tabla aditiva: `crear_esquema`
+    la agrega a una base existente sin tocar las demás (expediente C3.2).
+    """
+
+    __tablename__ = "descarte_version"
+
+    presupuesto_id: Mapped[int] = mapped_column(
+        ForeignKey("presupuesto.id", ondelete="CASCADE"), primary_key=True
+    )
+    fecha: Mapped[date] = mapped_column(Date)
+
+    presupuesto: Mapped[Presupuesto] = relationship()
 
 
 class ItemComputo(Base):

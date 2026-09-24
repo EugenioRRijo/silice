@@ -20,7 +20,12 @@ que el catálogo sigue reproduciéndolo. `cargar_elaboracion` recarga además el
 emitido, con los ítems pendientes guardados junto al presupuesto (INV‑080).
 """
 
-from core.budget.actualizacion import COLUMNAS_COMPARATIVO, Comparativo, actualizar_precios
+from core.budget.actualizacion import (
+    COLUMNAS_COMPARATIVO,
+    Comparativo,
+    actualizar_precios,
+    descartar_version,
+)
 from core.budget.curva import (
     PeriodoPlan,
     PlanInvalido,
@@ -65,6 +70,7 @@ __all__ = [
     "comparar_escenarios",
     "comparar_por_partida",
     "con_curva",
+    "descartar_version",
     "elaborar",
     "exportar_excel",
     "generar_curva",
