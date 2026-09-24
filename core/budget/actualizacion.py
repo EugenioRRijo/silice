@@ -1,10 +1,10 @@
 """UC‑02: revalorar un presupuesto guardado con una lista de precios nueva (Sesión I1).
 
 `actualizar_precios` cose las piezas que ya existen sin tocar ninguna: carga el presupuesto
-anterior (`cargar_presupuesto`), reconstruye sus APU con la lista nueva (`Catalogo.composicion`),
-vuelve a elaborar con **las mismas cantidades y los mismos parámetros de costo** (`elaborar`, que
-audita siempre) y guarda la versión nueva (`guardar_presupuesto`). Ninguna composición se edita:
-lo único que cambia es la lista de precios que la valora.
+anterior (`cargar_presupuesto`) con sus pendientes, reconstruye sus APU con la lista nueva
+(`Catalogo.composicion`), vuelve a elaborar con **las mismas cantidades y los mismos parámetros
+de costo** (`elaborar`, que audita siempre) y guarda la versión nueva (`guardar_presupuesto`).
+Ninguna composición se edita: lo único que cambia es la lista de precios que la valora.
 
 Además persiste las dos tablas del histórico de UC‑02: `CambioPrecio` (qué insumo cambió y cuánto,
 en `core.catalog.precios`) e `IncidenciaCambio` (qué le hizo ese cambio al precio unitario de cada
@@ -32,8 +32,11 @@ from core.budget.curva import PeriodoPlan
 # `_buscar` y `_parametros_de` son ayudantes del módulo hermano del mismo paquete: el contrato
 # `Presupuesto` no lleva los `ParametrosCosto` (insuficiencia registrada en la bitácora de
 # I0.5) y duplicar aquí su lectura de la fila sería repetir la única definición que existe.
+# `_cargar_pendientes`, por lo mismo: es la única lectura de los pendientes guardados (INV‑080),
+# sin la reauditoría de `cargar_elaboracion`, que aquí no hace falta.
 from core.budget.persistencia import (
     _buscar,
+    _cargar_pendientes,
     _parametros_de,
     cargar_presupuesto,
     guardar_presupuesto,
@@ -127,6 +130,9 @@ def actualizar_precios(
 
     Exige composición para todo renglón del presupuesto anterior antes de elaborar y de guardar
     (`exigir_composiciones`): revalorar no puede dejar renglones pendientes en silencio (INV‑013).
+    Los ítems que el anterior ya tenía pendientes (UC‑01 3a) se arrastran: siguen pendientes, el
+    informe nuevo los declara y la versión nueva los guarda (INV‑080, D4 = A). El comparativo
+    recorre solo los renglones valorados, que son los mismos en las dos versiones.
 
     No confirma la transacción: como `guardar_presupuesto`, la deja abierta para que el llamador
     acepte la versión nueva o la descarte (UC‑02, flujo 7a). Quien confirma decide mirando
@@ -149,7 +155,7 @@ def actualizar_precios(
     }
     exigir_composiciones(items, composiciones)
     nuevo = elaborar(
-        items,
+        [*items, *_cargar_pendientes(session, modelo)],
         composiciones,
         parametros,
         codigo=codigo_nuevo,
@@ -164,6 +170,7 @@ def actualizar_precios(
         proyecto=modelo.proyecto,
         lista=lista_nueva,
         parametros=parametros,
+        pendientes=nuevo.pendientes,
     )
 
     cambios = registrar_cambios(session, lista_anterior, lista_nueva)

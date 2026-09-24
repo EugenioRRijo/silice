@@ -16,7 +16,8 @@ CLAUDE.md §2).
 
 `guardar_presupuesto` y `cargar_presupuesto` implementan el versionado híbrido de
 `docs/modelo_datos.md` §5: el renglón guardado congela su `ResultadoAPU` y al cargar se comprueba
-que el catálogo sigue reproduciéndolo.
+que el catálogo sigue reproduciéndolo. `cargar_elaboracion` recarga además el informe del documento
+emitido, con los ítems pendientes guardados junto al presupuesto (INV‑080).
 """
 
 from core.budget.actualizacion import COLUMNAS_COMPARATIVO, Comparativo, actualizar_precios
@@ -35,7 +36,11 @@ from core.budget.escenarios import (
     generar_escenario,
 )
 from core.budget.excel import exportar_excel
-from core.budget.persistencia import cargar_presupuesto, guardar_presupuesto
+from core.budget.persistencia import (
+    cargar_elaboracion,
+    cargar_presupuesto,
+    guardar_presupuesto,
+)
 from core.budget.presupuesto import (
     CODIGO_PENDIENTE,
     GeneradorPlan,
@@ -55,6 +60,7 @@ __all__ = [
     "PlanInvalido",
     "ResultadoElaboracion",
     "actualizar_precios",
+    "cargar_elaboracion",
     "cargar_presupuesto",
     "comparar_escenarios",
     "comparar_por_partida",
