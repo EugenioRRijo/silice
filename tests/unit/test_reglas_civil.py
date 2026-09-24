@@ -15,6 +15,9 @@ import pytest
 from adapters.civil.evaluador import evaluar_regla
 from adapters.civil.reglas import (
     CLAVE_BALANCE,
+    REGLA_CONCRETO_TANQUILLA,
+    REGLA_ENCOFRADO_TANQUILLA,
+    REGLA_EXCAVACION_TANQUILLA,
     computar_relleno,
     computar_tanquillas,
     computar_zanja,
@@ -110,6 +113,44 @@ def test_los_items_son_trazables():
         assert item.dominio is Dominio.CIVIL
         assert item.regla is not None
         assert evaluar_regla(item.regla, item.parametros) == item.cantidad
+
+
+def test_cambiar_el_ancho_altera_solo_las_cantidades_que_dependen_de_el():
+    """RF‑19 (UC‑04, pasos 1 y 2; INV‑011): cambiar el ancho de la tanquilla altera las cantidades
+    derivadas de esa dimensión y ninguna otra, y cada ítem nuevo trae la expresión y los
+    parámetros que lo produjeron."""
+    geometria = linea_base.GEOMETRIA_TANQUILLA
+    ancho_nuevo = geometria["a"] + Decimal("0.20")
+    antes = [*_computar_una_tanquilla(n=linea_base.N_TANQUILLAS), *_computar_la_zanja()]
+    despues = [
+        *computar_tanquillas(
+            origen_id="T-01",
+            codigos=CODIGOS,
+            a=ancho_nuevo,
+            h=geometria["h"],
+            e=geometria["e"],
+            n=linea_base.N_TANQUILLAS,
+            sobreancho=SOBREANCHO,
+            espesor_fondo=ESPESOR_FONDO,
+        ),
+        *_computar_la_zanja(),
+    ]
+
+    cambiadas = {
+        nuevo.regla
+        for viejo, nuevo in zip(antes, despues, strict=True)
+        if viejo.cantidad != nuevo.cantidad
+    }
+
+    assert cambiadas == {
+        REGLA_CONCRETO_TANQUILLA,
+        REGLA_ENCOFRADO_TANQUILLA,
+        REGLA_EXCAVACION_TANQUILLA,
+    }
+    for item in despues:
+        assert evaluar_regla(item.regla, item.parametros) == item.cantidad
+        if item.regla in cambiadas:
+            assert item.parametros["a"] == ancho_nuevo
 
 
 def test_adaptador_tabular_extrae_la_muestra():
