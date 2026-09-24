@@ -1,10 +1,10 @@
 """UC‑02: revalorar un presupuesto guardado con una lista de precios nueva (Sesión I1).
 
 `actualizar_precios` cose las piezas que ya existen sin tocar ninguna: carga el presupuesto
-anterior (`cargar_presupuesto`), reconstruye sus APU con la lista nueva (`Catalogo.composicion`),
-vuelve a elaborar con **las mismas cantidades y los mismos parámetros de costo** (`elaborar`, que
-audita siempre) y guarda la versión nueva (`guardar_presupuesto`). Ninguna composición se edita:
-lo único que cambia es la lista de precios que la valora.
+anterior (`cargar_presupuesto`) con sus pendientes, reconstruye sus APU con la lista nueva
+(`Catalogo.composicion`), vuelve a elaborar con **las mismas cantidades y los mismos parámetros
+de costo** (`elaborar`, que audita siempre) y guarda la versión nueva (`guardar_presupuesto`).
+Ninguna composición se edita: lo único que cambia es la lista de precios que la valora.
 
 Además persiste las dos tablas del histórico de UC‑02: `CambioPrecio` (qué insumo cambió y cuánto,
 en `core.catalog.precios`) e `IncidenciaCambio` (qué le hizo ese cambio al precio unitario de cada
@@ -20,6 +20,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass
+from datetime import date
 from decimal import Decimal
 
 from pandas import DataFrame
@@ -32,8 +33,11 @@ from core.budget.curva import PeriodoPlan
 # `_buscar` y `_parametros_de` son ayudantes del módulo hermano del mismo paquete: el contrato
 # `Presupuesto` no lleva los `ParametrosCosto` (insuficiencia registrada en la bitácora de
 # I0.5) y duplicar aquí su lectura de la fila sería repetir la única definición que existe.
+# `_cargar_pendientes`, por lo mismo: es la única lectura de los pendientes guardados (INV‑080),
+# sin la reauditoría de `cargar_elaboracion`, que aquí no hace falta.
 from core.budget.persistencia import (
     _buscar,
+    _cargar_pendientes,
     _parametros_de,
     cargar_presupuesto,
     guardar_presupuesto,
@@ -48,7 +52,7 @@ from core.catalog import Catalogo
 from core.catalog.precios import registrar_cambios, variacion_relativa
 from core.contracts.presupuesto import PartidaPresupuestada, Presupuesto
 
-__all__ = ["COLUMNAS_COMPARATIVO", "Comparativo", "actualizar_precios"]
+__all__ = ["COLUMNAS_COMPARATIVO", "Comparativo", "actualizar_precios", "descartar_version"]
 
 #: Columnas del comparativo, en el orden en que se presentan.
 COLUMNAS_COMPARATIVO = (
@@ -127,6 +131,9 @@ def actualizar_precios(
 
     Exige composición para todo renglón del presupuesto anterior antes de elaborar y de guardar
     (`exigir_composiciones`): revalorar no puede dejar renglones pendientes en silencio (INV‑013).
+    Los ítems que el anterior ya tenía pendientes (UC‑01 3a) se arrastran: siguen pendientes, el
+    informe nuevo los declara y la versión nueva los guarda (INV‑080, D4 = A). El comparativo
+    recorre solo los renglones valorados, que son los mismos en las dos versiones.
 
     No confirma la transacción: como `guardar_presupuesto`, la deja abierta para que el llamador
     acepte la versión nueva o la descarte (UC‑02, flujo 7a). Quien confirma decide mirando
@@ -149,7 +156,7 @@ def actualizar_precios(
     }
     exigir_composiciones(items, composiciones)
     nuevo = elaborar(
-        items,
+        [*items, *_cargar_pendientes(session, modelo)],
         composiciones,
         parametros,
         codigo=codigo_nuevo,
@@ -164,11 +171,46 @@ def actualizar_precios(
         proyecto=modelo.proyecto,
         lista=lista_nueva,
         parametros=parametros,
+        pendientes=nuevo.pendientes,
     )
 
     cambios = registrar_cambios(session, lista_anterior, lista_nueva)
     _registrar_incidencias(session, cambios, anterior, nuevo.presupuesto)
     return nuevo, _comparar(anterior, nuevo.presupuesto, len(cambios))
+
+
+def descartar_version(
+    session: Session, proyecto_nombre: str, codigo_presupuesto: str, fecha: date
+) -> models.DescarteVersion:
+    """UC‑02, flujo 7a: marca como descartada la última versión guardada del proyecto.
+
+    La versión sigue guardada y cargándose como documento, y el historial de cambios que la
+    produjo (`CambioPrecio`, `IncidenciaCambio`) se conserva (`docs/ERS.md:170`). Solo se descarta
+    el último presupuesto guardado del proyecto (el de mayor `id`), si el proyecto tiene al menos
+    otro anterior, y una sola vez; en otro caso, `ValueError`. Así el primer presupuesto del
+    proyecto nunca se descarta. Límite (expediente C3.2): el esquema no guarda de qué presupuesto
+    salió una versión, así que la función no distingue una versión revalorada de un segundo
+    presupuesto elaborado aparte en el mismo proyecto; quien la llama (la página de actualización)
+    solo la ofrece para la versión que acaba de guardar `actualizar_precios`. No confirma la
+    transacción: como `actualizar_precios`, la confirma el llamador.
+    """
+    modelo = _buscar(session, proyecto_nombre, codigo_presupuesto)
+    versiones = session.scalars(
+        select(models.Presupuesto.id)
+        .where(models.Presupuesto.proyecto_id == modelo.proyecto_id)
+        .order_by(models.Presupuesto.id)
+    ).all()
+    if len(versiones) < 2 or modelo.id != versiones[-1]:
+        raise ValueError(
+            f"solo se descarta la ultima version revalorada del proyecto {proyecto_nombre!r}, "
+            f"y {codigo_presupuesto!r} no lo es"
+        )
+    if session.get(models.DescarteVersion, modelo.id) is not None:
+        raise ValueError(f"la version {codigo_presupuesto!r} ya esta descartada")
+    marca = models.DescarteVersion(presupuesto_id=modelo.id, fecha=fecha)
+    session.add(marca)
+    session.flush()
+    return marca
 
 
 # ---------------------------------------------------------------------------------------------

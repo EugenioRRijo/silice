@@ -9,12 +9,10 @@ usa `ui/app.py` y la exportación a Excel: esta capa no inventa su propio redond
 
 from __future__ import annotations
 
-import logging
 import os
 import tempfile
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Mapping, Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, HTTPException, status
 from fastapi.responses import FileResponse, PlainTextResponse
@@ -45,6 +43,7 @@ from core import models
 from core.budget import (
     Comparativo,
     actualizar_precios,
+    cargar_elaboracion,
     cargar_presupuesto,
     comparar_por_partida,
     elaborar,
@@ -56,20 +55,13 @@ from core.budget import (
 from core.catalog import Catalogo
 from core.contracts import Dominio, ItemComputo, OrigenTipo, ParametrosCosto
 from core.contracts.presupuesto import Presupuesto
-from core.verification import auditar
 from core.verification.informe import DECIMALES_PRESENTACION, InformeAuditoria
 from core.verification.texto import formatear_decimal
-
-if TYPE_CHECKING:
-    from ml.normalization import PartidaSimilar
+from ml.normalization import propuestas_para
 
 router = APIRouter(tags=["presupuestos"])
-_registro = logging.getLogger(__name__)
 
 _CAMPOS_PARAMETROS = ("fcas", "bono_alimentacion", "administracion", "utilidad")
-# Fallas de UC-03 que dejan un ítem pendiente sin propuestas en vez de responder 500 o 422
-# (`_proponedor`): extra `ml` ausente, modelo ausente, identificador inválido, pesos corruptos.
-_FALLAS_DE_LA_PROPUESTA = (ImportError, OSError, ValueError, RuntimeError)
 
 
 @router.post(
@@ -117,6 +109,7 @@ def crear_presupuesto(
         proyecto=proyecto,
         lista=catalogo.lista_vigente(peticion.fecha),
         parametros=parametros,
+        pendientes=resultado.pendientes,
     )
     sesion.commit()
 
@@ -327,10 +320,12 @@ def _pendientes(
     para separar los pendientes: no se vuelven a pedir. La cantidad viaja exacta (como en
     `ItemComputoRespuesta`), no redondeada: quien acepta una propuesta vuelve a enviar este mismo
     ítem con el código elegido.
+
+    El emparejamiento y el criterio de fallas son los de `ml.normalization.propuestas_para`
+    (INV-081), el mismo que usa `ui/`: un solo normalizador por petición, y ninguno sin
+    pendientes. Una falla declarada del modelo deja al ítem sin propuestas y la registra el
+    registrador de `ml.normalization.normalizador`; cualquier otra se propaga.
     """
-    if not pendientes:
-        return []
-    proponer = _proponedor(descripciones)
     return [
         ItemPendienteRespuesta(
             codigo_partida=item.codigo_partida,
@@ -342,53 +337,11 @@ def _pendientes(
                 PropuestaPartidaRespuesta(
                     codigo=similar.codigo, descripcion=similar.descripcion, puntaje=similar.puntaje
                 )
-                for similar in proponer(item.descripcion)
+                for similar in propuesta.similares
             ],
         )
-        for item in pendientes
+        for item, propuesta in propuestas_para(descripciones, pendientes)
     ]
-
-
-def _proponedor(descripciones: Mapping[str, str]) -> Callable[[str], Sequence[PartidaSimilar]]:
-    """`similares` del normalizador de UC-03 sobre el catálogo, o una propuesta vacía.
-
-    La propuesta es una ayuda, no una condición: sin el extra `ml`, o sin el modelo de similitud en
-    la caché local (precondición de UC-03, `docs/ERS.md`), el ítem queda pendiente y el informe lo
-    declara igual. Ante la falta del extra es el criterio de `rutas/rendimientos._veredicto_bosque`
-    (que solo atrapa `ImportError`); aquí se atrapan además `OSError` (modelo ausente, sin red) y
-    `ValueError` (`HFValidationError` de Hugging Face es su subclase), que de otro modo llegarían
-    como 500 o 422 después de guardar el presupuesto, y `RuntimeError` (un archivo de pesos
-    corrupto hace fallar `torch.load`). Las mismas fallas se atrapan en la construcción del
-    normalizador y en cada llamada a `similares`: la que falla deja sin propuestas solo a su ítem,
-    y se registra con `logging.warning` y su tipo, para que un fallo del modelo no pase por un
-    simple «sin propuestas». Solo se construye si hay pendientes: cargar el modelo cuesta segundos
-    dentro de la petición, y la primera vez puede descargarlo.
-    """
-    try:
-        from ml.normalization import NormalizadorPartidas
-
-        normalizador = NormalizadorPartidas(dict(descripciones))
-    except _FALLAS_DE_LA_PROPUESTA as error:
-        _registro.warning(
-            "UC-03 sin propuestas: el normalizador no se pudo construir (%s: %s)",
-            type(error).__name__,
-            error,
-        )
-        return lambda _descripcion: []
-
-    def proponer(descripcion: str) -> Sequence[PartidaSimilar]:
-        try:
-            return normalizador.similares(descripcion)
-        except _FALLAS_DE_LA_PROPUESTA as error:
-            _registro.warning(
-                "UC-03 sin propuestas para %r: similares fallo (%s: %s)",
-                descripcion,
-                type(error).__name__,
-                error,
-            )
-            return []
-
-    return proponer
 
 
 def _parametros_costo(peticion: PresupuestoPeticion) -> ParametrosCosto:
@@ -472,8 +425,12 @@ def _buscar_modelo(sesion: Session, codigo: str, proyecto: str | None = None) ->
 def _cargar(
     sesion: Session, codigo: str, proyecto: str | None = None
 ) -> tuple[Presupuesto, InformeAuditoria]:
-    """El presupuesto reconstruido desde el catálogo y su informe de auditoría, recién evaluado."""
+    """El presupuesto reconstruido desde el catálogo y su informe de auditoría, recién evaluado.
+
+    El informe es el del documento emitido (`cargar_elaboracion`): vuelve a declarar los ítems que
+    quedaron pendientes al elaborar (UC-01 3a), así que `/informe` y `/excel` no pueden declarar
+    CUMPLE un presupuesto emitido NO CUMPLE (INV-080).
+    """
     modelo = _buscar_modelo(sesion, codigo, proyecto)
-    catalogo = Catalogo(sesion)
-    presupuesto = cargar_presupuesto(sesion, modelo.proyecto.nombre, codigo, catalogo)
-    return presupuesto, auditar(presupuesto)
+    elaboracion = cargar_elaboracion(sesion, modelo.proyecto.nombre, codigo, Catalogo(sesion))
+    return elaboracion.presupuesto, elaboracion.informe
