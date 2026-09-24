@@ -120,7 +120,8 @@ de la sección 5. Borrador escrito: [capitulos/04-desarrollo.md](capitulos/04-de
 3. **Arquitectura** — núcleo cerrado / adaptadores abiertos; los contratos como única frontera;
    las dos guardias automáticas (las pruebas de `tests/unit/test_arquitectura.py`, conteo en la
    sección 5, + `scripts/guardia_nucleo.py` en la CI).
-4. **Motor de costos** — la fórmula (CLAUDE.md §4) y los dos errores clásicos que las pruebas
+4. **Motor de costos** — la fórmula (la de jornal en CLAUDE.md §4; la vigente, con destajo, en el
+   docstring de `core/costing/motor.py` y la decisión D9; desfase registrado en INV‑074) y los dos errores clásicos que las pruebas
    vigilan (materiales divididos por rendimiento; administración y utilidad sumadas). La línea
    base como oráculo: pruebas antes que implementación.
 5. **Presupuesto y curva** — cierre al 100 % por construcción (el caso didáctico cerraba al 99,30 %).
@@ -135,7 +136,7 @@ de la sección 5. Borrador escrito: [capitulos/04-desarrollo.md](capitulos/04-de
 10. **Módulos ML** — normalización (umbral 0,5; RF‑17 5/5), anomalías (Isolation Forest,
     semilla 42, abstención con n < 8), predicción (G2 → reglas con sensibilidad, limitación).
 11. **Interfaz y API** — nueve pantallas en `main` (diez cuando U1 agregue el Inicio de UC‑12,
-    RF‑39); la API con 18 rutas; montos como texto en la frontera JSON; escenarios UC‑08 sin
+    RF‑39); la API con 18 operaciones sobre 14 rutas; montos como texto en la frontera JSON; escenarios UC‑08 sin
     persistencia (D6).
 
 Cada sección: el problema → la decisión → la evidencia (prueba o bitácora). Las bitácoras de
@@ -203,18 +204,18 @@ y cobertura citan su corrida de CI ([metodologia.md §6](../metodologia.md)).
 |---|---|---|
 | Inconsistencias detectadas | 7 de 7 | `uv run pytest tests/integration/test_auditoria_7_de_7.py` |
 | Desviación vs línea base | 0,00 % (± 0,01 por PU) | `uv run pytest tests/unit/test_costing.py tests/integration/test_presupuesto_linea_base.py` |
-| Precios unitarios de la línea base | excavación 8,60 · tubería 10,19 · encofrado 33,24 · concreto 242,64 · relleno 52,58 USD | [CLAUDE.md §4](../../CLAUDE.md) · `tests/fixtures/apu_linea_base.py` · `uv run pytest tests/unit/test_costing.py` (7 casos: los cinco PU y los dos errores clásicos) |
+| Precios unitarios de la línea base | excavación 8,60 · tubería 10,19 · encofrado 33,24 · concreto 242,64 · relleno 52,58 USD (precios del caso al 28/04/2026; reproducidos en la CI del 2026‑09‑23) | [CLAUDE.md §4](../../CLAUDE.md) · `tests/fixtures/apu_linea_base.py` · `uv run pytest tests/unit/test_costing.py` (7 casos: los cinco PU y los dos errores clásicos) |
 | Núcleo intacto | diff vacío | `git diff --stat <rama-adaptador> -- core/` · `uv run python scripts/guardia_nucleo.py --base main` |
 | Pruebas de arquitectura | 66 casos (2026‑09‑23, verificación de GC1) | `uv run pytest --collect-only -q tests/unit/test_arquitectura.py` · [bitácora del cierre, GC1](../bitacora/2026-09-23-cierre.md) |
 | MAPE · RMSE · R² | 12,46 % · 5,10 USD · 0,9974 | `uv run python scripts/generar_resultados_ml.py` → [resultados_ml.md](../resultados_ml.md) |
-| Recálculo masivo | 1,17 s / 100 partidas | `uv run python scripts/medir_rnf03.py` |
+| Recálculo masivo | 1,17 s / 100 partidas (31/08/2026, equipo de desarrollo); repetición del 23/09/2026 en otro equipo, tras la corrección del núcleo: 1,34 s. Depende del equipo; se vuelve a medir al congelar | `uv run python scripts/medir_rnf03.py` · [bitácora F.2](../bitacora/2026-08-31-F2-plan-pruebas.md) · [acta R2, T6.1](revisiones/R2-capitulo-4.md) |
 | Suite y cobertura | 735 pruebas, 0 omitidas, en Linux y Windows · cobertura de `core/` 98 % (2026‑09‑23) | CI del PR #11, [corrida 35950215309](https://github.com/EugenioRRijo/tesis-apu-multidominio/actions/runs/35950215309) (`pytest -W error --cov=core …` y `coverage report --include="core/*"`) |
-| Requerimientos de la ERS | once UC (UC‑09 vacante) · 42 RF (RF‑32 vacante) · 10 RNF | [docs/ERS.md](../ERS.md) §2.2, §3.2 y §3.3 |
-| Interfaz y API en `main` | nueve pantallas · 18 rutas | `ui/app.py` (`PAGINAS`) · `api/rutas/` · [docs/api.json](../api.json) (`uv run python scripts/exportar_openapi.py`) |
-| Actualización de precios (UC‑02) sobre la línea base | concreto +30,17025 USD/m³ en el PU y +50,082615 USD en el total; los demás renglones sin cambio | `tests/fixtures/actualizacion_uc02.py` · `uv run pytest tests/integration/test_actualizacion_precios.py` |
-| Supuestos de la muestra civil | sobreancho de excavación 0,10 m · espesor de fondo 0,10 m | [data/samples/civil/README.md](../../data/samples/civil/README.md) |
-| Aceptación de RF‑17 | 5 de 5 partidas parafraseadas en el primer puesto (umbral 0,5; criterio ≥ 80 %) | `uv run pytest tests/unit/test_normalizacion.py` · [bitácora I2](../bitacora/2026-08-31-I2-normalizacion.md) |
-| Presupuestos multidominio (didácticos o construidos) | ARENAZA 1 109,29 y 5 410,73 USD · `MNT-001` 18 124,09 USD · `SIS-001` 16 093,89 USD | `tests/fixtures/presupuestos_arenaza.py` · `tests/integration/test_presupuesto_industrial.py` · `tests/integration/test_presupuesto_sistemas.py` |
+| Requerimientos de la ERS | once UC (UC‑09 vacante) · 42 RF (RF‑32 vacante) · 10 RNF (ERS vigente al 2026‑09‑23, tras la extensión de U0.1) | [docs/ERS.md](../ERS.md) §2.2, §3.2 y §3.3 |
+| Interfaz y API en `main` | nueve pantallas · 18 operaciones sobre 14 rutas (código de `main` en `f1dda36`, 2026‑09‑23) | `ui/app.py` (`PAGINAS`) · `api/rutas/` · [docs/api.json](../api.json) (`uv run python scripts/exportar_openapi.py`) |
+| Actualización de precios (UC‑02) sobre la línea base | concreto +30,17025 USD/m³ en el PU y +50,082615 USD en el total; los demás renglones sin cambio (verificado en la CI del 2026‑09‑23, corrida [35950215309](https://github.com/EugenioRRijo/tesis-apu-multidominio/actions/runs/35950215309)) | `tests/fixtures/actualizacion_uc02.py` · `uv run pytest tests/integration/test_actualizacion_precios.py` |
+| Supuestos de la muestra civil | sobreancho de excavación 0,10 m · espesor de fondo 0,10 m (supuestos declarados el 2026‑08‑29) | [data/samples/civil/README.md](../../data/samples/civil/README.md) |
+| Aceptación de RF‑17 | 5 de 5 partidas parafraseadas en el primer puesto (umbral 0,5; criterio ≥ 80 %; corrida de cierre del 2026‑08‑31) | `uv run pytest tests/unit/test_normalizacion.py` · [bitácora I2](../bitacora/2026-08-31-I2-normalizacion.md) |
+| Presupuestos multidominio (didácticos o construidos) | ARENAZA 1 109,29 y 5 410,73 USD · `MNT-001` 18 124,09 USD · `SIS-001` 16 093,89 USD (verificado en la CI del 2026‑09‑23, corrida [35950215309](https://github.com/EugenioRRijo/tesis-apu-multidominio/actions/runs/35950215309)) | `uv run pytest tests/integration/test_presupuesto_arenaza.py tests/integration/test_presupuesto_industrial.py tests/integration/test_presupuesto_sistemas.py` · `tests/fixtures/presupuestos_arenaza.py` |
 | Total del caso | 1 586,61 USD · curva 99,30 % | [linea_base.md](../linea_base.md) · `data/linea_base/APUS_CLINICA.pdf` |
 | Siete inconsistencias del caso didáctico (magnitudes) | encofrado 5,92 vs 4,48 m² (+32 %) · concreto 0,415 vs 0,224 m³ (+85 %) · curva 1 575,50 USD, 11,11 USD sin conciliar · relleno 1,30 vs ≈ 8,6 m³ · depreciación 0,03 vs 1,00 | [linea_base.md §5](../linea_base.md) · `tests/fixtures/apu_linea_base.py` |
 | Dimensiones del caso didáctico | 24 m de PVC de 4" · cuatro tanquillas de 0,80 × 0,80 × 0,80 m con paredes de 0,10 m · cinco partidas | [linea_base.md §1](../linea_base.md) · `tests/fixtures/apu_linea_base.py` |
