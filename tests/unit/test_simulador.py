@@ -19,8 +19,10 @@ def test_respeta_el_filtro_y_el_formato():
     nuevos = {insumo: precio for _tipo, insumo, _unidad, precio in filas}
     # INV-025: con la semilla fija la variacion es exacta; la lista vacia ya no se acepta.
     assert [i for i, precio in nuevos.items() if precio != PRECIOS[i][2]] == ["Cemento Portland"]
-    # Arena no se pidio: no sale en la lista simulada, asi que conserva su precio vigente.
-    assert nuevos.get("Arena lavada", PRECIOS["Arena lavada"][2]) == Decimal("30.00")
+    # Arena no se pidio: no sale en la lista simulada (conserva su precio vigente). Esta asercion
+    # cae con el filtro retirado sea cual sea el sorteo.
+    assert list(nuevos) == ["Cemento Portland"]
+    assert "Arena lavada" not in nuevos
     for _tipo, _insumo, _unidad, precio in filas:
         assert isinstance(precio, Decimal) and precio >= 0
         assert precio == precio.quantize(Decimal("0.01"))

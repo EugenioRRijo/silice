@@ -19,7 +19,8 @@ class SinExtra:
     """Gestor de contexto: `with SinExtra(monkeypatch, bloqueados, relacionados): ...`.
 
     Args:
-        monkeypatch: el de la prueba; deshace el parche de `builtins.__import__`.
+        monkeypatch: el de la prueba; aplica el parche de `builtins.__import__`, que se deshace
+            al salir del `with` (su teardown lo repone otra vez, sin efecto).
         bloqueados: nombres de paquete de primer nivel cuyo `import` lanza `ImportError`
             (tambien sus submodulos).
         relacionados: modulos que se sacan de `sys.modules` al entrar y se restauran al salir.
@@ -46,6 +47,7 @@ class SinExtra:
             sys.modules.pop(nombre, None)
 
         import_original = builtins.__import__
+        self._import_original = import_original
 
         def import_bloqueado(nombre, *args, **kwargs):
             if self._bloqueado(nombre):
@@ -55,6 +57,9 @@ class SinExtra:
         self._monkeypatch.setattr(builtins, "__import__", import_bloqueado)
 
     def __exit__(self, *excepcion: object) -> None:
+        # El bloqueo termina con el `with`, no en el teardown del monkeypatch: se repone aqui el
+        # `__import__` original (el teardown vuelve a poner el mismo valor, sin efecto).
+        builtins.__import__ = self._import_original
         for nombre in self._relacionados:
             sys.modules.pop(nombre, None)
         sys.modules.update(self._respaldo)
