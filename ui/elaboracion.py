@@ -29,6 +29,7 @@ from ui.composicion import (
     desglose,
     item_desde_cantidad,
     motivo_para_no_reemplazar,
+    texto_de_celda,
 )
 
 if TYPE_CHECKING:
@@ -54,7 +55,7 @@ def items_desde_filas(
     avisos: list[str] = []
     for indice, fila in enumerate(filas, start=1):
         codigo, cantidad_texto, origen_id = (
-            _celda_de_cantidad(fila, clave) for clave in COLUMNAS_CANTIDADES
+            texto_de_celda(fila, clave) for clave in COLUMNAS_CANTIDADES
         )
         if not codigo and not cantidad_texto and not origen_id:
             continue  # fila dinamica todavia en blanco: no es un error, es el estado normal
@@ -76,19 +77,6 @@ def items_desde_filas(
         except ComposicionInvalida as error:
             avisos.append(f"cantidades de obra, fila {indice}: {error}")
     return items, avisos
-
-
-def _celda_de_cantidad(fila: Mapping[str, object], clave: str) -> str:
-    """Una celda de la tabla de cantidades como texto, sin el `None`/`nan` que deja una fila nueva.
-
-    Mismo criterio que `ui.composicion._texto` (privada, no importable desde aqui): `st.data_editor`
-    con `num_rows="dynamic"` entrega `None` o NaN en las celdas de una fila recien agregada.
-    """
-    valor = fila.get(clave)
-    if valor is None:
-        return ""
-    texto = str(valor).strip()
-    return "" if texto.lower() == "nan" else texto
 
 
 def elaborar_desde_catalogo(

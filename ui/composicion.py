@@ -81,8 +81,11 @@ def decimal_desde_texto(texto: str, campo: str) -> Decimal:
     return valor
 
 
-def _texto(fila: Mapping[str, str], clave: str) -> str:
+def texto_de_celda(fila: Mapping[str, object], clave: str) -> str:
     """Extrae y normaliza una celda, incluida la frontera con el productor real de las filas.
+
+    Es la unica lectura de celdas de tabla de `ui/` (INV-046): la usan estas funciones y
+    `ui.elaboracion.items_desde_filas`.
 
     El tipo declarado de `fila` es `Mapping[str, str]`, pero `st.data_editor` con
     `num_rows="dynamic"` (docstring líneas 6-8) entrega `None` o NaN en las celdas de una fila
@@ -134,10 +137,10 @@ def _modalidad_desde_texto(texto: str, descripcion: str) -> ModalidadManoObra:
 
 
 def _material_desde_fila(fila: Mapping[str, str], indice: int) -> LineaMaterial | None:
-    descripcion = _texto(fila, "descripcion")
-    unidad = _texto(fila, "unidad")
-    cantidad_texto = _texto(fila, "cantidad")
-    precio_texto = _texto(fila, "precio")
+    descripcion = texto_de_celda(fila, "descripcion")
+    unidad = texto_de_celda(fila, "unidad")
+    cantidad_texto = texto_de_celda(fila, "cantidad")
+    precio_texto = texto_de_celda(fila, "precio")
     if _fila_vacia((descripcion, unidad, cantidad_texto, precio_texto)):
         return None
     _exigir_descripcion("materiales", indice, descripcion)
@@ -155,10 +158,10 @@ def _material_desde_fila(fila: Mapping[str, str], indice: int) -> LineaMaterial 
 
 
 def _equipo_desde_fila(fila: Mapping[str, str], indice: int) -> LineaEquipo | None:
-    descripcion = _texto(fila, "descripcion")
-    cantidad_texto = _texto(fila, "cantidad")
-    precio_texto = _texto(fila, "precio")
-    depreciacion_texto = _texto(fila, "depreciacion")
+    descripcion = texto_de_celda(fila, "descripcion")
+    cantidad_texto = texto_de_celda(fila, "cantidad")
+    precio_texto = texto_de_celda(fila, "precio")
+    depreciacion_texto = texto_de_celda(fila, "depreciacion")
     if _fila_vacia((descripcion, cantidad_texto, precio_texto, depreciacion_texto)):
         return None
     _exigir_descripcion("equipos", indice, descripcion)
@@ -177,10 +180,10 @@ def _equipo_desde_fila(fila: Mapping[str, str], indice: int) -> LineaEquipo | No
 
 
 def _mano_obra_desde_fila(fila: Mapping[str, str], indice: int) -> LineaManoObra | None:
-    descripcion = _texto(fila, "descripcion")
-    cantidad_texto = _texto(fila, "cantidad")
-    sueldo_texto = _texto(fila, "sueldo")
-    modalidad_texto = _texto(fila, "modalidad")
+    descripcion = texto_de_celda(fila, "descripcion")
+    cantidad_texto = texto_de_celda(fila, "cantidad")
+    sueldo_texto = texto_de_celda(fila, "sueldo")
+    modalidad_texto = texto_de_celda(fila, "modalidad")
     if _fila_vacia((descripcion, cantidad_texto, sueldo_texto, modalidad_texto)):
         return None
     _exigir_descripcion("mano de obra", indice, descripcion)
@@ -250,10 +253,10 @@ def composicion_desde_tablas(
 
 def _tabla_vacia(filas: Sequence[Mapping[str, str]]) -> bool:
     """Ninguna fila de la tabla tiene todavía un solo carácter escrito (ayudante de
-    `formulario_vacio`; reutiliza `_texto` y `_fila_vacia`, las mismas fronteras que ya limpian
-    `None`/NaN antes de decidir qué es "vacío").
+    `formulario_vacio`; reutiliza `texto_de_celda` y `_fila_vacia`, las mismas fronteras que ya
+    limpian `None`/NaN antes de decidir qué es "vacío").
     """
-    return all(_fila_vacia(tuple(_texto(fila, clave) for clave in fila)) for fila in filas)
+    return all(_fila_vacia(tuple(texto_de_celda(fila, clave) for clave in fila)) for fila in filas)
 
 
 def formulario_vacio(

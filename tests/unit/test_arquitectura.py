@@ -241,3 +241,15 @@ def test_ui_respeta_sus_importaciones_prohibidas(modulo):
         if nombre == prefijo or nombre.startswith(prefijo + ".")
     }
     assert not prohibidos, f"{modulo} importa {sorted(prohibidos)}"
+
+
+def test_una_sola_lectura_de_celdas_de_tabla_en_ui():
+    """INV-046: las celdas de las tablas de `st.data_editor` se leen solo con
+    `ui.composicion.texto_de_celda`; ningun modulo de ui/ define su propia copia."""
+    copias = sorted(
+        archivo.relative_to(RAIZ).as_posix()
+        for archivo in (RAIZ / "ui").rglob("*.py")
+        for nodo in ast.walk(ast.parse(archivo.read_text(encoding="utf-8")))
+        if isinstance(nodo, ast.FunctionDef) and nodo.name in {"_celda_de_cantidad", "_texto"}
+    )
+    assert copias == []
