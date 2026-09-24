@@ -26,6 +26,7 @@ if str(RAIZ) not in sys.path:
     sys.path.insert(0, str(RAIZ))
 
 from core.catalog import Catalogo, abrir_sesion, crear_motor  # noqa: E402
+from scripts.seed import RUTA_POR_DEFECTO  # noqa: E402
 
 
 def simular(
@@ -83,8 +84,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     analizador.add_argument(
         "--base",
-        default="data/apu.db",
-        help="ruta de la base de datos SQLite (por defecto data/apu.db)",
+        default=RUTA_POR_DEFECTO,
+        help=f"ruta de la base de datos SQLite (por defecto {RUTA_POR_DEFECTO})",
     )
 
     argumentos = analizador.parse_args(argv)

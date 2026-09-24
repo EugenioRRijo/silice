@@ -119,7 +119,7 @@ ORIGEN_LISTA = "scripts/seed_demo.py (precios de ejemplo, no cotizados)"
 CODIGO_PRESUPUESTO = "DEMO-001"
 MONEDA = "USD"
 FECHA_DEMO = date(2026, 9, 20)
-RUTA_POR_DEFECTO = "data/apu.db"
+RUTA_POR_DEFECTO = seed.RUTA_POR_DEFECTO  # fuente unica de la ruta de trabajo (INV-044)
 
 # Parametros de la estructura de costos: los valores por defecto del contrato (CLAUDE.md §4), sin
 # repetirlos aqui (principio DRY).
