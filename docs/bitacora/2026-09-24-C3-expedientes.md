@@ -102,7 +102,9 @@ la API todavía con `_proponedor`, corrido sin red (`HF_HUB_OFFLINE=1`,
   `test_sin_el_modelo_el_pendiente_queda_sin_propuestas[sin-modelo]`, `[identificador-invalido]` y
   `[pesos-corruptos]`; `test_si_similares_falla_el_pendiente_queda_sin_propuestas[import]`, `[os]`,
   `[valor]` y `[ejecucion]`.
-- **Pasan ya en rojo**, como prevé el plan (no cuentan como rojo; su cambio lo cubre la mordida):
+- **Pasan ya en rojo**, como prevé el plan (no cuentan como rojo). Las cubre la mutación de quitar
+  `ImportError` de `FALLAS_DE_LA_PROPUESTA`, con la que las dos fallan (comprobado en la ronda de
+  corrección 1 de B2):
   `test_sin_el_extra_ml_el_pendiente_queda_sin_propuestas` y
   `test_si_todos_los_items_quedan_pendientes_el_presupuesto_sale_vacio_y_no_cumple`.
 - Además, las dos pruebas de INV‑080 del paso 2 de la Tarea 11
