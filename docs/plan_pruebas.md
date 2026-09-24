@@ -144,7 +144,7 @@ archivo en la corrida registrada (total de la suite: 392).
 | RF‑16 | precarga cubierta en `ui/paginas/similares.py` (humo: `test_ui_importable.py`); **persistencia pendiente** del flujo de creación de partidas (hallazgo I2, para G0) | 1 | parcial |
 | RF‑17 | `tests/unit/test_normalizacion.py::test_acepta_al_menos_80_por_ciento_del_presupuesto_conocido` (5/5 reconocidas) | — | verde |
 | RF‑18, RF‑19 | `tests/unit/test_reglas_civil.py` (0,224 m3 y 4,48 m2 con a=0,80, h=0,80, e=0,10; sensibilidad al ancho) | 12 | verde |
-| RF‑20 | `tests/unit/test_budget.py` (diferenciales que suman la diferencia de totales) | — | verde |
+| RF‑20 | — (ninguna prueba: el requisito no tiene implementación; INV‑011) | — | no implementado; declarado en limitaciones |
 | RF‑21, RF‑23 | `tests/unit/test_verification.py` (una clase de pruebas por regla; presupuesto intacto; regla sin datos → INFO) | 71 | verde |
 | RF‑22 | `tests/integration/test_auditoria_7_de_7.py`: **7 de 7**, uno por regla | 4 | verde (indicador 1) |
 | RF‑24 | `test_auditoria_7_de_7.py`: la unidad «mts» del tercero llega intacta a R3 | — | verde |

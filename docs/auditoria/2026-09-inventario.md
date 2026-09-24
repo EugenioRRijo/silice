@@ -205,6 +205,10 @@ cambio de contrato para cubrir `ml/`), INV‑039, INV‑040, INV‑041 (C2; prec
 autonomía de los adaptadores, o vía de contrato de INV‑006 si el tutor la avala, R5), INV‑047,
 INV‑048 (latente; ya declarado trabajo futuro en la spec de UI §9), INV‑066, INV‑068. INV‑037 puede seguir abierto después de cerrar INV‑069, porque INV‑069 no exige volver privada `generar_presupuesto`.
 
+Además, **RF‑20** (diferencial por partida, UC‑04 paso 5) queda **no implementado; declarado en
+limitaciones**: la corrección de INV‑011 aprobada en GC0 lo preveía si no tenía implementación, y
+Eugenio lo decidió el 2026‑09‑23. La ERS (RF‑20) y el plan de pruebas (§8) lo dicen desde C1.
+
 ### (d) Conteo por fase y severidad
 
 Cada hallazgo se cuenta en su fase principal (la primera de la columna «Fase destino»); las subtareas
