@@ -370,8 +370,10 @@ El motor de costos es la función `calcular_apu(composicion, parametros) -> Resu
 (`core/costing/motor.py`). No accede a la base de datos ni conserva estado: recibe una composición y
 los parámetros de costo y devuelve el desglose y el precio unitario. Todo el cálculo se hace con
 `Decimal` y sin redondeos intermedios; el redondeo a dos decimales ocurre solo al presentar. La
-fórmula vigente es la que documenta el propio motor en su cadena de documentación, que se transcribe
-a continuación:
+fórmula vigente es la que documenta el propio motor en su cadena de documentación
+(`core/costing/motor.py`, líneas 3 a 13). Se reproduce a continuación con dos precisiones de lectura
+que el código confirma: el bono se multiplica solo por los obreros de las líneas a jornal, y en las
+líneas a destajo el campo `sueldo` contiene el precio por unidad de partida.
 
 ```
 materiales         = Σ cantidad × precio
