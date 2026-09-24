@@ -202,6 +202,8 @@ PROHIBIDOS_EN_UI: dict[str, tuple[str, ...]] = {
     "ui/elaboracion.py": ("streamlit", "pandas", "ui.caso"),
     # ARQ-A2: el fragmento pinta; no abre la base ni lee el catalogo.
     "ui/resultado.py": ("sqlalchemy.orm", "core.costing", "core.catalog"),
+    # RF-37: los recorridos se declaran en un modulo sin Streamlit ni base de datos (A6, R-3).
+    "ui/recorridos.py": ("streamlit", "sqlalchemy", "core.catalog", "ui.caso", "ui.app"),
 }
 
 
