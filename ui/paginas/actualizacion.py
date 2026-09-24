@@ -79,6 +79,8 @@ class Presentacion:
     #: El codigo de la version que esta ejecucion confirmo; `None` si no se guardo (UC-02 3a). Solo
     #: esa version se ofrece para descartar (UC-02 7a; limite de `descartar_version`).
     version_guardada: str | None
+    #: El caso donde se guardo: el descarte marca esa base aunque despues se abra otro caso.
+    ruta: Path
 
 
 def render() -> None:
@@ -96,7 +98,7 @@ def render() -> None:
         with st.spinner("Revalorando..."):
             _ejecutar(parametros, archivo)
 
-    _mostrar(st.session_state.get(CLAVE_RESULTADO), parametros["ruta"])
+    _mostrar(st.session_state.get(CLAVE_RESULTADO))
 
 
 # ---------------------------------------------------------------------------------------------
@@ -153,8 +155,8 @@ def _sembrar(ruta: Path) -> None:
 
 def _ejecutar(parametros: dict[str, object], archivo) -> None:
     """Corre UC-02 completo y deja en la sesion de Streamlit lo que hay que mostrar."""
-    # Una revaloracion nueva olvida el descarte de la anterior: la marca es por codigo, y el mismo
-    # codigo puede volver en otro caso abierto.
+    # Una revaloracion nueva olvida el descarte de la anterior: el mismo caso, proyecto y codigo
+    # pueden volver (un caso resembrado en la misma ruta), y la version nueva no esta descartada.
     st.session_state.pop(CLAVE_DESCARTADA, None)
     motor = crear_motor(f"sqlite:///{parametros['ruta'].as_posix()}")
     try:
@@ -233,6 +235,7 @@ def _actualizar(
         nombre_libro=libro.name,
         proyecto=str(parametros["proyecto"]),
         version_guardada=version_guardada,
+        ruta=Path(parametros["ruta"]),
     )
 
 
@@ -259,23 +262,33 @@ def _resumen(comparativo: Comparativo, moneda: str) -> str:
     return f"{anterior} -> {nuevo} {moneda}  ({variacion} {moneda}, {porcentaje} %)"
 
 
-def _descartar(ruta: Path, presentacion: Presentacion) -> None:
-    """UC-02 7a: marca la version nueva como descartada; su historial de cambios se conserva."""
-    motor = crear_motor(f"sqlite:///{ruta.as_posix()}")
+def _marca(presentacion: Presentacion) -> tuple[str, str, str | None]:
+    """La identidad de la version guardada: su caso, su proyecto y su codigo."""
+    return (presentacion.ruta.as_posix(), presentacion.proyecto, presentacion.version_guardada)
+
+
+def _descartar(presentacion: Presentacion) -> None:
+    """UC-02 7a: marca la version nueva como descartada; su historial de cambios se conserva.
+
+    Marca la base donde se guardo (`presentacion.ruta`), no la del caso abierto ahora.
+    """
+    motor = crear_motor(f"sqlite:///{presentacion.ruta.as_posix()}")
     try:
         with abrir_sesion(motor) as sesion:
             descartar_version(
                 sesion, presentacion.proyecto, presentacion.version_guardada, date.today()
             )
             sesion.commit()
-        st.session_state[CLAVE_DESCARTADA] = presentacion.version_guardada
     except (LookupError, ValueError, SQLAlchemyError) as error:
         st.error(str(error))
+        return
     finally:
         motor.dispose()
+    st.session_state[CLAVE_DESCARTADA] = _marca(presentacion)
+    st.rerun()  # el estado final: el aviso de descartada, sin el boton
 
 
-def _mostrar(presentacion: Presentacion | None, ruta: Path) -> None:
+def _mostrar(presentacion: Presentacion | None) -> None:
     if presentacion is None:
         return
 
@@ -300,10 +313,10 @@ def _mostrar(presentacion: Presentacion | None, ruta: Path) -> None:
     st.markdown(presentacion.informe)
 
     if presentacion.version_guardada is not None:
-        if st.session_state.get(CLAVE_DESCARTADA) == presentacion.version_guardada:
+        if st.session_state.get(CLAVE_DESCARTADA) == _marca(presentacion):
             st.info(
                 f"Version {presentacion.version_guardada} descartada: sigue guardada como "
                 "documento y su historial de cambios se conserva (UC-02, flujo 7a)."
             )
         elif st.button("Descartar version"):
-            _descartar(ruta, presentacion)
+            _descartar(presentacion)

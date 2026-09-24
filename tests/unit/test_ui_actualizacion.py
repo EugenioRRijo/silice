@@ -1,4 +1,10 @@
-"""UC-02 7a en la interfaz (INV-015): el boton marca la version y conserva el historial."""
+"""UC-02 7a en la interfaz (INV-015): el boton marca la version y conserva el historial.
+
+Dos arneses. Uno fija una `Presentacion` en la sesion. El otro, `_pantalla`, corre el flujo real
+de la pagina: `_ejecutar` con un archivo de precios (una sola vez por marca en la sesion) y despues
+`render`. Con ese arnes se prueba lo que el nucleo delega en la pagina: el boton solo aparece para
+la version que esta ejecucion guardo (revision de A7, P-1). Todas las bases viven en `tmp_path`.
+"""
 
 from __future__ import annotations
 
@@ -31,8 +37,9 @@ SCRIPT = "from ui.paginas.actualizacion import render\nrender()\n"
 CODIGO_NUEVO = "002"
 
 
-def _base_con_version_nueva(ruta: Path) -> None:
-    """001 guardado y 002 revalorado con la muestra, ambos confirmados, por el nucleo directo."""
+def _base_con_version_nueva(ruta: Path, *, revalorar: bool = True) -> None:
+    """001 guardado y 002 revalorado con la muestra, ambos confirmados, por el nucleo directo.
+    Con `revalorar=False`, solo 001."""
     motor = crear_motor(f"sqlite:///{ruta.as_posix()}")
     try:
         crear_esquema(motor)
@@ -57,6 +64,9 @@ def _base_con_version_nueva(ruta: Path) -> None:
                 lista=catalogo.lista_vigente(linea_base.FECHA_LINEA_BASE),
                 parametros=linea_base.PARAMETROS_LINEA_BASE,
             )
+            if not revalorar:
+                sesion.commit()
+                return
             lista = crear_lista_desde_archivo(
                 sesion,
                 MUESTRA,
@@ -100,6 +110,7 @@ def test_descartar_version_marca_la_version_y_conserva_el_historial(monkeypatch,
         nombre_libro="presupuesto_002.xlsx",
         proyecto=NOMBRE_PROYECTO,
         version_guardada=CODIGO_NUEVO,
+        ruta=base,
     )
     at.run()
     boton = next(b for b in at.button if b.label == "Descartar version")
@@ -126,8 +137,145 @@ def test_sin_version_guardada_no_hay_boton_de_descartar(monkeypatch, tmp_path):
         nombre_libro="presupuesto_002.xlsx",
         proyecto=NOMBRE_PROYECTO,
         version_guardada=None,
+        ruta=tmp_path / "vacio.db",
     )
     at.run()
 
     assert not at.exception
     assert "Descartar version" not in [b.label for b in at.button]
+
+
+# ---------------------------------------------------------------------------------------------
+# El flujo real de la pagina: `_ejecutar` y despues `render` (revision de A7, P-1 y P-2)
+# ---------------------------------------------------------------------------------------------
+
+#: Marca de sesion del arnes: si es verdadera (o falta), la proxima ejecucion revalora una vez.
+REVALORAR = "prueba_revalorar"
+ROTULO_DESCARTAR = "Descartar version"
+
+
+def _pantalla(ruta: str, lista: str) -> None:
+    """Revalora `ruta` (001 -> 002) con el archivo `lista` una vez por marca y pinta la pagina."""
+    import importlib
+    from datetime import date
+    from pathlib import Path
+    from types import SimpleNamespace
+
+    import streamlit as st
+
+    from scripts.seed import NOMBRE_PROYECTO
+
+    pagina = importlib.import_module("ui.paginas.actualizacion")
+    if st.session_state.get("prueba_revalorar", True):
+        st.session_state["prueba_revalorar"] = False
+        archivo = SimpleNamespace(name=Path(lista).name, getvalue=Path(lista).read_bytes)
+        parametros = {
+            "ruta": Path(ruta),
+            "proyecto": NOMBRE_PROYECTO,
+            "codigo": "001",
+            "codigo_nuevo": "002",
+            "vigencia": date(2026, 6, 1),
+            "moneda": "USD",
+            "nombre": "Lista de prueba",
+        }
+        pagina._ejecutar(parametros, archivo)
+    pagina.render()
+
+
+def _abrir(monkeypatch, caso_abierto: Path, guardar_en: Path, lista: Path) -> AppTest:
+    caso = importlib.import_module("ui.caso")
+    monkeypatch.setattr(caso, "RUTA_BASE_POR_DEFECTO", str(caso_abierto))
+    at = AppTest.from_function(
+        _pantalla, kwargs={"ruta": str(guardar_en), "lista": str(lista)}, default_timeout=120
+    )
+    at.run()
+    assert not at.exception, [e.value for e in at.exception]
+    assert not at.error, [e.value for e in at.error]
+    return at
+
+
+def _rotulos(at: AppTest) -> list[str]:
+    return [boton.label for boton in at.button]
+
+
+def _descartadas(at: AppTest) -> list[str]:
+    return [aviso.value for aviso in at.info if "descartada" in aviso.value]
+
+
+def _contar_si_existe(ruta: Path, entidad) -> int:
+    return _contar(ruta, entidad) if ruta.exists() else 0
+
+
+def test_revalorar_con_cambios_ofrece_descartar_la_version_guardada(monkeypatch, tmp_path):
+    base = tmp_path / "caso.db"
+    _base_con_version_nueva(base, revalorar=False)
+    pagina = importlib.import_module("ui.paginas.actualizacion")
+
+    at = _abrir(monkeypatch, base, base, MUESTRA)
+
+    presentacion = at.session_state[pagina.CLAVE_RESULTADO]
+    assert presentacion.version_guardada == CODIGO_NUEVO
+    assert presentacion.ruta == base
+    assert ROTULO_DESCARTAR in _rotulos(at)
+
+
+def test_revalorar_sin_cambios_no_guarda_ni_ofrece_descartar(monkeypatch, tmp_path):
+    """UC-02 3a: la lista repite un precio vigente (la piedra picada sigue a 35, como en la
+    muestra), ningun insumo cambia y no se guarda version: no hay nada que descartar."""
+    base = tmp_path / "caso.db"
+    _base_con_version_nueva(base, revalorar=False)
+    igual = tmp_path / "lista_igual.csv"
+    igual.write_text("tipo,insumo,unidad,precio\nmaterial,Piedra picada,m3,35\n", encoding="utf-8")
+    pagina = importlib.import_module("ui.paginas.actualizacion")
+
+    at = _abrir(monkeypatch, base, base, igual)
+
+    assert any("Ningun precio cambio" in aviso.value for aviso in at.warning)
+    assert at.session_state[pagina.CLAVE_RESULTADO].version_guardada is None
+    assert ROTULO_DESCARTAR not in _rotulos(at)
+
+
+def test_descartar_marca_la_base_donde_se_guardo_aunque_se_cambie_de_caso(monkeypatch, tmp_path):
+    """Duda 2 de A7: la version se guardo en `original`; antes del clic se abre `otro` caso, con
+    el mismo proyecto y su propia 002. La marca queda solo en `original`. P-2: el estado final es
+    el aviso de descartada, sin el boton."""
+    original = tmp_path / "original.db"
+    otro = tmp_path / "otro.db"
+    _base_con_version_nueva(original, revalorar=False)
+    _base_con_version_nueva(otro)
+    antes = huella(RUTA_BASE_REAL)
+
+    at = _abrir(monkeypatch, original, original, MUESTRA)
+    caso = importlib.import_module("ui.caso")
+    monkeypatch.setattr(caso, "RUTA_BASE_POR_DEFECTO", str(otro))
+    next(b for b in at.button if b.label == ROTULO_DESCARTAR).click().run()
+
+    assert not at.exception, [e.value for e in at.exception]
+    assert not at.error, [e.value for e in at.error]
+    assert _contar(original, models.DescarteVersion) == 1
+    assert _contar(otro, models.DescarteVersion) == 0
+    assert _contar(original, models.CambioPrecio) == len(PRECIOS_NUEVOS)
+    assert _descartadas(at) != []
+    assert ROTULO_DESCARTAR not in _rotulos(at)
+    assert huella(RUTA_BASE_REAL) == antes
+
+
+def test_revalorar_otra_vez_tras_descartar_vuelve_a_ofrecer_el_boton(monkeypatch, tmp_path):
+    """Duda 1 de A7: se descarta la 002 del caso; el caso se vuelve a sembrar en la misma ruta y
+    se revalora otra vez con el mismo codigo. La 002 nueva no esta descartada: el boton vuelve."""
+    base = tmp_path / "caso.db"
+    _base_con_version_nueva(base, revalorar=False)
+    at = _abrir(monkeypatch, base, base, MUESTRA)
+    next(b for b in at.button if b.label == ROTULO_DESCARTAR).click().run()
+    assert _descartadas(at) != []
+
+    base.unlink()  # todos los motores se cerraron (`motor.dispose()`)
+    _base_con_version_nueva(base, revalorar=False)
+    at.session_state[REVALORAR] = True
+    at.run()
+
+    assert not at.exception, [e.value for e in at.exception]
+    assert not at.error, [e.value for e in at.error]
+    assert _contar_si_existe(base, models.DescarteVersion) == 0
+    assert _descartadas(at) == []
+    assert ROTULO_DESCARTAR in _rotulos(at)
