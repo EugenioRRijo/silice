@@ -9,8 +9,6 @@ cantidad de la regla `longitud_m * (1 + reserva)`, evaluada por `adapters/teleco
 
 from __future__ import annotations
 
-import ast
-import sys
 from decimal import Decimal
 from pathlib import Path
 
@@ -22,7 +20,6 @@ from core.contracts import Dominio, OrigenTipo
 
 RAIZ = Path(__file__).resolve().parents[2]
 RUTA_MUESTRA = RAIZ / "data" / "samples" / "telecom" / "topologia_arenaza.csv"
-PAQUETE_TELECOM = RAIZ / "adapters" / "telecom"
 
 _ENCABEZADO_CSV = (
     "tipo,id,descripcion,codigo_partida,unidad,cantidad,origen,destino,longitud_m,reserva,"
@@ -140,55 +137,3 @@ def test_longitud_vacia_falla_con_fila_y_columna(tmp_path):
 
     with pytest.raises(ValueError, match=r"E-02.*longitud_m"):
         AdaptadorTelecom().extraer(ruta)
-
-
-def _imports_de(archivo: Path):
-    arbol = ast.parse(archivo.read_text(encoding="utf-8"), filename=str(archivo))
-    for nodo in ast.walk(arbol):
-        if isinstance(nodo, ast.Import):
-            for alias in nodo.names:
-                yield alias.name
-        elif isinstance(nodo, ast.ImportFrom) and nodo.module and nodo.level == 0:
-            yield nodo.module
-
-
-def _import_permitido(modulo: str) -> bool:
-    """True si `modulo` es una dependencia permitida para un archivo de `adapters/telecom/`.
-
-    Solo puede depender de la biblioteca estandar, de `core.contracts` (y sus submodulos) y de su
-    propio paquete `adapters.telecom` (y sus submodulos). Comparar unicamente la raiz del modulo
-    (`modulo.split(".")[0]`) dejaria pasar `import adapters.civil.evaluador`, porque su raiz
-    tambien es `"adapters"`: por eso el caso `adapters` compara el nombre completo del paquete, no
-    solo la raiz (hallazgo Important 1 de la ronda 1 de revision).
-    """
-    permitidos_estandar = set(sys.stdlib_module_names) | {"__future__"}
-    raiz_modulo = modulo.split(".")[0]
-    if raiz_modulo == "core":
-        return modulo == "core.contracts" or modulo.startswith("core.contracts.")
-    if raiz_modulo == "adapters":
-        return modulo == "adapters.telecom" or modulo.startswith("adapters.telecom.")
-    return raiz_modulo in permitidos_estandar
-
-
-def test_no_importa_nada_de_core_salvo_contracts():
-    for archivo in sorted(PAQUETE_TELECOM.rglob("*.py")):
-        for modulo in _imports_de(archivo):
-            assert _import_permitido(modulo), (
-                f"{archivo.relative_to(RAIZ).as_posix()} importa {modulo!r}; adapters/telecom solo "
-                "puede importar la biblioteca estandar, core.contracts y su propio paquete"
-            )
-
-
-def test_la_validacion_de_imports_rechaza_otros_paquetes():
-    # el bug corregido en la ronda 1 (comparar solo la raiz "adapters") habria dejado pasar esto:
-    assert not _import_permitido("adapters.civil.evaluador")
-    assert not _import_permitido("adapters.civil")
-    assert not _import_permitido("core.costing")
-    assert not _import_permitido("core")
-    # lo que si esta permitido:
-    assert _import_permitido("core.contracts")
-    assert _import_permitido("core.contracts.item_computo")
-    assert _import_permitido("adapters.telecom")
-    assert _import_permitido("adapters.telecom.adaptador")
-    assert _import_permitido("decimal")
-    assert _import_permitido("__future__")

@@ -1,6 +1,7 @@
 """Hace ejecutable la hipótesis central (CLAUDE.md §1 y §2).
 
-- adapters/ y ml/ importan de `core` únicamente `core.contracts`;
+- adapters/ importa solo la biblioteca estándar, core.contracts, su propio paquete y los terceros
+  declarados, con importación absoluta; ml/ importa de core solo core.contracts;
 - core/ no importa adapters, ml, ui, api, scripts ni tests (ningún paquete de primer nivel);
 - core/contracts solo depende de la biblioteca estándar.
 
@@ -15,6 +16,17 @@ import pytest
 
 RAIZ = Path(__file__).resolve().parents[2]
 PAQUETES_FUERA_DEL_NUCLEO = ("adapters", "ml", "ui", "api", "scripts", "tests")
+
+#: Terceros que cada adaptador puede importar, ademas de la biblioteca estandar, `core.contracts` y
+#: su propio paquete (INV-018: una sola guardia con la regla que antes solo regia para telecom).
+#: Un adaptador nuevo necesita su fila: lo exige `test_toda_carpeta_de_adapters_tiene_su_regla`.
+TERCEROS_POR_ADAPTADOR: dict[str, frozenset[str]] = {
+    "civil": frozenset({"ifcopenshell"}),
+    "industrial": frozenset(),
+    "sistemas": frozenset(),
+    "telecom": frozenset(),
+}
+_BIBLIOTECA_ESTANDAR = frozenset(sys.stdlib_module_names) | {"__future__"}
 
 
 def _archivos(paquete: str) -> list[Path]:
@@ -40,10 +52,9 @@ def _es_core_fuera_de_contracts(modulo: str) -> bool:
     return es_core and not modulo.startswith("core.contracts")
 
 
-@pytest.mark.parametrize(
-    "archivo", [a for p in ("adapters", "ml") for a in _archivos(p)], ids=_ruta
-)
-def test_fuera_del_nucleo_solo_se_importa_core_contracts(archivo):
+@pytest.mark.parametrize("archivo", _archivos("ml"), ids=_ruta)
+def test_ml_solo_importa_core_contracts_del_nucleo(archivo):
+    """ml/ importa de core solo core.contracts; adapters/ lo vigila su propia guardia (INV-018)."""
     prohibidos = [m for m in _imports(archivo) if _es_core_fuera_de_contracts(m)]
     assert not prohibidos, (
         f"{_ruta(archivo)} importa {prohibidos}; solo se permite core.contracts "
@@ -82,3 +93,99 @@ def test_la_guardia_cubre_todo_paquete_de_primer_nivel_fuera_del_nucleo():
     """
     paquetes = {inicio.parent.name for inicio in RAIZ.glob("*/__init__.py")} - {"core"}
     assert paquetes == set(PAQUETES_FUERA_DEL_NUCLEO)
+
+
+def _imports_relativos(archivo: Path) -> list[str]:
+    """Las importaciones relativas (`from . import x`, `from ..core import y`), que `_imports` no
+    devuelve (`level > 0`). Sin resolverlas no se sabe que paquete importan: en `adapters/` se
+    prohiben, y cada adaptador importa con la ruta absoluta que la regla si puede juzgar."""
+    arbol = ast.parse(archivo.read_text(encoding="utf-8"), filename=str(archivo))
+    return [
+        "." * nodo.level + (nodo.module or "")
+        for nodo in ast.walk(arbol)
+        if isinstance(nodo, ast.ImportFrom) and nodo.level > 0
+    ]
+
+
+def _import_permitido(adaptador: str, modulo: str) -> bool:
+    """True si un archivo de `adapters/<adaptador>/` puede importar `modulo`.
+
+    Compara el paquete completo y no solo la raiz: `adapters.civil.evaluador` tiene la misma raiz
+    `adapters` que el propio paquete de telecom y no por eso le esta permitido (hallazgo Important 1
+    de la ronda 1 de revision de I5, que antes solo vigilaba la copia de telecom).
+    """
+    raiz = modulo.split(".")[0]
+    if raiz == "core":
+        return modulo == "core.contracts" or modulo.startswith("core.contracts.")
+    if raiz == "adapters":
+        propio = f"adapters.{adaptador}"
+        return modulo == propio or modulo.startswith(propio + ".")
+    return raiz in _BIBLIOTECA_ESTANDAR or raiz in TERCEROS_POR_ADAPTADOR[adaptador]
+
+
+@pytest.mark.parametrize("adaptador", sorted(TERCEROS_POR_ADAPTADOR))
+def test_un_adaptador_solo_importa_contratos_su_paquete_y_sus_terceros(adaptador):
+    """INV-018: CLAUDE.md §2 y §5 para cada adaptador, con importaciones anidadas incluidas.
+
+    Las relativas se rechazan todas: `from ..core import costing` escaparia a `_imports`."""
+    archivos = _archivos(f"adapters/{adaptador}")
+    prohibidos = [
+        f"{_ruta(archivo)}: {modulo}"
+        for archivo in archivos
+        for modulo in _imports(archivo)
+        if not _import_permitido(adaptador, modulo)
+    ] + [
+        f"{_ruta(archivo)}: {relativo} (relativa)"
+        for archivo in archivos
+        for relativo in _imports_relativos(archivo)
+    ]
+    assert not prohibidos, (
+        f"adapters/{adaptador} importa {prohibidos}; solo se permite la biblioteca estandar, "
+        "core.contracts, su propio paquete y los terceros de TERCEROS_POR_ADAPTADOR, siempre con "
+        "importacion absoluta"
+    )
+
+
+def test_la_regla_de_un_adaptador_rechaza_otro_adaptador_y_el_resto_del_nucleo():
+    assert not _import_permitido("telecom", "adapters.civil.evaluador")
+    assert not _import_permitido("telecom", "adapters.civil")
+    assert not _import_permitido("telecom", "adapters.telecomunicaciones")  # prefijo, no paquete
+    assert not _import_permitido("telecom", "core.costing")
+    assert not _import_permitido("telecom", "core")
+    assert not _import_permitido("telecom", "ifcopenshell")  # el tercero de civil no es de telecom
+    assert _import_permitido("telecom", "core.contracts.item_computo")
+    assert _import_permitido("telecom", "adapters.telecom.adaptador")
+    assert _import_permitido("telecom", "decimal")
+    assert _import_permitido("telecom", "__future__")
+
+
+def test_la_guardia_ve_las_importaciones_relativas(tmp_path):
+    """`_imports` descarta las relativas (`level > 0`); `_imports_relativos` las devuelve todas,
+    con sus puntos, para que la regla por adaptador las rechace."""
+    archivo = tmp_path / "modulo.py"
+    archivo.write_text(
+        "from . import hermano\nfrom ..core.costing import calcular_apu\nimport decimal\n",
+        encoding="utf-8",
+    )
+    assert list(_imports(archivo)) == ["decimal"]
+    assert _imports_relativos(archivo) == [".", "..core.costing"]
+
+
+def test_toda_carpeta_de_adapters_tiene_su_regla():
+    """Un adaptador nuevo no puede quedar fuera de la guardia; el `__init__` raiz no importa nada.
+
+    Ademas, todo `.py` de `adapters/` es el `__init__` raiz o vive bajo un paquete con regla: un
+    modulo suelto (`adapters/utilidades.py`) o una carpeta sin `__init__.py` escaparian a la regla
+    por adaptador, y la generica ya solo recorre `ml/`.
+    """
+    paquetes = {inicio.parent.name for inicio in (RAIZ / "adapters").glob("*/__init__.py")}
+    assert paquetes == set(TERCEROS_POR_ADAPTADOR)
+    raiz = RAIZ / "adapters" / "__init__.py"
+    assert not list(_imports(raiz)) and not _imports_relativos(raiz)
+    sueltos = [
+        _ruta(archivo)
+        for archivo in _archivos("adapters")
+        if archivo != raiz
+        and archivo.relative_to(RAIZ / "adapters").parts[0] not in TERCEROS_POR_ADAPTADOR
+    ]
+    assert not sueltos, f"{sueltos} no estan bajo ningun paquete de TERCEROS_POR_ADAPTADOR"

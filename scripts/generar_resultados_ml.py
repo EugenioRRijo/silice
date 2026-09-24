@@ -291,6 +291,33 @@ def _r2(valor: Decimal | None) -> str:
     return "sin varianza en los reales" if valor is None else _cuatro(valor)
 
 
+def _parrafo_g2(conteos: Mapping[str, int]) -> list[str]:
+    """El parrafo de la compuerta G2, derivado del conteo mayor (INV-079).
+
+    Solo si todos los dominios estan por debajo de `UMBRAL_CASOS` puede afirmarse que la tabla
+    dicta el sistema de reglas en todos; si alguno lo alcanza, el parrafo lo dice en vez de
+    contradecir la tabla que tiene justo arriba.
+    """
+    por_debajo = [
+        f"Todos los dominios estan por debajo de los {UMBRAL_CASOS} registros: la tecnica de",
+        "`ml/prediction/` es el **sistema de reglas con analisis de sensibilidad**, y se declara",
+        "como **limitacion** del trabajo, no como logro: no hay datos suficientes para entrenar",
+        "ni validar un modelo de aprendizaje (la tabla de degradacion existe exactamente para",
+        "este caso). La compuerta G2 queda cruzada con esta evidencia; tras el sprint",
+        "multidominio la limitacion esta demostrada con catalogos poblados en los cuatro dominios,",
+        "no con ausencia de datos (compuerta GM4, PLAN_MULTIDOMINIO §2).",
+    ]
+    alguno_en_el_umbral = [
+        f"Al menos un dominio alcanza los {UMBRAL_CASOS} registros: para ese dominio la tabla",
+        "dicta una tecnica distinta del sistema de reglas (columna de la derecha), y",
+        "`ml/prediction/` implementa solo el **sistema de reglas con analisis de sensibilidad**.",
+        "Aplicarlo a ese dominio es una **limitacion** declarada, y la compuerta G2 debe",
+        "revisarse con este conteo antes de presentar sus metricas como las de la tecnica que",
+        "dicta la tabla.",
+    ]
+    return por_debajo if max(conteos.values(), default=0) < UMBRAL_CASOS else alguno_en_el_umbral
+
+
 def generar_informe(
     conteos: dict[str, int],
     metricas: Metricas,
@@ -317,17 +344,8 @@ def generar_informe(
     ]
     for dominio, registros in sorted(conteos.items()):
         lineas.append(f"| {dominio} | {registros} | {tecnica_para(registros).value} |")
+    lineas += ["", *_parrafo_g2(conteos), "", "## Regla declarada"]
     lineas += [
-        "",
-        f"Todos los dominios estan por debajo de los {UMBRAL_CASOS} registros: la tecnica de",
-        "`ml/prediction/` es el **sistema de reglas con analisis de sensibilidad**, y se declara",
-        "como **limitacion** del trabajo, no como logro: no hay datos suficientes para entrenar",
-        "ni validar un modelo de aprendizaje (la tabla de degradacion existe exactamente para",
-        "este caso). La compuerta G2 queda cruzada con esta evidencia; tras el sprint",
-        "multidominio la limitacion esta demostrada con catalogos poblados en los cuatro dominios,",
-        "no con ausencia de datos (compuerta GM4, PLAN_MULTIDOMINIO §2).",
-        "",
-        "## Regla declarada",
         "",
         "PU estimado = PU base x (1 + media de las variaciones del historico de cambios de",
         "precio). Sensibilidad: el rango recorre la variacion minima y la maxima observadas.",

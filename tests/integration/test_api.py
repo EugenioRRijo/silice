@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import sys
 from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
-from fastapi.testclient import TestClient
+from sqlalchemy import select
 
 from tests.fixtures import apu_linea_base as linea_base
 from tests.fixtures.actualizacion_uc02 import INCREMENTO_TOTAL
@@ -14,17 +16,6 @@ from tests.fixtures.computo_civil import CODIGOS as CODIGOS_CIVIL
 
 RAIZ = Path(__file__).resolve().parents[2]
 MUESTRA_PRECIOS = RAIZ / "data" / "samples" / "precios" / "lista_2026-06-01.csv"
-
-
-@pytest.fixture
-def cliente(sesion):
-    from api.dependencias import sesion_api
-    from api.main import app
-
-    app.dependency_overrides[sesion_api] = lambda: sesion
-    with TestClient(app) as cliente:
-        yield cliente
-    app.dependency_overrides.clear()
 
 
 def test_salud(cliente):
@@ -57,26 +48,6 @@ def test_cargar_lista_de_precios_reporta_desconocidos_vacios(cliente):
     assert cliente.get("/listas-precios").status_code == 200
 
 
-def _items_payload():
-    from tests.fixtures.computo_auditado import items_auditados
-
-    return [
-        {
-            "codigo_partida": i.codigo_partida,
-            "descripcion": i.descripcion,
-            "unidad": i.unidad,
-            "cantidad": str(i.cantidad),
-            "origen_id": i.origen_id,
-            "origen_tipo": i.origen_tipo.value,
-            "dominio": i.dominio.value,
-            "regla": i.regla,
-            "parametros": {k: str(v) for k, v in i.parametros.items()},
-            "especificaciones": dict(i.especificaciones),
-        }
-        for i in items_auditados()
-    ]
-
-
 def test_computo_civil_desde_la_muestra(cliente):
     ruta = RAIZ / "data" / "samples" / "civil" / "tanquillas_y_zanja.csv"
     import json
@@ -91,7 +62,7 @@ def test_computo_civil_desde_la_muestra(cliente):
     assert all(i["origen_id"] for i in r.json())
 
 
-def test_elaborar_presupuesto_por_http_reproduce_el_total_auditado(cliente):
+def test_elaborar_presupuesto_por_http_reproduce_el_total_auditado(cliente, items_payload):
     r = cliente.post(
         "/presupuestos",
         json={
@@ -99,7 +70,7 @@ def test_elaborar_presupuesto_por_http_reproduce_el_total_auditado(cliente):
             "fecha": "2026-04-28",
             "moneda": "USD",
             "proyecto": "Drenaje de la clínica",
-            "items": _items_payload(),
+            "items": items_payload,
         },
     )
     assert r.status_code == 201
@@ -112,7 +83,7 @@ def test_elaborar_presupuesto_por_http_reproduce_el_total_auditado(cliente):
     assert cliente.get("/presupuestos/API-001/excel").content[:2] == b"PK"
 
 
-def test_actualizacion_por_http_solo_revalora_el_concreto(cliente):
+def test_actualizacion_por_http_solo_revalora_el_concreto(cliente, items_payload):
     cliente.post(
         "/presupuestos",
         json={
@@ -120,7 +91,7 @@ def test_actualizacion_por_http_solo_revalora_el_concreto(cliente):
             "fecha": "2026-04-28",
             "moneda": "USD",
             "proyecto": "Drenaje de la clínica",
-            "items": _items_payload(),
+            "items": items_payload,
         },
     )
     with MUESTRA_PRECIOS.open("rb") as f:
@@ -141,7 +112,7 @@ def test_actualizacion_por_http_solo_revalora_el_concreto(cliente):
     assert sum(1 for f in cuerpo["filas"] if f["variacion_pct"] not in ("0", "0.00")) == 1
 
 
-def test_cambios_precio_por_http_con_filtro_de_insumo(cliente):
+def test_cambios_precio_por_http_con_filtro_de_insumo(cliente, items_payload):
     """GET /cambios-precio (sin prueba propia hasta esta sesion): tras una actualizacion, el
     historial responde con montos como texto exacto y respeta el filtro `insumo`. La ruta
     delega en `core.catalog.cambios_precio`, la unica consulta del historial.
@@ -153,7 +124,7 @@ def test_cambios_precio_por_http_con_filtro_de_insumo(cliente):
             "fecha": "2026-04-28",
             "moneda": "USD",
             "proyecto": "Drenaje de la clínica",
-            "items": _items_payload(),
+            "items": items_payload,
         },
     )
     with MUESTRA_PRECIOS.open("rb") as f:
@@ -176,12 +147,12 @@ def test_cambios_precio_por_http_con_filtro_de_insumo(cliente):
     assert {c["insumo"] for c in todos} == {"Cemento Portland", "Arena lavada"}
 
 
-def test_cantidad_decimal_malformada_responde_422_no_500(cliente):
+def test_cantidad_decimal_malformada_responde_422_no_500(cliente, items_payload):
     """`Decimal("12,50")` lanza `InvalidOperation` (que NO hereda de `ValueError`): sin manejo en
     la frontera seria un 500 crudo (hallazgo menor diferido de la bitacora F.1). La API debe
     responder 422 con el campo y el texto rechazado en el detalle.
     """
-    items = _items_payload()
+    items = items_payload
     items[0]["cantidad"] = "12,50"  # coma decimal: malformado para Decimal
     r = cliente.post(
         "/presupuestos",
@@ -197,7 +168,7 @@ def test_cantidad_decimal_malformada_responde_422_no_500(cliente):
     assert "12,50" in r.json()["detalle"]
 
 
-def test_parametro_decimal_no_finito_responde_422(cliente):
+def test_parametro_decimal_no_finito_responde_422(cliente, items_payload):
     """`Decimal("NaN")` SI parsea, pero no es un monto: debe rechazarse en la frontera, no
     propagarse hasta que una comparacion del nucleo lance `InvalidOperation` (500 crudo).
     """
@@ -209,14 +180,16 @@ def test_parametro_decimal_no_finito_responde_422(cliente):
             "moneda": "USD",
             "proyecto": "Drenaje de la clínica",
             "fcas": "NaN",
-            "items": _items_payload(),
+            "items": items_payload,
         },
     )
     assert r.status_code == 422
     assert "fcas" in r.json()["detalle"]
 
 
-def test_codigo_de_presupuesto_repetido_en_dos_proyectos_no_revienta_en_500(cliente, sesion):
+def test_codigo_de_presupuesto_repetido_en_dos_proyectos_no_revienta_en_500(
+    cliente, sesion, items_payload
+):
     """`codigo` solo es unico por proyecto (`UniqueConstraint(proyecto_id, codigo)`): si dos
     proyectos comparten codigo, las rutas que resuelven `{codigo}` deben responder 409 con
     detalle claro (nunca `MultipleResultsFound` sin manejar) y desambiguar con `?proyecto=`
@@ -228,7 +201,7 @@ def test_codigo_de_presupuesto_repetido_en_dos_proyectos_no_revienta_en_500(clie
         "codigo": "COL-001",
         "fecha": "2026-04-28",
         "moneda": "USD",
-        "items": _items_payload(),
+        "items": items_payload,
     }
     r1 = cliente.post("/presupuestos", json={**payload_base, "proyecto": "Drenaje de la clínica"})
     assert r1.status_code == 201
@@ -263,7 +236,9 @@ def test_codigo_de_presupuesto_repetido_en_dos_proyectos_no_revienta_en_500(clie
     )
 
 
-def test_actualizacion_sin_cambios_de_precio_responde_409_sin_persistir(cliente, sesion):
+def test_actualizacion_sin_cambios_de_precio_responde_409_sin_persistir(
+    cliente, sesion, items_payload
+):
     """UC-02, flujo 3a (rama sin prueba dedicada hasta esta sesion, bitacora F.1): si ningun
     insumo cambio de precio entre la lista del presupuesto y la nueva, no hay nada que
     confirmar: 409 y el `codigo_nuevo` NO queda guardado (la ruta no hace `commit`).
@@ -275,7 +250,7 @@ def test_actualizacion_sin_cambios_de_precio_responde_409_sin_persistir(cliente,
             "fecha": "2026-04-28",
             "moneda": "USD",
             "proyecto": "Drenaje de la clínica",
-            "items": _items_payload(),
+            "items": items_payload,
         },
     )
     with MUESTRA_PRECIOS.open("rb") as f:
@@ -340,3 +315,254 @@ def test_computo_civil_desde_un_modelo_ifc(cliente):
     assert items[0]["cantidad"] == str(linea_base.CANTIDAD_POR_TANQUILLA_MEMORIA[concreto])
     assert items[0]["codigo_partida"] == concreto
     assert items[0]["origen_tipo"] == "ifc"
+
+
+CODIGO_SIN_PARTIDA = "XX-99-NUE"
+
+
+def _item_sin_partida(descripcion):
+    """Un item cuya partida no existe en el catalogo (UC-01, flujo 3a)."""
+    return {
+        "codigo_partida": CODIGO_SIN_PARTIDA,
+        "descripcion": descripcion,
+        "unidad": "m3",
+        "cantidad": "2.5",
+        "origen_id": "PEND-01",
+        "origen_tipo": "manual",
+        "dominio": "civil",
+    }
+
+
+def _cuerpo(codigo, items):
+    return {
+        "codigo": codigo,
+        "fecha": "2026-04-28",
+        "moneda": "USD",
+        "proyecto": "Drenaje de la clínica",
+        "items": items,
+    }
+
+
+def test_un_item_sin_partida_queda_pendiente_por_http(cliente, sesion, items_payload, monkeypatch):
+    """UC-01, flujo 3a, por HTTP (INV-072): el item sin partida no aborta la elaboracion. Queda
+    pendiente, no suma al total, el informe lo declara (y se persiste) y la respuesta lo lista con
+    las partidas similares que propone UC-03. El normalizador es un doble: esta prueba verifica el
+    cableado, no la similitud (esa la cubre la prueba con el modelo real, mas abajo).
+    """
+    from core import models
+
+    recibidas = {}
+    propuesta = SimpleNamespace(codigo="LB-01-EXC", descripcion="Excavacion", puntaje=0.91)
+
+    class _NormalizadorDoble:
+        def __init__(self, partidas):
+            recibidas.update(partidas)
+
+        def similares(self, descripcion):
+            return [propuesta]
+
+    monkeypatch.setitem(
+        sys.modules, "ml.normalization", SimpleNamespace(NormalizadorPartidas=_NormalizadorDoble)
+    )
+    from core.catalog import Catalogo
+
+    consultas = []
+    partidas = Catalogo.partidas
+
+    def _partidas_contadas(self, *args, **kwargs):
+        consultas.append(args)
+        return partidas(self, *args, **kwargs)
+
+    base = cliente.post("/presupuestos", json=_cuerpo("API-BASE", items_payload))
+    monkeypatch.setattr(Catalogo, "partidas", _partidas_contadas)
+    r = cliente.post(
+        "/presupuestos",
+        json=_cuerpo("API-3A", [*items_payload, _item_sin_partida("Excavacion de un foso nuevo")]),
+    )
+    monkeypatch.undo()
+
+    assert r.status_code == 201
+    cuerpo = r.json()
+    assert cuerpo["total"] == str(linea_base.TOTAL_PRESUPUESTO_AUDITADO)  # no suma al total
+    assert cuerpo["hallazgos"] == base.json()["hallazgos"] + 1  # el informe lo declara
+    assert base.json()["pendientes"] == []
+    (pendiente,) = cuerpo["pendientes"]
+    assert pendiente["codigo_partida"] == CODIGO_SIN_PARTIDA
+    assert pendiente["origen_id"] == "PEND-01" and pendiente["cantidad"] == "2.5"
+    assert pendiente["propuestas"] == [
+        {"codigo": "LB-01-EXC", "descripcion": "Excavacion", "puntaje": 0.91}
+    ]
+    assert set(linea_base.CODIGOS_LINEA_BASE) <= set(recibidas)  # propone sobre el catalogo
+    assert len(consultas) == 1  # la propuesta reusa las partidas ya consultadas (GC2, A3)
+    # Postcondicion de UC-01: el informe persistido lleva la declaracion del pendiente.
+    guardado = sesion.scalars(
+        select(models.Presupuesto).where(models.Presupuesto.codigo == "API-3A")
+    ).one()
+    assert [h.regla for h in guardado.hallazgos if h.regla == "PENDIENTE"] == ["PENDIENTE"]
+
+
+def test_sin_el_extra_ml_el_pendiente_queda_sin_propuestas(cliente, items_payload, monkeypatch):
+    """La propuesta es una ayuda, no una condicion: sin `ml` el item sigue pendiente."""
+    monkeypatch.setitem(sys.modules, "ml.normalization", None)  # import -> ImportError
+
+    r = cliente.post(
+        "/presupuestos",
+        json=_cuerpo("API-3A-SIN-ML", [*items_payload, _item_sin_partida("Foso nuevo")]),
+    )
+
+    assert r.status_code == 201
+    assert r.json()["pendientes"][0]["propuestas"] == []
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        OSError("sin modelo en la cache local"),
+        ValueError("identificador de modelo invalido"),
+        RuntimeError("archivo de pesos corrupto"),
+    ],
+    ids=["sin-modelo", "identificador-invalido", "pesos-corruptos"],
+)
+def test_sin_el_modelo_el_pendiente_queda_sin_propuestas(
+    cliente, items_payload, monkeypatch, caplog, error
+):
+    """INV-072: el extra `ml` esta, pero el modelo no se puede cargar. Sin cache y sin red,
+    sentence-transformers lanza `OSError`; un identificador que Hugging Face rechaza lanza
+    `HFValidationError`, subclase de `ValueError`, que `api/main.py` convertiria en 422; un
+    archivo de pesos corrupto hace que `torch.load` lance `RuntimeError`. La ruta no responde 500
+    ni 422: el item sigue pendiente y sin propuestas."""
+
+    class _NormalizadorSinModelo:
+        def __init__(self, partidas):
+            raise error
+
+    monkeypatch.setitem(
+        sys.modules,
+        "ml.normalization",
+        SimpleNamespace(NormalizadorPartidas=_NormalizadorSinModelo),
+    )
+
+    with caplog.at_level("WARNING", logger="api.rutas.presupuestos"):
+        r = cliente.post(
+            "/presupuestos",
+            json=_cuerpo(
+                f"API-3A-{type(error).__name__}", [*items_payload, _item_sin_partida("Foso nuevo")]
+            ),
+        )
+
+    assert r.status_code == 201
+    (pendiente,) = r.json()["pendientes"]
+    assert pendiente["codigo_partida"] == CODIGO_SIN_PARTIDA
+    assert pendiente["propuestas"] == []
+    # Observabilidad (GC2): la falla no se traga en silencio; el aviso nombra su tipo.
+    (aviso,) = [a for a in caplog.records if a.name == "api.rutas.presupuestos"]
+    assert aviso.levelname == "WARNING" and type(error).__name__ in aviso.getMessage()
+
+
+def test_la_propuesta_real_reconoce_la_partida_de_la_misma_descripcion(
+    cliente, items_payload, monkeypatch
+):
+    """Con el modelo de similitud real (RF-15): una descripcion identica a la de una partida del
+    catalogo la pone primera. Oraculo independiente del modelo: textos iguales, coseno 1."""
+    pytest.importorskip("sentence_transformers")
+    monkeypatch.setenv("HF_HUB_DISABLE_SYMLINKS_WARNING", "1")
+    from ml.normalization import NormalizadorPartidas
+
+    try:
+        NormalizadorPartidas({})
+    except OSError as error:  # mismo criterio que tests/unit/test_normalizacion.py
+        pytest.skip(f"el modelo de similitud no esta disponible localmente: {error}")
+
+    codigo = linea_base.APU_EXCAVACION.codigo_partida
+    excavacion = next(p for p in cliente.get("/partidas").json() if p["codigo"] == codigo)
+
+    r = cliente.post(
+        "/presupuestos",
+        json=_cuerpo("API-3A-REAL", [*items_payload, _item_sin_partida(excavacion["descripcion"])]),
+    )
+
+    assert r.status_code == 201  # antes de leer el cuerpo: un 404 no tiene `pendientes`
+    propuestas = r.json()["pendientes"][0]["propuestas"]
+    assert 1 <= len(propuestas) <= 3
+    assert propuestas[0]["codigo"] == codigo
+    puntajes = [p["puntaje"] for p in propuestas]
+    assert puntajes == sorted(puntajes, reverse=True)
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        ImportError("dependencia perezosa ausente"),
+        OSError("tokenizador ausente"),
+        ValueError("entrada rechazada"),
+        RuntimeError("fallo del modelo al codificar"),
+    ],
+    ids=["import", "os", "valor", "ejecucion"],
+)
+def test_si_similares_falla_el_pendiente_queda_sin_propuestas(
+    cliente, items_payload, monkeypatch, caplog, error
+):
+    """El normalizador se construye, pero `similares` falla al codificar la descripcion: la
+    ruta no responde 500 despues de guardar. Ese item queda sin propuestas y sigue pendiente."""
+
+    class _NormalizadorQueFallaAlProponer:
+        def __init__(self, partidas):
+            pass
+
+        def similares(self, descripcion):
+            raise error
+
+    monkeypatch.setitem(
+        sys.modules,
+        "ml.normalization",
+        SimpleNamespace(NormalizadorPartidas=_NormalizadorQueFallaAlProponer),
+    )
+
+    with caplog.at_level("WARNING", logger="api.rutas.presupuestos"):
+        r = cliente.post(
+            "/presupuestos",
+            json=_cuerpo(
+                f"API-3A-SIM-{type(error).__name__}",
+                [*items_payload, _item_sin_partida("Foso nuevo")],
+            ),
+        )
+
+    assert r.status_code == 201
+    (pendiente,) = r.json()["pendientes"]
+    assert pendiente["codigo_partida"] == CODIGO_SIN_PARTIDA
+    assert pendiente["propuestas"] == []
+    (aviso,) = [a for a in caplog.records if a.name == "api.rutas.presupuestos"]
+    assert aviso.levelname == "WARNING" and type(error).__name__ in aviso.getMessage()
+
+
+def test_si_todos_los_items_quedan_pendientes_el_presupuesto_sale_vacio_y_no_cumple(
+    cliente, sesion, monkeypatch
+):
+    """UC-01 3a en el extremo: ningun item tiene partida. La elaboracion no aborta (201), el
+    total es 0, todos los items se listan como pendientes y el informe emitido no cumple.
+    Oraculo del veredicto: el informe guardado lleva un `PENDIENTE` de severidad ERROR (3) por
+    item, y un solo hallazgo ERROR basta para NO CUMPLE (CLAUDE.md, principio 7)."""
+    from core import models
+
+    monkeypatch.setitem(sys.modules, "ml.normalization", None)  # sin propuestas: no importa aqui
+    items = [
+        {**_item_sin_partida("Foso nuevo"), "origen_id": "PEND-01"},
+        {**_item_sin_partida("Muro nuevo"), "codigo_partida": "XX-98-NUE", "origen_id": "PEND-02"},
+    ]
+
+    r = cliente.post("/presupuestos", json=_cuerpo("API-3A-TODOS", items))
+
+    assert r.status_code == 201
+    cuerpo = r.json()
+    assert cuerpo["total"] == "0.00"
+    assert [(p["codigo_partida"], p["origen_id"]) for p in cuerpo["pendientes"]] == [
+        (CODIGO_SIN_PARTIDA, "PEND-01"),
+        ("XX-98-NUE", "PEND-02"),
+    ]
+    guardado = sesion.scalars(
+        select(models.Presupuesto).where(models.Presupuesto.codigo == "API-3A-TODOS")
+    ).one()
+    assert guardado.partidas == []
+    pendientes = [h for h in guardado.hallazgos if h.regla == "PENDIENTE"]
+    assert len(pendientes) == 2
+    assert all(h.severidad >= 3 for h in pendientes)  # ERROR: el informe no cumple

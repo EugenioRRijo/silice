@@ -5,7 +5,6 @@ intervención de mantenimiento. La muestra y sus supuestos están en
 
 from __future__ import annotations
 
-import ast
 from decimal import Decimal
 from pathlib import Path
 
@@ -17,7 +16,6 @@ from core.contracts import Dominio, OrigenTipo
 RUTA_MUESTRA = (
     Path(__file__).resolve().parents[2] / "data" / "samples" / "industrial" / "activos_planta.csv"
 )
-RUTA_PAQUETE = Path(__file__).resolve().parents[2] / "adapters" / "industrial"
 
 
 def _extraer():
@@ -63,19 +61,3 @@ def test_items_trazables_por_regla():
         assert item.origen_tipo is OrigenTipo.REGLA
         assert item.regla == REGLA_INTERVENCIONES
         assert evaluar_regla(item.regla, item.parametros) == item.cantidad
-
-
-def test_no_importa_nada_de_core_salvo_contracts():
-    for archivo in sorted(RUTA_PAQUETE.glob("*.py")):
-        arbol = ast.parse(archivo.read_text(encoding="utf-8"), filename=str(archivo))
-        for nodo in ast.walk(arbol):
-            modulos: list[str] = []
-            if isinstance(nodo, ast.Import):
-                modulos = [alias.name for alias in nodo.names]
-            elif isinstance(nodo, ast.ImportFrom) and nodo.module and nodo.level == 0:
-                modulos = [nodo.module]
-            for modulo in modulos:
-                es_core = modulo == "core" or modulo.startswith("core.")
-                assert not es_core or modulo.startswith("core.contracts"), (
-                    f"{archivo.name} importa {modulo!r}; solo se permite core.contracts"
-                )

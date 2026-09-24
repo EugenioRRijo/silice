@@ -13,10 +13,9 @@ genera uno programatico para la muestra): el adaptador solo lee `Pset_APU` y el
 `IfcElementQuantity` asociado, no distingue el productor del modelo (docs/superpowers/specs/
 2026-08-31-f1-api-simulador-design.md, seccion 7).
 
-Regla del nucleo cerrado (CLAUDE.md §5): solo se importa `core.contracts`; ifcopenshell (tercero) y
-la biblioteca estandar estan libres. `tests/unit/test_adapter_civil_ifc.py::
-test_solo_importa_core_contracts` y `tests/unit/test_arquitectura.py` lo vigilan con un analisis
-AST del archivo.
+Regla del nucleo cerrado (CLAUDE.md §5): solo se importa `core.contracts`; ifcopenshell (tercero
+declarado para civil) y la biblioteca estandar estan libres. `tests/unit/test_arquitectura.py`
+(`TERCEROS_POR_ADAPTADOR`) lo vigila con un analisis AST del paquete.
 """
 
 from __future__ import annotations
