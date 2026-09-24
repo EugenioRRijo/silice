@@ -90,3 +90,86 @@ repositorio y quedan pendientes; y T1.2 se aplaza a la versión final, con su mo
 proceso, T6.3 se aplicó y T11.1 quedó registrada como INV‑075, porque exige código de `scripts/`.
 Queda una observación para el capítulo II (véase T4.1). Se pide nueva revisión.
 
+
+## Segunda revisión
+
+**Fecha:** 2026-09-23 · **Versión revisada:** `a30ac08` (capítulo en `abcc92e`, cifras en `d97b79d`,
+inventario en `5c354e8`) · **Tutor:** el mismo revisor de la primera pasada
+
+Se leyó cada respuesta y se comprobó en el capítulo, en `referencias.md`, en `plan_redaccion.md` §5,
+en el inventario y en el código que cada observación marcada como aplicada lo está de verdad. En el
+capítulo corregido se volvieron a buscar la primera persona, «gemelo digital», «real» o «reales» y
+las citas, y cada cita se contrastó con su entrada y su estado. `meta_redaccion.py` sigue en 12/12,
+pero sigue sin leer este capítulo (INV‑075).
+
+### Comprobación de las respuestas
+
+| Obs. | Respuesta | Comprobación del tutor | Dictamen |
+|---|---|---|---|
+| T1.1 | aplicada | §4.3.1 abre con las cinco vistas, dice qué muestra cada una y remite al anexo C | aceptada |
+| T1.2 | aplazada | La Tabla 4.10 condiciona la versión final al diagrama de componentes y al entidad‑relación. El motivo (desfases INV‑029, 057, 058, 061 y 070, que se corrigen en C4) es real y está registrado | justificación aceptada; condición para la versión final |
+| T2.1 | aplicada | La Tabla 4.1 relaciona sección, objetivo, fase y producto; §4.4.2 nombra la línea base como producto de OE1 | aceptada; véase la recomendación S2 |
+| T2.2 | aplicada | §4.9.2 remite a la sexta pregunta en la variante A y a un resultado complementario en la B | aceptada |
+| T4.1 | aplicada | §4.4.1: el 600 % no tiene fuente normativa y el CIV publica factores de referencia (Colegio de Ingenieros de Venezuela, 2018, verificada), con remisión a §2.3.2 y a D4. Ya no contradice el capítulo II | aceptada |
+| T4.2 | aplicada | §4.6 presenta el orden como decisión de planificación, con su motivo, y retira la afirmación de frecuencia | aceptada |
+| T4.3 | aplicada | §4.8.2 usa la formulación del capítulo I, con las mismas tres citas (DataLaing e IP‑3, verificadas; Lulo, pendiente) y la marca «[verificación pendiente]» | aceptada |
+| T6.1 | aplicada | §4.6 y la fila de §5 dan 1,17 s (31/08, equipo de desarrollo) y 1,34 s (23/09, otro equipo), y dicen que la cifra depende del equipo | aceptada; véase la recomendación S1 |
+| T6.2 | aplicada | §4.4.1 atribuye la fórmula al docstring de `core/costing/motor.py`, líneas 3 a 13, que el tutor leyó. Precisa que el bono cuenta solo los obreros a jornal, lo que se confirma en `motor.py:45` y en `total_obreros`. Explica la diferencia con `CLAUDE.md` §4 (INV‑074, en el inventario, C4). El guion de `plan_redaccion.md` también quedó corregido | aceptada |
+| T6.3 | aplicada | Las filas nuevas de §5 llevan fecha o corrida, y la de los presupuestos multidominio lleva su comando. «18 operaciones sobre 14 rutas» coincide con `docs/api.json` | aceptada |
+| T6.4 | aplicada | §4.4.2 habla de «siete casos» y de «cinco casos de una misma prueba parametrizada» | aceptada |
+| T9.1 | aplicada en parte | La LOTTT entra verificada contra la Gaceta N.º 6.076 Extraordinario y se cita con su artículo 114. IEEE 830, las 4+1 (Kruchten) e ISO/IEC 25010 tienen entrada **pendiente** y siguen nombradas sin cita; la Tabla 4.10 lo declara. No completarlas de memoria es el criterio correcto | justificación aceptada para el borrador; condición para la versión final |
+| T9.2 | aplicada | §4.11.1 cita el programa y nombra los listados por su ruta; los listados tienen entrada propia pendiente, que no se cita | aceptada |
+| T11.1 | no aplicada; INV‑075 | Tocar `scripts/` queda fuera de una sesión de redacción, y el hallazgo tiene registro, corrección propuesta y etapa (C3). El tutor repitió a mano las búsquedas de R4 a R8 sobre la versión corregida: todas limpias | justificación aceptada |
+| T12.1 | aplicada | §4.7.2 presenta el adaptador IFC y el motor como la dimensión de costo del BIM‑5D; §4.2 nombra la sombra digital y aclara que el sistema no recibe esos datos de forma automática | aceptada |
+| T13.1 | aplicada | La introducción define una vez las compuertas, la auditoría de cierre y sus etapas, y las decisiones D1–D9. El cuerpo ya no usa C1–C4, GC1, M9, «sprint», «Sesión», las decisiones C1‑n, hashes ni códigos INV (solo quedan en los nombres de archivo de los enlaces), y la Tabla 4.11 conserva la trazabilidad | aceptada |
+| T13.2 | aplicada | §4.1, §4.2, §4.3, §4.4, §4.5, §4.7, §4.8, §4.9, §4.10 y §4.11 abren con un párrafo de hilo | aceptada |
+| T13.3 | aplicada | §4.5.1 nombra los cuatro sitios. El tutor comprobó que los cuatro pasan `plan=plan_secuencial` a `elaborar`: `ui/paginas/elaborar.py:234`, `ui/paginas/componer.py:808`, `api/rutas/presupuestos.py:91` y `scripts/seed_demo.py`. También comprobó que los sembradores de dominio siguen fuera del protocolo | aceptada |
+| T13.4 | aplicada | La Tabla 4.10 tiene la fila de resincronización con `v1.0-tesis` | aceptada |
+| T14.1 | aplicada | §4.9.1 y §4.10.3 y la introducción declaran que no hay generalización estadística y remiten a §1.5.2 | aceptada |
+
+### Recomendaciones nuevas (no bloquean la aprobación)
+
+- **S1.** §4.6 cita esta acta como fuente de la medición de 1,34 s. Un acta registra la revisión, no
+  una medición; conviene citar el comando, la fecha y el equipo, o la fila de `plan_redaccion.md` §5,
+  y dejar el acta fuera del texto de la tesis.
+- **S2.** La Tabla 4.1 ubica §4.9 en las «fases III y VI». El esqueleto §2 no asigna una fase de las
+  Bases al objetivo transversal («—»; sesiones I0.1 e I5). Hay que alinear la tabla con la matriz o
+  corregir la matriz, para que no haya dos versiones.
+- **S3.** La introducción remite al capítulo III la explicación de las compuertas y de la auditoría
+  de cierre. Cuando se redacte ese capítulo, hay que comprobar que las define con los mismos nombres.
+
+### Observación remitida al capítulo II
+
+La respuesta a T4.1 señala algo que el tutor confirma. El capítulo II, en §2.3.2, dice que el CIV
+«lo calcula y lo publica», y lo sostiene con una fuente que habla de factores **referenciales**. El
+enunciado de D4 en el paquete para el tutor pide, además, citar los rangos publicados (198–293 % y
+78–2 386 %), y el capítulo II no los cita: ni Chacín (2008) ni Dodi Scovino y Salas Caraballo (2019)
+figuran en él ni en `referencias.md`. No afecta al dictamen de este capítulo, que ya formula el
+punto con precisión. Se anota para un anexo del [acta del capítulo II](R1-capitulo-2.md).
+
+### Dictamen
+
+| Código | Veredicto | Fundamento |
+|---|---|---|
+| T1 | cumple con observaciones | Las secciones del guion están completas y las 4+1 se recorren. Queda T1.2 (figuras) como condición para la versión final |
+| T2 | cumple | La Tabla 4.1 y §4.9.2 cierran la correspondencia entre preguntas, objetivos y fases (S2 es de forma) |
+| T3 | cumple | Sin cambios |
+| T4 | cumple | Las tres afirmaciones se corrigieron. No quedan afirmaciones sobre la práctica sin respaldo |
+| T5 | cumple | La naturaleza de los datos se declara en la introducción y en cada tabla de casos |
+| T6 | cumple | Cada cifra tiene fecha y comando o corrida; la fórmula tiene su fuente verificable (S1 es de forma) |
+| T7 | cumple | Sin cambios; la cita del CIV y la de la LOTTT dicen qué sostienen |
+| T8 | cumple | Las citas nuevas (CIV 2018, LOTTT 2012, art. 114, y la cita múltiple del capítulo I) siguen el formato autor‑año |
+| T9 | cumple con observaciones | Toda cita tiene entrada. IEEE 830, las 4+1 e ISO/IEC 25010 siguen nombradas sin cita, con entrada pendiente, como condición para la versión final |
+| T10 | cumple | La única referencia pendiente que se cita, Lulo Software, lleva la marca; las entradas pendientes nuevas no se citan |
+| T11 | cumple | Voz impersonal, comprobada a mano. La cobertura automática queda en INV‑075 |
+| T12 | cumple | BIM‑5D y sombra digital en su sentido; «gemelo digital» no aparece |
+| T13 | cumple | Terminología interna definida o retirada, cada sección con su párrafo de apertura, §4.5.1 coherente y resincronización prevista |
+| T14 | cumple | Lo excluido está declarado donde se presentan resultados sobre los casos |
+
+**Resultado de la segunda revisión:** **aprobado en revisión**. Ningún criterio está en «no
+cumple» y las 20 observaciones de la primera pasada tienen respuesta: 17 aplicadas, T9.1 aplicada en
+parte, y T1.2 y T11.1 con justificación aceptada. Siguen abiertas, sin impedir esta aprobación, las
+figuras (T1.2) y las tres referencias pendientes (T9.1), que son condición para la versión final;
+INV‑074 (C4) e INV‑075 (C3); las recomendaciones S1–S3; la observación remitida al capítulo II; y
+todas las decisiones del tutor académico (G0, D1–D9, AACE, INV‑001, INV‑002 e INV‑006), que el
+capítulo declara pendientes. Esta aprobación no sustituye la del tutor académico designado.
