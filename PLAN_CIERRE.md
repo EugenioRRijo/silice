@@ -7,7 +7,9 @@ criterios: los enlaza.
 
 **Planes detallados (uno por fase, se escriben al abrirla):**
 - C0: [docs/superpowers/plans/2026-09-23-cierre-c0-inventario.md](docs/superpowers/plans/2026-09-23-cierre-c0-inventario.md)
-- C3: la fase U1 del plan de UI, [docs/superpowers/plans/2026-09-23-ui-recorrido-guiado-u0-u1.md](docs/superpowers/plans/2026-09-23-ui-recorrido-guiado-u0-u1.md), enmendado al abrir C3 (spec §5)
+- C3: [docs/superpowers/plans/2026-09-24-cierre-c3-interfaz-scripts.md](docs/superpowers/plans/2026-09-24-cierre-c3-interfaz-scripts.md),
+  que ejecuta la fase U1 del plan de UI, [docs/superpowers/plans/2026-09-23-ui-recorrido-guiado-u0-u1.md](docs/superpowers/plans/2026-09-23-ui-recorrido-guiado-u0-u1.md),
+  enmendado al abrir C3 (spec §5 y §10)
 - C1: [docs/superpowers/plans/2026-09-23-cierre-c1-nucleo.md](docs/superpowers/plans/2026-09-23-cierre-c1-nucleo.md)
 - C2: [docs/superpowers/plans/2026-09-24-cierre-c2-adaptadores-ml-api.md](docs/superpowers/plans/2026-09-24-cierre-c2-adaptadores-ml-api.md)
 - C4, Med, U2/U3: se planifican al cruzar la compuerta anterior, con el inventario ya aprobado.

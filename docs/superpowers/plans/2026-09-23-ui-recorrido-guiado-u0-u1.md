@@ -9,7 +9,19 @@ compartido por todas las pantallas, estado vacío que siembra sin poder destruir
 secciones con nombres de oficio y un paso siguiente pintado por el marco; y dejar escrito y medible
 el requisito nuevo RNF‑10 con su caso de prueba con persona, CP‑07.
 
-**Architecture:** Nada toca `core/`, `adapters/`, `ml/` ni `api/`. Cuatro piezas en `ui/`:
+> **Enmienda del 2026‑09‑24 (apertura de C3).** La fase U1 se ejecuta como fase **C3** del cierre
+> de la tesis, en la rama `inc/cierre-C3` (spec de cierre §5 y §6). La Tarea 6 se hizo en C1
+> (`9f6b72b` y `10e3a10`), salvo su paso 7, que queda decidido por D7 = (b): la base del worktree
+> `prototipo` se declara base sucia de un worktree retirado y no se ejecuta nada sobre ella. La
+> compuerta de U1 es **GU1a**; CP‑07 sale de la Tarea 13 hacia la fase **Med (GU1b)**. Las menciones
+> de «GU1» y de `inc/PLAN-ui` en la fase U0 (Tareas 1 a 5) son históricas; los criterios vigentes
+> de U1 son los enmendados abajo. Plan de la fase:
+> [2026-09-24-cierre-c3-interfaz-scripts.md](2026-09-24-cierre-c3-interfaz-scripts.md).
+
+**Architecture:** El código de `ui/` no modifica `core/`. En la fase C3, `core/` cambia solo por dos
+commits propios: el de INV‑080 en `core/budget/` y el de INV‑015 7a (tabla `descarte_version` y
+`descartar_version`). `api/` y `ml/` cambian solo en los commits de INV‑080 e INV‑081 del plan de
+C3; `adapters/` no cambia (enmienda del 2026‑09‑24). Cuatro piezas en `ui/`:
 `ui/recorridos.py` (los tres recorridos como datos puros), `ui/caso.py` (el caso abierto y el
 recorrido activo sobre claves propias de `st.session_state`, y el estado del caso leído con la API
 pública de `Catalogo`), `ui/paginas/inicio.py` (solo pinta) y `ui/app.py`, que pasa a ser
@@ -17,7 +29,7 @@ enrutador **y marco común**: pinta título, caso abierto, posición en el recor
 alrededor de `pagina.run()`. Las páginas no importan `ui.app` (no hay ciclo) y dejan de pedir la
 ruta de la base.
 
-**Tech Stack:** Python 3.12 · Streamlit 1.62.0 (`st.navigation` con secciones, `AppTest`) ·
+**Tech Stack:** Python 3.13 · Streamlit 1.62.0 (`st.navigation` con secciones, `AppTest`) ·
 SQLAlchemy 2 · pytest (`-W error --strict-markers`) · ruff · uv
 
 **Spec:**
@@ -30,12 +42,18 @@ SQLAlchemy 2 · pytest (`-W error --strict-markers`) · ruff · uv
 
 ## Global Constraints
 
-- **Dependencia dura:** la fase U1 (Tareas 6 a 13) **no empieza** hasta que el PR #7 esté auditado y
-  fusionado en `main`, y `inc/PLAN-ui` se haya reasentado sobre ese `main` (Tarea 6, paso 1). La
-  fase U0 (Tareas 1 a 5) solo toca documentos y `pyproject.toml`: se ejecuta ya.
-- `git diff --stat main -- core/ adapters/ ml/ api/` vacío durante todo el plan.
-- `tests/integration/test_composicion_extremo_a_extremo.py` y `tests/fixtures/apu_linea_base.py`
-  **no se editan**. La línea base sigue en 1 586,61 USD y la auditoría en 7 de 7.
+- **Dependencia dura (cumplida):** el PR #7 está auditado y fusionado en `main` (`6fbb977`), y U1
+  sale de `main` tras la fusión de C2 (`58ee828`), en `inc/cierre-C3` (enmienda del 2026‑09‑24).
+  La fase U0 (Tareas 1 a 5) solo tocó documentos y `pyproject.toml`.
+- **`core/`:** el criterio es el de la Tarea 18, paso 3, del
+  [plan de C3](2026-09-24-cierre-c3-interfaz-scripts.md): `core/` cambia exactamente en dos commits
+  propios (INV‑080 en `core/budget/` e INV‑015 7a), cada uno solo con `core/` y sus pruebas, con
+  expediente previo y la línea base intacta; ninguna fusión cambia `core/` por su cuenta y no se
+  agrega ningún archivo bajo `ml/` ni `adapters/` (enmienda del 2026‑09‑24).
+- `tests/fixtures/apu_linea_base.py` **no se edita**.
+  `tests/integration/test_composicion_extremo_a_extremo.py` y
+  `tests/integration/test_auditoria_7_de_7.py` solo cambian por INV‑052 (se mueven ayudas), sin
+  tocar ninguna aserción. La línea base sigue en 1 586,61 USD y la auditoría en 7 de 7.
 - `scripts/seed_demo.py` no se mueve ni se renombra (§4 regla 6).
 - `ui/composicion.py` no importa `ui.caso`, `streamlit` ni `pandas` (§4 regla 5; meta P7).
 - Ningún módulo de `ui/` construye objetos de Streamlit al importarse (§4 regla 3).
@@ -93,14 +111,14 @@ SQLAlchemy 2 · pytest (`-W error --strict-markers`) · ruff · uv
 | `docs/calidad_iso25010.md`, `docs/plan_pruebas.md`, `docs/dossier_g0.md` | 3 | RNF‑10; bloque B del anexo A; cifras fechadas |
 | `docs/guion_prueba_arenia.md` | 4 | CP‑07 |
 | `docs/bitacora/2026-09-23-sprint-ui.md` | 5, 13 | Bitácora del sprint y de sus compuertas |
-| `tests/conftest.py` | 6, 8 | Salvaguarda de `data/apu.db`; entorno limpio de `ARENIA_CASO` |
+| `tests/conftest.py` | 6, 8 | Salvaguarda de `data/apu.db` (Tarea 6: hecha en C1); entorno limpio de `ARENIA_CASO` (Tarea 8) |
 | `ui/recorridos.py` + `tests/unit/test_ui_recorridos.py` | 7 | Los tres recorridos, puros |
 | `ui/caso.py` + `tests/unit/test_ui_caso.py` | 8 | Caso abierto, recorrido activo, estado del caso |
 | `ui/paginas/inicio.py` + `tests/unit/test_ui_inicio.py` | 9 | Pantalla de Inicio y estado vacío |
 | `ui/app.py` + `tests/unit/test_ui_app.py` + `tests/unit/test_ui_importable.py` | 10 | Secciones, orden, inicio por defecto, marco |
-| `ui/paginas/*.py` (las nueve) + `tests/unit/test_ui_componer.py` + `tests/unit/test_ui_app.py` | 11 | Las pantallas leen el caso abierto; título y caso de uso los pinta el marco |
+| `ui/paginas/*.py` (las nueve) + `ui/elaboracion.py` + `ui/resultado.py` + `ui/composicion.py` + `tests/unit/test_ui_componer.py` + `tests/unit/test_ui_app.py` + `tests/unit/test_arquitectura.py` | 11 | Las pantallas leen el caso abierto; título y caso de uso los pinta el marco; extracción de INV‑043 (11b y 11c) |
 | `docs/manual_usuario.md`, `docs/guion_prueba_arenia.md` | 12 | Nombres nuevos del menú; Inicio en la preparación |
-| — | 13 | Compuerta GU1 automatizada; CP‑07 con personas |
+| — | 13 | Compuerta GU1a; CP‑07 en Med (GU1b) |
 
 ---
 
@@ -629,7 +647,7 @@ git commit -m "docs(bitacora): compuerta gu0 del sprint de ui" -m "Co-Authored-B
 
 # Fase U1 — Enfoque A (solo tras la fusión del PR #7)
 
-### Task 6: Reasentar la rama y activar la salvaguarda de aislamiento
+### Task 6: Reasentar la rama y activar la salvaguarda de aislamiento (hecha en C1: 9f6b72b, 10e3a10; paso 7 decidido en C3: D7 = (b))
 
 **Files:**
 - Modify: `tests/conftest.py`
@@ -639,17 +657,17 @@ git commit -m "docs(bitacora): compuerta gu0 del sprint de ui" -m "Co-Authored-B
 - Produces: fixture de sesión `_base_real_intacta` (autouse) y la constante `RUTA_BASE_REAL` en
   `tests/conftest.py`, que las Tareas 8 a 11 dan por activas.
 
-- [ ] **Step 1: Comprobar la integración con `main`.** La rama ya se integró con `main` por merge
+- [x] **Step 1: Comprobar la integración con `main`.** La rama ya se integró con `main` por merge
   (`216acca`, 2026‑09‑23): el rebase chocaba commit a commit con las correcciones de la auditoría
   del PR #7 en ERS y plan de pruebas, y un merge los resolvió en una sola pasada. Comprobar:
   `git log --oneline -1 main` está contenido en la rama (`git merge-base --is-ancestor main HEAD`).
 
-- [ ] **Step 2: Estado de partida en verde**
+- [x] **Step 2: Estado de partida en verde**
 
 Run: `uv sync --locked --all-extras && uv run pytest -W error --strict-markers -q`
 Expected: verde; anotar el número de pruebas en la bitácora.
 
-- [ ] **Step 3: Escribir la salvaguarda.** Agregar a `tests/conftest.py`, tras los imports
+- [x] **Step 3: Escribir la salvaguarda.** Agregar a `tests/conftest.py`, tras los imports
   existentes (agregar `from pathlib import Path`):
 
 ```python
@@ -680,7 +698,7 @@ def _base_real_intacta():
         )
 ```
 
-- [ ] **Step 4: Ver la salvaguarda en rojo.** Crear un archivo desechable
+- [x] **Step 4: Ver la salvaguarda en rojo.** Crear un archivo desechable
   `tests/unit/test_zz_salvaguarda_desechable.py`:
 
 ```python
@@ -695,13 +713,13 @@ def test_escribe_en_la_base_real():
 Run: `uv run pytest tests/unit/test_zz_salvaguarda_desechable.py -q -p no:cacheprovider`
 Expected: `1 passed, 1 error` con el mensaje «la suite modifico … data/apu.db».
 
-- [ ] **Step 5: Deshacer el experimento**
+- [x] **Step 5: Deshacer el experimento**
 
 Run: `rm tests/unit/test_zz_salvaguarda_desechable.py` y, **solo si antes del paso 4
 `data/apu.db` no existía en este worktree**, `rm data/apu.db`. Si existía, el `touch` cambió su
 `mtime` pero no su contenido: no se borra.
 
-- [ ] **Step 6: La suite completa pasa con la salvaguarda**
+- [x] **Step 6: La suite completa pasa con la salvaguarda**
 
 Run: `uv run pytest -W error --strict-markers -q`
 Expected: verde, mismo número de pruebas que en el paso 2. **Si falla por la salvaguarda**, es un
@@ -709,14 +727,17 @@ hallazgo real (una prueba existente escribe en `data/apu.db`): se identifica con
 `uv run pytest -q -p no:randomly --setup-show` por bisección de archivos, se corrige esa prueba
 para usar `tmp_path` y se anota en la bitácora. Nunca se relaja la salvaguarda.
 
-- [ ] **Step 7: Decidir `UI-01-TUB`.** La partida quedó en `.claude/worktrees/prototipo/data/apu.db`
+- [x] **Step 7: Decidir `UI-01-TUB`.** La partida quedó en `.claude/worktrees/prototipo/data/apu.db`
   (archivo ignorado por git). Preguntar a Eugenio con `AskUserQuestion` entre: (a) regenerar esa
   base con `uv run python scripts/seed_demo.py --db .claude/worktrees/prototipo/data/apu.db
   --reiniciar` ejecutado **desde la raíz del repositorio**, o (b) dejarla y declararla en la
   bitácora como base sucia de un worktree retirado. No borrar nada sin su respuesta. Anotar la
   decisión en la bitácora.
+  **Decidido en C3 (D7 = (b), Eugenio, 2026‑09‑24):** base sucia de un worktree retirado; no se
+  ejecuta nada sobre ella (ni siembra, ni reinicio, ni borrado). Registrado en la sección «Fase C3»
+  de `docs/bitacora/2026-09-23-cierre.md`.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add tests/conftest.py
@@ -1672,6 +1693,24 @@ git commit -m "feat(ui): pantalla de inicio con estado vacio sembrable" -m "RF-3
   (eso cambia en la Tarea 11). El marco ya pinta título y subtítulo, así que durante esta tarea
   esas pantallas mostrarán el título dos veces: es el estado intermedio esperado y no se prueba.
 
+> **Enmienda de C3 (2026‑09‑24): INV‑022, INV‑023 y P8.** Esta tarea se ejecuta como la Tarea 5 del
+> [plan de C3](2026-09-24-cierre-c3-interfaz-scripts.md), que manda donde difiera:
+> - **Anclas vigentes** (sobre `58ee828`): `ui/app.py:1-135`, con `modo_entrega_activo` en
+>   `:104-112`; `tests/unit/test_ui_app.py` tiene hoy 7 funciones (`:44`, `:49`, `:54`, `:60`,
+>   `:88`, `:94`, `:99`) y `_aplicacion` en `:80-85`.
+> - **Paso 1 + INV‑022:** en la reescritura de `test_ui_app.py`, `_aplicacion` afirma tras
+>   `at.run()` que la desviación surtió efecto (la leyenda lateral muestra el temporal) y que la
+>   huella de `data/apu.db` no cambió.
+> - **Paso 2 + INV‑023 + P8:** `test_ui_importable.py` importa los módulos en un proceso limpio con
+>   la ayuda única `tests/fixtures/subproceso.py::importar_en_limpio` (A‑13), afirma que no se crean
+>   archivos ni se llama a Streamlit sin runtime, y **conserva el literal `ui.paginas.componer`**
+>   que busca la meta P8 (`scripts/meta_prototipo.py:216-223`).
+> - **Paso 3 + debilidad de INV‑023 en las dos direcciones:** con una mutación temporal en
+>   `ui/paginas/historico.py`, la prueba vieja pasa y la nueva falla; se restaura.
+> - **Paso 7:** el cuerpo del commit agrega `Cierra INV-022 e INV-023; conserva el literal de la
+>   meta P8.`
+> - **Paso 8 (nuevo):** `uv run python scripts/meta_prototipo.py` da 12/12.
+
 - [ ] **Step 1: Reescribir `tests/unit/test_ui_app.py`** (sustituye el archivo entero; la
   afirmación de rutas únicas nacida de `a478cfc` se conserva en
   `test_cada_pagina_tiene_una_ruta_url_propia`):
@@ -2138,7 +2177,8 @@ git commit -m "feat(ui): menu en dos secciones con inicio por defecto y marco co
 **Files:**
 - Modify: `ui/paginas/actualizacion.py`, `catalogo.py`, `componer.py`, `elaborar.py`,
   `escenarios.py`, `historico.py`, `similares.py`, `simulador.py`, `visor.py`
-- Modify: `tests/unit/test_ui_componer.py:14-30` (docstring, hecho 2), `:92-112` (`_pantalla`)
+- Modify: `tests/unit/test_ui_componer.py:21-30` (docstring, hecho 2), `:90-115` (`_pantalla`;
+  parche `:100-101`, mensaje `:106-110`); anclas vigentes sobre `58ee828` (enmienda de C3)
 - Modify: `tests/unit/test_ui_app.py` (agrega las pruebas del marco por pantalla)
 
 **Interfaces:**
@@ -2274,20 +2314,21 @@ archivo ya habría quedado escrito). El visor es la única pantalla que no abre 
   | Página | Antes | Después |
   |---|---|---|
   | `catalogo.py:32` | `ruta = Path(st.sidebar.text_input("Archivo SQLite", value=RUTA_BASE_POR_DEFECTO))` | `ruta = ruta_caso()` |
-  | `componer.py:109` | ídem | `ruta = ruta_caso()` |
+  | `componer.py:120` | ídem | `ruta = ruta_caso()` |
   | `escenarios.py:57` | ídem | `ruta = ruta_caso()` |
   | `historico.py:37` | ídem | `ruta = ruta_caso()` |
   | `similares.py:69` | ídem | `ruta = ruta_caso()` |
   | `actualizacion.py:107-108` | `st.header("Base de datos")` + `ruta = st.text_input("Archivo SQLite", value=RUTA_BASE_POR_DEFECTO)` | `st.header("Base de datos")` + `ruta = ruta_caso()`; el botón «Sembrar la linea base» se conserva y siembra en `ruta` |
-  | `actualizacion.py` dict | `"ruta": Path(ruta),` | `"ruta": ruta,` |
-  | `elaborar.py:98-99` | `st.header("Base de datos")` + `ruta = st.text_input(...)` | borrar ambas líneas; en el dict, `"ruta": ruta_caso(),` |
-  | `simulador.py:50-51` | `st.header("Base de datos")` + `ruta = st.text_input(...)` | borrar ambas líneas; en el dict, `"ruta": ruta_caso(),` |
+  | `actualizacion.py:123` dict | `"ruta": Path(ruta),` | `"ruta": ruta,` |
+  | `elaborar.py:98-99` | `st.header("Base de datos")` + `ruta = st.text_input(...)` | borrar ambas líneas; en el dict (`:110`), `"ruta": ruta_caso(),` |
+  | `simulador.py:50-51` | `st.header("Base de datos")` + `ruta = st.text_input(...)` | borrar ambas líneas; en el dict (`:59`), `"ruta": ruta_caso(),` |
   | `visor.py` | no pide ruta | solo borrar `TITULO` y `st.title(TITULO)` |
 
   Tras migrar, quitar `from pathlib import Path` de las páginas donde quede sin uso (ruff lo
   señalará con `F401`).
 
-- [ ] **Step 4: Migrar el arnés de `tests/unit/test_ui_componer.py`.** En `_pantalla`, sustituir:
+- [ ] **Step 4: Migrar el arnés de `tests/unit/test_ui_componer.py`.** En `_pantalla` (`:90-115`),
+  sustituir:
 
 ```python
     pagina = importlib.import_module("ui.paginas.componer")
@@ -2322,8 +2363,11 @@ nueve páginas.
 
 - [ ] **Step 6: Regresión intocable y suite completa**
 
-Run: `git diff --stat main -- tests/integration/test_composicion_extremo_a_extremo.py tests/fixtures/ core/ adapters/ ml/ api/ && uv run pytest -W error --strict-markers -q && uv run ruff check .`
-Expected: el `git diff --stat` no imprime nada; suite y ruff verdes.
+Run: `git diff --stat main -- tests/integration/test_composicion_extremo_a_extremo.py tests/fixtures/apu_linea_base.py adapters/ && uv run pytest -W error --strict-markers -q && uv run ruff check .`
+Expected: el `git diff --stat` no imprime nada; suite y ruff verdes. **Enmienda de C3:** `core/`,
+`ml/` y `api/` ya no se exigen vacíos aquí; su criterio es el de la Tarea 18, paso 3, del
+[plan de C3](2026-09-24-cierre-c3-interfaz-scripts.md) (dos commits de `core/`, INV‑080 e INV‑015
+7a), y `tests/fixtures/` gana ayudas nuevas (`subproceso.py` y las de INV‑052).
 
 - [ ] **Step 7: Commit**
 
@@ -2332,13 +2376,41 @@ git add ui/paginas/ tests/unit/test_ui_componer.py tests/unit/test_ui_app.py
 git commit -m "refactor(ui): las pantallas leen el caso abierto y el marco pinta su titulo" -m "RF-38 y RF-42: ocho copias de RUTA_BASE_POR_DEFECTO pasan a una en ui/caso.py; ninguna pantalla salvo el Inicio pide la ruta; el codigo del caso de uso baja a subtitulo." -m "Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>"
 ```
 
+> **Enmienda de C3 (2026‑09‑24): pasos 8 a 12, la extracción de INV‑043 (11b y 11c, D5 = A).**
+> Si el inventario propone dividir `ui/paginas/componer.py` por el criterio S, **esa extracción la
+> hace la Tarea 11 y nadie más** (spec de cierre §5, fila C3). Los pasos 8 a 12 se ejecutan tal
+> como los escribe la Tarea 6 del [plan de C3](2026-09-24-cierre-c3-interfaz-scripts.md) (parte b),
+> que manda en firmas, mordidas y commits. Es una refactorización **sin cambio de comportamiento**:
+> las 9 pruebas de `tests/unit/test_ui_componer.py` siguen verdes y solo cambia el arnés del paso 4.
+
+- [ ] **Step 8: Prueba de arquitectura en rojo.** `test_ui_respeta_sus_importaciones_prohibidas`,
+  una sola prueba parametrizada en `tests/unit/test_arquitectura.py` (A‑9); falla en
+  `ui/paginas/componer.py` citando `core.budget`. La entrada de `ui/composicion.py` se observa con
+  una mutación en las dos direcciones (P7 no la ve; esta prueba sí).
+- [ ] **Step 9: Extraer (11b).** `ui/elaboracion.py` (sin Streamlit, `pandas` ni `ui.caso`:
+  `items_desde_filas`, `elaborar_desde_catalogo`, `libro_excel`) y `ui/resultado.py` (el fragmento
+  `mostrar_elaboracion`, sin `sqlalchemy.orm` ni `core.costing`); pruebas puras en
+  `tests/unit/test_elaboracion.py`, cada función con su mordida. Commit
+  `refactor(ui): la elaboracion sale de la pagina de componer`.
+- [ ] **Step 10: 11c.** `ui/composicion.py` gana `desglose` (puro) y `ui/elaboracion.py` gana
+  `Guardado` y `guardar_composicion` (la persistencia, sin `commit`); `componer.py` deja de
+  importar `core.costing`, `core.budget` y `sqlalchemy.orm` en tiempo de ejecución.
+- [ ] **Step 11: Verde y regresión**, con el recuento, `scripts/meta_prototipo.py` (P7 sigue OK) y
+  las líneas de `componer.py` antes (862) y después.
+- [ ] **Step 12: Commit de 11c**, separado del de 11b:
+  `refactor(ui): calculo y guardado de la composicion fuera de la pagina`, que cierra INV‑043.
+
 ---
 
 ### Task 12: Manual y guion con los nombres nuevos
 
 **Files:**
-- Modify: `docs/manual_usuario.md` (tabla de pantallas `:99` y menciones de títulos antiguos)
-- Modify: `docs/guion_prueba_arenia.md` (`:3`, preparación `:73`, precondiciones de CP‑01…CP‑06)
+- Modify: `docs/manual_usuario.md` (tabla de pantallas `:97-105` y menciones de títulos antiguos:
+  `:44`, `:174`, `:260`, `:290`)
+- Modify: `docs/guion_prueba_arenia.md` (`:3`, preparación §4 `:38-110`, precondiciones de
+  CP‑01…CP‑06; CP‑07 `:394-533`); anclas vigentes sobre `58ee828` (enmienda de C3)
+- Modify: `tests/unit/test_guion_prueba_arenia.py` (`test_cp07_se_declara_no_ejecutable_hasta_u1`,
+  paso 5b, enmienda de C3)
 - Modify: `docs/ERS.md` (columna de criterio de RF‑36…RF‑43: `pendiente` → `cumplido`)
 - Modify: `docs/plan_pruebas.md` (§8, filas RF‑36…RF‑43: casos y resultado)
 
@@ -2375,26 +2447,38 @@ Run: `grep -n "Componer partida\|Actualizacion de precios\|Elaborar presupuesto 
 Run: `grep -n "Componer partida (UC\|Archivo SQLite" docs/manual_usuario.md docs/guion_prueba_arenia.md; uv run pytest tests/unit/test_meta_prototipo.py tests/unit/test_meta_datos.py -q`
 Expected: el `grep` no imprime nada; las metas siguen verdes.
 
+- [ ] **Step 5b (enmienda de C3): reescribir a propósito
+  `test_cp07_se_declara_no_ejecutable_hasta_u1`** (`tests/unit/test_guion_prueba_arenia.py:115-121`),
+  que hoy fija que CP‑07 «no es ejecutable hasta U1». Con U1 hecha, la prueba afirma que CP‑07
+  **ya** es ejecutable y que su medición con personas es de Med (GU1b). El guion **conserva la
+  corrección de INV‑065**: la prueba manual trabaja sobre su propia base y nunca vuelve a
+  `data/apu.db`. La prueba entra en el commit del paso 6.
+
 - [ ] **Step 6: Commit**
 
 ```bash
-git add docs/manual_usuario.md docs/guion_prueba_arenia.md docs/ERS.md docs/plan_pruebas.md
+git add docs/manual_usuario.md docs/guion_prueba_arenia.md docs/ERS.md docs/plan_pruebas.md tests/unit/test_guion_prueba_arenia.py
 git commit -m "docs(manual): nombres de oficio, inicio y caso abierto; rf-36 a rf-43 cumplidos" -m "Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>"
 ```
 
 ---
 
-### Task 13: Compuerta GU1
+### Task 13: Compuerta GU1a
+
+> **Enmienda de C3 (2026‑09‑24).** GU1 se parte (spec de cierre §5): esta tarea cierra **GU1a** (U1
+> completa sin CP‑07) como parte de la compuerta **GC3 = GU1a**, cuyo procedimiento completo es la
+> Tarea 18 del [plan de C3](2026-09-24-cierre-c3-interfaz-scripts.md). CP‑07 con personas (pasos 6
+> y 7 originales) sale de aquí hacia la fase **Med**, compuerta **GU1b**.
 
 **Files:**
 - Modify: `docs/bitacora/2026-09-23-sprint-ui.md`
-- Modify: `docs/guion_prueba_arenia.md` (hoja de registro de CP‑07, al ejecutarlo)
-- Modify: `docs/calidad_iso25010.md` (§4 y §9 con la medición; cifras de pruebas al día)
+- Modify: `docs/guion_prueba_arenia.md` (hoja de registro de CP‑07, al ejecutarlo) — en Med (GU1b)
+- Modify: `docs/calidad_iso25010.md` (§4 y §9 con la medición; cifras de pruebas al día) — en Med (GU1b)
 
 **Interfaces:**
 - Consumes: todo U1.
-- Produces: veredicto de GU1 y de CP‑07; si CP‑07 FALLA, la lista de puntos de detención que fija
-  el alcance de U2.
+- Produces: veredicto de GU1a. El de CP‑07 (y, si FALLA, la lista de puntos de detención que fija
+  el alcance de U2) lo produce Med (GU1b).
 
 - [ ] **Step 1: Línea base y auditoría**
 
@@ -2403,11 +2487,14 @@ Expected: verde (1 586,61 USD y 7 de 7, afirmados contra `tests/fixtures/apu_lin
 
 - [ ] **Step 2: Núcleo cerrado, guardia y suite completa**
 
-Run: `git diff --stat main -- core/ && uv run python scripts/guardia_nucleo.py --base main && uv run pytest -W error --strict-markers -q && uv run ruff check .`
-Expected: diff vacío; guardia con código 0; suite y ruff verdes. Anotar el número de pruebas.
+Run: el criterio de `core/` de la Tarea 18, paso 3, del plan de C3 (`guardia_gc3.sh 2`, que incluye
+`scripts/guardia_nucleo.py` en la rama y contra una fusión de prueba en `main`), después
+`uv run pytest -W error --strict-markers -q && uv run ruff check .`
+Expected: exactamente dos commits tocan `core/` (INV‑080 e INV‑015 7a), cada uno solo con `core/` y
+sus pruebas; ninguna marca; guardia con código 0; suite y ruff verdes. Anotar el número de pruebas.
 
 - [ ] **Step 3: CI en ambos sistemas.** Empujar la rama **solo con permiso de Eugenio**
-  (`git push -u origin inc/PLAN-ui`) y abrir el PR con `gh pr create` hacia `main`; esperar el
+  (`git push -u origin inc/cierre-C3`) y abrir el PR con `gh pr create` hacia `main`; esperar el
   workflow y comprobar `ubuntu-latest` y `windows-latest` en verde con `gh pr checks`.
 
 - [ ] **Step 4: La aplicación en un navegador de verdad** (pendiente heredado de la bitácora del
@@ -2422,23 +2509,27 @@ Expected: diff vacío; guardia con código 0; suite y ruff verdes. Anotar el nú
   pruebas la cobertura de los cinco puntos de **Review Focus**. Corregir bloqueantes y repasar
   hasta que aprueben.
 
-- [ ] **Step 6: CP‑07 con dos personas.** Lo ejecuta Eugenio como observador, siguiendo al pie de
-  la letra `docs/guion_prueba_arenia.md` CP‑07, un escenario por persona. Llenar la hoja de
+- [ ] **Step 6: CP‑07 con dos personas — pasa a Med (GU1b), enmienda de C3; no se ejecuta en
+  C3.** Lo ejecuta Eugenio como observador, siguiendo al pie de la letra `docs/guion_prueba_arenia.md` CP‑07, un escenario por persona. Llenar la hoja de
   registro; calcular el veredicto con el criterio declarado; **no** modificar el criterio después
   de medir.
 
-- [ ] **Step 7: Registrar.** En `docs/calidad_iso25010.md` §4 reemplazar «Veredicto: pendiente de
-  medición» de RNF‑10 por el resultado (n, perfiles, tiempos, promedios del bloque B, veredicto) y
+- [ ] **Step 7: Registrar.** **Enmienda de C3:** en C3 solo se registra en la bitácora la línea
+  `**GU1a: cruzada el <fecha>.**` (con los resultados de los pasos 1 a 5); lo que sigue sobre
+  CP‑07 lo hace Med (GU1b). En Med: en `docs/calidad_iso25010.md` §4 reemplazar «Veredicto:
+  pendiente de medición» de RNF‑10 por el resultado (n, perfiles, tiempos, promedios del bloque B, veredicto) y
   actualizar su fila de §9 y la nota de vigencia con el conteo de pruebas del paso 2. En la
-  bitácora: resultados de los pasos 1–6 y la línea `**GU1: cruzada el <fecha>. CP‑07: PASA|FALLA.**`
+  bitácora: resultados del paso 6 y la línea `**GU1b: cruzada el <fecha>. CP‑07: PASA|FALLA.**`
   Si FALLA: copiar los puntos de detención a una sección «Alcance de U2» y **no** empezar U2 sin
   que Eugenio lo confirme.
 
-- [ ] **Step 8: Commit**
+- [ ] **Step 8: Commit.** **Enmienda de C3:** en C3, GU1a se registra en los commits de la Tarea 18
+  del plan de C3 (`docs(bitacora): compuerta gc3 del cierre, pendiente de ci`); el commit de abajo,
+  con el resultado de CP‑07, es de Med (GU1b).
 
 ```bash
 git add docs/bitacora/2026-09-23-sprint-ui.md docs/guion_prueba_arenia.md docs/calidad_iso25010.md
-git commit -m "docs(bitacora): compuerta gu1 y resultado de cp-07" -m "Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>"
+git commit -m "docs(bitacora): compuerta gu1b y resultado de cp-07" -m "Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>"
 ```
 
 ---
@@ -2446,6 +2537,6 @@ git commit -m "docs(bitacora): compuerta gu1 y resultado de cp-07" -m "Co-Author
 ## Fases U2 y U3
 
 No se detallan aquí a propósito. **U2** solo existe si CP‑07 resulta FALLA, y su alcance lo fijan
-los puntos de detención registrados en la Tarea 13: escribir sus tareas hoy sería inventarlas. Se
-planifica en un documento propio con la skill `superpowers:writing-plans` al cerrar GU1. **U3**
+los puntos de detención registrados en Med (GU1b; antes, Tarea 13): escribir sus tareas hoy sería inventarlas. Se
+planifica en un documento propio con la skill `superpowers:writing-plans` al cerrar GU1b (Med). **U3**
 requiere decisión expresa de Eugenio.
