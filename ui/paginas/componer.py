@@ -492,10 +492,11 @@ def _sugerencias_similares(catalogo: Catalogo, dominio: Dominio, descripcion: st
     """Ayuda 1: partidas del catalogo (del mismo dominio) parecidas a la descripcion tecleada.
 
     Solo lectura: la persona copia a mano lo que le sirva en las tablas de abajo. Ninguna tabla se
-    llena por su cuenta (spec §3.7).
+    llena por su cuenta (spec §3.7). Una falla declarada del modelo deja la ayuda sin sugerencias
+    (ya la registro `ml.normalization`); cualquier otra excepcion se propaga (INV-081).
     """
     partidas = {partida.codigo: partida.descripcion for partida in catalogo.partidas(dominio)}
-    propuestas = sugerir_partidas_similares(partidas, descripcion)
+    propuestas = sugerir_partidas_similares(partidas, descripcion).similares
     if not propuestas:
         return
 

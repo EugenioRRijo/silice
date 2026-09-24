@@ -11,16 +11,18 @@ implementado ofrece todavia -- documentado en la bitacora de la sesion).
 La capa de composicion es esta pagina: `ml/` no conoce la base de datos (CLAUDE.md §2), asi que
 aqui se consulta `core.catalog` y se le pasan pares (codigo, descripcion) planos.
 
-`ml.normalization` (sentence-transformers) se carga de forma perezosa en `_cargar_normalizacion()`,
-no al importar este modulo: mismo criterio que `ui/paginas/visor.py` con el extra `civil` -- un
-import incondicional romperia toda la UI en un entorno sin el extra `ml`. Sin pruebas de UI
-(decision del proyecto): la logica se prueba en `tests/unit/test_normalizacion.py` y esta pagina
-solo se comprueba importable.
+La propuesta sale de `ui.composicion.sugerir_partidas_similares`, que aplica el criterio unico de
+`ml.normalization.proponedor` (INV-081): un solo normalizador por consulta, y cada una de
+`FALLAS_DE_LA_PROPUESTA` es un mensaje, no una traza (sin el extra `ml`, el aviso de instalarlo;
+con el modelo sin red o con pesos corruptos, el error del modelo). `sentence-transformers` solo se
+importa al cargar el modelo, no al importar esta pagina: sin el extra, la interfaz sigue
+arrancando. La logica se prueba en `tests/unit/test_normalizacion.py`, y la degradacion de esta
+pagina en `tests/unit/test_ui_similares.py`.
 """
 
 from __future__ import annotations
 
-from types import ModuleType
+from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
 import streamlit as st
@@ -32,6 +34,7 @@ from core.contracts.apu import ComposicionAPU
 from core.verification.informe import DECIMALES_PRESENTACION
 from core.verification.texto import formatear_decimal
 from ui.caso import ruta_caso
+from ui.composicion import sugerir_partidas_similares
 
 if TYPE_CHECKING:
     from ml.normalization import PartidaSimilar
@@ -42,26 +45,12 @@ _MENSAJE_SIN_EXTRA_ML = (
 )
 
 
-def _cargar_normalizacion() -> ModuleType | None:
-    """El modulo `ml.normalization`, o `None` si el extra `ml` no esta instalado."""
-    try:
-        import ml.normalization
-    except ImportError:
-        return None
-    return ml.normalization
-
-
 def render() -> None:
     """Descripcion en texto libre -> tres propuestas con puntaje, desglose y rendimiento."""
     st.caption(
         "Escribe la descripcion de la partida: el sistema propone las mas parecidas del catalogo "
         "para reutilizar su desglose y su rendimiento (similitud semantica, sin entrenamiento)."
     )
-
-    normalizacion = _cargar_normalizacion()
-    if normalizacion is None:
-        st.error(_MENSAJE_SIN_EXTRA_ML)
-        return
 
     ruta = ruta_caso()
     descripcion = st.text_input("Descripcion de la partida", value="")
@@ -75,15 +64,17 @@ def render() -> None:
         with abrir_sesion(motor) as sesion:
             catalogo = Catalogo(sesion)
             partidas = {p.codigo: p.descripcion for p in catalogo.partidas()}
-            try:
-                normalizador = normalizacion.NormalizadorPartidas(partidas)
-            except OSError as error:
-                # Precondicion del UC-03: el modelo debe estar disponible localmente; la primera
-                # construccion lo descarga y sin red eso falla con un mensaje, no una traza.
-                st.error(f"El modelo de similitud no esta disponible: {error}")
+            propuesta = sugerir_partidas_similares(partidas, descripcion)
+            if propuesta.falla is not None:
+                # Precondicion del UC-03: el modelo debe estar disponible localmente. Sin el extra,
+                # el aviso de instalarlo; con otra falla declarada (sin red en la primera descarga,
+                # pesos corruptos), el error del modelo: un mensaje, no una traza.
+                if propuesta.falla.startswith("ImportError"):
+                    st.error(_MENSAJE_SIN_EXTRA_ML)
+                else:
+                    st.error(f"El modelo de similitud no esta disponible: {propuesta.falla}")
                 return
-            propuestas = normalizador.similares(descripcion)
-            _mostrar_propuestas(catalogo, propuestas)
+            _mostrar_propuestas(catalogo, propuesta.similares)
     except (LookupError, ValueError, ArithmeticError, SQLAlchemyError) as error:
         # Mismo criterio que el resto de las paginas: mensaje, no traza cruda.
         st.error(str(error))
@@ -91,7 +82,7 @@ def render() -> None:
         motor.dispose()
 
 
-def _mostrar_propuestas(catalogo: Catalogo, propuestas: list[PartidaSimilar]) -> None:
+def _mostrar_propuestas(catalogo: Catalogo, propuestas: Sequence[PartidaSimilar]) -> None:
     if not propuestas:
         # Flujos 2a y 2b del UC-03: nada sobre el umbral (o catalogo vacio) -> desde cero.
         st.info(

@@ -187,19 +187,31 @@ def test_aceptar_un_item_que_no_esta_es_un_error() -> None:
         aceptar_propuesta(list(items_auditados()), PENDIENTE_T99, "LB-02-TUB")
 
 
-# --- propuestas_de_pendientes (cuerpo provisional; 10c reescribe esta prueba) ----------------
+# --- propuestas_de_pendientes: `ml.normalization.propuestas_para` (INV-081, 10c) -------------
 
 
-def test_una_entrada_por_pendiente_en_su_orden(monkeypatch) -> None:
+def _normalizador_contado(construcciones: list[dict[str, str]], falla: Exception | None = None):
+    """Doble de `NormalizadorPartidas` en su submodulo (donde lo resuelve `proponedor`): cuenta
+    construcciones y propone `P-<descripcion>`; con `falla`, la lanza al consultar."""
     from ml.normalization import PartidaSimilar
 
-    llamadas: list[tuple[object, str]] = []
+    class _Doble:
+        def __init__(self, partidas):
+            construcciones.append(dict(partidas))
 
-    def _doble(partidas, descripcion):
-        llamadas.append((partidas, descripcion))
-        return [PartidaSimilar(f"P-{descripcion}", descripcion, 0.5)]
+        def similares(self, descripcion):
+            if falla is not None:
+                raise falla
+            return [PartidaSimilar(f"P-{descripcion}", descripcion, 0.5)]
 
-    monkeypatch.setattr("ui.composicion.sugerir_partidas_similares", _doble)
+    return _Doble
+
+
+def test_una_entrada_por_pendiente_en_su_orden_con_un_solo_normalizador(monkeypatch) -> None:
+    construcciones: list[dict[str, str]] = []
+    monkeypatch.setattr(
+        "ml.normalization.normalizador.NormalizadorPartidas", _normalizador_contado(construcciones)
+    )
     partidas = {"LB-02-TUB": "Tuberia PVC 4 pulgadas"}
     otro = dataclasses.replace(PENDIENTE_T99, origen_id="T-98", descripcion="Codo de PVC")
     entradas = propuestas_de_pendientes(partidas, [PENDIENTE_T99, otro])
@@ -209,16 +221,31 @@ def test_una_entrada_por_pendiente_en_su_orden(monkeypatch) -> None:
         f"P-{PENDIENTE_T99.descripcion}",
         "P-Codo de PVC",
     ]
-    assert llamadas == [(partidas, PENDIENTE_T99.descripcion), (partidas, "Codo de PVC")]
+    assert [entrada.falla for entrada in entradas] == [None, None]
+    assert construcciones == [partidas]  # un solo normalizador por elaboracion
 
 
 def test_sin_pendientes_no_hay_propuestas_ni_se_carga_nada(monkeypatch) -> None:
-    llamadas: list[object] = []
+    construcciones: list[dict[str, str]] = []
     monkeypatch.setattr(
-        "ui.composicion.sugerir_partidas_similares", lambda *args: llamadas.append(args) or []
+        "ml.normalization.normalizador.NormalizadorPartidas", _normalizador_contado(construcciones)
     )
     assert propuestas_de_pendientes({"LB-02-TUB": "Tuberia"}, []) == ()
-    assert llamadas == []
+    assert construcciones == []
+
+
+def test_una_falla_declarada_queda_en_la_entrada_del_pendiente(monkeypatch) -> None:
+    """El extra ausente llega como `ModuleNotFoundError`; la entrada lo declara `ImportError`."""
+
+    def _sin_extra(*_args, **_kwargs):
+        raise ModuleNotFoundError("No module named 'sentence_transformers'")
+
+    monkeypatch.setattr("ml.normalization.normalizador._cargar_modelo", _sin_extra)
+    (entrada,) = propuestas_de_pendientes({"LB-02-TUB": "Tuberia"}, [PENDIENTE_T99])
+
+    assert entrada.item == PENDIENTE_T99
+    assert entrada.similares == ()
+    assert entrada.falla.startswith("ImportError: No module named")
 
 
 # --- el fragmento sin propuestas: la regresion de componer (A-3) ----------------------------

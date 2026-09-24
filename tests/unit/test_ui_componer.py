@@ -31,7 +31,8 @@ desechables contra `f884044`, no supuesto):
    de texto resuelve por ese atributo de paquete (`getattr`) y aterriza en la copia huérfana sin
    ningún efecto; parchar el objeto de `sys.modules` directamente no depende de ese atributo.
 3. La ayuda 1 (`sugerir_partidas_similares`) carga `sentence-transformers` en cuanto el catálogo no
-   está vacío y hay una descripción tecleada: se sustituye por un doble que no sugiere nada.
+   está vacío y hay una descripción tecleada: se sustituye por un doble que no sugiere nada
+   (una `Propuesta` vacía, desde INV-081).
 4. Los widgets se localizan por su rótulo (`_por_rotulo`), salvo las condiciones del rendimiento,
    que son el único `st.text_area` de la página y se localizan por posición (`at.text_area[0]`).
 
@@ -57,6 +58,7 @@ from core.catalog import Catalogo, abrir_sesion, crear_motor
 from core.costing import calcular_apu
 from core.verification.informe import DECIMALES_PRESENTACION
 from core.verification.texto import formatear_decimal
+from ml.normalization import Propuesta
 from scripts.seed_demo import main as seed_demo_main
 from tests.fixtures.apu_linea_base import (
     APU_TUBERIA,
@@ -103,7 +105,7 @@ def _pantalla(monkeypatch, base: Path, filas: dict[str, list[dict[str, str]]]) -
     caso = importlib.import_module("ui.caso")
     monkeypatch.setattr(caso, "RUTA_BASE_POR_DEFECTO", str(base))
     pagina = importlib.import_module("ui.paginas.componer")
-    monkeypatch.setattr(pagina, "sugerir_partidas_similares", lambda *_: [])
+    monkeypatch.setattr(pagina, "sugerir_partidas_similares", lambda *_: Propuesta(()))
     at = AppTest.from_string(SCRIPT, default_timeout=60)
     for clave, valor in filas.items():
         at.session_state[clave] = valor

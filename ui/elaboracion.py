@@ -23,7 +23,6 @@ from typing import TYPE_CHECKING
 
 from core.budget import ResultadoElaboracion, elaborar, exportar_excel, plan_secuencial
 from core.contracts import ComposicionAPU, Dominio, ItemComputo, ParametrosCosto, ResultadoAPU
-from ui import composicion as _composicion
 from ui.composicion import (
     ComposicionInvalida,
     desglose,
@@ -175,22 +174,19 @@ def propuestas_de_pendientes(
     """Una entrada por pendiente, en su orden, con las partidas del catalogo parecidas a su
     descripcion (`partidas`: codigo -> descripcion). Sin pendientes devuelve `()` sin cargar nada.
 
-    **Cuerpo provisional (Tarea 7 del plan de C3):** llama a
-    `ui.composicion.sugerir_partidas_similares` una vez por pendiente, con su criterio de error de
-    hoy (una falla da una lista vacia), y por eso construye un indice semantico por pendiente. Lo
-    corrige 10c, que pasa el cuerpo a `ml.normalization.propuestas_para`: un solo normalizador por
-    llamada y el emparejamiento que comparte la API. La firma y el tipo de retorno no cambian.
+    El emparejamiento es `ml.normalization.propuestas_para`, el mismo de la API (INV-081): un solo
+    normalizador por elaboracion, y el criterio unico de fallas (una falla declarada deja al
+    pendiente sin similares y con su `falla`; un defecto se propaga). `ml.normalization` se importa
+    aqui, perezoso, como las demas ayudas de `ml`: no arrastra el extra, pero `ui/` no carga `ml`
+    hasta que hay pendientes.
     """
     if not pendientes:
         return ()
+    from ml.normalization import propuestas_para
+
     return tuple(
-        PendienteConPropuestas(
-            item=pendiente,
-            similares=tuple(
-                _composicion.sugerir_partidas_similares(partidas, pendiente.descripcion)
-            ),
-        )
-        for pendiente in pendientes
+        PendienteConPropuestas(item, propuesta.similares, propuesta.falla)
+        for item, propuesta in propuestas_para(partidas, pendientes)
     )
 
 

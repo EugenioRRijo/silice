@@ -45,7 +45,7 @@ from core.verification.texto import normalizar_texto
 
 if TYPE_CHECKING:
     from ml.anomaly import VeredictoRendimiento
-    from ml.normalization import PartidaSimilar
+    from ml.normalization import Propuesta
 
 
 def desglose(composicion: ComposicionAPU) -> ResultadoAPU:
@@ -588,9 +588,10 @@ def fila_mano_obra_desde_referencia(fila: FilaReferencia) -> dict[str, str]:
 # el modelo semántico, un error aritmético del bosque de aislamiento -- degrade siempre a "sin
 # sugerencia", nunca a una excepción que interrumpa la página ni impida guardar: la condición de
 # diseño es absoluta (spec §3.7, "todas sugerencia y ninguna bloqueante"; quien compone decide,
-# nunca el sistema). El import de cada submódulo de `ml` ocurre dentro de un `_importar_*`
-# perezoso (mismo criterio que `ui/paginas/similares.py::_cargar_normalizacion`, para que la
-# interfaz siga arrancando sin el extra `ml`), inyectable por parámetro para que las pruebas lo
+# nunca el sistema). La ayuda 1 degrada con el criterio único de `ml.normalization.proponedor`
+# (INV-081): solo sus fallas declaradas son "sin sugerencia", y un defecto se propaga. El import
+# de cada submódulo de `ml` ocurre dentro de un `_importar_*` perezoso (para que la interfaz siga
+# arrancando sin el extra `ml`), inyectable por parámetro para que las pruebas lo
 # sustituyan por un doble sin instalar ni desinstalar nada real
 # (`tests/unit/test_composicion_ia.py`).
 
@@ -621,25 +622,23 @@ def sugerir_partidas_similares(
     partidas: Mapping[str, str],
     descripcion: str,
     cargar_normalizacion: Callable[[], ModuleType] = _importar_normalizacion,
-) -> list[PartidaSimilar]:
+) -> Propuesta:
     """Ayuda 1 (spec §3.7): partidas del catálogo parecidas a la descripción tecleada, para partir
-    de algo en vez de una tabla vacía (reutiliza la similitud semántica de UC-03,
-    `ml.normalization.NormalizadorPartidas`, desde la composición a mano).
+    de algo en vez de una tabla vacía (reutiliza la similitud semántica de UC-03 desde la
+    composición a mano y desde la página de similares).
 
-    Nunca decide por la persona ni llena ninguna tabla: solo devuelve la lista de propuestas
-    (posiblemente vacía) para que la página las muestre de solo lectura. La respuesta es una lista
-    vacía sin descripción, sin catálogo, o si `cargar_normalizacion` falla por cualquier motivo (el
-    extra `ml` ausente, sin red para el modelo, o cualquier otro error): la persona sigue con la
-    tabla en blanco, exactamente como sin esta ayuda.
+    Nunca decide por la persona ni llena ninguna tabla: devuelve la `Propuesta` (posiblemente
+    vacía) para que la página la muestre de solo lectura. Sin descripción o sin catálogo es una
+    `Propuesta` vacía y no se construye ningún normalizador. Lo demás lo decide el criterio único
+    de `ml.normalization.proponedor` (INV-081): una de `FALLAS_DE_LA_PROPUESTA` (el extra `ml`
+    ausente, el modelo sin red, pesos corruptos...) da una `Propuesta` vacía con su `falla`, y
+    cualquier otra excepción es un defecto y se propaga. `cargar_normalizacion` no falla por falta
+    del extra: `ml.normalization` no lo importa; esa falla llega desde `proponedor`.
     """
+    normalizacion = cargar_normalizacion()
     if not descripcion.strip() or not partidas:
-        return []
-    try:
-        normalizacion = cargar_normalizacion()
-        normalizador = normalizacion.NormalizadorPartidas(partidas)
-        return list(normalizador.similares(descripcion))
-    except Exception:
-        return []
+        return normalizacion.Propuesta(())
+    return normalizacion.proponedor(partidas)(descripcion)
 
 
 def advertencia_precio_atipico(
