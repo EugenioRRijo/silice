@@ -64,6 +64,8 @@ def test_todo_hallazgo_de_partida_referencia_un_origen_trazable():
     for hallazgo in informe.hallazgos:
         if hallazgo.regla == "R2":
             continue
+        # Salto defensivo: el fixture trae curva, así que R7 no entra hoy en la rama «no
+        # aplicable». Se conserva para que la prueba no dependa de ese detalle del fixture.
         if (
             hallazgo.regla == "R7"
             and NO_APLICABLE in hallazgo.descripcion
