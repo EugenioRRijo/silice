@@ -186,8 +186,22 @@ def test_el_desglose_en_vivo_muestra_el_precio_unitario(monkeypatch, tmp_path):
     resultado = calcular_apu(APU_UI, PARAMETROS_LINEA_BASE)
     metrica = _por_rotulo(at.metric, "Precio unitario")
 
-    assert metrica.value == str(resultado.precio_unitario)
+    # INV-045: la pantalla presenta con la fuente unica (dos decimales), no `str(Decimal)`.
+    assert metrica.value == formatear_decimal(resultado.precio_unitario, DECIMALES_PRESENTACION)
     assert abs(resultado.precio_unitario - PRECIO_UNITARIO_ESPERADO["LB-02-TUB"]) <= TOLERANCIA_PU
+
+
+def test_el_desglose_en_vivo_presenta_dos_decimales(monkeypatch, tmp_path):
+    """INV-045. Oraculo: CLAUDE.md §4 (tuberia: costo directo 8,058; PU 10,19) y la fixture."""
+    at = _pantalla(monkeypatch, tmp_path / "vacia.db", _filas_de_apu(APU_UI))
+    _teclear_cabecera(at, APU_UI)
+    at.run()
+    assert not at.exception
+
+    assert _por_rotulo(at.metric, "Costo directo").value == "8.06"
+    assert _por_rotulo(at.metric, "Precio unitario").value == str(
+        PRECIO_UNITARIO_ESPERADO["LB-02-TUB"]
+    )
 
 
 # -------------------------------------------------------------------------------------------

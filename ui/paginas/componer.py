@@ -45,6 +45,8 @@ from core.catalog import (
     proponer_rendimiento,
 )
 from core.contracts import ComposicionAPU, Dominio, ItemComputo, ModalidadManoObra
+from core.verification.informe import DECIMALES_PRESENTACION
+from core.verification.texto import formatear_decimal
 from ui.caso import ruta_caso
 from ui.composicion import (
     ComposicionInvalida,
@@ -103,6 +105,11 @@ CLAVE_CODIGO_PRECARGADO = "componer_codigo_precargado"
 CLAVE_MATERIALES = "componer_materiales"
 CLAVE_EQUIPOS = "componer_equipos"
 CLAVE_MANO_OBRA = "componer_mano_obra"
+
+
+def _presentar(valor: Decimal) -> str:
+    """Un `Decimal` como lo presenta el sistema: dos decimales, con la fuente unica (INV-045)."""
+    return formatear_decimal(valor, DECIMALES_PRESENTACION)
 
 
 def render() -> None:
@@ -464,12 +471,12 @@ def _desglose_en_vivo(
 
     resultado = desglose(composicion)
     columnas = st.columns(6)
-    columnas[0].metric("Materiales", str(resultado.materiales))
-    columnas[1].metric("Equipos", str(resultado.equipos))
-    columnas[2].metric("Mano de obra", str(resultado.mano_obra))
-    columnas[3].metric("Costo directo", str(resultado.costo_directo))
-    columnas[4].metric("Con administracion", str(resultado.con_administracion))
-    columnas[5].metric("Precio unitario", str(resultado.precio_unitario))
+    columnas[0].metric("Materiales", _presentar(resultado.materiales))
+    columnas[1].metric("Equipos", _presentar(resultado.equipos))
+    columnas[2].metric("Mano de obra", _presentar(resultado.mano_obra))
+    columnas[3].metric("Costo directo", _presentar(resultado.costo_directo))
+    columnas[4].metric("Con administracion", _presentar(resultado.con_administracion))
+    columnas[5].metric("Precio unitario", _presentar(resultado.precio_unitario))
     return composicion
 
 
@@ -505,7 +512,8 @@ def _sugerencias_similares(catalogo: Catalogo, dominio: Dominio, descripcion: st
             except CatalogoIncompleto as error:
                 st.caption(f"Desglose incompleto en la lista vigente: {error}")
                 continue
-            st.caption(f"Rendimiento: {composicion.rendimiento} {composicion.unidad}/dia")
+            rendimiento = _presentar(composicion.rendimiento)
+            st.caption(f"Rendimiento: {rendimiento} {composicion.unidad}/dia")
             if composicion.materiales:
                 st.markdown("**Materiales**")
                 st.dataframe(
@@ -514,8 +522,8 @@ def _sugerencias_similares(catalogo: Catalogo, dominio: Dominio, descripcion: st
                             {
                                 "descripcion": linea.descripcion,
                                 "unidad": linea.unidad,
-                                "cantidad": str(linea.cantidad),
-                                "precio": str(linea.precio),
+                                "cantidad": _presentar(linea.cantidad),
+                                "precio": _presentar(linea.precio),
                             }
                             for linea in composicion.materiales
                         ]
@@ -529,8 +537,8 @@ def _sugerencias_similares(catalogo: Catalogo, dominio: Dominio, descripcion: st
                         [
                             {
                                 "descripcion": linea.descripcion,
-                                "cantidad": str(linea.cantidad),
-                                "precio": str(linea.precio),
+                                "cantidad": _presentar(linea.cantidad),
+                                "precio": _presentar(linea.precio),
                                 "depreciacion": str(linea.depreciacion),
                             }
                             for linea in composicion.equipos
@@ -545,8 +553,8 @@ def _sugerencias_similares(catalogo: Catalogo, dominio: Dominio, descripcion: st
                         [
                             {
                                 "descripcion": linea.descripcion,
-                                "cantidad": str(linea.cantidad),
-                                "sueldo": str(linea.sueldo),
+                                "cantidad": _presentar(linea.cantidad),
+                                "sueldo": _presentar(linea.sueldo),
                             }
                             for linea in composicion.mano_obra
                         ]
@@ -652,7 +660,7 @@ def _guardar(
     sesion.commit()
     st.success(
         f"Composicion guardada para la partida {composicion.codigo_partida}: precio unitario "
-        f"{guardado.resultado.precio_unitario}."
+        f"{_presentar(guardado.resultado.precio_unitario)}."
     )
 
 
