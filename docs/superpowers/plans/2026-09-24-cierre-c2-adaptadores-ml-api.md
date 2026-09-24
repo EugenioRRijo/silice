@@ -75,6 +75,10 @@ uv run pytest -W error --strict-markers -q -p no:cacheprovider --junitxml=report
   - `uv run ruff check .` limpio, con línea de 100 caracteres.
   - CI verde en `ubuntu-latest` y `windows-latest`, sin pruebas omitidas.
 - **Commits** en Conventional Commits, en español y sin tildes en el asunto. Terminan con `Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>`.
+- **IDs de los hallazgos nuevos: desde INV‑079** (decisión del controlador en la revisión del plan).
+  - La rama `inc/tesis-cap4` ya usó INV‑074 e INV‑075. INV‑076 a INV‑078 quedan reservados para los hallazgos de la redacción: UC‑05 (importar un presupuesto de tercero), three.js por CDN en RNF‑08 y el FCAS/CIV del capítulo II.
+  - Este plan crea **INV‑079** (Tarea 2, latente de `scripts/`) e **INV‑080** (Tarea 5, la recarga del informe). Lo que aparezca después, por ejemplo en los encargos de la Tarea 7, sigue en INV‑081.
+  - En `main` (`f1dda36`) el último ID es INV‑073. El hueco de INV‑074 a INV‑078 en esta rama es deliberado: se anota en la bitácora (Tarea 0, paso 4) para que la fusión con `inc/tesis-cap4` no lo tome por un error.
 - **Alcance congelado** (spec §2): solo correcciones que cierran un hallazgo y apuntan a un RF, RNF, contrato o documento existente. Toda duda se registra en la bitácora y la decide Eugenio en GC2.
 - **Regla de reparto** (spec §2): por cada sesión de código, al menos una de redacción. Se anota en la bitácora (Tarea 0, paso 4, y Tarea 7, paso 6 (g)).
 - **Convención de los textos.** Docstrings y comentarios siguen la del archivo que se edita.
@@ -87,21 +91,27 @@ uv run pytest -W error --strict-markers -q -p no:cacheprovider --junitxml=report
 1. **`POST /presupuestos` cambia de comportamiento (INV‑072).**
    - Un ítem con partida desconocida respondía 404, porque el `KeyError` de `Catalogo.partida` llegaba a `api/main.py:41-44`. Ahora responde 201, con el ítem en `pendientes` y un hallazgo `PENDIENTE` más en el conteo.
    - Ninguna prueba vigente dependía del 404 (se buscó en `tests/integration/test_api*.py`).
-   - El esquema solo **agrega** un campo, así que ningún cliente se rompe. `docs/api.json` cambia solo en esquemas, no en rutas (`tests/unit/test_openapi.py` compara las rutas).
-   - La recarga (`GET /presupuestos/{codigo}/informe`) **sigue sin declarar los pendientes**: es INV‑075 y exige `core/`. El revisor de requisitos debe confirmar que UC‑01 3a queda cubierto al elaborar y registrado como abierto al recargar.
+   - El esquema solo **agrega** un campo, así que ningún cliente se rompe. En `docs/api.json` **ninguna clave de `paths` cambia** (`tests/unit/test_openapi.py` compara las rutas); cambian los esquemas y la `description` de `POST /presupuestos`, que sale del docstring de `crear_presupuesto`.
+   - La recarga (`GET /presupuestos/{codigo}/informe`) **sigue sin declarar los pendientes**: es INV‑080, se desprende de INV‑072 y exige `core/`. El revisor de requisitos debe confirmar que UC‑01 3a queda cubierto al elaborar y registrado como abierto al recargar.
 2. **Las propuestas cargan el modelo de similitud en la ruta**, solo cuando hay pendientes.
-   - Sin el extra `ml` o sin el modelo, la ruta degrada a propuestas vacías (`except (ImportError, OSError)`), con el mismo criterio que `api/rutas/rendimientos.py:156-162`.
-   - La API ya dependía de `ml/` (`ml.anomaly`); la declaración de esa dependencia en la arquitectura es de C4 (INV‑059).
+   - Sin el extra `ml` o sin el modelo, la ruta degrada a propuestas vacías con `except (ImportError, OSError, ValueError)` alrededor de la construcción del normalizador.
+   - Va más allá que `api/rutas/rendimientos.py:156-159`, que solo atrapa `ImportError`. `OSError` es el modelo que falta en la caché sin red. `ValueError` cubre `HFValidationError`, que es su subclase: sin ese `except` llegaría a `api/main.py` como 422, cuando el presupuesto ya se guardó.
+   - La carga, y en el peor caso la descarga, del modelo ocurre **dentro de la petición**, después del `commit`: la latencia la paga el `POST` que trae pendientes. Queda en el dictamen C2‑4.
+   - La dependencia `api → ml` ya está declarada en la vista de desarrollo (`docs/arquitectura.md:823`; `:645-647` para `ml/` en la API): C2 no la agrega, solo suma `ml.normalization` a `ml.anomaly`.
    - El revisor de arquitectura pondera la latencia y el `except`.
 3. **Recálculo de UC‑04 (INV‑073, opción A).**
    - El relleno, que se deriva de totales, se recalcula sumando excavación y concreto y **escalando el volumen de tubería en proporción a la tubería**. Es válido porque el adaptador tabular admite un solo diámetro por balance (`adapters/civil/tabular.py:53-60`).
+   - La proporción se calcula con 28 dígitos de `Decimal`: si el cociente no es exacto, puede diferir en el último dígito de volver a extraer la fuente. Con la muestra es exacta. Queda en el docstring de `_rebalancear_relleno`.
+   - Si la tubería no cambió, el volumen se conserva tal cual. Si la fuente no tenía tubería, no hay proporción: se exige volver a extraerla, como con `diametro`.
    - `diametro` se rechaza con `ValueError`: entra al cómputo solo por la fuente.
    - El flujo 2b rechaza también la cantidad **nula**, como dice la ERS.
-   - El hallazgo de R5 no lo fabrica el adaptador: sale del núcleo al auditar, porque el relleno conservado deja de cuadrar con su directiva `_balance`.
+   - El hallazgo de R5 no lo fabrica el adaptador: sale del núcleo al auditar, porque el relleno conservado deja de cuadrar con su directiva `_balance`. **Solo aparece si el rechazado es el relleno.** Si se rechaza otro ítem, este conserva su cantidad, el relleno se rebalancea con ella y R5 cuadra, así que el rechazo se informa solo en `Recalculo.rechazados`. Lo declaran el docstring de `recalculo.py` y el dictamen C2‑6.
    - El oráculo del flujo principal es `AdaptadorCivilTabular.extraer` sobre la fuente editada, otra ruta de código.
+   - Cada rama tiene su prueba y se observa en rojo, o mordiendo con una mutación: el origen desconocido, el camino sin `relleno` en `codigos`, la fuente sin tubería y la clave repetida en cualquiera de las dos versiones de `emparejar`.
 4. **La guardia unificada (INV‑018) cambia qué pruebas existen.**
    - Desaparecen cinco pruebas de los archivos de adaptador y los casos por archivo de `adapters/` de `test_fuera_del_nucleo_solo_se_importa_core_contracts`, que queda solo para `ml/`.
-   - Aparecen una prueba por adaptador, la prueba de la regla y la de cobertura.
+   - Aparecen una prueba por adaptador, la prueba de la regla, la de las importaciones relativas y la de cobertura.
+   - La regla por adaptador prohíbe las importaciones relativas (`level > 0`), que `_imports` no devuelve. La de cobertura exige además que todo `.py` de `adapters/` sea el `__init__` raíz o viva bajo un paquete de `TERCEROS_POR_ADAPTADOR`.
    - El recuento baja o sube según eso: se anota con `--junitxml`, sin inventarlo.
    - El revisor de pruebas verifica que la regla nueva es **al menos** tan estricta como la de telecom para los cuatro paquetes.
 5. **Las mutaciones de INV‑016 e INV‑017 deben observarse en las dos direcciones:** la aserción vieja pasa con el defecto inyectado y la nueva falla con él.
@@ -114,10 +124,10 @@ uv run pytest -W error --strict-markers -q -p no:cacheprovider --junitxml=report
 |---|---|---|
 | `PLAN_CIERRE.md`, este documento, `docs/bitacora/2026-09-23-cierre.md` | 0, 5, 7 | Enlace al plan; sección «Fase C2», expediente C2.1 y compuerta GC2 |
 | `tests/integration/test_auditoria_arenaza.py` | 1 | INV‑016 |
-| `tests/unit/test_resultados_ml.py`, `docs/auditoria/2026-09-inventario.md` | 2 | INV‑017; fila nueva INV‑074 (latente, `scripts/`) |
+| `tests/unit/test_resultados_ml.py`, `docs/auditoria/2026-09-inventario.md` | 2 | INV‑017; fila nueva INV‑079 (latente, `scripts/`) |
 | `tests/unit/test_arquitectura.py`, `tests/unit/test_adapter_{civil_ifc,telecom,industrial,sistemas}.py`, `adapters/civil/ifc.py:16-19` (docstring) | 3 | INV‑018 |
 | `tests/integration/conftest.py`, `tests/integration/test_api.py`, `test_api_escenarios.py`, `test_api_rendimientos.py` | 4 | INV‑042 |
-| `api/esquemas.py`, `api/rutas/presupuestos.py`, `docs/api.json`, `tests/integration/test_api.py`; `docs/auditoria/2026-09-inventario.md`, `docs/bitacora/2026-09-23-cierre.md` | 5 | INV‑072 (api); fila nueva INV‑075 y expediente C2.1 (exige `core/`) |
+| `api/esquemas.py`, `api/rutas/presupuestos.py`, `docs/api.json`, `tests/integration/test_api.py`; `docs/auditoria/2026-09-inventario.md`, `docs/bitacora/2026-09-23-cierre.md` | 5 | INV‑072 (api); fila nueva INV‑080 (se desprende de INV‑072, capa `core`) y expediente C2.1 (exige `core/`) |
 | `adapters/civil/recalculo.py` (nuevo), `tests/unit/test_recalculo_civil.py` (nuevo), `tests/unit/test_adapter_civil_ifc.py` | 6 | INV‑073 (adaptadores), según la decisión previa 1 |
 | `docs/auditoria/2026-09-inventario.md`, `docs/bitacora/2026-09-23-cierre.md` | 7 | Estados, incluidos INV‑006, INV‑038 e INV‑041 sin código; compuerta GC2 |
 
@@ -161,7 +171,7 @@ La Tarea 7, paso 5, anota las anclas desplazadas en las filas correspondientes a
 ### Task 0: Punto de partida
 
 **Files:**
-- Ya en la rama: `docs/superpowers/plans/2026-09-23-cierre-c2-adaptadores-ml-api.md` (este documento, en el commit `docs(plan): plan detallado de la fase c2 del cierre`)
+- Ya en la rama: `docs/superpowers/plans/2026-09-24-cierre-c2-adaptadores-ml-api.md` (este documento, en los commits `docs(plan): plan detallado de la fase c2 del cierre` y `docs(plan): plan de c2 corregido tras la revision`)
 - Modify: `PLAN_CIERRE.md:12`, `docs/bitacora/2026-09-23-cierre.md` (sección nueva al final)
 
 **Interfaces:**
@@ -174,7 +184,7 @@ Run: `git rev-parse --abbrev-ref HEAD && git merge-base --is-ancestor main HEAD 
 
 Expected:
 - `inc/cierre-C2`, luego `base-ok`.
-- Los commits, del más reciente al más antiguo: `docs(plan): plan detallado de la fase c2 del cierre` y `f1dda36 merge: cierre fase c1 nucleo salvaguarda y guardia (#11)`.
+- Los commits, del más reciente al más antiguo: `docs(plan): plan de c2 corregido tras la revision`, `docs(plan): plan detallado de la fase c2 del cierre` y `f1dda36 merge: cierre fase c1 nucleo salvaguarda y guardia (#11)`.
 - `git status --short` vacío.
 - La lista de bases locales, o `sin bases locales`.
 - La lista de worktrees. Al planificar había ocho vivos: principal, `cierre`, `cierre-C0`, `cierre-C1`, `cierre-C2`, `prototipo`, `tesis-cap4` y `ui`. CLAUDE.md §3 («Worktrees») dice que solo coexisten el principal y el del sprint vigente. Se anota en la bitácora (paso 4). **No se borra ninguno**: lo decide Eugenio.
@@ -188,7 +198,7 @@ Expected: `735 0 0 0`, `verificar omitidas: 0 omitidas` y `All checks passed!`. 
 - [ ] **Step 3: Enlazar el plan.** En `PLAN_CIERRE.md`, reemplazar la línea 12 (`- C2, C4, Med, U2/U3: se planifican al cruzar la compuerta anterior, con el inventario ya aprobado.`) por:
 
 ```markdown
-- C2: [docs/superpowers/plans/2026-09-23-cierre-c2-adaptadores-ml-api.md](docs/superpowers/plans/2026-09-23-cierre-c2-adaptadores-ml-api.md)
+- C2: [docs/superpowers/plans/2026-09-24-cierre-c2-adaptadores-ml-api.md](docs/superpowers/plans/2026-09-24-cierre-c2-adaptadores-ml-api.md)
 - C4, Med, U2/U3: se planifican al cruzar la compuerta anterior, con el inventario ya aprobado.
 ```
 
@@ -199,7 +209,7 @@ Expected: `735 0 0 0`, `verificar omitidas: 0 omitidas` y `All checks passed!`. 
 
 **Rama:** `inc/cierre-C2` (worktree `.claude/worktrees/cierre-C2`) · **Commit de partida:** `f1dda36`
 (merge del PR #11) · **Plan ejecutable:**
-[docs/superpowers/plans/2026-09-23-cierre-c2-adaptadores-ml-api.md](../superpowers/plans/2026-09-23-cierre-c2-adaptadores-ml-api.md).
+[docs/superpowers/plans/2026-09-24-cierre-c2-adaptadores-ml-api.md](../superpowers/plans/2026-09-24-cierre-c2-adaptadores-ml-api.md).
 
 **Estado de partida:** el recuento (`--junitxml`) da N0 pruebas, 0 fallos, 0 errores y 0 omitidas;
 `ruff check .` limpio. `data/apu.db` al empezar: EXISTE_O_NO.
@@ -213,6 +223,9 @@ respuesta: DECISION_2.
   abrir C2) no consta. El worktree `tesis-cap4` está en `f1dda36`, sin commits propios.
 - Hay WORKTREES worktrees vivos frente a los dos que admite CLAUDE.md §3. Borrarlos lo decide
   Eugenio.
+- IDs del inventario: los hallazgos nuevos de C2 empiezan en INV‑079. `inc/tesis-cap4` ya usó
+  INV‑074 e INV‑075, e INV‑076 a INV‑078 quedan reservados para los de la redacción (UC‑05,
+  three.js por CDN en RNF‑08, FCAS/CIV del capítulo II). En esta rama el hueco es deliberado.
 ```
 
 Sustituir:
@@ -306,7 +319,7 @@ git commit -m "test(auditoria): rf-23 compara el mismo presupuesto antes y despu
 
 **Files:**
 - Modify: `tests/unit/test_resultados_ml.py:48-62`
-- Modify: `docs/auditoria/2026-09-inventario.md` (fila nueva INV‑074)
+- Modify: `docs/auditoria/2026-09-inventario.md` (fila nueva INV‑079)
 
 **Interfaces:**
 - Consumes: nada.
@@ -331,9 +344,14 @@ Expected: `2 passed`. `"5"` aparece dentro de `51`, `"50"` en el párrafo y `"re
     for dominio in ("industrial", "sistemas", "telecom"):
         assert f"| {dominio} | 0 | reglas |" in informe
 
-    # RF-28: las tres metricas obligatorias, presentes y con nombre.
-    for metrica in ("MAPE", "RMSE", "R2"):
-        assert metrica in informe
+    # RF-28: las tres metricas obligatorias, con su fila exacta. Oraculo a mano sobre `_informe()`
+    # (un solo par estimado/real de LB-04-CON):
+    # - MAPE = |279.04 - 272.81| / 272.81 = 6.23 / 272.81 = 0.022836..., es decir 2.28 %;
+    # - RMSE = raiz(6.23 ** 2) = 6.23 USD;
+    # - R2 no se define con un solo real (varianza nula): el informe lo dice con palabras.
+    assert "| MAPE | 2.28 % |" in informe
+    assert "| RMSE | 6.23 USD |" in informe
+    assert "| R2 | sin varianza en los reales |" in informe
 
     # La tecnica de reglas se declara como limitacion, no como logro (CLAUDE.md §8.1): la frase
     # exacta, no la palabra suelta, que tambien aparece en otros parrafos del informe.
@@ -348,6 +366,11 @@ Expected: `1 failed, 1 passed`. Falla `assert "| civil | 5 | reglas |" in inform
 Run: el mismo comando.
 Expected: `1 failed`, en la aserción de la limitación. La aserción vieja (`"limitacion" in informe.lower()`) habría pasado por las otras menciones (`:327`). **Restaurar `scripts/generar_resultados_ml.py`.**
 
+- [ ] **Step 3b: Las filas de las métricas también muerden.** En `_informe()` (`:24`), cambiar **temporalmente** `estimados = {"LB-04-CON": Decimal("279.04")}` por `estimados = {"LB-04-CON": Decimal("280.04")}`. El MAPE pasa a 7,23 / 272,81 = 2,65 % y el RMSE a 7,23 USD. La prueba de las predicciones no cambia, porque lee `predicciones` y no `estimados`.
+
+Run: el mismo comando.
+Expected: `1 failed, 1 passed`. Falla `assert "| MAPE | 2.28 % |" in informe`. La aserción vieja (`"MAPE" in informe`) habría pasado. **Restaurar `"279.04"`.**
+
 Run: `uv run pytest tests/unit/test_resultados_ml.py tests/unit/test_resultados_ml_multidominio.py -q -W error --strict-markers -p no:cacheprovider && git status --short`
 Expected: verde, y `git status` solo muestra `M tests/unit/test_resultados_ml.py`.
 
@@ -355,7 +378,7 @@ Expected: verde, y `git status` solo muestra `M tests/unit/test_resultados_ml.py
 
 ```bash
 git add tests/unit/test_resultados_ml.py
-git commit -m "test(ml): el informe g2 afirma la fila exacta y la limitacion declarada" -m "Cierra INV-017: '5' y '50' sueltos pasaban con 51 registros (tecnica casos); ahora se afirma la fila | civil | 5 | reglas | y la frase de la limitacion, con oraculo escrito desde CLAUDE.md 8.1. Mutaciones observadas y restauradas." -m "Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>"
+git commit -m "test(ml): el informe g2 afirma la fila exacta y la limitacion declarada" -m "Cierra INV-017: '5' y '50' sueltos pasaban con 51 registros (tecnica casos); ahora se afirma la fila | civil | 5 | reglas |, las filas exactas de MAPE, RMSE y R2 (oraculo a mano) y la frase de la limitacion, con oraculo escrito desde CLAUDE.md 8.1. Tres mutaciones observadas y restauradas." -m "Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>"
 ```
 
 - [ ] **Step 5: Registrar el hallazgo latente visto al planificar.**
@@ -363,10 +386,10 @@ git commit -m "test(ml): el informe g2 afirma la fila exacta y la limitacion dec
   - Hoy es cierto: el conteo mayor es 40 (`docs/resultados_ml.md:13`).
   - Es de `scripts/` (C3) y menor: se registra sin corregir.
 
-  Agregar al final de §3 del inventario (siguiente ID libre; al planificar, INV‑074):
+  Agregar al final de §3 del inventario con **INV‑079**, el primero de los IDs de C2 (Global Constraints: INV‑074 e INV‑075 los usó `inc/tesis-cap4` y INV‑076 a INV‑078 están reservados):
 
 ```markdown
-| INV-074 | planificación de C2 (Tarea 2) | scripts (cruza: docs) | Coherencia documental (resultados de ML) | menor | `scripts/generar_resultados_ml.py:318-328`; `docs/resultados_ml.md:15` | `generar_informe` escribe «Todos los dominios estan por debajo de los {UMBRAL_CASOS} registros» y declara la técnica de reglas como limitación sin consultar `conteos`: con un dominio sobre el umbral la tabla diría «casos» y el párrafo seguiría afirmando lo contrario. Latente: hoy el conteo mayor es 40 | Derivar el párrafo de `max(conteos.values())` (o exigir la condición antes de escribirlo) | C3 si Eugenio lo promueve en GC2; si no, a limitaciones | abierto |
+| INV-079 | planificación de C2 (Tarea 2) | scripts (cruza: docs) | Coherencia documental (resultados de ML) | menor | `scripts/generar_resultados_ml.py:318-328`; `docs/resultados_ml.md:15` | `generar_informe` escribe «Todos los dominios estan por debajo de los {UMBRAL_CASOS} registros» y declara la técnica de reglas como limitación sin consultar `conteos`: con un dominio sobre el umbral la tabla diría «casos» y el párrafo seguiría afirmando lo contrario. Latente: hoy el conteo mayor es 40 | Derivar el párrafo de `max(conteos.values())` (o exigir la condición antes de escribirlo) | C3 si Eugenio lo promueve en GC2; si no, a limitaciones | abierto |
 ```
 
 ```bash
@@ -386,7 +409,7 @@ git commit -m "docs(auditoria): parrafo g2 de resultados_ml sin derivar de los c
 **Interfaces:**
 - Consumes: `RAIZ`, `_archivos`, `_ruta` e `_imports` de `test_arquitectura.py`.
 - Produces:
-  - `TERCEROS_POR_ADAPTADOR: dict[str, frozenset[str]]` y `_import_permitido(adaptador, modulo)` en `tests/unit/test_arquitectura.py`.
+  - `TERCEROS_POR_ADAPTADOR: dict[str, frozenset[str]]`, `_import_permitido(adaptador, modulo)` e `_imports_relativos(archivo)` en `tests/unit/test_arquitectura.py`.
   - La Tarea 6 da por hecho que `adapters/civil/recalculo.py` queda bajo esta regla.
 
 - [ ] **Step 1: Escribir la regla unificada con civil sin terceros (rojo de comportamiento).** En `tests/unit/test_arquitectura.py`, después de `PAQUETES_FUERA_DEL_NUCLEO` (`:17`), agregar:
@@ -407,6 +430,18 @@ _BIBLIOTECA_ESTANDAR = frozenset(sys.stdlib_module_names) | {"__future__"}
 Y al final del archivo:
 
 ```python
+def _imports_relativos(archivo: Path) -> list[str]:
+    """Las importaciones relativas (`from . import x`, `from ..core import y`), que `_imports` no
+    devuelve (`level > 0`). Sin resolverlas no se sabe que paquete importan: en `adapters/` se
+    prohiben, y cada adaptador importa con la ruta absoluta que la regla si puede juzgar."""
+    arbol = ast.parse(archivo.read_text(encoding="utf-8"), filename=str(archivo))
+    return [
+        "." * nodo.level + (nodo.module or "")
+        for nodo in ast.walk(arbol)
+        if isinstance(nodo, ast.ImportFrom) and nodo.level > 0
+    ]
+
+
 def _import_permitido(adaptador: str, modulo: str) -> bool:
     """True si un archivo de `adapters/<adaptador>/` puede importar `modulo`.
 
@@ -425,16 +460,24 @@ def _import_permitido(adaptador: str, modulo: str) -> bool:
 
 @pytest.mark.parametrize("adaptador", sorted(TERCEROS_POR_ADAPTADOR))
 def test_un_adaptador_solo_importa_contratos_su_paquete_y_sus_terceros(adaptador):
-    """INV-018: CLAUDE.md §2 y §5 para cada adaptador, con importaciones anidadas incluidas."""
+    """INV-018: CLAUDE.md §2 y §5 para cada adaptador, con importaciones anidadas incluidas.
+
+    Las relativas se rechazan todas: `from ..core import costing` escaparia a `_imports`."""
+    archivos = _archivos(f"adapters/{adaptador}")
     prohibidos = [
         f"{_ruta(archivo)}: {modulo}"
-        for archivo in _archivos(f"adapters/{adaptador}")
+        for archivo in archivos
         for modulo in _imports(archivo)
         if not _import_permitido(adaptador, modulo)
+    ] + [
+        f"{_ruta(archivo)}: {relativo} (relativa)"
+        for archivo in archivos
+        for relativo in _imports_relativos(archivo)
     ]
     assert not prohibidos, (
         f"adapters/{adaptador} importa {prohibidos}; solo se permite la biblioteca estandar, "
-        "core.contracts, su propio paquete y los terceros de TERCEROS_POR_ADAPTADOR"
+        "core.contracts, su propio paquete y los terceros de TERCEROS_POR_ADAPTADOR, siempre con "
+        "importacion absoluta"
     )
 
 
@@ -451,15 +494,40 @@ def test_la_regla_de_un_adaptador_rechaza_otro_adaptador_y_el_resto_del_nucleo()
     assert _import_permitido("telecom", "__future__")
 
 
+def test_la_guardia_ve_las_importaciones_relativas(tmp_path):
+    """`_imports` descarta las relativas (`level > 0`); `_imports_relativos` las devuelve todas,
+    con sus puntos, para que la regla por adaptador las rechace."""
+    archivo = tmp_path / "modulo.py"
+    archivo.write_text(
+        "from . import hermano\nfrom ..core.costing import calcular_apu\nimport decimal\n",
+        encoding="utf-8",
+    )
+    assert list(_imports(archivo)) == ["decimal"]
+    assert _imports_relativos(archivo) == [".", "..core.costing"]
+
+
 def test_toda_carpeta_de_adapters_tiene_su_regla():
-    """Un adaptador nuevo no puede quedar fuera de la guardia; el `__init__` raiz no importa nada."""
+    """Un adaptador nuevo no puede quedar fuera de la guardia; el `__init__` raiz no importa nada.
+
+    Ademas, todo `.py` de `adapters/` es el `__init__` raiz o vive bajo un paquete con regla: un
+    modulo suelto (`adapters/utilidades.py`) o una carpeta sin `__init__.py` escaparian a la regla
+    por adaptador, y la generica ya solo recorre `ml/`.
+    """
     paquetes = {inicio.parent.name for inicio in (RAIZ / "adapters").glob("*/__init__.py")}
     assert paquetes == set(TERCEROS_POR_ADAPTADOR)
-    assert not list(_imports(RAIZ / "adapters" / "__init__.py"))
+    raiz = RAIZ / "adapters" / "__init__.py"
+    assert not list(_imports(raiz)) and not _imports_relativos(raiz)
+    sueltos = [
+        _ruta(archivo)
+        for archivo in _archivos("adapters")
+        if archivo != raiz
+        and archivo.relative_to(RAIZ / "adapters").parts[0] not in TERCEROS_POR_ADAPTADOR
+    ]
+    assert not sueltos, f"{sueltos} no estan bajo ningun paquete de TERCEROS_POR_ADAPTADOR"
 ```
 
 Run: `uv run pytest tests/unit/test_arquitectura.py -q -W error --strict-markers -p no:cacheprovider`
-Expected: `1 failed`: `test_un_adaptador_solo_importa_contratos_su_paquete_y_sus_terceros[civil]`, que lista `adapters/civil/ifc.py: ifcopenshell` y `adapters/civil/ifc.py: ifcopenshell.util.element`. Es un rojo sobre el código real: la regla muerde en cuanto un tercero no está declarado.
+Expected: `1 failed`: `test_un_adaptador_solo_importa_contratos_su_paquete_y_sus_terceros[civil]`, que lista `adapters/civil/ifc.py: ifcopenshell` y `adapters/civil/ifc.py: ifcopenshell.util.element`. Es un rojo sobre el código real: la regla muerde en cuanto un tercero no está declarado. `test_la_guardia_ve_las_importaciones_relativas` y `test_toda_carpeta_de_adapters_tiene_su_regla` pasan desde ya: hoy ningún adaptador usa importaciones relativas (`grep -rn "^from \." adapters` da vacío) ni hay módulos sueltos. Sus mordidas sobre el código real se ven en los pasos 3 y 4.
 
 - [ ] **Step 2: Declarar el tercero de civil (verde).** `"civil": frozenset(),` pasa a `"civil": frozenset({"ifcopenshell"}),`.
 
@@ -473,6 +541,13 @@ Expected:
 - `test_adapter_industrial.py::test_no_importa_nada_de_core_salvo_contracts` **pasa**: la copia vieja solo vigilaba `core`.
 - `test_un_adaptador_solo_importa_contratos_su_paquete_y_sus_terceros[industrial]` **falla**.
 
+Después, en el mismo lugar, cambiar la línea temporal por `from . import evaluador  # noqa: F401  MUTACION TEMPORAL`. Es una importación relativa del propio paquete: inocua al ejecutar, pero invisible para `_imports`.
+
+Run: el mismo comando.
+Expected:
+- `test_adapter_industrial.py::test_no_importa_nada_de_core_salvo_contracts` **pasa**, y también `test_fuera_del_nucleo_solo_se_importa_core_contracts[adapters/industrial/adaptador.py]`: las dos descartan `level > 0`.
+- `test_un_adaptador_solo_importa_contratos_su_paquete_y_sus_terceros[industrial]` **falla**, con `adapters/industrial/adaptador.py: . (relativa)`.
+
 **Restaurar `adapters/industrial/adaptador.py`** y comprobar con `git status --short` que no aparece.
 
 - [ ] **Step 4: Borrar las cuatro copias y reducir la vieja a `ml/`.**
@@ -482,7 +557,7 @@ Expected:
   - `tests/unit/test_adapter_sistemas.py`: borrar `test_no_importa_nada_de_core_salvo_contracts` (`:91-109`), `ARCHIVOS_ADAPTADOR` (`:24-28`) e `import ast` (`:12`).
   - `tests/unit/test_arquitectura.py`:
     - La parametrización de `:43-45` pasa a `@pytest.mark.parametrize("archivo", _archivos("ml"), ids=_ruta)`. La regla por adaptador ya cubre `adapters/`, así que dejar ambas sería la duplicación que el hallazgo denuncia.
-    - En el docstring, la línea 3 pasa a: `- adapters/ importa solo la biblioteca estándar, core.contracts, su propio paquete y los terceros declarados; ml/ importa de core solo core.contracts;`.
+    - En el docstring, la línea 3 pasa a: `- adapters/ importa solo la biblioteca estándar, core.contracts, su propio paquete y los terceros declarados, con importación absoluta; ml/ importa de core solo core.contracts;`.
   - `adapters/civil/ifc.py:16-19`: el docstring pasa a:
 
 ```python
@@ -501,11 +576,20 @@ Expected:
 - Suite verde, 0 omitidas. Anotar el recuento (`N3`); cambia respecto de `N0` porque la regla por archivo de `adapters/` se reemplaza por la regla por paquete.
 - `scripts/meta_alpha.py:109-111` sigue encontrando los tres archivos de adaptador, que no se borran.
 
+**Comprobar que la cobertura muerde, ahora que la regla genérica solo recorre `ml/`:** crear **temporalmente** `adapters/suelto.py` con la línea `import core.costing  # MUTACION TEMPORAL`.
+
+Run: `uv run pytest tests/unit/test_arquitectura.py -q -W error --strict-markers -p no:cacheprovider`
+Expected:
+- `1 failed`: `test_toda_carpeta_de_adapters_tiene_su_regla`, en `assert not sueltos`, con `['adapters/suelto.py']`.
+- Las cuatro reglas por adaptador y la genérica de `ml/` pasan: ninguna otra prueba ve el módulo suelto. Antes del paso 4 lo veía la genérica, así que esta aserción es la que conserva esa cobertura.
+
+**Borrar `adapters/suelto.py`** y comprobar con `git status --short` que no aparece.
+
 - [ ] **Step 5: Commit**
 
 ```bash
 git add tests/unit/test_arquitectura.py tests/unit/test_adapter_civil_ifc.py tests/unit/test_adapter_telecom.py tests/unit/test_adapter_industrial.py tests/unit/test_adapter_sistemas.py adapters/civil/ifc.py
-git commit -m "test(arquitectura): una sola guardia de importaciones por adaptador" -m "Cierra INV-018: la regla de telecom (biblioteca estandar, core.contracts, su propio paquete y ningun otro adaptador) rige ahora para los cuatro, con los terceros declarados por adaptador (civil: ifcopenshell). Rojo observado con civil sin terceros; una importacion cruzada temporal paso la copia vieja de industrial y fallo la nueva. Se borran las cuatro copias; la regla generica queda para ml." -m "Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>"
+git commit -m "test(arquitectura): una sola guardia de importaciones por adaptador" -m "Cierra INV-018: la regla de telecom (biblioteca estandar, core.contracts, su propio paquete y ningun otro adaptador) rige ahora para los cuatro, con los terceros declarados por adaptador (civil: ifcopenshell). Rojo observado con civil sin terceros; una importacion cruzada temporal y una relativa pasaron la copia vieja de industrial y fallaron la nueva, y un modulo suelto en adapters/ lo detecta la prueba de cobertura. Se borran las cuatro copias; la regla generica queda para ml." -m "Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>"
 ```
 
 ---
@@ -515,7 +599,7 @@ git commit -m "test(arquitectura): una sola guardia de importaciones por adaptad
 **Files:**
 - Modify: `tests/integration/conftest.py` (dos fixtures nuevas al final)
 - Modify: `tests/integration/test_api.py:9,19-27,60-77` y cada uso de `_items_payload()` (`:102`, `:123`, `:156`, `:184`, `:212`, `:231`, `:278`)
-- Modify: `tests/integration/test_api_escenarios.py:18,29-37,40-57`
+- Modify: `tests/integration/test_api_escenarios.py:20,29-37,40-57`
 - Modify: `tests/integration/test_api_rendimientos.py:26-33`
 
 **Interfaces:**
@@ -532,7 +616,8 @@ def cliente(sesion):
     """Cliente HTTP de la API sobre la sesión en memoria (INV‑042: una sola copia).
 
     Importa FastAPI dentro de la fixture: el extra `api` solo hace falta en las pruebas que la
-    piden, no en todo el paquete de integración.
+    piden, no en todo el paquete de integración. La sustitución de la sesión se deshace en un
+    `finally`: si el arranque del cliente falla, la siguiente prueba no hereda la base de esta.
     """
     from fastapi.testclient import TestClient
 
@@ -540,9 +625,11 @@ def cliente(sesion):
     from api.main import app
 
     app.dependency_overrides[sesion_api] = lambda: sesion
-    with TestClient(app) as cliente:
-        yield cliente
-    app.dependency_overrides.clear()
+    try:
+        with TestClient(app) as cliente:
+            yield cliente
+    finally:
+        app.dependency_overrides.clear()
 
 
 @pytest.fixture
@@ -594,7 +681,7 @@ Expected:
 
 ```bash
 git add tests/integration/conftest.py tests/integration/test_api.py tests/integration/test_api_escenarios.py tests/integration/test_api_rendimientos.py
-git commit -m "test(api): una sola fixture de cliente y de items para las pruebas de la api" -m "Cierra INV-042 (menor promovido): la fixture cliente estaba copiada tres veces y la carga util de items dos. Refactorizacion sin cambio de comportamiento: mismo recuento antes y despues." -m "Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>"
+git commit -m "test(api): una sola fixture de cliente y de items para las pruebas de la api" -m "Cierra INV-042 (menor promovido): la fixture cliente estaba copiada tres veces y la carga util de items dos. Refactorizacion sin cambio de comportamiento: mismo recuento antes y despues. La sustitucion de la sesion se deshace en un finally." -m "Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>"
 ```
 
 ---
@@ -605,8 +692,8 @@ git commit -m "test(api): una sola fixture de cliente y de items para las prueba
 - Modify: `api/esquemas.py:131-136` (`PresupuestoCreadoRespuesta`) y dos esquemas nuevos antes
 - Modify: `api/rutas/presupuestos.py:1-7` (docstring), `:9-56` (imports), `:67-107` (`crear_presupuesto`), ayudantes nuevos después de `_a_item_computo` (`:282-297`)
 - Modify: `docs/api.json` (regenerado)
-- Test: `tests/integration/test_api.py` (tres pruebas nuevas)
-- Modify: `docs/auditoria/2026-09-inventario.md` (fila nueva INV‑075), `docs/bitacora/2026-09-23-cierre.md` (expediente C2.1)
+- Test: `tests/integration/test_api.py` (cuatro pruebas nuevas, una de ellas con dos casos)
+- Modify: `docs/auditoria/2026-09-inventario.md` (fila nueva INV‑080), `docs/bitacora/2026-09-23-cierre.md` (expediente C2.1)
 
 **Interfaces:**
 - Consumes: `core.budget.elaborar` y `ResultadoElaboracion.pendientes` (`core/budget/presupuesto.py:91-124`, sin cambios); `Catalogo.partidas` (`core/catalog/repositorio.py:66-71`); `ml.normalization.NormalizadorPartidas` (`ml/normalization/normalizador.py:67-119`); las fixtures `cliente` e `items_payload` (Tarea 4).
@@ -709,6 +796,42 @@ def test_sin_el_extra_ml_el_pendiente_queda_sin_propuestas(cliente, items_payloa
     assert r.json()["pendientes"][0]["propuestas"] == []
 
 
+@pytest.mark.parametrize(
+    "error",
+    [OSError("sin modelo en la cache local"), ValueError("identificador de modelo invalido")],
+    ids=["sin-modelo", "identificador-invalido"],
+)
+def test_sin_el_modelo_el_pendiente_queda_sin_propuestas(
+    cliente, items_payload, monkeypatch, error
+):
+    """INV-072: el extra `ml` esta, pero el modelo no se puede cargar. Sin cache y sin red,
+    sentence-transformers lanza `OSError`; un identificador que Hugging Face rechaza lanza
+    `HFValidationError`, subclase de `ValueError`, que `api/main.py` convertiria en 422. La ruta
+    no responde 500 ni 422: el item sigue pendiente y sin propuestas."""
+
+    class _NormalizadorSinModelo:
+        def __init__(self, partidas):
+            raise error
+
+    monkeypatch.setitem(
+        sys.modules,
+        "ml.normalization",
+        SimpleNamespace(NormalizadorPartidas=_NormalizadorSinModelo),
+    )
+
+    r = cliente.post(
+        "/presupuestos",
+        json=_cuerpo(
+            f"API-3A-{type(error).__name__}", [*items_payload, _item_sin_partida("Foso nuevo")]
+        ),
+    )
+
+    assert r.status_code == 201
+    (pendiente,) = r.json()["pendientes"]
+    assert pendiente["codigo_partida"] == CODIGO_SIN_PARTIDA
+    assert pendiente["propuestas"] == []
+
+
 def test_la_propuesta_real_reconoce_la_partida_de_la_misma_descripcion(
     cliente, items_payload, monkeypatch
 ):
@@ -731,6 +854,7 @@ def test_la_propuesta_real_reconoce_la_partida_de_la_misma_descripcion(
         json=_cuerpo("API-3A-REAL", [*items_payload, _item_sin_partida(excavacion["descripcion"])]),
     )
 
+    assert r.status_code == 201  # antes de leer el cuerpo: un 404 no tiene `pendientes`
     propuestas = r.json()["pendientes"][0]["propuestas"]
     assert 1 <= len(propuestas) <= 3
     assert propuestas[0]["codigo"] == codigo
@@ -741,7 +865,11 @@ def test_la_propuesta_real_reconoce_la_partida_de_la_misma_descripcion(
 Partir en varias líneas lo que supere los 100 caracteres.
 
 Run: `uv run pytest tests/integration/test_api.py -q -W error --strict-markers -p no:cacheprovider -k "pendiente or propuesta"`
-Expected: `3 failed`, las tres con `assert 404 == 201` (o `KeyError: 'pendientes'` en la del modelo real). Es el comportamiento que denuncia INV‑072: la partida desconocida aborta la elaboración con 404.
+Expected, según haya o no modelo en la caché local:
+- Con el modelo: `5 failed`, las cinco con `assert 404 == 201`.
+- Sin el modelo: `4 failed, 1 skipped`. La del modelo real se omite en su `pytest.skip`, con el mismo criterio que `tests/unit/test_normalizacion.py`.
+
+Es el comportamiento que denuncia INV‑072: la partida desconocida aborta la elaboración con 404. Ninguna falla por `KeyError: 'pendientes'`: cada prueba afirma el 201 antes de leer el cuerpo.
 
 - [ ] **Step 2: Esquemas.** En `api/esquemas.py`, antes de `class PresupuestoCreadoRespuesta` (`:131`), agregar:
 
@@ -851,8 +979,12 @@ def _proponedor(catalogo: Catalogo) -> Callable[[str], Sequence]:
 
     La propuesta es una ayuda, no una condición: sin el extra `ml`, o sin el modelo de similitud en
     la caché local (precondición de UC-03, `docs/ERS.md`), el ítem queda pendiente y el informe lo
-    declara igual. Mismo criterio que `rutas/rendimientos._veredicto_bosque` ante la falta del
-    extra. Solo se construye si hay pendientes: cargar el modelo cuesta segundos.
+    declara igual. Ante la falta del extra es el criterio de `rutas/rendimientos._veredicto_bosque`
+    (que solo atrapa `ImportError`); aquí se atrapan además `OSError` (modelo ausente, sin red) y
+    `ValueError` (`HFValidationError` de Hugging Face es su subclase), que de otro modo llegarían
+    como 500 o 422 después de guardar el presupuesto. El `except` cubre solo la construcción del
+    normalizador, no `similares`. Solo se construye si hay pendientes: cargar el modelo cuesta
+    segundos dentro de la petición, y la primera vez puede descargarlo.
     """
     try:
         from ml.normalization import NormalizadorPartidas
@@ -860,7 +992,7 @@ def _proponedor(catalogo: Catalogo) -> Callable[[str], Sequence]:
         normalizador = NormalizadorPartidas(
             {partida.codigo: partida.descripcion for partida in catalogo.partidas()}
         )
-    except (ImportError, OSError):
+    except (ImportError, OSError, ValueError):
         return lambda _descripcion: []
     return normalizador.similares
 ```
@@ -871,24 +1003,34 @@ Run: `uv run pytest tests/integration/test_api.py tests/integration/test_api_esc
 
 Expected:
 - Verde.
-- `docs/api.json` cambia solo en `components/schemas`: aparecen `PropuestaPartidaRespuesta` e `ItemPendienteRespuesta`, y `pendientes` en `PresupuestoCreadoRespuesta`. Ninguna ruta cambia.
+- En `docs/api.json` **ninguna clave de `paths` cambia**. Cambian:
+  - `components/schemas`: aparecen `PropuestaPartidaRespuesta` e `ItemPendienteRespuesta`, y `pendientes` en `PresupuestoCreadoRespuesta`;
+  - la `description` de `POST /presupuestos`, que sale del docstring nuevo de `crear_presupuesto`.
+  
+  Comprobarlo con `git diff -- docs/api.json`: fuera de `components/schemas`, la única línea cambiada es esa `description`.
 - ruff limpio.
 
-**Comprobar que muerde:** en `_proponedor`, cambiar temporalmente `return normalizador.similares` por `return lambda _descripcion: []`. Deben fallar la prueba del doble y la del modelo real. Restaurar.
+**Comprobar que muerde:**
+- En `_proponedor`, cambiar temporalmente `return normalizador.similares` por `return lambda _descripcion: []`. Deben fallar la prueba del doble y la del modelo real. Restaurar.
+- En `_proponedor`, cambiar temporalmente `except (ImportError, OSError, ValueError):` por `except ImportError:`, que es el criterio de `rendimientos.py:156-159`. Deben fallar los dos casos de `test_sin_el_modelo_el_pendiente_queda_sin_propuestas`: `[sin-modelo]` con el `OSError: sin modelo en la cache local` que `TestClient` propaga, y `[identificador-invalido]` con `assert 422 == 201`. Restaurar.
 
-Después, «el recuento» (anotar `N5 = N3 + 3`) y `uv run pytest tests/unit/test_costing.py tests/integration/test_auditoria_7_de_7.py -q -W error -p no:cacheprovider`, que debe quedar verde.
+Después, «el recuento» (anotar `N5 = N3 + 5`: cuatro pruebas nuevas, una con dos casos) y `uv run pytest tests/unit/test_costing.py tests/integration/test_auditoria_7_de_7.py -q -W error -p no:cacheprovider`, que debe quedar verde.
 
 - [ ] **Step 5: Commit del código**
 
 ```bash
 git add api/esquemas.py api/rutas/presupuestos.py docs/api.json tests/integration/test_api.py
-git commit -m "fix(api): uc-01 3a por http deja pendiente el item sin partida y propone similares" -m "Parte de C2 de INV-072: POST /presupuestos pedia composiciones de todos los codigos y respondia 404 ante una partida desconocida. Ahora solo pide las que existen; elaborar deja el item pendiente, el informe lo declara y la respuesta 201 lo lista con las propuestas de UC-03 (vacias sin el extra ml). Sin rutas nuevas; docs/api.json regenerado. La recarga del informe exige core y se registra aparte." -m "Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>"
+git commit -m "fix(api): uc-01 3a por http deja pendiente el item sin partida y propone similares" -m "Parte de C2 de INV-072: POST /presupuestos pedia composiciones de todos los codigos y respondia 404 ante una partida desconocida. Ahora solo pide las que existen; elaborar deja el item pendiente, el informe lo declara y la respuesta 201 lo lista con las propuestas de UC-03 (vacias sin el extra ml o sin el modelo: ImportError, OSError, ValueError). Sin rutas nuevas; docs/api.json regenerado (esquemas y descripcion de la ruta). La recarga del informe exige core y se registra aparte." -m "Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>"
 ```
 
 - [ ] **Step 6: Registrar lo que exige `core/` (CLAUDE.md §9), sin parchear.** Agregar a la sección «Fase C2» de `docs/bitacora/2026-09-23-cierre.md`:
 
 ```markdown
-### Expediente C2.1: la recarga del informe pierde los pendientes (INV‑075)
+### Expediente C2.1: la recarga del informe pierde los pendientes (INV‑080)
+
+**Origen.** Se desprende de INV‑072 (UC‑01 3a): C2 cierra su parte de `api/` al elaborar, y lo
+que queda al recargar es de la capa `core`. La fila INV‑080 remite a INV‑072 y a este expediente
+sin repetir su descripción.
 
 **Problema.** Tras elaborar con un ítem sin partida, el informe guardado lleva el hallazgo
 `PENDIENTE` (`core/budget/persistencia.py:101-112`), pero:
@@ -897,8 +1039,9 @@ git commit -m "fix(api): uc-01 3a por http deja pendiente el item sin partida y 
 - la recarga reaudita con `auditar` (`api/rutas/presupuestos.py:378-385`), que no conoce los
   pendientes: los agrega `elaborar` (`core/budget/presupuesto.py:123,127`).
 
-`GET /presupuestos/{codigo}/informe` declara entonces CUMPLE un presupuesto que se emitió NO CUMPLE.
-RF‑02 pide el informe «al producir o cargar».
+`GET /presupuestos/{codigo}/informe` puede declarar entonces CUMPLE un presupuesto que se emitió
+NO CUMPLE: basta que el pendiente fuera su único motivo. RF‑02 pide el informe «al producir o
+cargar».
 
 **Por qué no se corrige en C2.** La única frontera de persistencia del presupuesto es
 `core/budget/persistencia.py` (su docstring, `:11-13`). Reconstruir el informe desde `api/`
@@ -915,15 +1058,15 @@ duplicaría `_declarar_pendientes`. GC2 exige `core/` sin cambios, y GU1a (C3) t
 lo declara.
 ```
 
-Y al final de §3 del inventario (siguiente ID libre; al planificar, INV‑075):
+Y al final de §3 del inventario, con **INV‑080** (el segundo ID de C2; Global Constraints). Es un hallazgo **derivado de INV‑072 en la capa `core`**: la fila remite a INV‑072 y al expediente C2.1 en vez de repetir la descripción del problema (DRY), y solo agrega lo que es propio de la capa `core`:
 
 ```markdown
-| INV-075 | planificación de C2 (Tarea 5; expediente C2.1 de la bitácora) | core (cruza: api, ui) | Informe siempre (principio 7) / trazabilidad (UC‑01 3a) | importante | `api/rutas/presupuestos.py:378-385`; `core/budget/presupuesto.py:123,127`; `core/budget/persistencia.py:85-89,101-112,119-144` | El informe recargado se reaudita con `auditar`, que no conoce los pendientes, y los ítems pendientes no se persisten: el presupuesto que se emitió NO CUMPLE por un ítem sin partida se recarga CUMPLE (RF‑02: el informe «al producir o cargar») | Una función de `core/budget/` que cargue el presupuesto con su informe completo, con llamadores de `api/` y `ui/` en commits separados; o declararlo en limitaciones | a decidir por Eugenio en GC2 (exige `core/`, cerrado en C2 y en C3) | abierto |
+| INV-080 | planificación de C2 (Tarea 5); se desprende de INV‑072 | core (cruza: api, ui) | Informe siempre (principio 7) / trazabilidad (UC‑01 3a) | importante | `core/budget/persistencia.py:85-89,101-112,119-144`; `core/budget/presupuesto.py:123,127`; llamador `api/rutas/presupuestos.py:378-385` | La parte de INV‑072 que queda al **recargar**: los pendientes no se persisten y la reauditoría no los conoce, así que el informe recargado puede declarar CUMPLE un presupuesto emitido NO CUMPLE (RF‑02). Detalle en el expediente C2.1 de la bitácora | Las opciones (a) y (b) del expediente C2.1 | a decidir por Eugenio en GC2 (exige `core/`, cerrado en C2 y en C3) | abierto |
 ```
 
 ```bash
 git add docs/bitacora/2026-09-23-cierre.md docs/auditoria/2026-09-inventario.md
-git commit -m "docs(bitacora): la recarga del informe pierde los pendientes y exige core" -m "Expediente C2.1 e INV-075: se detiene la correccion en la frontera de core/ (CLAUDE.md seccion 9); su destino lo decide Eugenio en GC2." -m "Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>"
+git commit -m "docs(bitacora): la recarga del informe pierde los pendientes y exige core" -m "Expediente C2.1 e INV-080, derivado de INV-072 en la capa core: se detiene la correccion en la frontera de core/ (CLAUDE.md seccion 9); su destino lo decide Eugenio en GC2." -m "Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>"
 ```
 
 ---
@@ -953,10 +1096,10 @@ git commit -m "docs(bitacora): la recarga del informe pierde los pendientes y ex
 - 2a: nada empareja por GlobalId.
 - 2b: una cantidad negativa se rechaza con el `ValueError` del contrato (`core/contracts/item_computo.py:52-53`), que aborta todo.
 
-`core/` no cambia. El hallazgo de R5 del flujo 2b lo emite `BalanceVolumetrico` (`core/verification/reglas.py:393-491`) al auditar, porque el relleno conservado ya no cuadra con su `_balance`.
+`core/` no cambia. El hallazgo de R5 del flujo 2b lo emite `BalanceVolumetrico` (`core/verification/reglas.py:393-491`) al auditar, porque el relleno conservado ya no cuadra con su `_balance`. **Solo aparece si el rechazado es el relleno** (revisión A5). Si se rechaza otro ítem, este conserva su cantidad y el relleno se rebalancea con ella, así que R5 cuadra y el rechazo queda solo en `Recalculo.rechazados`. Lo declaran el docstring del módulo, el de `test_2b_una_cantidad_nula_…` y el dictamen C2‑6.
 
 **Oráculos (escritos a mano, en el docstring de la prueba):**
-- **Flujo principal.** `AdaptadorCivilTabular.extraer` sobre la fuente con la fila editada, que es otra ruta de código.
+- **Flujo principal.** `AdaptadorCivilTabular.extraer` sobre la fuente con la fila editada, que es otra ruta de código. Lo mismo vale para el camino sin `relleno` en `codigos` y para la fuente sin tubería (la zanja Z‑01 con longitud 0).
 - **Flujo 2b**, con la muestra `data/samples/civil/tanquillas_y_zanja.csv`:
   - relleno anterior = 3,6 + 7,68 − 0,896 − 25,2 × 0,008107338624 = **10,1796950666752** m3;
   - con Z‑01 de 500 × 0,001 × 0,001: excavación 3,6 + 0,0005, tubería 525 m y balance 3,6005 − 0,896 − 525 × 0,008107338624 = **−1,5518527776** m3.
@@ -1004,24 +1147,27 @@ ZANJA_MINIMA = {
     "ancho": Decimal("0.001"),
     "profundidad": Decimal("0.001"),
 }
+#: Una zanja de longitud cero: la fuente queda sin tubería y su volumen en el relleno, en cero.
+SIN_TUBERIA = {"Z-01": {"longitud": Decimal("0")}}
+CODIGOS_SIN_RELLENO = {clave: codigo for clave, codigo in CODIGOS.items() if clave != "relleno"}
 
 
 def _anteriores():
     return AdaptadorCivilTabular(CODIGOS).extraer(MUESTRA)
 
 
-def _fuente_con(tmp_path: Path, fila_id: str, valores: dict[str, Decimal]) -> Path:
-    """La muestra con los valores de una fila cambiados: la fuente que editaría el proyectista."""
+def _fuente_con(
+    tmp_path: Path, cambios: dict[str, dict[str, Decimal]], nombre: str = "fuente_editada"
+) -> Path:
+    """La muestra con algunas filas cambiadas: la fuente que editaría el proyectista."""
     with MUESTRA.open(newline="", encoding="utf-8") as archivo:
         lector = csv.DictReader(archivo)
         campos = lector.fieldnames
         filas = [
-            {**fila, **{clave: str(valor) for clave, valor in valores.items()}}
-            if fila["id"] == fila_id
-            else fila
+            {**fila, **{clave: str(valor) for clave, valor in cambios.get(fila["id"], {}).items()}}
             for fila in lector
         ]
-    ruta = tmp_path / "fuente_editada.csv"
+    ruta = tmp_path / f"{nombre}.csv"
     with ruta.open("w", newline="", encoding="utf-8") as archivo:
         escritor = csv.DictWriter(archivo, fieldnames=campos)
         escritor.writeheader()
@@ -1041,9 +1187,52 @@ def test_recalcular_equivale_a_extraer_la_fuente_editada(tmp_path, fila_id, valo
     el resultado es exactamente lo que da extraer la fuente con la fila ya editada."""
     recalculo = recalcular(_anteriores(), {fila_id: valores}, CODIGOS)
 
-    esperado = AdaptadorCivilTabular(CODIGOS).extraer(_fuente_con(tmp_path, fila_id, valores))
+    esperado = AdaptadorCivilTabular(CODIGOS).extraer(_fuente_con(tmp_path, {fila_id: valores}))
     assert recalculo.items == tuple(esperado)
     assert recalculo.sin_regla == () and recalculo.rechazados == ()
+
+
+def test_sin_relleno_en_los_codigos_no_se_rebalancea(tmp_path):
+    """Un llamador que no pide relleno (el adaptador tabular sin `relleno` en `codigos`) recibe
+    lo mismo que extraer la fuente editada con esos códigos: ningún ítem de relleno aparece."""
+    cambio = {"T-01": {"a": Decimal("1.00")}}
+    anteriores = AdaptadorCivilTabular(CODIGOS_SIN_RELLENO).extraer(MUESTRA)
+
+    recalculo = recalcular(anteriores, cambio, CODIGOS_SIN_RELLENO)
+
+    esperado = AdaptadorCivilTabular(CODIGOS_SIN_RELLENO).extraer(_fuente_con(tmp_path, cambio))
+    assert recalculo.items == tuple(esperado)
+
+
+def test_sin_tuberia_en_la_fuente_la_tanquilla_se_recalcula_igual(tmp_path):
+    """Con la zanja en longitud cero la tubería es 0 antes y después del cambio: el volumen de
+    tubería del relleno se conserva tal cual, sin dividir 0 entre 0."""
+    cambio = {"T-01": {"a": Decimal("1.00")}}
+    fuente = _fuente_con(tmp_path, SIN_TUBERIA, "sin_tuberia")
+    anteriores = AdaptadorCivilTabular(CODIGOS).extraer(fuente)
+
+    recalculo = recalcular(anteriores, cambio, CODIGOS)
+
+    editada = _fuente_con(tmp_path, {**SIN_TUBERIA, **cambio}, "sin_tuberia_editada")
+    assert recalculo.items == tuple(AdaptadorCivilTabular(CODIGOS).extraer(editada))
+
+
+def test_sin_tuberia_en_la_fuente_la_zanja_exige_volver_a_extraerla(tmp_path):
+    """Sin tubería previa no hay proporción que escalar: el factor de sección solo vive en la
+    fuente, como `diametro`."""
+    anteriores = AdaptadorCivilTabular(CODIGOS).extraer(
+        _fuente_con(tmp_path, SIN_TUBERIA, "sin_tuberia")
+    )
+
+    with pytest.raises(ValueError, match="no tenia tuberia"):
+        recalcular(anteriores, {"Z-01": {"longitud": Decimal("30.00")}}, CODIGOS)
+
+
+def test_un_origen_que_no_esta_en_el_computo_se_rechaza():
+    """Un cambio para un objeto que el cómputo no tiene no es un flujo 1a: es un error del
+    llamador, y se rechaza en vez de informarse como «sin regla»."""
+    with pytest.raises(ValueError, match="ningun item del computo tiene el origen 'X-99'"):
+        recalcular(_anteriores(), {"X-99": {"a": Decimal("1.00")}}, CODIGOS)
 
 
 def test_1a_un_parametro_sin_regla_no_recalcula_y_se_informa():
@@ -1064,6 +1253,8 @@ def test_el_diametro_solo_cambia_volviendo_a_extraer_la_fuente():
 
 
 def test_2b_una_cantidad_nula_se_rechaza_y_conserva_la_anterior():
+    """Rechazado un ítem que no es el relleno, el relleno se rebalancea con la cantidad conservada
+    y cuadra: el rechazo se informa en `rechazados`, no con un hallazgo de R5 (C2‑6)."""
     anteriores = _anteriores()
     de_la_tanquilla = tuple(item for item in anteriores if item.origen_id == "T-01")
 
@@ -1099,10 +1290,14 @@ def test_2b_un_relleno_negativo_se_rechaza_y_r5_lo_declara():
     assert not [h for h in resultado.informe.hallazgos if h.regla == "R1"]  # trazas intactas
 
 
-def test_emparejar_rechaza_claves_repetidas():
+@pytest.mark.parametrize("repetida", ["anterior", "nueva"])
+def test_emparejar_rechaza_claves_repetidas_en_cualquiera_de_las_versiones(repetida):
     anteriores = _anteriores()
-    with pytest.raises(ValueError, match="ambiguo"):
-        emparejar([*anteriores, *anteriores], anteriores)
+    duplicados = [*anteriores, *anteriores]
+    versiones = (duplicados, anteriores) if repetida == "anterior" else (anteriores, duplicados)
+
+    with pytest.raises(ValueError, match=f"la version {repetida} repite .* ambiguo"):
+        emparejar(*versiones)
 ```
 
 En `tests/unit/test_adapter_civil_ifc.py` agregar `from decimal import Decimal` y `from tests.fixtures.computo_civil import CODIGOS` a los imports, y al final:
@@ -1157,23 +1352,29 @@ def test_uc04_2a_reimportar_empareja_por_global_id(tmp_path):
     assert sin_par.solo_nuevos == tuple(ajenos)
 ```
 
-- [ ] **Step 2: Primera versión, solo el flujo principal (rojo de comportamiento en los alternativos).** Crear `adapters/civil/recalculo.py` con el código del paso 3, pero **sin** las líneas marcadas `# UC‑04, flujo 1a`, `# UC‑04, flujo 2a`, `# UC‑04, flujo 2b` y `# fuente`. En cada bloque marcado se omite la condición y su cuerpo:
-  - en `_separar`, sin el 1a todos los nombres van a `efectivos`;
-  - en `_reevaluar`, sin el 2b no hay `return None`;
-  - en `_rebalancear_relleno`, sin el 2b no se conserva el relleno.
+- [ ] **Step 2: Primera versión, solo el flujo principal (rojo de comportamiento en los alternativos).** Crear `adapters/civil/recalculo.py` con el código del paso 3, pero **sin** las líneas marcadas `# UC‑04, flujo 1a`, `# UC‑04, flujo 2a`, `# UC‑04, flujo 2b`, `# fuente`, `# origen` y `# ambiguo`. En cada bloque marcado se omite la condición y su cuerpo entero, incluidas las líneas de continuación del mensaje que no llevan marca:
+  - en `_separar`, sin `# origen` un origen desconocido no se rechaza; sin el 2a no se rechaza el IFC; sin `# fuente` no se rechaza `diametro`; sin el 1a todos los nombres van a `efectivos`;
+  - en `recalcular` y `_reevaluar`, sin el 2b no hay `return None` ni se conserva el ítem;
+  - en `_rebalancear_relleno`, sin `# fuente` no se rechaza la fuente sin tubería, y sin el 2b no se conserva el relleno;
+  - en `_indice`, sin `# ambiguo` una clave repetida no se rechaza.
 
 Run: `uv run pytest tests/unit/test_recalculo_civil.py tests/unit/test_adapter_civil_ifc.py -q -W error --strict-markers -p no:cacheprovider`
 
 Expected:
-- Pasan las dos variantes de `test_recalcular_equivale_a_extraer_la_fuente_editada`, `test_emparejar_rechaza_claves_repetidas` y `test_uc04_2a_reimportar_empareja_por_global_id`.
-- **Fallan**, cada una por comportamiento:
+- Pasan las dos variantes de `test_recalcular_equivale_a_extraer_la_fuente_editada`, `test_sin_relleno_en_los_codigos_no_se_rebalancea`, `test_sin_tuberia_en_la_fuente_la_tanquilla_se_recalcula_igual` y `test_uc04_2a_reimportar_empareja_por_global_id`.
+- **Fallan**, cada una por comportamiento (observado al planificar sobre `f1dda36`, salvo las de IFC, que exigen el extra `civil`):
+  - `test_sin_tuberia_…_la_zanja_exige_volver_a_extraerla`: `decimal.InvalidOperation: [<class 'decimal.DivisionUndefined'>]`, porque la proporción divide 0 entre 0.
+  - `test_un_origen_que_no_esta_en_el_computo_se_rechaza`: `DID NOT RAISE`.
   - `test_1a_…`: `assert () == ('T-01:material',)`.
   - `test_el_diametro_…`: `DID NOT RAISE`.
   - `test_2b_una_cantidad_nula_…`: la tupla de ítems difiere, porque se aceptan ceros.
-  - `test_2b_un_relleno_negativo_…`: `ValueError: cantidad no puede ser negativa`. Es el defecto exacto de INV‑073: el contrato aborta el recálculo.
+  - `test_2b_un_relleno_negativo_…`: `ValueError: cantidad no puede ser negativa: -1.55185277760000`. Es el defecto exacto de INV‑073: el contrato aborta el recálculo.
+  - `test_emparejar_rechaza_claves_repetidas_en_cualquiera_de_las_versiones[anterior]` y `[nueva]`: `DID NOT RAISE`.
   - `test_uc04_2a_un_objeto_ifc_…`: `DID NOT RAISE`.
 - **Comprobar que el flujo principal muerde:** en `_reevaluar`, cambiar temporalmente `evaluar_regla(item.regla, parametros)` por `evaluar_regla(item.regla, item.parametros)`. Debe fallar `test_recalcular_equivale_…`. Restaurar.
 - **Comprobar que `emparejar` muerde:** cambiar temporalmente `_clave` para que devuelva `(item.codigo_partida,)`. Debe fallar `test_uc04_2a_reimportar_…` en `sin_par.pares == ()`. Restaurar.
+- **Comprobar que el camino sin relleno muerde:** en `recalcular`, quitar temporalmente la condición `if "relleno" in codigos:` y dejar su cuerpo sin sangría. Debe fallar `test_sin_relleno_en_los_codigos_no_se_rebalancea` con `KeyError: 'relleno'`. Restaurar.
+- **Comprobar que la tubería sin cambio muerde:** en `_rebalancear_relleno`, cambiar temporalmente la expresión condicional de `"volumen_tuberia"` por `volumen * tuberia_despues / tuberia_antes`. Debe fallar `test_sin_tuberia_en_la_fuente_la_tanquilla_se_recalcula_igual` con `decimal.InvalidOperation`. Restaurar.
 
 - [ ] **Step 3: Versión completa (verde).** `adapters/civil/recalculo.py`:
 
@@ -1191,8 +1392,11 @@ lleva (RF‑18, RF‑19). Los flujos alternativos de `docs/ERS.md` (UC‑04):
   pide reimportar el modelo (UC‑01, paso 2); `emparejar` conserva la correspondencia de las
   partidas por `origen_id`, que es el GlobalId.
 - 2b. Una regla que da una cantidad negativa o nula no la impone: el ítem conserva su valor
-  anterior y queda en `Recalculo.rechazados`. El hallazgo de R5 lo emite el núcleo al auditar,
-  porque el relleno conservado deja de cuadrar con su directiva de balance.
+  anterior y queda en `Recalculo.rechazados`. El hallazgo de R5 que pide la ERS lo emite el núcleo
+  al auditar, y **solo cuando el rechazado es el relleno**: el relleno conservado deja de cuadrar
+  con su directiva de balance. Si el rechazado es otro ítem (la tanquilla con `n = 0`), conserva su
+  cantidad anterior, el relleno se rebalancea con ella y R5 cuadra: el rechazo se informa solo en
+  `Recalculo.rechazados`.
 
 El paso 5 (RF‑20, el diferencial) no está implementado: se declaró en limitaciones en C1.
 
@@ -1290,8 +1494,8 @@ def emparejar(anteriores: Sequence[ItemComputo], nuevos: Sequence[ItemComputo]) 
     """UC‑04, flujo 2a: empareja la extracción anterior con la del modelo reimportado.
 
     La clave es `(origen_id, codigo_partida)`: en IFC el `origen_id` es el GlobalId del elemento, y
-    el código distingue las partidas que un mismo objeto produce. Una clave repetida haría ambiguo
-    el emparejamiento: se rechaza.
+    el código distingue las partidas que un mismo objeto produce. Una clave repetida en cualquiera
+    de las dos versiones haría ambiguo el emparejamiento: se rechaza.
     """
     indice_nuevos = _indice(nuevos, "nueva")
     _indice(anteriores, "anterior")
@@ -1316,8 +1520,8 @@ def _separar(
     sin_regla: list[str] = []
     for origen_id, parametros in cambios.items():
         del_objeto = [item for item in anteriores if item.origen_id == origen_id]
-        if not del_objeto:
-            raise ValueError(f"ningun item del computo tiene el origen {origen_id!r}")
+        if not del_objeto:  # origen
+            raise ValueError(f"ningun item del computo tiene el origen {origen_id!r}")  # origen
         if any(item.origen_tipo is OrigenTipo.IFC for item in del_objeto):  # UC‑04, flujo 2a
             raise ValueError(  # UC‑04, flujo 2a
                 f"el objeto {origen_id!r} viene de un modelo IFC, no de reglas: reimporte el "
@@ -1353,11 +1557,23 @@ def _rebalancear_relleno(
 
     La excavación y el concreto se vuelven a sumar. El volumen de tubería se escala con la longitud
     de tubería: el adaptador tabular admite un solo diámetro por balance (límite declarado en
-    `AdaptadorCivilTabular`), así que ese volumen es proporcional a la tubería. Un relleno que queda
-    negativo o nulo se rechaza como cualquier otra cantidad (flujo 2b).
+    `AdaptadorCivilTabular`), así que ese volumen es proporcional a la tubería. Si la tubería no
+    cambió, el volumen se conserva tal cual. Si la fuente no tenía tubería, no hay proporción que
+    escalar (el factor de sección solo vive en la fuente) y se exige volver a extraerla. Un relleno
+    que queda negativo o nulo se rechaza como cualquier otra cantidad (flujo 2b).
+
+    La proporción `volumen × después / antes` se calcula con la precisión del contexto `Decimal`
+    (28 dígitos). Cuando el cociente no es exacto puede diferir en el último dígito de lo que da
+    volver a extraer la fuente (`factor × tubería`). Con la muestra es exacto, y la prueba lo afirma
+    con igualdad.
     """
     tuberia_antes = _suma(anteriores, codigos["tuberia"])
     tuberia_despues = _suma(items, codigos["tuberia"])
+    if tuberia_despues != tuberia_antes and not tuberia_antes:  # fuente
+        raise ValueError(  # fuente
+            "la fuente no tenia tuberia: el factor de seccion del relleno no se conoce; "  # fuente
+            "vuelva a extraerla (UC-01, paso 2)"  # fuente
+        )  # fuente
     resultado: list[ItemComputo] = []
     rechazados: list[ItemComputo] = []
     for item in items:
@@ -1369,7 +1585,9 @@ def _rebalancear_relleno(
             "excavacion": _suma(items, codigos["excavacion"]),
             "concreto": _suma(items, codigos["concreto"]),
             "volumen_tuberia": (
-                volumen * tuberia_despues / tuberia_antes if tuberia_antes else volumen
+                volumen
+                if tuberia_despues == tuberia_antes
+                else volumen * tuberia_despues / tuberia_antes
             ),
         }
         if parametros == dict(item.parametros):
@@ -1396,16 +1614,16 @@ def _indice(items: Sequence[ItemComputo], version: str) -> dict[tuple[str, str],
     indice: dict[tuple[str, str], ItemComputo] = {}
     for item in items:
         clave = _clave(item)
-        if clave in indice:
-            raise ValueError(
-                f"la version {version} repite el origen {clave[0]!r} para la partida "
-                f"{clave[1]!r}: el emparejamiento seria ambiguo"
-            )
+        if clave in indice:  # ambiguo
+            raise ValueError(  # ambiguo
+                f"la version {version} repite el origen {clave[0]!r} para la partida "  # ambiguo
+                f"{clave[1]!r}: el emparejamiento seria ambiguo"  # ambiguo
+            )  # ambiguo
         indice[clave] = item
     return indice
 ```
 
-Las marcas `# UC‑04, flujo …` y `# fuente` se quedan: documentan qué línea realiza qué flujo. En el paso 2 solo sirvieron para quitar esas líneas.
+Las marcas `# UC‑04, flujo …`, `# fuente`, `# origen` y `# ambiguo` se quedan: documentan qué línea realiza qué flujo o qué rechazo. En el paso 2 solo sirvieron para quitar esas líneas. El módulo y `tests/unit/test_recalculo_civil.py` se ejecutaron al planificar sobre `f1dda36`: 12 pruebas en verde y ruff limpio; los rojos del paso 2 fuera de IFC y las mordidas del camino sin relleno y de la tubería sin cambio se observaron como se describen.
 
 Run: `uv run pytest tests/unit/test_recalculo_civil.py tests/unit/test_adapter_civil_ifc.py tests/unit/test_recalculo_uc04.py tests/unit/test_reglas_civil.py tests/unit/test_arquitectura.py -q -W error --strict-markers -p no:cacheprovider && uv run ruff check adapters tests`
 Expected:
@@ -1418,13 +1636,13 @@ Después, «el recuento» (anotar `N6`), y `uv run pytest tests/unit/test_costin
 
 ```bash
 git add adapters/civil/recalculo.py tests/unit/test_recalculo_civil.py tests/unit/test_adapter_civil_ifc.py
-git commit -m "fix(civil): flujos 1a, 2a y 2b de uc-04 en el adaptador civil" -m "Parte de C2 de INV-073 (decision previa 1, opcion A): recalcular reevalua las reglas que usan el parametro cambiado y rebalancea el relleno; informa lo que no participa en ninguna regla (1a), exige reimportar un objeto IFC y empareja por GlobalId (2a), y conserva la cantidad anterior ante una regla negativa o nula (2b), con el hallazgo de R5 emitido por el nucleo existente al auditar. Oraculos: la extraccion de la fuente editada y aritmetica a mano. core/ sin cambios." -m "Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>"
+git commit -m "fix(civil): flujos 1a, 2a y 2b de uc-04 en el adaptador civil" -m "Parte de C2 de INV-073 (decision previa 1, opcion A): recalcular reevalua las reglas que usan el parametro cambiado y rebalancea el relleno; informa lo que no participa en ninguna regla (1a), exige reimportar un objeto IFC y empareja por GlobalId (2a), y conserva la cantidad anterior ante una regla negativa o nula (2b). El hallazgo de R5 lo emite el nucleo existente al auditar, solo si el rechazado es el relleno. Rechaza un origen desconocido, una clave repetida en cualquiera de las dos versiones y una fuente sin tuberia que cambia de longitud. Oraculos: la extraccion de la fuente editada y aritmetica a mano. core/ sin cambios." -m "Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>"
 ```
 
 - [ ] **Step 5: Comprobar que ninguna prueba vieja fija el comportamiento anterior.**
 
-Run: `grep -rn "cantidad no puede ser negativa" tests adapters`
-Expected: solo las pruebas de contrato (`tests/unit/test_contracts.py`), que el recálculo no afecta, porque el contrato sigue rechazando negativos.
+Run: `grep -rn "cantidad no puede ser negativa" tests adapters core --include=*.py`
+Expected: una sola línea, `core/contracts/item_computo.py:53`, el mensaje del contrato, que sigue rechazando negativos y el recálculo no toca. Ninguna prueba ni adaptador fija ese texto: sobre `tests adapters` solo, el `grep` da vacío (comprobado al planificar).
 
 - [ ] **Step 6: Anotar el alcance que no se implementa.** A la sección «Fase C2» de la bitácora:
 
@@ -1501,17 +1719,17 @@ Expected:
 
 - [ ] **Step 5: Estados del inventario.** Con `git log --format="%h %s" main..HEAD`, reemplazar la columna «Estado»:
   - `cerrado (<hash>)` para INV‑016 (Tarea 1), INV‑017 (Tarea 2, paso 4), INV‑018 (Tarea 3) e INV‑042 (Tarea 4).
-  - INV‑072: `abierto: la parte de C2 (api) cerrada en <hash de la Tarea 5, paso 5>; quedan la subtarea de C3 (ui) y la recarga del informe, que exige core/ (INV‑075)`.
+  - INV‑072: `abierto: la parte de C2 (api) cerrada en <hash de la Tarea 5, paso 5>; quedan la subtarea de C3 (ui) y la recarga del informe, que exige core/ (INV‑080)`.
   - INV‑073: el de la Tarea 6, paso 7.
   - INV‑006: conserva su estado. Se agrega al final: `; en C2 no hubo código: la subtarea de C2 sigue aceptada con el hallazgo padre (sin aval del tutor al cerrar C2)`.
   - INV‑038 e INV‑041: conservan «a limitaciones»; no hay código en C2.
-  - INV‑074 e INV‑075: el destino que decida Eugenio en el paso 8.
+  - INV‑079 e INV‑080: el destino que decida Eugenio en el paso 8.
   - En la columna «Evidencia» de INV‑018 e INV‑042, anotar las anclas desplazadas de la tabla «Anclas verificadas» (p. ej. `test_adapter_civil_ifc.py:61-73 (hoy :64-76)`).
-  - En §4 (d), recontar con un script ad hoc sobre la tabla, como en C0 y C1, agregando INV‑074 e INV‑075 a su fase principal una vez decidida. Al final de §4 agregar: «La fase C2 agrega INV‑074 e INV‑075 (Tareas 2 y 5 del plan de C2) y cierra los hallazgos de su fase según la columna «Estado»».
+  - En §4 (d), recontar con un script ad hoc sobre la tabla, como en C0 y C1, agregando INV‑079 e INV‑080 a su fase principal una vez decidida. Al final de §4 agregar: «La fase C2 agrega INV‑079 e INV‑080 (Tareas 2 y 5 del plan de C2) y cierra los hallazgos de su fase según la columna «Estado»».
 
 - [ ] **Step 6: Bitácora.** Agregar a la sección «Fase C2» de `docs/bitacora/2026-09-23-cierre.md`:
   - (a) La tabla de hallazgos de C2: ID → estado → commit. Incluye INV‑006, INV‑038 e INV‑041, «sin código en C2».
-  - (b) Los hallazgos nuevos (INV‑074, INV‑075) con su fase.
+  - (b) Los hallazgos nuevos (INV‑079, INV‑080) con su fase.
   - (c) Pruebas: `N0 = 735` → `N1`, leídas con `--junitxml`.
   - (d) La tabla de dictámenes de abajo.
   - (e) Los veredictos de los cuatro encargos (paso 7).
@@ -1526,12 +1744,12 @@ Expected:
 |---|---|---|---|---|
 | C2‑1 | INV‑073 por la vía A (o B): `adapters/civil/recalculo.py` realiza 1a, 2a y 2b sin llamador en `ui/` ni `api/` | Flujos de la ERS (corrección, spec §2); UC‑04 ya es composición de biblioteca desde C1 | ~150 líneas sin llamador; con B, tres flujos declarados sin cumplir | (antes de ejecutar) |
 | C2‑2 | INV‑072: `POST /presupuestos` responde 201 con `pendientes` y sus propuestas; aceptar es reenviar el ítem; sin rutas nuevas | Realiza UC‑01 3a en la ruta existente; el campo nuevo es aditivo | Un cliente que dependía del 404 cambia de comportamiento (ninguna prueba lo hacía) | (antes de ejecutar) |
-| C2‑3 | La recarga del informe (INV‑075) no se corrige: exige `core/`; expediente C2.1 | CLAUDE.md §9 y GC2 | El informe recargado subdeclara un presupuesto con pendientes hasta que se decida (a) o (b) | |
-| C2‑4 | Sin el extra `ml` o sin el modelo, las propuestas quedan vacías (`ImportError`, `OSError`) | La propuesta es una ayuda; mismo criterio que `ml.anomaly` en la API | Un fallo de red se ve como «sin propuestas» y no como error | |
-| C2‑5 | INV‑018: la regla de telecom rige para los cuatro adaptadores, con terceros declarados (civil: `ifcopenshell`); la guardia genérica queda para `ml/` | Una sola fuente de la regla; ningún criterio más débil | Un tercero nuevo exige editar `TERCEROS_POR_ADAPTADOR` | |
-| C2‑6 | INV‑073: 2b rechaza también la cantidad nula; `diametro` exige volver a extraer; el volumen de tubería del relleno se escala por proporción | Texto de la ERS; el diámetro solo vive en la fuente; un solo diámetro por balance | Un cambio de diámetro no se puede recalcular sin reextraer | |
-| C2‑7 | INV‑074 (latente, `scripts/`): a limitaciones salvo que se promueva a C3 | Menor; hoy la afirmación es cierta | El informe podría contradecirse si un dominio supera 50 registros | |
-| C2‑8 | INV‑075: (a) fase que toque `core/`, con enmienda de la spec §5, o (b) limitaciones | Exige `core/`, cerrado en C2 y C3 | (a) reabre el núcleo; (b) deja RF‑02 parcial al recargar | |
+| C2‑3 | La recarga del informe (INV‑080, derivado de INV‑072 en la capa `core`) no se corrige: exige `core/`; expediente C2.1 | CLAUDE.md §9 y GC2 | El informe recargado subdeclara un presupuesto con pendientes hasta que se decida (a) o (b) | |
+| C2‑4 | Sin el extra `ml` o sin el modelo, las propuestas quedan vacías (`ImportError`, `OSError`, `ValueError`, que cubre `HFValidationError`). El modelo se carga, y la primera vez puede descargarse, dentro del `POST`, después de guardar | La propuesta es una ayuda; con `ImportError` es el criterio de `ml.anomaly` en la API (`rendimientos.py:156-159`), y los otros dos evitan un 500 o un 422 sobre un presupuesto ya guardado | Un fallo de red se ve como «sin propuestas» y no como error; un `POST` con pendientes tarda segundos, más si descarga el modelo | |
+| C2‑5 | INV‑018: la regla de telecom rige para los cuatro adaptadores, con terceros declarados (civil: `ifcopenshell`), sin importaciones relativas y sin módulos fuera de un paquete con regla; la guardia genérica queda para `ml/` | Una sola fuente de la regla; ningún criterio más débil | Un tercero nuevo exige editar `TERCEROS_POR_ADAPTADOR`; un adaptador que quisiera importaciones relativas debe pasarlas a absolutas | |
+| C2‑6 | INV‑073: 2b rechaza también la cantidad nula; el hallazgo de R5 que pide la ERS aparece **solo si el rechazado es el relleno** (si es otro ítem, el relleno se rebalancea con la cantidad conservada y el rechazo queda solo en `Recalculo.rechazados`); `diametro`, y la longitud de una zanja en una fuente sin tubería, exigen volver a extraer; el volumen de tubería del relleno se escala por proporción, con la precisión de 28 dígitos de `Decimal` | Texto de la ERS; el diámetro y el factor de sección solo viven en la fuente; un solo diámetro por balance | Un cambio de diámetro no se puede recalcular sin reextraer; un rechazo fuera del relleno no produce hallazgo de R5; la proporción puede diferir en el último dígito de reextraer | |
+| C2‑7 | INV‑079 (latente, `scripts/`): a limitaciones salvo que se promueva a C3 | Menor; hoy la afirmación es cierta | El informe podría contradecirse si un dominio supera 50 registros | |
+| C2‑8 | INV‑080: (a) fase que toque `core/`, con enmienda de la spec §5, o (b) limitaciones | Exige `core/`, cerrado en C2 y C3 | (a) reabre el núcleo; (b) deja RF‑02 parcial al recargar | |
 | C2‑9 | Sin código en C2 para INV‑006 (subtarea), INV‑038 (subtarea) e INV‑041 | Exigen contrato con aval pendiente, o están en limitaciones por GC0 | Si el tutor avala INV‑006, la migración de los cuatro evaluadores (y de `recalculo.py`) se reabre antes de `v1.0-tesis` | |
 ```
 
@@ -1540,25 +1758,37 @@ Expected:
 - [ ] **Step 7: Los cuatro encargos, en paralelo y en segundo plano.** Una llamada `Agent` por encargo, las cuatro en el mismo mensaje, todas sobre `git diff $(git merge-base main HEAD)..HEAD` más la spec, el inventario, el expediente C2.1 y este plan. Cada prompt incluye:
   - El encargo y su norma:
     - **Requisitos:** IEEE 830 y la ERS, con UC‑01 3a, UC‑04 1a/2a/2b, RF‑02, RF‑04, RF‑09, RF‑23 y RF‑28. Confirma que ningún cambio es capacidad nueva (spec §2).
-    - **Arquitectura:** vistas 4+1 y CLAUDE.md §2, §5 y §9. Verifica el paso 3, la regla de importaciones de `adapters/civil/recalculo.py` y que la dependencia `api → ml` no se amplió más allá de `ml.normalization`.
+    - **Arquitectura:** vistas 4+1 y CLAUDE.md §2, §5 y §9. Verifica el paso 3, la regla de importaciones de `adapters/civil/recalculo.py` y que la dependencia `api → ml`, ya declarada en `docs/arquitectura.md:823`, no se amplió más allá de `ml.normalization`. Pondera la latencia de cargar el modelo dentro del `POST` (C2‑4).
     - **Pruebas y calidad:** IEEE 829 e ISO/IEC 25010. Verifica los cinco puntos de **Review Focus**, que cada prueba nueva se observó en rojo por comportamiento o mordiendo, que los oráculos son independientes y que el recuento se leyó con `--junitxml`.
     - **Verificación de hechos:** abre cada cita `archivo:línea` de este plan, del expediente C2.1, del inventario y de la bitácora, y la confirma. Incluye la aritmética de los oráculos de la Tarea 6.
   - La instrucción de devolver **VEREDICTO** (aprueba / aprueba con correcciones / rechaza) y hallazgos con severidad, evidencia y corrección concreta.
   - La prohibición de editar archivos.
 
-  Cada hallazgo bloqueante se corrige en un commit propio y se vuelve a pasar **solo** el encargo que lo levantó, hasta que los cuatro aprueben. Los hallazgos nuevos que no se corrijan en C2 van al inventario vivo. Si uno exige `core/`, va a expediente, no a parche.
+  Cada hallazgo bloqueante se corrige en un commit propio y se vuelve a pasar **solo** el encargo que lo levantó, hasta que los cuatro aprueben. Los hallazgos nuevos que no se corrijan en C2 van al inventario vivo, desde INV‑081 (Global Constraints). Si uno exige `core/`, va a expediente, no a parche.
 
 - [ ] **Step 8: Eugenio ejecuta la aplicación y ratifica** (spec §6). El cambio principal es la API. **Nunca contra `data/apu.db`**: la API abre esa ruta por defecto (`api/dependencias.py:14`).
 
-```bash
-uv run python scripts/seed.py --db data/prueba_c2.db
-APU_BASE="sqlite:///data/prueba_c2.db" uv run uvicorn api.main:app
+La base de prueba vive en el directorio temporal del sistema, **no en `data/`**. En PowerShell, el shell principal de este entorno:
+
+```powershell
+uv run python scripts/seed.py --db "$env:TEMP\prueba_c2.db"
+$env:APU_BASE = "sqlite:///$($env:TEMP -replace '\\', '/')/prueba_c2.db"
+uv run uvicorn api.main:app
 ```
 
+En Git Bash:
+
+```bash
+uv run python scripts/seed.py --db "$TEMP/prueba_c2.db"
+APU_BASE="sqlite:///$(cygpath -m "$TEMP")/prueba_c2.db" uv run uvicorn api.main:app
+```
+
+Al terminar, en PowerShell, `Remove-Item Env:APU_BASE` y `Remove-Item "$env:TEMP\prueba_c2.db"`.
+
   - En `http://127.0.0.1:8000/docs`, enviar `POST /presupuestos` con los ítems de la línea base más uno de código `XX-99-NUE`. Debe responder 201 con el ítem en `pendientes` y hasta tres propuestas.
-  - Abrir `GET /presupuestos/{codigo}/informe` y comprobar lo que registra INV‑075: el informe recargado no declara el pendiente.
+  - Abrir `GET /presupuestos/{codigo}/informe` y comprobar lo que registra INV‑080: el informe recargado no declara el pendiente.
   - Para INV‑073 (variante A), ejecutar `uv run pytest tests/unit/test_recalculo_civil.py -q -p no:cacheprovider`.
-  - Al terminar, comprobar que `data/apu.db` no cambió (existencia y fecha anotadas en la Tarea 0).
+  - Al terminar, comprobar que `data/apu.db` no cambió (existencia y fecha anotadas en la Tarea 0) y que `git status --short` no muestra ninguna base nueva en `data/`.
   - Después, ratificar cada fila de la tabla del paso 6 y decidir C2‑7 y C2‑8. Sin ratificación, la compuerta no se cruza.
 
 - [ ] **Step 9: Commit (GC2 pendiente de CI)**
@@ -1574,7 +1804,7 @@ Run: `git push -u origin inc/cierre-C2`, seguido de:
 
 ```bash
 gh pr create --base main --title "Cierre de la tesis: fase C2 (adaptadores, ML y API)" --label gc2 --body "$(cat <<'EOF'
-Fase C2 del plan de cierre: INV-016, INV-017, INV-018 e INV-042 (pruebas), INV-072 en la API (UC-01 3a por HTTP) e INV-073 en el adaptador civil (flujos 1a, 2a y 2b de UC-04). core/ sin cambios: git diff --stat de la base de fusion a HEAD sobre core/ vacio. La recarga del informe con pendientes exige core y queda registrada (INV-075, expediente C2.1). INV-006 (subtarea de C2) sigue aceptada sin aval del tutor. Compuerta GC2 en docs/bitacora/2026-09-23-cierre.md.
+Fase C2 del plan de cierre: INV-016, INV-017, INV-018 e INV-042 (pruebas), INV-072 en la API (UC-01 3a por HTTP) e INV-073 en el adaptador civil (flujos 1a, 2a y 2b de UC-04). core/ sin cambios: git diff --stat de la base de fusion a HEAD sobre core/ vacio. La recarga del informe con pendientes exige core y queda registrada (INV-080, derivado de INV-072 en la capa core; expediente C2.1). INV-079 registra un latente de scripts. INV-006 (subtarea de C2) sigue aceptada sin aval del tutor. Compuerta GC2 en docs/bitacora/2026-09-23-cierre.md.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 EOF
@@ -1613,25 +1843,49 @@ El `push` va con el permiso del paso 10. La fusión es con merge commit y la dec
 | Hallazgo | Tarea | Cierre en C2 |
 |---|---|---|
 | INV‑016 (importante) | 1 | completo, con mutación observada en las dos direcciones |
-| INV‑017 (importante) | 2 | completo; deja registrado el latente INV‑074 |
-| INV‑018 (importante) | 3 | completo: una regla, terceros declarados, prueba de cobertura; anclas desplazadas anotadas |
-| INV‑042 (menor promovido) | 4 | completo; recuento idéntico antes y después |
-| INV‑072 (importante; C2 api + C3 ui) | 5 | parte de `api/` completa. Quedan la de C3 (`ui/`) y la recarga del informe, que exige `core/` (INV‑075) |
-| INV‑073 (importante; C2 adapters + C4 docs) | 6 | con la decisión A, parte de C2 completa y documentos para C4; con B, sin código y documentos para C4 |
+| INV‑017 (importante) | 2 | completo: fila exacta de G2, filas exactas de MAPE, RMSE y R2 con oráculo a mano, frase de la limitación; tres mutaciones observadas. Deja registrado el latente INV‑079 |
+| INV‑018 (importante) | 3 | completo: una regla, terceros declarados, importaciones relativas prohibidas, prueba de cobertura que también ve los módulos sueltos; anclas desplazadas anotadas |
+| INV‑042 (menor promovido) | 4 | completo; recuento idéntico antes y después; `dependency_overrides` se limpia en un `finally` |
+| INV‑072 (importante; C2 api + C3 ui) | 5 | parte de `api/` completa, con las ramas `ImportError`, `OSError` y `ValueError` de `_proponedor` probadas y mordidas. Quedan la de C3 (`ui/`) y la recarga del informe, que exige `core/` y se registra como INV‑080, derivado de INV‑072 en la capa `core` |
+| INV‑073 (importante; C2 adapters + C4 docs) | 6 | con la decisión A, parte de C2 completa, con una prueba por rama (origen desconocido, sin relleno, sin tubería, clave repetida en las dos versiones), y documentos para C4; con B, sin código y documentos para C4 |
 | INV‑006 (subtarea de C2) | 7, paso 5 | **sin código**: aceptada con el padre; el aval del tutor no llegó |
 | INV‑038 (subtarea de C2) | 7, paso 5 | sin código: a limitaciones (exige contrato) |
 | INV‑041 | 7, paso 5 | sin código: a limitaciones (autonomía declarada, dictamen R5 de GC0) |
 | Flujos 1a, 2a y 2b de UC‑04 registrados por C1 para C2 | 6 | son INV‑073 |
+| INV‑079 e INV‑080 (nuevos de C2) | 2 y 5; destino en 7, paso 8 | registrados, sin corregir: IDs desde INV‑079 por la decisión del controlador (Global Constraints) |
+
+**Cobertura de la revisión del plan** (`.superpowers/sdd/plan-c2/arq.md`, arquitecto, y `qa.md`, pruebas; los dos «aprueba con correcciones»):
+
+| Hallazgo | Severidad | Dónde se atiende |
+|---|---|---|
+| A1 = I1 (nombre del plan con fecha 2026-09-23) | importante | Tarea 0: Files, paso 3 (enlace en `PLAN_CIERRE.md`) y paso 4 (bitácora) citan `2026-09-24-…` |
+| A2 (`api → ml` ya declarada; INV‑059 es otra cosa) | menor | Review Focus 2 y Tarea 7, paso 7: citan `docs/arquitectura.md:823` (y `:645-647`); INV‑059 ya no se cita |
+| A3 (`docs/api.json` cambia la `description` de `POST /presupuestos`) | menor | Review Focus 1 y Tarea 5, paso 4: ninguna clave de `paths` cambia; cambian los esquemas y esa descripción |
+| A4 (el `except` de `_proponedor` frente a `rendimientos.py:156-159`; latencia) | menor | Review Focus 2 corrige la frase; `_proponedor` atrapa también `ValueError` (la opción de propuestas vacías, incluida) y su docstring lo explica; C2‑4 anota la latencia y la descarga dentro de la petición |
+| A5 (R5 solo aparece si el rechazado es el relleno) | menor | Docstring de `recalculo.py`, docstring de `test_2b_una_cantidad_nula_…`, Review Focus 3, Tarea 6 y dictamen C2‑6 |
+| A6 (esperado falso del `grep` de la Tarea 6, paso 5) | menor | Tarea 6, paso 5: el `grep` incluye `core` y el esperado es la sola línea del contrato; sobre `tests adapters` da vacío |
+| A7 (ancla `test_api_escenarios.py:18`) | menor | Tarea 4, Files: `:20` |
+| A8 (expediente C2.1: «puede declarar CUMPLE»; el hallazgo de la recarga se desprende de INV‑072) | menor | Expediente C2.1 con «puede declarar» y su origen; la fila INV‑080 queda en la capa `core`, remite a INV‑072 y al expediente sin repetir la descripción |
+| A9 = M2 (imports relativos invisibles para la guardia) | opcional, incluido | Tarea 3: `_imports_relativos`, rechazo en la regla por adaptador, `test_la_guardia_ve_las_importaciones_relativas` y mordida en el paso 3 |
+| A10 (el escalado proporcional puede diferir en el último dígito) | opcional, incluido | Docstring de `_rebalancear_relleno`, Review Focus 3 y C2‑6 |
+| I2 (rama `OSError` de `_proponedor` sin prueba) | importante | Tarea 5: `test_sin_el_modelo_el_pendiente_queda_sin_propuestas[sin-modelo]` (y `[identificador-invalido]` para A4), con su mordida (`except ImportError:`) en el paso 4 |
+| M1 (la prueba del modelo real afirma el 201; rojo sin caché) | menor | Tarea 5: `assert r.status_code == 201` antes de leer el cuerpo; paso 1 con los dos esperados (`5 failed` o `4 failed, 1 skipped`) |
+| M3 (cobertura de todo `adapters/**/*.py`) | menor | Tarea 3: `test_toda_carpeta_de_adapters_tiene_su_regla` afirma `sueltos` vacío; mordida con `adapters/suelto.py` en el paso 4 |
+| M4 (ramas de INV‑073 sin prueba; `emparejar` nunca en rojo) | menor | Tarea 6: pruebas del origen desconocido, sin relleno, sin tubería (dos) y clave repetida en las dos versiones; el `if tuberia_antes else volumen` se reemplaza por dos ramas probadas; marcas `# origen` y `# ambiguo` para el rojo del paso 2 y dos mordidas nuevas |
+| M5 (filas exactas de las métricas) | opcional, incluido | Tarea 2: las filas exactas de MAPE (2.28 %), RMSE (6.23 USD) y R2 («sin varianza en los reales»), con oráculo a mano y mordida en el paso 3b |
+| M6 (`dependency_overrides.clear()` en `try/finally`) | menor | Tarea 4, paso 1: la fixture `cliente` |
+| M7 (sembrar fuera de `data/`) | menor | Tarea 7, paso 8: la base va a `$env:TEMP` (PowerShell) o `$TEMP` (Git Bash), con la variante `$env:APU_BASE` |
+| Decisión del controlador (colisión de IDs) | — | Global Constraints, Tarea 0 (paso 4), Tareas 2, 5 y 7 y esta tabla: los nuevos son INV‑079 e INV‑080, y los que surjan después, desde INV‑081 |
 
 **Lo que no se pudo planificar en concreto, y por qué:**
 
 - **La migración de los cuatro evaluadores (subtarea de C2 de INV‑006).** Depende del aval del tutor sobre `core.contracts.expresiones` (expediente A.3), que no se ha dado. Por spec §4 queda *aceptada por decisión de arquitectura registrada* con su padre. `adapters/civil/recalculo.py` agrega un consumidor de la copia civil. Si el aval llega, entra en esa migración.
-- **La recarga del informe con pendientes (INV‑075).** Exige `core/budget/` y GC2 prohíbe tocar `core/`. Se documenta con expediente (C2.1) y se deja a Eugenio en GC2. Su corrección no se planifica porque no hay fase que pueda tocar `core/` sin enmendar la spec §5.
-- **La parte de `ui/` de INV‑072.** Es de C3. C3 heredará el mismo límite de INV‑075, porque GU1a también exige `core/` sin cambios.
+- **La recarga del informe con pendientes (INV‑080).** Exige `core/budget/` y GC2 prohíbe tocar `core/`. Se documenta con expediente (C2.1) y se deja a Eugenio en GC2. Su corrección no se planifica porque no hay fase que pueda tocar `core/` sin enmendar la spec §5.
+- **La parte de `ui/` de INV‑072.** Es de C3. C3 heredará el mismo límite de INV‑080, porque GU1a también exige `core/` sin cambios.
 - **La documentación de INV‑073 (ERS §3.2 y plan_pruebas §8).** Es de C4.
 - **Una ruta de API o una pantalla para UC‑04, y una ruta de UC‑03 en la API.** Serían capacidad nueva (spec §2): no se planifican y quedan como trabajo futuro si Eugenio las quisiera.
-- **La corrección de INV‑074.** Es de `scripts/` (C3) y menor: se registra y la decide Eugenio.
-- **Los recuentos exactos tras cada tarea.** No se fijan, salvo `N0 = 735` y que la Tarea 4 no cambia el número. El plan manda leerlos con `--junitxml` y anotarlos.
+- **La corrección de INV‑079.** Es de `scripts/` (C3) y menor: se registra y la decide Eugenio.
+- **Los recuentos exactos tras cada tarea.** No se fijan, salvo `N0 = 735`, que la Tarea 4 no cambia el número y que la Tarea 5 suma cinco. El plan manda leerlos con `--junitxml` y anotarlos.
 - **La compensación de la regla de reparto (capítulo IV antes de C2).** No consta al abrir C2. La redacción no es parte de este plan: se registra en la bitácora (Tarea 0, paso 4; Tarea 7, paso 6 (g)).
 
 ### Critical Files for Implementation
