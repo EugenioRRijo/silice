@@ -55,6 +55,12 @@ def _base_real_intacta():
     yield from vigilar_base(RUTA_BASE_REAL)
 
 
+@pytest.fixture(autouse=True)
+def _sin_caso_del_entorno(monkeypatch):
+    """Una `ARENIA_CASO` exportada en la terminal de quien corre la suite no debe desviar."""
+    monkeypatch.delenv("ARENIA_CASO", raising=False)
+
+
 @pytest.fixture(scope="session")
 def parametros_linea_base():
     return linea_base.PARAMETROS_LINEA_BASE
