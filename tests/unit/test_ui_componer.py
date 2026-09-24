@@ -62,11 +62,11 @@ from tests.fixtures.apu_linea_base import (
     PARAMETROS_LINEA_BASE,
     PRECIO_UNITARIO_ESPERADO,
 )
-from tests.integration.test_composicion_extremo_a_extremo import (
-    _filas_equipos,
-    _filas_mano_obra,
-    _filas_materiales,
-    _texto,
+from tests.fixtures.filas_composicion import (
+    filas_equipos,
+    filas_mano_obra,
+    filas_materiales,
+    texto_tecleado,
 )
 from ui.paginas import componer
 
@@ -117,9 +117,9 @@ def _pantalla(monkeypatch, base: Path, filas: dict[str, list[dict[str, str]]]) -
 def _filas_de_apu(apu) -> dict[str, list[dict[str, str]]]:
     """Las tres tablas de insumos de `apu`, listas para sembrar `st.session_state`."""
     return {
-        "componer_materiales__filas": _filas_materiales(apu),
-        "componer_equipos__filas": _filas_equipos(apu),
-        "componer_mano_obra__filas": _filas_mano_obra(apu),
+        "componer_materiales__filas": filas_materiales(apu),
+        "componer_equipos__filas": filas_equipos(apu),
+        "componer_mano_obra__filas": filas_mano_obra(apu),
     }
 
 
@@ -137,14 +137,16 @@ def _por_rotulo(elementos: ElementList, rotulo: str):
 def _teclear_cabecera(at: AppTest, apu, *, con_rendimiento: bool = True) -> None:
     """Teclea código, descripción y unidad de `apu`, localizando cada campo por su rótulo.
 
-    El rendimiento (`_texto(apu.rendimiento)`) se teclea salvo que `con_rendimiento` sea falso: la
-    prueba 3 necesita dejarlo en blanco a propósito (mitad de RF-33 que la prueba 2 no cubre).
+    El rendimiento (`texto_tecleado(apu.rendimiento)`) se teclea salvo que `con_rendimiento` sea
+    falso: la prueba 3 necesita dejarlo en blanco a propósito (mitad de RF-33 que la prueba 2 no
+    cubre).
     """
     _por_rotulo(at.text_input, "Codigo").set_value(apu.codigo_partida)
     _por_rotulo(at.text_input, "Descripcion").set_value(apu.descripcion)
     _por_rotulo(at.text_input, "Unidad").set_value(apu.unidad)
     if con_rendimiento:
-        _por_rotulo(at.text_input, componer.RENDIMIENTO_ETIQUETA).set_value(_texto(apu.rendimiento))
+        rendimiento = texto_tecleado(apu.rendimiento)
+        _por_rotulo(at.text_input, componer.RENDIMIENTO_ETIQUETA).set_value(rendimiento)
 
 
 @contextmanager
@@ -288,7 +290,8 @@ def test_guardar_dos_veces_edita_la_partida(monkeypatch, tmp_path):
 
     rendimiento_nuevo = Decimal("120")
     assert rendimiento_nuevo != APU_UI.rendimiento
-    _por_rotulo(at.text_input, componer.RENDIMIENTO_ETIQUETA).set_value(_texto(rendimiento_nuevo))
+    campo_rendimiento = _por_rotulo(at.text_input, componer.RENDIMIENTO_ETIQUETA)
+    campo_rendimiento.set_value(texto_tecleado(rendimiento_nuevo))
     at.run()
     assert not at.exception
 

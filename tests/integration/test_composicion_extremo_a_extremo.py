@@ -46,12 +46,18 @@ from core.verification import auditar
 from core.verification.informe import DECIMALES_PRESENTACION
 from scripts.seed_demo import CasoDemo, construir_caso_demo
 from tests.fixtures import apu_linea_base as linea_base
+from tests.fixtures.auditoria import detectadas as _detectadas
 from tests.fixtures.computo_auditado import composiciones_linea_base
+from tests.fixtures.filas_composicion import (
+    filas_equipos,
+    filas_mano_obra,
+    filas_materiales,
+    texto_tecleado,
+)
 from tests.fixtures.presupuesto_auditado import (
     items_con_trazas,
     presupuesto_con_siete_inconsistencias,
 )
-from tests.integration.test_auditoria_7_de_7 import _detectadas
 from ui.composicion import composicion_desde_tablas
 
 #: Tolerancia del total contra `TOTAL_PRESUPUESTO_AUDITADO`: un presupuesto se lee en centavos y
@@ -82,51 +88,6 @@ ENCABEZADO_MODALIDAD = "Modalidad"
 # --------------------------------------------------------------------------------------------
 
 
-def _texto(valor: Decimal) -> str:
-    """El `Decimal` tal como lo teclea una persona: notacion fija, sin exponente.
-
-    `str(Decimal("1E+2"))` da `"1E+2"`, que ninguna pantalla muestra; `f"{...:f}"` fuerza la
-    notacion posicional sin perder ni un digito ni la escala (`Decimal("1.00")` -> `"1.00"`).
-    """
-    return f"{valor:f}"
-
-
-def _filas_materiales(apu: ComposicionAPU) -> list[dict[str, str]]:
-    return [
-        {
-            "descripcion": linea.descripcion,
-            "unidad": linea.unidad,
-            "cantidad": _texto(linea.cantidad),
-            "precio": _texto(linea.precio),
-        }
-        for linea in apu.materiales
-    ]
-
-
-def _filas_equipos(apu: ComposicionAPU) -> list[dict[str, str]]:
-    return [
-        {
-            "descripcion": equipo.descripcion,
-            "cantidad": _texto(equipo.cantidad),
-            "precio": _texto(equipo.precio),
-            "depreciacion": _texto(equipo.depreciacion),
-        }
-        for equipo in apu.equipos
-    ]
-
-
-def _filas_mano_obra(apu: ComposicionAPU) -> list[dict[str, str]]:
-    return [
-        {
-            "descripcion": obrero.descripcion,
-            "cantidad": _texto(obrero.cantidad),
-            "sueldo": _texto(obrero.sueldo),
-            "modalidad": obrero.modalidad.value,
-        }
-        for obrero in apu.mano_obra
-    ]
-
-
 def _tecleado(apu: ComposicionAPU) -> ComposicionAPU:
     """El mismo APU rehecho por el camino de la pantalla, sin tocar `core`.
 
@@ -141,10 +102,10 @@ def _tecleado(apu: ComposicionAPU) -> ComposicionAPU:
         apu.codigo_partida,
         apu.descripcion,
         apu.unidad,
-        _texto(apu.rendimiento),
-        _filas_materiales(apu),
-        _filas_equipos(apu),
-        _filas_mano_obra(apu),
+        texto_tecleado(apu.rendimiento),
+        filas_materiales(apu),
+        filas_equipos(apu),
+        filas_mano_obra(apu),
     )
 
 

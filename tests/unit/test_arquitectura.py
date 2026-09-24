@@ -253,3 +253,19 @@ def test_una_sola_lectura_de_celdas_de_tabla_en_ui():
         if isinstance(nodo, ast.FunctionDef) and nodo.name in {"_celda_de_cantidad", "_texto"}
     )
     assert copias == []
+
+
+def test_ningun_modulo_de_prueba_importa_de_otro_modulo_de_prueba():
+    """INV-052 (A-6): lo compartido entre pruebas vive en `tests/fixtures/`. Un modulo `test_*.py`
+    solo importa de `tests.fixtures` o de `tests.conftest`, nunca de otro modulo de prueba."""
+    permitidos = ("tests.fixtures", "tests.conftest")
+    infractores = sorted(
+        f"{archivo.relative_to(RAIZ).as_posix()}:{nodo.lineno}"
+        for archivo in (RAIZ / "tests").rglob("test_*.py")
+        for nodo in ast.walk(ast.parse(archivo.read_text(encoding="utf-8")))
+        if isinstance(nodo, ast.ImportFrom)
+        and nodo.module
+        and nodo.module.startswith("tests.")
+        and not nodo.module.startswith(permitidos)
+    )
+    assert infractores == []
