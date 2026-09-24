@@ -164,8 +164,7 @@ def test_un_item_sin_partida_queda_pendiente_y_el_informe_lo_declara():
 def test_el_pendiente_se_atribuye_a_su_partida_aunque_comparta_origen_id():
     """El adaptador civil tabular da un mismo `origen_id` (la fila `T-01`) al concreto, al
     encofrado y a la excavación. Sin composición de concreto, el `PENDIENTE` de esa fila debe
-    atribuirse al concreto, no a la partida valorada que comparte el origen. Sin plan: la muestra
-    repite `LB-01-EXC` y `plan_secuencial` no lo admite todavía (INV‑071)."""
+    atribuirse al concreto, no a la partida valorada que comparte el origen."""
     items = AdaptadorCivilTabular(codigos=CODIGOS_CIVIL).extraer(MUESTRA_CIVIL)
     concreto = linea_base.APU_CONCRETO.codigo_partida
     composiciones = composiciones_linea_base()
@@ -177,6 +176,7 @@ def test_el_pendiente_se_atribuye_a_su_partida_aunque_comparta_origen_id():
         linea_base.PARAMETROS_LINEA_BASE,
         codigo=linea_base.CODIGO_PRESUPUESTO,
         fecha=linea_base.FECHA_LINEA_BASE,
+        plan=plan_secuencial,
     )
 
     (declarado,) = resultado.informe.por_regla()[CODIGO_PENDIENTE]
@@ -185,6 +185,33 @@ def test_el_pendiente_se_atribuye_a_su_partida_aunque_comparta_origen_id():
         partida.item.origen_id == pendiente.origen_id for partida in resultado.presupuesto.partidas
     )
     assert resultado.informe.partida_de(declarado) == concreto
+
+
+def test_plan_secuencial_admite_un_codigo_repetido_y_la_curva_cierra():
+    """INV‑071: la muestra civil tabular da `LB-01-EXC` en dos renglones (filas `T-01` y `Z-01`).
+    `plan_secuencial` abre un período por código de partida, en el orden de su primera aparición,
+    y la curva cierra exactamente en el total del presupuesto: ni R2 ni R7 dan ERROR."""
+    items = AdaptadorCivilTabular(codigos=CODIGOS_CIVIL).extraer(MUESTRA_CIVIL)
+    codigos = [item.codigo_partida for item in items]
+    assert len(codigos) > len(set(codigos)), "la muestra ya no repite ningún código"
+
+    resultado = elaborar(
+        items,
+        composiciones_linea_base(),
+        linea_base.PARAMETROS_LINEA_BASE,
+        codigo=linea_base.CODIGO_PRESUPUESTO,
+        fecha=linea_base.FECHA_LINEA_BASE,
+        plan=plan_secuencial,
+    )
+
+    presupuesto = resultado.presupuesto
+    assert resultado.pendientes == ()
+    assert presupuesto.total_curva == presupuesto.total
+    periodos = [codigos_en_etiqueta(punto.periodo) for punto in presupuesto.curva]
+    assert periodos == [(codigo,) for codigo in dict.fromkeys(codigos)]
+    por_regla = resultado.informe.por_regla()
+    for regla in ("R2", "R7"):
+        assert all(h.severidad is not Severidad.ERROR for h in por_regla.get(regla, [])), regla
 
 
 def test_sin_ninguna_partida_valorable_el_informe_se_emite_igual():
