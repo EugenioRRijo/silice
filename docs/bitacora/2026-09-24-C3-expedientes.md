@@ -141,8 +141,19 @@ en `tests/integration/test_actualizacion_precios.py` y `tests/integration/test_p
 - **`descartar_version(session, proyecto_nombre, codigo_presupuesto, fecha)`** en
   `core/budget/actualizacion.py`, exportada en `core.budget`:
   - «Última versión» es el presupuesto de mayor `id` del proyecto, siempre que haya al menos otro
-    anterior. El presupuesto base nunca se descarta (`ValueError`), ni una versión que no sea la
-    última, ni una ya descartada (`ValueError`).
+    anterior. El primer presupuesto del proyecto nunca se descarta (`ValueError`), ni uno que no sea
+    el último, ni uno ya descartado (`ValueError`).
+  - **Límite declarado (ronda de corrección 1 de B3, R‑1).** El esquema no guarda de qué
+    presupuesto salió una versión: `CambioPrecio` vincula dos **listas** de precios y un insumo, e
+    `IncidenciaCambio` un cambio y una **partida**; ninguno referencia un presupuesto. Así que
+    `descartar_version` no distingue una versión revalorada de un segundo presupuesto **elaborado
+    aparte** en el mismo proyecto (por ejemplo con `POST /presupuestos` y otro código), que también
+    es un base: si es el último, se puede descartar. Vincular la lista del presupuesto con un
+    `CambioPrecio` no basta (un presupuesto elaborado aparte con la lista nueva también la tendría)
+    y agregar una columna de linaje sería otro cambio de esquema, fuera de la excepción D1 = A. Por
+    eso no se toca el código: el docstring promete exactamente lo que garantiza, y el único llamador
+    (la página de actualización, pista A) ofrece el botón solo para la versión que acaba de guardar
+    `actualizar_precios` en esa ejecución. Se anota para el dictamen C3‑1.
   - La versión descartada **sigue guardada y cargándose como documento**: la marca no borra nada.
     Los `CambioPrecio` y las `IncidenciaCambio` que la produjeron se conservan (`docs/ERS.md:170`).
   - No confirma la transacción: la confirma el llamador (la página de actualización, en el commit de
@@ -151,7 +162,18 @@ en `tests/integration/test_actualizacion_precios.py` y `tests/integration/test_p
   los documentos derivados (`docs/modelo_datos.md`, `docs/arquitectura.md`), en commits aparte.
 
 **Línea base.** Intacta: `tests/fixtures/apu_linea_base.py` no se edita y el conjunto de la línea
-base sigue en `27 0 0 0`. Ninguna prueba de persistencia previa cambia: el diff de
-`test_persistencia.py` y `test_actualizacion_precios.py` solo agrega líneas.
+base sigue en `27 0 0 0`. Ninguna prueba ni aserción de persistencia previa cambia. El diff de
+`test_actualizacion_precios.py` solo agrega líneas; el de `test_persistencia.py` además modifica
+dos líneas de `import` (`inspect` y `crear_esquema`), porque ruff (I001) exige fusionarlos en las
+existentes (ronda de corrección 1 de B3, R‑2; el criterio de la Tarea 18 lo enmienda el
+controlador).
 
-**Ratificar en GC3:** la tabla aditiva (dictamen C3‑1) y la regla de «última versión».
+**Mordida del historial (ronda de corrección 1 de B3, R‑3).** La mordida 2 del plan
+(`delete(models.CambioPrecio)` antes de la marca) la detiene antes la clave foránea
+`incidencia_cambio.cambio_id` (`IntegrityError` dentro de `descartar_version`), no la aserción del
+historial. La mordida fuerte, que borra primero `IncidenciaCambio` y después `CambioPrecio`, hace
+fallar `test_descartar_la_version_nueva_la_marca_y_conserva_el_historial` **en la aserción**:
+`assert 0 == 2` sobre `_contar(sesion, models.CambioPrecio)` (comprobado y restaurado).
+
+**Ratificar en GC3:** la tabla aditiva (dictamen C3‑1), la regla de «última versión» y su límite
+(un segundo presupuesto elaborado aparte se puede descartar si es el último).
