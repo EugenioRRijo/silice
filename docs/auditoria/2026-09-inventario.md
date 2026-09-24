@@ -213,19 +213,23 @@ Eugenio lo decidió el 2026‑09‑23. La ERS (RF‑20) y el plan de pruebas (§
 ### (d) Conteo por fase y severidad
 
 Cada hallazgo se cuenta en su fase principal (la primera de la columna «Fase destino»); las subtareas
-en otra fase se anotan en (a).
+en otra fase se anotan en (a). Recontado con un script ad hoc sobre la tabla de §3, igual que en la
+Tarea 5 de C0, tras agregar INV‑071 a INV‑073 (nota de §3).
 
 | Fase | Bloqueante | Importante | Menor | Total | Menores promovidos | Menores a limitaciones |
 |---|---|---|---|---|---|---|
-| C1 | 1 | 16 | 4 | 21 | 0 | 4 |
-| C2 | 0 | 3 | 2 | 5 | 1 | 1 |
+| C1 | 1 | 17 | 4 | 22 | 0 | 4 |
+| C2 | 0 | 5 | 2 | 7 | 1 | 1 |
 | C3 | 0 | 8 | 9 | 17 | 7 | 2 |
 | C4 | 0 | 18 | 5 | 23 | 4 | 1 |
 | Red | 0 | 3 | 1 | 4 | 0 | 1 |
-| **Total** | **1** | **48** | **21** | **70** | **12** | **9** |
+| **Total** | **1** | **51** | **21** | **73** | **12** | **9** |
 
-Si se aprueba la propuesta, entran 61 hallazgos (1 bloqueante, 48 importantes y 12 menores
-promovidos) y 9 van al capítulo de limitaciones.
+Con la propuesta de GC0 (§4 (a)-(c), sin variación tras C1) entran 64 hallazgos (1 bloqueante, 51
+importantes y 12 menores promovidos) y 9 van al capítulo de limitaciones. INV‑071 cuenta en C1
+aunque su corrección quede condicionada a la ratificación de Eugenio en GC1 (si no la ratifica, pasa
+a la fase siguiente sin cambiar de conteo hasta entonces); INV‑072 e INV‑073 cuentan en C2, su
+primera fase destino.
 
 La fase C1 agrega INV‑071 a INV‑073 (Tareas 1, 11 y 12 del plan de C1) y cierra los hallazgos de su
 fase según esta columna; INV‑015 conserva la subtarea de C3 (7a).

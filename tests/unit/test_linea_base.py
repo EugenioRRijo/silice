@@ -4,7 +4,7 @@ No prueba el motor de costos (eso es test_costing.py); prueba que los DATOS cont
 el motor y el verificador son los del presupuesto auditado. Permanece verde todo el proyecto.
 """
 
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 
 import pytest
 
@@ -109,12 +109,14 @@ def test_la_depreciacion_del_vehiculo_es_inconsistente_entre_apu():
 
 
 def test_el_total_exacto_redondeado_es_el_del_pdf():
-    """`TOTAL_EXACTO_LINEA_BASE` es el total del motor; a dos decimales, el 1 586,61 auditado."""
-    from core.verification.informe import DECIMALES_PRESENTACION
-    from core.verification.texto import formatear_decimal
+    """`TOTAL_EXACTO_LINEA_BASE` es el total del motor; a dos decimales, el 1 586,61 auditado.
 
-    total = formatear_decimal(lb.TOTAL_EXACTO_LINEA_BASE, DECIMALES_PRESENTACION)
-    assert total == str(lb.TOTAL_PRESUPUESTO_AUDITADO)
+    El redondeo se hace aquí con `Decimal.quantize` en vez de con
+    `core.verification.texto.formatear_decimal`: un oráculo independiente de la función que el
+    resto del sistema usa para presentar, para que un error en esa función no se cubra a sí mismo.
+    """
+    total = lb.TOTAL_EXACTO_LINEA_BASE.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    assert total == lb.TOTAL_PRESUPUESTO_AUDITADO
 
 
 def test_precio_de_insumo_lee_la_transcripcion_del_pdf():

@@ -64,7 +64,11 @@ def test_todo_hallazgo_de_partida_referencia_un_origen_trazable():
     for hallazgo in informe.hallazgos:
         if hallazgo.regla == "R2":
             continue
-        if hallazgo.regla == "R7" and NO_APLICABLE in hallazgo.descripcion:
+        if (
+            hallazgo.regla == "R7"
+            and NO_APLICABLE in hallazgo.descripcion
+            and hallazgo.severidad is Severidad.INFO
+        ):
             continue
         assert hallazgo.origen_ids, hallazgo.descripcion
         assert informe.partida_de(hallazgo) in codigos, hallazgo.descripcion

@@ -39,8 +39,6 @@ from tests.fixtures.actualizacion_uc02 import PRECIOS_NUEVOS as PRECIOS_UC02
 COMPOSICIONES = {apu.codigo_partida: apu for apu in linea_base.APUS_LINEA_BASE}
 CONCRETO = linea_base.APU_CONCRETO.codigo_partida
 
-# Escenario de precios del caso UC‑02: solo cemento y arena suben, solo el concreto los usa.
-
 
 def _items():
     """Un renglón por APU de la línea base, cantidad 1: los deltas por partida son los del PU."""
@@ -82,6 +80,7 @@ def test_escenario_de_parametros_recalcula_cada_partida_contra_el_motor():
     assert escenario.parametros == parametros
 
 
+# Escenario de precios del caso UC‑02: solo cemento y arena suben, solo el concreto los usa.
 def test_escenario_de_precios_sube_solo_las_partidas_afectadas():
     base = _base()
 

@@ -256,7 +256,7 @@ ejecución que no existe es un recurso ausente, no un catálogo incompleto.
 **Corrección, ruta sin contrato.** `elaborar` separa los ítems cuya partida no tiene composición: no
 entran al presupuesto ni al total, van en `ResultadoElaboracion.pendientes` (el tipo es de
 `core/budget/`, no un contrato) y el informe los declara con un `Hallazgo` del contrato vigente, de
-código `PENDIENTE` y severidad ERROR. `Presupuesto` no cambia (`core/contracts/presupuesto.py:41-46`).
+código `PENDIENTE` y severidad ERROR. `Presupuesto` no cambia (`core/contracts/presupuesto.py:42-47`).
 `generar_presupuesto` sigue exigiendo composición: es el paso intermedio (INV‑037, a limitaciones).
 
 **Precondición estricta que se conserva.** `actualizar_precios` (`core/budget/actualizacion.py:140`)
