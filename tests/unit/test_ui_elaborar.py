@@ -306,3 +306,27 @@ def test_las_propuestas_se_calculan_una_vez_por_elaboracion(monkeypatch, base_se
     at.run()  # otro render sin volver a elaborar
     at.run()
     assert llamadas == [1]
+
+
+# --- errores tras «Aplicar» (R-2 y Q-2 de la revision de A4) ---------------------------------
+
+
+def test_si_la_reelaboracion_falla_el_error_queda_visible(monkeypatch, base_sembrada):
+    at = _elaborado(monkeypatch, base_sembrada)
+
+    def _falla(*_args):
+        raise LookupError("no hay lista de precios vigente a esa fecha")
+
+    monkeypatch.setattr("ui.elaboracion.elaborar_desde_catalogo", _falla)
+    at.selectbox(key="elaborar_propuesta_0").set_value("LB-02-TUB")
+    at.button(key="elaborar_aplicar_0").click().run()
+    assert not at.exception, [e.value for e in at.exception]
+    assert any("no hay lista de precios vigente" in e.value for e in at.error), at.error
+
+
+def test_aplicar_sin_items_no_rompe(monkeypatch, base_sembrada):
+    at = _elaborado(monkeypatch, base_sembrada)
+    at.session_state[CLAVE_ITEMS] = None  # lo que deja una extraccion fallida (`_extraer`)
+    at.button(key="elaborar_aplicar_0").click().run()
+    assert not at.exception, [e.value for e in at.exception]
+    assert any("vuelva a elaborar" in e.value for e in at.error), at.error

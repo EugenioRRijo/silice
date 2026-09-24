@@ -269,9 +269,19 @@ def _mostrar_resultado(parametros: dict[str, object]) -> None:
         return
     # D6: el item pendiente pasa a la partida aceptada y se vuelve a elaborar con la lista guardada.
     pendiente, codigo_elegido = eleccion
-    st.session_state[CLAVE_ITEMS] = elaboracion.aceptar_propuesta(
-        st.session_state[CLAVE_ITEMS], pendiente, codigo_elegido
-    )
+    items = st.session_state.get(CLAVE_ITEMS)
+    if not items or pendiente not in items:
+        # El computo cambio (o una extraccion fallo) despues de esta elaboracion: el resultado a la
+        # vista ya no corresponde a los items guardados (revision de A4, Q-2).
+        st.error(
+            "El computo cambio despues de esta elaboracion: extraigalo de nuevo y vuelva a "
+            "elaborar el presupuesto antes de aceptar una propuesta."
+        )
+        return
+    st.session_state[CLAVE_ITEMS] = elaboracion.aceptar_propuesta(items, pendiente, codigo_elegido)
     with st.spinner("Elaborando..."):
         _elaborar(parametros, st.session_state[CLAVE_ITEMS])
-    st.rerun()
+    if st.session_state.get(CLAVE_RESULTADO) is not None:
+        st.rerun()
+    # Si la reelaboracion fallo, `_elaborar` ya pinto su `st.error`: sin `st.rerun()`, que lo
+    # borraria, queda a la vista (revision de A4, R-2).
