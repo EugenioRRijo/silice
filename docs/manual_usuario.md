@@ -92,7 +92,9 @@ No hay más pasos (RNF‑07). Notas:
 
 La interfaz tiene diez pantallas en dos secciones del menú lateral, **Trabajo** e
 **Investigacion** (en modo entrega, solo Trabajo; sección 2). Se abre en **Inicio**. Cada pantalla
-muestra su título y, si implementa un caso de uso, su código como subtítulo; la barra lateral
+muestra su título; las cinco que implementan un caso de uso de la ERS (componer, elaborar,
+actualizar precios, escenarios y similares) muestran además su código como subtítulo. El Inicio y
+el histórico, aunque la tabla los asocie a UC‑12 y UC‑02, no lo muestran. La barra lateral
 muestra el caso abierto y su estado. Todas presentan los montos con dos decimales, pero **ningún
 cálculo interno redondea**: el redondeo es solo de presentación.
 
@@ -127,7 +129,7 @@ Con `ARENIA_CASO=<ruta>` la aplicación abre ese caso sin pasar por el Inicio.
 3. **Los recorridos.** Bajo *Que quiere hacer?* hay tres: *Ver la demostracion auditada*, *Armar
    un presupuesto* y *Actualizar precios*. Al elegir uno, el Inicio lista sus pasos; en cada
    pantalla del recorrido la barra lateral dice en qué paso está, qué hacer y cómo saber que
-   terminó, y al pie aparece el botón **Siguiente: <paso>**.
+   terminó, y al pie aparece el botón **Siguiente: <paso>**, salvo en el último paso.
 
 ### 3.1 Elaborar un presupuesto (UC‑01)
 
@@ -135,8 +137,10 @@ Con `ARENIA_CASO=<ruta>` la aplicación abre ese caso sin pasar por el Inicio.
    muestras listas en `data/samples/` (sección 6).
 2. El adaptador del dominio extrae el **cómputo**: una tabla de cantidades donde cada fila
    declara de dónde salió (`origen_id`) y, si vino de una regla paramétrica, la expresión que la
-   produjo. En el dominio civil, un archivo `.ifc` trae sus códigos de partida en el propio
-   modelo; un CSV pide asociar cada tipo de elemento a una partida del catálogo.
+   produjo. En esta pantalla todos los dominios se cargan en **CSV**; en el civil, el CSV pide
+   asociar cada tipo de elemento a una partida del catálogo. El `.ifc`, que trae sus códigos de
+   partida en el propio modelo, no entra por esta pantalla: entra por la API
+   (`POST /computos/civil`) y se ve en el **Visor 3D del modelo**.
 3. Al presupuestar (**Elaborar presupuesto**), el sistema calcula cada precio unitario con la
    estructura venezolana (prestaciones, bono, administración y utilidad en cascada), arma el total
    y la curva de inversión **y audita el resultado siempre**: el informe aparece sin pedirlo, con
