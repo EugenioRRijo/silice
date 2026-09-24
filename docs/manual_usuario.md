@@ -111,7 +111,8 @@ cálculo interno redondea**: el redondeo es solo de presentación.
 | Investigacion | **Simulador de listas** | apoyo | Generar listas de precios de prueba, deterministas |
 | Investigacion | **Visor 3D del modelo** | apoyo a UC‑01 | Ver el modelo IFC junto a la tabla elemento ↔ partida |
 
-Con `ARENIA_CASO=<ruta>` la aplicación abre ese caso sin pasar por el Inicio.
+Con `ARENIA_CASO=<ruta>` la aplicación fija ese caso sin tener que abrirlo en el Inicio (la
+aplicación sigue arrancando en el Inicio).
 
 ### 3.0 Inicio: el caso abierto y los recorridos guiados (UC‑12)
 
@@ -167,7 +168,9 @@ Con `ARENIA_CASO=<ruta>` la aplicación abre ese caso sin pasar por el Inicio.
    total) y el informe de auditoría de la versión nueva. Si algún insumo cambió de precio, la
    versión nueva ya quedó guardada con el código de la barra lateral; si ninguno cambió, no se
    guarda nada (UC‑02, flujo 3a). Cada cambio queda en el histórico con precio anterior, nuevo,
-   variación y fecha.
+   variación y fecha. Los ítems pendientes del presupuesto base (UC‑01 3a) pasan a la versión
+   nueva como pendientes, aunque la lista nueva traiga su partida, y el informe los vuelve a
+   declarar: valorarlos es UC‑01 (sección 3.1), no UC‑02.
 4. **Descartar la versión (UC‑02, flujo 7a).** Debajo del informe aparece el botón **Descartar
    version**, solo si en esta misma ejecución de la página se acaba de guardar una versión nueva:
    no aparece tras el flujo 3a ni para versiones guardadas antes. El botón **marca** la versión
@@ -216,8 +219,14 @@ escenario y declarar los supuestos — los cuatro parámetros de costo (precarga
 y/o una tabla de precios de ensayo por insumo (lo no mencionado conserva su precio vigente). Cada
 escenario generado se suma a la tabla comparativa: el base en la primera fila y una fila por
 escenario con su total y su variación absoluta y porcentual, descargable en CSV con los valores
-exactos. El detalle por partida de cada escenario se despliega debajo, con los hallazgos de su
-propia auditoría (que se genera siempre).
+exactos. El detalle por partida de cada escenario se despliega debajo, con el número de hallazgos
+de la auditoría del escenario (que se genera siempre) y los insumos variados.
+
+Límites: si el presupuesto base tiene ítems pendientes (UC‑01 3a), la página los lista en un aviso
+al abrirlo. Los escenarios solo recalculan los renglones valorados: esos ítems no suman al total
+del base ni al de ningún escenario, y la leyenda «Hallazgos de la auditoria del escenario: N» no
+los cuenta, porque la auditoría del escenario todavía no declara `PENDIENTE`. Que el informe del
+escenario y la ruta de la API los declaren queda para la fase C4 (INV‑083).
 
 El presupuesto base **nunca** se altera y ningún escenario se guarda: al cambiar de presupuesto
 la comparación se descarta. Para convertir un escenario en presupuesto vigente se usa la
