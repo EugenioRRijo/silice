@@ -76,3 +76,16 @@ def test_el_resumen_redondea_con_la_fuente_unica(nombre: str) -> None:
     texto = modulo.resumen(_resultado_de_dos_con_ciento_veinticinco(), "USD")
     assert "2.13" in texto
     assert "2.12" not in texto
+
+
+@pytest.mark.parametrize("nombre", SEMBRADORES)
+def test_el_resumen_declara_la_auditoria(nombre: str) -> None:
+    # Principio 7 (CLAUDE.md §2): el informe de auditoria acompana siempre al presupuesto, tambien
+    # en el texto que imprime cada sembrador. El oraculo sale del informe, no de `resumen`.
+    resultado = _resultado_de_dos_con_ciento_veinticinco()
+    esperado = (
+        f"Auditoria: {len(resultado.informe.hallazgos)} hallazgo(s), "
+        f"{'CUMPLE' if resultado.informe.cumple else 'NO CUMPLE'}"
+    )
+    texto = importlib.import_module(nombre).resumen(resultado, "USD")
+    assert esperado in [linea.strip() for linea in texto.splitlines()]

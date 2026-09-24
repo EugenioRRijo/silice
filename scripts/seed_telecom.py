@@ -154,7 +154,7 @@ from core.contracts import (  # noqa: E402
 from core.costing import calcular_apu  # noqa: E402
 from core.verification import auditar  # noqa: E402
 from core.verification.directivas import CLAVE_UNIDAD_ORIGINAL  # noqa: E402
-from scripts.seed import monto, motivo_para_no_reiniciar  # noqa: E402
+from scripts.seed import linea_auditoria, monto, motivo_para_no_reiniciar  # noqa: E402
 from tests.fixtures import presupuestos_arenaza as arenaza  # noqa: E402
 from tests.fixtures.presupuestos_arenaza import RenglonPresupuesto  # noqa: E402
 
@@ -620,6 +620,7 @@ def resumen(
             f"  con la mano de obra del PDF ({FRACCION_MANO_OBRA:.0%} del total): "
             f"{monto(total_con_mano_obra)} {moneda}"
         )
+    lineas.append(f"  {linea_auditoria(resultado.informe)}")
     return "\n".join(lineas)
 
 
