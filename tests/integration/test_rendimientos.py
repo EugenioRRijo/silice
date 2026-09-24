@@ -106,6 +106,32 @@ def test_referencia_de_ejecucion_inexistente_se_rechaza(sesion):
         )
 
 
+@pytest.mark.parametrize("referencia", ["", "   "])
+def test_referencia_de_ejecucion_vacia_se_rechaza_por_las_dos_puertas(sesion, referencia):
+    """Una referencia presente pero vacia no apunta a ninguna ejecucion (`registrar_ejecucion`
+    rechaza las vacias): `LookupError` (404 en la API) y nada se registra, como antes de INV-005.
+    Un ESTIMADO no la exige, pero si la trae debe ser valida."""
+    contrato = Rendimiento(
+        codigo_partida=EXCAVACION,
+        valor=Decimal("70"),
+        tipo=TipoRendimiento.ESTIMADO,
+        fecha=FECHA,
+        referencia_ejecucion=referencia,
+    )
+    with pytest.raises(LookupError, match="registre la obra"):
+        Catalogo(sesion).registrar_rendimiento(contrato)
+    with pytest.raises(LookupError, match="registre la obra"):
+        registrar_rendimiento(
+            sesion,
+            EXCAVACION,
+            valor=Decimal("70"),
+            tipo=TipoRendimiento.ESTIMADO,
+            fecha=FECHA,
+            referencia_ejecucion=referencia,
+        )
+    assert len(Catalogo(sesion).rendimientos(EXCAVACION)) == 1  # solo el sembrado
+
+
 def test_valor_no_positivo_se_rechaza(sesion):
     with pytest.raises(ValueError, match="mayor que cero"):
         registrar_rendimiento(
