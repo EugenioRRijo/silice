@@ -5,8 +5,9 @@ pinta; lo que decide vive en `ui/caso.py` y `ui/recorridos.py`. El titulo, el es
 la barra lateral y el boton «Siguiente» los pinta el marco de `ui/app.py`.
 
 El estado vacio ofrece cargar el caso de demostracion con `scripts.seed_demo.main`, siempre sin el
-flag de reinicio, y solo cuando el caso no tiene partidas: no puede sembrar encima de trabajo
-existente ni borrar nada.
+flag de reinicio, y solo cuando el caso no tiene partidas (una base con insumos o listas de
+precios pero sin partidas cuenta como vacia): nunca borra nada, y lo que ya hubiera en la base se
+conserva junto a lo sembrado.
 """
 
 from __future__ import annotations
