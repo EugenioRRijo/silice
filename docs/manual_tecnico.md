@@ -222,7 +222,9 @@ Los cuatro dominios siguen el patrón de la línea base: evidencia de precios fe
 | industrial | referencia MaPreX jul‑2026 como proxy declarado (degradación GM2): `data/precios/maprex_2026-07/referencia_industrial.csv` | `mantenimiento_industrial.py` | `seed_industrial.py` → `data/apu_industrial.db` |
 | sistemas | tabulador CIV al 01/07/2026: `data/precios/maprex_2026-07/referencia_sistemas.csv` (la productividad HH/PF es un supuesto declarado) | `tarifas_sistemas.py` | `seed_sistemas.py` → `data/apu_sistemas.db` |
 
-Los cuatro seeds aceptan `--db <ruta>` y `--reiniciar`. Cada carpeta `data/<dominio>/fuentes/`
+Los cuatro seeds aceptan `--db <ruta>` y `--reiniciar`. Sobre la ruta por defecto, `--reiniciar`
+exige además `--confirmar` (sin él la orden se niega con código 2 y no toca la base); con
+`--db <ruta>` basta `--reiniciar`. Cada carpeta `data/<dominio>/fuentes/`
 trae un `README.md` con origen, vigencia y supuestos de sus precios; las reglas de uso de MaPreX
 (referencia, no ronda vigente; tasa única 633,3644 Bs/USD del 01/07/2026) están en
 `data/precios/maprex_2026-07/README.md`. Una cotización de campo nueva no se edita en ningún
@@ -347,6 +349,7 @@ El proyecto no tiene Alembic: `Base.metadata.create_all` crea las tablas ausente
 las existentes, así que una columna nueva no llega a las bases ya sembradas y la interfaz falla
 con `OperationalError`. Pasó con `modalidad` en la fase P2
 ([bitácora del hallazgo](bitacora/2026-09-20-P2-hallazgo-migraciones.md), con las dos salidas:
-`ALTER TABLE … ADD COLUMN` aditivo o volver a sembrar con `--reiniciar`). **Regla:** toda sesión que
+`ALTER TABLE … ADD COLUMN` aditivo o volver a sembrar con `--reiniciar`, que sobre la ruta por
+defecto exige `--confirmar` y con `--db <ruta>` no). **Regla:** toda sesión que
 añada o cambie una columna de `core/models/entidades.py` declara en su plan, antes de escribir el
 código, qué les pasa a las bases que ya existen en disco.
