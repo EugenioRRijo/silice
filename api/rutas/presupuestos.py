@@ -9,10 +9,12 @@ usa `ui/app.py` y la exportación a Excel: esta capa no inventa su propio redond
 
 from __future__ import annotations
 
+import logging
 import os
 import tempfile
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, HTTPException, status
 from fastapi.responses import FileResponse, PlainTextResponse
@@ -58,7 +60,11 @@ from core.verification import auditar
 from core.verification.informe import DECIMALES_PRESENTACION, InformeAuditoria
 from core.verification.texto import formatear_decimal
 
+if TYPE_CHECKING:
+    from ml.normalization import PartidaSimilar
+
 router = APIRouter(tags=["presupuestos"])
+_registro = logging.getLogger(__name__)
 
 _CAMPOS_PARAMETROS = ("fcas", "bono_alimentacion", "administracion", "utilidad")
 # Fallas de UC-03 que dejan un ítem pendiente sin propuestas en vez de responder 500 o 422
@@ -86,9 +92,11 @@ def crear_presupuesto(
     catalogo = Catalogo(sesion)
     # UC-01, flujo 3a (INV-072): solo se piden composiciones de las partidas que existen; las
     # demás las deja pendientes `elaborar`, en vez de abortar con el KeyError del catálogo (404).
-    catalogadas = {partida.codigo for partida in catalogo.partidas()}
+    descripciones = {partida.codigo: partida.descripcion for partida in catalogo.partidas()}
     composiciones = catalogo.composiciones(
-        dict.fromkeys(item.codigo_partida for item in items if item.codigo_partida in catalogadas),
+        dict.fromkeys(
+            item.codigo_partida for item in items if item.codigo_partida in descripciones
+        ),
         fecha=peticion.fecha,
     )
     parametros = _parametros_costo(peticion)
@@ -116,7 +124,7 @@ def crear_presupuesto(
         codigo=resultado.presupuesto.codigo,
         total=formatear_decimal(resultado.presupuesto.total, DECIMALES_PRESENTACION),
         hallazgos=len(resultado.informe.hallazgos),
-        pendientes=_pendientes(catalogo, resultado.pendientes),
+        pendientes=_pendientes(descripciones, resultado.pendientes),
     )
 
 
@@ -311,16 +319,18 @@ def _a_item_computo(item: ItemComputoPeticion) -> ItemComputo:
 
 
 def _pendientes(
-    catalogo: Catalogo, pendientes: Sequence[ItemComputo]
+    descripciones: Mapping[str, str], pendientes: Sequence[ItemComputo]
 ) -> list[ItemPendienteRespuesta]:
     """UC-01, flujo 3a: cada ítem sin partida con las partidas más similares del catálogo (UC-03).
 
-    La cantidad viaja exacta (como en `ItemComputoRespuesta`), no redondeada: quien acepta una
-    propuesta vuelve a enviar este mismo ítem con el código elegido.
+    `descripciones` son las partidas del catálogo (código → descripción) que la ruta ya consultó
+    para separar los pendientes: no se vuelven a pedir. La cantidad viaja exacta (como en
+    `ItemComputoRespuesta`), no redondeada: quien acepta una propuesta vuelve a enviar este mismo
+    ítem con el código elegido.
     """
     if not pendientes:
         return []
-    proponer = _proponedor(catalogo)
+    proponer = _proponedor(descripciones)
     return [
         ItemPendienteRespuesta(
             codigo_partida=item.codigo_partida,
@@ -339,7 +349,7 @@ def _pendientes(
     ]
 
 
-def _proponedor(catalogo: Catalogo) -> Callable[[str], Sequence]:
+def _proponedor(descripciones: Mapping[str, str]) -> Callable[[str], Sequence[PartidaSimilar]]:
     """`similares` del normalizador de UC-03 sobre el catálogo, o una propuesta vacía.
 
     La propuesta es una ayuda, no una condición: sin el extra `ml`, o sin el modelo de similitud en
@@ -349,23 +359,33 @@ def _proponedor(catalogo: Catalogo) -> Callable[[str], Sequence]:
     `ValueError` (`HFValidationError` de Hugging Face es su subclase), que de otro modo llegarían
     como 500 o 422 después de guardar el presupuesto, y `RuntimeError` (un archivo de pesos
     corrupto hace fallar `torch.load`). Las mismas fallas se atrapan en la construcción del
-    normalizador y en cada llamada a `similares`: la que falla deja sin propuestas solo a su ítem.
-    Solo se construye si hay pendientes: cargar el modelo cuesta segundos dentro de la petición, y
-    la primera vez puede descargarlo.
+    normalizador y en cada llamada a `similares`: la que falla deja sin propuestas solo a su ítem,
+    y se registra con `logging.warning` y su tipo, para que un fallo del modelo no pase por un
+    simple «sin propuestas». Solo se construye si hay pendientes: cargar el modelo cuesta segundos
+    dentro de la petición, y la primera vez puede descargarlo.
     """
     try:
         from ml.normalization import NormalizadorPartidas
 
-        normalizador = NormalizadorPartidas(
-            {partida.codigo: partida.descripcion for partida in catalogo.partidas()}
+        normalizador = NormalizadorPartidas(dict(descripciones))
+    except _FALLAS_DE_LA_PROPUESTA as error:
+        _registro.warning(
+            "UC-03 sin propuestas: el normalizador no se pudo construir (%s: %s)",
+            type(error).__name__,
+            error,
         )
-    except _FALLAS_DE_LA_PROPUESTA:
         return lambda _descripcion: []
 
-    def proponer(descripcion: str) -> Sequence:
+    def proponer(descripcion: str) -> Sequence[PartidaSimilar]:
         try:
             return normalizador.similares(descripcion)
-        except _FALLAS_DE_LA_PROPUESTA:
+        except _FALLAS_DE_LA_PROPUESTA as error:
+            _registro.warning(
+                "UC-03 sin propuestas para %r: similares fallo (%s: %s)",
+                descripcion,
+                type(error).__name__,
+                error,
+            )
             return []
 
     return proponer

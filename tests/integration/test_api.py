@@ -364,12 +364,22 @@ def test_un_item_sin_partida_queda_pendiente_por_http(cliente, sesion, items_pay
     monkeypatch.setitem(
         sys.modules, "ml.normalization", SimpleNamespace(NormalizadorPartidas=_NormalizadorDoble)
     )
+    from core.catalog import Catalogo
+
+    consultas = []
+    partidas = Catalogo.partidas
+
+    def _partidas_contadas(self, *args, **kwargs):
+        consultas.append(args)
+        return partidas(self, *args, **kwargs)
 
     base = cliente.post("/presupuestos", json=_cuerpo("API-BASE", items_payload))
+    monkeypatch.setattr(Catalogo, "partidas", _partidas_contadas)
     r = cliente.post(
         "/presupuestos",
         json=_cuerpo("API-3A", [*items_payload, _item_sin_partida("Excavacion de un foso nuevo")]),
     )
+    monkeypatch.undo()
 
     assert r.status_code == 201
     cuerpo = r.json()
@@ -383,6 +393,7 @@ def test_un_item_sin_partida_queda_pendiente_por_http(cliente, sesion, items_pay
         {"codigo": "LB-01-EXC", "descripcion": "Excavacion", "puntaje": 0.91}
     ]
     assert set(linea_base.CODIGOS_LINEA_BASE) <= set(recibidas)  # propone sobre el catalogo
+    assert len(consultas) == 1  # la propuesta reusa las partidas ya consultadas (GC2, A3)
     # Postcondicion de UC-01: el informe persistido lleva la declaracion del pendiente.
     guardado = sesion.scalars(
         select(models.Presupuesto).where(models.Presupuesto.codigo == "API-3A")
@@ -413,7 +424,7 @@ def test_sin_el_extra_ml_el_pendiente_queda_sin_propuestas(cliente, items_payloa
     ids=["sin-modelo", "identificador-invalido", "pesos-corruptos"],
 )
 def test_sin_el_modelo_el_pendiente_queda_sin_propuestas(
-    cliente, items_payload, monkeypatch, error
+    cliente, items_payload, monkeypatch, caplog, error
 ):
     """INV-072: el extra `ml` esta, pero el modelo no se puede cargar. Sin cache y sin red,
     sentence-transformers lanza `OSError`; un identificador que Hugging Face rechaza lanza
@@ -431,17 +442,21 @@ def test_sin_el_modelo_el_pendiente_queda_sin_propuestas(
         SimpleNamespace(NormalizadorPartidas=_NormalizadorSinModelo),
     )
 
-    r = cliente.post(
-        "/presupuestos",
-        json=_cuerpo(
-            f"API-3A-{type(error).__name__}", [*items_payload, _item_sin_partida("Foso nuevo")]
-        ),
-    )
+    with caplog.at_level("WARNING", logger="api.rutas.presupuestos"):
+        r = cliente.post(
+            "/presupuestos",
+            json=_cuerpo(
+                f"API-3A-{type(error).__name__}", [*items_payload, _item_sin_partida("Foso nuevo")]
+            ),
+        )
 
     assert r.status_code == 201
     (pendiente,) = r.json()["pendientes"]
     assert pendiente["codigo_partida"] == CODIGO_SIN_PARTIDA
     assert pendiente["propuestas"] == []
+    # Observabilidad (GC2): la falla no se traga en silencio; el aviso nombra su tipo.
+    (aviso,) = [a for a in caplog.records if a.name == "api.rutas.presupuestos"]
+    assert aviso.levelname == "WARNING" and type(error).__name__ in aviso.getMessage()
 
 
 def test_la_propuesta_real_reconoce_la_partida_de_la_misma_descripcion(
@@ -485,7 +500,7 @@ def test_la_propuesta_real_reconoce_la_partida_de_la_misma_descripcion(
     ids=["import", "os", "valor", "ejecucion"],
 )
 def test_si_similares_falla_el_pendiente_queda_sin_propuestas(
-    cliente, items_payload, monkeypatch, error
+    cliente, items_payload, monkeypatch, caplog, error
 ):
     """El normalizador se construye, pero `similares` falla al codificar la descripcion: la
     ruta no responde 500 despues de guardar. Ese item queda sin propuestas y sigue pendiente."""
@@ -503,18 +518,21 @@ def test_si_similares_falla_el_pendiente_queda_sin_propuestas(
         SimpleNamespace(NormalizadorPartidas=_NormalizadorQueFallaAlProponer),
     )
 
-    r = cliente.post(
-        "/presupuestos",
-        json=_cuerpo(
-            f"API-3A-SIM-{type(error).__name__}",
-            [*items_payload, _item_sin_partida("Foso nuevo")],
-        ),
-    )
+    with caplog.at_level("WARNING", logger="api.rutas.presupuestos"):
+        r = cliente.post(
+            "/presupuestos",
+            json=_cuerpo(
+                f"API-3A-SIM-{type(error).__name__}",
+                [*items_payload, _item_sin_partida("Foso nuevo")],
+            ),
+        )
 
     assert r.status_code == 201
     (pendiente,) = r.json()["pendientes"]
     assert pendiente["codigo_partida"] == CODIGO_SIN_PARTIDA
     assert pendiente["propuestas"] == []
+    (aviso,) = [a for a in caplog.records if a.name == "api.rutas.presupuestos"]
+    assert aviso.levelname == "WARNING" and type(error).__name__ in aviso.getMessage()
 
 
 def test_si_todos_los_items_quedan_pendientes_el_presupuesto_sale_vacio_y_no_cumple(
