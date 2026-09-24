@@ -7,7 +7,8 @@ lo hace a propósito: ese fixture es la única copia de la línea base en todo e
 Uso:
     uv run python scripts/seed.py                 # crea data/apu.db
     uv run python scripts/seed.py --db /tmp/x.db  # otra ruta
-    uv run python scripts/seed.py --reiniciar     # borra el esquema y lo vuelve a crear
+    uv run python scripts/seed.py --db /tmp/x.db --reiniciar     # reinicia otra base
+    uv run python scripts/seed.py --reiniciar --confirmar       # reinicia la base por defecto
 """
 
 from __future__ import annotations
@@ -15,6 +16,7 @@ from __future__ import annotations
 import argparse
 import sys
 from collections.abc import Sequence
+from decimal import Decimal
 from pathlib import Path
 
 # Ejecutado como `python scripts/seed.py`, sys.path[0] es scripts/, no la raíz del repositorio, y
@@ -29,7 +31,11 @@ from sqlalchemy.orm import Session  # noqa: E402
 
 from core import models  # noqa: E402
 from core.catalog import Catalogo, abrir_sesion, crear_esquema, crear_motor  # noqa: E402
+from core.contracts import Presupuesto  # noqa: E402
 from core.contracts.dominio import Dominio  # noqa: E402
+from core.verification import InformeAuditoria  # noqa: E402
+from core.verification.informe import DECIMALES_PRESENTACION  # noqa: E402
+from core.verification.texto import formatear_decimal  # noqa: E402
 from tests.fixtures import apu_linea_base as linea_base  # noqa: E402
 
 NOMBRE_PROYECTO = "Drenaje de la clínica"
@@ -107,6 +113,89 @@ def sembrar(sesion: Session) -> models.Proyecto:
     return proyecto
 
 
+def motivo_para_no_reiniciar(
+    ruta: str, reiniciar: bool, confirmar: bool, por_defecto: str
+) -> str | None:
+    """Por que no se debe reiniciar `ruta`, o `None` si se puede (INV-050).
+
+    `--reiniciar` borra todas las tablas. Sobre `por_defecto`, la ruta por defecto **del script
+    que llama** (`data/apu.db` para `seed` y `seed_demo`, `data/apu_<dominio>.db` para los
+    sembradores de dominio), exige ademas `--confirmar`; con `--db` hacia otra ruta basta
+    `--reiniciar`. Las rutas se comparan resueltas, asi que `--db data/apu.db` explicito o
+    `--db ./data/../data/apu.db` tambien cuentan como la ruta por defecto.
+
+    Bordes declarados: la guarda protege solo la ruta por defecto del propio script, no la de
+    los demas (`seed_industrial --db data/apu.db --reiniciar` no la pide); y en Windows
+    `Path.resolve()` no iguala mayusculas y minusculas, asi que `--db DATA/APU.DB` escapa a la
+    comparacion.
+    """
+    if not reiniciar or confirmar:
+        return None
+    if Path(ruta).resolve() != Path(por_defecto).resolve():
+        return None
+    return (
+        f"--reiniciar borraria todas las tablas de la base por defecto ({por_defecto}). "
+        "Repita la orden con --confirmar si de verdad quiere vaciarla, o use --db <ruta> para "
+        "reiniciar otra base."
+    )
+
+
+def agregar_opciones_de_reinicio(analizador: argparse.ArgumentParser) -> None:
+    """Declara `--reiniciar` y `--confirmar`, las mismas en los cinco sembradores (INV-050)."""
+    analizador.add_argument(
+        "--reiniciar", action="store_true", help="borra el esquema antes de crearlo de nuevo"
+    )
+    analizador.add_argument(
+        "--confirmar",
+        action="store_true",
+        help="necesario para --reiniciar sobre la ruta por defecto (INV-050)",
+    )
+
+
+def negar_reinicio(argumentos: argparse.Namespace, por_defecto: str) -> int | None:
+    """Si el reinicio pedido no procede, escribe el motivo en `stderr` y devuelve el codigo de
+    salida 2; si procede, `None`. `argumentos` trae `db`, `reiniciar` y `confirmar`."""
+    motivo = motivo_para_no_reiniciar(
+        argumentos.db, argumentos.reiniciar, argumentos.confirmar, por_defecto
+    )
+    if motivo is None:
+        return None
+    print(motivo, file=sys.stderr)
+    return 2
+
+
+# ---------------------------------------------------------------------------------------------
+# Resumen impreso de los sembradores (INV-049): una sola forma de redondear y de listar
+# ---------------------------------------------------------------------------------------------
+
+
+def monto(valor: Decimal) -> str:
+    """Un monto como texto, con la fuente unica de presentacion (`formatear_decimal` con
+    `DECIMALES_PRESENTACION`, `ROUND_HALF_UP`), no con `:.2f`, que redondea al par (INV-049)."""
+    return formatear_decimal(valor, DECIMALES_PRESENTACION)
+
+
+def lineas_presupuesto(presupuesto: Presupuesto, moneda: str) -> list[str]:
+    """Encabezado, una linea por partida y el total: lo comun al `resumen` de los sembradores."""
+    lineas = [f"Presupuesto {presupuesto.codigo} ({len(presupuesto.partidas)} partidas):"]
+    lineas += [
+        f"  {partida.item.codigo_partida} [{partida.item.origen_id}] "
+        f"{partida.item.cantidad:f} {partida.item.unidad} x "
+        f"{monto(partida.resultado.precio_unitario)} = {monto(partida.total)} {moneda}"
+        for partida in presupuesto.partidas
+    ]
+    lineas.append(f"  Total: {monto(presupuesto.total)} {moneda}")
+    return lineas
+
+
+def linea_auditoria(informe: InformeAuditoria) -> str:
+    """La linea del informe de auditoria, que todo resumen imprime (principio 7, CLAUDE.md §2)."""
+    return (
+        f"Auditoria: {len(informe.hallazgos)} hallazgo(s), "
+        f"{'CUMPLE' if informe.cumple else 'NO CUMPLE'}"
+    )
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     analizador = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     analizador.add_argument(
@@ -114,10 +203,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         default=RUTA_POR_DEFECTO,
         help=f"ruta del archivo SQLite (por defecto {RUTA_POR_DEFECTO})",
     )
-    analizador.add_argument(
-        "--reiniciar", action="store_true", help="borra el esquema antes de crearlo de nuevo"
-    )
+    agregar_opciones_de_reinicio(analizador)
     argumentos = analizador.parse_args(argv)
+    negado = negar_reinicio(argumentos, RUTA_POR_DEFECTO)
+    if negado is not None:
+        return negado
 
     ruta = Path(argumentos.db)
     motor = crear_motor(f"sqlite:///{ruta.as_posix()}")

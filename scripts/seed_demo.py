@@ -48,7 +48,8 @@ Uso::
 
     uv run python scripts/seed_demo.py                 # crea/actualiza data/apu.db
     uv run python scripts/seed_demo.py --db /tmp/x.db  # otra ruta
-    uv run python scripts/seed_demo.py --reiniciar     # borra el esquema y lo vuelve a crear
+    uv run python scripts/seed_demo.py --db /tmp/x.db --reiniciar  # reinicia otra base
+    uv run python scripts/seed_demo.py --reiniciar --confirmar    # reinicia la base por defecto
 
 Deja sembrados, todo idempotente: los cinco APU ``LB-*`` de la linea base, las tres partidas
 ``DEMO-*``, las dos listas de precios (la de la linea base y la de la demostracion, que hereda
@@ -119,7 +120,7 @@ ORIGEN_LISTA = "scripts/seed_demo.py (precios de ejemplo, no cotizados)"
 CODIGO_PRESUPUESTO = "DEMO-001"
 MONEDA = "USD"
 FECHA_DEMO = date(2026, 9, 20)
-RUTA_POR_DEFECTO = "data/apu.db"
+RUTA_POR_DEFECTO = seed.RUTA_POR_DEFECTO  # fuente unica de la ruta de trabajo (INV-044)
 
 # Parametros de la estructura de costos: los valores por defecto del contrato (CLAUDE.md §4), sin
 # repetirlos aqui (principio DRY).
@@ -458,10 +459,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         default=RUTA_POR_DEFECTO,
         help=f"ruta del archivo SQLite (por defecto {RUTA_POR_DEFECTO})",
     )
-    analizador.add_argument(
-        "--reiniciar", action="store_true", help="borra el esquema antes de crearlo de nuevo"
-    )
+    seed.agregar_opciones_de_reinicio(analizador)
     argumentos = analizador.parse_args(argv)
+    negado = seed.negar_reinicio(argumentos, RUTA_POR_DEFECTO)
+    if negado is not None:
+        return negado
 
     caso = construir_caso_demo()
     ruta = Path(argumentos.db)
@@ -523,25 +525,22 @@ def _imprimir_resumen(
             f"  mano de obra {len(composicion.mano_obra)} ({modalidades})"
         )
 
-    resultado = elaborar_caso_demo(caso)
-    print(
-        f"Presupuesto {resultado.presupuesto.codigo} "
-        f"({len(resultado.presupuesto.partidas)} partidas):"
-    )
-    for partida in resultado.presupuesto.partidas:
-        print(
-            f"  {partida.item.codigo_partida} [{partida.item.origen_id}] "
-            f"{partida.item.cantidad:f} {partida.item.unidad} x "
-            f"{partida.resultado.precio_unitario:.2f} = {partida.total:.2f} {caso.moneda}"
-        )
-    print(f"  Total: {resultado.presupuesto.total:.2f} {caso.moneda}")
-    print("Curva de inversion:")
-    for punto in resultado.presupuesto.curva:
-        print(f"  {punto.periodo}: {punto.monto:.2f} (acumulado {punto.acumulado:.2f})")
-    print(
-        f"Auditoria: {len(resultado.informe.hallazgos)} hallazgo(s), "
-        f"{'CUMPLE' if resultado.informe.cumple else 'NO CUMPLE'}"
-    )
+    print(resumen(elaborar_caso_demo(caso), caso.moneda))
+
+
+def resumen(resultado: ResultadoElaboracion, moneda: str) -> str:
+    """El texto del presupuesto que imprime `main`: partidas, total, curva y auditoria.
+
+    Los montos se redondean con `seed.monto`, la fuente unica de presentacion (INV-049).
+    """
+    lineas = seed.lineas_presupuesto(resultado.presupuesto, moneda)
+    lineas.append("Curva de inversion:")
+    lineas += [
+        f"  {punto.periodo}: {seed.monto(punto.monto)} (acumulado {seed.monto(punto.acumulado)})"
+        for punto in resultado.presupuesto.curva
+    ]
+    lineas.append(seed.linea_auditoria(resultado.informe))
+    return "\n".join(lineas)
 
 
 if __name__ == "__main__":

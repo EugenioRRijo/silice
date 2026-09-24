@@ -9,7 +9,8 @@ Uso::
 
     uv run python scripts/seed_telecom.py                 # crea data/apu_telecom.db
     uv run python scripts/seed_telecom.py --db /tmp/x.db  # otra ruta
-    uv run python scripts/seed_telecom.py --reiniciar     # borra el esquema y lo vuelve a crear
+    uv run python scripts/seed_telecom.py --db /tmp/x.db --reiniciar  # reinicia otra base
+    uv run python scripts/seed_telecom.py --reiniciar --confirmar    # reinicia la base por defecto
 
 Qué se construye y por qué
 ==========================
@@ -131,7 +132,7 @@ from sqlalchemy import select  # noqa: E402
 from sqlalchemy.orm import Session  # noqa: E402
 
 from core import models  # noqa: E402
-from core.budget import generar_presupuesto  # noqa: E402
+from core.budget import ResultadoElaboracion, generar_presupuesto  # noqa: E402
 from core.catalog import (  # noqa: E402
     Catalogo,
     CatalogoIncompleto,
@@ -151,7 +152,14 @@ from core.contracts import (  # noqa: E402
     Presupuesto,
 )
 from core.costing import calcular_apu  # noqa: E402
+from core.verification import auditar  # noqa: E402
 from core.verification.directivas import CLAVE_UNIDAD_ORIGINAL  # noqa: E402
+from scripts.seed import (  # noqa: E402
+    agregar_opciones_de_reinicio,
+    linea_auditoria,
+    monto,
+    negar_reinicio,
+)
 from tests.fixtures import presupuestos_arenaza as arenaza  # noqa: E402
 from tests.fixtures.presupuestos_arenaza import RenglonPresupuesto  # noqa: E402
 
@@ -536,10 +544,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         default=RUTA_POR_DEFECTO,
         help=f"ruta del archivo SQLite (por defecto {RUTA_POR_DEFECTO})",
     )
-    analizador.add_argument(
-        "--reiniciar", action="store_true", help="borra el esquema antes de crearlo de nuevo"
-    )
+    agregar_opciones_de_reinicio(analizador)
     argumentos = analizador.parse_args(argv)
+    negado = negar_reinicio(argumentos, RUTA_POR_DEFECTO)
+    if negado is not None:
+        return negado
 
     ruta = Path(argumentos.db)
     motor = crear_motor(f"sqlite:///{ruta.as_posix()}")
@@ -566,16 +575,48 @@ def _imprimir_resumen(sesion: Session, ruta: Path, proyecto: models.Proyecto) ->
     for numero in sorted(PRESUPUESTOS):
         presupuesto = presupuesto_arenaza(sesion, numero)
         con_mo = presupuesto_arenaza(sesion, numero, con_mano_obra_sintetica=True)
-        impreso = TOTALES[numero]
         print(
-            f"Presupuesto {presupuesto.codigo} ({len(presupuesto.partidas)} partidas): "
-            f"reproducido {presupuesto.total:.2f} {MONEDA} | impreso en el PDF {impreso:.2f} "
-            f"{MONEDA} | diferencia {presupuesto.total - impreso:.2f}"
+            resumen(
+                ResultadoElaboracion(presupuesto, auditar(presupuesto)),
+                MONEDA,
+                impreso=TOTALES[numero],
+                total_con_mano_obra=con_mo.total,
+            )
         )
-        print(
+
+
+def resumen(
+    resultado: ResultadoElaboracion,
+    moneda: str,
+    *,
+    impreso: Decimal | None = None,
+    total_con_mano_obra: Decimal | None = None,
+) -> str:
+    """El texto de un presupuesto ARENAZA que imprime `main`.
+
+    Ademas del total reproducido, el caso telecom imprime dos datos propios, que se pasan con
+    nombre: el total `impreso` en el PDF (con la diferencia) y el `total_con_mano_obra` sintetica
+    de la politica del PDF. Los montos se redondean con `seed.monto`, la fuente unica de
+    presentacion (INV-049).
+    """
+    presupuesto = resultado.presupuesto
+    linea = (
+        f"Presupuesto {presupuesto.codigo} ({len(presupuesto.partidas)} partidas): "
+        f"reproducido {monto(presupuesto.total)} {moneda}"
+    )
+    if impreso is not None:
+        linea += (
+            f" | impreso en el PDF {monto(impreso)} {moneda}"
+            f" | diferencia {monto(presupuesto.total - impreso)}"
+        )
+    lineas = [linea]
+    if total_con_mano_obra is not None:
+        lineas.append(
             f"  con la mano de obra del PDF ({FRACCION_MANO_OBRA:.0%} del total): "
-            f"{con_mo.total:.2f} {MONEDA}"
+            f"{monto(total_con_mano_obra)} {moneda}"
         )
+    lineas.append(f"  {linea_auditoria(resultado.informe)}")
+    return "\n".join(lineas)
 
 
 if __name__ == "__main__":

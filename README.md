@@ -26,8 +26,9 @@ de cada rama que incorpora un dominio— y la vigila `tests/unit/test_arquitectu
 uv sync                                   # crea .venv e instala dependencias base + grupo dev (pytest, ruff)
 uv run pytest                             # suite de pruebas
 uv run ruff check .                       # estilo
-uv run python scripts/seed.py             # carga la línea base en data/apu.db (idempotente; --reiniciar para recrear)
-# ^ si su data/apu.db es anterior a P2, añada la columna `modalidad` con ALTER TABLE o use --reiniciar (docs/bitacora/2026-09-20-P2-hallazgo-migraciones.md)
+uv run python scripts/seed.py             # carga la línea base en data/apu.db (idempotente; recrear: --reiniciar --confirmar)
+# ^ sobre la base por defecto, --reiniciar exige --confirmar; con --db hacia otra ruta basta --reiniciar
+# ^ si su data/apu.db es anterior a P2, añada la columna `modalidad` con ALTER TABLE o use --reiniciar --confirmar (docs/bitacora/2026-09-20-P2-hallazgo-migraciones.md)
 uv run python scripts/meta_alpha.py       # estado de las 12 metas del sprint alpha (OK/FALLA/PENDIENTE)
 uv sync --extra ui                        # instala Streamlit
 uv run python -m streamlit run ui/app.py            # UI mínima: actualización masiva de precios (UC-02) e informe de auditoría
