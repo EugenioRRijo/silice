@@ -17,7 +17,6 @@ encadena en cascada sobre todos los renglones por igual.
 from __future__ import annotations
 
 import pytest
-from fastapi.testclient import TestClient
 
 from scripts.seed import NOMBRE_PROYECTO
 from tests.fixtures import apu_linea_base as linea_base
@@ -27,34 +26,8 @@ RUTA_ESCENARIOS = "/presupuestos/001/escenarios"
 
 
 @pytest.fixture
-def cliente(sesion):
-    from api.dependencias import sesion_api
-    from api.main import app
-
-    app.dependency_overrides[sesion_api] = lambda: sesion
-    with TestClient(app) as cliente:
-        yield cliente
-    app.dependency_overrides.clear()
-
-
-@pytest.fixture
-def presupuesto_001(cliente):
+def presupuesto_001(cliente, items_payload):
     """El presupuesto de la línea base guardado vía API (mismo cómputo que test_api)."""
-    items = [
-        {
-            "codigo_partida": item.codigo_partida,
-            "descripcion": item.descripcion,
-            "unidad": item.unidad,
-            "cantidad": str(item.cantidad),
-            "origen_id": item.origen_id,
-            "origen_tipo": item.origen_tipo.value,
-            "dominio": item.dominio.value,
-            "regla": item.regla,
-            "parametros": {clave: str(valor) for clave, valor in item.parametros.items()},
-            "especificaciones": dict(item.especificaciones),
-        }
-        for item in items_auditados()
-    ]
     respuesta = cliente.post(
         "/presupuestos",
         json={
@@ -62,7 +35,7 @@ def presupuesto_001(cliente):
             "fecha": linea_base.FECHA_LINEA_BASE.isoformat(),
             "moneda": linea_base.MONEDA,
             "proyecto": NOMBRE_PROYECTO,
-            "items": items,
+            "items": items_payload,
         },
     )
     assert respuesta.status_code == 201

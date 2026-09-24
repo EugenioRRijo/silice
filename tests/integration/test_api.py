@@ -5,26 +5,12 @@ from __future__ import annotations
 from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
 
-import pytest
-from fastapi.testclient import TestClient
-
 from tests.fixtures import apu_linea_base as linea_base
 from tests.fixtures.actualizacion_uc02 import INCREMENTO_TOTAL
 from tests.fixtures.computo_civil import CODIGOS as CODIGOS_CIVIL
 
 RAIZ = Path(__file__).resolve().parents[2]
 MUESTRA_PRECIOS = RAIZ / "data" / "samples" / "precios" / "lista_2026-06-01.csv"
-
-
-@pytest.fixture
-def cliente(sesion):
-    from api.dependencias import sesion_api
-    from api.main import app
-
-    app.dependency_overrides[sesion_api] = lambda: sesion
-    with TestClient(app) as cliente:
-        yield cliente
-    app.dependency_overrides.clear()
 
 
 def test_salud(cliente):
@@ -57,26 +43,6 @@ def test_cargar_lista_de_precios_reporta_desconocidos_vacios(cliente):
     assert cliente.get("/listas-precios").status_code == 200
 
 
-def _items_payload():
-    from tests.fixtures.computo_auditado import items_auditados
-
-    return [
-        {
-            "codigo_partida": i.codigo_partida,
-            "descripcion": i.descripcion,
-            "unidad": i.unidad,
-            "cantidad": str(i.cantidad),
-            "origen_id": i.origen_id,
-            "origen_tipo": i.origen_tipo.value,
-            "dominio": i.dominio.value,
-            "regla": i.regla,
-            "parametros": {k: str(v) for k, v in i.parametros.items()},
-            "especificaciones": dict(i.especificaciones),
-        }
-        for i in items_auditados()
-    ]
-
-
 def test_computo_civil_desde_la_muestra(cliente):
     ruta = RAIZ / "data" / "samples" / "civil" / "tanquillas_y_zanja.csv"
     import json
@@ -91,7 +57,7 @@ def test_computo_civil_desde_la_muestra(cliente):
     assert all(i["origen_id"] for i in r.json())
 
 
-def test_elaborar_presupuesto_por_http_reproduce_el_total_auditado(cliente):
+def test_elaborar_presupuesto_por_http_reproduce_el_total_auditado(cliente, items_payload):
     r = cliente.post(
         "/presupuestos",
         json={
@@ -99,7 +65,7 @@ def test_elaborar_presupuesto_por_http_reproduce_el_total_auditado(cliente):
             "fecha": "2026-04-28",
             "moneda": "USD",
             "proyecto": "Drenaje de la clínica",
-            "items": _items_payload(),
+            "items": items_payload,
         },
     )
     assert r.status_code == 201
@@ -112,7 +78,7 @@ def test_elaborar_presupuesto_por_http_reproduce_el_total_auditado(cliente):
     assert cliente.get("/presupuestos/API-001/excel").content[:2] == b"PK"
 
 
-def test_actualizacion_por_http_solo_revalora_el_concreto(cliente):
+def test_actualizacion_por_http_solo_revalora_el_concreto(cliente, items_payload):
     cliente.post(
         "/presupuestos",
         json={
@@ -120,7 +86,7 @@ def test_actualizacion_por_http_solo_revalora_el_concreto(cliente):
             "fecha": "2026-04-28",
             "moneda": "USD",
             "proyecto": "Drenaje de la clínica",
-            "items": _items_payload(),
+            "items": items_payload,
         },
     )
     with MUESTRA_PRECIOS.open("rb") as f:
@@ -141,7 +107,7 @@ def test_actualizacion_por_http_solo_revalora_el_concreto(cliente):
     assert sum(1 for f in cuerpo["filas"] if f["variacion_pct"] not in ("0", "0.00")) == 1
 
 
-def test_cambios_precio_por_http_con_filtro_de_insumo(cliente):
+def test_cambios_precio_por_http_con_filtro_de_insumo(cliente, items_payload):
     """GET /cambios-precio (sin prueba propia hasta esta sesion): tras una actualizacion, el
     historial responde con montos como texto exacto y respeta el filtro `insumo`. La ruta
     delega en `core.catalog.cambios_precio`, la unica consulta del historial.
@@ -153,7 +119,7 @@ def test_cambios_precio_por_http_con_filtro_de_insumo(cliente):
             "fecha": "2026-04-28",
             "moneda": "USD",
             "proyecto": "Drenaje de la clínica",
-            "items": _items_payload(),
+            "items": items_payload,
         },
     )
     with MUESTRA_PRECIOS.open("rb") as f:
@@ -176,12 +142,12 @@ def test_cambios_precio_por_http_con_filtro_de_insumo(cliente):
     assert {c["insumo"] for c in todos} == {"Cemento Portland", "Arena lavada"}
 
 
-def test_cantidad_decimal_malformada_responde_422_no_500(cliente):
+def test_cantidad_decimal_malformada_responde_422_no_500(cliente, items_payload):
     """`Decimal("12,50")` lanza `InvalidOperation` (que NO hereda de `ValueError`): sin manejo en
     la frontera seria un 500 crudo (hallazgo menor diferido de la bitacora F.1). La API debe
     responder 422 con el campo y el texto rechazado en el detalle.
     """
-    items = _items_payload()
+    items = items_payload
     items[0]["cantidad"] = "12,50"  # coma decimal: malformado para Decimal
     r = cliente.post(
         "/presupuestos",
@@ -197,7 +163,7 @@ def test_cantidad_decimal_malformada_responde_422_no_500(cliente):
     assert "12,50" in r.json()["detalle"]
 
 
-def test_parametro_decimal_no_finito_responde_422(cliente):
+def test_parametro_decimal_no_finito_responde_422(cliente, items_payload):
     """`Decimal("NaN")` SI parsea, pero no es un monto: debe rechazarse en la frontera, no
     propagarse hasta que una comparacion del nucleo lance `InvalidOperation` (500 crudo).
     """
@@ -209,14 +175,16 @@ def test_parametro_decimal_no_finito_responde_422(cliente):
             "moneda": "USD",
             "proyecto": "Drenaje de la clínica",
             "fcas": "NaN",
-            "items": _items_payload(),
+            "items": items_payload,
         },
     )
     assert r.status_code == 422
     assert "fcas" in r.json()["detalle"]
 
 
-def test_codigo_de_presupuesto_repetido_en_dos_proyectos_no_revienta_en_500(cliente, sesion):
+def test_codigo_de_presupuesto_repetido_en_dos_proyectos_no_revienta_en_500(
+    cliente, sesion, items_payload
+):
     """`codigo` solo es unico por proyecto (`UniqueConstraint(proyecto_id, codigo)`): si dos
     proyectos comparten codigo, las rutas que resuelven `{codigo}` deben responder 409 con
     detalle claro (nunca `MultipleResultsFound` sin manejar) y desambiguar con `?proyecto=`
@@ -228,7 +196,7 @@ def test_codigo_de_presupuesto_repetido_en_dos_proyectos_no_revienta_en_500(clie
         "codigo": "COL-001",
         "fecha": "2026-04-28",
         "moneda": "USD",
-        "items": _items_payload(),
+        "items": items_payload,
     }
     r1 = cliente.post("/presupuestos", json={**payload_base, "proyecto": "Drenaje de la clínica"})
     assert r1.status_code == 201
@@ -263,7 +231,9 @@ def test_codigo_de_presupuesto_repetido_en_dos_proyectos_no_revienta_en_500(clie
     )
 
 
-def test_actualizacion_sin_cambios_de_precio_responde_409_sin_persistir(cliente, sesion):
+def test_actualizacion_sin_cambios_de_precio_responde_409_sin_persistir(
+    cliente, sesion, items_payload
+):
     """UC-02, flujo 3a (rama sin prueba dedicada hasta esta sesion, bitacora F.1): si ningun
     insumo cambio de precio entre la lista del presupuesto y la nueva, no hay nada que
     confirmar: 409 y el `codigo_nuevo` NO queda guardado (la ruta no hace `commit`).
@@ -275,7 +245,7 @@ def test_actualizacion_sin_cambios_de_precio_responde_409_sin_persistir(cliente,
             "fecha": "2026-04-28",
             "moneda": "USD",
             "proyecto": "Drenaje de la clínica",
-            "items": _items_payload(),
+            "items": items_payload,
         },
     )
     with MUESTRA_PRECIOS.open("rb") as f:

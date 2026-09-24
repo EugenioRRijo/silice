@@ -5,7 +5,7 @@ RF-25/26/27 sobre `api/rutas/rendimientos.py`: registrar obras ejecutadas, regis
 historico con su dispersion y su propuesta, y recibir la advertencia de RF-27 **sin que el
 registro se impida**. Montos como texto exacto, como en toda la API (regla 3 de CLAUDE.md).
 
-El fixture `cliente` es el mismo de `tests/integration/test_api.py`: la base en memoria sembrada
+El fixture `cliente` vive en `tests/integration/conftest.py` (INV-042): la base en memoria sembrada
 deja un rendimiento estimado de 80 m3/dia en LB-01-EXC.
 """
 
@@ -13,7 +13,6 @@ from __future__ import annotations
 
 from decimal import Decimal
 
-import pytest
 from fastapi.testclient import TestClient
 
 from tests.fixtures import apu_linea_base as linea_base
@@ -21,17 +20,6 @@ from tests.fixtures import apu_linea_base as linea_base
 EXCAVACION = linea_base.APU_EXCAVACION.codigo_partida
 SEMBRADO = linea_base.APU_EXCAVACION.rendimiento
 RUTA_RENDIMIENTOS = f"/partidas/{EXCAVACION}/rendimientos"
-
-
-@pytest.fixture
-def cliente(sesion):
-    from api.dependencias import sesion_api
-    from api.main import app
-
-    app.dependency_overrides[sesion_api] = lambda: sesion
-    with TestClient(app) as cliente:
-        yield cliente
-    app.dependency_overrides.clear()
 
 
 def _registrar(cliente: TestClient, valor: str, **extra) -> object:
