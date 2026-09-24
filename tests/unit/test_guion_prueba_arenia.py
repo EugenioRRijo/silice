@@ -1,6 +1,6 @@
 """El guion manual no escribe en `data/apu.db` (INV‑065, bloqueante; spec de cierre §4).
 
-Lee `docs/guion_prueba_arenia.md` como texto y comprueba cinco cosas:
+Lee `docs/guion_prueba_arenia.md` como texto y comprueba seis cosas:
 
 - toda orden de siembra lleva `--db` con una base propia **en la misma línea** que la orden: la
   comprobación es línea a línea, así que una orden partida con `--db` en la línea siguiente cuenta
@@ -9,6 +9,8 @@ Lee `docs/guion_prueba_arenia.md` como texto y comprueba cinco cosas:
 - la preparación ejecuta CP‑01…CP‑06 desde una copia desechable del repositorio (`git worktree
   add`/`remove`), que desde U1 queda como segunda barrera: si `ARENIA_CASO` faltara, la aplicación
   abriría `data/apu.db` de la carpeta desde la que corre;
+- la preparación arranca la aplicación con `ARENIA_CASO=data/prueba_arenia.db`, en bash y en
+  PowerShell, y ninguna línea del guion la arranca con `data/apu.db`;
 - la precondición de cada caso CP‑01…CP‑06 abre la base de prueba: desde U1 (fase C3), con el caso
   abierto por `ARENIA_CASO=data/prueba_arenia.db`, que esta prueba acepta igual que la ruta;
 - CP‑07 ya es ejecutable y se mide en la fase Med (GU1b), sobre una base propia y desde la copia
@@ -91,6 +93,16 @@ def test_la_preparacion_usa_una_copia_desechable_del_repositorio():
     assert BORRAR_COPIA_DESECHABLE in preparacion, (
         f"la preparacion debe borrar la copia desechable con `{BORRAR_COPIA_DESECHABLE}`"
     )
+
+
+def test_la_preparacion_abre_el_caso_de_prueba():
+    """§4, paso 3: la aplicacion arranca con el caso de prueba en bash y en PowerShell, y ninguna
+    linea del guion la arranca con la base de trabajo (observacion de la revision de A6)."""
+    preparacion = _seccion(_texto(), "## 4. Entorno y preparación", "## 5.")
+    assert f"{CASO_ABIERTO}={BASE_DE_PRUEBA} " in preparacion
+    assert f'$env:{CASO_ABIERTO} = "{BASE_DE_PRUEBA}"' in preparacion
+    assert f"{CASO_ABIERTO}={BASE_DE_TRABAJO}" not in _texto()
+    assert f'$env:{CASO_ABIERTO} = "{BASE_DE_TRABAJO}"' not in _texto()
 
 
 @pytest.mark.parametrize("caso", ["CP-01", "CP-02", "CP-03", "CP-04", "CP-05", "CP-06"])
