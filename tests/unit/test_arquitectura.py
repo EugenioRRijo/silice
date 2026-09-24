@@ -255,17 +255,47 @@ def test_una_sola_lectura_de_celdas_de_tabla_en_ui():
     assert copias == []
 
 
+def _nombres_importados(archivo: Path) -> list[tuple[int, str]]:
+    """`(linea, modulo)` de cada import del archivo, con los relativos resueltos a nombre absoluto.
+
+    Cubre `import a.b`, `from a.b import c` (registra `a.b` y `a.b.c`, porque `c` puede ser un
+    submodulo) y `from ..b import c` (`level > 0`), resuelto desde el paquete del archivo.
+    """
+    paquete = archivo.relative_to(RAIZ).with_suffix("").parts[:-1]
+    nombres: list[tuple[int, str]] = []
+    for nodo in ast.walk(ast.parse(archivo.read_text(encoding="utf-8"))):
+        if isinstance(nodo, ast.Import):
+            nombres.extend((nodo.lineno, alias.name) for alias in nodo.names)
+        elif isinstance(nodo, ast.ImportFrom):
+            if nodo.level:
+                base = paquete[: len(paquete) - (nodo.level - 1)]
+                modulo = ".".join((*base, *([nodo.module] if nodo.module else [])))
+            else:
+                modulo = nodo.module or ""
+            nombres.append((nodo.lineno, modulo))
+            nombres.extend((nodo.lineno, f"{modulo}.{alias.name}") for alias in nodo.names)
+    return nombres
+
+
 def test_ningun_modulo_de_prueba_importa_de_otro_modulo_de_prueba():
-    """INV-052 (A-6): lo compartido entre pruebas vive en `tests/fixtures/`. Un modulo `test_*.py`
-    solo importa de `tests.fixtures` o de `tests.conftest`, nunca de otro modulo de prueba."""
+    """INV-052 (A-6): lo compartido entre pruebas vive en `tests/fixtures/`. Los modulos de prueba,
+    las fixtures y `tests/conftest.py` solo importan de `tests.fixtures` o de `tests.conftest`,
+    nunca de un modulo de prueba, sea con `from`, con `import` o con un import relativo (M-1 de la
+    revision de A5)."""
     permitidos = ("tests.fixtures", "tests.conftest")
+    archivos = sorted(
+        {
+            *(RAIZ / "tests").rglob("test_*.py"),
+            *(RAIZ / "tests" / "fixtures").rglob("*.py"),
+            RAIZ / "tests" / "conftest.py",
+        }
+    )
     infractores = sorted(
-        f"{archivo.relative_to(RAIZ).as_posix()}:{nodo.lineno}"
-        for archivo in (RAIZ / "tests").rglob("test_*.py")
-        for nodo in ast.walk(ast.parse(archivo.read_text(encoding="utf-8")))
-        if isinstance(nodo, ast.ImportFrom)
-        and nodo.module
-        and nodo.module.startswith("tests.")
-        and not nodo.module.startswith(permitidos)
+        {
+            f"{archivo.relative_to(RAIZ).as_posix()}:{linea}"
+            for archivo in archivos
+            for linea, nombre in _nombres_importados(archivo)
+            if nombre.startswith("tests.") and not nombre.startswith(permitidos)
+        }
     )
     assert infractores == []
