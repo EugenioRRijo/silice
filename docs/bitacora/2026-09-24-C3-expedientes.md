@@ -67,3 +67,26 @@ antes: el parámetro nuevo vale `()` por defecto y la recarga sin pendientes dev
 
 **Ratificar en GC3:** el `ValueError` ante un pendiente no declarado y el límite de los datos
 anteriores al cambio.
+
+## Nota de la Tarea 10b (INV‑081, api): rojo declarado de la reescritura de `test_api.py`
+
+No es una excepción de `core/`: se anota aquí porque el plan (Tarea 10b, QA‑17) pide dejar en el
+expediente la lista real del rojo. Con los dobles ya parchados en `ml.normalization.normalizador` y
+la API todavía con `_proponedor`, corrido sin red (`HF_HUB_OFFLINE=1`,
+`-k "propuestas or pendiente"`):
+
+- **Fallan** (ocho casos): `test_un_item_sin_partida_queda_pendiente_por_http`;
+  `test_sin_el_modelo_el_pendiente_queda_sin_propuestas[sin-modelo]`, `[identificador-invalido]` y
+  `[pesos-corruptos]`; `test_si_similares_falla_el_pendiente_queda_sin_propuestas[import]`, `[os]`,
+  `[valor]` y `[ejecucion]`.
+- **Pasan ya en rojo**, como prevé el plan (no cuentan como rojo; su cambio lo cubre la mordida):
+  `test_sin_el_extra_ml_el_pendiente_queda_sin_propuestas` y
+  `test_si_todos_los_items_quedan_pendientes_el_presupuesto_sale_vacio_y_no_cumple`.
+- Además, las dos pruebas de INV‑080 del paso 2 de la Tarea 11
+  (`test_el_informe_recargado_declara_el_pendiente` y
+  `test_el_excel_recargado_declara_el_pendiente_en_la_auditoria`), que también sustituían
+  `sys.modules["ml.normalization"]` por `None`, pasan a parchar `_cargar_modelo` con `_sin_extra`,
+  para no cargar el modelo real; pasan antes y después del cambio de la API.
+
+Mordida del commit de la API (`_pendientes` con `propuestas=[]` sin llamar a `propuestas_para`):
+fallan el cableado, los siete casos de `caplog` y `test_la_propuesta_real_reconoce_la_partida_de_la_misma_descripcion`.
