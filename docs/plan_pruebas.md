@@ -18,8 +18,8 @@ caso de prueba cita su RF; los enunciados de los RF viven **una sola vez** en
 
 ## 2. Elementos de prueba
 
-Versión probada: la de la corrida de CI registrada en §10, commit `308eca5` (cierre de la fase C3),
-idéntico en contenido a `main` en `ceb6b8e`. Elementos:
+Versión probada: la de la corrida de CI registrada en §10, commit `e7a0569` (compuerta GC4 del
+cierre), fusionado a prueba con `main` en `ceb6b8e`. Elementos:
 
 | Paquete | Contenido | Nivel de prueba |
 |---|---|---|
@@ -131,10 +131,11 @@ demuestran y a su estado. El enunciado y el criterio de aceptación viven en la 
 [ERS.md §3.2](ERS.md#32-requisitos-funcionales), sin estado; el README y la metodología enlazan aquí.
 Cada prueba se cita como `archivo::función` (o `archivo::Clase::función`); `::función` a secas
 pertenece al último archivo nombrado en la misma celda. Todas existen en el commit probado de la
-sección 10 (`uv run pytest --collect-only -q` las lista) y pasan en esa corrida, **salvo una**:
+sección 10 (`uv run pytest --collect-only -q` las lista) y pasan en esa corrida.
 `tests/integration/test_api_escenarios.py::test_los_escenarios_de_un_base_con_pendientes_los_declaran`,
-citada en la fila RF‑30 y en la tabla de UC‑08, entró en la fase C4 (INV‑083), después de `308eca5`;
-la cubre la corrida de la compuerta GC4, con la que se actualizará la sección 10 al cruzarla.
+citada en la fila RF‑30 y en la tabla de UC‑08, entró en la fase C4 (INV‑083), después de `308eca5`,
+y por eso quedaba fuera de la corrida anterior de la sección 10; la de la compuerta GC4, que la
+sustituyó, ya la incluye.
 
 Estados: **verde** (una prueba automatizada lo demuestra y pasa en la corrida de §10); **parcial**
 (una parte del criterio tiene prueba y otra no existe; la celda dice cuál); **no implementado** (el
@@ -417,7 +418,7 @@ la compuerta GC4: C4 es documentación y no los resuelve.
 | RNF‑04 usabilidad | juicio de expertos Likert ≥ 4/5, con el protocolo de C4, en la fase Med de [PLAN_CIERRE.md](../PLAN_CIERRE.md) | pendiente (Med) |
 | RNF‑05 núcleo cerrado | `git diff --stat core/` vacío tras I5 y tras cada adaptador; `test_arquitectura.py` verde | cumple |
 | RNF‑06 cobertura | cobertura de `core/` en la corrida de §10 (meta ≥ 80 %, que la CI exige con `--fail-under=80`) | cumple |
-| RNF‑07 portabilidad | `uv sync --locked --all-extras` sin pasos manuales y la suite completa en verde en Linux y en Windows en la corrida de §10 ([36427904452](https://github.com/EugenioRRijo/tesis-apu-multidominio/actions/runs/36427904452)) | cumple |
+| RNF‑07 portabilidad | `uv sync --locked --all-extras` sin pasos manuales y la suite completa en verde en Linux y en Windows en la corrida de §10 ([36489551508](https://github.com/EugenioRRijo/tesis-apu-multidominio/actions/runs/36489551508)) | cumple |
 | RNF‑08 seguridad | inspección: 0 credenciales versionadas, 0 llamadas de red en operación salvo las dos excepciones que declara la ERS: la descarga inicial del modelo (cacheada) y three.js desde `cdnjs.cloudflare.com` en el Visor 3D (INV‑077) | cumple, con las dos excepciones declaradas |
 | RNF‑09 compatibilidad IFC | G1 con salvedad: exacto contra modelo programático; faltan exports de ≥ 2 modeladores | parcial |
 | RNF‑10 aprendizaje de la interfaz | caso con persona CP‑07 ([guion_prueba_arenia.md](guion_prueba_arenia.md)), dos escenarios con personas distintas, bloque B del anexo A | pendiente (GU1b, fase Med) |
@@ -426,18 +427,18 @@ la compuerta GC4: C4 es documentación y no los resuelve.
 
 **Fuente única de las cifras de la suite y de la cobertura** (INV‑031; la CI es la fuente de verdad
 de las cifras, [metodologia.md §6](metodologia.md#6-gestión-de-configuración)): la corrida
-[36427904452](https://github.com/EugenioRRijo/tesis-apu-multidominio/actions/runs/36427904452)
-del PR #14, sobre el commit `308eca5` (cierre de C3), idéntico en contenido a `main` en `ceb6b8e`.
-La CI prueba la fusión de ese commit con la base del PR (`91b938a` en el registro del trabajo). Los
+[36489551508](https://github.com/EugenioRRijo/tesis-apu-multidominio/actions/runs/36489551508)
+del PR #15, sobre el commit `e7a0569` (compuerta GC4 del cierre). La CI prueba la fusión de ese
+commit con la base del PR, `main` en `ceb6b8e` (`08c26ba` en el registro del trabajo). Los
 demás documentos enlazan esta sección y no copian sus cifras.
 
 ```
 calidad (ruff + guardia del nucleo)  ruff: All checks passed!   guardia del nucleo: OK
-pruebas (ubuntu-latest)   926 passed in 96.75s   Python 3.13.13   verificar omitidas: 0 omitidas
-pruebas (windows-latest)  926 passed in 173.39s  Python 3.13.15   verificar omitidas: 0 omitidas
+pruebas (ubuntu-latest)   945 passed in 102.70s  Python 3.13.13   verificar omitidas: 0 omitidas
+pruebas (windows-latest)  945 passed in 188.20s  Python 3.13.15   verificar omitidas: 0 omitidas
 ```
 
-Distribución de la suite: **926 casos** recogidos, 721 en `tests/unit/` y 205 en
+Distribución de la suite: **945 casos** recogidos, 739 en `tests/unit/` y 206 en
 `tests/integration/`, 0 fallos y 0 omitidos, en las dos plataformas. El reparto por carpeta se lee
 con `uv run pytest --collect-only -q` sobre el mismo commit.
 
@@ -449,9 +450,9 @@ Cobertura, del trabajo `pruebas (ubuntu-latest)` de esa corrida (`coverage.py` c
 |---|---|---|---|
 | `core/` | 1 811 / 1 841 | **98 %** | 98,37 % |
 | `ml/` | 173 / 174 | — | 99,43 % |
-| `api/` | 466 / 492 | — | 94,72 % |
+| `api/` | 471 / 497 | — | 94,77 % |
 | `adapters/` | 474 / 521 | — | 90,98 % |
-| **Total medido** | 2 924 / 3 028 | **97 %** | 96,57 % |
+| **Total medido** | 2 929 / 3 033 | **97 %** | 96,57 % |
 
 La CI publica el porcentaje de `core/` en el paso «Cobertura de core >= 80 % (RNF-06)»
 (`coverage report --include="core/*" --fail-under=80`) y el total en la tabla de la suite; los de
@@ -460,5 +461,7 @@ miden.
 
 Registros anteriores, que esta sección sustituye: 385 casos en F.2 y 392 y 395 tras el cierre de
 UC‑08 (los tres del 2026‑08‑31, locales), 479 en la Sesión M4.1 del sprint multidominio
-(2026‑09‑14, local, con `core/` al 98,10 %) y 926 en esta corrida. La evaluación de
+(2026‑09‑14, local, con `core/` al 98,10 %), 926 en la corrida
+[36427904452](https://github.com/EugenioRRijo/tesis-apu-multidominio/actions/runs/36427904452)
+del cierre de C3 (2026‑09‑28, PR #14, commit `308eca5`) y 945 en esta corrida. La evaluación de
 calidad sobre estos resultados está en [calidad_iso25010.md](calidad_iso25010.md).
