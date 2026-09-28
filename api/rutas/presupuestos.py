@@ -2,7 +2,8 @@
 
 UC-01 (`POST /presupuestos`, a partir de `ItemComputo` ya extraídos, con el plan de trabajo del
 proyectista o, sin él, `plan_secuencial`, paso 6; un ítem sin partida queda pendiente y se lista
-con sus partidas similares, flujo 3a), UC-05 (el informe de auditoría, que se
+con sus partidas similares, flujo 3a; una partida sin rendimiento estimado vigente responde 409
+con el rendimiento que propone el histórico, flujo 3b), UC-05 (el informe de auditoría, que se
 genera siempre), UC-02 (`POST /presupuestos/{codigo}/actualizacion`) y UC-08
 (`POST /presupuestos/{codigo}/escenarios`, que declara los pendientes del base). Los montos se
 presentan siempre con dos decimales (`core.verification.informe.DECIMALES_PRESENTACION`), la misma
@@ -14,10 +15,11 @@ from __future__ import annotations
 import os
 import tempfile
 from collections.abc import Mapping, Sequence
+from datetime import date
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, status
-from fastapi.responses import FileResponse, PlainTextResponse
+from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from starlette.background import BackgroundTask
@@ -41,8 +43,11 @@ from api.esquemas import (
     PresupuestoPeticion,
     PresupuestoResumenRespuesta,
     PropuestaPartidaRespuesta,
+    RendimientoPorDeclararRespuesta,
+    RendimientosPorDeclararRespuesta,
     decimal_desde_texto,
 )
+from api.rutas.rendimientos import propuesta_respuesta
 from core import models
 from core.budget import (
     Comparativo,
@@ -58,8 +63,9 @@ from core.budget import (
     guardar_presupuesto,
     plan_secuencial,
 )
-from core.catalog import Catalogo
+from core.catalog import Catalogo, CatalogoIncompleto, proponer_rendimiento
 from core.contracts import Dominio, ItemComputo, OrigenTipo, ParametrosCosto
+from core.contracts.apu import TipoRendimiento
 from core.contracts.presupuesto import Presupuesto
 from core.verification.informe import DECIMALES_PRESENTACION, InformeAuditoria
 from core.verification.texto import formatear_decimal
@@ -74,12 +80,25 @@ _CAMPOS_PARAMETROS = ("fcas", "bono_alimentacion", "administracion", "utilidad")
     "/presupuestos",
     response_model=PresupuestoCreadoRespuesta,
     status_code=status.HTTP_201_CREATED,
+    responses={
+        status.HTTP_409_CONFLICT: {
+            "model": RendimientosPorDeclararRespuesta,
+            "description": "Falta un dato vigente del catálogo; si es un rendimiento estimado, "
+            "la respuesta propone el del histórico (UC-01, flujo 3b)",
+        }
+    },
 )
 def crear_presupuesto(
     sesion: SesionDep, peticion: PresupuestoPeticion
-) -> PresupuestoCreadoRespuesta:
+) -> PresupuestoCreadoRespuesta | JSONResponse:
     """Elabora el presupuesto (UC-01), lo audita siempre (UC-05) y lo guarda; los ítems sin
-    partida quedan pendientes (flujo 3a)."""
+    partida quedan pendientes (flujo 3a).
+
+    Flujo 3b (INV-088): si una partida no tiene rendimiento estimado vigente a la fecha, responde
+    409 sin guardar nada, con el rendimiento que propone el histórico y su dispersión por partida.
+    El tipo se declara al registrarlo con `POST /partidas/{codigo}/rendimientos`, y el presupuesto
+    se vuelve a enviar: la elaboración usa el rendimiento **estimado** vigente, así que un medido
+    registrado no la desbloquea."""
     proyecto = sesion.scalars(
         select(models.Proyecto).where(models.Proyecto.nombre == peticion.proyecto)
     ).one_or_none()
@@ -91,12 +110,26 @@ def crear_presupuesto(
     # UC-01, flujo 3a (INV-072): solo se piden composiciones de las partidas que existen; las
     # demás las deja pendientes `elaborar`, en vez de abortar con el KeyError del catálogo (404).
     descripciones = {partida.codigo: partida.descripcion for partida in catalogo.partidas()}
-    composiciones = catalogo.composiciones(
-        dict.fromkeys(
-            item.codigo_partida for item in items if item.codigo_partida in descripciones
-        ),
-        fecha=peticion.fecha,
+    codigos = dict.fromkeys(
+        item.codigo_partida for item in items if item.codigo_partida in descripciones
     )
+    try:
+        composiciones = catalogo.composiciones(codigos, fecha=peticion.fecha)
+    except CatalogoIncompleto as error:
+        por_declarar = _rendimientos_por_declarar(sesion, catalogo, codigos, peticion.fecha)
+        if not por_declarar:
+            raise  # falta otra cosa (la lista de precios vigente): el 409 de siempre
+        return JSONResponse(
+            status_code=status.HTTP_409_CONFLICT,
+            content=RendimientosPorDeclararRespuesta(
+                detalle=(
+                    f"{error}: declare el rendimiento propuesto con POST "
+                    "/partidas/{codigo}/rendimientos (tipo 'estimado', fecha no posterior a la "
+                    "del presupuesto) y vuelva a enviar el presupuesto"
+                ),
+                rendimientos_por_declarar=por_declarar,
+            ).model_dump(mode="json"),
+        )
     parametros = _parametros_costo(peticion)
 
     resultado = elaborar(
@@ -391,6 +424,29 @@ def _plan(
             ),
         )
         for periodo in periodos
+    ]
+
+
+def _rendimientos_por_declarar(
+    sesion: Session, catalogo: Catalogo, codigos: Sequence[str], fecha: date
+) -> list[RendimientoPorDeclararRespuesta]:
+    """UC-01, flujo 3b (INV-088): las partidas sin rendimiento estimado vigente a `fecha`, cada una
+    con la propuesta de `proponer_rendimiento` (RF-26).
+
+    Vigente es lo que `Catalogo.composicion` exige para reconstruir un APU: un rendimiento ESTIMADO
+    de fecha no posterior a la del presupuesto; es el mismo criterio de
+    `ui.elaboracion.rendimientos_por_declarar`, que la API no puede importar.
+    """
+    return [
+        RendimientoPorDeclararRespuesta(
+            codigo_partida=codigo,
+            propuesta=propuesta_respuesta(proponer_rendimiento(sesion, codigo)),
+        )
+        for codigo in codigos
+        if not any(
+            rendimiento.tipo is TipoRendimiento.ESTIMADO and rendimiento.fecha <= fecha
+            for rendimiento in catalogo.rendimientos(codigo)
+        )
     ]
 
 

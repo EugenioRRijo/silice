@@ -182,3 +182,109 @@ def test_las_filas_del_plan_se_agrupan_por_periodo_y_una_a_medias_se_rechaza() -
     a_medias = [{"periodo": "Semana 1", "codigo_partida": "LB-01-EXC", "fraccion": ""}]
     with pytest.raises(ComposicionInvalida, match="fila 1"):
         plan_desde_filas(a_medias)
+
+
+# --- INV-088: sin rendimiento vigente, se propone el del historico (UC-01, flujo 3b) ------------
+
+CLAVE_TIPO = "elaborar_tipo_rendimiento_0"
+CLAVE_REGISTRAR = "elaborar_registrar_rendimiento_0"
+
+
+@pytest.fixture
+def base_sin_estimado(base_sembrada: Path) -> Path:
+    """La base sembrada con `LB-02-TUB` sin estimado y dos medidos (`tests/fixtures`)."""
+    from tests.fixtures.sin_rendimiento_vigente import dejar_sin_estimado
+
+    motor = crear_motor(f"sqlite:///{base_sembrada.as_posix()}")
+    try:
+        with abrir_sesion(motor) as sesion:
+            dejar_sin_estimado(sesion)
+            sesion.commit()
+    finally:
+        motor.dispose()
+    return base_sembrada
+
+
+def _estimados_de_la_tuberia(base: Path) -> list[tuple[Decimal, object, str]]:
+    """Los rendimientos ESTIMADOS de `LB-02-TUB` en la base, leidos por el catalogo."""
+    from core.catalog import Catalogo
+    from core.contracts.apu import TipoRendimiento
+    from tests.fixtures.sin_rendimiento_vigente import CODIGO_SIN_ESTIMADO
+
+    motor = crear_motor(f"sqlite:///{base.as_posix()}")
+    try:
+        with abrir_sesion(motor) as sesion:
+            return [
+                (r.valor, r.fecha, r.condiciones)
+                for r in Catalogo(sesion).rendimientos(CODIGO_SIN_ESTIMADO)
+                if r.tipo is TipoRendimiento.ESTIMADO
+            ]
+    finally:
+        motor.dispose()
+
+
+def _sin_rendimiento(monkeypatch, base: Path) -> AppTest:
+    """La pantalla a la fecha de la fixture, tras pulsar «Elaborar presupuesto»."""
+    from tests.fixtures.sin_rendimiento_vigente import FECHA_PRESUPUESTO
+
+    at = _pantalla(monkeypatch, base)
+    _por_rotulo(at.sidebar.date_input, "Fecha").set_value(FECHA_PRESUPUESTO)
+    at.run()
+    _por_rotulo(at.button, ROTULO_ELABORAR).click().run()
+    assert not at.exception, [e.value for e in at.exception]
+    return at
+
+
+def test_sin_rendimiento_vigente_se_propone_el_del_historico_con_su_dispersion(
+    monkeypatch, base_sin_estimado
+):
+    at = _sin_rendimiento(monkeypatch, base_sin_estimado)
+
+    assert at.session_state[CLAVE_RESULTADO] is None  # no hay presupuesto sin ese rendimiento
+    assert "Rendimientos por declarar" in [s.value for s in at.subheader]
+    textos = [m.value for m in at.markdown]
+    # El MEDIDO mas reciente del historico (100, no 90), con su tipo declarado.
+    assert any("LB-02-TUB" in t and "100.00" in t and "medido" in t for t in textos), textos
+    notas = [c.value for c in at.caption]
+    # Dispersion a mano: dos medidos, 90 y 100 -> media 95, rango [90, 100].
+    assert any("2 observaciones" in t and "95.00" in t and "[90.00, 100.00]" in t for t in notas), (
+        notas
+    )
+    assert at.radio(key=CLAVE_TIPO).value is None  # el tipo no se presume: se exige declararlo
+
+
+def test_sin_declarar_el_tipo_no_se_registra_nada(monkeypatch, base_sin_estimado):
+    at = _sin_rendimiento(monkeypatch, base_sin_estimado)
+    at.button(key=CLAVE_REGISTRAR).click().run()
+    assert not at.exception, [e.value for e in at.exception]
+
+    assert any("declare" in e.value.lower() for e in at.error), [e.value for e in at.error]
+    assert _estimados_de_la_tuberia(base_sin_estimado) == []
+
+
+def test_declarado_medido_no_se_usa_tal_cual_y_no_se_registra(monkeypatch, base_sin_estimado):
+    at = _sin_rendimiento(monkeypatch, base_sin_estimado)
+    at.radio(key=CLAVE_TIPO).set_value("medido")
+    at.button(key=CLAVE_REGISTRAR).click().run()
+    assert not at.exception, [e.value for e in at.exception]
+
+    assert any("estimado" in e.value for e in at.error), [e.value for e in at.error]
+    assert _estimados_de_la_tuberia(base_sin_estimado) == []
+    assert at.session_state[CLAVE_RESULTADO] is None
+
+
+def test_declarado_estimado_se_registra_y_se_vuelve_a_elaborar(monkeypatch, base_sin_estimado):
+    from tests.fixtures.sin_rendimiento_vigente import FECHA_PRESUPUESTO
+
+    at = _sin_rendimiento(monkeypatch, base_sin_estimado)
+    at.radio(key=CLAVE_TIPO).set_value("estimado")
+    at.button(key=CLAVE_REGISTRAR).click().run()
+    assert not at.exception, [e.value for e in at.exception]
+    assert not at.error, [e.value for e in at.error]
+
+    ((valor, fecha, condiciones),) = _estimados_de_la_tuberia(base_sin_estimado)
+    assert (valor, fecha) == (Decimal("100"), FECHA_PRESUPUESTO)
+    assert "UC-01 3b" in condiciones  # RF-33: el rendimiento se registra con sus condiciones
+    # Con el 100 propuesto, el APU de la tuberia es el de la linea base: el total tambien.
+    assert at.session_state[CLAVE_RESULTADO].presupuesto.total == TOTAL_EXACTO_LINEA_BASE
+    assert "Rendimientos por declarar" not in [s.value for s in at.subheader]

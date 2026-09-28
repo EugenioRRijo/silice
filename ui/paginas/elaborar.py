@@ -24,6 +24,12 @@ boton (o tras aceptar una propuesta) usa `plan_secuencial`, el valor por defecto
 la tabla «Plan de trabajo»; el proyectista la edita y «Aplicar plan y volver a elaborar» elabora
 con su plan (`ui.elaboracion.plan_desde_filas`). Un plan invalido es un mensaje y deja a la vista
 el presupuesto anterior.
+
+UC-01 3b (INV-088): si una partida no tiene rendimiento estimado vigente a la fecha del
+presupuesto, la elaboracion no se detiene en el mensaje de `CatalogoIncompleto`: el bloque
+«Rendimientos por declarar» propone el rendimiento del historico con su dispersion
+(`ui.elaboracion.rendimientos_por_declarar`), exige declarar su tipo, lo registra
+(`ui.elaboracion.declarar_rendimiento`) y vuelve a elaborar.
 """
 
 from __future__ import annotations
@@ -31,6 +37,7 @@ from __future__ import annotations
 import tempfile
 from collections.abc import Mapping
 from datetime import date
+from decimal import Decimal
 from pathlib import Path
 
 import streamlit as st
@@ -42,8 +49,9 @@ from adapters.industrial.adaptador import AdaptadorIndustrial
 from adapters.sistemas.adaptador import AdaptadorSistemas
 from adapters.telecom.adaptador import AdaptadorTelecom
 from core.budget import plan_secuencial
-from core.catalog import Catalogo, abrir_sesion, crear_esquema, crear_motor
+from core.catalog import Catalogo, CatalogoIncompleto, abrir_sesion, crear_esquema, crear_motor
 from core.contracts import AdaptadorDominio, Dominio, ItemComputo
+from core.contracts.apu import TipoRendimiento
 from core.verification.informe import DECIMALES_PRESENTACION
 from core.verification.texto import formatear_decimal
 from ui import elaboracion
@@ -58,6 +66,8 @@ CLAVE_RESULTADO = "elaborar_resultado"
 CLAVE_PROPUESTAS = "elaborar_propuestas"
 #: El `st.data_editor` del plan de trabajo (UC-01 6); sus filas viven en `f"{CLAVE_PLAN}__filas"`.
 CLAVE_PLAN = "elaborar_plan"
+#: Las partidas sin rendimiento estimado vigente de la ultima elaboracion (UC-01 3b).
+CLAVE_RENDIMIENTOS = "elaborar_rendimientos_por_declarar"
 
 #: Adaptadores sin parametros propios: el dominio y el archivo bastan para construirlos.
 _ADAPTADORES_SIN_CODIGOS: dict[Dominio, type[AdaptadorDominio]] = {
@@ -102,6 +112,7 @@ def render() -> None:
         with st.spinner("Elaborando..."):
             _elaborar(parametros, items)
 
+    _declarar_rendimientos(parametros)
     _mostrar_resultado(parametros)
 
 
@@ -253,14 +264,26 @@ def _elaborar(
         crear_esquema(motor)
         with abrir_sesion(motor) as sesion:
             catalogo = Catalogo(sesion)
-            resultado = elaboracion.elaborar_desde_catalogo(
-                catalogo,
-                items,
-                str(parametros["codigo"]),
-                parametros["fecha"],
-                str(parametros["moneda"]),
-                plan,
-            )
+            try:
+                resultado = elaboracion.elaborar_desde_catalogo(
+                    catalogo,
+                    items,
+                    str(parametros["codigo"]),
+                    parametros["fecha"],
+                    str(parametros["moneda"]),
+                    plan,
+                )
+            except CatalogoIncompleto:
+                por_declarar = elaboracion.rendimientos_por_declarar(
+                    sesion, items, parametros["fecha"]
+                )
+                if not por_declarar:
+                    raise  # falta otra cosa (la lista de precios vigente): el mensaje de siempre
+                # UC-01 3b: el bloque «Rendimientos por declarar» toma el relevo del mensaje.
+                st.session_state[CLAVE_RENDIMIENTOS] = por_declarar
+                st.session_state[CLAVE_RESULTADO] = None
+                st.session_state[CLAVE_PROPUESTAS] = ()
+                return False
             partidas = {partida.codigo: partida.descripcion for partida in catalogo.partidas()}
     except (LookupError, ValueError, ArithmeticError, SQLAlchemyError) as error:
         # `LookupError` (`CatalogoIncompleto`) si no hay lista de precios vigente a esa fecha (un
@@ -276,6 +299,7 @@ def _elaborar(
         motor.dispose()
 
     st.session_state[CLAVE_RESULTADO] = resultado
+    st.session_state[CLAVE_RENDIMIENTOS] = ()
     st.session_state[CLAVE_PROPUESTAS] = elaboracion.propuestas_de_pendientes(
         partidas, resultado.pendientes
     )
@@ -352,3 +376,87 @@ def _plan_de_trabajo(parametros: dict[str, object]) -> None:
     if elaborado:
         st.rerun()  # el presupuesto de arriba se pinto antes de volver a elaborar
     # Si fallo, `_elaborar` ya pinto su `st.error`: sin `st.rerun()`, que lo borraria.
+
+
+# ---------------------------------------------------------------------------------------------
+# UC-01 3b: partidas sin rendimiento vigente (INV-088)
+# ---------------------------------------------------------------------------------------------
+
+
+def _presentar(valor: Decimal) -> str:
+    """Un `Decimal` como lo presenta el sistema: dos decimales, con la fuente unica (INV-045)."""
+    return formatear_decimal(valor, DECIMALES_PRESENTACION)
+
+
+def _declarar_rendimientos(parametros: dict[str, object]) -> None:
+    """El bloque «Rendimientos por declarar»: propuesta, dispersion, tipo declarado y registro."""
+    por_declarar = st.session_state.get(CLAVE_RENDIMIENTOS) or ()
+    if not por_declarar:
+        return
+    st.subheader("Rendimientos por declarar")
+    st.caption(
+        "Estas partidas no tienen rendimiento estimado vigente a la fecha del presupuesto: se "
+        "propone el del historico con su dispersion. Declare si es estimado o medido para "
+        "registrarlo y volver a elaborar."
+    )
+    for indice, entrada in enumerate(por_declarar):
+        codigo = entrada.codigo_partida
+        if entrada.propuesta is None:
+            st.error(
+                f"{codigo}: la partida no tiene ningun rendimiento registrado que proponer; "
+                "declarelo con sus condiciones en «Componer una partida»."
+            )
+            continue
+        rendimiento = entrada.propuesta.rendimiento
+        dispersion = entrada.propuesta.dispersion
+        st.markdown(
+            f"**{codigo}** · rendimiento propuesto {_presentar(rendimiento.valor)} unidades por "
+            f"dia ({rendimiento.tipo.value} del {rendimiento.fecha})"
+        )
+        st.caption(
+            f"Dispersion del historico: {dispersion.observaciones} observaciones "
+            f"({dispersion.medidos} medidas, {dispersion.estimados} estimadas), media "
+            f"{_presentar(dispersion.media)}, rango [{_presentar(dispersion.minimo)}, "
+            f"{_presentar(dispersion.maximo)}]."
+        )
+        tipo = st.radio(
+            f"Tipo declarado del rendimiento de {codigo}",
+            [opcion.value for opcion in TipoRendimiento],
+            index=None,
+            horizontal=True,
+            key=f"elaborar_tipo_rendimiento_{indice}",
+        )
+        if st.button(
+            "Registrar y volver a elaborar", key=f"elaborar_registrar_rendimiento_{indice}"
+        ):
+            _registrar_y_elaborar(parametros, entrada, tipo)
+
+
+def _registrar_y_elaborar(
+    parametros: dict[str, object], entrada: elaboracion.RendimientoPorDeclarar, tipo: str | None
+) -> None:
+    """Registra el rendimiento declarado y vuelve a elaborar; si algo falla, el mensaje queda."""
+    if tipo is None:
+        st.error(f"Declare si el rendimiento de {entrada.codigo_partida} es estimado o medido.")
+        return
+    items = st.session_state.get(CLAVE_ITEMS)
+    if not items:
+        st.error("Extraiga de nuevo el computo antes de registrar el rendimiento.")
+        return
+    ruta = parametros["ruta"]
+    motor = crear_motor(f"sqlite:///{ruta.as_posix()}")
+    try:
+        with abrir_sesion(motor) as sesion:
+            elaboracion.declarar_rendimiento(
+                sesion, entrada, TipoRendimiento(tipo), parametros["fecha"]
+            )
+            sesion.commit()
+    except (LookupError, ValueError, SQLAlchemyError) as error:
+        st.error(str(error))
+        return
+    finally:
+        motor.dispose()
+    with st.spinner("Elaborando..."):
+        elaborado = _elaborar(parametros, items)
+    if elaborado or st.session_state.get(CLAVE_RENDIMIENTOS):
+        st.rerun()  # el presupuesto, o la siguiente partida por declarar

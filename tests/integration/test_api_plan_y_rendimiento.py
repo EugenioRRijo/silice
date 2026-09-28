@@ -109,3 +109,73 @@ def test_una_fraccion_que_no_es_decimal_responde_422(cliente, items_payload):
     r = cliente.post("/presupuestos", json=_cuerpo("API-MAL", items_payload, plan=plan))
     assert r.status_code == 422
     assert "LB-01-EXC" in r.json()["detalle"]
+
+
+# --- INV-088: sin rendimiento vigente, se propone el del historico (UC-01, flujo 3b) ------------
+
+
+def test_sin_rendimiento_vigente_responde_409_con_la_propuesta_y_no_guarda(
+    cliente, sesion, items_payload
+):
+    from tests.fixtures.sin_rendimiento_vigente import FECHA_PRESUPUESTO, dejar_sin_estimado
+
+    dejar_sin_estimado(sesion)
+    sesion.commit()
+    cuerpo = _cuerpo("API-3B", items_payload, fecha=FECHA_PRESUPUESTO.isoformat())
+
+    r = cliente.post("/presupuestos", json=cuerpo)
+
+    assert r.status_code == 409
+    respuesta = r.json()
+    assert "LB-02-TUB" in respuesta["detalle"]
+    (por_declarar,) = respuesta["rendimientos_por_declarar"]
+    assert por_declarar["codigo_partida"] == "LB-02-TUB"
+    propuesta = por_declarar["propuesta"]
+    # El MEDIDO mas reciente del historico (100, no 90), con su tipo declarado.
+    assert (propuesta["rendimiento"]["valor"], propuesta["rendimiento"]["tipo"]) == (
+        "100",
+        "medido",
+    )
+    # Dispersion a mano: dos medidos, 90 y 100 -> media 95, rango [90, 100].
+    assert propuesta["dispersion"] == {
+        "observaciones": 2,
+        "media": "95",
+        "minimo": "90",
+        "maximo": "100",
+        "medidos": 2,
+        "estimados": 0,
+    }
+    assert (
+        sesion.scalars(
+            select(models.Presupuesto).where(models.Presupuesto.codigo == "API-3B")
+        ).one_or_none()
+        is None
+    )
+
+
+def test_declarado_el_estimado_propuesto_la_elaboracion_reproduce_la_linea_base(
+    cliente, sesion, items_payload
+):
+    """El tipo se declara con la ruta de rendimientos que ya existe (RF-25), y se vuelve a
+    enviar: con el 100 propuesto, el APU de la tuberia es el de la linea base."""
+    from tests.fixtures.sin_rendimiento_vigente import FECHA_PRESUPUESTO, dejar_sin_estimado
+
+    dejar_sin_estimado(sesion)
+    sesion.commit()
+    cuerpo = _cuerpo("API-3B", items_payload, fecha=FECHA_PRESUPUESTO.isoformat())
+    propuesta = cliente.post("/presupuestos", json=cuerpo).json()["rendimientos_por_declarar"]
+
+    registro = cliente.post(
+        "/partidas/LB-02-TUB/rendimientos",
+        json={
+            "valor": propuesta[0]["propuesta"]["rendimiento"]["valor"],
+            "tipo": "estimado",
+            "fecha": FECHA_PRESUPUESTO.isoformat(),
+            "condiciones": "propuesto del historico al elaborar (prueba de UC-01 3b)",
+        },
+    )
+    assert registro.status_code == 201
+
+    r = cliente.post("/presupuestos", json=cuerpo)
+    assert r.status_code == 201, r.json()
+    assert r.json()["total"] == str(linea_base.TOTAL_PRESUPUESTO_AUDITADO)

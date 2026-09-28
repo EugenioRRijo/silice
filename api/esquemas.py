@@ -363,6 +363,24 @@ class PropuestaRendimientoRespuesta(BaseModel):
     dispersion: DispersionRespuesta
 
 
+class RendimientoPorDeclararRespuesta(BaseModel):
+    """UC‑01, flujo 3b: una partida sin rendimiento estimado vigente a la fecha del presupuesto,
+    con la propuesta del histórico y su dispersión (RF‑26), o `null` si no tiene ninguno."""
+
+    codigo_partida: str
+    propuesta: PropuestaRendimientoRespuesta | None
+
+
+class RendimientosPorDeclararRespuesta(BaseModel):
+    """El 409 de `POST /presupuestos` cuando falta un rendimiento estimado vigente (UC‑01, 3b):
+    el motivo y, por partida, el rendimiento que se propone. El tipo se declara al registrarlo con
+    `POST /partidas/{codigo}/rendimientos` (RF‑25); luego se vuelve a enviar el presupuesto.
+    Si lo que falta es otra cosa (la lista de precios vigente), el 409 trae solo `detalle`."""
+
+    detalle: str
+    rendimientos_por_declarar: list[RendimientoPorDeclararRespuesta] = Field(default_factory=list)
+
+
 class RendimientosRespuesta(BaseModel):
     """El historico completo de una partida, con dispersion y propuesta (RF-26)."""
 

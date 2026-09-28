@@ -8,7 +8,8 @@ prueba como funcion (`tests/unit/test_elaboracion.py`). Lo vigila
 `tests/unit/test_arquitectura.py::test_ui_respeta_sus_importaciones_prohibidas`.
 
 Es el unico modulo de `ui/` sin pagina que escribe filas en la base (regla A-2 del plan de C3):
-`guardar_composicion` escribe, pero no confirma; el `commit` es de la pagina. Filas, no esquema:
+`guardar_composicion` y `declarar_rendimiento` (UC-01 3b, INV-088) escriben, pero no confirman;
+el `commit` es de la pagina. Filas, no esquema:
 `ui.caso.estado_caso` tambien escribe, pero solo DDL (`crear_esquema`), sin datos.
 """
 
@@ -23,7 +24,9 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from core.budget import ResultadoElaboracion, elaborar, exportar_excel, plan_secuencial
+from core.catalog import Catalogo, PropuestaRendimiento, proponer_rendimiento, registrar_rendimiento
 from core.contracts import ComposicionAPU, Dominio, ItemComputo, ParametrosCosto, ResultadoAPU
+from core.contracts.apu import Rendimiento, TipoRendimiento
 from ui.composicion import (
     ComposicionInvalida,
     decimal_desde_texto,
@@ -36,8 +39,9 @@ from ui.composicion import (
 if TYPE_CHECKING:
     from decimal import Decimal
 
+    from sqlalchemy.orm import Session
+
     from core.budget import GeneradorPlan, PeriodoPlan
-    from core.catalog import Catalogo
     from core.models import Partida
     from ml.normalization import PartidaSimilar
 
@@ -248,3 +252,73 @@ def aceptar_propuesta(
         dataclasses.replace(item, codigo_partida=codigo_elegido) if item == pendiente else item
         for item in items
     ]
+
+
+# --- UC-01 3b: la partida sin rendimiento vigente (INV-088) ------------------------------------
+
+
+@dataclass(frozen=True, slots=True)
+class RendimientoPorDeclarar:
+    """Una partida sin rendimiento estimado vigente y la propuesta del historico (UC-06), o
+    `None` si la partida no tiene ningun rendimiento registrado."""
+
+    codigo_partida: str
+    propuesta: PropuestaRendimiento | None
+
+
+def rendimientos_por_declarar(
+    sesion: Session, items: Sequence[ItemComputo], fecha: date
+) -> tuple[RendimientoPorDeclarar, ...]:
+    """UC-01 3b: las partidas de `items` sin rendimiento estimado vigente a `fecha`, en su orden,
+    cada una con la propuesta de `proponer_rendimiento` (el rendimiento y su dispersion).
+
+    Vigente es lo que `Catalogo.composicion` exige para reconstruir un APU: un rendimiento ESTIMADO
+    de fecha no posterior a la del presupuesto. Los codigos sin partida no cuentan: quedan
+    pendientes (flujo 3a).
+    """
+    catalogo = Catalogo(sesion)
+    existentes = {partida.codigo for partida in catalogo.partidas()}
+    codigos = [
+        codigo
+        for codigo in dict.fromkeys(item.codigo_partida for item in items)
+        if codigo in existentes
+    ]
+    return tuple(
+        RendimientoPorDeclarar(codigo, proponer_rendimiento(sesion, codigo))
+        for codigo in codigos
+        if not any(
+            rendimiento.tipo is TipoRendimiento.ESTIMADO and rendimiento.fecha <= fecha
+            for rendimiento in catalogo.rendimientos(codigo)
+        )
+    )
+
+
+def declarar_rendimiento(
+    sesion: Session, por_declarar: RendimientoPorDeclarar, tipo: TipoRendimiento, fecha: date
+) -> Rendimiento:
+    """UC-01 3b: registra el rendimiento propuesto con el tipo que declaro el proyectista.
+
+    La elaboracion usa solo el rendimiento ESTIMADO vigente (`Catalogo.composicion`): declarado
+    ESTIMADO, se registra a la `fecha` del presupuesto con las condiciones de su procedencia
+    (RF-33). Declarado MEDIDO no se usa tal cual (esa politica es de `core/`, fuera del alcance de
+    C5): `ValueError` y nada se registra. Sin propuesta, tambien `ValueError`. **No confirma**: el
+    `commit` es de la pagina, como en `guardar_composicion`.
+    """
+    propuesta = por_declarar.propuesta
+    codigo = por_declarar.codigo_partida
+    if propuesta is None:
+        raise ValueError(f"la partida {codigo} no tiene historico de rendimientos que proponer")
+    if tipo is not TipoRendimiento.ESTIMADO:
+        raise ValueError(
+            f"la elaboracion usa el rendimiento estimado vigente de {codigo}: un rendimiento "
+            "declarado medido no se usa tal cual; declare el propuesto como estimado para elaborar"
+        )
+    origen = propuesta.rendimiento
+    dispersion = propuesta.dispersion
+    referencia = f", ejecucion {origen.referencia_ejecucion}" if origen.referencia_ejecucion else ""
+    condiciones = (
+        f"propuesto del historico al elaborar (UC-01 3b): {origen.tipo.value} del {origen.fecha}"
+        f"{referencia}; dispersion: {dispersion.observaciones} observaciones, rango "
+        f"[{dispersion.minimo}, {dispersion.maximo}]"
+    )
+    return registrar_rendimiento(sesion, codigo, origen.valor, tipo, fecha, condiciones)
