@@ -18,6 +18,12 @@ pendiente, el informe lo declara y la pantalla propone partidas similares
 acepta una, `ui.elaboracion.aceptar_propuesta` reasigna el item y se vuelve a elaborar. Las dos se
 llaman como atributos del modulo `ui.elaboracion`, para que las pruebas las parchen donde se
 resuelven.
+
+UC-01 6 (INV-087): el proyectista distribuye las partidas en periodos. Cada elaboracion desde el
+boton (o tras aceptar una propuesta) usa `plan_secuencial`, el valor por defecto, y precarga con el
+la tabla «Plan de trabajo»; el proyectista la edita y «Aplicar plan y volver a elaborar» elabora
+con su plan (`ui.elaboracion.plan_desde_filas`). Un plan invalido es un mensaje y deja a la vista
+el presupuesto anterior.
 """
 
 from __future__ import annotations
@@ -35,6 +41,7 @@ from adapters.civil.tabular import AdaptadorCivilTabular
 from adapters.industrial.adaptador import AdaptadorIndustrial
 from adapters.sistemas.adaptador import AdaptadorSistemas
 from adapters.telecom.adaptador import AdaptadorTelecom
+from core.budget import plan_secuencial
 from core.catalog import Catalogo, abrir_sesion, crear_esquema, crear_motor
 from core.contracts import AdaptadorDominio, Dominio, ItemComputo
 from core.verification.informe import DECIMALES_PRESENTACION
@@ -49,6 +56,8 @@ CLAVE_ITEMS = "elaborar_items"
 CLAVE_RESULTADO = "elaborar_resultado"
 #: Las propuestas para los pendientes de la elaboracion guardada en `CLAVE_RESULTADO`.
 CLAVE_PROPUESTAS = "elaborar_propuestas"
+#: El `st.data_editor` del plan de trabajo (UC-01 6); sus filas viven en `f"{CLAVE_PLAN}__filas"`.
+CLAVE_PLAN = "elaborar_plan"
 
 #: Adaptadores sin parametros propios: el dominio y el archivo bastan para construirlos.
 _ADAPTADORES_SIN_CODIGOS: dict[Dominio, type[AdaptadorDominio]] = {
@@ -220,7 +229,24 @@ def _mostrar_items(items: list[ItemComputo] | None) -> None:
 # ---------------------------------------------------------------------------------------------
 
 
-def _elaborar(parametros: dict[str, object], items: list[ItemComputo]) -> None:
+def _elaborar(
+    parametros: dict[str, object],
+    items: list[ItemComputo],
+    filas_plan: list[dict[str, str]] | None = None,
+) -> bool:
+    """Elabora `items` y guarda el resultado; con `filas_plan`, con el plan del proyectista.
+
+    Sin `filas_plan` usa `plan_secuencial` y precarga con el la tabla del plan (INV-087). Si
+    falla, pinta el error y devuelve `False`: con el plan del proyectista el presupuesto anterior
+    sigue a la vista; sin el, se borra.
+    """
+    try:
+        plan = (
+            elaboracion.plan_desde_filas(filas_plan) if filas_plan is not None else plan_secuencial
+        )
+    except ValueError as error:  # `ComposicionInvalida`: una fila del plan a medias
+        st.error(str(error))
+        return False
     ruta = parametros["ruta"]
     motor = crear_motor(f"sqlite:///{ruta.as_posix()}")
     try:
@@ -233,6 +259,7 @@ def _elaborar(parametros: dict[str, object], items: list[ItemComputo]) -> None:
                 str(parametros["codigo"]),
                 parametros["fecha"],
                 str(parametros["moneda"]),
+                plan,
             )
             partidas = {partida.codigo: partida.descripcion for partida in catalogo.partidas()}
     except (LookupError, ValueError, ArithmeticError, SQLAlchemyError) as error:
@@ -240,10 +267,11 @@ def _elaborar(parametros: dict[str, object], items: list[ItemComputo]) -> None:
         # item sin partida ya no lanza: queda pendiente, UC-01 3a); `ValueError` (`PlanInvalido`)
         # del plan de trabajo; `ArithmeticError`/`SQLAlchemyError` por simetría con el mismo
         # criterio de `ui/paginas/actualizacion.py`.
-        st.session_state[CLAVE_RESULTADO] = None
-        st.session_state[CLAVE_PROPUESTAS] = ()
+        if filas_plan is None:
+            st.session_state[CLAVE_RESULTADO] = None
+            st.session_state[CLAVE_PROPUESTAS] = ()
         st.error(str(error))
-        return
+        return False
     finally:
         motor.dispose()
 
@@ -251,6 +279,12 @@ def _elaborar(parametros: dict[str, object], items: list[ItemComputo]) -> None:
     st.session_state[CLAVE_PROPUESTAS] = elaboracion.propuestas_de_pendientes(
         partidas, resultado.pendientes
     )
+    if filas_plan is None:
+        st.session_state[f"{CLAVE_PLAN}__filas"] = elaboracion.filas_desde_plan(
+            plan_secuencial(resultado.presupuesto)
+        )
+        st.session_state.pop(CLAVE_PLAN, None)  # el editor se vuelve a crear con esas filas
+    return True
 
 
 def _mostrar_resultado(parametros: dict[str, object]) -> None:
@@ -265,6 +299,7 @@ def _mostrar_resultado(parametros: dict[str, object]) -> None:
         prefijo="elaborar",
         propuestas=st.session_state.get(CLAVE_PROPUESTAS, ()),
     )
+    _plan_de_trabajo(parametros)
     if eleccion is None:
         return
     # D6: el item pendiente pasa a la partida aceptada y se vuelve a elaborar con la lista guardada.
@@ -280,8 +315,40 @@ def _mostrar_resultado(parametros: dict[str, object]) -> None:
         return
     st.session_state[CLAVE_ITEMS] = elaboracion.aceptar_propuesta(items, pendiente, codigo_elegido)
     with st.spinner("Elaborando..."):
-        _elaborar(parametros, st.session_state[CLAVE_ITEMS])
-    if st.session_state.get(CLAVE_RESULTADO) is not None:
+        elaborado = _elaborar(parametros, st.session_state[CLAVE_ITEMS])
+    if elaborado:
         st.rerun()
     # Si la reelaboracion fallo, `_elaborar` ya pinto su `st.error`: sin `st.rerun()`, que lo
     # borraria, queda a la vista (revision de A4, R-2).
+
+
+def _plan_de_trabajo(parametros: dict[str, object]) -> None:
+    """UC-01 6 (INV-087): la tabla del plan de trabajo y el boton que elabora con ella."""
+    st.subheader("Plan de trabajo")
+    st.caption(
+        "Distribuya las partidas en periodos: cada fila es la fraccion de una partida que se "
+        "ejecuta en un periodo, y las fracciones de cada partida suman 1. Por defecto, una "
+        "partida por dia; la curva de inversion sale de este plan y cierra en el total."
+    )
+    clave_filas = f"{CLAVE_PLAN}__filas"
+    editado = st.data_editor(
+        DataFrame(st.session_state.get(clave_filas, []), columns=elaboracion.COLUMNAS_PLAN).astype(
+            str
+        ),
+        num_rows="dynamic",
+        hide_index=True,
+        key=CLAVE_PLAN,
+    )
+    filas = editado.to_dict("records")
+    st.session_state[clave_filas] = filas
+    if not st.button("Aplicar plan y volver a elaborar", key="elaborar_aplicar_plan"):
+        return
+    items = st.session_state.get(CLAVE_ITEMS)
+    if not items:
+        st.error("Extraiga de nuevo el computo antes de aplicar el plan.")
+        return
+    with st.spinner("Elaborando..."):
+        elaborado = _elaborar(parametros, items, filas_plan=filas)
+    if elaborado:
+        st.rerun()  # el presupuesto de arriba se pinto antes de volver a elaborar
+    # Si fallo, `_elaborar` ya pinto su `st.error`: sin `st.rerun()`, que lo borraria.

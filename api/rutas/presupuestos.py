@@ -1,7 +1,8 @@
 """Rutas de presupuestos por HTTP: elaborar, consultar, exportar, actualizar precios y escenarios.
 
-UC-01 (`POST /presupuestos`, a partir de `ItemComputo` ya extraídos; un ítem sin partida queda
-pendiente y se lista con sus partidas similares, flujo 3a), UC-05 (el informe de auditoría, que se
+UC-01 (`POST /presupuestos`, a partir de `ItemComputo` ya extraídos, con el plan de trabajo del
+proyectista o, sin él, `plan_secuencial`, paso 6; un ítem sin partida queda pendiente y se lista
+con sus partidas similares, flujo 3a), UC-05 (el informe de auditoría, que se
 genera siempre), UC-02 (`POST /presupuestos/{codigo}/actualizacion`) y UC-08
 (`POST /presupuestos/{codigo}/escenarios`, que declara los pendientes del base). Los montos se
 presentan siempre con dos decimales (`core.verification.informe.DECIMALES_PRESENTACION`), la misma
@@ -34,6 +35,7 @@ from api.esquemas import (
     ItemPendienteRespuesta,
     PartidaPresupuestadaRespuesta,
     PendienteRespuesta,
+    PeriodoPlanPeticion,
     PresupuestoCreadoRespuesta,
     PresupuestoDetalleRespuesta,
     PresupuestoPeticion,
@@ -44,6 +46,8 @@ from api.esquemas import (
 from core import models
 from core.budget import (
     Comparativo,
+    GeneradorPlan,
+    PeriodoPlan,
     actualizar_precios,
     cargar_elaboracion,
     cargar_presupuesto,
@@ -102,7 +106,7 @@ def crear_presupuesto(
         peticion.codigo,
         peticion.fecha,
         peticion.moneda,
-        plan=plan_secuencial,
+        plan=_plan(peticion.plan),
     )
     guardar_presupuesto(
         sesion,
@@ -365,6 +369,29 @@ def _campos_pendiente(item: ItemComputo) -> dict[str, str]:
         "cantidad": str(item.cantidad),
         "origen_id": item.origen_id,
     }
+
+
+def _plan(
+    periodos: Sequence[PeriodoPlanPeticion] | None,
+) -> list[PeriodoPlan] | GeneradorPlan:
+    """UC-01, paso 6 (INV-087): el plan de trabajo del proyectista, o `plan_secuencial` si no lo
+    envía (el valor por defecto, que deja la línea base como estaba). Las fracciones se construyen
+    desde su texto exacto; que cada partida sume 1 lo juzga `elaborar` (`PlanInvalido`, 422)."""
+    if periodos is None:
+        return plan_secuencial
+    return [
+        (
+            periodo.periodo,
+            tuple(
+                (
+                    codigo,
+                    decimal_desde_texto(fraccion, f"fraccion de {codigo} en {periodo.periodo}"),
+                )
+                for codigo, fraccion in periodo.reparto.items()
+            ),
+        )
+        for periodo in periodos
+    ]
 
 
 def _parametros_costo(peticion: PresupuestoPeticion) -> ParametrosCosto:

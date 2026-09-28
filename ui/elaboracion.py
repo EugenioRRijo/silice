@@ -26,6 +26,7 @@ from core.budget import ResultadoElaboracion, elaborar, exportar_excel, plan_sec
 from core.contracts import ComposicionAPU, Dominio, ItemComputo, ParametrosCosto, ResultadoAPU
 from ui.composicion import (
     ComposicionInvalida,
+    decimal_desde_texto,
     desglose,
     item_desde_cantidad,
     motivo_para_no_reemplazar,
@@ -33,12 +34,18 @@ from ui.composicion import (
 )
 
 if TYPE_CHECKING:
+    from decimal import Decimal
+
+    from core.budget import GeneradorPlan, PeriodoPlan
     from core.catalog import Catalogo
     from core.models import Partida
     from ml.normalization import PartidaSimilar
 
 #: Columnas de la tabla de cantidades de obra: la clave interna de cada fila, no su rotulo.
 COLUMNAS_CANTIDADES = ("codigo_partida", "cantidad", "origen_id")
+
+#: Columnas de la tabla del plan de trabajo (UC-01, paso 6): una fila por partida y periodo.
+COLUMNAS_PLAN = ("periodo", "codigo_partida", "fraccion")
 
 
 def items_desde_filas(
@@ -80,13 +87,19 @@ def items_desde_filas(
 
 
 def elaborar_desde_catalogo(
-    catalogo: Catalogo, items: Sequence[ItemComputo], codigo: str, fecha: date, moneda: str
+    catalogo: Catalogo,
+    items: Sequence[ItemComputo],
+    codigo: str,
+    fecha: date,
+    moneda: str,
+    plan: Sequence[PeriodoPlan] | GeneradorPlan = plan_secuencial,
 ) -> ResultadoElaboracion:
     """Elabora y audita el presupuesto de `items` con las composiciones del catalogo a `fecha`.
 
-    Con `plan_secuencial` (una partida por dia, en el orden del presupuesto): sin plan la curva no
-    existe y R2 lo hace constar; con este plan trivial la curva cierra exactamente en el total y R2
-    y R7 quedan limpias.
+    UC-01, paso 6 (INV-087): `plan` es el plan de trabajo que distribuyo el proyectista
+    (`plan_desde_filas`). Por defecto, `plan_secuencial` (una partida por dia, en el orden del
+    presupuesto): la curva cierra exactamente en el total y R2 y R7 quedan limpias, y la linea base
+    no cambia. Un plan que no reparte exactamente una vez cada partida lanza `PlanInvalido`.
 
     UC-01 3a (INV-072): pide solo las composiciones de los codigos que el catalogo tiene, el mismo
     criterio que `api/rutas/presupuestos.py`. Un item sin partida no lanza: `elaborar` lo deja en
@@ -106,8 +119,41 @@ def elaborar_desde_catalogo(
         codigo=codigo,
         fecha=fecha,
         moneda=moneda,
-        plan=plan_secuencial,
+        plan=plan,
     )
+
+
+def filas_desde_plan(plan: Sequence[PeriodoPlan]) -> list[dict[str, str]]:
+    """UC-01, paso 6 (INV-087): el plan de trabajo como filas de la tabla editable, una por
+    partida y periodo, con la fraccion como texto exacto (`str` del `Decimal`)."""
+    return [
+        {"periodo": periodo, "codigo_partida": codigo, "fraccion": str(fraccion)}
+        for periodo, reparto in plan
+        for codigo, fraccion in reparto
+    ]
+
+
+def plan_desde_filas(filas: Sequence[Mapping[str, object]]) -> list[PeriodoPlan]:
+    """UC-01, paso 6 (INV-087): las filas de la tabla del plan como plan de trabajo de `elaborar`.
+
+    Los periodos siguen el orden de su primera fila, y cada uno reune las partidas de sus filas en
+    su orden. Una fila en blanco se ignora (estado normal de una tabla dinamica); una a medias o
+    con una fraccion que no es un decimal lanza `ComposicionInvalida` (un `ValueError`) con su
+    numero de fila. Que cada partida sume exactamente 1 lo juzga `elaborar` (`PlanInvalido`): la
+    regla del plan vive en `core.budget.curva`, no aqui.
+    """
+    periodos: dict[str, list[tuple[str, Decimal]]] = {}
+    for indice, fila in enumerate(filas, start=1):
+        periodo, codigo, fraccion = (texto_de_celda(fila, clave) for clave in COLUMNAS_PLAN)
+        if not periodo and not codigo and not fraccion:
+            continue  # fila dinamica todavia en blanco
+        if not periodo or not codigo or not fraccion:
+            raise ComposicionInvalida(
+                f"plan de trabajo, fila {indice}: declare el periodo, la partida y la fraccion"
+            )
+        valor = decimal_desde_texto(fraccion, f"plan de trabajo, fila {indice}, fraccion")
+        periodos.setdefault(periodo, []).append((codigo, valor))
+    return [(periodo, tuple(reparto)) for periodo, reparto in periodos.items()]
 
 
 def libro_excel(resultado: ResultadoElaboracion) -> tuple[bytes, str]:

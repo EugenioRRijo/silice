@@ -111,10 +111,22 @@ class ItemComputoRespuesta(BaseModel):
     especificaciones: dict[str, str]
 
 
+class PeriodoPlanPeticion(BaseModel):
+    """Un período del plan de trabajo (UC‑01, paso 6): su etiqueta y la fracción de cada partida
+    que ejecuta (código → fracción, como texto decimal). Las fracciones de cada partida suman 1
+    en todo el plan; si no, `PlanInvalido` responde 422."""
+
+    periodo: str
+    reparto: dict[str, str]
+
+
 class PresupuestoPeticion(BaseModel):
     """Lo que hace falta para elaborar un presupuesto (UC-01/05): items ya extraídos por un
     adaptador o construidos a mano, y los cuatro parámetros de costo, opcionales (por defecto los
     de `ParametrosCosto`, la línea base de CLAUDE.md §4).
+
+    `plan` es el plan de trabajo del proyectista (UC‑01, paso 6); sin él, una partida por día en
+    el orden del presupuesto (`plan_secuencial`).
     """
 
     codigo: str
@@ -126,6 +138,7 @@ class PresupuestoPeticion(BaseModel):
     bono_alimentacion: str | None = None
     administracion: str | None = None
     utilidad: str | None = None
+    plan: list[PeriodoPlanPeticion] | None = None
 
 
 class PropuestaPartidaRespuesta(BaseModel):

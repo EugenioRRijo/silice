@@ -1745,6 +1745,28 @@
         "title": "PendienteRespuesta",
         "description": "Un ítem de cómputo sin partida en el catálogo (UC‑01, flujo 3a): no suma a ningún total.\nLa cantidad viaja exacta, como texto decimal, no redondeada."
       },
+      "PeriodoPlanPeticion": {
+        "properties": {
+          "periodo": {
+            "type": "string",
+            "title": "Periodo"
+          },
+          "reparto": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Reparto"
+          }
+        },
+        "type": "object",
+        "required": [
+          "periodo",
+          "reparto"
+        ],
+        "title": "PeriodoPlanPeticion",
+        "description": "Un período del plan de trabajo (UC‑01, paso 6): su etiqueta y la fracción de cada partida\nque ejecuta (código → fracción, como texto decimal). Las fracciones de cada partida suman 1\nen todo el plan; si no, `PlanInvalido` responde 422."
+      },
       "PresupuestoCreadoRespuesta": {
         "properties": {
           "codigo": {
@@ -1884,6 +1906,20 @@
               }
             ],
             "title": "Utilidad"
+          },
+          "plan": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/PeriodoPlanPeticion"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plan"
           }
         },
         "type": "object",
@@ -1894,7 +1930,7 @@
           "items"
         ],
         "title": "PresupuestoPeticion",
-        "description": "Lo que hace falta para elaborar un presupuesto (UC-01/05): items ya extraídos por un\nadaptador o construidos a mano, y los cuatro parámetros de costo, opcionales (por defecto los\nde `ParametrosCosto`, la línea base de CLAUDE.md §4)."
+        "description": "Lo que hace falta para elaborar un presupuesto (UC-01/05): items ya extraídos por un\nadaptador o construidos a mano, y los cuatro parámetros de costo, opcionales (por defecto los\nde `ParametrosCosto`, la línea base de CLAUDE.md §4).\n\n`plan` es el plan de trabajo del proyectista (UC‑01, paso 6); sin él, una partida por día en\nel orden del presupuesto (`plan_secuencial`)."
       },
       "PresupuestoResumenRespuesta": {
         "properties": {
