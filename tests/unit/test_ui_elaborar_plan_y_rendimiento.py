@@ -284,7 +284,7 @@ def test_declarado_estimado_se_registra_y_se_vuelve_a_elaborar(monkeypatch, base
 
     ((valor, fecha, condiciones),) = _estimados_de_la_tuberia(base_sin_estimado)
     assert (valor, fecha) == (Decimal("100"), FECHA_PRESUPUESTO)
-    assert "UC-01 3b" in condiciones  # RF-33: el rendimiento se registra con sus condiciones
+    assert "UC-01 3b" in condiciones  # las condiciones declaran la procedencia del propuesto
     # Con el 100 propuesto, el APU de la tuberia es el de la linea base: el total tambien.
     assert at.session_state[CLAVE_RESULTADO].presupuesto.total == TOTAL_EXACTO_LINEA_BASE
     assert "Rendimientos por declarar" not in [s.value for s in at.subheader]

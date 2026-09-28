@@ -1,8 +1,8 @@
 """UC-07, flujo 3a, en la pantalla de componer (fase C5, pista U: INV-094).
 
 La ayuda 4 contrasta el precio construido con la estimacion por reglas solo si la partida ya existe
-(hay un PU anterior del que partir). Para una partida nueva no hay analogas en el historico: no se
-estima, y la pantalla debe informar que el contraste no es posible en vez de callar.
+(hay un PU anterior del que partir). Una partida nueva no tiene PU anterior: no se estima, y la
+pantalla debe informar que el contraste no es posible en vez de callar.
 
 Misma via que `tests/unit/test_ui_componer.py` (que no se importa: una prueba no importa de otra):
 la base (la linea base sembrada, con su lista de precios) vive en `tmp_path`, desviada por el
@@ -79,7 +79,7 @@ def test_una_partida_nueva_informa_que_el_contraste_no_es_posible(monkeypatch, t
     at.run()
     assert not at.exception, [e.value for e in at.exception]
 
-    # Partida nueva: el desglose en vivo existe, pero no hay analogas de las que estimar.
+    # Partida nueva: el desglose en vivo existe, pero no hay PU anterior del que estimar.
     assert _por_rotulo(at.metric, "Precio unitario")
     assert len(_avisos(at)) == 1, [aviso.value for aviso in at.info]
 

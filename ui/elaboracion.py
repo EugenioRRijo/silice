@@ -317,10 +317,11 @@ def declarar_rendimiento(
     """UC-01 3b: registra el rendimiento propuesto con el tipo que declaro el proyectista.
 
     La elaboracion usa solo el rendimiento ESTIMADO vigente (`Catalogo.composicion`): declarado
-    ESTIMADO, se registra a la `fecha` del presupuesto con las condiciones de su procedencia
-    (RF-33). Declarado MEDIDO no se usa tal cual (esa politica es de `core/`, fuera del alcance de
-    C5): `ValueError` y nada se registra. Sin propuesta, tambien `ValueError`. **No confirma**: el
-    `commit` es de la pagina, como en `guardar_composicion`.
+    ESTIMADO, se registra a la `fecha` del presupuesto con condiciones generadas desde su
+    procedencia (tipo, fecha, ejecucion y dispersion del propuesto). Declarado MEDIDO no se usa tal
+    cual (esa politica es de `core/`, fuera del alcance de C5): `ValueError` y nada se registra.
+    Sin propuesta, tambien `ValueError`. **No confirma**: el `commit` es de la pagina, como en
+    `guardar_composicion`.
     """
     propuesta = por_declarar.propuesta
     codigo = por_declarar.codigo_partida

@@ -609,16 +609,17 @@ def _contraste_aace(
 
     Solo aplica si la partida ya existe (hay un PU anterior del que partir: la regla no conoce la
     composicion nueva, declarado en `ml/prediction/reglas.py`). Una partida nueva (UC-10) no tiene
-    ese punto de partida ni analogas en el historico: no se estima, y la pantalla informa que el
-    contraste no es posible (UC-07, flujo 3a; INV-094).
+    ese PU anterior: no se estima, y la pantalla informa que el contraste no es posible (UC-07,
+    flujo 3a; INV-094). El sistema detecta 3a como «partida sin PU anterior», no busca analogas
+    (U-8 de la revision de C5).
     """
     try:
         pu_anterior = desglose(catalogo.composicion(codigo)).precio_unitario
     except KeyError:
         st.subheader("Contraste con la estimacion por reglas (AACE)")
         st.info(
-            "Partida nueva, sin analogas en el historico: el contraste no es posible y no se "
-            "estima su precio de referencia (UC-07, flujo 3a)."
+            "Partida nueva: la estimacion por reglas parte del PU anterior de la partida, que "
+            "no existe; el contraste no es posible (UC-07, flujo 3a)."
         )
         return
     except CatalogoIncompleto:
