@@ -135,7 +135,9 @@ Tolerancia de las pruebas: ± 0,01 sobre el precio unitario.
 ## 5. Contratos de interfaz (`core/contracts/`)
 
 Son los únicos tipos que cruzan fronteras entre paquetes. **Son estables**: no cambian en el resto del
-proyecto. Si una sesión cree necesitar cambiarlos, se detiene y documenta el hallazgo.
+proyecto, salvo el cambio aditivo D9 de la sección 4 (`ModalidadManoObra` y el campo
+`LineaManoObra.modalidad`, `JORNAL` por defecto, así que ningún uso anterior cambia), pendiente del
+aval del tutor. Si una sesión cree necesitar cambiarlos, se detiene y documenta el hallazgo.
 
 | Módulo | Tipos | Papel |
 |---|---|---|
