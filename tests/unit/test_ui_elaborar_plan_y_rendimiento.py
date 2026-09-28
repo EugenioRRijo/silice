@@ -186,8 +186,8 @@ def test_las_filas_del_plan_se_agrupan_por_periodo_y_una_a_medias_se_rechaza() -
 
 # --- INV-088: sin rendimiento vigente, se propone el del historico (UC-01, flujo 3b) ------------
 
-CLAVE_TIPO = "elaborar_tipo_rendimiento_0"
-CLAVE_REGISTRAR = "elaborar_registrar_rendimiento_0"
+CLAVE_TIPO = "elaborar_tipo_rendimiento_LB-02-TUB"
+CLAVE_REGISTRAR = "elaborar_registrar_rendimiento_LB-02-TUB"
 
 
 @pytest.fixture
@@ -352,3 +352,51 @@ def test_un_insumo_sin_precio_muestra_su_error_y_no_se_ofrece_3b(monkeypatch, ba
     assert any(INSUMO_SIN_PRECIO in texto for texto in errores), errores
     assert "Rendimientos por declarar" not in [s.value for s in at.subheader]
     assert at.session_state[CLAVE_RESULTADO] is None
+
+
+# --- U-2 de la revision: la declaracion no pasa de una partida a la siguiente --------------------
+
+
+@pytest.fixture
+def base_con_dos_sin_estimado(base_sin_estimado: Path) -> Path:
+    """Tambien el encofrado sin estimado, con un medido de 16 m2 por dia (el de su APU)."""
+    from datetime import date
+
+    from tests.fixtures.sin_rendimiento_vigente import dejar_sin_estimado
+
+    motor = crear_motor(f"sqlite:///{base_sin_estimado.as_posix()}")
+    try:
+        with abrir_sesion(motor) as sesion:
+            dejar_sin_estimado(sesion, "LB-03-ENC", ((date(2026, 5, 5), Decimal("16")),))
+            sesion.commit()
+    finally:
+        motor.dispose()
+    return base_sin_estimado
+
+
+def _radio_de(at: AppTest, codigo: str):
+    return _por_rotulo(at.radio, f"Tipo declarado del rendimiento de {codigo}")
+
+
+def test_con_dos_partidas_el_tipo_de_la_segunda_no_se_presume(
+    monkeypatch, base_con_dos_sin_estimado
+):
+    at = _sin_rendimiento(monkeypatch, base_con_dos_sin_estimado)
+    assert _radio_de(at, "LB-02-TUB").value is None
+    assert _radio_de(at, "LB-03-ENC").value is None
+
+    _radio_de(at, "LB-02-TUB").set_value("estimado")
+    registrar = [b for b in at.button if b.label == "Registrar y volver a elaborar"]
+    registrar[0].click().run()  # el de la tuberia, primera en el orden del computo
+    assert not at.exception, [e.value for e in at.exception]
+    assert not at.error, [e.value for e in at.error]
+
+    # Queda solo el encofrado, y su tipo sigue sin declarar: no hereda el de la tuberia.
+    assert [r.label for r in at.radio] == ["Tipo declarado del rendimiento de LB-03-ENC"]
+    assert _radio_de(at, "LB-03-ENC").value is None
+
+    _radio_de(at, "LB-03-ENC").set_value("estimado")
+    _por_rotulo(at.button, "Registrar y volver a elaborar").click().run()
+    assert not at.exception, [e.value for e in at.exception]
+    # Con los dos rendimientos de sus APU (100 y 16), el total es el de la linea base.
+    assert at.session_state[CLAVE_RESULTADO].presupuesto.total == TOTAL_EXACTO_LINEA_BASE

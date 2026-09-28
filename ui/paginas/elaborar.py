@@ -399,7 +399,9 @@ def _declarar_rendimientos(parametros: dict[str, object]) -> None:
         "propone el del historico con su dispersion. Declare si es estimado o medido para "
         "registrarlo y volver a elaborar."
     )
-    for indice, entrada in enumerate(por_declarar):
+    # Claves por codigo, no por posicion (U-2 de la revision de C5): tras registrar una partida la
+    # siguiente ocupa su lugar, y con clave por posicion heredaria el tipo ya declarado.
+    for entrada in por_declarar:
         codigo = entrada.codigo_partida
         if entrada.propuesta is None:
             st.error(
@@ -424,10 +426,10 @@ def _declarar_rendimientos(parametros: dict[str, object]) -> None:
             [opcion.value for opcion in TipoRendimiento],
             index=None,
             horizontal=True,
-            key=f"elaborar_tipo_rendimiento_{indice}",
+            key=f"elaborar_tipo_rendimiento_{codigo}",
         )
         if st.button(
-            "Registrar y volver a elaborar", key=f"elaborar_registrar_rendimiento_{indice}"
+            "Registrar y volver a elaborar", key=f"elaborar_registrar_rendimiento_{codigo}"
         ):
             _registrar_y_elaborar(parametros, entrada, tipo)
 

@@ -32,28 +32,44 @@ INSUMO_SIN_PRECIO = "Cemento Portland"
 FECHA_PRESUPUESTO = date(2026, 6, 1)
 
 
-def dejar_sin_estimado(sesion: Session) -> None:
-    """Borra los rendimientos ESTIMADOS de `LB-02-TUB` y registra los dos MEDIDOS. No confirma."""
-    partida_id = sesion.scalars(
-        select(models.Partida.id).where(models.Partida.codigo == CODIGO_SIN_ESTIMADO)
-    ).one()
-    sesion.execute(
-        delete(models.Rendimiento).where(
-            models.Rendimiento.partida_id == partida_id,
-            models.Rendimiento.tipo == TipoRendimiento.ESTIMADO.value,
-        )
-    )
-    registrar_ejecucion(sesion, REFERENCIA_OBRA, fecha_inicio=MEDIDOS[0][0])
-    for fecha, valor in MEDIDOS:
+def dejar_sin_estimado(
+    sesion: Session,
+    codigo: str = CODIGO_SIN_ESTIMADO,
+    medidos: tuple[tuple[date, Decimal], ...] = MEDIDOS,
+) -> None:
+    """Borra los rendimientos ESTIMADOS de `codigo` y registra sus `medidos` sobre la obra de
+    prueba (que se registra la primera vez). No confirma."""
+    _borrar_rendimientos(sesion, codigo, solo_estimados=True)
+    ya_registrada = sesion.scalars(
+        select(models.Ejecucion.id).where(models.Ejecucion.referencia == REFERENCIA_OBRA)
+    ).one_or_none()
+    if ya_registrada is None:
+        registrar_ejecucion(sesion, REFERENCIA_OBRA, fecha_inicio=MEDIDOS[0][0])
+    for fecha, valor in medidos:
         registrar_rendimiento(
             sesion,
-            CODIGO_SIN_ESTIMADO,
+            codigo,
             valor,
             TipoRendimiento.MEDIDO,
             fecha,
             condiciones="obra de prueba de UC-01 3b: no es una medicion real",
             referencia_ejecucion=REFERENCIA_OBRA,
         )
+
+
+def dejar_sin_historico(sesion: Session, codigo: str) -> None:
+    """Borra todos los rendimientos de `codigo`: no hay nada que proponer. No confirma."""
+    _borrar_rendimientos(sesion, codigo, solo_estimados=False)
+
+
+def _borrar_rendimientos(sesion: Session, codigo: str, *, solo_estimados: bool) -> None:
+    partida_id = sesion.scalars(
+        select(models.Partida.id).where(models.Partida.codigo == codigo)
+    ).one()
+    condicion = [models.Rendimiento.partida_id == partida_id]
+    if solo_estimados:
+        condicion.append(models.Rendimiento.tipo == TipoRendimiento.ESTIMADO.value)
+    sesion.execute(delete(models.Rendimiento).where(*condicion))
 
 
 def quitar_precio(sesion: Session) -> None:
