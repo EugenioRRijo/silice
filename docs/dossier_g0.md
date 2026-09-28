@@ -97,7 +97,7 @@ Cámara Venezolana de la Construcción, COVENIN ni MaPreX — y la propia Conven
 Trabajo para la Rama de la Industria de la Construcción (Gaceta Oficial N.º 6.752 Extraordinario,
 6 de julio de 2023) no menciona el FCAS ni la expresión «costos asociados al salario»
 (`docs/bitacora/2026-09-15-referencias-pendientes.md`). Los valores publicados que sí se
-encontraron son un rango de **198 % a 293 %** (Chacín, 2008, trabajo de grado de la Universidad
+encontraron son un rango de **198 % a 293 %** (Chacin, 2008, trabajo de grado de la Universidad
 Rafael Urdaneta, `docs/fuentes/Chacin_2008_FCAS_URU.pdf`) y de **78 % a 2 386 %** según qué
 cláusulas se incluyan (Dodi Scovino y Salas Caraballo, 2019, trabajo de grado de la Universidad
 José Antonio Páez, `docs/fuentes/Dodi_Salas_2019_FCAS_UJAP.pdf`, cálculo dominado por la
