@@ -46,11 +46,11 @@ completa en Linux y en Windows en cada cambio, es la fuente de verdad de esas ci
 ([metodologia.md §6](../../metodologia.md)). La corrida de referencia de este capítulo es la
 [35950215309](https://github.com/EugenioRRijo/tesis-apu-multidominio/actions/runs/35950215309), del
 23 de septiembre de 2026: 735 pruebas aprobadas en ambos sistemas, ninguna omitida, y una cobertura
-del 98 % sobre el núcleo. Las pruebas que citan las secciones puestas al día (4.2, 4.5.1 y 4.6) se
-escribieron después y se ejecutan en la corrida
+del 98 % sobre el núcleo. Las pruebas que citan las secciones puestas al día (4.2, 4.5.1 y 4.6) y
+la sección 4.7.3 se escribieron después y se ejecutan en la corrida
 [36427904452](https://github.com/EugenioRRijo/tesis-apu-multidominio/actions/runs/36427904452), del
-28 de septiembre de 2026, en verde; las cifras de referencia del capítulo cambian cuando se registren
-en la tabla de cifras citables.
+28 de septiembre de 2026 (commit `308eca5`, PR #14), en verde; las cifras de referencia del capítulo
+cambian cuando se registren en la tabla de cifras citables.
 
 **Compuertas.** El desarrollo se organizó con compuertas: criterios que debían cumplirse antes de
 continuar, declarados de antemano y explicados en el capítulo III. Aquí se mencionan tres. La

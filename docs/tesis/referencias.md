@@ -581,7 +581,8 @@ https://documentos.uru.edu/pdf/2301-08-02127.pdf
   aprobación del tutor; «Chacin (2007)» en el cuadro 2). El
   [dossier de G0](../dossier_g0.md) (D4) la registra como «Chacín».
 - **Afirmación contrastada:** el trabajo llama al factor «de prestaciones sociales» y lo rotula
-  «FCAS». Su cuadro 2 («Comparación de factores de prestaciones sociales») da, para obras de 3, 6 y
+  «FCAS». Su cuadro 2 («Comparación de factores de prestaciones sociales»; p. 77 según el índice de
+  cuadros, p. 75 del PDF, cuyas páginas no llevan número impreso) da, para obras de 3, 6 y
   12 meses, 281 %, 225 % y 198 % con el contrato colectivo 2003‑2006, y 293 %, 242 % y 210 % con el
   de 2007‑2009: el rango de 198 % a 293 % que cita el capítulo II. Las conclusiones dicen que el
   factor tiende a disminuir a medida que aumenta la duración de la obra, por la distribución de los
