@@ -248,7 +248,9 @@ El presupuesto base **nunca** se altera y ningún escenario se guarda: al cambia
 la comparación se descarta. Para convertir un escenario en presupuesto vigente se usa la
 actualización de precios (UC‑02) con la lista correspondiente. Por software, la misma operación
 está en `POST /presupuestos/{codigo}/escenarios` (API) y en `core.budget.generar_escenario`
-(Python).
+(Python). La respuesta de la API lista los ítems pendientes del base en `pendientes_base`, cada uno
+con `codigo_partida`, `descripcion`, `unidad`, `cantidad` (texto decimal exacto) y `origen_id`, sin
+propuestas; la lista queda vacía si el base no tiene pendientes.
 
 ### 3.7 Componer o editar una partida a mano (UC‑10 y UC‑11, prototipo AREN.IA)
 

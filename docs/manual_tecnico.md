@@ -222,8 +222,8 @@ están versionadas, así que regenerarlas solo hace falta si cambia el PDF de or
 ### 8.1 Catálogos por dominio
 
 Los cuatro dominios siguen el patrón de la línea base: evidencia de precios fechada en `data/`,
-**una sola copia** estructurada en `tests/fixtures/` y un seed que es el único módulo fuera de
-`tests/` que importa ese fixture. Ningún seed escribe un precio: todos los leen.
+**una sola copia** estructurada en `tests/fixtures/` y un seed que importa ese fixture en vez de
+copiarlo (no es el único script que lo importa: §9). Ningún seed escribe un precio: todos los leen.
 
 | Dominio | Fuente de precios | Copia única | Seed → base por defecto |
 |---|---|---|---|
@@ -249,15 +249,21 @@ catálogo de otro dominio apuntando `APU_BASE` a su base (`sqlite:///data/apu_te
   `core` directo. Si se añade una función, se expone en las dos capas por separado.
 - **La API serializa montos como texto** — al añadir rutas, construir `Decimal` desde el texto
   en la frontera y devolverlo como `str`.
-- **`tests/fixtures/apu_linea_base.py` es la única copia de la línea base.** `seed.py` y
-  `medir_rnf03.py` la importan a propósito; duplicarla en cualquier otro lado viola DRY.
+- **`tests/fixtures/apu_linea_base.py` es la única copia de la línea base.** `seed.py`,
+  `generar_resultados_ml.py`, `medir_rnf03.py` y `meta_prototipo.py` la importan a propósito;
+  duplicarla en cualquier otro lado viola DRY. En total, ocho scripts dependen de `tests/fixtures/`
+  ([arquitectura §4](arquitectura.md#4-vista-de-desarrollo-definitivo)): esos cuatro,
+  `seed_telecom.py`, `seed_industrial.py`, `seed_sistemas.py` y `extraer_arenaza.py`. Como la
+  interfaz importa `scripts.seed`, la aplicación Streamlit no arranca sin `tests/fixtures/`.
 - **No modificar `tests/unit/test_costing.py`** para poner nada en verde: se corrige la
   implementación.
 - **UC‑08 no persiste nada.** `core/budget/escenarios.py` es la lógica; la ruta
   `POST /presupuestos/{codigo}/escenarios` y la página «Escenarios de sensibilidad» solo componen
   y presentan. Promover un escenario a presupuesto es UC‑02 con la lista nueva, a propósito. Si el
-  base tiene ítems pendientes (UC‑01 3a), la página los declara al abrirlo; el informe de auditoría
-  del propio escenario no los declara, porque hacerlo exigiría cambiar `generar_escenario` en
+  base tiene ítems pendientes (UC‑01 3a), la página los declara al abrirlo y la API los devuelve en
+  `pendientes_base` (esquema `PendienteRespuesta`: `codigo_partida`, `descripcion`, `unidad`,
+  `cantidad` como texto decimal exacto y `origen_id`, sin propuestas); ningún escenario los
+  recalcula ni los suma. El informe de auditoría del propio escenario no los declara, porque hacerlo exigiría cambiar `generar_escenario` en
   `core/` y va a limitaciones (ruling C4‑3 de la [bitácora del cierre](bitacora/2026-09-23-cierre.md)).
 - Las limitaciones y los hallazgos abiertos están en dos lugares: el estado de cada RF en
   [plan_pruebas.md §8](plan_pruebas.md) y el [inventario de la auditoría](auditoria/2026-09-inventario.md),
