@@ -191,6 +191,15 @@ de RF‑21 no tiene prueba en R2 ni en R4 y la importación de RF‑24 es INV‑
 **1 no implementado** (RF‑20, deseable, en limitaciones). Ningún RF esencial queda sin ninguna prueba,
 pero RF‑16 solo tiene la de humo, que no ejercita la precarga.
 
+**RF en verde con pasos que el sistema no realiza.** RF‑07, RF‑26, RF‑27 y RF‑29 están en verde por
+su criterio de aceptación ([ERS §3.2](ERS.md#32-requisitos-funcionales)), que las pruebas citadas
+demuestran; pero la matriz por paso (§8.1) traza a ellos pasos que el sistema no realiza: UC‑01 6 a
+RF‑07 (el proyectista no distribuye los períodos; INV‑087), UC‑01 3b a RF‑26 (la elaboración no
+propone el rendimiento del histórico; INV‑088), UC‑06 4a a RF‑27 (la justificación de la advertencia
+no se registra; INV‑093) y UC‑07 5 a RF‑29 (los atípicos no entran al informe de auditoría;
+INV‑099). El verde de esta tabla no alcanza a esos pasos: su estado es el de §8.1 y su registro, el
+del [inventario](auditoria/2026-09-inventario.md).
+
 Las demás pruebas de la suite no demuestran un RF concreto: guardias de arquitectura y de la base de
 trabajo, metas de sprint, scripts, referencias de precios, dominios del sprint multidominio, API
 (OpenAPI y errores HTTP) y visor 3D. Su recuento es el de la sección 10.
@@ -289,7 +298,7 @@ UC‑04 no tiene pantalla ni ruta: lo realiza `adapters/civil/recalculo.py` (ERS
 | 2a sin plan de trabajo: R2 y R7 no aplicables | RF‑23 | `tests/unit/test_verification.py::test_r2_informa_cuando_no_hay_curva`, `::test_r7_se_declara_no_aplicable_si_el_presupuesto_no_declara_curva` | verde |
 | 2b cantidades sin regla: R1 declara la trazabilidad ausente | RF‑03, RF‑21 | `tests/unit/test_verification.py::test_r1_advierte_de_las_cantidades_manuales_sin_regla`; sin origen no hay ítem: `tests/unit/test_contracts.py::TestItemComputo::test_origen_obligatorio` | verde |
 | 3a una regla no evaluable: INFO y la ejecución continúa | RF‑23 | `tests/unit/test_verification.py::test_r1_reporta_la_regla_que_no_puede_evaluar`, `::test_r5_reporta_un_balance_que_no_puede_evaluar`, `::test_r4_informa_de_una_especificacion_que_no_puede_contrastar` | verde |
-| 5a sin hallazgos: el informe se emite igual y declara las siete reglas evaluadas | RF‑02, RF‑21 | ninguna prueba audita un presupuesto con cero hallazgos (es también la parte sin prueba de RF‑21), y el informe (`InformeAuditoria.a_markdown`) no enumera las reglas evaluadas | sin prueba; la enumeración de las siete reglas, no implementada |
+| 5a sin hallazgos: el informe se emite igual y declara las siete reglas evaluadas | RF‑02, RF‑21 | ninguna: el informe (`InformeAuditoria.a_markdown`) no enumera las reglas evaluadas, y ninguna prueba audita un presupuesto con cero hallazgos (es también la parte sin prueba de RF‑21) | no implementado: la enumeración de las siete reglas no existe; el informe sin hallazgos, además, sin prueba |
 
 #### UC‑06 — Registrar y consultar rendimientos reales de obra ejecutada
 
@@ -352,7 +361,7 @@ UC‑04 no tiene pantalla ni ruta: lo realiza `adapters/civil/recalculo.py` (ERS
 | Paso | RF | Prueba o caso | Estado |
 |---|---|---|---|
 | 1 abre la partida: tablas y rendimiento precargados | RF‑34 | `tests/unit/test_ui_componer.py::test_teclear_el_codigo_de_una_partida_guardada_precarga_sus_tres_tablas` (CP‑04, paso 1) | verde |
-| 2 modifica insumos, cantidades, precios o modalidad | RF‑34 | `tests/unit/test_ui_componer.py::test_editar_una_cantidad_y_guardar_reemplaza_la_composicion` | verde |
+| 2 modifica insumos, cantidades, precios o modalidad | RF‑34 | la cantidad, por la pantalla: `tests/unit/test_ui_componer.py::test_editar_una_cantidad_y_guardar_reemplaza_la_composicion`; el precio, la modalidad y agregar o quitar insumos recorren las mismas tablas de UC‑10 (pasos 2 a 4, RF‑34), probadas sobre una partida nueva, sin prueba sobre una existente (INV‑091) | verde para la cantidad; el resto, por el camino de UC‑10 |
 | 3 declara un rendimiento nuevo con sus condiciones | RF‑33 | `tests/integration/test_persistencia.py::test_reemplazar_composicion_propaga_las_condiciones_al_rendimiento`; `tests/unit/test_ui_componer.py::test_guardar_dos_veces_edita_la_partida` | verde |
 | 4 recalcula en vivo sobre la composición modificada | RF‑01 | CP‑02 paso 2 y CP‑03 (sobre la partida editada); la prueba automatizada del desglose, `tests/unit/test_ui_componer.py::test_el_desglose_en_vivo_muestra_el_precio_unitario`, es de UC‑10, sobre una composición nueva | manual |
 | 5 guarda | RF‑33 | `tests/unit/test_ui_componer.py::test_editar_una_cantidad_y_guardar_reemplaza_la_composicion`, `::test_guardar_dos_veces_edita_la_partida` (CP‑02, paso 3). La rama con éxito de `ui.elaboracion.guardar_composicion` sobre una partida existente no tiene prueba unitaria propia en `tests/unit/test_elaboracion.py`: la cubre la pantalla (QA‑A5 de C3) | verde por la pantalla; sin unitaria propia |
@@ -389,14 +398,14 @@ la compuerta GC4: C4 es documentación y no los resuelve.
 | UC‑02 | 12 | 11 | 0 | 1 | 0 | 0 |
 | UC‑03 | 8 | 4 | 0 | 1 | 2 | 1 |
 | UC‑04 | 8 | 7 | 0 | 0 | 0 | 1 |
-| UC‑05 | 10 | 7 | 0 | 2 | 1 | 0 |
+| UC‑05 | 10 | 7 | 0 | 2 | 0 | 1 |
 | UC‑06 | 8 | 7 | 0 | 0 | 0 | 1 |
 | UC‑07 | 8 | 6 | 0 | 2 | 0 | 0 |
 | UC‑08 | 7 | 6 | 0 | 0 | 0 | 1 |
 | UC‑10 | 12 | 12 | 0 | 0 | 0 | 0 |
 | UC‑11 | 8 | 7 | 1 | 0 | 0 | 0 |
 | UC‑12 | 10 | 9 | 1 | 0 | 0 | 0 |
-| **Total** | **104** | **85** | **2** | **9** | **3** | **5** |
+| **Total** | **104** | **85** | **2** | **9** | **2** | **6** |
 
 ## 9. Trazabilidad RNF → verificación
 
@@ -444,7 +453,7 @@ Cobertura, del trabajo `pruebas (ubuntu-latest)` de esa corrida (`coverage.py` c
 | `adapters/` | 474 / 521 | — | 90,98 % |
 | **Total medido** | 2 924 / 3 028 | **97 %** | 96,57 % |
 
-La CI publica el porcentaje de `core/` en el paso «Cobertura de core/ ≥ 80 %»
+La CI publica el porcentaje de `core/` en el paso «Cobertura de core >= 80 % (RNF-06)»
 (`coverage report --include="core/*" --fail-under=80`) y el total en la tabla de la suite; los de
 `ml/`, `api/` y `adapters/` son la suma de sus filas en esa misma tabla. `ui/` y `scripts/` no se
 miden.
