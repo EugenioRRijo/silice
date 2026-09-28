@@ -20,21 +20,16 @@ remitía las cifras a la bitácora hasta cerrar la compuerta de la interfaz.
 
 ## 1. Adecuación funcional
 
-**Completitud funcional.** La ERS declara 42 RF (RF‑32 vacante). Su estado vive en
-[plan_pruebas.md §8](plan_pruebas.md); aquí se interpretan las brechas que esa tabla declara:
-
-- **RF‑24** (Esencial, UC‑05: importar el presupuesto tabular de un tercero) queda **parcial**
-  mientras siga abierto INV‑076: ninguna ruta de `api/rutas/` ni página de `ui/paginas/` importa un
-  archivo ajeno; lo único que lo ejercita es la fixture de pruebas (ruling C4‑2 de la
-  [bitácora del cierre](bitacora/2026-09-23-cierre.md)).
-- **RF‑20** (Deseable, UC‑04: diferencial por partida) no está implementado y va declarado en
-  limitaciones (INV‑011).
-- **RF‑16** (Esencial, UC‑03: precargar la propuesta y persistir la partida nueva con su
-  referencia) queda **parcial**: la precarga existe; la persistencia con la referencia a la partida
-  de origen, no. Su estado es uno solo, el de [plan_pruebas.md §8](plan_pruebas.md) (INV‑027), y
-  la decisión de fondo es la D5 del
-  [dossier G0](dossier_g0.md#d5-flujo-de-creación-de-partidas-rf16-y-familia), pendiente del
-  tutor.
+**Completitud funcional.** La ERS declara 42 RF (RF‑32 vacante). Su estado vive en un solo
+lugar, [plan_pruebas.md §8](plan_pruebas.md), cuyo resumen enumera los RF que no están en verde y
+la causa de cada uno; aquí no se repite esa lista, para que no vuelva a desincronizarse (INV‑027,
+INV‑032). Lo que se interpreta es su efecto: §8 declara **RF esenciales en estado parcial** y un RF
+deseable (RF‑20, diferencial de UC‑04) **no implementado**, en limitaciones (INV‑011). Dos de esas
+brechas no se cierran dentro del cierre, porque dependen de decisiones fuera de C4: la importación
+del presupuesto de un tercero (RF‑24, INV‑076 abierto; ruling C4‑2 de la
+[bitácora del cierre](bitacora/2026-09-23-cierre.md)) y la persistencia de la partida creada desde
+una propuesta (RF‑16, decisión D5 del
+[dossier G0](dossier_g0.md#d5-flujo-de-creación-de-partidas-rf16-y-familia), pendiente del tutor).
 
 **Qué capa realiza cada caso de uso.** No todos los casos de uso tienen pantalla; la
 correspondencia la declara la [ERS §3.1](ERS.md) (INV‑030) y el
@@ -55,8 +50,9 @@ prueba de aceptación crítica del trabajo se cumple: **7 de 7 inconsistencias d
 **Pertinencia funcional.** El informe de auditoría se genera siempre, sin pedirlo (principio 7 de
 CLAUDE.md §2): `elaborar()` no tiene un modo sin auditoría.
 
-**Veredicto: parcial.** La corrección y la pertinencia cumplen; la completitud no, porque dos RF
-esenciales (RF‑16 y RF‑24) están parciales y uno deseable (RF‑20) no está implementado. La versión
+**Veredicto: parcial.** La corrección y la pertinencia cumplen; la completitud no, porque
+[plan_pruebas.md §8](plan_pruebas.md) declara RF esenciales parciales y un deseable sin
+implementar. La versión
 anterior de este párrafo decía «cumple, con los tres RF no esenciales declarados arriba», pero
 arriba solo se declaraba RF‑16, que es esencial (INV‑067).
 
@@ -102,7 +98,7 @@ Lo que el producto ya aporta a esa evaluación: hallazgos en español con severi
 cuantificado y los `origen_id` involucrados (columna *Orígenes* de la hoja *Auditoria* del
 Excel); UI multipágina y API autodocumentada (OpenAPI en `docs/api.json`).
 
-**Veredicto: pendiente de medición** (riesgo bajo: el informe se diseñó desde el caso didáctico).
+**Veredicto: pendiente de medición.** No se anticipa el resultado.
 
 **RNF‑10 — capacidad de aprendizaje de la interfaz** (sprint de UI, [PLAN_UI.md](../PLAN_UI.md)).
 RNF‑04 pregunta por el **informe**; nada en él mide si la persona supo por dónde empezar, y siete de
@@ -187,16 +183,16 @@ p. ej. Revit y Bonsai) sigue abierta; la alternativa tabular documentada existe 
 
 | Característica | Meta de la ERS | Resultado | Veredicto |
 |---|---|---|---|
-| Adecuación funcional | clase 3 AACE; RF cubiertos | desviación 0,00 %; 7 de 7; RF‑16 y RF‑24 parciales, RF‑20 no implementado (estado de cada RF: [plan_pruebas.md §8](plan_pruebas.md)) | parcial |
+| Adecuación funcional | clase 3 AACE; RF cubiertos | desviación 0,00 %; 7 de 7; RF esenciales parciales y RF‑20 no implementado (cuáles y por qué: [plan_pruebas.md §8](plan_pruebas.md)) | parcial |
 | Fiabilidad | reproducibilidad 100 % | comparación exacta en verde; suite en verde, 0 omitidas ([plan_pruebas.md §10](plan_pruebas.md)) | cumple |
 | Eficiencia de desempeño | < 5 s con ≤ 100 partidas | **1,17 s** con 100 partidas | cumple |
 | Usabilidad | RNF‑04 Likert ≥ 4/5 sobre el informe; RNF‑10 CP‑07 sin ayuda en ≤ 20 min, bloque B ≥ 4,0 y ningún ítem < 3 | RNF‑04: por medir en Med ([protocolo_rnf04.md](protocolo_rnf04.md)); RNF‑10: CP‑07 por ejecutar (GU1b, Med) | pendiente |
 | Mantenibilidad | `core/` intacto al agregar un dominio; cobertura de `core/` ≥ 80 % | diff vacío tras I5 + `test_arquitectura.py`; la CI exige ≥ 80 % (cifra en [plan_pruebas.md §10](plan_pruebas.md)) | cumple |
 | Portabilidad | 0 pasos manuales, Windows y Linux | Windows ✔ (local y CI); Linux ✔ (CI) | cumple |
-| Seguridad | 0 credenciales, 0 red | 0 credenciales; dos llamadas de red declaradas (modelo de ML en caché, three.js del visor) | cumple |
+| Seguridad | 0 y 0 (credenciales versionadas; llamadas de red durante la operación), con dos excepciones declaradas | 0 credenciales; dos llamadas de red declaradas (modelo de ML en caché, three.js del visor) | cumple |
 | Compatibilidad | IFC de ≥ 2 modeladores | exacto contra modelo programático | parcial |
 
 Cinco características cumplen su meta con evidencia automatizada o medida; una espera una medición
 humana (usabilidad, en Med) y dos quedan parciales por brechas declaradas: la adecuación funcional
-(RF‑16, RF‑24 y RF‑20) y la compatibilidad (IFC real). Ninguna brecha es silenciosa: todas tienen dueño,
+(los RF que [plan_pruebas.md §8](plan_pruebas.md) no da en verde) y la compatibilidad (IFC real). Ninguna brecha es silenciosa: todas tienen dueño,
 causa y registro.
