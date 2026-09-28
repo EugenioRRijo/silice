@@ -1218,8 +1218,10 @@ importa las diez páginas al cargarse (`ui/app.py:61-72`), y tres de ellas llega
 `ui/paginas/actualizacion.py:44` directamente, `ui/paginas/inicio.py:18` a través de
 `scripts.seed_demo` (`scripts/seed_demo.py:109`) y `ui/paginas/simulador.py:22` a través de
 `scripts.simular_lista` (`scripts/simular_lista.py:30`). Por eso **la aplicación Streamlit necesita
-`tests/fixtures/` para arrancar** (§5). La API no: `api/` no importa `scripts`, `tests` ni `ui`, ni
-directa ni transitivamente, y `scripts/` importa de `tests` solo `tests.fixtures`. Desde GC4 lo fijan
+`tests/fixtures/` para arrancar** (§5). La API no: ningún módulo de `api/` importa `scripts`, `tests` ni `ui`, e importar `api.main` no los
+carga; `scripts/` importa de `tests` solo `tests.fixtures`. La garantía no alcanza a lo que la API carga
+de forma perezosa (p. ej. `ml.anomaly` en `api/rutas/rendimientos.py:157`): ninguna guardia veda a `ml/`
+importar `scripts` (sí a los adaptadores, por su lista blanca). Desde GC4 lo fijan
 `test_la_api_no_importa_scripts_tests_ni_ui`, `test_importar_la_api_no_carga_scripts_tests_ni_ui` y
 `test_scripts_solo_importa_de_tests_sus_fixtures` (ARQ‑5 de la revisión de arquitectura de GC4).
 Ninguna prueba prohíbe la arista `ui → scripts`, que es deliberada; `tests` ya lo tenían vedado

@@ -195,7 +195,7 @@ de eso, la spec de la UI no se reabre: B y C siguen condicionales.
 | Riesgo | Criterio |
 |---|---|
 | C0 encuentra más de lo que cabe | El triage de §4 manda: solo bloqueantes e importantes; si aun así no cabe, Eugenio prioriza en GC0 y lo que quede fuera va a limitaciones |
-| El tutor no responde a tiempo | C2–C4 y Red siguen; C1 no toca contratos sin aval (los hallazgos afectados quedan *aceptados por decisión de arquitectura registrada*); F2 queda pendiente y **el final no se declara** sin él |
+| El tutor no responde a tiempo | C2–C5 y Red siguen; C1 no toca contratos sin aval (los hallazgos afectados quedan *aceptados por decisión de arquitectura registrada*); F2 queda pendiente y **el final no se declara** sin él |
 | No hay fecha de entrega fija | El plan se ordena por dependencias; al fijarse la fecha, cada fase recibe fecha límite en `PLAN_CIERRE.md` |
 | Los revisores comparten puntos ciegos | Ratificación humana en cada compuerta (§6) y validación del tutor y de personas en lo de fondo |
 | Una corrección toca `core/` y rompe la línea base | Se revierte; la línea base no cambia salvo decisión escrita del tutor (§1) |
