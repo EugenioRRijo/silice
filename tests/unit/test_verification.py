@@ -727,10 +727,14 @@ def test_el_informe_atribuye_la_muestra_civil_a_la_partida_de_cada_hallazgo():
     """INV‑095 reproducido: la muestra civil, elaborada como en «Elaborar un presupuesto».
 
     Oráculo independiente del índice del informe: la descripción de cada hallazgo de R1, R3 y R4
-    la redacta la regla desde `item.codigo_partida` y nombra una sola partida. Antes de la
-    corrección, 3 de 6 hallazgos salían con la partida equivocada: el R3 de la tubería como
-    `LB-01-EXC` y dos R4 INFO de la fila `T-01` como `LB-04-CON`. El número de R4 no se fija
-    (INV‑096 quita especificaciones que no corresponden a cada partida).
+    la redacta la regla desde `item.codigo_partida` y nombra una sola partida (R5 queda fuera:
+    su descripción cita también las partidas del balance). Antes de la corrección, y antes de
+    INV‑096, 3 de 6 hallazgos salían con la partida equivocada: el R3 de la tubería como
+    `LB-01-EXC` y dos R4 INFO de la fila `T-01` como `LB-04-CON`. Con INV‑096 (las
+    especificaciones de cada objeto ya no pasan a las partidas que no las usan) la muestra deja de
+    producir esos R4, así que su número no se fija aquí: la atribución de R4 sobre un objeto
+    compartido la fija una prueba en memoria
+    (`test_r4_sobre_un_objeto_compartido_se_atribuye_a_la_partida_de_la_especificacion`).
     """
     from core.budget import elaborar, plan_secuencial
 
@@ -896,3 +900,89 @@ def test_auditar_acepta_las_reglas_en_un_iterador_de_un_solo_uso(presupuesto):
 
     assert informe.reglas_evaluadas == tuple((regla.codigo, regla.nombre) for regla in REGLAS)
     assert informe.hallazgos == auditar(presupuesto).hallazgos
+
+
+# ---------------------------------------------------------------------------------------------
+# Ronda de corrección 1 de la pista N (QA‑1 a QA‑4 de la revisión de C5)
+# ---------------------------------------------------------------------------------------------
+
+
+def test_r4_sobre_un_objeto_compartido_se_atribuye_a_la_partida_de_la_especificacion():
+    """QA‑1. A mano: la tubería, segunda partida del objeto `OBJ-1`, declara un acabado que el
+    texto de su APU no nombra; R4 emite un solo INFO «no contrastable», y es de la tubería. El
+    índice no puede saberlo (el origen es compartido): lo sabe la declaración de R4."""
+    tuberia = linea_base.APU_TUBERIA.codigo_partida
+    presupuesto = _con_item(
+        _excavacion_y_tuberia_de_un_mismo_objeto(),
+        tuberia,
+        especificaciones={"acabado": "pulido espejo"},
+    )
+
+    informe = auditar(presupuesto, reglas=(CorrespondenciaEspecificaciones(),))
+
+    (r4,) = informe.hallazgos
+    assert r4.severidad is Severidad.INFO
+    assert r4.origen_ids == (OBJETO_COMPARTIDO,)
+    assert informe.partida_de(r4) == tuberia
+
+
+def test_r7_atribuye_la_conciliacion_de_varias_partidas_a_la_primera_del_presupuesto():
+    """QA‑2. A mano: un solo período enlaza las dos partidas de `OBJ-1` (la etiqueta nombra primero
+    la tubería) y les asigna 1,00, lejos de su total: un ERROR de conciliación que la descripción
+    atribuye a las dos y la columna, a la primera en el orden del presupuesto (la excavación)."""
+    excavacion = linea_base.APU_EXCAVACION.codigo_partida
+    tuberia = linea_base.APU_TUBERIA.codigo_partida
+    monto = Decimal("1.00")
+    plan = PuntoCurva(
+        periodo=directivas.etiqueta_con_codigos("Dia 1", (tuberia, excavacion)),
+        monto=monto,
+        acumulado=monto,
+    )
+    presupuesto = replace(_excavacion_y_tuberia_de_un_mismo_objeto(), curva=(plan,))
+
+    informe = auditar(presupuesto, reglas=(ConciliacionPresupuestoPlan(),))
+
+    (r7,) = informe.hallazgos
+    assert r7.severidad is Severidad.ERROR
+    assert excavacion in r7.descripcion and tuberia in r7.descripcion
+    assert informe.partida_de(r7) == excavacion
+
+
+def test_la_hoja_de_auditoria_sin_hallazgos_enumera_las_siete_reglas_en_cero(tmp_path):
+    """QA‑3 (UC‑05 5a en la forma exportada): la columna A solo trae el encabezado y el bloque G–I
+    trae las siete reglas con 0."""
+    from openpyxl import load_workbook
+
+    from core.budget import exportar_excel
+    from core.budget.excel import HOJA_AUDITORIA
+
+    presupuesto = _presupuesto_sin_hallazgos()
+    ruta = exportar_excel(presupuesto, auditar(presupuesto), tmp_path / "sin_hallazgos.xlsx")
+
+    hoja = load_workbook(ruta)[HOJA_AUDITORIA]
+    columna_a = [celda for (celda,) in hoja.iter_rows(max_col=1, values_only=True) if celda]
+    assert columna_a == ["Regla"]
+    bloque = [
+        fila
+        for fila in hoja.iter_rows(min_col=7, max_col=9, values_only=True)
+        if any(celda is not None for celda in fila)
+    ]
+    assert bloque == [
+        ("Regla evaluada", "Nombre", "Hallazgos"),
+        *((regla.codigo, regla.nombre, 0) for regla in REGLAS),
+    ]
+
+
+def test_r5_sobre_un_origen_compartido_se_atribuye_a_la_partida_del_balance(presupuesto):
+    """QA‑4. El relleno del presupuesto auditado no cuadra con su balance (hallazgo 6). Con el
+    origen de la excavación, el índice ya no puede atribuir ese origen: lo atribuye la declaración
+    de R5, a la partida que declara el balance."""
+    relleno = linea_base.APU_RELLENO.codigo_partida
+    compartido = _con_item(
+        presupuesto, relleno, origen_id=origen_de(linea_base.APU_EXCAVACION.codigo_partida)
+    )
+
+    informe = auditar(compartido, reglas=(BalanceVolumetrico(),))
+
+    (error,) = _errores(informe.hallazgos)
+    assert informe.partida_de(error) == relleno
