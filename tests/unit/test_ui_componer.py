@@ -488,3 +488,90 @@ def test_editar_una_cantidad_y_guardar_reemplaza_la_composicion(monkeypatch, tmp
     assert not at.error
     assert at.success
     assert _filas_guardadas(base, CODIGO_DEMO) == filas
+
+
+# -------------------------------------------------------------------------------------------
+# 7. UC-11, pasos 2 y 4 (INV-091): editar una partida existente recalcula en vivo
+# -------------------------------------------------------------------------------------------
+
+
+def _metricas_del_desglose(at: AppTest) -> dict[str, str]:
+    rotulos = ("Materiales", "Equipos", "Mano de obra", "Precio unitario")
+    return {rotulo: _por_rotulo(at.metric, rotulo).value for rotulo in rotulos}
+
+
+def _metricas_esperadas(apu) -> dict[str, str]:
+    """El desglose de `apu` por el motor, sin pasar por las tablas de la pantalla."""
+    resultado = calcular_apu(apu, PARAMETROS_LINEA_BASE)
+    return {
+        "Materiales": formatear_decimal(resultado.materiales, DECIMALES_PRESENTACION),
+        "Equipos": formatear_decimal(resultado.equipos, DECIMALES_PRESENTACION),
+        "Mano de obra": formatear_decimal(resultado.mano_obra, DECIMALES_PRESENTACION),
+        "Precio unitario": formatear_decimal(resultado.precio_unitario, DECIMALES_PRESENTACION),
+    }
+
+
+def test_editar_cantidad_precio_y_modalidad_recalcula_el_desglose_en_vivo(monkeypatch, tmp_path):
+    """UC-11, pasos 2 y 4, sobre `DEMO-01-INST` ya guardada: tres ediciones sucesivas (la cantidad
+    de un material, el precio de un equipo y la modalidad de una linea de mano de obra, de jornal a
+    destajo) y, tras cada una, el desglose en vivo es el de la composicion editada, sin guardar.
+
+    Oraculo: la composicion que el catalogo tiene guardada, editada con `dataclasses.replace` y
+    costeada por el motor (`calcular_apu`), otra ruta que la de la pantalla (que arma la
+    composicion desde el texto de sus tablas). Cada edicion debe mover el precio unitario: si la
+    pantalla ignorara el campo editado, la metrica no cambiaria y la prueba lo veria.
+    """
+    from core.contracts import ModalidadManoObra
+
+    base = tmp_path / "sembrada.db"
+    _sembrar_base(base)
+    guardada = _cabecera_guardada(base, CODIGO_DEMO)
+
+    at = _editar_demo(monkeypatch, base)
+    # Paso 1 de UC-11 como punto de partida: la precarga ya da el desglose de lo guardado.
+    assert _metricas_del_desglose(at) == _metricas_esperadas(guardada)
+
+    material = guardada.materiales[0]
+    equipo = guardada.equipos[0]
+    indice_jornal = next(
+        indice
+        for indice, obrero in enumerate(guardada.mano_obra)
+        if obrero.modalidad == ModalidadManoObra.JORNAL
+    )
+    obrero = guardada.mano_obra[indice_jornal]
+    mano_obra_destajo = list(guardada.mano_obra)
+    mano_obra_destajo[indice_jornal] = dataclasses.replace(
+        obrero, modalidad=ModalidadManoObra.DESTAJO
+    )
+
+    con_cantidad = dataclasses.replace(
+        guardada,
+        materiales=(
+            dataclasses.replace(material, cantidad=material.cantidad * 2),
+            *guardada.materiales[1:],
+        ),
+    )
+    con_precio = dataclasses.replace(
+        con_cantidad,
+        equipos=(dataclasses.replace(equipo, precio=equipo.precio + 10), *guardada.equipos[1:]),
+    )
+    con_modalidad = dataclasses.replace(con_precio, mano_obra=tuple(mano_obra_destajo))
+
+    anterior = _metricas_del_desglose(at)
+    for editada, rubro in (
+        (con_cantidad, "Materiales"),
+        (con_precio, "Equipos"),
+        (con_modalidad, "Mano de obra"),
+    ):
+        _reemplazar_tablas(at, _filas_de_apu(editada))
+        at.run()
+        assert not at.exception
+
+        metricas = _metricas_del_desglose(at)
+        assert metricas == _metricas_esperadas(editada), rubro
+        assert metricas[rubro] != anterior[rubro], f"la edicion de {rubro} no movio su rubro"
+        assert metricas["Precio unitario"] != anterior["Precio unitario"], rubro
+        anterior = metricas
+
+    # Solo desglose en vivo: nada de lo editado se guardo.
+    assert _cabecera_guardada(base, CODIGO_DEMO) == guardada
