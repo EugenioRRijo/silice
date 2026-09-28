@@ -1,7 +1,10 @@
 # Modelo de datos
 
-> Estado: **aprobado en la Sesión 0.2**. Materializa en persistencia los contratos de interfaz de
-> [CLAUDE.md §5](../CLAUDE.md) sin ampliarlos ni contradecirlos. Los modelos SQLAlchemy de
+> Estado: **completo, pendiente de revisión del tutor (compuerta G0,
+> [docs/metodologia.md §2.2](metodologia.md#22-compuertas))**. Redactado en la Sesión 0.2 y
+> contrastado con `core/models/entidades.py` en la fase C4 del cierre (2026‑09‑28). Materializa en
+> persistencia los contratos de interfaz de [CLAUDE.md §5](../CLAUDE.md) sin ampliarlos ni
+> contradecirlos. Los modelos SQLAlchemy de
 > `core/models/` (Sesión I0.4) se escriben a partir de este documento y no lo preceden: si el código
 > necesita una columna que aquí no está, primero se corrige el documento.
 
@@ -40,7 +43,7 @@ de la clave (**PK** primaria, **FK** foránea, **UK** única); `DecimalExacto` (
 | `CambioPrecio` | historial: qué insumo cambió, cuánto y entre qué listas | — |
 | `IncidenciaCambio` | efecto de un cambio de precio sobre el precio unitario de una partida | — |
 | `DescarteVersion` | marca de la versión revalorada que el usuario descartó (UC‑02, flujo 7a) | — |
-| `Hallazgo` | resultado persistido de una regla sobre un presupuesto | `Hallazgo` |
+| `Hallazgo` | resultado persistido de una regla sobre un presupuesto, o la declaración de un ítem pendiente (UC‑01, flujo 3a) | `Hallazgo` |
 
 ### 2.1 Catálogo
 
@@ -242,7 +245,7 @@ migración de esquema.
 | Atributo | Tipo | Clave | Nulo | Notas |
 |---|---|---|---|---|
 | `id` | int | PK | no | |
-| `presupuesto_id` | int | FK → `Presupuesto.id` | sí | nulo mientras el cómputo no se ha presupuestado |
+| `presupuesto_id` | int | FK → `Presupuesto.id` | sí | nulo mientras el cómputo no se ha presupuestado. Un ítem del presupuesto que ningún renglón cita es un **pendiente** de UC‑01 3a: se guarda así para que la recarga vuelva a declararlo (`core.budget.cargar_elaboracion`, INV‑080) |
 | `codigo_partida` | str(40) | — | no | código de negocio, no FK: un cómputo puede citar una partida aún no catalogada (lo detecta la auditoría) |
 | `descripcion` | str(300) | — | no | la que escribió el proyectista |
 | `unidad_original` | str(20) | — | no | tal cual se escribió: `mts` |
@@ -261,7 +264,7 @@ migración de esquema.
 |---|---|---|---|---|
 | `id` | int | PK | no | |
 | `presupuesto_id` | int | FK → `Presupuesto.id` | no | |
-| `regla` | str(10) | — | no | `R1`…`R7` |
+| `regla` | str(10) | — | no | `R1`…`R7`, o `PENDIENTE` (`core.budget.CODIGO_PENDIENTE`) para un ítem sin partida en el catálogo (UC‑01 3a) |
 | `severidad` | int | — | no | valor de `Severidad` (IntEnum) |
 | `descripcion` | str(500) | — | no | |
 | `impacto` | Decimal | — | sí | monto o cantidad afectada |
@@ -425,7 +428,7 @@ erDiagram
     PRESUPUESTO ||--o{ HALLAZGO : audita
     PRESUPUESTO ||--o{ ITEM_COMPUTO : computa
     PRESUPUESTO ||--o| DESCARTE_VERSION : "se descarta en"
-    PARTIDA_PRESUPUESTADA ||--|| ITEM_COMPUTO : "se origina en"
+    ITEM_COMPUTO ||--o| PARTIDA_PRESUPUESTADA : "se valora en"
     PARTIDA ||--o{ PARTIDA_PRESUPUESTADA : "se presupuesta en"
     PARTIDA ||--o{ COMPOSICION_APU : "se desglosa en"
     PARTIDA ||--o{ RENDIMIENTO : "rinde segun"
@@ -444,25 +447,34 @@ Cardinalidades en palabras:
 - Un proyecto tiene cero o más presupuestos; un presupuesto pertenece a exactamente un proyecto.
 - Un presupuesto se valora con exactamente una lista de precios; una lista puede valorar muchos.
 - Un presupuesto contiene cero o más renglones, cero o más puntos de curva y cero o más hallazgos.
-- Un renglón presupuestado corresponde a exactamente un `ItemComputo` y a exactamente una `Partida`.
+- Un renglón presupuestado corresponde a exactamente un `ItemComputo` y a exactamente una `Partida`;
+  un `ItemComputo` del presupuesto sin renglón es un ítem pendiente (UC‑01 3a). El «a lo sumo un
+  renglón por ítem» (`ITEM_COMPUTO ||--o| PARTIDA_PRESUPUESTADA`) es regla de negocio, **no la impone
+  el esquema**: `partida_presupuestada.item_computo_id` no lleva `UNIQUE`
+  (`core/models/entidades.py:352`). La garantiza la persistencia: `guardar_presupuesto` crea un
+  `ItemComputo` nuevo por cada renglón y uno por cada pendiente, sin reutilizar ninguno
+  (`core/budget/persistencia.py:117-126`).
 - Una partida se desglosa en una o más líneas de composición; cada línea referencia un insumo.
 - Un insumo cotiza a lo sumo una vez por lista (`UNIQUE (lista_id, insumo_id)`).
 - Una partida tiene cero o más rendimientos; un rendimiento medido pertenece a una ejecución.
 - Un cambio de precio repercute en cero o más partidas (`IncidenciaCambio`).
 - Un presupuesto tiene a lo sumo una marca de descarte (`DescarteVersion`, UC‑02 7a).
 
-Cobertura de los ocho casos de uso:
+Cobertura de los once casos de uso (UC‑09 está vacante):
 
 | UC | Entidades que lo sostienen |
 |---|---|
-| UC‑01 Elaborar presupuesto | `ItemComputo`, `Partida`, `ComposicionAPU`, `Rendimiento`, `ListaPrecios`, `PrecioInsumo`, `Presupuesto`, `PartidaPresupuestada`, `PuntoCurva` |
+| UC‑01 Elaborar presupuesto | `ItemComputo` (los pendientes, sin renglón), `Partida`, `ComposicionAPU`, `Rendimiento`, `ListaPrecios`, `PrecioInsumo`, `Presupuesto`, `PartidaPresupuestada`, `PuntoCurva`, `Hallazgo` (el `PENDIENTE` de 3a) |
 | UC‑02 Actualizar precios | `ListaPrecios`, `PrecioInsumo`, `CambioPrecio`, `IncidenciaCambio`, `DescarteVersion` (flujo 7a) |
 | UC‑03 Reutilizar partidas | `Partida.descripcion` (índice), `ComposicionAPU`, `Insumo` |
 | UC‑04 Recalcular alcance | `ItemComputo.regla`, `ItemComputo.parametros` |
 | UC‑05 Auditar | `Hallazgo`, `ItemComputo.origen_id`, `PartidaPresupuestada`, `PuntoCurva` |
 | UC‑06 Rendimientos reales | `Rendimiento`, `Ejecucion` |
 | UC‑07 Precio de mercado | `PartidaPresupuestada.precio_unitario`, `PrecioInsumo`, `CambioPrecio` |
-| UC‑08 Sensibilidad | parámetros congelados en `Presupuesto` + `ComposicionAPU` |
+| UC‑08 Sensibilidad | parámetros congelados en `Presupuesto` + `ComposicionAPU`; el escenario no se persiste |
+| UC‑10 Componer una partida | `Partida`, `Insumo` (y sus variantes, §6), `ComposicionAPU` (con `modalidad`), `PrecioInsumo` de la lista vigente, `Rendimiento` estimado con sus `condiciones` |
+| UC‑11 Editar una partida compuesta | `ComposicionAPU` (las líneas se reemplazan), `Rendimiento` (si cambió, se agrega uno nuevo y el anterior queda en el histórico de la partida) |
+| UC‑12 Recorrer la aplicación guiado | ninguna propia: el estado del caso abierto cuenta `Partida` e `Insumo` y lee la `ListaPrecios` vigente |
 
 ## 4. Normalización
 
@@ -545,6 +557,9 @@ con índice GIN, sin cambiar el resto del esquema.
    `Catalogo.composicion(codigo, fecha)` arma la `ComposicionAPU` con los precios de esa lista y con
    el rendimiento **estimado** más reciente cuya `fecha ≤ fecha`. Ese es el mecanismo que sostiene
    UC‑02: comparar el mismo APU valorado con dos listas distintas.
+5. **Descartar una versión no la borra.** La versión revalorada que el usuario descarta (UC‑02,
+   flujo 7a) recibe una marca en `DescarteVersion` (§2.2): sigue guardada, sigue reconstruyéndose
+   como cualquier otra y su historial (`CambioPrecio`, `IncidenciaCambio`) se conserva.
 
 Las dos vías responden preguntas distintas y por eso conviven:
 
