@@ -2,7 +2,7 @@
 
 | Capítulo | Estado | Última revisión |
 |---|---|---|
-| IV. Desarrollo de la propuesta | borrador corregido tras la revisión con la lista de cotejo ([acta R2](../revisiones/R2-capitulo-4.md)) y puesto al día con la corrección de la interfaz y los scripts en las secciones 4.2, 4.5.1, 4.6 y 4.12; pendiente la nueva revisión y la del tutor académico; figuras, referencias por verificar y decisiones del tutor marcadas como pendientes en la sección 4.12 | 2026-09-28 |
+| IV. Desarrollo de la propuesta | borrador corregido tras la revisión con la lista de cotejo ([acta R2](../revisiones/R2-capitulo-4.md)) y puesto al día con la corrección de la interfaz y los scripts en las secciones 4.2, 4.5.1, 4.6 y 4.12, y con dos cambios de la última etapa del cierre en la sección 4.5.1; pendiente la nueva revisión y la del tutor académico; figuras, referencias por verificar y decisiones del tutor marcadas como pendientes en la sección 4.12 | 2026-09-28 |
 
 Este capítulo describe el sistema desarrollado tal como existía en la rama principal del repositorio
 al 23 de septiembre de 2026, una vez concluida la corrección del núcleo de cálculo que se describe
@@ -50,7 +50,9 @@ del 98 % sobre el núcleo. Las pruebas que citan las secciones puestas al día (
 la sección 4.7.3 se escribieron después y se ejecutan en la corrida
 [36427904452](https://github.com/EugenioRRijo/tesis-apu-multidominio/actions/runs/36427904452), del
 28 de septiembre de 2026 (commit `308eca5`, PR #14), en verde; las cifras de referencia del capítulo
-cambian cuando se registren en la tabla de cifras citables.
+cambian cuando se registren en la tabla de cifras citables. La prueba de la operación de escenarios
+de la API que cita la sección 4.5.1 se escribió en la última etapa del cierre y no figura en esa
+corrida: entra en la corrida con que se cierre esa etapa.
 
 **Compuertas.** El desarrollo se organizó con compuertas: criterios que debían cumplirse antes de
 continuar, declarados de antemano y explicados en el capítulo III. Aquí se mencionan tres. La
@@ -68,9 +70,11 @@ la interfaz y los scripts; y la actualización de la documentación. Las tres pr
 septiembre, al concluir la primera. De las dos siguientes incorpora lo que cambió en el modelo de
 datos y en los flujos alternativos de la elaboración (UC‑01), la actualización de precios (UC‑02) y
 los escenarios (UC‑08), en las secciones 4.2, 4.5.1 y 4.6, y las Tablas 4.10 y 4.11 dan el estado de
-cada pendiente al cerrar la tercera. El resto de lo que esas dos etapas cambiaron se incorpora al
-resincronizar el capítulo con la versión congelada del software (Tabla 4.10). Donde un documento
-del repositorio contradice al código, este capítulo describe el código y dice que el desfase está
+cada pendiente al cerrar la tercera. De la cuarta, la sección 4.5.1 recoge dos cambios del 28 de
+septiembre: la operación de escenarios de la API declara los pendientes del presupuesto base, y la
+especificación redacta el flujo 3a de UC‑01 en su orden real. El resto de lo que cambiaron la
+segunda y la tercera se incorpora al resincronizar el capítulo con la versión congelada del
+software (Tabla 4.10). Donde un documento del repositorio contradice al código, este capítulo describe el código y dice que el desfase está
 registrado en el inventario, en lugar de heredarlo. Los códigos de esos registros no se usan en el
 texto: la Tabla 4.11, al final del capítulo, relaciona cada desfase o limitación mencionada con su
 registro.
@@ -502,9 +506,10 @@ En la versión del 23 de septiembre, la interfaz y la API pedían las composicio
 llamar a `elaborar`, y el catálogo lanza una excepción ante una partida desconocida, de modo que ese
 flujo alternativo no se alcanzaba de punta a punta desde ellas. Las dos etapas de corrección
 siguientes lo cerraron: ambas piden ahora solo las composiciones de las partidas que el catálogo
-tiene y dejan el resto a `elaborar`. El orden real del flujo es el inverso del que redacta la
-especificación, según la cual el sistema propone primero las partidas similares y el ítem queda
-pendiente solo si no se acepta ninguna. El sistema **elabora primero y propone después**: el
+tiene y dejan el resto a `elaborar`. Hasta el 28 de septiembre de 2026, la especificación redactaba
+el orden inverso: el sistema proponía primero las partidas similares y el ítem quedaba pendiente
+solo si no se aceptaba ninguna. Ese día, la última etapa del cierre reescribió el flujo con el orden
+real. El sistema **elabora primero y propone después**: el
 presupuesto se elabora con los ítems que tienen partida, el informe declara los pendientes y solo
 entonces se proponen, para cada pendiente, las partidas del catálogo más parecidas a su descripción,
 con el mismo emparejamiento de la normalización semántica (sección 4.10.1) en la interfaz y en la
@@ -517,8 +522,7 @@ aprendizaje automático instalado, el pendiente se declara igual, sin propuestas
 sostienen además las
 pruebas `tests/unit/test_ui_elaborar.py::test_el_item_sin_partida_queda_pendiente_con_sus_propuestas`,
 `tests/unit/test_ui_elaborar.py::test_aceptar_una_propuesta_vuelve_a_elaborar_sin_pendientes` y
-`tests/integration/test_api.py::test_un_item_sin_partida_queda_pendiente_por_http`. Ajustar la
-redacción del flujo en la especificación corresponde a la actualización de la documentación.
+`tests/integration/test_api.py::test_un_item_sin_partida_queda_pendiente_por_http`.
 
 Quedaba la recarga. Los pendientes no se guardaban, y al recargar un presupuesto su informe se
 reconstruía con una auditoría nueva que no los conocía, de modo que un presupuesto emitido con un
@@ -536,11 +540,14 @@ presupuesto guardado antes de ese cambio no tiene sus pendientes persistidos, y 
 inventa.
 
 Los escenarios de sensibilidad (sección 4.11.2) sufrían la misma pérdida por otra vía, porque
-recalculan solo los renglones valorados del presupuesto base. La pantalla de escenarios carga ahora el
-base con `cargar_elaboracion` y avisa de sus pendientes
-(`tests/unit/test_ui_escenarios.py::test_el_escenario_de_un_base_con_pendientes_los_declara`);
-declararlos también en la operación de escenarios de la API corresponde a la actualización de la
-documentación. El informe de auditoría de cada escenario, en cambio, no los incluye: hacerlo exigiría
+recalculan solo los renglones valorados del presupuesto base. La corrección de la interfaz hizo que la
+pantalla de escenarios cargara el base con `cargar_elaboracion` y avisara de sus pendientes
+(`tests/unit/test_ui_escenarios.py::test_el_escenario_de_un_base_con_pendientes_los_declara`). La
+última etapa del cierre, que incluyó ese cambio de la API, hizo lo mismo el 28 de septiembre de 2026
+en la operación de escenarios de la API: su respuesta lista los pendientes del base en `pendientes_base`,
+y ningún escenario los recalcula ni los suma
+(`tests/integration/test_api_escenarios.py::test_los_escenarios_de_un_base_con_pendientes_los_declaran`).
+El informe de auditoría de cada escenario, en cambio, no los incluye: hacerlo exigiría
 modificar otra vez el núcleo (`core/budget/escenarios.py`), y ese punto queda entre las limitaciones
 del trabajo. Todos estos puntos están registrados en el inventario (Tabla 4.11).
 
@@ -1036,8 +1043,6 @@ La Tabla 4.10 reúne lo que el capítulo no pudo cerrar, con su motivo.
 | Clasificación AACE 18R‑97 o 56R‑08 | Depende del tutor; afecta el rango del contraste de la sección 4.10.3 | [paquete para el tutor](../revisiones/2026-09-paquete-tutor.md), punto AACE |
 | Tres cambios de contrato (enumerados, `Decimal` y signo, evaluador único), con el evaluador único también en los adaptadores | Cambian contratos estables y esperan el aval del tutor; la corrección de los adaptadores no los tocó por esa razón | [bitácora de expedientes](../../bitacora/2026-09-23-C1-expedientes.md) y paquete para el tutor |
 | Citas de la norma IEEE 830, de las vistas 4+1 y de la norma ISO/IEC 25010 | Tienen entrada en `docs/tesis/referencias.md` como pendientes de verificar: el repositorio no contiene sus datos bibliográficos y no se completan de memoria | sesión de referencias antes de la versión final |
-| Declarar los pendientes del presupuesto base en la operación de escenarios de la API (UC‑08) | La pantalla ya los declara; la API todavía no (sección 4.5.1) | actualización de la documentación |
-| Orden real del flujo 3a de UC‑01 en la especificación | La interfaz y la API elaboran primero y proponen después; la especificación redacta el orden inverso (sección 4.5.1) | actualización de la documentación |
 
 *Nota.* Elaboración propia a partir del [inventario del cierre](../../auditoria/2026-09-inventario.md)
 y del paquete para el tutor.
@@ -1072,7 +1077,7 @@ código, hacia su registro en el inventario de la auditoría de cierre.
 | 4.5.1 | El hallazgo `PENDIENTE` vive fuera de la auditoría | INV‑070 | actualización de la documentación |
 | 4.5.1 | UC‑01 3a no se alcanzaba desde la interfaz y la API | INV‑072 (cerrado) | corrección de los adaptadores y la API; corrección de la interfaz |
 | 4.5.1 | La recarga del informe perdía los ítems pendientes | INV‑080 (cerrado) | corrección de la interfaz, con un cambio del núcleo por expediente |
-| 4.5.1 | Los escenarios de un presupuesto con pendientes no los declaraban | INV‑083 (abierto) | corrección de la interfaz (la pantalla); actualización de la documentación (la API); el informe del propio escenario, a limitaciones |
+| 4.5.1 | Los escenarios de un presupuesto con pendientes no los declaraban | INV‑083 (la pantalla los declaró desde la corrección de la interfaz y la API desde el 28/09/2026; el informe del propio escenario, a limitaciones; su estado final lo registra el cierre de la última etapa) | corrección de la interfaz (la pantalla); la última etapa del cierre, que incluyó ese cambio de la API (la API) |
 | 4.5.2 | `plan_secuencial` agrupaba por renglón | INV‑071 (cerrado) | corrección del núcleo |
 | 4.5.3 | Redondeo de presentación escrito en tres lugares | INV‑038 (a limitaciones) | — |
 | 4.2, 4.6 | Descartar la versión nueva de UC‑02 (flujo 7a) | INV‑015 (cerrado) | corrección de la interfaz, con un cambio del núcleo por expediente |
@@ -1082,6 +1087,7 @@ código, hacia su registro en el inventario de la auditoría de cierre.
 | 4.9.2 | Interpretación de especificaciones duplicada en los adaptadores | INV‑041 (a limitaciones) | — |
 
 *Nota.* Elaboración propia a partir del [inventario del cierre](../../auditoria/2026-09-inventario.md),
-con los estados al cerrar la corrección de la interfaz y los scripts (28/09/2026). Cada hallazgo
+con los estados al cerrar la corrección de la interfaz y los scripts (28/09/2026), salvo la fila de
+INV‑083, que recoge además el cambio de la API de la última etapa del cierre. Cada hallazgo
 cerrado lo fue en la etapa que indica la última columna; los detalles de cada corrección están en la
 [bitácora del cierre](../../bitacora/2026-09-23-cierre.md).
