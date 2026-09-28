@@ -263,11 +263,27 @@ class EscenarioRespuesta(BaseModel):
     partidas: list[FilaComparativoRespuesta]
 
 
+class PendienteBaseRespuesta(BaseModel):
+    """Un ítem pendiente del presupuesto base (UC‑01, flujo 3a): sin partida en el catálogo, no
+    suma al total del base ni al de ningún escenario (INV‑083)."""
+
+    origen_id: str
+    codigo_partida: str
+    descripcion: str
+
+
 class EscenariosRespuesta(BaseModel):
-    """La comparación completa de UC-08. Nada de esto queda persistido (RF-30)."""
+    """La comparación completa de UC-08. Nada de esto queda persistido (RF-30).
+
+    `pendientes_base` declara los ítems pendientes del base (INV‑083): `generar_escenario` solo
+    recalcula los renglones valorados, así que ningún escenario los ve. Vacía si el base no tiene
+    pendientes o si se guardó antes de que se persistieran (INV‑080). El informe propio de cada
+    escenario no los declara (ruling C4‑3, a limitaciones).
+    """
 
     codigo_base: str
     total_base: str
+    pendientes_base: list[PendienteBaseRespuesta] = Field(default_factory=list)
     escenarios: list[EscenarioRespuesta]
 
 

@@ -6,7 +6,11 @@ Cablea el hallazgo 1 de la bitácora del cierre de UC‑08: los escenarios exist
 - devuelve el total del base y una entrada por escenario con total, variación (absoluta y
   porcentual), hallazgos de su auditoría y el detalle por partida (flujo principal, paso 3);
 - no persiste nada: el base queda como única versión guardada (RF‑30);
-- un parámetro fuera de rango se rechaza con 422 por las invariantes del contrato (flujo 1a).
+- un parámetro fuera de rango se rechaza con 422 por las invariantes del contrato (flujo 1a);
+- declara los ítems pendientes del base (UC‑01 3a, INV‑083): `generar_escenario` solo recalcula
+  los renglones valorados, así que ningún escenario los ve ni los suma; la respuesta los lista en
+  `pendientes_base` para que ninguno se lea como completo. El informe propio de cada escenario no
+  los declara: exigiría cambiar `core/budget/escenarios.py` y queda en limitaciones (ruling C4‑3).
 
 Importes esperados sin circularidad: la subida de cemento y arena reproduce los 50,082615 USD
 calculados a mano para UC‑02 (1,66 m3 × 30,17025); y con la utilidad al 20 % la variación
@@ -18,8 +22,16 @@ from __future__ import annotations
 
 import pytest
 
+from core.catalog import abrir_sesion, crear_motor
+from core.verification.informe import DECIMALES_PRESENTACION
+from core.verification.texto import formatear_decimal
 from scripts.seed import NOMBRE_PROYECTO
 from tests.fixtures import apu_linea_base as linea_base
+from tests.fixtures.base_con_pendiente import (
+    PENDIENTE_T99,
+    guardar_base_con_pendiente,
+    url_sqlite,
+)
 from tests.fixtures.computo_auditado import items_auditados
 
 RUTA_ESCENARIOS = "/presupuestos/001/escenarios"
@@ -60,6 +72,7 @@ def test_base_mas_una_entrada_por_escenario_con_detalle(cliente, presupuesto_001
     cuerpo = respuesta.json()
     assert cuerpo["codigo_base"] == "001"
     assert cuerpo["total_base"] == presupuesto_001["total"]
+    assert cuerpo["pendientes_base"] == []  # un base sin pendientes no inventa ninguno
 
     escenarios = {escenario["nombre"]: escenario for escenario in cuerpo["escenarios"]}
     assert len(escenarios) == 2
@@ -92,3 +105,58 @@ def test_parametro_fuera_de_rango_se_rechaza_por_el_contrato(cliente, presupuest
     )
     assert respuesta.status_code == 422
     assert "utilidad" in respuesta.json()["detalle"]
+
+
+@pytest.fixture
+def cliente_con_pendiente(tmp_path):
+    """Cliente HTTP sobre un archivo de `tmp_path` con el 001 guardado con su pendiente T-99.
+
+    El base lo guarda el nucleo directo con `pendientes=` (`tests/fixtures/base_con_pendiente.py`)
+    y se cierra antes de la peticion: la ruta lee lo persistido, con una sesion por peticion como
+    `api.dependencias.sesion_api`. Nada escribe en `data/`.
+    """
+    from fastapi.testclient import TestClient
+
+    from api.dependencias import sesion_api
+    from api.main import app
+
+    ruta = tmp_path / "escenarios.db"
+    guardar_base_con_pendiente(ruta)
+    motor = crear_motor(url_sqlite(ruta))
+
+    def _sesion():
+        with abrir_sesion(motor) as sesion:
+            yield sesion
+
+    app.dependency_overrides[sesion_api] = _sesion
+    try:
+        with TestClient(app) as cliente:
+            yield cliente
+    finally:
+        app.dependency_overrides.clear()
+        motor.dispose()
+
+
+def test_los_escenarios_de_un_base_con_pendientes_los_declaran(cliente_con_pendiente):
+    """INV-083 por HTTP: la respuesta lista los pendientes del base, que ningun escenario suma.
+
+    Oraculos de la fixture, no de la ruta: el pendiente es `PENDIENTE_T99` tal como se guardo, y el
+    total del base es el de la linea base valorada (el pendiente no suma).
+    """
+    respuesta = cliente_con_pendiente.post(
+        f"/presupuestos/{linea_base.CODIGO_PRESUPUESTO}/escenarios",
+        json={"escenarios": [{"nombre": "utilidad 20", "utilidad": "0.20"}]},
+    )
+
+    assert respuesta.status_code == 200
+    cuerpo = respuesta.json()
+    assert cuerpo["pendientes_base"] == [
+        {
+            "origen_id": PENDIENTE_T99.origen_id,
+            "codigo_partida": PENDIENTE_T99.codigo_partida,
+            "descripcion": PENDIENTE_T99.descripcion,
+        }
+    ]
+    assert cuerpo["total_base"] == formatear_decimal(
+        linea_base.TOTAL_EXACTO_LINEA_BASE, DECIMALES_PRESENTACION
+    )

@@ -1,10 +1,11 @@
-"""Rutas de presupuestos por HTTP: elaborar, consultar, exportar y actualizar precios.
+"""Rutas de presupuestos por HTTP: elaborar, consultar, exportar, actualizar precios y escenarios.
 
 UC-01 (`POST /presupuestos`, a partir de `ItemComputo` ya extraídos; un ítem sin partida queda
 pendiente y se lista con sus partidas similares, flujo 3a), UC-05 (el informe de auditoría, que se
-genera siempre) y UC-02 (`POST /presupuestos/{codigo}/actualizacion`). Los montos se presentan
-siempre con dos decimales (`core.verification.informe.DECIMALES_PRESENTACION`), la misma cifra que
-usa `ui/app.py` y la exportación a Excel: esta capa no inventa su propio redondeo.
+genera siempre), UC-02 (`POST /presupuestos/{codigo}/actualizacion`) y UC-08
+(`POST /presupuestos/{codigo}/escenarios`, que declara los pendientes del base). Los montos se
+presentan siempre con dos decimales (`core.verification.informe.DECIMALES_PRESENTACION`), la misma
+cifra que usa `ui/app.py` y la exportación a Excel: esta capa no inventa su propio redondeo.
 """
 
 from __future__ import annotations
@@ -32,6 +33,7 @@ from api.esquemas import (
     ItemComputoPeticion,
     ItemPendienteRespuesta,
     PartidaPresupuestadaRespuesta,
+    PendienteBaseRespuesta,
     PresupuestoCreadoRespuesta,
     PresupuestoDetalleRespuesta,
     PresupuestoPeticion,
@@ -247,10 +249,16 @@ def escenarios_de_presupuesto(
     Los parámetros que un escenario no declara heredan los congelados en el presupuesto base;
     un parámetro fuera de rango lo rechaza el contrato (`ParametrosCosto`) y responde 422
     (flujo 1a). La sesión no confirma nada: el base queda como única versión guardada (RF-30).
+
+    El base se lee con `cargar_elaboracion`, no con `cargar_presupuesto`: el contrato `Presupuesto`
+    no lleva los ítems pendientes (UC-01 3a) y `generar_escenario` solo recalcula los renglones
+    valorados, así que la respuesta los declara en `pendientes_base` (INV-083), como la página de
+    escenarios. El informe propio de cada escenario no los declara (ruling C4-3, limitaciones).
     """
     modelo = _buscar_modelo(sesion, codigo, proyecto)
     catalogo = Catalogo(sesion)
-    base = cargar_presupuesto(sesion, modelo.proyecto.nombre, codigo, catalogo)
+    elaboracion = cargar_elaboracion(sesion, modelo.proyecto.nombre, codigo, catalogo)
+    base = elaboracion.presupuesto
     composiciones = {
         codigo_partida: catalogo.composicion(
             codigo_partida, fecha=modelo.fecha, lista=modelo.lista_precios
@@ -284,6 +292,14 @@ def escenarios_de_presupuesto(
     return EscenariosRespuesta(
         codigo_base=base.codigo,
         total_base=formatear_decimal(base.total, DECIMALES_PRESENTACION),
+        pendientes_base=[
+            PendienteBaseRespuesta(
+                origen_id=item.origen_id,
+                codigo_partida=item.codigo_partida,
+                descripcion=item.descripcion,
+            )
+            for item in elaboracion.pendientes
+        ],
         escenarios=respuestas,
     )
 
