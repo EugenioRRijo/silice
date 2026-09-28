@@ -2,7 +2,7 @@
 
 | Capítulo | Estado | Última revisión |
 |---|---|---|
-| IV. Desarrollo de la propuesta | borrador corregido tras la revisión con la lista de cotejo ([acta R2](../revisiones/R2-capitulo-4.md)) y puesto al día con la corrección de la interfaz y los scripts en las secciones 4.2, 4.5.1, 4.6 y 4.12, y con dos cambios de la última etapa del cierre en la sección 4.5.1; pendiente la nueva revisión y la del tutor académico; figuras, referencias por verificar y decisiones del tutor marcadas como pendientes en la sección 4.12 | 2026-09-28 |
+| IV. Desarrollo de la propuesta | borrador corregido tras la revisión con la lista de cotejo ([acta R2](../revisiones/R2-capitulo-4.md)) y puesto al día con la corrección de la interfaz y los scripts en las secciones 4.2, 4.5.1, 4.6 y 4.12, y con tres cambios de la última etapa del cierre en las secciones 4.3.2 y 4.5.1; pendiente la nueva revisión y la del tutor académico; figuras, referencias por verificar y decisiones del tutor marcadas como pendientes en la sección 4.12 | 2026-09-28 |
 
 Este capítulo describe el sistema desarrollado tal como existía en la rama principal del repositorio
 al 23 de septiembre de 2026, una vez concluida la corrección del núcleo de cálculo que se describe
@@ -50,7 +50,7 @@ del 98 % sobre el núcleo. Las pruebas que citan las secciones puestas al día (
 la sección 4.7.3 se escribieron después y se ejecutan en la corrida
 [36427904452](https://github.com/EugenioRRijo/tesis-apu-multidominio/actions/runs/36427904452), del
 28 de septiembre de 2026 (commit `308eca5`, PR #14), en verde; las cifras de referencia del capítulo
-cambian cuando se registren en la tabla de cifras citables. La prueba de la operación de escenarios
+cambian al resincronizarlo (Tabla 4.10). La prueba de la operación de escenarios
 de la API que cita la sección 4.5.1 se escribió en la última etapa del cierre y no figura en esa
 corrida: entra en la corrida con que se cierre esa etapa.
 
@@ -70,9 +70,13 @@ la interfaz y los scripts; y la actualización de la documentación. Las tres pr
 septiembre, al concluir la primera. De las dos siguientes incorpora lo que cambió en el modelo de
 datos y en los flujos alternativos de la elaboración (UC‑01), la actualización de precios (UC‑02) y
 los escenarios (UC‑08), en las secciones 4.2, 4.5.1 y 4.6, y las Tablas 4.10 y 4.11 dan el estado de
-cada pendiente al cerrar la tercera. De la cuarta, la sección 4.5.1 recoge dos cambios del 28 de
-septiembre: la operación de escenarios de la API declara los pendientes del presupuesto base, y la
-especificación redacta el flujo 3a de UC‑01 en su orden real. El resto de lo que cambiaron la
+cada pendiente al cerrar la tercera. De la cuarta, todavía en curso, el capítulo recoge tres cambios
+del 28 de septiembre: la operación de escenarios de la API declara los pendientes del presupuesto
+base y la especificación redacta el flujo 3a de UC‑01 en su orden real (sección 4.5.1), y la tabla
+de contratos de `CLAUDE.md` y la arquitectura muestran la modalidad de mano de obra (sección 4.3.2).
+Esa etapa corrigió además, el mismo día, los desfases documentales que describen las secciones
+4.1.1, 4.1.4, 4.2, 4.3.4, 4.4.1 y 4.7.2: esas secciones los describen como estaban el 23 de
+septiembre, y la Tabla 4.11 da su estado al cerrar la tercera etapa. El resto de lo que cambiaron la
 segunda y la tercera se incorpora al resincronizar el capítulo con la versión congelada del
 software (Tabla 4.10). Donde un documento del repositorio contradice al código, este capítulo describe el código y dice que el desfase está
 registrado en el inventario, en lugar de heredarlo. Los códigos de esos registros no se usan en el
@@ -136,8 +140,8 @@ versión vigente.
 | UC‑12 | Recorrer la aplicación guiado desde el Inicio | usuario nuevo | especificado y pendiente en la versión del 23/09/2026; implementado después en la interfaz (pantalla de Inicio; Tabla 4.10) |
 
 *Nota.* Elaboración propia a partir de `docs/ERS.md` §2.2 y de `ui/app.py`, `api/rutas/` y
-`scripts/`. La columna de acceso describe el código. La especificación declara en su §3.1 que la
-interfaz ofrece los once casos de uso, lo que el código de la versión del 23 de septiembre no
+`scripts/`. La columna de acceso describe el código. En su §3.1, la especificación declaraba en esa
+versión, la del 23 de septiembre, que la interfaz ofrecía los once casos de uso, lo que el código no
 confirmaba para UC‑04, UC‑06, UC‑07 y UC‑12; el desfase está registrado en el inventario (Tabla
 4.11).
 
@@ -415,13 +419,16 @@ con_administracion = costo_directo × (1 + administración)
 precio_unitario    = con_administracion × (1 + utilidad)
 ```
 
-La especificación del cálculo en `CLAUDE.md` §4, que el capítulo II fundamenta en §2.2.4, contiene
-solo la parte de jornal: el bono se multiplica allí por la suma de todas las cantidades de mano de obra
-y no existe la línea de destajo. Las dos líneas nuevas provienen de la decisión D9, recomendada al
-tutor y pendiente de su aval
+En la versión del 23 de septiembre, la especificación del cálculo en `CLAUDE.md` §4, que el capítulo
+II fundamenta en §2.2.4, contenía solo la parte de jornal: el bono se multiplicaba allí por la suma de
+todas las cantidades de mano de obra y no existía la línea de destajo. Las dos líneas nuevas provienen
+de la decisión D9, recomendada al tutor y pendiente de su aval
 ([bitácora del hallazgo del destajo](../../bitacora/2026-09-16-P0-hallazgo-destajo.md)). Con todas las
 líneas a jornal ambas formulaciones coinciden, porque entonces los obreros a jornal son todos los
-obreros. El desfase de `CLAUDE.md` §4 quedó registrado en el inventario (Tabla 4.11).
+obreros. El desfase de `CLAUDE.md` §4 quedó registrado en el inventario (Tabla 4.11), y la última
+etapa del cierre incorporó la fórmula con destajo a
+[CLAUDE.md §4](../../../CLAUDE.md#4-especificación-del-cálculo-y-línea-base) el 28 de septiembre de
+2026.
 
 Con los parámetros del caso didáctico (FCAS de 6,00, bono de alimentación de 1,00 USD por obrero y
 día, administración del 15 % y utilidad del 10 %, en cascada), el motor reproduce los cinco precios
@@ -714,8 +721,8 @@ del cálculo manual, pero ese modelo lo generó por programa `scripts/generar_ta
 exportó un modelador BIM ([bitácora de la API y la extracción IFC](../../bitacora/2026-08-31-F1-api-3d.md)).
 Por esa razón el RNF‑09, que pide archivos de al menos dos herramientas, queda parcial, y ejercitar el
 adaptador con modelos exportados por modeladores comerciales o libres es trabajo pendiente. La
-especificación y la arquitectura todavía dan la extracción IFC por pendiente (desfase registrado,
-Tabla 4.11); el código y las pruebas `tests/unit/test_adapter_civil_ifc.py` y
+especificación y la arquitectura daban en esa versión, la del 23 de septiembre, la extracción IFC por
+pendiente (desfase registrado, Tabla 4.11); el código y las pruebas `tests/unit/test_adapter_civil_ifc.py` y
 `tests/unit/test_generador_ifc.py` muestran que existe.
 
 La primera pregunta secundaria de la investigación, sobre el nivel de desarrollo que necesita el
@@ -1039,8 +1046,8 @@ La Tabla 4.10 reúne lo que el capítulo no pudo cerrar, con su motivo.
 
 | Pendiente | Motivo | Dónde se resuelve |
 |---|---|---|
-| Figuras del capítulo: al menos el diagrama de componentes (vista de desarrollo) y el diagrama entidad‑relación; además, el diagrama de secuencia de la elaboración y capturas de la interfaz | Los diagramas de origen están en `docs/arquitectura.md` y `docs/modelo_datos.md`, que tienen desfases registrados (Tabla 4.11); generarlos ahora llevaría esos desfases a la tesis. `docs/tesis/figuras/` todavía no existe. La versión final no se aprueba sin las dos primeras | actualización de la documentación y una sesión de redacción posterior |
-| Resincronización del capítulo con la versión congelada del software (`v1.0-tesis`) | El capítulo describe la versión del 23/09/2026, salvo lo que se puso al día en las secciones 4.2, 4.5.1 y 4.6. Las correcciones siguientes implementaron además la pantalla de Inicio con el recorrido guiado (UC‑12, RF‑36 a RF‑43), la separación de la pantalla de composición y los flujos alternativos de UC‑04 en el adaptador civil (`adapters/civil/recalculo.py`), que las secciones 4.1, 4.3.4, 4.7.3 y 4.11 mencionan sin describirlos, y la actualización de la documentación cambiará otros puntos | sesión de redacción después del congelamiento |
+| Figuras del capítulo: al menos el diagrama de componentes (vista de desarrollo) y el diagrama entidad‑relación; además, el diagrama de secuencia de la elaboración y capturas de la interfaz | Los diagramas de origen están en `docs/arquitectura.md` y `docs/modelo_datos.md`, que tenían desfases registrados (Tabla 4.11), corregidos en la última etapa del cierre; las figuras se generan de su versión corregida. `docs/tesis/figuras/` todavía no existe. La versión final no se aprueba sin las dos primeras | actualización de la documentación y una sesión de redacción posterior |
+| Resincronización del capítulo con la versión congelada del software (`v1.0-tesis`) | El capítulo describe la versión del 23/09/2026, salvo lo que se puso al día en las secciones 4.2, 4.5.1 y 4.6. Las correcciones siguientes implementaron además la pantalla de Inicio con el recorrido guiado (UC‑12, RF‑36 a RF‑43), la separación de la pantalla de composición y los flujos alternativos de UC‑04 en el adaptador civil (`adapters/civil/recalculo.py`), que las secciones 4.1, 4.3.4, 4.7.3 y 4.11 mencionan sin describirlos, y la actualización de la documentación corrigió además los desfases documentales de las secciones citadas en las convenciones | sesión de redacción después del congelamiento |
 | Aprobación de la especificación, el modelo de datos y la arquitectura (compuerta G0) | Depende del tutor académico designado | [paquete para el tutor](../revisiones/2026-09-paquete-tutor.md), punto G0 |
 | Decisiones D1 (R7), D2 (R8), D3 (OE7), D4 (FCAS), D5 (RF‑16), D6 (UC‑08), D7 (rama de adaptador), D8 (BIM‑5D) y D9 (destajo) | Dependen del tutor; el capítulo describe lo implementado y declara la decisión como pendiente | [paquete para el tutor](../revisiones/2026-09-paquete-tutor.md) |
 | Clasificación AACE 18R‑97 o 56R‑08 | Depende del tutor; afecta el rango del contraste de la sección 4.10.3 | [paquete para el tutor](../revisiones/2026-09-paquete-tutor.md), punto AACE |
@@ -1073,7 +1080,7 @@ código, hacia su registro en el inventario de la auditoría de cierre.
 | 4.3.4 | Vistas de escenarios y de desarrollo desactualizadas | INV‑029 | actualización de la documentación |
 | 4.3.4, 4.8.2, 4.9.2 | La arquitectura declara dos copias del evaluador y hay cinco | INV‑058 | actualización de la documentación |
 | 4.3.4, 4.11.1 | La página de composición calculaba, persistía y orquestaba | INV‑043 (cerrado), INV‑070 | corrección de la interfaz (la separación); actualización de la documentación (el reparto resultante) |
-| 4.4.1 | `CLAUDE.md` §4 no contiene la fórmula con destajo | INV‑074 | actualización de la documentación |
+| 4.4.1 | `CLAUDE.md` §4 no contenía la fórmula con destajo | INV‑074 (incorporada el 28/09/2026 a `CLAUDE.md` §4; su estado final lo registra el cierre de la última etapa) | actualización de la documentación |
 | 4.5.1 | `generar_presupuesto` pública y llamada sin informe por los sembradores | INV‑037 (a limitaciones) | — |
 | 4.5.1 | Protocolo de elaboración en cuatro sitios | INV‑069 (cerrado) | corrección del núcleo |
 | 4.5.1 | Ítem sin partida pendiente (UC‑01 3a) | INV‑013 (cerrado) | corrección del núcleo |
@@ -1091,6 +1098,6 @@ código, hacia su registro en el inventario de la auditoría de cierre.
 
 *Nota.* Elaboración propia a partir del [inventario del cierre](../../auditoria/2026-09-inventario.md),
 con los estados al cerrar la corrección de la interfaz y los scripts (28/09/2026), salvo las filas de
-INV‑057 e INV‑083, que recogen además cambios de la última etapa del cierre. Cada hallazgo
+INV‑057, INV‑074 e INV‑083, que recogen además cambios de la última etapa del cierre. Cada hallazgo
 cerrado lo fue en la etapa que indica la última columna; los detalles de cada corrección están en la
 [bitácora del cierre](../../bitacora/2026-09-23-cierre.md).
