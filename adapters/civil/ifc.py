@@ -26,6 +26,7 @@ from pathlib import Path
 
 import ifcopenshell
 import ifcopenshell.util.element
+from ifcopenshell import ifcopenshell_wrapper
 
 from core.contracts import AdaptadorDominio, Dominio, ItemComputo, OrigenTipo
 from core.contracts.unidades import normalizar_unidad
@@ -33,6 +34,16 @@ from core.contracts.unidades import normalizar_unidad
 # Palabra con que abre todo archivo IFC en formato STEP (ISO 10303-21, «ISO-10303-21;»). Un
 # archivo que no empieza asi no es un modelo que ifcopenshell pueda leer.
 _CABECERA_STEP = b"ISO-10303-21"
+
+# Por que ifcopenshell no pudo abrir un archivo STEP, segun el estado de `ifcopenshell_wrapper.open`
+# (los mismos cuatro estados que `ifcopenshell.file.__init__` traduce a excepciones).
+_ESTADO = ifcopenshell_wrapper.file_open_status
+_MOTIVO_POR_ESTADO: dict[int, str] = {
+    _ESTADO.READ_ERROR: "no se pudo abrir para lectura",
+    _ESTADO.NO_HEADER: "su cabecera STEP no se pudo interpretar",
+    _ESTADO.UNSUPPORTED_SCHEMA: "declara un esquema IFC que ifcopenshell no soporta",
+    _ESTADO.INVALID_SYNTAX: "tiene errores de sintaxis STEP",
+}
 
 _NOMBRE_PSET = "Pset_APU"
 _CLAVE_CODIGO = "COVENIN_Codigo"
@@ -150,13 +161,24 @@ class AdaptadorCivilIFC(AdaptadorDominio):
 def _abrir_modelo(ruta: Path) -> ifcopenshell.file:
     """Abre el modelo IFC o lo rechaza con `ValueError` nombrando el archivo (UC-01, flujo 2a).
 
-    La cabecera STEP se comprueba antes de llamar a ifcopenshell: un archivo corrupto, vacio o que
-    no es IFC (un CSV con extension `.ifc`) se rechaza sin que ifcopenshell lo intente abrir. Asi
-    el rechazo es el `ValueError` que la API traduce a 422 y la pagina de elaboracion muestra, y no
-    un `ifcopenshell.Error` u `OSError`, que la API no maneja (INV-089). Ademas, ifcopenshell deja
-    a medio construir el objeto de un archivo que no pudo leer, y su `__del__` lanza un `KeyError`
-    que Python solo puede reportar como excepcion no atrapable. Si la cabecera es valida y el
-    cuerpo no se puede leer, el error de ifcopenshell tambien se traduce a `ValueError`.
+    Solo lee el formato STEP (`.ifc`); la API y la interfaz solo envian aqui archivos `.ifc`, asi
+    que ifcXML e ifcZIP no llegan. El rechazo es siempre el `ValueError` que la API traduce a 422
+    y la pagina de elaboracion muestra, nunca un `ifcopenshell.Error` u `OSError`, que la API no
+    maneja (INV-089). Dos casos:
+
+    - **No es STEP** (binario, vacio, un CSV con extension `.ifc`): no empieza con la cabecera
+      `ISO-10303-21`, y se rechaza sin pasar por ifcopenshell.
+    - **STEP que ifcopenshell no puede abrir** (cabecera danada, esquema no soportado): se abre
+      con `ifcopenshell_wrapper.open`, la misma llamada con que `ifcopenshell.open` empieza, y se
+      rechaza si su estado no es bueno, **antes** de construir el `ifcopenshell.file`. Con
+      `ifcopenshell.open`, ifcopenshell 0.8.5 lanza el error desde `file.__init__` sin haber
+      registrado el objeto, y su `__del__` lanza despues un `KeyError` que Python solo puede
+      reportar como excepcion no atrapable (con `-W error`, rompe la prueba que este corriendo
+      cuando el recolector lo libere).
+
+    Limite declarado: el analizador de ifcopenshell es tolerante con el cuerpo. Un archivo truncado
+    o con lineas de basura despues de una cabecera valida se abre sin error y entrega los elementos
+    que alcanzo a leer; eso no se detecta aqui.
     """
     with open(ruta, "rb") as archivo:
         inicio = archivo.read(64)
@@ -165,9 +187,9 @@ def _abrir_modelo(ruta: Path) -> ifcopenshell.file:
             f"el archivo {ruta.name!r} es ilegible: no es un modelo IFC (no empieza con la "
             f"cabecera {_CABECERA_STEP.decode()} del formato STEP)"
         )
-    try:
-        return ifcopenshell.open(str(ruta))
-    except (ifcopenshell.Error, OSError) as error:
-        raise ValueError(
-            f"el archivo {ruta.name!r} es ilegible como modelo IFC: {error}"
-        ) from error
+    datos = ifcopenshell_wrapper.open(str(ruta.absolute()))
+    estado = datos.good()
+    if not estado:
+        motivo = _MOTIVO_POR_ESTADO.get(estado.value(), f"estado {estado.value()} de ifcopenshell")
+        raise ValueError(f"el archivo {ruta.name!r} es ilegible como modelo IFC: {motivo}")
+    return ifcopenshell.file(datos)

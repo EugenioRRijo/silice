@@ -5,7 +5,8 @@ y el elemento o fila que fallo. Antes de C5 solo tenian prueba un CSV de telecom
 vacia y el CSV civil sin zanja o con dos diametros. Estas pruebas cubren lo que faltaba, cada caso
 con una fuente ilegible real escrita en `tmp_path`:
 
-- un IFC corrupto, vacio o que en realidad es un CSV (el adaptador civil IFC);
+- un IFC que no es STEP (binario, vacio o un CSV) y un STEP que ifcopenshell no abre (cabecera
+  danada o esquema no soportado), en el adaptador civil IFC;
 - una celda mal formada de industrial, de sistemas y del CSV civil;
 - la muestra de otro dominio entregada a cada adaptador tabular;
 - un archivo binario (no es texto UTF-8) entregado a cada adaptador tabular.
@@ -67,50 +68,96 @@ def _copia_con_celda(origen: Path, destino: Path, fila_id: str, columna: str, va
 # ---------------------------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize(
-    ("nombre", "contenido"),
-    [
-        ("corrupto.ifc", b"\x00\xff\xfe basura binaria que no es STEP \x00"),
-        ("vacio.ifc", b""),
-        ("es_un_csv.ifc", MUESTRA_CIVIL.read_bytes()),
-    ],
-    ids=["binario", "vacio", "csv-con-extension-ifc"],
-)
-def test_un_ifc_ilegible_se_rechaza_nombrando_el_archivo(tmp_path, nombre, contenido):
+MUESTRA_IFC = MUESTRAS / "tanquilla.ifc"
+
+#: Archivos con extension `.ifc` que no son STEP: no empiezan con `ISO-10303-21`.
+IFC_QUE_NO_ES_STEP = {
+    "binario": b"\x00\xff\xfe basura binaria que no es STEP \x00",
+    "vacio": b"",
+    "csv-con-extension-ifc": MUESTRA_CIVIL.read_bytes(),
+}
+
+#: Archivos STEP (cabecera `ISO-10303-21` valida) que ifcopenshell no puede abrir, con la parte
+#: del motivo que el mensaje debe dar. El esquema no soportado es la muestra con
+#: `FILE_SCHEMA(('IFC9'))`.
+IFC_STEP_DANADO = {
+    "cabecera-danada": (b"ISO-10303-21;\nHEADER;\n@@@ basura $$$ \x00\xff\nENDSEC;\n", "cabecera"),
+    "solo-la-palabra-inicial": (b"ISO-10303-21;", "cabecera"),
+    "con-bom-y-cabecera-danada": (b"\xef\xbb\xbfISO-10303-21;\nHEADER;\n@@@\n", "cabecera"),
+    "esquema-no-soportado": (
+        MUESTRA_IFC.read_bytes().replace(b"FILE_SCHEMA(('IFC4'))", b"FILE_SCHEMA(('IFC9'))"),
+        "esquema",
+    ),
+}
+
+
+def _extraer_ifc(ruta: Path) -> None:
     pytest.importorskip("ifcopenshell")
     from adapters.civil.ifc import AdaptadorCivilIFC
 
-    ruta = tmp_path / nombre
+    AdaptadorCivilIFC().extraer(ruta)
+
+
+@pytest.mark.parametrize("caso", sorted(IFC_QUE_NO_ES_STEP))
+def test_un_ifc_que_no_es_step_se_rechaza_nombrando_el_archivo(tmp_path, caso):
+    ruta = tmp_path / f"{caso}.ifc"
+    ruta.write_bytes(IFC_QUE_NO_ES_STEP[caso])
+
+    with pytest.raises(ValueError) as error:
+        _extraer_ifc(ruta)
+
+    assert ruta.name in str(error.value)
+    assert "no es un modelo IFC" in str(error.value)
+
+
+@pytest.mark.parametrize("caso", sorted(IFC_STEP_DANADO))
+def test_un_step_que_ifcopenshell_no_abre_se_rechaza_con_archivo_y_motivo(tmp_path, caso):
+    """La cabecera STEP es valida, asi que pasa la primera comprobacion; lo rechaza el estado con
+    que ifcopenshell abre el archivo (T-1 de la revision de la pista P)."""
+    contenido, motivo = IFC_STEP_DANADO[caso]
+    assert contenido != MUESTRA_IFC.read_bytes(), "la muestra no se altero"
+    ruta = tmp_path / f"{caso}.ifc"
     ruta.write_bytes(contenido)
 
     with pytest.raises(ValueError) as error:
-        AdaptadorCivilIFC().extraer(ruta)
+        _extraer_ifc(ruta)
 
-    assert nombre in str(error.value)
-    assert "IFC" in str(error.value)
+    assert ruta.name in str(error.value)
+    assert "ilegible como modelo IFC" in str(error.value)
+    assert motivo in str(error.value)
 
 
-def test_un_ifc_ilegible_no_deja_excepciones_no_atrapables(tmp_path, monkeypatch):
-    """ifcopenshell deja a medio construir el objeto del archivo que no pudo abrir, y su `__del__`
-    lanza un `KeyError` que Python solo puede reportar por `sys.unraisablehook`. Con `-W error`
-    esa excepcion rompe la prueba que este corriendo cuando el recolector la libere, que puede
-    ser cualquier otra. El rechazo del adaptador no debe dejarla: se libera la excepcion, se
-    recolecta y se comprueba que el gancho no recibio nada.
+@pytest.mark.parametrize(
+    "caso",
+    [f"no-step:{caso}" for caso in sorted(IFC_QUE_NO_ES_STEP)]
+    + [f"step:{caso}" for caso in sorted(IFC_STEP_DANADO)],
+)
+def test_rechazar_estos_ifc_no_deja_excepciones_no_atrapables(tmp_path, monkeypatch, caso):
+    """Cubre exactamente los archivos de `IFC_QUE_NO_ES_STEP` e `IFC_STEP_DANADO`.
+
+    Con `ifcopenshell.open`, ifcopenshell 0.8.5 deja a medio construir el objeto del archivo que no
+    pudo abrir, y su `__del__` lanza un `KeyError` que Python solo puede reportar por
+    `sys.unraisablehook`; con `-W error` rompe la prueba que este corriendo cuando el recolector
+    lo libere, que puede ser cualquier otra. El adaptador no construye ese objeto
+    (`adapters/civil/ifc.py`, `_abrir_modelo`). Aqui se libera la excepcion, se recolecta y se
+    comprueba que el gancho, sustituido solo durante esta prueba, no recibio nada.
+
+    No cubre un STEP de cuerpo truncado o con basura: ifcopenshell lo abre sin error (limite
+    declarado en `_abrir_modelo`), asi que no hay rechazo que probar.
     """
-    pytest.importorskip("ifcopenshell")
-    from adapters.civil.ifc import AdaptadorCivilIFC
-
-    ruta = tmp_path / "corrupto.ifc"
-    ruta.write_bytes(b"\x00\xff\xfe basura binaria que no es STEP \x00")
+    grupo, nombre = caso.split(":")
+    contenido = IFC_QUE_NO_ES_STEP[nombre] if grupo == "no-step" else IFC_STEP_DANADO[nombre][0]
+    ruta = tmp_path / f"{nombre}.ifc"
+    ruta.write_bytes(contenido)
     no_atrapables = []
     monkeypatch.setattr(sys, "unraisablehook", no_atrapables.append)
 
     def _rechazar() -> None:
         try:
-            AdaptadorCivilIFC().extraer(ruta)
+            _extraer_ifc(ruta)
         except ValueError:
             return
-        pytest.fail("el IFC corrupto no se rechazo")
+        pytest.fail(f"{ruta.name} no se rechazo con ValueError")
 
     _rechazar()
     gc.collect()
