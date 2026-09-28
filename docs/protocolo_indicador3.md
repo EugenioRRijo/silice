@@ -208,7 +208,8 @@ el autor; si lo es, se anota en el registro como amenaza a la validez (sección 
   de la misma persona, y su pericia con la hoja de cálculo, que es la mayor fuente de variación, se
   cancela. Con esto, n pequeños bastan si el efecto es grande y de signo constante.
 - **Prueba declarada:** Wilcoxon de rangos con signo, **exacta**, bilateral, α = 0,05, sobre
-  `d(i) = t_manual(i) − t_sistema(i)` (sección 11). Su menor valor p posible es 2 / 2ⁿ: con n = 5
+  `d(i) = t_manual(i) − t_sistema(i)`, con la herramienta y el tratamiento de diferencias nulas y
+  empates de la sección 11, punto 3. Su menor valor p posible es 2 / 2ⁿ: con n = 5
   es 0,0625 (nunca significativo), con n = 6 es 0,031 y con n = 8, 0,0078. Por eso **6 es el
   mínimo** que permite concluir y **8** deja margen para que una o dos diferencias no vayan en el
   mismo sentido.
@@ -322,18 +323,49 @@ cantidades, que dependen de lo que el participante escribió en la plantilla.
 1. **Análisis principal** sobre los participantes con los **dos** entregables correctos: tabla por
    participante (`t_manual`, `t_sistema`, `r`), mediana de `r` con su mínimo y su máximo, y
    medianas de `t_manual` y `t_sistema`.
-2. **Prueba:** Wilcoxon exacta, bilateral, α = 0,05, sobre `d(i)`, solo si hay al menos 6 pares en
-   el análisis principal. Un tiempo censurado entra con el valor del tope; si el censurado es el
-   del sistema, esto juega en su contra.
-3. **Enunciado del resultado:** se afirma que el sistema **reduce** el tiempo de elaboración de la
-   tarea T3 si y solo si la mediana de `r` es mayor que 0 **y** la prueba da p < 0,05. En cualquier
-   otro caso se informa el dato sin afirmar una reducción. No se fija de antemano un porcentaje
-   mínimo: las Bases nombran el indicador («reducción del tiempo de elaboración», §8.3 y §8.5,
-   criterios de validación) sin meta numérica, y este protocolo no la inventa.
-4. **Análisis secundarios** (descriptivos, sin prueba): la mediana de `r` por orden (S1 y S2 contra
-   S3 y S4) y por variante, para ver efectos de orden o de variante; el número de entregables
-   incorrectos por condición; las preguntas al observador por condición.
-5. **Todo participante que empezó se reporta**, también los excluidos del análisis principal y el
+2. **Censurados e interrumpidos.** Una condición censurada (tope alcanzado, sección 9, regla 4) o
+   interrumpida por defecto (regla 5) no tiene entregable terminado: cuenta como **incorrecta** y
+   su participante **sale del análisis principal**. Si la censurada es la condición manual, la
+   exclusión quita una de las reducciones más grandes y juega en contra del sistema
+   (conservadora). Si es la condición sistema, la exclusión lo favorecería; por eso el análisis de
+   sensibilidad del punto 5 los vuelve a incluir. Cada exclusión se reporta con su participante,
+   su condición y su motivo.
+3. **Prueba:** Wilcoxon de rangos con signo, bilateral, α = 0,05, sobre
+   `d(i) = t_manual(i) − t_sistema(i)` del análisis principal, calculada con SciPy 1.18.1 (la
+   versión fijada en `uv.lock`; se instala con el extra `ml`) así:
+
+   ```
+   scipy.stats.wilcoxon(d, alternative="two-sided", zero_method="wilcox",
+                        method=scipy.stats.PermutationMethod())
+   ```
+
+   - **Diferencias nulas** (`d(i) = 0`, iguales a la centésima de minuto): `zero_method="wilcox"`
+     las descarta, y el n de la prueba es el número de diferencias no nulas. Si quedan menos de 6,
+     no hay prueba (sección 6).
+   - **Empates** entre los `|d(i)|`: reciben el rango promedio. `PermutationMethod()` recorre las
+     2ⁿ asignaciones de signo (con n ≤ 8 son a lo sumo 256, menos que sus 9 999 remuestreos por
+     defecto, así que la enumeración es completa y p es exacta también con empates). Sin empates da
+     el mismo p que `method="exact"`: con n = 8, siete diferencias positivas y una negativa de rango
+     1, las dos dan 0,015625 (comprobado con SciPy 1.18.1 al escribir este protocolo).
+   - Se reportan el estadístico, p, el n de la prueba y cuántas diferencias nulas y empates hubo.
+4. **Enunciado del resultado:** se afirma que el sistema **reduce** el tiempo de elaboración de la
+   tarea T3 si y solo si, en el análisis principal, la mediana de `r` es mayor que 0 **y** la
+   prueba da p < 0,05, **y** el análisis de sensibilidad (punto 5) no da una mediana de `r` menor
+   o igual que 0. En cualquier otro caso se informa el dato sin afirmar una reducción. No se fija
+   de antemano un porcentaje mínimo: las Bases nombran el indicador («reducción del tiempo de
+   elaboración», §8.3 y §8.5, criterios de validación) sin meta numérica, y este protocolo no la
+   inventa.
+5. **Análisis de sensibilidad** (descriptivo, sin prueba): todos los participantes que llegaron al
+   final de las dos condiciones, correctos o no, censurados o no. Un censurado entra con el tope
+   como tiempo; una condición interrumpida por defecto de la aplicación entra, si es la del
+   sistema, con el tope de 45 minutos (el defecto juega en contra del sistema). Se reporta la
+   mediana de `r` con su mínimo y su máximo.
+6. **Análisis secundarios** (descriptivos, sin prueba): la mediana de `r` por orden (S1 y S2 contra
+   S3 y S4) y por variante, para ver efectos de orden o de variante; la mediana de
+   `r_con_práctica = 1 − (t_sistema + t_práctica) / t_manual`, que carga al sistema el tiempo de su
+   práctica (sección 13); el número de entregables incorrectos por condición; las preguntas al
+   observador por condición.
+7. **Todo participante que empezó se reporta**, también los excluidos del análisis principal y el
    motivo.
 
 ## 12. Plantilla de registro
@@ -370,7 +402,8 @@ cantidades, que dependen de lo que el participante escribió en la plantilla.
 | **Resumen** | n = | | mediana = | mediana = | mediana (mín–máx) = | pares válidos = | |
 
 Resultado de la prueba de Wilcoxon: estadístico, p, n de pares. Enunciado del resultado según la
-regla de la sección 11, punto 3.
+regla de la sección 11, punto 4; mediana de `r` del análisis de
+sensibilidad (punto 5) y de `r_con_práctica` (punto 6).
 
 ## 13. Amenazas a la validez y cómo se controlan
 
@@ -379,6 +412,8 @@ regla de la sección 11, punto 3.
 | Aprendizaje de la tarea entre condiciones | Dos variantes contrabalanceadas con el orden (sección 7); sin retroalimentación entre condiciones |
 | Diferencias de pericia entre personas | Diseño intrasujeto: cada persona es su propio control |
 | Tarea hecha a la medida del sistema | Las cuatro elecciones conservadoras de la sección 1 favorecen al método manual |
+| Práctica solo con el sistema (hasta 15 min con la variante P, con preguntas permitidas), que el método manual no tiene | Justificada en la sección 7: la hoja de cálculo es la herramienta habitual del participante y el sistema no. Su tiempo se registra; no entra en `t_sistema`, pero el análisis secundario `r_con_práctica` (sección 11, punto 6) lo carga al sistema y se reporta junto al resultado. La variante P no es ninguna de las medidas |
+| Exclusión de censurados e interrumpidos | Regla de la sección 11, punto 2, y análisis de sensibilidad (punto 5), que los reincluye en contra del sistema |
 | Sesgo del observador | Consignas literales, respuesta fija a las preguntas, asignación de secuencias fija, clave comprobada antes de la primera sesión; si el observador es el autor, se declara |
 | Relación con el autor | Criterio de exclusión y declaración firmada (sección 5) |
 | Validez externa | Un caso didáctico y una tarea acotada: el resultado vale para T3 y así se cita, no para la elaboración de cualquier presupuesto |
