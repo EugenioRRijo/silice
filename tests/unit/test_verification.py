@@ -22,6 +22,7 @@ from adapters.civil.evaluador import evaluar_regla
 from adapters.civil.tabular import AdaptadorCivilTabular
 from core.contracts import (
     Hallazgo,
+    OrigenTipo,
     PartidaPresupuestada,
     Presupuesto,
     PuntoCurva,
@@ -56,6 +57,7 @@ from tests.fixtures.computo_civil import CODIGOS as CODIGOS_CIVIL
 from tests.fixtures.presupuesto_auditado import (
     BALANCE_RELLENO,
     presupuesto_con_siete_inconsistencias,
+    presupuesto_corregido,
 )
 
 CENTIMO = Decimal("0.01")
@@ -804,3 +806,93 @@ def test_r7_atribuye_la_conciliacion_y_la_partida_sin_periodo_de_un_objeto_compa
         (Severidad.ERROR, tuberia),
         (Severidad.ADVERTENCIA, excavacion),
     }
+
+
+# ---------------------------------------------------------------------------------------------
+# Reglas evaluadas y presupuesto sin hallazgos (INV‑092 con RF‑21, expediente C5.2)
+# ---------------------------------------------------------------------------------------------
+
+
+def _presupuesto_sin_hallazgos() -> Presupuesto:
+    """`presupuesto_corregido()` con el relleno declarado tabular (trazable por su fila).
+
+    El único hallazgo del presupuesto corregido es la ADVERTENCIA de R1 por el relleno transcrito
+    a mano sin regla; declarado tabular, no queda ninguno.
+    """
+    corregido = presupuesto_corregido()
+    return replace(
+        corregido,
+        partidas=tuple(
+            replace(partida, item=replace(partida.item, origen_tipo=OrigenTipo.TABULAR))
+            if partida.item.origen_tipo is OrigenTipo.MANUAL
+            else partida
+            for partida in corregido.partidas
+        ),
+    )
+
+
+def test_el_informe_enumera_las_reglas_evaluadas_con_su_cuenta_de_hallazgos(presupuesto):
+    informe = auditar(presupuesto)
+    markdown = informe.a_markdown()
+
+    assert "## Reglas evaluadas" in markdown
+    for regla in REGLAS:
+        cuenta = sum(1 for hallazgo in informe.hallazgos if hallazgo.regla == regla.codigo)
+        assert f"| {regla.codigo} | {regla.nombre} | {cuenta} |" in markdown
+    assert informe.reglas_evaluadas == tuple((regla.codigo, regla.nombre) for regla in REGLAS)
+
+
+def test_el_informe_enumera_solo_las_reglas_que_corrieron(presupuesto):
+    informe = auditar(presupuesto, reglas=(CoherenciaDimensional(),))
+    markdown = informe.a_markdown()
+
+    assert "| R3 | Coherencia dimensional | 2 |" in markdown
+    assert f"| R1 | {TrazabilidadGeometrica.nombre} |" not in markdown
+
+
+def test_un_presupuesto_sin_hallazgos_emite_el_informe_con_las_siete_reglas():
+    """UC‑05 5a: el informe se emite igual, declara las siete reglas evaluadas y ningún hallazgo."""
+    presupuesto = _presupuesto_sin_hallazgos()
+    # Oráculo por la otra ruta: cada regla, llamada por separado, no halla nada.
+    assert [regla.evaluar(presupuesto) for regla in REGLAS] == [[]] * len(REGLAS)
+
+    informe = auditar(presupuesto)
+    markdown = informe.a_markdown()
+
+    assert informe.hallazgos == ()
+    assert informe.cumple
+    assert "Hallazgos: 0 · Resultado: CUMPLE" in markdown
+    assert len(REGLAS) == 7
+    for regla in REGLAS:
+        assert f"| {regla.codigo} | {regla.nombre} | 0 |" in markdown
+    assert markdown.count("Sin hallazgos.") == 2  # resumen y tabla, sin tablas vacías
+    assert "| # | Regla |" not in markdown
+
+
+def test_r2_devuelve_lista_vacia_si_la_curva_cierra():
+    """RF‑21: la curva del presupuesto corregido cierra por construcción (`plan_secuencial`)."""
+    corregido = presupuesto_corregido()
+    assert corregido.curva
+    assert CierreCurvaInversion().evaluar(corregido) == []
+
+
+def test_r4_devuelve_lista_vacia_si_el_apu_reconoce_las_especificaciones():
+    """RF‑21: la tubería corregida declara diámetro y material, y el texto de su APU los nombra."""
+    corregido = presupuesto_corregido()
+    declaradas = [
+        clave
+        for partida in corregido.partidas
+        for clave in partida.item.especificaciones
+        if not directivas.es_directiva(clave)
+    ]
+    assert declaradas
+    assert CorrespondenciaEspecificaciones().evaluar(corregido) == []
+
+
+def test_auditar_acepta_las_reglas_en_un_iterador_de_un_solo_uso(presupuesto):
+    """O‑4 de la revisión de C5: `auditar` recorre las reglas dos veces (hallazgos y reglas
+    evaluadas); un generador no debe dejar el informe sin reglas evaluadas."""
+    informe = auditar(presupuesto, reglas=(regla for regla in REGLAS))
+
+    assert informe.reglas_evaluadas == tuple((regla.codigo, regla.nombre) for regla in REGLAS)
+    assert informe.hallazgos == auditar(presupuesto).hallazgos
