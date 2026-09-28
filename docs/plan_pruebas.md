@@ -7,7 +7,9 @@ caso de prueba cita su RF; los enunciados de los RF viven **una sola vez** en
 
 ## 1. Identificador y alcance
 
-- **Identificador:** PP‑APU‑001, versión de la Sesión F.2 (2026‑08‑31).
+- **Identificador:** PP‑APU‑001, versión de la Sesión F.2 (2026‑08‑31), actualizada en la fase C4
+  del cierre (2026‑09‑28): cifras de la corrida de CI de §10 y matriz por paso de todos los casos
+  de uso (§8.1).
 - **Alcance:** todo el software del repositorio (`core/`, `adapters/`, `ml/`, `api/`, `ui/`,
   `scripts/`) contra los RF‑01…RF‑43 (RF‑32 vacante) y RNF‑01…RNF‑10 de la ERS.
 - **Referencias:** [CLAUDE.md](../CLAUDE.md) (constitución), [ERS.md](ERS.md) (IEEE 830),
@@ -16,9 +18,8 @@ caso de prueba cita su RF; los enunciados de los RF viven **una sola vez** en
 
 ## 2. Elementos de prueba
 
-Versión probada: rama `main` en el commit `02f961a` (cierre del sprint I6) más el cierre de
-UC‑08 (`inc/UC08-escenarios`, 2026‑08‑31), que motivó la segunda corrida registrada en §10.
-Elementos:
+Versión probada: la de la corrida de CI registrada en §10, commit `308eca5` (cierre de la fase C3),
+idéntico en contenido a `main` en `ceb6b8e`. Elementos:
 
 | Paquete | Contenido | Nivel de prueba |
 |---|---|---|
@@ -29,25 +30,24 @@ Elementos:
 | `core/verification` | reglas R1–R7 e informe | unitario + integración (7 de 7) |
 | `adapters/{civil,telecom,industrial,sistemas}` | extracción de cantidades | unitario + arquitectura |
 | `ml/{normalization,anomaly,prediction}` | RF‑15/17, RF‑27/29, RF‑28 | unitario |
-| `api/` | 13 endpoints FastAPI + OpenAPI | integración (TestClient) |
-| `ui/` | Streamlit multipágina y visor 3D | humo (importación y generación) |
+| `api/` | 18 operaciones FastAPI (`docs/api.json`) + OpenAPI | integración (TestClient) |
+| `ui/` | Streamlit multipágina y visor 3D | unitario con `streamlit.testing.v1.AppTest` + humo (importación) |
 | `scripts/` | seed, simulador, generadores, metas | unitario + ejecución directa |
 
 ## 3. Características a probar y a no probar
 
 **A probar:** los 42 RF de la ERS (matriz de la sección 8) y los RNF verificables por software o
-por medición (RNF‑01, 02, 03, 05, 06, 08; sección 9).
+por medición (RNF‑01, 02, 03, 05, 06, 07, 08; sección 9).
 
 **A no probar en esta sesión, con causa:**
 
-- **RNF‑04 (usabilidad del informe):** requiere juicio de expertos con escala Likert; el
-  instrumento se aplica con el tutor (Fase 6). No es automatizable.
+- **RNF‑04 (usabilidad del informe):** requiere juicio de expertos con escala Likert; no es
+  automatizable. Se mide en la fase Med de [PLAN_CIERRE.md](../PLAN_CIERRE.md), con el protocolo que
+  C4 deja escrito antes de medir (la Fase 6 del plan de desarrollo ya cerró; INV‑062).
 - **RNF‑10 (capacidad de aprendizaje de la interfaz):** no es automatizable; se mide con el caso con
   persona CP‑07 de [guion_prueba_arenia.md](guion_prueba_arenia.md) en la compuerta GU1b (fase Med)
   de [PLAN_UI.md](../PLAN_UI.md). Sus requisitos funcionales RF‑36 a RF‑43 **sí** tienen prueba
   automatizada, en verde (sección 8, U1).
-- **RNF‑07 en Linux:** la instalación con `uv sync` está verificada solo en Windows 11; la
-  corrida en Linux queda declarada como pendiente.
 - **RNF‑09 (IFC de ≥ 2 modeladores):** la compuerta G1 se cruzó con salvedad — el adaptador civil
   reproduce exacto el cálculo manual, pero contra `data/samples/tanquilla.ifc` generado
   programáticamente, no contra un export BIM real (bitácora
@@ -66,9 +66,10 @@ alcance de F.1. La brecha se cerró el mismo día — `core/budget/escenarios.py
    elaborar → auditar → actualizar precios → reconstruir a fecha).
 3. **Exactitud decimal.** Los importes se comparan como `Decimal` exactos; la única tolerancia
    admitida es ± 0,01 sobre el precio unitario de los cinco APU de la línea base (CLAUDE.md §4).
-4. **Arquitectura como prueba.** `test_arquitectura.py` (65 casos, uno más por cada módulo que
-   nace: el cierre de UC‑08 añadió el suyo solo) falla si un adaptador importa
-   de `core` algo distinto de `core.contracts`: la hipótesis central se vigila en cada corrida.
+4. **Arquitectura como prueba.** `test_arquitectura.py` (sus casos parametrizados crecen solos con
+   cada módulo que nace: el cierre de UC‑08 añadió el suyo sin tocar la prueba) falla si un
+   adaptador importa de `core` algo distinto de `core.contracts`: la hipótesis central se vigila en
+   cada corrida.
 5. **Advertencias como errores.** La suite corre con `-W error`: cualquier advertencia de
    dependencia o de código propio rompe la corrida.
 6. **Determinismo.** Todo lo estocástico fija semilla (Isolation Forest y simulador con
@@ -76,7 +77,7 @@ alcance de F.1. La brecha se cerró el mismo día — `core/budget/escenarios.py
    (se comprobó que fallan ante el defecto que documentan).
 7. **Metas de sprint automatizadas.** `scripts/meta_alpha.py` y `scripts/meta_i6.py` evalúan las
    metas de cierre (12/12 en el sprint I6) leyendo la corrida de pytest, la cobertura y el estado
-   del repositorio; ellos mismos tienen pruebas (`test_meta_alpha.py`, 26 casos).
+   del repositorio; ellos mismos tienen pruebas (`test_meta_alpha.py` y las de cada meta).
 
 ## 5. Criterios de aprobación y de fallo
 
@@ -102,13 +103,15 @@ el reporte de cobertura (sección 10) y `scripts/medir_rnf03.py` (evidencia repr
 RNF‑03). Desde la Sesión P4.2, además, el [guion de prueba manual de AREN.IA](guion_prueba_arenia.md)
 (casos CP‑01 a CP‑06 de la pantalla de componer, para quien pruebe sin programar).
 
-**Entorno de la ejecución registrada:** equipo de desarrollo con Windows 11 Home (10.0.26200),
-Python 3.13.2, `uv` con extras `ui`, `api`, `civil` y `ml`, SQLite local, modelo de
-`sentence-transformers` en caché local (sin red durante la corrida). Comandos:
+**Entorno de la ejecución registrada (§10):** los runners de GitHub `ubuntu-latest` (Python
+3.13.13) y `windows-latest` (Python 3.13.15), con `uv sync --locked --all-extras`, SQLite y el modelo
+de `sentence-transformers` restaurado de la caché de la CI. Comandos locales equivalentes:
 
 ```
-uv sync --extra ui --extra api --extra civil --extra ml
-uv run pytest -W error --cov=core --cov=adapters --cov=ml --cov=api
+uv sync --locked --all-extras
+uv run pytest -W error -p no:cacheprovider --junitxml=reporte-pruebas.xml --cov=core --cov=ml --cov=api --cov=adapters --cov-report=term
+uv run python scripts/verificar_omitidas.py reporte-pruebas.xml
+uv run coverage report --include="core/*" --fail-under=80
 uv run ruff check .
 uv run python scripts/medir_rnf03.py
 ```
@@ -397,43 +400,51 @@ GC4: C4 es documentación y no los resuelve.
 | RNF‑01 exactitud | línea base reproducida exacta (RF‑01, RF‑06): desviación 0,00 % ≪ clase 3 AACE | cumple |
 | RNF‑02 reproducibilidad | `test_precios_se_reconstruyen_a_fecha`: reconstrucción idéntica, 100 % | cumple |
 | RNF‑03 desempeño | `scripts/medir_rnf03.py` (2026‑08‑31): UC‑02 con **100 partidas y 41 insumos revalorados en 1,17 s** (umbral 5 s) | cumple |
-| RNF‑04 usabilidad | juicio de expertos Likert ≥ 4/5: instrumento por aplicar con el tutor | pendiente |
+| RNF‑04 usabilidad | juicio de expertos Likert ≥ 4/5, con el protocolo de C4, en la fase Med de [PLAN_CIERRE.md](../PLAN_CIERRE.md) | pendiente (Med) |
 | RNF‑05 núcleo cerrado | `git diff --stat core/` vacío tras I5 y tras cada adaptador; `test_arquitectura.py` verde | cumple |
-| RNF‑06 cobertura | `core/` 98,10 % (meta ≥ 80 %); detalle en §10 | cumple |
-| RNF‑07 portabilidad | `uv sync --locked` sin pasos manuales; suite completa en verde en Windows 11 (local) y en Linux y Windows por CI ([run 34969162933](https://github.com/EugenioRRijo/tesis-apu-multidominio/actions/runs/34969162933), 2026‑09‑15) | cumple |
-| RNF‑08 seguridad | inspección: 0 credenciales versionadas, 0 llamadas de red en operación (excepción declarada: descarga inicial del modelo, cacheada) | cumple |
+| RNF‑06 cobertura | cobertura de `core/` en la corrida de §10 (meta ≥ 80 %, que la CI exige con `--fail-under=80`) | cumple |
+| RNF‑07 portabilidad | `uv sync --locked --all-extras` sin pasos manuales y la suite completa en verde en Linux y en Windows en la corrida de §10 ([36427904452](https://github.com/EugenioRRijo/tesis-apu-multidominio/actions/runs/36427904452)) | cumple |
+| RNF‑08 seguridad | inspección: 0 credenciales versionadas, 0 llamadas de red en operación salvo las dos excepciones que declara la ERS: la descarga inicial del modelo (cacheada) y three.js desde `cdnjs.cloudflare.com` en el Visor 3D (INV‑077) | cumple, con las dos excepciones declaradas |
 | RNF‑09 compatibilidad IFC | G1 con salvedad: exacto contra modelo programático; faltan exports de ≥ 2 modeladores | parcial |
 | RNF‑10 aprendizaje de la interfaz | caso con persona CP‑07 ([guion_prueba_arenia.md](guion_prueba_arenia.md)), dos escenarios con personas distintas, bloque B del anexo A | pendiente (GU1b, fase Med) |
 
-## 10. Registro de la ejecución (2026‑09‑14)
+## 10. Registro de la ejecución (CI, 2026‑09‑28)
+
+**Fuente única de las cifras de la suite y de la cobertura** (INV‑031; la CI es la fuente de verdad
+de las cifras, [metodologia.md §6](metodologia.md#6-gestión-de-configuración)): la corrida
+[36427904452](https://github.com/EugenioRRijo/tesis-apu-multidominio/actions/runs/36427904452)
+del PR #14, sobre el commit `308eca5` (cierre de C3), idéntico en contenido a `main` en `ceb6b8e`.
+La CI prueba la fusión de ese commit con la base del PR (`91b938a` en el registro del trabajo). Los
+demás documentos enlazan esta sección y no copian sus cifras.
 
 ```
-479 passed in 109.47s          (pytest -W error, plataforma win32, Python 3.13.2)
-ruff check .                   sin observaciones
-git diff m-base --stat -- core/   vacío
+calidad (ruff + guardia del nucleo)  ruff: All checks passed!   guardia del nucleo: OK
+pruebas (ubuntu-latest)   926 passed in 96.75s   Python 3.13.13   verificar omitidas: 0 omitidas
+pruebas (windows-latest)  926 passed in 173.39s  Python 3.13.15   verificar omitidas: 0 omitidas
 ```
 
-Corrida de la Sesión M4.1 del sprint multidominio (rama `worktree-sprint-multidominio`). Desde el
-registro anterior la suite creció en 84 casos, los de las sesiones M0.1–M4.1: referencia MaPreX
-estructurada, catálogo, presupuesto y auditoría de telecom (ARENAZA), industrial (mantenimiento) y
-sistemas (puntos de función), la meta del sprint y la sección multidominio de
-[resultados_ml.md](resultados_ml.md). Todo ese crecimiento ocurrió sin tocar `core/`. Registros
-anteriores, todos del 2026‑08‑31: 385 en F.2 (`core/` 97,99 %), 392 tras el cierre de UC‑08 en el
-núcleo y 395 tras cablear UC‑08 en la API y la UI.
+Distribución de la suite: **926 casos** recogidos, 721 en `tests/unit/` y 205 en
+`tests/integration/`, 0 fallos y 0 omitidos, en las dos plataformas. El reparto por carpeta se lee
+con `uv run pytest --collect-only -q` sobre el mismo commit.
 
-Cobertura de líneas por paquete (pytest‑cov sobre la corrida completa):
+Cobertura, del trabajo `pruebas (ubuntu-latest)` de esa corrida (`coverage.py` cuenta
+**sentencias**, no líneas; la CI publica el porcentaje entero y el exacto se calcula de sus columnas
+`Stmts` y `Miss`):
 
-| Paquete | Líneas cubiertas | Cobertura |
-|---|---|---|
-| `core/` | 1 707 / 1 740 | **98,10 %** |
-| `ml/` | 141 / 142 | 99,30 % |
-| `api/` | 452 / 478 | 94,56 % |
-| `adapters/` | 372 / 419 | 88,78 % |
-| **Total medido** | 2 672 / 2 779 | **96,15 %** |
+| Paquete | Sentencias cubiertas | Cobertura publicada | Exacta |
+|---|---|---|---|
+| `core/` | 1 811 / 1 841 | **98 %** | 98,37 % |
+| `ml/` | 173 / 174 | — | 99,43 % |
+| `api/` | 466 / 492 | — | 94,72 % |
+| `adapters/` | 474 / 521 | — | 90,98 % |
+| **Total medido** | 2 924 / 3 028 | **97 %** | 96,57 % |
 
-`core/` tiene las mismas 1 740 líneas que el 2026‑08‑31; la línea adicional cubierta la ejercen las
-pruebas de integración de los dominios nuevos. Las dos líneas nuevas de `ml/` son la cuantización
-de presentación de `contrastar_aace` (M4.1).
+La CI publica el porcentaje de `core/` en el paso «Cobertura de core/ ≥ 80 %»
+(`coverage report --include="core/*" --fail-under=80`) y el total en la tabla de la suite; los de
+`ml/`, `api/` y `adapters/` son la suma de sus filas en esa misma tabla. `ui/` y `scripts/` no se
+miden.
 
-Distribución de la suite: 345 casos unitarios y 134 de integración, 0 fallos, 0 omitidos.
-La evaluación de calidad sobre estos resultados está en [calidad_iso25010.md](calidad_iso25010.md).
+Registros anteriores, que esta sección sustituye: 385 casos en F.2 y 392 y 395 tras el cierre de
+UC‑08 (los tres del 2026‑08‑31, locales), 479 en la Sesión M4.1 del sprint multidominio
+(2026‑09‑14, local, con `core/` al 98,10 %) y 926 en esta corrida. La evaluación de
+calidad sobre estos resultados está en [calidad_iso25010.md](calidad_iso25010.md).
