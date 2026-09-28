@@ -35,8 +35,8 @@
 
 | Campo | Valor |
 |---|---|
-| Versión | 1.0 |
-| Fecha | 2026‑08‑29 |
+| Versión | 1.1 (revisión C4; la 1.0 es del 2026‑08‑29) |
+| Fecha | 2026‑09‑28 |
 | Autor | [tesista] |
 | Revisor | [tutor académico] |
 
@@ -117,8 +117,8 @@ ejecutada) lo reserva para «Generar presupuesto asistido desde las necesidades 
 UC‑11 se declararon en la Sesión P0.1 del sprint del prototipo AREN.IA
 ([PLAN_PROTOTIPO.md](../PLAN_PROTOTIPO.md)); su implementación en `ui/composicion.py` y
 `ui/paginas/componer.py` corresponde a las Fases P1 y P2 de ese plan
-(`docs/bitacora/2026-09-16-sprint-prototipo.md`); ver RF‑33 a RF‑35 (§3.2). Sus pruebas y su estado
-están en [plan_pruebas.md §8 y §8.1](plan_pruebas.md#8-especificación-de-casos-trazabilidad-rf--prueba).
+(`docs/bitacora/2026-09-16-sprint-prototipo.md`); ver RF‑33 a RF‑35 (§3.2). Esta sección no lleva estado: la prueba o el caso manual de cada paso y de cada flujo alternativo de **los once** casos de uso,
+y los pasos y flujos que el sistema no realiza, con su registro en el inventario, están en [plan_pruebas.md §8.1](plan_pruebas.md#8-especificación-de-casos-trazabilidad-rf--prueba) (INV‑032, INV‑033).
 
 Los tipos citados en los flujos (`ItemComputo`, `ComposicionAPU`, `ResultadoAPU`, `Presupuesto`,
 `Hallazgo`, `Rendimiento`) son los de [CLAUDE.md §5](../CLAUDE.md#5-contratos-de-interfaz-corecontracts),
@@ -475,7 +475,7 @@ lo reserva para UC‑09. Los RF de UC‑10 y UC‑11 (Sesión P0.1 de
 [PLAN_UI.md](../PLAN_UI.md)) en RF‑36. La reserva es **de RF‑32 solamente**: los demás requisitos
 de UC‑09 tomarán, al ejecutarse A0.1, la numeración a partir del siguiente al número más alto
 asignado (hoy RF‑44). Esta enmienda prevalece sobre la instrucción «numera desde RF‑32» de
-[PLAN_ASISTENTE.md](../PLAN_ASISTENTE.md):71‑73, que queda desactualizada hasta que la Sesión A0.1
+[PLAN_ASISTENTE.md](../PLAN_ASISTENTE.md):78‑80, que queda desactualizada hasta que la Sesión A0.1
 la corrija.
 
 | RF | Enunciado | Prioridad | UC | Incremento | Criterio de aceptación |
