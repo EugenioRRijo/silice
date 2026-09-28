@@ -7,8 +7,9 @@ mensajes. Sin Streamlit, sin `pandas` y sin `ui.caso`: cada funcion recibe lo qu
 prueba como funcion (`tests/unit/test_elaboracion.py`). Lo vigila
 `tests/unit/test_arquitectura.py::test_ui_respeta_sus_importaciones_prohibidas`.
 
-Es el unico modulo de `ui/` sin pagina que escribe en la base (regla A-2 del plan de C3):
-`guardar_composicion` escribe, pero no confirma; el `commit` es de la pagina.
+Es el unico modulo de `ui/` sin pagina que escribe filas en la base (regla A-2 del plan de C3):
+`guardar_composicion` escribe, pero no confirma; el `commit` es de la pagina. Filas, no esquema:
+`ui.caso.estado_caso` tambien escribe, pero solo DDL (`crear_esquema`), sin datos.
 """
 
 from __future__ import annotations

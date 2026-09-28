@@ -3,9 +3,10 @@
 **Sistema de generación y auditoría de Análisis de Precios Unitarios multidominio**
 
 > Estado: **completo, pendiente de revisión del tutor (compuerta G0, [docs/metodologia.md §2.2](metodologia.md#22-compuertas))**.
-> Redactado en la Sesión 0.1 de [PLAN_DESARROLLO.md](../PLAN_DESARROLLO.md). Criterio de cierre exigido:
-> al menos 23 RF numerados con prioridad y trazabilidad al caso de uso, y matriz de trazabilidad
-> completa. Resultado original: **31 RF** (sección 3.2) y matriz de la sección 4.
+> Redactado en la Sesión 0.1 de [PLAN_DESARROLLO.md](../PLAN_DESARROLLO.md). Criterio de cierre de esa
+> sesión: al menos 20 RF numerados, cada uno con prioridad y trazabilidad al caso de uso que lo origina,
+> y su matriz de trazabilidad (PLAN_DESARROLLO.md, Sesión 0.1, «Cierre»). Resultado original:
+> **31 RF** (sección 3.2) y matriz de la sección 4.
 > Este documento no reproduce datos que tienen fuente única: enlaza [CLAUDE.md](../CLAUDE.md),
 > [docs/linea_base.md](linea_base.md) y [docs/metodologia.md](metodologia.md) (principio DRY,
 > [metodologia.md §5](metodologia.md#5-dry)). Tras cruzar G0 quedan congelados los ocho casos de uso y
@@ -23,12 +24,19 @@
 > demás requisitos de UC‑09 continuarán, al ejecutarse la Sesión A0.1 de
 > [PLAN_ASISTENTE.md](../PLAN_ASISTENTE.md), a partir del siguiente al número más alto asignado (hoy
 > RF‑44); esta enmienda prevalece sobre la instrucción «numera desde RF‑32» de
-> PLAN_ASISTENTE.md:71‑73, que queda desactualizada hasta que A0.1 la corrija.
+> PLAN_ASISTENTE.md:78‑80, que queda desactualizada hasta que A0.1 la corrija.
+> **Revisión C4 (2026‑09‑28, fase C4 de [PLAN_CIERRE.md](../PLAN_CIERRE.md)):** sin UC, RF, RNF,
+> pantalla ni ruta nuevos. (1) Los criterios de §3.2 quedan sin estado ni nombres de prueba, que
+> viven solo en [plan_pruebas.md §8](plan_pruebas.md#8-especificación-de-casos-trazabilidad-rf--prueba);
+> RF‑16, RF‑20, RF‑21 y RF‑24 declaran su **alcance vigente**. (2) §3.1 declara la capa que realiza
+> cada caso de uso. (3) UC‑01 3a se reordena al comportamiento ratificado en C3‑10. (4) Se agrega el
+> flujo UC‑02 4a, que aclara lo ratificado en C3‑8. (5) UC‑04 2b se reformula según C2‑6. Además,
+> G1 figura cruzada con salvedad (§2.5, RF‑04, RNF‑09) y RNF‑08 declara la carga de three.js.
 
 | Campo | Valor |
 |---|---|
-| Versión | 1.0 |
-| Fecha | 2026‑08‑29 |
+| Versión | 1.1 (revisión C4; la 1.0 es del 2026‑08‑29) |
+| Fecha | 2026‑09‑28 |
 | Autor | [tesista] |
 | Revisor | [tutor académico] |
 
@@ -108,9 +116,9 @@ UC‑09 queda vacante en este documento: [PLAN_ASISTENTE.md](../PLAN_ASISTENTE.m
 ejecutada) lo reserva para «Generar presupuesto asistido desde las necesidades del usuario». UC‑10 y
 UC‑11 se declararon en la Sesión P0.1 del sprint del prototipo AREN.IA
 ([PLAN_PROTOTIPO.md](../PLAN_PROTOTIPO.md)); su implementación en `ui/composicion.py` y
-`ui/paginas/componer.py`, de las Fases P1 y P2 de ese plan, está cumplida (el sprint cerró con sus doce
-metas en verde el 2026‑09‑21, `docs/bitacora/2026-09-16-sprint-prototipo.md`); ver RF‑33 a RF‑35 (§3.2)
-y la matriz de trazabilidad (§4) para las pruebas.
+`ui/paginas/componer.py` corresponde a las Fases P1 y P2 de ese plan
+(`docs/bitacora/2026-09-16-sprint-prototipo.md`); ver RF‑33 a RF‑35 (§3.2). Esta sección no lleva estado: la prueba o el caso manual de cada paso y de cada flujo alternativo de **los once** casos de uso,
+y los pasos y flujos que el sistema no realiza, con su registro en el inventario, están en [plan_pruebas.md §8.1](plan_pruebas.md#8-especificación-de-casos-trazabilidad-rf--prueba) (INV‑032, INV‑033).
 
 Los tipos citados en los flujos (`ItemComputo`, `ComposicionAPU`, `ResultadoAPU`, `Presupuesto`,
 `Hallazgo`, `Rendimiento`) son los de [CLAUDE.md §5](../CLAUDE.md#5-contratos-de-interfaz-corecontracts),
@@ -136,8 +144,11 @@ implementados en `core/contracts/`.
 - **Flujos alternativos**
   - *2a. Fuente ilegible o de otro dominio:* el sistema rechaza la carga, no crea el presupuesto e indica
     el archivo y el elemento o fila que falló.
-  - *3a. Ítem sin partida en el catálogo:* el sistema propone las tres partidas más similares (UC‑03); si
-    no se acepta ninguna, el ítem queda pendiente, no suma al total y el informe lo declara.
+  - *3a. Ítem sin partida en el catálogo:* el sistema elabora el presupuesto sin él: el ítem queda
+    pendiente, no suma al total y el informe lo declara. Después propone, para cada pendiente, las
+    partidas más similares del catálogo (UC‑03); si el proyectista acepta una, el ítem pasa a esa
+    partida y el presupuesto se vuelve a elaborar; si no acepta ninguna, el ítem sigue pendiente.
+    (Orden vigente desde C3, dictamen C3‑10: la interfaz elabora primero y propone después.)
   - *3b. Partida sin rendimiento vigente:* el sistema propone el del histórico con su dispersión (UC‑06) y
     exige declarar si es estimado o medido.
   - *6a. Sin plan de trabajo:* el presupuesto se emite sin curva y el informe registra que R2 no es aplicable.
@@ -167,6 +178,9 @@ implementados en `core/contracts/`.
   - *2b. Unidad no equivalente a la del catálogo* (`unidades_equivalentes`): la fila se rechaza y se
     reporta; las demás se procesan.
   - *3a. Ningún precio cambió:* no se crea versión nueva y se informa.
+  - *4a. El presupuesto tiene ítems pendientes (UC‑01, flujo 3a):* la versión nueva los conserva y su
+    informe los vuelve a declarar. Siguen pendientes aunque la lista nueva traiga su partida: valorarlos
+    es UC‑01, no UC‑02 (aclaración de C4; comportamiento ratificado en el dictamen C3‑8).
   - *7a. El usuario descarta la versión:* se marca como descartada, pero el registro de cambios se conserva
     porque alimenta el histórico del módulo predictivo.
 - **Postcondiciones:** versión nueva asociada a su lista de precios; histórico de cambios persistido; el
@@ -211,8 +225,12 @@ implementados en `core/contracts/`.
   - *1a. El parámetro no participa en ninguna regla:* no hay recálculo y se informa.
   - *2a. La fuente es un modelo IFC y no reglas:* el sistema exige reimportar el modelo (UC‑01, paso 2) y
     empareja por `origen_id` (GlobalId) para conservar la correspondencia de las partidas.
-  - *2b. Una regla produce una cantidad negativa o nula* (por ejemplo, relleno negativo): la cantidad se
-    rechaza, la partida conserva su valor anterior y se emite un hallazgo de R5.
+  - *2b. Una regla produce una cantidad negativa o nula* (por ejemplo, relleno negativo): se rechaza el
+    objeto entero (`origen_id`), no solo esa cantidad, y todos sus ítems conservan su valor anterior,
+    para que un objeto nunca mezcle dimensiones viejas y nuevas; el rechazo se informa en el resultado
+    del recálculo. La auditoría emite un hallazgo de R5 solo cuando el objeto rechazado es el relleno,
+    que conservado deja de cuadrar con su balance; si es otro objeto, el relleno se rebalancea con las
+    cantidades conservadas y R5 cuadra (INV‑073; dictamen C2‑6).
 - **Postcondiciones:** versión nueva trazable, con la expresión que produjo cada cantidad; el diferencial
   queda registrado.
 
@@ -405,7 +423,12 @@ implementados en `core/contracts/`.
 - Ejecución local en Windows/Linux con Python ≥ 3.12.
 
 ### 2.5 Suposiciones y dependencias
-- Disponibilidad de la línea base auditada (existe) y de un modelo IFC de prueba (`tanquilla.ifc`, pendiente).
+- Disponibilidad de la línea base auditada (existe) y de un modelo IFC de prueba: existe
+  `data/samples/tanquilla.ifc`, generado programáticamente por `scripts/generar_tanquilla_ifc.py`, y
+  la compuerta G1 se cruzó **con salvedad**: el adaptador civil IFC reproduce exacto el cálculo manual
+  contra ese modelo, no contra un export de un modelador BIM
+  ([bitácora de F.1](bitacora/2026-08-31-F1-api-3d.md)); falta la prueba con exports de al menos dos
+  modeladores (RNF‑09).
 - Volumen de registros históricos suficiente para el módulo predictivo (compuerta G2, CLAUDE.md §8.1).
 - Autorización de uso académico de una base de precios de referencia, o catálogo reducido propio.
 
@@ -418,10 +441,23 @@ reconocimiento de planos.
 ## 3. Requisitos específicos
 
 ### 3.1 Interfaces externas
-- **Usuario:** interfaz web local (Streamlit) con los once casos de uso declarados en este documento
-  (UC‑01 a UC‑08 y UC‑10 a UC‑12; UC‑09 vacante, ver sección 2.2), con una pantalla de Inicio que
-  lleva al usuario por recorridos guiados (UC‑12).
+- **Usuario:** interfaz web local (Streamlit) con una pantalla de Inicio que lleva al usuario por
+  recorridos guiados (UC‑12). No todos los casos de uso tienen pantalla: la tabla siguiente declara la
+  capa que realiza cada uno (INV‑030). UC‑09 queda vacante (sección 2.2).
 - **Software:** API REST (FastAPI) con esquema OpenAPI en `docs/api.json`.
+
+| UC | Interfaz (pantalla del menú) | API REST | Solo biblioteca o script |
+|---|---|---|---|
+| UC‑01 | «Elaborar un presupuesto» (extrae, elabora, audita y descarga el Excel) y el bloque de cantidades de «Componer una partida»; la interfaz no guarda el presupuesto | `POST /computos/{dominio}` y `POST /presupuestos` (elabora, audita y guarda); `GET /presupuestos/{codigo}/excel` | — |
+| UC‑02 | «Actualizar precios» (revalora, guarda la versión y ofrece descartarla) e «Historico de cambios de precio» | `POST /listas-precios`, `POST /presupuestos/{codigo}/actualizacion`, `GET /cambios-precio`; descartar una versión no tiene ruta | — |
+| UC‑03 | «Partidas similares» (solo lectura); ayuda de similares en «Componer una partida»; propuestas de los pendientes en «Elaborar un presupuesto» | propuestas de los pendientes en la respuesta de `POST /presupuestos` | — |
+| UC‑04 | ninguna | ninguna | `adapters/civil/recalculo.py` (`recalcular`, `emparejar`), ejercido solo por las pruebas |
+| UC‑05 | el informe se muestra al elaborar, al componer y al revalorar; no hay pantalla de auditoría de un presupuesto ajeno | `GET /presupuestos/{codigo}/informe` y la hoja de auditoría de `…/excel` | la importación del archivo de un tercero no existe en ninguna capa (RF‑24, INV‑076) |
+| UC‑06 | «Componer una partida» propone el rendimiento del histórico y advierte al apartarse; no registra medidos | `POST /ejecuciones`, `GET /ejecuciones`, `GET /partidas/{codigo}/rendimientos`, `POST /partidas/{codigo}/rendimientos` | — |
+| UC‑07 | «Componer una partida» contrasta el precio con la estimación por reglas (clase 3 de AACE) | ninguna | `scripts/generar_resultados_ml.py` escribe `docs/resultados_ml.md` |
+| UC‑08 | «Escenarios de sensibilidad» | `POST /presupuestos/{codigo}/escenarios` | — |
+| UC‑10, UC‑11 | «Componer una partida» | ninguna | — |
+| UC‑12 | «Inicio» y el marco común de las pantallas (`ui/app.py`) | ninguna | — |
 - **Archivos de entrada:** IFC 4 (dominio civil), CSV de topología (telecom), registro de activos
   (industrial), alcance funcional (sistemas), listas de precios CSV/XLSX.
 - **Archivos de salida:** presupuesto y curva en XLSX, informe de auditoría.
@@ -429,7 +465,7 @@ reconocimiento de planos.
 ### 3.2 Requisitos funcionales
 
 Cada RF es una afirmación comprobable, con prioridad (Esencial / Deseable / Opcional), el UC que lo
-origina, el incremento que lo implementa y un criterio de aceptación con la prueba que lo demuestra.
+origina, el incremento que lo implementa y un criterio de aceptación.
 Numeración: RF‑01 a RF‑03 se conservan como se escribieron en el esqueleto (son los tres requisitos
 transversales del núcleo); de RF‑04 en adelante los requisitos van agrupados por caso de uso en orden
 ascendente de UC. Los números no se reutilizan: si un RF se retira, su número queda vacante.
@@ -439,66 +475,61 @@ lo reserva para UC‑09. Los RF de UC‑10 y UC‑11 (Sesión P0.1 de
 [PLAN_UI.md](../PLAN_UI.md)) en RF‑36. La reserva es **de RF‑32 solamente**: los demás requisitos
 de UC‑09 tomarán, al ejecutarse A0.1, la numeración a partir del siguiente al número más alto
 asignado (hoy RF‑44). Esta enmienda prevalece sobre la instrucción «numera desde RF‑32» de
-[PLAN_ASISTENTE.md](../PLAN_ASISTENTE.md):71‑73, que queda desactualizada hasta que la Sesión A0.1
+[PLAN_ASISTENTE.md](../PLAN_ASISTENTE.md):78‑80, que queda desactualizada hasta que la Sesión A0.1
 la corrija.
 
 | RF | Enunciado | Prioridad | UC | Incremento | Criterio de aceptación |
 |---|---|---|---|---|---|
-| RF‑01 | El sistema calculará el precio unitario de una partida a partir de su composición y los parámetros de costo según la fórmula de CLAUDE.md §4 | Esencial | UC‑01 | I0.3 | `test_costing.py` en verde (5 APU ± 0,01) |
-| RF‑02 | El sistema generará siempre el informe de auditoría al producir o cargar un presupuesto | Esencial | UC‑05 | I4 | 7 de 7 inconsistencias detectadas |
-| RF‑03 | Toda cantidad de obra conservará `origen_id`, `origen_tipo` y, si aplica, la regla que la produjo | Esencial | UC‑01, 04 | I0.1 | `tests/unit/test_contracts.py` y `tests/unit/test_linea_base.py`: ningún `ItemComputo` sin `origen_id`, y un ítem de origen REGLA sin expresión es rechazado |
-| RF‑04 | El sistema obtendrá las cantidades de obra invocando `AdaptadorDominio.extraer(fuente)`, sin que el núcleo conozca el dominio ni el formato de la fuente | Esencial | UC‑01 | I0.1, I3.1 | `tests/unit/test_arquitectura.py` verde (ningún adaptador importa de `core` fuera de `core.contracts`) y `tests/unit/test_linea_base.py`: todo `ItemComputo` trae `origen_id` y `origen_tipo`; la extracción IFC con `origen_id` = GlobalId, pendiente (Sesión I3.1) |
-| RF‑05 | El sistema persistirá partidas, insumos, composiciones y rendimientos en SQLite; `scripts/seed.py` cargará la línea base en la base de datos, de modo que el presupuesto se reproduzca completo desde ella | Esencial | UC‑01 | I0.4 | `tests/integration/test_persistencia.py`: los cinco APU recuperados de la base dan los mismos precios unitarios que el fixture |
-| RF‑06 | El sistema construirá el presupuesto asociando cada `ItemComputo` a su `ComposicionAPU`, calculando su `ResultadoAPU` y emitiendo una `PartidaPresupuestada` por ítem, con total por partida y total general | Esencial | UC‑01 | I0.5 | `tests/unit/test_budget.py` y `tests/integration/test_presupuesto_linea_base.py`: el presupuesto de la línea base corregida se reproduce partida por partida desde el catálogo persistido |
-| RF‑07 | El sistema generará la curva de inversión de modo que su acumulado final sea exactamente igual al total del presupuesto | Esencial | UC‑01 | I0.5 | `tests/unit/test_budget.py` y `tests/integration/test_presupuesto_linea_base.py`: `total_curva == total` sin tolerancia (el caso real cerraba en 99,30 %) |
-| RF‑08 | El sistema exportará presupuesto y curva a XLSX, redondeando a dos decimales solo en la celda presentada y nunca en el cálculo | Deseable | UC‑01 | I0.5 | `tests/unit/test_budget.py::test_exportar_excel_escribe_cuatro_hojas`: el libro se escribe completo y sus totales coinciden con los del presupuesto en memoria |
-| RF‑09 | El sistema admitirá un dominio nuevo agregando un adaptador bajo `adapters/` que solo importe `core.contracts`, sin modificar `core/` | Esencial | UC‑01 | I5 | `git diff --stat core/` vacío tras I5, `tests/unit/test_arquitectura.py` verde y `tests/unit/test_adapter_telecom.py`, `tests/unit/test_adapter_industrial.py` y `tests/unit/test_adapter_sistemas.py` en verde (indicador 4) |
-| RF‑10 | El sistema cargará una lista de precios en CSV o XLSX, la validará (columnas, tipos y unidades) e identificará los insumos cuyo precio difiere del vigente y las partidas donde participan | Esencial | UC‑02 | I1 | `tests/integration/test_actualizacion_precios.py`: la lista de prueba identifica exactamente los insumos modificados |
-| RF‑11 | El sistema recalculará todos los APU afectados por la lista nueva y producirá una versión nueva del presupuesto sin editar ninguna composición | Esencial | UC‑02 | I1 | `tests/integration/test_actualizacion_precios.py`: las composiciones quedan idénticas y los precios unitarios cambian solo en las partidas afectadas |
-| RF‑12 | El sistema persistirá cada cambio de precio con insumo, precio anterior, precio nuevo, variación porcentual, incidencia por partida y fecha | Esencial | UC‑02 | I1 | `tests/integration/test_actualizacion_precios.py`: un registro por insumo modificado, recuperable tras cerrar la sesión |
-| RF‑13 | El sistema emitirá un informe comparativo entre la versión anterior y la nueva, por partida y total, en variación absoluta y porcentual | Esencial | UC‑02 | I1 | `tests/integration/test_actualizacion_precios.py`: la suma de las variaciones por partida iguala la variación del total |
-| RF‑14 | El sistema reconstruirá cualquier presupuesto con los precios vigentes en la fecha en que fue elaborado | Esencial | UC‑02 | I1 | `tests/integration/test_persistencia.py::test_precios_se_reconstruyen_a_fecha` y `tests/integration/test_actualizacion_precios.py`: la reconstrucción a la fecha original es idéntica al presupuesto emitido (RNF‑02) |
-| RF‑15 | El sistema devolverá, para una descripción en texto libre, las tres partidas del catálogo más similares con su puntaje de similitud del coseno | Esencial | UC‑03 | I2 | `tests/unit/test_normalizacion.py::test_propuestas_ordenadas_por_puntaje_y_sobre_el_umbral`: a lo sumo tres, orden descendente, ninguna bajo `UMBRAL_POR_DEFECTO` |
-| RF‑16 | Al aceptar una propuesta, el sistema precargará su composición y su rendimiento, conservando la referencia a la partida de origen y el puntaje que la propuso | Esencial | UC‑03 | I2 | precarga cubierta en `ui/paginas/similares.py` (desglose, rendimiento, origen y puntaje visibles); la **persistencia** de la partida nueva, antes bloqueada por la falta de un flujo de creación de partidas (hallazgo en `docs/bitacora/2026-08-31-I2-normalizacion.md` y decisión D5 de `docs/dossier_g0.md`), queda **satisfecha por UC‑10** (Sesión P0.1; implementación en las Fases P1–P2 de [PLAN_PROTOTIPO.md](../PLAN_PROTOTIPO.md)) |
-| RF‑17 | El sistema reconocerá al menos el 80 % de las partidas de un presupuesto conocido al normalizar sus descripciones | Esencial | UC‑03 | I2 | `tests/unit/test_normalizacion.py::test_acepta_al_menos_80_por_ciento_del_presupuesto_conocido`: ≥ 80 % de la línea base parafraseada reconocida en el primer puesto |
-| RF‑18 | El sistema derivará las cantidades del dominio civil de reglas paramétricas declaradas, registrando en cada `ItemComputo` la expresión evaluada y los parámetros usados | Esencial | UC‑04 | I3.2 | `tests/unit/test_reglas_civil.py`: con a = 0,80, h = 0,80, e = 0,10 el concreto da 0,224 m3 y el encofrado 4,48 m2, y ambos ítems traen `regla` y `parametros` |
-| RF‑19 | Al modificar un parámetro dimensional o el conteo de elementos, el sistema reevaluará las reglas afectadas y recalculará cantidades, precios y curva sin intervención manual | Esencial | UC‑04 | I3.2 | `tests/unit/test_reglas_civil.py`: cambiar el ancho de la tanquilla altera las cantidades derivadas de esa dimensión y ninguna otra |
-| RF‑20 | El sistema presentará el diferencial entre la versión anterior y la recalculada: cantidad, precio unitario y total por partida | Deseable | UC‑04 | I3.2 | **No implementado; declarado en limitaciones** (INV‑011, fase C1 del cierre; decisión del 2026‑09‑23). Criterio previsto: la suma de los diferenciales por partida iguala la diferencia de totales |
-| RF‑21 | El sistema ejecutará las siete reglas R1–R7 sobre cualquier `Presupuesto` y devolverá `Hallazgo` con severidad, descripción, impacto cuantificado y los `origen_id` involucrados | Esencial | UC‑05 | I4 | `tests/unit/test_verification.py`: cada regla devuelve hallazgos completos y lista vacía cuando el presupuesto cumple |
-| RF‑22 | El sistema detectará las siete inconsistencias de la línea base sobre el presupuesto de prueba que las reproduce | Esencial | UC‑05 | I4 | `tests/integration/test_auditoria_7_de_7.py`: 7 de 7 hallazgos sobre el presupuesto de prueba, uno por regla, con `tests/unit/test_verification.py` cubriendo cada regla por separado (indicador 1) |
-| RF‑23 | El sistema ordenará el informe por severidad descendente y no modificará el presupuesto auditado; una regla que no pueda evaluarse se reportará como hallazgo INFO sin interrumpir a las demás | Esencial | UC‑05 | I4 | `tests/unit/test_verification.py`: el presupuesto de entrada es idéntico antes y después, y una regla sin datos no aborta el informe |
-| RF‑24 | El sistema importará un presupuesto de un tercero en formato tabular, conservando las unidades originales escritas por su autor, para poder auditarlo | Esencial | UC‑05 | I4 | `tests/integration/test_auditoria_7_de_7.py`: la unidad "mts" del cómputo llega intacta a la regla R3 |
-| RF‑25 | El sistema registrará rendimientos medidos con partida, valor, condiciones, fecha y referencia a la ejecución, y rechazará un rendimiento medido sin esa referencia | Esencial | UC‑06 | I6.2 | `tests/unit/test_contracts.py` cubre la invariante; registro y consulta cubiertos (I6.2): `tests/integration/test_rendimientos.py` (medido exige referencia a una `Ejecucion` real, trazada por clave foránea) y `tests/integration/test_api_rendimientos.py` |
-| RF‑26 | Al componer un APU, el sistema propondrá el rendimiento del histórico de la partida con su dispersión (número de observaciones, media, mínimo y máximo) | Esencial | UC‑06 | I6.2 | cubierto (I6.2): `tests/integration/test_rendimientos.py` y `tests/integration/test_api_rendimientos.py` — dispersión con n, media, mínimo, máximo y desglose estimado‑medido; la propuesta prefiere el medido más reciente y declara siempre el tipo |
-| RF‑27 | El sistema advertirá cuando el rendimiento introducido se aparte del comportamiento observado, sin impedir el registro | Esencial | UC‑06 | I6.1, I6.2 | detección cubierta: `tests/unit/test_anomalias.py` (`evaluar_rendimiento`: desviado → atípico, coherente → no, histórico corto → sin veredicto); advertencia en el flujo cubierta (I6.2): `tests/integration/test_api_rendimientos.py` — fuera del rango observado responde 201 con `advertencia` y el registro persiste igual |
-| RF‑28 | El sistema estimará el precio de mercado de una partida con la técnica que corresponda al conteo de registros del dominio y reportará MAPE, RMSE y R² de la técnica empleada | Esencial | UC‑07 | I6.3 | cubierto (I6.3): `docs/resultados_ml.md` generado con MAPE, RMSE, R² y técnica según conteo (compuerta G2 cruzada); pruebas en `tests/unit/test_prediccion.py` y `tests/unit/test_resultados_ml.py` (indicador 5) |
-| RF‑29 | El sistema contrastará el precio construido con el estimado, expresará la desviación en porcentaje y marcará como atípicos los precios que se aparten del histórico | Esencial | UC‑07 | I6.1, I6.3 | marcado de atípicos cubierto: `tests/unit/test_anomalias.py` (`precios_atipicos` sobre el histórico de variaciones); contraste cubierto (I6.3): `tests/unit/test_prediccion.py` — desviación en porcentaje y `Hallazgo` de severidad ADVERTENCIA fuera del rango declarado de la clase 3 de AACE |
-| RF‑30 | El sistema generará escenarios variando `ParametrosCosto` o precios de insumos y recalculará el presupuesto completo sin alterar el presupuesto base | Deseable | UC‑08 | F.1 | cubierto (cierre UC‑08, 2026‑08‑31): `tests/unit/test_escenarios.py` — el presupuesto base y las composiciones quedan intactos, y cada partida del escenario se verifica contra `calcular_apu` (el motor como verdad de terreno); por HTTP, `tests/integration/test_api_escenarios.py` — `POST /presupuestos/{codigo}/escenarios` no persiste ninguna versión y responde 422 ante un parámetro fuera de rango (flujo 1a) |
-| RF‑31 | El sistema comparará varios escenarios entre sí y con el presupuesto base en una tabla exportable | Opcional | UC‑08 | F.1 | cubierto (cierre UC‑08, 2026‑08‑31): `tests/unit/test_escenarios.py` — la tabla trae el base y una fila por escenario con total, variación absoluta y porcentual, y se exporta (`to_csv`); en la UI, la página «Escenarios (UC‑08)» presenta la tabla con detalle por partida y descarga CSV |
-| RF‑33 | El sistema no persistirá una composición cuyo rendimiento no haya sido declarado explícitamente junto con sus condiciones | Esencial | UC‑10, 11 | P1.2, P2.2 | cumplido en los dos caminos del catálogo: `tests/integration/test_persistencia.py::test_cargar_composicion_sin_condiciones_lanza_valueerror` (P2.2, `Catalogo.cargar_composicion`) y `::test_reemplazar_composicion_exige_condiciones_no_vacias` (P1.2, `Catalogo.reemplazar_composicion`); cumplido en la pantalla: `tests/unit/test_ui_componer.py::test_sin_condiciones_el_boton_de_guardar_esta_deshabilitado` (P4.1, el botón «Guardar composicion» nace deshabilitado sin condiciones y se habilita al declararlas) y `::test_sin_rendimiento_guardar_no_persiste_nada` (con condiciones pero sin rendimiento, el botón guarda habilitado pero no persiste nada) |
-| RF‑34 | La modalidad de la mano de obra se declara por línea: jornal o destajo | Esencial | UC‑10, 11 | P1.1, P2.2 | cumplido en el núcleo y el catálogo: `tests/unit/test_costing_destajo.py` (P1.1, `ModalidadManoObra` en `core/contracts/apu.py`, columna Modalidad de `LineaManoObra`) y `tests/integration/test_persistencia.py::test_la_modalidad_a_destajo_sobrevive_el_viaje_por_el_catalogo` (persistencia y lectura); cumplido en la composición pura: `tests/unit/test_composicion.py` (P2.1, `ui/composicion.py` acepta y valida la modalidad por fila); cumplido en la pantalla: la columna Modalidad de la tabla de mano de obra en `ui/paginas/componer.py` (P2.2, `st.column_config.SelectboxColumn`), ejercitada por `tests/unit/test_ui_componer.py::test_teclear_el_codigo_de_una_partida_guardada_precarga_sus_tres_tablas` (jornal y destajo conviven en la misma partida precargada) y por `tests/integration/test_composicion_extremo_a_extremo.py::test_el_caso_de_demostracion_mezcla_jornal_y_destajo_en_una_partida` |
-| RF‑35 | El precio sugerido desde la referencia de mercado es editable por quien presupuesta | Esencial | UC‑10 | P2.3 | cumplido: `tests/unit/test_composicion.py` (`test_buscar_referencia_*`, P2.3, la referencia MaPreX sugiere) y `::test_el_precio_sugerido_por_la_referencia_es_editable_y_el_calculo_lo_refleja` (auditoría del PR #7: el precio de la fila sigue siendo un campo editable, nunca de solo lectura, y `core.costing.calcular_apu` refleja el precio editado, no el sugerido) |
-| RF‑36 | La interfaz abrirá en la pantalla de Inicio, cualquiera que sea el orden del resto del menú | Esencial | UC‑12 | U1 | cumplido (U1): `tests/unit/test_ui_app.py` — el Inicio es la página por defecto por identidad, no por posición, y la ruta vacía que Streamlit da a la página por defecto se traduce a `inicio` |
-| RF‑37 | Los recorridos guiados se declararán una sola vez, en un módulo sin Streamlit ni base de datos, y el destino de cada paso será la ruta de una página registrada | Esencial | UC‑12 | U1 | cumplido (U1): `tests/unit/test_ui_recorridos.py` (la declaración única); `tests/unit/test_arquitectura.py::test_ui_respeta_sus_importaciones_prohibidas[ui/recorridos.py]` (sin Streamlit ni base de datos); `tests/unit/test_ui_app.py` — integridad de enlaces: todo `paso.pagina` está en `{p.ruta_url for p in paginas_visibles(False)}` y en las visibles en modo entrega |
-| RF‑38 | El archivo de la base se fijará una vez por sesión y todas las pantallas operarán sobre ese mismo caso; ninguna pantalla distinta del Inicio pedirá la ruta | Esencial | UC‑12 | U1 | cumplido (U1): `tests/unit/test_ui_caso.py` — resolución sesión → entorno → constante; `RUTA_BASE_POR_DEFECTO` definida una sola vez en `ui/`; `tests/unit/test_ui_app.py` — ninguna página salvo el Inicio pide la ruta |
-| RF‑39 | El sistema mostrará en toda pantalla, en solo lectura, el caso abierto y su estado: existencia del archivo, número de partidas, número de insumos y si hay lista de precios vigente | Esencial | UC‑12 | U1 | cumplido (U1): `tests/unit/test_ui_caso.py` (estado sobre base inexistente, vacía, sembrada e ilegible, sin traza) y `tests/unit/test_ui_app.py` (`AppTest`: el marco pinta el estado en cada una de las diez pantallas) |
-| RF‑40 | Cuando el caso abierto no exista o no contenga partidas, el Inicio lo declarará y ofrecerá cargar el caso de demostración, sin exponer nunca la opción de reiniciar la base | Esencial | UC‑12 | U1 | cumplido (U1): `tests/unit/test_ui_inicio.py` (estado vacío, siembra, botón ausente con partidas) y `tests/unit/test_ui_caso.py` (el literal del flag de reinicio no aparece en ningún archivo de `ui/`) |
-| RF‑41 | Cada pantalla del recorrido activo mostrará su paso siguiente y la posición del usuario en el recorrido, tomados de la declaración única de recorridos; una pantalla que no pertenezca a ningún recorrido no mostrará ninguno de los dos | Deseable | UC‑12 | U1 | cumplido (U1): `tests/unit/test_ui_recorridos.py` (`paso_siguiente` y `Recorrido.posicion`) y `tests/unit/test_ui_app.py` (`AppTest`: botón «Siguiente» y su destino) |
-| RF‑42 | El menú presentará cada pantalla con el nombre de su oficio, agrupada en dos secciones —Trabajo e Investigación— en el orden del trabajo real; el código del caso de uso permanecerá visible como subtítulo | Deseable | UC‑12 | U1 | cumplido (U1): `tests/unit/test_ui_app.py` — secciones y orden sin Streamlit; ningún título lleva código de UC; `AppTest`: el subtítulo «Caso de uso …» en las cinco pantallas que tienen uno |
-| RF‑43 | Con el modo entrega activo, ninguna pantalla de Trabajo quedará inaccesible | Esencial | UC‑12 | U1 | cumplido (U1): `tests/unit/test_ui_app.py` (la sección Trabajo es idéntica con y sin modo entrega) y `tests/unit/test_ui_app.py::test_ningun_paso_sale_de_la_seccion_trabajo` (ningún paso sale de Trabajo) |
+| RF‑01 | El sistema calculará el precio unitario de una partida a partir de su composición y los parámetros de costo según la fórmula de CLAUDE.md §4 | Esencial | UC‑01 | I0.3 | Los cinco precios unitarios de la línea base se reproducen con ± 0,01; los materiales no se dividen entre el rendimiento y la administración y la utilidad se aplican en cascada |
+| RF‑02 | El sistema generará siempre el informe de auditoría al producir o cargar un presupuesto | Esencial | UC‑05 | I4 | Todo presupuesto elaborado o recargado trae su informe; sobre el presupuesto de prueba se detectan 7 de 7 inconsistencias, y el informe recargado declara los ítems pendientes del documento emitido |
+| RF‑03 | Toda cantidad de obra conservará `origen_id`, `origen_tipo` y, si aplica, la regla que la produjo | Esencial | UC‑01, 04 | I0.1 | Ningún `ItemComputo` sin `origen_id`; un ítem de origen REGLA sin expresión se rechaza; los ítems que derivan de una regla llevan su expresión y sus parámetros, y todo hallazgo de partida referencia un origen trazable |
+| RF‑04 | El sistema obtendrá las cantidades de obra invocando `AdaptadorDominio.extraer(fuente)`, sin que el núcleo conozca el dominio ni el formato de la fuente | Esencial | UC‑01 | I0.1, I3.1 | Ningún adaptador importa de `core` fuera de `core.contracts`; todo `ItemComputo` extraído trae `origen_id` y `origen_tipo`; el adaptador IFC usa el GlobalId como `origen_id` y reproduce el cálculo manual de la tanquilla (compuerta G1, cruzada con salvedad: sección 2.5) |
+| RF‑05 | El sistema persistirá partidas, insumos, composiciones y rendimientos en SQLite; `scripts/seed.py` cargará la línea base en la base de datos, de modo que el presupuesto se reproduzca completo desde ella | Esencial | UC‑01 | I0.4 | Los cinco APU recuperados de la base dan los mismos precios unitarios que el fixture |
+| RF‑06 | El sistema construirá el presupuesto asociando cada `ItemComputo` a su `ComposicionAPU`, calculando su `ResultadoAPU` y emitiendo una `PartidaPresupuestada` por ítem, con total por partida y total general | Esencial | UC‑01 | I0.5 | El presupuesto de la línea base corregida se reproduce partida por partida desde el catálogo persistido |
+| RF‑07 | El sistema generará la curva de inversión de modo que su acumulado final sea exactamente igual al total del presupuesto | Esencial | UC‑01 | I0.5 | `total_curva == total` sin tolerancia (la curva del caso didáctico de la línea base, [CLAUDE.md §1](../CLAUDE.md#1-qué-es-este-proyecto), cerraba en 99,30 %) |
+| RF‑08 | El sistema exportará presupuesto y curva a XLSX, redondeando a dos decimales solo en la celda presentada y nunca en el cálculo | Deseable | UC‑01 | I0.5 | El libro se escribe completo, con sus cuatro hojas, y sus totales coinciden con los del presupuesto en memoria |
+| RF‑09 | El sistema admitirá un dominio nuevo agregando un adaptador bajo `adapters/` que solo importe `core.contracts`, sin modificar `core/` | Esencial | UC‑01 | I5 | `git diff --stat core/` vacío tras I5; ningún adaptador importa de `core` fuera de `core.contracts`, y los adaptadores telecom, industrial y sistemas extraen sus muestras (indicador 4) |
+| RF‑10 | El sistema cargará una lista de precios en CSV o XLSX, la validará (columnas, tipos y unidades) e identificará los insumos cuyo precio difiere del vigente y las partidas donde participan | Esencial | UC‑02 | I1 | La lista de prueba identifica exactamente los insumos modificados; los importes se leen como `Decimal` exacto y una fila con unidad no equivalente se rechaza sin detener las demás |
+| RF‑11 | El sistema recalculará todos los APU afectados por la lista nueva y producirá una versión nueva del presupuesto sin editar ninguna composición | Esencial | UC‑02 | I1 | Las composiciones quedan idénticas y los precios unitarios cambian solo en las partidas afectadas |
+| RF‑12 | El sistema persistirá cada cambio de precio con insumo, precio anterior, precio nuevo, variación porcentual, incidencia por partida y fecha | Esencial | UC‑02 | I1 | Un registro por insumo modificado, con su incidencia por partida, recuperable tras cerrar la sesión |
+| RF‑13 | El sistema emitirá un informe comparativo entre la versión anterior y la nueva, por partida y total, en variación absoluta y porcentual | Esencial | UC‑02 | I1 | La suma de las variaciones por partida iguala la variación del total |
+| RF‑14 | El sistema reconstruirá cualquier presupuesto con los precios vigentes en la fecha en que fue elaborado | Esencial | UC‑02 | I1 | La reconstrucción a la fecha original es idéntica al presupuesto emitido (RNF‑02) |
+| RF‑15 | El sistema devolverá, para una descripción en texto libre, las tres partidas del catálogo más similares con su puntaje de similitud del coseno | Esencial | UC‑03 | I2 | A lo sumo tres propuestas, en orden descendente de puntaje, ninguna bajo `UMBRAL_POR_DEFECTO` |
+| RF‑16 | Al aceptar una propuesta, el sistema precargará su composición y su rendimiento, conservando la referencia a la partida de origen y el puntaje que la propuso | Esencial | UC‑03 | I2 | La propuesta aceptada muestra su desglose, su rendimiento, el código de la partida de origen y el puntaje, y la partida nueva se persiste con esa referencia. **Alcance vigente:** la precarga existe; la persistencia de la referencia al origen y al puntaje no existe, y su alcance es la decisión D5 del tutor ([dossier_g0.md](dossier_g0.md#d5-flujo-de-creación-de-partidas-rf16-y-familia)); UC‑10 persiste partidas compuestas, sin esa referencia |
+| RF‑17 | El sistema reconocerá al menos el 80 % de las partidas de un presupuesto conocido al normalizar sus descripciones | Esencial | UC‑03 | I2 | ≥ 80 % de la línea base parafraseada reconocida en el primer puesto |
+| RF‑18 | El sistema derivará las cantidades del dominio civil de reglas paramétricas declaradas, registrando en cada `ItemComputo` la expresión evaluada y los parámetros usados | Esencial | UC‑04 | I3.2 | Con a = 0,80, h = 0,80, e = 0,10 el concreto da 0,224 m3 y el encofrado 4,48 m2, y ambos ítems traen `regla` y `parametros` |
+| RF‑19 | Al modificar un parámetro dimensional o el conteo de elementos, el sistema reevaluará las reglas afectadas y recalculará cantidades, precios y curva sin intervención manual | Esencial | UC‑04 | I3.2 | Cambiar el ancho de la tanquilla altera solo las cantidades que dependen de él, y el recálculo se propaga a precios, curva y auditoría; se cumplen los flujos 1a, 2a y 2b de UC‑04 |
+| RF‑20 | El sistema presentará el diferencial entre la versión anterior y la recalculada: cantidad, precio unitario y total por partida | Deseable | UC‑04 | I3.2 | Criterio previsto: la suma de los diferenciales por partida iguala la diferencia de totales. **Alcance vigente: no implementado**, declarado en limitaciones (INV‑011, fase C1 del cierre; decisión del 2026‑09‑23) |
+| RF‑21 | El sistema ejecutará las siete reglas R1–R7 sobre cualquier `Presupuesto` y devolverá `Hallazgo` con severidad, descripción, impacto cuantificado y los `origen_id` involucrados | Esencial | UC‑05 | I4 | Cada regla detecta su inconsistencia con hallazgos completos (severidad, descripción, impacto y `origen_id`) y devuelve una lista vacía cuando el presupuesto cumple. **Alcance vigente: parcial** ([plan_pruebas §8](plan_pruebas.md#8-especificación-de-casos-trazabilidad-rf--prueba)) |
+| RF‑22 | El sistema detectará las siete inconsistencias de la línea base sobre el presupuesto de prueba que las reproduce | Esencial | UC‑05 | I4 | 7 de 7 hallazgos sobre el presupuesto de prueba, uno por regla (indicador 1) |
+| RF‑23 | El sistema ordenará el informe por severidad descendente y no modificará el presupuesto auditado; una regla que no pueda evaluarse se reportará como hallazgo INFO sin interrumpir a las demás | Esencial | UC‑05 | I4 | El presupuesto auditado es idéntico antes y después, el informe sale ordenado por severidad descendente y una regla sin datos da un hallazgo INFO sin abortar el informe |
+| RF‑24 | El sistema importará un presupuesto de un tercero en formato tabular, conservando las unidades originales escritas por su autor, para poder auditarlo | Esencial | UC‑05 | I4 | La unidad escrita por el autor del archivo importado («mts») llega intacta a la regla R3. **Alcance vigente: parcial.** R3 conserva la unidad del autor sobre un `Presupuesto` construido en memoria, pero la importación de un archivo tabular de un tercero no existe en ninguna capa (INV‑076, abierto; bloquea F3) |
+| RF‑25 | El sistema registrará rendimientos medidos con partida, valor, condiciones, fecha y referencia a la ejecución, y rechazará un rendimiento medido sin esa referencia | Esencial | UC‑06 | I6.2 | Un rendimiento medido sin referencia a una `Ejecucion` registrada se rechaza; con ella queda trazado por clave foránea |
+| RF‑26 | Al componer un APU, el sistema propondrá el rendimiento del histórico de la partida con su dispersión (número de observaciones, media, mínimo y máximo) | Esencial | UC‑06 | I6.2 | Dispersión con número de observaciones, media, mínimo, máximo y desglose estimado‑medido; la propuesta prefiere el medido más reciente y declara siempre el tipo |
+| RF‑27 | El sistema advertirá cuando el rendimiento introducido se aparte del comportamiento observado, sin impedir el registro | Esencial | UC‑06 | I6.1, I6.2 | Desviado → atípico, coherente → no, histórico corto → sin veredicto; un valor fuera del rango observado se registra igual, con la advertencia |
+| RF‑28 | El sistema estimará el precio de mercado de una partida con la técnica que corresponda al conteo de registros del dominio y reportará MAPE, RMSE y R² de la técnica empleada | Esencial | UC‑07 | I6.3 | `docs/resultados_ml.md` con MAPE, RMSE, R² y la técnica que dicta el conteo de la compuerta G2 (indicador 5) |
+| RF‑29 | El sistema contrastará el precio construido con el estimado, expresará la desviación en porcentaje y marcará como atípicos los precios que se aparten del histórico | Esencial | UC‑07 | I6.1, I6.3 | La desviación se expresa en porcentaje, fuera del rango de la clase 3 de AACE produce un `Hallazgo` ADVERTENCIA, y los precios que se apartan del histórico de variaciones se marcan como atípicos |
+| RF‑30 | El sistema generará escenarios variando `ParametrosCosto` o precios de insumos y recalculará el presupuesto completo sin alterar el presupuesto base | Deseable | UC‑08 | F.1 | El presupuesto base y las composiciones quedan intactos, cada partida del escenario coincide con `calcular_apu` (el motor como verdad de terreno), nada se persiste y un parámetro fuera de rango se rechaza (flujo 1a) |
+| RF‑31 | El sistema comparará varios escenarios entre sí y con el presupuesto base en una tabla exportable | Opcional | UC‑08 | F.1 | La tabla trae el base y una fila por escenario con total y variación absoluta y porcentual, con detalle por partida, y se exporta; en la interfaz, la página «Escenarios de sensibilidad» |
+| RF‑33 | El sistema no persistirá una composición cuyo rendimiento no haya sido declarado explícitamente junto con sus condiciones | Esencial | UC‑10, 11 | P1.2, P2.2 | Sin condiciones del rendimiento, o sin rendimiento, no se persiste nada, ni por los dos caminos del catálogo (cargar y reemplazar) ni desde la pantalla; el botón «Guardar composicion» nace deshabilitado sin condiciones |
+| RF‑34 | La modalidad de la mano de obra se declara por línea: jornal o destajo | Esencial | UC‑10, 11 | P1.1, P2.2 | Jornal y destajo conviven en una misma partida, se persisten, se leen y se exportan; una línea sin modalidad es jornal |
+| RF‑35 | El precio sugerido desde la referencia de mercado es editable por quien presupuesta | Esencial | UC‑10 | P2.3 | El precio sugerido queda en un campo editable y `core.costing.calcular_apu` refleja el precio editado, no el sugerido |
+| RF‑36 | La interfaz abrirá en la pantalla de Inicio, cualquiera que sea el orden del resto del menú | Esencial | UC‑12 | U1 | El Inicio es la página por defecto por identidad, no por posición, y la ruta vacía que Streamlit da a la página por defecto se traduce a `inicio` |
+| RF‑37 | Los recorridos guiados se declararán una sola vez, en un módulo sin Streamlit ni base de datos, y el destino de cada paso será la ruta de una página registrada | Esencial | UC‑12 | U1 | Una sola declaración de recorridos, sin Streamlit ni base de datos; todo `paso.pagina` es la ruta de una página visible, con y sin modo entrega |
+| RF‑38 | El archivo de la base se fijará una vez por sesión y todas las pantallas operarán sobre ese mismo caso; ninguna pantalla distinta del Inicio pedirá la ruta | Esencial | UC‑12 | U1 | Resolución sesión → entorno → constante, `RUTA_BASE_POR_DEFECTO` definida una sola vez en `ui/`, y ninguna página salvo el Inicio pide la ruta |
+| RF‑39 | El sistema mostrará en toda pantalla, en solo lectura, el caso abierto y su estado: existencia del archivo, número de partidas, número de insumos y si hay lista de precios vigente | Esencial | UC‑12 | U1 | El estado es correcto sobre una base inexistente, vacía, sembrada e ilegible, sin traza, y el marco lo pinta en cada una de las diez pantallas |
+| RF‑40 | Cuando el caso abierto no exista o no contenga partidas, el Inicio lo declarará y ofrecerá cargar el caso de demostración, sin exponer nunca la opción de reiniciar la base | Esencial | UC‑12 | U1 | Estado vacío, siembra, y ningún botón de sembrar con partidas; el literal del flag de reinicio no aparece en ningún archivo de `ui/` |
+| RF‑41 | Cada pantalla del recorrido activo mostrará su paso siguiente y la posición del usuario en el recorrido, tomados de la declaración única de recorridos; una pantalla que no pertenezca a ningún recorrido no mostrará ninguno de los dos | Deseable | UC‑12 | U1 | `paso_siguiente` y la posición del recorrido salen de la declaración única; el botón «Siguiente» lleva a su destino y una pantalla fuera del recorrido no lo muestra |
+| RF‑42 | El menú presentará cada pantalla con el nombre de su oficio, agrupada en dos secciones —Trabajo e Investigación— en el orden del trabajo real; el código del caso de uso permanecerá visible como subtítulo | Deseable | UC‑12 | U1 | Secciones y orden sin Streamlit; ningún título lleva código de UC; el subtítulo «Caso de uso …» aparece en las cinco pantallas que tienen uno |
+| RF‑43 | Con el modo entrega activo, ninguna pantalla de Trabajo quedará inaccesible | Esencial | UC‑12 | U1 | La sección Trabajo es idéntica con y sin modo entrega, y ningún paso de un recorrido sale de Trabajo |
 
-Los archivos citados pertenecen al conjunto de pruebas acordado para el proyecto: en `tests/unit/`,
-`test_costing.py`, `test_contracts.py`, `test_linea_base.py`, `test_arquitectura.py`, `test_budget.py`,
-`test_reglas_civil.py`, `test_verification.py`, `test_adapter_telecom.py`, `test_adapter_industrial.py` y
-`test_adapter_sistemas.py`; en `tests/integration/`, `test_persistencia.py`, `test_presupuesto_linea_base.py`,
-`test_auditoria_7_de_7.py` y `test_actualizacion_precios.py`. Los cuatro primeros existen al cerrar la
-Sesión 0.1; los demás los crea el incremento indicado en su fila. Los RF posteriores al núcleo (I2, I6.1,
-I6.2, I6.3, F.1 y, en su momento, RF‑33 a RF‑35 del sprint del prototipo) declaran su criterio medible
-antes de que exista la prueba que lo cierra: el archivo se nombra al abrir esa sesión, no antes. RF‑33 a
-RF‑35 siguieron ese patrón al declararse en la Sesión P0.1 y ya pasaron de pendiente a cumplido, con las
-pruebas y conteos de la tabla anterior (Fases P2 a P4 del sprint del prototipo). RF‑36 a RF‑43 (U0.1)
-nombraron su archivo de prueba al declararse; U1 (fase C3 del cierre) creó esos cuatro archivos,
-que están en verde: RF‑36 a RF‑43 pasan a cumplido (U1).
+Los criterios de esta tabla son afirmaciones comprobables y no llevan estado. **La prueba que
+demuestra cada criterio y su estado (verde, parcial, sin prueba o no implementado) viven una sola vez,
+en [plan_pruebas.md §8](plan_pruebas.md#8-especificación-de-casos-trazabilidad-rf--prueba), y la prueba
+o el caso manual de cada paso de cada caso de uso, en su §8.1** (INV‑032; la regla de fuentes únicas
+es [metodologia.md §5](metodologia.md#5-dry)). Solo RF‑16, RF‑20, RF‑21 y RF‑24 declaran aquí su
+**alcance vigente**, porque su criterio no se cumple entero. En RF‑16, RF‑20 y RF‑24 lo fija una
+decisión registrada (D5, la limitación de C1 e INV‑076); en RF‑21, una prueba que falta.
 
 Cobertura por caso de uso (mínimos exigidos por el criterio de cierre entre paréntesis):
 
@@ -528,8 +559,8 @@ Cobertura por caso de uso (mínimos exigidos por el criterio de cierre entre par
 | Mantenibilidad | RNF‑05 agregar un dominio no modifica `core/` | `git diff --stat core/`, `test_arquitectura.py` | vacío / verde |
 | Mantenibilidad | RNF‑06 cobertura de pruebas del núcleo | pytest‑cov | ≥ 80 % |
 | Portabilidad | RNF‑07 instalación con `uv sync` en Windows y Linux | pasos manuales | 0 |
-| Seguridad | RNF‑08 ejecución local: el sistema no requiere credenciales, no invoca servicios externos en tiempo de ejecución y los datos residen en un archivo SQLite del equipo del usuario | credenciales versionadas; llamadas de red durante la operación | 0 y 0; única excepción, la descarga inicial del modelo de `sentence-transformers` (I2), que se declara y se cachea localmente |
-| Compatibilidad | RNF‑09 entrada IFC 4 de cualquier modelador | archivos de ≥ 2 herramientas (p. ej. Revit y Bonsai) | cantidades extraídas iguales al cálculo manual en ambos; pendiente de la compuerta G1 (I3.1), cuya alternativa es la entrada tabular documentada |
+| Seguridad | RNF‑08 ejecución local: el sistema no requiere credenciales, no invoca servicios externos en tiempo de ejecución y los datos residen en un archivo SQLite del equipo del usuario | credenciales versionadas; llamadas de red durante la operación | 0 y 0, con dos excepciones declaradas: la descarga inicial del modelo de `sentence-transformers` (I2), del lado del servidor, que se cachea localmente; y la biblioteca three.js (`r128`), que el navegador descarga de `cdnjs.cloudflare.com` cada vez que se abre el Visor 3D (`URL_THREE_JS` en `ui/paginas/visor.py`), sin caché propia del sistema (INV‑077) |
+| Compatibilidad | RNF‑09 entrada IFC 4 de cualquier modelador | archivos de ≥ 2 herramientas (p. ej. Revit y Bonsai) | cantidades extraídas iguales al cálculo manual en ambos; la compuerta G1 (I3.1) se cruzó con salvedad sobre un modelo generado programáticamente (sección 2.5); faltan los exports de dos modeladores, y la alternativa declarada es la entrada tabular |
 | Usabilidad | RNF‑10 capacidad de aprendizaje de la interfaz: una persona que nunca vio la aplicación llega sola del Inicio a un presupuesto en Excel con su hoja de auditoría | caso con persona CP‑07 ([guion_prueba_arenia.md](guion_prueba_arenia.md)) y bloque B del anexo A de [dossier_g0.md](dossier_g0.md) | en cada uno de los dos escenarios de CP‑07 (CP‑07 pasa solo si pasan ambos): sin ayuda, ≤ 20 min, bloque B ≥ 4,0 y ningún ítem < 3 |
 
 ### 3.4 Reglas de negocio
@@ -541,26 +572,34 @@ Criterios de degradación del módulo predictivo: [CLAUDE.md §8.1](../CLAUDE.md
 
 ## 4. Matriz de trazabilidad
 
-| UC | RF | Prueba(s) | Incremento | Indicador de la tesis |
-|---|---|---|---|---|
-| UC‑01 | RF‑01, RF‑03, RF‑04, RF‑05, RF‑06, RF‑07, RF‑08 | `tests/unit/test_costing.py`, `tests/unit/test_contracts.py`, `tests/unit/test_linea_base.py`, `tests/unit/test_arquitectura.py`, `tests/unit/test_budget.py` (I0.5), `tests/integration/test_persistencia.py` (I0.4), `tests/integration/test_presupuesto_linea_base.py` (I0.5); extracción IFC pendiente (I3.1) | I0.1, I0.3, I0.4, I0.5, I3.1 | 2, 3 |
-| UC‑01 (transversal) | RF‑09 | `tests/unit/test_arquitectura.py`, `tests/unit/test_adapter_telecom.py`, `tests/unit/test_adapter_industrial.py` y `tests/unit/test_adapter_sistemas.py` (I5), más `git diff --stat core/` | I0.1, I5 | 4 |
-| UC‑02 | RF‑10, RF‑11, RF‑12, RF‑13, RF‑14 | `tests/integration/test_actualizacion_precios.py` (I1), `tests/integration/test_persistencia.py` (I0.4) | I0.4, I1 | 3 |
-| UC‑03 | RF‑15, RF‑16, RF‑17 | `tests/unit/test_normalizacion.py` (I2); persistencia de RF‑16 pendiente del flujo de creación de partidas (hallazgo I2) | I2 | 3 |
-| UC‑04 | RF‑03, RF‑18, RF‑19, RF‑20 | `tests/unit/test_contracts.py` (RF‑03, I0.1), `tests/unit/test_reglas_civil.py` (I3.2), `tests/unit/test_budget.py` (I0.5) | I0.1, I3.2 | 2 |
-| UC‑05 | RF‑02, RF‑21, RF‑22, RF‑23, RF‑24 | `tests/unit/test_verification.py` (I4), `tests/integration/test_auditoria_7_de_7.py` (I4); RF‑02 «al cargar» con pendientes: `tests/integration/test_recarga_con_pendientes.py` y las pruebas HTTP de `tests/integration/test_api.py` (`test_el_informe_recargado_declara_el_pendiente` y `test_el_excel_recargado_declara_el_pendiente_en_la_auditoria`) (C3, INV‑080) | I4, C3 | 1 |
-| UC‑06 | RF‑25, RF‑26, RF‑27 | `tests/unit/test_contracts.py` (invariante de `Rendimiento`, I0.1); `tests/unit/test_anomalias.py` (detección de desviación, I6.1); `tests/integration/test_rendimientos.py` y `tests/integration/test_api_rendimientos.py` (registro, dispersión y advertencia, I6.2) | I0.1, I6.1, I6.2 | 2 |
-| UC‑07 | RF‑28, RF‑29 | `tests/unit/test_anomalias.py` (precios atípicos, I6.1); `tests/unit/test_prediccion.py` y `tests/unit/test_resultados_ml.py` (estimación, métricas y contraste AACE, I6.3; `docs/resultados_ml.md`) | I6.1, I6.3 | 5 |
-| UC‑08 | RF‑30, RF‑31 | `tests/unit/test_escenarios.py` y `tests/integration/test_api_escenarios.py` (`core/budget/escenarios.py`, `POST /presupuestos/{codigo}/escenarios`, página `ui/paginas/escenarios.py`; sin persistir: el mecanismo de UC‑02) | cierre UC‑08 (2026‑08‑31) | 2 (apoyo) |
-| UC‑10 | RF‑16 (satisfecho), RF‑33, RF‑34, RF‑35 | cumplidas (declaradas pendientes al cerrar la Sesión P0.1, sin prueba todavía): `tests/integration/test_persistencia.py::test_cargar_composicion_sin_condiciones_lanza_valueerror` y `::test_reemplazar_composicion_exige_condiciones_no_vacias` (P1.2, P2.2); `tests/unit/test_costing_destajo.py` (P1.1); `tests/unit/test_composicion.py` (P2.1, P2.3, incluida `test_el_precio_sugerido_por_la_referencia_es_editable_y_el_calculo_lo_refleja`); `tests/unit/test_ui_componer.py` (P4.1) | P0.1 (declarado), P1–P4 ([PLAN_PROTOTIPO.md](../PLAN_PROTOTIPO.md)) | prototipo de entrega AREN.IA, fuera de los cinco indicadores de [docs/metodologia.md §8](metodologia.md#8-indicadores-de-la-tesis) |
-| UC‑11 | RF‑33, RF‑34 | cumplida (declarada pendiente al cerrar la Sesión P0.1, sin prueba todavía): `tests/integration/test_persistencia.py::test_reemplazar_composicion_exige_condiciones_no_vacias` (P1.2, `Catalogo.reemplazar_composicion`); paso 1 (precarga de las tres tablas antes de reemplazar, hallazgo de la auditoría del PR #7 corregido en `b4f7321`): `tests/unit/test_ui_componer.py::test_teclear_el_codigo_de_una_partida_guardada_precarga_sus_tres_tablas` y `::test_guardar_sin_ninguna_linea_sobre_una_partida_existente_no_borra_su_desglose` | P0.1 (declarado), P1.2, P2.2 | prototipo de entrega AREN.IA, fuera de los cinco indicadores de [docs/metodologia.md §8](metodologia.md#8-indicadores-de-la-tesis) |
-| UC‑12 | RF‑36, RF‑37, RF‑38, RF‑39, RF‑40, RF‑41, RF‑42, RF‑43 | cumplidos (U1): `tests/unit/test_ui_recorridos.py`, `tests/unit/test_ui_caso.py`, `tests/unit/test_ui_inicio.py`, `tests/unit/test_ui_app.py` (U1); CP‑07 para RNF‑10 | U0.1 (declarado), U1 ([PLAN_UI.md](../PLAN_UI.md)) | fuera de los cinco indicadores de [docs/metodologia.md §8](metodologia.md#8-indicadores-de-la-tesis); aporta la medición de usabilidad de [calidad_iso25010.md §4](calidad_iso25010.md) |
+La matriz traza cada caso de uso a sus requisitos, al incremento que los implementó y al indicador de
+la tesis. **Las pruebas que demuestran cada RF, con su estado, están solo en
+[plan_pruebas.md §8](plan_pruebas.md#8-especificación-de-casos-trazabilidad-rf--prueba); la prueba o
+el caso manual de cada paso y de cada flujo alternativo de los once casos de uso, en su §8.1**
+(INV‑032, INV‑033).
+
+| UC | RF | Incremento | Indicador de la tesis |
+|---|---|---|---|
+| UC‑01 | RF‑01, RF‑03, RF‑04, RF‑05, RF‑06, RF‑07, RF‑08 | I0.1, I0.3, I0.4, I0.5, I3.1 | 2, 3 |
+| UC‑01 (transversal) | RF‑09 | I0.1, I5 | 4 |
+| UC‑02 | RF‑10, RF‑11, RF‑12, RF‑13, RF‑14 | I0.4, I1 | 3 |
+| UC‑03 | RF‑15, RF‑16, RF‑17 | I2 | 3 |
+| UC‑04 | RF‑03, RF‑18, RF‑19, RF‑20 | I0.1, I3.2 | 2 |
+| UC‑05 | RF‑02, RF‑21, RF‑22, RF‑23, RF‑24 | I4, C3 | 1 |
+| UC‑06 | RF‑25, RF‑26, RF‑27 | I0.1, I6.1, I6.2 | 2 |
+| UC‑07 | RF‑28, RF‑29 | I6.1, I6.3 | 5 |
+| UC‑08 | RF‑30, RF‑31 | cierre UC‑08 (2026‑08‑31) | 2 (apoyo) |
+| UC‑10 | RF‑33, RF‑34, RF‑35 | P0.1 (declarado), P1–P4 ([PLAN_PROTOTIPO.md](../PLAN_PROTOTIPO.md)) | prototipo de entrega AREN.IA, fuera de los cinco indicadores de [docs/metodologia.md §8](metodologia.md#8-indicadores-de-la-tesis) |
+| UC‑11 | RF‑33, RF‑34 | P0.1 (declarado), P1.2, P2.2 | prototipo de entrega AREN.IA, fuera de los cinco indicadores de [docs/metodologia.md §8](metodologia.md#8-indicadores-de-la-tesis) |
+| UC‑12 | RF‑36, RF‑37, RF‑38, RF‑39, RF‑40, RF‑41, RF‑42, RF‑43 | U0.1 (declarado), U1 ([PLAN_UI.md](../PLAN_UI.md)) | fuera de los cinco indicadores de [docs/metodologia.md §8](metodologia.md#8-indicadores-de-la-tesis); aporta la medición de usabilidad de [calidad_iso25010.md §4](calidad_iso25010.md) |
 
 Correspondencia RNF → verificación: RNF‑01 y RNF‑02 se comprueban en UC‑01 y UC‑02 (RF‑06, RF‑14);
-RNF‑03 en UC‑02 (RF‑11); RNF‑04 con el juicio de expertos sobre el informe de UC‑05; RNF‑05 con RF‑09;
-RNF‑06 y RNF‑07 en la Sesión F.2; RNF‑08 por inspección del repositorio y de las dependencias;
-RNF‑09 en la compuerta G1 (RF‑04). RNF‑10 con el caso con persona CP‑07, en la compuerta GU1b (fase Med) de
-[PLAN_UI.md](../PLAN_UI.md); RNF‑04 es un requisito distinto y sigue pendiente.
+RNF‑03 en UC‑02 (RF‑11), con `scripts/medir_rnf03.py`; RNF‑04 con el juicio de expertos sobre el
+informe de UC‑05, en la fase Med de [PLAN_CIERRE.md](../PLAN_CIERRE.md); RNF‑05 con RF‑09; RNF‑06 y
+RNF‑07 en la integración continua; RNF‑08 por inspección del repositorio y de las dependencias;
+RNF‑09 en la compuerta G1 (RF‑04); RNF‑10 con el caso con persona CP‑07, en la compuerta GU1b
+(fase Med) de [PLAN_UI.md](../PLAN_UI.md). RNF‑04 y RNF‑10 son requisitos distintos, con mediciones
+distintas. El resultado de cada verificación está en [plan_pruebas.md §9](plan_pruebas.md#9-trazabilidad-rnf--verificación).
 
 La columna "Indicador" enlaza con [docs/metodologia.md §8](metodologia.md#8-indicadores-de-la-tesis) y
 con la matriz de [docs/tesis/esqueleto_tesis.md](tesis/esqueleto_tesis.md).

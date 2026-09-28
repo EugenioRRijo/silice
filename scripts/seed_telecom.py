@@ -596,8 +596,9 @@ def resumen(
 
     Ademas del total reproducido, el caso telecom imprime dos datos propios, que se pasan con
     nombre: el total `impreso` en el PDF (con la diferencia) y el `total_con_mano_obra` sintetica
-    de la politica del PDF. Los montos se redondean con `seed.monto`, la fuente unica de
-    presentacion (INV-049).
+    de la politica del PDF. Cierra siempre con la linea de auditoria (`seed.linea_auditoria`,
+    principio 7), como los demas resumenes de siembra. Los montos se redondean con
+    `seed.monto`, la fuente unica de presentacion (INV-049).
     """
     presupuesto = resultado.presupuesto
     linea = (

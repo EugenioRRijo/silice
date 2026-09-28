@@ -43,7 +43,8 @@ Windows. Cada paso se reproduce así:
 Convenciones: código, docstrings y commits en español (identificadores sin tildes);
 Conventional Commits (`feat(core): …`); `Decimal` en todo número monetario o dimensional —
 nunca `float` — y redondeo solo al presentar; una rama por incremento y bitácora por sprint.
-El estado de las pruebas y la cobertura vigente están en [plan_pruebas.md](plan_pruebas.md).
+El estado de cada RF y la prueba que lo demuestra están en [plan_pruebas.md §8](plan_pruebas.md);
+la suite y la cobertura vigentes, con la corrida de CI que las mide, en su §10.
 
 ## 3. Mapa del código
 
@@ -57,8 +58,8 @@ El estado de las pruebas y la cobertura vigente están en [plan_pruebas.md](plan
 | `adapters/{civil,telecom,industrial,sistemas}` | fuente de cada dominio → `ItemComputo` | sección 4 |
 | `ml/` | normalización, anomalías, predicción | no conoce la base de datos: recibe datos planos |
 | `api/` | FastAPI sobre el núcleo | montos como texto; OpenAPI exportado a `docs/api.json` |
-| `ui/` | Streamlit multipágina | solo presentación; llama a `core` directo. La composición de APU a mano vive en la capa pura `ui/composicion.py` (sección 10.2) |
-| `scripts/` | operaciones reproducibles | tabla en la sección 8 |
+| `ui/` | Streamlit multipágina | presentación; llama a `core` directo. La composición de APU a mano vive en la capa pura `ui/composicion.py` (sección 10.2). Tres páginas importan de `scripts/`: el Inicio siembra con `scripts.seed_demo`, la de actualización con `scripts.seed` y el simulador con `scripts.simular_lista` |
+| `scripts/` | operaciones reproducibles | índice en [scripts/README.md](../scripts/README.md) (sección 8) |
 
 El flujo completo de UC‑01: `AdaptadorDominio.extraer(fuente)` → `list[ItemComputo]` →
 `core.budget.elaborar(items, composiciones, parametros, ...)` → `ResultadoElaboracion`
@@ -92,8 +93,22 @@ cantidad la produjo una regla paramétrica, `regla` lleva la expresión y `param
 
 ### 4.2 Pasos
 
-1. **Crear el paquete** `adapters/<dominio>/` con su `adaptador.py` (y un `evaluador.py` si hay
-   reglas paramétricas: véase `adapters/telecom/`, el ejemplo más pequeño).
+1. **Crear el paquete** `adapters/<dominio>/` con su `adaptador.py`. Si el dominio tiene reglas
+   paramétricas necesita un evaluador de expresiones, y hoy no hay uno que un adaptador pueda
+   importar: el del núcleo (`core/verification/expresiones.py`) está fuera de `core.contracts`.
+   Por eso el evaluador existe en **cinco copias**, la del núcleo y una por adaptador
+   (`adapters/{civil,industrial,sistemas,telecom}/evaluador.py`): es deuda declarada (INV‑006,
+   aceptada por decisión de arquitectura registrada y pendiente del aval del tutor; ADR 8 de
+   [arquitectura.md](arquitectura.md)). Su cierre previsto es un evaluador parametrizable en
+   `core.contracts` ([expediente §A.3](bitacora/2026-09-23-C1-expedientes.md)). Mientras no
+   exista, un adaptador nuevo con reglas agrega una **sexta** copia: partir de la de telecom
+   (`adapters/telecom/evaluador.py`, suma, resta, producto y cociente) o de la de sistemas
+   (solo suma y producto), reducir los operadores a los que sus reglas usan, llevar sus pruebas y
+   declarar la copia en la bitácora de la sesión. La copia tiene que dar el mismo `Decimal` que el
+   evaluador del núcleo, porque la regla R1 reevalúa con este último las expresiones de todo
+   dominio al auditar; el patrón de esa comprobación es
+   `tests/unit/test_verification.py::test_las_reglas_civiles_son_evaluables_por_el_nucleo`. Un
+   adaptador sin reglas no la necesita.
 2. **Subclasificar** `AdaptadorDominio`, declarar `dominio` e implementar `extraer()`:
 
    ```python
@@ -188,22 +203,17 @@ limitación). Conteo G2 y métricas por dominio, reproducibles:
 
 ## 8. Scripts reproducibles
 
-| Script | Produce |
-|---|---|
-| `scripts/seed.py` | `data/apu.db` con la línea base (idempotente) |
-| `scripts/seed_telecom.py`, `scripts/seed_industrial.py`, `scripts/seed_sistemas.py` | catálogo, presupuesto auditado y lista de precios de cada dominio en su propia base (sección 8.1) |
-| `scripts/extraer_maprex.py` | `data/precios/maprex_2026-07/referencia_<dominio>.csv` desde los tres listados MaPreX |
-| `scripts/extraer_arenaza.py` | `data/telecom/fuentes/presupuesto_{1,2}_arenaza.csv` desde los PDF ARENAZA |
-| `scripts/derivar_listas_telecom.py` | las dos listas UC‑02 de telecom (ARENAZA y MaPreX); `--verificar` las compara con las de disco |
-| `scripts/simular_lista.py` | listas de precios de prueba, deterministas por semilla |
-| `scripts/generar_tanquilla_ifc.py` | `data/samples/tanquilla.ifc` (la muestra de G1) |
-| `scripts/exportar_openapi.py` | `docs/api.json` |
-| `scripts/generar_resultados_ml.py` | `docs/resultados_ml.md` (conteo G2 y métricas RF‑28 por dominio) |
-| `scripts/medir_rnf03.py` | evidencia de RNF‑03 (100 partidas, umbral 5 s) |
-| `scripts/seed_demo.py` | en una sola orden: línea base, las tres partidas `DEMO-*` (caso didáctico de AREN.IA) con su lista heredando los precios de la vigente, y el presupuesto `DEMO-001` guardado con su informe (idempotente; `--db`, `--reiniciar`, y `--confirmar` para reiniciar la base por defecto) |
-| `scripts/lista_maprex_usd.py` | `data/precios/maprex_2026-07/lista_maprex_usd.csv`, la referencia MaPreX en el formato canónico `tipo,insumo,unidad,precio` (en equipos, `precio` es el valor del activo, no una tarifa diaria) |
-| `scripts/simular_corpus.py` | corpus **simulado** de partidas `SIM-*` para pruebas de volumen de la interfaz, siempre en una base nueva (sección 10.4) |
-| `scripts/meta_alpha.py`, `scripts/meta_i6.py`, `scripts/meta_multidominio.py`, `scripts/meta_prototipo.py` | evaluación automática de metas de sprint (`meta_prototipo.py --hasta P<n>` evalúa por fases) |
+El índice de los scripts —qué hace cada uno, agrupados en siembra, datos derivados, simulación y
+medición, artefactos reproducibles, guardias de la CI y metas de sprint— vive en un solo lugar,
+[scripts/README.md](../scripts/README.md): una fila por script, y
+`tests/unit/test_scripts_documentados.py` falla si alguno no la tiene (INV‑051). Esta sección no
+lo repite (INV‑056); solo agrega lo que quien mantiene el código necesita saber de algunos:
+
+- Las opciones de siembra (`--db`, `--reiniciar` y `--confirmar`) y la procedencia de los precios
+  de cada dominio están en la sección 8.1; el corpus simulado de `simular_corpus.py` tiene su
+  cuarentena (sección 10.4).
+- `guardia_nucleo.py` y `verificar_omitidas.py` son pasos de la CI; su comando local está en la
+  sección 2.
 
 PyMuPDF no es dependencia del proyecto: los dos extractores se ejecutan con
 `uv run --with pymupdf python scripts/<extractor>.py` y ninguna prueba lo importa. Sus salidas
@@ -212,8 +222,8 @@ están versionadas, así que regenerarlas solo hace falta si cambia el PDF de or
 ### 8.1 Catálogos por dominio
 
 Los cuatro dominios siguen el patrón de la línea base: evidencia de precios fechada en `data/`,
-**una sola copia** estructurada en `tests/fixtures/` y un seed que es el único módulo fuera de
-`tests/` que importa ese fixture. Ningún seed escribe un precio: todos los leen.
+**una sola copia** estructurada en `tests/fixtures/` y un seed que importa ese fixture en vez de
+copiarlo (no es el único script que lo importa: §9). Ningún seed escribe un precio: todos los leen.
 
 | Dominio | Fuente de precios | Copia única | Seed → base por defecto |
 |---|---|---|---|
@@ -239,16 +249,28 @@ catálogo de otro dominio apuntando `APU_BASE` a su base (`sqlite:///data/apu_te
   `core` directo. Si se añade una función, se expone en las dos capas por separado.
 - **La API serializa montos como texto** — al añadir rutas, construir `Decimal` desde el texto
   en la frontera y devolverlo como `str`.
-- **`tests/fixtures/apu_linea_base.py` es la única copia de la línea base.** `seed.py` y
-  `medir_rnf03.py` la importan a propósito; duplicarla en cualquier otro lado viola DRY.
+- **`tests/fixtures/apu_linea_base.py` es la única copia de la línea base.** `seed.py`,
+  `generar_resultados_ml.py`, `medir_rnf03.py` y `meta_prototipo.py` la importan a propósito;
+  duplicarla en cualquier otro lado viola DRY. En total, ocho scripts dependen de `tests/fixtures/`
+  ([arquitectura §4](arquitectura.md#4-vista-de-desarrollo-definitivo)): esos cuatro,
+  `seed_telecom.py`, `seed_industrial.py`, `seed_sistemas.py` y `extraer_arenaza.py`. Como la
+  interfaz importa `scripts.seed`, la aplicación Streamlit no arranca sin `tests/fixtures/`.
 - **No modificar `tests/unit/test_costing.py`** para poner nada en verde: se corrige la
   implementación.
 - **UC‑08 no persiste nada.** `core/budget/escenarios.py` es la lógica; la ruta
-  `POST /presupuestos/{codigo}/escenarios` y la página «Escenarios (UC‑08)» solo componen y
-  presentan. Promover un escenario a presupuesto es UC‑02 con la lista nueva, a propósito.
-- Los hallazgos abiertos del proyecto (flujo de creación de partidas para RF‑16, IFC real para
-  G1, Linux para RNF‑07) están en las bitácoras de [bitacora/](bitacora/) — leerlas antes de
-  «arreglar» algo que en realidad es una limitación declarada.
+  `POST /presupuestos/{codigo}/escenarios` y la página «Escenarios de sensibilidad» solo componen
+  y presentan. Promover un escenario a presupuesto es UC‑02 con la lista nueva, a propósito. Si el
+  base tiene ítems pendientes (UC‑01 3a), la página los declara al abrirlo y la API los devuelve en
+  `pendientes_base` (esquema `PendienteRespuesta`: `codigo_partida`, `descripcion`, `unidad`,
+  `cantidad` como texto decimal exacto y `origen_id`, sin propuestas); ningún escenario los
+  recalcula ni los suma. El informe de auditoría del propio escenario no los declara, porque hacerlo exigiría cambiar `generar_escenario` en
+  `core/` y va a limitaciones (ruling C4‑3 de la [bitácora del cierre](bitacora/2026-09-23-cierre.md)).
+- Las limitaciones y los hallazgos abiertos están en dos lugares: el estado de cada RF en
+  [plan_pruebas.md §8](plan_pruebas.md) y el [inventario de la auditoría](auditoria/2026-09-inventario.md),
+  una fila por hallazgo con su fase y su estado (por ejemplo, RF‑24 sin importación de un
+  presupuesto ajeno, INV‑076, y el IFC exportado desde un modelador BIM para G1). Leerlos antes de «arreglar»
+  algo que en realidad es una limitación declarada. RNF‑07 ya no figura entre ellos: la CI lo
+  verifica en Linux y Windows en cada cambio.
 
 ## 10. El prototipo AREN.IA: composición de APU a mano (sprint P0–P5)
 

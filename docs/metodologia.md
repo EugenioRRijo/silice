@@ -173,6 +173,9 @@ delante del jurado.
 | Estructura de carpetas y responsabilidades | CLAUDE.md §6 | README, arquitectura, manual técnico |
 | Trazabilidad objetivo ↔ fase ↔ sesión ↔ producto ↔ indicador | `docs/tesis/esqueleto_tesis.md` | ERS, este documento, tesis |
 | Regla "adaptadores solo importan `core.contracts`" | `tests/unit/test_arquitectura.py` | verificación automática de la hipótesis |
+| Correspondencia RF → prueba → estado | `docs/plan_pruebas.md` §8 | la ERS conserva el enunciado y el criterio de aceptación, sin estado, y enlaza; README, calidad, manual técnico y dossier enlazan (INV‑032) |
+| Cifras de la suite y de la cobertura, con la corrida de CI que las mide | `docs/plan_pruebas.md` §10 | calidad, dossier, README y manual técnico enlazan; la tabla de cifras citables de `docs/tesis/plan_redaccion.md` §5 las cita con esa misma corrida (INV‑031, sección 6) |
+| Índice de los scripts | `scripts/README.md` (vigilado por `tests/unit/test_scripts_documentados.py`) | manual técnico §8 |
 
 ### 5.2 Reglas prácticas
 
@@ -213,7 +216,7 @@ delante del jurado.
 | Ratificación de las decisiones del agente | Toda decisión tomada durante la ejecución («ruling») queda en la bitácora con su costo si es errónea y se ratifica por Eugenio al cruzar la compuerta; sin ratificación la compuerta no se cruza. Porque: las decisiones del controlador de la auditoría del PR #7 y del sprint de UI quedaron registradas sin esa ratificación explícita (`docs/bitacora/2026-09-16-sprint-prototipo.md`, «Auditoría de rama completa»; `docs/bitacora/2026-09-23-sprint-ui.md`, «Decisiones del controlador») |
 | La CI es la fuente de verdad de las cifras | Toda cifra de pruebas que vaya a la tesis cita su corrida de CI. Porque: un entorno local sin el extra `ml` dio 656 pruebas en lugar de las 673 registradas al cerrar el sprint del prototipo (`docs/bitacora/2026-09-16-sprint-prototipo.md`, «Auditoría de rama completa»; recuento local en `docs/bitacora/2026-09-23-sprint-ui.md`) |
 | Un frente de código a la vez | Ninguno nuevo que no responda a un objetivo específico (`docs/tesis/esqueleto_tesis.md` §2, «Matriz de trazabilidad») o indicador (sección 8) de la tesis. Porque: el PR #7 acumuló las fases P0 a P5 en un solo frente, lo que exigió una auditoría de ~11 000 líneas antes de fusionar (`docs/bitacora/2026-09-16-sprint-prototipo.md`, «Auditoría de rama completa») |
-| La validación humana precede a la automática | En las decisiones de fondo, el tutor (compuertas G0 y decisiones D‑n) y las pruebas con personas (CP‑07) son las verificaciones independientes. Porque: los cuatro encargos que auditaron el PR #7 comparten el mismo modelo y sus puntos ciegos (`docs/bitacora/2026-09-16-sprint-prototipo.md`, «Auditoría de rama completa») |
+| La validación humana precede a la automática | En las decisiones de fondo, el tutor (compuertas G0 y decisiones D‑n) y las pruebas con personas (CP‑07, el indicador 3 y el juicio de expertos de RNF‑04, cada uno con su protocolo escrito antes de medir) son las verificaciones independientes. Porque: los cuatro encargos que auditaron el PR #7 comparten el mismo modelo y sus puntos ciegos (`docs/bitacora/2026-09-16-sprint-prototipo.md`, «Auditoría de rama completa») |
 
 ---
 
@@ -235,7 +238,7 @@ Objetivo específico ─► Fase ─► Sesión ─► UC ─► RF ─► prueb
 |---|---|---|---|
 | 1 | Inconsistencias detectadas | 7 de 7 sobre el presupuesto auditado | Sesión I4 |
 | 2 | Exactitud del presupuesto generado | desviación % frente a la línea base corregida; clase 3 de AACE | Sesiones I0.5, I3.2 |
-| 3 | Reducción del tiempo de elaboración | cronometraje manual vs automatizado (observación estructurada) | Fase 6 |
+| 3 | Reducción del tiempo de elaboración | cronometraje de la misma tarea de referencia por el método manual y con el sistema, con participantes que no son el autor (observación estructurada; [protocolo_indicador3.md](protocolo_indicador3.md)) | fase Med del cierre ([PLAN_CIERRE.md](../PLAN_CIERRE.md)); antes asignado a la Fase 6, que cerró sin medirlo |
 | 4 | Extensibilidad sin tocar el núcleo | `git diff --stat core/` vacío y `test_arquitectura.py` verde | Sesión I5 |
 | 5 | Desempeño predictivo | MAPE, RMSE, R² por técnica | Sesión I6.3 |
 

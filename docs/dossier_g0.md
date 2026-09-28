@@ -1,9 +1,10 @@
 # Dossier de la compuerta G0 — revisión del tutor
 
 Paquete único para la reunión de G0: qué documentos se someten a aprobación, en qué estado está
-el sistema que los respalda y, sobre todo, **las ocho decisiones acumuladas** que las bitácoras
+el sistema que los respalda y, sobre todo, **las nueve decisiones acumuladas** que las bitácoras
 fueron elevando a esta compuerta, cada una con su contexto, su impacto y una recomendación.
-Preparado el 2026‑08‑31, con el PLAN de desarrollo completo (20 de 20 sesiones).
+Preparado el 2026‑08‑31, con el PLAN de desarrollo completo (20 de 20 sesiones) y ocho decisiones
+(D1–D8); la D9 se agregó en la Sesión P0.1 del sprint del prototipo (2026‑09‑16).
 
 ## 1. Qué aprueba G0
 
@@ -29,15 +30,26 @@ aprobarlos como están.
 Detalle y evidencia reproducible en [plan_pruebas.md](plan_pruebas.md) y
 [calidad_iso25010.md](calidad_iso25010.md); aquí solo el resumen para la reunión:
 
-- **395 pruebas en verde** con advertencias como errores; cobertura de `core/` 98,05 %.
+- **Suite en verde** con advertencias como errores y 0 omitidas: 395 pruebas y cobertura de
+  `core/` 98,05 % al preparar el dossier. La cifra vigente y su corrida de CI están en
+  [plan_pruebas.md §10](plan_pruebas.md), su única fuente.
 - **7 de 7 inconsistencias** de la línea base detectadas (indicador 1); exactitud frente a la
   línea base corregida: desviación 0,00 % (indicador 2).
 - **Núcleo intacto**: `git diff --stat core/` vacío tras los adaptadores telecom, industrial y
-  sistemas (indicador 4), vigilado por 65 pruebas de arquitectura en cada corrida.
+  sistemas (indicador 4), vigilado en cada corrida por `tests/unit/test_arquitectura.py`.
 - **Módulo predictivo**: técnica de reglas por compuerta G2 (< 50 registros por dominio), con
   MAPE 12,46 %, RMSE 5,10 USD, R² 0,9974 (indicador 5; [resultados_ml.md](resultados_ml.md)).
 - **Desempeño**: 100 partidas revaloradas en 1,17 s (meta < 5 s).
-- Los **ocho casos de uso** operan de extremo a extremo (UI, API y núcleo).
+- Los **ocho casos de uso** de G0 están implementados, con brechas declaradas: los RF que no están
+  en verde, con la causa de cada uno, los enumera el resumen de [plan_pruebas.md §8](plan_pruebas.md),
+  su fuente única (entre ellos, la importación del presupuesto de un tercero de UC‑05, INV‑076, y el
+  diferencial de UC‑04, no implementado, INV‑011). No todos tienen pantalla: la capa que realiza
+  cada uno la declara la [ERS §3.1](ERS.md) (INV‑030).
+
+*Vigencia (2026‑09‑28, fase C4 del cierre):* esta sección decía «los ocho casos de uso operan de
+extremo a extremo (UI, API y núcleo)», y no era cierto para UC‑04, UC‑06 y UC‑07, que no tenían
+pantalla propia, ni para la importación de UC‑05; se corrigió junto con las cifras, que ahora
+remiten a su fuente.
 
 ## 3. Decisiones que esperan la validación del tutor
 
@@ -53,8 +65,9 @@ raíz del hallazgo 3 queda sin regla que la explique. **Recomendación: aprobar.
 
 ### D2. Regla candidata R8 — «precio uniforme del insumo»
 
-Al persistir la línea base apareció un **octavo defecto** del caso: un mismo insumo con dos
-precios distintos en la misma lista y fecha (bitácora de 0.2/I0.4; el esquema lo rechaza con
+Al persistir la línea base apareció **otro defecto** del caso, sin número propio (no es el
+hallazgo adicional 8 de [linea_base.md §5](linea_base.md), la unidad del encofrado, ni el 9): un
+mismo insumo con dos precios distintos en la misma lista y fecha (bitácora de 0.2/I0.4; el esquema lo rechaza con
 `UNIQUE` y lo carga como variantes para no ocultarlo). La regla propuesta lo reportaría con
 severidad ADVERTENCIA. No cuenta para el indicador 1 (que queda en 7 de 7). **Opciones:**
 aprobarla como octava regla (sesión corta, mismo patrón que R1–R7) o dejarla como hallazgo
@@ -85,7 +98,7 @@ Cámara Venezolana de la Construcción, COVENIN ni MaPreX — y la propia Conven
 Trabajo para la Rama de la Industria de la Construcción (Gaceta Oficial N.º 6.752 Extraordinario,
 6 de julio de 2023) no menciona el FCAS ni la expresión «costos asociados al salario»
 (`docs/bitacora/2026-09-15-referencias-pendientes.md`). Los valores publicados que sí se
-encontraron son un rango de **198 % a 293 %** (Chacín, 2008, trabajo de grado de la Universidad
+encontraron son un rango de **198 % a 293 %** (Chacin, 2008, trabajo de grado de la Universidad
 Rafael Urdaneta, `docs/fuentes/Chacin_2008_FCAS_URU.pdf`) y de **78 % a 2 386 %** según qué
 cláusulas se incluyan (Dodi Scovino y Salas Caraballo, 2019, trabajo de grado de la Universidad
 José Antonio Páez, `docs/fuentes/Dodi_Salas_2019_FCAS_UJAP.pdf`, cálculo dominado por la
@@ -193,16 +206,19 @@ del aval del tutor junto con el resto de esta decisión.
   alternativa tabular ya existe y está documentada.
 - **G2 cruzada por degradación:** < 50 registros por dominio → sistema de reglas con análisis de
   sensibilidad, **declarado como limitación**, no como logro ([resultados_ml.md](resultados_ml.md)).
-- **RNF‑07:** instalación verificada en Windows; la corrida en Linux sigue pendiente.
+- **RNF‑07:** al preparar el dossier, la instalación estaba verificada solo en Windows. *Vigencia
+  (2026‑09‑28):* cumple desde el 2026‑09‑15; la integración continua verifica la instalación y la
+  suite en Linux y Windows en cada PR ([calidad_iso25010.md §6](calidad_iso25010.md)).
 - **Fuente ARENAZA inconsistente:** el tubo corrugado mide 80 m en los cómputos y 90 m en el
   presupuesto del mismo documento — candidata a caso de estudio de R7 en telecom (bitácora del
   sprint alpha). Útil para el capítulo de resultados.
 
 ## 5. Qué desbloquea G0
 
-Con G0 aprobada: el anteproyecto formal (con la decisión D3 incorporada), la aplicación del
-instrumento de RNF‑04 (anexo A) y la redacción de los capítulos sobre
-[tesis/esqueleto_tesis.md](tesis/esqueleto_tesis.md) con los indicadores ya medidos.
+Con G0 aprobada: el anteproyecto formal (con la decisión D3 incorporada) y la redacción de los
+capítulos sobre [tesis/esqueleto_tesis.md](tesis/esqueleto_tesis.md) con los indicadores ya
+medidos. El instrumento de RNF‑04 (anexo A) ya no espera a G0: se aplica en la fase Med del cierre
+([PLAN_CIERRE.md](../PLAN_CIERRE.md)) con su protocolo, [protocolo_rnf04.md](protocolo_rnf04.md).
 
 ---
 
@@ -211,7 +227,10 @@ instrumento de RNF‑04 (anexo A) y la redacción de los capítulos sobre
 **Meta:** ≥ 4/5 en promedio. **Población sugerida:** 3–5 profesionales de costos u obra que no
 hayan participado del proyecto. **Procedimiento:** entregar a cada experto el informe de
 auditoría del caso de estudio (generado por el sistema, sin edición) y este cuestionario;
-sin explicación previa del sistema — eso es exactamente lo que se mide.
+sin explicación previa del sistema — eso es exactamente lo que se mide. **Cómo se aplica** (desde
+la fase C4 del cierre): [protocolo_rnf04.md](protocolo_rnf04.md) fija el número y el perfil de los
+expertos, la versión exacta del informe (commit y huella SHA‑256), el procedimiento y la plantilla
+de registro. El protocolo no cambia las ocho afirmaciones de este bloque.
 
 Escala: 1 = totalmente en desacuerdo · 3 = neutral · 5 = totalmente de acuerdo.
 

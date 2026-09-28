@@ -94,15 +94,24 @@ Todo APU se calcula así (`Decimal`, sin redondeos intermedios):
 ```
 materiales         = Σ cantidad × precio                         ← NO se divide entre rendimiento
 equipos            = Σ (cantidad × precio × depreciacion) / rendimiento
-mano_obra          = ( Σ cantidad × sueldo × (1 + FCAS)  +  bono × Σ cantidad ) / rendimiento
+mano_obra_jornal   = ( Σ cantidad × sueldo × (1 + FCAS)  +  bono × Σ cantidad ) / rendimiento
+                                                                 ← solo líneas a jornal
+mano_obra_destajo  = Σ cantidad × sueldo                         ← solo líneas a destajo, completo
+mano_obra          = mano_obra_jornal + mano_obra_destajo
 costo_directo      = materiales + equipos + mano_obra
 con_administracion = costo_directo × (1 + administracion)
 precio_unitario    = con_administracion × (1 + utilidad)          ← en cascada, NO (1 + 0,15 + 0,10)
 ```
 
 Parámetros de la línea base (`core.contracts.apu.ParametrosCosto`, valores por defecto):
-FCAS = 6,00 (prestaciones 600 %) · bono de alimentación = 1,00 USD por obrero y día ·
+FCAS = 6,00 (prestaciones 600 %) · bono de alimentación = 1,00 USD por obrero a jornal y día ·
 administración = 0,15 · utilidad = 0,10. El rendimiento se expresa en unidades de partida por día.
+
+La modalidad de cada línea de mano de obra (`ModalidadManoObra`: `JORNAL` por defecto, o `DESTAJO`)
+es la decisión D9 ([docs/dossier_g0.md](docs/dossier_g0.md#d9-modalidad-de-mano-de-obra-por-linea-cambio-a-un-contrato-declarado-estable)),
+pendiente del aval del tutor. A destajo, `sueldo` es el precio por unidad de partida (artículo 114 de
+la LOTTT): la línea entra completa, sin FCAS, sin bono y sin dividir entre el rendimiento. La línea
+base es toda a jornal, así que para ella `mano_obra_destajo = 0` y el cálculo es el de siempre.
 
 Los dos errores más probables al implementar el motor, y que las pruebas vigilan explícitamente:
 dividir los materiales entre el rendimiento; sumar administración y utilidad en vez de encadenarlas.
@@ -125,8 +134,10 @@ Tolerancia de las pruebas: ± 0,01 sobre el precio unitario.
 
 ## 5. Contratos de interfaz (`core/contracts/`)
 
-Son los únicos tipos que cruzan fronteras entre paquetes. **Son estables**: no cambian en el resto del
-proyecto. Si una sesión cree necesitar cambiarlos, se detiene y documenta el hallazgo.
+Son los únicos tipos del núcleo que cruzan la frontera con `adapters/` y `ml/`. **Son estables**: no cambian en el resto del
+proyecto, salvo el cambio aditivo D9 de la sección 4 (`ModalidadManoObra` y el campo
+`LineaManoObra.modalidad`, `JORNAL` por defecto, así que ningún uso anterior cambia), pendiente del
+aval del tutor. Si una sesión cree necesitar cambiarlos, se detiene y documenta el hallazgo.
 
 | Módulo | Tipos | Papel |
 |---|---|---|
@@ -134,7 +145,7 @@ proyecto. Si una sesión cree necesitar cambiarlos, se detiene y documenta el ha
 | `dominio.py` | `Dominio` (civil, telecom, industrial, sistemas) | Enumeración de dominios |
 | `item_computo.py` | `OrigenTipo`, `ItemComputo` | Una cantidad de obra trazable: `codigo_partida`, `descripcion`, `unidad`, `cantidad`, `origen_id`, `origen_tipo`, `dominio`, `regla`, `parametros`, `especificaciones` |
 | `adaptador.py` | `AdaptadorDominio` (ABC) | `dominio: ClassVar[Dominio]` y `extraer(fuente) -> list[ItemComputo]` |
-| `apu.py` | `LineaMaterial`, `LineaEquipo`, `LineaManoObra`, `ComposicionAPU`, `ParametrosCosto`, `ResultadoAPU`, `TipoRendimiento`, `Rendimiento` | Entrada y salida del motor; rendimiento estimado vs medido |
+| `apu.py` | `LineaMaterial`, `LineaEquipo`, `ModalidadManoObra`, `LineaManoObra`, `ComposicionAPU`, `ParametrosCosto`, `ResultadoAPU`, `TipoRendimiento`, `Rendimiento` | Entrada y salida del motor; rendimiento estimado vs medido; modalidad de cada línea de mano de obra, `LineaManoObra.modalidad` (jornal por defecto o destajo, decisión D9 de la sección 4) |
 | `presupuesto.py` | `PartidaPresupuestada`, `PuntoCurva`, `Presupuesto` | Forma en memoria del presupuesto y su curva; la entrada de toda regla de verificación |
 | `verificacion.py` | `Severidad`, `Hallazgo`, `ReglaVerificacion` (ABC) | Contrato de las reglas: `evaluar(presupuesto) -> list[Hallazgo]` |
 
@@ -150,35 +161,50 @@ importar nada de `core` salvo `core.contracts`. Guía ampliada en el manual téc
 
 ## 6. Estructura de carpetas
 
+Las anotaciones «— sesión» de las carpetas de código nombran las sesiones de
+[PLAN_DESARROLLO.md](PLAN_DESARROLLO.md) que las construyeron; los cambios de los planes posteriores
+(multidominio, prototipo, UI, cierre) no se anotan: están en `docs/bitacora/`. `scripts/`, `data/`,
+`tests/` y `docs/` crecen en casi todas las sesiones y no llevan anotación.
+
 ```
-CLAUDE.md  PLAN_DESARROLLO.md  README.md  pyproject.toml
+CLAUDE.md  README.md  pyproject.toml  uv.lock
+PLAN_DESARROLLO.md  PLAN_MULTIDOMINIO.md  PLAN_PROTOTIPO.md  PLAN_UI.md  PLAN_ASISTENTE.md  PLAN_CIERRE.md
 core/
-  contracts/      estables (sección 5)                                   — I0.1 ✔
+  contracts/      estables (sección 5)                                   — I0.1
   costing/        motor: calcular_apu(composicion, parametros) -> ResultadoAPU — I0.3
-  models/         SQLAlchemy según docs/modelo_datos.md                   — I0.4
-  catalog/        consulta y carga de partidas, insumos, rendimientos     — I0.4
-  budget/         presupuesto, curva de inversión, exportación Excel      — I0.5, I1
+  models/         SQLAlchemy según docs/modelo_datos.md (dieciséis entidades) — I0.4
+  catalog/        partidas, insumos y composiciones; listas de precios; rendimientos — I0.4, I1, I6.2
+  budget/         presupuesto, curva, Excel, persistencia, actualización de precios, escenarios
+                                                                         — I0.5, I1, F.1
   verification/   las siete reglas (sección 7) y el informe de auditoría  — I4
 adapters/
-  civil/          IFC con ifcopenshell + reglas paramétricas trazables    — I3.1, I3.2
+  civil/          IFC con ifcopenshell, entrada tabular, reglas paramétricas y recálculo — I3.1, I3.2
   telecom/        topología de red en CSV (nodos, enlaces, longitudes)     — I5
   industrial/     registro de activos con frecuencia de intervención      — I5
   sistemas/       alcance funcional (módulos, casos de uso, puntos de función) — I5
 ml/
   normalization/  sentence-transformers, similitud del coseno             — I2
   anomaly/        Isolation Forest sobre precios y rendimientos           — I6.1
-  prediction/     XGBoost / CBR / reglas según compuerta G2               — I6.3
-ui/               Streamlit                                                — I1, F.1
-api/              FastAPI, esquema OpenAPI exportado a docs/api.json       — F.1
-scripts/          seed.py (carga la línea base en SQLite)                  — I0.4
+  prediction/     sistema de reglas; técnica según compuerta G2 (sección 8.1) — I6.3
+ui/               Streamlit: app.py (enrutador), paginas/ (diez pantallas) y los módulos sin pantalla
+                  composicion, elaboracion, resultado, caso, recorridos, visor3d — I1, F.1
+api/              FastAPI (main.py, rutas/); esquema OpenAPI exportado a docs/api.json — F.1
+scripts/          siembra (seed*.py), simulación, extracción de fuentes, metas (meta_*.py) y
+                  utilidades de la suite; una fila por script en scripts/README.md
 data/
   linea_base/     APUS_CLINICA.pdf (evidencia primaria)
-  samples/        tanquilla.ifc (antes de I3.1), telecom/*.pdf (muestras para I5)
+  samples/        una muestra por dominio (civil/, telecom/, industrial/, sistemas/), precios/ y tanquilla.ifc
+  precios/        maprex_2026-07/: listados MaPreX (tabulador CIV incluido) y referencias por dominio
+  civil/  telecom/  industrial/  sistemas/   plantilla de precios de cada dominio; fuentes/ salvo civil
 tests/
-  fixtures/       apu_linea_base.py — única copia de la línea base
-  unit/           contratos, arquitectura, línea base, costing (rojo hasta I0.3)
-  integration/    persistencia y flujos completos                          — I0.4+
-docs/             metodologia, ERS, modelo_datos, arquitectura, linea_base, tesis/, bitacora/, fuentes/
+  fixtures/       apu_linea_base.py — única copia de la línea base; los demás datos compartidos de prueba.
+                  scripts/ también los importa, y ui/ por scripts.seed: la interfaz no arranca sin ellos
+  unit/           contratos, arquitectura, línea base, costing, adaptadores, ml, ui y scripts
+  integration/    persistencia, API y flujos completos
+docs/             README, ERS, modelo_datos, arquitectura, plan_pruebas, calidad_iso25010,
+                  manual_tecnico, manual_usuario, metodologia, linea_base, dossier_g0, protocolo_precios,
+                  protocolo_indicador3 y protocolo_rnf04 (estos dos, de C4), resultados_ml,
+                  guion_prueba_arenia, api.json, auditoria/, bitacora/, fuentes/, tesis/, superpowers/
 ```
 
 ---

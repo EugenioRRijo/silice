@@ -1,7 +1,8 @@
 """Carga el catálogo de mantenimiento industrial en SQLite y arma su presupuesto (Sesión M2.2).
 
-Hermano de `scripts/seed.py` (civil) y `scripts/seed_telecom.py` (telecom) y, como ellos, el único
-módulo fuera de `tests/` que importa su fixture: `tests/fixtures/mantenimiento_industrial.py` es
+Hermano de `scripts/seed.py` (civil) y `scripts/seed_telecom.py` (telecom), y el único módulo
+fuera de `tests/` que importa su fixture (el de civil y el de telecom tienen además otros
+importadores en `scripts/`): `tests/fixtures/mantenimiento_industrial.py` es
 la única copia de las cuatro composiciones `MNT-*`, y a su vez lee los precios de
 `data/precios/maprex_2026-07/referencia_industrial.csv`. Aquí **no se escribe ningún precio**.
 

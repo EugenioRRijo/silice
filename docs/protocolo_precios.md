@@ -114,7 +114,7 @@ del dominio es por horas‑hombre, no por jornal, y dejarla vacía confundiría 
 |---|---|---|
 | MaPreX / Lulowin (listados oficiales) | Software de precios de la construcción; acceso mensual bajo licencia/suscripción académica (ver anexo, sección 3) | `data/precios/maprex_2026-07/` — MaPreX v26.0.0.1, BD `BDLaing08072026.mdb` (08/07/2026), impreso 13/07/2026; ya en el repo como referencia de julio 2026, pendiente ronda vigente |
 | Cotizaciones de proveedores locales (ferreterías, distribuidoras de materiales y equipos de construcción) | Solicitud directa del autor (trabajo de campo, Fase M0 de PLAN_MULTIDOMINIO, ~9–14 insumos) | Cotización fechada, archivada en `data/civil/fuentes/` |
-| Convención colectiva de la construcción (LOTTT y contratación colectiva vigente) | Publicación pública / gremio de la construcción | Pendiente cita normativa exacta (decisión D4 del [dossier G0](dossier_g0.md): el FCAS de 600 % proviene de los APU reales del caso, falta su respaldo normativo citable; el par jornal + bono del tabulador de la construcción dentro de `data/precios/maprex_2026-07/mano_de_obra.pdf` es evidencia fechada disponible mientras se resuelve la cita) |
+| Convención colectiva de la construcción (LOTTT y contratación colectiva vigente) | Publicación pública / gremio de la construcción | Sin cita normativa para el FCAS: el 600 % proviene de los APU del caso didáctico, y la verificación contra fuente primaria de la decisión D4 del [dossier G0](dossier_g0.md) (actualización de la Sesión P0.1) encontró que no tiene fuente normativa publicada — la convención colectiva vigente no menciona el FCAS — y que los valores publicados van de 198 % a 293 % (Chacin, 2008) y de 78 % a 2 386 % (Dodi Scovino y Salas Caraballo, 2019). Recomendación de D4, pendiente del aval del tutor: declararlo parámetro configurable del caso de estudio. El par jornal + bono del tabulador de la construcción dentro de `data/precios/maprex_2026-07/mano_de_obra.pdf` es evidencia fechada del salario, no del FCAS |
 
 El catálogo de insumos a re-cotizar es exactamente el de `tests/fixtures/apu_linea_base.py`:
 `data/civil/plantilla_precios.csv` (sección 2.5).
@@ -145,8 +145,8 @@ motor — por eso la plantilla telecom solo trae filas `material`.
 
 El catálogo de insumos es una **lista tentativa** de repuestos, servicios/herramientas y técnicos
 plausibles por cada uno de los diez activos de `data/samples/industrial/activos_planta.csv` — no
-proviene de una orden de trabajo real, a diferencia de los insumos civil (línea base auditada) o
-telecom (presupuestos didácticos ARENAZA). Se marca así explícitamente porque el brief de esta sesión no
+proviene de una orden de trabajo, a diferencia de los insumos civil (APU del caso didáctico de la
+línea base) o telecom (presupuestos didácticos ARENAZA). Se marca así explícitamente porque el brief de esta sesión no
 tiene todavía cotizaciones de campo que confirmen qué repuesto exacto corresponde a cada activo; la
 ronda de cotizaciones de la Fase M0 la reemplazará o la confirmará insumo por insumo:
 `data/industrial/plantilla_precios.csv` (sección 2.5).

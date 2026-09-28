@@ -6,13 +6,18 @@ sobre `tmp_path` (CLAUDE.md §9 y restricciones del sprint).
 
 from __future__ import annotations
 
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
+from typing import Any
+
 import pytest
 from sqlalchemy import create_engine, event
 from sqlalchemy.pool import StaticPool
 
-from core.catalog import abrir_sesion, crear_esquema
+from core.catalog import abrir_sesion, crear_esquema, crear_motor
 from core.catalog.sesion import _activar_claves_foraneas
 from scripts.seed import sembrar
+from tests.fixtures.base_con_pendiente import guardar_base_con_pendiente, url_sqlite
 
 
 @pytest.fixture
@@ -45,25 +50,59 @@ def sesion(motor):
         yield sesion
 
 
-@pytest.fixture
-def cliente(sesion):
-    """Cliente HTTP de la API sobre la sesión en memoria (INV‑042: una sola copia).
+@contextmanager
+def _cliente_http(fabrica_de_sesion: Callable[[], Any]) -> Iterator[Any]:
+    """El único esqueleto del cliente HTTP de la API (INV‑042, M‑1 de la revisión de la pista C
+    de C4): sustituye `api.dependencias.sesion_api` por `fabrica_de_sesion` y abre un
+    `TestClient`.
 
-    Importa FastAPI dentro de la fixture: el extra `api` solo hace falta en las pruebas que la
-    piden, no en todo el paquete de integración. La sustitución de la sesión se deshace en un
-    `finally`: si el arranque del cliente falla, la siguiente prueba no hereda la base de esta.
+    `fabrica_de_sesion` es lo que FastAPI llama en cada petición: una función que devuelve una
+    sesión o un generador que la entrega. Importa FastAPI aquí dentro: el extra `api` solo hace
+    falta en las pruebas que piden un cliente, no en todo el paquete de integración. La
+    sustitución se deshace en un `finally`: si el arranque del cliente falla, la siguiente prueba
+    no hereda la base de esta.
     """
     from fastapi.testclient import TestClient
 
     from api.dependencias import sesion_api
     from api.main import app
 
-    app.dependency_overrides[sesion_api] = lambda: sesion
+    app.dependency_overrides[sesion_api] = fabrica_de_sesion
     try:
         with TestClient(app) as cliente:
             yield cliente
     finally:
         app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def cliente(sesion):
+    """Cliente HTTP de la API sobre la sesión en memoria, compartida por todas las peticiones."""
+    with _cliente_http(lambda: sesion) as cliente:
+        yield cliente
+
+
+@pytest.fixture
+def cliente_con_pendiente(tmp_path):
+    """Cliente HTTP sobre un archivo de `tmp_path` con el 001 guardado con su pendiente T-99.
+
+    El base lo guarda el núcleo directo con `pendientes=` (`tests/fixtures/base_con_pendiente.py`)
+    y el motor se cierra antes de la petición: la ruta lee lo persistido, con una sesión por
+    petición como `api.dependencias.sesion_api`. Nada escribe en `data/`.
+    """
+    ruta = tmp_path / "escenarios.db"
+    guardar_base_con_pendiente(ruta)
+    motor = crear_motor(url_sqlite(ruta))
+
+    def _sesion_por_peticion():
+        with abrir_sesion(motor) as sesion:
+            yield sesion
+
+    try:
+        with _cliente_http(_sesion_por_peticion) as cliente:
+            yield cliente
+    finally:
+        motor.dispose()
 
 
 @pytest.fixture

@@ -38,7 +38,7 @@ No se escribe en el orden del índice sino del material más consolidado al meno
 | Orden | Capítulo | Por qué |
 |---|---|---|
 | 1.º | IV. Desarrollo | todo existe: código, docs, bitácoras; cero dependencias externas |
-| 2.º | V. Resultados | los cinco indicadores están medidos; solo el juicio de expertos queda «pendiente» declarado |
+| 2.º | V. Resultados | cuatro de los cinco indicadores están medidos; el 3 (tiempo) y el juicio de expertos de RNF‑04 se miden en la fase Med con sus protocolos |
 | 3.º | III. Marco metodológico | `docs/metodologia.md` ya es el 80 % del capítulo |
 | 4.º | II. Marco teórico | exige leer `docs/fuentes/Estado_del_Arte_BIM5D_ML_APU.pdf`; D4 puede esperar como nota |
 | 5.º | I. El problema | los objetivos dependen de la decisión D3 (OE7 o complementario) |
@@ -96,8 +96,9 @@ fuentes de datos · criterios de validación · metodología de desarrollo.
 - **Instrumentos, con nombre y apellido:** pruebas automatizadas (pytest con `-W error`; el conteo
   vigente y su corrida de CI, en la sección 5),
   metas de sprint automatizadas (`scripts/meta_alpha.py`, 12/12), observación estructurada
-  (indicador 3), juicio de expertos (instrumento Likert del
-  [dossier G0, anexo A](../dossier_g0.md)), medición reproducible de desempeño
+  (indicador 3, con su protocolo: [protocolo_indicador3.md](../protocolo_indicador3.md)), juicio de
+  expertos (instrumento Likert del [dossier G0, anexo A](../dossier_g0.md), aplicado con
+  [protocolo_rnf04.md](../protocolo_rnf04.md)), medición reproducible de desempeño
   (`scripts/medir_rnf03.py`).
 - **Las compuertas G0–G2 como decisión metodológica:** criterios de degradación declarados antes
   de conocer el resultado (G2 es el ejemplo estrella: la tabla de degradación existía desde la
@@ -115,7 +116,8 @@ de la sección 5. Borrador escrito: [capitulos/04-desarrollo.md](capitulos/04-de
 1. **Requerimientos** — ERS: once UC (UC‑09 vacante), 42 RF (RF‑32 vacante), 10 RNF; el criterio de
    aceptación medible por RF.
 2. **Modelo de datos** — decisiones que valen la pena contar: versionado híbrido (congelar y
-   recomputar), variantes de insumos homónimos (el octavo defecto → candidata R8, D2),
+   recomputar), variantes de insumos homónimos (el precio no uniforme de un insumo, sin ordinal
+   para no confundirlo con el hallazgo adicional 8 → candidata R8, D2),
    rendimiento medido con clave foránea a la ejecución.
 3. **Arquitectura** — núcleo cerrado / adaptadores abiertos; los contratos como única frontera;
    las dos guardias automáticas (las pruebas de `tests/unit/test_arquitectura.py`, conteo en la
@@ -135,9 +137,9 @@ de la sección 5. Borrador escrito: [capitulos/04-desarrollo.md](capitulos/04-de
    en el manual técnico.
 10. **Módulos ML** — normalización (umbral 0,5; RF‑17 5/5), anomalías (Isolation Forest,
     semilla 42, abstención con n < 8), predicción (G2 → reglas con sensibilidad, limitación).
-11. **Interfaz y API** — nueve pantallas en `main` (diez cuando U1 agregue el Inicio de UC‑12,
-    RF‑39); la API con 18 operaciones sobre 14 rutas; montos como texto en la frontera JSON; escenarios UC‑08 sin
-    persistencia (D6).
+11. **Interfaz y API** — diez pantallas en dos secciones desde U1 (el Inicio de UC‑12 más las
+    nueve anteriores); la API con 18 operaciones sobre 14 rutas; montos como texto en la frontera
+    JSON; escenarios UC‑08 sin persistencia (D6).
 
 Cada sección: el problema → la decisión → la evidencia (prueba o bitácora). Las bitácoras de
 `docs/bitacora/` son la memoria de las decisiones: citarlas como anexo H.
@@ -148,16 +150,17 @@ Un apartado por indicador, con su cifra y su procedencia (tabla de la sección 5
 
 | Indicador | Resultado a redactar |
 |---|---|
-| 1. Inconsistencias | **7 de 7** detectadas, una por regla; más los hallazgos adicionales 8 (precio no uniforme, D2) y 9 (las cinco discrepancias diarias que explican la brecha de 11,11 USD, sustento de R7/D1) |
+| 1. Inconsistencias | **7 de 7** detectadas, una por regla; más los hallazgos adicionales 8 (unidad del encofrado, R3) y 9 (las cinco discrepancias diarias que explican la brecha de 11,11 USD, sustento de R7/D1) de [linea_base.md §5](../linea_base.md), y el precio no uniforme de un insumo (sin ordinal; candidata R8, D2) |
 | 2. Exactitud | desviación **0,00 %** frente a la línea base corregida; muy dentro de clase 3 AACE (−20 %/+30 %) |
-| 3. Tiempo | recálculo de 100 partidas en **1,17 s** (meta < 5 s); el cronometraje manual vs automatizado queda como medición de la defensa (observación estructurada) |
+| 3. Tiempo | la mediana de la reducción relativa del tiempo de la tarea de referencia T3, manual frente a sistema, con n, perfil, fecha y commit, medida en la fase Med con [protocolo_indicador3.md](../protocolo_indicador3.md) (enmienda de C4: ya no queda para la defensa). El recálculo de 100 partidas en **1,17 s** es RNF‑03, tiempo de máquina, y se cita como complemento, no como el indicador |
 | 4. Extensibilidad | `git diff --stat core/` **vacío** tras telecom, industrial y sistemas; las pruebas de arquitectura (conteo en la sección 5) lo re‑verifican en cada corrida |
 | 5. Desempeño predictivo | MAPE **12,46 %** · RMSE **5,10 USD** · R² **0,9974** — presentados como resultado de la **degradación declarada** (reglas), no como logro de ML |
 
 Además: la evaluación ISO/IEC 25010, con el conteo de veredictos tal como lo da su fuente única,
 la tabla de [calidad_iso25010.md §9](../calidad_iso25010.md) (no se reproduce aquí: se cita; contarlo
 con las brechas a la vista es más fuerte que esconderlas), el plan IEEE 829 (suite y cobertura según
-la sección 5, con su corrida de CI) y el juicio de expertos cuando se aplique (anexo A del dossier).
+la sección 5, con su corrida de CI) y el juicio de expertos de RNF‑04, que se aplica en la fase Med
+con [protocolo_rnf04.md](../protocolo_rnf04.md) sobre el anexo A del dossier.
 
 ### Conclusiones y recomendaciones
 
@@ -198,7 +201,16 @@ Toda cifra del texto sale de aquí. Si una medición se repite y cambia, se actu
 y se buscan sus usos en los capítulos.
 
 Valores medidos el 31/08/2026 salvo que la fila indique otra fecha o corrida. Las cifras de pruebas
-y cobertura citan su corrida de CI ([metodologia.md §6](../metodologia.md)).
+y cobertura citan su corrida de CI ([metodologia.md §6](../metodologia.md)); su fuente única es
+[plan_pruebas.md §10](../plan_pruebas.md) ([metodologia.md §5.1](../metodologia.md#5-dry)).
+
+**Enmienda de la fase C4 del cierre (2026‑09‑28).** El indicador 3 ya no queda «como medición de la
+defensa»: la spec de cierre §5 (fila Med) lo mide antes de congelar, con el protocolo
+[protocolo_indicador3.md](../protocolo_indicador3.md), escrito antes de medir; lo mismo el juicio de
+expertos de RNF‑04 ([protocolo_rnf04.md](../protocolo_rnf04.md)). Sus filas, al final de la tabla,
+quedan en «pendiente de Med» hasta que la fase Med las llene con su registro; ninguna cifra de esas
+filas entra a un capítulo antes. Se actualizan, además, las filas de la suite, de las pruebas de
+arquitectura y de la interfaz, a la corrida de CI con que se cruzó GC3.
 
 | Cifra | Valor | Comando / fuente |
 |---|---|---|
@@ -206,12 +218,12 @@ y cobertura citan su corrida de CI ([metodologia.md §6](../metodologia.md)).
 | Desviación vs línea base | 0,00 % (± 0,01 por PU) | `uv run pytest tests/unit/test_costing.py tests/integration/test_presupuesto_linea_base.py` |
 | Precios unitarios de la línea base | excavación 8,60 · tubería 10,19 · encofrado 33,24 · concreto 242,64 · relleno 52,58 USD (precios del caso al 28/04/2026; reproducidos en la CI del 2026‑09‑23) | [CLAUDE.md §4](../../CLAUDE.md) · `tests/fixtures/apu_linea_base.py` · `uv run pytest tests/unit/test_costing.py` (7 casos: los cinco PU y los dos errores clásicos) |
 | Núcleo intacto | diff vacío | `git diff --stat <rama-adaptador> -- core/` · `uv run python scripts/guardia_nucleo.py --base main` |
-| Pruebas de arquitectura | 66 casos (2026‑09‑23, verificación de GC1) | `uv run pytest --collect-only -q tests/unit/test_arquitectura.py` · [bitácora del cierre, GC1](../bitacora/2026-09-23-cierre.md) |
+| Pruebas de arquitectura | 65 casos (2026‑09‑28, commit `308eca5`, corrida de CI [36427904452](https://github.com/EugenioRRijo/tesis-apu-multidominio/actions/runs/36427904452); 66 en la verificación de GC1 del 2026‑09‑23) | `uv run pytest --collect-only -q tests/unit/test_arquitectura.py` · [bitácora del cierre, GC1](../bitacora/2026-09-23-cierre.md) |
 | MAPE · RMSE · R² | 12,46 % · 5,10 USD · 0,9974 | `uv run python scripts/generar_resultados_ml.py` → [resultados_ml.md](../resultados_ml.md) |
 | Recálculo masivo | 1,17 s / 100 partidas (31/08/2026, equipo de desarrollo); repetición del 23/09/2026 en otro equipo, tras la corrección del núcleo: 1,34 s. Depende del equipo; se vuelve a medir al congelar | `uv run python scripts/medir_rnf03.py` · [bitácora F.2](../bitacora/2026-08-31-F2-plan-pruebas.md) · [acta R2, T6.1](revisiones/R2-capitulo-4.md) |
-| Suite y cobertura | 735 pruebas, 0 omitidas, en Linux y Windows · cobertura de `core/` 98 % (2026‑09‑23) | CI del PR #11, [corrida 35950215309](https://github.com/EugenioRRijo/tesis-apu-multidominio/actions/runs/35950215309) (`pytest -W error --cov=core …` y `coverage report --include="core/*"`) |
+| Suite y cobertura | 945 pruebas, 0 omitidas, en Linux y Windows · cobertura de `core/` 98 % (1 841 sentencias, 30 sin cubrir) (2026‑09‑28, commit `e7a0569`, fusionado a prueba con `main` = `ceb6b8e`) · 735 pruebas y 98 % en la corrida [35950215309](https://github.com/EugenioRRijo/tesis-apu-multidominio/actions/runs/35950215309) (2026‑09‑23), referencia del capítulo IV hasta su resincronización | CI del PR #15, [corrida 36489551508](https://github.com/EugenioRRijo/tesis-apu-multidominio/actions/runs/36489551508) (`pytest -W error --cov=core …` y `coverage report --include="core/*"`, en su registro) · fuente única: [plan_pruebas.md §10](../plan_pruebas.md) |
 | Requerimientos de la ERS | once UC (UC‑09 vacante) · 42 RF (RF‑32 vacante) · 10 RNF (ERS vigente al 2026‑09‑23, tras la extensión de U0.1) | [docs/ERS.md](../ERS.md) §2.2, §3.2 y §3.3 |
-| Interfaz y API en `main` | nueve pantallas · 18 operaciones sobre 14 rutas (código de `main` en `f1dda36`, 2026‑09‑23) | `ui/app.py` (`PAGINAS`) · `api/rutas/` · [docs/api.json](../api.json) (`uv run python scripts/exportar_openapi.py`) |
+| Interfaz y API en `main` | diez pantallas en dos secciones (Trabajo e Investigacion) · 18 operaciones sobre 14 rutas (código de `main` en `ceb6b8e`, 2026‑09‑28) · nueve pantallas en `f1dda36` (2026‑09‑23), referencia del capítulo IV | `ui/app.py` (`PAGINAS`) · `api/rutas/` · [docs/api.json](../api.json) (`uv run python scripts/exportar_openapi.py`) |
 | Actualización de precios (UC‑02) sobre la línea base | concreto +30,17025 USD/m³ en el PU y +50,082615 USD en el total; los demás renglones sin cambio (verificado en la CI del 2026‑09‑23, corrida [35950215309](https://github.com/EugenioRRijo/tesis-apu-multidominio/actions/runs/35950215309)) | `tests/fixtures/actualizacion_uc02.py` · `uv run pytest tests/integration/test_actualizacion_precios.py` |
 | Supuestos de la muestra civil | sobreancho de excavación 0,10 m · espesor de fondo 0,10 m (supuestos declarados el 2026‑08‑29) | [data/samples/civil/README.md](../../data/samples/civil/README.md) |
 | Aceptación de RF‑17 | 5 de 5 partidas parafraseadas en el primer puesto (umbral 0,5; criterio ≥ 80 %; corrida de cierre del 2026‑08‑31) | `uv run pytest tests/unit/test_normalizacion.py` · [bitácora I2](../bitacora/2026-08-31-I2-normalizacion.md) |
@@ -225,6 +237,9 @@ y cobertura citan su corrida de CI ([metodologia.md §6](../metodologia.md)).
 | Metas de sprint | 12/12 | `uv run python scripts/meta_i6.py` |
 | Conteo G2 | civil 5 · telecom 40 · industrial 4 · sistemas 9 (todos < 50; recuento multidominio M4.1) | [resultados_ml.md](../resultados_ml.md) (`uv run python scripts/generar_resultados_ml.py`) |
 | Predicciones del caso | tabla PU base/estimado/rango | [resultados_ml.md](../resultados_ml.md) |
+| Indicador 3: reducción del tiempo de elaboración | **pendiente de Med**: mediana de la reducción relativa (mín–máx) sobre la tarea T3, con n, perfil, fecha y commit | [protocolo_indicador3.md](../protocolo_indicador3.md) · bitácora de la fase Med |
+| RNF‑04: juicio de expertos sobre el informe | **pendiente de Med**: promedio global (meta ≥ 4,0) y veredicto, con n, perfil, fecha, commit, las dos huellas del informe (SHA‑256 de la pantalla, `informe_rnf04.md`, y de la forma exportada, `informe_rnf04.xlsx`) y la forma sobre la que se juzgó cada afirmación (protocolo §1) | [protocolo_rnf04.md](../protocolo_rnf04.md) · bitácora de la fase Med |
+| RNF‑10: CP‑07 | **pendiente de Med (GU1b)**: veredicto por escenario, tiempo y promedio del bloque B | [guion_prueba_arenia.md](../guion_prueba_arenia.md), CP‑07 · bitácora de la fase Med |
 
 ## 6. Tablero de avance
 
