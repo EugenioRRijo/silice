@@ -121,3 +121,96 @@ partida: pasan a la atribución por regla.
 **Ratificar en GC5:** el protocolo `ReglaAtribuible` fuera de los contratos, el `None` ante dos
 hallazgos iguales con partidas distintas, el índice que no registra orígenes compartidos y el límite
 de los pendientes hasta C5.2.
+
+**Resultado de C5.1** (anotado con el expediente C5.2). Commit de `core/`: `e43fd8b` (un arreglo de
+revisión lo reescribiría por `fixup`, regla C5‑1). Rojo por comportamiento, antes del código, en
+`tests/unit/test_verification.py`: la muestra civil con 3 hallazgos mal atribuidos (el R3 de la
+tubería como `LB-01-EXC` y los dos R4 de `T-01` como `LB-04-CON`), el R3 del objeto `OBJ-1` como
+`LB-01-EXC`, la regla ajena y el hallazgo declarado dos veces atribuidos a `LB-01-EXC`. Además de
+las dos pruebas del expediente, tres más: la regla ajena sobre el origen compartido, el hallazgo
+declarado para dos partidas y la conciliación y la partida sin período de R7 sobre `OBJ-1` (esta
+última, porque la mordida de R7 que quita su declaración sobrevivía: con orígenes únicos el índice
+de respaldo da la misma partida). Mordidas, cada una restaurada: `partida_de` sin la declaración
+(fallan 2), el índice que vuelve a registrar los orígenes compartidos (falla 1), la última
+declaración que gana (falla 1), R3 que declara la primera partida del presupuesto (fallan 2) y R7
+que no declara la conciliación (falla 1). Línea base `27 0 0 0`; la huella del informe de RNF‑04 no
+cambia (`9469aaf8…ed0063`).
+
+## C5.2 INV‑092 (con RF‑21): el informe enumera las reglas evaluadas
+
+**Problema.** UC‑05 5a (`docs/ERS.md`, «No hay hallazgos: el informe se emite igualmente,
+declarando las siete reglas evaluadas y sin hallazgos») no está implementado:
+`InformeAuditoria.a_markdown` pinta cabecera, resumen por severidad y tabla de hallazgos, pero no
+dice qué reglas corrió, y con cero hallazgos emite dos tablas vacías. Ninguna prueba audita un
+presupuesto con cero hallazgos, y RF‑21 («devuelve una lista vacía cuando el presupuesto cumple»)
+no tiene esa prueba para R2 ni para R4 (`docs/plan_pruebas.md` §8, fila RF‑21, y §8.1, UC‑05 5a).
+Ese informe es el objeto del juicio de expertos de RNF‑04 en Med, por eso va antes.
+
+**Diagnóstico.** `auditar` ya recibe las reglas (`reglas=REGLAS`) y cada una declara `codigo` y
+`nombre` (`ClassVar` del contrato `ReglaVerificacion`): el dato existe y el informe lo descarta. Hay
+una trampa (ARQ‑3 de la revisión de arquitectura de GC4): `core.budget.presupuesto._declarar_pendientes`
+reconstruye `InformeAuditoria` campo por campo, así que un campo nuevo se perdería en silencio en
+toda elaboración con pendientes y en la recarga (`cargar_elaboracion` la llama). Es la misma trampa
+que deja abierto el límite de C5.1 con `partida_por_hallazgo`.
+
+**Diseño.** Un solo commit, asunto `feat(verification): el informe enumera las reglas evaluadas`,
+que toca solo `core/verification/informe.py`, `core/budget/presupuesto.py` y
+`core/budget/excel.py`, más sus pruebas en `tests/`:
+
+- `InformeAuditoria.reglas_evaluadas: tuple[tuple[str, str], ...]`: `(codigo, nombre)` de cada regla
+  que corrió `auditar`, en el orden en que corrieron. Es un campo del informe, no de un contrato; el
+  contrato solo se lee.
+- `a_markdown`: una sección «Reglas evaluadas» (tabla Regla · Nombre · Hallazgos) entre el resumen
+  por severidad y la tabla de hallazgos. Con cero hallazgos, el resumen y la tabla de hallazgos
+  dicen «Sin hallazgos.» en vez de pintar tablas vacías. Un informe construido a mano sin reglas
+  evaluadas no pinta la sección (`auditar` siempre la llena).
+- `excel.py`: la hoja *Auditoria* enumera las mismas reglas en un bloque a la derecha (columnas G a
+  I: Regla evaluada · Nombre · Hallazgos), separado por la columna F vacía. La tabla de hallazgos
+  (columnas A a E) sigue con una fila por hallazgo, que es lo que fijan las pruebas existentes del
+  libro (`test_budget.py`, `test_api.py`). Así las dos formas del informe que juzga RNF‑04 declaran
+  lo mismo.
+- `presupuesto.py`: `_declarar_pendientes` pasa a `dataclasses.replace(informe, hallazgos=…,
+  partida_por_origen=…)`: conserva `reglas_evaluadas` y `partida_por_hallazgo` (cierra el límite de
+  C5.1) y cualquier campo que el informe gane después. `PENDIENTE` no se enumera como regla: no es
+  una de las siete, lo emite la elaboración. `core/budget/persistencia.py` no cambia: la recarga
+  llama a `_declarar_pendientes`.
+
+**Pruebas.** En rojo por comportamiento (fallan por aserción, no por importación):
+
+1. `tests/unit/test_verification.py`: el informe del presupuesto auditado enumera las siete reglas
+   con su nombre y su cuenta de hallazgos (oráculo: la cuenta por `hallazgo.regla` sobre
+   `informe.hallazgos`, y los códigos y nombres de `REGLAS`).
+2. `tests/unit/test_verification.py`, UC‑05 5a: un presupuesto con **cero** hallazgos. Es
+   `presupuesto_corregido()` (la fixture de 7 de 7), cuyo único hallazgo es la ADVERTENCIA de R1 por
+   el relleno transcrito a mano; declarado tabular (trazable por su fila), no queda ninguno.
+   Oráculo por la otra ruta: cada una de las siete reglas, llamada por separado, devuelve `[]`. El
+   informe dice CUMPLE, enumera las siete con 0 y dice «Sin hallazgos.».
+3. `tests/unit/test_budget.py`: la elaboración con pendientes conserva las reglas evaluadas y la
+   atribución de C5.1 (la muestra civil sin composición de concreto: el pendiente comparte `T-01` y
+   el R3 de la tubería, de `Z-01`, sigue atribuido a `LB-02-TUB`); y el libro enumera las reglas en
+   la hoja *Auditoria*.
+4. `tests/integration/test_recarga_con_pendientes.py`: el informe recargado con pendientes enumera
+   las siete reglas (ARQ‑3).
+
+Pruebas de caracterización de RF‑21 (verdes desde el principio: la conducta existe, faltaba la
+prueba), con mordida: R2 y R4 devuelven `[]` sobre `presupuesto_corregido()`, que trae curva que
+cierra por construcción y especificaciones que el texto de su APU reconoce.
+
+**Límites declarados.**
+
+- La base no guarda `reglas_evaluadas` (no hay migración de esquema): el informe recargado las
+  enumera porque la recarga reaudita con `REGLAS`.
+- La cuenta de hallazgos por regla incluye INFO y las declaraciones «no aplicable» (R2 y R7 sin plan
+  de trabajo, que sí son hallazgos del contrato).
+- La huella del informe de RNF‑04 cambia con este commit (sección nueva): la regenera el controlador
+  en GC5 sobre el commit de la compuerta (`docs/protocolo_rnf04.md` §1), no esta pista.
+
+**Línea base.** Intacta: `tests/fixtures/apu_linea_base.py` no se edita y el conjunto de la línea
+base sigue en `27 0 0 0`; ninguna aserción existente cambia.
+
+**Para la pista D.** `docs/plan_pruebas.md` §8 (fila RF‑21: las pruebas de lista vacía de R2 y R4) y
+§8.1 (UC‑05 5a), `docs/ERS.md` (alcance vigente de RF‑21) y el manual de usuario (la sección nueva
+del informe).
+
+**Ratificar en GC5:** el bloque de reglas a la derecha en la hoja *Auditoria*, «Sin hallazgos.» en
+lugar de tablas vacías y `PENDIENTE` fuera de la enumeración.
