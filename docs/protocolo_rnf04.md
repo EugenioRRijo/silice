@@ -268,6 +268,7 @@ CUMPLE / NO CUMPLE / sigue pendiente · Commit probado y huellas: ___
 | Expertos que se influyen entre sí | Sesiones individuales, sin comunicación hasta el final |
 | Versiones distintas del informe | Un commit, una generación, dos huellas anotadas en cada hoja |
 | Una forma del informe sin el dato que la afirmación pregunta | Se entregan las dos formas y cada afirmación declara, antes de medir, sobre cuál se juzga (sección 1) |
+| La afirmación 2 del anexo A nombra las severidades «error / advertencia / información», y el informe evaluado trae `CRITICO`, `ERROR` y `ADVERTENCIA`, y ningún `INFO` (sección 1) | El instrumento no se cambia (anexo A). La discrepancia se declara aquí, antes de medir, y se reporta junto al promedio de la afirmación 2: el experto juzga una severidad (`CRITICO`) que el texto no nombra y no ve la de información |
 | Muestra pequeña | n ≥ 3 declarado como mínimo; el resultado se cita como juicio de un panel, no como muestra representativa |
 | Criterio acomodado al resultado | Criterio de la sección 6 escrito antes de medir; nada se relaja después |
 

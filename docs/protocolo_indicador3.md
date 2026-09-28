@@ -172,7 +172,9 @@ presupuesto*):
   asociar en la barra lateral cada partida a su código de M2 (concreto, encofrado, excavación,
   tubería y, marcando *Incluir relleno (balance R5)*, el relleno), subir la plantilla, pulsar
   *Extraer cómputo*, *Elaborar presupuesto* y *Exportar a Excel*.
-- **Entregable:** el libro descargado `presupuesto_<código>*.xlsx`, con sus cuatro hojas
+- **Entregable:** el libro descargado `presupuesto_P-001*.xlsx` (el nombre lleva el «Código del
+  presupuesto» de la barra lateral, `P-001` por defecto, que al participante no se le pide cambiar;
+  no el código del participante), con sus cuatro hojas
   (*Presupuesto*, *APU*, *Curva* y *Auditoria*).
 - **Fin del tiempo:** el archivo está en la carpeta de descargas y el participante dijo «terminé».
 
@@ -240,7 +242,10 @@ la variante P y el material M3, en la que el observador sí contesta preguntas (
 tiempo se registra aparte y no cuenta). No hay práctica para el método manual: la hoja de cálculo
 es la herramienta habitual del participante (criterio de inclusión de la sección 5). La práctica
 ocurre antes de la condición sistema en las cuatro secuencias; su efecto sobre la condición manual
-que la sigue en S3 y S4 lo recoge el contrabalanceo.
+que la sigue en S3 y S4 lo recoge el contrabalanceo. Al terminar la práctica, y antes de la
+condición sistema, el observador **retira de la carpeta de descargas** el libro de la práctica
+(`presupuesto_P-001.xlsx`, a una carpeta aparte): la condición sistema descarga un libro con el mismo
+nombre, y el navegador lo renombraría («(1)»), confundiendo cuál es el entregable.
 
 **Entre condiciones:** pausa de 10 minutos. Al participante **no** se le dice si su primer
 entregable fue correcto hasta terminar la segunda condición.
