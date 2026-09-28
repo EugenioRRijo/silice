@@ -75,7 +75,7 @@ del 28 de septiembre: la operación de escenarios de la API declara los pendient
 base y la especificación redacta el flujo 3a de UC‑01 en su orden real (sección 4.5.1), y la tabla
 de contratos de `CLAUDE.md` y la arquitectura muestran la modalidad de mano de obra (sección 4.3.2).
 Esa etapa corrigió además, el mismo día, los desfases documentales que describen las secciones
-4.1.1, 4.1.4, 4.2, 4.3.4, 4.4.1 y 4.7.2: esas secciones los describen como estaban el 23 de
+4.1.1, 4.1.3, 4.1.4, 4.2, 4.3.4, 4.4.1 y 4.7.2: esas secciones los describen como estaban el 23 de
 septiembre, y la Tabla 4.11 da su estado al cerrar la tercera etapa. El resto de lo que cambiaron la
 segunda y la tercera se incorpora al resincronizar el capítulo con la versión congelada del
 software (Tabla 4.10). Donde un documento del repositorio contradice al código, este capítulo describe el código y dice que el desfase está
@@ -188,11 +188,18 @@ capítulo V a partir de su fuente única, la evaluación de calidad de
 | RNF‑05 | Mantenibilidad | agregar un dominio no modifica `core/` | `git diff --stat core/` vacío y `test_arquitectura.py` en verde |
 | RNF‑06 | Mantenibilidad | cobertura de pruebas del núcleo | ≥ 80 % |
 | RNF‑07 | Portabilidad | instalación con `uv sync` en Windows y Linux | cero pasos manuales |
-| RNF‑08 | Seguridad | ejecución local, sin credenciales ni servicios externos | cero y cero, con la descarga inicial del modelo de similitud como excepción declarada |
+| RNF‑08 | Seguridad | ejecución local, sin credenciales ni servicios externos | cero y cero, con dos excepciones declaradas: la descarga inicial del modelo de similitud y la carga de three.js por el Visor 3D (esta, declarada el 28/09/2026; véase la nota) |
 | RNF‑09 | Compatibilidad | entrada IFC 4 de cualquier modelador | cantidades iguales al cálculo manual con archivos de al menos dos herramientas |
 | RNF‑10 | Usabilidad | una persona que nunca vio la aplicación llega sola del Inicio a un presupuesto en Excel con su hoja de auditoría | caso con persona CP‑07 en dos escenarios, sin ayuda y en 20 min o menos |
 
-*Nota.* Elaboración propia a partir de `docs/ERS.md` §3.3.
+*Nota.* Elaboración propia a partir de `docs/ERS.md` §3.3. En la versión del 23 de septiembre, la fila
+RNF‑08 de la especificación declaraba una sola excepción, la descarga del modelo de similitud
+(sección 4.10.1). El Visor 3D ya cargaba entonces en el navegador la biblioteca three.js desde
+`cdnjs.cloudflare.com` (`URL_THREE_JS` en `ui/paginas/visor.py`), cada vez que se abre y sin caché
+propia del sistema, una llamada de red que la especificación no declaraba. La especificación la
+declaró como segunda excepción el 28 de septiembre de 2026 (commit `1cf355a`;
+[ERS §3.3](../../ERS.md#33-requisitos-no-funcionales-isoiec-25010), fila RNF‑08), sin incorporar la
+biblioteca al repositorio; el desfase está registrado en el inventario (Tabla 4.11).
 
 ### 4.1.4 Estado documental de los requerimientos
 
@@ -922,7 +929,10 @@ la corrida con que se cerró ese módulo reconoció las cinco
 ([bitácora de la normalización](../../bitacora/2026-08-31-I2-normalizacion.md)). El puntaje es un
 número de coma flotante, y es la única excepción justificada a la regla del `Decimal`: es una
 similitud adimensional, no una cantidad de obra ni un monto. La primera ejecución descarga el modelo y
-lo guarda en la caché local, que es la excepción declarada del RNF‑08.
+lo guarda en la caché local, que es una de las dos excepciones declaradas del RNF‑08; la otra, la
+biblioteca three.js que el navegador carga para el Visor 3D, se declaró el 28 de septiembre de 2026
+([ERS §3.3](../../ERS.md#33-requisitos-no-funcionales-isoiec-25010), fila RNF‑08; nota de la
+Tabla 4.3).
 
 ### 4.10.2 Detección de valores atípicos
 
@@ -1068,6 +1078,7 @@ código, hacia su registro en el inventario de la auditoría de cierre.
 | 4.1.1, 4.1.4 | La especificación promete en la interfaz los once casos de uso | INV‑030 | actualización de la documentación |
 | 4.1.2 | RF‑16 tenía estados distintos en la especificación y el plan de pruebas | INV‑027 | actualización de la documentación |
 | 4.1.2, 4.7.3 | RF‑20 no implementado; RF‑19 citaba una prueba que no existía | INV‑011 (cerrado en el código) | corrección del núcleo; documentos en la actualización de la documentación |
+| 4.1.3, 4.10.1 | La especificación declaraba una sola excepción del RNF‑08 y el Visor 3D carga three.js desde un servidor externo | INV‑077 (declarada el 28/09/2026 en la fila RNF‑08 de la especificación; su estado final lo registra el cierre de la última etapa) | actualización de la documentación |
 | 4.1.4 | La matriz de trazabilidad cita pruebas que no verifican lo afirmado | INV‑026 | actualización de la documentación |
 | 4.1.4 | El encabezado de la especificación contradice su conteo mínimo | INV‑063 | actualización de la documentación |
 | 4.1.4, 4.7.2 | Especificación y arquitectura dan la extracción IFC por pendiente | INV‑028 | actualización de la documentación |
@@ -1098,6 +1109,6 @@ código, hacia su registro en el inventario de la auditoría de cierre.
 
 *Nota.* Elaboración propia a partir del [inventario del cierre](../../auditoria/2026-09-inventario.md),
 con los estados al cerrar la corrección de la interfaz y los scripts (28/09/2026), salvo las filas de
-INV‑057, INV‑074 e INV‑083, que recogen además cambios de la última etapa del cierre. Cada hallazgo
+INV‑057, INV‑074, INV‑077 e INV‑083, que recogen además cambios de la última etapa del cierre. Cada hallazgo
 cerrado lo fue en la etapa que indica la última columna; los detalles de cada corrección están en la
 [bitácora del cierre](../../bitacora/2026-09-23-cierre.md).
