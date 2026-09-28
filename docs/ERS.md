@@ -25,6 +25,13 @@
 > [PLAN_ASISTENTE.md](../PLAN_ASISTENTE.md), a partir del siguiente al número más alto asignado (hoy
 > RF‑44); esta enmienda prevalece sobre la instrucción «numera desde RF‑32» de
 > PLAN_ASISTENTE.md:71‑73, que queda desactualizada hasta que A0.1 la corrija.
+> **Revisión C4 (2026‑09‑28, fase C4 de [PLAN_CIERRE.md](../PLAN_CIERRE.md)):** sin UC, RF, RNF,
+> pantalla ni ruta nuevos. (1) Los criterios de §3.2 quedan sin estado ni nombres de prueba, que
+> viven solo en [plan_pruebas.md §8](plan_pruebas.md#8-especificación-de-casos-trazabilidad-rf--prueba);
+> RF‑16, RF‑20, RF‑21 y RF‑24 declaran su **alcance vigente**. (2) §3.1 declara la capa que realiza
+> cada caso de uso. (3) UC‑01 3a se reordena al comportamiento ratificado en C3‑10. (4) Se agrega el
+> flujo UC‑02 4a, que aclara lo ratificado en C3‑8. (5) UC‑04 2b se reformula según C2‑6. Además,
+> G1 figura cruzada con salvedad (§2.5, RF‑04, RNF‑09) y RNF‑08 declara la carga de three.js.
 
 | Campo | Valor |
 |---|---|
@@ -109,9 +116,9 @@ UC‑09 queda vacante en este documento: [PLAN_ASISTENTE.md](../PLAN_ASISTENTE.m
 ejecutada) lo reserva para «Generar presupuesto asistido desde las necesidades del usuario». UC‑10 y
 UC‑11 se declararon en la Sesión P0.1 del sprint del prototipo AREN.IA
 ([PLAN_PROTOTIPO.md](../PLAN_PROTOTIPO.md)); su implementación en `ui/composicion.py` y
-`ui/paginas/componer.py`, de las Fases P1 y P2 de ese plan, está cumplida (el sprint cerró con sus doce
-metas en verde el 2026‑09‑21, `docs/bitacora/2026-09-16-sprint-prototipo.md`); ver RF‑33 a RF‑35 (§3.2);
-sus pruebas están en [plan_pruebas.md §8 y §8.1](plan_pruebas.md#8-especificación-de-casos-trazabilidad-rf--prueba).
+`ui/paginas/componer.py` corresponde a las Fases P1 y P2 de ese plan
+(`docs/bitacora/2026-09-16-sprint-prototipo.md`); ver RF‑33 a RF‑35 (§3.2). Sus pruebas y su estado
+están en [plan_pruebas.md §8 y §8.1](plan_pruebas.md#8-especificación-de-casos-trazabilidad-rf--prueba).
 
 Los tipos citados en los flujos (`ItemComputo`, `ComposicionAPU`, `ResultadoAPU`, `Presupuesto`,
 `Hallazgo`, `Rendimiento`) son los de [CLAUDE.md §5](../CLAUDE.md#5-contratos-de-interfaz-corecontracts),
@@ -492,8 +499,8 @@ la corrija.
 | RF‑17 | El sistema reconocerá al menos el 80 % de las partidas de un presupuesto conocido al normalizar sus descripciones | Esencial | UC‑03 | I2 | ≥ 80 % de la línea base parafraseada reconocida en el primer puesto |
 | RF‑18 | El sistema derivará las cantidades del dominio civil de reglas paramétricas declaradas, registrando en cada `ItemComputo` la expresión evaluada y los parámetros usados | Esencial | UC‑04 | I3.2 | Con a = 0,80, h = 0,80, e = 0,10 el concreto da 0,224 m3 y el encofrado 4,48 m2, y ambos ítems traen `regla` y `parametros` |
 | RF‑19 | Al modificar un parámetro dimensional o el conteo de elementos, el sistema reevaluará las reglas afectadas y recalculará cantidades, precios y curva sin intervención manual | Esencial | UC‑04 | I3.2 | Cambiar el ancho de la tanquilla altera solo las cantidades que dependen de él, y el recálculo se propaga a precios, curva y auditoría; se cumplen los flujos 1a, 2a y 2b de UC‑04 |
-| RF‑20 | El sistema presentará el diferencial entre la versión anterior y la recalculada: cantidad, precio unitario y total por partida | Deseable | UC‑04 | I3.2 | **No implementado; declarado en limitaciones** (INV‑011, fase C1 del cierre; decisión del 2026‑09‑23). Criterio previsto: la suma de los diferenciales por partida iguala la diferencia de totales |
-| RF‑21 | El sistema ejecutará las siete reglas R1–R7 sobre cualquier `Presupuesto` y devolverá `Hallazgo` con severidad, descripción, impacto cuantificado y los `origen_id` involucrados | Esencial | UC‑05 | I4 | Cada regla detecta su inconsistencia con hallazgos completos (severidad, descripción, impacto y `origen_id`) y no reporta errores cuando el presupuesto cumple |
+| RF‑20 | El sistema presentará el diferencial entre la versión anterior y la recalculada: cantidad, precio unitario y total por partida | Deseable | UC‑04 | I3.2 | Criterio previsto: la suma de los diferenciales por partida iguala la diferencia de totales. **Alcance vigente: no implementado**, declarado en limitaciones (INV‑011, fase C1 del cierre; decisión del 2026‑09‑23) |
+| RF‑21 | El sistema ejecutará las siete reglas R1–R7 sobre cualquier `Presupuesto` y devolverá `Hallazgo` con severidad, descripción, impacto cuantificado y los `origen_id` involucrados | Esencial | UC‑05 | I4 | Cada regla detecta su inconsistencia con hallazgos completos (severidad, descripción, impacto y `origen_id`) y devuelve una lista vacía cuando el presupuesto cumple. **Alcance vigente: parcial.** La lista vacía tiene prueba solo en R5 y R7, y ninguna prueba audita un presupuesto con cero hallazgos (plan_pruebas §8, RF‑21; §8.1, UC‑05 5a) |
 | RF‑22 | El sistema detectará las siete inconsistencias de la línea base sobre el presupuesto de prueba que las reproduce | Esencial | UC‑05 | I4 | 7 de 7 hallazgos sobre el presupuesto de prueba, uno por regla (indicador 1) |
 | RF‑23 | El sistema ordenará el informe por severidad descendente y no modificará el presupuesto auditado; una regla que no pueda evaluarse se reportará como hallazgo INFO sin interrumpir a las demás | Esencial | UC‑05 | I4 | El presupuesto auditado es idéntico antes y después, el informe sale ordenado por severidad descendente y una regla sin datos da un hallazgo INFO sin abortar el informe |
 | RF‑24 | El sistema importará un presupuesto de un tercero en formato tabular, conservando las unidades originales escritas por su autor, para poder auditarlo | Esencial | UC‑05 | I4 | La unidad escrita por el autor del archivo importado («mts») llega intacta a la regla R3. **Alcance vigente: parcial.** R3 conserva la unidad del autor sobre un `Presupuesto` construido en memoria, pero la importación de un archivo tabular de un tercero no existe en ninguna capa (INV‑076, abierto; bloquea F3) |
@@ -520,8 +527,9 @@ Los criterios de esta tabla son afirmaciones comprobables y no llevan estado. **
 demuestra cada criterio y su estado (verde, parcial, sin prueba o no implementado) viven una sola vez,
 en [plan_pruebas.md §8](plan_pruebas.md#8-especificación-de-casos-trazabilidad-rf--prueba), y la prueba
 o el caso manual de cada paso de cada caso de uso, en su §8.1** (INV‑032; la regla de fuentes únicas
-es [metodologia.md §5](metodologia.md#5-dry)). Solo RF‑16, RF‑20 y RF‑24 declaran aquí su **alcance
-vigente**, porque lo fija una decisión registrada (D5, la limitación de C1 y INV‑076), no una prueba.
+es [metodologia.md §5](metodologia.md#5-dry)). Solo RF‑16, RF‑20, RF‑21 y RF‑24 declaran aquí su
+**alcance vigente**, porque su criterio no se cumple entero. En RF‑16, RF‑20 y RF‑24 lo fija una
+decisión registrada (D5, la limitación de C1 e INV‑076); en RF‑21, una prueba que falta.
 
 Cobertura por caso de uso (mínimos exigidos por el criterio de cierre entre paréntesis):
 
