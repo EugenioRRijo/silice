@@ -94,15 +94,24 @@ Todo APU se calcula así (`Decimal`, sin redondeos intermedios):
 ```
 materiales         = Σ cantidad × precio                         ← NO se divide entre rendimiento
 equipos            = Σ (cantidad × precio × depreciacion) / rendimiento
-mano_obra          = ( Σ cantidad × sueldo × (1 + FCAS)  +  bono × Σ cantidad ) / rendimiento
+mano_obra_jornal   = ( Σ cantidad × sueldo × (1 + FCAS)  +  bono × Σ cantidad ) / rendimiento
+                                                                 ← solo líneas a jornal
+mano_obra_destajo  = Σ cantidad × sueldo                         ← solo líneas a destajo, completo
+mano_obra          = mano_obra_jornal + mano_obra_destajo
 costo_directo      = materiales + equipos + mano_obra
 con_administracion = costo_directo × (1 + administracion)
 precio_unitario    = con_administracion × (1 + utilidad)          ← en cascada, NO (1 + 0,15 + 0,10)
 ```
 
 Parámetros de la línea base (`core.contracts.apu.ParametrosCosto`, valores por defecto):
-FCAS = 6,00 (prestaciones 600 %) · bono de alimentación = 1,00 USD por obrero y día ·
+FCAS = 6,00 (prestaciones 600 %) · bono de alimentación = 1,00 USD por obrero a jornal y día ·
 administración = 0,15 · utilidad = 0,10. El rendimiento se expresa en unidades de partida por día.
+
+La modalidad de cada línea de mano de obra (`ModalidadManoObra`: `JORNAL` por defecto, o `DESTAJO`)
+es la decisión D9 ([docs/dossier_g0.md](docs/dossier_g0.md#d9-modalidad-de-mano-de-obra-por-linea-cambio-a-un-contrato-declarado-estable)),
+pendiente del aval del tutor. A destajo, `sueldo` es el precio por unidad de partida (artículo 114 de
+la LOTTT): la línea entra completa, sin FCAS, sin bono y sin dividir entre el rendimiento. La línea
+base es toda a jornal, así que para ella `mano_obra_destajo = 0` y el cálculo es el de siempre.
 
 Los dos errores más probables al implementar el motor, y que las pruebas vigilan explícitamente:
 dividir los materiales entre el rendimiento; sumar administración y utilidad en vez de encadenarlas.
