@@ -1120,6 +1120,7 @@ flowchart TB
         api["api (FastAPI)"]
     end
     scripts["scripts/<br/>siembra, simulación, metas"]
+    fixtures["tests.fixtures<br/>línea base y datos compartidos"]
     civil -. "implementa AdaptadorDominio" .-> contracts
     telecom -. "implementa AdaptadorDominio" .-> contracts
     industrial -. "implementa AdaptadorDominio" .-> contracts
@@ -1137,6 +1138,7 @@ flowchart TB
     scripts --> ml
     scripts --> ui
     scripts --> api
+    scripts --> fixtures
 ```
 
 Interfaces provistas y requeridas:
@@ -1153,9 +1155,9 @@ Interfaces provistas y requeridas:
 | `ml.normalization` | `NormalizadorPartidas`, `proponedor`, `propuestas_para`, `Propuesta`, `FALLAS_DE_LA_PROPUESTA` | nada de `core`; `sentence-transformers` (extra `ml`) solo al cargar el modelo |
 | `ml.anomaly` | `precios_atipicos`, `evaluar_rendimiento` | nada de `core`; `numpy` y, al ajustar el bosque, `scikit-learn` (extra `ml`) |
 | `ml.prediction` | `tecnica_para`, `predecir_por_reglas`, `metricas`, `contrastar_aace` | `core.contracts` (`Hallazgo`, `Severidad`) |
-| `ui` | las diez pantallas de `ui/app.py` (§1) | `core`, `adapters`, `ml` (perezoso) y `scripts` |
+| `ui` | las diez pantallas de `ui/app.py` (§1) | `core`, `adapters`, `ml` (perezoso) y `scripts`; de forma transitiva, `tests.fixtures` (vía `scripts.seed`, ver abajo) |
 | `api` | las rutas HTTP de `api/rutas/` (§1; esquema en `docs/api.json`) | `core`, `adapters` (perezoso), `ml` |
-| `scripts` | siembra de las bases, simulación de listas, metas de cada sprint, `docs/resultados_ml.md` y `docs/api.json` | `core`, `adapters`, `ml`, `ui` y `api` |
+| `scripts` | siembra de las bases, simulación de listas, metas de cada sprint, `docs/resultados_ml.md` y `docs/api.json` | `core`, `adapters`, `ml`, `ui`, `api` y `tests.fixtures` (solo los fixtures) |
 
 Regla de dependencia: ninguna flecha sale de `core/` hacia `adapters/`, `ml/`, `ui/`, `api/`,
 `scripts/` ni `tests/` (`test_el_nucleo_no_conoce_a_los_demas_paquetes`, con la tupla
@@ -1195,6 +1197,21 @@ módulos importados (`scripts.seed`, `scripts.simular_lista`, `scripts.seed_demo
 importa de vuelta al paquete que lo importa. `scripts/exportar_openapi.py` importa `api.main` para
 escribir `docs/api.json`.
 
+**`scripts` depende de `tests.fixtures`, y por eso la interfaz también.** Ocho scripts importan
+`tests.fixtures`: `seed.py`, `seed_telecom.py`, `seed_industrial.py`, `seed_sistemas.py`,
+`generar_resultados_ml.py`, `medir_rnf03.py`, `meta_prototipo.py` y `extraer_arenaza.py`.
+`scripts/seed.py:39` importa `tests.fixtures.apu_linea_base` al cargarse el módulo. Es una
+dependencia **deliberada**: el fixture es la única copia de la línea base
+([CLAUDE.md §2](../CLAUDE.md#2-principios), principio 1; `docs/manual_tecnico.md:242`), y copiarla en
+`scripts/` sería la duplicación que el principio prohíbe. La consecuencia es de despliegue: `ui.app`
+importa las diez páginas al cargarse (`ui/app.py:61-72`), y tres de ellas llegan a `scripts.seed`:
+`ui/paginas/actualizacion.py:44` directamente, `ui/paginas/inicio.py:18` a través de
+`scripts.seed_demo` (`scripts/seed_demo.py:109`) y `ui/paginas/simulador.py:22` a través de
+`scripts.simular_lista` (`scripts/simular_lista.py:30`). Por eso **la aplicación Streamlit necesita
+`tests/fixtures/` para arrancar** (§5). La API no: `api/` no importa `scripts` ni `tests`. Ninguna
+prueba de `tests/unit/test_arquitectura.py` declara ni prohíbe esta arista: esa suite solo impide que
+`core/` importe `tests` (INV‑010).
+
 ## 5. Vista física
 
 Ejecución **local, sin servidor y sin credenciales** (RNF‑08 de
@@ -1229,6 +1246,7 @@ flowchart TB
         end
         subgraph artefactos["Artefactos desplegados"]
             paquetes["core/ · adapters/ · ml/ · ui/ · api/ · scripts/<br/>codigo fuente, sin instalacion"]
+            fixtures["tests/fixtures/ (con tests/__init__.py)<br/>linea base, fuente unica<br/>la interfaz no arranca sin el"]
             venv[".venv/<br/>dependencias resueltas por uv sync"]
         end
         subgraph datos["Almacenamiento local"]
@@ -1248,6 +1266,7 @@ flowchart TB
     seed --> paquetes
     pytest --> paquetes
     paquetes --> venv
+    paquetes -->|"scripts.seed importa tests.fixtures.apu_linea_base"| fixtures
     paquetes -->|"SQLAlchemy + DecimalExacto"| db
     samples -->|"AdaptadorDominio.extraer"| paquetes
     referencia -->|"ui.composicion.buscar_referencia"| paquetes
@@ -1264,6 +1283,7 @@ Decisiones de despliegue y sus consecuencias:
 | Base de datos | SQLite en `data/apu.db`, URL por defecto de `core.catalog.sesion.crear_motor`; la interfaz abre el caso que fija el Inicio (`ui.caso.ruta_caso`) | sin instalación de servidor; `.gitignore` ignora `*.db` (en cualquier carpeta) y la base se regenera con `uv run python scripts/seed.py` o `scripts/seed_demo.py` |
 | Integridad referencial | `PRAGMA foreign_keys=ON` en cada conexión SQLite | sin él, el motor ignora las claves foráneas y el esquema deja de ser el documentado |
 | Portabilidad del motor | PostgreSQL se activa cambiando la URL y sustituyendo `DecimalExacto` por `Numeric(18, 6)` | ningún modelo cambia (ADR 7) |
+| Artefactos | el código se ejecuta desde el checkout, sin instalar paquete; `tests/fixtures/` (con `tests/__init__.py` y `tests/fixtures/__init__.py`) se despliega junto al código | la interfaz importa `scripts.seed`, que importa la línea base de `tests/fixtures/apu_linea_base.py` (§4): un despliegue que podara `tests/` dejaría a Streamlit sin arrancar. La API no lo necesita |
 | Entorno | `uv sync` (RNF‑07), extras por capa: `ui`, `api`, `civil`, `ml` | el equipo del proyectista no necesita `ifcopenshell` ni `torch` para presupuestar; sin el extra, las ayudas de `ml` y la entrada IFC degradan con un aviso |
 | Pruebas | SQLite **en memoria**; ninguna prueba escribe en `data/` salvo con `tmp_path` | la base del usuario nunca se altera al correr la suite |
 | Seguridad | sin credenciales y sin datos fuera del equipo; los dos accesos de red declarados arriba | RNF‑08; el respaldo es copiar un archivo |
