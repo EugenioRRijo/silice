@@ -566,25 +566,26 @@ https://datalaing.com/site/wp-content/uploads/2023/07/convencion-colectiva-de-la
 
 Chacin, R. (2008). *Comparación mediante el cálculo del factor de prestaciones sociales del contrato
 colectivo 2003-2006 vs. contrato colectivo 2007-2009 sector construcción en Venezuela* [Trabajo de
-grado, Universidad Rafael Urdaneta].
+grado, Universidad Rafael Urdaneta]. Repositorio Institucional URU.
+https://documentos.uru.edu/pdf/2301-08-02127.pdf
 
-- **Estado:** pendiente
-- **Verificación:** texto completo del trabajo, leído el 2026‑09‑28 en
-  `docs/fuentes/Chacin_2008_FCAS_URU.pdf` (141 páginas; procedencia en `docs/fuentes/README.md`:
-  repositorio de la Universidad Rafael Urdaneta). La portada dice «Trabajo presentado como requisito
-  para optar al título de Ingeniero Civil», autor Rafael Chacin, tutor Carlos Sandoval, Escuela de
-  Ingeniería Civil, Maracaibo, enero de 2008.
-- **Afirmación contrastada:** el cuadro 2 («Comparación de factores de prestaciones sociales»)
-  da, para obras de 3, 6 y 12 meses, 281 %, 225 % y 198 % con el contrato colectivo 2003‑2006, y
-  293 %, 242 % y 210 % con el de 2007‑2009: el rango de 198 % a 293 % que cita el capítulo II. Las
-  conclusiones dicen que el factor tiende a disminuir a medida que aumenta la duración de la obra,
-  por la distribución de los gastos fijos en más días.
-- **Falta:** el registro del trabajo en el repositorio de la Universidad Rafael Urdaneta (URL), que
-  no se localizó en la búsqueda web del 2026‑09‑28, y con él el año que se cita: la portada dice
-  enero de 2008, pero el resumen fecha el trabajo en diciembre de 2007, la aprobación del tutor es
-  del 10 de diciembre de 2007 y el cuadro 2 lleva «Fuente: Chacin (2007)». Confirmar también la
-  grafía del apellido: el documento escribe «Chacin», sin tilde, y así se cita; el
-  [dossier de G0](../dossier_g0.md) (D4) lo registra como «Chacín».
+- **Estado:** verificada
+- **Verificación:** repositorio institucional de la Universidad Rafael Urdaneta, 2026‑09‑28: el
+  archivo del enlace es idéntico, byte a byte (SHA‑256 `bdcd6cd1…c5ab2`, 5 189 391 bytes), a
+  `docs/fuentes/Chacin_2008_FCAS_URU.pdf`, leído completo ese día (141 páginas). La portada dice
+  «Trabajo presentado como requisito para optar al título de Ingeniero Civil», autor Rafael Chacin,
+  tutor Carlos Sandoval, Escuela de Ingeniería Civil, Maracaibo, enero de 2008.
+- **Año:** se cita 2008, el de la portada. El resumen fecha el trabajo en diciembre de 2007, la
+  aprobación del tutor es del 10 de diciembre de 2007 y el cuadro 2 lleva «Fuente: Chacin (2007)».
+- **Grafía:** «Chacin», sin tilde, como la escribe el documento en minúsculas («Rafael Chacin» en la
+  aprobación del tutor; «Chacin (2007)» en el cuadro 2). El
+  [dossier de G0](../dossier_g0.md) (D4) la registra como «Chacín».
+- **Afirmación contrastada:** el trabajo llama al factor «de prestaciones sociales» y lo rotula
+  «FCAS». Su cuadro 2 («Comparación de factores de prestaciones sociales») da, para obras de 3, 6 y
+  12 meses, 281 %, 225 % y 198 % con el contrato colectivo 2003‑2006, y 293 %, 242 % y 210 % con el
+  de 2007‑2009: el rango de 198 % a 293 % que cita el capítulo II. Las conclusiones dicen que el
+  factor tiende a disminuir a medida que aumenta la duración de la obra, por la distribución de los
+  gastos fijos en más días.
 
 ### Dodi Scovino y Salas Caraballo (2019)
 
@@ -606,6 +607,8 @@ https://riujap.ujap.edu.ve/server/api/core/bitstreams/729831c4-590d-4973-9d0b-70
   individuales ajustados por índices de inflación, 1 720,34 %; las del seguro social obligatorio,
   93,23 %; y todas las cláusulas juntas, 2 386,08 %. El resumen atribuye el aumento de los costos a
   la hiperinflación. Es el rango de 78 % a 2 386 % que cita el capítulo II.
+  La introducción (p. 2) presenta el factor como «mejor conocido como el porcentaje de prestaciones
+  sociales».
 
 ### Ley Orgánica del Trabajo, los Trabajadores y las Trabajadoras (2012)
 
