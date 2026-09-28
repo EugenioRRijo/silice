@@ -12,12 +12,23 @@ from __future__ import annotations
 
 from dataclasses import replace
 from decimal import ROUND_HALF_UP, Decimal
+from pathlib import Path
+from typing import ClassVar
 
 import pytest
 
 from adapters.civil import reglas as reglas_civil
 from adapters.civil.evaluador import evaluar_regla
-from core.contracts import PuntoCurva, Severidad
+from adapters.civil.tabular import AdaptadorCivilTabular
+from core.contracts import (
+    Hallazgo,
+    PartidaPresupuestada,
+    Presupuesto,
+    PuntoCurva,
+    ReglaVerificacion,
+    Severidad,
+)
+from core.costing import calcular_apu
 from core.verification import (
     REGLAS,
     BalanceVolumetrico,
@@ -40,7 +51,8 @@ from core.verification.expresiones import (
 from core.verification.reglas import NO_APLICABLE, REGLA_NO_EVALUABLE
 from core.verification.texto import es_numero, normalizar_texto, pares_numero_unidad, tokens
 from tests.fixtures import apu_linea_base as linea_base
-from tests.fixtures.computo_auditado import origen_de
+from tests.fixtures.computo_auditado import composiciones_linea_base, items_auditados, origen_de
+from tests.fixtures.computo_civil import CODIGOS as CODIGOS_CIVIL
 from tests.fixtures.presupuesto_auditado import (
     BALANCE_RELLENO,
     presupuesto_con_siete_inconsistencias,
@@ -629,3 +641,166 @@ def test_auditar_con_subconjunto_de_reglas(presupuesto):
     informe = auditar(presupuesto, reglas=(CoherenciaDimensional(),))
     assert {hallazgo.regla for hallazgo in informe.hallazgos} == {"R3"}
     assert len(informe.hallazgos) == 2
+
+
+# ---------------------------------------------------------------------------------------------
+# Atribución de cada hallazgo a su partida (INV‑095, expediente C5.1)
+# ---------------------------------------------------------------------------------------------
+
+MUESTRA_CIVIL = (
+    Path(__file__).resolve().parents[2] / "data" / "samples" / "civil" / "tanquillas_y_zanja.csv"
+)
+#: Un objeto paramétrico que da dos partidas (`OrigenTipo.REGLA`): el caso que el índice
+#: «un `origen_id`, una partida» no distingue.
+OBJETO_COMPARTIDO = "OBJ-1"
+
+
+def _presupuesto_en_memoria(items) -> Presupuesto:
+    composiciones = composiciones_linea_base()
+    return Presupuesto(
+        codigo=linea_base.CODIGO_PRESUPUESTO,
+        fecha=linea_base.FECHA_LINEA_BASE,
+        moneda=linea_base.MONEDA,
+        partidas=tuple(
+            PartidaPresupuestada(
+                item=item,
+                apu=composiciones[item.codigo_partida],
+                resultado=calcular_apu(
+                    composiciones[item.codigo_partida], linea_base.PARAMETROS_LINEA_BASE
+                ),
+            )
+            for item in items
+        ),
+    )
+
+
+def _excavacion_y_tuberia_de_un_mismo_objeto() -> Presupuesto:
+    """La excavación primero y la tubería después, las dos del objeto `OBJ-1`.
+
+    A mano: el ítem de tubería del caso auditado se computa en «mts» (normalizado «m») y su APU
+    está en «pieza», así que R3 emite exactamente un hallazgo, y es de `LB-02-TUB`; la excavación
+    (m3 contra m3) no emite ninguno.
+    """
+    por_codigo = {item.codigo_partida: item for item in items_auditados()}
+    return _presupuesto_en_memoria(
+        replace(por_codigo[codigo], origen_id=OBJETO_COMPARTIDO)
+        for codigo in (
+            linea_base.APU_EXCAVACION.codigo_partida,
+            linea_base.APU_TUBERIA.codigo_partida,
+        )
+    )
+
+
+class _ReglaAjena(ReglaVerificacion):
+    """Una regla que no es del núcleo y no declara la partida de su hallazgo."""
+
+    codigo: ClassVar[str] = "X1"
+    nombre: ClassVar[str] = "Regla ajena"
+
+    def evaluar(self, presupuesto: Presupuesto) -> list[Hallazgo]:
+        return [
+            Hallazgo(
+                regla=self.codigo,
+                severidad=Severidad.INFO,
+                descripcion="cita el objeto compartido",
+                origen_ids=(OBJETO_COMPARTIDO,),
+            )
+        ]
+
+
+class _ReglaQueAtribuyeDosVeces(_ReglaAjena):
+    """Declara el mismo hallazgo para dos partidas distintas: el informe no debe elegir."""
+
+    codigo: ClassVar[str] = "X2"
+
+    def atribuir(self, presupuesto: Presupuesto) -> list[tuple[Hallazgo, str | None]]:
+        (hallazgo,) = self.evaluar(presupuesto)
+        return [
+            (hallazgo, linea_base.APU_TUBERIA.codigo_partida),
+            (hallazgo, linea_base.APU_EXCAVACION.codigo_partida),
+        ]
+
+
+def test_el_informe_atribuye_la_muestra_civil_a_la_partida_de_cada_hallazgo():
+    """INV‑095 reproducido: la muestra civil, elaborada como en «Elaborar un presupuesto».
+
+    Oráculo independiente del índice del informe: la descripción de cada hallazgo de R1, R3 y R4
+    la redacta la regla desde `item.codigo_partida` y nombra una sola partida. Antes de la
+    corrección, 3 de 6 hallazgos salían con la partida equivocada: el R3 de la tubería como
+    `LB-01-EXC` y dos R4 INFO de la fila `T-01` como `LB-04-CON`. El número de R4 no se fija
+    (INV‑096 quita especificaciones que no corresponden a cada partida).
+    """
+    from core.budget import elaborar, plan_secuencial
+
+    resultado = elaborar(
+        AdaptadorCivilTabular(codigos=CODIGOS_CIVIL).extraer(MUESTRA_CIVIL),
+        composiciones_linea_base(),
+        linea_base.PARAMETROS_LINEA_BASE,
+        codigo=linea_base.CODIGO_PRESUPUESTO,
+        fecha=linea_base.FECHA_LINEA_BASE,
+        plan=plan_secuencial,
+    )
+    informe = resultado.informe
+    codigos = {partida.item.codigo_partida for partida in resultado.presupuesto.partidas}
+
+    por_partida = [h for h in informe.hallazgos if h.regla in {"R1", "R3", "R4"}]
+    assert por_partida, "la muestra civil ya no produce hallazgos por partida"
+    mal_atribuidos = []
+    for hallazgo in por_partida:
+        nombradas = [codigo for codigo in sorted(codigos) if codigo in hallazgo.descripcion]
+        assert len(nombradas) == 1, hallazgo.descripcion
+        if informe.partida_de(hallazgo) != nombradas[0]:
+            mal_atribuidos.append((hallazgo.descripcion, informe.partida_de(hallazgo)))
+    assert mal_atribuidos == []
+
+    (r3,) = informe.por_regla()["R3"]
+    assert informe.partida_de(r3) == linea_base.APU_TUBERIA.codigo_partida
+
+
+def test_el_hallazgo_de_un_objeto_con_dos_partidas_va_a_la_partida_que_lo_produjo():
+    presupuesto = _excavacion_y_tuberia_de_un_mismo_objeto()
+
+    informe = auditar(presupuesto, reglas=(CoherenciaDimensional(),))
+
+    (r3,) = informe.hallazgos
+    assert r3.origen_ids == (OBJETO_COMPARTIDO,)
+    assert informe.partida_de(r3) == linea_base.APU_TUBERIA.codigo_partida
+
+
+def test_una_regla_que_no_declara_su_partida_no_se_atribuye_a_un_origen_compartido():
+    """Sin la declaración de la regla, el índice no puede saber cuál de las dos partidas del
+    objeto es la del hallazgo: el informe no la adivina (la columna pinta «-»)."""
+    informe = auditar(_excavacion_y_tuberia_de_un_mismo_objeto(), reglas=(_ReglaAjena(),))
+
+    (ajeno,) = informe.hallazgos
+    assert informe.partida_de(ajeno) is None
+    assert f"| {ajeno.regla} | INFO | - |" in informe.a_markdown()
+
+
+def test_un_hallazgo_declarado_para_dos_partidas_no_se_atribuye_a_ninguna():
+    informe = auditar(
+        _excavacion_y_tuberia_de_un_mismo_objeto(), reglas=(_ReglaQueAtribuyeDosVeces(),)
+    )
+
+    (repetido,) = {hallazgo for hallazgo in informe.hallazgos}
+    assert informe.partida_de(repetido) is None
+
+
+def test_r7_atribuye_la_conciliacion_y_la_partida_sin_periodo_de_un_objeto_compartido():
+    """A mano: el plan asigna 1,00 a la tubería, que totaliza cientos de dólares (ERROR de
+    conciliación, de la tubería), y no planifica la excavación (ADVERTENCIA, de la excavación).
+    Las dos partidas comparten el objeto `OBJ-1`, así que el índice no puede atribuirlas."""
+    tuberia = linea_base.APU_TUBERIA.codigo_partida
+    excavacion = linea_base.APU_EXCAVACION.codigo_partida
+    monto = Decimal("1.00")
+    plan = PuntoCurva(
+        periodo=directivas.etiqueta_con_codigos("Dia 1", (tuberia,)), monto=monto, acumulado=monto
+    )
+    presupuesto = replace(_excavacion_y_tuberia_de_un_mismo_objeto(), curva=(plan,))
+
+    informe = auditar(presupuesto, reglas=(ConciliacionPresupuestoPlan(),))
+
+    assert {(h.severidad, informe.partida_de(h)) for h in informe.hallazgos} == {
+        (Severidad.ERROR, tuberia),
+        (Severidad.ADVERTENCIA, excavacion),
+    }

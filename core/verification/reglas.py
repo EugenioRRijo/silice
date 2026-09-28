@@ -17,6 +17,13 @@ adaptadores cambian, el núcleo no.
 cuando la regla puede cuantificar dinero, y `None` cuando no tiene sentido cuantificarlo (R3, R4,
 R6). El sentido de la desviación no va en el signo sino en `valor_observado` y `valor_esperado`, que
 toda regla cuantitativa llena.
+
+**Atribución a la partida (INV‑095, expediente C5.1).** `Hallazgo` no lleva código de partida y un
+`origen_id` puede producir varias partidas (`OrigenTipo.REGLA`: el objeto paramétrico), así que el
+informe no puede deducir la partida de un hallazgo por su origen. Las reglas cuyos hallazgos nacen
+de una partida (R1, R3, R4, R5 y R7) la declaran con `atribuir` (`ReglaAtribuible`), y su `evaluar`
+devuelve esos mismos hallazgos sin la partida. R2 (el presupuesto completo) y R6 (sus `origen_ids`
+ya son códigos de partida) no la necesitan.
 """
 
 from __future__ import annotations
@@ -24,7 +31,7 @@ from __future__ import annotations
 from collections import defaultdict
 from collections.abc import Iterable, Mapping, Sequence
 from decimal import Decimal, InvalidOperation
-from typing import ClassVar
+from typing import ClassVar, Protocol, runtime_checkable
 
 from core.contracts.item_computo import ItemComputo, OrigenTipo
 from core.contracts.presupuesto import PartidaPresupuestada, Presupuesto, PuntoCurva
@@ -51,12 +58,14 @@ __all__ = [
     "NO_APLICABLE",
     "REGLAS",
     "REGLA_NO_EVALUABLE",
+    "Atribucion",
     "BalanceVolumetrico",
     "CierreCurvaInversion",
     "CoherenciaDimensional",
     "ConciliacionPresupuestoPlan",
     "CorrespondenciaEspecificaciones",
     "CriterioDepreciacion",
+    "ReglaAtribuible",
     "TrazabilidadGeometrica",
 ]
 
@@ -68,6 +77,31 @@ _CERO = Decimal(0)
 REGLA_NO_EVALUABLE = "regla no evaluable"
 #: Con qué se declaran R2 y R7 cuando el presupuesto no trae plan de trabajo (UC‑05 flujo 2a).
 NO_APLICABLE = "no aplicable"
+
+#: Un hallazgo con el código de la partida que lo produjo, o `None` si no es de una partida.
+Atribucion = tuple[Hallazgo, str | None]
+
+
+@runtime_checkable
+class ReglaAtribuible(Protocol):
+    """Una regla que declara la partida de cada hallazgo que emite (INV‑095).
+
+    No es un contrato de `core/contracts/`: lo implementan las reglas de este módulo y lo consulta
+    `core.verification.informe.auditar`. Una regla que no lo implementa se atribuye por el índice
+    de orígenes del informe.
+
+    `auditar` usa `atribuir` en lugar de `evaluar`, así que los dos tienen que decir lo mismo: los
+    hallazgos de `atribuir`, sin la partida, son exactamente los de `evaluar`, en el mismo orden.
+    Quien redefina `evaluar` en una subclase redefine también `atribuir`.
+    """
+
+    def atribuir(self, presupuesto: Presupuesto) -> list[Atribucion]:
+        """Los hallazgos de `evaluar`, en el mismo orden, cada uno con su partida."""
+        ...
+
+
+def _sin_partida(atribuciones: Iterable[Atribucion]) -> list[Hallazgo]:
+    return [hallazgo for hallazgo, _ in atribuciones]
 
 
 def _num(valor: Decimal) -> str:
@@ -121,25 +155,29 @@ class TrazabilidadGeometrica(ReglaVerificacion):
         self.tolerancia_relativa = tolerancia_relativa
 
     def evaluar(self, presupuesto: Presupuesto) -> list[Hallazgo]:
-        hallazgos: list[Hallazgo] = []
+        return _sin_partida(self.atribuir(presupuesto))
+
+    def atribuir(self, presupuesto: Presupuesto) -> list[Atribucion]:
+        hallazgos: list[Atribucion] = []
         for partida in presupuesto.partidas:
             item = partida.item
             if item.regla:
-                hallazgos.extend(self._verificar_regla(partida))
-            elif item.origen_tipo is OrigenTipo.MANUAL:
-                hallazgos.append(
-                    Hallazgo(
-                        regla=self.codigo,
-                        severidad=Severidad.ADVERTENCIA,
-                        descripcion=(
-                            f"la cantidad de {item.codigo_partida} ({_num(item.cantidad)} "
-                            f"{item.unidad}) es manual y no declara la regla que la produjo: "
-                            "no es derivable ni reproducible"
-                        ),
-                        origen_ids=(item.origen_id,),
-                        valor_observado=item.cantidad,
-                    )
+                hallazgos.extend(
+                    (hallazgo, item.codigo_partida) for hallazgo in self._verificar_regla(partida)
                 )
+            elif item.origen_tipo is OrigenTipo.MANUAL:
+                manual = Hallazgo(
+                    regla=self.codigo,
+                    severidad=Severidad.ADVERTENCIA,
+                    descripcion=(
+                        f"la cantidad de {item.codigo_partida} ({_num(item.cantidad)} "
+                        f"{item.unidad}) es manual y no declara la regla que la produjo: "
+                        "no es derivable ni reproducible"
+                    ),
+                    origen_ids=(item.origen_id,),
+                    valor_observado=item.cantidad,
+                )
+                hallazgos.append((manual, item.codigo_partida))
         return hallazgos
 
     def _verificar_regla(self, partida: PartidaPresupuestada) -> list[Hallazgo]:
@@ -274,23 +312,25 @@ class CoherenciaDimensional(ReglaVerificacion):
     nombre: ClassVar[str] = "Coherencia dimensional"
 
     def evaluar(self, presupuesto: Presupuesto) -> list[Hallazgo]:
-        hallazgos: list[Hallazgo] = []
+        return _sin_partida(self.atribuir(presupuesto))
+
+    def atribuir(self, presupuesto: Presupuesto) -> list[Atribucion]:
+        hallazgos: list[Atribucion] = []
         for partida in presupuesto.partidas:
             item, apu = partida.item, partida.apu
             if unidades_equivalentes(item.unidad, apu.unidad):
                 continue
-            hallazgos.append(
-                Hallazgo(
-                    regla=self.codigo,
-                    severidad=Severidad.ERROR,
-                    descripcion=(
-                        f"la partida {item.codigo_partida} se computa en {self._citar(item)} y su "
-                        f"APU esta definido en {apu.unidad!r}: no son la misma unidad, el precio "
-                        "unitario no aplica a esa cantidad"
-                    ),
-                    origen_ids=(item.origen_id,),
-                )
+            hallazgo = Hallazgo(
+                regla=self.codigo,
+                severidad=Severidad.ERROR,
+                descripcion=(
+                    f"la partida {item.codigo_partida} se computa en {self._citar(item)} y su "
+                    f"APU esta definido en {apu.unidad!r}: no son la misma unidad, el precio "
+                    "unitario no aplica a esa cantidad"
+                ),
+                origen_ids=(item.origen_id,),
             )
+            hallazgos.append((hallazgo, item.codigo_partida))
         return hallazgos
 
     @staticmethod
@@ -318,7 +358,10 @@ class CorrespondenciaEspecificaciones(ReglaVerificacion):
     nombre: ClassVar[str] = "Correspondencia de especificaciones"
 
     def evaluar(self, presupuesto: Presupuesto) -> list[Hallazgo]:
-        hallazgos: list[Hallazgo] = []
+        return _sin_partida(self.atribuir(presupuesto))
+
+    def atribuir(self, presupuesto: Presupuesto) -> list[Atribucion]:
+        hallazgos: list[Atribucion] = []
         for partida in presupuesto.partidas:
             corpus = self._corpus(partida)
             pares_corpus = pares_numero_unidad(tokens(corpus))
@@ -327,7 +370,7 @@ class CorrespondenciaEspecificaciones(ReglaVerificacion):
                     continue
                 hallazgo = self._verificar(partida, clave, valor, corpus, pares_corpus)
                 if hallazgo is not None:
-                    hallazgos.append(hallazgo)
+                    hallazgos.append((hallazgo, partida.item.codigo_partida))
         return hallazgos
 
     @staticmethod
@@ -405,13 +448,19 @@ class BalanceVolumetrico(ReglaVerificacion):
         self.tolerancia_relativa = tolerancia_relativa
 
     def evaluar(self, presupuesto: Presupuesto) -> list[Hallazgo]:
+        return _sin_partida(self.atribuir(presupuesto))
+
+    def atribuir(self, presupuesto: Presupuesto) -> list[Atribucion]:
         cantidades = _cantidades_por_codigo(presupuesto)
         origenes = _origenes_por_codigo(presupuesto)
-        hallazgos: list[Hallazgo] = []
+        hallazgos: list[Atribucion] = []
         for partida in presupuesto.partidas:
             balance = partida.item.especificaciones.get(CLAVE_BALANCE)
             if balance:
-                hallazgos.extend(self._verificar(partida, balance, cantidades, origenes))
+                hallazgos.extend(
+                    (hallazgo, partida.item.codigo_partida)
+                    for hallazgo in self._verificar(partida, balance, cantidades, origenes)
+                )
         return hallazgos
 
     def _verificar(
@@ -602,34 +651,43 @@ class ConciliacionPresupuestoPlan(ReglaVerificacion):
         self.tolerancia = tolerancia
 
     def evaluar(self, presupuesto: Presupuesto) -> list[Hallazgo]:
+        return _sin_partida(self.atribuir(presupuesto))
+
+    def atribuir(self, presupuesto: Presupuesto) -> list[Atribucion]:
+        """Una partida sin período se atribuye a sí misma; una conciliación, a la primera partida
+        de su componente en el orden del presupuesto (la descripción las nombra todas); un período
+        sin partida y la declaración de «no aplicable», a ninguna."""
         if not presupuesto.curva:
-            return [
-                Hallazgo(
-                    regla=self.codigo,
-                    severidad=Severidad.INFO,
-                    descripcion=(
-                        f"R7 {NO_APLICABLE}: el presupuesto no declara plan de trabajo, no hay "
-                        "montos que conciliar con sus partidas"
-                    ),
-                )
-            ]
+            no_aplicable = Hallazgo(
+                regla=self.codigo,
+                severidad=Severidad.INFO,
+                descripcion=(
+                    f"R7 {NO_APLICABLE}: el presupuesto no declara plan de trabajo, no hay "
+                    "montos que conciliar con sus partidas"
+                ),
+            )
+            return [(no_aplicable, None)]
 
         componentes = _componentes_conexas(
             len(presupuesto.curva), len(presupuesto.partidas), self._enlazar(presupuesto)
         )
 
-        hallazgos: list[Hallazgo] = []
+        hallazgos: list[Atribucion] = []
         for indices_periodo, indices_partida in componentes:
             puntos = [presupuesto.curva[i] for i in indices_periodo]
             partidas = [presupuesto.partidas[j] for j in indices_partida]
             if not partidas:
-                hallazgos.extend(self._periodos_sin_partida(puntos))
+                hallazgos.extend((h, None) for h in self._periodos_sin_partida(puntos))
             elif not puntos:
-                hallazgos.extend(self._partidas_sin_periodo(partidas))
+                sin_periodo = self._partidas_sin_periodo(partidas)
+                hallazgos.extend(
+                    (h, partida.item.codigo_partida)
+                    for h, partida in zip(sin_periodo, partidas, strict=True)
+                )
             else:
                 hallazgo = self._conciliar(puntos, partidas, presupuesto.moneda)
                 if hallazgo is not None:
-                    hallazgos.append(hallazgo)
+                    hallazgos.append((hallazgo, partidas[0].item.codigo_partida))
         return hallazgos
 
     @staticmethod
