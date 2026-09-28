@@ -85,9 +85,11 @@ sabe la regla que lo emitió, que lo redactó recorriendo una partida concreta.
 
 **Prueba en rojo por comportamiento.** Dos, en `tests/unit/test_verification.py`:
 
-1. La muestra civil de arriba, auditada: cada hallazgo de R1, R3, R4 y R5 se atribuye a la única
+1. La muestra civil de arriba, auditada: cada hallazgo de R1, R3 y R4 se atribuye a la única
    partida del presupuesto que nombra su descripción (oráculo independiente del índice: el texto lo
-   redacta la regla desde `item.codigo_partida`), y el R3 de la tubería, a `LB-02-TUB`. En rojo
+   redacta la regla desde `item.codigo_partida`), y el R3 de la tubería, a `LB-02-TUB`. R5 queda
+   fuera de este oráculo porque su descripción cita también las partidas del balance; su
+   declaración la fija una prueba propia con el origen del relleno compartido (ronda 1, QA‑4). En rojo
    fallan los 3 de 6 de la tabla. La prueba no fija cuántos R4 INFO hay: INV‑096 (pista P) quita las
    especificaciones que no corresponden a cada partida y ese número baja.
 2. Un presupuesto en memoria, con aritmética a mano: dos ítems con el mismo `origen_id`, la
@@ -100,7 +102,8 @@ sabe la regla que lo emitió, que lo redactó recorriendo una partida concreta.
   reconstruye `InformeAuditoria` campo por campo y perdería `partida_por_hallazgo`; ese archivo no
   está entre los permitidos de este commit (`core/verification/*`). Mientras tanto, en una
   elaboración **con** pendientes la columna vuelve al índice (que ya no adivina en un origen
-  compartido, pero al que `_declarar_pendientes` agrega los orígenes de los pendientes). Lo cierra
+  compartido, pero al que `_declarar_pendientes` agregaba los orígenes de los pendientes; la ronda 1
+  los quitó, M‑1). Lo cierra
   el commit de C5.2, que pasa `_declarar_pendientes` a `dataclasses.replace` con una prueba de que
   la atribución sobrevive a los pendientes. Los dos commits van en el mismo PR.
 - Una conciliación de R7 que abarca varias partidas se atribuye a la primera (su descripción las
@@ -122,7 +125,7 @@ partida: pasan a la atribución por regla.
 hallazgos iguales con partidas distintas, el índice que no registra orígenes compartidos y el límite
 de los pendientes hasta C5.2.
 
-**Resultado de C5.1** (anotado con el expediente C5.2). Commit de `core/`: `e43fd8b` (un arreglo de
+**Resultado de C5.1** (anotado con el expediente C5.2). Commit de `core/`: `e43fd8b`, hoy `cd68487` tras el fixup de la ronda 1 (un arreglo de
 revisión lo reescribiría por `fixup`, regla C5‑1). Rojo por comportamiento, antes del código, en
 `tests/unit/test_verification.py`: la muestra civil con 3 hallazgos mal atribuidos (el R3 de la
 tubería como `LB-01-EXC` y los dos R4 de `T-01` como `LB-04-CON`), el R3 del objeto `OBJ-1` como
@@ -202,11 +205,23 @@ cierra por construcción y especificaciones que el texto de su APU reconoce.
   enumera porque la recarga reaudita con `REGLAS`.
 - La cuenta de hallazgos por regla incluye INFO y las declaraciones «no aplicable» (R2 y R7 sin plan
   de trabajo, que sí son hallazgos del contrato).
+- **La tabla «Reglas evaluadas» no cuenta los `PENDIENTE`** (no son una de las siete reglas: los
+  declara la elaboración). Con pendientes, la suma de la tabla es menor que «Hallazgos: N» de la
+  cabecera, y en el Excel el bloque G–I suma menos filas que la tabla A–E; la diferencia son
+  exactamente los `PENDIENTE` (M‑2 de la revisión de requisitos). El manual de usuario debe
+  decirlo (pista D).
+- **La columna Partida es un ancla; la descripción, el detalle.** Una conciliación de R7 que abarca
+  varias partidas se atribuye a la primera en el orden del presupuesto y R6, a la del factor
+  minoritario (su primer código); en los dos casos la descripción nombra todas las partidas (O‑1 de
+  la revisión de requisitos). La fijan `test_r7_atribuye_la_conciliacion_de_varias_partidas_…` y
+  `test_partida_de_resuelve_el_origen_y_el_codigo_de_partida`.
 - La huella del informe de RNF‑04 cambia con este commit (sección nueva): la regenera el controlador
   en GC5 sobre el commit de la compuerta (`docs/protocolo_rnf04.md` §1), no esta pista.
 
 **Línea base.** Intacta: `tests/fixtures/apu_linea_base.py` no se edita y el conjunto de la línea
-base sigue en `27 0 0 0`; ninguna aserción existente cambia.
+base sigue en `27 0 0 0`. El commit de `core/` no cambia ninguna aserción existente; la ronda 1
+cambia una, en un commit de pruebas aparte (O‑2: `test_budget.py` cuenta la columna A de la hoja
+*Auditoria* y no `max_row`).
 
 **Para la pista D.** `docs/plan_pruebas.md` §8 (fila RF‑21: las pruebas de lista vacía de R2 y R4) y
 §8.1 (UC‑05 5a), `docs/ERS.md` (alcance vigente de RF‑21) y el manual de usuario (la sección nueva
@@ -214,3 +229,29 @@ del informe).
 
 **Ratificar en GC5:** el bloque de reglas a la derecha en la hoja *Auditoria*, «Sin hallazgos.» en
 lugar de tablas vacías y `PENDIENTE` fuera de la enumeración.
+
+## Ronda de corrección 1 de la pista N (revisiones de arquitectura, requisitos y QA)
+
+Dictámenes `N-rev-arq.md`, `N-rev-req.md` y `N-rev-qa.md` del directorio de control: los tres
+aprueban, con observaciones o con condición. Los cambios de `core/` van por `fixup` y autosquash
+sobre `abeee7e` (regla C5‑1). Los dos commits de `core/` conservan sus asuntos exactos: `cd68487`
+(INV‑095, antes `e43fd8b`) y `aa53201` (INV‑092, antes `07e246d`).
+
+| Hallazgo | Corrección | Dónde |
+|---|---|---|
+| M‑1 (arq., req.) | `_declarar_pendientes` ya no mete en el índice de respaldo el `origen_id` de cada pendiente: basta la identidad `codigo -> codigo`. Docstring reescrito. Prueba: un hallazgo sin partida declarada que cita la fila `T-01` (compartida por dos valoradas y el pendiente) da `None`, no la partida pendiente. Mordida (reponer la entrada): falla 1 | fixup de `07e246d` |
+| O‑1 (arq.) | El docstring de `ReglaAtribuible` dice que los hallazgos de `atribuir`, sin la partida, son exactamente los de `evaluar`, y que quien redefine uno redefine el otro | fixup de `e43fd8b` |
+| O‑4 (arq.) | `auditar` materializa `reglas = tuple(reglas)`. Prueba con un generador. Mordida (quitar la línea): falla 1 | fixup de `07e246d` |
+| QA‑1 (condición) | R4 sobre el objeto compartido `OBJ-1`, en memoria (la muestra civil deja de producir R4 con INV‑096), y docstring de la prueba de la muestra. Mordida «R4 no declara su partida»: fallan 2 | `test(verification)` |
+| QA‑2 | La conciliación de R7 de varias partidas va a la primera del presupuesto. Mordida `partidas[-1]`: falla 1 | `test(verification)` |
+| QA‑3 = M‑3 (req.) | La hoja *Auditoria* sin hallazgos: columna A solo con el encabezado, G–I con las siete reglas en 0. Mordida «no escribir el bloque sin hallazgos»: falla 1 | `test(verification)` |
+| QA‑4 | R5 con el origen del relleno compartido con la excavación. Mordida «R5 declara `None`»: falla 1. Y el texto del expediente C5.1 (R1, R3 y R4, no R5) | `test(verification)`; este commit |
+| O‑2 (arq.) | `test_budget.py` cuenta la columna A de la hoja *Auditoria* y no `max_row` | `test(budget)` |
+| M‑2 (req.) | Límite declarado en C5.2: la tabla «Reglas evaluadas» no cuenta los `PENDIENTE` | este commit |
+| O‑1 (req.) | Declarado en C5.2: la columna Partida es un ancla (R7 de varias partidas, a la primera; R6, al primer código) | este commit |
+| QA‑5 | Las cifras de mordida del reporte son las del momento: «`partida_de` sin la declaración» muerde hoy 4 pruebas, no 2, porque se agregaron después la de R7 y la de pendientes | — |
+
+Queda para el controlador (I‑1 de la revisión de requisitos): `docs/protocolo_rnf04.md` §1, la fila
+de las reglas evaluadas y el párrafo de la *Partida*, al regenerar el material de RNF‑04 en GC5. Para
+la pista D: O‑3 de arquitectura (`docs/arquitectura.md` :966 y :1334, `InformeAuditoria` como
+interfaz pública que evoluciona de forma aditiva) y el manual (M‑2, O‑1 y O‑3 de requisitos).
