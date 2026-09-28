@@ -179,3 +179,46 @@ def test_declarado_el_estimado_propuesto_la_elaboracion_reproduce_la_linea_base(
     r = cliente.post("/presupuestos", json=cuerpo)
     assert r.status_code == 201, r.json()
     assert r.json()["total"] == str(linea_base.TOTAL_PRESUPUESTO_AUDITADO)
+
+
+# --- U-1 y U-3 de la revision: sin lista vigente no es 3b ----------------------------------------
+
+
+def test_sin_lista_vigente_el_409_no_propone_rendimientos_y_no_guarda(
+    cliente, sesion, items_payload
+):
+    """Un `CatalogoIncompleto` real: el presupuesto se fecha antes de la lista (y de los estimados)
+    de la linea base. Lo que falta es la lista: el 409 lo dice y no ofrece 3b."""
+    from datetime import date
+
+    anterior = date(2026, 1, 1)
+    assert anterior < linea_base.FECHA_LINEA_BASE
+    cuerpo = _cuerpo("API-SIN-LISTA", items_payload, fecha=anterior.isoformat())
+
+    r = cliente.post("/presupuestos", json=cuerpo)
+
+    assert r.status_code == 409
+    respuesta = r.json()
+    assert "lista de precios" in respuesta["detalle"]
+    assert respuesta.get("rendimientos_por_declarar", []) == []
+    assert (
+        sesion.scalars(
+            select(models.Presupuesto).where(models.Presupuesto.codigo == "API-SIN-LISTA")
+        ).one_or_none()
+        is None
+    )
+
+
+def test_un_insumo_sin_precio_responde_el_409_de_siempre(cliente, sesion, items_payload):
+    """Otro `CatalogoIncompleto` real que no es de rendimiento: el cemento sin precio en la lista
+    vigente. Todas las partidas tienen su estimado: 409 con solo el `detalle` del precio."""
+    from tests.fixtures.sin_rendimiento_vigente import INSUMO_SIN_PRECIO, quitar_precio
+
+    quitar_precio(sesion)
+    sesion.commit()
+
+    r = cliente.post("/presupuestos", json=_cuerpo("API-SIN-PRECIO", items_payload))
+
+    assert r.status_code == 409
+    assert INSUMO_SIN_PRECIO in r.json()["detalle"]
+    assert r.json().get("rendimientos_por_declarar", []) == []

@@ -275,8 +275,13 @@ def rendimientos_por_declarar(
     Vigente es lo que `Catalogo.composicion` exige para reconstruir un APU: un rendimiento ESTIMADO
     de fecha no posterior a la del presupuesto. Los codigos sin partida no cuentan: quedan
     pendientes (flujo 3a).
+
+    `Catalogo.composiciones` resuelve la lista de precios antes que los rendimientos, asi que sin
+    lista vigente a `fecha` el `CatalogoIncompleto` es de la lista, no de 3b: se relanza aqui
+    (`Catalogo.lista_vigente`) antes de clasificar nada (U-1 de la revision de C5).
     """
     catalogo = Catalogo(sesion)
+    catalogo.lista_vigente(fecha)
     existentes = {partida.codigo for partida in catalogo.partidas()}
     codigos = [
         codigo

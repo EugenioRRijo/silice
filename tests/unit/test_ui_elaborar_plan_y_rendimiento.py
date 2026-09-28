@@ -288,3 +288,67 @@ def test_declarado_estimado_se_registra_y_se_vuelve_a_elaborar(monkeypatch, base
     # Con el 100 propuesto, el APU de la tuberia es el de la linea base: el total tambien.
     assert at.session_state[CLAVE_RESULTADO].presupuesto.total == TOTAL_EXACTO_LINEA_BASE
     assert "Rendimientos por declarar" not in [s.value for s in at.subheader]
+
+
+# --- U-1 y U-3 de la revision: sin lista vigente no es 3b ----------------------------------------
+
+
+def _rendimientos_en(base: Path) -> int:
+    """Cuantos rendimientos hay en la base (de cualquier partida y tipo)."""
+    from sqlalchemy import func, select
+
+    from core import models
+
+    motor = crear_motor(f"sqlite:///{base.as_posix()}")
+    try:
+        with abrir_sesion(motor) as sesion:
+            return sesion.scalar(select(func.count()).select_from(models.Rendimiento))
+    finally:
+        motor.dispose()
+
+
+def test_sin_lista_vigente_se_muestra_su_error_y_no_se_ofrece_3b(monkeypatch, base_sembrada):
+    """Un `CatalogoIncompleto` real: el presupuesto se fecha antes de la lista (y de los estimados)
+    de la linea base. Lo que falta es la lista: su mensaje, sin bloque 3b y sin escribir nada."""
+    from datetime import date
+
+    from tests.fixtures.apu_linea_base import FECHA_LINEA_BASE
+
+    anterior = date(2026, 1, 1)
+    assert anterior < FECHA_LINEA_BASE
+    rendimientos = _rendimientos_en(base_sembrada)
+
+    at = _pantalla(monkeypatch, base_sembrada)
+    _por_rotulo(at.sidebar.date_input, "Fecha").set_value(anterior)
+    at.run()
+    _por_rotulo(at.button, ROTULO_ELABORAR).click().run()
+    assert not at.exception, [e.value for e in at.exception]
+
+    errores = [e.value for e in at.error]
+    assert any("lista de precios" in texto for texto in errores), errores
+    assert "Rendimientos por declarar" not in [s.value for s in at.subheader]
+    assert at.session_state[CLAVE_RESULTADO] is None
+    assert _rendimientos_en(base_sembrada) == rendimientos
+
+
+def test_un_insumo_sin_precio_muestra_su_error_y_no_se_ofrece_3b(monkeypatch, base_sembrada):
+    """Otro `CatalogoIncompleto` real que no es de rendimiento: el cemento sin precio en la lista
+    vigente. Todas las partidas tienen su estimado: el mensaje de siempre, sin bloque 3b."""
+    from tests.fixtures.sin_rendimiento_vigente import INSUMO_SIN_PRECIO, quitar_precio
+
+    motor = crear_motor(f"sqlite:///{base_sembrada.as_posix()}")
+    try:
+        with abrir_sesion(motor) as sesion:
+            quitar_precio(sesion)
+            sesion.commit()
+    finally:
+        motor.dispose()
+
+    at = _pantalla(monkeypatch, base_sembrada)
+    _por_rotulo(at.button, ROTULO_ELABORAR).click().run()
+    assert not at.exception, [e.value for e in at.exception]
+
+    errores = [e.value for e in at.error]
+    assert any(INSUMO_SIN_PRECIO in texto for texto in errores), errores
+    assert "Rendimientos por declarar" not in [s.value for s in at.subheader]
+    assert at.session_state[CLAVE_RESULTADO] is None

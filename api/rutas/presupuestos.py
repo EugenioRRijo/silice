@@ -115,15 +115,17 @@ def crear_presupuesto(
     )
     try:
         composiciones = catalogo.composiciones(codigos, fecha=peticion.fecha)
-    except CatalogoIncompleto as error:
+    except CatalogoIncompleto:
         por_declarar = _rendimientos_por_declarar(sesion, catalogo, codigos, peticion.fecha)
         if not por_declarar:
-            raise  # falta otra cosa (la lista de precios vigente): el 409 de siempre
+            raise  # falta otra cosa (un precio de la lista vigente): el 409 de siempre
+        sin_estimado = ", ".join(entrada.codigo_partida for entrada in por_declarar)
         return JSONResponse(
             status_code=status.HTTP_409_CONFLICT,
             content=RendimientosPorDeclararRespuesta(
                 detalle=(
-                    f"{error}: declare el rendimiento propuesto con POST "
+                    f"sin rendimiento estimado vigente al {peticion.fecha}: {sin_estimado}; "
+                    "declare el rendimiento propuesto con POST "
                     "/partidas/{codigo}/rendimientos (tipo 'estimado', fecha no posterior a la "
                     "del presupuesto) y vuelva a enviar el presupuesto"
                 ),
@@ -436,7 +438,12 @@ def _rendimientos_por_declarar(
     Vigente es lo que `Catalogo.composicion` exige para reconstruir un APU: un rendimiento ESTIMADO
     de fecha no posterior a la del presupuesto; es el mismo criterio de
     `ui.elaboracion.rendimientos_por_declarar`, que la API no puede importar.
+
+    `Catalogo.composiciones` resuelve la lista de precios antes que los rendimientos, asi que sin
+    lista vigente a `fecha` el `CatalogoIncompleto` es de la lista, no de 3b: se relanza aqui
+    (`Catalogo.lista_vigente`, 409 con solo `detalle`) antes de clasificar nada (U-1).
     """
+    catalogo.lista_vigente(fecha)
     return [
         RendimientoPorDeclararRespuesta(
             codigo_partida=codigo,

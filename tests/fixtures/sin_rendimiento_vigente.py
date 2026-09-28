@@ -5,6 +5,9 @@ ESTIMADO y su historico queda con dos MEDIDOS de una obra de prueba, 90 y 100 pi
 catalogo propone el MEDIDO mas reciente (100, el mismo valor del APU de la linea base), asi que,
 declarado como estimado, el presupuesto vuelve a sumar exactamente el de la linea base: ese es el
 oraculo, y un 90 lo romperia.
+
+`quitar_precio` es el contraste de U-3 (revision de C5): un `CatalogoIncompleto` que no es de
+rendimiento (un insumo sin precio en la lista vigente) no debe ofrecer 3b.
 """
 
 from __future__ import annotations
@@ -23,6 +26,8 @@ CODIGO_SIN_ESTIMADO = "LB-02-TUB"
 REFERENCIA_OBRA = "OBRA-PRUEBA-3B"
 #: Los dos rendimientos medidos del historico, del mas antiguo al mas reciente.
 MEDIDOS = ((date(2026, 5, 1), Decimal("90")), (date(2026, 5, 10), Decimal("100")))
+#: El insumo al que `quitar_precio` le borra el precio (lo usa el concreto, LB-04-CON).
+INSUMO_SIN_PRECIO = "Cemento Portland"
 #: Fecha del presupuesto de las pruebas: posterior a los medidos y a la lista de la linea base.
 FECHA_PRESUPUESTO = date(2026, 6, 1)
 
@@ -49,3 +54,12 @@ def dejar_sin_estimado(sesion: Session) -> None:
             condiciones="obra de prueba de UC-01 3b: no es una medicion real",
             referencia_ejecucion=REFERENCIA_OBRA,
         )
+
+
+def quitar_precio(sesion: Session) -> None:
+    """Borra de toda lista el precio de `INSUMO_SIN_PRECIO`. No confirma."""
+    insumos = select(models.Insumo.id).where(models.Insumo.descripcion == INSUMO_SIN_PRECIO)
+    borrados = sesion.execute(
+        delete(models.PrecioInsumo).where(models.PrecioInsumo.insumo_id.in_(insumos))
+    )
+    assert borrados.rowcount > 0, f"la linea base no tiene precio de {INSUMO_SIN_PRECIO!r}"
