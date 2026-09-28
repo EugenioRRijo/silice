@@ -161,13 +161,18 @@ importar nada de `core` salvo `core.contracts`. Guía ampliada en el manual téc
 
 ## 6. Estructura de carpetas
 
+Las anotaciones «— sesión» de las carpetas de código nombran las sesiones de
+[PLAN_DESARROLLO.md](PLAN_DESARROLLO.md) que las construyeron; los cambios de los planes posteriores
+(multidominio, prototipo, UI, cierre) no se anotan: están en `docs/bitacora/`. `scripts/`, `data/`,
+`tests/` y `docs/` crecen en casi todas las sesiones y no llevan anotación.
+
 ```
 CLAUDE.md  README.md  pyproject.toml  uv.lock
 PLAN_DESARROLLO.md  PLAN_MULTIDOMINIO.md  PLAN_PROTOTIPO.md  PLAN_UI.md  PLAN_ASISTENTE.md  PLAN_CIERRE.md
 core/
-  contracts/      estables (sección 5)                                   — I0.1, P1.1 (D9)
+  contracts/      estables (sección 5)                                   — I0.1
   costing/        motor: calcular_apu(composicion, parametros) -> ResultadoAPU — I0.3
-  models/         SQLAlchemy según docs/modelo_datos.md (dieciséis entidades) — I0.4, C3
+  models/         SQLAlchemy según docs/modelo_datos.md (dieciséis entidades) — I0.4
   catalog/        partidas, insumos y composiciones; listas de precios; rendimientos — I0.4, I1, I6.2
   budget/         presupuesto, curva, Excel, persistencia, actualización de precios, escenarios
                                                                          — I0.5, I1, F.1
@@ -182,7 +187,7 @@ ml/
   anomaly/        Isolation Forest sobre precios y rendimientos           — I6.1
   prediction/     sistema de reglas; técnica según compuerta G2 (sección 8.1) — I6.3
 ui/               Streamlit: app.py (enrutador), paginas/ (diez pantallas) y los módulos sin pantalla
-                  composicion, elaboracion, resultado, caso, recorridos, visor3d — I1, F.1, P1–P2, U1, C3
+                  composicion, elaboracion, resultado, caso, recorridos, visor3d — I1, F.1
 api/              FastAPI (main.py, rutas/); esquema OpenAPI exportado a docs/api.json — F.1
 scripts/          siembra (seed*.py), simulación, extracción de fuentes, metas (meta_*.py) y
                   utilidades de la suite; una fila por script en scripts/README.md
@@ -192,11 +197,13 @@ data/
   precios/        maprex_2026-07/: listados MaPreX (tabulador CIV incluido) y referencias por dominio
   civil/  telecom/  industrial/  sistemas/   plantilla de precios de cada dominio; fuentes/ salvo civil
 tests/
-  fixtures/       apu_linea_base.py — única copia de la línea base; los demás datos compartidos de prueba
+  fixtures/       apu_linea_base.py — única copia de la línea base; los demás datos compartidos de prueba.
+                  scripts/ también los importa, y ui/ por scripts.seed: la interfaz no arranca sin ellos
   unit/           contratos, arquitectura, línea base, costing, adaptadores, ml, ui y scripts
-  integration/    persistencia, API y flujos completos                     — I0.4+
-docs/             ERS, modelo_datos, arquitectura, plan_pruebas, calidad_iso25010, manual_tecnico,
-                  manual_usuario, metodologia, linea_base, dossier_g0, protocolo_precios, resultados_ml,
+  integration/    persistencia, API y flujos completos
+docs/             README, ERS, modelo_datos, arquitectura, plan_pruebas, calidad_iso25010,
+                  manual_tecnico, manual_usuario, metodologia, linea_base, dossier_g0, protocolo_precios,
+                  protocolo_indicador3 y protocolo_rnf04 (estos dos, de C4), resultados_ml,
                   guion_prueba_arenia, api.json, auditoria/, bitacora/, fuentes/, tesis/, superpowers/
 ```
 
