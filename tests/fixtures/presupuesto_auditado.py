@@ -205,9 +205,9 @@ def _items_corregidos(composiciones: dict[str, ComposicionAPU]) -> tuple[ItemCom
 def presupuesto_corregido() -> Presupuesto:
     """El mismo caso con las siete inconsistencias resueltas: el informe no debe hallar errores.
 
-    La curva la construye `core.budget` (Sesión I0.5), que cierra al 100 % por construcción. Las
-    pruebas que consumen esta función se saltan mientras ese módulo no exponga `plan_secuencial` y
-    `generar_curva`.
+    La curva la construye `core.budget` (`plan_secuencial` y `generar_curva`, Sesión I0.5), que
+    cierra al 100 % por construcción. La consume
+    `tests/integration/test_auditoria_7_de_7.py::test_el_presupuesto_corregido_no_tiene_errores`.
     """
     from core.budget import generar_curva, plan_secuencial
 

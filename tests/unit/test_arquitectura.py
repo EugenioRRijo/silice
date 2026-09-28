@@ -245,6 +245,59 @@ def test_ui_respeta_sus_importaciones_prohibidas(modulo):
     assert not prohibidos, f"{modulo} importa {sorted(prohibidos)}"
 
 
+#: Las paginas de ui/ (y su `__init__`): el marco `ui/app.py` las importa, ninguna lo importa a el.
+PAGINAS_DE_UI = sorted((RAIZ / "ui" / "paginas").glob("*.py"))
+
+
+def _importa_el_marco(ruta: Path) -> list[str]:
+    """Lo que `ruta` importa de `ui.app` en tiempo de ejecucion (`_imports_de_ejecucion`)."""
+    return sorted(
+        nombre
+        for nombre in _imports_de_ejecucion(ruta)
+        if nombre == "ui.app" or nombre.startswith("ui.app.")
+    )
+
+
+def test_la_guardia_del_marco_recorre_las_paginas():
+    """Sin parametrizar a proposito (O-1 de la revision de la pista C de C4): si `PAGINAS_DE_UI`
+    quedara vacia, pytest omitiria la prueba parametrizada en vez de fallar."""
+    assert RAIZ / "ui" / "paginas" / "escenarios.py" in PAGINAS_DE_UI
+
+
+@pytest.mark.parametrize("pagina", PAGINAS_DE_UI, ids=_ruta)
+def test_ninguna_pagina_importa_el_marco(pagina):
+    """M-2 de la revision de arquitectura de GC3: el grafo `ui.app -> ui.paginas.*` es aciclico
+    (`ui/app.py`) solo si ninguna pagina importa `ui.app`, ni con `import ui.app` ni con
+    `from ui import app` (`_imports_de_ejecucion` registra `ui.app` en los dos casos)."""
+    marco = _importa_el_marco(pagina)
+    assert not marco, f"{_ruta(pagina)} importa {marco}: el marco importa las paginas, no al reves"
+
+
+def test_la_guardia_del_marco_ve_cada_forma_de_importarlo(tmp_path):
+    """Las mordidas de la guardia, fijadas (O-2 de la revision de la pista C de C4), como
+    `test_la_guardia_ve_las_importaciones_relativas`: cada forma de importar `ui.app` en tiempo
+    de ejecucion se detecta, y un nombre que solo empieza igual o un import de tipado no.
+    Limite declarado, comun a `_imports_de_ejecucion`: `from .. import app` e
+    `importlib.import_module("ui.app")` no se ven (ninguna pagina usa esas formas)."""
+    fuentes = {
+        "import ui.app\n": True,
+        "import ui.app as marco\n": True,
+        "from ui import app\n": True,
+        "from ui.app import render\n": True,
+        "def perezosa():\n    from ui import app\n": True,
+        "from ui import app_nueva\n": False,
+        "import ui.apply\n": False,
+        "from ui import caso\n": False,
+        "from typing import TYPE_CHECKING\nif TYPE_CHECKING:\n    from ui import app\n": False,
+    }
+    detectadas = {}
+    for numero, fuente in enumerate(fuentes):
+        archivo = tmp_path / f"pagina_{numero}.py"
+        archivo.write_text(fuente, encoding="utf-8")
+        detectadas[fuente] = bool(_importa_el_marco(archivo))
+    assert detectadas == fuentes
+
+
 def test_una_sola_lectura_de_celdas_de_tabla_en_ui():
     """INV-046: las celdas de las tablas de `st.data_editor` se leen solo con
     `ui.composicion.texto_de_celda`; ningun modulo de ui/ define su propia copia."""
@@ -281,15 +334,18 @@ def _nombres_importados(archivo: Path) -> list[tuple[int, str]]:
 
 def test_ningun_modulo_de_prueba_importa_de_otro_modulo_de_prueba():
     """INV-052 (A-6): lo compartido entre pruebas vive en `tests/fixtures/`. Los modulos de prueba,
-    las fixtures y `tests/conftest.py` solo importan de `tests.fixtures` o de `tests.conftest`,
-    nunca de un modulo de prueba, sea con `from`, con `import` o con un import relativo (M-1 de la
-    revision de A5)."""
+    las fixtures y **todo** `conftest.py` (el raiz y los de cada subcarpeta, como
+    `tests/integration/conftest.py`: O-7 de la revision de A5) solo importan de `tests.fixtures` o
+    de `tests.conftest`, nunca de un modulo de prueba, sea con `from`, con `import` o con un import
+    relativo (M-1 de la revision de A5)."""
     permitidos = ("tests.fixtures", "tests.conftest")
+    conftests = sorted((RAIZ / "tests").rglob("conftest.py"))
+    assert RAIZ / "tests" / "integration" / "conftest.py" in conftests
     archivos = sorted(
         {
             *(RAIZ / "tests").rglob("test_*.py"),
             *(RAIZ / "tests" / "fixtures").rglob("*.py"),
-            RAIZ / "tests" / "conftest.py",
+            *conftests,
         }
     )
     infractores = sorted(

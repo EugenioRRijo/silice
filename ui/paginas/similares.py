@@ -2,7 +2,7 @@
 
 El proyectista escribe la descripcion de una partida en texto libre y el sistema propone las tres
 partidas mas parecidas del catalogo con su puntaje de similitud del coseno
-(`ml.normalization.NormalizadorPartidas`, RF-15); al desplegar una propuesta se precargan su
+(`ml.normalization.proponedor`, RF-15); al desplegar una propuesta se precargan su
 desglose (`core.catalog.Catalogo.composicion`) y su rendimiento, conservando el codigo de la
 partida de origen y el puntaje que la propuso (RF-16, la parte de precarga: la persistencia de una
 partida nueva con esa referencia espera al flujo de creacion de partidas, que ningun UC
