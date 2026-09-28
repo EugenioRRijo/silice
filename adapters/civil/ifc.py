@@ -100,7 +100,7 @@ class AdaptadorCivilIFC(AdaptadorDominio):
         faltantes = _CLAVES_PSET_APU - pset_apu.keys()
         if faltantes:
             raise ValueError(
-                f"{_NOMBRE_PSET} del elemento {global_id!r} en {fuente!r} no declara "
+                f"{_NOMBRE_PSET} del elemento {global_id!r} en {Path(fuente).name!r} no declara "
                 f"{sorted(faltantes)}"
             )
 
@@ -133,8 +133,8 @@ class AdaptadorCivilIFC(AdaptadorDominio):
         if clase_esperada is None:
             raise ValueError(
                 f"el adaptador IFC no sabe que tipo de cantidad corresponde a la unidad "
-                f"{unidad_normalizada!r} (elemento {global_id!r} en {fuente!r}); unidades "
-                f"soportadas: {sorted(_CLASE_IFC_POR_UNIDAD)}"
+                f"{unidad_normalizada!r} (elemento {global_id!r} en {Path(fuente).name!r}); "
+                f"unidades soportadas: {sorted(_CLASE_IFC_POR_UNIDAD)}"
             )
 
         qtos = ifcopenshell.util.element.get_psets(elemento, qtos_only=True, verbose=True)
@@ -148,12 +148,12 @@ class AdaptadorCivilIFC(AdaptadorDominio):
         if not candidatos:
             raise ValueError(
                 f"no se encontro una cantidad {clase_esperada} (unidad {unidad_normalizada!r}) "
-                f"para el elemento {global_id!r} en {fuente!r}"
+                f"para el elemento {global_id!r} en {Path(fuente).name!r}"
             )
         if len(candidatos) > 1:
             raise ValueError(
                 f"cantidad ambigua: {len(candidatos)} valores {clase_esperada} para el elemento "
-                f"{global_id!r} en {fuente!r}"
+                f"{global_id!r} en {Path(fuente).name!r}"
             )
         return Decimal(str(candidatos[0]))
 

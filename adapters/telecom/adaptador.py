@@ -67,11 +67,22 @@ def _leer_filas(
         ) from error
 
 
-def _decimal(fila: dict[str, str], columna: str) -> Decimal:
-    """Convierte `fila[columna]` a `Decimal`, identificando la fila y la columna en el error.
+def _ubicacion(fuente: Path | str, fila: dict[str, str], linea: int) -> str:
+    """El archivo y la fila de un error: el `id` de la fila si lo trae y, siempre, su linea.
+
+    En telecom el `id` es la segunda columna: una fila corta (menos celdas que la cabecera) puede
+    no traerlo, y entonces solo la linea la identifica (T-3 de la revision de la pista P de C5).
+    """
+    fila_id = (fila.get("id") or "").strip()
+    fila_texto = f"fila {fila_id!r} (linea {linea})" if fila_id else f"linea {linea}"
+    return f"el archivo {Path(fuente).name!r}, {fila_texto}"
+
+
+def _decimal(fila: dict[str, str], columna: str, ubicacion: str) -> Decimal:
+    """Convierte `fila[columna]` a `Decimal`, identificando el archivo, la fila y la columna.
 
     `cantidad` (nodo) y `longitud_m` (enlace) deben venir siempre llenos: una celda vacia o no
-    numerica lanza `ValueError` con el `id` de la fila y el nombre de la columna, en vez del
+    numerica lanza `ValueError` con `ubicacion` y el nombre de la columna, en vez del
     `decimal.InvalidOperation` generico que lanzaria `Decimal("")` sin contexto.
     """
     valor = (fila.get(columna) or "").strip()
@@ -79,13 +90,13 @@ def _decimal(fila: dict[str, str], columna: str) -> Decimal:
         return Decimal(valor)
     except InvalidOperation as error:
         raise ValueError(
-            f"fila {fila.get('id')!r}: columna {columna!r} vacia o no numerica: {valor!r}"
+            f"{ubicacion}: la columna {columna!r} esta vacia o no es numerica: {valor!r}"
         ) from error
 
 
-def _reserva(fila: dict[str, str]) -> Decimal:
+def _reserva(fila: dict[str, str], ubicacion: str) -> Decimal:
     """`reserva` vacia equivale a `Decimal("0")` (documentado en data/samples/telecom/README.md);
-    un valor presente pero no numerico sigue siendo un error, con la fila identificada.
+    un valor presente pero no numerico sigue siendo un error, con el archivo y la fila.
     """
     valor = (fila.get("reserva") or "").strip()
     if not valor:
@@ -93,9 +104,7 @@ def _reserva(fila: dict[str, str]) -> Decimal:
     try:
         return Decimal(valor)
     except InvalidOperation as error:
-        raise ValueError(
-            f"fila {fila.get('id')!r}: columna 'reserva' no numerica: {valor!r}"
-        ) from error
+        raise ValueError(f"{ubicacion}: la columna 'reserva' no es numerica: {valor!r}") from error
 
 
 class AdaptadorTelecom(AdaptadorDominio):
@@ -109,32 +118,37 @@ class AdaptadorTelecom(AdaptadorDominio):
 
     def extraer(self, fuente: Path | str) -> list[ItemComputo]:
         items: list[ItemComputo] = []
-        for fila in _leer_filas(fuente, _COLUMNAS, self.dominio):
-            tipo = fila["tipo"].strip()
+        # La linea 1 es la cabecera: la primera fila de datos es la linea 2.
+        for linea, fila in enumerate(_leer_filas(fuente, _COLUMNAS, self.dominio), start=2):
+            ubicacion = _ubicacion(fuente, fila, linea)
+            tipo = (fila.get("tipo") or "").strip()
             if tipo == _TIPO_NODO:
-                items.append(self._item_nodo(fila))
+                items.append(self._item_nodo(fila, ubicacion))
             elif tipo == _TIPO_ENLACE:
-                items.append(self._item_enlace(fila))
+                items.append(self._item_enlace(fila, ubicacion))
             else:
-                raise ValueError(f"tipo de fila no reconocido en {fuente!r}: {tipo!r}")
+                raise ValueError(
+                    f"{ubicacion}: tipo de fila no reconocido: {tipo!r} (se esperaba "
+                    f"{_TIPO_NODO!r} o {_TIPO_ENLACE!r})"
+                )
         return items
 
-    def _item_nodo(self, fila: dict[str, str]) -> ItemComputo:
+    def _item_nodo(self, fila: dict[str, str], ubicacion: str) -> ItemComputo:
         return ItemComputo(
             codigo_partida=fila["codigo_partida"],
             descripcion=fila["descripcion"],
             unidad=fila["unidad"],
-            cantidad=_decimal(fila, "cantidad"),
+            cantidad=_decimal(fila, "cantidad", ubicacion),
             origen_id=fila["id"],
             origen_tipo=OrigenTipo.CSV,
             dominio=Dominio.TELECOM,
             especificaciones=_parsear_especificaciones(fila.get("especificaciones")),
         )
 
-    def _item_enlace(self, fila: dict[str, str]) -> ItemComputo:
+    def _item_enlace(self, fila: dict[str, str], ubicacion: str) -> ItemComputo:
         parametros = {
-            "longitud_m": _decimal(fila, "longitud_m"),
-            "reserva": _reserva(fila),
+            "longitud_m": _decimal(fila, "longitud_m", ubicacion),
+            "reserva": _reserva(fila, ubicacion),
         }
         cantidad = evaluar_regla(_REGLA_LONGITUD_ENLACE, parametros)
         especificaciones = {

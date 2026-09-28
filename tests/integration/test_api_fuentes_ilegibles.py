@@ -9,6 +9,7 @@ ilegible real y comprueba el 422 y que el `detalle` nombra el archivo y, si la h
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
@@ -64,3 +65,43 @@ def test_un_binario_en_telecom_responde_422_con_el_archivo(cliente):
 
     assert r.status_code == 422
     assert "red.csv" in r.json()["detalle"]
+
+
+def _sin_rutas(detalle: str) -> bool:
+    """El `detalle` nombra el archivo, no la ruta del directorio temporal del servidor (T-4)."""
+    return "/" not in detalle and "\\" not in detalle
+
+
+def test_la_muestra_de_telecom_en_civil_responde_422_sin_la_ruta_del_servidor(cliente):
+    """Civil tambien lee `id` y `tipo`, que la topologia de telecom trae; antes la rechazaba por
+    «tipo de fila no reconocido en WindowsPath('.../tmpXXXX/topologia_arenaza.csv')»."""
+    from tests.fixtures.computo_civil import CODIGOS
+
+    contenido = (MUESTRAS / "telecom" / "topologia_arenaza.csv").read_bytes()
+
+    r = cliente.post(
+        "/computos/civil",
+        files={"archivo": ("topologia_arenaza.csv", contenido, "text/csv")},
+        data={"codigos": json.dumps(CODIGOS)},
+    )
+
+    assert r.status_code == 422
+    detalle = r.json()["detalle"]
+    assert "topologia_arenaza.csv" in detalle
+    assert "no es una fuente del dominio civil" in detalle
+    assert _sin_rutas(detalle), detalle
+
+
+def test_un_step_de_esquema_no_soportado_responde_422_sin_la_ruta_del_servidor(cliente):
+    pytest.importorskip("ifcopenshell")
+    muestra = (MUESTRAS / "tanquilla.ifc").read_bytes()
+    assert b"FILE_SCHEMA(('IFC4'))" in muestra
+    contenido = muestra.replace(b"FILE_SCHEMA(('IFC4'))", b"FILE_SCHEMA(('IFC9'))")
+
+    r = _subir(cliente, "civil", "modelo_ifc9.ifc", contenido, "application/x-step")
+
+    assert r.status_code == 422
+    detalle = r.json()["detalle"]
+    assert "modelo_ifc9.ifc" in detalle
+    assert "esquema" in detalle
+    assert _sin_rutas(detalle), detalle

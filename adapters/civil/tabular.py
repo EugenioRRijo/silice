@@ -25,7 +25,25 @@ from core.contracts import AdaptadorDominio, Dominio, ItemComputo
 
 _TIPO_TANQUILLA = "tanquilla"
 _TIPO_ZANJA = "zanja"
-_COLUMNAS = ("id", "tipo")
+# Todas las columnas del formato (data/samples/civil/README.md): las que no aplican a la
+# fila van vacias, pero la cabecera las trae. Exigirlas distingue una fuente de otro
+# dominio que tambien tenga "id" y "tipo", como la topologia de telecom (T-4 de la
+# revision de la pista P de C5).
+_COLUMNAS = (
+    "id",
+    "tipo",
+    "a",
+    "h",
+    "e",
+    "n",
+    "sobreancho",
+    "espesor_fondo",
+    "longitud",
+    "ancho",
+    "profundidad",
+    "diametro",
+    "desperdicio",
+)
 
 
 def _parsear_especificaciones(texto: str | None) -> dict[str, str]:
@@ -123,7 +141,8 @@ class AdaptadorCivilTabular(AdaptadorDominio):
             fila_id = fila["id"]
             ids_procesadas.append(fila_id)
             especificaciones = _parsear_especificaciones(fila.get("especificaciones"))
-            tipo = fila["tipo"].strip()
+            # Una fila corta (menos celdas que la cabecera) trae `None` en las que faltan.
+            tipo = (fila.get("tipo") or "").strip()
 
             if tipo == _TIPO_TANQUILLA:
                 concreto, encofrado, excavacion = computar_tanquillas(
@@ -169,7 +188,10 @@ class AdaptadorCivilTabular(AdaptadorDominio):
                 )
                 volumen_tuberia_total += factor_volumen_tuberia * tuberia.cantidad
             else:
-                raise ValueError(f"tipo de fila no reconocido en {fuente!r}: {tipo!r}")
+                raise ValueError(
+                    f"el archivo {Path(fuente).name!r}, fila {fila_id!r}: tipo de fila no "
+                    f"reconocido: {tipo!r} (se esperaba {_TIPO_TANQUILLA!r} o {_TIPO_ZANJA!r})"
+                )
 
         if "relleno" in self._codigos:
             if factor_volumen_tuberia is None:
