@@ -104,7 +104,11 @@ cantidad la produjo una regla paramétrica, `regla` lleva la expresión y `param
    exista, un adaptador nuevo con reglas agrega una **sexta** copia: partir de la de telecom
    (`adapters/telecom/evaluador.py`, suma, resta, producto y cociente) o de la de sistemas
    (solo suma y producto), reducir los operadores a los que sus reglas usan, llevar sus pruebas y
-   declarar la copia en la bitácora de la sesión. Un adaptador sin reglas no la necesita.
+   declarar la copia en la bitácora de la sesión. La copia tiene que dar el mismo `Decimal` que el
+   evaluador del núcleo, porque la regla R1 reevalúa con este último las expresiones de todo
+   dominio al auditar; el patrón de esa comprobación es
+   `tests/unit/test_verification.py::test_las_reglas_civiles_son_evaluables_por_el_nucleo`. Un
+   adaptador sin reglas no la necesita.
 2. **Subclasificar** `AdaptadorDominio`, declarar `dominio` e implementar `extraer()`:
 
    ```python
