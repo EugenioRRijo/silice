@@ -16,8 +16,8 @@ modelo revisando a otro. Este diseño no agrega capacidades: fija **dónde termi
 queda fuera, y cómo se corrige lo que ya existe con método y no por intuición.
 
 **Nombres.** Para no chocar con las reglas R1–R7, las decisiones D1–D9, las metas M1–M12 ni el Sprint
-R1 de capítulos, las fases de este plan se llaman **C0–C4** (corrección), **Med** (mediciones con
-personas) y **Red** (redacción).
+R1 de capítulos, las fases de este plan se llaman **C0–C5** (corrección; C5 desde la enmienda del
+2026‑09‑28, §10), **Med** (mediciones con personas) y **Red** (redacción).
 
 ---
 
@@ -73,7 +73,7 @@ Las cuatro disciplinas no compiten: cada una gobierna un nivel distinto.
 
 | Disciplina | Gobierna | Cómo se aplica aquí |
 |---|---|---|
-| **Cascada** | el macro: fases en orden con compuertas | C0 → C1 → C2 → C3 → C4 → Med → (U2 \| U3) → congelamiento; Red en paralelo desde C1; ninguna compuerta se cruza sin su criterio y la ratificación de Eugenio |
+| **Cascada** | el macro: fases en orden con compuertas | C0 → C1 → C2 → C3 → C4 → C5 → Med → (U2 \| U3) → congelamiento; Red en paralelo desde C1; ninguna compuerta se cruza sin su criterio y la ratificación de Eugenio |
 | **Scrum** | el micro: cada fase es un sprint | backlog tomado del inventario; *Definition of Done* de `docs/metodologia.md` §3.4 (incluidas documentación y trazabilidad por paso); revisión = los cuatro encargos de ingeniería de sistemas; retrospectiva = bitácora; un PR por fase |
 | **SOLID** | la estructura del código | criterio de auditoría en C0 y de corrección en C1–C3 (§4) |
 | **DRY** | los hechos | cada hecho en su fuente única (`docs/metodologia.md` §5.1); toda duplicación es hallazgo |
@@ -154,6 +154,7 @@ Eugenio los promueve al aprobar el inventario. El resto va al capítulo de limit
 | **C2 — Adaptadores, ML y API** | Los hallazgos de `adapters/`, `ml/` y `api/`, incluida la migración de los adaptadores de un contrato nuevo de C1 | **GC2:** `git diff --stat $(git merge-base main HEAD)..HEAD -- core/` vacío, anotado en la bitácora; CI verde; cuatro encargos |
 | **C3 — Interfaz y scripts** | Se ejecuta como **U1** de `PLAN_UI.md` (Tareas 7–12 del plan detallado; la 6 pasó a C1 y la 13 se parte, ver abajo), ampliada con los hallazgos de `ui/` y `scripts/`. Si el inventario propone dividir `ui/paginas/componer.py` por el criterio S, esa extracción la hace **la Tarea 11 y nadie más**. C3 tiene **dos excepciones** a «`core/` sin cambios», cada una en un commit propio de `core/`, con expediente previo en `docs/bitacora/`, sin mezclar capas (sus llamadores de `api/` y `ui/` van en commits separados) y con la línea base (1 586,61 y 7 de 7) intacta: **INV‑080** (la recarga del informe pierde los pendientes), un commit de `core/budget/` derivado de un hallazgo posterior a C1; e **INV‑015 7a** (descartar la versión revalorada, `docs/ERS.md:170`), un commit con la tabla aditiva `descarte_version` en `core/models/`, `descartar_version` en `core/budget/actualizacion.py` (exportada en `core/budget/__init__.py`) y el docstring de `core/catalog/sesion.py`; el botón, en un commit de `ui/`. Enmiendas autorizadas por Eugenio el 2026‑09‑24 (§10) | **GC3 = GU1a** (ver enmienda), más, para esos dos commits, el expediente previo y la línea base intacta |
 | **C4 — Documentación, trazabilidad e instrumentos** | ERS, plan de pruebas, calidad, manuales y arquitectura coherentes con el código; matriz por paso de **todos** los casos de uso (F5); cifras citadas a su corrida de CI; y, **antes de medir**, los protocolos de Med: el del indicador 3 (tarea de referencia, definición operacional de «manual», participantes que no sean el autor, n, orden y contrabalanceo, registro con commit probado) y el del juicio de expertos de RNF‑04 (n ≥ 3, perfil, versión del informe y commit), con enmienda de `docs/tesis/plan_redaccion.md` §5, que hoy deja el indicador 3 para la defensa | **GC4:** un **artefacto revisable por un tercero**: una lista de cotejo por documento (cada cifra con su corrida de CI) y la matriz por paso completa; el verificador de hechos es revisor, no criterio; cuatro encargos |
+| **C5 — Corrección de los hallazgos de la matriz F5** | Los importantes que GC4 registró desde la matriz por paso (F5) y la revisión de la pista D: **INV‑087** (el plan de períodos del proyectista), **INV‑088** (UC‑01 3b), **INV‑092** con RF‑21 (lista vacía y reglas evaluadas) e **INV‑095** (atribución de la partida en el informe); y los menores de GC4 que Eugenio promueva (INV‑089, INV‑091, INV‑094 en su flujo 3a e INV‑096). `core/` no cambia salvo **dos excepciones**, cada una en un commit propio de `core/`, con expediente previo en `docs/bitacora/`, sin mezclar capas (sus llamadores de `api/` y `ui/` en commits separados) y con la línea base (1 586,61 y 7 de 7) intacta: **INV‑092** (`core/verification/informe.py` y `core/budget/presupuesto.py`, más `core/budget/excel.py` si la hoja *Auditoria* enumera las reglas) e **INV‑095** (`core/verification`, sin contrato). INV‑088 se corrige en `ui/` y `api/` con `proponer_rendimiento` y `registrar_rendimiento` de `core.catalog`; solo abre expediente de `core/` si el rendimiento MEDIDO declarado debe usarse tal cual, sin registrar un ESTIMADO, y esa excepción no la da esta fila. Si un expediente concluye que hace falta cambiar un contrato, la fase se detiene (`CLAUDE.md` §5). Los hallazgos **en duda (§2)** —INV‑076, INV‑086, INV‑090, INV‑093 e INV‑099 (el paso 5 de INV‑094)— no entran por esta fila: los decide Eugenio al ratificar GC4, enmendando el alcance de la ERS («Alcance vigente: no implementado», como RF‑20, y a limitaciones) o mandándolos a C5 con la enmienda de §2 que exija la capacidad nueva. Enmienda del 2026‑09‑28 (§10) | **GC5:** línea base 1 586,61 y 7 de 7; `git log main..HEAD -- core/` da exactamente los commits autorizados por esta fila, enumerados en la bitácora por hash con su expediente, y ningún contrato cambia; `tests/unit/test_arquitectura.py` y la suite verdes en Linux y en Windows (CI); una nueva pasada de la lista de cotejo de GC4 sobre los documentos que C5 cambie; el material de RNF‑04 (`docs/protocolo_rnf04.md` §1) regenerado sobre el commit de la compuerta, con sus huellas nuevas; cuatro encargos |
 | **Med — Mediciones con personas** | CP‑07 (RNF‑10, dos escenarios), el indicador 3 y el juicio de expertos de RNF‑04, cada uno con su protocolo de C4; participantes y expertos sin relación personal con Eugenio, declarado en el registro; cada medición registra el commit probado | **GM = GU1b** para CP‑07, más: los tres registrados con n, perfil, fecha y commit; resultados incorporados a `calidad_iso25010.md` §4/§9, a la ERS y a `plan_redaccion.md` §5 sin contradicciones (la lista de cotejo de GC4). **Ningún criterio se relaja tras medir:** la revisión de umbrales que prevé el guion de CP‑07 aplica solo a ejecuciones futuras, nunca al escenario ya medido |
 | **U2 — Enfoque B** | Solo si CP‑07 FALLA; alcance = puntos de detención registrados | GU2 de `PLAN_UI.md`, **más una nueva pasada de la lista de cotejo de GC4** sobre lo que U2 cambie |
 | **U3 — Enfoque C** | Solo con decisión expresa de Eugenio | GU1a por defecto, salvo que esa decisión fije otra |
@@ -244,3 +245,21 @@ es migración de esquema, §2), y `descartar_version` en `core/budget/actualizac
 INV‑080. Motivo: 7a exige un dato persistido nuevo («se marca como descartada») y la fila INV‑015 es
 importante, así que no puede ir a limitaciones. Coherencia: GU1a recoge las dos excepciones (INV‑080
 e INV‑015 7a) en su criterio, en `PLAN_UI.md` y en la verificación de la compuerta.
+
+**Enmienda del 2026‑09‑28 (apertura de C5).** La matriz por paso de C4 (F5) y la revisión de la
+pista D registraron en GC4 cuatro importantes nuevos (INV‑087, INV‑088, INV‑092 e INV‑095) que C4,
+fase de documentación, no podía corregir. Se abre la fase **C5** entre C4 y Med, con la fila y la
+compuerta GC5 de §5. La autoriza el controlador por la regla de autonomía que Eugenio fijó para el
+cierre (2026‑09‑28: encadenar fases sin detenerse a pedir confirmación) y queda **pendiente de su
+ratificación** en GC4; si no la ratifica, los commits de `core/` de C5, que viven en su rama, se
+revierten. Las excepciones de `core/` son solo dos, INV‑092 e INV‑095, con las condiciones de las de
+C3 (expediente previo, commit propio sin mezclar capas, llamadores aparte, línea base intacta);
+INV‑088 es de `ui/` y `api/`, porque `core.catalog` ya ofrece la propuesta y el registro del
+rendimiento (revisión de arquitectura de GC4, ARQ‑1), y solo el caso MEDIDO usado tal cual
+necesitaría otra enmienda. Motivo: F3 exige cero importantes abiertos, y RNF‑04 juzga en Med el
+informe que INV‑092 e INV‑095 cambian, así que su huella cambiaría después de medir. **Med va
+después de GC5, no en paralelo:** el indicador 3 y CP‑07 pasan por «Elaborar un presupuesto», que
+INV‑087 e INV‑088 cambian, y RNF‑04 por el informe; medir en paralelo sería medir un commit distinto
+del congelado (revisión de requisitos de GC4, M‑3). Los hallazgos en duda (§2) —INV‑076, INV‑086,
+INV‑090, INV‑093 e INV‑099— quedan fuera de esta enmienda: los decide Eugenio en la misma
+ratificación.
