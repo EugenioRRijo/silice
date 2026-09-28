@@ -268,7 +268,7 @@ migración de esquema.
 | `severidad` | int | — | no | valor de `Severidad` (IntEnum) |
 | `descripcion` | str(500) | — | no | |
 | `impacto` | Decimal | — | sí | monto o cantidad afectada |
-| `origen_ids` | texto JSON | — | no | lista de `origen_id`; `[]` si la regla no señala cantidades |
+| `origen_ids` | texto JSON | — | no | lista de identificadores que resuelve `InformeAuditoria.partida_de`: `origen_id` en R1, R3, R4, R5 y R7; **códigos de partida** en R6, y el par `(codigo_partida, origen_id)` en `PENDIENTE` (`core.budget.presupuesto._clave_pendiente`); `[]` si la regla no señala cantidades. Con un `origen_id` compartido por varias partidas la atribución falla (INV‑095, C5; [arquitectura §6.1](arquitectura.md#61-deuda-arquitectónica-declarada)) |
 | `valor_observado` | Decimal | — | sí | |
 | `valor_esperado` | Decimal | — | sí | |
 
