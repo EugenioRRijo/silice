@@ -148,7 +148,7 @@ evaluador de expresiones trazables existe en cinco copias, la del núcleo y una 
 
 Instalación con `uv sync --locked` (+ extras) sin pasos manuales. Se verificó primero en Windows 11
 (equipo de desarrollo) y, desde 2026‑09‑15
-([primera corrida, 34969162933](https://github.com/EugenioRRijo/tesis-apu-multidominio/actions/runs/34969162933)),
+([primera corrida en verde, 34969162933](https://github.com/EugenioRRijo/tesis-apu-multidominio/actions/runs/34969162933)),
 la integración continua lo verifica en cada PR en runners de GitHub con Linux (`ubuntu-latest`) y
 Windows (`windows-latest`): suite completa con `-W error` y 0 omitidas en ambos sistemas (la
 corrida vigente, en [plan_pruebas.md §10](plan_pruebas.md)). Portar no exigió ningún cambio de

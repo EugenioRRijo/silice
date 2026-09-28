@@ -164,7 +164,7 @@ Es lo que UC‑02 muestra al usuario: «el cemento subió 20 % y el vaciado de c
 | `variacion` | Decimal | — | no | fracción de variación del PU |
 
 **`DescarteVersion`** — la versión revalorada que el usuario descartó (UC‑02, flujo 7a;
-`docs/ERS.md:170`). Es una **marca, no un borrado**: la versión sigue guardada y cargándose como
+`docs/ERS.md:184`). Es una **marca, no un borrado**: la versión sigue guardada y cargándose como
 documento, y el historial que la produjo (`CambioPrecio`, `IncidenciaCambio`) se conserva porque
 alimenta el histórico del módulo predictivo.
 

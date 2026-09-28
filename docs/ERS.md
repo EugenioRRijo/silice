@@ -24,7 +24,7 @@
 > demás requisitos de UC‑09 continuarán, al ejecutarse la Sesión A0.1 de
 > [PLAN_ASISTENTE.md](../PLAN_ASISTENTE.md), a partir del siguiente al número más alto asignado (hoy
 > RF‑44); esta enmienda prevalece sobre la instrucción «numera desde RF‑32» de
-> PLAN_ASISTENTE.md:71‑73, que queda desactualizada hasta que A0.1 la corrija.
+> PLAN_ASISTENTE.md:78‑80, que queda desactualizada hasta que A0.1 la corrija.
 > **Revisión C4 (2026‑09‑28, fase C4 de [PLAN_CIERRE.md](../PLAN_CIERRE.md)):** sin UC, RF, RNF,
 > pantalla ni ruta nuevos. (1) Los criterios de §3.2 quedan sin estado ni nombres de prueba, que
 > viven solo en [plan_pruebas.md §8](plan_pruebas.md#8-especificación-de-casos-trazabilidad-rf--prueba);

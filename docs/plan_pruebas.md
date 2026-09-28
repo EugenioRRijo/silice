@@ -131,7 +131,10 @@ demuestran y a su estado. El enunciado y el criterio de aceptación viven en la 
 [ERS.md §3.2](ERS.md#32-requisitos-funcionales), sin estado; el README y la metodología enlazan aquí.
 Cada prueba se cita como `archivo::función` (o `archivo::Clase::función`); `::función` a secas
 pertenece al último archivo nombrado en la misma celda. Todas existen en el commit probado de la
-sección 10 (`uv run pytest --collect-only -q` las lista) y pasan en esa corrida.
+sección 10 (`uv run pytest --collect-only -q` las lista) y pasan en esa corrida, **salvo una**:
+`tests/integration/test_api_escenarios.py::test_los_escenarios_de_un_base_con_pendientes_los_declaran`,
+citada en la fila RF‑30 y en la tabla de UC‑08, entró en la fase C4 (INV‑083), después de `308eca5`;
+la cubre la corrida de la compuerta GC4, con la que se actualizará la sección 10 al cruzarla.
 
 Estados: **verde** (una prueba automatizada lo demuestra y pasa en la corrida de §10); **parcial**
 (una parte del criterio tiene prueba y otra no existe; la celda dice cuál); **no implementado** (el
