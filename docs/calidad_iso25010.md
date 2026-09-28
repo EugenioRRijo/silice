@@ -1,52 +1,68 @@
 # Evaluación de calidad del producto (ISO/IEC 25010) — Sesión F.2
 
 Evaluación del sistema contra el modelo de calidad de producto de ISO/IEC 25010, con las métricas
-y metas declaradas en [ERS.md §3.3](ERS.md#33-requisitos-no-funcionales-isoiec-25010). La evidencia
-numérica (corrida de la suite, cobertura, medición de desempeño) está registrada **una sola vez**
-en [plan_pruebas.md](plan_pruebas.md) §9–§10; aquí se interpreta.
+y metas declaradas en [ERS.md §3.3](ERS.md#33-requisitos-no-funcionales-isoiec-25010). Este
+documento **interpreta**; no registra cifras ni estados que tienen fuente única
+([metodologia.md §5.1](metodologia.md#5-dry)):
 
-> **Nota de vigencia (2026‑09‑23).** Las cifras de pruebas y de RF de este documento son de su
-> redacción (2026‑08‑31): 395 pruebas, 30 de 31 RF, cobertura de `core/` 98,05 % (§5). El propio §6
-> cita, sin reconciliar, 490 pruebas de la CI desde 2026‑09‑15. [plan_pruebas.md §10](plan_pruebas.md)
-> registra después 479 (2026‑09‑14) y [§9](plan_pruebas.md) cobertura de `core/` 98,10 %; el cierre
-> del sprint del prototipo (Fase P5) llegó a 673 pruebas y la auditoría de rama completa que precedió
-> a la fusión del PR #7 la llevó a **690** (CI [run 35893754650](https://github.com/EugenioRRijo/tesis-apu-multidominio/actions/runs/35893754650),
-> verde sobre `main`; detalle en
-> [docs/bitacora/2026-09-16-sprint-prototipo.md](bitacora/2026-09-16-sprint-prototipo.md)). La ERS
-> pasó de 31 a **42 RF** y de 9 a **10 RNF** en la Sesión U0.1 del sprint de UI
-> ([PLAN_UI.md](../PLAN_UI.md)). Se actualizan todas estas cifras juntas al cerrar la compuerta GU1;
-> hasta entonces, la fuente vigente de cada conteo es la bitácora citada arriba, no este documento.
+- el estado de cada RF y la prueba que lo demuestra: [plan_pruebas.md §8](plan_pruebas.md)
+  (INV‑032);
+- la suite, la cobertura y la corrida de CI que las mide: [plan_pruebas.md §10](plan_pruebas.md)
+  (INV‑031);
+- la verificación de cada RNF: [plan_pruebas.md §9](plan_pruebas.md).
 
-Fecha de la evaluación: 2026‑08‑31, sobre `main` en `02f961a` (cierre del sprint I6);
-actualizada el mismo día tras el cierre de UC‑08 (`inc/UC08-escenarios`).
+Fecha de la evaluación: 2026‑08‑31, sobre `main` en `02f961a` (cierre del sprint I6).
+**Actualizada el 2026‑09‑28 en la fase C4 del cierre** ([PLAN_CIERRE.md](../PLAN_CIERRE.md)) sobre
+`main` = `ceb6b8e`, cuyo contenido es el del commit `308eca5` que probó la corrida de CI
+[36427904452](https://github.com/EugenioRRijo/tesis-apu-multidominio/actions/runs/36427904452)
+(Linux y Windows, en verde). Esa actualización reemplaza la nota de vigencia del 2026‑09‑23, que
+remitía las cifras a la bitácora hasta cerrar la compuerta de la interfaz.
 
 ## 1. Adecuación funcional
 
-**Completitud funcional.** 30 de los 31 RF tienen prueba automatizada en verde y **ningún RF
-queda sin prueba**: la brecha de UC‑08 (RF‑30, RF‑31) se cerró el 2026‑08‑31 con
-`core/budget/escenarios.py` y `tests/unit/test_escenarios.py`. El único RF parcial es RF‑16 (su
-persistencia espera un flujo de creación de partidas que no existe en ningún UC implementado —
-hallazgo recurrente de I2 e I6, elevado a G0). Los ocho casos de uso operan de extremo a
-extremo: UC‑08 quedó cableado el mismo día en las tres capas (núcleo `core.budget`, ruta
-`POST /presupuestos/{codigo}/escenarios` y página «Escenarios (UC‑08)» en la UI), con lo que la
-interfaz cumple lo que la ERS §3.1 promete.
+**Completitud funcional.** La ERS declara 42 RF (RF‑32 vacante). Su estado vive en
+[plan_pruebas.md §8](plan_pruebas.md); aquí se interpretan las brechas que esa tabla declara:
+
+- **RF‑24** (Esencial, UC‑05: importar el presupuesto tabular de un tercero) queda **parcial**
+  mientras siga abierto INV‑076: ninguna ruta de `api/rutas/` ni página de `ui/paginas/` importa un
+  archivo ajeno; lo único que lo ejercita es la fixture de pruebas (ruling C4‑2 de la
+  [bitácora del cierre](bitacora/2026-09-23-cierre.md)).
+- **RF‑20** (Deseable, UC‑04: diferencial por partida) no está implementado y va declarado en
+  limitaciones (INV‑011).
+- **RF‑16** (Esencial, UC‑03: persistir la partida creada desde una propuesta) tiene un único
+  estado, el de [plan_pruebas.md §8](plan_pruebas.md) (INV‑027); la decisión de fondo es la D5 del
+  [dossier G0](dossier_g0.md#d5-flujo-de-creación-de-partidas-rf16-y-familia).
+
+**Qué capa realiza cada caso de uso.** No todos los casos de uso tienen pantalla; la
+correspondencia la declara la [ERS §3.1](ERS.md) (INV‑030) y el
+[manual de usuario §3](manual_usuario.md) dice por dónde se opera cada uno. UC‑04 vive en el
+adaptador civil (`adapters/civil/recalculo.py`), sin pantalla ni ruta; UC‑06 se opera por la API y
+UC‑07 por script. UC‑08 está cableado en las tres capas: `core.budget.generar_escenario`, la ruta
+`POST /presupuestos/{codigo}/escenarios` y la página «Escenarios de sensibilidad» (INV‑085).
 
 **Corrección funcional (RNF‑01).** El presupuesto de la línea base corregida se reproduce con
 desviación 0,00 % — los cinco precios unitarios dentro de ± 0,01 y los totales exactos en
 `Decimal` — muy dentro del rango de la clase 3 de AACE (−20 % / +30 %) que la meta exige. La
 prueba de aceptación crítica del trabajo se cumple: **7 de 7 inconsistencias detectadas**
-(indicador 1 de la tesis).
+(indicador 1 de la tesis). Las dos cosas las vuelven a comprobar `tests/unit/test_costing.py` y
+`tests/integration/test_auditoria_7_de_7.py` en cada corrida de CI, entre ellas la citada arriba.
 
 **Pertinencia funcional.** El informe de auditoría se genera siempre, sin pedirlo (principio 7 de
 CLAUDE.md §2): `elaborar()` no tiene un modo sin auditoría.
 
-**Veredicto: cumple**, con los tres RF no esenciales declarados arriba.
+**Veredicto: parcial.** La corrección y la pertinencia cumplen; la completitud no, porque un RF
+esencial (RF‑24) está parcial y un deseable (RF‑20) no está implementado. La versión anterior de
+este párrafo decía «cumple, con los tres RF no esenciales declarados arriba», pero arriba solo se
+declaraba RF‑16, que es esencial (INV‑067).
 
 ## 2. Fiabilidad
 
-**Madurez.** 395 pruebas, 0 fallos, 0 omitidas, con `-W error` (ninguna advertencia tolerada) en
-la corrida registrada. La suite creció de 88 (Sprint 0) a 395 sin retirar ninguna prueba de valor:
-la línea base que validó el motor en I0.3 sigue vigilándolo intacta.
+**Madurez.** La suite completa corre en verde con `-W error` (ninguna advertencia tolerada) y
+**0 omitidas**, en Linux y en Windows, en cada PR: la CI exige las dos condiciones
+(`scripts/verificar_omitidas.py`). La cifra de pruebas y su corrida están en
+[plan_pruebas.md §10](plan_pruebas.md). La línea base que validó el motor en I0.3 sigue siendo la
+única copia de sus datos (`tests/fixtures/apu_linea_base.py`) y `tests/unit/test_costing.py` la
+sigue vigilando.
 
 **Reproducibilidad (RNF‑02).** Cualquier presupuesto se reconstruye con los precios vigentes a su
 fecha y el resultado es idéntico al emitido (100 %, comparación exacta). Todo lo estocástico fija
@@ -62,21 +78,24 @@ archivo y fila antes de valorar nada; un rendimiento atípico advierte pero no i
 ## 3. Eficiencia de desempeño (RNF‑03)
 
 Medición reproducible con `uv run python scripts/medir_rnf03.py` (2026‑08‑31, equipo de
-desarrollo, SQLite local, sin exportación): el ciclo completo de UC‑02 — revalorar 100 partidas
-con 41 insumos cambiados, reelaborar con auditoría R1–R7, guardar la versión nueva y su histórico
-de incidencias — tarda **1,17 s**, contra la meta de < 5 s: margen de 4×. La suite completa (395
-pruebas, incluido el modelo de lenguaje de I2) corre en 100,9 s.
+desarrollo, SQLite local, sin exportación; registro en [plan_pruebas.md §9](plan_pruebas.md)): el
+ciclo completo de UC‑02 — revalorar 100 partidas con 41 insumos cambiados, reelaborar con
+auditoría R1–R7, guardar la versión nueva y su histórico de incidencias — tarda **1,17 s**, contra
+la meta de < 5 s: margen de 4×. La medición depende del equipo y se repite al congelar
+([plan_redaccion.md §5](tesis/plan_redaccion.md#5-cifras-citables-y-cómo-regenerarlas)).
 
 **Veredicto: cumple.**
 
 ## 4. Usabilidad (RNF‑04 y RNF‑10)
 
-La meta (juicio de expertos ≥ 4/5 en Likert sobre el informe de auditoría) **no es automatizable y
-está pendiente**: el instrumento ya está redactado ([dossier_g0.md, anexo A](dossier_g0.md)) y se
-aplica con el tutor en la Fase 6. Lo que el producto ya
-aporta a esa evaluación: hallazgos en español con severidad, impacto cuantificado y los
-`origen_id` involucrados; UI multipágina con los flujos implementados y visor 3D del modelo; API
-autodocumentada (OpenAPI en `docs/api.json`).
+**RNF‑04 — el informe de auditoría se entiende sin formación previa.** La meta (juicio de
+expertos ≥ 4/5 en Likert) **no es automatizable y está pendiente**. Se mide en la fase **Med**
+([PLAN_CIERRE.md](../PLAN_CIERRE.md)) con el protocolo [protocolo_rnf04.md](protocolo_rnf04.md):
+al menos tres expertos sin relación personal con el autor, el bloque A del
+[anexo A del dossier](dossier_g0.md) y un informe identificado por su commit y su huella SHA‑256.
+Lo que el producto ya aporta a esa evaluación: hallazgos en español con severidad, impacto
+cuantificado y los `origen_id` involucrados (columna *Orígenes* de la hoja *Auditoria* del
+Excel); UI multipágina y API autodocumentada (OpenAPI en `docs/api.json`).
 
 **Veredicto: pendiente de medición** (riesgo bajo: el informe se diseñó desde el caso didáctico).
 
@@ -89,50 +108,66 @@ y el **bloque B** del [anexo A del dossier](dossier_g0.md), con promedio propio 
 mezcla con el del bloque A. Subcaracterísticas de ISO/IEC 25010 atacadas: reconocibilidad de la
 adecuación, capacidad de aprendizaje y protección contra errores del usuario.
 
-**Veredicto: pendiente de medición** (compuerta GU1). Con n = 1 por escenario, el resultado es un
-dato, no una muestra, y así se cita.
+**Veredicto: pendiente de medición.** La spec de cierre (§5) partió la compuerta GU1 en dos:
+**GU1a** (la interfaz de U1 completa, sin CP‑07) se cruzó el 2026‑09‑28 con la CI en verde (PR #14);
+**GU1b** es CP‑07 ejecutado y registrado, en la fase Med. Con n = 1 por escenario, el resultado es
+un dato, no una muestra, y así se cita.
 
 ## 5. Mantenibilidad
 
 **Modularidad (RNF‑05).** La hipótesis central de la tesis es una propiedad de mantenibilidad y
 está probada empíricamente: `git diff --stat core/` vacío tras implementar los adaptadores
-telecom, industrial y sistemas (indicador 4), y `test_arquitectura.py` (65 casos, generados por
-parametrización sobre los módulos existentes) la vuelve a comprobar en cada corrida — un
-adaptador que importe de `core` algo distinto de `core.contracts` rompe la suite.
+telecom, industrial y sistemas (indicador 4), y `tests/unit/test_arquitectura.py` (parametrizada
+sobre los módulos existentes: un módulo nuevo genera su caso solo) la vuelve a comprobar en cada
+corrida — un adaptador que importe de `core` algo distinto de `core.contracts` rompe la suite.
+La meta es que `core/` no cambie **al agregar un dominio**; `core/` sí cambió después por
+decisiones registradas que no son dominios: la modalidad a destajo (D9, sprint del prototipo), las
+correcciones de la fase C1 y los dos commits que la spec de cierre §5 autorizó en C3 (INV‑080 e
+INV‑015 7a). Ninguno de esos commits tocó `adapters/` ni `ml/`: es la condición que
+`scripts/guardia_nucleo.py` vigila en la CI.
 
-**Capacidad de prueba (RNF‑06).** Cobertura de `core/` **98,05 %** (meta ≥ 80 %); `ml/` 99,29 %,
-`api/` 94,56 %, `adapters/` 88,78 %; total medido 96,11 %.
+**Capacidad de prueba (RNF‑06).** La meta es cobertura de `core/` ≥ 80 %. La CI la exige en cada
+cambio: el paso «Cobertura de core >= 80 %» de `.github/workflows/ci.yml` corre
+`coverage report --include="core/*" --fail-under=80` en Linux y falla por debajo. La cifra medida
+y su corrida están en [plan_pruebas.md §10](plan_pruebas.md).
 
 **Analizabilidad.** Cada hecho vive en un solo lugar (DRY: constantes en `ParametrosCosto`, alias
-de unidades en `contracts.unidades`, línea base en el fixture); toda cantidad lleva su origen
-(RF‑03); `ruff` (reglas E, F, W, I, B, UP, N) corre limpio.
+de unidades en `contracts.unidades`, línea base en el fixture), con una excepción declarada: el
+evaluador de expresiones trazables existe en cinco copias, la del núcleo y una por adaptador
+(INV‑006, aceptado por decisión de arquitectura registrada y pendiente del aval del tutor;
+[expediente §A.3](bitacora/2026-09-23-C1-expedientes.md)). Toda cantidad lleva su origen (RF‑03);
+`ruff` (reglas E, F, W, I, B, UP, N) corre limpio.
 
 **Modificabilidad.** Agregar un dominio = un paquete nuevo bajo `adapters/` que subclasifica
-`AdaptadorDominio`; la guía para terceros queda en el manual técnico (Sesión F.3).
+`AdaptadorDominio`; la guía para terceros está en el [manual técnico §4](manual_tecnico.md).
 
 **Veredicto: cumple.**
 
 ## 6. Portabilidad (RNF‑07)
 
 Instalación con `uv sync --locked` (+ extras) sin pasos manuales. Se verificó primero en Windows 11
-(equipo de desarrollo) y, desde 2026‑09‑15, la integración continua lo verifica en cada PR en
-runners de GitHub con Linux (`ubuntu-latest`) y Windows (`windows-latest`, Windows Server 2025):
-suite completa de 490 pruebas con `-W error` y 0 omitidas en ambos sistemas
-([run 34969162933](https://github.com/EugenioRRijo/tesis-apu-multidominio/actions/runs/34969162933)).
-Portar no exigió ningún cambio de código ni de pruebas: no hay rutas codificadas ni dependencias
-del sistema operativo en el código propio.
+(equipo de desarrollo) y, desde 2026‑09‑15
+([primera corrida, 34969162933](https://github.com/EugenioRRijo/tesis-apu-multidominio/actions/runs/34969162933)),
+la integración continua lo verifica en cada PR en runners de GitHub con Linux (`ubuntu-latest`) y
+Windows (`windows-latest`): suite completa con `-W error` y 0 omitidas en ambos sistemas (la
+corrida vigente, en [plan_pruebas.md §10](plan_pruebas.md)). Portar no exigió ningún cambio de
+código ni de pruebas: no hay rutas codificadas ni dependencias del sistema operativo en el código
+propio.
 
 **Veredicto: cumple** (las dos plataformas declaradas, con evidencia automatizada en cada cambio).
 
 ## 7. Seguridad (RNF‑08)
 
 Por inspección del repositorio y de las dependencias: 0 credenciales versionadas; ejecución
-enteramente local (SQLite en el equipo del usuario, API y UI en localhost); 0 llamadas de red en
-operación — la única excepción, declarada y cacheada, es la descarga inicial del modelo de
-`sentence-transformers` (I2). La corrida de la suite pasa sin red disponible una vez poblada la
-caché.
+enteramente local (SQLite en el equipo del usuario, API y UI en localhost). En operación hay **dos
+llamadas de red, ambas declaradas**: la descarga inicial del modelo de `sentence-transformers`
+(I2), que queda en caché, y three.js, que el Visor 3D carga desde `cdnjs.cloudflare.com` con
+versión fija cada vez que se pinta (`ui/paginas/visor.py`, `URL_THREE_JS`; INV‑077, declarada en
+C4). Sin red, el navegador no obtiene three.js y el visor no puede dibujar el modelo. La corrida
+de la suite pasa sin red disponible una vez poblada la caché.
 
-**Veredicto: cumple** para el perfil declarado (herramienta local de tesis, sin autenticación).
+**Veredicto: cumple** para el perfil declarado (herramienta local de tesis, sin autenticación),
+con las dos excepciones de red declaradas.
 
 ## 8. Compatibilidad (RNF‑09)
 
@@ -147,15 +182,16 @@ p. ej. Revit y Bonsai) sigue abierta; la alternativa tabular documentada existe 
 
 | Característica | Meta de la ERS | Resultado | Veredicto |
 |---|---|---|---|
-| Adecuación funcional | clase 3 AACE; RF cubiertos | desviación 0,00 %; 30/31 RF en verde (26/26 esenciales); 7 de 7 | cumple |
-| Fiabilidad | reproducibilidad 100 % | comparación exacta en verde; 395/395 | cumple |
+| Adecuación funcional | clase 3 AACE; RF cubiertos | desviación 0,00 %; 7 de 7; RF‑24 parcial y RF‑20 no implementado (estado de cada RF: [plan_pruebas.md §8](plan_pruebas.md)) | parcial |
+| Fiabilidad | reproducibilidad 100 % | comparación exacta en verde; suite en verde, 0 omitidas ([plan_pruebas.md §10](plan_pruebas.md)) | cumple |
 | Eficiencia de desempeño | < 5 s con ≤ 100 partidas | **1,17 s** con 100 partidas | cumple |
-| Usabilidad | RNF‑04 Likert ≥ 4/5 sobre el informe; RNF‑10 CP‑07 sin ayuda en ≤ 20 min, bloque B ≥ 4,0 y ningún ítem < 3 | RNF‑04: instrumento por aplicar (Fase 6); RNF‑10: CP‑07 por ejecutar (GU1) | pendiente |
-| Mantenibilidad | `core/` intacto; cobertura ≥ 80 % | diff vacío + 65 pruebas; **98,05 %** | cumple |
+| Usabilidad | RNF‑04 Likert ≥ 4/5 sobre el informe; RNF‑10 CP‑07 sin ayuda en ≤ 20 min, bloque B ≥ 4,0 y ningún ítem < 3 | RNF‑04: por medir en Med ([protocolo_rnf04.md](protocolo_rnf04.md)); RNF‑10: CP‑07 por ejecutar (GU1b, Med) | pendiente |
+| Mantenibilidad | `core/` intacto al agregar un dominio; cobertura de `core/` ≥ 80 % | diff vacío tras I5 + `test_arquitectura.py`; la CI exige ≥ 80 % (cifra en [plan_pruebas.md §10](plan_pruebas.md)) | cumple |
 | Portabilidad | 0 pasos manuales, Windows y Linux | Windows ✔ (local y CI); Linux ✔ (CI) | cumple |
-| Seguridad | 0 credenciales, 0 red | 0 y 0 (excepción declarada) | cumple |
+| Seguridad | 0 credenciales, 0 red | 0 credenciales; dos llamadas de red declaradas (modelo de ML en caché, three.js del visor) | cumple |
 | Compatibilidad | IFC de ≥ 2 modeladores | exacto contra modelo programático | parcial |
 
-Seis características cumplen su meta con evidencia automatizada o medida; una espera una medición
-humana (usabilidad) y una queda parcial por una brecha declarada desde su compuerta (IFC real).
-Ninguna brecha es silenciosa: todas tienen dueño, causa y bitácora.
+Cinco características cumplen su meta con evidencia automatizada o medida; una espera una medición
+humana (usabilidad, en Med) y dos quedan parciales por brechas declaradas: la adecuación funcional
+(RF‑24 y RF‑20) y la compatibilidad (IFC real). Ninguna brecha es silenciosa: todas tienen dueño,
+causa y registro.
