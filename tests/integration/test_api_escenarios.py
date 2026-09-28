@@ -22,16 +22,11 @@ from __future__ import annotations
 
 import pytest
 
-from core.catalog import abrir_sesion, crear_motor
 from core.verification.informe import DECIMALES_PRESENTACION
 from core.verification.texto import formatear_decimal
 from scripts.seed import NOMBRE_PROYECTO
 from tests.fixtures import apu_linea_base as linea_base
-from tests.fixtures.base_con_pendiente import (
-    PENDIENTE_T99,
-    guardar_base_con_pendiente,
-    url_sqlite,
-)
+from tests.fixtures.base_con_pendiente import PENDIENTE_T99
 from tests.fixtures.computo_auditado import items_auditados
 
 RUTA_ESCENARIOS = "/presupuestos/001/escenarios"
@@ -105,36 +100,6 @@ def test_parametro_fuera_de_rango_se_rechaza_por_el_contrato(cliente, presupuest
     )
     assert respuesta.status_code == 422
     assert "utilidad" in respuesta.json()["detalle"]
-
-
-@pytest.fixture
-def cliente_con_pendiente(tmp_path):
-    """Cliente HTTP sobre un archivo de `tmp_path` con el 001 guardado con su pendiente T-99.
-
-    El base lo guarda el nucleo directo con `pendientes=` (`tests/fixtures/base_con_pendiente.py`)
-    y se cierra antes de la peticion: la ruta lee lo persistido, con una sesion por peticion como
-    `api.dependencias.sesion_api`. Nada escribe en `data/`.
-    """
-    from fastapi.testclient import TestClient
-
-    from api.dependencias import sesion_api
-    from api.main import app
-
-    ruta = tmp_path / "escenarios.db"
-    guardar_base_con_pendiente(ruta)
-    motor = crear_motor(url_sqlite(ruta))
-
-    def _sesion():
-        with abrir_sesion(motor) as sesion:
-            yield sesion
-
-    app.dependency_overrides[sesion_api] = _sesion
-    try:
-        with TestClient(app) as cliente:
-            yield cliente
-    finally:
-        app.dependency_overrides.clear()
-        motor.dispose()
 
 
 def test_los_escenarios_de_un_base_con_pendientes_los_declaran(cliente_con_pendiente):
