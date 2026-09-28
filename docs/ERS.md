@@ -3,9 +3,10 @@
 **Sistema de generación y auditoría de Análisis de Precios Unitarios multidominio**
 
 > Estado: **completo, pendiente de revisión del tutor (compuerta G0, [docs/metodologia.md §2.2](metodologia.md#22-compuertas))**.
-> Redactado en la Sesión 0.1 de [PLAN_DESARROLLO.md](../PLAN_DESARROLLO.md). Criterio de cierre exigido:
-> al menos 23 RF numerados con prioridad y trazabilidad al caso de uso, y matriz de trazabilidad
-> completa. Resultado original: **31 RF** (sección 3.2) y matriz de la sección 4.
+> Redactado en la Sesión 0.1 de [PLAN_DESARROLLO.md](../PLAN_DESARROLLO.md). Criterio de cierre de esa
+> sesión: al menos 20 RF numerados, cada uno con prioridad y trazabilidad al caso de uso que lo origina,
+> y su matriz de trazabilidad (PLAN_DESARROLLO.md, Sesión 0.1, «Cierre»). Resultado original:
+> **31 RF** (sección 3.2) y matriz de la sección 4.
 > Este documento no reproduce datos que tienen fuente única: enlaza [CLAUDE.md](../CLAUDE.md),
 > [docs/linea_base.md](linea_base.md) y [docs/metodologia.md](metodologia.md) (principio DRY,
 > [metodologia.md §5](metodologia.md#5-dry)). Tras cruzar G0 quedan congelados los ocho casos de uso y
