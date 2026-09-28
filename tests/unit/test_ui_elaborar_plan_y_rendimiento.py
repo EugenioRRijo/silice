@@ -445,3 +445,27 @@ def test_una_fila_del_plan_malformada_se_rechaza_en_la_pagina(monkeypatch, base_
     errores = [e.value for e in at.error]
     assert any("fila 6" in texto for texto in errores), errores
     assert at.session_state[CLAVE_RESULTADO] is antes
+
+
+# --- Duda 6 de la revision: el plan que vuelve al secuencial se avisa ----------------------------
+
+AVISO_PLAN_REINICIADO = "volvio a una partida por dia"
+
+
+def test_volver_a_elaborar_avisa_que_el_plan_vuelve_al_secuencial(monkeypatch, base_sembrada):
+    """Cada elaboracion sin el plan del proyectista (el boton, aceptar una propuesta de 3a o
+    registrar un rendimiento de 3b) vuelve a `plan_secuencial`: si descarta un plan editado, lo
+    dice en vez de descartarlo en silencio."""
+    at = _elaborado(monkeypatch, base_sembrada)
+    assert not [c.value for c in at.caption if AVISO_PLAN_REINICIADO in c.value]
+
+    _reemplazar_plan(at, PLAN_DOS_SEMANAS)
+    _por_rotulo(at.button, ROTULO_APLICAR_PLAN).click().run()
+    assert not at.exception, [e.value for e in at.exception]
+    assert not [c.value for c in at.caption if AVISO_PLAN_REINICIADO in c.value]
+
+    _por_rotulo(at.button, ROTULO_ELABORAR).click().run()
+    assert not at.exception, [e.value for e in at.exception]
+    avisos = [c.value for c in at.caption if AVISO_PLAN_REINICIADO in c.value]
+    assert len(avisos) == 1, [c.value for c in at.caption]
+    assert len(at.session_state[CLAVE_RESULTADO].presupuesto.curva) == len(CODIGOS_LINEA_BASE)

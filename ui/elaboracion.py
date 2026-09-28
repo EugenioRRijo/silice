@@ -42,6 +42,7 @@ if TYPE_CHECKING:
     from sqlalchemy.orm import Session
 
     from core.budget import GeneradorPlan, PeriodoPlan
+    from core.contracts.presupuesto import Presupuesto
     from core.models import Partida
     from ml.normalization import PartidaSimilar
 
@@ -135,6 +136,18 @@ def filas_desde_plan(plan: Sequence[PeriodoPlan]) -> list[dict[str, str]]:
         for periodo, reparto in plan
         for codigo, fraccion in reparto
     ]
+
+
+def plan_de(filas: Sequence[Mapping[str, object]] | None) -> list[PeriodoPlan] | GeneradorPlan:
+    """UC-01, paso 6: el plan de las filas del proyectista o, sin filas, el plan por defecto
+    (`plan_secuencial`). Decide aqui, no en la pagina (U-6 de la revision de C5)."""
+    return plan_secuencial if filas is None else plan_desde_filas(filas)
+
+
+def filas_del_plan_por_defecto(presupuesto: Presupuesto) -> list[dict[str, str]]:
+    """Las filas del plan por defecto (`plan_secuencial`) sobre el presupuesto ya valorado: la
+    tabla que la pagina precarga tras cada elaboracion sin plan del proyectista."""
+    return filas_desde_plan(plan_secuencial(presupuesto))
 
 
 def plan_desde_filas(filas: Sequence[Mapping[str, object]]) -> list[PeriodoPlan]:

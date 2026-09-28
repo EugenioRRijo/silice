@@ -19,11 +19,12 @@ acepta una, `ui.elaboracion.aceptar_propuesta` reasigna el item y se vuelve a el
 llaman como atributos del modulo `ui.elaboracion`, para que las pruebas las parchen donde se
 resuelven.
 
-UC-01 6 (INV-087): el proyectista distribuye las partidas en periodos. Cada elaboracion desde el
-boton (o tras aceptar una propuesta) usa `plan_secuencial`, el valor por defecto, y precarga con el
-la tabla «Plan de trabajo»; el proyectista la edita y «Aplicar plan y volver a elaborar» elabora
-con su plan (`ui.elaboracion.plan_desde_filas`). Un plan invalido es un mensaje y deja a la vista
-el presupuesto anterior.
+UC-01 6 (INV-087): el proyectista distribuye las partidas en periodos. Cada elaboracion sin plan
+del proyectista (el boton, aceptar una propuesta de 3a o registrar un rendimiento de 3b) usa el
+plan por defecto, `plan_secuencial`, que decide `ui.elaboracion.plan_de`, y precarga con el la
+tabla «Plan de trabajo» (si descarta un plan editado, lo avisa); el proyectista la edita y
+«Aplicar plan y volver a elaborar» elabora con su plan. Un plan invalido es un mensaje y deja a la
+vista el presupuesto anterior.
 
 UC-01 3b (INV-088): si una partida no tiene rendimiento estimado vigente a la fecha del
 presupuesto, la elaboracion no se detiene en el mensaje de `CatalogoIncompleto`: el bloque
@@ -48,7 +49,6 @@ from adapters.civil.tabular import AdaptadorCivilTabular
 from adapters.industrial.adaptador import AdaptadorIndustrial
 from adapters.sistemas.adaptador import AdaptadorSistemas
 from adapters.telecom.adaptador import AdaptadorTelecom
-from core.budget import plan_secuencial
 from core.catalog import Catalogo, CatalogoIncompleto, abrir_sesion, crear_esquema, crear_motor
 from core.contracts import AdaptadorDominio, Dominio, ItemComputo
 from core.contracts.apu import TipoRendimiento
@@ -66,6 +66,8 @@ CLAVE_RESULTADO = "elaborar_resultado"
 CLAVE_PROPUESTAS = "elaborar_propuestas"
 #: El `st.data_editor` del plan de trabajo (UC-01 6); sus filas viven en `f"{CLAVE_PLAN}__filas"`.
 CLAVE_PLAN = "elaborar_plan"
+#: Si la ultima elaboracion sin plan del proyectista descarto uno editado (duda 6 de la revision).
+CLAVE_PLAN_REINICIADO = "elaborar_plan_reiniciado"
 #: Las partidas sin rendimiento estimado vigente de la ultima elaboracion (UC-01 3b).
 CLAVE_RENDIMIENTOS = "elaborar_rendimientos_por_declarar"
 
@@ -247,14 +249,12 @@ def _elaborar(
 ) -> bool:
     """Elabora `items` y guarda el resultado; con `filas_plan`, con el plan del proyectista.
 
-    Sin `filas_plan` usa `plan_secuencial` y precarga con el la tabla del plan (INV-087). Si
+    Sin `filas_plan` usa el plan por defecto y precarga con el la tabla del plan (INV-087). Si
     falla, pinta el error y devuelve `False`: con el plan del proyectista el presupuesto anterior
     sigue a la vista; sin el, se borra.
     """
     try:
-        plan = (
-            elaboracion.plan_desde_filas(filas_plan) if filas_plan is not None else plan_secuencial
-        )
+        plan = elaboracion.plan_de(filas_plan)
     except ValueError as error:  # `ComposicionInvalida`: una fila del plan a medias
         st.error(str(error))
         return False
@@ -304,10 +304,14 @@ def _elaborar(
         partidas, resultado.pendientes
     )
     if filas_plan is None:
-        st.session_state[f"{CLAVE_PLAN}__filas"] = elaboracion.filas_desde_plan(
-            plan_secuencial(resultado.presupuesto)
-        )
+        # El plan vuelve al de por defecto; si con eso se descarta uno editado, se avisa.
+        por_defecto = elaboracion.filas_del_plan_por_defecto(resultado.presupuesto)
+        anteriores = st.session_state.get(f"{CLAVE_PLAN}__filas")
+        st.session_state[CLAVE_PLAN_REINICIADO] = bool(anteriores) and anteriores != por_defecto
+        st.session_state[f"{CLAVE_PLAN}__filas"] = por_defecto
         st.session_state.pop(CLAVE_PLAN, None)  # el editor se vuelve a crear con esas filas
+    else:
+        st.session_state[CLAVE_PLAN_REINICIADO] = False
     return True
 
 
@@ -354,6 +358,11 @@ def _plan_de_trabajo(parametros: dict[str, object]) -> None:
         "ejecuta en un periodo, y las fracciones de cada partida suman 1. Por defecto, una "
         "partida por dia; la curva de inversion sale de este plan y cierra en el total."
     )
+    if st.session_state.get(CLAVE_PLAN_REINICIADO):
+        st.caption(
+            "Al volver a elaborar, el plan de trabajo volvio a una partida por dia: el plan "
+            "editado antes se descarto. Vuelva a distribuirlo y aplique el plan."
+        )
     clave_filas = f"{CLAVE_PLAN}__filas"
     editado = st.data_editor(
         DataFrame(st.session_state.get(clave_filas, []), columns=elaboracion.COLUMNAS_PLAN).astype(
