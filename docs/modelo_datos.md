@@ -448,7 +448,12 @@ Cardinalidades en palabras:
 - Un presupuesto se valora con exactamente una lista de precios; una lista puede valorar muchos.
 - Un presupuesto contiene cero o más renglones, cero o más puntos de curva y cero o más hallazgos.
 - Un renglón presupuestado corresponde a exactamente un `ItemComputo` y a exactamente una `Partida`;
-  un `ItemComputo` del presupuesto sin renglón es un ítem pendiente (UC‑01 3a).
+  un `ItemComputo` del presupuesto sin renglón es un ítem pendiente (UC‑01 3a). El «a lo sumo un
+  renglón por ítem» (`ITEM_COMPUTO ||--o| PARTIDA_PRESUPUESTADA`) es regla de negocio, **no la impone
+  el esquema**: `partida_presupuestada.item_computo_id` no lleva `UNIQUE`
+  (`core/models/entidades.py:352`). La garantiza la persistencia: `guardar_presupuesto` crea un
+  `ItemComputo` nuevo por cada renglón y uno por cada pendiente, sin reutilizar ninguno
+  (`core/budget/persistencia.py:117-126`).
 - Una partida se desglosa en una o más líneas de composición; cada línea referencia un insumo.
 - Un insumo cotiza a lo sumo una vez por lista (`UNIQUE (lista_id, insumo_id)`).
 - Una partida tiene cero o más rendimientos; un rendimiento medido pertenece a una ejecución.
