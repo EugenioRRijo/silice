@@ -222,3 +222,20 @@ def test_un_insumo_sin_precio_responde_el_409_de_siempre(cliente, sesion, items_
     assert r.status_code == 409
     assert INSUMO_SIN_PRECIO in r.json()["detalle"]
     assert r.json().get("rendimientos_por_declarar", []) == []
+
+
+# --- U-4 de la revision: sin ningun historico, la propuesta es null -----------------------------
+
+
+def test_sin_ningun_historico_la_propuesta_es_null(cliente, sesion, items_payload):
+    from tests.fixtures.sin_rendimiento_vigente import dejar_sin_historico
+
+    dejar_sin_historico(sesion, "LB-01-EXC")
+    sesion.commit()
+
+    r = cliente.post("/presupuestos", json=_cuerpo("API-SIN-HIST", items_payload))
+
+    assert r.status_code == 409
+    assert r.json()["rendimientos_por_declarar"] == [
+        {"codigo_partida": "LB-01-EXC", "propuesta": None}
+    ]

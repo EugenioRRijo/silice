@@ -400,3 +400,48 @@ def test_con_dos_partidas_el_tipo_de_la_segunda_no_se_presume(
     assert not at.exception, [e.value for e in at.exception]
     # Con los dos rendimientos de sus APU (100 y 16), el total es el de la linea base.
     assert at.session_state[CLAVE_RESULTADO].presupuesto.total == TOTAL_EXACTO_LINEA_BASE
+
+
+# --- U-4 de la revision: propuesta None y fila del plan malformada en la pagina -----------------
+
+
+def test_sin_ningun_historico_no_hay_propuesta_y_se_remite_a_componer(monkeypatch, base_sembrada):
+    from tests.fixtures.sin_rendimiento_vigente import dejar_sin_historico
+
+    motor = crear_motor(f"sqlite:///{base_sembrada.as_posix()}")
+    try:
+        with abrir_sesion(motor) as sesion:
+            dejar_sin_historico(sesion, "LB-01-EXC")
+            sesion.commit()
+    finally:
+        motor.dispose()
+    rendimientos = _rendimientos_en(base_sembrada)
+
+    at = _elaborado_sin_asertar_errores(monkeypatch, base_sembrada)
+
+    assert "Rendimientos por declarar" in [s.value for s in at.subheader]
+    errores = [e.value for e in at.error]
+    assert any("LB-01-EXC" in t and "Componer una partida" in t for t in errores), errores
+    assert all("LB-01-EXC" not in r.label for r in at.radio)
+    assert _rendimientos_en(base_sembrada) == rendimientos
+
+
+def _elaborado_sin_asertar_errores(monkeypatch, base: Path) -> AppTest:
+    at = _pantalla(monkeypatch, base)
+    _por_rotulo(at.button, ROTULO_ELABORAR).click().run()
+    assert not at.exception, [e.value for e in at.exception]
+    return at
+
+
+def test_una_fila_del_plan_malformada_se_rechaza_en_la_pagina(monkeypatch, base_sembrada):
+    at = _elaborado(monkeypatch, base_sembrada)
+    antes = at.session_state[CLAVE_RESULTADO]
+    malformada = [*PLAN_DOS_SEMANAS[:-1], {**PLAN_DOS_SEMANAS[-1], "fraccion": "1,5"}]
+    _reemplazar_plan(at, malformada)
+
+    _por_rotulo(at.button, ROTULO_APLICAR_PLAN).click().run()
+    assert not at.exception, [e.value for e in at.exception]
+
+    errores = [e.value for e in at.error]
+    assert any("fila 6" in texto for texto in errores), errores
+    assert at.session_state[CLAVE_RESULTADO] is antes
