@@ -160,34 +160,42 @@ importar nada de `core` salvo `core.contracts`. Guía ampliada en el manual téc
 ## 6. Estructura de carpetas
 
 ```
-CLAUDE.md  PLAN_DESARROLLO.md  README.md  pyproject.toml
+CLAUDE.md  README.md  pyproject.toml  uv.lock
+PLAN_DESARROLLO.md  PLAN_MULTIDOMINIO.md  PLAN_PROTOTIPO.md  PLAN_UI.md  PLAN_ASISTENTE.md  PLAN_CIERRE.md
 core/
-  contracts/      estables (sección 5)                                   — I0.1 ✔
+  contracts/      estables (sección 5)                                   — I0.1, P1.1 (D9)
   costing/        motor: calcular_apu(composicion, parametros) -> ResultadoAPU — I0.3
-  models/         SQLAlchemy según docs/modelo_datos.md                   — I0.4
-  catalog/        consulta y carga de partidas, insumos, rendimientos     — I0.4
-  budget/         presupuesto, curva de inversión, exportación Excel      — I0.5, I1
+  models/         SQLAlchemy según docs/modelo_datos.md (dieciséis entidades) — I0.4, C3
+  catalog/        partidas, insumos y composiciones; listas de precios; rendimientos — I0.4, I1, I6.2
+  budget/         presupuesto, curva, Excel, persistencia, actualización de precios, escenarios
+                                                                         — I0.5, I1, F.1
   verification/   las siete reglas (sección 7) y el informe de auditoría  — I4
 adapters/
-  civil/          IFC con ifcopenshell + reglas paramétricas trazables    — I3.1, I3.2
+  civil/          IFC con ifcopenshell, entrada tabular, reglas paramétricas y recálculo — I3.1, I3.2
   telecom/        topología de red en CSV (nodos, enlaces, longitudes)     — I5
   industrial/     registro de activos con frecuencia de intervención      — I5
   sistemas/       alcance funcional (módulos, casos de uso, puntos de función) — I5
 ml/
   normalization/  sentence-transformers, similitud del coseno             — I2
   anomaly/        Isolation Forest sobre precios y rendimientos           — I6.1
-  prediction/     XGBoost / CBR / reglas según compuerta G2               — I6.3
-ui/               Streamlit                                                — I1, F.1
-api/              FastAPI, esquema OpenAPI exportado a docs/api.json       — F.1
-scripts/          seed.py (carga la línea base en SQLite)                  — I0.4
+  prediction/     sistema de reglas; técnica según compuerta G2 (sección 8.1) — I6.3
+ui/               Streamlit: app.py (enrutador), paginas/ (diez pantallas) y los módulos sin pantalla
+                  composicion, elaboracion, resultado, caso, recorridos, visor3d — I1, F.1, P1–P2, U1, C3
+api/              FastAPI (main.py, rutas/); esquema OpenAPI exportado a docs/api.json — F.1
+scripts/          siembra (seed*.py), simulación, extracción de fuentes, metas (meta_*.py) y
+                  utilidades de la suite; una fila por script en scripts/README.md
 data/
   linea_base/     APUS_CLINICA.pdf (evidencia primaria)
-  samples/        tanquilla.ifc (antes de I3.1), telecom/*.pdf (muestras para I5)
+  samples/        una muestra por dominio (civil/, telecom/, industrial/, sistemas/), precios/ y tanquilla.ifc
+  precios/        maprex_2026-07/: listados MaPreX (tabulador CIV incluido) y referencias por dominio
+  civil/  telecom/  industrial/  sistemas/   plantilla de precios de cada dominio; fuentes/ salvo civil
 tests/
-  fixtures/       apu_linea_base.py — única copia de la línea base
-  unit/           contratos, arquitectura, línea base, costing (rojo hasta I0.3)
-  integration/    persistencia y flujos completos                          — I0.4+
-docs/             metodologia, ERS, modelo_datos, arquitectura, linea_base, tesis/, bitacora/, fuentes/
+  fixtures/       apu_linea_base.py — única copia de la línea base; los demás datos compartidos de prueba
+  unit/           contratos, arquitectura, línea base, costing, adaptadores, ml, ui y scripts
+  integration/    persistencia, API y flujos completos                     — I0.4+
+docs/             ERS, modelo_datos, arquitectura, plan_pruebas, calidad_iso25010, manual_tecnico,
+                  manual_usuario, metodologia, linea_base, dossier_g0, protocolo_precios, resultados_ml,
+                  guion_prueba_arenia, api.json, auditoria/, bitacora/, fuentes/, tesis/, superpowers/
 ```
 
 ---
