@@ -245,6 +245,21 @@ def test_ui_respeta_sus_importaciones_prohibidas(modulo):
     assert not prohibidos, f"{modulo} importa {sorted(prohibidos)}"
 
 
+#: Las paginas de ui/ (y su `__init__`): el marco `ui/app.py` las importa, ninguna lo importa a el.
+PAGINAS_DE_UI = sorted((RAIZ / "ui" / "paginas").glob("*.py"))
+
+
+@pytest.mark.parametrize("pagina", PAGINAS_DE_UI, ids=_ruta)
+def test_ninguna_pagina_importa_el_marco(pagina):
+    """M-2 de la revision de arquitectura de GC3: el grafo `ui.app -> ui.paginas.*` es aciclico
+    (`ui/app.py`) solo si ninguna pagina importa `ui.app`, ni con `import ui.app` ni con
+    `from ui import app` (`_imports_de_ejecucion` registra `ui.app` en los dos casos)."""
+    assert PAGINAS_DE_UI, "la guardia no encontro ninguna pagina en ui/paginas/"
+    importados = _imports_de_ejecucion(pagina)
+    marco = sorted(n for n in importados if n == "ui.app" or n.startswith("ui.app."))
+    assert not marco, f"{_ruta(pagina)} importa {marco}: el marco importa las paginas, no al reves"
+
+
 def test_una_sola_lectura_de_celdas_de_tabla_en_ui():
     """INV-046: las celdas de las tablas de `st.data_editor` se leen solo con
     `ui.composicion.texto_de_celda`; ningun modulo de ui/ define su propia copia."""
@@ -281,15 +296,18 @@ def _nombres_importados(archivo: Path) -> list[tuple[int, str]]:
 
 def test_ningun_modulo_de_prueba_importa_de_otro_modulo_de_prueba():
     """INV-052 (A-6): lo compartido entre pruebas vive en `tests/fixtures/`. Los modulos de prueba,
-    las fixtures y `tests/conftest.py` solo importan de `tests.fixtures` o de `tests.conftest`,
-    nunca de un modulo de prueba, sea con `from`, con `import` o con un import relativo (M-1 de la
-    revision de A5)."""
+    las fixtures y **todo** `conftest.py` (el raiz y los de cada subcarpeta, como
+    `tests/integration/conftest.py`: O-7 de la revision de A5) solo importan de `tests.fixtures` o
+    de `tests.conftest`, nunca de un modulo de prueba, sea con `from`, con `import` o con un import
+    relativo (M-1 de la revision de A5)."""
     permitidos = ("tests.fixtures", "tests.conftest")
+    conftests = sorted((RAIZ / "tests").rglob("conftest.py"))
+    assert RAIZ / "tests" / "integration" / "conftest.py" in conftests
     archivos = sorted(
         {
             *(RAIZ / "tests").rglob("test_*.py"),
             *(RAIZ / "tests" / "fixtures").rglob("*.py"),
-            RAIZ / "tests" / "conftest.py",
+            *conftests,
         }
     )
     infractores = sorted(
