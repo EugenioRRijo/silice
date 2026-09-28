@@ -123,60 +123,70 @@ equivalente en [manual_tecnico.md](manual_tecnico.md) §2.
 
 ## 8. Especificación de casos: trazabilidad RF → prueba
 
-Una fila por RF; el enunciado y el criterio de aceptación están en la fila homónima de
-[ERS.md §3.2](ERS.md#32-requisitos-funcionales). «Casos» cuenta las funciones de prueba del
-archivo en la corrida registrada (total de la suite: 392).
+**Fuente única** (INV‑032): esta tabla es el único lugar donde cada RF se traza a las pruebas que lo
+demuestran y a su estado. El enunciado y el criterio de aceptación viven en la fila homónima de
+[ERS.md §3.2](ERS.md#32-requisitos-funcionales), sin estado; el README y la metodología enlazan aquí.
+Cada prueba se cita como `archivo::función` (o `archivo::Clase::función`); `::función` a secas
+pertenece al último archivo nombrado en la misma celda. Todas existen en el commit probado de la
+sección 10 (`uv run pytest --collect-only -q` las lista) y pasan en esa corrida.
 
-| RF | Prueba(s) que lo demuestran | Casos | Resultado |
-|---|---|---|---|
-| RF‑01 | `tests/unit/test_costing.py` (5 APU ± 0,01, errores vigilados: materiales sin dividir por rendimiento, cascada admin→utilidad) | 7 | verde |
-| RF‑02 | `tests/integration/test_auditoria_7_de_7.py`; `elaborar` audita siempre (`tests/integration/test_presupuesto_linea_base.py`); la recarga declara los pendientes del documento emitido (C3, INV‑080): `tests/integration/test_recarga_con_pendientes.py` y, por HTTP, `/informe` y `/excel` en `tests/integration/test_api.py` (`test_el_informe_recargado_declara_el_pendiente`, `test_el_excel_recargado_declara_el_pendiente_en_la_auditoria`) | 4 + 9 + 7 + 2 | verde; residuo en bases guardadas antes de `04ca90d` ([manual técnico](manual_tecnico.md)) |
-| RF‑03 | `tests/unit/test_contracts.py` (`TestItemComputo`: sin `origen_id` se rechaza; REGLA sin expresión se rechaza); `tests/unit/test_linea_base.py` | 8 + 14 | verde |
-| RF‑04 | `tests/unit/test_arquitectura.py`; `tests/unit/test_adapter_civil_ifc.py` (`origen_id` = GlobalId) | 65 + 3 | verde, con la salvedad G1 (§3) |
-| RF‑05 | `tests/integration/test_persistencia.py` (los 5 APU recuperados dan los mismos PU que el fixture) | 14 | verde |
-| RF‑06 | `tests/unit/test_budget.py`; `tests/integration/test_presupuesto_linea_base.py` | 12 + 9 | verde |
-| RF‑07 | ídem RF‑06: `total_curva == total` exacto | — | verde |
-| RF‑08 | `tests/unit/test_budget.py::test_exportar_excel_escribe_cuatro_hojas` | 1 | verde |
-| RF‑09 | `test_arquitectura.py` + `test_adapter_telecom.py`, `test_adapter_industrial.py`, `test_adapter_sistemas.py` + `git diff --stat core/` vacío tras I5 | 65 + 7 + 4 + 4 | verde (indicador 4) |
-| RF‑10 – RF‑13 | `tests/integration/test_actualizacion_precios.py` (lista de muestra: cambios exactos, composiciones intactas, un registro por insumo, variaciones que cuadran) | 20 | verde |
-| RF‑14 | `tests/integration/test_persistencia.py::test_precios_se_reconstruyen_a_fecha` + `test_actualizacion_precios.py` | — | verde |
-| RF‑15 | `tests/unit/test_normalizacion.py::test_propuestas_ordenadas_por_puntaje_y_sobre_el_umbral` | 6 | verde |
-| RF‑16 | precarga cubierta en `ui/paginas/similares.py` (humo: `test_ui_importable.py`); **persistencia pendiente** del flujo de creación de partidas (hallazgo I2, para G0) | 1 | parcial |
-| RF‑17 | `tests/unit/test_normalizacion.py::test_acepta_al_menos_80_por_ciento_del_presupuesto_conocido` (5/5 reconocidas) | — | verde |
-| RF‑18, RF‑19 | `tests/unit/test_reglas_civil.py` (0,224 m3 y 4,48 m2 con a=0,80, h=0,80, e=0,10; sensibilidad al ancho) | 12 | verde |
-| RF‑20 | — (ninguna prueba: el requisito no tiene implementación; INV‑011) | — | no implementado; declarado en limitaciones |
-| RF‑21, RF‑23 | `tests/unit/test_verification.py` (una clase de pruebas por regla; presupuesto intacto; regla sin datos → INFO) | 71 | verde |
-| RF‑22 | `tests/integration/test_auditoria_7_de_7.py`: **7 de 7**, uno por regla | 4 | verde (indicador 1) |
-| RF‑24 | `test_auditoria_7_de_7.py`: la unidad «mts» del tercero llega intacta a R3 | — | verde |
-| RF‑25 | `tests/unit/test_contracts.py` (`TestRendimiento`); `tests/integration/test_rendimientos.py`; `tests/integration/test_api_rendimientos.py` | 2 + 13 + 7 | verde |
-| RF‑26 | `test_rendimientos.py` + `test_api_rendimientos.py` (dispersión con n, media, mínimo, máximo; prefiere el medido más reciente) | — | verde |
-| RF‑27 | `tests/unit/test_anomalias.py` (`evaluar_rendimiento`); `test_api_rendimientos.py` (201 con `advertencia`, el registro persiste) | 8 | verde |
-| RF‑28 | `tests/unit/test_prediccion.py`; `tests/unit/test_resultados_ml.py`; [resultados_ml.md](resultados_ml.md) con MAPE, RMSE, R² | 8 + 2 | verde (G2: reglas; indicador 5) |
-| RF‑29 | `test_anomalias.py` (`precios_atipicos`); `test_prediccion.py` (desviación % y hallazgo fuera del rango AACE clase 3) | — | verde |
-| RF‑30 | `tests/unit/test_escenarios.py` (parámetros verificados contra el motor; base y composiciones intactos); `tests/integration/test_api_escenarios.py` (`POST /presupuestos/{codigo}/escenarios`: nada se persiste, 422 ante parámetro fuera de rango) | 6 + 3 | verde |
-| RF‑31 | `tests/unit/test_escenarios.py` (tabla base + una fila por escenario, exportada a CSV; detalle por partida); la página «Escenarios (UC‑08)» cubierta por humo en `test_ui_importable.py` | — | verde |
-| RF‑33 | `tests/integration/test_persistencia.py` (`test_cargar_composicion_sin_condiciones_lanza_valueerror`, `test_reemplazar_composicion_exige_condiciones_no_vacias`: los dos caminos del catálogo); `tests/unit/test_ui_componer.py` (P4.1: el botón «Guardar composicion» nace deshabilitado sin condiciones y se habilita al declararlas; con condiciones pero sin rendimiento, el botón guarda habilitado pero no persiste nada) | 27 + 5 | verde |
-| RF‑34 | `tests/unit/test_composicion.py` (`composicion_desde_tablas` acepta y valida la modalidad por fila); `tests/integration/test_persistencia.py::test_la_modalidad_a_destajo_sobrevive_el_viaje_por_el_catalogo`; `tests/integration/test_composicion_extremo_a_extremo.py::test_el_caso_de_demostracion_mezcla_jornal_y_destajo_en_una_partida` (jornal y destajo en una misma partida, por el camino de la pantalla) | 24 + 27 + 14 | verde |
-| RF‑35 | `tests/unit/test_composicion.py` (`test_buscar_referencia_*`, 5 pruebas: la referencia MaPreX sugiere; `test_el_precio_sugerido_por_la_referencia_es_editable_y_el_calculo_lo_refleja`, 1 prueba: el precio de la fila sigue siendo un campo editable, nunca de solo lectura, y `core.costing.calcular_apu` refleja el precio editado, no el sugerido) | 34 | verde |
-| RF‑36 | `tests/unit/test_ui_app.py` (Inicio por defecto por identidad; ruta vacía → `inicio`) | 21 | verde |
-| RF‑37 | `tests/unit/test_ui_recorridos.py` (la declaración única); `tests/unit/test_arquitectura.py::test_ui_respeta_sus_importaciones_prohibidas[ui/recorridos.py]` (sin Streamlit ni base de datos); `tests/unit/test_ui_app.py` (integridad de enlaces con y sin modo entrega) | 13 + 1 + 21 | verde |
-| RF‑38 | `tests/unit/test_ui_caso.py` (una sola ruta por defecto); `tests/unit/test_ui_app.py` (ninguna página salvo el Inicio pide la ruta) | 13 + 21 | verde |
-| RF‑39 | `tests/unit/test_ui_caso.py`; `tests/unit/test_ui_app.py` (indicador en las diez pantallas) | 13 + 21 | verde |
-| RF‑40 | `tests/unit/test_ui_inicio.py`; `tests/unit/test_ui_caso.py` (sin flag de reinicio en `ui/`) | 9 + 13 | verde |
-| RF‑41 | `tests/unit/test_ui_recorridos.py` (`paso_siguiente` y `Recorrido.posicion`); `tests/unit/test_ui_app.py` (botón «Siguiente») | 13 + 21 | verde |
-| RF‑42 | `tests/unit/test_ui_app.py` (secciones, orden, subtítulo de caso de uso) | 21 | verde |
-| RF‑43 | `tests/unit/test_ui_app.py` (la sección Trabajo intacta en modo entrega; ningún paso sale de Trabajo) | 21 | verde |
+Estados: **verde** (una prueba automatizada lo demuestra y pasa en la corrida de §10); **parcial**
+(una parte del criterio tiene prueba y otra no existe; la celda dice cuál); **no implementado** (el
+requisito no tiene código y está declarado en limitaciones).
 
-**Resumen:** 33 de 34 RF anteriores al
-sprint de UI con prueba automatizada en verde; RF‑36 a RF‑43, declarados en U0, en verde desde U1
-(fase C3 del cierre). En esas ocho filas, «Casos» cuenta las funciones `def test_` de cada archivo;
-`test_ui_app.py` suma 38 casos al contar sus parámetros. RF‑16 parcial (su parte de UI está
-cubierta, su persistencia espera un flujo que no existe — hallazgo registrado). **Los RF esenciales
-anteriores al sprint de UI y RF‑36 a RF‑43 tienen prueba en verde.**
+| RF | Prueba(s) que lo demuestran | Estado |
+|---|---|---|
+| RF‑01 | `tests/unit/test_costing.py::test_precio_unitario_reproduce_la_linea_base` (5 APU ± 0,01), `::test_los_materiales_no_se_dividen_entre_el_rendimiento`, `::test_administracion_y_utilidad_se_aplican_en_cascada` | verde |
+| RF‑02 | `tests/integration/test_auditoria_7_de_7.py::test_detecta_las_siete_inconsistencias`; `tests/unit/test_budget.py::test_elaborar_siempre_devuelve_informe`; `tests/integration/test_presupuesto_linea_base.py::test_guardar_persiste_renglones_curva_y_hallazgos`; la recarga declara los pendientes del documento emitido (C3, INV‑080): `tests/integration/test_recarga_con_pendientes.py::test_la_recarga_devuelve_el_informe_emitido_con_sus_pendientes` y, por HTTP, `tests/integration/test_api.py::test_el_informe_recargado_declara_el_pendiente`, `::test_el_excel_recargado_declara_el_pendiente_en_la_auditoria` | verde; residuo en bases guardadas antes de `04ca90d` (dictamen C3‑3, [manual técnico](manual_tecnico.md)) |
+| RF‑03 | `tests/unit/test_contracts.py::TestItemComputo::test_origen_obligatorio`, `::TestItemComputo::test_regla_obligatoria_si_origen_es_regla`, `::TestItemComputo::test_regla_con_parametros_queda_congelada`; `tests/unit/test_reglas_civil.py::test_los_items_son_trazables`; `tests/integration/test_auditoria_7_de_7.py::test_todo_hallazgo_de_partida_referencia_un_origen_trazable` | verde |
+| RF‑04 | `tests/unit/test_arquitectura.py::test_un_adaptador_solo_importa_contratos_su_paquete_y_sus_terceros`, `::test_toda_carpeta_de_adapters_tiene_su_regla`; `tests/unit/test_adapter_civil_ifc.py::test_g1_lo_extraido_coincide_con_el_calculo_manual` (`origen_id` = GlobalId); `tests/unit/test_adapter_telecom.py::test_origen_id_es_la_clave_de_fila` | verde, con la salvedad de G1 (§3) |
+| RF‑05 | `tests/integration/test_persistencia.py::test_composicion_reconstruye_cada_apu_identico`, `::test_seed_carga_cinco_partidas_y_una_lista` | verde |
+| RF‑06 | `tests/unit/test_budget.py::test_presupuesto_reproduce_1586_61`, `::test_cada_renglon_reproduce_el_total_auditado`; `tests/integration/test_presupuesto_linea_base.py::test_elaborar_desde_el_catalogo_reproduce_1586_61`, `::test_los_renglones_referencian_la_partida_del_catalogo` | verde |
+| RF‑07 | `tests/unit/test_budget.py::test_curva_cierra_exactamente_en_el_total`, `::test_curva_con_fracciones_arbitrarias_cierra`; `tests/integration/test_composicion_extremo_a_extremo.py::test_la_curva_del_caso_de_demostracion_cierra_en_el_total` | verde |
+| RF‑08 | `tests/unit/test_budget.py::test_exportar_excel_escribe_cuatro_hojas`; `tests/unit/test_elaboracion.py::test_el_libro_se_abre_y_tiene_la_hoja_de_auditoria` | verde |
+| RF‑09 | `tests/unit/test_arquitectura.py` (todo el archivo); `tests/unit/test_adapter_telecom.py::test_extrae_nodos_y_enlaces_de_la_muestra`; `tests/unit/test_adapter_industrial.py::test_extrae_los_activos_de_la_muestra`; `tests/unit/test_adapter_sistemas.py::test_extrae_los_casos_de_uso_de_la_muestra`; `git diff --stat core/` vacío tras I5 y la guardia `scripts/guardia_nucleo.py` en cada corrida de CI | verde (indicador 4) |
+| RF‑10 | `tests/integration/test_actualizacion_precios.py::test_leer_lista_precios_devuelve_decimales_exactos`, `::test_leer_lista_precios_xlsx_lee_decimales_exactos`, `::test_leer_lista_precios_rechaza_lo_que_no_es_un_numero_no_negativo`, `::test_actualizar_precios_solo_revalora_el_concreto`, `::test_una_fila_con_unidad_no_equivalente_se_rechaza_y_las_demas_se_procesan` | verde |
+| RF‑11 | `tests/integration/test_actualizacion_precios.py::test_uc02_no_edita_ninguna_composicion`, `::test_actualizar_precios_solo_revalora_el_concreto` | verde |
+| RF‑12 | `tests/integration/test_actualizacion_precios.py::test_registra_un_cambio_de_precio_por_insumo_afectado`, `::test_registra_la_incidencia_de_cada_cambio_en_el_concreto`, `::test_los_cambios_de_precio_se_releen_tras_cerrar_la_sesion` | verde |
+| RF‑13 | `tests/integration/test_actualizacion_precios.py::test_el_comparativo_suma_los_totales`, `::test_el_comparativo_detalla_la_partida_que_cambio` | verde |
+| RF‑14 | `tests/integration/test_persistencia.py::test_precios_se_reconstruyen_a_fecha`; `tests/integration/test_actualizacion_precios.py::test_el_presupuesto_anterior_sigue_reconstruyendose_a_su_fecha` | verde |
+| RF‑15 | `tests/unit/test_normalizacion.py::test_propuestas_ordenadas_por_puntaje_y_sobre_el_umbral`, `::test_cuantos_acota_el_numero_de_propuestas` | verde |
+| RF‑16 | la precarga (desglose, rendimiento, partida de origen y puntaje) la pinta `ui/paginas/similares.py` y solo tiene la prueba de humo `tests/unit/test_ui_importable.py::test_las_paginas_se_importan_sin_efectos`; la persistencia de la partida nueva con esa referencia no existe (decisión D5 del tutor, pendiente) | parcial (INV‑027: estado único) |
+| RF‑17 | `tests/unit/test_normalizacion.py::test_acepta_al_menos_80_por_ciento_del_presupuesto_conocido` | verde |
+| RF‑18 | `tests/unit/test_reglas_civil.py::test_concreto_por_tanquilla_es_0_224`, `::test_encofrado_por_tanquilla_es_4_48`, `::test_los_items_son_trazables` | verde |
+| RF‑19 | `tests/unit/test_reglas_civil.py::test_cambiar_el_ancho_altera_solo_las_cantidades_que_dependen_de_el`; `tests/unit/test_recalculo_uc04.py::test_uc04_recalcula_precios_curva_y_auditoria_al_cambiar_el_ancho`; flujos 1a, 2a y 2b de UC‑04 en §8.1 | verde |
+| RF‑20 | — (ninguna prueba: el requisito no tiene implementación; INV‑011) | no implementado; declarado en limitaciones |
+| RF‑21 | `tests/unit/test_verification.py`, una o más pruebas por regla: `::test_r1_encofrado_y_concreto_con_impacto`, `::test_r2_brecha_11_11`, `::test_r3_reporta_unidad_original_mts`, `::test_r4_marca_3_4_pulg_y_no_marca_pvc`, `::test_r5_relleno_vs_balance`, `::test_r6_vehiculo_0_03_vs_1_00`, `::test_r7_dia_a_dia`; sin errores cuando el presupuesto cumple: `tests/integration/test_auditoria_7_de_7.py::test_el_presupuesto_corregido_no_tiene_errores` | verde |
+| RF‑22 | `tests/integration/test_auditoria_7_de_7.py::test_detecta_las_siete_inconsistencias`: **7 de 7**, uno por regla | verde (indicador 1) |
+| RF‑23 | `tests/unit/test_verification.py::test_el_informe_ordena_los_hallazgos_por_severidad_descendente`, `::test_r1_reporta_la_regla_que_no_puede_evaluar`, `::test_r5_reporta_un_balance_que_no_puede_evaluar` (INFO sin abortar); presupuesto idéntico antes y después: `tests/integration/test_auditoria_arenaza.py::test_la_auditoria_corre_sobre_el_presupuesto_telecom_completo` | verde |
+| RF‑24 | la unidad «mts» del autor llega intacta a R3 sobre un `Presupuesto` construido en memoria: `tests/unit/test_verification.py::test_r3_reporta_unidad_original_mts`; la importación de un archivo tabular de un tercero no existe (INV‑076, abierto) | parcial |
+| RF‑25 | `tests/unit/test_contracts.py::TestRendimiento::test_medido_exige_referencia`; `tests/integration/test_rendimientos.py::test_registrar_medido_sin_referencia_se_rechaza`, `::test_registrar_medido_traza_la_ejecucion`, `::test_referencia_de_ejecucion_inexistente_se_rechaza`; `tests/integration/test_api_rendimientos.py::test_medido_sin_referencia_es_422_y_con_referencia_real_queda_trazado` | verde |
+| RF‑26 | `tests/integration/test_rendimientos.py::test_dispersion_exacta_y_con_tipos_contados`, `::test_propuesta_prefiere_el_medido_mas_reciente`, `::test_propuesta_sin_medidos_cae_al_estimado_mas_reciente`; `tests/integration/test_api_rendimientos.py::test_get_trae_historico_dispersion_y_propuesta` | verde |
+| RF‑27 | `tests/unit/test_anomalias.py::test_rendimiento_desviado_es_atipico_pero_el_veredicto_no_prohibe`, `::test_rendimiento_coherente_con_lo_observado_no_es_atipico`, `::test_historico_insuficiente_no_da_veredicto`; `tests/integration/test_rendimientos.py::test_advertencia_cuando_el_valor_se_aparta_del_rango_observado`; `tests/integration/test_api_rendimientos.py::test_advertencia_fuera_del_rango_observado_sin_impedir_el_registro` | verde |
+| RF‑28 | `tests/unit/test_prediccion.py::test_tecnica_para_es_la_tabla_de_la_compuerta_g2`, `::test_metricas_exactas_mape_rmse_r2`, `::test_prediccion_por_reglas_con_rango_de_sensibilidad`; `tests/unit/test_resultados_ml.py::test_el_informe_declara_conteo_tecnica_y_metricas`; la CI regenera [resultados_ml.md](resultados_ml.md) sin diferencias (§7) | verde (G2: reglas; indicador 5) |
+| RF‑29 | `tests/unit/test_prediccion.py::test_contraste_aace_fuera_del_rango_es_hallazgo_advertencia`, `::test_contraste_aace_dentro_del_rango_no_produce_hallazgo`; `tests/unit/test_anomalias.py::test_la_variacion_extrema_es_atipica_y_tiene_el_peor_puntaje`, `::test_los_atipicos_salen_ordenados_del_mas_anomalo_al_menos` | verde |
+| RF‑30 | `tests/unit/test_escenarios.py::test_escenario_de_parametros_recalcula_cada_partida_contra_el_motor`, `::test_escenario_de_precios_sube_solo_las_partidas_afectadas`, `::test_el_presupuesto_base_y_las_composiciones_quedan_intactos`; `tests/integration/test_api_escenarios.py::test_los_escenarios_no_persisten_ninguna_version`, `::test_parametro_fuera_de_rango_se_rechaza_por_el_contrato` | verde |
+| RF‑31 | `tests/unit/test_escenarios.py::test_tabla_comparativa_una_fila_por_escenario_con_total_y_variacion`, `::test_tabla_comparativa_es_exportable`, `::test_comparativo_por_partida_del_escenario`; `tests/integration/test_api_escenarios.py::test_base_mas_una_entrada_por_escenario_con_detalle`; la página «Escenarios de sensibilidad»: `tests/unit/test_ui_escenarios.py::test_el_escenario_de_un_base_con_pendientes_los_declara` | verde |
+| RF‑33 | `tests/integration/test_persistencia.py::test_cargar_composicion_sin_condiciones_lanza_valueerror`, `::test_reemplazar_composicion_exige_condiciones_no_vacias` (los dos caminos del catálogo); `tests/unit/test_ui_componer.py::test_sin_condiciones_el_boton_de_guardar_esta_deshabilitado`, `::test_sin_rendimiento_guardar_no_persiste_nada` | verde |
+| RF‑34 | `tests/unit/test_costing_destajo.py` (todo el archivo); `tests/unit/test_composicion.py::test_una_fila_de_mano_de_obra_sin_modalidad_es_jornal`, `::test_una_modalidad_desconocida_se_rechaza_nombrando_la_fila`; `tests/integration/test_persistencia.py::test_la_modalidad_a_destajo_sobrevive_el_viaje_por_el_catalogo`; `tests/integration/test_composicion_extremo_a_extremo.py::test_el_caso_de_demostracion_mezcla_jornal_y_destajo_en_una_partida`; `tests/unit/test_ui_componer.py::test_teclear_el_codigo_de_una_partida_guardada_precarga_sus_tres_tablas`; `tests/unit/test_budget.py::test_hoja_apu_muestra_la_modalidad_de_mano_de_obra` | verde |
+| RF‑35 | `tests/unit/test_composicion.py::test_buscar_referencia_encuentra_la_fila_esperada_con_ref_y_precio_decimal` y las otras cuatro pruebas `test_buscar_referencia_*` del mismo archivo (la referencia MaPreX sugiere); `::test_el_precio_sugerido_por_la_referencia_es_editable_y_el_calculo_lo_refleja` | verde |
+| RF‑36 | `tests/unit/test_ui_app.py::test_la_aplicacion_arranca_en_el_inicio`, `::test_la_ruta_vacia_de_la_pagina_por_defecto_es_el_inicio`, `::test_el_inicio_es_la_primera_pagina_y_la_unica_por_defecto` | verde |
+| RF‑37 | `tests/unit/test_ui_recorridos.py::test_hay_tres_recorridos_en_el_orden_declarado`; `tests/unit/test_arquitectura.py::test_ui_respeta_sus_importaciones_prohibidas[ui/recorridos.py]` (sin Streamlit ni base de datos); `tests/unit/test_ui_app.py::test_todo_paso_apunta_a_una_pagina_registrada` | verde |
+| RF‑38 | `tests/unit/test_ui_caso.py::test_la_ruta_guardada_en_la_sesion_manda`, `::test_sin_ruta_en_la_sesion_manda_la_variable_de_entorno`, `::test_sin_sesion_ni_entorno_queda_la_ruta_por_defecto`, `::test_la_ruta_por_defecto_se_define_una_sola_vez_en_ui`; `tests/unit/test_ui_app.py::test_ninguna_pantalla_distinta_del_inicio_pide_la_ruta` | verde |
+| RF‑39 | `tests/unit/test_ui_caso.py::test_resumen_de_cada_estado`, `::test_estado_de_un_archivo_que_no_es_sqlite_es_un_error_sin_traza`; `tests/unit/test_ui_app.py::test_cada_pantalla_muestra_el_caso_abierto_y_su_titulo` | verde |
+| RF‑40 | `tests/unit/test_ui_inicio.py::test_una_base_inexistente_muestra_el_estado_vacio_sin_crearla`, `::test_la_siembra_deja_la_base_utilizable`, `::test_con_partidas_no_se_ofrece_sembrar`; `tests/unit/test_ui_caso.py::test_ningun_archivo_de_ui_contiene_el_flag_de_reinicio` | verde |
+| RF‑41 | `tests/unit/test_ui_recorridos.py::test_paso_siguiente_avanza_y_se_detiene_en_el_ultimo`, `::test_posicion_es_de_base_uno_y_none_fuera_del_recorrido`; `tests/unit/test_ui_app.py::test_el_boton_siguiente_lleva_al_paso_que_sigue`, `::test_una_pantalla_fuera_del_recorrido_no_muestra_siguiente` | verde |
+| RF‑42 | `tests/unit/test_ui_app.py::test_sin_modo_entrega_dos_secciones_en_el_orden_del_trabajo`, `::test_ningun_titulo_lleva_codigo_de_caso_de_uso`, `::test_las_cinco_pantallas_con_caso_de_uso_lo_declaran` | verde |
+| RF‑43 | `tests/unit/test_ui_app.py::test_modo_entrega_omite_investigacion_y_conserva_todo_trabajo`, `::test_ningun_paso_sale_de_la_seccion_trabajo` | verde |
 
-Cobertura adicional no exigida por RF: `test_generador_ifc.py` (1), `test_visor3d.py` (4),
-`test_openapi.py` (2), `test_simulador.py` (2), `test_api.py` (14), `test_civil_verificacion.py`
-(3) y `test_meta_alpha.py` (26).
+**Resumen:** de los 42 RF, **39 en verde**, **2 parciales** (RF‑16 y RF‑24, los dos esenciales: la
+persistencia de la referencia de RF‑16 espera la decisión D5 del tutor y la importación de RF‑24 es
+INV‑076, abierto) y **1 no implementado** (RF‑20, deseable, en limitaciones). Ningún RF esencial queda
+sin ninguna prueba.
+
+Las demás pruebas de la suite no demuestran un RF concreto: guardias de arquitectura y de la base de
+trabajo, metas de sprint, scripts, referencias de precios, dominios del sprint multidominio, API
+(OpenAPI y errores HTTP) y visor 3D. Su recuento es el de la sección 10.
 
 ### 8.1 Trazabilidad por paso de UC‑12
 
