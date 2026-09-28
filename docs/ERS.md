@@ -434,10 +434,23 @@ reconocimiento de planos.
 ## 3. Requisitos específicos
 
 ### 3.1 Interfaces externas
-- **Usuario:** interfaz web local (Streamlit) con los once casos de uso declarados en este documento
-  (UC‑01 a UC‑08 y UC‑10 a UC‑12; UC‑09 vacante, ver sección 2.2), con una pantalla de Inicio que
-  lleva al usuario por recorridos guiados (UC‑12).
+- **Usuario:** interfaz web local (Streamlit) con una pantalla de Inicio que lleva al usuario por
+  recorridos guiados (UC‑12). No todos los casos de uso tienen pantalla: la tabla siguiente declara la
+  capa que realiza cada uno (INV‑030). UC‑09 queda vacante (sección 2.2).
 - **Software:** API REST (FastAPI) con esquema OpenAPI en `docs/api.json`.
+
+| UC | Interfaz (pantalla del menú) | API REST | Solo biblioteca o script |
+|---|---|---|---|
+| UC‑01 | «Elaborar un presupuesto» (extrae, elabora, audita y descarga el Excel) y el bloque de cantidades de «Componer una partida»; la interfaz no guarda el presupuesto | `POST /computos/{dominio}` y `POST /presupuestos` (elabora, audita y guarda); `GET /presupuestos/{codigo}/excel` | — |
+| UC‑02 | «Actualizar precios» (revalora, guarda la versión y ofrece descartarla) e «Historico de cambios de precio» | `POST /listas-precios`, `POST /presupuestos/{codigo}/actualizacion`, `GET /cambios-precio`; descartar una versión no tiene ruta | — |
+| UC‑03 | «Partidas similares» (solo lectura); ayuda de similares en «Componer una partida»; propuestas de los pendientes en «Elaborar un presupuesto» | propuestas de los pendientes en la respuesta de `POST /presupuestos` | — |
+| UC‑04 | ninguna | ninguna | `adapters/civil/recalculo.py` (`recalcular`, `emparejar`), ejercido solo por las pruebas |
+| UC‑05 | el informe se muestra al elaborar, al componer y al revalorar; no hay pantalla de auditoría de un presupuesto ajeno | `GET /presupuestos/{codigo}/informe` y la hoja de auditoría de `…/excel` | la importación del archivo de un tercero no existe en ninguna capa (RF‑24, INV‑076) |
+| UC‑06 | «Componer una partida» propone el rendimiento del histórico y advierte al apartarse; no registra medidos | `POST /ejecuciones`, `GET /ejecuciones`, `GET /partidas/{codigo}/rendimientos`, `POST /partidas/{codigo}/rendimientos` | — |
+| UC‑07 | «Componer una partida» contrasta el precio con la estimación por reglas (clase 3 de AACE) | ninguna | `scripts/generar_resultados_ml.py` escribe `docs/resultados_ml.md` |
+| UC‑08 | «Escenarios de sensibilidad» | `POST /presupuestos/{codigo}/escenarios` | — |
+| UC‑10, UC‑11 | «Componer una partida» | ninguna | — |
+| UC‑12 | «Inicio» y el marco común de las pantallas (`ui/app.py`) | ninguna | — |
 - **Archivos de entrada:** IFC 4 (dominio civil), CSV de topología (telecom), registro de activos
   (industrial), alcance funcional (sistemas), listas de precios CSV/XLSX.
 - **Archivos de salida:** presupuesto y curva en XLSX, informe de auditoría.
