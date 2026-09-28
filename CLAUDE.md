@@ -143,7 +143,7 @@ proyecto. Si una sesión cree necesitar cambiarlos, se detiene y documenta el ha
 | `dominio.py` | `Dominio` (civil, telecom, industrial, sistemas) | Enumeración de dominios |
 | `item_computo.py` | `OrigenTipo`, `ItemComputo` | Una cantidad de obra trazable: `codigo_partida`, `descripcion`, `unidad`, `cantidad`, `origen_id`, `origen_tipo`, `dominio`, `regla`, `parametros`, `especificaciones` |
 | `adaptador.py` | `AdaptadorDominio` (ABC) | `dominio: ClassVar[Dominio]` y `extraer(fuente) -> list[ItemComputo]` |
-| `apu.py` | `LineaMaterial`, `LineaEquipo`, `LineaManoObra`, `ComposicionAPU`, `ParametrosCosto`, `ResultadoAPU`, `TipoRendimiento`, `Rendimiento` | Entrada y salida del motor; rendimiento estimado vs medido |
+| `apu.py` | `LineaMaterial`, `LineaEquipo`, `ModalidadManoObra`, `LineaManoObra`, `ComposicionAPU`, `ParametrosCosto`, `ResultadoAPU`, `TipoRendimiento`, `Rendimiento` | Entrada y salida del motor; rendimiento estimado vs medido; modalidad de cada línea de mano de obra, `LineaManoObra.modalidad` (jornal por defecto o destajo, decisión D9 de la sección 4) |
 | `presupuesto.py` | `PartidaPresupuestada`, `PuntoCurva`, `Presupuesto` | Forma en memoria del presupuesto y su curva; la entrada de toda regla de verificación |
 | `verificacion.py` | `Severidad`, `Hallazgo`, `ReglaVerificacion` (ABC) | Contrato de las reglas: `evaluar(presupuesto) -> list[Hallazgo]` |
 
