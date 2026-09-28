@@ -887,6 +887,13 @@ Debajo de las diez pantallas de `ui/paginas/` hay una capa sin pantalla (INV‑0
 | `ui/composicion.py` | lógica pura: arma y valida una `ComposicionAPU` a partir de las tablas que teclea el proyectista (`composicion_desde_tablas`, con la modalidad por línea de la decisión D9) y calcula su desglose (`desglose` → `core.costing.calcular_apu`); envuelve las ayudas de `ml/` con importación perezosa | `streamlit`, `pandas`, `ui.caso`, `sqlalchemy`, `core.catalog`, `core.budget` |
 | `ui/elaboracion.py` | orquesta «cantidades → elaborar → exportar» (`items_desde_filas`, `elaborar_desde_catalogo`, `libro_excel`), guarda composiciones sin confirmar (`guardar_composicion`) y resuelve UC‑01 3a (`propuestas_de_pendientes`, `aceptar_propuesta`) | `streamlit`, `pandas`, `ui.caso` |
 | `ui/resultado.py` | el fragmento de Streamlit que pinta un presupuesto elaborado, su informe y sus pendientes (`mostrar_elaboracion`), compartido por componer y elaborar | `sqlalchemy.orm`, `core.costing`, `core.catalog` |
+| `ui/recorridos.py` | declara una sola vez los recorridos guiados de UC‑12 (`RECORRIDOS`, `Paso`, `Recorrido`, `recorrido_por_nombre`, `paso_siguiente`), sin Streamlit ni base de datos: solo importa `dataclasses` | `streamlit`, `sqlalchemy`, `core.catalog`, `ui.caso`, `ui.app` |
+
+Completan la capa dos módulos sin lista propia en `PROHIBIDOS_EN_UI`: `ui/caso.py` (el caso abierto de
+la sesión y el recorrido activo: `ruta_caso`, `estado_caso`, `resumen_caso`) y `ui/visor3d.py`
+(`mallas`, la teselación del IFC que pinta el «Visor 3D del modelo»). La tabla es, fila por fila, el
+diccionario `PROHIBIDOS_EN_UI` (`tests/unit/test_arquitectura.py:196-207`) salvo `ui/paginas/componer.py`,
+que se trata en el párrafo siguiente.
 
 `ui/paginas/componer.py` **pinta y confirma**: arma las tablas y el formulario, llama a
 `ui.composicion` para el cálculo en vivo, a `ui.elaboracion` para guardar y elaborar, y es quien hace
