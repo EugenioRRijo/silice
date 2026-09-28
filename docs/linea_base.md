@@ -84,6 +84,11 @@ No se cuentan en el indicador 1, pero las reglas las cubren:
 El hallazgo 9 explica el 3: cada monto diario es menor que el de su partida, y la suma de esas
 diferencias es la brecha de 11,11 USD.
 
+Al persistir la línea base apareció un defecto más, que no lleva número en esta tabla: un mismo
+insumo con dos precios distintos en la misma lista y fecha. Es la regla candidata R8 de la
+decisión D2 del [dossier G0](dossier_g0.md#3-decisiones-que-esperan-la-validación-del-tutor) y
+tampoco cuenta en el indicador 1.
+
 ## 6. Otras observaciones del documento fuente
 
 - El APU de tubería asigna un "Maestro Electricista" a una partida de plomería. No afecta al cálculo;
@@ -91,6 +96,10 @@ diferencias es la brecha de 11,11 USD.
 - El análisis financiero de la clínica (páginas 9 y 10 del PDF) rotula como "ingreso mensual" un
   ingreso diario y declara costo de insumos nulo. Está fuera del alcance, pero ilustra la misma
   patología: ausencia de verificación automática entre magnitudes relacionadas.
-- El cómputo corregido completo (excavación con sobreancho y espesor de fondo, zanja con pendiente
-  del 3 %, tubería con 5 % de desperdicio) se produce con las reglas paramétricas de la Sesión I3.2;
-  hasta entonces solo están corregidos encofrado y concreto.
+- El cómputo corregido completo se produjo en la Sesión I3.2 con las reglas paramétricas de
+  `adapters/civil/reglas.py` sobre la muestra `data/samples/civil/tanquillas_y_zanja.csv`:
+  excavación de los fosos con sobreancho y espesor de fondo, tubería con 5 % de desperdicio y
+  relleno por balance (excavación − concreto − volumen de tubería). Los supuestos que la memoria no
+  fija están declarados en `data/samples/civil/README.md`. La pendiente del 3 % de la zanja que se
+  había previsto no se modeló: la regla de la zanja usa una profundidad constante
+  (`REGLA_EXCAVACION_ZANJA`).
