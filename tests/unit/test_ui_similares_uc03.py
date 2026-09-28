@@ -10,8 +10,10 @@ estas pruebas fijan lo que la pagina hace cuando el modelo si propone:
   propuestas siguen mostrando el suyo.
 
 La propuesta del modelo se sustituye por un doble con puntajes fijos (el ranking real lo prueban
-`tests/unit/test_normalizacion.py` y `tests/integration/test_api.py`); asi el puntaje que se lee en
-pantalla tiene un oraculo exacto. El oraculo del desglose es la linea base
+`tests/unit/test_normalizacion.py` y `tests/integration/test_api.py`; ninguna prueba de pantalla
+recorre esta pagina con el modelo real en el camino de exito); asi el puntaje que se lee en
+pantalla tiene un oraculo exacto. El doble comprueba lo que la pagina le pasa: el catalogo como
+pares (codigo, descripcion) y la descripcion tecleada. El oraculo del desglose es la linea base
 (`tests/fixtures/apu_linea_base.py`), que `scripts/seed.py` siembra en una base de `tmp_path`,
 desviada por el objeto modulo `sys.modules["ui.caso"]`. El paso 5 (ajustar y recalcular) no lo hace
 esta pagina, que es de solo lectura (UC-10, paso 6, en «Componer una partida»).
@@ -35,7 +37,7 @@ from core.verification.texto import formatear_decimal
 from ml.normalization import PartidaSimilar, Propuesta
 from scripts.seed import sembrar
 from tests.conftest import RUTA_BASE_REAL, huella
-from tests.fixtures.apu_linea_base import APU_CONCRETO, APU_EXCAVACION
+from tests.fixtures.apu_linea_base import APU_CONCRETO, APU_EXCAVACION, APUS_LINEA_BASE
 
 SCRIPT = "from ui.paginas.similares import render\nrender()\n"
 ROTULO_DESCRIPCION = "Descripcion de la partida"
@@ -80,18 +82,26 @@ def _quitar_precio(base: Path, descripcion_insumo: str) -> None:
         motor.dispose()
 
 
-def _propuesta(*_args, **_kwargs) -> Propuesta:
-    return Propuesta(
-        (
-            PartidaSimilar(APU_CONCRETO.codigo_partida, APU_CONCRETO.descripcion, PUNTAJE_CONCRETO),
-            PartidaSimilar(
-                APU_EXCAVACION.codigo_partida, APU_EXCAVACION.descripcion, PUNTAJE_EXCAVACION
-            ),
-        )
-    )
+DESCRIPCION_TECLEADA = "concreto para las paredes de una tanquilla"
 
 
 def _consultar(monkeypatch, base: Path) -> AppTest:
+    llamadas: list[tuple[dict[str, str], str]] = []
+
+    def _propuesta(partidas, descripcion) -> Propuesta:
+        """El doble del modelo: registra lo que recibe y propone el concreto y la excavacion."""
+        llamadas.append((dict(partidas), descripcion))
+        return Propuesta(
+            (
+                PartidaSimilar(
+                    APU_CONCRETO.codigo_partida, APU_CONCRETO.descripcion, PUNTAJE_CONCRETO
+                ),
+                PartidaSimilar(
+                    APU_EXCAVACION.codigo_partida, APU_EXCAVACION.descripcion, PUNTAJE_EXCAVACION
+                ),
+            )
+        )
+
     caso = importlib.import_module("ui.caso")
     monkeypatch.setattr(caso, "RUTA_BASE_POR_DEFECTO", str(base))
     pagina = importlib.import_module("ui.paginas.similares")
@@ -99,11 +109,20 @@ def _consultar(monkeypatch, base: Path) -> AppTest:
     at = AppTest.from_string(SCRIPT, default_timeout=60)
     at.run()
     assert not at.exception, [e.value for e in at.exception]
+    assert llamadas == [], "sin descripcion la pagina no debe consultar el modelo"
     next(t for t in at.text_input if t.label == ROTULO_DESCRIPCION).input(
-        "concreto para las paredes de una tanquilla"
+        DESCRIPCION_TECLEADA
     ).run()
     assert not at.exception, [e.value for e in at.exception]
     assert not at.error, [e.value for e in at.error]
+
+    # Lo que la pagina le paso al modelo: la descripcion tecleada y el catalogo sembrado, con la
+    # descripcion de cada partida de la linea base (oraculo: el fixture, no la base).
+    assert len(llamadas) == 1, llamadas
+    partidas, descripcion = llamadas[0]
+    assert descripcion == DESCRIPCION_TECLEADA
+    for apu in APUS_LINEA_BASE:
+        assert partidas.get(apu.codigo_partida) == apu.descripcion, apu.codigo_partida
     return at
 
 
