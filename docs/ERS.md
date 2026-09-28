@@ -137,8 +137,11 @@ implementados en `core/contracts/`.
 - **Flujos alternativos**
   - *2a. Fuente ilegible o de otro dominio:* el sistema rechaza la carga, no crea el presupuesto e indica
     el archivo y el elemento o fila que falló.
-  - *3a. Ítem sin partida en el catálogo:* el sistema propone las tres partidas más similares (UC‑03); si
-    no se acepta ninguna, el ítem queda pendiente, no suma al total y el informe lo declara.
+  - *3a. Ítem sin partida en el catálogo:* el sistema elabora el presupuesto sin él: el ítem queda
+    pendiente, no suma al total y el informe lo declara. Después propone, para cada pendiente, las
+    partidas más similares del catálogo (UC‑03); si el proyectista acepta una, el ítem pasa a esa
+    partida y el presupuesto se vuelve a elaborar; si no acepta ninguna, el ítem sigue pendiente.
+    (Orden vigente desde C3, dictamen C3‑10: la interfaz elabora primero y propone después.)
   - *3b. Partida sin rendimiento vigente:* el sistema propone el del histórico con su dispersión (UC‑06) y
     exige declarar si es estimado o medido.
   - *6a. Sin plan de trabajo:* el presupuesto se emite sin curva y el informe registra que R2 no es aplicable.
@@ -168,6 +171,9 @@ implementados en `core/contracts/`.
   - *2b. Unidad no equivalente a la del catálogo* (`unidades_equivalentes`): la fila se rechaza y se
     reporta; las demás se procesan.
   - *3a. Ningún precio cambió:* no se crea versión nueva y se informa.
+  - *4a. El presupuesto tiene ítems pendientes (UC‑01, flujo 3a):* la versión nueva los conserva y su
+    informe los vuelve a declarar. Siguen pendientes aunque la lista nueva traiga su partida: valorarlos
+    es UC‑01, no UC‑02 (aclaración de C4; comportamiento ratificado en el dictamen C3‑8).
   - *7a. El usuario descarta la versión:* se marca como descartada, pero el registro de cambios se conserva
     porque alimenta el histórico del módulo predictivo.
 - **Postcondiciones:** versión nueva asociada a su lista de precios; histórico de cambios persistido; el
@@ -212,8 +218,12 @@ implementados en `core/contracts/`.
   - *1a. El parámetro no participa en ninguna regla:* no hay recálculo y se informa.
   - *2a. La fuente es un modelo IFC y no reglas:* el sistema exige reimportar el modelo (UC‑01, paso 2) y
     empareja por `origen_id` (GlobalId) para conservar la correspondencia de las partidas.
-  - *2b. Una regla produce una cantidad negativa o nula* (por ejemplo, relleno negativo): la cantidad se
-    rechaza, la partida conserva su valor anterior y se emite un hallazgo de R5.
+  - *2b. Una regla produce una cantidad negativa o nula* (por ejemplo, relleno negativo): se rechaza el
+    objeto entero (`origen_id`), no solo esa cantidad, y todos sus ítems conservan su valor anterior,
+    para que un objeto nunca mezcle dimensiones viejas y nuevas; el rechazo se informa en el resultado
+    del recálculo. La auditoría emite un hallazgo de R5 solo cuando el objeto rechazado es el relleno,
+    que conservado deja de cuadrar con su balance; si es otro objeto, el relleno se rebalancea con las
+    cantidades conservadas y R5 cuadra (INV‑073; dictamen C2‑6).
 - **Postcondiciones:** versión nueva trazable, con la expresión que produjo cada cantidad; el diferencial
   queda registrado.
 
