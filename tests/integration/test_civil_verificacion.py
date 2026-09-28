@@ -191,3 +191,29 @@ def test_r4_sigue_viendo_el_diametro_contradicho_de_la_tuberia(tmp_path):
     assert errores_r4[0].origen_ids == ("Z-01",)
     assert CODIGOS["tuberia"] in errores_r4[0].descripcion
     assert "3/4 pulg" in errores_r4[0].descripcion
+
+
+def test_r4_sigue_viendo_el_material_declarado_del_concreto(tmp_path):
+    """La otra dirección para la tanquilla (T-6 de la revisión de la pista P de C5).
+
+    Con `material=acero` en T-01, el concreto recibe la especificación y R4 la señala sobre
+    LB-04-CON con el origen T-01, y solo ahí: ni el encofrado ni la excavación la reciben. Es INFO
+    y no ERROR porque R4 solo declara contradicción entre pares número-unidad (`3/4 pulg` frente a
+    `4 pulg`), y un material no lo es: «acero» no aparece en el texto del APU de concreto y queda
+    como no contrastable (`core/verification/reglas.py`, `CorrespondenciaEspecificaciones`).
+    """
+    alterada = tmp_path / "tanquillas_y_zanja_acero.csv"
+    texto = RUTA_MUESTRA.read_text(encoding="utf-8")
+    assert texto.count("material=concreto") == 1
+    alterada.write_text(texto.replace("material=concreto", "material=acero"), encoding="utf-8")
+
+    items = tuple(AdaptadorCivilTabular(codigos=CODIGOS).extraer(alterada))
+    informe = auditar(_presupuesto_de(items))
+
+    hallazgos_r4 = [h for h in informe.hallazgos if h.regla == "R4"]
+    assert len(hallazgos_r4) == 1, [h.descripcion for h in hallazgos_r4]
+    (hallazgo,) = hallazgos_r4
+    assert hallazgo.severidad == Severidad.INFO
+    assert hallazgo.origen_ids == ("T-01",)
+    assert CODIGOS["concreto"] in hallazgo.descripcion
+    assert "'acero'" in hallazgo.descripcion
