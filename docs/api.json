@@ -637,7 +637,7 @@
           "presupuestos"
         ],
         "summary": "Escenarios De Presupuesto",
-        "description": "UC-08: recalcula el presupuesto bajo los supuestos de cada escenario, sin persistir nada.\n\nLos parámetros que un escenario no declara heredan los congelados en el presupuesto base;\nun parámetro fuera de rango lo rechaza el contrato (`ParametrosCosto`) y responde 422\n(flujo 1a). La sesión no confirma nada: el base queda como única versión guardada (RF-30).\n\nEl base se lee con `cargar_elaboracion`, no con `cargar_presupuesto`: el contrato `Presupuesto`\nno lleva los ítems pendientes (UC-01 3a) y `generar_escenario` solo recalcula los renglones\nvalorados, así que la respuesta los declara en `pendientes_base` (INV-083), como la página de\nescenarios. El informe propio de cada escenario no los declara (ruling C4-3, limitaciones).",
+        "description": "UC-08: recalcula el presupuesto bajo los supuestos de cada escenario, sin persistir nada.\n\nLos parámetros que un escenario no declara heredan los congelados en el presupuesto base;\nun parámetro fuera de rango lo rechaza el contrato (`ParametrosCosto`) y responde 422\n(flujo 1a). La sesión no confirma nada: el base queda como única versión guardada (RF-30).\n\nLos ítems pendientes del base (sin partida en el catálogo, UC-01 flujo 3a) no se recalculan en\nningún escenario ni suman a ningún total: la respuesta los lista en `pendientes_base`, con la\nmisma forma que los pendientes de `POST /presupuestos` pero sin propuestas. Los hallazgos de\ncada escenario no los cuentan.",
         "operationId": "escenarios_de_presupuesto_presupuestos__codigo__escenarios_post",
         "parameters": [
           {
@@ -1291,7 +1291,7 @@
           },
           "pendientes_base": {
             "items": {
-              "$ref": "#/components/schemas/PendienteBaseRespuesta"
+              "$ref": "#/components/schemas/PendienteRespuesta"
             },
             "type": "array",
             "title": "Pendientes Base"
@@ -1311,7 +1311,7 @@
           "escenarios"
         ],
         "title": "EscenariosRespuesta",
-        "description": "La comparación completa de UC-08. Nada de esto queda persistido (RF-30).\n\n`pendientes_base` declara los ítems pendientes del base (INV‑083): `generar_escenario` solo\nrecalcula los renglones valorados, así que ningún escenario los ve. Vacía si el base no tiene\npendientes o si se guardó antes de que se persistieran (INV‑080). El informe propio de cada\nescenario no los declara (ruling C4‑3, a limitaciones)."
+        "description": "La comparación completa de UC-08. Nada de esto queda persistido (RF-30).\n\n`pendientes_base` lista los ítems pendientes del presupuesto base (sin partida en el\ncatálogo): ningún escenario los recalcula ni los suma a su total, y los hallazgos de cada\nescenario no los cuentan. Queda vacía si el base no tiene pendientes o si se guardó sin\nregistrarlos."
       },
       "FilaComparativoRespuesta": {
         "properties": {
@@ -1711,12 +1711,8 @@
         "title": "PartidaRespuesta",
         "description": "Cabecera de una partida del catalogo."
       },
-      "PendienteBaseRespuesta": {
+      "PendienteRespuesta": {
         "properties": {
-          "origen_id": {
-            "type": "string",
-            "title": "Origen Id"
-          },
           "codigo_partida": {
             "type": "string",
             "title": "Codigo Partida"
@@ -1724,16 +1720,30 @@
           "descripcion": {
             "type": "string",
             "title": "Descripcion"
+          },
+          "unidad": {
+            "type": "string",
+            "title": "Unidad"
+          },
+          "cantidad": {
+            "type": "string",
+            "title": "Cantidad"
+          },
+          "origen_id": {
+            "type": "string",
+            "title": "Origen Id"
           }
         },
         "type": "object",
         "required": [
-          "origen_id",
           "codigo_partida",
-          "descripcion"
+          "descripcion",
+          "unidad",
+          "cantidad",
+          "origen_id"
         ],
-        "title": "PendienteBaseRespuesta",
-        "description": "Un ítem pendiente del presupuesto base (UC‑01, flujo 3a): sin partida en el catálogo, no\nsuma al total del base ni al de ningún escenario (INV‑083)."
+        "title": "PendienteRespuesta",
+        "description": "Un ítem de cómputo sin partida en el catálogo (UC‑01, flujo 3a): no suma a ningún total.\nLa cantidad viaja exacta, como texto decimal, no redondeada."
       },
       "PresupuestoCreadoRespuesta": {
         "properties": {

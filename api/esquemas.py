@@ -140,16 +140,22 @@ class PropuestaPartidaRespuesta(BaseModel):
     puntaje: float
 
 
-class ItemPendienteRespuesta(BaseModel):
-    """Un ítem sin partida en el catálogo (UC‑01, flujo 3a): no suma al total y el informe lo
-    declara. Para aceptar una propuesta se vuelve a enviar el ítem con ese código. `propuestas`
-    queda vacía sin el extra `ml` o sin el modelo de similitud en la caché local."""
+class PendienteRespuesta(BaseModel):
+    """Un ítem de cómputo sin partida en el catálogo (UC‑01, flujo 3a): no suma a ningún total.
+    La cantidad viaja exacta, como texto decimal, no redondeada."""
 
     codigo_partida: str
     descripcion: str
     unidad: str
     cantidad: str
     origen_id: str
+
+
+class ItemPendienteRespuesta(PendienteRespuesta):
+    """Un ítem sin partida en el catálogo (UC‑01, flujo 3a): no suma al total y el informe lo
+    declara. Para aceptar una propuesta se vuelve a enviar el ítem con ese código. `propuestas`
+    queda vacía sin el extra `ml` o sin el modelo de similitud en la caché local."""
+
     propuestas: list[PropuestaPartidaRespuesta]
 
 
@@ -263,27 +269,21 @@ class EscenarioRespuesta(BaseModel):
     partidas: list[FilaComparativoRespuesta]
 
 
-class PendienteBaseRespuesta(BaseModel):
-    """Un ítem pendiente del presupuesto base (UC‑01, flujo 3a): sin partida en el catálogo, no
-    suma al total del base ni al de ningún escenario (INV‑083)."""
-
-    origen_id: str
-    codigo_partida: str
-    descripcion: str
-
-
 class EscenariosRespuesta(BaseModel):
     """La comparación completa de UC-08. Nada de esto queda persistido (RF-30).
 
-    `pendientes_base` declara los ítems pendientes del base (INV‑083): `generar_escenario` solo
-    recalcula los renglones valorados, así que ningún escenario los ve. Vacía si el base no tiene
-    pendientes o si se guardó antes de que se persistieran (INV‑080). El informe propio de cada
-    escenario no los declara (ruling C4‑3, a limitaciones).
+    `pendientes_base` lista los ítems pendientes del presupuesto base (sin partida en el
+    catálogo): ningún escenario los recalcula ni los suma a su total, y los hallazgos de cada
+    escenario no los cuentan. Queda vacía si el base no tiene pendientes o si se guardó sin
+    registrarlos.
     """
 
+    # INV-083 (fase C4): los pendientes del base, de `cargar_elaboracion`. «Guardado sin
+    # registrarlos» es un presupuesto anterior a INV-080. Que el informe de cada escenario no los
+    # declare es el ruling C4‑3 (limitaciones): exigiría cambiar `generar_escenario` en `core/`.
     codigo_base: str
     total_base: str
-    pendientes_base: list[PendienteBaseRespuesta] = Field(default_factory=list)
+    pendientes_base: list[PendienteRespuesta] = Field(default_factory=list)
     escenarios: list[EscenarioRespuesta]
 
 

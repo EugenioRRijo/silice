@@ -115,11 +115,14 @@ def test_los_escenarios_de_un_base_con_pendientes_los_declaran(cliente_con_pendi
 
     assert respuesta.status_code == 200
     cuerpo = respuesta.json()
+    # La misma forma que el pendiente de `POST /presupuestos`, sin propuestas; la cantidad exacta.
     assert cuerpo["pendientes_base"] == [
         {
-            "origen_id": PENDIENTE_T99.origen_id,
             "codigo_partida": PENDIENTE_T99.codigo_partida,
             "descripcion": PENDIENTE_T99.descripcion,
+            "unidad": PENDIENTE_T99.unidad,
+            "cantidad": str(PENDIENTE_T99.cantidad),
+            "origen_id": PENDIENTE_T99.origen_id,
         }
     ]
     assert cuerpo["total_base"] == formatear_decimal(
