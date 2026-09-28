@@ -12,7 +12,7 @@ criterios: los enlaza.
   enmendado al abrir C3 (spec §5 y §10)
 - C1: [docs/superpowers/plans/2026-09-23-cierre-c1-nucleo.md](docs/superpowers/plans/2026-09-23-cierre-c1-nucleo.md)
 - C2: [docs/superpowers/plans/2026-09-24-cierre-c2-adaptadores-ml-api.md](docs/superpowers/plans/2026-09-24-cierre-c2-adaptadores-ml-api.md)
-- C4, Med, U2/U3: se planifican al cruzar la compuerta anterior, con el inventario ya aprobado.
+- C4, C5, Med, U2/U3: se planifican al cruzar la compuerta anterior, con el inventario ya aprobado.
 
 **Bitácora:** `docs/bitacora/2026-09-23-cierre.md` (la crea la Tarea 1 de C0).
 
@@ -32,7 +32,8 @@ U2 o U3.
 | **C2** | Hallazgos de `adapters/`, `ml/` y `api/` | `inc/cierre-C2` | **GC2** |
 | **C3** | U1 (Tareas 7–12) más los hallazgos de `ui/` y `scripts/` | `inc/cierre-C3` | **GC3 = GU1a** |
 | **C4** | Documentación coherente, trazabilidad por paso de todos los UC, protocolos del indicador 3 y de RNF‑04 | `inc/cierre-C4` | **GC4** |
-| **Med** | CP‑07, indicador 3, juicio de expertos | `inc/cierre-Med` | **GM = GU1b** y más |
+| **C5** | Corrección de los hallazgos de la matriz F5 (INV‑087, INV‑088, INV‑092 con RF‑21, INV‑095 y los menores promovidos de GC4); `core/` solo en los commits de INV‑092 e INV‑095, con expediente (enmienda del 2026‑09‑28, pendiente de ratificación) | `inc/cierre-C5` | **GC5** |
+| **Med** | CP‑07, indicador 3, juicio de expertos; después de GC5, no en paralelo | `inc/cierre-Med` | **GM = GU1b** y más |
 | **U2 / U3** | B si CP‑07 FALLA; C si Eugenio lo decide | `inc/cierre-U2` / `-U3` | GU2 / GU1a |
 | **Congelamiento** | Etiqueta `v1.0-tesis` | `main` | **F3** |
 | **Red** | Capítulos IV → V → III → conclusiones → introducción → I (tras D3); una sesión de redacción por cada una de código desde C1 | `inc/tesis-<cap>` | **F4** |
