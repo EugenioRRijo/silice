@@ -31,7 +31,9 @@ Declarados antes del código en `data/sistemas/fuentes/README.md`; ninguno bloqu
   de la decisión sobre la fuente del FCAS del dossier G0.
 
 Consumidores: `tests/unit/test_tarifas_sistemas.py` (M3.1) y `scripts/seed_sistemas.py` (M3.2),
-que es, como los otros seeds, el único módulo fuera de `tests/` que lo importa.
+que es el único módulo fuera de `tests/` que lo importa. Sigue el patrón de los otros seeds, que
+importan a propósito la copia única de su dominio, aunque las copias civil y telecom tienen además
+otros importadores en `scripts/` (la lista completa está en `docs/arquitectura.md` §4).
 """
 
 from __future__ import annotations

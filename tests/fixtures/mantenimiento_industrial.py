@@ -36,8 +36,10 @@ del autor, a confirmar con la ronda de cotizaciones (`data/industrial/plantilla_
   presupuesto: discrepancia declarada para la decisión FCAS/bono del dossier G0, no resuelta aquí.
 
 Consumidores: `tests/unit/test_mantenimiento_industrial.py` (M2.1) y `scripts/seed_industrial.py`
-(M2.2), que es, como `scripts/seed.py` y `scripts/seed_telecom.py`, el único módulo fuera de
-`tests/` que lo importa.
+(M2.2), que es el único módulo fuera de `tests/` que lo importa. Sigue el patrón de
+`scripts/seed.py` y `scripts/seed_telecom.py`, que importan a propósito la copia única de su
+dominio, aunque esas copias tienen además otros importadores en `scripts/` (la lista completa está
+en `docs/arquitectura.md` §4).
 """
 
 from __future__ import annotations
