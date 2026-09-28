@@ -1,5 +1,12 @@
 # PLAN_ASISTENTE.md — Asistente de presupuestos con IA, auditado (UC‑09)
 
+> **Nota de vigencia (2026‑09‑28, fase C4 del cierre).** Este plan quedó **fuera del límite de la
+> tesis**: la [spec de cierre §2](docs/superpowers/specs/2026-09-23-plan-cierre-tesis-design.md)
+> declara el asistente de presupuestos con IA (UC‑09) trabajo futuro, un proyecto nuevo que va al
+> capítulo de conclusiones y recomendaciones. Ninguna de sus sesiones se ejecuta antes del final de
+> la tesis; el texto que sigue se conserva como el plan que fue (INV‑066). La numeración que
+> reserva para UC‑09 quedó enmendada en la ERS (reserva de RF‑32 solamente, Sesión U0.1).
+
 Continuación de [PLAN_DESARROLLO.md](PLAN_DESARROLLO.md) (20 de 20 sesiones) y de
 [PLAN_MULTIDOMINIO.md](PLAN_MULTIDOMINIO.md) (11 de 11). Aquellos planes dejaron un núcleo que
 costea, audita y contrasta presupuestos de cuatro dominios con precios publicados y fechados. Este plan

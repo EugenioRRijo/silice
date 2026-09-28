@@ -8,6 +8,16 @@
 pruebas y calidad, verificación factual). Los ocho hallazgos bloqueantes están aplicados; la
 sección 10 deja constancia de qué cambió y por qué.
 
+> **Enmienda de la spec de cierre (2026‑09‑23, anotada en la fase C4 del cierre, 2026‑09‑28).** La
+> [spec de cierre §5](2026-09-23-plan-cierre-tesis-design.md) enmendó este diseño en dos puntos, y
+> donde el texto de abajo diga otra cosa, manda la enmienda: (1) la compuerta **GU1** se partió en
+> **GU1a** (U1 completa sin CP‑07; cruzada el 2026‑09‑28 con la CI en verde, PR #14) y **GU1b**
+> (CP‑07 ejecutado y registrado, en la fase Med); (2) U1 se ejecutó dentro de la fase C3 del cierre,
+> que autorizó **dos** commits de `core/` (INV‑080 e INV‑015 7a), de modo que «`core/` sin cambios»
+> vale para todo U1 salvo esos dos. Detalle: [bitácora del cierre](../../bitacora/2026-09-23-cierre.md).
+> Por la misma spec, RNF‑04, que abajo queda «para la Fase 6», se mide en la fase Med con
+> [protocolo_rnf04.md](../../protocolo_rnf04.md).
+
 El prototipo sabe hacer su trabajo y no sabe explicarlo. Este diseño no agrega capacidades: agrega
 **orientación**. La frase que lo origina es de Eugenio, 2026‑09‑22: «no sé qué hacer y no hay un
 camino para llevar al usuario de la mano».
@@ -73,7 +83,8 @@ interfaz; el vocabulario de los títulos; la agrupación y el orden del menú; e
 indicador de caso abierto, pintados por el marco; los recorridos guiados como estructura de datos;
 la prueba con persona.
 
-**No entra.** Ninguna modificación a `core/`, `adapters/`, `ml/` ni `api/`. Ningún cambio al cálculo,
+**No entra.** Ninguna modificación a `core/`, `adapters/`, `ml/` ni `api/` (enmendado: la fase C3
+del cierre autorizó dos commits de `core/`, INV‑080 e INV‑015 7a; ver la nota del encabezado). Ningún cambio al cálculo,
 a la auditoría ni al Excel. Ninguna capacidad nueva: no se agrega nada que la aplicación no sepa
 hacer hoy. El asistente con IA (UC‑09) es otro plan (`PLAN_ASISTENTE.md`) y no se toca.
 
@@ -268,7 +279,8 @@ Cuatro piezas. Cada una responde a las tres preguntas: qué hace, cómo se usa, 
 Reglas que la arquitectura debe respetar:
 
 1. **`ui/` no *modifica* `core/`.** `git diff --stat core/` vacío durante todo U1 y guardia del
-   núcleo en código 0. *Importar* de `core` es legítimo y ya es el caso: `docs/arquitectura.md` §C4
+   núcleo en código 0 (enmendado: salvo los dos commits de `core/` que autorizó la fase C3 del
+   cierre, INV‑080 e INV‑015 7a; nota del encabezado). *Importar* de `core` es legítimo y ya es el caso: `docs/arquitectura.md` §C4
    declara `ui --> core` como arista válida, y `ui/paginas/catalogo.py:19` ya la usa.
 2. **La lógica verificable vive fuera de las páginas.** Es el patrón que el sprint anterior
    estableció con `ui/composicion.py`: las páginas pintan, los módulos hermanos deciden.
@@ -391,7 +403,7 @@ ejecución, dejando constancia en `docs/bitacora/`.
 | Fase | Contenido | Compuerta |
 |---|---|---|
 | **U0** — Documentar | RF‑36 a RF‑43 y UC‑12 en la ERS (con el actor nuevo «usuario nuevo / evaluador» y los seis lugares que un UC obliga a tocar); enmienda de la reserva de RF‑32; RNF‑10 en ERS, `calidad_iso25010.md` y `plan_pruebas.md` §3/§8/§9; bloque B en el anexo A; CP‑07 en el guion manual; el menor de `streamlit` (sección 8) | **GU0**: requisitos escritos, CP‑07 redactado antes de ejecutarse, documentos sin contradicción interna |
-| **U1** — Enfoque A | Inicio, caso abierto, marco, estado vacío sembrable, vocabulario, agrupación, paso siguiente | **GU1**: línea base en 1 586,61 y 7 de 7; suite verde en ambos sistemas; salvaguarda de aislamiento activa; **CP‑07** |
+| **U1** — Enfoque A | Inicio, caso abierto, marco, estado vacío sembrable, vocabulario, agrupación, paso siguiente | **GU1a** (enmienda de la spec de cierre §5): línea base en 1 586,61 y 7 de 7; suite verde en ambos sistemas; salvaguarda de aislamiento activa; **GU1b** (fase Med): **CP‑07** |
 | **U2** — Enfoque B | El asistente de cinco pasos. **Solo si CP‑07 resulta FALLA**; su alcance lo fijan los puntos de detención registrados | **GU2**: ídem GU1, más `componer.py` sin cambios salvo extracción de fragmentos |
 | **U3** — Enfoque C | Pulido de navegación y redacción. Requiere decisión expresa de Eugenio | — |
 
