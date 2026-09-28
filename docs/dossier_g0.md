@@ -40,10 +40,11 @@ Detalle y evidencia reproducible en [plan_pruebas.md](plan_pruebas.md) y
 - **Módulo predictivo**: técnica de reglas por compuerta G2 (< 50 registros por dominio), con
   MAPE 12,46 %, RMSE 5,10 USD, R² 0,9974 (indicador 5; [resultados_ml.md](resultados_ml.md)).
 - **Desempeño**: 100 partidas revaloradas en 1,17 s (meta < 5 s).
-- Los **ocho casos de uso** de G0 están implementados, con dos brechas declaradas: la importación
-  del presupuesto de un tercero (RF‑24 de UC‑05, INV‑076) y el diferencial de UC‑04 (RF‑20, no
-  implementado, INV‑011). No todos tienen pantalla: la capa que realiza cada uno la declara la
-  [ERS §3.1](ERS.md) (INV‑030); el estado de cada RF, [plan_pruebas.md §8](plan_pruebas.md).
+- Los **ocho casos de uso** de G0 están implementados, con brechas declaradas: los RF que no están
+  en verde, con la causa de cada uno, los enumera el resumen de [plan_pruebas.md §8](plan_pruebas.md),
+  su fuente única (entre ellos, la importación del presupuesto de un tercero de UC‑05, INV‑076, y el
+  diferencial de UC‑04, no implementado, INV‑011). No todos tienen pantalla: la capa que realiza
+  cada uno la declara la [ERS §3.1](ERS.md) (INV‑030).
 
 *Vigencia (2026‑09‑28, fase C4 del cierre):* esta sección decía «los ocho casos de uso operan de
 extremo a extremo (UI, API y núcleo)», y no era cierto para UC‑04, UC‑06 y UC‑07, que no tenían
