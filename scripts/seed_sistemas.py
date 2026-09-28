@@ -1,7 +1,8 @@
 """Carga el catálogo de sistemas (puntos de función) en SQLite y arma su presupuesto (Sesión M3.2).
 
-Hermano de `scripts/seed.py`, `scripts/seed_telecom.py` y `scripts/seed_industrial.py` y, como
-ellos, el único módulo fuera de `tests/` que importa su fixture:
+Hermano de `scripts/seed.py`, `scripts/seed_telecom.py` y `scripts/seed_industrial.py`, y el único
+módulo fuera de `tests/` que importa su fixture (el de civil y el de telecom tienen además otros
+importadores en `scripts/`):
 `tests/fixtures/tarifas_sistemas.py` es la única copia de las tarifas (leídas del tabulador CIV
 jul‑2026 estructurado en M0.2) y del APU de un punto de función. Aquí **no se escribe ningún
 precio**.
