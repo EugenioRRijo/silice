@@ -193,6 +193,14 @@ tesista (T6.2 y T13.5 en `0f77206`).
 Esta aprobación no sustituye la del tutor académico designado. Siguen abiertos, sin impedirla, los
 puntos que enumera el dictamen de la segunda revisión.
 
+**Nota posterior a la aprobación (2026‑09‑28, compuerta GC4).** `b0d3ef1` (`docs(tesis): capitulo iv
+declara la segunda excepcion de rnf-08 (INV-077)`) cambió el capítulo IV después de este «aprobado en
+revisión» (`1b6a73c`): agrega 4.1.3 a la lista de las Convenciones, declara la segunda excepción de
+RNF‑08 (three.js) en la fila de la Tabla 4.3 y en su nota y en §4.10.1, y agrega la fila de INV‑077
+a la Tabla 4.11 y a su nota. Es la discrepancia D‑7 de la lista de cotejo de GC4. Sigue el mismo
+patrón de fechado que esta revisión aceptó para §4.4.1 e INV‑074, y lo comprobó el encargo de
+requisitos de GC4. No reabre la aprobación.
+
 ## Anexo A — Muestra de afirmaciones contrastadas
 
 Primera pasada (1 a 20) y segunda revisión (21 a 34).
