@@ -93,7 +93,8 @@ la meta de < 5 s: margen de 4×. La medición depende del equipo y se repite al 
 expertos ≥ 4/5 en Likert) **no es automatizable y está pendiente**. Se mide en la fase **Med**
 ([PLAN_CIERRE.md](../PLAN_CIERRE.md)) con el protocolo [protocolo_rnf04.md](protocolo_rnf04.md):
 al menos tres expertos sin relación personal con el autor, el bloque A del
-[anexo A del dossier](dossier_g0.md) y un informe identificado por su commit y su huella SHA‑256.
+[anexo A del dossier](dossier_g0.md) y un informe identificado por su commit y por las huellas
+SHA‑256 de sus dos formas, la pantalla y la hoja *Auditoria* ([protocolo](protocolo_rnf04.md) §1).
 Lo que el producto ya aporta a esa evaluación: hallazgos en español con severidad, impacto
 cuantificado y los `origen_id` involucrados (columna *Orígenes* de la hoja *Auditoria* del
 Excel); UI multipágina y API autodocumentada (OpenAPI en `docs/api.json`).
@@ -164,8 +165,10 @@ enteramente local (SQLite en el equipo del usuario, API y UI en localhost). En o
 llamadas de red, ambas declaradas**: la descarga inicial del modelo de `sentence-transformers`
 (I2), que queda en caché, y three.js, que el Visor 3D carga desde `cdnjs.cloudflare.com` con
 versión fija cada vez que se pinta (`ui/paginas/visor.py`, `URL_THREE_JS`; INV‑077, declarada en
-C4). Sin red, el navegador no obtiene three.js y el visor no puede dibujar el modelo. La corrida
-de la suite pasa sin red disponible una vez poblada la caché.
+C4). Sin red, el navegador no obtiene three.js y el visor no puede dibujar el modelo. Que la suite
+pase sin red una vez poblada la caché **no se ha verificado con la red cortada**. Hay solo un
+indicio: con `HF_HUB_OFFLINE=1` y `TRANSFORMERS_OFFLINE=1`, `tests/unit/test_normalizacion.py` pasa
+(revisión de pruebas de GC4). La corrida sin red se mide en Med.
 
 **Veredicto: cumple** para el perfil declarado (herramienta local de tesis, sin autenticación),
 con las dos excepciones de red declaradas.
