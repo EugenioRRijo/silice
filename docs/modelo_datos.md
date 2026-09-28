@@ -19,7 +19,7 @@
 
 ## 2. Entidades
 
-Quince entidades. Los atributos de cada una se detallan en §2.1 – §2.3, con su tipo lógico y el papel
+Dieciséis entidades. Los atributos de cada una se detallan en §2.1 – §2.3, con su tipo lógico y el papel
 de la clave (**PK** primaria, **FK** foránea, **UK** única); `DecimalExacto` (§7.1) se abrevia
 `Decimal` en esas tablas.
 
@@ -39,6 +39,7 @@ de la clave (**PK** primaria, **FK** foránea, **UK** única); `DecimalExacto` (
 | `PrecioInsumo` | precio de un insumo en una lista | precio de `LineaMaterial` / `LineaEquipo` / sueldo de `LineaManoObra` |
 | `CambioPrecio` | historial: qué insumo cambió, cuánto y entre qué listas | — |
 | `IncidenciaCambio` | efecto de un cambio de precio sobre el precio unitario de una partida | — |
+| `DescarteVersion` | marca de la versión revalorada que el usuario descartó (UC‑02, flujo 7a) | — |
 | `Hallazgo` | resultado persistido de una regla sobre un presupuesto | `Hallazgo` |
 
 ### 2.1 Catálogo
@@ -158,6 +159,26 @@ Es lo que UC‑02 muestra al usuario: «el cemento subió 20 % y el vaciado de c
 | `precio_unitario_anterior` | Decimal | — | no | PU con la lista anterior |
 | `precio_unitario_nuevo` | Decimal | — | no | PU con la lista nueva |
 | `variacion` | Decimal | — | no | fracción de variación del PU |
+
+**`DescarteVersion`** — la versión revalorada que el usuario descartó (UC‑02, flujo 7a;
+`docs/ERS.md:170`). Es una **marca, no un borrado**: la versión sigue guardada y cargándose como
+documento, y el historial que la produjo (`CambioPrecio`, `IncidenciaCambio`) se conserva porque
+alimenta el histórico del módulo predictivo.
+
+| Atributo | Tipo | Clave | Nulo | Notas |
+|---|---|---|---|---|
+| `presupuesto_id` | int | PK, FK → `Presupuesto.id` | no | `ondelete="CASCADE"`: borrar el presupuesto borra su marca |
+| `fecha` | date | — | no | fecha del descarte |
+
+Regla de 7a (`core.budget.descartar_version`): solo se descarta el último presupuesto guardado del
+proyecto (el de mayor `id`), si el proyecto tiene al menos otro anterior, y una sola vez; el primero
+del proyecto nunca. Como la clave primaria es la foránea, una versión tiene a lo sumo una marca.
+Límite (expediente C3.2): el esquema no guarda de qué presupuesto salió una versión, así que la
+función no distingue una versión revalorada de un segundo presupuesto elaborado aparte en el mismo
+proyecto; por eso la interfaz solo ofrece el botón «Descartar version» para la versión que acaba de
+guardar `actualizar_precios` en esa ejecución. La tabla es **aditiva**: `crear_esquema`
+(`create_all`) la agrega a una base existente sin tocar las demás tablas, así que no es una
+migración de esquema.
 
 ### 2.3 Proyecto, presupuesto y auditoría
 
@@ -380,6 +401,10 @@ erDiagram
         decimal precio_unitario_nuevo
         decimal variacion
     }
+    DESCARTE_VERSION {
+        int presupuesto_id PK, FK
+        date fecha
+    }
     HALLAZGO {
         int id PK
         int presupuesto_id FK
@@ -399,6 +424,7 @@ erDiagram
     PRESUPUESTO ||--o{ PUNTO_CURVA : planifica
     PRESUPUESTO ||--o{ HALLAZGO : audita
     PRESUPUESTO ||--o{ ITEM_COMPUTO : computa
+    PRESUPUESTO ||--o| DESCARTE_VERSION : "se descarta en"
     PARTIDA_PRESUPUESTADA ||--|| ITEM_COMPUTO : "se origina en"
     PARTIDA ||--o{ PARTIDA_PRESUPUESTADA : "se presupuesta en"
     PARTIDA ||--o{ COMPOSICION_APU : "se desglosa en"
@@ -423,13 +449,14 @@ Cardinalidades en palabras:
 - Un insumo cotiza a lo sumo una vez por lista (`UNIQUE (lista_id, insumo_id)`).
 - Una partida tiene cero o más rendimientos; un rendimiento medido pertenece a una ejecución.
 - Un cambio de precio repercute en cero o más partidas (`IncidenciaCambio`).
+- Un presupuesto tiene a lo sumo una marca de descarte (`DescarteVersion`, UC‑02 7a).
 
 Cobertura de los ocho casos de uso:
 
 | UC | Entidades que lo sostienen |
 |---|---|
 | UC‑01 Elaborar presupuesto | `ItemComputo`, `Partida`, `ComposicionAPU`, `Rendimiento`, `ListaPrecios`, `PrecioInsumo`, `Presupuesto`, `PartidaPresupuestada`, `PuntoCurva` |
-| UC‑02 Actualizar precios | `ListaPrecios`, `PrecioInsumo`, `CambioPrecio`, `IncidenciaCambio` |
+| UC‑02 Actualizar precios | `ListaPrecios`, `PrecioInsumo`, `CambioPrecio`, `IncidenciaCambio`, `DescarteVersion` (flujo 7a) |
 | UC‑03 Reutilizar partidas | `Partida.descripcion` (índice), `ComposicionAPU`, `Insumo` |
 | UC‑04 Recalcular alcance | `ItemComputo.regla`, `ItemComputo.parametros` |
 | UC‑05 Auditar | `Hallazgo`, `ItemComputo.origen_id`, `PartidaPresupuestada`, `PuntoCurva` |

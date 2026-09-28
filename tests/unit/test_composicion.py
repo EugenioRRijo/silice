@@ -10,12 +10,14 @@ import pytest
 
 from core.contracts import Dominio, ModalidadManoObra, OrigenTipo, ParametrosCosto
 from core.costing import calcular_apu
+from tests.fixtures.apu_linea_base import APU_TUBERIA, PRECIO_UNITARIO_ESPERADO
 from ui.composicion import (
     ComposicionInvalida,
     FilaReferencia,
     buscar_referencia,
     composicion_desde_tablas,
     decimal_desde_texto,
+    desglose,
     fila_equipos_desde_referencia,
     fila_mano_obra_desde_referencia,
     fila_materiales_desde_referencia,
@@ -466,3 +468,13 @@ def test_filas_desde_composicion_escribe_los_decimales_sin_exponente():
     _, (equipo,), _ = filas_desde_composicion(composicion)
 
     assert equipo["cantidad"] == "100"
+
+
+def test_desglose_de_la_tuberia_da_el_precio_de_la_linea_base():
+    """INV-043 (11c): el desglose en vivo sale de la pagina. Oraculo: CLAUDE.md §4 y la fixture
+    (costo directo 8,058; PU 10,19 a dos decimales)."""
+    resultado = desglose(APU_TUBERIA)
+    assert resultado.costo_directo == Decimal("8.058")
+    assert resultado.precio_unitario.quantize(Decimal("0.01")) == PRECIO_UNITARIO_ESPERADO[
+        "LB-02-TUB"
+    ]

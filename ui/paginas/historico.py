@@ -10,7 +10,6 @@ from __future__ import annotations
 
 from datetime import date
 from decimal import Decimal
-from pathlib import Path
 
 import streamlit as st
 from pandas import DataFrame
@@ -20,21 +19,19 @@ from core import models
 from core.catalog import abrir_sesion, cambios_precio, crear_esquema, crear_motor
 from core.verification.informe import DECIMALES_PRESENTACION
 from core.verification.texto import formatear_decimal
+from ui.caso import ruta_caso
 
-TITULO = "Historico de cambios de precio"
-RUTA_BASE_POR_DEFECTO = "data/apu.db"
 CIEN = Decimal(100)
 
 
 def render() -> None:
     """Filtros en la barra lateral; la tabla de cambios en el cuerpo."""
-    st.title(TITULO)
     st.caption(
         "Cada fila es un insumo que cambio de precio entre la lista anterior y la lista nueva de "
         "una actualizacion (UC-02)."
     )
 
-    ruta = Path(st.sidebar.text_input("Archivo SQLite", value=RUTA_BASE_POR_DEFECTO))
+    ruta = ruta_caso()
     insumo, desde, hasta = _filtros()
 
     motor = crear_motor(f"sqlite:///{ruta.as_posix()}")

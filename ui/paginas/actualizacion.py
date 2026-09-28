@@ -31,7 +31,7 @@ from pandas import DataFrame
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from core.budget import Comparativo, actualizar_precios, exportar_excel
+from core.budget import Comparativo, actualizar_precios, descartar_version, exportar_excel
 from core.catalog import (
     Catalogo,
     abrir_sesion,
@@ -42,14 +42,14 @@ from core.catalog import (
 from core.verification.informe import DECIMALES_PRESENTACION
 from core.verification.texto import formatear_decimal
 from scripts.seed import NOMBRE_PROYECTO, sembrar
+from ui.caso import ruta_caso
 
-TITULO = "Actualizacion masiva de precios (UC-02)"
-RUTA_BASE_POR_DEFECTO = "data/apu.db"
 CODIGO_BASE_POR_DEFECTO = "001"
 CODIGO_NUEVO_POR_DEFECTO = "002"
 MONEDA_POR_DEFECTO = "USD"
 TIPOS_ACEPTADOS = ["csv", "xlsx"]
 CLAVE_RESULTADO = "resultado_uc02"
+CLAVE_DESCARTADA = "actualizacion_version_descartada"
 CERO = Decimal(0)
 
 #: Columnas del comparativo que se presentan redondeadas; el resto va como texto tal cual.
@@ -75,11 +75,16 @@ class Presentacion:
     desconocidos: tuple[str, ...]
     libro: bytes
     nombre_libro: str
+    proyecto: str
+    #: El codigo de la version que esta ejecucion confirmo; `None` si no se guardo (UC-02 3a). Solo
+    #: esa version se ofrece para descartar (UC-02 7a; limite de `descartar_version`).
+    version_guardada: str | None
+    #: El caso donde se guardo: el descarte marca esa base aunque despues se abra otro caso.
+    ruta: Path
 
 
 def render() -> None:
     """Pantalla unica: parametros en la barra lateral, archivo y resultados en el cuerpo."""
-    st.title(TITULO)
     st.caption(
         "Carga una lista de precios nueva (CSV o XLSX con las columnas tipo, insumo, unidad y "
         "precio) y el sistema revalora el presupuesto guardado, registra que cambio y audita la "
@@ -105,9 +110,9 @@ def _barra_lateral() -> dict[str, object]:
     """Los datos que necesita `actualizar_precios`, con la linea base como valor por defecto."""
     with st.sidebar:
         st.header("Base de datos")
-        ruta = st.text_input("Archivo SQLite", value=RUTA_BASE_POR_DEFECTO)
+        ruta = ruta_caso()
         if st.button("Sembrar la linea base"):
-            _sembrar(Path(ruta))
+            _sembrar(ruta)
 
         st.header("Presupuesto")
         proyecto = st.text_input("Proyecto", value=NOMBRE_PROYECTO)
@@ -120,7 +125,7 @@ def _barra_lateral() -> dict[str, object]:
         nombre = st.text_input("Nombre de la lista", value=f"Lista {vigencia:%d/%m/%Y}")
 
     return {
-        "ruta": Path(ruta),
+        "ruta": ruta,
         "proyecto": proyecto,
         "codigo": codigo,
         "codigo_nuevo": codigo_nuevo,
@@ -150,6 +155,9 @@ def _sembrar(ruta: Path) -> None:
 
 def _ejecutar(parametros: dict[str, object], archivo) -> None:
     """Corre UC-02 completo y deja en la sesion de Streamlit lo que hay que mostrar."""
+    # Una revaloracion nueva olvida el descarte de la anterior: el mismo caso, proyecto y codigo
+    # pueden volver (un caso resembrado en la misma ruta), y la version nueva no esta descartada.
+    st.session_state.pop(CLAVE_DESCARTADA, None)
     motor = crear_motor(f"sqlite:///{parametros['ruta'].as_posix()}")
     try:
         crear_esquema(motor)
@@ -193,22 +201,13 @@ def _actualizar(
     libro = exportar_excel(
         nuevo.presupuesto, nuevo.informe, carpeta / f"presupuesto_{nuevo.presupuesto.codigo}.xlsx"
     )
-    presentacion = Presentacion(
-        tabla=_para_presentar(comparativo.tabla),
-        resumen=_resumen(comparativo, nuevo.presupuesto.moneda),
-        informe=nuevo.informe.a_markdown(),
-        desconocidos=tuple(
-            f"{precio.descripcion} ({precio.tipo.value})" for precio in resumen.desconocidos
-        ),
-        libro=libro.read_bytes(),
-        nombre_libro=libro.name,
-    )
 
     if comparativo.insumos_afectados == 0:
         # Ningun insumo cambio de precio entre la lista anterior y la nueva: no hay nada que
         # guardar (UC-02, flujo 3a). Descartar la transaccion tambien descarta la lista nueva, que
         # aqui es identica a la anterior en sus precios.
         st.warning("Ningun precio cambio: no se guardo una version nueva (UC-02, flujo 3a).")
+        version_guardada = None
     else:
         # Algun insumo cambio de precio (se persiste siempre, ya lo hizo actualizar_precios), pero
         # eso no implica que el presupuesto varie: si el insumo no participa de ninguna de sus
@@ -221,7 +220,23 @@ def _actualizar(
                 "version nueva y su historial de cambios, pero el total no vario."
             )
         sesion.commit()
-    return presentacion
+        # Solo la version que esta ejecucion acaba de confirmar se ofrece para descartar (UC-02
+        # 7a): es el llamador que exige el docstring de `descartar_version`.
+        version_guardada = str(parametros["codigo_nuevo"])
+
+    return Presentacion(
+        tabla=_para_presentar(comparativo.tabla),
+        resumen=_resumen(comparativo, nuevo.presupuesto.moneda),
+        informe=nuevo.informe.a_markdown(),
+        desconocidos=tuple(
+            f"{precio.descripcion} ({precio.tipo.value})" for precio in resumen.desconocidos
+        ),
+        libro=libro.read_bytes(),
+        nombre_libro=libro.name,
+        proyecto=str(parametros["proyecto"]),
+        version_guardada=version_guardada,
+        ruta=Path(parametros["ruta"]),
+    )
 
 
 # ---------------------------------------------------------------------------------------------
@@ -247,6 +262,32 @@ def _resumen(comparativo: Comparativo, moneda: str) -> str:
     return f"{anterior} -> {nuevo} {moneda}  ({variacion} {moneda}, {porcentaje} %)"
 
 
+def _marca(presentacion: Presentacion) -> tuple[str, str, str | None]:
+    """La identidad de la version guardada: su caso, su proyecto y su codigo."""
+    return (presentacion.ruta.as_posix(), presentacion.proyecto, presentacion.version_guardada)
+
+
+def _descartar(presentacion: Presentacion) -> None:
+    """UC-02 7a: marca la version nueva como descartada; su historial de cambios se conserva.
+
+    Marca la base donde se guardo (`presentacion.ruta`), no la del caso abierto ahora.
+    """
+    motor = crear_motor(f"sqlite:///{presentacion.ruta.as_posix()}")
+    try:
+        with abrir_sesion(motor) as sesion:
+            descartar_version(
+                sesion, presentacion.proyecto, presentacion.version_guardada, date.today()
+            )
+            sesion.commit()
+    except (LookupError, ValueError, SQLAlchemyError) as error:
+        st.error(str(error))
+        return
+    finally:
+        motor.dispose()
+    st.session_state[CLAVE_DESCARTADA] = _marca(presentacion)
+    st.rerun()  # el estado final: el aviso de descartada, sin el boton
+
+
 def _mostrar(presentacion: Presentacion | None) -> None:
     if presentacion is None:
         return
@@ -270,3 +311,12 @@ def _mostrar(presentacion: Presentacion | None) -> None:
 
     st.subheader("Informe de auditoria de la version nueva")
     st.markdown(presentacion.informe)
+
+    if presentacion.version_guardada is not None:
+        if st.session_state.get(CLAVE_DESCARTADA) == _marca(presentacion):
+            st.info(
+                f"Version {presentacion.version_guardada} descartada: sigue guardada como "
+                "documento y su historial de cambios se conserva (UC-02, flujo 7a)."
+            )
+        elif st.button("Descartar version"):
+            _descartar(presentacion)

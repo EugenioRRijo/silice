@@ -19,17 +19,20 @@ desechables contra `f884044`, no supuesto):
    `at.run()` (la página solo inicializa esa clave si no existe; sembrar después de que la tabla ya
    se pintó no surte efecto).
 2. La base se desvía sin tocar código de producción, parchando el **objeto módulo** que devuelve
-   `importlib.import_module("ui.paginas.componer")` (el que vive en `sys.modules`, que es el que
-   ejecuta `AppTest`), no una ruta de texto: `monkeypatch.setattr(pagina,
-   "RUTA_BASE_POR_DEFECTO", str(base))` antes del primer `run()`. La forma de texto
+   `importlib.import_module("ui.caso")`, donde vive la única `RUTA_BASE_POR_DEFECTO` desde el
+   sprint de UI (el que vive en `sys.modules`, que es el que ejecuta `AppTest`), no una ruta de
+   texto: `monkeypatch.setattr(caso, "RUTA_BASE_POR_DEFECTO", str(base))` antes del primer
+   `run()`. La forma de texto
    (`monkeypatch.setattr("ui.paginas.componer.RUTA_BASE_POR_DEFECTO", ...)`) se abandonó adrede:
-   `tests/unit/test_composicion_ia.py::_SinExtraML` deja el atributo `componer` del paquete
-   `ui.paginas` apuntando a una copia fría que `sys.modules` ya no usa (diagnosticado en la Tarea
-   1; el arreglo de raíz vive en ese archivo). `monkeypatch.setattr` con una ruta de texto resuelve
-   por ese atributo de paquete (`getattr`) y aterriza en la copia huérfana sin ningún efecto;
-   parchar el objeto de `sys.modules` directamente no depende de ese atributo.
+   el antiguo `_SinExtraML` de `tests/unit/test_composicion_ia.py` dejaba el atributo `componer`
+   del paquete `ui.paginas` apuntando a una copia fría que `sys.modules` ya no usa (diagnosticado
+   en la Tarea 1). Su sucesor, `tests.fixtures.sin_extra.SinExtra` (INV-021), sincroniza los
+   atributos de paquete al salir, pero la regla se conserva. `monkeypatch.setattr` con una ruta
+   de texto resuelve por ese atributo de paquete (`getattr`) y aterriza en la copia huérfana sin
+   ningún efecto; parchar el objeto de `sys.modules` directamente no depende de ese atributo.
 3. La ayuda 1 (`sugerir_partidas_similares`) carga `sentence-transformers` en cuanto el catálogo no
-   está vacío y hay una descripción tecleada: se sustituye por un doble que no sugiere nada.
+   está vacío y hay una descripción tecleada: se sustituye por un doble que no sugiere nada
+   (una `Propuesta` vacía, desde INV-081).
 4. Los widgets se localizan por su rótulo (`_por_rotulo`), salvo las condiciones del rendimiento,
    que son el único `st.text_area` de la página y se localizan por posición (`at.text_area[0]`).
 
@@ -55,17 +58,18 @@ from core.catalog import Catalogo, abrir_sesion, crear_motor
 from core.costing import calcular_apu
 from core.verification.informe import DECIMALES_PRESENTACION
 from core.verification.texto import formatear_decimal
+from ml.normalization import Propuesta
 from scripts.seed_demo import main as seed_demo_main
 from tests.fixtures.apu_linea_base import (
     APU_TUBERIA,
     PARAMETROS_LINEA_BASE,
     PRECIO_UNITARIO_ESPERADO,
 )
-from tests.integration.test_composicion_extremo_a_extremo import (
-    _filas_equipos,
-    _filas_mano_obra,
-    _filas_materiales,
-    _texto,
+from tests.fixtures.filas_composicion import (
+    filas_equipos,
+    filas_mano_obra,
+    filas_materiales,
+    texto_tecleado,
 )
 from ui.paginas import componer
 
@@ -94,20 +98,21 @@ def _pantalla(monkeypatch, base: Path, filas: dict[str, list[dict[str, str]]]) -
     Parcha el **objeto módulo** de `sys.modules["ui.paginas.componer"]` (el que `importlib.
     import_module` devuelve, el mismo que ejecuta `AppTest` al resolver `from ui.paginas.componer
     import render`), no una ruta de texto: ver el hecho verificado 2, arriba, y el informe de la
-    Tarea 1 para el porqué (`tests/unit/test_composicion_ia.py::_SinExtraML` deja el atributo del
-    paquete desincronizado de `sys.modules`, y una ruta de texto resuelve por ese atributo).
+    Tarea 1 para el porqué (un gestor de extras que saca módulos de `sys.modules` puede dejar el
+    atributo del paquete desincronizado, y una ruta de texto resuelve por ese atributo; hoy es
+    `tests.fixtures.sin_extra.SinExtra`, que los sincroniza al salir).
     """
+    caso = importlib.import_module("ui.caso")
+    monkeypatch.setattr(caso, "RUTA_BASE_POR_DEFECTO", str(base))
     pagina = importlib.import_module("ui.paginas.componer")
-    monkeypatch.setattr(pagina, "RUTA_BASE_POR_DEFECTO", str(base))
-    monkeypatch.setattr(pagina, "sugerir_partidas_similares", lambda *_: [])
+    monkeypatch.setattr(pagina, "sugerir_partidas_similares", lambda *_: Propuesta(()))
     at = AppTest.from_string(SCRIPT, default_timeout=60)
     for clave, valor in filas.items():
         at.session_state[clave] = valor
     at.run()
     assert base.exists(), (
-        f"la redireccion de RUTA_BASE_POR_DEFECTO no surtio efecto: {base} no existe tras el "
-        "primer run (la pantalla habria creado el esquema ahi); revisar si algo dejo "
-        "sys.modules['ui.paginas.componer'] desincronizado del atributo del paquete ui.paginas"
+        f"la redireccion de ui.caso.RUTA_BASE_POR_DEFECTO no surtio efecto: {base} no existe "
+        "tras el primer run (la pantalla habria creado el esquema ahi)"
     )
     assert not at.exception, f"la pantalla no debia fallar al abrir: {at.exception}"
     return at
@@ -116,9 +121,9 @@ def _pantalla(monkeypatch, base: Path, filas: dict[str, list[dict[str, str]]]) -
 def _filas_de_apu(apu) -> dict[str, list[dict[str, str]]]:
     """Las tres tablas de insumos de `apu`, listas para sembrar `st.session_state`."""
     return {
-        "componer_materiales__filas": _filas_materiales(apu),
-        "componer_equipos__filas": _filas_equipos(apu),
-        "componer_mano_obra__filas": _filas_mano_obra(apu),
+        "componer_materiales__filas": filas_materiales(apu),
+        "componer_equipos__filas": filas_equipos(apu),
+        "componer_mano_obra__filas": filas_mano_obra(apu),
     }
 
 
@@ -136,14 +141,16 @@ def _por_rotulo(elementos: ElementList, rotulo: str):
 def _teclear_cabecera(at: AppTest, apu, *, con_rendimiento: bool = True) -> None:
     """Teclea código, descripción y unidad de `apu`, localizando cada campo por su rótulo.
 
-    El rendimiento (`_texto(apu.rendimiento)`) se teclea salvo que `con_rendimiento` sea falso: la
-    prueba 3 necesita dejarlo en blanco a propósito (mitad de RF-33 que la prueba 2 no cubre).
+    El rendimiento (`texto_tecleado(apu.rendimiento)`) se teclea salvo que `con_rendimiento` sea
+    falso: la prueba 3 necesita dejarlo en blanco a propósito (mitad de RF-33 que la prueba 2 no
+    cubre).
     """
     _por_rotulo(at.text_input, "Codigo").set_value(apu.codigo_partida)
     _por_rotulo(at.text_input, "Descripcion").set_value(apu.descripcion)
     _por_rotulo(at.text_input, "Unidad").set_value(apu.unidad)
     if con_rendimiento:
-        _por_rotulo(at.text_input, componer.RENDIMIENTO_ETIQUETA).set_value(_texto(apu.rendimiento))
+        rendimiento = texto_tecleado(apu.rendimiento)
+        _por_rotulo(at.text_input, componer.RENDIMIENTO_ETIQUETA).set_value(rendimiento)
 
 
 @contextmanager
@@ -185,8 +192,22 @@ def test_el_desglose_en_vivo_muestra_el_precio_unitario(monkeypatch, tmp_path):
     resultado = calcular_apu(APU_UI, PARAMETROS_LINEA_BASE)
     metrica = _por_rotulo(at.metric, "Precio unitario")
 
-    assert metrica.value == str(resultado.precio_unitario)
+    # INV-045: la pantalla presenta con la fuente unica (dos decimales), no `str(Decimal)`.
+    assert metrica.value == formatear_decimal(resultado.precio_unitario, DECIMALES_PRESENTACION)
     assert abs(resultado.precio_unitario - PRECIO_UNITARIO_ESPERADO["LB-02-TUB"]) <= TOLERANCIA_PU
+
+
+def test_el_desglose_en_vivo_presenta_dos_decimales(monkeypatch, tmp_path):
+    """INV-045. Oraculo: CLAUDE.md §4 (tuberia: costo directo 8,058; PU 10,19) y la fixture."""
+    at = _pantalla(monkeypatch, tmp_path / "vacia.db", _filas_de_apu(APU_UI))
+    _teclear_cabecera(at, APU_UI)
+    at.run()
+    assert not at.exception
+
+    assert _por_rotulo(at.metric, "Costo directo").value == "8.06"
+    assert _por_rotulo(at.metric, "Precio unitario").value == str(
+        PRECIO_UNITARIO_ESPERADO["LB-02-TUB"]
+    )
 
 
 # -------------------------------------------------------------------------------------------
@@ -273,7 +294,8 @@ def test_guardar_dos_veces_edita_la_partida(monkeypatch, tmp_path):
 
     rendimiento_nuevo = Decimal("120")
     assert rendimiento_nuevo != APU_UI.rendimiento
-    _por_rotulo(at.text_input, componer.RENDIMIENTO_ETIQUETA).set_value(_texto(rendimiento_nuevo))
+    campo_rendimiento = _por_rotulo(at.text_input, componer.RENDIMIENTO_ETIQUETA)
+    campo_rendimiento.set_value(texto_tecleado(rendimiento_nuevo))
     at.run()
     assert not at.exception
 

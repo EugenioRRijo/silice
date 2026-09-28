@@ -11,6 +11,10 @@ capa de dominio.
 Las filas son diccionarios de texto (las claves que produce cada tabla de la pantalla), nunca
 `Decimal` ni objetos del contrato: el usuario escribe texto y esta capa es la única que decide qué
 significa "vacío" y qué mensaje de error señala la fila y el campo culpables.
+
+Depende de `core.costing` solo para `desglose` (`calcular_apu` es una función pura) y **no escribe
+en la base**: la persistencia de una composición vive en `ui/elaboracion.guardar_composicion`
+(INV-043, fase C3). Lo vigila `tests/unit/test_arquitectura.py`.
 """
 
 from __future__ import annotations
@@ -29,16 +33,28 @@ from core.contracts.apu import (
     LineaManoObra,
     LineaMaterial,
     ModalidadManoObra,
+    ParametrosCosto,
+    ResultadoAPU,
 )
 from core.contracts.dominio import Dominio
 from core.contracts.item_computo import ItemComputo, OrigenTipo
 from core.contracts.unidades import unidades_equivalentes
 from core.contracts.verificacion import Hallazgo
+from core.costing import calcular_apu
 from core.verification.texto import normalizar_texto
 
 if TYPE_CHECKING:
     from ml.anomaly import VeredictoRendimiento
-    from ml.normalization import PartidaSimilar
+    from ml.normalization import Propuesta
+
+
+def desglose(composicion: ComposicionAPU) -> ResultadoAPU:
+    """El desglose de costos de `composicion` con los parametros por defecto (CLAUDE.md §4).
+
+    Es lo que la pagina de componer muestra en vivo, contrasta y confirma al guardar: una funcion
+    pura (`calcular_apu`), sin base de datos.
+    """
+    return calcular_apu(composicion, ParametrosCosto())
 
 
 class ComposicionInvalida(ValueError):  # noqa: N818
@@ -65,14 +81,17 @@ def decimal_desde_texto(texto: str, campo: str) -> Decimal:
     return valor
 
 
-def _texto(fila: Mapping[str, str], clave: str) -> str:
+def texto_de_celda(fila: Mapping[str, object], clave: str) -> str:
     """Extrae y normaliza una celda, incluida la frontera con el productor real de las filas.
 
-    El tipo declarado de `fila` es `Mapping[str, str]`, pero `st.data_editor` con
-    `num_rows="dynamic"` (docstring líneas 6-8) entrega `None` o NaN en las celdas de una fila
-    recién añadida en blanco: `str(None)` es `"None"` y `str(float("nan"))` es `"nan"`, y ninguno
-    de los dos es vacío para `str.strip()`. Esta es la frontera donde ambos se normalizan a
-    cadena vacía, antes de que lleguen a `_fila_vacia` o a cualquier conversión.
+    Es la unica lectura de celdas de tabla de `ui/` (INV-046): la usan estas funciones y
+    `ui.elaboracion.items_desde_filas`.
+
+    El tipo declarado de `fila` es `Mapping[str, object]`: las celdas suelen ser texto, pero
+    `st.data_editor` con `num_rows="dynamic"` (docstring líneas 6-8) entrega `None` o NaN en las
+    celdas de una fila recién añadida en blanco: `str(None)` es `"None"` y `str(float("nan"))`
+    es `"nan"`, y ninguno de los dos es vacío para `str.strip()`. Esta es la frontera donde ambos
+    se normalizan a cadena vacía, antes de que lleguen a `_fila_vacia` o a cualquier conversión.
     """
     valor = fila.get(clave)
     if valor is None:
@@ -118,10 +137,10 @@ def _modalidad_desde_texto(texto: str, descripcion: str) -> ModalidadManoObra:
 
 
 def _material_desde_fila(fila: Mapping[str, str], indice: int) -> LineaMaterial | None:
-    descripcion = _texto(fila, "descripcion")
-    unidad = _texto(fila, "unidad")
-    cantidad_texto = _texto(fila, "cantidad")
-    precio_texto = _texto(fila, "precio")
+    descripcion = texto_de_celda(fila, "descripcion")
+    unidad = texto_de_celda(fila, "unidad")
+    cantidad_texto = texto_de_celda(fila, "cantidad")
+    precio_texto = texto_de_celda(fila, "precio")
     if _fila_vacia((descripcion, unidad, cantidad_texto, precio_texto)):
         return None
     _exigir_descripcion("materiales", indice, descripcion)
@@ -139,10 +158,10 @@ def _material_desde_fila(fila: Mapping[str, str], indice: int) -> LineaMaterial 
 
 
 def _equipo_desde_fila(fila: Mapping[str, str], indice: int) -> LineaEquipo | None:
-    descripcion = _texto(fila, "descripcion")
-    cantidad_texto = _texto(fila, "cantidad")
-    precio_texto = _texto(fila, "precio")
-    depreciacion_texto = _texto(fila, "depreciacion")
+    descripcion = texto_de_celda(fila, "descripcion")
+    cantidad_texto = texto_de_celda(fila, "cantidad")
+    precio_texto = texto_de_celda(fila, "precio")
+    depreciacion_texto = texto_de_celda(fila, "depreciacion")
     if _fila_vacia((descripcion, cantidad_texto, precio_texto, depreciacion_texto)):
         return None
     _exigir_descripcion("equipos", indice, descripcion)
@@ -161,10 +180,10 @@ def _equipo_desde_fila(fila: Mapping[str, str], indice: int) -> LineaEquipo | No
 
 
 def _mano_obra_desde_fila(fila: Mapping[str, str], indice: int) -> LineaManoObra | None:
-    descripcion = _texto(fila, "descripcion")
-    cantidad_texto = _texto(fila, "cantidad")
-    sueldo_texto = _texto(fila, "sueldo")
-    modalidad_texto = _texto(fila, "modalidad")
+    descripcion = texto_de_celda(fila, "descripcion")
+    cantidad_texto = texto_de_celda(fila, "cantidad")
+    sueldo_texto = texto_de_celda(fila, "sueldo")
+    modalidad_texto = texto_de_celda(fila, "modalidad")
     if _fila_vacia((descripcion, cantidad_texto, sueldo_texto, modalidad_texto)):
         return None
     _exigir_descripcion("mano de obra", indice, descripcion)
@@ -234,10 +253,10 @@ def composicion_desde_tablas(
 
 def _tabla_vacia(filas: Sequence[Mapping[str, str]]) -> bool:
     """Ninguna fila de la tabla tiene todavía un solo carácter escrito (ayudante de
-    `formulario_vacio`; reutiliza `_texto` y `_fila_vacia`, las mismas fronteras que ya limpian
-    `None`/NaN antes de decidir qué es "vacío").
+    `formulario_vacio`; reutiliza `texto_de_celda` y `_fila_vacia`, las mismas fronteras que ya
+    limpian `None`/NaN antes de decidir qué es "vacío").
     """
-    return all(_fila_vacia(tuple(_texto(fila, clave) for clave in fila)) for fila in filas)
+    return all(_fila_vacia(tuple(texto_de_celda(fila, clave) for clave in fila)) for fila in filas)
 
 
 def formulario_vacio(
@@ -569,9 +588,10 @@ def fila_mano_obra_desde_referencia(fila: FilaReferencia) -> dict[str, str]:
 # el modelo semántico, un error aritmético del bosque de aislamiento -- degrade siempre a "sin
 # sugerencia", nunca a una excepción que interrumpa la página ni impida guardar: la condición de
 # diseño es absoluta (spec §3.7, "todas sugerencia y ninguna bloqueante"; quien compone decide,
-# nunca el sistema). El import de cada submódulo de `ml` ocurre dentro de un `_importar_*`
-# perezoso (mismo criterio que `ui/paginas/similares.py::_cargar_normalizacion`, para que la
-# interfaz siga arrancando sin el extra `ml`), inyectable por parámetro para que las pruebas lo
+# nunca el sistema). La ayuda 1 degrada con el criterio único de `ml.normalization.proponedor`
+# (INV-081): solo sus fallas declaradas son "sin sugerencia", y un defecto se propaga. El import
+# de cada submódulo de `ml` ocurre dentro de un `_importar_*` perezoso (para que la interfaz siga
+# arrancando sin el extra `ml`), inyectable por parámetro para que las pruebas lo
 # sustituyan por un doble sin instalar ni desinstalar nada real
 # (`tests/unit/test_composicion_ia.py`).
 
@@ -602,25 +622,23 @@ def sugerir_partidas_similares(
     partidas: Mapping[str, str],
     descripcion: str,
     cargar_normalizacion: Callable[[], ModuleType] = _importar_normalizacion,
-) -> list[PartidaSimilar]:
+) -> Propuesta:
     """Ayuda 1 (spec §3.7): partidas del catálogo parecidas a la descripción tecleada, para partir
-    de algo en vez de una tabla vacía (reutiliza la similitud semántica de UC-03,
-    `ml.normalization.NormalizadorPartidas`, desde la composición a mano).
+    de algo en vez de una tabla vacía (reutiliza la similitud semántica de UC-03 desde la
+    composición a mano y desde la página de similares).
 
-    Nunca decide por la persona ni llena ninguna tabla: solo devuelve la lista de propuestas
-    (posiblemente vacía) para que la página las muestre de solo lectura. La respuesta es una lista
-    vacía sin descripción, sin catálogo, o si `cargar_normalizacion` falla por cualquier motivo (el
-    extra `ml` ausente, sin red para el modelo, o cualquier otro error): la persona sigue con la
-    tabla en blanco, exactamente como sin esta ayuda.
+    Nunca decide por la persona ni llena ninguna tabla: devuelve la `Propuesta` (posiblemente
+    vacía) para que la página la muestre de solo lectura. Sin descripción o sin catálogo es una
+    `Propuesta` vacía y no se construye ningún normalizador. Lo demás lo decide el criterio único
+    de `ml.normalization.proponedor` (INV-081): una de `FALLAS_DE_LA_PROPUESTA` (el extra `ml`
+    ausente, el modelo sin red, pesos corruptos...) da una `Propuesta` vacía con su `falla`, y
+    cualquier otra excepción es un defecto y se propaga. `cargar_normalizacion` no falla por falta
+    del extra: `ml.normalization` no lo importa; esa falla llega desde `proponedor`.
     """
+    normalizacion = cargar_normalizacion()
     if not descripcion.strip() or not partidas:
-        return []
-    try:
-        normalizacion = cargar_normalizacion()
-        normalizador = normalizacion.NormalizadorPartidas(partidas)
-        return list(normalizador.similares(descripcion))
-    except Exception:
-        return []
+        return normalizacion.Propuesta(())
+    return normalizacion.proponedor(partidas)(descripcion)
 
 
 def advertencia_precio_atipico(

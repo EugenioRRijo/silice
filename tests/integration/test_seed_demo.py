@@ -77,7 +77,10 @@ def _contar_tablas(base: Path) -> tuple[int, ...]:
 
 
 def test_una_sola_orden_deja_linea_base_y_demo_valorables_hoy(tmp_path: Path) -> None:
-    """`seed_demo.main` solo: la linea base y la demostracion quedan valorables hoy mismo.
+    """`seed_demo.main` solo: la linea base y la demostracion quedan valorables en `FECHA_DEMO`.
+
+    La fecha es la fija de la demostracion, no el reloj (INV-020): con `date.today()` la prueba
+    dependia del dia en que se corria.
 
     Hoy falla: `sembrar_demo` nunca siembra la linea base, asi que `Catalogo.composicion` de
     cualquier `LB-*` lanza `KeyError` (la partida no existe en el catalogo).
@@ -88,7 +91,7 @@ def test_una_sola_orden_deja_linea_base_y_demo_valorables_hoy(tmp_path: Path) ->
     motor = crear_motor(f"sqlite:///{base.as_posix()}")
     try:
         with abrir_sesion(motor) as sesion:
-            _assert_linea_base_y_demo_valorables(Catalogo(sesion), fecha=date.today())
+            _assert_linea_base_y_demo_valorables(Catalogo(sesion), fecha=seed_demo.FECHA_DEMO)
     finally:
         motor.dispose()
 
@@ -106,7 +109,7 @@ def test_sembrar_la_demo_sobre_una_base_con_linea_base_no_la_rompe(tmp_path: Pat
     motor = crear_motor(f"sqlite:///{base.as_posix()}")
     try:
         with abrir_sesion(motor) as sesion:
-            _assert_linea_base_y_demo_valorables(Catalogo(sesion), fecha=date.today())
+            _assert_linea_base_y_demo_valorables(Catalogo(sesion), fecha=seed_demo.FECHA_DEMO)
     finally:
         motor.dispose()
 

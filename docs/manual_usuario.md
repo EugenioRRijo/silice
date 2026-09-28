@@ -40,11 +40,13 @@ No hay más pasos (RNF‑07). Notas:
    uv run python scripts/seed_sistemas.py     # data/apu_sistemas.db   puntos de función (tabulador CIV)
    ```
 
-   Para trabajar con uno de esos catálogos en la interfaz, escribir la ruta de su base en el
-   campo **«Archivo SQLite»** de la barra lateral (todas las páginas que consultan la base lo
-   tienen; por defecto dice `data/apu.db`). En la API, arrancar con la variable de entorno
-   `APU_BASE` apuntando a esa base (por ejemplo `sqlite:///data/apu_telecom.db`). De dónde sale
-   cada precio y con qué fecha: [manual técnico, sección 8.1](manual_tecnico.md#81-catálogos-por-dominio).
+   Para trabajar con uno de esos catálogos en la interfaz, el caso se abre una vez en **Inicio**
+   (campo *Archivo del caso (SQLite)* y botón *Abrir este caso*); la barra lateral lo muestra bajo
+   **Caso abierto** y todas las pantallas trabajan sobre él (por defecto, `data/apu.db`). También se
+   puede arrancar la interfaz con la variable `ARENIA_CASO=<ruta>`. En la API, arrancar con la
+   variable de entorno `APU_BASE` apuntando a esa base (por ejemplo
+   `sqlite:///data/apu_telecom.db`). De dónde sale cada precio y con qué fecha: [manual técnico,
+   sección 8.1](manual_tecnico.md#81-catálogos-por-dominio).
 
    **Dejar lista la aplicación para componer partidas (prototipo AREN.IA).** Una sola orden siembra
    la línea base de la clínica, tres partidas de demostración (`DEMO-01-INST`, `DEMO-02-VALV`,
@@ -67,9 +69,9 @@ No hay más pasos (RNF‑07). Notas:
    uv run python -m streamlit run ui/app.py
    ```
 
-   **Modo entrega.** Para mostrar solo las cinco pantallas que usa quien presupuesta
-   (actualización de precios, catálogo, componer, elaborar e histórico) y ocultar las cuatro de
-   investigación de la tesis (escenarios, partidas similares, simulador y visor 3D), se arranca con
+   **Modo entrega.** Para mostrar solo la sección **Trabajo** (Inicio y las cinco pantallas que
+   usa quien presupuesta: catálogo, componer, elaborar, actualizar precios e histórico) y omitir la
+   sección **Investigacion** (escenarios, partidas similares, simulador y visor 3D), se arranca con
    la variable `ARENIA_MODO_ENTREGA` en `1` (exactamente `1`; cualquier otro valor la deja apagada):
 
    ```
@@ -88,21 +90,47 @@ No hay más pasos (RNF‑07). Notas:
 
 ## 3. Las pantallas
 
-La interfaz tiene nueve páginas (menú lateral; cinco en modo entrega, sección 2). Todas presentan
-los montos con dos decimales, pero **ningún cálculo interno redondea**: el redondeo es solo de
-presentación.
+La interfaz tiene diez pantallas en dos secciones del menú lateral, **Trabajo** e
+**Investigacion** (en modo entrega, solo Trabajo; sección 2). Se abre en **Inicio**. Cada pantalla
+muestra su título; las cinco que implementan un caso de uso de la ERS (componer, elaborar,
+actualizar precios, escenarios y similares) muestran además su código como subtítulo. El Inicio y
+el histórico, aunque la tabla los asocie a UC‑12 y UC‑02, no lo muestran. La barra lateral
+muestra el caso abierto y su estado. Todas presentan los montos con dos decimales, pero **ningún
+cálculo interno redondea**: el redondeo es solo de presentación.
 
-| Página | Caso de uso | Qué hace |
-|---|---|---|
-| **Actualización de precios** | UC‑02 | Cargar una lista de precios nueva (CSV/XLSX) y revalorar un presupuesto guardado |
-| **Catálogo** | consulta | Partidas e insumos con su precio vigente |
-| **Componer partida** | UC‑10 / UC‑11 | Armar a mano una partida nueva o editar una existente, presupuestarla y exportarla (sección 3.7) |
-| **Elaborar presupuesto** | UC‑01 | Extraer cantidades de una fuente por dominio y presupuestarlas |
-| **Escenarios** | UC‑08 | Recalcular un presupuesto bajo supuestos («¿y si…?») sin alterarlo |
-| **Histórico de precios** | UC‑02 | Cambios de precio registrados, con filtros |
-| **Partidas similares** | UC‑03 | Buscar en texto libre partidas parecidas para reutilizar su desglose |
-| **Simulador de listas** | apoyo | Generar listas de precios de prueba, deterministas |
-| **Visor 3D** | apoyo a UC‑01 | Ver el modelo IFC junto a la tabla elemento ↔ partida |
+| Sección | Pantalla | Caso de uso | Qué hace |
+|---|---|---|---|
+| Trabajo | **Inicio** | UC‑12 | Abrir el caso, cargar el de demostración si está vacío y elegir un recorrido guiado (sección 3.0) |
+| Trabajo | **Catalogo de partidas e insumos** | consulta | Partidas e insumos con su precio vigente |
+| Trabajo | **Componer una partida** | UC‑10 / UC‑11 | Armar a mano una partida nueva o editar una existente, presupuestarla y exportarla (sección 3.7) |
+| Trabajo | **Elaborar un presupuesto** | UC‑01 | Extraer cantidades de una fuente por dominio y presupuestarlas (sección 3.1) |
+| Trabajo | **Actualizar precios** | UC‑02 | Cargar una lista de precios nueva (CSV/XLSX) y revalorar un presupuesto guardado |
+| Trabajo | **Historico de cambios de precio** | UC‑02 | Cambios de precio registrados, con filtros |
+| Investigacion | **Escenarios de sensibilidad** | UC‑08 | Recalcular un presupuesto bajo supuestos («¿y si…?») sin alterarlo |
+| Investigacion | **Partidas similares** | UC‑03 | Buscar en texto libre partidas parecidas para reutilizar su desglose |
+| Investigacion | **Simulador de listas** | apoyo | Generar listas de precios de prueba, deterministas |
+| Investigacion | **Visor 3D del modelo** | apoyo a UC‑01 | Ver el modelo IFC junto a la tabla elemento ↔ partida |
+
+Con `ARENIA_CASO=<ruta>` la aplicación fija ese caso sin tener que abrirlo en el Inicio (la
+aplicación sigue arrancando en el Inicio).
+
+### 3.0 Inicio: el caso abierto y los recorridos guiados (UC‑12)
+
+1. **El caso.** El campo *Archivo del caso (SQLite)* y el botón *Abrir este caso* fijan la base
+   con que trabajan todas las pantallas durante la sesión; ninguna otra pantalla vuelve a pedir la
+   ruta. Abrir una ruta que no existe no crea el archivo: la barra lateral dice «El archivo no
+   existe todavia».
+2. **El estado vacío.** Si el caso no existe todavía o no tiene partidas, el Inicio lo dice y
+   ofrece **Cargar el caso de demostracion** (la línea base de la clínica, la demostración
+   didáctica y su presupuesto auditado). La comprobación es solo sobre las **partidas**: una base
+   que tenga insumos o listas de precios pero ninguna partida cuenta como vacía y también se le
+   ofrece la carga. La carga **no borra nada**: nunca usa el reinicio de `scripts/seed_demo.py`, y
+   repetirla no duplica lo sembrado; lo que ya hubiera en la base se conserva junto a lo
+   sembrado. Si el caso ya tiene partidas, no se ofrece.
+3. **Los recorridos.** Bajo *Que quiere hacer?* hay tres: *Ver la demostracion auditada*, *Armar
+   un presupuesto* y *Actualizar precios*. Al elegir uno, el Inicio lista sus pasos; en cada
+   pantalla del recorrido la barra lateral dice en qué paso está, qué hacer y cómo saber que
+   terminó, y al pie aparece el botón **Siguiente: <paso>**, salvo en el último paso.
 
 ### 3.1 Elaborar un presupuesto (UC‑01)
 
@@ -110,11 +138,24 @@ presentación.
    muestras listas en `data/samples/` (sección 6).
 2. El adaptador del dominio extrae el **cómputo**: una tabla de cantidades donde cada fila
    declara de dónde salió (`origen_id`) y, si vino de una regla paramétrica, la expresión que la
-   produjo. En el dominio civil, un archivo `.ifc` trae sus códigos de partida en el propio
-   modelo; un CSV pide asociar cada tipo de elemento a una partida del catálogo.
-3. Al presupuestar, el sistema calcula cada precio unitario con la estructura venezolana
-   (prestaciones, bono, administración y utilidad en cascada), arma el total y la curva de
-   inversión **y audita el resultado siempre**: el informe aparece sin pedirlo.
+   produjo. En esta pantalla todos los dominios se cargan en **CSV**; en el civil, el CSV pide
+   asociar cada tipo de elemento a una partida del catálogo. El `.ifc`, que trae sus códigos de
+   partida en el propio modelo, no entra por esta pantalla: entra por la API
+   (`POST /computos/civil`) y se ve en el **Visor 3D del modelo**.
+3. Al presupuestar (**Elaborar presupuesto**), el sistema calcula cada precio unitario con la
+   estructura venezolana (prestaciones, bono, administración y utilidad en cascada), arma el total
+   y la curva de inversión **y audita el resultado siempre**: el informe aparece sin pedirlo, con
+   el total del presupuesto, el **resumen por severidad** (cuántos hallazgos de cada severidad, o
+   «Sin hallazgos») y el botón **Exportar a Excel**.
+4. **Ítems sin partida (UC‑01 3a).** Si un ítem del cómputo tiene un código que el catálogo no
+   tiene, el presupuesto **se elabora igual** con los demás y ese ítem queda **pendiente**: el
+   informe lo declara con un hallazgo `PENDIENTE` y la pantalla lo lista en el bloque
+   **Pendientes** (origen, código y descripción). **Después** de elaborar, la pantalla propone para
+   cada pendiente las partidas del catálogo más parecidas a su descripción, con su puntaje de
+   similitud. Si se elige una en el selector *Propuesta para <origen>* y se pulsa **Aplicar y
+   volver a elaborar**, el ítem pasa a esa partida y el presupuesto se elabora de nuevo, ya sin ese
+   pendiente. Si no se acepta ninguna, el ítem sigue pendiente y el informe lo sigue declarando.
+   Sin el extra `ml` instalado no hay propuestas: el pendiente se lista igual, sin selector.
 
 ### 3.2 Actualizar precios masivamente (UC‑02)
 
@@ -124,8 +165,26 @@ presentación.
    un número, lo dice con archivo y fila), detecta qué insumos cambiaron y recalcula **todos**
    los APU afectados sin editar ninguna composición.
 3. Revisar el **comparativo** (precio unitario antes/después por partida, incidencia en el
-   total) y el informe de auditoría de la versión nueva; confirmar para guardarla o descartarla.
-   Cada cambio queda en el histórico con precio anterior, nuevo, variación y fecha.
+   total) y el informe de auditoría de la versión nueva. Si algún insumo cambió de precio, la
+   versión nueva ya quedó guardada con el código de la barra lateral; si ninguno cambió, no se
+   guarda nada (UC‑02, flujo 3a). Cada cambio queda en el histórico con precio anterior, nuevo,
+   variación y fecha. Los ítems pendientes del presupuesto base (UC‑01 3a) pasan a la versión
+   nueva como pendientes, aunque la lista nueva traiga su partida, y el informe los vuelve a
+   declarar: valorarlos es UC‑01 (sección 3.1), no UC‑02.
+4. **Descartar la versión (UC‑02, flujo 7a).** Debajo del informe aparece el botón **Descartar
+   version**, solo si en esta misma ejecución de la página se acaba de guardar una versión nueva:
+   no aparece tras el flujo 3a ni para versiones guardadas antes. El botón **marca** la versión
+   como descartada; no la borra: sigue guardada y se puede cargar como documento, y su historial
+   de cambios de precio se conserva. La marca vale para la base del caso donde se guardó la
+   versión, aunque después se abra otro caso. Tras pulsarlo, la página dice que la versión quedó
+   descartada y el botón desaparece.
+
+   Límites: la marca **no se deshace** desde la interfaz, y las demás páginas (histórico,
+   escenarios) no la muestran. Solo se descarta la última versión guardada del proyecto, nunca
+   el primer presupuesto, y una sola vez; en otro caso la página muestra el motivo. El sistema no
+   guarda de qué presupuesto salió una versión, así que no distingue una versión revalorada de un
+   segundo presupuesto elaborado aparte en el mismo proyecto: por eso el botón solo se ofrece para
+   la versión que acaba de guardar esta página.
 
 La decisión de guardar se toma con el número de **insumos afectados**, no con la variación del
 total: una lista puede cambiar insumos que este presupuesto no usa (variación 0) y el cambio
@@ -155,13 +214,19 @@ construido contra el estimado en el rango de la clase 3 de AACE.
 
 ### 3.6 Escenarios de sensibilidad (UC‑08)
 
-En la página **Escenarios (UC‑08)**: elegir el presupuesto base, darle nombre al escenario y
-declarar los supuestos — los cuatro parámetros de costo (precargados con los del base) y/o una
-tabla de precios de ensayo por insumo (lo no mencionado conserva su precio vigente). Cada
+En la página **Escenarios de sensibilidad** (UC‑08): elegir el presupuesto base, darle nombre al
+escenario y declarar los supuestos — los cuatro parámetros de costo (precargados con los del base)
+y/o una tabla de precios de ensayo por insumo (lo no mencionado conserva su precio vigente). Cada
 escenario generado se suma a la tabla comparativa: el base en la primera fila y una fila por
 escenario con su total y su variación absoluta y porcentual, descargable en CSV con los valores
-exactos. El detalle por partida de cada escenario se despliega debajo, con los hallazgos de su
-propia auditoría (que se genera siempre).
+exactos. El detalle por partida de cada escenario se despliega debajo, con el número de hallazgos
+de la auditoría del escenario (que se genera siempre) y los insumos variados.
+
+Límites: si el presupuesto base tiene ítems pendientes (UC‑01 3a), la página los lista en un aviso
+al abrirlo. Los escenarios solo recalculan los renglones valorados: esos ítems no suman al total
+del base ni al de ningún escenario, y la leyenda «Hallazgos de la auditoria del escenario: N» no
+los cuenta, porque la auditoría del escenario todavía no declara `PENDIENTE`. Que el informe del
+escenario y la ruta de la API los declaren queda para la fase C4 (INV‑083).
 
 El presupuesto base **nunca** se altera y ningún escenario se guarda: al cambiar de presupuesto
 la comparación se descarta. Para convertir un escenario en presupuesto vigente se usa la
@@ -171,13 +236,12 @@ está en `POST /presupuestos/{codigo}/escenarios` (API) y en `core.budget.genera
 
 ### 3.7 Componer o editar una partida a mano (UC‑10 y UC‑11, prototipo AREN.IA)
 
-La página **Componer partida (UC-10 / UC-11)** es el recorrido completo de quien presupuesta: arma
-el análisis de precio de una partida, lo guarda en el catálogo, le asigna cantidades de obra y sale
-con el presupuesto auditado y su Excel, sin cambiar de pantalla. Los casos de uso están en la
-[ERS](ERS.md) (UC‑10 componer, UC‑11 editar; RF‑33 a RF‑35) y el diseño en la
-[spec del prototipo](superpowers/specs/2026-09-16-prototipo-composicion-apu-design.md). Para
-practicarlo paso a paso con resultados esperados está el
-[guion de prueba manual](guion_prueba_arenia.md).
+La página **Componer una partida** (UC‑10 / UC‑11) es el recorrido completo de quien presupuesta:
+arma el análisis de precio de una partida, lo guarda en el catálogo, le asigna cantidades de obra y
+sale con el presupuesto auditado y su Excel, sin cambiar de pantalla. Los casos de uso están en la
+[ERS](ERS.md) (UC‑10 componer, UC‑11 editar; RF‑33 a RF‑35) y el diseño en la [spec del
+prototipo](superpowers/specs/2026-09-16-prototipo-composicion-apu-design.md). Para practicarlo paso
+a paso con resultados esperados está el [guion de prueba manual](guion_prueba_arenia.md).
 
 1. **Cabecera.** Código, descripción y unidad de la partida, su dominio (civil por defecto) y la
    fecha, que decide qué lista de precios está vigente. Si el código ya existe en el catálogo, lo
@@ -257,8 +321,9 @@ inconsistencias del presupuesto original.
 ## 5. Exportar
 
 - **Excel:** presupuesto y curva en un libro XLSX (desde la página de actualización, desde
-  **Componer partida** tras elaborar, sección 3.7, o `GET /presupuestos/{codigo}/excel` en la API). Las celdas presentan dos decimales; los totales
-  del libro cuadran con los del sistema porque el redondeo es solo de celda.
+  **Elaborar un presupuesto** o de **Componer una partida** tras elaborar, secciones 3.1 y 3.7, o
+  `GET /presupuestos/{codigo}/excel` en la API). Las celdas presentan dos decimales; los totales del
+  libro cuadran con los del sistema porque el redondeo es solo de celda.
 - **Informe:** `GET /presupuestos/{codigo}/informe`.
 - **Tabla de escenarios:** botón de descarga CSV en la página de escenarios (valores exactos,
   sin redondeo de presentación).
@@ -282,9 +347,9 @@ Cada carpeta trae su `README.md` con el formato exacto de columnas.
 |---|---|
 | «instala el extra civil» al cargar un `.ifc` | Falta `ifcopenshell`: `uv sync --extra civil` |
 | Error 409 «catálogo incompleto» | Falta un precio o rendimiento vigente para una partida: revisar la lista de precios cargada o volver a sembrar (`scripts/seed.py`) |
-| La UI no encuentra datos | La base no está sembrada: paso 1 de la sección 2 (`data/apu.db`) |
+| La UI no encuentra datos | El caso abierto no tiene partidas: en **Inicio**, **Cargar el caso de demostracion**, o sembrar como en el paso 1 de la sección 2 |
 | «Partidas similares» tarda la primera vez | Descarga única del modelo de lenguaje; después queda en caché |
 | Un rendimiento medido se rechaza | Falta la referencia a la ejecución: es una invariante, no un error |
 | «Guardar composicion» no se puede pulsar | Faltan las condiciones del rendimiento (RF‑33): escribirlas |
 | «no hay ninguna lista de precios vigente» al guardar | La base está vacía o la fecha es anterior a toda lista: sembrar con `scripts/seed_demo.py` o cambiar la fecha |
-| El campo «Archivo SQLite» volvió a `data/apu.db` | Se reinicia al recargar la página (F5): volver a escribir la ruta de la base de prueba |
+| La barra lateral no muestra el caso esperado bajo «Caso abierto» | Abrirlo en **Inicio** (*Archivo del caso (SQLite)* y *Abrir este caso*) o arrancar con `ARENIA_CASO=<ruta>`: recargar la página (F5) vuelve a la ruta de `ARENIA_CASO` o, sin ella, a `data/apu.db` |

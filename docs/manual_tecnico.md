@@ -200,7 +200,7 @@ limitación). Conteo G2 y métricas por dominio, reproducibles:
 | `scripts/exportar_openapi.py` | `docs/api.json` |
 | `scripts/generar_resultados_ml.py` | `docs/resultados_ml.md` (conteo G2 y métricas RF‑28 por dominio) |
 | `scripts/medir_rnf03.py` | evidencia de RNF‑03 (100 partidas, umbral 5 s) |
-| `scripts/seed_demo.py` | en una sola orden: línea base, las tres partidas `DEMO-*` (caso didáctico de AREN.IA) con su lista heredando los precios de la vigente, y el presupuesto `DEMO-001` guardado con su informe (idempotente; `--db`, `--reiniciar`) |
+| `scripts/seed_demo.py` | en una sola orden: línea base, las tres partidas `DEMO-*` (caso didáctico de AREN.IA) con su lista heredando los precios de la vigente, y el presupuesto `DEMO-001` guardado con su informe (idempotente; `--db`, `--reiniciar`, y `--confirmar` para reiniciar la base por defecto) |
 | `scripts/lista_maprex_usd.py` | `data/precios/maprex_2026-07/lista_maprex_usd.csv`, la referencia MaPreX en el formato canónico `tipo,insumo,unidad,precio` (en equipos, `precio` es el valor del activo, no una tarifa diaria) |
 | `scripts/simular_corpus.py` | corpus **simulado** de partidas `SIM-*` para pruebas de volumen de la interfaz, siempre en una base nueva (sección 10.4) |
 | `scripts/meta_alpha.py`, `scripts/meta_i6.py`, `scripts/meta_multidominio.py`, `scripts/meta_prototipo.py` | evaluación automática de metas de sprint (`meta_prototipo.py --hasta P<n>` evalúa por fases) |
@@ -222,7 +222,10 @@ Los cuatro dominios siguen el patrón de la línea base: evidencia de precios fe
 | industrial | referencia MaPreX jul‑2026 como proxy declarado (degradación GM2): `data/precios/maprex_2026-07/referencia_industrial.csv` | `mantenimiento_industrial.py` | `seed_industrial.py` → `data/apu_industrial.db` |
 | sistemas | tabulador CIV al 01/07/2026: `data/precios/maprex_2026-07/referencia_sistemas.csv` (la productividad HH/PF es un supuesto declarado) | `tarifas_sistemas.py` | `seed_sistemas.py` → `data/apu_sistemas.db` |
 
-Los cuatro seeds aceptan `--db <ruta>` y `--reiniciar`. Cada carpeta `data/<dominio>/fuentes/`
+Los cuatro seeds aceptan `--db <ruta>` y `--reiniciar`. Sobre la ruta por defecto, `--reiniciar`
+exige además `--confirmar` (sin él la orden se niega con código 2 y no toca la base), también
+si esa misma ruta se escribe con `--db`; con `--db` hacia otra ruta basta `--reiniciar`.
+Cada carpeta `data/<dominio>/fuentes/`
 trae un `README.md` con origen, vigencia y supuestos de sus precios; las reglas de uso de MaPreX
 (referencia, no ronda vigente; tasa única 633,3644 Bs/USD del 01/07/2026) están en
 `data/precios/maprex_2026-07/README.md`. Una cotización de campo nueva no se edita en ningún
@@ -347,6 +350,14 @@ El proyecto no tiene Alembic: `Base.metadata.create_all` crea las tablas ausente
 las existentes, así que una columna nueva no llega a las bases ya sembradas y la interfaz falla
 con `OperationalError`. Pasó con `modalidad` en la fase P2
 ([bitácora del hallazgo](bitacora/2026-09-20-P2-hallazgo-migraciones.md), con las dos salidas:
-`ALTER TABLE … ADD COLUMN` aditivo o volver a sembrar con `--reiniciar`). **Regla:** toda sesión que
+`ALTER TABLE … ADD COLUMN` aditivo o volver a sembrar con `--reiniciar`, que sobre la ruta por
+defecto exige `--confirmar` y con `--db` hacia otra ruta no). **Regla:** toda sesión que
 añada o cambie una columna de `core/models/entidades.py` declara en su plan, antes de escribir el
 código, qué les pasa a las bases que ya existen en disco.
+
+La fase C3 dejó un caso de esa regla sin migración, declarado: desde `04ca90d` (INV‑080) un
+presupuesto se guarda con sus ítems pendientes (UC‑01 3a), y su recarga devuelve el informe
+emitido. Una base guardada **antes** de ese commit no tiene los pendientes persistidos: la recarga
+no los inventa y el informe recargado es la reauditoría de los renglones valorados, que puede decir
+CUMPLE sobre un documento que se emitió NO CUMPLE (no conformidad residual con RF‑02, dictamen
+C3‑3). Para que su informe recargado declare los pendientes, esa base se vuelve a sembrar.

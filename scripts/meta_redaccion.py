@@ -6,6 +6,9 @@ patron de `scripts/meta_asistente.py`: cada chequeo es una funcion pura sobre te
 parte verificable de la lista de cotejo del tutor (`docs/tesis/rubrica_tutor.md`); lo que
 requiere juicio (T2, T3, T4, T7, T13) queda en las actas de revision.
 
+R1-R3 revisan los capitulos I y II; R4-R8 sobre todo capitulo presente: cada `NN-*.md` de
+`docs/tesis/capitulos/` (salvo el README), nombrado por su numero en romano (INV-075).
+
 Un documento ausente da PENDIENTE; un documento presente que no cumple da FALLA.
 
 Uso: `uv run python scripts/meta_redaccion.py [--json]`.
@@ -28,8 +31,9 @@ if str(RAIZ) not in sys.path:
 from scripts.meta_alpha import Estado, Fila, _filas_a_json, render_tabla  # noqa: E402
 
 CARPETA_TESIS = RAIZ / "docs" / "tesis"
-RUTA_CAPITULO_1 = CARPETA_TESIS / "capitulos" / "01-el-problema.md"
-RUTA_CAPITULO_2 = CARPETA_TESIS / "capitulos" / "02-marco-teorico.md"
+CARPETA_CAPITULOS = CARPETA_TESIS / "capitulos"
+RUTA_CAPITULO_1 = CARPETA_CAPITULOS / "01-el-problema.md"
+RUTA_CAPITULO_2 = CARPETA_CAPITULOS / "02-marco-teorico.md"
 RUTA_REFERENCIAS = CARPETA_TESIS / "referencias.md"
 RUTA_RUBRICA = CARPETA_TESIS / "rubrica_tutor.md"
 RUTA_ACTA_1 = CARPETA_TESIS / "revisiones" / "R1-capitulo-1.md"
@@ -461,13 +465,52 @@ def _leer(ruta: Path) -> str | None:
     return ruta.read_text(encoding="utf-8") if ruta.exists() else None
 
 
+#: Un capitulo de la tesis: dos digitos, guion y nombre (`04-desarrollo.md`).
+_ARCHIVO_CAPITULO = re.compile(r"^(\d{2})-.+\.md$")
+_ROMANOS: tuple[tuple[int, str], ...] = (
+    (90, "XC"), (50, "L"), (40, "XL"), (10, "X"), (9, "IX"), (5, "V"), (4, "IV"), (1, "I"),
+)
+
+
+def _romano(numero: int) -> str:
+    texto = ""
+    for valor, simbolo in _ROMANOS:
+        cuantos, numero = divmod(numero, valor)
+        texto += simbolo * cuantos
+    return texto
+
+
+def capitulos_presentes(carpeta: Path) -> dict[str, str]:
+    """Los capitulos de `carpeta` (`NN-*.md`) en orden, como `{"capitulo <romano>": texto}`.
+
+    El README de la carpeta y cualquier archivo que no empiece por dos digitos y guion no cuentan.
+    Es la entrada de R4-R8, que asi revisan todo capitulo presente y no solo el I y el II
+    (INV-075). Una carpeta ausente no tiene capitulos.
+
+    Lanza `ValueError` si dos archivos llevan el mismo numero (`04-desarrollo.md` y
+    `04-borrador.md`): uno pisaria al otro sin aviso y un borrador podria esconder el capitulo.
+    """
+    if not carpeta.is_dir():
+        return {}
+    capitulos: dict[str, str] = {}
+    archivos: dict[str, str] = {}
+    for ruta in sorted(carpeta.glob("*.md")):
+        coincidencia = _ARCHIVO_CAPITULO.match(ruta.name)
+        if coincidencia is None:
+            continue
+        nombre = f"capitulo {_romano(int(coincidencia.group(1)))}"
+        if nombre in archivos:
+            raise ValueError(
+                f"dos archivos para el {nombre}: {archivos[nombre]} y {ruta.name}"
+            )
+        archivos[nombre] = ruta.name
+        capitulos[nombre] = ruta.read_text(encoding="utf-8")
+    return capitulos
+
+
 def _evaluar_metas() -> list[Fila]:
     capitulo_1, capitulo_2 = _leer(RUTA_CAPITULO_1), _leer(RUTA_CAPITULO_2)
-    capitulos = {
-        nombre: texto
-        for nombre, texto in (("capitulo I", capitulo_1), ("capitulo II", capitulo_2))
-        if texto is not None
-    }
+    capitulos = capitulos_presentes(CARPETA_CAPITULOS)
     referencias = _leer(RUTA_REFERENCIAS)
     chequeos: dict[str, Callable[[], tuple[Estado, str]]] = {
         "R1": lambda: evaluar_capitulo_1(capitulo_1),

@@ -1,6 +1,8 @@
 """Pruebas de `scripts/meta_redaccion.py` (Sprint R1: capitulos I y II).
 
-Funciones puras sobre texto sintetico: ninguna prueba lee el disco ni ejecuta procesos. Los
+Funciones puras sobre texto sintetico: ninguna prueba escribe en el repositorio ni ejecuta
+procesos. Las de INV-075 escriben su tesis sintetica en `tmp_path` y, al evaluar las 12 metas,
+leen sin modificarlas las demas fuentes reales de la meta (rubrica, actas y CLAUDE.md). Los
 casos negativos imitan los errores que un tutor marcaria: una seccion que falta, OE7 en la
 variante equivocada, primera persona, una cita sin referencia, una referencia pendiente sin marca,
 un caso didactico presentado como real y "gemelo digital" fuera de su delimitacion.
@@ -377,3 +379,89 @@ def test_acta_incompleta_falla_y_ausente_pendiente():
 )
 def test_naturaleza_de_los_datos_en_la_fuente_unica(texto, esperado):
     assert meta.evaluar_naturaleza_datos(texto)[0] is esperado
+
+
+# --- INV-075: R4-R8 sobre todo capitulo presente ---------------------------------------------
+
+#: Un capitulo IV que viola una sola regla cada vez. Los capitulos I y II sinteticos y
+#: REFERENCIAS cumplen R4-R8 (lo afirman las pruebas de arriba), asi que la unica FALLA posible
+#: viene del capitulo IV.
+CAPITULO_4_QUE_VIOLA: dict[str, str] = {
+    "R4": "# Capítulo IV — Desarrollo\n\n## 4.1 Construcción\n\nHemos implementado el motor.\n",
+    "R5": "# Capítulo IV — Desarrollo\n\n## 4.1 Precios\n\nLos listados de MaPreX (2026) dicen.\n",
+    "R6": "# Capítulo IV — Desarrollo\n\n## 4.1 Contexto\n\nSegún Sacks et al. (2020) hay lazo.\n",
+    "R7": (
+        "# Capítulo IV — Desarrollo\n\n## 4.1 Caso\n\n"
+        "Se auditó un presupuesto real elaborado por el procedimiento tradicional.\n"
+    ),
+    "R8": (
+        "# Capítulo IV — Desarrollo\n\n## 4.1 Arquitectura\n\n"
+        "El sistema es un gemelo digital de la obra.\n"
+    ),
+}
+
+
+def _tesis_sintetica(monkeypatch: pytest.MonkeyPatch, tmp_path, capitulo_4: str) -> None:
+    """Lleva las rutas de la meta a `tmp_path`: capitulos I, II y IV y las referencias. Las
+    demas rutas (rubrica, actas, CLAUDE.md) no intervienen en R4-R8."""
+    carpeta = tmp_path / "capitulos"
+    carpeta.mkdir()
+    (carpeta / "01-el-problema.md").write_text(CAPITULO_1, encoding="utf-8")
+    (carpeta / "02-marco-teorico.md").write_text(CAPITULO_2, encoding="utf-8")
+    (carpeta / "04-desarrollo.md").write_text(capitulo_4, encoding="utf-8")
+    (carpeta / "README.md").write_text("Hemos dejado aqui el indice.\n", encoding="utf-8")
+    referencias = tmp_path / "referencias.md"
+    referencias.write_text(REFERENCIAS, encoding="utf-8")
+    monkeypatch.setattr(meta, "RUTA_CAPITULO_1", carpeta / "01-el-problema.md")
+    monkeypatch.setattr(meta, "RUTA_CAPITULO_2", carpeta / "02-marco-teorico.md")
+    monkeypatch.setattr(meta, "CARPETA_CAPITULOS", carpeta)
+    monkeypatch.setattr(meta, "RUTA_REFERENCIAS", referencias)
+
+
+def _fila(codigo: str):
+    (fila,) = [fila for fila in meta._evaluar_metas() if fila.codigo == codigo]
+    return fila
+
+
+@pytest.mark.parametrize("codigo", sorted(CAPITULO_4_QUE_VIOLA))
+def test_r4_a_r8_revisan_el_capitulo_iv(monkeypatch, tmp_path, codigo):
+    _tesis_sintetica(monkeypatch, tmp_path, CAPITULO_4_QUE_VIOLA[codigo])
+
+    fila = _fila(codigo)
+
+    assert fila.estado is Estado.FALLA, fila.evidencia
+    assert "capitulo IV" in fila.evidencia
+
+
+@pytest.mark.parametrize("codigo", sorted(CAPITULO_4_QUE_VIOLA))
+def test_r4_a_r8_con_un_capitulo_iv_que_cumple(monkeypatch, tmp_path, codigo):
+    # Contraste: el mismo arreglo con un capitulo IV impersonal y sin citas da OK, y el README de
+    # la carpeta (que dice "hemos") no se lee como capitulo.
+    _tesis_sintetica(monkeypatch, tmp_path, "# Capítulo IV — Desarrollo\n\nSe implementó.\n")
+
+    fila = _fila(codigo)
+
+    assert fila.estado is Estado.OK, fila.evidencia
+
+
+def test_capitulos_presentes_numera_en_romano_y_excluye_el_readme(tmp_path):
+    for nombre in ("01-el-problema.md", "04-desarrollo.md", "10-otro.md", "README.md", "notas.md"):
+        (tmp_path / nombre).write_text(nombre, encoding="utf-8")
+
+    capitulos = meta.capitulos_presentes(tmp_path)
+
+    assert capitulos == {
+        "capitulo I": "01-el-problema.md",
+        "capitulo IV": "04-desarrollo.md",
+        "capitulo X": "10-otro.md",
+    }
+
+
+def test_dos_capitulos_con_el_mismo_numero_se_rechazan(tmp_path):
+    # Un borrador con el numero de un capitulo no puede esconderlo: ambos caerian en la misma
+    # clave y el segundo en orden alfabetico pisaria al primero sin aviso.
+    (tmp_path / "04-desarrollo.md").write_text("capitulo real", encoding="utf-8")
+    (tmp_path / "04-borrador.md").write_text("borrador", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="04-borrador.md.*04-desarrollo.md"):
+        meta.capitulos_presentes(tmp_path)

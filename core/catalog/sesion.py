@@ -28,7 +28,7 @@ def crear_motor(url: str = URL_POR_DEFECTO) -> Engine:
 
 
 def crear_esquema(motor: Engine) -> None:
-    """Crea las quince tablas y sus índices si aún no existen."""
+    """Crea las dieciséis tablas y sus índices si aún no existen."""
     Base.metadata.create_all(motor)
 
 

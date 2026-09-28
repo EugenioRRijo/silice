@@ -150,7 +150,7 @@ def _declarar_pendientes(
                 f"cita la partida {item.codigo_partida}, que no tiene composicion de APU: queda "
                 "pendiente y no suma al total"
             ),
-            origen_ids=(item.codigo_partida, item.origen_id),
+            origen_ids=_clave_pendiente(item),
             valor_observado=item.cantidad,
         )
         for item in pendientes
@@ -164,6 +164,15 @@ def _declarar_pendientes(
             **informe.partida_por_origen,
         },
     )
+
+
+def _clave_pendiente(item: ItemComputo) -> tuple[str, str]:
+    """Los `origen_ids` del hallazgo `CODIGO_PENDIENTE` de un ítem: su partida y su origen.
+
+    Única definición de la clave: la usan `_declarar_pendientes` al redactar el hallazgo y
+    `core.budget.persistencia` al comprobar que cada pendiente guardado está declarado (INV‑080).
+    """
+    return (item.codigo_partida, item.origen_id)
 
 
 def exigir_composiciones(

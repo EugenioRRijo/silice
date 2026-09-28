@@ -272,7 +272,7 @@ classDiagram
     class entidades {
         <<module>>
         +Base: DeclarativeBase
-        +quince entidades SQLAlchemy
+        +dieciséis entidades SQLAlchemy
         +TipoInsumo: StrEnum
     }
     class DecimalExacto {
@@ -414,7 +414,7 @@ class CatalogoIncompleto(LookupError): ...   # core.catalog.errores
 URL_POR_DEFECTO = "sqlite:///data/apu.db"
 
 def crear_motor(url: str = URL_POR_DEFECTO) -> Engine
-def crear_esquema(motor: Engine) -> None      # crea las quince tablas y sus indices
+def crear_esquema(motor: Engine) -> None      # crea las dieciséis tablas y sus indices
 def abrir_sesion(motor: Engine) -> Session
 
 # core.models.tipos
@@ -424,7 +424,7 @@ class DecimalExacto(TypeDecorator[Decimal]):
     def process_result_value(self, value: Any, dialect: Dialect) -> Decimal | None
 ```
 
-Las quince entidades persistentes (`core/models/entidades.py`) no se repiten aquí: su diagrama
+Las dieciséis entidades persistentes (`core/models/entidades.py`) no se repiten aquí: su diagrama
 entidad‑relación y la justificación de la normalización están en
 [docs/modelo_datos.md §3](modelo_datos.md#3-diagrama-entidadrelación).
 

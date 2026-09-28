@@ -11,6 +11,13 @@ de partida en la fuente: recibe un mapeo `codigos` del llamador (`adapters/civil
 pantalla deja que el usuario elija esos codigos entre las partidas civiles ya cargadas en el
 catalogo, en vez de inventar codigos que el catalogo no tiene (regla del contrato congelado,
 CLAUDE.md §5: los codigos de partida son del catalogo, no del adaptador).
+
+UC-01 3a (INV-072, D6): un item cuyo codigo no esta en el catalogo no aborta la elaboracion: queda
+pendiente, el informe lo declara y la pantalla propone partidas similares
+(`ui.elaboracion.propuestas_de_pendientes`, calculadas una vez por elaboracion). Si el usuario
+acepta una, `ui.elaboracion.aceptar_propuesta` reasigna el item y se vuelve a elaborar. Las dos se
+llaman como atributos del modulo `ui.elaboracion`, para que las pruebas las parchen donde se
+resuelven.
 """
 
 from __future__ import annotations
@@ -28,18 +35,20 @@ from adapters.civil.tabular import AdaptadorCivilTabular
 from adapters.industrial.adaptador import AdaptadorIndustrial
 from adapters.sistemas.adaptador import AdaptadorSistemas
 from adapters.telecom.adaptador import AdaptadorTelecom
-from core.budget import elaborar, exportar_excel, plan_secuencial
 from core.catalog import Catalogo, abrir_sesion, crear_esquema, crear_motor
-from core.contracts import AdaptadorDominio, Dominio, ItemComputo, ParametrosCosto
+from core.contracts import AdaptadorDominio, Dominio, ItemComputo
 from core.verification.informe import DECIMALES_PRESENTACION
 from core.verification.texto import formatear_decimal
+from ui import elaboracion
+from ui.caso import ruta_caso
+from ui.resultado import mostrar_elaboracion
 
-TITULO = "Elaborar presupuesto (UC-01)"
-RUTA_BASE_POR_DEFECTO = "data/apu.db"
 CODIGO_POR_DEFECTO = "P-001"
 MONEDA_POR_DEFECTO = "USD"
 CLAVE_ITEMS = "elaborar_items"
 CLAVE_RESULTADO = "elaborar_resultado"
+#: Las propuestas para los pendientes de la elaboracion guardada en `CLAVE_RESULTADO`.
+CLAVE_PROPUESTAS = "elaborar_propuestas"
 
 #: Adaptadores sin parametros propios: el dominio y el archivo bastan para construirlos.
 _ADAPTADORES_SIN_CODIGOS: dict[Dominio, type[AdaptadorDominio]] = {
@@ -51,7 +60,6 @@ _ADAPTADORES_SIN_CODIGOS: dict[Dominio, type[AdaptadorDominio]] = {
 
 def render() -> None:
     """Selector de dominio y archivo; tabla de cómputo; botón de elaboración e informe."""
-    st.title(TITULO)
     st.caption(
         "Elige un dominio, carga su archivo de muestra (data/samples/<dominio>/) y extrae el "
         "cómputo con el adaptador correspondiente; luego elabora el presupuesto, que se audita "
@@ -85,7 +93,7 @@ def render() -> None:
         with st.spinner("Elaborando..."):
             _elaborar(parametros, items)
 
-    _mostrar_resultado(st.session_state.get(CLAVE_RESULTADO))
+    _mostrar_resultado(parametros)
 
 
 # ---------------------------------------------------------------------------------------------
@@ -95,9 +103,6 @@ def render() -> None:
 
 def _barra_lateral() -> dict[str, object]:
     with st.sidebar:
-        st.header("Base de datos")
-        ruta = st.text_input("Archivo SQLite", value=RUTA_BASE_POR_DEFECTO)
-
         st.header("Cómputo")
         dominio = st.selectbox("Dominio", list(Dominio), format_func=lambda d: d.value)
 
@@ -107,7 +112,7 @@ def _barra_lateral() -> dict[str, object]:
         moneda = st.text_input("Moneda", value=MONEDA_POR_DEFECTO)
 
     return {
-        "ruta": Path(ruta),
+        "ruta": ruta_caso(),
         "dominio": dominio,
         "codigo": codigo,
         "fecha": fecha,
@@ -222,48 +227,61 @@ def _elaborar(parametros: dict[str, object], items: list[ItemComputo]) -> None:
         crear_esquema(motor)
         with abrir_sesion(motor) as sesion:
             catalogo = Catalogo(sesion)
-            codigos_unicos = list(dict.fromkeys(item.codigo_partida for item in items))
-            composiciones = catalogo.composiciones(codigos_unicos, fecha=parametros["fecha"])
-            resultado = elaborar(
+            resultado = elaboracion.elaborar_desde_catalogo(
+                catalogo,
                 items,
-                composiciones,
-                ParametrosCosto(),
-                codigo=str(parametros["codigo"]),
-                fecha=parametros["fecha"],
-                moneda=str(parametros["moneda"]),
-                plan=plan_secuencial,
+                str(parametros["codigo"]),
+                parametros["fecha"],
+                str(parametros["moneda"]),
             )
+            partidas = {partida.codigo: partida.descripcion for partida in catalogo.partidas()}
     except (LookupError, ValueError, ArithmeticError, SQLAlchemyError) as error:
-        # `LookupError` (`CatalogoIncompleto`) si falta la composición de alguna partida del
-        # cómputo (por ejemplo, un dominio sin catálogo cargado); `ValueError` (`PlanInvalido`)
+        # `LookupError` (`CatalogoIncompleto`) si no hay lista de precios vigente a esa fecha (un
+        # item sin partida ya no lanza: queda pendiente, UC-01 3a); `ValueError` (`PlanInvalido`)
         # del plan de trabajo; `ArithmeticError`/`SQLAlchemyError` por simetría con el mismo
         # criterio de `ui/paginas/actualizacion.py`.
         st.session_state[CLAVE_RESULTADO] = None
+        st.session_state[CLAVE_PROPUESTAS] = ()
         st.error(str(error))
         return
     finally:
         motor.dispose()
 
     st.session_state[CLAVE_RESULTADO] = resultado
+    st.session_state[CLAVE_PROPUESTAS] = elaboracion.propuestas_de_pendientes(
+        partidas, resultado.pendientes
+    )
 
 
-def _mostrar_resultado(resultado) -> None:
+def _mostrar_resultado(parametros: dict[str, object]) -> None:
+    resultado = st.session_state.get(CLAVE_RESULTADO)
     if resultado is None:
         return
-
-    st.subheader("Presupuesto elaborado")
-    total = formatear_decimal(resultado.presupuesto.total, DECIMALES_PRESENTACION)
-    st.metric("Total del presupuesto", f"{total} {resultado.presupuesto.moneda}")
-
-    with tempfile.TemporaryDirectory() as carpeta:
-        ruta = Path(carpeta) / f"presupuesto_{resultado.presupuesto.codigo}.xlsx"
-        libro = exportar_excel(resultado.presupuesto, resultado.informe, ruta)
-        st.download_button(
-            "Exportar a Excel",
-            data=libro.read_bytes(),
-            file_name=libro.name,
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    libro, nombre_libro = elaboracion.libro_excel(resultado)
+    eleccion = mostrar_elaboracion(
+        resultado,
+        libro,
+        nombre_libro,
+        prefijo="elaborar",
+        propuestas=st.session_state.get(CLAVE_PROPUESTAS, ()),
+    )
+    if eleccion is None:
+        return
+    # D6: el item pendiente pasa a la partida aceptada y se vuelve a elaborar con la lista guardada.
+    pendiente, codigo_elegido = eleccion
+    items = st.session_state.get(CLAVE_ITEMS)
+    if not items or pendiente not in items:
+        # El computo cambio (o una extraccion fallo) despues de esta elaboracion: el resultado a la
+        # vista ya no corresponde a los items guardados (revision de A4, Q-2).
+        st.error(
+            "El computo cambio despues de esta elaboracion: extraigalo de nuevo y vuelva a "
+            "elaborar el presupuesto antes de aceptar una propuesta."
         )
-
-    st.subheader("Informe de auditoría")
-    st.markdown(resultado.informe.a_markdown())
+        return
+    st.session_state[CLAVE_ITEMS] = elaboracion.aceptar_propuesta(items, pendiente, codigo_elegido)
+    with st.spinner("Elaborando..."):
+        _elaborar(parametros, st.session_state[CLAVE_ITEMS])
+    if st.session_state.get(CLAVE_RESULTADO) is not None:
+        st.rerun()
+    # Si la reelaboracion fallo, `_elaborar` ya pinto su `st.error`: sin `st.rerun()`, que lo
+    # borraria, queda a la vista (revision de A4, R-2).

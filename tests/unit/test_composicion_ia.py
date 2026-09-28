@@ -14,14 +14,14 @@ doble que lanza `ImportError`, nunca con `skipif`).
 
 from __future__ import annotations
 
-import builtins
-import sys
 from decimal import Decimal
 from types import SimpleNamespace
 
 import pytest
 
 from core.contracts import Hallazgo, Severidad
+from ml.normalization import Propuesta
+from tests.fixtures.sin_extra import SinExtra
 from ui.composicion import (
     ContrasteAace,
     advertencia_precio_atipico,
@@ -40,63 +40,91 @@ def _que_falla(*_args, **_kwargs):
 
 
 def _que_falla_por_extra_ausente(*_args, **_kwargs):
-    """El doble que simula el extra `ml` no instalado: un `import ml.algo` real lanza exactamente
-    esta excepcion, y aqui se reproduce sin depender de (des)instalar nada.
+    """El doble que simula el extra `ml` no instalado: un `import` real de un modulo ausente lanza
+    exactamente esta excepcion (`ModuleNotFoundError`, subclase de `ImportError`), y aqui se
+    reproduce sin depender de (des)instalar nada.
     """
-    raise ImportError("simulado: el extra 'ml' no esta instalado")
+    raise ModuleNotFoundError("simulado: el extra 'ml' no esta instalado")
 
 
 # ---------------------------------------------------------------------------------------------
-# Ayuda 1: partidas similares del catalogo (ml.normalization.NormalizadorPartidas)
+# Ayuda 1: partidas similares del catalogo (ml.normalization.proponedor, INV-081)
 # ---------------------------------------------------------------------------------------------
+#
+# Reescritura declarada de C3 (10c, QA-4): la costura `cargar_normalizacion` ya no ofrece
+# `NormalizadorPartidas`, sino `Propuesta` y `proponedor`, el criterio unico de fallas de `ml`. Las
+# fallas del modelo se simulan en `ml.normalization.normalizador._cargar_modelo`, donde ocurren de
+# verdad, con la costura por defecto.
 
 
 def _modulo_normalizacion(resultado):
-    class _NormalizadorDoble:
-        def __init__(self, partidas):
-            assert partidas, "se le debe pasar el catalogo real, no un mapeo vacio"
-            self.partidas = partidas
+    def proponedor(partidas):
+        assert partidas, "se le debe pasar el catalogo real, no un mapeo vacio"
 
-        def similares(self, descripcion):
+        def proponer(descripcion):
             assert descripcion
-            return resultado
+            return Propuesta(tuple(resultado))
 
-    return SimpleNamespace(NormalizadorPartidas=_NormalizadorDoble)
+        return proponer
+
+    return SimpleNamespace(Propuesta=Propuesta, proponedor=proponedor)
 
 
 def test_sugerir_partidas_similares_ofrece_lo_que_devuelve_la_ayuda():
     resultado = [SimpleNamespace(codigo="LB-01-EXC", descripcion="Excavacion", puntaje=0.91)]
     modulo = _modulo_normalizacion(resultado)
 
-    propuestas = sugerir_partidas_similares(
+    propuesta = sugerir_partidas_similares(
         {"LB-01-EXC": "Excavacion a mano"},
         "excavacion de zanja",
         cargar_normalizacion=lambda: modulo,
     )
 
-    assert propuestas == resultado
+    assert propuesta.similares == tuple(resultado)
+    assert propuesta.falla is None
 
 
-def test_sugerir_partidas_similares_no_bloquea_si_la_ayuda_lanza():
-    propuestas = sugerir_partidas_similares(
-        {"A": "algo"}, "algo parecido", cargar_normalizacion=_que_falla
+def test_sugerir_partidas_similares_no_bloquea_si_la_ayuda_lanza(monkeypatch):
+    monkeypatch.setattr("ml.normalization.normalizador._cargar_modelo", _que_falla)
+    propuesta = sugerir_partidas_similares({"A": "algo"}, "algo parecido")
+    assert propuesta.similares == ()
+    assert propuesta.falla.startswith("RuntimeError")
+
+
+def test_sugerir_partidas_similares_sin_el_extra_ml(monkeypatch):
+    """El extra ausente llega como `ModuleNotFoundError` y `ml` lo declara `ImportError`: es el
+    prefijo con que la pagina de similares reconoce «instale el extra»."""
+    monkeypatch.setattr(
+        "ml.normalization.normalizador._cargar_modelo", _que_falla_por_extra_ausente
     )
-    assert propuestas == []
+    propuesta = sugerir_partidas_similares({"A": "algo"}, "algo parecido")
+    assert propuesta.similares == ()
+    assert propuesta.falla.startswith("ImportError:")
 
 
-def test_sugerir_partidas_similares_sin_el_extra_ml():
-    propuestas = sugerir_partidas_similares(
-        {"A": "algo"}, "algo parecido", cargar_normalizacion=_que_falla_por_extra_ausente
-    )
-    assert propuestas == []
+def test_sugerir_partidas_similares_propaga_lo_que_no_es_una_falla_declarada(monkeypatch):
+    """INV-081 (C3-4): solo las cuatro fallas declaradas de `ml.normalization` dejan la ayuda sin
+    propuestas; un `KeyError` es un defecto y se propaga, no se traga como «sin sugerencias»."""
+
+    def _defecto(*_args, **_kwargs):
+        raise KeyError("defecto, no una falla declarada del modelo")
+
+    monkeypatch.setattr("ml.normalization.normalizador._cargar_modelo", _defecto)
+    with pytest.raises(KeyError):
+        sugerir_partidas_similares({"A": "algo"}, "algo parecido")
 
 
 def test_sugerir_partidas_similares_sin_descripcion_no_intenta_nada():
-    """Sin texto que buscar no hay nada que sugerir: ni siquiera se llega a cargar la ayuda."""
-    propuestas = sugerir_partidas_similares(
-        {"A": "algo"}, "   ", cargar_normalizacion=_que_falla
+    """Sin texto que buscar no hay nada que sugerir: ni siquiera se construye el normalizador."""
+
+    def _no_se_llama(_partidas):
+        raise AssertionError("sin descripcion no se construye ningun normalizador")
+
+    modulo = SimpleNamespace(Propuesta=Propuesta, proponedor=_no_se_llama)
+    propuesta = sugerir_partidas_similares(
+        {"A": "algo"}, "   ", cargar_normalizacion=lambda: modulo
     )
-    assert propuestas == []
+    assert propuesta == Propuesta(())
 
 
 # ---------------------------------------------------------------------------------------------
@@ -303,7 +331,7 @@ def test_contrastar_precio_con_reglas_sin_el_extra_ml():
 # ---------------------------------------------------------------------------------------------
 
 
-def test_ninguna_ayuda_modifica_las_filas_ni_la_composicion_resultante():
+def test_ninguna_ayuda_modifica_las_filas_ni_la_composicion_resultante(monkeypatch):
     """Se arma una composicion real con `composicion_desde_tablas` antes y despues de invocar las
     cuatro ayudas -- con dobles, todos fallando a proposito -- y debe ser exactamente la misma: lo
     que se guarda es lo que la persona compuso, nunca lo que una ayuda propuso (spec §3.7).
@@ -327,7 +355,8 @@ def test_ninguna_ayuda_modifica_las_filas_ni_la_composicion_resultante():
 
     antes = componer()
 
-    sugerir_partidas_similares({"A": "algo"}, "cemento", cargar_normalizacion=_que_falla)
+    monkeypatch.setattr("ml.normalization.normalizador._cargar_modelo", _que_falla)
+    sugerir_partidas_similares({"A": "algo"}, "cemento")
     advertencia_precio_atipico(
         {}, Decimal("8"), Decimal("8"), cargar_anomalia=_que_falla_por_extra_ausente
     )
@@ -348,8 +377,8 @@ def test_ninguna_ayuda_modifica_las_filas_ni_la_composicion_resultante():
 # ---------------------------------------------------------------------------------------------
 
 #: Modulos que un import perezoso mal hecho dejaria en cache con `ml` ya cargado; se limpian antes
-#: y se restauran despues (mismo patron que `tests/unit/test_visor3d.py::_SinIfcopenshell` para el
-#: extra `civil`).
+#: y se restauran despues (el mismo gestor `tests.fixtures.sin_extra.SinExtra`
+#: que usa `tests/unit/test_visor3d.py` para el extra `civil`).
 _MODULOS_RELACIONADOS_CON_ML = (
     "ml",
     "ml.normalization",
@@ -363,69 +392,16 @@ _MODULOS_RELACIONADOS_CON_ML = (
 )
 
 
-class _SinExtraML:
-    """Bloquea `import ml` (y sus submodulos) con un `ImportError`, para que un import a nivel de
-    modulo mal hecho en `ui.composicion` o `ui.paginas.componer` se delate de inmediato. Restaura
-    el cache de modulos original al salir, para no afectar otras pruebas de la suite.
-    """
-
-    def __init__(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        self._monkeypatch = monkeypatch
-
-    def __enter__(self) -> None:
-        self._respaldo = {
-            nombre: sys.modules[nombre]
-            for nombre in _MODULOS_RELACIONADOS_CON_ML
-            if nombre in sys.modules
-        }
-        for nombre in _MODULOS_RELACIONADOS_CON_ML:
-            sys.modules.pop(nombre, None)
-
-        import_original = builtins.__import__
-
-        def import_bloqueado(nombre, *args, **kwargs):
-            if nombre == "ml" or nombre.startswith("ml."):
-                raise ImportError(f"simulado: extra ml no instalado ({nombre})")
-            return import_original(nombre, *args, **kwargs)
-
-        self._monkeypatch.setattr(builtins, "__import__", import_bloqueado)
-
-    def __exit__(self, *excepcion: object) -> None:
-        for nombre in _MODULOS_RELACIONADOS_CON_ML:
-            sys.modules.pop(nombre, None)
-        sys.modules.update(self._respaldo)
-        # Arreglo de la Tarea 1 (P4.1, `tests/unit/test_ui_componer.py`): `sys.modules.pop`/
-        # `.update` restauran la entrada de `sys.modules`, pero NO el atributo del paquete padre
-        # (p. ej. `ui.paginas.componer`, el atributo, no la clave del diccionario). El `import`
-        # perezoso de mas arriba (dentro del `with`) deja ese atributo apuntando a la copia fria
-        # sin `ml`; sin este paso queda asi para el resto de la sesion de pytest, y cualquier
-        # prueba posterior que resuelva por una ruta de texto (`monkeypatch.setattr("ui.paginas.
-        # componer.X", ...)`, que resuelve por ese atributo via `getattr`, no por `sys.modules`)
-        # parcha la copia huerfana en vez de la que de verdad se ejecuta. Se sincroniza cada
-        # atributo de paquete con lo que quedo en `sys.modules` (o se borra, si el modulo no
-        # existia antes de `__enter__`).
-        for nombre in _MODULOS_RELACIONADOS_CON_ML:
-            if "." not in nombre:
-                continue  # modulo de nivel superior: no hay atributo de paquete padre que fijar
-            nombre_paquete, atributo = nombre.rsplit(".", 1)
-            paquete = sys.modules.get(nombre_paquete)
-            if paquete is None:
-                continue  # el paquete padre tampoco esta cargado: nada que sincronizar
-            if nombre in sys.modules:
-                setattr(paquete, atributo, sys.modules[nombre])
-            elif hasattr(paquete, atributo):
-                delattr(paquete, atributo)
-
-
 def test_la_pagina_de_componer_se_importa_sin_el_extra_ml(monkeypatch):
     """RF de arranque (spec §3.7): la interfaz sigue arrancando sin el extra `ml`; las cuatro
     ayudas simplemente no aparecen (cada una degrada a "sin sugerencia" al intentar usarse).
     """
     import importlib
 
-    with _SinExtraML(monkeypatch):
+    with SinExtra(monkeypatch, ("ml",), _MODULOS_RELACIONADOS_CON_ML):
         modulo_composicion = importlib.import_module("ui.composicion")
         modulo_pagina = importlib.import_module("ui.paginas.componer")
 
-    assert modulo_composicion is not None
-    assert modulo_pagina is not None
+    # INV-024: `is not None` no afirma nada; se exige el punto de entrada de cada modulo.
+    assert callable(modulo_composicion.sugerir_partidas_similares)
+    assert callable(modulo_pagina.render)

@@ -26,6 +26,7 @@ from core.budget import (
     COLUMNAS_COMPARATIVO,
     actualizar_precios,
     cargar_presupuesto,
+    descartar_version,
     elaborar,
     generar_curva,
     generar_presupuesto,
@@ -709,3 +710,93 @@ def test_cambios_precio_consulta_consolidada_con_filtros(sesion, actualizacion):
     assert cambios_precio(sesion, hasta=FECHA_NUEVA) == todos
     assert cambios_precio(sesion, desde=FECHA_NUEVA + timedelta(days=1)) == []
     assert cambios_precio(sesion, hasta=FECHA_NUEVA - timedelta(days=1)) == []
+
+
+# ---------------------------------------------------------------------------------------------
+# UC-02, flujo 7a: descartar la version nueva (INV-015, expediente C3.2)
+# ---------------------------------------------------------------------------------------------
+
+
+def _contar(sesion, entidad) -> int:
+    return len(sesion.scalars(select(entidad)).all())
+
+
+def test_descartar_la_version_nueva_la_marca_y_conserva_el_historial(sesion, actualizacion):
+    """`docs/ERS.md:170`: se marca como descartada y el registro de cambios se conserva."""
+    nuevo, _ = actualizacion
+    sesion.commit()
+    incidencias = _contar(sesion, models.IncidenciaCambio)
+
+    marca = descartar_version(sesion, NOMBRE_PROYECTO, CODIGO_NUEVO, FECHA_NUEVA)
+    sesion.commit()
+
+    assert marca.presupuesto.codigo == CODIGO_NUEVO
+    assert marca.fecha == FECHA_NUEVA
+    assert _contar(sesion, models.DescarteVersion) == 1
+    # Oraculo: la muestra cambia exactamente dos insumos (tests/fixtures/actualizacion_uc02.py).
+    assert _contar(sesion, models.CambioPrecio) == len(PRECIOS_NUEVOS) == 2
+    assert _contar(sesion, models.IncidenciaCambio) == incidencias
+    # La version descartada sigue siendo un documento que se carga.
+    recargado = cargar_presupuesto(sesion, NOMBRE_PROYECTO, CODIGO_NUEVO, Catalogo(sesion))
+    assert recargado.total == nuevo.presupuesto.total
+
+
+def test_el_presupuesto_base_nunca_se_descarta(sesion, actualizacion):
+    sesion.commit()
+    with pytest.raises(ValueError, match="ultima version"):
+        descartar_version(sesion, NOMBRE_PROYECTO, linea_base.CODIGO_PRESUPUESTO, FECHA_NUEVA)
+
+
+def test_sin_version_revalorada_no_hay_nada_que_descartar(sesion, presupuesto_001):
+    sesion.commit()
+    with pytest.raises(ValueError, match="ultima version"):
+        descartar_version(sesion, NOMBRE_PROYECTO, linea_base.CODIGO_PRESUPUESTO, FECHA_NUEVA)
+
+
+def test_una_version_no_se_descarta_dos_veces(sesion, actualizacion):
+    sesion.commit()
+    descartar_version(sesion, NOMBRE_PROYECTO, CODIGO_NUEVO, FECHA_NUEVA)
+    with pytest.raises(ValueError, match="ya esta descartada"):
+        descartar_version(sesion, NOMBRE_PROYECTO, CODIGO_NUEVO, FECHA_NUEVA)
+
+
+def test_con_tres_versiones_solo_se_descarta_la_ultima(sesion, actualizacion, lista_nueva):
+    """GC3, M‑2 de requisitos: con dos versiones «no es la última» coincide con «es la primera».
+
+    Con tres (001, 002 y 003) la intermedia no es ni la primera ni la última: descartarla da
+    `ValueError` y la 003 sí se descarta (fila INV‑015: nunca una versión que no sea la última).
+    """
+    nuevo, _ = actualizacion
+    actualizar_precios(
+        sesion,
+        NOMBRE_PROYECTO,
+        CODIGO_NUEVO,
+        lista_nueva.lista,
+        "003",
+        plan=plan_secuencial(nuevo.presupuesto),
+    )
+    sesion.commit()
+
+    with pytest.raises(ValueError, match="ultima version"):
+        descartar_version(sesion, NOMBRE_PROYECTO, CODIGO_NUEVO, FECHA_NUEVA)
+    marca = descartar_version(sesion, NOMBRE_PROYECTO, "003", FECHA_NUEVA)
+    assert marca.presupuesto.codigo == "003"
+    assert _contar(sesion, models.DescarteVersion) == 1
+
+
+def test_borrar_una_version_descartada_borra_su_marca_en_cascada(sesion, actualizacion):
+    """GC3, M‑2 de pruebas: el `ondelete="CASCADE"` de `descarte_version` se comprueba por
+    comportamiento, no solo en el esquema. Con `PRAGMA foreign_keys=ON` (el de `crear_motor`),
+    borrar el presupuesto marcado elimina su `DescarteVersion`.
+    """
+    sesion.commit()
+    assert sesion.connection().exec_driver_sql("PRAGMA foreign_keys").scalar_one() == 1
+    marca = descartar_version(sesion, NOMBRE_PROYECTO, CODIGO_NUEVO, FECHA_NUEVA)
+    sesion.commit()
+    assert _contar(sesion, models.DescarteVersion) == 1
+
+    sesion.delete(marca.presupuesto)
+    sesion.commit()
+    sesion.expunge_all()
+
+    assert _contar(sesion, models.DescarteVersion) == 0

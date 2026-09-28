@@ -8,6 +8,11 @@ unitario reconstruido no coincide con la instantánea, el presupuesto y el catá
 y `cargar_presupuesto` lo denuncia con `ValueError` en vez de devolver un documento adulterado.
 El `Presupuesto` devuelto lleva la instantánea, no el recálculo: es lo que se emitió.
 
+Los ítems **pendientes** de UC‑01 3a (sin partida en el catálogo) se guardan como ítems de cómputo
+del presupuesto sin renglón, y `cargar_elaboracion` los vuelve a declarar en el informe recargado,
+que así es el del documento emitido (INV‑080, expediente C3.1 de
+`docs/bitacora/2026-09-24-C3-expedientes.md`).
+
 `core/catalog/mapeo.py` es el único lugar donde se cruza la frontera modelo↔contrato **del
 catálogo**; este módulo es el único donde se cruza la del **presupuesto**. Los modelos se usan
 siempre cualificados (`models.X`) y los contratos por su nombre: siete nombres coinciden.
@@ -20,23 +25,40 @@ Los tres campos JSON‑texto (`ItemComputo.parametros`, `ItemComputo.especificac
 from __future__ import annotations
 
 import json
-from collections.abc import Mapping
+from collections import Counter
+from collections.abc import Mapping, Sequence
 from decimal import Decimal
 
-from sqlalchemy import select
+from sqlalchemy import exists, select
 from sqlalchemy.orm import Session
 
 from core import models
+
+# `_declarar_pendientes` y `_clave_pendiente` son ayudantes del módulo hermano del mismo paquete
+# que redactan el hallazgo `PENDIENTE` y su clave: la recarga y la comprobación al guardar usan la
+# misma única definición que la elaboración (mismo criterio de `actualizacion.py` con `_buscar`).
+from core.budget.presupuesto import (
+    CODIGO_PENDIENTE,
+    ResultadoElaboracion,
+    _clave_pendiente,
+    _declarar_pendientes,
+)
 from core.catalog import Catalogo
 from core.contracts.apu import ParametrosCosto, ResultadoAPU
 from core.contracts.dominio import Dominio
 from core.contracts.item_computo import ItemComputo, OrigenTipo
 from core.contracts.presupuesto import PartidaPresupuestada, Presupuesto, PuntoCurva
 from core.costing import calcular_apu
+from core.verification import auditar
 from core.verification.directivas import CLAVE_UNIDAD_ORIGINAL
 from core.verification.informe import InformeAuditoria
 
-__all__ = ["TOLERANCIA_RECONSTRUCCION", "cargar_presupuesto", "guardar_presupuesto"]
+__all__ = [
+    "TOLERANCIA_RECONSTRUCCION",
+    "cargar_elaboracion",
+    "cargar_presupuesto",
+    "guardar_presupuesto",
+]
 
 #: Diferencia máxima admitida entre el precio unitario reconstruido y el de la instantánea.
 TOLERANCIA_RECONSTRUCCION = Decimal("0.000001")
@@ -49,8 +71,17 @@ def guardar_presupuesto(
     proyecto: models.Proyecto,
     lista: models.ListaPrecios,
     parametros: ParametrosCosto,
+    pendientes: Sequence[ItemComputo] = (),
 ) -> models.Presupuesto:
     """Persiste el presupuesto con su cómputo, su curva y los hallazgos de su informe.
+
+    `pendientes` son los ítems que la elaboración dejó sin partida (`ResultadoElaboracion`,
+    UC‑01 3a). Se guardan como ítems de cómputo del presupuesto **sin renglón**, para que
+    `cargar_elaboracion` los vuelva a declarar (INV‑080). La correspondencia se exige en los dos
+    sentidos (`ValueError` si falla): cada pendiente tiene su hallazgo `CODIGO_PENDIENTE` en el
+    informe, porque guardar uno que el documento no declara haría que la recarga dijera más que el
+    documento; y cada hallazgo `CODIGO_PENDIENTE` del informe tiene su pendiente, porque sin él la
+    recarga diría menos (un informe emitido NO CUMPLE recargado como CUMPLE).
 
     Deja la transacción abierta: confirmar o deshacer es decisión de quien llama. Cada partida del
     presupuesto debe existir en el catálogo (`KeyError` si no), porque el renglón persistido la
@@ -63,6 +94,7 @@ def guardar_presupuesto(
             f"el informe audita el presupuesto {informe.codigo_presupuesto!r}, "
             f"no el {presupuesto.codigo!r} que se está guardando"
         )
+    _exigir_correspondencia(pendientes, informe)
 
     catalogo = Catalogo(session)
     # Las partidas del catálogo se resuelven antes de construir nada: así un código desconocido
@@ -87,6 +119,11 @@ def guardar_presupuesto(
     ):
         item = _a_modelo_item(partida.item, modelo)
         modelo.partidas.append(_a_modelo_renglon(partida, catalogada, item, orden))
+
+    # Después de los renglones: sus `id` quedan en el orden de `pendientes`, que es el que
+    # `cargar_elaboracion` restituye.
+    for pendiente in pendientes:
+        _a_modelo_item(pendiente, modelo)
 
     for orden, punto in enumerate(presupuesto.curva):
         modelo.curva.append(
@@ -125,7 +162,11 @@ def cargar_presupuesto(
     presupuesto referencia y se compara con la instantánea guardada: una diferencia mayor que
     `TOLERANCIA_RECONSTRUCCION` en el precio unitario es `ValueError`.
     """
-    modelo = _buscar(session, proyecto_nombre, codigo)
+    return _presupuesto_de(_buscar(session, proyecto_nombre, codigo), catalogo)
+
+
+def _presupuesto_de(modelo: models.Presupuesto, catalogo: Catalogo) -> Presupuesto:
+    """La reconstrucción de `cargar_presupuesto` sobre una fila ya encontrada."""
     parametros = _parametros_de(modelo)
 
     partidas = tuple(
@@ -142,6 +183,67 @@ def cargar_presupuesto(
         partidas=partidas,
         curva=curva,
     )
+
+
+def cargar_elaboracion(
+    session: Session, proyecto_nombre: str, codigo: str, catalogo: Catalogo
+) -> ResultadoElaboracion:
+    """El presupuesto guardado con el informe del documento emitido, pendientes incluidos.
+
+    `presupuesto` es el de `cargar_presupuesto` (la misma reconstrucción y la misma denuncia de un
+    catálogo desligado). `pendientes` son los ítems de cómputo del presupuesto que ningún renglón
+    cita, en el orden en que se guardaron. El informe es la reauditoría del presupuesto con esos
+    pendientes declarados otra vez, como en `elaborar` (UC‑01 3a): así el informe recargado es el
+    emitido y no puede declarar CUMPLE un presupuesto emitido NO CUMPLE (RF‑02, INV‑080).
+
+    Límite: un presupuesto guardado antes de INV‑080 no tiene sus pendientes persistidos y su
+    recarga no los inventa: su informe es `auditar(cargar_presupuesto(...))` (expediente C3.1).
+    """
+    modelo = _buscar(session, proyecto_nombre, codigo)
+    presupuesto = _presupuesto_de(modelo, catalogo)
+    pendientes = _cargar_pendientes(session, modelo)
+    return ResultadoElaboracion(
+        presupuesto=presupuesto,
+        informe=_declarar_pendientes(auditar(presupuesto), pendientes),
+        pendientes=pendientes,
+    )
+
+
+def _cargar_pendientes(session: Session, modelo: models.Presupuesto) -> tuple[ItemComputo, ...]:
+    """Los ítems de cómputo del presupuesto que ningún renglón cita (sus pendientes), en el orden
+    en que se guardaron (por `id`). Lo comparten `cargar_elaboracion` y `actualizar_precios`."""
+    con_renglon = exists().where(
+        models.PartidaPresupuestada.item_computo_id == models.ItemComputo.id
+    )
+    filas = session.scalars(
+        select(models.ItemComputo)
+        .where(models.ItemComputo.presupuesto_id == modelo.id, ~con_renglon)
+        .order_by(models.ItemComputo.id)
+    )
+    return tuple(_a_contrato_item(fila) for fila in filas)
+
+
+def _exigir_correspondencia(pendientes: Sequence[ItemComputo], informe: InformeAuditoria) -> None:
+    """Los pendientes y los hallazgos `CODIGO_PENDIENTE` del informe se corresponden uno a uno,
+    por `_clave_pendiente` (partida y origen)."""
+    declarados = Counter(
+        tuple(hallazgo.origen_ids)
+        for hallazgo in informe.hallazgos
+        if hallazgo.regla == CODIGO_PENDIENTE
+    )
+    guardados = Counter(_clave_pendiente(item) for item in pendientes)
+    problemas = [
+        *(
+            f"el informe no declara el pendiente {codigo} ({origen})"
+            for codigo, origen in guardados - declarados
+        ),
+        *(
+            f"el informe declara pendiente {' '.join(clave)} sin pasarlo en 'pendientes'"
+            for clave in declarados - guardados
+        ),
+    ]
+    if problemas:
+        raise ValueError("pendientes e informe no se corresponden: " + "; ".join(problemas))
 
 
 # ---------------------------------------------------------------------------------------------

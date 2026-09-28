@@ -8,6 +8,10 @@ declara (parametros nuevos y/o precios de ensayo) y presenta la tabla de RF-31 c
 por partida. Nada se persiste: el base queda intacto (RF-30) y los escenarios viven en
 `st.session_state` mientras dura la comparacion.
 
+El base se lee con `cargar_elaboracion`, que trae sus items pendientes (UC-01 3a, INV-080):
+`generar_escenario` solo recalcula los renglones valorados, asi que la pagina los declara con un
+aviso para que ningun escenario se lea como completo (INV-083).
+
 La descarga CSV entrega la tabla con los `Decimal` exactos (`str`), no los dos decimales de la
 pantalla: es la exportacion de RF-31, y el redondeo es solo de presentacion (CLAUDE.md §2.3).
 Los dos decimales visibles son los de `core.verification.informe.DECIMALES_PRESENTACION`, la
@@ -16,6 +20,7 @@ unica definicion de presentacion del sistema.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import replace
 from decimal import Decimal
 from pathlib import Path
@@ -28,19 +33,18 @@ from sqlalchemy.exc import SQLAlchemyError
 from core import models
 from core.budget import (
     Escenario,
-    cargar_presupuesto,
+    cargar_elaboracion,
     comparar_escenarios,
     comparar_por_partida,
     generar_escenario,
 )
 from core.catalog import Catalogo, abrir_sesion, crear_esquema, crear_motor
-from core.contracts import ParametrosCosto
+from core.contracts import ItemComputo, ParametrosCosto
 from core.verification.informe import DECIMALES_PRESENTACION
 from core.verification.texto import formatear_decimal
+from ui.caso import ruta_caso
 from ui.composicion import decimal_desde_texto
 
-TITULO = "Escenarios (UC-08)"
-RUTA_BASE_POR_DEFECTO = "data/apu.db"
 _CAMPOS_PARAMETROS = ("fcas", "bono_alimentacion", "administracion", "utilidad")
 _ESTADO_ESCENARIOS = "uc08_escenarios"
 _ESTADO_BASE = "uc08_base"
@@ -48,13 +52,12 @@ _ESTADO_BASE = "uc08_base"
 
 def render() -> None:
     """Selector de presupuesto, formulario de supuestos y tabla comparativa de RF-31."""
-    st.title(TITULO)
     st.caption(
         "Recalcula un presupuesto guardado variando parametros de costo o precios de insumos. "
         "El presupuesto base no se altera y ningun escenario se guarda."
     )
 
-    ruta = Path(st.sidebar.text_input("Archivo SQLite", value=RUTA_BASE_POR_DEFECTO))
+    ruta = ruta_caso()
     motor = crear_motor(f"sqlite:///{ruta.as_posix()}")
     try:
         crear_esquema(motor)
@@ -90,13 +93,32 @@ def _pagina(sesion, ruta: Path) -> None:
         st.session_state[_ESTADO_ESCENARIOS] = []
 
     catalogo = Catalogo(sesion)
-    base = cargar_presupuesto(sesion, modelo.proyecto.nombre, modelo.codigo, catalogo)
+    # `cargar_elaboracion`, no `cargar_presupuesto`: el contrato `Presupuesto` no lleva los items
+    # pendientes del base, y los escenarios no los ven (INV-083).
+    elaboracion = cargar_elaboracion(sesion, modelo.proyecto.nombre, modelo.codigo, catalogo)
+    base = elaboracion.presupuesto
+    _declarar_pendientes(elaboracion.pendientes)
     parametros_base = ParametrosCosto(
         **{nombre: getattr(modelo, nombre) for nombre in _CAMPOS_PARAMETROS}
     )
 
     _formulario(modelo, base, catalogo, parametros_base)
     _resultados(base)
+
+
+def _declarar_pendientes(pendientes: Sequence[ItemComputo]) -> None:
+    """UC-01 3a en UC-08: el base tiene items sin partida que ningun escenario recalcula."""
+    if not pendientes:
+        return
+    lineas = "\n".join(
+        f"- {item.origen_id}: {item.codigo_partida} ({item.descripcion})" for item in pendientes
+    )
+    st.warning(
+        "El presupuesto base tiene items pendientes, sin partida en el catalogo:\n\n"
+        f"{lineas}\n\n"
+        "Pendientes del base: los escenarios solo recalculan los renglones valorados; estos "
+        "items no suman al total del base ni de ningun escenario (UC-01 3a)."
+    )
 
 
 def _formulario(modelo, base, catalogo: Catalogo, parametros_base: ParametrosCosto) -> None:

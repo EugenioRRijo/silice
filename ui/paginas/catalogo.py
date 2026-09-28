@@ -10,8 +10,6 @@ sistema.
 
 from __future__ import annotations
 
-from pathlib import Path
-
 import streamlit as st
 from pandas import DataFrame
 from sqlalchemy.exc import SQLAlchemyError
@@ -19,17 +17,14 @@ from sqlalchemy.exc import SQLAlchemyError
 from core.catalog import Catalogo, CatalogoIncompleto, abrir_sesion, crear_esquema, crear_motor
 from core.verification.informe import DECIMALES_PRESENTACION
 from core.verification.texto import formatear_decimal
-
-TITULO = "Catalogo"
-RUTA_BASE_POR_DEFECTO = "data/apu.db"
+from ui.caso import ruta_caso
 
 
 def render() -> None:
     """Dos tablas de solo lectura: partidas del catalogo e insumos con su precio vigente."""
-    st.title(TITULO)
     st.caption("Partidas e insumos del catalogo, con el precio vigente de cada insumo.")
 
-    ruta = Path(st.sidebar.text_input("Archivo SQLite", value=RUTA_BASE_POR_DEFECTO))
+    ruta = ruta_caso()
 
     motor = crear_motor(f"sqlite:///{ruta.as_posix()}")
     try:

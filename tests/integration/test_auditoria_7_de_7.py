@@ -15,18 +15,11 @@ from core.contracts import Severidad
 from core.verification import auditar
 from core.verification.reglas import NO_APLICABLE
 from tests.fixtures.apu_linea_base import HALLAZGOS_ADICIONALES, INCONSISTENCIAS
+from tests.fixtures.auditoria import detectadas as _detectadas
 from tests.fixtures.presupuesto_auditado import (
     presupuesto_con_siete_inconsistencias,
     presupuesto_corregido,
 )
-
-
-def _detectadas(informe) -> set[tuple[str, str | None]]:
-    return {
-        (hallazgo.regla, informe.partida_de(hallazgo))
-        for hallazgo in informe.hallazgos
-        if hallazgo.severidad >= Severidad.ERROR
-    }
 
 
 def test_detecta_las_siete_inconsistencias():

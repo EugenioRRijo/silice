@@ -1,25 +1,23 @@
 """El guion manual no escribe en `data/apu.db` (INV‑065, bloqueante; spec de cierre §4).
 
-Lee `docs/guion_prueba_arenia.md` como texto y comprueba cinco cosas:
+Lee `docs/guion_prueba_arenia.md` como texto y comprueba seis cosas:
 
 - toda orden de siembra lleva `--db` con una base propia **en la misma línea** que la orden: la
   comprobación es línea a línea, así que una orden partida con `--db` en la línea siguiente cuenta
   como orden sin base (el guion escribe cada orden en una sola línea);
 - la preparación anota y comprueba la base de trabajo;
 - la preparación ejecuta CP‑01…CP‑06 desde una copia desechable del repositorio (`git worktree
-  add`/`remove`): hasta que la Tarea 12 de U1 llegue, la aplicación abre `data/apu.db` de la carpeta
-  desde la que corre en el primer renderizado de cada página, antes de que se pueda escribir otra
-  ruta, así que ni sembrar en `data/prueba_arenia.db` ni escribir el campo **Archivo SQLite**
-  bastan por sí solos;
-- la precondición de cada caso CP‑01…CP‑06 manda abrir la base de prueba en el campo
-  **Archivo SQLite**, porque la aplicación vuelve a `data/apu.db` en cada recarga;
-- CP‑07 se declara no ejecutable hasta U1: arranca la aplicación con `ARENIA_CASO`, que nadie lee
-  antes de la Tarea 12, y si se ejecutara antes debe hacerse desde la copia desechable de la
-  sección 4 (observación Q1 de GC1).
+  add`/`remove`), que desde U1 queda como segunda barrera: si `ARENIA_CASO` faltara, la aplicación
+  abriría `data/apu.db` de la carpeta desde la que corre;
+- la preparación arranca la aplicación con `ARENIA_CASO=data/prueba_arenia.db`, en bash y en
+  PowerShell, y ninguna línea del guion la arranca con `data/apu.db`;
+- la precondición de cada caso CP‑01…CP‑06 abre la base de prueba: desde U1 (fase C3), con el caso
+  abierto por `ARENIA_CASO=data/prueba_arenia.db`, que esta prueba acepta igual que la ruta;
+- CP‑07 ya es ejecutable y se mide en la fase Med (GU1b), sobre una base propia y desde la copia
+  desechable de la sección 4 (observación Q1 de GC1; QA‑10 del plan de C3).
 
-Cuando la Tarea 12 de U1 (fase C3, con `ARENIA_CASO` leído por `ui/caso.py`) reescriba esas
-precondiciones podrá migrar la corrección a `ARENIA_CASO`, que esta prueba también acepta, y podrá
-retirar la copia desechable, pero no volver en silencio a la ruta por defecto.
+El guion podrá retirar algún día la copia desechable, pero no volver en silencio a la ruta por
+defecto.
 
 Límite conocido: esta prueba lee el texto del guion, no ejecuta la aplicación; comprueba que la
 instrucción está escrita, no que quien la siga la respete.
@@ -97,6 +95,16 @@ def test_la_preparacion_usa_una_copia_desechable_del_repositorio():
     )
 
 
+def test_la_preparacion_abre_el_caso_de_prueba():
+    """§4, paso 3: la aplicacion arranca con el caso de prueba en bash y en PowerShell, y ninguna
+    linea del guion la arranca con la base de trabajo (observacion de la revision de A6)."""
+    preparacion = _seccion(_texto(), "## 4. Entorno y preparación", "## 5.")
+    assert f"{CASO_ABIERTO}={BASE_DE_PRUEBA} " in preparacion
+    assert f'$env:{CASO_ABIERTO} = "{BASE_DE_PRUEBA}"' in preparacion
+    assert f"{CASO_ABIERTO}={BASE_DE_TRABAJO}" not in _texto()
+    assert f'$env:{CASO_ABIERTO} = "{BASE_DE_TRABAJO}"' not in _texto()
+
+
 @pytest.mark.parametrize("caso", ["CP-01", "CP-02", "CP-03", "CP-04", "CP-05", "CP-06"])
 def test_la_precondicion_de_cada_caso_abre_la_base_de_prueba(caso):
     precondicion = _seccion(_casos()[caso], "**Precondición:**", "**Pasos**")
@@ -112,10 +120,17 @@ def test_la_segunda_pestana_de_cp02_tambien_abre_la_base_de_prueba():
     assert BASE_DE_PRUEBA in pasos or CASO_ABIERTO in pasos
 
 
-def test_cp07_se_declara_no_ejecutable_hasta_u1():
-    """CP‑07 arranca la app con `ARENIA_CASO`, que ninguna parte lee hasta la Tarea 12 de U1:
-    ejecutado hoy en la raíz crearía o tocaría `data/apu.db` (observación Q1 de GC1)."""
+def test_cp07_es_ejecutable_y_se_mide_en_med():
+    """CP‑07 ya es ejecutable: con U1 hecha, `ui/caso.py` lee `ARENIA_CASO`. Su medición con
+    personas es de la fase Med (compuerta GU1b), no de C3 (QA‑10 del plan de C3).
+
+    Conserva INV‑065 (antes, en `test_cp07_se_declara_no_ejecutable_hasta_u1`): la preparación de
+    CP‑07 trabaja sobre una base propia, desde la copia desechable de la sección 4 o con
+    `ARENIA_CASO` apuntando a una base que no es la por defecto; nunca vuelve a `data/apu.db`."""
     cp07 = _seccion(_texto(), "### CP‑07 ", "## 7.")
-    assert "no es ejecutable hasta U1" in cp07
-    assert "Tarea 12" in cp07
-    assert "copia desechable de la sección 4" in cp07
+    assert "no es ejecutable hasta U1" not in cp07
+    assert "se ejecuta en la fase Med (GU1b)" in cp07
+    assert "copia desechable de la sección 4" in cp07 or (
+        CASO_ABIERTO in cp07 and BASE_DE_PRUEBA in cp07
+    )
+    assert f"{CASO_ABIERTO}={BASE_DE_TRABAJO}" not in cp07
