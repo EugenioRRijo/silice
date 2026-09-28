@@ -1,18 +1,24 @@
-"""Un presupuesto base guardado con un item pendiente (UC-01 3a), para las pruebas de INV-083.
+"""Un presupuesto base guardado con items pendientes (UC-01 3a), para las pruebas de recarga y de
+escenarios (INV-080, INV-083).
 
-La pagina de escenarios (`tests/unit/test_ui_escenarios.py`) y la ruta de la API
-(`tests/integration/test_api_escenarios.py`) prueban lo mismo por dos capas: los escenarios de un
-base con pendientes los declaran. Las dos parten de esta misma base (INV-052: lo compartido entre
-pruebas vive en `tests/fixtures/`), guardada por el nucleo directo con `pendientes=`, sin pasar por
-la capa que se prueba. La ruta la elige la prueba y vive en `tmp_path`: nada escribe en `data/`.
+La recarga (`tests/integration/test_recarga_con_pendientes.py`), la pagina de escenarios
+(`tests/unit/test_ui_escenarios.py`) y la ruta de la API
+(`tests/integration/test_api_escenarios.py`) parten de la misma base (INV-052: lo compartido
+entre pruebas vive en `tests/fixtures/`), guardada por el nucleo directo con `pendientes=`, sin
+pasar por la capa que se prueba. La ruta del archivo la elige la prueba y vive en `tmp_path`:
+nada escribe en `data/`.
 """
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from decimal import Decimal
 from pathlib import Path
 
-from core.budget import elaborar, guardar_presupuesto, plan_secuencial
+from sqlalchemy.orm import Session
+
+from core import models
+from core.budget import ResultadoElaboracion, elaborar, guardar_presupuesto, plan_secuencial
 from core.catalog import Catalogo, abrir_sesion, crear_esquema, crear_motor
 from core.contracts import Dominio, ItemComputo, OrigenTipo
 from scripts.seed import sembrar
@@ -36,39 +42,64 @@ def url_sqlite(ruta: Path) -> str:
     return f"sqlite:///{ruta.as_posix()}"
 
 
-def guardar_base_con_pendiente(ruta: Path) -> None:
-    """Siembra `ruta` y guarda el presupuesto 001 (linea base mas T-99) con su pendiente.
+def elaborar_en(
+    sesion: Session, items: Sequence[ItemComputo], codigo: str = linea_base.CODIGO_PRESUPUESTO
+) -> ResultadoElaboracion:
+    """La elaboracion de la interfaz y de la API: composiciones solo de las partidas que existen,
+    con los parametros y la fecha de la linea base."""
+    catalogo = Catalogo(sesion)
+    existentes = {partida.codigo for partida in catalogo.partidas()}
+    composiciones = catalogo.composiciones(
+        dict.fromkeys(i.codigo_partida for i in items if i.codigo_partida in existentes),
+        fecha=linea_base.FECHA_LINEA_BASE,
+    )
+    return elaborar(
+        items,
+        composiciones,
+        linea_base.PARAMETROS_LINEA_BASE,
+        codigo=codigo,
+        fecha=linea_base.FECHA_LINEA_BASE,
+        moneda=linea_base.MONEDA,
+        plan=plan_secuencial,
+    )
 
-    Cierra el motor al terminar: quien lo abra despues lee lo persistido, no la identidad de una
-    sesion viva.
+
+def guardar_en(
+    sesion: Session, proyecto: models.Proyecto, resultado: ResultadoElaboracion, **extra
+) -> models.Presupuesto:
+    """`guardar_presupuesto` con la lista vigente y los parametros de la linea base; `extra` pasa
+    tal cual (p. ej. `pendientes=`). No confirma."""
+    return guardar_presupuesto(
+        sesion,
+        resultado.presupuesto,
+        resultado.informe,
+        proyecto=proyecto,
+        lista=Catalogo(sesion).lista_vigente(linea_base.FECHA_LINEA_BASE),
+        parametros=linea_base.PARAMETROS_LINEA_BASE,
+        **extra,
+    )
+
+
+def emitir(ruta: Path, items: Sequence[ItemComputo]) -> ResultadoElaboracion:
+    """Siembra `ruta`, elabora `items`, guarda con sus pendientes y confirma; cierra el motor.
+
+    Quien abra `ruta` despues lee lo persistido, no la identidad de una sesion viva.
     """
     motor = crear_motor(url_sqlite(ruta))
     try:
         crear_esquema(motor)
         with abrir_sesion(motor) as sesion:
             proyecto = sembrar(sesion)
-            catalogo = Catalogo(sesion)
-            resultado = elaborar(
-                [*items_auditados(), PENDIENTE_T99],
-                catalogo.composiciones(
-                    linea_base.CODIGOS_LINEA_BASE, fecha=linea_base.FECHA_LINEA_BASE
-                ),
-                linea_base.PARAMETROS_LINEA_BASE,
-                codigo=linea_base.CODIGO_PRESUPUESTO,
-                fecha=linea_base.FECHA_LINEA_BASE,
-                moneda=linea_base.MONEDA,
-                plan=plan_secuencial,
-            )
-            assert resultado.pendientes == (PENDIENTE_T99,)
-            guardar_presupuesto(
-                sesion,
-                resultado.presupuesto,
-                resultado.informe,
-                proyecto=proyecto,
-                lista=catalogo.lista_vigente(linea_base.FECHA_LINEA_BASE),
-                parametros=linea_base.PARAMETROS_LINEA_BASE,
-                pendientes=resultado.pendientes,
-            )
+            resultado = elaborar_en(sesion, items)
+            guardar_en(sesion, proyecto, resultado, pendientes=resultado.pendientes)
             sesion.commit()
     finally:
         motor.dispose()
+    return resultado
+
+
+def guardar_base_con_pendiente(ruta: Path) -> ResultadoElaboracion:
+    """El presupuesto 001 (linea base mas T-99) guardado en `ruta` con su pendiente."""
+    resultado = emitir(ruta, [*items_auditados(), PENDIENTE_T99])
+    assert resultado.pendientes == (PENDIENTE_T99,)
+    return resultado

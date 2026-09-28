@@ -18,7 +18,6 @@ import json
 from collections import Counter
 from dataclasses import replace
 from datetime import date
-from decimal import Decimal
 from pathlib import Path
 
 import pytest
@@ -30,8 +29,6 @@ from core.budget import (
     actualizar_precios,
     cargar_elaboracion,
     cargar_presupuesto,
-    elaborar,
-    guardar_presupuesto,
     plan_secuencial,
 )
 from core.catalog import (
@@ -41,12 +38,12 @@ from core.catalog import (
     crear_lista_desde_archivo,
     crear_motor,
 )
-from core.contracts.dominio import Dominio
-from core.contracts.item_computo import ItemComputo, OrigenTipo
 from core.contracts.verificacion import Severidad
 from core.verification import auditar
 from scripts.seed import NOMBRE_PROYECTO, sembrar
 from tests.fixtures import apu_linea_base as linea_base
+from tests.fixtures.base_con_pendiente import PENDIENTE_T99 as PENDIENTE
+from tests.fixtures.base_con_pendiente import elaborar_en, emitir, guardar_en, url_sqlite
 from tests.fixtures.computo_auditado import items_auditados
 
 RAIZ = Path(__file__).resolve().parents[2]
@@ -58,18 +55,9 @@ CODIGO = linea_base.CODIGO_PRESUPUESTO
 CODIGO_NUEVO = "002"
 ERROR = int(Severidad.ERROR)
 
-#: El ítem cuya partida no existe en el catálogo sembrado (UC‑01, flujo 3a).
-PENDIENTE = ItemComputo(
-    codigo_partida="XX-99-NUE",
-    descripcion="Excavacion de un foso nuevo",
-    unidad="m3",
-    cantidad=Decimal("2.5"),
-    origen_id="T-99",
-    origen_tipo=OrigenTipo.MANUAL,
-    dominio=Dominio.CIVIL,
-)
-#: Un segundo pendiente cuya clave ordena **antes** que la del primero: si la recarga ordenara por
-#: código, por origen o al revés del guardado, el orden de los dos cambiaría.
+#: Un segundo pendiente cuya clave ordena **antes** que la del primero (`PENDIENTE`, el T-99 de
+#: `tests/fixtures/base_con_pendiente.py`): si la recarga ordenara por código, por origen o al
+#: revés del guardado, el orden de los dos cambiaría.
 SEGUNDO = replace(PENDIENTE, codigo_partida="XX-98-NUE", origen_id="T-98", descripcion="Muro")
 
 
@@ -78,54 +66,17 @@ SEGUNDO = replace(PENDIENTE, codigo_partida="XX-98-NUE", origen_id="T-98", descr
 # ---------------------------------------------------------------------------------------------
 
 
+def _ruta(tmp_path: Path) -> Path:
+    return tmp_path / "recarga.db"
+
+
 def _url(tmp_path: Path) -> str:
-    return f"sqlite:///{(tmp_path / 'recarga.db').as_posix()}"
-
-
-def _elaborar(sesion, items, codigo=CODIGO):
-    """La elaboración de la interfaz y de la API: composiciones solo de las partidas que existen."""
-    catalogo = Catalogo(sesion)
-    existentes = {partida.codigo for partida in catalogo.partidas()}
-    composiciones = catalogo.composiciones(
-        dict.fromkeys(i.codigo_partida for i in items if i.codigo_partida in existentes),
-        fecha=linea_base.FECHA_LINEA_BASE,
-    )
-    return elaborar(
-        items,
-        composiciones,
-        linea_base.PARAMETROS_LINEA_BASE,
-        codigo=codigo,
-        fecha=linea_base.FECHA_LINEA_BASE,
-        moneda=linea_base.MONEDA,
-        plan=plan_secuencial,
-    )
-
-
-def _guardar(sesion, proyecto, resultado, **extra):
-    return guardar_presupuesto(
-        sesion,
-        resultado.presupuesto,
-        resultado.informe,
-        proyecto=proyecto,
-        lista=Catalogo(sesion).lista_vigente(linea_base.FECHA_LINEA_BASE),
-        parametros=linea_base.PARAMETROS_LINEA_BASE,
-        **extra,
-    )
+    return url_sqlite(_ruta(tmp_path))
 
 
 def _emitir(tmp_path: Path, items):
     """Siembra, elabora, guarda con sus pendientes y confirma en `tmp_path`; cierra el motor."""
-    motor = crear_motor(_url(tmp_path))
-    crear_esquema(motor)
-    try:
-        with abrir_sesion(motor) as sesion:
-            proyecto = sembrar(sesion)
-            resultado = _elaborar(sesion, items)
-            _guardar(sesion, proyecto, resultado, pendientes=resultado.pendientes)
-            sesion.commit()
-    finally:
-        motor.dispose()
-    return resultado
+    return emitir(_ruta(tmp_path), items)
 
 
 @pytest.fixture
@@ -221,20 +172,20 @@ def test_un_pendiente_que_el_informe_no_declara_no_se_guarda(base_sembrada):
     """3. Persistir un pendiente sin su hallazgo `PENDIENTE` haría que la recarga dijera más que
     el documento emitido."""
     sesion, proyecto = base_sembrada
-    resultado = _elaborar(sesion, items_auditados())  # el informe no lo declara
+    resultado = elaborar_en(sesion, items_auditados())  # el informe no lo declara
 
     with pytest.raises(ValueError, match="no declara el pendiente XX-99-NUE"):
-        _guardar(sesion, proyecto, resultado, pendientes=(PENDIENTE,))
+        guardar_en(sesion, proyecto, resultado, pendientes=(PENDIENTE,))
 
 
 def test_un_pendiente_declarado_que_no_se_pasa_no_se_guarda(base_sembrada):
     """3b. La otra dirección: el informe declara `XX-99-NUE` pendiente y se guarda sin
     `pendientes`. La recarga diría menos que el documento (CUMPLE sobre un NO CUMPLE)."""
     sesion, proyecto = base_sembrada
-    resultado = _elaborar(sesion, [*items_auditados(), PENDIENTE])
+    resultado = elaborar_en(sesion, [*items_auditados(), PENDIENTE])
 
     with pytest.raises(ValueError, match="declara pendiente XX-99-NUE T-99"):
-        _guardar(sesion, proyecto, resultado)
+        guardar_en(sesion, proyecto, resultado)
 
 
 def test_revalorar_arrastra_los_pendientes_del_base(tmp_path, reabierta):
