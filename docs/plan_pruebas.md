@@ -188,14 +188,174 @@ Las demás pruebas de la suite no demuestran un RF concreto: guardias de arquite
 trabajo, metas de sprint, scripts, referencias de precios, dominios del sprint multidominio, API
 (OpenAPI y errores HTTP) y visor 3D. Su recuento es el de la sección 10.
 
-### 8.1 Trazabilidad por paso de UC‑12
+### 8.1 Trazabilidad por paso de todos los casos de uso
 
 Regla (metodología §3.4): cada paso numerado y cada flujo alternativo de un caso de uso cita la
 prueba o el caso manual que lo demuestra; un paso sin fila es un requisito sin verificar. La regla
 nace de la auditoría del PR #7: el paso 1 de UC‑11 estaba escrito y nunca se implementó, y ninguna
-prueba lo reclamaba.
+prueba lo reclamaba. Desde C4 la matriz cubre los once casos de uso de la
+[ERS §2.2](ERS.md#22-funciones-del-producto-casos-de-uso), con sus flujos alternativos (INV‑033,
+condición F5 del final del proyecto). La capa que realiza cada caso de uso está en
+[ERS §3.1](ERS.md#31-interfaces-externas).
 
-| Paso de UC‑12 | RF | Prueba o caso | Estado |
+Mismas convenciones de cita que la sección 8. Estados de un paso: **verde** (una prueba automatizada
+lo demuestra y pasa en la corrida de §10); **manual** (solo lo demuestra un caso del
+[guion](guion_prueba_arenia.md), cuya ejecución no está registrada todavía: su §8 está en blanco);
+**parcial** (la celda dice qué parte tiene prueba y qué parte no); **sin prueba** (el comportamiento
+existe, pero ninguna prueba ni caso manual lo demuestra); **no implementado** (el paso, tal como está
+escrito, no existe en ninguna capa). Donde una prueba automatizada existe, el caso manual que también
+lo recorre se cita entre paréntesis como apoyo.
+
+#### UC‑01 — Elaborar presupuesto nuevo desde una fuente de cantidades
+
+| Paso | RF | Prueba o caso | Estado |
+|---|---|---|---|
+| 1 crea el proyecto y selecciona fuente y dominio | RF‑04 | la fuente y el dominio: `tests/integration/test_api.py::test_computo_civil_desde_la_muestra`, `::test_computo_civil_desde_un_modelo_ifc` (`POST /computos/{dominio}`); el proyecto no se crea: la API exige uno ya sembrado y la interfaz no lo pide | parcial: crear el proyecto no está implementado |
+| 2 extrae los `ItemComputo` con su origen | RF‑03, RF‑04 | `tests/unit/test_reglas_civil.py::test_adaptador_tabular_extrae_la_muestra`; `tests/unit/test_adapter_civil_ifc.py::test_g1_lo_extraido_coincide_con_el_calculo_manual`; `tests/unit/test_adapter_telecom.py::test_extrae_nodos_y_enlaces_de_la_muestra`; `tests/unit/test_adapter_industrial.py::test_extrae_los_activos_de_la_muestra`; `tests/unit/test_adapter_sistemas.py::test_extrae_los_casos_de_uso_de_la_muestra` | verde |
+| 3 asocia cada ítem a su partida y recupera composición y rendimiento | RF‑05, RF‑06 | `tests/integration/test_persistencia.py::test_composicion_reconstruye_cada_apu_identico`; `tests/integration/test_presupuesto_linea_base.py::test_los_renglones_referencian_la_partida_del_catalogo` | verde |
+| 4 el motor calcula cada `ResultadoAPU` | RF‑01 | `tests/unit/test_costing.py::test_precio_unitario_reproduce_la_linea_base` | verde |
+| 5 arma el `Presupuesto` con totales | RF‑06 | `tests/unit/test_budget.py::test_presupuesto_reproduce_1586_61`, `::test_cada_renglon_reproduce_el_total_auditado`; `tests/integration/test_presupuesto_linea_base.py::test_elaborar_desde_el_catalogo_reproduce_1586_61`; `tests/integration/test_api.py::test_elaborar_presupuesto_por_http_reproduce_el_total_auditado` | verde |
+| 6 el proyectista distribuye en períodos; la curva cierra en el total | RF‑07 | la curva cierra: `tests/unit/test_budget.py::test_curva_cierra_exactamente_en_el_total`, `::test_curva_con_fracciones_arbitrarias_cierra`, `::test_elaborar_acepta_el_plan_como_funcion_del_presupuesto_valorado`; la distribución no la hace el proyectista: la interfaz y la API usan siempre `plan_secuencial` (una partida por día) | parcial: distribuir los períodos no está implementado en la interfaz ni en la API; el núcleo acepta cualquier plan |
+| 7 verifica y emite el informe sin que se pida | RF‑02 | `tests/unit/test_budget.py::test_elaborar_siempre_devuelve_informe`; `tests/unit/test_ui_elaborar.py::test_el_item_sin_partida_queda_pendiente_con_sus_propuestas` (el informe en la pantalla) (CP‑06) | verde |
+| 8 exporta presupuesto y curva a XLSX | RF‑08 | `tests/unit/test_budget.py::test_exportar_excel_escribe_cuatro_hojas`; `tests/unit/test_elaboracion.py::test_el_libro_se_abre_y_tiene_la_hoja_de_auditoria`; `tests/unit/test_ui_componer.py::test_de_componer_a_excel_desde_la_pantalla` (CP‑05) | verde |
+| 2a fuente ilegible o de otro dominio | RF‑04 | `tests/unit/test_adapter_telecom.py::test_longitud_vacia_falla_con_fila_y_columna`; `tests/unit/test_reglas_civil.py::test_adaptador_tabular_exige_una_zanja_para_el_balance_de_relleno`; `tests/integration/test_api.py::test_computo_ifc_sin_extra_civil_responde_400`, `::test_cantidad_decimal_malformada_responde_422_no_500` | verde en adaptadores y API; el mensaje de la página «Elaborar un presupuesto» sin prueba propia |
+| 3a ítem sin partida: pendiente, propuestas y reelaboración (orden de C3‑10) | RF‑02, RF‑15 | `tests/unit/test_budget.py::test_un_item_sin_partida_queda_pendiente_y_el_informe_lo_declara`; `tests/unit/test_ui_elaborar.py::test_el_item_sin_partida_queda_pendiente_con_sus_propuestas`, `::test_aceptar_una_propuesta_vuelve_a_elaborar_sin_pendientes`, `::test_aceptar_cambia_solo_el_item_pendiente`, `::test_sin_el_extra_el_pendiente_se_declara_sin_propuestas`; `tests/integration/test_api.py::test_un_item_sin_partida_queda_pendiente_por_http`, `::test_si_todos_los_items_quedan_pendientes_el_presupuesto_sale_vacio_y_no_cumple` | verde |
+| 3b partida sin rendimiento vigente: propone el del histórico | RF‑26 | ninguna: la elaboración exige un rendimiento estimado vigente y, si falta, se detiene con `CatalogoIncompleto` (`core/catalog/repositorio.py`, `_rendimiento_estimado`); la propuesta del histórico con su dispersión existe en UC‑06 (paso 3), no en la elaboración | no implementado |
+| 6a sin plan de trabajo: sin curva, R2 no aplicable | RF‑07 | `tests/unit/test_budget.py::test_elaborar_siempre_devuelve_informe` (sin plan, `curva == ()`); `tests/unit/test_verification.py::test_r2_informa_cuando_no_hay_curva`, `::test_r7_se_declara_no_aplicable_si_el_presupuesto_no_declara_curva` | verde en el núcleo; la interfaz y la API siempre pasan un plan, así que por ellas el flujo no ocurre |
+| 7a hallazgos `CRITICO`: se emite igual, con ellos al frente | RF‑23 | `tests/unit/test_verification.py::test_r2_brecha_11_11` (un `CRITICO`), `::test_el_informe_ordena_los_hallazgos_por_severidad_descendente` | verde |
+
+#### UC‑02 — Actualizar masivamente los precios de un presupuesto existente
+
+| Paso | RF | Prueba o caso | Estado |
+|---|---|---|---|
+| 1 carga el archivo con su vigencia y su moneda | RF‑10 | `tests/integration/test_actualizacion_precios.py::test_leer_lista_precios_devuelve_decimales_exactos`, `::test_leer_lista_precios_xlsx_lee_decimales_exactos`, `::test_crear_lista_copia_los_precios_anteriores_y_sobrescribe_los_del_archivo`, `::test_el_presupuesto_nuevo_queda_persistido_con_su_lista` | verde |
+| 2 valida columnas, tipos y unidades; todo importe a `Decimal` | RF‑10 | `tests/integration/test_actualizacion_precios.py::test_leer_lista_precios_rechaza_lo_que_no_es_un_numero_no_negativo`, `::test_leer_lista_precios_devuelve_decimales_exactos` | verde |
+| 3 identifica los insumos que cambian y sus partidas | RF‑10 | `tests/integration/test_actualizacion_precios.py::test_actualizar_precios_solo_revalora_el_concreto`; `tests/integration/test_api.py::test_actualizacion_por_http_solo_revalora_el_concreto` | verde |
+| 4 recalcula y produce una versión nueva sin editar composiciones | RF‑11 | `tests/integration/test_actualizacion_precios.py::test_uc02_no_edita_ninguna_composicion`, `::test_uc02_exige_composicion_para_todo_renglon_antes_de_guardar` | verde |
+| 5 un registro de cambio por insumo, con su incidencia | RF‑12 | `tests/integration/test_actualizacion_precios.py::test_registra_un_cambio_de_precio_por_insumo_afectado`, `::test_registra_la_incidencia_de_cada_cambio_en_el_concreto`, `::test_repetir_uc02_con_el_mismo_par_de_listas_no_duplica_el_historial` | verde |
+| 6 informe comparativo por partida y total | RF‑13 | `tests/integration/test_actualizacion_precios.py::test_el_comparativo_suma_los_totales`, `::test_el_comparativo_detalla_la_partida_que_cambio` | verde |
+| 7 acepta o descarta la versión nueva | RF‑11 | `tests/unit/test_ui_actualizacion.py::test_revalorar_con_cambios_ofrece_descartar_la_version_guardada` (la versión se guarda y el botón de descartar aparece) | verde |
+| 2a insumos desconocidos: se listan y se ofrecen dar de alta o ignorar | RF‑10 | `tests/integration/test_actualizacion_precios.py::test_crear_lista_reporta_los_insumos_desconocidos_sin_crearlos`; `tests/integration/test_api.py::test_cargar_lista_de_precios_reporta_desconocidos_vacios` | parcial: se listan y se ignoran; darlos de alta no se ofrece |
+| 2b unidad no equivalente: la fila se rechaza y las demás siguen | RF‑10 | `tests/integration/test_actualizacion_precios.py::test_una_fila_con_unidad_no_equivalente_se_rechaza_y_las_demas_se_procesan` | verde |
+| 3a ningún precio cambió: no hay versión nueva | RF‑11 | `tests/unit/test_ui_actualizacion.py::test_revalorar_sin_cambios_no_guarda_ni_ofrece_descartar`; `tests/integration/test_api.py::test_actualizacion_sin_cambios_de_precio_responde_409_sin_persistir` | verde |
+| 4a el base tiene ítems pendientes (UC‑01 3a) | RF‑02 | `tests/integration/test_recarga_con_pendientes.py::test_revalorar_arrastra_los_pendientes_del_base` | verde |
+| 7a descarta la versión: se marca y el historial se conserva | RF‑12 | `tests/integration/test_actualizacion_precios.py::test_descartar_la_version_nueva_la_marca_y_conserva_el_historial`, `::test_con_tres_versiones_solo_se_descarta_la_ultima`, `::test_el_presupuesto_base_nunca_se_descarta`, `::test_una_version_no_se_descarta_dos_veces`; `tests/unit/test_ui_actualizacion.py::test_descartar_version_marca_la_version_y_conserva_el_historial`, `::test_descartar_marca_la_base_donde_se_guardo_aunque_se_cambie_de_caso` | verde |
+
+#### UC‑03 — Reutilizar partidas y desgloses de proyectos anteriores
+
+| Paso | RF | Prueba o caso | Estado |
+|---|---|---|---|
+| 1 escribe la descripción en texto libre | RF‑15 | `tests/unit/test_normalizacion.py::test_descripcion_identica_es_la_primera_propuesta_con_puntaje_cercano_a_uno` | verde en `ml/`; la página «Partidas similares» solo tiene pruebas de degradación (`tests/unit/test_ui_similares.py::test_sin_el_extra_la_pagina_lo_dice`) |
+| 2 devuelve las tres más similares con su puntaje | RF‑15 | `tests/unit/test_normalizacion.py::test_propuestas_ordenadas_por_puntaje_y_sobre_el_umbral`, `::test_cuantos_acota_el_numero_de_propuestas`; `tests/integration/test_api.py::test_la_propuesta_real_reconoce_la_partida_de_la_misma_descripcion` | verde |
+| 3 el proyectista selecciona una | RF‑16 | en UC‑01 3a: `tests/unit/test_ui_elaborar.py::test_aceptar_una_propuesta_vuelve_a_elaborar_sin_pendientes`; en la página «Partidas similares» la selección es desplegar la propuesta, sin prueba | parcial |
+| 4 precarga composición y rendimiento con origen y puntaje | RF‑16 | la página los muestra; solo `tests/unit/test_ui_importable.py::test_las_paginas_se_importan_sin_efectos` (humo) | sin prueba (RF‑16 parcial) |
+| 5 ajusta y el sistema recalcula | RF‑16 | la página «Partidas similares» es de solo lectura; el ajuste y el recálculo en vivo ocurren en «Componer una partida» (UC‑10, paso 6) | no implementado en UC‑03 |
+| 2a ningún candidato supera el umbral | RF‑15 | `tests/unit/test_normalizacion.py::test_nada_supera_el_umbral_no_propone_nada` | verde |
+| 2b catálogo vacío | RF‑15 | `tests/unit/test_normalizacion.py::test_catalogo_vacio_no_propone_sin_error` | verde |
+| 4a el desglose usa insumos sin precio vigente | RF‑16 | ninguna: la página muestra el aviso de `CatalogoIncompleto` sin prueba | sin prueba |
+
+#### UC‑04 — Recalcular ante cambio de alcance o dimensiones
+
+UC‑04 no tiene pantalla ni ruta: lo realiza `adapters/civil/recalculo.py` (ERS §3.1).
+
+| Paso | RF | Prueba o caso | Estado |
+|---|---|---|---|
+| 1 modifica un parámetro dimensional o un conteo | RF‑19 | `tests/unit/test_recalculo_civil.py::test_recalcular_equivale_a_extraer_la_fuente_editada`; `tests/unit/test_reglas_civil.py::test_cambiar_el_ancho_altera_solo_las_cantidades_que_dependen_de_el` | verde |
+| 2 reevalúa las reglas y produce `ItemComputo` con su expresión | RF‑18, RF‑19 | `tests/unit/test_recalculo_civil.py::test_recalcular_equivale_a_extraer_la_fuente_editada`; `tests/unit/test_reglas_civil.py::test_los_items_son_trazables` | verde |
+| 3 recalcula las partidas y el total | RF‑19 | `tests/unit/test_recalculo_uc04.py::test_uc04_recalcula_precios_curva_y_auditoria_al_cambiar_el_ancho` | verde |
+| 4 regenera la curva y la verificación | RF‑19 | `tests/unit/test_recalculo_uc04.py::test_uc04_recalcula_precios_curva_y_auditoria_al_cambiar_el_ancho` | verde |
+| 5 muestra el diferencial por partida | RF‑20 | — | no implementado (RF‑20, limitaciones) |
+| 1a el parámetro no participa en ninguna regla | RF‑19 | `tests/unit/test_recalculo_civil.py::test_1a_un_parametro_sin_regla_no_recalcula_y_se_informa`, `::test_1a_un_cambio_dirigido_al_relleno_se_rechaza` | verde |
+| 2a la fuente es IFC: reimportar y emparejar por GlobalId | RF‑04, RF‑19 | `tests/unit/test_adapter_civil_ifc.py::test_uc04_2a_un_objeto_ifc_no_se_recalcula_por_reglas`, `::test_uc04_2a_reimportar_empareja_por_global_id`; `tests/unit/test_recalculo_civil.py::test_emparejar_rechaza_claves_repetidas_en_cualquiera_de_las_versiones` | verde |
+| 2b cantidad negativa o nula: rechazo atómico del objeto; R5 si es el relleno | RF‑19 | `tests/unit/test_recalculo_civil.py::test_2b_una_cantidad_nula_se_rechaza_y_conserva_la_anterior`, `::test_2b_el_rechazo_es_atomico_por_objeto`, `::test_2b_un_relleno_negativo_se_rechaza_y_r5_lo_declara` | verde |
+
+#### UC‑05 — Auditar un presupuesto elaborado por un tercero
+
+| Paso | RF | Prueba o caso | Estado |
+|---|---|---|---|
+| 1 selecciona el presupuesto o importa el archivo del tercero | RF‑24 | seleccionar uno propio: `tests/integration/test_api.py::test_el_informe_recargado_declara_el_pendiente` (`GET /presupuestos/{codigo}/informe`); importar el archivo de un tercero: ninguna (INV‑076) | parcial: la importación no está implementada |
+| 2 construye el `Presupuesto` conservando las unidades del autor | RF‑24 | `tests/unit/test_verification.py::test_r3_reporta_unidad_original_mts`, sobre el presupuesto de prueba construido en memoria (`tests/fixtures/presupuesto_auditado.py`); por la vía de las cantidades tecleadas en «Componer una partida» el ítem toma la unidad de la partida, así que R3 no se dispara por esa vía (dictamen C3‑47) | parcial: sin archivo de un tercero |
+| 3 ejecuta R1–R7 | RF‑21, RF‑22 | `tests/integration/test_auditoria_7_de_7.py::test_detecta_las_siete_inconsistencias` | verde |
+| 4 cada hallazgo con severidad, descripción, impacto y `origen_id` | RF‑21 | `tests/integration/test_auditoria_7_de_7.py::test_todo_hallazgo_de_partida_referencia_un_origen_trazable`; `tests/unit/test_verification.py::test_r1_encofrado_y_concreto_con_impacto`; `tests/unit/test_contracts.py::TestVerificacion::test_hallazgo_exige_regla_y_descripcion` | verde |
+| 5 ordena por severidad y emite el informe | RF‑23 | `tests/unit/test_verification.py::test_el_informe_ordena_los_hallazgos_por_severidad_descendente`, `::test_informe_markdown_contiene_resumen_y_partidas` (CP‑06) | verde |
+| 6 exporta el informe | RF‑02 | `tests/unit/test_elaboracion.py::test_el_libro_se_abre_y_tiene_la_hoja_de_auditoria`; `tests/integration/test_api.py::test_el_excel_recargado_declara_el_pendiente_en_la_auditoria` | verde |
+| 2a sin plan de trabajo: R2 y R7 no aplicables | RF‑23 | `tests/unit/test_verification.py::test_r2_informa_cuando_no_hay_curva`, `::test_r7_se_declara_no_aplicable_si_el_presupuesto_no_declara_curva` | verde |
+| 2b cantidades sin regla: R1 declara la trazabilidad ausente | RF‑03, RF‑21 | `tests/unit/test_verification.py::test_r1_advierte_de_las_cantidades_manuales_sin_regla`; sin origen no hay ítem: `tests/unit/test_contracts.py::TestItemComputo::test_origen_obligatorio` | verde |
+| 3a una regla no evaluable: INFO y la ejecución continúa | RF‑23 | `tests/unit/test_verification.py::test_r1_reporta_la_regla_que_no_puede_evaluar`, `::test_r5_reporta_un_balance_que_no_puede_evaluar`, `::test_r4_informa_de_una_especificacion_que_no_puede_contrastar` | verde |
+| 5a sin hallazgos: el informe se emite igual y declara las siete reglas evaluadas | RF‑02 | ninguna prueba audita un presupuesto con cero hallazgos, y el informe (`InformeAuditoria.a_markdown`) no enumera las reglas evaluadas | sin prueba; la enumeración de las siete reglas, no implementada |
+
+#### UC‑06 — Registrar y consultar rendimientos reales de obra ejecutada
+
+| Paso | RF | Prueba o caso | Estado |
+|---|---|---|---|
+| 1 registra el rendimiento observado con su referencia | RF‑25 | `tests/integration/test_api_rendimientos.py::test_medido_sin_referencia_es_422_y_con_referencia_real_queda_trazado`, `::test_ejecucion_se_registra_se_lista_y_no_se_duplica` | verde |
+| 2 lo persiste como MEDIDO exigiendo la referencia | RF‑25 | `tests/integration/test_rendimientos.py::test_registrar_medido_traza_la_ejecucion`; `tests/unit/test_contracts.py::TestRendimiento::test_medido_exige_referencia` | verde |
+| 3 propone el rendimiento del histórico con su dispersión | RF‑26 | `tests/integration/test_rendimientos.py::test_dispersion_exacta_y_con_tipos_contados`, `::test_propuesta_prefiere_el_medido_mas_reciente`; `tests/integration/test_api_rendimientos.py::test_get_trae_historico_dispersion_y_propuesta` (CP‑02 y CP‑04, paso 1, en «Componer una partida») | verde |
+| 4 advierte sin impedir el registro | RF‑27 | `tests/integration/test_api_rendimientos.py::test_advertencia_fuera_del_rango_observado_sin_impedir_el_registro`, `::test_dentro_del_rango_observado_no_hay_advertencia`; `tests/integration/test_rendimientos.py::test_advertencia_cuando_el_valor_se_aparta_del_rango_observado` (CP‑04) | verde |
+| 5 nunca mezcla estimados con medidos | RF‑26 | `tests/integration/test_rendimientos.py::test_dispersion_exacta_y_con_tipos_contados`, `::test_propuesta_sin_medidos_cae_al_estimado_mas_reciente`; `tests/integration/test_persistencia.py::test_reemplazar_composicion_tras_un_medido_no_deja_el_estimado_obsoleto` | verde |
+| 1a falta la referencia a la ejecución | RF‑25 | `tests/integration/test_rendimientos.py::test_registrar_medido_sin_referencia_se_rechaza`, `::test_referencia_de_ejecucion_inexistente_se_rechaza`, `::test_referencia_de_ejecucion_vacia_se_rechaza_por_las_dos_puertas` | verde |
+| 3a sin histórico: propone el estimado del catálogo, rotulado | RF‑26 | `tests/integration/test_rendimientos.py::test_propuesta_sin_medidos_cae_al_estimado_mas_reciente`, `::test_dispersion_de_partida_sin_rendimientos_es_none` | verde |
+| 4a acepta la advertencia: su justificación queda junto al APU | RF‑27 | ninguna: ni el registro (`RendimientoPeticion`) ni la composición tienen un campo de justificación | no implementado |
+
+#### UC‑07 — Contrastar el precio construido con el precio de mercado
+
+| Paso | RF | Prueba o caso | Estado |
+|---|---|---|---|
+| 1 selecciona una partida o un presupuesto | RF‑28 | una partida, al componerla: `tests/unit/test_composicion_ia.py::test_contrastar_precio_con_reglas_ofrece_el_marco_aace_cuando_hay_hallazgo` (CP‑02, paso 2); los presupuestos de todos los dominios, por `scripts/generar_resultados_ml.py`: `tests/unit/test_resultados_ml.py::test_el_informe_tabula_las_predicciones_con_su_rango` | verde; elegir un presupuesto concreto no tiene pantalla ni ruta |
+| 2 determina la técnica por el conteo | RF‑28 | `tests/unit/test_prediccion.py::test_tecnica_para_es_la_tabla_de_la_compuerta_g2`; `tests/unit/test_resultados_ml.py::test_el_informe_declara_conteo_tecnica_y_metricas` | verde |
+| 3 estima y reporta MAPE, RMSE y R² | RF‑28 | `tests/unit/test_prediccion.py::test_metricas_exactas_mape_rmse_r2`, `::test_prediccion_por_reglas_con_rango_de_sensibilidad` | verde |
+| 4 contrasta y expresa la desviación en porcentaje | RF‑29 | `tests/unit/test_prediccion.py::test_contraste_aace_fuera_del_rango_es_hallazgo_advertencia`, `::test_contraste_aace_presenta_a_dos_decimales_con_redondeo_hacia_arriba` | verde |
+| 5 marca los atípicos y los incorpora al informe de auditoría | RF‑29 | se marcan: `tests/unit/test_anomalias.py::test_los_atipicos_salen_ordenados_del_mas_anomalo_al_menos`; se tabulan en `docs/resultados_ml.md`; ninguna capa los agrega al informe de auditoría del presupuesto | parcial: la incorporación al informe no está implementada |
+| 2a menos de 50 registros: reglas con sensibilidad, como limitación | RF‑28 | `tests/unit/test_prediccion.py::test_tecnica_para_es_la_tabla_de_la_compuerta_g2`, `::test_prediccion_por_reglas_con_rango_de_sensibilidad`; `tests/unit/test_resultados_ml.py::test_con_un_dominio_en_el_umbral_el_informe_no_afirma_que_todos_estan_por_debajo` | verde |
+| 3a partida sin análogas: no se estima y se informa | RF‑28 | `tests/unit/test_prediccion.py::test_sin_historico_de_variaciones_la_prediccion_es_el_precio_base` fija lo contrario: sin histórico la estimación es el precio base, sin rango, y no se declara que el contraste no sea posible | no implementado (el código hace otra cosa) |
+| 4a desviación fuera de la clase 3 de AACE: ADVERTENCIA | RF‑29 | `tests/unit/test_prediccion.py::test_contraste_aace_fuera_del_rango_es_hallazgo_advertencia`; `tests/unit/test_composicion_ia.py::test_contrastar_precio_con_reglas_ofrece_el_marco_aace_cuando_hay_hallazgo` | verde |
+
+#### UC‑08 — Generar escenarios de sensibilidad
+
+| Paso | RF | Prueba o caso | Estado |
+|---|---|---|---|
+| 1 define el escenario (parámetros o precios) | RF‑30 | `tests/unit/test_escenarios.py::test_escenario_de_parametros_recalcula_cada_partida_contra_el_motor`, `::test_escenario_de_precios_sube_solo_las_partidas_afectadas` | verde |
+| 2 recalcula sin alterar el base | RF‑30 | `tests/unit/test_escenarios.py::test_el_presupuesto_base_y_las_composiciones_quedan_intactos`; `tests/integration/test_api_escenarios.py::test_los_escenarios_no_persisten_ninguna_version` | verde |
+| 3 total y variación, por partida y en conjunto | RF‑31 | `tests/unit/test_escenarios.py::test_comparativo_por_partida_del_escenario`; `tests/integration/test_api_escenarios.py::test_base_mas_una_entrada_por_escenario_con_detalle` | verde |
+| 4 compara varios escenarios y exporta la tabla | RF‑31 | `tests/unit/test_escenarios.py::test_tabla_comparativa_una_fila_por_escenario_con_total_y_variacion`, `::test_tabla_comparativa_es_exportable` | verde |
+| 1a parámetro fuera de rango: no se crea | RF‑30 | `tests/integration/test_api_escenarios.py::test_parametro_fuera_de_rango_se_rechaza_por_el_contrato`; `tests/unit/test_contracts.py::TestParametrosCosto::test_negativo` | verde |
+| 2a cambia precios de insumos: mecanismo de UC‑02 sin persistir la lista | RF‑30 | `tests/unit/test_escenarios.py::test_escenario_de_precios_sube_solo_las_partidas_afectadas`; `tests/integration/test_api_escenarios.py::test_los_escenarios_no_persisten_ninguna_version` | verde |
+| 4a promueve un escenario a presupuesto | RF‑30 | ninguna: promover no existe como acción; por diseño es UC‑02 con la lista del escenario (decisión D6 del dossier, pendiente del tutor) | no implementado |
+| base con ítems pendientes (UC‑01 3a; INV‑083) | RF‑30 | la página los declara: `tests/unit/test_ui_escenarios.py::test_el_escenario_de_un_base_con_pendientes_los_declara`; la API los declara desde la pista C de C4, sin prueba en esta rama; el informe del propio escenario no los lista (dictamen C4‑3, a limitaciones) | parcial |
+
+#### UC‑10 — Componer una partida
+
+| Paso | RF | Prueba o caso | Estado |
+|---|---|---|---|
+| 1 declara código, descripción y unidad | RF‑33 | `tests/unit/test_elaboracion.py::test_una_partida_nueva_se_persiste_y_se_relee`; `tests/unit/test_composicion.py::test_la_unidad_con_alias_se_normaliza` (CP‑01, paso 6) | verde |
+| 2 tabla de materiales | RF‑01 | `tests/unit/test_composicion.py::test_una_tabla_valida_produce_la_composicion_esperada`, `::test_una_fila_de_materiales_con_datos_pero_sin_descripcion_se_rechaza` | verde |
+| 3 tabla de equipos con su depreciación | RF‑01 | `tests/unit/test_composicion.py::test_una_tabla_valida_produce_la_composicion_esperada`, `::test_una_depreciacion_fuera_de_rango_nombra_la_tabla_equipos` | verde |
+| 4 tabla de mano de obra con su modalidad | RF‑34 | `tests/unit/test_composicion.py::test_una_fila_de_mano_de_obra_sin_modalidad_es_jornal`, `::test_una_modalidad_desconocida_se_rechaza_nombrando_la_fila`; `tests/unit/test_costing_destajo.py::test_la_composicion_mixta_suma_los_dos_bloques` (CP‑03) | verde |
+| 5 declara el rendimiento con sus condiciones | RF‑33 | `tests/unit/test_composicion.py::test_un_rendimiento_cero_o_negativo_se_rechaza`; `tests/unit/test_ui_componer.py::test_sin_condiciones_el_boton_de_guardar_esta_deshabilitado` | verde |
+| 6 calcula y muestra el desglose en vivo, sin guardar | RF‑01 | `tests/unit/test_ui_componer.py::test_el_desglose_en_vivo_muestra_el_precio_unitario`, `::test_el_desglose_en_vivo_presenta_dos_decimales`; `tests/unit/test_composicion.py::test_desglose_de_la_tuberia_da_el_precio_de_la_linea_base` (CP‑01, paso 8) | verde |
+| 7 guarda la composición | RF‑33 | `tests/unit/test_ui_componer.py::test_de_componer_a_excel_desde_la_pantalla`; `tests/unit/test_elaboracion.py::test_una_partida_nueva_se_persiste_y_se_relee` (CP‑01, paso 10) | verde |
+| 8 la persiste con su rendimiento y sus condiciones | RF‑33 | `tests/integration/test_persistencia.py::test_cargar_composicion_registra_las_condiciones_declaradas`; `tests/integration/test_composicion_extremo_a_extremo.py::test_el_caso_de_demostracion_sobrevive_al_camino_de_la_pantalla` | verde |
+| 2a/3a/4a fila vacía: se descarta | RF‑33 | `tests/unit/test_composicion.py::test_las_filas_vacias_se_descartan`, `::test_una_fila_con_nan_en_todas_las_celdas_se_descarta_como_vacia`, `::test_una_fila_con_none_en_todas_las_celdas_se_descarta_como_vacia` | verde |
+| 2b/3b/4b buscador de la referencia de mercado; precio editable | RF‑35 | `tests/unit/test_composicion.py::test_buscar_referencia_encuentra_la_fila_esperada_con_ref_y_precio_decimal`, `::test_buscar_referencia_factor_depreciacion_solo_lleno_en_equipos`, `::test_el_precio_sugerido_por_la_referencia_es_editable_y_el_calculo_lo_refleja` (CP‑01, pasos 1 a 4) | verde |
+| 5a sin rendimiento o sin condiciones: no se persiste | RF‑33 | `tests/unit/test_ui_componer.py::test_sin_condiciones_el_boton_de_guardar_esta_deshabilitado`, `::test_sin_rendimiento_guardar_no_persiste_nada`; `tests/integration/test_persistencia.py::test_cargar_composicion_sin_condiciones_lanza_valueerror` | verde |
+| 7a la partida ya tiene composición: se edita (UC‑11) | RF‑33 | `tests/integration/test_persistencia.py::test_cargar_composicion_dos_veces_lanza_valueerror`; `tests/unit/test_ui_componer.py::test_guardar_dos_veces_edita_la_partida` (CP‑02, paso 6) | verde |
+
+#### UC‑11 — Editar una partida compuesta
+
+| Paso | RF | Prueba o caso | Estado |
+|---|---|---|---|
+| 1 abre la partida: tablas y rendimiento precargados | RF‑34 | `tests/unit/test_ui_componer.py::test_teclear_el_codigo_de_una_partida_guardada_precarga_sus_tres_tablas` (CP‑04, paso 1) | verde |
+| 2 modifica insumos, cantidades, precios o modalidad | RF‑34 | `tests/unit/test_ui_componer.py::test_editar_una_cantidad_y_guardar_reemplaza_la_composicion` | verde |
+| 3 declara un rendimiento nuevo con sus condiciones | RF‑33 | `tests/integration/test_persistencia.py::test_reemplazar_composicion_propaga_las_condiciones_al_rendimiento`; `tests/unit/test_ui_componer.py::test_guardar_dos_veces_edita_la_partida` | verde |
+| 4 recalcula en vivo sobre la composición modificada | RF‑01 | `tests/unit/test_ui_componer.py::test_el_desglose_en_vivo_muestra_el_precio_unitario` (el mismo desglose de UC‑10); sobre una partida editada, CP‑02 paso 2 y CP‑03 | verde (el desglose); manual (sobre la edición) |
+| 5 guarda | RF‑33 | `tests/unit/test_ui_componer.py::test_editar_una_cantidad_y_guardar_reemplaza_la_composicion`, `::test_guardar_dos_veces_edita_la_partida` (CP‑02, paso 3). La rama con éxito de `ui.elaboracion.guardar_composicion` sobre una partida existente no tiene prueba unitaria propia en `tests/unit/test_elaboracion.py`: la cubre la pantalla (QA‑A5 de C3) | verde por la pantalla; sin unitaria propia |
+| 6 reemplaza la composición y conserva el rendimiento anterior | RF‑33 | `tests/integration/test_persistencia.py::test_reemplazar_composicion_permite_corregir_una_partida`, `::test_reemplazar_conserva_el_rendimiento_anterior_en_el_historico`, `::test_reemplazar_composicion_agrega_rendimiento_solo_si_cambian_condiciones`, `::test_reemplazar_composicion_sin_cambios_no_agrega_rendimiento` | verde |
+| 3a sin rendimiento nuevo con condiciones: no se guarda | RF‑33 | `tests/integration/test_persistencia.py::test_reemplazar_composicion_exige_condiciones_no_vacias`; `tests/unit/test_ui_componer.py::test_sin_condiciones_el_boton_de_guardar_esta_deshabilitado` | verde |
+| 6a la partida no existe: se rechaza el reemplazo | RF‑33 | `tests/integration/test_persistencia.py::test_reemplazar_una_partida_inexistente_lanza_lookuperror` | verde |
+
+#### UC‑12 — Recorrer la aplicación guiado desde el Inicio
+
+| Paso | RF | Prueba o caso | Estado |
 |---|---|---|---|
 | 1 abre en Inicio | RF‑36 | `tests/unit/test_ui_app.py::test_la_aplicacion_arranca_en_el_inicio`, `::test_la_ruta_vacia_de_la_pagina_por_defecto_es_el_inicio` | verde |
 | 2 caso abierto en la barra lateral | RF‑39 | `tests/unit/test_ui_app.py::test_cada_pantalla_muestra_el_caso_abierto_y_su_titulo`; `tests/unit/test_ui_caso.py::test_resumen_de_cada_estado` | verde |
@@ -207,6 +367,28 @@ prueba lo reclamaba.
 | 3a caso vacío: siembra sin reinicio | RF‑40 | `tests/unit/test_ui_inicio.py::test_una_base_inexistente_muestra_el_estado_vacio_sin_crearla`, `::test_la_siembra_deja_la_base_utilizable`, `::test_con_partidas_no_se_ofrece_sembrar`, `::test_una_base_existente_sin_partidas_ofrece_sembrar`; `tests/unit/test_ui_caso.py::test_ningun_archivo_de_ui_contiene_el_flag_de_reinicio`, `::test_estado_de_una_base_vacia` | verde |
 | 3b archivo ilegible | RF‑39 | `tests/unit/test_ui_inicio.py::test_un_archivo_ilegible_se_informa_sin_ofrecer_sembrar`; `tests/unit/test_ui_caso.py::test_estado_de_un_archivo_que_no_es_sqlite_es_un_error_sin_traza` | verde |
 | 5a pantalla fuera del recorrido | RF‑41 | `tests/unit/test_ui_app.py::test_una_pantalla_fuera_del_recorrido_no_muestra_siguiente` | verde |
+
+#### Resumen de la matriz por paso
+
+Recuento de las filas de esta sección por el estado con que empieza su última celda (una fila
+«verde en el núcleo…» cuenta como verde; su celda dice qué capa no lo ejerce). Los pasos parciales,
+sin prueba o no implementados son hallazgos de esta matriz y quedan para decisión en la compuerta
+GC4: C4 es documentación y no los resuelve.
+
+| UC | Pasos y flujos | Verde | Manual | Parcial | Sin prueba | No implementado |
+|---|---|---|---|---|---|---|
+| UC‑01 | 13 | 10 | 0 | 2 | 0 | 1 |
+| UC‑02 | 12 | 11 | 0 | 1 | 0 | 0 |
+| UC‑03 | 8 | 4 | 0 | 1 | 2 | 1 |
+| UC‑04 | 8 | 7 | 0 | 0 | 0 | 1 |
+| UC‑05 | 10 | 7 | 0 | 2 | 1 | 0 |
+| UC‑06 | 8 | 7 | 0 | 0 | 0 | 1 |
+| UC‑07 | 8 | 6 | 0 | 1 | 0 | 1 |
+| UC‑08 | 8 | 6 | 0 | 1 | 0 | 1 |
+| UC‑10 | 12 | 12 | 0 | 0 | 0 | 0 |
+| UC‑11 | 8 | 8 | 0 | 0 | 0 | 0 |
+| UC‑12 | 10 | 9 | 1 | 0 | 0 | 0 |
+| **Total** | **105** | **87** | **1** | **8** | **3** | **6** |
 
 ## 9. Trazabilidad RNF → verificación
 
