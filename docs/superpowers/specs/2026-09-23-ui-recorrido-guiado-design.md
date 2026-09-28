@@ -15,6 +15,8 @@ sección 10 deja constancia de qué cambió y por qué.
 > (CP‑07 ejecutado y registrado, en la fase Med); (2) U1 se ejecutó dentro de la fase C3 del cierre,
 > que autorizó **dos** commits de `core/` (INV‑080 e INV‑015 7a), de modo que «`core/` sin cambios»
 > vale para todo U1 salvo esos dos. Detalle: [bitácora del cierre](../../bitacora/2026-09-23-cierre.md).
+> Por la misma spec, RNF‑04, que abajo queda «para la Fase 6», se mide en la fase Med con
+> [protocolo_rnf04.md](../../protocolo_rnf04.md).
 
 El prototipo sabe hacer su trabajo y no sabe explicarlo. Este diseño no agrega capacidades: agrega
 **orientación**. La frase que lo origina es de Eugenio, 2026‑09‑22: «no sé qué hacer y no hay un
