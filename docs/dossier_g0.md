@@ -46,9 +46,9 @@ Detalle y evidencia reproducible en [plan_pruebas.md](plan_pruebas.md) y
   [ERS §3.1](ERS.md) (INV‑030); el estado de cada RF, [plan_pruebas.md §8](plan_pruebas.md).
 
 *Vigencia (2026‑09‑28, fase C4 del cierre):* esta sección decía «los ocho casos de uso operan de
-extremo a extremo (UI, API y núcleo)», y no era cierto para UC‑04, UC‑06 y UC‑07, que no tienen
-pantalla, ni para la importación de UC‑05; se corrigió junto con las cifras, que ahora remiten a su
-fuente.
+extremo a extremo (UI, API y núcleo)», y no era cierto para UC‑04, UC‑06 y UC‑07, que no tenían
+pantalla propia, ni para la importación de UC‑05; se corrigió junto con las cifras, que ahora
+remiten a su fuente.
 
 ## 3. Decisiones que esperan la validación del tutor
 

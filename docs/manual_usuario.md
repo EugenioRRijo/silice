@@ -120,8 +120,11 @@ demás se operan por otra capa (la correspondencia completa entre caso de uso y 
 adaptador civil (`adapters/civil/recalculo.py`) y no tiene pantalla ni ruta de la API. UC‑05 se ve
 en el informe de auditoría que acompaña a todo presupuesto elaborado (sección 4), pero la
 importación del presupuesto de un tercero para auditarlo (RF‑24) todavía no existe (INV‑076).
-UC‑06 se opera por la API (sección 3.4) y UC‑07 con un script (sección 3.5). En UC‑01, el `.ifc`
-civil entra por la API (sección 3.1).
+Los rendimientos medidos de UC‑06 se registran por la API (sección 3.4), y las métricas y el
+contraste completo de UC‑07 se generan con un script (sección 3.5); de los dos, la pantalla
+**Componer una partida** ofrece una parte como ayudas: propone el rendimiento del histórico,
+advierte si se aparta y contrasta el precio con la estimación por reglas (sección 3.7). En UC‑01,
+el `.ifc` civil entra por la API (sección 3.1).
 
 ### 3.0 Inicio: el caso abierto y los recorridos guiados (UC‑12)
 

@@ -29,15 +29,20 @@ remitía las cifras a la bitácora hasta cerrar la compuerta de la interfaz.
   [bitácora del cierre](bitacora/2026-09-23-cierre.md)).
 - **RF‑20** (Deseable, UC‑04: diferencial por partida) no está implementado y va declarado en
   limitaciones (INV‑011).
-- **RF‑16** (Esencial, UC‑03: persistir la partida creada desde una propuesta) tiene un único
-  estado, el de [plan_pruebas.md §8](plan_pruebas.md) (INV‑027); la decisión de fondo es la D5 del
-  [dossier G0](dossier_g0.md#d5-flujo-de-creación-de-partidas-rf16-y-familia).
+- **RF‑16** (Esencial, UC‑03: precargar la propuesta y persistir la partida nueva con su
+  referencia) queda **parcial**: la precarga existe; la persistencia con la referencia a la partida
+  de origen, no. Su estado es uno solo, el de [plan_pruebas.md §8](plan_pruebas.md) (INV‑027), y
+  la decisión de fondo es la D5 del
+  [dossier G0](dossier_g0.md#d5-flujo-de-creación-de-partidas-rf16-y-familia), pendiente del
+  tutor.
 
 **Qué capa realiza cada caso de uso.** No todos los casos de uso tienen pantalla; la
 correspondencia la declara la [ERS §3.1](ERS.md) (INV‑030) y el
-[manual de usuario §3](manual_usuario.md) dice por dónde se opera cada uno. UC‑04 vive en el
-adaptador civil (`adapters/civil/recalculo.py`), sin pantalla ni ruta; UC‑06 se opera por la API y
-UC‑07 por script. UC‑08 está cableado en las tres capas: `core.budget.generar_escenario`, la ruta
+[manual de usuario §3](manual_usuario.md) dice por dónde se opera cada uno. UC‑04 vive solo en el
+adaptador civil (`adapters/civil/recalculo.py`), sin pantalla ni ruta; los rendimientos medidos de
+UC‑06 se registran solo por la API, y las métricas de UC‑07, con un script (la pantalla «Componer
+una partida» ofrece parte de los dos como ayudas); la importación de UC‑05 no existe en ninguna
+capa (RF‑24). UC‑08 está cableado en las tres capas: `core.budget.generar_escenario`, la ruta
 `POST /presupuestos/{codigo}/escenarios` y la página «Escenarios de sensibilidad» (INV‑085).
 
 **Corrección funcional (RNF‑01).** El presupuesto de la línea base corregida se reproduce con
@@ -50,10 +55,10 @@ prueba de aceptación crítica del trabajo se cumple: **7 de 7 inconsistencias d
 **Pertinencia funcional.** El informe de auditoría se genera siempre, sin pedirlo (principio 7 de
 CLAUDE.md §2): `elaborar()` no tiene un modo sin auditoría.
 
-**Veredicto: parcial.** La corrección y la pertinencia cumplen; la completitud no, porque un RF
-esencial (RF‑24) está parcial y un deseable (RF‑20) no está implementado. La versión anterior de
-este párrafo decía «cumple, con los tres RF no esenciales declarados arriba», pero arriba solo se
-declaraba RF‑16, que es esencial (INV‑067).
+**Veredicto: parcial.** La corrección y la pertinencia cumplen; la completitud no, porque dos RF
+esenciales (RF‑16 y RF‑24) están parciales y uno deseable (RF‑20) no está implementado. La versión
+anterior de este párrafo decía «cumple, con los tres RF no esenciales declarados arriba», pero
+arriba solo se declaraba RF‑16, que es esencial (INV‑067).
 
 ## 2. Fiabilidad
 
@@ -182,7 +187,7 @@ p. ej. Revit y Bonsai) sigue abierta; la alternativa tabular documentada existe 
 
 | Característica | Meta de la ERS | Resultado | Veredicto |
 |---|---|---|---|
-| Adecuación funcional | clase 3 AACE; RF cubiertos | desviación 0,00 %; 7 de 7; RF‑24 parcial y RF‑20 no implementado (estado de cada RF: [plan_pruebas.md §8](plan_pruebas.md)) | parcial |
+| Adecuación funcional | clase 3 AACE; RF cubiertos | desviación 0,00 %; 7 de 7; RF‑16 y RF‑24 parciales, RF‑20 no implementado (estado de cada RF: [plan_pruebas.md §8](plan_pruebas.md)) | parcial |
 | Fiabilidad | reproducibilidad 100 % | comparación exacta en verde; suite en verde, 0 omitidas ([plan_pruebas.md §10](plan_pruebas.md)) | cumple |
 | Eficiencia de desempeño | < 5 s con ≤ 100 partidas | **1,17 s** con 100 partidas | cumple |
 | Usabilidad | RNF‑04 Likert ≥ 4/5 sobre el informe; RNF‑10 CP‑07 sin ayuda en ≤ 20 min, bloque B ≥ 4,0 y ningún ítem < 3 | RNF‑04: por medir en Med ([protocolo_rnf04.md](protocolo_rnf04.md)); RNF‑10: CP‑07 por ejecutar (GU1b, Med) | pendiente |
@@ -193,5 +198,5 @@ p. ej. Revit y Bonsai) sigue abierta; la alternativa tabular documentada existe 
 
 Cinco características cumplen su meta con evidencia automatizada o medida; una espera una medición
 humana (usabilidad, en Med) y dos quedan parciales por brechas declaradas: la adecuación funcional
-(RF‑24 y RF‑20) y la compatibilidad (IFC real). Ninguna brecha es silenciosa: todas tienen dueño,
+(RF‑16, RF‑24 y RF‑20) y la compatibilidad (IFC real). Ninguna brecha es silenciosa: todas tienen dueño,
 causa y registro.
