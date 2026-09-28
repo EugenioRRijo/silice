@@ -392,7 +392,9 @@ def test_exportar_excel_escribe_cuatro_hojas(tmp_path):
     total_escrito = Decimal(str(hoja.cell(row=hoja.max_row, column=hoja.max_column).value))
     assert abs(total_escrito - linea_base.TOTAL_PRESUPUESTO_AUDITADO) <= TOLERANCIA
     assert libro["Curva"].max_row == len(resultado.presupuesto.curva) + 1
-    assert libro["Auditoria"].max_row == len(resultado.informe.hallazgos) + 1
+    # Columna A y no `max_row`: el bloque de reglas evaluadas (G–I) tiene sus propias filas.
+    auditoria = [c for (c,) in libro["Auditoria"].iter_rows(max_col=1, values_only=True) if c]
+    assert len(auditoria) == len(resultado.informe.hallazgos) + 1
 
 
 def test_hoja_apu_muestra_la_modalidad_de_mano_de_obra(tmp_path):
