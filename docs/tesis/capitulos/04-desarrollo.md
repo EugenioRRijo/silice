@@ -317,8 +317,11 @@ Python.
 
 *Nota.* Elaboración propia a partir de `core/contracts/`. `ModalidadManoObra` y el campo
 `LineaManoObra.modalidad` se agregaron durante el desarrollo del prototipo de composición (sección
-4.4.3); la tabla de contratos de `CLAUDE.md` y el diagrama de la arquitectura todavía no los muestran
-(desfase registrado, Tabla 4.11).
+4.4.3). En la versión del 23 de septiembre, la tabla de contratos de `CLAUDE.md` y el diagrama de la
+arquitectura no los mostraban (desfase registrado, Tabla 4.11); la última etapa del cierre los
+incorporó el 28 de septiembre de 2026 a la tabla de contratos
+([CLAUDE.md §5](../../../CLAUDE.md#5-contratos-de-interfaz-corecontracts)) y a los contratos de la
+vista lógica ([arquitectura, §2.1](../../arquitectura.md#21-contratos-corecontracts-estables)).
 
 Los contratos se declararon estables, y la regla del proyecto ante una aparente insuficiencia es
 detenerse y documentarla en la bitácora en lugar de modificarlos. Esa regla produjo un registro de
@@ -1063,7 +1066,7 @@ código, hacia su registro en el inventario de la auditoría de cierre.
 | 4.1.4, 4.7.2 | Especificación y arquitectura dan la extracción IFC por pendiente | INV‑028 | actualización de la documentación |
 | 4.2 | El modelo de datos se declara aprobado con G0 pendiente | INV‑061 | actualización de la documentación |
 | 4.2 | Dos defectos distintos numerados como «octavo» | INV‑064 | actualización de la documentación |
-| 4.3.2 | La tabla de contratos y el diagrama omiten la modalidad de mano de obra | INV‑057 | actualización de la documentación |
+| 4.3.2 | La tabla de contratos y el diagrama omitían la modalidad de mano de obra | INV‑057 (incorporada el 28/09/2026 a `CLAUDE.md` §5 y a la arquitectura §2.1; su estado final lo registra el cierre de la última etapa) | actualización de la documentación |
 | 4.3.2, 4.8.2 | Enumerados, `Decimal` y signo, y evaluador único en los contratos | INV‑001, INV‑002, INV‑006 (aceptados por decisión de arquitectura registrada) | aval del tutor |
 | 4.3.3 | La guardia de arquitectura no cubría `scripts` ni `tests` | INV‑010 (cerrado) | corrección del núcleo |
 | 4.3.3 | La salvaguarda de la base de trabajo | INV‑065 (cerrado) | corrección del núcleo |
@@ -1087,7 +1090,7 @@ código, hacia su registro en el inventario de la auditoría de cierre.
 | 4.9.2 | Interpretación de especificaciones duplicada en los adaptadores | INV‑041 (a limitaciones) | — |
 
 *Nota.* Elaboración propia a partir del [inventario del cierre](../../auditoria/2026-09-inventario.md),
-con los estados al cerrar la corrección de la interfaz y los scripts (28/09/2026), salvo la fila de
-INV‑083, que recoge además el cambio de la API de la última etapa del cierre. Cada hallazgo
+con los estados al cerrar la corrección de la interfaz y los scripts (28/09/2026), salvo las filas de
+INV‑057 e INV‑083, que recogen además cambios de la última etapa del cierre. Cada hallazgo
 cerrado lo fue en la etapa que indica la última columna; los detalles de cada corrección están en la
 [bitácora del cierre](../../bitacora/2026-09-23-cierre.md).
