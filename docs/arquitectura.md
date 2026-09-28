@@ -138,7 +138,7 @@ de los demás.
 | UC‑05 | `core.verification.auditar` sobre un `Presupuesto`, siempre dentro de `core.budget.elaborar` y de `core.budget.cargar_elaboracion`. El hallazgo `PENDIENTE` no lo emite `auditar`: lo agrega la elaboración (`_declarar_pendientes`), así que quien llame a `auditar` directamente no lo ve | el informe acompaña a toda elaboración en pantalla y en la hoja «Auditoria» del libro; `GET /presupuestos/{codigo}/informe`. El archivo de un tercero no tiene pantalla ni ruta de importación: su `Presupuesto` se arma en código (`scripts/seed_telecom.py`, `tests/fixtures/presupuesto_auditado.py`) |
 | UC‑06 | `core.catalog.rendimientos` (`registrar_ejecucion`, `registrar_rendimiento`, `dispersion_rendimientos`, `proponer_rendimiento`, `advertencia_rendimiento`) y, con el extra `ml`, `ml.anomaly.evaluar_rendimiento` | propuesta y advertencia en «Componer una partida»; el registro de un rendimiento medido, solo por HTTP: `POST /ejecuciones`, `GET /ejecuciones`, `GET` y `POST /partidas/{codigo}/rendimientos` |
 | UC‑07 | `ml.anomaly.precios_atipicos` y `ml.prediction` (`tecnica_para`, `predecir_por_reglas`, `metricas`, `contrastar_aace`) | ayudas 2 y 4 de «Componer una partida» (`ui.composicion.advertencia_precio_atipico`, `ui.composicion.contrastar_precio_con_reglas`); `scripts/generar_resultados_ml.py` escribe `docs/resultados_ml.md`; sin ruta HTTP |
-| UC‑08 | `core.budget.escenarios` (`generar_escenario`, `comparar_escenarios`, `comparar_por_partida`). Nada se persiste; el informe de un escenario no declara los pendientes del base (ruling C4‑3 de la bitácora del cierre, a limitaciones) | «Escenarios de sensibilidad» (`ui/paginas/escenarios.py`, que lee el base con `cargar_elaboracion` y avisa de sus pendientes); `POST /presupuestos/{codigo}/escenarios` |
+| UC‑08 | `core.budget.escenarios` (`generar_escenario`, `comparar_escenarios`, `comparar_por_partida`). Nada se persiste; el informe de un escenario no declara los pendientes del base (ruling C4‑3 de la bitácora del cierre, a limitaciones) | «Escenarios de sensibilidad» (`ui/paginas/escenarios.py`, que lee el base con `cargar_elaboracion` y avisa de sus pendientes); `POST /presupuestos/{codigo}/escenarios`, cuya respuesta los declara en `pendientes_base` (INV‑083, pista C de C4) |
 | UC‑10, UC‑11 | `ui.composicion` (`composicion_desde_tablas`; `desglose` → `core.costing.calcular_apu`) y `ui.elaboracion.guardar_composicion` → `Catalogo.cargar_composicion` o `Catalogo.reemplazar_composicion` | «Componer una partida» (`ui/paginas/componer.py`); sin ruta HTTP |
 | UC‑12 | `ui.app` (`PAGINAS`, `paginas_visibles`, `marco`), `ui.caso` (`ruta_caso`, `estado_caso`) y `ui.recorridos` (`RECORRIDOS`, `paso_siguiente`); el caso vacío se siembra con `scripts.seed_demo.main` | «Inicio» (`ui/paginas/inicio.py`) y el marco común de las diez pantallas; sin ruta HTTP |
 
@@ -904,8 +904,8 @@ El hallazgo `PENDIENTE` de UC‑01 3a vive **fuera** de `auditar`: lo agrega `co
 al recargar. Quien llame a `core.verification.auditar` directamente sobre un `Presupuesto` no lo ve,
 porque el `Presupuesto` no lleva los ítems pendientes.
 
-Las ayudas de aprendizaje automático (la referencia de precio de mercado sugerida, RF‑35, y las
-cuatro ayudas de componer) se invocan **desde `ui/`, con importación perezosa, nunca desde `core/`**:
+Las ayudas de aprendizaje automático (las cuatro de componer: partidas similares, precio atípico,
+rendimiento atípico y contraste AACE; el buscador de la referencia de mercado de RF‑35 no usa `ml`) se invocan **desde `ui/`, con importación perezosa, nunca desde `core/`**:
 `ui/composicion.py` las carga con `_importar_normalizacion`, `_importar_anomalia` e
 `_importar_prediccion`, y la API hace lo mismo con `ml.anomaly` en `api/rutas/rendimientos.py`
 (`docs/bitacora/2026-08-31-sprint-i6.md`). `core/` no importa `ml` (ADR 5, CLAUDE.md §2); si
