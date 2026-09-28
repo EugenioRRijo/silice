@@ -27,16 +27,51 @@ se les dice así.
 
 **Qué informe.** El del caso de estudio que anuncia el anexo A: el presupuesto de la línea base con
 sus siete inconsistencias (`tests/fixtures/presupuesto_auditado.py`,
-`presupuesto_con_siete_inconsistencias`), auditado por el sistema (`core.verification.auditar`) y
-exportado como lo recibiría un usuario, en el libro de Excel de cuatro hojas
-(`core.budget.exportar_excel`): *Presupuesto*, *APU*, *Curva* y *Auditoria*. **El informe es la
-hoja *Auditoria***; las otras tres van con él porque son el contexto que un profesional tendría a
-mano. No se edita nada.
+`presupuesto_con_siete_inconsistencias`), auditado por el sistema (`core.verification.auditar`).
+No se edita nada. **Se entrega en las dos formas en que el sistema lo presenta** (ruling del
+controlador en la revisión de la pista D, fase C4), generadas del mismo commit y con la misma orden:
 
-**Por qué el libro y no la pantalla.** La afirmación 4 del anexo A pregunta por las referencias de
-origen (`origen_id`). La hoja *Auditoria* las trae en su columna *Orígenes*; el informe que se ve
-en pantalla (`InformeAuditoria.a_markdown`) no las muestra: trae la partida, lo observado y lo
-esperado. Se evalúa, por eso, la hoja *Auditoria*, y la diferencia se declara en el capítulo V.
+- **La forma de pantalla:** `informe_rnf04.md`, el texto que la aplicación pinta
+  (`InformeAuditoria.a_markdown`, el mismo que muestran «Elaborar un presupuesto» y «Componer una
+  partida»). Se muestra **renderizado**, con sus encabezados y tablas, en una vista previa de
+  Markdown (por ejemplo, la de VS Code), o impreso desde esa vista.
+- **La forma exportada:** `informe_rnf04.xlsx`, el libro de Excel de cuatro hojas
+  (`core.budget.exportar_excel`): *Presupuesto*, *APU*, *Curva* y *Auditoria*. El informe es la
+  hoja *Auditoria*; las otras tres son el presupuesto auditado, el contexto que un profesional
+  tendría a mano.
+
+**Qué trae cada forma, declarado antes de medir.** Las dos listan los mismos 14 hallazgos en el
+mismo orden, pero no con las mismas columnas:
+
+| Dato | Pantalla (`.md`) | Hoja *Auditoria* (`.xlsx`) |
+|---|---|---|
+| Resultado global («Hallazgos: 14 · Resultado: NO CUMPLE») | sí | no |
+| Resumen por severidad | sí | no |
+| Regla, severidad, descripción, impacto | sí | sí |
+| Partida del hallazgo | sí | no |
+| Observado y esperado | sí | no |
+| Orígenes (`origen_id`) | no | sí |
+
+Por eso **cada afirmación del anexo A se juzga sobre una forma fija** (columna «Se juzga sobre» de
+la rúbrica, sección 7), y el cuestionario impreso la indica al margen de cada afirmación, sin
+cambiar su texto:
+
+| Afirmación | Se juzga sobre | Por qué |
+|---|---|---|
+| 1 Entender qué comprueba | las dos | es un juicio sobre el informe entero |
+| 2 Severidad comprensible y bien asignada | las dos | las dos traen la severidad; la pantalla, además, su resumen |
+| 3 Impacto cuantificado | la pantalla | solo ella trae, junto al impacto, lo observado y lo esperado («montos y cantidades en juego»); con la hoja sola, la afirmación se juzgaría con menos datos |
+| 4 Orígenes para ubicar la fila | la hoja *Auditoria* | es la única que trae los `origen_id` |
+| 5 Orden por severidad | la pantalla | trae el resultado global y el resumen por severidad que encabezan el orden; en la hoja el orden existe, pero sin ese encabezado |
+| 6 Lenguaje apropiado | las dos | las descripciones son las mismas |
+| 7 Decidir qué corregir y en qué orden | las dos, leídas juntas | decidir pide la partida y lo esperado (pantalla) y el origen de la fila (hoja) |
+| 8 Confianza como complemento | las dos | es un juicio sobre el informe entero |
+
+Así, ninguna afirmación se contesta sobre una forma que carece del dato que pregunta. El capítulo V
+reporta esta asignación junto al resultado. En este informe la columna *Partida* de la pantalla es
+fiable: cada `origen_id` de la fixture es único (`computo:<código>`), así que no le alcanza el
+defecto de atribución de esa columna que el controlador registró en la revisión de C4 (M3), que
+aparece cuando varias partidas comparten un mismo `origen_id`.
 
 **Cómo se genera** (el observador, en la copia desechable de la sección 3, desde su raíz):
 
@@ -44,23 +79,27 @@ esperado. Se evalúa, por eso, la hoja *Auditoria*, y la diferencia se declara e
 uv run python -c "from pathlib import Path; from tests.fixtures.presupuesto_auditado import presupuesto_con_siete_inconsistencias as p; from core.verification import auditar; from core.budget import exportar_excel; pr = p(); inf = auditar(pr); exportar_excel(pr, inf, Path('informe_rnf04.xlsx')); Path('informe_rnf04.md').write_text(inf.a_markdown(), encoding='utf-8', newline='\n')"
 ```
 
-La orden escribe dos archivos: `informe_rnf04.xlsx`, **el que se entrega**, y
-`informe_rnf04.md`, el texto del mismo informe, que sirve para identificar su contenido.
+La orden escribe los dos archivos que se entregan: `informe_rnf04.md` (la forma de pantalla) y
+`informe_rnf04.xlsx` (la forma exportada).
 
 **La versión del informe** se fija con tres datos, que van en cada hoja de registro:
 
 1. **El commit probado:** `git log -1 --oneline` en la copia desechable; un commit de `main` con su
-   corrida de CI en verde, cuyo enlace también se anota.
-2. **La huella del contenido:** SHA‑256 de `informe_rnf04.md` (en bash,
+   corrida de CI en verde, cuyo enlace también se anota. Por ejemplo, `ceb6b8e` tiene la corrida
+   [36428464254](https://github.com/EugenioRRijo/tesis-apu-multidominio/actions/runs/36428464254)
+   (push a `main`, en verde).
+2. **La huella de la forma de pantalla** (que es también la del contenido del informe): SHA‑256 de
+   `informe_rnf04.md` (en bash,
    `sha256sum informe_rnf04.md`; en PowerShell,
    `Get-FileHash informe_rnf04.md -Algorithm SHA256`). El texto no lleva fecha, así que la huella
    solo cambia si cambia el informe. Sobre el código de `ceb6b8e` (`main`) vale
    `9469aaf8ded7d8ba901b99060a80a12be60fc18d1c7152e850c98ec024ed0063` y el informe tiene **14
    hallazgos**: 1 CRITICO, 12 ERROR y 1 ADVERTENCIA. Si el commit probado da otra huella, se anota
    y se explica qué cambió antes de aplicar el instrumento.
-3. **La huella del archivo entregado:** SHA‑256 de `informe_rnf04.xlsx`. El libro guarda su fecha
+3. **La huella de la forma exportada:** SHA‑256 de `informe_rnf04.xlsx`. El libro guarda su fecha
    de creación, así que su huella cambia en cada generación: por eso **se genera una sola vez** y
-   todos los expertos reciben **ese mismo archivo** (la misma huella en todas las hojas).
+   todos los expertos reciben **esos mismos dos archivos** (las mismas dos huellas en todas las
+   hojas de registro).
 
 ## 2. Los expertos
 
@@ -96,9 +135,11 @@ voluntaria; los datos se publican sin nombres.
    [guion de prueba](guion_prueba_arenia.md)): `git worktree add ../tesis-rnf04 <commit>` y, dentro
    de ella, `uv sync`. El `<commit>` cumple lo dicho en la sección 1, punto 1.
 2. Generar el informe **una sola vez** con la orden de la sección 1 y anotar las dos huellas.
-3. Preparar para cada experto: el archivo `informe_rnf04.xlsx` (o, si prefiere papel, sus cuatro
-   hojas impresas, anotando que fue en papel); el **bloque A del anexo A impreso tal cual** (las
-   ocho afirmaciones y el campo abierto, sin cambiar una palabra); la hoja de rúbrica de la
+3. Preparar para cada experto: las **dos formas** del informe, `informe_rnf04.md` renderizado y
+   `informe_rnf04.xlsx` (o, si prefiere papel, la vista renderizada del `.md` y las cuatro hojas del
+   libro, impresas, anotando que fue en papel); el **bloque A del anexo A impreso tal cual** (las
+   ocho afirmaciones y el campo abierto, sin cambiar una palabra), con la forma sobre la que se
+   juzga cada afirmación (tabla de la sección 1) anotada al margen; la hoja de rúbrica de la
    sección 7.
 4. Borrar la copia desechable al terminar todas las sesiones:
    `git worktree remove ../tesis-rnf04`.
@@ -111,10 +152,12 @@ que todos hayan respondido.
 **Consigna literal** (se lee o se envía tal cual, sin agregar nada):
 
 > «Le entrego el informe de auditoría que un sistema produjo sobre un presupuesto de obra; el
-> presupuesto es un ejercicio académico, no una obra ejecutada. El informe está en la hoja
-> *Auditoria* del libro; las demás hojas son el presupuesto auditado. Léalo como lo leería si se
-> lo enviara un colega y, al terminar, marque su grado de acuerdo con cada afirmación del
-> cuestionario. No hay respuestas correctas: lo que se evalúa es el informe, no a usted.»
+> presupuesto es un ejercicio académico, no una obra ejecutada. El informe viene en dos formas: como
+> se ve en la pantalla del sistema y como se exporta a Excel, en la hoja *Auditoria* del libro; las
+> demás hojas del libro son el presupuesto auditado. Léalo como lo leería si se lo enviara un colega
+> y, al terminar, marque su grado de acuerdo con cada afirmación del cuestionario; al margen de cada
+> una se indica sobre qué forma contestarla. No hay respuestas correctas: lo que se evalúa es el
+> informe, no a usted.»
 
 **Reglas:**
 
@@ -163,21 +206,21 @@ anexo A y aquí van con una etiqueta breve):
 | Declaración: «No soy el autor ni tengo relación personal con él; no participé en el proyecto ni vi antes la aplicación, sus documentos o este informe; no participé en la medición del indicador 3 ni en CP‑07» (firma) | |
 | Fecha · medio (archivo / papel) · presencial o a distancia | |
 | Commit probado · corrida de CI en verde de ese commit | |
-| SHA‑256 de `informe_rnf04.md` · SHA‑256 de `informe_rnf04.xlsx` | |
+| SHA‑256 de `informe_rnf04.md` (pantalla) · SHA‑256 de `informe_rnf04.xlsx` (exportada) | |
 | Versión del protocolo (commit que contiene este archivo) | |
 | Tiempo de lectura (min) · tiempo total (min) | |
 | Preguntas al observador (literal) | |
 
-| # | Afirmación (etiqueta; texto completo en el anexo A) | 1 | 2 | 3 | 4 | 5 |
-|---|---|---|---|---|---|---|
-| 1 | Entendí qué comprueba sin formación previa | | | | | |
-| 2 | Severidad comprensible y bien asignada | | | | | |
-| 3 | El impacto cuantificado permite dimensionar | | | | | |
-| 4 | Los orígenes permiten ubicar la fila | | | | | |
-| 5 | El orden presenta primero lo que más importa | | | | | |
-| 6 | Lenguaje apropiado para un profesional de obra | | | | | |
-| 7 | Permite decidir qué corregir y en qué orden | | | | | |
-| 8 | Confiaría en él como complemento de una revisión manual | | | | | |
+| # | Afirmación (etiqueta; texto completo en el anexo A) | Se juzga sobre | 1 | 2 | 3 | 4 | 5 |
+|---|---|---|---|---|---|---|---|
+| 1 | Entendí qué comprueba sin formación previa | las dos | | | | | |
+| 2 | Severidad comprensible y bien asignada | las dos | | | | | |
+| 3 | El impacto cuantificado permite dimensionar | pantalla (`.md`) | | | | | |
+| 4 | Los orígenes permiten ubicar la fila | hoja *Auditoria* (`.xlsx`) | | | | | |
+| 5 | El orden presenta primero lo que más importa | pantalla (`.md`) | | | | | |
+| 6 | Lenguaje apropiado para un profesional de obra | las dos | | | | | |
+| 7 | Permite decidir qué corregir y en qué orden | las dos, leídas juntas | | | | | |
+| 8 | Confiaría en él como complemento de una revisión manual | las dos | | | | | |
 
 Escala: 1 = totalmente en desacuerdo · 3 = neutral · 5 = totalmente de acuerdo.
 
@@ -214,6 +257,7 @@ CUMPLE / NO CUMPLE / sigue pendiente · Commit probado y huellas: ___
 | Explicaciones que contaminan la medición | Consigna literal y respuesta fija a las preguntas de contenido |
 | Expertos que se influyen entre sí | Sesiones individuales, sin comunicación hasta el final |
 | Versiones distintas del informe | Un commit, una generación, dos huellas anotadas en cada hoja |
+| Una forma del informe sin el dato que la afirmación pregunta | Se entregan las dos formas y cada afirmación declara, antes de medir, sobre cuál se juzga (sección 1) |
 | Muestra pequeña | n ≥ 3 declarado como mínimo; el resultado se cita como juicio de un panel, no como muestra representativa |
 | Criterio acomodado al resultado | Criterio de la sección 6 escrito antes de medir; nada se relaja después |
 
