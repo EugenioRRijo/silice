@@ -111,7 +111,8 @@ Las cuatro relaciones `«extend»` son flujos alternativos del ERS; no todas se 
   hallazgo `CODIGO_PENDIENTE`; después, `ml.normalization.propuestas_para` propone partidas similares
   y `ui.elaboracion.aceptar_propuesta` reasigna el ítem y se vuelve a elaborar. El orden real es
   **elaborar primero y proponer después**, no el que redacta el ERS («propone… y si no se acepta
-  ninguna»); la corrección de la redacción es de la ERS (dictamen C3‑10).
+  ninguna»); la corrección de la redacción es de la ERS (ruling C3‑10 de la
+  [bitácora del cierre](bitacora/2026-09-23-cierre.md)).
 - **UC‑06 → UC‑01 (3b), no realizada en el flujo de UC‑01.** Una partida sin rendimiento estimado
   hace que `Catalogo.composicion` lance `CatalogoIncompleto`, y la elaboración lo muestra como error.
   La propuesta del histórico con su dispersión (`core.catalog.proponer_rendimiento`) existe, pero la
@@ -135,7 +136,7 @@ de los demás.
 | UC‑02 | `core.catalog.crear_lista_desde_archivo` → `core.budget.actualizar_precios` → `Comparativo`; 7a: `core.budget.descartar_version` | «Actualizar precios» (`ui/paginas/actualizacion.py`) e «Historico de cambios de precio» (`core.catalog.cambios_precio`); `POST /listas-precios`, `POST /presupuestos/{codigo}/actualizacion`, `GET /cambios-precio` |
 | UC‑03 | `ml.normalization` (`NormalizadorPartidas`, `proponedor`, `propuestas_para`) sobre pares código–descripción que la capa de presentación lee de `core.catalog`; la persistencia de la partida nueva es UC‑10 | «Partidas similares» (`ui/paginas/similares.py`, vía `ui.composicion.sugerir_partidas_similares`); dentro de UC‑01 3a en «Elaborar un presupuesto» y en `POST /presupuestos` |
 | UC‑04 | `adapters.civil.recalculo` (`recalcular`, `emparejar`) y `core.budget.elaborar` por quien llama. El paso 5 (diferencial, RF‑20) no está implementado | sin pantalla ni ruta HTTP |
-| UC‑05 | `core.verification.auditar` sobre un `Presupuesto`, siempre dentro de `core.budget.elaborar` y de `core.budget.cargar_elaboracion`. El hallazgo `PENDIENTE` no lo emite `auditar`: lo agrega la elaboración (`_declarar_pendientes`), así que quien llame a `auditar` directamente no lo ve | el informe acompaña a toda elaboración en pantalla y en la hoja «Auditoria» del libro; `GET /presupuestos/{codigo}/informe`. El archivo de un tercero no tiene pantalla ni ruta de importación: su `Presupuesto` se arma en código (`scripts/seed_telecom.py`, `tests/fixtures/presupuesto_auditado.py`) |
+| UC‑05 | `core.verification.auditar` sobre un `Presupuesto`. En las pantallas y la API corre siempre dentro de `core.budget.elaborar` y de `core.budget.cargar_elaboracion`. La excepción son los resúmenes impresos de tres sembradores, que arman `ResultadoElaboracion(presupuesto, auditar(presupuesto))` sobre `core.budget.generar_presupuesto` y llaman a `auditar` directamente, sin pendientes: `scripts/seed_telecom.py:580` (el presupuesto de un tercero), `scripts/seed_industrial.py:259` y `scripts/seed_sistemas.py:252`. El hallazgo `PENDIENTE` no lo emite `auditar`: lo agrega la elaboración (`_declarar_pendientes`), así que quien llame a `auditar` directamente no lo ve | el informe acompaña a toda elaboración en pantalla y en la hoja «Auditoria» del libro; `GET /presupuestos/{codigo}/informe`. El archivo de un tercero no tiene pantalla ni ruta de importación: su `Presupuesto` se arma en código (`scripts/seed_telecom.py`, `tests/fixtures/presupuesto_auditado.py`) |
 | UC‑06 | `core.catalog.rendimientos` (`registrar_ejecucion`, `registrar_rendimiento`, `dispersion_rendimientos`, `proponer_rendimiento`, `advertencia_rendimiento`) y, con el extra `ml`, `ml.anomaly.evaluar_rendimiento` | propuesta y advertencia en «Componer una partida»; el registro de un rendimiento medido, solo por HTTP: `POST /ejecuciones`, `GET /ejecuciones`, `GET` y `POST /partidas/{codigo}/rendimientos` |
 | UC‑07 | `ml.anomaly.precios_atipicos` y `ml.prediction` (`tecnica_para`, `predecir_por_reglas`, `metricas`, `contrastar_aace`) | ayudas 2 y 4 de «Componer una partida» (`ui.composicion.advertencia_precio_atipico`, `ui.composicion.contrastar_precio_con_reglas`); `scripts/generar_resultados_ml.py` escribe `docs/resultados_ml.md`; sin ruta HTTP |
 | UC‑08 | `core.budget.escenarios` (`generar_escenario`, `comparar_escenarios`, `comparar_por_partida`). Nada se persiste; el informe de un escenario no declara los pendientes del base (ruling C4‑3 de la bitácora del cierre, a limitaciones) | «Escenarios de sensibilidad» (`ui/paginas/escenarios.py`, que lee el base con `cargar_elaboracion` y avisa de sus pendientes); `POST /presupuestos/{codigo}/escenarios`, cuya respuesta los declara en `pendientes_base` (INV‑083, pista C de C4) |
@@ -959,16 +960,21 @@ sequenceDiagram
     VER-->>BUD: InformeAuditoria
     BUD->>BUD: _declarar_pendientes: un hallazgo PENDIENTE (ERROR) por item sin partida
     BUD-->>PRE: ResultadoElaboracion(presupuesto, informe, pendientes)
-    opt hay pendientes (UC-01 3a)
-        PRE->>ML: propuestas_para(partidas, pendientes)
-        ML-->>PRE: partidas similares por pendiente, o su falla
-    end
     alt API: POST /presupuestos
         PRE->>BUD: guardar_presupuesto(session, presupuesto, informe, proyecto, lista, parametros, pendientes)
         BUD->>CAT: partida(codigo) de cada renglon, antes de construir nada
         BUD->>DB: flush de presupuesto, items de computo (pendientes incluidos), renglones, curva y hallazgos
         PRE->>DB: commit
+        opt hay pendientes (UC-01 3a), al armar la respuesta (_pendientes)
+            PRE->>ML: propuestas_para(partidas, pendientes)
+            ML-->>PRE: partidas similares por pendiente, o su falla
+        end
+        PRE-->>P: codigo, total, numero de hallazgos y pendientes con sus propuestas
     else pantalla
+        opt hay pendientes (UC-01 3a)
+            PRE->>ML: propuestas_para(partidas, pendientes)
+            ML-->>PRE: partidas similares por pendiente, o su falla
+        end
         PRE->>BUD: exportar_excel(presupuesto, informe, ruta)
         PRE-->>P: presupuesto, informe, pendientes con sus propuestas y libro XLSX
     end
@@ -981,8 +987,12 @@ Cinco detalles del orden real que el diagrama fija y que conviene no perder:
    `PENDIENTE` de los ítems sin partida (§2.4).
 2. **Ninguna regla aborta el informe.** `auditar` recorre las siete y concatena sus hallazgos; una
    expresión inevaluable produce un `Hallazgo`, no una excepción.
-3. **Primero se elabora y después se propone** (UC‑01 3a). Si el usuario acepta una propuesta,
-   `ui.elaboracion.aceptar_propuesta` reasigna el ítem y la pantalla vuelve a llamar a
+3. **Primero se elabora y después se propone** (UC‑01 3a). La pantalla propone antes de exportar
+   (`ui.elaboracion.propuestas_de_pendientes`); la API, **después de confirmar**: la ruta hace
+   `elaborar`, `guardar_presupuesto` y `sesion.commit()`, y solo al construir la respuesta llama a
+   `_pendientes`, que invoca `propuestas_para` (`api/rutas/presupuestos.py:96-121` y `:314-344`), de
+   modo que el presupuesto queda guardado aunque el modelo de propuestas falle. Si el usuario acepta
+   una propuesta, `ui.elaboracion.aceptar_propuesta` reasigna el ítem y la pantalla vuelve a llamar a
    `elaborar_desde_catalogo`: una elaboración completa nueva, con su informe.
 4. **`guardar_presupuesto` hace `flush`, no `commit`**: la transacción pertenece a quien llama, de
    modo que el presupuesto puede formar parte de una operación mayor (la de UC‑02, §3.2). Rechaza con
@@ -1063,7 +1073,7 @@ una versión nueva del presupuesto; el presupuesto anterior sigue reconstruyénd
   como documento y `CambioPrecio` e `IncidenciaCambio` se conservan. Solo se descarta la última
   versión guardada del proyecto, si tiene al menos otra anterior; como el esquema no guarda de qué
   presupuesto salió una versión, la pantalla solo ofrece el botón para la versión que acaba de
-  confirmar (expediente C3.2).
+  confirmar ([expediente C3.2](bitacora/2026-09-24-C3-expedientes.md)).
 
 ## 4. Vista de desarrollo (definitivo)
 
