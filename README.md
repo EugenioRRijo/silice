@@ -9,30 +9,34 @@ La hipótesis central del trabajo es que **un núcleo de costeo y verificación 
 mientras se agregan dominios (civil, telecom, industrial, sistemas) mediante adaptadores**. La prueba
 empírica es `git diff --stat core/` vacío al terminar los adaptadores (Sesión I5); la mide la meta M9
 de `scripts/meta_alpha.py` —commit a commit y, además, con el `git diff core/` del **rango completo**
-de cada rama que incorpora un dominio— y la vigila `tests/unit/test_arquitectura.py`.
+de cada rama que incorpora un dominio—, la vigila `tests/unit/test_arquitectura.py` y, en cada PR,
+`scripts/guardia_nucleo.py` en la integración continua.
 
 ## Documentos rectores
 
 | Documento | Para qué |
 |---|---|
 | [CLAUDE.md](CLAUDE.md) | Constitución del proyecto: principios, cálculo, contratos, estructura, reglas, compuertas |
-| [PLAN_DESARROLLO.md](PLAN_DESARROLLO.md) | Las 20 sesiones de trabajo, con prompt, criterio de cierre y commit |
+| [PLAN_DESARROLLO.md](PLAN_DESARROLLO.md) | Las 20 sesiones de trabajo, con prompt, criterio de cierre y commit (completo) |
+| [PLAN_CIERRE.md](PLAN_CIERRE.md) | El final de la tesis: fases de corrección C0–C4, mediciones con personas (Med) y redacción, con sus compuertas |
 | [docs/metodologia.md](docs/metodologia.md) | Metodología Scrum‑Cascada y principio DRY aplicados al proyecto |
-| [docs/README.md](docs/README.md) | Índice de toda la documentación |
+| [docs/README.md](docs/README.md) | Índice de toda la documentación, con los planes de cada sprint |
 
 ## Arranque rápido
 
 ```powershell
-uv sync                                   # crea .venv e instala dependencias base + grupo dev (pytest, ruff)
-uv run pytest                             # suite de pruebas
+uv sync --all-extras                      # crea .venv con las dependencias, el grupo dev y los extras (ui, api, civil, ml)
+uv run pytest -W error                    # suite de pruebas (advertencia = error)
 uv run ruff check .                       # estilo
 uv run python scripts/seed.py             # carga la línea base en data/apu.db (idempotente; recrear: --reiniciar --confirmar)
 # ^ sobre la base por defecto, --reiniciar exige --confirmar; con --db hacia otra ruta basta --reiniciar
 # ^ si su data/apu.db es anterior a P2, añada la columna `modalidad` con ALTER TABLE o use --reiniciar --confirmar (docs/bitacora/2026-09-20-P2-hallazgo-migraciones.md)
-uv run python scripts/meta_alpha.py       # estado de las 12 metas del sprint alpha (OK/FALLA/PENDIENTE)
-uv sync --extra ui                        # instala Streamlit
-uv run python -m streamlit run ui/app.py            # UI mínima: actualización masiva de precios (UC-02) e informe de auditoría
+uv run python -m streamlit run ui/app.py  # la interfaz: abre en Inicio, con el caso abierto y los recorridos guiados
+uv run uvicorn api.main:app               # la API (documentación interactiva en http://127.0.0.1:8000/docs)
 ```
+
+La operación completa está en el [manual de usuario](docs/manual_usuario.md); cómo mantener y
+extender el sistema, en el [manual técnico](docs/manual_tecnico.md).
 
 > OneDrive sincroniza todo lo que hay en esta carpeta, incluido `.venv/`. Para evitarlo, antes de
 > `uv sync` defina `$env:UV_PROJECT_ENVIRONMENT = "$env:LOCALAPPDATA\apu_system\.venv"` (o fíjelo
@@ -40,34 +44,26 @@ uv run python -m streamlit run ui/app.py            # UI mínima: actualización
 
 ## Estado de la suite
 
-Toda la suite está en verde (versión alpha 0.1, sprint del 2026‑08‑29). Qué vigila cada archivo:
+La suite corre en verde con `-W error` y 0 omitidas en Linux y Windows en cada PR
+(`.github/workflows/ci.yml`). Este README no repite cifras ni estados (DRY,
+[docs/metodologia.md §5.1](docs/metodologia.md#5-dry)):
 
-| Archivo | Qué comprueba | Sesión |
-|---|---|---|
-| `tests/unit/test_contracts.py` | invariantes de los contratos (`Decimal`, unidades normalizadas, dataclasses inmutables) | 0 |
-| `tests/unit/test_arquitectura.py` | `core/` no importa adaptadores, ML, UI ni API; los adaptadores solo importan `core.contracts` | 0 |
-| `tests/unit/test_linea_base.py` | integridad del caso auditado (`tests/fixtures/apu_linea_base.py`) | 0 |
-| `tests/unit/test_costing.py` | el motor reproduce los cinco APU de la línea base ± 0,01 | I0.3 |
-| `tests/unit/test_meta_alpha.py` | las funciones puras de `scripts/meta_alpha.py` | alpha |
-| `tests/unit/test_reglas_civil.py` | 0,224 m3 y 4,48 m2 por tanquilla; adaptador tabular | I3.2 |
-| `tests/unit/test_verification.py` | evaluador, texto, directivas y las siete reglas sobre el presupuesto auditado | I4 |
-| `tests/unit/test_adapter_{telecom,industrial,sistemas}.py` | cada adaptador devuelve `ItemComputo` trazables sin importar nada de `core` salvo `core.contracts` | I5 |
-| `tests/unit/test_budget.py` | presupuesto 1 586,61; la curva cierra exactamente en el total; Excel de cuatro hojas | I0.5 |
-| `tests/integration/test_persistencia.py` | SQLite reconstruye las cinco composiciones idénticas; precios a fecha; variantes de insumos | I0.4 |
-| `tests/integration/test_auditoria_7_de_7.py` | **7 de 7** inconsistencias detectadas; el presupuesto corregido cumple | I4 |
-| `tests/integration/test_civil_verificacion.py` | el balance del adaptador civil es resoluble por R5 | I3.2 (4b) |
-| `tests/integration/test_presupuesto_linea_base.py` | seed → catálogo → `elaborar` → guardar → cargar reproduce el presupuesto | I0.5 |
-| `tests/integration/test_actualizacion_precios.py` | UC‑02: nueva lista de precios, `CambioPrecio`, `IncidenciaCambio`, reconstrucción a fecha | I1 |
+- qué RF demuestra cada archivo de prueba y en qué estado está:
+  [docs/plan_pruebas.md §8](docs/plan_pruebas.md);
+- el número de pruebas y la cobertura, con la corrida de CI que los mide:
+  [docs/plan_pruebas.md §10](docs/plan_pruebas.md);
+- la evaluación de calidad sobre esos resultados: [docs/calidad_iso25010.md](docs/calidad_iso25010.md).
 
 ## Mapa del repositorio
 
 ```
 core/        núcleo cerrado: contracts (estables), costing, models, catalog, budget, verification
-adapters/    un paquete por dominio (civil tabular, telecom, industrial, sistemas); solo importan core.contracts
-ml/          normalization, anomaly, prediction (pendientes de la compuerta G2)
-ui/  api/    Streamlit (UC-02 mínimo) y FastAPI (Fase F)
+adapters/    un paquete por dominio (civil IFC y tabular, telecom, industrial, sistemas); solo importan core.contracts
+ml/          normalization, anomaly, prediction (técnica de reglas por la compuerta G2)
+ui/          Streamlit: diez pantallas en dos secciones (Trabajo e Investigacion), con Inicio y recorridos guiados
+api/         FastAPI; esquema OpenAPI exportado a docs/api.json
 tests/       unit, integration, fixtures (la línea base vive en tests/fixtures/apu_linea_base.py)
-data/        linea_base (evidencia primaria), samples (CSV por dominio, PDF telecom, lista de precios de muestra)
-docs/        metodología, ERS, modelo de datos, arquitectura, línea base, esqueleto de tesis, bitácora
-scripts/     seed.py (línea base en SQLite), meta_alpha.py (las 12 metas del alpha)
+data/        linea_base (evidencia primaria), samples (fuentes por dominio), precios (MaPreX jul‑2026), fuentes por dominio
+docs/        ERS, plan de pruebas, calidad, manuales, arquitectura, modelo de datos, protocolos, tesis, bitácoras
+scripts/     siembra, datos derivados, medición, guardias de la CI y metas de sprint (índice en scripts/README.md)
 ```
