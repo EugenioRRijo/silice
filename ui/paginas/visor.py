@@ -107,8 +107,11 @@ def _render_desde_ruta(ruta: Path) -> None:
     # `ArithmeticError`; ver `ui/paginas/elaborar.py`).
     errores_lectura_ifc = (OSError, ifcopenshell.Error, LookupError, ValueError, ArithmeticError)
     try:
-        mallas_encontradas = mallas(ruta)
+        # Primero el adaptador: rechaza un archivo ilegible con `ValueError` sin llegar a
+        # `ifcopenshell.open`, que `mallas` llama y que ante un archivo que no es STEP deja una
+        # excepcion no atrapable (O-1 de la revision de la pista P de C5).
         items = adaptador_civil_ifc().extraer(ruta)
+        mallas_encontradas = mallas(ruta)
     except errores_lectura_ifc as error:
         st.error(str(error))
         return
