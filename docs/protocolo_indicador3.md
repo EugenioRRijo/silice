@@ -395,11 +395,14 @@ cantidades, que dependen de lo que el participante escribió en la plantilla.
 
 **Hoja consolidada** (una fila por participante, más el resumen):
 
-| Participante | Secuencia | Perfil (resumen) | `t_manual` | `t_sistema` | `r` | Ambos correctos | Commit |
-|---|---|---|---|---|---|---|---|
-| P01 | S1 | | | | | | |
-| … | | | | | | | |
-| **Resumen** | n = | | mediana = | mediana = | mediana (mín–máx) = | pares válidos = | |
+| Participante | Secuencia | Perfil (resumen) | `t_manual` | `t_sistema` | `r` | `t_práctica` | `r_con_práctica` | Ambos correctos | Commit |
+|---|---|---|---|---|---|---|---|---|---|
+| P01 | S1 | | | | | | | | |
+| … | | | | | | | | | |
+| **Resumen** | n = | | mediana = | mediana = | mediana (mín–máx) = | mediana = | mediana (mín–máx) = | pares válidos = | |
+
+`t_práctica` es la duración de la práctica con P de la hoja por participante, y
+`r_con_práctica = 1 − (t_sistema + t_práctica) / t_manual` (sección 11, punto 6).
 
 Resultado de la prueba de Wilcoxon: estadístico, p, n de pares. Enunciado del resultado según la
 regla de la sección 11, punto 4; mediana de `r` del análisis de

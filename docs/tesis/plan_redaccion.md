@@ -238,7 +238,7 @@ arquitectura y de la interfaz, a la corrida de CI con que se cruzó GC3.
 | Conteo G2 | civil 5 · telecom 40 · industrial 4 · sistemas 9 (todos < 50; recuento multidominio M4.1) | [resultados_ml.md](../resultados_ml.md) (`uv run python scripts/generar_resultados_ml.py`) |
 | Predicciones del caso | tabla PU base/estimado/rango | [resultados_ml.md](../resultados_ml.md) |
 | Indicador 3: reducción del tiempo de elaboración | **pendiente de Med**: mediana de la reducción relativa (mín–máx) sobre la tarea T3, con n, perfil, fecha y commit | [protocolo_indicador3.md](../protocolo_indicador3.md) · bitácora de la fase Med |
-| RNF‑04: juicio de expertos sobre el informe | **pendiente de Med**: promedio global (meta ≥ 4,0) y veredicto, con n, perfil, fecha, commit y huella del informe | [protocolo_rnf04.md](../protocolo_rnf04.md) · bitácora de la fase Med |
+| RNF‑04: juicio de expertos sobre el informe | **pendiente de Med**: promedio global (meta ≥ 4,0) y veredicto, con n, perfil, fecha, commit, las dos huellas del informe (SHA‑256 de la pantalla, `informe_rnf04.md`, y de la forma exportada, `informe_rnf04.xlsx`) y la forma sobre la que se juzgó cada afirmación (protocolo §1) | [protocolo_rnf04.md](../protocolo_rnf04.md) · bitácora de la fase Med |
 | RNF‑10: CP‑07 | **pendiente de Med (GU1b)**: veredicto por escenario, tiempo y promedio del bloque B | [guion_prueba_arenia.md](../guion_prueba_arenia.md), CP‑07 · bitácora de la fase Med |
 
 ## 6. Tablero de avance

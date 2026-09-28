@@ -54,24 +54,34 @@ mismo orden, pero no con las mismas columnas:
 
 Por eso **cada afirmación del anexo A se juzga sobre una forma fija** (columna «Se juzga sobre» de
 la rúbrica, sección 7), y el cuestionario impreso la indica al margen de cada afirmación, sin
-cambiar su texto:
+cambiar su texto. La columna usa cuatro rótulos:
+
+- **la pantalla** o **la hoja *Auditoria***: se juzga sobre esa forma sola;
+- **las dos, en conjunto**: se juzga sobre el informe entero, leyendo las dos formas juntas, porque
+  la afirmación pregunta por todo el informe o necesita datos que solo trae una y datos que solo
+  trae la otra;
+- **cualquiera de las dos**: las dos formas traen el mismo dato que la afirmación pregunta, y el
+  experto puede juzgarla sobre la que prefiera (siempre tiene las dos a mano).
 
 | Afirmación | Se juzga sobre | Por qué |
 |---|---|---|
-| 1 Entender qué comprueba | las dos | es un juicio sobre el informe entero |
-| 2 Severidad comprensible y bien asignada | las dos | las dos traen la severidad; la pantalla, además, su resumen |
+| 1 Entender qué comprueba | las dos, en conjunto | es un juicio sobre el informe entero |
+| 2 Severidad comprensible y bien asignada | cualquiera de las dos | las dos traen la severidad de cada hallazgo; la pantalla, además, su resumen |
 | 3 Impacto cuantificado | la pantalla | solo ella trae, junto al impacto, lo observado y lo esperado («montos y cantidades en juego»); con la hoja sola, la afirmación se juzgaría con menos datos |
 | 4 Orígenes para ubicar la fila | la hoja *Auditoria* | es la única que trae los `origen_id` |
 | 5 Orden por severidad | la pantalla | trae el resultado global y el resumen por severidad que encabezan el orden; en la hoja el orden existe, pero sin ese encabezado |
-| 6 Lenguaje apropiado | las dos | las descripciones son las mismas |
-| 7 Decidir qué corregir y en qué orden | las dos, leídas juntas | decidir pide la partida y lo esperado (pantalla) y el origen de la fila (hoja) |
-| 8 Confianza como complemento | las dos | es un juicio sobre el informe entero |
+| 6 Lenguaje apropiado | cualquiera de las dos | las descripciones son las mismas |
+| 7 Decidir qué corregir y en qué orden | las dos, en conjunto | decidir pide la partida y lo esperado (pantalla) y el origen de la fila (hoja) |
+| 8 Confianza como complemento | las dos, en conjunto | es un juicio sobre el informe entero |
 
 Así, ninguna afirmación se contesta sobre una forma que carece del dato que pregunta. El capítulo V
 reporta esta asignación junto al resultado. En este informe la columna *Partida* de la pantalla es
-fiable: cada `origen_id` de la fixture es único (`computo:<código>`), así que no le alcanza el
-defecto de atribución de esa columna que el controlador registró en la revisión de C4 (M3), que
-aparece cuando varias partidas comparten un mismo `origen_id`.
+fiable: cada partida de la fixture lleva un `origen_id` propio, `computo:<código>`, que no comparte
+con ninguna otra. Las filas de R6 citan los códigos de partida sin prefijo (R6 compara APU entre sí),
+y el informe también los resuelve a su partida (`_indice_de_partidas`,
+`core/verification/informe.py:144-157`); la de R2 no cita ninguno y la pantalla pone «-». Por eso
+no le alcanza el defecto de atribución de esa columna que el controlador registró en la revisión de
+C4 (M3), que aparece cuando varias partidas comparten un mismo `origen_id`.
 
 **Cómo se genera** (el observador, en la copia desechable de la sección 3, desde su raíz):
 
@@ -213,14 +223,14 @@ anexo A y aquí van con una etiqueta breve):
 
 | # | Afirmación (etiqueta; texto completo en el anexo A) | Se juzga sobre | 1 | 2 | 3 | 4 | 5 |
 |---|---|---|---|---|---|---|---|
-| 1 | Entendí qué comprueba sin formación previa | las dos | | | | | |
-| 2 | Severidad comprensible y bien asignada | las dos | | | | | |
+| 1 | Entendí qué comprueba sin formación previa | las dos, en conjunto | | | | | |
+| 2 | Severidad comprensible y bien asignada | cualquiera de las dos | | | | | |
 | 3 | El impacto cuantificado permite dimensionar | pantalla (`.md`) | | | | | |
 | 4 | Los orígenes permiten ubicar la fila | hoja *Auditoria* (`.xlsx`) | | | | | |
 | 5 | El orden presenta primero lo que más importa | pantalla (`.md`) | | | | | |
-| 6 | Lenguaje apropiado para un profesional de obra | las dos | | | | | |
-| 7 | Permite decidir qué corregir y en qué orden | las dos, leídas juntas | | | | | |
-| 8 | Confiaría en él como complemento de una revisión manual | las dos | | | | | |
+| 6 | Lenguaje apropiado para un profesional de obra | cualquiera de las dos | | | | | |
+| 7 | Permite decidir qué corregir y en qué orden | las dos, en conjunto | | | | | |
+| 8 | Confiaría en él como complemento de una revisión manual | las dos, en conjunto | | | | | |
 
 Escala: 1 = totalmente en desacuerdo · 3 = neutral · 5 = totalmente de acuerdo.
 
