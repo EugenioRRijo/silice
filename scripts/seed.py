@@ -1,8 +1,11 @@
 """Carga la línea base auditada en SQLite para reproducir el presupuesto desde la base de datos.
 
-Este script es el **único** módulo fuera de `tests/` que importa `tests.fixtures.apu_linea_base`, y
-lo hace a propósito: ese fixture es la única copia de la línea base en todo el sistema (CLAUDE.md
-§2, principio DRY). Duplicar aquí los cinco APU sería exactamente lo que el principio prohíbe.
+Este script importa `tests.fixtures.apu_linea_base` a propósito, como también lo hacen, fuera
+de `tests/`, `scripts/generar_resultados_ml.py`, `scripts/medir_rnf03.py` y
+`scripts/meta_prototipo.py`: ese fixture es la única copia de la línea base en todo el sistema
+(CLAUDE.md §2, principio DRY). Duplicar aquí los cinco APU sería exactamente lo que el principio
+prohíbe. La lista completa de los scripts que dependen de `tests/fixtures/` está en
+`docs/arquitectura.md` §4.
 
 Uso:
     uv run python scripts/seed.py                 # crea data/apu.db

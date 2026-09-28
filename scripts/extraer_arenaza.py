@@ -7,8 +7,8 @@ Unica copia estructurada de los 40 renglones (CLAUDE.md seccion 2, principio DRY
 `tests/fixtures/presupuestos_arenaza.py` (`PRESUPUESTO_1`, `PRESUPUESTO_2`) es la UNICA
 transcripcion de los 40 renglones en todo el repositorio. Este script no repite esos datos: los
 importa y (a) escribe los CSV a partir de ellos, (b) verifica el fixture contra el texto de los
-PDF, recien extraido con PyMuPDF, cada vez que corre. Mismo patron que `scripts/seed.py`, el
-unico modulo fuera de `tests/` que importa `tests.fixtures.apu_linea_base` (linea base civil):
+PDF, recien extraido con PyMuPDF, cada vez que corre. Mismo patron que `scripts/seed.py`,
+que importa `tests.fixtures.apu_linea_base` (linea base civil):
 un script de infraestructura puede importar un fixture de pruebas cuando ese fixture es,
 deliberadamente, la unica copia de un dato del dominio.
 

@@ -1194,7 +1194,10 @@ de despacho. La guía para cablear un adaptador nuevo está en el
 [manual técnico §4](manual_tecnico.md#4-escribir-un-adaptador-de-dominio-nuevo).
 
 `scripts/` es un conjunto de utilidades de siembra, simulación y auditoría de metas, no un componente
-del producto; la suite solo vigila que `core/` no lo importe (INV‑010). Tiene dependencia en los dos
+del producto; la suite de arquitectura solo vigila que no lo importen `core/` (INV‑010,
+`test_el_nucleo_no_conoce_a_los_demas_paquetes`) ni `adapters/`, cuya lista blanca rechaza todo lo
+que no sea `core.contracts`, su propio paquete, la biblioteca estándar o sus terceros declarados
+(`test_un_adaptador_solo_importa_contratos_su_paquete_y_sus_terceros`). Tiene dependencia en los dos
 sentidos con `ui/`, sin ciclo de módulos: `ui/paginas/actualizacion.py` importa `scripts.seed`
 (`sembrar`, para la demo desde la pantalla), `ui/paginas/simulador.py` importa `scripts.simular_lista`
 (`simular`) e `ui/paginas/inicio.py` importa `scripts.seed_demo` (`main`, para sembrar el caso vacío
@@ -1209,15 +1212,16 @@ escribir `docs/api.json`.
 `generar_resultados_ml.py`, `medir_rnf03.py`, `meta_prototipo.py` y `extraer_arenaza.py`.
 `scripts/seed.py:39` importa `tests.fixtures.apu_linea_base` al cargarse el módulo. Es una
 dependencia **deliberada**: el fixture es la única copia de la línea base
-([CLAUDE.md §2](../CLAUDE.md#2-principios), principio 1; `docs/manual_tecnico.md:242`), y copiarla en
+([CLAUDE.md §2](../CLAUDE.md#2-principios), principio 1; `docs/manual_tecnico.md:252`), y copiarla en
 `scripts/` sería la duplicación que el principio prohíbe. La consecuencia es de despliegue: `ui.app`
 importa las diez páginas al cargarse (`ui/app.py:61-72`), y tres de ellas llegan a `scripts.seed`:
 `ui/paginas/actualizacion.py:44` directamente, `ui/paginas/inicio.py:18` a través de
 `scripts.seed_demo` (`scripts/seed_demo.py:109`) y `ui/paginas/simulador.py:22` a través de
 `scripts.simular_lista` (`scripts/simular_lista.py:30`). Por eso **la aplicación Streamlit necesita
 `tests/fixtures/` para arrancar** (§5). La API no: `api/` no importa `scripts` ni `tests`. Ninguna
-prueba de `tests/unit/test_arquitectura.py` declara ni prohíbe esta arista: esa suite solo impide que
-`core/` importe `tests` (INV‑010).
+prueba de `tests/unit/test_arquitectura.py` declara ni prohíbe esta arista para `scripts/` ni para
+`ui/`: esa suite solo impide importar `tests` a `core/` (INV‑010) y a los adaptadores, por su lista
+blanca (`_import_permitido`, `tests/unit/test_arquitectura.py:110-123`).
 
 ## 5. Vista física
 
