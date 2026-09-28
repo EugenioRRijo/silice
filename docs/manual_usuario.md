@@ -114,6 +114,15 @@ cálculo interno redondea**: el redondeo es solo de presentación.
 Con `ARENIA_CASO=<ruta>` la aplicación fija ese caso sin tener que abrirlo en el Inicio (la
 aplicación sigue arrancando en el Inicio).
 
+**Casos de uso sin pantalla propia.** La tabla cubre los casos de uso que tienen pantalla; los
+demás se operan por otra capa (la correspondencia completa entre caso de uso y capa está en la
+[ERS §3.1](ERS.md)). UC‑04, recalcular las cantidades ante un cambio de dimensiones, existe en el
+adaptador civil (`adapters/civil/recalculo.py`) y no tiene pantalla ni ruta de la API. UC‑05 se ve
+en el informe de auditoría que acompaña a todo presupuesto elaborado (sección 4), pero la
+importación del presupuesto de un tercero para auditarlo (RF‑24) todavía no existe (INV‑076).
+UC‑06 se opera por la API (sección 3.4) y UC‑07 con un script (sección 3.5). En UC‑01, el `.ifc`
+civil entra por la API (sección 3.1).
+
 ### 3.0 Inicio: el caso abierto y los recorridos guiados (UC‑12)
 
 1. **El caso.** El campo *Archivo del caso (SQLite)* y el botón *Abrir este caso* fijan la base
@@ -155,7 +164,10 @@ aplicación sigue arrancando en el Inicio).
    similitud. Si se elige una en el selector *Propuesta para <origen>* y se pulsa **Aplicar y
    volver a elaborar**, el ítem pasa a esa partida y el presupuesto se elabora de nuevo, ya sin ese
    pendiente. Si no se acepta ninguna, el ítem sigue pendiente y el informe lo sigue declarando.
-   Sin el extra `ml` instalado no hay propuestas: el pendiente se lista igual, sin selector.
+   Si no se pudieron calcular las propuestas, el pendiente se lista igual, sin selector, y debajo
+   aparece una leyenda con el tipo y el mensaje de la falla: `ImportError: …` cuando falta el extra
+   `ml`; `OSError: …` cuando el modelo de lenguaje no se pudo descargar o leer (por ejemplo, la
+   primera vez y sin red).
 
 ### 3.2 Actualizar precios masivamente (UC‑02)
 
@@ -172,8 +184,8 @@ aplicación sigue arrancando en el Inicio).
    nueva como pendientes, aunque la lista nueva traiga su partida, y el informe los vuelve a
    declarar: valorarlos es UC‑01 (sección 3.1), no UC‑02.
 4. **Descartar la versión (UC‑02, flujo 7a).** Debajo del informe aparece el botón **Descartar
-   version**, solo si en esta misma ejecución de la página se acaba de guardar una versión nueva:
-   no aparece tras el flujo 3a ni para versiones guardadas antes. El botón **marca** la versión
+   version**, solo si la última revaloración de esta sesión guardó una versión nueva: no aparece
+   tras el flujo 3a ni para versiones guardadas antes. El botón **marca** la versión
    como descartada; no la borra: sigue guardada y se puede cargar como documento, y su historial
    de cambios de precio se conserva. La marca vale para la base del caso donde se guardó la
    versión, aunque después se abra otro caso. Tras pulsarlo, la página dice que la versión quedó
@@ -225,8 +237,9 @@ de la auditoría del escenario (que se genera siempre) y los insumos variados.
 Límites: si el presupuesto base tiene ítems pendientes (UC‑01 3a), la página los lista en un aviso
 al abrirlo. Los escenarios solo recalculan los renglones valorados: esos ítems no suman al total
 del base ni al de ningún escenario, y la leyenda «Hallazgos de la auditoria del escenario: N» no
-los cuenta, porque la auditoría del escenario todavía no declara `PENDIENTE`. Que el informe del
-escenario y la ruta de la API los declaren queda para la fase C4 (INV‑083).
+los cuenta, porque la auditoría del escenario no declara `PENDIENTE`. Es una limitación declarada:
+que ese informe los declarase exigiría cambiar el núcleo, y la fase C4 del cierre no lo autoriza
+(ruling C4‑3 de la [bitácora del cierre](bitacora/2026-09-23-cierre.md)).
 
 El presupuesto base **nunca** se altera y ningún escenario se guarda: al cambiar de presupuesto
 la comparación se descarta. Para convertir un escenario en presupuesto vigente se usa la
