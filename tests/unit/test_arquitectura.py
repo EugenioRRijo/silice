@@ -357,3 +357,124 @@ def test_ningun_modulo_de_prueba_importa_de_otro_modulo_de_prueba():
         }
     )
     assert infractores == []
+
+
+#: Paquetes que la API no importa en tiempo de ejecucion (ARQ-5 de la revision de arquitectura de
+#: GC4): docs/arquitectura.md §4 declara que `api` no depende de `scripts` ni de `tests`, y la API
+#: no es un cliente de la interfaz. Una ruta que importara `scripts.seed` arrastraria `tests/`.
+PROHIBIDOS_EN_API = ("scripts", "tests", "ui")
+
+
+def _prohibido_en_api(modulo: str) -> bool:
+    """True si `modulo` pertenece a un paquete de `PROHIBIDOS_EN_API` (paquete, no prefijo)."""
+    return modulo.split(".")[0] in PROHIBIDOS_EN_API
+
+
+def test_la_regla_de_la_api_distingue_paquetes_de_prefijos():
+    """Las mordidas de `_prohibido_en_api`, fijadas en los dos sentidos."""
+    assert _prohibido_en_api("scripts.seed")
+    assert _prohibido_en_api("tests")
+    assert _prohibido_en_api("tests.fixtures.apu_linea_base")
+    assert _prohibido_en_api("ui.caso")
+    assert not _prohibido_en_api("uimodulo")
+    assert not _prohibido_en_api("scriptsx")
+    assert not _prohibido_en_api("core.budget")
+    assert not _prohibido_en_api("ml.normalization")
+
+
+def test_la_api_no_importa_scripts_tests_ni_ui():
+    """ARQ-5 (GC4), por archivo: ningun modulo de `api/` importa `scripts`, `tests` ni `ui` en
+    tiempo de ejecucion, tampoco de forma perezosa (`_imports_de_ejecucion`)."""
+    archivos = _archivos("api")
+    assert RAIZ / "api" / "rutas" / "presupuestos.py" in archivos
+    prohibidos = sorted(
+        f"{_ruta(archivo)}: {modulo}"
+        for archivo in archivos
+        for modulo in _imports_de_ejecucion(archivo)
+        if _prohibido_en_api(modulo)
+    )
+    assert prohibidos == []
+
+
+def test_importar_la_api_no_carga_scripts_tests_ni_ui():
+    """ARQ-5 (GC4), transitivo: importar `api.main` en un proceso limpio no deja en `sys.modules`
+    ningun modulo de `scripts`, `tests` ni `ui`, aunque llegara a ellos a traves de otro paquete.
+    `subprocess` se importa aqui para no desplazar las anclas de este archivo que citan los
+    documentos (`:23`, `:110-123`, `:196-207`)."""
+    import subprocess
+
+    codigo = (
+        "import sys\n"
+        "import api.main\n"
+        f"print(sorted({{n for n in sys.modules if n.split('.')[0] in {PROHIBIDOS_EN_API!r}}}))\n"
+    )
+    salida = subprocess.run(
+        [sys.executable, "-c", codigo],
+        cwd=RAIZ,
+        capture_output=True,
+        text=True,
+        check=True,
+        timeout=300,
+    )
+    assert salida.stdout.strip() == "[]", salida.stdout
+
+
+def _importado_de_tests(archivo: Path) -> list[str]:
+    """Lo que `archivo` importa del paquete `tests`, con el nombre completo: `from tests import
+    fixtures` cuenta como `tests.fixtures`, no como `tests`. Incluye las importaciones perezosas."""
+    nombres: list[str] = []
+    for nodo in ast.walk(ast.parse(archivo.read_text(encoding="utf-8"))):
+        if isinstance(nodo, ast.Import):
+            nombres.extend(alias.name for alias in nodo.names)
+        elif isinstance(nodo, ast.ImportFrom) and nodo.level == 0 and nodo.module:
+            if nodo.module == "tests":
+                nombres.extend(f"tests.{alias.name}" for alias in nodo.names)
+            else:
+                nombres.append(nodo.module)
+    return [nombre for nombre in nombres if nombre == "tests" or nombre.startswith("tests.")]
+
+
+def _prohibidos_en_scripts(archivo: Path) -> list[str]:
+    """Lo que `archivo` importa de `tests` fuera del paquete `tests.fixtures`."""
+    return [
+        nombre
+        for nombre in _importado_de_tests(archivo)
+        if nombre != "tests.fixtures" and not nombre.startswith("tests.fixtures.")
+    ]
+
+
+def test_scripts_solo_importa_de_tests_sus_fixtures():
+    """ARQ-5 (GC4): `scripts/` depende de `tests` solo por `tests.fixtures`, la fuente unica de la
+    linea base y de los casos (docs/arquitectura.md §4); nunca de un modulo de prueba ni de un
+    `conftest.py`. La guardia no es ciega: `scripts/seed.py` importa `tests.fixtures`."""
+    assert _importado_de_tests(RAIZ / "scripts" / "seed.py")
+    prohibidos = sorted(
+        f"{_ruta(archivo)}: {nombre}"
+        for archivo in _archivos("scripts")
+        for nombre in _prohibidos_en_scripts(archivo)
+    )
+    assert prohibidos == []
+
+
+def test_la_guardia_de_scripts_ve_cada_forma_de_importar_tests(tmp_path):
+    """Las mordidas de `_prohibidos_en_scripts` en los dos sentidos, como
+    `test_la_guardia_del_marco_ve_cada_forma_de_importarlo`: cada forma de llegar a `tests` fuera
+    de `tests.fixtures` se detecta; las formas permitidas y un nombre que solo empieza igual, no."""
+    fuentes = {
+        "from tests.fixtures import apu_linea_base\n": False,
+        "from tests.fixtures.apu_linea_base import PARAMETROS\n": False,
+        "from tests import fixtures\n": False,
+        "import tests.fixtures.apu_linea_base\n": False,
+        "import testsuite\n": False,
+        "from tests.conftest import huella\n": True,
+        "from tests import conftest\n": True,
+        "import tests\n": True,
+        "import tests.unit.test_costing\n": True,
+        "def perezosa():\n    from tests.integration import conftest\n": True,
+    }
+    detectadas = {}
+    for numero, fuente in enumerate(fuentes):
+        archivo = tmp_path / f"script_{numero}.py"
+        archivo.write_text(fuente, encoding="utf-8")
+        detectadas[fuente] = bool(_prohibidos_en_scripts(archivo))
+    assert detectadas == fuentes
