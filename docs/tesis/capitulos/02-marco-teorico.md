@@ -2,7 +2,7 @@
 
 | Capítulo | Estado | Última revisión |
 |---|---|---|
-| II. Marco teórico | borrador completo, revisado con la lista de cotejo (Sesión R1.7) | 2026-09-15 |
+| II. Marco teórico | borrador completo, revisado con la lista de cotejo (Sesión R1.7); §2.3.2 alineada con la fuente del FCAS verificada contra fuente primaria, pendiente de nueva revisión | 2026-09-28 |
 
 ## 2.1 Antecedentes de la investigación
 
@@ -113,7 +113,7 @@ La investigación adopta el siguiente modelo de cálculo, en el que el rendimien
 - **Costo directo:** materiales más equipos más mano de obra.
 - **Precio unitario:** costo directo por (1 + administración) y, sobre ese resultado, por (1 + utilidad).
 
-Dos decisiones del modelo merecen explicitarse. La primera: los materiales no se dividen entre el rendimiento, porque su cantidad ya está referida a la unidad de partida, mientras que el costo diario de equipos y mano de obra sí debe repartirse entre las unidades producidas en el día. La segunda: la administración y la utilidad se aplican en cascada, es decir, la utilidad se calcula sobre el costo que ya incluye la administración, y no como suma de ambos porcentajes. En el caso didáctico, los parámetros son un FCAS de 6,00 (600 %), un bono de alimentación de 1,00 USD por trabajador y día, una administración del 15 % y una utilidad del 10 %. El FCAS se trata como parámetro del caso de estudio mientras no se confirme su fuente normativa.
+Dos decisiones del modelo merecen explicitarse. La primera: los materiales no se dividen entre el rendimiento, porque su cantidad ya está referida a la unidad de partida, mientras que el costo diario de equipos y mano de obra sí debe repartirse entre las unidades producidas en el día. La segunda: la administración y la utilidad se aplican en cascada, es decir, la utilidad se calcula sobre el costo que ya incluye la administración, y no como suma de ambos porcentajes. En el caso didáctico, los parámetros son un FCAS de 6,00 (600 %), un bono de alimentación de 1,00 USD por trabajador y día, una administración del 15 % y una utilidad del 10 %. El FCAS del 600 % proviene del caso didáctico, no tiene fuente normativa y se trata como parámetro del caso de estudio (sección 2.3.2).
 
 ### 2.2.5 Aprendizaje automático para la estimación de costos con datos escasos
 
@@ -151,7 +151,11 @@ La norma venezolana COVENIN‑MINDUR 2000, en su parte II.A dedicada a las edifi
 
 La convención colectiva de trabajo de la industria de la construcción fija las condiciones económicas de la relación laboral en el sector. La vigente al cierre de esta revisión se publicó en la Gaceta Oficial N.º 6.752 Extraordinario, del 6 de julio de 2023; rige desde la fecha de su depósito, dura veinticuatro meses y sus disposiciones continúan aplicándose hasta que otras las sustituyan. Sus partes son las cámaras de la construcción, las federaciones y los sindicatos del sector, y alcanza a las empresas afiliadas a esas cámaras (Convención Colectiva de la Industria de la Construcción, 2023).
 
-El factor de costos asociados al salario no aparece en su texto. Quien lo calcula y lo publica es el Colegio de Ingenieros de Venezuela, cuyo Departamento de Análisis y Costos advierte que los factores de sus guías son referencias, que el cálculo se apoya en las cláusulas de la convención y en la legislación laboral, y que cada empresa debería calcular el suyo para cada obra (Colegio de Ingenieros de Venezuela, 2018). Por eso esta investigación no deriva el valor del FCAS de la convención: lo trata como un parámetro del caso de estudio, explícito y modificable. Esa decisión mantiene el modelo de cálculo válido para cualquier convención vigente, porque el factor entra como dato y no como constante del cálculo.
+El factor de costos asociados al salario no aparece en su texto, y no tiene un valor normativo publicado. El Colegio de Ingenieros de Venezuela no calcula ni publica el factor de cada obra: publica factores de referencia en sus guías, y su Departamento de Análisis y Costos advierte que esos factores son solo ejemplos de los valores probables, que su cálculo se apoya en las cláusulas de la convención y en la legislación laboral, y que cada empresa debería calcular el suyo para cada obra (Colegio de Ingenieros de Venezuela, 2018).
+
+Los cálculos publicados en trabajos de grado muestran cuánto varía el factor según la convención que se aplique, la duración de la obra y las cláusulas que se incluyan. Chacin (2008), que lo llama factor de prestaciones sociales, su denominación anterior, lo calculó con las convenciones colectivas de 2003‑2006 y de 2007‑2009 para obras de tres, seis y doce meses, y obtuvo valores entre el 198 % y el 293 % (p. 77, cuadro 2), que disminuyen a medida que la obra dura más, porque los costos fijos se reparten entre más días. Dodi Scovino y Salas Caraballo (2019), con la convención de 2016‑2018 y los costos de 2018, obtuvieron un 78,63 % si solo se incluyen las cláusulas de montos fijos y un 2 386,08 % si se incluyen todas (pp. 32‑33), en un cálculo dominado por los índices de inflación de ese año.
+
+Por eso esta investigación no deriva el valor del FCAS de la convención ni lo toma de un valor publicado: el 600 % proviene del caso didáctico y se trata como un parámetro del caso de estudio, explícito y modificable. Esa decisión mantiene el modelo de cálculo válido para cualquier convención vigente, porque el factor entra como dato y no como constante del cálculo. Avalar esa declaración es una decisión que se somete al tutor académico.
 
 ### 2.3.3 Clasificación de estimaciones de costos de AACE International
 

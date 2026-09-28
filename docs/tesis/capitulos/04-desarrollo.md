@@ -2,11 +2,12 @@
 
 | Capítulo | Estado | Última revisión |
 |---|---|---|
-| IV. Desarrollo de la propuesta | borrador corregido tras la revisión con la lista de cotejo ([acta R2](../revisiones/R2-capitulo-4.md)); pendiente la nueva revisión y la del tutor académico; figuras, referencias por verificar y decisiones del tutor marcadas como pendientes en la sección 4.12 | 2026-09-23 |
+| IV. Desarrollo de la propuesta | borrador corregido tras la revisión con la lista de cotejo ([acta R2](../revisiones/R2-capitulo-4.md)) y puesto al día con la corrección de la interfaz y los scripts en las secciones 4.2, 4.5.1, 4.6 y 4.12; pendiente la nueva revisión y la del tutor académico; figuras, referencias por verificar y decisiones del tutor marcadas como pendientes en la sección 4.12 | 2026-09-28 |
 
-Este capítulo describe el sistema desarrollado tal como existe en la rama principal del repositorio
+Este capítulo describe el sistema desarrollado tal como existía en la rama principal del repositorio
 al 23 de septiembre de 2026, una vez concluida la corrección del núcleo de cálculo que se describe
-más abajo. Se sigue el orden causal del plan de desarrollo: primero los requerimientos y el modelo
+más abajo, con la puesta al día que se precisa en las convenciones del capítulo. Se sigue el orden
+causal del plan de desarrollo: primero los requerimientos y el modelo
 de datos, luego la arquitectura que los aloja, el motor de costos, el presupuesto con su curva, la
 actualización de precios, el adaptador civil, la verificación, los adaptadores de otros dominios,
 los módulos de aprendizaje automático y, al final, la interfaz y la API. Cada sección expone el
@@ -45,7 +46,11 @@ completa en Linux y en Windows en cada cambio, es la fuente de verdad de esas ci
 ([metodologia.md §6](../../metodologia.md)). La corrida de referencia de este capítulo es la
 [35950215309](https://github.com/EugenioRRijo/tesis-apu-multidominio/actions/runs/35950215309), del
 23 de septiembre de 2026: 735 pruebas aprobadas en ambos sistemas, ninguna omitida, y una cobertura
-del 98 % sobre el núcleo.
+del 98 % sobre el núcleo. Las pruebas que citan las secciones puestas al día (4.2, 4.5.1 y 4.6) y
+la sección 4.7.3 se escribieron después y se ejecutan en la corrida
+[36427904452](https://github.com/EugenioRRijo/tesis-apu-multidominio/actions/runs/36427904452), del
+28 de septiembre de 2026 (commit `308eca5`, PR #14), en verde; las cifras de referencia del capítulo
+cambian cuando se registren en la tabla de cifras citables.
 
 **Compuertas.** El desarrollo se organizó con compuertas: criterios que debían cumplirse antes de
 continuar, declarados de antemano y explicados en el capítulo III. Aquí se mencionan tres. La
@@ -57,8 +62,14 @@ cantidad de datos disponibles.
 **Auditoría de cierre.** Antes de congelar el software se auditó el repositorio completo, capa por
 capa, y cada hallazgo quedó registrado en un [inventario](../../auditoria/2026-09-inventario.md) con
 la etapa de corrección que le corresponde. Esas etapas son cuatro y se ejecutan en orden: la
-corrección del núcleo de cálculo, ya concluida; la de los adaptadores, el aprendizaje automático y
-la API; la de la interfaz y los scripts; y la actualización de la documentación. Donde un documento
+corrección del núcleo de cálculo; la de los adaptadores, el aprendizaje automático y la API; la de
+la interfaz y los scripts; y la actualización de la documentación. Las tres primeras concluyeron el
+23, el 24 y el 28 de septiembre de 2026, respectivamente. El capítulo describe la versión del 23 de
+septiembre, al concluir la primera. De las dos siguientes incorpora lo que cambió en el modelo de
+datos y en los flujos alternativos de la elaboración (UC‑01), la actualización de precios (UC‑02) y
+los escenarios (UC‑08), en las secciones 4.2, 4.5.1 y 4.6, y las Tablas 4.10 y 4.11 dan el estado de
+cada pendiente al cerrar la tercera. El resto de lo que esas dos etapas cambiaron se incorpora al
+resincronizar el capítulo con la versión congelada del software (Tabla 4.10). Donde un documento
 del repositorio contradice al código, este capítulo describe el código y dice que el desfase está
 registrado en el inventario, en lugar de heredarlo. Los códigos de esos registros no se usan en el
 texto: la Tabla 4.11, al final del capítulo, relaciona cada desfase o limitación mencionada con su
@@ -118,12 +129,13 @@ versión vigente.
 | UC‑08 | Generar escenarios de sensibilidad | proyectista | interfaz y API |
 | UC‑10 | Componer una partida | proyectista | interfaz (pantalla «Componer partida») |
 | UC‑11 | Editar una partida compuesta | proyectista | interfaz (pantalla «Componer partida») |
-| UC‑12 | Recorrer la aplicación guiado desde el Inicio | usuario nuevo | especificado; pendiente de implementación |
+| UC‑12 | Recorrer la aplicación guiado desde el Inicio | usuario nuevo | especificado y pendiente en la versión del 23/09/2026; implementado después en la interfaz (pantalla de Inicio; Tabla 4.10) |
 
 *Nota.* Elaboración propia a partir de `docs/ERS.md` §2.2 y de `ui/app.py`, `api/rutas/` y
 `scripts/`. La columna de acceso describe el código. La especificación declara en su §3.1 que la
-interfaz ofrece los once casos de uso, lo que el código no confirma para UC‑04, UC‑06, UC‑07 y UC‑12;
-el desfase está registrado en el inventario (Tabla 4.11).
+interfaz ofrece los once casos de uso, lo que el código de la versión del 23 de septiembre no
+confirmaba para UC‑04, UC‑06, UC‑07 y UC‑12; el desfase está registrado en el inventario (Tabla
+4.11).
 
 ### 4.1.2 Requerimientos funcionales
 
@@ -135,18 +147,19 @@ acumulado final de la curva de inversión sea igual al total del presupuesto **s
 RF‑22 exige que el sistema detecte las siete inconsistencias de la línea base sobre un presupuesto de
 prueba que las reproduce.
 
-Tres grupos de requerimientos no están cumplidos en la versión vigente y así se declaran:
+En la versión del 23 de septiembre, tres grupos de requerimientos no estaban cumplidos y así se
+declaran:
 
 - **RF‑20** (diferencial entre la versión anterior y la recalculada, deseable, UC‑04) no tiene
   implementación. Durante la corrección del núcleo se decidió declararlo «no implementado» en lugar
   de escribir un tercer comparador sin ningún módulo que lo usara
   ([bitácora del cierre](../../bitacora/2026-09-23-cierre.md)). Pasa a las limitaciones del trabajo.
-- **RF‑36 a RF‑43** (UC‑12, recorrido guiado desde el Inicio) están especificados con sus pruebas
-  nombradas, pero su implementación corresponde a la corrección de la interfaz.
+- **RF‑36 a RF‑43** (UC‑12, recorrido guiado desde el Inicio) estaban especificados con sus pruebas
+  nombradas y sin implementar. La corrección de la interfaz los implementó después; su descripción
+  se incorpora al resincronizar el capítulo (Tabla 4.10).
 - **RF‑16** (precarga de una partida propuesta con referencia a su origen y a su puntaje) tiene la
   precarga implementada, y la persistencia de la partida nueva se resolvió con la composición de
-  UC‑10, pero la especificación y el plan de pruebas le asignan estados distintos. El alcance de RF‑16
-  es la decisión D5 del tutor, pendiente.
+  UC‑10: su estado es parcial. El alcance de RF‑16 es la decisión D5 del tutor, pendiente.
 
 ### 4.1.3 Requerimientos no funcionales
 
@@ -192,10 +205,16 @@ precisión ni historia. Se presentan las entidades y cuatro decisiones del model
 
 El modelo de datos está documentado en [modelo_datos.md](../../modelo_datos.md) (anexo B) y se
 implementó con SQLAlchemy (`core/models/entidades.py`). Materializa en persistencia los contratos del
-núcleo sin ampliarlos: quince entidades agrupadas en catálogo (`Partida`, `Insumo`, `ComposicionAPU`,
-`Rendimiento`, `Ejecucion`), precios y su historial (`ListaPrecios`, `PrecioInsumo`, `CambioPrecio`,
-`IncidenciaCambio`) y proyecto, presupuesto y auditoría (`Proyecto`, `Presupuesto`,
-`PartidaPresupuestada`, `PuntoCurva`, `ItemComputo`, `Hallazgo`). El documento del modelo se declara
+núcleo sin ampliarlos: dieciséis entidades agrupadas en catálogo (`Partida`, `Insumo`,
+`ComposicionAPU`, `Rendimiento`, `Ejecucion`), precios y su historial (`ListaPrecios`, `PrecioInsumo`,
+`CambioPrecio`, `IncidenciaCambio`) y proyecto, presupuesto y auditoría (`Proyecto`, `Presupuesto`,
+`DescarteVersion`, `PartidaPresupuestada`, `PuntoCurva`, `ItemComputo`, `Hallazgo`). La decimosexta,
+`DescarteVersion`, se agregó en la corrección de la interfaz para marcar la versión de un presupuesto
+que el usuario descarta tras actualizar sus precios (sección 4.6). Su tabla, `descarte_version`, es
+aditiva: la función que crea el esquema la agrega a una base existente sin tocar las otras quince, de
+modo que no exige migrar los datos
+(`tests/integration/test_persistencia.py::test_crear_esquema_agrega_descarte_version_a_una_base_existente`).
+El documento del modelo se declara
 aprobado, pero la compuerta G0, que debía aprobarlo junto con la especificación y la arquitectura,
 sigue pendiente del tutor; el capítulo lo trata como documento pendiente de esa aprobación.
 
@@ -355,8 +374,11 @@ la interfaz (Tabla 4.11). Sus vistas de escenarios y de desarrollo describen una
 sistema y nombran funciones que ya no existen; su vista física da por abierta la compuerta G1 y por
 ausente el modelo IFC de muestra; y declara dos copias del evaluador de expresiones cuando el código
 tiene cinco. Además, afirma que la página de composición de partidas (`ui/paginas/componer.py`) solo
-dibuja la pantalla, cuando esa página calcula el precio unitario con `calcular_apu`, persiste la
-composición y orquesta la elaboración del presupuesto. Por esa razón, las figuras que se derivarían de
+dibuja la pantalla, cuando en la versión del 23 de septiembre esa página calculaba el precio unitario
+con `calcular_apu`, persistía la composición y orquestaba la elaboración del presupuesto. La
+corrección de la interfaz llevó después el cálculo a `ui/composicion.py` y la persistencia y la
+orquestación a `ui/elaboracion.py`; el reparto resultante se incorpora al resincronizar el capítulo
+(Tabla 4.10). Por esa razón, las figuras que se derivarían de
 los diagramas de la arquitectura quedan pendientes hasta su regeneración (sección 4.12).
 
 ## 4.4 Motor de costos
@@ -474,10 +496,53 @@ implementó el flujo alternativo 3a de UC‑01: un ítem cuya partida no tiene c
 ya no aborta la elaboración, sino que queda pendiente, no suma al total y el informe lo declara con un
 hallazgo de severidad ERROR y código `PENDIENTE`. Ese hallazgo lo agrega la elaboración y no la
 auditoría, porque solo la elaboración sabe qué ítems no pudo valorar; quien llame directamente a la
-función de auditoría no lo ve. Por otra parte, la interfaz y la API todavía piden las composiciones al
-catálogo antes de llamar a `elaborar`, y el catálogo lanza una excepción ante una partida desconocida,
-de modo que ese flujo alternativo aún no se alcanza de punta a punta desde ellas. Ambos puntos están
-registrados en el inventario (Tabla 4.11).
+función de auditoría no lo ve.
+
+En la versión del 23 de septiembre, la interfaz y la API pedían las composiciones al catálogo antes de
+llamar a `elaborar`, y el catálogo lanza una excepción ante una partida desconocida, de modo que ese
+flujo alternativo no se alcanzaba de punta a punta desde ellas. Las dos etapas de corrección
+siguientes lo cerraron: ambas piden ahora solo las composiciones de las partidas que el catálogo
+tiene y dejan el resto a `elaborar`. El orden real del flujo es el inverso del que redacta la
+especificación, según la cual el sistema propone primero las partidas similares y el ítem queda
+pendiente solo si no se acepta ninguna. El sistema **elabora primero y propone después**: el
+presupuesto se elabora con los ítems que tienen partida, el informe declara los pendientes y solo
+entonces se proponen, para cada pendiente, las partidas del catálogo más parecidas a su descripción,
+con el mismo emparejamiento de la normalización semántica (sección 4.10.1) en la interfaz y en la
+API. En la pantalla «Elaborar un presupuesto», aceptar una propuesta reasigna el ítem a la partida
+elegida y vuelve a elaborar el presupuesto; si no se acepta ninguna, el ítem sigue pendiente y el
+informe lo sigue declarando. En la API, `POST /presupuestos` responde con los pendientes y sus
+propuestas, y aceptar una equivale a reenviar el ítem con la partida elegida. Sin el extra de
+aprendizaje automático instalado, el pendiente se declara igual, sin propuestas
+(`tests/unit/test_ui_elaborar.py::test_sin_el_extra_el_pendiente_se_declara_sin_propuestas`). Lo
+sostienen además las
+pruebas `tests/unit/test_ui_elaborar.py::test_el_item_sin_partida_queda_pendiente_con_sus_propuestas`,
+`tests/unit/test_ui_elaborar.py::test_aceptar_una_propuesta_vuelve_a_elaborar_sin_pendientes` y
+`tests/integration/test_api.py::test_un_item_sin_partida_queda_pendiente_por_http`. Ajustar la
+redacción del flujo en la especificación corresponde a la actualización de la documentación.
+
+Quedaba la recarga. Los pendientes no se guardaban, y al recargar un presupuesto su informe se
+reconstruía con una auditoría nueva que no los conocía, de modo que un presupuesto emitido con un
+hallazgo `PENDIENTE` podía recargarse con un informe conforme. La corrección de la interfaz lo cerró
+con un cambio del núcleo, justificado en un expediente previo
+([expediente de la recarga con pendientes](../../bitacora/2026-09-24-C3-expedientes.md)).
+`guardar_presupuesto` guarda cada pendiente como un ítem de cómputo del presupuesto sin renglón y
+exige que los pendientes y los hallazgos `PENDIENTE` del informe se correspondan uno a uno.
+`cargar_elaboracion` (`core/budget/persistencia.py`) los recupera y los vuelve a declarar, de modo que
+el informe recargado es el emitido
+(`tests/integration/test_recarga_con_pendientes.py::test_la_recarga_devuelve_el_informe_emitido_con_sus_pendientes`).
+Esa función la usan las operaciones de la API que devuelven el informe y el libro de un presupuesto
+guardado, y la actualización de precios arrastra los pendientes a la versión nueva (sección 4.6). Un
+presupuesto guardado antes de ese cambio no tiene sus pendientes persistidos, y su recarga no los
+inventa.
+
+Los escenarios de sensibilidad (sección 4.11.2) sufrían la misma pérdida por otra vía, porque
+recalculan solo los renglones valorados del presupuesto base. La pantalla de escenarios carga ahora el
+base con `cargar_elaboracion` y avisa de sus pendientes
+(`tests/unit/test_ui_escenarios.py::test_el_escenario_de_un_base_con_pendientes_los_declara`);
+declararlos también en la operación de escenarios de la API corresponde a la actualización de la
+documentación. El informe de auditoría de cada escenario, en cambio, no los incluye: hacerlo exigiría
+modificar otra vez el núcleo (`core/budget/escenarios.py`), y ese punto queda entre las limitaciones
+del trabajo. Todos estos puntos están registrados en el inventario (Tabla 4.11).
 
 ### 4.5.2 La curva cierra por construcción
 
@@ -546,10 +611,32 @@ septiembre de 2026 en otro equipo, después de los cambios de la corrección del
 ([acta de revisión R2](../revisiones/R2-capitulo-4.md), observación T6.1). La cifra depende del equipo;
 en ambas mediciones se cumple la meta de 5 s del RNF‑03, que el capítulo V evalúa.
 
-Tres aspectos quedan abiertos. Descartar la versión nueva conservando el registro de cambios (flujo 7a
-de UC‑02) corresponde a la corrección de la interfaz. Como la lista identifica al insumo por su
-descripción, una fila actualiza todas las variantes homónimas descritas en la sección 4.2. Y cuando el
-precio anterior es cero, la variación registrada es cero, porque la columna no admite nulos.
+Si el presupuesto base tiene ítems pendientes (sección 4.5.1), la versión nueva los conserva como
+pendientes y su informe los vuelve a declarar, porque valorarlos corresponde a UC‑01 y no a UC‑02
+(`tests/integration/test_recarga_con_pendientes.py::test_revalorar_arrastra_los_pendientes_del_base`).
+
+El flujo alternativo 7a de UC‑02, descartar la versión nueva conservando el registro de cambios,
+estaba pendiente en la versión del 23 de septiembre y se implementó en la corrección de la interfaz.
+Como exigía un dato persistido nuevo, requirió un segundo cambio del núcleo en esa etapa, también
+justificado en un expediente previo
+([expediente del descarte de versiones](../../bitacora/2026-09-24-C3-expedientes.md)).
+La función `descartar_version` (`core/budget/actualizacion.py`) registra la marca en la tabla
+`descarte_version` (sección 4.2), y la pantalla de actualización de precios ofrece el botón
+«Descartar version» para la versión que acaba de guardar. Es una marca y no un borrado: la versión
+sigue guardada y se puede cargar, y el registro de `CambioPrecio` e `IncidenciaCambio` se conserva,
+porque alimenta al módulo predictivo. Solo se descarta la última versión guardada del proyecto, una
+sola vez y nunca el primer presupuesto. Lo sostienen las pruebas
+`test_descartar_la_version_nueva_la_marca_y_conserva_el_historial`,
+`test_con_tres_versiones_solo_se_descarta_la_ultima`, `test_una_version_no_se_descarta_dos_veces` y
+`test_el_presupuesto_base_nunca_se_descarta`, de `tests/integration/test_actualizacion_precios.py`.
+Quedan dos límites declarados. El esquema no registra de qué presupuesto salió cada versión, de modo
+que la función no distingue una versión revalorada de un segundo presupuesto elaborado aparte en el
+mismo proyecto; por eso la interfaz ofrece el botón solo para la versión recién guardada. Y ninguna
+pantalla ni operación de la API muestra todavía la marca.
+
+Otros dos aspectos quedan abiertos. Como la lista identifica al insumo por su descripción, una fila
+actualiza todas las variantes homónimas descritas en la sección 4.2. Y cuando el precio anterior es
+cero, la variación registrada es cero, porque la columna no admite nulos.
 
 ## 4.7 Adaptador civil: reglas paramétricas y extracción IFC
 
@@ -637,10 +724,12 @@ escrita durante la corrección del núcleo, cambia el ancho de las tanquillas y 
 concreto, el encofrado y la excavación, y ninguna otra partida; que los ítems nuevos traen la
 expresión y el parámetro cambiado; que la curva se regenera cerrando en el total nuevo; y que la
 verificación se ejecuta de nuevo. El paso 5 de UC‑04, el diferencial por partida (RF‑20), no está
-implementado (sección 4.1.2), y tampoco lo están sus flujos alternativos: informar que un parámetro no
-participa en ninguna regla, emparejar por `GlobalId` al reimportar un modelo IFC y conservar el valor
-anterior ante una cantidad negativa. Estos flujos corresponden a la corrección de los adaptadores y a
-la actualización de la documentación.
+implementado (sección 4.1.2). En la versión del 23 de septiembre tampoco lo estaban sus flujos
+alternativos: informar que un parámetro no participa en ninguna regla, emparejar por `GlobalId` al
+reimportar un modelo IFC y conservar el valor anterior ante una cantidad negativa. La corrección de
+los adaptadores los implementó después en `adapters/civil/recalculo.py`
+(`tests/unit/test_recalculo_civil.py`); su descripción se incorpora al resincronizar el capítulo
+(Tabla 4.10).
 
 ## 4.8 Verificación R1–R7 y el informe de auditoría
 
@@ -882,7 +971,9 @@ investigación y deja las de trabajo.
 | Simulador de listas | apoyo a UC‑02 | investigación |
 | Visor 3D | visualización del modelo IFC | investigación |
 
-*Nota.* Elaboración propia a partir de `ui/app.py` (`PAGINAS`).
+*Nota.* Elaboración propia a partir de `ui/app.py` (`PAGINAS`), en la versión del 23 de septiembre
+de 2026. La corrección de la interfaz agregó después la pantalla de Inicio (UC‑12), que se incorpora
+al resincronizar el capítulo (Tabla 4.10).
 
 La pantalla de composición permite declarar una partida con sus tablas de materiales, equipos y mano
 de obra (con la modalidad por línea), ver el precio unitario en vivo calculado por el motor, apoyarse
@@ -891,12 +982,14 @@ repositorio en `data/precios/maprex_2026-07/`, para sugerir descripciones y prec
 editables (RF‑35), y guardar la composición solo si el rendimiento se declaró con sus condiciones
 (RF‑33). La lógica de composición se probó sin Streamlit en `ui/composicion.py`
 (`tests/unit/test_composicion.py`) y la pantalla con el arnés de pruebas de Streamlit
-(`tests/unit/test_ui_componer.py`). Como se señaló en la sección 4.3.4, esa pantalla concentra además
-cálculo, persistencia y orquestación; su separación corresponde a la corrección de la interfaz.
+(`tests/unit/test_ui_componer.py`). Como se señaló en la sección 4.3.4, en la versión del 23 de
+septiembre esa pantalla concentraba además cálculo, persistencia y orquestación; la corrección de la
+interfaz los separó después (Tabla 4.10).
 
 El recorrido guiado desde una pantalla de Inicio (UC‑12), con el caso abierto visible en toda pantalla
-y un paso siguiente en cada una, está especificado y no implementado: corresponde a la corrección de la
-interfaz. Su medición con personas (RNF‑10, caso CP‑07) se hará después, en la etapa de mediciones con
+y un paso siguiente en cada una, estaba especificado y sin implementar en la versión del 23 de
+septiembre. La corrección de la interfaz lo implementó después; su descripción se incorpora al
+resincronizar el capítulo (Tabla 4.10). Su medición con personas (RNF‑10, caso CP‑07) se hará después, en la etapa de mediciones con
 usuarios.
 
 ### 4.11.2 La API
@@ -937,14 +1030,14 @@ La Tabla 4.10 reúne lo que el capítulo no pudo cerrar, con su motivo.
 | Pendiente | Motivo | Dónde se resuelve |
 |---|---|---|
 | Figuras del capítulo: al menos el diagrama de componentes (vista de desarrollo) y el diagrama entidad‑relación; además, el diagrama de secuencia de la elaboración y capturas de la interfaz | Los diagramas de origen están en `docs/arquitectura.md` y `docs/modelo_datos.md`, que tienen desfases registrados (Tabla 4.11); generarlos ahora llevaría esos desfases a la tesis. `docs/tesis/figuras/` todavía no existe. La versión final no se aprueba sin las dos primeras | actualización de la documentación y una sesión de redacción posterior |
-| Resincronización del capítulo con la versión congelada del software (`v1.0-tesis`) | El capítulo describe la versión del 23/09/2026; varios puntos quedan para las etapas de corrección siguientes, y al cerrarlas el texto quedará desfasado | sesión de redacción después del congelamiento |
+| Resincronización del capítulo con la versión congelada del software (`v1.0-tesis`) | El capítulo describe la versión del 23/09/2026, salvo lo que se puso al día en las secciones 4.2, 4.5.1 y 4.6. Las correcciones siguientes implementaron además la pantalla de Inicio con el recorrido guiado (UC‑12, RF‑36 a RF‑43), la separación de la pantalla de composición y los flujos alternativos de UC‑04 en el adaptador civil (`adapters/civil/recalculo.py`), que las secciones 4.1, 4.3.4, 4.7.3 y 4.11 mencionan sin describirlos, y la actualización de la documentación cambiará otros puntos | sesión de redacción después del congelamiento |
 | Aprobación de la especificación, el modelo de datos y la arquitectura (compuerta G0) | Depende del tutor académico designado | [paquete para el tutor](../revisiones/2026-09-paquete-tutor.md), punto G0 |
 | Decisiones D1 (R7), D2 (R8), D3 (OE7), D4 (FCAS), D5 (RF‑16), D6 (UC‑08), D7 (rama de adaptador), D8 (BIM‑5D) y D9 (destajo) | Dependen del tutor; el capítulo describe lo implementado y declara la decisión como pendiente | [paquete para el tutor](../revisiones/2026-09-paquete-tutor.md) |
 | Clasificación AACE 18R‑97 o 56R‑08 | Depende del tutor; afecta el rango del contraste de la sección 4.10.3 | [paquete para el tutor](../revisiones/2026-09-paquete-tutor.md), punto AACE |
-| Tres cambios de contrato (enumerados, `Decimal` y signo, evaluador único) | Cambian contratos estables y esperan el aval del tutor | [bitácora de expedientes](../../bitacora/2026-09-23-C1-expedientes.md) y paquete para el tutor |
+| Tres cambios de contrato (enumerados, `Decimal` y signo, evaluador único), con el evaluador único también en los adaptadores | Cambian contratos estables y esperan el aval del tutor; la corrección de los adaptadores no los tocó por esa razón | [bitácora de expedientes](../../bitacora/2026-09-23-C1-expedientes.md) y paquete para el tutor |
 | Citas de la norma IEEE 830, de las vistas 4+1 y de la norma ISO/IEC 25010 | Tienen entrada en `docs/tesis/referencias.md` como pendientes de verificar: el repositorio no contiene sus datos bibliográficos y no se completan de memoria | sesión de referencias antes de la versión final |
-| Recorrido guiado (UC‑12, RF‑36 a RF‑43) y separación de la pantalla de composición | Código pendiente | corrección de la interfaz |
-| Flujos alternativos de UC‑04, flujo 3a de UC‑01 de punta a punta y evaluador único en los adaptadores | Código pendiente | corrección de los adaptadores y la API (y de la interfaz para la pantalla) |
+| Declarar los pendientes del presupuesto base en la operación de escenarios de la API (UC‑08) | La pantalla ya los declara; la API todavía no (sección 4.5.1) | actualización de la documentación |
+| Orden real del flujo 3a de UC‑01 en la especificación | La interfaz y la API elaboran primero y proponen después; la especificación redacta el orden inverso (sección 4.5.1) | actualización de la documentación |
 
 *Nota.* Elaboración propia a partir del [inventario del cierre](../../auditoria/2026-09-inventario.md)
 y del paquete para el tutor.
@@ -958,7 +1051,7 @@ código, hacia su registro en el inventario de la auditoría de cierre.
 | Sección | Desfase o limitación | Registro | Etapa que lo atiende |
 |---|---|---|---|
 | 4.1.1, 4.1.4 | La especificación promete en la interfaz los once casos de uso | INV‑030 | actualización de la documentación |
-| 4.1.2 | RF‑16 con estados distintos en la especificación y el plan de pruebas | INV‑027 | actualización de la documentación |
+| 4.1.2 | RF‑16 tenía estados distintos en la especificación y el plan de pruebas | INV‑027 | actualización de la documentación |
 | 4.1.2, 4.7.3 | RF‑20 no implementado; RF‑19 citaba una prueba que no existía | INV‑011 (cerrado en el código) | corrección del núcleo; documentos en la actualización de la documentación |
 | 4.1.4 | La matriz de trazabilidad cita pruebas que no verifican lo afirmado | INV‑026 | actualización de la documentación |
 | 4.1.4 | El encabezado de la especificación contradice su conteo mínimo | INV‑063 | actualización de la documentación |
@@ -971,21 +1064,24 @@ código, hacia su registro en el inventario de la auditoría de cierre.
 | 4.3.3 | La salvaguarda de la base de trabajo | INV‑065 (cerrado) | corrección del núcleo |
 | 4.3.4 | Vistas de escenarios y de desarrollo desactualizadas | INV‑029 | actualización de la documentación |
 | 4.3.4, 4.8.2, 4.9.2 | La arquitectura declara dos copias del evaluador y hay cinco | INV‑058 | actualización de la documentación |
-| 4.3.4, 4.11.1 | La página de composición calcula, persiste y orquesta | INV‑043, INV‑070 | corrección de la interfaz; actualización de la documentación |
+| 4.3.4, 4.11.1 | La página de composición calculaba, persistía y orquestaba | INV‑043 (cerrado), INV‑070 | corrección de la interfaz (la separación); actualización de la documentación (el reparto resultante) |
 | 4.4.1 | `CLAUDE.md` §4 no contiene la fórmula con destajo | INV‑074 | actualización de la documentación |
 | 4.5.1 | `generar_presupuesto` pública y llamada sin informe por los sembradores | INV‑037 (a limitaciones) | — |
 | 4.5.1 | Protocolo de elaboración en cuatro sitios | INV‑069 (cerrado) | corrección del núcleo |
 | 4.5.1 | Ítem sin partida pendiente (UC‑01 3a) | INV‑013 (cerrado) | corrección del núcleo |
 | 4.5.1 | El hallazgo `PENDIENTE` vive fuera de la auditoría | INV‑070 | actualización de la documentación |
-| 4.5.1 | UC‑01 3a no se alcanza desde la interfaz y la API | INV‑072 | corrección de los adaptadores y la API; corrección de la interfaz |
+| 4.5.1 | UC‑01 3a no se alcanzaba desde la interfaz y la API | INV‑072 (cerrado) | corrección de los adaptadores y la API; corrección de la interfaz |
+| 4.5.1 | La recarga del informe perdía los ítems pendientes | INV‑080 (cerrado) | corrección de la interfaz, con un cambio del núcleo por expediente |
+| 4.5.1 | Los escenarios de un presupuesto con pendientes no los declaraban | INV‑083 (abierto) | corrección de la interfaz (la pantalla); actualización de la documentación (la API); el informe del propio escenario, a limitaciones |
 | 4.5.2 | `plan_secuencial` agrupaba por renglón | INV‑071 (cerrado) | corrección del núcleo |
 | 4.5.3 | Redondeo de presentación escrito en tres lugares | INV‑038 (a limitaciones) | — |
-| 4.6 | Descartar la versión nueva de UC‑02 (flujo 7a) | INV‑015 | corrección de la interfaz |
+| 4.2, 4.6 | Descartar la versión nueva de UC‑02 (flujo 7a) | INV‑015 (cerrado) | corrección de la interfaz, con un cambio del núcleo por expediente |
 | 4.6 | Variación con precio anterior cero | INV‑004 (cerrado) | corrección del núcleo |
-| 4.7.3 | Flujos alternativos de UC‑04 sin implementar | INV‑073 | corrección de los adaptadores; actualización de la documentación |
+| 4.7.3 | Los flujos alternativos de UC‑04 no estaban implementados | INV‑073 (abierto: implementados en el adaptador civil; queda su documentación) | corrección de los adaptadores; actualización de la documentación |
 | 4.8.3 | Dato ausente como INFO y dato inválido como ERROR | INV‑012 (cerrado) | corrección del núcleo |
 | 4.9.2 | Interpretación de especificaciones duplicada en los adaptadores | INV‑041 (a limitaciones) | — |
 
-*Nota.* Elaboración propia a partir del [inventario del cierre](../../auditoria/2026-09-inventario.md).
-Los hallazgos cerrados lo fueron durante la corrección del núcleo; los detalles de cada corrección
-están en la [bitácora del cierre](../../bitacora/2026-09-23-cierre.md).
+*Nota.* Elaboración propia a partir del [inventario del cierre](../../auditoria/2026-09-inventario.md),
+con los estados al cerrar la corrección de la interfaz y los scripts (28/09/2026). Cada hallazgo
+cerrado lo fue en la etapa que indica la última columna; los detalles de cada corrección están en la
+[bitácora del cierre](../../bitacora/2026-09-23-cierre.md).

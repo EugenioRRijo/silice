@@ -555,11 +555,61 @@ https://datalaing.com/site/wp-content/uploads/2023/07/convencion-colectiva-de-la
   de la fecha de su depósito», que «tendrá una duración de veinticuatro (24) meses» y que «sus
   disposiciones continuarán vigentes hasta tanto sean reemplazadas por otras que las sustituyan».
 - **Hallazgo (decisión D4):** el texto **no menciona** el factor de costos asociados al salario ni la
-  expresión «costos asociados al salario». Son sus cláusulas económicas las que alimentan el cálculo
-  que publica el CIV (véase su comunicado de 2018), de modo que el FCAS no se deriva de la convención
-  y el del caso de estudio se mantiene como parámetro declarado.
+  expresión «costos asociados al salario». Son sus cláusulas económicas las que alimentan los
+  factores de referencia que el CIV publica en sus guías (véase su comunicado de 2018), de modo que
+  el FCAS no se deriva de la convención y el del caso de estudio se mantiene como parámetro
+  declarado.
 - **Forma de cita:** documento legal; en el texto, «(Convención Colectiva de la Industria de la
   Construcción, 2023)».
+
+### Chacin (2008)
+
+Chacin, R. (2008). *Comparación mediante el cálculo del factor de prestaciones sociales del contrato
+colectivo 2003-2006 vs. contrato colectivo 2007-2009 sector construcción en Venezuela* [Trabajo de
+grado, Universidad Rafael Urdaneta]. Repositorio Institucional URU.
+https://documentos.uru.edu/pdf/2301-08-02127.pdf
+
+- **Estado:** verificada
+- **Verificación:** repositorio institucional de la Universidad Rafael Urdaneta, 2026‑09‑28: el
+  archivo del enlace es idéntico, byte a byte (SHA‑256 `bdcd6cd1…c5ab2`, 5 189 391 bytes), a
+  `docs/fuentes/Chacin_2008_FCAS_URU.pdf`, leído completo ese día (141 páginas). La portada dice
+  «Trabajo presentado como requisito para optar al título de Ingeniero Civil», autor Rafael Chacin,
+  tutor Carlos Sandoval, Escuela de Ingeniería Civil, Maracaibo, enero de 2008.
+- **Año:** se cita 2008, el de la portada. El resumen fecha el trabajo en diciembre de 2007, la
+  aprobación del tutor es del 10 de diciembre de 2007 y el cuadro 2 lleva «Fuente: Chacin (2007)».
+- **Grafía:** «Chacin», sin tilde, como la escribe el documento en minúsculas («Rafael Chacin» en la
+  aprobación del tutor; «Chacin (2007)» en el cuadro 2). El
+  [dossier de G0](../dossier_g0.md) (D4) la registra como «Chacín».
+- **Afirmación contrastada:** el trabajo llama al factor «de prestaciones sociales» y lo rotula
+  «FCAS». Su cuadro 2 («Comparación de factores de prestaciones sociales»; p. 77 según el índice de
+  cuadros, p. 75 del PDF, cuyas páginas no llevan número impreso) da, para obras de 3, 6 y
+  12 meses, 281 %, 225 % y 198 % con el contrato colectivo 2003‑2006, y 293 %, 242 % y 210 % con el
+  de 2007‑2009: el rango de 198 % a 293 % que cita el capítulo II. Las conclusiones dicen que el
+  factor tiende a disminuir a medida que aumenta la duración de la obra, por la distribución de los
+  gastos fijos en más días.
+
+### Dodi Scovino y Salas Caraballo (2019)
+
+Dodi Scovino, K. S., & Salas Caraballo, J. M. (2019). *Análisis comparativo del factor de costos
+asociado al salario, según el contrato colectivo vigente, de la industria de la construcción en
+Venezuela* [Trabajo de grado, Universidad José Antonio Páez]. Repositorio Digital UJAP.
+https://riujap.ujap.edu.ve/server/api/core/bitstreams/729831c4-590d-4973-9d0b-70a1dbd1c54b/content
+
+- **Estado:** verificada
+- **Verificación:** repositorio digital de la Universidad José Antonio Páez, 2026‑09‑28: el archivo
+  del enlace es idéntico, byte a byte (SHA‑256 `2cb1909c…28ee`), a
+  `docs/fuentes/Dodi_Salas_2019_FCAS_UJAP.pdf`, leído completo ese día (43 páginas). La portada
+  dice «Trabajo de grado presentado como requisito para optar al título de Ingeniero Civil»,
+  autores Katherine S. Dodi Scovino y José M. Salas Caraballo, tutor Alejandro F. Pocaterra
+  Bonilla, San Diego, enero de 2019.
+- **Afirmación contrastada:** el trabajo calcula el factor con la Convención Colectiva 2016‑2018
+  (§2.3, marco legal) y los costos de 2018. En el análisis de resultados (pp. 32‑33), las cláusulas
+  de montos fijos dan un FCAS de 78,63 %; las de montos en base al salario, 341,95 %; las de costos
+  individuales ajustados por índices de inflación, 1 720,34 %; las del seguro social obligatorio,
+  93,23 %; y todas las cláusulas juntas, 2 386,08 %. El resumen atribuye el aumento de los costos a
+  la hiperinflación. Es el rango de 78 % a 2 386 % que cita el capítulo II.
+  La introducción (p. 2) presenta el factor como «mejor conocido como el porcentaje de prestaciones
+  sociales».
 
 ### Ley Orgánica del Trabajo, los Trabajadores y las Trabajadoras (2012)
 
