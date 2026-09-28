@@ -963,7 +963,7 @@ sequenceDiagram
     loop for regla in REGLAS (R1 a R7)
         VER->>VER: regla.evaluar(presupuesto)
     end
-    VER->>VER: InformeAuditoria ordena por severidad e indexa origen_id a codigo_partida
+    VER->>VER: InformeAuditoria ordena por severidad e indexa origen_id a codigo_partida (la primera partida de cada origen_id, INV-095 en C5)
     VER-->>BUD: InformeAuditoria
     BUD->>BUD: _declarar_pendientes: un hallazgo PENDIENTE (ERROR) por item sin partida
     BUD-->>PRE: ResultadoElaboracion(presupuesto, informe, pendientes)
@@ -997,7 +997,7 @@ Cinco detalles del orden real que el diagrama fija y que conviene no perder:
 3. **Primero se elabora y después se propone** (UC‑01 3a). La pantalla propone antes de exportar
    (`ui.elaboracion.propuestas_de_pendientes`); la API, **después de confirmar**: la ruta hace
    `elaborar`, `guardar_presupuesto` y `sesion.commit()`, y solo al construir la respuesta llama a
-   `_pendientes`, que invoca `propuestas_para` (`api/rutas/presupuestos.py:96-121` y `:314-344`), de
+   `_pendientes`, que invoca `propuestas_para` (`api/rutas/presupuestos.py:98-123` y `:329-355`), de
    modo que el presupuesto queda guardado aunque el modelo de propuestas falle. Si el usuario acepta
    una propuesta, `ui.elaboracion.aceptar_propuesta` reasigna el ítem y la pantalla vuelve a llamar a
    `elaborar_desde_catalogo`: una elaboración completa nueva, con su informe.
@@ -1218,10 +1218,13 @@ importa las diez páginas al cargarse (`ui/app.py:61-72`), y tres de ellas llega
 `ui/paginas/actualizacion.py:44` directamente, `ui/paginas/inicio.py:18` a través de
 `scripts.seed_demo` (`scripts/seed_demo.py:109`) y `ui/paginas/simulador.py:22` a través de
 `scripts.simular_lista` (`scripts/simular_lista.py:30`). Por eso **la aplicación Streamlit necesita
-`tests/fixtures/` para arrancar** (§5). La API no: `api/` no importa `scripts` ni `tests`. Ninguna
-prueba de `tests/unit/test_arquitectura.py` declara ni prohíbe esta arista para `scripts/` ni para
-`ui/`: esa suite solo impide importar `tests` a `core/` (INV‑010) y a los adaptadores, por su lista
-blanca (`_import_permitido`, `tests/unit/test_arquitectura.py:110-123`).
+`tests/fixtures/` para arrancar** (§5). La API no: `api/` no importa `scripts`, `tests` ni `ui`, ni
+directa ni transitivamente, y `scripts/` importa de `tests` solo `tests.fixtures`. Desde GC4 lo fijan
+`test_la_api_no_importa_scripts_tests_ni_ui`, `test_importar_la_api_no_carga_scripts_tests_ni_ui` y
+`test_scripts_solo_importa_de_tests_sus_fixtures` (ARQ‑5 de la revisión de arquitectura de GC4).
+Ninguna prueba prohíbe la arista `ui → scripts`, que es deliberada; `tests` ya lo tenían vedado
+`core/` (INV‑010) y los adaptadores, por su lista blanca (`_import_permitido`,
+`tests/unit/test_arquitectura.py:110-123`).
 
 ## 5. Vista física
 
@@ -1326,7 +1329,7 @@ rodeadas y documentadas, y son entrada de la revisión de contratos posterior a 
 | Insuficiencia | Se rodea con | Registro |
 |---|---|---|
 | Evaluador de expresiones en cinco copias: núcleo y los cuatro adaptadores (INV‑006) | prueba de equivalencia civil–núcleo; R1 reevalúa con el del núcleo las expresiones de todo dominio. Aceptado por decisión de arquitectura registrada, pendiente del aval del tutor | [I3.2](bitacora/2026-08-29-I3.2-civil.md) h.1, [I4](bitacora/2026-08-29-I4-verificacion.md) h.1, bitácoras de I5 ([industrial](bitacora/2026-08-29-I5-industrial.md), [sistemas](bitacora/2026-08-29-I5-sistemas.md), [telecom](bitacora/2026-08-29-I5-telecom.md)), [expediente C1 §A.3](bitacora/2026-09-23-C1-expedientes.md) |
-| `Hallazgo` no lleva `codigo_partida` | índice `partida_por_origen` que arma `auditar` y resuelve `InformeAuditoria.partida_de` | [I4](bitacora/2026-08-29-I4-verificacion.md) h.2 |
+| `Hallazgo` no lleva `codigo_partida` | índice `partida_por_origen` que arma `auditar` y resuelve `InformeAuditoria.partida_de`. **El rodeo no basta** cuando varias partidas comparten un `origen_id` (el adaptador civil tabular da la misma fila a varias partidas): el índice guarda la primera y la columna *Partida* del informe en pantalla atribuye mal esos hallazgos (INV‑095). Se corrige en C5 dentro de `core/verification`, sin contrato: los `origen_ids` con la clave `(codigo_partida, origen_id)`, como ya hacen R6 y `_clave_pendiente`, o un índice de varias partidas por origen | [I4](bitacora/2026-08-29-I4-verificacion.md) h.2; [inventario](auditoria/2026-09-inventario.md), INV‑095 |
 | `PuntoCurva` no lleva `codigo_partida` | códigos entre corchetes en la etiqueta (ADR 11) | [I4](bitacora/2026-08-29-I4-verificacion.md) h.3 |
 | El criterio de amortización no es declarable en `LineaEquipo` | R6 verifica solo la mitad verificable (factor único por insumo) y lo dice en el hallazgo | [I4](bitacora/2026-08-29-I4-verificacion.md) h.4 |
 | `Presupuesto` no lleva `ParametrosCosto` | las cuatro columnas de `models.Presupuesto` (ADR 10) | [I0.5](bitacora/2026-08-29-I0.5-presupuesto.md) h.2 |
