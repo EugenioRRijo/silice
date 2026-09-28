@@ -20,6 +20,7 @@ from core.contracts import AdaptadorDominio, Dominio, ItemComputo, OrigenTipo
 _TIPO_NODO = "nodo"
 _TIPO_ENLACE = "enlace"
 _REGLA_LONGITUD_ENLACE = "longitud_m * (1 + reserva)"
+_COLUMNAS = ("tipo", "id", "descripcion", "codigo_partida", "unidad")
 
 
 def _parsear_especificaciones(texto: str | None) -> dict[str, str]:
@@ -36,6 +37,34 @@ def _parsear_especificaciones(texto: str | None) -> dict[str, str]:
         clave, _, valor = par.partition("=")
         resultado[clave.strip()] = valor.strip()
     return resultado
+
+
+def _leer_filas(
+    fuente: Path | str, columnas: tuple[str, ...], dominio: Dominio
+) -> list[dict[str, str]]:
+    """Las filas del CSV, o `ValueError` con el nombre del archivo si no es una fuente de `dominio`.
+
+    UC-01, flujo 2a (INV-089): un archivo binario (no es texto UTF-8) o sin las columnas que este
+    adaptador lee (la muestra de otro dominio) se rechaza nombrando el archivo, con el
+    `ValueError` que la API traduce a 422, en vez de un `KeyError` de la primera columna que
+    falte. Cada adaptador tiene su copia: ninguno importa de otro (CLAUDE.md §2).
+    """
+    nombre = Path(fuente).name
+    try:
+        with open(fuente, newline="", encoding="utf-8") as archivo:
+            lector = csv.DictReader(archivo)
+            presentes = lector.fieldnames or ()
+            faltantes = [columna for columna in columnas if columna not in presentes]
+            if faltantes:
+                raise ValueError(
+                    f"el archivo {nombre!r} no es una fuente del dominio {dominio.value}: "
+                    f"faltan las columnas {faltantes}"
+                )
+            return list(lector)
+    except UnicodeDecodeError as error:
+        raise ValueError(
+            f"el archivo {nombre!r} es ilegible: no es un CSV de texto en UTF-8"
+        ) from error
 
 
 def _decimal(fila: dict[str, str], columna: str) -> Decimal:
@@ -80,15 +109,14 @@ class AdaptadorTelecom(AdaptadorDominio):
 
     def extraer(self, fuente: Path | str) -> list[ItemComputo]:
         items: list[ItemComputo] = []
-        with open(fuente, newline="", encoding="utf-8") as archivo:
-            for fila in csv.DictReader(archivo):
-                tipo = fila["tipo"].strip()
-                if tipo == _TIPO_NODO:
-                    items.append(self._item_nodo(fila))
-                elif tipo == _TIPO_ENLACE:
-                    items.append(self._item_enlace(fila))
-                else:
-                    raise ValueError(f"tipo de fila no reconocido en {fuente!r}: {tipo!r}")
+        for fila in _leer_filas(fuente, _COLUMNAS, self.dominio):
+            tipo = fila["tipo"].strip()
+            if tipo == _TIPO_NODO:
+                items.append(self._item_nodo(fila))
+            elif tipo == _TIPO_ENLACE:
+                items.append(self._item_enlace(fila))
+            else:
+                raise ValueError(f"tipo de fila no reconocido en {fuente!r}: {tipo!r}")
         return items
 
     def _item_nodo(self, fila: dict[str, str]) -> ItemComputo:

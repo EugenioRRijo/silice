@@ -20,6 +20,7 @@ declarado para civil) y la biblioteca estandar estan libres. `tests/unit/test_ar
 
 from __future__ import annotations
 
+from codecs import BOM_UTF8
 from decimal import Decimal
 from pathlib import Path
 
@@ -28,6 +29,10 @@ import ifcopenshell.util.element
 
 from core.contracts import AdaptadorDominio, Dominio, ItemComputo, OrigenTipo
 from core.contracts.unidades import normalizar_unidad
+
+# Palabra con que abre todo archivo IFC en formato STEP (ISO 10303-21, «ISO-10303-21;»). Un
+# archivo que no empieza asi no es un modelo que ifcopenshell pueda leer.
+_CABECERA_STEP = b"ISO-10303-21"
 
 _NOMBRE_PSET = "Pset_APU"
 _CLAVE_CODIGO = "COVENIN_Codigo"
@@ -58,7 +63,7 @@ class AdaptadorCivilIFC(AdaptadorDominio):
     dominio = Dominio.CIVIL
 
     def extraer(self, fuente: Path | str) -> list[ItemComputo]:
-        modelo = ifcopenshell.open(str(fuente))
+        modelo = _abrir_modelo(Path(fuente))
 
         elementos: dict[str, object] = {}
         for coleccion in (
@@ -140,3 +145,29 @@ class AdaptadorCivilIFC(AdaptadorDominio):
                 f"{global_id!r} en {fuente!r}"
             )
         return Decimal(str(candidatos[0]))
+
+
+def _abrir_modelo(ruta: Path) -> ifcopenshell.file:
+    """Abre el modelo IFC o lo rechaza con `ValueError` nombrando el archivo (UC-01, flujo 2a).
+
+    La cabecera STEP se comprueba antes de llamar a ifcopenshell: un archivo corrupto, vacio o que
+    no es IFC (un CSV con extension `.ifc`) se rechaza sin que ifcopenshell lo intente abrir. Asi
+    el rechazo es el `ValueError` que la API traduce a 422 y la pagina de elaboracion muestra, y no
+    un `ifcopenshell.Error` u `OSError`, que la API no maneja (INV-089). Ademas, ifcopenshell deja
+    a medio construir el objeto de un archivo que no pudo leer, y su `__del__` lanza un `KeyError`
+    que Python solo puede reportar como excepcion no atrapable. Si la cabecera es valida y el
+    cuerpo no se puede leer, el error de ifcopenshell tambien se traduce a `ValueError`.
+    """
+    with open(ruta, "rb") as archivo:
+        inicio = archivo.read(64)
+    if not inicio.removeprefix(BOM_UTF8).lstrip().startswith(_CABECERA_STEP):
+        raise ValueError(
+            f"el archivo {ruta.name!r} es ilegible: no es un modelo IFC (no empieza con la "
+            f"cabecera {_CABECERA_STEP.decode()} del formato STEP)"
+        )
+    try:
+        return ifcopenshell.open(str(ruta))
+    except (ifcopenshell.Error, OSError) as error:
+        raise ValueError(
+            f"el archivo {ruta.name!r} es ilegible como modelo IFC: {error}"
+        ) from error
