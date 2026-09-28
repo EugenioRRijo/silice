@@ -2,7 +2,7 @@
 
 | Capítulo | Estado | Última revisión |
 |---|---|---|
-| IV. Desarrollo de la propuesta | borrador corregido tras la revisión con la lista de cotejo ([acta R2](../revisiones/R2-capitulo-4.md)) y puesto al día con la corrección de la interfaz y los scripts en las secciones 4.2, 4.5.1, 4.6 y 4.12, y con tres cambios de la última etapa del cierre en las secciones 4.3.2 y 4.5.1; pendiente la nueva revisión y la del tutor académico; figuras, referencias por verificar y decisiones del tutor marcadas como pendientes en la sección 4.12 | 2026-09-28 |
+| IV. Desarrollo de la propuesta | borrador corregido tras la revisión con la lista de cotejo ([acta R2](../revisiones/R2-capitulo-4.md)) y puesto al día con la corrección de la interfaz y los scripts en las secciones 4.2, 4.5.1, 4.6 y 4.12, y con tres cambios de la última etapa del cierre en las secciones 4.3.2 y 4.5.1; aprobado en revisión ([acta C4](../revisiones/C4-capitulos-2-y-4.md)); pendiente la revisión del tutor académico; figuras, referencias por verificar y decisiones del tutor marcadas como pendientes en la sección 4.12 | 2026-09-28 |
 
 Este capítulo describe el sistema desarrollado tal como existía en la rama principal del repositorio
 al 23 de septiembre de 2026, una vez concluida la corrección del núcleo de cálculo que se describe

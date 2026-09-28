@@ -2,7 +2,7 @@
 
 | Capítulo | Estado | Última revisión |
 |---|---|---|
-| II. Marco teórico | borrador completo, revisado con la lista de cotejo (Sesión R1.7); §2.3.2 alineada con la fuente del FCAS verificada contra fuente primaria, pendiente de nueva revisión | 2026-09-28 |
+| II. Marco teórico | borrador completo, revisado con la lista de cotejo (Sesión R1.7); §2.3.2 alineada con la fuente del FCAS verificada contra fuente primaria; aprobado en revisión ([acta C4](../revisiones/C4-capitulos-2-y-4.md)); pendiente la revisión del tutor académico | 2026-09-28 |
 
 ## 2.1 Antecedentes de la investigación
 
