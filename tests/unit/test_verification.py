@@ -470,7 +470,8 @@ def test_r5_reporta_un_balance_que_no_puede_evaluar(presupuesto):
 
 
 def test_r5_reporta_un_balance_sin_llaves_en_vez_de_lanzar(presupuesto):
-    """Un balance como el que hoy escribe `adapters/civil/tabular.py` (códigos sin llaves) no es
+    """Un balance con los códigos sin llaves, como el que escribía `adapters/civil/tabular.py`
+    antes de la corrección 4b (Sesión I3.2, `tests/integration/test_civil_verificacion.py`), no es
     analizable: `LB-01-EXC` se leería como una resta. La regla lo reporta, no revienta.
     """
     sin_llaves = BALANCE_RELLENO.replace("{", "").replace("}", "")

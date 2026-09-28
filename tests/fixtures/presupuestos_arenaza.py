@@ -13,13 +13,13 @@ contrato que `scripts/extraer_maprex.py`, Sesion M0.2). Este fixture es una segu
 transcripcion, tambien hecha a mano contra el mismo PDF, de la MISMA fuente primaria -- no una
 lectura del CSV. `tests/unit/test_fuentes_arenaza.py::test_fixture_coincide_con_csv` es el
 mecanismo de reconciliacion: si el fixture y el CSV alguna vez se transcriben distinto, la
-prueba falla (comparando la suma de `total`, no cada campo, porque son dos formas -- Python y
-CSV -- de la misma informacion, no una derivada de la otra). Se elige esta direccion (dos
-transcripciones independientes verificadas por una prueba) en vez de generar una desde la otra
-en tiempo de ejecucion porque sigue el mismo patron que `tests/fixtures/apu_linea_base.py`
-(valores `Decimal` literales, sin E/S en tiempo de prueba) y porque una prueba que reconcilia
-dos transcripciones independientes es mas sensible a un error de transcripcion que una que
-compara un dato contra si mismo.
+prueba falla. Compara la suma de `total` y, ademas, campo a campo las siete columnas de cada
+renglon: son dos formas -- Python y CSV -- de la misma informacion, no una derivada de la otra.
+Se elige esta direccion (dos transcripciones independientes verificadas por una prueba) en vez
+de generar una desde la otra en tiempo de ejecucion porque sigue el mismo patron que
+`tests/fixtures/apu_linea_base.py` (valores `Decimal` literales, sin E/S en tiempo de prueba) y
+porque una prueba que reconcilia dos transcripciones independientes es mas sensible a un error
+de transcripcion que una que compara un dato contra si mismo.
 
 Forma del fixture: dataclass `RenglonPresupuesto` (no dict), por eso
 `tests/unit/test_fuentes_arenaza.py::test_fixture_coincide_con_csv` usa `r.total` (atributo),

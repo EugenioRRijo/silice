@@ -82,8 +82,9 @@ def test_una_sola_orden_deja_linea_base_y_demo_valorables_hoy(tmp_path: Path) ->
     La fecha es la fija de la demostracion, no el reloj (INV-020): con `date.today()` la prueba
     dependia del dia en que se corria.
 
-    Hoy falla: `sembrar_demo` nunca siembra la linea base, asi que `Catalogo.composicion` de
-    cualquier `LB-*` lanza `KeyError` (la partida no existe en el catalogo).
+    Regresion del hecho 8: cuando `main` solo sembraba la demostracion, `Catalogo.composicion` de
+    cualquier `LB-*` lanzaba `KeyError` (la partida no existia en el catalogo). Hoy `main` siembra
+    primero la linea base (`seed.sembrar`) y despues la demostracion.
     """
     base = tmp_path / "una_orden.db"
     assert seed_demo.main(["--db", str(base)]) == 0
@@ -99,8 +100,10 @@ def test_una_sola_orden_deja_linea_base_y_demo_valorables_hoy(tmp_path: Path) ->
 def test_sembrar_la_demo_sobre_una_base_con_linea_base_no_la_rompe(tmp_path: Path) -> None:
     """El escenario de quien ya tiene `data/apu.db` con la linea base y siembra la demo encima.
 
-    Hoy falla con `CatalogoIncompleto`: la lista de precios de la demostracion nace vacia y pasa a
-    ser la vigente desde `FECHA_DEMO`, asi que ningun `LB-*` tiene precio desde esa fecha.
+    Regresion del hecho 8: cuando la lista de precios de la demostracion nacia vacia y pasaba a ser
+    la vigente desde `FECHA_DEMO`, ningun `LB-*` tenia precio desde esa fecha
+    (`CatalogoIncompleto`).
+    Hoy `sembrar_demo` hereda todos los precios de la vigente antes de cargar ninguna composicion.
     """
     base = tmp_path / "linea_base_primero.db"
     assert seed.main(["--db", str(base)]) == 0
@@ -117,8 +120,8 @@ def test_sembrar_la_demo_sobre_una_base_con_linea_base_no_la_rompe(tmp_path: Pat
 def test_deja_guardado_el_presupuesto_de_ejemplo(tmp_path: Path) -> None:
     """El presupuesto `DEMO-001` queda guardado con el mismo total que produce el caso elaborado.
 
-    Hoy falla: `main` no guarda ningun presupuesto (no existe `guardar_presupuesto_demo`), asi que
-    `cargar_presupuesto` no encuentra nada que cargar.
+    Regresion: cuando `main` no guardaba ningun presupuesto, `cargar_presupuesto` no encontraba
+    nada que cargar. Hoy lo guarda `guardar_presupuesto_demo`.
     """
     base = tmp_path / "presupuesto.db"
     assert seed_demo.main(["--db", str(base)]) == 0
@@ -141,8 +144,8 @@ def test_deja_guardado_el_presupuesto_de_ejemplo(tmp_path: Path) -> None:
 def test_demo_01_tiene_historial_para_la_advertencia_de_rendimiento(tmp_path: Path) -> None:
     """`DEMO-01-INST` acumula suficientes observaciones para que RF-27 tenga algo que advertir.
 
-    Hoy falla: ninguna partida sembrada tiene dos observaciones de rendimiento (hecho verificado
-    9), asi que `dispersion_rendimientos` no llega al minimo que exige `advertencia_rendimiento`.
+    Regresion del hecho 9: cuando ninguna partida sembrada tenia dos observaciones de rendimiento,
+    `dispersion_rendimientos` no llegaba al minimo que exige `advertencia_rendimiento`.
     """
     base = tmp_path / "rendimiento.db"
     assert seed_demo.main(["--db", str(base)]) == 0
