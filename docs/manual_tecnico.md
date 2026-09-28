@@ -262,7 +262,7 @@ catálogo de otro dominio apuntando `APU_BASE` a su base (`sqlite:///data/apu_te
 - Las limitaciones y los hallazgos abiertos están en dos lugares: el estado de cada RF en
   [plan_pruebas.md §8](plan_pruebas.md) y el [inventario de la auditoría](auditoria/2026-09-inventario.md),
   una fila por hallazgo con su fase y su estado (por ejemplo, RF‑24 sin importación de un
-  presupuesto ajeno, INV‑076, y el IFC de un modelador real para G1). Leerlos antes de «arreglar»
+  presupuesto ajeno, INV‑076, y el IFC exportado desde un modelador BIM para G1). Leerlos antes de «arreglar»
   algo que en realidad es una limitación declarada. RNF‑07 ya no figura entre ellos: la CI lo
   verifica en Linux y Windows en cada cambio.
 
