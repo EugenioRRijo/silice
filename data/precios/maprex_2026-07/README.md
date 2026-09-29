@@ -148,7 +148,7 @@ usado en la línea base («Ayudante», presente en las cinco partidas), el par e
 
 | Ref MaPreX | Rol | Jornal (Bs) | Jornal (USD) | Bono (Bs) | Bono (USD) |
 |---|---|---|---|---|---|
-| `1-1.2` | AYUDANTE - TABULADOR CONSTRUCCION -N2 | 1.128,42 | 1,7816 | 3.939,53 | 6,2192 |
+| `1-1.2` | AYUDANTE - TABULADOR CONSTRUCCION -N2 | 1.128,42 | 1,7816 | 3.939,53 | 6,2200 |
 
 El nombre de la agrupación («BONO X240$/ME») es la etiqueta interna de MaPreX para la política de
 bono vigente (equivalente declarado a 240 USD/mes); el monto en bolívares del bono varía por nivel
