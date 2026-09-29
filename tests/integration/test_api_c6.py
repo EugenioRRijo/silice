@@ -590,7 +590,7 @@ class _DetectorFalso:
         ]
 
 
-def _revalorar(cliente, items_payload):
+def _revalorar(cliente, items_payload, lista: Path = MUESTRA_PRECIOS):
     cliente.post(
         "/presupuestos",
         json={
@@ -601,10 +601,10 @@ def _revalorar(cliente, items_payload):
             "items": items_payload,
         },
     )
-    with MUESTRA_PRECIOS.open("rb") as f:
+    with lista.open("rb") as f:
         cliente.post(
             "/listas-precios",
-            files={"archivo": (MUESTRA_PRECIOS.name, f, "text/csv")},
+            files={"archivo": (lista.name, f, "text/csv")},
             data={"nombre": "L2", "moneda": linea_base.MONEDA, "fecha_vigencia": "2026-06-01"},
         )
     return cliente.post(
@@ -634,12 +634,65 @@ def test_la_revaloracion_trae_los_atipicos_de_ml_al_informe(cliente, items_paylo
     assert all(fila[0] != "ATIPICO" for fila in _filas_de_hallazgos(original))
 
 
-def test_sin_el_extra_ml_la_revaloracion_sigue_sin_atipicos(cliente, items_payload, monkeypatch):
-    """Import perezoso: sin `ml.anomaly` la ruta funciona igual y no declara atipicos."""
-    monkeypatch.setitem(sys.modules, "ml.anomaly", None)  # `from ml.anomaly import ...` falla
+#: Doce precios del catalogo sembrado que cambian a la vez: con la revaloracion, el historico de
+#: variaciones pasa de `MINIMO_OBSERVACIONES` (8) y el detector real llegaria a `sklearn`.
+LISTA_CON_DOCE_CAMBIOS = """tipo,insumo,unidad,precio
+material,Cemento Portland,saco,18
+material,Arena lavada,m3,33
+material,Piedra picada,m3,38
+material,Tubería PVC 4 pulg,m,6.6
+material,Material granular,m3,13
+material,Madera,m2,13
+equipo,Retroexcavadora,,210
+equipo,Pico,,26
+equipo,Camión de volteo,,160
+equipo,Mezcladora de concreto,,63
+mano_obra,Ayudante,,3.3
+mano_obra,Carpintero de 1ra,,5.5
+"""
 
-    r = _revalorar(cliente, items_payload)
+
+def _sin_sklearn(monkeypatch) -> None:
+    """Simula la instalacion sin el extra `ml` (`scikit-learn`): `ml.anomaly` se sigue importando,
+    porque solo necesita `numpy`, pero `sklearn` y sus submodulos ya cargados dejan de importarse
+    (`None` en `sys.modules`), y `importlib.util.find_spec("sklearn")` da `None`."""
+    for nombre in [n for n in sys.modules if n == "sklearn" or n.startswith("sklearn.")]:
+        monkeypatch.setitem(sys.modules, nombre, None)
+    monkeypatch.setitem(sys.modules, "sklearn", None)
+
+
+def test_sin_sklearn_la_revaloracion_con_historico_suficiente_sigue_sin_atipicos(
+    cliente, items_payload, tmp_path, monkeypatch
+):
+    """Ronda 1 de A, H3: sin `scikit-learn` y con historico suficiente para el bosque, la ruta no
+    falla (antes, 500 por `ImportError` al llamar al detector) y no declara atipicos."""
+    from ml.anomaly import MINIMO_OBSERVACIONES
+
+    lista = tmp_path / "lista_doce_cambios.csv"
+    lista.write_text(LISTA_CON_DOCE_CAMBIOS, encoding="utf-8")
+    _sin_sklearn(monkeypatch)
+
+    r = _revalorar(cliente, items_payload, lista)
 
     assert r.status_code == 200
+    assert len(cliente.get("/cambios-precio").json()) >= MINIMO_OBSERVACIONES
     informe = cliente.get("/presupuestos/API-002/informe").text
     assert all(fila[0] != "ATIPICO" for fila in _filas_de_hallazgos(informe))
+
+
+def test_sin_sklearn_el_registro_de_rendimientos_advierte_solo_por_rango(cliente, monkeypatch):
+    """El mismo defecto en `_veredicto_bosque` (`api/rutas/rendimientos.py`): con historico
+    suficiente para el bosque y sin `scikit-learn`, el registro sigue siendo 201 con la advertencia
+    de rango sola."""
+    from ml.anomaly import MINIMO_OBSERVACIONES
+
+    _sin_sklearn(monkeypatch)
+    for i in range(MINIMO_OBSERVACIONES):
+        assert _registrar(cliente, str(76 + i % 4)).status_code == 201
+
+    r = _registrar(cliente, "300", fecha="2026-07-05")
+
+    assert r.status_code == 201
+    advertencia = r.json()["advertencia"]
+    assert advertencia is not None and "rango" in advertencia
+    assert "Isolation Forest" not in advertencia

@@ -15,6 +15,7 @@ exportación a Excel: esta capa no inventa su propio redondeo.
 
 from __future__ import annotations
 
+import importlib.util
 import os
 import tempfile
 from collections.abc import Mapping, Sequence
@@ -428,7 +429,14 @@ def escenarios_de_presupuesto(
 def _detector_de_atipicos() -> DetectorAtipicos | None:
     """`ml.anomaly.precios_atipicos` con import perezoso, o `None` sin el extra `ml` (el mismo
     criterio que `_veredicto_bosque` en `api/rutas/rendimientos.py`): `core/` recibe el detector
-    como parámetro porque no importa `ml/` (expediente C6.5)."""
+    como parámetro porque no importa `ml/` (expediente C6.5).
+
+    El extra se reconoce por `scikit-learn`, no por `ml.anomaly`: ese paquete se importa solo con
+    `numpy` y el detector importa `sklearn` al llamarlo, con 8 o más variaciones. Mirar solo la
+    importación dejaba un 500 sin el extra (ronda 1 de la pista A, H3).
+    """
+    if importlib.util.find_spec("sklearn") is None:
+        return None
     try:
         from ml.anomaly import precios_atipicos
     except ImportError:

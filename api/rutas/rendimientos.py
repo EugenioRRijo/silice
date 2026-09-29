@@ -11,6 +11,7 @@ historico alcanza, se enriquece con el veredicto del detector de anomalias de la
 
 from __future__ import annotations
 
+import importlib.util
 from decimal import Decimal
 
 from fastapi import APIRouter, status
@@ -177,7 +178,14 @@ def _advertencia(
 
 
 def _veredicto_bosque(valores_previos: list[Decimal], valor: Decimal):
-    """El veredicto de `ml.anomaly`, o `None` sin el extra `ml` o sin historico suficiente."""
+    """El veredicto de `ml.anomaly`, o `None` sin el extra `ml` o sin historico suficiente.
+
+    El extra se reconoce por `scikit-learn` (`importlib.util.find_spec`), no por `ml.anomaly`, que
+    se importa solo con `numpy`: el bosque importa `sklearn` al evaluar (ronda 1 de la pista A,
+    H3; el mismo criterio que `presupuestos._detector_de_atipicos`).
+    """
+    if importlib.util.find_spec("sklearn") is None:
+        return None
     try:
         from ml.anomaly import evaluar_rendimiento
     except ImportError:
