@@ -846,6 +846,33 @@ def test_el_informe_enumera_las_reglas_evaluadas_con_su_cuenta_de_hallazgos(pres
     assert informe.reglas_evaluadas == tuple((regla.codigo, regla.nombre) for regla in REGLAS)
 
 
+def test_el_informe_de_rnf04_cuenta_por_regla_las_cifras_del_protocolo(presupuesto):
+    """QA‑4 de GC5: las cuentas literales de «Reglas evaluadas» y de severidad del informe que
+    juzgan los expertos de RNF‑04 (`docs/protocolo_rnf04.md` §1), fijadas aquí y no solo por la
+    huella del `.md`: un cambio que mueva la huella falla antes en la suite que en Med."""
+    informe = auditar(presupuesto)
+
+    assert [(codigo, cuenta) for codigo, _, cuenta in informe.cuenta_por_regla_evaluada()] == [
+        ("R1", 3),
+        ("R2", 1),
+        ("R3", 2),
+        ("R4", 1),
+        ("R5", 1),
+        ("R6", 1),
+        ("R7", 5),
+    ]
+    assert len(informe.hallazgos) == 14
+    assert informe.por_severidad() == {
+        Severidad.CRITICO: 1,
+        Severidad.ERROR: 12,
+        Severidad.ADVERTENCIA: 1,
+    }
+    markdown = informe.a_markdown()
+    for codigo, cuenta in (("R1", 3), ("R2", 1), ("R3", 2), ("R7", 5)):
+        nombre = dict(informe.reglas_evaluadas)[codigo]
+        assert f"| {codigo} | {nombre} | {cuenta} |" in markdown
+
+
 def test_el_informe_enumera_solo_las_reglas_que_corrieron(presupuesto):
     informe = auditar(presupuesto, reglas=(CoherenciaDimensional(),))
     markdown = informe.a_markdown()
