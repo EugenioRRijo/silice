@@ -8,7 +8,7 @@
 > Las cinco vistas describen **el código que existe** en `main` tras la fase C3 del cierre
 > (`ceb6b8e`): las firmas de la vista lógica y los mensajes de la vista de proceso se copiaron de los
 > módulos, no se diseñaron aquí. **Actualizado en la fase C5** contra `f629f94` (rama
-> `inc/cierre-C5`): el plan de trabajo del proyectista y el flujo 3b de UC‑01 (INV‑087, INV‑088),
+> `inc/cierre-C5`; el código de la compuerta GC5 es el de `e5a8209`, y el retoque `340be62`–`dcd59e6` no cambia nada de lo descrito): el plan de trabajo del proyectista y el flujo 3b de UC‑01 (INV‑087, INV‑088),
 > la atribución de la partida que declara la regla y las reglas evaluadas del informe (INV‑095,
 > INV‑092, las dos excepciones de `core/` de C5), y dos deudas nuevas en §6.1 (el lector de CSV
 > de los adaptadores y el criterio del estimado vigente). Lo que no está implementado se dice como tal y no se dibuja como si
@@ -893,7 +893,7 @@ del caso de estudio: lo que necesitan saber se lo dice el propio `Presupuesto` (
 
 **`InformeAuditoria` es una interfaz pública del núcleo, no un contrato de
 [CLAUDE.md §5](../CLAUDE.md#5-contratos-de-interfaz-corecontracts).** Cruza a `api/`
-(`api/rutas/presupuestos.py`), a `ui/` (por `a_markdown()`), a `scripts/` y a los módulos de
+(`api/rutas/presupuestos.py`), a `ui/` (`a_markdown()`, `por_severidad()` y `hallazgos`), a `scripts/` y a los módulos de
 `core.budget` (`presupuesto`, `persistencia`, `escenarios`, `excel`), pero no vive en
 `core/contracts/`, depende de `core.verification` (un contrato solo depende de la biblioteca
 estándar) y ningún paquete externo lo construye: su único constructor es `auditar`, con argumentos
@@ -949,8 +949,8 @@ Debajo de las diez pantallas de `ui/paginas/` hay una capa sin pantalla (INV‑0
 Completan la capa dos módulos sin lista propia en `PROHIBIDOS_EN_UI`: `ui/caso.py` (el caso abierto de
 la sesión y el recorrido activo: `ruta_caso`, `estado_caso`, `resumen_caso`) y `ui/visor3d.py`
 (`mallas`, la teselación del IFC que pinta el «Visor 3D del modelo»). La tabla es, fila por fila, el
-diccionario `PROHIBIDOS_EN_UI` (`tests/unit/test_arquitectura.py:196-207`) salvo `ui/paginas/componer.py`,
-que se trata en el párrafo siguiente.
+diccionario `PROHIBIDOS_EN_UI` (`tests/unit/test_arquitectura.py:196-209`) salvo las dos páginas,
+`ui/paginas/componer.py` y `ui/paginas/elaborar.py`, que se tratan en el párrafo siguiente.
 
 `ui/paginas/componer.py` **pinta y confirma**: arma las tablas y el formulario, llama a
 `ui.composicion` para el cálculo en vivo, a `ui.elaboracion` para guardar y elaborar, y es quien hace
@@ -962,8 +962,8 @@ que se trata en el párrafo siguiente.
 que **escribe filas** en la base (`guardar_composicion` y, desde C5, `declarar_rendimiento`, los dos
 sin confirmar: el `sesion.commit()` es de la página, `componer.py` o `elaborar.py`);
 `ui.caso.estado_caso` solo crea el esquema si falta (`crear_esquema`, DDL). Desde C5 (U‑6 de la
-revisión de la pista U), `ui/paginas/elaborar.py` tampoco importa `core.budget`: el plan por
-defecto lo decide `ui.elaboracion.plan_de`. El grafo de `ui/` es acíclico:
+revisión de la pista U), `ui/paginas/elaborar.py` tampoco importa `core.budget`, y lo vigila
+`PROHIBIDOS_EN_UI` (A‑2 de GC5): el plan por defecto lo decide `ui.elaboracion.plan_de`. El grafo de `ui/` es acíclico:
 `ui.app` → `ui.paginas.*` → `ui.elaboracion` → `ui.composicion` → `core`, y `ui.paginas.*` →
 `ui.resultado`; ninguna página importa `ui.app`.
 
@@ -1228,9 +1228,9 @@ Interfaces provistas y requeridas:
 |---|---|---|
 | `core.contracts` | todos los tipos de intercambio ([CLAUDE.md §5](../CLAUDE.md#5-contratos-de-interfaz-corecontracts)) | biblioteca estándar |
 | `core.costing` | `calcular_apu` | `core.contracts` |
-| `core.budget` | `generar_presupuesto`, `elaborar`, `ResultadoElaboracion`, `CODIGO_PENDIENTE`, `generar_curva`, `plan_secuencial`, `con_curva`, `guardar_presupuesto`, `cargar_presupuesto`, `cargar_elaboracion`, `exportar_excel`, `actualizar_precios`, `descartar_version`, `Comparativo`, `generar_escenario`, `comparar_escenarios`, `comparar_por_partida`, `Escenario` | `core.contracts`, `core.costing`, `core.verification`, `core.catalog`, `core.models`; `sqlalchemy`, `pandas`, `openpyxl` |
+| `core.budget` | `generar_presupuesto`, `elaborar`, `ResultadoElaboracion`, `CODIGO_PENDIENTE`, `generar_curva`, `plan_secuencial`, `PeriodoPlan`, `GeneradorPlan`, `PlanInvalido`, `con_curva`, `guardar_presupuesto`, `cargar_presupuesto`, `cargar_elaboracion`, `exportar_excel`, `actualizar_precios`, `descartar_version`, `Comparativo`, `generar_escenario`, `comparar_escenarios`, `comparar_por_partida`, `Escenario` | `core.contracts`, `core.costing`, `core.verification`, `core.catalog`, `core.models`; `sqlalchemy`, `pandas`, `openpyxl` |
 | `core.verification` | R1 … R7, `REGLAS`, `auditar`, `InformeAuditoria`, `directivas`, `evaluar` | `core.contracts` |
-| `core.catalog` | `Catalogo`, `crear_motor`, `crear_esquema`, `abrir_sesion`, `CatalogoIncompleto`; listas de precios (`crear_lista_desde_archivo`, `leer_lista_precios`, `insumos_afectados`, `registrar_cambios`, `cambios_precio`); rendimientos (`registrar_ejecucion`, `registrar_rendimiento`, `dispersion_rendimientos`, `proponer_rendimiento`, `advertencia_rendimiento`) | `core.contracts`, `core.models`, `core.verification` (solo `texto.normalizar_texto`); `sqlalchemy`, `pandas`, `openpyxl` |
+| `core.catalog` | `Catalogo`, `crear_motor`, `crear_esquema`, `abrir_sesion`, `CatalogoIncompleto`; listas de precios (`crear_lista_desde_archivo`, `leer_lista_precios`, `insumos_afectados`, `registrar_cambios`, `cambios_precio`); rendimientos (`registrar_ejecucion`, `registrar_rendimiento`, `dispersion_rendimientos`, `proponer_rendimiento`, `PropuestaRendimiento`, `advertencia_rendimiento`) | `core.contracts`, `core.models`, `core.verification` (solo `texto.normalizar_texto`); `sqlalchemy`, `pandas`, `openpyxl` |
 | `core.models` | las dieciséis entidades, `Base`, `DecimalExacto` | `core.contracts` (solo `TipoRendimiento`); `sqlalchemy` |
 | `adapters.<dominio>` | una subclase de `AdaptadorDominio` | de `core`, solo `core.contracts`; además su propio paquete, la biblioteca estándar y los terceros que le declara `TERCEROS_POR_ADAPTADOR` en `tests/unit/test_arquitectura.py` (fuente única de esa lista) |
 | `ml.normalization` | `NormalizadorPartidas`, `proponedor`, `propuestas_para`, `Propuesta`, `FALLAS_DE_LA_PROPUESTA` | nada de `core`; `sentence-transformers` (extra `ml`) solo al cargar el modelo |
