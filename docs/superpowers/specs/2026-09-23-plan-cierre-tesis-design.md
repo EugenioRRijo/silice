@@ -15,9 +15,10 @@ UC‑11—, que la ERS puede quedar desfasada un sprint entero y que casi toda l
 modelo revisando a otro. Este diseño no agrega capacidades: fija **dónde termina el proyecto**, qué
 queda fuera, y cómo se corrige lo que ya existe con método y no por intuición.
 
-**Nombres.** Para no chocar con las reglas R1–R7, las decisiones D1–D9, las metas M1–M12 ni el Sprint
-R1 de capítulos, las fases de este plan se llaman **C0–C5** (corrección; C5 desde la enmienda del
-2026‑09‑28, §10), **Med** (mediciones con personas) y **Red** (redacción).
+**Nombres.** Para no chocar con las reglas R1–R7, las decisiones D1–D9, las metas M1–M12 ni el
+Sprint R1 de capítulos, las fases de este plan se llaman **C0–C6** (corrección; C5 desde la enmienda
+del 2026‑09‑28 y C6 desde la del 2026‑09‑29, §10), **Med** (mediciones con personas) y **Red**
+(redacción).
 
 ---
 
@@ -60,12 +61,28 @@ entra ninguna capacidad nueva. La regla es operativa:
 - El asistente de presupuestos con IA (UC‑09, `PLAN_ASISTENTE.md`): es un proyecto nuevo.
 - Más dominios o recorridos por dominio: el multidominio ya demostró la hipótesis central.
 - Un IFC exportado desde Revit o Bonsai: limitación declarada de la compuerta G1 (RNF‑09 *parcial*).
-- Migraciones de esquema de base de datos.
+- Migraciones de esquema de base de datos, salvo las **tablas aditivas** que `crear_esquema` agrega
+  a una base existente sin alterar las demás: `descarte_version` (INV‑015 7a, C3) y
+  `justificacion_rendimiento` (INV‑093, C6), §10.
 - AREN.IA como producto de ARENAZA: camino posterior a la defensa, con su propio remoto (`arenia`).
 - Los hallazgos menores que el inventario no promueva.
 
 **Regla de reparto** para que el documento deje de ir detrás del código: desde C1, **por cada sesión
 de código hay al menos una de redacción** (fase Red).
+
+**Los cinco en duda de GC5 (enmienda del 2026‑09‑29).** INV‑076, INV‑086, INV‑090, INV‑093 e INV‑099
+quedaron **en duda** porque cumplir el paso de la ERS que cada uno incumple pedía algo que esta
+sección no dejaba entrar sin enmienda. Eugenio decidió el 2026‑09‑29 corregirlos en la fase **C6**
+(§5), en vez de enmendar el alcance de la ERS y llevarlos a limitaciones. Por la regla operativa,
+INV‑090, INV‑093 e INV‑099 son **corrección**: apuntan a pasos de la ERS vigente (UC‑02 2a, UC‑06
+4a, UC‑07 5) y no agregan caso de uso, RF, RNF, pantalla ni ruta; agregan campos a rutas y a
+pantallas que ya existen. INV‑093 necesita además la excepción de migraciones de la viñeta anterior.
+INV‑076 e INV‑086 son **capacidad nueva**, porque agregan dos rutas de API que la ERS §3.1 no tenía:
+`POST /presupuestos/importar` (RF‑24, UC‑05 1 y 2) y `POST /proyectos` (UC‑01 1). Esta enmienda es
+la decisión escrita de Eugenio. El visto bueno del tutor queda pendiente y se registra en
+`docs/tesis/revisiones/`; si lo niega, los commits de C6 se revierten y los cinco pasan a la salida
+(a) de su fila del inventario. Fuera de C6 el congelamiento no cambia: ninguna pantalla nueva y
+ninguna otra ruta.
 
 ## 3. Marco metodológico
 
@@ -73,7 +90,7 @@ Las cuatro disciplinas no compiten: cada una gobierna un nivel distinto.
 
 | Disciplina | Gobierna | Cómo se aplica aquí |
 |---|---|---|
-| **Cascada** | el macro: fases en orden con compuertas | C0 → C1 → C2 → C3 → C4 → C5 → Med → (U2 \| U3) → congelamiento; Red en paralelo desde C1; ninguna compuerta se cruza sin su criterio y la ratificación de Eugenio |
+| **Cascada** | el macro: fases en orden con compuertas | C0 → C1 → C2 → C3 → C4 → C5 → C6 → Med → (U2 \| U3) → congelamiento; Red en paralelo desde C1; ninguna compuerta se cruza sin su criterio y la ratificación de Eugenio |
 | **Scrum** | el micro: cada fase es un sprint | backlog tomado del inventario; *Definition of Done* de `docs/metodologia.md` §3.4 (incluidas documentación y trazabilidad por paso); revisión = los cuatro encargos de ingeniería de sistemas; retrospectiva = bitácora; un PR por fase |
 | **SOLID** | la estructura del código | criterio de auditoría en C0 y de corrección en C1–C3 (§4) |
 | **DRY** | los hechos | cada hecho en su fuente única (`docs/metodologia.md` §5.1); toda duplicación es hallazgo |
@@ -155,6 +172,7 @@ Eugenio los promueve al aprobar el inventario. El resto va al capítulo de limit
 | **C3 — Interfaz y scripts** | Se ejecuta como **U1** de `PLAN_UI.md` (Tareas 7–12 del plan detallado; la 6 pasó a C1 y la 13 se parte, ver abajo), ampliada con los hallazgos de `ui/` y `scripts/`. Si el inventario propone dividir `ui/paginas/componer.py` por el criterio S, esa extracción la hace **la Tarea 11 y nadie más**. C3 tiene **dos excepciones** a «`core/` sin cambios», cada una en un commit propio de `core/`, con expediente previo en `docs/bitacora/`, sin mezclar capas (sus llamadores de `api/` y `ui/` van en commits separados) y con la línea base (1 586,61 y 7 de 7) intacta: **INV‑080** (la recarga del informe pierde los pendientes), un commit de `core/budget/` derivado de un hallazgo posterior a C1; e **INV‑015 7a** (descartar la versión revalorada, `docs/ERS.md:170`), un commit con la tabla aditiva `descarte_version` en `core/models/`, `descartar_version` en `core/budget/actualizacion.py` (exportada en `core/budget/__init__.py`) y el docstring de `core/catalog/sesion.py`; el botón, en un commit de `ui/`. Enmiendas autorizadas por Eugenio el 2026‑09‑24 (§10) | **GC3 = GU1a** (ver enmienda), más, para esos dos commits, el expediente previo y la línea base intacta |
 | **C4 — Documentación, trazabilidad e instrumentos** | ERS, plan de pruebas, calidad, manuales y arquitectura coherentes con el código; matriz por paso de **todos** los casos de uso (F5); cifras citadas a su corrida de CI; y, **antes de medir**, los protocolos de Med: el del indicador 3 (tarea de referencia, definición operacional de «manual», participantes que no sean el autor, n, orden y contrabalanceo, registro con commit probado) y el del juicio de expertos de RNF‑04 (n ≥ 3, perfil, versión del informe y commit), con enmienda de `docs/tesis/plan_redaccion.md` §5, que hoy deja el indicador 3 para la defensa | **GC4:** un **artefacto revisable por un tercero**: una lista de cotejo por documento (cada cifra con su corrida de CI) y la matriz por paso completa; el verificador de hechos es revisor, no criterio; cuatro encargos |
 | **C5 — Corrección de los hallazgos de la matriz F5** | Los importantes que GC4 registró desde la matriz por paso (F5) y la revisión de la pista D: **INV‑087** (el plan de períodos del proyectista), **INV‑088** (UC‑01 3b), **INV‑092** con RF‑21 (lista vacía y reglas evaluadas) e **INV‑095** (atribución de la partida en el informe); y los menores de GC4 que Eugenio promueva (INV‑089, INV‑091, INV‑094 en su flujo 3a e INV‑096). `core/` no cambia salvo **dos excepciones**, cada una en un commit propio de `core/`, con expediente previo en `docs/bitacora/`, sin mezclar capas (sus llamadores de `api/` y `ui/` en commits separados) y con la línea base (1 586,61 y 7 de 7) intacta: **INV‑092** (`core/verification/informe.py` y `core/budget/presupuesto.py`, más `core/budget/excel.py` si la hoja *Auditoria* enumera las reglas) e **INV‑095** (`core/verification`, sin contrato). INV‑088 se corrige en `ui/` y `api/` con `proponer_rendimiento` y `registrar_rendimiento` de `core.catalog`; solo abre expediente de `core/` si el rendimiento MEDIDO declarado debe usarse tal cual, sin registrar un ESTIMADO, y esa excepción no la da esta fila. Si un expediente concluye que hace falta cambiar un contrato, la fase se detiene (`CLAUDE.md` §5). Los hallazgos **en duda (§2)** —INV‑076, INV‑086, INV‑090, INV‑093 e INV‑099 (el paso 5 de INV‑094)— no entran por esta fila: los decide Eugenio al ratificar GC4, enmendando el alcance de la ERS («Alcance vigente: no implementado», como RF‑20, y a limitaciones) o mandándolos a C5 con la enmienda de §2 que exija la capacidad nueva. Enmienda del 2026‑09‑28 (§10) | **GC5:** línea base 1 586,61 y 7 de 7; `git log main..HEAD -- core/` da exactamente los commits autorizados por esta fila, enumerados en la bitácora por hash con su expediente, y ningún contrato cambia; `tests/unit/test_arquitectura.py` y la suite verdes en Linux y en Windows (CI); una nueva pasada de la lista de cotejo de GC4 sobre los documentos que C5 cambie; el material de RNF‑04 (`docs/protocolo_rnf04.md` §1) regenerado sobre el commit de la compuerta, con sus huellas nuevas; cuatro encargos |
+| **C6 — Los cinco en duda de GC5 y la prueba con precios de referencia publicados** | Los cinco importantes en duda que GC5 dejó a decisión de Eugenio (§2) y que él mandó a esta fase el 2026‑09‑29: **INV‑076** (RF‑24, esencial; UC‑05 1 y 2: importar el presupuesto tabular de un tercero, auditarlo y persistir su informe por `POST /presupuestos/importar`; el informe y el libro salen por `GET /presupuestos/{codigo}/informe` y `…/excel`, que ya existen), **INV‑086** (UC‑01 1: `POST /proyectos`), **INV‑090** (UC‑02 2a: dar de alta, en «Actualizar precios» y en `POST /listas-precios`, los insumos desconocidos que el usuario elija), **INV‑093** (UC‑06 4a: la justificación de la advertencia, en `POST /partidas/{codigo}/rendimientos` y en «Componer una partida») e **INV‑099** (UC‑07 5: los precios atípicos de la lista nueva, como hallazgos `ATIPICO` de severidad ADVERTENCIA en el informe de la versión revalorada, persistidos y declarados otra vez al recargar). Además, la prueba de los casos didácticos con los listados MaPreX de julio de 2026 y el tabulador CIV (`data/precios/maprex_2026-07/`), sobre bases temporales, sin tocar `data/apu.db` ni la línea base, registrada en su bitácora. Ninguna pantalla nueva; dos rutas nuevas (INV‑076 e INV‑086). `core/` cambia en **cinco excepciones**. Cada una va en un commit propio, con expediente previo en `docs/bitacora/2026-09-29-C6-expedientes.md`, sin mezclar capas (sus llamadores de `api/` y `ui/` en commits separados), con la línea base (1 586,61 y 7 de 7) intacta y sin cambiar ningún contrato de `core/contracts/`. INV‑093: `feat(models): tabla aditiva para justificar la advertencia de rendimiento` (`core/models/entidades.py` y `__init__.py`; `core/catalog/rendimientos.py`, `__init__.py` y el docstring de `sesion.py`), con la **tabla aditiva** `justificacion_rendimiento`, que `crear_esquema` agrega a una base existente con `Base.metadata.create_all`, sin `ALTER TABLE` y sin tocar las demás tablas. INV‑090: `feat(catalog): dar de alta los insumos desconocidos de la lista de precios` (`core/catalog/precios.py`, `repositorio.py` y `__init__.py`). INV‑086: `feat(budget): crear el proyecto de los presupuestos` (`core/budget/persistencia.py` y `__init__.py`). INV‑076: `feat(budget): importar el presupuesto tabular de un tercero para auditarlo` (el archivo nuevo `core/budget/importacion.py`, `core/budget/__init__.py` y, en `core/catalog/precios.py`, solo la lectura de una hoja por su nombre). INV‑099: `feat(budget): los precios atipicos de la lista nueva entran al informe` (`core/budget/presupuesto.py`, `actualizacion.py`, `persistencia.py` y `__init__.py`); recibe el detector como parámetro, porque `core/` no importa `ml/`. Los arreglos de revisión sobre esos commits van por `fixup` y autosquash, como en C5‑1. Si un expediente concluye que hace falta cambiar un contrato, la fase se detiene (`CLAUDE.md` §5). C6 va **antes de Med**, que mide el commit de GC6. Enmienda del 2026‑09‑29 (§10) | **GC6:** línea base 1 586,61 y 7 de 7; `git log main..HEAD -- core/` da exactamente los cinco commits autorizados, cada uno posterior a su expediente, enumerados por hash en la bitácora; `git diff main..HEAD -- core/contracts/` vacío; el único archivo nuevo de `core/` es `core/budget/importacion.py`; `core/models/entidades.py` no quita ninguna columna, tabla, índice ni restricción; ningún archivo nuevo bajo `adapters/` ni `ml/`; una base creada antes de C6 se abre, gana la tabla nueva y conserva sus filas (prueba); `tests/unit/test_arquitectura.py` y la suite verdes en Linux y en Windows (CI); `docs/api.json` regenerado; la matriz por paso (F5) con UC‑01 1, UC‑02 2a, UC‑05 1 y 2, UC‑06 4a y UC‑07 5 en verde, y RF‑24 sin alcance vigente; la prueba con precios de referencia publicados registrada con su commit; una nueva pasada de la lista de cotejo de GC4 sobre los documentos que C6 cambie; el material de RNF‑04 regenerado sobre el commit de la compuerta, con las huellas de GC5 (si alguna cambia, se declara por qué antes de abrir Med); cuatro encargos; la decisión escrita de Eugenio y el visto bueno del tutor (§2) |
 | **Med — Mediciones con personas** | CP‑07 (RNF‑10, dos escenarios), el indicador 3 y el juicio de expertos de RNF‑04, cada uno con su protocolo de C4; participantes y expertos sin relación personal con Eugenio, declarado en el registro; cada medición registra el commit probado | **GM = GU1b** para CP‑07, más: los tres registrados con n, perfil, fecha y commit; resultados incorporados a `calidad_iso25010.md` §4/§9, a la ERS y a `plan_redaccion.md` §5 sin contradicciones (la lista de cotejo de GC4). **Ningún criterio se relaja tras medir:** la revisión de umbrales que prevé el guion de CP‑07 aplica solo a ejecuciones futuras, nunca al escenario ya medido |
 | **U2 — Enfoque B** | Solo si CP‑07 FALLA; alcance = puntos de detención registrados | GU2 de `PLAN_UI.md`, **más una nueva pasada de la lista de cotejo de GC4** sobre lo que U2 cambie |
 | **U3 — Enfoque C** | Solo con decisión expresa de Eugenio | GU1a por defecto, salvo que esa decisión fije otra |
@@ -202,9 +220,10 @@ de eso, la spec de la UI no se reabre: B y C siguen condicionales.
 
 ## 8. Qué este diseño NO hace
 
-No agrega capacidades; no reabre la spec de la UI más allá de la enmienda de GU1 declarada en §5 (B y C
-siguen condicionales); no cambia contratos de `core/` sin expediente y aval; y no fija fechas: las fija
-la fecha de entrega cuando exista.
+No agrega capacidades, salvo las dos rutas de C6 que autoriza la enmienda del 2026‑09‑29 (§2 y §10);
+no reabre la spec de la UI más allá de la enmienda de GU1 declarada en §5 (B y C siguen
+condicionales); no cambia contratos de `core/` sin expediente y aval; y no fija fechas: las fija la
+fecha de entrega cuando exista.
 
 ## 9. Calibración del inventario
 
@@ -263,3 +282,28 @@ INV‑087 e INV‑088 cambian, y RNF‑04 por el informe; medir en paralelo ser�
 del congelado (revisión de requisitos de GC4, M‑3). Los hallazgos en duda (§2) —INV‑076, INV‑086,
 INV‑090, INV‑093 e INV‑099— quedan fuera de esta enmienda: los decide Eugenio en la misma
 ratificación.
+
+**Enmienda del 2026‑09‑29 (apertura de C6).** La compuerta GC5 dejó abiertos cinco importantes **en
+duda (§2)**, con dos salidas cada uno: (a) enmendar el alcance de la ERS y llevarlos a limitaciones,
+o (b) una fase de corrección nueva (bitácora del cierre, GC5, «Decisión pendiente de Eugenio»).
+Eugenio eligió (b) el 2026‑09‑29 para los cinco (INV‑076, INV‑086, INV‑090, INV‑093 e INV‑099) y se
+abre la fase **C6** entre C5 y Med, con la fila y la compuerta GC6 de §5. Motivos: F3 exige cero
+importantes abiertos; la salida (a) dejaba RF‑24, un requisito esencial, en alcance parcial, y
+cuatro pasos de la ERS vigente sin realizar. **Med va después de GC6, no en paralelo**, por el
+argumento M‑3 de la enmienda de C5: C6 cambia «Actualizar precios», «Componer una partida» y el
+informe de la versión revalorada, y medir en paralelo sería medir un commit distinto del congelado.
+«Elaborar un presupuesto», por donde pasan CP‑07 y el indicador 3, no cambia, y se espera que el
+informe que juzga RNF‑04 conserve sus huellas. Las excepciones de `core/` son cinco, con las
+condiciones de C3 y C5 (expediente previo, commit propio sin mezclar capas, llamadores aparte, línea
+base intacta, ningún contrato cambiado). INV‑093 requiere levantar, solo para su tabla, la exclusión
+de migraciones de §2: `justificacion_rendimiento` es aditiva, como `descarte_version`, y
+`crear_esquema` la crea sin alterar las demás. En INV‑099, `core/` recibe el detector de atípicos
+como un invocable cuyo resultado cumple un protocolo del núcleo, así que no importa `ml/` (nota de
+arquitectura de GC4 en la fila INV‑099 del inventario). Los atípicos entran como hallazgos
+`ATIPICO`, igual que el `PENDIENTE` de C3, así que `InformeAuditoria` no gana campos. Eugenio
+decidió además probar el software con los listados MaPreX de julio de 2026 y el tabulador CIV. Es
+una **actividad de evaluación**, no capacidad: usa las funciones y los scripts que ya existen sobre
+bases temporales, y registra sus resultados como sensibilidad de los casos didácticos a precios de
+referencia publicados (`CLAUDE.md` §1). Esta enmienda es la decisión escrita de Eugenio. El visto
+bueno del tutor para las dos rutas nuevas (§2) queda pendiente; si no llega o se niega, los commits
+de C6 se revierten.
