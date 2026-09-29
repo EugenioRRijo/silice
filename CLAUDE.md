@@ -172,9 +172,9 @@ PLAN_DESARROLLO.md  PLAN_MULTIDOMINIO.md  PLAN_PROTOTIPO.md  PLAN_UI.md  PLAN_AS
 core/
   contracts/      estables (sección 5)                                   — I0.1
   costing/        motor: calcular_apu(composicion, parametros) -> ResultadoAPU — I0.3
-  models/         SQLAlchemy según docs/modelo_datos.md (dieciséis entidades) — I0.4
+  models/         SQLAlchemy según docs/modelo_datos.md (diecisiete entidades) — I0.4
   catalog/        partidas, insumos y composiciones; listas de precios; rendimientos — I0.4, I1, I6.2
-  budget/         presupuesto, curva, Excel, persistencia, actualización de precios, escenarios
+  budget/         presupuesto, curva, Excel, persistencia, importación, actualización de precios, escenarios
                                                                          — I0.5, I1, F.1
   verification/   las siete reglas (sección 7) y el informe de auditoría  — I4
 adapters/
