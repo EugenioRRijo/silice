@@ -326,13 +326,20 @@ class EjecucionRespuesta(BaseModel):
 
 
 class RendimientoPeticion(BaseModel):
-    """Registro de un rendimiento sobre una partida. `valor` viaja como texto decimal."""
+    """Registro de un rendimiento sobre una partida. `valor` viaja como texto decimal.
+
+    `justificacion` (UC-06, flujo 4a) es el motivo con que se acepta la advertencia de RF-27. Se
+    registra solo si el valor dispara la advertencia, ligada al rendimiento de esta misma
+    peticion; sin advertencia se ignora (la respuesta la trae nula). Con advertencia, una
+    justificacion en blanco es 422 y no se registra nada.
+    """
 
     valor: str
     tipo: str
     fecha: date
     condiciones: str = ""
     referencia_ejecucion: str | None = None
+    justificacion: str | None = None
 
 
 class RendimientoRespuesta(BaseModel):
@@ -390,7 +397,9 @@ class RendimientosRespuesta(BaseModel):
 
 
 class RegistroRendimientoRespuesta(BaseModel):
-    """Lo registrado y la advertencia de RF-27 (o null): advertir nunca es impedir."""
+    """Lo registrado y la advertencia de RF-27 (o null): advertir nunca es impedir.
+    `justificacion` es la que quedo registrada con la advertencia (UC-06, flujo 4a), o null."""
 
     rendimiento: RendimientoRespuesta
     advertencia: str | None
+    justificacion: str | None = None

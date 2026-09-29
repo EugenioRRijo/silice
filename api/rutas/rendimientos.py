@@ -35,6 +35,7 @@ from core.catalog import (
     PropuestaRendimiento,
     advertencia_rendimiento,
     dispersion_rendimientos,
+    justificar_rendimiento,
     proponer_rendimiento,
     registrar_ejecucion,
     registrar_rendimiento,
@@ -90,6 +91,13 @@ def crear_rendimiento(
     La advertencia se evalua contra el comportamiento observado ANTES de este registro (el valor
     nuevo no participa de su propio rango) y nunca impide: la respuesta siempre es 201 con el
     registro hecho y la transaccion confirmada.
+
+    UC-06, flujo 4a (INV-093): si hubo advertencia y la peticion trae `justificacion`, se registra
+    con `justificar_rendimiento`, que la liga al ultimo rendimiento de la partida, el que esta
+    misma peticion acaba de registrar en su transaccion (revision de arquitectura de C6, N-5). Sin
+    advertencia la justificacion se ignora: el cliente no sabe de antemano si la habra, y
+    rechazarla impediria un registro que RF-27 no impide. Si el nucleo la rechaza (en blanco), se
+    deshace tambien el rendimiento y la respuesta es 422: la peticion es una sola operacion.
     """
     valor = decimal_desde_texto(peticion.valor, "valor")
     try:
@@ -111,11 +119,22 @@ def crear_rendimiento(
         condiciones=peticion.condiciones,
         referencia_ejecucion=peticion.referencia_ejecucion,
     )
+    advertencia = _advertencia(dispersion_previa, historico_previo, valor)
+    justificacion = None
+    if advertencia is not None and peticion.justificacion is not None:
+        try:
+            justificacion = justificar_rendimiento(
+                sesion, codigo, peticion.justificacion, advertencia, peticion.fecha
+            ).texto
+        except ValueError:
+            sesion.rollback()
+            raise
     sesion.commit()
 
     return RegistroRendimientoRespuesta(
         rendimiento=_a_rendimiento_respuesta(registrado),
-        advertencia=_advertencia(dispersion_previa, historico_previo, valor),
+        advertencia=advertencia,
+        justificacion=justificacion,
     )
 
 
