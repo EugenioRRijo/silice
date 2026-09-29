@@ -32,10 +32,18 @@
 > cada caso de uso. (3) UC‑01 3a se reordena al comportamiento ratificado en C3‑10. (4) Se agrega el
 > flujo UC‑02 4a, que aclara lo ratificado en C3‑8. (5) UC‑04 2b se reformula según C2‑6. Además,
 > G1 figura cruzada con salvedad (§2.5, RF‑04, RNF‑09) y RNF‑08 declara la carga de three.js.
+> **Revisión C5 (2026‑09‑28, fase C5 de [PLAN_CIERRE.md](../PLAN_CIERRE.md)):** sin UC, RF, RNF,
+> pantalla ni ruta nuevos; el código de C5 corrige hallazgos sobre flujos que ya existían.
+> (1) UC‑01 6 dice cómo distribuye el proyectista y cuál es el plan por defecto (INV‑087).
+> (2) UC‑01 3b declara su alcance vigente: el tipo «medido» no se registra ni se usa, y la
+> propuesta sale de todo el histórico, sin atarla a la fecha del presupuesto (INV‑088). (3) RF‑21
+> deja de declarar alcance vigente: la prueba de la lista vacía de R2 y R4 y la del presupuesto
+> sin hallazgos existen (INV‑092). (4) §3.1 nombra el plan, el 409 del flujo 3b y el aviso del
+> flujo 3a de UC‑07 (INV‑094).
 
 | Campo | Valor |
 |---|---|
-| Versión | 1.1 (revisión C4; la 1.0 es del 2026‑08‑29) |
+| Versión | 1.2 (revisión C5; la 1.1 es la revisión C4 y la 1.0, del 2026‑08‑29) |
 | Fecha | 2026‑09‑28 |
 | Autor | [tesista] |
 | Revisor | [tutor académico] |
@@ -138,7 +146,10 @@ implementados en `core/contracts/`.
   4. El motor de costos calcula el `ResultadoAPU` de cada partida con los `ParametrosCosto` del proyecto.
   5. El sistema arma el `Presupuesto`: una `PartidaPresupuestada` por ítem, con su total, y el total general.
   6. El proyectista distribuye las partidas en períodos; el sistema genera la curva de inversión y
-     comprueba que el acumulado final iguale el total.
+     comprueba que el acumulado final iguale el total. Mientras el proyectista no distribuya, el
+     sistema usa un plan por defecto de una partida por día; el proyectista lo reparte en la
+     pantalla de elaboración o en el campo `plan` de `POST /presupuestos`, y un plan en que alguna
+     partida no sume exactamente 1 se rechaza sin elaborar ni guardar (implementado en C5, INV‑087).
   7. El sistema ejecuta la verificación (UC‑05) y emite el informe de auditoría sin que se le solicite.
   8. El proyectista exporta presupuesto y curva a XLSX.
 - **Flujos alternativos**
@@ -150,7 +161,18 @@ implementados en `core/contracts/`.
     partida y el presupuesto se vuelve a elaborar; si no acepta ninguna, el ítem sigue pendiente.
     (Orden vigente desde C3, dictamen C3‑10: la interfaz elabora primero y propone después.)
   - *3b. Partida sin rendimiento vigente:* el sistema propone el del histórico con su dispersión (UC‑06) y
-    exige declarar si es estimado o medido.
+    exige declarar si es estimado o medido. **Alcance vigente** (C5, INV‑088): vigente es un
+    rendimiento estimado de fecha no posterior a la del presupuesto, el único que usa la
+    elaboración. Declarado **estimado**, el propuesto se registra a la fecha del presupuesto, con su
+    procedencia en las condiciones, y el presupuesto se vuelve a elaborar. Declarado **medido**, no
+    se registra ni se usa, y el sistema lo explica: usarlo tal cual exigiría cambiar la política del
+    catálogo en `core/`, que el cierre no autoriza. La propuesta sale de todo el histórico de la
+    partida (RF‑26), sin atarla a la fecha del presupuesto, así que en un presupuesto con fecha
+    pasada puede proponer un rendimiento posterior a esa fecha. Si la partida no tiene ningún
+    rendimiento que proponer, el sistema remite a UC‑10. Por la API, `POST /presupuestos` responde
+    409 sin guardar nada, con la propuesta por partida; el tipo se declara registrando el
+    rendimiento (UC‑06) y el presupuesto se vuelve a enviar. La falta de una lista de precios
+    vigente no es este flujo: se informa como tal.
   - *6a. Sin plan de trabajo:* el presupuesto se emite sin curva y el informe registra que R2 no es aplicable.
   - *7a. Hallazgos de severidad `CRITICO`:* el presupuesto se emite igualmente, con esos hallazgos al frente
     del informe. La verificación audita, no bloquea.
@@ -448,13 +470,13 @@ reconocimiento de planos.
 
 | UC | Interfaz (pantalla del menú) | API REST | Solo biblioteca o script |
 |---|---|---|---|
-| UC‑01 | «Elaborar un presupuesto» (extrae, elabora, audita y descarga el Excel) y el bloque de cantidades de «Componer una partida»; la interfaz no guarda el presupuesto | `POST /computos/{dominio}` y `POST /presupuestos` (elabora, audita y guarda); `GET /presupuestos/{codigo}/excel` | — |
+| UC‑01 | «Elaborar un presupuesto» (extrae, elabora con el plan de trabajo del proyectista, audita y descarga el Excel; propone el rendimiento que falta, flujo 3b) y el bloque de cantidades de «Componer una partida»; la interfaz no guarda el presupuesto | `POST /computos/{dominio}` y `POST /presupuestos` (elabora con el `plan` del proyectista, audita y guarda; sin rendimiento vigente, 409 con la propuesta, flujo 3b); `GET /presupuestos/{codigo}/excel` | — |
 | UC‑02 | «Actualizar precios» (revalora, guarda la versión y ofrece descartarla) e «Historico de cambios de precio» | `POST /listas-precios`, `POST /presupuestos/{codigo}/actualizacion`, `GET /cambios-precio`; descartar una versión no tiene ruta | — |
 | UC‑03 | «Partidas similares» (solo lectura); ayuda de similares en «Componer una partida»; propuestas de los pendientes en «Elaborar un presupuesto» | propuestas de los pendientes en la respuesta de `POST /presupuestos` | — |
 | UC‑04 | ninguna | ninguna | `adapters/civil/recalculo.py` (`recalcular`, `emparejar`), ejercido solo por las pruebas |
 | UC‑05 | el informe se muestra al elaborar, al componer y al revalorar; no hay pantalla de auditoría de un presupuesto ajeno | `GET /presupuestos/{codigo}/informe` y la hoja de auditoría de `…/excel` | la importación del archivo de un tercero no existe en ninguna capa (RF‑24, INV‑076) |
-| UC‑06 | «Componer una partida» propone el rendimiento del histórico y advierte al apartarse; no registra medidos | `POST /ejecuciones`, `GET /ejecuciones`, `GET /partidas/{codigo}/rendimientos`, `POST /partidas/{codigo}/rendimientos` | — |
-| UC‑07 | «Componer una partida» contrasta el precio con la estimación por reglas (clase 3 de AACE) | ninguna | `scripts/generar_resultados_ml.py` escribe `docs/resultados_ml.md` |
+| UC‑06 | «Componer una partida» propone el rendimiento del histórico y advierte al apartarse; «Elaborar un presupuesto» lo propone en el flujo 3b de UC‑01; ninguna de las dos registra medidos | `POST /ejecuciones`, `GET /ejecuciones`, `GET /partidas/{codigo}/rendimientos`, `POST /partidas/{codigo}/rendimientos` | — |
+| UC‑07 | «Componer una partida» contrasta el precio con la estimación por reglas (clase 3 de AACE); para una partida nueva, avisa que el contraste no es posible (flujo 3a) | ninguna | `scripts/generar_resultados_ml.py` escribe `docs/resultados_ml.md` |
 | UC‑08 | «Escenarios de sensibilidad» | `POST /presupuestos/{codigo}/escenarios` | — |
 | UC‑10, UC‑11 | «Componer una partida» | ninguna | — |
 | UC‑12 | «Inicio» y el marco común de las pantallas (`ui/app.py`) | ninguna | — |
@@ -500,7 +522,7 @@ la corrija.
 | RF‑18 | El sistema derivará las cantidades del dominio civil de reglas paramétricas declaradas, registrando en cada `ItemComputo` la expresión evaluada y los parámetros usados | Esencial | UC‑04 | I3.2 | Con a = 0,80, h = 0,80, e = 0,10 el concreto da 0,224 m3 y el encofrado 4,48 m2, y ambos ítems traen `regla` y `parametros` |
 | RF‑19 | Al modificar un parámetro dimensional o el conteo de elementos, el sistema reevaluará las reglas afectadas y recalculará cantidades, precios y curva sin intervención manual | Esencial | UC‑04 | I3.2 | Cambiar el ancho de la tanquilla altera solo las cantidades que dependen de él, y el recálculo se propaga a precios, curva y auditoría; se cumplen los flujos 1a, 2a y 2b de UC‑04 |
 | RF‑20 | El sistema presentará el diferencial entre la versión anterior y la recalculada: cantidad, precio unitario y total por partida | Deseable | UC‑04 | I3.2 | Criterio previsto: la suma de los diferenciales por partida iguala la diferencia de totales. **Alcance vigente: no implementado**, declarado en limitaciones (INV‑011, fase C1 del cierre; decisión del 2026‑09‑23) |
-| RF‑21 | El sistema ejecutará las siete reglas R1–R7 sobre cualquier `Presupuesto` y devolverá `Hallazgo` con severidad, descripción, impacto cuantificado y los `origen_id` involucrados | Esencial | UC‑05 | I4 | Cada regla detecta su inconsistencia con hallazgos completos (severidad, descripción, impacto y `origen_id`) y devuelve una lista vacía cuando el presupuesto cumple. **Alcance vigente: parcial** ([plan_pruebas §8](plan_pruebas.md#8-especificación-de-casos-trazabilidad-rf--prueba)) |
+| RF‑21 | El sistema ejecutará las siete reglas R1–R7 sobre cualquier `Presupuesto` y devolverá `Hallazgo` con severidad, descripción, impacto cuantificado y los `origen_id` involucrados | Esencial | UC‑05 | I4 | Cada regla detecta su inconsistencia con hallazgos completos (severidad, descripción, impacto y `origen_id`) y devuelve una lista vacía cuando el presupuesto cumple |
 | RF‑22 | El sistema detectará las siete inconsistencias de la línea base sobre el presupuesto de prueba que las reproduce | Esencial | UC‑05 | I4 | 7 de 7 hallazgos sobre el presupuesto de prueba, uno por regla (indicador 1) |
 | RF‑23 | El sistema ordenará el informe por severidad descendente y no modificará el presupuesto auditado; una regla que no pueda evaluarse se reportará como hallazgo INFO sin interrumpir a las demás | Esencial | UC‑05 | I4 | El presupuesto auditado es idéntico antes y después, el informe sale ordenado por severidad descendente y una regla sin datos da un hallazgo INFO sin abortar el informe |
 | RF‑24 | El sistema importará un presupuesto de un tercero en formato tabular, conservando las unidades originales escritas por su autor, para poder auditarlo | Esencial | UC‑05 | I4 | La unidad escrita por el autor del archivo importado («mts») llega intacta a la regla R3. **Alcance vigente: parcial.** R3 conserva la unidad del autor sobre un `Presupuesto` construido en memoria, pero la importación de un archivo tabular de un tercero no existe en ninguna capa (INV‑076, abierto; bloquea F3) |
@@ -527,9 +549,10 @@ Los criterios de esta tabla son afirmaciones comprobables y no llevan estado. **
 demuestra cada criterio y su estado (verde, parcial, sin prueba o no implementado) viven una sola vez,
 en [plan_pruebas.md §8](plan_pruebas.md#8-especificación-de-casos-trazabilidad-rf--prueba), y la prueba
 o el caso manual de cada paso de cada caso de uso, en su §8.1** (INV‑032; la regla de fuentes únicas
-es [metodologia.md §5](metodologia.md#5-dry)). Solo RF‑16, RF‑20, RF‑21 y RF‑24 declaran aquí su
-**alcance vigente**, porque su criterio no se cumple entero. En RF‑16, RF‑20 y RF‑24 lo fija una
-decisión registrada (D5, la limitación de C1 e INV‑076); en RF‑21, una prueba que falta.
+es [metodologia.md §5](metodologia.md#5-dry)). Solo RF‑16, RF‑20 y RF‑24 declaran aquí su
+**alcance vigente**, porque su criterio no se cumple entero; en los tres lo fija una decisión
+registrada (D5, la limitación de C1 e INV‑076). RF‑21 lo declaró hasta la fase C5, en que la
+prueba que le faltaba entró con INV‑092.
 
 Cobertura por caso de uso (mínimos exigidos por el criterio de cierre entre paréntesis):
 

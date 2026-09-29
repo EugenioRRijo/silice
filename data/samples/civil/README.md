@@ -8,6 +8,12 @@ la geometría del caso de estudio de la línea base (`tests/fixtures/apu_linea_b
 
 `id,tipo,a,h,e,n,sobreancho,espesor_fondo,longitud,ancho,profundidad,diametro,desperdicio,especificaciones`
 
+- La cabecera **debe traer las 13 primeras columnas** (de `id` a `desperdicio`), aunque una fila
+  deje vacías las que no le aplican; `especificaciones` es opcional. Si falta alguna de las 13, el
+  adaptador rechaza el archivo con «el archivo '…' no es una fuente del dominio civil: faltan las
+  columnas [...]» (así la muestra de otro dominio, que también trae `id` y `tipo`, no pasa por
+  civil; INV‑089, fase C5). Una celda vacía o no numérica en una columna que la fila usa se rechaza
+  nombrando el archivo, la fila (`id`) y la columna.
 - `tipo` ∈ {`tanquilla`, `zanja`}. Una fila `tanquilla` solo llena `a,h,e,n,sobreancho,espesor_fondo`;
   una fila `zanja` solo llena `longitud,ancho,profundidad,diametro,desperdicio`. Las columnas que no
   aplican a la fila se dejan vacías.
@@ -18,7 +24,11 @@ la geometría del caso de estudio de la línea base (`tests/fixtures/apu_linea_b
 - `diametro`: diámetro de la tubería en metros, para calcular su volumen (`REGLA_VOLUMEN_TUBERIA`);
   distinto del `diametro` en pulgadas que pueda aparecer como texto en `especificaciones`.
 - `especificaciones`: pares `clave=valor` separados por `;` (por ejemplo
-  `diametro=4 pulg;material=PVC`), trazables hacia la regla R4.
+  `diametro=4 pulg;material=PVC`), trazables hacia la regla R4. Describen el **elemento construido**
+  del objeto y llegan **solo** a su partida: las de una fila `tanquilla`, al concreto (las paredes);
+  las de una fila `zanja`, a la tubería. La excavación y el encofrado no las reciben (INV‑096, fase
+  C5), así que R4 no las contrasta con esos APU; una especificación de la excavación o del
+  encofrado (tipo de suelo, madera) no se puede dirigir hoy desde esta columna.
 
 ## Supuestos declarados
 

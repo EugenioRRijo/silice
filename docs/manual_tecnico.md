@@ -54,7 +54,7 @@ la suite y la cobertura vigentes, con la corrida de CI que las mide, en su §10.
 | `core/costing` | motor de costos, función pura | `calcular_apu(composicion, parametros)` |
 | `core/models` + `core/catalog` | SQLite (SQLAlchemy) y catálogo | `Catalogo`, `crear_lista_desde_archivo`, rendimientos con dispersión |
 | `core/budget` | presupuesto, curva, exportación, UC‑02 y UC‑08 | `elaborar` (audita siempre), `actualizar_precios`, `generar_escenario` |
-| `core/verification` | reglas R1–R7 e informe | `auditar`, `ReglaVerificacion.evaluar -> list[Hallazgo]` |
+| `core/verification` | reglas R1–R7 e informe | `auditar`, `ReglaVerificacion.evaluar -> list[Hallazgo]`, `ReglaAtribuible.atribuir` (sección 5), `InformeAuditoria` |
 | `adapters/{civil,telecom,industrial,sistemas}` | fuente de cada dominio → `ItemComputo` | sección 4 |
 | `ml/` | normalización, anomalías, predicción | no conoce la base de datos: recibe datos planos |
 | `api/` | FastAPI sobre el núcleo | montos como texto; OpenAPI exportado a `docs/api.json` |
@@ -62,8 +62,9 @@ la suite y la cobertura vigentes, con la corrida de CI que las mide, en su §10.
 | `scripts/` | operaciones reproducibles | índice en [scripts/README.md](../scripts/README.md) (sección 8) |
 
 El flujo completo de UC‑01: `AdaptadorDominio.extraer(fuente)` → `list[ItemComputo]` →
-`core.budget.elaborar(items, composiciones, parametros, ...)` → `ResultadoElaboracion`
-(presupuesto + informe). La fórmula del motor y sus dos errores clásicos (dividir materiales
+`core.budget.elaborar(items, composiciones, parametros, ..., plan=...)` → `ResultadoElaboracion`
+(presupuesto + informe). El `plan` es el del proyectista (la tabla de la pantalla o el campo `plan`
+de la API) o, sin él, `plan_secuencial` (sección 9). La fórmula del motor y sus dos errores clásicos (dividir materiales
 entre rendimiento; sumar administración y utilidad en vez de encadenarlas) están en
 [CLAUDE.md §4](../CLAUDE.md) y las vigila `tests/unit/test_costing.py`.
 
@@ -146,7 +147,17 @@ cantidad la produjo una regla paramétrica, `regla` lleva la expresión y `param
    `README.md`, y escribir `tests/unit/test_adapter_<dominio>.py` **antes** de implementar
    (TDD; el patrón está en `tests/unit/test_adapter_telecom.py`): cantidades exactas en
    `Decimal`, `origen_id` presente en cada ítem, unidad normalizada, y el caso de fuente
-   malformada (se rechaza citando la fila, no se adivina).
+   malformada (se rechaza citando la fila, no se adivina). Desde C5 (INV‑089) los cuatro
+   adaptadores siguen la misma convención, que la API traduce a 422 y la pantalla muestra tal cual:
+   toda fuente ilegible es un **`ValueError`** (nunca un `KeyError`, un `InvalidOperation` ni un
+   `UnicodeDecodeError`) cuyo mensaje nombra el archivo **por su nombre, sin la ruta** del servidor
+   (`Path(fuente).name`) y, si es de una fila, la fila y la columna. La cabecera se comprueba antes
+   de leer: si faltan columnas del formato, «no es una fuente del dominio X», así una muestra de
+   otro dominio no se confunde con una propia (el civil exige sus 13 columnas). El patrón está en
+   `_leer_filas` y `_decimal` de cualquier adaptador tabular; son copias, porque ningún adaptador
+   importa de otro (deuda declarada en [arquitectura §6.1](arquitectura.md#61-deuda-arquitectónica-declarada)),
+   y su equivalencia la vigila `tests/unit/test_fuentes_ilegibles.py`, donde conviene agregar el
+   dominio nuevo.
 5. **Verificar las guardias.** `uv run pytest -W error` (la prueba de arquitectura ya incluye el
    módulo nuevo sin registrarlo en ningún lado) y `git diff --stat core/` → vacío.
 6. **Cablear la entrada (opcional).** Para que la fuente se pueda subir por la interfaz:
@@ -163,6 +174,20 @@ cantidad la produjo una regla paramétrica, `regla` lleva la expresión y `param
 - Los `codigo_partida` que emite el adaptador deben existir en el catálogo al presupuestar; si
   la fuente no los trae (caso del civil tabular), el adaptador recibe el mapeo del llamador en
   su constructor — los códigos son del catálogo, no del adaptador.
+- **El límite de `ifcopenshell`.** `adapters/civil/ifc.py::_abrir_modelo` rechaza con `ValueError`
+  un archivo que no es STEP (sin la cabecera `ISO-10303-21`) y un STEP que `ifcopenshell` no puede
+  abrir (cabecera dañada, esquema no soportado), comprobando el estado de
+  `ifcopenshell_wrapper.open` **antes** de construir el `ifcopenshell.file`: con
+  `ifcopenshell.open`, la versión 0.8.5 deja una excepción no atrapable en `file.__del__`, que con
+  `-W error` rompe otra prueba al azar. El analizador, en cambio, **tolera el cuerpo**: un `.ifc`
+  truncado o con basura tras una cabecera válida se abre sin error y da un cómputo vacío (o con los
+  elementos que alcanzó a leer), sin rechazo. Está verificado contra `ifcopenshell` 0.8.5, la
+  versión de `uv.lock` (`pyproject.toml` pide `>=0.8`, sin cota superior); si otra versión cambia
+  esa API de bajo nivel, fallan las pruebas del IFC, no en silencio.
+- Las especificaciones de un objeto civil (`especificaciones` del CSV) llegan solo a la partida
+  del elemento que describen: el concreto en la tanquilla y la tubería en la zanja, no la
+  excavación ni el encofrado (INV‑096). Una especificación de la excavación o del encofrado (tipo
+  de suelo, madera) no se puede dirigir hoy desde esa columna.
 
 ## 5. Añadir una regla de verificación
 
@@ -175,6 +200,24 @@ de oro heredada de R1–R7: una regla que no puede evaluarse devuelve un hallazg
 lanza; el informe nunca se cae a medias. Las pruebas van por regla en
 `tests/unit/test_verification.py` y el caso integrado en
 `tests/integration/test_auditoria_7_de_7.py` (que debe seguir en 7 de 7).
+
+Lo que la regla nueva recibe sin hacer nada: el informe la enumera en **Reglas evaluadas** (su
+`codigo` y su `nombre`, con su cuenta de hallazgos, en pantalla y en las columnas G a I de la hoja
+*Auditoria*), porque `auditar` registra toda regla que corre (INV‑092). Lo que tiene que decidir:
+
+- **La columna *Partida*.** Si sus hallazgos nacen de una partida concreta, que implemente también
+  `atribuir(presupuesto) -> list[tuple[Hallazgo, str | None]]` (el protocolo `ReglaAtribuible` de
+  `core/verification/reglas.py`, no un contrato): cada hallazgo con el código de la partida que lo
+  produjo, o `None`. `auditar` usa entonces `atribuir` en lugar de `evaluar`, así que los dos
+  tienen que dar exactamente los mismos hallazgos, en el mismo orden (la forma sencilla, la de
+  R1, R3, R4, R5 y R7: `evaluar` devuelve los de `atribuir` sin la partida), y quien redefine uno
+  redefine el otro. Si no lo implementa, el informe atribuye cada hallazgo por su primer
+  `origen_id`, salvo que ese origen lo compartan varias partidas: entonces pinta «-», porque no
+  adivina (INV‑095).
+- **`InformeAuditoria` crece solo añadiendo campos al final, con valor por defecto**: no es un
+  contrato de `core/contracts/`, pero `api/`, `ui/`, `scripts/` y `core.budget` lo consumen.
+  Quien lo copie con cambios usa `dataclasses.replace`, como `_declarar_pendientes`
+  ([arquitectura §2.2](arquitectura.md#22-clases-y-funciones-del-núcleo), «Verificación»).
 
 ## 6. Persistencia
 
@@ -249,6 +292,28 @@ catálogo de otro dominio apuntando `APU_BASE` a su base (`sqlite:///data/apu_te
   `core` directo. Si se añade una función, se expone en las dos capas por separado.
 - **La API serializa montos como texto** — al añadir rutas, construir `Decimal` desde el texto
   en la frontera y devolverlo como `str`.
+- **El plan de trabajo (UC‑01, paso 6; INV‑087).** `POST /presupuestos` acepta un campo opcional
+  `plan`: una lista de `{"periodo": "Semana 1", "reparto": {"LB-01-EXC": "0.5", ...}}`, con las
+  fracciones como texto decimal (esquema `PeriodoPlanPeticion`). Sin el campo, `plan_secuencial`
+  (una partida por día), que es lo que deja la línea base como estaba. Un plan en que alguna
+  partida no sume exactamente 1, que nombre una partida que el presupuesto no tiene o con una
+  fracción que no es un decimal responde **422 sin guardar** (las dos primeras son `PlanInvalido`,
+  un `ValueError`: la regla del plan vive una sola vez, en `core.budget.curva`). La pantalla hace lo mismo con la tabla
+  «Plan de trabajo» (`ui.elaboracion.plan_desde_filas` y `plan_de`). Fracciones negativas o
+  mayores que 1 pasan si la partida suma 1: es la regla de `core.budget.curva`, y ni la pantalla ni
+  la API añaden otra.
+- **El 409 del flujo 3b (UC‑01; INV‑088).** Si a una partida le falta un rendimiento **estimado**
+  vigente (de fecha no posterior a la del presupuesto), `POST /presupuestos` responde **409 sin
+  guardar** con el esquema `RendimientosPorDeclararRespuesta`: `detalle` y, por partida,
+  `rendimientos_por_declarar[].propuesta` (el rendimiento de `core.catalog.proponer_rendimiento`
+  con su dispersión, o `null` si la partida no tiene histórico). El cliente declara el tipo
+  registrando el rendimiento con `POST /partidas/{codigo}/rendimientos` (tipo `estimado`, fecha no
+  posterior a la del presupuesto) y reenvía el presupuesto; un medido registrado **no** lo
+  desbloquea, porque la elaboración usa solo el estimado (`Catalogo._rendimiento_estimado`). Si lo
+  que falta es la lista de precios vigente o un precio, el 409 es el de siempre, solo con
+  `detalle`. El criterio «estimado vigente» está escrito en `api.rutas.presupuestos` y en
+  `ui.elaboracion` porque la API no puede importar `ui/` y C5 no tocó `core.catalog`: si cambia la
+  política, hay que cambiar los dos y `core` (deuda U‑5, [arquitectura §6.1](arquitectura.md#61-deuda-arquitectónica-declarada)).
 - **`tests/fixtures/apu_linea_base.py` es la única copia de la línea base.** `seed.py`,
   `generar_resultados_ml.py`, `medir_rnf03.py` y `meta_prototipo.py` la importan a propósito;
   duplicarla en cualquier otro lado viola DRY. En total, ocho scripts dependen de `tests/fixtures/`

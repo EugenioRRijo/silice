@@ -47,6 +47,7 @@ mismo orden, pero no con las mismas columnas:
 |---|---|---|
 | Resultado global («Hallazgos: 14 · Resultado: NO CUMPLE») | sí | no |
 | Resumen por severidad | sí | no |
+| Reglas evaluadas: las siete, con su nombre y su cuenta de hallazgos (sección «Reglas evaluadas» en pantalla; columnas G a I de la hoja) | sí | sí |
 | Regla, severidad, descripción, impacto | sí | sí |
 | Partida del hallazgo | sí | no |
 | Observado y esperado | sí | no |
@@ -65,7 +66,7 @@ cambiar su texto. La columna usa cuatro rótulos:
 
 | Afirmación | Se juzga sobre | Por qué |
 |---|---|---|
-| 1 Entender qué comprueba | las dos, en conjunto | es un juicio sobre el informe entero |
+| 1 Entender qué comprueba | las dos, en conjunto | es un juicio sobre el informe entero. Desde C5 las dos formas enumeran las reglas evaluadas, pero entender qué comprueba cada regla pide también sus hallazgos, con la partida (pantalla) y el origen (hoja); se mantiene la asignación, revisada antes de medir |
 | 2 Severidad comprensible y bien asignada | cualquiera de las dos | las dos traen la severidad de cada hallazgo; la pantalla, además, su resumen |
 | 3 Impacto cuantificado | la pantalla | solo ella trae, junto al impacto, lo observado y lo esperado («montos y cantidades en juego»); con la hoja sola, la afirmación se juzgaría con menos datos |
 | 4 Orígenes para ubicar la fila | la hoja *Auditoria* | es la única que trae los `origen_id` |
@@ -75,13 +76,20 @@ cambiar su texto. La columna usa cuatro rótulos:
 | 8 Confianza como complemento | las dos, en conjunto | es un juicio sobre el informe entero |
 
 Así, ninguna afirmación se contesta sobre una forma que carece del dato que pregunta. El capítulo V
-reporta esta asignación junto al resultado. En este informe la columna *Partida* de la pantalla es
-fiable: cada partida de la fixture lleva un `origen_id` propio, `computo:<código>`, que no comparte
-con ninguna otra. Las filas de R6 citan los códigos de partida sin prefijo (R6 compara APU entre sí),
-y el informe también los resuelve a su partida (`_indice_de_partidas`,
-`core/verification/informe.py:144-157`); la de R2 no cita ninguno y la pantalla pone «-». Por eso
-no le alcanza el defecto de atribución de esa columna que el controlador registró en la revisión de
-C4 (M3), que aparece cuando varias partidas comparten un mismo `origen_id`.
+reporta esta asignación junto al resultado.
+
+**La columna *Partida* de la pantalla.** Desde la fase C5 (INV‑095), la partida de cada hallazgo la
+declara la regla que lo emite: R1, R3, R4, R5 y R7 dicen de qué partida hablan al redactarlo, y el
+informe no la deduce del origen. Lo que ninguna regla declara se resuelve por el origen del
+hallazgo: las filas de R6 citan códigos de partida (R6 compara APU entre sí) y se atribuyen a su
+primer código, la partida del factor minoritario; la de R2, que es del presupuesto entero, no cita
+ninguno y la pantalla pone «-». Un origen que comparten varias partidas sin que ninguna regla lo
+haya declarado también da «-»: el informe no adivina. La columna es un **ancla** para ubicar el
+hallazgo y la descripción es el detalle: una conciliación de R7 que abarca varias partidas se
+ancla en la primera en el orden del presupuesto, y la de R6 en su primer código, y en los dos casos
+la descripción las nombra todas. En este informe cada partida de la fixture lleva un `origen_id`
+propio, `computo:<código>`, y cada fila de R7 concilia una sola partida, así que la atribución
+coincide con la que daba el índice antes de C5.
 
 **Cómo se genera** (el observador, en la copia desechable de la sección 3, desde su raíz):
 
