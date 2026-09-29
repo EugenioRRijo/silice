@@ -21,10 +21,12 @@ cualquier entorno instalado solo con `uv sync --extra ui --extra api`. Si el ext
 instalado, `render()` lo detecta y muestra un mensaje con `st.error`, mismo criterio que usa
 `api/rutas/computos.py` para `ImportError` (400 con mensaje claro) en vez de una traza cruda.
 
-Sin pruebas de UI (decision del proyecto, spec F.1 seccion 7): la teselacion se prueba en
-`tests/unit/test_visor3d.py`, junto con el aislamiento del import perezoso; esta pagina solo se
-comprueba con `tests/unit/test_ui_importable.py` (se importa sin efectos) y con la verificacion
-manual documentada en el reporte de la tarea.
+Pruebas: la teselacion y el aislamiento del import perezoso, en `tests/unit/test_visor3d.py`; que
+la pagina se importa sin efectos, en `tests/unit/test_ui_importable.py`. La pagina misma, en
+`tests/unit/test_ui_visor_orden.py` (fase C5, O-1): con dobles, que el adaptador extrae antes de
+que `mallas` tesele, y que si el adaptador rechaza el archivo `mallas` nunca lo abre; y de punta a
+punta, un IFC ilegible real en `tmp_path` (binario o con la cabecera STEP danada) con el adaptador
+y `mallas` reales, que se muestra como un `st.error` y no deja excepciones no atrapables.
 """
 
 from __future__ import annotations
