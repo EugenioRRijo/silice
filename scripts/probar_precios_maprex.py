@@ -23,13 +23,14 @@ Que hace, en orden:
    normalizacion del catalogo), con el mismo tipo y una unidad equivalente
    (`core.contracts.unidades.unidades_equivalentes`). La plantilla no declara unidad para la
    mano de obra, que el APU paga por jornal: casa si MaPreX la cotiza por `dia`. Solo materiales
-   y mano de obra; los equipos quedan fuera (ruling C6-9: el precio MaPreX de un equipo es su
-   valor de reposicion) y se contrastan aparte, sin cargarlos: tarifa diaria MaPreX (reposicion
-   x factor Cop/Depr.) frente a precio x depreciacion del APU. Lo que no casa se excluye y se
-   reporta. El precio es la columna `precio_usd` (633,3644 Bs/USD al 01/07/2026), que se
-   verifica contra `precio_bs` con la tasa de `scripts.derivar_listas_telecom`; vigencia unica
-   2026-07-09. La lista se escribe en un CSV temporal, se carga con `crear_lista_desde_archivo`
-   y revalora el 001 con `actualizar_precios(..., plan=plan_secuencial, detectar_atipicos=...)`.
+   y mano de obra; los equipos quedan fuera (ruling C6-9: la columna Precio/Alq. de un equipo
+   no es su tarifa diaria) y se contrastan aparte, sin cargarlos: tarifa diaria MaPreX
+   (Precio/Alq. x Cop/Depr., la columna Total de `equipos.pdf`) frente a precio x depreciacion
+   del APU. Lo que no casa se excluye y se reporta. El precio es la columna `precio_usd`
+   (633,3644 Bs/USD al 01/07/2026), que se verifica contra `precio_bs` con la tasa de
+   `scripts.derivar_listas_telecom`; vigencia unica 2026-07-09. La lista se escribe en un CSV
+   temporal, se carga con `crear_lista_desde_archivo` y revalora el 001 con
+   `actualizar_precios(..., plan=plan_secuencial, detectar_atipicos=...)`.
 3. **Telecom TC-001 y TC-002** con `data/telecom/fuentes/lista_maprex_2026-07.csv` (la replica de
    la Sesion M1.3, `tests/integration/test_auditoria_arenaza.py`).
 4. **Industrial MNT-001 y sistemas SIS-001**: ya se siembran con sus listados MaPreX y CIV, asi que
@@ -44,8 +45,8 @@ Como `scripts/seed.py`, importa `tests.fixtures` a proposito: es la unica copia 
 del presupuesto auditado (CLAUDE.md §2, principio DRY).
 
 Uso:
-    uv run --extra ml python scripts/probar_precios_maprex.py
-    uv run --extra ml python scripts/probar_precios_maprex.py --salida resultado.md
+    uv run --all-extras python scripts/probar_precios_maprex.py
+    uv run --all-extras python scripts/probar_precios_maprex.py --salida resultado.md
 """
 
 from __future__ import annotations
@@ -133,10 +134,12 @@ ORDEN_TIPOS = ("material", "equipo", "mano_obra")
 
 _EQUIVALENTE = re.compile(r"equivalente de '([^']+)'")
 _TRUNCADA = "truncada"
+#: El rol MaPreX del Ayudante del tabulador de la construccion (README de `data/precios/...`).
+REF_AYUDANTE_N2 = "1-1.2"
 
 MOTIVO_EQUIPO = (
-    "equipo: fuera de la revaloracion (C6-9); el precio MaPreX es valor de reposicion, "
-    "se contrasta aparte"
+    "equipo: fuera de la revaloracion (C6-9); su Precio/Alq. MaPreX no es tarifa diaria "
+    "(falta el factor Cop/Depr.), se contrasta aparte"
 )
 MOTIVO_SIN_EQUIVALENTE = "la nota no nombra ningun insumo de la plantilla civil"
 MOTIVO_TIPO = "el tipo MaPreX ({mapreX}) no es el de la plantilla ({plantilla})"
@@ -273,7 +276,7 @@ class ContrasteEquipo:
     precio_apu: Decimal
     depreciacion_apu: Decimal
     ref_maprex: str
-    reposicion_maprex: Decimal
+    precio_alq_maprex: Decimal
     factor_maprex: Decimal
 
     @property
@@ -282,7 +285,13 @@ class ContrasteEquipo:
 
     @property
     def tarifa_maprex(self) -> Decimal:
-        return self.reposicion_maprex * self.factor_maprex
+        return self.precio_alq_maprex * self.factor_maprex
+
+
+def bono_ayudante_maprex(referencia: Path = RUTA_REFERENCIA_CIVIL) -> Decimal:
+    """El bono de alimentacion diario del Ayudante N2 de MaPreX, en USD, desde su `bono_bs`."""
+    (fila,) = [f for f in _leer_csv(referencia) if f["ref_maprex"] == REF_AYUDANTE_N2]
+    return a_usd(Decimal(fila["bono_bs"]))
 
 
 def contrastar_equipos(referencia: Path = RUTA_REFERENCIA_CIVIL) -> tuple[ContrasteEquipo, ...]:
@@ -309,7 +318,7 @@ def contrastar_equipos(referencia: Path = RUTA_REFERENCIA_CIVIL) -> tuple[Contra
                 precio_apu=precio,
                 depreciacion_apu=depreciacion,
                 ref_maprex=fila["ref_maprex"],
-                reposicion_maprex=_precio_usd(fila),
+                precio_alq_maprex=_precio_usd(fila),
                 factor_maprex=Decimal(fila["factor_depreciacion"]),
             )
         )
@@ -1020,8 +1029,8 @@ def _seccion_equipos(contrastes: Sequence[ContrasteEquipo]) -> list[str]:
     lineas = [
         "### Contraste de equipos (no se cargan; ruling C6-9)",
         "",
-        "Tarifa diaria del APU = precio x depreciacion; tarifa diaria MaPreX = valor de reposicion "
-        "x factor Cop/Depr. (`equipos.pdf`).",
+        "Tarifa diaria del APU = precio x depreciacion; tarifa diaria MaPreX = Precio/Alq. x "
+        "Cop/Depr. (la columna Total de `equipos.pdf`).",
         "",
     ]
     lineas += _tabla(
@@ -1032,7 +1041,7 @@ def _seccion_equipos(contrastes: Sequence[ContrasteEquipo]) -> list[str]:
             "Depr. APU",
             "Tarifa APU",
             "Ref",
-            "Reposicion MaPreX",
+            "Precio/Alq. MaPreX",
             "Factor MaPreX",
             "Tarifa MaPreX",
             "MaPreX / APU",
@@ -1045,7 +1054,7 @@ def _seccion_equipos(contrastes: Sequence[ContrasteEquipo]) -> list[str]:
                 formatear_decimal(c.depreciacion_apu),
                 _p(c.tarifa_apu),
                 c.ref_maprex,
-                _m(c.reposicion_maprex),
+                _m(c.precio_alq_maprex),
                 formatear_decimal(c.factor_maprex),
                 _p(c.tarifa_maprex),
                 formatear_decimal(c.tarifa_maprex / c.tarifa_apu, DECIMALES_PRESENTACION)
@@ -1096,8 +1105,9 @@ def _seccion_salvedades(resultado: Resultado) -> list[str]:
         "referencia publicados, no el costo de ninguna obra.",
         f"- El bono de alimentacion no se revalora: es un parametro de costo "
         f"(`ParametrosCosto.bono_alimentacion` = {_m(bono)} USD por obrero y dia), no un precio "
-        "de la lista; MaPreX trae 6,2192 USD/dia para el Ayudante N2 (README de la carpeta), "
-        "que solo entraria como escenario (UC-08).",
+        f"de la lista; MaPreX trae {_p(bono_ayudante_maprex())} USD/dia para el Ayudante N2 "
+        f"(Ref {REF_AYUDANTE_N2}, bono_bs de `referencia_civil.csv` a la tasa {TASA}), que solo "
+        "entraria como escenario (UC-08).",
         "- Vigencia unica 2026-07-09 para la lista civil derivada, aunque la mano de obra de "
         "MaPreX es del 01/07/2026.",
         f"- Tasa 633,3644 Bs/USD al 01/07/2026; cada `precio_usd` de `referencia_civil.csv` que "
@@ -1105,8 +1115,8 @@ def _seccion_salvedades(resultado: Resultado) -> list[str]:
         "- No se convierte ninguna unidad: una fila cuya unidad MaPreX no equivale a la del "
         "catalogo se excluye y se reporta (`sco` no es alias de `saco` en "
         "`core.contracts.unidades`).",
-        "- Los equipos no se revaloran (C6-9): su precio MaPreX es el valor de reposicion; se "
-        "contrastan aparte.",
+        "- Los equipos no se revaloran (C6-9): su Precio/Alq. MaPreX no es una tarifa diaria "
+        "sin el factor Cop/Depr.; se contrastan aparte.",
         f"- Descripciones truncadas por el propio PDF de MaPreX "
         f"({sum(len(refs) for refs in truncadas.values())}), conservadas tal cual: "
         + (
