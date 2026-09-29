@@ -111,6 +111,48 @@ def test_una_fraccion_que_no_es_decimal_responde_422(cliente, items_payload):
     assert "LB-01-EXC" in r.json()["detalle"]
 
 
+def test_un_plan_vacio_responde_422_sin_guardar(cliente, sesion, items_payload):
+    """QA-2 de GC5 (UC-01 6a): `plan: []` no es «sin plan». Solo la ausencia del campo usa
+    `plan_secuencial`; una lista vacia llega a `elaborar`, donde cada partida suma 0. Si la API
+    tratara la lista vacia como ausente, esta prueba veria un 201."""
+    r = cliente.post("/presupuestos", json=_cuerpo("API-VACIO", items_payload, plan=[]))
+    assert r.status_code == 422
+    assert "LB-01-EXC suma 0" in r.json()["detalle"]
+    assert (
+        sesion.scalars(
+            select(models.Presupuesto).where(models.Presupuesto.codigo == "API-VACIO")
+        ).one_or_none()
+        is None
+    )
+
+
+def test_fracciones_fuera_de_0_1_pasan_si_la_partida_suma_1(cliente, sesion, items_payload):
+    """QA-2 de GC5, limitacion declarada INV-101 (a limitaciones): el plan juzga la suma por
+    partida, no el rango de cada fraccion. Caracterizacion en dos direcciones: 1.5 y -0.5 suman 1
+    y dan 201 con la curva cerrada en el total; 1.5 sola suma 1.5 y da 422."""
+    plan = [
+        {"periodo": "Semana 1", "reparto": {"LB-01-EXC": "1.5", "LB-02-TUB": "1"}},
+        {
+            "periodo": "Semana 2",
+            "reparto": {"LB-01-EXC": "-0.5", "LB-03-ENC": "1", "LB-04-CON": "1", "LB-05-REL": "1"},
+        },
+    ]
+    r = cliente.post("/presupuestos", json=_cuerpo("API-FUERA", items_payload, plan=plan))
+    assert r.status_code == 201, r.json()
+
+    curva = _curva_guardada(sesion, "API-FUERA")
+    # Aritmetica a mano: una excavacion y media en la primera semana, y media menos en la segunda.
+    assert curva[0].monto == Decimal("1.5") * _total_de("LB-01-EXC") + _total_de("LB-02-TUB")
+    assert curva[-1].acumulado == linea_base.TOTAL_EXACTO_LINEA_BASE  # cierra en el total
+
+    sin_compensar = [plan[0], {**plan[1], "reparto": {**plan[1]["reparto"], "LB-01-EXC": "0"}}]
+    r = cliente.post(
+        "/presupuestos", json=_cuerpo("API-FUERA-2", items_payload, plan=sin_compensar)
+    )
+    assert r.status_code == 422
+    assert "LB-01-EXC suma 1.5" in r.json()["detalle"]
+
+
 # --- INV-088: sin rendimiento vigente, se propone el del historico (UC-01, flujo 3b) ------------
 
 
