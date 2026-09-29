@@ -29,6 +29,7 @@ from streamlit.testing.v1 import AppTest
 from core import models
 from core.catalog import abrir_sesion, crear_esquema, crear_motor, registrar_rendimiento
 from core.contracts import TipoRendimiento
+from ml.anomaly import VeredictoRendimiento
 from ml.normalization import Propuesta
 from scripts.seed import sembrar
 from tests.conftest import RUTA_BASE_REAL, huella
@@ -233,3 +234,27 @@ def test_si_el_guardado_no_registra_rendimiento_no_justifica_el_ultimo_y_avisa(
     assert _rendimientos(base)[-1] == ultimo_antes
     assert _contar_justificaciones(base) == 0
     assert "no registro un rendimiento nuevo" in _textos(at.warning)
+
+
+def test_el_aviso_de_ml_no_hace_aparecer_el_campo_de_justificacion(monkeypatch, tmp_path):
+    """Q-2: el campo acompana solo a la advertencia por rango de RF-27, no a la ayuda 3 de
+    AREN.IA. Un doble de `veredicto_ml_rendimiento` marca atipico un valor dentro del rango
+    (con dos observaciones el detector real se abstiene): hay aviso de `ml`, pero ni campo ni
+    justificacion."""
+    base = _base(tmp_path)
+    pagina = importlib.import_module("ui.paginas.componer")
+    monkeypatch.setattr(
+        pagina,
+        "veredicto_ml_rendimiento",
+        lambda *_: VeredictoRendimiento(atipico=True, puntaje=-0.3),
+    )
+
+    at = _pantalla(monkeypatch, base, DENTRO_DEL_RANGO)
+    avisos = _textos(at.warning)
+    assert "bosque de aislamiento" in avisos
+    assert "se aparta" not in avisos
+    assert not _hay(at.text_input, ROTULO_JUSTIFICACION)
+    _guardar(at)
+
+    assert [valor for _id, valor, _tipo in _rendimientos(base)][-1] == Decimal(DENTRO_DEL_RANGO)
+    assert _contar_justificaciones(base) == 0
