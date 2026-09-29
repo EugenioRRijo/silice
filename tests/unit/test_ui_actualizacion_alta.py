@@ -1,4 +1,4 @@
-"""UC-02 2a y 2b (INV-090) en la pantalla «Actualizar precios» (fase C6).
+"""UC-02 2a y 2b (INV-090) y UC-07 5 (INV-099) en la pantalla «Actualizar precios» (fase C6).
 
 La pantalla se ejercita entera con `AppTest`: se sube el archivo con `file_uploader` (Streamlit
 1.62 lo admite en `AppTest`), se elige en el `multiselect` «Dar de alta» y se pulsa «Revalorar
@@ -20,6 +20,7 @@ rechaza y no se ofrece).
 from __future__ import annotations
 
 import importlib
+from dataclasses import dataclass
 from decimal import Decimal
 from pathlib import Path
 
@@ -29,9 +30,13 @@ from streamlit.testing.v1 import AppTest
 from core import models
 from core.catalog import abrir_sesion, crear_motor
 from tests.conftest import RUTA_BASE_REAL, huella
+from tests.fixtures.actualizacion_uc02 import PRECIOS_NUEVOS, VARIACIONES
 from tests.fixtures.base_con_pendiente import emitir
 from tests.fixtures.computo_auditado import items_auditados
+from tests.fixtures.sin_extra import SinExtra
 
+RAIZ = Path(__file__).resolve().parents[2]
+MUESTRA = RAIZ / "data" / "samples" / "precios" / "lista_2026-06-01.csv"
 SCRIPT = "from ui.paginas.actualizacion import render\nrender()\n"
 ROTULO_ALTA = "Dar de alta"
 ROTULO_REVALORAR = "Revalorar presupuesto"
@@ -257,3 +262,85 @@ def test_sin_cambios_de_precio_las_altas_tampoco_se_guardan(monkeypatch, tmp_pat
     assert presentacion.dados_de_alta == ()
     assert _contar(base, models.Insumo) == insumos_antes
     assert _insumos(base, "Cemento blanco") == []
+
+
+# ---------------------------------------------------------------------------------------------
+# INV-099: UC-07 5, los precios atipicos de la lista nueva en el informe revalorado
+# ---------------------------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class _Marca:
+    """Cumple `core.budget.MarcaAtipica` (id, valor, puntaje) sin depender de `ml`."""
+
+    id: str
+    valor: Decimal
+    puntaje: float
+
+
+def test_el_informe_revalorado_muestra_los_precios_atipicos(monkeypatch, tmp_path):
+    """El detector se sustituye por uno que marca todo el historico: con la muestra cambian dos
+    insumos (cemento y arena, `PRECIOS_NUEVOS`), los dos del concreto, asi que el informe de la
+    version nueva trae dos `ATIPICO` y la base los guarda."""
+    base = _base(tmp_path)
+    pagina = importlib.import_module("ui.paginas.actualizacion")
+    recibidos: list[dict[str, Decimal]] = []
+
+    def marcar_todo(historico):
+        recibidos.append(dict(historico))
+        return [_Marca(id=clave, valor=valor, puntaje=-0.25) for clave, valor in historico.items()]
+
+    monkeypatch.setattr(pagina, "_detector_de_atipicos", lambda: marcar_todo)
+    at = _abrir(monkeypatch, base, MUESTRA.read_bytes(), MUESTRA.name)
+    _revalorar(at)
+
+    assert not at.error, _textos(at.error)
+    assert len(recibidos) == 1
+    assert sorted(recibidos[0].values()) == sorted(VARIACIONES.values())
+    presentacion = at.session_state[pagina.CLAVE_RESULTADO]
+    assert presentacion.informe.count("ATIPICO") >= len(PRECIOS_NUEVOS)
+    assert "Cemento Portland" in presentacion.informe
+    assert "ATIPICO" in _textos(at.markdown)
+    guardados = _en_base(
+        base,
+        lambda s: s.scalar(
+            select(func.count())
+            .select_from(models.Hallazgo)
+            .where(models.Hallazgo.regla == "ATIPICO")
+        ),
+    )
+    assert guardados == len(PRECIOS_NUEVOS)
+
+
+def test_sin_detector_el_informe_no_trae_atipicos(monkeypatch, tmp_path):
+    base = _base(tmp_path)
+    pagina = importlib.import_module("ui.paginas.actualizacion")
+    monkeypatch.setattr(pagina, "_detector_de_atipicos", lambda: None)
+
+    at = _abrir(monkeypatch, base, MUESTRA.read_bytes(), MUESTRA.name)
+    _revalorar(at)
+
+    assert not at.error, _textos(at.error)
+    assert "ATIPICO" not in at.session_state[pagina.CLAVE_RESULTADO].informe
+
+
+_MODULOS_RELACIONADOS_CON_ML = (
+    "ml",
+    "ml.anomaly",
+    "ml.anomaly.detector",
+    "ui.paginas.actualizacion",
+)
+
+
+def test_el_detector_es_el_de_ml_y_sin_el_extra_no_hay(monkeypatch):
+    """El import perezoso: con el extra `ml`, `ml.anomaly.precios_atipicos`; sin el, `None` y la
+    pagina se importa igual."""
+    import ml.anomaly
+
+    pagina = importlib.import_module("ui.paginas.actualizacion")
+    assert pagina._detector_de_atipicos() is ml.anomaly.precios_atipicos
+
+    with SinExtra(monkeypatch, ("ml",), _MODULOS_RELACIONADOS_CON_ML):
+        sin_ml = importlib.import_module("ui.paginas.actualizacion")
+        assert callable(sin_ml.render)
+        assert sin_ml._detector_de_atipicos() is None

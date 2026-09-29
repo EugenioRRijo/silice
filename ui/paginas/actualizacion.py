@@ -22,6 +22,11 @@ Flujo 2a (INV-090, fase C6): al subir el archivo, la pantalla lista sus insumos 
 elegido por defecto; los elegidos pasan a `crear_lista_desde_archivo`, que los crea con precio solo
 en la lista nueva. El aviso separa los dados de alta, los ignorados (2a) y los rechazados por unidad
 (2b: las filas que la vista previa no ofrece porque su insumo existe con otra unidad).
+
+Paso 5 de UC-07 (INV-099, fase C6): la pantalla pasa a `actualizar_precios` el detector
+`ml.anomaly.precios_atipicos` (import perezoso; sin el extra `ml`, ninguno), y los precios
+atipicos de la lista nueva llegan como hallazgos `ATIPICO` al informe de la version revalorada que
+se muestra.
 """
 
 from __future__ import annotations
@@ -39,7 +44,13 @@ from pandas import DataFrame
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from core.budget import Comparativo, actualizar_precios, descartar_version, exportar_excel
+from core.budget import (
+    Comparativo,
+    DetectorAtipicos,
+    actualizar_precios,
+    descartar_version,
+    exportar_excel,
+)
 from core.catalog import (
     Catalogo,
     PrecioLeido,
@@ -288,6 +299,7 @@ def _actualizar(
         str(parametros["codigo"]),
         resumen.lista,
         str(parametros["codigo_nuevo"]),
+        detectar_atipicos=_detector_de_atipicos(),
     )
     libro = exportar_excel(
         nuevo.presupuesto, nuevo.informe, carpeta / f"presupuesto_{nuevo.presupuesto.codigo}.xlsx"
@@ -336,6 +348,19 @@ def _actualizar(
         rechazados=tuple(_nombrar(d) for d in resumen.desconocidos if d not in ofrecidos),
         dados_de_alta=dados_de_alta,
     )
+
+
+def _detector_de_atipicos() -> DetectorAtipicos | None:
+    """`ml.anomaly.precios_atipicos`, o `None` sin el extra `ml` (UC-07, paso 5).
+
+    Import perezoso, como `ui/composicion.py`: `core` no importa `ml`, y la pantalla funciona sin
+    el extra; sin el, el informe es la auditoria de siempre, sin hallazgos `ATIPICO`.
+    """
+    try:
+        from ml.anomaly import precios_atipicos
+    except ImportError:
+        return None
+    return precios_atipicos
 
 
 def _nombrar(leido: PrecioLeido) -> str:
