@@ -18,11 +18,18 @@ campo que origino este trabajo llama "rendimiento" tanto al consumo de material 
 como a la produccion diaria de la cuadrilla, y ahi es exactamente donde se produce el error. Por eso
 la columna de materiales dice "Consumo por unidad" y el campo de la partida dice "Rendimiento -
 unidades por dia": nunca la misma palabra para las dos cosas.
+
+UC-06, flujo 4a (INV-093, fase C6): con la advertencia de RF-27 a la vista, la pagina ofrece el
+campo de justificacion y, al guardar, la registra con `core.catalog.justificar_rendimiento`, que la
+liga al ultimo rendimiento de la partida. Por eso solo justifica si el guardado registro un
+rendimiento nuevo (cuenta de rendimientos antes y despues); si no, lo avisa y no justifica, porque
+el ultimo seria otro (hallazgo 1 de la revision de requisitos de C6 y N-5 de la de arquitectura).
 """
 
 from __future__ import annotations
 
 from collections.abc import Callable, Sequence
+from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
 from typing import TYPE_CHECKING
@@ -42,6 +49,7 @@ from core.catalog import (
     crear_esquema,
     crear_motor,
     dispersion_rendimientos,
+    justificar_rendimiento,
     proponer_rendimiento,
 )
 from core.contracts import ComposicionAPU, Dominio, ItemComputo, ModalidadManoObra
@@ -106,6 +114,17 @@ CLAVE_MATERIALES = "componer_materiales"
 CLAVE_EQUIPOS = "componer_equipos"
 CLAVE_MANO_OBRA = "componer_mano_obra"
 
+#: Rotulo del campo de UC-06 4a; solo se pinta cuando hay advertencia de rendimiento (RF-27).
+JUSTIFICACION_ETIQUETA = "Justificacion de la advertencia (UC-06, flujo 4a)"
+
+
+@dataclass(frozen=True, slots=True)
+class AdvertenciaRendimiento:
+    """La advertencia de RF-27 que la persona tiene a la vista y lo que escribio para aceptarla."""
+
+    advertencia: str
+    justificacion: str
+
 
 def _presentar(valor: Decimal) -> str:
     """Un `Decimal` como lo presenta el sistema: dos decimales, con la fuente unica (INV-045)."""
@@ -152,7 +171,7 @@ def _pagina(sesion: Session) -> None:
     # se pinta primero, asi que aqui ya se conoce el codigo de esta ejecucion.
     _precargar_tablas(catalogo, codigo)
 
-    rendimiento_texto = _rendimiento(sesion, codigo)
+    rendimiento_texto, advertida = _rendimiento(sesion, codigo)
     condiciones = st.text_area(
         "Condiciones del rendimiento",
         help="Obligatorio (RF-33): el sistema no persiste una composicion cuyo rendimiento no se "
@@ -189,7 +208,7 @@ def _pagina(sesion: Session) -> None:
                 "arriba): corrija las tablas antes de guardar."
             )
         else:
-            _guardar(sesion, catalogo, composicion, dominio, fecha, condiciones)
+            _guardar(sesion, catalogo, composicion, dominio, fecha, condiciones, advertida)
 
     items = _cantidades_de_obra(catalogo)
     _elaborar_presupuesto(catalogo, items)
@@ -241,8 +260,11 @@ def _precargar_tablas(catalogo: Catalogo, codigo: str) -> None:
         st.session_state.pop(clave, None)
 
 
-def _rendimiento(sesion: Session, codigo: str) -> str:
+def _rendimiento(sesion: Session, codigo: str) -> tuple[str, AdvertenciaRendimiento | None]:
     """El campo de rendimiento de la partida: precargado, con su advertencia si corresponde.
+
+    Devuelve el texto tecleado y, si hubo advertencia de RF-27, la advertencia con su
+    justificacion (UC-06, flujo 4a).
 
     `proponer_rendimiento` y `dispersion_rendimientos` exigen que la partida ya exista en el
     catalogo (`Catalogo.partida`, `KeyError` si no); una partida nueva (UC-10) no tiene historial
@@ -271,32 +293,43 @@ def _rendimiento(sesion: Session, codigo: str) -> str:
             "comportamiento correcto, no un error. Declare el rendimiento con sus condiciones."
         )
 
-    _advertir_si_corresponde(dispersion, observados, rendimiento_texto)
-    return rendimiento_texto
+    advertida = _advertir_si_corresponde(dispersion, observados, rendimiento_texto)
+    return rendimiento_texto, advertida
 
 
 def _advertir_si_corresponde(
     dispersion: DispersionRendimiento | None,
     observados: Sequence[Decimal],
     rendimiento_texto: str,
-) -> None:
+) -> AdvertenciaRendimiento | None:
     """RF-27: avisa si el valor tecleado se aparta de lo observado, sin bloquear nunca.
 
     Dos avisos independientes, ninguno bloqueante: el rango observado
     (`core.catalog.advertencia_rendimiento`, Tarea 1) y, cuando hay observaciones suficientes, la
     lectura estadistica de `ml.anomaly` (ayuda 3 de AREN.IA, spec §3.7,
-    `ui.composicion.veredicto_ml_rendimiento`).
+    `ui.composicion.veredicto_ml_rendimiento`). Solo con el primero se pinta el campo de
+    justificacion (UC-06, flujo 4a): es la advertencia que la ERS pide aceptar con un motivo.
     """
     if not rendimiento_texto.strip():
-        return
+        return None
     try:
         valor = decimal_desde_texto(rendimiento_texto, "rendimiento")
     except ComposicionInvalida:
-        return  # el valor todavia no es un decimal valido: nada que advertir aun
+        return None  # el valor todavia no es un decimal valido: nada que advertir aun
 
+    advertida: AdvertenciaRendimiento | None = None
     advertencia = advertencia_rendimiento(dispersion, valor)
     if advertencia:
         st.warning(advertencia)
+        justificacion = st.text_input(
+            JUSTIFICACION_ETIQUETA,
+            help=(
+                "Opcional: el motivo con el que acepta el rendimiento pese a la advertencia. Se "
+                "guarda junto al rendimiento que registre este guardado; la advertencia no "
+                "impide guardar (RF-27)."
+            ),
+        )
+        advertida = AdvertenciaRendimiento(advertencia=advertencia, justificacion=justificacion)
 
     veredicto = veredicto_ml_rendimiento(observados, valor)
     if veredicto is not None and veredicto.atipico:
@@ -305,6 +338,7 @@ def _advertir_si_corresponde(
             f"rendimiento como atipico frente al historico de la partida (puntaje "
             f"{veredicto.puntaje:.3f}); el registro no queda bloqueado por esto."
         )
+    return advertida
 
 
 def _buscador_de_referencia(
@@ -657,21 +691,52 @@ def _guardar(
     dominio: Dominio,
     fecha: date,
     condiciones: str,
+    advertida: AdvertenciaRendimiento | None = None,
 ) -> None:
     """Persiste la composicion con `guardar_composicion` y confirma solo si hubo resultado.
 
     Sobre una partida existente, `motivo_para_no_reemplazar` decide antes de escribir (dentro de
     `guardar_composicion`): si hay motivo, `st.error` y nada se escribe ni se confirma.
+
+    Con `advertida` (UC-06, flujo 4a), la justificacion se registra en la misma transaccion, antes
+    del `commit`, y solo si el guardado registro un rendimiento nuevo: `justificar_rendimiento` la
+    liga al ultimo de la partida, que sin rendimiento nuevo seria otro.
     """
+    codigo = composicion.codigo_partida
+    rendimientos_antes = _cuantos_rendimientos(catalogo, codigo)
     guardado = guardar_composicion(catalogo, composicion, dominio, fecha, condiciones)
     if guardado.resultado is None:
         st.error(guardado.motivo)
         return
+    if advertida is not None:
+        if _cuantos_rendimientos(catalogo, codigo) == rendimientos_antes:
+            st.warning(
+                "El guardado no registro un rendimiento nuevo (el valor y las condiciones son los "
+                "del ultimo estimado): la justificacion no se registro, porque se ligaria a otro "
+                "rendimiento (UC-06, flujo 4a)."
+            )
+        elif advertida.justificacion.strip():
+            justificar_rendimiento(
+                sesion, codigo, advertida.justificacion, advertida.advertencia, fecha
+            )
+        else:
+            st.info(
+                "El rendimiento se guardo con la advertencia y sin justificacion (UC-06, flujo "
+                "4a): la advertencia informa, no impide el registro (RF-27)."
+            )
     sesion.commit()
     st.success(
         f"Composicion guardada para la partida {composicion.codigo_partida}: precio unitario "
         f"{_presentar(guardado.resultado.precio_unitario)}."
     )
+
+
+def _cuantos_rendimientos(catalogo: Catalogo, codigo: str) -> int:
+    """Los rendimientos registrados de la partida; cero si todavia no existe (UC-10)."""
+    try:
+        return len(catalogo.rendimientos(codigo))
+    except KeyError:
+        return 0
 
 
 # ---------------------------------------------------------------------------------------------
