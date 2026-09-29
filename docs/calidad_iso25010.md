@@ -24,8 +24,8 @@ remitía las cifras a la bitácora hasta cerrar la compuerta de la interfaz.
 lugar, [plan_pruebas.md §8](plan_pruebas.md), cuyo resumen enumera los RF que no están en verde y
 la causa de cada uno; aquí no se repite esa lista, para que no vuelva a desincronizarse (INV‑027,
 INV‑032). Lo que se interpreta es su efecto: §8 declara **RF esenciales en estado parcial** y un RF
-deseable (RF‑20, diferencial de UC‑04) **no implementado**, en limitaciones (INV‑011). Dos de esas
-brechas no se cierran dentro del cierre, porque dependen de decisiones fuera de C4: la importación
+deseable (RF‑20, diferencial de UC‑04) **no implementado**, en limitaciones (INV‑011). Desde C5, los RF esenciales parciales son dos,
+RF‑16 y RF‑24 (plan_pruebas §8), y las dos brechas no se cierran dentro del cierre: dependen de decisiones fuera de él. Son la importación
 del presupuesto de un tercero (RF‑24, INV‑076 abierto; ruling C4‑2 de la
 [bitácora del cierre](bitacora/2026-09-23-cierre.md)) y la persistencia de la partida creada desde
 una propuesta (RF‑16, decisión D5 del
