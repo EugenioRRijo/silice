@@ -10,7 +10,7 @@ caso de prueba cita su RF; los enunciados de los RF viven **una sola vez** en
 - **Identificador:** PP‑APU‑001, versión de la Sesión F.2 (2026‑08‑31), actualizada en la fase C4
   del cierre (2026‑09‑28): cifras de la corrida de CI de §10 y matriz por paso de todos los casos
   de uso (§8.1); y en la fase C5 (2026‑09‑28): las matrices de §8 y §8.1 al código que corrige los
-  hallazgos de C5 (las cifras de §10 las sustituye la corrida de la compuerta GC5).
+  hallazgos de C5 (las cifras de §10 las sustituyó la corrida de la compuerta GC5, 2026‑09‑29).
 - **Alcance:** todo el software del repositorio (`core/`, `adapters/`, `ml/`, `api/`, `ui/`,
   `scripts/`) contra los RF‑01…RF‑43 (RF‑32 vacante) y RNF‑01…RNF‑10 de la ERS.
 - **Referencias:** [CLAUDE.md](../CLAUDE.md) (constitución), [ERS.md](ERS.md) (IEEE 830),
@@ -19,8 +19,8 @@ caso de prueba cita su RF; los enunciados de los RF viven **una sola vez** en
 
 ## 2. Elementos de prueba
 
-Versión probada: la de la corrida de CI registrada en §10, commit `e7a0569` (compuerta GC4 del
-cierre), fusionado a prueba con `main` en `ceb6b8e`. Elementos:
+Versión probada: la de la corrida de CI registrada en §10, commit `7545914` (compuerta GC5 del
+cierre), fusionado a prueba con `main` en `503fec6`. Elementos:
 
 | Paquete | Contenido | Nivel de prueba |
 |---|---|---|
@@ -138,8 +138,9 @@ citada en la fila RF‑30 y en la tabla de UC‑08, entró en la fase C4 (INV‑
 y por eso quedaba fuera de la corrida anterior de la sección 10; la de la compuerta GC4, que la
 sustituyó, ya la incluye. Lo mismo vale para las pruebas que entraron en la fase C5 (INV‑087,
 INV‑088, INV‑089, INV‑091, INV‑092, INV‑094, INV‑095 e INV‑096), citadas en esta sección y en §8.1:
-existen en `f629f94` (`uv run pytest --collect-only -q`, 1 037 casos) y pasan en local, pero no en
-la corrida de `e7a0569`; la corrida de la compuerta GC5, que sustituirá a la de §10, las incluye.
+existían en `f629f94` (`uv run pytest --collect-only -q`, 1 037 casos) y pasaban en local, pero
+quedaban fuera de la corrida de `e7a0569`; la de la compuerta GC5, que sustituyó a esa en §10, ya
+las incluye.
 
 Estados: **verde** (una prueba automatizada lo demuestra y pasa en la corrida de §10); **parcial**
 (una parte del criterio tiene prueba y otra no existe; la celda dice cuál); **no implementado** (el
@@ -428,27 +429,27 @@ mensaje en la pantalla), UC‑03 1, UC‑05 3, 4 y 6 y UC‑11 2. En GC4 el tota
 | RNF‑04 usabilidad | juicio de expertos Likert ≥ 4/5, con el protocolo de C4, en la fase Med de [PLAN_CIERRE.md](../PLAN_CIERRE.md) | pendiente (Med) |
 | RNF‑05 núcleo cerrado | `git diff --stat core/` vacío tras I5 y tras cada adaptador; `test_arquitectura.py` verde | cumple |
 | RNF‑06 cobertura | cobertura de `core/` en la corrida de §10 (meta ≥ 80 %, que la CI exige con `--fail-under=80`) | cumple |
-| RNF‑07 portabilidad | `uv sync --locked --all-extras` sin pasos manuales y la suite completa en verde en Linux y en Windows en la corrida de §10 ([36489551508](https://github.com/EugenioRRijo/tesis-apu-multidominio/actions/runs/36489551508)) | cumple |
+| RNF‑07 portabilidad | `uv sync --locked --all-extras` sin pasos manuales y la suite completa en verde en Linux y en Windows en la corrida de §10 ([36520879630](https://github.com/EugenioRRijo/tesis-apu-multidominio/actions/runs/36520879630)) | cumple |
 | RNF‑08 seguridad | inspección: 0 credenciales versionadas, 0 llamadas de red en operación salvo las dos excepciones que declara la ERS: la descarga inicial del modelo (cacheada) y three.js desde `cdnjs.cloudflare.com` en el Visor 3D (INV‑077) | cumple, con las dos excepciones declaradas |
 | RNF‑09 compatibilidad IFC | G1 con salvedad: exacto contra modelo programático; faltan exports de ≥ 2 modeladores | parcial |
 | RNF‑10 aprendizaje de la interfaz | caso con persona CP‑07 ([guion_prueba_arenia.md](guion_prueba_arenia.md)), dos escenarios con personas distintas, bloque B del anexo A | pendiente (GU1b, fase Med) |
 
-## 10. Registro de la ejecución (CI, 2026‑09‑28)
+## 10. Registro de la ejecución (CI, 2026‑09‑29)
 
 **Fuente única de las cifras de la suite y de la cobertura** (INV‑031; la CI es la fuente de verdad
 de las cifras, [metodologia.md §6](metodologia.md#6-gestión-de-configuración)): la corrida
-[36489551508](https://github.com/EugenioRRijo/tesis-apu-multidominio/actions/runs/36489551508)
-del PR #15, sobre el commit `e7a0569` (compuerta GC4 del cierre). La CI prueba la fusión de ese
-commit con la base del PR, `main` en `ceb6b8e` (`08c26ba` en el registro del trabajo). Los
+[36520879630](https://github.com/EugenioRRijo/tesis-apu-multidominio/actions/runs/36520879630)
+del PR #16, sobre el commit `7545914` (compuerta GC5 del cierre). La CI prueba la fusión de ese
+commit con la base del PR, `main` en `503fec6` (`12ac081` en el registro del trabajo). Los
 demás documentos enlazan esta sección y no copian sus cifras.
 
 ```
 calidad (ruff + guardia del nucleo)  ruff: All checks passed!   guardia del nucleo: OK
-pruebas (ubuntu-latest)   945 passed in 102.70s  Python 3.13.13   verificar omitidas: 0 omitidas
-pruebas (windows-latest)  945 passed in 188.20s  Python 3.13.15   verificar omitidas: 0 omitidas
+pruebas (ubuntu-latest)   1045 passed in 115.44s  Python 3.13.13   verificar omitidas: 0 omitidas
+pruebas (windows-latest)  1045 passed in 214.04s  Python 3.13.15   verificar omitidas: 0 omitidas
 ```
 
-Distribución de la suite: **945 casos** recogidos, 739 en `tests/unit/` y 206 en
+Distribución de la suite: **1 045 casos** recogidos, 816 en `tests/unit/` y 229 en
 `tests/integration/`, 0 fallos y 0 omitidos, en las dos plataformas. El reparto por carpeta se lee
 con `uv run pytest --collect-only -q` sobre el mismo commit.
 
@@ -458,11 +459,11 @@ Cobertura, del trabajo `pruebas (ubuntu-latest)` de esa corrida (`coverage.py` c
 
 | Paquete | Sentencias cubiertas | Cobertura publicada | Exacta |
 |---|---|---|---|
-| `core/` | 1 811 / 1 841 | **98 %** | 98,37 % |
+| `core/` | 1 873 / 1 901 | **99 %** | 98,53 % |
 | `ml/` | 173 / 174 | — | 99,43 % |
-| `api/` | 471 / 497 | — | 94,77 % |
-| `adapters/` | 474 / 521 | — | 90,98 % |
-| **Total medido** | 2 929 / 3 033 | **97 %** | 96,57 % |
+| `api/` | 512 / 528 | — | 96,97 % |
+| `adapters/` | 565 / 609 | — | 92,78 % |
+| **Total medido** | 3 123 / 3 212 | **97 %** | 97,23 % |
 
 La CI publica el porcentaje de `core/` en el paso «Cobertura de core >= 80 % (RNF-06)»
 (`coverage report --include="core/*" --fail-under=80`) y el total en la tabla de la suite; los de
@@ -473,5 +474,8 @@ Registros anteriores, que esta sección sustituye: 385 casos en F.2 y 392 y 395 
 UC‑08 (los tres del 2026‑08‑31, locales), 479 en la Sesión M4.1 del sprint multidominio
 (2026‑09‑14, local, con `core/` al 98,10 %), 926 en la corrida
 [36427904452](https://github.com/EugenioRRijo/tesis-apu-multidominio/actions/runs/36427904452)
-del cierre de C3 (2026‑09‑28, PR #14, commit `308eca5`) y 945 en esta corrida. La evaluación de
+del cierre de C3 (2026‑09‑28, PR #14, commit `308eca5`), 945 en la corrida
+[36489551508](https://github.com/EugenioRRijo/tesis-apu-multidominio/actions/runs/36489551508)
+de la compuerta GC4 (2026‑09‑28, PR #15, commit `e7a0569`, con `core/` al 98,37 %) y 1 045 en esta
+corrida. La evaluación de
 calidad sobre estos resultados está en [calidad_iso25010.md](calidad_iso25010.md).
