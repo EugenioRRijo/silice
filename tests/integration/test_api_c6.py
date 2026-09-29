@@ -233,3 +233,66 @@ def test_un_alta_invalida_es_422_sin_escribir_nada(
     assert r.status_code == 422
     assert fragmento in r.json()["detalle"]
     assert (_contar(sesion, models.Insumo), _contar(sesion, models.ListaPrecios)) == antes
+
+
+# ---------------------------------------------------------------------------------------------
+# INV-086 (UC-01 1): crear el proyecto
+# ---------------------------------------------------------------------------------------------
+
+PROYECTO_NUEVO = "Ampliacion del drenaje"
+
+
+def test_crear_proyecto_y_elaborar_sobre_el(cliente, sesion, items_payload):
+    cuerpo_presupuesto = {
+        "codigo": "C6-001",
+        "fecha": "2026-04-28",
+        "moneda": linea_base.MONEDA,
+        "proyecto": PROYECTO_NUEVO,
+        "items": items_payload,
+    }
+    assert cliente.post("/presupuestos", json=cuerpo_presupuesto).status_code == 404
+
+    r = cliente.post(
+        "/proyectos",
+        json={"nombre": PROYECTO_NUEVO, "descripcion": "segunda etapa", "dominio": "civil"},
+    )
+
+    assert r.status_code == 201
+    assert r.json() == {
+        "nombre": PROYECTO_NUEVO,
+        "descripcion": "segunda etapa",
+        "dominio": "civil",
+    }
+    creado = cliente.post("/presupuestos", json=cuerpo_presupuesto)
+    assert creado.status_code == 201
+    assert creado.json()["total"] == str(linea_base.TOTAL_PRESUPUESTO_AUDITADO)
+    modelo = sesion.scalars(
+        select(models.Presupuesto).where(models.Presupuesto.codigo == "C6-001")
+    ).one()
+    assert modelo.proyecto.nombre == PROYECTO_NUEVO
+
+
+def test_crear_proyecto_sin_dominio_ni_descripcion(cliente):
+    r = cliente.post("/proyectos", json={"nombre": "Solo el nombre"})
+    assert r.status_code == 201
+    assert r.json() == {"nombre": "Solo el nombre", "descripcion": "", "dominio": ""}
+
+
+@pytest.mark.parametrize(
+    ("cuerpo", "fragmento"),
+    [
+        ({"nombre": PROYECTO_NUEVO}, "ya existe"),
+        ({"nombre": "   "}, "vacio"),
+        ({"nombre": "Otro", "dominio": "naval"}, "naval"),
+    ],
+    ids=["repetido", "vacio", "dominio-desconocido"],
+)
+def test_un_proyecto_invalido_es_422_sin_crear_nada(cliente, sesion, cuerpo, fragmento):
+    assert cliente.post("/proyectos", json={"nombre": PROYECTO_NUEVO}).status_code == 201
+    antes = _contar(sesion, models.Proyecto)
+
+    r = cliente.post("/proyectos", json=cuerpo)
+
+    assert r.status_code == 422
+    assert fragmento in r.json()["detalle"]
+    assert _contar(sesion, models.Proyecto) == antes

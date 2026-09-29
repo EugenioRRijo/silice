@@ -96,6 +96,26 @@ class CambioRespuesta(BaseModel):
     fecha: date
 
 
+class ProyectoPeticion(BaseModel):
+    """UC-01, paso 1: el proyecto que agrupara los presupuestos. `nombre` es unico y no vacio;
+    `dominio`, si se indica, es uno de `core.contracts.Dominio` (civil, telecom, industrial,
+    sistemas)."""
+
+    nombre: str
+    descripcion: str = ""
+    dominio: str = ""
+
+
+class ProyectoRespuesta(BaseModel):
+    """El proyecto creado, tal como quedo guardado."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    nombre: str
+    descripcion: str
+    dominio: str
+
+
 class ItemComputoPeticion(BaseModel):
     """Un `ItemComputo` tal como lo envía el cliente: cantidad y parámetros como texto."""
 

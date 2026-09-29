@@ -43,6 +43,8 @@ from api.esquemas import (
     PresupuestoPeticion,
     PresupuestoResumenRespuesta,
     PropuestaPartidaRespuesta,
+    ProyectoPeticion,
+    ProyectoRespuesta,
     RendimientoPorDeclararRespuesta,
     RendimientosPorDeclararRespuesta,
     decimal_desde_texto,
@@ -57,6 +59,7 @@ from core.budget import (
     cargar_elaboracion,
     cargar_presupuesto,
     comparar_por_partida,
+    crear_proyecto,
     elaborar,
     exportar_excel,
     generar_escenario,
@@ -74,6 +77,21 @@ from ml.normalization import propuestas_para
 router = APIRouter(tags=["presupuestos"])
 
 _CAMPOS_PARAMETROS = ("fcas", "bono_alimentacion", "administracion", "utilidad")
+
+
+@router.post("/proyectos", response_model=ProyectoRespuesta, status_code=status.HTTP_201_CREATED)
+def crear_proyecto_de_presupuestos(
+    sesion: SesionDep, peticion: ProyectoPeticion
+) -> ProyectoRespuesta:
+    """UC-01, paso 1 (INV-086): crea el proyecto sobre el que luego se elabora
+    (`POST /presupuestos`) y confirma la transaccion.
+
+    La validacion es de `core.budget.crear_proyecto`: un nombre vacio o repetido, o un dominio que
+    no es de `Dominio`, es 422 sin crear nada. La interfaz no crea proyectos: solo esta ruta.
+    """
+    proyecto = crear_proyecto(sesion, peticion.nombre, peticion.descripcion, peticion.dominio)
+    sesion.commit()
+    return ProyectoRespuesta.model_validate(proyecto)
 
 
 @router.post(
