@@ -193,3 +193,49 @@ con ella las altas, y debe decirlo. La API recibe descripciones: las traduce con
 `insumos_desconocidos` (una descripción que no está en la vista previa es 422) y responde
 `dados_de_alta` con `insumo.codigo` o `insumo.descripcion`. Para R, los rechazados del 2b son
 `ResumenLista.desconocidos` menos la vista previa.
+
+## C6.3 INV-086: crear el proyecto de los presupuestos
+
+**Problema.** UC‑01, paso 1 (`docs/ERS.md:141`): «El proyectista crea el proyecto y selecciona la
+fuente de cantidades y su dominio». Crear el proyecto no existe en ninguna capa: `POST /presupuestos`
+exige un proyecto ya sembrado (`api/rutas/presupuestos.py:102-106`, `LookupError` si no existe) y el
+único que crea filas de `proyecto` es la siembra (`scripts/seed.py:83-116`, y los sembradores de los
+otros dominios). La matriz por paso lo marca parcial (`docs/plan_pruebas.md`, UC‑01 1; inventario,
+INV‑086).
+
+**Diseño.** Un solo commit de `core/`, asunto `feat(budget): crear el proyecto de los presupuestos`,
+con sus pruebas en `tests/integration/test_proyectos.py`:
+
+- `core/budget/persistencia.py`: `crear_proyecto(session, nombre, descripcion="", dominio="") ->
+  models.Proyecto`, junto a `guardar_presupuesto` (:67-153), porque el proyecto es la cabecera del
+  presupuesto que ese módulo persiste (`models.Proyecto`, `core/models/entidades.py:250-263`).
+  Normaliza el nombre (`strip`); `ValueError` si queda vacío, si ya existe un proyecto con ese nombre
+  (la columna es única, :256, y chocar en el `flush` daría un `IntegrityError` que la API no sabe
+  traducir) o si `dominio` no es vacío ni un valor de `core.contracts.Dominio` (el dominio se guarda
+  como texto, `str(Dominio.CIVIL)` como en la siembra, :91-95). Hace `flush`, no `commit`, como
+  `guardar_presupuesto`.
+- `core/budget/__init__.py`: exporta `crear_proyecto`.
+
+**Alternativa descartada.** Crear el proyecto implícitamente en `POST /presupuestos` cuando no
+existe. Cambiaría «Elaborar un presupuesto» y la ruta por donde pasan CP‑07 y el indicador 3, que
+Med mide (spec §10, enmienda de C6), y un error de tipeo en el nombre crearía un proyecto nuevo en
+silencio en vez de responder 404. También se descartó ponerla en `core/catalog`: el proyecto no es
+catálogo (partidas, insumos, precios), es la cabecera del documento que persiste `core/budget`.
+
+**Por qué ningún contrato cambia.** `core/contracts/` no tiene tipo de proyecto: es una entidad de
+persistencia (`models.Proyecto`) y la función devuelve el modelo, como `guardar_presupuesto`.
+
+**Línea base.** Intacta: la siembra sigue creando su proyecto por su cuenta y ninguna ruta de
+elaboración cambia.
+
+**Pruebas previstas** (`tests/integration/test_proyectos.py`, base en memoria):
+
+1. Crear un proyecto nuevo: queda con su nombre (sin espacios sobrantes), descripción y dominio, y
+   `guardar_presupuesto` guarda sobre él el presupuesto de la línea base.
+2. Nombre repetido (el de la siembra) o vacío, y dominio desconocido: `ValueError`, sin fila nueva.
+
+La mordida prevista: quitar la comprobación del nombre existente (la prueba 2 recibe un
+`IntegrityError`).
+
+**Para la pista A.** `POST /proyectos` llama a `crear_proyecto` y confirma; el duplicado y el
+dominio desconocido son `ValueError` (422 por `api/main.py:47-50`).
