@@ -118,8 +118,10 @@ aplicación sigue arrancando en el Inicio).
 demás se operan por otra capa (la correspondencia completa entre caso de uso y capa está en la
 [ERS §3.1](ERS.md)). UC‑04, recalcular las cantidades ante un cambio de dimensiones, existe en el
 adaptador civil (`adapters/civil/recalculo.py`) y no tiene pantalla ni ruta de la API. UC‑05 se ve
-en el informe de auditoría que acompaña a todo presupuesto elaborado (sección 4), pero la
-importación del presupuesto de un tercero para auditarlo (RF‑24) todavía no existe (INV‑076).
+en el informe de auditoría que acompaña a todo presupuesto elaborado (sección 4). El presupuesto
+de un tercero se importa solo por la API, sin pantalla (RF‑24, desde la fase C6; sección 3.4 bis).
+UC‑01 también tiene un paso por la API: `POST /proyectos` crea el proyecto sobre el que luego se
+elabora o se importa (la interfaz no crea proyectos).
 Los rendimientos medidos de UC‑06 se registran por la API (sección 3.4), y las métricas y el
 contraste completo de UC‑07 se generan con un script (sección 3.5); de los dos, la pantalla
 **Componer una partida** ofrece una parte como ayudas: propone el rendimiento del histórico,
@@ -232,10 +234,28 @@ un presupuesto** propone también el rendimiento del histórico cuando a una par
 2. Cargarla en la página: el sistema valida el archivo (si falta una columna o un precio no es
    un número, lo dice con archivo y fila), detecta qué insumos cambiaron y recalcula **todos**
    los APU afectados sin editar ninguna composición.
+
+   **Dar de alta insumos desconocidos (UC‑02, flujo 2a).** Si el archivo trae insumos que el
+   catálogo no conoce con ninguna unidad, al subirlo la pantalla avisa cuántos son y los nombra, y
+   el campo **Dar de alta** los ofrece, **con ninguno elegido**. Elija antes de revalorar los que
+   quiera crear: cada uno recibe un código nuevo (`MAT-NNN`, `EQU-NNN` o `MO-NNN`) y su precio entra
+   **solo en la lista nueva**. Los demás se ignoran y no intervienen en el recálculo. Las filas
+   cuyo insumo ya está con otra unidad no se ofrecen (flujo 2b: se rechazan). Límites: si elige
+   dos filas del mismo insumo con precios distintos, el sistema lo rechaza y no escribe nada; y
+   dos materiales con la misma descripción y unidades distintas se ofrecen los dos y, si se eligen
+   ambos, quedan dos insumos homónimos con distinta unidad. Si el archivo o el caso no se pueden
+   leer, el campo no aparece y el motivo sale al pulsar **Revalorar presupuesto**.
 3. Revisar el **comparativo** (precio unitario antes/después por partida, incidencia en el
    total) y el informe de auditoría de la versión nueva. Si algún insumo cambió de precio, la
    versión nueva ya quedó guardada con el código de la barra lateral; si ninguno cambió, no se
-   guarda nada (UC‑02, flujo 3a). Cada cambio queda en el histórico con precio anterior, nuevo,
+   guarda nada (UC‑02, flujo 3a; en ese caso **tampoco se guardan las altas elegidas**, porque un
+   alta no es un cambio de precio: la página lo dice y las nombra). Debajo salen **tres avisos
+   separados**: los insumos *dados de alta*, los *ignorados* (flujo 2a) y los *rechazados*
+   (flujo 2b, otra unidad). El informe de la versión nueva puede traer hallazgos `ATIPICO`
+   (ADVERTENCIA): precios de la lista nueva que se apartan del histórico de variaciones y que usa
+   alguna partida del presupuesto. Solo aparecen si está instalado el extra `ml` y el histórico
+   tiene al menos 8 variaciones; en otro caso no se marca ninguno y la pantalla no avisa de que no
+   se evaluaron. Cada cambio queda en el histórico con precio anterior, nuevo,
    variación y fecha. Los ítems pendientes del presupuesto base (UC‑01 3a) pasan a la versión
    nueva como pendientes, aunque la lista nueva traiga su partida, y el informe los vuelve a
    declarar: valorarlos es UC‑01 (sección 3.1), no UC‑02.
@@ -274,6 +294,22 @@ Se registran por la API (`POST /ejecuciones` y las rutas de rendimientos): un re
 rechaza. Al consultar una partida, el sistema devuelve su histórico con dispersión (número de
 observaciones, media, mínimo, máximo) y propone el valor más defendible. Si el valor introducido
 se aparta del comportamiento observado, el sistema **advierte pero no impide** el registro.
+`POST /partidas/{codigo}/rendimientos` acepta además el campo opcional `justificacion` (UC‑06,
+flujo 4a): con advertencia, se registra ligada al rendimiento de esa misma petición y la respuesta
+la devuelve; sin advertencia se ignora y la respuesta trae `justificacion: null`; con advertencia y
+en blanco, responde 422 y no registra nada. Ninguna ruta ni pantalla la consulta después.
+
+### 3.4 bis Importar el presupuesto de un tercero (UC‑05, RF‑24)
+
+Solo por la API, sin pantalla: primero crear el proyecto (`POST /proyectos`, con `nombre`,
+`descripcion` y `dominio` opcionales) y luego `POST /presupuestos/importar` con el libro XLSX y el
+nombre del proyecto. El libro lleva las hojas `Datos`, `Presupuesto`, `APU`, `Insumos` y, opcional,
+`Curva` (formato en el [manual técnico §9](manual_tecnico.md)). El sistema lo **valora con su motor**
+sobre los APU del archivo (no lee los precios unitarios del autor), audita siempre las siete
+reglas conservando las unidades que escribió el autor y guarda el presupuesto con su informe; el
+informe y el libro salen por `GET /presupuestos/{codigo}/informe` y `…/excel`. Si algo falla no
+queda nada escrito. Efecto que conviene saber: los APU del tercero quedan en el catálogo y la lista
+«Importada: <archivo>» pasa a ser la lista vigente desde la fecha del presupuesto.
 
 ### 3.5 Contraste con el mercado (UC‑07)
 
@@ -345,6 +381,14 @@ a paso con resultados esperados está el [guion de prueba manual](guion_prueba_a
    **Condiciones del rendimiento** son **obligatorias** (RF‑33): un rendimiento sin decir en qué
    condiciones se obtuvo (tipo de suelo, cuadrilla, equipo…) no es verificable, y el botón de
    guardar permanece deshabilitado hasta que se escriban.
+
+   **Justificación de la advertencia (UC‑06, flujo 4a).** Cuando el rendimiento escrito se sale del
+   rango observado y aparece la advertencia, se pinta debajo el campo **Justificacion de la
+   advertencia (UC-06, flujo 4a)**, opcional. Si se escribe, se registra al guardar **ligada al
+   rendimiento que registra ese guardado** y el aviso de éxito lo dice; si se deja en blanco, el
+   rendimiento se guarda igual y se informa (la advertencia no impide). Si el guardado no registra
+   un rendimiento nuevo (mismo valor y condiciones que el último estimado), la justificación no se
+   registra y se avisa. El campo no aparece con el aviso del bosque de aislamiento (ayuda 3) solo.
 4. **Desglose en vivo.** Mientras se escribe, la página recalcula materiales, equipos, mano de
    obra, costo directo, costo con administración y **precio unitario**, con la misma fórmula del
    resto del sistema. Si una fila está incompleta o mal escrita, un aviso dice en qué tabla, qué
@@ -419,6 +463,10 @@ Tres detalles de la tabla de reglas evaluadas:
   paso 4) no es una de las siete reglas: lo declara la elaboración. Con pendientes, la suma de la
   tabla de reglas es menor que el «Hallazgos: N» de la cabecera, y la diferencia son exactamente
   los `PENDIENTE`, que sí están en la tabla de hallazgos.
+- **Los `ATIPICO` tampoco se enumeran, y no cambian el veredicto.** El informe de una versión
+  revalorada (sección 3.2) puede traer hallazgos `ATIPICO`, de severidad ADVERTENCIA: precios de la
+  lista nueva atípicos frente al histórico. Como los `PENDIENTE`, no son una de las siete reglas: no
+  cuentan en «Reglas evaluadas», sí en el «Hallazgos: N» de la cabecera y en la tabla de hallazgos.
 - Las cuentas incluyen los hallazgos informativos, no solo los errores.
 
 **La columna Partida.** La partida de cada hallazgo la declara la regla que lo emitió; no se
@@ -472,6 +520,13 @@ Cada carpeta trae su `README.md` con el formato exacto de columnas.
 | La UI no encuentra datos | El caso abierto no tiene partidas: en **Inicio**, **Cargar el caso de demostracion**, o sembrar como en el paso 1 de la sección 2 |
 | «Partidas similares» tarda la primera vez | Descarga única del modelo de lenguaje; después queda en caché |
 | Un rendimiento medido se rechaza | Falta la referencia a la ejecución: es una invariante, no un error |
+| Error «… precios distintos» al dar de alta en **Actualizar precios** (o 422 en `POST /listas-precios`) | Dos filas elegidas son el mismo insumo con precios distintos: dejar una sola o corregir el archivo. Nada se escribió |
+| «Dar de alta» no aparece al subir la lista | El caso aún no existe, el archivo o la base no se pueden leer, o no hay insumos desconocidos; el motivo, si lo hay, sale al pulsar **Revalorar presupuesto** |
+| 422 «justificacion … no puede estar vacia» en `POST /partidas/{codigo}/rendimientos` | Con advertencia, la justificación vino en blanco: enviar texto o no enviar el campo. El rendimiento no se registró |
+| 404 en `POST /presupuestos/importar` | El proyecto no existe: crearlo con `POST /proyectos` |
+| 422 en `POST /presupuestos/importar` | El archivo no es un libro XLSX legible o le faltan hojas, columnas o claves (el mensaje nombra archivo, hoja y fila); un código de partida ya está en el catálogo; el código de presupuesto ya existe en el proyecto; o la moneda no es exactamente la de la lista vigente. No quedó nada escrito |
+| 422 en `POST /proyectos` | Nombre vacío o repetido, o un dominio distinto de civil, telecom, industrial o sistemas |
+| 500 en `POST /presupuestos/{codigo}/actualizacion` con una lista que carga bien | Dos listas con el mismo nombre (por ejemplo, al cargar dos veces el archivo para ver los desconocidos): el nombre debe ser único |
 | «Guardar composicion» no se puede pulsar | Faltan las condiciones del rendimiento (RF‑33): escribirlas |
 | «no hay ninguna lista de precios vigente» al guardar | La base está vacía o la fecha es anterior a toda lista: sembrar con `scripts/seed_demo.py` o cambiar la fecha |
 | La barra lateral no muestra el caso esperado bajo «Caso abierto» | Abrirlo en **Inicio** (*Archivo del caso (SQLite)* y *Abrir este caso*) o arrancar con `ARENIA_CASO=<ruta>`: recargar la página (F5) vuelve a la ruta de `ARENIA_CASO` o, sin ella, a `data/apu.db` |
