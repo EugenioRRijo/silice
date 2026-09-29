@@ -23,21 +23,21 @@ remitía las cifras a la bitácora hasta cerrar la compuerta de la interfaz.
 **Completitud funcional.** La ERS declara 42 RF (RF‑32 vacante). Su estado vive en un solo
 lugar, [plan_pruebas.md §8](plan_pruebas.md), cuyo resumen enumera los RF que no están en verde y
 la causa de cada uno; aquí no se repite esa lista, para que no vuelva a desincronizarse (INV‑027,
-INV‑032). Lo que se interpreta es su efecto: §8 declara **RF esenciales en estado parcial** y un RF
-deseable (RF‑20, diferencial de UC‑04) **no implementado**, en limitaciones (INV‑011). Desde C5, los RF esenciales parciales son dos,
-RF‑16 y RF‑24 (plan_pruebas §8), y las dos brechas no se cierran dentro del cierre: dependen de decisiones fuera de él. Son la importación
-del presupuesto de un tercero (RF‑24, INV‑076 abierto; ruling C4‑2 de la
-[bitácora del cierre](bitacora/2026-09-23-cierre.md)) y la persistencia de la partida creada desde
-una propuesta (RF‑16, decisión D5 del
-[dossier G0](dossier_g0.md#d5-flujo-de-creación-de-partidas-rf16-y-familia), pendiente del tutor).
+INV‑032). Lo que se interpreta es su efecto: §8 declara **un RF esencial en estado parcial** y un RF
+deseable (RF‑20, diferencial de UC‑04) **no implementado**, en limitaciones (INV‑011). Desde C6, el
+único RF esencial parcial es RF‑16 (plan_pruebas §8): la persistencia de la partida creada desde
+una propuesta depende de la decisión D5 del
+[dossier G0](dossier_g0.md#d5-flujo-de-creación-de-partidas-rf16-y-familia), pendiente del tutor,
+y no se cierra dentro del cierre. RF‑24, la importación del presupuesto de un tercero, pasó a verde
+en la fase C6 (INV‑076).
 
 **Qué capa realiza cada caso de uso.** No todos los casos de uso tienen pantalla; la
 correspondencia la declara la [ERS §3.1](ERS.md) (INV‑030) y el
 [manual de usuario §3](manual_usuario.md) dice por dónde se opera cada uno. UC‑04 vive solo en el
 adaptador civil (`adapters/civil/recalculo.py`), sin pantalla ni ruta; los rendimientos medidos de
 UC‑06 se registran solo por la API, y las métricas de UC‑07, con un script (la pantalla «Componer
-una partida» ofrece parte de los dos como ayudas); la importación de UC‑05 no existe en ninguna
-capa (RF‑24). UC‑08 está cableado en las tres capas: `core.budget.generar_escenario`, la ruta
+una partida» ofrece parte de los dos como ayudas); la importación de UC‑05 (RF‑24) solo existe por la
+API, `POST /presupuestos/importar`, desde C6. UC‑08 está cableado en las tres capas: `core.budget.generar_escenario`, la ruta
 `POST /presupuestos/{codigo}/escenarios` y la página «Escenarios de sensibilidad» (INV‑085).
 
 **Corrección funcional (RNF‑01).** El presupuesto de la línea base corregida se reproduce con
@@ -51,7 +51,7 @@ prueba de aceptación crítica del trabajo se cumple: **7 de 7 inconsistencias d
 CLAUDE.md §2): `elaborar()` no tiene un modo sin auditoría.
 
 **Veredicto: parcial.** La corrección y la pertinencia cumplen; la completitud no, porque
-[plan_pruebas.md §8](plan_pruebas.md) declara RF esenciales parciales y un deseable sin
+[plan_pruebas.md §8](plan_pruebas.md) declara un RF esencial parcial (RF‑16) y un deseable sin
 implementar. La versión
 anterior de este párrafo decía «cumple, con los tres RF no esenciales declarados arriba», pero
 arriba solo se declaraba RF‑16, que es esencial (INV‑067).
@@ -189,7 +189,7 @@ p. ej. Revit y Bonsai) sigue abierta; la alternativa tabular documentada existe 
 
 | Característica | Meta de la ERS | Resultado | Veredicto |
 |---|---|---|---|
-| Adecuación funcional | clase 3 AACE; RF cubiertos | desviación 0,00 %; 7 de 7; RF esenciales parciales y RF‑20 no implementado (cuáles y por qué: [plan_pruebas.md §8](plan_pruebas.md)) | parcial |
+| Adecuación funcional | clase 3 AACE; RF cubiertos | desviación 0,00 %; 7 de 7; RF‑16 parcial y RF‑20 no implementado (cuáles y por qué: [plan_pruebas.md §8](plan_pruebas.md)) | parcial |
 | Fiabilidad | reproducibilidad 100 % | comparación exacta en verde; suite en verde, 0 omitidas ([plan_pruebas.md §10](plan_pruebas.md)) | cumple |
 | Eficiencia de desempeño | < 5 s con ≤ 100 partidas | **1,17 s** con 100 partidas | cumple |
 | Usabilidad | RNF‑04 Likert ≥ 4/5 sobre el informe; RNF‑10 CP‑07 sin ayuda en ≤ 20 min, bloque B ≥ 4,0 y ningún ítem < 3 | RNF‑04: por medir en Med ([protocolo_rnf04.md](protocolo_rnf04.md)); RNF‑10: CP‑07 por ejecutar (GU1b, Med) | pendiente |
