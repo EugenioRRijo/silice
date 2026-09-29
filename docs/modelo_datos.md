@@ -2,7 +2,8 @@
 
 > Estado: **completo, pendiente de revisión del tutor (compuerta G0,
 > [docs/metodologia.md §2.2](metodologia.md#22-compuertas))**. Redactado en la Sesión 0.2 y
-> contrastado con `core/models/entidades.py` en la fase C4 del cierre (2026‑09‑28). Materializa en
+> contrastado con `core/models/entidades.py` en la fase C4 del cierre (2026‑09‑28); en la fase C6
+> (2026‑09‑29) gana la tabla aditiva `justificacion_rendimiento` (INV‑093). Materializa en
 > persistencia los contratos de interfaz de [CLAUDE.md §5](../CLAUDE.md) sin ampliarlos ni
 > contradecirlos. Los modelos SQLAlchemy de
 > `core/models/` (Sesión I0.4) se escriben a partir de este documento y no lo preceden: si el código
@@ -22,7 +23,7 @@
 
 ## 2. Entidades
 
-Dieciséis entidades. Los atributos de cada una se detallan en §2.1 – §2.3, con su tipo lógico y el papel
+Diecisiete entidades. Los atributos de cada una se detallan en §2.1 – §2.3, con su tipo lógico y el papel
 de la clave (**PK** primaria, **FK** foránea, **UK** única); `DecimalExacto` (§7.1) se abrevia
 `Decimal` en esas tablas.
 
@@ -37,6 +38,7 @@ de la clave (**PK** primaria, **FK** foránea, **UK** única); `DecimalExacto` (
 | `Insumo` | material, equipo o mano de obra del catálogo | `LineaMaterial` / `LineaEquipo` / `LineaManoObra` (catálogo) |
 | `ComposicionAPU` | relación partida–insumo con cantidad y factor de depreciación | `ComposicionAPU` (líneas) |
 | `Rendimiento` | valor, tipo, condiciones, fecha, referencia a ejecución | `Rendimiento` |
+| `JustificacionRendimiento` | justificación con que el proyectista acepta la advertencia de RF‑27 sobre un rendimiento (UC‑06, flujo 4a) | — |
 | `Ejecucion` | obra ejecutada de la que se mide un rendimiento | `Rendimiento.referencia_ejecucion` |
 | `ListaPrecios` | conjunto de precios con fecha de vigencia y moneda | — |
 | `PrecioInsumo` | precio de un insumo en una lista | precio de `LineaMaterial` / `LineaEquipo` / sueldo de `LineaManoObra` |
@@ -102,6 +104,26 @@ antes de decidir si reutiliza un insumo o crea una variante.
 `contracts.Rendimiento.__post_init__`, escrita también en el esquema para que ningún camino de
 carga (script, importación masiva, SQL directo) pueda saltársela.
 
+**`JustificacionRendimiento`** — la justificación con que el proyectista acepta la advertencia de
+RF‑27 (UC‑06, flujo 4a; `docs/ERS.md`, UC‑06 4a). Se liga al rendimiento que registró el guardado o
+la petición que trajo la advertencia (`core.catalog.justificar_rendimiento`, que toma el último
+rendimiento de la partida, el de mayor `id`), no a la composición.
+
+| Atributo | Tipo | Clave | Nulo | Notas |
+|---|---|---|---|---|
+| `rendimiento_id` | int | PK, FK → `Rendimiento.id` | no | `ondelete="CASCADE"`: borrar el rendimiento (o su partida) borra su justificación |
+| `texto` | texto | — | no | la justificación; no vacía (lo valida `justificar_rendimiento`) |
+| `advertencia` | texto | — | no | el texto de la advertencia aceptada, para leerla sin reconstruir la dispersión de ese momento |
+| `fecha` | date | — | no | fecha del registro |
+
+Como la clave primaria es la foránea, un rendimiento tiene a lo sumo una justificación (una
+segunda da `ValueError`). La relación se declara solo del lado nuevo (`JustificacionRendimiento.rendimiento`,
+sin `back_populates`), así que `Rendimiento` y sus consultas no cambian. La tabla es **aditiva**,
+como `DescarteVersion` (§2.2): `crear_esquema` (`create_all`) la agrega a una base anterior a C6 sin
+`ALTER TABLE` y sin tocar las demás tablas ni sus filas (expediente C6.1 de
+`docs/bitacora/2026-09-29-C6-expedientes.md`). Ninguna ruta ni pantalla la lee después de
+registrarla.
+
 **`Ejecucion`** — obra ejecutada de la que se mide un rendimiento.
 
 | Atributo | Tipo | Clave | Nulo | Notas |
@@ -125,6 +147,14 @@ presupuesto la referencia** (§5).
 | `moneda` | str(10) | — | no | `USD` |
 | `fecha_vigencia` | date | — | no | indexada: `lista_vigente(fecha)` busca el máximo ≤ fecha |
 | `origen` | str(200) | — | no | procedencia documental: `APUS_CLINICA.pdf`, boletín, cotización |
+
+Desde C6 (INV‑076), importar el presupuesto de un tercero (UC‑05) crea la lista «Importada:
+<archivo>», con `origen` = el nombre del archivo, la moneda del presupuesto y `fecha_vigencia` = su
+fecha, que **copia los precios de la lista vigente a esa fecha** (si la hay) y valora los APU del
+tercero. Como `lista_vigente` toma la de mayor `fecha_vigencia` y, a igual fecha, la de mayor `id`,
+la importada pasa a ser la **vigente desde su fecha** para todo el caso: la heredan lo que se
+elabore o componga después y la próxima lista que se cargue. Los importes no cambian, porque la
+copia es exacta; la procedencia sí (limitación declarada en la ERS, postcondición de UC‑05).
 
 **`PrecioInsumo`** — el precio de un insumo en una lista. Para la mano de obra, el jornal diario.
 
@@ -264,11 +294,11 @@ migración de esquema.
 |---|---|---|---|---|
 | `id` | int | PK | no | |
 | `presupuesto_id` | int | FK → `Presupuesto.id` | no | |
-| `regla` | str(10) | — | no | `R1`…`R7`, o `PENDIENTE` (`core.budget.CODIGO_PENDIENTE`) para un ítem sin partida en el catálogo (UC‑01 3a) |
+| `regla` | str(10) | — | no | `R1`…`R7`, o `PENDIENTE` (`core.budget.CODIGO_PENDIENTE`) para un ítem sin partida en el catálogo (UC‑01 3a), o `ATIPICO` (`core.budget.CODIGO_ATIPICO`, desde C6) para un precio atípico de la lista nueva en el informe de una versión revalorada (UC‑07 5) |
 | `severidad` | int | — | no | valor de `Severidad` (IntEnum) |
 | `descripcion` | str(500) | — | no | |
 | `impacto` | Decimal | — | sí | monto o cantidad afectada |
-| `origen_ids` | texto JSON | — | no | lista de identificadores que resuelve `InformeAuditoria.partida_de`: `origen_id` en R1, R3, R4, R5 y R7; **códigos de partida** en R6, y el par `(codigo_partida, origen_id)` en `PENDIENTE` (`core.budget.presupuesto._clave_pendiente`); `[]` si la regla no señala cantidades. Desde C5 (INV‑095) la partida de un hallazgo de R1, R3, R4, R5 o R7 la declara la regla al emitirlo (`InformeAuditoria.partida_por_hallazgo`), no se deduce de su primer origen: un `origen_id` compartido por varias partidas ya no se atribuye a la primera. Esa atribución **no se persiste** (la tabla no cambia): la recarga (`cargar_elaboracion`) reaudita y la vuelve a calcular ([arquitectura §6.1](arquitectura.md#61-deuda-arquitectónica-declarada)) |
+| `origen_ids` | texto JSON | — | no | lista de identificadores que resuelve `InformeAuditoria.partida_de`: `origen_id` en R1, R3, R4, R5 y R7; **códigos de partida** en R6 y en `ATIPICO` (las partidas del presupuesto que usan el insumo; convención de C6, no `origen_id` de ítems), y el par `(codigo_partida, origen_id)` en `PENDIENTE` (`core.budget.presupuesto._clave_pendiente`); `[]` si la regla no señala cantidades. Desde C5 (INV‑095) la partida de un hallazgo de R1, R3, R4, R5 o R7 la declara la regla al emitirlo (`InformeAuditoria.partida_por_hallazgo`), no se deduce de su primer origen: un `origen_id` compartido por varias partidas ya no se atribuye a la primera. Esa atribución **no se persiste** (la tabla no cambia): la recarga (`cargar_elaboracion`) reaudita y la vuelve a calcular ([arquitectura §6.1](arquitectura.md#61-deuda-arquitectónica-declarada)) |
 | `valor_observado` | Decimal | — | sí | |
 | `valor_esperado` | Decimal | — | sí | |
 
@@ -278,6 +308,10 @@ declaró cada regla (`partida_por_hallazgo`, INV‑095). El informe recargado la
 atribuye porque la recarga reaudita con `REGLAS`; la tabla guarda solo los hallazgos, que no
 cambiaron de forma. Un presupuesto sin hallazgos no deja ninguna fila `Hallazgo`: que se
 verificaron las siete reglas lo dice el informe al recargarlo, no la base.
+
+Los `ATIPICO` de C6 (INV‑099) sí se guardan como filas de `Hallazgo`, sin columna nueva: la
+reauditoría no los puede recalcular (el detector no está en el núcleo), así que `cargar_elaboracion`
+los lee de la tabla y los vuelve a declarar.
 
 ## 3. Diagrama entidad‑relación
 
@@ -372,6 +406,12 @@ erDiagram
         date fecha
         string condiciones
     }
+    JUSTIFICACION_RENDIMIENTO {
+        int rendimiento_id PK, FK
+        string texto
+        string advertencia
+        date fecha
+    }
     EJECUCION {
         int id PK
         int proyecto_id FK
@@ -439,6 +479,7 @@ erDiagram
     PARTIDA ||--o{ PARTIDA_PRESUPUESTADA : "se presupuesta en"
     PARTIDA ||--o{ COMPOSICION_APU : "se desglosa en"
     PARTIDA ||--o{ RENDIMIENTO : "rinde segun"
+    RENDIMIENTO ||--o| JUSTIFICACION_RENDIMIENTO : "se justifica en"
     PARTIDA ||--o{ INCIDENCIA_CAMBIO : "se encarece en"
     INSUMO ||--o{ COMPOSICION_APU : participa
     INSUMO ||--o{ PRECIO_INSUMO : "cotiza en"
@@ -458,12 +499,13 @@ Cardinalidades en palabras:
   un `ItemComputo` del presupuesto sin renglón es un ítem pendiente (UC‑01 3a). El «a lo sumo un
   renglón por ítem» (`ITEM_COMPUTO ||--o| PARTIDA_PRESUPUESTADA`) es regla de negocio, **no la impone
   el esquema**: `partida_presupuestada.item_computo_id` no lleva `UNIQUE`
-  (`core/models/entidades.py:352`). La garantiza la persistencia: `guardar_presupuesto` crea un
+  (`core/models/entidades.py:373`). La garantiza la persistencia: `guardar_presupuesto` crea un
   `ItemComputo` nuevo por cada renglón y uno por cada pendiente, sin reutilizar ninguno
-  (`core/budget/persistencia.py:117-126`).
+  (`core/budget/persistencia.py:156-165`).
 - Una partida se desglosa en una o más líneas de composición; cada línea referencia un insumo.
 - Un insumo cotiza a lo sumo una vez por lista (`UNIQUE (lista_id, insumo_id)`).
 - Una partida tiene cero o más rendimientos; un rendimiento medido pertenece a una ejecución.
+- Un rendimiento tiene a lo sumo una justificación (`JustificacionRendimiento`, UC‑06 4a).
 - Un cambio de precio repercute en cero o más partidas (`IncidenciaCambio`).
 - Un presupuesto tiene a lo sumo una marca de descarte (`DescarteVersion`, UC‑02 7a).
 
@@ -471,13 +513,13 @@ Cobertura de los once casos de uso (UC‑09 está vacante):
 
 | UC | Entidades que lo sostienen |
 |---|---|
-| UC‑01 Elaborar presupuesto | `ItemComputo` (los pendientes, sin renglón), `Partida`, `ComposicionAPU`, `Rendimiento`, `ListaPrecios`, `PrecioInsumo`, `Presupuesto`, `PartidaPresupuestada`, `PuntoCurva`, `Hallazgo` (el `PENDIENTE` de 3a) |
-| UC‑02 Actualizar precios | `ListaPrecios`, `PrecioInsumo`, `CambioPrecio`, `IncidenciaCambio`, `DescarteVersion` (flujo 7a) |
+| UC‑01 Elaborar presupuesto | `Proyecto` (paso 1, `POST /proyectos` desde C6), `ItemComputo` (los pendientes, sin renglón), `Partida`, `ComposicionAPU`, `Rendimiento`, `ListaPrecios`, `PrecioInsumo`, `Presupuesto`, `PartidaPresupuestada`, `PuntoCurva`, `Hallazgo` (el `PENDIENTE` de 3a) |
+| UC‑02 Actualizar precios | `ListaPrecios`, `PrecioInsumo`, `CambioPrecio`, `IncidenciaCambio`, `DescarteVersion` (flujo 7a), `Insumo` (los dados de alta del flujo 2a, C6) |
 | UC‑03 Reutilizar partidas | `Partida.descripcion` (índice), `ComposicionAPU`, `Insumo` |
 | UC‑04 Recalcular alcance | `ItemComputo.regla`, `ItemComputo.parametros` |
-| UC‑05 Auditar | `Hallazgo`, `ItemComputo.origen_id`, `PartidaPresupuestada`, `PuntoCurva` |
-| UC‑06 Rendimientos reales | `Rendimiento`, `Ejecucion` |
-| UC‑07 Precio de mercado | `PartidaPresupuestada.precio_unitario`, `PrecioInsumo`, `CambioPrecio` |
+| UC‑05 Auditar | `Hallazgo`, `ItemComputo.origen_id`, `PartidaPresupuestada`, `PuntoCurva`; al importar el archivo de un tercero (C6), además `Partida`, `Insumo`, `ComposicionAPU`, `Rendimiento` (los APU del tercero) y la `ListaPrecios` «Importada» con sus `PrecioInsumo` |
+| UC‑06 Rendimientos reales | `Rendimiento`, `Ejecucion`, `JustificacionRendimiento` (flujo 4a, C6) |
+| UC‑07 Precio de mercado | `PartidaPresupuestada.precio_unitario`, `PrecioInsumo`, `CambioPrecio`, `Hallazgo` (el `ATIPICO` de la versión revalorada, paso 5, C6) |
 | UC‑08 Sensibilidad | parámetros congelados en `Presupuesto` + `ComposicionAPU`; el escenario no se persiste |
 | UC‑10 Componer una partida | `Partida`, `Insumo` (y sus variantes, §6), `ComposicionAPU` (con `modalidad`), `PrecioInsumo` de la lista vigente, `Rendimiento` estimado con sus `condiciones` |
 | UC‑11 Editar una partida compuesta | `ComposicionAPU` (las líneas se reemplazan), `Rendimiento` (si cambió, se agrega uno nuevo y el anterior queda en el histórico de la partida) |
