@@ -16,7 +16,7 @@ necesita el plan secuencial pasa `plan=plan_secuencial`, sin armar un borrador p
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date
 
 from core.budget.curva import PeriodoPlan, con_curva, generar_curva
@@ -136,8 +136,11 @@ def _declarar_pendientes(
     identidad `codigo -> codigo`, como hace R6 (`core.verification.informe._indice_de_partidas`).
     Así `partida_de` lo atribuye a la partida pendiente aunque su `origen_id` lo comparta un ítem
     valorado de otra partida (el adaptador civil tabular da la misma fila `T-01` al concreto, al
-    encofrado y a la excavación), porque en el índice del informe ese origen ya apunta a esa otra
-    partida.
+    encofrado y a la excavación). El `origen_id` del pendiente **no** entra al índice: nadie lo
+    necesita (el hallazgo se resuelve por su código) y, como el índice del informe ya no registra
+    un origen que citan dos partidas valoradas (INV‑095), la entrada del pendiente ocuparía ese
+    hueco y una regla que no declara su partida y cita ese origen se atribuiría al pendiente, que
+    es justo la conjetura que el índice evita (M‑1 de la revisión de C5).
     """
     if not pendientes:
         return informe
@@ -155,11 +158,12 @@ def _declarar_pendientes(
         )
         for item in pendientes
     )
-    return InformeAuditoria(
-        codigo_presupuesto=informe.codigo_presupuesto,
+    # `replace` y no un informe nuevo campo por campo: así se conservan las reglas evaluadas y la
+    # partida que cada regla declaró (INV‑092 e INV‑095, expediente C5.2), y lo que el informe gane.
+    return replace(
+        informe,
         hallazgos=informe.hallazgos + declarados,
         partida_por_origen={
-            **{item.origen_id: item.codigo_partida for item in pendientes},
             **{item.codigo_partida: item.codigo_partida for item in pendientes},
             **informe.partida_por_origen,
         },

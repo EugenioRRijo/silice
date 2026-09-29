@@ -39,7 +39,7 @@ from core.catalog import (
     crear_motor,
 )
 from core.contracts.verificacion import Severidad
-from core.verification import auditar
+from core.verification import REGLAS, auditar
 from scripts.seed import NOMBRE_PROYECTO, sembrar
 from tests.fixtures import apu_linea_base as linea_base
 from tests.fixtures.base_con_pendiente import PENDIENTE_T99 as PENDIENTE
@@ -245,3 +245,18 @@ def test_un_presupuesto_guardado_sin_pendientes_no_los_inventa(tmp_path, reabier
     assert recargado.pendientes == ()
     assert recargado.informe == auditar(presupuesto)
     assert CODIGO_PENDIENTE not in {h.regla for h in recargado.informe.hallazgos}
+
+
+def test_la_recarga_con_pendientes_enumera_las_reglas_evaluadas(tmp_path, reabierta):
+    """INV‑092 (ARQ‑3 de GC4): la recarga declara los pendientes con `_declarar_pendientes`, que no
+    debe perder las reglas que corrió la reauditoría. La base no las guarda: las da `REGLAS`."""
+    _emitir(tmp_path, [*items_auditados(), PENDIENTE])
+
+    with reabierta() as sesion:
+        recargado = cargar_elaboracion(sesion, NOMBRE_PROYECTO, CODIGO, Catalogo(sesion))
+
+    assert recargado.pendientes == (PENDIENTE,)
+    markdown = recargado.informe.a_markdown()
+    for regla in REGLAS:
+        cuenta = sum(1 for h in recargado.informe.hallazgos if h.regla == regla.codigo)
+        assert f"| {regla.codigo} | {regla.nombre} | {cuenta} |" in markdown

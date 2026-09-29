@@ -35,7 +35,8 @@ from core.budget.curva import PlanInvalido
 from core.contracts.apu import ComposicionAPU, LineaManoObra, ModalidadManoObra, ParametrosCosto
 from core.contracts.dominio import Dominio
 from core.contracts.item_computo import ItemComputo, OrigenTipo
-from core.contracts.verificacion import Severidad
+from core.contracts.verificacion import Hallazgo, Severidad
+from core.verification import REGLAS
 from core.verification.directivas import codigos_en_etiqueta
 from core.verification.informe import InformeAuditoria
 from tests.fixtures import apu_linea_base as linea_base
@@ -391,7 +392,9 @@ def test_exportar_excel_escribe_cuatro_hojas(tmp_path):
     total_escrito = Decimal(str(hoja.cell(row=hoja.max_row, column=hoja.max_column).value))
     assert abs(total_escrito - linea_base.TOTAL_PRESUPUESTO_AUDITADO) <= TOLERANCIA
     assert libro["Curva"].max_row == len(resultado.presupuesto.curva) + 1
-    assert libro["Auditoria"].max_row == len(resultado.informe.hallazgos) + 1
+    # Columna A y no `max_row`: el bloque de reglas evaluadas (G–I) tiene sus propias filas.
+    auditoria = [c for (c,) in libro["Auditoria"].iter_rows(max_col=1, values_only=True) if c]
+    assert len(auditoria) == len(resultado.informe.hallazgos) + 1
 
 
 def test_hoja_apu_muestra_la_modalidad_de_mano_de_obra(tmp_path):
@@ -448,3 +451,102 @@ def test_hoja_apu_muestra_la_modalidad_de_mano_de_obra(tmp_path):
     # (2 obreros x 3 = 1 destajista x 6), pero por razones distintas segun la modalidad.
     assert fila_jornal[-1] == Decimal("6.00")
     assert fila_destajo[-1] == Decimal("6.00")
+
+
+# ---------------------------------------------------------------------------------------------
+# Reglas evaluadas y atribución con pendientes (INV‑092 e INV‑095, expedientes C5.1 y C5.2)
+# ---------------------------------------------------------------------------------------------
+
+
+def test_la_elaboracion_con_pendientes_conserva_las_reglas_evaluadas_y_la_atribucion():
+    """`_declarar_pendientes` no pierde lo que el informe ya sabía (ARQ‑3 de GC4).
+
+    La muestra civil sin composición de concreto: el pendiente comparte la fila `T-01` con el
+    encofrado y la excavación, y el R3 de la tubería (fila `Z-01`, que también da la excavación)
+    solo se atribuye bien si sobrevive la declaración de la regla.
+    """
+    items = AdaptadorCivilTabular(codigos=CODIGOS_CIVIL).extraer(MUESTRA_CIVIL)
+    composiciones = composiciones_linea_base()
+    del composiciones[linea_base.APU_CONCRETO.codigo_partida]
+
+    resultado = elaborar(
+        items,
+        composiciones,
+        linea_base.PARAMETROS_LINEA_BASE,
+        codigo=linea_base.CODIGO_PRESUPUESTO,
+        fecha=linea_base.FECHA_LINEA_BASE,
+        plan=plan_secuencial,
+    )
+
+    assert resultado.pendientes
+    informe = resultado.informe
+    markdown = informe.a_markdown()
+    for regla in REGLAS:
+        assert f"| {regla.codigo} | {regla.nombre} |" in markdown
+    assert f"| {CODIGO_PENDIENTE} |" not in markdown.split("## Hallazgos")[0]
+    (r3,) = informe.por_regla()["R3"]
+    assert informe.partida_de(r3) == linea_base.APU_TUBERIA.codigo_partida
+
+
+def test_la_hoja_de_auditoria_enumera_las_reglas_evaluadas(tmp_path):
+    resultado = elaborar(
+        items_auditados(),
+        composiciones_linea_base(),
+        linea_base.PARAMETROS_LINEA_BASE,
+        codigo=linea_base.CODIGO_PRESUPUESTO,
+        fecha=linea_base.FECHA_LINEA_BASE,
+        plan=_plan_auditado(),
+    )
+    ruta = exportar_excel(resultado.presupuesto, resultado.informe, tmp_path / "reglas.xlsx")
+
+    hoja = load_workbook(ruta)["Auditoria"]
+    bloque = [
+        fila
+        for fila in hoja.iter_rows(min_col=7, max_col=9, values_only=True)
+        if any(celda is not None for celda in fila)
+    ]
+    assert bloque, "la hoja de auditoria no enumera las reglas evaluadas"
+    assert bloque[0] == ("Regla evaluada", "Nombre", "Hallazgos")
+    assert bloque[1:] == [
+        (
+            regla.codigo,
+            regla.nombre,
+            sum(1 for hallazgo in resultado.informe.hallazgos if hallazgo.regla == regla.codigo),
+        )
+        for regla in REGLAS
+    ]
+    # La tabla de hallazgos (columna A) sigue con una fila por hallazgo, más el encabezado.
+    tabla = [fila for (fila,) in hoja.iter_rows(max_col=1, values_only=True) if fila is not None]
+    assert len(tabla) == len(resultado.informe.hallazgos) + 1
+
+
+def test_el_origen_de_un_pendiente_no_atribuye_a_una_regla_que_no_declara_su_partida():
+    """M‑1 de la revisión de C5: la fila `T-01` da encofrado y excavación (valorados) y concreto
+    (pendiente, sin composición). Un hallazgo que no declara su partida y cita `T-01` (el de una
+    regla ajena al núcleo) no tiene forma de saber cuál de las dos valoradas es: el informe no lo
+    atribuye, y tampoco a la partida pendiente por ocupar el hueco del índice."""
+    items = AdaptadorCivilTabular(codigos=CODIGOS_CIVIL).extraer(MUESTRA_CIVIL)
+    concreto = linea_base.APU_CONCRETO.codigo_partida
+    composiciones = composiciones_linea_base()
+    del composiciones[concreto]
+
+    resultado = elaborar(
+        items,
+        composiciones,
+        linea_base.PARAMETROS_LINEA_BASE,
+        codigo=linea_base.CODIGO_PRESUPUESTO,
+        fecha=linea_base.FECHA_LINEA_BASE,
+        plan=plan_secuencial,
+    )
+
+    (pendiente,) = resultado.pendientes
+    assert pendiente.codigo_partida == concreto
+    ajeno = Hallazgo(
+        regla="X1",
+        severidad=Severidad.INFO,
+        descripcion="cita la fila del pendiente",
+        origen_ids=(pendiente.origen_id,),
+    )
+    assert resultado.informe.partida_de(ajeno) is None
+    (declarado,) = resultado.informe.por_regla()[CODIGO_PENDIENTE]
+    assert resultado.informe.partida_de(declarado) == concreto
