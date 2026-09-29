@@ -38,6 +38,7 @@ escribe con `--db`; con `--db` hacia otra ruta basta `--reiniciar`.
 | `simular_lista.py` | lista de precios determinista (por semilla) a partir de la vigente del catálogo, para pruebas de UC‑02 | UC‑02 |
 | `simular_corpus.py` | corpus simulado y determinista de composiciones APU | P4.3 · prototipo |
 | `medir_rnf03.py` | mide RNF‑03: el tiempo del recálculo masivo de UC‑02 con N partidas en SQLite local | RNF‑03 |
+| `probar_precios_maprex.py` | prueba los casos didácticos con precios de referencia publicados (MaPreX de julio de 2026 y tabulador CIV): cobertura del listado MaPreX en USD, revaloración del presupuesto 001 civil y de TC‑001/TC‑002, comprobación de MNT‑001 y SIS‑001; siempre en un directorio temporal, sin `--db` (con `--extra ml` marca los precios atípicos) | C6 · todos |
 
 ## Artefactos reproducibles
 
