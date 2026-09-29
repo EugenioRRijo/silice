@@ -11,7 +11,9 @@ El `Presupuesto` devuelto lleva la instantánea, no el recálculo: es lo que se 
 Los ítems **pendientes** de UC‑01 3a (sin partida en el catálogo) se guardan como ítems de cómputo
 del presupuesto sin renglón, y `cargar_elaboracion` los vuelve a declarar en el informe recargado,
 que así es el del documento emitido (INV‑080, expediente C3.1 de
-`docs/bitacora/2026-09-24-C3-expedientes.md`).
+`docs/bitacora/2026-09-24-C3-expedientes.md`). Lo mismo con los precios **atípicos** que declaró
+una revaloración (`CODIGO_ATIPICO`, UC‑07 paso 5, expediente C6.5): la reauditoría no los puede
+recalcular (el detector no está en el núcleo), así que se leen de los hallazgos guardados.
 
 `core/catalog/mapeo.py` es el único lugar donde se cruza la frontera modelo↔contrato **del
 catálogo**; este módulo es el único donde se cruza la del **presupuesto**. Los modelos se usan
@@ -38,9 +40,11 @@ from core import models
 # que redactan el hallazgo `PENDIENTE` y su clave: la recarga y la comprobación al guardar usan la
 # misma única definición que la elaboración (mismo criterio de `actualizacion.py` con `_buscar`).
 from core.budget.presupuesto import (
+    CODIGO_ATIPICO,
     CODIGO_PENDIENTE,
     ResultadoElaboracion,
     _clave_pendiente,
+    _declarar_atipicos,
     _declarar_pendientes,
 )
 from core.catalog import Catalogo
@@ -48,6 +52,7 @@ from core.contracts.apu import ParametrosCosto, ResultadoAPU
 from core.contracts.dominio import Dominio
 from core.contracts.item_computo import ItemComputo, OrigenTipo
 from core.contracts.presupuesto import PartidaPresupuestada, Presupuesto, PuntoCurva
+from core.contracts.verificacion import Hallazgo, Severidad
 from core.costing import calcular_apu
 from core.verification import auditar
 from core.verification.directivas import CLAVE_UNIDAD_ORIGINAL
@@ -230,16 +235,44 @@ def cargar_elaboracion(
     pendientes declarados otra vez, como en `elaborar` (UC‑01 3a): así el informe recargado es el
     emitido y no puede declarar CUMPLE un presupuesto emitido NO CUMPLE (RF‑02, INV‑080).
 
+    Los hallazgos `CODIGO_ATIPICO` guardados (los declaró la revaloración que emitió esta
+    versión, UC‑07 paso 5) se vuelven a declarar tal cual: la reauditoría no puede recalcularlos.
+
     Límite: un presupuesto guardado antes de INV‑080 no tiene sus pendientes persistidos y su
     recarga no los inventa: su informe es `auditar(cargar_presupuesto(...))` (expediente C3.1).
     """
     modelo = _buscar(session, proyecto_nombre, codigo)
     presupuesto = _presupuesto_de(modelo, catalogo)
     pendientes = _cargar_pendientes(session, modelo)
+    informe = _declarar_pendientes(auditar(presupuesto), pendientes)
     return ResultadoElaboracion(
         presupuesto=presupuesto,
-        informe=_declarar_pendientes(auditar(presupuesto), pendientes),
+        informe=_declarar_atipicos(informe, _cargar_atipicos(session, modelo)),
         pendientes=pendientes,
+    )
+
+
+def _cargar_atipicos(session: Session, modelo: models.Presupuesto) -> tuple[Hallazgo, ...]:
+    """Los hallazgos `CODIGO_ATIPICO` guardados del presupuesto, en el orden en que se guardaron."""
+    filas = session.scalars(
+        select(models.Hallazgo)
+        .where(
+            models.Hallazgo.presupuesto_id == modelo.id,
+            models.Hallazgo.regla == CODIGO_ATIPICO,
+        )
+        .order_by(models.Hallazgo.id)
+    )
+    return tuple(
+        Hallazgo(
+            regla=fila.regla,
+            severidad=Severidad(fila.severidad),
+            descripcion=fila.descripcion,
+            impacto=fila.impacto,
+            origen_ids=tuple(json.loads(fila.origen_ids)),
+            valor_observado=fila.valor_observado,
+            valor_esperado=fila.valor_esperado,
+        )
+        for fila in filas
     )
 
 

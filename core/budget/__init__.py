@@ -53,20 +53,26 @@ from core.budget.persistencia import (
     guardar_presupuesto,
 )
 from core.budget.presupuesto import (
+    CODIGO_ATIPICO,
     CODIGO_PENDIENTE,
+    DetectorAtipicos,
     GeneradorPlan,
+    MarcaAtipica,
     ResultadoElaboracion,
     elaborar,
     generar_presupuesto,
 )
 
 __all__ = [
+    "CODIGO_ATIPICO",
     "CODIGO_PENDIENTE",
     "COLUMNAS_COMPARATIVO",
     "COLUMNAS_ESCENARIOS",
     "Comparativo",
+    "DetectorAtipicos",
     "Escenario",
     "GeneradorPlan",
+    "MarcaAtipica",
     "PeriodoPlan",
     "PlanInvalido",
     "PresupuestoImportado",

@@ -18,6 +18,8 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, replace
 from datetime import date
+from decimal import Decimal
+from typing import Protocol
 
 from core.budget.curva import PeriodoPlan, con_curva, generar_curva
 from core.contracts.apu import ComposicionAPU, ParametrosCosto
@@ -30,8 +32,11 @@ from core.verification.informe import InformeAuditoria
 from core.verification.texto import formatear_decimal
 
 __all__ = [
+    "CODIGO_ATIPICO",
     "CODIGO_PENDIENTE",
+    "DetectorAtipicos",
     "GeneradorPlan",
+    "MarcaAtipica",
     "ResultadoElaboracion",
     "elaborar",
     "exigir_composiciones",
@@ -44,6 +49,33 @@ MONEDA_POR_DEFECTO = "USD"
 #: de las siete reglas de CLAUDE.md §7: lo emite la elaboración, que es quien sabe qué ítems no pudo
 #: valorar, y viaja en el mismo informe para que nadie reciba el presupuesto sin esa declaración.
 CODIGO_PENDIENTE = "PENDIENTE"
+
+#: Código con que el informe de una versión revalorada declara un precio atípico de su lista nueva
+#: (UC‑07, paso 5; expediente C6.5). Tampoco es una de las siete reglas: lo emite la revaloración,
+#: que es quien tiene la lista nueva y el detector, con severidad ADVERTENCIA.
+CODIGO_ATIPICO = "ATIPICO"
+
+
+class MarcaAtipica(Protocol):
+    """Una variación de precio marcada como atípica por un detector ajeno al núcleo.
+
+    `id` es el de su `CambioPrecio` (como texto), `valor` su variación y `puntaje` el del detector
+    (más negativo, más anómalo). `ml.anomaly.PrecioAtipico` lo cumple sin que `core/` lo importe.
+    """
+
+    @property
+    def id(self) -> str: ...
+
+    @property
+    def valor(self) -> Decimal: ...
+
+    @property
+    def puntaje(self) -> float: ...
+
+
+#: El detector de atípicos que recibe la revaloración: el histórico `{id del cambio: variación}` en
+#: la entrada y las marcas en la salida, la forma de `ml.anomaly.precios_atipicos`.
+DetectorAtipicos = Callable[[Mapping[str, Decimal]], Sequence[MarcaAtipica]]
 
 #: Un plan de trabajo que se calcula sobre el presupuesto ya valorado (p. ej. `plan_secuencial`).
 GeneradorPlan = Callable[[Presupuesto], Sequence[PeriodoPlan]]
@@ -166,6 +198,32 @@ def _declarar_pendientes(
         partida_por_origen={
             **{item.codigo_partida: item.codigo_partida for item in pendientes},
             **informe.partida_por_origen,
+        },
+    )
+
+
+def _declarar_atipicos(
+    informe: InformeAuditoria, hallazgos: Sequence[Hallazgo]
+) -> InformeAuditoria:
+    """El mismo informe con los hallazgos `CODIGO_ATIPICO` de una revaloración (UC‑07, paso 5).
+
+    Cada hallazgo cita, en `origen_ids`, los códigos de las partidas del presupuesto que usan el
+    insumo cuyo precio es atípico. Se atribuye a su partida si cita una sola, y a ninguna (`None`)
+    si cita varias: el informe no elige una por su cuenta (INV‑095). Única definición de esa
+    atribución: la usan `actualizar_precios` al revalorar y `cargar_elaboracion` al recargar.
+    `replace`, como `_declarar_pendientes`, para no perder lo que el informe ya lleva.
+    """
+    if not hallazgos:
+        return informe
+    return replace(
+        informe,
+        hallazgos=informe.hallazgos + tuple(hallazgos),
+        partida_por_hallazgo={
+            **informe.partida_por_hallazgo,
+            **{
+                hallazgo: hallazgo.origen_ids[0] if len(hallazgo.origen_ids) == 1 else None
+                for hallazgo in hallazgos
+            },
         },
     )
 

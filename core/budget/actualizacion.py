@@ -10,6 +10,10 @@ Además persiste las dos tablas del histórico de UC‑02: `CambioPrecio` (qué 
 en `core.catalog.precios`) e `IncidenciaCambio` (qué le hizo ese cambio al precio unitario de cada
 partida del presupuesto). Ese registro es el que alimentará al módulo predictivo de la Sesión I6.
 
+Con un detector de atípicos (`detectar_atipicos`, UC‑07 paso 5; expediente C6.5), los cambios de
+la lista nueva que se apartan del histórico de variaciones entran al informe de la versión nueva
+como hallazgos `CODIGO_ATIPICO`. El detector llega como argumento: `core/` no importa `ml/`.
+
 El `Comparativo` es la salida para el usuario: una fila por renglón con su precio unitario antes y
 después, y la incidencia de cada partida en la variación del total. Sus celdas son `Decimal`
 —el `DataFrame` es de tipo `object`, nunca `float`— porque un comparativo de precios que redondea
@@ -19,7 +23,7 @@ al pasar por pandas deja de cuadrar con el presupuesto que compara (CLAUDE.md §
 from __future__ import annotations
 
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date
 from decimal import Decimal
 
@@ -42,15 +46,23 @@ from core.budget.persistencia import (
     cargar_presupuesto,
     guardar_presupuesto,
 )
+
+# `_declarar_atipicos` es ayudante del módulo hermano: la única definición de cómo el informe
+# atribuye un atípico, que comparte con la recarga de `persistencia.py`.
 from core.budget.presupuesto import (
+    CODIGO_ATIPICO,
+    DetectorAtipicos,
     GeneradorPlan,
     ResultadoElaboracion,
+    _declarar_atipicos,
     elaborar,
     exigir_composiciones,
 )
 from core.catalog import Catalogo
-from core.catalog.precios import registrar_cambios, variacion_relativa
+from core.catalog.precios import cambios_precio, registrar_cambios, variacion_relativa
 from core.contracts.presupuesto import PartidaPresupuestada, Presupuesto
+from core.contracts.verificacion import Hallazgo, Severidad
+from core.verification.texto import formatear_decimal
 
 __all__ = ["COLUMNAS_COMPARATIVO", "Comparativo", "actualizar_precios", "descartar_version"]
 
@@ -116,6 +128,7 @@ def actualizar_precios(
     lista_nueva: models.ListaPrecios,
     codigo_nuevo: str,
     plan: Sequence[PeriodoPlan] | GeneradorPlan | None = None,
+    detectar_atipicos: DetectorAtipicos | None = None,
 ) -> tuple[ResultadoElaboracion, Comparativo]:
     """Revalora un presupuesto con `lista_nueva` y lo guarda como versión `codigo_nuevo`.
 
@@ -142,6 +155,15 @@ def actualizar_precios(
     cambiaron insumos pero ninguno participa de este presupuesto, `variacion` también da cero,
     pero el cambio es real y su historial (`CambioPrecio`, `IncidenciaCambio`) debe quedar
     registrado igual.
+
+    `detectar_atipicos` (UC‑07, paso 5) recibe el histórico completo de variaciones
+    `{id del CambioPrecio: variación}`, ya con los cambios de esta lista, y devuelve las marcas
+    atípicas (`ml.anomaly.precios_atipicos` tiene esa forma). De las marcas se toman solo las de
+    los cambios de **esta** lista que tocan alguna partida del presupuesto; cada una entra al
+    informe de la versión nueva como un hallazgo `CODIGO_ATIPICO` de severidad ADVERTENCIA, que se
+    guarda con él. Sin detector (`None`), el informe es la auditoría de siempre. Por eso el
+    historial se registra **antes** de guardar la versión nueva: `registrar_cambios` es
+    idempotente y solo hace `flush`.
     """
     modelo = _buscar(session, proyecto_nombre, codigo_presupuesto)
     parametros = _parametros_de(modelo)
@@ -164,6 +186,10 @@ def actualizar_precios(
         moneda=anterior.moneda,
         plan=plan,
     )
+    cambios = registrar_cambios(session, lista_anterior, lista_nueva)
+    if detectar_atipicos is not None:
+        atipicos = _hallazgos_atipicos(session, cambios, nuevo.presupuesto, detectar_atipicos)
+        nuevo = replace(nuevo, informe=_declarar_atipicos(nuevo.informe, atipicos))
     guardar_presupuesto(
         session,
         nuevo.presupuesto,
@@ -174,7 +200,6 @@ def actualizar_precios(
         pendientes=nuevo.pendientes,
     )
 
-    cambios = registrar_cambios(session, lista_anterior, lista_nueva)
     _registrar_incidencias(session, cambios, anterior, nuevo.presupuesto)
     return nuevo, _comparar(anterior, nuevo.presupuesto, len(cambios))
 
@@ -211,6 +236,54 @@ def descartar_version(
     session.add(marca)
     session.flush()
     return marca
+
+
+# ---------------------------------------------------------------------------------------------
+# Precios atípicos de la lista nueva (UC‑07, paso 5)
+# ---------------------------------------------------------------------------------------------
+
+
+def _hallazgos_atipicos(
+    session: Session,
+    cambios: Sequence[models.CambioPrecio],
+    nuevo: Presupuesto,
+    detectar: DetectorAtipicos,
+) -> list[Hallazgo]:
+    """Un hallazgo `CODIGO_ATIPICO` por cambio de esta lista que el detector marca y que toca
+    alguna partida del presupuesto; las marcas de otros cambios del histórico no son de él."""
+    if not cambios:
+        return []
+    historico = {str(cambio.id): cambio.variacion for cambio in cambios_precio(session)}
+    de_esta_lista = {str(cambio.id): cambio for cambio in cambios}
+    marcas = [marca for marca in detectar(historico) if marca.id in de_esta_lista]
+    if not marcas:
+        return []
+    codigos = list(dict.fromkeys(partida.item.codigo_partida for partida in nuevo.partidas))
+    partidas = _partidas_por_insumo(
+        session, [de_esta_lista[marca.id].insumo_id for marca in marcas], codigos
+    )
+    hallazgos: list[Hallazgo] = []
+    for marca in marcas:
+        cambio = de_esta_lista[marca.id]
+        usan = partidas.get(cambio.insumo_id, ())
+        if not usan:
+            continue
+        hallazgos.append(
+            Hallazgo(
+                regla=CODIGO_ATIPICO,
+                severidad=Severidad.ADVERTENCIA,
+                descripcion=(
+                    f"el precio de {cambio.insumo.descripcion} paso de "
+                    f"{formatear_decimal(cambio.precio_anterior)} a "
+                    f"{formatear_decimal(cambio.precio_nuevo)} "
+                    f"({cambio.variacion * CIEN:+.2f} %): se aparta del historico de variaciones "
+                    f"de precio (detector de atipicos, puntaje {marca.puntaje:.3f}; RF-29)"
+                ),
+                origen_ids=tuple(partida.codigo for partida in usan),
+                valor_observado=cambio.variacion,
+            )
+        )
+    return hallazgos
 
 
 # ---------------------------------------------------------------------------------------------
