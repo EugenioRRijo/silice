@@ -278,7 +278,9 @@ def _elaborar(
                     sesion, items, parametros["fecha"]
                 )
                 if not por_declarar:
-                    raise  # falta otra cosa (la lista de precios vigente): el mensaje de siempre
+                    # Falta un precio, una unidad o una depreciacion: el mensaje de siempre. La
+                    # falta de lista vigente no llega aqui: la lanza `rendimientos_por_declarar`.
+                    raise
                 # UC-01 3b: el bloque «Rendimientos por declarar» toma el relevo del mensaje.
                 st.session_state[CLAVE_RENDIMIENTOS] = por_declarar
                 st.session_state[CLAVE_RESULTADO] = None
