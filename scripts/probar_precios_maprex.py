@@ -1196,6 +1196,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     with tempfile.TemporaryDirectory(prefix="probar_maprex_") as temporal:
         resultado = probar(Path(temporal), _detector_ml())
     texto = informe_markdown(resultado)
+    # En Windows, stdout redirigido usa la pagina de codigos local: las tablas son UTF-8.
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")
     print(texto)
     if argumentos.salida is not None:
         argumentos.salida.write_text(texto, encoding="utf-8")
