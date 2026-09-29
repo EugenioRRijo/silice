@@ -271,6 +271,46 @@ def test_sin_cambios_de_precio_las_altas_tampoco_se_guardan(monkeypatch, tmp_pat
 
 
 # ---------------------------------------------------------------------------------------------
+# La vista previa no escribe ni revienta (U-2 / Q-1 de la revision de U)
+# ---------------------------------------------------------------------------------------------
+
+#: Sin la columna obligatoria `precio`: el nucleo lo rechaza con un `ValueError`.
+LISTA_MAL_FORMADA = "tipo,insumo,unidad\nmaterial,Cemento blanco,saco\n"
+
+
+def test_un_archivo_mal_formado_no_ofrece_nada_y_el_error_sale_al_revalorar(monkeypatch, tmp_path):
+    """Subir un archivo ilegible no da traza ni ofrece altas; al revalorar sale el mensaje del
+    nucleo como error de la pagina y no se escribe nada."""
+    base = _base(tmp_path)
+    listas_antes = _contar(base, models.ListaPrecios)
+    pagina = importlib.import_module("ui.paginas.actualizacion")
+
+    at = _abrir(monkeypatch, base, LISTA_MAL_FORMADA.encode())  # afirma: sin excepcion
+
+    assert not [m for m in at.multiselect if m.label == ROTULO_ALTA]
+    assert "El archivo trae" not in _textos(at.info)
+    assert not at.error, "la vista previa no informa: el error sale al revalorar"
+    _revalorar(at)
+    assert "precio" in _textos(at.error)
+    assert at.session_state[pagina.CLAVE_RESULTADO] is None
+    assert _contar(base, models.ListaPrecios) == listas_antes
+
+
+def test_con_un_caso_inexistente_la_vista_previa_no_crea_la_base(monkeypatch, tmp_path):
+    """La vista previa corre en cada rerun al subir el archivo: sobre un caso que aun no existe
+    no abre la base (SQLite la crearia vacia) y no ofrece nada."""
+    base = tmp_path / "no_existe.db"
+    antes = huella(RUTA_BASE_REAL)
+
+    at = _abrir(monkeypatch, base, LISTA_MIXTA.encode())  # afirma: sin excepcion
+
+    assert not base.exists()
+    assert not [m for m in at.multiselect if m.label == ROTULO_ALTA]
+    assert not at.error
+    assert huella(RUTA_BASE_REAL) == antes
+
+
+# ---------------------------------------------------------------------------------------------
 # INV-099: UC-07 5, los precios atipicos de la lista nueva en el informe revalorado
 # ---------------------------------------------------------------------------------------------
 
