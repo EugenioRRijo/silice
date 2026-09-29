@@ -31,6 +31,7 @@ se muestra.
 
 from __future__ import annotations
 
+import importlib.util
 import tempfile
 from collections.abc import Collection, Iterator
 from contextlib import contextmanager
@@ -361,7 +362,14 @@ def _detector_de_atipicos() -> DetectorAtipicos | None:
 
     Import perezoso, como `ui/composicion.py`: `core` no importa `ml`, y la pantalla funciona sin
     el extra; sin el, el informe es la auditoria de siempre, sin hallazgos `ATIPICO`.
+
+    El import perezoso no basta (H3 de la revision de A, U-9 de la de U): el paquete `ml/` siempre
+    esta y `ml.anomaly` se importa sin `scikit-learn`, que solo carga al ajustar el bosque, ya
+    dentro de `actualizar_precios`. Sin `sklearn`, con 8 o mas variaciones esa llamada lanzaria
+    `ModuleNotFoundError` y abortaria la revaloracion; por eso se pregunta antes por `sklearn`.
     """
+    if importlib.util.find_spec("sklearn") is None:
+        return None
     try:
         from ml.anomaly import precios_atipicos
     except ImportError:

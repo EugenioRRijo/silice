@@ -20,15 +20,18 @@ rechaza y no se ofrece).
 from __future__ import annotations
 
 import importlib
+import sys
+from collections import Counter
 from dataclasses import dataclass
 from decimal import Decimal
 from pathlib import Path
 
+import pytest
 from sqlalchemy import func, select
 from streamlit.testing.v1 import AppTest
 
 from core import models
-from core.catalog import abrir_sesion, crear_motor
+from core.catalog import Catalogo, abrir_sesion, crear_motor
 from tests.conftest import RUTA_BASE_REAL, huella
 from tests.fixtures.actualizacion_uc02 import PRECIOS_NUEVOS, VARIACIONES
 from tests.fixtures.base_con_pendiente import emitir
@@ -390,3 +393,59 @@ def test_el_detector_es_el_de_ml_y_sin_el_extra_no_hay(monkeypatch):
         sin_ml = importlib.import_module("ui.paginas.actualizacion")
         assert callable(sin_ml.render)
         assert sin_ml._detector_de_atipicos() is None
+
+
+def _sin_sklearn(monkeypatch) -> None:
+    """El extra `ml` sin `scikit-learn`: el paquete `ml/` siempre esta y `ml.anomaly` se importa
+    sin `sklearn` (solo lo importa al ajustar el bosque), asi que bloquear `ml` no simula este
+    caso. Se ponen a `None` en `sys.modules` `sklearn` y los submodulos ya cargados: importarlos
+    lanza `ModuleNotFoundError` y `importlib.util.find_spec("sklearn")` da `None`."""
+    for nombre in [n for n in sys.modules if n == "sklearn" or n.startswith("sklearn.")]:
+        monkeypatch.setitem(sys.modules, nombre, None)
+    monkeypatch.setitem(sys.modules, "sklearn", None)
+
+
+def _lista_que_cambia_los_materiales(base: Path) -> tuple[bytes, int]:
+    """Un CSV que duplica el precio de cada material de descripcion unica del catalogo vigente,
+    y cuantos son: con la linea base, mas que `ml.anomaly.MINIMO_OBSERVACIONES`."""
+
+    def filas(sesion):
+        vigentes = [
+            (precio.insumo, precio.precio)
+            for precio in Catalogo(sesion).lista_vigente().precios
+            if precio.insumo.tipo == models.TipoInsumo.MATERIAL.value
+        ]
+        veces = Counter(insumo.descripcion for insumo, _ in vigentes)
+        return [
+            f"material,{insumo.descripcion},{insumo.unidad},{precio * 2}\n"
+            for insumo, precio in vigentes
+            if veces[insumo.descripcion] == 1
+        ]
+
+    elegidas = _en_base(base, filas)
+    return (CABECERA + "".join(elegidas)).encode(), len(elegidas)
+
+
+def test_sin_sklearn_no_hay_detector_y_la_revaloracion_no_se_aborta(monkeypatch, tmp_path):
+    """H3 de la revision de A (U-9): el import perezoso de `ml.anomaly` no protege de la falta de
+    `sklearn`. Con 8 o mas variaciones el detector real ajusta el bosque y lanza
+    `ModuleNotFoundError`; la pagina no le pasa detector y la revaloracion se guarda."""
+    import ml.anomaly
+
+    base = _base(tmp_path)
+    contenido, cambian = _lista_que_cambia_los_materiales(base)
+    assert cambian >= ml.anomaly.MINIMO_OBSERVACIONES
+    pagina = importlib.import_module("ui.paginas.actualizacion")
+    _sin_sklearn(monkeypatch)
+    variaciones = {str(n): Decimal("0.1") * n for n in range(1, cambian + 1)}
+    with pytest.raises(ModuleNotFoundError):
+        ml.anomaly.precios_atipicos(variaciones)  # el riesgo es real, no supuesto
+
+    at = _abrir(monkeypatch, base, contenido)
+    _revalorar(at)
+
+    assert not at.error, _textos(at.error)
+    presentacion = at.session_state[pagina.CLAVE_RESULTADO]
+    assert presentacion.version_guardada == "002"
+    assert "ATIPICO" not in presentacion.informe
+    assert pagina._detector_de_atipicos() is None
