@@ -120,14 +120,29 @@ La orden escribe los dos archivos que se entregan: `informe_rnf04.md` (la forma 
    INV‑092 agregó la sección «Reglas evaluadas»; la atribución de INV‑095 no movió ninguna fila de
    este informe. Si el commit probado da otra huella, se anota y se explica qué cambió antes de
    aplicar el instrumento.
-3. **La huella de la forma exportada:** SHA‑256 de `informe_rnf04.xlsx`. El libro guarda su fecha
-   de creación, así que su huella cambia en cada generación: por eso **se genera una sola vez** y
-   todos los expertos reciben **esos mismos dos archivos** (las mismas dos huellas en todas las
-   hojas de registro). En la generación de GC5, sobre `e5a8209`, valió
-   `25a4beabe2e9fd06399903398c27a703b79259ba9809ddbd76bded8cca57e003`; su hoja *Auditoria* tiene los
-   14 hallazgos en las columnas A a E y las siete reglas evaluadas en las columnas G a I. Esa huella
-   solo prueba la regeneración de la compuerta: la que se anota en las hojas de registro es la de la
-   generación única de Med.
+3. **Las dos huellas de la forma exportada**, `informe_rnf04.xlsx`:
+   - **La del archivo:** SHA‑256 de `informe_rnf04.xlsx` (`sha256sum` o `Get-FileHash`, como en el
+     punto 2). Depende de la fecha: el libro guarda la de su creación en `docProps/core.xml`, y cada
+     entrada del zip lleva la hora en que se escribió, así que cambia en cada generación aunque el
+     contenido sea el mismo. Identifica el **ejemplar entregado**: por eso el libro **se genera una
+     sola vez** y todos los expertos reciben **esos mismos dos archivos** (las mismas huellas en todas
+     las hojas de registro).
+   - **La del contenido:** SHA‑256 del nombre y los bytes de cada entrada del zip, en orden de
+     nombre, sin `docProps/core.xml`. No depende de la fecha, así que ata el libro al commit
+     probado. Se calcula, en la misma carpeta y en bash o en PowerShell, con
+
+     ```
+     uv run python -c "import hashlib, zipfile; z = zipfile.ZipFile('informe_rnf04.xlsx'); h = hashlib.sha256(); [h.update(n.encode() + z.read(n)) for n in sorted(z.namelist()) if n != 'docProps/core.xml']; print(h.hexdigest())"
+     ```
+
+   Sobre el código de `e5a8209` la huella del contenido vale
+   `386bca1cb4a75868b5ac12fd0f637c02072c748b5a64fe16064c225bdd5b7748`: la misma en el libro de la
+   generación de GC5 y en dos generaciones posteriores (corrección de GC5, QA‑1), cuyas huellas de
+   archivo difieren entre sí y de la de GC5
+   (`25a4beabe2e9fd06399903398c27a703b79259ba9809ddbd76bded8cca57e003`, que no se puede reproducir:
+   solo prueba que ese ejemplar existió). Su hoja *Auditoria* tiene los 14 hallazgos en las columnas
+   A a E y las siete reglas evaluadas en las columnas G a I. Si el commit probado da otra huella de
+   contenido, se anota y se explica qué cambió antes de aplicar el instrumento.
 
 ## 2. Los expertos
 
@@ -162,7 +177,8 @@ voluntaria; los datos se publican sin nombres.
 1. **Copia desechable** del repositorio, nunca la copia de trabajo (como la sección 4 del
    [guion de prueba](guion_prueba_arenia.md)): `git worktree add ../tesis-rnf04 <commit>` y, dentro
    de ella, `uv sync`. El `<commit>` cumple lo dicho en la sección 1, punto 1.
-2. Generar el informe **una sola vez** con la orden de la sección 1 y anotar las dos huellas.
+2. Generar el informe **una sola vez** con la orden de la sección 1 y anotar sus tres huellas: la
+   de la pantalla y las dos del libro (la del archivo y la del contenido).
 3. Preparar para cada experto: las **dos formas** del informe, `informe_rnf04.md` renderizado y
    `informe_rnf04.xlsx` (o, si prefiere papel, la vista renderizada del `.md` y las cuatro hojas del
    libro, impresas, anotando que fue en papel); el **bloque A del anexo A impreso tal cual** (las
@@ -204,7 +220,8 @@ que todos hayan respondido.
 
 Por experto: las ocho puntuaciones, el campo abierto literal, el perfil, la declaración firmada,
 la fecha, el medio (archivo o papel), los tiempos, las preguntas hechas al observador, el commit
-probado, su corrida de CI, las dos huellas y la versión del protocolo (la hoja de la sección 7).
+probado, su corrida de CI, las tres huellas (la de la pantalla y las dos del libro) y la versión
+del protocolo (la hoja de la sección 7).
 
 ## 6. Criterio de decisión, declarado antes de medir
 
@@ -234,7 +251,7 @@ anexo A y aquí van con una etiqueta breve):
 | Declaración: «No soy el autor ni tengo relación personal con él; no participé en el proyecto ni vi antes la aplicación, sus documentos o este informe; no participé en la medición del indicador 3 ni en CP‑07» (firma) | |
 | Fecha · medio (archivo / papel) · presencial o a distancia | |
 | Commit probado · corrida de CI en verde de ese commit | |
-| SHA‑256 de `informe_rnf04.md` (pantalla) · SHA‑256 de `informe_rnf04.xlsx` (exportada) | |
+| SHA‑256 de `informe_rnf04.md` (pantalla) · SHA‑256 de `informe_rnf04.xlsx`: la del archivo y la del contenido (exportada; sección 1, punto 3) | |
 | Versión del protocolo (commit que contiene este archivo) | |
 | Tiempo de lectura (min) · tiempo total (min) | |
 | Preguntas al observador (literal) | |
@@ -284,7 +301,7 @@ CUMPLE / NO CUMPLE / sigue pendiente · Commit probado y huellas: ___
 | Complacencia con el autor | Exclusión por relación personal y participación; declaración firmada; consigna que dice que se evalúa el informe, no a la persona |
 | Explicaciones que contaminan la medición | Consigna literal y respuesta fija a las preguntas de contenido |
 | Expertos que se influyen entre sí | Sesiones individuales, sin comunicación hasta el final |
-| Versiones distintas del informe | Un commit, una generación, dos huellas anotadas en cada hoja |
+| Versiones distintas del informe | Un commit, una generación, tres huellas anotadas en cada hoja (la del contenido del libro lo ata al commit) |
 | Una forma del informe sin el dato que la afirmación pregunta | Se entregan las dos formas y cada afirmación declara, antes de medir, sobre cuál se juzga (sección 1) |
 | La afirmación 2 del anexo A nombra las severidades «error / advertencia / información», y el informe evaluado trae `CRITICO`, `ERROR` y `ADVERTENCIA`, y ningún `INFO` (sección 1) | El instrumento no se cambia (anexo A). La discrepancia se declara aquí, antes de medir, y se reporta junto al promedio de la afirmación 2: el experto juzga una severidad (`CRITICO`) que el texto no nombra y no ve la de información |
 | Muestra pequeña | n ≥ 3 declarado como mínimo; el resultado se cita como juicio de un panel, no como muestra representativa |
