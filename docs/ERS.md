@@ -40,11 +40,23 @@
 > deja de declarar alcance vigente: la prueba de la lista vacía de R2 y R4 y la del presupuesto
 > sin hallazgos existen (INV‑092). (4) §3.1 nombra el plan, el 409 del flujo 3b y el aviso del
 > flujo 3a de UC‑07 (INV‑094).
+> **Revisión C6 (2026‑09‑29, fase C6 de [PLAN_CIERRE.md](../PLAN_CIERRE.md)):** sin UC, RF, RNF
+> ni pantalla nuevos; **dos rutas nuevas**, `POST /proyectos` y `POST /presupuestos/importar`, que
+> autoriza la enmienda del 2026‑09‑29 ([spec del cierre](superpowers/specs/2026-09-23-plan-cierre-tesis-design.md),
+> §2 y §10), con el visto bueno del tutor **pendiente**: si se niega, los commits de C6 se revierten
+> (ruling C6‑10). Los demás cambios agregan campos a rutas y pantallas que ya existían.
+> (1) UC‑01 1: el proyecto se crea por la API (INV‑086). (2) UC‑02 2a, 2b y 3a: el alta de los
+> desconocidos elegidos, los rechazados aparte y las altas que 3a deshace (INV‑090). (3) UC‑05 y
+> RF‑24: la importación del archivo de un tercero existe y RF‑24 deja de declarar alcance vigente
+> (INV‑076). (4) UC‑06 4a: la justificación se registra ligada al rendimiento (INV‑093). (5) UC‑07 5
+> declara su alcance vigente: los atípicos entran al informe de la versión revalorada (INV‑099).
+> (6) RF‑02 extiende la recarga a esos atípicos. (7) §3.1 nombra las rutas, los campos y el archivo
+> de entrada nuevos.
 
 | Campo | Valor |
 |---|---|
-| Versión | 1.2 (revisión C5; la 1.1 es la revisión C4 y la 1.0, del 2026‑08‑29) |
-| Fecha | 2026‑09‑28 |
+| Versión | 1.3 (revisión C6; la 1.2 es la revisión C5, la 1.1 la C4 y la 1.0, del 2026‑08‑29) |
+| Fecha | 2026‑09‑29 |
 | Autor | [tesista] |
 | Revisor | [tutor académico] |
 
@@ -138,7 +150,10 @@ implementados en `core/contracts/`.
 - **Precondiciones:** el catálogo tiene partidas, insumos y una lista de precios vigente; existe una
   fuente de cantidades (IFC, CSV o tabla) de un dominio con adaptador registrado.
 - **Flujo principal**
-  1. El proyectista crea el proyecto y selecciona la fuente de cantidades y su dominio.
+  1. El proyectista crea el proyecto y selecciona la fuente de cantidades y su dominio. El proyecto
+     se crea por la API (`POST /proyectos`, desde C6, INV‑086): nombre único y no vacío; descripción
+     y dominio opcionales, y el dominio, si se indica, es uno de `Dominio`. Ese dominio es
+     informativo: nada lo compara después con el de la fuente. La interfaz no crea proyectos.
   2. El sistema invoca `AdaptadorDominio.extraer(fuente)` y obtiene una lista de `ItemComputo`, cada uno
      con `origen_id` y `origen_tipo`.
   3. El sistema asocia cada ítem a su partida del catálogo y recupera su `ComposicionAPU` y el
@@ -196,10 +211,26 @@ implementados en `core/contracts/`.
   7. El usuario acepta la versión nueva o la descarta.
 - **Flujos alternativos**
   - *2a. Insumos desconocidos en el archivo:* el sistema los lista y ofrece darlos de alta o ignorarlos; los
-    ignorados no intervienen en el recálculo.
+    ignorados no intervienen en el recálculo. Desde C6 (INV‑090), desconocida es la fila cuyo tipo y
+    descripción (normalizada) no están en el catálogo con ninguna unidad. Al subir el archivo, la
+    pantalla los lista a la vista, sin escribir nada, y los ofrece en «Dar de alta» sin ninguno
+    elegido: el alta es solo por selección explícita, antes de revalorar (ruling C6‑7). Cada
+    elegido se crea con un código nuevo de su tipo (`MAT‑NNN`, `EQU‑NNN`, `MO‑NNN`; solo los
+    materiales guardan unidad) y su precio entra **solo** en la lista nueva. Las filas elegidas del
+    mismo insumo dan una sola alta; si sus precios difieren, el sistema lo rechaza sin escribir
+    nada. **Límite declarado:** dos filas de material con la misma descripción desconocida y
+    unidades distintas se ofrecen las dos, y si se eligen ambas nacen dos homónimos con distinta
+    unidad, el caso que 2b evita para los insumos ya catalogados. Por la API no hay vista previa: el
+    cliente elige en la misma carga (§3.1).
   - *2b. Unidad no equivalente a la del catálogo* (`unidades_equivalentes`): la fila se rechaza y se
-    reporta; las demás se procesan.
-  - *3a. Ningún precio cambió:* no se crea versión nueva y se informa.
+    reporta; las demás se procesan. Desde C6, esa fila no se ofrece para el alta y se reporta
+    aparte de los ignorados de 2a.
+  - *3a. Ningún precio cambió:* no se crea versión nueva y se informa. En «Actualizar precios», las
+    altas elegidas en 2a tampoco se guardan: se deshacen con la transacción y el aviso las nombra.
+    Un alta no es un cambio de precio (el insumo nuevo solo tiene precio en la lista nueva), así que
+    elegir altas en un archivo sin cambios de precio lleva a este flujo. Por la API, la carga
+    (`POST /listas-precios`) ya confirmó la lista y sus altas, y el 409 de la revaloración no las
+    deshace.
   - *4a. El presupuesto tiene ítems pendientes (UC‑01, flujo 3a):* la versión nueva los conserva y su
     informe los vuelve a declarar. Siguen pendientes aunque la lista nueva traiga su partida: valorarlos
     es UC‑01, no UC‑02 (aclaración de C4; comportamiento ratificado en el dictamen C3‑8).
@@ -260,10 +291,23 @@ implementados en `core/contracts/`.
 
 - **Actor principal:** auditor.
 - **Precondiciones:** hay un presupuesto propio del sistema, o un archivo tabular de un tercero con
-  cantidades, unidades, APU y plan de trabajo.
+  cantidades, unidades, APU y plan de trabajo. Desde C6 (INV‑076), ese archivo es un libro XLSX con
+  las hojas `Datos`, `Presupuesto`, `APU`, `Insumos` y, opcional, `Curva`, cuyo formato fija
+  `core/budget/importacion.py` y detalla el [manual técnico](manual_tecnico.md); el proyecto donde
+  se guarda ya existe (UC‑01 1).
 - **Flujo principal**
-  1. El auditor selecciona el presupuesto o importa el archivo del tercero.
+  1. El auditor selecciona el presupuesto o importa el archivo del tercero. La importación es por
+     la API (`POST /presupuestos/importar`), sin pantalla (ruling C6‑3). Se rechaza **sin escribir
+     nada**, nombrando el archivo y, si corresponde, la hoja y la fila, si el archivo está mal
+     formado o no es un libro legible, si un código de partida del archivo ya está en el catálogo,
+     si el proyecto ya tiene un presupuesto con ese código o si la moneda del archivo no es la de
+     la lista vigente a su fecha (comparación exacta).
   2. El sistema construye el `Presupuesto` en memoria conservando las unidades escritas por el autor.
+     El presupuesto importado se **valora con el motor** sobre los APU y los parámetros del propio
+     archivo: el formato no trae los precios unitarios ni los totales del autor, así que un error
+     aritmético en ellos no se audita de forma directa (solo asoma por R2 o R7 frente a su curva).
+     El formato tampoco trae `origen_tipo`: un renglón con regla es `REGLA` y uno sin ella,
+     `MANUAL` (flujo 2b).
   3. El sistema ejecuta las siete reglas R1–R7
      ([CLAUDE.md §7](../CLAUDE.md#7-siete-reglas-de-verificación-coreverification-sesión-i4)).
   4. Cada regla devuelve `Hallazgo` con severidad, descripción, impacto cuantificado y los `origen_id`
@@ -280,7 +324,18 @@ implementados en `core/contracts/`.
   - *5a. No hay hallazgos:* el informe se emite igualmente, declarando las siete reglas evaluadas y sin
     hallazgos.
 - **Postcondiciones:** informe persistido y asociado al presupuesto; el presupuesto auditado no se
-  modifica en ningún caso.
+  modifica en ningún caso. Si se importó el archivo de un tercero: sus APU quedan en el catálogo con
+  las condiciones «importado de <archivo> (presupuesto de un tercero, UC-05)», así que aparecen en
+  UC‑03, en el histórico de rendimientos de UC‑06, entre las partidas de «Elaborar un presupuesto»
+  y en el recuento por dominio con que la ayuda 4 de «Componer una partida» elige la técnica
+  (compuerta G2);
+  y la lista «Importada: <archivo>», que copia la vigente a la fecha del presupuesto, pasa a ser la
+  **vigente desde esa fecha** para todo el caso (la que muestra el marco de las pantallas, RF‑39, y
+  la que valora y referencia lo que se elabore o componga después, y la que copia la próxima lista
+  que se cargue). Los importes no cambian, porque la copia es exacta, pero la procedencia de los
+  datos propios posteriores apunta al archivo del tercero. **Limitación declarada** (N‑2 y N‑7 de
+  la revisión de C6): excluir las listas importadas de la vigencia exige cambiar `core/`, fuera de
+  C6.
 
 #### UC‑06 — Registrar y consultar rendimientos reales de obra ejecutada
 
@@ -300,7 +355,19 @@ implementados en `core/contracts/`.
     no es auditable.
   - *3a. No hay histórico para la partida:* el sistema propone el rendimiento estimado del catálogo y lo
     rotula como tal.
-  - *4a. El proyectista acepta la advertencia:* se registra su justificación junto al APU.
+  - *4a. El proyectista acepta la advertencia:* se registra su justificación junto al APU. Desde C6
+    (INV‑093), la justificación es opcional y se registra **ligada al rendimiento que registra ese
+    guardado**, no a la composición: tabla `justificacion_rendimiento`, con el texto de la
+    advertencia aceptada y la fecha, a lo sumo una por rendimiento. En «Componer una partida», el
+    campo aparece solo con la advertencia por rango de RF‑27 (el aviso del detector de anomalías no
+    lo hace aparecer); sin texto se guarda igual y se informa, porque RF‑27 no impide; si el
+    guardado no registra un rendimiento nuevo, la justificación no se registra y se avisa. Por la
+    API viaja solo en la misma petición que registra el rendimiento (campo `justificacion` de
+    `POST /partidas/{codigo}/rendimientos`) y acompaña a la advertencia de la respuesta (el rango y,
+    con el extra `ml`, el veredicto del detector): sin advertencia se ignora y la respuesta la trae
+    nula; con advertencia, una justificación en blanco es 422 y no se registra nada. Ninguna ruta
+    ni pantalla la lee después: solo la devuelven la respuesta de ese `POST` y el aviso del guardado
+    en la pantalla.
 - **Postcondiciones:** histórico de rendimientos ampliado; todo APU es trazable al tipo y a la fuente de
   su rendimiento.
 
@@ -315,7 +382,18 @@ implementados en `core/contracts/`.
   3. El sistema estima el precio de referencia y reporta MAPE, RMSE y R² de la técnica empleada.
   4. El sistema contrasta el precio construido con el estimado y expresa la desviación en porcentaje.
   5. El sistema marca como atípicos los precios que se apartan del histórico y los incorpora al informe
-     de auditoría.
+     de auditoría. **Alcance vigente** (C6, INV‑099; ruling C6‑6): solo en el informe de la versión
+     revalorada (UC‑02). «Actualizar precios» y `POST /presupuestos/{codigo}/actualizacion` pasan
+     al núcleo el detector de `ml.anomaly`, que evalúa el histórico de variaciones de precio de
+     **todos** los insumos (la ayuda 2 de «Componer una partida», en cambio, mira el del insumo).
+     Cada cambio de la lista nueva que el detector marca y que usa alguna partida del presupuesto
+     entra como hallazgo `ATIPICO` de severidad ADVERTENCIA, que cita los códigos de esas partidas
+     (no `origen_id` de ítems de cómputo); queda persistido y se declara otra vez al recargar. El
+     informe de un presupuesto elaborado (UC‑01) o importado (UC‑05), y el que muestra «Componer una
+     partida», no los traen. Sin el extra `ml` (sin `scikit-learn`) o con menos de 8 variaciones en
+     el histórico (`MINIMO_OBSERVACIONES`), no se marca ninguno, y el informe no dice que no se
+     evaluaron. `ATIPICO` no es una de las siete reglas: no cuenta en «Reglas evaluadas» y, por su
+     severidad, no cambia el veredicto.
 - **Flujos alternativos**
   - *2a. Menos de 50 registros:* se emplea el sistema de reglas con análisis de sensibilidad y el
     resultado se rotula como limitación declarada.
@@ -470,18 +548,21 @@ reconocimiento de planos.
 
 | UC | Interfaz (pantalla del menú) | API REST | Solo biblioteca o script |
 |---|---|---|---|
-| UC‑01 | «Elaborar un presupuesto» (extrae, elabora con el plan de trabajo del proyectista, audita y descarga el Excel; propone el rendimiento que falta, flujo 3b) y el bloque de cantidades de «Componer una partida»; la interfaz no guarda el presupuesto | `POST /computos/{dominio}` y `POST /presupuestos` (elabora con el `plan` del proyectista, audita y guarda; sin rendimiento vigente, 409 con la propuesta, flujo 3b); `GET /presupuestos/{codigo}/excel` | — |
-| UC‑02 | «Actualizar precios» (revalora, guarda la versión y ofrece descartarla) e «Historico de cambios de precio» | `POST /listas-precios`, `POST /presupuestos/{codigo}/actualizacion`, `GET /cambios-precio`; descartar una versión no tiene ruta | — |
+| UC‑01 | «Elaborar un presupuesto» (extrae, elabora con el plan de trabajo del proyectista, audita y descarga el Excel; propone el rendimiento que falta, flujo 3b) y el bloque de cantidades de «Componer una partida»; la interfaz no guarda el presupuesto | `POST /proyectos` (paso 1, desde C6: nombre único y no vacío, `descripcion` y `dominio` opcionales, el dominio uno de `Dominio`; 201, o 422 sin crear nada; la interfaz no crea proyectos), `POST /computos/{dominio}` y `POST /presupuestos` (elabora con el `plan` del proyectista, audita y guarda; sin rendimiento vigente, 409 con la propuesta, flujo 3b); `GET /presupuestos/{codigo}/excel` | — |
+| UC‑02 | «Actualizar precios» (al subir el archivo lista los desconocidos y ofrece «Dar de alta», ninguno elegido, flujo 2a; revalora, guarda la versión y ofrece descartarla; avisa aparte de los dados de alta, los ignorados de 2a y los rechazados de 2b) e «Historico de cambios de precio» | `POST /listas-precios` (desde C6, el campo repetible `dar_de_alta` con descripciones del archivo, que eligen por identidad normalizada; la respuesta trae `dados_de_alta`, `ignorados` de 2a, `rechazados` de 2b y `desconocidos`, los dos últimos juntos; un alta de algo que no es desconocido del archivo, o dos filas elegidas del mismo insumo con precios distintos, es 422 sin escribir), `POST /presupuestos/{codigo}/actualizacion`, `GET /cambios-precio`; descartar una versión no tiene ruta. Por la API no hay vista previa del flujo 2a: el cliente elige en la misma carga a partir de su archivo y de `GET /insumos`, porque cargar para ver los desconocidos y volver a cargar deja dos listas. El nombre de la lista debe ser único: `…/actualizacion` la busca por nombre | — |
 | UC‑03 | «Partidas similares» (solo lectura); ayuda de similares en «Componer una partida»; propuestas de los pendientes en «Elaborar un presupuesto» | propuestas de los pendientes en la respuesta de `POST /presupuestos` | — |
 | UC‑04 | ninguna | ninguna | `adapters/civil/recalculo.py` (`recalcular`, `emparejar`), ejercido solo por las pruebas |
-| UC‑05 | el informe se muestra al elaborar, al componer y al revalorar; no hay pantalla de auditoría de un presupuesto ajeno | `GET /presupuestos/{codigo}/informe` y la hoja de auditoría de `…/excel` | la importación del archivo de un tercero no existe en ninguna capa (RF‑24, INV‑076) |
-| UC‑06 | «Componer una partida» propone el rendimiento del histórico y advierte al apartarse; «Elaborar un presupuesto» lo propone en el flujo 3b de UC‑01; ninguna de las dos registra medidos | `POST /ejecuciones`, `GET /ejecuciones`, `GET /partidas/{codigo}/rendimientos`, `POST /partidas/{codigo}/rendimientos` | — |
-| UC‑07 | «Componer una partida» contrasta el precio con la estimación por reglas (clase 3 de AACE); para una partida nueva, avisa que el contraste no es posible (flujo 3a) | ninguna | `scripts/generar_resultados_ml.py` escribe `docs/resultados_ml.md` |
+| UC‑05 | el informe se muestra al elaborar, al componer y al revalorar; no hay pantalla de auditoría de un presupuesto ajeno ni de importación (ruling C6‑3) | `POST /presupuestos/importar` (desde C6, RF‑24: multipart con `archivo` XLSX y `proyecto`; 201; 404 si el proyecto no existe; 422 si el archivo no es un libro legible o está mal formado, con archivo, hoja y fila, si un código de partida ya está en el catálogo, si el código de presupuesto se repite en el proyecto o si la moneda no es la de la lista vigente, comparada exacta; si falla, no deja nada escrito), `GET /presupuestos/{codigo}/informe` y la hoja de auditoría de `…/excel` | — |
+| UC‑06 | «Componer una partida» propone el rendimiento del histórico, advierte al apartarse y, desde C6, registra la justificación de la advertencia por rango (flujo 4a); «Elaborar un presupuesto» lo propone en el flujo 3b de UC‑01; ninguna de las dos registra medidos | `POST /ejecuciones`, `GET /ejecuciones`, `GET /partidas/{codigo}/rendimientos`, `POST /partidas/{codigo}/rendimientos` (desde C6, el campo `justificacion`, flujo 4a: se registra solo con advertencia, ligada al rendimiento de la misma petición; con advertencia y en blanco, 422 sin registrar nada; la respuesta la devuelve y ninguna ruta la lee después) | — |
+| UC‑07 | «Componer una partida» contrasta el precio con la estimación por reglas (clase 3 de AACE); para una partida nueva, avisa que el contraste no es posible (flujo 3a); desde C6, «Actualizar precios» incorpora los precios atípicos de la lista nueva al informe de la versión revalorada (paso 5, con su alcance vigente) | `POST /presupuestos/{codigo}/actualizacion` (desde C6, paso 5: los atípicos de la lista nueva entran como `ATIPICO` ADVERTENCIA al informe de la versión nueva, que sirve `GET /presupuestos/{codigo_nuevo}/informe`; con el extra `ml` y al menos 8 variaciones en el histórico) | `scripts/generar_resultados_ml.py` escribe `docs/resultados_ml.md` |
 | UC‑08 | «Escenarios de sensibilidad» | `POST /presupuestos/{codigo}/escenarios` | — |
 | UC‑10, UC‑11 | «Componer una partida» | ninguna | — |
 | UC‑12 | «Inicio» y el marco común de las pantallas (`ui/app.py`) | ninguna | — |
 - **Archivos de entrada:** IFC 4 (dominio civil), CSV de topología (telecom), registro de activos
-  (industrial), alcance funcional (sistemas), listas de precios CSV/XLSX.
+  (industrial), alcance funcional (sistemas), listas de precios CSV/XLSX y, desde C6, el
+  presupuesto de un tercero (UC‑05): un XLSX con las hojas `Datos`, `Presupuesto`, `APU`, `Insumos`
+  y `Curva` (opcional), cuyo formato detalla el [manual técnico](manual_tecnico.md); el sistema lo
+  valora con su motor sobre los APU del archivo.
 - **Archivos de salida:** presupuesto y curva en XLSX, informe de auditoría.
 
 ### 3.2 Requisitos funcionales
@@ -503,7 +584,7 @@ la corrija.
 | RF | Enunciado | Prioridad | UC | Incremento | Criterio de aceptación |
 |---|---|---|---|---|---|
 | RF‑01 | El sistema calculará el precio unitario de una partida a partir de su composición y los parámetros de costo según la fórmula de CLAUDE.md §4 | Esencial | UC‑01 | I0.3 | Los cinco precios unitarios de la línea base se reproducen con ± 0,01; los materiales no se dividen entre el rendimiento y la administración y la utilidad se aplican en cascada |
-| RF‑02 | El sistema generará siempre el informe de auditoría al producir o cargar un presupuesto | Esencial | UC‑05 | I4 | Todo presupuesto elaborado o recargado trae su informe; sobre el presupuesto de prueba se detectan 7 de 7 inconsistencias, y el informe recargado declara los ítems pendientes del documento emitido |
+| RF‑02 | El sistema generará siempre el informe de auditoría al producir o cargar un presupuesto | Esencial | UC‑05 | I4 | Todo presupuesto elaborado o recargado trae su informe; sobre el presupuesto de prueba se detectan 7 de 7 inconsistencias, y el informe recargado declara los ítems pendientes del documento emitido y, en una versión revalorada, los precios atípicos que declaró su revaloración (UC‑07 5) |
 | RF‑03 | Toda cantidad de obra conservará `origen_id`, `origen_tipo` y, si aplica, la regla que la produjo | Esencial | UC‑01, 04 | I0.1 | Ningún `ItemComputo` sin `origen_id`; un ítem de origen REGLA sin expresión se rechaza; los ítems que derivan de una regla llevan su expresión y sus parámetros, y todo hallazgo de partida referencia un origen trazable |
 | RF‑04 | El sistema obtendrá las cantidades de obra invocando `AdaptadorDominio.extraer(fuente)`, sin que el núcleo conozca el dominio ni el formato de la fuente | Esencial | UC‑01 | I0.1, I3.1 | Ningún adaptador importa de `core` fuera de `core.contracts`; todo `ItemComputo` extraído trae `origen_id` y `origen_tipo`; el adaptador IFC usa el GlobalId como `origen_id` y reproduce el cálculo manual de la tanquilla (compuerta G1, cruzada con salvedad: sección 2.5) |
 | RF‑05 | El sistema persistirá partidas, insumos, composiciones y rendimientos en SQLite; `scripts/seed.py` cargará la línea base en la base de datos, de modo que el presupuesto se reproduzca completo desde ella | Esencial | UC‑01 | I0.4 | Los cinco APU recuperados de la base dan los mismos precios unitarios que el fixture |
@@ -525,7 +606,7 @@ la corrija.
 | RF‑21 | El sistema ejecutará las siete reglas R1–R7 sobre cualquier `Presupuesto` y devolverá `Hallazgo` con severidad, descripción, impacto cuantificado y los `origen_id` involucrados | Esencial | UC‑05 | I4 | Cada regla detecta su inconsistencia con hallazgos completos (severidad, descripción, impacto y `origen_id`) y devuelve una lista vacía cuando el presupuesto cumple |
 | RF‑22 | El sistema detectará las siete inconsistencias de la línea base sobre el presupuesto de prueba que las reproduce | Esencial | UC‑05 | I4 | 7 de 7 hallazgos sobre el presupuesto de prueba, uno por regla (indicador 1) |
 | RF‑23 | El sistema ordenará el informe por severidad descendente y no modificará el presupuesto auditado; una regla que no pueda evaluarse se reportará como hallazgo INFO sin interrumpir a las demás | Esencial | UC‑05 | I4 | El presupuesto auditado es idéntico antes y después, el informe sale ordenado por severidad descendente y una regla sin datos da un hallazgo INFO sin abortar el informe |
-| RF‑24 | El sistema importará un presupuesto de un tercero en formato tabular, conservando las unidades originales escritas por su autor, para poder auditarlo | Esencial | UC‑05 | I4 | La unidad escrita por el autor del archivo importado («mts») llega intacta a la regla R3. **Alcance vigente: parcial.** R3 conserva la unidad del autor sobre un `Presupuesto` construido en memoria, pero la importación de un archivo tabular de un tercero no existe en ninguna capa (INV‑076, abierto; bloquea F3) |
+| RF‑24 | El sistema importará un presupuesto de un tercero en formato tabular, conservando las unidades originales escritas por su autor, para poder auditarlo | Esencial | UC‑05 | I4 | La unidad escrita por el autor del archivo importado («mts») llega intacta a la regla R3 |
 | RF‑25 | El sistema registrará rendimientos medidos con partida, valor, condiciones, fecha y referencia a la ejecución, y rechazará un rendimiento medido sin esa referencia | Esencial | UC‑06 | I6.2 | Un rendimiento medido sin referencia a una `Ejecucion` registrada se rechaza; con ella queda trazado por clave foránea |
 | RF‑26 | Al componer un APU, el sistema propondrá el rendimiento del histórico de la partida con su dispersión (número de observaciones, media, mínimo y máximo) | Esencial | UC‑06 | I6.2 | Dispersión con número de observaciones, media, mínimo, máximo y desglose estimado‑medido; la propuesta prefiere el medido más reciente y declara siempre el tipo |
 | RF‑27 | El sistema advertirá cuando el rendimiento introducido se aparte del comportamiento observado, sin impedir el registro | Esencial | UC‑06 | I6.1, I6.2 | Desviado → atípico, coherente → no, histórico corto → sin veredicto; un valor fuera del rango observado se registra igual, con la advertencia |
@@ -549,10 +630,11 @@ Los criterios de esta tabla son afirmaciones comprobables y no llevan estado. **
 demuestra cada criterio y su estado (verde, parcial, sin prueba o no implementado) viven una sola vez,
 en [plan_pruebas.md §8](plan_pruebas.md#8-especificación-de-casos-trazabilidad-rf--prueba), y la prueba
 o el caso manual de cada paso de cada caso de uso, en su §8.1** (INV‑032; la regla de fuentes únicas
-es [metodologia.md §5](metodologia.md#5-dry)). Solo RF‑16, RF‑20 y RF‑24 declaran aquí su
-**alcance vigente**, porque su criterio no se cumple entero; en los tres lo fija una decisión
-registrada (D5, la limitación de C1 e INV‑076). RF‑21 lo declaró hasta la fase C5, en que la
-prueba que le faltaba entró con INV‑092.
+es [metodologia.md §5](metodologia.md#5-dry)). Solo RF‑16 y RF‑20 declaran aquí su
+**alcance vigente**, porque su criterio no se cumple entero; en los dos lo fija una decisión
+registrada (D5 y la limitación de C1). RF‑21 lo declaró hasta la fase C5, en que la prueba que le
+faltaba entró con INV‑092, y RF‑24 hasta la fase C6, en que la importación del archivo de un
+tercero entró con INV‑076 (`POST /presupuestos/importar`, UC‑05 1 y 2).
 
 Cobertura por caso de uso (mínimos exigidos por el criterio de cierre entre paréntesis):
 
