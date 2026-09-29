@@ -1,7 +1,7 @@
 # Prueba del software con precios de referencia publicados (MaPreX jul-2026 y tabulador CIV)
 
 **Fecha:** 2026‑09‑29 · **Rama:** `inc/cierre-C6-R` (pista R de C6, desde `inc/cierre-C6-N` =
-`4e5ba05`) · **Commit del script:** `24465ea` · **Plan:** `C6-plan.md` del directorio de control de
+`7213524`) · **Commit del script:** `1648d2f` · **Plan:** `C6-plan.md` del directorio de control de
 C6 (§5 y rulings C6‑6 y C6‑9) · **Bitácora de la fase:** [2026-09-23-cierre.md, «Fase C6»](2026-09-23-cierre.md).
 
 **Naturaleza de los datos** ([CLAUDE.md §1](../../CLAUDE.md)). Los casos que se revaloran (el
@@ -15,11 +15,11 @@ didácticos a precios de referencia publicados**; no estima el costo de ninguna 
 Orden exacta, desde la raíz del worktree:
 
 ```
-uv run --extra ml python scripts/probar_precios_maprex.py --salida <temporal>/resultado.md
+uv run --all-extras python scripts/probar_precios_maprex.py --salida <temporal>/resultado.md
 ```
 
-Después, `uv sync --all-extras`: `uv run --extra ml` sincroniza el entorno solo con ese extra y
-retira los demás (la API deja de importarse y `test_arquitectura.py` falla hasta resincronizar).
+`--all-extras` deja el entorno como lo sincronizan la CI y el README; sin el extra `ml` el script
+corre igual, sin detector de atípicos, y el informe lo declara.
 
 - **Bases:** cuatro SQLite nuevas en un `tempfile.TemporaryDirectory()`, sembradas con
   `scripts.seed.sembrar`, `seed_telecom.sembrar_telecom`, `seed_industrial.sembrar_industrial` y
@@ -102,23 +102,23 @@ Excluidas:
 | material | CLAVO DE ACERO LISO L=2 1/2" | ACE076 | Clavos de acero 2 1/2 pulg | unidad MaPreX 'pza' no equivale a la del catalogo 'unidad' |
 | material | DESENCOFRANTE SIKA | MZ0201 | Desencofrante | unidad MaPreX 'lt' no equivale a la del catalogo 'unidad' |
 | material | CEMENTO GRIS PORTLAND SACO 42.5 KG/93,7 LB | CEM019 | Cemento Portland | unidad MaPreX 'sco' no equivale a la del catalogo 'saco' |
-| equipo | RETROEXCAVADORA CASE O SIM | MOV027 | Retroexcavadora | equipo: fuera de la revaloracion (C6-9); el precio MaPreX es valor de reposicion, se contrasta aparte |
-| equipo | PICO CON CABO | ALB072 | Pico | equipo: fuera de la revaloracion (C6-9); el precio MaPreX es valor de reposicion, se contrasta aparte |
-| equipo | PALA CUADRADA CON CABO DE MADERA | EZ0576 | Pala | equipo: fuera de la revaloracion (C6-9); el precio MaPreX es valor de reposicion, se contrasta aparte |
-| equipo | CAMION VOLTEO 8 M3 FORD 7000 O SIM | VEH010 | Camion de volteo | equipo: fuera de la revaloracion (C6-9); el precio MaPreX es valor de reposicion, se contrasta aparte |
-| equipo | VEHICULO PARA TRANSPORTE DE PERSONAL | EZ0512 | Vehiculo de transporte | equipo: fuera de la revaloracion (C6-9); el precio MaPreX es valor de reposicion, se contrasta aparte |
-| equipo | SEGUETA AJUSTABLE (ARCO) | CAR010 | Segueta | equipo: fuera de la revaloracion (C6-9); el precio MaPreX es valor de reposicion, se contrasta aparte |
-| equipo | CINTA METRICA 3 MT / CINTA Y CARCAZA METALICA | MED001 | Cinta metrica | equipo: fuera de la revaloracion (C6-9); el precio MaPreX es valor de reposicion, se contrasta aparte |
-| equipo | SIERRA ELECTRICA CIRCULAR D=7 1/4" 110V 1,6 KWH | ALB045 | Sierra circular electrica | equipo: fuera de la revaloracion (C6-9); el precio MaPreX es valor de reposicion, se contrasta aparte |
-| equipo | MARTILLO CARPINTERO NACIONAL 0,6 KGM MANGO MAD | DEM005 | Martillo | equipo: fuera de la revaloracion (C6-9); el precio MaPreX es valor de reposicion, se contrasta aparte |
-| equipo | NIVEL DE 3 BURBUJAS Y 18" | ALB024 | Nivel de mano | equipo: fuera de la revaloracion (C6-9); el precio MaPreX es valor de reposicion, se contrasta aparte |
-| equipo | ALICATE PARA ELECTRICISTA | ELE046 | Alicate | equipo: fuera de la revaloracion (C6-9); el precio MaPreX es valor de reposicion, se contrasta aparte |
-| equipo | MEZCLADORA P/CONCRETO CAP=0,40 M3 12,2 HP (DIESE | CON007 | Mezcladora de concreto | equipo: fuera de la revaloracion (C6-9); el precio MaPreX es valor de reposicion, se contrasta aparte |
-| equipo | VIBRADOR PARA CONCRETO | CON041 | Vibrador de concreto | equipo: fuera de la revaloracion (C6-9); el precio MaPreX es valor de reposicion, se contrasta aparte |
-| equipo | CARRETILLA PARA CONSTRUCCION | ALB073 | Carretilla | equipo: fuera de la revaloracion (C6-9); el precio MaPreX es valor de reposicion, se contrasta aparte |
-| equipo | TOBO PLASTICO CAP= 10 LT DE ALBAÑILERIA | ALB146 | Tobos plasticos | equipo: fuera de la revaloracion (C6-9); el precio MaPreX es valor de reposicion, se contrasta aparte |
-| equipo | COMPACTADORA RANA / PLANCHA 0.50 X 1.0M - 280 KG | CPT018 | Compactadora de percusion tipo sapo | equipo: fuera de la revaloracion (C6-9); el precio MaPreX es valor de reposicion, se contrasta aparte |
-| equipo | HERRAMIENTAS MENORES | ALB213 | Herramientas menores | equipo: fuera de la revaloracion (C6-9); el precio MaPreX es valor de reposicion, se contrasta aparte |
+| equipo | RETROEXCAVADORA CASE O SIM | MOV027 | Retroexcavadora | equipo: fuera de la revaloracion (C6-9); su Precio/Alq. MaPreX no es tarifa diaria (falta el factor Cop/Depr.), se contrasta aparte |
+| equipo | PICO CON CABO | ALB072 | Pico | equipo: fuera de la revaloracion (C6-9); su Precio/Alq. MaPreX no es tarifa diaria (falta el factor Cop/Depr.), se contrasta aparte |
+| equipo | PALA CUADRADA CON CABO DE MADERA | EZ0576 | Pala | equipo: fuera de la revaloracion (C6-9); su Precio/Alq. MaPreX no es tarifa diaria (falta el factor Cop/Depr.), se contrasta aparte |
+| equipo | CAMION VOLTEO 8 M3 FORD 7000 O SIM | VEH010 | Camion de volteo | equipo: fuera de la revaloracion (C6-9); su Precio/Alq. MaPreX no es tarifa diaria (falta el factor Cop/Depr.), se contrasta aparte |
+| equipo | VEHICULO PARA TRANSPORTE DE PERSONAL | EZ0512 | Vehiculo de transporte | equipo: fuera de la revaloracion (C6-9); su Precio/Alq. MaPreX no es tarifa diaria (falta el factor Cop/Depr.), se contrasta aparte |
+| equipo | SEGUETA AJUSTABLE (ARCO) | CAR010 | Segueta | equipo: fuera de la revaloracion (C6-9); su Precio/Alq. MaPreX no es tarifa diaria (falta el factor Cop/Depr.), se contrasta aparte |
+| equipo | CINTA METRICA 3 MT / CINTA Y CARCAZA METALICA | MED001 | Cinta metrica | equipo: fuera de la revaloracion (C6-9); su Precio/Alq. MaPreX no es tarifa diaria (falta el factor Cop/Depr.), se contrasta aparte |
+| equipo | SIERRA ELECTRICA CIRCULAR D=7 1/4" 110V 1,6 KWH | ALB045 | Sierra circular electrica | equipo: fuera de la revaloracion (C6-9); su Precio/Alq. MaPreX no es tarifa diaria (falta el factor Cop/Depr.), se contrasta aparte |
+| equipo | MARTILLO CARPINTERO NACIONAL 0,6 KGM MANGO MAD | DEM005 | Martillo | equipo: fuera de la revaloracion (C6-9); su Precio/Alq. MaPreX no es tarifa diaria (falta el factor Cop/Depr.), se contrasta aparte |
+| equipo | NIVEL DE 3 BURBUJAS Y 18" | ALB024 | Nivel de mano | equipo: fuera de la revaloracion (C6-9); su Precio/Alq. MaPreX no es tarifa diaria (falta el factor Cop/Depr.), se contrasta aparte |
+| equipo | ALICATE PARA ELECTRICISTA | ELE046 | Alicate | equipo: fuera de la revaloracion (C6-9); su Precio/Alq. MaPreX no es tarifa diaria (falta el factor Cop/Depr.), se contrasta aparte |
+| equipo | MEZCLADORA P/CONCRETO CAP=0,40 M3 12,2 HP (DIESE | CON007 | Mezcladora de concreto | equipo: fuera de la revaloracion (C6-9); su Precio/Alq. MaPreX no es tarifa diaria (falta el factor Cop/Depr.), se contrasta aparte |
+| equipo | VIBRADOR PARA CONCRETO | CON041 | Vibrador de concreto | equipo: fuera de la revaloracion (C6-9); su Precio/Alq. MaPreX no es tarifa diaria (falta el factor Cop/Depr.), se contrasta aparte |
+| equipo | CARRETILLA PARA CONSTRUCCION | ALB073 | Carretilla | equipo: fuera de la revaloracion (C6-9); su Precio/Alq. MaPreX no es tarifa diaria (falta el factor Cop/Depr.), se contrasta aparte |
+| equipo | TOBO PLASTICO CAP= 10 LT DE ALBAÑILERIA | ALB146 | Tobos plasticos | equipo: fuera de la revaloracion (C6-9); su Precio/Alq. MaPreX no es tarifa diaria (falta el factor Cop/Depr.), se contrasta aparte |
+| equipo | COMPACTADORA RANA / PLANCHA 0.50 X 1.0M - 280 KG | CPT018 | Compactadora de percusion tipo sapo | equipo: fuera de la revaloracion (C6-9); su Precio/Alq. MaPreX no es tarifa diaria (falta el factor Cop/Depr.), se contrasta aparte |
+| equipo | HERRAMIENTAS MENORES | ALB213 | Herramientas menores | equipo: fuera de la revaloracion (C6-9); su Precio/Alq. MaPreX no es tarifa diaria (falta el factor Cop/Depr.), se contrasta aparte |
 
 #### civil 001 -> MAPREX-2026-07
 
@@ -173,9 +173,9 @@ Hallazgos ATIPICO en el informe nuevo: 2.
 
 #### Contraste de equipos (no se cargan; ruling C6-9)
 
-Tarifa diaria del APU = precio x depreciacion; tarifa diaria MaPreX = valor de reposicion x factor Cop/Depr. (`equipos.pdf`).
+Tarifa diaria del APU = precio x depreciacion; tarifa diaria MaPreX = Precio/Alq. x Cop/Depr. (la columna Total de `equipos.pdf`).
 
-| Equipo | Partidas | Precio APU | Depr. APU | Tarifa APU | Ref | Reposicion MaPreX | Factor MaPreX | Tarifa MaPreX | MaPreX / APU |
+| Equipo | Partidas | Precio APU | Depr. APU | Tarifa APU | Ref | Precio/Alq. MaPreX | Factor MaPreX | Tarifa MaPreX | MaPreX / APU |
 |---|---|---|---|---|---|---|---|---|---|
 | Retroexcavadora | LB-01-EXC | 200.00 | 1 | 200.0000 | MOV027 | 110025.92 | 0.0035 | 385.0907 | 1.93 |
 | Pico | LB-01-EXC | 25.00 | 0.03 | 0.7500 | ALB072 | 40.53 | 0.033 | 1.3375 | 1.78 |
@@ -301,11 +301,11 @@ Hallazgos ATIPICO en el informe nuevo: 0.
 ### 5. Salvedades
 
 - Los casos son didacticos (CLAUDE.md §1): esto mide su sensibilidad a precios de referencia publicados, no el costo de ninguna obra.
-- El bono de alimentacion no se revalora: es un parametro de costo (`ParametrosCosto.bono_alimentacion` = 1.00 USD por obrero y dia), no un precio de la lista; MaPreX trae 6,2192 USD/dia para el Ayudante N2 (README de la carpeta), que solo entraria como escenario (UC-08).
+- El bono de alimentacion no se revalora: es un parametro de costo (`ParametrosCosto.bono_alimentacion` = 1.00 USD por obrero y dia), no un precio de la lista; MaPreX trae 6.2200 USD/dia para el Ayudante N2 (Ref 1-1.2, bono_bs de `referencia_civil.csv` a la tasa 633.3644), que solo entraria como escenario (UC-08).
 - Vigencia unica 2026-07-09 para la lista civil derivada, aunque la mano de obra de MaPreX es del 01/07/2026.
 - Tasa 633,3644 Bs/USD al 01/07/2026; cada `precio_usd` de `referencia_civil.csv` que se usa se verifico contra su `precio_bs` con la tasa 633.3644.
 - No se convierte ninguna unidad: una fila cuya unidad MaPreX no equivale a la del catalogo se excluye y se reporta (`sco` no es alias de `saco` en `core.contracts.unidades`).
-- Los equipos no se revaloran (C6-9): su precio MaPreX es el valor de reposicion; se contrastan aparte.
+- Los equipos no se revaloran (C6-9): su Precio/Alq. MaPreX no es una tarifa diaria sin el factor Cop/Depr.; se contrastan aparte.
 - Descripciones truncadas por el propio PDF de MaPreX (22), conservadas tal cual: referencia_sistemas.csv: DIS001, DIS003, DIS004, DIS014, DIS025, DIS027, DIS028, DIS029, DIS030, DIS031, DIS032, DIS033, DIS034, DIS038, DIS039, DIS040, DIS041, DIS042, DIS043, DIS044; referencia_telecom.csv: ELA633, ELC057. Una lista que las cite casa solo con un catalogo sembrado con la misma grafia.
 
 ## Lectura
@@ -313,15 +313,16 @@ Hallazgos ATIPICO en el informe nuevo: 0.
 **Civil (001): el total pasa de 1 586,61 a 1 756,70 USD (+10,72 %), y lo explica casi todo una
 partida.** La tubería sube 98,44 % (incidencia +15,18 puntos sobre el total): su material pasa de 6
 a 13,9291 USD/m (PLOA38) y entra 1,05 m por pieza. El concreto sube 12,91 % porque la arena lavada
-(30 → 59,6023 USD/m³) y la piedra picada (35 → 59,6023) casi se duplican; el cemento, el insumo de
-más peso de esa partida, no se revalora (ver abajo). Las otras tres partidas bajan: la excavación
-(−12,36 %) y el encofrado (−11,60 %) solo por la mano de obra, porque sus materiales no cambian
-(la excavación no tiene y los del encofrado no casan), y el relleno (−30,82 %) por el material
-granular (12 → 7,1523 USD/m³) más la mano de obra. La mano de obra baja en todas: los jornales
-MaPreX del tabulador de la construcción (1,78 a 2,56 USD/día) quedan por debajo de los sueldos del
-ejercicio (3 a 5 USD/día), y el FCAS de 600 % multiplica esa diferencia por siete. El bono de
-alimentación sigue en 1,00 USD por obrero y día, cuando MaPreX trae 6,2192 para el ayudante N2: si
-se aplicara (escenario UC‑08, fuera de esta prueba), la baja de la mano de obra se reduciría.
+(30 → 59,6023 USD/m³) casi se duplica (+98,67 %) y la piedra picada (35 → 59,6023) sube 70,29 %; el
+cemento, el insumo de más peso de esa partida, no se revalora (ver abajo). Las otras tres partidas
+bajan: la excavación (−12,36 %) y el encofrado (−11,60 %) solo por la mano de obra, porque sus
+materiales no cambian (la excavación no tiene y los del encofrado no casan), y el relleno (−30,82 %)
+por el material granular (12 → 7,1523 USD/m³) y la mano de obra, pese a que su agua sube de 2 a
+11,9205 USD/m³. La mano de obra baja en todas: los jornales MaPreX del tabulador de la construcción
+(1,78 a 2,56 USD/día) quedan por debajo de los sueldos del ejercicio (3 a 5 USD/día), y el FCAS de
+600 % multiplica esa diferencia por siete. El bono de alimentación sigue en 1,00 USD por obrero y
+día, cuando MaPreX trae 6,2200 para el ayudante N2 (Ref 1‑1.2: 3 939,53 Bs a la tasa): si se
+aplicara (escenario UC‑08, fuera de esta prueba), la baja de la mano de obra se reduciría.
 
 **Solo 12 de las 37 referencias civiles se pueden cargar sin convertir unidades.** De los 13
 materiales casan 5; los otros 8 tienen en MaPreX otra unidad de venta (`pza`, `env`, `lt`, `und`,
@@ -333,12 +334,13 @@ conservan su precio del ejercicio. Cobertura de insumos del 001: 6 de 14 materia
 dos veces: el catálogo la tiene como dos variantes, 12 y 2 USD, y la fila MaPreX actualiza ambas),
 7 de 7 roles de mano de obra y 0 de 20 equipos.
 
-**Equipos (contraste, no carga).** La tarifa diaria MaPreX (reposición × factor Cop/Depr.) supera
-a la del APU en los equipos pesados (retroexcavadora 1,93×, camión de volteo 3,02×, vehículo de
-transporte 4,29× con factor 1,00) y queda por debajo en algunos menores (vibrador 0,45×, alicate
-0,25×, la cinta métrica de 160 USD del encofrado 0,04×). El hallazgo 7 de la línea base se ve de
-nuevo: el mismo vehículo con factor 0,03 en la tubería da una tarifa 143 veces menor que la de
-MaPreX, que para ese equipo usa 1,00, el mismo factor que los otros cuatro APU.
+**Equipos (contraste, no carga).** La tarifa diaria MaPreX (Precio/Alq. × Cop/Depr., la columna
+Total de `equipos.pdf`) supera a la del APU en los equipos pesados (retroexcavadora 1,93×, camión de
+volteo 3,02×, vehículo de transporte 4,29× con factor 1,00) y queda por debajo en algunos menores
+(vibrador 0,45×, alicate 0,25×, la cinta métrica de 160 USD del encofrado 0,04×). El hallazgo 7 de
+la línea base se ve de nuevo: el mismo vehículo con factor 0,03 en la tubería da una tarifa 143
+veces menor que la de MaPreX, que para ese equipo usa 1,00, el mismo factor que los otros cuatro
+APU.
 
 **Hallazgos: los precios no mueven ninguna de las siete reglas.** R1 (3), R3 (2), R4 (1), R5 (1) y
 R6 (1) son los mismos antes y después: miden cantidades, unidades, especificaciones, balance y
