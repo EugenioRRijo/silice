@@ -54,6 +54,11 @@ def computar_tanquillas(
     `a`, `h`, `e` son el ancho exterior, la altura y el espesor de pared (memoria de cálculo de la
     línea base). `sobreancho` y `espesor_fondo` son el margen de excavación alrededor del foso y el
     espesor de base bajo la tanquilla (supuestos declarados en `data/samples/civil/README.md`).
+
+    `especificaciones` describe el elemento construido del objeto, las paredes de concreto de la
+    tanquilla: solo el ítem de concreto las recibe. El encofrado (de madera) y la excavación no son
+    de ese material, y si las llevaran R4 las marcaría como no contrastables contra un APU que no
+    las menciona, ruido sobre partidas a las que no se refieren (INV‑096).
     """
     especificaciones = dict(especificaciones or {})
 
@@ -82,7 +87,6 @@ def computar_tanquillas(
         dominio=Dominio.CIVIL,
         regla=REGLA_ENCOFRADO_TANQUILLA,
         parametros=parametros_encofrado,
-        especificaciones=especificaciones,
     )
 
     parametros_excavacion = {
@@ -102,7 +106,6 @@ def computar_tanquillas(
         dominio=Dominio.CIVIL,
         regla=REGLA_EXCAVACION_TANQUILLA,
         parametros=parametros_excavacion,
-        especificaciones=especificaciones,
     )
 
     return [concreto, encofrado, excavacion]
@@ -125,6 +128,9 @@ def computar_zanja(
     (Sesión I4) la marcaría como un hallazgo falso. El llamador (el adaptador tabular) sigue
     teniendo `diametro` disponible para calcular el volumen de tubería (`REGLA_VOLUMEN_TUBERIA`) y
     construir el balance de `computar_relleno`.
+
+    `especificaciones` (el diámetro en pulgadas, el material) describe la tubería: solo ese ítem
+    las recibe. La excavación de la zanja no es de PVC ni tiene diámetro (INV‑096).
     """
     especificaciones = dict(especificaciones or {})
 
@@ -139,7 +145,6 @@ def computar_zanja(
         dominio=Dominio.CIVIL,
         regla=REGLA_EXCAVACION_ZANJA,
         parametros=parametros_excavacion,
-        especificaciones=especificaciones,
     )
 
     parametros_tuberia = {"longitud": longitud, "desperdicio": desperdicio}

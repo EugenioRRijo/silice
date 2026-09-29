@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import csv
 from collections.abc import Mapping
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
 from adapters.civil.evaluador import evaluar_regla
@@ -25,6 +25,25 @@ from core.contracts import AdaptadorDominio, Dominio, ItemComputo
 
 _TIPO_TANQUILLA = "tanquilla"
 _TIPO_ZANJA = "zanja"
+# Todas las columnas del formato (data/samples/civil/README.md): las que no aplican a la
+# fila van vacias, pero la cabecera las trae. Exigirlas distingue una fuente de otro
+# dominio que tambien tenga "id" y "tipo", como la topologia de telecom (T-4 de la
+# revision de la pista P de C5).
+_COLUMNAS = (
+    "id",
+    "tipo",
+    "a",
+    "h",
+    "e",
+    "n",
+    "sobreancho",
+    "espesor_fondo",
+    "longitud",
+    "ancho",
+    "profundidad",
+    "diametro",
+    "desperdicio",
+)
 
 
 def _parsear_especificaciones(texto: str | None) -> dict[str, str]:
@@ -41,6 +60,50 @@ def _parsear_especificaciones(texto: str | None) -> dict[str, str]:
         clave, _, valor = par.partition("=")
         resultado[clave.strip()] = valor.strip()
     return resultado
+
+
+def _leer_filas(
+    fuente: Path | str, columnas: tuple[str, ...], dominio: Dominio
+) -> list[dict[str, str]]:
+    """Las filas del CSV, o `ValueError` con el nombre del archivo si no es una fuente de `dominio`.
+
+    UC-01, flujo 2a (INV-089): un archivo binario (no es texto UTF-8) o sin las columnas que este
+    adaptador lee (la muestra de otro dominio) se rechaza nombrando el archivo, con el
+    `ValueError` que la API traduce a 422, en vez de un `KeyError` de la primera columna que
+    falte. Cada adaptador tiene su copia: ninguno importa de otro (CLAUDE.md §2).
+    """
+    nombre = Path(fuente).name
+    try:
+        with open(fuente, newline="", encoding="utf-8") as archivo:
+            lector = csv.DictReader(archivo)
+            presentes = lector.fieldnames or ()
+            faltantes = [columna for columna in columnas if columna not in presentes]
+            if faltantes:
+                raise ValueError(
+                    f"el archivo {nombre!r} no es una fuente del dominio {dominio.value}: "
+                    f"faltan las columnas {faltantes}"
+                )
+            return list(lector)
+    except UnicodeDecodeError as error:
+        raise ValueError(
+            f"el archivo {nombre!r} es ilegible: no es un CSV de texto en UTF-8"
+        ) from error
+
+
+def _decimal(fila: dict[str, str], columna: str, fuente: Path | str) -> Decimal:
+    """`fila[columna]` como `Decimal`, o `ValueError` con el archivo, la fila y la columna.
+
+    Una celda vacia o no numerica lanzaria `decimal.InvalidOperation` sin contexto, que la API no
+    traduce a 422 (INV-089, UC-01 flujo 2a).
+    """
+    valor = (fila.get(columna) or "").strip()
+    try:
+        return Decimal(valor)
+    except InvalidOperation as error:
+        raise ValueError(
+            f"el archivo {Path(fuente).name!r}, fila {fila.get('id')!r}: la columna "
+            f"{columna!r} esta vacia o no es numerica: {valor!r}"
+        ) from error
 
 
 class AdaptadorCivilTabular(AdaptadorDominio):
@@ -74,58 +137,61 @@ class AdaptadorCivilTabular(AdaptadorDominio):
         factor_volumen_tuberia: Decimal | None = None
         diametro_balance: Decimal | None = None
 
-        with open(fuente, newline="", encoding="utf-8") as archivo:
-            for fila in csv.DictReader(archivo):
-                fila_id = fila["id"]
-                ids_procesadas.append(fila_id)
-                especificaciones = _parsear_especificaciones(fila.get("especificaciones"))
-                tipo = fila["tipo"].strip()
+        for fila in _leer_filas(fuente, _COLUMNAS, self.dominio):
+            fila_id = fila["id"]
+            ids_procesadas.append(fila_id)
+            especificaciones = _parsear_especificaciones(fila.get("especificaciones"))
+            # Una fila corta (menos celdas que la cabecera) trae `None` en las que faltan.
+            tipo = (fila.get("tipo") or "").strip()
 
-                if tipo == _TIPO_TANQUILLA:
-                    concreto, encofrado, excavacion = computar_tanquillas(
-                        origen_id=fila_id,
-                        codigos=self._codigos,
-                        a=Decimal(fila["a"]),
-                        h=Decimal(fila["h"]),
-                        e=Decimal(fila["e"]),
-                        n=Decimal(fila["n"]),
-                        sobreancho=Decimal(fila["sobreancho"]),
-                        espesor_fondo=Decimal(fila["espesor_fondo"]),
-                        especificaciones=especificaciones,
+            if tipo == _TIPO_TANQUILLA:
+                concreto, encofrado, excavacion = computar_tanquillas(
+                    origen_id=fila_id,
+                    codigos=self._codigos,
+                    a=_decimal(fila, "a", fuente),
+                    h=_decimal(fila, "h", fuente),
+                    e=_decimal(fila, "e", fuente),
+                    n=_decimal(fila, "n", fuente),
+                    sobreancho=_decimal(fila, "sobreancho", fuente),
+                    espesor_fondo=_decimal(fila, "espesor_fondo", fuente),
+                    especificaciones=especificaciones,
+                )
+                items.extend([concreto, encofrado, excavacion])
+                concreto_total += concreto.cantidad
+                excavacion_total += excavacion.cantidad
+            elif tipo == _TIPO_ZANJA:
+                diametro_zanja = _decimal(fila, "diametro", fuente)
+                excavacion, tuberia = computar_zanja(
+                    origen_id=fila_id,
+                    codigos=self._codigos,
+                    longitud=_decimal(fila, "longitud", fuente),
+                    ancho=_decimal(fila, "ancho", fuente),
+                    profundidad=_decimal(fila, "profundidad", fuente),
+                    diametro=diametro_zanja,
+                    desperdicio=_decimal(fila, "desperdicio", fuente),
+                    especificaciones=especificaciones,
+                )
+                items.extend([excavacion, tuberia])
+                excavacion_total += excavacion.cantidad
+                if diametro_balance is not None and diametro_zanja != diametro_balance:
+                    raise ValueError(
+                        f"el balance de relleno no admite dos diametros de tuberia: la fila "
+                        f"{fila_id!r} declara {diametro_zanja} y una fila anterior declara "
+                        f"{diametro_balance}"
                     )
-                    items.extend([concreto, encofrado, excavacion])
-                    concreto_total += concreto.cantidad
-                    excavacion_total += excavacion.cantidad
-                elif tipo == _TIPO_ZANJA:
-                    diametro_zanja = Decimal(fila["diametro"])
-                    excavacion, tuberia = computar_zanja(
-                        origen_id=fila_id,
-                        codigos=self._codigos,
-                        longitud=Decimal(fila["longitud"]),
-                        ancho=Decimal(fila["ancho"]),
-                        profundidad=Decimal(fila["profundidad"]),
-                        diametro=diametro_zanja,
-                        desperdicio=Decimal(fila["desperdicio"]),
-                        especificaciones=especificaciones,
-                    )
-                    items.extend([excavacion, tuberia])
-                    excavacion_total += excavacion.cantidad
-                    if diametro_balance is not None and diametro_zanja != diametro_balance:
-                        raise ValueError(
-                            f"el balance de relleno no admite dos diametros de tuberia: la fila "
-                            f"{fila_id!r} declara {diametro_zanja} y una fila anterior declara "
-                            f"{diametro_balance}"
-                        )
-                    diametro_balance = diametro_zanja
-                    # Factor de conversión m -> m3 de la tubería (área de la sección): se deriva
-                    # de REGLA_VOLUMEN_TUBERIA con longitud=1 para no repetir el coeficiente 0.7854.
-                    factor_volumen_tuberia = evaluar_regla(
-                        REGLA_VOLUMEN_TUBERIA,
-                        {"longitud": Decimal("1"), "diametro": diametro_zanja},
-                    )
-                    volumen_tuberia_total += factor_volumen_tuberia * tuberia.cantidad
-                else:
-                    raise ValueError(f"tipo de fila no reconocido en {fuente!r}: {tipo!r}")
+                diametro_balance = diametro_zanja
+                # Factor de conversión m -> m3 de la tubería (área de la sección): se deriva
+                # de REGLA_VOLUMEN_TUBERIA con longitud=1 para no repetir el coeficiente 0.7854.
+                factor_volumen_tuberia = evaluar_regla(
+                    REGLA_VOLUMEN_TUBERIA,
+                    {"longitud": Decimal("1"), "diametro": diametro_zanja},
+                )
+                volumen_tuberia_total += factor_volumen_tuberia * tuberia.cantidad
+            else:
+                raise ValueError(
+                    f"el archivo {Path(fuente).name!r}, fila {fila_id!r}: tipo de fila no "
+                    f"reconocido: {tipo!r} (se esperaba {_TIPO_TANQUILLA!r} o {_TIPO_ZANJA!r})"
+                )
 
         if "relleno" in self._codigos:
             if factor_volumen_tuberia is None:
