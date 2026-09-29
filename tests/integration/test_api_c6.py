@@ -556,6 +556,26 @@ def test_importar_un_archivo_que_no_es_xlsx_es_422(cliente, tmp_path, proyecto_t
     assert r.status_code == 422
 
 
+def test_el_proyecto_y_el_presupuesto_importado_quedan_confirmados(cliente_con_pendiente, tmp_path):
+    """UC-01 1 y UC-05 con una sesion por peticion (QA-3 de la ronda 1 de A).
+
+    `cliente_con_pendiente` abre una sesion por peticion sobre un SQLite de `tmp_path` sembrado,
+    como `api.dependencias.sesion_api` en produccion: lo que una ruta no confirma se pierde al
+    cerrar su sesion. El fixture `cliente` comparte una sola sesion y no lo notaria. Cada paso lo
+    comprueba la peticion siguiente, con su propia sesion: importar sobre el proyecto (404 si
+    `POST /proyectos` no lo confirmo) y pedir el informe (404 si la importacion no se confirmo).
+    """
+    cliente = cliente_con_pendiente
+    codigo = presupuesto_tercero().codigo
+
+    assert cliente.post("/proyectos", json={"nombre": PROYECTO_TERCERO}).status_code == 201
+    assert _importar(cliente, escribir_presupuesto_tabular(tmp_path)).status_code == 201
+
+    consulta = {"proyecto": PROYECTO_TERCERO}
+    assert cliente.get(f"/presupuestos/{codigo}/informe", params=consulta).status_code == 200
+    assert codigo in {p["codigo"] for p in cliente.get("/presupuestos").json()}
+
+
 # ---------------------------------------------------------------------------------------------
 # INV-099 (UC-07 5): los precios atipicos de la lista nueva en el informe revalorado
 # ---------------------------------------------------------------------------------------------
