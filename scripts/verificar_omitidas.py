@@ -1,6 +1,6 @@
 """Verificador de CI: ninguna prueba omitida en el JUnit de pytest.
 
-Siete archivos de prueba usan `pytest.importorskip` (ifcopenshell, scikit-learn,
+Trece archivos de prueba usan `pytest.importorskip` (ifcopenshell, scikit-learn,
 sentence-transformers) y `test_normalizacion.py` se omite si el modelo de similitud no se puede
 descargar. Si en CI faltara un extra, esas pruebas desaparecerian en silencio y la corrida saldria
 verde: este script convierte "0 omitidas" en una condicion del pipeline.
