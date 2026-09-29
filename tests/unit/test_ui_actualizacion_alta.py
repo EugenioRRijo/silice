@@ -167,6 +167,11 @@ def test_al_subir_la_lista_ofrece_dar_de_alta_solo_los_desconocidos_del_flujo_2a
     assert not [o for o in seleccion.options if "Arena lavada" in o], "2b no se ofrece"
     assert not [o for o in seleccion.options if "Cemento Portland" in o], "un conocido tampoco"
     assert seleccion.value == [], "por defecto no se da de alta ninguno"
+    # U-3: «los lista» a la vista, sin abrir el desplegable; 2b y los conocidos no cuentan.
+    lista = _textos(at.info)
+    assert "El archivo trae 1 insumo(s) que no estan en el catalogo" in lista
+    assert "Cemento blanco" in lista
+    assert "Arena lavada" not in lista and "Cemento Portland" not in lista
     assert _contar(base, models.Insumo) == insumos_antes, "subir el archivo no escribe"
     assert _contar(base, models.ListaPrecios) == 1
     assert huella(RUTA_BASE_REAL) == antes
@@ -235,6 +240,7 @@ def test_filas_repetidas_con_precios_distintos_son_un_error_sin_escribir(monkeyp
 
     at = _abrir(monkeypatch, base, LISTA_REPETIDA.encode())
     assert len([o for o in _multiselect(at).options if "Cemento blanco" in o]) == 2
+    assert "El archivo trae 2 insumo(s)" in _textos(at.info), "cada fila repetida cuenta"
     _revalorar(at, elegir=("Cemento blanco",))
 
     assert "precios distintos" in _textos(at.error)

@@ -185,6 +185,12 @@ def _ofrecer_alta(ruta: Path, archivo) -> tuple[PrecioLeido, ...]:
     ofrecidos = _vista_previa(ruta, archivo)
     if not ofrecidos:
         return ()
+    # UC-02 2a «los lista»: a la vista antes de revalorar, sin abrir el desplegable (U-3).
+    st.info(
+        f"El archivo trae {len(ofrecidos)} insumo(s) que no estan en el catalogo (UC-02, flujo "
+        f'2a): {", ".join(_nombrar(leido) for leido in ofrecidos)}. Elija en "Dar de alta" los '
+        "que quiera crear antes de revalorar; los demas se ignoran."
+    )
     # La posicion hace unica cada opcion aunque el archivo repita una fila.
     opciones = {
         f"{numero}. {_nombrar(leido)}, precio {leido.precio}": leido
