@@ -27,6 +27,7 @@ from sqlalchemy import func, select
 
 from core import models
 from tests.fixtures import apu_linea_base as linea_base
+from tests.fixtures.actualizacion_uc02 import CEMENTO
 
 
 def _contar(sesion, modelo) -> int:
@@ -125,3 +126,110 @@ def test_sin_justificacion_la_respuesta_la_trae_nula(cliente, sesion):
     assert r.json()["advertencia"] is not None
     assert r.json()["justificacion"] is None
     assert _justificaciones(sesion) == []
+
+
+# ---------------------------------------------------------------------------------------------
+# INV-090 (UC-02 2a y 2b): dar de alta los desconocidos elegidos
+# ---------------------------------------------------------------------------------------------
+
+ADITIVO = "Aditivo plastificante"
+MALLA = "Malla electrosoldada"
+#: «Arena lavada» esta en el catalogo en m3: en sacos es el flujo 2b (unidad no equivalente).
+ARENA_EN_SACOS = "Arena lavada"
+
+
+def _cargar_lista(cliente, tmp_path, filas: str, dar_de_alta=None, nombre="Lista C6"):
+    archivo = tmp_path / "lista_c6.csv"
+    archivo.write_text("tipo,insumo,unidad,precio\n" + filas, encoding="utf-8")
+    datos: dict[str, object] = {
+        "nombre": nombre,
+        "moneda": linea_base.MONEDA,
+        "fecha_vigencia": "2026-06-01",
+    }
+    if dar_de_alta is not None:
+        datos["dar_de_alta"] = dar_de_alta
+    with archivo.open("rb") as f:
+        return cliente.post(
+            "/listas-precios", files={"archivo": (archivo.name, f, "text/csv")}, data=datos
+        )
+
+
+FILAS_CON_DESCONOCIDOS = (
+    f"material,{CEMENTO},saco,18\n"
+    f"material,{ADITIVO},lt,12\n"
+    f"material,{MALLA},m2,9\n"
+    f"material,{ARENA_EN_SACOS},saco,4\n"
+)
+
+
+def _insumo(sesion, descripcion: str) -> models.Insumo | None:
+    return sesion.scalars(
+        select(models.Insumo).where(models.Insumo.descripcion == descripcion)
+    ).one_or_none()
+
+
+def test_dar_de_alta_crea_solo_el_elegido_y_separa_ignorados_de_rechazados(
+    cliente, sesion, tmp_path
+):
+    insumos_antes = _contar(sesion, models.Insumo)
+
+    r = _cargar_lista(cliente, tmp_path, FILAS_CON_DESCONOCIDOS, dar_de_alta=[ADITIVO])
+
+    assert r.status_code == 201
+    cuerpo = r.json()
+    assert cuerpo["dados_de_alta"] == [ADITIVO]
+    assert cuerpo["ignorados"] == [MALLA]  # 2a: desconocido que no se eligio
+    assert cuerpo["rechazados"] == [ARENA_EN_SACOS]  # 2b: unidad no equivalente
+    assert sorted(cuerpo["desconocidos"]) == sorted([MALLA, ARENA_EN_SACOS])
+
+    assert _contar(sesion, models.Insumo) == insumos_antes + 1
+    aditivo = _insumo(sesion, ADITIVO)
+    assert aditivo is not None and aditivo.codigo.startswith("MAT-")
+    assert _insumo(sesion, MALLA) is None
+    precios = {
+        (precio.lista.nombre, precio.insumo.descripcion): precio.precio
+        for precio in sesion.scalars(select(models.PrecioInsumo))
+    }
+    assert precios[("Lista C6", ADITIVO)] == Decimal("12")
+    assert not any(insumo == ADITIVO for lista, insumo in precios if lista != "Lista C6")
+
+
+def test_sin_dar_de_alta_nada_se_crea_y_los_desconocidos_se_reportan_aparte(
+    cliente, sesion, tmp_path
+):
+    insumos_antes = _contar(sesion, models.Insumo)
+
+    r = _cargar_lista(cliente, tmp_path, FILAS_CON_DESCONOCIDOS)
+
+    assert r.status_code == 201
+    cuerpo = r.json()
+    assert cuerpo["dados_de_alta"] == []
+    assert cuerpo["ignorados"] == [ADITIVO, MALLA]
+    assert cuerpo["rechazados"] == [ARENA_EN_SACOS]
+    assert _contar(sesion, models.Insumo) == insumos_antes
+
+
+@pytest.mark.parametrize(
+    ("filas", "elegidos", "fragmento"),
+    [
+        # Un insumo del catalogo no es desconocido.
+        (FILAS_CON_DESCONOCIDOS, [CEMENTO], CEMENTO),
+        # Un rechazado por unidad (2b) no se ofrece para el alta.
+        (FILAS_CON_DESCONOCIDOS, [ARENA_EN_SACOS], ARENA_EN_SACOS),
+        # Una descripcion que ni esta en el archivo.
+        (FILAS_CON_DESCONOCIDOS, ["Insumo fantasma"], "Insumo fantasma"),
+        # El mismo desconocido en dos filas con precios distintos (nucleo, ronda 1 de N).
+        (f"material,{ADITIVO},lt,12\nmaterial,{ADITIVO},lt,13\n", [ADITIVO], "filas"),
+    ],
+    ids=["catalogado", "rechazado-2b", "ausente", "precios-distintos"],
+)
+def test_un_alta_invalida_es_422_sin_escribir_nada(
+    cliente, sesion, tmp_path, filas, elegidos, fragmento
+):
+    antes = (_contar(sesion, models.Insumo), _contar(sesion, models.ListaPrecios))
+
+    r = _cargar_lista(cliente, tmp_path, filas, dar_de_alta=elegidos)
+
+    assert r.status_code == 422
+    assert fragmento in r.json()["detalle"]
+    assert (_contar(sesion, models.Insumo), _contar(sesion, models.ListaPrecios)) == antes
