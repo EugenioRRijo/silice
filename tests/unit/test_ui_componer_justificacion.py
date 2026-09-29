@@ -178,6 +178,10 @@ def test_con_advertencia_la_justificacion_se_liga_al_rendimiento_que_registra_el
     assert "se aparta" in advertencia and FUERA_DE_RANGO in advertencia
     assert "2 observaciones" in advertencia
     assert fecha == date.today(), "la fecha de la cabecera, la misma del rendimiento"
+    # U-1: la pantalla es la unica evidencia que tiene el proyectista de que el paso ocurrio.
+    exito = _textos(at.success)
+    assert "Justificacion de la advertencia registrada" in exito
+    assert f"rendimiento {FUERA_DE_RANGO}" in exito
     assert huella(RUTA_BASE_REAL) == antes
 
 
@@ -204,6 +208,7 @@ def test_con_advertencia_y_sin_texto_guarda_sin_justificacion(monkeypatch, tmp_p
     assert [valor for _id, valor, _tipo in _rendimientos(base)][-1] == Decimal(FUERA_DE_RANGO)
     assert _contar_justificaciones(base) == 0
     assert "sin justificacion" in _textos(at.info)
+    assert "Justificacion de la advertencia registrada" not in _textos(at.success)
 
 
 def test_si_el_guardado_no_registra_rendimiento_no_justifica_el_ultimo_y_avisa(

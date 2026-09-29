@@ -708,6 +708,7 @@ def _guardar(
     if guardado.resultado is None:
         st.error(guardado.motivo)
         return
+    justificada = False
     if advertida is not None:
         if _cuantos_rendimientos(catalogo, codigo) == rendimientos_antes:
             st.warning(
@@ -719,16 +720,25 @@ def _guardar(
             justificar_rendimiento(
                 sesion, codigo, advertida.justificacion, advertida.advertencia, fecha
             )
+            justificada = True
         else:
             st.info(
                 "El rendimiento se guardo con la advertencia y sin justificacion (UC-06, flujo "
                 "4a): la advertencia informa, no impide el registro (RF-27)."
             )
     sesion.commit()
-    st.success(
+    mensaje = (
         f"Composicion guardada para la partida {composicion.codigo_partida}: precio unitario "
         f"{_presentar(guardado.resultado.precio_unitario)}."
     )
+    if justificada:
+        # U-1 (ronda 1 de C6): ninguna pantalla lee despues la justificacion; este aviso es la
+        # evidencia de que el paso 4a ocurrio.
+        mensaje += (
+            " Justificacion de la advertencia registrada junto al rendimiento "
+            f"{composicion.rendimiento} (UC-06, flujo 4a)."
+        )
+    st.success(mensaje)
 
 
 def _cuantos_rendimientos(catalogo: Catalogo, codigo: str) -> int:
