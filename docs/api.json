@@ -142,7 +142,7 @@
           "listas"
         ],
         "summary": "Cargar Lista Precios",
-        "description": "Crea una lista de precios desde un archivo CSV o XLSX y confirma la transaccion (UC-02).",
+        "description": "Crea una lista de precios desde un archivo CSV o XLSX y confirma la transaccion (UC-02).\n\nFlujo 2a (INV-090): los insumos desconocidos que nombra `dar_de_alta` se dan de alta con\ncodigo nuevo y su precio entra solo en esta lista; los demas desconocidos se ignoran. Una\ndescripcion que no sea un desconocido del archivo (un insumo ya catalogado, una fila rechazada\npor unidad del flujo 2b o una que no esta en el archivo) es 422 sin escribir nada, igual que\ndos filas elegidas del mismo insumo con precios distintos. La respuesta separa los ignorados\n(2a) de los rechazados (2b): `ResumenLista.desconocidos` los trae juntos, y los ignorados son\nlos que ofrece la vista previa `insumos_desconocidos`.",
         "operationId": "cargar_lista_precios_listas_precios_post",
         "requestBody": {
           "content": {
@@ -323,6 +323,48 @@
         }
       }
     },
+    "/proyectos": {
+      "post": {
+        "tags": [
+          "presupuestos"
+        ],
+        "summary": "Crear Proyecto De Presupuestos",
+        "description": "UC-01, paso 1 (INV-086): crea el proyecto sobre el que luego se elabora\n(`POST /presupuestos`) o se importa (`POST /presupuestos/importar`) y confirma la transaccion.\n\nLa validacion es de `core.budget.crear_proyecto`: un nombre vacio o repetido, o un dominio que\nno es de `Dominio`, es 422 sin crear nada. La interfaz no crea proyectos; por HTTP, solo esta\nruta (los scripts de siembra de `scripts/` tambien los crean, directamente en la base).",
+        "operationId": "crear_proyecto_de_presupuestos_proyectos_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProyectoPeticion"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProyectoRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/presupuestos": {
       "get": {
         "tags": [
@@ -382,6 +424,48 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RendimientosPorDeclararRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/presupuestos/importar": {
+      "post": {
+        "tags": [
+          "presupuestos"
+        ],
+        "summary": "Importar Presupuesto De Tercero",
+        "description": "RF-24 y UC-05, pasos 1 y 2 (INV-076): importa el presupuesto tabular de un tercero, lo\naudita siempre y lo guarda con su informe, que luego sirven `GET /presupuestos/{codigo}/informe`\ny `GET /presupuestos/{codigo}/excel`.\n\nLa lectura, la auditoría y la persistencia son de `core.budget.importar_presupuesto`. Un\nproyecto inexistente es 404. Un archivo que no es XLSX o está mal formado (con archivo, hoja y\nfila), un código de partida que ya está en el catálogo, un código de presupuesto repetido en el\nproyecto o una moneda distinta de la de la lista vigente a su fecha son 422, sin escribir nada.\nEl presupuesto del tercero no tiene ítems pendientes: todo renglón trae su APU. Se declara\nantes de las rutas con `{codigo}` para que `importar` no se lea como un código.",
+        "operationId": "importar_presupuesto_de_tercero_presupuestos_importar_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_importar_presupuesto_de_tercero_presupuestos_importar_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PresupuestoCreadoRespuesta"
                 }
               }
             }
@@ -578,7 +662,7 @@
           "presupuestos"
         ],
         "summary": "Actualizar Presupuesto",
-        "description": "UC-02: revalora el presupuesto con `peticion.lista` y guarda la versión `codigo_nuevo`.\n\nMismo criterio que `ui/app.py`: si ningún insumo cambió de precio\n(`comparativo.insumos_afectados == 0`) no hay nada que confirmar (409, sin `commit`).",
+        "description": "UC-02: revalora el presupuesto con `peticion.lista` y guarda la versión `codigo_nuevo`.\n\nMismo criterio que `ui/app.py`: si ningún insumo cambió de precio\n(`comparativo.insumos_afectados == 0`) no hay nada que confirmar (409, sin `commit`).\n\nUC-07, paso 5 (INV-099): pasa al núcleo el detector de precios atípicos de `ml.anomaly`\n(`_detector_de_atipicos`); los que marque entran como hallazgos `ATIPICO` en el informe de la\nversión nueva, que sirve `GET /presupuestos/{codigo_nuevo}/informe`. Sin el extra `ml`, o con\nmenos variaciones de las que el detector necesita, no hay atípicos que declarar.",
         "operationId": "actualizar_presupuesto_presupuestos__codigo__actualizacion_post",
         "parameters": [
           {
@@ -823,7 +907,7 @@
           "rendimientos"
         ],
         "summary": "Crear Rendimiento",
-        "description": "RF-25 + RF-27: registra el rendimiento y advierte si se aparta de lo observado.\n\nLa advertencia se evalua contra el comportamiento observado ANTES de este registro (el valor\nnuevo no participa de su propio rango) y nunca impide: la respuesta siempre es 201 con el\nregistro hecho y la transaccion confirmada.",
+        "description": "RF-25 + RF-27: registra el rendimiento y advierte si se aparta de lo observado.\n\nLa advertencia se evalua contra el comportamiento observado ANTES de este registro (el valor\nnuevo no participa de su propio rango) y nunca impide: con un valor valido la respuesta es 201\ncon el registro hecho y la transaccion confirmada, haya advertencia o no. La unica excepcion\nque trae UC-06 4a es una justificacion en blanco junto a una advertencia (422, ver abajo).\n\nUC-06, flujo 4a (INV-093): si hubo advertencia y la peticion trae `justificacion`, se registra\ncon `justificar_rendimiento`, que la liga al ultimo rendimiento de la partida, el que esta\nmisma peticion acaba de registrar en su transaccion (revision de arquitectura de C6, N-5). Sin\nadvertencia la justificacion se ignora: el cliente no sabe de antemano si la habra, y\nrechazarla impediria un registro que RF-27 no impide. Si el nucleo la rechaza (en blanco), se\ndeshace tambien el rendimiento y la respuesta es 422: la peticion es una sola operacion.",
         "operationId": "crear_rendimiento_partidas__codigo__rendimientos_post",
         "parameters": [
           {
@@ -911,6 +995,21 @@
             "type": "string",
             "format": "date",
             "title": "Fecha Vigencia"
+          },
+          "dar_de_alta": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dar De Alta",
+            "description": "Descripciones de los insumos desconocidos del archivo que se dan de alta (UC-02, flujo 2a), comparadas sin distinguir mayusculas, tildes ni espacios; por defecto, ninguno"
           }
         },
         "type": "object",
@@ -946,6 +1045,27 @@
           "archivo"
         ],
         "title": "Body_computar_computos__dominio__post"
+      },
+      "Body_importar_presupuesto_de_tercero_presupuestos_importar_post": {
+        "properties": {
+          "archivo": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "Archivo",
+            "description": "El presupuesto del tercero en un libro XLSX con las hojas Datos, Presupuesto, APU, Insumos y, opcional, Curva (formato de core.budget.importacion)"
+          },
+          "proyecto": {
+            "type": "string",
+            "title": "Proyecto",
+            "description": "Proyecto existente donde se guarda"
+          }
+        },
+        "type": "object",
+        "required": [
+          "archivo",
+          "proyecto"
+        ],
+        "title": "Body_importar_presupuesto_de_tercero_presupuestos_importar_post"
       },
       "CambioRespuesta": {
         "properties": {
@@ -993,6 +1113,27 @@
             },
             "type": "array",
             "title": "Desconocidos"
+          },
+          "dados_de_alta": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Dados De Alta"
+          },
+          "ignorados": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Ignorados"
+          },
+          "rechazados": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Rechazados"
           }
         },
         "type": "object",
@@ -1001,7 +1142,7 @@
           "desconocidos"
         ],
         "title": "CargaListaRespuesta",
-        "description": "Lo que produjo cargar un archivo de precios: la lista creada y los insumos desconocidos."
+        "description": "Lo que produjo cargar un archivo de precios (UC-02): la lista creada y los insumos del\narchivo que el catalogo no conocia.\n\n- `dados_de_alta`: los desconocidos que el administrador eligio dar de alta (flujo 2a, campo\n  de formulario `dar_de_alta`); quedan en el catalogo con codigo nuevo y su precio solo en esta\n  lista.\n- `ignorados`: los desconocidos del flujo 2a que no se eligieron; no intervienen en el\n  recalculo.\n- `rechazados`: las filas del flujo 2b, cuya descripcion si esta en el catalogo pero con una\n  unidad no equivalente; se rechazan y no se pueden dar de alta.\n- `desconocidos`: ignorados y rechazados juntos, en el orden del archivo (el campo de antes de\n  C6, que se conserva)."
       },
       "ComparativoRespuesta": {
         "properties": {
@@ -2002,6 +2143,54 @@
         "title": "PropuestaRendimientoRespuesta",
         "description": "La propuesta al componer un APU: rendimiento elegido mas su dispersion."
       },
+      "ProyectoPeticion": {
+        "properties": {
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          },
+          "descripcion": {
+            "type": "string",
+            "title": "Descripcion",
+            "default": ""
+          },
+          "dominio": {
+            "type": "string",
+            "title": "Dominio",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "nombre"
+        ],
+        "title": "ProyectoPeticion",
+        "description": "UC-01, paso 1: el proyecto que agrupara los presupuestos. `nombre` es unico y no vacio;\n`dominio`, si se indica, es uno de `core.contracts.Dominio` (civil, telecom, industrial,\nsistemas)."
+      },
+      "ProyectoRespuesta": {
+        "properties": {
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          },
+          "descripcion": {
+            "type": "string",
+            "title": "Descripcion"
+          },
+          "dominio": {
+            "type": "string",
+            "title": "Dominio"
+          }
+        },
+        "type": "object",
+        "required": [
+          "nombre",
+          "descripcion",
+          "dominio"
+        ],
+        "title": "ProyectoRespuesta",
+        "description": "El proyecto creado, tal como quedo guardado."
+      },
       "RegistroRendimientoRespuesta": {
         "properties": {
           "rendimiento": {
@@ -2017,6 +2206,17 @@
               }
             ],
             "title": "Advertencia"
+          },
+          "justificacion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Justificacion"
           }
         },
         "type": "object",
@@ -2025,7 +2225,7 @@
           "advertencia"
         ],
         "title": "RegistroRendimientoRespuesta",
-        "description": "Lo registrado y la advertencia de RF-27 (o null): advertir nunca es impedir."
+        "description": "Lo registrado y la advertencia de RF-27 (o null): advertir nunca es impedir.\n`justificacion` es la que quedo registrada con la advertencia (UC-06, flujo 4a), o null."
       },
       "RendimientoPeticion": {
         "properties": {
@@ -2057,6 +2257,17 @@
               }
             ],
             "title": "Referencia Ejecucion"
+          },
+          "justificacion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Justificacion"
           }
         },
         "type": "object",
@@ -2066,7 +2277,7 @@
           "fecha"
         ],
         "title": "RendimientoPeticion",
-        "description": "Registro de un rendimiento sobre una partida. `valor` viaja como texto decimal."
+        "description": "Registro de un rendimiento sobre una partida. `valor` viaja como texto decimal.\n\n`justificacion` (UC-06, flujo 4a) es el motivo con que se acepta la advertencia de RF-27. Se\nregistra solo si el valor dispara la advertencia, ligada al rendimiento de esta misma\npeticion; sin advertencia se ignora (la respuesta la trae nula). Con advertencia, una\njustificacion en blanco es 422 y no se registra nada."
       },
       "RendimientoPorDeclararRespuesta": {
         "properties": {

@@ -3,17 +3,26 @@
 from __future__ import annotations
 
 import tempfile
+from collections.abc import Sequence
 from datetime import date
 from pathlib import Path
 from typing import Annotated
 
+import openpyxl
 from fastapi import APIRouter, File, Form, UploadFile, status
 from sqlalchemy import select
 
 from api.dependencias import SesionDep
 from api.esquemas import CambioRespuesta, CargaListaRespuesta, ListaRespuesta
 from core import models
-from core.catalog import cambios_precio, crear_lista_desde_archivo
+from core.catalog import (
+    PrecioLeido,
+    cambios_precio,
+    crear_lista_desde_archivo,
+    insumos_desconocidos,
+)
+from core.catalog.precios import SUFIJOS_EXCEL
+from core.verification.texto import normalizar_texto
 
 router = APIRouter(tags=["listas"])
 
@@ -38,17 +47,95 @@ def cargar_lista_precios(
     nombre: Annotated[str, Form()],
     moneda: Annotated[str, Form()],
     fecha_vigencia: Annotated[date, Form()],
+    dar_de_alta: Annotated[
+        list[str] | None,
+        Form(
+            description="Descripciones de los insumos desconocidos del archivo que se dan de "
+            "alta (UC-02, flujo 2a), comparadas sin distinguir mayusculas, tildes ni espacios; "
+            "por defecto, ninguno"
+        ),
+    ] = None,
 ) -> CargaListaRespuesta:
-    """Crea una lista de precios desde un archivo CSV o XLSX y confirma la transaccion (UC-02)."""
+    """Crea una lista de precios desde un archivo CSV o XLSX y confirma la transaccion (UC-02).
+
+    Flujo 2a (INV-090): los insumos desconocidos que nombra `dar_de_alta` se dan de alta con
+    codigo nuevo y su precio entra solo en esta lista; los demas desconocidos se ignoran. Una
+    descripcion que no sea un desconocido del archivo (un insumo ya catalogado, una fila rechazada
+    por unidad del flujo 2b o una que no esta en el archivo) es 422 sin escribir nada, igual que
+    dos filas elegidas del mismo insumo con precios distintos. La respuesta separa los ignorados
+    (2a) de los rechazados (2b): `ResumenLista.desconocidos` los trae juntos, y los ignorados son
+    los que ofrece la vista previa `insumos_desconocidos`.
+    """
     with tempfile.TemporaryDirectory() as directorio:
         ruta = Path(directorio) / archivo.filename
         ruta.write_bytes(archivo.file.read())
-        resumen = crear_lista_desde_archivo(sesion, ruta, nombre, moneda, fecha_vigencia)
+        comprobar_libro_legible(ruta)
+        candidatos = insumos_desconocidos(sesion, ruta)
+        resumen = crear_lista_desde_archivo(
+            sesion,
+            ruta,
+            nombre,
+            moneda,
+            fecha_vigencia,
+            dar_de_alta=_elegidos(candidatos, dar_de_alta or (), ruta.name),
+        )
     sesion.commit()
     return CargaListaRespuesta(
         lista=ListaRespuesta.model_validate(resumen.lista),
         desconocidos=[leido.descripcion for leido in resumen.desconocidos],
+        dados_de_alta=[insumo.descripcion for insumo in resumen.dados_de_alta],
+        ignorados=[leido.descripcion for leido in resumen.desconocidos if leido in candidatos],
+        rechazados=[leido.descripcion for leido in resumen.desconocidos if leido not in candidatos],
     )
+
+
+def comprobar_libro_legible(ruta: Path) -> None:
+    """`ValueError` (422) con el nombre del archivo si `ruta` es un libro de Excel que openpyxl no
+    puede abrir: bytes que no son un zip (`zipfile.BadZipFile`), un zip sin las partes de un libro
+    (`KeyError`, que el manejador de `LookupError` responderia como 404) o un archivo truncado.
+
+    Ronda 1 de la pista A (H1): sin esta comprobacion, `POST /listas-precios` y
+    `POST /presupuestos/importar` respondian 500 ante un .xlsx corrupto. Se abre el libro antes de
+    llamar al nucleo, asi que cualquier fallo de esta apertura es del archivo y no se confunde con
+    un error del catalogo; la traduccion de fondo, en el lector del nucleo, queda para GC6. Un
+    archivo de otro sufijo no se toca: su rechazo es del nucleo.
+    """
+    if ruta.suffix.lower() not in SUFIJOS_EXCEL:
+        return
+    # El flujo lo abre y lo cierra esta funcion: si openpyxl falla a mitad, en Windows dejaria el
+    # archivo abierto y el directorio temporal de la ruta no se podria borrar.
+    with ruta.open("rb") as flujo:
+        try:
+            openpyxl.load_workbook(flujo, read_only=True).close()
+        except Exception as error:
+            raise ValueError(
+                f"{ruta.name}: no se puede leer como libro de Excel "
+                f"({type(error).__name__}: {error})"
+            ) from error
+
+
+def _elegidos(
+    candidatos: Sequence[PrecioLeido], descripciones: Sequence[str], archivo: str
+) -> list[PrecioLeido]:
+    """Las filas de la vista previa que nombran `descripciones`. `ValueError` (422) si alguna
+    descripcion no es un insumo desconocido de este archivo.
+
+    Se compara con `normalizar_texto`, la identidad del nucleo (`core.catalog.precios`): una
+    descripcion elige **todas** las filas de su identidad, con cualquier grafia (mayusculas,
+    tildes, espacios), y el nucleo decide si sus precios concuerdan (una sola alta) o no (422).
+    Elegir solo la grafia exacta dejaria fuera una fila de la misma identidad, que luego
+    sobrescribiria en silencio el precio del alta (ronda 1 de la pista A, H2).
+    """
+    elegidas = {normalizar_texto(d) for d in descripciones}
+    disponibles = {normalizar_texto(c.descripcion) for c in candidatos}
+    ajenas = [d for d in descripciones if normalizar_texto(d) not in disponibles]
+    if ajenas:
+        raise ValueError(
+            f"{archivo}: {', '.join(repr(d) for d in ajenas)} no es un insumo desconocido de "
+            "este archivo; solo se dan de alta los desconocidos del flujo 2a de UC-02 (un "
+            "insumo catalogado o una fila rechazada por unidad no se dan de alta)"
+        )
+    return [c for c in candidatos if normalizar_texto(c.descripcion) in elegidas]
 
 
 @router.get("/cambios-precio", response_model=list[CambioRespuesta])
