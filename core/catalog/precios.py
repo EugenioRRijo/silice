@@ -13,8 +13,10 @@ Tres responsabilidades, en el orden en que las usa el caso de uso:
    Python puro y sin arreglos intermedios.
 2. **Crear** la lista nueva a partir de la vigente: copia todos sus precios y sobrescribe los que
    trae el archivo. Así la lista nueva vale por sí sola para reconstruir cualquier APU, que es lo
-   que exige `Catalogo.composicion`. Los insumos que el catálogo no conoce **no se crean**: se
-   devuelven en `ResumenLista.desconocidos` para que el usuario decida (UC‑02, flujo 2a).
+   que exige `Catalogo.composicion`. Los insumos que el catálogo no conoce **no se crean** salvo
+   que el usuario los elija: `insumos_desconocidos` los lista sin escribir nada y
+   `crear_lista_desde_archivo(..., dar_de_alta=...)` da de alta solo los elegidos, con precio solo
+   en la lista nueva; los demás se devuelven en `ResumenLista.desconocidos` (UC‑02, flujo 2a).
 3. **Detectar y registrar** qué insumos cambiaron de precio entre dos listas. Ese historial es el
    que alimentará al módulo predictivo (Sesión I6), de modo que se persiste siempre, aunque el
    presupuesto nuevo se descarte (UC‑02, flujo 7a).
@@ -33,6 +35,7 @@ por insumo, y distinguir variantes exigiría que el proveedor escribiera los có
 from __future__ import annotations
 
 from collections import defaultdict
+from collections.abc import Collection, Iterable
 from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal, InvalidOperation
@@ -50,14 +53,19 @@ from core.verification.texto import normalizar_texto
 
 __all__ = [
     "COLUMNAS_ARCHIVO",
+    "PRIMERA_FILA_DE_DATOS",
+    "SUFIJOS_EXCEL",
     "CambioDetectado",
     "PrecioLeido",
     "ResumenLista",
     "cambios_precio",
     "crear_lista_desde_archivo",
     "insumos_afectados",
+    "insumos_desconocidos",
     "leer_lista_precios",
+    "leer_tabla",
     "registrar_cambios",
+    "tipo_insumo",
     "variacion_relativa",
 ]
 
@@ -68,8 +76,8 @@ COLUMNAS_ARCHIVO = ("tipo", "insumo", "unidad", "precio")
 SUFIJO_CSV = ".csv"
 SUFIJOS_EXCEL = (".xlsx", ".xlsm")
 
-#: Primera fila con datos del archivo: la 1 es la de encabezados.
-_PRIMERA_FILA_DE_DATOS = 2
+#: Primera fila con datos del archivo (y de cada hoja de un libro): la 1 es la de encabezados.
+PRIMERA_FILA_DE_DATOS = 2
 
 #: Grafías de la columna `tipo` que no son el valor canónico de `models.TipoInsumo`.
 _ALIAS_TIPO = {
@@ -95,14 +103,18 @@ class PrecioLeido:
 class ResumenLista:
     """Qué produjo la carga de un archivo de precios.
 
-    `desconocidos` son las filas cuyo (tipo, descripción, unidad) no está en el catálogo: se
-    reportan y no intervienen en el recálculo, porque dar de alta un insumo es una decisión del
-    administrador, no un efecto secundario de leer un archivo (UC‑02, flujo 2a). Sigue el patrón de
-    `ResumenCarga`: la carga devuelve lo que hizo, no solo lo que creó.
+    `desconocidos` son las filas cuyo (tipo, descripción, unidad) no está en el catálogo y que no
+    se dieron de alta: los ignorados del flujo 2a y los rechazados del 2b (unidad no equivalente a
+    la del catálogo). Se reportan y no intervienen en el recálculo, porque dar de alta un insumo es
+    una decisión del administrador, no un efecto secundario de leer un archivo (UC‑02, flujo 2a).
+    `dados_de_alta` son los insumos que el administrador eligió dar de alta (expediente C6.2), con
+    precio solo en `lista`. Sigue el patrón de `ResumenCarga`: la carga devuelve lo que hizo, no
+    solo lo que creó.
     """
 
     lista: models.ListaPrecios
     desconocidos: tuple[PrecioLeido, ...] = ()
+    dados_de_alta: tuple[models.Insumo, ...] = ()
 
 
 _CERO = Decimal(0)
@@ -151,7 +163,7 @@ def leer_lista_precios(ruta: Path) -> list[PrecioLeido]:
     El separador decimal es el punto. Aceptar también la coma exigiría decidir qué significa el
     separador de miles, y ninguna fuente del proyecto lo necesita todavía.
     """
-    tabla = _leer_tabla(ruta)
+    tabla = leer_tabla(ruta)
     faltantes = [columna for columna in COLUMNAS_ARCHIVO if columna not in tabla.columns]
     if faltantes:
         raise ValueError(
@@ -160,17 +172,24 @@ def leer_lista_precios(ruta: Path) -> list[PrecioLeido]:
         )
     return [
         _a_precio_leido(fila, numero, ruta)
-        for numero, fila in enumerate(tabla.to_dict("records"), start=_PRIMERA_FILA_DE_DATOS)
+        for numero, fila in enumerate(tabla.to_dict("records"), start=PRIMERA_FILA_DE_DATOS)
     ]
 
 
-def _leer_tabla(ruta: Path) -> pd.DataFrame:
-    """El archivo como tabla de texto: ningún importe pasa por `float` en ningún paso."""
+def leer_tabla(ruta: Path, hoja: str | None = None) -> pd.DataFrame:
+    """El archivo como tabla de texto: ningún importe pasa por `float` en ningún paso.
+
+    Única lectura de CSV y XLSX sin `float` del sistema: la usan las listas de precios y la
+    importación del presupuesto de un tercero (`core.budget.importacion`, expediente C6.4).
+    `hoja` elige una hoja del XLSX por su nombre (sin ella, la activa).
+    """
     sufijo = ruta.suffix.lower()
     if sufijo == SUFIJO_CSV:
+        if hoja is not None:
+            raise ValueError(f"{ruta.name}: un CSV no tiene hojas; se esperaba la hoja {hoja!r}")
         tabla = pd.read_csv(ruta, dtype=str, keep_default_na=False, encoding="utf-8")
     elif sufijo in SUFIJOS_EXCEL:
-        tabla = _leer_tabla_excel(ruta)
+        tabla = _leer_tabla_excel(ruta, hoja)
     else:
         raise ValueError(
             f"{ruta.name}: formato no soportado; se leen {', '.join((SUFIJO_CSV, *SUFIJOS_EXCEL))}"
@@ -179,7 +198,7 @@ def _leer_tabla(ruta: Path) -> pd.DataFrame:
     return tabla.fillna("")
 
 
-def _leer_tabla_excel(ruta: Path) -> pd.DataFrame:
+def _leer_tabla_excel(ruta: Path, hoja: str | None = None) -> pd.DataFrame:
     """Lee un XLSX celda por celda con `openpyxl`, sin la ruta de `pandas.read_excel(dtype=str)`.
 
     Esa ruta no evita el `float`: el motor `openpyxl` analiza toda celda numérica del XML como
@@ -192,10 +211,15 @@ def _leer_tabla_excel(ruta: Path) -> pd.DataFrame:
     (con la precisión que un ser humano puede escribir en una celda) reconstruye el mismo texto que
     se escribió: CPython garantiza que su algoritmo de la representación más corta cumple
     `float(str(x)) == x`.
+
+    Sin `hoja` lee la hoja activa; con ella, la de ese nombre (`ValueError` si el libro no la
+    tiene).
     """
     libro = openpyxl.load_workbook(ruta, read_only=True, data_only=True)
     try:
-        filas = libro.active.iter_rows(values_only=True)
+        if hoja is not None and hoja not in libro.sheetnames:
+            raise ValueError(f"{ruta.name}: falta la hoja {hoja!r}")
+        filas = (libro[hoja] if hoja is not None else libro.active).iter_rows(values_only=True)
         try:
             encabezados = [_texto_celda(valor) for valor in next(filas)]
         except StopIteration:
@@ -236,18 +260,30 @@ def _texto(valor: object) -> str:
     return str(valor).strip()
 
 
-def _a_tipo(valor: str, numero: int, ruta: Path) -> models.TipoInsumo:
-    clave = valor.lower()
+def tipo_insumo(texto: str) -> models.TipoInsumo:
+    """El tipo de insumo de la columna `tipo`, con sus grafías (`mano de obra`, `mano_de_obra`).
+
+    Única traducción de esa columna: la usan las listas de precios y la importación del
+    presupuesto de un tercero. `ValueError` sin posición si no es un tipo conocido; quien la
+    llama añade el archivo, la hoja y la fila.
+    """
+    clave = texto.strip().lower()
     if clave in _ALIAS_TIPO:
         return _ALIAS_TIPO[clave]
     try:
         return models.TipoInsumo(clave)
-    except ValueError as error:
+    except ValueError:
         esperados = ", ".join(tipo.value for tipo in models.TipoInsumo)
         raise ValueError(
-            f"{ruta.name}, fila {numero}: tipo de insumo {valor!r} desconocido; "
-            f"se espera uno de {esperados}"
-        ) from error
+            f"tipo de insumo {texto!r} desconocido; se espera uno de {esperados}"
+        ) from None
+
+
+def _a_tipo(valor: str, numero: int, ruta: Path) -> models.TipoInsumo:
+    try:
+        return tipo_insumo(valor)
+    except ValueError as error:
+        raise ValueError(f"{ruta.name}, fila {numero}: {error}") from None
 
 
 def _a_precio(valor: str, numero: int, ruta: Path) -> Decimal:
@@ -280,6 +316,7 @@ def crear_lista_desde_archivo(
     moneda: str,
     fecha_vigencia: date,
     origen: str = "",
+    dar_de_alta: Collection[PrecioLeido] = (),
 ) -> ResumenLista:
     """Crea la lista de precios que declara el archivo, partiendo de la vigente a esa fecha.
 
@@ -292,9 +329,18 @@ def crear_lista_desde_archivo(
     presupuesto la referencia (docs/modelo_datos.md §2.2).
 
     Sin `origen` queda el nombre del archivo, que es la procedencia del dato (CLAUDE.md §2.6).
+
+    `dar_de_alta` son las filas de `insumos_desconocidos` que el administrador eligió (UC‑02,
+    flujo 2a; expediente C6.2): se crean con código nuevo de su tipo y su precio entra solo en la
+    lista nueva. Las filas elegidas con la misma identidad de catálogo (tipo, descripción
+    normalizada y, solo en materiales, unidad normalizada) dan **una** alta. Se validan antes de
+    escribir nada: `ValueError` si alguna no es un insumo desconocido de este archivo, o si dos
+    con la misma identidad traen precios distintos. Sin elegidos, el catálogo no gana insumos.
     """
     leidos = leer_lista_precios(ruta)
     anterior = Catalogo(session).lista_vigente(fecha_vigencia)
+    catalogados = _insumos_por_clave(session)
+    elegidos = _elegidos(leidos, catalogados, dar_de_alta, ruta)
 
     lista = models.ListaPrecios(
         nombre=nombre,
@@ -305,7 +351,20 @@ def crear_lista_desde_archivo(
     session.add(lista)
     session.flush()
 
-    catalogados = _insumos_por_clave(session)
+    catalogo = Catalogo(session)
+    dados_de_alta: list[models.Insumo] = []
+    por_identidad: dict[_ClaveInsumo, models.Insumo] = {}
+    for leido in elegidos:
+        identidad = _identidad_alta(leido)
+        insumo = por_identidad.get(identidad)
+        if insumo is None:  # varias filas con la misma identidad: una sola alta
+            insumo = catalogo.dar_de_alta_insumo(leido.tipo, leido.descripcion, leido.unidad)
+            por_identidad[identidad] = insumo
+            dados_de_alta.append(insumo)
+        # Indexada por la clave de la fila (con su unidad, p. ej. «dia» en un equipo), para que el
+        # recorrido de abajo le fije el precio en la lista nueva.
+        catalogados[_clave(leido.tipo.value, leido.descripcion, leido.unidad)] = [insumo]
+
     precios = {precio.insumo_id: precio.precio for precio in anterior.precios}
     desconocidos: list[PrecioLeido] = []
     for leido in leidos:
@@ -321,7 +380,70 @@ def crear_lista_desde_archivo(
         for insumo_id, precio in precios.items()
     )
     session.flush()
-    return ResumenLista(lista=lista, desconocidos=tuple(desconocidos))
+    return ResumenLista(
+        lista=lista, desconocidos=tuple(desconocidos), dados_de_alta=tuple(dados_de_alta)
+    )
+
+
+def insumos_desconocidos(session: Session, ruta: Path) -> tuple[PrecioLeido, ...]:
+    """La vista previa del flujo 2a de UC‑02: las filas del archivo que se pueden dar de alta.
+
+    Son las filas cuyo (tipo, descripción) normalizado no está en el catálogo con **ninguna**
+    unidad, en el orden del archivo. Una fila cuya descripción sí está, con una unidad no
+    equivalente, es el flujo 2b («la fila se rechaza y se reporta»): no se ofrece, porque darla de
+    alta crearía un homónimo con otra unidad del insumo que ese flujo rechaza. No escribe nada.
+    """
+    return _candidatos_de_alta(leer_lista_precios(ruta), _insumos_por_clave(session))
+
+
+def _candidatos_de_alta(
+    leidos: Iterable[PrecioLeido], catalogados: dict[_ClaveInsumo, list[models.Insumo]]
+) -> tuple[PrecioLeido, ...]:
+    conocidas = {(tipo, descripcion) for tipo, descripcion, _unidad in catalogados}
+    return tuple(
+        leido
+        for leido in leidos
+        if (leido.tipo.value, normalizar_texto(leido.descripcion)) not in conocidas
+    )
+
+
+def _elegidos(
+    leidos: list[PrecioLeido],
+    catalogados: dict[_ClaveInsumo, list[models.Insumo]],
+    dar_de_alta: Collection[PrecioLeido],
+    ruta: Path,
+) -> list[PrecioLeido]:
+    """Los elegidos para el alta, en el orden del archivo; `ValueError` si alguno no se ofrece."""
+    candidatos = _candidatos_de_alta(leidos, catalogados)
+    ajenos = [leido for leido in dar_de_alta if leido not in candidatos]
+    if ajenos:
+        raise ValueError(
+            f"{ruta.name}: {', '.join(repr(a.descripcion) for a in ajenos)} no es un insumo "
+            "desconocido de este archivo; solo se dan de alta los que lista "
+            "insumos_desconocidos (UC-02, flujo 2a)"
+        )
+    elegidos = set(dar_de_alta)
+    filas = {id(leido): numero for numero, leido in enumerate(leidos, start=PRIMERA_FILA_DE_DATOS)}
+    en_orden = [leido for leido in candidatos if leido in elegidos]
+    por_identidad: dict[_ClaveInsumo, list[PrecioLeido]] = defaultdict(list)
+    for leido in en_orden:
+        por_identidad[_identidad_alta(leido)].append(leido)
+    for mismas in por_identidad.values():
+        if len({leido.precio for leido in mismas}) > 1:
+            raise ValueError(
+                f"{ruta.name}, filas {', '.join(str(filas[id(leido)]) for leido in mismas)}: "
+                f"{mismas[0].descripcion!r} se dara de alta una sola vez y esas filas le dan "
+                f"precios distintos ({', '.join(str(leido.precio) for leido in mismas)})"
+            )
+    return en_orden
+
+
+def _identidad_alta(leido: PrecioLeido) -> _ClaveInsumo:
+    """La identidad de catálogo del insumo que daría de alta la fila: tipo, descripción
+    normalizada y unidad normalizada solo en materiales (equipos y mano de obra van sin unidad,
+    como en `Catalogo.dar_de_alta_insumo`)."""
+    unidad = leido.unidad if leido.tipo is models.TipoInsumo.MATERIAL else None
+    return _clave(leido.tipo.value, leido.descripcion, unidad)
 
 
 def _insumos_por_clave(session: Session) -> dict[_ClaveInsumo, list[models.Insumo]]:

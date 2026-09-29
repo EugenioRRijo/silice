@@ -41,28 +41,41 @@ from core.budget.escenarios import (
     generar_escenario,
 )
 from core.budget.excel import exportar_excel
+from core.budget.importacion import (
+    PresupuestoImportado,
+    importar_presupuesto,
+    leer_presupuesto_tabular,
+)
 from core.budget.persistencia import (
     cargar_elaboracion,
     cargar_presupuesto,
+    crear_proyecto,
     guardar_presupuesto,
 )
 from core.budget.presupuesto import (
+    CODIGO_ATIPICO,
     CODIGO_PENDIENTE,
+    DetectorAtipicos,
     GeneradorPlan,
+    MarcaAtipica,
     ResultadoElaboracion,
     elaborar,
     generar_presupuesto,
 )
 
 __all__ = [
+    "CODIGO_ATIPICO",
     "CODIGO_PENDIENTE",
     "COLUMNAS_COMPARATIVO",
     "COLUMNAS_ESCENARIOS",
     "Comparativo",
+    "DetectorAtipicos",
     "Escenario",
     "GeneradorPlan",
+    "MarcaAtipica",
     "PeriodoPlan",
     "PlanInvalido",
+    "PresupuestoImportado",
     "ResultadoElaboracion",
     "actualizar_precios",
     "cargar_elaboracion",
@@ -70,6 +83,7 @@ __all__ = [
     "comparar_escenarios",
     "comparar_por_partida",
     "con_curva",
+    "crear_proyecto",
     "descartar_version",
     "elaborar",
     "exportar_excel",
@@ -77,5 +91,7 @@ __all__ = [
     "generar_escenario",
     "generar_presupuesto",
     "guardar_presupuesto",
+    "importar_presupuesto",
+    "leer_presupuesto_tabular",
     "plan_secuencial",
 ]
