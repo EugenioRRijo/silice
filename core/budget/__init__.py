@@ -44,6 +44,7 @@ from core.budget.excel import exportar_excel
 from core.budget.persistencia import (
     cargar_elaboracion,
     cargar_presupuesto,
+    crear_proyecto,
     guardar_presupuesto,
 )
 from core.budget.presupuesto import (
@@ -70,6 +71,7 @@ __all__ = [
     "comparar_escenarios",
     "comparar_por_partida",
     "con_curva",
+    "crear_proyecto",
     "descartar_version",
     "elaborar",
     "exportar_excel",

@@ -57,11 +57,45 @@ __all__ = [
     "TOLERANCIA_RECONSTRUCCION",
     "cargar_elaboracion",
     "cargar_presupuesto",
+    "crear_proyecto",
     "guardar_presupuesto",
 ]
 
 #: Diferencia máxima admitida entre el precio unitario reconstruido y el de la instantánea.
 TOLERANCIA_RECONSTRUCCION = Decimal("0.000001")
+
+
+def crear_proyecto(
+    session: Session,
+    nombre: str,
+    descripcion: str = "",
+    dominio: Dominio | str = "",
+) -> models.Proyecto:
+    """UC‑01, paso 1: crea el proyecto que agrupará los presupuestos (expediente C6.3).
+
+    El nombre se guarda sin espacios sobrantes y es único (`ValueError` si queda vacío o si ya
+    existe: chocar con la restricción única en el `flush` daría un `IntegrityError` en vez de un
+    rechazo legible). `dominio` es opcional; si se indica, debe ser un valor de `Dominio` y se
+    guarda como texto, como en la siembra. Hace `flush`, no `commit`, como `guardar_presupuesto`.
+    """
+    nombre = nombre.strip()
+    if not nombre:
+        raise ValueError("el nombre del proyecto no puede estar vacio")
+    if dominio != "":
+        try:
+            dominio = Dominio(dominio)
+        except ValueError:
+            esperados = ", ".join(d.value for d in Dominio)
+            raise ValueError(
+                f"dominio {dominio!r} desconocido; se espera uno de {esperados}"
+            ) from None
+    existente = session.scalar(select(models.Proyecto.id).where(models.Proyecto.nombre == nombre))
+    if existente is not None:
+        raise ValueError(f"ya existe un proyecto llamado {nombre!r}")
+    proyecto = models.Proyecto(nombre=nombre, descripcion=descripcion, dominio=str(dominio))
+    session.add(proyecto)
+    session.flush()
+    return proyecto
 
 
 def guardar_presupuesto(
