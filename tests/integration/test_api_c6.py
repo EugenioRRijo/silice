@@ -633,6 +633,9 @@ def _revalorar(cliente, items_payload, lista: Path = MUESTRA_PRECIOS):
 
 
 def test_la_revaloracion_trae_los_atipicos_de_ml_al_informe(cliente, items_payload, monkeypatch):
+    """Con el extra `ml` (la CI lo instala): la ruta pasa el detector a la revaloracion; sin
+    scikit-learn la guarda `find_spec` no lo pasa, asi que la prueba se omite."""
+    pytest.importorskip("sklearn")
     import ml.anomaly
 
     detector = _DetectorFalso()
