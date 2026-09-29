@@ -380,3 +380,106 @@ reconstruirse con la lista importada).
 escribe el archivo en un `TemporaryDirectory` con su nombre, busca el `models.Proyecto` por nombre
 (`LookupError` si no está, 404), llama a `importar_presupuesto`, confirma y responde 201 con
 `PresupuestoCreadoRespuesta`, `pendientes=[]`; la ruta va antes de las que llevan `{codigo}`.
+
+## C6.5 INV-099: los precios atípicos de la lista nueva entran al informe
+
+**Problema.** UC‑07, paso 5 (`docs/ERS.md:317-318`): «El sistema marca como atípicos los precios que
+se apartan del histórico **y los incorpora al informe de auditoría**». `ml.anomaly.precios_atipicos`
+(`ml/anomaly/detector.py:83-100`) los marca y los muestra la ayuda 2 de «Componer una partida»
+(`ui/composicion.py:650-670`) y `docs/resultados_ml.md`, pero ningún informe de auditoría los lleva:
+`InformeAuditoria.a_markdown` (`core/verification/informe.py:123-170`) no los conoce y la
+revaloración (`core/budget/actualizacion.py:112-179`) no los busca (inventario, INV‑099;
+`docs/plan_pruebas.md`, UC‑07 5, parcial). La nota de arquitectura de GC4 en esa fila fija la
+restricción: `core/` no importa `ml/`.
+
+**Diseño.** Un solo commit de `core/`, asunto
+`feat(budget): los precios atipicos de la lista nueva entran al informe`, con sus pruebas en
+`tests/integration/test_atipicos_en_informe.py`. Los atípicos entran donde nacen los precios nuevos:
+en el informe de la versión revalorada de UC‑02, que es el informe del presupuesto valorado con esa
+lista.
+
+- `core/budget/presupuesto.py`, junto a `CODIGO_PENDIENTE` y `_declarar_pendientes` (:43-46,
+  :127-170):
+  - `CODIGO_ATIPICO = "ATIPICO"` (cabe en `models.Hallazgo.regla`, `String(10)`,
+    `core/models/entidades.py:390`).
+  - `MarcaAtipica`, un `typing.Protocol` con `id: str`, `valor: Decimal` y `puntaje: float` (de solo
+    lectura). `ml.anomaly.PrecioAtipico` (`ml/anomaly/detector.py:66-72`) lo cumple
+    estructuralmente, sin que `core/` lo importe.
+  - `DetectorAtipicos = Callable[[Mapping[str, Decimal]], Sequence[MarcaAtipica]]`: la forma de
+    `precios_atipicos`, que recibe el histórico `{id del cambio: variación}`.
+  - `_declarar_atipicos(informe, hallazgos)`: el mismo informe con los hallazgos `ATIPICO`
+    agregados por `dataclasses.replace` (como `_declarar_pendientes` desde C5.2, así se conservan
+    las reglas evaluadas y la atribución de cada regla), y la partida de cada uno en
+    `partida_por_hallazgo`: la única partida que cita, o `None` si cita varias (el informe no elige
+    una por su cuenta, como en INV‑095). Es la única definición de esa atribución: la usan la
+    revaloración y la recarga.
+- `core/budget/actualizacion.py`: `actualizar_precios(..., detectar_atipicos: DetectorAtipicos |
+  None = None)` (:112-179). `registrar_cambios` (:177) pasa a ir **antes** de `guardar_presupuesto`
+  (:167-175), porque los hallazgos se persisten al guardar; es idempotente y solo hace `flush`
+  (`core/catalog/precios.py:366-401`), así que repetir UC‑02 con el mismo par de listas sigue sin
+  duplicar filas. Con detector: el histórico es `{str(c.id): c.variacion for c in
+  cambios_precio(session)}` (todo el historial persistido, incluidos los cambios de esta lista);
+  de sus marcas se toman solo las de los cambios de **esta** lista; cada una da un
+  `Hallazgo(regla="ATIPICO", severidad=ADVERTENCIA, descripcion="el precio de <insumo> paso de A a
+  B (+x %): se aparta del historico de variaciones de precio (detector de atipicos, puntaje p;
+  RF-29)", origen_ids=<códigos de las partidas del presupuesto que usan el insumo>,
+  valor_observado=<variación>)`, con las partidas de `_partidas_por_insumo` (:276-300); un cambio
+  que no toca ninguna partida del presupuesto no da hallazgo (no es un hallazgo **de este**
+  presupuesto). El informe se declara con `_declarar_atipicos` y se guarda con esos hallazgos.
+  Sin detector (`None`, el valor por defecto) el informe es el de hoy: ninguna llamada cambia.
+- `core/budget/persistencia.py`: `cargar_elaboracion` (:188-209) vuelve a declarar los `ATIPICO`
+  guardados del presupuesto (filas de `models.Hallazgo` con `regla == CODIGO_ATIPICO`), como ya hace
+  con los pendientes: la reauditoría no puede recalcularlos (el detector no está en `core/` y el
+  histórico habrá crecido), así que el informe recargado repite los del documento emitido. La
+  conversión fila → `Hallazgo` vive aquí, el único módulo que cruza la frontera modelo↔contrato del
+  presupuesto.
+- `core/budget/__init__.py`: exporta `CODIGO_ATIPICO`, `DetectorAtipicos` y `MarcaAtipica`.
+- No cambian: `InformeAuditoria`, `core/verification`, `a_markdown` (pinta el `ATIPICO` en su
+  tabla como pinta el `PENDIENTE`), `core/budget/excel.py` (su hoja *Auditoria* recorre
+  `informe.hallazgos`); la sección «Reglas evaluadas» no cuenta `ATIPICO`, porque no es una de las
+  siete reglas (`cuenta_por_regla_evaluada`, `core/verification/informe.py:98-107`). El
+  puntaje (`float`) solo aparece en el texto; la variación queda en `valor_observado` como `Decimal`.
+
+**Alternativas descartadas.** (a) *Importar `ml.anomaly` desde `core/budget`*: rompe la frontera que
+vigila `tests/unit/test_arquitectura.py` y haría del extra `ml` una dependencia del núcleo. (b)
+*Una sección de atípicos en `a_markdown`* o un campo nuevo en `InformeAuditoria`: toca
+`core/verification`, que la enmienda no abre, y cambiaría la huella del informe de RNF‑04 para todo
+presupuesto; como hallazgos `ATIPICO` solo aparecen donde hay detector y cambios marcados. (c)
+*Atípicos en la elaboración (UC‑01)*: el presupuesto nuevo no trae precios nuevos que juzgar contra
+el histórico de variaciones, y «Elaborar» es lo que Med mide (spec §10). (d) *Severidad ERROR*: un
+precio atípico es una alerta para revisar, no un incumplimiento; con ADVERTENCIA el veredicto
+CUMPLE/NO CUMPLE no cambia por un juicio estadístico.
+
+**Por qué ningún contrato cambia.** `Hallazgo.regla` es texto libre (`core/contracts/verificacion.py:
+21-38`): `ATIPICO` es un código más, como `PENDIENTE` (C3). `MarcaAtipica` y `DetectorAtipicos`
+son tipos de `core/budget`, no de `core/contracts/`.
+
+**Línea base.** Intacta: con `detectar_atipicos=None` la revaloración produce el mismo presupuesto,
+el mismo informe y el mismo historial que hoy, y la elaboración de la línea base no pasa por aquí.
+El informe de RNF‑04 (elaboración del protocolo) no cambia de huella.
+
+**Pruebas previstas** (`tests/integration/test_atipicos_en_informe.py`, base en memoria):
+
+1. Con un detector falso que marca las variaciones mayores de 0,15 de una lista que sube el cemento
+   (15 → 18, +20 %, solo en el concreto) y el ayudante (3 → 4, en las cinco partidas): dos
+   `ATIPICO` de severidad ADVERTENCIA; el del cemento cita solo el concreto y se atribuye a él; el
+   del ayudante cita las cinco partidas (oráculo: la línea base) y no se atribuye a ninguna; ambos
+   quedan guardados y `cargar_elaboracion` los vuelve a declarar; el veredicto no cambia y la
+   sección «Reglas evaluadas» no los cuenta.
+2. Sin detector: el informe de la versión nueva es la auditoría de su presupuesto
+   (`auditar(nuevo.presupuesto)`, otra ruta de código), sin `ATIPICO`.
+3. Una marca de un cambio ajeno a esta lista, y la de un cambio de un insumo que ninguna partida
+   usa: sin hallazgo.
+4. Repetir la revaloración con el mismo par de listas no duplica el historial (idempotencia de
+   UC‑02 con el nuevo orden).
+5. Con `ml.anomaly.precios_atipicos` real (extra `ml`, que la CI instala; `importorskip` como las
+   demás pruebas del extra) y un histórico de diez variaciones pequeñas: el cemento (+20 %) sale
+   `ATIPICO` en el informe.
+
+La mordida prevista: no filtrar las marcas por los cambios de esta lista, o atribuir el hallazgo
+de varias partidas a la primera.
+
+**Para las pistas A y U.** `POST /presupuestos/{codigo}/actualizacion` y la página «Actualizar
+precios» pasan `detectar_atipicos=ml.anomaly.precios_atipicos` con import perezoso (como
+`ui/composicion.py:609-612` y `api/rutas/rendimientos.py:160-166`); sin el extra `ml`, `None`. El
+informe ya los trae: la página y `GET /presupuestos/{codigo}/informe` los muestran sin cambio.
