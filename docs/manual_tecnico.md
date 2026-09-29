@@ -301,7 +301,10 @@ catálogo de otro dominio apuntando `APU_BASE` a su base (`sqlite:///data/apu_te
   un `ValueError`: la regla del plan vive una sola vez, en `core.budget.curva`). La pantalla hace lo mismo con la tabla
   «Plan de trabajo» (`ui.elaboracion.plan_desde_filas` y `plan_de`). Fracciones negativas o
   mayores que 1 pasan si la partida suma 1: es la regla de `core.budget.curva`, y ni la pantalla ni
-  la API añaden otra.
+  la API añaden otra (INV‑101, a limitaciones; lo fija
+  `tests/integration/test_api_plan_y_rendimiento.py::test_fracciones_fuera_de_0_1_pasan_si_la_partida_suma_1`).
+  Un `plan` vacío no es la ausencia del campo: cada partida suma 0 y responde 422
+  (`::test_un_plan_vacio_responde_422_sin_guardar`).
 - **El 409 del flujo 3b (UC‑01; INV‑088).** Si a una partida le falta un rendimiento **estimado**
   vigente (de fecha no posterior a la del presupuesto), `POST /presupuestos` responde **409 sin
   guardar** con el esquema `RendimientosPorDeclararRespuesta`: `detalle` y, por partida,
