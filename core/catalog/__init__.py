@@ -8,6 +8,7 @@ from core.catalog.precios import (
     cambios_precio,
     crear_lista_desde_archivo,
     insumos_afectados,
+    insumos_desconocidos,
     leer_lista_precios,
     registrar_cambios,
 )
@@ -43,6 +44,7 @@ __all__ = [
     "crear_motor",
     "dispersion_rendimientos",
     "insumos_afectados",
+    "insumos_desconocidos",
     "justificar_rendimiento",
     "leer_lista_precios",
     "proponer_rendimiento",
