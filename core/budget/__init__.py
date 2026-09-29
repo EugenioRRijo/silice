@@ -41,6 +41,11 @@ from core.budget.escenarios import (
     generar_escenario,
 )
 from core.budget.excel import exportar_excel
+from core.budget.importacion import (
+    PresupuestoImportado,
+    importar_presupuesto,
+    leer_presupuesto_tabular,
+)
 from core.budget.persistencia import (
     cargar_elaboracion,
     cargar_presupuesto,
@@ -64,6 +69,7 @@ __all__ = [
     "GeneradorPlan",
     "PeriodoPlan",
     "PlanInvalido",
+    "PresupuestoImportado",
     "ResultadoElaboracion",
     "actualizar_precios",
     "cargar_elaboracion",
@@ -79,5 +85,7 @@ __all__ = [
     "generar_escenario",
     "generar_presupuesto",
     "guardar_presupuesto",
+    "importar_presupuesto",
+    "leer_presupuesto_tabular",
     "plan_secuencial",
 ]

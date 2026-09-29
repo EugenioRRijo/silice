@@ -53,6 +53,8 @@ from core.verification.texto import normalizar_texto
 
 __all__ = [
     "COLUMNAS_ARCHIVO",
+    "PRIMERA_FILA_DE_DATOS",
+    "SUFIJOS_EXCEL",
     "CambioDetectado",
     "PrecioLeido",
     "ResumenLista",
@@ -61,7 +63,9 @@ __all__ = [
     "insumos_afectados",
     "insumos_desconocidos",
     "leer_lista_precios",
+    "leer_tabla",
     "registrar_cambios",
+    "tipo_insumo",
     "variacion_relativa",
 ]
 
@@ -72,8 +76,8 @@ COLUMNAS_ARCHIVO = ("tipo", "insumo", "unidad", "precio")
 SUFIJO_CSV = ".csv"
 SUFIJOS_EXCEL = (".xlsx", ".xlsm")
 
-#: Primera fila con datos del archivo: la 1 es la de encabezados.
-_PRIMERA_FILA_DE_DATOS = 2
+#: Primera fila con datos del archivo (y de cada hoja de un libro): la 1 es la de encabezados.
+PRIMERA_FILA_DE_DATOS = 2
 
 #: Grafías de la columna `tipo` que no son el valor canónico de `models.TipoInsumo`.
 _ALIAS_TIPO = {
@@ -159,7 +163,7 @@ def leer_lista_precios(ruta: Path) -> list[PrecioLeido]:
     El separador decimal es el punto. Aceptar también la coma exigiría decidir qué significa el
     separador de miles, y ninguna fuente del proyecto lo necesita todavía.
     """
-    tabla = _leer_tabla(ruta)
+    tabla = leer_tabla(ruta)
     faltantes = [columna for columna in COLUMNAS_ARCHIVO if columna not in tabla.columns]
     if faltantes:
         raise ValueError(
@@ -168,17 +172,24 @@ def leer_lista_precios(ruta: Path) -> list[PrecioLeido]:
         )
     return [
         _a_precio_leido(fila, numero, ruta)
-        for numero, fila in enumerate(tabla.to_dict("records"), start=_PRIMERA_FILA_DE_DATOS)
+        for numero, fila in enumerate(tabla.to_dict("records"), start=PRIMERA_FILA_DE_DATOS)
     ]
 
 
-def _leer_tabla(ruta: Path) -> pd.DataFrame:
-    """El archivo como tabla de texto: ningún importe pasa por `float` en ningún paso."""
+def leer_tabla(ruta: Path, hoja: str | None = None) -> pd.DataFrame:
+    """El archivo como tabla de texto: ningún importe pasa por `float` en ningún paso.
+
+    Única lectura de CSV y XLSX sin `float` del sistema: la usan las listas de precios y la
+    importación del presupuesto de un tercero (`core.budget.importacion`, expediente C6.4).
+    `hoja` elige una hoja del XLSX por su nombre (sin ella, la activa).
+    """
     sufijo = ruta.suffix.lower()
     if sufijo == SUFIJO_CSV:
+        if hoja is not None:
+            raise ValueError(f"{ruta.name}: un CSV no tiene hojas; se esperaba la hoja {hoja!r}")
         tabla = pd.read_csv(ruta, dtype=str, keep_default_na=False, encoding="utf-8")
     elif sufijo in SUFIJOS_EXCEL:
-        tabla = _leer_tabla_excel(ruta)
+        tabla = _leer_tabla_excel(ruta, hoja)
     else:
         raise ValueError(
             f"{ruta.name}: formato no soportado; se leen {', '.join((SUFIJO_CSV, *SUFIJOS_EXCEL))}"
@@ -187,7 +198,7 @@ def _leer_tabla(ruta: Path) -> pd.DataFrame:
     return tabla.fillna("")
 
 
-def _leer_tabla_excel(ruta: Path) -> pd.DataFrame:
+def _leer_tabla_excel(ruta: Path, hoja: str | None = None) -> pd.DataFrame:
     """Lee un XLSX celda por celda con `openpyxl`, sin la ruta de `pandas.read_excel(dtype=str)`.
 
     Esa ruta no evita el `float`: el motor `openpyxl` analiza toda celda numérica del XML como
@@ -200,10 +211,15 @@ def _leer_tabla_excel(ruta: Path) -> pd.DataFrame:
     (con la precisión que un ser humano puede escribir en una celda) reconstruye el mismo texto que
     se escribió: CPython garantiza que su algoritmo de la representación más corta cumple
     `float(str(x)) == x`.
+
+    Sin `hoja` lee la hoja activa; con ella, la de ese nombre (`ValueError` si el libro no la
+    tiene).
     """
     libro = openpyxl.load_workbook(ruta, read_only=True, data_only=True)
     try:
-        filas = libro.active.iter_rows(values_only=True)
+        if hoja is not None and hoja not in libro.sheetnames:
+            raise ValueError(f"{ruta.name}: falta la hoja {hoja!r}")
+        filas = (libro[hoja] if hoja is not None else libro.active).iter_rows(values_only=True)
         try:
             encabezados = [_texto_celda(valor) for valor in next(filas)]
         except StopIteration:
@@ -244,18 +260,30 @@ def _texto(valor: object) -> str:
     return str(valor).strip()
 
 
-def _a_tipo(valor: str, numero: int, ruta: Path) -> models.TipoInsumo:
-    clave = valor.lower()
+def tipo_insumo(texto: str) -> models.TipoInsumo:
+    """El tipo de insumo de la columna `tipo`, con sus grafías (`mano de obra`, `mano_de_obra`).
+
+    Única traducción de esa columna: la usan las listas de precios y la importación del
+    presupuesto de un tercero. `ValueError` sin posición si no es un tipo conocido; quien la
+    llama añade el archivo, la hoja y la fila.
+    """
+    clave = texto.strip().lower()
     if clave in _ALIAS_TIPO:
         return _ALIAS_TIPO[clave]
     try:
         return models.TipoInsumo(clave)
-    except ValueError as error:
+    except ValueError:
         esperados = ", ".join(tipo.value for tipo in models.TipoInsumo)
         raise ValueError(
-            f"{ruta.name}, fila {numero}: tipo de insumo {valor!r} desconocido; "
-            f"se espera uno de {esperados}"
-        ) from error
+            f"tipo de insumo {texto!r} desconocido; se espera uno de {esperados}"
+        ) from None
+
+
+def _a_tipo(valor: str, numero: int, ruta: Path) -> models.TipoInsumo:
+    try:
+        return tipo_insumo(valor)
+    except ValueError as error:
+        raise ValueError(f"{ruta.name}, fila {numero}: {error}") from None
 
 
 def _a_precio(valor: str, numero: int, ruta: Path) -> Decimal:
@@ -395,7 +423,7 @@ def _elegidos(
             "insumos_desconocidos (UC-02, flujo 2a)"
         )
     elegidos = set(dar_de_alta)
-    filas = {id(leido): numero for numero, leido in enumerate(leidos, start=_PRIMERA_FILA_DE_DATOS)}
+    filas = {id(leido): numero for numero, leido in enumerate(leidos, start=PRIMERA_FILA_DE_DATOS)}
     en_orden = [leido for leido in candidatos if leido in elegidos]
     por_identidad: dict[_ClaveInsumo, list[PrecioLeido]] = defaultdict(list)
     for leido in en_orden:
