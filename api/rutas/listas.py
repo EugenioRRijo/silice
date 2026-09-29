@@ -20,6 +20,7 @@ from core.catalog import (
     crear_lista_desde_archivo,
     insumos_desconocidos,
 )
+from core.verification.texto import normalizar_texto
 
 router = APIRouter(tags=["listas"])
 
@@ -47,8 +48,9 @@ def cargar_lista_precios(
     dar_de_alta: Annotated[
         list[str] | None,
         Form(
-            description="Descripciones, tal como vienen en el archivo, de los insumos "
-            "desconocidos que se dan de alta (UC-02, flujo 2a); por defecto, ninguno"
+            description="Descripciones de los insumos desconocidos del archivo que se dan de "
+            "alta (UC-02, flujo 2a), comparadas sin distinguir mayusculas, tildes ni espacios; "
+            "por defecto, ninguno"
         ),
     ] = None,
 ) -> CargaListaRespuesta:
@@ -87,17 +89,25 @@ def cargar_lista_precios(
 def _elegidos(
     candidatos: Sequence[PrecioLeido], descripciones: Sequence[str], archivo: str
 ) -> list[PrecioLeido]:
-    """Las filas de la vista previa que nombran `descripciones` (todas las de cada una, si el
-    archivo la repite: el nucleo decide si sus precios concuerdan). `ValueError` (422) si alguna
-    descripcion no es un insumo desconocido de este archivo."""
-    ajenas = [d for d in descripciones if all(c.descripcion != d for c in candidatos)]
+    """Las filas de la vista previa que nombran `descripciones`. `ValueError` (422) si alguna
+    descripcion no es un insumo desconocido de este archivo.
+
+    Se compara con `normalizar_texto`, la identidad del nucleo (`core.catalog.precios`): una
+    descripcion elige **todas** las filas de su identidad, con cualquier grafia (mayusculas,
+    tildes, espacios), y el nucleo decide si sus precios concuerdan (una sola alta) o no (422).
+    Elegir solo la grafia exacta dejaria fuera una fila de la misma identidad, que luego
+    sobrescribiria en silencio el precio del alta (ronda 1 de la pista A, H2).
+    """
+    elegidas = {normalizar_texto(d) for d in descripciones}
+    disponibles = {normalizar_texto(c.descripcion) for c in candidatos}
+    ajenas = [d for d in descripciones if normalizar_texto(d) not in disponibles]
     if ajenas:
         raise ValueError(
             f"{archivo}: {', '.join(repr(d) for d in ajenas)} no es un insumo desconocido de "
             "este archivo; solo se dan de alta los desconocidos del flujo 2a de UC-02 (un "
             "insumo catalogado o una fila rechazada por unidad no se dan de alta)"
         )
-    return [c for c in candidatos if c.descripcion in descripciones]
+    return [c for c in candidatos if normalizar_texto(c.descripcion) in elegidas]
 
 
 @router.get("/cambios-precio", response_model=list[CambioRespuesta])

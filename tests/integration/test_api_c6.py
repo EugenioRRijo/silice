@@ -256,8 +256,11 @@ def test_sin_dar_de_alta_nada_se_crea_y_los_desconocidos_se_reportan_aparte(
         (FILAS_CON_DESCONOCIDOS, ["Insumo fantasma"], "Insumo fantasma"),
         # El mismo desconocido en dos filas con precios distintos (nucleo, ronda 1 de N).
         (f"material,{ADITIVO},lt,12\nmaterial,{ADITIVO},lt,13\n", [ADITIVO], "filas"),
+        # La misma identidad del nucleo (descripcion normalizada) con otra grafia y otro precio:
+        # elegir una elige las dos, y el nucleo rechaza los precios distintos (ronda 1 de A, H2).
+        (f"material,{ADITIVO},lt,12\nmaterial,{ADITIVO.upper()} ,lt,99\n", [ADITIVO], "filas"),
     ],
-    ids=["catalogado", "rechazado-2b", "ausente", "precios-distintos"],
+    ids=["catalogado", "rechazado-2b", "ausente", "precios-distintos", "otra-grafia"],
 )
 def test_un_alta_invalida_es_422_sin_escribir_nada(
     cliente, sesion, tmp_path, filas, elegidos, fragmento
@@ -269,6 +272,28 @@ def test_un_alta_invalida_es_422_sin_escribir_nada(
     assert r.status_code == 422
     assert fragmento in r.json()["detalle"]
     assert (_contar(sesion, models.Insumo), _contar(sesion, models.ListaPrecios)) == antes
+
+
+def test_elegir_una_grafia_da_de_alta_la_identidad_con_el_precio_de_sus_filas(
+    cliente, sesion, tmp_path
+):
+    """Dos grafias de la misma identidad del nucleo y el mismo precio: una sola alta, con ese
+    precio, y la otra fila no queda ni ignorada ni rechazada (ronda 1 de A, H2)."""
+    filas = f"material,{ADITIVO},lt,12\nmaterial,  {ADITIVO.upper()},lt,12\n"
+    insumos_antes = _contar(sesion, models.Insumo)
+
+    r = _cargar_lista(cliente, tmp_path, filas, dar_de_alta=[ADITIVO.lower()])
+
+    assert r.status_code == 201
+    cuerpo = r.json()
+    assert cuerpo["ignorados"] == [] and cuerpo["rechazados"] == []
+    assert len(cuerpo["dados_de_alta"]) == 1
+    assert _contar(sesion, models.Insumo) == insumos_antes + 1
+    precios = {
+        (precio.lista.nombre, precio.insumo.descripcion): precio.precio
+        for precio in sesion.scalars(select(models.PrecioInsumo))
+    }
+    assert precios[("Lista C6", cuerpo["dados_de_alta"][0])] == Decimal("12")
 
 
 # ---------------------------------------------------------------------------------------------
