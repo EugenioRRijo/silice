@@ -94,7 +94,7 @@ class Presentacion:
     resumen: str
     informe: str
     #: Los insumos desconocidos que no se eligieron para el alta: ignorados (UC-02, flujo 2a).
-    desconocidos: tuple[str, ...]
+    ignorados: tuple[str, ...]
     libro: bytes
     nombre_libro: str
     proyecto: str
@@ -339,7 +339,7 @@ def _actualizar(
         tabla=_para_presentar(comparativo.tabla),
         resumen=_resumen(comparativo, nuevo.presupuesto.moneda),
         informe=nuevo.informe.a_markdown(),
-        desconocidos=tuple(_nombrar(d) for d in resumen.desconocidos if d in ofrecidos),
+        ignorados=tuple(_nombrar(d) for d in resumen.desconocidos if d in ofrecidos),
         libro=libro.read_bytes(),
         nombre_libro=libro.name,
         proyecto=str(parametros["proyecto"]),
@@ -430,11 +430,11 @@ def _mostrar(presentacion: Presentacion | None) -> None:
             "Se dieron de alta en el catalogo, con precio solo en la lista nueva (UC-02, flujo "
             "2a): " + ", ".join(presentacion.dados_de_alta)
         )
-    if presentacion.desconocidos:
+    if presentacion.ignorados:
         st.warning(
             "Se ignoraron los insumos del archivo que no estan en el catalogo y no se eligieron "
             "para el alta (UC-02, flujo 2a; no intervienen en el recalculo): "
-            + ", ".join(presentacion.desconocidos)
+            + ", ".join(presentacion.ignorados)
         )
     if presentacion.rechazados:
         st.warning(

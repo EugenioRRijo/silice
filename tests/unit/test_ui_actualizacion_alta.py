@@ -186,8 +186,8 @@ def test_revalorar_sin_elegir_ignora_los_desconocidos_y_rechaza_los_de_otra_unid
     presentacion = at.session_state[pagina.CLAVE_RESULTADO]
     assert presentacion.version_guardada == "002"
     assert presentacion.dados_de_alta == ()
-    assert [d for d in presentacion.desconocidos if "Cemento blanco" in d] != []
-    assert not [d for d in presentacion.desconocidos if "Arena lavada" in d]
+    assert [d for d in presentacion.ignorados if "Cemento blanco" in d] != []
+    assert not [d for d in presentacion.ignorados if "Arena lavada" in d]
     assert [r for r in presentacion.rechazados if "Arena lavada" in r] != []
     assert not [r for r in presentacion.rechazados if "Cemento blanco" in r]
     avisos = _textos(at.warning)
@@ -212,7 +212,7 @@ def test_revalorar_con_el_elegido_lo_da_de_alta_con_precio_solo_en_la_lista_nuev
     assert not at.error, _textos(at.error)
     presentacion = at.session_state[pagina.CLAVE_RESULTADO]
     assert [d for d in presentacion.dados_de_alta if "Cemento blanco" in d] != []
-    assert not [d for d in presentacion.desconocidos if "Cemento blanco" in d]
+    assert not [d for d in presentacion.ignorados if "Cemento blanco" in d]
     assert [r for r in presentacion.rechazados if "Arena lavada" in r] != []
     assert "dieron de alta" in _textos(at.success) + _textos(at.info) + _textos(at.warning)
     assert _contar(base, models.Insumo) == insumos_antes + 1
