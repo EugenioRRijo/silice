@@ -239,3 +239,144 @@ La mordida prevista: quitar la comprobación del nombre existente (la prueba 2 r
 
 **Para la pista A.** `POST /proyectos` llama a `crear_proyecto` y confirma; el duplicado y el
 dominio desconocido son `ValueError` (422 por `api/main.py:47-50`).
+
+## C6.4 INV-076: importar el presupuesto tabular de un tercero para auditarlo
+
+**Problema.** RF‑24, esencial (`docs/ERS.md:528`): «El sistema importará un presupuesto de un tercero
+en formato tabular, conservando las unidades originales escritas por su autor, para poder
+auditarlo»; UC‑05, pasos 1 y 2 (`docs/ERS.md:264-265`): «el auditor selecciona el presupuesto o
+**importa el archivo del tercero**» y «el sistema construye el `Presupuesto` en memoria conservando
+las unidades escritas por el autor». Ninguna capa lee ese archivo: la API y la interfaz auditan solo
+lo que el propio sistema elabora (UC‑01), y lo único que ejercita UC‑05 sobre un presupuesto ajeno es
+la fixture `presupuesto_con_siete_inconsistencias` (`tests/fixtures/presupuesto_auditado.py:137-139`),
+que arma el `Presupuesto` en Python (inventario, INV‑076; `docs/plan_pruebas.md`, UC‑05 1 y 2).
+
+**Diseño.** Un solo commit de `core/`, asunto
+`feat(budget): importar el presupuesto tabular de un tercero para auditarlo`, con sus pruebas en
+`tests/integration/test_importacion_tercero.py` y la fixture nueva
+`tests/fixtures/presupuesto_tabular.py`.
+
+*Formato: un solo XLSX* (el CSV no tiene hojas), con todo número leído como texto y convertido a
+`Decimal` (CLAUDE.md §2.3), como `leer_lista_precios`. Hojas y columnas (fuente única: las
+constantes de `core/budget/importacion.py`):
+
+| Hoja | Columnas | Notas |
+|---|---|---|
+| `Datos` | `clave`, `valor` | claves obligatorias: `codigo`, `fecha` (ISO), `moneda`, `dominio`, `fcas`, `bono_alimentacion`, `administracion`, `utilidad` |
+| `Presupuesto` | `codigo_partida`, `descripcion`, `unidad`, `cantidad`, `origen_id`, `regla`, `parametros`, `especificaciones` | `unidad` es la del autor y se guarda también en `especificaciones[CLAVE_UNIDAD_ORIGINAL]` (como `tests/fixtures/computo_auditado.py:36-48`), así que «mts» llega a R3; `parametros` y `especificaciones`, objetos JSON (los números de `parametros` como texto o número, siempre a `Decimal`); `origen_tipo` es `REGLA` si hay regla y `MANUAL` si no (R1 advierte la trazabilidad ausente, UC‑05 2b); sin `origen_id`, `<archivo>:Presupuesto:<fila>` |
+| `APU` | `codigo_partida`, `descripcion`, `unidad`, `rendimiento` | una fila por partida, código único |
+| `Insumos` | `codigo_partida`, `tipo`, `insumo`, `unidad`, `cantidad`, `precio`, `depreciacion`, `modalidad` | `tipo` con las grafías de UC‑02 (`_a_tipo` de `core/catalog/precios.py:239-250`); `unidad` solo materiales; `depreciacion` solo equipos; `modalidad` solo mano de obra, jornal por defecto (D9); `precio` es el sueldo en la mano de obra |
+| `Curva` (opcional) | `periodo`, `monto`, `acumulado` | la del autor, tal cual; sin ella R2 y R7 no aplican (UC‑05 2a) |
+
+*Código:*
+
+- Archivo nuevo `core/budget/importacion.py`:
+  - `leer_presupuesto_tabular(ruta) -> PresupuestoImportado`, **pura** (no toca la base): construye
+    los `ItemComputo`, las `ComposicionAPU` y los `ParametrosCosto`, arma el presupuesto con
+    `generar_presupuesto` (`core/budget/presupuesto.py:62-88`, que exige composición para todo ítem)
+    y le pone la curva del autor con `con_curva` (`core/budget/curva.py:77-82`). Devuelve
+    `PresupuestoImportado` (presupuesto, parámetros, composiciones y dominio), un dataclass del
+    módulo, no un contrato. Todo error de forma es `ValueError` con archivo, hoja y, si aplica, fila:
+    hoja o columna ausente, clave de `Datos` ausente, número o fecha ilegibles, partida repetida en
+    `APU`, insumo de una partida sin APU, y un ítem del presupuesto sin APU («ítem sin APU»: un
+    presupuesto ajeno no tiene pendientes que proponer, el tercero entregó un documento incompleto).
+  - `importar_presupuesto(session, ruta, proyecto) -> ResultadoElaboracion`: lee; audita siempre
+    (`auditar`, principio 7); comprueba **antes de escribir** que ningún `codigo_partida` del
+    archivo exista ya en el catálogo (si existe, `ValueError`: el APU del tercero no puede
+    sustituir ni mezclarse con el del catálogo, y el caso necesita códigos propios) y que el
+    proyecto no tenga ya un presupuesto con ese código; crea `ListaPrecios(nombre="Importada:
+    <archivo>", origen=<archivo>, fecha_vigencia=<fecha del presupuesto>)` copiando los precios de
+    la lista vigente a esa fecha si la hay, para que siga valorando el catálogo completo, como
+    `crear_lista_desde_archivo` (`core/catalog/precios.py:286-288`); carga cada APU con
+    `Catalogo.cargar_composicion(..., condiciones="importado de <archivo> (presupuesto de un
+    tercero, UC-05)")` (`core/catalog/repositorio.py:138-183`: reutiliza los insumos homónimos con
+    el mismo precio y crea variantes si difiere) y guarda con `guardar_presupuesto`
+    (`core/budget/persistencia.py`), con el informe, la curva y los hallazgos. No confirma. Así la
+    postcondición de UC‑05 («informe persistido y asociado al presupuesto») se cumple, y
+    `cargar_elaboracion` recarga el mismo informe porque el catálogo reconstruye los APU del
+    tercero con la lista importada.
+- `core/catalog/precios.py`: `_leer_tabla(ruta, hoja=None)` y `_leer_tabla_excel(ruta, hoja=None)`
+  (:167-210; hoy solo la hoja activa, :198) leen la hoja por su nombre; una hoja ausente es
+  `ValueError` con archivo y hoja. Sin `hoja`, idénticas. Es la única lectura de XLSX sin `float`
+  del sistema (docstring de :1-13) y la importación la reutiliza en vez de repetirla.
+- `core/budget/__init__.py`: exporta `PresupuestoImportado`, `importar_presupuesto` y
+  `leer_presupuesto_tabular`.
+
+**Alternativas descartadas.** (a) *Auditar sin persistir.* Cumpliría los pasos 1 a 5, pero no la
+postcondición de UC‑05 ni el paso 6 por las rutas que ya existen (`GET /presupuestos/{codigo}/informe`
+y `…/excel` leen lo guardado). (b) *Persistir sin cargar los APU* (renglones sin partida del
+catálogo): `models.PartidaPresupuestada.partida_id` es obligatorio y `cargar_presupuesto`
+reconstruye cada renglón desde el catálogo; cambiarlo es cambiar el versionado híbrido
+(docs/modelo_datos.md §5). (c) *Reutilizar la partida del catálogo si el código existe*: mezclaría
+el APU del tercero con el propio y la reconstrucción denunciaría la diferencia; se rechaza (ruling
+C6‑4). (d) *CSV con varias tablas* o varios archivos: el XLSX de hojas es el formato que ya usa el
+sistema (`exportar_excel`) y un solo archivo es lo que el auditor recibe. (e) *Leer con
+`pandas.read_excel`*: pasa los números por `float` (docstring de `core/catalog/precios.py:1-13`).
+
+**Por qué ningún contrato cambia.** La importación produce `ItemComputo`, `ComposicionAPU`,
+`ParametrosCosto` y `Presupuesto` tal como están, con la unidad original en
+`especificaciones[CLAVE_UNIDAD_ORIGINAL]`, la convención que ya usan la fixture y la persistencia
+(`_a_modelo_item`). `PresupuestoImportado` y `ResultadoElaboracion` son de `core/budget`.
+
+**Línea base.** Intacta: el motor, las reglas y la siembra no cambian, y
+`tests/fixtures/apu_linea_base.py` no se edita. La fixture tabular **deriva** de
+`presupuesto_con_siete_inconsistencias()` sin repetir un dato, cambiando solo el prefijo de los
+códigos de partida (`LB-` por `TER-`, también dentro de los `origen_id` y del balance de R5), porque
+la base de prueba ya tiene sembradas las `LB-*` y la importación rechaza un código existente
+(riesgo de C6‑plan §6). Efecto declarado en el catálogo: la lista «Importada» pasa a ser la vigente
+a su fecha (tiene la misma fecha y mayor `id`), pero copia todos los precios de la anterior, así que
+todo APU del catálogo se reconstruye igual; las partidas del tercero quedan en el catálogo y
+aparecerán entre las similares de UC‑03.
+
+**Ronda 1 de revisión (req 2, arq N-2 y N-7, qa N-QA-1), por `fixup` de este commit y del de
+código.**
+
+- *Monedas.* `importar_presupuesto` rechaza, sin escribir, el archivo cuya moneda difiere de la de
+  la lista vigente a su fecha: la lista «Importada» copia esos precios y no mezcla monedas.
+- *Presupuesto vacío.* Una hoja `Presupuesto` sin renglones es `ValueError` con archivo y hoja: un
+  archivo sin cantidades ya no se importa ni sale CUMPLE.
+- *Limitación declarada: la lista «Importada» pasa a ser la vigente.* Tiene la fecha del
+  presupuesto del tercero y mayor `id`, así que `Catalogo.lista_vigente` la devuelve a esa fecha y
+  después. Los importes no cambian (copia exacta de la anterior, y cada presupuesto se reconstruye
+  con su propia lista), pero la procedencia sí (principio 6):
+  - el marco de toda pantalla (`ui/caso.py:101`) y `api/rutas/catalogo.py:35` muestran como lista
+    vigente la del tercero;
+  - un presupuesto propio elaborado después por `POST /presupuestos`
+    (`api/rutas/presupuestos.py:151`) o por «Elaborar» queda ligado a esa lista;
+  - «Componer una partida» fija los precios de sus insumos nuevos y variantes en ella
+    (`ui/elaboracion.py:210-219`);
+  - toda lista cargada después (`crear_lista_desde_archivo`, `seed_demo`) la copia, variantes del
+    tercero incluidas, y una lista de fecha posterior creada **antes** de la importación no tiene
+    los insumos del tercero (revalorar el presupuesto importado contra ella daría
+    `CatalogoIncompleto`);
+  - las partidas `TER-*` entran en `catalogo.partidas(dominio)`: inflan el recuento que decide la
+    técnica de la compuerta G2 en la ayuda 4 de «Componer» (`ui/paginas/componer.py:629`),
+    aparecen en «Elaborar» y entre las similares de UC-03;
+  - las variantes de insumo del tercero alimentan el histórico de `CambioPrecio` que usa el
+    detector de atípicos.
+  Excluir las listas importadas de `lista_vigente` exige una marca en el esquema y tocar
+  `repositorio.py`, fuera de los archivos que la enmienda permite a este commit: queda para un
+  sprint posterior, y la decisión, para Eugenio y el tutor (GC6).
+
+**Pruebas previstas** (`tests/integration/test_importacion_tercero.py`, base en memoria y archivos
+en `tmp_path`):
+
+1. La lectura reproduce, código por código, los ítems (unidad del autor incluida), los APU y la
+   curva de la fixture, y el total exacto de la línea base.
+2. La importación audita 7 de 7 (oráculo: `INCONSISTENCIAS` de la línea base, con el prefijo
+   cambiado), y el hallazgo de R3 cita «mts», la unidad del autor (criterio de RF‑24).
+3. Guardar y recargar con `cargar_elaboracion` da el mismo informe y el mismo total.
+4. Un código de partida que ya está en el catálogo (el archivo con `LB-`): `ValueError`, sin lista,
+   partida ni presupuesto nuevos.
+5. Hoja ausente, columna ausente e ítem sin APU: `ValueError` con archivo, hoja y fila.
+6. Sin la hoja `Curva`: R2 y R7 se declaran no aplicables y las demás reglas se ejecutan.
+7. Un ítem sin regla: `MANUAL` y la advertencia de trazabilidad ausente de R1.
+
+La mordida prevista: normalizar la unidad del autor antes de guardarla en `especificaciones`
+(R3 dejaría de citar «mts»), o no copiar la lista vigente (la línea base sembrada dejaría de
+reconstruirse con la lista importada).
+
+**Para la pista A.** `POST /presupuestos/importar` (multipart: `archivo` y `proyecto` como `Form`)
+escribe el archivo en un `TemporaryDirectory` con su nombre, busca el `models.Proyecto` por nombre
+(`LookupError` si no está, 404), llama a `importar_presupuesto`, confirma y responde 201 con
+`PresupuestoCreadoRespuesta`, `pendientes=[]`; la ruta va antes de las que llevan `{codigo}`.
