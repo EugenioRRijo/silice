@@ -68,6 +68,10 @@ CLAVE_PROPUESTAS = "elaborar_propuestas"
 CLAVE_PLAN = "elaborar_plan"
 #: Si la ultima elaboracion sin plan del proyectista descarto uno editado (duda 6 de la revision).
 CLAVE_PLAN_REINICIADO = "elaborar_plan_reiniciado"
+#: Las filas del plan por defecto de la ultima elaboracion sin plan del proyectista: el aviso de
+#: `CLAVE_PLAN_REINICIADO` compara con ellas, no con las del plan por defecto nuevo, que cambian
+#: con el computo aunque nadie haya editado la tabla (R-2 de la re-revision de U).
+CLAVE_PLAN_POR_DEFECTO = "elaborar_plan_por_defecto"
 #: Las partidas sin rendimiento estimado vigente de la ultima elaboracion (UC-01 3b).
 CLAVE_RENDIMIENTOS = "elaborar_rendimientos_por_declarar"
 
@@ -306,10 +310,14 @@ def _elaborar(
         partidas, resultado.pendientes
     )
     if filas_plan is None:
-        # El plan vuelve al de por defecto; si con eso se descarta uno editado, se avisa.
+        # El plan vuelve al de por defecto; si con eso se descarta uno editado, se avisa. Editado
+        # es distinto del plan por defecto que se precargo, no del nuevo: si el computo cambio,
+        # el nuevo difiere aunque nadie haya tocado la tabla.
         por_defecto = elaboracion.filas_del_plan_por_defecto(resultado.presupuesto)
         anteriores = st.session_state.get(f"{CLAVE_PLAN}__filas")
-        st.session_state[CLAVE_PLAN_REINICIADO] = bool(anteriores) and anteriores != por_defecto
+        precargado = st.session_state.get(CLAVE_PLAN_POR_DEFECTO)
+        st.session_state[CLAVE_PLAN_REINICIADO] = bool(anteriores) and anteriores != precargado
+        st.session_state[CLAVE_PLAN_POR_DEFECTO] = por_defecto
         st.session_state[f"{CLAVE_PLAN}__filas"] = por_defecto
         st.session_state.pop(CLAVE_PLAN, None)  # el editor se vuelve a crear con esas filas
     else:

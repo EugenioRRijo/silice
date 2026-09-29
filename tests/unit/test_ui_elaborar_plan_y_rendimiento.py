@@ -469,3 +469,29 @@ def test_volver_a_elaborar_avisa_que_el_plan_vuelve_al_secuencial(monkeypatch, b
     avisos = [c.value for c in at.caption if AVISO_PLAN_REINICIADO in c.value]
     assert len(avisos) == 1, [c.value for c in at.caption]
     assert len(at.session_state[CLAVE_RESULTADO].presupuesto.curva) == len(CODIGOS_LINEA_BASE)
+
+
+def test_el_aviso_no_sale_si_nadie_edito_el_plan_aunque_cambie_el_computo(
+    monkeypatch, base_sembrada
+):
+    """R-2 de la re-revision de U: el aviso compara con el plan por defecto de la elaboracion
+    anterior, no con el nuevo. Se elabora sin LB-05-REL y luego con las cinco partidas, sin tocar
+    la tabla: el plan por defecto cambia (cuatro filas, luego cinco), pero nadie lo edito."""
+    sin_relleno = [i for i in items_auditados() if i.codigo_partida != "LB-05-REL"]
+    caso = importlib.import_module("ui.caso")
+    monkeypatch.setattr(caso, "RUTA_BASE_POR_DEFECTO", str(base_sembrada))
+    at = AppTest.from_string(SCRIPT, default_timeout=120)
+    at.session_state[CLAVE_ITEMS] = sin_relleno
+    at.run()
+    _por_rotulo(at.button, ROTULO_ELABORAR).click().run()
+    assert not at.exception, [e.value for e in at.exception]
+    assert not at.error, [e.value for e in at.error]
+    assert len(at.session_state[f"{CLAVE_PLAN}__filas"]) == len(CODIGOS_LINEA_BASE) - 1
+
+    at.session_state[CLAVE_ITEMS] = list(items_auditados())
+    _por_rotulo(at.button, ROTULO_ELABORAR).click().run()
+    assert not at.exception, [e.value for e in at.exception]
+    assert not at.error, [e.value for e in at.error]
+
+    assert len(at.session_state[f"{CLAVE_PLAN}__filas"]) == len(CODIGOS_LINEA_BASE)
+    assert not [c.value for c in at.caption if AVISO_PLAN_REINICIADO in c.value]
