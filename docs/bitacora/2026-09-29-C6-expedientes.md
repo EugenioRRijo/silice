@@ -93,3 +93,103 @@ segunda justificación.
 «Componer» no registra rendimiento nuevo (`_registrar_rendimiento_si_cambia` no cambió nada), el
 último rendimiento puede estar ya justificado y la función lanza `ValueError`: la interfaz debe
 tratarlo como aviso, no como fallo del guardado.
+
+## C6.2 INV-090: dar de alta los insumos desconocidos de la lista de precios
+
+**Problema.** UC‑02, flujo 2a (`docs/ERS.md:198-199`): «Insumos desconocidos en el archivo: el
+sistema los lista y **ofrece darlos de alta o ignorarlos**; los ignorados no intervienen en el
+recálculo». Hoy solo se listan: `crear_lista_desde_archivo` (`core/catalog/precios.py:276-324`) los
+devuelve en `ResumenLista.desconocidos` (:94-105) y la página los anuncia como «no se crearon ni
+intervienen en el recalculo» (`ui/paginas/actualizacion.py:299-303`); ni la página ni
+`POST /listas-precios` (`api/rutas/listas.py:30-51`) ofrecen el alta (inventario, INV‑090;
+`docs/plan_pruebas.md`, UC‑02 2a, parcial).
+
+**Diseño.** Un solo commit de `core/`, asunto
+`feat(catalog): dar de alta los insumos desconocidos de la lista de precios`, con sus pruebas en
+`tests/integration/test_alta_desconocidos.py`:
+
+- `core/catalog/precios.py`:
+  - `insumos_desconocidos(session, ruta) -> tuple[PrecioLeido, ...]`: la vista previa de lo que se
+    puede dar de alta, en el orden del archivo, **sin escribir nada**. Son las filas cuyo
+    `(tipo, descripción)` normalizado no está en el catálogo con **ninguna** unidad. Una fila cuya
+    descripción sí está en el catálogo pero con una unidad no equivalente es el flujo 2b («la fila
+    se rechaza y se reporta», `docs/ERS.md:200-201`): sigue en `ResumenLista.desconocidos`, como hoy
+    (`test_una_fila_con_unidad_no_equivalente_se_rechaza_y_las_demas_se_procesan`), pero no se
+    ofrece para el alta, porque darla de alta crearía un homónimo con otra unidad del insumo que el
+    flujo 2b rechaza.
+  - `crear_lista_desde_archivo(..., dar_de_alta: Collection[PrecioLeido] = ())`: los elegidos se
+    validan **antes** de crear la lista (`ValueError` si alguno no está en la vista previa de ese
+    archivo, sin escribir nada); luego se crean, en el orden del archivo y uno por clave, con código
+    nuevo del tipo (`MAT-NNN`, `EQU-NNN`, `MO-NNN`), y su precio entra **solo en la lista nueva**:
+    la anterior es inmutable (docs/modelo_datos.md §2.2) y la nueva ya nace de copiarla (:286-288).
+    Sin `dar_de_alta` el comportamiento es idéntico al de hoy.
+  - `ResumenLista` (:94-105) gana, **al final** y con valor por defecto, `dados_de_alta:
+    tuple[models.Insumo, ...] = ()`. `desconocidos` pasa a ser lo que **no** se dio de alta: los
+    ignorados del flujo 2a y los rechazados del 2b («ignorados siguen en `desconocidos`»). Sin alta,
+    `desconocidos` no cambia.
+- `core/catalog/repositorio.py`: `Catalogo.dar_de_alta_insumo(tipo, descripcion, unidad) ->
+  models.Insumo`, público, que reutiliza `_codigo_nuevo` (:404-413) y hace `flush`. `ValueError` con
+  descripción vacía o si ya existe un insumo con el mismo `(tipo, descripción, unidad)`: el alta no
+  es la vía para crear variantes (esas nacen en `_resolver_insumo`, :354-388). Construye el
+  `models.Insumo` directamente, sin `a_modelo_insumo`: esa función traduce una `LineaCatalogo`, que
+  exige precio, cantidad y depreciación que un insumo recién dado de alta no tiene, e inventarlos
+  sería peor que declarar la excepción; el docstring del módulo (:8-11) la nombra junto a
+  `models.PrecioInsumo`.
+- `core/catalog/__init__.py`: exporta `insumos_desconocidos`.
+
+**Alternativa descartada.** Dar de alta todos los desconocidos al cargar la lista. El flujo 2a pide
+que el sistema **ofrezca** el alta o el ignorar: crear en silencio lo que un proveedor escribió mal
+(«Cemento Portlan») llenaría el catálogo de insumos huérfanos. También se descartó identificar los
+elegidos por descripción dentro del núcleo: dos filas del archivo pueden compartir descripción con
+distinto tipo, y `PrecioLeido` (inmutable, con tipo, descripción, unidad y precio) ya es la clave
+exacta que devuelve la vista previa; la API traduce las descripciones que recibe a esos
+`PrecioLeido`.
+
+**Por qué ningún contrato cambia.** `PrecioLeido`, `ResumenLista` y `Catalogo` son del catálogo,
+no de `core/contracts/`; el campo nuevo de `ResumenLista` va al final con valor por defecto, así que
+toda construcción existente sigue valiendo.
+
+**Línea base.** Intacta: el alta solo ocurre si el llamador elige, un insumo recién creado no está
+en ninguna composición y no tiene precio en la lista anterior, así que no entra en
+`insumos_afectados` (:344-363, exige los dos precios) ni en ningún APU. `actualizar_precios` da
+los mismos totales con y sin alta (prueba 4).
+
+**Ronda 1 de revisión (arq N-1, qa N-QA-5, hechos 7, req 6), por `fixup` de este commit.**
+
+- *Equipos y mano de obra sin unidad.* `Catalogo.dar_de_alta_insumo` guarda la unidad solo en los
+  materiales; los equipos y la mano de obra se dan de alta con `unidad=None`, la convención de
+  `lineas_de` (`core/catalog/mapeo.py:142-181`), para que `_resolver_insumo` los reutilice cuando un
+  APU los componga. Sin eso, una fila de MaPreX `equipo,…,dia,…` daba un insumo que ningún APU
+  alcanzaba y el primer APU creaba un homónimo. Límite que queda: la lista siguiente que traiga la
+  misma fila con «dia» la rechaza como flujo 2b (unidad no equivalente), como ya les pasa hoy a
+  todos los equipos del catálogo frente a MaPreX (riesgo «MaPreX casa pocos insumos», C6-plan §6).
+- *Identidad normalizada.* La guardia de insumo existente compara con la identidad del catálogo
+  (tipo, descripción con `normalizar_texto` y unidad con `normalizar_unidad`, sin unidad fuera de
+  los materiales), no con el texto exacto: una llamada directa con otra grafía ya no crea un
+  homónimo.
+- *Filas repetidas.* Dos filas elegidas con la misma identidad dan **una** alta y las dos le fijan
+  el precio en la lista nueva; si sus precios difieren, `ValueError` que nombra el archivo y las
+  filas, antes de escribir nada. Dos filas con la misma descripción y distinta unidad de material
+  siguen siendo dos identidades y dan dos altas (el catálogo ya admite homónimos de distinta
+  unidad): caso de borde que la interfaz puede evitar.
+
+**Pruebas previstas** (`tests/integration/test_alta_desconocidos.py`, base en memoria):
+
+1. La vista previa lista el desconocido del flujo 2a, no el rechazado del 2b ni los casados, y no
+   crea insumos ni listas.
+2. Con el desconocido elegido, se crea `MAT-NNN` (siguiente número del tipo, calculado a mano desde
+   la siembra) con su descripción y unidad, precio solo en la lista nueva, y queda en
+   `dados_de_alta`, no en `desconocidos`.
+3. El desconocido no elegido no se crea y sigue en `desconocidos`.
+4. `actualizar_precios` da el mismo comparativo con y sin alta (dos bases).
+5. Elegir un insumo casado o un rechazado del 2b: `ValueError`, sin lista nueva ni insumos.
+
+La mordida prevista: fijar el precio del dado de alta también en la lista anterior, o aceptar un
+elegido que no es desconocido.
+
+**Para las pistas U, A y R.** La página llama a `insumos_desconocidos` al subir el archivo y pasa la
+selección en `dar_de_alta`; si ningún precio cambió (flujo 3a) la página deshace la transacción y
+con ella las altas, y debe decirlo. La API recibe descripciones: las traduce con
+`insumos_desconocidos` (una descripción que no está en la vista previa es 422) y responde
+`dados_de_alta` con `insumo.codigo` o `insumo.descripcion`. Para R, los rechazados del 2b son
+`ResumenLista.desconocidos` menos la vista previa.
