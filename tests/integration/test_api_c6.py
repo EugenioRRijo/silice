@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import io
 import sys
+import zipfile
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import date
@@ -68,6 +69,21 @@ def _filas_de_hallazgos(informe: str) -> list[tuple[str, str, str | None]]:
         if len(celdas) >= 4 and celdas[0].isdigit():
             filas.append((celdas[1], celdas[2], None if celdas[3] == "-" else celdas[3]))
     return filas
+
+
+#: Dos formas de un .xlsx ilegible (ronda 1 de A, H1): bytes que no son un zip (openpyxl lanza
+#: `zipfile.BadZipFile`) y un zip sin las partes de un libro (`KeyError`, que sin traducir seria un
+#: 404 de «recurso no encontrado»).
+FORMAS_ILEGIBLES = ("no-zip", "zip-sin-libro")
+
+
+def _xlsx_ilegible(ruta: Path, forma: str) -> Path:
+    if forma == "no-zip":
+        ruta.write_bytes(b"esto no es un libro de Excel")
+    else:
+        with zipfile.ZipFile(ruta, "w") as archivo:
+            archivo.writestr("nota.txt", "un zip, pero no un libro")
+    return ruta
 
 
 # ---------------------------------------------------------------------------------------------
@@ -296,6 +312,24 @@ def test_elegir_una_grafia_da_de_alta_la_identidad_con_el_precio_de_sus_filas(
     assert precios[("Lista C6", cuerpo["dados_de_alta"][0])] == Decimal("12")
 
 
+@pytest.mark.parametrize("forma", FORMAS_ILEGIBLES)
+def test_un_xlsx_ilegible_al_cargar_la_lista_es_422_sin_escribir_nada(
+    cliente, sesion, tmp_path, forma
+):
+    ruta = _xlsx_ilegible(tmp_path / "lista_rota.xlsx", forma)
+    antes = (_contar(sesion, models.Insumo), _contar(sesion, models.ListaPrecios))
+    datos = {"nombre": "Rota", "moneda": linea_base.MONEDA, "fecha_vigencia": "2026-06-01"}
+
+    with ruta.open("rb") as f:
+        r = cliente.post(
+            "/listas-precios", files={"archivo": (ruta.name, f, TIPO_XLSX)}, data=datos
+        )
+
+    assert r.status_code == 422
+    assert "lista_rota.xlsx" in r.json()["detalle"]
+    assert (_contar(sesion, models.Insumo), _contar(sesion, models.ListaPrecios)) == antes
+
+
 # ---------------------------------------------------------------------------------------------
 # INV-086 (UC-01 1): crear el proyecto
 # ---------------------------------------------------------------------------------------------
@@ -466,8 +500,11 @@ def _sin_hoja(ruta: Path, hoja: str) -> Path:
         (lambda d: _con_moneda(escribir_presupuesto_tabular(d), "usd"), "usd"),
         # Error de forma: falta la hoja de los APU.
         (lambda d: _sin_hoja(escribir_presupuesto_tabular(d), "APU"), "APU"),
+        # H1 de la ronda 1 de A: un .xlsx que openpyxl no puede abrir.
+        (lambda d: _xlsx_ilegible(d / "tercero_roto.xlsx", "no-zip"), "tercero_roto.xlsx"),
+        (lambda d: _xlsx_ilegible(d / "tercero_roto.xlsx", "zip-sin-libro"), "tercero_roto.xlsx"),
     ],
-    ids=["codigo-existente", "moneda-distinta", "hoja-ausente"],
+    ids=["codigo-existente", "moneda-distinta", "hoja-ausente", "xlsx-no-zip", "xlsx-sin-libro"],
 )
 def test_un_archivo_que_no_se_puede_importar_es_422_sin_escribir_nada(
     cliente, sesion, tmp_path, proyecto_tercero, preparar, fragmento

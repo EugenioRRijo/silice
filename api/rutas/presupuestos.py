@@ -53,6 +53,7 @@ from api.esquemas import (
     RendimientosPorDeclararRespuesta,
     decimal_desde_texto,
 )
+from api.rutas.listas import comprobar_libro_legible
 from api.rutas.rendimientos import propuesta_respuesta
 from core import models
 from core.budget import (
@@ -213,6 +214,7 @@ def importar_presupuesto_de_tercero(
     with tempfile.TemporaryDirectory() as directorio:
         ruta = Path(directorio) / archivo.filename
         ruta.write_bytes(archivo.file.read())
+        comprobar_libro_legible(ruta)
         try:
             resultado = importar_presupuesto(sesion, ruta, destino)
         except ValueError:

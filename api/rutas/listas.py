@@ -8,6 +8,7 @@ from datetime import date
 from pathlib import Path
 from typing import Annotated
 
+import openpyxl
 from fastapi import APIRouter, File, Form, UploadFile, status
 from sqlalchemy import select
 
@@ -20,6 +21,7 @@ from core.catalog import (
     crear_lista_desde_archivo,
     insumos_desconocidos,
 )
+from core.catalog.precios import SUFIJOS_EXCEL
 from core.verification.texto import normalizar_texto
 
 router = APIRouter(tags=["listas"])
@@ -67,6 +69,7 @@ def cargar_lista_precios(
     with tempfile.TemporaryDirectory() as directorio:
         ruta = Path(directorio) / archivo.filename
         ruta.write_bytes(archivo.file.read())
+        comprobar_libro_legible(ruta)
         candidatos = insumos_desconocidos(sesion, ruta)
         resumen = crear_lista_desde_archivo(
             sesion,
@@ -84,6 +87,31 @@ def cargar_lista_precios(
         ignorados=[leido.descripcion for leido in resumen.desconocidos if leido in candidatos],
         rechazados=[leido.descripcion for leido in resumen.desconocidos if leido not in candidatos],
     )
+
+
+def comprobar_libro_legible(ruta: Path) -> None:
+    """`ValueError` (422) con el nombre del archivo si `ruta` es un libro de Excel que openpyxl no
+    puede abrir: bytes que no son un zip (`zipfile.BadZipFile`), un zip sin las partes de un libro
+    (`KeyError`, que el manejador de `LookupError` responderia como 404) o un archivo truncado.
+
+    Ronda 1 de la pista A (H1): sin esta comprobacion, `POST /listas-precios` y
+    `POST /presupuestos/importar` respondian 500 ante un .xlsx corrupto. Se abre el libro antes de
+    llamar al nucleo, asi que cualquier fallo de esta apertura es del archivo y no se confunde con
+    un error del catalogo; la traduccion de fondo, en el lector del nucleo, queda para GC6. Un
+    archivo de otro sufijo no se toca: su rechazo es del nucleo.
+    """
+    if ruta.suffix.lower() not in SUFIJOS_EXCEL:
+        return
+    # El flujo lo abre y lo cierra esta funcion: si openpyxl falla a mitad, en Windows dejaria el
+    # archivo abierto y el directorio temporal de la ruta no se podria borrar.
+    with ruta.open("rb") as flujo:
+        try:
+            openpyxl.load_workbook(flujo, read_only=True).close()
+        except Exception as error:
+            raise ValueError(
+                f"{ruta.name}: no se puede leer como libro de Excel "
+                f"({type(error).__name__}: {error})"
+            ) from error
 
 
 def _elegidos(
