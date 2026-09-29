@@ -95,9 +95,12 @@ expertos ≥ 4/5 en Likert) **no es automatizable y está pendiente**. Se mide e
 al menos tres expertos sin relación personal con el autor, el bloque A del
 [anexo A del dossier](dossier_g0.md) y un informe identificado por su commit y por las huellas
 SHA‑256 de sus dos formas, la pantalla y la hoja *Auditoria* ([protocolo](protocolo_rnf04.md) §1).
-Lo que el producto ya aporta a esa evaluación: hallazgos en español con severidad, impacto
-cuantificado y los `origen_id` involucrados (columna *Orígenes* de la hoja *Auditoria* del
-Excel); UI multipágina y API autodocumentada (OpenAPI en `docs/api.json`).
+El material se regeneró en la compuerta GC5 sobre `e5a8209`: 14 hallazgos (1 CRITICO, 12 ERROR y
+1 ADVERTENCIA) y huella de la pantalla `1d7ba8d6…9077a840` (protocolo §1, con la huella completa y
+la del libro). Lo que el producto ya aporta a esa evaluación: hallazgos en español con severidad,
+impacto cuantificado y los `origen_id` involucrados (columna *Orígenes* de la hoja *Auditoria* del
+Excel); desde C5, las siete reglas evaluadas en las dos formas y, en la pantalla, la partida de
+cada hallazgo atribuida por regla (INV‑095, protocolo §1); UI multipágina y API autodocumentada (OpenAPI en `docs/api.json`).
 
 **Veredicto: pendiente de medición.** No se anticipa el resultado.
 

@@ -103,21 +103,31 @@ La orden escribe los dos archivos que se entregan: `informe_rnf04.md` (la forma 
 **La versión del informe** se fija con tres datos, que van en cada hoja de registro:
 
 1. **El commit probado:** `git log -1 --oneline` en la copia desechable; un commit de `main` con su
-   corrida de CI en verde, cuyo enlace también se anota. Por ejemplo, `ceb6b8e` tiene la corrida
-   [36428464254](https://github.com/EugenioRRijo/tesis-apu-multidominio/actions/runs/36428464254)
-   (push a `main`, en verde).
+   corrida de CI en verde, cuyo enlace también se anota. Tiene que contener la fase C5 del cierre
+   (la fusión de su PR o uno posterior): un commit anterior, como `ceb6b8e` (corrida
+   [36428464254](https://github.com/EugenioRRijo/tesis-apu-multidominio/actions/runs/36428464254),
+   push a `main`, en verde), da el informe de antes de C5, sin la sección «Reglas evaluadas».
 2. **La huella de la forma de pantalla** (que es también la del contenido del informe): SHA‑256 de
    `informe_rnf04.md` (en bash,
    `sha256sum informe_rnf04.md`; en PowerShell,
    `Get-FileHash informe_rnf04.md -Algorithm SHA256`). El texto no lleva fecha, así que la huella
-   solo cambia si cambia el informe. Sobre el código de `ceb6b8e` (`main`) vale
-   `9469aaf8ded7d8ba901b99060a80a12be60fc18d1c7152e850c98ec024ed0063` y el informe tiene **14
-   hallazgos**: 1 CRITICO, 12 ERROR y 1 ADVERTENCIA. Si el commit probado da otra huella, se anota
-   y se explica qué cambió antes de aplicar el instrumento.
+   solo cambia si cambia el informe. Sobre el código de `e5a8209` (rama `inc/cierre-C5`, compuerta
+   GC5, 2026‑09‑28; los commits de documentos de la compuerta no cambian el código) vale
+   `1d7ba8d6ae0f08b2ddc43b8d73c985915a2c0554001887745b6e23889077a840`, la misma en bash y en
+   PowerShell, y el informe tiene **14 hallazgos**: 1 CRITICO, 12 ERROR y 1 ADVERTENCIA, y
+   **siete reglas evaluadas** (R1 3, R2 1, R3 2, R4 1, R5 1, R6 1 y R7 5). Antes de C5 valía
+   `9469aaf8ded7d8ba901b99060a80a12be60fc18d1c7152e850c98ec024ed0063` (`ceb6b8e`): cambió porque
+   INV‑092 agregó la sección «Reglas evaluadas»; la atribución de INV‑095 no movió ninguna fila de
+   este informe. Si el commit probado da otra huella, se anota y se explica qué cambió antes de
+   aplicar el instrumento.
 3. **La huella de la forma exportada:** SHA‑256 de `informe_rnf04.xlsx`. El libro guarda su fecha
    de creación, así que su huella cambia en cada generación: por eso **se genera una sola vez** y
    todos los expertos reciben **esos mismos dos archivos** (las mismas dos huellas en todas las
-   hojas de registro).
+   hojas de registro). En la generación de GC5, sobre `e5a8209`, valió
+   `25a4beabe2e9fd06399903398c27a703b79259ba9809ddbd76bded8cca57e003`; su hoja *Auditoria* tiene los
+   14 hallazgos en las columnas A a E y las siete reglas evaluadas en las columnas G a I. Esa huella
+   solo prueba la regeneración de la compuerta: la que se anota en las hojas de registro es la de la
+   generación única de Med.
 
 ## 2. Los expertos
 
