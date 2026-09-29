@@ -353,7 +353,7 @@
           "presupuestos"
         ],
         "summary": "Crear Presupuesto",
-        "description": "Elabora el presupuesto (UC-01), lo audita siempre (UC-05) y lo guarda; los ítems sin\npartida quedan pendientes (flujo 3a).",
+        "description": "Elabora el presupuesto (UC-01), lo audita siempre (UC-05) y lo guarda; los ítems sin\npartida quedan pendientes (flujo 3a).\n\nFlujo 3b (INV-088): si una partida no tiene rendimiento estimado vigente a la fecha, responde\n409 sin guardar nada, con el rendimiento que propone el histórico y su dispersión por partida.\nEl tipo se declara al registrarlo con `POST /partidas/{codigo}/rendimientos`, y el presupuesto\nse vuelve a enviar: la elaboración usa el rendimiento **estimado** vigente, así que un medido\nregistrado no la desbloquea.",
         "operationId": "crear_presupuesto_presupuestos_post",
         "requestBody": {
           "content": {
@@ -372,6 +372,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PresupuestoCreadoRespuesta"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Falta un dato vigente del catálogo; si es un rendimiento estimado, la respuesta propone el del histórico (UC-01, flujo 3b)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RendimientosPorDeclararRespuesta"
                 }
               }
             }
@@ -1745,6 +1755,28 @@
         "title": "PendienteRespuesta",
         "description": "Un ítem de cómputo sin partida en el catálogo (UC‑01, flujo 3a): no suma a ningún total.\nLa cantidad viaja exacta, como texto decimal, no redondeada."
       },
+      "PeriodoPlanPeticion": {
+        "properties": {
+          "periodo": {
+            "type": "string",
+            "title": "Periodo"
+          },
+          "reparto": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Reparto"
+          }
+        },
+        "type": "object",
+        "required": [
+          "periodo",
+          "reparto"
+        ],
+        "title": "PeriodoPlanPeticion",
+        "description": "Un período del plan de trabajo (UC‑01, paso 6): su etiqueta y la fracción de cada partida\nque ejecuta (código → fracción, como texto decimal). Las fracciones de cada partida suman 1\nen todo el plan; si no, `PlanInvalido` responde 422."
+      },
       "PresupuestoCreadoRespuesta": {
         "properties": {
           "codigo": {
@@ -1884,6 +1916,20 @@
               }
             ],
             "title": "Utilidad"
+          },
+          "plan": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/PeriodoPlanPeticion"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plan"
           }
         },
         "type": "object",
@@ -1894,7 +1940,7 @@
           "items"
         ],
         "title": "PresupuestoPeticion",
-        "description": "Lo que hace falta para elaborar un presupuesto (UC-01/05): items ya extraídos por un\nadaptador o construidos a mano, y los cuatro parámetros de costo, opcionales (por defecto los\nde `ParametrosCosto`, la línea base de CLAUDE.md §4)."
+        "description": "Lo que hace falta para elaborar un presupuesto (UC-01/05): items ya extraídos por un\nadaptador o construidos a mano, y los cuatro parámetros de costo, opcionales (por defecto los\nde `ParametrosCosto`, la línea base de CLAUDE.md §4).\n\n`plan` es el plan de trabajo del proyectista (UC‑01, paso 6); sin él, una partida por día en\nel orden del presupuesto (`plan_secuencial`)."
       },
       "PresupuestoResumenRespuesta": {
         "properties": {
@@ -2022,6 +2068,31 @@
         "title": "RendimientoPeticion",
         "description": "Registro de un rendimiento sobre una partida. `valor` viaja como texto decimal."
       },
+      "RendimientoPorDeclararRespuesta": {
+        "properties": {
+          "codigo_partida": {
+            "type": "string",
+            "title": "Codigo Partida"
+          },
+          "propuesta": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PropuestaRendimientoRespuesta"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "codigo_partida",
+          "propuesta"
+        ],
+        "title": "RendimientoPorDeclararRespuesta",
+        "description": "UC‑01, flujo 3b: una partida sin rendimiento estimado vigente a la fecha del presupuesto,\ncon la propuesta del histórico y su dispersión (RF‑26), o `null` si no tiene ninguno."
+      },
       "RendimientoRespuesta": {
         "properties": {
           "valor": {
@@ -2063,6 +2134,27 @@
         ],
         "title": "RendimientoRespuesta",
         "description": "Un rendimiento del historico: estimado o medido, siempre declarado."
+      },
+      "RendimientosPorDeclararRespuesta": {
+        "properties": {
+          "detalle": {
+            "type": "string",
+            "title": "Detalle"
+          },
+          "rendimientos_por_declarar": {
+            "items": {
+              "$ref": "#/components/schemas/RendimientoPorDeclararRespuesta"
+            },
+            "type": "array",
+            "title": "Rendimientos Por Declarar"
+          }
+        },
+        "type": "object",
+        "required": [
+          "detalle"
+        ],
+        "title": "RendimientosPorDeclararRespuesta",
+        "description": "El 409 de `POST /presupuestos` cuando falta un rendimiento estimado vigente (UC‑01, 3b):\nel motivo y, por partida, el rendimiento que se propone. El tipo se declara al registrarlo con\n`POST /partidas/{codigo}/rendimientos` (RF‑25); luego se vuelve a enviar el presupuesto.\nSi lo que falta es otra cosa (la lista de precios vigente), el 409 trae solo `detalle`."
       },
       "RendimientosRespuesta": {
         "properties": {

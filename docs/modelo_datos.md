@@ -268,9 +268,16 @@ migración de esquema.
 | `severidad` | int | — | no | valor de `Severidad` (IntEnum) |
 | `descripcion` | str(500) | — | no | |
 | `impacto` | Decimal | — | sí | monto o cantidad afectada |
-| `origen_ids` | texto JSON | — | no | lista de identificadores que resuelve `InformeAuditoria.partida_de`: `origen_id` en R1, R3, R4, R5 y R7; **códigos de partida** en R6, y el par `(codigo_partida, origen_id)` en `PENDIENTE` (`core.budget.presupuesto._clave_pendiente`); `[]` si la regla no señala cantidades. Con un `origen_id` compartido por varias partidas la atribución falla (INV‑095, C5; [arquitectura §6.1](arquitectura.md#61-deuda-arquitectónica-declarada)) |
+| `origen_ids` | texto JSON | — | no | lista de identificadores que resuelve `InformeAuditoria.partida_de`: `origen_id` en R1, R3, R4, R5 y R7; **códigos de partida** en R6, y el par `(codigo_partida, origen_id)` en `PENDIENTE` (`core.budget.presupuesto._clave_pendiente`); `[]` si la regla no señala cantidades. Desde C5 (INV‑095) la partida de un hallazgo de R1, R3, R4, R5 o R7 la declara la regla al emitirlo (`InformeAuditoria.partida_por_hallazgo`), no se deduce de su primer origen: un `origen_id` compartido por varias partidas ya no se atribuye a la primera. Esa atribución **no se persiste** (la tabla no cambia): la recarga (`cargar_elaboracion`) reaudita y la vuelve a calcular ([arquitectura §6.1](arquitectura.md#61-deuda-arquitectónica-declarada)) |
 | `valor_observado` | Decimal | — | sí | |
 | `valor_esperado` | Decimal | — | sí | |
+
+Lo que el informe ganó en C5 no tiene columna ni tabla, a propósito (sin migración de esquema): las
+**reglas evaluadas** (`InformeAuditoria.reglas_evaluadas`, INV‑092, UC‑05 5a) y la partida que
+declaró cada regla (`partida_por_hallazgo`, INV‑095). El informe recargado las enumera y las
+atribuye porque la recarga reaudita con `REGLAS`; la tabla guarda solo los hallazgos, que no
+cambiaron de forma. Un presupuesto sin hallazgos no deja ninguna fila `Hallazgo`: que se
+verificaron las siete reglas lo dice el informe al recargarlo, no la base.
 
 ## 3. Diagrama entidad‑relación
 

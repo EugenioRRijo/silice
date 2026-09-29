@@ -29,7 +29,7 @@ congelado, CLAUDE.md §5 y §9): se documenta como hallazgo en
 from __future__ import annotations
 
 import csv
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
 from adapters.sistemas.evaluador import evaluar_regla
@@ -38,6 +38,7 @@ from core.contracts import AdaptadorDominio, Dominio, ItemComputo, OrigenTipo
 REGLA_PUNTOS_FUNCION = "4*entradas + 5*salidas + 4*consultas + 10*archivos + 7*interfaces"
 
 _COLUMNAS_CONTEO = ("entradas", "salidas", "consultas", "archivos", "interfaces")
+_COLUMNAS = ("id", "modulo", "caso_de_uso", "codigo_partida", *_COLUMNAS_CONTEO)
 
 
 def _parsear_especificaciones(texto: str | None) -> dict[str, str]:
@@ -57,6 +58,50 @@ def _parsear_especificaciones(texto: str | None) -> dict[str, str]:
     return resultado
 
 
+def _leer_filas(
+    fuente: Path | str, columnas: tuple[str, ...], dominio: Dominio
+) -> list[dict[str, str]]:
+    """Las filas del CSV, o `ValueError` con el nombre del archivo si no es una fuente de `dominio`.
+
+    UC-01, flujo 2a (INV-089): un archivo binario (no es texto UTF-8) o sin las columnas que este
+    adaptador lee (la muestra de otro dominio) se rechaza nombrando el archivo, con el
+    `ValueError` que la API traduce a 422, en vez de un `KeyError` de la primera columna que
+    falte. Cada adaptador tiene su copia: ninguno importa de otro (CLAUDE.md §2).
+    """
+    nombre = Path(fuente).name
+    try:
+        with open(fuente, newline="", encoding="utf-8") as archivo:
+            lector = csv.DictReader(archivo)
+            presentes = lector.fieldnames or ()
+            faltantes = [columna for columna in columnas if columna not in presentes]
+            if faltantes:
+                raise ValueError(
+                    f"el archivo {nombre!r} no es una fuente del dominio {dominio.value}: "
+                    f"faltan las columnas {faltantes}"
+                )
+            return list(lector)
+    except UnicodeDecodeError as error:
+        raise ValueError(
+            f"el archivo {nombre!r} es ilegible: no es un CSV de texto en UTF-8"
+        ) from error
+
+
+def _decimal(fila: dict[str, str], columna: str, fuente: Path | str) -> Decimal:
+    """`fila[columna]` como `Decimal`, o `ValueError` con el archivo, la fila y la columna.
+
+    Una celda vacia o no numerica lanzaria `decimal.InvalidOperation` sin contexto, que la API no
+    traduce a 422 (INV-089, UC-01 flujo 2a).
+    """
+    valor = (fila.get(columna) or "").strip()
+    try:
+        return Decimal(valor)
+    except InvalidOperation as error:
+        raise ValueError(
+            f"el archivo {Path(fuente).name!r}, fila {fila.get('id')!r}: la columna "
+            f"{columna!r} esta vacia o no es numerica: {valor!r}"
+        ) from error
+
+
 class AdaptadorSistemas(AdaptadorDominio):
     """Extrae puntos de función no ajustados (PFNA) de una tabla CSV de alcance funcional.
 
@@ -70,22 +115,21 @@ class AdaptadorSistemas(AdaptadorDominio):
 
     def extraer(self, fuente: Path | str) -> list[ItemComputo]:
         items: list[ItemComputo] = []
-        with open(fuente, newline="", encoding="utf-8") as archivo:
-            for fila in csv.DictReader(archivo):
-                parametros = {columna: Decimal(fila[columna]) for columna in _COLUMNAS_CONTEO}
-                cantidad = evaluar_regla(REGLA_PUNTOS_FUNCION, parametros)
-                items.append(
-                    ItemComputo(
-                        codigo_partida=fila["codigo_partida"],
-                        descripcion=f"{fila['modulo']}: {fila['caso_de_uso']}",
-                        unidad="pf",
-                        cantidad=cantidad,
-                        origen_id=fila["id"],
-                        origen_tipo=OrigenTipo.REGLA,
-                        dominio=Dominio.SISTEMAS,
-                        regla=REGLA_PUNTOS_FUNCION,
-                        parametros=parametros,
-                        especificaciones=_parsear_especificaciones(fila.get("especificaciones")),
-                    )
+        for fila in _leer_filas(fuente, _COLUMNAS, self.dominio):
+            parametros = {columna: _decimal(fila, columna, fuente) for columna in _COLUMNAS_CONTEO}
+            cantidad = evaluar_regla(REGLA_PUNTOS_FUNCION, parametros)
+            items.append(
+                ItemComputo(
+                    codigo_partida=fila["codigo_partida"],
+                    descripcion=f"{fila['modulo']}: {fila['caso_de_uso']}",
+                    unidad="pf",
+                    cantidad=cantidad,
+                    origen_id=fila["id"],
+                    origen_tipo=OrigenTipo.REGLA,
+                    dominio=Dominio.SISTEMAS,
+                    regla=REGLA_PUNTOS_FUNCION,
+                    parametros=parametros,
+                    especificaciones=_parsear_especificaciones(fila.get("especificaciones")),
                 )
+            )
         return items

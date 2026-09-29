@@ -6,7 +6,7 @@ presupuesto se lee en centavos, mientras que los `Decimal` del modelo conservan 
 `core.verification.informe.DECIMALES_PRESENTACION`, que ya la fija para el informe de auditoría.
 
 El libro lleva siempre la hoja de auditoría, aunque el presupuesto no tenga hallazgos: el informe se
-entrega siempre (principio 7 de CLAUDE.md §2).
+entrega siempre (principio 7 de CLAUDE.md §2), y la hoja enumera las reglas evaluadas (UC‑05 5a).
 
 La tabla de mano de obra de la hoja APU incluye la columna Modalidad: bajo DESTAJO, `sueldo` no es
 un sueldo diario sino el precio por unidad de partida del artículo 114 de la LOTTT (decisión D9), y
@@ -37,6 +37,10 @@ CIEN = Decimal(100)
 CERO = Decimal(0)
 
 _NEGRITA = Font(bold=True)
+
+#: Bloque de las reglas evaluadas en la hoja de auditoría: columna G (la 7), tras la F vacía.
+_COLUMNA_REGLAS = 7
+_TITULOS_REGLAS = ("Regla evaluada", "Nombre", "Hallazgos")
 
 
 def exportar_excel(presupuesto: Presupuesto, informe: InformeAuditoria, ruta: Path) -> Path:
@@ -159,6 +163,12 @@ def _hoja_curva(hoja: Worksheet, presupuesto: Presupuesto) -> None:
 
 
 def _hoja_auditoria(hoja: Worksheet, informe: InformeAuditoria) -> None:
+    """Una fila por hallazgo (columnas A a E) y, a la derecha, las reglas evaluadas.
+
+    Las reglas van en un bloque aparte (columnas G a I, tras la F vacía) para que el libro declare
+    lo que verificó aunque no haya hallazgos (UC‑05 5a, INV‑092) sin mezclar filas de otra clase en
+    la tabla de hallazgos.
+    """
     _encabezado(hoja, ["Regla", "Severidad", "Descripción", "Impacto", "Orígenes"])
     for hallazgo in informe.hallazgos:
         hoja.append(
@@ -170,3 +180,11 @@ def _hoja_auditoria(hoja: Worksheet, informe: InformeAuditoria) -> None:
                 ", ".join(hallazgo.origen_ids),
             ]
         )
+    reglas = informe.cuenta_por_regla_evaluada()
+    if not reglas:
+        return
+    for columna, titulo in enumerate(_TITULOS_REGLAS, start=_COLUMNA_REGLAS):
+        hoja.cell(row=1, column=columna, value=titulo).font = _NEGRITA
+    for fila, valores in enumerate(reglas, start=2):
+        for columna, valor in enumerate(valores, start=_COLUMNA_REGLAS):
+            hoja.cell(row=fila, column=columna, value=valor)

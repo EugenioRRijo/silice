@@ -111,10 +111,22 @@ class ItemComputoRespuesta(BaseModel):
     especificaciones: dict[str, str]
 
 
+class PeriodoPlanPeticion(BaseModel):
+    """Un período del plan de trabajo (UC‑01, paso 6): su etiqueta y la fracción de cada partida
+    que ejecuta (código → fracción, como texto decimal). Las fracciones de cada partida suman 1
+    en todo el plan; si no, `PlanInvalido` responde 422."""
+
+    periodo: str
+    reparto: dict[str, str]
+
+
 class PresupuestoPeticion(BaseModel):
     """Lo que hace falta para elaborar un presupuesto (UC-01/05): items ya extraídos por un
     adaptador o construidos a mano, y los cuatro parámetros de costo, opcionales (por defecto los
     de `ParametrosCosto`, la línea base de CLAUDE.md §4).
+
+    `plan` es el plan de trabajo del proyectista (UC‑01, paso 6); sin él, una partida por día en
+    el orden del presupuesto (`plan_secuencial`).
     """
 
     codigo: str
@@ -126,6 +138,7 @@ class PresupuestoPeticion(BaseModel):
     bono_alimentacion: str | None = None
     administracion: str | None = None
     utilidad: str | None = None
+    plan: list[PeriodoPlanPeticion] | None = None
 
 
 class PropuestaPartidaRespuesta(BaseModel):
@@ -348,6 +361,24 @@ class PropuestaRendimientoRespuesta(BaseModel):
 
     rendimiento: RendimientoRespuesta
     dispersion: DispersionRespuesta
+
+
+class RendimientoPorDeclararRespuesta(BaseModel):
+    """UC‑01, flujo 3b: una partida sin rendimiento estimado vigente a la fecha del presupuesto,
+    con la propuesta del histórico y su dispersión (RF‑26), o `null` si no tiene ninguno."""
+
+    codigo_partida: str
+    propuesta: PropuestaRendimientoRespuesta | None
+
+
+class RendimientosPorDeclararRespuesta(BaseModel):
+    """El 409 de `POST /presupuestos` cuando falta un rendimiento estimado vigente (UC‑01, 3b):
+    el motivo y, por partida, el rendimiento que se propone. El tipo se declara al registrarlo con
+    `POST /partidas/{codigo}/rendimientos` (RF‑25); luego se vuelve a enviar el presupuesto.
+    Si lo que falta es otra cosa (la lista de precios vigente), el 409 trae solo `detalle`."""
+
+    detalle: str
+    rendimientos_por_declarar: list[RendimientoPorDeclararRespuesta] = Field(default_factory=list)
 
 
 class RendimientosRespuesta(BaseModel):

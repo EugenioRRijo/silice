@@ -123,8 +123,9 @@ importación del presupuesto de un tercero para auditarlo (RF‑24) todavía no 
 Los rendimientos medidos de UC‑06 se registran por la API (sección 3.4), y las métricas y el
 contraste completo de UC‑07 se generan con un script (sección 3.5); de los dos, la pantalla
 **Componer una partida** ofrece una parte como ayudas: propone el rendimiento del histórico,
-advierte si se aparta y contrasta el precio con la estimación por reglas (sección 3.7). En UC‑01,
-el `.ifc` civil entra por la API (sección 3.1).
+advierte si se aparta y contrasta el precio con la estimación por reglas (sección 3.7); **Elaborar
+un presupuesto** propone también el rendimiento del histórico cuando a una partida le falta
+(sección 3.1, paso 6). En UC‑01, el `.ifc` civil entra por la API (sección 3.1).
 
 ### 3.0 Inicio: el caso abierto y los recorridos guiados (UC‑12)
 
@@ -154,11 +155,30 @@ el `.ifc` civil entra por la API (sección 3.1).
    asociar cada tipo de elemento a una partida del catálogo. El `.ifc`, que trae sus códigos de
    partida en el propio modelo, no entra por esta pantalla: entra por la API
    (`POST /computos/civil`) y se ve en el **Visor 3D del modelo**.
+
+   **Si el archivo no se puede leer, no se presupuesta nada** y el mensaje nombra el archivo (sin
+   la carpeta) y, si el problema es de una fila, la fila y la columna. Los mensajes son de esta
+   forma:
+   - *el archivo 'x.csv' es ilegible: no es un CSV de texto en UTF-8* (un binario, o un texto con
+     otra codificación);
+   - *el archivo 'x.csv' no es una fuente del dominio civil: faltan las columnas [...]* (la muestra
+     de otro dominio, o un CSV al que le faltan columnas de su formato);
+   - *el archivo 'x.csv', fila 'T-01': la columna 'a' esta vacia o no es numerica: ''* (una celda
+     mal escrita; en telecom el mensaje dice además la línea del archivo);
+   - para un `.ifc` (por la API o en el visor): *el archivo 'x.ifc' es ilegible: no es un modelo
+     IFC (...)*, o *es ilegible como modelo IFC:* seguido del motivo (su cabecera STEP no se pudo
+     interpretar, o declara un esquema IFC que `ifcopenshell` no soporta).
+
+   **Límite de los `.ifc`.** Un `.ifc` con la cabecera correcta pero **truncado o con basura** en
+   el cuerpo no se rechaza: `ifcopenshell` lo abre sin error y el cómputo sale vacío (o solo con
+   los elementos que alcanzó a leer). Si un modelo que debería traer elementos da un cómputo vacío,
+   revise el archivo.
 3. Al presupuestar (**Elaborar presupuesto**), el sistema calcula cada precio unitario con la
    estructura venezolana (prestaciones, bono, administración y utilidad en cascada), arma el total
    y la curva de inversión **y audita el resultado siempre**: el informe aparece sin pedirlo, con
    el total del presupuesto, el **resumen por severidad** (cuántos hallazgos de cada severidad, o
-   «Sin hallazgos») y el botón **Exportar a Excel**.
+   «Sin hallazgos»), las **reglas evaluadas** con su cuenta (sección 4) y el botón **Exportar a
+   Excel**.
 4. **Ítems sin partida (UC‑01 3a).** Si un ítem del cómputo tiene un código que el catálogo no
    tiene, el presupuesto **se elabora igual** con los demás y ese ítem queda **pendiente**: el
    informe lo declara con un hallazgo `PENDIENTE` y la pantalla lo lista en el bloque
@@ -171,6 +191,39 @@ el `.ifc` civil entra por la API (sección 3.1).
    aparece una leyenda con el tipo y el mensaje de la falla: `ImportError: …` cuando falta el extra
    `ml`; `OSError: …` cuando el modelo de lenguaje no se pudo descargar o leer (por ejemplo, la
    primera vez y sin red).
+5. **Plan de trabajo (UC‑01, paso 6).** Debajo del informe está la tabla **Plan de trabajo**, con
+   tres columnas: `periodo` (la etiqueta del período, por ejemplo «Semana 1»), `codigo_partida` y
+   `fraccion` (la parte de la partida que se ejecuta en ese período, con punto decimal: `0.5`, no
+   `0,5`). Cada fila dice qué fracción de una partida va en un período, y **las fracciones de cada
+   partida suman 1**. La primera elaboración usa el plan por defecto, una partida por día, y la
+   tabla viene precargada con él. Para repartir de otro modo, se edita la tabla (se pueden añadir
+   y quitar filas) y se pulsa **Aplicar plan y volver a elaborar**: el presupuesto se elabora con
+   ese plan, la curva de inversión sale de él (hoja *Curva* del Excel) y las reglas R2 y R7 lo
+   auditan. Si alguna partida no suma exactamente 1, si el plan nombra una partida que el
+   presupuesto no tiene, o si una fila está a medias o su fracción no es un número, la pantalla lo
+   dice (con el número de fila cuando es de una fila) y deja a la vista el presupuesto anterior.
+   Ojo: **al volver a elaborar sin el plan** (el botón **Elaborar presupuesto**, aceptar una
+   propuesta del paso 4 o registrar un rendimiento del paso 6), el plan vuelve a una partida por
+   día; si con eso se descartó un plan editado, la tabla lo avisa y hay que volver a aplicarlo.
+6. **Rendimientos por declarar (UC‑01, flujo 3b).** Si una partida no tiene un rendimiento
+   **estimado** vigente a la fecha del presupuesto (uno registrado con esa fecha o antes), el
+   presupuesto no se elabora y aparece el bloque **Rendimientos por declarar**: para cada partida,
+   el rendimiento que propone el histórico (el medido más reciente o, si no hay, el último
+   estimado), con su tipo y su fecha, y la dispersión del histórico (observaciones, cuántas
+   medidas y cuántas estimadas, media y rango). El selector *Tipo declarado del rendimiento de
+   <partida>* **no trae ninguna opción marcada**: hay que declarar si es estimado o medido y pulsar
+   **Registrar y volver a elaborar**.
+   - Declarado **estimado**, el propuesto se registra en el catálogo con la fecha del presupuesto
+     (sus condiciones dicen de dónde salió) y el presupuesto se elabora; si quedan otras partidas
+     por declarar, el bloque pasa a la siguiente.
+   - Declarado **medido**, no se registra nada: la elaboración solo usa rendimientos estimados, y
+     la pantalla lo explica. Para usar ese valor, declárelo estimado.
+   - Si la partida no tiene ningún rendimiento en el histórico, no hay propuesta: la pantalla remite
+     a **Componer una partida** para declararlo con sus condiciones.
+   - La propuesta sale de todo el histórico de la partida, sin mirar la fecha del presupuesto: con
+     un presupuesto de fecha pasada, puede proponer un rendimiento posterior a esa fecha.
+   - Si lo que falta es la **lista de precios** vigente a esa fecha (o un precio), el bloque no
+     aparece: la pantalla muestra ese error.
 
 ### 3.2 Actualizar precios masivamente (UC‑02)
 
@@ -210,7 +263,9 @@ sigue siendo real.
 Escribir la descripción en texto libre («excavación de zanja a mano», por ejemplo). El sistema
 propone hasta **tres** partidas del catálogo con su puntaje de similitud (0 a 1; por debajo de
 0,5 no propone). Al desplegar una propuesta se ven su desglose completo, su rendimiento y la
-referencia a la partida de origen con el puntaje que la propuso.
+referencia a la partida de origen con el puntaje que la propuso. Si el desglose usa un insumo sin
+precio en la lista vigente, la propuesta lo avisa («Desglose incompleto en la lista vigente…»,
+con el insumo y la partida) y no muestra sus tablas (UC‑03, flujo 4a).
 
 ### 3.4 Rendimientos reales de obra (UC‑06)
 
@@ -303,7 +358,10 @@ a paso con resultados esperados está el [guion de prueba manual](guion_prueba_a
       partida (hacen falta al menos dos observaciones) y, con historial suficiente, añade la
       lectura del bosque de aislamiento.
    4. *Contraste con la estimación por reglas (AACE):* solo para partidas que ya existen; compara
-      el precio construido con el estimado y dice si cae en el rango de la clase 3 de AACE.
+      el precio construido con el estimado y dice si cae en el rango de la clase 3 de AACE. Para
+      una partida nueva, la sección aparece con un aviso: la estimación por reglas parte del
+      precio unitario anterior de la partida, que no existe, así que el contraste no es posible
+      (UC‑07, flujo 3a).
 6. **Guardar y editar.** **Guardar composicion** crea o reemplaza el desglose de la partida. Al
    editar, el rendimiento anterior **no se pisa**: si el valor o las condiciones cambiaron, se
    registra uno nuevo y el anterior queda en el histórico; si no cambió nada, no se añade ruido.
@@ -314,7 +372,10 @@ a paso con resultados esperados está el [guion de prueba manual](guion_prueba_a
    obligatorio: una cantidad sin origen no es trazable.
 8. **Elaborar.** Con al menos una cantidad válida aparece **Elaborar y auditar** (código, fecha y
    moneda del presupuesto). El sistema arma el presupuesto, su curva de inversión con un plan de
-   una partida por día y el informe de auditoría.
+   una partida por día y el informe de auditoría. Repartir el plan de trabajo y declarar un
+   rendimiento que falta (flujo 3b) se hacen en **Elaborar un presupuesto** (sección 3.1, pasos 5
+   y 6), no en esta página: aquí, si a una partida le falta el rendimiento, se muestra el mensaje
+   del catálogo.
 9. **El informe de auditoría** se muestra siempre, tenga hallazgos o no (sección 4), con el total
    del presupuesto y el recuento por severidad.
 10. **Descarga en Excel.** El botón **Exportar a Excel** entrega el libro del presupuesto; su hoja
@@ -336,12 +397,52 @@ Una regla que no pueda evaluarse (por ejemplo, R2 sin curva) aparece como hallaz
 no interrumpe a las demás. Sobre el caso de estudio, el sistema detecta las **7 de 7**
 inconsistencias del presupuesto original.
 
+**Cómo se lee en pantalla.** El informe tiene cuatro partes, en este orden:
+
+1. La cabecera: «Hallazgos: N · Resultado: CUMPLE» o «NO CUMPLE».
+2. **Resumen por severidad:** cuántos hallazgos hay de cada severidad.
+3. **Reglas evaluadas:** una fila por cada regla que corrió (R1 a R7), con su nombre y cuántos
+   hallazgos dio. Una regla con 0 **se verificó y no encontró nada**; así el informe dice qué
+   comprobó aunque no haya hallazgos.
+4. **Hallazgos:** la tabla, con la regla, la severidad, la **partida**, la descripción, el impacto y
+   los valores observado y esperado.
+
+Con **cero hallazgos**, el informe se emite igual: el resumen y la tabla dicen «Sin hallazgos.» y la
+sección de reglas evaluadas lista las siete con 0.
+
+Tres detalles de la tabla de reglas evaluadas:
+
+- **«No aplicable» cuenta 1.** Si el presupuesto no tiene plan de trabajo, R2 y R7 no se pueden
+  aplicar y cada una lo declara con un hallazgo informativo: por eso muestran 1 aunque no haya
+  ningún defecto.
+- **Los `PENDIENTE` no se enumeran.** El hallazgo `PENDIENTE` de un ítem sin partida (sección 3.1,
+  paso 4) no es una de las siete reglas: lo declara la elaboración. Con pendientes, la suma de la
+  tabla de reglas es menor que el «Hallazgos: N» de la cabecera, y la diferencia son exactamente
+  los `PENDIENTE`, que sí están en la tabla de hallazgos.
+- Las cuentas incluyen los hallazgos informativos, no solo los errores.
+
+**La columna Partida.** La partida de cada hallazgo la declara la regla que lo emitió; no se
+adivina. Es un **ancla** para ubicar el hallazgo, y la descripción da el detalle:
+
+- una conciliación de R7 que abarca varias partidas se ancla en **la primera** de ellas en el orden
+  del presupuesto, y R6 en **su primer código** (la partida del factor minoritario); en los dos
+  casos la descripción nombra todas las partidas;
+- la columna dice «-» cuando no hay una sola partida que nombrar: lo que es del presupuesto entero
+  (el cierre de la curva de R2, las declaraciones «no aplicable», un período del plan que no nombra
+  ninguna partida) o un hallazgo cuyo origen comparten varias partidas sin que ninguna regla lo haya
+  declarado.
+
 ## 5. Exportar
 
 - **Excel:** presupuesto y curva en un libro XLSX (desde la página de actualización, desde
   **Elaborar un presupuesto** o de **Componer una partida** tras elaborar, secciones 3.1 y 3.7, o
   `GET /presupuestos/{codigo}/excel` en la API). Las celdas presentan dos decimales; los totales del
-  libro cuadran con los del sistema porque el redondeo es solo de celda.
+  libro cuadran con los del sistema porque el redondeo es solo de celda. La hoja **Auditoria** es el
+  informe: una fila por hallazgo en las columnas A a E (regla, severidad, descripción, impacto y
+  orígenes) y, separadas por la columna F vacía, las **reglas evaluadas** en las columnas G a I
+  (regla, nombre y número de hallazgos), con los mismos criterios de la sección 4. Sin hallazgos,
+  la columna A trae solo el encabezado y G a I, las siete reglas con 0. La hoja no tiene columna de
+  partida: esa está en el informe en pantalla.
 - **Informe:** `GET /presupuestos/{codigo}/informe`.
 - **Tabla de escenarios:** botón de descarga CSV en la página de escenarios (valores exactos,
   sin redondeo de presentación).
@@ -364,7 +465,10 @@ Cada carpeta trae su `README.md` con el formato exacto de columnas.
 | Síntoma | Causa y solución |
 |---|---|
 | «instala el extra civil» al cargar un `.ifc` | Falta `ifcopenshell`: `uv sync --extra civil` |
-| Error 409 «catálogo incompleto» | Falta un precio o rendimiento vigente para una partida: revisar la lista de precios cargada o volver a sembrar (`scripts/seed.py`) |
+| Error 409 «catálogo incompleto» | Falta la lista de precios vigente o un precio para una partida: revisar la lista de precios cargada o volver a sembrar (`scripts/seed.py`) |
+| Error 409 con `rendimientos_por_declarar` en `POST /presupuestos` | Una partida no tiene rendimiento estimado vigente (UC‑01 3b): la respuesta trae, por partida, el rendimiento que propone el histórico con su dispersión. Registrarlo como estimado con `POST /partidas/{codigo}/rendimientos` (fecha no posterior a la del presupuesto) y volver a enviar el presupuesto; en la pantalla, el bloque **Rendimientos por declarar** (sección 3.1, paso 6) |
+| «las fracciones del plan de trabajo deben sumar exactamente 1 por partida» | El plan de la tabla **Plan de trabajo** (o el campo `plan` de la API, que responde 422) no reparte entera alguna partida: corregir sus fracciones |
+| Un `.ifc` da un cómputo vacío sin error | El archivo tiene la cabecera correcta pero el cuerpo truncado o dañado, o ningún elemento con `Pset_APU`: `ifcopenshell` no lo rechaza (límite declarado, sección 3.1) |
 | La UI no encuentra datos | El caso abierto no tiene partidas: en **Inicio**, **Cargar el caso de demostracion**, o sembrar como en el paso 1 de la sección 2 |
 | «Partidas similares» tarda la primera vez | Descarga única del modelo de lenguaje; después queda en caché |
 | Un rendimiento medido se rechaza | Falta la referencia a la ejecución: es una invariante, no un error |

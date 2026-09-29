@@ -24,8 +24,8 @@ remitía las cifras a la bitácora hasta cerrar la compuerta de la interfaz.
 lugar, [plan_pruebas.md §8](plan_pruebas.md), cuyo resumen enumera los RF que no están en verde y
 la causa de cada uno; aquí no se repite esa lista, para que no vuelva a desincronizarse (INV‑027,
 INV‑032). Lo que se interpreta es su efecto: §8 declara **RF esenciales en estado parcial** y un RF
-deseable (RF‑20, diferencial de UC‑04) **no implementado**, en limitaciones (INV‑011). Dos de esas
-brechas no se cierran dentro del cierre, porque dependen de decisiones fuera de C4: la importación
+deseable (RF‑20, diferencial de UC‑04) **no implementado**, en limitaciones (INV‑011). Desde C5, los RF esenciales parciales son dos,
+RF‑16 y RF‑24 (plan_pruebas §8), y las dos brechas no se cierran dentro del cierre: dependen de decisiones fuera de él. Son la importación
 del presupuesto de un tercero (RF‑24, INV‑076 abierto; ruling C4‑2 de la
 [bitácora del cierre](bitacora/2026-09-23-cierre.md)) y la persistencia de la partida creada desde
 una propuesta (RF‑16, decisión D5 del
@@ -95,9 +95,12 @@ expertos ≥ 4/5 en Likert) **no es automatizable y está pendiente**. Se mide e
 al menos tres expertos sin relación personal con el autor, el bloque A del
 [anexo A del dossier](dossier_g0.md) y un informe identificado por su commit y por las huellas
 SHA‑256 de sus dos formas, la pantalla y la hoja *Auditoria* ([protocolo](protocolo_rnf04.md) §1).
-Lo que el producto ya aporta a esa evaluación: hallazgos en español con severidad, impacto
-cuantificado y los `origen_id` involucrados (columna *Orígenes* de la hoja *Auditoria* del
-Excel); UI multipágina y API autodocumentada (OpenAPI en `docs/api.json`).
+El material se regeneró en la compuerta GC5 sobre `e5a8209`: 14 hallazgos (1 CRITICO, 12 ERROR y
+1 ADVERTENCIA) y huella de la pantalla `1d7ba8d6…9077a840` (protocolo §1, con la huella completa y
+la del libro). Lo que el producto ya aporta a esa evaluación: hallazgos en español con severidad,
+impacto cuantificado y los `origen_id` involucrados (columna *Orígenes* de la hoja *Auditoria* del
+Excel); desde C5, las siete reglas evaluadas en las dos formas y, en la pantalla, la partida de
+cada hallazgo atribuida por regla (INV‑095, protocolo §1); UI multipágina y API autodocumentada (OpenAPI en `docs/api.json`).
 
 **Veredicto: pendiente de medición.** No se anticipa el resultado.
 

@@ -47,6 +47,7 @@ mismo orden, pero no con las mismas columnas:
 |---|---|---|
 | Resultado global («Hallazgos: 14 · Resultado: NO CUMPLE») | sí | no |
 | Resumen por severidad | sí | no |
+| Reglas evaluadas: las siete, con su nombre y su cuenta de hallazgos (sección «Reglas evaluadas» en pantalla; columnas G a I de la hoja) | sí | sí |
 | Regla, severidad, descripción, impacto | sí | sí |
 | Partida del hallazgo | sí | no |
 | Observado y esperado | sí | no |
@@ -65,7 +66,7 @@ cambiar su texto. La columna usa cuatro rótulos:
 
 | Afirmación | Se juzga sobre | Por qué |
 |---|---|---|
-| 1 Entender qué comprueba | las dos, en conjunto | es un juicio sobre el informe entero |
+| 1 Entender qué comprueba | las dos, en conjunto | es un juicio sobre el informe entero. Desde C5 las dos formas enumeran las reglas evaluadas, pero entender qué comprueba cada regla pide también sus hallazgos, con la partida (pantalla) y el origen (hoja); se mantiene la asignación, revisada antes de medir |
 | 2 Severidad comprensible y bien asignada | cualquiera de las dos | las dos traen la severidad de cada hallazgo; la pantalla, además, su resumen |
 | 3 Impacto cuantificado | la pantalla | solo ella trae, junto al impacto, lo observado y lo esperado («montos y cantidades en juego»); con la hoja sola, la afirmación se juzgaría con menos datos |
 | 4 Orígenes para ubicar la fila | la hoja *Auditoria* | es la única que trae los `origen_id` |
@@ -75,13 +76,20 @@ cambiar su texto. La columna usa cuatro rótulos:
 | 8 Confianza como complemento | las dos, en conjunto | es un juicio sobre el informe entero |
 
 Así, ninguna afirmación se contesta sobre una forma que carece del dato que pregunta. El capítulo V
-reporta esta asignación junto al resultado. En este informe la columna *Partida* de la pantalla es
-fiable: cada partida de la fixture lleva un `origen_id` propio, `computo:<código>`, que no comparte
-con ninguna otra. Las filas de R6 citan los códigos de partida sin prefijo (R6 compara APU entre sí),
-y el informe también los resuelve a su partida (`_indice_de_partidas`,
-`core/verification/informe.py:144-157`); la de R2 no cita ninguno y la pantalla pone «-». Por eso
-no le alcanza el defecto de atribución de esa columna que el controlador registró en la revisión de
-C4 (M3), que aparece cuando varias partidas comparten un mismo `origen_id`.
+reporta esta asignación junto al resultado.
+
+**La columna *Partida* de la pantalla.** Desde la fase C5 (INV‑095), la partida de cada hallazgo la
+declara la regla que lo emite: R1, R3, R4, R5 y R7 dicen de qué partida hablan al redactarlo, y el
+informe no la deduce del origen. Lo que ninguna regla declara se resuelve por el origen del
+hallazgo: las filas de R6 citan códigos de partida (R6 compara APU entre sí) y se atribuyen a su
+primer código, la partida del factor minoritario; la de R2, que es del presupuesto entero, no cita
+ninguno y la pantalla pone «-». Un origen que comparten varias partidas sin que ninguna regla lo
+haya declarado también da «-»: el informe no adivina. La columna es un **ancla** para ubicar el
+hallazgo y la descripción es el detalle: una conciliación de R7 que abarca varias partidas se
+ancla en la primera en el orden del presupuesto, y la de R6 en su primer código, y en los dos casos
+la descripción las nombra todas. En este informe cada partida de la fixture lleva un `origen_id`
+propio, `computo:<código>`, y cada fila de R7 concilia una sola partida, así que la atribución
+coincide con la que daba el índice antes de C5.
 
 **Cómo se genera** (el observador, en la copia desechable de la sección 3, desde su raíz):
 
@@ -95,21 +103,46 @@ La orden escribe los dos archivos que se entregan: `informe_rnf04.md` (la forma 
 **La versión del informe** se fija con tres datos, que van en cada hoja de registro:
 
 1. **El commit probado:** `git log -1 --oneline` en la copia desechable; un commit de `main` con su
-   corrida de CI en verde, cuyo enlace también se anota. Por ejemplo, `ceb6b8e` tiene la corrida
-   [36428464254](https://github.com/EugenioRRijo/tesis-apu-multidominio/actions/runs/36428464254)
-   (push a `main`, en verde).
+   corrida de CI en verde, cuyo enlace también se anota. Tiene que contener la fase C5 del cierre
+   (la fusión de su PR o uno posterior): un commit anterior, como `ceb6b8e` (corrida
+   [36428464254](https://github.com/EugenioRRijo/tesis-apu-multidominio/actions/runs/36428464254),
+   push a `main`, en verde), da el informe de antes de C5, sin la sección «Reglas evaluadas».
 2. **La huella de la forma de pantalla** (que es también la del contenido del informe): SHA‑256 de
    `informe_rnf04.md` (en bash,
    `sha256sum informe_rnf04.md`; en PowerShell,
    `Get-FileHash informe_rnf04.md -Algorithm SHA256`). El texto no lleva fecha, así que la huella
-   solo cambia si cambia el informe. Sobre el código de `ceb6b8e` (`main`) vale
-   `9469aaf8ded7d8ba901b99060a80a12be60fc18d1c7152e850c98ec024ed0063` y el informe tiene **14
-   hallazgos**: 1 CRITICO, 12 ERROR y 1 ADVERTENCIA. Si el commit probado da otra huella, se anota
-   y se explica qué cambió antes de aplicar el instrumento.
-3. **La huella de la forma exportada:** SHA‑256 de `informe_rnf04.xlsx`. El libro guarda su fecha
-   de creación, así que su huella cambia en cada generación: por eso **se genera una sola vez** y
-   todos los expertos reciben **esos mismos dos archivos** (las mismas dos huellas en todas las
-   hojas de registro).
+   solo cambia si cambia el informe. Sobre el código de `e5a8209` (rama `inc/cierre-C5`, compuerta
+   GC5, 2026‑09‑28; los commits de documentos de la compuerta no cambian el código) vale
+   `1d7ba8d6ae0f08b2ddc43b8d73c985915a2c0554001887745b6e23889077a840`, la misma en bash y en
+   PowerShell, y el informe tiene **14 hallazgos**: 1 CRITICO, 12 ERROR y 1 ADVERTENCIA, y
+   **siete reglas evaluadas** (R1 3, R2 1, R3 2, R4 1, R5 1, R6 1 y R7 5). Antes de C5 valía
+   `9469aaf8ded7d8ba901b99060a80a12be60fc18d1c7152e850c98ec024ed0063` (`ceb6b8e`): cambió porque
+   INV‑092 agregó la sección «Reglas evaluadas»; la atribución de INV‑095 no movió ninguna fila de
+   este informe. Si el commit probado da otra huella, se anota y se explica qué cambió antes de
+   aplicar el instrumento.
+3. **Las dos huellas de la forma exportada**, `informe_rnf04.xlsx`:
+   - **La del archivo:** SHA‑256 de `informe_rnf04.xlsx` (`sha256sum` o `Get-FileHash`, como en el
+     punto 2). Depende de la fecha: el libro guarda la de su creación en `docProps/core.xml`, y cada
+     entrada del zip lleva la hora en que se escribió, así que cambia en cada generación aunque el
+     contenido sea el mismo. Identifica el **ejemplar entregado**: por eso el libro **se genera una
+     sola vez** y todos los expertos reciben **esos mismos dos archivos** (las mismas huellas en todas
+     las hojas de registro).
+   - **La del contenido:** SHA‑256 del nombre y los bytes de cada entrada del zip, en orden de
+     nombre, sin `docProps/core.xml`. No depende de la fecha, así que ata el libro al commit
+     probado. Se calcula, en la misma carpeta y en bash o en PowerShell, con
+
+     ```
+     uv run python -c "import hashlib, zipfile; z = zipfile.ZipFile('informe_rnf04.xlsx'); h = hashlib.sha256(); [h.update(n.encode() + z.read(n)) for n in sorted(z.namelist()) if n != 'docProps/core.xml']; print(h.hexdigest())"
+     ```
+
+   Sobre el código de `e5a8209` la huella del contenido vale
+   `386bca1cb4a75868b5ac12fd0f637c02072c748b5a64fe16064c225bdd5b7748`: la misma en el libro de la
+   generación de GC5 y en dos generaciones posteriores (corrección de GC5, QA‑1), cuyas huellas de
+   archivo difieren entre sí y de la de GC5
+   (`25a4beabe2e9fd06399903398c27a703b79259ba9809ddbd76bded8cca57e003`, que no se puede reproducir:
+   solo prueba que ese ejemplar existió). Su hoja *Auditoria* tiene los 14 hallazgos en las columnas
+   A a E y las siete reglas evaluadas en las columnas G a I. Si el commit probado da otra huella de
+   contenido, se anota y se explica qué cambió antes de aplicar el instrumento.
 
 ## 2. Los expertos
 
@@ -144,7 +177,8 @@ voluntaria; los datos se publican sin nombres.
 1. **Copia desechable** del repositorio, nunca la copia de trabajo (como la sección 4 del
    [guion de prueba](guion_prueba_arenia.md)): `git worktree add ../tesis-rnf04 <commit>` y, dentro
    de ella, `uv sync`. El `<commit>` cumple lo dicho en la sección 1, punto 1.
-2. Generar el informe **una sola vez** con la orden de la sección 1 y anotar las dos huellas.
+2. Generar el informe **una sola vez** con la orden de la sección 1 y anotar sus tres huellas: la
+   de la pantalla y las dos del libro (la del archivo y la del contenido).
 3. Preparar para cada experto: las **dos formas** del informe, `informe_rnf04.md` renderizado y
    `informe_rnf04.xlsx` (o, si prefiere papel, la vista renderizada del `.md` y las cuatro hojas del
    libro, impresas, anotando que fue en papel); el **bloque A del anexo A impreso tal cual** (las
@@ -186,7 +220,8 @@ que todos hayan respondido.
 
 Por experto: las ocho puntuaciones, el campo abierto literal, el perfil, la declaración firmada,
 la fecha, el medio (archivo o papel), los tiempos, las preguntas hechas al observador, el commit
-probado, su corrida de CI, las dos huellas y la versión del protocolo (la hoja de la sección 7).
+probado, su corrida de CI, las tres huellas (la de la pantalla y las dos del libro) y la versión
+del protocolo (la hoja de la sección 7).
 
 ## 6. Criterio de decisión, declarado antes de medir
 
@@ -216,7 +251,7 @@ anexo A y aquí van con una etiqueta breve):
 | Declaración: «No soy el autor ni tengo relación personal con él; no participé en el proyecto ni vi antes la aplicación, sus documentos o este informe; no participé en la medición del indicador 3 ni en CP‑07» (firma) | |
 | Fecha · medio (archivo / papel) · presencial o a distancia | |
 | Commit probado · corrida de CI en verde de ese commit | |
-| SHA‑256 de `informe_rnf04.md` (pantalla) · SHA‑256 de `informe_rnf04.xlsx` (exportada) | |
+| SHA‑256 de `informe_rnf04.md` (pantalla) · SHA‑256 de `informe_rnf04.xlsx`: la del archivo y la del contenido (exportada; sección 1, punto 3) | |
 | Versión del protocolo (commit que contiene este archivo) | |
 | Tiempo de lectura (min) · tiempo total (min) | |
 | Preguntas al observador (literal) | |
@@ -266,7 +301,7 @@ CUMPLE / NO CUMPLE / sigue pendiente · Commit probado y huellas: ___
 | Complacencia con el autor | Exclusión por relación personal y participación; declaración firmada; consigna que dice que se evalúa el informe, no a la persona |
 | Explicaciones que contaminan la medición | Consigna literal y respuesta fija a las preguntas de contenido |
 | Expertos que se influyen entre sí | Sesiones individuales, sin comunicación hasta el final |
-| Versiones distintas del informe | Un commit, una generación, dos huellas anotadas en cada hoja |
+| Versiones distintas del informe | Un commit, una generación, tres huellas anotadas en cada hoja (la del contenido del libro lo ata al commit) |
 | Una forma del informe sin el dato que la afirmación pregunta | Se entregan las dos formas y cada afirmación declara, antes de medir, sobre cuál se juzga (sección 1) |
 | La afirmación 2 del anexo A nombra las severidades «error / advertencia / información», y el informe evaluado trae `CRITICO`, `ERROR` y `ADVERTENCIA`, y ningún `INFO` (sección 1) | El instrumento no se cambia (anexo A). La discrepancia se declara aquí, antes de medir, y se reporta junto al promedio de la afirmación 2: el experto juzga una severidad (`CRITICO`) que el texto no nombra y no ve la de información |
 | Muestra pequeña | n ≥ 3 declarado como mínimo; el resultado se cita como juicio de un panel, no como muestra representativa |

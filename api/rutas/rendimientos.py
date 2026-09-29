@@ -32,6 +32,7 @@ from core import models
 from core.catalog import (
     Catalogo,
     DispersionRendimiento,
+    PropuestaRendimiento,
     advertencia_rendimiento,
     dispersion_rendimientos,
     proponer_rendimiento,
@@ -69,18 +70,10 @@ def obtener_rendimientos(sesion: SesionDep, codigo: str) -> RendimientosRespuest
     """El historico de la partida con su dispersion y su propuesta (RF-26)."""
     historico = Catalogo(sesion).rendimientos(codigo)  # KeyError -> 404 si la partida no existe
     dispersion = dispersion_rendimientos(sesion, codigo)
-    propuesta = proponer_rendimiento(sesion, codigo)
     return RendimientosRespuesta(
         historico=[_a_rendimiento_respuesta(r) for r in historico],
         dispersion=_a_dispersion_respuesta(dispersion) if dispersion is not None else None,
-        propuesta=(
-            PropuestaRendimientoRespuesta(
-                rendimiento=_a_rendimiento_respuesta(propuesta.rendimiento),
-                dispersion=_a_dispersion_respuesta(propuesta.dispersion),
-            )
-            if propuesta is not None
-            else None
-        ),
+        propuesta=propuesta_respuesta(proponer_rendimiento(sesion, codigo)),
     )
 
 
@@ -129,6 +122,19 @@ def crear_rendimiento(
 # ---------------------------------------------------------------------------------------------
 # Ayudantes
 # ---------------------------------------------------------------------------------------------
+
+
+def propuesta_respuesta(
+    propuesta: PropuestaRendimiento | None,
+) -> PropuestaRendimientoRespuesta | None:
+    """La propuesta de `proponer_rendimiento` como respuesta (RF-26); la usan esta ruta y el 409
+    de `POST /presupuestos` (UC-01, flujo 3b)."""
+    if propuesta is None:
+        return None
+    return PropuestaRendimientoRespuesta(
+        rendimiento=_a_rendimiento_respuesta(propuesta.rendimiento),
+        dispersion=_a_dispersion_respuesta(propuesta.dispersion),
+    )
 
 
 def _advertencia(
