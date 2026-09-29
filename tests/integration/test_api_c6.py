@@ -19,19 +19,50 @@ archivos en `tmp_path`: nada escribe en `data/`.
 
 from __future__ import annotations
 
+import io
 from datetime import date
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
+from pathlib import Path
 
+import openpyxl
 import pytest
 from sqlalchemy import func, select
 
 from core import models
 from tests.fixtures import apu_linea_base as linea_base
 from tests.fixtures.actualizacion_uc02 import CEMENTO
+from tests.fixtures.presupuesto_tabular import (
+    PREFIJO_LINEA_BASE,
+    codigo_tercero,
+    escribir_presupuesto_tabular,
+    presupuesto_tercero,
+)
+
+TIPO_XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+CENTIMO = Decimal("0.01")
+
+
+def _dos_decimales(valor: Decimal) -> str:
+    return str(valor.quantize(CENTIMO, ROUND_HALF_UP))
 
 
 def _contar(sesion, modelo) -> int:
     return sesion.scalar(select(func.count()).select_from(modelo))
+
+
+def _filas_de_hallazgos(informe: str) -> list[tuple[str, str, str | None]]:
+    """(regla, severidad, partida) de cada fila de la tabla «## Hallazgos» del markdown.
+
+    Lee el texto que devuelve `GET /presupuestos/{codigo}/informe`, no el objeto del nucleo: es lo
+    que ve el cliente de la API. Una partida «-» es un hallazgo sin partida.
+    """
+    _, _, tabla = informe.partition("## Hallazgos")
+    filas = []
+    for linea in tabla.splitlines():
+        celdas = [celda.strip() for celda in linea.strip().strip("|").split("|")]
+        if len(celdas) >= 4 and celdas[0].isdigit():
+            filas.append((celdas[1], celdas[2], None if celdas[3] == "-" else celdas[3]))
+    return filas
 
 
 # ---------------------------------------------------------------------------------------------
@@ -296,3 +327,163 @@ def test_un_proyecto_invalido_es_422_sin_crear_nada(cliente, sesion, cuerpo, fra
     assert r.status_code == 422
     assert fragmento in r.json()["detalle"]
     assert _contar(sesion, models.Proyecto) == antes
+
+
+# ---------------------------------------------------------------------------------------------
+# INV-076 (RF-24, UC-05 1 y 2): importar el presupuesto tabular de un tercero
+# ---------------------------------------------------------------------------------------------
+
+PROYECTO_TERCERO = "Auditoria del drenaje de un tercero"
+#: Las siete inconsistencias documentadas de la linea base, con los codigos del tercero.
+SIETE = {
+    (i.regla, codigo_tercero(i.codigo_partida) if i.codigo_partida else None)
+    for i in linea_base.INCONSISTENCIAS
+}
+
+
+def _importar(cliente, ruta: Path, proyecto: str = PROYECTO_TERCERO, tipo: str = TIPO_XLSX):
+    with ruta.open("rb") as f:
+        return cliente.post(
+            "/presupuestos/importar",
+            files={"archivo": (ruta.name, f, tipo)},
+            data={"proyecto": proyecto},
+        )
+
+
+@pytest.fixture
+def proyecto_tercero(cliente):
+    r = cliente.post("/proyectos", json={"nombre": PROYECTO_TERCERO, "dominio": "civil"})
+    assert r.status_code == 201
+    return PROYECTO_TERCERO
+
+
+def test_importar_audita_siete_de_siete_y_persiste_informe_y_libro(
+    cliente, sesion, tmp_path, proyecto_tercero
+):
+    esperado = presupuesto_tercero()
+
+    r = _importar(cliente, escribir_presupuesto_tabular(tmp_path))
+
+    assert r.status_code == 201
+    cuerpo = r.json()
+    assert cuerpo["codigo"] == esperado.codigo
+    assert cuerpo["total"] == _dos_decimales(esperado.total)
+    assert cuerpo["hallazgos"] >= len(SIETE)
+    assert cuerpo["pendientes"] == []
+
+    consulta = {"proyecto": proyecto_tercero}
+    informe = cliente.get(f"/presupuestos/{esperado.codigo}/informe", params=consulta)
+    assert informe.status_code == 200
+    detectadas = {
+        (regla, partida)
+        for regla, severidad, partida in _filas_de_hallazgos(informe.text)
+        if severidad in ("ERROR", "CRITICO")
+    }
+    assert len(SIETE) == 7 and SIETE <= detectadas
+    assert "mts" in informe.text  # RF-24: R3 cita la unidad del autor
+
+    libro = cliente.get(f"/presupuestos/{esperado.codigo}/excel", params=consulta)
+    assert libro.status_code == 200
+    hojas = openpyxl.load_workbook(io.BytesIO(libro.content)).sheetnames
+    assert "Auditoria" in hojas
+
+    lista = sesion.scalars(
+        select(models.ListaPrecios).where(models.ListaPrecios.origen == "presupuesto_tercero.xlsx")
+    ).one()
+    assert lista.nombre == "Importada: presupuesto_tercero.xlsx"
+
+
+def test_importar_se_declara_antes_de_las_rutas_con_codigo():
+    """`importar` no debe poder leerse como un `{codigo}`. Hoy ninguna ruta POST lleva solo
+    `/presupuestos/{codigo}`, asi que por HTTP el orden no se nota (Starlette sigue buscando tras
+    una coincidencia parcial de otro metodo); la prueba fija la convencion del plan de C6 (§2.4)
+    para que una ruta futura con ese patron no la tape."""
+    from api.rutas.presupuestos import router
+
+    rutas = [ruta.path for ruta in router.routes]
+    importar = rutas.index("/presupuestos/importar")
+    con_codigo = [i for i, ruta in enumerate(rutas) if ruta.startswith("/presupuestos/{codigo}")]
+    assert con_codigo and importar < min(con_codigo)
+
+
+def test_importar_sobre_un_proyecto_inexistente_es_404(cliente, tmp_path):
+    r = _importar(cliente, escribir_presupuesto_tabular(tmp_path), proyecto="No existe")
+    assert r.status_code == 404
+
+
+def _con_moneda(ruta: Path, moneda: str) -> Path:
+    libro = openpyxl.load_workbook(ruta)
+    for fila in libro["Datos"].iter_rows(min_row=2):
+        if fila[0].value == "moneda":
+            fila[1].value = moneda
+    libro.save(ruta)
+    return ruta
+
+
+def _sin_hoja(ruta: Path, hoja: str) -> Path:
+    libro = openpyxl.load_workbook(ruta)
+    libro.remove(libro[hoja])
+    libro.save(ruta)
+    return ruta
+
+
+@pytest.mark.parametrize(
+    ("preparar", "fragmento"),
+    [
+        # Codigos de partida que ya estan en el catalogo sembrado.
+        (lambda d: escribir_presupuesto_tabular(d, prefijo=PREFIJO_LINEA_BASE), "catalogo"),
+        # O-2: la moneda se compara exacta; «usd» no es la «USD» de la lista vigente.
+        (lambda d: _con_moneda(escribir_presupuesto_tabular(d), "usd"), "usd"),
+        # Error de forma: falta la hoja de los APU.
+        (lambda d: _sin_hoja(escribir_presupuesto_tabular(d), "APU"), "APU"),
+    ],
+    ids=["codigo-existente", "moneda-distinta", "hoja-ausente"],
+)
+def test_un_archivo_que_no_se_puede_importar_es_422_sin_escribir_nada(
+    cliente, sesion, tmp_path, proyecto_tercero, preparar, fragmento
+):
+    antes = (_contar(sesion, models.Presupuesto), _contar(sesion, models.ListaPrecios))
+
+    r = _importar(cliente, preparar(tmp_path))
+
+    assert r.status_code == 422
+    assert fragmento in r.json()["detalle"]
+    assert (_contar(sesion, models.Presupuesto), _contar(sesion, models.ListaPrecios)) == antes
+
+
+def test_si_la_importacion_falla_despues_de_escribir_la_ruta_no_deja_nada(
+    cliente, sesion, tmp_path, proyecto_tercero, monkeypatch
+):
+    """La ruta es una sola operacion: si el nucleo falla con la lista importada y los APU ya
+    escritos (aqui, al guardar el presupuesto), deshace todo y responde 422."""
+    import core.budget.importacion as importacion
+
+    def _falla_al_guardar(*_args, **_kwargs):
+        raise ValueError("fallo simulado al guardar el presupuesto")
+
+    monkeypatch.setattr(importacion, "guardar_presupuesto", _falla_al_guardar)
+    modelos = (models.Partida, models.ListaPrecios, models.Presupuesto)
+    antes = [_contar(sesion, modelo) for modelo in modelos]
+
+    r = _importar(cliente, escribir_presupuesto_tabular(tmp_path))
+
+    assert r.status_code == 422
+    assert "fallo simulado" in r.json()["detalle"]
+    assert [_contar(sesion, modelo) for modelo in modelos] == antes
+
+
+def test_importar_dos_veces_el_mismo_codigo_es_422(cliente, sesion, tmp_path, proyecto_tercero):
+    assert _importar(cliente, escribir_presupuesto_tabular(tmp_path)).status_code == 201
+    otra = tmp_path / "otra"
+    otra.mkdir()
+    # Otros codigos de partida (no chocan con los TER-* ya importados), mismo codigo de presupuesto.
+    r = _importar(cliente, escribir_presupuesto_tabular(otra, prefijo="OTR-"))
+    assert r.status_code == 422
+    assert presupuesto_tercero().codigo in r.json()["detalle"]
+
+
+def test_importar_un_archivo_que_no_es_xlsx_es_422(cliente, tmp_path, proyecto_tercero):
+    ruta = tmp_path / "presupuesto.csv"
+    ruta.write_text("codigo_partida,cantidad\nTER-01,1\n", encoding="utf-8")
+    r = _importar(cliente, ruta, tipo="text/csv")
+    assert r.status_code == 422

@@ -329,7 +329,7 @@
           "presupuestos"
         ],
         "summary": "Crear Proyecto De Presupuestos",
-        "description": "UC-01, paso 1 (INV-086): crea el proyecto sobre el que luego se elabora\n(`POST /presupuestos`) y confirma la transaccion.\n\nLa validacion es de `core.budget.crear_proyecto`: un nombre vacio o repetido, o un dominio que\nno es de `Dominio`, es 422 sin crear nada. La interfaz no crea proyectos: solo esta ruta.",
+        "description": "UC-01, paso 1 (INV-086): crea el proyecto sobre el que luego se elabora\n(`POST /presupuestos`) o se importa (`POST /presupuestos/importar`) y confirma la transaccion.\n\nLa validacion es de `core.budget.crear_proyecto`: un nombre vacio o repetido, o un dominio que\nno es de `Dominio`, es 422 sin crear nada. La interfaz no crea proyectos: solo esta ruta.",
         "operationId": "crear_proyecto_de_presupuestos_proyectos_post",
         "requestBody": {
           "content": {
@@ -424,6 +424,48 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RendimientosPorDeclararRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/presupuestos/importar": {
+      "post": {
+        "tags": [
+          "presupuestos"
+        ],
+        "summary": "Importar Presupuesto De Tercero",
+        "description": "RF-24 y UC-05, pasos 1 y 2 (INV-076): importa el presupuesto tabular de un tercero, lo\naudita siempre y lo guarda con su informe, que luego sirven `GET /presupuestos/{codigo}/informe`\ny `GET /presupuestos/{codigo}/excel`.\n\nLa lectura, la auditoría y la persistencia son de `core.budget.importar_presupuesto`. Un\nproyecto inexistente es 404. Un archivo que no es XLSX o está mal formado (con archivo, hoja y\nfila), un código de partida que ya está en el catálogo, un código de presupuesto repetido en el\nproyecto o una moneda distinta de la de la lista vigente a su fecha son 422, sin escribir nada.\nEl presupuesto del tercero no tiene ítems pendientes: todo renglón trae su APU. Se declara\nantes de las rutas con `{codigo}` para que `importar` no se lea como un código.",
+        "operationId": "importar_presupuesto_de_tercero_presupuestos_importar_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_importar_presupuesto_de_tercero_presupuestos_importar_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PresupuestoCreadoRespuesta"
                 }
               }
             }
@@ -1003,6 +1045,27 @@
           "archivo"
         ],
         "title": "Body_computar_computos__dominio__post"
+      },
+      "Body_importar_presupuesto_de_tercero_presupuestos_importar_post": {
+        "properties": {
+          "archivo": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "Archivo",
+            "description": "El presupuesto del tercero en un libro XLSX con las hojas Datos, Presupuesto, APU, Insumos y, opcional, Curva (formato de core.budget.importacion)"
+          },
+          "proyecto": {
+            "type": "string",
+            "title": "Proyecto",
+            "description": "Proyecto existente donde se guarda"
+          }
+        },
+        "type": "object",
+        "required": [
+          "archivo",
+          "proyecto"
+        ],
+        "title": "Body_importar_presupuesto_de_tercero_presupuestos_importar_post"
       },
       "CambioRespuesta": {
         "properties": {
