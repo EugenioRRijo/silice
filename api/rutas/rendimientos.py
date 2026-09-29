@@ -90,8 +90,9 @@ def crear_rendimiento(
     """RF-25 + RF-27: registra el rendimiento y advierte si se aparta de lo observado.
 
     La advertencia se evalua contra el comportamiento observado ANTES de este registro (el valor
-    nuevo no participa de su propio rango) y nunca impide: la respuesta siempre es 201 con el
-    registro hecho y la transaccion confirmada.
+    nuevo no participa de su propio rango) y nunca impide: con un valor valido la respuesta es 201
+    con el registro hecho y la transaccion confirmada, haya advertencia o no. La unica excepcion
+    que trae UC-06 4a es una justificacion en blanco junto a una advertencia (422, ver abajo).
 
     UC-06, flujo 4a (INV-093): si hubo advertencia y la peticion trae `justificacion`, se registra
     con `justificar_rendimiento`, que la liga al ultimo rendimiento de la partida, el que esta

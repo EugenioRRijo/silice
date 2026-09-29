@@ -95,7 +95,8 @@ def crear_proyecto_de_presupuestos(
     (`POST /presupuestos`) o se importa (`POST /presupuestos/importar`) y confirma la transaccion.
 
     La validacion es de `core.budget.crear_proyecto`: un nombre vacio o repetido, o un dominio que
-    no es de `Dominio`, es 422 sin crear nada. La interfaz no crea proyectos: solo esta ruta.
+    no es de `Dominio`, es 422 sin crear nada. La interfaz no crea proyectos; por HTTP, solo esta
+    ruta (los scripts de siembra de `scripts/` tambien los crean, directamente en la base).
     """
     proyecto = crear_proyecto(sesion, peticion.nombre, peticion.descripcion, peticion.dominio)
     sesion.commit()

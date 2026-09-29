@@ -329,7 +329,7 @@
           "presupuestos"
         ],
         "summary": "Crear Proyecto De Presupuestos",
-        "description": "UC-01, paso 1 (INV-086): crea el proyecto sobre el que luego se elabora\n(`POST /presupuestos`) o se importa (`POST /presupuestos/importar`) y confirma la transaccion.\n\nLa validacion es de `core.budget.crear_proyecto`: un nombre vacio o repetido, o un dominio que\nno es de `Dominio`, es 422 sin crear nada. La interfaz no crea proyectos: solo esta ruta.",
+        "description": "UC-01, paso 1 (INV-086): crea el proyecto sobre el que luego se elabora\n(`POST /presupuestos`) o se importa (`POST /presupuestos/importar`) y confirma la transaccion.\n\nLa validacion es de `core.budget.crear_proyecto`: un nombre vacio o repetido, o un dominio que\nno es de `Dominio`, es 422 sin crear nada. La interfaz no crea proyectos; por HTTP, solo esta\nruta (los scripts de siembra de `scripts/` tambien los crean, directamente en la base).",
         "operationId": "crear_proyecto_de_presupuestos_proyectos_post",
         "requestBody": {
           "content": {
@@ -907,7 +907,7 @@
           "rendimientos"
         ],
         "summary": "Crear Rendimiento",
-        "description": "RF-25 + RF-27: registra el rendimiento y advierte si se aparta de lo observado.\n\nLa advertencia se evalua contra el comportamiento observado ANTES de este registro (el valor\nnuevo no participa de su propio rango) y nunca impide: la respuesta siempre es 201 con el\nregistro hecho y la transaccion confirmada.\n\nUC-06, flujo 4a (INV-093): si hubo advertencia y la peticion trae `justificacion`, se registra\ncon `justificar_rendimiento`, que la liga al ultimo rendimiento de la partida, el que esta\nmisma peticion acaba de registrar en su transaccion (revision de arquitectura de C6, N-5). Sin\nadvertencia la justificacion se ignora: el cliente no sabe de antemano si la habra, y\nrechazarla impediria un registro que RF-27 no impide. Si el nucleo la rechaza (en blanco), se\ndeshace tambien el rendimiento y la respuesta es 422: la peticion es una sola operacion.",
+        "description": "RF-25 + RF-27: registra el rendimiento y advierte si se aparta de lo observado.\n\nLa advertencia se evalua contra el comportamiento observado ANTES de este registro (el valor\nnuevo no participa de su propio rango) y nunca impide: con un valor valido la respuesta es 201\ncon el registro hecho y la transaccion confirmada, haya advertencia o no. La unica excepcion\nque trae UC-06 4a es una justificacion en blanco junto a una advertencia (422, ver abajo).\n\nUC-06, flujo 4a (INV-093): si hubo advertencia y la peticion trae `justificacion`, se registra\ncon `justificar_rendimiento`, que la liga al ultimo rendimiento de la partida, el que esta\nmisma peticion acaba de registrar en su transaccion (revision de arquitectura de C6, N-5). Sin\nadvertencia la justificacion se ignora: el cliente no sabe de antemano si la habra, y\nrechazarla impediria un registro que RF-27 no impide. Si el nucleo la rechaza (en blanco), se\ndeshace tambien el rendimiento y la respuesta es 422: la peticion es una sola operacion.",
         "operationId": "crear_rendimiento_partidas__codigo__rendimientos_post",
         "parameters": [
           {
