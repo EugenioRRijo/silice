@@ -113,10 +113,15 @@ def test_un_ifc_que_no_es_step_se_rechaza_nombrando_el_archivo(tmp_path, caso):
 @pytest.mark.parametrize("caso", sorted(IFC_STEP_DANADO))
 def test_un_step_que_ifcopenshell_no_abre_se_rechaza_con_archivo_y_motivo(tmp_path, caso):
     """La cabecera STEP es valida, asi que pasa la primera comprobacion; lo rechaza el estado con
-    que ifcopenshell abre el archivo (T-1 de la revision de la pista P)."""
+    que ifcopenshell abre el archivo (T-1 de la revision de la pista P).
+
+    El archivo tiene un nombre neutro, `modelo.ifc`: con el nombre del caso («cabecera-danada»,
+    «esquema-no-soportado»), el mensaje contendria el motivo aunque no lo diera (T-7).
+    """
     contenido, motivo = IFC_STEP_DANADO[caso]
     assert contenido != MUESTRA_IFC.read_bytes(), "la muestra no se altero"
-    ruta = tmp_path / f"{caso}.ifc"
+    ruta = tmp_path / "modelo.ifc"
+    assert motivo not in ruta.name
     ruta.write_bytes(contenido)
 
     with pytest.raises(ValueError) as error:
