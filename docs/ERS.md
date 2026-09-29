@@ -160,19 +160,19 @@ implementados en `core/contracts/`.
     partidas más similares del catálogo (UC‑03); si el proyectista acepta una, el ítem pasa a esa
     partida y el presupuesto se vuelve a elaborar; si no acepta ninguna, el ítem sigue pendiente.
     (Orden vigente desde C3, dictamen C3‑10: la interfaz elabora primero y propone después.)
-  - *3b. Partida sin rendimiento vigente:* el sistema propone el del histórico con su dispersión (UC‑06) y
-    exige declarar si es estimado o medido. **Alcance vigente** (C5, INV‑088): vigente es un
-    rendimiento estimado de fecha no posterior a la del presupuesto, el único que usa la
-    elaboración. Declarado **estimado**, el propuesto se registra a la fecha del presupuesto, con su
-    procedencia en las condiciones, y el presupuesto se vuelve a elaborar. Declarado **medido**, no
-    se registra ni se usa, y el sistema lo explica: usarlo tal cual exigiría cambiar la política del
-    catálogo en `core/`, que el cierre no autoriza. La propuesta sale de todo el histórico de la
-    partida (RF‑26), sin atarla a la fecha del presupuesto, así que en un presupuesto con fecha
-    pasada puede proponer un rendimiento posterior a esa fecha. Si la partida no tiene ningún
-    rendimiento que proponer, el sistema remite a UC‑10. Por la API, `POST /presupuestos` responde
-    409 sin guardar nada, con la propuesta por partida; el tipo se declara registrando el
-    rendimiento (UC‑06) y el presupuesto se vuelve a enviar. La falta de una lista de precios
-    vigente no es este flujo: se informa como tal.
+  - *3b. Partida sin rendimiento vigente:* el sistema propone el del histórico con su dispersión (UC‑06) y exige declarar
+    si es estimado o medido. **Alcance vigente** (C5, INV‑088; dictamen C5‑4, pendiente de ratificación; INV‑100): vigente
+    es un rendimiento estimado de fecha no posterior a la del presupuesto, el único que usa la elaboración. Declarado
+    **estimado**, el propuesto se registra a la fecha del presupuesto, con su procedencia en las condiciones, y el
+    presupuesto se vuelve a elaborar. En la pantalla, declarado **medido** no se registra ni se usa, y el sistema lo
+    explica: usarlo tal cual exigiría cambiar la política del catálogo en `core/`, que el cierre no autoriza. La propuesta
+    sale de todo el histórico de la partida (RF‑26), sin atarla a la fecha del presupuesto, así que en un presupuesto con
+    fecha pasada puede proponer un rendimiento posterior a esa fecha (INV‑100). Si la partida no tiene ningún rendimiento
+    que proponer, el sistema remite a «Componer una partida», donde se vuelve a declarar la composición con su rendimiento
+    y sus condiciones (UC‑11, sin precarga: la precarga exige un rendimiento vigente). Por la API, `POST /presupuestos`
+    responde 409 sin guardar nada, con la propuesta por partida (`null` si no hay ninguna); el tipo se declara registrando
+    el rendimiento (UC‑06) y el presupuesto se vuelve a enviar. Un medido registrado así queda en el histórico, pero no
+    desbloquea la elaboración. La falta de una lista de precios vigente no es este flujo: se informa como tal.
   - *6a. Sin plan de trabajo:* el presupuesto se emite sin curva y el informe registra que R2 no es aplicable.
   - *7a. Hallazgos de severidad `CRITICO`:* el presupuesto se emite igualmente, con esos hallazgos al frente
     del informe. La verificación audita, no bloquea.
@@ -319,8 +319,8 @@ implementados en `core/contracts/`.
 - **Flujos alternativos**
   - *2a. Menos de 50 registros:* se emplea el sistema de reglas con análisis de sensibilidad y el
     resultado se rotula como limitación declarada.
-  - *3a. Partida nueva sin análogas en el histórico:* no se estima y se informa que el contraste no es
-    posible.
+  - *3a. Partida nueva sin análogas en el histórico:* no se estima y se informa que el contraste no es posible. **Alcance vigente**
+    (C5, INV‑094): el sistema detecta 3a como partida sin PU anterior, porque la estimación por reglas parte de él; no busca análogas.
   - *4a. La desviación excede el rango de la clase 3 de AACE:* se emite un hallazgo de severidad
     ADVERTENCIA.
 - **Postcondiciones:** estimación, métricas y desviación quedan registradas junto al presupuesto, con la
@@ -595,11 +595,11 @@ Criterios de degradación del módulo predictivo: [CLAUDE.md §8.1](../CLAUDE.md
 
 ## 4. Matriz de trazabilidad
 
-La matriz traza cada caso de uso a sus requisitos, al incremento que los implementó y al indicador de
-la tesis. **Las pruebas que demuestran cada RF, con su estado, están solo en
-[plan_pruebas.md §8](plan_pruebas.md#8-especificación-de-casos-trazabilidad-rf--prueba); la prueba o
-el caso manual de cada paso y de cada flujo alternativo de los once casos de uso, en su §8.1**
-(INV‑032, INV‑033).
+La matriz traza cada caso de uso a sus requisitos, al incremento que los implementó y al indicador de la tesis. **Las pruebas que demuestran cada
+RF, con su estado, están solo en [plan_pruebas.md §8](plan_pruebas.md#8-especificación-de-casos-trazabilidad-rf--prueba); la prueba o el caso
+manual de cada paso y de cada flujo alternativo de los once casos de uso, en su §8.1** (INV‑032, INV‑033). La columna «Incremento» registra solo
+los incrementos del desarrollo, con el mismo criterio que la de §3.2; las fases del cierre (C1 a C5) que corrigieron un caso de uso no se anotan
+aquí: cada corrección está en su fila del [inventario del cierre](auditoria/2026-09-inventario.md) y en la fila del paso en plan_pruebas §8.1.
 
 | UC | RF | Incremento | Indicador de la tesis |
 |---|---|---|---|
@@ -608,7 +608,7 @@ el caso manual de cada paso y de cada flujo alternativo de los once casos de uso
 | UC‑02 | RF‑10, RF‑11, RF‑12, RF‑13, RF‑14 | I0.4, I1 | 3 |
 | UC‑03 | RF‑15, RF‑16, RF‑17 | I2 | 3 |
 | UC‑04 | RF‑03, RF‑18, RF‑19, RF‑20 | I0.1, I3.2 | 2 |
-| UC‑05 | RF‑02, RF‑21, RF‑22, RF‑23, RF‑24 | I4, C3 | 1 |
+| UC‑05 | RF‑02, RF‑21, RF‑22, RF‑23, RF‑24 | I4 | 1 |
 | UC‑06 | RF‑25, RF‑26, RF‑27 | I0.1, I6.1, I6.2 | 2 |
 | UC‑07 | RF‑28, RF‑29 | I6.1, I6.3 | 5 |
 | UC‑08 | RF‑30, RF‑31 | cierre UC‑08 (2026‑08‑31) | 2 (apoyo) |
