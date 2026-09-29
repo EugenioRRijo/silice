@@ -20,6 +20,9 @@ archivos en `tmp_path`: nada escribe en `data/`.
 from __future__ import annotations
 
 import io
+import sys
+from collections.abc import Mapping
+from dataclasses import dataclass
 from datetime import date
 from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
@@ -30,7 +33,7 @@ from sqlalchemy import func, select
 
 from core import models
 from tests.fixtures import apu_linea_base as linea_base
-from tests.fixtures.actualizacion_uc02 import CEMENTO
+from tests.fixtures.actualizacion_uc02 import CEMENTO, VARIACIONES
 from tests.fixtures.presupuesto_tabular import (
     PREFIJO_LINEA_BASE,
     codigo_tercero,
@@ -38,6 +41,8 @@ from tests.fixtures.presupuesto_tabular import (
     presupuesto_tercero,
 )
 
+RAIZ = Path(__file__).resolve().parents[2]
+MUESTRA_PRECIOS = RAIZ / "data" / "samples" / "precios" / "lista_2026-06-01.csv"
 TIPO_XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 CENTIMO = Decimal("0.01")
 
@@ -487,3 +492,92 @@ def test_importar_un_archivo_que_no_es_xlsx_es_422(cliente, tmp_path, proyecto_t
     ruta.write_text("codigo_partida,cantidad\nTER-01,1\n", encoding="utf-8")
     r = _importar(cliente, ruta, tipo="text/csv")
     assert r.status_code == 422
+
+
+# ---------------------------------------------------------------------------------------------
+# INV-099 (UC-07 5): los precios atipicos de la lista nueva en el informe revalorado
+# ---------------------------------------------------------------------------------------------
+
+CONCRETO = linea_base.APU_CONCRETO.codigo_partida
+UMBRAL_FALSO = Decimal("0.15")
+
+
+@dataclass(frozen=True)
+class _Marca:
+    """Una marca con la forma de `ml.anomaly.PrecioAtipico`."""
+
+    id: str
+    valor: Decimal
+    puntaje: float
+
+
+class _DetectorFalso:
+    """Sustituye a `ml.anomaly.precios_atipicos`: marca las variaciones mayores que el umbral y
+    guarda lo que recibio. Un historico de dos variaciones no alcanza al bosque real
+    (`MINIMO_OBSERVACIONES`), asi que la prueba fija el veredicto y mira el cableado de la ruta."""
+
+    def __init__(self) -> None:
+        self.recibido: dict[str, Decimal] | None = None
+
+    def __call__(self, variaciones: Mapping[str, Decimal]) -> list[_Marca]:
+        self.recibido = dict(variaciones)
+        return [
+            _Marca(id=id_, valor=valor, puntaje=-0.25)
+            for id_, valor in variaciones.items()
+            if valor > UMBRAL_FALSO
+        ]
+
+
+def _revalorar(cliente, items_payload):
+    cliente.post(
+        "/presupuestos",
+        json={
+            "codigo": "API-001",
+            "fecha": "2026-04-28",
+            "moneda": linea_base.MONEDA,
+            "proyecto": "Drenaje de la clínica",
+            "items": items_payload,
+        },
+    )
+    with MUESTRA_PRECIOS.open("rb") as f:
+        cliente.post(
+            "/listas-precios",
+            files={"archivo": (MUESTRA_PRECIOS.name, f, "text/csv")},
+            data={"nombre": "L2", "moneda": linea_base.MONEDA, "fecha_vigencia": "2026-06-01"},
+        )
+    return cliente.post(
+        "/presupuestos/API-001/actualizacion", json={"lista": "L2", "codigo_nuevo": "API-002"}
+    )
+
+
+def test_la_revaloracion_trae_los_atipicos_de_ml_al_informe(cliente, items_payload, monkeypatch):
+    import ml.anomaly
+
+    detector = _DetectorFalso()
+    monkeypatch.setattr(ml.anomaly, "precios_atipicos", detector)
+
+    r = _revalorar(cliente, items_payload)
+
+    assert r.status_code == 200
+    assert detector.recibido is not None
+    assert sorted(detector.recibido.values()) == sorted(VARIACIONES.values())
+    informe = cliente.get("/presupuestos/API-002/informe").text
+    atipicos = [fila for fila in _filas_de_hallazgos(informe) if fila[0] == "ATIPICO"]
+    # Solo el cemento (+20 %) supera el umbral; solo el concreto lo usa.
+    assert VARIACIONES[CEMENTO] > UMBRAL_FALSO
+    assert atipicos == [("ATIPICO", "ADVERTENCIA", CONCRETO)]
+    assert CEMENTO in informe
+    # El informe del presupuesto de origen no cambia.
+    original = cliente.get("/presupuestos/API-001/informe").text
+    assert all(fila[0] != "ATIPICO" for fila in _filas_de_hallazgos(original))
+
+
+def test_sin_el_extra_ml_la_revaloracion_sigue_sin_atipicos(cliente, items_payload, monkeypatch):
+    """Import perezoso: sin `ml.anomaly` la ruta funciona igual y no declara atipicos."""
+    monkeypatch.setitem(sys.modules, "ml.anomaly", None)  # `from ml.anomaly import ...` falla
+
+    r = _revalorar(cliente, items_payload)
+
+    assert r.status_code == 200
+    informe = cliente.get("/presupuestos/API-002/informe").text
+    assert all(fila[0] != "ATIPICO" for fila in _filas_de_hallazgos(informe))

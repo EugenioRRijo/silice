@@ -4,7 +4,8 @@ UC-01 (`POST /presupuestos`, a partir de `ItemComputo` ya extraídos, con el pla
 proyectista o, sin él, `plan_secuencial`, paso 6; un ítem sin partida queda pendiente y se lista
 con sus partidas similares, flujo 3a; una partida sin rendimiento estimado vigente responde 409
 con el rendimiento que propone el histórico, flujo 3b), UC-05 (el informe de auditoría, que se
-genera siempre), UC-02 (`POST /presupuestos/{codigo}/actualizacion`) y UC-08
+genera siempre), UC-02 (`POST /presupuestos/{codigo}/actualizacion`, que desde C6 declara en el
+informe de la versión nueva los precios atípicos de la lista, UC-07 5) y UC-08
 (`POST /presupuestos/{codigo}/escenarios`, que declara los pendientes del base). Desde C6, también
 el paso 1 de UC-01 (`POST /proyectos`, INV-086) y el presupuesto tabular de un tercero de RF-24 y
 UC-05 (`POST /presupuestos/importar`, INV-076). Los montos se presentan siempre con dos decimales
@@ -56,6 +57,7 @@ from api.rutas.rendimientos import propuesta_respuesta
 from core import models
 from core.budget import (
     Comparativo,
+    DetectorAtipicos,
     GeneradorPlan,
     PeriodoPlan,
     actualizar_precios,
@@ -313,6 +315,11 @@ def actualizar_presupuesto(
 
     Mismo criterio que `ui/app.py`: si ningún insumo cambió de precio
     (`comparativo.insumos_afectados == 0`) no hay nada que confirmar (409, sin `commit`).
+
+    UC-07, paso 5 (INV-099): pasa al núcleo el detector de precios atípicos de `ml.anomaly`
+    (`_detector_de_atipicos`); los que marque entran como hallazgos `ATIPICO` en el informe de la
+    versión nueva, que sirve `GET /presupuestos/{codigo_nuevo}/informe`. Sin el extra `ml`, o con
+    menos variaciones de las que el detector necesita, no hay atípicos que declarar.
     """
     modelo = _buscar_modelo(sesion, codigo, proyecto)
     lista_nueva = sesion.scalars(
@@ -322,7 +329,12 @@ def actualizar_presupuesto(
         raise LookupError(f"no hay ninguna lista de precios {peticion.lista!r}")
 
     _nuevo, comparativo = actualizar_precios(
-        sesion, modelo.proyecto.nombre, codigo, lista_nueva, peticion.codigo_nuevo
+        sesion,
+        modelo.proyecto.nombre,
+        codigo,
+        lista_nueva,
+        peticion.codigo_nuevo,
+        detectar_atipicos=_detector_de_atipicos(),
     )
     if comparativo.insumos_afectados == 0:
         raise HTTPException(
@@ -409,6 +421,17 @@ def escenarios_de_presupuesto(
 # ---------------------------------------------------------------------------------------------
 # Ayudantes
 # ---------------------------------------------------------------------------------------------
+
+
+def _detector_de_atipicos() -> DetectorAtipicos | None:
+    """`ml.anomaly.precios_atipicos` con import perezoso, o `None` sin el extra `ml` (el mismo
+    criterio que `_veredicto_bosque` en `api/rutas/rendimientos.py`): `core/` recibe el detector
+    como parámetro porque no importa `ml/` (expediente C6.5)."""
+    try:
+        from ml.anomaly import precios_atipicos
+    except ImportError:
+        return None
+    return precios_atipicos
 
 
 def _proyecto(sesion: Session, nombre: str) -> models.Proyecto:

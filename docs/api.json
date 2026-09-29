@@ -662,7 +662,7 @@
           "presupuestos"
         ],
         "summary": "Actualizar Presupuesto",
-        "description": "UC-02: revalora el presupuesto con `peticion.lista` y guarda la versión `codigo_nuevo`.\n\nMismo criterio que `ui/app.py`: si ningún insumo cambió de precio\n(`comparativo.insumos_afectados == 0`) no hay nada que confirmar (409, sin `commit`).",
+        "description": "UC-02: revalora el presupuesto con `peticion.lista` y guarda la versión `codigo_nuevo`.\n\nMismo criterio que `ui/app.py`: si ningún insumo cambió de precio\n(`comparativo.insumos_afectados == 0`) no hay nada que confirmar (409, sin `commit`).\n\nUC-07, paso 5 (INV-099): pasa al núcleo el detector de precios atípicos de `ml.anomaly`\n(`_detector_de_atipicos`); los que marque entran como hallazgos `ATIPICO` en el informe de la\nversión nueva, que sirve `GET /presupuestos/{codigo_nuevo}/informe`. Sin el extra `ml`, o con\nmenos variaciones de las que el detector necesita, no hay atípicos que declarar.",
         "operationId": "actualizar_presupuesto_presupuestos__codigo__actualizacion_post",
         "parameters": [
           {
