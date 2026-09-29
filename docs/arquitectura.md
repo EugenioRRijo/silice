@@ -7,7 +7,11 @@
 > INV‑058, INV‑059, INV‑070 e INV‑082 del [inventario](auditoria/2026-09-inventario.md)).
 > Las cinco vistas describen **el código que existe** en `main` tras la fase C3 del cierre
 > (`ceb6b8e`): las firmas de la vista lógica y los mensajes de la vista de proceso se copiaron de los
-> módulos, no se diseñaron aquí. Lo que no está implementado se dice como tal y no se dibuja como si
+> módulos, no se diseñaron aquí. **Actualizado en la fase C5** contra `f629f94` (rama
+> `inc/cierre-C5`): el plan de trabajo del proyectista y el flujo 3b de UC‑01 (INV‑087, INV‑088),
+> la atribución de la partida que declara la regla y las reglas evaluadas del informe (INV‑095,
+> INV‑092, las dos excepciones de `core/` de C5), y dos deudas nuevas en §6.1 (el lector de CSV
+> de los adaptadores y el criterio del estimado vigente). Lo que no está implementado se dice como tal y no se dibuja como si
 > existiera. El **estado** de cada caso de uso, paso a paso y con su prueba, no se repite aquí: vive
 > solo en [docs/plan_pruebas.md §8](plan_pruebas.md#8-especificación-de-casos-trazabilidad-rf--prueba).
 > Este documento no reproduce datos que tienen fuente única: enlaza [CLAUDE.md](../CLAUDE.md),
@@ -17,7 +21,7 @@
 
 | Campo | Valor |
 |---|---|
-| Versión | 1.1 |
+| Versión | 1.2 (actualización de C5; la 1.1 es la regeneración de C4) |
 | Fecha | 2026‑09‑28 (versión 1.0: 2026‑08‑29) |
 | Autor | [tesista] |
 | Revisor | [tutor académico] |
@@ -113,10 +117,21 @@ Las cuatro relaciones `«extend»` son flujos alternativos del ERS; no todas se 
   **elaborar primero y proponer después**, no el que redacta el ERS («propone… y si no se acepta
   ninguna»); la corrección de la redacción es de la ERS (ruling C3‑10 de la
   [bitácora del cierre](bitacora/2026-09-23-cierre.md)).
-- **UC‑06 → UC‑01 (3b), no realizada en el flujo de UC‑01.** Una partida sin rendimiento estimado
-  hace que `Catalogo.composicion` lance `CatalogoIncompleto`, y la elaboración lo muestra como error.
-  La propuesta del histórico con su dispersión (`core.catalog.proponer_rendimiento`) existe, pero la
-  usan la pantalla de componer (UC‑10, UC‑11) y la API de rendimientos, no la de elaborar.
+- **UC‑06 → UC‑01 (3b), realizada en `ui/` y `api/`, sin `core/`** (INV‑088, fase C5). Una partida
+  sin rendimiento estimado vigente hace que `Catalogo.composicion` lance `CatalogoIncompleto`. La
+  pantalla y la API lo capturan y clasifican: primero `Catalogo.lista_vigente(fecha)`, porque
+  sin lista vigente el error es de la lista y no de 3b, y se deja subir; después, las partidas sin
+  un ESTIMADO de fecha no posterior a la del presupuesto, cada una con
+  `core.catalog.proponer_rendimiento` (el rendimiento del histórico y su dispersión). La pantalla
+  las lleva al bloque «Rendimientos por declarar» (`ui.elaboracion.rendimientos_por_declarar`),
+  exige el tipo, registra el propuesto declarado ESTIMADO con `core.catalog.registrar_rendimiento`
+  (`ui.elaboracion.declarar_rendimiento`, sin confirmar: el `commit` es de la página) y vuelve a
+  elaborar. La API responde 409 sin guardar, con la propuesta por partida
+  (`api.rutas.presupuestos._rendimientos_por_declarar`); el tipo se declara con
+  `POST /partidas/{codigo}/rendimientos` y el presupuesto se reenvía. Un MEDIDO declarado no
+  desbloquea la elaboración: la política de `Catalogo._rendimiento_estimado` es de `core/` y C5 no
+  la toca (ERS, UC‑01 3b). El criterio «estimado vigente» queda repetido en las dos capas (deuda
+  U‑5, §6.1).
 - **UC‑07 → UC‑05 (paso 5), no realizada.** Los precios atípicos (`ml.anomaly.precios_atipicos`) y
   el contraste AACE (`ml.prediction.contrastar_aace`, que devuelve un `Hallazgo`) se muestran en la
   pantalla de componer, pero no entran al `InformeAuditoria`: `core/` no importa `ml` (ADR 5).
@@ -132,13 +147,13 @@ de los demás.
 
 | UC | Realizado por | Pantalla (`ui/app.py`, `PAGINAS`) y ruta HTTP |
 |---|---|---|
-| UC‑01 | `AdaptadorDominio.extraer` del dominio → `ui.elaboracion.elaborar_desde_catalogo` o `api.rutas.presupuestos.crear_presupuesto` → `Catalogo.composiciones` de las partidas existentes → `core.budget.elaborar(..., plan=plan_secuencial)` → `core.budget.exportar_excel`. Persiste (`core.budget.guardar_presupuesto`) la API y los sembradores; la pantalla elabora, muestra y exporta, pero no guarda el presupuesto | «Elaborar un presupuesto» (`ui/paginas/elaborar.py`; civil solo tabular) y «Componer una partida»; `POST /computos/{dominio}` (civil: `.ifc` o tabular) y `POST /presupuestos` |
+| UC‑01 | `AdaptadorDominio.extraer` del dominio → `ui.elaboracion.elaborar_desde_catalogo` o `api.rutas.presupuestos.crear_presupuesto` → `Catalogo.composiciones` de las partidas existentes → `core.budget.elaborar(..., plan=...)` con el plan del proyectista o, sin él, `plan_secuencial` (`ui.elaboracion.plan_de` y `plan_desde_filas`; `api.rutas.presupuestos._plan`; paso 6, INV‑087) → `core.budget.exportar_excel`. Flujo 3b: `ui.elaboracion.rendimientos_por_declarar` y `declarar_rendimiento`, o el 409 de `api.rutas.presupuestos._rendimientos_por_declarar` (INV‑088). Persiste (`core.budget.guardar_presupuesto`) la API y los sembradores; la pantalla elabora, muestra y exporta, pero no guarda el presupuesto | «Elaborar un presupuesto» (`ui/paginas/elaborar.py`; civil solo tabular; tabla «Plan de trabajo» y bloque «Rendimientos por declarar») y «Componer una partida»; `POST /computos/{dominio}` (civil: `.ifc` o tabular) y `POST /presupuestos` (campo `plan`; 409 de 3b) |
 | UC‑02 | `core.catalog.crear_lista_desde_archivo` → `core.budget.actualizar_precios` → `Comparativo`; 7a: `core.budget.descartar_version` | «Actualizar precios» (`ui/paginas/actualizacion.py`) e «Historico de cambios de precio» (`core.catalog.cambios_precio`); `POST /listas-precios`, `POST /presupuestos/{codigo}/actualizacion`, `GET /cambios-precio` |
 | UC‑03 | `ml.normalization` (`NormalizadorPartidas`, `proponedor`, `propuestas_para`) sobre pares código–descripción que la capa de presentación lee de `core.catalog`; la persistencia de la partida nueva es UC‑10 | «Partidas similares» (`ui/paginas/similares.py`, vía `ui.composicion.sugerir_partidas_similares`); dentro de UC‑01 3a en «Elaborar un presupuesto» y en `POST /presupuestos` |
 | UC‑04 | `adapters.civil.recalculo` (`recalcular`, `emparejar`) y `core.budget.elaborar` por quien llama. El paso 5 (diferencial, RF‑20) no está implementado | sin pantalla ni ruta HTTP |
 | UC‑05 | `core.verification.auditar` sobre un `Presupuesto`. En las pantallas y la API corre siempre dentro de `core.budget.elaborar` y de `core.budget.cargar_elaboracion`. La excepción son los resúmenes impresos de tres sembradores, que arman `ResultadoElaboracion(presupuesto, auditar(presupuesto))` sobre `core.budget.generar_presupuesto` y llaman a `auditar` directamente, sin pendientes: `scripts/seed_telecom.py:580` (el presupuesto de un tercero), `scripts/seed_industrial.py:260` y `scripts/seed_sistemas.py:253`. El hallazgo `PENDIENTE` no lo emite `auditar`: lo agrega la elaboración (`_declarar_pendientes`), así que quien llame a `auditar` directamente no lo ve | el informe acompaña a toda elaboración en pantalla y en la hoja «Auditoria» del libro; `GET /presupuestos/{codigo}/informe`. El archivo de un tercero no tiene pantalla ni ruta de importación: su `Presupuesto` se arma en código (`scripts/seed_telecom.py`, `tests/fixtures/presupuesto_auditado.py`) |
-| UC‑06 | `core.catalog.rendimientos` (`registrar_ejecucion`, `registrar_rendimiento`, `dispersion_rendimientos`, `proponer_rendimiento`, `advertencia_rendimiento`) y, con el extra `ml`, `ml.anomaly.evaluar_rendimiento` | propuesta y advertencia en «Componer una partida»; el registro de un rendimiento medido, solo por HTTP: `POST /ejecuciones`, `GET /ejecuciones`, `GET` y `POST /partidas/{codigo}/rendimientos` |
-| UC‑07 | `ml.anomaly.precios_atipicos` y `ml.prediction` (`tecnica_para`, `predecir_por_reglas`, `metricas`, `contrastar_aace`) | ayudas 2 y 4 de «Componer una partida» (`ui.composicion.advertencia_precio_atipico`, `ui.composicion.contrastar_precio_con_reglas`); `scripts/generar_resultados_ml.py` escribe `docs/resultados_ml.md`; sin ruta HTTP |
+| UC‑06 | `core.catalog.rendimientos` (`registrar_ejecucion`, `registrar_rendimiento`, `dispersion_rendimientos`, `proponer_rendimiento`, `advertencia_rendimiento`) y, con el extra `ml`, `ml.anomaly.evaluar_rendimiento` | propuesta y advertencia en «Componer una partida»; la propuesta, también en el flujo 3b de «Elaborar un presupuesto» y en el 409 de `POST /presupuestos`; el registro de un rendimiento medido, solo por HTTP: `POST /ejecuciones`, `GET /ejecuciones`, `GET` y `POST /partidas/{codigo}/rendimientos` |
+| UC‑07 | `ml.anomaly.precios_atipicos` y `ml.prediction` (`tecnica_para`, `predecir_por_reglas`, `metricas`, `contrastar_aace`) | ayudas 2 y 4 de «Componer una partida» (`ui.composicion.advertencia_precio_atipico`, `ui.composicion.contrastar_precio_con_reglas`; para una partida nueva, sin PU anterior del que partir, la ayuda 4 avisa que el contraste no es posible, flujo 3a, INV‑094); `scripts/generar_resultados_ml.py` escribe `docs/resultados_ml.md`; sin ruta HTTP |
 | UC‑08 | `core.budget.escenarios` (`generar_escenario`, `comparar_escenarios`, `comparar_por_partida`). Nada se persiste; el informe de un escenario no declara los pendientes del base (ruling C4‑3 de la bitácora del cierre, a limitaciones) | «Escenarios de sensibilidad» (`ui/paginas/escenarios.py`, que lee el base con `cargar_elaboracion` y avisa de sus pendientes); `POST /presupuestos/{codigo}/escenarios`, cuya respuesta los declara en `pendientes_base` (INV‑083, pista C de C4) |
 | UC‑10, UC‑11 | `ui.composicion` (`composicion_desde_tablas`; `desglose` → `core.costing.calcular_apu`) y `ui.elaboracion.guardar_composicion` → `Catalogo.cargar_composicion` o `Catalogo.reemplazar_composicion` | «Componer una partida» (`ui/paginas/componer.py`); sin ruta HTTP |
 | UC‑12 | `ui.app` (`PAGINAS`, `paginas_visibles`, `marco`), `ui.caso` (`ruta_caso`, `estado_caso`) y `ui.recorridos` (`RECORRIDOS`, `paso_siguiente`); el caso vacío se siembra con `scripts.seed_demo.main` | «Inicio» (`ui/paginas/inicio.py`) y el marco común de las diez pantallas; sin ruta HTTP |
@@ -668,6 +683,9 @@ entidad‑relación y la justificación de la normalización están en
 #### Verificación
 
 Es la única parte del núcleo con jerarquía de clases: siete reglas que implementan el mismo puerto.
+Cinco de ellas (R1, R3, R4, R5 y R7) implementan además el protocolo `ReglaAtribuible`
+(INV‑095, fase C5), que no es un contrato de `core/contracts/`: vive en
+`core/verification/reglas.py` y declara la partida de cada hallazgo que la regla emite.
 
 ```mermaid
 classDiagram
@@ -681,6 +699,7 @@ classDiagram
         +codigo = R1
         +__init__(tolerancia_relativa Decimal)
         +evaluar(presupuesto Presupuesto) list~Hallazgo~
+        +atribuir(presupuesto Presupuesto) list~Atribucion~
     }
     class CierreCurvaInversion {
         +codigo = R2
@@ -689,15 +708,18 @@ classDiagram
     class CoherenciaDimensional {
         +codigo = R3
         +evaluar(presupuesto Presupuesto) list~Hallazgo~
+        +atribuir(presupuesto Presupuesto) list~Atribucion~
     }
     class CorrespondenciaEspecificaciones {
         +codigo = R4
         +evaluar(presupuesto Presupuesto) list~Hallazgo~
+        +atribuir(presupuesto Presupuesto) list~Atribucion~
     }
     class BalanceVolumetrico {
         +codigo = R5
         +__init__(tolerancia_relativa Decimal)
         +evaluar(presupuesto Presupuesto) list~Hallazgo~
+        +atribuir(presupuesto Presupuesto) list~Atribucion~
     }
     class CriterioDepreciacion {
         +codigo = R6
@@ -707,6 +729,11 @@ classDiagram
         +codigo = R7
         +__init__(tolerancia Decimal)
         +evaluar(presupuesto Presupuesto) list~Hallazgo~
+        +atribuir(presupuesto Presupuesto) list~Atribucion~
+    }
+    class ReglaAtribuible {
+        <<protocol>>
+        +atribuir(presupuesto Presupuesto) list~Atribucion~
     }
     class informe {
         <<module>>
@@ -718,9 +745,12 @@ classDiagram
         +codigo_presupuesto: str
         +hallazgos: tuple~Hallazgo~
         +partida_por_origen: Mapping~str, str~
+        +partida_por_hallazgo: Mapping~Hallazgo, str~
+        +reglas_evaluadas: tuple~tuple~
         +cumple: bool
         +por_severidad() dict~Severidad, int~
         +por_regla() dict~str, Hallazgos~
+        +cuenta_por_regla_evaluada() tuple~tuple~
         +partida_de(hallazgo Hallazgo) str
         +a_markdown() str
     }
@@ -759,6 +789,12 @@ classDiagram
     ReglaVerificacion <|-- CriterioDepreciacion
     ReglaVerificacion <|-- ConciliacionPresupuestoPlan
     informe ..> ReglaVerificacion : corre REGLAS en orden
+    informe ..> ReglaAtribuible : si la regla lo implementa, atribuir en vez de evaluar
+    ReglaAtribuible <|.. TrazabilidadGeometrica
+    ReglaAtribuible <|.. CoherenciaDimensional
+    ReglaAtribuible <|.. CorrespondenciaEspecificaciones
+    ReglaAtribuible <|.. BalanceVolumetrico
+    ReglaAtribuible <|.. ConciliacionPresupuestoPlan
     informe ..> InformeAuditoria : construye
     TrazabilidadGeometrica ..> expresiones : reevalua item.regla
     BalanceVolumetrico ..> expresiones : evalua el balance
@@ -783,11 +819,14 @@ class InformeAuditoria:
     codigo_presupuesto: str
     hallazgos: tuple[Hallazgo, ...] = ()
     partida_por_origen: Mapping[str, str] = field(default_factory=dict)
+    partida_por_hallazgo: Mapping[Hallazgo, str | None] = field(default_factory=dict)
+    reglas_evaluadas: tuple[tuple[str, str], ...] = ()
 
     @property
     def cumple(self) -> bool
     def por_severidad(self) -> dict[Severidad, int]
     def por_regla(self) -> dict[str, list[Hallazgo]]
+    def cuenta_por_regla_evaluada(self) -> tuple[tuple[str, str, int], ...]
     def partida_de(self, hallazgo: Hallazgo) -> str | None
     def a_markdown(self) -> str
 
@@ -796,6 +835,12 @@ def auditar(
 ) -> InformeAuditoria
 
 # core.verification.reglas  (codigo y nombre son ClassVar[str] en cada clase)
+Atribucion = tuple[Hallazgo, str | None]              # el hallazgo y el codigo de su partida
+
+@runtime_checkable
+class ReglaAtribuible(Protocol):                       # R1, R3, R4, R5 y R7 (INV-095)
+    def atribuir(self, presupuesto: Presupuesto) -> list[Atribucion]
+
 class TrazabilidadGeometrica(ReglaVerificacion):        # R1
     def __init__(self, tolerancia_relativa: Decimal = Decimal("0.001")) -> None
     def evaluar(self, presupuesto: Presupuesto) -> list[Hallazgo]
@@ -846,6 +891,18 @@ Qué comprueba cada regla y qué hallazgo de la línea base detecta: [CLAUDE.md
 [docs/linea_base.md](linea_base.md). Ninguna regla nombra un dominio, una unidad concreta ni un código
 del caso de estudio: lo que necesitan saber se lo dice el propio `Presupuesto` (ADR 8).
 
+**`InformeAuditoria` es una interfaz pública del núcleo, no un contrato de
+[CLAUDE.md §5](../CLAUDE.md#5-contratos-de-interfaz-corecontracts).** Cruza a `api/`
+(`api/rutas/presupuestos.py`), a `ui/` (por `a_markdown()`), a `scripts/` y a los módulos de
+`core.budget` (`presupuesto`, `persistencia`, `escenarios`, `excel`), pero no vive en
+`core/contracts/`, depende de `core.verification` (un contrato solo depende de la biblioteca
+estándar) y ningún paquete externo lo construye: su único constructor es `auditar`, con argumentos
+por nombre. Por eso **crece solo añadiendo campos al final, con valor por defecto**: así entraron
+en C5 `partida_por_hallazgo` (INV‑095) y `reglas_evaluadas` (INV‑092), sin que ningún consumidor
+cambiara. Quien lo copie con campos nuevos usa `dataclasses.replace`, como
+`core.budget.presupuesto._declarar_pendientes` desde C5, y no un constructor campo por campo, que
+perdería en silencio lo que el informe gane.
+
 ### 2.3 Los adaptadores
 
 Cinco adaptadores de cuatro dominios implementan el mismo puerto y ninguno aparece en los diagramas
@@ -885,7 +942,7 @@ Debajo de las diez pantallas de `ui/paginas/` hay una capa sin pantalla (INV‑0
 | Módulo | Qué hace | Qué no importa (`PROHIBIDOS_EN_UI`) |
 |---|---|---|
 | `ui/composicion.py` | lógica pura: arma y valida una `ComposicionAPU` a partir de las tablas que teclea el proyectista (`composicion_desde_tablas`, con la modalidad por línea de la decisión D9) y calcula su desglose (`desglose` → `core.costing.calcular_apu`); envuelve las ayudas de `ml/` con importación perezosa | `streamlit`, `pandas`, `ui.caso`, `sqlalchemy`, `core.catalog`, `core.budget` |
-| `ui/elaboracion.py` | orquesta «cantidades → elaborar → exportar» (`items_desde_filas`, `elaborar_desde_catalogo`, `libro_excel`), guarda composiciones sin confirmar (`guardar_composicion`) y resuelve UC‑01 3a (`propuestas_de_pendientes`, `aceptar_propuesta`) | `streamlit`, `pandas`, `ui.caso` |
+| `ui/elaboracion.py` | orquesta «cantidades → elaborar → exportar» (`items_desde_filas`, `elaborar_desde_catalogo`, `libro_excel`), guarda composiciones sin confirmar (`guardar_composicion`) y resuelve UC‑01 3a (`propuestas_de_pendientes`, `aceptar_propuesta`), 6 (el plan del proyectista: `plan_de`, `plan_desde_filas`, `filas_desde_plan`, `filas_del_plan_por_defecto`) y 3b (`rendimientos_por_declarar`, `declarar_rendimiento`, este último sin confirmar) | `streamlit`, `pandas`, `ui.caso` |
 | `ui/resultado.py` | el fragmento de Streamlit que pinta un presupuesto elaborado, su informe y sus pendientes (`mostrar_elaboracion`), compartido por componer y elaborar | `sqlalchemy.orm`, `core.costing`, `core.catalog` |
 | `ui/recorridos.py` | declara una sola vez los recorridos guiados de UC‑12 (`RECORRIDOS`, `Paso`, `Recorrido`, `recorrido_por_nombre`, `paso_siguiente`), sin Streamlit ni base de datos: solo importa `dataclasses` | `streamlit`, `sqlalchemy`, `core.catalog`, `ui.caso`, `ui.app` |
 
@@ -902,8 +959,11 @@ que se trata en el párrafo siguiente.
 `tests/unit/test_arquitectura.py::test_ui_respeta_sus_importaciones_prohibidas`, parametrizada con
 `PROHIBIDOS_EN_UI`. Sí lee el catálogo (`core.catalog`) para precargar tablas, proponer rendimientos
 (UC‑06) y mostrar el histórico de precios. `ui/elaboracion.py` es el único módulo de `ui/` sin pantalla
-que **escribe filas** en la base (`guardar_composicion`, sin confirmar); `ui.caso.estado_caso` solo
-crea el esquema si falta (`crear_esquema`, DDL). El grafo de `ui/` es acíclico:
+que **escribe filas** en la base (`guardar_composicion` y, desde C5, `declarar_rendimiento`, los dos
+sin confirmar: el `sesion.commit()` es de la página, `componer.py` o `elaborar.py`);
+`ui.caso.estado_caso` solo crea el esquema si falta (`crear_esquema`, DDL). Desde C5 (U‑6 de la
+revisión de la pista U), `ui/paginas/elaborar.py` tampoco importa `core.budget`: el plan por
+defecto lo decide `ui.elaboracion.plan_de`. El grafo de `ui/` es acíclico:
 `ui.app` → `ui.paginas.*` → `ui.elaboracion` → `ui.composicion` → `core`, y `ui.paginas.*` →
 `ui.resultado`; ninguna página importa `ui.app`.
 
@@ -932,6 +992,8 @@ Mensajes tomados de `ui/elaboracion.py::elaborar_desde_catalogo`,
 `api/rutas/presupuestos.py::crear_presupuesto`, `core/budget/presupuesto.py::elaborar`,
 `core/verification/informe.py::auditar` y `core/budget/persistencia.py::guardar_presupuesto`. La
 pantalla y la API siguen el mismo protocolo hasta el `ResultadoElaboracion`; difieren al final.
+El flujo 3b (partida sin rendimiento estimado vigente) se dibuja como la rama `opt` tras
+`composiciones`; su detalle está en §1 (UC‑06 → UC‑01).
 
 ```mermaid
 sequenceDiagram
@@ -951,21 +1013,33 @@ sequenceDiagram
     PRE->>CAT: partidas()
     PRE->>CAT: composiciones(codigos que el catalogo tiene, fecha)
     CAT->>DB: lista_vigente(fecha) y rendimiento estimado
+    opt falta un rendimiento estimado vigente (UC-01 3b, INV-088)
+        CAT-->>PRE: CatalogoIncompleto
+        PRE->>CAT: lista_vigente(fecha): si falta la lista, el error sube y no es 3b
+        PRE->>CAT: rendimientos(codigo) y proponer_rendimiento(codigo) de cada partida sin estimado
+        alt API
+            PRE-->>P: 409 sin guardar, con la propuesta y su dispersion por partida
+        else pantalla
+            P->>PRE: declara el tipo (estimado) del propuesto
+            PRE->>CAT: registrar_rendimiento(ESTIMADO, fecha del presupuesto) y commit de la pagina
+            PRE->>CAT: composiciones(codigos, fecha) de nuevo
+        end
+    end
     CAT-->>PRE: dict[str, ComposicionAPU]
-    PRE->>BUD: elaborar(items, composiciones, parametros, codigo, fecha, moneda, plan=plan_secuencial)
+    PRE->>BUD: elaborar(items, composiciones, parametros, codigo, fecha, moneda, plan=plan del proyectista o plan_secuencial)
     BUD->>BUD: generar_presupuesto(items valorables, composiciones, parametros, codigo, fecha, moneda)
     loop una vez por ItemComputo valorable
         BUD->>COS: calcular_apu(composicion, parametros)
         COS-->>BUD: ResultadoAPU
     end
-    BUD->>BUD: plan_secuencial(presupuesto), generar_curva y con_curva
+    BUD->>BUD: el plan (o plan_secuencial(presupuesto)), generar_curva y con_curva
     BUD->>VER: auditar(presupuesto)
     loop for regla in REGLAS (R1 a R7)
-        VER->>VER: regla.evaluar(presupuesto)
+        VER->>VER: regla.atribuir(presupuesto) si es ReglaAtribuible (R1, R3, R4, R5, R7), o regla.evaluar(presupuesto) si no lo es
     end
-    VER->>VER: InformeAuditoria ordena por severidad e indexa origen_id a codigo_partida (la primera partida de cada origen_id, INV-095 en C5)
+    VER->>VER: InformeAuditoria ordena por severidad, guarda la partida que declaro cada regla (partida_por_hallazgo), el indice de respaldo origen_id a codigo_partida sin los origenes compartidos y las reglas evaluadas (INV-095, INV-092)
     VER-->>BUD: InformeAuditoria
-    BUD->>BUD: _declarar_pendientes: un hallazgo PENDIENTE (ERROR) por item sin partida
+    BUD->>BUD: _declarar_pendientes: un hallazgo PENDIENTE (ERROR) por item sin partida, con dataclasses.replace
     BUD-->>PRE: ResultadoElaboracion(presupuesto, informe, pendientes)
     alt API: POST /presupuestos
         PRE->>BUD: guardar_presupuesto(session, presupuesto, informe, proyecto, lista, parametros, pendientes)
@@ -997,7 +1071,7 @@ Cinco detalles del orden real que el diagrama fija y que conviene no perder:
 3. **Primero se elabora y después se propone** (UC‑01 3a). La pantalla propone antes de exportar
    (`ui.elaboracion.propuestas_de_pendientes`); la API, **después de confirmar**: la ruta hace
    `elaborar`, `guardar_presupuesto` y `sesion.commit()`, y solo al construir la respuesta llama a
-   `_pendientes`, que invoca `propuestas_para` (`api/rutas/presupuestos.py:98-123` y `:329-355`), de
+   `_pendientes`, que invoca `propuestas_para` (`api/rutas/presupuestos.py:137-162` y `:368-394`), de
    modo que el presupuesto queda guardado aunque el modelo de propuestas falle. Si el usuario acepta
    una propuesta, `ui.elaboracion.aceptar_propuesta` reasigna el ítem y la pantalla vuelve a llamar a
    `elaborar_desde_catalogo`: una elaboración completa nueva, con su informe.
@@ -1331,7 +1405,9 @@ rodeadas y documentadas, y son entrada de la revisión de contratos posterior a 
 | Insuficiencia | Se rodea con | Registro |
 |---|---|---|
 | Evaluador de expresiones en cinco copias: núcleo y los cuatro adaptadores (INV‑006) | prueba de equivalencia civil–núcleo; R1 reevalúa con el del núcleo las expresiones de todo dominio. Aceptado por decisión de arquitectura registrada, pendiente del aval del tutor | [I3.2](bitacora/2026-08-29-I3.2-civil.md) h.1, [I4](bitacora/2026-08-29-I4-verificacion.md) h.1, bitácoras de I5 ([industrial](bitacora/2026-08-29-I5-industrial.md), [sistemas](bitacora/2026-08-29-I5-sistemas.md), [telecom](bitacora/2026-08-29-I5-telecom.md)), [expediente C1 §A.3](bitacora/2026-09-23-C1-expedientes.md) |
-| `Hallazgo` no lleva `codigo_partida` | índice `partida_por_origen` que arma `auditar` y resuelve `InformeAuditoria.partida_de`. **El rodeo no basta** cuando varias partidas comparten un `origen_id` (el adaptador civil tabular da la misma fila a varias partidas): el índice guarda la primera y la columna *Partida* del informe en pantalla atribuye mal esos hallazgos (INV‑095). Se corrige en C5 dentro de `core/verification`, sin contrato: los `origen_ids` con la clave `(codigo_partida, origen_id)`, como ya hacen R6 y `_clave_pendiente`, o un índice de varias partidas por origen | [I4](bitacora/2026-08-29-I4-verificacion.md) h.2; [inventario](auditoria/2026-09-inventario.md), INV‑095 |
+| El lector del CSV en cuatro copias: `_leer_filas`, `_decimal` y `_parsear_especificaciones` en `adapters/civil/tabular.py`, `adapters/industrial/adaptador.py`, `adapters/sistemas/adaptador.py` y `adapters/telecom/adaptador.py` (A‑1 de la revisión de la pista P de C5; `_parsear_especificaciones` es INV‑041) | forzadas por la misma regla que el evaluador: ningún adaptador importa de otro (`test_arquitectura.py`), `core.contracts` es estable y C5 no admite archivos nuevos bajo `adapters/`. No son idénticas: `_leer_filas` sí lo es en los cuatro, pero `_decimal` de telecom recibe la ubicación ya armada (`_ubicacion`, con la línea) y no el archivo. La equivalencia de conducta la vigila `tests/unit/test_fuentes_ilegibles.py` (el binario y la muestra de otro dominio, en los cuatro adaptadores). Cierre previsto: un módulo común de lectura tabular cuando se autorice un archivo nuevo en `adapters/`, o `core.contracts` si el tutor avala INV‑006 | [inventario](auditoria/2026-09-inventario.md), INV‑041 e INV‑089; bitácora de C5 ([cierre](bitacora/2026-09-23-cierre.md), «Fase C5») |
+| El criterio «rendimiento estimado vigente» (un ESTIMADO de fecha no posterior a la del presupuesto) escrito fuera de `core/`: `ui.elaboracion.rendimientos_por_declarar` y `api.rutas.presupuestos._rendimientos_por_declarar` repiten la política de `Catalogo._rendimiento_estimado` (U‑5 de la revisión de la pista U de C5) | la API no puede importar `ui/` y C5 no autoriza tocar `core.catalog`; las dos docstrings se citan entre sí, y las dos llaman antes a `Catalogo.lista_vigente` para no confundir la falta de lista con el flujo 3b. Si la política cambia, hay tres sitios que cambiar. Cierre previsto, después del cierre: un `Catalogo.rendimiento_vigente(codigo, fecha) -> Rendimiento \| None` público sobre `_rendimiento_estimado` (excepción de `core/`, sin contrato) | bitácora de C5 ([cierre](bitacora/2026-09-23-cierre.md), «Fase C5») |
+| `Hallazgo` no lleva `codigo_partida` | desde C5 (INV‑095), **la regla que emite el hallazgo declara su partida**: R1, R3, R4, R5 y R7 implementan `ReglaAtribuible.atribuir(presupuesto) -> list[(Hallazgo, codigo \| None)]` (un `Protocol` de `core/verification/reglas.py`, no un contrato), su `evaluar` devuelve los mismos hallazgos sin la partida, y `auditar` guarda la declaración en `InformeAuditoria.partida_por_hallazgo`, que `partida_de` consulta primero. Para lo que ninguna regla declara (R2, R6, el `PENDIENTE` de `core.budget` o una regla ajena) queda el índice `partida_por_origen`, que ya no registra un `origen_id` citado por varias partidas: el informe pinta «-» en vez de adivinar. La columna *Partida* es un **ancla**: una conciliación de R7 que abarca varias partidas va a la primera en el orden del presupuesto y R6 a su primer código (la del factor minoritario); la descripción las nombra todas. Descartada la clave `(codigo_partida, origen_id)` en `origen_ids`: cambiaba la salida de cinco reglas, la columna *Orígenes* del Excel y los hallazgos persistidos (15 pruebas en 4 archivos). `ReglaAtribuible` es el rodeo explícito de la insuficiencia, candidato a entrar en el contrato en una versión futura, no en este proyecto | [I4](bitacora/2026-08-29-I4-verificacion.md) h.2; [inventario](auditoria/2026-09-inventario.md), INV‑095; [expediente C5.1](bitacora/2026-09-28-C5-expedientes.md) |
 | `PuntoCurva` no lleva `codigo_partida` | códigos entre corchetes en la etiqueta (ADR 11) | [I4](bitacora/2026-08-29-I4-verificacion.md) h.3 |
 | El criterio de amortización no es declarable en `LineaEquipo` | R6 verifica solo la mitad verificable (factor único por insumo) y lo dice en el hallazgo | [I4](bitacora/2026-08-29-I4-verificacion.md) h.4 |
 | `Presupuesto` no lleva `ParametrosCosto` | las cuatro columnas de `models.Presupuesto` (ADR 10) | [I0.5](bitacora/2026-08-29-I0.5-presupuesto.md) h.2 |
