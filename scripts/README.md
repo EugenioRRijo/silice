@@ -49,6 +49,20 @@ La CI los regenera y los compara con `git diff --exit-code`.
 | `exportar_openapi.py` | exporta el esquema OpenAPI de la aplicación FastAPI a `docs/api.json` | F.1 · api |
 | `generar_resultados_ml.py` | genera `docs/resultados_ml.md`: compuerta G2 y métricas del módulo predictivo (RF‑28) | I6.3 y M4.1 · ml |
 
+## Caso TI-001 e informes en PDF
+
+Caso construido de redes de computación (laptops HP, cableado Cat 6, canalización EMT y servidor en
+rack), con datos en `tests/fixtures/caso_ti001.py` y cantidades en
+`data/samples/telecom/topologia_ti001.csv`. Los dos generadores de PDF necesitan el extra `informes`
+(`uv run --extra informes python scripts/<nombre>.py --salida <ruta>.pdf`).
+
+| Script | Qué hace | Sesión o dominio |
+|---|---|---|
+| `analisis_ti001.py` | recálculo independiente del PU, pruebas de control con errores sembrados, sensibilidad y punto de equilibrio del caso; sin argumentos imprime el resumen | caso TI-001 · telecom |
+| `informe_ti001.py` | PDF del caso: APU, presupuesto, plan, curva, punto de equilibrio, auditoría del presupuesto y del programa (extra `informes`) | caso TI-001 · telecom |
+| `auditoria_ti001.py` | datos de la auditoría técnica del programa del 30/09/2026 que muestra la sección 2 del informe (instantánea fechada) | caso TI-001 · todos |
+| `glosario_presupuestos.py` | PDF con el glosario de siglas, las fuentes de cada dato y la guía para presupuestar una red (extra `informes`) | caso TI-001 · telecom |
+
 ## Guardias de la CI
 
 | Script | Qué hace | Sesión o dominio |

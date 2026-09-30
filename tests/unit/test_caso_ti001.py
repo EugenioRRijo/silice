@@ -1,0 +1,108 @@
+"""Caso TI-001 (laptops HP, cableado Cat 6, EMT y servidor en rack) de punta a punta.
+
+Oráculos: el total y los precios unitarios del informe publicado el 30/09/2026
+(`docs/bitacora/2026-09-30-caso-ti001.md`), la identidad de cierre de la curva y el recálculo
+independiente de `scripts/analisis_ti001.py`. Caso construido (NORMAS.md §1).
+"""
+
+from __future__ import annotations
+
+import subprocess
+import sys
+from decimal import Decimal
+
+import pytest
+
+from core.contracts import Severidad
+from scripts import analisis_ti001 as an
+from tests.fixtures import caso_ti001 as caso
+
+TOLERANCIA = Decimal("0.01")
+
+
+@pytest.fixture(scope="module")
+def resultado():
+    return caso.elaborar_caso()
+
+
+def test_total_y_cierre_de_la_curva(resultado):
+    presupuesto = resultado.presupuesto
+    assert abs(presupuesto.total - Decimal("50503.27")) <= TOLERANCIA
+    assert presupuesto.total_curva == presupuesto.total
+    assert len(presupuesto.curva) == len(caso.PLAN)
+
+
+@pytest.mark.parametrize(
+    ("codigo", "precio_unitario"),
+    [
+        ("TI-EMT1", "18.72"),
+        ("TI-EMT34", "14.75"),
+        ("TI-PTO", "19.19"),
+        ("TI-UTP", "3.55"),
+        ("TI-CERT", "15.55"),
+        ("TI-RACK", "1845.50"),
+        ("TI-UPS", "2030.48"),
+        ("TI-SW", "1820.68"),
+        ("TI-SRV", "4801.77"),
+        ("TI-LAP", "3039.65"),
+    ],
+)
+def test_precios_unitarios(resultado, codigo, precio_unitario):
+    grupo = an.por_partida(resultado.presupuesto)[codigo]
+    assert abs(grupo["resultado"].precio_unitario - Decimal(precio_unitario)) <= TOLERANCIA
+
+
+def test_auditoria_cumple_sin_errores(resultado):
+    """Las siete reglas corren; los únicos avisos son INFO de R4 (origen/destino de los tramos)."""
+    informe = resultado.informe
+    assert informe.cumple
+    assert {h.regla for h in informe.hallazgos} == {"R4"}
+    assert all(h.severidad is Severidad.INFO for h in informe.hallazgos)
+
+
+def test_el_motor_coincide_con_el_recalculo_independiente(resultado):
+    for codigo, motor, manual, diferencia in an.verificaciones_motor(resultado.presupuesto):
+        assert diferencia == 0, (codigo, motor, manual)
+
+
+def test_pruebas_de_control():
+    """Seis de siete errores sembrados se detectan; el de 1/2 pulg es el defecto conocido de R4."""
+    controles = {c["nombre"]: c["ok"] for c in an.pruebas_de_control()}
+    no_detectados = [nombre for nombre, ok in controles.items() if not ok]
+    assert no_detectados == ["Troncal EMT-TA especificada en 1/2 pulg y costeada en 1 pulg"]
+
+
+def test_punto_de_equilibrio(resultado):
+    equilibrio = an.punto_equilibrio(resultado.presupuesto)
+    assert abs(equilibrio["PE"] - Decimal("28586.76")) <= TOLERANCIA
+    assert abs(equilibrio["PE_pct"] - Decimal("56.60")) <= TOLERANCIA
+    assert equilibrio["periodo"].startswith("Dia 6")
+    # Identidad: en el PE el margen de contribución cubre el costo fijo (salvo la precisión finita
+    # de Decimal al dividir y volver a multiplicar).
+    assert abs(equilibrio["PE"] * equilibrio["m"] - equilibrio["CF"]) < Decimal("1e-20")
+
+
+def test_sensibilidad_del_bono_y_de_la_cascada(resultado):
+    filas = {
+        nombre: variacion for nombre, _, variacion, _ in an.sensibilidad(resultado.presupuesto)
+    }
+    assert filas["Caso base (parametros del informe)"] == 0
+    assert (
+        abs(filas["Bono exacto por oficio (MaPreX) en vez de bono unico"] + Decimal("23.04"))
+        <= TOLERANCIA
+    )
+    assert filas["Error tipico: sumar adm. + util. (1,25) en vez de encadenar (1,265)"] < 0
+
+
+@pytest.mark.parametrize("script", ["informe_ti001.py", "glosario_presupuestos.py"])
+def test_los_pdf_se_generan(tmp_path, script):
+    pytest.importorskip("reportlab")
+    pytest.importorskip("matplotlib")
+    salida = tmp_path / "salida.pdf"
+    subprocess.run(
+        [sys.executable, f"scripts/{script}", "--salida", str(salida)],
+        check=True,
+        cwd=caso.RAIZ,
+        capture_output=True,
+    )
+    assert salida.read_bytes().startswith(b"%PDF")

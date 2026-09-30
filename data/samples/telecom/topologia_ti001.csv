@@ -1,0 +1,28 @@
+tipo,id,descripcion,codigo_partida,unidad,cantidad,origen,destino,longitud_m,reserva,especificaciones
+nodo,RACK-01,Rack de piso 19 pulg cerrado 42U con patch panel Cat 6 y accesorios,TI-RACK,pieza,1,,,,,tipo_equipo=rack de piso;categoria=cat 6
+nodo,UPS-01,UPS 3000 VA para rack,TI-UPS,pieza,1,,,,,capacidad=3000 va
+nodo,SW-01,Switch administrable 48 puertos con uplinks gigabit,TI-SW,pieza,1,,,,,puertos=48
+nodo,SRV-01,Servidor en rack HP ProLiant o similar,TI-SRV,pieza,1,,,,,marca=hp;formato=rack
+nodo,LAP-LOTE,Laptops HP i7 (6 zona A + 5 zona B + 1 recepcion),TI-LAP,pieza,12,,,,,marca=hp;procesador=i7
+nodo,PTO-LOTE,Salidas de datos Cat 6 (12 puestos + impresora + reserva),TI-PTO,punto,14,,,,,categoria=cat 6;_balance={TI-LAP} + 2
+nodo,CERT-LOTE,Certificacion de enlaces permanentes Cat 6,TI-CERT,punto,14,,,,,categoria=cat 6;_balance={TI-PTO}
+enlace,EMT-TA,Troncal EMT 1 pulg cuarto tecnico - zona A,TI-EMT1,m,,RACK-01,ZONA-A,16,0.05,diametro=1 pulg
+enlace,EMT-TB,Troncal EMT 1 pulg cuarto tecnico - zona B,TI-EMT1,m,,RACK-01,ZONA-B,28,0.05,diametro=1 pulg
+enlace,EMT-TC,Troncal EMT 1 pulg cuarto tecnico - recepcion,TI-EMT1,m,,RACK-01,ZONA-C,10,0.05,diametro=1 pulg
+enlace,EMT-BA,Bajantes EMT 3/4 pulg zona A (6 x 3 m),TI-EMT34,m,,ZONA-A,PTO-A,18,0.05,diametro=3/4 pulg
+enlace,EMT-BB,Bajantes EMT 3/4 pulg zona B (5 x 3 m),TI-EMT34,m,,ZONA-B,PTO-B,15,0.05,diametro=3/4 pulg
+enlace,EMT-BC,Bajantes EMT 3/4 pulg recepcion (3 x 3 m),TI-EMT34,m,,ZONA-C,PTO-C,9,0.05,diametro=3/4 pulg
+enlace,UTP-A1,Cable UTP Cat 6 rack - puesto A1,TI-UTP,m,,RACK-01,PTO-A1,18,0.10,categoria=cat 6
+enlace,UTP-A2,Cable UTP Cat 6 rack - puesto A2,TI-UTP,m,,RACK-01,PTO-A2,19.5,0.10,categoria=cat 6
+enlace,UTP-A3,Cable UTP Cat 6 rack - puesto A3,TI-UTP,m,,RACK-01,PTO-A3,21,0.10,categoria=cat 6
+enlace,UTP-A4,Cable UTP Cat 6 rack - puesto A4,TI-UTP,m,,RACK-01,PTO-A4,22.5,0.10,categoria=cat 6
+enlace,UTP-A5,Cable UTP Cat 6 rack - puesto A5,TI-UTP,m,,RACK-01,PTO-A5,24,0.10,categoria=cat 6
+enlace,UTP-A6,Cable UTP Cat 6 rack - puesto A6,TI-UTP,m,,RACK-01,PTO-A6,25.5,0.10,categoria=cat 6
+enlace,UTP-B1,Cable UTP Cat 6 rack - puesto B1,TI-UTP,m,,RACK-01,PTO-B1,31,0.10,categoria=cat 6
+enlace,UTP-B2,Cable UTP Cat 6 rack - puesto B2,TI-UTP,m,,RACK-01,PTO-B2,32.5,0.10,categoria=cat 6
+enlace,UTP-B3,Cable UTP Cat 6 rack - puesto B3,TI-UTP,m,,RACK-01,PTO-B3,34,0.10,categoria=cat 6
+enlace,UTP-B4,Cable UTP Cat 6 rack - puesto B4,TI-UTP,m,,RACK-01,PTO-B4,35.5,0.10,categoria=cat 6
+enlace,UTP-B5,Cable UTP Cat 6 rack - puesto B5,TI-UTP,m,,RACK-01,PTO-B5,37,0.10,categoria=cat 6
+enlace,UTP-C1,Cable UTP Cat 6 rack - recepcion C1,TI-UTP,m,,RACK-01,PTO-C1,12,0.10,categoria=cat 6
+enlace,UTP-C2,Cable UTP Cat 6 rack - impresora C2,TI-UTP,m,,RACK-01,PTO-C2,13.5,0.10,categoria=cat 6
+enlace,UTP-C3,Cable UTP Cat 6 rack - reserva C3,TI-UTP,m,,RACK-01,PTO-C3,15,0.10,categoria=cat 6
