@@ -6,11 +6,11 @@ from __future__ import annotations
 
 import json
 import tempfile
-from pathlib import Path
 from typing import Annotated
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 
+from api.archivos import guardar_subida
 from api.esquemas import ItemComputoRespuesta
 from core.contracts import AdaptadorDominio, Dominio, ItemComputo
 
@@ -77,8 +77,7 @@ def computar(
     mapeo_codigos = json.loads(codigos) if codigos is not None else None
     adaptador = _adaptador(dominio, mapeo_codigos, archivo.filename)
     with tempfile.TemporaryDirectory() as carpeta:
-        ruta = Path(carpeta) / archivo.filename
-        ruta.write_bytes(archivo.file.read())
+        ruta = guardar_subida(carpeta, archivo)
         items = adaptador.extraer(ruta)
     return [_a_respuesta(item) for item in items]
 

@@ -1,4 +1,4 @@
-"""Las dieciséis entidades de docs/modelo_datos.md, en SQLAlchemy 2.0.
+"""Las diecisiete entidades de docs/modelo_datos.md, en SQLAlchemy 2.0.
 
 Siete nombres coinciden a propósito con tipos de `core.contracts` (`ComposicionAPU`,
 `ItemComputo`, `Rendimiento`, `Presupuesto`, `PartidaPresupuestada`, `PuntoCurva`, `Hallazgo`):
@@ -157,6 +157,27 @@ class Rendimiento(Base):
 
     partida: Mapped[Partida] = relationship(back_populates="rendimientos")
     ejecucion: Mapped[Ejecucion | None] = relationship(back_populates="rendimientos")
+
+
+class JustificacionRendimiento(Base):
+    """UC‑06, flujo 4a: la justificación con la que el proyectista acepta la advertencia de RF‑27.
+
+    Una por rendimiento, ligada al que se registró con la advertencia. Guarda también el texto de
+    la advertencia aceptada, para leerla sin reconstruir la dispersión de ese momento. Tabla
+    aditiva: `crear_esquema` la agrega a una base existente sin tocar las demás, y la relación se
+    declara solo de este lado, así que `Rendimiento` y sus consultas no cambian (expediente C6.1).
+    """
+
+    __tablename__ = "justificacion_rendimiento"
+
+    rendimiento_id: Mapped[int] = mapped_column(
+        ForeignKey("rendimiento.id", ondelete="CASCADE"), primary_key=True
+    )
+    texto: Mapped[str] = mapped_column(Text)
+    advertencia: Mapped[str] = mapped_column(Text)
+    fecha: Mapped[date] = mapped_column(Date)
+
+    rendimiento: Mapped[Rendimiento] = relationship()
 
 
 # ---------------------------------------------------------------------------------------------

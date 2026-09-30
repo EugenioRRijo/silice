@@ -65,10 +65,25 @@ class ListaRespuesta(BaseModel):
 
 
 class CargaListaRespuesta(BaseModel):
-    """Lo que produjo cargar un archivo de precios: la lista creada y los insumos desconocidos."""
+    """Lo que produjo cargar un archivo de precios (UC-02): la lista creada y los insumos del
+    archivo que el catalogo no conocia.
+
+    - `dados_de_alta`: los desconocidos que el administrador eligio dar de alta (flujo 2a, campo
+      de formulario `dar_de_alta`); quedan en el catalogo con codigo nuevo y su precio solo en esta
+      lista.
+    - `ignorados`: los desconocidos del flujo 2a que no se eligieron; no intervienen en el
+      recalculo.
+    - `rechazados`: las filas del flujo 2b, cuya descripcion si esta en el catalogo pero con una
+      unidad no equivalente; se rechazan y no se pueden dar de alta.
+    - `desconocidos`: ignorados y rechazados juntos, en el orden del archivo (el campo de antes de
+      C6, que se conserva).
+    """
 
     lista: ListaRespuesta
     desconocidos: list[str]
+    dados_de_alta: list[str] = Field(default_factory=list)
+    ignorados: list[str] = Field(default_factory=list)
+    rechazados: list[str] = Field(default_factory=list)
 
 
 class CambioRespuesta(BaseModel):
@@ -79,6 +94,26 @@ class CambioRespuesta(BaseModel):
     precio_nuevo: str
     variacion: str
     fecha: date
+
+
+class ProyectoPeticion(BaseModel):
+    """UC-01, paso 1: el proyecto que agrupara los presupuestos. `nombre` es unico y no vacio;
+    `dominio`, si se indica, es uno de `core.contracts.Dominio` (civil, telecom, industrial,
+    sistemas)."""
+
+    nombre: str
+    descripcion: str = ""
+    dominio: str = ""
+
+
+class ProyectoRespuesta(BaseModel):
+    """El proyecto creado, tal como quedo guardado."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    nombre: str
+    descripcion: str
+    dominio: str
 
 
 class ItemComputoPeticion(BaseModel):
@@ -326,13 +361,20 @@ class EjecucionRespuesta(BaseModel):
 
 
 class RendimientoPeticion(BaseModel):
-    """Registro de un rendimiento sobre una partida. `valor` viaja como texto decimal."""
+    """Registro de un rendimiento sobre una partida. `valor` viaja como texto decimal.
+
+    `justificacion` (UC-06, flujo 4a) es el motivo con que se acepta la advertencia de RF-27. Se
+    registra solo si el valor dispara la advertencia, ligada al rendimiento de esta misma
+    peticion; sin advertencia se ignora (la respuesta la trae nula). Con advertencia, una
+    justificacion en blanco es 422 y no se registra nada.
+    """
 
     valor: str
     tipo: str
     fecha: date
     condiciones: str = ""
     referencia_ejecucion: str | None = None
+    justificacion: str | None = None
 
 
 class RendimientoRespuesta(BaseModel):
@@ -390,7 +432,9 @@ class RendimientosRespuesta(BaseModel):
 
 
 class RegistroRendimientoRespuesta(BaseModel):
-    """Lo registrado y la advertencia de RF-27 (o null): advertir nunca es impedir."""
+    """Lo registrado y la advertencia de RF-27 (o null): advertir nunca es impedir.
+    `justificacion` es la que quedo registrada con la advertencia (UC-06, flujo 4a), o null."""
 
     rendimiento: RendimientoRespuesta
     advertencia: str | None
+    justificacion: str | None = None

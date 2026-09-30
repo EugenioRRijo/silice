@@ -230,7 +230,9 @@ Los dos puntos que más preguntas generan:
 - **Rendimiento medido ≠ estimado:** el medido exige clave foránea a una `Ejecucion` real; la
   invariante vive en el contrato y en el esquema.
 - **No hay herramienta de migraciones:** `create_all` crea tablas ausentes pero nunca altera una
-  existente. Cambiar una columna exige la regla de la sección 10.5.
+  existente. Cambiar una columna exige la regla de la sección 10.5. Las **tablas aditivas**
+  (`descarte_version`, C3; `justificacion_rendimiento`, C6) no son migraciones: una base anterior
+  las gana al abrirse con `crear_esquema`, sin `ALTER TABLE` y conservando sus filas.
 
 ## 7. `ml/` y sus compuertas
 
@@ -257,6 +259,13 @@ lo repite (INV‑056); solo agrega lo que quien mantiene el código necesita sab
   cuarentena (sección 10.4).
 - `guardia_nucleo.py` y `verificar_omitidas.py` son pasos de la CI; su comando local está en la
   sección 2.
+
+`probar_precios_maprex.py` (C6) revalora los casos didácticos con los listados MaPreX de julio de
+2026 y el tabulador CIV, siempre sobre bases temporales (no tiene `--db`, no toca `data/apu.db` ni
+la línea base). Se ejecuta con `uv run --all-extras python scripts/probar_precios_maprex.py
+[--salida resultado.md]`: `--all-extras` deja el entorno como lo sincronizan la CI y el README; sin
+el extra `ml` corre igual, sin detector de atípicos, y el informe lo declara. Su resultado
+registrado está en `docs/bitacora/2026-09-29-C6-precios-maprex.md`.
 
 PyMuPDF no es dependencia del proyecto: los dos extractores se ejecutan con
 `uv run --with pymupdf python scripts/<extractor>.py` y ninguna prueba lo importa. Sus salidas
@@ -318,11 +327,66 @@ catálogo de otro dominio apuntando `APU_BASE` a su base (`sqlite:///data/apu_te
   `ui.elaboracion` porque la API no puede importar `ui/` y C5 no tocó `core.catalog`: si cambia la
   política, hay que cambiar los dos y `core` (deuda U‑5, [arquitectura §6.1](arquitectura.md#61-deuda-arquitectónica-declarada)).
 - **`tests/fixtures/apu_linea_base.py` es la única copia de la línea base.** `seed.py`,
-  `generar_resultados_ml.py`, `medir_rnf03.py` y `meta_prototipo.py` la importan a propósito;
-  duplicarla en cualquier otro lado viola DRY. En total, ocho scripts dependen de `tests/fixtures/`
-  ([arquitectura §4](arquitectura.md#4-vista-de-desarrollo-definitivo)): esos cuatro,
+  `generar_resultados_ml.py`, `medir_rnf03.py`, `meta_prototipo.py` y `probar_precios_maprex.py` la
+  importan a propósito; duplicarla en cualquier otro lado viola DRY. En total, nueve scripts
+  dependen de `tests/fixtures/`
+  ([arquitectura §4](arquitectura.md#4-vista-de-desarrollo-definitivo)): esos cinco,
   `seed_telecom.py`, `seed_industrial.py`, `seed_sistemas.py` y `extraer_arenaza.py`. Como la
   interfaz importa `scripts.seed`, la aplicación Streamlit no arranca sin `tests/fixtures/`.
+- **Las rutas de C6** (dos nuevas y tres campos; esquema en `docs/api.json`):
+  - `POST /proyectos` (UC‑01 1): cuerpo `{nombre, descripcion?, dominio?}`. 201 con el proyecto; 422 si
+    el nombre está vacío o repetido o el dominio no es de `Dominio`. La interfaz no crea proyectos.
+  - `POST /presupuestos/importar` (RF‑24, UC‑05 1 y 2): multipart con `archivo` (XLSX) y `proyecto`.
+    201 con `PresupuestoCreadoRespuesta` (`pendientes` vacío); 404 si el proyecto no existe; 422, sin
+    dejar nada escrito, si el archivo no es un libro legible o está mal formado (con archivo, hoja y
+    fila), si un código de partida ya está en el catálogo, si el código de presupuesto se repite en
+    el proyecto o si la moneda no es la de la lista vigente a su fecha (comparación exacta, sin
+    normalizar: «usd» no es «USD»). El informe y el libro salen por `GET /presupuestos/{codigo}/informe`
+    y `…/excel`. Se declara antes de las rutas con `{codigo}`.
+  - `POST /listas-precios` gana el campo repetible `dar_de_alta` (descripciones del archivo, que
+    elige por identidad normalizada, con `normalizar_texto`) y la respuesta gana `dados_de_alta`,
+    `ignorados` (2a) y `rechazados` (2b); `desconocidos` sigue trayendo los dos últimos juntos. Un alta
+    de lo que no es desconocido, o dos filas elegidas del mismo insumo con precios distintos, es 422
+    sin escribir. **Por API no hay vista previa del flujo 2a**: el cliente elige en la misma carga a
+    partir de su archivo y de `GET /insumos`; cargar el mismo archivo dos veces para ver los
+    desconocidos deja dos listas, y **el nombre de la lista debe ser único**, porque
+    `POST /presupuestos/{codigo}/actualizacion` la busca por nombre y con dos iguales responde 500
+    (`MultipleResultsFound`, defecto anterior a C6, a limitaciones).
+  - `POST /partidas/{codigo}/rendimientos` gana `justificacion` (UC‑06 4a): se registra solo si hay
+    advertencia, ligada al rendimiento de esa misma petición; sin advertencia se ignora y la
+    respuesta trae `justificacion: null`; con advertencia y en blanco, 422 sin registrar nada. Ninguna
+    ruta la lee después.
+  - `POST /presupuestos/{codigo}/actualizacion` pasa el detector `ml.anomaly.precios_atipicos` (UC‑07
+    5): los atípicos de la lista nueva salen como `ATIPICO` (ADVERTENCIA) en el informe de la versión
+    nueva. Requiere `scikit-learn` (la guarda es `importlib.util.find_spec("sklearn")`, no el import
+    de `ml.anomaly`) y al menos `MINIMO_OBSERVACIONES` = 8 variaciones en el histórico; con menos, o
+    sin el extra, no hay atípicos y el informe no lo dice.
+  Las rutas de escritura hacen un `commit`; las que pueden fallar tras escribir (`importar`,
+  `rendimientos`) hacen `rollback` ante `ValueError`, así que la petición es una sola operación.
+- **El formato del XLSX de importación** (`core/budget/importacion.py`, fuente única de hojas y
+  columnas: `HOJA_*`, `COLUMNAS_*`, `CLAVES_DATOS`). Un solo libro `.xlsx` o `.xlsm`; todo número se
+  lee como texto y se convierte a `Decimal`. **Límite:** una celda numérica de Excel llega por `str()`
+  del valor que guardó el libro (`data_only=True`): exacto si se tecleó, pero una celda de fórmula puede
+  traer artefactos binarios (0,30000000000000004); conviene escribir los importes como texto.
+
+  | Hoja | Columnas | Notas |
+  |---|---|---|
+  | `Datos` | `clave`, `valor` | claves obligatorias: `codigo`, `fecha` (ISO), `moneda`, `dominio`, `fcas`, `bono_alimentacion`, `administracion`, `utilidad` |
+  | `Presupuesto` | `codigo_partida`, `descripcion`, `unidad`, `cantidad`, `origen_id`, `regla`, `parametros`, `especificaciones` | `parametros` y `especificaciones` son objetos JSON; con `regla` el origen es `REGLA`, sin ella `MANUAL` (R1 advierte); sin `origen_id`, `<archivo>:Presupuesto:<fila>`; la unidad del autor se conserva en `especificaciones[_unidad_original]` y llega a R3 |
+  | `APU` | `codigo_partida`, `descripcion`, `unidad`, `rendimiento` | una fila por partida, sin repetir |
+  | `Insumos` | `codigo_partida`, `tipo`, `insumo`, `unidad`, `cantidad`, `precio`, `depreciacion`, `modalidad` | `tipo` con las grafías de UC‑02; `unidad` solo en materiales; `depreciacion` solo en equipos; `modalidad` solo en mano de obra (jornal por defecto; en la mano de obra `precio` es el sueldo) |
+  | `Curva` (opcional) | `periodo`, `monto`, `acumulado` | la curva del autor, tal cual; sin ella R2 y R7 no aplican |
+
+  El presupuesto se **valora con el motor** sobre los APU y los parámetros del archivo: el formato
+  no trae los precios unitarios ni los totales del autor. La importación crea la lista
+  «Importada: <archivo>», con la moneda y la fecha del presupuesto, que **copia la lista vigente a esa
+  fecha**, y carga los APU con las condiciones «importado de <archivo> (presupuesto de un tercero,
+  UC-05)». Desde ese momento **la lista «Importada» es la vigente desde su fecha** para todo el caso
+  (la muestra el marco de las pantallas, valora lo que se elabore o componga después y la copia la
+  próxima lista que se cargue), y los APU del tercero cuentan en «Elaborar», en UC‑03 y en el recuento
+  de la compuerta G2. Los importes no cambian; la procedencia sí (limitación, [arquitectura §6.1](arquitectura.md#61-deuda-arquitectónica-declarada)).
+  Hay un fixture que escribe el libro desde el presupuesto de las siete inconsistencias:
+  `tests/fixtures/presupuesto_tabular.py`.
 - **No modificar `tests/unit/test_costing.py`** para poner nada en verde: se corrige la
   implementación.
 - **UC‑08 no persiste nada.** `core/budget/escenarios.py` es la lógica; la ruta
@@ -335,8 +399,8 @@ catálogo de otro dominio apuntando `APU_BASE` a su base (`sqlite:///data/apu_te
   `core/` y va a limitaciones (ruling C4‑3 de la [bitácora del cierre](bitacora/2026-09-23-cierre.md)).
 - Las limitaciones y los hallazgos abiertos están en dos lugares: el estado de cada RF en
   [plan_pruebas.md §8](plan_pruebas.md) y el [inventario de la auditoría](auditoria/2026-09-inventario.md),
-  una fila por hallazgo con su fase y su estado (por ejemplo, RF‑24 sin importación de un
-  presupuesto ajeno, INV‑076, y el IFC exportado desde un modelador BIM para G1). Leerlos antes de «arreglar»
+  una fila por hallazgo con su fase y su estado (por ejemplo, el IFC exportado desde un modelador BIM
+  para G1). Leerlos antes de «arreglar»
   algo que en realidad es una limitación declarada. RNF‑07 ya no figura entre ellos: la CI lo
   verifica en Linux y Windows en cada cambio.
 

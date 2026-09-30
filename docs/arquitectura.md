@@ -11,7 +11,12 @@
 > `inc/cierre-C5`; el código de la compuerta GC5 es el de `e5a8209`, y el retoque `340be62`–`dcd59e6` no cambia nada de lo descrito): el plan de trabajo del proyectista y el flujo 3b de UC‑01 (INV‑087, INV‑088),
 > la atribución de la partida que declara la regla y las reglas evaluadas del informe (INV‑095,
 > INV‑092, las dos excepciones de `core/` de C5), y dos deudas nuevas en §6.1 (el lector de CSV
-> de los adaptadores y el criterio del estimado vigente). Lo que no está implementado se dice como tal y no se dibuja como si
+> de los adaptadores y el criterio del estimado vigente). **Actualizado en la fase C6** contra
+> `e6c84c1` (rama `inc/cierre-C6`, con las pistas N, R, U y A integradas): el módulo nuevo
+> `core/budget/importacion.py` (INV‑076), el puerto `MarcaAtipica`/`DetectorAtipicos` por el que la
+> revaloración recibe el detector de `ml` sin importarlo (INV‑099), el alta de desconocidos
+> (INV‑090), la justificación del rendimiento (INV‑093), `crear_proyecto` (INV‑086), las dos rutas
+> nuevas y tres deudas en §6.1. Lo que no está implementado se dice como tal y no se dibuja como si
 > existiera. El **estado** de cada caso de uso, paso a paso y con su prueba, no se repite aquí: vive
 > solo en [docs/plan_pruebas.md §8](plan_pruebas.md#8-especificación-de-casos-trazabilidad-rf--prueba).
 > Este documento no reproduce datos que tienen fuente única: enlaza [CLAUDE.md](../CLAUDE.md),
@@ -21,8 +26,8 @@
 
 | Campo | Valor |
 |---|---|
-| Versión | 1.2 (actualización de C5; la 1.1 es la regeneración de C4) |
-| Fecha | 2026‑09‑28 (versión 1.0: 2026‑08‑29) |
+| Versión | 1.3 (actualización de C6; la 1.2 es la de C5 y la 1.1, la regeneración de C4) |
+| Fecha | 2026‑09‑29 (versión 1.0: 2026‑08‑29) |
 | Autor | [tesista] |
 | Revisor | [tutor académico] |
 
@@ -132,9 +137,18 @@ Las cuatro relaciones `«extend»` son flujos alternativos del ERS; no todas se 
   desbloquea la elaboración: la política de `Catalogo._rendimiento_estimado` es de `core/` y C5 no
   la toca (ERS, UC‑01 3b). El criterio «estimado vigente» queda repetido en las dos capas (deuda
   U‑5, §6.1).
-- **UC‑07 → UC‑05 (paso 5), no realizada.** Los precios atípicos (`ml.anomaly.precios_atipicos`) y
-  el contraste AACE (`ml.prediction.contrastar_aace`, que devuelve un `Hallazgo`) se muestran en la
-  pantalla de componer, pero no entran al `InformeAuditoria`: `core/` no importa `ml` (ADR 5).
+- **UC‑07 → UC‑05 (paso 5), realizada solo en la revaloración** (INV‑099, fase C6; alcance vigente
+  de la [ERS](ERS.md#22-funciones-del-producto-casos-de-uso), UC‑07 5). `core.budget.actualizar_precios`
+  recibe el detector como parámetro (`detectar_atipicos: DetectorAtipicos | None`): un invocable
+  cuyo resultado cumple el protocolo `MarcaAtipica` de `core/budget/presupuesto.py`, que
+  `ml.anomaly.precios_atipicos` cumple por estructura sin que `core/` importe `ml` (ADR 5). La
+  pantalla «Actualizar precios» y `POST /presupuestos/{codigo}/actualizacion` son la raíz de
+  composición: le pasan `ml.anomaly.precios_atipicos` con importación perezosa (§2.4). Los atípicos
+  de la lista nueva entran al informe de la versión revalorada como hallazgos `CODIGO_ATIPICO`
+  (ADVERTENCIA), que `guardar_presupuesto` persiste y `cargar_elaboracion` vuelve a declarar. En
+  cualquier otro informe (elaborar, componer, importar) no entran, y el contraste AACE
+  (`ml.prediction.contrastar_aace`, que devuelve un `Hallazgo`) sigue solo en la pantalla de
+  componer.
 - **UC‑11 → UC‑10 (7a), realizada.** `ui.elaboracion.guardar_composicion` decide: si la partida no
   existe, `Catalogo.cargar_composicion` (UC‑10); si existe, `Catalogo.reemplazar_composicion`
   (UC‑11), salvo que `ui.composicion.motivo_para_no_reemplazar` lo impida.
@@ -147,13 +161,13 @@ de los demás.
 
 | UC | Realizado por | Pantalla (`ui/app.py`, `PAGINAS`) y ruta HTTP |
 |---|---|---|
-| UC‑01 | `AdaptadorDominio.extraer` del dominio → `ui.elaboracion.elaborar_desde_catalogo` o `api.rutas.presupuestos.crear_presupuesto` → `Catalogo.composiciones` de las partidas existentes → `core.budget.elaborar(..., plan=...)` con el plan del proyectista o, sin él, `plan_secuencial` (`ui.elaboracion.plan_de` y `plan_desde_filas`; `api.rutas.presupuestos._plan`; paso 6, INV‑087) → `core.budget.exportar_excel`. Flujo 3b: `ui.elaboracion.rendimientos_por_declarar` y `declarar_rendimiento`, o el 409 de `api.rutas.presupuestos._rendimientos_por_declarar` (INV‑088). Persiste (`core.budget.guardar_presupuesto`) la API y los sembradores; la pantalla elabora, muestra y exporta, pero no guarda el presupuesto | «Elaborar un presupuesto» (`ui/paginas/elaborar.py`; civil solo tabular; tabla «Plan de trabajo» y bloque «Rendimientos por declarar») y «Componer una partida»; `POST /computos/{dominio}` (civil: `.ifc` o tabular) y `POST /presupuestos` (campo `plan`; 409 de 3b) |
-| UC‑02 | `core.catalog.crear_lista_desde_archivo` → `core.budget.actualizar_precios` → `Comparativo`; 7a: `core.budget.descartar_version` | «Actualizar precios» (`ui/paginas/actualizacion.py`) e «Historico de cambios de precio» (`core.catalog.cambios_precio`); `POST /listas-precios`, `POST /presupuestos/{codigo}/actualizacion`, `GET /cambios-precio` |
+| UC‑01 | Paso 1 (INV‑086, C6): `api.rutas.presupuestos.crear_proyecto_de_presupuestos` → `core.budget.crear_proyecto`. `AdaptadorDominio.extraer` del dominio → `ui.elaboracion.elaborar_desde_catalogo` o `api.rutas.presupuestos.crear_presupuesto` → `Catalogo.composiciones` de las partidas existentes → `core.budget.elaborar(..., plan=...)` con el plan del proyectista o, sin él, `plan_secuencial` (`ui.elaboracion.plan_de` y `plan_desde_filas`; `api.rutas.presupuestos._plan`; paso 6, INV‑087) → `core.budget.exportar_excel`. Flujo 3b: `ui.elaboracion.rendimientos_por_declarar` y `declarar_rendimiento`, o el 409 de `api.rutas.presupuestos._rendimientos_por_declarar` (INV‑088). Persiste (`core.budget.guardar_presupuesto`) la API y los sembradores; la pantalla elabora, muestra y exporta, pero no guarda el presupuesto | «Elaborar un presupuesto» (`ui/paginas/elaborar.py`; civil solo tabular; tabla «Plan de trabajo» y bloque «Rendimientos por declarar») y «Componer una partida»; `POST /proyectos` (paso 1; la interfaz no crea proyectos), `POST /computos/{dominio}` (civil: `.ifc` o tabular) y `POST /presupuestos` (campo `plan`; 409 de 3b) |
+| UC‑02 | `core.catalog.crear_lista_desde_archivo` → `core.budget.actualizar_precios` → `Comparativo`; 7a: `core.budget.descartar_version`. Flujo 2a (INV‑090, C6): la vista previa `core.catalog.insumos_desconocidos` (no escribe) y el argumento `dar_de_alta` de `crear_lista_desde_archivo`, que da de alta con `Catalogo.dar_de_alta_insumo`; los ignorados (2a) y los rechazados (2b) los separa quien llama, comparando `ResumenLista.desconocidos` con la vista previa. Paso 5 de UC‑07 (INV‑099): el detector de atípicos entra como `detectar_atipicos` | «Actualizar precios» (`ui/paginas/actualizacion.py`, con «Dar de alta») e «Historico de cambios de precio» (`core.catalog.cambios_precio`); `POST /listas-precios` (campo `dar_de_alta`), `POST /presupuestos/{codigo}/actualizacion`, `GET /cambios-precio` |
 | UC‑03 | `ml.normalization` (`NormalizadorPartidas`, `proponedor`, `propuestas_para`) sobre pares código–descripción que la capa de presentación lee de `core.catalog`; la persistencia de la partida nueva es UC‑10 | «Partidas similares» (`ui/paginas/similares.py`, vía `ui.composicion.sugerir_partidas_similares`); dentro de UC‑01 3a en «Elaborar un presupuesto» y en `POST /presupuestos` |
 | UC‑04 | `adapters.civil.recalculo` (`recalcular`, `emparejar`) y `core.budget.elaborar` por quien llama. El paso 5 (diferencial, RF‑20) no está implementado | sin pantalla ni ruta HTTP |
-| UC‑05 | `core.verification.auditar` sobre un `Presupuesto`. En las pantallas y la API corre siempre dentro de `core.budget.elaborar` y de `core.budget.cargar_elaboracion`. La excepción son los resúmenes impresos de tres sembradores, que arman `ResultadoElaboracion(presupuesto, auditar(presupuesto))` sobre `core.budget.generar_presupuesto` y llaman a `auditar` directamente, sin pendientes: `scripts/seed_telecom.py:580` (el presupuesto de un tercero), `scripts/seed_industrial.py:260` y `scripts/seed_sistemas.py:253`. El hallazgo `PENDIENTE` no lo emite `auditar`: lo agrega la elaboración (`_declarar_pendientes`), así que quien llame a `auditar` directamente no lo ve | el informe acompaña a toda elaboración en pantalla y en la hoja «Auditoria» del libro; `GET /presupuestos/{codigo}/informe`. El archivo de un tercero no tiene pantalla ni ruta de importación: su `Presupuesto` se arma en código (`scripts/seed_telecom.py`, `tests/fixtures/presupuesto_auditado.py`) |
-| UC‑06 | `core.catalog.rendimientos` (`registrar_ejecucion`, `registrar_rendimiento`, `dispersion_rendimientos`, `proponer_rendimiento`, `advertencia_rendimiento`) y, con el extra `ml`, `ml.anomaly.evaluar_rendimiento` | propuesta y advertencia en «Componer una partida»; la propuesta, también en el flujo 3b de «Elaborar un presupuesto» y en el 409 de `POST /presupuestos`; el registro de un rendimiento medido, solo por HTTP: `POST /ejecuciones`, `GET /ejecuciones`, `GET` y `POST /partidas/{codigo}/rendimientos` |
-| UC‑07 | `ml.anomaly.precios_atipicos` y `ml.prediction` (`tecnica_para`, `predecir_por_reglas`, `metricas`, `contrastar_aace`) | ayudas 2 y 4 de «Componer una partida» (`ui.composicion.advertencia_precio_atipico`, `ui.composicion.contrastar_precio_con_reglas`; para una partida nueva, sin PU anterior del que partir, la ayuda 4 avisa que el contraste no es posible, flujo 3a, INV‑094); `scripts/generar_resultados_ml.py` escribe `docs/resultados_ml.md`; sin ruta HTTP |
+| UC‑05 | `core.verification.auditar` sobre un `Presupuesto`. En las pantallas y la API corre siempre dentro de `core.budget.elaborar` y de `core.budget.cargar_elaboracion`. La excepción son los resúmenes impresos de tres sembradores, que arman `ResultadoElaboracion(presupuesto, auditar(presupuesto))` sobre `core.budget.generar_presupuesto` y llaman a `auditar` directamente, sin pendientes: `scripts/seed_telecom.py:580` (el presupuesto de un tercero), `scripts/seed_industrial.py:260` y `scripts/seed_sistemas.py:253`. El hallazgo `PENDIENTE` no lo emite `auditar`: lo agrega la elaboración (`_declarar_pendientes`), así que quien llame a `auditar` directamente no lo ve | el informe acompaña a toda elaboración en pantalla y en la hoja «Auditoria» del libro; `GET /presupuestos/{codigo}/informe`. El archivo tabular de un tercero (RF‑24, INV‑076, C6) entra por `POST /presupuestos/importar` → `core.budget.importar_presupuesto` (`core/budget/importacion.py`: lee, audita siempre y guarda con su informe; §3.3), sin pantalla (ruling C6‑3); los presupuestos de terceros de los sembradores y de las pruebas se siguen armando en código (`scripts/seed_telecom.py`, `tests/fixtures/presupuesto_auditado.py`) |
+| UC‑06 | `core.catalog.rendimientos` (`registrar_ejecucion`, `registrar_rendimiento`, `dispersion_rendimientos`, `proponer_rendimiento`, `advertencia_rendimiento` y, desde C6, `justificar_rendimiento`, flujo 4a, INV‑093) y, con el extra `ml`, `ml.anomaly.evaluar_rendimiento` | propuesta, advertencia y, desde C6, la justificación de la advertencia por rango en «Componer una partida»; la justificación, también en el campo `justificacion` de `POST /partidas/{codigo}/rendimientos`; la propuesta, también en el flujo 3b de «Elaborar un presupuesto» y en el 409 de `POST /presupuestos`; el registro de un rendimiento medido, solo por HTTP: `POST /ejecuciones`, `GET /ejecuciones`, `GET` y `POST /partidas/{codigo}/rendimientos` |
+| UC‑07 | `ml.anomaly.precios_atipicos` y `ml.prediction` (`tecnica_para`, `predecir_por_reglas`, `metricas`, `contrastar_aace`) | ayudas 2 y 4 de «Componer una partida» (`ui.composicion.advertencia_precio_atipico`, `ui.composicion.contrastar_precio_con_reglas`; para una partida nueva, sin PU anterior del que partir, la ayuda 4 avisa que el contraste no es posible, flujo 3a, INV‑094); `scripts/generar_resultados_ml.py` escribe `docs/resultados_ml.md`. Paso 5 (INV‑099, C6): `ml.anomaly.precios_atipicos` como `DetectorAtipicos` de `core.budget.actualizar_precios`, en «Actualizar precios» y en `POST /presupuestos/{codigo}/actualizacion`; ninguna otra ruta HTTP |
 | UC‑08 | `core.budget.escenarios` (`generar_escenario`, `comparar_escenarios`, `comparar_por_partida`). Nada se persiste; el informe de un escenario no declara los pendientes del base (ruling C4‑3 de la bitácora del cierre, a limitaciones) | «Escenarios de sensibilidad» (`ui/paginas/escenarios.py`, que lee el base con `cargar_elaboracion` y avisa de sus pendientes); `POST /presupuestos/{codigo}/escenarios`, cuya respuesta los declara en `pendientes_base` (INV‑083, pista C de C4) |
 | UC‑10, UC‑11 | `ui.composicion` (`composicion_desde_tablas`; `desglose` → `core.costing.calcular_apu`) y `ui.elaboracion.guardar_composicion` → `Catalogo.cargar_composicion` o `Catalogo.reemplazar_composicion` | «Componer una partida» (`ui/paginas/componer.py`); sin ruta HTTP |
 | UC‑12 | `ui.app` (`PAGINAS`, `paginas_visibles`, `marco`), `ui.caso` (`ruta_caso`, `estado_caso`) y `ui.recorridos` (`RECORRIDOS`, `paso_siguiente`); el caso vacío se siembra con `scripts.seed_demo.main` | «Inicio» (`ui/paginas/inicio.py`) y el marco común de las diez pantallas; sin ruta HTTP |
@@ -292,8 +306,9 @@ classDiagram
 El núcleo es en su mayor parte **funciones sobre contratos inmutables**, no jerarquías de objetos: los
 módulos se dibujan con el estereotipo `<<module>>`; las clases propias son `Catalogo`, las siete reglas,
 las entidades de `core.models` y unos pocos resultados congelados (`ResultadoElaboracion`,
-`Comparativo`, `Escenario`, `InformeAuditoria`, `ResumenCarga`, `ResumenLista` y los de
-`core.catalog.rendimientos`). En los diagramas los genéricos usan la notación de Mermaid (`list~X~`)
+`Comparativo`, `Escenario`, `InformeAuditoria`, `ResumenCarga`, `ResumenLista`,
+`PresupuestoImportado` y los de `core.catalog.rendimientos`), más un protocolo, `MarcaAtipica`
+(C6). En los diagramas los genéricos usan la notación de Mermaid (`list~X~`)
 y se omiten los valores por defecto; las **firmas literales**, copiadas del código, están en los
 listados que siguen a cada diagrama.
 
@@ -311,7 +326,21 @@ classDiagram
         +elaborar(items, composiciones, parametros, codigo, fecha, moneda, plan) ResultadoElaboracion
         +exigir_composiciones(items, composiciones) None
         +CODIGO_PENDIENTE: str
+        +CODIGO_ATIPICO: str
         +GeneradorPlan: TypeAlias
+        +DetectorAtipicos: TypeAlias
+    }
+    class MarcaAtipica {
+        <<Protocol>>
+        +id: str
+        +valor: Decimal
+        +puntaje: float
+    }
+    class importacion {
+        <<module>>
+        +leer_presupuesto_tabular(ruta Path) PresupuestoImportado
+        +importar_presupuesto(session, ruta, proyecto) ResultadoElaboracion
+        +HOJA_DATOS ... HOJA_CURVA: str
     }
     class ResultadoElaboracion {
         <<frozen dataclass>>
@@ -332,11 +361,12 @@ classDiagram
         +guardar_presupuesto(session, presupuesto, informe, proyecto, lista, parametros, pendientes) models_Presupuesto
         +cargar_presupuesto(session, proyecto_nombre, codigo, catalogo) Presupuesto
         +cargar_elaboracion(session, proyecto_nombre, codigo, catalogo) ResultadoElaboracion
+        +crear_proyecto(session, nombre, descripcion, dominio) models_Proyecto
         +TOLERANCIA_RECONSTRUCCION: Decimal
     }
     class actualizacion {
         <<module>>
-        +actualizar_precios(session, proyecto_nombre, codigo_presupuesto, lista_nueva, codigo_nuevo, plan) tuple
+        +actualizar_precios(session, proyecto_nombre, codigo_presupuesto, lista_nueva, codigo_nuevo, plan, detectar_atipicos) tuple
         +descartar_version(session, proyecto_nombre, codigo_presupuesto, fecha) models_DescarteVersion
         +Comparativo: frozen dataclass
     }
@@ -362,11 +392,15 @@ classDiagram
         +cargar_composicion(composicion, lista, dominio, fecha_rendimiento, condiciones) ResumenCarga
         +reemplazar_composicion(composicion, lista, dominio, fecha_rendimiento, condiciones) ResumenCarga
         +registrar_rendimiento(rendimiento Rendimiento) models_Rendimiento
+        +dar_de_alta_insumo(tipo, descripcion, unidad) models_Insumo
     }
     class precios {
         <<module>>
         +leer_lista_precios(ruta Path) list~PrecioLeido~
-        +crear_lista_desde_archivo(session, ruta, nombre, moneda, fecha_vigencia, origen) ResumenLista
+        +leer_tabla(ruta Path, hoja) DataFrame
+        +tipo_insumo(texto str) TipoInsumo
+        +insumos_desconocidos(session, ruta) tuple~PrecioLeido~
+        +crear_lista_desde_archivo(session, ruta, nombre, moneda, fecha_vigencia, origen, dar_de_alta) ResumenLista
         +insumos_afectados(session, lista_anterior, lista_nueva) list~CambioDetectado~
         +registrar_cambios(session, lista_anterior, lista_nueva) list~models_CambioPrecio~
         +cambios_precio(session, insumo, desde, hasta) list~models_CambioPrecio~
@@ -379,6 +413,7 @@ classDiagram
         +dispersion_rendimientos(session, codigo_partida) DispersionRendimiento
         +proponer_rendimiento(session, codigo_partida) PropuestaRendimiento
         +advertencia_rendimiento(dispersion, valor) str
+        +justificar_rendimiento(session, codigo_partida, texto, advertencia, fecha) models_JustificacionRendimiento
     }
     class mapeo {
         <<module>>
@@ -401,7 +436,7 @@ classDiagram
     class entidades {
         <<module>>
         +Base: DeclarativeBase
-        +dieciséis entidades SQLAlchemy
+        +diecisiete entidades SQLAlchemy
         +TipoInsumo: StrEnum
     }
     class DecimalExacto {
@@ -417,13 +452,21 @@ classDiagram
     presupuesto ..> InformeAuditoria : auditar siempre y declara pendientes
     curva ..> directivas : etiqueta_con_codigos
     persistencia ..> costing : reconstruye y verifica
-    persistencia ..> presupuesto : _declarar_pendientes
+    persistencia ..> presupuesto : _declarar_pendientes + _declarar_atipicos
+    presupuesto ..> MarcaAtipica : DetectorAtipicos devuelve marcas
     persistencia ..> Catalogo : composicion a fecha
     persistencia ..> directivas : CLAVE_UNIDAD_ORIGINAL
     persistencia ..> entidades : unica frontera del presupuesto
     actualizacion ..> persistencia : cargar, guardar y pendientes guardados
     actualizacion ..> presupuesto : exigir_composiciones + elaborar
-    actualizacion ..> precios : registrar_cambios + variacion_relativa
+    actualizacion ..> precios : registrar_cambios + cambios_precio + variacion_relativa
+    actualizacion ..> MarcaAtipica : detectar_atipicos(historico)
+    importacion ..> presupuesto : generar_presupuesto
+    importacion ..> curva : con_curva
+    importacion ..> persistencia : guardar_presupuesto
+    importacion ..> Catalogo : lista_vigente + cargar_composicion
+    importacion ..> precios : leer_tabla + tipo_insumo
+    importacion ..> entidades : lista Importada y sus precios
     escenarios ..> actualizacion : Comparativo y su tabla
     escenarios ..> presupuesto : exigir_composiciones + elaborar
     excel ..> InformeAuditoria : hoja Auditoria
@@ -440,8 +483,10 @@ classDiagram
 `Catalogo` recibe una `Session` ya abierta y **no** importa `core.catalog.sesion`: quien la abre es
 `abrir_sesion(motor)`, y quien decide confirmar o deshacer la transacción es siempre el llamador.
 Ninguna función del núcleo confirma: `guardar_presupuesto`, `actualizar_precios`,
-`descartar_version`, `crear_lista_desde_archivo`, `registrar_cambios` y las cargas del catálogo hacen
-`flush` y dejan el `commit` a la pantalla, a la ruta HTTP o al sembrador.
+`descartar_version`, `crear_lista_desde_archivo`, `registrar_cambios`, las cargas del catálogo y,
+desde C6, `crear_proyecto`, `importar_presupuesto`, `justificar_rendimiento` y
+`Catalogo.dar_de_alta_insumo` hacen `flush` y dejan el `commit` a la pantalla, a la ruta HTTP o al
+sembrador.
 
 Firmas literales (`core/costing/motor.py`, `core/budget/*.py`, `core/catalog/*.py`,
 `core/models/tipos.py`):
@@ -453,6 +498,17 @@ def calcular_apu(composicion: ComposicionAPU, parametros: ParametrosCosto) -> Re
 # core.budget.presupuesto
 MONEDA_POR_DEFECTO = "USD"
 CODIGO_PENDIENTE = "PENDIENTE"
+CODIGO_ATIPICO = "ATIPICO"
+
+class MarcaAtipica(Protocol):
+    @property
+    def id(self) -> str: ...
+    @property
+    def valor(self) -> Decimal: ...
+    @property
+    def puntaje(self) -> float: ...
+
+DetectorAtipicos = Callable[[Mapping[str, Decimal]], Sequence[MarcaAtipica]]
 GeneradorPlan = Callable[[Presupuesto], Sequence[PeriodoPlan]]
 
 @dataclass(frozen=True, slots=True)
@@ -500,6 +556,13 @@ def plan_secuencial(presupuesto: Presupuesto, formato: str = FORMATO_PERIODO) ->
 # core.budget.persistencia
 TOLERANCIA_RECONSTRUCCION = Decimal("0.000001")
 
+def crear_proyecto(
+    session: Session,
+    nombre: str,
+    descripcion: str = "",
+    dominio: Dominio | str = "",
+) -> models.Proyecto
+
 def guardar_presupuesto(
     session: Session,
     presupuesto: Presupuesto,
@@ -537,6 +600,7 @@ def actualizar_precios(
     lista_nueva: models.ListaPrecios,
     codigo_nuevo: str,
     plan: Sequence[PeriodoPlan] | GeneradorPlan | None = None,
+    detectar_atipicos: DetectorAtipicos | None = None,
 ) -> tuple[ResultadoElaboracion, Comparativo]
 
 def descartar_version(
@@ -565,6 +629,25 @@ def comparar_por_partida(base: Presupuesto, escenario: Escenario) -> Comparativo
 
 # core.budget.excel
 def exportar_excel(presupuesto: Presupuesto, informe: InformeAuditoria, ruta: Path) -> Path
+
+# core.budget.importacion (C6, INV-076); con COLUMNAS_* y CLAVES_DATOS, fuente única del formato
+HOJA_DATOS = "Datos"
+HOJA_PRESUPUESTO = "Presupuesto"
+HOJA_APU = "APU"
+HOJA_INSUMOS = "Insumos"
+HOJA_CURVA = "Curva"
+
+@dataclass(frozen=True, slots=True)
+class PresupuestoImportado:
+    presupuesto: Presupuesto
+    parametros: ParametrosCosto
+    composiciones: Mapping[str, ComposicionAPU]
+    dominio: Dominio
+
+def leer_presupuesto_tabular(ruta: Path) -> PresupuestoImportado
+def importar_presupuesto(
+    session: Session, ruta: Path, proyecto: models.Proyecto
+) -> ResultadoElaboracion
 
 # core.catalog.repositorio
 @dataclass(slots=True)
@@ -606,6 +689,9 @@ class Catalogo:
         condiciones: str,
     ) -> ResumenCarga
     def registrar_rendimiento(self, rendimiento: Rendimiento) -> models.Rendimiento
+    def dar_de_alta_insumo(
+        self, tipo: models.TipoInsumo, descripcion: str, unidad: str | None
+    ) -> models.Insumo
 
 class CatalogoIncompleto(LookupError): ...   # core.catalog.errores
 
@@ -614,9 +700,13 @@ class CatalogoIncompleto(LookupError): ...   # core.catalog.errores
 class ResumenLista:
     lista: models.ListaPrecios
     desconocidos: tuple[PrecioLeido, ...] = ()
+    dados_de_alta: tuple[models.Insumo, ...] = ()
 
 def variacion_relativa(anterior: Decimal, nuevo: Decimal) -> Decimal
 def leer_lista_precios(ruta: Path) -> list[PrecioLeido]
+def leer_tabla(ruta: Path, hoja: str | None = None) -> pd.DataFrame
+def tipo_insumo(texto: str) -> models.TipoInsumo
+def insumos_desconocidos(session: Session, ruta: Path) -> tuple[PrecioLeido, ...]
 def crear_lista_desde_archivo(
     session: Session,
     ruta: Path,
@@ -624,6 +714,7 @@ def crear_lista_desde_archivo(
     moneda: str,
     fecha_vigencia: date,
     origen: str = "",
+    dar_de_alta: Collection[PrecioLeido] = (),
 ) -> ResumenLista
 def insumos_afectados(
     session: Session, lista_anterior: models.ListaPrecios, lista_nueva: models.ListaPrecios
@@ -661,12 +752,15 @@ def registrar_rendimiento(
 def dispersion_rendimientos(session: Session, codigo_partida: str) -> DispersionRendimiento | None
 def proponer_rendimiento(session: Session, codigo_partida: str) -> PropuestaRendimiento | None
 def advertencia_rendimiento(dispersion: DispersionRendimiento | None, valor: Decimal) -> str | None
+def justificar_rendimiento(
+    session: Session, codigo_partida: str, texto: str, advertencia: str, fecha: date
+) -> models.JustificacionRendimiento
 
 # core.catalog.sesion
 URL_POR_DEFECTO = "sqlite:///data/apu.db"
 
 def crear_motor(url: str = URL_POR_DEFECTO) -> Engine
-def crear_esquema(motor: Engine) -> None      # crea las dieciséis tablas y sus indices
+def crear_esquema(motor: Engine) -> None      # crea las diecisiete tablas que falten y sus indices
 def abrir_sesion(motor: Engine) -> Session
 
 # core.models.tipos
@@ -676,7 +770,7 @@ class DecimalExacto(TypeDecorator[Decimal]):
     def process_result_value(self, value: Any, dialect: Dialect) -> Decimal | None
 ```
 
-Las dieciséis entidades persistentes (`core/models/entidades.py`) no se repiten aquí: su diagrama
+Las diecisiete entidades persistentes (`core/models/entidades.py`) no se repiten aquí: su diagrama
 entidad‑relación y la justificación de la normalización están en
 [docs/modelo_datos.md §3](modelo_datos.md#3-diagrama-entidadrelación).
 
@@ -976,7 +1070,13 @@ Las ayudas de aprendizaje automático (las cuatro de componer: partidas similare
 rendimiento atípico y contraste AACE; el buscador de la referencia de mercado de RF‑35 no usa `ml`) se invocan **desde `ui/`, con importación perezosa, nunca desde `core/`**:
 `ui/composicion.py` las carga con `_importar_normalizacion`, `_importar_anomalia` e
 `_importar_prediccion`, y la API hace lo mismo con `ml.anomaly` en `api/rutas/rendimientos.py`
-(`docs/bitacora/2026-08-31-sprint-i6.md`). `core/` no importa `ml` (ADR 5, CLAUDE.md §2); si
+(`docs/bitacora/2026-08-31-sprint-i6.md`). Desde C6 hay dos raíces de composición más para el
+detector de atípicos de la revaloración (UC‑07 5): `ui/paginas/actualizacion.py::_detector_de_atipicos`
+y `api/rutas/presupuestos.py::_detector_de_atipicos`, copia literal una de la otra (deuda, §6.1).
+Las dos preguntan primero por `scikit-learn` con `importlib.util.find_spec("sklearn")`, porque
+`ml.anomaly` se importa solo con `numpy` y el bosque importa `sklearn` al evaluar; sin el extra el
+detector es `None` y el informe no lleva `ATIPICO`. `api/rutas/rendimientos.py::_veredicto_bosque`
+usa la misma guarda. `core/` no importa `ml` (ADR 5, CLAUDE.md §2); si
 `ui/composicion.py` llegara a necesitar que el núcleo conociera `ml`, sería un hallazgo para
 documentar en `docs/bitacora/`, no un import que se agrega en silencio.
 
@@ -1071,7 +1171,7 @@ Cinco detalles del orden real que el diagrama fija y que conviene no perder:
 3. **Primero se elabora y después se propone** (UC‑01 3a). La pantalla propone antes de exportar
    (`ui.elaboracion.propuestas_de_pendientes`); la API, **después de confirmar**: la ruta hace
    `elaborar`, `guardar_presupuesto` y `sesion.commit()`, y solo al construir la respuesta llama a
-   `_pendientes`, que invoca `propuestas_para` (`api/rutas/presupuestos.py:137-162` y `:368-394`), de
+   `_pendientes`, que invoca `propuestas_para` (`api/rutas/presupuestos.py:160-184` y `:476-503`), de
    modo que el presupuesto queda guardado aunque el modelo de propuestas falle. Si el usuario acepta
    una propuesta, `ui.elaboracion.aceptar_propuesta` reasigna el ítem y la pantalla vuelve a llamar a
    `elaborar_desde_catalogo`: una elaboración completa nueva, con su informe.
@@ -1088,10 +1188,11 @@ Cinco detalles del orden real que el diagrama fija y que conviene no perder:
 
 ### 3.2 UC‑02 — Actualizar masivamente los precios
 
-Mensajes tomados de `ui/paginas/actualizacion.py` (`_actualizar`, `_descartar`),
+Mensajes tomados de `ui/paginas/actualizacion.py` (`_ofrecer_alta`, `_actualizar`, `_descartar`),
 `core/catalog/precios.py` y `core/budget/actualizacion.py`. La ruta
 `POST /presupuestos/{codigo}/actualizacion` recorre la misma secuencia desde `actualizar_precios`,
-con una lista ya cargada por `POST /listas-precios`.
+con una lista ya cargada por `POST /listas-precios` (que en C6 gana `dar_de_alta`; sin vista previa
+por API, §1).
 
 ```mermaid
 sequenceDiagram
@@ -1106,12 +1207,15 @@ sequenceDiagram
     participant DB as SQLite
 
     Admin->>UI: archivo de precios, nombre, moneda, vigencia, proyecto, codigo base y codigo nuevo
-    UI->>PRE: crear_lista_desde_archivo(session, ruta, nombre, moneda, fecha_vigencia, origen)
+    UI->>PRE: insumos_desconocidos(session, ruta): vista previa, no escribe (flujo 2a)
+    PRE-->>UI: desconocidos que se pueden dar de alta
+    Admin->>UI: elige en «Dar de alta» (ninguno por defecto)
+    UI->>PRE: crear_lista_desde_archivo(session, ruta, nombre, moneda, fecha_vigencia, origen, dar_de_alta)
     PRE->>PRE: leer_lista_precios(ruta), Decimal desde el texto, nunca desde float
     PRE->>CAT: lista_vigente(fecha_vigencia)
     PRE->>DB: lista nueva con los precios de la vigente, sobrescritos por los del archivo (flush)
-    PRE-->>UI: ResumenLista(lista, desconocidos)
-    UI->>ACT: actualizar_precios(session, proyecto_nombre, codigo_presupuesto, lista_nueva, codigo_nuevo)
+    PRE-->>UI: ResumenLista(lista, desconocidos, dados_de_alta)
+    UI->>ACT: actualizar_precios(session, proyecto_nombre, codigo_presupuesto, lista_nueva, codigo_nuevo, detectar_atipicos)
     ACT->>PER: cargar_presupuesto(session, proyecto_nombre, codigo, catalogo)
     PER-->>ACT: Presupuesto anterior, reconstruido y verificado a su fecha
     ACT->>CAT: composicion(codigo, fecha=vigencia nueva, lista=lista_nueva) por partida
@@ -1119,14 +1223,18 @@ sequenceDiagram
     ACT->>BUD: elaborar(items y pendientes guardados, composiciones, parametros, codigo_nuevo, fecha, moneda, plan)
     BUD->>VER: auditar(presupuesto), UC-05 incluido
     BUD-->>ACT: ResultadoElaboracion(presupuesto nuevo, informe, pendientes)
-    ACT->>PER: guardar_presupuesto(session, presupuesto, informe, proyecto, lista_nueva, parametros, pendientes)
     ACT->>PRE: registrar_cambios(session, lista_anterior, lista_nueva)
     PRE->>DB: un CambioPrecio por insumo de insumos_afectados (flush)
+    opt hay detector (UC-07 5, INV-099)
+        ACT->>ACT: detectar_atipicos({id de cambio: variacion} de todo el historico)
+        ACT->>ACT: un hallazgo ATIPICO (ADVERTENCIA) por cambio de esta lista que el detector marca y que usa alguna partida; _declarar_atipicos
+    end
+    ACT->>PER: guardar_presupuesto(session, presupuesto, informe, proyecto, lista_nueva, parametros, pendientes)
     ACT->>DB: una IncidenciaCambio por par cambio-partida (flush)
     ACT-->>UI: (ResultadoElaboracion, Comparativo)
     UI->>BUD: exportar_excel(presupuesto, informe, ruta)
     alt Comparativo.insumos_afectados == 0 (flujo 3a)
-        UI-->>Admin: ningun precio cambio; sin commit, se descarta todo, lista incluida
+        UI-->>Admin: ningun precio cambio; sin commit, se descarta todo, lista y altas incluidas
     else algun insumo cambio de precio
         UI->>DB: commit
         UI-->>Admin: comparativo por partida y total, informe, libro XLSX y boton Descartar version
@@ -1147,6 +1255,12 @@ una versión nueva del presupuesto; el presupuesto anterior sigue reconstruyénd
 
 - **La pantalla decide con `insumos_afectados`, no con `variacion`.** Un cambio de precio en un insumo
   que no participa del presupuesto deja la variación en cero, pero es real y su historial se guarda.
+- **`registrar_cambios` va antes de `guardar_presupuesto`** desde C6 (INV‑099): el detector necesita
+  el historial con los cambios de esta lista, y `registrar_cambios` es idempotente y solo hace `flush`.
+  El detector recibe el histórico de **todos** los insumos; el `ATIPICO` cita códigos de partida, no
+  `origen_id` de ítems (convención declarada en [modelo_datos.md §2.3](modelo_datos.md#23-proyecto-presupuesto-y-auditoría)).
+- **Las altas de 2a viajan en la misma transacción.** Si ningún precio cambió (flujo 3a) la pantalla
+  no confirma y las altas se deshacen con la lista; por la API, `POST /listas-precios` ya confirmó.
 - **Los pendientes se arrastran.** Los ítems que el presupuesto anterior tenía pendientes (UC‑01 3a)
   vuelven a entrar a `elaborar`, siguen pendientes y la versión nueva los guarda (INV‑080).
 - **Descartar es marcar, no borrar (7a).** `descartar_version` agrega una fila de `DescarteVersion`
@@ -1155,6 +1269,42 @@ una versión nueva del presupuesto; el presupuesto anterior sigue reconstruyénd
   versión guardada del proyecto, si tiene al menos otra anterior; como el esquema no guarda de qué
   presupuesto salió una versión, la pantalla solo ofrece el botón para la versión que acaba de
   confirmar ([expediente C3.2](bitacora/2026-09-24-C3-expedientes.md)).
+
+### 3.3 UC‑05 con el archivo de un tercero — importar y auditar (RF‑24, C6)
+
+Mensajes tomados de `api/rutas/presupuestos.py::importar_presupuesto_de_tercero` y
+`core/budget/importacion.py`. No hay pantalla (ruling C6‑3).
+
+```mermaid
+sequenceDiagram
+    actor Aud as Auditor
+    participant API as api.rutas.presupuestos
+    participant IMP as core.budget.importacion
+    participant BUD as core.budget (presupuesto, curva, persistencia)
+    participant CAT as core.catalog.Catalogo
+    participant VER as core.verification
+    participant DB as SQLite
+
+    Aud->>API: POST /presupuestos/importar (archivo XLSX, proyecto)
+    API->>DB: proyecto por nombre (404 si no existe)
+    API->>API: comprobar_libro_legible(ruta): 422 si openpyxl no lo abre
+    API->>IMP: importar_presupuesto(session, ruta, proyecto)
+    IMP->>IMP: leer_presupuesto_tabular: hojas Datos, Presupuesto, APU, Insumos y Curva (opcional); ValueError con archivo, hoja y fila
+    IMP->>BUD: generar_presupuesto(items, composiciones, parametros del archivo) y con_curva(curva del autor)
+    IMP->>VER: auditar(presupuesto): las siete reglas, siempre
+    IMP->>DB: rechaza sin escribir: codigo de partida ya en el catalogo, presupuesto repetido, moneda distinta de la lista vigente
+    IMP->>DB: lista «Importada: archivo» (copia la vigente a la fecha) (flush)
+    IMP->>CAT: cargar_composicion(cada APU, «importado de archivo (presupuesto de un tercero, UC-05)»)
+    IMP->>BUD: guardar_presupuesto(presupuesto, informe, proyecto, lista importada, parametros)
+    IMP-->>API: ResultadoElaboracion
+    API->>DB: commit (rollback si hubo ValueError)
+    API-->>Aud: 201 con codigo, total y hallazgos; informe y libro por GET .../informe y .../excel
+```
+
+Tres consecuencias que el diagrama no dibuja: el presupuesto se **valora con el motor**, no con los
+precios unitarios del autor; la lista «Importada» pasa a ser la **vigente desde su fecha** (ERS,
+postcondición de UC‑05, y §6.1); y los APU del tercero entran al catálogo, así que cuentan en
+«Elaborar», en UC‑03 y en el recuento por dominio de la ayuda 4 de «Componer».
 
 ## 4. Vista de desarrollo (definitivo)
 
@@ -1228,13 +1378,13 @@ Interfaces provistas y requeridas:
 |---|---|---|
 | `core.contracts` | todos los tipos de intercambio ([CLAUDE.md §5](../CLAUDE.md#5-contratos-de-interfaz-corecontracts)) | biblioteca estándar |
 | `core.costing` | `calcular_apu` | `core.contracts` |
-| `core.budget` | `generar_presupuesto`, `elaborar`, `ResultadoElaboracion`, `CODIGO_PENDIENTE`, `generar_curva`, `plan_secuencial`, `PeriodoPlan`, `GeneradorPlan`, `PlanInvalido`, `con_curva`, `guardar_presupuesto`, `cargar_presupuesto`, `cargar_elaboracion`, `exportar_excel`, `actualizar_precios`, `descartar_version`, `Comparativo`, `generar_escenario`, `comparar_escenarios`, `comparar_por_partida`, `Escenario` | `core.contracts`, `core.costing`, `core.verification`, `core.catalog`, `core.models`; `sqlalchemy`, `pandas`, `openpyxl` |
+| `core.budget` | `generar_presupuesto`, `elaborar`, `ResultadoElaboracion`, `CODIGO_PENDIENTE`, `CODIGO_ATIPICO`, `MarcaAtipica` y `DetectorAtipicos` (el puerto que la revaloración **requiere** y `ml.anomaly` cumple por estructura, sin que ninguno importe al otro), `crear_proyecto`, `importar_presupuesto`, `leer_presupuesto_tabular`, `PresupuestoImportado`, `generar_curva`, `plan_secuencial`, `PeriodoPlan`, `GeneradorPlan`, `PlanInvalido`, `con_curva`, `guardar_presupuesto`, `cargar_presupuesto`, `cargar_elaboracion`, `exportar_excel`, `actualizar_precios`, `descartar_version`, `Comparativo`, `generar_escenario`, `comparar_escenarios`, `comparar_por_partida`, `Escenario` | `core.contracts`, `core.costing`, `core.verification`, `core.catalog`, `core.models`; `sqlalchemy`, `pandas`, `openpyxl` |
 | `core.verification` | R1 … R7, `REGLAS`, `auditar`, `InformeAuditoria`, `directivas`, `evaluar` | `core.contracts` |
-| `core.catalog` | `Catalogo`, `crear_motor`, `crear_esquema`, `abrir_sesion`, `CatalogoIncompleto`; listas de precios (`crear_lista_desde_archivo`, `leer_lista_precios`, `insumos_afectados`, `registrar_cambios`, `cambios_precio`); rendimientos (`registrar_ejecucion`, `registrar_rendimiento`, `dispersion_rendimientos`, `proponer_rendimiento`, `PropuestaRendimiento`, `advertencia_rendimiento`) | `core.contracts`, `core.models`, `core.verification` (solo `texto.normalizar_texto`); `sqlalchemy`, `pandas`, `openpyxl` |
-| `core.models` | las dieciséis entidades, `Base`, `DecimalExacto` | `core.contracts` (solo `TipoRendimiento`); `sqlalchemy` |
+| `core.catalog` | `Catalogo`, `crear_motor`, `crear_esquema`, `abrir_sesion`, `CatalogoIncompleto`; listas de precios (`crear_lista_desde_archivo` con `dar_de_alta`, `insumos_desconocidos`, `leer_lista_precios`, `leer_tabla`, `insumos_afectados`, `registrar_cambios`, `cambios_precio`); rendimientos (`registrar_ejecucion`, `registrar_rendimiento`, `dispersion_rendimientos`, `proponer_rendimiento`, `PropuestaRendimiento`, `advertencia_rendimiento`, `justificar_rendimiento`) | `core.contracts`, `core.models`, `core.verification` (solo `texto.normalizar_texto`); `sqlalchemy`, `pandas`, `openpyxl` |
+| `core.models` | las diecisiete entidades, `Base`, `DecimalExacto` | `core.contracts` (solo `TipoRendimiento`); `sqlalchemy` |
 | `adapters.<dominio>` | una subclase de `AdaptadorDominio` | de `core`, solo `core.contracts`; además su propio paquete, la biblioteca estándar y los terceros que le declara `TERCEROS_POR_ADAPTADOR` en `tests/unit/test_arquitectura.py` (fuente única de esa lista) |
 | `ml.normalization` | `NormalizadorPartidas`, `proponedor`, `propuestas_para`, `Propuesta`, `FALLAS_DE_LA_PROPUESTA` | nada de `core`; `sentence-transformers` (extra `ml`) solo al cargar el modelo |
-| `ml.anomaly` | `precios_atipicos`, `evaluar_rendimiento` | nada de `core`; `numpy` y, al ajustar el bosque, `scikit-learn` (extra `ml`) |
+| `ml.anomaly` | `precios_atipicos` (cumple `DetectorAtipicos` de `core.budget`), `evaluar_rendimiento` | nada de `core`; `numpy` y, al ajustar el bosque, `scikit-learn` (extra `ml`) |
 | `ml.prediction` | `tecnica_para`, `predecir_por_reglas`, `metricas`, `contrastar_aace` | `core.contracts` (`Hallazgo`, `Severidad`) |
 | `ui` | las diez pantallas de `ui/app.py` (§1) | `core`, `adapters`, `ml` (perezoso) y `scripts`; de forma transitiva, `tests.fixtures` (vía `scripts.seed`, ver abajo) |
 | `api` | las rutas HTTP de `api/rutas/` (§1; esquema en `docs/api.json`) | `core`, `adapters` (perezoso), `ml` |
@@ -1281,9 +1431,10 @@ módulos importados (`scripts.seed`, `scripts.simular_lista`, `scripts.seed_demo
 importa de vuelta al paquete que lo importa. `scripts/exportar_openapi.py` importa `api.main` para
 escribir `docs/api.json`.
 
-**`scripts` depende de `tests.fixtures`, y por eso la interfaz también.** Ocho scripts importan
+**`scripts` depende de `tests.fixtures`, y por eso la interfaz también.** Nueve scripts importan
 `tests.fixtures`: `seed.py`, `seed_telecom.py`, `seed_industrial.py`, `seed_sistemas.py`,
-`generar_resultados_ml.py`, `medir_rnf03.py`, `meta_prototipo.py` y `extraer_arenaza.py`.
+`generar_resultados_ml.py`, `medir_rnf03.py`, `meta_prototipo.py`, `extraer_arenaza.py` y
+`probar_precios_maprex.py` (C6).
 `scripts/seed.py:42` importa `tests.fixtures.apu_linea_base` al cargarse el módulo. Es una
 dependencia **deliberada**: el fixture es la única copia de la línea base
 ([CLAUDE.md §2](../CLAUDE.md#2-principios), principio 1; `docs/manual_tecnico.md:252`), y copiarla en
@@ -1294,7 +1445,7 @@ importa las diez páginas al cargarse (`ui/app.py:61-72`), y tres de ellas llega
 `scripts.simular_lista` (`scripts/simular_lista.py:30`). Por eso **la aplicación Streamlit necesita
 `tests/fixtures/` para arrancar** (§5). La API no: ningún módulo de `api/` importa `scripts`, `tests` ni `ui`, e importar `api.main` no los
 carga; `scripts/` importa de `tests` solo `tests.fixtures`. La garantía no alcanza a lo que la API carga
-de forma perezosa (p. ej. `ml.anomaly` en `api/rutas/rendimientos.py:157`): ninguna guardia veda a `ml/`
+de forma perezosa (p. ej. `ml.anomaly` en `api/rutas/rendimientos.py:191` y `api/rutas/presupuestos.py:442`): ninguna guardia veda a `ml/`
 importar `scripts` (sí a los adaptadores, por su lista blanca). Desde GC4 lo fijan
 `test_la_api_no_importa_scripts_tests_ni_ui`, `test_importar_la_api_no_carga_scripts_tests_ni_ui` y
 `test_scripts_solo_importa_de_tests_sus_fixtures` (ARQ‑5 de la revisión de arquitectura de GC4).
@@ -1394,7 +1545,7 @@ Decisiones de despliegue y sus consecuencias:
 | 9 | El sistema es de un proceso y un hilo; el informe viaja **dentro** del resultado (`ResultadoElaboracion`) | principio 7 de CLAUDE.md §2: el informe se genera siempre. Un tipo que lleva las dos cosas lo hace imposible de omitir | no hay concurrencia que documentar en la vista de proceso; la transacción es responsabilidad del llamador (`flush`, no `commit`) |
 | 10 | Versionado híbrido: el presupuesto **referencia** su lista de precios y además **congela** el `ResultadoAPU` de cada renglón | responden preguntas distintas: qué se firmó y cuánto costaría hoy | `cargar_presupuesto` revalora y compara con la instantánea (tolerancia 1 × 10⁻⁶); como el contrato `Presupuesto` no lleva `ParametrosCosto`, los cuatro parámetros se copian en la fila del presupuesto ([bitácora I0.5](bitacora/2026-08-29-I0.5-presupuesto.md), hallazgo 2) |
 | 11 | El enlace período → partida viaja en la **etiqueta** del punto de curva, entre corchetes (`"Dia 1 [LB-01-EXC]"`), con `etiqueta_con_codigos` / `codigos_en_etiqueta` como único par inverso | `PuntoCurva` no tiene campo para el código de partida y `core/contracts/` está congelado; R7 necesita ese enlace para conciliar el plan con el presupuesto | funciona sin tocar los contratos, pero R7 depende de una convención textual y, si la etiqueta no la declara, cae a una heurística de contención de descripciones. Un campo `codigos_partida: tuple[str, ...]` en `PuntoCurva` lo eliminaría ([bitácora I4](bitacora/2026-08-29-I4-verificacion.md), hallazgo 3) |
-| 12 | La frontera modelo ↔ contrato existe en **exactamente dos** módulos: `core/catalog/mapeo.py` (catálogo) y `core/budget/persistencia.py` (presupuesto) | unirlas habría hecho que `core.catalog` dependiera de `core.verification` por el `InformeAuditoria` | siete nombres coinciden entre modelos y contratos: los modelos se importan **siempre cualificados** (`models.Presupuesto`). Las tablas sin contrato (`ListaPrecios`, `PrecioInsumo`, `CambioPrecio`, `IncidenciaCambio`, `Ejecucion`, `DescarteVersion`) las escriben directamente `core.catalog.precios`, `core.catalog.rendimientos` y `core.budget.actualizacion`, sin cruzar esa frontera. Si aparece una tercera frontera, conviene revisar la partición |
+| 12 | La frontera modelo ↔ contrato existe en **exactamente dos** módulos: `core/catalog/mapeo.py` (catálogo) y `core/budget/persistencia.py` (presupuesto) | unirlas habría hecho que `core.catalog` dependiera de `core.verification` por el `InformeAuditoria` | siete nombres coinciden entre modelos y contratos: los modelos se importan **siempre cualificados** (`models.Presupuesto`). Las tablas sin contrato (`ListaPrecios`, `PrecioInsumo`, `CambioPrecio`, `IncidenciaCambio`, `Ejecucion`, `DescarteVersion`, `JustificacionRendimiento`) las escriben directamente `core.catalog.precios`, `core.catalog.rendimientos` y `core.budget.actualizacion`, sin cruzar esa frontera. Si aparece una tercera frontera, conviene revisar la partición |
 
 ### 6.1 Deuda arquitectónica declarada
 
@@ -1412,4 +1563,7 @@ rodeadas y documentadas, y son entrada de la revisión de contratos posterior a 
 | El criterio de amortización no es declarable en `LineaEquipo` | R6 verifica solo la mitad verificable (factor único por insumo) y lo dice en el hallazgo | [I4](bitacora/2026-08-29-I4-verificacion.md) h.4 |
 | `Presupuesto` no lleva `ParametrosCosto` | las cuatro columnas de `models.Presupuesto` (ADR 10) | [I0.5](bitacora/2026-08-29-I0.5-presupuesto.md) h.2 |
 | Insumos homónimos con dos precios el mismo día | variantes de insumo con sufijo `-B`; candidata a regla R8, a decidir con el tutor | [I0.4](bitacora/2026-08-29-0.2-I0.4-persistencia.md) h.1, [modelo_datos.md §6](modelo_datos.md#6-insumos-homónimos-con-precio-distinto-hallazgo-de-datos-de-la-sesión-i04) |
+| La lista «Importada» de un presupuesto de un tercero pasa a ser la vigente del caso desde su fecha (`core/budget/importacion.py::_lista_importada`; N‑2 y N‑7 de la revisión de arquitectura de C6): la heredan el marco de las pantallas, `POST /presupuestos`, «Elaborar», «Componer» y toda lista cargada después, y los APU del tercero entran al catálogo (UC‑03, recuento de G2, histórico de precios). Los importes no cambian; la procedencia sí | la importación rechaza una moneda distinta de la de la lista vigente y la ERS lo declara (UC‑05, postcondición). Cierre previsto, fuera de C6: excluir las listas importadas de `Catalogo.lista_vigente` con una marca en la tabla o un criterio sobre `origen` (toca `repositorio.py` y el esquema) | bitácora de C6 ([cierre](bitacora/2026-09-23-cierre.md), «Fase C6»); [expediente C6.4](bitacora/2026-09-29-C6-expedientes.md) |
+| El «pegamento» de `ml` y la receta ignorados/rechazados duplicados entre capas (U‑6 y O5 de las revisiones de C6): `_detector_de_atipicos` en `ui/paginas/actualizacion.py` y en `api/rutas/presupuestos.py` (más `_veredicto_bosque`), y la separación de `ResumenLista.desconocidos` en ignorados de 2a y rechazados de 2b, escrita en la pantalla, la API y `scripts/probar_precios_maprex.py` | `ResumenLista.desconocidos` reúne 2a y 2b y C6 no puede tocar `core/` fuera de sus cinco excepciones; cada capa compara con `insumos_desconocidos`. Cierre previsto: un `ResumenLista.rechazados` en el núcleo | revisiones de C6 (U‑6, O5); inventario de GC6 |
+| Los errores de lectura del XLSX no se traducen a `ValueError` en el lector del núcleo (`_hojas` y `_leer_tabla_excel`): un libro ilegible es `zipfile.BadZipFile` o `KeyError` | la API lo comprueba antes con `api.rutas.listas.comprobar_libro_legible` (422). La pantalla «Actualizar precios» **no** lo rodea: captura `LookupError`, `ValueError`, `ArithmeticError` y `SQLAlchemyError` (`ui/paginas/actualizacion.py:226` en la vista previa y `:263` al revalorar), y `zipfile.BadZipFile` no es ninguno (el `KeyError` de un zip sin partes sí es un `LookupError`), así que un `.xlsx` que no es un libro llega a la página como excepción sin capturar, ya al subirlo. Cierre previsto: traducir en `core.catalog.precios` | revisión de la pista A de C6 (H1, N2) |
 | Las líneas de `ComposicionAPU` no tienen vigencia temporal | limitación declarada: los presupuestos emitidos están congelados y no se ven afectados | [modelo_datos.md §5](modelo_datos.md#5-estrategia-de-versionado) |

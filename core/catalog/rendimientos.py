@@ -37,6 +37,7 @@ __all__ = [
     "PropuestaRendimiento",
     "advertencia_rendimiento",
     "dispersion_rendimientos",
+    "justificar_rendimiento",
     "proponer_rendimiento",
     "registrar_ejecucion",
     "registrar_rendimiento",
@@ -162,6 +163,47 @@ def advertencia_rendimiento(dispersion: DispersionRendimiento | None, valor: Dec
         f"rango [{dispersion.minimo}, {dispersion.maximo}] en {dispersion.observaciones} "
         f"observaciones ({dispersion.medidos} medidas); el registro se completa igualmente"
     )
+
+
+def justificar_rendimiento(
+    session: Session, codigo_partida: str, texto: str, advertencia: str, fecha: date
+) -> models.JustificacionRendimiento:
+    """UC‑06, flujo 4a: registra la justificación con la que se acepta la advertencia de RF‑27.
+
+    Se liga al **último** rendimiento registrado de la partida (el de mayor `id`): el que acaba de
+    registrar `registrar_rendimiento` o `Catalogo.reemplazar_composicion` en la misma transacción.
+    Un rendimiento tiene a lo sumo una justificación (tabla aditiva `justificacion_rendimiento`,
+    expediente C6.1). `ValueError` si el texto o la advertencia están vacíos o si ese rendimiento
+    ya tiene justificación; `KeyError` si la partida no existe y `LookupError` si no tiene
+    rendimientos. Hace `flush`, no `commit`, como el resto del módulo.
+    """
+    if not texto.strip():
+        raise ValueError("la justificacion de la advertencia no puede estar vacia")
+    if not advertencia.strip():
+        raise ValueError(
+            "no hay advertencia que justificar: la justificacion acompana a una advertencia de "
+            "rendimiento (UC-06, flujo 4a)"
+        )
+    partida = Catalogo(session).partida(codigo_partida)
+    ultimo = session.scalars(
+        select(models.Rendimiento)
+        .where(models.Rendimiento.partida_id == partida.id)
+        .order_by(models.Rendimiento.id.desc())
+        .limit(1)
+    ).one_or_none()
+    if ultimo is None:
+        raise LookupError(f"la partida {codigo_partida} no tiene rendimientos que justificar")
+    if session.get(models.JustificacionRendimiento, ultimo.id) is not None:
+        raise ValueError(
+            f"el ultimo rendimiento de {codigo_partida} ya tiene justificacion: registre el "
+            "rendimiento nuevo antes de justificarlo"
+        )
+    justificacion = models.JustificacionRendimiento(
+        rendimiento_id=ultimo.id, texto=texto, advertencia=advertencia, fecha=fecha
+    )
+    session.add(justificacion)
+    session.flush()
+    return justificacion
 
 
 def _dispersion_de(historico: list[Rendimiento]) -> DispersionRendimiento | None:

@@ -43,6 +43,7 @@ from core.catalog import (
     leer_lista_precios,
     registrar_cambios,
 )
+from core.catalog.precios import leer_tabla
 from scripts.seed import NOMBRE_PROYECTO, sembrar
 from tests.fixtures import apu_linea_base as linea_base
 from tests.fixtures.actualizacion_uc02 import (
@@ -194,6 +195,27 @@ def test_leer_lista_precios_rechaza_lo_que_no_es_un_numero_no_negativo(tmp_path,
 
     with pytest.raises(ValueError, match=r"lista\.csv, fila 2"):
         leer_lista_precios(archivo)
+
+
+def test_leer_lista_precios_rechaza_un_tipo_desconocido_con_archivo_y_fila(tmp_path):
+    """QA H3: el tipo de insumo que no es material, equipo ni mano de obra cita archivo y fila."""
+    archivo = tmp_path / "lista.csv"
+    archivo.write_text(
+        f"tipo,insumo,unidad,precio\nmaterial,{CEMENTO},saco,15\nherramienta,Pala,,3\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match=r"lista\.csv, fila 3: tipo de insumo 'herramienta'"):
+        leer_lista_precios(archivo)
+
+
+def test_un_csv_no_tiene_hojas(tmp_path):
+    """QA H3: pedir una hoja de un CSV es un error que lo dice, no una lectura silenciosa."""
+    archivo = tmp_path / "lista.csv"
+    archivo.write_text("tipo,insumo,unidad,precio\n", encoding="utf-8")
+
+    with pytest.raises(ValueError, match=r"lista\.csv: un CSV no tiene hojas.*'Insumos'"):
+        leer_tabla(archivo, hoja="Insumos")
 
 
 def test_crear_lista_copia_los_precios_anteriores_y_sobrescribe_los_del_archivo(

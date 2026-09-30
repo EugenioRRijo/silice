@@ -28,7 +28,12 @@ def crear_motor(url: str = URL_POR_DEFECTO) -> Engine:
 
 
 def crear_esquema(motor: Engine) -> None:
-    """Crea las dieciséis tablas y sus índices si aún no existen."""
+    """Crea las diecisiete tablas y sus índices si aún no existen.
+
+    `create_all` solo crea lo que falta (`checkfirst`): una base anterior gana las tablas
+    aditivas (`descarte_version`, C3; `justificacion_rendimiento`, C6) sin `ALTER TABLE` y sin
+    tocar las demás ni sus filas.
+    """
     Base.metadata.create_all(motor)
 
 

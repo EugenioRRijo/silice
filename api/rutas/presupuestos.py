@@ -4,26 +4,32 @@ UC-01 (`POST /presupuestos`, a partir de `ItemComputo` ya extraídos, con el pla
 proyectista o, sin él, `plan_secuencial`, paso 6; un ítem sin partida queda pendiente y se lista
 con sus partidas similares, flujo 3a; una partida sin rendimiento estimado vigente responde 409
 con el rendimiento que propone el histórico, flujo 3b), UC-05 (el informe de auditoría, que se
-genera siempre), UC-02 (`POST /presupuestos/{codigo}/actualizacion`) y UC-08
-(`POST /presupuestos/{codigo}/escenarios`, que declara los pendientes del base). Los montos se
-presentan siempre con dos decimales (`core.verification.informe.DECIMALES_PRESENTACION`), la misma
-cifra que usa `ui/app.py` y la exportación a Excel: esta capa no inventa su propio redondeo.
+genera siempre), UC-02 (`POST /presupuestos/{codigo}/actualizacion`, que desde C6 declara en el
+informe de la versión nueva los precios atípicos de la lista, UC-07 5) y UC-08
+(`POST /presupuestos/{codigo}/escenarios`, que declara los pendientes del base). Desde C6, también
+el paso 1 de UC-01 (`POST /proyectos`, INV-086) y el presupuesto tabular de un tercero de RF-24 y
+UC-05 (`POST /presupuestos/importar`, INV-076). Los montos se presentan siempre con dos decimales
+(`core.verification.informe.DECIMALES_PRESENTACION`), la misma cifra que usa `ui/app.py` y la
+exportación a Excel: esta capa no inventa su propio redondeo.
 """
 
 from __future__ import annotations
 
+import importlib.util
 import os
 import tempfile
 from collections.abc import Mapping, Sequence
 from datetime import date
 from pathlib import Path
+from typing import Annotated
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, File, Form, HTTPException, UploadFile, status
 from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from starlette.background import BackgroundTask
 
+from api.archivos import guardar_subida
 from api.dependencias import SesionDep
 from api.esquemas import (
     ActualizacionPeticion,
@@ -43,24 +49,30 @@ from api.esquemas import (
     PresupuestoPeticion,
     PresupuestoResumenRespuesta,
     PropuestaPartidaRespuesta,
+    ProyectoPeticion,
+    ProyectoRespuesta,
     RendimientoPorDeclararRespuesta,
     RendimientosPorDeclararRespuesta,
     decimal_desde_texto,
 )
+from api.rutas.listas import comprobar_libro_legible
 from api.rutas.rendimientos import propuesta_respuesta
 from core import models
 from core.budget import (
     Comparativo,
+    DetectorAtipicos,
     GeneradorPlan,
     PeriodoPlan,
     actualizar_precios,
     cargar_elaboracion,
     cargar_presupuesto,
     comparar_por_partida,
+    crear_proyecto,
     elaborar,
     exportar_excel,
     generar_escenario,
     guardar_presupuesto,
+    importar_presupuesto,
     plan_secuencial,
 )
 from core.catalog import Catalogo, CatalogoIncompleto, proponer_rendimiento
@@ -74,6 +86,22 @@ from ml.normalization import propuestas_para
 router = APIRouter(tags=["presupuestos"])
 
 _CAMPOS_PARAMETROS = ("fcas", "bono_alimentacion", "administracion", "utilidad")
+
+
+@router.post("/proyectos", response_model=ProyectoRespuesta, status_code=status.HTTP_201_CREATED)
+def crear_proyecto_de_presupuestos(
+    sesion: SesionDep, peticion: ProyectoPeticion
+) -> ProyectoRespuesta:
+    """UC-01, paso 1 (INV-086): crea el proyecto sobre el que luego se elabora
+    (`POST /presupuestos`) o se importa (`POST /presupuestos/importar`) y confirma la transaccion.
+
+    La validacion es de `core.budget.crear_proyecto`: un nombre vacio o repetido, o un dominio que
+    no es de `Dominio`, es 422 sin crear nada. La interfaz no crea proyectos; por HTTP, solo esta
+    ruta (los scripts de siembra de `scripts/` tambien los crean, directamente en la base).
+    """
+    proyecto = crear_proyecto(sesion, peticion.nombre, peticion.descripcion, peticion.dominio)
+    sesion.commit()
+    return ProyectoRespuesta.model_validate(proyecto)
 
 
 @router.post(
@@ -99,11 +127,7 @@ def crear_presupuesto(
     El tipo se declara al registrarlo con `POST /partidas/{codigo}/rendimientos`, y el presupuesto
     se vuelve a enviar: la elaboración usa el rendimiento **estimado** vigente, así que un medido
     registrado no la desbloquea."""
-    proyecto = sesion.scalars(
-        select(models.Proyecto).where(models.Proyecto.nombre == peticion.proyecto)
-    ).one_or_none()
-    if proyecto is None:
-        raise LookupError(f"no hay ningún proyecto {peticion.proyecto!r} en el catálogo")
+    proyecto = _proyecto(sesion, peticion.proyecto)
 
     items = [_a_item_computo(item) for item in peticion.items]
     catalogo = Catalogo(sesion)
@@ -159,6 +183,52 @@ def crear_presupuesto(
         total=formatear_decimal(resultado.presupuesto.total, DECIMALES_PRESENTACION),
         hallazgos=len(resultado.informe.hallazgos),
         pendientes=_pendientes(descripciones, resultado.pendientes),
+    )
+
+
+@router.post(
+    "/presupuestos/importar",
+    response_model=PresupuestoCreadoRespuesta,
+    status_code=status.HTTP_201_CREATED,
+)
+def importar_presupuesto_de_tercero(
+    sesion: SesionDep,
+    archivo: Annotated[
+        UploadFile,
+        File(
+            description="El presupuesto del tercero en un libro XLSX con las hojas Datos, "
+            "Presupuesto, APU, Insumos y, opcional, Curva (formato de core.budget.importacion)"
+        ),
+    ],
+    proyecto: Annotated[str, Form(description="Proyecto existente donde se guarda")],
+) -> PresupuestoCreadoRespuesta:
+    """RF-24 y UC-05, pasos 1 y 2 (INV-076): importa el presupuesto tabular de un tercero, lo
+    audita siempre y lo guarda con su informe, que luego sirven `GET /presupuestos/{codigo}/informe`
+    y `GET /presupuestos/{codigo}/excel`.
+
+    La lectura, la auditoría y la persistencia son de `core.budget.importar_presupuesto`. Un
+    proyecto inexistente es 404. Un archivo que no es XLSX o está mal formado (con archivo, hoja y
+    fila), un código de partida que ya está en el catálogo, un código de presupuesto repetido en el
+    proyecto o una moneda distinta de la de la lista vigente a su fecha son 422, sin escribir nada.
+    El presupuesto del tercero no tiene ítems pendientes: todo renglón trae su APU. Se declara
+    antes de las rutas con `{codigo}` para que `importar` no se lea como un código.
+    """
+    destino = _proyecto(sesion, proyecto)
+    with tempfile.TemporaryDirectory() as directorio:
+        ruta = guardar_subida(directorio, archivo)
+        comprobar_libro_legible(ruta)
+        try:
+            resultado = importar_presupuesto(sesion, ruta, destino)
+        except ValueError:
+            sesion.rollback()
+            raise
+    sesion.commit()
+
+    return PresupuestoCreadoRespuesta(
+        codigo=resultado.presupuesto.codigo,
+        total=formatear_decimal(resultado.presupuesto.total, DECIMALES_PRESENTACION),
+        hallazgos=len(resultado.informe.hallazgos),
+        pendientes=[],
     )
 
 
@@ -249,6 +319,11 @@ def actualizar_presupuesto(
 
     Mismo criterio que `ui/app.py`: si ningún insumo cambió de precio
     (`comparativo.insumos_afectados == 0`) no hay nada que confirmar (409, sin `commit`).
+
+    UC-07, paso 5 (INV-099): pasa al núcleo el detector de precios atípicos de `ml.anomaly`
+    (`_detector_de_atipicos`); los que marque entran como hallazgos `ATIPICO` en el informe de la
+    versión nueva, que sirve `GET /presupuestos/{codigo_nuevo}/informe`. Sin el extra `ml`, o con
+    menos variaciones de las que el detector necesita, no hay atípicos que declarar.
     """
     modelo = _buscar_modelo(sesion, codigo, proyecto)
     lista_nueva = sesion.scalars(
@@ -258,7 +333,12 @@ def actualizar_presupuesto(
         raise LookupError(f"no hay ninguna lista de precios {peticion.lista!r}")
 
     _nuevo, comparativo = actualizar_precios(
-        sesion, modelo.proyecto.nombre, codigo, lista_nueva, peticion.codigo_nuevo
+        sesion,
+        modelo.proyecto.nombre,
+        codigo,
+        lista_nueva,
+        peticion.codigo_nuevo,
+        detectar_atipicos=_detector_de_atipicos(),
     )
     if comparativo.insumos_afectados == 0:
         raise HTTPException(
@@ -345,6 +425,34 @@ def escenarios_de_presupuesto(
 # ---------------------------------------------------------------------------------------------
 # Ayudantes
 # ---------------------------------------------------------------------------------------------
+
+
+def _detector_de_atipicos() -> DetectorAtipicos | None:
+    """`ml.anomaly.precios_atipicos` con import perezoso, o `None` sin el extra `ml` (el mismo
+    criterio que `_veredicto_bosque` en `api/rutas/rendimientos.py`): `core/` recibe el detector
+    como parámetro porque no importa `ml/` (expediente C6.5).
+
+    El extra se reconoce por `scikit-learn`, no por `ml.anomaly`: ese paquete se importa solo con
+    `numpy` y el detector importa `sklearn` al llamarlo, con 8 o más variaciones. Mirar solo la
+    importación dejaba un 500 sin el extra (ronda 1 de la pista A, H3).
+    """
+    if importlib.util.find_spec("sklearn") is None:
+        return None
+    try:
+        from ml.anomaly import precios_atipicos
+    except ImportError:
+        return None
+    return precios_atipicos
+
+
+def _proyecto(sesion: Session, nombre: str) -> models.Proyecto:
+    """El proyecto de ese nombre; `LookupError` (404) si no existe (`POST /proyectos` lo crea)."""
+    proyecto = sesion.scalars(
+        select(models.Proyecto).where(models.Proyecto.nombre == nombre)
+    ).one_or_none()
+    if proyecto is None:
+        raise LookupError(f"no hay ningún proyecto {nombre!r} en el catálogo")
+    return proyecto
 
 
 def _a_item_computo(item: ItemComputoPeticion) -> ItemComputo:

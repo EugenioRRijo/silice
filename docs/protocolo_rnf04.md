@@ -107,6 +107,11 @@ La orden escribe los dos archivos que se entregan: `informe_rnf04.md` (la forma 
    (la fusión de su PR o uno posterior): un commit anterior, como `ceb6b8e` (corrida
    [36428464254](https://github.com/EugenioRRijo/tesis-apu-multidominio/actions/runs/36428464254),
    push a `main`, en verde), da el informe de antes de C5, sin la sección «Reglas evaluadas».
+   Desde GC6 tiene que contener también la fase C6: **el commit de la fusión del PR de C6 o uno
+   posterior**, porque Med mide sobre el código de C6 (ruling C6‑13). El material de GC6 se generó
+   sobre `5b33e5f` (el código de C6, rama `inc/cierre-C6`), que todavía no está en `main` ni tiene
+   corrida de CI; es la ancla actual, y al fusionar el PR se anota el commit de la fusión y su
+   corrida en verde.
 2. **La huella de la forma de pantalla** (que es también la del contenido del informe): SHA‑256 de
    `informe_rnf04.md` (en bash,
    `sha256sum informe_rnf04.md`; en PowerShell,
@@ -118,8 +123,15 @@ La orden escribe los dos archivos que se entregan: `informe_rnf04.md` (la forma 
    **siete reglas evaluadas** (R1 3, R2 1, R3 2, R4 1, R5 1, R6 1 y R7 5). Antes de C5 valía
    `9469aaf8ded7d8ba901b99060a80a12be60fc18d1c7152e850c98ec024ed0063` (`ceb6b8e`): cambió porque
    INV‑092 agregó la sección «Reglas evaluadas»; la atribución de INV‑095 no movió ninguna fila de
-   este informe. Si el commit probado da otra huella, se anota y se explica qué cambió antes de
-   aplicar el instrumento.
+   este informe. **En GC6 la huella no cambia** (ruling C6‑11): sobre el código de `5b33e5f` (rama
+   `inc/cierre-C6`, con las pistas N, R, U, A y D fusionadas; los commits de documentos de la
+   compuerta no cambian el código) el `informe_rnf04.md` vuelve a valer
+   `1d7ba8d6ae0f08b2ddc43b8d73c985915a2c0554001887745b6e23889077a840`, la misma en bash y en
+   PowerShell, con los mismos 14 hallazgos y las mismas siete reglas evaluadas. C6 no tocó
+   `core/verification/`, ni `core/budget/excel.py`, ni «Elaborar un presupuesto», ni la fixture del
+   informe: los `ATIPICO` de C6 solo entran al informe de una versión revalorada, y este no lo es.
+   Si el commit probado da otra huella, se anota y se explica qué cambió antes de aplicar el
+   instrumento.
 3. **Las dos huellas de la forma exportada**, `informe_rnf04.xlsx`:
    - **La del archivo:** SHA‑256 de `informe_rnf04.xlsx` (`sha256sum` o `Get-FileHash`, como en el
      punto 2). Depende de la fecha: el libro guarda la de su creación en `docProps/core.xml`, y cada
@@ -141,8 +153,15 @@ La orden escribe los dos archivos que se entregan: `informe_rnf04.md` (la forma 
    archivo difieren entre sí y de la de GC5
    (`25a4beabe2e9fd06399903398c27a703b79259ba9809ddbd76bded8cca57e003`, que no se puede reproducir:
    solo prueba que ese ejemplar existió). Su hoja *Auditoria* tiene los 14 hallazgos en las columnas
-   A a E y las siete reglas evaluadas en las columnas G a I. Si el commit probado da otra huella de
-   contenido, se anota y se explica qué cambió antes de aplicar el instrumento.
+   A a E y las siete reglas evaluadas en las columnas G a I. **En GC6 la huella del contenido no
+   cambia**: sobre `5b33e5f` vale la misma `386bca1cb4a75868b5ac12fd0f637c02072c748b5a64fe16064c225bdd5b7748`,
+   y la huella de archivo de esa generación, `informe_rnf04.xlsx`, es
+   `fa744198a289e179b2dc8e00c18e2d954087fcea024fcf0508dc6bc095bc4754` (también la misma en bash y en
+   PowerShell). Una regeneración posterior en la misma sesión dio la misma huella de contenido y otra de
+   archivo (`bfbae17b…988c`), como se espera. Los dos archivos de GC6 se conservan, sin versionar, en
+   `.superpowers/sdd/2026-09-29-cierre-c6/rnf04-gc6/`; en Med cuenta la generación única de ese
+   momento, con su huella de archivo. Si el commit probado da otra huella de contenido, se anota y se
+   explica qué cambió antes de aplicar el instrumento.
 
 ## 2. Los expertos
 

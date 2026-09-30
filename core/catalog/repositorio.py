@@ -6,9 +6,10 @@ el llamador va a seguir trabajando con la sesión (`Partida`, `Insumo`, `ListaPr
 
 Aquí se orquestan la sesión y las consultas; **ningún contrato se arma ni se traduce a modelo en
 este módulo**: las dos direcciones están en `core/catalog/mapeo.py` (`a_composicion`,
-`a_modelo_insumo`…). La única fila que este módulo construye por su cuenta es `models.PrecioInsumo`
-en `_fijar_precio`, que no traduce ningún contrato: es la relación (lista, insumo) → precio, sin
-contraparte en `core.contracts`.
+`a_modelo_insumo`…). Las únicas filas que este módulo construye por su cuenta no traducen ningún
+contrato: `models.PrecioInsumo` en `_fijar_precio`, la relación (lista, insumo) → precio, sin
+contraparte en `core.contracts`, y el `models.Insumo` de `dar_de_alta_insumo`, que nace de una
+fila de una lista de precios (UC‑02, flujo 2a) y no de una línea de APU.
 """
 
 from __future__ import annotations
@@ -37,6 +38,8 @@ from core.catalog.mapeo import (
 )
 from core.contracts.apu import ComposicionAPU, Rendimiento, TipoRendimiento
 from core.contracts.dominio import Dominio
+from core.contracts.unidades import normalizar_unidad
+from core.verification.texto import normalizar_texto
 
 #: Sufijos de variante de insumo: el segundo homónimo es «-B», el tercero «-C»…
 SUFIJOS_VARIANTE = string.ascii_uppercase[1:]
@@ -266,6 +269,48 @@ class Catalogo:
         self._sesion.flush()
         return modelo
 
+    def dar_de_alta_insumo(
+        self, tipo: models.TipoInsumo, descripcion: str, unidad: str | None
+    ) -> models.Insumo:
+        """UC‑02, flujo 2a: crea el insumo desconocido que el administrador eligió dar de alta.
+
+        Código nuevo de su tipo (`MAT-NNN`, `EQU-NNN`, `MO-NNN`), sin precio: el precio lo fija
+        quien lo da de alta en la lista que corresponde (`crear_lista_desde_archivo`).
+
+        Solo los materiales guardan unidad: equipos y mano de obra se guardan con `unidad=None`,
+        la convención de `lineas_de` (`core/catalog/mapeo.py`), para que `_resolver_insumo` los
+        reutilice cuando un APU los use (una lista de precios los escribe con «dia», que el
+        catálogo no lleva). `ValueError` con descripción vacía o si ya hay un insumo con la misma
+        identidad del catálogo: tipo, descripción normalizada (`normalizar_texto`) y unidad
+        normalizada (`normalizar_unidad`), la clave con que `core.catalog.precios` casa un archivo.
+        El alta no es la vía de las variantes, que nacen en `_resolver_insumo`. No confirma.
+        """
+        tipo = models.TipoInsumo(tipo)
+        descripcion = descripcion.strip()
+        if not descripcion:
+            raise ValueError("la descripcion del insumo a dar de alta no puede estar vacia")
+        if tipo is not models.TipoInsumo.MATERIAL or not (unidad or "").strip():
+            unidad = None
+        else:
+            unidad = normalizar_unidad(unidad)
+        clave = (normalizar_texto(descripcion), unidad)
+        existentes = self._sesion.execute(
+            select(models.Insumo.descripcion, models.Insumo.unidad).where(
+                models.Insumo.tipo == tipo.value
+            )
+        ).all()
+        if any(
+            (normalizar_texto(otra), normalizar_unidad(suya) if suya else None) == clave
+            for otra, suya in existentes
+        ):
+            raise ValueError(f"el insumo {descripcion!r} ({tipo.value}) ya esta en el catalogo")
+        insumo = models.Insumo(
+            codigo=self._codigo_nuevo(tipo), tipo=tipo.value, descripcion=descripcion, unidad=unidad
+        )
+        self._sesion.add(insumo)
+        self._sesion.flush()
+        return insumo
+
     # -- interno -------------------------------------------------------------------------------
 
     def _rendimiento_estimado(self, partida: models.Partida, limite: date) -> models.Rendimiento:
@@ -346,9 +391,7 @@ class Catalogo:
             and anterior.condiciones == condiciones
         ):
             return
-        self._sesion.add(
-            a_modelo_rendimiento_estimado(composicion, partida, fecha, condiciones)
-        )
+        self._sesion.add(a_modelo_rendimiento_estimado(composicion, partida, fecha, condiciones))
         self._sesion.flush()
 
     def _resolver_insumo(

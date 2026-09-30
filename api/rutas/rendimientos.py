@@ -11,6 +11,7 @@ historico alcanza, se enriquece con el veredicto del detector de anomalias de la
 
 from __future__ import annotations
 
+import importlib.util
 from decimal import Decimal
 
 from fastapi import APIRouter, status
@@ -35,6 +36,7 @@ from core.catalog import (
     PropuestaRendimiento,
     advertencia_rendimiento,
     dispersion_rendimientos,
+    justificar_rendimiento,
     proponer_rendimiento,
     registrar_ejecucion,
     registrar_rendimiento,
@@ -88,8 +90,16 @@ def crear_rendimiento(
     """RF-25 + RF-27: registra el rendimiento y advierte si se aparta de lo observado.
 
     La advertencia se evalua contra el comportamiento observado ANTES de este registro (el valor
-    nuevo no participa de su propio rango) y nunca impide: la respuesta siempre es 201 con el
-    registro hecho y la transaccion confirmada.
+    nuevo no participa de su propio rango) y nunca impide: con un valor valido la respuesta es 201
+    con el registro hecho y la transaccion confirmada, haya advertencia o no. La unica excepcion
+    que trae UC-06 4a es una justificacion en blanco junto a una advertencia (422, ver abajo).
+
+    UC-06, flujo 4a (INV-093): si hubo advertencia y la peticion trae `justificacion`, se registra
+    con `justificar_rendimiento`, que la liga al ultimo rendimiento de la partida, el que esta
+    misma peticion acaba de registrar en su transaccion (revision de arquitectura de C6, N-5). Sin
+    advertencia la justificacion se ignora: el cliente no sabe de antemano si la habra, y
+    rechazarla impediria un registro que RF-27 no impide. Si el nucleo la rechaza (en blanco), se
+    deshace tambien el rendimiento y la respuesta es 422: la peticion es una sola operacion.
     """
     valor = decimal_desde_texto(peticion.valor, "valor")
     try:
@@ -111,11 +121,22 @@ def crear_rendimiento(
         condiciones=peticion.condiciones,
         referencia_ejecucion=peticion.referencia_ejecucion,
     )
+    advertencia = _advertencia(dispersion_previa, historico_previo, valor)
+    justificacion = None
+    if advertencia is not None and peticion.justificacion is not None:
+        try:
+            justificacion = justificar_rendimiento(
+                sesion, codigo, peticion.justificacion, advertencia, peticion.fecha
+            ).texto
+        except ValueError:
+            sesion.rollback()
+            raise
     sesion.commit()
 
     return RegistroRendimientoRespuesta(
         rendimiento=_a_rendimiento_respuesta(registrado),
-        advertencia=_advertencia(dispersion_previa, historico_previo, valor),
+        advertencia=advertencia,
+        justificacion=justificacion,
     )
 
 
@@ -158,7 +179,14 @@ def _advertencia(
 
 
 def _veredicto_bosque(valores_previos: list[Decimal], valor: Decimal):
-    """El veredicto de `ml.anomaly`, o `None` sin el extra `ml` o sin historico suficiente."""
+    """El veredicto de `ml.anomaly`, o `None` sin el extra `ml` o sin historico suficiente.
+
+    El extra se reconoce por `scikit-learn` (`importlib.util.find_spec`), no por `ml.anomaly`, que
+    se importa solo con `numpy`: el bosque importa `sklearn` al evaluar (ronda 1 de la pista A,
+    H3; el mismo criterio que `presupuestos._detector_de_atipicos`).
+    """
+    if importlib.util.find_spec("sklearn") is None:
+        return None
     try:
         from ml.anomaly import evaluar_rendimiento
     except ImportError:
