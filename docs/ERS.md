@@ -204,7 +204,12 @@ implementados en `core/contracts/`.
   2. El sistema valida columnas, tipos y unidades, y convierte todo importe a `Decimal`.
   3. El sistema identifica los insumos cuyo precio difiere del vigente y las partidas donde participan.
   4. El sistema recalcula los APU afectados y produce una versión nueva del presupuesto, sin editar
-     ninguna composición.
+     ninguna composición. La versión nueva se elabora **sin plan de trabajo**: `actualizar_precios`
+     no recibe el plan guardado, ni por la pantalla ni por la API (UC‑01 6a), así que su informe
+     declara R2 y R7 no aplicables (INFO). Vale también para un presupuesto importado (UC‑05): la
+     versión revalorada no conserva la curva del tercero ni los hallazgos de curva y plan que
+     traía su informe (R2 y R7); el informe del archivo importado, que no se modifica, sí los
+     conserva (INV‑120).
   5. El sistema persiste un registro de cambio por insumo: precio anterior, precio nuevo, variación e
      incidencia por partida.
   6. El sistema muestra el informe comparativo por partida y total, en valor absoluto y porcentual.
@@ -216,7 +221,10 @@ implementados en `core/contracts/`.
     pantalla los lista a la vista, sin escribir nada, y los ofrece en «Dar de alta» sin ninguno
     elegido: el alta es solo por selección explícita, antes de revalorar (ruling C6‑7). Cada
     elegido se crea con un código nuevo de su tipo (`MAT‑NNN`, `EQU‑NNN`, `MO‑NNN`; solo los
-    materiales guardan unidad) y su precio entra **solo** en la lista nueva. Las filas elegidas del
+    materiales guardan unidad) y su precio entra **solo** en la lista nueva. Un equipo o una mano
+    de obra dado de alta con unidad en el archivo (por ejemplo, «dia») no la guarda: en la lista
+    siguiente esa misma fila se reporta como rechazada por unidad (2b) y su precio no entra
+    (INV‑121). Las filas elegidas del
     mismo insumo dan una sola alta; si sus precios difieren, el sistema lo rechaza sin escribir
     nada. **Límite declarado:** dos filas de material con la misma descripción desconocida y
     unidades distintas se ofrecen las dos, y si se eligen ambas nacen dos homónimos con distinta
@@ -335,7 +343,9 @@ implementados en `core/contracts/`.
   que se cargue). Los importes no cambian, porque la copia es exacta, pero la procedencia de los
   datos propios posteriores apunta al archivo del tercero. **Limitación declarada** (N‑2 y N‑7 de
   la revisión de C6): excluir las listas importadas de la vigencia exige cambiar `core/`, fuera de
-  C6.
+  C6. Revalorar el presupuesto importado (UC‑02) elabora la versión nueva sin plan de trabajo, así
+  que no conserva la curva del tercero ni los hallazgos R2 y R7 de su informe (UC‑02, paso 4); el
+  informe del archivo importado sí los conserva.
 
 #### UC‑06 — Registrar y consultar rendimientos reales de obra ejecutada
 
