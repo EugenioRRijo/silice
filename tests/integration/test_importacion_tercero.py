@@ -10,6 +10,7 @@ documentadas de la linea base (`INCONSISTENCIAS`) y su total exacto. Los archivo
 from __future__ import annotations
 
 from dataclasses import replace
+from datetime import date
 from decimal import Decimal
 from pathlib import Path
 
@@ -19,12 +20,13 @@ from sqlalchemy import func, select
 
 from core import models
 from core.budget import (
+    actualizar_precios,
     cargar_elaboracion,
     crear_proyecto,
     importar_presupuesto,
     leer_presupuesto_tabular,
 )
-from core.catalog import Catalogo, abrir_sesion
+from core.catalog import Catalogo, abrir_sesion, crear_lista_desde_archivo
 from core.contracts import Dominio, ModalidadManoObra, OrigenTipo, Severidad
 from core.costing import calcular_apu
 from core.verification import auditar
@@ -427,3 +429,61 @@ def test_sin_lista_vigente_la_importada_lleva_solo_los_precios_del_tercero(motor
         )
         assert recargado.presupuesto.total == resultado.presupuesto.total
         assert resultado.presupuesto.total == linea_base.TOTAL_EXACTO_LINEA_BASE
+
+
+def test_importar_y_revalorar_parte_del_precio_del_tercero(sesion, tmp_path, proyecto):
+    """QA H1 / M22: el presupuesto importado queda ligado a la lista «Importada: <archivo>», y
+    una revaloracion (UC-02) calcula sus cambios contra los precios del tercero, no contra el
+    catalogo sembrado.
+
+    El tercero paga el cemento a 16 USD/saco (el catalogo, a 15). Oraculo a mano: el vaciado de
+    concreto usa 7,5 sacos/m3 y el computo auditado 1,66 m3; cada USD de saco pesa
+    7,5 x 1,15 x 1,10 x 1,66 = 15,74925 USD en el presupuesto. Importado: +1 USD sobre la linea
+    base. Revalorado a 18: de 16 a 18, +2 USD sobre lo importado (no +3, que seria partir de 15).
+    """
+    cemento = "Cemento Portland"
+    por_saco = Decimal("7.5") * Decimal("1.15") * Decimal("1.10") * Decimal("1.66")
+    archivo = escribir_presupuesto_tabular(tmp_path, precios_materiales={cemento: Decimal("16")})
+    resultado = importar_presupuesto(sesion, archivo, proyecto)
+    sesion.commit()
+
+    assert resultado.presupuesto.total == linea_base.TOTAL_EXACTO_LINEA_BASE + por_saco
+    modelo = sesion.scalars(
+        select(models.Presupuesto).where(models.Presupuesto.codigo == resultado.presupuesto.codigo)
+    ).one()
+    assert modelo.lista_precios.nombre == f"Importada: {NOMBRE_ARCHIVO}"
+    assert modelo.lista_precios.origen == NOMBRE_ARCHIVO
+
+    nueva = tmp_path / "lista_nueva.csv"
+    nueva.write_text(f"tipo,insumo,unidad,precio\nmaterial,{cemento},saco,18\n", encoding="utf-8")
+    lista = crear_lista_desde_archivo(
+        sesion, nueva, "Lista de junio", "USD", date(2026, 6, 1), origen=nueva.name
+    )
+    revalorado, comparativo = actualizar_precios(
+        sesion, PROYECTO, resultado.presupuesto.codigo, lista.lista, "002"
+    )
+    sesion.commit()
+
+    assert comparativo.total_anterior == resultado.presupuesto.total
+    assert comparativo.total_nuevo == linea_base.TOTAL_EXACTO_LINEA_BASE + 3 * por_saco
+    assert revalorado.presupuesto.total == comparativo.total_nuevo
+    # La variante de 16 USD que creo la importacion (docs/modelo_datos.md §6) es la que usa el
+    # tercero; el cemento de 15 sigue en el catalogo y la lista lo sube igual, pero ninguna
+    # partida suya lo usa.
+    cambios = {
+        (c.precio_anterior, c.precio_nuevo): c for c in sesion.scalars(select(models.CambioPrecio))
+    }
+    assert set(cambios) == {(Decimal("15"), Decimal("18")), (Decimal("16"), Decimal("18"))}
+    del_tercero = cambios[(Decimal("16"), Decimal("18"))]
+    assert del_tercero.variacion == Decimal("0.125")  # (18 - 16) / 16; contra el catalogo, 0,2
+    (incidencia,) = del_tercero.incidencias
+    assert incidencia.precio_unitario_nuevo - incidencia.precio_unitario_anterior == (
+        Decimal("7.5") * 2 * Decimal("1.15") * Decimal("1.10")
+    )
+    assert not cambios[(Decimal("15"), Decimal("18"))].incidencias
+
+    sesion.expunge_all()
+    recargado = cargar_elaboracion(sesion, PROYECTO, "002", Catalogo(sesion))
+    assert recargado.presupuesto.total == comparativo.total_nuevo
+    assert recargado.informe.hallazgos == revalorado.informe.hallazgos
+    assert recargado.informe.a_markdown() == revalorado.informe.a_markdown()

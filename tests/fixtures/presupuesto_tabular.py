@@ -12,7 +12,9 @@ pasa por `float`. El archivo vive donde diga la prueba (`tmp_path`): nada escrib
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping
 from dataclasses import replace
+from decimal import Decimal
 from pathlib import Path
 
 import openpyxl
@@ -70,6 +72,15 @@ def presupuesto_tercero(prefijo: str = PREFIJO_TERCERO) -> Presupuesto:
                 ),
             )
             for partida in original.partidas
+        ),
+    )
+
+
+def _con_precios(apu: ComposicionAPU, precios: Mapping[str, Decimal]) -> ComposicionAPU:
+    return replace(
+        apu,
+        materiales=tuple(
+            replace(m, precio=precios.get(m.descripcion, m.precio)) for m in apu.materiales
         ),
     )
 
@@ -160,14 +171,20 @@ def escribir_presupuesto_tabular(
     prefijo: str = PREFIJO_TERCERO,
     con_curva: bool = True,
     nombre: str = NOMBRE_ARCHIVO,
+    precios_materiales: Mapping[str, Decimal] | None = None,
 ) -> Path:
     """Escribe el XLSX del tercero en `carpeta` y devuelve su ruta.
 
     `prefijo` cambia el de los codigos de partida (`"LB-"` reproduce los de la linea base, que
-    chocan con el catalogo sembrado); `con_curva=False` omite la hoja opcional `Curva`.
+    chocan con el catalogo sembrado); `con_curva=False` omite la hoja opcional `Curva`;
+    `precios_materiales` (descripcion -> precio) da al tercero un precio propio, distinto del
+    del catalogo, en los materiales con esa descripcion de todos sus APU.
     """
     presupuesto = presupuesto_tercero(prefijo)
-    composiciones = {partida.apu.codigo_partida: partida.apu for partida in presupuesto.partidas}
+    composiciones = {
+        partida.apu.codigo_partida: _con_precios(partida.apu, precios_materiales or {})
+        for partida in presupuesto.partidas
+    }
 
     libro = openpyxl.Workbook()
     hojas = [
