@@ -244,7 +244,7 @@ un presupuesto** propone también el rendimiento del histórico cuando a una par
    dos filas del mismo insumo con precios distintos, el sistema lo rechaza y no escribe nada; y
    dos materiales con la misma descripción y unidades distintas se ofrecen los dos y, si se eligen
    ambos, quedan dos insumos homónimos con distinta unidad. Si el archivo o el caso no se pueden
-   leer, el campo no aparece y el motivo sale al pulsar **Revalorar presupuesto**.
+   leer, el campo no aparece y el motivo sale al pulsar **Revalorar presupuesto**. Excepción conocida: un archivo `.xlsx` que no es un libro de Excel (corrupto o de otro formato con esa extensión) todavía no se captura y la página muestra el error de Python; conviene comprobar que el libro abre en Excel antes de subirlo.
 3. Revisar el **comparativo** (precio unitario antes/después por partida, incidencia en el
    total) y el informe de auditoría de la versión nueva. Si algún insumo cambió de precio, la
    versión nueva ya quedó guardada con el código de la barra lateral; si ninguno cambió, no se
