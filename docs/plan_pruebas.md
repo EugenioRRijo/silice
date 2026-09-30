@@ -141,8 +141,9 @@ INV‑088, INV‑089, INV‑091, INV‑092, INV‑094, INV‑095 e INV‑096), c
 existían en `f629f94` (`uv run pytest --collect-only -q`, 1 037 casos) y pasaban en local, pero
 quedaban fuera de la corrida de `e7a0569`; la de la compuerta GC5, que sustituyó a esa en §10, ya
 las incluye. Y para las de la fase C6 (INV‑076, INV‑086, INV‑090, INV‑093 e INV‑099): existen en
-`e6c84c1` (`uv run pytest --collect-only -q`, 1 167 casos) y pasan en local, pero quedan fuera de la
-corrida de `7545914` que registra §10; la de la compuerta GC6 la sustituirá.
+`e6c84c1` (`uv run pytest --collect-only -q`, 1 167 casos) y pasan en la corrida local de la
+compuerta GC6 que registra §10, pero la última corrida de la CI de §10 (`7545914`, GC5) todavía no
+las incluye; la del PR de C6 la sustituirá.
 
 Estados: **verde** (una prueba automatizada lo demuestra y pasa en la corrida de §10); **parcial**
 (una parte del criterio tiene prueba y otra no existe; la celda dice cuál); **no implementado** (el
@@ -445,14 +446,40 @@ UC‑04 5 (RF‑20) y UC‑08 4a (decisión D6).
 | RNF‑09 compatibilidad IFC | G1 con salvedad: exacto contra modelo programático; faltan exports de ≥ 2 modeladores | parcial |
 | RNF‑10 aprendizaje de la interfaz | caso con persona CP‑07 ([guion_prueba_arenia.md](guion_prueba_arenia.md)), dos escenarios con personas distintas, bloque B del anexo A | pendiente (GU1b, fase Med) |
 
-## 10. Registro de la ejecución (CI, 2026‑09‑29)
+## 10. Registro de la ejecución (local en GC6, 2026‑09‑29; CI de C6 pendiente)
 
 **Fuente única de las cifras de la suite y de la cobertura** (INV‑031; la CI es la fuente de verdad
-de las cifras, [metodologia.md §6](metodologia.md#6-gestión-de-configuración)): la corrida
+de las cifras, [metodologia.md §6](metodologia.md#6-gestión-de-configuración)). La rama de C6
+(`inc/cierre-C6`) todavía no tiene corrida de CI: se sube al abrir su PR. Hasta entonces esta
+sección registra dos cosas: la **corrida local de la compuerta GC6** y, aparte y sin tocar, la
+**última corrida de la CI** (GC5, PR #16). Cuando el PR de C6 esté en verde, sus cifras sustituyen a
+las dos, como hicieron GC4 y GC5. Los demás documentos enlazan esta sección y no copian sus cifras.
+
+### Corrida local de la compuerta GC6
+
+Sobre `5b33e5f`, el código de C6 (los commits de la compuerta solo tocan documentos), con
+`uv run --all-extras pytest -W error --strict-markers -q -p no:cacheprovider --junitxml=<ruta fuera
+del árbol>`, en Windows con Python 3.13, y las cifras leídas del JUnit:
+
+```
+suite completa         1167 tests   0 fallos   0 errores   0 omitidas   456 s
+verificar omitidas: 0 omitidas      ruff check .: All checks passed!
+metas: meta_prototipo 12/12, meta_redaccion 12/12, meta_datos 3/3
+línea base (test_costing, 7 de 7, extremo a extremo, 1 586,61): 27 0 0 0
+guardia del núcleo (guardia_gc6.sh 5): 5 commits de core/ con los asuntos autorizados, marcas: 0
+```
+
+Distribución de la suite: **1 167 casos** recogidos, **841 en `tests/unit/`** y **326 en
+`tests/integration/`**, 0 fallos y 0 omitidos. La fase C6 sumó 122 sobre los 1 045 de la CI de GC5
+(816 y 229): 25 unitarios y 97 de integración (N, 62; R, 8; U, 16; A, 36). Esta corrida no mide
+cobertura y no corre en Linux: ninguna de las dos cosas la sustituye la CI.
+
+### Última corrida de la CI (GC5, 2026‑09‑29)
+
+La corrida
 [36520879630](https://github.com/EugenioRRijo/tesis-apu-multidominio/actions/runs/36520879630)
 del PR #16, sobre el commit `7545914` (compuerta GC5 del cierre). La CI prueba la fusión de ese
-commit con la base del PR, `main` en `503fec6` (`12ac081` en el registro del trabajo). Los
-demás documentos enlazan esta sección y no copian sus cifras.
+commit con la base del PR, `main` en `503fec6` (`12ac081` en el registro del trabajo).
 
 ```
 calidad (ruff + guardia del nucleo)  ruff: All checks passed!   guardia del nucleo: OK
@@ -460,11 +487,11 @@ pruebas (ubuntu-latest)   1045 passed in 115.44s  Python 3.13.13   verificar omi
 pruebas (windows-latest)  1045 passed in 214.04s  Python 3.13.15   verificar omitidas: 0 omitidas
 ```
 
-Distribución de la suite: **1 045 casos** recogidos, 816 en `tests/unit/` y 229 en
+Distribución de la suite de esa corrida: **1 045 casos** recogidos, 816 en `tests/unit/` y 229 en
 `tests/integration/`, 0 fallos y 0 omitidos, en las dos plataformas. El reparto por carpeta se lee
 con `uv run pytest --collect-only -q` sobre el mismo commit.
 
-Cobertura, del trabajo `pruebas (ubuntu-latest)` de esa corrida (`coverage.py` cuenta
+Cobertura, del trabajo `pruebas (ubuntu-latest)` de esa corrida de la CI (`coverage.py` cuenta
 **sentencias**, no líneas; la CI publica el porcentaje entero y el exacto se calcula de sus columnas
 `Stmts` y `Miss`):
 
@@ -487,6 +514,6 @@ UC‑08 (los tres del 2026‑08‑31, locales), 479 en la Sesión M4.1 del sprin
 [36427904452](https://github.com/EugenioRRijo/tesis-apu-multidominio/actions/runs/36427904452)
 del cierre de C3 (2026‑09‑28, PR #14, commit `308eca5`), 945 en la corrida
 [36489551508](https://github.com/EugenioRRijo/tesis-apu-multidominio/actions/runs/36489551508)
-de la compuerta GC4 (2026‑09‑28, PR #15, commit `e7a0569`, con `core/` al 98,37 %) y 1 045 en esta
-corrida. La evaluación de
+de la compuerta GC4 (2026‑09‑28, PR #15, commit `e7a0569`, con `core/` al 98,37 %), 1 045 en la
+corrida de la CI de GC5 y 1 167 en la local de GC6. La evaluación de
 calidad sobre estos resultados está en [calidad_iso25010.md](calidad_iso25010.md).
