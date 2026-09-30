@@ -12,6 +12,7 @@ import openpyxl
 from fastapi import APIRouter, File, Form, UploadFile, status
 from sqlalchemy import select
 
+from api.archivos import guardar_subida
 from api.dependencias import SesionDep
 from api.esquemas import CambioRespuesta, CargaListaRespuesta, ListaRespuesta
 from core import models
@@ -67,8 +68,7 @@ def cargar_lista_precios(
     los que ofrece la vista previa `insumos_desconocidos`.
     """
     with tempfile.TemporaryDirectory() as directorio:
-        ruta = Path(directorio) / archivo.filename
-        ruta.write_bytes(archivo.file.read())
+        ruta = guardar_subida(directorio, archivo)
         comprobar_libro_legible(ruta)
         candidatos = insumos_desconocidos(sesion, ruta)
         resumen = crear_lista_desde_archivo(

@@ -29,6 +29,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 from starlette.background import BackgroundTask
 
+from api.archivos import guardar_subida
 from api.dependencias import SesionDep
 from api.esquemas import (
     ActualizacionPeticion,
@@ -214,8 +215,7 @@ def importar_presupuesto_de_tercero(
     """
     destino = _proyecto(sesion, proyecto)
     with tempfile.TemporaryDirectory() as directorio:
-        ruta = Path(directorio) / archivo.filename
-        ruta.write_bytes(archivo.file.read())
+        ruta = guardar_subida(directorio, archivo)
         comprobar_libro_legible(ruta)
         try:
             resultado = importar_presupuesto(sesion, ruta, destino)
