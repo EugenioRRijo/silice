@@ -4,7 +4,7 @@
 aqui) del acopio de datos (conteo por dominio y evaluacion sobre la linea base, que corren contra
 una base sembrada al ejecutar el script). El informe declara el conteo de la compuerta G2, la
 tecnica elegida, las metricas obligatorias (MAPE, RMSE, R2) y la limitacion de la tecnica de
-reglas, como exige CLAUDE.md §8.1.
+reglas, como exige NORMAS.md §8.1.
 """
 
 from __future__ import annotations
@@ -50,7 +50,7 @@ def test_el_informe_declara_conteo_tecnica_y_metricas():
     informe = _informe()
 
     # Compuerta G2 (INV-017): la fila exacta de cada dominio con su conteo y la tecnica que dicta
-    # la tabla de CLAUDE.md §8.1 (menos de 50 registros: reglas). Oraculo escrito a mano desde esa
+    # la tabla de NORMAS.md §8.1 (menos de 50 registros: reglas). Oraculo escrito a mano desde esa
     # tabla, no con `tecnica_para`: una fila con otro conteo u otra tecnica no pasa.
     assert "| civil | 5 | reglas |" in informe
     for dominio in ("industrial", "sistemas", "telecom"):
@@ -65,7 +65,7 @@ def test_el_informe_declara_conteo_tecnica_y_metricas():
     assert "| RMSE | 6.23 USD |" in informe
     assert "| R2 | sin varianza en los reales |" in informe
 
-    # La tecnica de reglas se declara como limitacion, no como logro (CLAUDE.md §8.1): la frase
+    # La tecnica de reglas se declara como limitacion, no como logro (NORMAS.md §8.1): la frase
     # exacta, no la palabra suelta, que tambien aparece en otros parrafos del informe.
     assert "como **limitacion** del trabajo, no como logro" in informe
 
@@ -79,7 +79,7 @@ def test_el_informe_tabula_las_predicciones_con_su_rango():
 
 def test_con_un_dominio_en_el_umbral_el_informe_no_afirma_que_todos_estan_por_debajo():
     """INV-079: el parrafo de G2 se deriva de los conteos. Con telecom en 50 registros (el umbral de
-    CLAUDE.md §8.1, que ya dicta razonamiento basado en casos) no puede afirmar que todos los
+    NORMAS.md §8.1, que ya dicta razonamiento basado en casos) no puede afirmar que todos los
     dominios estan por debajo de 50 ni declarar la tecnica de reglas como la que dicta la tabla."""
     informe = _informe({"civil": 5, "telecom": 50, "industrial": 4, "sistemas": 9})
 

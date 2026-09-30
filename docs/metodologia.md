@@ -1,6 +1,6 @@
 # Metodología de desarrollo: Scrum‑Cascada y DRY
 
-Este documento define **cómo** se construye el sistema descrito en [CLAUDE.md](../CLAUDE.md) y
+Este documento define **cómo** se construye el sistema descrito en [NORMAS.md](../NORMAS.md) y
 planificado en [PLAN_DESARROLLO.md](../PLAN_DESARROLLO.md). Es la referencia del capítulo
 metodológico de la tesis en lo relativo al proceso de desarrollo de software.
 
@@ -59,7 +59,7 @@ registrar el resultado en la bitácora.
 | **G‑núcleo** | Sesión I0.3 | las cinco pruebas de `test_costing.py` en verde sin modificarlas | se revisa el motor, nunca la línea base |
 | **G1** extracción IFC | Sesión I3.1 | cantidades extraídas de `tanquilla.ifc` = cálculo manual | el adaptador civil pasa a entrada tabular; se documenta la pérdida de independencia tecnológica |
 | **G‑núcleo intacto** | Sesión I5 | `git diff --stat core/` vacío y `test_arquitectura.py` verde | el intento de cambio se documenta como hallazgo; se rediseña el adaptador o se declara insuficiencia del contrato |
-| **G2** datos para ML | antes de I6.3 | conteo de registros por dominio contra la tabla de CLAUDE.md §8.1 | se degrada la técnica (XGBoost → CBR → reglas) y se declara la limitación |
+| **G2** datos para ML | antes de I6.3 | conteo de registros por dominio contra la tabla de NORMAS.md §8.1 | se degrada la técnica (XGBoost → CBR → reglas) y se declara la limitación |
 
 ### 2.3 Qué se congela al cruzar cada compuerta
 
@@ -94,7 +94,7 @@ registrar el resultado en la bitácora.
 
 | Evento | Cómo se ejecuta |
 |---|---|
-| Sprint Planning | leer CLAUDE.md y la sesión del PLAN; usar modo plan de Claude Code; confirmar la *Definition of Ready* |
+| Sprint Planning | leer NORMAS.md y la sesión del PLAN; usar modo plan de Claude Code; confirmar la *Definition of Ready* |
 | Daily | una entrada breve en la bitácora al abrir y cerrar cada sesión de trabajo |
 | Sprint Review | verificar el criterio de "Cierre" de la sesión con evidencia (salida de pytest, diff, captura) |
 | Retrospectiva | sección "Hallazgos y decisiones" de la bitácora; lo que afecta al proceso se lleva a este documento |
@@ -148,7 +148,7 @@ registrar el resultado en la bitácora.
 - Un sprint nunca adelanta trabajo de una fase cuya compuerta no se ha cruzado.
 - Un hallazgo dentro de un sprint que contradice un documento de fase anterior no se resuelve
   parcheando el código: se registra en la bitácora, se corrige el documento y se reabre la compuerta
-  si hace falta. La regla del 80 % de CLAUDE.md §9 es el caso más importante de esta política.
+  si hace falta. La regla del 80 % de NORMAS.md §9 es el caso más importante de esta política.
 
 ---
 
@@ -164,13 +164,13 @@ delante del jurado.
 | Hecho | Único lugar | Quién lo consume |
 |---|---|---|
 | Parámetros del cálculo (FCAS, bono, administración, utilidad) | `core/contracts/apu.py::ParametrosCosto` | motor, fixtures, docs (enlazan) |
-| Fórmula del precio unitario | CLAUDE.md §4 (texto) → `core/costing/` (única implementación) | presupuesto, actualización de precios, API |
+| Fórmula del precio unitario | NORMAS.md §4 (texto) → `core/costing/` (única implementación) | presupuesto, actualización de precios, API |
 | Tipos que cruzan fronteras | `core/contracts/` | core, adapters, ml, ui, api, tests |
 | Alias de unidades | `core/contracts/unidades.py` | contratos, regla R3 |
 | Los 5 APU, cómputo, presupuesto, curva y 7 inconsistencias | `tests/fixtures/apu_linea_base.py` | `test_costing`, `test_linea_base`, `scripts/seed.py`, fixture de I4 |
 | Fixtures de pytest | `tests/conftest.py` | toda la suite |
 | Reglas paramétricas del dominio civil | `adapters/civil/reglas.py` (expresiones trazables) | cómputo, informe, docs |
-| Estructura de carpetas y responsabilidades | CLAUDE.md §6 | README, arquitectura, manual técnico |
+| Estructura de carpetas y responsabilidades | NORMAS.md §6 | README, arquitectura, manual técnico |
 | Trazabilidad objetivo ↔ fase ↔ sesión ↔ producto ↔ indicador | `docs/tesis/esqueleto_tesis.md` | ERS, este documento, tesis |
 | Regla "adaptadores solo importan `core.contracts`" | `tests/unit/test_arquitectura.py` | verificación automática de la hipótesis |
 | Correspondencia RF → prueba → estado | `docs/plan_pruebas.md` §8 | la ERS conserva el enunciado y el criterio de aceptación, sin estado, y enlaza; README, calidad, manual técnico y dossier enlazan (INV‑032) |
@@ -180,7 +180,7 @@ delante del jurado.
 ### 5.2 Reglas prácticas
 
 1. Una constante numérica del negocio no se escribe dos veces: se importa de `ParametrosCosto` o del fixture.
-2. Un documento no reproduce tablas de otro documento: las enlaza con ancla (`CLAUDE.md#4-...`).
+2. Un documento no reproduce tablas de otro documento: las enlaza con ancla (`NORMAS.md#4-...`).
 3. Un dato de prueba se define en `tests/fixtures/` y se comparte por `conftest.py`; ningún test lo reescribe.
 4. Una regla de negocio (cálculo, verificación, paramétrica) vive en una sola función o clase; la UI y la API la llaman.
 5. Los contratos se importan siempre desde `core.contracts`; nunca se redefinen "parecidos" en otro paquete.

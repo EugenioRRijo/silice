@@ -8,7 +8,7 @@ palabra; las cifras y los estados de los requisitos no se repiten: viven en su f
 
 | Documento | Estado | Sesión que lo completa |
 |---|---|---|
-| [../CLAUDE.md](../CLAUDE.md) — constitución del proyecto | completo | — |
+| [../NORMAS.md](../NORMAS.md) — constitución del proyecto | completo | — |
 | [metodologia.md](metodologia.md) — Scrum‑Cascada, DRY, fuentes únicas e indicadores | completo | se actualiza por fase |
 | [linea_base.md](linea_base.md) — el caso didáctico auditado y sus siete inconsistencias | completo | — |
 | [ERS.md](ERS.md) — Especificación de Requerimientos de Software (IEEE 830) | completo, pendiente de revisión del tutor (G0) | 0.1 ✔; extensiones P0.1 y U0.1 |
@@ -53,9 +53,6 @@ palabra; las cifras y los estados de los requisitos no se repiten: viven en su f
 | [../PLAN_UI.md](../PLAN_UI.md) — recorrido guiado de la interfaz (U0–U3) | U0 y U1 hechas (GU1a cruzada); GU1b en Med; U2 y U3 condicionales |
 | [../PLAN_ASISTENTE.md](../PLAN_ASISTENTE.md) — asistente de presupuestos con IA (UC‑09) | fuera del límite de la tesis: trabajo futuro |
 | [../PLAN_CIERRE.md](../PLAN_CIERRE.md) — el final de la tesis (C0–C4, Med, Red) | en curso |
-
-Los diseños (`superpowers/specs/`) y los planes detallados (`superpowers/plans/`) de cada sprint
-están en [superpowers/](superpowers/); registran lo que se decidió en su fecha y no se reescriben.
 
 ## Fuentes (`fuentes/`)
 

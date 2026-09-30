@@ -3,8 +3,8 @@
 **Fecha:** 2026‑09‑20 · **Rama:** `inc/PLAN-prototipo` (worktree `.claude/worktrees/prototipo`) ·
 **Base del sprint:** etiqueta `p-base` (`471b3e2`) · **Rango:** `d7d0bab..0d4ff1f` (cuatro tareas) más
 la tanda de arreglos de la auditoría final (`1ead3dc..c50cdf1` y este commit) ·
-**Plan:** `docs/superpowers/plans/2026-09-20-prototipo-arenia-fase-p2-deudas-y-composicion.md` ·
-**Spec vinculante:** `docs/superpowers/specs/2026-09-16-prototipo-composicion-apu-design.md` ·
+**Plan:** `2026-09-20-prototipo-arenia-fase-p2-deudas-y-composicion.md` ·
+**Spec vinculante:** `2026-09-16-prototipo-composicion-apu-design.md` ·
 **Ledger:** `.superpowers/sdd/2026-09-20-prototipo-arenia-fase-p2-deudas-y-composicion/progress.md`
 (no viaja con la fusión: está en `.git/info/exclude`).
 
@@ -58,7 +58,7 @@ ledger, cada una con su coste si resultara equivocada:
    no los otros tres sembradores. *Coste si está equivocado:* cinco llamadores tocados y una firma
    pública cambiada en una rama sin fusionar; revertir es un `git revert` de un commit.
 3. **No añadir `ui` a la parametrización estricta de `test_arquitectura.py`** que solo permite importar
-   `core.contracts`: esa regla es de los adaptadores (CLAUDE.md §2), no de la interfaz, que ya está
+   `core.contracts`: esa regla es de los adaptadores (NORMAS.md §2), no de la interfaz, que ya está
    vigilada por otra prueba menos estricta. *Coste si está equivocado:* la interfaz queda vigilada por
    una regla menos estricta de lo que el plan de sesiones imaginaba; se corrige añadiendo la
    parametrización en cualquier sesión futura.

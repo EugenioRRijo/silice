@@ -2,7 +2,7 @@
 
 Lee una tabla CSV de geometría (tanquillas y zanjas) y devuelve las cantidades de obra trazables
 que producen las reglas paramétricas de `adapters/civil/reglas.py`. Es la entrada tabular prevista
-por la compuerta G1 (CLAUDE.md, sección 8.2) si el adaptador IFC no reproduce el cálculo manual;
+por la compuerta G1 (NORMAS.md, sección 8.2) si el adaptador IFC no reproduce el cálculo manual;
 aquí se implementa de forma independiente porque el brief de esta sesión la pide como entrega
 propia.
 """
@@ -70,7 +70,7 @@ def _leer_filas(
     UC-01, flujo 2a (INV-089): un archivo binario (no es texto UTF-8) o sin las columnas que este
     adaptador lee (la muestra de otro dominio) se rechaza nombrando el archivo, con el
     `ValueError` que la API traduce a 422, en vez de un `KeyError` de la primera columna que
-    falte. Cada adaptador tiene su copia: ninguno importa de otro (CLAUDE.md §2).
+    falte. Cada adaptador tiene su copia: ninguno importa de otro (NORMAS.md §2).
     """
     nombre = Path(fuente).name
     try:

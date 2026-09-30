@@ -471,7 +471,7 @@ def test_filas_desde_composicion_escribe_los_decimales_sin_exponente():
 
 
 def test_desglose_de_la_tuberia_da_el_precio_de_la_linea_base():
-    """INV-043 (11c): el desglose en vivo sale de la pagina. Oraculo: CLAUDE.md §4 y la fixture
+    """INV-043 (11c): el desglose en vivo sale de la pagina. Oraculo: NORMAS.md §4 y la fixture
     (costo directo 8,058; PU 10,19 a dos decimales)."""
     resultado = desglose(APU_TUBERIA)
     assert resultado.costo_directo == Decimal("8.058")

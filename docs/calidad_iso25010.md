@@ -48,7 +48,7 @@ prueba de aceptación crítica del trabajo se cumple: **7 de 7 inconsistencias d
 `tests/integration/test_auditoria_7_de_7.py` en cada corrida de CI, entre ellas la citada arriba.
 
 **Pertinencia funcional.** El informe de auditoría se genera siempre, sin pedirlo (principio 7 de
-CLAUDE.md §2): `elaborar()` no tiene un modo sin auditoría.
+NORMAS.md §2): `elaborar()` no tiene un modo sin auditoría.
 
 **Veredicto: parcial.** La corrección y la pertinencia cumplen; la completitud no, porque
 [plan_pruebas.md §8](plan_pruebas.md) declara un RF esencial parcial (RF‑16) y un deseable sin

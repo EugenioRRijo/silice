@@ -19,7 +19,7 @@ from adapters.civil.evaluador import evaluar_regla
 from core.contracts import Dominio, ItemComputo, OrigenTipo
 
 # ---------------------------------------------------------------------------------------------
-# Expresiones. Única copia: reproducirlas en una prueba es un error (CLAUDE.md, principio DRY).
+# Expresiones. Única copia: reproducirlas en una prueba es un error (NORMAS.md, principio DRY).
 # ---------------------------------------------------------------------------------------------
 
 REGLA_CONCRETO_TANQUILLA = "n * (a**2 - (a - 2*e)**2) * h"  # m3

@@ -4,9 +4,9 @@ Continúa a [PLAN_PROTOTIPO.md](PLAN_PROTOTIPO.md), que cerró 12 de 12 metas, y
 [PLAN_ASISTENTE.md](PLAN_ASISTENTE.md): el asistente con IA (UC‑09) sigue siendo otro plan.
 
 **Diseño que lo fundamenta:**
-[docs/superpowers/specs/2026-09-23-ui-recorrido-guiado-design.md](docs/superpowers/specs/2026-09-23-ui-recorrido-guiado-design.md).
+2026-09-23-ui-recorrido-guiado-design.md.
 **Plan detallado (tarea por tarea):**
-[docs/superpowers/plans/2026-09-23-ui-recorrido-guiado-u0-u1.md](docs/superpowers/plans/2026-09-23-ui-recorrido-guiado-u0-u1.md).
+2026-09-23-ui-recorrido-guiado-u0-u1.md.
 
 **Por qué existe.** La interfaz tiene nueve pantallas que funcionan y ninguna puerta de entrada.
 Frase de origen (Eugenio, 2026‑09‑22): «no sé qué hacer y no hay un camino para llevar al usuario de
@@ -18,7 +18,7 @@ medición del proyecto, mediante RNF‑10 y CP‑07.
 **Dependencia dura (cumplida).** El PR #7 está auditado y fusionado en `main` (`6fbb977`). U1 se
 ejecuta como fase C3 del cierre, en `inc/cierre-C3`, que sale de `main` tras la fusión de C2
 (`58ee828`); plan de la fase:
-[docs/superpowers/plans/2026-09-24-cierre-c3-interfaz-scripts.md](docs/superpowers/plans/2026-09-24-cierre-c3-interfaz-scripts.md)
+2026-09-24-cierre-c3-interfaz-scripts.md
 (enmienda del 2026‑09‑24).
 
 ## Sesiones
@@ -38,8 +38,8 @@ ejecuta como fase C3 del cierre, en `inc/cierre-C3`, que sale de `main` tras la 
 
 ## Enfoques B y C: qué son y cuándo se activan
 
-Fuente única: [docs/superpowers/specs/2026-09-23-ui-recorrido-guiado-design.md §3.7 y
-§7](docs/superpowers/specs/2026-09-23-ui-recorrido-guiado-design.md).
+Fuente única: 2026-09-23-ui-recorrido-guiado-design.md §3.7 y
+§7.
 
 - **B — asistente de cinco pasos (fase U2).** Un asistente paso a paso —retoma la motivación de
   Eugenio del 2026‑09‑22 («llevar al usuario de la mano»)— apoyado en el caso abierto, el marco y
@@ -62,7 +62,7 @@ B y C son una secuencia, no un compromiso: si CP‑07 resulta PASA, U2 no se eje
 - **GU1a** (U1 completa sin CP‑07; se cruza con GC3 del cierre): línea base en 1 586,61 USD y 7 de
   7; suite verde en Windows y Linux; salvaguarda de aislamiento activa; `core/` cambia **solo** por
   los dos commits que autoriza la fila C3 de la spec de cierre
-  ([§5](docs/superpowers/specs/2026-09-23-plan-cierre-tesis-design.md)): el de INV‑080 (en
+  (§5): el de INV‑080 (en
   `core/budget/`) y el de INV‑015 7a (tabla `descarte_version` y `descartar_version`), verificados
   como en la Tarea 18, paso 3, del plan de C3; aprobación de los cuatro encargos.
 - **GU1b** (en Med): **CP‑07 ejecutado y registrado** (PASA o FALLA: ambos cierran GU1b; FALLA

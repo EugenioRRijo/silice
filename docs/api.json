@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Sistema APU multidominio",
-    "description": "API HTTP sobre el nucleo del sistema de Analisis de Precios Unitarios (APU).\n\n**Los montos viajan como texto, nunca como numero JSON.** Todo campo monetario o dimensional\n(precios, cantidades, factores, totales) se serializa como `str` en formato decimal\n(por ejemplo `\"1586.61\"`) tanto en las peticiones como en las respuestas; la conversion a\n`Decimal` ocurre siempre en la frontera de la API, construyendo desde el texto exacto. Esto evita\nla perdida de precision de `float` en JSON (regla 3 de CLAUDE.md).\n",
+    "description": "API HTTP sobre el nucleo del sistema de Analisis de Precios Unitarios (APU).\n\n**Los montos viajan como texto, nunca como numero JSON.** Todo campo monetario o dimensional\n(precios, cantidades, factores, totales) se serializa como `str` en formato decimal\n(por ejemplo `\"1586.61\"`) tanto en las peticiones como en las respuestas; la conversion a\n`Decimal` ocurre siempre en la frontera de la API, construyendo desde el texto exacto. Esto evita\nla perdida de precision de `float` en JSON (regla 3 de NORMAS.md).\n",
     "version": "0.1.0"
   },
   "paths": {
@@ -1831,7 +1831,7 @@
           "total"
         ],
         "title": "PartidaPresupuestadaRespuesta",
-        "description": "Un renglón del presupuesto, tal como se presenta (dos decimales, CLAUDE.md §2.3)."
+        "description": "Un renglón del presupuesto, tal como se presenta (dos decimales, NORMAS.md §2.3)."
       },
       "PartidaRespuesta": {
         "properties": {
@@ -2081,7 +2081,7 @@
           "items"
         ],
         "title": "PresupuestoPeticion",
-        "description": "Lo que hace falta para elaborar un presupuesto (UC-01/05): items ya extraídos por un\nadaptador o construidos a mano, y los cuatro parámetros de costo, opcionales (por defecto los\nde `ParametrosCosto`, la línea base de CLAUDE.md §4).\n\n`plan` es el plan de trabajo del proyectista (UC‑01, paso 6); sin él, una partida por día en\nel orden del presupuesto (`plan_secuencial`)."
+        "description": "Lo que hace falta para elaborar un presupuesto (UC-01/05): items ya extraídos por un\nadaptador o construidos a mano, y los cuatro parámetros de costo, opcionales (por defecto los\nde `ParametrosCosto`, la línea base de NORMAS.md §4).\n\n`plan` es el plan de trabajo del proyectista (UC‑01, paso 6); sin él, una partida por día en\nel orden del presupuesto (`plan_secuencial`)."
       },
       "PresupuestoResumenRespuesta": {
         "properties": {

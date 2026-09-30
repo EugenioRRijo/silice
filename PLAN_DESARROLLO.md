@@ -1,4 +1,4 @@
-# Plan de desarrollo con Claude Code
+# Plan de desarrollo
 
 Sistema de generación y auditoría de Análisis de Precios Unitarios multidominio.
 
@@ -7,7 +7,7 @@ Este plan traduce los siete incrementos del plan de implementación a sesiones c
 > **Errata (2026‑09‑15).** Este plan llamaba «reales» a los cinco APU y al presupuesto auditado del
 > caso de la clínica. Son un **ejercicio académico ficticio**: la línea base normativa de las
 > pruebas y un caso didáctico en la tesis. El texto quedó corregido en la sesión de limpieza; la
-> fuente única de la naturaleza de los datos es [CLAUDE.md §1](CLAUDE.md#1-qué-es-este-proyecto).
+> fuente única de la naturaleza de los datos es [NORMAS.md §1](NORMAS.md#1-qué-es-este-proyecto).
 
 ---
 
@@ -23,7 +23,7 @@ source .venv/bin/activate        # Windows: .venv\Scripts\activate
 pip install sqlalchemy pandas pytest ruff
 ```
 
-Copiar `CLAUDE.md` a la raíz del repositorio. Es lo primero, antes de cualquier código.
+Copiar `NORMAS.md` a la raíz del repositorio. Es lo primero, antes de cualquier código.
 
 ```bash
 claude
@@ -54,7 +54,7 @@ Sin código todavía. Estas sesiones producen los entregables que el jurado de s
 **Objetivo.** Convertir los ocho casos de uso en requerimientos funcionales numerados.
 
 ```
-Lee CLAUDE.md. Necesito redactar la Especificación de Requerimientos
+Lee NORMAS.md. Necesito redactar la Especificación de Requerimientos
 de Software bajo IEEE 830 para este sistema.
 
 Los ocho casos de uso son:
@@ -139,12 +139,12 @@ que agregar un adaptador no toca el núcleo.
 ### Sesión I0.1 — Contratos y esqueleto
 
 ```
-Crea la estructura de carpetas descrita en CLAUDE.md sección 6, con
+Crea la estructura de carpetas descrita en NORMAS.md sección 6, con
 __init__.py donde corresponda, pyproject.toml con las dependencias
 y configuración de ruff y pytest.
 
 Implementa core/contracts/ exactamente como está especificado en
-CLAUDE.md sección 5. Estos archivos son estables, no deben cambiar
+NORMAS.md sección 5. Estos archivos son estables, no deben cambiar
 en el resto del proyecto.
 
 Nada más por ahora.
@@ -159,7 +159,7 @@ Nada más por ahora.
 Esta sesión va **antes** de implementar el motor. Es deliberado.
 
 ```
-Lee la sección 4 de CLAUDE.md, que contiene la especificación exacta
+Lee la sección 4 de NORMAS.md, que contiene la especificación exacta
 del cálculo y los cinco APU verificados de la línea base.
 
 Crea tests/fixtures/apu_linea_base.py con los cinco casos como datos
@@ -339,7 +339,7 @@ encofrado 4.48 m2. En el presupuesto auditado se usaron 0.415 y
 
 ```
 Implementa core/verification/ con las siete reglas de la sección 7 de
-CLAUDE.md.
+NORMAS.md.
 
 Cada regla es una clase con un método evaluar() que devuelve una lista
 de hallazgos, cada uno con severidad, descripción, cuantificación del

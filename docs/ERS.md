@@ -7,7 +7,7 @@
 > sesión: al menos 20 RF numerados, cada uno con prioridad y trazabilidad al caso de uso que lo origina,
 > y su matriz de trazabilidad (PLAN_DESARROLLO.md, Sesión 0.1, «Cierre»). Resultado original:
 > **31 RF** (sección 3.2) y matriz de la sección 4.
-> Este documento no reproduce datos que tienen fuente única: enlaza [CLAUDE.md](../CLAUDE.md),
+> Este documento no reproduce datos que tienen fuente única: enlaza [NORMAS.md](../NORMAS.md),
 > [docs/linea_base.md](linea_base.md) y [docs/metodologia.md](metodologia.md) (principio DRY,
 > [metodologia.md §5](metodologia.md#5-dry)). Tras cruzar G0 quedan congelados los ocho casos de uso y
 > sus requerimientos funcionales numerados.
@@ -42,7 +42,7 @@
 > flujo 3a de UC‑07 (INV‑094).
 > **Revisión C6 (2026‑09‑29, fase C6 de [PLAN_CIERRE.md](../PLAN_CIERRE.md)):** sin UC, RF, RNF
 > ni pantalla nuevos; **dos rutas nuevas**, `POST /proyectos` y `POST /presupuestos/importar`, que
-> autoriza la enmienda del 2026‑09‑29 ([spec del cierre](superpowers/specs/2026-09-23-plan-cierre-tesis-design.md),
+> autoriza la enmienda del 2026‑09‑29 (spec del cierre,
 > §2 y §10), con el visto bueno del tutor **pendiente**: si se niega, los commits de C6 se revierten
 > (ruling C6‑10). Los demás cambios agregan campos a rutas y pantallas que ya existían.
 > (1) UC‑01 1: el proyecto se crea por la API (INV‑086). (2) UC‑02 2a, 2b y 3a: el alta de los
@@ -69,7 +69,7 @@ Definir los requerimientos funcionales y no funcionales del sistema para que el 
 equipo de desarrollo compartan una única descripción verificable de lo que se construye.
 
 ### 1.2 Alcance
-Ver [CLAUDE.md §1](../CLAUDE.md#1-qué-es-este-proyecto). Incluye: derivación trazable de cantidades,
+Ver [NORMAS.md §1](../NORMAS.md#1-qué-es-este-proyecto). Incluye: derivación trazable de cantidades,
 costeo con estructura venezolana, presupuesto y curva, verificación automática, normalización semántica,
 detección de anomalías y predicción de precios. Excluye: gemelo digital en sentido estricto,
 digitalización automática de planos, evaluación financiera del proyecto de inversión.
@@ -100,7 +100,7 @@ digitalización automática de planos, evaluación financiera del proyecto de in
 
 ### 1.4 Referencias
 IEEE 830‑1998; ISO/IEC 25010; COVENIN 2000; AACE RP 18R‑97; Bases del anteproyecto
-(`docs/fuentes/`); [CLAUDE.md](../CLAUDE.md); [docs/metodologia.md](metodologia.md).
+(`docs/fuentes/`); [NORMAS.md](../NORMAS.md); [docs/metodologia.md](metodologia.md).
 
 ### 1.5 Visión general del documento
 La sección 2 describe el producto y sus casos de uso; la sección 3 enumera los requerimientos; la
@@ -141,7 +141,7 @@ UC‑11 se declararon en la Sesión P0.1 del sprint del prototipo AREN.IA
 y los pasos y flujos que el sistema no realiza, con su registro en el inventario, están en [plan_pruebas.md §8.1](plan_pruebas.md#8-especificación-de-casos-trazabilidad-rf--prueba) (INV‑032, INV‑033).
 
 Los tipos citados en los flujos (`ItemComputo`, `ComposicionAPU`, `ResultadoAPU`, `Presupuesto`,
-`Hallazgo`, `Rendimiento`) son los de [CLAUDE.md §5](../CLAUDE.md#5-contratos-de-interfaz-corecontracts),
+`Hallazgo`, `Rendimiento`) son los de [NORMAS.md §5](../NORMAS.md#5-contratos-de-interfaz-corecontracts),
 implementados en `core/contracts/`.
 
 #### UC‑01 — Elaborar presupuesto nuevo desde una fuente de cantidades
@@ -317,7 +317,7 @@ implementados en `core/contracts/`.
      El formato tampoco trae `origen_tipo`: un renglón con regla es `REGLA` y uno sin ella,
      `MANUAL` (flujo 2b).
   3. El sistema ejecuta las siete reglas R1–R7
-     ([CLAUDE.md §7](../CLAUDE.md#7-siete-reglas-de-verificación-coreverification-sesión-i4)).
+     ([NORMAS.md §7](../NORMAS.md#7-siete-reglas-de-verificación-coreverification-sesión-i4)).
   4. Cada regla devuelve `Hallazgo` con severidad, descripción, impacto cuantificado y los `origen_id`
      involucrados.
   5. El sistema ordena los hallazgos por severidad descendente y emite el informe de auditoría.
@@ -385,7 +385,7 @@ implementados en `core/contracts/`.
 
 - **Actor principal:** auditor. **Actor secundario:** proyectista.
 - **Precondiciones:** hay histórico de precios y de APU acumulado, y el conteo de registros por dominio
-  está hecho (compuerta G2, [CLAUDE.md §8.1](../CLAUDE.md#8-compuertas-y-criterios-de-degradación)).
+  está hecho (compuerta G2, [NORMAS.md §8.1](../NORMAS.md#8-compuertas-y-criterios-de-degradación)).
 - **Flujo principal**
   1. El usuario selecciona una partida o un presupuesto completo.
   2. El sistema determina la técnica que corresponde al conteo de registros del dominio.
@@ -526,8 +526,8 @@ implementados en `core/contracts/`.
 | Usuario nuevo / evaluador | abre la aplicación por primera vez —tribunal, tutor o presupuestista recién llegado— y necesita orientarse sin formación previa | UC‑12 |
 
 ### 2.4 Restricciones
-- Todo monto y cantidad en `Decimal` (CLAUDE.md §2).
-- El núcleo no depende de ningún dominio; los dominios entran por `AdaptadorDominio` (CLAUDE.md §5).
+- Todo monto y cantidad en `Decimal` (NORMAS.md §2).
+- El núcleo no depende de ningún dominio; los dominios entran por `AdaptadorDominio` (NORMAS.md §5).
 - Procesamiento sobre IFC 4, no sobre formatos nativos de modelado (independencia tecnológica).
 - Codificación de partidas COVENIN 2000; estructura de costos según la Convención Colectiva vigente.
 - Ejecución local en Windows/Linux con Python ≥ 3.12.
@@ -539,7 +539,7 @@ implementados en `core/contracts/`.
   contra ese modelo, no contra un export de un modelador BIM
   ([bitácora de F.1](bitacora/2026-08-31-F1-api-3d.md)); falta la prueba con exports de al menos dos
   modeladores (RNF‑09).
-- Volumen de registros históricos suficiente para el módulo predictivo (compuerta G2, CLAUDE.md §8.1).
+- Volumen de registros históricos suficiente para el módulo predictivo (compuerta G2, NORMAS.md §8.1).
 - Autorización de uso académico de una base de precios de referencia, o catálogo reducido propio.
 
 ### 2.6 Requisitos futuros
@@ -593,13 +593,13 @@ la corrija.
 
 | RF | Enunciado | Prioridad | UC | Incremento | Criterio de aceptación |
 |---|---|---|---|---|---|
-| RF‑01 | El sistema calculará el precio unitario de una partida a partir de su composición y los parámetros de costo según la fórmula de CLAUDE.md §4 | Esencial | UC‑01 | I0.3 | Los cinco precios unitarios de la línea base se reproducen con ± 0,01; los materiales no se dividen entre el rendimiento y la administración y la utilidad se aplican en cascada |
+| RF‑01 | El sistema calculará el precio unitario de una partida a partir de su composición y los parámetros de costo según la fórmula de NORMAS.md §4 | Esencial | UC‑01 | I0.3 | Los cinco precios unitarios de la línea base se reproducen con ± 0,01; los materiales no se dividen entre el rendimiento y la administración y la utilidad se aplican en cascada |
 | RF‑02 | El sistema generará siempre el informe de auditoría al producir o cargar un presupuesto | Esencial | UC‑05 | I4 | Todo presupuesto elaborado o recargado trae su informe; sobre el presupuesto de prueba se detectan 7 de 7 inconsistencias, y el informe recargado declara los ítems pendientes del documento emitido y, en una versión revalorada, los precios atípicos que declaró su revaloración (UC‑07 5) |
 | RF‑03 | Toda cantidad de obra conservará `origen_id`, `origen_tipo` y, si aplica, la regla que la produjo | Esencial | UC‑01, 04 | I0.1 | Ningún `ItemComputo` sin `origen_id`; un ítem de origen REGLA sin expresión se rechaza; los ítems que derivan de una regla llevan su expresión y sus parámetros, y todo hallazgo de partida referencia un origen trazable |
 | RF‑04 | El sistema obtendrá las cantidades de obra invocando `AdaptadorDominio.extraer(fuente)`, sin que el núcleo conozca el dominio ni el formato de la fuente | Esencial | UC‑01 | I0.1, I3.1 | Ningún adaptador importa de `core` fuera de `core.contracts`; todo `ItemComputo` extraído trae `origen_id` y `origen_tipo`; el adaptador IFC usa el GlobalId como `origen_id` y reproduce el cálculo manual de la tanquilla (compuerta G1, cruzada con salvedad: sección 2.5) |
 | RF‑05 | El sistema persistirá partidas, insumos, composiciones y rendimientos en SQLite; `scripts/seed.py` cargará la línea base en la base de datos, de modo que el presupuesto se reproduzca completo desde ella | Esencial | UC‑01 | I0.4 | Los cinco APU recuperados de la base dan los mismos precios unitarios que el fixture |
 | RF‑06 | El sistema construirá el presupuesto asociando cada `ItemComputo` a su `ComposicionAPU`, calculando su `ResultadoAPU` y emitiendo una `PartidaPresupuestada` por ítem, con total por partida y total general | Esencial | UC‑01 | I0.5 | El presupuesto de la línea base corregida se reproduce partida por partida desde el catálogo persistido |
-| RF‑07 | El sistema generará la curva de inversión de modo que su acumulado final sea exactamente igual al total del presupuesto | Esencial | UC‑01 | I0.5 | `total_curva == total` sin tolerancia (la curva del caso didáctico de la línea base, [CLAUDE.md §1](../CLAUDE.md#1-qué-es-este-proyecto), cerraba en 99,30 %) |
+| RF‑07 | El sistema generará la curva de inversión de modo que su acumulado final sea exactamente igual al total del presupuesto | Esencial | UC‑01 | I0.5 | `total_curva == total` sin tolerancia (la curva del caso didáctico de la línea base, [NORMAS.md §1](../NORMAS.md#1-qué-es-este-proyecto), cerraba en 99,30 %) |
 | RF‑08 | El sistema exportará presupuesto y curva a XLSX, redondeando a dos decimales solo en la celda presentada y nunca en el cálculo | Deseable | UC‑01 | I0.5 | El libro se escribe completo, con sus cuatro hojas, y sus totales coinciden con los del presupuesto en memoria |
 | RF‑09 | El sistema admitirá un dominio nuevo agregando un adaptador bajo `adapters/` que solo importe `core.contracts`, sin modificar `core/` | Esencial | UC‑01 | I5 | `git diff --stat core/` vacío tras I5; ningún adaptador importa de `core` fuera de `core.contracts`, y los adaptadores telecom, industrial y sistemas extraen sus muestras (indicador 4) |
 | RF‑10 | El sistema cargará una lista de precios en CSV o XLSX, la validará (columnas, tipos y unidades) e identificará los insumos cuyo precio difiere del vigente y las partidas donde participan | Esencial | UC‑02 | I1 | La lista de prueba identifica exactamente los insumos modificados; los importes se leen como `Decimal` exacto y una fila con unidad no equivalente se rechaza sin detener las demás |
@@ -679,9 +679,9 @@ Cobertura por caso de uso (mínimos exigidos por el criterio de cierre entre par
 | Usabilidad | RNF‑10 capacidad de aprendizaje de la interfaz: una persona que nunca vio la aplicación llega sola del Inicio a un presupuesto en Excel con su hoja de auditoría | caso con persona CP‑07 ([guion_prueba_arenia.md](guion_prueba_arenia.md)) y bloque B del anexo A de [dossier_g0.md](dossier_g0.md) | en cada uno de los dos escenarios de CP‑07 (CP‑07 pasa solo si pasan ambos): sin ayuda, ≤ 20 min, bloque B ≥ 4,0 y ningún ítem < 3 |
 
 ### 3.4 Reglas de negocio
-Fórmula de cálculo: [CLAUDE.md §4](../CLAUDE.md#4-especificación-del-cálculo-y-línea-base).
-Reglas de verificación R1–R7: [CLAUDE.md §7](../CLAUDE.md#7-siete-reglas-de-verificación-coreverification-sesión-i4).
-Criterios de degradación del módulo predictivo: [CLAUDE.md §8.1](../CLAUDE.md#8-compuertas-y-criterios-de-degradación).
+Fórmula de cálculo: [NORMAS.md §4](../NORMAS.md#4-especificación-del-cálculo-y-línea-base).
+Reglas de verificación R1–R7: [NORMAS.md §7](../NORMAS.md#7-siete-reglas-de-verificación-coreverification-sesión-i4).
+Criterios de degradación del módulo predictivo: [NORMAS.md §8.1](../NORMAS.md#8-compuertas-y-criterios-de-degradación).
 
 ---
 

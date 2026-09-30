@@ -2,7 +2,7 @@
 
 **Fecha:** 2026‑09‑23 · **Rama:** `inc/cierre-C1` · **Inventario:**
 [docs/auditoria/2026-09-inventario.md](../auditoria/2026-09-inventario.md) · **Spec:**
-[§4 y §5](../superpowers/specs/2026-09-23-plan-cierre-tesis-design.md) · **Paquete para el tutor:**
+§4 y §5 · **Paquete para el tutor:**
 [docs/tesis/revisiones/2026-09-paquete-tutor.md](../tesis/revisiones/2026-09-paquete-tutor.md).
 
 La spec (§5, fila C1) exige un expediente previo por cada hallazgo de `core/`, y (§4) que la
@@ -47,11 +47,11 @@ cadena que salta la invariante, para cada contrato).
 
 | Alternativa | Por qué no |
 |---|---|
-| Validar en cada frontera (API, adaptadores, UI) | Repite la regla en cada capa (DRY) y deja al contrato sin proteger su propia invariante (CLAUDE.md §5) |
+| Validar en cada frontera (API, adaptadores, UI) | Repite la regla en cada capa (DRY) y deja al contrato sin proteger su propia invariante (NORMAS.md §5) |
 | `isinstance` estricto con `TypeError` | Más estricto que el precedente de `LineaManoObra`; rompe a un llamador que envíe texto de un JSON o CSV |
 | No cambiar y declarar la limitación | Es el estado mientras no llegue el aval |
 
-**Costo de hacerlo:** seis líneas en dos contratos «estables» (CLAUDE.md §5), más las pruebas. La
+**Costo de hacerlo:** seis líneas en dos contratos «estables» (NORMAS.md §5), más las pruebas. La
 línea base no cambia porque sus datos usan miembros.
 
 **Costo de no hacerlo:** un llamador futuro que construya contratos desde texto (la API recibe
@@ -140,7 +140,7 @@ de INV‑003 en C1 (rechazar lo que no es `Decimal`) solo llega a la copia del n
 los adaptadores siguen lanzando `TypeError` con un `float`.
 
 **Cambio de contrato propuesto.** Un módulo nuevo `core/contracts/expresiones.py`, el único que los
-adaptadores pueden importar (CLAUDE.md §2):
+adaptadores pueden importar (NORMAS.md §2):
 
 ```python
 OPERADORES_ARITMETICOS: frozenset[type[ast.operator]] = frozenset(
@@ -162,7 +162,7 @@ def evaluar(
 delega `evaluar`. En la **subtarea de C2**, que depende del aval, los cuatro adaptadores importan
 `core.contracts.expresiones.evaluar` con sus subconjuntos: sistemas `{Add, Mult}`, telecom
 `{Add, Sub, Mult, Div}`, civil e industrial los cinco. El módulo nuevo agrega una fila a la tabla de
-CLAUDE.md §5.
+NORMAS.md §5.
 
 | Alternativa | Por qué no |
 |---|---|

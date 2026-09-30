@@ -5,7 +5,7 @@
 
 ## Objetivo
 
-Implementar `core/verification/`: las siete reglas de CLAUDE.md §7 como clases `ReglaVerificacion`,
+Implementar `core/verification/`: las siete reglas de NORMAS.md §7 como clases `ReglaVerificacion`,
 un informe que se genera siempre, y la prueba de aceptación crítica que reproduce el presupuesto
 auditado y comprueba que el sistema detecta **7 de 7** sin que el núcleo conozca ningún dominio.
 
@@ -32,15 +32,15 @@ Commit: `feat(core): sistema de verificacion de consistencia`.
 
 | Decisión | Motivo |
 |---|---|
-| El núcleo tiene su propio evaluador de expresiones en vez de reutilizar `adapters/civil/evaluador.py` | `core/` no puede importar `adapters/` (CLAUDE.md §2). Ver el hallazgo 1 |
+| El núcleo tiene su propio evaluador de expresiones en vez de reutilizar `adapters/civil/evaluador.py` | `core/` no puede importar `adapters/` (NORMAS.md §2). Ver el hallazgo 1 |
 | Las directivas se distinguen por el prefijo `_` en `especificaciones` | Es el único campo de texto libre del contrato; el prefijo permite que R4 (que compara especificaciones con el texto del APU) las ignore sin conocer sus nombres |
 | El `impacto` de un hallazgo es siempre una magnitud **no negativa**; el sentido lo llevan `valor_observado` y `valor_esperado` | El brief pide `\|Δ\| × PU` en R1 y R5; aplicar el mismo criterio en R2 y R7 evita que la misma columna del informe signifique cosas distintas según la regla |
 | R7 concilia **componentes conexas** del grafo período–partida, no filas sueltas | Una partida puede repartirse en varios períodos (el encofrado ocupa los días 3 y 4) y un período puede cubrir varias partidas |
 | R7 no reporta nada si el presupuesto no declara curva | R2 ya lo informa; repetirlo como cinco advertencias "partida sin período" sería ruido |
 | R1 advierte (no da error) ante una cantidad MANUAL sin regla, aunque declare `_balance` | El brief lo pide así, y es cierto: el 1,30 m3 del relleno se escribió a mano. Que además exista un balance lo verifica R5, que sí da error |
-| El informe redondea a dos decimales solo en las columnas de la tabla; la descripción de cada hallazgo cita el valor exacto | CLAUDE.md §2.3 redondea "únicamente al presentar", pero la trazabilidad (§2.6) exige conservar la evidencia sin perder dígitos |
+| El informe redondea a dos decimales solo en las columnas de la tabla; la descripción de cada hallazgo cita el valor exacto | NORMAS.md §2.3 redondea "únicamente al presentar", pero la trazabilidad (§2.6) exige conservar la evidencia sin perder dígitos |
 | `partida_por_origen` registra `origen_id -> codigo` y también `codigo -> codigo` | R6 compara APU entre sí y solo puede referenciar códigos de partida, no `origen_id` de ítems. Ver el hallazgo 2 |
-| `ExpresionInvalida` y `ParametroFaltante` llevan `# noqa: N818` | El proyecto escribe identificadores en español (CLAUDE.md §3) y el sufijo `Error` que exige N818 es una convención inglesa. No se tocó `pyproject.toml` (archivo compartido) |
+| `ExpresionInvalida` y `ParametroFaltante` llevan `# noqa: N818` | El proyecto escribe identificadores en español (NORMAS.md §3) y el sufijo `Error` que exige N818 es una convención inglesa. No se tocó `pyproject.toml` (archivo compartido) |
 
 ## Hallazgos
 
@@ -50,7 +50,7 @@ Commit: `feat(core): sistema de verificacion de consistencia`.
 
 3. **Insuficiencia del contrato: `PuntoCurva` no lleva `codigo_partida`.** R7 tiene que conciliar el plan de trabajo con el presupuesto sin saber qué partidas ejecuta cada período. **Solución sin tocar el contrato:** la convención de `core/verification/directivas.py`, que declara los códigos entre corchetes al final de la etiqueta (`"Dia 1 [LB-01-EXC, LB-02-TUB]"`), con `etiqueta_con_codigos` / `codigos_en_etiqueta` como par inverso. Si la etiqueta no los declara —como ocurre en la curva real del caso— R7 cae a la contención textual de la descripción de la partida en la del período, que es una heurística y puede fallar; por eso `core.budget` (Sesión I0.5) debería etiquetar sus períodos con `etiqueta_con_codigos`.
 
-4. **Insuficiencia del contrato: el criterio de depreciación no es declarable.** CLAUDE.md §7 define R6 como "un mismo insumo lleva el mismo factor en todos los APU **y el criterio está declarado**". `LineaEquipo` tiene `depreciacion` pero ningún campo donde declarar la regla de amortización que la justifica (vida útil, horas de uso, criterio contable). R6 verifica lo que sí puede —que el factor sea único por insumo— y lo dice en la descripción del hallazgo. La segunda mitad de la regla no es verificable con el contrato actual.
+4. **Insuficiencia del contrato: el criterio de depreciación no es declarable.** NORMAS.md §7 define R6 como "un mismo insumo lleva el mismo factor en todos los APU **y el criterio está declarado**". `LineaEquipo` tiene `depreciacion` pero ningún campo donde declarar la regla de amortización que la justifica (vida útil, horas de uso, criterio contable). R6 verifica lo que sí puede —que el factor sea único por insumo— y lo dice en la descripción del hallazgo. La segunda mitad de la regla no es verificable con el contrato actual.
 
 5. **`adapters/civil/tabular.py` genera el balance de relleno sin llaves**, en la forma `"LB-01-EXC - LB-04-CON - LB-02-TUB * 0.0081"`. `core.verification.expresiones.sustituir_codigos` espera `{LB-01-EXC}`, y sin llaves la expresión ni siquiera es analizable (`LB-01-EXC` se lee como una resta de tres nombres). Con ese balance, R5 emitiría un ERROR de "balance no evaluable" en vez de verificarlo. **No se corrigió aquí:** `adapters/` no es ruta exclusiva de esta tarea y el núcleo no debe adaptarse al adaptador. Es un arreglo de una línea en `tabular.py` (envolver cada código en llaves) que debería entrar en la siguiente sesión que toque el adaptador civil.
 

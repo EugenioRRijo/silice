@@ -30,7 +30,7 @@ def test_apu_declarado_didactico_no_se_reporta():
 
 
 def test_datos_que_el_usuario_suministre_despues_no_se_reportan():
-    """La propia fuente unica (CLAUDE.md seccion 1) habla de APU reales en futuro."""
+    """La propia fuente unica (NORMAS.md seccion 1) habla de APU reales en futuro."""
     texto = "Cuando se suministren APU de casos reales, se incorporaran como evidencia adicional."
 
     assert meta.oraciones_como_reales(texto) == []
@@ -128,7 +128,7 @@ def test_errata_presente_en_todos():
 
 
 def test_se_vigila_la_documentacion_del_proyecto():
-    for relativo in ("CLAUDE.md", "README.md", "PLAN_MULTIDOMINIO.md", "docs/ERS.md"):
+    for relativo in ("NORMAS.md", "README.md", "PLAN_MULTIDOMINIO.md", "docs/ERS.md"):
         assert meta.es_vigilado(relativo), relativo
 
 

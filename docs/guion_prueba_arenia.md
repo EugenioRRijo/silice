@@ -34,7 +34,7 @@ CP‑07 (sprint de UI, [PLAN_UI.md](../PLAN_UI.md)) es de otra naturaleza: no lo
 **Los datos sembrados son didácticos, no de obra ejecutada.** Las cinco partidas `LB-*` de la
 clínica y las tres partidas `DEMO-*` son ejercicios académicos ficticios; los precios de la
 referencia MaPreX son una referencia publicada que se usa como sugerencia. La declaración completa
-vive una sola vez en [CLAUDE.md §1](../CLAUDE.md#1-qué-es-este-proyecto). La partida `PRUEBA-01-TUB`
+vive una sola vez en [NORMAS.md §1](../NORMAS.md#1-qué-es-este-proyecto). La partida `PRUEBA-01-TUB`
 que se compone en este guion es, igualmente, un caso de prueba.
 
 ## 4. Entorno y preparación
@@ -397,7 +397,7 @@ el precio unitario `0.1212291…` (de `19.99` a `20.11`).
 **Cómo se lee.** Las tres cantidades se escribieron a mano en CP‑05; ninguna viene de una regla
 paramétrica ni de un modelo IFC. La regla R1 (trazabilidad geométrica) lo hace constar como
 advertencia, no como error: el presupuesto **cumple**. Que el informe aparezca sin haberlo pedido es
-parte de lo que se prueba (principio 7 de [CLAUDE.md](../CLAUDE.md)).
+parte de lo que se prueba (principio 7 de [NORMAS.md](../NORMAS.md)).
 
 | Resultado obtenido | Veredicto |
 |---|---|
@@ -553,7 +553,7 @@ ejecución, dejando constancia en [docs/bitacora/](bitacora/).
 | CP‑03 | UC‑10, UC‑11 | RF‑01, RF‑34 | decisión D9 ([dossier_g0.md](dossier_g0.md)) |
 | CP‑04 | UC‑06, UC‑11 | RF‑26, RF‑27, RF‑33 | — |
 | CP‑05 | UC‑01 | RF‑06, RF‑07, RF‑08, RF‑34 | hojas de `core/budget/excel.py` |
-| CP‑06 | UC‑01, UC‑05 | RF‑02, RF‑21, RF‑23 | principio 7 de CLAUDE.md §2 |
+| CP‑06 | UC‑01, UC‑05 | RF‑02, RF‑21, RF‑23 | principio 7 de NORMAS.md §2 |
 | CP‑07 | UC‑12 | RF‑36 a RF‑43 | RNF‑10; bloque B del anexo A de [dossier_g0.md](dossier_g0.md); compuerta GU1b (Med) |
 
 ## 8. Registro de la ejecución

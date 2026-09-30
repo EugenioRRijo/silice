@@ -73,7 +73,7 @@ los escenarios (UC‑08), en las secciones 4.2, 4.5.1 y 4.6, y las Tablas 4.10 y
 cada pendiente al cerrar la tercera. De la cuarta, todavía en curso, el capítulo recoge tres cambios
 del 28 de septiembre: la operación de escenarios de la API declara los pendientes del presupuesto
 base y la especificación redacta el flujo 3a de UC‑01 en su orden real (sección 4.5.1), y la tabla
-de contratos de `CLAUDE.md` y la arquitectura muestran la modalidad de mano de obra (sección 4.3.2).
+de contratos de `NORMAS.md` y la arquitectura muestran la modalidad de mano de obra (sección 4.3.2).
 Esa etapa corrigió además, el mismo día, los desfases documentales que describen las secciones
 4.1.1, 4.1.3, 4.1.4, 4.2, 4.3.4, 4.4.1 y 4.7.2: esas secciones los describen como estaban el 23 de
 septiembre, y la Tabla 4.11 da su estado al cerrar la tercera etapa. El resto de lo que cambiaron la
@@ -90,7 +90,7 @@ AACE. El capítulo describe lo implementado y declara cada una como pendiente, c
 
 **Naturaleza de los datos.** Todos los análisis de precios unitarios y presupuestos que se
 mencionan son ejercicios académicos ficticios o casos construidos para el proyecto
-([CLAUDE.md §1](../../../CLAUDE.md)); ninguno de ellos es una obra ejecutada, y no se presentan como tal.
+([NORMAS.md §1](../../../NORMAS.md)); ninguno de ellos es una obra ejecutada, y no se presentan como tal.
 Los resultados sobre esos casos no se generalizan estadísticamente, y la validación
 con presupuestos reales no forma parte del alcance de la investigación, como declara el capítulo I en
 §1.5.2.
@@ -106,7 +106,7 @@ documental de todos ellos frente al código.
 Los requerimientos se especificaron con la estructura de la norma IEEE 830 y se recogen en la
 [especificación de requerimientos](../../ERS.md) (anexo A). La especificación no reproduce los datos
 que tienen fuente única: la fórmula de cálculo, las siete reglas de verificación y los criterios de
-degradación del módulo predictivo se enlazan desde ella a `CLAUDE.md`, y el caso de estudio, a
+degradación del módulo predictivo se enlazan desde ella a `NORMAS.md`, y el caso de estudio, a
 [linea_base.md](../../linea_base.md). Con ese criterio, un cambio en la fórmula o en una regla se hace
 en un solo lugar.
 
@@ -328,10 +328,10 @@ Python.
 
 *Nota.* Elaboración propia a partir de `core/contracts/`. `ModalidadManoObra` y el campo
 `LineaManoObra.modalidad` se agregaron durante el desarrollo del prototipo de composición (sección
-4.4.3). En la versión del 23 de septiembre, la tabla de contratos de `CLAUDE.md` y el diagrama de la
+4.4.3). En la versión del 23 de septiembre, la tabla de contratos de `NORMAS.md` y el diagrama de la
 arquitectura no los mostraban (desfase registrado, Tabla 4.11); la última etapa del cierre los
 incorporó el 28 de septiembre de 2026 a la tabla de contratos
-([CLAUDE.md §5](../../../CLAUDE.md#5-contratos-de-interfaz-corecontracts)) y a los contratos de la
+([NORMAS.md §5](../../../NORMAS.md#5-contratos-de-interfaz-corecontracts)) y a los contratos de la
 vista lógica ([arquitectura, §2.1](../../arquitectura.md#21-contratos-corecontracts-estables)).
 
 Los contratos se declararon estables, y la regla del proyecto ante una aparente insuficiencia es
@@ -426,15 +426,15 @@ con_administracion = costo_directo × (1 + administración)
 precio_unitario    = con_administracion × (1 + utilidad)
 ```
 
-En la versión del 23 de septiembre, la especificación del cálculo en `CLAUDE.md` §4, que el capítulo
+En la versión del 23 de septiembre, la especificación del cálculo en `NORMAS.md` §4, que el capítulo
 II fundamenta en §2.2.4, contenía solo la parte de jornal: el bono se multiplicaba allí por la suma de
 todas las cantidades de mano de obra y no existía la línea de destajo. Las dos líneas nuevas provienen
 de la decisión D9, recomendada al tutor y pendiente de su aval
 ([bitácora del hallazgo del destajo](../../bitacora/2026-09-16-P0-hallazgo-destajo.md)). Con todas las
 líneas a jornal ambas formulaciones coinciden, porque entonces los obreros a jornal son todos los
-obreros. El desfase de `CLAUDE.md` §4 quedó registrado en el inventario (Tabla 4.11), y la última
+obreros. El desfase de `NORMAS.md` §4 quedó registrado en el inventario (Tabla 4.11), y la última
 etapa del cierre incorporó la fórmula con destajo a
-[CLAUDE.md §4](../../../CLAUDE.md#4-especificación-del-cálculo-y-línea-base) el 28 de septiembre de
+[NORMAS.md §4](../../../NORMAS.md#4-especificación-del-cálculo-y-línea-base) el 28 de septiembre de
 2026.
 
 Con los parámetros del caso didáctico (FCAS de 6,00, bono de alimentación de 1,00 USD por obrero y
@@ -866,7 +866,7 @@ al desarrollo multidominio, los completó con catálogos, presupuestos y auditor
 | `adapters/sistemas` | alcance funcional por módulo y caso de uso | `REGLA` | `4*entradas + 5*salidas + 4*consultas + 10*archivos + 7*interfaces` (puntos de función) | `SIS-001`, caso construido para el proyecto |
 
 *Nota.* Elaboración propia a partir de `adapters/*/adaptador.py`, `adapters/civil/` y de la nota
-sobre la naturaleza de los datos de `CLAUDE.md` §1.
+sobre la naturaleza de los datos de `NORMAS.md` §1.
 
 Cada adaptador subclasifica `AdaptadorDominio`, declara su dominio e implementa `extraer` devolviendo
 ítems con un `origen_id` tomado de su fuente. Ninguno importa de `core` otra cosa que los contratos.
@@ -1084,14 +1084,14 @@ código, hacia su registro en el inventario de la auditoría de cierre.
 | 4.1.4, 4.7.2 | Especificación y arquitectura dan la extracción IFC por pendiente | INV‑028 | actualización de la documentación |
 | 4.2 | El modelo de datos se declara aprobado con G0 pendiente | INV‑061 | actualización de la documentación |
 | 4.2 | Dos defectos distintos numerados como «octavo» | INV‑064 | actualización de la documentación |
-| 4.3.2 | La tabla de contratos y el diagrama omitían la modalidad de mano de obra | INV‑057 (incorporada el 28/09/2026 a `CLAUDE.md` §5 y a la arquitectura §2.1; su estado final lo registra el cierre de la última etapa) | actualización de la documentación |
+| 4.3.2 | La tabla de contratos y el diagrama omitían la modalidad de mano de obra | INV‑057 (incorporada el 28/09/2026 a `NORMAS.md` §5 y a la arquitectura §2.1; su estado final lo registra el cierre de la última etapa) | actualización de la documentación |
 | 4.3.2, 4.8.2 | Enumerados, `Decimal` y signo, y evaluador único en los contratos | INV‑001, INV‑002, INV‑006 (aceptados por decisión de arquitectura registrada) | aval del tutor |
 | 4.3.3 | La guardia de arquitectura no cubría `scripts` ni `tests` | INV‑010 (cerrado) | corrección del núcleo |
 | 4.3.3 | La salvaguarda de la base de trabajo | INV‑065 (cerrado) | corrección del núcleo |
 | 4.3.4 | Vistas de escenarios y de desarrollo desactualizadas | INV‑029 | actualización de la documentación |
 | 4.3.4, 4.8.2, 4.9.2 | La arquitectura declara dos copias del evaluador y hay cinco | INV‑058 | actualización de la documentación |
 | 4.3.4, 4.11.1 | La página de composición calculaba, persistía y orquestaba | INV‑043 (cerrado), INV‑070 | corrección de la interfaz (la separación); actualización de la documentación (el reparto resultante) |
-| 4.4.1 | `CLAUDE.md` §4 no contenía la fórmula con destajo | INV‑074 (incorporada el 28/09/2026 a `CLAUDE.md` §4; su estado final lo registra el cierre de la última etapa) | actualización de la documentación |
+| 4.4.1 | `NORMAS.md` §4 no contenía la fórmula con destajo | INV‑074 (incorporada el 28/09/2026 a `NORMAS.md` §4; su estado final lo registra el cierre de la última etapa) | actualización de la documentación |
 | 4.5.1 | `generar_presupuesto` pública y llamada sin informe por los sembradores | INV‑037 (a limitaciones) | — |
 | 4.5.1 | Protocolo de elaboración en cuatro sitios | INV‑069 (cerrado) | corrección del núcleo |
 | 4.5.1 | Ítem sin partida pendiente (UC‑01 3a) | INV‑013 (cerrado) | corrección del núcleo |

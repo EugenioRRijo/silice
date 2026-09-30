@@ -9,7 +9,7 @@ sola vez, antes de `st.navigation`, en el enrutador.
 
 Solo presentacion. Toda la logica vive en `core`: esta capa abre la sesion, llama a
 `crear_lista_desde_archivo` y a `actualizar_precios`, muestra el comparativo y el informe de
-auditoria -que se genera siempre, sin pedirlo (principio 7 de CLAUDE.md §2)- y ofrece el libro de
+auditoria -que se genera siempre, sin pedirlo (principio 7 de NORMAS.md §2)- y ofrece el libro de
 Excel. No calcula ni redondea nada por su cuenta: los dos decimales de la tabla son los de
 `core.verification.informe.DECIMALES_PRESENTACION`, la unica definicion de presentacion del
 sistema.

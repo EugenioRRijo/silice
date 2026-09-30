@@ -2,7 +2,7 @@
 
 Lo comparten la pagina de componer y la de elaborar: total, resumen por severidad, descarga del
 libro de Excel y el informe de auditoria. El informe se muestra tenga hallazgos o no: el informe de
-auditoria se genera siempre, sin que el usuario lo pida (principio 7 de CLAUDE.md §2), y eso es
+auditoria se genera siempre, sin que el usuario lo pida (principio 7 de NORMAS.md §2), y eso es
 principio del proyecto, no preferencia de pantalla.
 
 Solo pinta lo que recibe: no abre la base (sin `sqlalchemy.orm`) ni calcula (sin `core.costing`).

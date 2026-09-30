@@ -11,7 +11,7 @@ tabla de casos de uso. Nueve casos de uso (`SI-01` … `SI-09`) en tres módulos
 `id,modulo,caso_de_uso,codigo_partida,entradas,salidas,consultas,archivos,interfaces,especificaciones`
 
 - `id`: identificador del caso de uso, prefijo `SI-`. Es el `origen_id` del `ItemComputo` (regla de
-  trazabilidad total, CLAUDE.md §2.6).
+  trazabilidad total, NORMAS.md §2.6).
 - `modulo`, `caso_de_uso`: agrupación funcional y nombre del caso de uso; se combinan en la
   `descripcion` del `ItemComputo` (`"<modulo>: <caso_de_uso>"`).
 - `codigo_partida`: código de la partida asociada a ese caso de uso. A diferencia del adaptador

@@ -1,6 +1,6 @@
 """Meta del sprint I6: evalua el cumplimiento de sus 12 metas (Sesiones I6.2 e I6.3).
 
-Se define ANTES de implementar las sesiones (principio 5 de CLAUDE.md: las metas existen primero
+Se define ANTES de implementar las sesiones (principio 5 de NORMAS.md: las metas existen primero
 y el sprint se escribe para ponerlas en OK): las metas de pruebas arrancan en PENDIENTE porque sus
 archivos no existen todavia, y el cierre del sprint exige 12/12.
 

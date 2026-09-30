@@ -12,7 +12,7 @@ fuente natural de precios, que es distinta en cada dominio.
 *el núcleo no cambia al agregar un dominio*; este prueba que *el protocolo de datos no cambia al
 cambiar la fuente*. Alimenta el capítulo V y la decisión D3 del [dossier G0](docs/dossier_g0.md)
 (OE7). Ninguna sesión de este plan toca `core/`: si un contrato parece insuficiente, se detiene y
-se escribe el hallazgo en `docs/bitacora/` (CLAUDE.md §9); el análisis de la política de mano de
+se escribe el hallazgo en `docs/bitacora/` (NORMAS.md §9); el análisis de la política de mano de
 obra de ARENAZA ya mostró que no hace falta
 ([bitácora I5‑telecom](docs/bitacora/2026-08-29-I5-telecom.md), hallazgo 1, opción 1).
 
@@ -21,7 +21,7 @@ obra de ARENAZA ya mostró que no hace falta
 > fechado son las listas de precios de referencia (MaPreX jul‑2026 y el tabulador del CIV). El
 > texto quedó corregido en la sesión de limpieza; los mensajes de commit citados más abajo se
 > conservan tal como se hicieron, porque son historia. La fuente única de la naturaleza de los
-> datos es [CLAUDE.md §1](CLAUDE.md#1-qué-es-este-proyecto).
+> datos es [NORMAS.md §1](NORMAS.md#1-qué-es-este-proyecto).
 
 ---
 
@@ -48,7 +48,7 @@ Telecom va primero: su evidencia primaria ya está en `data/samples/telecom/` y 
 inconsistencia documentada (el tubo corrugado: 80 m en cómputos vs 90 m en presupuesto del mismo
 PDF), que convierte al dominio en el **segundo caso de auditoría** de la tesis.
 
-## 1. Principios (además de los de CLAUDE.md)
+## 1. Principios (además de los de NORMAS.md)
 
 1. **La fuente cambia; el formato no.** Toda fuente termina en el CSV canónico de UC‑02
    (`tipo,insumo,unidad,precio`) con `fecha_vigencia` y `origen`. Un conector por fuente,
@@ -305,7 +305,7 @@ cuatro compuertas GM.
 
 Total: **11 sesiones**, más el trabajo de campo del autor (que corre en paralelo y ya no bloquea
 ninguna compuerta: GM2 y GM3 tienen degradación o fuente en el repo; las cotizaciones y la
-encuesta solo mejoran la evidencia). Las convenciones operativas son las de CLAUDE.md §3: una
+encuesta solo mejoran la evidencia). Las convenciones operativas son las de NORMAS.md §3: una
 rama por incremento (`inc/M1.1-fuentes-arenaza`), bitácora por sesión, `uv run pytest` y `ruff`
 al cierre.
 

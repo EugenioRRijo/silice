@@ -29,8 +29,8 @@ siguiente sesión»).
 
 | Decisión | Motivo |
 |---|---|
-| `ml/` recibe el catálogo como pares (código, descripción) planos; la página de la UI es la capa de composición que consulta `core.catalog` | `ml/` solo puede importar `core.contracts` (CLAUDE.md §2, `test_arquitectura.py`); este módulo no necesita ni eso — sin base de datos, sin sesión |
-| El puntaje de similitud es `float`, no `Decimal` | Es una similitud adimensional en [−1, 1], no una cantidad de obra ni un monto: la regla `Decimal` de CLAUDE.md §2.3 alcanza «cantidades, precios, factores y rendimientos», y los vectores del modelo son `float32` de origen. Se presenta redondeado solo en la UI |
+| `ml/` recibe el catálogo como pares (código, descripción) planos; la página de la UI es la capa de composición que consulta `core.catalog` | `ml/` solo puede importar `core.contracts` (NORMAS.md §2, `test_arquitectura.py`); este módulo no necesita ni eso — sin base de datos, sin sesión |
+| El puntaje de similitud es `float`, no `Decimal` | Es una similitud adimensional en [−1, 1], no una cantidad de obra ni un monto: la regla `Decimal` de NORMAS.md §2.3 alcanza «cantidades, precios, factores y rendimientos», y los vectores del modelo son `float32` de origen. Se presenta redondeado solo en la UI |
 | `UMBRAL_POR_DEFECTO = 0.5` | Umbral declarado que exige RF‑15, calibrado con la aceptación RF‑17: las cinco paráfrasis puntúan cómodamente por encima y la consulta fuera de dominio («auditoría contable…») queda por debajo |
 | Modelo cacheado por proceso (`lru_cache`) | Cargarlo cuesta segundos y cientos de MB de RAM; la UI de Streamlit re‑ejecuta la página en cada interacción |
 | `HF_HUB_DISABLE_SYMLINKS_WARNING=1` en las pruebas | En Windows sin modo desarrollador, la primera descarga del modelo emite un `UserWarning` documentado de `huggingface_hub` (caché sin symlinks); rompería el DoD de cero advertencias (`-W error`) en un entorno limpio. Es la variable oficial de la librería, no un filtro genérico |

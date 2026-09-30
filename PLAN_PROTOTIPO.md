@@ -5,7 +5,7 @@ Continúa a [PLAN_MULTIDOMINIO.md](PLAN_MULTIDOMINIO.md), que cerró 11 de 11 se
 necesita primero que exista el flujo donde ponerlas, y ese flujo es lo que este plan construye.
 
 **Diseño que lo fundamenta:**
-[docs/superpowers/specs/2026-09-16-prototipo-composicion-apu-design.md](docs/superpowers/specs/2026-09-16-prototipo-composicion-apu-design.md).
+2026-09-16-prototipo-composicion-apu-design.md.
 Las secciones que se citan abajo (§3.1, §3.7…) son de ese documento.
 
 **Cómo se audita:** `uv run python scripts/meta_prototipo.py [--hasta <fase>]`. Una fase se cruza
@@ -93,7 +93,7 @@ la nota transcrita con su encabezado metodológico.
 ### Sesión P0.2 — Arquitectura, metas del sprint y la decisión D9
 
 **Lecturas.** spec §3.1, §4, §5, §8; `docs/arquitectura.md`; `scripts/meta_asistente.py` (patrón de
-meta con `--hasta`); `CLAUDE.md` §5 y §9.
+meta con `--hasta`); `NORMAS.md` §5 y §9.
 
 ```
 Crea scripts/meta_prototipo.py copiando el patron de scripts/meta_asistente.py: metas P1 a P12 con

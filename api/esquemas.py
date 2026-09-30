@@ -1,6 +1,6 @@
 """Esquemas Pydantic, espejo de los contratos del nucleo.
 
-Los montos (`Decimal`) viajan siempre como texto (`str`), nunca como `float` (CLAUDE.md §2.3): la
+Los montos (`Decimal`) viajan siempre como texto (`str`), nunca como `float` (NORMAS.md §2.3): la
 conversion a `Decimal` ocurre en la frontera, construyendo siempre desde el mismo texto que
 persiste `core.models.tipos.DecimalExacto`.
 """
@@ -158,7 +158,7 @@ class PeriodoPlanPeticion(BaseModel):
 class PresupuestoPeticion(BaseModel):
     """Lo que hace falta para elaborar un presupuesto (UC-01/05): items ya extraídos por un
     adaptador o construidos a mano, y los cuatro parámetros de costo, opcionales (por defecto los
-    de `ParametrosCosto`, la línea base de CLAUDE.md §4).
+    de `ParametrosCosto`, la línea base de NORMAS.md §4).
 
     `plan` es el plan de trabajo del proyectista (UC‑01, paso 6); sin él, una partida por día en
     el orden del presupuesto (`plan_secuencial`).
@@ -218,7 +218,7 @@ class PresupuestoCreadoRespuesta(BaseModel):
 
 
 class PartidaPresupuestadaRespuesta(BaseModel):
-    """Un renglón del presupuesto, tal como se presenta (dos decimales, CLAUDE.md §2.3)."""
+    """Un renglón del presupuesto, tal como se presenta (dos decimales, NORMAS.md §2.3)."""
 
     codigo_partida: str
     descripcion: str

@@ -13,7 +13,7 @@ El base se lee con `cargar_elaboracion`, que trae sus items pendientes (UC-01 3a
 aviso para que ningun escenario se lea como completo (INV-083).
 
 La descarga CSV entrega la tabla con los `Decimal` exactos (`str`), no los dos decimales de la
-pantalla: es la exportacion de RF-31, y el redondeo es solo de presentacion (CLAUDE.md §2.3).
+pantalla: es la exportacion de RF-31, y el redondeo es solo de presentacion (NORMAS.md §2.3).
 Los dos decimales visibles son los de `core.verification.informe.DECIMALES_PRESENTACION`, la
 unica definicion de presentacion del sistema.
 """

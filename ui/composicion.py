@@ -3,7 +3,7 @@
 La lógica de convertir las tres tablas de la futura pantalla (`ui/paginas/componer.py`, Sesión
 P2.2) en un `ComposicionAPU` del contrato vive aquí, fuera de `render()`, porque hoy el repositorio
 no tiene ninguna prueba de interfaz: lo único verificable es lo que se puede llamar sin Streamlit
-(spec de diseño §4, `docs/superpowers/specs/2026-09-16-prototipo-composicion-apu-design.md`). Por
+(spec de diseño §4, `2026-09-16-prototipo-composicion-apu-design.md`). Por
 eso este módulo no importa `streamlit` ni `pandas`: `st.data_editor` devuelve un `DataFrame`, pero
 convertirlo a las listas de diccionarios que aquí se reciben es trabajo de la página, no de esta
 capa de dominio.
@@ -49,7 +49,7 @@ if TYPE_CHECKING:
 
 
 def desglose(composicion: ComposicionAPU) -> ResultadoAPU:
-    """El desglose de costos de `composicion` con los parametros por defecto (CLAUDE.md §4).
+    """El desglose de costos de `composicion` con los parametros por defecto (NORMAS.md §4).
 
     Es lo que la pagina de componer muestra en vivo, contrasta y confirma al guardar: una funcion
     pura (`calcular_apu`), sin base de datos.
@@ -61,7 +61,7 @@ class ComposicionInvalida(ValueError):  # noqa: N818
     """Una tabla de la pantalla no se puede convertir en un APU del contrato.
 
     El nombre no lleva el sufijo `Error` que pide la convención inglesa de N818: el proyecto
-    escribe sus identificadores en español (CLAUDE.md §3), igual que `ExpresionInvalida`
+    escribe sus identificadores en español (NORMAS.md §3), igual que `ExpresionInvalida`
     (`core/verification/expresiones.py`) y `PlanInvalido` (`core/budget/curva.py`).
     """
 
@@ -320,7 +320,7 @@ def item_desde_cantidad(
 # partida existente llamaba a `Catalogo.reemplazar_composicion` con lo que hubiera en pantalla, que
 # borra las lineas sin impedir una composicion de cero lineas y no actualiza ni la descripcion ni
 # la unidad de la partida. Las dos decisiones viven aqui, puras; `ui/paginas/componer.py` solo
-# pinta y llama. `core/` no se toca (CLAUDE.md §9).
+# pinta y llama. `core/` no se toca (NORMAS.md §9).
 
 
 def _decimal_como_texto(valor: Decimal) -> str:
@@ -473,7 +473,7 @@ def buscar_referencia(texto: str, tipo: str, raiz: Path | None = None) -> list[F
     """Sugerencias de la referencia MaPreX para autocompletar una fila de la composición.
 
     MaPreX es referencia de mercado, no verdad (spec §3.4,
-    `docs/superpowers/specs/2026-09-16-prototipo-composicion-apu-design.md`): esta función busca
+    `2026-09-16-prototipo-composicion-apu-design.md`): esta función busca
     y sugiere; la Tarea 3 la muestra en pantalla, y quien compone decide si usa el precio
     sugerido, lo edita o lo ignora. Autocompletar `factor_depreciacion` desde una sola fuente es
     lo que evita que dos personas le den un factor distinto al mismo insumo en dos APU, que es

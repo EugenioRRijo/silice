@@ -258,7 +258,7 @@ def estado_nucleo_intacto(
     commits: Sequence[tuple[str, Sequence[str]]],
     ramas: Sequence[tuple[str, Sequence[str]]] = (),
 ) -> tuple[Estado, str]:
-    """Las dos evidencias de la hipotesis central (CLAUDE.md seccion 1), en una sola meta.
+    """Las dos evidencias de la hipotesis central (NORMAS.md seccion 1), en una sola meta.
 
     1. **Por commit** (`commits`): FALLA si algun commit toca a la vez `adapters/`|`ml/` y `core/`.
     2. **Por rama** (`ramas`): FALLA si el `git diff core/` del rango completo de una rama que
@@ -451,7 +451,7 @@ def _ramas_adaptador(base: str) -> list[tuple[str, list[str]]]:
 
     Una rama cuenta como incorporacion de un dominio si su rango (`primer_padre...tope`, es decir
     lo que la rama introdujo respecto de su punto de partida) **agrega** algun archivo bajo
-    `adapters/` o `ml/`. Es la formulacion literal de la hipotesis de CLAUDE.md seccion 1 ("el
+    `adapters/` o `ml/`. Es la formulacion literal de la hipotesis de NORMAS.md seccion 1 ("el
     nucleo no cambia cuando se agrega un dominio") y la unidad de la que habla su evidencia:
     `git diff --stat core/` vacio tras implementar los adaptadores.
 

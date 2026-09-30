@@ -4,7 +4,7 @@ Reproduce, a partir de la muestra `data/samples/telecom/topologia_arenaza.csv` (
 presupuestos ARENAZA, ver `data/samples/telecom/README.md`), 8 nodos (puntos WiFi, switches, rack,
 UPS) y 5 enlaces de cable UTP. Cada nodo es una cantidad tabular directa; cada enlace deriva su
 cantidad de la regla `longitud_m * (1 + reserva)`, evaluada por `adapters/telecom/evaluador.py`
-(independiente del de `adapters/civil`: cada adaptador es autonomo, CLAUDE.md paragrafo 2).
+(independiente del de `adapters/civil`: cada adaptador es autonomo, NORMAS.md paragrafo 2).
 """
 
 from __future__ import annotations

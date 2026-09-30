@@ -1,9 +1,9 @@
 # Expedientes de la fase C3 del cierre (núcleo)
 
 **Fecha:** 2026‑09‑24 · **Rama:** `inc/cierre-C3-nucleo` (pista B de C3) · **Plan:**
-[docs/superpowers/plans/2026-09-24-cierre-c3-interfaz-scripts.md](../superpowers/plans/2026-09-24-cierre-c3-interfaz-scripts.md)
+2026-09-24-cierre-c3-interfaz-scripts.md
 · **Inventario:** [docs/auditoria/2026-09-inventario.md](../auditoria/2026-09-inventario.md) ·
-**Spec:** [§5 y §10](../superpowers/specs/2026-09-23-plan-cierre-tesis-design.md).
+**Spec:** §5 y §10.
 
 La spec (§5, fila C3, enmendada en la Tarea 1 de C3) autoriza exactamente dos commits que tocan
 `core/` en esta fase, cada uno con expediente previo en este archivo, commiteado antes de su código,
@@ -36,7 +36,7 @@ la opción (a) en GC2 y su alcance amplio en C3 (D4 = A, 2026‑09‑24).
 - `cargar_elaboracion(session, proyecto_nombre, codigo, catalogo) -> ResultadoElaboracion`, pública
   en `core.budget`:
   - `presupuesto` es la misma reconstrucción de `cargar_presupuesto`, que no cambia de firma ni de
-    retorno (el contrato `Presupuesto` es estable, CLAUDE.md §5), sobre una sola búsqueda de la
+    retorno (el contrato `Presupuesto` es estable, NORMAS.md §5), sobre una sola búsqueda de la
     fila;
   - `pendientes`: los `item_computo` del presupuesto sin `partida_presupuestada`, ordenados por `id`
     (el orden en que se guardaron, que es el de `ResultadoElaboracion.pendientes`). Los lee un

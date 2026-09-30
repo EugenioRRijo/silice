@@ -2,7 +2,7 @@
 
 Guía de operación del sistema de generación y auditoría de Análisis de Precios Unitarios (APU)
 para el proyectista. No hace falta saber programar: todo se opera desde la interfaz web local.
-Qué es el sistema y por qué calcula como calcula está en [CLAUDE.md](../CLAUDE.md) y en la
+Qué es el sistema y por qué calcula como calcula está en [NORMAS.md](../NORMAS.md) y en la
 [ERS](ERS.md); este manual solo explica **cómo usarlo**.
 
 ## 1. Requisitos e instalación
@@ -60,7 +60,7 @@ No hay más pasos (RNF‑07). Notas:
    Es idempotente: repetirla no duplica nada. **`--reiniciar` borra la base antes de sembrarla**:
    úselo solo sobre una base de prueba, nunca sobre una con trabajo propio. Todo lo que siembra es
    un **caso didáctico** (ejercicio académico, no obra ejecutada ni precios cotizados; ver
-   [CLAUDE.md §1](../CLAUDE.md)). Al terminar, la terminal muestra el total del presupuesto de
+   [NORMAS.md §1](../NORMAS.md)). Al terminar, la terminal muestra el total del presupuesto de
    ejemplo y la línea `Auditoria: 3 hallazgo(s), CUMPLE`.
 
 2. **Abrir la interfaz** (se abre en el navegador, en el equipo local):
@@ -348,8 +348,8 @@ propuestas; la lista queda vacía si el base no tiene pendientes.
 La página **Componer una partida** (UC‑10 / UC‑11) es el recorrido completo de quien presupuesta:
 arma el análisis de precio de una partida, lo guarda en el catálogo, le asigna cantidades de obra y
 sale con el presupuesto auditado y su Excel, sin cambiar de pantalla. Los casos de uso están en la
-[ERS](ERS.md) (UC‑10 componer, UC‑11 editar; RF‑33 a RF‑35) y el diseño en la [spec del
-prototipo](superpowers/specs/2026-09-16-prototipo-composicion-apu-design.md). Para practicarlo paso
+[ERS](ERS.md) (UC‑10 componer, UC‑11 editar; RF‑33 a RF‑35) y el diseño en la spec del
+prototipo. Para practicarlo paso
 a paso con resultados esperados está el [guion de prueba manual](guion_prueba_arenia.md).
 
 1. **Cabecera.** Código, descripción y unidad de la partida, su dominio (civil por defecto) y la
@@ -431,7 +431,7 @@ a paso con resultados esperados está el [guion de prueba manual](guion_prueba_a
 Se genera **siempre** — no existe forma de obtener un presupuesto sin él. Ejecuta las siete
 reglas R1–R7 (trazabilidad de cantidades, cierre exacto de la curva, coherencia de unidades,
 correspondencia de especificaciones, balance volumétrico, criterio único de depreciación y
-conciliación con el plan; detalle en [CLAUDE.md §7](../CLAUDE.md)). Cada hallazgo trae:
+conciliación con el plan; detalle en [NORMAS.md §7](../NORMAS.md)). Cada hallazgo trae:
 
 - **severidad** (el informe se ordena de mayor a menor);
 - **descripción e impacto cuantificado** (cuánto dinero o cuánta cantidad está en juego);

@@ -16,7 +16,7 @@ de cada rama que incorpora un dominio—, la vigila `tests/unit/test_arquitectur
 
 | Documento | Para qué |
 |---|---|
-| [CLAUDE.md](CLAUDE.md) | Constitución del proyecto: principios, cálculo, contratos, estructura, reglas, compuertas |
+| [NORMAS.md](NORMAS.md) | Constitución del proyecto: principios, cálculo, contratos, estructura, reglas, compuertas |
 | [PLAN_DESARROLLO.md](PLAN_DESARROLLO.md) | Las 20 sesiones de trabajo, con prompt, criterio de cierre y commit (completo) |
 | [PLAN_CIERRE.md](PLAN_CIERRE.md) | El final de la tesis: fases de corrección C0–C4, mediciones con personas (Med) y redacción, con sus compuertas |
 | [docs/metodologia.md](docs/metodologia.md) | Metodología Scrum‑Cascada y principio DRY aplicados al proyecto |

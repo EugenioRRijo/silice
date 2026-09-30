@@ -3,9 +3,9 @@
 **Fechas:** 2026‑09‑16 (P0–P1), 2026‑09‑20 (P2–P3) y 2026‑09‑21 (P4–P5) · **Rama:**
 `inc/PLAN-prototipo` (worktree `.claude/worktrees/prototipo`) · **Base:** etiqueta `p-base` =
 `471b3e2` · **Plan de sesiones:** [`PLAN_PROTOTIPO.md`](../../PLAN_PROTOTIPO.md) · **Spec
-vinculante:** [`docs/superpowers/specs/2026-09-16-prototipo-composicion-apu-design.md`](../superpowers/specs/2026-09-16-prototipo-composicion-apu-design.md) ·
+vinculante:** `2026-09-16-prototipo-composicion-apu-design.md` ·
 **Planes ejecutables:** los cinco `prototipo-arenia-*.md` de
-[`docs/superpowers/plans/`](../superpowers/plans/) (uno del 16/09, tres del 20/09 y uno del 21/09) ·
+`docs/superpowers/plans/` (uno del 16/09, tres del 20/09 y uno del 21/09) ·
 **PR:** #7, abierto contra `main`, sin fusionar.
 
 Los cuadernos de control de los agentes (`.superpowers/sdd/2026-09-16-prototipo-arenia-fase-p0-p1`,
@@ -21,7 +21,7 @@ RF‑33 a RF‑35 de la [ERS](../ERS.md)), con la referencia MaPreX como sugeren
 rendimiento exigido con sus condiciones, la mano de obra a jornal o a destajo por línea, las
 ayudas de `ml/` cableadas a la pantalla, y el recorrido completo hasta el presupuesto auditado y su
 Excel. Todo lo que el sprint siembra o simula es un **caso didáctico o simulado**, no obra ejecutada
-([CLAUDE.md §1](../../CLAUDE.md)).
+([NORMAS.md §1](../../NORMAS.md)).
 
 **Cumplido.** Las tres compuertas cruzadas, meta del sprint **12/12**, suite con **690** pruebas y
 0 omitidas (673 al cerrar P5; 690 tras la auditoría de la rama completa, sección «Auditoría de rama
@@ -40,7 +40,7 @@ queda intacta (sección «El cambio al núcleo»).
 ## El cambio al núcleo y su expediente
 
 `git diff p-base --stat -- core/` al cierre: **7 archivos, +217 / −18**. La hipótesis central
-(CLAUDE.md §1) dice que `core/` no cambia **al agregar un dominio**; ninguno de estos cambios lo
+(NORMAS.md §1) dice que `core/` no cambia **al agregar un dominio**; ninguno de estos cambios lo
 pidió un dominio, ningún adaptador se tocó, `tests/unit/test_costing.py` y
 `tests/fixtures/apu_linea_base.py` tienen diff vacío contra `p-base`, y
 `scripts/guardia_nucleo.py --base p-base` sale con código 0 (ningún commit toca `core/` junto con
@@ -76,7 +76,7 @@ suma 56 (`git log --oneline 471b3e2..HEAD | wc -l`).
 
 1. **El destajo del artículo 114 de la LOTTT no cabía en el contrato (D9).** `LineaManoObra` no
    distinguía modalidad y el motor aplicaba FCAS, bono y división entre el rendimiento a toda línea.
-   La sesión se detuvo (CLAUDE.md §9), elevó la decisión al tutor y la implementó como cambio
+   La sesión se detuvo (NORMAS.md §9), elevó la decisión al tutor y la implementó como cambio
    aditivo. Detalle en la [bitácora del hallazgo](2026-09-16-P0-hallazgo-destajo.md) y en la
    [D9 del dossier](../dossier_g0.md).
 2. **El FCAS del 600 % no tiene fuente normativa publicada (D4).** Ni la convención colectiva de la

@@ -1,7 +1,7 @@
 """Prueba los casos didacticos con precios de referencia publicados (MaPreX jul-2026 y CIV).
 
 Fase C6 del cierre, pista R (C6-plan §5). Mide la sensibilidad de los casos didacticos del
-repositorio (CLAUDE.md §1: los APU y presupuestos son ejercicios academicos ficticios) a los
+repositorio (NORMAS.md §1: los APU y presupuestos son ejercicios academicos ficticios) a los
 listados MaPreX de julio de 2026 y al tabulador CIV, que si son referencias publicadas. No
 convierte ningun caso en otra cosa: es una prueba del software con precios de referencia.
 
@@ -42,7 +42,7 @@ la revaloracion corre sin detector y el informe lo dice. Todo importe es `Decima
 solo al presentar (`core.verification.texto.formatear_decimal`).
 
 Como `scripts/seed.py`, importa `tests.fixtures` a proposito: es la unica copia de la linea base y
-del presupuesto auditado (CLAUDE.md §2, principio DRY).
+del presupuesto auditado (NORMAS.md §2, principio DRY).
 
 Uso:
     uv run --all-extras python scripts/probar_precios_maprex.py
@@ -1101,7 +1101,7 @@ def _seccion_salvedades(resultado: Resultado) -> list[str]:
     return [
         "## 5. Salvedades",
         "",
-        "- Los casos son didacticos (CLAUDE.md §1): esto mide su sensibilidad a precios de "
+        "- Los casos son didacticos (NORMAS.md §1): esto mide su sensibilidad a precios de "
         "referencia publicados, no el costo de ninguna obra.",
         f"- El bono de alimentacion no se revalora: es un parametro de costo "
         f"(`ParametrosCosto.bono_alimentacion` = {_m(bono)} USD por obrero y dia), no un precio "

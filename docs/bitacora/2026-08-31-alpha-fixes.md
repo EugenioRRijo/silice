@@ -29,7 +29,7 @@ antes de etiquetar `alpha-0.1`, sin tocar `core/contracts/` ni la línea base, y
 | Decisión | Motivo |
 |---|---|
 | El ítem 1 se resuelve **declarando el límite** (un solo diámetro por fuente cuando hay balance), no con un término por diámetro | Un término por diámetro exige un código de partida de tubería por diámetro, y el catálogo del alpha tiene uno solo. El límite se declara en el docstring de `AdaptadorCivilTabular` y en la prueba, como pide la revisión |
-| M9 evalúa por rama solo las fusiones **de la línea principal** cuyo rango **agrega** archivos bajo `adapters/` o `ml/` | Es la formulación literal de la hipótesis de CLAUDE.md §1 («el núcleo no cambia **cuando se agrega un dominio**») y produce exactamente las cuatro ramas de los cuatro adaptadores. Una fusión de `main` *hacia dentro* de una rama en curso tiene los papeles invertidos y su rango no es lo que la rama introdujo (`0aa7e60` lo demostró en la primera versión); una rama que solo *modifica* un adaptador ya existente no es la incorporación de un dominio y la cubre la regla por commit |
+| M9 evalúa por rama solo las fusiones **de la línea principal** cuyo rango **agrega** archivos bajo `adapters/` o `ml/` | Es la formulación literal de la hipótesis de NORMAS.md §1 («el núcleo no cambia **cuando se agrega un dominio**») y produce exactamente las cuatro ramas de los cuatro adaptadores. Una fusión de `main` *hacia dentro* de una rama en curso tiene los papeles invertidos y su rango no es lo que la rama introdujo (`0aa7e60` lo demostró en la primera versión); una rama que solo *modifica* un adaptador ya existente no es la incorporación de un dominio y la cubre la regla por commit |
 | **Dos commits** en vez de uno | Ver *Impedimentos* |
 | El ítem 5 no lleva prueba | Es UI, y el proyecto no prueba la capa de presentación. Verificación manual registrada abajo |
 | Se corrige `README.md:10` pero **no** `docs/bitacora/2026-08-29-sprint-alpha.md:47` | El cierre del sprint lo firma el integrador; la redacción de esa bitácora la ajusta él si quiere. `README.md` sí describe el sistema vigente |
@@ -68,7 +68,7 @@ antes de etiquetar `alpha-0.1`, sin tocar `core/contracts/` ni la línea base, y
    por eso jamás puede ver un commit que solo toque `core/`. Ninguna regla por commit podía cerrarlo;
    hacía falta cambiar la unidad de análisis a la rama. Las cuatro ramas de adaptador del sprint
    (`inc/I3.2-civil`, `inc/I5-industrial`, `inc/I5-sistemas`, `inc/I5-telecom`) dan `git diff core/`
-   vacío, que es la evidencia que CLAUDE.md §1 le atribuye a la hipótesis central.
+   vacío, que es la evidencia que NORMAS.md §1 le atribuye a la hipótesis central.
 5. **Ninguna insuficiencia nueva de `core/contracts/`.** Los diez ítems se corrigieron sin tocar los
    contratos.
 

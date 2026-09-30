@@ -28,3 +28,6 @@ ml/**/*.pkl
 Thumbs.db
 .DS_Store
 ~$*
+
+# Worktrees de los sprints (NORMAS.md §3)
+.worktrees/

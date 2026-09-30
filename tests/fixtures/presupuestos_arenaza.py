@@ -2,7 +2,7 @@
 
 Fuente primaria: `data/samples/telecom/Presupuesto_1_ARENAZA.pdf` (14 renglones, 1 109,29 USD)
 y `Presupuesto_2_ARENAZA.pdf` (26 renglones, 5 410,73 USD), ambos con fecha 18/05/2026. Es la
-segunda linea base didactica de la tesis, en otro dominio (CLAUDE.md seccion 1): la primera es
+segunda linea base didactica de la tesis, en otro dominio (NORMAS.md seccion 1): la primera es
 `tests/fixtures/apu_linea_base.py` (civil).
 
 Direccion CSV <-> fixture (decision de esta sesion, brief Sesion M1.1 paso 4): el CSV NO se
@@ -29,7 +29,7 @@ que `LineaPresupuestoAuditado` en `tests/fixtures/apu_linea_base.py`.
 `cantidad` y `precio_unitario` son `Decimal | None`: son `None` unicamente en el renglon 14 de
 `PRESUPUESTO_1` ("Micelaneos"), una partida global de contingencia que el PDF no descompone en
 cantidad x precio unitario (solo trae un `total` de 100,00 USD). No se inventa una cantidad de
-"1" ni un precio "100.00" que la fuente no declara (CLAUDE.md seccion 2, principio de
+"1" ni un precio "100.00" que la fuente no declara (NORMAS.md seccion 2, principio de
 trazabilidad total: un dato que la fuente no tiene no se rellena por conveniencia).
 
 Cuando la tabla "Presupuesto" del PDF omite el precio unitario por ser igual al total

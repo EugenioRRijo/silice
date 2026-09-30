@@ -17,7 +17,7 @@ Uso::
 Como en `scripts/extraer_arenaza.py`, regenerar es un no‑op: las dos listas se derivan
 íntegramente de datos que ya viven en otro sitio —el fixture ARENAZA, a través de las composiciones
 de `scripts/seed_telecom.py`, y el CSV de referencia MaPreX— y **aquí no se escribe ningún
-precio** (CLAUDE.md §2, principio DRY). `tests/unit/test_listas_telecom.py` comprueba que los CSV en
+precio** (NORMAS.md §2, principio DRY). `tests/unit/test_listas_telecom.py` comprueba que los CSV en
 disco son exactamente los que este script deriva.
 
 Lista 1: qué insumo entra y cuál no

@@ -2,7 +2,7 @@
 
 Se define ANTES de las sesiones de `PLAN_ASISTENTE.md`, como `meta_multidominio.py`: las metas
 existen primero y cada fase se trabaja para ponerlas en OK. Dos diferencias aprendidas en aquel
-sprint (spec `docs/superpowers/specs/2026-09-15-asistente-presupuestos-design.md`, seccion 7):
+sprint (spec `2026-09-15-asistente-presupuestos-design.md`, seccion 7):
 
 1. Cada chequeo de contenido es una funcion pura sobre el texto (`evaluar_*`), probada en
    `tests/unit/test_meta_asistente.py` sin tocar el disco; leer archivos es asunto de la

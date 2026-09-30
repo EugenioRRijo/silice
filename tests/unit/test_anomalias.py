@@ -2,7 +2,7 @@
 
 `ml.anomaly` recibe datos planos -- series de `Decimal` con su identificador -- igual que
 `ml.normalization` recibe pares (codigo, descripcion): `ml/` no conoce la base de datos
-(CLAUDE.md §2, `test_arquitectura.py`). La capa de composicion (I6.2 para rendimientos, I6.3
+(NORMAS.md §2, `test_arquitectura.py`). La capa de composicion (I6.2 para rendimientos, I6.3
 para el contraste de precios) le pasara lo que consulte `core.catalog`.
 
 Dos usos, los del PLAN (Sesion I6.1):

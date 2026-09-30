@@ -80,7 +80,7 @@ def test_el_resumen_redondea_con_la_fuente_unica(nombre: str) -> None:
 
 @pytest.mark.parametrize("nombre", SEMBRADORES)
 def test_el_resumen_declara_la_auditoria(nombre: str) -> None:
-    # Principio 7 (CLAUDE.md §2): el informe de auditoria acompana siempre al presupuesto, tambien
+    # Principio 7 (NORMAS.md §2): el informe de auditoria acompana siempre al presupuesto, tambien
     # en el texto que imprime cada sembrador. El oraculo sale del informe, no de `resumen`.
     resultado = _resultado_de_dos_con_ciento_veinticinco()
     esperado = (

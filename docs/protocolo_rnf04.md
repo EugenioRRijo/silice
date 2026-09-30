@@ -4,7 +4,7 @@
 |---|---|
 | Requisito | RNF‑04 de la [ERS §3.3](ERS.md#33-requisitos-no-funcionales-isoiec-25010): «el informe de auditoría se entiende sin formación previa»; métrica, juicio de expertos (Likert); meta, ≥ 4/5 |
 | Instrumento | bloque A del [anexo A del dossier G0](dossier_g0.md): ocho afirmaciones en escala 1–5 y un campo abierto. **Este protocolo no lo cambia** |
-| Escrito en | fase C4 del cierre, 2026‑09‑28 ([spec de cierre §5](superpowers/specs/2026-09-23-plan-cierre-tesis-design.md), fila C4) |
+| Escrito en | fase C4 del cierre, 2026‑09‑28 (spec de cierre §5, fila C4) |
 | Se ejecuta en | fase Med del cierre ([PLAN_CIERRE.md](../PLAN_CIERRE.md)) |
 | Versión del protocolo | el commit que contiene este archivo; se anota en cada hoja de registro |
 
@@ -20,7 +20,7 @@ interfaz) es otro requisito, con otro instrumento (bloque B y CP‑07), y su pro
 con este.
 
 **Naturaleza de los datos.** El informe evaluado es el del caso didáctico de la clínica, un
-ejercicio académico ficticio ([CLAUDE.md §1](../CLAUDE.md#1-qué-es-este-proyecto)); a los expertos
+ejercicio académico ficticio ([NORMAS.md §1](../NORMAS.md#1-qué-es-este-proyecto)); a los expertos
 se les dice así.
 
 ## 1. El informe que se evalúa y su versión

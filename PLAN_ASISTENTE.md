@@ -1,7 +1,7 @@
 # PLAN_ASISTENTE.md — Asistente de presupuestos con IA, auditado (UC‑09)
 
 > **Nota de vigencia (2026‑09‑28, fase C4 del cierre).** Este plan quedó **fuera del límite de la
-> tesis**: la [spec de cierre §2](docs/superpowers/specs/2026-09-23-plan-cierre-tesis-design.md)
+> tesis**: la spec de cierre §2
 > declara el asistente de presupuestos con IA (UC‑09) trabajo futuro, un proyecto nuevo que va al
 > capítulo de conclusiones y recomendaciones. Ninguna de sus sesiones se ejecuta antes del final de
 > la tesis; el texto que sigue se conserva como el plan que fue (INV‑066). La numeración que
@@ -14,7 +14,7 @@ agrega **una IA que arma el presupuesto a partir de las necesidades del usuario*
 cambie y sin que la IA fije una sola cifra: la IA interpreta y elige; el núcleo calcula y audita.
 
 **El diseño y sus decisiones viven en la spec**
-[docs/superpowers/specs/2026-09-15-asistente-presupuestos-design.md](docs/superpowers/specs/2026-09-15-asistente-presupuestos-design.md)
+2026-09-15-asistente-presupuestos-design.md
 (enfoque A, decisiones DA‑1 a DA‑3, herramientas, métricas propuestas). Este archivo es la **única
 copia** de las fases, las compuertas y las sesiones; la spec no las repite y las sesiones no repiten
 la spec: la enlazan.
@@ -39,11 +39,11 @@ bitácora (metodologia.md §2.2).
 | Integración continua | Linux + Windows, guardia del núcleo | `.github/workflows/ci.yml` |
 | Interpretación de necesidades en lenguaje natural | **no existe** | este plan |
 
-## 1. Principios (además de los de CLAUDE.md)
+## 1. Principios (además de los de NORMAS.md)
 
 1. **La IA nunca fija precios ni cantidades sin regla.** Cada precio sale del catálogo o de MaPreX
    con su origen; cada cantidad, de una regla declarada (R1 la reevalúa) o del usuario.
-2. **El informe se genera siempre**, también para un borrador de la IA (CLAUDE.md §2.7).
+2. **El informe se genera siempre**, también para un borrador de la IA (NORMAS.md §2.7).
 3. **Nada se persiste sin aceptación del usuario.** El asistente produce borradores.
 4. **Ninguna corrida real contra la API sin aprobación.** Pruebas y CI usan un cliente falso; cada
    corrida real registra tokens y costo.

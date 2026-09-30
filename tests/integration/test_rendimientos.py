@@ -3,7 +3,7 @@
 RF-25: el registro persiste partida, valor, condiciones, fecha y referencia a la ejecucion, y un
 rendimiento MEDIDO sin referencia se rechaza (la invariante vive en el contrato
 `core.contracts.apu.Rendimiento`; aqui se comprueba que la frontera del catalogo la aplica y que
-la referencia apunta a una `Ejecucion` real, trazabilidad total de CLAUDE.md §2).
+la referencia apunta a una `Ejecucion` real, trazabilidad total de NORMAS.md §2).
 
 RF-26: la dispersion trae numero de observaciones, media, minimo y maximo (todo `Decimal`, sin
 redondeos: los dos decimales son de presentacion), y cuantas observaciones son medidas y cuantas

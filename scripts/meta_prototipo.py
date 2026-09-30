@@ -85,7 +85,7 @@ ARCHIVOS_FUENTES_SIN_FICHA: tuple[str, ...] = ("README.md", "2026-09-16-nota-pra
 
 #: Ruta fija del generador del corpus simulado. El nombre lo fija el plan, no es una suposicion:
 #: `PLAN_PROTOTIPO.md` (Sesion P4.3) y el spec de diseno
-#: (docs/superpowers/specs/2026-09-16-prototipo-composicion-apu-design.md, linea 190) declaran
+#: (2026-09-16-prototipo-composicion-apu-design.md, linea 190) declaran
 #: `scripts/simular_corpus.py`.
 GENERADOR_CORPUS_SIMULADO: tuple[str, ...] = ("scripts", "simular_corpus.py")
 

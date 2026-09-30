@@ -3,7 +3,7 @@
 Guía para quien vaya a mantener o extender el sistema. El aporte central del trabajo es la
 **extensibilidad sin tocar el núcleo**, así que el corazón de este manual es la sección 4: cómo
 un tercero escribe un adaptador de dominio nuevo. La constitución del proyecto es
-[CLAUDE.md](../CLAUDE.md); la arquitectura completa (vistas 4+1), [arquitectura.md](arquitectura.md);
+[NORMAS.md](../NORMAS.md); la arquitectura completa (vistas 4+1), [arquitectura.md](arquitectura.md);
 el modelo de datos, [modelo_datos.md](modelo_datos.md). Este manual no los repite: los recorre.
 
 ## 1. La regla que gobierna todo
@@ -18,7 +18,7 @@ de la tesis, y está vigilada por dos guardias automáticas:
 
 Si al trabajar en un adaptador o en `ml/` parece necesario modificar algo de `core/`:
 **detenerse**. O el adaptador está mal planteado o el contrato es insuficiente; ambas cosas se
-documentan en `docs/bitacora/`, no se parchean (CLAUDE.md §9).
+documentan en `docs/bitacora/`, no se parchean (NORMAS.md §9).
 
 ## 2. Entorno de desarrollo
 
@@ -66,7 +66,7 @@ El flujo completo de UC‑01: `AdaptadorDominio.extraer(fuente)` → `list[ItemC
 (presupuesto + informe). El `plan` es el del proyectista (la tabla de la pantalla o el campo `plan`
 de la API) o, sin él, `plan_secuencial` (sección 9). La fórmula del motor y sus dos errores clásicos (dividir materiales
 entre rendimiento; sumar administración y utilidad en vez de encadenarlas) están en
-[CLAUDE.md §4](../CLAUDE.md) y las vigila `tests/unit/test_costing.py`.
+[NORMAS.md §4](../NORMAS.md) y las vigila `tests/unit/test_costing.py`.
 
 ## 4. Escribir un adaptador de dominio nuevo
 
@@ -170,7 +170,7 @@ cantidad la produjo una regla paramétrica, `regla` lleva la expresión y `param
   adaptador para una **variante** de esos dominios (otro formato de fuente, otra disciplina
   dentro de civil) no toca nada. Un **quinto dominio** exigiría añadir un miembro a esa
   enumeración, que es un contrato estable: la línea es trivial, pero la decisión es de
-  gobernanza del proyecto y se registra en `docs/bitacora/` (CLAUDE.md §5).
+  gobernanza del proyecto y se registra en `docs/bitacora/` (NORMAS.md §5).
 - Los `codigo_partida` que emite el adaptador deben existir en el catálogo al presupuestar; si
   la fuente no los trae (caso del civil tabular), el adaptador recibe el mapeo del llamador en
   su constructor — los códigos son del catálogo, no del adaptador.
@@ -408,7 +408,7 @@ catálogo de otro dominio apuntando `APU_BASE` a su base (`sqlite:///data/apu_te
 
 El sprint del prototipo añadió la pantalla que compone y edita una partida a mano (UC‑10 y UC‑11
 de la [ERS](ERS.md), RF‑33 a RF‑35). El diseño y su porqué están en la
-[spec](superpowers/specs/2026-09-16-prototipo-composicion-apu-design.md); la vista lógica de la
+spec; la vista lógica de la
 capa nueva, en [arquitectura.md §2.4](arquitectura.md#24-composición-de-partidas-en-la-ui-uicomposicionpy-sesión-p21);
 el recorrido del sprint, en la [bitácora de cierre](bitacora/2026-09-16-sprint-prototipo.md).
 Esta sección solo recoge lo que quien mantenga el código necesita saber.

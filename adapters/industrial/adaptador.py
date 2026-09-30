@@ -4,7 +4,7 @@ Lee un CSV de activos de planta (bombas, tableros, compresores, transformadores,
 y convierte cada fila en un `ItemComputo` trazable: la cantidad de obra es el número de
 intervenciones de mantenimiento esperadas en el horizonte de planificación, `frecuencia_anual *
 horizonte_anios`, declarada como regla para que el informe de auditoría muestre la expresión exacta
-que la produjo (regla R1, CLAUDE.md §7). La muestra y sus supuestos están en
+que la produjo (regla R1, NORMAS.md §7). La muestra y sus supuestos están en
 `data/samples/industrial/README.md`.
 """
 
@@ -47,7 +47,7 @@ def _leer_filas(
     UC-01, flujo 2a (INV-089): un archivo binario (no es texto UTF-8) o sin las columnas que este
     adaptador lee (la muestra de otro dominio) se rechaza nombrando el archivo, con el
     `ValueError` que la API traduce a 422, en vez de un `KeyError` de la primera columna que
-    falte. Cada adaptador tiene su copia: ninguno importa de otro (CLAUDE.md §2).
+    falte. Cada adaptador tiene su copia: ninguno importa de otro (NORMAS.md §2).
     """
     nombre = Path(fuente).name
     try:

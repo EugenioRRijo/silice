@@ -62,7 +62,7 @@ def test_fixture_coincide_con_csv():
                               (PRESUPUESTO_2, "presupuesto_2_arenaza.csv")]:
         assert sum(r.total for r in renglones) == _total_csv(nombre)
         # Reconciliacion campo a campo (las 7 columnas, las 40 filas): la unica copia
-        # estructurada es el fixture (CLAUDE.md seccion 2, principio DRY); esta comparacion
+        # estructurada es el fixture (NORMAS.md seccion 2, principio DRY); esta comparacion
         # detecta cualquier divergencia entre el fixture y el CSV que la suma de `total` por si
         # sola no vería (una descripcion, unidad, cantidad, precio_unitario u origen distintos).
         filas_csv = _filas_csv(nombre)

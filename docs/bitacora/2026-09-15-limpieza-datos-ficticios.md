@@ -4,11 +4,11 @@
 `.claude/worktrees/limpieza-datos`) · **Base:** `inc/tesis-cap1-2` (`d6fc6e9`, PR #4) ·
 **Origen:** pendiente registrado en la
 [bitácora del Sprint R1](2026-09-15-sprint-r1-capitulos.md) y en la
-[spec del sprint](../superpowers/specs/2026-09-15-sprint-r1-capitulos-design.md) §3.
+spec del sprint §3.
 
 ## Objetivo
 
-`CLAUDE.md` §1 declara que **todos** los APU y presupuestos del repositorio son ejercicios
+`NORMAS.md` §1 declara que **todos** los APU y presupuestos del repositorio son ejercicios
 académicos ficticios. Los capítulos I y II ya lo respetan, pero el resto del repositorio seguía
 llamándolos reales: un jurado que leyera la tesis y después el repositorio encontraría la
 contradicción. Esta sesión la cierra y deja una meta que impide que vuelva.
@@ -33,7 +33,7 @@ con ellas. Antes ambas cosas se nombraban igual.
   de obra ejecutada» de UC‑06, el parámetro `reales` de las métricas (valores observados frente a
   estimados) y las frases que ya declaran que algo **no** es real.
 - **Datos reales futuros:** las corridas reales contra la API del asistente y los «APU reales que el
-  usuario suministre» de la compuerta GA‑datos. `CLAUDE.md` §1 los contempla.
+  usuario suministre» de la compuerta GA‑datos. `NORMAS.md` §1 los contempla.
 - **Registros fechados:** bitácoras y specs o planes de sprints ya ejecutados registran lo que se
   sabía en su fecha. Tampoco se reescribieron los **mensajes de commit citados** dentro de
   `PLAN_MULTIDOMINIO.md`: son historia ocurrida. En su lugar, cada documento histórico lleva su
@@ -47,7 +47,7 @@ Tres chequeos, con 14 pruebas en `tests/unit/test_meta_datos.py`:
 | Meta | Qué comprueba |
 |---|---|
 | D1 | Ningún documento vigilado presenta los datos del repositorio como reales |
-| D2 | `CLAUDE.md` sigue declarando la naturaleza de todos los datos, ARENAZA incluido |
+| D2 | `NORMAS.md` sigue declarando la naturaleza de todos los datos, ARENAZA incluido |
 | D3 | Los tres documentos históricos conservan su nota de errata |
 
 Decisiones de diseño:

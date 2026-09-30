@@ -3,8 +3,8 @@
 **Fechas:** 2026‑09‑14 (diseño) y 2026‑09‑15 (implementación y primeras corridas) · **Rama:**
 `inc/CI-integracion-continua` (worktree `.claude/worktrees/ci-integracion`), apilada sobre
 `worktree-sprint-multidominio` · **PR:** #2, con base en el PR #1 · **Spec:**
-`docs/superpowers/specs/2026-09-14-ci-integracion-continua-design.md` · **Plan:**
-`docs/superpowers/plans/2026-09-14-ci-integracion-continua.md`
+`2026-09-14-ci-integracion-continua-design.md` · **Plan:**
+`2026-09-14-ci-integracion-continua.md`
 
 ## Objetivo
 
@@ -97,7 +97,7 @@ prueba de normalización lo descargó y aun así no se omitió. La caché se gua
 ## Pendientes
 
 - **En archivos vedados** (cambios sin commitear del usuario en el checkout principal): mencionar
-  la integración continua en las convenciones de `CLAUDE.md` §3 y agregar la insignia de CI en
+  la integración continua en las convenciones de `NORMAS.md` §3 y agregar la insignia de CI en
   `README.md`.
 - **Del usuario:** reglas de protección de rama en GitHub que exijan los tres checks antes de
   fusionar (Settings → Branches), y fusionar el PR #1. Al fusionarlo, reorientar el PR #2 a

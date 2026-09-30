@@ -1,7 +1,7 @@
-# CLAUDE.md — Constitución del proyecto
+# NORMAS.md — Constitución del proyecto
 
 Este archivo es la fuente de verdad sobre **qué** se construye y **cómo**. Cualquier sesión de trabajo
-(humana o con Claude Code) empieza leyéndolo. Los demás documentos lo enlazan; no lo copian.
+empieza leyéndolo. Los demás documentos lo enlazan; no lo copian.
 
 ---
 
@@ -80,7 +80,7 @@ Convenciones operativas:
 | Sesiones | Una sesión por incremento, `/clear` entre ellas; modo plan antes de cambios grandes |
 | Entorno | `uv sync` · `uv run pytest` · `uv run ruff check .` |
 | Idioma | Código, docstrings, docs y commits en español; identificadores sin tildes |
-| Worktrees | Uno por sprint en `.claude/worktrees/<nombre-corto>`; se borra al fusionar. Solo coexisten el checkout principal y el worktree del sprint vigente: varios worktrees vivos a la vez es lo que dejó `main` dos semanas desactualizado |
+| Worktrees | Uno por sprint en `.worktrees/<nombre-corto>`; se borra al fusionar. Solo coexisten el checkout principal y el worktree del sprint vigente: varios worktrees vivos a la vez es lo que dejó `main` dos semanas desactualizado |
 | Fusión | Un PR por incremento **contra `main`**, fusionado en cuanto la CI esté verde. No acumular pilas: `gh pr merge` fusiona en la base *actual* del PR, así que una pila hay que reorientarla con `gh pr edit <n> --base main` antes de fusionar, o se fusiona cada PR dentro de su padre y `main` no recibe nada |
 | Etiquetas | Una por compuerta cruzada (`g0-docs`, `g1-ifc`, `g2-datos`…) y una **base por sprint** (`i6-base`, `m-base`, `a-base`, `r-base`, `p-base`) que sirve de referencia a `git diff <base> --stat -- core/` |
 | Metas | `scripts/meta_<sprint>.py` audita las metas del sprint; una fase se cruza con `--hasta <fase>` en OK **y** la compuerta anotada en `docs/bitacora/` |
@@ -167,7 +167,7 @@ Las anotaciones «— sesión» de las carpetas de código nombran las sesiones 
 `tests/` y `docs/` crecen en casi todas las sesiones y no llevan anotación.
 
 ```
-CLAUDE.md  README.md  pyproject.toml  uv.lock
+NORMAS.md  README.md  pyproject.toml  uv.lock
 PLAN_DESARROLLO.md  PLAN_MULTIDOMINIO.md  PLAN_PROTOTIPO.md  PLAN_UI.md  PLAN_ASISTENTE.md  PLAN_CIERRE.md
 core/
   contracts/      estables (sección 5)                                   — I0.1
@@ -204,7 +204,7 @@ tests/
 docs/             README, ERS, modelo_datos, arquitectura, plan_pruebas, calidad_iso25010,
                   manual_tecnico, manual_usuario, metodologia, linea_base, dossier_g0, protocolo_precios,
                   protocolo_indicador3 y protocolo_rnf04 (estos dos, de C4), resultados_ml,
-                  guion_prueba_arenia, api.json, auditoria/, bitacora/, fuentes/, tesis/, superpowers/
+                  guion_prueba_arenia, api.json, auditoria/, bitacora/, fuentes/, tesis/
 ```
 
 ---
@@ -252,7 +252,7 @@ tutor antes de I0.3. Los esqueletos ya existen; se completan en las Sesiones 0.1
 
 ---
 
-## 9. Cómo trabajar con Claude Code en este repositorio
+## 9. Cómo trabajar en este repositorio
 
 - Leer este archivo y la sesión correspondiente de [PLAN_DESARROLLO.md](PLAN_DESARROLLO.md) antes de
   escribir código. Usar modo plan para cambios grandes.

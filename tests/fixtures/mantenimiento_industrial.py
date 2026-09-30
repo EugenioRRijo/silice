@@ -1,7 +1,7 @@
 """Catálogo de mantenimiento industrial: cuatro partidas `MNT-*` costeadas con la referencia
 MaPreX de julio 2026 (Sesión M2.1 del PLAN_MULTIDOMINIO).
 
-Única copia estructurada de las composiciones de mantenimiento en el sistema (CLAUDE.md §2,
+Única copia estructurada de las composiciones de mantenimiento en el sistema (NORMAS.md §2,
 principio DRY). **No transcribe ningún precio**: los lee de
 `data/precios/maprex_2026-07/referencia_industrial.csv` (Sesión M0.2, cada fila verificada contra
 el PDF y con `ref_maprex`) al importarse. Las descripciones de los insumos son las de MaPreX,

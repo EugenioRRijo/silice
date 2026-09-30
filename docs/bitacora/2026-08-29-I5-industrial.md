@@ -9,7 +9,7 @@ Implementar `AdaptadorIndustrial`, que lee un registro de activos de planta (bom
 compresores, transformadores, válvulas, motores…) con su frecuencia de intervención de
 mantenimiento y devuelve `ItemComputo` trazables, sin tocar `core/`. Es una de las tres piezas de la
 prueba empírica de la hipótesis central del proyecto (`git diff --stat core/` vacío tras agregar un
-dominio nuevo, CLAUDE.md §1).
+dominio nuevo, NORMAS.md §1).
 
 ## Qué se hizo
 
@@ -28,7 +28,7 @@ Commit: `feat(industrial): adaptador de registro de activos`.
 
 | Decisión | Motivo |
 |---|---|
-| Evaluador propio en `adapters/industrial/evaluador.py`, no importado de `adapters/civil/evaluador.py` | cada adaptador es independiente (CLAUDE.md §2); aunque el subconjunto aritmético permitido coincide hoy con el de civil, importar entre paquetes de `adapters/` acoplaría dos dominios que no deben conocerse entre sí |
+| Evaluador propio en `adapters/industrial/evaluador.py`, no importado de `adapters/civil/evaluador.py` | cada adaptador es independiente (NORMAS.md §2); aunque el subconjunto aritmético permitido coincide hoy con el de civil, importar entre paquetes de `adapters/` acoplaría dos dominios que no deben conocerse entre sí |
 | `codigo_partida` distinto de `id_activo` (`MNT-BOM-CEN` vs. `IN-001`) | el brief pide activos con códigos `IN-`; `id_activo` es el identificador del activo físico en el inventario (y el `origen_id` trazable), mientras `codigo_partida` es la partida de mantenimiento que un futuro APU costearía — son dos conceptos distintos aunque en esta muestra compartan el mismo activo 1:1 |
 | `unidad` de la muestra es `intervencion` para todas las filas, sin alias en `core.contracts.unidades` | es la unidad natural de una intervención de mantenimiento; `normalizar_unidad` la deja pasar sin traducir porque no está en la tabla de alias, tal como el contrato prevé para unidades no tabuladas |
 | Horizonte de planificación de 5 años para la mayoría de los activos, 3 años para el transformador de emergencia (`IN-010`) | el brief no fija un horizonte único; variar uno de los diez activos evita que la muestra parezca una constante disfrazada y ejercita la regla con más de un valor de `horizonte_anios` |

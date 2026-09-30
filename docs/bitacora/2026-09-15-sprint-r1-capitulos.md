@@ -2,8 +2,8 @@
 
 **Fecha:** 2026‑09‑15 · **Rama:** `inc/tesis-cap1-2` (worktree `.claude/worktrees/redaccion-cap1-2`)
 · **Base:** etiqueta `r-base` (`fd1b706`, punta de `inc/PLAN-asistente`) ·
-**Spec:** [2026-09-15-sprint-r1-capitulos-design.md](../superpowers/specs/2026-09-15-sprint-r1-capitulos-design.md)
-· **Plan:** [2026-09-15-sprint-r1-capitulos.md](../superpowers/plans/2026-09-15-sprint-r1-capitulos.md)
+**Spec:** 2026-09-15-sprint-r1-capitulos-design.md
+· **Plan:** 2026-09-15-sprint-r1-capitulos.md
 
 ## Objetivo
 
@@ -42,7 +42,7 @@ Al aprobar la spec, el usuario aclaró que los APU del repositorio «son fictici
 ejercicios de clases y no representan un valor real», ARENAZA incluido. Una búsqueda encontró 92
 afirmaciones que presentaban esos datos como reales, en 25 archivos.
 
-- **R1.0:** `CLAUDE.md` §1 pasó a ser la fuente única de la «Naturaleza de los datos». Se
+- **R1.0:** `NORMAS.md` §1 pasó a ser la fuente única de la «Naturaleza de los datos». Se
   corrigieron `docs/linea_base.md`, `docs/tesis/capitulos/README.md`,
   `data/telecom/fuentes/README.md` (con nota de errata), `data/samples/README.md` y
   `docs/tesis/plan_redaccion.md`.
@@ -147,7 +147,7 @@ falló:
   - El caso es de edificación, y la 56R‑08 es la práctica de ese sector.
   - Si se adopta, el cambio alcanza a la ERS (RF‑29 y el glosario) y al rango de `ml/prediction`, no
     a `core/`.
-  - `CLAUDE.md` §8.1 fija «clase 3 de AACE» sin nombrar la práctica.
+  - `NORMAS.md` §8.1 fija «clase 3 de AACE» sin nombrar la práctica.
 - **D4:** fuente del FCAS. Sigue como «parámetro del caso de estudio».
 
 ## Pendientes

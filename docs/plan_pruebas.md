@@ -3,7 +3,7 @@
 Plan de pruebas del sistema de generación y auditoría de APU multidominio, según la estructura de
 IEEE 829 y con la trazabilidad que exige [metodologia.md §7](metodologia.md#7-trazabilidad): cada
 caso de prueba cita su RF; los enunciados de los RF viven **una sola vez** en
-[ERS.md §3.2](ERS.md#32-requisitos-funcionales) y aquí no se repiten (CLAUDE.md §2, DRY).
+[ERS.md §3.2](ERS.md#32-requisitos-funcionales) y aquí no se repiten (NORMAS.md §2, DRY).
 
 ## 1. Identificador y alcance
 
@@ -15,7 +15,7 @@ caso de prueba cita su RF; los enunciados de los RF viven **una sola vez** en
   la CI de la compuerta GC6 (2026‑09‑29) en §10.
 - **Alcance:** todo el software del repositorio (`core/`, `adapters/`, `ml/`, `api/`, `ui/`,
   `scripts/`) contra los RF‑01…RF‑43 (RF‑32 vacante) y RNF‑01…RNF‑10 de la ERS.
-- **Referencias:** [CLAUDE.md](../CLAUDE.md) (constitución), [ERS.md](ERS.md) (IEEE 830),
+- **Referencias:** [NORMAS.md](../NORMAS.md) (constitución), [ERS.md](ERS.md) (IEEE 830),
   [metodologia.md](metodologia.md) (indicadores y trazabilidad),
   [linea_base.md](linea_base.md) (caso auditado), bitácoras en [bitacora/](bitacora/).
 
@@ -27,7 +27,7 @@ encargo de QA de GC6 (`eb06e96`), y los commits posteriores solo tocan documento
 
 | Paquete | Contenido | Nivel de prueba |
 |---|---|---|
-| `core/contracts` | contratos estables (§5 de CLAUDE.md) | unitario (invariantes) |
+| `core/contracts` | contratos estables (§5 de NORMAS.md) | unitario (invariantes) |
 | `core/costing` | motor de costos (función pura) | unitario contra la línea base |
 | `core/models`, `core/catalog` | persistencia SQLite y catálogo | unitario + integración |
 | `core/budget` | presupuesto, curva, exportación, UC‑02 | unitario + integración |
@@ -62,14 +62,14 @@ alcance de F.1. La brecha se cerró el mismo día — `core/budget/escenarios.py
 
 ## 4. Enfoque
 
-1. **Pruebas antes que implementación en el núcleo** (CLAUDE.md §2.5): la línea base verificada
+1. **Pruebas antes que implementación en el núcleo** (NORMAS.md §2.5): la línea base verificada
    (`tests/fixtures/apu_linea_base.py`, única copia) existe desde antes que el motor;
    `test_costing.py` no se modificó para ponerse en verde.
 2. **Dos niveles.** `tests/unit/` prueba cada pieza aislada (contratos, motor, reglas,
    adaptadores, ml); `tests/integration/` prueba flujos completos sobre SQLite real (sembrar →
    elaborar → auditar → actualizar precios → reconstruir a fecha).
 3. **Exactitud decimal.** Los importes se comparan como `Decimal` exactos; la única tolerancia
-   admitida es ± 0,01 sobre el precio unitario de los cinco APU de la línea base (CLAUDE.md §4).
+   admitida es ± 0,01 sobre el precio unitario de los cinco APU de la línea base (NORMAS.md §4).
 4. **Arquitectura como prueba.** `test_arquitectura.py` (sus casos parametrizados crecen solos con
    cada módulo que nace: el cierre de UC‑08 añadió el suyo sin tocar la prueba) falla si un
    adaptador importa de `core` algo distinto de `core.contracts`: la hipótesis central se vigila en
@@ -95,7 +95,7 @@ alcance de F.1. La brecha se cerró el mismo día — `core/budget/escenarios.py
 
 ## 6. Criterios de suspensión y reanudación
 
-Si una prueba del núcleo se pone en rojo, la regla de CLAUDE.md §9 aplica: no se parchea la
+Si una prueba del núcleo se pone en rojo, la regla de NORMAS.md §9 aplica: no se parchea la
 prueba; se corrige la implementación o, si el contrato resulta insuficiente, se documenta el
 hallazgo en `docs/bitacora/` y se detiene la sesión. Estado esperado histórico: hasta I0.3 la
 suite estuvo deliberadamente roja en `test_costing.py` (marcador `rojo_esperado`).

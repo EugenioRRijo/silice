@@ -15,14 +15,14 @@ complejidad media):
 
 `REGLA_PUNTOS_FUNCION` es la expresión trazable que combina esos pesos: cada `ItemComputo` la
 guarda en `regla` junto con las cinco cantidades en `parametros`, de modo que el informe de
-auditoría puede reevaluarla (regla R1 de `core/verification/`, CLAUDE.md §7).
+auditoría puede reevaluarla (regla R1 de `core/verification/`, NORMAS.md §7).
 
 Nota sobre la unidad ("pf"): `core.contracts.unidades._ALIAS` es la única tabla de alias del
-sistema (CLAUDE.md §2) y solo cubre unidades físicas de obra (m3, m2, m, pieza, kg, etc.); "punto
+sistema (NORMAS.md §2) y solo cubre unidades físicas de obra (m3, m2, m, pieza, kg, etc.); "punto
 de función" no es una de ellas. `normalizar_unidad("pf")` la deja tal cual (minúsculas, sin
 espacios), sin traducirla ni fallar, que es el comportamiento documentado para unidades
 desconocidas. No se modifica `core/contracts/unidades.py` para agregarla (regla del contrato
-congelado, CLAUDE.md §5 y §9): se documenta como hallazgo en
+congelado, NORMAS.md §5 y §9): se documenta como hallazgo en
 `docs/bitacora/2026-08-29-I5-sistemas.md`.
 """
 
@@ -66,7 +66,7 @@ def _leer_filas(
     UC-01, flujo 2a (INV-089): un archivo binario (no es texto UTF-8) o sin las columnas que este
     adaptador lee (la muestra de otro dominio) se rechaza nombrando el archivo, con el
     `ValueError` que la API traduce a 422, en vez de un `KeyError` de la primera columna que
-    falte. Cada adaptador tiene su copia: ninguno importa de otro (CLAUDE.md §2).
+    falte. Cada adaptador tiene su copia: ninguno importa de otro (NORMAS.md §2).
     """
     nombre = Path(fuente).name
     try:

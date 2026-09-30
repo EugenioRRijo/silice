@@ -43,17 +43,17 @@ Los briefs, reportes, paquetes de revisión y el ledger del sprint viven fuera d
 | T12 Arquitectura 4+1 | 0.3 | `inc/0.3-arquitectura` | `f4951b3`, `ab9a2a7` | `047d0bb` | [0.3-arquitectura](2026-08-29-0.3-arquitectura.md) |
 | T13 Integración final | — | `main` | (este cierre) | — | esta bitácora |
 
-Momentos del trabajo (CLAUDE.md §1) alcanzados: las cinco pruebas del motor en verde (`g-nucleo`);
+Momentos del trabajo (NORMAS.md §1) alcanzados: las cinco pruebas del motor en verde (`g-nucleo`);
 `git diff --stat core/` vacío para los cuatro adaptadores (meta M9, verificada por `meta_alpha.py` commit a
 commit y por el rango completo de cada rama de adaptador). La compuerta G1 (IFC) sigue abierta: el adaptador civil del alpha es tabular
-(CLAUDE.md §8.2).
+(NORMAS.md §8.2).
 
 ## Decisiones del sprint (rulings del integrador)
 
 | Decisión | Motivo | Costo si es errónea |
 |---|---|---|
 | Implementadores en paralelo por oleadas, cada uno en su worktree con rutas exclusivas | petición del usuario; las rutas disjuntas eliminan conflictos | fusiones manuales |
-| Contratos congelados; toda insuficiencia se documenta, no se parchea | CLAUDE.md §5 y §9 | rodeos en el código (ver hallazgos) |
+| Contratos congelados; toda insuficiencia se documenta, no se parchea | NORMAS.md §5 y §9 | rodeos en el código (ver hallazgos) |
 | Directivas `_balance`, `_tolerancia`, `_unidad_original` en `ItemComputo.especificaciones` (claves con `_` = directivas para el núcleo) | R5 y R3 necesitan datos que el contrato no tiene; la convención vive en `core/verification/directivas.py` y una prueba comprueba que el adaptador civil usa las mismas claves | dos declaraciones de la misma convención |
 | Evaluador de expresiones duplicado entre `core/verification` y cada adaptador, atado por una prueba de equivalencia | `adapters/` solo importa `core.contracts`; un adaptador no importa otro | divergencia detectada solo por esa prueba |
 | `DecimalExacto` (texto) en SQLite en vez de `Numeric` | exactitud y cero advertencias; en PostgreSQL sería `Numeric(18,6)` | sin ordenación numérica en SQL (no se necesita) |
@@ -62,7 +62,7 @@ commit y por el rango completo de cada rama de adaptador). La compuerta G1 (IFC)
 | El presupuesto referencia su lista de precios **y** congela el `ResultadoAPU` por renglón (versionado híbrido); `cargar_presupuesto` verifica la reconstrucción | reconstrucción a fecha (UC‑02) y detección de composiciones editadas después | divergencia detectada como `ValueError` |
 | La curva cierra por construcción: el último período es `total − Σ anteriores` y su acumulado es `total` literal; períodos etiquetados con los códigos entre corchetes (`"Dia 1 [LB-01-EXC]"`) | el hallazgo 3 de la línea base debe ser imposible; R7 concilia por códigos | ninguno |
 | R6 con severidad ERROR; R7 devuelve `[]` si el presupuesto no declara curva | el 7/7 cuenta hallazgos ≥ ERROR; R2 ya señala la ausencia de curva | un presupuesto sin plan pasa R7 en silencio |
-| `elaborar` audita siempre | principio 7 de CLAUDE.md | ninguno |
+| `elaborar` audita siempre | principio 7 de NORMAS.md | ninguno |
 | Incrementos fusionados a `main` sin preguntar por cada uno, con `--no-ff`; sin push | plan aprobado; no hay remoto | revertir fusiones |
 | G0 (tutor) no cruzable desde aquí | requiere revisión humana | ninguno funcional |
 
@@ -101,7 +101,7 @@ Windows es cp1252: la meta imprime tablas ASCII.
 - **G1:** sin `tanquilla.ifc`, la Sesión I3.1 no tiene *Definition of Ready*; el adaptador tabular
   cubre el dominio civil del alpha.
 - **G2:** sin registros de APU suficientes por dominio, `ml/` queda para el siguiente sprint
-  (contar registros y aplicar CLAUDE.md §8.1).
+  (contar registros y aplicar NORMAS.md §8.1).
 - **FCAS 600 %:** sin fuente primaria confirmada (convención colectiva vigente); cerrar antes de
   defender el capítulo IV.
 - Operativos: la creación simultánea de cuatro worktrees falló en el harness (carrera); se limitó a dos

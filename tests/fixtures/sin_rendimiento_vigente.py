@@ -1,6 +1,6 @@
 """Base de la linea base con una partida sin rendimiento estimado vigente (UC-01 3b, INV-088).
 
-Caso de prueba, no ejecucion real (CLAUDE.md §1): la tuberia `LB-02-TUB` pierde su rendimiento
+Caso de prueba, no ejecucion real (NORMAS.md §1): la tuberia `LB-02-TUB` pierde su rendimiento
 ESTIMADO y su historico queda con dos MEDIDOS de una obra de prueba, 90 y 100 piezas por dia. El
 catalogo propone el MEDIDO mas reciente (100, el mismo valor del APU de la linea base), asi que,
 declarado como estimado, el presupuesto vuelve a sumar exactamente el de la linea base: ese es el

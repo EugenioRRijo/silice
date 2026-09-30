@@ -2,8 +2,8 @@
 
 **Fecha:** 2026‑09‑15 · **Rama:** `inc/PLAN-asistente` (worktree `.claude/worktrees/plan-asistente`),
 apilada sobre `inc/CI-integracion-continua` · **Base:** etiqueta `a-base` = `66fb52a` · **Spec:**
-`docs/superpowers/specs/2026-09-15-asistente-presupuestos-design.md` · **Plan ejecutable:**
-`docs/superpowers/plans/2026-09-15-plan-asistente.md` · **Plan de fases:** `PLAN_ASISTENTE.md`
+`2026-09-15-asistente-presupuestos-design.md` · **Plan ejecutable:**
+`2026-09-15-plan-asistente.md` · **Plan de fases:** `PLAN_ASISTENTE.md`
 
 ## Objetivo
 
@@ -51,8 +51,8 @@ Agents y a una llamada única con salida estructurada (spec §2). Esta bitácora
 
 | Archivo | Contenido |
 |---|---|
-| `docs/superpowers/specs/2026-09-15-asistente-presupuestos-design.md` | Decisiones, enfoques, arquitectura, flujo de UC‑09, conjunto dorado, métricas propuestas, compuertas, meta y riesgos |
-| `docs/superpowers/plans/2026-09-15-plan-asistente.md` | Las tres tareas de este sprint |
+| `2026-09-15-asistente-presupuestos-design.md` | Decisiones, enfoques, arquitectura, flujo de UC‑09, conjunto dorado, métricas propuestas, compuertas, meta y riesgos |
+| `2026-09-15-plan-asistente.md` | Las tres tareas de este sprint |
 | `PLAN_ASISTENTE.md` | **Única copia** de fases, compuertas y sesiones. Cada sesión lleva Lecturas, prompt, **Cierre.** (DoD con la meta que pasa a OK), **Fuente única.** (DRY) y **Commit.** |
 | `scripts/meta_asistente.py` | 12 metas (P, A0–A3 y dos transversales). Chequeos de contenido puros sobre texto; `--hasta <fase>`; M8 y M9 por `_evaluar` de `meta_alpha`; M11 y M12 importados de `meta_multidominio` |
 | `tests/unit/test_meta_asistente.py` | 22 pruebas, sin disco, git, ruff ni pytest |
@@ -101,7 +101,7 @@ tests/integration/test_asistente_casos_dorados.py», etc. Ninguna en FALLA.
   - fusionar en orden los PR #1 (sprint multidominio), #2 (CI) y #3 (este plan);
   - aprobar el presupuesto de corridas reales antes de A3;
   - commitear la sesión de redacción pausada, requisito de A4.3.
-- **En archivos vedados:** mencionar `asistente/` y `PLAN_ASISTENTE.md` en `CLAUDE.md` (§1 y §6) y
+- **En archivos vedados:** mencionar `asistente/` y `PLAN_ASISTENTE.md` en `NORMAS.md` (§1 y §6) y
   en `README.md`.
 - **Siguiente sesión:** A0.1 (ERS). Su *Definition of Ready* se cumple con este plan en su rama y
   `--hasta P` en OK.

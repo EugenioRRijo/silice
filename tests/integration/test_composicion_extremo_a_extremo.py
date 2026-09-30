@@ -15,14 +15,14 @@ De donde sale cada valor esperado
 De ningun sitio de este archivo. La linea base (los cinco APU linea a linea, la curva emitida, el
 total auditado y las siete inconsistencias con su regla) vive **una sola vez** en
 `tests/fixtures/apu_linea_base.py`, y el presupuesto con las siete inconsistencias en
-`tests/fixtures/presupuesto_auditado.py` (CLAUDE.md §2, principio DRY). Aqui se importan; no se
+`tests/fixtures/presupuesto_auditado.py` (NORMAS.md §2, principio DRY). Aqui se importan; no se
 transcribe ni un precio, ni una cantidad, ni una descripcion. Una prueba que copiara sus valores
 esperados dejaria de ser una regresion en cuanto alguien corrigiera la fixture: seguiria afirmando
 el numero viejo y pasaria mientras el sistema se desvia.
 
 El caso de demostracion tampoco se construye aqui: se importa de `scripts/seed_demo.py`
 (`construir_caso_demo`), su unica construccion en el repositorio. **Ese caso es didactico y no
-proviene de obra ejecutada** (CLAUDE.md §1): nadie tendio esa tuberia ni instalo esa valvula; sus
+proviene de obra ejecutada** (NORMAS.md §1): nadie tendio esa tuberia ni instalo esa valvula; sus
 precios son de ejemplo, no cotizados. Existe para ejercitar en un mismo presupuesto lo que la
 linea base no tiene: jornal y destajo en la misma partida (decision D9, articulo 114 de la LOTTT),
 materiales con desperdicio, equipos con depreciacion parcial, la curva con `plan_secuencial` y la
@@ -61,7 +61,7 @@ from tests.fixtures.presupuesto_auditado import (
 from ui.composicion import composicion_desde_tablas
 
 #: Tolerancia del total contra `TOTAL_PRESUPUESTO_AUDITADO`: un presupuesto se lee en centavos y
-#: los `Decimal` del modelo no se redondean hasta presentarlos (CLAUDE.md §2.3 y §4). No se
+#: los `Decimal` del modelo no se redondean hasta presentarlos (NORMAS.md §2.3 y §4). No se
 #: teclea "0.01": se deriva de la precision de presentacion que ya declara el nucleo, la misma de
 #: la que `core/budget/excel.py` deduce su paso de redondeo.
 TOLERANCIA = Decimal(1).scaleb(-DECIMALES_PRESENTACION)
@@ -196,7 +196,7 @@ def _elaborado_demo(caso: CasoDemo):
     """El presupuesto del caso de demostracion, con sus APU rehechos por la pantalla y su curva.
 
     Caso didactico: sus tres partidas son un ejercicio academico ficticio y sus precios son de
-    ejemplo, no cotizados (docstring de `scripts/seed_demo.py`, CLAUDE.md §1).
+    ejemplo, no cotizados (docstring de `scripts/seed_demo.py`, NORMAS.md §1).
     """
     composiciones = {apu.codigo_partida: _tecleado(apu) for apu in caso.composiciones}
     borrador = generar_presupuesto(

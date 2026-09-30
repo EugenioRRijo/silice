@@ -4,7 +4,7 @@ Un recorrido es una secuencia de pasos con un proposito. Se declara aqui **una s
 declaracion salen sus cuatro consumidores: la pantalla de Inicio que los ofrece, el marco de
 `ui/app.py` que pinta en que paso esta el usuario y su boton «Siguiente», y el guion de prueba
 manual CP-07 (`docs/guion_prueba_arenia.md`). Escribir el camino en cada pantalla seria repetirlo
-cuatro veces (principio DRY, CLAUDE.md §2).
+cuatro veces (principio DRY, NORMAS.md §2).
 
 Sin Streamlit y sin base de datos: se prueba como funcion pura. La integridad de enlaces —que cada
 `Paso.pagina` sea la ruta URL de una pagina registrada en `ui.app.PAGINAS`, y de una pagina de la

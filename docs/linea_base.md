@@ -9,13 +9,13 @@ empírica del problema** (indicador 1: siete inconsistencias que el sistema debe
 > contenido y el formato de un APU venezolano, pero no corresponde a una obra ejecutada ni sus
 > valores son reales. Es la línea base normativa de las pruebas y un caso **didáctico** en la tesis.
 > La naturaleza de todos los datos del repositorio se declara una sola vez en
-> [CLAUDE.md §1](../CLAUDE.md#1-qué-es-este-proyecto).
+> [NORMAS.md §1](../NORMAS.md#1-qué-es-este-proyecto).
 
 | Versión | Dónde |
 |---|---|
 | Evidencia primaria | [`data/linea_base/APUS_CLINICA.pdf`](../data/linea_base/APUS_CLINICA.pdf) |
 | Versión ejecutable (única copia de los datos) | [`tests/fixtures/apu_linea_base.py`](../tests/fixtures/apu_linea_base.py) |
-| Fórmula y resumen de los cinco APU | [CLAUDE.md §4](../CLAUDE.md#4-especificación-del-cálculo-y-línea-base) |
+| Fórmula y resumen de los cinco APU | [NORMAS.md §4](../NORMAS.md#4-especificación-del-cálculo-y-línea-base) |
 | Pruebas de integridad de esta transcripción | [`tests/unit/test_linea_base.py`](../tests/unit/test_linea_base.py) |
 
 ## 1. Alcance físico

@@ -1,6 +1,6 @@
 """Meta del Sprint R1 de redaccion: capitulos I y II de la tesis (12 chequeos).
 
-Spec: `docs/superpowers/specs/2026-09-15-sprint-r1-capitulos-design.md`, seccion 6. Sigue el
+Spec: `2026-09-15-sprint-r1-capitulos-design.md`, seccion 6. Sigue el
 patron de `scripts/meta_asistente.py`: cada chequeo es una funcion pura sobre texto, probada en
 `tests/unit/test_meta_redaccion.py`; leer archivos es asunto de la orquestacion. Automatiza la
 parte verificable de la lista de cotejo del tutor (`docs/tesis/rubrica_tutor.md`); lo que
@@ -38,7 +38,7 @@ RUTA_REFERENCIAS = CARPETA_TESIS / "referencias.md"
 RUTA_RUBRICA = CARPETA_TESIS / "rubrica_tutor.md"
 RUTA_ACTA_1 = CARPETA_TESIS / "revisiones" / "R1-capitulo-1.md"
 RUTA_ACTA_2 = CARPETA_TESIS / "revisiones" / "R1-capitulo-2.md"
-RUTA_CLAUDE = RAIZ / "CLAUDE.md"
+RUTA_NORMAS = RAIZ / "NORMAS.md"
 
 TITULOS: dict[str, str] = {
     "R1": "Capitulo I con tabla de estado y las cinco secciones del guion",
@@ -52,7 +52,7 @@ TITULOS: dict[str, str] = {
     "R9": "Lista de cotejo con los criterios T1-T14",
     "R10": "Acta del capitulo I: T1-T14 con veredicto, ninguno en 'no cumple'",
     "R11": "Acta del capitulo II: T1-T14 con veredicto, ninguno en 'no cumple'",
-    "R12": "CLAUDE.md declara la naturaleza de todos los datos (incluye ARENAZA)",
+    "R12": "NORMAS.md declara la naturaleza de todos los datos (incluye ARENAZA)",
 }
 
 CRITERIOS: tuple[str, ...] = tuple(f"T{n}" for n in range(1, 15))
@@ -440,7 +440,7 @@ def evaluar_acta(texto: str | None) -> tuple[Estado, str]:
 
 def evaluar_naturaleza_datos(texto: str | None) -> tuple[Estado, str]:
     if texto is None:
-        return Estado.FALLA, "falta CLAUDE.md"
+        return Estado.FALLA, "falta NORMAS.md"
     normalizado = _normalizar(texto)
     faltan = [
         etiqueta
@@ -452,8 +452,8 @@ def evaluar_naturaleza_datos(texto: str | None) -> tuple[Estado, str]:
         if not presente
     ]
     if faltan:
-        return Estado.FALLA, f"CLAUDE.md no tiene: {', '.join(faltan)}"
-    return Estado.OK, "CLAUDE.md declara la naturaleza de todos los datos, ARENAZA incluido"
+        return Estado.FALLA, f"NORMAS.md no tiene: {', '.join(faltan)}"
+    return Estado.OK, "NORMAS.md declara la naturaleza de todos los datos, ARENAZA incluido"
 
 
 # --------------------------------------------------------------------------------------
@@ -524,7 +524,7 @@ def _evaluar_metas() -> list[Fila]:
         "R9": lambda: evaluar_rubrica(_leer(RUTA_RUBRICA)),
         "R10": lambda: evaluar_acta(_leer(RUTA_ACTA_1)),
         "R11": lambda: evaluar_acta(_leer(RUTA_ACTA_2)),
-        "R12": lambda: evaluar_naturaleza_datos(_leer(RUTA_CLAUDE)),
+        "R12": lambda: evaluar_naturaleza_datos(_leer(RUTA_NORMAS)),
     }
     return [Fila(codigo, TITULOS[codigo], *chequeo()) for codigo, chequeo in chequeos.items()]
 

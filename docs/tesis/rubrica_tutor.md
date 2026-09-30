@@ -6,7 +6,7 @@ El **tesista** redacta; el tutor aplica esta lista criterio por criterio y deja 
 aprobación del tutor académico designado por la institución se registra aparte y no la sustituye
 este instrumento, que sirve para llegar a esa revisión con el capítulo ya depurado.
 
-Diseño y alcance: [spec del Sprint R1](../superpowers/specs/2026-09-15-sprint-r1-capitulos-design.md)
+Diseño y alcance: spec del Sprint R1
 §5. Convenciones de redacción: [plan_redaccion.md](plan_redaccion.md) §1.
 
 ## Escala
@@ -35,7 +35,7 @@ observación tiene respuesta del tesista.
 | Código | Criterio | Qué mira el tutor |
 |---|---|---|
 | **T4** | Afirmaciones sobre la práctica con respaldo | Toda afirmación sobre cómo se presupuesta en la práctica, cuánto tiempo toma o qué errores ocurren se apoya en literatura citada; ninguna se sostiene solo en la opinión del autor |
-| **T5** | Casos presentados como didácticos | Los APU y presupuestos del repositorio (clínica, ARENAZA, `MNT-001`, `SIS-001`) se presentan como casos didácticos o construidos, con su alcance declarado; ninguno se presenta como obra ejecutada ni como dato real (`CLAUDE.md` §1) |
+| **T5** | Casos presentados como didácticos | Los APU y presupuestos del repositorio (clínica, ARENAZA, `MNT-001`, `SIS-001`) se presentan como casos didácticos o construidos, con su alcance declarado; ninguno se presenta como obra ejecutada ni como dato real (`NORMAS.md` §1) |
 | **T6** | Cifras del proyecto trazables | Toda cifra del proyecto coincide con la tabla de cifras citables de `plan_redaccion.md` §5; las cifras de la literatura llevan su cita |
 | **T7** | Antecedentes con aporte explícito | Cada antecedente dice en una o dos oraciones qué aporta a **este** trabajo o qué vacío deja; no hay resúmenes sueltos |
 

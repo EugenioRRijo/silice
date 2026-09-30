@@ -26,7 +26,7 @@ El relleno no se edita: es un valor derivado de los totales. Un cambio dirigido 
 
 El paso 5 (RF‑20, el diferencial) no está implementado: se declaró en limitaciones en C1.
 
-Este módulo no toca `core/` (CLAUDE.md §2 y §9): importa solo `core.contracts` y su propio paquete,
+Este módulo no toca `core/` (NORMAS.md §2 y §9): importa solo `core.contracts` y su propio paquete,
 y evalúa con la copia civil del evaluador (una de las cinco de INV‑006, aceptada mientras no haya
 aval del tutor).
 """

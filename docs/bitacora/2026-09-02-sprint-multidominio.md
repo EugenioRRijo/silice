@@ -3,7 +3,7 @@
 **Fechas:** 2026‑09‑02 (meta y M0.1–M3.2) y 2026‑09‑14 (M4.1–M4.2) · **Rama:**
 `worktree-sprint-multidominio` (worktree `.claude/worktrees/sprint-multidominio`) · **Base:**
 etiqueta `m-base` = `62986ec` · **Plan ejecutable:**
-`docs/superpowers/plans/2026-09-02-sprint-multidominio.md` · **Spec:** `PLAN_MULTIDOMINIO.md`
+`2026-09-02-sprint-multidominio.md` · **Spec:** `PLAN_MULTIDOMINIO.md`
 
 ## Objetivo y resultado
 
@@ -12,7 +12,7 @@ auditado y lista de precios real y fechada, **sin tocar `core/`**.
 
 **Cumplido en los cuatro dominios.** `git diff m-base --stat -- core/` quedó vacío al cierre de
 cada sesión y al cierre del sprint; ninguna sesión encontró una insuficiencia de contratos que
-obligara a detenerse (CLAUDE.md §9). Meta del sprint: **12/12**.
+obligara a detenerse (NORMAS.md §9). Meta del sprint: **12/12**.
 
 ## Compuertas
 
@@ -142,5 +142,5 @@ RESULTADO: 12/12 metas OK
 
 **Sin fusionar a `main`**: la fusión (`--no-ff`, sin push, como el resto del proyecto) la decide
 el usuario. El sprint no editó ninguno de los archivos con cambios sin commitear en el checkout
-principal (`CLAUDE.md`, `README.md`, `docs/README.md`, `docs/linea_base.md`, `docs/tesis/**`),
+principal (`NORMAS.md`, `README.md`, `docs/README.md`, `docs/linea_base.md`, `docs/tesis/**`),
 así que la fusión no los toca.
