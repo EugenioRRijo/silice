@@ -286,3 +286,35 @@ def test_la_guardia_del_alta_usa_la_identidad_del_catalogo(
         Catalogo(sesion).dar_de_alta_insumo(tipo, descripcion, unidad)
 
     assert _contar(sesion, models.Insumo) == insumos
+
+
+def test_un_equipo_con_dos_unidades_es_una_sola_alta(sesion, tmp_path):
+    """QA M11: la identidad del alta de equipos y mano de obra no usa la unidad (el catalogo los
+    lleva sin ella): dos filas del mismo equipo, «dia» y «hr», dan una alta, no dos."""
+    archivo = _archivo(
+        tmp_path, "equipo,Compactador de placa,dia,40", "equipo,Compactador de placa,hr,40"
+    )
+    vista = insumos_desconocidos(sesion, archivo)
+    assert len(vista) == 2
+    equipos = len(Catalogo(sesion).insumos(models.TipoInsumo.EQUIPO))
+
+    resumen = _crear(sesion, archivo, dar_de_alta=vista)
+
+    (alta,) = resumen.dados_de_alta
+    assert alta.unidad is None
+    assert len(Catalogo(sesion).insumos(models.TipoInsumo.EQUIPO)) == equipos + 1
+    assert _precio(sesion, resumen.lista, alta) == Decimal(40)
+    assert resumen.desconocidos == ()
+
+
+def test_un_equipo_con_dos_unidades_y_precios_distintos_se_rechaza(sesion, tmp_path):
+    """QA M11: las mismas dos filas con precios distintos son una sola alta con dos precios."""
+    archivo = _archivo(
+        tmp_path, "equipo,Compactador de placa,dia,40", "equipo,Compactador de placa,hr,45"
+    )
+    insumos = _contar(sesion, models.Insumo)
+
+    with pytest.raises(ValueError, match="una sola vez"):
+        _crear(sesion, archivo, dar_de_alta=insumos_desconocidos(sesion, archivo))
+
+    assert _contar(sesion, models.Insumo) == insumos

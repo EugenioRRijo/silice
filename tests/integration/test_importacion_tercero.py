@@ -9,6 +9,7 @@ documentadas de la linea base (`INCONSISTENCIAS`) y su total exacto. Los archivo
 
 from __future__ import annotations
 
+import json
 from dataclasses import replace
 from datetime import date
 from decimal import Decimal
@@ -217,6 +218,14 @@ def test_un_codigo_que_ya_esta_en_el_catalogo_se_rechaza_sin_escribir(sesion, tm
             lambda libro: libro["APU"].cell(row=2, column=4, value="0"),
             rf"{NOMBRE_ARCHIVO}, hoja APU, fila 2: .*rendimiento",
         ),
+        (
+            lambda libro: libro["APU"].append(["", "Sin codigo", "m3", "1"]),
+            rf"{NOMBRE_ARCHIVO}, hoja APU, fila 7: falta codigo_partida",
+        ),
+        (
+            lambda libro: libro["Presupuesto"].cell(row=2, column=4, value="-1"),  # cantidad
+            rf"{NOMBRE_ARCHIVO}, hoja Presupuesto, fila 2: cantidad no puede ser negativa",
+        ),
     ],
     ids=[
         "hoja",
@@ -233,6 +242,8 @@ def test_un_codigo_que_ya_esta_en_el_catalogo_se_rechaza_sin_escribir(sesion, tm
         "tipo",
         "no-finito",
         "invariante",
+        "apu-sin-codigo",
+        "item-invariante",
     ],
 )
 def test_un_archivo_mal_formado_se_rechaza_con_archivo_hoja_y_fila(archivo, cambio, patron):
@@ -487,3 +498,47 @@ def test_importar_y_revalorar_parte_del_precio_del_tercero(sesion, tmp_path, pro
     assert recargado.presupuesto.total == comparativo.total_nuevo
     assert recargado.informe.hallazgos == revalorado.informe.hallazgos
     assert recargado.informe.a_markdown() == revalorado.informe.a_markdown()
+
+
+@pytest.mark.parametrize(
+    ("tipo", "columna", "valor", "patron"),
+    [
+        ("material", 5, "-1", "cantidad no puede ser negativ"),  # cantidad
+        ("equipo", 7, "2", "depreciacion"),  # fuera de (0, 1]
+        ("mano_obra", 5, "-1", "cantidad no puede ser negativ"),  # cantidad
+    ],
+)
+def test_una_linea_que_viola_su_contrato_se_rechaza_con_hoja_y_fila(
+    archivo, tipo, columna, valor, patron
+):
+    """QA H3: el `ValueError` de `LineaMaterial`, `LineaEquipo` o `LineaManoObra` sale citando
+    archivo, hoja y fila, para cada tipo de insumo."""
+    marcada = {}
+
+    def viola(libro):
+        hoja = libro["Insumos"]
+        fila = next(f for f in hoja.iter_rows(min_row=2) if f[1].value == tipo)
+        fila[columna - 1].value = valor
+        marcada["fila"] = fila[0].row
+
+    _editar(archivo, viola)
+
+    with pytest.raises(ValueError, match=rf"hoja Insumos, fila {marcada['fila']}: .*{patron}"):
+        leer_presupuesto_tabular(archivo)
+
+
+def test_la_unidad_del_autor_gana_a_una_clave_unidad_original_del_json(archivo):
+    """QA M16 / RF-24: si las `especificaciones` del archivo traen la clave interna de la unidad
+    original, vale la unidad que escribio el autor en la columna `unidad`, no la del JSON."""
+
+    def hostil(libro):
+        hoja = libro["Presupuesto"]
+        fila = next(f for f in hoja.iter_rows(min_row=2) if f[0].value == TUBERIA)
+        assert fila[2].value == "mts"
+        fila[7].value = json.dumps({CLAVE_UNIDAD_ORIGINAL: "km", "diametro": "4 pulg"})
+
+    importado = leer_presupuesto_tabular(_editar(archivo, hostil))
+
+    (partida,) = [p for p in importado.presupuesto.partidas if p.item.codigo_partida == TUBERIA]
+    assert partida.item.especificaciones[CLAVE_UNIDAD_ORIGINAL] == "mts"
+    assert partida.item.especificaciones["diametro"] == "4 pulg"
