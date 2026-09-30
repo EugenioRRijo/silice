@@ -460,21 +460,23 @@ las dos, como hicieron GC4 y GC5. Los demás documentos enlazan esta sección y 
 
 ### Corrida local de la compuerta GC6
 
-Sobre `5b33e5f`, el código de C6 (los commits de la compuerta solo tocan documentos), con
+Sobre `eb06e96`, el código de C6 con el lote del encargo de QA de GC6 (los commits de la compuerta solo
+tocan documentos), con
 `uv run --all-extras pytest -W error --strict-markers -q -p no:cacheprovider --junitxml=<ruta fuera
 del árbol>`, en Windows, y las cifras leídas del JUnit:
 
 ```
-suite completa         1167 tests   0 fallos   0 errores   0 omitidas   456 s   Python 3.13.2
+suite completa         1191 tests   0 fallos   0 errores   0 omitidas   357 s   Python 3.13.2
 verificar omitidas: 0 omitidas      ruff check .: All checks passed!
 metas: meta_prototipo 12/12, meta_redaccion 12/12, meta_datos 3/3
 línea base (test_costing, 7 de 7, extremo a extremo, 1 586,61): 27 0 0 0
 guardia del núcleo (guardia_gc6.sh 5): 5 commits de core/ con los asuntos autorizados, marcas: 0
 ```
 
-Distribución de la suite: **1 167 casos** recogidos, **841 en `tests/unit/`** y **326 en
-`tests/integration/`**, 0 fallos y 0 omitidos. La fase C6 sumó 122 sobre los 1 045 de la CI de GC5
-(816 y 229): 25 unitarios y 97 de integración (N, 62; R, 8; U, 16; A, 36). Esta corrida no mide
+Distribución de la suite: **1 191 casos** recogidos, **841 en `tests/unit/`** y **350 en
+`tests/integration/`**, 0 fallos y 0 omitidos. La fase C6 sumó 146 sobre los 1 045 de la CI de GC5
+(816 y 229): 25 unitarios y 121 de integración (N, 62; R, 8; U, 16; A, 36; y 24 del lote del encargo de
+QA de GC6, todas de integración). Esta corrida no mide
 cobertura y no corre en Linux: ninguna de las dos cosas la sustituye la CI.
 
 ### Última corrida de la CI (GC5, 2026‑09‑29)
@@ -518,5 +520,5 @@ UC‑08 (los tres del 2026‑08‑31, locales), 479 en la Sesión M4.1 del sprin
 del cierre de C3 (2026‑09‑28, PR #14, commit `308eca5`), 945 en la corrida
 [36489551508](https://github.com/EugenioRRijo/tesis-apu-multidominio/actions/runs/36489551508)
 de la compuerta GC4 (2026‑09‑28, PR #15, commit `e7a0569`, con `core/` al 98,37 %), 1 045 en la
-corrida de la CI de GC5 y 1 167 en la local de GC6. La evaluación de
+corrida de la CI de GC5 y 1 191 en la local de GC6. La evaluación de
 calidad sobre estos resultados está en [calidad_iso25010.md](calidad_iso25010.md).
