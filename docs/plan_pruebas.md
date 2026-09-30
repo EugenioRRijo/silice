@@ -10,7 +10,9 @@ caso de prueba cita su RF; los enunciados de los RF viven **una sola vez** en
 - **Identificador:** PP‑APU‑001, versión de la Sesión F.2 (2026‑08‑31), actualizada en la fase C4
   del cierre (2026‑09‑28): cifras de la corrida de CI de §10 y matriz por paso de todos los casos
   de uso (§8.1); y en la fase C5 (2026‑09‑28): las matrices de §8 y §8.1 al código que corrige los
-  hallazgos de C5 (las cifras de §10 las sustituyó la corrida de la compuerta GC5, 2026‑09‑29).
+  hallazgos de C5 (las cifras de §10 las sustituyó la corrida de la compuerta GC5, 2026‑09‑29); y
+  en la fase C6 (2026‑09‑29): las matrices de §8 y §8.1 al código de C6 y la corrida local de la
+  compuerta GC6 en §10, con la de la CI pendiente hasta el PR de C6.
 - **Alcance:** todo el software del repositorio (`core/`, `adapters/`, `ml/`, `api/`, `ui/`,
   `scripts/`) contra los RF‑01…RF‑43 (RF‑32 vacante) y RNF‑01…RNF‑10 de la ERS.
 - **Referencias:** [CLAUDE.md](../CLAUDE.md) (constitución), [ERS.md](ERS.md) (IEEE 830),
@@ -19,8 +21,9 @@ caso de prueba cita su RF; los enunciados de los RF viven **una sola vez** en
 
 ## 2. Elementos de prueba
 
-Versión probada: la de la corrida de CI registrada en §10, commit `7545914` (compuerta GC5 del
-cierre), fusionado a prueba con `main` en `503fec6`. Elementos:
+Versión probada: la corrida local de la compuerta GC6 registrada en §10, sobre `5b33e5f` (el
+código de C6); la última corrida de la CI de §10 es la de `7545914` (compuerta GC5 del cierre),
+fusionado a prueba con `main` en `503fec6`, y la de C6 está pendiente hasta su PR. Elementos:
 
 | Paquete | Contenido | Nivel de prueba |
 |---|---|---|
@@ -104,7 +107,7 @@ el reporte de cobertura (sección 10) y `scripts/medir_rnf03.py` (evidencia repr
 RNF‑03). Desde la Sesión P4.2, además, el [guion de prueba manual de AREN.IA](guion_prueba_arenia.md)
 (casos CP‑01 a CP‑06 de la pantalla de componer, para quien pruebe sin programar).
 
-**Entorno de la ejecución registrada (§10):** los runners de GitHub `ubuntu-latest` (Python
+**Entorno de la última corrida de la CI (§10):** los runners de GitHub `ubuntu-latest` (Python
 3.13.13) y `windows-latest` (Python 3.13.15), con `uv sync --locked --all-extras`, SQLite y el modelo
 de `sentence-transformers` restaurado de la caché de la CI. Comandos locales equivalentes:
 
@@ -459,10 +462,10 @@ las dos, como hicieron GC4 y GC5. Los demás documentos enlazan esta sección y 
 
 Sobre `5b33e5f`, el código de C6 (los commits de la compuerta solo tocan documentos), con
 `uv run --all-extras pytest -W error --strict-markers -q -p no:cacheprovider --junitxml=<ruta fuera
-del árbol>`, en Windows con Python 3.13, y las cifras leídas del JUnit:
+del árbol>`, en Windows, y las cifras leídas del JUnit:
 
 ```
-suite completa         1167 tests   0 fallos   0 errores   0 omitidas   456 s
+suite completa         1167 tests   0 fallos   0 errores   0 omitidas   456 s   Python 3.13.2
 verificar omitidas: 0 omitidas      ruff check .: All checks passed!
 metas: meta_prototipo 12/12, meta_redaccion 12/12, meta_datos 3/3
 línea base (test_costing, 7 de 7, extremo a extremo, 1 586,61): 27 0 0 0
