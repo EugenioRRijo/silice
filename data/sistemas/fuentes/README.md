@@ -89,7 +89,7 @@ composición legible: las cantidades de mano de obra por PF suman exactamente 1.
 
 `PARAMETROS_SISTEMAS = ParametrosCosto(fcas=0, bono_alimentacion=0, administracion=0,15,
 utilidad=0,10)`. El tabulador CIV es un tabulador de **sueldos mínimos profesionales**: el factor
-de prestaciones del 600 % de CLAUDE.md §4 es la convención de la mano de obra de la construcción
+de prestaciones del 600 % de NORMAS.md §4 es la convención de la mano de obra de la construcción
 y no hay fuente que lo respalde para profesionales; el CIV tampoco publica bono. Se dejan en cero
 hasta la decisión sobre la fuente del FCAS del dossier G0 (`docs/dossier_g0.md`); administración
 y utilidad se mantienen en sus valores por defecto porque una casa de software también los
@@ -112,7 +112,7 @@ materiales ni equipos: las licencias y herramientas no están en el tabulador y 
 | × 1,15 (administración) | | | 100,90215 |
 | **× 1,10 (utilidad) = precio unitario** | | | **110,992365 USD/PF** |
 
-Calculado a mano con la fórmula de CLAUDE.md §4 antes de correr el motor; la prueba lo fija como
+Calculado a mano con la fórmula de NORMAS.md §4 antes de correr el motor; la prueba lo fija como
 regresión exacta. Cada caso de uso de `data/samples/sistemas/alcance_funcional.csv` recibe esta
 misma composición bajo su propio código (`SIS-PRES-01`, …), porque el alcance funcional no
 aporta datos para diferenciar la productividad por módulo sin inventarla.

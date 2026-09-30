@@ -8,7 +8,7 @@ partida de origen y el puntaje que la propuso (RF-16, la parte de precarga: la p
 partida nueva con esa referencia espera al flujo de creacion de partidas, que ningun UC
 implementado ofrece todavia -- documentado en la bitacora de la sesion).
 
-La capa de composicion es esta pagina: `ml/` no conoce la base de datos (CLAUDE.md §2), asi que
+La capa de composicion es esta pagina: `ml/` no conoce la base de datos (NORMAS.md §2), asi que
 aqui se consulta `core.catalog` y se le pasan pares (codigo, descripcion) planos.
 
 La propuesta sale de `ui.composicion.sugerir_partidas_similares`, que aplica el criterio unico de

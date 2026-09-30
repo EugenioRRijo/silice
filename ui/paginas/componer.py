@@ -2,7 +2,7 @@
 
 Es la novena pantalla y la que da sentido al prototipo: hasta esta sesion, solo los scripts de
 siembra llamaban a `Catalogo.cargar_composicion`
-(`docs/superpowers/specs/2026-09-16-prototipo-composicion-apu-design.md` §1) y ninguna de las ocho
+(`2026-09-16-prototipo-composicion-apu-design.md` §1) y ninguna de las ocho
 paginas existentes permitia armar una partida desde cero.
 
 No contiene logica de dominio ni orquesta (INV-043, fase C3): la composicion y su desglose viven
@@ -752,7 +752,7 @@ def _cuantos_rendimientos(catalogo: Catalogo, codigo: str) -> int:
 # ---------------------------------------------------------------------------------------------
 # De componer a Excel sin salir de la aplicacion (Tarea 2, fase P3): cantidades de obra sobre las
 # partidas ya guardadas, elaboracion con `core.budget.elaborar` (que audita siempre, principio 7
-# de CLAUDE.md §2) y descarga del libro de Excel, con el mismo patron de
+# de NORMAS.md §2) y descarga del libro de Excel, con el mismo patron de
 # `ui/paginas/actualizacion.py`.
 # ---------------------------------------------------------------------------------------------
 

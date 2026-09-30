@@ -6,7 +6,7 @@ y la geometría de `apu_linea_base`, los precios del motor (`core.costing.calcul
 expresiones paramétricas del adaptador civil (`adapters.civil.reglas`).
 
 Que una fixture de pruebas importe `adapters` es deliberado: demuestra que las reglas que escribe un
-adaptador son evaluables por el núcleo sin que el núcleo conozca al adaptador (CLAUDE.md §2).
+adaptador son evaluables por el núcleo sin que el núcleo conozca al adaptador (NORMAS.md §2).
 """
 
 from __future__ import annotations

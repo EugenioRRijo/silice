@@ -50,7 +50,7 @@ Precios en bolívares; la tasa está declarada dentro del propio listado de MO:
 No se extrajo ningún CSV ni entró ningún precio al catálogo: eso es la Sesión M0.2, con
 verificación manual fila a fila (principio 2 del plan). Esta sesión solo archiva la evidencia y
 pone el plan al día. Tampoco se tocaron los archivos con cambios pendientes de la sesión de
-redacción pausada (`CLAUDE.md`, `README.md`, `docs/linea_base.md`, `docs/tesis/…`), que siguen
+redacción pausada (`NORMAS.md`, `README.md`, `docs/linea_base.md`, `docs/tesis/…`), que siguen
 sin commitear tal como estaban.
 
 ## Estado al cierre

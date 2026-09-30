@@ -15,7 +15,7 @@ uv).
 - `tipo` ∈ {`nodo`, `enlace`}. Una fila `nodo` solo llena `cantidad`; una fila `enlace` solo llena
   `origen,destino,longitud_m,reserva`. Las columnas que no aplican a la fila se dejan vacías.
 - `id`: clave de la fila, usada tal cual como `origen_id` del `ItemComputo` (trazabilidad total,
-  CLAUDE.md sección 2).
+  NORMAS.md sección 2).
 - `codigo_partida`: prefijo `TC-` (partidas propias del dominio telecom; no reutiliza códigos `LB-`
   de la línea base civil).
 - `cantidad` (solo `nodo`): cantidad tabular directa, tomada tal cual del CSV.
@@ -83,7 +83,7 @@ primaria, ambos quedan documentados aquí para no confundirse con un dato medido
 
 Ambos PDF de ARENAZA (`Presupuesto_1_ARENAZA.pdf`, `Presupuesto_2_ARENAZA.pdf`) fijan la mano de obra
 como "el equivalente al 50 % del presupuesto total", no un jornal por rendimiento como en el dominio
-civil (CLAUDE.md sección 4). Esta muestra y el adaptador **no representan esa política**: el
+civil (NORMAS.md sección 4). Esta muestra y el adaptador **no representan esa política**: el
 adaptador solo extrae `ItemComputo` (cantidades de obra), no `ComposicionAPU` ni costeo; la política
 de mano de obra pertenece a la capa de costeo (`core.costing`, `core.contracts.apu`), fuera del
 alcance de esta sesión. El análisis de cómo representarla sin tocar `core/` está en

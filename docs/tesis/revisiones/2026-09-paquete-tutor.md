@@ -1,7 +1,7 @@
 # Paquete de decisiones para el tutor académico designado
 
 **Fecha:** 2026‑09‑23 · **Prepara:** condición **F2** del cierre de la tesis
-([spec §1](../../superpowers/specs/2026-09-23-plan-cierre-tesis-design.md#1-el-final-endpoint)): *«el
+(spec §1): *«el
 tutor académico designado validó lo que el proyecto decidió sin él»* — constancia en
 `docs/tesis/revisiones/` de la compuerta G0 (validación retroactiva), de las nueve decisiones D1–D9 de
 [docs/dossier_g0.md §3](../../dossier_g0.md#3-decisiones-que-esperan-la-validación-del-tutor) y de la
@@ -11,7 +11,7 @@ constancias que F2 necesita igual, T2/T3 del acta del capítulo I y la numeraci�
 
 **Regla general si el tutor rechaza un punto** (spec §1, párrafo de rechazo): se abre un expediente en
 `docs/bitacora/` y la corrección entra como hallazgo del inventario vivo en la fase de la capa que le
-corresponda; la línea base (`CLAUDE.md` §2 principio 5, y §4) solo cambia por decisión escrita del
+corresponda; la línea base (`NORMAS.md` §2 principio 5, y §4) solo cambia por decisión escrita del
 tutor, con expediente previo. La columna «Si rechaza» de cada fila aplica esa regla al punto concreto;
 cuando el propio dossier ya declara una consecuencia específica (D1), se usa esa.
 

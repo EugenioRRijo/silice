@@ -298,7 +298,7 @@ def test_computo_ifc_sin_extra_civil_responde_400(cliente, monkeypatch):
 
 def test_computo_civil_desde_un_modelo_ifc(cliente):
     """Compuerta G1 por HTTP: `.ifc` como entrada de `/computos/civil`, decidido por la extension
-    del archivo (docs/superpowers/specs/2026-08-31-f1-api-simulador-design.md, seccion 7). No hace
+    del archivo (2026-08-31-f1-api-simulador-design.md, seccion 7). No hace
     falta el mapeo `codigos` que exige la entrada tabular: `Pset_APU` ya trae el codigo de partida.
     """
     ruta = RAIZ / "data" / "samples" / "tanquilla.ifc"
@@ -541,7 +541,7 @@ def test_si_todos_los_items_quedan_pendientes_el_presupuesto_sale_vacio_y_no_cum
     """UC-01 3a en el extremo: ningun item tiene partida. La elaboracion no aborta (201), el
     total es 0, todos los items se listan como pendientes y el informe emitido no cumple.
     Oraculo del veredicto: el informe guardado lleva un `PENDIENTE` de severidad ERROR (3) por
-    item, y un solo hallazgo ERROR basta para NO CUMPLE (CLAUDE.md, principio 7)."""
+    item, y un solo hallazgo ERROR basta para NO CUMPLE (NORMAS.md, principio 7)."""
     from core import models
 
     monkeypatch.setattr(f"{NORMALIZADOR}._cargar_modelo", _sin_extra)  # sin propuestas aqui

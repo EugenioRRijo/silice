@@ -4,7 +4,7 @@
 `7213524`) · **Commit del script:** `1648d2f` · **Plan:** `C6-plan.md` del directorio de control de
 C6 (§5 y rulings C6‑6 y C6‑9) · **Bitácora de la fase:** [2026-09-23-cierre.md, «Fase C6»](2026-09-23-cierre.md).
 
-**Naturaleza de los datos** ([CLAUDE.md §1](../../CLAUDE.md)). Los casos que se revaloran (el
+**Naturaleza de los datos** ([NORMAS.md §1](../../NORMAS.md)). Los casos que se revaloran (el
 presupuesto 001 del drenaje de la clínica, los dos de ARENAZA, `MNT-001` y `SIS-001`) son ejercicios
 académicos o casos construidos para el proyecto: **didácticos**. Los listados MaPreX de julio de 2026
 y el tabulador CIV sí son referencias publicadas. Esta bitácora mide la **sensibilidad de los casos
@@ -300,7 +300,7 @@ Hallazgos ATIPICO en el informe nuevo: 0.
 
 ### 5. Salvedades
 
-- Los casos son didacticos (CLAUDE.md §1): esto mide su sensibilidad a precios de referencia publicados, no el costo de ninguna obra.
+- Los casos son didacticos (NORMAS.md §1): esto mide su sensibilidad a precios de referencia publicados, no el costo de ninguna obra.
 - El bono de alimentacion no se revalora: es un parametro de costo (`ParametrosCosto.bono_alimentacion` = 1.00 USD por obrero y dia), no un precio de la lista; MaPreX trae 6.2200 USD/dia para el Ayudante N2 (Ref 1-1.2, bono_bs de `referencia_civil.csv` a la tasa 633.3644), que solo entraria como escenario (UC-08).
 - Vigencia unica 2026-07-09 para la lista civil derivada, aunque la mano de obra de MaPreX es del 01/07/2026.
 - Tasa 633,3644 Bs/USD al 01/07/2026; cada `precio_usd` de `referencia_civil.csv` que se usa se verifico contra su `precio_bs` con la tasa 633.3644.
@@ -371,7 +371,7 @@ tubo corrugado de TC‑002 (R1, ERROR) sigue en el informe revalorado.
 USD), revalorados con la lista de la que salieron, no cambian ningún insumo ni el total: la siembra
 reproduce sus listados MaPreX y CIV.
 
-**Una observación sobre el núcleo (no se parchea; CLAUDE.md §9).** Al revalorar TC‑002 con la misma
+**Una observación sobre el núcleo (no se parchea; NORMAS.md §9).** Al revalorar TC‑002 con la misma
 lista MaPreX que ya revaloró TC‑001 (mismo proyecto, mismo par de listas), `actualizar_precios` no
 registra ninguna `IncidenciaCambio` para las partidas de TC‑002 (0 frente a 4 de TC‑001):
 `_registrar_incidencias` (`core/budget/actualizacion.py`) considera ya registrado el historial si

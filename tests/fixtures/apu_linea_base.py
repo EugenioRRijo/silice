@@ -1,6 +1,6 @@
 """Línea base auditada: los cinco APU del caso didáctico, con su cómputo, presupuesto y curva.
 
-Única copia de estos datos en el sistema (CLAUDE.md §2, principio DRY).
+Única copia de estos datos en el sistema (NORMAS.md §2, principio DRY).
 Fuente primaria: data/linea_base/APUS_CLINICA.pdf (presupuesto 001, 28/04/2026, USD).
 Versión narrativa: docs/linea_base.md.
 

@@ -1,6 +1,6 @@
 """Auditoría del presupuesto telecom ARENAZA + primer UC‑02 fuera de civil (Sesión M1.3).
 
-Compuerta GM1: las siete reglas de verificación (CLAUDE.md §7) corren sobre el presupuesto
+Compuerta GM1: las siete reglas de verificación (NORMAS.md §7) corren sobre el presupuesto
 ARENAZA armado en la Sesión M1.2 (`scripts.seed_telecom.presupuesto_arenaza`) y el hallazgo 80/90
 del tubo corrugado (presupuesto 2, renglón 5: 80 m en "Computos metricos" vs 90 m en
 "Presupuesto", `data/telecom/fuentes/README.md`) sale del informe de auditoría con su `origen_id`,
@@ -21,7 +21,7 @@ núcleo: `scripts/seed_telecom.py`
 (`item_de`) ahora declara, solo para ese renglón, `regla = REGLA_TUBO_CORRUGADO =
 "cantidad_computos"` — una referencia directa al parámetro que ya viajaba con el ítem, no una
 fórmula geométrica nueva. R1 no exige que `regla` sea una fórmula: solo evalúa lo que se declare
-contra los `parametros` declarados y lo compara con `cantidad`  (CLAUDE.md §7, R1;
+contra los `parametros` declarados y lo compara con `cantidad`  (NORMAS.md §7, R1;
 `core/verification/reglas.py::TrazabilidadGeometrica`). Con eso, R1 compara la cantidad impresa en
 "Presupuesto" (90, la que persiste como `cantidad`) contra la de "Computos metricos" (80, evaluando
 la regla) y emite un hallazgo ERROR con `origen_id = "Presupuesto_2_ARENAZA.pdf:2:5"`. Ningún
@@ -103,7 +103,7 @@ def test_el_tubo_corrugado_produce_exactamente_un_hallazgo_80_90(sesion_telecom)
     (hallazgo,) = relacionados
     assert hallazgo.regla == "R1"
     assert hallazgo.severidad == Severidad.ERROR
-    assert hallazgo.origen_ids  # trazable: no vacío (CLAUDE.md §2, principio 6)
+    assert hallazgo.origen_ids  # trazable: no vacío (NORMAS.md §2, principio 6)
     assert hallazgo.origen_ids == (ORIGEN_TUBO,)
     # 90 (impreso en "Presupuesto", el que vale como cantidad) vs 80 (impreso en "Computos
     # metricos", el que declara la regla): exactamente los dos valores del hallazgo de fuente.

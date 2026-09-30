@@ -23,7 +23,7 @@ proxy insumo por insumo.
 
 La **única copia estructurada** de las composiciones es `tests/fixtures/mantenimiento_industrial.py`,
 que **lee los precios de `referencia_industrial.csv` al importarse** (no los transcribe: principio
-DRY, CLAUDE.md §2). `tests/unit/test_mantenimiento_industrial.py` comprueba que cada línea del
+DRY, NORMAS.md §2). `tests/unit/test_mantenimiento_industrial.py` comprueba que cada línea del
 fixture coincide con su fila de la referencia y que la lista canónica de esta carpeta es
 exactamente la que el fixture deriva.
 

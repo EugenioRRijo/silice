@@ -12,7 +12,7 @@ Flujo completo de la Sesión I0.5::
     exportar_excel(resultado.presupuesto, resultado.informe, Path("presupuesto.xlsx"))
 
 `elaborar` audita siempre: no existe forma de obtener el presupuesto sin su informe (principio 7 de
-CLAUDE.md §2).
+NORMAS.md §2).
 
 `guardar_presupuesto` y `cargar_presupuesto` implementan el versionado híbrido de
 `docs/modelo_datos.md` §5: el renglón guardado congela su `ResultadoAPU` y al cargar se comprueba

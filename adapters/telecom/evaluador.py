@@ -2,7 +2,7 @@
 
 Evalua unicamente la regla que necesita este adaptador: la longitud de un enlace de cable con su
 reserva de instalacion, `longitud_m * (1 + reserva)`. Es una implementacion propia y minima, NO
-la de `adapters/civil/evaluador.py`: cada adaptador es autonomo (CLAUDE.md, seccion 2) y no
+la de `adapters/civil/evaluador.py`: cada adaptador es autonomo (NORMAS.md, seccion 2) y no
 comparte codigo con otro adaptador, solo con `core.contracts`. La duplicacion conceptual entre
 ambos evaluadores es deliberada y se registra como hallazgo en
 `docs/bitacora/2026-08-29-I5-telecom.md`.

@@ -11,7 +11,7 @@ Tres acopios, cada uno en su propia base (asi ninguna lista de precios de un dom
 
 1. **Conteo G2 multidominio** (`conteo_multidominio`): se siembran los cuatro catalogos (civil,
    telecom, industrial y sistemas, con los seeds de cada dominio) y se cuentan las partidas por
-   dominio. La tecnica la dicta `ml.prediction.tecnica_para` (la tabla de CLAUDE.md §8.1 hecha
+   dominio. La tecnica la dicta `ml.prediction.tecnica_para` (la tabla de NORMAS.md §8.1 hecha
    codigo).
 2. **Evaluacion civil** (`evaluar_sobre_linea_base`): el caso UC-02 verificado por las pruebas de
    integracion: presupuesto 001 -> lista de muestra del 01/06/2026 -> presupuesto 002; los PU del
@@ -337,7 +337,7 @@ def generar_informe(
         "catalogos de los cuatro dominios; reproducible con",
         "`uv run python scripts/generar_resultados_ml.py`.",
         "",
-        "## Compuerta G2: conteo de registros y tecnica (CLAUDE.md §8.1)",
+        "## Compuerta G2: conteo de registros y tecnica (NORMAS.md §8.1)",
         "",
         "| Dominio | Registros de APU | Tecnica que dicta la tabla |",
         "|---|---|---|",

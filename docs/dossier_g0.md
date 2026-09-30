@@ -8,7 +8,7 @@ Preparado el 2026‑08‑31, con el PLAN de desarrollo completo (20 de 20 sesion
 
 ## 1. Qué aprueba G0
 
-Los tres entregables documentales de la Fase 0 ([CLAUDE.md §8.3](../CLAUDE.md)):
+Los tres entregables documentales de la Fase 0 ([NORMAS.md §8.3](../NORMAS.md)):
 
 | Documento | Norma | Estado |
 |---|---|---|
@@ -111,7 +111,7 @@ convención colectiva dice que el beneficio que respalda el bono de alimentació
 carácter salarial, a ningún efecto legal o contractual»*
 (`docs/fuentes/CCT_Construccion_GO_6752_Ext_2023-07-06.txt`, líneas 837‑840). El motor
 (`core/costing/motor.py`) ya suma el bono aparte del bloque de sueldos y **no** lo multiplica por
-`(1 + fcas)` (ver la fórmula de CLAUDE.md §4: `bono × Σ cantidad`, fuera del paréntesis que sí
+`(1 + fcas)` (ver la fórmula de NORMAS.md §4: `bono × Σ cantidad`, fuera del paréntesis que sí
 lleva FCAS). La decisión de diseño resulta estar normativamente respaldada; no requiere cambio.
 
 ### D5. Flujo de creación de partidas (RF‑16 y familia)
@@ -165,9 +165,9 @@ la regula para el sector (cláusula 1, `docs/fuentes/CCT_Construccion_GO_6752_Ex
 líneas 60‑65: *«es aquel que ejecuta su trabajo por metro, por unidad de obra, por pieza o por
 tarea, cuyo salario o pago no podrá ser inferior al previsto en el Tabulador de Oficios y Salarios
 que forma parte de esta Convención»*). `LineaManoObra` y `calcular_apu` están en la lista de
-contratos congelados de CLAUDE.md §5; por eso, en vez de parcharlos en silencio, la sesión P0.1 se
-detuvo (CLAUDE.md §9) y eleva el hallazgo aquí. No compromete la hipótesis central: una modalidad
-salarial no es un dominio (CLAUDE.md §1) y `scripts/guardia_nucleo.py` solo falla si un commit
+contratos congelados de NORMAS.md §5; por eso, en vez de parcharlos en silencio, la sesión P0.1 se
+detuvo (NORMAS.md §9) y eleva el hallazgo aquí. No compromete la hipótesis central: una modalidad
+salarial no es un dominio (NORMAS.md §1) y `scripts/guardia_nucleo.py` solo falla si un commit
 toca `core/` junto con `adapters/` o `ml/`.
 
 **Opciones:** (1) modalidad por línea dentro del contrato — `ModalidadManoObra` (`StrEnum`
@@ -270,7 +270,7 @@ bloque A.** Misma escala: 1 = totalmente en desacuerdo · 3 = neutral · 5 = tot
 | B7 | Volvería a recorrer esto solo, sin que nadie me acompañara | global | |
 
 Los códigos D‑1 a D‑6 son los defectos de orientación de la
-[spec del recorrido guiado, §1](superpowers/specs/2026-09-23-ui-recorrido-guiado-design.md).
+spec del recorrido guiado, §1.
 B4 solo se contesta en el escenario B de CP‑07 (base vacía); en el escenario A se anota «no aplica»
 y el promedio se calcula sobre seis ítems.
 

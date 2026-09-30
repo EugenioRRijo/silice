@@ -46,7 +46,7 @@ def test_detecta_los_hallazgos_adicionales_8_y_9():
 
 
 def test_todo_hallazgo_de_partida_referencia_un_origen_trazable():
-    """Trazabilidad total (CLAUDE.md §2.6): salvo el cierre de la curva y la declaración de R7 no
+    """Trazabilidad total (NORMAS.md §2.6): salvo el cierre de la curva y la declaración de R7 no
     aplicable (INV‑012), que son propiedades del presupuesto completo, todo hallazgo referencia
     orígenes que el informe sabe atribuir.
     """

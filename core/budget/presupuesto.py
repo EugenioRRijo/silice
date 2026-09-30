@@ -7,7 +7,7 @@ valor de entrega: exige composición para todo ítem y devuelve un presupuesto s
 se entrega siempre con `elaborar` (INV‑037).
 
 `elaborar` es el flujo completo de la Sesión I0.5: presupuesto, curva y **auditoría siempre**, sin
-que el usuario la pida (principio 7 de CLAUDE.md §2). Por eso devuelve `ResultadoElaboracion`, que
+que el usuario la pida (principio 7 de NORMAS.md §2). Por eso devuelve `ResultadoElaboracion`, que
 lleva el informe junto al presupuesto: no hay forma de obtener uno sin el otro. Es también el único
 lugar del protocolo «presupuesto valorado → plan de trabajo → curva → auditoría» (INV‑069): quien
 necesita el plan secuencial pasa `plan=plan_secuencial`, sin armar un borrador propio.
@@ -46,7 +46,7 @@ __all__ = [
 MONEDA_POR_DEFECTO = "USD"
 
 #: Código con que el informe declara un ítem sin partida en el catálogo (UC‑01, flujo 3a). No es una
-#: de las siete reglas de CLAUDE.md §7: lo emite la elaboración, que es quien sabe qué ítems no pudo
+#: de las siete reglas de NORMAS.md §7: lo emite la elaboración, que es quien sabe qué ítems no pudo
 #: valorar, y viaja en el mismo informe para que nadie reciba el presupuesto sin esa declaración.
 CODIGO_PENDIENTE = "PENDIENTE"
 
@@ -102,7 +102,7 @@ def generar_presupuesto(
     """Un `PartidaPresupuestada` por ítem, en el orden recibido, con su precio recién calculado.
 
     Paso intermedio, sin valor de entrega: el presupuesto que devuelve no lleva informe de
-    auditoría. Entregar siempre con `elaborar` (principio 7 de CLAUDE.md §2; INV‑037).
+    auditoría. Entregar siempre con `elaborar` (principio 7 de NORMAS.md §2; INV‑037).
 
     Lanza `ValueError` con la lista de códigos si alguna cantidad no tiene composición de APU: un
     presupuesto incompleto es un presupuesto sin precio, no un presupuesto con ceros.

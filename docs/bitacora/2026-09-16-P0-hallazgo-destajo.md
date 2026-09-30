@@ -4,15 +4,15 @@
 **Compuerta:** GP0, meta P3 de `scripts/meta_prototipo.py` (exige la decisión **D9** en
 `docs/dossier_g0.md`) · **Origen:** RF‑34 (`docs/ERS.md`), que UC‑10 y UC‑11 ya declaran como
 requisito esencial · **Spec de diseño:**
-`docs/superpowers/specs/2026-09-16-prototipo-composicion-apu-design.md` §3.1 y §5, que adelantó este
+`2026-09-16-prototipo-composicion-apu-design.md` §3.1 y §5, que adelantó este
 mismo análisis; esta bitácora lo verifica contra las fuentes primarias y lo eleva formalmente.
 
 ## Objetivo
 
 Determinar si `core/contracts/apu.py` y `core/costing/motor.py` (contratos declarados **estables**
-por CLAUDE.md §5) pueden expresar hoy una línea de mano de obra que cobra por unidad de obra
+por NORMAS.md §5) pueden expresar hoy una línea de mano de obra que cobra por unidad de obra
 ejecutada — «a destajo» — en vez de por jornal diario. RF‑34 exige que la modalidad se declare por
-línea; si el contrato no lo permite, CLAUDE.md §9 ordena **detenerse y documentar el hallazgo**, no
+línea; si el contrato no lo permite, NORMAS.md §9 ordena **detenerse y documentar el hallazgo**, no
 parchear en silencio.
 
 **Resultado:** no se puede. Es un hallazgo real, con respaldo normativo, y no compromete la
@@ -90,12 +90,12 @@ Extraordinario, 6 de julio de 2023):
 
 El hallazgo, entonces, no es «un informante de campo mencionó el destajo»: es que **el contrato del
 sistema no puede expresar una modalidad salarial que la ley tipifica y que la convención colectiva
-del sector regula explícitamente**, en un sistema cuya misión declarada (CLAUDE.md §1) es costear
+del sector regula explícitamente**, en un sistema cuya misión declarada (NORMAS.md §1) es costear
 «con la estructura venezolana».
 
 ## 4. Por qué la hipótesis central no se ve afectada
 
-CLAUDE.md §1 dice: «El núcleo (`core/`) no cambia **cuando se agrega un dominio**», y la prueba de
+NORMAS.md §1 dice: «El núcleo (`core/`) no cambia **cuando se agrega un dominio**», y la prueba de
 esa hipótesis es `git diff --stat core/` vacío al agregar los adaptadores telecom, industrial y
 sistemas. Una modalidad salarial no es un dominio: sigue siendo el dominio civil, con la misma
 `ComposicionAPU`, el mismo `ParametrosCosto` y la misma fórmula en cascada — solo se amplía qué
@@ -105,12 +105,12 @@ puede declarar una línea de mano de obra dentro de esa fórmula.
 rango `base..HEAD`) solo falla si un commit toca `core/` **junto con** `adapters/` o `ml/`, o si una
 rama que incorpora un dominio nuevo modifica `core/`. El commit que implemente D9 toca únicamente
 `core/contracts/apu.py` y `core/costing/motor.py` — ningún adaptador ni módulo de `ml/` en el mismo
-commit — así que no dispara la guardia. La regla de CLAUDE.md §9 («si un adaptador parece necesitar
+commit — así que no dispara la guardia. La regla de NORMAS.md §9 («si un adaptador parece necesitar
 tocar `core/`, deténgase») tampoco aplica en sentido estricto: aquí no es un adaptador el que pide
 tocar el núcleo, es el propio dominio civil el que necesita que el núcleo declare algo que hoy no
 declara. Aun así, se sigue el mismo procedimiento — documentar antes de tocar un contrato
 declarado estable — porque `LineaManoObra` y `calcular_apu` sí están en la lista de contratos
-congelados de CLAUDE.md §5.
+congelados de NORMAS.md §5.
 
 ## 5. Las cuatro opciones evaluadas
 

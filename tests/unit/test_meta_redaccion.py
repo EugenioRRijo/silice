@@ -2,7 +2,7 @@
 
 Funciones puras sobre texto sintetico: ninguna prueba escribe en el repositorio ni ejecuta
 procesos. Las de INV-075 escriben su tesis sintetica en `tmp_path` y, al evaluar las 12 metas,
-leen sin modificarlas las demas fuentes reales de la meta (rubrica, actas y CLAUDE.md). Los
+leen sin modificarlas las demas fuentes reales de la meta (rubrica, actas y NORMAS.md). Los
 casos negativos imitan los errores que un tutor marcaria: una seccion que falta, OE7 en la
 variante equivocada, primera persona, una cita sin referencia, una referencia pendiente sin marca,
 un caso didactico presentado como real y "gemelo digital" fuera de su delimitacion.
@@ -403,7 +403,7 @@ CAPITULO_4_QUE_VIOLA: dict[str, str] = {
 
 def _tesis_sintetica(monkeypatch: pytest.MonkeyPatch, tmp_path, capitulo_4: str) -> None:
     """Lleva las rutas de la meta a `tmp_path`: capitulos I, II y IV y las referencias. Las
-    demas rutas (rubrica, actas, CLAUDE.md) no intervienen en R4-R8."""
+    demas rutas (rubrica, actas, NORMAS.md) no intervienen en R4-R8."""
     carpeta = tmp_path / "capitulos"
     carpeta.mkdir()
     (carpeta / "01-el-problema.md").write_text(CAPITULO_1, encoding="utf-8")

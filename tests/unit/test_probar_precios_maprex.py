@@ -1,7 +1,7 @@
 """Prueba de `scripts/probar_precios_maprex.py` (C6, pista R; C6-plan §5).
 
 El script prueba los casos didacticos con precios de referencia publicados (listados MaPreX de
-julio de 2026 y tabulador CIV; CLAUDE.md §1). Aqui corre sin el detector de atipicos
+julio de 2026 y tabulador CIV; NORMAS.md §1). Aqui corre sin el detector de atipicos
 (`detectar_atipicos=None`): la prueba no depende del extra `ml`; el script, si.
 
 Oraculos independientes del script, escritos a mano desde los CSV:
@@ -15,11 +15,11 @@ Oraculos independientes del script, escritos a mano desde los CSV:
   declara unidad para la mano de obra: casan los 7. 5 + 7 = 12; excluidas 8 + 17 = 25.
 - **Precios:** tuberia 13,9291 USD/m (PLOA38) y ayudante 1,7816 USD/dia (1-1.2, tabla del README
   de `data/precios/maprex_2026-07/`).
-- **Direccion de la revaloracion** (CLAUDE.md §4): la tuberia sube (su material pasa de 6 a
+- **Direccion de la revaloracion** (NORMAS.md §4): la tuberia sube (su material pasa de 6 a
   13,9291 USD/m, 1,05 m por pieza: +8,33 USD de materiales; la mano de obra baja
   (11,5 x 7 + 3) / 100 = 0,835 -> (5,8847 x 7 + 3) / 100 = 0,442), y la excavacion baja (no lleva
   materiales y toda su mano de obra baja de jornal).
-- **Resultado publicado** (bitacora `2026-09-29-C6-precios-maprex.md`), a mano con CLAUDE.md §4:
+- **Resultado publicado** (bitacora `2026-09-29-C6-precios-maprex.md`), a mano con NORMAS.md §4:
   tuberia, materiales 7,19 + 1,05 x 7,9291 = 15,515555; equipos 0,033; mano de obra
   (5,8847 x 7 + 3) / 100 = 0,441929; costo directo 15,990484 x 1,15 x 1,10 = 20,2280 -> **20,23**.
   Los cinco PU nuevos 7,54 / 20,23 / 29,38 / 273,96 / 36,37 por las cantidades 9,74 / 24 / 23,68 /

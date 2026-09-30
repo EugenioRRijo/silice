@@ -1,11 +1,11 @@
 """Sesion I6.3: prediccion de precio por sistema de reglas (UC-07, compuerta G2).
 
-La compuerta G2 (CLAUDE.md §8.1) elige la tecnica por el conteo de registros de APU del dominio:
+La compuerta G2 (NORMAS.md §8.1) elige la tecnica por el conteo de registros de APU del dominio:
 `tecnica_para` ES esa tabla hecha codigo (meta M5 de `scripts/meta_i6.py`). Con los conteos
 del proyecto (civil = 5, el resto 0) toca **sistema de reglas con analisis de sensibilidad,
 declarado como limitacion** (metas M6 y M7).
 
-`ml/prediction` recibe datos planos, como el resto de `ml/` (CLAUDE.md §2): precios unitarios
+`ml/prediction` recibe datos planos, como el resto de `ml/` (NORMAS.md §2): precios unitarios
 base por partida y la serie de variaciones del historico de cambios; devuelve predicciones con su
 rango de sensibilidad, metricas (MAPE, RMSE, R2, en `Decimal`) y el contraste AACE clase 3, que
 produce un `Hallazgo` de severidad ADVERTENCIA del contrato `core.contracts.verificacion` cuando
@@ -22,7 +22,7 @@ from core.contracts.verificacion import Severidad
 
 
 def test_tecnica_para_es_la_tabla_de_la_compuerta_g2():
-    """CLAUDE.md §8.1: < 50 reglas; 50-200 casos; > 200 XGBoost. Bordes incluidos."""
+    """NORMAS.md §8.1: < 50 reglas; 50-200 casos; > 200 XGBoost. Bordes incluidos."""
     from ml.prediction import Tecnica, tecnica_para
 
     assert tecnica_para(0) is Tecnica.REGLAS

@@ -59,7 +59,7 @@ La CI los regenera y los compara con `git diff --exit-code`.
 ## Metas de sprint
 
 Cada una audita las metas de su sprint (`OK`/`FALLA`/`PENDIENTE`); una fase se cruza con
-`--hasta <fase>` donde el script lo admite (CLAUDE.md §3).
+`--hasta <fase>` donde el script lo admite (NORMAS.md §3).
 
 | Script | Qué hace | Sesión o dominio |
 |---|---|---|

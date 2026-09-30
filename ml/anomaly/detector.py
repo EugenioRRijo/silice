@@ -13,11 +13,11 @@ Sin datos etiquetados ni entrenamiento supervisado: el bosque de aislamiento se 
 historico acumulado cada vez, con semilla fija (`SEMILLA`) para que el mismo historico produzca
 siempre el mismo resultado -- las pruebas y el capitulo de resultados citan cifras estables.
 
-Arquitectura (CLAUDE.md §2, `test_arquitectura.py`): `ml/` no conoce la base de datos. Este modulo
+Arquitectura (NORMAS.md §2, `test_arquitectura.py`): `ml/` no conoce la base de datos. Este modulo
 recibe series planas -- un `Mapping[str, Decimal]` de variaciones o una secuencia de `Decimal` de
 rendimientos observados -- y devuelve identificadores, valores y puntajes.
 
-Numeros: los valores llegan como `Decimal` (regla de CLAUDE.md §2.3) y **se devuelven intactos**;
+Numeros: los valores llegan como `Decimal` (regla de NORMAS.md §2.3) y **se devuelven intactos**;
 la conversion a `float` ocurre solo dentro del bosque, que es aritmetica estadistica de
 scikit-learn, no un calculo monetario. Los puntajes son `float` adimensionales, como el puntaje
 de similitud de `ml.normalization`: mas negativo = mas anomalo (convencion de `decision_function`,

@@ -3,7 +3,7 @@
 RF-25/26/27 sobre `api/rutas/rendimientos.py`: registrar obras ejecutadas, registrar rendimientos
 (estimados y medidos, siempre distinguidos: metas M3 y M4 de `scripts/meta_i6.py`), consultar el
 historico con su dispersion y su propuesta, y recibir la advertencia de RF-27 **sin que el
-registro se impida**. Montos como texto exacto, como en toda la API (regla 3 de CLAUDE.md).
+registro se impida**. Montos como texto exacto, como en toda la API (regla 3 de NORMAS.md).
 
 El fixture `cliente` vive en `tests/integration/conftest.py` (INV-042): la base en memoria sembrada
 deja un rendimiento estimado de 80 m3/dia en LB-01-EXC.

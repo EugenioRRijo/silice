@@ -1,6 +1,6 @@
 """Normalización de unidades de medida.
 
-Única tabla de alias del sistema (principio DRY, CLAUDE.md §2). Solo unifica grafías de la MISMA
+Única tabla de alias del sistema (principio DRY, NORMAS.md §2). Solo unifica grafías de la MISMA
 unidad (m³ ≡ m3, mts ≡ m). Unidades distintas siguen siendo distintas: "pieza" nunca equivale a "m",
 porque la regla R3 (coherencia dimensional) necesita detectar exactamente esa diferencia.
 """

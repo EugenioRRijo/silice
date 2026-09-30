@@ -1,6 +1,6 @@
 """Prediccion de precio unitario por sistema de reglas (UC-07, Sesion I6.3, compuerta G2).
 
-La compuerta G2 (CLAUDE.md §8.1) elige la tecnica por el conteo de registros de APU del dominio;
+La compuerta G2 (NORMAS.md §8.1) elige la tecnica por el conteo de registros de APU del dominio;
 `tecnica_para` es esa tabla hecha codigo. Con los conteos del proyecto (civil = 5, el resto
 0) corresponde el **sistema de reglas con analisis de sensibilidad, declarado como limitacion**:
 no hay datos para entrenar nada, y este modulo no lo disimula.
@@ -15,9 +15,9 @@ con la raiz cuadrada del propio `Decimal`).
 
 El contraste de RF-29 compara el precio construido con el estimado y produce un `Hallazgo` de
 severidad ADVERTENCIA (contrato `core.contracts.verificacion`) cuando la desviacion sale del rango
-declarado de la clase 3 de AACE International (-20 % / +30 %, el marco que fija CLAUDE.md §8.1).
+declarado de la clase 3 de AACE International (-20 % / +30 %, el marco que fija NORMAS.md §8.1).
 
-Como todo `ml/` (CLAUDE.md §2): datos planos, sin base de datos, y de `core` solo los contratos.
+Como todo `ml/` (NORMAS.md §2): datos planos, sin base de datos, y de `core` solo los contratos.
 """
 
 from __future__ import annotations
@@ -42,7 +42,7 @@ __all__ = [
     "tecnica_para",
 ]
 
-#: Umbrales de la tabla de degradacion de CLAUDE.md §8.1 (registros de APU por dominio).
+#: Umbrales de la tabla de degradacion de NORMAS.md §8.1 (registros de APU por dominio).
 UMBRAL_CASOS = 50
 UMBRAL_XGBOOST = 200
 
@@ -63,7 +63,7 @@ class Tecnica(StrEnum):
 
 
 def tecnica_para(registros: int) -> Tecnica:
-    """La tabla de CLAUDE.md §8.1: < 50 reglas; 50-200 casos; > 200 XGBoost."""
+    """La tabla de NORMAS.md §8.1: < 50 reglas; 50-200 casos; > 200 XGBoost."""
     if registros < UMBRAL_CASOS:
         return Tecnica.REGLAS
     if registros <= UMBRAL_XGBOOST:
@@ -165,7 +165,7 @@ def contrastar_aace(
     if inferior <= desviacion <= superior:
         return None
 
-    # La descripcion presenta a dos decimales (CLAUDE.md §2.3: se redondea solo al presentar);
+    # La descripcion presenta a dos decimales (NORMAS.md §2.3: se redondea solo al presentar);
     # `valor_observado` y `valor_esperado` conservan los Decimal exactos.
     return Hallazgo(
         regla="CONTRASTE-AACE3",

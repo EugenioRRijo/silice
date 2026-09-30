@@ -4,13 +4,13 @@ Selector de dominio, archivo de muestra, adaptador, tabla de `ItemComputo` extra
 elaborar el presupuesto: el mismo flujo que describe la spec F.1 §2 para `POST /computos/{dominio}`
 seguido de `POST /presupuestos`, pero llamando a `core` y a `adapters` directo (la UI no consume la
 API por HTTP, decision del usuario, 2026-08-31, spec F.1 §4). `elaborar()` audita siempre, sin que
-se le pida (principio 7 de CLAUDE.md §2): el informe se muestra en cuanto el presupuesto existe.
+se le pida (principio 7 de NORMAS.md §2): el informe se muestra en cuanto el presupuesto existe.
 
 El adaptador civil tabular (`adapters/civil/tabular.py`) es el unico que no trae su propio codigo
 de partida en la fuente: recibe un mapeo `codigos` del llamador (`adapters/civil/reglas.py`). Esta
 pantalla deja que el usuario elija esos codigos entre las partidas civiles ya cargadas en el
 catalogo, en vez de inventar codigos que el catalogo no tiene (regla del contrato congelado,
-CLAUDE.md §5: los codigos de partida son del catalogo, no del adaptador).
+NORMAS.md §5: los codigos de partida son del catalogo, no del adaptador).
 
 UC-01 3a (INV-072, D6): un item cuyo codigo no esta en el catalogo no aborta la elaboracion: queda
 pendiente, el informe lo declara y la pantalla propone partidas similares

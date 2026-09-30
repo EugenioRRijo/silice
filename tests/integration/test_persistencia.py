@@ -1,7 +1,7 @@
 """Persistencia y catálogo (Sesión I0.4).
 
 Criterio de cierre: los cinco APU de la línea base se reconstruyen desde SQLite **idénticos** al
-fixture `tests/fixtures/apu_linea_base.py`, que es la única copia de esos datos (CLAUDE.md §2).
+fixture `tests/fixtures/apu_linea_base.py`, que es la única copia de esos datos (NORMAS.md §2).
 Las comparaciones son por igualdad de dataclass del contrato; no interviene el motor de costos.
 """
 
@@ -584,7 +584,7 @@ def test_una_linea_sin_modalidad_persistida_vuelve_como_jornal(sesion):
     rama NULL→JORNAL de `core/catalog/mapeo.py:87-89`, que es la que hace legibles las filas viejas
     una vez aplicado el `ALTER TABLE`.
 
-    La línea base solo trae JORNAL (CLAUDE.md §4): sin sembrar aquí una línea a DESTAJO, poner en
+    La línea base solo trae JORNAL (NORMAS.md §4): sin sembrar aquí una línea a DESTAJO, poner en
     NULL cualquier fila y esperar JORNAL no tenía fase roja, porque JORNAL ya era su modalidad. Se
     siembra una partida mixta (mismo patrón que
     `test_la_modalidad_a_destajo_sobrevive_el_viaje_por_el_catalogo`), se comprueba que vuelve como

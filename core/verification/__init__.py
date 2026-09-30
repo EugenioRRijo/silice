@@ -1,4 +1,4 @@
-"""Las siete reglas de verificación (CLAUDE.md §7) y el informe de auditoría.
+"""Las siete reglas de verificación (NORMAS.md §7) y el informe de auditoría.
 
 El informe se genera siempre, sin que el usuario lo solicite. Sesión I4.
 
@@ -10,7 +10,7 @@ Uso::
     print(informe.a_markdown())
 
 El paquete no importa ningún adaptador ni conoce ningún dominio: todo lo que necesita saber del
-caso se lo dice el propio `Presupuesto` (CLAUDE.md §2, hipótesis central).
+caso se lo dice el propio `Presupuesto` (NORMAS.md §2, hipótesis central).
 """
 
 from core.verification import directivas

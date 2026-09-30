@@ -12,7 +12,7 @@ presupuestos y hallazgos guardados) se lee con un motor propio, y los datos del 
 muestra `lista_2026-06-01.csv` y de `tests/fixtures/actualizacion_uc02.py` (dos insumos cambian de
 precio, cemento y arena, y los dos entran al concreto).
 
-Archivos de prueba (caso didactico, CLAUDE.md §1): «Cemento blanco» no esta en el catalogo sembrado
+Archivos de prueba (caso didactico, NORMAS.md §1): «Cemento blanco» no esta en el catalogo sembrado
 (flujo 2a, se ofrece para el alta); «Arena lavada» en kg existe con otra unidad, m3 (flujo 2b, se
 rechaza y no se ofrece).
 """

@@ -17,7 +17,7 @@ class DecimalExacto(TypeDecorator[Decimal]):
     SQLite no tiene tipo decimal nativo: con `Numeric` el valor viaja como `REAL` y SQLAlchemy lo
     reconvierte a `Decimal` a través de `float`, lo que emite `SAWarning` y admite pérdida de
     precisión. El texto conserva exactamente los dígitos y la escala del original
-    (`Decimal("0.415")` vuelve como `Decimal("0.415")`), que es lo que exige CLAUDE.md §2.
+    (`Decimal("0.415")` vuelve como `Decimal("0.415")`), que es lo que exige NORMAS.md §2.
 
     En PostgreSQL se sustituye por `Numeric(18, 6)` sin tocar los modelos.
     """

@@ -5,13 +5,13 @@ del coseno entre vectores de `sentence-transformers` (modelo multilingue
 `paraphrase-multilingual-MiniLM-L12-v2`, el que fija el PLAN). No requiere datos etiquetados ni
 entrenamiento: es similitud semantica directa.
 
-Arquitectura (CLAUDE.md §2, `tests/unit/test_arquitectura.py`): `ml/` no conoce la base de datos ni
+Arquitectura (NORMAS.md §2, `tests/unit/test_arquitectura.py`): `ml/` no conoce la base de datos ni
 importa de `core` nada fuera de `core.contracts` -- este modulo, de hecho, no necesita ni los
 contratos: recibe el catalogo como pares (codigo, descripcion) planos y la capa de composicion
 (`ui/`, `api/`) le pasa lo que consulta `core.catalog`.
 
 El puntaje es un `float`: es una similitud adimensional en [-1, 1], no una cantidad de obra ni un
-monto, asi que la regla `Decimal` de CLAUDE.md §2.3 no lo alcanza (los vectores del modelo son
+monto, asi que la regla `Decimal` de NORMAS.md §2.3 no lo alcanza (los vectores del modelo son
 `float32` de origen). Se presenta redondeado solo en la capa de presentacion.
 
 La primera construccion descarga el modelo si no esta en la cache local de Hugging Face

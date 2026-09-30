@@ -17,7 +17,7 @@ como hallazgos `CODIGO_ATIPICO`. El detector llega como argumento: `core/` no im
 El `Comparativo` es la salida para el usuario: una fila por renglón con su precio unitario antes y
 después, y la incidencia de cada partida en la variación del total. Sus celdas son `Decimal`
 —el `DataFrame` es de tipo `object`, nunca `float`— porque un comparativo de precios que redondea
-al pasar por pandas deja de cuadrar con el presupuesto que compara (CLAUDE.md §2.3).
+al pasar por pandas deja de cuadrar con el presupuesto que compara (NORMAS.md §2.3).
 """
 
 from __future__ import annotations
@@ -133,7 +133,7 @@ def actualizar_precios(
     """Revalora un presupuesto con `lista_nueva` y lo guarda como versión `codigo_nuevo`.
 
     Devuelve la elaboración nueva —presupuesto e informe de auditoría, que se genera siempre
-    (principio 7 de CLAUDE.md §2)— y el comparativo contra la versión anterior, que sigue intacta
+    (principio 7 de NORMAS.md §2)— y el comparativo contra la versión anterior, que sigue intacta
     y reconstruyéndose con su propia lista.
 
     El presupuesto nuevo se fecha en la vigencia de `lista_nueva`, que es cuando pasan a valer esos

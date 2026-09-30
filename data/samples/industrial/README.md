@@ -10,7 +10,7 @@ con `id_activo` prefijado `IN-`.
 `id_activo,descripcion,codigo_partida,unidad,frecuencia_anual,horizonte_anios,especificaciones`
 
 - `id_activo`: identificador único del activo en el registro de planta (`IN-001`…). Es el
-  `origen_id` del `ItemComputo` (trazabilidad, CLAUDE.md §5).
+  `origen_id` del `ItemComputo` (trazabilidad, NORMAS.md §5).
 - `descripcion`: nombre del activo tal como aparece en el inventario de mantenimiento.
 - `codigo_partida`: código de la partida de mantenimiento asociada al activo (prefijo `MNT-`); es
   la partida que un futuro APU de mantenimiento costearía (ver Hallazgos en la bitácora de esta

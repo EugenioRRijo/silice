@@ -10,10 +10,10 @@ que declare el conjunto de propiedades `Pset_APU` (`COVENIN_Codigo`, `Partida_De
 
 El archivo es reemplazable por un export real de Revit/Bonsai (`scripts/generar_tanquilla_ifc.py`
 genera uno programatico para la muestra): el adaptador solo lee `Pset_APU` y el
-`IfcElementQuantity` asociado, no distingue el productor del modelo (docs/superpowers/specs/
+`IfcElementQuantity` asociado, no distingue el productor del modelo (spec
 2026-08-31-f1-api-simulador-design.md, seccion 7).
 
-Regla del nucleo cerrado (CLAUDE.md §5): solo se importa `core.contracts`; ifcopenshell (tercero
+Regla del nucleo cerrado (NORMAS.md §5): solo se importa `core.contracts`; ifcopenshell (tercero
 declarado para civil) y la biblioteca estandar estan libres. `tests/unit/test_arquitectura.py`
 (`TERCEROS_POR_ADAPTADOR`) lo vigila con un analisis AST del paquete.
 """

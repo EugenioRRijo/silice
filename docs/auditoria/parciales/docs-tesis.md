@@ -1,8 +1,8 @@
 # Auditoría parcial — capa `docs-tesis`
 
 Commit auditado: `cc2243cd5a7efd3b20dc82fe586484a6ef01fea8`. Criterios: spec
-`docs/superpowers/specs/2026-09-23-plan-cierre-tesis-design.md` §4 (únicos principios y severidades
-usados). Contexto obligatorio: `CLAUDE.md` §1 (naturaleza ficticia de todos los APU) y
+`2026-09-23-plan-cierre-tesis-design.md` §4 (únicos principios y severidades
+usados). Contexto obligatorio: `NORMAS.md` §1 (naturaleza ficticia de todos los APU) y
 `docs/metodologia.md` §5.1 y §8. Las decisiones D1–D9 de `docs/dossier_g0.md` se toman como riesgo ya
 rastreado y no se reportan como hallazgo. `docs/tesis/revisiones/2026-09-paquete-tutor.md` se revisó
 igual que el resto, por ser nuevo.

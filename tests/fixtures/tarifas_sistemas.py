@@ -1,6 +1,6 @@
 """Tarifas del dominio sistemas y el APU de un punto de función (Sesión M3.1 del PLAN_MULTIDOMINIO).
 
-Única copia estructurada de las tarifas y de la composición por punto de función (CLAUDE.md §2,
+Única copia estructurada de las tarifas y de la composición por punto de función (NORMAS.md §2,
 principio DRY). **No transcribe ningún precio**: lee los jornales del tabulador CIV al 01/07/2026
 de `data/precios/maprex_2026-07/referencia_sistemas.csv` (Sesión M0.2, 43 filas con `ref_maprex`)
 al importarse. Las descripciones de los roles son las de MaPreX, literales (incluida la truncada
@@ -68,7 +68,7 @@ DESCRIPCION_PLANTILLA = "Un punto de funcion no ajustado (IFPUG) de software a m
 #: Honorarios profesionales: sin prestaciones ni bono (ver «Supuestos»).
 PARAMETROS_SISTEMAS = ParametrosCosto(fcas=Decimal("0"), bono_alimentacion=Decimal("0"))
 
-#: Precio unitario de un punto de función **calculado a mano** con la fórmula de CLAUDE.md §4 antes
+#: Precio unitario de un punto de función **calculado a mano** con la fórmula de NORMAS.md §4 antes
 #: de correr el motor (README de `data/sistemas/fuentes/`). Es un resultado esperado, no un precio
 #: de entrada: única copia para las pruebas de M3.1 y M3.2 (INV‑009).
 PRECIO_UNITARIO_PF_ESPERADO = Decimal("110.992365")

@@ -57,10 +57,10 @@ Secciones: planteamiento · formulación (pregunta principal y secundarias, Base
 objetivos (general + OE1–OE6, **más OE7 según D3**) · justificación · alcance y delimitación.
 
 - **La evidencia va en dos planos**
-  ([spec del Sprint R1](../superpowers/specs/2026-09-15-sprint-r1-capitulos-design.md) §3). La
+  (spec del Sprint R1 §3). La
   **literatura** sostiene, con citas verificadas, que el problema ocurre en la práctica. El
   **caso didáctico** de la clínica, un ejercicio académico ficticio de 1 586,61 USD
-  ([CLAUDE.md §1](../../CLAUDE.md)), muestra el **mecanismo** con siete inconsistencias
+  ([NORMAS.md §1](../../NORMAS.md)), muestra el **mecanismo** con siete inconsistencias
   documentadas en [linea_base.md](../linea_base.md) (curva que cierra en 99,30 %, encofrado 5,92
   vs 4,48 m², concreto 0,415 vs 0,224 m³, «mts» vs «Pieza», 3/4" vs 4", 9,74 m³ excavados vs
   1,30 rellenados, depreciación 1,00 vs 0,03). El planteamiento no argumenta en abstracto, pero
@@ -122,7 +122,7 @@ de la sección 5. Borrador escrito: [capitulos/04-desarrollo.md](capitulos/04-de
 3. **Arquitectura** — núcleo cerrado / adaptadores abiertos; los contratos como única frontera;
    las dos guardias automáticas (las pruebas de `tests/unit/test_arquitectura.py`, conteo en la
    sección 5, + `scripts/guardia_nucleo.py` en la CI).
-4. **Motor de costos** — la fórmula (la de jornal en CLAUDE.md §4; la vigente, con destajo, en el
+4. **Motor de costos** — la fórmula (la de jornal en NORMAS.md §4; la vigente, con destajo, en el
    docstring de `core/costing/motor.py` y la decisión D9; desfase registrado en INV‑074) y los dos errores clásicos que las pruebas
    vigilan (materiales divididos por rendimiento; administración y utilidad sumadas). La línea
    base como oráculo: pruebas antes que implementación.
@@ -216,7 +216,7 @@ arquitectura y de la interfaz, a la corrida de CI con que se cruzó GC3.
 |---|---|---|
 | Inconsistencias detectadas | 7 de 7 | `uv run pytest tests/integration/test_auditoria_7_de_7.py` |
 | Desviación vs línea base | 0,00 % (± 0,01 por PU) | `uv run pytest tests/unit/test_costing.py tests/integration/test_presupuesto_linea_base.py` |
-| Precios unitarios de la línea base | excavación 8,60 · tubería 10,19 · encofrado 33,24 · concreto 242,64 · relleno 52,58 USD (precios del caso al 28/04/2026; reproducidos en la CI del 2026‑09‑23) | [CLAUDE.md §4](../../CLAUDE.md) · `tests/fixtures/apu_linea_base.py` · `uv run pytest tests/unit/test_costing.py` (7 casos: los cinco PU y los dos errores clásicos) |
+| Precios unitarios de la línea base | excavación 8,60 · tubería 10,19 · encofrado 33,24 · concreto 242,64 · relleno 52,58 USD (precios del caso al 28/04/2026; reproducidos en la CI del 2026‑09‑23) | [NORMAS.md §4](../../NORMAS.md) · `tests/fixtures/apu_linea_base.py` · `uv run pytest tests/unit/test_costing.py` (7 casos: los cinco PU y los dos errores clásicos) |
 | Núcleo intacto | diff vacío | `git diff --stat <rama-adaptador> -- core/` · `uv run python scripts/guardia_nucleo.py --base main` |
 | Pruebas de arquitectura | 83 casos (2026‑09‑28, commit `e7a0569` de la compuerta GC4, corrida de CI [36489551508](https://github.com/EugenioRRijo/tesis-apu-multidominio/actions/runs/36489551508); C5 no los cambia: 83 en `f629f94`) · 65 en `308eca5` (cierre de C3, corrida [36427904452](https://github.com/EugenioRRijo/tesis-apu-multidominio/actions/runs/36427904452)) · 66 en la verificación de GC1 del 2026‑09‑23 | `uv run pytest --collect-only -q tests/unit/test_arquitectura.py` · [bitácora del cierre, GC1](../bitacora/2026-09-23-cierre.md) |
 | MAPE · RMSE · R² | 12,46 % · 5,10 USD · 0,9974 | `uv run python scripts/generar_resultados_ml.py` → [resultados_ml.md](../resultados_ml.md) |
@@ -231,8 +231,8 @@ arquitectura y de la interfaz, a la corrida de CI con que se cruzó GC3.
 | Total del caso | 1 586,61 USD · curva 99,30 % | [linea_base.md](../linea_base.md) · `data/linea_base/APUS_CLINICA.pdf` |
 | Siete inconsistencias del caso didáctico (magnitudes) | encofrado 5,92 vs 4,48 m² (+32 %) · concreto 0,415 vs 0,224 m³ (+85 %) · curva 1 575,50 USD, 11,11 USD sin conciliar · relleno 1,30 vs ≈ 8,6 m³ · depreciación 0,03 vs 1,00 | [linea_base.md §5](../linea_base.md) · `tests/fixtures/apu_linea_base.py` |
 | Dimensiones del caso didáctico | 24 m de PVC de 4" · cuatro tanquillas de 0,80 × 0,80 × 0,80 m con paredes de 0,10 m · cinco partidas | [linea_base.md §1](../linea_base.md) · `tests/fixtures/apu_linea_base.py` |
-| Parámetros de costo del caso didáctico | FCAS 6,00 (600 %) · bono de alimentación 1,00 USD por obrero y día · administración 15 % · utilidad 10 %, en cascada | `core/contracts/apu.py` (`ParametrosCosto`) · [CLAUDE.md §4](../../CLAUDE.md) |
-| Umbrales de la compuerta G2 (técnica según datos) | más de 200 registros por dominio: XGBoost con bosques aleatorios como contraste · de 50 a 200: razonamiento basado en casos · menos de 50: sistema de reglas con análisis de sensibilidad | [CLAUDE.md §8.1](../../CLAUDE.md) · `ml/prediction/reglas.py` (`tecnica_para`) |
+| Parámetros de costo del caso didáctico | FCAS 6,00 (600 %) · bono de alimentación 1,00 USD por obrero y día · administración 15 % · utilidad 10 %, en cascada | `core/contracts/apu.py` (`ParametrosCosto`) · [NORMAS.md §4](../../NORMAS.md) |
+| Umbrales de la compuerta G2 (técnica según datos) | más de 200 registros por dominio: XGBoost con bosques aleatorios como contraste · de 50 a 200: razonamiento basado en casos · menos de 50: sistema de reglas con análisis de sensibilidad | [NORMAS.md §8.1](../../NORMAS.md) · `ml/prediction/reglas.py` (`tecnica_para`) |
 | Inconsistencia del ejercicio ARENAZA | tubo corrugado 80 m (cómputo) vs 90 m (presupuesto) | [data/telecom/fuentes/README.md](../../data/telecom/fuentes/README.md) · `uv run pytest tests/integration/test_auditoria_arenaza.py` |
 | Metas de sprint | 12/12 | `uv run python scripts/meta_i6.py` |
 | Conteo G2 | civil 5 · telecom 40 · industrial 4 · sistemas 9 (todos < 50; recuento multidominio M4.1) | [resultados_ml.md](../resultados_ml.md) (`uv run python scripts/generar_resultados_ml.py`) |

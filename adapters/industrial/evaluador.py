@@ -2,14 +2,14 @@
 
 La regla de cómputo de este adaptador (`frecuencia_anual * horizonte_anios`,
 `adapters/industrial/adaptador.py`) se declara como texto para que el informe de auditoría pueda
-mostrar la expresión exacta que produjo cada cantidad (regla R1, CLAUDE.md §7). Este módulo la
+mostrar la expresión exacta que produjo cada cantidad (regla R1, NORMAS.md §7). Este módulo la
 evalúa sin usar `eval()`: solo permite el subconjunto aritmético necesario (suma, resta,
 multiplicación, división, potencia, negación unaria, nombres de parámetro, constantes numéricas y
 paréntesis, que el AST ya resuelve como precedencia). Cualquier otro nodo del árbol sintáctico
 (llamadas, atributos, índices, comparaciones, comprensiones, etc.) se rechaza.
 
 Es una implementación propia e independiente de `adapters/civil/evaluador.py`: cada adaptador es
-autónomo (CLAUDE.md §2), así que no se importa entre dominios aunque el subconjunto de aritmética
+autónomo (NORMAS.md §2), así que no se importa entre dominios aunque el subconjunto de aritmética
 permitido sea, por ahora, el mismo.
 """
 

@@ -1,6 +1,6 @@
 """Meta de datos: la documentacion del repositorio no presenta sus datos como reales.
 
-`CLAUDE.md` seccion 1 declara que todos los APU y presupuestos del repositorio son ejercicios
+`NORMAS.md` seccion 1 declara que todos los APU y presupuestos del repositorio son ejercicios
 academicos ficticios. La sesion de limpieza (2026-09-15) corrigio las afirmaciones que decian lo
 contrario; esta meta existe para que no vuelvan.
 
@@ -39,7 +39,7 @@ from scripts.meta_redaccion import evaluar_naturaleza_datos  # noqa: E402
 
 TITULOS: dict[str, str] = {
     "D1": "La documentacion no presenta los datos del repositorio como reales",
-    "D2": "CLAUDE.md declara la naturaleza de todos los datos (incluye ARENAZA)",
+    "D2": "NORMAS.md declara la naturaleza de todos los datos (incluye ARENAZA)",
     "D3": "Los documentos historicos conservan su nota de errata",
 }
 
@@ -176,7 +176,7 @@ def _evaluar_metas() -> list[Fila]:
     }
     chequeos: dict[str, Callable[[], tuple[Estado, str]]] = {
         "D1": lambda: evaluar_documentos(documentos),
-        "D2": lambda: evaluar_naturaleza_datos(_leer(RAIZ / "CLAUDE.md")),
+        "D2": lambda: evaluar_naturaleza_datos(_leer(RAIZ / "NORMAS.md")),
         "D3": lambda: evaluar_errata(historicos),
     }
     return [Fila(codigo, TITULOS[codigo], *chequeo()) for codigo, chequeo in chequeos.items()]

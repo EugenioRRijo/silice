@@ -402,7 +402,7 @@ class PuntoCurva(Base):
 
 
 class Hallazgo(Base):
-    """Resultado persistido de una regla de verificación sobre un presupuesto (CLAUDE.md §7)."""
+    """Resultado persistido de una regla de verificación sobre un presupuesto (NORMAS.md §7)."""
 
     __tablename__ = "hallazgo"
 

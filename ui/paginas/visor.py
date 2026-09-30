@@ -61,7 +61,7 @@ _MENSAJE_SIN_EXTRA_CIVIL = (
 def _cargar_dependencias_civiles() -> tuple[ModuleType, type[AdaptadorCivilIFC]]:
     """Importa `ifcopenshell` y `AdaptadorCivilIFC` solo cuando el visor se usa de verdad.
 
-    Perezoso a proposito (CLAUDE.md §9, seccion "import perezoso" de este modulo): asi `ui.app` y
+    Perezoso a proposito (NORMAS.md §9, seccion "import perezoso" de este modulo): asi `ui.app` y
     esta pagina siguen siendo importables sin el extra `civil`. Relanza `ImportError` tal cual si
     ifcopenshell no esta instalado; `render()` decide como mostrarlo (`st.error`).
     """
@@ -77,7 +77,7 @@ def render() -> None:
     st.caption(
         "Carga un modelo IFC y compara su geometria con el cómputo que extrae el adaptador civil: "
         "cada malla del visor corresponde a una fila de la tabla, unidas por el GlobalId (regla R1 "
-        "de verificacion, CLAUDE.md §7)."
+        "de verificacion, NORMAS.md §7)."
     )
 
     archivo = st.file_uploader("Modelo IFC (.ifc)", type=["ifc"])

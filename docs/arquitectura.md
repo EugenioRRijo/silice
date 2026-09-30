@@ -19,7 +19,7 @@
 > nuevas y tres deudas en §6.1. Lo que no está implementado se dice como tal y no se dibuja como si
 > existiera. El **estado** de cada caso de uso, paso a paso y con su prueba, no se repite aquí: vive
 > solo en [docs/plan_pruebas.md §8](plan_pruebas.md#8-especificación-de-casos-trazabilidad-rf--prueba).
-> Este documento no reproduce datos que tienen fuente única: enlaza [CLAUDE.md](../CLAUDE.md),
+> Este documento no reproduce datos que tienen fuente única: enlaza [NORMAS.md](../NORMAS.md),
 > [docs/ERS.md](ERS.md), [docs/modelo_datos.md](modelo_datos.md) y
 > [docs/linea_base.md](linea_base.md) (principio DRY,
 > [metodologia.md §5](metodologia.md#5-dry)).
@@ -108,7 +108,7 @@ flowchart LR
 **Por qué UC‑05 es `«include»` y no `«extend»`.** No es una decisión de modelado: el código lo impone.
 `core.budget.elaborar` llama siempre a `core.verification.auditar` y devuelve un
 `ResultadoElaboracion` que lleva presupuesto **e** informe, de modo que no existe forma de obtener uno
-sin el otro (principio 7 de [CLAUDE.md §2](../CLAUDE.md#2-principios)). UC‑02
+sin el otro (principio 7 de [NORMAS.md §2](../NORMAS.md#2-principios)). UC‑02
 (`core.budget.actualizar_precios`), UC‑04 (quien llama a `adapters.civil.recalculo.recalcular` vuelve a
 elaborar) y UC‑08 (`core.budget.generar_escenario`, cuyo `Escenario` lleva su `informe`) producen su
 versión por la misma función, así que heredan la inclusión.
@@ -181,7 +181,7 @@ de ensayo (`scripts.simular_lista.simular`) y la tercera muestra el modelo IFC q
 
 ### 2.1 Contratos (`core/contracts`, estables)
 
-La tabla de módulos y tipos es la de [CLAUDE.md §5](../CLAUDE.md#5-contratos-de-interfaz-corecontracts);
+La tabla de módulos y tipos es la de [NORMAS.md §5](../NORMAS.md#5-contratos-de-interfaz-corecontracts);
 el diagrama muestra sus atributos. El único cambio de los contratos desde la Sesión I0.1 es aditivo:
 `ModalidadManoObra` y el campo `LineaManoObra.modalidad`, con `JORNAL` por defecto (decisión D9 de
 [dossier_g0.md](dossier_g0.md#d9-modalidad-de-mano-de-obra-por-linea-cambio-a-un-contrato-declarado-estable),
@@ -980,13 +980,13 @@ def pares_numero_unidad(tokens_del_texto: list[str]) -> list[tuple[str, str]]
 def formatear_decimal(valor: Decimal, decimales: int | None = None) -> str
 ```
 
-Qué comprueba cada regla y qué hallazgo de la línea base detecta: [CLAUDE.md
-§7](../CLAUDE.md#7-siete-reglas-de-verificación-coreverification-sesión-i4) y
+Qué comprueba cada regla y qué hallazgo de la línea base detecta: [NORMAS.md
+§7](../NORMAS.md#7-siete-reglas-de-verificación-coreverification-sesión-i4) y
 [docs/linea_base.md](linea_base.md). Ninguna regla nombra un dominio, una unidad concreta ni un código
 del caso de estudio: lo que necesitan saber se lo dice el propio `Presupuesto` (ADR 8).
 
 **`InformeAuditoria` es una interfaz pública del núcleo, no un contrato de
-[CLAUDE.md §5](../CLAUDE.md#5-contratos-de-interfaz-corecontracts).** Cruza a `api/`
+[NORMAS.md §5](../NORMAS.md#5-contratos-de-interfaz-corecontracts).** Cruza a `api/`
 (`api/rutas/presupuestos.py`), a `ui/` (`a_markdown()`, `por_severidad()` y `hallazgos`), a `scripts/` y a los módulos de
 `core.budget` (`presupuesto`, `persistencia`, `escenarios`, `excel`), pero no vive en
 `core/contracts/`, depende de `core.verification` (un contrato solo depende de la biblioteca
@@ -1076,7 +1076,7 @@ y `api/rutas/presupuestos.py::_detector_de_atipicos`, copia literal una de la ot
 Las dos preguntan primero por `scikit-learn` con `importlib.util.find_spec("sklearn")`, porque
 `ml.anomaly` se importa solo con `numpy` y el bosque importa `sklearn` al evaluar; sin el extra el
 detector es `None` y el informe no lleva `ATIPICO`. `api/rutas/rendimientos.py::_veredicto_bosque`
-usa la misma guarda. `core/` no importa `ml` (ADR 5, CLAUDE.md §2); si
+usa la misma guarda. `core/` no importa `ml` (ADR 5, NORMAS.md §2); si
 `ui/composicion.py` llegara a necesitar que el núcleo conociera `ml`, sería un hallazgo para
 documentar en `docs/bitacora/`, no un import que se agrega en silencio.
 
@@ -1376,7 +1376,7 @@ Interfaces provistas y requeridas:
 
 | Componente | Provee | Requiere |
 |---|---|---|
-| `core.contracts` | todos los tipos de intercambio ([CLAUDE.md §5](../CLAUDE.md#5-contratos-de-interfaz-corecontracts)) | biblioteca estándar |
+| `core.contracts` | todos los tipos de intercambio ([NORMAS.md §5](../NORMAS.md#5-contratos-de-interfaz-corecontracts)) | biblioteca estándar |
 | `core.costing` | `calcular_apu` | `core.contracts` |
 | `core.budget` | `generar_presupuesto`, `elaborar`, `ResultadoElaboracion`, `CODIGO_PENDIENTE`, `CODIGO_ATIPICO`, `MarcaAtipica` y `DetectorAtipicos` (el puerto que la revaloración **requiere** y `ml.anomaly` cumple por estructura, sin que ninguno importe al otro), `crear_proyecto`, `importar_presupuesto`, `leer_presupuesto_tabular`, `PresupuestoImportado`, `generar_curva`, `plan_secuencial`, `PeriodoPlan`, `GeneradorPlan`, `PlanInvalido`, `con_curva`, `guardar_presupuesto`, `cargar_presupuesto`, `cargar_elaboracion`, `exportar_excel`, `actualizar_precios`, `descartar_version`, `Comparativo`, `generar_escenario`, `comparar_escenarios`, `comparar_por_partida`, `Escenario` | `core.contracts`, `core.costing`, `core.verification`, `core.catalog`, `core.models`; `sqlalchemy`, `pandas`, `openpyxl` |
 | `core.verification` | R1 … R7, `REGLAS`, `auditar`, `InformeAuditoria`, `directivas`, `evaluar` | `core.contracts` |
@@ -1437,7 +1437,7 @@ escribir `docs/api.json`.
 `probar_precios_maprex.py` (C6).
 `scripts/seed.py:42` importa `tests.fixtures.apu_linea_base` al cargarse el módulo. Es una
 dependencia **deliberada**: el fixture es la única copia de la línea base
-([CLAUDE.md §2](../CLAUDE.md#2-principios), principio 1; `docs/manual_tecnico.md:252`), y copiarla en
+([NORMAS.md §2](../NORMAS.md#2-principios), principio 1; `docs/manual_tecnico.md:252`), y copiarla en
 `scripts/` sería la duplicación que el principio prohíbe. La consecuencia es de despliegue: `ui.app`
 importa las diez páginas al cargarse (`ui/app.py:61-72`), y tres de ellas llegan a `scripts.seed`:
 `ui/paginas/actualizacion.py:44` directamente, `ui/paginas/inicio.py:18` a través de
@@ -1464,7 +1464,7 @@ que hace el navegador cada vez que pinta el «Visor 3D del modelo» (`ui/paginas
 fija `r128`).
 
 La **compuerta G1 está cruzada con salvedad**
-([CLAUDE.md §8.2](../CLAUDE.md#8-compuertas-y-criterios-de-degradación);
+([NORMAS.md §8.2](../NORMAS.md#8-compuertas-y-criterios-de-degradación);
 [bitácora F.1](bitacora/2026-08-31-F1-api-3d.md)): `AdaptadorCivilIFC` extrae de
 `data/samples/tanquilla.ifc` las cantidades exactas del cálculo manual, pero ese archivo lo genera
 `scripts/generar_tanquilla_ifc.py`; ningún modelador BIM real (Revit, Bonsai) forma parte todavía del
@@ -1542,7 +1542,7 @@ Decisiones de despliegue y sus consecuencias:
 | 6 | Tipos de presupuesto y hallazgo dentro de los contratos | las reglas se escriben contra una forma estable en memoria | los modelos SQLAlchemy mapean desde y hacia esos tipos |
 | 7 | `DecimalExacto`: los `Decimal` se persisten como **texto** en SQLite (`TypeDecorator` con `impl = String(40)`), no con `Float` ni con `Numeric` | SQLite no tiene decimal nativo: `Numeric` almacena `REAL` y reconvierte **pasando por `float`**, lo que emite `SAWarning` y admite pérdida de precisión, contra el principio 3 | el texto conserva dígitos y escala (`Decimal("0.415")` vuelve idéntico) y la suite corre sin advertencias; a cambio, ordenar o filtrar por importe en SQL sería lexicográfico (ninguna consulta lo hace). El mismo criterio rige los `Decimal` dentro de las columnas JSON‑texto. En PostgreSQL se sustituye por `Numeric(18, 6)` sin tocar los modelos. Detalle en [modelo_datos.md §7.1](modelo_datos.md#71-decimalexacto-el-tipo-monetario-y-dimensional) |
 | 8 | **El balance y la regla que produjo una cantidad son datos del ítem, no código del núcleo.** La expresión viaja en `ItemComputo.regla` con sus `parametros`; el balance volumétrico y su tolerancia, en las directivas `_balance` y `_tolerancia` de `especificaciones`; la unidad tal como la escribió el autor, en `_unidad_original` | Si R1 y R5 conocieran las fórmulas del drenaje, el núcleo conocería el dominio civil y la hipótesis central sería falsa. El núcleo solo sabe **evaluar aritmética** (`core.verification.expresiones`) y **leer una convención de claves** (`core.verification.directivas`) | agregar un dominio no añade una rama al núcleo: el adaptador declara sus expresiones y el núcleo las reevalúa. Precio pagado: el evaluador de AST existe en **cinco copias**, `core/verification/expresiones.py` y un `evaluador.py` en cada adaptador (civil e industrial idénticos salvo el docstring; telecom y sistemas con subconjuntos menores de operadores), porque la regla de dependencia impide compartirlo entre adaptadores y con el núcleo. `tests/unit/test_verification.py::test_las_reglas_civiles_son_evaluables_por_el_nucleo` evalúa cada `REGLA_*` civil con los dos evaluadores y exige el mismo `Decimal`; las expresiones de los otros tres dominios las reevalúa R1 con el del núcleo al auditar. El cierre previsto, `core.contracts.expresiones` (INV‑006), cambia un contrato: está **aceptado por decisión de arquitectura registrada**, pendiente del aval del tutor ([expediente C1, §A.3](bitacora/2026-09-23-C1-expedientes.md); [bitácora I4](bitacora/2026-08-29-I4-verificacion.md), hallazgo 1) |
-| 9 | El sistema es de un proceso y un hilo; el informe viaja **dentro** del resultado (`ResultadoElaboracion`) | principio 7 de CLAUDE.md §2: el informe se genera siempre. Un tipo que lleva las dos cosas lo hace imposible de omitir | no hay concurrencia que documentar en la vista de proceso; la transacción es responsabilidad del llamador (`flush`, no `commit`) |
+| 9 | El sistema es de un proceso y un hilo; el informe viaja **dentro** del resultado (`ResultadoElaboracion`) | principio 7 de NORMAS.md §2: el informe se genera siempre. Un tipo que lleva las dos cosas lo hace imposible de omitir | no hay concurrencia que documentar en la vista de proceso; la transacción es responsabilidad del llamador (`flush`, no `commit`) |
 | 10 | Versionado híbrido: el presupuesto **referencia** su lista de precios y además **congela** el `ResultadoAPU` de cada renglón | responden preguntas distintas: qué se firmó y cuánto costaría hoy | `cargar_presupuesto` revalora y compara con la instantánea (tolerancia 1 × 10⁻⁶); como el contrato `Presupuesto` no lleva `ParametrosCosto`, los cuatro parámetros se copian en la fila del presupuesto ([bitácora I0.5](bitacora/2026-08-29-I0.5-presupuesto.md), hallazgo 2) |
 | 11 | El enlace período → partida viaja en la **etiqueta** del punto de curva, entre corchetes (`"Dia 1 [LB-01-EXC]"`), con `etiqueta_con_codigos` / `codigos_en_etiqueta` como único par inverso | `PuntoCurva` no tiene campo para el código de partida y `core/contracts/` está congelado; R7 necesita ese enlace para conciliar el plan con el presupuesto | funciona sin tocar los contratos, pero R7 depende de una convención textual y, si la etiqueta no la declara, cae a una heurística de contención de descripciones. Un campo `codigos_partida: tuple[str, ...]` en `PuntoCurva` lo eliminaría ([bitácora I4](bitacora/2026-08-29-I4-verificacion.md), hallazgo 3) |
 | 12 | La frontera modelo ↔ contrato existe en **exactamente dos** módulos: `core/catalog/mapeo.py` (catálogo) y `core/budget/persistencia.py` (presupuesto) | unirlas habría hecho que `core.catalog` dependiera de `core.verification` por el `InformeAuditoria` | siete nombres coinciden entre modelos y contratos: los modelos se importan **siempre cualificados** (`models.Presupuesto`). Las tablas sin contrato (`ListaPrecios`, `PrecioInsumo`, `CambioPrecio`, `IncidenciaCambio`, `Ejecucion`, `DescarteVersion`, `JustificacionRendimiento`) las escriben directamente `core.catalog.precios`, `core.catalog.rendimientos` y `core.budget.actualizacion`, sin cruzar esa frontera. Si aparece una tercera frontera, conviene revisar la partición |
@@ -1550,7 +1550,7 @@ Decisiones de despliegue y sus consecuencias:
 ### 6.1 Deuda arquitectónica declarada
 
 Ninguna de estas insuficiencias se parcheó tocando `core/contracts/` (regla de
-[CLAUDE.md §9](../CLAUDE.md#9-cómo-trabajar-con-claude-code-en-este-repositorio)); todas están
+[NORMAS.md §9](../NORMAS.md#9-cómo-trabajar-en-este-repositorio)); todas están
 rodeadas y documentadas, y son entrada de la revisión de contratos posterior a la Fase 1.
 
 | Insuficiencia | Se rodea con | Registro |

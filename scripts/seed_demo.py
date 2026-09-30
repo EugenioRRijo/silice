@@ -10,7 +10,7 @@ dejaba las cinco partidas ``LB-*`` sin precio desde la fecha de la demostracion 
 
 **Caso didactico, no obra ejecutada.** Igual que la linea base civil (`scripts/seed.py`) y los
 catalogos telecom/industrial/sistemas, las tres partidas de este modulo son un ejercicio academico
-ficticio (CLAUDE.md §1): nadie tendio esta tuberia ni instalo esta valvula. Su unico proposito es
+ficticio (NORMAS.md §1): nadie tendio esta tuberia ni instalo esta valvula. Su unico proposito es
 que, al abrir la aplicacion contra `data/apu.db` (el archivo que todas las paginas de `ui/paginas/`
 usan por defecto), el catalogo no aparezca vacio y muestre algo que ademas de existir **ensena**
 la decision D9: una partida con mano de obra a jornal y a destajo a la vez.
@@ -19,7 +19,7 @@ Hermano de `scripts/seed.py`, `scripts/seed_telecom.py`, `scripts/seed_industria
 `scripts/seed_sistemas.py`: mismo patron de `--db`, `--reiniciar`, `Catalogo` y resumen impreso.
 A diferencia de ellos, este caso no proviene de ningun PDF ni CSV externo (no hay fixture que
 citar): las tres composiciones se escriben aqui mismo, en `construir_caso_demo`, que es la
-**unica** construccion del caso en todo el repositorio (principio DRY, CLAUDE.md §2). Cualquier
+**unica** construccion del caso en todo el repositorio (principio DRY, NORMAS.md §2). Cualquier
 otro modulo que necesite este caso -- por ejemplo la prueba de extremo a extremo de la Tarea 3 de
 P3, `tests/integration/test_composicion_extremo_a_extremo.py` -- la importa desde aqui en vez de
 copiarla: un caso de demostracion escrito dos veces es dos casos que divergen en la primera
@@ -40,7 +40,7 @@ Que ejercita el caso, partida por partida
   a jornal, para que el contraste con la partida anterior sea visible; material con desperdicio
   (empaques de caucho, 2 unidades + 5 % de merma = 2,10); mismo equipo que la partida anterior con
   el mismo factor de depreciacion (0,05), declarado igual en ambas para no reproducir el hallazgo 7
-  de la linea base (CLAUDE.md §7, regla R6).
+  de la linea base (NORMAS.md §7, regla R6).
 - ``DEMO-03-PRUEBA`` (Prueba hidrostatica de la linea instalada): partida adicional, solo para que
   el presupuesto tenga tres periodos y una curva de inversion con mas de un tramo.
 
@@ -122,7 +122,7 @@ MONEDA = "USD"
 FECHA_DEMO = date(2026, 9, 20)
 RUTA_POR_DEFECTO = seed.RUTA_POR_DEFECTO  # fuente unica de la ruta de trabajo (INV-044)
 
-# Parametros de la estructura de costos: los valores por defecto del contrato (CLAUDE.md §4), sin
+# Parametros de la estructura de costos: los valores por defecto del contrato (NORMAS.md §4), sin
 # repetirlos aqui (principio DRY).
 PARAMETROS_DEMO = ParametrosCosto()
 
@@ -281,7 +281,7 @@ def construir_composiciones_demo() -> tuple[ComposicionAPU, ...]:
 def construir_items_demo() -> tuple[ItemComputo, ...]:
     """Las cantidades de obra del caso: 180 m de linea, 4 valvulas, y la prueba sobre esos 180 m.
 
-    Pura, igual que `construir_composiciones_demo`. Origen MANUAL (CLAUDE.md §5): son cantidades
+    Pura, igual que `construir_composiciones_demo`. Origen MANUAL (NORMAS.md §5): son cantidades
     declaradas para el caso didactico, no derivadas de una regla ni de un modelo IFC.
     """
     return (
@@ -337,7 +337,7 @@ def construir_caso_demo() -> CasoDemo:
 def elaborar_caso_demo(caso: CasoDemo) -> ResultadoElaboracion:
     """El presupuesto del caso, con su curva secuencial, elaborado y auditado.
 
-    **Unica** elaboracion del caso en el modulo (principio DRY, CLAUDE.md §2): antes vivia en
+    **Unica** elaboracion del caso en el modulo (principio DRY, NORMAS.md §2): antes vivia en
     linea dentro de `_imprimir_resumen`, que ahora la llama en vez de repetirla; tambien la usan
     `guardar_presupuesto_demo` y `tests/integration/test_seed_demo.py`.
     """

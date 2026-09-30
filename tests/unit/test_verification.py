@@ -5,7 +5,7 @@ convención de directivas), una prueba por regla sobre el presupuesto auditado y
 
 Estas pruebas SÍ importan `adapters.civil`: comprueban que las expresiones y las claves de
 directiva que escribe un adaptador son interpretables por el núcleo sin que el núcleo lo importe
-(CLAUDE.md §2, hipótesis central).
+(NORMAS.md §2, hipótesis central).
 """
 
 from __future__ import annotations

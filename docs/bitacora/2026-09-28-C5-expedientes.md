@@ -3,13 +3,13 @@
 **Fecha:** 2026‑09‑28 · **Rama:** `inc/cierre-C5-nucleo` (pista N de C5) · **Orden de trabajo:**
 `C5-orden-de-trabajo.md` del directorio de control de C5 · **Inventario:**
 [docs/auditoria/2026-09-inventario.md](../auditoria/2026-09-inventario.md) · **Spec:**
-[§5, fila C5, y §10, enmienda del 2026‑09‑28](../superpowers/specs/2026-09-23-plan-cierre-tesis-design.md)
+§5, fila C5, y §10, enmienda del 2026‑09‑28
 · **Bitácora de la fase:** [2026-09-23-cierre.md, «Fase C5»](2026-09-23-cierre.md).
 
 La enmienda de C5 autoriza exactamente dos commits que tocan `core/`, cada uno con su expediente
 previo en este archivo, commiteado antes de su código, sin cambiar ningún contrato de
 `core/contracts/` y con la línea base (1 586,61 USD y 7 de 7) intacta. Si un expediente concluyera
-que hace falta un contrato, la fase se detiene (CLAUDE.md §5). El método es el de los expedientes
+que hace falta un contrato, la fase se detiene (NORMAS.md §5). El método es el de los expedientes
 C3.1 y C3.2 ([2026-09-24-C3-expedientes.md](2026-09-24-C3-expedientes.md)).
 
 ## C5.1 INV‑095: el informe atribuye cada hallazgo a su partida y su origen

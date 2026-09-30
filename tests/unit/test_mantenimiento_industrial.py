@@ -3,7 +3,7 @@ activos del inventario construido `activos_planta.csv`, costeadas con la referen
 jul‑2026 como proxy declarado (degradación GM2, `data/industrial/fuentes/README.md`) y sin
 transcribir ningún precio.
 
-Los precios unitarios esperados se calcularon **a mano** con la fórmula de CLAUDE.md §4 antes de
+Los precios unitarios esperados se calcularon **a mano** con la fórmula de NORMAS.md §4 antes de
 correr el motor (rendimiento 1, parámetros por defecto del contrato) y se fijan aquí como regresión
 exacta: materiales sin dividir entre el rendimiento; equipos cantidad × precio × factor; mano de
 obra (Σ cantidad × jornal × (1 + 6,00) + 1,00 × obreros); administración 15 % y utilidad 10 % en

@@ -4,7 +4,7 @@
 |---|---|
 | Indicador | 3, «Reducción del tiempo de elaboración» ([metodologia.md §8](metodologia.md#8-indicadores-de-la-tesis)) |
 | Objetivo al que sirve | OE1 (registro de tiempos de elaboración) y OE6 (evaluación), según [tesis/esqueleto_tesis.md](tesis/esqueleto_tesis.md) |
-| Escrito en | fase C4 del cierre, 2026‑09‑28 ([spec de cierre §5](superpowers/specs/2026-09-23-plan-cierre-tesis-design.md), fila C4) |
+| Escrito en | fase C4 del cierre, 2026‑09‑28 (spec de cierre §5, fila C4) |
 | Se ejecuta en | fase Med del cierre ([PLAN_CIERRE.md](../PLAN_CIERRE.md)), antes de congelar |
 | Versión del protocolo | el commit que contiene este archivo; se anota en cada hoja de registro |
 
@@ -14,7 +14,7 @@ defecto del protocolo, se registra en la bitácora de Med y se aplica solo a ses
 a las ya medidas (spec de cierre §5, fila Med).
 
 **Naturaleza de los datos.** La tarea usa el caso didáctico de la clínica, un ejercicio académico
-ficticio ([CLAUDE.md §1](../CLAUDE.md#1-qué-es-este-proyecto)). Lo que se mide es el tiempo de las
+ficticio ([NORMAS.md §1](../NORMAS.md#1-qué-es-este-proyecto)). Lo que se mide es el tiempo de las
 personas, no la exactitud del caso.
 
 ## 1. Qué se mide y qué no
@@ -95,7 +95,7 @@ La tubería se valora por metro con el precio unitario de LB‑02‑TUB tal como
 curva: una partida por día, cada una al 100 % en su día, en el orden que el participante elija.
 
 **M2. Partidas del catálogo** (precios del caso didáctico al 28/04/2026, los de
-[CLAUDE.md §4](../CLAUDE.md#4-especificación-del-cálculo-y-línea-base)):
+[NORMAS.md §4](../NORMAS.md#4-especificación-del-cálculo-y-línea-base)):
 
 | Código | Descripción | Unidad del APU | Precio unitario (USD) |
 |---|---|---|---|

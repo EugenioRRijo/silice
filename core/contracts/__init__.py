@@ -1,4 +1,4 @@
-"""Contratos de interfaz del sistema (CLAUDE.md §5). Estables durante todo el proyecto."""
+"""Contratos de interfaz del sistema (NORMAS.md §5). Estables durante todo el proyecto."""
 
 from core.contracts.adaptador import AdaptadorDominio
 from core.contracts.apu import (

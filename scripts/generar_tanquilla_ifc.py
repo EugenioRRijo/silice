@@ -8,7 +8,7 @@ Sesion T7 tenga geometria real que teselar.
 
 El elemento lleva:
 - `Pset_APU`: COVENIN_Codigo, Partida_Descripcion, Unidad — la trazabilidad hacia la partida del
-  presupuesto (docs/superpowers/specs/2026-08-31-f1-api-simulador-design.md, seccion 7).
+  presupuesto (2026-08-31-f1-api-simulador-design.md, seccion 7).
 - `Qto_APU`: VolumenConcreto, calculado con `Decimal` -- (a**2 - (a - 2*e)**2) * h -- la misma
   formula de I3.2 que produce 0,224 m3 para a=h=0,80 y e=0,10 (tests/unit/test_reglas_civil.py).
   IFC solo admite `float` en sus magnitudes: se convierte al final, no antes, y el valor

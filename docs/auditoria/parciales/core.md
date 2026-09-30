@@ -2,7 +2,7 @@
 
 Commit auditado: `cc2243cd5a7efd3b20dc82fe586484a6ef01fea8`. `git diff --stat cc2243cd HEAD -- core/` está
 vacío, así que los números de línea valen igual sobre el HEAD del worktree. Criterios: spec
-`docs/superpowers/specs/2026-09-23-plan-cierre-tesis-design.md` §4. Las decisiones D1–D9 de
+`2026-09-23-plan-cierre-tesis-design.md` §4. Las decisiones D1–D9 de
 `docs/dossier_g0.md` se toman como riesgo ya rastreado y no se reportan.
 
 ## 1. Archivos revisados (35 de 35 de `git ls-files core/`)

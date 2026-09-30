@@ -21,7 +21,7 @@ multidominio**, asistido por modelo BIM‑5D y aprendizaje automático.
   **siete inconsistencias** documentadas una a una en [linea_base.md](../../linea_base.md).
   Es un **ejercicio académico ficticio**, igual que los presupuestos ARENAZA: casos
   **didácticos** con el contenido y el formato de la práctica, no obras ejecutadas ni valores
-  reales ([CLAUDE.md §1](../../../CLAUDE.md#1-qué-es-este-proyecto)). La validación con
+  reales ([NORMAS.md §1](../../../NORMAS.md#1-qué-es-este-proyecto)). La validación con
   presupuestos reales es una limitación declarada hasta que el usuario los suministre.
 - **La solución.** El sistema deriva las cantidades de una fuente trazable (IFC, reglas
   paramétricas, tablas), las costea con la estructura venezolana (FCAS, bono, administración y
@@ -30,7 +30,7 @@ multidominio**, asistido por modelo BIM‑5D y aprendizaje automático.
   contrasta los precios con el mercado mediante ML.
 - **La hipótesis arquitectónica.** El núcleo (`core/`) no cambia al agregar dominios (civil,
   telecom, industrial, sistemas): se demuestra con `git diff --stat core/` vacío y las pruebas
-  de arquitectura de `tests/unit/test_arquitectura.py` ([CLAUDE.md](../../../CLAUDE.md) — hipótesis central).
+  de arquitectura de `tests/unit/test_arquitectura.py` ([NORMAS.md](../../../NORMAS.md) — hipótesis central).
 - **Los resultados ya medidos** (procedencia y regeneración en
   [plan_redaccion.md §5](../plan_redaccion.md#5-cifras-citables-y-cómo-regenerarlas)):
   7 de 7 inconsistencias detectadas · desviación 0,00 % vs línea base corregida · recálculo de

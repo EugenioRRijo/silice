@@ -1,7 +1,7 @@
 """Fixtures de las pruebas de integración: una base SQLite en memoria ya sembrada.
 
 Ninguna prueba escribe en `data/`: el motor vive en memoria y el script de siembra se ejerce
-sobre `tmp_path` (CLAUDE.md §9 y restricciones del sprint).
+sobre `tmp_path` (NORMAS.md §9 y restricciones del sprint).
 """
 
 from __future__ import annotations

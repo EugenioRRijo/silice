@@ -16,7 +16,7 @@ en el análisis de precios unitarios.
 ## Contenido técnico recogido
 
 Resumen fiel de lo que la nota aporta y que el diseño del prototipo
-(`docs/superpowers/specs/2026-09-16-prototipo-composicion-apu-design.md`) ya usa:
+(`2026-09-16-prototipo-composicion-apu-design.md`) ya usa:
 
 - **Las tres tablas de insumos.** Un análisis de precios unitarios se arma con tres desgloses
   separados: materiales, equipos y mano de obra.

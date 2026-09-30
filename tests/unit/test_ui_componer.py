@@ -6,7 +6,7 @@ recorre `ui.composicion.composicion_desde_tablas` sin Streamlit
 (`tests/integration/test_composicion_extremo_a_extremo.py`). Esta es la primera vez que el
 repositorio ejercita la pantalla misma con `streamlit.testing.v1.AppTest` (Streamlit 1.62.0).
 
-**Caso de prueba, no ejecución real** (CLAUDE.md §1): las composiciones que se guardan aquí son
+**Caso de prueba, no ejecución real** (NORMAS.md §1): las composiciones que se guardan aquí son
 `APU_TUBERIA` de la línea base (`tests/fixtures/apu_linea_base.py`), reetiquetada con el código
 propio `UI-01-TUB` para no depender de si la base sembrada ya trae las partidas `LB-*`; las
 "condiciones del rendimiento" que se teclean son texto de prueba, no una observación de obra.
@@ -81,7 +81,7 @@ CODIGO_UI = "UI-01-TUB"
 APU_UI = dataclasses.replace(APU_TUBERIA, codigo_partida=CODIGO_UI)
 
 #: Condiciones de prueba para RF-33: cualquier texto no vacío basta; declara explícitamente que es
-#: de prueba, no una observación de obra (CLAUDE.md §1).
+#: de prueba, no una observación de obra (NORMAS.md §1).
 CONDICIONES_DE_PRUEBA = (
     "condiciones de prueba de la Sesión P4.1 (tests/unit/test_ui_componer.py): no proviene de una "
     "ejecución medida"
@@ -198,7 +198,7 @@ def test_el_desglose_en_vivo_muestra_el_precio_unitario(monkeypatch, tmp_path):
 
 
 def test_el_desglose_en_vivo_presenta_dos_decimales(monkeypatch, tmp_path):
-    """INV-045. Oraculo: CLAUDE.md §4 (tuberia: costo directo 8,058; PU 10,19) y la fixture."""
+    """INV-045. Oraculo: NORMAS.md §4 (tuberia: costo directo 8,058; PU 10,19) y la fixture."""
     at = _pantalla(monkeypatch, tmp_path / "vacia.db", _filas_de_apu(APU_UI))
     _teclear_cabecera(at, APU_UI)
     at.run()
@@ -354,7 +354,7 @@ def test_de_componer_a_excel_desde_la_pantalla(monkeypatch, tmp_path):
 # 6. Editar una partida existente (UC-11) no puede borrarle el desglose (auditoria del PR #7)
 # -------------------------------------------------------------------------------------------
 #
-# `DEMO-01-INST` es la partida sembrada por `scripts/seed_demo.py` (caso didactico, CLAUDE.md §1):
+# `DEMO-01-INST` es la partida sembrada por `scripts/seed_demo.py` (caso didactico, NORMAS.md §1):
 # 3 materiales, 2 equipos y 2 lineas de mano de obra (una a jornal y otra a destajo). Estas pruebas
 # abren la pantalla **sin** sembrar las tablas: son las que la precarga debe llenar.
 

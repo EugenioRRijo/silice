@@ -2,11 +2,11 @@
 
 Es el único lugar del núcleo donde se redondea: las celdas se escriben con dos decimales porque un
 presupuesto se lee en centavos, mientras que los `Decimal` del modelo conservan todos sus dígitos
-(CLAUDE.md §2.3). La cantidad de decimales no se declara aquí: se toma de
+(NORMAS.md §2.3). La cantidad de decimales no se declara aquí: se toma de
 `core.verification.informe.DECIMALES_PRESENTACION`, que ya la fija para el informe de auditoría.
 
 El libro lleva siempre la hoja de auditoría, aunque el presupuesto no tenga hallazgos: el informe se
-entrega siempre (principio 7 de CLAUDE.md §2), y la hoja enumera las reglas evaluadas (UC‑05 5a).
+entrega siempre (principio 7 de NORMAS.md §2), y la hoja enumera las reglas evaluadas (UC‑05 5a).
 
 La tabla de mano de obra de la hoja APU incluye la columna Modalidad: bajo DESTAJO, `sueldo` no es
 un sueldo diario sino el precio por unidad de partida del artículo 114 de la LOTTT (decisión D9), y

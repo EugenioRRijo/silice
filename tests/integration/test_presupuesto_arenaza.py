@@ -204,7 +204,7 @@ def test_solo_hay_dos_lineas_de_ajuste_en_todo_el_catalogo(sesion_telecom):
 
 def test_la_marca_de_ajuste_no_colisiona_con_la_regla_de_verificacion_r6():
     """La marca se persiste como descripción de insumo y aparecerá en el informe de M1.3, donde
-    "R6" significa `CriterioDepreciacion` (CLAUDE.md §7): no puede contener esa cadena."""
+    "R6" significa `CriterioDepreciacion` (NORMAS.md §7): no puede contener esa cadena."""
     assert "R6" not in MARCA_AJUSTE
 
 

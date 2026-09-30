@@ -2,7 +2,7 @@
 
 Aplica a `<base>..HEAD` la regla de `scripts/meta_alpha.py` (`estado_nucleo_intacto`): falla si un
 commit toca `core/` junto a `adapters/` o `ml/`, o si una rama fusionada que incorpora un dominio
-cambia `core/` (CLAUDE.md seccion 1). A diferencia de las metas de sprint, la base no esta fija: la
+cambia `core/` (NORMAS.md seccion 1). A diferencia de las metas de sprint, la base no esta fija: la
 pone quien llama (el workflow de CI o el desarrollador en local).
 
 Codigos de salida: 0 si la regla se cumple o el rango no tiene commits de dominio; 1 si se viola;

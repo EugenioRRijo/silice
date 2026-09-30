@@ -4,7 +4,7 @@ Generado por `scripts/generar_resultados_ml.py` sobre bases en memoria sembradas
 catalogos de los cuatro dominios; reproducible con
 `uv run python scripts/generar_resultados_ml.py`.
 
-## Compuerta G2: conteo de registros y tecnica (CLAUDE.md §8.1)
+## Compuerta G2: conteo de registros y tecnica (NORMAS.md §8.1)
 
 | Dominio | Registros de APU | Tecnica que dicta la tabla |
 |---|---|---|

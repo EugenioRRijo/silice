@@ -8,7 +8,7 @@ Misma via que `tests/unit/test_ui_componer.py` (que no se importa: una prueba no
 la base (la linea base sembrada, con su lista de precios) vive en `tmp_path`, desviada por el
 objeto modulo `sys.modules["ui.caso"]`; las tablas se siembran por
 `st.session_state[f"{clave}__filas"]` antes del primer `run()`, y la ayuda 1 se sustituye por un
-doble que no sugiere nada. Caso de prueba, no ejecucion real (CLAUDE.md §1).
+doble que no sugiere nada. Caso de prueba, no ejecucion real (NORMAS.md §1).
 """
 
 from __future__ import annotations

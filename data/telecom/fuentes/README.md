@@ -4,7 +4,7 @@ Sesión M1.1 del [PLAN_MULTIDOMINIO.md](../../../PLAN_MULTIDOMINIO.md). Esta car
 estructuración renglón a renglón de los dos presupuestos ARENAZA (telecom). Son **ejercicios
 académicos ficticios**, como el caso civil de la clínica (`data/linea_base/`): documentos con el
 formato de la práctica, no presupuestos de una obra ejecutada ni precios reales
-([CLAUDE.md §1](../../../CLAUDE.md)).
+([NORMAS.md §1](../../../NORMAS.md)).
 
 > **Errata (2026‑09‑15).** Las sesiones M1.1–M4.2 los trataron como «presupuestos reales» y
 > «segunda línea base real». Esa afirmación queda corregida aquí y en la fuente única; las
@@ -106,7 +106,7 @@ recomputación de `cantidad × precio_unitario`). No son la inconsistencia que e
 registrar (esa es el 80/90 del tubo corrugado), pero tampoco se ocultan: quedan anotadas aquí y
 en el docstring de `scripts/extraer_arenaza.py` y de
 `tests/fixtures/presupuestos_arenaza.py`, con el mismo criterio de trazabilidad total de
-CLAUDE.md §2 que ya aplican las siete inconsistencias de la línea base civil.
+NORMAS.md §2 que ya aplican las siete inconsistencias de la línea base civil.
 
 ## Otras diferencias entre "Computos métricos" y "Presupuesto" (presupuesto 2)
 

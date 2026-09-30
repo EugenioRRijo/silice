@@ -172,7 +172,7 @@ def test_estado_nucleo_intacto_falla_si_una_rama_de_adaptador_cambia_core():
     """El agujero que cerró la revisión final (ítem 3): un commit que toca **solo** `core/`.
 
     `git log -- adapters ml` no lo lista, así que la regla por commit no lo ve; el `git diff
-    core/` del rango completo de la rama sí. Es la evidencia que CLAUDE.md §1 atribuye a M9.
+    core/` del rango completo de la rama sí. Es la evidencia que NORMAS.md §1 atribuye a M9.
     """
     ramas = [("9c54669e merge: I5 adaptador telecom (inc/I5-telecom)", ["core/costing/motor.py"])]
 

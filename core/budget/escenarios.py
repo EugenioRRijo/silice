@@ -17,7 +17,7 @@ Las dos variaciones del flujo principal de UC‑08:
   se recalcula. Las composiciones recibidas quedan intactas: son dataclasses congeladas y aquí
   solo se crean copias.
 
-`elaborar` audita siempre, así que cada escenario trae su informe (principio 7 de CLAUDE.md §2):
+`elaborar` audita siempre, así que cada escenario trae su informe (principio 7 de NORMAS.md §2):
 un escenario con hallazgos nuevos es información de sensibilidad, no un defecto.
 """
 
@@ -30,7 +30,7 @@ from decimal import Decimal
 from pandas import DataFrame
 
 # `_porcentaje` y `_comparar` son ayudantes del módulo hermano del mismo paquete: la fórmula de
-# variación porcentual y la tabla por renglón tienen una sola definición (CLAUDE.md §2.1) y
+# variación porcentual y la tabla por renglón tienen una sola definición (NORMAS.md §2.1) y
 # duplicarlas aquí sería repetirla. Mismo patrón que `actualizacion` con `persistencia`.
 from core.budget.actualizacion import Comparativo, _comparar, _porcentaje
 from core.budget.presupuesto import elaborar, exigir_composiciones

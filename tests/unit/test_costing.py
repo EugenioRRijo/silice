@@ -1,8 +1,8 @@
 """Pruebas del motor de costos contra los cinco APU de la línea base (Sesiones I0.2 e I0.3).
 
-Se escribieron antes que el motor (CLAUDE.md §2, principio 5): la línea base verificada existía
+Se escribieron antes que el motor (NORMAS.md §2, principio 5): la línea base verificada existía
 antes que `core.costing`, y el motor se escribió para pasarlas sin modificarlas. Están en verde
-desde la Sesión I0.3 y siguen sin modificarse para ponerlas en verde (CLAUDE.md §9).
+desde la Sesión I0.3 y siguen sin modificarse para ponerlas en verde (NORMAS.md §9).
 
 Contrato del motor:
     calcular_apu(composicion: ComposicionAPU, parametros: ParametrosCosto) -> ResultadoAPU

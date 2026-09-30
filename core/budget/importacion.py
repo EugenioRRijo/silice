@@ -4,7 +4,7 @@ El auditor recibe un presupuesto que el sistema no elaboró. `leer_presupuesto_t
 reconstruye en memoria, **conservando las unidades que escribió su autor** (RF‑24): la unidad de
 cada renglón se guarda también en `especificaciones[CLAVE_UNIDAD_ORIGINAL]`, la convención que
 lee la regla R3, así que «mts» llega intacto al hallazgo. `importar_presupuesto` además lo audita
-(principio 7 de CLAUDE.md §2) y lo persiste con su informe, para que las rutas que ya existen lo
+(principio 7 de NORMAS.md §2) y lo persiste con su informe, para que las rutas que ya existen lo
 sirvan (`GET /presupuestos/{codigo}/informe` y `…/excel`). Expediente C6.4 de
 `docs/bitacora/2026-09-29-C6-expedientes.md`.
 
@@ -22,7 +22,7 @@ sirvan (`GET /presupuestos/{codigo}/informe` y `…/excel`). Expediente C6.4 de
 - `Curva` (opcional): el plan de trabajo del autor, tal cual. Sin ella R2 y R7 se declaran no
   aplicables (UC‑05 2a).
 
-Todo número se lee como texto y se convierte a `Decimal` (CLAUDE.md §2.3), con la misma lectura de
+Todo número se lee como texto y se convierte a `Decimal` (NORMAS.md §2.3), con la misma lectura de
 XLSX celda por celda que las listas de precios (`core.catalog.precios`). No es el formato del libro
 que escribe `exportar_excel`: aquel presenta el presupuesto, este lo describe completo.
 """

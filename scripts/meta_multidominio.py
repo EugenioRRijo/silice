@@ -49,7 +49,7 @@ from scripts.meta_alpha import (  # noqa: E402
 #: Etiqueta puesta al arrancar el sprint multidominio, el punto de partida de sus metas de git.
 BASE_POR_DEFECTO = "m-base"
 
-#: Los cuatro dominios del proyecto (CLAUDE.md seccion 1), en el orden en que aparecen ahi.
+#: Los cuatro dominios del proyecto (NORMAS.md seccion 1), en el orden en que aparecen ahi.
 DOMINIOS: tuple[str, ...] = ("civil", "telecom", "industrial", "sistemas")
 
 #: Cabecera exacta de los CSV de referencia MaPreX (Task 3 del plan de sesiones); solo
@@ -254,7 +254,7 @@ def evaluar_m10_resultados_ml() -> tuple[Estado, str]:
 
 
 def evaluar_m11_nucleo_intacto(base: str) -> tuple[Estado, str]:
-    """La hipotesis central de CLAUDE.md seccion 1, literal: `git diff <base> --stat --
+    """La hipotesis central de NORMAS.md seccion 1, literal: `git diff <base> --stat --
     core/` vacio. A diferencia de `estado_nucleo_intacto` de `meta_alpha.py` (que audita
     commit por commit y rama por rama), esta meta pide solo el diff acumulado del sprint.
     """

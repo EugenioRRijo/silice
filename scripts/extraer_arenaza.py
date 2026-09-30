@@ -2,7 +2,7 @@
 en `data/telecom/fuentes/`: `presupuesto_1_arenaza.csv` (14 renglones, 1109.29 USD) y
 `presupuesto_2_arenaza.csv` (26 renglones, 5410.73 USD).
 
-Unica copia estructurada de los 40 renglones (CLAUDE.md seccion 2, principio DRY)
+Unica copia estructurada de los 40 renglones (NORMAS.md seccion 2, principio DRY)
 ------------------------------------------------------------------------------
 `tests/fixtures/presupuestos_arenaza.py` (`PRESUPUESTO_1`, `PRESUPUESTO_2`) es la UNICA
 transcripcion de los 40 renglones en todo el repositorio. Este script no repite esos datos: los

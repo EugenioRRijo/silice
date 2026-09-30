@@ -1,6 +1,6 @@
 """Tarifas del dominio sistemas (Sesión M3.1): jornales del tabulador CIV jul‑2026 por rol, con Ref,
 y el APU de un punto de función cuyo precio unitario se fijó **a mano** con la fórmula de
-CLAUDE.md §4 antes de correr el motor (`data/sistemas/fuentes/README.md`).
+NORMAS.md §4 antes de correr el motor (`data/sistemas/fuentes/README.md`).
 
 Ningún precio se transcribe aquí: cada valor esperado se lee de `referencia_sistemas.csv` (M0.2)
 o se deriva del fixture. Las regresiones exactas son las del cálculo manual: costo directo 87,741 y

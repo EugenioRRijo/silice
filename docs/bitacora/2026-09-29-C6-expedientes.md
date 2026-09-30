@@ -3,14 +3,14 @@
 **Fecha:** 2026‑09‑29 · **Rama:** `inc/cierre-C6-N` (pista N de C6, desde `c47b57e`) · **Plan:**
 `C6-plan.md` del directorio de control de C6 (§2 y §6) · **Inventario:**
 [docs/auditoria/2026-09-inventario.md](../auditoria/2026-09-inventario.md) · **Spec:**
-[§5, fila C6, y §10, enmienda del 2026‑09‑29](../superpowers/specs/2026-09-23-plan-cierre-tesis-design.md)
+§5, fila C6, y §10, enmienda del 2026‑09‑29
 · **Bitácora de la fase:** [2026-09-23-cierre.md, «Fase C6»](2026-09-23-cierre.md).
 
 La enmienda de C6 autoriza exactamente cinco commits que tocan `core/`, uno por hallazgo (INV‑093,
 INV‑090, INV‑086, INV‑076 e INV‑099), cada uno con su expediente previo en este archivo, commiteado
 antes de su código, sin mezclar capas (los llamadores de `api/` y `ui/` van en commits de otras
 pistas), sin cambiar ningún contrato de `core/contracts/` y con la línea base (1 586,61 USD y 7 de 7)
-intacta. Si un expediente concluyera que hace falta un contrato, la fase se detiene (CLAUDE.md §5).
+intacta. Si un expediente concluyera que hace falta un contrato, la fase se detiene (NORMAS.md §5).
 El método es el de los expedientes C3 y C5
 ([2026-09-24-C3-expedientes.md](2026-09-24-C3-expedientes.md),
 [2026-09-28-C5-expedientes.md](2026-09-28-C5-expedientes.md)). Las citas archivo:línea son de
@@ -257,7 +257,7 @@ que arma el `Presupuesto` en Python (inventario, INV‑076; `docs/plan_pruebas.m
 `tests/fixtures/presupuesto_tabular.py`.
 
 *Formato: un solo XLSX* (el CSV no tiene hojas), con todo número leído como texto y convertido a
-`Decimal` (CLAUDE.md §2.3), como `leer_lista_precios`. Hojas y columnas (fuente única: las
+`Decimal` (NORMAS.md §2.3), como `leer_lista_precios`. Hojas y columnas (fuente única: las
 constantes de `core/budget/importacion.py`):
 
 | Hoja | Columnas | Notas |

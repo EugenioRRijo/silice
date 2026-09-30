@@ -7,7 +7,7 @@ campo ni justificacion. Si el guardado no registro un rendimiento nuevo, la pant
 y lo avisa: el ultimo rendimiento de la partida seria otro y la justificacion se ligaria en
 silencio al equivocado (hallazgo 1 de la revision de requisitos de N y N-5 de la de arquitectura).
 
-Caso didactico (CLAUDE.md §1): la tuberia `LB-02-TUB` de la linea base, sembrada por
+Caso didactico (NORMAS.md §1): la tuberia `LB-02-TUB` de la linea base, sembrada por
 `scripts.seed.sembrar` con rendimiento 100, mas un segundo rendimiento estimado de 110 registrado
 por el nucleo directo. Aritmetica a mano del oraculo: dos observaciones, rango [100, 110];
 teclear 150 queda fuera del rango (advierte) y 105 dentro (no advierte). El arnes es el de

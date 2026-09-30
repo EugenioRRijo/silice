@@ -4,7 +4,7 @@
 > [docs/metodologia.md §2.2](metodologia.md#22-compuertas))**. Redactado en la Sesión 0.2 y
 > contrastado con `core/models/entidades.py` en la fase C4 del cierre (2026‑09‑28); en la fase C6
 > (2026‑09‑29) gana la tabla aditiva `justificacion_rendimiento` (INV‑093). Materializa en
-> persistencia los contratos de interfaz de [CLAUDE.md §5](../CLAUDE.md) sin ampliarlos ni
+> persistencia los contratos de interfaz de [NORMAS.md §5](../NORMAS.md) sin ampliarlos ni
 > contradecirlos. Los modelos SQLAlchemy de
 > `core/models/` (Sesión I0.4) se escriben a partir de este documento y no lo preceden: si el código
 > necesita una columna que aquí no está, primero se corrige el documento.
@@ -15,11 +15,11 @@
 |---|---|---|
 | Reconstruir cualquier presupuesto a la fecha en que se elaboró | UC‑02, RNF‑02 | los precios se versionan: `ListaPrecios` con vigencia y `CambioPrecio` como historial; el presupuesto referencia la lista con la que se valoró |
 | Distinguir rendimiento estimado de rendimiento medido | UC‑06 | `Rendimiento.tipo` ∈ {estimado, medido}; un rendimiento medido referencia obligatoriamente una `Ejecucion` (restricción `CHECK` en la tabla, no solo en Python) |
-| `Decimal` para todo lo monetario y dimensional | CLAUDE.md §2 | tipo propio `DecimalExacto` (§7); nunca `Float`, y tampoco `Numeric` sobre SQLite |
-| Toda cantidad es trazable a su origen | CLAUDE.md §2 | `ItemComputo` persistido con `origen_id`, `origen_tipo`, `regla`, `parametros` |
-| El núcleo no conoce dominios concretos | CLAUDE.md §5 | `Partida.dominio` es un dato, no una rama de código; ninguna tabla es específica de un dominio |
+| `Decimal` para todo lo monetario y dimensional | NORMAS.md §2 | tipo propio `DecimalExacto` (§7); nunca `Float`, y tampoco `Numeric` sobre SQLite |
+| Toda cantidad es trazable a su origen | NORMAS.md §2 | `ItemComputo` persistido con `origen_id`, `origen_tipo`, `regla`, `parametros` |
+| El núcleo no conoce dominios concretos | NORMAS.md §5 | `Partida.dominio` es un dato, no una rama de código; ninguna tabla es específica de un dominio |
 | El histórico de cambios alimenta el módulo predictivo | I1, I6.3 | `CambioPrecio` guarda insumo, precio anterior, precio nuevo, fecha; `IncidenciaCambio` guarda el efecto por partida |
-| El informe de auditoría se persiste, no solo se imprime | CLAUDE.md §2, UC‑05 | `Hallazgo` cuelga del presupuesto auditado y conserva los `origen_id` involucrados |
+| El informe de auditoría se persiste, no solo se imprime | NORMAS.md §2, UC‑05 | `Hallazgo` cuelga del presupuesto auditado y conserva los `origen_id` involucrados |
 
 ## 2. Entidades
 
@@ -665,7 +665,7 @@ severidad ADVERTENCIA. Se decide con el tutor en la Sesión I4, igual que R7.
 
 ### 7.1 `DecimalExacto`: el tipo monetario y dimensional
 
-CLAUDE.md §2 exige `Decimal` en todo número monetario y dimensional, sin `float` en ningún punto del
+NORMAS.md §2 exige `Decimal` en todo número monetario y dimensional, sin `float` en ningún punto del
 camino. Sobre SQLite eso descarta las dos opciones evidentes:
 
 - `Float` está prohibido por el principio;

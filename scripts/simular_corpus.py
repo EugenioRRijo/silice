@@ -8,10 +8,10 @@ y se arma con la **misma** capa pura que usa la pantalla (`fila_*_desde_referenc
 `composicion_desde_tablas`): el corpus ejercita ese codigo, no una copia de el.
 
 **Que no es.** No es un dato de mercado, no proviene de obra ejecutada, no alimenta `ml/` y
-no cuenta para ninguna compuerta: en particular, no cuenta para la compuerta G2 (CLAUDE.md §8.1),
+no cuenta para ninguna compuerta: en particular, no cuenta para la compuerta G2 (NORMAS.md §8.1),
 que sigue cruzada con degradacion a reglas. Las cantidades, los rendimientos y la combinacion de
 insumos de cada partida `SIM-*` son sorteados; solo los precios unitarios de los insumos vienen de
-la referencia MaPreX (CLAUDE.md §1, naturaleza de los datos).
+la referencia MaPreX (NORMAS.md §1, naturaleza de los datos).
 
 **Cuarentena, en dos capas.**
 

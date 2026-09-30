@@ -12,7 +12,7 @@ supuestos declarados. Este índice solo dice qué hay y qué adaptador lo consum
 | `industrial/activos_planta.csv` | industrial | `adapters/industrial/adaptador.py` (`AdaptadorIndustrial`) | 10 activos de planta con frecuencia anual de intervención y horizonte; la cantidad es intervenciones en el horizonte | I5 |
 | `sistemas/alcance_funcional.csv` | sistemas | `adapters/sistemas/adaptador.py` (`AdaptadorSistemas`) | 9 casos de uso en 3 módulos con entradas, salidas, consultas, archivos e interfaces; la cantidad son puntos de función sin ajustar | I5 |
 | `precios/lista_2026-06-01.csv` | — (transversal) | `core/catalog/precios.py` (UC‑02) | lista de precios de muestra: cemento 15 → 18, arena 30 → 33, resto igual que la línea base | I1 |
-| `tanquilla.ifc` | civil | `adapters/civil/` (I3.1) | **pendiente**: modelar una sola tanquilla en Revit o Bonsai, con el Pset `Pset_APU` (`COVENIN_Codigo`, `Partida_Descripcion`, `Unidad`) y exportar a IFC 4. Compuerta G1 abierta; mientras tanto el adaptador tabular es la entrada civil (CLAUDE.md §8.2) | antes de I3.1 |
+| `tanquilla.ifc` | civil | `adapters/civil/` (I3.1) | **pendiente**: modelar una sola tanquilla en Revit o Bonsai, con el Pset `Pset_APU` (`COVENIN_Codigo`, `Partida_Descripcion`, `Unidad`) y exportar a IFC 4. Compuerta G1 abierta; mientras tanto el adaptador tabular es la entrada civil (NORMAS.md §8.2) | antes de I3.1 |
 
 Nota sobre telecom: los presupuestos ARENAZA usan una política de mano de obra distinta ("50 % del
 total") en lugar del APU por rendimiento. El análisis de cómo representarla sin tocar `core/` está en

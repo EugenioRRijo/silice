@@ -8,7 +8,7 @@
 Cerrar el primer caso de uso de valor percibido: el usuario carga una lista de precios nueva
 (CSV o XLSX), el sistema identifica los insumos afectados, **revalora** el presupuesto guardado sin
 editar ninguna composición, registra qué cambió y con qué incidencia por partida, emite el informe
-comparativo y audita la versión nueva (el informe se genera siempre, principio 7 de CLAUDE.md §2).
+comparativo y audita la versión nueva (el informe se genera siempre, principio 7 de NORMAS.md §2).
 Interfaz mínima en Streamlit para hacerlo sin escribir código.
 
 ## Qué se hizo
@@ -42,7 +42,7 @@ Commit: `feat(core): actualizacion masiva de precios con registro de cambios`.
 | La lista nueva **copia todos** los precios de la vigente y sobrescribe los del archivo | Así vale por sí sola para reconstruir cualquier APU; una lista parcial haría fallar `Catalogo.composicion` con `CatalogoIncompleto` en la primera partida con un insumo sin precio. La lista anterior no se toca: es inmutable desde que un presupuesto la referencia |
 | Emparejamiento por (tipo, descripción **normalizada**, unidad **normalizada**), no por código | El archivo lo escribe un proveedor que no conoce los códigos internos. La descripción pasa por `core.verification.texto.normalizar_texto` (única normalización de texto del sistema) y la unidad por `normalizar_unidad` (única tabla de alias): DRY, y `TUBERIA PVC 4"` casa con `Tubería PVC 4 pulg` |
 | Una fila del archivo actualiza **todas las variantes** homónimas de esa descripción y unidad | Hallazgo 2. Es la única lectura posible con las cuatro columnas que define el brief |
-| `Decimal` construido desde el **texto** del archivo (`dtype=str`, `keep_default_na=False`) | Si pandas leyera los precios como números, el importe ya habría pasado por `float` (CLAUDE.md §2.3). Punto como separador decimal; los errores citan archivo y número de fila (UC‑02, flujo 2a) |
+| `Decimal` construido desde el **texto** del archivo (`dtype=str`, `keep_default_na=False`) | Si pandas leyera los precios como números, el importe ya habría pasado por `float` (NORMAS.md §2.3). Punto como separador decimal; los errores citan archivo y número de fila (UC‑02, flujo 2a) |
 | `actualizar_precios` conserva la firma del brief y añade `plan: Sequence[PeriodoPlan] \| None = None` | Sin plan el presupuesto nuevo no lleva curva y R2 lo hace constar como INFO, que es el comportamiento ya definido en `elaborar`; con plan, la curva del presupuesto nuevo cierra en su total |
 | El presupuesto nuevo se fecha en `lista_nueva.fecha_vigencia` y hereda moneda y los cuatro parámetros de costo del anterior | Es la fecha en que esos precios pasan a valer. Lo único que se mueve son los precios: las cantidades, los ítems y la estructura de costos son los mismos, que es lo que hace comparables las dos versiones |
 | `IncidenciaCambio` guarda el precio unitario de la partida **con la lista anterior** y **con la nueva** | Es la definición literal de las dos columnas en `docs/modelo_datos.md` §2.2. Ver hallazgo 4 |

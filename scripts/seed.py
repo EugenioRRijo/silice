@@ -3,7 +3,7 @@
 Este script importa `tests.fixtures.apu_linea_base` a propósito, como también lo hacen, fuera
 de `tests/`, `scripts/generar_resultados_ml.py`, `scripts/medir_rnf03.py` y
 `scripts/meta_prototipo.py`: ese fixture es la única copia de la línea base en todo el sistema
-(CLAUDE.md §2, principio DRY). Duplicar aquí los cinco APU sería exactamente lo que el principio
+(NORMAS.md §2, principio DRY). Duplicar aquí los cinco APU sería exactamente lo que el principio
 prohíbe. La lista completa de los scripts que dependen de `tests/fixtures/` está en
 `docs/arquitectura.md` §4.
 
@@ -192,7 +192,7 @@ def lineas_presupuesto(presupuesto: Presupuesto, moneda: str) -> list[str]:
 
 
 def linea_auditoria(informe: InformeAuditoria) -> str:
-    """La linea del informe de auditoria, que todo resumen imprime (principio 7, CLAUDE.md §2)."""
+    """La linea del informe de auditoria, que todo resumen imprime (principio 7, NORMAS.md §2)."""
     return (
         f"Auditoria: {len(informe.hallazgos)} hallazgo(s), "
         f"{'CUMPLE' if informe.cumple else 'NO CUMPLE'}"

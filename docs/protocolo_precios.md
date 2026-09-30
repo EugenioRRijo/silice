@@ -7,7 +7,7 @@ sistemas) antes de que entre al catálogo mediante UC‑02. Los principios 1‑5
 silenciosos", "una copia por dominio", "el simulador jamás se presenta como dato de mercado") rigen
 todo lo que sigue; este documento solo los hace operativos.
 
-Las sesiones M1.1‑M3.2 citan este protocolo en vez de repetirlo (principio DRY, CLAUDE.md §2).
+Las sesiones M1.1‑M3.2 citan este protocolo en vez de repetirlo (principio DRY, NORMAS.md §2).
 
 ---
 
@@ -49,7 +49,7 @@ Todo precio se registra con:
 
 1. `fecha`: el día en que se obtuvo la cotización o se leyó el listado (no la fecha en que se llena
    la plantilla).
-2. La **tasa BCV del día**, si la fuente cotiza en bolívares. El sistema opera en USD (CLAUDE.md §1,
+2. La **tasa BCV del día**, si la fuente cotiza en bolívares. El sistema opera en USD (NORMAS.md §1,
    §4); toda conversión Bs→USD debe declarar la tasa usada y su fecha, siguiendo exactamente la
    regla que ya aplica `data/precios/maprex_2026-07/README.md` a la tasa **633,3644 Bs/USD al
    01/07/2026** ("toda conversión a USD que se derive de estos PDF debe registrar esa tasa y esa

@@ -1,7 +1,7 @@
 """UC-03 (Sesion I2): normalizacion semantica de descripciones de partida.
 
 `ml.normalization.NormalizadorPartidas` recibe el catalogo como pares (codigo, descripcion) planos
--- `ml/` solo puede importar `core.contracts` (CLAUDE.md §2; `test_arquitectura.py`), asi que no
+-- `ml/` solo puede importar `core.contracts` (NORMAS.md §2; `test_arquitectura.py`), asi que no
 conoce la base de datos: la capa de composicion (UI) le pasa lo que consulta `core.catalog` -- y
 devuelve las partidas mas similares por similitud del coseno, ordenadas de mayor a menor puntaje y
 nunca por debajo del umbral declarado (RF-15).

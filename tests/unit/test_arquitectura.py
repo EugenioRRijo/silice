@@ -1,4 +1,4 @@
-"""Hace ejecutable la hipótesis central (CLAUDE.md §1 y §2).
+"""Hace ejecutable la hipótesis central (NORMAS.md §1 y §2).
 
 - adapters/ importa solo la biblioteca estándar, core.contracts, su propio paquete y los terceros
   declarados, con importación absoluta; ml/ importa de core solo core.contracts;
@@ -58,7 +58,7 @@ def test_ml_solo_importa_core_contracts_del_nucleo(archivo):
     prohibidos = [m for m in _imports(archivo) if _es_core_fuera_de_contracts(m)]
     assert not prohibidos, (
         f"{_ruta(archivo)} importa {prohibidos}; solo se permite core.contracts "
-        "(CLAUDE.md §2). Si parece imprescindible, es un hallazgo de la investigación: "
+        "(NORMAS.md §2). Si parece imprescindible, es un hallazgo de la investigación: "
         "documentarlo en docs/bitacora/."
     )
 
@@ -86,7 +86,7 @@ def test_la_guardia_cubre_todo_paquete_de_primer_nivel_fuera_del_nucleo():
     """INV-010: la tupla vigilada no puede olvidar un paquete del repositorio.
 
     Todo directorio de primer nivel con `__init__.py`, salvo `core`, es un paquete que el nucleo no
-    puede importar (CLAUDE.md §2; spec de cierre §4, criterio D: `core/` no importa de `adapters/`,
+    puede importar (NORMAS.md §2; spec de cierre §4, criterio D: `core/` no importa de `adapters/`,
     `ml/`, `ui/`, `api/` ni `scripts/`). `tests` entra porque tambien es importable
     (`tests/__init__.py`). Un paquete nuevo (p. ej. `asistente`) hace fallar esta prueba hasta
     que se agrega a la tupla.
@@ -125,7 +125,7 @@ def _import_permitido(adaptador: str, modulo: str) -> bool:
 
 @pytest.mark.parametrize("adaptador", sorted(TERCEROS_POR_ADAPTADOR))
 def test_un_adaptador_solo_importa_contratos_su_paquete_y_sus_terceros(adaptador):
-    """INV-018: CLAUDE.md §2 y §5 para cada adaptador, con importaciones anidadas incluidas.
+    """INV-018: NORMAS.md §2 y §5 para cada adaptador, con importaciones anidadas incluidas.
 
     Las relativas se rechazan todas: `from ..core import costing` escaparia a `_imports`."""
     archivos = _archivos(f"adapters/{adaptador}")

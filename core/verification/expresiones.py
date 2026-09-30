@@ -3,7 +3,7 @@
 `ItemComputo.regla` guarda como texto la expresión que produjo la cantidad (por ejemplo
 ``"n * (a**2 - (a - 2*e)**2) * h"``) y `ItemComputo.parametros` los valores con los que se evaluó.
 La regla R1 la vuelve a evaluar y compara; la regla R5 hace lo mismo con el balance volumétrico.
-El núcleo no puede reutilizar el evaluador de `adapters/civil/` (importaría un adaptador, CLAUDE.md
+El núcleo no puede reutilizar el evaluador de `adapters/civil/` (importaría un adaptador, NORMAS.md
 §2), así que tiene el suyo: la duplicación es un hallazgo registrado en la bitácora de la Sesión I4,
 no un descuido.
 
@@ -11,7 +11,7 @@ Se acepta únicamente el subconjunto aritmético: suma, resta, multiplicación, 
 negación unaria, nombres de parámetro y constantes numéricas. Cualquier otro nodo del árbol
 sintáctico (llamadas, atributos, índices, condicionales, comparaciones, cadenas) se rechaza. Las
 constantes se leen del texto fuente y se convierten con `Decimal(str)`: pasar por `float` perdería
-precisión y contradiría CLAUDE.md §2.
+precisión y contradiría NORMAS.md §2.
 """
 
 from __future__ import annotations
@@ -35,7 +35,7 @@ class ExpresionInvalida(ValueError):  # noqa: N818
     """La expresión no es analizable o usa una construcción que no es aritmética pura.
 
     El nombre no lleva el sufijo `Error` que pide la convención inglesa de N818: el proyecto
-    escribe sus identificadores en español (CLAUDE.md §3) y "Invalida" ya nombra la falla.
+    escribe sus identificadores en español (NORMAS.md §3) y "Invalida" ya nombra la falla.
     """
 
 
@@ -115,7 +115,7 @@ def _evaluar_nodo(nodo: ast.AST, fuente: str, valores: Mapping[str, Decimal]) ->
         if not isinstance(valor, Decimal):
             # Un `float` en los parámetros haría fallar la aritmética (o la comparación posterior
             # de R1) con `TypeError`, fuera del alcance de las reglas: el informe no se emitiría
-            # (principio 7 de CLAUDE.md §2). Aquí se convierte en un dato inválido reportable.
+            # (principio 7 de NORMAS.md §2). Aquí se convierte en un dato inválido reportable.
             raise ExpresionInvalida(
                 f"el parametro {nodo.id!r} no es Decimal sino {type(valor).__name__}"
             )

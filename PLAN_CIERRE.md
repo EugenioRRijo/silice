@@ -1,17 +1,17 @@
 # PLAN_CIERRE — final, límite y corrección metodológica de la tesis
 
 **Diseño que lo fundamenta (fuente única del final, del límite y de los criterios):**
-[docs/superpowers/specs/2026-09-23-plan-cierre-tesis-design.md](docs/superpowers/specs/2026-09-23-plan-cierre-tesis-design.md),
+2026-09-23-plan-cierre-tesis-design.md,
 aprobado por Eugenio el 2026‑09‑23 tras dos rondas de los cuatro encargos. Este plan no repite sus
 criterios: los enlaza.
 
 **Planes detallados (uno por fase, se escriben al abrirla):**
-- C0: [docs/superpowers/plans/2026-09-23-cierre-c0-inventario.md](docs/superpowers/plans/2026-09-23-cierre-c0-inventario.md)
-- C3: [docs/superpowers/plans/2026-09-24-cierre-c3-interfaz-scripts.md](docs/superpowers/plans/2026-09-24-cierre-c3-interfaz-scripts.md),
-  que ejecuta la fase U1 del plan de UI, [docs/superpowers/plans/2026-09-23-ui-recorrido-guiado-u0-u1.md](docs/superpowers/plans/2026-09-23-ui-recorrido-guiado-u0-u1.md),
+- C0: 2026-09-23-cierre-c0-inventario.md
+- C3: 2026-09-24-cierre-c3-interfaz-scripts.md,
+  que ejecuta la fase U1 del plan de UI, 2026-09-23-ui-recorrido-guiado-u0-u1.md,
   enmendado al abrir C3 (spec §5 y §10)
-- C1: [docs/superpowers/plans/2026-09-23-cierre-c1-nucleo.md](docs/superpowers/plans/2026-09-23-cierre-c1-nucleo.md)
-- C2: [docs/superpowers/plans/2026-09-24-cierre-c2-adaptadores-ml-api.md](docs/superpowers/plans/2026-09-24-cierre-c2-adaptadores-ml-api.md)
+- C1: 2026-09-23-cierre-c1-nucleo.md
+- C2: 2026-09-24-cierre-c2-adaptadores-ml-api.md
 - C4, C5, C6, Med, U2/U3: se planifican al cruzar la compuerta anterior, con el inventario ya aprobado.
 
 **Bitácora:** `docs/bitacora/2026-09-23-cierre.md` (la crea la Tarea 1 de C0).

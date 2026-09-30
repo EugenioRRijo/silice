@@ -36,7 +36,7 @@ usuario («retomemos la sesión de trabajo»).
 |---|---|
 | Medir RNF‑03 con un script versionado (`scripts/medir_rnf03.py`) y no con una cifra suelta en el documento | Mismo patrón que `generar_resultados_ml.py`: toda métrica del capítulo de resultados debe poder regenerarse con un comando; una medición irrepetible no es evidencia |
 | Replicar los 5 APU reales hasta 100 partidas en vez de inventar composiciones sintéticas | Lo que RNF‑03 mide es volumen de recálculo, no variedad; réplicas de APU auditados mantienen el escenario dentro de datos verificados (DRY sobre el fixture) |
-| La evidencia numérica vive en `plan_pruebas.md` §9–§10 y `calidad_iso25010.md` la interpreta | Un solo lugar por hecho (CLAUDE.md §2.1); la evaluación cambia de opinión, el registro no |
+| La evidencia numérica vive en `plan_pruebas.md` §9–§10 y `calidad_iso25010.md` la interpreta | Un solo lugar por hecho (NORMAS.md §2.1); la evaluación cambia de opinión, el registro no |
 | RF‑30/31 declarados **pendientes** en el plan, no «cubiertos por diseño» | El plan de pruebas es el documento donde mentir sale más caro: los dos RF sin prueba quedan en fila propia con causa y referencia; los 26 esenciales sí están todos en verde |
 | Cobertura medida sobre `core`, `adapters`, `ml` y `api` (no `ui/` ni `scripts/`) | La meta de RNF‑06 es sobre el núcleo; adapters/ml/api se reportan como contexto. La UI de Streamlit se prueba por humo (importación) y medir sus páginas daría un número sin significado |
 

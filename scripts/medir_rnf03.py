@@ -15,7 +15,7 @@ Uso:
     uv run python scripts/medir_rnf03.py --partidas 50    # otro tamaño
 
 Como scripts/seed.py, importa `tests.fixtures.apu_linea_base` a propósito: es la única copia de la
-línea base (CLAUDE.md §2, DRY). Sale con código 0 si cumple la meta y 1 si no.
+línea base (NORMAS.md §2, DRY). Sale con código 0 si cumple la meta y 1 si no.
 """
 
 from __future__ import annotations

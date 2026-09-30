@@ -2,7 +2,7 @@
 
 Hermano de `scripts/seed.py` (que hace lo mismo con la línea base civil) y, como aquel, el único
 módulo fuera de `tests/` que importa su fixture: `tests/fixtures/presupuestos_arenaza.py` es la
-única copia de los dos presupuestos ARENAZA en todo el sistema (CLAUDE.md §2, principio DRY). Aquí
+única copia de los dos presupuestos ARENAZA en todo el sistema (NORMAS.md §2, principio DRY). Aquí
 **no se escribe ningún número del PDF**: todos se leen del fixture.
 
 Uso::
@@ -77,7 +77,7 @@ Los cuatro mecanismos de los renglones que el PDF no cierra
    ``depreciacion = 1,00``, el factor que el PDF aplica de hecho al cargar la herramienta completa a
    un solo presupuesto. Con ``rendimiento = 1`` el importe es el impreso (90,00). Que la herramienta
    se impute al 100 % es una observación para M1.3 (regla de verificación **R6**,
-   ``CriterioDepreciacion``, CLAUDE.md §7), no un ajuste de esta capa.
+   ``CriterioDepreciacion``, NORMAS.md §7), no un ajuste de esta capa.
 
 La política de mano de obra "50 % del presupuesto total"
 --------------------------------------------------------
@@ -87,7 +87,7 @@ total"*. Se implementa con la **OPCIÓN 1** del hallazgo 1 de
 ``docs/bitacora/2026-08-29-I5-telecom.md``: ``con_mano_obra`` arma, **fuera del motor**, una
 ``LineaManoObra`` sintética de una "cuadrilla" cuyo sueldo se despeja para que la mano de obra del
 APU sea la fracción pedida del costo directo. El motor de costos no cambia (sigue siendo la función
-pura de CLAUDE.md §4) y `core/` queda intacto.
+pura de NORMAS.md §4) y `core/` queda intacto.
 
 Lectura adoptada: "el presupuesto total" es la cifra impresa al pie del PDF (la suma de los
 renglones, que son todos suministros), de modo que la mano de obra es 0,50 x total impreso y se
@@ -215,7 +215,7 @@ RENGLONES_HERRAMIENTA: frozenset[tuple[int, int]] = frozenset({(1, 12), (2, 26)}
 DEPRECIACION_HERRAMIENTA = Decimal("1.00")
 #: Prefijo de la línea que reproduce un total impreso contradictorio (mecanismo 2 del módulo).
 #: No contiene "R6" a propósito: en este repositorio "R6" es la regla de verificación
-#: `CriterioDepreciacion` (CLAUDE.md §7) y esta marca se persiste como descripción de insumo, así
+#: `CriterioDepreciacion` (NORMAS.md §7) y esta marca se persiste como descripción de insumo, así
 #: que un "R6" aquí se leería como esa regla en el informe de auditoría de la Sesión M1.3.
 MARCA_AJUSTE = "Ajuste total impreso"
 #: Regla trazable del tubo corrugado del presupuesto 2 (Sesión M1.3, ver `item_de`): una referencia
@@ -367,7 +367,7 @@ def item_de(numero: int, renglon: RenglonPresupuesto) -> ItemComputo:
     (`TrazabilidadGeometrica`) compare la cantidad impresa en "Presupuesto" (90, la que queda en
     `cantidad`) contra la de "Computos metricos" (80, en `parametros`) y emita el hallazgo con este
     `origen_id`. No se inventa un mecanismo nuevo en `core/`: R1 ya compara cualquier `regla`
-    declarada contra su evaluación, sin exigir que sea una fórmula geométrica (CLAUDE.md §7, R1);
+    declarada contra su evaluación, sin exigir que sea una fórmula geométrica (NORMAS.md §7, R1);
     aquí la "regla" es la referencia directa al parámetro que ya viaja con el ítem.
     """
     especificaciones = {CLAVE_UNIDAD_ORIGINAL: renglon.unidad} if renglon.unidad else {}
@@ -418,7 +418,7 @@ def con_mano_obra(
 
     El despeje usa los parámetros recibidos, así que la política se cumple también si algún día se
     costea este dominio con FCAS o bono distintos de cero. `core.costing` no cambia: la política se
-    resuelve antes de llamarlo (CLAUDE.md §2, principio 4).
+    resuelve antes de llamarlo (NORMAS.md §2, principio 4).
     """
     if composicion.mano_obra:
         raise ValueError(

@@ -1,7 +1,7 @@
 """Cómputo métrico del caso auditado, como `ItemComputo` del contrato.
 
 Traduce cada línea de `apu_linea_base.PRESUPUESTO_AUDITADO` (la única copia de los datos, principio
-DRY de CLAUDE.md §2) a la forma que consume el núcleo. Aquí no se inventa ningún número: todas las
+DRY de NORMAS.md §2) a la forma que consume el núcleo. Aquí no se inventa ningún número: todas las
 cantidades, unidades y descripciones vienen del PDF transcrito en el Sprint 0.
 
 La unidad que escribió el proyectista se guarda además en `especificaciones[CLAVE_UNIDAD_ORIGINAL]`
