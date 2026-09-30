@@ -1,13 +1,13 @@
 """Normalización del texto libre que comparan las reglas de verificación.
 
-Único lugar del sistema donde se normaliza texto (principio DRY, CLAUDE.md §2). Las descripciones
+Único lugar del sistema donde se normaliza texto (principio DRY, NORMAS.md §2). Las descripciones
 de un APU, de un cómputo y de una especificación las escriben personas distintas en momentos
 distintos: `Tubería PVC de 4"`, `TUBERIA PVC 4 PULGADAS` y `tuberia pvc 4 pulg` son el mismo dato.
 Antes de compararlos (reglas R4 y R6) se llevan todos a una misma forma: minúsculas, sin
 diacríticos, con una sola grafía para la pulgada, punto como separador decimal y espacios simples.
 
 `formatear_decimal` es lo contrario: presenta un `Decimal` para un informe. Vive aquí porque el
-redondeo a dos decimales de CLAUDE.md §2 es una decisión de presentación, y hay una sola copia.
+redondeo a dos decimales de NORMAS.md §2 es una decisión de presentación, y hay una sola copia.
 """
 
 from __future__ import annotations
@@ -76,7 +76,7 @@ def pares_numero_unidad(tokens_del_texto: list[str]) -> list[tuple[str, str]]:
 def formatear_decimal(valor: Decimal, decimales: int | None = None) -> str:
     """Texto de un `Decimal` para un informe, sin notación exponencial.
 
-    Con `decimales` redondea a esa cantidad (dos, al presentar montos: CLAUDE.md §2); sin ella
+    Con `decimales` redondea a esa cantidad (dos, al presentar montos: NORMAS.md §2); sin ella
     conserva el valor exacto y solo recorta los ceros finales, para que la evidencia de un
     hallazgo no pierda dígitos.
     """

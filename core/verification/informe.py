@@ -1,4 +1,4 @@
-"""Informe de auditoría: se genera siempre, sin que el usuario lo pida (CLAUDE.md §2.7).
+"""Informe de auditoría: se genera siempre, sin que el usuario lo pida (NORMAS.md §2.7).
 
 `auditar` corre las siete reglas sobre un presupuesto y devuelve un `InformeAuditoria` inmutable con
 los hallazgos ordenados y con lo necesario para atribuir cada hallazgo a su partida.
@@ -124,7 +124,7 @@ class InformeAuditoria:
         """Informe legible: cabecera, resumen por severidad, reglas evaluadas y tabla de hallazgos.
 
         Los montos y cantidades de la tabla se redondean a dos decimales, que es el único lugar
-        donde se redondea (CLAUDE.md §2.3); la descripción de cada hallazgo conserva el valor
+        donde se redondea (NORMAS.md §2.3); la descripción de cada hallazgo conserva el valor
         exacto que lo motivó. Sin hallazgos, el informe se emite igual (UC‑05 5a): declara las
         reglas evaluadas y dice «Sin hallazgos.» en vez de pintar tablas vacías.
         """

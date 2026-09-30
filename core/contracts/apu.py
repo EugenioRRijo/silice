@@ -1,4 +1,4 @@
-"""Entrada y salida del motor de costos, y registro de rendimientos (CLAUDE.md §4 y §5)."""
+"""Entrada y salida del motor de costos, y registro de rendimientos (NORMAS.md §4 y §5)."""
 
 from __future__ import annotations
 
@@ -141,7 +141,7 @@ class ComposicionAPU:
 
 @dataclass(frozen=True, slots=True)
 class ParametrosCosto:
-    """Factores de la estructura de costos. Por defecto, los de la línea base (CLAUDE.md §4).
+    """Factores de la estructura de costos. Por defecto, los de la línea base (NORMAS.md §4).
 
     fcas: Factor de Costos Asociados al Salario, como fracción (6.00 = prestaciones del 600 %).
     bono_alimentacion: monto diario por obrero, en la moneda del presupuesto.

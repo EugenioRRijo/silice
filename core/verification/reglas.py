@@ -1,4 +1,4 @@
-"""Las siete reglas de verificación de consistencia (CLAUDE.md §7).
+"""Las siete reglas de verificación de consistencia (NORMAS.md §7).
 
 Cada regla es una clase `ReglaVerificacion` que recibe un `Presupuesto` y devuelve una lista de
 `Hallazgo`. Ninguna lanza excepciones por datos. A una regla que le falta un dato (un parámetro

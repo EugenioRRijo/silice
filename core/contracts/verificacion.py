@@ -1,4 +1,4 @@
-"""Contrato de las reglas de verificación y de sus hallazgos (CLAUDE.md §7)."""
+"""Contrato de las reglas de verificación y de sus hallazgos (NORMAS.md §7)."""
 
 from __future__ import annotations
 

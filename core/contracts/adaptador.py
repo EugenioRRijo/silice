@@ -1,4 +1,4 @@
-"""Contrato de los adaptadores de dominio (CLAUDE.md §5)."""
+"""Contrato de los adaptadores de dominio (NORMAS.md §5)."""
 
 from __future__ import annotations
 

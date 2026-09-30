@@ -4,7 +4,7 @@ Tres responsabilidades, en el orden en que las usa el caso de uso:
 
 1. **Leer** un archivo CSV o XLSX con las columnas `tipo`, `insumo`, `unidad` y `precio`. Todo
    importe se construye con `Decimal` **desde el texto** del archivo, nunca desde un `float`
-   (CLAUDE.md §2.3). El CSV ya es texto en el archivo: `pandas.read_csv(dtype=str)` lo lee tal
+   (NORMAS.md §2.3). El CSV ya es texto en el archivo: `pandas.read_csv(dtype=str)` lo lee tal
    cual. El XLSX es distinto: `pandas.read_excel(dtype=str)` **no** basta, porque el motor de
    Excel (`openpyxl`) analiza toda celda numérica como `float` de Python *antes* de que `pandas`
    pueda aplicar `dtype`, que solo convierte ese `float` a texto *después*, delegando el formateo a
@@ -328,7 +328,7 @@ def crear_lista_desde_archivo(
     `core.budget.guardar_presupuesto`— y no modifica la lista anterior: es inmutable desde que un
     presupuesto la referencia (docs/modelo_datos.md §2.2).
 
-    Sin `origen` queda el nombre del archivo, que es la procedencia del dato (CLAUDE.md §2.6).
+    Sin `origen` queda el nombre del archivo, que es la procedencia del dato (NORMAS.md §2.6).
 
     `dar_de_alta` son las filas de `insumos_desconocidos` que el administrador eligió (UC‑02,
     flujo 2a; expediente C6.2): se crean con código nuevo de su tipo y su precio entra solo en la

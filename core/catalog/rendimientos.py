@@ -3,10 +3,10 @@
 El aporte del caso de uso es la trazabilidad: un rendimiento MEDIDO nace de una `Ejecucion`
 registrada (obra real, referencia única) y esa procedencia viaja con él hasta el contrato
 (`Rendimiento.referencia_ejecucion`). La invariante «MEDIDO exige referencia» vive en el contrato
-(`core.contracts.apu.Rendimiento`, CLAUDE.md §5) y en la base
+(`core.contracts.apu.Rendimiento`, NORMAS.md §5) y en la base
 (`ck_rendimiento_medido_exige_ejecucion`); este módulo construye el contrato **antes** de tocar la
 base y delega el registro en `Catalogo.registrar_rendimiento`, que exige que la referencia apunte
-a una ejecución que exista (trazabilidad total, CLAUDE.md §2).
+a una ejecución que exista (trazabilidad total, NORMAS.md §2).
 
 La dispersión (RF‑26) es aritmética de `Decimal`: número de observaciones, media, mínimo y máximo,
 más el desglose estimado/medido — estimado y medido nunca se mezclan sin declararse. La media es la

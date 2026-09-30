@@ -1,6 +1,6 @@
 """Motor de costos: deriva un precio unitario a partir de una composición de APU.
 
-Fórmula (CLAUDE.md §4, ``Decimal``, sin redondeos intermedios)::
+Fórmula (NORMAS.md §4, ``Decimal``, sin redondeos intermedios)::
 
     materiales         = Σ cantidad × precio            <- NO se divide entre rendimiento
     equipos            = Σ (cantidad × precio × depreciación) / rendimiento
