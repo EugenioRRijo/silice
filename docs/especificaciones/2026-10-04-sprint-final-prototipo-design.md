@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | **propuesta, revisión 2** (corrige los hallazgos de la primera ronda de los cuatro encargos, §16). Pendiente de la aprobación de Eugenio; los cambios en `core/` necesitan además el visto bueno del tutor (§12.3) |
+| Estado | **propuesta, revisión 3**: los cuatro encargos aprobaron con cambios en la ronda 2, sin bloqueantes, y esta revisión aplica esos cambios (§16). Pendiente de la aprobación de Eugenio; los cambios en `core/` necesitan además el visto bueno del tutor (§12.3) |
 | Fecha | 2026‑10‑04 |
 | Rama | `inc/spec-sf`, desde `main` = `1a02530` (fusión del PR #19, caso TI‑001) |
 | Sprint | SF, «sprint final del prototipo»; fases SF0 a SF5 (§13) |
@@ -46,8 +46,10 @@ escribe después de aprobarlo y no repite este texto: lo enlaza.
 - **Las composiciones viven una vez por partida en el catálogo** y se reemplazan en el sitio
   (`core/catalog/repositorio.py:188`); `cargar_presupuesto` las reconstruye y exige que el PU cuadre
   con la instantánea (`core/budget/persistencia.py:403-425`). Editar un APU hoy rompe la recarga de
-  cualquier presupuesto anterior que lo use; [modelo_datos.md](../modelo_datos.md) ya declara esa
-  limitación «hasta que un caso de uso la exija».
+  cualquier presupuesto anterior que lo use. [modelo_datos.md](../modelo_datos.md) (625‑630) declara
+  que las composiciones no tienen vigencia y difiere la extensión «hasta que un caso de uso la exija»,
+  pero afirma que eso «no afecta a los presupuestos emitidos»; la recarga demuestra lo contrario y SF0
+  enmienda esa frase.
 - **`descartar_version`** (`core/budget/actualizacion.py:207`) descarta solo la última versión, una
   vez; el esquema no guarda de qué versión salió otra.
 - **`elaborar` audita siempre con las siete reglas** (`core/budget/presupuesto.py:155`); `auditar` sí
@@ -95,8 +97,9 @@ una **enmienda** a ese límite:
   - `exportar_excel` (el libro de **cuatro hojas** de Elaborar, que exigen CP‑05, CP‑07, el
     indicador 3 §4, RNF‑04 y `test_exportar_excel_escribe_cuatro_hojas`) **conserva su estructura**.
     La hoja del proyecto se exporta con una función nueva (§9.5). M‑1 se corrige en las dos.
-  - La **huella SHA‑256 del informe** de la fixture de siete inconsistencias que ancla RNF‑04 se
-    vuelve prueba de regresión del sprint. Si SF‑E5 (R4) la cambia, se registra un ruling de
+  - Las dos **huellas SHA‑256** que ancla RNF‑04 (la del informe de la fixture de siete
+    inconsistencias y la del contenido del libro `.xlsx`) se vuelven pruebas de regresión del sprint.
+    Si SF‑E5 (R4) o M‑1 (que también toca `exportar_excel`) cambian alguna, se registra un ruling de
     reanclaje antes de la primera sesión de Med, como el C6‑11.
   - Los **pasos** del guion (CP‑07 incluido, porque la navegación pasa arriba) y de los dos
     protocolos se actualizan **una sola vez, al cerrar la última fase entregada** (GSF5, o GSF4 si
@@ -139,7 +142,8 @@ caso OF‑001 (§11.1).
 **Numeración.** En la ERS vigente el último UC asignado es UC‑12, el último RF asignado es **RF‑43**
 (RF‑32 vacante, reservado a UC‑09) y el último RNF es RNF‑10. Los RF nuevos van de **RF‑44 a RF‑63**.
 La nota de la ERS que reserva para UC‑09 «el siguiente al número más alto asignado» se enmienda para
-que, tras SF, ese número sea RF‑64. El actor **gerente** se agrega a la tabla de actores.
+que, tras SF, ese número sea RF‑64. Los conteos de la ERS pasan de 42 a **62 RF** y de once a
+**quince UC** (la meta S1 los comprueba). El actor **gerente** se agrega a la tabla de actores.
 
 ### 4.1 Casos de uso
 
@@ -148,9 +152,9 @@ alternos y postcondiciones). Aquí, su resumen y los flujos alternos ya conocido
 
 | UC | Nombre | Actor | Precondición | Flujos alternos conocidos |
 |---|---|---|---|---|
-| UC‑13 | Levantar el espacio y los metrajes | proyectista | proyecto abierto | 13a medida sin origen: se acepta como borrador y R8 la marca; 13b punto fuera de su ambiente: R9 |
-| UC‑14 | Importar un plano a la hoja | proyectista | proyecto abierto | 14a DXF sin `$INSUNITS`: se detiene y pide la unidad; 14b entidades fuera de convención: van al informe, no a la hoja; 14c reimportar el mismo plano: empareja por *handle* o `GlobalId` (como UC‑04 2a), actualiza, agrega y marca las filas que desaparecieron; 14d archivo malformado o mayor que el límite: se rechaza sin traza |
-| UC‑15 | Editar la hoja del proyecto | proyectista | **cualquier** presupuesto guardado, con o sin espacio (clínica, TI‑001, importado de UC‑05) | 15a guardar sin fuente o responsable: se rechaza; 15b plan con una partida que no suma 1: se rechaza (como UC‑01 paso 6); 15c salir con borrador sin guardar: aviso; 15d restaurar una versión anterior |
+| UC‑13 | Levantar el espacio y los metrajes | proyectista | proyecto abierto | 13a fila sin origen de medida: se acepta en la versión y R8 la marca ERROR; 13b punto fuera de su ambiente: R9 |
+| UC‑14 | Importar un plano a la hoja | proyectista | proyecto abierto | 14a DXF sin `$INSUNITS`: se detiene y pide la unidad; 14b entidades fuera de convención: van al informe, no a la hoja; 14c reimportar el mismo plano: empareja por *handle* o `GlobalId` (como UC‑04 2a), actualiza, agrega y marca las filas que desaparecieron; 14d archivo malformado o mayor de 20 MB: se rechaza con un mensaje, sin *traceback* |
+| UC‑15 | Editar la hoja del proyecto | proyectista | **cualquier** presupuesto guardado, con o sin espacio (clínica, TI‑001, importado de UC‑05) | 15a guardar sin fuente o responsable: se rechaza; 15b plan con una partida que no suma 1: se rechaza (como UC‑01 paso 6); 15c salir con ediciones sin guardar: aviso; 15d restaurar una versión anterior; 15e versión sin instantánea de composiciones (anterior a SF‑E6, o importada de UC‑05): al abrirla, la hoja crea la instantánea desde el catálogo vigente y lo registra; si una partida no tiene composición en el catálogo, su APU queda en solo lectura |
 | UC‑16 | Analizar el punto de equilibrio | proyectista, gerente | presupuesto guardado | 16a sin plan: PE sin ubicación en la curva; 16b margen ≤ 0: no existe PE; 16c PE > V: no se alcanza |
 
 UC existentes que se enmiendan:
@@ -169,7 +173,7 @@ Prioridad: E = esencial, D = deseable.
 
 | RF | Requisito | UC | Pri. | Fase | Criterio de aceptación |
 |---|---|---|---|---|---|
-| RF‑44 | La hoja de metrajes registra ambientes, fuentes, puntos, recorridos y orígenes de medida (§6.2) | UC‑13 | E | SF1 | cada tipo de origen exige su referencia (§6.3); faltando una, la fila se guarda como borrador y R8 la marca |
+| RF‑44 | La hoja de metrajes registra ambientes, fuentes, puntos, recorridos y orígenes de medida (§6.2) | UC‑13 | E | SF1 | cada tipo de origen exige su referencia (§6.3); faltando una, la fila se acepta en la versión y R8 la marca ERROR |
 | RF‑45 | El sistema propone un recorrido para cada punto (§6.4) y el usuario lo reemplaza declarando vértices | UC‑13 | E | SF1 | longitudes del recorrido propuesto del baño de OF‑001 = memoria de cálculo; un recorrido declarado sustituye al propuesto |
 | RF‑46 | La geometría une los segmentos coincidentes, parte los solapes colineales y guarda los segmentos derivados con sobrescritura opcional de diámetro y de empotrado (§6.5) | UC‑13 | E | SF1 | solapes parciales de la memoria de cálculo dan la longitud unida esperada a ± 0,001 m |
 | RF‑47 | Reglas de cantidades de **agua** (agua fría y drenaje), con fuente o supuesto declarado (§7.1) | UC‑13 | E | SF1 | cantidades del baño de OF‑001 = memoria de cálculo |
@@ -181,8 +185,8 @@ Prioridad: E = esencial, D = deseable.
 | RF‑53 | Guardar crea una versión nueva con su informe, la instantánea de sus composiciones y de su espacio, y un `RegistroCambio` por celda cambiada; exige fuente del cambio y responsable | UC‑15 | E | SF3 | sin fuente o sin responsable se rechaza; la versión anterior sigue cargando idéntica |
 | RF‑54 | Restaurar una versión N crea una versión nueva copia de N, con su `RegistroCambio`; el historial solo crece | UC‑15 | E | SF3 | tras restaurar, la versión nueva es igual a N y N sigue existiendo |
 | RF‑55 | La columna Estado de cada fila muestra el peor hallazgo que la toca y enlaza a su detalle | UC‑15 | E | SF3 | un error sembrado en una fila marca esa fila y ninguna otra |
-| RF‑56 | Cada precio muestra lista, referencia, fecha, moneda original y tasa con su fecha; una cotización se registra con su fuente, con alcance del proyecto | UC‑15, UC‑02, UC‑07 | E | SF3 | la cotización cambia solo ese insumo en ese proyecto; la versión resultante conserva el plan y la curva |
-| RF‑57 | Parámetros del proyecto editables (FCAS, administración, utilidad, imprevistos) con fuente | UC‑15 | E | SF3 | cambiar el FCAS recalcula todos los APU de la versión y queda en el registro |
+| RF‑56 | Cada precio muestra lista, referencia, fecha, moneda original y tasa con su fecha; una cotización se registra con su fuente, con alcance del proyecto, y prevalece sobre la lista global para ese insumo hasta que se retire | UC‑15, UC‑02, UC‑07 | E | SF3 | la cotización cambia solo ese insumo en ese proyecto; la versión resultante conserva el plan y la curva; una actualización global posterior por UC‑02 no la pisa |
+| RF‑57 | Parámetros del proyecto editables (los de `ParametrosCosto`: FCAS, administración, utilidad y los demás que ya define el contrato) con fuente | UC‑15 | E | SF3 | cambiar el FCAS recalcula todos los APU de la versión y queda en el registro |
 | RF‑58 | Punto de equilibrio calculado por el sistema y ubicado en la curva, con los casos límite de §9.4 | UC‑16 | E | SF3 | TI‑001 da 28 586,76 USD en el Día 6 (literal de la bitácora); cada caso límite da su salida declarada |
 | RF‑59 | Exportación de la hoja del proyecto a Excel con fórmulas vivas, hojas de la hoja, trazabilidad y auditoría (§9.5) | UC‑15 | E | SF3 | las fórmulas evaluadas dan los totales del sistema dentro de la tolerancia de §9.5 |
 | RF‑60 | Barra superior con navegación arriba y las herramientas de §10 | todos | E | SF4 | AppTest: navegación arriba, modo entrega oculta Investigación, cada herramienta lleva a su acción |
@@ -194,9 +198,9 @@ Prioridad: E = esencial, D = deseable.
 
 | RNF | Característica | Requisito | Medición |
 |---|---|---|---|
-| RNF‑11 | Eficiencia de desempeño | En `ui.hoja`, sin Streamlit, desde aplicar una edición hasta tener presupuesto, informe y PE (sin persistir): mediana ≤ 2 s para un proyecto de 500 puntos | `scripts/medir_rnf11.py` con un generador determinista versionado; una corrida de calentamiento y la mediana de cinco; paso propio de la CI en Linux y Windows; la cifra se registra en plan_pruebas §10, como RNF‑03 |
-| RNF‑12 | Seguridad | Ningún texto exportado se interpreta como fórmula (prefijos `=`, `+`, `-`, `@`, tabulador, retorno de carro) y un número negativo sigue siendo número; ningún archivo subido sale de su carpeta (`..\`, `../`, ruta absoluta, nombres reservados de Windows); DXF/IFC con límite de tamaño y error controlado si están malformados | pruebas por caso |
-| RNF‑13 | Usabilidad | Con los participantes y condiciones de CP‑07, cada uno de CP‑08 a CP‑11 se completa sin ayuda en ≤ 15 min, y el bloque B del cuestionario da ≥ 4,0 | guion, en Med; consigna, paradas y criterio fijados antes de medir |
+| RNF‑11 | Eficiencia de desempeño | En `ui.hoja`, sin Streamlit, desde aplicar una edición hasta tener presupuesto, informe y PE (sin persistir): mediana ≤ 2 s para un proyecto de 500 puntos | `scripts/medir_rnf11.py` con un generador determinista versionado (en SF0); una corrida de calentamiento y la mediana de cinco. El veredicto se toma en el equipo de desarrollo, como RNF‑03; la CI ejecuta el script en Linux y Windows y **registra** la cifra sin romper la corrida. Todo se anota en plan_pruebas §10 |
+| RNF‑12 | Seguridad | Ningún texto exportado se interpreta como fórmula (prefijos `=`, `+`, `-`, `@`, tabulador, retorno de carro) y un número negativo sigue siendo número; ningún archivo subido sale de su carpeta (`..\`, `../`, ruta absoluta, nombres reservados de Windows); DXF/IFC de más de 20 MB o malformados se rechazan con un mensaje | pruebas por caso |
+| RNF‑13 | Usabilidad | En las condiciones de CP‑07, con el **mismo número y perfil** de participantes que CP‑07 pero **personas distintas**: cada caso de CP‑08 a CP‑11 se completa sin ayuda en ≤ 15 min por todos los participantes, el bloque B da ≥ 4,0 y ningún ítem queda < 3. Veredicto por caso | guion, en Med; consigna, paradas y criterio fijados antes de medir; el costo en participantes se suma al plan de Med |
 
 ---
 
@@ -224,12 +228,12 @@ Cada expediente lo argumenta.
 | `ui/paginas/hoja.py` (nueva) | la pantalla de la hoja | `ui.*` | no |
 | `core/budget/presupuesto.py` | `elaborar(..., reglas=REGLAS)` | — | **SF‑E1** |
 | `core/budget/persistencia.py`, `actualizacion.py`, `escenarios.py`, `importacion.py` | conservan los hallazgos guardados de reglas externas (§8.4) | — | **SF‑E1** |
-| `core/budget/edicion.py` (nuevo) y `core/models` | versión nueva desde una edición, `RegistroCambio`, restaurar una versión | — | **SF‑E2** |
+| `core/budget/edicion.py` (nuevo) y `core/models` | versión nueva desde una edición, `RegistroCambio`, restaurar una versión; **toda** versión nueva (edición, restauración, cotización, UC‑02) guarda su `version_origen`; versión vigente = la de mayor id no descartada | — | **SF‑E2** |
 | `core/budget/equilibrio.py` (nuevo) | `punto_equilibrio(presupuesto, parametros)`, función pura | — | **SF‑E3** |
 | `core/budget/excel.py` | `exportar_hoja(...)` nueva con `hojas_extra: Sequence[TablaExportable]`; M‑1 en las dos exportaciones; `exportar_excel` conserva sus cuatro hojas | — | **SF‑E4** |
 | `core/verification/reglas.py` | R4 compara especificaciones normalizadas (A‑2) | — | **SF‑E5** |
-| `core/models`, `core/budget/persistencia.py` | instantánea de la composición y del rendimiento por versión de presupuesto | — | **SF‑E6** |
-| `core/models`, `core/catalog` | origen de precios (referencia por insumo, tasa y fecha de la tasa por lista) y listas con alcance de proyecto | — | **SF‑E7** |
+| `core/models`, `core/budget/persistencia.py`, `actualizacion.py` | instantánea de la composición y del rendimiento por versión. Todo camino del núcleo (recarga y su verificación de PU, revaloración por UC‑02, escenarios) toma la composición de la instantánea cuando existe y del catálogo solo para versiones anteriores a SF‑E6. Revalorar = líneas de la instantánea con los precios nuevos | — | **SF‑E6** |
+| `core/models`, `core/catalog` | origen de precios (referencia por insumo, tasa y fecha de la tasa por lista) y listas con alcance de proyecto; `lista_vigente` excluye las listas de proyecto; al revalorar por UC‑02 una versión con lista de proyecto, la cotización se aplica sobre la nueva lista base | — | **SF‑E7** |
 
 `adapters/espacio` **no** implementa `AdaptadorDominio` (`core/contracts/adaptador.py`): su fuente es
 una hoja en base de datos, no un archivo, y emite varias especialidades. Es una «fuente de
@@ -252,6 +256,11 @@ usuario pulsa «Guardar versión»
 ```
 
 Cerrar sin guardar no deja rastro (aviso 15c). Restaurar es RF‑54.
+
+**Espacio de las versiones que no crea la hoja.** Restaurar, cotizar y revalorar por UC‑02 crean
+versiones fuera del guardado de la hoja. Esas versiones no copian filas `esp_*`: su espacio es el de
+su `version_origen` (SF‑E2), subiendo por la cadena hasta la primera que tenga filas propias. Así
+toda versión de un proyecto con espacio se puede volver a auditar con R8–R10.
 
 ### 5.4 Vista de desarrollo y física
 
@@ -338,8 +347,13 @@ Los recorridos de una misma fuente forman un árbol. La geometría parte los sol
 
 - **Codo:** cada cambio de dirección entre dos segmentos consecutivos de un mismo camino, incluido el
   paso de vertical a horizontal (pared → techo). Un recorrido «sube, cruza en x, cruza en y, baja»
-  tiene tres codos.
-- **Tee:** un nodo donde concurren d ≥ 3 segmentos cuenta d − 2 tees.
+  tiene tres codos. Un codo sobre un tramo compartido cuenta **una vez** para el árbol, no una por
+  recorrido.
+- **Tee:** un nodo donde concurren d ≥ 3 segmentos cuenta d − 2 tees. El giro del ramal en una tee
+  **no** cuenta además como codo: la tee ya lo resuelve.
+- **Clave de un segmento:** sus dos extremos redondeados a 0,001 m más la fuente. Una sobrescritura
+  (diámetro, empotrado) se guarda con esa clave; si la geometría cambia y la clave desaparece, R9
+  marca la sobrescritura huérfana.
 - **Caja:** una por punto, más las que el usuario declare en el recorrido.
 - **Diámetro de un segmento compartido:** el mayor de los puntos que sirve, salvo sobrescritura. No se
   dimensiona la instalación (§3).
@@ -444,7 +458,7 @@ R1–R7 conservan su enunciado. `elaborar` las corre siempre (principio 7). La l
 | Regla | Comprueba | Severidad |
 |---|---|---|
 | R8 Origen de la medida | toda fila del espacio que produce una cantidad cita su **origen de medida** (no se refiere a `origen_id`, que RF‑03 ya garantiza); supuestos, alturas pendientes y sobrescrituras a mano se marcan | ERROR sin origen; ADVERTENCIA si es supuesto, pendiente o sobrescritura |
-| R9 Coherencia espacial | punto y fuente dentro de su ambiente; ninguna altura supera la del ambiente; ningún recorrido más corto que la distancia ortogonal mínima entre sus extremos; segmentos solapados con empotrado distinto sin declarar | ERROR |
+| R9 Coherencia espacial | punto y fuente dentro de su ambiente; ninguna altura supera la del ambiente; ningún recorrido más corto que la distancia ortogonal mínima entre sus extremos; segmentos solapados con empotrado distinto sin declarar; sobrescrituras de segmento huérfanas | ERROR |
 | R10 Límites de la especialidad | pendiente del drenaje, 90 m por enlace de datos, puntos por circuito | ERROR si el límite tiene fuente verificada; ADVERTENCIA si es supuesto |
 
 R8–R10 reciben la instantánea del espacio de la versión (DA‑SF‑8). Sus hallazgos citan en
@@ -473,7 +487,9 @@ INFO de R4 (M‑3), y `test_pruebas_de_control` pasa a detectar el control de 1/
 `elaborar` admite `reglas=`. En los demás caminos que auditan (recarga, revaloración, escenarios,
 importación, API) se sigue el precedente de `CODIGO_ATIPICO` (expediente C6.5): los hallazgos
 guardados cuya regla no está en `REGLAS` se vuelven a declarar en el informe. Cuando la hoja abre una
-versión con espacio, `ui.hoja` vuelve a auditar con R8–R10 sobre la instantánea de esa versión.
+versión con espacio, `ui.hoja` vuelve a auditar con R8–R10 sobre la instantánea de esa versión, y esa
+auditoría **reemplaza** los hallazgos guardados de esas mismas reglas; no se suman, así el informe no
+duplica nada.
 
 ---
 
@@ -507,7 +523,7 @@ y recorridos).
 | Plan y curva | reparto de cada partida por período (cada partida suma 1) | montos, acumulados y porcentajes |
 | Punto de equilibrio | nada propio: se mueve con lo demás (RS‑4) | todo |
 | Precios | cotización con su fuente (§9.6) | precio vigente de la versión |
-| Parámetros | FCAS, administración, utilidad, imprevistos | — |
+| Parámetros | los de `ParametrosCosto` (FCAS, administración, utilidad…); no se agregan parámetros nuevos al contrato | — |
 
 La columna **Estado** (RF‑55) se pinta aparte de las celdas editables, para que el editor no se
 reinicie en cada recálculo.
@@ -520,8 +536,9 @@ fecha y hora. **Todo** cambio guardado exige fuente y responsable. La versión d
 limitación C3.2 (de qué versión salió otra) y se declara en el modelo de datos.
 
 Cada versión guarda su instantánea de composiciones y rendimientos (SF‑E6) y la de su espacio
-(`esp_*`), así que cualquier versión se recarga idéntica. **Restaurar** la versión N crea una versión
-nueva copia de N (RF‑54); nada se borra.
+(`esp_*`, o la de su `version_origen`, §5.3), así que cualquier versión se recarga idéntica.
+**Restaurar** la versión N crea una versión nueva copia de N (RF‑54); nada se borra. La **versión
+vigente** es la de mayor id no descartada; una restauración pasa a ser la vigente.
 
 ### 9.4 Punto de equilibrio (SF‑E3)
 
@@ -544,7 +561,9 @@ conserva sus literales (28 586,76 USD, 56,60 %, Día 6) como oráculo.
   como `TablaExportable`, un tipo genérico definido en `core.budget`; el escape de M‑1 se aplica
   también a ellas.
 - Cantidades y precios se escriben **sin redondear**, con formato de presentación a dos decimales; los
-  totales son fórmulas (`=cantidad*PU`, `=SUMA(...)`). Así el total del Excel coincide con
+  totales son fórmulas (`=cantidad*PU`, `=SUM(...)`). El archivo guarda los nombres de función en
+  inglés (`SUM`, `ROUND`), que es lo que esperan openpyxl y el evaluador; Excel en español los muestra
+  traducidos. Así el total del Excel coincide con
   `Presupuesto.total`, y el principio 3 de NORMAS (redondear solo al presentar) se respeta.
 - M‑2: lo que no cuadra es la suma de las filas **mostradas** frente al total mostrado. Se resuelve
   según RS‑8; la propuesta es dejar el total exacto como contractual y agregar al pie una nota con la
@@ -557,11 +576,15 @@ conserva sus literales (28 586,76 USD, 56,60 %, Día 6) como oráculo.
 ### 9.6 Precios con su origen (SF‑E7)
 
 La pestaña Precios muestra por insumo: lista, referencia (el Ref de MaPreX), fecha del precio, moneda
-original y tasa con su fecha. Hoy `ListaPrecios` solo guarda `moneda` y `origen`; SF‑E7 agrega
-referencia por insumo, y tasa y fecha de la tasa por lista. Una **cotización** (proveedor, número y
-fecha, con la evidencia del [protocolo de levantamiento de precios](../protocolo_precios.md)) crea una
-lista **del proyecto**: copia de la lista base con ese insumo cambiado, que la versión referencia de
-forma explícita (DA‑SF‑9). La versión resultante conserva el plan y la curva. Un insumo sin fuente o
+original y tasa con su fecha. Hoy `ListaPrecios` guarda nombre, moneda, fecha de vigencia y origen,
+sin tasa ni fecha de la tasa, y `PrecioInsumo` no guarda referencia; SF‑E7 las agrega. Una
+**cotización** (proveedor, número y fecha, con la evidencia del
+[protocolo de levantamiento de precios](../protocolo_precios.md)) crea una lista **del proyecto**:
+copia de la lista base con ese insumo cambiado, que la versión referencia de forma explícita
+(DA‑SF‑9). La versión resultante conserva el plan y la curva. Las listas de proyecto no entran en la
+resolución global (`lista_vigente`). Si después UC‑02 carga una lista global nueva, la cotización
+**prevalece** para ese insumo en ese proyecto: al revalorar, se aplica sobre la nueva lista base, hasta
+que el usuario la retire (con su registro). Un insumo sin fuente o
 sin fecha se marca en la columna Estado.
 
 ### 9.7 Proyectos
@@ -639,8 +662,8 @@ pruebas comparan con esas memorias, no con la expresión de R1 (que sería circu
 porque las constantes declaradas como supuesto producen ADVERTENCIAS de R8 y R10.
 
 **Regresión en cada compuerta:** los cinco APU de la línea base a ± 0,01; 7 de 7 y
-`test_r4_marca_3_4_pulg_y_no_marca_pvc` sin modificarse; total de TI‑001; huella del informe de
-RNF‑04; cuatro hojas de `exportar_excel`.
+`test_r4_marca_3_4_pulg_y_no_marca_pvc` sin modificarse; total de TI‑001; las dos huellas de RNF‑04
+(informe y contenido del `.xlsx`); cuatro hojas de `exportar_excel`.
 
 Las filas nuevas de plan_pruebas §8 (trazabilidad), §8.1 (pasos de UC‑13 a UC‑16) y §9 (RNF‑11 a
 RNF‑13) se escriben en SF0.
@@ -650,11 +673,15 @@ RNF‑13) se escriben en SF0.
 AppTest no escribe en `st.data_editor`, así que la prueba se hace en el navegador, con un
 procedimiento fijado antes de ejecutar y registrado en la bitácora:
 
-- datos: 500 puntos del generador de RNF‑11;
+- datos: 500 puntos del generador de RNF‑11, que se escribe en SF0;
+- cálculo sustituto (aún no existe `ui.hoja`): cada edición vuelve a llamar a `core.budget.elaborar`
+  con los ítems generados, que es el mismo costo que tendrá la hoja sin la derivación espacial;
 - ediciones: 20 de celda, 5 altas y 5 bajas de fila, una ordenación y 10 ediciones rápidas seguidas
   mientras el script se reinicia;
-- columna Estado aparte de los datos editables; borrador en `st.session_state` con clave que no es de
-  widget; pestaña activa con control o `st.fragment`.
+- columna Estado aparte de los datos editables; ediciones en `st.session_state` con clave que no es
+  de widget; pestaña activa con control o `st.fragment`;
+- medición: la propia aplicación registra la marca de tiempo de cada edición recibida y de cada
+  Estado pintado, no un cronómetro.
 
 **PASA** si no se pierde ninguna edición y la columna Estado se actualiza en ≤ 2 s tras cada una. Si
 falla, la hoja usa AG Grid (DA‑SF‑1).
@@ -670,7 +697,7 @@ después, como el guion §4.
 |---|---|---|
 | CP‑08 | Levantar a mano el baño de OF‑001 (un ambiente, una fuente, dos puntos de agua) y obtener su presupuesto auditado | UC‑13; RF‑44 a RF‑47, RF‑61 |
 | CP‑09 | Importar el DXF de OF‑001 y corregir la fila que marca el informe (sale si SF5 cae) | UC‑14; RF‑50 |
-| CP‑10 | Cambiar la cantidad de una línea de un APU, ver el recálculo y el punto de equilibrio, intentar guardar sin fuente (rechazo) y guardar con fuente | UC‑15, UC‑16; RF‑52 a RF‑55, RF‑58 |
+| CP‑10 | Cambiar la cantidad de una línea de un APU, ver el recálculo y el punto de equilibrio, intentar guardar sin fuente (rechazo) y guardar con fuente | UC‑15, UC‑16; RF‑52, RF‑53, RF‑55, RF‑58 |
 | CP‑11 | Ver el origen del precio de un insumo, registrar una cotización, ver la Trazabilidad y exportar el Excel (después de CP‑10) | UC‑15; RF‑56, RF‑59 |
 
 RNF‑13 fija consigna literal, condiciones de parada y criterio antes de medir, y excluye a los
@@ -680,8 +707,9 @@ regla de exclusión cruzada de esos protocolos.
 ### 11.5 Calidad y cobertura
 
 [calidad_iso25010.md](../calidad_iso25010.md) se amplía con RNF‑11 a RNF‑13. Cobertura de `core/` ≥ 80 %
-(RNF‑06) y la misma meta declarada para `adapters/espacio`; `ui.hoja` se prueba aunque `ui/` no se
-mida. Suite con `-W error` y 0 omitidas en Linux y Windows (vigilar advertencias de ezdxf).
+(RNF‑06) y la misma meta para `adapters/espacio`, que la CI hace cumplir con un paso propio
+(`coverage report --include="adapters/espacio/*" --fail-under=80`) y la meta S10; `ui.hoja` se prueba
+aunque `ui/` no se mida. Suite con `-W error` y 0 omitidas en Linux y Windows (vigilar advertencias de ezdxf).
 
 ---
 
@@ -707,8 +735,9 @@ mida. Suite con `-W error` y 0 omitidas en Linux y Windows (vigilar advertencias
   una rama que agrega archivos en `adapters/` toca `core/`. Por eso, en cada fase con expedientes, los
   cambios de `core/` van en una rama y PR propios (`inc/sf<n>-nucleo`), fusionados primero; el
   adaptador y la interfaz van después en `inc/sf<n>` sin tocar `core/`.
-- **GSF2** comprueba `git diff gsf1..gsf2 -- core/` vacío: agregar datos y electricidad no toca el
-  núcleo, que es la evidencia de la hipótesis de la tesis.
+- **GSF2** comprueba `git diff gsf1..HEAD -- core/` vacío en el momento de evaluarla: agregar datos y
+  electricidad no toca el núcleo, que es la evidencia de la hipótesis de la tesis. **GSF5** hace lo
+  mismo desde `gsf4`, porque la importación de planos también es de adaptador.
 - Una fase se cruza cuando (a) `scripts/meta_sf.py --hasta SF<n>` está en OK, (b) la CI está verde en
   Linux y Windows y (c) aprueban los encargos:
 
@@ -731,12 +760,13 @@ PENDIENTE, no FALLA):
 | S1 Requisitos | UC‑13 a UC‑16, RF‑44 a RF‑63 y RNF‑11 a RNF‑13 en la ERS | SF0 |
 | S2 Memorias | memorias de cálculo versionadas antes del código de su fase | SF1 |
 | S3 Especialidades | pruebas de agua, datos y electricidad en verde | SF1–SF2 |
-| S4 Núcleo por adaptadores | `git diff gsf1..gsf2 -- core/` vacío | SF2 |
+| S4 Núcleo por adaptadores | `git diff gsf1..HEAD -- core/` vacío al cerrar SF2, y `gsf4..HEAD` al cerrar SF5 | SF2, SF5 |
 | S5 Hoja | pruebas de edición, versiones, restauración, PE y Excel en verde | SF3 |
 | S6 Barra | AppTest de navegación y herramientas | SF4 |
 | S7 Planos | pruebas de DXF e IFC | SF5 |
-| S8 Regresión | línea base, 7 de 7, R4 de 3/4 pulg, TI‑001, huella RNF‑04, cuatro hojas | todas |
-| S9 RNF‑11 | mediana registrada ≤ 2 s | SF3 |
+| S8 Regresión | línea base, 7 de 7, R4 de 3/4 pulg, TI‑001, las dos huellas de RNF‑04, cuatro hojas | todas |
+| S9 RNF‑11 | mediana registrada ≤ 2 s en el equipo de desarrollo | SF3 |
+| S10 Cobertura del espacio | `adapters/espacio` ≥ 80 % | SF1 |
 
 ### 12.3 Lo que decide el tutor
 
@@ -750,7 +780,7 @@ no edita APU.
 
 | Fase | Contenido | Funciona al cerrar | Compuerta |
 |---|---|---|---|
-| **SF0** | ERS, arquitectura, modelo de datos y plan de pruebas enmendados; fuentes de §7 verificadas; licencia de ezdxf; clases IFC; inventario A‑1…M‑3; prueba corta de §11.3; `meta_sf.py` | documentos aprobados y DA‑SF‑1 confirmada | GSF0 |
+| **SF0** | ERS, arquitectura, modelo de datos y plan de pruebas enmendados; fuentes de §7 verificadas; licencia de ezdxf; clases IFC; inventario A‑1…M‑3; generador de 500 puntos; prueba corta de §11.3; `meta_sf.py` | documentos aprobados y DA‑SF‑1 confirmada | GSF0 |
 | **SF1** | Núcleo: SF‑E1, SF‑E5. Adaptador: `adapters/espacio` (modelo, geometría, unión, `esp_*` versionada, orígenes), **agua**, R8 y R9, memoria del baño, pestaña Espacio y metrajes | el baño de OF‑001 se levanta a mano y sale su presupuesto auditado | GSF1 |
 | **SF2** | **Datos** y **electricidad**, R10, M‑3, memoria y OF‑001 completo; sin tocar `core/` | la oficina con tres especialidades | GSF2 |
 | **SF3** | Núcleo: SF‑E2, SF‑E3, SF‑E4, SF‑E6, SF‑E7. Hoja: pestañas restantes, borrador, guardado, restauración, cotización, Excel, RNF‑11 | editar una línea, ver el recálculo, guardar con su registro, restaurar y exportar | GSF3 |
@@ -799,3 +829,4 @@ SF1–SF4 no se recortan.
 | Ronda | Encargos | Veredicto | Qué cambió |
 |---|---|---|---|
 | 1 (2026‑10‑04) | requisitos, arquitectura, pruebas y calidad, verificador de hechos | los cuatro, «aprueba con cambios»; 11 bloqueantes | numeración desde RF‑44; RF con prioridad, fase y criterio; UC con flujos alternos; instantánea de composiciones (SF‑E6) y de espacio por versión; restauración como versión nueva; R8–R10 con la instantánea del espacio y hallazgos conservados al recargar (SF‑E1 ampliado); M‑3 sin pasar textos a `parametros`; Excel sin redondear con evaluador de fórmulas y `exportar_excel` intacto; ramas de núcleo separadas por la guardia; protección de los instrumentos de Med; cotización por proyecto (SF‑E7); oráculos con memorias de cálculo; conteo de codos y tees definido; pendiente del drenaje y circuito como cadena; matriz de pruebas; metas de `meta_sf.py` |
+| 2 (2026‑10‑04) | los mismos cuatro | los cuatro, «aprueba con cambios», sin bloqueantes | versiones sin instantánea (15e); cotización que prevalece sobre la lista global y listas de proyecto fuera de `lista_vigente`; `version_origen` en toda versión y espacio heredado por la cadena; todo camino del núcleo usa la instantánea de composiciones; versión vigente definida; «imprevistos» retirado (no existe en `ParametrosCosto`); clave de segmento y sobrescrituras huérfanas; codos en tramos compartidos y en tees; reauditoría de R8–R10 que reemplaza, no suma; RNF‑13 con personas distintas y ningún ítem < 3; límite de 20 MB; RNF‑11 con veredicto en el equipo de desarrollo; `SUM`/`ROUND` en inglés; segunda huella de RNF‑04; generador y cálculo sustituto en SF0; S4 con `HEAD` y también en SF5; cobertura de `adapters/espacio` en la CI; conteos de la ERS; dos correcciones de redacción del verificador |
