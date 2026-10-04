@@ -8,12 +8,14 @@ Lo que la prueba fija (spec §11.3):
 
 - datos: 500 puntos de `scripts.generar_hoja_prueba`;
 - cálculo sustituto: cada edición recibida vuelve a llamar a `core.budget.elaborar`;
-- la columna Estado vive en un componente aparte (`st.dataframe`), no en el editor;
+- la columna Estado vive en un componente aparte (`st.dataframe`), no en el editor, y el editor
+  muestra el índice (`fila`) para comprobar la alineación tras ordenar;
 - las ediciones se guardan en `st.session_state["borrador_prueba"]`, clave que NO es de widget;
 - la pestaña activa es un `st.segmented_control`;
 - medición: la propia aplicación anota en `scripts/_salida_prueba_editor.log` la marca de tiempo
-  de cada edición recibida y de cada Estado pintado (servidor; lo que ve el ojo se contrasta con
-  la grabación de pantalla del procedimiento).
+  de cada edición recibida (con los valores completos de las celdas, altas y bajas) y de cada Estado
+  pintado (servidor; `desde_recepcion_s` es una COTA INFERIOR de lo que ve el usuario, pues no
+  incluye red ni pintado del navegador; ese tramo se mide con la grabación de pantalla).
 """
 
 from __future__ import annotations
@@ -64,10 +66,18 @@ def tabla_inicial(n: int = N_PUNTOS) -> pd.DataFrame:
     return pd.DataFrame(filas, columns=list(COLUMNAS))
 
 
-def diferencias(antes: pd.DataFrame, despues: pd.DataFrame) -> dict[str, list]:
-    """Altas, bajas y celdas cambiadas entre dos versiones del borrador (por índice de fila)."""
-    altas = sorted(set(despues.index) - set(antes.index))
-    bajas = sorted(set(antes.index) - set(despues.index))
+def diferencias(antes: pd.DataFrame, despues: pd.DataFrame) -> dict[str, object]:
+    """Altas, bajas y celdas cambiadas entre dos versiones del borrador (por índice de fila).
+
+    Las altas y bajas llevan la fila completa y las celdas, el valor nuevo: el registro guarda
+    valores, no conteos, para compararlos con la lista en papel.
+    """
+    altas = {
+        fila: despues.loc[fila].to_dict() for fila in sorted(set(despues.index) - set(antes.index))
+    }
+    bajas = {
+        fila: antes.loc[fila].to_dict() for fila in sorted(set(antes.index) - set(despues.index))
+    }
     celdas = []
     for fila in despues.index:
         if fila not in antes.index:
@@ -75,7 +85,7 @@ def diferencias(antes: pd.DataFrame, despues: pd.DataFrame) -> dict[str, list]:
         for col in COLUMNAS:
             a, d = antes.at[fila, col], despues.at[fila, col]
             if not (pd.isna(a) and pd.isna(d)) and a != d:
-                celdas.append(f"{fila}.{col}={d!r}")
+                celdas.append(f"{fila}.{col}:{a!r}->{d!r}")
     return {"altas": altas, "bajas": bajas, "celdas": celdas}
 
 
@@ -134,6 +144,7 @@ def main() -> None:
             editada = st.data_editor(
                 st.session_state[CLAVE_BASE],
                 num_rows="dynamic",
+                hide_index=False,  # muestra el índice (columna `fila`) para contrastar con Estado
                 key=f"editor_prueba_{st.session_state[CLAVE_VERSION]}",
                 height=520,
                 column_config={

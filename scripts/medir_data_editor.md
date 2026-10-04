@@ -16,7 +16,10 @@ en `st.data_editor`, así que ningún agente lo puede hacer. La aplicación es d
   línea por evento: `hora ISO<TAB>marca monotónica<TAB>evento<TAB>detalle`. Eventos: `ARRANQUE`, `RUN`
   (cada ejecución del script), `EDICION_RECIBIDA` (con altas, bajas y celdas cambiadas) y
   `ESTADO_PINTADO` (con `desde_recepcion_s`, el tiempo del servidor hasta pintar el Estado). No se usa
-  cronómetro.
+  cronómetro. `EDICION_RECIBIDA` registra los **valores completos**: cada celda como
+  `fila.columna:antes->despues`, y las altas y bajas con la fila entera.
+- El editor muestra el índice de fila (columna `fila`, `hide_index=False`) y la tabla Estado lleva
+  la misma columna `fila`, para comprobar la alineación.
 
 ## Preparación
 
@@ -38,11 +41,14 @@ en `st.data_editor`, así que ningún agente lo puede hacer. La aplicación es d
    `cantidad`). Anotar cada una.
 3. **5 bajas de fila**: seleccionar cinco filas y borrarlas (icono de papelera). Anotar cuáles.
 4. **Una ordenación**: ordenar por `cantidad` haciendo clic en el encabezado. Observar si el Estado
-   sigue alineado con la fila que le corresponde (la tabla Estado lleva el número de fila) y anotar lo
-   que se vea.
+   sigue alineado con la fila que le corresponde: el valor de `fila` de cada renglón del editor debe ser
+   el de la fila de Estado a su misma altura. **Estado alineado a la fila equivocada tras ordenar =
+   FALLA.** Anotar lo que se vea.
 5. **10 ediciones rápidas seguidas** mientras el script se reinicia: sin esperar entre una y otra,
    cambiar `cantidad` en 10 celdas distintas (p. ej. filas 100 a 109, valores 901 a 910), pasando de
-   celda con Tab/Enter lo más rápido posible. Anotar las diez.
+   celda con Tab/Enter lo más rápido posible. Anotar las diez. Para este lote, la medida es el tiempo
+   desde la `EDICION_RECIBIDA` **primera** del lote hasta el **último** `ESTADO_PINTADO` (diferencia de
+   las marcas monotónicas), y debe cumplir también ≤ 2 s más el tiempo de tecleo anotado en la grabación.
 6. Cambiar a la pestaña **Resumen** y volver a **Hoja**: las ediciones hechas deben seguir presentes
    (el borrador vive en `session_state`).
 7. Esperar 5 s sin tocar nada y cerrar la medición.
@@ -53,11 +59,14 @@ en `st.data_editor`, así que ningún agente lo puede hacer. La aplicación es d
 
 1. **No se pierde ninguna edición.** Cada edición anotada en papel aparece en el registro como celda
    cambiada, alta o baja de alguna línea `EDICION_RECIBIDA` (las diez rápidas pueden llegar agrupadas
-   en pocas líneas, pero ninguna celda debe faltar), y los valores finales visibles en el editor y en
-   la pestaña Resumen (conteo de filas = 500 + 5 − 5 = 500) coinciden con lo anotado.
+   en pocas líneas, pero ninguna celda debe faltar). Los **valores finales** del registro (campo
+   después de `->`) se comparan uno a uno con la lista en papel, y los visibles en el editor y en la
+   pestaña Resumen (conteo de filas = 500 + 5 − 5 = 500) coinciden con lo anotado.
 2. **El Estado se actualiza en ≤ 2 s tras cada edición.** Para cada `EDICION_RECIBIDA`, la línea
-   `ESTADO_PINTADO` siguiente (mismo `RUN`) cumple `desde_recepcion_s` ≤ 2,0; y en la grabación de
-   pantalla el Estado visible cambia dentro de 2 s tras la edición.
+   `ESTADO_PINTADO` siguiente (mismo `RUN`) cumple `desde_recepcion_s` ≤ 2,0 (**cota inferior**: no incluye red ni pintado del navegador); y el
+   tramo del navegador se decide contando **fotogramas de la grabación de pantalla** entre el momento
+   de la edición y el cambio visible del Estado: ≤ 2 s (a 30 fps, ≤ 60 fotogramas). Ambos deben
+   cumplirse. Estado alineado a la fila equivocada tras ordenar (paso 4) también es FALLA.
 
 Si falla cualquiera: veredicto **FALLA**, la hoja usa AG Grid (DA‑SF‑1; `streamlit-aggrid`) y las
 tareas 3.x de PLAN_SF.md lo reflejan.
@@ -70,5 +79,6 @@ tareas 3.x de PLAN_SF.md lo reflejan.
 - Lo observado en la ordenación (paso 4) y cualquier edición perdida o reiniciada del editor.
 - Versión de Streamlit (`uv run python -c "import streamlit; print(streamlit.__version__)"`) y navegador.
 
-Limitación declarada: las marcas son del servidor; el último tramo (red y pintado del navegador) se
-contrasta con la grabación de pantalla, no con el registro.
+Limitación declarada: las marcas son del servidor y `desde_recepcion_s` es una **cota inferior**; el
+último tramo (red y pintado del navegador) se mide contando fotogramas de la grabación de pantalla,
+no con el registro.
