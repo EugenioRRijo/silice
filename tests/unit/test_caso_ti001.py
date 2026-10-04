@@ -66,10 +66,13 @@ def test_el_motor_coincide_con_el_recalculo_independiente(resultado):
 
 
 def test_pruebas_de_control():
-    """Seis de siete errores sembrados se detectan; el de 1/2 pulg es el defecto conocido de R4."""
+    """Siete de siete errores sembrados se detectan. Hasta SF‑E5 el de 1/2 pulg se escapaba (A‑2: R4
+    comparaba por subcadena y el APU cita la «Dobladora de tubo EMT 1/2 a 1 1/2 pulg»); cambia a
+    propósito, con el ruling SF‑E5‑1 de `docs/bitacora/2026-10-sf.md` (spec §8.3)."""
     controles = {c["nombre"]: c["ok"] for c in an.pruebas_de_control()}
+    assert len(controles) == 7
     no_detectados = [nombre for nombre, ok in controles.items() if not ok]
-    assert no_detectados == ["Troncal EMT-TA especificada en 1/2 pulg y costeada en 1 pulg"]
+    assert no_detectados == []
 
 
 def test_punto_de_equilibrio(resultado):
