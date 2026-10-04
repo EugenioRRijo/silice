@@ -413,13 +413,13 @@ class CorrespondenciaEspecificaciones(ReglaVerificacion):
         normalizado = normalizar_texto(valor)
         if not normalizado:
             return None
-        declarado = componentes(normalizado)
-        if declarado and any(_aparece(declarado, segmento) for segmento in corpus):
+        especificacion = componentes(normalizado)
+        if especificacion and any(_aparece(especificacion, segmento) for segmento in corpus):
             return None
 
         contradicciones = [
             (magnitud.texto, en_texto.texto, magnitud.unidad)
-            for magnitud in magnitudes_de(declarado)
+            for magnitud in magnitudes_de(especificacion)
             for en_texto in magnitudes_corpus
             if en_texto.unidad == magnitud.unidad and en_texto.valor != magnitud.valor
         ]

@@ -157,18 +157,31 @@ def componentes(texto: str) -> list[Componente]:
     """El texto como secuencia de palabras y cantidades comparables.
 
     Un entero seguido de una fracción propia es un número mixto y forma una sola cantidad
-    (`1 1/2` vale 1,5): es la grafía de los diámetros en pulgadas.
+    (`1 1/2` vale 1,5): es la grafía de los diámetros en pulgadas. Solo si entre los dos hay
+    únicamente espacio: un signo que el tokenizador descarta (`90° 1/2"`, un codo de 90 grados y
+    1/2 pulg) los separa, aunque no quede en la secuencia.
     """
-    crudos = [limpio for limpio in (_limpiar(token) for token in tokens(texto)) if limpio]
+    normalizado = normalizar_texto(texto)
+    piezas = [
+        (coincidencia, limpio)
+        for coincidencia in _TOKEN.finditer(normalizado)
+        if (limpio := _limpiar(coincidencia.group()))
+    ]
     resultado: list[Componente] = []
     indice = 0
-    while indice < len(crudos):
-        actual = crudos[indice]
+    while indice < len(piezas):
+        coincidencia, actual = piezas[indice]
         valor = valor_numerico(actual)
-        if valor is not None and _ENTERO.fullmatch(actual) and indice + 1 < len(crudos):
-            fraccion = _fraccion_propia(crudos[indice + 1])
-            if fraccion is not None:
-                resultado.append(Componente(f"{actual} {crudos[indice + 1]}", valor + fraccion))
+        if (
+            valor is not None
+            and _ENTERO.fullmatch(coincidencia.group())
+            and indice + 1 < len(piezas)
+        ):
+            siguiente, fraccion_texto = piezas[indice + 1]
+            separacion = normalizado[coincidencia.end() : siguiente.start()]
+            fraccion = _fraccion_propia(fraccion_texto)
+            if fraccion is not None and separacion.isspace():
+                resultado.append(Componente(f"{actual} {fraccion_texto}", valor + fraccion))
                 indice += 2
                 continue
         resultado.append(Componente(actual, valor))
