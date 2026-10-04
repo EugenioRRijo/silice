@@ -83,4 +83,5 @@ Cada una audita las metas de su sprint (`OK`/`FALLA`/`PENDIENTE`); una fase se c
 | `meta_prototipo.py` | las 12 metas del prototipo AREN.IA, en seis fases (P0 a P5) | sprint prototipo |
 | `meta_asistente.py` | las 12 metas del plan del asistente de presupuestos (UC‑09) | plan del asistente |
 | `meta_redaccion.py` | los 12 chequeos de la redacción de la tesis (R1 a R12) | sprint R1 |
+| `meta_sf.py` | las 10 metas del sprint final, en seis fases (SF0 a SF5) | sprint final |
 | `meta_datos.py` | tres chequeos (D1 a D3): la documentación del repositorio no presenta sus datos como reales | limpieza de datos |
