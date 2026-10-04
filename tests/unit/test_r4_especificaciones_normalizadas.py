@@ -346,3 +346,27 @@ def test_dos_descripciones_no_se_leen_como_una_sola():
     )
     assert hallazgo.severidad is Severidad.INFO
     assert "no es contrastable" in hallazgo.descripcion
+
+
+# ---------------------------------------------------------------------------------------------
+# Ronda de corrección 2 de la tarea 1.2
+# ---------------------------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("texto", ['Tubo 1-1/2"', "Tubo 1 - 1/2 pulg", "Tubo 1 -1/2 pulgadas"])
+def test_el_guion_une_el_numero_mixto(texto):
+    """«1-1/2"» es la otra grafía del número mixto: vale 1,5 pulg, igual que «1 1/2"»."""
+    assert [(m.valor, m.unidad) for m in modulo_texto.magnitudes(texto)] == [
+        (Decimal("1.5"), "pulg")
+    ]
+
+
+def test_r4_reconoce_1_1_2_pulg_en_un_apu_escrito_con_guion():
+    assert _r4(_presupuesto('Tuberia EMT de 1-1/2"', {"diametro": "1 1/2 pulg"})) == []
+
+
+@pytest.mark.parametrize("texto", ['Codo PVC 90°1/2"', 'Codo PVC 90° 1/2"', 'Codo PVC 90°-1/2"'])
+def test_el_angulo_sigue_separado_del_diametro(texto):
+    assert [m.valor for m in modulo_texto.magnitudes(texto) if m.unidad == "pulg"] == [
+        Decimal("0.5")
+    ]
