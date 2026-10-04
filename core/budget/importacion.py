@@ -30,7 +30,7 @@ que escribe `exportar_excel`: aquel presenta el presupuesto, este lo describe co
 from __future__ import annotations
 
 import json
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, fields
 from datetime import date
 from decimal import Decimal, InvalidOperation
@@ -57,7 +57,8 @@ from core.contracts.apu import (
 from core.contracts.dominio import Dominio
 from core.contracts.item_computo import ItemComputo, OrigenTipo
 from core.contracts.presupuesto import Presupuesto, PuntoCurva
-from core.verification import auditar
+from core.contracts.verificacion import ReglaVerificacion
+from core.verification import REGLAS, auditar
 from core.verification.directivas import CLAVE_UNIDAD_ORIGINAL
 
 __all__ = [
@@ -170,7 +171,10 @@ def leer_presupuesto_tabular(ruta: Path) -> PresupuestoImportado:
 
 
 def importar_presupuesto(
-    session: Session, ruta: Path, proyecto: models.Proyecto
+    session: Session,
+    ruta: Path,
+    proyecto: models.Proyecto,
+    reglas: Sequence[ReglaVerificacion] = REGLAS,
 ) -> ResultadoElaboracion:
     """UC‑05 con el archivo de un tercero: lee, audita siempre y persiste con su informe.
 
@@ -183,11 +187,13 @@ def importar_presupuesto(
     esa fecha si la hay (así sigue valorando el catálogo completo, como
     `crear_lista_desde_archivo`); carga cada APU del tercero con esa lista
     (`Catalogo.cargar_composicion`) y guarda el presupuesto con su informe
-    (`guardar_presupuesto`), que `cargar_elaboracion` recarga igual. No confirma la transacción.
+    (`guardar_presupuesto`), que `cargar_elaboracion` recarga igual. `reglas` son las que audita la
+    importación (las siete por defecto); los hallazgos de las que no son de `REGLAS` se guardan con
+    el informe y la recarga los vuelve a declarar (SF‑E1, RF‑62). No confirma la transacción.
     """
     importado = leer_presupuesto_tabular(ruta)
     presupuesto = importado.presupuesto
-    informe = auditar(presupuesto)
+    informe = auditar(presupuesto, reglas)
 
     catalogo = Catalogo(session)
     existentes = sorted(

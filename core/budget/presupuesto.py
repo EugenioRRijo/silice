@@ -25,9 +25,9 @@ from core.budget.curva import PeriodoPlan, con_curva, generar_curva
 from core.contracts.apu import ComposicionAPU, ParametrosCosto
 from core.contracts.item_computo import ItemComputo
 from core.contracts.presupuesto import PartidaPresupuestada, Presupuesto
-from core.contracts.verificacion import Hallazgo, Severidad
+from core.contracts.verificacion import Hallazgo, ReglaVerificacion, Severidad
 from core.costing import calcular_apu
-from core.verification import auditar
+from core.verification import REGLAS, auditar
 from core.verification.informe import InformeAuditoria
 from core.verification.texto import formatear_decimal
 
@@ -41,6 +41,7 @@ __all__ = [
     "elaborar",
     "exigir_composiciones",
     "generar_presupuesto",
+    "hallazgos_externos",
 ]
 
 MONEDA_POR_DEFECTO = "USD"
@@ -128,6 +129,7 @@ def elaborar(
     fecha: date,
     moneda: str = MONEDA_POR_DEFECTO,
     plan: Sequence[PeriodoPlan] | GeneradorPlan | None = None,
+    reglas: Sequence[ReglaVerificacion] = REGLAS,
 ) -> ResultadoElaboracion:
     """Genera el presupuesto, le añade la curva si hay plan y lo audita siempre.
 
@@ -135,6 +137,11 @@ def elaborar(
     valorado. `plan=plan_secuencial` es el protocolo de la interfaz, la API y los sembradores, que
     antes cada uno escribía con un borrador propio (INV‑069). Sin `plan` el presupuesto no lleva
     curva y las reglas R2 y R7 lo declaran no aplicable.
+
+    `reglas` son las reglas que audita la elaboración: por defecto las siete de `REGLAS`; quien
+    tiene reglas propias (p. ej. las de una hoja de cálculo de espacio) pasa `REGLAS + las suyas`
+    (SF‑E1, RF‑62). Sus hallazgos se guardan con el informe y, al recargar, revalorar, simular o
+    importar, `hallazgos_externos` los distingue de los de las siete para volver a declararlos.
 
     Un ítem cuya partida no tiene composición en `composiciones` queda **pendiente** (UC‑01, flujo
     3a): no entra al presupuesto, no suma al total ni al plan, y el informe lo declara con un
@@ -152,7 +159,7 @@ def elaborar(
     reparto = plan(presupuesto) if callable(plan) else plan
     if reparto is not None:
         presupuesto = con_curva(presupuesto, generar_curva(presupuesto, reparto))
-    informe = _declarar_pendientes(auditar(presupuesto), pendientes)
+    informe = _declarar_pendientes(auditar(presupuesto, reglas), pendientes)
     return ResultadoElaboracion(presupuesto=presupuesto, informe=informe, pendientes=pendientes)
 
 
@@ -226,6 +233,35 @@ def _declarar_atipicos(
             },
         },
     )
+
+
+def hallazgos_externos(
+    informe: InformeAuditoria, reglas: Sequence[ReglaVerificacion] = REGLAS
+) -> tuple[Hallazgo, ...]:
+    """Los hallazgos del informe que no son de `reglas` ni son `CODIGO_PENDIENTE` (SF‑E1).
+
+    Son los que una reauditoría con `reglas` no puede recalcular: los de reglas ajenas a ellas
+    (incluido `CODIGO_ATIPICO`, que declara la revaloración). Quien rehace un informe (un
+    escenario, por ejemplo) los pasa a `_declarar_externos` para no perderlos.
+    """
+    conocidos = {regla.codigo for regla in reglas} | {CODIGO_PENDIENTE}
+    return tuple(h for h in informe.hallazgos if h.regla not in conocidos)
+
+
+def _declarar_externos(
+    informe: InformeAuditoria, hallazgos: Sequence[Hallazgo]
+) -> InformeAuditoria:
+    """El mismo informe con los hallazgos guardados de reglas que la reauditoría no corrió.
+
+    Los `CODIGO_ATIPICO` se atribuyen como siempre (`_declarar_atipicos`). Los demás se agregan
+    sin declarar partida: una regla que no declara partida la deja al índice de orígenes del
+    informe, y es lo mismo que pasó al emitirlos. Única definición, como `_declarar_atipicos`.
+    """
+    atipicos = [h for h in hallazgos if h.regla == CODIGO_ATIPICO]
+    otros = tuple(h for h in hallazgos if h.regla != CODIGO_ATIPICO)
+    if otros:
+        informe = replace(informe, hallazgos=informe.hallazgos + otros)
+    return _declarar_atipicos(informe, atipicos)
 
 
 def _clave_pendiente(item: ItemComputo) -> tuple[str, str]:
