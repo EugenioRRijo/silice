@@ -1566,4 +1566,100 @@ rodeadas y documentadas, y son entrada de la revisión de contratos posterior a 
 | La lista «Importada» de un presupuesto de un tercero pasa a ser la vigente del caso desde su fecha (`core/budget/importacion.py::_lista_importada`; N‑2 y N‑7 de la revisión de arquitectura de C6): la heredan el marco de las pantallas, `POST /presupuestos`, «Elaborar», «Componer» y toda lista cargada después, y los APU del tercero entran al catálogo (UC‑03, recuento de G2, histórico de precios). Los importes no cambian; la procedencia sí | la importación rechaza una moneda distinta de la de la lista vigente y la ERS lo declara (UC‑05, postcondición). Cierre previsto, fuera de C6: excluir las listas importadas de `Catalogo.lista_vigente` con una marca en la tabla o un criterio sobre `origen` (toca `repositorio.py` y el esquema) | bitácora de C6 ([cierre](bitacora/2026-09-23-cierre.md), «Fase C6»); [expediente C6.4](bitacora/2026-09-29-C6-expedientes.md) |
 | El «pegamento» de `ml` y la receta ignorados/rechazados duplicados entre capas (U‑6 y O5 de las revisiones de C6): `_detector_de_atipicos` en `ui/paginas/actualizacion.py` y en `api/rutas/presupuestos.py` (más `_veredicto_bosque`), y la separación de `ResumenLista.desconocidos` en ignorados de 2a y rechazados de 2b, escrita en la pantalla, la API y `scripts/probar_precios_maprex.py` | `ResumenLista.desconocidos` reúne 2a y 2b y C6 no puede tocar `core/` fuera de sus cinco excepciones; cada capa compara con `insumos_desconocidos`. Cierre previsto: un `ResumenLista.rechazados` en el núcleo | revisiones de C6 (U‑6, O5); inventario de GC6 |
 | Los errores de lectura del XLSX no se traducen a `ValueError` en el lector del núcleo (`_hojas` y `_leer_tabla_excel`): un libro ilegible es `zipfile.BadZipFile` o `KeyError` | la API lo comprueba antes con `api.rutas.listas.comprobar_libro_legible` (422). La pantalla «Actualizar precios» **no** lo rodea: captura `LookupError`, `ValueError`, `ArithmeticError` y `SQLAlchemyError` (`ui/paginas/actualizacion.py:226` en la vista previa y `:263` al revalorar), y `zipfile.BadZipFile` no es ninguno (el `KeyError` de un zip sin partes sí es un `LookupError`), así que un `.xlsx` que no es un libro llega a la página como excepción sin capturar, ya al subirlo. Cierre previsto: traducir en `core.catalog.precios` | revisión de la pista A de C6 (H1, N2) |
-| Las líneas de `ComposicionAPU` no tienen vigencia temporal | limitación declarada: los presupuestos emitidos están congelados y no se ven afectados | [modelo_datos.md §5](modelo_datos.md#5-estrategia-de-versionado) |
+| Las líneas de `ComposicionAPU` no tienen vigencia temporal | limitación declarada. **Corregida en SF0:** editar un APU sí afecta a los presupuestos emitidos, porque la recarga reconstruye la composición desde el catálogo y exige que el PU cuadre; el cierre previsto es la instantánea de composiciones por versión (SF‑E6, §7.2) | [modelo_datos.md §5](modelo_datos.md#5-estrategia-de-versionado) |
+
+---
+
+## 7. Enmienda del sprint final (SF): hoja del proyecto, edición trazable y barra superior
+
+Fuente única: [spec SF](especificaciones/2026-10-04-sprint-final-prototipo-design.md) §5, §6, §8 y
+§9; aquí se registran las vistas y las decisiones. **Estado: diseño, nada de esto existe aún en el
+código**; cada pieza pasa a las secciones 1 a 6 cuando se implementa y se fusiona. Plan:
+[PLAN_SF.md](../PLAN_SF.md).
+
+### 7.1 Principio que se conserva
+
+[NORMAS.md §2](../NORMAS.md): núcleo cerrado, adaptadores abiertos. Lo **propio de una especialidad o
+de un formato de plano** va en `adapters/`. Lo **genérico de cualquier presupuesto** (versionar una
+edición, registrar el cambio, conservar hallazgos, punto de equilibrio, Excel, origen de precios) va
+en `core/` con expediente, como en C5 y C6. Ningún expediente es específico de agua, datos o
+electricidad: por eso no contradice RNF‑05 ni RF‑09. Cada expediente lo argumenta.
+
+### 7.2 Vista lógica: paquetes
+
+| Paquete | Qué contiene | Importa | Toca `core/` |
+|---|---|---|---|
+| `adapters/espacio/` (nuevo) | modelo espacial, geometría (recorridos, unión de segmentos, conteo de accesorios), persistencia propia `esp_*` versionada, derivación de `ItemComputo`, reglas R8–R10 | `core.contracts`, `sqlalchemy` | no |
+| `adapters/espacio/especialidades/` | `agua.py`, `datos.py`, `electricidad.py` | `core.contracts` | no |
+| `adapters/espacio/planos/` | `dxf.py` (ezdxf), `ifc.py` (ifcopenshell; duplica lo necesario de `adapters/civil/ifc.py`, porque un adaptador no importa otro) | `core.contracts` | no |
+| `adapters/telecom/` | M‑3: deja de emitir `origen` y `destino` como especificaciones (los traza `origen_id`) | `core.contracts` | no |
+| `ui/hoja.py` (nuevo, sin Streamlit) | borrador en memoria, derivación, elaboración con reglas extra, PE, guardado en una sola transacción, restauración, exportación | `adapters.espacio`, `core` | no |
+| `ui/barra.py` (nuevo) | barra de herramientas; la importa solo `ui/app.py`; delega las acciones en `ui.hoja` | `ui.hoja`, `ui.caso` | no |
+| `ui/paginas/hoja.py` (nueva) | la pantalla de la hoja | `ui.*` | no |
+| `core/budget/presupuesto.py` | `elaborar(..., reglas=REGLAS)` | — | SF‑E1 |
+| `core/budget/persistencia.py`, `actualizacion.py`, `escenarios.py`, `importacion.py` | conservan los hallazgos guardados de reglas externas | — | SF‑E1 |
+| `core/budget/edicion.py` (nuevo), `core/models` | versión nueva desde una edición, `RegistroCambio`, restaurar; toda versión nueva guarda su `version_origen` | — | SF‑E2 |
+| `core/budget/equilibrio.py` (nuevo) | `punto_equilibrio(presupuesto, parametros)`, función pura | — | SF‑E3 |
+| `core/budget/excel.py` | `exportar_hoja(...)` con `hojas_extra`; M‑1 en las dos exportaciones; `exportar_excel` conserva sus cuatro hojas | — | SF‑E4 |
+| `core/verification/reglas.py` | R4 compara especificaciones normalizadas (A‑2) | — | SF‑E5 |
+| `core/models`, `core/budget/persistencia.py`, `actualizacion.py` | instantánea de composición y de rendimiento por versión | — | SF‑E6 |
+| `core/models`, `core/catalog` | origen de precios (referencia, tasa y fecha de la tasa) y listas con alcance de proyecto | — | SF‑E7 |
+
+`adapters/espacio` **no** implementa `AdaptadorDominio` (`core/contracts/adaptador.py`): su fuente es
+una hoja en base de datos, no un archivo, y emite varias especialidades. Es una «fuente de
+cantidades» con su propia interfaz `derivar(espacio, especialidad) -> list[ItemComputo]`.
+
+### 7.3 Vista de procesos: una edición
+
+```
+usuario edita una celda de entrada
+  -> ui.hoja aplica el cambio al borrador (st.session_state, clave que no es de widget)
+  -> adapters.espacio deriva los ItemComputo (si cambió el espacio)
+  -> core.budget.elaborar(items, composiciones de la versión, parámetros, plan,
+                          reglas = REGLAS + reglas_espacio(instantánea del espacio))
+  -> core.budget.equilibrio.punto_equilibrio(presupuesto, parámetros)
+  -> la pestaña activa se repinta; la columna Estado va aparte de las celdas editables
+usuario pulsa «Guardar versión»
+  -> en una sola Session: core.budget.edicion guarda la versión, su informe, la instantánea de
+     composiciones y un RegistroCambio por celda; adapters.espacio copia las filas esp_* con la
+     clave de la versión nueva
+```
+
+Cerrar sin guardar no deja rastro (aviso UC‑15c). Restaurar es RF‑54. Restaurar, cotizar y revalorar
+por UC‑02 crean versiones fuera del guardado de la hoja y no copian filas `esp_*`: su espacio es el de
+su `version_origen`, subiendo por la cadena hasta la primera con filas propias. Cuando la hoja abre una
+versión con espacio, `ui.hoja` vuelve a auditar con R8–R10 y esa auditoría **reemplaza** los hallazgos
+guardados de esas reglas; no se suman.
+
+### 7.4 Vista de desarrollo y física
+
+- Dependencias: `ezdxf` en un extra `planos` (licencia: bitácora de SF0); un evaluador de fórmulas de
+  Excel en el grupo de desarrollo, solo para pruebas; `ifcopenshell` ya está en `civil`;
+  `streamlit>=1.62` en el extra `ui`.
+- Persistencia: el mismo SQLite del caso abierto. Las tablas `esp_*` llevan la clave de versión sin
+  clave foránea y las crea `crear_esquema_espacio()`
+  ([modelo_datos.md §2.4](modelo_datos.md#24-enmienda-del-sprint-final-sf-diseño-aún-no-implementado)).
+- `tests/unit/test_arquitectura.py`: `TERCEROS_POR_ADAPTADOR` agrega `"espacio": {sqlalchemy, ezdxf,
+  ifcopenshell}` (primer adaptador con base de datos); `PROHIBIDOS_EN_UI` agrega `ui/hoja.py`
+  (`streamlit`, `pandas`, `ui.caso`); `ui/barra.py` solo la importa `ui/app.py`.
+- Rendimiento en Streamlit: la pestaña activa se elige con `st.segmented_control` o se aísla con
+  `st.fragment`, para no ejecutar las ocho en cada edición; las composiciones de la versión se guardan
+  en caché; el Excel se genera solo al pulsar Exportar.
+
+### 7.5 Decisiones de diseño
+
+| # | Decisión | Alternativa descartada | Costo si es errónea |
+|---|---|---|---|
+| DA‑SF‑1 | Streamlit con `st.data_editor`; si la prueba de SF0 falla, la hoja usa AG Grid (`streamlit-aggrid`) en la misma fase | React sobre la API | rehacer la pantalla de la hoja |
+| DA‑SF‑2 | La hoja de metrajes en tablas propias del adaptador (`esp_*`), versionadas con el presupuesto | entidades en `core/models` | mover tablas a `core/` con expediente |
+| DA‑SF‑3 | Agua y electricidad con `Dominio.CIVIL` («instalaciones de la edificación») y datos con `Dominio.TELECOM`; la especialidad viaja en `especificaciones["_especialidad"]` | `Dominio.ELECTRICO` | expediente de contrato; mientras tanto, los conteos de la compuerta G2 mezclan electricidad con civil, y se declara |
+| DA‑SF‑4 | El Excel exportado no se reimporta | importar el Excel editado | cambios hechos fuera sin auditar |
+| DA‑SF‑5 | Una cantidad derivada se puede sobrescribir a mano, con fuente; R8 la marca como ADVERTENCIA | prohibirlo | el usuario saca el cálculo del sistema |
+| DA‑SF‑6 | El plano importado nunca salta la hoja | importar directo al presupuesto | errores del plano sin revisar |
+| DA‑SF‑7 | Editar un APU en la hoja cambia la **copia de la versión** (instantánea, SF‑E6), nunca el catálogo; «promover al catálogo» pasa por UC‑11 | editar el catálogo; o una partida variante con código nuevo | sin SF‑E6, no se puede volver a versiones anteriores |
+| DA‑SF‑8 | R8–R10 se construyen con la instantánea del espacio de la versión y la consultan; no se serializa el espacio dentro de los ítems | coordenadas y orígenes en `parametros`/`especificaciones` | `parametros` no admite texto; R4 haría ruido |
+| DA‑SF‑9 | Una cotización crea una lista de precios del proyecto (copia de la base con el insumo cambiado), que la versión referencia explícitamente | lista global por vigencia | la cotización de un proyecto cambiaría todos |
+
+Nota de nomenclatura: la deuda de §6.1 sobre insumos homónimos habla de una «candidata a regla R8».
+Esa numeración queda superada: R8, R9 y R10 son, en SF, las reglas del espacio (spec §8.2); la regla de
+homónimos, si se aprueba, tomará el número siguiente.

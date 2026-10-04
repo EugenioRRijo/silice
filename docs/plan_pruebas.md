@@ -219,6 +219,49 @@ Las demás pruebas de la suite no demuestran un RF concreto: guardias de arquite
 trabajo, metas de sprint, scripts, referencias de precios, dominios del sprint multidominio, API
 (OpenAPI y errores HTTP) y visor 3D. Su recuento es el de la sección 10.
 
+### 8.0 Filas del sprint final (SF): RF‑44 a RF‑63, planeadas
+
+Fuente: [spec SF §11.2](especificaciones/2026-10-04-sprint-final-prototipo-design.md) y
+[§4.2](especificaciones/2026-10-04-sprint-final-prototipo-design.md) (criterios de aceptación). Estas
+filas se abren en SF0 **sin pruebas todavía**: ninguna cita `archivo::función` porque ninguna prueba
+existe. Cada una pasa a esa forma cuando su fase la escribe, y el **commit de la prueba va antes que el
+de la implementación, con el rojo observado** (NORMAS principio 5; spec §11.2). Estado «planeado (SFn)»
+no es ninguno de los estados de §8.1 y **no entra en el resumen de §8** (que cuenta los 42 RF vigentes)
+hasta que la fase correspondiente lo cruce. Las pruebas se comparan con las **memorias de cálculo a
+mano** (`tests/fixtures/memorias/bano_of001.md`, antes de SF1; `of001.md`, antes de SF2), no con la
+expresión de R1, que sería circular.
+
+| RF | Prueba prevista | Fase | Estado |
+|---|---|---|---|
+| RF‑44 | referencia obligatoria por tipo de origen de medida; casos negativos (la fila se acepta y R8 la marca ERROR) | SF1 | planeado (SF1) |
+| RF‑45 | recorridos propuestos y declarados; longitudes del baño de OF‑001 = memoria | SF1 | planeado (SF1) |
+| RF‑46 | solapes parciales y totales de la unión de segmentos a ± 0,001 m | SF1 | planeado (SF1) |
+| RF‑47 | cantidades de agua del baño de OF‑001 = memoria | SF1 | planeado (SF1) |
+| RF‑48 | cantidades de datos de OF‑001 = memoria | SF2 | planeado (SF2) |
+| RF‑49 | cantidades eléctricas de OF‑001 = memoria (cadena por vecino más cercano, editable) | SF2 | planeado (SF2) |
+| RF‑50 | DXF de OF‑001 con alturas cargadas = cantidades de la hoja manual a ± 0,001 m; DXF fuera de convención → informe sin filas; sin `$INSUNITS` → se detiene; reimportación por *handle* | SF5 | planeado (SF5) |
+| RF‑51 | IFC de prueba → filas esperadas; informe; hereda la salvedad de RNF‑09 si el IFC es programático | SF5 | planeado (SF5) |
+| RF‑52 | edición en borrador: cambia totales, curva, PE y Estado sin crear versión | SF3 | planeado (SF3) |
+| RF‑53 | guardar sin fuente o sin responsable se rechaza; la versión anterior recarga idéntica | SF3 | planeado (SF3) |
+| RF‑54 | restaurar crea una versión copia de N; N sigue existiendo | SF3 | planeado (SF3) |
+| RF‑55 | la columna Estado marca solo la fila con el error sembrado | SF3 | planeado (SF3) |
+| RF‑56 | origen del precio visible; la cotización cambia solo ese insumo en ese proyecto, conserva plan y curva y no la pisa una actualización global posterior | SF3 | planeado (SF3) |
+| RF‑57 | cambiar el FCAS recalcula todos los APU de la versión y queda en el registro | SF3 | planeado (SF3) |
+| RF‑58 | TI‑001 = 28 586,76 USD en el Día 6; cada caso límite de spec §9.4 (16a, 16b, 16c) | SF3 | planeado (SF3) |
+| RF‑59 | evaluador de fórmulas frente a los totales del sistema, dentro de la tolerancia de spec §9.5 | SF3 | planeado (SF3) |
+| RF‑60 | AppTest: navegación arriba, modo entrega oculta Investigación, cada herramienta lleva a su acción | SF4 | planeado (SF4) |
+| RF‑61 | por condición y con valores frontera: 90,00 m pasa y 90,01 m falla; máximo de puntos por circuito y uno más; pendiente mínima y una menos; cada condición de R9; cada severidad de R8 | SF1–SF2 | planeado (SF1–SF2) |
+| RF‑62 | informe recargado = emitido, en cada camino de spec §8.4 (recarga, revaloración, escenarios, importación, API) | SF1 | planeado (SF1) |
+| RF‑63 | nombre de proyecto vacío o repetido se rechaza con mensaje | SF4 | planeado (SF4) |
+| A‑2 (hallazgo) | caso directo (3/4" en memoria, 4" en el APU, `docs/linea_base.md`) y los cuatro pares de la bitácora de TI‑001 | SF1 | planeado (SF1) |
+| Arquitectura | importaciones de `adapters.espacio`, `ui.hoja` y `ui.barra` en `test_arquitectura.py` | SF1 | planeado (SF1) |
+
+**Regresión en cada compuerta del SF:** los cinco APU de la línea base a ± 0,01; 7 de 7 y
+`test_r4_marca_3_4_pulg_y_no_marca_pvc` sin modificarse; total de TI‑001 (50 503,27 USD); las dos
+huellas de RNF‑04 (informe y contenido del `.xlsx`); las cuatro hojas de `exportar_excel`. **OF‑001
+limpio** no da «cero hallazgos»: da el conjunto exacto esperado (regla, severidad y fila), porque las
+constantes declaradas como supuesto producen ADVERTENCIAS de R8 y R10.
+
 ### 8.1 Trazabilidad por paso de todos los casos de uso
 
 Regla (metodología §3.4): cada paso numerado y cada flujo alternativo de un caso de uso cita la
@@ -399,6 +442,40 @@ UC‑04 no tiene pantalla ni ruta: lo realiza `adapters/civil/recalculo.py` (ERS
 | 3b archivo ilegible | RF‑39 | `tests/unit/test_ui_inicio.py::test_un_archivo_ilegible_se_informa_sin_ofrecer_sembrar`; `tests/unit/test_ui_caso.py::test_estado_de_un_archivo_que_no_es_sqlite_es_un_error_sin_traza` | verde |
 | 5a pantalla fuera del recorrido | RF‑41 | `tests/unit/test_ui_app.py::test_una_pantalla_fuera_del_recorrido_no_muestra_siguiente` | verde |
 
+#### UC‑13 a UC‑16 — casos de uso del sprint final (planeados)
+
+Fuente: [spec SF §4.1](especificaciones/2026-10-04-sprint-final-prototipo-design.md); los UC se
+escriben completos en la ERS en SF0 y esta tabla sigue sus flujos alternos. Todas las filas están en
+estado **planeado (SFn)**: el paso no existe todavía y ninguna prueba lo demuestra (misma regla que
+§8.0: no entran en el «Resumen de la matriz por paso» hasta que su fase los cruce). Un paso que su fase
+cierre sin prueba ni caso manual es un requisito sin verificar (regla de §8.1).
+
+| Paso | RF | Prueba o caso | Estado |
+|---|---|---|---|
+| UC‑13 1 el proyectista levanta ambientes, fuentes, puntos y recorridos en la hoja | RF‑44, RF‑45 | pruebas de RF‑44/RF‑45 (§8.0) | planeado (SF1) |
+| UC‑13 2 el sistema une segmentos, cuenta accesorios y deriva los `ItemComputo` | RF‑46, RF‑47, RF‑48, RF‑49 | pruebas contra las memorias de cálculo (§8.0) | planeado (SF1–SF2) |
+| UC‑13 3 elabora y audita con las siete reglas más R8 a R10 | RF‑61, RF‑62 | RF‑61 y RF‑62 (§8.0) | planeado (SF1–SF2) |
+| UC‑13a fila sin origen de medida: se acepta en la versión y R8 la marca ERROR | RF‑44, RF‑61 | caso negativo de RF‑44; severidad de R8 | planeado (SF1) |
+| UC‑13b punto fuera de su ambiente: R9 | RF‑61 | condición de R9 | planeado (SF1) |
+| UC‑14 1 elige un plano (DXF o IFC) | RF‑50, RF‑51 | pruebas de importación (§8.0) | planeado (SF5) |
+| UC‑14 2 el sistema vuelca filas a la hoja con un informe de importación (nunca directo al presupuesto, DA‑SF‑6) | RF‑50, RF‑51 | informe y filas esperadas | planeado (SF5) |
+| UC‑14a DXF sin `$INSUNITS`: se detiene y pide la unidad | RF‑50 | prueba de detención | planeado (SF5) |
+| UC‑14b entidades fuera de convención: van al informe, no a la hoja | RF‑50 | DXF fuera de convención → informe sin filas | planeado (SF5) |
+| UC‑14c reimportar el mismo plano: empareja por *handle* o `GlobalId`, actualiza, agrega y marca las que desaparecieron | RF‑50, RF‑51 | prueba de reimportación | planeado (SF5) |
+| UC‑14d archivo malformado o mayor de 20 MB: rechazo con mensaje, sin *traceback* | RNF‑12 | prueba de RNF‑12 | planeado (SF5) |
+| UC‑15 1 edita celdas de entrada en el borrador; recalcula y audita sin persistir | RF‑52, RF‑55 | edición en borrador; Estado | planeado (SF3) |
+| UC‑15 2 guarda: versión nueva con informe, instantáneas y un `RegistroCambio` por celda | RF‑53, RF‑57 | guardado; cambio de FCAS | planeado (SF3) |
+| UC‑15 3 cotiza un insumo; exporta la hoja a Excel | RF‑56, RF‑59 | cotización; evaluador de fórmulas | planeado (SF3) |
+| UC‑15a guardar sin fuente o responsable: se rechaza | RF‑53 | caso negativo | planeado (SF3) |
+| UC‑15b plan con una partida que no suma 1: se rechaza (como UC‑01 paso 6) | RF‑52 | caso negativo | planeado (SF3) |
+| UC‑15c salir con ediciones sin guardar: aviso | RF‑52 | AppTest del aviso o caso manual | planeado (SF3) |
+| UC‑15d restaurar una versión anterior | RF‑54 | restaurar crea copia | planeado (SF3) |
+| UC‑15e versión sin instantánea (anterior a SF‑E6 o importada por UC‑05): la hoja la crea desde el catálogo vigente y lo registra; partida sin composición en el catálogo: APU en solo lectura | RF‑53 | abrir la clínica y TI‑001 (foco de revisión 5 de PLAN_SF) | planeado (SF3) |
+| UC‑16 1 calcula el punto de equilibrio y lo ubica en la curva | RF‑58 | TI‑001 = 28 586,76 USD, Día 6 | planeado (SF3) |
+| UC‑16a sin plan: PE sin ubicación en la curva | RF‑58 | caso límite | planeado (SF3) |
+| UC‑16b margen ≤ 0: no existe PE | RF‑58 | caso límite | planeado (SF3) |
+| UC‑16c PE > V: no se alcanza | RF‑58 | caso límite | planeado (SF3) |
+
 #### Resumen de la matriz por paso
 
 Recuento de las filas de esta sección por el estado con que empieza su última celda (una fila
@@ -448,6 +525,9 @@ UC‑04 5 (RF‑20) y UC‑08 4a (decisión D6).
 | RNF‑08 seguridad | inspección: 0 credenciales versionadas, 0 llamadas de red en operación salvo las dos excepciones que declara la ERS: la descarga inicial del modelo (cacheada) y three.js desde `cdnjs.cloudflare.com` en el Visor 3D (INV‑077) | cumple, con las dos excepciones declaradas |
 | RNF‑09 compatibilidad IFC | G1 con salvedad: exacto contra modelo programático; faltan exports de ≥ 2 modeladores | parcial |
 | RNF‑10 aprendizaje de la interfaz | caso con persona CP‑07 ([guion_prueba_arenia.md](guion_prueba_arenia.md)), dos escenarios con personas distintas, bloque B del anexo A | pendiente (GU1b, fase Med) |
+| RNF‑11 desempeño de la hoja | `scripts/medir_rnf11.py` con el generador determinista de 500 puntos (SF0): desde aplicar una edición hasta tener presupuesto, informe y PE, sin persistir, en `ui.hoja` sin Streamlit; mediana de cinco corridas tras una de calentamiento ≤ 2 s. Veredicto en el equipo de desarrollo (como RNF‑03); la CI registra la cifra en Linux y Windows sin romper la corrida | planeado (SF3; generador y script en SF0) |
+| RNF‑12 seguridad de exportes y subidas | una prueba por cada prefijo de fórmula (`=`, `+`, `-`, `@`, tabulador, retorno de carro; un negativo sigue siendo número) y por cada ruta peligrosa (`..\`, `../`, absoluta, nombres reservados de Windows); DXF/IFC de más de 20 MB o malformados se rechazan con mensaje | planeado (SF3–SF5) |
+| RNF‑13 usabilidad de la hoja | CP‑08 a CP‑11 del [guion](guion_prueba_arenia.md), con el mismo número y perfil de participantes que CP‑07 pero personas distintas: cada caso sin ayuda en ≤ 15 min por todos, bloque B ≥ 4,0 y ningún ítem < 3; veredicto por caso. Consigna, paradas y criterio se fijan antes de medir | planeado (fase Med; guion actualizado al cerrar SF5) |
 
 ## 10. Registro de la ejecución (CI de la compuerta GC6, 2026‑09‑29)
 

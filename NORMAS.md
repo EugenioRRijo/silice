@@ -169,11 +169,13 @@ Las anotaciones «— sesión» de las carpetas de código nombran las sesiones 
 
 ```
 NORMAS.md  README.md  pyproject.toml  uv.lock
-PLAN_DESARROLLO.md  PLAN_MULTIDOMINIO.md  PLAN_PROTOTIPO.md  PLAN_UI.md  PLAN_ASISTENTE.md  PLAN_CIERRE.md
+PLAN_DESARROLLO.md  PLAN_MULTIDOMINIO.md  PLAN_PROTOTIPO.md  PLAN_UI.md  PLAN_ASISTENTE.md  PLAN_CIERRE.md  PLAN_SF.md
 core/
   contracts/      estables (sección 5)                                   — I0.1
   costing/        motor: calcular_apu(composicion, parametros) -> ResultadoAPU — I0.3
-  models/         SQLAlchemy según docs/modelo_datos.md (diecisiete entidades) — I0.4
+  models/         SQLAlchemy según docs/modelo_datos.md (diecisiete entidades hoy; el sprint final
+                  SF agrega RegistroCambio y la instantánea de composiciones y rendimientos,
+                  modelo_datos §2.4) — I0.4
   catalog/        partidas, insumos y composiciones; listas de precios; rendimientos — I0.4, I1, I6.2
   budget/         presupuesto, curva, Excel, persistencia, importación, actualización de precios, escenarios
                                                                          — I0.5, I1, F.1
@@ -183,12 +185,18 @@ adapters/
   telecom/        topología de red en CSV (nodos, enlaces, longitudes)     — I5
   industrial/     registro de activos con frecuencia de intervención      — I5
   sistemas/       alcance funcional (módulos, casos de uso, puntos de función) — I5
+  espacio/        (SF, en construcción) hoja de metrajes: modelo espacial, geometría, tablas esp_*
+                  propias del adaptador (no cuentan entre las entidades de core/models), agua, datos,
+                  electricidad, reglas R8-R10 e importación de planos DXF/IFC; no implementa
+                  AdaptadorDominio (docs/arquitectura.md §7)
 ml/
   normalization/  sentence-transformers, similitud del coseno             — I2
   anomaly/        Isolation Forest sobre precios y rendimientos           — I6.1
   prediction/     sistema de reglas; técnica según compuerta G2 (sección 8.1) — I6.3
 ui/               Streamlit: app.py (enrutador), paginas/ (diez pantallas) y los módulos sin pantalla
-                  composicion, elaboracion, resultado, caso, recorridos, visor3d — I1, F.1
+                  composicion, elaboracion, resultado, caso, recorridos, visor3d — I1, F.1;
+                  SF agrega hoja.py (lógica de la hoja, sin Streamlit), barra.py (barra superior,
+                  solo la importa app.py) y paginas/hoja.py
 api/              FastAPI (main.py, rutas/); esquema OpenAPI exportado a docs/api.json — F.1
 scripts/          siembra (seed*.py), simulación, extracción de fuentes, metas (meta_*.py) y
                   utilidades de la suite; una fila por script en scripts/README.md
