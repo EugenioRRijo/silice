@@ -11,6 +11,7 @@ y los hallazgos persistidos (`models.Hallazgo`), contados con una consulta propi
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
 from pathlib import Path
@@ -198,31 +199,68 @@ def test_fr4_guardar_lo_recargado_no_duplica_los_hallazgos(sesion, base):
     _mismo_informe(vigente.informe, base.informe)
 
 
-def test_revalorar_arrastra_los_externos_y_no_los_atipicos_viejos(sesion, base, tmp_path):
-    archivo = tmp_path / "lista.csv"
+@dataclass(frozen=True)
+class Marca:
+    id: str
+    valor: Decimal
+    puntaje: float
+
+
+def _marca_todo(variaciones):
+    """Detector falso: todo cambio de la lista es atipico."""
+    return [Marca(id=i, valor=v, puntaje=-0.3) for i, v in variaciones.items()]
+
+
+def _lista(sesion, tmp_path, nombre, precio, fecha):
+    archivo = tmp_path / f"{nombre}.csv"
     archivo.write_text(
-        f"tipo,insumo,unidad,precio\nmaterial,{CEMENTO},saco,{PRECIOS_NUEVOS[CEMENTO]}\n",
-        encoding="utf-8",
+        f"tipo,insumo,unidad,precio{chr(10)}material,{CEMENTO},saco,{precio}{chr(10)}"
     )
-    lista = crear_lista_desde_archivo(
-        sesion,
-        archivo,
-        nombre="Lista 01/06/2026",
-        moneda=linea_base.MONEDA,
-        fecha_vigencia=date(2026, 6, 1),
+    return crear_lista_desde_archivo(
+        sesion, archivo, nombre=nombre, moneda=linea_base.MONEDA, fecha_vigencia=fecha
     ).lista
 
-    nuevo, _ = actualizar_precios(
-        sesion, NOMBRE_PROYECTO, CODIGO, lista, CODIGO_NUEVO, plan=plan_secuencial
+
+def _atipicos(informe):
+    return [h for h in informe.hallazgos if h.regla == CODIGO_ATIPICO]
+
+
+def test_revalorar_arrastra_los_externos_y_no_los_atipicos_viejos(sesion, base, tmp_path):
+    precio = Decimal(str(PRECIOS_NUEVOS[CEMENTO]))
+    lista2 = _lista(sesion, tmp_path, "L2", precio, date(2026, 6, 1))
+
+    segundo, _ = actualizar_precios(
+        sesion,
+        NOMBRE_PROYECTO,
+        CODIGO,
+        lista2,
+        CODIGO_NUEVO,
+        plan=plan_secuencial,
+        detectar_atipicos=_marca_todo,
+    )
+    sesion.commit()
+    sesion.expunge_all()
+    lista3 = _lista(sesion, tmp_path, "L3", precio * 2, date(2026, 7, 1))
+    tercero, _ = actualizar_precios(
+        sesion,
+        NOMBRE_PROYECTO,
+        CODIGO_NUEVO,
+        lista3,
+        "003",
+        plan=plan_secuencial,
+        detectar_atipicos=_marca_todo,
     )
     sesion.commit()
     sesion.expunge_all()
 
-    assert len(_externos(nuevo.informe)) == 2
-    assert [h for h in nuevo.informe.hallazgos if h.regla == CODIGO_ATIPICO] == []
-    assert _guardados(sesion, CODIGO_NUEVO) == 2
-    recargado = cargar_elaboracion(sesion, NOMBRE_PROYECTO, CODIGO_NUEVO, Catalogo(sesion))
-    _mismo_informe(recargado.informe, nuevo.informe)
+    viejos, nuevos = _atipicos(segundo.informe), _atipicos(tercero.informe)
+    assert len(viejos) == 1 and len(nuevos) == 1
+    assert nuevos[0] not in viejos  # solo el del detector de la lista 3, no el heredado
+    assert len(_externos(segundo.informe)) == len(_externos(tercero.informe)) == 2
+    assert _guardados(sesion, "003") == 2
+    assert _guardados(sesion, "003", regla=CODIGO_ATIPICO) == 1
+    recargado = cargar_elaboracion(sesion, NOMBRE_PROYECTO, "003", Catalogo(sesion))
+    _mismo_informe(recargado.informe, tercero.informe)
 
 
 def test_el_escenario_declara_los_externos_que_se_le_pasan(sesion, base):
@@ -248,6 +286,21 @@ def test_el_escenario_declara_los_externos_que_se_le_pasan(sesion, base):
     assert tuple(_externos(con.informe)) == externos
     assert _externos(sin.informe) == []
 
+    atipico = Hallazgo(
+        regla=CODIGO_ATIPICO,
+        severidad=Severidad.ADVERTENCIA,
+        descripcion="precio atipico de la lista del base",
+    )
+    con_atipico = generar_escenario(
+        "alza",
+        recargado.presupuesto,
+        composiciones,
+        linea_base.PARAMETROS_LINEA_BASE,
+        externos=(*externos, atipico),
+    )
+    assert _atipicos(con_atipico.informe) == []  # los atipicos son de la lista del base
+    assert tuple(_externos(con_atipico.informe)) == externos
+
 
 def test_importar_con_reglas_extra_recarga_el_mismo_informe(sesion, tmp_path):
     proyecto = crear_proyecto(sesion, "Tercero", dominio=Dominio.CIVIL)
@@ -260,3 +313,30 @@ def test_importar_con_reglas_extra_recarga_el_mismo_informe(sesion, tmp_path):
 
     assert len(_externos(emitido.informe)) == 2
     _mismo_informe(recargado.informe, emitido.informe)
+
+
+def test_reglas_como_iterador_no_duplican_las_siete(sesion, base):
+    """Un iterador de un solo uso se consume una vez: las siete no se evaluan dos veces."""
+    items = items_auditados()
+    catalogo = Catalogo(sesion)
+    composiciones = catalogo.composiciones(
+        dict.fromkeys(i.codigo_partida for i in items), fecha=linea_base.FECHA_LINEA_BASE
+    )
+    resultado = elaborar(
+        items,
+        composiciones,
+        linea_base.PARAMETROS_LINEA_BASE,
+        codigo="IT",
+        fecha=linea_base.FECHA_LINEA_BASE,
+        moneda=linea_base.MONEDA,
+        plan=plan_secuencial,
+        reglas=iter(CON_EXTRA),
+    )
+    de_lista = _elaborar(sesion, codigo="IT", reglas=CON_EXTRA)
+    assert resultado.informe.hallazgos == de_lista.informe.hallazgos
+    assert resultado.informe.reglas_evaluadas == de_lista.informe.reglas_evaluadas
+
+    recargado = cargar_elaboracion(
+        sesion, NOMBRE_PROYECTO, CODIGO, Catalogo(sesion), reglas=iter(CON_EXTRA)
+    )
+    _mismo_informe(recargado.informe, base.informe)
