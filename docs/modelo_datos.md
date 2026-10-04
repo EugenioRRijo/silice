@@ -346,7 +346,7 @@ entidades de `core/` los fija su expediente; los de abajo son los del spec.
 
 **Tablas `esp_*` del adaptador `adapters/espacio`** (DA‑SF‑2). Las crea `crear_esquema_espacio()`, no
 `crear_esquema`. Todas llevan la **clave de versión** (id del presupuesto) **sin clave foránea**,
-porque el adaptador no importa `core.models`; un borrado de proyecto limpia sus filas. Las versiones
+porque el adaptador no importa `core.models`; el borrado de proyecto lo hace `adapters.espacio.borrar_proyecto(...)`, que invoca `ui.hoja` (la API no borra proyectos). Mientras no se invoque, pueden quedar filas `esp_*` huérfanas: deuda explícita de SF. Las versiones
 que no crea la hoja (restaurar, cotizar, revalorar) no copian filas `esp_*`: su espacio es el de su
 `version_origen`, subiendo por la cadena hasta la primera con filas propias (spec §5.3).
 
@@ -690,7 +690,7 @@ presupuesto anterior que lo use. Lo congelado es el resultado valorado, no la co
 produjo. La extensión se hace en el sprint final (SF‑E6, §2.4) con una **instantánea de la
 composición y del rendimiento por versión**, no con `vigente_desde`/`vigente_hasta`: cada versión
 guarda las líneas con que se valoró y toda recarga las toma de ahí (solo las versiones anteriores a
-SF‑E6 usan el catálogo).
+SF‑E6 o importadas por UC‑05 usan el catálogo).
 
 ## 6. Insumos homónimos con precio distinto (hallazgo de datos de la Sesión I0.4)
 
