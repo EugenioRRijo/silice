@@ -52,7 +52,14 @@ from core.verification.expresiones import (
     nombres_de,
     sustituir_codigos,
 )
-from core.verification.texto import formatear_decimal, normalizar_texto, pares_numero_unidad, tokens
+from core.verification.texto import (
+    Componente,
+    Magnitud,
+    componentes,
+    formatear_decimal,
+    magnitudes_de,
+    normalizar_texto,
+)
 
 __all__ = [
     "NO_APLICABLE",
@@ -352,6 +359,14 @@ class CorrespondenciaEspecificaciones(ReglaVerificacion):
     Una especificación que no aparece en el texto y que además contradice un valor del texto para
     la misma unidad (`3/4 pulg` frente a `4 pulg`) es un error; una que simplemente no aparece se
     informa como no contrastable, porque el texto del APU puede callar un atributo sin equivocarse.
+
+    **Comparación normalizada (SF‑E5, hallazgo A‑2).** «Aparecer» es que la secuencia de palabras y
+    cantidades de la especificación (`core.verification.texto.componentes`) esté, seguida y en
+    orden, dentro de la de una descripción del APU, con las cantidades comparadas por su `Decimal`:
+    `4 pulg` no aparece en `3/4 pulg`, ni `2` en `1/2`, ni `6` en `16`, ni `1/2` en `1 1/2`, y
+    `0.5 pulg` sí aparece en `1/2 pulg`. El corpus es el APU (su descripción y la de cada línea),
+    **no** la descripción del propio ítem: la escribe quien declaró la especificación y no puede
+    confirmarla.
     """
 
     codigo: ClassVar[str] = "R4"
@@ -364,45 +379,49 @@ class CorrespondenciaEspecificaciones(ReglaVerificacion):
         hallazgos: list[Atribucion] = []
         for partida in presupuesto.partidas:
             corpus = self._corpus(partida)
-            pares_corpus = pares_numero_unidad(tokens(corpus))
+            magnitudes_corpus = [m for segmento in corpus for m in magnitudes_de(segmento)]
             for clave, valor in partida.item.especificaciones.items():
                 if es_directiva(clave):
                     continue
-                hallazgo = self._verificar(partida, clave, valor, corpus, pares_corpus)
+                hallazgo = self._verificar(partida, clave, valor, corpus, magnitudes_corpus)
                 if hallazgo is not None:
                     hallazgos.append((hallazgo, partida.item.codigo_partida))
         return hallazgos
 
     @staticmethod
-    def _corpus(partida: PartidaPresupuestada) -> str:
+    def _corpus(partida: PartidaPresupuestada) -> list[list[Componente]]:
+        """Cada descripción del APU como secuencia comparable, por separado: una especificación
+        no se reconoce, ni una cantidad toma su unidad, a caballo entre dos líneas."""
         apu = partida.apu
         descripciones = [
             apu.descripcion,
             *(linea.descripcion for linea in apu.materiales),
             *(linea.descripcion for linea in apu.equipos),
             *(linea.descripcion for linea in apu.mano_obra),
-            partida.item.descripcion,
         ]
-        return normalizar_texto(" ".join(descripciones))
+        return [componentes(descripcion) for descripcion in descripciones]
 
     def _verificar(
         self,
         partida: PartidaPresupuestada,
         clave: str,
         valor: str,
-        corpus: str,
-        pares_corpus: Sequence[tuple[str, str]],
+        corpus: Sequence[Sequence[Componente]],
+        magnitudes_corpus: Sequence[Magnitud],
     ) -> Hallazgo | None:
         item = partida.item
         normalizado = normalizar_texto(valor)
-        if not normalizado or normalizado in corpus:
+        if not normalizado:
+            return None
+        declarado = componentes(normalizado)
+        if declarado and any(_aparece(declarado, segmento) for segmento in corpus):
             return None
 
         contradicciones = [
-            (numero_declarado, numero_texto, unidad)
-            for numero_declarado, unidad in pares_numero_unidad(tokens(normalizado))
-            for numero_texto, unidad_texto in pares_corpus
-            if unidad_texto == unidad and numero_texto != numero_declarado
+            (magnitud.texto, en_texto.texto, magnitud.unidad)
+            for magnitud in magnitudes_de(declarado)
+            for en_texto in magnitudes_corpus
+            if en_texto.unidad == magnitud.unidad and en_texto.valor != magnitud.valor
         ]
         if not contradicciones:
             return Hallazgo(
@@ -426,6 +445,16 @@ class CorrespondenciaEspecificaciones(ReglaVerificacion):
             ),
             origen_ids=(item.origen_id,),
         )
+
+
+def _aparece(buscada: Sequence[Componente], texto: Sequence[Componente]) -> bool:
+    """True si `buscada` está, seguida y en orden, dentro de `texto` (comparando por `clave`)."""
+    claves = [componente.clave for componente in buscada]
+    del_texto = [componente.clave for componente in texto]
+    largo = len(claves)
+    return any(
+        del_texto[inicio : inicio + largo] == claves for inicio in range(len(del_texto) - largo + 1)
+    )
 
 
 # ---------------------------------------------------------------------------------------------
