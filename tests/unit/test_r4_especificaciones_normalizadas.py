@@ -304,3 +304,45 @@ def test_magnitudes_une_el_numero_mixto_y_conserva_su_grafia():
         ("2.5", Decimal("2.5"), "m"),
     ]
     assert all(isinstance(m.valor, Decimal) for m in magnitudes)
+
+
+# ---------------------------------------------------------------------------------------------
+# Ronda de corrección 1 de la tarea 1.2
+# ---------------------------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "linea",
+    [
+        'Codo PVC 90° 1/2"',
+        'Codo PVC 90º 1/2"',
+        'Codo PVC 90 grados 1/2"',
+        'Codo PVC 90°1/2"',
+    ],
+)
+def test_un_angulo_no_forma_numero_mixto_con_el_diametro_que_le_sigue(linea):
+    """«90° 1/2"» es un codo de 90 grados y 1/2 pulg, no una cantidad de 90,5 pulg: con el «°»
+    descartado, el 90 y el 1/2 quedaban juntos y R4 marcaba un ERROR falso (1/2 frente a 90 1/2)."""
+    presupuesto = _presupuesto(
+        "Instalacion de codos de PVC",
+        {"diametro": "1/2 pulg"},
+        lineas=(linea,),
+    )
+    assert _r4(presupuesto) == []
+    assert [m.valor for m in modulo_texto.magnitudes(linea) if m.unidad == "pulg"] == [
+        Decimal("0.5")
+    ]
+
+
+def test_dos_descripciones_no_se_leen_como_una_sola():
+    """Comparación línea a línea: una descripción que termina en «… 4» y la siguiente que empieza
+    por «pulg …» no forman «4 pulg» (ni para reconocer la especificación ni como magnitud)."""
+    hallazgo = _unico(
+        _presupuesto(
+            "Suministro e instalacion de tuberia de 4",
+            {"diametro": "4 pulg"},
+            lineas=("pulg galvanizada de acero",),
+        )
+    )
+    assert hallazgo.severidad is Severidad.INFO
+    assert "no es contrastable" in hallazgo.descripcion
