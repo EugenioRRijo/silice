@@ -153,13 +153,19 @@ def _fraccion_propia(token: str) -> Decimal | None:
     return Decimal(numerador) / Decimal(denominador)
 
 
+def _une_numero_mixto(separacion: str) -> bool:
+    """True si lo que hay entre un entero y una fracción es espacio o un guion entre espacios."""
+    return separacion.isspace() or separacion.strip() == "-"
+
+
 def componentes(texto: str) -> list[Componente]:
     """El texto como secuencia de palabras y cantidades comparables.
 
     Un entero seguido de una fracción propia es un número mixto y forma una sola cantidad
     (`1 1/2` vale 1,5): es la grafía de los diámetros en pulgadas. Solo si entre los dos hay
-    únicamente espacio: un signo que el tokenizador descarta (`90° 1/2"`, un codo de 90 grados y
-    1/2 pulg) los separa, aunque no quede en la secuencia.
+    únicamente espacio o un guion (`1-1/2"`, `1 - 1/2`): cualquier otro signo que el tokenizador
+    descarta (`90° 1/2"`, un codo de 90 grados y 1/2 pulg) los separa, aunque no quede en la
+    secuencia.
     """
     normalizado = normalizar_texto(texto)
     piezas = [
@@ -180,7 +186,7 @@ def componentes(texto: str) -> list[Componente]:
             siguiente, fraccion_texto = piezas[indice + 1]
             separacion = normalizado[coincidencia.end() : siguiente.start()]
             fraccion = _fraccion_propia(fraccion_texto)
-            if fraccion is not None and separacion.isspace():
+            if fraccion is not None and _une_numero_mixto(separacion):
                 resultado.append(Componente(f"{actual} {fraccion_texto}", valor + fraccion))
                 indice += 2
                 continue
