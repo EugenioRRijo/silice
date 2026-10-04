@@ -31,3 +31,6 @@ Thumbs.db
 
 # Worktrees de los sprints (NORMAS.md §3)
 .worktrees/
+
+# Salida de la prueba descartable del editor de tablas (SF0)
+scripts/_salida_prueba_editor.log
