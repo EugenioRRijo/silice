@@ -169,6 +169,7 @@ def actualizar_precios(
     historial se registra **antes** de guardar la versión nueva: `registrar_cambios` es
     idempotente y solo hace `flush`.
     """
+    reglas = tuple(reglas)
     modelo = _buscar(session, proyecto_nombre, codigo_presupuesto)
     parametros = _parametros_de(modelo)
     lista_anterior = modelo.lista_precios

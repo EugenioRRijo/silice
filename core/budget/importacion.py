@@ -191,6 +191,7 @@ def importar_presupuesto(
     importación (las siete por defecto); los hallazgos de las que no son de `REGLAS` se guardan con
     el informe y la recarga los vuelve a declarar (SF‑E1, RF‑62). No confirma la transacción.
     """
+    reglas = tuple(reglas)
     importado = leer_presupuesto_tabular(ruta)
     presupuesto = importado.presupuesto
     informe = auditar(presupuesto, reglas)

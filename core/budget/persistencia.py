@@ -248,6 +248,7 @@ def cargar_elaboracion(
     Límite: un presupuesto guardado antes de INV‑080 no tiene sus pendientes persistidos y su
     recarga no los inventa: su informe es `auditar(cargar_presupuesto(...))` (expediente C3.1).
     """
+    reglas = tuple(reglas)
     modelo = _buscar(session, proyecto_nombre, codigo)
     presupuesto = _presupuesto_de(modelo, catalogo)
     pendientes = _cargar_pendientes(session, modelo)

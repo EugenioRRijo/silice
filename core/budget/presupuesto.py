@@ -153,6 +153,7 @@ def elaborar(
     informe no cumple: lleva un `CODIGO_PENDIENTE` de severidad ERROR por ítem. Aunque se pase
     `plan`, no hay curva que repartir, y R2 y R7 se declaran no aplicables (INFO).
     """
+    reglas = tuple(reglas)
     valorables = [item for item in items if item.codigo_partida in composiciones]
     pendientes = tuple(item for item in items if item.codigo_partida not in composiciones)
     presupuesto = generar_presupuesto(valorables, composiciones, parametros, codigo, fecha, moneda)

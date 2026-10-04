@@ -33,7 +33,12 @@ from pandas import DataFrame
 # variación porcentual y la tabla por renglón tienen una sola definición (NORMAS.md §2.1) y
 # duplicarlas aquí sería repetirla. Mismo patrón que `actualizacion` con `persistencia`.
 from core.budget.actualizacion import Comparativo, _comparar, _porcentaje
-from core.budget.presupuesto import _declarar_externos, elaborar, exigir_composiciones
+from core.budget.presupuesto import (
+    CODIGO_ATIPICO,
+    _declarar_externos,
+    elaborar,
+    exigir_composiciones,
+)
 from core.contracts.apu import ComposicionAPU, ParametrosCosto
 from core.contracts.presupuesto import Presupuesto
 from core.contracts.verificacion import Hallazgo, ReglaVerificacion
@@ -90,8 +95,11 @@ def generar_escenario(
 
     `reglas` son las que audita el escenario (las siete por defecto). `externos` son los hallazgos
     del base cuya regla no está en `reglas` (`hallazgos_externos(informe_del_base, reglas)`): el
-    escenario no los puede recalcular y los vuelve a declarar tal cual (SF‑E1, RF‑62).
+    escenario no los puede recalcular y los vuelve a declarar tal cual (SF‑E1, RF‑62). Los
+    `CODIGO_ATIPICO` del base **no** pasan aunque vengan en `externos`: son de la lista de precios
+    del base y el escenario tiene otros precios (mismo criterio que `actualizar_precios`).
     """
+    reglas = tuple(reglas)
     precios = dict(precios or {})
     ajustadas = (
         {codigo: _con_precios(apu, precios) for codigo, apu in composiciones.items()}
@@ -112,7 +120,9 @@ def generar_escenario(
     return Escenario(
         nombre=nombre,
         presupuesto=resultado.presupuesto,
-        informe=_declarar_externos(resultado.informe, externos),
+        informe=_declarar_externos(
+            resultado.informe, [h for h in externos if h.regla != CODIGO_ATIPICO]
+        ),
         parametros=parametros,
         insumos_variados=_variados(composiciones, precios),
     )
@@ -170,7 +180,9 @@ def _con_precios(composicion: ComposicionAPU, precios: Mapping[str, Decimal]) ->
     )
 
 
-def _variados(composiciones: Mapping[str, ComposicionAPU], precios: Mapping[str, Decimal]) -> int:
+def _variados(
+    composiciones: Mapping[str, ComposicionAPU], precios: Mapping[str, Decimal]
+) -> int:
     """Cuántos insumos del escenario difieren de algún precio vigente en las composiciones."""
     return len(
         {
