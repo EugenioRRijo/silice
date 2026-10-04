@@ -40,3 +40,8 @@ def test_las_partidas_generadas_tienen_composicion_y_se_elabora_sin_pendientes()
     )
     assert resultado.pendientes == ()
     assert len(resultado.presupuesto.partidas) == 500
+
+
+def test_las_cantidades_tienen_exactamente_dos_decimales():
+    for item in generar_items(2000, semilla=3):
+        assert item.cantidad.as_tuple().exponent == -2, item.cantidad

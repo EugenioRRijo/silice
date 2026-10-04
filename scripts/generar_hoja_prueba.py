@@ -67,7 +67,7 @@ def generar_items(n: int, semilla: int = 0) -> list[ItemComputo]:
     items: list[ItemComputo] = []
     for i in range(n):
         apu = composiciones[azar.choice(codigos)]
-        cantidad = Decimal(azar.randint(1, 100_000)) / Decimal(100)
+        cantidad = (Decimal(azar.randint(1, 100_000)) / Decimal(100)).quantize(Decimal("0.01"))
         items.append(
             ItemComputo(
                 codigo_partida=apu.codigo_partida,

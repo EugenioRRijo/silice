@@ -75,8 +75,7 @@ try:
     import fitz  # PyMuPDF
 except ImportError as exc:  # pragma: no cover - guia de uso, no logica de negocio
     raise SystemExit(
-        "Falta PyMuPDF. Ejecutar con:\n"
-        "  uv run --with pymupdf python scripts/extraer_maprex.py"
+        "Falta PyMuPDF. Ejecutar con:\n  uv run --with pymupdf python scripts/extraer_maprex.py"
     ) from exc
 
 RAIZ = Path(__file__).resolve().parents[1]
@@ -90,8 +89,17 @@ FECHA_MATERIALES_EQUIPOS = "2026-07-09"
 FECHA_MANO_OBRA = "2026-07-01"
 
 CABECERA = [
-    "tipo", "insumo", "unidad", "precio_bs", "bono_bs", "factor_depreciacion",
-    "precio_usd", "fecha_vigencia", "archivo", "ref_maprex", "notas",
+    "tipo",
+    "insumo",
+    "unidad",
+    "precio_bs",
+    "bono_bs",
+    "factor_depreciacion",
+    "precio_usd",
+    "fecha_vigencia",
+    "archivo",
+    "ref_maprex",
+    "notas",
 ]
 
 # --------------------------------------------------------------------------------------
@@ -103,7 +111,7 @@ PATRON_MATERIALES = re.compile(
     re.MULTILINE,
 )
 PATRON_EQUIPOS = re.compile(
-    r'^([A-Z]{2,4}\d{3,4})\s?(.+)\n([\d.,]+)\n([\d.,]+)\n([\d.,]+)([^\n]*)\n(\d{1,2}/\d{2}/\d{2,4})$',
+    r"^([A-Z]{2,4}\d{3,4})\s?(.+)\n([\d.,]+)\n([\d.,]+)\n([\d.,]+)([^\n]*)\n(\d{1,2}/\d{2}/\d{2,4})$",
     re.MULTILINE,
 )
 # Tabulador CIV (sistemas): agrupacion "e-TAB CIV ...". Solo se necesitan ref/desc/jornal/bono;
@@ -266,7 +274,11 @@ def _combinar_notas(*partes: str) -> str:
 
 
 def fila_material(
-    ref: str, dic: dict[str, FilaMaterial], nota: str, *, archivo: str = "materiales.pdf",
+    ref: str,
+    dic: dict[str, FilaMaterial],
+    nota: str,
+    *,
+    archivo: str = "materiales.pdf",
     fecha: str = FECHA_MATERIALES_EQUIPOS,
 ) -> dict[str, str]:
     dato = dic[ref]
@@ -336,31 +348,49 @@ def fila_mano_obra(
 # --- civil: los 37 insumos de tests/fixtures/apu_linea_base.py ------------------------
 
 CIVIL_MATERIALES: tuple[tuple[str, str], ...] = (
-    ("PLOA38", "equivalente de 'Tuberia PVC 4 pulg'; PVC A.N. (sanitario/drenaje) NORMA, "
-               "D=4\"/110mm"),
+    (
+        "PLOA38",
+        "equivalente de 'Tuberia PVC 4 pulg'; PVC A.N. (sanitario/drenaje) NORMA, D=4\"/110mm",
+    ),
     ("PLO035", "equivalente de 'Curva PVC 4 pulg'; codo PVC 90 grados A.N. D=4\""),
-    ("PLO560", "equivalente de 'Conector PVC 4 pulg'; union PVC A.B. 4\" (generica, sin "
-               "distincion A.N./A.B. en MaPreX para uniones)"),
+    (
+        "PLO560",
+        "equivalente de 'Conector PVC 4 pulg'; union PVC A.B. 4\" (generica, sin "
+        "distincion A.N./A.B. en MaPreX para uniones)",
+    ),
     ("MT539", "equivalente de 'Pegamento para PVC'; pegamento 1/4 gl marca Tangit o similar"),
-    ("ENC010", "equivalente de 'Madera'; madera de pino para encofrado, MaPreX cotiza por m3 "
-               "(la linea base usa m2 de consumo simplificado, no unidad comercial)"),
-    ("ENC048", "equivalente de 'Listones de madera 2x2'; MaPreX solo lista liston 2\"x4\"x3mt, "
-               "no 2x2; se usa como proxy dimensional mas cercano"),
-    ("ACE076", "equivalente de 'Clavos de acero 2 1/2 pulg'; clavo de acero liso L=2 1/2\", "
-               "unidad pza"),
+    (
+        "ENC010",
+        "equivalente de 'Madera'; madera de pino para encofrado, MaPreX cotiza por m3 "
+        "(la linea base usa m2 de consumo simplificado, no unidad comercial)",
+    ),
+    (
+        "ENC048",
+        "equivalente de 'Listones de madera 2x2'; MaPreX solo lista liston 2\"x4\"x3mt, "
+        "no 2x2; se usa como proxy dimensional mas cercano",
+    ),
+    (
+        "ACE076",
+        "equivalente de 'Clavos de acero 2 1/2 pulg'; clavo de acero liso L=2 1/2\", unidad pza",
+    ),
     ("MZ0201", "equivalente de 'Desencofrante'; desencofrante Sika"),
-    ("CEM019", "equivalente de 'Cemento Portland'; cemento gris Portland saco 42.5 kg "
-               "(estandar de mercado)"),
+    (
+        "CEM019",
+        "equivalente de 'Cemento Portland'; cemento gris Portland saco 42.5 kg "
+        "(estandar de mercado)",
+    ),
     ("MZ0027", "equivalente de 'Arena lavada'"),
     ("AGR081", "equivalente de 'Piedra picada'; variante 'para concreto'"),
-    ("AGR003", "equivalente de 'Agua'; agua suministrada en camion cisterna o tanque (agua de "
-               "obra, no potable embotellada)"),
+    (
+        "AGR003",
+        "equivalente de 'Agua'; agua suministrada en camion cisterna o tanque (agua de "
+        "obra, no potable embotellada)",
+    ),
     ("BAS006", "equivalente de 'Material granular'; material granular integral"),
 )
 
 CIVIL_EQUIPOS: tuple[tuple[str, str], ...] = (
-    ("MOV027", "equivalente de 'Retroexcavadora'; CASE o similar, sin martillo hidraulico "
-               "adosado"),
+    ("MOV027", "equivalente de 'Retroexcavadora'; CASE o similar, sin martillo hidraulico adosado"),
     ("ALB072", "equivalente de 'Pico'; pico con cabo"),
     ("EZ0576", "equivalente de 'Pala'; pala cuadrada con cabo de madera"),
     ("VEH010", "equivalente de 'Camion de volteo'; Ford 7000 u similar, 8 m3"),
@@ -375,23 +405,34 @@ CIVIL_EQUIPOS: tuple[tuple[str, str], ...] = (
     ("CON041", "equivalente de 'Vibrador de concreto'"),
     ("ALB073", "equivalente de 'Carretilla'; carretilla para construccion"),
     ("ALB146", "equivalente de 'Tobos plasticos'; tobo plastico 10 lt de albañileria"),
-    ("CPT018", "equivalente de 'Compactadora de percusion tipo sapo'; MaPreX la llama 'rana' "
-               "(sinonimo), 280 kg"),
-    ("ALB213", "equivalente de 'Herramientas menores'; MaPreX tiene tres filas con la misma "
-               "descripcion exacta (ALB213 9.060 Bs, ALB171 30.200 Bs, EZ0263 37.750 Bs) sin "
-               "ningun otro campo que las distinga; se elige la de menor precio (ALB213) como "
-               "referencia conservadora ante la falta de un criterio propio de MaPreX"),
+    (
+        "CPT018",
+        "equivalente de 'Compactadora de percusion tipo sapo'; MaPreX la llama 'rana' "
+        "(sinonimo), 280 kg",
+    ),
+    (
+        "ALB213",
+        "equivalente de 'Herramientas menores'; MaPreX tiene tres filas con la misma "
+        "descripcion exacta (ALB213 9.060 Bs, ALB171 30.200 Bs, EZ0263 37.750 Bs) sin "
+        "ningun otro campo que las distinga; se elige la de menor precio (ALB213) como "
+        "referencia conservadora ante la falta de un criterio propio de MaPreX",
+    ),
 )
 
 CIVIL_MANO_OBRA: tuple[tuple[str, str], ...] = (
-    ("24-5.4", "equivalente de 'Operador de equipo de 1ra'; tabulador construccion, operador "
-               "de equipo pesado 1ra"),
+    (
+        "24-5.4",
+        "equivalente de 'Operador de equipo de 1ra'; tabulador construccion, operador "
+        "de equipo pesado 1ra",
+    ),
     ("1-1.2", "equivalente de 'Ayudante'; tabulador construccion, ayudante generico"),
-    ("8-3.5", "equivalente de 'Chofer de 2da'; tabulador construccion, chofer de 2da "
-              "(3 a 8 ton)"),
+    ("8-3.5", "equivalente de 'Chofer de 2da'; tabulador construccion, chofer de 2da (3 a 8 ton)"),
     ("4-3.3", "equivalente de 'Chofer de 4ta'; tabulador construccion"),
-    ("24-216", "equivalente de 'Maestro (electricista, segun el APU original)'; maestro "
-               "electricista, tabulador construccion"),
+    (
+        "24-216",
+        "equivalente de 'Maestro (electricista, segun el APU original)'; maestro "
+        "electricista, tabulador construccion",
+    ),
     ("19-2.5", "equivalente de 'Carpintero de 1ra'; tabulador construccion"),
     ("19-2.2", "equivalente de 'Albañil de 1ra'; tabulador construccion"),
 )
@@ -399,79 +440,151 @@ CIVIL_MANO_OBRA: tuple[tuple[str, str], ...] = (
 # --- telecom: renglones comparables con ARENAZA (data/telecom/plantilla_precios.csv) --
 
 TELECOM_MATERIALES: tuple[tuple[str, str], ...] = (
-    ("ELA006", "cable UTP categoria 6 (cubre 'Bobina Cable Utp Cat 6' y 'Bobina Cable Utp "
-               "Cat6 305m Int' de la plantilla: mismo insumo, distinta presentacion de rollo)"),
-    ("ELE906", "equivalente de 'Tubo Corrugado Flexible 1 Pulgada'; tubo PVC electricidad "
-               "corrugado flexible D=1\" exacto"),
-    ("ELC069", "equivalente de 'Conectores Rj45 Cat6 Utp Bolsa'; conector RJ45 macho cat 6 "
-               "(precio por pieza, no por bolsa de 100)"),
-    ("ELC065", "equivalente de 'Conector Jack Coupler Ubiquiti Rj45'; jack coupler hembra "
-               "RJ45 cat 6 generico (MaPreX no distingue marca Ubiquiti)"),
-    ("QUI059", "cubre 'Bolsa Tirrap (100 unidades)' y 'Amarre Tiewrap Negro Plastico 20 Cm'; "
-               "tirrap 3,5mm x 200mm, precio por pieza"),
-    ("ELF449", "equivalente de 'Organizador De Cables Individuales 20cm'; espiral organizador "
-               "de cable (forma distinta: espiral continuo vs organizadores individuales)"),
-    ("ELF215", "cubre 'Teipe Electrico Negro Cobra' y 'Teipe Aislante Para Cableado "
-               "Electrico'; cinta aislante plastica negra (MaPreX no lista la marca Cobra)"),
-    ("ELA190", "equivalente de 'Toma Doble Con Tierra 270 20a Con Placa Blanca'; "
-               "tomacorriente doble 1 fase 20/30A"),
+    (
+        "ELA006",
+        "cable UTP categoria 6 (cubre 'Bobina Cable Utp Cat 6' y 'Bobina Cable Utp "
+        "Cat6 305m Int' de la plantilla: mismo insumo, distinta presentacion de rollo)",
+    ),
+    (
+        "ELE906",
+        "equivalente de 'Tubo Corrugado Flexible 1 Pulgada'; tubo PVC electricidad "
+        'corrugado flexible D=1" exacto',
+    ),
+    (
+        "ELC069",
+        "equivalente de 'Conectores Rj45 Cat6 Utp Bolsa'; conector RJ45 macho cat 6 "
+        "(precio por pieza, no por bolsa de 100)",
+    ),
+    (
+        "ELC065",
+        "equivalente de 'Conector Jack Coupler Ubiquiti Rj45'; jack coupler hembra "
+        "RJ45 cat 6 generico (MaPreX no distingue marca Ubiquiti)",
+    ),
+    (
+        "QUI059",
+        "cubre 'Bolsa Tirrap (100 unidades)' y 'Amarre Tiewrap Negro Plastico 20 Cm'; "
+        "tirrap 3,5mm x 200mm, precio por pieza",
+    ),
+    (
+        "ELF449",
+        "equivalente de 'Organizador De Cables Individuales 20cm'; espiral organizador "
+        "de cable (forma distinta: espiral continuo vs organizadores individuales)",
+    ),
+    (
+        "ELF215",
+        "cubre 'Teipe Electrico Negro Cobra' y 'Teipe Aislante Para Cableado "
+        "Electrico'; cinta aislante plastica negra (MaPreX no lista la marca Cobra)",
+    ),
+    (
+        "ELA190",
+        "equivalente de 'Toma Doble Con Tierra 270 20a Con Placa Blanca'; "
+        "tomacorriente doble 1 fase 20/30A",
+    ),
     ("ELE033", "equivalente de 'Anillo E.m.t. 2'; anillo EMT D=2\" exacto"),
-    ("ACE894", "equivalente de 'Guaya Guia Pasa Cable De Acero'; guaya de acero D=1/4\" "
-               "(calibre fino, tipico de guia pasacables)"),
-    ("ELE654", "equivalente de 'Cajetin Plastico 4x2 Pvc Con Grapa Metalica'; cajetin "
-               "rectangular PVC 2\"x4\" (misma medida, orden invertido)"),
-    ("ELC066", "equivalente de 'Cajetin Superficial 4x2 Hembra'; cajetin superficial de red "
-               "1 puerto (MaPreX no distingue '4x2' en cajetines de red)"),
-    ("ELA633", "referencia generica de categoria para 'Switch Escritorio Gigabit 10P PoE', "
-               "'Switch Tp-link Tl-sg108 8P' y 'Switch Tp-link 16P'; unico switch de marca en "
-               "MaPreX es TP-Link 48P 10/100 para rack (puertos y PoE no coinciden, ver "
-               "bitacora)"),
-    ("ELA553", "equivalente de 'Canaleta Plastica 40x40x2mts'; canaleta para cableado "
-               "superficial 1\"/25mm (seccion menor a 40x40mm)"),
-    ("ELC051", "referencia de categoria para 'Rack Fijo Onlink 12u'; rack abierto 4U de "
-               "pared (MaPreX no tiene racks de pared de 12U)"),
-    ("ELC057", "referencia adicional de patch panel (categoria 'racks/canalizacion' del "
-               "alcance de la sesion), no de un insumo puntual de la plantilla"),
-    ("EFO001", "referencia adicional de fibra optica (categoria explicita del alcance de la "
-               "sesion), no de un insumo puntual de la plantilla; cable ADSS 48 hilos "
-               "monomodo OM3"),
+    (
+        "ACE894",
+        "equivalente de 'Guaya Guia Pasa Cable De Acero'; guaya de acero D=1/4\" "
+        "(calibre fino, tipico de guia pasacables)",
+    ),
+    (
+        "ELE654",
+        "equivalente de 'Cajetin Plastico 4x2 Pvc Con Grapa Metalica'; cajetin "
+        'rectangular PVC 2"x4" (misma medida, orden invertido)',
+    ),
+    (
+        "ELC066",
+        "equivalente de 'Cajetin Superficial 4x2 Hembra'; cajetin superficial de red "
+        "1 puerto (MaPreX no distingue '4x2' en cajetines de red)",
+    ),
+    (
+        "ELA633",
+        "referencia generica de categoria para 'Switch Escritorio Gigabit 10P PoE', "
+        "'Switch Tp-link Tl-sg108 8P' y 'Switch Tp-link 16P'; unico switch de marca en "
+        "MaPreX es TP-Link 48P 10/100 para rack (puertos y PoE no coinciden, ver "
+        "bitacora)",
+    ),
+    (
+        "ELA553",
+        "equivalente de 'Canaleta Plastica 40x40x2mts'; canaleta para cableado "
+        'superficial 1"/25mm (seccion menor a 40x40mm)',
+    ),
+    (
+        "ELC051",
+        "referencia de categoria para 'Rack Fijo Onlink 12u'; rack abierto 4U de "
+        "pared (MaPreX no tiene racks de pared de 12U)",
+    ),
+    (
+        "ELC057",
+        "referencia adicional de patch panel (categoria 'racks/canalizacion' del "
+        "alcance de la sesion), no de un insumo puntual de la plantilla",
+    ),
+    (
+        "EFO001",
+        "referencia adicional de fibra optica (categoria explicita del alcance de la "
+        "sesion), no de un insumo puntual de la plantilla; cable ADSS 48 hilos "
+        "monomodo OM3",
+    ),
 )
 
 TELECOM_EQUIPOS: tuple[tuple[str, str], ...] = (
-    ("EFO001", "fusionadora/empalmadora de fibra optica; referencia de equipo de red para "
-               "contraste (README: 'fusionadoras y equipos de red')"),
+    (
+        "EFO001",
+        "fusionadora/empalmadora de fibra optica; referencia de equipo de red para "
+        "contraste (README: 'fusionadoras y equipos de red')",
+    ),
 )
 
 # --- industrial: repuestos/servicios de data/samples/industrial/activos_planta.csv ----
 
 INDUSTRIAL_MATERIALES: tuple[tuple[str, str], ...] = (
-    ("MZ0623", "rodamiento de referencia para motores/bombas rotativas (MaPreX solo lista "
-               "rodamiento de alternador; sin SKU generico de rodamiento industrial)"),
+    (
+        "MZ0623",
+        "rodamiento de referencia para motores/bombas rotativas (MaPreX solo lista "
+        "rodamiento de alternador; sin SKU generico de rodamiento industrial)",
+    ),
     ("MZ0341", "grasa para rodamientos; lubricante de mantenimiento de rodamientos"),
-    ("MEC528", "correa industrial A41 para motor; repuesto de transmision aplicable a "
-               "compresores/motores"),
-    ("PLOG46", "repuesto para IN-005 Valvula de control neumatica (diametro=4 pulg; MaPreX "
-               "solo tiene bola D=2\" en acero inoxidable, diametro distinto)"),
-    ("PLO887", "valvula check D=1\" piston acero inoxidable; repuesto adicional de "
-               "valvuleria para bombas"),
+    (
+        "MEC528",
+        "correa industrial A41 para motor; repuesto de transmision aplicable a compresores/motores",
+    ),
+    (
+        "PLOG46",
+        "repuesto para IN-005 Valvula de control neumatica (diametro=4 pulg; MaPreX "
+        'solo tiene bola D=2" en acero inoxidable, diametro distinto)',
+    ),
+    (
+        "PLO887",
+        'valvula check D=1" piston acero inoxidable; repuesto adicional de valvuleria para bombas',
+    ),
     ("COM032", "aceite para maquinas/motores; lubricante generico de mantenimiento"),
     ("MZ0294", "filtro de aceite de motor; repuesto de mantenimiento generico"),
-    ("MZ0471", "material para instalacion de sello mecanico tipo cartucho; repuesto de "
-               "IN-001/IN-007 (bombas centrifuga y sumergible)"),
-    ("ELA073", "repuesto/referencia para IN-004 Transformador de distribucion (150 kVA); "
-               "MaPreX no tiene 150 kVA exacto, se usa 100 kVA monofasico como proxy de "
-               "capacidad"),
+    (
+        "MZ0471",
+        "material para instalacion de sello mecanico tipo cartucho; repuesto de "
+        "IN-001/IN-007 (bombas centrifuga y sumergible)",
+    ),
+    (
+        "ELA073",
+        "repuesto/referencia para IN-004 Transformador de distribucion (150 kVA); "
+        "MaPreX no tiene 150 kVA exacto, se usa 100 kVA monofasico como proxy de "
+        "capacidad",
+    ),
     ("ELA067", "repuesto/referencia para IN-010 Transformador de emergencia (75 kVA exacto)"),
 )
 
 INDUSTRIAL_EQUIPOS: tuple[tuple[str, str], ...] = (
-    ("EZ0453", "herramienta de taller (README: 'herramientas y equipos de taller'); taladro "
-               "industrial de banco 3/4\" 750W"),
+    (
+        "EZ0453",
+        "herramienta de taller (README: 'herramientas y equipos de taller'); taladro "
+        'industrial de banco 3/4" 750W',
+    ),
 )
 
 INDUSTRIAL_MANO_OBRA: tuple[tuple[str, str], ...] = (
-    ("24-6.7", "tecnico de mantenimiento; mecanico de equipo pesado de 1ra, tabulador "
-               "construccion"),
+    (
+        "24-6.7",
+        "tecnico de mantenimiento; mecanico de equipo pesado de 1ra, tabulador construccion",
+    ),
     ("19-215", "tecnico electricista; electricista de 1ra, tabulador construccion"),
 )
 
@@ -483,18 +596,14 @@ INDUSTRIAL_MANO_OBRA: tuple[tuple[str, str], ...] = (
 
 def construir_civil(materiales, equipos, equipos_descartados, mano_obra) -> list[dict[str, str]]:
     filas = [fila_material(ref, materiales, nota) for ref, nota in CIVIL_MATERIALES]
-    filas += [
-        fila_equipo(ref, equipos, nota, equipos_descartados) for ref, nota in CIVIL_EQUIPOS
-    ]
+    filas += [fila_equipo(ref, equipos, nota, equipos_descartados) for ref, nota in CIVIL_EQUIPOS]
     filas += [fila_mano_obra(ref, mano_obra, nota) for ref, nota in CIVIL_MANO_OBRA]
     return filas
 
 
 def construir_telecom(materiales, equipos, equipos_descartados) -> list[dict[str, str]]:
     filas = [fila_material(ref, materiales, nota) for ref, nota in TELECOM_MATERIALES]
-    filas += [
-        fila_equipo(ref, equipos, nota, equipos_descartados) for ref, nota in TELECOM_EQUIPOS
-    ]
+    filas += [fila_equipo(ref, equipos, nota, equipos_descartados) for ref, nota in TELECOM_EQUIPOS]
     return filas
 
 
@@ -571,8 +680,10 @@ def main() -> int:
     # Diagnostico de auditoria (hallazgo de revision): equipos.pdf trae filas cuyo
     # Total impreso no coincide con Precio x Factor; se descartan del parseo (no se usan
     # como candidatas) y quedan registradas aqui, no solo silenciadas.
-    print(f"  filas de equipos.pdf descartadas por el cruce Total=Precio x Factor: "
-          f"{len(equipos_descartados)}")
+    print(
+        f"  filas de equipos.pdf descartadas por el cruce Total=Precio x Factor: "
+        f"{len(equipos_descartados)}"
+    )
     for mensaje in equipos_descartados.values():
         print(f"    - {mensaje}")
     return 0

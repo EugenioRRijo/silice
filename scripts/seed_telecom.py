@@ -289,15 +289,11 @@ def _lineas_impresas(
             renglon.descripcion, Decimal("1"), _precio(renglon), DEPRECIACION_HERRAMIENTA
         )
         return (), (equipo,)
-    material = LineaMaterial(
-        renglon.descripcion, _unidad(renglon), Decimal("1"), _precio(renglon)
-    )
+    material = LineaMaterial(renglon.descripcion, _unidad(renglon), Decimal("1"), _precio(renglon))
     return (material,), ()
 
 
-def _linea_ajuste(
-    renglon: RenglonPresupuesto, composicion: ComposicionAPU
-) -> LineaMaterial | None:
+def _linea_ajuste(renglon: RenglonPresupuesto, composicion: ComposicionAPU) -> LineaMaterial | None:
     """Mecanismo 2: la diferencia entre el total impreso y lo que da la composición, declarada.
 
     `None` cuando no hace falta (los 38 renglones que sí cierran). Si el total impreso fuera menor
@@ -426,9 +422,9 @@ def con_mano_obra(
             "politica encima duplicaria el importe"
         )
     directo = calcular_apu(composicion, parametros).costo_directo
-    sueldo = (
-        fraccion * directo * composicion.rendimiento - parametros.bono_alimentacion
-    ) / (1 + parametros.fcas)
+    sueldo = (fraccion * directo * composicion.rendimiento - parametros.bono_alimentacion) / (
+        1 + parametros.fcas
+    )
     if sueldo < 0:
         raise ValueError(
             f"el bono de alimentacion ({parametros.bono_alimentacion}) ya supera la mano de obra "
