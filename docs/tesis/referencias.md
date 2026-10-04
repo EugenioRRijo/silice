@@ -665,6 +665,56 @@ desde el programa MaPreX, versión 26.0.0.1, base de datos `BDLaing08072026.mdb`
 
 ---
 
+### Ministerio de Sanidad y Asistencia Social (1988)
+
+Ministerio de Sanidad y Asistencia Social. (1988). *Normas sanitarias para proyecto, construcción,
+reparación, reforma y mantenimiento de edificaciones* (Gaceta Oficial de la República de Venezuela
+N.° 4.044 Extraordinario, 8 de septiembre de 1988).
+
+- **Estado:** pendiente
+- **Verificación:** búsqueda web, 2026‑10‑04 (tarea 0.4 del sprint final SF). Existencia, número de
+  gaceta y fecha de publicación (8 de septiembre de 1988) confirmados en varios repositorios que la
+  alojan (Scribd, SlideShare, Tecnoproyectos). **No se abrió el texto**: el organismo emisor se
+  toma de la práctica común y no de la fuente, y queda por confirmar.
+- **Falta:** abrir el PDF (`tecnoproyectos.com.ve/attachments/Norma-Sanitaria-4044_1988.pdf`) y
+  registrar el artículo y el valor de la pendiente mínima de las tuberías de drenaje. **Hasta
+  entonces la pendiente mínima de R10 es un supuesto declarado (RS‑5):** ERROR no, ADVERTENCIA
+  (spec SF §8.2). No se registra ningún número de artículo ni de pendiente.
+- **Constante que respalda:** pendiente mínima del drenaje (R10, agua).
+
+### Comisión Venezolana de Normas Industriales / FONDONORMA (Código Eléctrico Nacional)
+
+Fondo para la Normalización y Certificación de la Calidad. (2009). *Código Eléctrico Nacional*
+(FONDONORMA 200:2009).
+
+- **Estado:** pendiente
+- **Verificación:** búsqueda web, 2026‑10‑04. Las fichas encontradas muestran la serie: COVENIN
+  200:1999 (6.ª revisión), FONDONORMA 200:2004 (7.ª revisión) y FONDONORMA 200:2009. **Denominación
+  única que adopta el sistema:** «Código Eléctrico Nacional (FONDONORMA 200)», con el año de la
+  edición que se consulte; el glosario del caso TI‑001 (`scripts/glosario_presupuestos.py`) lo cita
+  como «CEN (COVENIN 200)» y se unifica a la forma anterior al tocarlo (la norma pasó de COVENIN a
+  FONDONORMA). Los años de edición salen de títulos de fichas de terceros, no del documento.
+- **Falta:** abrir una edición y registrar el artículo y el máximo de puntos por circuito de
+  tomacorrientes e iluminación; la edición y el año definitivos. **Hasta entonces el máximo de puntos
+  por circuito es un supuesto declarado (RS‑5)** y R10 da ADVERTENCIA, no ERROR.
+- **Constante que respalda:** puntos máximos por circuito (R10, electricidad).
+
+### ANSI/TIA‑568
+
+Telecommunications Industry Association / American National Standards Institute. *ANSI/TIA‑568,
+Commercial Building Telecommunications Cabling Standard* (edición por registrar).
+
+- **Estado:** pendiente
+- **Verificación:** búsqueda web, 2026‑10‑04, en fuentes secundarias (Wikipedia, notas de
+  instaladores y una copia de la norma ANSI/TIA/EIA‑568‑B alojada en un sitio universitario): el
+  enlace permanente (*permanent link*) horizontal admite como máximo **90 m** y el canal (*channel*)
+  100 m con hasta 10 m de cordones. **El texto de la edición vigente no se consultó** (es de pago).
+  El glosario del caso (`scripts/glosario_presupuestos.py`) ya declara los 90 m y los 100 m.
+- **Falta:** edición, año y cláusula de la norma. La constante de 90 m queda como **corroborada en
+  fuentes secundarias**; R10 puede darla como límite con fuente (ERROR) solo cuando se registre la
+  edición. Mientras tanto se aplica como **supuesto declarado (RS‑5)** y R10 da ADVERTENCIA.
+- **Constante que respalda:** 90 m por enlace permanente (R10, datos).
+
 ## Consultadas y no citadas
 
 Fuera de la lista APA 7, que solo admite obras citadas (criterio T9 de la
