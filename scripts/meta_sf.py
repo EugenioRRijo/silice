@@ -83,7 +83,7 @@ def evaluar_s1_requisitos(texto_ers: str | None) -> tuple[Estado, str]:
     if texto_ers is None:
         return Estado.PENDIENTE, "falta docs/ERS.md"
     faltan = [
-        f"{prefijo}‑{numero}"
+        f"{prefijo}-{numero}"
         for prefijo, numeros in REQUISITOS_SF
         for numero in numeros
         if not re.search(rf"(?<![A-Za-z]){prefijo}{_GUION}{numero}(?!\d)", texto_ers)

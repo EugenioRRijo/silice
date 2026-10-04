@@ -58,7 +58,7 @@ def test_s1_no_confunde_rf_44_con_rf_440():
     ers += " RF‑440 RNF‑11 RNF‑12 RNF‑13"
     estado, detalle = evaluar_s1_requisitos(ers)
     assert estado is Estado.FALLA
-    assert "RF‑44" in detalle
+    assert "RF-44" in detalle
 
 
 def test_main_devuelve_codigo_distinto_de_cero_con_pendientes(capsys):
