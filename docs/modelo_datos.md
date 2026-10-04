@@ -17,7 +17,7 @@
 | Distinguir rendimiento estimado de rendimiento medido | UC‑06 | `Rendimiento.tipo` ∈ {estimado, medido}; un rendimiento medido referencia obligatoriamente una `Ejecucion` (restricción `CHECK` en la tabla, no solo en Python) |
 | `Decimal` para todo lo monetario y dimensional | NORMAS.md §2 | tipo propio `DecimalExacto` (§7); nunca `Float`, y tampoco `Numeric` sobre SQLite |
 | Toda cantidad es trazable a su origen | NORMAS.md §2 | `ItemComputo` persistido con `origen_id`, `origen_tipo`, `regla`, `parametros` |
-| El núcleo no conoce dominios concretos | NORMAS.md §5 | `Partida.dominio` es un dato, no una rama de código; ninguna tabla es específica de un dominio |
+| El núcleo no conoce dominios concretos | NORMAS.md §5 | `Partida.dominio` es un dato, no una rama de código; ninguna tabla **de `core/models`** es específica de un dominio. Las tablas `esp_*` del sprint final (§2.4) son del adaptador `adapters/espacio`, no del núcleo, y por eso no contradicen este requisito (spec SF §5.4) |
 | El histórico de cambios alimenta el módulo predictivo | I1, I6.3 | `CambioPrecio` guarda insumo, precio anterior, precio nuevo, fecha; `IncidenciaCambio` guarda el efecto por partida |
 | El informe de auditoría se persiste, no solo se imprime | NORMAS.md §2, UC‑05 | `Hallazgo` cuelga del presupuesto auditado y conserva los `origen_id` involucrados |
 
@@ -206,8 +206,9 @@ alimenta el histórico del módulo predictivo.
 Regla de 7a (`core.budget.descartar_version`): solo se descarta el último presupuesto guardado del
 proyecto (el de mayor `id`), si el proyecto tiene al menos otro anterior, y una sola vez; el primero
 del proyecto nunca. Como la clave primaria es la foránea, una versión tiene a lo sumo una marca.
-Límite (expediente C3.2): el esquema no guarda de qué presupuesto salió una versión, así que la
-función no distingue una versión revalorada de un segundo presupuesto elaborado aparte en el mismo
+Límite (expediente C3.2; **se cierra en SF‑E2**, §2.4: toda versión nueva guarda su `version_origen`
+y la versión vigente pasa a ser la de mayor `id` no descartada): hoy el esquema no guarda de qué
+presupuesto salió una versión, así que la función no distingue una versión revalorada de un segundo presupuesto elaborado aparte en el mismo
 proyecto; por eso la interfaz solo ofrece el botón «Descartar version» para la versión que acaba de
 guardar `actualizar_precios` en esa ejecución. La tabla es **aditiva**: `crear_esquema`
 (`create_all`) la agrega a una base existente sin tocar las demás tablas, así que no es una
@@ -312,6 +313,60 @@ verificaron las siete reglas lo dice el informe al recargarlo, no la base.
 Los `ATIPICO` de C6 (INV‑099) sí se guardan como filas de `Hallazgo`, sin columna nueva: la
 reauditoría no los puede recalcular (el detector no está en el núcleo), así que `cargar_elaboracion`
 los lee de la tabla y los vuelve a declarar.
+
+### 2.4 Enmienda del sprint final (SF): diseño, aún no implementado
+
+Fuente: [spec SF](especificaciones/2026-10-04-sprint-final-prototipo-design.md) §5.2, §6.2, §9.3 y
+§9.6. Esta sección describe lo que SF agrega; las §2.1 a §2.3 siguen describiendo el esquema vigente
+(diecisiete entidades) hasta que cada expediente de `core/` se fusione. Los nombres de columna de las
+entidades de `core/` los fija su expediente; los de abajo son los del spec.
+
+**Entidades nuevas de `core/models`** (aditivas: `crear_esquema` las agrega sin migrar las demás):
+
+| Entidad | Propósito | Expediente |
+|---|---|---|
+| `RegistroCambio` | una fila por celda cambiada al guardar: proyecto, versión de origen, versión resultante, objeto (metraje, APU, precio, plan, parámetro), clave de la fila, campo, valor anterior, valor nuevo, **fuente del cambio**, responsable, fecha y hora. Todo cambio guardado exige fuente y responsable | SF‑E2 |
+| Instantánea de composiciones | las líneas de `ComposicionAPU` con que se valoró cada versión; toda recarga, la verificación del PU, la revaloración (UC‑02) y los escenarios las toman de aquí, y del catálogo solo si la versión es anterior a SF‑E6 | SF‑E6 |
+| Instantánea de rendimientos | el rendimiento vigente de cada partida de la versión, con el mismo criterio | SF‑E6 |
+
+**Columnas nuevas en entidades existentes:**
+
+- `Presupuesto.version_origen` (SF‑E2): la versión de la que salió. La guarda **toda** versión nueva
+  (edición, restauración, cotización, revaloración por UC‑02). Cierra la limitación C3.2 de
+  `DescarteVersion` (§2.3). La **versión vigente** es la de mayor `id` no descartada; una restauración
+  pasa a ser la vigente.
+- Origen de precios (SF‑E7): `ListaPrecios` gana tasa de cambio y fecha de la tasa, y un alcance
+  (global o de proyecto); `PrecioInsumo` gana la referencia (el Ref de MaPreX). Una **cotización**
+  crea una lista del proyecto (copia de la base con el insumo cambiado) que la versión referencia
+  explícitamente (DA‑SF‑9). `lista_vigente` excluye las listas de proyecto. Al revalorar por UC‑02 una
+  versión con lista de proyecto, la cotización se aplica sobre la nueva lista base.
+
+**Restaurar** la versión N crea una versión nueva copia de N, con su `RegistroCambio`; nada se borra
+(RF‑54).
+
+**Tablas `esp_*` del adaptador `adapters/espacio`** (DA‑SF‑2). Las crea `crear_esquema_espacio()`, no
+`crear_esquema`. Todas llevan la **clave de versión** (id del presupuesto) **sin clave foránea**,
+porque el adaptador no importa `core.models`; el borrado de proyecto lo hace `adapters.espacio.borrar_proyecto(...)`, que invoca `ui.hoja` (la API no borra proyectos). Mientras no se invoque, pueden quedar filas `esp_*` huérfanas: deuda explícita de SF. Las versiones
+que no crea la hoja (restaurar, cotizar, revalorar) no copian filas `esp_*`: su espacio es el de su
+`version_origen`, subiendo por la cadena hasta la primera con filas propias (spec §5.3).
+
+| Tabla | Columnas |
+|---|---|
+| `esp_ambientes` | id, nombre, x0, y0, largo, ancho, alto, origen de medida |
+| `esp_fuentes` | id, especialidad, tipo (acometida o montante de agua, colector de drenaje, rack, tablero), ambiente, x, y, z, origen |
+| `esp_circuitos` | id, tablero, número, conductores (fase, neutro, tierra), calibre, puntos máximos, orden de la cadena |
+| `esp_puntos` | id, especialidad, tipo (agua fría, drenaje, datos, tomacorriente, iluminación), ambiente, superficie (pared, techo, piso), x, y, z, fuente, circuito, especificaciones (diámetro, calibre, categoría), origen |
+| `esp_recorridos` | id, punto o circuito, propuesto o declarado, vértices declarados |
+| `esp_tramos` | recorrido, orden, superficie (pared, techo, plafón, piso, bandeja), empotrado o expuesto, vértices, pendiente (drenaje), longitud calculada |
+| `esp_segmentos` (derivada) | resultado de la unión de tramos (spec §6.5), con sobrescritura opcional de diámetro y de empotrado |
+| `esp_origenes` | id, tipo (plano, DXF, IFC, levantamiento en sitio, supuesto), referencia obligatoria por tipo, fecha, responsable |
+
+Coordenadas en metros, eje z hacia arriba desde el piso terminado; tolerancia geométrica 0,001 m. Los
+valores dimensionales se guardan con `DecimalExacto` (§7.1), como el resto del esquema. El origen de la
+medida es de la **fila** (de dónde sale el dato); la fuente del cambio es del `RegistroCambio` (por
+qué se cambió): se piden por separado. El espacio no se serializa dentro de `ItemComputo.parametros`
+(`Mapping[str, Decimal]`, no admite texto) ni en `especificaciones` (R4 haría ruido): R8 a R10 reciben
+la instantánea del espacio de la versión (DA‑SF‑8).
 
 ## 3. Diagrama entidad‑relación
 
@@ -624,10 +679,18 @@ sobreescribe el precio.
 
 Lo que este esquema **no** versiona todavía, y se declara como limitación: las líneas de
 `ComposicionAPU` no tienen vigencia temporal. Cambiar el desglose de una partida (añadir un insumo,
-cambiar una cantidad) altera el APU reconstruible a fechas pasadas. No afecta a los presupuestos
-emitidos, que están congelados en `PartidaPresupuestada`, pero sí a la pregunta «cómo se componía
-esta partida en abril». Añadir `vigente_desde`/`vigente_hasta` a `ComposicionAPU` es la extensión
-natural; se difiere hasta que un caso de uso la exija, para no pagar su complejidad sin necesidad.
+cambiar una cantidad) altera el APU reconstruible a fechas pasadas.
+
+**Corrección (SF0, 2026‑10‑04; spec SF §1.2).** Una versión anterior de este párrafo afirmaba que
+esto «no afecta a los presupuestos emitidos», porque estarían congelados en `PartidaPresupuestada`.
+La recarga demuestra lo contrario: `cargar_presupuesto` reconstruye cada APU desde la composición
+del catálogo y exige que el precio unitario cuadre con la instantánea del renglón
+(`core/budget/persistencia.py:403-425`), de modo que editar un APU rompe la recarga de cualquier
+presupuesto anterior que lo use. Lo congelado es el resultado valorado, no la composición que lo
+produjo. La extensión se hace en el sprint final (SF‑E6, §2.4) con una **instantánea de la
+composición y del rendimiento por versión**, no con `vigente_desde`/`vigente_hasta`: cada versión
+guarda las líneas con que se valoró y toda recarga las toma de ahí (solo las versiones anteriores a
+SF‑E6 o importadas por UC‑05 usan el catálogo).
 
 ## 6. Insumos homónimos con precio distinto (hallazgo de datos de la Sesión I0.4)
 

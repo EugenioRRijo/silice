@@ -94,8 +94,20 @@ _PRONOMBRES_PRIMERA_PERSONA = re.compile(
 _VERBO_PRIMERA_PLURAL = re.compile(r"\b([a-zñ]+(?:amos|emos|imos))\b", re.IGNORECASE)
 #: Sustantivos y adjetivos sin tilde con la misma terminacion.
 _NO_VERBOS: frozenset[str] = frozenset(
-    {"amos", "ramos", "tramos", "gramos", "kilogramos", "reclamos", "remos", "extremos",
-     "supremos", "primos", "racimos", "mimos"}
+    {
+        "amos",
+        "ramos",
+        "tramos",
+        "gramos",
+        "kilogramos",
+        "reclamos",
+        "remos",
+        "extremos",
+        "supremos",
+        "primos",
+        "racimos",
+        "mimos",
+    }
 )
 _TABLA_ESTADO = re.compile(
     r"^\|\s*capitulo\s*\|\s*estado\s*\|\s*ultima revision\s*\|", re.MULTILINE
@@ -468,7 +480,14 @@ def _leer(ruta: Path) -> str | None:
 #: Un capitulo de la tesis: dos digitos, guion y nombre (`04-desarrollo.md`).
 _ARCHIVO_CAPITULO = re.compile(r"^(\d{2})-.+\.md$")
 _ROMANOS: tuple[tuple[int, str], ...] = (
-    (90, "XC"), (50, "L"), (40, "XL"), (10, "X"), (9, "IX"), (5, "V"), (4, "IV"), (1, "I"),
+    (90, "XC"),
+    (50, "L"),
+    (40, "XL"),
+    (10, "X"),
+    (9, "IX"),
+    (5, "V"),
+    (4, "IV"),
+    (1, "I"),
 )
 
 
@@ -500,9 +519,7 @@ def capitulos_presentes(carpeta: Path) -> dict[str, str]:
             continue
         nombre = f"capitulo {_romano(int(coincidencia.group(1)))}"
         if nombre in archivos:
-            raise ValueError(
-                f"dos archivos para el {nombre}: {archivos[nombre]} y {ruta.name}"
-            )
+            raise ValueError(f"dos archivos para el {nombre}: {archivos[nombre]} y {ruta.name}")
         archivos[nombre] = ruta.name
         capitulos[nombre] = ruta.read_text(encoding="utf-8")
     return capitulos

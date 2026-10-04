@@ -37,6 +37,8 @@ escribe con `--db`; con `--db` hacia otra ruta basta `--reiniciar`.
 |---|---|---|
 | `simular_lista.py` | lista de precios determinista (por semilla) a partir de la vigente del catálogo, para pruebas de UC‑02 | UC‑02 |
 | `simular_corpus.py` | corpus simulado y determinista de composiciones APU | P4.3 · prototipo |
+| `generar_hoja_prueba.py` | generador determinista de puntos (`generar_items`) y composiciones simples para medir la hoja | RNF‑11 · SF0 |
+| `prueba_data_editor.py` | app Streamlit descartable de la prueba corta de `st.data_editor` con 500 puntos (procedimiento en `medir_data_editor.md`) | spec SF §11.3 · SF0 |
 | `medir_rnf03.py` | mide RNF‑03: el tiempo del recálculo masivo de UC‑02 con N partidas en SQLite local | RNF‑03 |
 | `probar_precios_maprex.py` | prueba los casos didácticos con precios de referencia publicados (MaPreX de julio de 2026 y tabulador CIV): cobertura del listado MaPreX en USD, revaloración del presupuesto 001 civil y de TC‑001/TC‑002, comprobación de MNT‑001 y SIS‑001; siempre en un directorio temporal, sin `--db` (con el extra `ml`, que instala `uv sync --all-extras`, marca los precios atípicos; sin él corre igual y lo declara) | C6 · todos |
 
@@ -81,6 +83,7 @@ Cada una audita las metas de su sprint (`OK`/`FALLA`/`PENDIENTE`); una fase se c
 | `meta_i6.py` | las 12 metas del sprint I6 (Sesiones I6.2 e I6.3) | sprint I6 |
 | `meta_multidominio.py` | las 12 metas del sprint multidominio (fases M0 a M4) | sprint multidominio |
 | `meta_prototipo.py` | las 12 metas del prototipo AREN.IA, en seis fases (P0 a P5) | sprint prototipo |
+| `meta_sf.py` | las 10 metas del sprint final, en seis fases (SF0 a SF5) | sprint final |
 | `meta_asistente.py` | las 12 metas del plan del asistente de presupuestos (UC‑09) | plan del asistente |
 | `meta_redaccion.py` | los 12 chequeos de la redacción de la tesis (R1 a R12) | sprint R1 |
 | `meta_datos.py` | tres chequeos (D1 a D3): la documentación del repositorio no presenta sus datos como reales | limpieza de datos |

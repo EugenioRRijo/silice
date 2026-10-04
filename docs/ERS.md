@@ -23,7 +23,7 @@
 > UC‑10/UC‑11, de modo que la reserva de un rango contiguo estaba rota antes de este sprint. Los
 > demás requisitos de UC‑09 continuarán, al ejecutarse la Sesión A0.1 de
 > [PLAN_ASISTENTE.md](../PLAN_ASISTENTE.md), a partir del siguiente al número más alto asignado (hoy
-> RF‑44); esta enmienda prevalece sobre la instrucción «numera desde RF‑32» de
+> RF‑64, tras el sprint final); esta enmienda prevalece sobre la instrucción «numera desde RF‑32» de
 > PLAN_ASISTENTE.md:78‑80, que queda desactualizada hasta que A0.1 la corrija.
 > **Revisión C4 (2026‑09‑28, fase C4 de [PLAN_CIERRE.md](../PLAN_CIERRE.md)):** sin UC, RF, RNF,
 > pantalla ni ruta nuevos. (1) Los criterios de §3.2 quedan sin estado ni nombres de prueba, que
@@ -53,10 +53,20 @@
 > (6) RF‑02 extiende la recarga a esos atípicos. (7) §3.1 nombra las rutas, los campos y el archivo
 > de entrada nuevos.
 
+> **Enmienda del sprint final (Sesión SF0, compuerta GSF0, [PLAN_SF.md](../PLAN_SF.md); spec
+> [2026-10-04-sprint-final-prototipo-design.md](especificaciones/2026-10-04-sprint-final-prototipo-design.md) §4):**
+> se agregan UC‑13 a UC‑16, los RF‑44 a RF‑63 —para un total de **62 RF** y **quince UC**— y los
+> requisitos no funcionales RNF‑11 a RNF‑13; se agrega el actor **gerente** (§2.3). Se enmiendan:
+> UC‑01 1 (la interfaz crea proyectos, RF‑63; hasta C6 solo los creaba la API, INV‑086) y su fuente
+> de cantidades nueva; UC‑02, UC‑04, UC‑11 y UC‑12 (§2.2); §2.4 y §2.6 (DXF e IFC2x3 e IFC 4 como
+> entradas de planos); RF‑37, RF‑39 y RF‑42 (once pantallas); y la reserva de UC‑09, que pasa a RF‑64.
+> Los RF nuevos quedan **sin implementar** hasta su fase (columna «Incremento»); el estado de cada uno
+> vive solo en [plan_pruebas.md §8](plan_pruebas.md#8-especificación-de-casos-trazabilidad-rf--prueba).
+
 | Campo | Valor |
 |---|---|
-| Versión | 1.3 (revisión C6; la 1.2 es la revisión C5, la 1.1 la C4 y la 1.0, del 2026‑08‑29) |
-| Fecha | 2026‑09‑29 |
+| Versión | 1.4 (enmienda del sprint final SF0; la 1.3 es la revisión C6, la 1.2 la C5, la 1.1 la C4 y la 1.0, del 2026‑08‑29) |
+| Fecha | 2026‑10‑04 |
 | Autor | [tesista] |
 | Revisor | [tutor académico] |
 
@@ -131,13 +141,17 @@ produce presupuesto, curva de inversión, informe de auditoría y exportación a
 | UC‑10 | Componer una partida | P0.1 (declarado), P1–P2 |
 | UC‑11 | Editar una partida compuesta | P0.1 (declarado), P1–P2 |
 | UC‑12 | Recorrer la aplicación guiado desde el Inicio | U0.1 (declarado), U1 |
+| UC‑13 | Levantar el espacio y los metrajes | SF0 (declarado), SF1–SF2 |
+| UC‑14 | Importar un plano a la hoja | SF0 (declarado), SF5 |
+| UC‑15 | Editar la hoja del proyecto | SF0 (declarado), SF3 |
+| UC‑16 | Analizar el punto de equilibrio | SF0 (declarado), SF3 |
 
 UC‑09 queda vacante en este documento: [PLAN_ASISTENTE.md](../PLAN_ASISTENTE.md) (Sesión A0.1, aún no
 ejecutada) lo reserva para «Generar presupuesto asistido desde las necesidades del usuario». UC‑10 y
 UC‑11 se declararon en la Sesión P0.1 del sprint del prototipo AREN.IA
 ([PLAN_PROTOTIPO.md](../PLAN_PROTOTIPO.md)); su implementación en `ui/composicion.py` y
 `ui/paginas/componer.py` corresponde a las Fases P1 y P2 de ese plan
-(`docs/bitacora/2026-09-16-sprint-prototipo.md`); ver RF‑33 a RF‑35 (§3.2). Esta sección no lleva estado: la prueba o el caso manual de cada paso y de cada flujo alternativo de **los once** casos de uso,
+(`docs/bitacora/2026-09-16-sprint-prototipo.md`); ver RF‑33 a RF‑35 (§3.2). Esta sección no lleva estado: la prueba o el caso manual de cada paso y de cada flujo alternativo de **los quince** casos de uso,
 y los pasos y flujos que el sistema no realiza, con su registro en el inventario, están en [plan_pruebas.md §8.1](plan_pruebas.md#8-especificación-de-casos-trazabilidad-rf--prueba) (INV‑032, INV‑033).
 
 Los tipos citados en los flujos (`ItemComputo`, `ComposicionAPU`, `ResultadoAPU`, `Presupuesto`,
@@ -153,7 +167,9 @@ implementados en `core/contracts/`.
   1. El proyectista crea el proyecto y selecciona la fuente de cantidades y su dominio. El proyecto
      se crea por la API (`POST /proyectos`, desde C6, INV‑086): nombre único y no vacío; descripción
      y dominio opcionales, y el dominio, si se indica, es uno de `Dominio`. Ese dominio es
-     informativo: nada lo compara después con el de la fuente. La interfaz no crea proyectos.
+     informativo: nada lo compara después con el de la fuente. Desde el sprint final la interfaz
+     también crea proyectos, con la misma regla de nombre (RF‑63, herramienta Proyecto); hasta
+     entonces solo los creaba la API.
   2. El sistema invoca `AdaptadorDominio.extraer(fuente)` y obtiene una lista de `ItemComputo`, cada uno
      con `origen_id` y `origen_tipo`.
   3. El sistema asocia cada ítem a su partida del catálogo y recupera su `ComposicionAPU` y el
@@ -170,6 +186,9 @@ implementados en `core/contracts/`.
 - **Flujos alternativos**
   - *2a. Fuente ilegible o de otro dominio:* el sistema rechaza la carga, no crea el presupuesto e indica
     el archivo y el elemento o fila que falló.
+  - *2b. La fuente de cantidades es la hoja de metrajes (UC‑13):* el sistema toma las cantidades
+    derivadas del espacio del proyecto como `ItemComputo` de origen REGLA y sigue en el paso 3; la
+    hoja es una fuente de cantidades más y el flujo no cambia.
   - *3a. Ítem sin partida en el catálogo:* el sistema elabora el presupuesto sin él: el ítem queda
     pendiente, no suma al total y el informe lo declara. Después propone, para cada pendiente, las
     partidas más similares del catálogo (UC‑03); si el proyectista acepta una, el ítem pasa a esa
@@ -244,6 +263,9 @@ implementados en `core/contracts/`.
     es UC‑01, no UC‑02 (aclaración de C4; comportamiento ratificado en el dictamen C3‑8).
   - *7a. El usuario descarta la versión:* se marca como descartada, pero el registro de cambios se conserva
     porque alimenta el histórico del módulo predictivo.
+  - *Enmienda SF (spec §4.1):* sin cambios en su pantalla. La cotización de la hoja del proyecto
+    (RF‑56, UC‑15) es un camino propio que conserva el plan y la curva; una lista global nueva
+    cargada por este caso no pisa una cotización vigente del proyecto, que se aplica sobre ella.
 - **Postcondiciones:** versión nueva asociada a su lista de precios; histórico de cambios persistido; el
   presupuesto anterior sigue siendo reconstruible a su fecha.
 
@@ -292,6 +314,9 @@ implementados en `core/contracts/`.
     del recálculo. La auditoría emite un hallazgo de R5 solo cuando el objeto rechazado es el relleno,
     que conservado deja de cuadrar con su balance; si es otro objeto, el relleno se rebalancea con las
     cantidades conservadas y R5 cuadra (INV‑073; dictamen C2‑6).
+  - *Enmienda SF (spec §4.1):* para los proyectos con espacio, el recálculo ante un cambio de
+    dimensiones lo realiza la hoja del proyecto (UC‑15, RF‑52); RF‑20 (el diferencial) sigue sin
+    implementarse y la hoja recalcula completo.
 - **Postcondiciones:** versión nueva trazable, con la expresión que produjo cada cantidad; el diferencial
   queda registrado.
 
@@ -484,6 +509,9 @@ implementados en `core/contracts/`.
     guardar (misma regla que UC‑10, paso 5).
   - *6a. La partida no existe en el catálogo:* el sistema rechaza el reemplazo; ese caso es UC‑10, no
     UC‑11.
+  - *Enmienda SF (spec §4.1):* este caso sigue siendo el único camino para cambiar una composición
+    **del catálogo**. La hoja del proyecto (UC‑15) edita una copia de la composición en la versión
+    (DA‑SF‑7) y ofrece «promover al catálogo» por este caso.
 - **Postcondiciones:** la composición vigente es la nueva; el rendimiento anterior queda en el
   histórico de la partida, distinguible del nuevo; ningún otro presupuesto ya emitido que reutilizó
   esta partida se altera retroactivamente.
@@ -495,12 +523,12 @@ implementados en `core/contracts/`.
   previa del sistema.
 - **Flujo principal**
   1. El usuario abre la aplicación; el sistema muestra la pantalla de Inicio (RF‑36).
-  2. El sistema muestra en la barra lateral, en solo lectura, el caso abierto y su estado (RF‑39).
+  2. El sistema muestra en la barra lateral, en solo lectura, el caso abierto y su estado (RF‑39) (barra superior desde SF4, RF‑60).
   3. El usuario confirma el archivo del caso o abre otro; el sistema lo fija para toda la sesión y
      ninguna otra pantalla vuelve a pedirlo (RF‑38).
   4. El usuario elige uno de los tres recorridos declarados (RF‑37).
   5. En cada pantalla del recorrido, el sistema indica en qué paso está y ofrece el paso siguiente
-     (RF‑41); el menú agrupa las pantallas por oficio y en el orden del trabajo (RF‑42).
+     (RF‑41) (barra superior desde SF4, RF‑60); el menú agrupa las pantallas por oficio y en el orden del trabajo (RF‑42).
   6. El usuario completa el último paso y obtiene el resultado del recorrido (por ejemplo, el
      presupuesto en Excel con su hoja de auditoría).
 - **Flujos alternativos**
@@ -512,23 +540,144 @@ implementados en `core/contracts/`.
     traza, y el usuario abre otro.
   - *5a. El usuario abre una pantalla que no pertenece al recorrido activo:* el sistema no muestra
     paso siguiente en ella (RF‑41).
+  - *5b. El recorrido llega a la hoja del proyecto:* desde el sprint final los recorridos guiados
+    incluyen la pantalla «Hoja del proyecto» (UC‑15), que forma parte de la sección Trabajo
+    (RF‑37, RF‑42 y RF‑43).
 - **Postcondiciones:** el usuario llegó al resultado del recorrido; la base solo cambió por las
   acciones que el propio usuario ejecutó (la siembra del paso 3a, guardar, elaborar).
+
+#### UC‑13 — Levantar el espacio y los metrajes
+
+- **Actor principal:** proyectista / estimador.
+- **Precondiciones:** hay un proyecto abierto (UC‑01 1, RF‑63); el catálogo tiene las partidas de las
+  especialidades cuyas cantidades se van a derivar; hay una lista de precios vigente.
+- **Flujo principal**
+  1. El proyectista declara en la hoja los ambientes del proyecto, con sus dimensiones.
+  2. Declara las fuentes (por ejemplo, la acometida de agua, el tablero eléctrico o el rack) y los
+     circuitos, y coloca los puntos de cada especialidad (puntos de agua, de datos, tomacorrientes,
+     luminarias) dentro de su ambiente (RF‑44).
+  3. Para cada punto declara su origen de medida —por ejemplo, plano acotado, medido en sitio o
+     supuesto declarado— con la referencia que ese tipo exige (RF‑44).
+  4. El sistema propone un recorrido para cada punto; el proyectista lo acepta o lo reemplaza declarando
+     sus vértices (RF‑45).
+  5. El sistema une los segmentos coincidentes, parte los solapes colineales y guarda los segmentos
+     derivados, con sobrescritura opcional de diámetro y de empotrado (RF‑46).
+  6. El sistema aplica las reglas de cantidades de la especialidad —agua (RF‑47), datos (RF‑48) o
+     electricidad (RF‑49)— y produce los `ItemComputo` derivados, con la regla y los parámetros que los
+     produjeron (RF‑03).
+  7. El sistema audita el espacio con R8, R9 y R10 (RF‑61) y muestra los hallazgos junto a la fila que
+     tocan.
+  8. El proyectista guarda el levantamiento como parte de una versión del presupuesto (UC‑15, RF‑53).
+- **Flujos alternativos**
+  - *13a. Fila sin origen de medida:* se acepta en la versión; R8 la marca ERROR (RF‑44, RF‑61).
+  - *13b. Punto fuera de su ambiente:* se acepta en la versión; R9 lo marca (RF‑61).
+  - *4a. El usuario no declara vértices:* rige el recorrido propuesto y así se registra.
+  - *6a. Regla sin fuente normativa verificada:* la cantidad se produce con el supuesto declarado y el
+    informe lo registra.
+- **Postcondiciones:** el espacio, sus orígenes de medida y las cantidades derivadas quedan en la hoja
+  del borrador; toda cantidad derivada conserva `origen_id`, `origen_tipo` y su regla; nada se persiste
+  hasta que el proyectista guarda (UC‑15).
+
+#### UC‑14 — Importar un plano a la hoja
+
+- **Actor principal:** proyectista / estimador.
+- **Precondiciones:** hay un proyecto abierto; se dispone de un plano en DXF que sigue la convención de
+  capas del sistema, o de un modelo IFC (IFC2x3 o IFC 4) con espacios, terminales y tableros.
+- **Flujo principal**
+  1. El proyectista elige el archivo (herramienta «Importar plano»).
+  2. El sistema valida el archivo: tamaño, formato y, en el DXF, la unidad de dibujo (`$INSUNITS`).
+  3. El sistema lee las entidades de la convención —en el DXF, por capa; en el IFC, `IfcSpace`,
+     terminales y tableros— y las convierte en ambientes, fuentes y puntos de la hoja, cada una con su
+     identificador de origen (el *handle* del DXF o el `GlobalId` del IFC) (RF‑50, RF‑51).
+  4. El sistema produce el informe de importación (qué se importó, qué se omitió y por qué).
+  5. El proyectista revisa el resultado en la hoja y completa lo que el plano no trae (por ejemplo,
+     las alturas) como en UC‑13.
+- **Flujos alternativos**
+  - *14a. DXF sin `$INSUNITS`:* el sistema se detiene y pide la unidad; no importa nada mientras no se
+    declare.
+  - *14b. Entidades fuera de la convención:* van al informe de importación, no a la hoja.
+  - *14c. Reimportar el mismo plano:* el sistema empareja por *handle* o `GlobalId` (como UC‑04 2a),
+    actualiza las filas que cambiaron, agrega las nuevas y marca las filas que desaparecieron.
+  - *14d. Archivo malformado o mayor de 20 MB:* se rechaza con un mensaje, sin *traceback* y sin
+    escribir nada (RNF‑12).
+  - *3a. IFC generado programáticamente:* el resultado hereda la salvedad de RNF‑09 y el informe la
+    declara.
+- **Postcondiciones:** las filas importadas están en la hoja del borrador con su identificador de
+  origen y el informe de importación está disponible; ningún archivo subido sale de su carpeta
+  (RNF‑12); el proyecto no cambia en la base hasta que se guarda una versión (UC‑15).
+
+#### UC‑15 — Editar la hoja del proyecto
+
+- **Actor principal:** proyectista / estimador.
+- **Precondiciones:** existe **cualquier** presupuesto guardado del proyecto, con o sin espacio (el
+  de la clínica, TI‑001 o uno importado por UC‑05).
+- **Flujo principal**
+  1. El proyectista abre el presupuesto en la pantalla «Hoja del proyecto».
+  2. Edita las celdas de entrada de la pestaña que corresponda (metrajes, APU, cantidades, plan,
+     precios, parámetros; spec §9.2). Las celdas calculadas están bloqueadas.
+  3. El sistema recalcula y audita en el borrador, sin persistir: totales, curva, punto de equilibrio y
+     columna Estado (RF‑52, RF‑55).
+  4. El proyectista declara la fuente del cambio y su nombre como responsable, y guarda.
+  5. El sistema crea una versión nueva con su informe, la instantánea de sus composiciones y de su
+     espacio, y un `RegistroCambio` por cada celda cambiada (RF‑53).
+- **Flujos alternativos**
+  - *15a. Guardar sin fuente o sin responsable:* se rechaza y no se crea la versión (RF‑53).
+  - *15b. Plan con una partida que no suma 1:* se rechaza (como UC‑01 6).
+  - *15c. Salir con ediciones sin guardar:* el sistema avisa.
+  - *15d. Restaurar una versión anterior N:* el sistema crea una versión nueva copia de N, con su
+    `RegistroCambio`; N sigue existiendo (RF‑54).
+  - *15e. Versión sin instantánea de composiciones (anterior a SF‑E6, o importada de UC‑05):* al
+    abrirla, la hoja crea la instantánea desde el catálogo vigente y lo registra; si una partida no
+    tiene composición en el catálogo, su APU queda en solo lectura.
+  - *2a. El proyectista registra una cotización:* la cotización lleva su fuente, tiene alcance del
+    proyecto y prevalece sobre la lista global para ese insumo hasta que se retire (RF‑56).
+  - *2b. El proyectista cambia un parámetro del proyecto (por ejemplo, el FCAS):* se recalculan todos
+    los APU de la versión y el cambio queda en el registro (RF‑57).
+  - *5a. Exportar:* el proyectista exporta la hoja a Excel con fórmulas vivas, trazabilidad y auditoría
+    (RF‑59).
+- **Postcondiciones:** la versión anterior sigue cargando idéntica; la versión nueva conserva el plan y
+  la curva salvo que el usuario los editara; cada cambio guardado tiene fuente, responsable y fecha;
+  el historial solo crece.
+
+#### UC‑16 — Analizar el punto de equilibrio
+
+- **Actor principal:** proyectista / estimador, gerente.
+- **Precondiciones:** existe un presupuesto guardado.
+- **Flujo principal**
+  1. El actor abre la pestaña «Punto de equilibrio» de la hoja del proyecto.
+  2. El sistema calcula el punto de equilibrio con la definición del caso TI‑001: costos variables
+     (CV) como la suma de cantidad por costo directo de cada partida, costos fijos (CF) como CV por
+     la administración de los parámetros de la versión, margen m = (V − CV) / V con V el total del
+     contrato, y PE = CF / m (RF‑58).
+  3. El sistema ubica el PE en la curva: el primer período cuyo acumulado lo alcanza y la fracción
+     de ese período.
+  4. El actor cambia cualquier entrada de la hoja (UC‑15) y el punto de equilibrio se recalcula en el
+     borrador.
+- **Flujos alternativos**
+  - *16a. Sin plan de trabajo:* se informa el PE sin ubicación en la curva.
+  - *16b. Margen ≤ 0:* no existe punto de equilibrio y el sistema lo declara.
+  - *16c. PE > V:* el sistema declara que no se alcanza dentro del contrato.
+  - *2a. V = 0:* el análisis no es aplicable.
+- **Postcondiciones:** el actor conoce el PE, su ubicación o la razón por la que no existe; el análisis
+  no modifica el presupuesto.
 
 ### 2.3 Características de los usuarios
 
 | Actor | Descripción | UC principales |
 |---|---|---|
-| Proyectista / estimador | elabora y actualiza presupuestos | UC‑01, 02, 03, 04, 08, 10, 11 |
+| Proyectista / estimador | elabora y actualiza presupuestos | UC‑01, 02, 03, 04, 08, 10, 11, 13, 14, 15, 16 |
 | Auditor | revisa presupuestos de terceros | UC‑05, 07 |
 | Residente de obra | registra rendimientos medidos | UC‑06 |
 | Administrador del catálogo | mantiene partidas, insumos y listas de precios | UC‑02, 03 |
+| Gerente | decide sobre el presupuesto de un proyecto —no lo edita— y consulta el punto de equilibrio y los totales de la hoja | UC‑16 |
 | Usuario nuevo / evaluador | abre la aplicación por primera vez —tribunal, tutor o presupuestista recién llegado— y necesita orientarse sin formación previa | UC‑12 |
 
 ### 2.4 Restricciones
 - Todo monto y cantidad en `Decimal` (NORMAS.md §2).
 - El núcleo no depende de ningún dominio; los dominios entran por `AdaptadorDominio` (NORMAS.md §5).
-- Procesamiento sobre IFC 4, no sobre formatos nativos de modelado (independencia tecnológica).
+- Procesamiento sobre IFC (IFC2x3 e IFC 4) y DXF, no sobre formatos nativos de modelado
+  (independencia tecnológica). IFC y DXF son entradas de planos (UC‑14, RF‑50 y RF‑51); el DXF
+  exige la convención de capas del sistema. No se leen planos en PDF ni escaneados.
 - Codificación de partidas COVENIN 2000; estructura de costos según la Convención Colectiva vigente.
 - Ejecución local en Windows/Linux con Python ≥ 3.12.
 
@@ -544,7 +693,7 @@ implementados en `core/contracts/`.
 
 ### 2.6 Requisitos futuros
 Sombra digital (avance real de obra vs curva planificada); multimoneda con factor de actualización;
-reconocimiento de planos.
+reconocimiento de planos en PDF o escaneados (la importación de DXF e IFC ya no es futura: UC‑14).
 
 ---
 
@@ -558,7 +707,7 @@ reconocimiento de planos.
 
 | UC | Interfaz (pantalla del menú) | API REST | Solo biblioteca o script |
 |---|---|---|---|
-| UC‑01 | «Elaborar un presupuesto» (extrae, elabora con el plan de trabajo del proyectista, audita y descarga el Excel; propone el rendimiento que falta, flujo 3b) y el bloque de cantidades de «Componer una partida»; la interfaz no guarda el presupuesto | `POST /proyectos` (paso 1, desde C6: nombre único y no vacío, `descripcion` y `dominio` opcionales, el dominio uno de `Dominio`; 201, o 422 sin crear nada; la interfaz no crea proyectos), `POST /computos/{dominio}` y `POST /presupuestos` (elabora con el `plan` del proyectista, audita y guarda; sin rendimiento vigente, 409 con la propuesta, flujo 3b); `GET /presupuestos/{codigo}/excel` | — |
+| UC‑01 | «Elaborar un presupuesto» (extrae, elabora con el plan de trabajo del proyectista, audita y descarga el Excel; propone el rendimiento que falta, flujo 3b) y el bloque de cantidades de «Componer una partida»; la interfaz no guarda el presupuesto; desde el sprint final lo guarda la hoja del proyecto (UC‑15) | `POST /proyectos` (paso 1, desde C6: nombre único y no vacío, `descripcion` y `dominio` opcionales, el dominio uno de `Dominio`; 201, o 422 sin crear nada; desde el sprint final la interfaz también crea proyectos, RF‑63), `POST /computos/{dominio}` y `POST /presupuestos` (elabora con el `plan` del proyectista, audita y guarda; sin rendimiento vigente, 409 con la propuesta, flujo 3b); `GET /presupuestos/{codigo}/excel` | — |
 | UC‑02 | «Actualizar precios» (al subir el archivo lista los desconocidos y ofrece «Dar de alta», ninguno elegido, flujo 2a; revalora, guarda la versión y ofrece descartarla; avisa aparte de los dados de alta, los ignorados de 2a y los rechazados de 2b) e «Historico de cambios de precio» | `POST /listas-precios` (desde C6, el campo repetible `dar_de_alta` con descripciones del archivo, que eligen por identidad normalizada; la respuesta trae `dados_de_alta`, `ignorados` de 2a, `rechazados` de 2b y `desconocidos`, los dos últimos juntos; un alta de algo que no es desconocido del archivo, o dos filas elegidas del mismo insumo con precios distintos, es 422 sin escribir), `POST /presupuestos/{codigo}/actualizacion`, `GET /cambios-precio`; descartar una versión no tiene ruta. Por la API no hay vista previa del flujo 2a: el cliente elige en la misma carga a partir de su archivo y de `GET /insumos`, porque cargar para ver los desconocidos y volver a cargar deja dos listas. El nombre de la lista debe ser único: `…/actualizacion` la busca por nombre | — |
 | UC‑03 | «Partidas similares» (solo lectura); ayuda de similares en «Componer una partida»; propuestas de los pendientes en «Elaborar un presupuesto» | propuestas de los pendientes en la respuesta de `POST /presupuestos` | — |
 | UC‑04 | ninguna | ninguna | `adapters/civil/recalculo.py` (`recalcular`, `emparejar`), ejercido solo por las pruebas |
@@ -568,7 +717,9 @@ reconocimiento de planos.
 | UC‑08 | «Escenarios de sensibilidad» | `POST /presupuestos/{codigo}/escenarios` | — |
 | UC‑10, UC‑11 | «Componer una partida» | ninguna | — |
 | UC‑12 | «Inicio» y el marco común de las pantallas (`ui/app.py`) | ninguna | — |
-- **Archivos de entrada:** IFC 4 (dominio civil), CSV de topología (telecom), registro de activos
+| UC‑13, UC‑15, UC‑16 | «Hoja del proyecto» (pestañas Espacio y metrajes, APU, Presupuesto, Plan y curva, Punto de equilibrio, Precios, Parámetros, Auditoría y Trazabilidad) | ninguna: la API conserva sus rutas | — |
+| UC‑14 | herramienta «Importar plano» de la barra superior (RF‑60) | ninguna | — |
+- **Archivos de entrada:** IFC (IFC2x3 e IFC 4) y DXF de planos (UC‑14), IFC 4 (dominio civil), CSV de topología (telecom), registro de activos
   (industrial), alcance funcional (sistemas), listas de precios CSV/XLSX y, desde C6, el
   presupuesto de un tercero (UC‑05): un XLSX con las hojas `Datos`, `Presupuesto`, `APU`, `Insumos`
   y `Curva` (opcional), cuyo formato detalla el [manual técnico](manual_tecnico.md); el sistema lo
@@ -587,7 +738,7 @@ lo reserva para UC‑09. Los RF de UC‑10 y UC‑11 (Sesión P0.1 de
 [PLAN_PROTOTIPO.md](../PLAN_PROTOTIPO.md)) continuaron en RF‑33, y los de UC‑12 (Sesión U0.1 de
 [PLAN_UI.md](../PLAN_UI.md)) en RF‑36. La reserva es **de RF‑32 solamente**: los demás requisitos
 de UC‑09 tomarán, al ejecutarse A0.1, la numeración a partir del siguiente al número más alto
-asignado (hoy RF‑44). Esta enmienda prevalece sobre la instrucción «numera desde RF‑32» de
+asignado (RF‑64, tras el sprint final). Esta enmienda prevalece sobre la instrucción «numera desde RF‑32» de
 [PLAN_ASISTENTE.md](../PLAN_ASISTENTE.md):78‑80, que queda desactualizada hasta que la Sesión A0.1
 la corrija.
 
@@ -628,13 +779,33 @@ la corrija.
 | RF‑34 | La modalidad de la mano de obra se declara por línea: jornal o destajo | Esencial | UC‑10, 11 | P1.1, P2.2 | Jornal y destajo conviven en una misma partida, se persisten, se leen y se exportan; una línea sin modalidad es jornal |
 | RF‑35 | El precio sugerido desde la referencia de mercado es editable por quien presupuesta | Esencial | UC‑10 | P2.3 | El precio sugerido queda en un campo editable y `core.costing.calcular_apu` refleja el precio editado, no el sugerido |
 | RF‑36 | La interfaz abrirá en la pantalla de Inicio, cualquiera que sea el orden del resto del menú | Esencial | UC‑12 | U1 | El Inicio es la página por defecto por identidad, no por posición, y la ruta vacía que Streamlit da a la página por defecto se traduce a `inicio` |
-| RF‑37 | Los recorridos guiados se declararán una sola vez, en un módulo sin Streamlit ni base de datos, y el destino de cada paso será la ruta de una página registrada | Esencial | UC‑12 | U1 | Una sola declaración de recorridos, sin Streamlit ni base de datos; todo `paso.pagina` es la ruta de una página visible, con y sin modo entrega |
+| RF‑37 | Los recorridos guiados se declararán una sola vez, en un módulo sin Streamlit ni base de datos, y el destino de cada paso será la ruta de una página registrada | Esencial | UC‑12 | U1 | Una sola declaración de recorridos, sin Streamlit ni base de datos; todo `paso.pagina` es la ruta de una página visible, con y sin modo entrega; desde el sprint final los recorridos incluyen la pantalla «Hoja del proyecto» |
 | RF‑38 | El archivo de la base se fijará una vez por sesión y todas las pantallas operarán sobre ese mismo caso; ninguna pantalla distinta del Inicio pedirá la ruta | Esencial | UC‑12 | U1 | Resolución sesión → entorno → constante, `RUTA_BASE_POR_DEFECTO` definida una sola vez en `ui/`, y ninguna página salvo el Inicio pide la ruta |
-| RF‑39 | El sistema mostrará en toda pantalla, en solo lectura, el caso abierto y su estado: existencia del archivo, número de partidas, número de insumos y si hay lista de precios vigente | Esencial | UC‑12 | U1 | El estado es correcto sobre una base inexistente, vacía, sembrada e ilegible, sin traza, y el marco lo pinta en cada una de las diez pantallas |
+| RF‑39 | El sistema mostrará en toda pantalla, en solo lectura, el caso abierto y su estado: existencia del archivo, número de partidas, número de insumos y si hay lista de precios vigente | Esencial | UC‑12 | U1 | El estado es correcto sobre una base inexistente, vacía, sembrada e ilegible, sin traza, y el marco lo pinta en cada una de las once pantallas (diez hasta el sprint final, más la «Hoja del proyecto») |
 | RF‑40 | Cuando el caso abierto no exista o no contenga partidas, el Inicio lo declarará y ofrecerá cargar el caso de demostración, sin exponer nunca la opción de reiniciar la base | Esencial | UC‑12 | U1 | Estado vacío, siembra, y ningún botón de sembrar con partidas; el literal del flag de reinicio no aparece en ningún archivo de `ui/` |
 | RF‑41 | Cada pantalla del recorrido activo mostrará su paso siguiente y la posición del usuario en el recorrido, tomados de la declaración única de recorridos; una pantalla que no pertenezca a ningún recorrido no mostrará ninguno de los dos | Deseable | UC‑12 | U1 | `paso_siguiente` y la posición del recorrido salen de la declaración única; el botón «Siguiente» lleva a su destino y una pantalla fuera del recorrido no lo muestra |
-| RF‑42 | El menú presentará cada pantalla con el nombre de su oficio, agrupada en dos secciones —Trabajo e Investigación— en el orden del trabajo real; el código del caso de uso permanecerá visible como subtítulo | Deseable | UC‑12 | U1 | Secciones y orden sin Streamlit; ningún título lleva código de UC; el subtítulo «Caso de uso …» aparece en las cinco pantallas que tienen uno |
+| RF‑42 | El menú presentará cada pantalla con el nombre de su oficio, agrupada en dos secciones —Trabajo e Investigación— en el orden del trabajo real; el código del caso de uso permanecerá visible como subtítulo; desde el sprint final la «Hoja del proyecto» forma parte de la sección Trabajo | Deseable | UC‑12 | U1 | Secciones y orden sin Streamlit, con las once pantallas; ningún título lleva código de UC; el subtítulo «Caso de uso …» aparece en las cinco pantallas que tienen uno |
 | RF‑43 | Con el modo entrega activo, ninguna pantalla de Trabajo quedará inaccesible | Esencial | UC‑12 | U1 | La sección Trabajo es idéntica con y sin modo entrega, y ningún paso de un recorrido sale de Trabajo |
+| RF‑44 | La hoja de metrajes registrará ambientes, fuentes, puntos, recorridos y orígenes de medida (spec §6.2) | Esencial | UC‑13 | SF1 | Cada tipo de origen exige su referencia (spec §6.3); faltando una, la fila se acepta en la versión y R8 la marca ERROR |
+| RF‑45 | El sistema propondrá un recorrido para cada punto (spec §6.4) y el usuario lo reemplazará declarando vértices | Esencial | UC‑13 | SF1 | Las longitudes del recorrido propuesto del baño de OF‑001 igualan la memoria de cálculo; un recorrido declarado sustituye al propuesto |
+| RF‑46 | La geometría unirá los segmentos coincidentes, partirá los solapes colineales y guardará los segmentos derivados con sobrescritura opcional de diámetro y de empotrado (spec §6.5) | Esencial | UC‑13 | SF1 | Los solapes parciales de la memoria de cálculo dan la longitud unida esperada a ± 0,001 m |
+| RF‑47 | El sistema aplicará reglas de cantidades de **agua** (agua fría y drenaje), con fuente o supuesto declarado (spec §7.1) | Esencial | UC‑13 | SF1 | Las cantidades del baño de OF‑001 igualan la memoria de cálculo |
+| RF‑48 | El sistema aplicará reglas de cantidades de **datos** (spec §7.2) | Esencial | UC‑13 | SF2 | Las cantidades de datos de OF‑001 igualan la memoria de cálculo |
+| RF‑49 | El sistema aplicará reglas de cantidades de **electricidad**, con recorrido por circuito y orden de la cadena propuesto por vecino más cercano y editable (spec §7.3) | Esencial | UC‑13 | SF2 | Las cantidades eléctricas de OF‑001 igualan la memoria de cálculo |
+| RF‑50 | El sistema importará DXF con la convención de capas de spec §6.6.1, se detendrá si falta `$INSUNITS`, emitirá un informe de importación y reimportará por *handle* | Deseable | UC‑14 | SF5 | El DXF de OF‑001, con alturas cargadas, da las mismas cantidades derivadas que la hoja manual |
+| RF‑51 | El sistema importará espacios, terminales y tableros desde IFC, con informe de importación y reimportación por `GlobalId` | Deseable | UC‑14 | SF5 | El IFC de prueba da las filas esperadas; hereda la salvedad de RNF‑09 si el archivo es programático |
+| RF‑52 | La hoja del proyecto editará las celdas de entrada de spec §9.2 y recalculará y auditará en el borrador sin persistir | Esencial | UC‑15 | SF3 | Una edición cambia totales, curva, PE y columna Estado sin crear versión |
+| RF‑53 | Guardar creará una versión nueva con su informe, la instantánea de sus composiciones y de su espacio, y un `RegistroCambio` por celda cambiada; exigirá fuente del cambio y responsable | Esencial | UC‑15 | SF3 | Sin fuente o sin responsable se rechaza; la versión anterior sigue cargando idéntica |
+| RF‑54 | Restaurar una versión N creará una versión nueva copia de N, con su `RegistroCambio`; el historial solo crece | Esencial | UC‑15 | SF3 | Tras restaurar, la versión nueva es igual a N y N sigue existiendo |
+| RF‑55 | La columna Estado de cada fila mostrará el peor hallazgo que la toca y enlazará a su detalle | Esencial | UC‑15 | SF3 | Un error sembrado en una fila marca esa fila y ninguna otra |
+| RF‑56 | Cada precio mostrará lista, referencia, fecha, moneda original y tasa con su fecha; una cotización se registrará con su fuente, con alcance del proyecto, y prevalecerá sobre la lista global para ese insumo hasta que se retire | Esencial | UC‑15, UC‑02, UC‑07 | SF3 | La cotización cambia solo ese insumo en ese proyecto; la versión resultante conserva el plan y la curva; una actualización global posterior por UC‑02 no la pisa |
+| RF‑57 | Los parámetros del proyecto serán editables (los de `ParametrosCosto`: FCAS, administración, utilidad y los demás que ya define el contrato), con fuente | Esencial | UC‑15 | SF3 | Cambiar el FCAS recalcula todos los APU de la versión y queda en el registro |
+| RF‑58 | El sistema calculará el punto de equilibrio y lo ubicará en la curva, con los casos límite de spec §9.4 | Esencial | UC‑16 | SF3 | TI‑001 da 28 586,76 USD en el Día 6 (literal de la bitácora); cada caso límite da su salida declarada |
+| RF‑59 | El sistema exportará la hoja del proyecto a Excel con fórmulas vivas, hojas de la hoja, trazabilidad y auditoría (spec §9.5) | Esencial | UC‑15 | SF3 | Las fórmulas evaluadas dan los totales del sistema dentro de la tolerancia de spec §9.5 |
+| RF‑60 | La interfaz tendrá una barra superior con navegación arriba y las herramientas de spec §10 | Esencial | todos | SF4 | AppTest: navegación arriba, modo entrega oculta Investigación, cada herramienta lleva a su acción |
+| RF‑61 | El sistema ejecutará las reglas de auditoría R8, R9 y R10 (spec §8.2) | Esencial | UC‑13, UC‑15 | SF1–SF2 | Un error sembrado por condición, con valores frontera, se detecta |
+| RF‑62 | Los hallazgos de reglas que no están en las siete se conservarán al recargar, revalorar, simular escenarios, importar y en la API (spec §8.4) | Esencial | UC‑05, UC‑15 | SF1 | El informe recargado de una versión con hoja es idéntico al emitido |
+| RF‑63 | La interfaz creará proyectos con nombre único y no vacío | Esencial | UC‑01 | SF4 | Nombre vacío o repetido se rechaza con mensaje |
 
 Los criterios de esta tabla son afirmaciones comprobables y no llevan estado. **La prueba que
 demuestra cada criterio y su estado (verde, parcial, sin prueba o no implementado) viven una sola vez,
@@ -661,7 +832,12 @@ Cobertura por caso de uso (mínimos exigidos por el criterio de cierre entre par
 | UC‑10 | RF‑33, RF‑34, RF‑35 | 3 (sin mínimo declarado; UC nuevo, Sesión P0.1) |
 | UC‑11 | RF‑33, RF‑34 | 2 (sin mínimo declarado; UC nuevo, Sesión P0.1) |
 | UC‑12 | RF‑36, RF‑37, RF‑38, RF‑39, RF‑40, RF‑41, RF‑42, RF‑43 | 8 (sin mínimo declarado; UC nuevo, Sesión U0.1) |
-| **Total** | RF‑01 … RF‑31, RF‑33 … RF‑43 (RF‑32 vacante — reservado a UC‑09; RF‑03 traza a dos UC; RF‑33 y RF‑34 trazan a UC‑10 y UC‑11) | **42** |
+| UC‑13 | RF‑44, RF‑45, RF‑46, RF‑47, RF‑48, RF‑49, RF‑61 | 7 (sin mínimo declarado; UC nuevo, Sesión SF0) |
+| UC‑14 | RF‑50, RF‑51 | 2 (sin mínimo declarado; UC nuevo, Sesión SF0) |
+| UC‑15 | RF‑52, RF‑53, RF‑54, RF‑55, RF‑56, RF‑57, RF‑59, RF‑61, RF‑62 | 9 (sin mínimo declarado; UC nuevo, Sesión SF0) |
+| UC‑16 | RF‑58 | 1 (sin mínimo declarado; UC nuevo, Sesión SF0) |
+| Transversales | RF‑60 (todos los UC); RF‑63 (UC‑01); RF‑62 (también UC‑05); RF‑56 (también UC‑02 y UC‑07) | — |
+| **Total** | RF‑01 … RF‑31, RF‑33 … RF‑63 (RF‑32 vacante — reservado a UC‑09; RF‑03 traza a dos UC; RF‑33 y RF‑34 trazan a UC‑10 y UC‑11; RF‑56, RF‑61 y RF‑62 trazan a más de un UC) | **62** |
 
 ### 3.3 Requisitos no funcionales (ISO/IEC 25010)
 
@@ -677,6 +853,9 @@ Cobertura por caso de uso (mínimos exigidos por el criterio de cierre entre par
 | Seguridad | RNF‑08 ejecución local: el sistema no requiere credenciales, no invoca servicios externos en tiempo de ejecución y los datos residen en un archivo SQLite del equipo del usuario | credenciales versionadas; llamadas de red durante la operación | 0 y 0, con dos excepciones declaradas: la descarga inicial del modelo de `sentence-transformers` (I2), del lado del servidor, que se cachea localmente; y la biblioteca three.js (`r128`), que el navegador descarga de `cdnjs.cloudflare.com` cada vez que se abre el Visor 3D (`URL_THREE_JS` en `ui/paginas/visor.py`), sin caché propia del sistema (INV‑077) |
 | Compatibilidad | RNF‑09 entrada IFC 4 de cualquier modelador | archivos de ≥ 2 herramientas (p. ej. Revit y Bonsai) | cantidades extraídas iguales al cálculo manual en ambos; la compuerta G1 (I3.1) se cruzó con salvedad sobre un modelo generado programáticamente (sección 2.5); faltan los exports de dos modeladores, y la alternativa declarada es la entrada tabular |
 | Usabilidad | RNF‑10 capacidad de aprendizaje de la interfaz: una persona que nunca vio la aplicación llega sola del Inicio a un presupuesto en Excel con su hoja de auditoría | caso con persona CP‑07 ([guion_prueba_arenia.md](guion_prueba_arenia.md)) y bloque B del anexo A de [dossier_g0.md](dossier_g0.md) | en cada uno de los dos escenarios de CP‑07 (CP‑07 pasa solo si pasan ambos): sin ayuda, ≤ 20 min, bloque B ≥ 4,0 y ningún ítem < 3 |
+| Eficiencia de desempeño | RNF‑11 en `ui.hoja`, sin Streamlit, desde aplicar una edición hasta tener presupuesto, informe y punto de equilibrio (sin persistir) para un proyecto de 500 puntos | mediana de cinco corridas tras una de calentamiento, con `scripts/medir_rnf11.py` (se crea en SF3) y un generador determinista versionado (`scripts/generar_hoja_prueba.py`, ya en SF0) | ≤ 2 s. El veredicto se toma en el equipo de desarrollo, como RNF‑03; la CI ejecuta el script en Linux y Windows y **registra** la cifra sin romper la corrida; todo se anota en plan_pruebas §10 |
+| Seguridad | RNF‑12 ningún texto exportado se interpreta como fórmula (prefijos `=`, `+`, `-`, `@`, tabulador, retorno de carro) y un número negativo sigue siendo número; ningún archivo subido sale de su carpeta (`..\`, `../`, ruta absoluta, nombres reservados de Windows); un DXF o IFC de más de 20 MB o malformado se rechaza con un mensaje | pruebas por caso | 0 casos que se evalúen como fórmula o escapen de su carpeta; 100 % de los rechazos con mensaje y sin *traceback* |
+| Usabilidad | RNF‑13 capacidad de uso de la hoja: en las condiciones de CP‑07, con el **mismo número y perfil** de participantes que CP‑07 pero **personas distintas**, cada caso de CP‑08 a CP‑11 se completa sin ayuda | guion de pruebas con personas, en la fase Med; consigna, paradas y criterio fijados antes de medir | ≤ 15 min por todos los participantes, bloque B ≥ 4,0 y ningún ítem < 3; veredicto por caso. El costo en participantes se suma al plan de Med |
 
 ### 3.4 Reglas de negocio
 Fórmula de cálculo: [NORMAS.md §4](../NORMAS.md#4-especificación-del-cálculo-y-línea-base).
@@ -689,13 +868,13 @@ Criterios de degradación del módulo predictivo: [NORMAS.md §8.1](../NORMAS.md
 
 La matriz traza cada caso de uso a sus requisitos, al incremento que los implementó y al indicador de la tesis. **Las pruebas que demuestran cada
 RF, con su estado, están solo en [plan_pruebas.md §8](plan_pruebas.md#8-especificación-de-casos-trazabilidad-rf--prueba); la prueba o el caso
-manual de cada paso y de cada flujo alternativo de los once casos de uso, en su §8.1** (INV‑032, INV‑033). La columna «Incremento» registra solo
+manual de cada paso y de cada flujo alternativo de los quince casos de uso, en su §8.1** (INV‑032, INV‑033). La columna «Incremento» registra solo
 los incrementos del desarrollo, con el mismo criterio que la de §3.2; las fases del cierre (C1 a C5) que corrigieron un caso de uso no se anotan
 aquí: cada corrección está en su fila del [inventario del cierre](auditoria/2026-09-inventario.md) y en la fila del paso en plan_pruebas §8.1.
 
 | UC | RF | Incremento | Indicador de la tesis |
 |---|---|---|---|
-| UC‑01 | RF‑01, RF‑03, RF‑04, RF‑05, RF‑06, RF‑07, RF‑08 | I0.1, I0.3, I0.4, I0.5, I3.1 | 2, 3 |
+| UC‑01 | RF‑01, RF‑03, RF‑04, RF‑05, RF‑06, RF‑07, RF‑08, RF‑63 | I0.1, I0.3, I0.4, I0.5, I3.1, SF4 | 2, 3 |
 | UC‑01 (transversal) | RF‑09 | I0.1, I5 | 4 |
 | UC‑02 | RF‑10, RF‑11, RF‑12, RF‑13, RF‑14 | I0.4, I1 | 3 |
 | UC‑03 | RF‑15, RF‑16, RF‑17 | I2 | 3 |
@@ -707,14 +886,21 @@ aquí: cada corrección está en su fila del [inventario del cierre](auditoria/2
 | UC‑10 | RF‑33, RF‑34, RF‑35 | P0.1 (declarado), P1–P4 ([PLAN_PROTOTIPO.md](../PLAN_PROTOTIPO.md)) | prototipo de entrega AREN.IA, fuera de los cinco indicadores de [docs/metodologia.md §8](metodologia.md#8-indicadores-de-la-tesis) |
 | UC‑11 | RF‑33, RF‑34 | P0.1 (declarado), P1.2, P2.2 | prototipo de entrega AREN.IA, fuera de los cinco indicadores de [docs/metodologia.md §8](metodologia.md#8-indicadores-de-la-tesis) |
 | UC‑12 | RF‑36, RF‑37, RF‑38, RF‑39, RF‑40, RF‑41, RF‑42, RF‑43 | U0.1 (declarado), U1 ([PLAN_UI.md](../PLAN_UI.md)) | fuera de los cinco indicadores de [docs/metodologia.md §8](metodologia.md#8-indicadores-de-la-tesis); aporta la medición de usabilidad de [calidad_iso25010.md §4](calidad_iso25010.md) |
+| UC‑13 | RF‑44, RF‑45, RF‑46, RF‑47, RF‑48, RF‑49, RF‑61 | SF0 (declarado), SF1–SF2 ([PLAN_SF.md](../PLAN_SF.md)) | prototipo de entrega AREN.IA, fuera de los cinco indicadores de [docs/metodologia.md §8](metodologia.md#8-indicadores-de-la-tesis); la ausencia de cambios en `core/` al agregar datos y electricidad es evidencia del indicador 4 |
+| UC‑14 | RF‑50, RF‑51 | SF0 (declarado), SF5 | prototipo de entrega AREN.IA, fuera de los cinco indicadores |
+| UC‑15 | RF‑52, RF‑53, RF‑54, RF‑55, RF‑56, RF‑57, RF‑59, RF‑61, RF‑62 | SF0 (declarado), SF1, SF3 | prototipo de entrega AREN.IA, fuera de los cinco indicadores |
+| UC‑16 | RF‑58 | SF0 (declarado), SF3 | prototipo de entrega AREN.IA, fuera de los cinco indicadores |
+| Transversal | RF‑60 | SF4 | prototipo de entrega AREN.IA, fuera de los cinco indicadores |
 
 Correspondencia RNF → verificación: RNF‑01 y RNF‑02 se comprueban en UC‑01 y UC‑02 (RF‑06, RF‑14);
 RNF‑03 en UC‑02 (RF‑11), con `scripts/medir_rnf03.py`; RNF‑04 con el juicio de expertos sobre el
 informe de UC‑05, en la fase Med de [PLAN_CIERRE.md](../PLAN_CIERRE.md); RNF‑05 con RF‑09; RNF‑06 y
 RNF‑07 en la integración continua; RNF‑08 por inspección del repositorio y de las dependencias;
 RNF‑09 en la compuerta G1 (RF‑04); RNF‑10 con el caso con persona CP‑07, en la compuerta GU1b
-(fase Med) de [PLAN_UI.md](../PLAN_UI.md). RNF‑04 y RNF‑10 son requisitos distintos, con mediciones
-distintas. El resultado de cada verificación está en [plan_pruebas.md §9](plan_pruebas.md#9-trazabilidad-rnf--verificación).
+(fase Med) de [PLAN_UI.md](../PLAN_UI.md); RNF‑11 en UC‑15 (RF‑52), con `scripts/medir_rnf11.py`
+(SF3); RNF‑12 en UC‑14 y UC‑15 (RF‑50, RF‑51 y RF‑59), por pruebas por caso; RNF‑13 en UC‑13 a
+UC‑16, con los casos con personas CP‑08 a CP‑11 de la fase Med. RNF‑04 y RNF‑10 son requisitos
+distintos, con mediciones distintas. El resultado de cada verificación está en [plan_pruebas.md §9](plan_pruebas.md#9-trazabilidad-rnf--verificación).
 
 La columna "Indicador" enlaza con [docs/metodologia.md §8](metodologia.md#8-indicadores-de-la-tesis) y
 con la matriz de [docs/tesis/esqueleto_tesis.md](tesis/esqueleto_tesis.md).

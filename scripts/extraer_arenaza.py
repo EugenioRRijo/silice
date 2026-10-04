@@ -65,8 +65,7 @@ try:
     import fitz  # PyMuPDF
 except ImportError as exc:  # pragma: no cover - guia de uso, no logica de negocio
     raise SystemExit(
-        "Falta PyMuPDF. Ejecutar con:\n"
-        "  uv run --with pymupdf python scripts/extraer_arenaza.py"
+        "Falta PyMuPDF. Ejecutar con:\n  uv run --with pymupdf python scripts/extraer_arenaza.py"
     ) from exc
 
 # Ejecutado como `python scripts/extraer_arenaza.py`, sys.path[0] es scripts/, no la raiz del
