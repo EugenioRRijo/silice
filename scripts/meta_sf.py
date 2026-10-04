@@ -8,6 +8,10 @@ Cada chequeo de contenido es una funcion pura sobre texto ya leido (`evaluar_*`)
 fases todavia no construidas dan PENDIENTE, nunca FALLA: es evidencia ausente, no un
 incumplimiento. Hoy solo S1 (requisitos en la ERS) se evalua de verdad.
 
+Nota: `FASES` agrupa cada meta en la fase donde ARRANCA su evaluacion. S3 («SF1-SF2» en la spec)
+arranca en SF1 y S8 («todas») se conecta en SF1; por eso sus titulos llevan el alcance de la spec y
+no la fase de agrupacion.
+
 Uso: `uv run python scripts/meta_sf.py [--hasta SF0|SF1|SF2|SF3|SF4|SF5] [--json]`.
 """
 
@@ -38,12 +42,12 @@ FASES: dict[str, tuple[str, ...]] = {
 TITULOS: dict[str, str] = {
     "S1": "(SF0) UC-13 a UC-16, RF-44 a RF-63 y RNF-11 a RNF-13 estan en docs/ERS.md",
     "S2": "(SF1) Memorias de calculo versionadas antes del codigo de su fase",
-    "S3": "(SF1) Pruebas de agua, datos y electricidad en verde",
+    "S3": "(SF1-SF2) Pruebas de agua, datos y electricidad en verde",
     "S4": "(SF2) core/ intacto desde gsf1 (y desde gsf4 al cerrar SF5)",
     "S5": "(SF3) Pruebas de edicion, versiones, restauracion, PE y Excel en verde",
     "S6": "(SF4) AppTest de navegacion y herramientas de la barra",
     "S7": "(SF5) Pruebas de importacion de DXF e IFC",
-    "S8": "(SF1) Regresion: linea base, R4, TI-001, huellas de RNF-04, cuatro hojas",
+    "S8": "(todas) Regresion: linea base, R4, TI-001, huellas de RNF-04, cuatro hojas",
     "S9": "(SF3) RNF-11: mediana registrada <= 2 s en el equipo de desarrollo",
     "S10": "(SF1) adapters/espacio con cobertura >= 80 %",
 }
@@ -78,20 +82,31 @@ def metas_hasta(fase: str) -> list[str]:
 # --------------------------------------------------------------------------------------
 
 
+def _patron_definicion(prefijo: str, numero: int) -> str:
+    """Linea que DEFINE el requisito: UC por encabezado, RF por fila de tabla, RNF por fila de la
+    tabla de calidad (el identificador va en la 2.a celda)."""
+    id_ = rf"{prefijo}{_GUION}{numero}(?!\d)"
+    if prefijo == "UC":
+        return rf"^#{{3,4}}\s+{id_}"
+    if prefijo == "RF":
+        return rf"^\|\s*{id_}\s*\|"
+    return rf"^\|[^|\n]*\|\s*{id_}"
+
+
 def evaluar_s1_requisitos(texto_ers: str | None) -> tuple[Estado, str]:
-    """Cada UC-13..16, RF-44..63 y RNF-11..13 aparece en la ERS (guion normal o no separable)."""
+    """Cada UC-13..16, RF-44..63 y RNF-11..13 esta DEFINIDO en la ERS (no basta mencionarlo)."""
     if texto_ers is None:
         return Estado.PENDIENTE, "falta docs/ERS.md"
     faltan = [
         f"{prefijo}-{numero}"
         for prefijo, numeros in REQUISITOS_SF
         for numero in numeros
-        if not re.search(rf"(?<![A-Za-z]){prefijo}{_GUION}{numero}(?!\d)", texto_ers)
+        if not re.search(_patron_definicion(prefijo, numero), texto_ers, re.MULTILINE)
     ]
     if faltan:
-        return Estado.FALLA, "la ERS no declara: " + ", ".join(faltan)
+        return Estado.FALLA, "la ERS no define: " + ", ".join(faltan)
     total = sum(len(numeros) for _, numeros in REQUISITOS_SF)
-    return Estado.OK, f"los {total} requisitos del sprint final estan en docs/ERS.md"
+    return Estado.OK, f"los {total} requisitos del sprint final estan definidos en docs/ERS.md"
 
 
 def _pendiente(motivo: str) -> Callable[[], tuple[Estado, str]]:
