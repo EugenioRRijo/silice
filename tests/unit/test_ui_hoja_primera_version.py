@@ -80,6 +80,19 @@ def _arrancar(monkeypatch, base: Path, borrador=None, **estado) -> AppTest:
     return at
 
 
+def _abierta(at: AppTest):
+    try:
+        return at.session_state[CLAVE_ABIERTA]
+    except KeyError:
+        return None
+
+
+def _sembrar(at: AppTest, borrador: hoja.Borrador) -> AppTest:
+    at.session_state[CLAVE_BORRADOR] = borrador
+    at.session_state[CLAVE_PARTIDA] = borrador
+    return at.run()
+
+
 def _borrador(espacio) -> hoja.Borrador:
     return hoja.Borrador(fecha=caso_of001.FECHA, moneda=caso_of001.MONEDA, espacio=espacio)
 
@@ -111,7 +124,7 @@ def test_un_proyecto_sin_versiones_lo_dice_y_ofrece_guardar_la_primera(monkeypat
     at = _arrancar(monkeypatch, base, **{CLAVE_PROYECTO: NUEVO})
 
     assert any(AVISO in i.value for i in at.info)
-    assert at.session_state[CLAVE_ABIERTA] is None
+    assert _abierta(at) is None
     assert {b.label for b in at.button} >= {GUARDAR}
     assert [b for b in at.button if b.label == "Guardar version"] == []  # no se ofrecen los dos
     assert at.text_input(key=CLAVE_FUENTE) is not None
@@ -176,7 +189,8 @@ def test_guardar_la_primera_version_crea_la_001_y_la_hoja_la_abre(monkeypatch, b
     abierta = at.session_state[CLAVE_ABIERTA]
     assert (abierta.proyecto, abierta.codigo) == (NUEVO, "001")
     assert abierta.borrador.espacio == espacio_of001()
-    assert abs(abierta.guardada.presupuesto.total - D("2703.86")) <= D("0.01")
+    # los parametros por defecto del contrato (no los de OF-001): el 2577.59 del guion (CP-09)
+    assert abs(abierta.guardada.presupuesto.total - D("2577.59")) <= D("0.01")
     assert not [i for i in at.info if AVISO in i.value]  # ya tiene version
     assert not at.warning  # nada sin guardar
     # ahora el flujo es el normal: Guardar version, no Guardar primera version
@@ -217,7 +231,7 @@ def test_un_guardado_que_falla_dice_que_paso_y_no_deja_nada(monkeypatch, base):
     assert not at.exception, [e.value for e in at.exception]
     assert any("lista de precios" in e.value for e in at.error)
     assert _contar(base, models.Presupuesto) == versiones
-    assert at.session_state[CLAVE_ABIERTA] is None
+    assert _abierta(at) is None
     assert at.session_state[CLAVE_BORRADOR] == sin_lista  # el borrador se conserva
 
 
@@ -225,14 +239,17 @@ def test_el_borrador_describido_sin_proyecto_sobrevive_al_elegir_un_proyecto_nue
     monkeypatch, base
 ):
     """CP-08: se describe el bano y despues se abre/crea el proyecto en la barra."""
-    at = _arrancar(monkeypatch, base, _borrador(espacio_bano()), **{CLAVE_PROYECTO: SIN_PROYECTO})
-    assert any(NOMBRE_OF001 in o for o in at.selectbox(key=CLAVE_PROYECTO).options)
+    at = _arrancar(monkeypatch, base, **{CLAVE_PROYECTO: SIN_PROYECTO})
+    _sembrar(at, _borrador(espacio_bano()))
+    proyecto = next(s for s in at.selectbox if s.label == "Proyecto")
+    assert NOMBRE_OF001 in proyecto.options and NUEVO in proyecto.options
 
-    at.selectbox(key=CLAVE_PROYECTO).select(NUEVO).run()
+    proyecto.select(NUEVO).run()
 
     assert not at.exception, [e.value for e in at.exception]
     assert at.session_state[CLAVE_BORRADOR].espacio == espacio_bano()
     assert any(AVISO in i.value for i in at.info)
     _llenar(at)
     _boton(at, GUARDAR).click().run()
+    assert not at.exception, [e.value for e in at.exception]
     assert at.session_state[CLAVE_ABIERTA].codigo == "001"

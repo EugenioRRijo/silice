@@ -106,6 +106,8 @@ CLAVE_RESPONSABLE = "hoja_responsable"
 PREFIJO_EDITOR = "hoja_editor_"
 
 SIN_PROYECTO = "(borrador nuevo, sin guardar)"
+SIN_VERSIONES = "Este proyecto aún no tiene versiones"
+GUARDAR_PRIMERA = "Guardar primera versión"
 TABLAS_CON_ESTADO = hoja.TABLAS_CON_ESTADO
 
 _AYUDA_ESPACIO = (
@@ -226,8 +228,9 @@ def _calculo() -> tuple[hoja.ResultadoHoja, list]:
 def _abrir(proyecto: str | None, codigo: str | None) -> None:
     """Abre la version elegida (o un borrador nuevo) y renueva la siembra de los editores."""
     if proyecto is None or codigo is None:
+        # Sin proyecto, o un proyecto nuevo que todavia no tiene version: borrador en blanco.
         st.session_state[CLAVE_ABIERTA] = None
-        st.session_state[CLAVE_ABIERTA_EN] = (str(ruta_caso()), None, None)
+        st.session_state[CLAVE_ABIERTA_EN] = (str(ruta_caso()), proyecto, None)
         st.session_state[CLAVE_BORRADOR] = hoja.Borrador(fecha=date.today())
     else:
         try:
@@ -315,18 +318,26 @@ def _selector_de_version(cambios: Sequence) -> None:
     codigo = None
     if proyecto != SIN_PROYECTO:
         codigos = [v.codigo for v in versiones if not v.descartada] or [v.codigo for v in versiones]
-        vigente = next((v.codigo for v in versiones if v.vigente), codigos[-1])
-        abierta_aqui = abierto[2] if abierto is not None and abierto[1] == proyecto else None
-        inicial = abierta_aqui if abierta_aqui in codigos else vigente
-        codigo = columnas[1].selectbox(
-            "Version",
-            codigos,
-            index=codigos.index(inicial) if inicial in codigos else 0,
-            key=_clave_selector(CLAVE_VERSION),
-            format_func=lambda c: f"{c} (vigente)" if c == vigente else c,
-        )
+        if codigos:
+            vigente = next((v.codigo for v in versiones if v.vigente), codigos[-1])
+            abierta_aqui = abierto[2] if abierto is not None and abierto[1] == proyecto else None
+            inicial = abierta_aqui if abierta_aqui in codigos else vigente
+            codigo = columnas[1].selectbox(
+                "Version",
+                codigos,
+                index=codigos.index(inicial) if inicial in codigos else 0,
+                key=_clave_selector(CLAVE_VERSION),
+                format_func=lambda c: f"{c} (vigente)" if c == vigente else c,
+            )
+        else:
+            columnas[1].caption(SIN_VERSIONES)
     deseado = (ruta, None if proyecto == SIN_PROYECTO else proyecto, codigo)
     if abierto == deseado:
+        return
+    if deseado[1] is not None and codigo is None and _abierta() is None:
+        # Un proyecto sin versiones adopta el borrador que ya hay (se describio el espacio antes de
+        # crearlo o abrirlo): no se descarta nada, solo cambia a que proyecto pertenece.
+        st.session_state[CLAVE_ABIERTA_EN] = deseado
         return
     if abierto is None and not cambios and deseado[1] is None:
         st.session_state[CLAVE_ABIERTA_EN] = deseado
@@ -365,7 +376,7 @@ def _guardar() -> None:
     """Callback del boton Guardar: una sola sesion; el resultado se dice en el mensaje."""
     abierta, borrador = _abierta(), _borrador()
     if abierta is None:
-        _mensaje("error", "Abra una version guardada para poder guardar cambios.")
+        _guardar_primera(borrador)
         return
     try:
         with _sesion() as sesion:
@@ -391,6 +402,46 @@ def _guardar() -> None:
         f"Se guardo la version {guardada.codigo} con {guardada.cambios} cambios registrados.",
     )
     _abrir(abierta.proyecto, guardada.codigo)
+    st.session_state[CLAVE_FUENTE] = ""
+
+
+def _proyecto_sin_versiones() -> str | None:
+    """El proyecto elegido que aun no tiene versiones (al que pertenece el borrador), o `None`."""
+    abierto = st.session_state.get(CLAVE_ABIERTA_EN)
+    if _abierta() is not None or abierto is None:
+        return None
+    return abierto[1]
+
+
+def _guardar_primera(borrador: hoja.Borrador) -> None:
+    """Callback de Guardar primera version: crea la 001 del proyecto nuevo y la abre."""
+    proyecto = _proyecto_sin_versiones()
+    if proyecto is None:
+        _mensaje("error", "Elija o cree un proyecto (barra superior) para poder guardar.")
+        return
+    try:
+        with _sesion() as sesion:
+            guardada = hoja.crear_primera_version(
+                sesion,
+                Catalogo(sesion),
+                proyecto,
+                borrador,
+                fuente=st.session_state.get(CLAVE_FUENTE, ""),
+                responsable=st.session_state.get(CLAVE_RESPONSABLE, ""),
+            )
+    except hoja.HojaInvalida as error:
+        _mensaje("error", str(error))
+        return
+    except (SQLAlchemyError, ValueError, CatalogoIncompleto) as error:
+        _mensaje("error", f"No se guardo nada: {getattr(error, 'orig', None) or error}")
+        return
+    _mensaje(
+        "success",
+        f"Se guardo la primera version {guardada.codigo} del proyecto {proyecto} "
+        f"(total {formatear_decimal(guardada.total, 2)}). Quedo registrada su creacion, con su "
+        "fuente y su responsable.",
+    )
+    _abrir(proyecto, guardada.codigo)
     st.session_state[CLAVE_FUENTE] = ""
 
 
@@ -424,11 +475,22 @@ def _panel_de_guardado(cambios: Sequence, accion: str | None) -> None:
         st.warning(
             f"{len(cambios)} cambios sin guardar. Si cierra la hoja o abre otra version se pierden."
         )
+    proyecto_nuevo = _proyecto_sin_versiones()
+    if proyecto_nuevo is not None:
+        st.info(
+            f"{SIN_VERSIONES}. Describa el espacio (o importe un plano) y guarde la primera "
+            "version abajo, con su fuente y su responsable."
+        )
     with st.expander("Guardar version y exportar a Excel", expanded=bool(cambios) or pide_guardar):
-        if abierta is None:
+        if abierta is None and proyecto_nuevo is None:
             st.caption(
-                "Esta es un borrador sin version guardada: abra una version del proyecto para "
-                "poder guardar. Si, el Excel se puede preparar igual."
+                "Este borrador no pertenece a ningun proyecto: elija o cree uno (barra superior) "
+                "para poder guardar. El Excel se puede preparar igual."
+            )
+        elif abierta is None:
+            st.caption(
+                f"Proyecto {proyecto_nuevo}: la primera version registra su creacion con la "
+                "fuente y el responsable. El Excel se puede preparar igual."
             )
         else:
             st.caption(
@@ -441,21 +503,31 @@ def _panel_de_guardado(cambios: Sequence, accion: str | None) -> None:
                     "vigente en el catalogo."
                 )
         fuente, responsable = st.columns(2)
-        fuente.text_input("Fuente del cambio (por que y con que respaldo)", key=CLAVE_FUENTE)
+        fuente.text_input(
+            "Fuente de la medida (de donde salen los datos)"
+            if proyecto_nuevo is not None
+            else "Fuente del cambio (por que y con que respaldo)",
+            key=CLAVE_FUENTE,
+        )
         responsable.text_input("Responsable", key=CLAVE_RESPONSABLE)
-        motivo = (
-            "Abra una version guardada para poder guardar."
-            if abierta is None
-            else hoja.motivo_para_no_guardar(
+        if abierta is not None:
+            motivo = hoja.motivo_para_no_guardar(
                 abierta.borrador,
                 _borrador(),
                 st.session_state.get(CLAVE_FUENTE, ""),
                 st.session_state.get(CLAVE_RESPONSABLE, ""),
             )
-        )
+        elif proyecto_nuevo is not None:
+            motivo = hoja.motivo_para_no_crear_primera(
+                _borrador(),
+                st.session_state.get(CLAVE_FUENTE, ""),
+                st.session_state.get(CLAVE_RESPONSABLE, ""),
+            )
+        else:
+            motivo = "Elija o cree un proyecto (barra superior) para poder guardar."
         izquierda, derecha = st.columns(2)
         izquierda.button(
-            "Guardar version",
+            GUARDAR_PRIMERA if proyecto_nuevo is not None else "Guardar version",
             on_click=_guardar,
             disabled=motivo is not None or (abierta is not None and abierta.solo_lectura),
             help=motivo,
