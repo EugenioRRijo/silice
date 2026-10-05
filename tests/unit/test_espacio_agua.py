@@ -220,6 +220,7 @@ def _con_puntos(*puntos: Punto) -> Espacio:
 def _punto(base: Punto, **cambios: object) -> Punto:
     espec = dict(base.espec)
     espec.update(cambios.pop("espec", {}))  # type: ignore[arg-type]
+    espec = {k: v for k, v in espec.items() if v is not None}  # None = quitar la clave
     return replace(base, especificaciones=tuple(espec.items()), **cambios)  # type: ignore[arg-type]
 
 
@@ -238,12 +239,12 @@ def test_material_y_diametro_distintos_se_separan() -> None:
 
 def test_llave_de_paso_solo_si_se_declara() -> None:
     p1, p2 = espacio_bano().puntos
-    sin_p1 = _punto(p1, espec={"llave_de_paso": "no"})
+    sin_p1 = _punto(p1, espec={"llave_de_paso": None})
     una = _con_puntos(sin_p1, p2)
     llaves = [i for i in derivar(una, "agua") if i.codigo_partida == "AF-LLAVE"]
     assert len(llaves) == 1 and llaves[0].cantidad == 1
     assert llaves[0].origen_id == "esp_puntos:P2"
-    ninguna = replace(una, puntos=(sin_p1, _punto(p2, espec={"llave_de_paso": "no"})))
+    ninguna = replace(una, puntos=(sin_p1, _punto(p2, espec={"llave_de_paso": None})))
     assert not [i for i in derivar(ninguna, "agua") if i.codigo_partida == "AF-LLAVE"]
 
 
@@ -284,7 +285,7 @@ def test_punto_sin_diametro_se_separa_y_no_inventa_uno() -> None:
     tuberias = [i for i in items if i.codigo_partida.startswith("AF-TUB")]
     sin = [i for i in tuberias if i.codigo_partida.endswith("SIN-DIAMETRO")]
     assert len(sin) == 1 and "diametro" not in sin[0].especificaciones
-    assert "sin diametro declarado" in sin[0].descripcion
+    assert "sin diámetro declarado" in sin[0].descripcion
 
 
 # --- determinismo ---------------------------------------------------------------------------

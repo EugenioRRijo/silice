@@ -45,6 +45,10 @@ SIN_DIAMETRO = "sin_diametro"
 
 Clave3 = tuple[Decimal, Decimal, Decimal]
 
+#: Superficies cuyo tramo va empotrado si nadie lo declara (decisión D-4, tarea 1.5): el drenaje
+#: corre enterrado en el piso igual que la bajante en la pared; techo, plafón y bandeja, expuestos.
+_EMPOTRADAS = frozenset({SuperficieTramo.PARED, SuperficieTramo.PISO})
+
 
 # --- utilidades --------------------------------------------------------------------------
 
@@ -81,6 +85,10 @@ def _magnitud_diametro(valor: str) -> Fraction:
         return sum((Fraction(t) for t in valor.split()), Fraction(0))
     except (ValueError, ZeroDivisionError):
         return Fraction(-1)
+
+
+#: Magnitud de un diámetro normalizado (`'1 1/2'` -> 3/2), para elegir «el mayor» (D-5).
+magnitud_diametro = _magnitud_diametro
 
 
 def longitud_tramos(tramos: Iterable[Tramo]) -> Decimal:
@@ -123,7 +131,7 @@ def _tramos_desde_vertices(
                 orden=len(tramos) + 1,
                 superficie=superficie,
                 vertices=(a, b),
-                empotrado=superficie is SuperficieTramo.PARED,
+                empotrado=superficie in _EMPOTRADAS,
             )
         )
     return tuple(tramos)
@@ -220,7 +228,7 @@ class _Pieza:
 def _empotrado_de(t: Tramo) -> bool:
     if t.empotrado is not None:
         return t.empotrado
-    return t.superficie is SuperficieTramo.PARED
+    return t.superficie in _EMPOTRADAS
 
 
 def _piezas_de_fuente(espacio: Espacio, fuente: Fuente) -> list[_Pieza]:

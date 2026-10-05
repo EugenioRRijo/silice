@@ -599,7 +599,11 @@ def test_drenaje_por_el_piso_va_empotrado_por_defecto() -> None:
         esp,
         puntos=esp.puntos + (p,),
         recorridos=esp.recorridos
-        + (Recorrido(id="R-D1", punto_id="D1", modo=ModoRecorrido.DECLARADO, tramos=(sin_declarar,)),),
+        + (
+            Recorrido(
+                id="R-D1", punto_id="D1", modo=ModoRecorrido.DECLARADO, tramos=(sin_declarar,)
+            ),
+        ),
     )
     (segmento,) = [s for s in analizar(declarado, "agua").segmentos if s.sirve == ("D1",)]
     assert segmento.empotrado is True
