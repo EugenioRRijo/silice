@@ -375,11 +375,22 @@ controlado si está malformado (RNF‑12).
 |---|---|---|
 | `AMBIENTES` | polilínea cerrada con un texto adentro (nombre) | ambiente |
 | `FTE-AGUA`, `FTE-DRENAJE`, `FTE-DATOS`, `FTE-ELEC` | bloque insertado | fuente |
-| `PTO-AGUA`, `PTO-DRENAJE`, `PTO-DATOS`, `PTO-TOMA`, `PTO-LUZ` | bloque con atributos `ALTURA` y opcionales `DIAMETRO`, `CALIBRE`, `CIRCUITO` | punto |
+| `PTO-AGUA`, `PTO-DRENAJE`, `PTO-DATOS`, `PTO-TOMA`, `PTO-LUZ` | bloque con atributos `ALTURA` y opcionales `DIAMETRO`, `CALIBRE`, `CIRCUITO` y, como extensiones de la convención (RS‑16, pendiente de ratificar por Eugenio), `ID`, `CATEGORIA`, `LLAVE`, `SUPERFICIE`, `AMBIENTE` | punto |
 | `REC-<especialidad>` | polilínea abierta | recorrido declarado (opcional) |
 
 Unidades: `$INSUNITS`; si falta, la importación se detiene y pide la unidad. La altura de los
 ambientes queda pendiente y R8 la marca hasta cargarla.
+
+**Atributos opcionales añadidos en SF5 (RS‑16, enmienda SF5; pendiente de ratificar por Eugenio).** El
+DXF de OF‑001 no se reproduce sin ellos. Ninguno es obligatorio y un bloque sin ellos se importa como
+antes: `ID` (el `id` de la fila; sin él, `<capa>-<handle>`), `CATEGORIA` (categoría del cable de datos),
+`LLAVE` (`si`: llave de paso de agua fría; otro valor se ignora y va al informe), `SUPERFICIE` (`pared`,
+`techo` o `piso`; sin ella se infiere: iluminación en el techo, cota 0 en el piso, lo demás en la pared) y
+`AMBIENTE` (el nombre del ambiente, para un punto sobre el borde de dos). Un punto sobre el borde de varios
+ambientes sin `AMBIENTE` va al de **menor área** y, a igual área, al de `id` menor (se declara en el
+informe). Un circuito importado lleva conductores 1‑1‑1 y 6 puntos máximos **supuestos** (`SF5‑1`,
+`SF5‑2`, SUPUESTO_DECLARADO) y R8 da una ADVERTENCIA («circuito importado con conductores y puntos
+supuestos», RS‑17) mientras los conserve; deja de avisar cuando el usuario los declara.
 
 #### 6.6.2 IFC
 
@@ -460,6 +471,15 @@ R1–R7 conservan su enunciado. `elaborar` las corre siempre (principio 7). La l
 | R8 Origen de la medida | toda fila del espacio que produce una cantidad cita su **origen de medida** (no se refiere a `origen_id`, que RF‑03 ya garantiza); supuestos, alturas pendientes y sobrescrituras a mano se marcan | ERROR sin origen; ADVERTENCIA si es supuesto, pendiente o sobrescritura |
 | R9 Coherencia espacial | punto y fuente dentro de su ambiente; ninguna altura supera la del ambiente; ningún recorrido más corto que la distancia ortogonal mínima entre sus extremos; segmentos solapados con empotrado distinto sin declarar; sobrescrituras de segmento huérfanas | ERROR |
 | R10 Límites de la especialidad | pendiente del drenaje, 90 m por enlace de datos, puntos por circuito | ERROR si el límite tiene fuente verificada; ADVERTENCIA si es supuesto |
+
+**Riesgo residual de memoria en la importación (RNF‑12, enmienda SF5).** Además del límite de 20 MB, el
+DXF se rechaza si el espacio modelo trae más de `MAX_ENTIDADES_DXF` entidades (100 000) y el IFC si trae
+más de `MAX_ELEMENTOS_IFC` elementos más espacios (50 000); ambos son SUPUESTO_DECLARADO (protección
+propia, sin fuente normativa) y configurables por parámetro. El IFC se abre desde el archivo, sin copiar
+su contenido a una cadena. **Riesgo que queda:** el tope se aplica *después* de que `ezdxf` o
+`ifcopenshell` abren el archivo, de modo que un archivo de 20 MB muy denso puede ocupar memoria al
+expandirse (denegación de servicio por expansión) antes de ser rechazado; un prototipo de un solo
+usuario local lo acepta y queda declarado.
 
 R8–R10 reciben la instantánea del espacio de la versión (DA‑SF‑8). Sus hallazgos citan en
 `origen_ids` las claves `esp_*` de las filas, que es lo que usa la columna Estado. No implementan
@@ -831,3 +851,4 @@ SF1–SF4 no se recortan.
 | 1 (2026‑10‑04) | requisitos, arquitectura, pruebas y calidad, verificador de hechos | los cuatro, «aprueba con cambios»; 11 bloqueantes | numeración desde RF‑44; RF con prioridad, fase y criterio; UC con flujos alternos; instantánea de composiciones (SF‑E6) y de espacio por versión; restauración como versión nueva; R8–R10 con la instantánea del espacio y hallazgos conservados al recargar (SF‑E1 ampliado); M‑3 sin pasar textos a `parametros`; Excel sin redondear con evaluador de fórmulas y `exportar_excel` intacto; ramas de núcleo separadas por la guardia; protección de los instrumentos de Med; cotización por proyecto (SF‑E7); oráculos con memorias de cálculo; conteo de codos y tees definido; pendiente del drenaje y circuito como cadena; matriz de pruebas; metas de `meta_sf.py` |
 | 2 (2026‑10‑04) | los mismos cuatro | los cuatro, «aprueba con cambios», sin bloqueantes | versiones sin instantánea (15e); cotización que prevalece sobre la lista global y listas de proyecto fuera de `lista_vigente`; `version_origen` en toda versión y espacio heredado por la cadena; todo camino del núcleo usa la instantánea de composiciones; versión vigente definida; «imprevistos» retirado (no existe en `ParametrosCosto`); clave de segmento y sobrescrituras huérfanas; codos en tramos compartidos y en tees; reauditoría de R8–R10 que reemplaza, no suma; RNF‑13 con personas distintas y ningún ítem < 3; límite de 20 MB; RNF‑11 con veredicto en el equipo de desarrollo; `SUM`/`ROUND` en inglés; segunda huella de RNF‑04; generador y cálculo sustituto en SF0; S4 con `HEAD` y también en SF5; cobertura de `adapters/espacio` en la CI; conteos de la ERS; dos correcciones de redacción del verificador |
 | Enmienda SF2 (2026‑10‑05) | los cuatro encargos de SF2 | aprueban SF2 sin bloqueantes | §11.2: las constantes supuestas dan ADVERTENCIAS de R8; R10 solo marca incumplimientos y baja a ADVERTENCIA mientras su límite sea supuesto (RS‑11); R10 evalúa solo tramos de drenaje que declaran pendiente |
+| Enmienda SF5 (2026‑10‑05) | revisión por encargo de SF5 | aprueba SF5 con correcciones | §6.6.1: atributos opcionales `ID`, `CATEGORIA`, `LLAVE`, `SUPERFICIE` y `AMBIENTE` de los bloques de punto (RS‑16, pendiente de ratificar por Eugenio); circuito importado con valores supuestos marcado por R8 hasta que se declaren (RS‑17); borde entre ambientes al de menor área; §8.2: topes de entidades DXF y de elementos IFC y riesgo residual de memoria (RNF‑12) |
