@@ -396,6 +396,49 @@ def test_r9_recorrido_diagonal_es_mas_corto_que_la_ortogonal():
     assert (h.valor_observado, h.valor_esperado) == (D("5"), D("7"))
 
 
+def _diagonal_en_dos_tramos(orden_ab: int, orden_bc: int) -> Recorrido:
+    """A(0,0,0) -> B(1,1,0) -> C(2,2,0): 2,83 m de largo contra 4 m de distancia ortogonal."""
+    pared = SuperficieTramo.PARED
+    return Recorrido(
+        id="RO",
+        punto_id="P",
+        modo=ModoRecorrido.DECLARADO,
+        tramos=(
+            tramo(orden_ab, pared, ("0", "0", "0"), ("1", "1", "0")),
+            tramo(orden_bc, pared, ("1", "1", "0"), ("2", "2", "0")),
+        ),
+    )
+
+
+def test_r9_extremos_del_camino_no_dependen_del_orden_declarado_de_los_tramos():
+    """Los extremos son los del camino, no los de la lista de tramos: con los `orden` cruzados
+    (el tramo B-C primero) la comparacion contra la distancia ortogonal sigue siendo A-C."""
+    en_orden = r9(minimo(recorridos=(_diagonal_en_dos_tramos(1, 2),)))
+    cruzado = r9(minimo(recorridos=(_diagonal_en_dos_tramos(2, 1),)))
+
+    (h,) = en_orden
+    assert h.valor_esperado == D("4") and h.valor_observado < D("4")
+    assert cruzado == en_orden
+
+
+def test_r9_tramos_que_no_forman_un_camino_no_se_comparan_ni_revientan():
+    """Un recorrido ramificado (tres tramos desde B) no tiene dos extremos: no hay distancia
+    ortogonal minima que exigirle, y R9 no lo inventa."""
+    pared = SuperficieTramo.PARED
+    ramas = Recorrido(
+        id="RY",
+        punto_id="P",
+        modo=ModoRecorrido.DECLARADO,
+        tramos=(
+            tramo(1, pared, ("1", "1", "0"), ("0", "0", "0")),
+            tramo(2, pared, ("1", "1", "0"), ("2", "2", "0")),
+            tramo(3, pared, ("1", "1", "0"), ("1", "2", "0")),
+        ),
+    )
+
+    assert r9(minimo(recorridos=(ramas,))) == []
+
+
 def _recorrido_vertical(id_, punto_id, empotrado) -> Recorrido:
     return Recorrido(
         id=id_,
