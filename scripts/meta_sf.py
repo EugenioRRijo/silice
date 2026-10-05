@@ -116,7 +116,7 @@ PUNTAS_S4: tuple[str, ...] = ("gsf2", "inc/sf2")
 #: Base de S4 desde SF4: el cierre del nucleo de SF3 (RS4-10). Desde alli hasta la punta de la
 #: rama (barra, planos, integracion) `core/` no debe cambiar; el nucleo de SF3 SI lo toco, con
 #: expediente.
-BASES_S4_FINAL: tuple[str, ...] = ("gsf4", "gsf3", "inc/sf3-nucleo")
+BASES_S4_FINAL: tuple[str, ...] = ("gsf4", "gsf3", "inc/sf3", "inc/sf3-nucleo")
 #: Pruebas AppTest de la navegacion superior y de las herramientas de la barra (S6).
 RUTA_PRUEBAS_BARRA = ("tests/unit/test_ui_barra.py", "tests/unit/test_ui_app.py")
 

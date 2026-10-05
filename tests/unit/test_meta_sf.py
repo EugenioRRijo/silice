@@ -539,6 +539,8 @@ def test_s9_lee_el_registro_que_deja_el_script(tmp_path):
     assert registro_rnf11(ruta)["mediana_s"] == 0.3
     ruta.write_text("no es json", encoding="utf-8")
     assert registro_rnf11(ruta) is None
+
+
 # --- SF4: S6 (AppTest de la barra) y la base de S4 desde inc/sf2 -------------------------------
 
 
@@ -590,7 +592,7 @@ def test_desde_sf4_s4_agrega_el_tramo_posterior_al_nucleo_de_sf3_ruling_rs4_10()
 
     esperado = [
         (("gsf1", "inc/sf1"), ("gsf2", "inc/sf2")),
-        (("gsf4", "gsf3", "inc/sf3-nucleo"), ("HEAD",)),
+        (("gsf4", "gsf3", "inc/sf3", "inc/sf3-nucleo"), ("HEAD",)),
     ]
     assert intervalos_s4("SF4") == esperado
     assert intervalos_s4("SF5") == esperado
@@ -612,12 +614,16 @@ def test_combinar_s4_exige_todos_los_tramos_y_nombra_los_que_fallan():
 
 
 def test_s4_toma_la_primera_base_que_existe_en_cada_tramo():
-    from scripts.meta_sf import base_de_core
+    from scripts.meta_sf import BASES_S4_FINAL, base_de_core
 
-    bases = ("gsf4", "gsf3", "inc/sf3-nucleo")
-    assert base_de_core(lambda ref: ref == "inc/sf3-nucleo", bases) == "inc/sf3-nucleo"
-    assert base_de_core(lambda ref: ref in ("gsf3", "inc/sf3-nucleo"), bases) == "gsf3"
-    assert base_de_core(lambda ref: False, bases) is None
+    assert BASES_S4_FINAL == ("gsf4", "gsf3", "inc/sf3", "inc/sf3-nucleo")
+    assert base_de_core(lambda ref: ref == "inc/sf3-nucleo", BASES_S4_FINAL) == "inc/sf3-nucleo"
+    assert base_de_core(lambda ref: ref in ("inc/sf3", "inc/sf3-nucleo"), BASES_S4_FINAL) == (
+        "inc/sf3"
+    )
+    assert base_de_core(lambda ref: ref in ("gsf3", "inc/sf3"), BASES_S4_FINAL) == "gsf3"
+    assert base_de_core(lambda ref: True, BASES_S4_FINAL) == "gsf4"
+    assert base_de_core(lambda ref: False, BASES_S4_FINAL) is None
 
 
 def test_s4_sobre_el_repositorio_real_desde_sf4_no_falla():
