@@ -13,9 +13,10 @@ orden es estable: por tabla y, dentro de ella, por id (el modelo ya ordena sus t
 **R8**, una fila del espacio que produce cantidad (ambiente, fuente o punto) cita un origen de
 medida registrado y completo; si no, ERROR («origen no registrado» si el `origen_id` esta vacio o no
 existe, «origen sin referencia» si al origen le falta un dato de su referencia obligatoria). El
-modelo acepta ambos casos: es esta regla la que los valida (RF-44, UC-13a). ADVERTENCIA si ese origen es un supuesto, si el punto declara su
-altura pendiente (`especificaciones["altura"] == "pendiente"`) o si un segmento vigente tiene
-diametro o empotrado fijados a mano. Una sobrescritura huerfana no produce cantidad: es de R9.
+modelo acepta ambos casos: es esta regla la que los valida (RF-44, UC-13a). ADVERTENCIA si ese
+origen es un supuesto, si el punto declara su altura pendiente (`especificaciones["altura"] ==
+"pendiente"`) o si un segmento vigente tiene diametro o empotrado fijados a mano. Una sobrescritura
+huerfana no produce cantidad: es de R9.
 
 **R9** (siempre ERROR), en este orden: 1. punto o fuente fuera de su ambiente (`Espacio.validar`,
 tolerancia de §6.1; una altura de punto sobre el techo es esto mismo y se informa una vez);
