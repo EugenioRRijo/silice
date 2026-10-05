@@ -8,7 +8,11 @@ from scripts.meta_alpha import Estado
 from scripts.meta_sf import (
     FASES,
     TITULOS,
+    contar_resultados,
     evaluar_s1_requisitos,
+    evaluar_s2_memorias,
+    evaluar_s3_especialidades,
+    evaluar_s8_regresion,
     evaluar_s10_cobertura,
     main,
     metas_hasta,
@@ -82,9 +86,9 @@ def test_s1_sobre_la_ers_real_y_json(capsys):
     assert "S1" in json.dumps(datos)
 
 
-def test_main_devuelve_codigo_distinto_de_cero_con_pendientes(capsys):
-    assert main(["--hasta", "SF1"]) == 1
-    assert "S2" in capsys.readouterr().out
+def test_main_hasta_sf0_ok_y_sf2_aun_con_pendientes(capsys):
+    assert main(["--hasta", "SF2"]) == 1  # S4 llega con SF2
+    assert "S4" in capsys.readouterr().out
 
 
 def test_s10_ok_en_la_frontera_80():
@@ -129,3 +133,131 @@ def test_s10_no_ejecuta_pytest_dentro_de_la_meta(monkeypatch):
     monkeypatch.setattr(subprocess, "Popen", prohibido)
     evaluar_s10_cobertura(85.0)
     main(["--hasta", "SF1"])
+
+
+# --- S2 Memorias -------------------------------------------------------------------------
+
+_MEMORIAS_SF1 = ("bano_of001.md", "bano_drenaje_of001.md")
+
+
+def test_s2_ok_si_las_memorias_del_bano_existen_y_son_anteriores_al_codigo():
+    estado, detalle = evaluar_s2_memorias(
+        {m: True for m in _MEMORIAS_SF1}, {m: True for m in _MEMORIAS_SF1}
+    )
+    assert estado is Estado.OK
+    assert "bano_of001.md" in detalle
+
+
+def test_s2_falla_si_la_memoria_se_versiono_despues_del_codigo():
+    orden = {"bano_of001.md": True, "bano_drenaje_of001.md": False}
+    estado, detalle = evaluar_s2_memorias({m: True for m in _MEMORIAS_SF1}, orden)
+    assert estado is Estado.FALLA
+    assert "bano_drenaje_of001.md" in detalle
+    assert "despues" in detalle
+
+
+def test_s2_falla_si_falta_una_memoria_y_el_codigo_ya_existe():
+    presentes = {"bano_of001.md": True, "bano_drenaje_of001.md": False}
+    orden = {"bano_of001.md": True, "bano_drenaje_of001.md": None}
+    estado, detalle = evaluar_s2_memorias(presentes, orden)
+    assert estado is Estado.FALLA
+    assert "bano_drenaje_of001.md" in detalle
+
+
+def test_s2_pendiente_si_falta_la_memoria_y_aun_no_hay_codigo():
+    estado, _ = evaluar_s2_memorias({m: False for m in _MEMORIAS_SF1}, {}, codigo_existe=False)
+    assert estado is Estado.PENDIENTE
+
+
+def test_s2_la_memoria_de_sf2_ausente_no_hace_fallar_ni_pendiente_sf1():
+    estado, detalle = evaluar_s2_memorias(
+        {m: True for m in _MEMORIAS_SF1},
+        {m: True for m in _MEMORIAS_SF1},
+        posteriores={"of001.md": False},
+    )
+    assert estado is Estado.OK
+    assert "of001.md" in detalle and "SF2" in detalle
+
+
+def test_s2_memoria_presente_sin_commit_es_falla():
+    estado, detalle = evaluar_s2_memorias(
+        {m: True for m in _MEMORIAS_SF1}, {m: None for m in _MEMORIAS_SF1}
+    )
+    assert estado is Estado.FALLA  # presentes pero sin commit de memoria: no versionadas
+    assert "sin versionar" in detalle
+
+
+# --- S3 Especialidades -------------------------------------------------------------------
+
+
+def test_s3_ok_si_las_pruebas_de_agua_pasan():
+    estado, detalle = evaluar_s3_especialidades(existe_agua=True, resultado_agua=(31, 31))
+    assert estado is Estado.OK
+    assert "31" in detalle
+
+
+def test_s3_falla_si_alguna_prueba_de_agua_falla():
+    estado, detalle = evaluar_s3_especialidades(existe_agua=True, resultado_agua=(30, 31))
+    assert estado is Estado.FALLA
+    assert "30" in detalle
+
+
+def test_s3_pendiente_si_no_hay_pruebas_de_agua():
+    estado, _ = evaluar_s3_especialidades(existe_agua=False, resultado_agua=None)
+    assert estado is Estado.PENDIENTE
+
+
+def test_s3_pendiente_si_no_se_recolecto_ninguna_prueba():
+    estado, _ = evaluar_s3_especialidades(existe_agua=True, resultado_agua=(0, 0))
+    assert estado is Estado.PENDIENTE
+
+
+# --- S8 Regresion ------------------------------------------------------------------------
+
+
+def test_s8_ok_si_todos_los_grupos_pasan():
+    grupos = {"linea base": (10, 10), "7 de 7": (4, 4)}
+    estado, detalle = evaluar_s8_regresion(grupos)
+    assert estado is Estado.OK
+    assert "14" in detalle
+
+
+def test_s8_falla_y_nombra_el_grupo_que_falla():
+    grupos = {"linea base": (10, 10), "7 de 7": (3, 4), "R4": (1, 1)}
+    estado, detalle = evaluar_s8_regresion(grupos)
+    assert estado is Estado.FALLA
+    assert "7 de 7" in detalle
+    assert "linea base" not in detalle
+
+
+def test_s8_pendiente_si_un_grupo_no_tiene_prueba_y_el_resto_pasa():
+    grupos = {"linea base": (10, 10), "cuatro hojas": None}
+    estado, detalle = evaluar_s8_regresion(grupos)
+    assert estado is Estado.PENDIENTE
+    assert "cuatro hojas" in detalle
+
+
+def test_s8_falla_pesa_mas_que_pendiente():
+    estado, _ = evaluar_s8_regresion({"a": (0, 1), "b": None})
+    assert estado is Estado.FALLA
+
+
+def test_s8_un_grupo_sin_pruebas_recolectadas_es_pendiente():
+    estado, _ = evaluar_s8_regresion({"a": (0, 0)})
+    assert estado is Estado.PENDIENTE
+
+
+def test_contar_resultados_agrupa_por_prefijo_de_nodeid():
+    salida = (
+        "PASSED tests/unit/test_a.py::test_x\n"
+        "FAILED tests/unit/test_a.py::test_y - assert 0\n"
+        "PASSED tests/unit/test_b.py::test_z\n"
+    )
+    cuenta = contar_resultados(
+        salida, {"A": ("tests/unit/test_a.py",), "B": ("tests/unit/test_b.py",)}
+    )
+    assert cuenta == {"A": (1, 2), "B": (1, 1)}
+
+
+def test_contar_resultados_grupo_ausente_es_cero():
+    assert contar_resultados("", {"A": ("tests/unit/test_a.py",)}) == {"A": (0, 0)}
