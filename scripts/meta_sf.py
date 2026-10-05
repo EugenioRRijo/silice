@@ -35,8 +35,12 @@ Nota: `FASES` agrupa cada meta en la fase donde ARRANCA su evaluacion. S3 («SF1
 arranca en SF1 y S8 («todas») se conecta en SF1; por eso sus titulos llevan el alcance de la spec y
 no la fase de agrupacion.
 
-Desde SF4, S4 compara `core/` contra `gsf2` (o la rama `inc/sf2`) y S6 corre las pruebas AppTest
-de la barra (`test_ui_barra.py` y `test_ui_app.py`).
+Desde SF4, S6 corre las pruebas AppTest de la barra (`test_ui_barra.py` y `test_ui_app.py`).
+S4 vigila dos tramos de `core/` (`intervalos_s4`, ruling RS4-10): `gsf1..gsf2` (SF2) y, desde SF4,
+el cierre del nucleo de SF3 (`gsf4`, `gsf3` o la rama `inc/sf3-nucleo`) hasta la punta de la rama.
+S7 (SF5) pesa las pruebas de importacion de planos: DXF (`test_planos_dxf.py`,
+`test_planos_dxf_of001.py` con la equivalencia de OF-001 con la hoja, y el informe y la
+reimportacion de `test_planos_informe.py`) e IFC (`test_planos_ifc.py`).
 
 Uso: `uv run python scripts/meta_sf.py [--hasta SF0|SF1|SF2|SF3|SF4|SF5] [--json]`.
 """
@@ -71,7 +75,7 @@ TITULOS: dict[str, str] = {
     "S1": "(SF0) UC-13 a UC-16, RF-44 a RF-63 y RNF-11 a RNF-13 estan en docs/ERS.md",
     "S2": "(SF1) Memorias de calculo versionadas antes del codigo de su fase",
     "S3": "(SF1-SF2) Pruebas de agua, datos y electricidad en verde",
-    "S4": "(SF2) core/ intacto desde gsf1 (y desde gsf4 al cerrar SF5)",
+    "S4": "(SF2) core/ intacto: gsf1..gsf2 y, tras el nucleo de SF3, hasta la punta (RS4-10)",
     "S5": "(SF3) Pruebas de edicion, versiones, restauracion, PE y Excel en verde",
     "S6": "(SF4) AppTest de navegacion y herramientas de la barra",
     "S7": "(SF5) Pruebas de importacion de DXF e IFC",
@@ -95,6 +99,12 @@ RUTA_MEMORIAS = RAIZ / "tests" / "fixtures" / "memorias"
 RUTA_ESPACIO = RAIZ / "adapters" / "espacio"
 RUTA_PRUEBAS_AGUA = "tests/unit/test_espacio_agua.py"
 RUTA_PRUEBAS_DATOS = ("tests/unit/test_espacio_datos.py",)
+RUTA_PRUEBAS_DXF = (
+    "tests/unit/test_planos_dxf.py",
+    "tests/unit/test_planos_dxf_of001.py",
+    "tests/unit/test_planos_informe.py",
+)
+RUTA_PRUEBAS_IFC = ("tests/unit/test_planos_ifc.py",)
 RUTA_PRUEBAS_ELECTRICIDAD = (
     "tests/unit/test_espacio_electricidad.py",
     "tests/unit/test_espacio_circuitos.py",
@@ -431,6 +441,31 @@ def evaluar_s6_barra(existen: bool, resultado: tuple[int, int] | None) -> tuple[
         return Estado.PENDIENTE, "las pruebas de la barra no recolectaron casos"
     pasan, total = resultado
     return Estado.OK, f"AppTest de navegacion y herramientas en verde ({pasan}/{total})"
+def evaluar_s7_planos(
+    existe_dxf: bool,
+    resultado_dxf: tuple[int, int] | None,
+    existe_ifc: bool,
+    resultado_ifc: tuple[int, int] | None,
+) -> tuple[Estado, str]:
+    """S7: las pruebas de DXF y de IFC existen y pasan (`resultado_*` = (pasan, total)).
+
+    Una que falla pesa mas que una que falta; una que falta o no recolecto casos es PENDIENTE."""
+    formatos = {"dxf": (existe_dxf, resultado_dxf), "ifc": (existe_ifc, resultado_ifc)}
+    fallan = [
+        f"{nombre} ({r[0]}/{r[1]})"
+        for nombre, (existe, r) in formatos.items()
+        if existe and r is not None and r[1] > 0 and r[0] < r[1]
+    ]
+    if fallan:
+        return Estado.FALLA, "pruebas que fallan: " + ", ".join(fallan)
+    faltan = [nombre for nombre, (existe, _) in formatos.items() if not existe]
+    if faltan:
+        return Estado.PENDIENTE, "faltan las pruebas de " + ", ".join(faltan)
+    sin_casos = [nombre for nombre, (_, r) in formatos.items() if r is None or r[1] == 0]
+    if sin_casos:
+        return Estado.PENDIENTE, "las pruebas de " + ", ".join(sin_casos) + " no recolectaron casos"
+    detalle = ", ".join(f"{nombre} ({r[0]}/{r[1]})" for nombre, (_, r) in formatos.items())  # type: ignore[index]
+    return Estado.OK, f"pruebas de importacion en verde: {detalle}"
 
 
 def evaluar_s8_regresion(
@@ -598,6 +633,12 @@ def _s4(fase: str | None = None) -> tuple[Estado, str]:
     return combinar_s4([_tramo_s4(b, p) for b, p in intervalos_s4(fase)])
 
 
+def _s7() -> tuple[Estado, str]:
+    existe_dxf, resultado_dxf = _resultado_de(RUTA_PRUEBAS_DXF)
+    existe_ifc, resultado_ifc = _resultado_de(RUTA_PRUEBAS_IFC)
+    return evaluar_s7_planos(existe_dxf, resultado_dxf, existe_ifc, resultado_ifc)
+
+
 def _s5() -> tuple[Estado, str]:
     presentes = {g: ids for g, ids in GRUPOS_S5.items() if all((RAIZ / i).is_file() for i in ids)}
     ids = [i for grupo in presentes.values() for i in grupo]
@@ -637,7 +678,7 @@ def _evaluar_metas(codigos: list[str], fase: str | None = None) -> list[Fila]:
         "S4": lambda: _s4(fase),
         "S5": _s5,
         "S6": _s6,
-        "S7": _pendiente("la importacion de planos llega con SF5"),
+        "S7": _s7,
         "S8": _s8,
         "S9": lambda: evaluar_s9_rnf11(registro_rnf11()),
         "S10": _s10,

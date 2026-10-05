@@ -16,6 +16,7 @@ from scripts.meta_sf import (
     evaluar_s3_especialidades,
     evaluar_s4_core,
     evaluar_s5_nucleo,
+    evaluar_s7_planos,
     evaluar_s8_regresion,
     evaluar_s9_rnf11,
     evaluar_s10_cobertura,
@@ -625,3 +626,49 @@ def test_s4_sobre_el_repositorio_real_desde_sf4_no_falla():
 
     estado, detalle = _s4("SF5")
     assert estado is not Estado.FALLA, detalle
+
+
+# --- SF5: S7 importacion de planos ---------------------------------------------------------------
+
+
+def test_s7_ok_si_pasan_las_pruebas_de_dxf_e_ifc():
+    estado, detalle = evaluar_s7_planos(True, (60, 60), True, (40, 40))
+    assert estado is Estado.OK
+    assert "dxf (60/60)" in detalle and "ifc (40/40)" in detalle
+
+
+def test_s7_falla_y_nombra_el_formato_que_falla():
+    estado, detalle = evaluar_s7_planos(True, (59, 60), True, (40, 40))
+    assert estado is Estado.FALLA and "dxf (59/60)" in detalle and "ifc" not in detalle
+    estado, detalle = evaluar_s7_planos(True, (60, 60), True, (39, 40))
+    assert estado is Estado.FALLA and "ifc (39/40)" in detalle
+
+
+def test_s7_falla_pesa_mas_que_pendiente():
+    estado, _ = evaluar_s7_planos(True, (1, 2), False, None)
+    assert estado is Estado.FALLA
+
+
+def test_s7_pendiente_si_faltan_las_pruebas_o_no_recolectaron_casos():
+    estado, detalle = evaluar_s7_planos(False, None, True, (40, 40))
+    assert estado is Estado.PENDIENTE and "dxf" in detalle
+    estado, detalle = evaluar_s7_planos(True, (60, 60), False, None)
+    assert estado is Estado.PENDIENTE and "ifc" in detalle
+    estado, detalle = evaluar_s7_planos(True, (0, 0), True, (40, 40))
+    assert estado is Estado.PENDIENTE and "no recolectaron" in detalle
+
+
+def test_s7_ya_no_es_pendiente_fijo_en_la_orquestacion(monkeypatch):
+    import scripts.meta_sf as meta
+
+    consultadas = []
+
+    def falso(ids):
+        consultadas.append(tuple(ids))
+        return True, (len(ids), len(ids))
+
+    monkeypatch.setattr(meta, "_resultado_de", falso)
+    fila = meta._evaluar_metas(["S7"], "SF5")[0]
+    assert fila.estado is Estado.OK, fila.detalle
+    asi = {i for grupo in consultadas for i in grupo}
+    assert "tests/unit/test_planos_ifc.py" in asi and "tests/unit/test_planos_dxf_of001.py" in asi
