@@ -279,7 +279,42 @@ def test_cada_insumo_cita_su_ref_de_maprex_y_los_proxies_estan_declarados() -> N
     assert sorted(proxies) == ["codo112", "dr112"]
 
 
-def test_el_total_de_of001_es_estable() -> None:
-    """Pin de caracterizacion: cambia solo si cambian cantidades, precios o composiciones."""
-    total = _elaborar().elaboracion.presupuesto.total
-    assert abs(total - D("2703.86")) <= D("0.01")
+def _bs_por_etiqueta() -> dict[str, str]:
+    """Etiqueta (con su Ref) -> precio en Bs tal como aparece en MaPreX."""
+    return {i.etiqueta: i.precio_bs for i in caso.INSUMOS.values()}
+
+
+def _pu_a_mano(comp, bs: dict[str, str]) -> Decimal:
+    """PU de NORMAS.md §4 desde los Bs de MaPreX, linea por linea (sin el motor)."""
+    fcas, adm, util = D("6.00"), D("0.15"), D("0.10")
+    bono = _usd("3679.85")
+    materiales = sum((m.cantidad * _usd(bs[m.descripcion]) for m in comp.materiales), D(0))
+    equipos = sum(
+        (e.cantidad * _usd(bs[e.descripcion]) * e.depreciacion for e in comp.equipos), D(0)
+    )
+    mano = sum(
+        (o.cantidad * (_usd(bs[o.descripcion]) * (1 + fcas) + bono) for o in comp.mano_obra), D(0)
+    )
+    directo = materiales + (equipos + mano) / comp.rendimiento
+    return directo * (1 + adm) * (1 + util)
+
+
+def test_el_total_de_of001_se_calcula_a_mano_partida_por_partida(memoria: dict, resultado) -> None:
+    """Total = suma de cantidad de la memoria x PU a mano, partida por partida (30 partidas)."""
+    bs = _bs_por_etiqueta()
+    por_codigo = {p.item.codigo_partida: p for p in resultado.elaboracion.presupuesto.partidas}
+    total_a_mano = D(0)
+    cantidades = 0
+    for especialidad, claves in CODIGO_DE_PARTIDA.items():
+        for p in memoria[especialidad]["partidas"]:
+            codigo = claves[p["partida"]]
+            cantidad = D(p["cantidad"])
+            pu = _pu_a_mano(caso.COMPOSICIONES[codigo], bs)
+            assert abs(por_codigo[codigo].resultado.precio_unitario - pu) <= D("0.01"), codigo
+            total_a_mano += cantidad * pu
+            cantidades += 1
+    assert cantidades == len(caso.PARTIDAS) == 30
+    total = resultado.elaboracion.presupuesto.total
+    assert abs(total - total_a_mano) <= D("0.01"), (total, total_a_mano)
+    # cifra fijada contra ese calculo a mano (no contra la salida del motor)
+    assert abs(total_a_mano - D("2703.86")) <= D("0.01"), total_a_mano

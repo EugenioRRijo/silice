@@ -305,3 +305,52 @@ def test_las_tablas_markdown_coinciden_con_el_json(memoria: dict) -> None:
         impresas = {i: Decimal(v.replace(",", ".")) for i, v in filas}
         declaradas = {s["id"]: _d(s["longitud"]) for s in memoria[bloque]["segmentos"]}
         assert impresas == declaradas, prefijo
+
+
+# --- el script versionado reproduce el bloque JSON ---------------------------------------------
+
+
+def _script():
+    import importlib.util
+
+    ruta = MEMORIAS / "calculo_of001.py"
+    spec = importlib.util.spec_from_file_location("calculo_of001", ruta)
+    modulo = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(modulo)
+    return modulo
+
+
+def _f(valor: str) -> Fraction:
+    return Fraction(valor)
+
+
+def test_el_script_de_calculo_coincide_con_el_bloque_json(memoria: dict) -> None:
+    r = _script().calcular(memoria)
+    datos, ele = memoria["datos"], memoria["electricidad"]
+    assert {p: _f(v["longitud"]) for p, v in datos["recorridos"].items()} == r["datos"]["recorrido"]
+    assert r["datos"]["sin_unir"] == _f(datos["longitud_sin_unir"])
+    assert r["datos"]["unida"] == _f(datos["longitud_unida_total"])
+    assert r["datos"]["por_diametro"] == {
+        k: _f(v) for k, v in datos["longitud_unida_por_diametro"].items()
+    }
+    cable = next(p for p in datos["partidas"] if p["partida"] == "cable_cat_6")
+    assert r["datos"]["cable"] == _f(cable["cantidad"])
+    assert r["electricidad"]["ordenes"] == {c: v["orden"] for c, v in ele["circuitos"].items()}
+    assert r["electricidad"]["cadena"] == {c: _f(v["cadena"]) for c, v in ele["circuitos"].items()}
+    assert r["electricidad"]["sin_unir"] == _f(ele["longitud_sin_unir"])
+    assert r["electricidad"]["unida"] == _f(ele["longitud_unida_total"])
+    assert r["electricidad"]["por_diametro"] == {
+        k: _f(v) for k, v in ele["longitud_unida_por_diametro"].items()
+    }
+    for calibre, metros in r["electricidad"]["conductor"].items():
+        partida = next(p for p in ele["partidas"] if p["partida"] == f"conductor_{calibre}")
+        assert metros == _f(partida["cantidad"])
+    for bloque, calculado in ((datos, r["datos"]), (ele, r["electricidad"])):
+        declarados = {
+            s["clave"]: (_f(s["longitud"]), s["diametro"], sorted(s["sirve"]))
+            for s in bloque["segmentos"]
+        }
+        propios = {
+            s["clave"]: (s["longitud"], s["diametro"], s["sirve"]) for s in calculado["segmentos"]
+        }
+        assert propios == declarados

@@ -188,8 +188,13 @@ def recorrido_propuesto(espacio: Espacio, punto: Punto) -> tuple[Tramo, ...]:
     return ()
 
 
-def _alto_de(espacio: Espacio, ambiente_id: str) -> Decimal:
-    return next(a.alto for a in espacio.ambientes if a.id == ambiente_id)
+def _altos(espacio: Espacio) -> dict[str, Decimal]:
+    """Alto de cada ambiente por id, calculado una vez por llamada (no una busqueda por punto)."""
+    return {a.id: a.alto for a in espacio.ambientes}
+
+
+def _alto_de(altos: dict[str, Decimal], ambiente_id: str) -> Decimal:
+    return altos[ambiente_id]
 
 
 def _costo_paso(a: Coord, alto_a: Decimal, b: Coord, alto_b: Decimal) -> Decimal:
@@ -217,25 +222,22 @@ def orden_de_cadena(espacio: Espacio, circuito: Circuito) -> tuple[str, ...]:
     fuente = _fuente_de_circuito(espacio, circuito)
     if fuente is None:
         return tuple(orden + sorted(faltan))
+    altos = _altos(espacio)
     if orden:
         ultimo = puntos[orden[-1]]
-        actual, alto = ultimo.posicion, _alto_de(espacio, ultimo.ambiente_id)
+        actual, alto = ultimo.posicion, _alto_de(altos, ultimo.ambiente_id)
     else:
-        actual, alto = fuente.posicion, _alto_de(espacio, fuente.ambiente_id)
+        actual, alto = fuente.posicion, _alto_de(altos, fuente.ambiente_id)
+    # posicion y alto de cada punto que falta, una sola vez (no una busqueda por cada comparacion)
+    destino = {i: (puntos[i].posicion, _alto_de(altos, puntos[i].ambiente_id)) for i in faltan}
     while faltan:
         elegido = min(
             faltan,
-            key=lambda i: (
-                _costo_paso(
-                    actual, alto, puntos[i].posicion, _alto_de(espacio, puntos[i].ambiente_id)
-                ),
-                i,
-            ),
+            key=lambda i: (_costo_paso(actual, alto, destino[i][0], destino[i][1]), i),
         )
         faltan.remove(elegido)
         orden.append(elegido)
-        actual = puntos[elegido].posicion
-        alto = _alto_de(espacio, puntos[elegido].ambiente_id)
+        actual, alto = destino[elegido]
     return tuple(orden)
 
 
@@ -249,12 +251,13 @@ def recorrido_de_circuito(espacio: Espacio, circuito: Circuito) -> tuple[Tramo, 
     if fuente is None or not orden:
         return ()
     puntos = {p.id: p for p in espacio.puntos}
+    altos = _altos(espacio)
     en_techo, en_pared = SuperficieTramo.TECHO, SuperficieTramo.PARED
     vertices: list[tuple[Coord, SuperficieTramo]] = [(fuente.posicion, en_pared)]
-    actual, alto_actual = fuente.posicion, _alto_de(espacio, fuente.ambiente_id)
+    actual, alto_actual = fuente.posicion, _alto_de(altos, fuente.ambiente_id)
     for punto_id in orden:
         destino = puntos[punto_id]
-        b, alto_b = destino.posicion, _alto_de(espacio, destino.ambiente_id)
+        b, alto_b = destino.posicion, _alto_de(altos, destino.ambiente_id)
         techo = max(alto_actual, alto_b)
         vertices += [
             (Coord(actual.x, actual.y, techo), en_pared),

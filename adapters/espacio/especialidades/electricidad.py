@@ -17,7 +17,8 @@ tipo de tubería por defecto EMT; D-14 orden de la cadena por vecino más cercan
 bajadas coincidentes; D-16 diámetro de un circuito = el mayor de los declarados por sus puntos;
 D-17 y D-18 sin desperdicio. Ninguna tiene fuente verificada: son supuestos declarados y así se
 ven en la descripción de cada ítem. El máximo de puntos por circuito lo declara cada circuito; su
-fuente candidata (COVENIN 200) no está verificada, así que R10 lo trata como supuesto.
+fuente candidata, el Código Eléctrico Nacional (FONDONORMA 200), no está verificada, así que R10 lo
+trata como supuesto.
 """
 
 from __future__ import annotations
@@ -59,6 +60,7 @@ from adapters.espacio.modelo import (
     Punto,
     TipoFuente,
     TipoPunto,
+    Tramo,
 )
 from adapters.espacio.origen import clave_esp
 from core.contracts.dominio import Dominio
@@ -67,7 +69,8 @@ from core.contracts.item_computo import ItemComputo
 # --- constantes (un solo lugar) ----------------------------------------------------------
 
 _D13 = Constante("D-13", "Desperdicio del conductor eléctrico", Decimal("0.10"), SUPUESTO_DECLARADO)
-#: R10 (spec §8.2): el máximo lo declara cada circuito. Fuente candidata COVENIN 200, a verificar.
+#: R10 (spec §8.2): el máximo lo declara cada circuito. Fuente candidata: Código Eléctrico Nacional
+#: (FONDONORMA 200), a verificar.
 LIMITE_PUNTOS_POR_CIRCUITO = Constante(
     "R10-circuitos",
     "Puntos máximos por circuito (el declarado en cada circuito)",
@@ -134,10 +137,12 @@ def _circuitos_de(espacio: Espacio, puntos: Iterable[Punto]) -> list[Circuito]:
 # --- derivación -----------------------------------------------------------------------------
 
 
-def _conductores(espacio: Espacio) -> Iterator[ItemComputo]:
+def _conductores(
+    espacio: Espacio, tramos_por_circuito: dict[str, tuple[Tramo, ...]]
+) -> Iterator[ItemComputo]:
     grupos: dict[str, list[tuple[Circuito, Decimal]]] = defaultdict(list)
     for c in espacio.circuitos:
-        tramos = tramos_de_circuito(espacio, c)
+        tramos = tramos_por_circuito[c.id]
         if tramos:
             grupos[_calibre(c)].append((c, longitud_tramos(tramos) * sum(c.conductores)))
     for calibre, filas in grupos.items():
@@ -255,7 +260,9 @@ def derivar_electricidad(espacio: Espacio) -> list[ItemComputo]:
         and p.tipo in (TipoPunto.TOMACORRIENTE, TipoPunto.ILUMINACION)
     ]
     items: list[ItemComputo] = []
-    items.extend(_conductores(espacio))
+    # los tramos de cada circuito se calculan una sola vez
+    tramos_por_circuito = {c.id: tramos_de_circuito(espacio, c) for c in espacio.circuitos}
+    items.extend(_conductores(espacio, tramos_por_circuito))
     items.extend(_tuberias(espacio))
     items.extend(_por_punto(espacio, puntos))
     items.extend(_protecciones(espacio))

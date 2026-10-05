@@ -34,6 +34,11 @@ mas holguras (`datos.longitud_enlace`, sin la reserva) mayor que 90 m; 3. puntos
 puntos (los que citan el circuito mas los de su orden) que el maximo declarado. Severidad: ERROR si
 la fuente del limite esta verificada, ADVERTENCIA si es un supuesto declarado (hoy los tres lo son).
 Cada limite es una `Constante` de su especialidad; `Limites` los junta para probar ambos casos.
+Limitacion (pendiente): R10 evalua solo tramos de drenaje que declaran su pendiente; el recorrido
+propuesto de §6.4 no la trae, asi que con recorridos propuestos la condicion 1 no se dispara.
+Decision (puntos por circuito, R10d): el maximo lo declara el usuario en cada circuito, pero la
+severidad sigue a la fuente del limite base (`LIMITE_PUNTOS_POR_CIRCUITO`): mientras esa fuente sea
+supuesta (RS-11, pendiente de ratificar por Eugenio) un exceso es ADVERTENCIA, no ERROR.
 """
 
 from __future__ import annotations
