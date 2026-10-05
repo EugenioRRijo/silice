@@ -1952,7 +1952,7 @@ def tablas_de_espacio(
     return tablas
 
 
-def exportar_excel_hoja(
+def exportar_excel(
     ruta: Path,
     resultado: ResultadoHoja,
     borrador: Borrador,
@@ -1984,9 +1984,9 @@ def excel_de_hoja_en_bytes(
     trazabilidad: TablaExportable | None = None,
     precios: Sequence[FilaPrecio] = (),
 ) -> bytes:
-    """El libro de `exportar_excel_hoja` como bytes, para `st.download_button`."""
+    """El libro de `exportar_excel` como bytes, para `st.download_button`."""
     with tempfile.TemporaryDirectory() as carpeta:
-        ruta = exportar_excel_hoja(
+        ruta = exportar_excel(
             Path(carpeta) / "hoja.xlsx",
             resultado,
             borrador,

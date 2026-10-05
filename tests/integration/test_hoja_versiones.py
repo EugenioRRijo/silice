@@ -740,7 +740,7 @@ def test_el_excel_de_la_hoja_se_reabre_y_sus_formulas_dan_el_total_del_sistema(o
     resultado = hoja.elaborar_borrador(abierta.borrador, codigo="002")
     ruta = tmp_path / "hoja.xlsx"
 
-    hoja.exportar_excel_hoja(
+    hoja.exportar_excel(
         ruta,
         resultado,
         abierta.borrador,
@@ -797,7 +797,7 @@ def test_un_texto_con_prefijo_de_formula_no_se_exporta_como_formula(of001, tmp_p
     )
     ruta = tmp_path / "m1.xlsx"
 
-    hoja.exportar_excel_hoja(ruta, hoja.elaborar_borrador(editado), editado)
+    hoja.exportar_excel(ruta, hoja.elaborar_borrador(editado), editado)
 
     libro = load_workbook(ruta)
     hoja_ambientes = libro["Esp ambientes"]
