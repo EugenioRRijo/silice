@@ -8,13 +8,16 @@ from scripts.meta_alpha import Estado
 from scripts.meta_sf import (
     FASES,
     TITULOS,
+    base_de_core,
     contar_resultados,
     evaluar_s1_requisitos,
     evaluar_s2_memorias,
     evaluar_s3_especialidades,
+    evaluar_s4_core,
     evaluar_s8_regresion,
     evaluar_s10_cobertura,
     main,
+    memorias_exigidas,
     metas_hasta,
     porcentaje_espacio,
 )
@@ -86,9 +89,13 @@ def test_s1_sobre_la_ers_real_y_json(capsys):
     assert "S1" in json.dumps(datos)
 
 
-def test_main_hasta_sf0_ok_y_sf2_aun_con_pendientes(capsys):
-    assert main(["--hasta", "SF2"]) == 1  # S4 llega con SF2
-    assert "S4" in capsys.readouterr().out
+def test_main_hasta_sf0_ok(capsys):
+    assert main(["--hasta", "SF0"]) == 0
+    assert "S1" in capsys.readouterr().out
+
+
+def test_hasta_sf2_evalua_seis_metas_incluida_s4():
+    assert metas_hasta("SF2") == ["S1", "S2", "S3", "S8", "S10", "S4"]
 
 
 def test_s10_ok_en_la_frontera_80():
@@ -322,3 +329,115 @@ def test_existe_exige_la_funcion_y_no_solo_el_archivo():
     assert _existe("tests/unit/test_meta_sf.py::test_s10_ok_si_el_dato_esta_vigente")
     assert not _existe("tests/unit/test_meta_sf.py::test_que_no_existe")
     assert not _existe("tests/unit/no_existe.py")
+
+
+# --- SF2: S3 con datos y electricidad ----------------------------------------------------------
+
+
+def _s3_sf2(**cambios):
+    datos = dict(
+        existe_agua=True,
+        resultado_agua=(31, 31),
+        existe_datos=True,
+        resultado_datos=(22, 22),
+        existe_electricidad=True,
+        resultado_electricidad=(40, 40),
+    )
+    datos.update(cambios)
+    return evaluar_s3_especialidades(**datos)
+
+
+def test_s3_sf2_ok_si_pasan_agua_datos_y_electricidad():
+    estado, detalle = _s3_sf2()
+    assert estado is Estado.OK
+    assert "agua (31/31)" in detalle and "datos (22/22)" in detalle
+    assert "electricidad (40/40)" in detalle
+
+
+def test_s3_sf2_pendiente_si_faltan_las_pruebas_de_datos_o_de_electricidad():
+    estado, detalle = _s3_sf2(existe_datos=False, resultado_datos=None)
+    assert estado is Estado.PENDIENTE and "datos" in detalle
+    estado, detalle = _s3_sf2(existe_electricidad=False, resultado_electricidad=None)
+    assert estado is Estado.PENDIENTE and "electricidad" in detalle
+
+
+def test_s3_sf2_pendiente_si_no_se_recolecto_ninguna_prueba_de_datos():
+    estado, _ = _s3_sf2(resultado_datos=(0, 0))
+    assert estado is Estado.PENDIENTE
+
+
+def test_s3_sf2_falla_y_nombra_la_especialidad_que_falla():
+    estado, detalle = _s3_sf2(resultado_electricidad=(39, 40))
+    assert estado is Estado.FALLA and "electricidad" in detalle and "39" in detalle
+    estado, detalle = _s3_sf2(resultado_datos=(21, 22))
+    assert estado is Estado.FALLA and "datos" in detalle
+
+
+def test_s3_falla_pesa_mas_que_pendiente():
+    estado, _ = _s3_sf2(
+        resultado_datos=(21, 22), existe_electricidad=False, resultado_electricidad=None
+    )
+    assert estado is Estado.FALLA
+
+
+def test_s3_sin_exigir_sf2_conserva_el_mensaje_de_sf1():
+    estado, detalle = evaluar_s3_especialidades(existe_agua=True, resultado_agua=(31, 31))
+    assert estado is Estado.OK and "SF2" in detalle
+
+
+# --- SF2: S2 reconoce of001.md -------------------------------------------------------------------
+
+
+def test_s2_en_sf1_exige_solo_las_memorias_del_bano():
+    assert set(memorias_exigidas(False)) == {"bano_of001.md", "bano_drenaje_of001.md"}
+
+
+def test_s2_en_sf2_exige_tambien_of001_antes_del_primer_codigo_de_datos():
+    exigidas = memorias_exigidas(True)
+    assert set(exigidas) == {"bano_of001.md", "bano_drenaje_of001.md", "of001.md"}
+    assert exigidas["of001.md"][-1] == "adapters/espacio/especialidades/datos.py"
+    assert "--diff-filter=A" in exigidas["of001.md"]
+
+
+def test_s2_sf2_falla_si_of001_se_versiono_despues_del_codigo():
+    presentes = {"bano_of001.md": True, "bano_drenaje_of001.md": True, "of001.md": True}
+    orden = {"bano_of001.md": True, "bano_drenaje_of001.md": True, "of001.md": False}
+    estado, detalle = evaluar_s2_memorias(presentes, orden)
+    assert estado is Estado.FALLA and "of001.md" in detalle
+
+
+# --- SF2: S4 core intacto ---------------------------------------------------------------------
+
+
+def test_s4_ok_si_el_diff_de_core_esta_vacio():
+    estado, detalle = evaluar_s4_core("gsf1", "")
+    assert estado is Estado.OK and "gsf1" in detalle
+    assert evaluar_s4_core("inc/sf1", "  " + chr(10))[0] is Estado.OK
+
+
+def test_s4_falla_si_core_cambio_y_lo_dice():
+    estado, detalle = evaluar_s4_core(
+        "gsf1", " core/budget/curva.py | 3 ++-" + chr(10) + " 1 file changed"
+    )
+    assert estado is Estado.FALLA
+    assert "core/budget/curva.py" in detalle
+
+
+def test_s4_pendiente_sin_base_o_si_git_no_responde():
+    assert evaluar_s4_core(None, "")[0] is Estado.PENDIENTE
+    assert evaluar_s4_core("gsf1", None)[0] is Estado.PENDIENTE
+
+
+def test_la_base_de_s4_es_gsf1_y_si_no_existe_inc_sf1():
+    assert base_de_core(lambda ref: True) == "gsf1"
+    assert base_de_core(lambda ref: ref == "inc/sf1") == "inc/sf1"
+    assert base_de_core(lambda ref: False) is None
+
+
+def test_s4_sobre_el_repositorio_real_no_falla():
+    """En este arbol `core/` no cambio desde gsf1 (o inc/sf1): OK; sin la base (clon superficial),
+    PENDIENTE. Un FALLA aqui es una violacion real del invariante de SF2."""
+    from scripts.meta_sf import _s4
+
+    estado, detalle = _s4()
+    assert estado is not Estado.FALLA, detalle
