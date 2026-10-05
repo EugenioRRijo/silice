@@ -16,6 +16,7 @@ uv sync --extra ui --extra api --extra civil --extra ml
 
 No hay más pasos (RNF‑07). Notas:
 
+- El extra `ui` exige **Streamlit 1.62 o superior**: el menú superior (`position="top"`) no existe en versiones anteriores.
 - El extra `civil` instala `ifcopenshell` (modelos IFC); `ml` instala scikit‑learn y
   sentence‑transformers. Sin el extra correspondiente, esas funciones avisan que faltan en vez de
   fallar en silencio.
@@ -90,8 +91,10 @@ No hay más pasos (RNF‑07). Notas:
 
 ## 3. Las pantallas
 
-La interfaz tiene diez pantallas en dos secciones del menú lateral, **Trabajo** e
-**Investigacion** (en modo entrega, solo Trabajo; sección 2). Se abre en **Inicio**. Cada pantalla
+La interfaz tiene once pantallas en dos secciones del **menú superior** (desde el sprint final
+el menú va arriba, no a la izquierda), **Trabajo** e **Investigacion** (en modo entrega, solo
+Trabajo; sección 2). Bajo el menú, en todas las pantallas, está la **barra de herramientas**
+(sección 3.0 bis). Se abre en **Inicio**. Cada pantalla
 muestra su título; las cinco que implementan un caso de uso de la ERS (componer, elaborar,
 actualizar precios, escenarios y similares) muestran además su código como subtítulo. El Inicio y
 el histórico, aunque la tabla los asocie a UC‑12 y UC‑02, no lo muestran. La barra lateral
@@ -104,6 +107,7 @@ cálculo interno redondea**: el redondeo es solo de presentación.
 | Trabajo | **Catalogo de partidas e insumos** | consulta | Partidas e insumos con su precio vigente |
 | Trabajo | **Componer una partida** | UC‑10 / UC‑11 | Armar a mano una partida nueva o editar una existente, presupuestarla y exportarla (sección 3.7) |
 | Trabajo | **Elaborar un presupuesto** | UC‑01 | Extraer cantidades de una fuente por dominio y presupuestarlas (sección 3.1) |
+| Trabajo | **Hoja del proyecto** | UC‑13, UC‑15 | Describir el espacio en tablas y ver las cantidades derivadas, el estado de cada fila y el informe de auditoría (sección 3.8) |
 | Trabajo | **Actualizar precios** | UC‑02 | Cargar una lista de precios nueva (CSV/XLSX) y revalorar un presupuesto guardado |
 | Trabajo | **Historico de cambios de precio** | UC‑02 | Cambios de precio registrados, con filtros |
 | Investigacion | **Escenarios de sensibilidad** | UC‑08 | Recalcular un presupuesto bajo supuestos («¿y si…?») sin alterarlo |
@@ -120,8 +124,9 @@ demás se operan por otra capa (la correspondencia completa entre caso de uso y 
 adaptador civil (`adapters/civil/recalculo.py`) y no tiene pantalla ni ruta de la API. UC‑05 se ve
 en el informe de auditoría que acompaña a todo presupuesto elaborado (sección 4). El presupuesto
 de un tercero se importa solo por la API, sin pantalla (RF‑24, desde la fase C6; sección 3.4 bis).
-UC‑01 también tiene un paso por la API: `POST /proyectos` crea el proyecto sobre el que luego se
-elabora o se importa (la interfaz no crea proyectos).
+UC‑01 también tiene un paso previo: crear el proyecto sobre el que luego se elabora o se importa.
+Se hace con `POST /proyectos` en la API y, desde el sprint final, con la herramienta **Proyecto**
+de la barra superior (RF‑63, sección 3.0 bis); las dos rechazan el nombre vacío o repetido.
 Los rendimientos medidos de UC‑06 se registran por la API (sección 3.4), y las métricas y el
 contraste completo de UC‑07 se generan con un script (sección 3.5); de los dos, la pantalla
 **Componer una partida** ofrece una parte como ayudas: propone el rendimiento del histórico,
@@ -146,6 +151,34 @@ un presupuesto** propone también el rendimiento del histórico cuando a una par
    un presupuesto* y *Actualizar precios*. Al elegir uno, el Inicio lista sus pasos; en cada
    pantalla del recorrido la barra lateral dice en qué paso está, qué hacer y cómo saber que
    terminó, y al pie aparece el botón **Siguiente: <paso>**, salvo en el último paso.
+
+### 3.0 bis La barra de herramientas y los proyectos (RF‑60, RF‑63)
+
+Debajo del menú superior, y en el mismo lugar de todas las pantallas, hay una fila de herramientas.
+La barra lateral queda para lo que ya mostraba: el caso abierto y el paso del recorrido activo.
+
+| Herramienta | Qué hace |
+|---|---|
+| **Proyecto** | Muestra el caso abierto, el proyecto abierto y su versión vigente. Permite **crear** un proyecto nuevo y **abrir** uno del caso. |
+| **Importar plano** | Importa un plano DXF o IFC hacia la hoja (UC‑14). Solo aparece cuando la importación de planos está disponible; mientras no lo esté, la herramienta no se muestra. |
+| **Precios** | Lleva a la pestaña *Precios* de la hoja del proyecto cuando la hoja del proyecto esté completa; mientras tanto lleva a **Actualizar precios**. |
+| **Auditar** | Resume el informe de auditoría de la versión vigente del proyecto abierto: cuántos hallazgos y de qué severidad. El sistema audita siempre; el botón solo lo muestra. |
+| **Guardar version** | Guarda el borrador de la hoja como una versión nueva. Aparece deshabilitado, con la ayuda «Todavía no está disponible en esta versión del prototipo» y un aviso visible bajo la barra, hasta que la hoja del proyecto esté completa. |
+| **Exportar Excel** | Genera el Excel de la hoja. Deshabilitado con el mismo texto hasta que la hoja del proyecto esté completa. |
+| **Recorrido guiado** | Sin recorrido elegido, lleva al Inicio para elegir uno. Con uno elegido dice **Retomar: <recorrido>** y lleva a su paso siguiente (o a su primer paso si usted está en otra pantalla). |
+
+**Crear un proyecto.** Abra el desplegable **Proyecto**, escriba el nombre en *Nombre del proyecto
+nuevo* y pulse **Crear proyecto**. El nombre debe ser **único en el caso** y **no vacío**: un nombre
+en blanco se rechaza con «Escriba un nombre para el proyecto: no puede quedar vacio», y uno que ya
+existe (aunque cambien las mayúsculas o los espacios sobrantes) con «Ya existe un proyecto llamado
+…». Si el caso no existe todavía, el mensaje lo dice y no crea el archivo: ábralo o siémbrelo antes
+en el Inicio. Al crearlo, el proyecto queda abierto; un proyecto nuevo aún no tiene versión
+vigente («sin version guardada»).
+
+**Abrir un proyecto.** En el mismo desplegable, elija uno en *Abrir un proyecto del caso* y pulse
+**Abrir**. La **versión vigente** es hoy el último presupuesto guardado del proyecto que no se
+descartó; cuando la hoja del proyecto esté completa y entregue las versiones editables, será la versión que ellas
+declaren.
 
 ### 3.1 Elaborar un presupuesto (UC‑01)
 
@@ -426,6 +459,19 @@ a paso con resultados esperados está el [guion de prueba manual](guion_prueba_a
     de APU muestra la columna *Modalidad* de cada línea de mano de obra, para que un destajo no se
     lea como sueldo diario.
 
+### 3.8 Hoja del proyecto (UC‑13, UC‑15)
+
+La pantalla **Hoja del proyecto** tiene hoy una pestaña, **Espacio y metrajes**: se describen en
+tablas editables los orígenes de medida, los ambientes, las fuentes, los puntos y los vértices de
+los recorridos; debajo, el sistema muestra las cantidades que se derivan del espacio (agua,
+datos y electricidad), la columna **Estado** de cada fila con el peor hallazgo que la toca, el
+total del presupuesto y el informe de auditoría. Una fila inválida muestra un mensaje que dice
+fila y campo, y la hoja sigue con el último borrador válido. **La hoja todavía no guarda:**
+guardar versiones, restaurar, el punto de equilibrio, los precios con su origen y el Excel de la
+hoja estarán disponibles cuando la hoja del proyecto esté completa, y la importación de planos
+cuando se complete. Hasta entonces las herramientas correspondientes de la barra están
+deshabilitadas u ocultas.
+
 ## 4. El informe de auditoría
 
 Se genera **siempre** — no existe forma de obtener un presupuesto sin él. Ejecuta las siete
@@ -529,4 +575,8 @@ Cada carpeta trae su `README.md` con el formato exacto de columnas.
 | 500 en `POST /presupuestos/{codigo}/actualizacion` con una lista que carga bien | Dos listas con el mismo nombre (por ejemplo, al cargar dos veces el archivo para ver los desconocidos): el nombre debe ser único |
 | «Guardar composicion» no se puede pulsar | Faltan las condiciones del rendimiento (RF‑33): escribirlas |
 | «no hay ninguna lista de precios vigente» al guardar | La base está vacía o la fecha es anterior a toda lista: sembrar con `scripts/seed_demo.py` o cambiar la fecha |
+| «Escriba un nombre para el proyecto» o «Ya existe un proyecto llamado …» al crear un proyecto | El nombre quedó en blanco o ya lo usa otro proyecto del caso: escribir otro, o abrir el existente con **Abrir** |
+| **Guardar version** y **Exportar Excel** aparecen deshabilitados | Se habilitan cuando la hoja del proyecto esté completa; un aviso bajo la barra lo dice |
+| **Importar plano** no aparece en la barra | Depende de la importación de planos, que aún no está completa; hasta entonces la herramienta se oculta |
+| Un archivo subido se guarda con otro nombre (por ejemplo `_CON.csv`) | El nombre original era reservado en Windows (`CON`, `NUL`, `COM1`…) o traía caracteres no permitidos: se limpia para guardarlo, y el contenido no cambia |
 | La barra lateral no muestra el caso esperado bajo «Caso abierto» | Abrirlo en **Inicio** (*Archivo del caso (SQLite)* y *Abrir este caso*) o arrancar con `ARENIA_CASO=<ruta>`: recargar la página (F5) vuelve a la ruta de `ARENIA_CASO` o, sin ella, a `data/apu.db` |

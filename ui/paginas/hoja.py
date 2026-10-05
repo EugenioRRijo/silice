@@ -56,7 +56,7 @@ from core.catalog import Catalogo, CatalogoIncompleto, abrir_sesion, crear_esque
 from core.verification.informe import DECIMALES_PRESENTACION
 from core.verification.texto import formatear_decimal
 from ui import caso, hoja
-from ui.caso import ruta_caso
+from ui.caso import ACCION_PRECIOS, ruta_caso
 
 PESTANAS = (
     "Espacio y metrajes",
@@ -1117,8 +1117,9 @@ def render() -> None:
     """La hoja del proyecto: version abierta, guardado y la pestana activa."""
     _borrador()
     accion = _atender()
-    if accion == "precios":  # la herramienta Precios de la barra lleva a su pestana
-        st.session_state[CLAVE_PESTANA] = "Precios"
+    if accion == ACCION_PRECIOS:  # la herramienta Precios de la barra lleva a su pestana
+        if "Precios" in PESTANAS:
+            st.session_state[CLAVE_PESTANA] = "Precios"
         st.session_state.pop(CLAVE_ACCION_PENDIENTE, None)
         accion = None
     _mostrar_mensaje()

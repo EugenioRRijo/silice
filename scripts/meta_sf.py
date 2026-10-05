@@ -7,8 +7,9 @@ primero y cada fase se trabaja para ponerlas en OK (spec 2026-10-04, seccion 12.
 Cada chequeo de contenido es una funcion pura sobre texto ya leido (`evaluar_*`). Las metas de
 fases todavia no construidas dan PENDIENTE, nunca FALLA: es evidencia ausente, no un
 incumplimiento. Hoy se evaluan de verdad S1 (requisitos en la ERS), S2 (memorias), S3 (agua,
-datos y electricidad), S4 (`core/` intacto), S8 (regresion) y S10 (cobertura); la orquestacion
-lee disco, consulta git y ejecuta pytest, y cada evaluador recibe solo el dato ya leido.
+datos y electricidad), S4 (`core/` intacto), S6 (barra), S8 (regresion) y S10 (cobertura); la
+orquestacion lee disco, consulta git y ejecuta pytest, y cada evaluador recibe solo el dato
+ya leido.
 
 S3 pesa las pruebas de `tests/unit/test_espacio_agua.py` y, desde SF2, las de datos
 (`test_espacio_datos.py`) y electricidad (`test_espacio_electricidad.py` y
@@ -33,6 +34,9 @@ de `adapters/espacio` (`cobertura_vigente`); si no, queda PENDIENTE.
 Nota: `FASES` agrupa cada meta en la fase donde ARRANCA su evaluacion. S3 («SF1-SF2» en la spec)
 arranca en SF1 y S8 («todas») se conecta en SF1; por eso sus titulos llevan el alcance de la spec y
 no la fase de agrupacion.
+
+Desde SF4, S4 compara `core/` contra `gsf2` (o la rama `inc/sf2`) y S6 corre las pruebas AppTest
+de la barra (`test_ui_barra.py` y `test_ui_app.py`).
 
 Uso: `uv run python scripts/meta_sf.py [--hasta SF0|SF1|SF2|SF3|SF4|SF5] [--json]`.
 """
@@ -99,6 +103,12 @@ RUTA_PRUEBAS_ELECTRICIDAD = (
 BASES_S4: tuple[str, ...] = ("gsf1", "inc/sf1")
 #: Fin de SF2, con que S4 compara la base desde que ramas posteriores tocan `core/` (SF3 nucleo).
 PUNTAS_S4: tuple[str, ...] = ("gsf2", "inc/sf2")
+#: Base de S4 desde SF4: el cierre del nucleo de SF3 (RS4-10). Desde alli hasta la punta de la
+#: rama (barra, planos, integracion) `core/` no debe cambiar; el nucleo de SF3 SI lo toco, con
+#: expediente.
+BASES_S4_FINAL: tuple[str, ...] = ("gsf4", "gsf3", "inc/sf3-nucleo")
+#: Pruebas AppTest de la navegacion superior y de las herramientas de la barra (S6).
+RUTA_PRUEBAS_BARRA = ("tests/unit/test_ui_barra.py", "tests/unit/test_ui_app.py")
 
 #: S5 (nucleo de SF3): grupo -> archivos de prueba que deben existir y pasar.
 GRUPOS_S5: dict[str, tuple[str, ...]] = {
@@ -320,27 +330,19 @@ def evaluar_s3_especialidades(
 
 def evaluar_s4_core(base: str | None, diff: str | None, punta: str = "HEAD") -> tuple[Estado, str]:
     """S4: `core/` no cambio desde `base` hasta `punta` (`git diff --stat <base>..<punta> -- core/`
-    vacio; `punta` es `HEAD` o, desde SF3, el fin de SF2: ver `punta_de_s4`).
+    vacio; `punta` es `HEAD` o, desde SF3, el fin de SF2: ver `intervalos_s4`).
 
     `base` es None si no hay etiqueta ni rama de referencia, y `diff` es None si git no
     respondio: en ambos casos no hay evidencia (PENDIENTE). Un diff con contenido es FALLA y
     nombra lo que cambio."""
     if base is None:
-        return Estado.PENDIENTE, "sin base: ni la etiqueta gsf1 ni la rama inc/sf1 existen"
+        return Estado.PENDIENTE, "sin base: no existe ni gsf1 ni inc/sf1"
     if diff is None:
         return Estado.PENDIENTE, f"git no respondio al comparar core/ con {base}"
     cambios = [linea.strip() for linea in diff.splitlines() if linea.strip()]
     if cambios:
         return Estado.FALLA, f"core/ cambio en {base}..{punta}: " + "; ".join(cambios[:5])
     return Estado.OK, f"core/ intacto en {base}..{punta} (git diff vacio)"
-
-
-def punta_de_s4(existe: Callable[[str], bool]) -> str:
-    """El fin de SF2 contra el que S4 compara: `gsf2`, si no `inc/sf2`, y `HEAD` si ninguno existe.
-
-    S4 vigila SF2 y SF5 (spec 12.2). Una rama de SF3 que toca `core/` con expediente no es una
-    violacion: se compara el fin de SF2, no la punta de la rama."""
-    return next((ref for ref in PUNTAS_S4 if existe(ref)), "HEAD")
 
 
 def evaluar_s5_nucleo(grupos: dict[str, tuple[int, int] | None]) -> tuple[Estado, str]:
@@ -390,9 +392,45 @@ def evaluar_s9_rnf11(registro: dict | None) -> tuple[Estado, str]:
     return Estado.FALLA, texto + ": supera el umbral"
 
 
-def base_de_core(existe: Callable[[str], bool]) -> str | None:
+def base_de_core(existe: Callable[[str], bool], bases: Sequence[str] = BASES_S4) -> str | None:
     """La primera base de S4 que existe (`gsf1`, y si no `inc/sf1`); None si no hay ninguna."""
-    return next((ref for ref in BASES_S4 if existe(ref)), None)
+    return next((ref for ref in bases if existe(ref)), None)
+
+
+def intervalos_s4(fase: str | None) -> list[tuple[tuple[str, ...], tuple[str, ...]]]:
+    """Los tramos de `core/` que S4 exige intactos: `[(bases, puntas), ...]`.
+
+    Siempre el de SF2 (`gsf1..gsf2`). Desde SF4 (o sin `--hasta`) se agrega el posterior al nucleo
+    de SF3, que SI toco `core/` con expediente (spec 12.2, RS4-10): desde su cierre hasta la punta
+    de la rama (`HEAD`: barra, planos e integracion) no debe haber cambios."""
+    tramos: list[tuple[tuple[str, ...], tuple[str, ...]]] = [(BASES_S4, PUNTAS_S4)]
+    orden = list(FASES)
+    if fase is None or orden.index(fase) >= orden.index("SF4"):
+        tramos.append((BASES_S4_FINAL, ("HEAD",)))
+    return tramos
+
+
+def combinar_s4(resultados: Sequence[tuple[Estado, str]]) -> tuple[Estado, str]:
+    """S4 es OK solo si todos los tramos lo son; un fallo pesa mas que una ausencia."""
+    detalle = " | ".join(d for _, d in resultados)
+    if any(e is Estado.FALLA for e, _ in resultados):
+        return Estado.FALLA, detalle
+    if any(e is Estado.PENDIENTE for e, _ in resultados):
+        return Estado.PENDIENTE, detalle
+    return Estado.OK, detalle
+
+
+def evaluar_s6_barra(existen: bool, resultado: tuple[int, int] | None) -> tuple[Estado, str]:
+    """S6: las pruebas AppTest de la navegacion y de la barra existen y pasan (`resultado` =
+    (pasan, total)). Una prueba que falla pesa mas que una que falta; sin casos, PENDIENTE."""
+    if existen and resultado is not None and resultado[1] > 0 and resultado[0] < resultado[1]:
+        return Estado.FALLA, f"pruebas de la barra que fallan ({resultado[0]}/{resultado[1]})"
+    if not existen:
+        return Estado.PENDIENTE, "faltan las pruebas AppTest de la barra"
+    if resultado is None or resultado[1] == 0:
+        return Estado.PENDIENTE, "las pruebas de la barra no recolectaron casos"
+    pasan, total = resultado
+    return Estado.OK, f"AppTest de navegacion y herramientas en verde ({pasan}/{total})"
 
 
 def evaluar_s8_regresion(
@@ -537,11 +575,11 @@ def _referencia_existe(ref: str) -> bool:
     return bool(_git("rev-parse", "--verify", "--quiet", f"{ref}^{{commit}}"))
 
 
-def _s4() -> tuple[Estado, str]:
-    base = base_de_core(_referencia_existe)
+def _tramo_s4(bases: tuple[str, ...], puntas: tuple[str, ...]) -> tuple[Estado, str]:
+    base = base_de_core(_referencia_existe, bases)
     if base is None:
-        return evaluar_s4_core(None, None)
-    punta = punta_de_s4(_referencia_existe)
+        return Estado.PENDIENTE, "sin base: no existe ninguna de " + ", ".join(bases)
+    punta = next((ref for ref in puntas if _referencia_existe(ref)), "HEAD")
     try:
         r = subprocess.run(
             ["git", "diff", "--stat", f"{base}..{punta}", "--", "core/"],
@@ -556,11 +594,20 @@ def _s4() -> tuple[Estado, str]:
     return evaluar_s4_core(base, r.stdout if r.returncode == 0 else None, punta)
 
 
+def _s4(fase: str | None = None) -> tuple[Estado, str]:
+    return combinar_s4([_tramo_s4(b, p) for b, p in intervalos_s4(fase)])
+
+
 def _s5() -> tuple[Estado, str]:
     presentes = {g: ids for g, ids in GRUPOS_S5.items() if all((RAIZ / i).is_file() for i in ids)}
     ids = [i for grupo in presentes.values() for i in grupo]
     cuenta = contar_resultados(_correr_pytest(ids), presentes) if ids else {}
     return evaluar_s5_nucleo({g: cuenta.get(g) for g in GRUPOS_S5})
+
+
+def _s6() -> tuple[Estado, str]:
+    existen, resultado = _resultado_de(RUTA_PRUEBAS_BARRA)
+    return evaluar_s6_barra(existen, resultado)
 
 
 def _s8() -> tuple[Estado, str]:
@@ -587,9 +634,9 @@ def _evaluar_metas(codigos: list[str], fase: str | None = None) -> list[Fila]:
         "S1": lambda: evaluar_s1_requisitos(_leer(RUTA_ERS)),
         "S2": lambda: _s2(sf2),
         "S3": lambda: _s3(sf2),
-        "S4": _s4,
+        "S4": lambda: _s4(fase),
         "S5": _s5,
-        "S6": _pendiente("la barra superior llega con SF4"),
+        "S6": _s6,
         "S7": _pendiente("la importacion de planos llega con SF5"),
         "S8": _s8,
         "S9": lambda: evaluar_s9_rnf11(registro_rnf11()),

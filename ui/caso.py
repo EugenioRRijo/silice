@@ -38,6 +38,13 @@ RUTA_BASE_POR_DEFECTO = "data/apu.db"
 VARIABLE_RUTA_CASO = "ARENIA_CASO"
 CLAVE_CASO = "arenia_caso_ruta"
 CLAVE_RECORRIDO = "arenia_recorrido_activo"
+CLAVE_PROYECTO = "arenia_proyecto_abierto"
+CLAVE_ACCION = "arenia_accion_pedida"
+#: Acciones que la barra superior le pide a la hoja del proyecto (`pedir_accion`).
+ACCION_PRECIOS = "precios"
+ACCION_IMPORTAR_PLANO = "importar_plano"
+ACCION_GUARDAR_VERSION = "guardar_version"
+ACCION_EXPORTAR_EXCEL = "exportar_excel"
 
 
 def resolver_ruta(guardada: str | None, entorno: Mapping[str, str], por_defecto: str) -> Path:
@@ -69,6 +76,30 @@ def recorrido_activo() -> str | None:
 def fijar_recorrido(nombre: str | None) -> None:
     """Fija (o, con `None`, suelta) el recorrido activo de la sesion."""
     st.session_state[CLAVE_RECORRIDO] = nombre
+
+
+def proyecto_abierto() -> str | None:
+    """El nombre del proyecto abierto en esta sesion (barra superior, RF-63), o `None`."""
+    return st.session_state.get(CLAVE_PROYECTO)
+
+
+def fijar_proyecto(nombre: str | None) -> None:
+    """Fija (o, con `None`, suelta) el proyecto abierto de la sesion."""
+    st.session_state[CLAVE_PROYECTO] = nombre
+
+
+def pedir_accion(accion: str) -> None:
+    """Deja una accion de la barra superior para la pantalla de destino (la hoja del proyecto).
+
+    La barra no conoce las claves de la hoja: solo deja el nombre de lo que el usuario pidio y la
+    pantalla lo atiende con `tomar_accion` en su proxima ejecucion.
+    """
+    st.session_state[CLAVE_ACCION] = accion
+
+
+def tomar_accion() -> str | None:
+    """La accion pedida por la barra, que se consume: la segunda llamada devuelve `None`."""
+    return st.session_state.pop(CLAVE_ACCION, None)
 
 
 @dataclass(frozen=True, slots=True)

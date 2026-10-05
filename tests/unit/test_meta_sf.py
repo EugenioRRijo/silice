@@ -23,7 +23,6 @@ from scripts.meta_sf import (
     memorias_exigidas,
     metas_hasta,
     porcentaje_espacio,
-    punta_de_s4,
     registro_rnf11,
 )
 
@@ -451,14 +450,6 @@ def test_s4_sobre_el_repositorio_real_no_falla():
 # --- SF3 (rama de nucleo): S4 solo vigila SF2 y SF5; S5 parcial; S9 pendiente ------------------
 
 
-def test_la_punta_de_s4_es_el_fin_de_sf2_y_si_no_existe_head():
-    """S4 vigila SF2 (y SF5): en una rama de SF3 que SI toca `core/` (expedientes SF-E2 a SF-E7,
-    spec 12.2) se compara el fin de SF2, no la punta de la rama."""
-    assert punta_de_s4(lambda ref: True) == "gsf2"
-    assert punta_de_s4(lambda ref: ref == "inc/sf2") == "inc/sf2"
-    assert punta_de_s4(lambda ref: False) == "HEAD"
-
-
 def test_s4_nombra_la_punta_con_que_comparo():
     estado, detalle = evaluar_s4_core("inc/sf1", "", "inc/sf2")
     assert estado is Estado.OK and "inc/sf1..inc/sf2" in detalle
@@ -547,3 +538,90 @@ def test_s9_lee_el_registro_que_deja_el_script(tmp_path):
     assert registro_rnf11(ruta)["mediana_s"] == 0.3
     ruta.write_text("no es json", encoding="utf-8")
     assert registro_rnf11(ruta) is None
+# --- SF4: S6 (AppTest de la barra) y la base de S4 desde inc/sf2 -------------------------------
+
+
+def test_hasta_sf4_agrega_s6_despues_de_las_metas_de_sf3():
+    assert metas_hasta("SF4") == ["S1", "S2", "S3", "S8", "S10", "S4", "S5", "S9", "S6"]
+
+
+def test_s6_ok_si_pasan_todas_las_pruebas_de_la_barra():
+    from scripts.meta_sf import evaluar_s6_barra
+
+    estado, detalle = evaluar_s6_barra(True, (25, 25))
+    assert estado is Estado.OK
+    assert "25/25" in detalle
+
+
+def test_s6_falla_si_una_prueba_de_la_barra_falla():
+    from scripts.meta_sf import evaluar_s6_barra
+
+    estado, detalle = evaluar_s6_barra(True, (24, 25))
+    assert estado is Estado.FALLA
+    assert "24/25" in detalle
+
+
+def test_s6_pendiente_si_faltan_las_pruebas_o_no_recolectaron_casos():
+    from scripts.meta_sf import evaluar_s6_barra
+
+    assert evaluar_s6_barra(False, None)[0] is Estado.PENDIENTE
+    assert evaluar_s6_barra(True, (0, 0))[0] is Estado.PENDIENTE
+    assert evaluar_s6_barra(True, None)[0] is Estado.PENDIENTE
+
+
+def test_las_pruebas_de_s6_existen_en_disco():
+    from scripts.meta_sf import RUTA_PRUEBAS_BARRA, _existe
+
+    assert RUTA_PRUEBAS_BARRA
+    assert all(_existe(ruta) for ruta in RUTA_PRUEBAS_BARRA)
+
+
+def test_s4_hasta_sf3_compara_solo_el_fin_de_sf2():
+    from scripts.meta_sf import intervalos_s4
+
+    assert intervalos_s4("SF2") == [(("gsf1", "inc/sf1"), ("gsf2", "inc/sf2"))]
+    assert intervalos_s4("SF3") == [(("gsf1", "inc/sf1"), ("gsf2", "inc/sf2"))]
+
+
+def test_desde_sf4_s4_agrega_el_tramo_posterior_al_nucleo_de_sf3_ruling_rs4_10():
+    """El nucleo de SF3 toco `core/` con expediente: tras el, la base pasa a su cierre."""
+    from scripts.meta_sf import intervalos_s4
+
+    esperado = [
+        (("gsf1", "inc/sf1"), ("gsf2", "inc/sf2")),
+        (("gsf4", "gsf3", "inc/sf3-nucleo"), ("HEAD",)),
+    ]
+    assert intervalos_s4("SF4") == esperado
+    assert intervalos_s4("SF5") == esperado
+    assert intervalos_s4(None) == esperado
+
+
+def test_combinar_s4_exige_todos_los_tramos_y_nombra_los_que_fallan():
+    from scripts.meta_sf import combinar_s4
+
+    ok = (Estado.OK, "core/ intacto en a..b (git diff vacio)")
+    mal = (Estado.FALLA, "core/ cambio en c..HEAD: x")
+    pend = (Estado.PENDIENTE, "sin base")
+    assert combinar_s4([ok, ok])[0] is Estado.OK
+    assert "a..b" in combinar_s4([ok, ok])[1]
+    estado, detalle = combinar_s4([ok, mal])
+    assert estado is Estado.FALLA and "c..HEAD" in detalle
+    assert combinar_s4([pend, ok])[0] is Estado.PENDIENTE
+    assert combinar_s4([pend, mal])[0] is Estado.FALLA  # un fallo pesa mas que una ausencia
+
+
+def test_s4_toma_la_primera_base_que_existe_en_cada_tramo():
+    from scripts.meta_sf import base_de_core
+
+    bases = ("gsf4", "gsf3", "inc/sf3-nucleo")
+    assert base_de_core(lambda ref: ref == "inc/sf3-nucleo", bases) == "inc/sf3-nucleo"
+    assert base_de_core(lambda ref: ref in ("gsf3", "inc/sf3-nucleo"), bases) == "gsf3"
+    assert base_de_core(lambda ref: False, bases) is None
+
+
+def test_s4_sobre_el_repositorio_real_desde_sf4_no_falla():
+    """En esta rama `core/` no cambio tras el nucleo de SF3: OK; sin la base, PENDIENTE."""
+    from scripts.meta_sf import _s4
+
+    estado, detalle = _s4("SF5")
+    assert estado is not Estado.FALLA, detalle

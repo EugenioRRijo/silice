@@ -318,3 +318,41 @@ def test_revalorar_desde_la_pantalla_conserva_el_plan_guardado_de_la_version(mon
             )
     finally:
         motor.dispose()
+# --- un nombre inutilizable no se confunde con «sin ofertas» (revision de usabilidad) -----------
+
+
+def _vista_con_nombre(ruta: str, nombre: str) -> None:
+    from pathlib import Path
+    from types import SimpleNamespace
+
+    import streamlit as st
+
+    from ui.paginas import actualizacion
+
+    archivo = SimpleNamespace(name=nombre, getvalue=lambda: b"codigo,precio\nX,1\n")
+    ofrecidos = actualizacion._ofrecer_alta(Path(ruta), archivo)
+    st.write(f"ofrecidos={len(ofrecidos)}")
+
+
+def test_la_vista_previa_con_nombre_inutilizable_muestra_el_motivo(tmp_path):
+    caso = tmp_path / "caso.db"
+    _base_con_version_nueva(caso, revalorar=False)
+    at = AppTest.from_function(
+        _vista_con_nombre, kwargs={"ruta": str(caso), "nombre": ".."}, default_timeout=60
+    )
+    at.run()
+    assert not at.exception, [e.value for e in at.exception]
+    assert len(at.error) == 1
+    assert "nombre utilizable" in at.error[0].value
+    assert "Renombre" in at.error[0].value
+
+
+def test_la_vista_previa_con_nombre_valido_no_muestra_error(tmp_path):
+    caso = tmp_path / "caso.db"
+    _base_con_version_nueva(caso, revalorar=False)
+    at = AppTest.from_function(
+        _vista_con_nombre, kwargs={"ruta": str(caso), "nombre": "lista.csv"}, default_timeout=60
+    )
+    at.run()
+    assert not at.exception, [e.value for e in at.exception]
+    assert not at.error

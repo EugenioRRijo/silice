@@ -15,7 +15,7 @@ dependencies = [
 #   uv sync --extra civil   (I3.1)   uv sync --extra ml (I2, I6)   uv sync --extra ui --extra api (I1, F.1)
 #   uv sync --extra informes (PDF del caso TI-001 y del glosario)
 [project.optional-dependencies]
-ui = ["streamlit>=1.36"]
+ui = ["streamlit>=1.62"]
 api = ["fastapi>=0.110", "uvicorn>=0.29"]
 civil = ["ifcopenshell>=0.8"]
 ml = ["scikit-learn>=1.4", "sentence-transformers>=3.0", "xgboost>=2.0"]

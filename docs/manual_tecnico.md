@@ -515,3 +515,51 @@ emitido. Una base guardada **antes** de ese commit no tiene los pendientes persi
 no los inventa y el informe recargado es la reauditoría de los renglones valorados, que puede decir
 CUMPLE sobre un documento que se emitió NO CUMPLE (no conformidad residual con RF‑02, dictamen
 C3‑3). Para que su informe recargado declare los pendientes, esa base se vuelve a sembrar.
+
+## 11. Interfaz del sprint final: menú superior, barra de herramientas y subidas (SF4)
+
+**Menú y marco.** `ui/app.py` llama a `st.navigation(secciones, position="top")` (Streamlit ≥ 1.62,
+fijado en el extra `ui` de `pyproject.toml`; `tests/unit/test_ui_app.py` falla con una versión sin
+`position="top"`). Son once pantallas en dos grupos, Trabajo e Investigación; la «Hoja del
+proyecto» va en Trabajo, justo después de Elaborar; `ARENIA_MODO_ENTREGA=1` sigue omitiendo
+Investigación. `marco()` pinta, en este orden: la barra de herramientas, el título, el subtítulo
+del caso de uso, el caso abierto (barra lateral), el paso del recorrido, la pantalla y el botón
+«Siguiente».
+
+**Barra de herramientas (`ui/barra.py`).** La importa **solo** `ui/app.py` (lo vigila
+`test_solo_ui_app_importa_la_barra_de_herramientas`); ninguna página importa el marco. No conoce
+las claves de la hoja: cuando una herramienta pide trabajo a la hoja, deja una *acción pedida* con
+`ui.caso.pedir_accion(...)` y navega; la pantalla la consume con `ui.caso.tomar_accion()` al
+renderizar (hoy `ui/paginas/hoja.py` atiende `ACCION_PRECIOS`). Tres ganchos declarados para fases
+que aún no se entregan:
+
+| Gancho | Detección | Estado hoy |
+|---|---|---|
+| Importar plano (SF5) | `hay_importacion_de_planos()`: `importlib.util.find_spec("adapters.espacio.planos")` | oculta mientras el paquete no exista |
+| Guardar versión y Exportar Excel (SF3) | `hay_guardado_y_exportacion()`: `ui.hoja` expone las funciones de `FUNCIONES_DE_SF3` (`guardar_version`, `exportar_excel`) | deshabilitados, con ayuda «disponible cuando se complete SF3» |
+| Precios (SF3) | `"Precios" in ui.paginas.hoja.PESTANAS` | lleva a Actualizar precios mientras no exista la pestaña |
+
+Quien implemente SF3 debe exponer esas dos funciones en `ui/hoja.py` (o renombrar la constante en un
+solo lugar) y atender `ACCION_GUARDAR_VERSION` y `ACCION_EXPORTAR_EXCEL` en la pantalla de la hoja:
+el guardado exige fuente y responsable (RF‑53) y el Excel se genera solo al pulsar, así que ambos
+viven en la pantalla, no en la barra.
+
+**Proyectos (`ui/proyectos.py`, sin Streamlit).** `crear_proyecto_nuevo` valida (nombre no vacío,
+único sin distinguir mayúsculas ni espacios sobrantes, caso existente) antes de llamar a
+`core.budget.crear_proyecto`, que repite las dos reglas; `version_vigente` y `resumen_auditoria`
+leen el último presupuesto no descartado del proyecto. Ninguna función crea el archivo de la base.
+Cuando SF3 aporte la versión vigente propia, `_vigente` es el único punto que cambia.
+
+**Subidas (`ui/subidas.py`, A‑1).** `guardar_subida(directorio, archivo)` es la única forma de
+escribir una subida de Streamlit: conserva solo el último componente del nombre (separadores `/` y
+`\`), reemplaza los caracteres prohibidos en Windows, quita espacios y puntos finales, renombra con
+`_` los nombres reservados (`CON`, `NUL`, `COM1`…), acota a 100 caracteres conservando la extensión
+y rechaza con `ValueError` el nombre sin componente utilizable. `actualizacion`, `elaborar` y
+`visor` la usan; un test impide volver a unir `archivo.name` a una carpeta. Imita las reglas de
+`api/archivos.py` sin importarlo (`ui` no importa `api`).
+
+**Probar la barra con `AppTest`.** `tests/unit/test_ui_barra.py` corre `pintar_barra(ruta, ir_a)` en
+un guion de cuatro líneas, con un `ir_a` que solo anota el destino en `st.session_state`; los
+popovers se localizan con `at.get("popover")` (`.proto.popover.label`) y sus widgets con su `key`.
+Los estados de SF3/SF5 se simulan parchando el objeto módulo (`monkeypatch.setattr(ui.hoja, ...,
+raising=False)`).
