@@ -43,6 +43,7 @@ supuesta (RS-11, pendiente de ratificar por Eugenio) un exceso es ADVERTENCIA, n
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from decimal import Decimal
 
@@ -74,6 +75,7 @@ __all__ = [
     "CODIGO_R8",
     "CODIGO_R10",
     "CODIGO_R9",
+    "CantidadEscrita",
     "CoherenciaEspacial",
     "Limites",
     "LimitesDeEspecialidad",
@@ -196,18 +198,50 @@ def _hallazgos_r8(espacio: Espacio) -> list[Hallazgo]:
     return hallazgos
 
 
+@dataclass(frozen=True, slots=True)
+class CantidadEscrita:
+    """Una cantidad que el usuario escribio a mano en lugar de la anterior (DA-SF-5, spec §5.5).
+
+    `origen_id` es el del item (cita las filas `esp_*` de donde sale su cantidad, o el origen de
+    la fila del presupuesto si no hay hoja); `anterior` es la cantidad que tenia el item (la
+    calculada por la hoja o la de la version abierta) y `escrita` la que quedo.
+    """
+
+    codigo_partida: str
+    origen_id: str
+    anterior: Decimal
+    escrita: Decimal
+
+
+def _hallazgos_cantidades_escritas(escritas: Sequence[CantidadEscrita]) -> list[Hallazgo]:
+    return [
+        _hallazgo(
+            CODIGO_R8,
+            Severidad.ADVERTENCIA,
+            c.origen_id,
+            f"cantidad de {c.codigo_partida} fijada a mano: {_n(c.escrita)} en lugar de "
+            f"{_n(c.anterior)}",
+            observado=c.escrita,
+            esperado=c.anterior,
+        )
+        for c in escritas
+        if c.escrita != c.anterior
+    ]
+
+
 class OrigenDeLaMedida(ReglaVerificacion):
     """R8: toda fila que produce una cantidad cita su origen de medida; supuestos, alturas
-    pendientes y sobrescrituras a mano se marcan (spec §8.2)."""
+    pendientes, sobrescrituras a mano y cantidades escritas a mano se marcan (spec §8.2, §5.5)."""
 
     codigo = CODIGO_R8
     nombre = "Origen de la medida"
 
-    def __init__(self, espacio: Espacio) -> None:
+    def __init__(self, espacio: Espacio, cantidades: Sequence[CantidadEscrita] = ()) -> None:
         self.espacio = espacio
+        self.cantidades = tuple(cantidades)
 
     def evaluar(self, presupuesto: Presupuesto) -> list[Hallazgo]:
-        return _hallazgos_r8(self.espacio)
+        return _hallazgos_r8(self.espacio) + _hallazgos_cantidades_escritas(self.cantidades)
 
 
 # --- R9 -----------------------------------------------------------------------------------
@@ -449,6 +483,14 @@ class LimitesDeEspecialidad(ReglaVerificacion):
         return _hallazgos_r10(self.espacio, self.limites)
 
 
-def reglas_espacio(espacio: Espacio) -> tuple[ReglaVerificacion, ...]:
-    """R8, R9 y R10 sobre la instantanea `espacio`, listas para `elaborar(reglas=REGLAS + ...)`."""
-    return (OrigenDeLaMedida(espacio), CoherenciaEspacial(espacio), LimitesDeEspecialidad(espacio))
+def reglas_espacio(
+    espacio: Espacio, cantidades: Sequence[CantidadEscrita] = ()
+) -> tuple[ReglaVerificacion, ...]:
+    """R8, R9 y R10 sobre la instantanea `espacio`, listas para `elaborar(reglas=REGLAS + ...)`.
+
+    `cantidades` son las cantidades escritas a mano (DA-SF-5): solo R8 las marca."""
+    return (
+        OrigenDeLaMedida(espacio, cantidades),
+        CoherenciaEspacial(espacio),
+        LimitesDeEspecialidad(espacio),
+    )

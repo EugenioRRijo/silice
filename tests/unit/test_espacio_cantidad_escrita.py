@@ -28,7 +28,7 @@ def _limpio():
         tipo=TipoOrigen.LEVANTAMIENTO,
         referencia={"fecha": "2026-10-05", "responsable": "E"},
     )
-    return replace(espacio_bano(), origenes=(levantamiento,))
+    return replace(espacio_bano(), origenes=(levantamiento,), sobrescrituras=())
 
 
 def test_una_cantidad_escrita_da_una_advertencia_que_cita_el_origen_del_item():
