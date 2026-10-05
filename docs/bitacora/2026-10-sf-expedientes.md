@@ -81,6 +81,14 @@ columnas, se agrega un `ALTER TABLE … ADD COLUMN` por columna y se mueven las 
   una columna de texto (no consultable por insumo, que es lo que necesitan las incidencias de UC‑02).
 - **Costo si es erróneo:** si el tutor rechaza la tabla de líneas, la hoja no puede editar un APU (queda de
   solo lectura) y la recarga vuelve a depender del catálogo; el resto de SF3 no cambia.
+- **Implementación y rojo observado (2026‑10‑05):** `core/budget/instantanea.py` (nuevo), `core/models/entidades.py`
+  (tres tablas), `core/budget/persistencia.py` (`guardar_presupuesto` congela y gana `plan`, `version_origen` y
+  `motivo`; la recarga toma la composición por código de partida) y `core/budget/actualizacion.py` (composiciones
+  revaloradas e incidencias desde la instantánea). Prueba: `tests/integration/test_instantanea_composiciones.py`
+  (18). Rojo: `ModuleNotFoundError: No module named 'core.budget.instantanea'` en el commit `67e6777`;
+  implementación `d28c352`. `escenarios.py` no cambia: `generar_escenario` recibe las composiciones del llamador,
+  que ahora las obtiene con `composiciones_de_presupuesto`. Cobertura de `importacion.py` (UC‑05): las versiones
+  importadas congelan su instantánea al guardar.
 - **Estado:** espera visto bueno del tutor.
 
 ## SF‑E2: edición, versiones, `RegistroCambio` y restaurar (tarea 3.2)
@@ -126,6 +134,12 @@ columnas, se agrega un `ALTER TABLE … ADD COLUMN` por columna y se mueven las 
   distinguir una revaloración (`motivo = revaloracion`) de un presupuesto aparte.
 - **Costo si es erróneo:** una tabla de registro con otro nombre de columna: se renombra con una migración
   aditiva (los valores son texto); si el tutor rechaza el expediente, la hoja no guarda ediciones y se declara.
+- **Implementación y rojo observado (2026‑10‑05):** `core/budget/edicion.py` (nuevo) y las entidades
+  `VersionOrigen` y `RegistroCambio`. `asegurar_instantanea` registra su creación (UC‑15e). Prueba:
+  `tests/integration/test_edicion_versiones.py` (23 casos, con su fixture compartido
+  `tests/fixtures/versiones.py`) y `test_trazabilidad_exportable.py` (3). Rojo: `ModuleNotFoundError: No module
+  named 'core.budget.edicion'` en `8fb57c0`; implementación `a3ca877`; la tabla de trazabilidad, `56a1856` y
+  `350bb91`.
 - **Estado:** espera visto bueno del tutor.
 
 ## SF‑E3: punto de equilibrio (tarea 3.3)
@@ -149,6 +163,12 @@ columnas, se agrega un `ALTER TABLE … ADD COLUMN` por columna y se mueven las 
 - **Impacto:** módulo nuevo; el script cambia solo su cuerpo (`test_punto_de_equilibrio` de TI‑001 sigue
   igual). El total y los PU de TI‑001 no cambian.
 - **Costo si es erróneo:** cambiar una función pura y sus pruebas (RS‑4).
+- **Implementación y rojo observado (2026‑10‑05):** `core/budget/equilibrio.py` (nuevo) y
+  `scripts/analisis_ti001.py`, cuya `punto_equilibrio` adapta el resultado al diccionario de siempre y conserva
+  sus literales (`test_caso_ti001.py::test_punto_de_equilibrio` sin editar). Prueba:
+  `tests/unit/test_equilibrio.py` (14, con el literal de la bitácora de TI‑001 y el caso de dos partidas a mano:
+  PE = 585 = 50 % de 1 170, período 1 a 0,9). Rojo: `ModuleNotFoundError: No module named
+  'core.budget.equilibrio'` en `2b85ffa`; implementación `2b68ab2`.
 - **Estado:** espera visto bueno del tutor.
 
 ## SF‑E4: Excel de la hoja y M‑1/M‑2 (tarea 3.4)
@@ -177,6 +197,17 @@ columnas, se agrega un `ALTER TABLE … ADD COLUMN` por columna y se mueven las 
   `exportar_excel` cambia de forma. Dependencia nueva solo de pruebas.
 - **Costo si es erróneo:** si se prefiere el total como suma de filas redondeadas, hay que enmendar RF‑08 y el
   principio 3 de NORMAS con expediente (RS‑8).
+- **Implementación y rojo observado (2026‑10‑05):** `core/budget/excel.py` (`exportar_hoja`, `TablaExportable`,
+  escape de M‑1 en `_agregar`, usado por las dos exportaciones) y `pyproject.toml`/`uv.lock` (`formulas` en
+  `dev`). Prueba: `tests/unit/test_excel_hoja.py` y `test_excel_m1.py` (33 con las parametrizadas: 19 y 14). Las fórmulas
+  evaluadas de la línea base, de TI‑001 (50 503,27) y de un caso sintético con destajo, equipo y parámetros
+  propios coinciden con el `Decimal` del sistema a ±0,005 en cada celda con fórmula (PU y total de cada
+  renglón, resumen de cada APU, acumulado y porcentaje de la curva, V, CV, CF y PE). Rojo: el commit `a2801ea`
+  precede al código; `core/budget/excel.py` de ese commit no define `TablaExportable` ni `exportar_hoja` (no se
+  ejecutó la corrida roja antes del commit: el `ImportError` se verificó con `git show`). Implementación `028d622`.
+  **Huellas:** `test_huellas_rnf04.py` (las dos) y las cuatro hojas pasan sin editarse: el escape solo toca
+  celdas con prefijo peligroso y la fixture de las siete inconsistencias no tiene ninguna, así que **no hay
+  ruling de reanclaje**.
 - **Estado:** espera visto bueno del tutor.
 
 ## SF‑E7: origen de precios y cotizaciones por proyecto (tarea 3.5)
@@ -210,4 +241,9 @@ columnas, se agrega un `ALTER TABLE … ADD COLUMN` por columna y se mueven las 
   tienen filas en `lista_precios_origen`, así que todas sus listas son globales).
 - **Costo si es erróneo:** una lista global por vigencia cambiaría todos los proyectos (DA‑SF‑9); si el tutor
   rechaza el expediente, la cotización se difiere y la pestaña Precios solo muestra el origen.
+- **Implementación y rojo observado (2026‑10‑05):** `core/catalog/origen.py` (nuevo: tasa, referencia, listas de
+  proyecto, `origen_de_precios`), `core/budget/cotizacion.py` (nuevo: `cotizar_insumo`, `retirar_cotizacion`),
+  `core/catalog/repositorio.py` (`lista_vigente` excluye las listas de proyecto) y `actualizar_precios` (repone las
+  cotizaciones activas sobre la lista base nueva). Prueba: `tests/integration/test_cotizacion_proyecto.py` (19).
+  Rojo: `ModuleNotFoundError: No module named 'core.budget.cotizacion'` en `8fc8799`; implementación `5ee15f0`.
 - **Estado:** espera visto bueno del tutor.
