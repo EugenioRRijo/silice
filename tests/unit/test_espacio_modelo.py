@@ -9,6 +9,7 @@ from pathlib import Path
 import pytest
 
 from adapters.espacio import (
+    LLAVE_DE_PASO,
     Ambiente,
     Circuito,
     Coord,
@@ -25,6 +26,7 @@ from adapters.espacio import (
     TipoOrigen,
     TipoPunto,
     Tramo,
+    clave_esp,
 )
 from tests.fixtures.espacio_bano import espacio_bano
 
@@ -206,23 +208,79 @@ def test_un_circuito_cita_puntos_que_existen():
         Espacio(origenes=(_origen(),), ambientes=(_ambiente(),), circuitos=(circuito,))
 
 
-def test_ambiente_sin_puntos_se_informa_en_validar():
+def test_ambiente_sin_puntos_no_es_problema_de_validar():
+    """Un borrador empieza por el ambiente; ninguna regla (R8-R10) pide avisar de ello."""
     espacio = Espacio(origenes=(_origen(),), ambientes=(_ambiente(),))
-    problemas = espacio.validar()
-    assert len(problemas) == 1
-    assert "A" in problemas[0] and "sin puntos" in problemas[0]
+    assert espacio.validar() == []
 
 
-def test_punto_fuera_de_su_ambiente_se_informa_en_validar():
+def test_validar_devuelve_clave_esp_y_mensaje_del_punto_fuera():
     fuera = _punto(posicion=Coord(D("5"), D("0"), D("0.6")))
     espacio = Espacio(origenes=(_origen(),), ambientes=(_ambiente(),), puntos=(fuera,))
-    assert any("fuera" in p and "P" in p for p in espacio.validar())
+    [(clave, mensaje)] = espacio.validar()
+    assert clave == clave_esp("esp_puntos", "P") == "esp_puntos:P"
+    assert "P" in mensaje and "fuera" in mensaje
 
 
-def test_el_punto_en_el_limite_del_ambiente_es_valido():
-    limite = _punto(posicion=Coord(D("2"), D("1"), D("2.5")))
-    espacio = Espacio(origenes=(_origen(),), ambientes=(_ambiente(),), puntos=(limite,))
+def test_validar_comprueba_que_la_fuente_este_en_su_ambiente():
+    fuente = Fuente(
+        id="F",
+        especialidad=Especialidad.AGUA,
+        tipo=TipoFuente.MONTANTE_AGUA,
+        ambiente_id="A",
+        posicion=Coord(D("-1"), D("0"), D("0")),
+        origen_id="O1",
+    )
+    espacio = Espacio(origenes=(_origen(),), ambientes=(_ambiente(),), fuentes=(fuente,))
+    [(clave, mensaje)] = espacio.validar()
+    assert clave == "esp_fuentes:F"
+    assert "fuente" in mensaje and "fuera" in mensaje
+
+
+@pytest.mark.parametrize(
+    ("x", "dentro"),
+    [
+        (D("2.000"), True),
+        (D("2.001"), True),  # justo en la tolerancia de 0,001 m (spec 6.1)
+        (D("2.0011"), False),
+        (D("-0.001"), True),
+        (D("-0.0011"), False),
+    ],
+)
+def test_contiene_aplica_la_tolerancia_de_un_milimetro(x, dentro):
+    assert _ambiente().contiene(Coord(x, D("0"), D("1"))) is dentro
+
+
+@pytest.mark.parametrize(
+    ("z", "dentro"),
+    [(D("2.501"), True), (D("2.5011"), False), (D("-0.001"), True), (D("-0.0011"), False)],
+)
+def test_contiene_aplica_la_tolerancia_en_z(z, dentro):
+    assert _ambiente().contiene(Coord(D("1"), D("0.5"), z)) is dentro
+
+
+def test_validar_no_marca_el_punto_dentro_de_la_tolerancia():
+    casi = _punto(posicion=Coord(D("2.001"), D("1.001"), D("2.501")))
+    espacio = Espacio(origenes=(_origen(),), ambientes=(_ambiente(),), puntos=(casi,))
     assert espacio.validar() == []
+    mas = _punto(posicion=Coord(D("2.0011"), D("1"), D("1")))
+    espacio = Espacio(origenes=(_origen(),), ambientes=(_ambiente(),), puntos=(mas,))
+    assert len(espacio.validar()) == 1
+
+
+def test_el_orden_de_tramo_repetido_se_rechaza_al_construir_el_recorrido():
+    a = _tramo(1, SuperficieTramo.PARED, ("0", "0", "0"), ("0", "0", "1"))
+    b = _tramo(1, SuperficieTramo.TECHO, ("0", "0", "1"), ("1", "0", "1"))
+    with pytest.raises(ValueError, match="orden"):
+        Recorrido(id="R", punto_id="P", modo=ModoRecorrido.DECLARADO, tramos=(a, b))
+
+
+def test_la_llave_de_paso_solo_admite_el_valor_declarado():
+    assert LLAVE_DE_PASO == "si"
+    assert _punto(especificaciones={"llave_de_paso": LLAVE_DE_PASO}).espec["llave_de_paso"] == "si"
+    for malo in ("no", "Si", "true", ""):
+        with pytest.raises(ValueError, match="llave_de_paso"):
+            _punto(especificaciones={"llave_de_paso": malo})
 
 
 def test_el_bano_de_la_memoria_valida_limpio():

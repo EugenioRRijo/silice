@@ -195,3 +195,27 @@ def test_la_prueba_usa_un_archivo_temporal_y_no_data_apu_db(motor, tmp_path):
     assert motor.url.database is not None
     assert str(tmp_path) in motor.url.database
     assert not motor.url.database.replace("\\", "/").endswith("data/apu.db")
+
+
+def test_fr5_cargar_en_una_base_sin_tablas_esp_devuelve_vacio_y_no_escribe(tmp_path):
+    """Una base de clinica o TI-001 no tiene esp_*: cargar no falla, no crea tablas ni escribe."""
+    motor = create_engine(f"sqlite:///{tmp_path / 'sin_esp.db'}")
+    try:
+        with motor.begin() as con:
+            con.execute(text("CREATE TABLE otra (x INTEGER)"))
+        with Session(motor) as sesion:
+            assert cargar_espacio(sesion, 1) == Espacio()
+        assert not any(t.startswith("esp_") for t in inspect(motor).get_table_names())
+    finally:
+        motor.dispose()
+
+
+def test_cargar_con_el_esquema_a_medias_tambien_devuelve_vacio(tmp_path):
+    motor = create_engine(f"sqlite:///{tmp_path / 'medias.db'}")
+    try:
+        with motor.begin() as con:
+            con.execute(text("CREATE TABLE esp_ambientes (version_id INTEGER, id TEXT)"))
+        with Session(motor) as sesion:
+            assert cargar_espacio(sesion, 1) == Espacio()
+    finally:
+        motor.dispose()
