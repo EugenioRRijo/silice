@@ -213,16 +213,22 @@ def test_un_presupuesto_sin_espacio_abre_igual_que_antes_de_la_hoja():
 def test_borrador_de_una_base_anterior_a_la_hoja_es_vacio(tmp_path):
     """[FR-5] Sin tablas esp_* la version abre con el espacio vacio y no escribe nada."""
     motor = crear_motor(f"sqlite:///{(tmp_path / 'vieja.db').as_posix()}")
-    with abrir_sesion(motor) as sesion:
-        assert hoja.borrador_de_version(sesion, 1) == Espacio()
-    assert "esp_ambientes" not in _tablas(motor)
+    try:
+        with abrir_sesion(motor) as sesion:
+            assert hoja.borrador_de_version(sesion, 1) == Espacio()
+        assert "esp_ambientes" not in _tablas(motor)
+    finally:
+        motor.dispose()
 
 
 def test_borrador_de_una_version_sin_filas_esp_es_vacio(tmp_path):
     motor = crear_motor(f"sqlite:///{(tmp_path / 'nueva.db').as_posix()}")
     crear_esquema_espacio(motor)
-    with abrir_sesion(motor) as sesion:
-        assert hoja.borrador_de_version(sesion, 7) == Espacio()
+    try:
+        with abrir_sesion(motor) as sesion:
+            assert hoja.borrador_de_version(sesion, 7) == Espacio()
+    finally:
+        motor.dispose()
 
 
 def _tablas(motor) -> set[str]:
