@@ -41,7 +41,7 @@ import tempfile
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from datetime import date, datetime
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from enum import StrEnum
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -51,6 +51,7 @@ from sqlalchemy import func, select
 from adapters.espacio import (
     ESPECIALIDADES,
     Ambiente,
+    Circuito,
     Coord,
     Espacio,
     Especialidad,
@@ -69,6 +70,15 @@ from adapters.espacio import (
     crear_esquema_espacio,
     derivar,
     guardar_espacio,
+)
+from adapters.espacio.planos import (
+    EstadoImportacion,
+    ItemInforme,
+    ResultadoImportacion,
+    TipoItem,
+    cargar_alturas,
+    declarar_circuitos,
+    fusionar,
 )
 from adapters.espacio.reglas import CantidadEscrita, reglas_espacio
 from core import models
@@ -113,6 +123,7 @@ from ui.composicion import (
     filas_desde_composicion,
     texto_de_celda,
 )
+from ui.subidas import Subida, guardar_subida
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
@@ -2065,3 +2076,215 @@ def excel_de_hoja_en_bytes(
             precios=precios,
         )
         return ruta.read_bytes()
+
+
+# --- importar un plano (RF-50, RF-51; integracion de SF5 con la hoja de SF3) ----------------------
+#
+# El plano crea filas en el BORRADOR con su origen y un informe de lo que no reconocio; nunca salta
+# la hoja ni la auditoria (DA-SF-6): las filas se revisan como cualquier otra y las reglas de
+# espacio las auditan. `ezdxf` e `ifcopenshell` son extras perezosos: se importan al leer.
+
+#: Extension del archivo -> formato del plano.
+FORMATOS_DE_PLANO: Mapping[str, str] = {".dxf": "dxf", ".ifc": "ifc"}
+
+#: Unidades que acepta el lector de DXF cuando el dibujo no declara la suya.
+UNIDADES_DE_PLANO: tuple[str, ...] = ("m", "cm", "mm", "dm", "in", "ft")
+
+#: Altura maxima que se acepta al cargar (metros): una cifra mayor es casi seguro otra unidad.
+ALTURA_MAXIMA_M = Decimal(250)
+
+#: Como se llama cada tipo de linea del informe de importacion, para quien no conoce el sistema.
+ROTULOS_DEL_INFORME: Mapping[TipoItem, str] = {
+    TipoItem.IMPORTADO: "Importado",
+    TipoItem.NO_RECONOCIDO: "No reconocido",
+    TipoItem.APROXIMADO: "Aproximado",
+    TipoItem.PENDIENTE: "Pendiente",
+    TipoItem.DESAPARECIDO: "Ya no está en el plano",
+    TipoItem.OMITIDO: "Omitido",
+}
+_FIJOS_DEL_INFORME = (
+    TipoItem.IMPORTADO,
+    TipoItem.NO_RECONOCIDO,
+    TipoItem.APROXIMADO,
+    TipoItem.PENDIENTE,
+)
+COLUMNAS_DEL_INFORME = ("Tipo", "En el plano", "Fila de la hoja", "Qué pasó")
+_TEXTO_CIRCUITO_SUPUESTO = "supuestos declarados"
+#: Las referencias internas entre parentesis, p. ej. `(SF5-1, SF5-2)`, no le dicen nada al usuario.
+_REFERENCIA_INTERNA = re.compile(r"\s*\((?:SF\d+-\d+(?:,\s*)?)+\)")
+
+
+def formato_de_plano(nombre: str) -> str:
+    """`dxf` o `ifc`, por la extension (sin distinguir mayusculas); `HojaInvalida` si es otra."""
+    formato = FORMATOS_DE_PLANO.get(Path(nombre or "").suffix.lower())
+    if formato is None:
+        raise HojaInvalida(
+            f"El archivo «{nombre}» no es un plano que se pueda importar. "
+            "Suba un plano en formato DXF o IFC."
+        )
+    return formato
+
+
+def leer_plano(ruta: Path | str, *, unidades: str | None = None) -> ResultadoImportacion:
+    """Lee un plano DXF o IFC del disco y devuelve la importacion con su informe.
+
+    Nunca lanza por un archivo malo: devuelve un resultado `RECHAZADA` (con su mensaje) o
+    `DETENIDA` (falta la unidad del dibujo: `pide_unidad`; se reanuda volviendo a leer con
+    `unidades`). Lanza `HojaInvalida` si la extension no es DXF ni IFC o si falta instalar el
+    lector.
+    """
+    ruta = Path(ruta)
+    formato = formato_de_plano(ruta.name)
+    try:
+        if formato == "dxf":
+            from adapters.espacio.planos.dxf import importar_dxf
+
+            return importar_dxf(ruta, unidades=unidades)
+        from adapters.espacio.planos.ifc import importar_ifc
+
+        return importar_ifc(ruta)
+    except ImportError as error:
+        extra = "planos" if formato == "dxf" else "civil"
+        raise HojaInvalida(
+            f"Falta instalar el componente para leer planos {formato.upper()}. "
+            f"Instale el extra «{extra}» y vuelva a intentarlo."
+        ) from error
+
+
+def subir_plano(
+    subida: Subida, directorio: Path | str, *, unidades: str | None = None
+) -> tuple[Path, ResultadoImportacion]:
+    """Guarda el archivo subido con `ui.subidas.guardar_subida` (nombre seguro, A-1) y lo lee.
+
+    Un formato ajeno se rechaza ANTES de escribir nada. Devuelve la ruta guardada y la importacion.
+    """
+    formato_de_plano(subida.name or "")
+    ruta = guardar_subida(directorio, subida)
+    return ruta, leer_plano(ruta, unidades=unidades)
+
+
+def resumen_de_importacion(
+    resultado: ResultadoImportacion, informe: Sequence[ItemInforme] | None = None
+) -> list[tuple[str, int]]:
+    """Cuantas lineas del informe hay de cada tipo: importado, no reconocido, aproximado y
+    pendiente siempre; los tipos propios de una reimportacion, solo si aparecen."""
+    lineas = resultado.informe if informe is None else informe
+    cuenta = dict.fromkeys(TipoItem, 0)
+    for linea in lineas:
+        cuenta[linea.tipo] += 1
+    return [
+        (ROTULOS_DEL_INFORME[tipo], cuenta[tipo])
+        for tipo in TipoItem
+        if tipo in _FIJOS_DEL_INFORME or cuenta[tipo]
+    ]
+
+
+def filas_del_informe(informe: Iterable[ItemInforme]) -> list[dict[str, str]]:
+    """Las lineas del informe como filas de tabla, con rotulos en espanol."""
+    return [
+        {
+            COLUMNAS_DEL_INFORME[0]: ROTULOS_DEL_INFORME[i.tipo],
+            COLUMNAS_DEL_INFORME[1]: i.referencia,
+            COLUMNAS_DEL_INFORME[2]: i.fila,
+            COLUMNAS_DEL_INFORME[3]: _REFERENCIA_INTERNA.sub("", i.mensaje),
+        }
+        for i in informe
+    ]
+
+
+def alturas_pendientes(resultado: ResultadoImportacion) -> list[tuple[str, str]]:
+    """Los ambientes cuya altura el plano no trae: `(id, nombre)`, en el orden del plano."""
+    pendientes = {
+        i.fila
+        for i in resultado.informe
+        if i.tipo is TipoItem.PENDIENTE and i.tabla == "esp_ambientes"
+    }
+    return [(a.id, a.nombre) for a in resultado.ambientes if a.id in pendientes]
+
+
+def _altura(identificador: str, texto: str) -> Decimal:
+    """Una altura en metros escrita por el usuario (acepta coma decimal)."""
+    try:
+        valor: Decimal | None = Decimal(texto.strip().replace(",", "."))
+    except InvalidOperation:
+        valor = None
+    if valor is None or not valor.is_finite() or not Decimal(0) < valor <= ALTURA_MAXIMA_M:
+        raise HojaInvalida(
+            f"Altura de «{identificador}»: «{texto}» no es una altura valida. "
+            f"Escriba un numero de metros mayor que 0 y hasta {ALTURA_MAXIMA_M}, por ejemplo 2,50."
+        )
+    return valor
+
+
+def cargar_alturas_desde_texto(
+    resultado: ResultadoImportacion, textos: Mapping[str, str]
+) -> ResultadoImportacion:
+    """Carga las alturas escritas (metros); una celda en blanco deja ese ambiente pendiente.
+
+    Si alguna es invalida lanza `HojaInvalida` y no carga ninguna (todo o nada)."""
+    cargar = {
+        identificador: _altura(identificador, texto)
+        for identificador, texto in textos.items()
+        if texto.strip()
+    }
+    return cargar_alturas(resultado, cargar)
+
+
+def circuitos_supuestos(resultado: ResultadoImportacion) -> list[Circuito]:
+    """Los circuitos que entraron con conductores y puntos maximos supuestos: por declarar."""
+    ids = {
+        i.fila
+        for i in resultado.informe
+        if i.tipo is TipoItem.APROXIMADO
+        and i.tabla == "esp_circuitos"
+        and _TEXTO_CIRCUITO_SUPUESTO in i.mensaje
+    }
+    return [c for c in resultado.circuitos if c.id in ids]
+
+
+def _entero(identificador: str, rotulo: str, texto: str, minimo: int) -> int:
+    try:
+        valor: int | None = int(texto.strip())
+    except ValueError:
+        valor = None
+    if valor is None or valor < minimo:
+        raise HojaInvalida(
+            f"Circuito «{identificador}»: {rotulo} debe ser un numero entero de {minimo} o mas "
+            f"(se escribio «{texto}»)."
+        )
+    return valor
+
+
+def declarar_circuitos_desde_texto(
+    resultado: ResultadoImportacion, valores: Mapping[str, tuple[str, str, str, str]]
+) -> ResultadoImportacion:
+    """Declara circuitos: `{id: (fase, neutro, tierra, puntos maximos)}` como texto.
+
+    Fija esos valores y retira la marca de supuesto del circuito. `HojaInvalida` si alguno no es
+    un entero valido (y no declara ninguno)."""
+    declarados: dict[str, tuple[tuple[int, int, int], int]] = {}
+    for identificador, (fase, neutro, tierra, puntos) in valores.items():
+        conductores = (
+            _entero(identificador, "los conductores de fase", fase, 0),
+            _entero(identificador, "los conductores de neutro", neutro, 0),
+            _entero(identificador, "los conductores de tierra", tierra, 0),
+        )
+        maximo = _entero(identificador, "los puntos maximos", puntos, 1)
+        declarados[identificador] = (conductores, maximo)
+    return declarar_circuitos(resultado, declarados)
+
+
+def fusionar_plano(
+    borrador: Borrador, resultado: ResultadoImportacion
+) -> tuple[Borrador, tuple[ItemInforme, ...]]:
+    """Fusiona la importacion con el espacio del borrador: actualiza, agrega y marca lo que ya no
+    esta en el plano. Devuelve el borrador nuevo (el original no cambia) y el informe de la fusion.
+
+    Las filas entran al BORRADOR, no a una version: hay que revisarlas, y la auditoria las evalua
+    como a cualquier otra (DA-SF-6). Una importacion detenida o rechazada no se fusiona
+    (`HojaInvalida` con su motivo)."""
+    if resultado.estado is not EstadoImportacion.IMPORTADA:
+        motivo = resultado.mensaje or "el plano no se pudo importar"
+        raise HojaInvalida(f"No se puede fusionar «{resultado.archivo}»: {motivo}")
+    espacio, informe = fusionar(borrador.espacio, resultado)
+    return replace(borrador, espacio=espacio), informe

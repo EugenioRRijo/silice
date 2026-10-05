@@ -140,7 +140,10 @@ def test_las_filas_del_informe_hablan_en_espanol_y_no_traen_siglas_internas():
 
 def test_las_alturas_pendientes_son_los_seis_ambientes_del_plano():
     pendientes = hoja.alturas_pendientes(hoja.leer_plano(DXF))
-    assert [i for i, _ in pendientes] == ["BAN-01", "COC-01", "REC-01", "CT-01", "ZA", "ZB"]
+    assert sorted(i for i, _ in pendientes) == sorted(
+        ["BAN-01", "COC-01", "REC-01", "CT-01", "ZA", "ZB"]
+    )
+    assert [i for i, _ in pendientes] == [a.id for a in hoja.leer_plano(DXF).ambientes]
 
 
 def test_cargar_las_alturas_acepta_coma_decimal_y_quita_lo_pendiente():
@@ -242,7 +245,7 @@ def test_fusionar_no_cambia_el_borrador_original_ni_toca_lo_que_no_es_del_espaci
     assert nuevo.composiciones == original.composiciones and nuevo.plan == original.plan
 
 
-def test_fusionar_pasa_por_la_auditoria_los_circuitos_supuestos_los_marca_R8():
+def test_fusionar_pasa_por_la_auditoria_los_circuitos_supuestos_los_marca_la_regla_8():
     """DA-SF-6: el plano no salta la auditoria. Sin declarar los circuitos, R8 los advierte."""
     sin_declarar = hoja.cargar_alturas_desde_texto(hoja.leer_plano(DXF), _altura_de_la_memoria())
     borrador, _ = hoja.fusionar_plano(_borrador(), sin_declarar)
