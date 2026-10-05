@@ -95,6 +95,7 @@ from core.catalog import Catalogo, CatalogoIncompleto
 from core.catalog.origen import origen_de_precios
 from core.contracts import ComposicionAPU, ItemComputo, ParametrosCosto, Severidad
 from core.contracts.item_computo import OrigenTipo
+from core.contracts.presupuesto import Presupuesto
 from core.verification import REGLAS
 from core.verification.informe import DECIMALES_PRESENTACION
 from core.verification.texto import formatear_decimal
@@ -873,6 +874,58 @@ def cambiar_insumo(
         return replace(composicion, **{campo: cambiado})
     except ValueError as error:
         raise HojaInvalida(str(error)) from error
+
+
+# --- tablas calculadas de la pantalla -----------------------------------------------------------
+
+
+def filas_del_presupuesto(resultado: ResultadoHoja) -> list[dict[str, str]]:
+    """Una fila por renglon del presupuesto, como texto: `clave`, `partida`, `descripcion`,
+    `unidad`, `cantidad` (exacta), `pu`, `total` (a dos decimales) y `estado`.
+
+    Una partida sin APU (pendiente) sale sin `pu` ni `total`. Las columnas `pu`, `total` y
+    `estado` son calculadas: la pantalla las pinta aparte de la `cantidad`, que es la editable.
+    """
+    valorados = resultado.elaboracion.presupuesto.partidas
+    por_clave = dict(zip(claves_de_items([p.item for p in valorados]), valorados, strict=True))
+    filas = []
+    for clave, item in zip(claves_de_items(resultado.todos), resultado.todos, strict=True):
+        renglon = por_clave.get(clave)
+        estado = resultado.estado_items.get(clave, EstadoFila(None, TEXTO_OK))
+        filas.append(
+            {
+                "clave": clave,
+                "partida": item.codigo_partida,
+                "descripcion": item.descripcion,
+                "unidad": item.unidad,
+                "cantidad": _numero(item.cantidad),
+                "pu": ""
+                if renglon is None
+                else formatear_decimal(renglon.resultado.precio_unitario, DECIMALES_PRESENTACION),
+                "total": ""
+                if renglon is None
+                else formatear_decimal(renglon.total, DECIMALES_PRESENTACION),
+                "estado": estado.texto,
+            }
+        )
+    return filas
+
+
+def filas_de_curva(presupuesto: Presupuesto) -> list[dict[str, str]]:
+    """La curva de inversion como texto: `periodo` (sin los codigos de partida), `monto`,
+    `acumulado` y `porcentaje` acumulado, a dos decimales."""
+    filas = []
+    for punto in presupuesto.curva:
+        porcentaje = punto.acumulado / presupuesto.total * 100 if presupuesto.total else Decimal(0)
+        filas.append(
+            {
+                "periodo": _CODIGOS_AL_FINAL.sub("", punto.periodo),
+                "monto": formatear_decimal(punto.monto, DECIMALES_PRESENTACION),
+                "acumulado": formatear_decimal(punto.acumulado, DECIMALES_PRESENTACION),
+                "porcentaje": formatear_decimal(porcentaje, DECIMALES_PRESENTACION),
+            }
+        )
+    return filas
 
 
 # --- parametros ---------------------------------------------------------------------------------

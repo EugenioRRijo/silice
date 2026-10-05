@@ -474,3 +474,47 @@ def test_crear_el_plan_secuencial_da_una_curva_que_cierra_en_el_total():
     assert [r[0][0] for _, r in con_plan.plan] == sorted(
         codigos, key=lambda c: [i.codigo_partida for i in hoja.items_elaborados(con_plan)].index(c)
     )
+
+
+# --- tablas calculadas de la pantalla ------------------------------------------------------------
+
+
+def test_las_filas_del_presupuesto_llevan_clave_cantidad_pu_total_y_estado():
+    base = borrador_bano()
+    items = hoja.items_elaborados(base)
+    clave = _clave(items, "AF-LLAVE")
+    resultado = hoja.elaborar_borrador(replace(base, cantidades={clave: D("5")}))
+
+    filas = hoja.filas_del_presupuesto(resultado)
+
+    assert [f["clave"] for f in filas] == hoja.claves_de_items(resultado.todos)
+    llave = next(f for f in filas if f["clave"] == clave)
+    assert llave["partida"] == "AF-LLAVE" and llave["cantidad"] == "5"
+    assert llave["pu"] == "2.53" and llave["total"] == "12.65"  # 5 x 2,53 a mano
+    assert "fijada a mano" in llave["estado"]
+    otra = next(f for f in filas if f["partida"] != "AF-LLAVE")
+    assert otra["estado"] == hoja.TEXTO_OK
+
+
+def test_una_partida_sin_apu_sale_pendiente_y_sin_pu():
+    base = borrador_bano()
+    sin_apu = replace(
+        base, composiciones={k: v for k, v in base.composiciones.items() if k != "AF-LLAVE"}
+    )
+
+    filas = hoja.filas_del_presupuesto(hoja.elaborar_borrador(sin_apu))
+
+    llave = next(f for f in filas if f["partida"] == "AF-LLAVE")
+    assert llave["pu"] == "" and llave["total"] == "" and "PENDIENTE" in llave["estado"]
+
+
+def test_las_filas_de_la_curva_cierran_en_el_total_con_su_porcentaje():
+    resultado = hoja.elaborar_borrador(borrador_bano())
+    presupuesto = resultado.elaboracion.presupuesto
+
+    filas = hoja.filas_de_curva(presupuesto)
+
+    assert len(filas) == len(presupuesto.curva)
+    assert filas[-1]["acumulado"] == f"{presupuesto.total:.2f}"
+    assert filas[-1]["porcentaje"] == "100.00"
+    assert all(" [" not in f["periodo"] for f in filas)  # los codigos del periodo no se muestran
