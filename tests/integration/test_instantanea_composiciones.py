@@ -261,7 +261,7 @@ def test_la_revaloracion_usa_las_lineas_congeladas_y_no_las_del_catalogo(sesion,
         moneda=linea_base.MONEDA,
         fecha_vigencia=FECHA_NUEVA,
         origen=MUESTRA.name,
-    )
+    ).lista
 
     nuevo, comparativo = actualizar_precios(sesion, NOMBRE_PROYECTO, CODIGO, lista, "002")
 
@@ -283,7 +283,7 @@ def test_la_version_revalorada_congela_sus_propias_lineas_con_los_precios_nuevos
         moneda=linea_base.MONEDA,
         fecha_vigencia=FECHA_NUEVA,
         origen=MUESTRA.name,
-    )
+    ).lista
     actualizar_precios(sesion, NOMBRE_PROYECTO, CODIGO, lista, "002")
 
     anterior = composiciones_de_version(sesion, _modelo(sesion, CODIGO))
