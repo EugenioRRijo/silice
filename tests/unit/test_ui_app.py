@@ -42,6 +42,7 @@ TITULOS_TRABAJO = (
     "Catalogo de partidas e insumos",
     "Componer una partida",
     "Elaborar un presupuesto",
+    "Hoja del proyecto",
     "Actualizar precios",
     "Historico de cambios de precio",
 )
