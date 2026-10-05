@@ -17,6 +17,7 @@ import re
 from collections import Counter
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
+from datetime import datetime
 from decimal import Decimal
 
 from sqlalchemy import select
@@ -404,13 +405,17 @@ def asegurar_instantanea(
     codigo: str,
     catalogo: Catalogo,
     parametros: ParametrosCosto | None = None,
+    *,
+    responsable: str = "sistema",
+    ahora: datetime | None = None,
 ) -> ResultadoInstantanea:
     """UC‑15e: congela desde el catálogo vigente las partidas de la versión que no tienen
     instantánea, solo si el catálogo todavía reproduce su precio unitario.
 
     Las que no tienen composición en el catálogo, o cuyo PU ya no cuadra con el renglón guardado,
     quedan en `sin_composicion` (solo lectura). Idempotente: no toca lo ya congelado. También
-    congela el plan si la versión no lo tiene y la curva lo revela. No hace `commit`.
+    congela el plan si la versión no lo tiene y la curva lo revela. Si congeló algo, lo registra con
+    un `RegistroCambio` (objeto `apu`, campo `instantanea`; UC‑15e). No hace `commit`.
     """
     from core.budget.persistencia import _buscar, _parametros_de
 
@@ -439,6 +444,25 @@ def asegurar_instantanea(
             continue
         _escribir_composicion(session, modelo, composicion, modelo.lista_precios)
         creadas.append(partida)
+    if creadas:
+        session.add(
+            models.RegistroCambio(
+                proyecto_id=modelo.proyecto_id,
+                version_origen_id=modelo.id,
+                version_resultante_id=modelo.id,
+                objeto="apu",
+                clave=", ".join(creadas),
+                campo="instantanea",
+                valor_anterior="catalogo",
+                valor_nuevo="instantanea",
+                fuente=(
+                    "al abrir la version se creo su instantanea de composiciones desde el "
+                    "catalogo vigente (UC-15e)"
+                ),
+                responsable=responsable,
+                fecha_hora=ahora or datetime.now(),
+            )
+        )
     session.flush()
     tiene_plan = (
         session.scalar(
