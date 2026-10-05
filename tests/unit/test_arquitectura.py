@@ -200,7 +200,12 @@ PROHIBIDOS_EN_UI: dict[str, tuple[str, ...]] = {
     "ui/paginas/elaborar.py": ("core.budget",),
     # RA-2: "no escribe en la base" vigilado tambien por core.catalog, core.budget y sqlalchemy.
     "ui/composicion.py": (
-        "streamlit", "pandas", "ui.caso", "sqlalchemy", "core.catalog", "core.budget",
+        "streamlit",
+        "pandas",
+        "ui.caso",
+        "sqlalchemy",
+        "core.catalog",
+        "core.budget",
     ),
     "ui/elaboracion.py": ("streamlit", "pandas", "ui.caso"),
     # SF 1.8: la hoja orquesta el borrador y la elaboracion sin pintar (FR-5: sin Streamlit).
@@ -483,3 +488,86 @@ def test_la_guardia_de_scripts_ve_cada_forma_de_importar_tests(tmp_path):
         archivo.write_text(fuente, encoding="utf-8")
         detectadas[fuente] = bool(_prohibidos_en_scripts(archivo))
     assert detectadas == fuentes
+
+
+# --- SF1: el grafo de dependencias de adapters/espacio y de ui.hoja no tiene ciclos --------------
+
+
+def _modulo_de(archivo: Path) -> str:
+    """Nombre punteado de un archivo (`adapters/espacio/__init__.py` -> `adapters.espacio`)."""
+    partes = archivo.relative_to(RAIZ).with_suffix("").parts
+    return ".".join(partes[:-1] if partes[-1] == "__init__" else partes)
+
+
+def _hay_ciclo(grafo: dict[str, set[str]]) -> list[str] | None:
+    """Un ciclo del grafo (lista de nodos) o `None`; busqueda en profundidad con colores."""
+    estado: dict[str, int] = {}  # 1 = en la pila, 2 = terminado
+
+    def visitar(nodo: str, pila: list[str]) -> list[str] | None:
+        estado[nodo] = 1
+        for vecino in sorted(grafo.get(nodo, ())):
+            if estado.get(vecino) == 1:
+                return (
+                    [*pila[pila.index(vecino) :], nodo, vecino]
+                    if vecino in pila
+                    else [nodo, vecino]
+                )
+            if vecino not in estado and (ciclo := visitar(vecino, [*pila, nodo])):
+                return ciclo
+        estado[nodo] = 2
+        return None
+
+    for nodo in sorted(grafo):
+        if nodo not in estado and (ciclo := visitar(nodo, [])):
+            return ciclo
+    return None
+
+
+def _grafo_de_espacio() -> dict[str, set[str]]:
+    modulos = {_modulo_de(a) for a in _archivos("adapters/espacio")}
+    grafo: dict[str, set[str]] = {m: set() for m in modulos}
+    for archivo in _archivos("adapters/espacio"):
+        origen = _modulo_de(archivo)
+        for importado in _imports(archivo):
+            if importado.startswith("adapters.espacio") and importado in modulos:
+                grafo[origen].add(importado)
+    return grafo
+
+
+def test_el_detector_de_ciclos_ve_un_ciclo_y_no_ve_uno_donde_no_lo_hay():
+    assert _hay_ciclo({"a": {"b"}, "b": {"c"}, "c": {"a"}}) is not None
+    assert _hay_ciclo({"a": {"b", "c"}, "b": {"c"}, "c": set()}) is None
+
+
+def test_el_grafo_interno_de_adapters_espacio_es_aciclico():
+    """Ningun modulo de `adapters/espacio` depende, directa o indirectamente, de si mismo."""
+    grafo = _grafo_de_espacio()
+    assert {"adapters.espacio.modelo", "adapters.espacio.reglas"} <= set(grafo)  # lo recorre
+    assert _hay_ciclo(grafo) is None, _hay_ciclo(grafo)
+
+
+def test_ningun_submodulo_de_espacio_importa_el_paquete_raiz():
+    """`from adapters.espacio import X` desde un submodulo cierra un ciclo con `__init__`, que los
+    importa a todos: los submodulos se importan entre si por su ruta completa."""
+    raiz = "adapters.espacio"
+    culpables = [
+        _ruta(a)
+        for a in _archivos("adapters/espacio")
+        if a.name != "__init__.py" and raiz in set(_imports(a))
+    ]
+    assert not culpables, culpables
+
+
+def test_ui_hoja_depende_de_adapters_espacio_y_este_no_depende_de_ui():
+    """La arista es ui.hoja -> adapters.espacio y no existe la inversa: sin ciclo entre capas."""
+    de_hoja = {m for m in _imports(RAIZ / "ui" / "hoja.py") if m.startswith("adapters")}
+    assert de_hoja and all(
+        m == "adapters.espacio" or m.startswith("adapters.espacio.") for m in de_hoja
+    ), de_hoja
+    inversa = [
+        f"{_ruta(a)}: {m}"
+        for a in _archivos("adapters/espacio")
+        for m in _imports(a)
+        if m == "ui" or m.startswith("ui.")
+    ]
+    assert not inversa, inversa
