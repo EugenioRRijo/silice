@@ -85,9 +85,12 @@ def _celdas_de_texto(ruta: Path, prefijo: str):
 
 
 def _hojas_esperadas(prefijo: str, todas: set[str]) -> set[str]:
-    """El contrato recorta los espacios iniciales de algunos textos (descripcion, periodo): con
-    tabulador o retorno de carro solo llegan al libro los que no pasan por ahi."""
-    return {"APU", "Auditoria"} if prefijo in ("\t", "\r") else todas
+    """Con tabulador o retorno de carro solo falta la hoja del plan: la etiqueta del periodo se
+    recorta (espacios iniciales) antes de llegar al libro, asi que ahi no hay prefijo que
+    escapar. Presupuesto, APU, Auditoria y las tablas genericas SI se esperan con los seis."""
+    if prefijo in ("\t", "\r"):
+        return todas - {"Curva", "Plan y curva"}
+    return todas
 
 
 def _formulas_con_carga(ruta: Path) -> list[str]:
@@ -130,7 +133,7 @@ def test_exportar_hoja_escribe_como_texto_cada_prefijo_peligroso(prefijo, tmp_pa
     celdas = _celdas_de_texto(ruta, prefijo)
     hojas = {titulo for titulo, _ in celdas}
     todas = {"Presupuesto", "APU", "Plan y curva", "Auditoria", "Espacio y metrajes"}
-    assert _hojas_esperadas(prefijo, todas | set()) <= hojas
+    assert _hojas_esperadas(prefijo, todas) <= hojas
     assert "Espacio y metrajes" in hojas
     for titulo, celda in celdas:
         assert celda.data_type == "s", (titulo, celda.coordinate)
@@ -167,3 +170,57 @@ def test_un_texto_sin_prefijo_peligroso_no_cambia(tmp_path):
     celda = load_workbook(ruta)["Presupuesto"]["C2"]
     assert celda.value == CARGA
     assert not celda.quotePrefix
+
+
+# ---------------------------------------------------------------------------------------------
+# Escape directo, sin depender de que el contrato recorte o no el texto (revision de pruebas SF3)
+# ---------------------------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("prefijo", PREFIJOS)
+def test_agregar_y_poner_escapan_cada_prefijo_en_cualquier_hoja(prefijo):
+    from openpyxl import Workbook
+
+    from core.budget.excel import _agregar, _Formula, _poner
+
+    hoja = Workbook().active
+    texto = prefijo + "dato"
+
+    _agregar(hoja, [texto, 5, _Formula("=A1")])
+    celda_poner = _poner(hoja, 5, 1, texto)
+
+    texto_agregado, numero, formula = hoja[1]
+    assert (texto_agregado.value, texto_agregado.data_type, texto_agregado.quotePrefix) == (
+        texto,
+        "s",
+        True,
+    )
+    assert (numero.value, numero.data_type) == (5, "n")
+    # la formula propia del sistema NO se escapa: sigue siendo formula
+    assert (formula.value, formula.data_type, formula.quotePrefix) == ("=A1", "f", False)
+    assert (celda_poner.value, celda_poner.data_type, celda_poner.quotePrefix) == (
+        texto,
+        "s",
+        True,
+    )
+
+
+@pytest.mark.parametrize("prefijo", PREFIJOS)
+def test_una_tabla_exportable_escapa_cada_prefijo_en_celdas_y_encabezados(prefijo, tmp_path):
+    presupuesto, informe = _presupuesto("")
+    tabla = TablaExportable(
+        titulo="Directa",
+        columnas=(prefijo + "uno", "dos"),
+        filas=((prefijo + "a", "b"), ("c", prefijo + "d")),
+    )
+
+    ruta = exportar_hoja(
+        presupuesto, informe, tmp_path / "directa.xlsx", ParametrosCosto(), hojas_extra=(tabla,)
+    )
+
+    hoja = load_workbook(ruta)["Directa"]
+    for direccion, esperado in (("A1", "uno"), ("A2", "a"), ("B3", "d")):
+        celda = hoja[direccion]
+        assert celda.value == _leido(prefijo) + esperado, direccion
+        assert (celda.data_type, celda.quotePrefix) == ("s", True), direccion
+    assert _formulas_con_carga(ruta) == []

@@ -331,10 +331,6 @@ def test_retirar_la_cotizacion_vuelve_al_precio_de_la_lista_base_con_su_registro
     sesion.commit()
 
     # sin cotizaciones la version usa la lista base (global) y suma lo mismo que UC-02 sola
-    assert sesion.get(models.ListaPreciosOrigen, nueva.lista_precios_id) is None or (
-        sesion.get(models.ListaPreciosOrigen, nueva.lista_precios_id).alcance
-        == models.ALCANCE_GLOBAL
-    )
     assert nueva.lista_precios_id == lista.id
     assert cotizaciones_de_version(sesion, nueva) == []
     assert _cerca(_total(sesion, "004") - _total(sesion, CODIGO), INCREMENTO_TOTAL)
@@ -505,3 +501,59 @@ def test_una_base_sin_las_tablas_de_origen_abre_y_cotiza(tmp_path):
         sesion.commit()
         assert nueva.codigo == "002"
     motor.dispose()
+
+
+# ---------------------------------------------------------------------------------------------
+# RF-62: un hallazgo de regla externa (R8) sobrevive a cotizar y a retirar la cotizacion
+# ---------------------------------------------------------------------------------------------
+
+
+def test_cotizar_y_retirar_conservan_el_hallazgo_externo_y_el_informe_recargado_es_identico(
+    sesion,
+):
+    from dataclasses import replace
+
+    from core.contracts import Hallazgo, Severidad
+
+    r8 = Hallazgo(
+        regla="R8",
+        severidad=Severidad.ADVERTENCIA,
+        descripcion="fila con origen de medida supuesto",
+        impacto=D("2.5"),
+        origen_ids=("LB-01-EXC",),
+        valor_observado=D("1.25"),
+        valor_esperado=D("1"),
+    )
+    resultado = elaborar_001(sesion)
+    informe = replace(resultado.informe, hallazgos=resultado.informe.hallazgos + (r8,))
+    guardar_001(sesion, sembrar(sesion), replace(resultado, informe=informe))
+    sesion.commit()
+    cemento = sesion.scalars(
+        select(models.Insumo).where(models.Insumo.descripcion == "Cemento Portland")
+    ).one()
+
+    _cotizar(sesion, cemento, "20")
+    sesion.commit()
+    retirar_cotizacion(
+        sesion, NOMBRE_PROYECTO, "002", "003", Catalogo(sesion),
+        insumo=cemento, fuente="el proveedor no mantuvo el precio", responsable=RESPONSABLE,
+    )
+    sesion.commit()
+    sesion.expunge_all()
+
+    for codigo in ("002", "003"):
+        recargado = cargar_elaboracion(sesion, NOMBRE_PROYECTO, codigo, Catalogo(sesion)).informe
+        assert [h for h in recargado.hallazgos if h.regla == "R8"] == [r8], codigo
+        guardados = sesion.scalar(
+            select(func.count())
+            .select_from(models.Hallazgo)
+            .where(
+                models.Hallazgo.regla == "R8",
+                models.Hallazgo.presupuesto_id == _modelo(sesion, codigo).id,
+            )
+        )
+        assert guardados == 1, codigo
+    # volver a recargar da lo mismo (no se duplica ni se pierde nada al leer)
+    primero = cargar_elaboracion(sesion, NOMBRE_PROYECTO, "003", Catalogo(sesion)).informe
+    segundo = cargar_elaboracion(sesion, NOMBRE_PROYECTO, "003", Catalogo(sesion)).informe
+    assert primero.hallazgos == segundo.hallazgos

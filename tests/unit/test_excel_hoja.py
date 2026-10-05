@@ -196,7 +196,26 @@ def test_las_hojas_que_core_no_conoce_entran_como_tablas_exportables(base, tmp_p
     assert libro["Precios"]["B2"].value == "CEM019"
 
 
-@pytest.mark.parametrize("titulo", ["", "x" * 32, "a:b", "a/b", "[a]", "APU", "Presupuesto"])
+@pytest.mark.parametrize(
+    "titulo",
+    [
+        "",
+        "x" * 32,
+        "a:b",
+        "a/b",
+        "[a]",
+        "APU",
+        "Presupuesto",
+        # Excel compara los titulos sin distinguir mayusculas: openpyxl renombraria estos
+        "presupuesto",
+        "PRESUPUESTO",
+        "apu",
+        "Plan Y Curva",
+        "punto de equilibrio",
+        "TRAZABILIDAD",
+        "auditoria",
+    ],
+)
 def test_un_titulo_invalido_o_repetido_se_rechaza(titulo, base, tmp_path):
     tabla = TablaExportable(titulo=titulo, columnas=("a",), filas=())
     with pytest.raises(ValueError, match="titulo"):
@@ -330,6 +349,13 @@ def test_cada_formula_de_ti001_coincide_con_el_sistema(tmp_path):
     celdas = evaluar(ruta)
     total = _celda(load_workbook(ruta), "Presupuesto", "TOTAL", "G")
     assert _cerca(celdas[("PRESUPUESTO", total)], D("50503.27"))
+    # el punto de equilibrio EVALUADO por Excel contra los literales de la bitacora de TI-001
+    # (28 586,76 USD = 56,60 % del contrato), no solo contra `punto_equilibrio(...)`
+    libro = load_workbook(ruta)
+    pe = _celda(libro, "Punto de equilibrio", "Punto de equilibrio (PE)")
+    pct = _celda(libro, "Punto de equilibrio", "PE como % de las ventas")
+    assert _cerca(celdas[("PUNTO DE EQUILIBRIO", pe)], D("28586.76"))
+    assert abs(D(str(celdas[("PUNTO DE EQUILIBRIO", pct)])) - D("56.60")) <= D("0.01")
 
 
 def test_cada_formula_con_destajo_equipo_y_parametros_propios_coincide(tmp_path):
