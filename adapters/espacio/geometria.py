@@ -20,6 +20,7 @@ sobrescritura, cuenta como expuesto y queda marcado en `Segmento.conflicto_empot
 
 from __future__ import annotations
 
+from bisect import bisect_left, bisect_right
 from collections import defaultdict
 from collections.abc import Iterable
 from dataclasses import dataclass
@@ -246,6 +247,10 @@ def _agrupar_nodos(coords: Iterable[Coord]) -> dict[Coord, Coord]:
 
     Devuelve coordenada -> representante, que es la mínima lexicográfica (x, y, z) del grupo: no
     depende del orden de entrada ni de los ids. Es la única tolerancia de la unión y del corte.
+
+    Límite conocido del single-linkage: una cadena de extremos, cada uno a 0,001 m o menos del
+    siguiente, colapsa en un solo nodo aunque sus extremos queden a más de 0,001 m entre sí. No es
+    un caso realista (exigiría extremos separados por menos de un milímetro en hilera).
     """
     unicas = sorted(set(coords), key=lambda c: (c.x, c.y, c.z))
     padre = list(range(len(unicas)))
@@ -270,12 +275,29 @@ def _agrupar_nodos(coords: Iterable[Coord]) -> dict[Coord, Coord]:
     return {c: unicas[raiz(i)] for i, c in enumerate(unicas)}
 
 
+class _IndiceNodos:
+    """Nodos ordenados por x para probar en cada pieza solo los que caen en su caja envolvente
+    (con margen TOLERANCIA); el resultado es el mismo que probar todos, sin recorrerlos todos."""
+
+    def __init__(self, nodos: list[Coord]) -> None:
+        self.todos = nodos  # ordenados por (x, y, z)
+        self._xs = [n.x for n in nodos]
+
+    def cercanos(self, a: Coord, b: Coord) -> list[Coord]:
+        t = TOLERANCIA
+        x0, x1 = min(a.x, b.x) - t, max(a.x, b.x) + t
+        y0, y1 = min(a.y, b.y) - t, max(a.y, b.y) + t
+        z0, z1 = min(a.z, b.z) - t, max(a.z, b.z) + t
+        banda = self.todos[bisect_left(self._xs, x0) : bisect_right(self._xs, x1)]
+        return [n for n in banda if y0 <= n.y <= y1 and z0 <= n.z <= z1]
+
+
 def _segmentos_de_fuente(espacio: Espacio, fuente: Fuente) -> tuple[list[_Pieza], list[Segmento]]:
     piezas = _piezas_de_fuente(espacio, fuente)
     if not piezas:
         return [], []
     rep = _agrupar_nodos(c for pz in piezas for c in (pz.a, pz.b))
-    nodos = sorted(set(rep.values()), key=lambda c: (c.x, c.y, c.z))
+    indice = _IndiceNodos(sorted(set(rep.values()), key=lambda c: (c.x, c.y, c.z)))
 
     acumulado: dict[tuple[Coord, Coord], dict] = {}
     for pz in piezas:
@@ -286,7 +308,7 @@ def _segmentos_de_fuente(espacio: Espacio, fuente: Fuente) -> tuple[list[_Pieza]
         largo2 = _punto_escalar(d, d)
         largo = a.distancia(b)
         cortes: list[tuple[Decimal, Coord]] = []
-        for n in nodos:
+        for n in indice.cercanos(a, b):
             if n in (a, b):
                 continue
             t = _punto_escalar(_vec(a, n), d) / largo2
