@@ -160,11 +160,11 @@ La barra lateral queda para lo que ya mostraba: el caso abierto y el paso del re
 | Herramienta | Qué hace |
 |---|---|
 | **Proyecto** | Muestra el caso abierto, el proyecto abierto y su versión vigente. Permite **crear** un proyecto nuevo y **abrir** uno del caso. |
-| **Importar plano** | Importa un plano DXF o IFC hacia la hoja (UC‑14). Solo aparece cuando la importación de planos está disponible (sprint SF5); mientras no lo esté, la herramienta no se muestra. |
-| **Precios** | Lleva a la pestaña *Precios* de la hoja del proyecto cuando exista (SF3); mientras tanto lleva a **Actualizar precios**. |
+| **Importar plano** | Importa un plano DXF o IFC hacia la hoja (UC‑14). Solo aparece cuando la importación de planos está disponible; mientras no lo esté, la herramienta no se muestra. |
+| **Precios** | Lleva a la pestaña *Precios* de la hoja del proyecto cuando la hoja del proyecto esté completa; mientras tanto lleva a **Actualizar precios**. |
 | **Auditar** | Resume el informe de auditoría de la versión vigente del proyecto abierto: cuántos hallazgos y de qué severidad. El sistema audita siempre; el botón solo lo muestra. |
-| **Guardar version** | Guarda el borrador de la hoja como una versión nueva. Aparece deshabilitado con el texto «disponible cuando se complete SF3» hasta entonces. |
-| **Exportar Excel** | Genera el Excel de la hoja. Deshabilitado con el mismo texto hasta SF3. |
+| **Guardar version** | Guarda el borrador de la hoja como una versión nueva. Aparece deshabilitado, con la ayuda «Todavía no está disponible en esta versión del prototipo» y un aviso visible bajo la barra, hasta que la hoja del proyecto esté completa. |
+| **Exportar Excel** | Genera el Excel de la hoja. Deshabilitado con el mismo texto hasta que la hoja del proyecto esté completa. |
 | **Recorrido guiado** | Sin recorrido elegido, lleva al Inicio para elegir uno. Con uno elegido dice **Retomar: <recorrido>** y lleva a su paso siguiente (o a su primer paso si usted está en otra pantalla). |
 
 **Crear un proyecto.** Abra el desplegable **Proyecto**, escriba el nombre en *Nombre del proyecto
@@ -177,7 +177,7 @@ vigente («sin version guardada»).
 
 **Abrir un proyecto.** En el mismo desplegable, elija uno en *Abrir un proyecto del caso* y pulse
 **Abrir**. La **versión vigente** es hoy el último presupuesto guardado del proyecto que no se
-descartó; cuando el sprint SF3 entregue las versiones editables, será la versión que ellas
+descartó; cuando la hoja del proyecto esté completa y entregue las versiones editables, será la versión que ellas
 declaren.
 
 ### 3.1 Elaborar un presupuesto (UC‑01)
@@ -468,8 +468,8 @@ datos y electricidad), la columna **Estado** de cada fila con el peor hallazgo q
 total del presupuesto y el informe de auditoría. Una fila inválida muestra un mensaje que dice
 fila y campo, y la hoja sigue con el último borrador válido. **La hoja todavía no guarda:**
 guardar versiones, restaurar, el punto de equilibrio, los precios con su origen y el Excel de la
-hoja están disponibles cuando se complete el sprint SF3, y la importación de planos cuando se
-complete el SF5. Hasta entonces las herramientas correspondientes de la barra están
+hoja estarán disponibles cuando la hoja del proyecto esté completa, y la importación de planos
+cuando se complete. Hasta entonces las herramientas correspondientes de la barra están
 deshabilitadas u ocultas.
 
 ## 4. El informe de auditoría
@@ -576,7 +576,7 @@ Cada carpeta trae su `README.md` con el formato exacto de columnas.
 | «Guardar composicion» no se puede pulsar | Faltan las condiciones del rendimiento (RF‑33): escribirlas |
 | «no hay ninguna lista de precios vigente» al guardar | La base está vacía o la fecha es anterior a toda lista: sembrar con `scripts/seed_demo.py` o cambiar la fecha |
 | «Escriba un nombre para el proyecto» o «Ya existe un proyecto llamado …» al crear un proyecto | El nombre quedó en blanco o ya lo usa otro proyecto del caso: escribir otro, o abrir el existente con **Abrir** |
-| **Guardar version** y **Exportar Excel** aparecen deshabilitados | Dependen del sprint SF3 y se habilitan cuando se complete; el texto de ayuda del botón lo dice |
-| **Importar plano** no aparece en la barra | La importación de planos llega con el sprint SF5; hasta entonces la herramienta se oculta |
+| **Guardar version** y **Exportar Excel** aparecen deshabilitados | Se habilitan cuando la hoja del proyecto esté completa; un aviso bajo la barra lo dice |
+| **Importar plano** no aparece en la barra | Depende de la importación de planos, que aún no está completa; hasta entonces la herramienta se oculta |
 | Un archivo subido se guarda con otro nombre (por ejemplo `_CON.csv`) | El nombre original era reservado en Windows (`CON`, `NUL`, `COM1`…) o traía caracteres no permitidos: se limpia para guardarlo, y el contenido no cambia |
 | La barra lateral no muestra el caso esperado bajo «Caso abierto» | Abrirlo en **Inicio** (*Archivo del caso (SQLite)* y *Abrir este caso*) o arrancar con `ARENIA_CASO=<ruta>`: recargar la página (F5) vuelve a la ruta de `ARENIA_CASO` o, sin ella, a `data/apu.db` |
