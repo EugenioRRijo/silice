@@ -8,7 +8,7 @@ estudio real: sus coordenadas son los supuestos declarados de las memorias de c�
 
 * **Qué es.** La oficina OF‑001 (baño, cocineta, recepción, cuarto técnico y zonas A y B) con la
   convención de capas del spec §6.6.1: 6 ambientes (polilínea cerrada con su identificador adentro),
-  6 fuentes y 26 puntos, con sus atributos de bloque (`ID`, `ALTURA`, `DIAMETRO`, `CALIBRE`, `CIRCUITO`,
+  6 fuentes y 21 puntos, con sus atributos de bloque (`ID`, `ALTURA`, `DIAMETRO`, `CALIBRE`, `CIRCUITO`,
   y las extensiones opcionales `CATEGORIA`, `LLAVE`, `AMBIENTE`; ver la bitácora SF, SF5).
 * **Cómo se dibujó.** Entidad por entidad con `ezdxf`, por `scripts/dibujar_of001_dxf.py`, que lee las
   **tablas markdown** de `tests/fixtures/memorias/of001.md` (§1.1 a §1.4), `bano_of001.md` y

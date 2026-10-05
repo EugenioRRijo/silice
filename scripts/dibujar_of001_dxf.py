@@ -1,7 +1,8 @@
-"""Dibuja `tests/fixtures/planos/of001.dxf` entidad por entidad desde las memorias de calculo a mano.
+"""Dibuja `tests/fixtures/planos/of001.dxf` entidad por entidad desde las memorias a mano.
 
 Oraculo INDEPENDIENTE de la importacion de planos (spec 11.1 y 6.6.1): lee las TABLAS markdown de
-`tests/fixtures/memorias/of001.md` (secciones 1.1 a 1.4), `bano_of001.md` y `bano_drenaje_of001.md` y
+`tests/fixtures/memorias/of001.md` (secciones 1.1 a 1.4), `bano_of001.md` y
+`bano_drenaje_of001.md` y
 escribe cada polilinea, texto y bloque con `ezdxf`. NO importa nada de `adapters/` ni de
 `tests/fixtures/espacio_of001.py` (la hoja manual): si lo hiciera, la prueba de equivalencia seria
 circular. Una prueba (`test_planos_dxf_of001.py`) vigila esa independencia.
@@ -11,7 +12,8 @@ Lo que dibuja, segun la convencion de capas (spec 6.6.1):
 * `AMBIENTES`: una polilinea cerrada por ambiente con su identificador como texto adentro.
 * `FTE-AGUA`, `FTE-DRENAJE`, `FTE-DATOS`, `FTE-ELEC`: un bloque por fuente (atributos `ID`, `ALTURA`
   y `AMBIENTE` solo si el punto cae en el borde de dos ambientes).
-* `PTO-AGUA`, `PTO-DRENAJE`, `PTO-DATOS`, `PTO-TOMA`, `PTO-LUZ`: un bloque por punto con `ID`, `ALTURA`
+* `PTO-AGUA`, `PTO-DRENAJE`, `PTO-DATOS`, `PTO-TOMA`, `PTO-LUZ`: un bloque por punto con `ID`,
+  `ALTURA`
   y los opcionales `DIAMETRO`, `CALIBRE`, `CIRCUITO`, `CATEGORIA`, `LLAVE` y `AMBIENTE` (solo si es
   ambiguo). `ALTURA` es la cota z del punto, en las unidades del dibujo (metros, `$INSUNITS` = 6).
 
@@ -163,7 +165,7 @@ def _diametro(texto: str) -> str | None:
 
 
 def puntos_del_bano(bano: str, drenaje: str) -> list[dict]:
-    """P1, P2 (`bano_of001.md`) y D1, D2 (`bano_drenaje_of001.md`): filas «| Punto | `P1` | ... |»."""
+    """P1, P2 (`bano_of001.md`) y D1, D2 (`bano_drenaje_of001.md`): filas «| Punto | `P1` |...»."""
     puntos = []
     for texto in (bano, drenaje):
         for linea in texto.splitlines():
@@ -260,8 +262,12 @@ def dibujar(salida: Path = SALIDA) -> Path:
     for a in ambientes:
         x1, y1 = a.x0 + a.largo, a.y0 + a.ancho
         msp.add_lwpolyline(
-            [(float(a.x0), float(a.y0)), (float(x1), float(a.y0)), (float(x1), float(y1)),
-             (float(a.x0), float(y1))],  # fmt: skip
+            [
+                (float(a.x0), float(a.y0)),
+                (float(x1), float(a.y0)),
+                (float(x1), float(y1)),
+                (float(a.x0), float(y1)),
+            ],  # fmt: skip
             close=True,
             dxfattribs={"layer": "AMBIENTES"},
         )
@@ -310,7 +316,9 @@ def dibujar(salida: Path = SALIDA) -> Path:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(prog="dibujar_of001_dxf.py", description=__doc__.split("\n")[0])
+    parser = argparse.ArgumentParser(
+        prog="dibujar_of001_dxf.py", description=__doc__.split("\n")[0]
+    )
     parser.add_argument("--salida", type=Path, default=SALIDA, help="ruta del DXF a escribir")
     args = parser.parse_args(argv)
     print(f"escrito {dibujar(args.salida)}")
