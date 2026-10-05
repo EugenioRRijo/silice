@@ -166,22 +166,37 @@ def _item(
     )
 
 
-def _material_de(segmento: Segmento, puntos: dict[str, Punto]) -> tuple[str, bool]:
+def _datos_de_material(puntos: dict[str, Punto]) -> dict[str, tuple[int, str]]:
+    """Por punto: rango de la magnitud de su diametro (-1 vale lo que no declara; los rangos
+    conservan el orden de las magnitudes, asi la comparacion por segmento es entre enteros) y su material en
+    mayusculas ('' si no declara). Se calcula una vez por derivacion, no por segmento (RNF-11)."""
+    magnitudes = {
+        i: magnitud_diametro(d) if (d := normalizar_diametro(p.espec.get("diametro"))) else -1
+        for i, p in puntos.items()
+    }
+    rango = {m: r for r, m in enumerate(sorted(set(magnitudes.values())))}
+    return {
+        i: (
+            rango[m],
+            puntos[i].espec.get("material", "").strip().upper(),
+        )
+        for i, m in magnitudes.items()
+    }
+
+
+def _material_de(
+    segmento: Segmento,
+    puntos: dict[str, Punto],
+    datos: dict[str, tuple[int, str]] | None = None,
+) -> tuple[str, bool]:
     """Material del segmento y si es el de por defecto (D-6).
 
     Entre los puntos de mayor diámetro que lo sirven, el primero en orden alfabético de los
     materiales declarados: no depende de los ids ni del orden de entrada."""
-    servidos = [puntos[i] for i in segmento.sirve if i in puntos]
-    magnitudes = {
-        p.id: magnitud_diametro(d) if (d := normalizar_diametro(p.espec.get("diametro"))) else -1
-        for p in servidos
-    }
-    mayor = max(magnitudes.values(), default=-1)
-    declarados = sorted(
-        m.upper()
-        for p in servidos
-        if magnitudes[p.id] == mayor and (m := p.espec.get("material", "").strip())
-    )
+    datos = _datos_de_material(puntos) if datos is None else datos
+    servidos = [datos[i] for i in segmento.sirve if i in datos]
+    mayor = max((m for m, _ in servidos), default=-1)
+    declarados = sorted(mat for m, mat in servidos if m == mayor and mat)
     if declarados:
         return declarados[0], False
     return MATERIAL_POR_DEFECTO, True
@@ -210,8 +225,9 @@ def _tuberias(
     sistema: _Sistema, segmentos: list[Segmento], puntos: dict[str, Punto]
 ) -> Iterator[ItemComputo]:
     grupos: dict[tuple[str, str | None], list[tuple[Segmento, bool]]] = defaultdict(list)
+    datos = _datos_de_material(puntos)
     for s in segmentos:
-        material, por_defecto = _material_de(s, puntos)
+        material, por_defecto = _material_de(s, puntos, datos)
         grupos[(material, s.diametro)].append((s, por_defecto))
     desperdicio = Decimal(sistema.desperdicio_tuberia.valor)
     for (material, diametro), con_flag in grupos.items():

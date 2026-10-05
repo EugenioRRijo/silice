@@ -24,8 +24,9 @@ from bisect import bisect_left, bisect_right
 from collections import defaultdict
 from collections.abc import Iterable
 from dataclasses import dataclass
-from decimal import ROUND_HALF_EVEN, Decimal
+from decimal import ROUND_FLOOR, ROUND_HALF_EVEN, Decimal
 from fractions import Fraction
+from functools import lru_cache
 
 from adapters.espacio.modelo import (
     TOLERANCIA,
@@ -80,6 +81,7 @@ def normalizar_diametro(valor: str | None) -> str | None:
     return limpio or None
 
 
+@lru_cache(maxsize=256)
 def _magnitud_diametro(valor: str) -> Fraction:
     try:
         return sum((Fraction(t) for t in valor.split()), Fraction(0))
@@ -253,11 +255,28 @@ def _piezas_de_fuente(espacio: Espacio, fuente: Fuente) -> list[_Pieza]:
     return piezas
 
 
+def _celda(c: Coord) -> tuple[int, int, int]:
+    """Celda de la cuadrícula hash: lado TOLERANCIA, piso de cada coordenada (exacto en Decimal)."""
+    return (
+        int((c.x / TOLERANCIA).to_integral_value(ROUND_FLOOR)),
+        int((c.y / TOLERANCIA).to_integral_value(ROUND_FLOOR)),
+        int((c.z / TOLERANCIA).to_integral_value(ROUND_FLOOR)),
+    )
+
+
+_VECINAS = tuple((i, j, k) for i in (-1, 0, 1) for j in (-1, 0, 1) for k in (-1, 0, 1))
+
+
 def _agrupar_nodos(coords: Iterable[Coord]) -> dict[Coord, Coord]:
     """Une por vecindad (single-linkage, distancia <= TOLERANCIA) las coordenadas de los extremos.
 
     Devuelve coordenada -> representante, que es la mínima lexicográfica (x, y, z) del grupo: no
     depende del orden de entrada ni de los ids. Es la única tolerancia de la unión y del corte.
+
+    Cuadrícula espacial hash de lado TOLERANCIA: dos coordenadas a TOLERANCIA o menos caen en la
+    misma celda o en una vecina, así que cada una solo se prueba contra las 27 celdas de su entorno
+    (costo lineal con densidad acotada; el barrido por x era cuadrático si muchos nodos comparten x).
+    El resultado es el del barrido completo de todos los pares.
 
     Límite conocido del single-linkage: una cadena de extremos, cada uno a 0,001 m o menos del
     siguiente, colapsa en un solo nodo aunque sus extremos queden a más de 0,001 m entre sí. No es
@@ -272,96 +291,165 @@ def _agrupar_nodos(coords: Iterable[Coord]) -> dict[Coord, Coord]:
             i = padre[i]
         return i
 
+    celdas: dict[tuple[int, int, int], list[int]] = defaultdict(list)
+    claves = [_celda(c) for c in unicas]
+    for i, k in enumerate(claves):
+        celdas[k].append(i)
     tol2 = TOLERANCIA * TOLERANCIA
     for i, a in enumerate(unicas):
-        for j in range(i + 1, len(unicas)):
-            b = unicas[j]
-            if b.x - a.x > TOLERANCIA:
-                break  # ordenadas por x: ninguna posterior está a menos de la tolerancia
-            dx, dy, dz = b.x - a.x, b.y - a.y, b.z - a.z
-            if dx * dx + dy * dy + dz * dz <= tol2:
-                ri, rj = raiz(i), raiz(j)
-                if ri != rj:
-                    padre[max(ri, rj)] = min(ri, rj)  # la raíz es la mínima lexicográfica
+        kx, ky, kz = claves[i]
+        for dx, dy, dz in _VECINAS:
+            for j in celdas.get((kx + dx, ky + dy, kz + dz), ()):
+                if j <= i:
+                    continue
+                b = unicas[j]
+                ex, ey, ez = b.x - a.x, b.y - a.y, b.z - a.z
+                if ex * ex + ey * ey + ez * ez <= tol2:
+                    ri, rj = raiz(i), raiz(j)
+                    if ri != rj:
+                        padre[max(ri, rj)] = min(ri, rj)  # la raíz es la mínima lexicográfica
     return {c: unicas[raiz(i)] for i, c in enumerate(unicas)}
 
 
 class _IndiceNodos:
-    """Nodos ordenados por x para probar en cada pieza solo los que caen en su caja envolvente
-    (con margen TOLERANCIA); el resultado es el mismo que probar todos, sin recorrerlos todos."""
+    """Nodos en una cuadrícula hash de lado TOLERANCIA para probar en cada pieza solo los que caen
+    en su caja envolvente (con margen TOLERANCIA); el resultado es el mismo que probar todos.
+
+    `todos` va ordenado por (x, y, z) y se identifica a cada nodo por su posición ahí (su rango),
+    así el resto del cálculo compara enteros y no coordenadas. Si la caja cubre pocas celdas se leen
+    esas celdas; si cubre más celdas que nodos hay (pieza larga), se toma la banda más estrecha de
+    los tres ejes ordenados y se filtra por los otros dos.
+    """
 
     def __init__(self, nodos: list[Coord]) -> None:
-        self.todos = nodos  # ordenados por (x, y, z)
+        self.todos = nodos
+        self._celdas: dict[tuple[int, int, int], list[int]] = defaultdict(list)
+        for r, n in enumerate(nodos):
+            self._celdas[_celda(n)].append(r)
+        self._ejes = [
+            sorted((getattr(n, eje), r) for r, n in enumerate(nodos)) for eje in ("x", "y", "z")
+        ]
+        self._valores = [[v for v, _ in e] for e in self._ejes]
         self._xs = [n.x for n in nodos]
+        self._ys = [n.y for n in nodos]
+        self._zs = [n.z for n in nodos]
 
-    def cercanos(self, a: Coord, b: Coord) -> list[Coord]:
+    def cercanos(self, a: Coord, b: Coord) -> list[int]:
+        """Rangos de los nodos dentro de la caja de (a, b) con margen TOLERANCIA."""
         t = TOLERANCIA
-        x0, x1 = min(a.x, b.x) - t, max(a.x, b.x) + t
-        y0, y1 = min(a.y, b.y) - t, max(a.y, b.y) + t
-        z0, z1 = min(a.z, b.z) - t, max(a.z, b.z) + t
-        banda = self.todos[bisect_left(self._xs, x0) : bisect_right(self._xs, x1)]
-        return [n for n in banda if y0 <= n.y <= y1 and z0 <= n.z <= z1]
+        lo = Coord(min(a.x, b.x) - t, min(a.y, b.y) - t, min(a.z, b.z) - t)
+        hi = Coord(max(a.x, b.x) + t, max(a.y, b.y) + t, max(a.z, b.z) + t)
+        (i0, j0, k0), (i1, j1, k1) = _celda(lo), _celda(hi)
+        n_celdas = (i1 - i0 + 1) * (j1 - j0 + 1) * (k1 - k0 + 1)
+        if n_celdas <= len(self.todos):
+            candidatos = (
+                r
+                for i in range(i0, i1 + 1)
+                for j in range(j0, j1 + 1)
+                for k in range(k0, k1 + 1)
+                for r in self._celdas.get((i, j, k), ())
+            )
+        else:
+            mejor, rango = 0, (0, 0)
+            for e, (vl, vh) in enumerate(zip((lo.x, lo.y, lo.z), (hi.x, hi.y, hi.z), strict=True)):
+                r = (bisect_left(self._valores[e], vl), bisect_right(self._valores[e], vh))
+                if e == 0 or r[1] - r[0] < rango[1] - rango[0]:
+                    mejor, rango = e, r
+            candidatos = (r for _, r in self._ejes[mejor][rango[0] : rango[1]])
+        xs, ys, zs = self._xs, self._ys, self._zs
+        lx, ly, lz, hx, hy, hz = lo.x, lo.y, lo.z, hi.x, hi.y, hi.z
+        return [
+            r for r in candidatos if lx <= xs[r] <= hx and ly <= ys[r] <= hy and lz <= zs[r] <= hz
+        ]
 
 
-def _segmentos_de_fuente(espacio: Espacio, fuente: Fuente) -> tuple[list[_Pieza], list[Segmento]]:
+_TOL2 = TOLERANCIA * TOLERANCIA
+_HOLGURA = Decimal("1e-20")  # relativa; solo separa lo seguro de lo que se confirma con la raiz
+_SEGURO_DENTRO = _TOL2 * (1 - _HOLGURA)
+_SEGURO_FUERA = _TOL2 * (1 + _HOLGURA)
+
+
+def _a_tolerancia_del_pie(n: Coord, a: Coord, d: tuple[Decimal, ...], t: Decimal) -> bool:
+    """True si `n` queda a TOLERANCIA o menos del pie de su proyeccion sobre el segmento (a, d).
+
+    Es `n.distancia(pie) <= TOLERANCIA` de siempre, sin construir el pie ni sacar la raiz cuando el
+    cuadrado de la distancia esta claramente a un lado de TOLERANCIA**2; lo dudoso (a menos de 1e-20
+    relativo del limite) se decide con la misma raiz de antes, asi que el resultado no cambia."""
+    ex, ey, ez = a.x + t * d[0] - n.x, a.y + t * d[1] - n.y, a.z + t * d[2] - n.z
+    d2 = ex * ex + ey * ey + ez * ez
+    if d2 < _SEGURO_DENTRO:
+        return True
+    if d2 > _SEGURO_FUERA:
+        return False
+    return d2.sqrt() <= TOLERANCIA
+
+
+@lru_cache(maxsize=8)
+def _segmentos_de_fuente(
+    espacio: Espacio, fuente: Fuente
+) -> tuple[tuple[_Pieza, ...], tuple[Segmento, ...]]:
+    """Piezas y segmentos de una fuente. Se calcula UNA vez por `Espacio` (inmutable y hashable):
+    derivar, R8 y R9 del mismo ciclo comparten el resultado (RNF-11)."""
     piezas = _piezas_de_fuente(espacio, fuente)
     if not piezas:
-        return [], []
+        return (), ()
     rep = _agrupar_nodos(c for pz in piezas for c in (pz.a, pz.b))
-    indice = _IndiceNodos(sorted(set(rep.values()), key=lambda c: (c.x, c.y, c.z)))
+    nodos = sorted(set(rep.values()), key=lambda c: (c.x, c.y, c.z))
+    indice = _IndiceNodos(nodos)
+    rango = {n: r for r, n in enumerate(nodos)}
 
-    acumulado: dict[tuple[Coord, Coord], dict] = {}
+    # llave (rango menor, rango mayor) -> [sirve, diametros, empotrados, superficies, largo]
+    acumulado: dict[tuple[int, int], list] = {}
     for pz in piezas:
         a, b = rep[pz.a], rep[pz.b]
         if a == b:
             continue  # largo cero tras unir los nodos vecinos
+        ra, rb = rango[a], rango[b]
         d = _vec(a, b)
         largo2 = _punto_escalar(d, d)
         largo = a.distancia(b)
-        cortes: list[tuple[Decimal, Coord]] = []
-        for n in indice.cercanos(a, b):
-            if n in (a, b):
+        ax, ay, az = a.x, a.y, a.z
+        dx, dy, dz = d
+        cortes: list[tuple[Decimal, int]] = []
+        for r in indice.cercanos(a, b):
+            if r == ra or r == rb:
                 continue
-            t = _punto_escalar(_vec(a, n), d) / largo2
+            n = nodos[r]
+            t = ((n.x - ax) * dx + (n.y - ay) * dy + (n.z - az) * dz) / largo2
             if not (0 < t < 1):
                 continue
-            pie = Coord(a.x + t * d[0], a.y + t * d[1], a.z + t * d[2])
-            if n.distancia(pie) <= TOLERANCIA:
-                cortes.append((t, n))
+            ex, ey, ez = ax + t * dx - n.x, ay + t * dy - n.y, az + t * dz - n.z
+            d2 = ex * ex + ey * ey + ez * ez
+            if d2 < _SEGURO_DENTRO or (d2 <= _SEGURO_FUERA and _a_tolerancia_del_pie(n, a, d, t)):
+                cortes.append((t, r))
         # las longitudes se miden sobre el segmento original (t * largo): partirlo en un nodo
-        # que se desvía menos de la tolerancia no lo dobla ni lo alarga
-        cortes.sort(key=lambda tn: (tn[0], tn[1].x, tn[1].y, tn[1].z))
-        ts = [Decimal(0), *(t for t, _ in cortes), Decimal(1)]
-        cadena = [a, *(n for _, n in cortes), b]
-        for (n1, n2), (t1, t2) in zip(
-            zip(cadena, cadena[1:], strict=False), zip(ts, ts[1:], strict=False), strict=False
-        ):
-            llave = (n1, n2) if (n1.x, n1.y, n1.z) <= (n2.x, n2.y, n2.z) else (n2, n1)
-            reg = acumulado.setdefault(
-                llave,
-                {
-                    "sirve": set(),
-                    "diametros": [],
-                    "empotrados": set(),
-                    "superficies": set(),
-                    "largo": CERO,
-                },
-            )
-            reg["sirve"].add(pz.sirve)
+        # que se desvía menos de la tolerancia no lo dobla ni lo alarga. El rango ordena igual
+        # que (x, y, z), asi el desempate de t iguales es el de siempre.
+        cortes.sort()
+        t_ant, r_ant = Decimal(0), ra
+        for t_sig, r_sig in [*cortes, (Decimal(1), rb)]:
+            llave = (r_ant, r_sig) if r_ant <= r_sig else (r_sig, r_ant)
+            reg = acumulado.get(llave)
+            if reg is None:
+                reg = acumulado[llave] = [set(), {}, set(), set(), CERO]
+            reg[0].add(pz.sirve)
             if pz.diametro is not None:
-                reg["diametros"].append(pz.diametro)
-            reg["empotrados"].add(pz.empotrado)
-            reg["superficies"].add(pz.superficie)
-            reg["largo"] = max(reg["largo"], (t2 - t1) * largo)
+                reg[1][pz.diametro] = None  # sin repetir y en orden de aparicion (max desempata igual)
+            reg[2].add(pz.empotrado)
+            reg[3].add(pz.superficie)
+            tramo = (t_sig - t_ant) * largo
+            if tramo > reg[4]:
+                reg[4] = tramo
+            t_ant, r_ant = t_sig, r_sig
 
     sobre = {s.clave: s for s in espacio.sobrescrituras}
     segmentos: list[Segmento] = []
-    for (a, b), reg in acumulado.items():
+    for (ia, ib), (sirve, diametros, empotrados, superficies, largo_unido) in acumulado.items():
+        a, b = nodos[ia], nodos[ib]
         clave = clave_segmento(fuente.id, a, b)
-        diametro = max(reg["diametros"], key=_magnitud_diametro) if reg["diametros"] else None
-        conflicto = len(reg["empotrados"]) > 1
-        empotrado = reg["empotrados"] == {True}
-        superficies = reg["superficies"]
+        diametro = max(diametros, key=_magnitud_diametro) if diametros else None
+        conflicto = len(empotrados) > 1
+        empotrado = empotrados == {True}
         superficie = next(iter(superficies)) if len(superficies) == 1 else None
         s = sobre.get(clave)
         if s is not None:
@@ -375,8 +463,8 @@ def _segmentos_de_fuente(espacio: Espacio, fuente: Fuente) -> tuple[list[_Pieza]
                 fuente_id=fuente.id,
                 a=a,
                 b=b,
-                longitud=reg["largo"],
-                sirve=tuple(sorted(reg["sirve"])),
+                longitud=largo_unido,
+                sirve=tuple(sorted(sirve)),
                 diametro=diametro,
                 empotrado=empotrado,
                 conflicto_empotrado=conflicto,
@@ -384,7 +472,7 @@ def _segmentos_de_fuente(espacio: Espacio, fuente: Fuente) -> tuple[list[_Pieza]
             )
         )
     segmentos.sort(key=lambda s: s.clave)
-    return piezas, segmentos
+    return tuple(piezas), tuple(segmentos)
 
 
 def _fuentes(espacio: Espacio, fuente_id: str | None) -> list[Fuente]:
