@@ -30,7 +30,11 @@ def _total(borrador, **kw) -> Decimal:
 
 
 def _clave(items, codigo) -> str:
-    return next(c for c, i in zip(hoja.claves_de_items(items), items, strict=True) if i.codigo_partida == codigo)
+    return next(
+        c
+        for c, i in zip(hoja.claves_de_items(items), items, strict=True)
+        if i.codigo_partida == codigo
+    )
 
 
 # --- cantidades escritas a mano (DA-SF-5) -------------------------------------------------------
@@ -38,7 +42,7 @@ def _clave(items, codigo) -> str:
 
 def test_escribir_una_cantidad_cambia_el_total_en_delta_por_el_pu():
     base = borrador_bano()
-    items = hoja.items_de_borrador(base)
+    items = hoja.items_elaborados(base)
     llave = next(i for i in items if i.codigo_partida == "AF-LLAVE")
     clave = _clave(items, "AF-LLAVE")
 
@@ -49,7 +53,7 @@ def test_escribir_una_cantidad_cambia_el_total_en_delta_por_el_pu():
 
 def test_la_cantidad_escrita_la_marca_r8_y_ninguna_otra_regla_cambia():
     base = borrador_bano()
-    items = hoja.items_de_borrador(base)
+    items = hoja.items_elaborados(base)
     clave = _clave(items, "AF-LLAVE")
     editado = replace(base, cantidades={clave: D("9")})
 
@@ -63,7 +67,7 @@ def test_la_cantidad_escrita_la_marca_r8_y_ninguna_otra_regla_cambia():
 
 def test_el_estado_de_las_filas_de_origen_lleva_la_marca_de_la_cantidad_escrita():
     base = borrador_bano()
-    items = hoja.items_de_borrador(base)
+    items = hoja.items_elaborados(base)
     llave = next(i for i in items if i.codigo_partida == "AF-LLAVE")
     editado = replace(base, cantidades={_clave(items, "AF-LLAVE"): D("9")})
 
@@ -71,7 +75,9 @@ def test_el_estado_de_las_filas_de_origen_lleva_la_marca_de_la_cantidad_escrita(
 
     # el item AF-LLAVE cita las filas F1, P1 y P2: las tres llevan la marca; ninguna otra
     citadas = {c for c in llave.origen_id.split(";") if c.startswith("esp_")}
-    marcadas = {k for k, e in estado.items() if "fijada a mano" in e.texto and "AF-LLAVE" in e.texto}
+    marcadas = {
+        k for k, e in estado.items() if "fijada a mano" in e.texto and "AF-LLAVE" in e.texto
+    }
     assert citadas == marcadas
     assert {"esp_puntos:P1", "esp_puntos:P2", "esp_fuentes:F1"} <= marcadas
 
@@ -86,7 +92,7 @@ def test_una_cantidad_escrita_de_un_item_que_ya_no_existe_se_ignora():
 
 
 def test_las_claves_de_items_son_unicas_aunque_se_repita_partida_y_origen():
-    items = hoja.items_de_borrador(borrador_bano())
+    items = hoja.items_elaborados(borrador_bano())
     doble = [*items, items[0]]
 
     claves = hoja.claves_de_items(doble)
@@ -106,7 +112,12 @@ def test_los_parametros_se_leen_de_texto_con_el_campo_culpable_en_el_error():
         fcas=D("6.5"), bono_alimentacion=D("1"), administracion=D("0.18"), utilidad=D("0.1")
     )
     for campo, valor in (("fcas", "mucho"), ("utilidad", "-0.1"), ("administracion", "")):
-        textos = {"fcas": "6", "bono_alimentacion": "1", "administracion": "0.15", "utilidad": "0.1"}
+        textos = {
+            "fcas": "6",
+            "bono_alimentacion": "1",
+            "administracion": "0.15",
+            "utilidad": "0.1",
+        }
         textos[campo] = valor
         with pytest.raises(hoja.HojaInvalida, match=campo):
             hoja.parametros_desde_texto(textos)
@@ -127,7 +138,7 @@ def test_cambiar_el_fcas_recalcula_todos_los_apu_de_la_version():
 
     # mano de obra por unidad = sueldo x (1 + fcas) + bono; solo cambia el FCAS: 10 por 1 de fcas
     delta_cd = D("10") * (D("7") - D("6"))
-    cantidad = sum((i.cantidad for i in hoja.items_de_borrador(base)), D(0))
+    cantidad = sum((i.cantidad for i in hoja.items_elaborados(base)), D(0))
     esperado = cantidad * delta_cd * D("1.15") * D("1.10")
     assert abs((_total(nuevo) - _total(base)) - esperado) <= D("0.0001")
 
@@ -136,7 +147,11 @@ def test_cambiar_el_fcas_recalcula_todos_los_apu_de_la_version():
 
 
 def test_ajustar_plan_conserva_el_reparto_y_agrega_las_partidas_nuevas():
-    plan = [("Dia 1", (("A", D("1")),)), ("Dia 2", (("B", D("0.5")), ("C", D("1")))), ("Dia 3", (("B", D("0.5")),))]
+    plan = [
+        ("Dia 1", (("A", D("1")),)),
+        ("Dia 2", (("B", D("0.5")), ("C", D("1")))),
+        ("Dia 3", (("B", D("0.5")),)),
+    ]
 
     ajustado = hoja.ajustar_plan(plan, ["B", "C", "NUEVA"])
 
@@ -155,7 +170,9 @@ def test_ajustar_plan_sin_cambios_devuelve_el_mismo_plan():
 
 def test_el_plan_se_ajusta_cuando_el_espacio_agrega_una_partida():
     base = borrador_bano()
-    codigos = {p.item.codigo_partida for p in hoja.elaborar_borrador(base).elaboracion.presupuesto.partidas}
+    codigos = {
+        p.item.codigo_partida for p in hoja.elaborar_borrador(base).elaboracion.presupuesto.partidas
+    }
     # un plan guardado que solo conoce la mitad de las partidas
     recortado = replace(base, plan=tuple(p for p in base.plan if p[1][0][0] in sorted(codigos)[:3]))
 
@@ -185,7 +202,7 @@ def test_el_plan_se_lee_de_filas_y_cada_partida_debe_sumar_uno():
 
 def test_el_plan_como_filas_va_y_vuelve():
     base = borrador_bano()
-    codigos = sorted({i.codigo_partida for i in hoja.items_de_borrador(base)})
+    codigos = sorted({i.codigo_partida for i in hoja.items_elaborados(base)})
 
     etiquetas, filas = hoja.plan_como_filas(base.plan, codigos)
 
@@ -214,7 +231,10 @@ def test_sin_partidas_el_punto_de_equilibrio_no_aplica():
     pe = hoja.elaborar_borrador(vacio).equilibrio
 
     assert pe.estado is EstadoEquilibrio.NO_APLICABLE
-    assert hoja.texto_equilibrio(pe) == "El presupuesto no tiene ventas: el punto de equilibrio no aplica."
+    assert (
+        hoja.texto_equilibrio(pe)
+        == "El presupuesto no tiene ventas: el punto de equilibrio no aplica."
+    )
 
 
 def test_sin_plan_el_punto_de_equilibrio_no_tiene_ubicacion():
@@ -228,7 +248,9 @@ def test_un_margen_no_positivo_es_no_existe_con_su_texto():
     # utilidad negativa no la admite el contrato; un margen <= 0 sale de costo directo >= precio:
     # se arma con administracion y utilidad en cero y se verifica el texto del estado calculado
     base = borrador_bano()
-    pe = hoja.elaborar_borrador(replace(base, parametros=ParametrosCosto(administracion=D(0), utilidad=D(0)))).equilibrio
+    pe = hoja.elaborar_borrador(
+        replace(base, parametros=ParametrosCosto(administracion=D(0), utilidad=D(0)))
+    ).equilibrio
 
     assert pe.estado is EstadoEquilibrio.NO_EXISTE
     assert "no existe" in hoja.texto_equilibrio(pe).lower()
@@ -255,14 +277,18 @@ def test_editar_una_celda_de_metraje_da_exactamente_un_cambio():
 
 
 def test_agregar_y_quitar_una_fila_de_metraje_son_cambios_de_fila():
-    base = borrador_bano()
+    base = borrador_bano(con_plan=False)
     filas = hoja.filas_desde_espacio(base.espacio)
     quitada = filas["puntos"].pop()
     editado = replace(base, espacio=hoja.espacio_desde_filas(filas, base=base.espacio))
 
     [cambio] = hoja.cambios_entre(base, editado)
 
-    assert (cambio.objeto, cambio.clave, cambio.campo) == ("metraje", f"esp_puntos:{quitada['id']}", "fila")
+    assert (cambio.objeto, cambio.clave, cambio.campo) == (
+        "metraje",
+        f"esp_puntos:{quitada['id']}",
+        "fila",
+    )
     assert cambio.valor_nuevo == "" and quitada["nombre"] in cambio.valor_anterior
     assert hoja.cambios_entre(editado, base) == [
         CambioEditado("metraje", f"esp_puntos:{quitada['id']}", "fila", "", cambio.valor_anterior)
@@ -295,7 +321,9 @@ def test_cantidad_de_linea_rendimiento_e_insumo_de_un_apu_son_cambios_de_apu():
         CambioEditado("apu", "AF-LLAVE|material", "cantidad", "1", "3"),
     ]
     otro = replace(apu, materiales=(replace(linea, descripcion="otro material", precio=D("5")),))
-    cambios = hoja.cambios_entre(base, replace(base, composiciones={**base.composiciones, "AF-LLAVE": otro}))
+    cambios = hoja.cambios_entre(
+        base, replace(base, composiciones={**base.composiciones, "AF-LLAVE": otro})
+    )
     assert cambios == [
         CambioEditado("apu", "AF-LLAVE|material", "insumo", "material", "otro material"),
         CambioEditado("apu", "AF-LLAVE|material", "precio", "2", "5"),
@@ -304,7 +332,7 @@ def test_cantidad_de_linea_rendimiento_e_insumo_de_un_apu_son_cambios_de_apu():
 
 def test_una_cantidad_escrita_es_un_cambio_de_cantidad_con_el_valor_calculado_como_anterior():
     base = borrador_bano()
-    items = hoja.items_de_borrador(base)
+    items = hoja.items_elaborados(base)
     llave = next(i for i in items if i.codigo_partida == "AF-LLAVE")
     clave = _clave(items, "AF-LLAVE")
     editado = replace(base, cantidades={clave: D("9")})
@@ -313,7 +341,9 @@ def test_una_cantidad_escrita_es_un_cambio_de_cantidad_con_el_valor_calculado_co
     assert llave.cantidad == D("2")
     assert hoja.cambios_entre(base, editado) == [esperado]
     # y volver al valor calculado lo registra al reves
-    assert hoja.cambios_entre(editado, base) == [CambioEditado("cantidad", clave, "cantidad", "9", "2")]
+    assert hoja.cambios_entre(editado, base) == [
+        CambioEditado("cantidad", clave, "cantidad", "9", "2")
+    ]
 
 
 def test_un_cambio_de_plan_es_un_cambio_por_partida_y_periodo():
