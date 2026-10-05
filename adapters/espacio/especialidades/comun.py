@@ -10,7 +10,7 @@ from __future__ import annotations
 from collections.abc import Iterable, Mapping
 from decimal import Decimal
 
-from adapters.espacio.especialidades import Constante, porcentaje
+from adapters.espacio.especialidades import SUPUESTO_DECLARADO, Constante, porcentaje
 from adapters.espacio.geometria import magnitud_diametro, normalizar_diametro
 from adapters.espacio.modelo import Punto
 from core.contracts.dominio import Dominio
@@ -22,6 +22,24 @@ UNIDAD_PIEZA = "pieza"
 UNIDAD_PUNTO = "punto"
 CERO = Decimal(0)
 UNO = Decimal(1)
+
+#: Constantes que comparten datos y electricidad (memoria `of001.md`, sección 5): un solo lugar.
+D12 = Constante("D-12", "Tipo de canalización por defecto", "EMT", SUPUESTO_DECLARADO)
+D17 = Constante(
+    "D-17",
+    "Desperdicio de cajas, salidas, jacks, certificación y protección (conteo exacto)",
+    Decimal("0"),
+    SUPUESTO_DECLARADO,
+)
+D18 = Constante(
+    "D-18",
+    "Desperdicio de la canalización de datos y de la tubería eléctrica",
+    Decimal("0"),
+    SUPUESTO_DECLARADO,
+)
+CANALIZACION_POR_DEFECTO = str(D12.valor)
+DESPERDICIO_CONTEO = Decimal(D17.valor)
+DESPERDICIO_CANALIZACION = Decimal(D18.valor)
 
 #: `core/models/entidades.py`: `origen_id` es `String(120)`.
 LIMITE_ORIGEN = 120

@@ -4,6 +4,9 @@ Todo en `Decimal` (NORMAS.md §2.3), sin dependencias nuevas y sin tocar `core/`
 
 * `recorrido_propuesto`: el camino que se propone para un punto (§6.4). Un punto sin fuente no tiene
   recorrido; los tramos de largo cero se omiten (FR-2).
+* `recorrido_de_circuito`: la cadena de un circuito (tablero -> punto 1 -> punto 2 ...), en el orden
+  declarado o en el del vecino mas cercano (`orden_de_cadena`, D-14); cada paso sube al techo, cruza
+  en x y en y, y baja (§6.4).
 * `unir_segmentos`: los recorridos de una misma fuente forman un árbol; la unión parte los solapes
   colineales (totales y parciales) en los nodos de toda la fuente y une los segmentos coincidentes a
   0,001 m, de modo que la tubería compartida no se cuenta dos veces (FR-3).
@@ -30,6 +33,7 @@ from functools import lru_cache
 
 from adapters.espacio.modelo import (
     TOLERANCIA,
+    Circuito,
     Coord,
     Espacio,
     Especialidad,
@@ -184,6 +188,106 @@ def recorrido_propuesto(espacio: Espacio, punto: Punto) -> tuple[Tramo, ...]:
     return ()
 
 
+def _alto_de(espacio: Espacio, ambiente_id: str) -> Decimal:
+    return next(a.alto for a in espacio.ambientes if a.id == ambiente_id)
+
+
+def _costo_paso(a: Coord, alto_a: Decimal, b: Coord, alto_b: Decimal) -> Decimal:
+    """Largo del paso de `a` a `b` (D-14): sube al techo, cruza en x y en y, y baja. El techo es el
+    mayor de los dos ambientes, asi ningun paso queda por debajo de uno de sus extremos."""
+    techo = max(alto_a, alto_b)
+    return abs(techo - a.z) + abs(b.x - a.x) + abs(b.y - a.y) + abs(techo - b.z)
+
+
+def _fuente_de_circuito(espacio: Espacio, circuito: Circuito) -> Fuente | None:
+    return next((f for f in espacio.fuentes if f.id == circuito.tablero), None)
+
+
+def orden_de_cadena(espacio: Espacio, circuito: Circuito) -> tuple[str, ...]:
+    """Orden de los puntos de la cadena de un circuito (§6.4, D-14).
+
+    El orden declarado manda. Los puntos que citan el circuito (`circuito_id`) y no estan en el
+    orden se agregan al final, por vecino mas cercano desde el ultimo punto. Sin orden declarado,
+    el de todos sus puntos por vecino mas cercano desde el tablero: en cada paso el punto de menor
+    costo (`_costo_paso`) entre los que faltan; un empate lo gana el id menor. Sin tablero no hay
+    desde donde medir: los que faltan van por id."""
+    puntos = {p.id: p for p in espacio.puntos}
+    orden = [i for i in circuito.orden if i in puntos]
+    faltan = {p.id for p in espacio.puntos if p.circuito_id == circuito.id} - set(orden)
+    fuente = _fuente_de_circuito(espacio, circuito)
+    if fuente is None:
+        return tuple(orden + sorted(faltan))
+    if orden:
+        ultimo = puntos[orden[-1]]
+        actual, alto = ultimo.posicion, _alto_de(espacio, ultimo.ambiente_id)
+    else:
+        actual, alto = fuente.posicion, _alto_de(espacio, fuente.ambiente_id)
+    while faltan:
+        elegido = min(
+            faltan,
+            key=lambda i: (
+                _costo_paso(
+                    actual, alto, puntos[i].posicion, _alto_de(espacio, puntos[i].ambiente_id)
+                ),
+                i,
+            ),
+        )
+        faltan.remove(elegido)
+        orden.append(elegido)
+        actual = puntos[elegido].posicion
+        alto = _alto_de(espacio, puntos[elegido].ambiente_id)
+    return tuple(orden)
+
+
+def recorrido_de_circuito(espacio: Espacio, circuito: Circuito) -> tuple[Tramo, ...]:
+    """Cadena propuesta de un circuito (§6.4): del tablero por sus puntos en `orden_de_cadena`.
+
+    Cada paso sube al techo, recorre en x y luego en y, y baja; los tramos de largo cero se omiten.
+    `()` si el circuito no tiene puntos o su tablero no existe."""
+    fuente = _fuente_de_circuito(espacio, circuito)
+    orden = orden_de_cadena(espacio, circuito)
+    if fuente is None or not orden:
+        return ()
+    puntos = {p.id: p for p in espacio.puntos}
+    en_techo, en_pared = SuperficieTramo.TECHO, SuperficieTramo.PARED
+    vertices: list[tuple[Coord, SuperficieTramo]] = [(fuente.posicion, en_pared)]
+    actual, alto_actual = fuente.posicion, _alto_de(espacio, fuente.ambiente_id)
+    for punto_id in orden:
+        destino = puntos[punto_id]
+        b, alto_b = destino.posicion, _alto_de(espacio, destino.ambiente_id)
+        techo = max(alto_actual, alto_b)
+        vertices += [
+            (Coord(actual.x, actual.y, techo), en_pared),
+            (Coord(b.x, actual.y, techo), en_techo),
+            (Coord(b.x, b.y, techo), en_techo),
+            (b, en_pared),
+        ]
+        actual, alto_actual = b, alto_b
+    return _tramos_desde_vertices(vertices)
+
+
+def tramos_de_circuito(espacio: Espacio, circuito: Circuito) -> tuple[Tramo, ...]:
+    """Tramos de un circuito: los de su recorrido con tramos (declarado, o propuesto con tramos
+    poblados, que se trata como declarado) si existe; si no, la cadena propuesta."""
+    for r in espacio.recorridos:
+        if r.circuito_id == circuito.id and r.tramos:
+            return r.tramos
+    return recorrido_de_circuito(espacio, circuito)
+
+
+def diametro_de_circuito(espacio: Espacio, circuito: Circuito) -> str | None:
+    """Diametro de la canalizacion de un circuito (D-16): el mayor de los declarados por sus
+    puntos; `None` si ninguno lo declara (no se inventa uno)."""
+    ids = set(circuito.orden)
+    diametros = {
+        d
+        for p in espacio.puntos
+        if (p.circuito_id == circuito.id or p.id in ids)
+        and (d := normalizar_diametro(p.espec.get("diametro"))) is not None
+    }
+    return max(diametros, key=_magnitud_diametro) if diametros else None
+
+
 def tramos_de(espacio: Espacio, punto: Punto) -> tuple[Tramo, ...]:
     """Tramos de un punto: los del recorrido con tramos (declarado, o propuesto con tramos
     poblados, que se trata como declarado) si existe; si no, el propuesto."""
@@ -248,10 +352,9 @@ def _piezas_de_fuente(espacio: Espacio, fuente: Fuente) -> list[_Pieza]:
     for p in espacio.puntos:
         if p.fuente_id == fuente.id:
             agregar(tramos_de(espacio, p), p.id, normalizar_diametro(p.espec.get("diametro")))
-    circuitos = {c.id for c in espacio.circuitos if c.tablero == fuente.id}
-    for r in espacio.recorridos:
-        if r.circuito_id in circuitos:
-            agregar(r.tramos, r.circuito_id, None)
+    for c in espacio.circuitos:
+        if c.tablero == fuente.id:
+            agregar(tramos_de_circuito(espacio, c), c.id, diametro_de_circuito(espacio, c))
     return piezas
 
 

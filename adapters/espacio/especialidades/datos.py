@@ -27,7 +27,13 @@ from decimal import Decimal
 
 from adapters.espacio.especialidades import SUPUESTO_DECLARADO, Constante, porcentaje
 from adapters.espacio.especialidades.comun import (
+    CANALIZACION_POR_DEFECTO,
     CERO,
+    D12,
+    D17,
+    D18,
+    DESPERDICIO_CANALIZACION,
+    DESPERDICIO_CONTEO,
     UNIDAD_LONGITUD,
     UNIDAD_PIEZA,
     UNIDAD_PUNTO,
@@ -55,30 +61,17 @@ _D9 = Constante(
 )
 _D10 = Constante("D-10", "Reserva del cable de datos", Decimal("0.10"), SUPUESTO_DECLARADO)
 _D11 = Constante("D-11", "Categoría de cable por defecto", "cat 6", SUPUESTO_DECLARADO)
-_D12 = Constante("D-12", "Tipo de canalización por defecto", "EMT", SUPUESTO_DECLARADO)
-_D17 = Constante(
-    "D-17",
-    "Desperdicio de cajas, face plates, jacks y certificación (conteo exacto)",
-    Decimal("0"),
-    SUPUESTO_DECLARADO,
-)
-_D18 = Constante(
-    "D-18", "Desperdicio de la canalización de datos", Decimal("0"), SUPUESTO_DECLARADO
-)
 #: R10 (spec §8.2): enlace permanente máximo. Fuente candidata ANSI/TIA-568, a verificar.
 LIMITE_ENLACE = Constante(
     "R10-datos", "Enlace permanente máximo (m)", Decimal("90"), SUPUESTO_DECLARADO
 )
 
-CONSTANTES_DATOS: tuple[Constante, ...] = (_D8, _D9, _D10, _D11, _D12, _D17, _D18, LIMITE_ENLACE)
+CONSTANTES_DATOS: tuple[Constante, ...] = (_D8, _D9, _D10, _D11, D12, D17, D18, LIMITE_ENLACE)
 
 HOLGURA_RACK = Decimal(_D8.valor)
 HOLGURA_PUNTO = Decimal(_D9.valor)
 RESERVA_CABLE = Decimal(_D10.valor)
 CATEGORIA_POR_DEFECTO = str(_D11.valor)
-CANALIZACION_POR_DEFECTO = str(_D12.valor)
-DESPERDICIO_CONTEO = Decimal(_D17.valor)
-DESPERDICIO_CANALIZACION = Decimal(_D18.valor)
 
 ESPECIALIDAD = Especialidad.DATOS.value
 
@@ -197,14 +190,14 @@ def _canalizacion(espacio: Espacio, puntos: list[Punto]) -> Iterator[ItemComputo
         grupos[(tipo, s.diametro)].append((s, por_defecto))
     for (tipo, diametro), con_flag in grupos.items():
         segs = [s for s, _ in con_flag]
-        nota = f"; tipo por defecto: {_D12.fuente}" if any(f for _, f in con_flag) else ""
+        nota = f"; tipo por defecto: {D12.fuente}" if any(f for _, f in con_flag) else ""
         longitud = sum((s.longitud for s in segs), CERO)
         especificaciones = {"tipo": tipo}
         if diametro:
             especificaciones["diametro"] = f"{diametro} pulg"
         yield _item(
             f"DT-CAN-{tipo}-{codigo_diametro(diametro)}",
-            f"Canalización {tipo} {texto_diametro(diametro)} de datos ({etiqueta(_D18)}{nota})",
+            f"Canalización {tipo} {texto_diametro(diametro)} de datos ({etiqueta(D18)}{nota})",
             UNIDAD_LONGITUD,
             longitud * (UNO + DESPERDICIO_CANALIZACION),
             (clave_esp("esp_fuentes", s.fuente_id) for s in segs),
@@ -227,7 +220,7 @@ def _por_punto(puntos: list[Punto]) -> Iterator[ItemComputo]:
     ):
         yield _item(
             codigo,
-            f"{nombre} ({etiqueta(_D17)})",
+            f"{nombre} ({etiqueta(D17)})",
             unidad,
             n * (UNO + DESPERDICIO_CONTEO),
             _fuentes_de(puntos),
