@@ -96,6 +96,7 @@ from core.budget import (
     elaborar,
     exportar_hoja,
     guardar_edicion,
+    guardar_presupuesto,
     plan_de_version,
     plan_secuencial,
     punto_equilibrio,
@@ -1690,6 +1691,125 @@ def guardar_version(
     return VersionGuardada(
         codigo=nueva.codigo, cambios=len(cambios), total=resultado.elaboracion.presupuesto.total
     )
+
+
+def crear_primera_version(
+    sesion: Session,
+    catalogo: Catalogo,
+    proyecto: str,
+    borrador: Borrador,
+    *,
+    codigo: str | None = None,
+    fuente: str,
+    responsable: str,
+    fecha: date | None = None,
+    ahora: datetime | None = None,
+) -> VersionGuardada:
+    """Guarda `borrador` como la PRIMERA version de un proyecto que todavia no tiene ninguna (RI-7).
+
+    Es el camino «crear un presupuesto nuevo a partir del espacio»: `guardar_version` exige una
+    version abierta de la que partir y un proyecto recien creado no la tiene. Todo en UNA `Session`
+    y con `core` tal como esta (no hay un motivo de creacion en `MOTIVOS_VERSION`):
+
+    * la lista de precios es la **vigente** a `fecha` (por defecto la del borrador): si el catalogo
+      no tiene ninguna, `HojaInvalida` lo dice y no se inventa un precio;
+    * los parametros son los del borrador (los del contrato por defecto, o los que el usuario ya
+      cambio en la pestana Parametros); las composiciones, las del catalogo vigente para cada
+      partida derivada (`completar_composiciones`), congeladas en la instantanea de la version;
+    * sin plan en el borrador, el plan secuencial de `core` (una partida por periodo): sin el no
+      habria curva ni punto de equilibrio en el tiempo, y el usuario lo edita despues;
+    * la version nace sin `version_origen` ni motivo (nace de cero) y deja UN `RegistroCambio`
+      (`objeto='version'`, `campo='creacion'`) con la fuente y el responsable, obligatorios;
+    * el espacio se copia con la clave de la version nueva, en la misma transaccion.
+
+    `HojaInvalida` (sin tocar la base) si falta la fuente o el responsable, si el proyecto no existe
+    o ya tiene versiones (guardar dos veces no duplica; desde la segunda se usa `guardar_version`),
+    si la hoja esta vacia o si no hay lista de precios. Confirma si todo sale bien; si algo falla,
+    deshace todo y propaga el error.
+    """
+    fuente, responsable = fuente.strip(), responsable.strip()
+    if not fuente:
+        raise HojaInvalida(
+            "Escriba la fuente de la medida: de donde salen los datos (un plano, un acta)."
+        )
+    if not responsable:
+        raise HojaInvalida("Escriba el responsable: quien crea esta primera version.")
+    modelo_proyecto = sesion.scalars(
+        select(models.Proyecto).where(models.Proyecto.nombre == proyecto)
+    ).one_or_none()
+    if modelo_proyecto is None:
+        raise HojaInvalida(
+            f"El proyecto {proyecto!r} no existe: creelo desde la barra superior (Proyectos)."
+        )
+    if sesion.scalar(
+        select(func.count())
+        .select_from(models.Presupuesto)
+        .where(models.Presupuesto.proyecto_id == modelo_proyecto.id)
+    ):
+        raise HojaInvalida(
+            f"El proyecto {proyecto!r} ya tiene versiones: abra una y use Guardar version."
+        )
+    fecha = fecha or borrador.fecha
+    try:
+        lista = catalogo.lista_vigente(fecha)
+    except CatalogoIncompleto as error:
+        raise HojaInvalida(
+            f"No hay una lista de precios vigente al {fecha:%d/%m/%Y}: cargue una en Actualizar "
+            "precios (o cambie la fecha del presupuesto) y vuelva a guardar."
+        ) from error
+    borrador = completar_composiciones(catalogo, replace(borrador, fecha=fecha), lista=lista)
+    if borrador.plan is None:
+        borrador = con_plan_secuencial(borrador)
+    try:
+        nuevo_codigo = (codigo or "").strip() or siguiente_codigo(sesion, proyecto)
+        resultado = elaborar_borrador(borrador, codigo=nuevo_codigo)
+        elaboracion = resultado.elaboracion
+        if not elaboracion.presupuesto.partidas and not elaboracion.pendientes:
+            raise HojaInvalida(
+                "La hoja esta vacia: dibuje o importe el espacio (o escriba cantidades) antes de "
+                "guardar la primera version."
+            )
+        if borrador.espacio != Espacio():
+            crear_esquema_espacio(sesion.connection())
+        nueva = guardar_presupuesto(
+            sesion,
+            elaboracion.presupuesto,
+            elaboracion.informe,
+            proyecto=modelo_proyecto,
+            lista=lista,
+            parametros=borrador.parametros,
+            pendientes=elaboracion.pendientes,
+            plan=resultado.plan,
+        )
+        sesion.add(
+            models.RegistroCambio(
+                proyecto_id=modelo_proyecto.id,
+                version_origen_id=None,
+                version_resultante_id=nueva.id,
+                objeto="version",
+                clave=nuevo_codigo,
+                campo="creacion",
+                valor_anterior="",
+                valor_nuevo=nuevo_codigo,
+                fuente=fuente,
+                responsable=responsable,
+                fecha_hora=ahora or datetime.now(),
+            )
+        )
+        sesion.flush()
+        if borrador.espacio != Espacio():
+            guardar_espacio(sesion, nueva.id, borrador.espacio)
+        sesion.commit()
+    except HojaInvalida:
+        sesion.rollback()
+        raise
+    except ValueError as error:
+        sesion.rollback()
+        raise HojaInvalida(str(error)) from error
+    except BaseException:
+        sesion.rollback()
+        raise
+    return VersionGuardada(codigo=nuevo_codigo, cambios=1, total=elaboracion.presupuesto.total)
 
 
 def _en_una_transaccion(sesion: Session, accion: Callable[[], str]) -> str:
