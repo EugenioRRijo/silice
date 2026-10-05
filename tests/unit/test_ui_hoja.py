@@ -47,9 +47,7 @@ def test_la_pantalla_no_crea_la_base_si_no_existe(monkeypatch, tmp_path):
 def test_el_bano_sembrado_muestra_cantidades_derivadas_y_el_informe(monkeypatch, tmp_path):
     at = _arrancar(monkeypatch, tmp_path / "no_existe.db", borrador=espacio_bano())
     texto = " ".join(m.value for m in at.markdown)
-    assert "AF-TUB-PVC-3/4" in texto or any(
-        "AF-TUB-PVC-3/4" in str(d.value) for d in at.dataframe
-    )
+    assert "AF-TUB-PVC-3/4" in texto or any("AF-TUB-PVC-3/4" in str(d.value) for d in at.dataframe)
     assert "Informe de auditoria" in " ".join(s.value for s in at.subheader)
     assert "R8" in texto  # el informe declara las reglas del espacio
 
@@ -63,3 +61,14 @@ def test_el_estado_va_fuera_de_los_editores(monkeypatch, tmp_path):
 def test_la_primera_pestana_es_espacio_y_metrajes():
     assert PESTANAS[0] == "Espacio y metrajes"
 
+
+def test_la_oficina_sembrada_muestra_las_tres_especialidades(monkeypatch, tmp_path):
+    from tests.fixtures.espacio_of001 import espacio_of001
+
+    at = _arrancar(monkeypatch, tmp_path / "no_existe.db", borrador=espacio_of001())
+    cantidades = [d.value for d in at.dataframe if "Partida" in list(d.value.columns)]
+    assert len(cantidades) == 1
+    partidas = set(cantidades[0]["Partida"])
+    assert {"AF-TUB-PVC-3/4", "DR-TUB-PVC-2", "DT-UTP-CAT-6", "EL-COND-12-AWG"} <= partidas
+    estados = [d for d in at.dataframe if "Estado" in list(d.value.columns)]
+    assert len(estados) == 3
