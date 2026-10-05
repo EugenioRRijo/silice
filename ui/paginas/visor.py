@@ -43,6 +43,7 @@ from pandas import DataFrame
 from core.contracts import ItemComputo
 from core.verification.informe import DECIMALES_PRESENTACION
 from core.verification.texto import formatear_decimal
+from ui.subidas import guardar_subida
 from ui.visor3d import mallas
 
 if TYPE_CHECKING:
@@ -87,8 +88,11 @@ def render() -> None:
         return
 
     with tempfile.TemporaryDirectory() as carpeta:
-        ruta_temporal = Path(carpeta) / archivo.name
-        ruta_temporal.write_bytes(archivo.getvalue())
+        try:
+            ruta_temporal = guardar_subida(carpeta, archivo)
+        except ValueError as error:
+            st.error(f"{error}. Renombre el archivo y vuelva a subirlo.")
+            return
         _render_desde_ruta(ruta_temporal)
 
 

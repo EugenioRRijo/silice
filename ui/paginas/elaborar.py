@@ -57,6 +57,7 @@ from core.verification.texto import formatear_decimal
 from ui import elaboracion
 from ui.caso import ruta_caso
 from ui.resultado import mostrar_elaboracion
+from ui.subidas import guardar_subida
 
 CODIGO_POR_DEFECTO = "P-001"
 MONEDA_POR_DEFECTO = "USD"
@@ -203,8 +204,7 @@ def _construir_adaptador(dominio: Dominio, codigos_civil: Mapping[str, str]) -> 
 def _extraer(dominio: Dominio, archivo, codigos_civil: Mapping[str, str]) -> None:
     try:
         with tempfile.TemporaryDirectory() as carpeta:
-            ruta_archivo = Path(carpeta) / archivo.name
-            ruta_archivo.write_bytes(archivo.getvalue())
+            ruta_archivo = guardar_subida(carpeta, archivo)
             adaptador = _construir_adaptador(dominio, codigos_civil)
             items = adaptador.extraer(ruta_archivo)
     except (LookupError, ValueError, ArithmeticError) as error:

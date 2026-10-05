@@ -11,7 +11,7 @@ que el usuario quiere con `ui.caso.pedir_accion` y la pantalla de destino lo ati
 | Importar plano | solo si `adapters.espacio.planos` es importable (SF5); lleva a la hoja |
 | Precios | la pestana Precios de la hoja si existe; si no, la pantalla Actualizar precios |
 | Auditar | resume el informe de la version vigente (se audita siempre; el boton lo muestra) |
-| Guardar version / Exportar Excel | dependen de SF3: deshabilitados hasta que `ui.hoja` exponga sus funciones |
+| Guardar version, Exportar Excel | dependen de SF3: deshabilitados hasta que `ui.hoja` exista |
 | Recorrido guiado | abre o retoma el recorrido de UC-12 |
 
 **Ganchos declarados.** `FUNCIONES_DE_SF3` nombra las dos funciones que `ui.hoja` debe exponer para
@@ -240,6 +240,8 @@ def pintar_barra(ruta: str, ir_a: Callable[[str], None]) -> None:
                 ):
                     _ir_con_accion(ir_a, RUTA_HOJA, accion)
         with next(celdas):
-            rotulo = ROTULO_RECORRIDO if recorrido is None else ROTULO_RETOMAR.format(recorrido.nombre)
+            rotulo = ROTULO_RECORRIDO
+            if recorrido is not None:
+                rotulo = ROTULO_RETOMAR.format(recorrido.nombre)
             if st.button(rotulo, width="stretch", key="barra_recorrido"):
                 ir_a(destino_de_recorrido(recorrido, ruta))

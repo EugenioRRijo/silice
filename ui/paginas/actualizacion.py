@@ -65,6 +65,7 @@ from core.verification.informe import DECIMALES_PRESENTACION
 from core.verification.texto import formatear_decimal
 from scripts.seed import NOMBRE_PROYECTO, sembrar
 from ui.caso import ruta_caso
+from ui.subidas import guardar_subida
 
 CODIGO_BASE_POR_DEFECTO = "001"
 CODIGO_NUEVO_POR_DEFECTO = "002"
@@ -233,9 +234,7 @@ def _vista_previa(ruta: Path, archivo) -> tuple[PrecioLeido, ...]:
 def _archivo_temporal(archivo) -> Iterator[Path]:
     """El archivo subido, con su nombre, en una carpeta temporal que se borra al salir."""
     with tempfile.TemporaryDirectory() as carpeta:
-        ruta_archivo = Path(carpeta) / archivo.name
-        ruta_archivo.write_bytes(archivo.getvalue())
-        yield ruta_archivo
+        yield guardar_subida(carpeta, archivo)
 
 
 # ---------------------------------------------------------------------------------------------

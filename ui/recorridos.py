@@ -116,6 +116,13 @@ RECORRIDOS: tuple[Recorrido, ...] = (
                 "«Elaborar presupuesto»; descargue el Excel.",
                 "Se descarga el libro con su hoja de auditoria.",
             ),
+            Paso(
+                "Revisar en la hoja del proyecto",
+                "hoja",
+                "Abra la hoja del proyecto: describa el espacio en las tablas y revise las "
+                "cantidades derivadas, la columna Estado de cada fila y el informe de auditoria.",
+                "Ve el total del presupuesto y el informe de auditoria del borrador.",
+            ),
         ),
     ),
     Recorrido(

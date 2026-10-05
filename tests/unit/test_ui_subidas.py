@@ -42,7 +42,7 @@ class Subida:
         ("C:\\Windows\\win.ini", "win.ini"),
         ("\\\\servidor\\recurso\\datos.csv", "datos.csv"),
         ("C:datos.csv", "C_datos.csv"),
-        ("a<b>c|d?e*f\"g.csv", "a_b_c_d_e_f_g.csv"),
+        ('a<b>c|d?e*f"g.csv', "a_b_c_d_e_f_g.csv"),
         ("con\x00trol\x1f.csv", "con_trol_.csv"),
         ("  espacios.csv  ", "espacios.csv"),
         ("termina_en_punto.csv.", "termina_en_punto.csv"),

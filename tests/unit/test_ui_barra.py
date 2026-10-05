@@ -148,7 +148,8 @@ def test_la_barra_oculta_importar_plano_mientras_sf5_no_llega(monkeypatch, caso_
         barra.ROTULO_EXPORTAR,
         barra.ROTULO_RECORRIDO,
     ]
-    assert [p.proto.popover.label for p in at.get("popover")] == [barra.ROTULO_PROYECTO, barra.ROTULO_AUDITAR]
+    popovers = [p.proto.popover.label for p in at.get("popover")]
+    assert popovers == [barra.ROTULO_PROYECTO, barra.ROTULO_AUDITAR]
 
 
 def test_importar_plano_aparece_si_existe_el_paquete_y_lleva_a_la_hoja(
