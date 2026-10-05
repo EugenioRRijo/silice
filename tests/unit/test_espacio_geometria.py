@@ -607,3 +607,36 @@ def test_drenaje_por_el_piso_va_empotrado_por_defecto() -> None:
     )
     (segmento,) = [s for s in analizar(declarado, "agua").segmentos if s.sirve == ("D1",)]
     assert segmento.empotrado is True
+
+
+def test_d4_vale_por_superficie_declarada_a_cualquier_cota() -> None:
+    """El empotrado por defecto depende de la superficie del tramo, no de su cota (pendiente,
+    drenaje enterrado): un tramo de piso a z = -0,30 va empotrado y uno de techo, no."""
+    esp = espacio_bano()
+    colector = Fuente(
+        id="C1",
+        especialidad=Especialidad.AGUA,
+        tipo=TipoFuente.COLECTOR_DRENAJE,
+        ambiente_id="BAN-01",
+        posicion=c("2", "1.5", "0"),
+        origen_id="O1",
+    )
+    p = replace(
+        punto(esp, "P1"),
+        id="D1",
+        tipo=TipoPunto.DRENAJE,
+        superficie=SuperficiePunto.PISO,
+        posicion=c("0.5", "0.5", "0"),
+        fuente_id="C1",
+    )
+    esp = replace(esp, fuentes=esp.fuentes + (colector,), puntos=esp.puntos + (p,))
+    for superficie, z, esperado in (
+        (SuperficieTramo.PISO, "-0.3", True),
+        (SuperficieTramo.TECHO, "2.5", False),
+    ):
+        tramo = Tramo(orden=1, superficie=superficie, vertices=(c("0", "0", z), c("1", "0", z)))
+        r = Recorrido(id="R-D1", punto_id="D1", modo=ModoRecorrido.DECLARADO, tramos=(tramo,))
+        segmentos = analizar(replace(esp, recorridos=esp.recorridos + (r,)), "agua").segmentos
+        (segmento,) = [s for s in segmentos if s.sirve == ("D1",)]
+        assert segmento.empotrado is esperado, superficie
+        assert segmento.superficie is superficie
