@@ -703,6 +703,27 @@ sin_trazado = pytest.mark.skipif(
 )
 
 
+#: Lo que tarda en una maquina de desarrollo sin carga la carga de referencia de `_lentitud()`.
+_REFERENCIA_S = 0.19
+
+
+def _lentitud() -> float:
+    """Cuanto mas lenta esta la maquina (o el proceso: heap grande de una suite larga, otros
+    procesos) que cuando se fijaron los umbrales: 1 o mas. Mide una carga fija de Decimal y orden
+    (el mismo tipo de trabajo que la geometria) y toma la mejor de tres."""
+    mejor = float("inf")
+    for _ in range(3):
+        a, b, acumulado, filas = D("1.234567"), D("0.000123"), D(0), []
+        inicio = time.perf_counter()
+        for i in range(150_000):
+            c = (a - b) * a + b
+            acumulado += c
+            filas.append((c, i))
+        filas.sort()
+        mejor = min(mejor, time.perf_counter() - inicio)
+    return max(1.0, mejor / _REFERENCIA_S)
+
+
 def _mediana_de_tres(trabajo) -> float:
     """Mediana de tres corridas, cada una con la cache vacia (si no, la 2.a y la 3.a medirian un
     acierto de cache y no el calculo)."""
@@ -713,6 +734,12 @@ def _mediana_de_tres(trabajo) -> float:
         trabajo()
         tiempos.append(time.perf_counter() - inicio)
     return sorted(tiempos)[1]
+
+
+def _umbral() -> float:
+    """1,5 s en la maquina de referencia, escalado por su lentitud actual: el umbral es relativo.
+    Una regresion cuadratica (11 s en el pasillo) lo supera aun con la maquina 5 veces mas lenta."""
+    return 1.5 * _lentitud()
 
 
 def _ciclo(esp: Espacio) -> None:
@@ -728,16 +755,18 @@ def _cuadricula_500() -> Espacio:
 
 @sin_trazado
 def test_escala_500_puntos_en_menos_de_un_segundo_y_medio() -> None:
-    """`analizar` con 500 puntos (cuadricula): mediana de tres corridas, umbral laxo (1,5 s)."""
+    """`analizar` con 500 puntos (cuadricula): mediana de tres corridas, umbral laxo y relativo
+    (1,5 s en la maquina de referencia, escalado por su lentitud actual)."""
     esp = _cuadricula_500()
     segs = []
 
     def trabajo() -> None:
         segs[:] = analizar(esp, Especialidad.AGUA).segmentos
 
+    umbral = _umbral()
     segundos = _mediana_de_tres(trabajo)
     assert len(segs) > 500
-    assert segundos < 1.5, f"analizar tardo {segundos:.2f} s (mediana de 3) con 500 puntos"
+    assert segundos < umbral, f"analizar tardo {segundos:.2f} s (mediana de 3; umbral {umbral:.2f})"
 
 
 @sin_trazado
@@ -748,8 +777,9 @@ def test_el_ciclo_derivar_r8_r9_con_500_puntos_cabe_en_un_segundo_y_medio(forma)
     Antes de la correccion: 2,3 s (cuadricula) y 11,6 s (pasillo), por tres uniones y un indice
     cuadratico cuando muchos nodos comparten x."""
     esp = _cuadricula_500() if forma == "cuadricula" else _pasillo(500)
+    umbral = _umbral()
     segundos = _mediana_de_tres(lambda: _ciclo(esp))
-    assert segundos < 1.5, f"{forma}: el ciclo tardo {segundos:.2f} s (mediana de 3)"
+    assert segundos < umbral, f"{forma}: el ciclo tardo {segundos:.2f} s (umbral {umbral:.2f})"
 
 
 def test_derivar_r8_y_r9_comparten_una_sola_union(monkeypatch, sin_cache) -> None:

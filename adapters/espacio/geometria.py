@@ -331,9 +331,9 @@ class _IndiceNodos:
             sorted((getattr(n, eje), r) for r, n in enumerate(nodos)) for eje in ("x", "y", "z")
         ]
         self._valores = [[v for v, _ in e] for e in self._ejes]
-        self._xs = [n.x for n in nodos]
-        self._ys = [n.y for n in nodos]
-        self._zs = [n.z for n in nodos]
+        self.xs = [n.x for n in nodos]
+        self.ys = [n.y for n in nodos]
+        self.zs = [n.z for n in nodos]
 
     def cercanos(self, a: Coord, b: Coord) -> list[int]:
         """Rangos de los nodos dentro de la caja de (a, b) con margen TOLERANCIA."""
@@ -357,7 +357,7 @@ class _IndiceNodos:
                 if e == 0 or r[1] - r[0] < rango[1] - rango[0]:
                     mejor, rango = e, r
             candidatos = (r for _, r in self._ejes[mejor][rango[0] : rango[1]])
-        xs, ys, zs = self._xs, self._ys, self._zs
+        xs, ys, zs = self.xs, self.ys, self.zs
         lx, ly, lz, hx, hy, hz = lo.x, lo.y, lo.z, hi.x, hi.y, hi.z
         return [
             r for r in candidatos if lx <= xs[r] <= hx and ly <= ys[r] <= hy and lz <= zs[r] <= hz
@@ -399,9 +399,10 @@ def _segmentos_de_fuente(
     indice = _IndiceNodos(nodos)
     rango = {n: r for r, n in enumerate(nodos)}
 
-    # llave (rango menor, rango mayor) -> [sirve, diametros, empotrados, superficies, largo]
-    acumulado: dict[tuple[int, int], list] = {}
-    for pz in piezas:
+    # llave (rango menor, rango mayor) -> (piezas que la cubren, largo que cada una le aporta)
+    acumulado: dict[tuple[int, int], tuple[list[int], list[Decimal]]] = {}
+    columnas = (indice.xs, indice.ys, indice.zs)
+    for indice_pieza, pz in enumerate(piezas):
         a, b = rep[pz.a], rep[pz.b]
         if a == b:
             continue  # largo cero tras unir los nodos vecinos
@@ -409,20 +410,41 @@ def _segmentos_de_fuente(
         d = _vec(a, b)
         largo2 = _punto_escalar(d, d)
         largo = a.distancia(b)
-        ax, ay, az = a.x, a.y, a.z
-        dx, dy, dz = d
         cortes: list[tuple[Decimal, int]] = []
-        for r in indice.cercanos(a, b):
-            if r == ra or r == rb:
-                continue
-            n = nodos[r]
-            t = ((n.x - ax) * dx + (n.y - ay) * dy + (n.z - az) * dz) / largo2
-            if not (0 < t < 1):
-                continue
-            ex, ey, ez = ax + t * dx - n.x, ay + t * dy - n.y, az + t * dz - n.z
-            d2 = ex * ex + ey * ey + ez * ez
-            if d2 < _SEGURO_DENTRO or (d2 <= _SEGURO_FUERA and _a_tolerancia_del_pie(n, a, d, t)):
-                cortes.append((t, r))
+        candidatos = [r for r in indice.cercanos(a, b) if r != ra and r != rb]
+        ejes = [k for k in range(3) if d[k]]
+        if len(ejes) == 1:
+            # pieza paralela a un eje (lo habitual: recorridos ortogonales). Misma cuenta que la
+            # general, que suma terminos nulos: t es identico y el desvio perpendicular solo pierde
+            # un termino ~1e-56 que no cambia el veredicto (lo dudoso lo decide la raiz exacta).
+            k = ejes[0]
+            c_k, c_p, c_q = columnas[k], columnas[(k + 1) % 3], columnas[(k + 2) % 3]
+            origen = (a.x, a.y, a.z)
+            a_k, a_p, a_q, d_k = origen[k], origen[(k + 1) % 3], origen[(k + 2) % 3], d[k]
+            for r in candidatos:
+                t = ((c_k[r] - a_k) * d_k) / largo2
+                if not (0 < t < 1):
+                    continue
+                ep, eq = a_p - c_p[r], a_q - c_q[r]
+                d2 = ep * ep + eq * eq
+                if d2 < _SEGURO_DENTRO or (
+                    d2 <= _SEGURO_FUERA and _a_tolerancia_del_pie(nodos[r], a, d, t)
+                ):
+                    cortes.append((t, r))
+        else:
+            ax, ay, az = a.x, a.y, a.z
+            dx, dy, dz = d
+            xs, ys, zs = columnas
+            for r in candidatos:
+                t = ((xs[r] - ax) * dx + (ys[r] - ay) * dy + (zs[r] - az) * dz) / largo2
+                if not (0 < t < 1):
+                    continue
+                ex, ey, ez = ax + t * dx - xs[r], ay + t * dy - ys[r], az + t * dz - zs[r]
+                d2 = ex * ex + ey * ey + ez * ez
+                if d2 < _SEGURO_DENTRO or (
+                    d2 <= _SEGURO_FUERA and _a_tolerancia_del_pie(nodos[r], a, d, t)
+                ):
+                    cortes.append((t, r))
         # las longitudes se miden sobre el segmento original (t * largo): partirlo en un nodo
         # que se desvía menos de la tolerancia no lo dobla ni lo alarga. El rango ordena igual
         # que (x, y, z), asi el desempate de t iguales es el de siempre.
@@ -432,22 +454,22 @@ def _segmentos_de_fuente(
             llave = (r_ant, r_sig) if r_ant <= r_sig else (r_sig, r_ant)
             reg = acumulado.get(llave)
             if reg is None:
-                reg = acumulado[llave] = [set(), {}, set(), set(), CERO]
-            reg[0].add(pz.sirve)
-            if pz.diametro is not None:
-                # sin repetir y en orden de aparicion: `max` desempata igual que con la lista entera
-                reg[1][pz.diametro] = None
-            reg[2].add(pz.empotrado)
-            reg[3].add(pz.superficie)
-            tramo = (t_sig - t_ant) * largo
-            if tramo > reg[4]:
-                reg[4] = tramo
+                reg = acumulado[llave] = ([], [])
+            reg[0].append(indice_pieza)
+            reg[1].append((t_sig - t_ant) * largo)
             t_ant, r_ant = t_sig, r_sig
 
     sobre = {s.clave: s for s in espacio.sobrescrituras}
     segmentos: list[Segmento] = []
-    for (ia, ib), (sirve, diametros, empotrados, superficies, largo_unido) in acumulado.items():
+    for (ia, ib), (cubren, largos) in acumulado.items():
         a, b = nodos[ia], nodos[ib]
+        largo_unido = max(CERO, *largos)
+        cubiertas = [piezas[i] for i in cubren]
+        sirve = {pz.sirve for pz in cubiertas}
+        # sin repetir y en orden de aparicion: `max` desempata igual que con la lista entera
+        diametros = dict.fromkeys(pz.diametro for pz in cubiertas if pz.diametro is not None)
+        empotrados = {pz.empotrado for pz in cubiertas}
+        superficies = {pz.superficie for pz in cubiertas}
         clave = clave_segmento(fuente.id, a, b)
         diametro = max(diametros, key=_magnitud_diametro) if diametros else None
         conflicto = len(empotrados) > 1
