@@ -175,9 +175,9 @@ en blanco se rechaza con «Escriba un nombre para el proyecto: no puede quedar v
 existe (aunque cambien las mayúsculas o los espacios sobrantes) con «Ya existe un proyecto llamado
 …». Si el caso no existe todavía, el mensaje lo dice y no crea el archivo: ábralo o siémbrelo antes
 en el Inicio. Al crearlo, el proyecto queda abierto; un proyecto nuevo aún no tiene versión
-vigente («sin version guardada»), y la hoja del proyecto lo trata como un borrador sin versión:
-se puede describir el espacio e importar un plano, pero **Guardar version** necesita una versión
-abierta (ver «Limitaciones» en la sección 3.8).
+vigente («sin version guardada»), y la hoja del proyecto lo trata como un proyecto sin versiones:
+se describe el espacio o se importa un plano y se guarda la **primera versión** con **Guardar
+primera versión** (sección 3.8, «Guardar la primera versión»).
 
 **Abrir un proyecto.** En el mismo desplegable, elija uno en *Abrir un proyecto del caso* y pulse
 **Abrir**. La **versión vigente** es la última versión guardada del proyecto que no se descartó
@@ -513,14 +513,25 @@ ellos el botón **Guardar version** está deshabilitado y su ayuda dice qué fal
 cambiada queda en el registro de la versión nueva. Sin cambios no hay nada que guardar, y una versión en
 solo lectura (alguna partida ya no tiene APU vigente) no se puede guardar.
 
+**Guardar la primera versión de un proyecto nuevo.** Un proyecto recién creado en la barra no tiene
+versiones: la hoja lo dice con el aviso **Este proyecto aún no tiene versiones**. Describa el espacio
+(o importe un plano) —lo que ya había escrito se conserva al elegir el proyecto—, abra el panel
+**Guardar version y exportar a Excel**, escriba la **Fuente de la medida** (de dónde salen los datos:
+un plano, un acta) y el **Responsable**, y pulse **Guardar primera versión**. La hoja guarda la `001`
+y la abre. Decisiones que conviene conocer: los **precios** son los de la lista vigente a la fecha
+del borrador (si el catálogo no tiene ninguna, el mensaje lo dice y no se guarda nada: cárguela
+en *Actualizar precios*); los **parámetros** son los que muestra la pestaña *Parámetros* (los de la
+aplicación mientras no los cambie; los puede editar después y guardar una versión nueva); si no
+hay plan de trabajo se usa el **plan secuencial** (una partida por periodo), que puede editar en
+*Plan y curva*; y la versión deja **un registro de creación** (pestaña *Trazabilidad*) con su fuente y
+su responsable. Desde la segunda versión se usa **Guardar version**, como siempre.
+
 **Exportar el Excel (UC‑16).** **Exportar Excel** de la barra, o **Preparar Excel** en el panel, genera el
 libro de la hoja y **Descargar Excel** lo entrega (`hoja_<código>.xlsx`): las hojas de la hoja del
 proyecto con sus fórmulas vivas, más una hoja por tabla del espacio. El libro se genera solo al pedirlo.
 
-**Limitaciones del prototipo.** (1) **Un proyecto nuevo no se puede guardar todavía:** necesita una versión
-abierta para guardar, y el sistema no crea la primera versión desde la hoja; el borrador se puede
-describir, importar, auditar y exportar a Excel, pero no guardar. (2) Cerrar la pestaña del navegador con
-cambios sin guardar los pierde: Streamlit no deja avisar. (3) Los datos de ejemplo (OF‑001) son un caso
+**Limitaciones del prototipo.** (1) Cerrar la pestaña del navegador con
+cambios sin guardar los pierde: Streamlit no deja avisar. (2) Los datos de ejemplo (OF‑001) son un caso
 construido, no una obra ejecutada.
 
 ## 4. El informe de auditoría
@@ -627,7 +638,7 @@ Cada carpeta trae su `README.md` con el formato exacto de columnas.
 | «Guardar composicion» no se puede pulsar | Faltan las condiciones del rendimiento (RF‑33): escribirlas |
 | «no hay ninguna lista de precios vigente» al guardar | La base está vacía o la fecha es anterior a toda lista: sembrar con `scripts/seed_demo.py` o cambiar la fecha |
 | «Escriba un nombre para el proyecto» o «Ya existe un proyecto llamado …» al crear un proyecto | El nombre quedó en blanco o ya lo usa otro proyecto del caso: escribir otro, o abrir el existente con **Abrir** |
-| **Guardar version** de la hoja está deshabilitado | La ayuda del botón dice por qué: no hay una versión abierta (un borrador nuevo no se guarda), no hay cambios, falta la fuente o el responsable, o la versión está en solo lectura |
+| **Guardar version** (o **Guardar primera versión**) de la hoja está deshabilitado | La ayuda del botón dice por qué: el borrador no pertenece a ningún proyecto (elija o cree uno), no hay cambios, falta la fuente o el responsable, o la versión está en solo lectura |
 | **Guardar version** o **Exportar Excel** de la barra aparecen deshabilitados con «Todavía no está disponible…» | La hoja del proyecto no está instalada en esta copia: actualizar el repositorio |
 | **Importar plano** no aparece en la barra | El componente de planos no está instalado en esta copia; con `uv sync --extra planos` (DXF) o `--extra civil` (IFC) vuelve a funcionar |
 | «Falta instalar el componente para leer planos DXF» al leer un plano | Falta el extra `planos` (DXF) o `civil` (IFC): `uv sync --extra planos` |

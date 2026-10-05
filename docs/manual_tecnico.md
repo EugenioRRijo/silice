@@ -595,9 +595,10 @@ que siguen siendo supuestos (circuitos sin declarar). `tests/unit/test_hoja_plan
 archivos) y `tests/integration/test_aceptacion_sf.py` (del DXF de OF‑001 al Excel evaluado con
 `formulas`) lo comprueban.
 
-**Límites conocidos.** (1) Un proyecto nuevo de la barra no tiene versión y `guardar_version` exige una
-abierta: **no hay forma de guardar su primera versión desde la hoja** (diferido; requiere decidir la
-lista de precios de la primera versión). (2) El Excel de la hoja no se reimporta (RS‑3). (3) Un
+**Límites conocidos.** (1) La primera versión de un proyecto nuevo se guarda con `ui.hoja.crear_primera_version` (RI‑7):
+lista vigente a la fecha del borrador, parámetros del borrador, plan secuencial si no hay plan, un
+`RegistroCambio` de creación y sin `VersionOrigen` (el núcleo no tiene motivo `creacion`; propuesta en la
+bitácora, RI‑17). (2) El Excel de la hoja no se reimporta (RS‑3). (3) Un
 borrador nuevo usa los parámetros por defecto de la aplicación (bono 1,00), no los del caso: por eso
 su total puede diferir del de una versión guardada con otros parámetros.
 

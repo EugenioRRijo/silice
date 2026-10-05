@@ -605,7 +605,9 @@ ejecución, dejando constancia en [docs/bitacora/](bitacora/).
 - **Precondición:** `data/prueba_sf.db` recién sembrada (sección 4.1); la aplicación abierta con
   `ARENIA_CASO=data/prueba_sf.db` en **Inicio**, con `prueba_sf.db` bajo **Caso abierto**; la pantalla
   **Hoja del proyecto** (menú superior, sección **Trabajo**) con **(borrador nuevo, sin guardar)** en
-  el selector *Proyecto* y la pestaña **Espacio y metrajes**. La persona tiene en papel la **ficha del
+  el selector *Proyecto* y la pestaña **Espacio y metrajes**. (Desde la integración final el caso **termina
+  guardando**: el proyecto se crea al final, en los pasos 7 y 8, y el borrador pasa a él. Los pasos 7 y 8 suman
+  unos minutos al caso: ver la nota de RNF‑13 en 6.1.) La persona tiene en papel la **ficha del
   baño** (tabla siguiente).
 
 **Ficha del baño** (se entrega impresa; metros; eje z hacia arriba desde el piso terminado; son supuestos
@@ -629,6 +631,11 @@ declarados de la memoria `tests/fixtures/memorias/bano_of001.md`, no un plano re
 4. Observe el **Total del presupuesto** y baje a **Informe de auditoria**.
 5. En la pestaña **Presupuesto**, observe el precio unitario y el total de cada renglón.
 6. Abra el panel **Guardar version y exportar a Excel** y observe el botón **Guardar version**.
+7. En la barra de herramientas abra **Proyecto**, escriba `Baño de prueba` en *Nombre del proyecto nuevo* y
+   pulse **Crear proyecto**. Observe el aviso de la hoja y el panel de guardado.
+8. En *Fuente de la medida* escriba `ficha del baño de la prueba` y, en *Responsable*, su nombre (`Ing.
+   Participante`). Pulse **Guardar primera versión**. Observe el mensaje, los selectores *Proyecto* y
+   *Version* y la pestaña **Trazabilidad**.
 
 **Resultado esperado**
 
@@ -656,8 +663,21 @@ declarados de la memoria `tests/fixtures/memorias/bano_of001.md`, no un plano re
   `AF-LLAVE` 12.59 y 25.18; `AF-PICADO-PARED` 6.81 y 38.84; `AF-SALIDA` 6.59 y 13.19; `AF-TEE-3/4` 4.47 y
   4.47; `AF-TUB-PVC-1/2` 5.82 y 15.36; `AF-TUB-PVC-3/4` 9.05 y 62.71 (la suma de los renglones
   redondeados da 172.43; el total exacto es 172.42).
-- Paso 6: **Guardar version** está deshabilitado y su ayuda dice `Abra una version guardada para poder
-  guardar.` (un borrador nuevo no tiene versión: el guardado es de CP‑10).
+- Paso 6: **Guardar version** está deshabilitado y su ayuda dice `Elija o cree un proyecto (barra superior)
+  para poder guardar.` (el borrador todavía no pertenece a ningún proyecto).
+- Paso 7: mensaje de la barra `Proyecto «Baño de prueba» creado y abierto.`; la hoja pasa a ese proyecto **sin
+  perder lo escrito** (las tablas y el total `172.42 USD` siguen igual) y muestra el aviso azul `Este proyecto
+  aún no tiene versiones. Describa el espacio (o importe un plano) y guarde la primera version abajo, con su
+  fuente y su responsable.` El botón del panel se llama ahora **Guardar primera versión** y, sin fuente, su
+  ayuda dice `Escriba la fuente de la medida: de donde salen los datos (un plano, un acta).`
+- Paso 8: mensaje verde `Se guardo la primera version 001 del proyecto Baño de prueba (total 172.42). Quedo
+  registrada su creacion, con su fuente y su responsable.`; los selectores dicen `Baño de prueba` y `001`; ya
+  no hay aviso de cambios sin guardar; el **Total del presupuesto** sigue en `172.42 USD`. El informe, ahora
+  con el plan secuencial de la aplicación, dice `Hallazgos: 4 · Resultado: CUMPLE`: las **cuatro ADVERTENCIA**
+  de R8 (la medida es un supuesto) y ninguna INFO de R2 y R7 (la versión guardada trae curva y plan).
+  **Trazabilidad** muestra el historial (`001`, elaborada, 1 cambio, vigente) y **un** registro: objeto
+  `version`, clave `001`, campo `creacion`, antes vacío, después `001`, la fuente, el responsable y la fecha y
+  hora.
 
 | Resultado obtenido | Veredicto |
 |---|---|
@@ -688,6 +708,10 @@ declarados de la memoria `tests/fixtures/memorias/bano_of001.md`, no un plano re
 6. Pulse **Fusionar con el espacio del borrador**.
 7. Observe las tablas, **Cantidades derivadas**, el **Total del presupuesto** y el **Informe de auditoria**.
 8. Observe el botón **Guardar version**.
+9. En la barra de herramientas abra **Proyecto**, escriba `Oficina del plano` en *Nombre del proyecto nuevo* y
+   pulse **Crear proyecto**. En *Fuente de la medida* escriba `plano of001.dxf y memoria de calculo` y, en
+   *Responsable*, su nombre. Pulse **Guardar primera versión** y observe el mensaje y el **Total del
+   presupuesto**.
 
 **Resultado esperado**
 
@@ -711,7 +735,12 @@ declarados de la memoria `tests/fixtures/memorias/bano_of001.md`, no un plano re
   `2577.59 USD`**, el mismo de la hoja manual de OF‑001 con los parámetros por defecto. El informe dice
   `Hallazgos: 2 · Resultado: CUMPLE`: dos INFO (R2 y R7, sin curva ni plan) y R8, R9 y R10 en cero (el plano
   es un origen de medida con archivo y las alturas están cargadas).
-- Paso 8: **Guardar version** está deshabilitado (el borrador nuevo no tiene versión: ver CP‑10).
+- Paso 8: **Guardar version** está deshabilitado y su ayuda dice `Elija o cree un proyecto (barra superior)
+  para poder guardar.` (el borrador todavía no pertenece a ningún proyecto).
+- Paso 9: la hoja pasa al proyecto nuevo sin perder las tablas ni el total; aparece el aviso `Este proyecto aún
+  no tiene versiones…`; al guardar, mensaje verde `Se guardo la primera version 001 del proyecto Oficina del
+  plano (total 2577.59).…`; el **Total del presupuesto** sigue en `2577.59 USD` (los parámetros por defecto
+  se guardan con la versión) y las tablas conservan las 6 ambientes, 6 fuentes y 21 puntos al reabrirse.
 
 | Resultado obtenido | Veredicto |
 |---|---|
@@ -821,6 +850,15 @@ exclusión cruzada de esos protocolos, de las que hayan hecho la medición del i
 expuesto a la tarea en otra medición. Ninguna vio antes la aplicación ni sus documentos; la segunda no
 presenció la sesión de la primera. Cada participante hace los cuatro casos **en este orden: CP‑08, CP‑09,
 CP‑10, CP‑11** (CP‑10 antes que CP‑11, que parte de su versión).
+
+**Efecto de RI‑7 resuelto (integración final).** CP‑08 y CP‑09 ya **terminan guardando** su primera versión
+(pasos 7 y 8 de CP‑08, paso 9 de CP‑09): suman unos minutos a cada caso, pero el umbral de ≤ 15 min **no se
+cambia** (se fijó antes de medir y esta suma no lo cambia de forma material; si algún participante supera el
+umbral solo por esos pasos, se anota en el registro como hallazgo de la medición, no como cambio del
+umbral). **CP‑10 y CP‑11 siguen partiendo de OF‑001 `001` de `data/prueba_sf.db`, no de lo creado en CP‑08 y
+CP‑09**: sus valores esperados (2703.86, Día 23, `MAT‑003`) son los de OF‑001 con el bono adoptado del caso y
+los de lo creado en CP‑08 y CP‑09 serían otros (172.42 y 2577.59, con el bono por defecto); partir de lo
+creado obligaría a reescribir y volver a ejecutar esos dos casos. Queda declarado.
 
 **Condiciones.** Las de CP‑07: copia desechable (sección 4, paso 1), base propia
 `data/prueba_sf.db` sembrada de nuevo antes de **cada participante** (sección 4.1), `ARENIA_MODO_ENTREGA`
@@ -978,7 +1016,12 @@ confirma en la primera sesión de Med. Se cotejó con aritmética aparte: las oc
 `tests/fixtures/memorias/bano_of001.md` (exactas); las cantidades de CP‑09 con la hoja manual de OF‑001
 (±0,001 m, prueba `tests/integration/test_aceptacion_sf.py`) y su total con la hoja manual con los mismos
 parámetros (2577.59 USD, no 2703.86: esa cifra usa el bono adoptado del caso, 5.81, y un borrador nuevo
-usa el de la aplicación, 1.00); el total de CP‑10, 2703.86 + 6,93 × 0,05 × 5,1648 × 1,15 × 1,10 =
+usa el de la aplicación, 1.00); los pasos 7 y 8 de CP‑08 y el paso 9 de CP‑09 (guardar la primera versión, RI‑7) se obtuvieron con `AppTest`
+sobre una copia de `scripts/seed_of001.py` con un proyecto vacío (`tests/unit/test_ui_hoja_primera_version.py`
+y el recorrido de CP‑08 con las filas de la ficha): el mensaje, el aviso, la ayuda del botón, los selectores y
+la trazabilidad se leyeron de la pantalla; el total de CP‑09 tras guardar (2577.59) se comprobó a nivel de la
+hoja (`tests/integration/test_primera_version.py`), **no** con el plano subido por la interfaz; el total de
+CP‑10, 2703.86 + 6,93 × 0,05 × 5,1648 × 1,15 × 1,10 =
 2706.12, y el 56,60 % del equilibrio como 0,15 / 0,265. El total de CP‑08 (172.42) se obtuvo ejecutando
 el sistema: no tiene una memoria a mano propia (la suma de los renglones redondeados da 172.43).
 
