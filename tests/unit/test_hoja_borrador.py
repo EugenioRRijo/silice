@@ -433,7 +433,7 @@ def test_cambiar_el_insumo_de_una_linea_toma_la_descripcion_la_unidad_y_el_preci
 
     assert (nueva.materiales[0].descripcion, nueva.materiales[0].unidad) == (
         "Llave de bola 1/2",
-        "pza",
+        "pieza",  # el contrato normaliza la unidad: pza -> pieza
     )
     assert nueva.materiales[0].precio == D("12.50") and nueva.materiales[0].cantidad == D("1")
     assert nueva.materiales[1] == apu.materiales[1]

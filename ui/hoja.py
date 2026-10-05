@@ -98,7 +98,12 @@ from core.contracts.item_computo import OrigenTipo
 from core.verification import REGLAS
 from core.verification.informe import DECIMALES_PRESENTACION
 from core.verification.texto import formatear_decimal
-from ui.composicion import ComposicionInvalida, decimal_desde_texto, texto_de_celda
+from ui.composicion import (
+    ComposicionInvalida,
+    decimal_desde_texto,
+    filas_desde_composicion,
+    texto_de_celda,
+)
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
@@ -731,6 +736,145 @@ def cantidades_desde_filas(
     return escritas
 
 
+# --- edicion del APU en la copia de la version (DA-SF-7) -----------------------------------------
+
+
+def filas_de_apu(
+    composicion: ComposicionAPU,
+) -> tuple[list[dict[str, str]], list[dict[str, str]], list[dict[str, str]]]:
+    """Las tres tablas de texto de un APU (materiales, equipos, mano de obra) para el editor.
+
+    Solo la `cantidad` de cada linea y el rendimiento se editan en la hoja: el resto de las
+    columnas son del insumo (su precio sale de la lista de la version, pestana Precios)."""
+    return filas_desde_composicion(composicion)
+
+
+def _cantidades_de_tabla(
+    filas: Sequence[Mapping[str, object]], grupo: str, esperadas: int
+) -> list[Decimal]:
+    if len(filas) != esperadas:
+        raise HojaInvalida(
+            f"{grupo}: la tabla tiene {len(filas)} lineas y el APU {esperadas}; en la hoja solo "
+            "se edita la cantidad de cada linea (para agregar o quitar una, use Componer)"
+        )
+    cantidades = []
+    for numero, fila in enumerate(filas, start=1):
+        donde = f"{grupo}, fila {numero}"
+        try:
+            valor = decimal_desde_texto(texto_de_celda(fila, "cantidad"), f"{donde}: cantidad")
+        except ComposicionInvalida as error:
+            raise HojaInvalida(str(error)) from error
+        if valor < 0:
+            raise HojaInvalida(f"{donde}: la cantidad no puede ser negativa")
+        cantidades.append(valor)
+    return cantidades
+
+
+def composicion_con_cantidades(
+    base: ComposicionAPU,
+    materiales: Sequence[Mapping[str, object]],
+    equipos: Sequence[Mapping[str, object]],
+    mano_obra: Sequence[Mapping[str, object]],
+    rendimiento: str,
+) -> ComposicionAPU:
+    """El APU `base` con las cantidades de linea de las tres tablas y el rendimiento escritos.
+
+    Solo cambian la cantidad de cada linea y el rendimiento; descripcion, unidad, precio y
+    depreciacion son los de `base`. `HojaInvalida` dice la tabla, la fila y el campo.
+    """
+    cant_m = _cantidades_de_tabla(materiales, "materiales", len(base.materiales))
+    cant_e = _cantidades_de_tabla(equipos, "equipos", len(base.equipos))
+    cant_o = _cantidades_de_tabla(mano_obra, "mano de obra", len(base.mano_obra))
+    try:
+        valor = decimal_desde_texto(rendimiento, "rendimiento")
+        return replace(
+            base,
+            rendimiento=valor,
+            materiales=tuple(
+                replace(linea, cantidad=c) for linea, c in zip(base.materiales, cant_m, strict=True)
+            ),
+            equipos=tuple(
+                replace(linea, cantidad=c) for linea, c in zip(base.equipos, cant_e, strict=True)
+            ),
+            mano_obra=tuple(
+                replace(linea, cantidad=c) for linea, c in zip(base.mano_obra, cant_o, strict=True)
+            ),
+        )
+    except (ComposicionInvalida, ValueError) as error:
+        raise HojaInvalida(str(error)) from error
+
+
+@dataclass(frozen=True, slots=True)
+class FilaInsumo:
+    """Un insumo del catalogo con el precio que tiene en la lista de la version."""
+
+    codigo: str
+    descripcion: str
+    unidad: str
+    precio: Decimal
+
+
+#: Los tres tipos de linea de un APU, como los llama el catalogo.
+TIPOS_DE_LINEA = ("material", "equipo", "mano_obra")
+
+
+def insumos_candidatos(
+    sesion: Session, proyecto: str, codigo: str, tipo: str, texto: str, limite: int = 20
+) -> list[FilaInsumo]:
+    """Los insumos de `tipo` cuya descripcion contiene `texto` y que la lista de la version
+    valora, con ese precio: los que se pueden elegir para una linea de un APU (spec §9.2).
+
+    Ordenados por descripcion; a lo sumo `limite`. Sin `texto`, los primeros.
+    """
+    lista = _modelo(sesion, proyecto, codigo).lista_precios
+    consulta = (
+        select(models.Insumo, models.PrecioInsumo.precio)
+        .join(models.PrecioInsumo, models.PrecioInsumo.insumo_id == models.Insumo.id)
+        .where(models.PrecioInsumo.lista_id == lista.id, models.Insumo.tipo == tipo)
+        .order_by(models.Insumo.descripcion, models.Insumo.id)
+        .limit(limite)
+    )
+    if texto.strip():
+        consulta = consulta.where(models.Insumo.descripcion.ilike(f"%{texto.strip()}%"))
+    return [
+        FilaInsumo(insumo.codigo, insumo.descripcion, insumo.unidad or "", precio)
+        for insumo, precio in sesion.execute(consulta)
+    ]
+
+
+def cambiar_insumo(
+    composicion: ComposicionAPU, tipo: str, indice: int, insumo: FilaInsumo
+) -> ComposicionAPU:
+    """El APU con la linea `indice` (desde 0) del grupo `tipo` apuntando a otro insumo: toma su
+    descripcion, su unidad y su precio; conserva la cantidad (y la depreciacion de un equipo)."""
+    if tipo not in TIPOS_DE_LINEA:
+        raise HojaInvalida(f"tipo de linea {tipo!r} desconocido; se espera uno de {TIPOS_DE_LINEA}")
+    grupo = {
+        "material": composicion.materiales,
+        "equipo": composicion.equipos,
+        "mano_obra": composicion.mano_obra,
+    }[tipo]
+    if not 0 <= indice < len(grupo):
+        raise HojaInvalida(
+            f"la linea {indice + 1} no existe: el grupo {tipo} tiene {len(grupo)} lineas"
+        )
+    linea = grupo[indice]
+    if tipo == "material":
+        nueva = replace(
+            linea, descripcion=insumo.descripcion, unidad=insumo.unidad, precio=insumo.precio
+        )
+    elif tipo == "equipo":
+        nueva = replace(linea, descripcion=insumo.descripcion, precio=insumo.precio)
+    else:
+        nueva = replace(linea, descripcion=insumo.descripcion, sueldo=insumo.precio)
+    cambiado = (*grupo[:indice], nueva, *grupo[indice + 1 :])
+    campo = {"material": "materiales", "equipo": "equipos", "mano_obra": "mano_obra"}[tipo]
+    try:
+        return replace(composicion, **{campo: cambiado})
+    except ValueError as error:
+        raise HojaInvalida(str(error)) from error
+
+
 # --- parametros ---------------------------------------------------------------------------------
 
 #: Los campos de `ParametrosCosto` que la pestana Parametros edita (no se agregan nuevos).
@@ -771,6 +915,13 @@ def ajustar_plan(plan: Sequence[PeriodoPlan], codigos: Iterable[str]) -> list[Pe
             siguiente += 1
             periodos.append((FORMATO_PERIODO.format(n=siguiente), ((codigo, Decimal(1)),)))
     return periodos
+
+
+def con_plan_secuencial(borrador: Borrador) -> Borrador:
+    """El borrador con un plan secuencial: una partida por periodo, al 100 %, en el orden del
+    presupuesto (`core.budget.plan_secuencial`). Para una version que no tiene plan."""
+    presupuesto = elaborar_borrador(replace(borrador, plan=None)).elaboracion.presupuesto
+    return replace(borrador, plan=tuple(plan_secuencial(presupuesto)))
 
 
 def plan_como_filas(
