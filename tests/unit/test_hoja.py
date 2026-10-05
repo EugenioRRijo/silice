@@ -295,12 +295,32 @@ def test_una_fila_invalida_es_un_error_con_la_fila_y_el_campo(tabla, campo, valo
     assert mensaje in str(error.value)
 
 
-def test_el_origen_supuesto_sin_motivo_es_un_error():
+def test_el_origen_supuesto_sin_motivo_pasa_al_borrador_y_el_estado_lo_marca_error():
+    """RF-44 / UC-13a: la hoja no rechaza la fila; R8 la marca ERROR en el Estado."""
     espacio = espacio_bano()
     filas = hoja.filas_desde_espacio(espacio)
     filas["origenes"][0]["referencia"] = ""
-    with pytest.raises(hoja.HojaInvalida, match="motivo"):
-        hoja.espacio_desde_filas(filas, base=espacio)
+    borrador = hoja.espacio_desde_filas(filas, base=espacio)
+    assert borrador.origenes[0].incompleto
+
+    estado = _elaborar(borrador).estado
+    assert estado["esp_puntos:P1"].severidad is Severidad.ERROR
+    assert "origen sin referencia" in estado["esp_puntos:P1"].texto
+    assert "motivo" in estado["esp_puntos:P1"].texto
+
+
+def test_una_fila_con_origen_vacio_pasa_al_borrador_y_el_estado_la_marca_error():
+    espacio = espacio_bano()
+    filas = hoja.filas_desde_espacio(espacio)
+    filas["puntos"][0]["origen_id"] = ""
+    filas["ambientes"][0]["origen_id"] = "FANTASMA"
+    borrador = hoja.espacio_desde_filas(filas, base=espacio)
+
+    estado = _elaborar(borrador).estado
+    assert estado["esp_puntos:P1"].severidad is Severidad.ERROR
+    assert "origen no registrado" in estado["esp_puntos:P1"].texto
+    assert estado["esp_ambientes:BAN-01"].severidad is Severidad.ERROR
+    assert "origen no registrado" in estado["esp_ambientes:BAN-01"].texto
 
 
 def test_circuitos_y_sobrescrituras_se_conservan_al_editar():

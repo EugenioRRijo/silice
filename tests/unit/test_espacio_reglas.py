@@ -224,21 +224,63 @@ def test_r8_sobrescritura_huerfana_no_es_r8_sino_r9():
     assert len(r9(minimo(sobrescrituras=(sobre,)))) == 1
 
 
+@pytest.mark.parametrize(
+    ("campo", "tabla", "quien"),
+    [
+        ("ambientes", "esp_ambientes:A", "ambiente A"),
+        ("fuentes", "esp_fuentes:F", "fuente F"),
+        ("puntos", "esp_puntos:P", "punto P"),
+    ],
+)
 @pytest.mark.parametrize("origen", ["NO-EXISTE", ""])
-def test_r8_fila_sin_origen_de_medida_es_error(origen):
-    espacio = minimo()
-    # el modelo ya rechaza esto al construirse (RF-03); la regla lo comprueba de todos modos para
-    # una instantanea corrompida despues de construida
-    object.__setattr__(espacio.puntos[0], "origen_id", origen)
+def test_r8_fila_sin_origen_de_medida_es_error(origen, campo, tabla, quien):
+    """RF-44 / UC-13a: la fila se acepta en el espacio (sin mutar nada) y R8 la marca ERROR."""
+    base = minimo()
+    filas = tuple(replace(f, origen_id=origen) for f in getattr(base, campo))
+    espacio = replace(base, **{campo: filas})
 
     assert r8(espacio) == [
         hallazgo(
             "R8",
             Severidad.ERROR,
-            "esp_puntos:P",
-            f"punto P: no cita un origen de medida registrado (origen_id {origen!r})",
+            tabla,
+            f"{quien}: origen no registrado (origen_id {origen!r})",
         )
     ]
+
+
+def test_r8_origen_sin_su_referencia_obligatoria_es_error():
+    """RF-44 / UC-13a: un origen al que le falta un dato se acepta y R8 lo marca ERROR."""
+    sin_motivo = OrigenMedida(id="SUP", tipo=TipoOrigen.SUPUESTO, referencia={})
+    sin_responsable = OrigenMedida(
+        id="LEV2", tipo=TipoOrigen.LEVANTAMIENTO, referencia={"fecha": "2026-10-01"}
+    )
+    espacio = minimo(
+        origenes=(LEVANTAMIENTO, sin_motivo, sin_responsable),
+        puntos=(punto("P1", origen="SUP"), punto("P2", origen="LEV2")),
+    )
+
+    assert r8(espacio) == [
+        hallazgo(
+            "R8",
+            Severidad.ERROR,
+            "esp_puntos:P1",
+            "punto P1: origen sin referencia (origen SUP: falta «motivo»)",
+        ),
+        hallazgo(
+            "R8",
+            Severidad.ERROR,
+            "esp_puntos:P2",
+            "punto P2: origen sin referencia (origen LEV2: falta «responsable»)",
+        ),
+    ]
+
+
+def test_r8_origen_supuesto_sin_motivo_no_revienta_y_solo_da_el_error_de_referencia():
+    sin_motivo = OrigenMedida(id="SUP", tipo=TipoOrigen.SUPUESTO, referencia={})
+    espacio = minimo(origenes=(LEVANTAMIENTO, sin_motivo), puntos=(punto(origen="SUP"),))
+
+    assert [h.severidad for h in r8(espacio)] == [Severidad.ERROR]
 
 
 # --- R9 -----------------------------------------------------------------------------------

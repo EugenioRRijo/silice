@@ -22,19 +22,32 @@ def test_cada_tipo_con_su_referencia_completa_es_valido(tipo, referencia):
 
 
 @pytest.mark.parametrize(("tipo", "referencia"), VALIDOS)
-def test_falta_cada_dato_de_la_referencia_se_rechaza(tipo, referencia):
-    for clave in referencia:
-        incompleta = {k: v for k, v in referencia.items() if k != clave}
-        with pytest.raises(ValueError, match=clave):
-            OrigenMedida(id="O", tipo=tipo, referencia=incompleta)
+def test_un_origen_completo_no_esta_incompleto(tipo, referencia):
+    origen = OrigenMedida(id="O", tipo=tipo, referencia=referencia)
+    assert origen.faltantes == () and not origen.incompleto
 
 
 @pytest.mark.parametrize(("tipo", "referencia"), VALIDOS)
-def test_un_dato_en_blanco_se_rechaza(tipo, referencia):
+def test_falta_un_dato_de_la_referencia_el_origen_se_acepta_y_queda_incompleto(tipo, referencia):
+    """RF-44 / UC-13a: la referencia faltante no se rechaza; R8 la marca ERROR."""
+    for clave in referencia:
+        incompleta = {k: v for k, v in referencia.items() if k != clave}
+        origen = OrigenMedida(id="O", tipo=tipo, referencia=incompleta)
+        assert origen.incompleto
+        assert origen.faltantes == (clave,)
+
+
+@pytest.mark.parametrize(("tipo", "referencia"), VALIDOS)
+def test_un_dato_en_blanco_cuenta_como_faltante(tipo, referencia):
     for clave in referencia:
         en_blanco = dict(referencia) | {clave: "   "}
-        with pytest.raises(ValueError, match=clave):
-            OrigenMedida(id="O", tipo=tipo, referencia=en_blanco)
+        origen = OrigenMedida(id="O", tipo=tipo, referencia=en_blanco)
+        assert origen.faltantes == (clave,)
+
+
+def test_un_origen_sin_ninguna_referencia_lista_todo_lo_que_falta():
+    origen = OrigenMedida(id="O", tipo=TipoOrigen.PLANO, referencia={})
+    assert origen.faltantes == ("plano", "lamina", "revision")
 
 
 def test_el_id_no_puede_estar_vacio():

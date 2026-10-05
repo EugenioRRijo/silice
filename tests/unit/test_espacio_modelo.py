@@ -175,9 +175,16 @@ def test_ids_repetidos_se_rechazan():
         Espacio(origenes=(_origen(),), ambientes=(_ambiente(), _ambiente()))
 
 
+def test_una_fila_con_origen_inexistente_o_vacio_se_acepta_y_la_marca_r8():
+    """RF-44 / UC-13a: el origen es el unico enlace que el modelo no exige; R8 lo marca ERROR."""
+    sin_origen = Espacio(ambientes=(_ambiente(),))
+    assert sin_origen.ambientes[0].origen_id == "O1" and not sin_origen.origenes
+    assert Espacio(ambientes=(_ambiente(origen_id=""),)).ambientes[0].origen_id == ""
+    punto = Espacio(origenes=(_origen(),), ambientes=(_ambiente(),), puntos=(_punto(origen_id=""),))
+    assert punto.puntos[0].origen_id == ""
+
+
 def test_referencias_a_filas_inexistentes_se_rechazan():
-    with pytest.raises(ValueError, match="origen"):
-        Espacio(ambientes=(_ambiente(),))
     with pytest.raises(ValueError, match="ambiente"):
         Espacio(origenes=(_origen(),), puntos=(_punto(),))
     with pytest.raises(ValueError, match="fuente"):
