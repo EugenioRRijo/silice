@@ -14,10 +14,12 @@ dependencies = [
 # Extras por capa. Se instalan solo cuando la sesion que los usa llega:
 #   uv sync --extra civil   (I3.1)   uv sync --extra ml (I2, I6)   uv sync --extra ui --extra api (I1, F.1)
 #   uv sync --extra informes (PDF del caso TI-001 y del glosario)
+#   uv sync --extra planos  (SF5: importar DXF)
 [project.optional-dependencies]
 ui = ["streamlit>=1.36"]
 api = ["fastapi>=0.110", "uvicorn>=0.29"]
 civil = ["ifcopenshell>=0.8"]
+planos = ["ezdxf>=1.3"]
 ml = ["scikit-learn>=1.4", "sentence-transformers>=3.0", "xgboost>=2.0"]
 informes = ["reportlab>=4.0", "matplotlib>=3.8"]
 
