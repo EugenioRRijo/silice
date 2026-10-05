@@ -131,6 +131,7 @@ def guardar_edicion(
         plan=plan,
         version_origen=origen,
         motivo="edicion",
+        heredar_insumos=True,
     )
     momento = ahora or datetime.now()
     session.add_all(
@@ -189,6 +190,7 @@ def restaurar_version(
         plan=plan_de_version(session, origen),
         version_origen=origen,
         motivo="restauracion",
+        heredar_insumos=True,
     )
     session.add(
         models.RegistroCambio(

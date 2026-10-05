@@ -1566,16 +1566,21 @@ rodeadas y documentadas, y son entrada de la revisión de contratos posterior a 
 | La lista «Importada» de un presupuesto de un tercero pasa a ser la vigente del caso desde su fecha (`core/budget/importacion.py::_lista_importada`; N‑2 y N‑7 de la revisión de arquitectura de C6): la heredan el marco de las pantallas, `POST /presupuestos`, «Elaborar», «Componer» y toda lista cargada después, y los APU del tercero entran al catálogo (UC‑03, recuento de G2, histórico de precios). Los importes no cambian; la procedencia sí | la importación rechaza una moneda distinta de la de la lista vigente y la ERS lo declara (UC‑05, postcondición). Cierre previsto, fuera de C6: excluir las listas importadas de `Catalogo.lista_vigente` con una marca en la tabla o un criterio sobre `origen` (toca `repositorio.py` y el esquema) | bitácora de C6 ([cierre](bitacora/2026-09-23-cierre.md), «Fase C6»); [expediente C6.4](bitacora/2026-09-29-C6-expedientes.md) |
 | El «pegamento» de `ml` y la receta ignorados/rechazados duplicados entre capas (U‑6 y O5 de las revisiones de C6): `_detector_de_atipicos` en `ui/paginas/actualizacion.py` y en `api/rutas/presupuestos.py` (más `_veredicto_bosque`), y la separación de `ResumenLista.desconocidos` en ignorados de 2a y rechazados de 2b, escrita en la pantalla, la API y `scripts/probar_precios_maprex.py` | `ResumenLista.desconocidos` reúne 2a y 2b y C6 no puede tocar `core/` fuera de sus cinco excepciones; cada capa compara con `insumos_desconocidos`. Cierre previsto: un `ResumenLista.rechazados` en el núcleo | revisiones de C6 (U‑6, O5); inventario de GC6 |
 | Los errores de lectura del XLSX no se traducen a `ValueError` en el lector del núcleo (`_hojas` y `_leer_tabla_excel`): un libro ilegible es `zipfile.BadZipFile` o `KeyError` | la API lo comprueba antes con `api.rutas.listas.comprobar_libro_legible` (422). La pantalla «Actualizar precios» **no** lo rodea: captura `LookupError`, `ValueError`, `ArithmeticError` y `SQLAlchemyError` (`ui/paginas/actualizacion.py:226` en la vista previa y `:263` al revalorar), y `zipfile.BadZipFile` no es ninguno (el `KeyError` de un zip sin partes sí es un `LookupError`), así que un `.xlsx` que no es un libro llega a la página como excepción sin capturar, ya al subirlo. Cierre previsto: traducir en `core.catalog.precios` | revisión de la pista A de C6 (H1, N2) |
-| Las líneas de `ComposicionAPU` no tienen vigencia temporal | limitación declarada. **Frase corregida en SF0; limitación cerrada en SF3 núcleo (SF‑E6, `core/budget/instantanea.py`).** Editar un APU sí afecta a los presupuestos emitidos, porque la recarga reconstruye la composición desde el catálogo y exige que el PU cuadre; el cierre previsto es la instantánea de composiciones por versión (SF‑E6, §7.2) | [modelo_datos.md §5](modelo_datos.md#5-estrategia-de-versionado) |
+| Las líneas de `ComposicionAPU` no tienen vigencia temporal | **Cerrada en el núcleo (SF‑E6, `core/budget/instantanea.py`); abierta en la API y en escenarios** hasta que `api/rutas/presupuestos.py` y `ui/paginas/escenarios.py` adopten `composiciones_de_presupuesto` (tarea obligatoria de `inc/sf3`). Mientras no lo hagan, esos dos consumidores siguen reconstruyendo la composición desde el catálogo y editar un APU del catálogo les afecta a los presupuestos emitidos; la recarga del núcleo ya lee la instantánea de cada versión | [modelo_datos.md §5](modelo_datos.md#5-estrategia-de-versionado) |
 
 ---
 
 ## 7. Enmienda del sprint final (SF): hoja del proyecto, edición trazable y barra superior
 
 Fuente única: [spec SF](especificaciones/2026-10-04-sprint-final-prototipo-design.md) §5, §6, §8 y
-§9; aquí se registran las vistas y las decisiones. **Estado: diseño, nada de esto existe aún en el
-código**; cada pieza pasa a las secciones 1 a 6 cuando se implementa y se fusiona. Plan:
-[PLAN_SF.md](../PLAN_SF.md).
+§9; aquí se registran las vistas y las decisiones. **Estado por pieza (fin de `inc/sf3-nucleo`):**
+SF‑E2 (edición, registro de cambios, restaurar), SF‑E3 (punto de equilibrio), SF‑E4 (Excel de la hoja
+y escape M‑1), SF‑E6 (instantánea de composiciones, rendimientos y plan) y SF‑E7 (origen de precios y
+cotizaciones por proyecto) están **implementadas en el núcleo** y con sus pruebas; SF‑E1 (reglas
+externas) y SF‑E5 (R4) llegaron en fases anteriores. **Sigue pendiente**: la hoja del proyecto
+(`ui/hoja.py`, `ui/paginas/hoja.py`), la barra (`ui/barra.py`), `adapters/espacio` y sus tablas
+`esp_*`, y la adopción de `composiciones_de_presupuesto` por la API y por escenarios. Cada pieza pasa
+a las secciones 1 a 6 cuando se fusiona. Plan: [PLAN_SF.md](../PLAN_SF.md).
 
 ### 7.1 Principio que se conserva
 
