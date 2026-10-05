@@ -1,10 +1,11 @@
 """El guion de CP‑08 a CP‑11 y RNF‑13 está escrito completo (integración final del sprint SF).
 
-Lee `docs/guion_prueba_arenia.md` y `docs/protocolo_indicador3.md` como texto. Comprueba que cada caso
-es un caso IEEE 829 completo (objetivo, trazabilidad, precondición, pasos, resultado esperado y tabla de
-veredicto), que usa la base propia `data/prueba_sf.db` y nunca `data/apu.db`, que CP‑10 va antes que
-CP‑11, que el paso negativo de guardar sin fuente está, y que RNF‑13 declara consigna literal, paradas,
-criterio, n y exclusión de las personas de CP‑07. Límite: lee texto; no ejecuta la aplicación.
+Lee `docs/guion_prueba_arenia.md` y `docs/protocolo_indicador3.md` como texto. Comprueba que cada
+caso es un caso IEEE 829 completo (objetivo, trazabilidad, precondición, pasos, resultado esperado y
+tabla de veredicto), que usa la base propia `data/prueba_sf.db` y nunca `data/apu.db`, que CP‑10 va
+antes que CP‑11, que el paso negativo de guardar sin fuente está, y que RNF‑13 declara consigna
+literal, paradas, criterio, n y exclusión de las personas de CP‑07. Límite: lee texto; no ejecuta
+la aplicación.
 """
 
 from __future__ import annotations
