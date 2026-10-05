@@ -152,9 +152,11 @@ def test_tramo_declarado_de_largo_cero_se_omite() -> None:
         vertices=(c("0", "0", "2.5"), c("0", "0", "2.5")),
     )
     r = Recorrido(id="R-P1", punto_id="P1", modo=ModoRecorrido.DECLARADO, tramos=(cero,))
-    segs = unir_segmentos(replace(esp, recorridos=(r,), sobrescrituras=()))
-    assert all(s.longitud > 0 for s in segs)
-    assert all("P1" not in s.sirve for s in segs)
+    solo_p1 = replace(esp, puntos=(punto(esp, "P1"),), recorridos=(r,), sobrescrituras=())
+    assert unir_segmentos(solo_p1) == ()
+    g = analizar(solo_p1, Especialidad.AGUA)
+    assert g.segmentos == () and g.accesorios == ()
+    assert g.longitud_sin_unir == 0 and g.longitud_unida == 0
 
 
 def test_tramos_de_prefiere_el_declarado_y_si_no_propone() -> None:
@@ -324,10 +326,181 @@ def test_drenaje_baja_al_piso_y_recorre_por_el_piso() -> None:
         punto(esp, "P1"),
         id="D1",
         tipo=TipoPunto.DRENAJE,
-        superficie=SuperficiePunto.PISO,
-        posicion=c("0.5", "0.5", "0"),
+        superficie=SuperficiePunto.PARED,
+        posicion=c("0.5", "0.5", "0.4"),
         fuente_id="C1",
     )
     tramos = recorrido_propuesto(replace(esp, fuentes=esp.fuentes + (colector,)), p)
-    assert [t.superficie for t in tramos] == [SuperficieTramo.PISO, SuperficieTramo.PISO]
-    assert cerca(longitud_tramos(tramos), "2.500")  # 1,5 en x y 1,0 en y
+    assert [t.superficie for t in tramos] == [
+        SuperficieTramo.PARED,
+        SuperficieTramo.PISO,
+        SuperficieTramo.PISO,
+    ]
+    assert [t.vertices for t in tramos] == [
+        (c("0.5", "0.5", "0.4"), c("0.5", "0.5", "0")),  # baja al piso
+        (c("0.5", "0.5", "0"), c("2", "0.5", "0")),  # en x
+        (c("2", "0.5", "0"), c("2", "1.5", "0")),  # luego en y
+    ]
+    assert cerca(longitud_tramos(tramos), "2.900")
+
+
+def test_recorrido_propuesto_no_recibe_pendiente() -> None:
+    with pytest.raises(TypeError):
+        recorrido_propuesto(espacio_bano(), punto(espacio_bano(), "P1"), D("0.02"))  # type: ignore[call-arg]
+
+
+def test_recorrido_modo_propuesto_con_tramos_se_trata_como_declarado() -> None:
+    esp = espacio_bano()
+    raro = Tramo(
+        orden=1,
+        superficie=SuperficieTramo.TECHO,
+        vertices=(c("0", "0", "2.5"), c("1", "0", "2.5")),
+    )
+    r = Recorrido(id="R-P2", punto_id="P2", modo=ModoRecorrido.PROPUESTO, tramos=(raro,))
+    esp2 = replace(esp, recorridos=(r,), sobrescrituras=())
+    assert tramos_de(esp2, punto(esp2, "P2")) == (raro,)
+
+
+# --- nodos por vecindad y cortes con una sola tolerancia ----------------------------------
+
+
+def espacio_rutas(rutas: dict[str, list[tuple[str, str, str]]]) -> Espacio:
+    """Espacio con la fuente F1 en (0; 0; 2,5) y un punto por ruta con tramos declarados."""
+    base = espacio_bano()
+    puntos, recorridos = [], []
+    for pid, vertices in rutas.items():
+        puntos.append(
+            replace(
+                punto(base, "P1"),
+                id=pid,
+                posicion=c(*vertices[-1]),
+                especificaciones=(("diametro", '1/2"'),),
+            )
+        )
+        tramo = Tramo(
+            orden=1,
+            superficie=SuperficieTramo.TECHO,
+            empotrado=False,
+            vertices=tuple(c(*v) for v in vertices),
+        )
+        recorridos.append(
+            Recorrido(id=f"R-{pid}", punto_id=pid, modo=ModoRecorrido.DECLARADO, tramos=(tramo,))
+        )
+    fuente = replace(base.fuentes[0], posicion=c("0", "0", "2.5"))
+    return replace(
+        base,
+        fuentes=(fuente,),
+        puntos=tuple(puntos),
+        recorridos=tuple(recorridos),
+        sobrescrituras=(),
+    )
+
+
+def _l(segs) -> list[Decimal]:
+    return [s.longitud for s in segs]
+
+
+def test_nodos_a_menos_de_un_milimetro_en_celdas_distintas_se_unen() -> None:
+    esp = espacio_rutas(
+        {
+            "P1": [("0", "0", "2.5"), ("1.0004", "0", "2.5")],
+            "P2": [("0", "0", "2.5"), ("1.0006", "0", "2.5")],
+        }
+    )
+    g = analizar(esp, Especialidad.AGUA)
+    assert len(g.segmentos) == 1  # sin segmento fantasma de 0,0002 m
+    assert cerca(g.longitud_unida, "1.0005")
+    assert g.codos == {} and g.tees == {}
+
+
+def test_ramas_en_y_desde_nodos_que_se_unen_dan_un_codo_y_ninguna_tee() -> None:
+    esp = espacio_rutas(
+        {
+            "P1": [("0", "0", "2.5"), ("1.0004", "0", "2.5"), ("1.0004", "1", "2.5")],
+            "P2": [("0", "0", "2.5"), ("1.0006", "0", "2.5"), ("1.0006", "1", "2.5")],
+        }
+    )
+    g = analizar(esp, Especialidad.AGUA)
+    assert len(g.segmentos) == 2
+    assert sum(g.codos.values()) == 1 and g.tees == {}
+
+
+def test_nodos_en_1_00049_y_1_00051_con_ramas_de_1_y_2_m() -> None:
+    esp = espacio_rutas(
+        {
+            "P1": [("0", "0", "2.5"), ("1.00049", "0", "2.5"), ("1.00049", "1", "2.5")],
+            "P2": [("0", "0", "2.5"), ("1.00051", "0", "2.5"), ("1.00051", "2", "2.5")],
+        }
+    )
+    g = analizar(esp, Especialidad.AGUA)
+    assert len(g.segmentos) == 3  # x, y de 0 a 1 e y de 1 a 2
+    assert all(abs(longitud - 1) <= TOL for longitud in _l(g.segmentos))  # sin diagonales
+    assert g.tees == {} and sum(g.codos.values()) == 1
+
+
+def test_una_t_a_0_0009_m_de_la_recta_no_dobla_el_tubo_principal() -> None:
+    esp = espacio_rutas(
+        {
+            "P1": [("0", "0", "2.5"), ("2", "0", "2.5")],
+            "P2": [("1", "1", "2.5"), ("1", "0.0009", "2.5")],
+        }
+    )
+    g = analizar(esp, Especialidad.AGUA)
+    principales = sorted(s.longitud for s in g.segmentos if s.sirve == ("P1",))
+    assert len(g.segmentos) == 3
+    assert principales == [D("1"), D("1")]  # exactos: sin diagonales de 1,0000004 m
+    assert g.tees == {"1/2": 1} and g.codos == {}
+
+
+def test_tres_solapes_parciales_colineales() -> None:
+    esp = espacio_rutas(
+        {
+            "P1": [("0", "0", "2.5"), ("2.5", "0", "2.5")],
+            "P2": [("1", "0", "2.5"), ("3", "0", "2.5")],
+            "P3": [("2", "0", "2.5"), ("4", "0", "2.5")],
+        }
+    )
+    g = analizar(esp, Especialidad.AGUA)
+    assert cerca(g.longitud_sin_unir, "6.500")
+    assert cerca(g.longitud_unida, "4.000")
+    assert g.codos == {} and g.tees == {}
+
+
+def test_solape_colineal_en_diagonal() -> None:
+    esp = espacio_rutas(
+        {
+            "P1": [("0", "0", "0"), ("3", "4", "0")],
+            "P2": [("0", "0", "0"), ("1.5", "2", "0")],
+        }
+    )
+    g = analizar(esp, Especialidad.AGUA)
+    assert cerca(g.longitud_sin_unir, "7.500")
+    assert cerca(g.longitud_unida, "5.000")
+    assert len(g.segmentos) == 2
+    assert g.codos == {} and g.tees == {}
+
+
+def test_t_sin_nodo_previo_parte_el_principal_con_una_tee_y_sin_codo() -> None:
+    esp = espacio_rutas(
+        {
+            "P1": [("0", "0", "2.5"), ("2", "0", "2.5")],
+            "P2": [("1", "0", "2.5"), ("1", "1", "2.5")],
+        }
+    )
+    g = analizar(esp, Especialidad.AGUA)
+    assert len(g.segmentos) == 3
+    assert cerca(g.longitud_unida, "3.000")
+    assert g.tees == {"1/2": 1} and g.codos == {}
+
+
+def test_cruce_en_x_sin_nodo_no_parte_ni_cuenta_tees() -> None:
+    esp = espacio_rutas(
+        {
+            "P1": [("0", "0", "2.5"), ("2", "0", "2.5")],
+            "P2": [("1", "-1", "2.5"), ("1", "1", "2.5")],
+        }
+    )
+    g = analizar(esp, Especialidad.AGUA)
+    assert len(g.segmentos) == 2
+    assert cerca(g.longitud_unida, "4.000")
+    assert g.tees == {} and g.codos == {}
