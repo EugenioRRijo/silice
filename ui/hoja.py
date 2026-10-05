@@ -2163,20 +2163,24 @@ def subir_plano(
     return ruta, leer_plano(ruta, unidades=unidades)
 
 
-def resumen_de_importacion(
-    resultado: ResultadoImportacion, informe: Sequence[ItemInforme] | None = None
-) -> list[tuple[str, int]]:
+def resumen_del_informe(informe: Iterable[ItemInforme]) -> list[tuple[str, int]]:
     """Cuantas lineas del informe hay de cada tipo: importado, no reconocido, aproximado y
     pendiente siempre; los tipos propios de una reimportacion, solo si aparecen."""
-    lineas = resultado.informe if informe is None else informe
     cuenta = dict.fromkeys(TipoItem, 0)
-    for linea in lineas:
+    for linea in informe:
         cuenta[linea.tipo] += 1
     return [
         (ROTULOS_DEL_INFORME[tipo], cuenta[tipo])
         for tipo in TipoItem
         if tipo in _FIJOS_DEL_INFORME or cuenta[tipo]
     ]
+
+
+def resumen_de_importacion(
+    resultado: ResultadoImportacion, informe: Sequence[ItemInforme] | None = None
+) -> list[tuple[str, int]]:
+    """El resumen del informe de la importacion o, si se pasa, del informe de la fusion."""
+    return resumen_del_informe(resultado.informe if informe is None else informe)
 
 
 def filas_del_informe(informe: Iterable[ItemInforme]) -> list[dict[str, str]]:

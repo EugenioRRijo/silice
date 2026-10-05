@@ -1,7 +1,7 @@
-"""Pantalla de la hoja: el flujo «Importar plano» de la pestana Espacio y metrajes (RF-50, RF-51).
+"""Pantalla de la hoja: el flujo «Importar plano» de la pestana Espacio y metrajes (RF-50/51).
 
-`AppTest` no sube archivos: la logica se prueba en `tests/unit/test_hoja_planos.py` con el archivo en
-disco, y aqui el pintado, con la importacion ya leida y precargada en `st.session_state`.
+`AppTest` no sube archivos: la logica se prueba en `tests/unit/test_hoja_planos.py` con el
+archivo en disco, y aqui el pintado, con la importacion ya leida y precargada en `st.session_state`.
 """
 
 from __future__ import annotations
@@ -72,7 +72,7 @@ def _cargado():
     return hoja.leer_plano(DXF)
 
 
-# --- la accion de la barra lleva al flujo ----------------------------------------------------------
+# --- la accion de la barra lleva al flujo ------------------------------------------------------
 
 
 def test_importar_plano_de_la_barra_lleva_a_espacio_y_metrajes_y_abre_el_flujo(
@@ -97,7 +97,7 @@ def test_sin_pedirlo_el_flujo_esta_plegado_y_dice_que_formatos_acepta(monkeypatc
     assert "DXF" in _textos(at) and "IFC" in _textos(at)
 
 
-# --- el informe ------------------------------------------------------------------------------------
+# --- el informe --------------------------------------------------------------------------------
 
 
 def test_con_una_importacion_se_muestran_los_cuatro_conteos_y_el_informe(monkeypatch, tmp_path):
@@ -140,7 +140,7 @@ def test_la_importacion_detenida_pide_la_unidad_y_se_reanuda_con_ella(monkeypatc
     assert _hay_boton(at, FUSIONAR)
 
 
-# --- alturas y circuitos ---------------------------------------------------------------------------
+# --- alturas y circuitos -----------------------------------------------------------------------
 
 
 def test_se_piden_las_seis_alturas_pendientes_y_cargarlas_las_quita(monkeypatch, tmp_path):
@@ -189,7 +189,7 @@ def test_un_circuito_invalido_se_dice_en_claro(monkeypatch, tmp_path):
     assert len(hoja.circuitos_supuestos(at.session_state[CLAVE_IMPORTACION])) == 2
 
 
-# --- fusionar --------------------------------------------------------------------------------------
+# --- fusionar ----------------------------------------------------------------------------------
 
 
 def test_fusionar_pasa_las_filas_al_borrador_sin_saltar_la_hoja(monkeypatch, tmp_path):

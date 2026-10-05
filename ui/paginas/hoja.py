@@ -31,11 +31,13 @@ importarse: todo vive dentro de `render()`.
 
 from __future__ import annotations
 
+import tempfile
 from collections.abc import Callable, Iterator, Sequence
 from contextlib import contextmanager
 from dataclasses import replace
 from datetime import date
 from decimal import Decimal
+from pathlib import Path
 from typing import Any
 
 import streamlit as st
@@ -51,12 +53,13 @@ from adapters.espacio import (
     TipoOrigen,
     TipoPunto,
 )
+from adapters.espacio.planos import EstadoImportacion
 from core import models
 from core.catalog import Catalogo, CatalogoIncompleto, abrir_sesion, crear_esquema, crear_motor
 from core.verification.informe import DECIMALES_PRESENTACION
 from core.verification.texto import formatear_decimal
 from ui import caso, hoja
-from ui.caso import ACCION_PRECIOS, ruta_caso
+from ui.caso import ACCION_IMPORTAR_PLANO, ACCION_PRECIOS, ruta_caso
 
 PESTANAS = (
     "Espacio y metrajes",
@@ -80,12 +83,22 @@ CLAVE_GENERACION = "hoja_generacion"  # sube al renovar la siembra de los editor
 CLAVE_ULTIMA_PESTANA = "hoja_ultima_pestana"
 CLAVE_EXCEL = "hoja_excel"  # (nombre, bytes) del ultimo Excel preparado
 CLAVE_ACCION_PENDIENTE = "hoja_accion_pendiente"  # accion de la barra que aun no se atendio
+CLAVE_IMPORTACION = "hoja_importacion"  # el `ResultadoImportacion` del plano que se esta revisando
+CLAVE_PLANO = "hoja_plano"  # ruta (texto) del plano guardado, para reanudarlo con la unidad
+CLAVE_PLANO_ABIERTO = "hoja_plano_abierto"  # la barra pidio abrir el flujo de importar
+CLAVE_PLANO_DIRECTORIO = "hoja_plano_directorio"  # carpeta temporal de los planos subidos
+CLAVE_PLANO_FUSION = "hoja_plano_fusion"  # el informe de la ultima fusion
+CLAVE_PLANO_MENSAJE = "hoja_plano_mensaje"  # (tipo, texto) del ultimo intento de leer o declarar
 CLAVE_SELECTORES = "hoja_selectores"  # sube para que los selectores vuelvan a la version abierta
 CLAVE_MENSAJE = "hoja_mensaje"  # (tipo, texto) del ultimo intento de guardar, restaurar o cotizar
 
 # Claves de widgets (los selectores llevan ademas el numero de `CLAVE_SELECTORES`).
 CLAVE_PESTANA = "hoja_pestana"
 CLAVE_PROYECTO = "hoja_proyecto"
+CLAVE_PLANO_ARCHIVO = "hoja_plano_archivo"
+CLAVE_PLANO_UNIDAD = "hoja_plano_unidad"
+PREFIJO_ALTURA = "hoja_plano_altura_"
+PREFIJO_CIRCUITO = "hoja_plano_circuito_"
 CLAVE_VERSION = "hoja_version"
 CLAVE_FUENTE = "hoja_fuente"
 CLAVE_RESPONSABLE = "hoja_responsable"
@@ -521,6 +534,7 @@ def _cantidades(items: Sequence[Any]) -> None:
 
 
 def _pestana_espacio() -> None:
+    _importar_plano()
     st.caption(_AYUDA_ESPACIO)
     base = hoja.filas_desde_espacio(_partida().espacio)
     huecos: dict[str, object] = {}
@@ -563,6 +577,246 @@ def _pestana_espacio() -> None:
         )
     st.subheader("Informe de auditoria")
     st.markdown(resultado.elaboracion.informe.a_markdown())
+
+
+# --- importar un plano (RF-50, RF-51) -------------------------------------------------------------
+
+_AYUDA_PLANO = (
+    "Suba un plano en formato DXF o IFC. El plano crea filas en el borrador de esta hoja, con el "
+    "archivo como origen de medida, y un informe de lo que importó, lo que no reconoció, lo que "
+    "aproximó y lo que queda pendiente. Nada salta la hoja ni la auditoría: las filas entran para "
+    "que las revise."
+)
+_AYUDA_CIRCUITOS = (
+    "El plano no dice cuántos conductores tiene cada circuito ni cuántos puntos admite: se "
+    "supusieron. Confírmelos o corríjalos; mientras sean supuestos, la auditoría lo advierte."
+)
+_AVISO_PENDIENTES = (
+    "Si fusiona ahora, los ambientes sin altura entran con 2,5 m provisionales y los circuitos "
+    "supuestos quedan marcados en la auditoría. Puede cargarlos antes o corregirlos después en las "
+    "tablas."
+)
+ROTULO_IMPORTAR = "Importar plano (DXF o IFC)"
+ROTULO_LEER_PLANO = "Leer plano"
+ROTULO_CARGAR_ALTURAS = "Cargar alturas"
+ROTULO_DECLARAR_CIRCUITOS = "Declarar circuitos"
+ROTULO_CONTINUAR_UNIDAD = "Continuar con esta unidad"
+ROTULO_FUSIONAR = "Fusionar con el espacio del borrador"
+ROTULO_DESCARTAR_PLANO = "Descartar la importación"
+_CAMPOS_DE_CIRCUITO = (
+    ("fase", "Conductores de fase"),
+    ("neutro", "Conductores de neutro"),
+    ("tierra", "Conductores de tierra"),
+    ("puntos", "Puntos máximos"),
+)
+
+
+def _directorio_de_planos() -> Path:
+    """La carpeta temporal donde se guardan los planos subidos en esta sesion."""
+    actual = st.session_state.get(CLAVE_PLANO_DIRECTORIO)
+    if actual is None or not Path(actual).is_dir():
+        actual = tempfile.mkdtemp(prefix="arenia_planos_")
+        st.session_state[CLAVE_PLANO_DIRECTORIO] = actual
+    return Path(actual)
+
+
+def _aviso_de_plano(tipo: str, texto: str) -> None:
+    st.session_state[CLAVE_PLANO_MENSAJE] = (tipo, texto)
+
+
+def _leer_plano_subido() -> None:
+    subida = st.session_state.get(CLAVE_PLANO_ARCHIVO)
+    if subida is None:
+        _aviso_de_plano(
+            "error", "Elija primero un archivo de plano (DXF o IFC) y pulse Leer plano."
+        )
+        return
+    try:
+        ruta, resultado = hoja.subir_plano(subida, _directorio_de_planos())
+    except hoja.HojaInvalida as error:
+        _aviso_de_plano("error", str(error))
+        return
+    except (ValueError, OSError) as error:
+        _aviso_de_plano("error", f"{error}. Renombre el archivo y vuelva a subirlo.")
+        return
+    st.session_state[CLAVE_PLANO] = str(ruta)
+    st.session_state[CLAVE_IMPORTACION] = resultado
+    st.session_state.pop(CLAVE_PLANO_FUSION, None)
+
+
+def _continuar_con_unidad() -> None:
+    ruta = st.session_state.get(CLAVE_PLANO)
+    if ruta is None:
+        _aviso_de_plano("error", "Vuelva a subir el plano: ya no está disponible.")
+        return
+    try:
+        st.session_state[CLAVE_IMPORTACION] = hoja.leer_plano(
+            ruta, unidades=st.session_state.get(CLAVE_PLANO_UNIDAD)
+        )
+    except hoja.HojaInvalida as error:
+        _aviso_de_plano("error", str(error))
+
+
+def _descartar_importacion() -> None:
+    for clave in (CLAVE_IMPORTACION, CLAVE_PLANO, CLAVE_PLANO_FUSION):
+        st.session_state.pop(clave, None)
+
+
+def _cargar_alturas_escritas() -> None:
+    resultado = st.session_state.get(CLAVE_IMPORTACION)
+    if resultado is None:
+        return
+    textos = {
+        identificador: st.session_state.get(PREFIJO_ALTURA + identificador, "")
+        for identificador, _ in hoja.alturas_pendientes(resultado)
+    }
+    try:
+        st.session_state[CLAVE_IMPORTACION] = hoja.cargar_alturas_desde_texto(resultado, textos)
+    except hoja.HojaInvalida as error:
+        _aviso_de_plano("error", f"{error} No se cargó ninguna altura.")
+
+
+def _declarar_circuitos_escritos() -> None:
+    resultado = st.session_state.get(CLAVE_IMPORTACION)
+    if resultado is None:
+        return
+    valores = {
+        c.id: tuple(
+            st.session_state.get(f"{PREFIJO_CIRCUITO}{campo}_{c.id}", "")
+            for campo, _ in _CAMPOS_DE_CIRCUITO
+        )
+        for c in hoja.circuitos_supuestos(resultado)
+    }
+    try:
+        st.session_state[CLAVE_IMPORTACION] = hoja.declarar_circuitos_desde_texto(
+            resultado,
+            valores,  # type: ignore[arg-type]
+        )
+    except hoja.HojaInvalida as error:
+        _aviso_de_plano("error", f"{error} No se declaró ningún circuito.")
+
+
+def _fusionar_importacion() -> bool:
+    """Fusiona la importacion vigente con el borrador; True si lo logro (hay que reejecutar)."""
+    resultado = st.session_state.get(CLAVE_IMPORTACION)
+    if resultado is None:
+        return False
+    try:
+        nuevo, informe = hoja.fusionar_plano(_borrador(), resultado)
+    except hoja.HojaInvalida as error:
+        _aviso_de_plano("error", str(error))
+        return False
+    _poner_borrador(nuevo, resembrar=True)
+    filas = resultado.filas
+    _descartar_importacion()
+    st.session_state[CLAVE_PLANO_FUSION] = informe
+    _mensaje(
+        "success",
+        f"Se fusionó «{resultado.archivo}» con el borrador de la hoja: {filas['esp_ambientes']} "
+        f"ambientes, {filas['esp_fuentes']} fuentes y {filas['esp_puntos']} puntos. Revise las "
+        "filas en las tablas de abajo; la auditoría las evalúa como a las demás. Todavía no se "
+        "guardó ninguna versión: use Guardar versión cuando esté conforme.",
+    )
+    return True
+
+
+def _pintar_conteos(resumen: Sequence[tuple[str, int]]) -> None:
+    for columna, (rotulo, cantidad) in zip(st.columns(len(resumen)), resumen, strict=True):
+        columna.metric(rotulo, str(cantidad))
+
+
+def _pintar_tabla_del_informe(informe: Sequence[Any]) -> None:
+    st.dataframe(
+        DataFrame(hoja.filas_del_informe(informe), columns=list(hoja.COLUMNAS_DEL_INFORME)),
+        hide_index=True,
+        width="stretch",
+    )
+
+
+def _pintar_unidad_pedida(resultado: Any) -> None:
+    st.warning(resultado.mensaje)
+    st.selectbox("Unidad del dibujo", hoja.UNIDADES_DE_PLANO, key=CLAVE_PLANO_UNIDAD)
+    st.button(ROTULO_CONTINUAR_UNIDAD, on_click=_continuar_con_unidad)
+
+
+def _pintar_alturas(resultado: Any) -> None:
+    pendientes = hoja.alturas_pendientes(resultado)
+    if not pendientes:
+        return
+    st.subheader("Alturas pendientes")
+    st.caption(
+        "El plano no trae la altura de estos ambientes. Escríbala en metros (por ejemplo 2,50); "
+        "los que deje en blanco siguen pendientes."
+    )
+    with st.form("hoja_plano_alturas"):
+        for identificador, nombre in pendientes:
+            etiqueta = identificador if nombre == identificador else f"{identificador} ({nombre})"
+            st.text_input(f"Altura de {etiqueta}, en metros", key=PREFIJO_ALTURA + identificador)
+        st.form_submit_button(ROTULO_CARGAR_ALTURAS, on_click=_cargar_alturas_escritas)
+
+
+def _pintar_circuitos(resultado: Any) -> None:
+    supuestos = hoja.circuitos_supuestos(resultado)
+    if not supuestos:
+        return
+    st.subheader("Circuitos por declarar")
+    st.caption(_AYUDA_CIRCUITOS)
+    with st.form("hoja_plano_circuitos"):
+        for circuito in supuestos:
+            actuales = (*circuito.conductores, circuito.puntos_maximos)
+            for columna, (campo, rotulo), actual in zip(
+                st.columns(len(_CAMPOS_DE_CIRCUITO)), _CAMPOS_DE_CIRCUITO, actuales, strict=True
+            ):
+                columna.text_input(
+                    f"{rotulo} del circuito {circuito.id}",
+                    value=str(actual),
+                    key=f"{PREFIJO_CIRCUITO}{campo}_{circuito.id}",
+                )
+        st.form_submit_button(ROTULO_DECLARAR_CIRCUITOS, on_click=_declarar_circuitos_escritos)
+
+
+def _pintar_importacion(resultado: Any) -> None:
+    if resultado.estado is EstadoImportacion.RECHAZADA:
+        st.error(f"No se pudo importar «{resultado.archivo}»: {resultado.mensaje}")
+        st.button(ROTULO_DESCARTAR_PLANO, on_click=_descartar_importacion)
+        return
+    if resultado.estado is EstadoImportacion.DETENIDA:
+        _pintar_unidad_pedida(resultado)
+        st.button(ROTULO_DESCARTAR_PLANO, on_click=_descartar_importacion)
+        return
+    st.subheader(f"Informe de la importación de {resultado.archivo}")
+    _pintar_conteos(hoja.resumen_de_importacion(resultado))
+    _pintar_tabla_del_informe(resultado.informe)
+    _pintar_alturas(resultado)
+    _pintar_circuitos(resultado)
+    if hoja.alturas_pendientes(resultado) or hoja.circuitos_supuestos(resultado):
+        st.info(_AVISO_PENDIENTES)
+    izquierda, derecha = st.columns(2)
+    if izquierda.button(ROTULO_FUSIONAR, type="primary") and _fusionar_importacion():
+        st.rerun()
+    derecha.button(ROTULO_DESCARTAR_PLANO, on_click=_descartar_importacion)
+
+
+def _importar_plano() -> None:
+    """El flujo de importar un plano, al principio de la pestana Espacio y metrajes."""
+    resultado = st.session_state.get(CLAVE_IMPORTACION)
+    fusion = st.session_state.get(CLAVE_PLANO_FUSION)
+    abierto = bool(st.session_state.pop(CLAVE_PLANO_ABIERTO, False)) or resultado is not None
+    with st.expander(ROTULO_IMPORTAR, expanded=abierto or bool(fusion)):
+        st.caption(_AYUDA_PLANO)
+        mensaje = st.session_state.pop(CLAVE_PLANO_MENSAJE, None)
+        if mensaje is not None:
+            {"error": st.error, "success": st.success}.get(mensaje[0], st.info)(mensaje[1])
+        st.file_uploader(
+            "Plano", type=["dxf", "ifc"], key=CLAVE_PLANO_ARCHIVO, label_visibility="collapsed"
+        )
+        st.button(ROTULO_LEER_PLANO, on_click=_leer_plano_subido)
+        if resultado is not None:
+            _pintar_importacion(resultado)
+        elif fusion:
+            st.subheader("Informe de la última fusión")
+            _pintar_conteos(hoja.resumen_del_informe(fusion))
+            _pintar_tabla_del_informe(fusion)
 
 
 # --- pestana APU ---------------------------------------------------------------------------------
@@ -1120,6 +1374,11 @@ def render() -> None:
     if accion == ACCION_PRECIOS:  # la herramienta Precios de la barra lleva a su pestana
         if "Precios" in PESTANAS:
             st.session_state[CLAVE_PESTANA] = "Precios"
+        st.session_state.pop(CLAVE_ACCION_PENDIENTE, None)
+        accion = None
+    elif accion == ACCION_IMPORTAR_PLANO:  # Importar plano lleva al flujo de la pestana Espacio
+        st.session_state[CLAVE_PESTANA] = PESTANAS[0]
+        st.session_state[CLAVE_PLANO_ABIERTO] = True
         st.session_state.pop(CLAVE_ACCION_PENDIENTE, None)
         accion = None
     _mostrar_mensaje()
