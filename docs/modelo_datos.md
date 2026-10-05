@@ -206,7 +206,7 @@ alimenta el histórico del módulo predictivo.
 Regla de 7a (`core.budget.descartar_version`): solo se descarta el último presupuesto guardado del
 proyecto (el de mayor `id`), si el proyecto tiene al menos otro anterior, y una sola vez; el primero
 del proyecto nunca. Como la clave primaria es la foránea, una versión tiene a lo sumo una marca.
-Límite (expediente C3.2; **se cierra en SF‑E2**, §2.4: toda versión nueva guarda su `version_origen`
+Límite (expediente C3.2; **cerrado en SF‑E2**, §2.4: toda versión nueva guarda su `version_origen`
 y la versión vigente pasa a ser la de mayor `id` no descartada): hoy el esquema no guarda de qué
 presupuesto salió una versión, así que la función no distingue una versión revalorada de un segundo presupuesto elaborado aparte en el mismo
 proyecto; por eso la interfaz solo ofrece el botón «Descartar version» para la versión que acaba de
@@ -314,35 +314,56 @@ Los `ATIPICO` de C6 (INV‑099) sí se guardan como filas de `Hallazgo`, sin col
 reauditoría no los puede recalcular (el detector no está en el núcleo), así que `cargar_elaboracion`
 los lee de la tabla y los vuelve a declarar.
 
-### 2.4 Enmienda del sprint final (SF): diseño, aún no implementado
+### 2.4 Enmienda del sprint final (SF): núcleo implementado en SF3 (`inc/sf3-nucleo`)
 
 Fuente: [spec SF](especificaciones/2026-10-04-sprint-final-prototipo-design.md) §5.2, §6.2, §9.3 y
-§9.6. Esta sección describe lo que SF agrega; las §2.1 a §2.3 siguen describiendo el esquema vigente
-(diecisiete entidades) hasta que cada expediente de `core/` se fusione. Los nombres de columna de las
-entidades de `core/` los fija su expediente; los de abajo son los del spec.
+§9.6; expedientes SF‑E2, SF‑E6 y SF‑E7 en [2026-10-sf-expedientes.md](bitacora/2026-10-sf-expedientes.md).
+Las §2.1 a §2.3 siguen describiendo las diecisiete entidades originales; esta sección describe las
+**ocho tablas aditivas** que SF3 agrega a `core/models` (veinticinco en total). Todas son aditivas
+(ruling SF3‑E0): `crear_esquema` las crea en una base anterior sin `ALTER TABLE` y sin tocar sus
+filas, y ninguna columna se agrega a una tabla existente. Lo que el spec llama «columna» (la versión
+de origen, la tasa y el alcance de una lista, la referencia de un precio) vive en una tabla con la
+misma clave. Una base anterior abre: las tablas nuevas están vacías y todo cae al camino de siempre
+(catálogo, lista global, versión sin origen). Los nombres de columna son los de `entidades.py`.
 
-**Entidades nuevas de `core/models`** (aditivas: `crear_esquema` las agrega sin migrar las demás):
+**Instantánea por versión (SF‑E6).** Una por (versión, partida); `ondelete="CASCADE"` desde `Presupuesto`.
 
-| Entidad | Propósito | Expediente |
+| Entidad (tabla) | Atributos | Notas |
 |---|---|---|
-| `RegistroCambio` | una fila por celda cambiada al guardar: proyecto, versión de origen, versión resultante, objeto (metraje, APU, precio, plan, parámetro), clave de la fila, campo, valor anterior, valor nuevo, **fuente del cambio**, responsable, fecha y hora. Todo cambio guardado exige fuente y responsable | SF‑E2 |
-| Instantánea de composiciones | las líneas de `ComposicionAPU` con que se valoró cada versión; toda recarga, la verificación del PU, la revaloración (UC‑02) y los escenarios las toman de aquí, y del catálogo solo si la versión es anterior a SF‑E6 | SF‑E6 |
-| Instantánea de rendimientos | el rendimiento vigente de cada partida de la versión, con el mismo criterio | SF‑E6 |
+| `ComposicionVersion` (`composicion_version`) | `id`, `presupuesto_id`, `codigo_partida`, `descripcion`, `unidad`, `rendimiento` | única por (`presupuesto_id`, `codigo_partida`). `rendimiento` es la **instantánea de rendimientos**: el vigente de la partida en esa versión |
+| `LineaComposicionVersion` (`linea_composicion_version`) | `id`, `composicion_id`, `orden`, `tipo`, `insumo_id` (anulable), `descripcion`, `unidad`, `cantidad`, `precio`, `depreciacion`, `modalidad` | orden canónico de `core.catalog.mapeo.lineas_de` (materiales, equipos, mano de obra); `precio` es el que valoró la versión; `insumo_id` permite revalorar con otra lista |
+| `PlanVersion` (`plan_version`) | `id`, `presupuesto_id`, `periodo`, `etiqueta`, `orden`, `codigo_partida` (anulable), `fraccion` | el reparto del plan por partida (la curva guardada no lo conserva): ampliación declarada del expediente SF‑E6 |
 
-**Columnas nuevas en entidades existentes:**
+`core.budget.guardar_presupuesto` congela siempre la instantánea. La recarga, la verificación del PU,
+la revaloración por UC‑02 y `composiciones_de_presupuesto` (escenarios, hoja) toman la composición
+**por código de partida** de la instantánea y, solo si falta, del catálogo con la lista y la fecha del
+presupuesto (versiones anteriores a SF‑E6; instantánea parcial de UC‑15e). `asegurar_instantanea`
+congela desde el catálogo vigente las partidas que no la tienen, solo si el catálogo todavía
+reproduce su PU.
 
-- `Presupuesto.version_origen` (SF‑E2): la versión de la que salió. La guarda **toda** versión nueva
-  (edición, restauración, cotización, revaloración por UC‑02). Cierra la limitación C3.2 de
-  `DescarteVersion` (§2.3). La **versión vigente** es la de mayor `id` no descartada; una restauración
-  pasa a ser la vigente.
-- Origen de precios (SF‑E7): `ListaPrecios` gana tasa de cambio y fecha de la tasa, y un alcance
-  (global o de proyecto); `PrecioInsumo` gana la referencia (el Ref de MaPreX). Una **cotización**
-  crea una lista del proyecto (copia de la base con el insumo cambiado) que la versión referencia
-  explícitamente (DA‑SF‑9). `lista_vigente` excluye las listas de proyecto. Al revalorar por UC‑02 una
-  versión con lista de proyecto, la cotización se aplica sobre la nueva lista base.
+**Versiones y registro (SF‑E2).**
 
-**Restaurar** la versión N crea una versión nueva copia de N, con su `RegistroCambio`; nada se borra
-(RF‑54).
+| Entidad (tabla) | Atributos | Notas |
+|---|---|---|
+| `VersionOrigen` (`version_origen`) | `presupuesto_id` (PK), `origen_id` (anulable), `motivo` | de qué versión salió otra; `motivo` ∈ `edicion`, `restauracion`, `cotizacion`, `revaloracion` (`models.MOTIVOS_VERSION`). La guarda **toda** versión nueva que no se elabora de cero. Cierra la limitación C3.2 de `DescarteVersion` (§2.2): la **versión vigente** es la de mayor `id` no descartada (`core.budget.version_vigente`) |
+| `RegistroCambio` (`registro_cambio`) | `id`, `proyecto_id`, `version_origen_id`, `version_resultante_id`, `objeto`, `clave`, `campo`, `valor_anterior`, `valor_nuevo`, `fuente`, `responsable`, `fecha_hora` | una fila por celda cambiada; valores como texto; `objeto` ∈ `metraje`, `apu`, `cantidad`, `precio`, `plan`, `parametro`, `version`. **Fuente del cambio y responsable obligatorios** |
+
+**Restaurar** la versión N crea una versión nueva copia de N (renglones, ítems, pendientes, curva,
+plan, instantánea, hallazgos), con `VersionOrigen` (motivo `restauracion`, origen N) y su
+`RegistroCambio`; nada se borra (RF‑54).
+
+**Origen de precios y cotizaciones (SF‑E7).**
+
+| Entidad (tabla) | Atributos | Notas |
+|---|---|---|
+| `ListaPreciosOrigen` (`lista_precios_origen`) | `lista_id` (PK), `tasa`, `fecha_tasa`, `alcance`, `proyecto_id`, `lista_base_id` | una lista sin fila es **global**. Una lista de alcance `proyecto` nace de una cotización (copia de `lista_base_id`) y la versión la referencia explícitamente (DA‑SF‑9); `Catalogo.lista_vigente` la excluye |
+| `ReferenciaPrecio` (`referencia_precio`) | `precio_id` (PK), `referencia` | la referencia de un `PrecioInsumo` en su lista (el Ref de MaPreX) |
+| `Cotizacion` (`cotizacion`) | `id`, `lista_id`, `insumo_id`, `precio`, `precio_base`, `proveedor`, `numero`, `fecha` | cotizaciones **activas** de una lista de proyecto; única por (lista, insumo) |
+
+Al revalorar por UC‑02 una versión con lista de proyecto, `actualizar_precios` crea una lista de
+proyecto nueva (copia de la lista base nueva con las cotizaciones activas repuestas): la cotización
+prevalece hasta `retirar_cotizacion`, que también deja su `RegistroCambio`. El historial `CambioPrecio`
+compara siempre listas base.
 
 **Tablas `esp_*` del adaptador `adapters/espacio`** (DA‑SF‑2). Las crea `crear_esquema_espacio()`, no
 `crear_esquema`. Todas llevan la **clave de versión** (id del presupuesto) **sin clave foránea**,
