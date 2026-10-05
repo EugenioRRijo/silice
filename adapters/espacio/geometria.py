@@ -42,9 +42,6 @@ CERO = Decimal(0)
 MILIMETRO = Decimal("0.001")
 SIN_DIAMETRO = "sin_diametro"
 
-#: Seno del ángulo bajo el cual dos segmentos que concurren se consideran colineales.
-_SENO_COLINEAL = Decimal("0.000001")
-
 Clave3 = tuple[Decimal, Decimal, Decimal]
 
 
@@ -113,11 +110,11 @@ def _norma(u: tuple[Decimal, ...]) -> Decimal:
 
 
 def _tramos_desde_vertices(
-    vertices: list[tuple[Coord, SuperficieTramo, Decimal | None]],
+    vertices: list[tuple[Coord, SuperficieTramo]],
 ) -> tuple[Tramo, ...]:
     """Tramos entre vértices consecutivos; los de largo cero (a 0,001 m) se omiten."""
     tramos: list[Tramo] = []
-    for (a, _, _), (b, superficie, pendiente) in zip(vertices, vertices[1:], strict=False):
+    for (a, _), (b, superficie) in zip(vertices, vertices[1:], strict=False):
         if _nodo(a) == _nodo(b):
             continue
         tramos.append(
@@ -126,21 +123,18 @@ def _tramos_desde_vertices(
                 superficie=superficie,
                 vertices=(a, b),
                 empotrado=superficie is SuperficieTramo.PARED,
-                pendiente=pendiente,
             )
         )
     return tuple(tramos)
 
 
-def recorrido_propuesto(
-    espacio: Espacio, punto: Punto, pendiente: Decimal | None = None
-) -> tuple[Tramo, ...]:
+def recorrido_propuesto(espacio: Espacio, punto: Punto) -> tuple[Tramo, ...]:
     """Recorrido que propone el §6.4 para un punto; `()` si no tiene fuente o no es de este tipo.
 
     Agua fría y datos: de la fuente sube al techo, recorre en x y luego en y, y baja por la pared
     hasta la altura del punto. Drenaje: del punto baja al piso y recorre en x y luego en y por el
-    piso, con z decreciente según `pendiente` (m/m, 0 si no se da), hasta el colector. La
-    electricidad es por circuito (tarea 2.1) y aquí devuelve `()`.
+    piso hasta el colector, sin pendiente (la pendiente y R10 son de la tarea 1.5). La electricidad
+    es por circuito (tarea 2.1) y aquí devuelve `()`.
     """
     if punto.fuente_id is None:
         return ()
@@ -149,45 +143,43 @@ def recorrido_propuesto(
         return ()
     ambiente = next((a for a in espacio.ambientes if a.id == punto.ambiente_id), None)
     p, f = punto.posicion, fuente.posicion
+    en_techo, en_pared, en_piso = (
+        SuperficieTramo.TECHO,
+        SuperficieTramo.PARED,
+        SuperficieTramo.PISO,
+    )
     if punto.tipo in (TipoPunto.AGUA_FRIA, TipoPunto.DATOS):
         if ambiente is None:
             return ()
         techo = ambiente.alto
-        en_techo, en_pared = SuperficieTramo.TECHO, SuperficieTramo.PARED
         return _tramos_desde_vertices(
             [
-                (f, en_pared, None),
-                (Coord(f.x, f.y, techo), en_pared, None),
-                (Coord(p.x, f.y, techo), en_techo, None),
-                (Coord(p.x, p.y, techo), en_techo, None),
-                (p, en_pared, None),
+                (f, en_pared),
+                (Coord(f.x, f.y, techo), en_pared),
+                (Coord(p.x, f.y, techo), en_techo),
+                (Coord(p.x, p.y, techo), en_techo),
+                (p, en_pared),
             ]
         )
     if punto.tipo is TipoPunto.DRENAJE:
-        pend = pendiente if pendiente is not None else CERO
-        piso, pared = SuperficieTramo.PISO, SuperficieTramo.PARED
-        z0 = CERO
-        z1 = z0 - pend * abs(f.x - p.x)
-        z2 = z1 - pend * abs(f.y - p.y)
         return _tramos_desde_vertices(
             [
-                (p, pared, None),
-                (Coord(p.x, p.y, z0), pared, None),
-                (Coord(f.x, p.y, z1), piso, pendiente),
-                (Coord(f.x, f.y, z2), piso, pendiente),
+                (p, en_pared),
+                (Coord(p.x, p.y, CERO), en_pared),
+                (Coord(f.x, p.y, CERO), en_piso),
+                (Coord(f.x, f.y, CERO), en_piso),
             ]
         )
     return ()
 
 
-def tramos_de(
-    espacio: Espacio, punto: Punto, pendiente: Decimal | None = None
-) -> tuple[Tramo, ...]:
-    """Tramos de un punto: los del recorrido declarado si los tiene; si no, el propuesto."""
+def tramos_de(espacio: Espacio, punto: Punto) -> tuple[Tramo, ...]:
+    """Tramos de un punto: los del recorrido con tramos (declarado, o propuesto con tramos
+    poblados, que se trata como declarado) si existe; si no, el propuesto."""
     for r in espacio.recorridos:
         if r.punto_id == punto.id and r.tramos:
             return r.tramos
-    return recorrido_propuesto(espacio, punto, pendiente)
+    return recorrido_propuesto(espacio, punto)
 
 
 # --- unión de segmentos (§6.5) -----------------------------------------------------------
@@ -249,49 +241,82 @@ def _piezas_de_fuente(espacio: Espacio, fuente: Fuente) -> list[_Pieza]:
     return piezas
 
 
+def _agrupar_nodos(coords: Iterable[Coord]) -> dict[Coord, Coord]:
+    """Une por vecindad (single-linkage, distancia <= TOLERANCIA) las coordenadas de los extremos.
+
+    Devuelve coordenada -> representante, que es la mínima lexicográfica (x, y, z) del grupo: no
+    depende del orden de entrada ni de los ids. Es la única tolerancia de la unión y del corte.
+    """
+    unicas = sorted(set(coords), key=lambda c: (c.x, c.y, c.z))
+    padre = list(range(len(unicas)))
+
+    def raiz(i: int) -> int:
+        while padre[i] != i:
+            padre[i] = padre[padre[i]]
+            i = padre[i]
+        return i
+
+    tol2 = TOLERANCIA * TOLERANCIA
+    for i, a in enumerate(unicas):
+        for j in range(i + 1, len(unicas)):
+            b = unicas[j]
+            if b.x - a.x > TOLERANCIA:
+                break  # ordenadas por x: ninguna posterior está a menos de la tolerancia
+            dx, dy, dz = b.x - a.x, b.y - a.y, b.z - a.z
+            if dx * dx + dy * dy + dz * dz <= tol2:
+                ri, rj = raiz(i), raiz(j)
+                if ri != rj:
+                    padre[max(ri, rj)] = min(ri, rj)  # la raíz es la mínima lexicográfica
+    return {c: unicas[raiz(i)] for i, c in enumerate(unicas)}
+
+
 def _segmentos_de_fuente(espacio: Espacio, fuente: Fuente) -> tuple[list[_Pieza], list[Segmento]]:
     piezas = _piezas_de_fuente(espacio, fuente)
     if not piezas:
         return [], []
-    nodos: dict[Clave3, Coord] = {}
-    for pz in piezas:
-        nodos.setdefault(_nodo(pz.a), pz.a)
-        nodos.setdefault(_nodo(pz.b), pz.b)
+    rep = _agrupar_nodos(c for pz in piezas for c in (pz.a, pz.b))
+    nodos = sorted(set(rep.values()), key=lambda c: (c.x, c.y, c.z))
 
-    acumulado: dict[tuple[Clave3, Clave3], dict] = {}
+    acumulado: dict[tuple[Coord, Coord], dict] = {}
     for pz in piezas:
-        ka, kb = _nodo(pz.a), _nodo(pz.b)
-        a, b = nodos[ka], nodos[kb]
+        a, b = rep[pz.a], rep[pz.b]
+        if a == b:
+            continue  # largo cero tras unir los nodos vecinos
         d = _vec(a, b)
         largo2 = _punto_escalar(d, d)
-        cortes: list[tuple[Decimal, Clave3]] = []
-        for k, n in nodos.items():
-            if k in (ka, kb):
+        largo = a.distancia(b)
+        cortes: list[tuple[Decimal, Coord]] = []
+        for n in nodos:
+            if n in (a, b):
                 continue
             t = _punto_escalar(_vec(a, n), d) / largo2
             if not (0 < t < 1):
                 continue
             pie = Coord(a.x + t * d[0], a.y + t * d[1], a.z + t * d[2])
             if n.distancia(pie) <= TOLERANCIA:
-                cortes.append((t, k))
-        cadena = [ka] + [k for _, k in sorted(cortes)] + [kb]
-        for k1, k2 in zip(cadena, cadena[1:], strict=False):
-            if k1 == k2:
-                continue
+                cortes.append((t, n))
+        # las longitudes se miden sobre el segmento original (t * largo): partirlo en un nodo
+        # que se desvía menos de la tolerancia no lo dobla ni lo alarga
+        cortes.sort(key=lambda tn: (tn[0], tn[1].x, tn[1].y, tn[1].z))
+        ts = [Decimal(0), *(t for t, _ in cortes), Decimal(1)]
+        cadena = [a, *(n for _, n in cortes), b]
+        for (n1, n2), (t1, t2) in zip(
+            zip(cadena, cadena[1:], strict=False), zip(ts, ts[1:], strict=False), strict=False
+        ):
+            llave = (n1, n2) if (n1.x, n1.y, n1.z) <= (n2.x, n2.y, n2.z) else (n2, n1)
             reg = acumulado.setdefault(
-                tuple(sorted((k1, k2))),  # type: ignore[arg-type]
-                {"sirve": set(), "diametros": [], "empotrados": set()},
+                llave, {"sirve": set(), "diametros": [], "empotrados": set(), "largo": CERO}
             )
             reg["sirve"].add(pz.sirve)
             if pz.diametro is not None:
                 reg["diametros"].append(pz.diametro)
             reg["empotrados"].add(pz.empotrado)
+            reg["largo"] = max(reg["largo"], (t2 - t1) * largo)
 
     sobre = {s.clave: s for s in espacio.sobrescrituras}
     segmentos: list[Segmento] = []
-    for (k1, k2), reg in acumulado.items():
-        a, b = nodos[k1], nodos[k2]
-        clave = f"{fuente.id}|{_texto(k1)}|{_texto(k2)}"
+    for (a, b), reg in acumulado.items():
+        clave = clave_segmento(fuente.id, a, b)
         diametro = max(reg["diametros"], key=_magnitud_diametro) if reg["diametros"] else None
         conflicto = len(reg["empotrados"]) > 1
         empotrado = reg["empotrados"] == {True}
@@ -307,7 +332,7 @@ def _segmentos_de_fuente(espacio: Espacio, fuente: Fuente) -> tuple[list[_Pieza]
                 fuente_id=fuente.id,
                 a=a,
                 b=b,
-                longitud=a.distancia(b),
+                longitud=reg["largo"],
                 sirve=tuple(sorted(reg["sirve"])),
                 diametro=diametro,
                 empotrado=empotrado,
@@ -342,13 +367,15 @@ def sobrescrituras_huerfanas(espacio: Espacio) -> tuple[str, ...]:
 def contar_accesorios(segmentos: Iterable[Segmento]) -> tuple[Accesorio, ...]:
     """Codos y tees del árbol. Nodo con d segmentos: d = 2 y no colineales, un codo; d >= 3, d - 2
     tees y ningún codo. El diámetro del accesorio es el mayor de los segmentos que concurren."""
-    por_nodo: dict[tuple[str, Clave3], list[tuple[Segmento, Coord, Coord]]] = defaultdict(list)
+    por_nodo: dict[tuple[str, Coord], list[tuple[Segmento, Coord, Coord]]] = defaultdict(list)
     for s in segmentos:
-        por_nodo[(s.fuente_id, _nodo(s.a))].append((s, s.a, s.b))
-        por_nodo[(s.fuente_id, _nodo(s.b))].append((s, s.b, s.a))
+        por_nodo[(s.fuente_id, s.a)].append((s, s.a, s.b))
+        por_nodo[(s.fuente_id, s.b)].append((s, s.b, s.a))
 
     accesorios: list[Accesorio] = []
-    for (fuente_id, _), incidentes in sorted(por_nodo.items(), key=lambda kv: kv[0]):
+    for (fuente_id, _), incidentes in sorted(
+        por_nodo.items(), key=lambda kv: (kv[0][0], kv[0][1].x, kv[0][1].y, kv[0][1].z)
+    ):
         d = len(incidentes)
         if d < 2:
             continue
@@ -360,8 +387,10 @@ def contar_accesorios(segmentos: Iterable[Segmento]) -> tuple[Accesorio, ...]:
             continue
         u = _vec(incidentes[0][1], incidentes[0][2])
         v = _vec(incidentes[1][1], incidentes[1][2])
-        seno = _norma(_cruz(u, v)) / (_norma(u) * _norma(v))
-        colineal = seno <= _SENO_COLINEAL and _punto_escalar(u, v) < 0
+        # colineales: el extremo del tramo corto se desvía de la recta del largo menos que la
+        # tolerancia (misma que en la unión de nodos) y van en sentidos opuestos
+        desvio = _norma(_cruz(u, v)) / max(_norma(u), _norma(v))
+        colineal = desvio <= TOLERANCIA and _punto_escalar(u, v) < 0
         if not colineal:
             accesorios.append(Accesorio("codo", fuente_id, centro, diametro, 1))
     return tuple(accesorios)
