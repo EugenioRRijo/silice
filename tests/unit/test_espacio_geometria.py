@@ -6,7 +6,9 @@ Las cifras salen del bloque JSON de `tests/fixtures/memorias/bano_of001.md`, no 
 from __future__ import annotations
 
 import json
+import random
 import re
+import time
 from dataclasses import replace
 from decimal import Decimal
 from pathlib import Path
@@ -27,6 +29,7 @@ from adapters.espacio import (
     TipoFuente,
     TipoPunto,
     Tramo,
+    geometria,
 )
 from adapters.espacio.geometria import (
     analizar,
@@ -504,3 +507,63 @@ def test_cruce_en_x_sin_nodo_no_parte_ni_cuenta_tees() -> None:
     assert len(g.segmentos) == 2
     assert cerca(g.longitud_unida, "4.000")
     assert g.tees == {} and g.codos == {}
+
+
+# --- indice de nodos: equivalencia con el barrido completo y escala -----------------------
+
+
+def _rutas_aleatorias(
+    semilla: int, n: int, ruido: bool, rango: int = 6
+) -> dict[str, list[tuple[str, str, str]]]:
+    rng = random.Random(semilla)
+
+    def v(paso: int) -> str:
+        valor = D(rng.randint(0, rango)) * D("0.5")
+        if ruido and rng.random() < 0.5:
+            valor += D(rng.randint(-9, 9)) / D(10000)
+        return f"{valor:.5f}"
+
+    rutas = {}
+    for i in range(n):
+        vertices = [("0", "0", "2.5")]
+        x, y = v(0), v(1)
+        vertices += [(x, "0", "2.5"), (x, y, "2.5")]
+        if rng.random() < 0.5:
+            vertices.append((x, y, v(2)))
+        rutas[f"Q{i}"] = vertices
+    return rutas
+
+
+def _resumen(esp: Espacio) -> tuple:
+    g = analizar(esp, Especialidad.AGUA)
+    return (
+        [(s.clave, s.longitud, s.sirve, s.diametro, s.empotrado) for s in g.segmentos],
+        g.codos,
+        g.tees,
+        g.longitud_sin_unir,
+        g.longitud_unida,
+    )
+
+
+@pytest.mark.parametrize("semilla", range(6))
+def test_el_indice_da_lo_mismo_que_el_barrido_completo(monkeypatch, semilla: int) -> None:
+    esp = espacio_rutas(_rutas_aleatorias(semilla, 12, ruido=semilla % 2 == 1))
+    indexado = _resumen(esp)
+    monkeypatch.setattr(geometria._IndiceNodos, "cercanos", lambda self, a, b: self.todos)
+    assert _resumen(esp) == indexado
+
+
+def test_el_indice_da_lo_mismo_en_el_bano(monkeypatch) -> None:
+    esp = espacio_bano()
+    indexado = _resumen(esp)
+    monkeypatch.setattr(geometria._IndiceNodos, "cercanos", lambda self, a, b: self.todos)
+    assert _resumen(esp) == indexado
+
+
+def test_escala_500_puntos_en_menos_de_un_segundo_y_medio() -> None:
+    esp = espacio_rutas(_rutas_aleatorias(7, 500, ruido=True, rango=80))
+    inicio = time.perf_counter()
+    g = analizar(esp, Especialidad.AGUA)
+    segundos = time.perf_counter() - inicio
+    assert len(g.segmentos) > 500
+    assert segundos < 1.5, f"analizar tardo {segundos:.2f} s con 500 puntos"
