@@ -16,7 +16,8 @@ que el usuario quiere con `ui.caso.pedir_accion` y la pantalla de destino lo ati
 
 **Ganchos declarados.** `FUNCIONES_DE_SF3` nombra las dos funciones que `ui.hoja` debe exponer para
 habilitar Guardar version y Exportar Excel; mientras falte alguna, los botones quedan deshabilitados
-con el texto de `TEXTO_SF3` y un aviso visible (`AVISO_SF3`, sin siglas internas; `hay_guardado_y_exportacion`). Al habilitarse, el
+con el texto de `TEXTO_SF3` y un aviso visible (`AVISO_SF3`, sin siglas internas;
+`hay_guardado_y_exportacion`). Al habilitarse, el
 boton lleva a la hoja con la accion pedida (`ACCION_GUARDAR_VERSION`, `ACCION_EXPORTAR_EXCEL`): el
 guardado exige fuente y responsable (RF-53) y la descarga del Excel se genera solo al pulsar, asi
 que ambos viven en la pantalla de la hoja, no en la barra.
