@@ -8,7 +8,8 @@ Cada chequeo de contenido es una funcion pura sobre texto ya leido (`evaluar_*`)
 fases todavia no construidas dan PENDIENTE, nunca FALLA: es evidencia ausente, no un
 incumplimiento. Hoy se evaluan de verdad S1 (requisitos en la ERS), S2 (memorias), S3 (agua,
 datos y electricidad), S4 (`core/` intacto), S6 (barra), S8 (regresion) y S10 (cobertura); la
-orquestacion lee disco, consulta git y ejecuta pytest, y cada evaluador recibe solo el dato ya leido.
+orquestacion lee disco, consulta git y ejecuta pytest, y cada evaluador recibe solo el dato
+ya leido.
 
 S3 pesa las pruebas de `tests/unit/test_espacio_agua.py` y, desde SF2, las de datos
 (`test_espacio_datos.py`) y electricidad (`test_espacio_electricidad.py` y
