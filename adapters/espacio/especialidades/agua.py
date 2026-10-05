@@ -66,6 +66,14 @@ _D6 = Constante("D-6", "Material de tubería por defecto", "PVC", SUPUESTO_DECLA
 
 CONSTANTES_AGUA: tuple[Constante, ...] = (_D1, _D1B, _D2, _D6)
 
+#: R10 (spec §8.2, §7.1): pendiente mínima del drenaje, como fracción (0,01 = 1 %), positiva si el
+#: tramo desciende hacia el colector. Fuente candidata: Normas Sanitarias (Gaceta Oficial N.º 4.044
+#: Extraordinario, 1988), a verificar; el valor es un supuesto declarado.
+LIMITE_PENDIENTE_DRENAJE = Constante(
+    "R10-pendiente", "Pendiente mínima del drenaje (m/m)", Decimal("0.01"), SUPUESTO_DECLARADO
+)
+LIMITES_AGUA: tuple[Constante, ...] = (LIMITE_PENDIENTE_DRENAJE,)
+
 DESPERDICIO_TUBERIA_AGUA_FRIA = Decimal(_D1.valor)
 DESPERDICIO_TUBERIA_DRENAJE = Decimal(_D1B.valor)
 DESPERDICIO_ACCESORIOS_Y_PICADO = Decimal(_D2.valor)
