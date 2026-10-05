@@ -1,4 +1,5 @@
-"""Las diecisiete entidades de docs/modelo_datos.md, en SQLAlchemy 2.0.
+"""Las entidades de docs/modelo_datos.md, en SQLAlchemy 2.0: las diecisiete del sistema y las
+tablas aditivas del sprint final (SF3: instantánea, registro de cambios y origen de precios).
 
 Siete nombres coinciden a propósito con tipos de `core.contracts` (`ComposicionAPU`,
 `ItemComputo`, `Rendimiento`, `Presupuesto`, `PartidaPresupuestada`, `PuntoCurva`, `Hallazgo`):
@@ -13,13 +14,14 @@ como `sqlalchemy.Enum`: añadir un dominio nuevo no debe exigir una migración d
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 from enum import StrEnum
 
 from sqlalchemy import (
     CheckConstraint,
     Date,
+    DateTime,
     ForeignKey,
     Index,
     Integer,
@@ -417,3 +419,191 @@ class Hallazgo(Base):
     valor_esperado: Mapped[Decimal | None] = mapped_column(DecimalExacto, default=None)
 
     presupuesto: Mapped[Presupuesto] = relationship(back_populates="hallazgos")
+
+
+# ---------------------------------------------------------------------------------------------
+# Sprint final (SF3): instantánea por versión, registro de cambios y origen de precios.
+# Todas son tablas aditivas: `crear_esquema` las agrega a una base anterior sin `ALTER TABLE`
+# (ruling SF3‑E0, docs/bitacora/2026-10-sf-expedientes.md).
+# ---------------------------------------------------------------------------------------------
+
+
+class ComposicionVersion(Base):
+    """SF‑E6: la composición de APU y el rendimiento con que se valoró una partida en una versión.
+
+    Una por (versión, código de partida). `rendimiento` es la instantánea del rendimiento vigente de
+    la partida en esa versión.
+    """
+
+    __tablename__ = "composicion_version"
+    __table_args__ = (
+        UniqueConstraint("presupuesto_id", "codigo_partida", name="uq_composicion_version"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    presupuesto_id: Mapped[int] = mapped_column(ForeignKey("presupuesto.id", ondelete="CASCADE"))
+    codigo_partida: Mapped[str] = mapped_column(String(40))
+    descripcion: Mapped[str] = mapped_column(String(300))
+    unidad: Mapped[str] = mapped_column(String(20))
+    rendimiento: Mapped[Decimal] = mapped_column(DecimalExacto)
+
+    lineas: Mapped[list[LineaComposicionVersion]] = relationship(
+        back_populates="composicion",
+        order_by="LineaComposicionVersion.orden",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+
+
+class LineaComposicionVersion(Base):
+    """SF‑E6: una línea de la composición congelada, con el precio con que se valoró.
+
+    `insumo_id` es de qué insumo del catálogo salió (anulable): sirve para revalorar la línea con
+    otra lista de precios (UC‑02, cotizaciones). `tipo` es un valor de `TipoInsumo`.
+    """
+
+    __tablename__ = "linea_composicion_version"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    composicion_id: Mapped[int] = mapped_column(
+        ForeignKey("composicion_version.id", ondelete="CASCADE")
+    )
+    orden: Mapped[int] = mapped_column(Integer)
+    tipo: Mapped[str] = mapped_column(String(10))
+    insumo_id: Mapped[int | None] = mapped_column(ForeignKey("insumo.id"), default=None)
+    descripcion: Mapped[str] = mapped_column(String(300))
+    unidad: Mapped[str | None] = mapped_column(String(20), default=None)
+    cantidad: Mapped[Decimal] = mapped_column(DecimalExacto)
+    precio: Mapped[Decimal] = mapped_column(DecimalExacto)
+    depreciacion: Mapped[Decimal | None] = mapped_column(DecimalExacto, default=None)
+    modalidad: Mapped[str | None] = mapped_column(String(10), default=None)
+
+    composicion: Mapped[ComposicionVersion] = relationship(back_populates="lineas")
+    insumo: Mapped[Insumo | None] = relationship()
+
+
+class PlanVersion(Base):
+    """SF‑E6: el reparto del plan de trabajo de una versión (período, partida, fracción).
+
+    La curva guardada (`PuntoCurva`) no conserva el reparto por partida: sin esta tabla ni una
+    cotización ni una restauración podrían conservar el plan (RF‑54, RF‑56). `codigo_partida` es
+    anulable para un período declarado sin partidas.
+    """
+
+    __tablename__ = "plan_version"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    presupuesto_id: Mapped[int] = mapped_column(ForeignKey("presupuesto.id", ondelete="CASCADE"))
+    periodo: Mapped[int] = mapped_column(Integer)
+    etiqueta: Mapped[str] = mapped_column(String(120))
+    orden: Mapped[int] = mapped_column(Integer)
+    codigo_partida: Mapped[str | None] = mapped_column(String(40), default=None)
+    fraccion: Mapped[Decimal | None] = mapped_column(DecimalExacto, default=None)
+
+
+#: Motivos con que una versión nueva declara su `VersionOrigen`.
+MOTIVOS_VERSION = ("edicion", "restauracion", "cotizacion", "revaloracion")
+
+
+class VersionOrigen(Base):
+    """SF‑E2: de qué versión salió otra (cierra la limitación C3.2 de `DescarteVersion`).
+
+    Una fila por versión que no se elaboró de cero: edición, restauración, cotización o
+    revaloración (`MOTIVOS_VERSION`).
+    """
+
+    __tablename__ = "version_origen"
+
+    presupuesto_id: Mapped[int] = mapped_column(
+        ForeignKey("presupuesto.id", ondelete="CASCADE"), primary_key=True
+    )
+    origen_id: Mapped[int | None] = mapped_column(
+        ForeignKey("presupuesto.id", ondelete="SET NULL"), default=None
+    )
+    motivo: Mapped[str] = mapped_column(String(20))
+
+
+class RegistroCambio(Base):
+    """SF‑E2: una celda cambiada al guardar una versión (spec §9.3). Los valores son texto.
+
+    `version_origen_id` es la versión de la que salió el cambio y `version_resultante_id` la que lo
+    contiene (la misma, para un registro que no crea versión). La **fuente del cambio** (por qué y
+    con qué respaldo) y el **responsable** son obligatorios; el origen de la medida es de la fila
+    de la hoja y no entra aquí.
+    """
+
+    __tablename__ = "registro_cambio"
+    __table_args__ = (Index("ix_registro_cambio_resultante", "version_resultante_id"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    proyecto_id: Mapped[int] = mapped_column(ForeignKey("proyecto.id", ondelete="CASCADE"))
+    version_origen_id: Mapped[int | None] = mapped_column(
+        ForeignKey("presupuesto.id", ondelete="SET NULL"), default=None
+    )
+    version_resultante_id: Mapped[int] = mapped_column(
+        ForeignKey("presupuesto.id", ondelete="CASCADE")
+    )
+    objeto: Mapped[str] = mapped_column(String(20))
+    clave: Mapped[str] = mapped_column(String(200))
+    campo: Mapped[str] = mapped_column(String(60))
+    valor_anterior: Mapped[str] = mapped_column(Text, default="")
+    valor_nuevo: Mapped[str] = mapped_column(Text, default="")
+    fuente: Mapped[str] = mapped_column(String(300))
+    responsable: Mapped[str] = mapped_column(String(120))
+    fecha_hora: Mapped[datetime] = mapped_column(DateTime)
+
+
+#: Alcances de una lista de precios.
+ALCANCE_GLOBAL = "global"
+ALCANCE_PROYECTO = "proyecto"
+
+
+class ListaPreciosOrigen(Base):
+    """SF‑E7: de dónde sale una lista (tasa de cambio con su fecha) y su alcance.
+
+    Una lista sin fila aquí es **global** (todas las de las bases anteriores). Una lista de alcance
+    `proyecto` nace de una cotización: copia de `lista_base_id` con insumos cambiados, que una
+    versión referencia explícitamente (DA‑SF‑9), y `lista_vigente` no la resuelve.
+    """
+
+    __tablename__ = "lista_precios_origen"
+
+    lista_id: Mapped[int] = mapped_column(
+        ForeignKey("lista_precios.id", ondelete="CASCADE"), primary_key=True
+    )
+    tasa: Mapped[Decimal | None] = mapped_column(DecimalExacto, default=None)
+    fecha_tasa: Mapped[date | None] = mapped_column(Date, default=None)
+    alcance: Mapped[str] = mapped_column(String(10), default=ALCANCE_GLOBAL)
+    proyecto_id: Mapped[int | None] = mapped_column(
+        ForeignKey("proyecto.id", ondelete="CASCADE"), default=None
+    )
+    lista_base_id: Mapped[int | None] = mapped_column(ForeignKey("lista_precios.id"), default=None)
+
+
+class ReferenciaPrecio(Base):
+    """SF‑E7: la referencia de un precio en su lista (p. ej. el Ref de MaPreX)."""
+
+    __tablename__ = "referencia_precio"
+
+    precio_id: Mapped[int] = mapped_column(
+        ForeignKey("precio_insumo.id", ondelete="CASCADE"), primary_key=True
+    )
+    referencia: Mapped[str] = mapped_column(String(60))
+
+
+class Cotizacion(Base):
+    """SF‑E7: una cotización activa en una lista de proyecto (proveedor, número y fecha)."""
+
+    __tablename__ = "cotizacion"
+    __table_args__ = (UniqueConstraint("lista_id", "insumo_id", name="uq_cotizacion_lista_insumo"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    lista_id: Mapped[int] = mapped_column(ForeignKey("lista_precios.id", ondelete="CASCADE"))
+    insumo_id: Mapped[int] = mapped_column(ForeignKey("insumo.id"))
+    precio: Mapped[Decimal] = mapped_column(DecimalExacto)
+    precio_base: Mapped[Decimal | None] = mapped_column(DecimalExacto, default=None)
+    proveedor: Mapped[str] = mapped_column(String(120))
+    numero: Mapped[str] = mapped_column(String(60))
+    fecha: Mapped[date] = mapped_column(Date)
+
+    insumo: Mapped[Insumo] = relationship()

@@ -33,6 +33,7 @@ from sqlalchemy.orm import Session
 
 from core import models
 from core.budget.curva import PeriodoPlan
+from core.budget.instantanea import composiciones_revaloradas, partidas_por_insumo
 
 # `_buscar` y `_parametros_de` son ayudantes del módulo hermano del mismo paquete: el contrato
 # `Presupuesto` no lleva los `ParametrosCosto` (insuficiencia registrada en la bitácora de
@@ -177,10 +178,15 @@ def actualizar_precios(
 
     anterior = cargar_presupuesto(session, proyecto_nombre, codigo_presupuesto, catalogo)
     items = [partida.item for partida in anterior.partidas]
-    composiciones = {
-        codigo: catalogo.composicion(codigo, fecha=lista_nueva.fecha_vigencia, lista=lista_nueva)
-        for codigo in dict.fromkeys(item.codigo_partida for item in items)
-    }
+    # SF‑E6: las líneas son las de la instantánea de la versión (con los precios de la lista
+    # nueva); solo una partida sin instantánea se reconstruye del catálogo.
+    composiciones = composiciones_revaloradas(
+        session,
+        modelo,
+        catalogo,
+        lista_nueva,
+        list(dict.fromkeys(item.codigo_partida for item in items)),
+    )
     exigir_composiciones(items, composiciones)
     nuevo = elaborar(
         [*items, *_cargar_pendientes(session, modelo)],
@@ -199,7 +205,9 @@ def actualizar_precios(
     nuevo = replace(nuevo, informe=_declarar_externos(nuevo.informe, externos))
     cambios = registrar_cambios(session, lista_anterior, lista_nueva)
     if detectar_atipicos is not None:
-        atipicos = _hallazgos_atipicos(session, cambios, nuevo.presupuesto, detectar_atipicos)
+        atipicos = _hallazgos_atipicos(
+            session, cambios, nuevo.presupuesto, detectar_atipicos, modelo.id
+        )
         nuevo = replace(nuevo, informe=_declarar_atipicos(nuevo.informe, atipicos))
     guardar_presupuesto(
         session,
@@ -209,9 +217,11 @@ def actualizar_precios(
         lista=lista_nueva,
         parametros=parametros,
         pendientes=nuevo.pendientes,
+        version_origen=modelo,
+        motivo="revaloracion",
     )
 
-    _registrar_incidencias(session, cambios, anterior, nuevo.presupuesto)
+    _registrar_incidencias(session, cambios, anterior, nuevo.presupuesto, modelo.id)
     return nuevo, _comparar(anterior, nuevo.presupuesto, len(cambios))
 
 
@@ -259,6 +269,7 @@ def _hallazgos_atipicos(
     cambios: Sequence[models.CambioPrecio],
     nuevo: Presupuesto,
     detectar: DetectorAtipicos,
+    version_id: int,
 ) -> list[Hallazgo]:
     """Un hallazgo `CODIGO_ATIPICO` por cambio de esta lista que el detector marca y que toca
     alguna partida del presupuesto; las marcas de otros cambios del histórico no son de él."""
@@ -270,8 +281,8 @@ def _hallazgos_atipicos(
     if not marcas:
         return []
     codigos = list(dict.fromkeys(partida.item.codigo_partida for partida in nuevo.partidas))
-    partidas = _partidas_por_insumo(
-        session, [de_esta_lista[marca.id].insumo_id for marca in marcas], codigos
+    partidas = partidas_por_insumo(
+        session, version_id, [de_esta_lista[marca.id].insumo_id for marca in marcas], codigos
     )
     hallazgos: list[Hallazgo] = []
     for marca in marcas:
@@ -307,6 +318,7 @@ def _registrar_incidencias(
     cambios: Sequence[models.CambioPrecio],
     anterior: Presupuesto,
     nuevo: Presupuesto,
+    version_id: int,
 ) -> list[models.IncidenciaCambio]:
     """Una `IncidenciaCambio` por cada par (cambio de precio, partida del presupuesto que lo usa).
 
@@ -335,8 +347,8 @@ def _registrar_incidencias(
 
     precios_anteriores = _precio_unitario_por_partida(anterior)
     precios_nuevos = _precio_unitario_por_partida(nuevo)
-    partidas = _partidas_por_insumo(
-        session, [cambio.insumo_id for cambio in cambios], list(precios_anteriores)
+    partidas = partidas_por_insumo(
+        session, version_id, [cambio.insumo_id for cambio in cambios], list(precios_anteriores)
     )
 
     incidencias = [
@@ -355,33 +367,6 @@ def _registrar_incidencias(
     session.add_all(incidencias)
     session.flush()
     return incidencias
-
-
-def _partidas_por_insumo(
-    session: Session, insumos: Sequence[int], codigos: Sequence[str]
-) -> dict[int, list[models.Partida]]:
-    """Qué partidas del presupuesto llevan cada insumo, según la composición del catálogo.
-
-    Cada partida aparece **una sola vez** por insumo: nada impide que una partida repita el mismo
-    insumo en dos líneas de su composición (`composicion_apu` no tiene clave única por partida e
-    insumo), y sin eliminar el repetido el `join` registraría dos incidencias idénticas para el
-    mismo cambio de precio.
-    """
-    filas = session.execute(
-        select(models.ComposicionAPU.insumo_id, models.Partida)
-        .join(models.Partida, models.Partida.id == models.ComposicionAPU.partida_id)
-        .where(
-            models.ComposicionAPU.insumo_id.in_(insumos),
-            models.Partida.codigo.in_(codigos),
-        )
-        .order_by(models.Partida.codigo)
-    ).all()
-    por_insumo: dict[int, list[models.Partida]] = {}
-    for insumo_id, partida in filas:
-        partidas = por_insumo.setdefault(insumo_id, [])
-        if all(registrada.id != partida.id for registrada in partidas):
-            partidas.append(partida)
-    return por_insumo
 
 
 def _precio_unitario_por_partida(presupuesto: Presupuesto) -> dict[str, Decimal]:
