@@ -55,7 +55,7 @@ from adapters.espacio import (
     derivar,
 )
 from adapters.espacio.reglas import reglas_espacio
-from core.budget import ResultadoElaboracion, elaborar, plan_secuencial
+from core.budget import CODIGO_PENDIENTE, ResultadoElaboracion, elaborar, plan_secuencial
 from core.budget.presupuesto import MONEDA_POR_DEFECTO
 from core.catalog import Catalogo
 from core.contracts import ComposicionAPU, ItemComputo, ParametrosCosto, Severidad
@@ -111,6 +111,9 @@ ROTULOS: dict[str, str] = {
 
 #: Estado de una fila que ningun hallazgo toca.
 TEXTO_OK = "OK"
+
+#: Estado de una fila cuyos items citan partidas sin APU en el catalogo (no es error de medida).
+TEXTO_PENDIENTE = "PENDIENTE: sin APU en el catálogo"
 
 _SI, _NO = "si", "no"
 
@@ -510,20 +513,37 @@ def estado_de_filas(espacio: Espacio, informe: InformeAuditoria) -> dict[str, Es
     La clave es la de `adapters.espacio.clave_esp` (`esp_puntos:P1`). Una fila sin hallazgos es
     `EstadoFila(None, TEXTO_OK)`. Los hallazgos de una fila van agrupados por severidad, de la
     mas grave a la menos, cada severidad con su rotulo una sola vez: `ADVERTENCIA: a; b`.
+
+    Un item sin APU en el catalogo (hallazgo `PENDIENTE` del nucleo, ERROR) no es un error de la
+    medida: la fila lo dice aparte, `PENDIENTE: sin APU en el catálogo (AF-SALIDA; ...)`, con las
+    partidas que faltan, y va despues del `ERROR:` de medida si lo hay. La severidad de la fila
+    sigue siendo la del informe.
     """
     por_fila: dict[str, dict[Severidad, list[str]]] = {}
+    sin_apu: dict[str, list[str]] = {}
     for hallazgo in informe.hallazgos:
         for clave in dict.fromkeys(_claves_citadas(hallazgo.origen_ids)):
+            if hallazgo.regla == CODIGO_PENDIENTE:
+                partida = hallazgo.origen_ids[0]
+                if partida not in sin_apu.setdefault(clave, []):
+                    sin_apu[clave].append(partida)
+                continue
             textos = por_fila.setdefault(clave, {}).setdefault(hallazgo.severidad, [])
             if hallazgo.descripcion not in textos:
                 textos.append(hallazgo.descripcion)
     estado: dict[str, EstadoFila] = {}
     for clave in _claves_de_filas(espacio):
-        grupos = por_fila.get(clave)
-        if not grupos:
+        grupos = por_fila.get(clave, {})
+        partidas = sin_apu.get(clave)
+        if not grupos and not partidas:
             estado[clave] = EstadoFila(None, TEXTO_OK)
             continue
-        orden = sorted(grupos, reverse=True)
-        texto = " | ".join(f"{s.name}: {'; '.join(grupos[s])}" for s in orden)
-        estado[clave] = EstadoFila(orden[0], texto)
+        segmentos = [(s, f"{s.name}: {'; '.join(grupos[s])}") for s in grupos]
+        if partidas:
+            segmentos.append(
+                (Severidad.ERROR, f"{TEXTO_PENDIENTE} ({'; '.join(sorted(partidas))})")
+            )
+        # de la mas grave a la menos; a igual severidad la medida va antes que la partida pendiente
+        segmentos.sort(key=lambda sg: (-sg[0], sg[1].startswith(TEXTO_PENDIENTE)))
+        estado[clave] = EstadoFila(segmentos[0][0], " | ".join(t for _, t in segmentos))
     return estado

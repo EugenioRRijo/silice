@@ -336,7 +336,7 @@ def test_circuitos_y_sobrescrituras_se_conservan_al_editar():
 
 
 def _elaborar_sin_apu(espacio: Espacio) -> hoja.ResultadoHoja:
-    """El catalogo no tiene las partidas del agua (AF-*, DR-*): todos los items quedan pendientes."""
+    """El catalogo no tiene las partidas del agua (AF-*, DR-*): los items quedan pendientes."""
     return hoja.elaborar_hoja(espacio, {}, codigo="OF-001", fecha=FECHA)
 
 
@@ -347,7 +347,7 @@ def test_un_item_pendiente_no_se_confunde_con_un_error_de_medida_en_el_estado():
     assert p1.texto.startswith("PENDIENTE: sin APU en el catálogo")
     assert "AF-SALIDA" in p1.texto  # dice que partida falta
     assert "fuera del ambiente" not in p1.texto and "origen" not in p1.texto
-    assert "no tiene composicion" not in p1.texto  # el texto largo del nucleo no se repite en la fila
+    assert "no tiene composicion" not in p1.texto  # el texto largo del nucleo no va en la fila
 
 
 def test_una_fila_con_error_de_medida_y_partida_pendiente_dice_las_dos_cosas_por_separado():
