@@ -132,7 +132,9 @@ def test_s10_no_ejecuta_pytest_dentro_de_la_meta(monkeypatch):
     monkeypatch.setattr(subprocess, "run", prohibido)
     monkeypatch.setattr(subprocess, "Popen", prohibido)
     evaluar_s10_cobertura(85.0)
-    main(["--hasta", "SF1"])
+    from scripts.meta_sf import _s10
+
+    _s10()  # S2, S3 y S8 si lanzan procesos (git y pytest); S10 solo lee coverage.json
 
 
 # --- S2 Memorias -------------------------------------------------------------------------
