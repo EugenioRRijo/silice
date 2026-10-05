@@ -155,7 +155,7 @@ def test_margen_cero_o_negativo_no_tiene_punto_de_equilibrio(pu):
 
 
 def test_pe_mayor_que_las_ventas_no_se_alcanza_dentro_del_contrato():
-    # CD 100, PU 110: V = 110, CV = 100, CF = 15 > V - CV = 10, asi que PE = 15 x 110 / 10 = 165 > V.
+    # CD 100, PU 110: V = 110, CV = 100, CF = 15 > V - CV = 10: PE = 15 x 110 / 10 = 165 > V.
     curva = (PuntoCurva("Dia 1 [A]", D(110), D(110)),)
     r = punto_equilibrio(_presupuesto([_partida("A", "1", "100", "110")], curva), PARAMETROS)
 
