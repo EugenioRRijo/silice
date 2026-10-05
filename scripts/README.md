@@ -20,6 +20,7 @@ escribe con `--db`; con `--db` hacia otra ruta basta `--reiniciar`.
 | `seed_industrial.py` | catálogo de mantenimiento industrial en `data/apu_industrial.db` y su presupuesto `MNT-001` | M2.2 · industrial |
 | `seed_sistemas.py` | catálogo de sistemas (puntos de función) en `data/apu_sistemas.db` y su presupuesto `SIS-001` | M3.2 · sistemas |
 | `seed_telecom.py` | catálogo telecom (ARENAZA) en `data/apu_telecom.db` y la reproducción de sus dos presupuestos | M1.2 · telecom |
+| `seed_of001.py` | la oficina OF‑001 con su espacio y la versión `001` en `data/prueba_sf.db`, la base propia de CP‑08 a CP‑11 del guion; se niega a escribir en `data/apu.db` y exige `--reiniciar` si el archivo existe | SF · integración |
 
 ## Datos derivados de las fuentes
 
