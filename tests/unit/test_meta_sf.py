@@ -17,12 +17,14 @@ from scripts.meta_sf import (
     evaluar_s4_core,
     evaluar_s5_nucleo,
     evaluar_s8_regresion,
+    evaluar_s9_rnf11,
     evaluar_s10_cobertura,
     main,
     memorias_exigidas,
     metas_hasta,
     porcentaje_espacio,
     punta_de_s4,
+    registro_rnf11,
 )
 
 
@@ -505,3 +507,39 @@ def test_los_grupos_de_s5_cubren_edicion_restauracion_pe_y_excel():
     for ids in GRUPOS_S5.values():
         for ruta in ids:
             assert (raiz / ruta).is_file(), ruta
+
+
+# --- SF3 (rama de la hoja): S9 conectada a la cifra de `medir_rnf11.py` ---------------------------
+
+
+def test_s9_pendiente_si_no_hay_cifra():
+    estado, detalle = evaluar_s9_rnf11(None)
+    assert estado is Estado.PENDIENTE and "medir_rnf11.py" in detalle
+
+
+def test_s9_ok_si_la_mediana_cumple_el_umbral_incluida_la_frontera():
+    for mediana in (0.125, 1.999, 2.0):
+        estado, detalle = evaluar_s9_rnf11({"mediana_s": mediana, "umbral_s": 2.0, "puntos": 500})
+        assert estado is Estado.OK, mediana
+    assert "500 puntos" in detalle and "2,000" in detalle
+
+
+def test_s9_falla_si_la_mediana_supera_el_umbral_y_dice_la_cifra():
+    estado, detalle = evaluar_s9_rnf11({"mediana_s": 2.0001, "umbral_s": 2.0, "puntos": 500})
+    assert estado is Estado.FALLA and "2,000" in detalle
+
+
+def test_s9_con_un_registro_ilegible_o_de_otro_tamano_es_pendiente():
+    assert evaluar_s9_rnf11({})[0] is Estado.PENDIENTE
+    assert evaluar_s9_rnf11({"mediana_s": "x", "umbral_s": 2.0, "puntos": 500})[0] is Estado.PENDIENTE
+    # una medicion de menos de 500 puntos no es la que pide RNF-11
+    assert evaluar_s9_rnf11({"mediana_s": 0.1, "umbral_s": 2.0, "puntos": 30})[0] is Estado.PENDIENTE
+
+
+def test_s9_lee_el_registro_que_deja_el_script(tmp_path):
+    ruta = tmp_path / "rnf11.json"
+    assert registro_rnf11(ruta) is None
+    ruta.write_text('{"mediana_s": 0.3, "umbral_s": 2.0, "puntos": 500}', encoding="utf-8")
+    assert registro_rnf11(ruta)["mediana_s"] == 0.3
+    ruta.write_text("no es json", encoding="utf-8")
+    assert registro_rnf11(ruta) is None
