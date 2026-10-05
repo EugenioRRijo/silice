@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import re
 from decimal import Decimal
+from fractions import Fraction
 from pathlib import Path
 
 import pytest
@@ -86,7 +87,11 @@ def test_partidas_con_desperdicio_en_decimal_exacto(memoria: dict) -> None:
     for diametro, n in memoria["tees"].items():
         assert partidas[f"tee_{diametro}"] == n
     assert partidas["picado_resane_pared"] == _d(memoria["longitud_empotrada"])
-    assert partidas["salida_agua"] == memoria["cajas"]  # una salida y una caja por punto
+    puntos = {p for s in memoria["segmentos"] for p in s["sirve"]}
+    assert partidas["salida_agua"] == memoria["salidas_agua"] == len(puntos)
+    assert partidas["llave_de_paso"] == len(memoria["puntos_con_llave"])
+    assert set(memoria["puntos_con_llave"]) <= puntos
+    assert memoria["cajas"] == len(puntos)  # una caja por punto (spec 6.5), concepto distinto
 
 
 def test_casos_degenerados_sin_tramos(memoria: dict) -> None:
@@ -98,3 +103,37 @@ def test_casos_degenerados_sin_tramos(memoria: dict) -> None:
         assert _d(d["longitud"]) == 0
         assert d["codos"] == 0
         assert d["tees"] == 0
+
+
+def _extremos(clave: str) -> tuple[tuple[Decimal, ...], tuple[Decimal, ...]]:
+    _, a, b = clave.split("|")
+    return tuple(_d(v) for v in a.split(",")), tuple(_d(v) for v in b.split(","))
+
+
+def _direccion(a: tuple[Decimal, ...], b: tuple[Decimal, ...]) -> tuple[int, ...]:
+    """Eje y sentido unitario de un segmento ortogonal (desde a hacia b)."""
+    return tuple((v > 0) - (v < 0) for v in (y - x for x, y in zip(a, b, strict=True)))
+
+
+def test_codos_y_tees_por_grado_de_nodo(memoria: dict) -> None:
+    """Spec 6.5: tee = nodo de grado d>=3 aporta d-2; codo = nodo de grado 2 no colineal."""
+    nodos: dict[tuple[Decimal, ...], list[dict]] = {}
+    for s in memoria["segmentos"]:
+        for extremo in _extremos(s["clave"]):
+            nodos.setdefault(extremo, []).append(s)
+    codos: dict[str, int] = {}
+    tees: dict[str, int] = {}
+    for nodo, segs in nodos.items():
+        diametro = max((s["diametro"] for s in segs), key=Fraction)
+        if len(segs) >= 3:
+            tees[diametro] = tees.get(diametro, 0) + len(segs) - 2
+        elif len(segs) == 2:
+            vectores = []
+            for s in segs:
+                a, b = _extremos(s["clave"])
+                otro = b if a == nodo else a
+                vectores.append(_direccion(nodo, otro))
+            if vectores[0] != tuple(-v for v in vectores[1]):  # no colineales
+                codos[diametro] = codos.get(diametro, 0) + 1
+    assert codos == memoria["codos"]
+    assert tees == memoria["tees"]
