@@ -168,7 +168,8 @@ presupuesto*):
   `profundidad` = p, `diametro` = D, `desperdicio` = d), con la advertencia de que el separador
   decimal es el **punto**. El formato completo está en `data/samples/civil/README.md`.
 - **Pasos que el participante ejecuta cronometrados:** completar la plantilla con los datos de M1
-  y guardarla; en la aplicación, abrir *Elaborar un presupuesto*, elegir el dominio `civil`,
+  y guardarla; en la aplicación, abrir *Elaborar un presupuesto* (menú superior, sección *Trabajo*),
+  elegir el dominio `civil`,
   asociar en la barra lateral cada partida a su código de M2 (concreto, encofrado, excavación,
   tubería y, marcando *Incluir relleno (balance R5)*, el relleno), subir la plantilla, pulsar
   *Extraer cómputo*, *Elaborar presupuesto* y *Exportar a Excel*.
@@ -177,6 +178,11 @@ presupuesto*):
   no el código del participante), con sus cuatro hojas
   (*Presupuesto*, *APU*, *Curva* y *Auditoria*).
 - **Fin del tiempo:** el archivo está en la carpeta de descargas y el participante dijo «terminé».
+- **La interfaz desde la integración final del sprint SF (cambio previo a la primera sesión, sin tocar el
+  método, los topes ni la prueba estadística):** el menú de pantallas va **arriba** y bajo él hay una barra
+  de herramientas. «Exportar Excel» de esa barra produce el libro de la *Hoja del proyecto*
+  (`hoja_<código>.xlsx`), no el entregable: si el participante lo usa, el observador lo anota y el
+  entregable sigue siendo el `presupuesto_P-001*.xlsx` de *Exportar a Excel* de *Elaborar un presupuesto*.
 
 ## 5. Participantes
 

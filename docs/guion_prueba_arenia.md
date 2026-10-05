@@ -17,8 +17,17 @@ RF citados viven una sola vez en la [ERS](ERS.md) y aquí no se repiten.
   fuera de rango, la exportación a Excel y la lectura del informe de auditoría.
 - **Fuera de alcance:** las demás pantallas de la aplicación (salvo la consulta del *Catalogo* en
   CP‑02) y todo lo que ya prueban las pruebas automatizadas del [plan de pruebas](plan_pruebas.md).
+- **Desde la integración final:** CP‑08 a CP‑11 recorren la **Hoja del proyecto** (levantar el espacio a
+  mano, importar un plano, editar un APU y guardar con fuente, ver precios y cotizar, trazabilidad y
+  Excel) con personas distintas de las de CP‑07 (RNF‑13).
 
 CP‑07 (sprint de UI, [PLAN_UI.md](../PLAN_UI.md)) es de otra naturaleza: no lo ejecuta quien anota, sino una persona que nunca vio la aplicación, y mide RNF‑10.
+
+**Puesta al día de la integración final del sprint SF (2026‑10‑05).** La navegación pasa a un menú
+**superior** con una **barra de herramientas** debajo, y aparece la pantalla **Hoja del proyecto**
+(UC‑13 a UC‑16). CP‑07 se actualiza a esa interfaz y se escriben **CP‑08 a CP‑11** como casos IEEE 829
+completos, con persona y con RNF‑13 (sección 6.1). Es un cambio previo a la primera sesión de Med
+(bitácora del sprint final). CP‑01 a CP‑06 no cambian de fondo: solo el nombre del menú.
 
 ## 2. Elementos a probar
 
@@ -28,6 +37,10 @@ CP‑07 (sprint de UI, [PLAN_UI.md](../PLAN_UI.md)) es de otra naturaleza: no lo
 | `ui/composicion.py` | el buscador de la referencia MaPreX y la lectura de las tablas |
 | `core/budget/excel.py` | el libro de Excel con sus cuatro hojas |
 | `scripts/seed_demo.py` | la siembra que deja la base lista para la prueba |
+| `ui/paginas/hoja.py`, `ui/hoja.py` | la Hoja del proyecto (CP‑08 a CP‑11): tablas del espacio, APU, precios, versiones, plano y Excel |
+| `ui/barra.py` | la barra de herramientas (Proyecto, Importar plano, Precios, Auditar, Guardar versión, Exportar Excel, Recorrido guiado) |
+| `adapters/espacio/planos/` | la importación de planos DXF e IFC (CP‑09) |
+| `scripts/seed_of001.py` | la siembra de OF‑001 en `data/prueba_sf.db` para CP‑08 a CP‑11 |
 
 ## 3. Naturaleza de los datos
 
@@ -104,9 +117,34 @@ Si no existe, anote «no existe».
 
    Se abre el navegador en **Inicio**. Compruebe que la barra lateral, bajo **Caso abierto**, nombra
    `data/prueba_arenia.db` y que su resumen empieza por `8 partidas`. Si nombra otra base, cierre
-   la aplicación y vuelva a arrancarla con la variable. Después, en el menú lateral (sección
+   la aplicación y vuelva a arrancarla con la variable. Después, en el menú **superior** (sección
    **Trabajo**), elija **Componer una partida**. Recargar la página (F5) o abrir otra pestaña **no**
    cambia el caso abierto: la variable lo mantiene.
+
+   Desde la integración final el menú de pantallas va **arriba** y, debajo de él, hay una **barra de
+   herramientas** (Proyecto, Importar plano, Precios, Auditar, Guardar versión, Exportar Excel y
+   Recorrido guiado); la barra lateral conserva el **Caso abierto** y el paso del recorrido. CP‑01 a
+   CP‑06 no usan la barra de herramientas.
+
+### 4.1 Base propia de CP‑08 a CP‑11 (`data/prueba_sf.db`)
+
+CP‑08 a CP‑11 no usan `data/prueba_arenia.db`: trabajan sobre su propia base, **`data/prueba_sf.db`**, con
+la oficina OF‑001 y la misma protección de `data/apu.db` (sección 4, «Antes de empezar» y «Al terminar la
+prueba»). Dentro de la copia desechable del paso 1 (con `uv sync --extra ui --extra ml --extra planos`):
+
+```
+uv run python scripts/seed_of001.py --db data/prueba_sf.db --reiniciar
+```
+
+**Comprobación de la preparación.** La terminal debe mostrar, entre otras, estas líneas:
+`Proyecto: OF-001: oficina con baño, cocineta y puestos (caso de prueba)`, `Version 001: 30 partidas`,
+`Total: 2703.86 USD` y `Auditoria: 33 hallazgo(s), CUMPLE`. La orden se niega a escribir en `data/apu.db` y,
+sobre una base que ya existe, exige `--reiniciar`: cada participante empieza de la misma base. Después, la
+aplicación se abre con el caso de prueba (en bash `ARENIA_CASO=data/prueba_sf.db uv run python -m streamlit
+run ui/app.py`; en PowerShell `$env:ARENIA_CASO = "data/prueba_sf.db"; uv run python -m streamlit run
+ui/app.py`) y la barra lateral, bajo **Caso abierto**, nombra `prueba_sf.db` con `30 partidas · 49 insumos ·
+lista vigente: Lista MaPreX jul-2026 (OF-001)`. Para CP‑09 el observador deja una copia de
+`tests/fixtures/planos/of001.dxf` en el escritorio con el nombre `of001.dxf`.
 
 **Orden de ejecución.** Los casos se ejecutan en orden, de CP‑01 a CP‑06, sobre una base recién
 sembrada: CP‑02 y CP‑03 continúan donde terminó CP‑01. Si repite la prueba, vuelva al paso 2.
@@ -217,7 +255,7 @@ base de trabajo. Por último, borre la copia desechable (paso 1).
 4. Para comprobar el historial, cambie el rendimiento a `150` y pulse Enter. **No guarde.**
 5. Vuelva a escribir `120` en el rendimiento (así queda listo para CP‑03).
 6. Abra una **segunda pestaña** del navegador con la misma dirección de la aplicación y, en ella,
-   elija **Catalogo de partidas e insumos** en el menú lateral. Compruebe que la barra lateral de
+   elija **Catalogo de partidas e insumos** en el menú superior. Compruebe que la barra lateral de
    esa pestaña también muestra `data/prueba_arenia.db` bajo **Caso abierto** (la variable
    `ARENIA_CASO` lo fija para toda pestaña nueva). Observe la tabla **Partidas**. Cierre esa pestaña
    y vuelva a la primera.
@@ -446,8 +484,9 @@ parte de lo que se prueba (principio 7 de [NORMAS.md](../NORMAS.md)).
    `ARENIA_CASO=data/cp07/escenario_a.db uv run python -m streamlit run ui/app.py`;
    en PowerShell: `$env:ARENIA_CASO = "data/cp07/escenario_a.db"; uv run python -m streamlit run ui/app.py`
    (en el escenario B, `escenario_b.db`).
-5. Compruebe que el navegador abrió en **Inicio** y que la barra lateral, bajo **Caso abierto**,
-   nombra la base del escenario. Cierre toda otra pestaña.
+5. Compruebe que el navegador abrió en **Inicio**, que el menú de pantallas está **arriba** (con la barra
+   de herramientas debajo) y que la barra lateral, bajo **Caso abierto**, nombra la base del
+   escenario. Cierre toda otra pestaña.
 6. Vacíe la carpeta de descargas del navegador, o anote su contenido para distinguir después el
    archivo nuevo.
 7. Tenga a mano el cronómetro, esta hoja de registro y el bloque B del anexo A de
@@ -475,7 +514,15 @@ parte de lo que se prueba (principio 7 de [NORMAS.md](../NORMAS.md)).
    caso): eso tampoco cuenta como ayuda; anote el minuto y la ruta que abrió. El estado final se
    comprueba siempre sobre la base del escenario (`escenario_a.db` o `escenario_b.db`), nunca sobre
    la que haya quedado abierta al final.
-6. **Oferta única de ayuda:** si pasan 3 minutos sin avanzar —sin cambiar de pantalla ni producir
+6. **La barra de herramientas** (Proyecto, Importar plano, Precios, Auditar, Guardar versión, Exportar
+   Excel y Recorrido guiado) es parte de la aplicación que se mide: si el participante la usa, no cuenta
+   como ayuda ni se le explica. **«Exportar Excel» de la barra produce el libro de la *Hoja del
+   proyecto* (`hoja_<código>.xlsx`), no `presupuesto_<código>*.xlsx`:** el estado final de CP‑07 sigue
+   siendo el de «Estado final observable» (el archivo de *Elaborar un presupuesto*). Si el participante
+   termina con el libro de la barra, el observador lo anota como punto de detención y el escenario no
+   alcanzó el estado final. (Ruling de la integración: no se amplía el criterio de CP‑07 al cambiar la
+   interfaz; ver la bitácora.)
+7. **Oferta única de ayuda:** si pasan 3 minutos sin avanzar —sin cambiar de pantalla ni producir
    un resultado nuevo—, diga una sola vez: «¿Quiere que le ayude?». Si acepta, la sesión queda
    **asistida** y el veredicto ya es FALLA; se continúa hasta una condición de parada para registrar
    el resto. Si no acepta, no se vuelve a ofrecer.
@@ -544,6 +591,320 @@ ejecución, dejando constancia en [docs/bitacora/](bitacora/).
 
 **Veredicto de CP‑07:** ____ (PASA solo si ambos escenarios PASAN)
 
+### CP‑08 — Levantar a mano el baño de OF‑001 y obtener su presupuesto auditado
+
+> **CP‑08 a CP‑11 son casos con persona (RNF‑13) y se ejecutan en la fase Med.** Se preparan con la
+> base de la sección 4.1 (`data/prueba_sf.db`), dentro de la copia desechable de la sección 4, y con las
+> mismas comprobaciones de `data/apu.db` de «Antes de empezar» y «Al terminar la prueba». Su
+> consigna literal, sus paradas y su criterio están en la sección 6.1.
+
+- **Objetivo:** que una persona que no vio la aplicación describa un baño en las tablas de la hoja
+  (un ambiente, una fuente, dos puntos de agua) y obtenga sus cantidades derivadas, su presupuesto y su
+  informe de auditoría.
+- **Trazabilidad:** UC‑13; RF‑44 a RF‑47, RF‑61; RNF‑13.
+- **Precondición:** `data/prueba_sf.db` recién sembrada (sección 4.1); la aplicación abierta con
+  `ARENIA_CASO=data/prueba_sf.db` en **Inicio**, con `prueba_sf.db` bajo **Caso abierto**; la pantalla
+  **Hoja del proyecto** (menú superior, sección **Trabajo**) con **(borrador nuevo, sin guardar)** en
+  el selector *Proyecto* y la pestaña **Espacio y metrajes**. La persona tiene en papel la **ficha del
+  baño** (tabla siguiente).
+
+**Ficha del baño** (se entrega impresa; metros; eje z hacia arriba desde el piso terminado; son supuestos
+declarados de la memoria `tests/fixtures/memorias/bano_of001.md`, no un plano real)
+
+| Tabla | id | Datos |
+|---|---|---|
+| Orígenes de medida | `O1` | tipo `supuesto`; referencia `motivo=ejemplo de memoria de calculo` |
+| Ambientes | `BAN-01` | nombre `Bano`; x0 `0`; y0 `0`; largo `2`; ancho `1.5`; alto `2.5`; origen `O1` |
+| Fuentes | `F1` | especialidad `agua`; tipo `montante_agua`; ambiente `BAN-01`; x `0`; y `0`; z `0`; origen `O1` |
+| Puntos | `P1` | nombre `lavamanos`; especialidad `agua`; tipo `agua_fria`; ambiente `BAN-01`; superficie `pared`; x `1.5`; y `0`; z `0.6`; fuente `F1`; circuito vacío; especificaciones `diametro=1/2"; llave_de_paso=si`; origen `O1` |
+| Puntos | `P2` | nombre `ducha`; especialidad `agua`; tipo `agua_fria`; ambiente `BAN-01`; superficie `pared`; x `1`; y `1.5`; z `1.2`; fuente `F1`; circuito vacío; especificaciones `diametro=3/4"; llave_de_paso=si`; origen `O1` |
+| Vértices de recorridos | — | ninguna fila: el sistema propone el recorrido de cada punto |
+
+**Pasos**
+
+1. En la tabla **Origenes de medida**, agregue una fila (el **+** bajo la tabla) y escriba los datos de `O1`.
+2. Repita para **Ambientes** (`BAN-01`), **Fuentes** (`F1`) y **Puntos** (`P1` y `P2`). Las columnas con lista
+   (*tipo*, *especialidad*, *superficie*) se eligen de la lista. Deje **Vertices de recorridos** vacía.
+3. Observe la columna **Estado** junto a cada tabla y la tabla **Cantidades derivadas**.
+4. Observe el **Total del presupuesto** y baje a **Informe de auditoria**.
+5. En la pestaña **Presupuesto**, observe el precio unitario y el total de cada renglón.
+6. Abra el panel **Guardar version y exportar a Excel** y observe el botón **Guardar version**.
+
+**Resultado esperado**
+
+- Paso 3: cada fila trae el Estado `ADVERTENCIA: …la medida es un supuesto declarado (origen O1: ejemplo
+  de memoria de calculo)` (el origen es un supuesto, no una medición). **Cantidades derivadas** tiene
+  **ocho** filas, y sus cantidades son las de la memoria a mano (exactas):
+
+  | Partida | Unidad | Cantidad |
+  |---|---|---|
+  | `AF-CODO-1/2` | unidad | `1.00` |
+  | `AF-CODO-3/4` | unidad | `2.00` |
+  | `AF-LLAVE` | unidad | `2.00` |
+  | `AF-PICADO-PARED` | m | `5.70` |
+  | `AF-SALIDA` | unidad | `2.00` |
+  | `AF-TEE-3/4` | unidad | `1.00` |
+  | `AF-TUB-PVC-1/2` | m | `2.64` |
+  | `AF-TUB-PVC-3/4` | m | `6.93` |
+
+- Paso 4: **Total del presupuesto `172.42 USD`** (los parámetros de un borrador nuevo son los de la
+  aplicación: administración 15 %, utilidad 10 %, bono de alimentación 1,00). El informe dice
+  `Hallazgos: 6 · Resultado: CUMPLE`: **cuatro ADVERTENCIA** de la regla R8 (ambiente `BAN-01`, fuente `F1`,
+  punto `P1` y punto `P2`: «la medida es un supuesto declarado») y **dos INFO** (R2 y R7 «no aplicable»: el
+  borrador no declara curva ni plan). R9 y R10 no dan hallazgos.
+- Paso 5: precio unitario y total por renglón: `AF-CODO-1/2` 3.42 y 3.42; `AF-CODO-3/4` 4.63 y 9.26;
+  `AF-LLAVE` 12.59 y 25.18; `AF-PICADO-PARED` 6.81 y 38.84; `AF-SALIDA` 6.59 y 13.19; `AF-TEE-3/4` 4.47 y
+  4.47; `AF-TUB-PVC-1/2` 5.82 y 15.36; `AF-TUB-PVC-3/4` 9.05 y 62.71 (la suma de los renglones
+  redondeados da 172.43; el total exacto es 172.42).
+- Paso 6: **Guardar version** está deshabilitado y su ayuda dice `Abra una version guardada para poder
+  guardar.` (un borrador nuevo no tiene versión: el guardado es de CP‑10).
+
+| Resultado obtenido | Veredicto |
+|---|---|
+| | |
+
+### CP‑09 — Importar el DXF de OF‑001 y cargar lo que el informe marca como pendiente
+
+- **Objetivo:** importar un plano, leer el informe de importación, cargar las alturas que el plano no
+  trae, declarar los circuitos y fusionar el plano con el borrador de la hoja sin saltar la auditoría.
+- **Trazabilidad:** UC‑14; RF‑50, RF‑51; RNF‑13.
+- **Precondición:** la de CP‑08 (la persona de la medición no repite CP‑08 antes: recargue la página con
+  **F5** para que el borrador quede nuevo). El archivo `of001.dxf` (copia de
+  `tests/fixtures/planos/of001.dxf`) está en el escritorio.
+- **Nota de alcance.** El DXF de OF‑001 trae **varias** marcas, no una sola «fila»: seis alturas
+  pendientes, dos circuitos de valores supuestos y siete fuentes asignadas por cercanía. Este caso pide
+  resolver lo **pendiente** (las seis alturas) y declarar los circuitos; las siete aproximaciones se leen
+  y quedan en el informe. (Ruling de la integración; ver la bitácora.)
+
+**Pasos**
+
+1. En la barra de herramientas, pulse **Importar plano**. Se abre la pestaña **Espacio y metrajes** con el
+   bloque **Importar plano (DXF o IFC)** abierto.
+2. En el cuadro *Plano*, elija `of001.dxf` y pulse **Leer plano**.
+3. Lea los cuatro contadores y la tabla del informe.
+4. En **Alturas pendientes** escriba `2,50` en cada uno de los seis campos y pulse **Cargar alturas**.
+5. En **Circuitos por declarar** revise `C1` y `C2` y pulse **Declarar circuitos** (confirma los valores
+   que trae el plano).
+6. Pulse **Fusionar con el espacio del borrador**.
+7. Observe las tablas, **Cantidades derivadas**, el **Total del presupuesto** y el **Informe de auditoria**.
+8. Observe el botón **Guardar version**.
+
+**Resultado esperado**
+
+- Paso 3: **Importado 33**, **No reconocido 0**, **Aproximado 9**, **Pendiente 6**; la tabla del informe
+  tiene 48 filas (columnas *Tipo*, *En el plano*, *Fila de la hoja*, *Qué pasó*): seis ambientes con
+  «altura pendiente; entra con 2.5 m provisionales hasta cargar la real», siete puntos con «fuente RK1
+  asignada por cercania» y dos circuitos con «conductores 1-1-1 y 6 puntos maximos son supuestos
+  declarados». Debajo aparecen **Alturas pendientes** (seis campos: BAN‑01, COC‑01, CT‑01, REC‑01, ZA y ZB)
+  y **Circuitos por declarar** (C1 y C2, cada uno con 1, 1, 1 y 6), y un aviso azul que dice que, si se
+  fusiona ahora, esas alturas entran con 2,5 m provisionales.
+- Paso 4: **Pendiente 0** y desaparece el bloque *Alturas pendientes*.
+- Paso 5: **Aproximado 7** y desaparece el bloque *Circuitos por declarar*.
+- Paso 6: aparece el mensaje verde `Se fusionó «of001.dxf» con el borrador de la hoja: 6 ambientes, 6
+  fuentes y 21 puntos. Revise las filas en las tablas de abajo; la auditoría las evalúa como a las demás.
+  Todavía no se guardó ninguna versión: use Guardar versión cuando esté conforme.` y el bloque de importar
+  pasa a mostrar **Informe de la última fusión**.
+- Paso 7: las tablas tienen **6 ambientes** (alto `2.5`), **6 fuentes** y **21 puntos**; **Cantidades
+  derivadas** tiene **30 filas**, las mismas partidas y cantidades que la hoja manual de OF‑001 a ±0,001 m
+  (conteos exactos), entre ellas `AF-TUB-PVC-3/4` 6.93 m, `AF-TUB-PVC-1/2` 8.25 m, `DR-TUB-PVC-2` 4.35 m,
+  `DT-UTP-CAT-6` 101.64 m, `EL-COND-12-AWG` 75.57 m y `EL-COND-14-AWG` 33.00 m. **Total del presupuesto
+  `2577.59 USD`**, el mismo de la hoja manual de OF‑001 con los parámetros por defecto. El informe dice
+  `Hallazgos: 2 · Resultado: CUMPLE`: dos INFO (R2 y R7, sin curva ni plan) y R8, R9 y R10 en cero (el plano
+  es un origen de medida con archivo y las alturas están cargadas).
+- Paso 8: **Guardar version** está deshabilitado (el borrador nuevo no tiene versión: ver CP‑10).
+
+| Resultado obtenido | Veredicto |
+|---|---|
+
+### CP‑10 — Cambiar la cantidad de una línea, ver el recálculo y el punto de equilibrio, guardar con fuente
+
+- **Objetivo:** editar la cantidad de una línea de un APU en la copia de la versión, ver el recálculo y el
+  punto de equilibrio, comprobar que guardar sin fuente se rechaza y guardar con fuente y responsable.
+- **Trazabilidad:** UC‑15, UC‑16; RF‑52, RF‑53, RF‑55, RF‑58; RNF‑13.
+- **Precondición:** `data/prueba_sf.db` recién sembrada (sección 4.1) y la aplicación recién arrancada
+  sobre ella (**CP‑10 se ejecuta antes que CP‑11**, que parte de la versión que deja este caso). En
+  **Hoja del proyecto**: *Proyecto* `OF-001: oficina con baño, cocineta y puestos (caso de prueba)` y
+  *Version* `001 (vigente)` (se pueden elegir en la propia pantalla o abriendo el proyecto con la
+  herramienta **Proyecto** de la barra).
+
+**Pasos**
+
+1. Elija el proyecto OF‑001 y la versión `001`. Observe el **Total del presupuesto** y la pestaña
+   **Punto de equilibrio**.
+2. Abra la pestaña **APU**, elija la partida `AF-TUB-PVC-3/4` y, en **Materiales**, cambie la cantidad de
+   `Tubo PVC 3/4 pulg A.B. presion agua fria [MT2050]` de `1` a `1.05`.
+3. Observe el aviso amarillo, el **Precio unitario** de la partida y, en **Punto de equilibrio**, las
+   cifras nuevas.
+4. Abra el panel **Guardar version y exportar a Excel** sin escribir nada y observe el botón **Guardar
+   version**.
+5. En *Fuente del cambio* escriba `ficha tecnica del fabricante: 5 % de desperdicio en el tubo` y, en
+   *Responsable*, su nombre (`Ing. Participante`). Pulse **Guardar version**.
+6. Observe el mensaje, el selector *Version* y la pestaña **Trazabilidad**.
+
+**Resultado esperado**
+
+- Paso 1: **Total del presupuesto `2703.86 USD`**. **Punto de equilibrio:** `Se alcanza en Dia 23, al 46 %
+  de ese período.`; Ventas (contrato) `2703.86 USD`, Costo variable `2137.44 USD`, Costo fijo `320.62 USD`,
+  Utilidad `245.81 USD`, Punto de equilibrio `1530.49 USD`, Como % de las ventas `56.60 %`.
+- Paso 3: aviso amarillo `1 cambios sin guardar. Si cierra la hoja o abre otra version se pierden.`;
+  **Precio unitario** de `AF-TUB-PVC-3/4` pasa de `9.45` a `9.78` (Materiales `5.68` → `5.94`); **Total
+  `2706.12 USD`**; punto de equilibrio: `Se alcanza en Dia 23, al 45 % de ese período.`, Ventas `2706.12`,
+  Costo variable `2139.23`, Costo fijo `320.88`, Utilidad `246.01`, Punto de equilibrio `1531.77 USD`,
+  `56.60 %`. (El total sube 2,26 USD: 6,93 m × 0,05 × 5,1648 × 1,15 × 1,10.)
+- Paso 4: el panel se abre solo; **Guardar version está deshabilitado** y su ayuda dice `Escriba la fuente
+  del cambio: por que se cambia y con que respaldo.` (el rechazo de guardar sin fuente: no se escribe
+  nada).
+- Paso 5: mensaje verde `Se guardo la version 002 con 1 cambios registrados.`
+- Paso 6: *Version* ofrece `001` y `002 (vigente)`. **Trazabilidad** muestra el historial (`001` elaborada;
+  `002` edición, sale de `001`, 1 cambio, vigente) y el registro de la `002`: objeto `apu`, clave
+  `AF-TUB-PVC-3/4|Tubo PVC 3/4 pulg A.B. presion agua fria [MT2050]`, campo `cantidad`, antes `1`, después
+  `1.05`, la fuente, el responsable y la fecha y hora.
+
+| Resultado obtenido | Veredicto |
+|---|---|
+
+### CP‑11 — Ver el origen de un precio, registrar una cotización, ver la trazabilidad y exportar el Excel
+
+- **Objetivo:** ver de dónde sale el precio de un insumo, registrar una cotización, ver dónde queda el
+  cambio y exportar el libro de Excel de la hoja.
+- **Trazabilidad:** UC‑15; RF‑56, RF‑59; RNF‑13.
+- **Precondición:** **CP‑10 terminado con PASA**, sin cerrar la aplicación: la versión `002` (vigente) de
+  OF‑001 abierta en **Hoja del proyecto**. La carpeta de descargas vacía (o su contenido anotado).
+
+**Pasos**
+
+1. En la barra de herramientas pulse **Precios**. Busque en la tabla el insumo `MAT-003`, el tubo PVC de
+   3/4 pulg, y lea su precio, su lista y su Estado.
+2. En **Registrar una cotizacion** elija el insumo `MAT-003`; escriba *Precio cotizado* `5.50`, *Proveedor*
+   `Ferreteria Los Andes`, *Numero de la cotizacion* `COT-2026-0412` y *Responsable* `Ing. Participante`;
+   deje la fecha de hoy y pulse **Cotizar**.
+3. Observe el mensaje y la fila de `MAT-003` en la tabla de precios.
+4. Abra la pestaña **Trazabilidad**.
+5. En la barra de herramientas pulse **Exportar Excel** y, en el panel *Guardar version y exportar a Excel*,
+   **Descargar Excel**. Abra el archivo.
+
+**Resultado esperado**
+
+- Paso 1: se abre la pestaña **Precios** (la tabla de **49** insumos). `MAT-003`: `Tubo PVC 3/4 pulg A.B.
+  presion agua fria [MT2050]`, **Precio** `5.16`, **Lista** `Lista MaPreX jul-2026 (OF-001)`, moneda `USD`,
+  **Estado** `Sin referencia ni cotización: el precio no tiene fuente`.
+- Paso 3: mensaje verde `Se guardo la version 003 con la cotizacion de MAT-003.`; la fila de `MAT-003`
+  pasa a **Precio** `5.50`, **Cotizacion** `Ferreteria Los Andes, COT-2026-0412, <fecha de hoy>` y **Estado**
+  `OK`.
+- Paso 4: el historial tiene `001` (elaborada), `002` (edición, sale de `001`) y `003` (**cotizacion**, sale
+  de `002`, 1 cambio, vigente); el registro de la `003`: objeto `precio`, clave `MAT-003`, campo
+  `cotizacion`, antes `5.1648`, después `5.50`, fuente `Cotizacion COT-2026-0412 de Ferreteria Los Andes
+  (<fecha de hoy>).` y su responsable.
+- Paso 5: el archivo se llama `hoja_003.xlsx` y tiene **catorce hojas**, en este orden: *Espacio y
+  metrajes*, *APU*, *Presupuesto*, *Plan y curva*, *Punto de equilibrio*, *Precios*, *Parametros*,
+  *Auditoria*, *Trazabilidad*, *Esp origenes*, *Esp ambientes*, *Esp fuentes*, *Esp puntos* y *Esp
+  vertices*. La hoja *Trazabilidad* tiene **una** fila de datos (`002`, `003`, `precio`, `MAT-003`,
+  `cotizacion`, `5.1648`, `5.50`, la fuente, el responsable y la fecha y hora). Las fórmulas del libro
+  (APU, Presupuesto, Punto de equilibrio) se calculan al abrirlo.
+
+| Resultado obtenido | Veredicto |
+|---|---|
+
+### 6.1 RNF‑13 — Cómo se miden CP‑08 a CP‑11
+
+RNF‑13 (ERS §9): en las condiciones de CP‑07, con el **mismo número y perfil** de participantes que CP‑07
+pero **personas distintas**, cada caso de CP‑08 a CP‑11 se completa **sin ayuda** en **≤ 15 min** por todos
+los participantes; el bloque B del anexo A de [dossier_g0.md](dossier_g0.md) da **≥ 4,0** y ningún ítem
+queda por debajo de 3. El veredicto es **por caso**. Todo lo de esta sección se fija **antes de medir** y no
+se cambia después de ver un resultado.
+
+**Participantes (n y perfil declarados).** **n = 2**, igual que CP‑07 (dos personas, una por sesión), con el
+perfil de CP‑07 (se anota profesión, años de experiencia con presupuestos de obra y si ha usado
+aplicaciones web de datos; sin nombre). **Personas distintas** de las de CP‑07 y, con la misma regla de
+exclusión cruzada de esos protocolos, de las que hayan hecho la medición del indicador 3 o la de RNF‑04
+([protocolo_indicador3.md](protocolo_indicador3.md), [protocolo_rnf04.md](protocolo_rnf04.md)): nadie ya
+expuesto a la tarea en otra medición. Ninguna vio antes la aplicación ni sus documentos; la segunda no
+presenció la sesión de la primera. Cada participante hace los cuatro casos **en este orden: CP‑08, CP‑09,
+CP‑10, CP‑11** (CP‑10 antes que CP‑11, que parte de su versión).
+
+**Condiciones.** Las de CP‑07: copia desechable (sección 4, paso 1), base propia
+`data/prueba_sf.db` sembrada de nuevo antes de **cada participante** (sección 4.1), `ARENIA_MODO_ENTREGA`
+sin definir, `data/apu.db` comprobada antes y después, observador distinto del participante, carpeta de
+descargas vacía, y el mismo guion del observador de CP‑07 (puntos 1 a 7: no contestar preguntas, anotar
+preguntas y puntos de detención, qué cuenta como ayuda, oferta única de ayuda) **con los umbrales de esta
+sección**. El participante no recibe explicación previa de la aplicación.
+
+**Consigna literal de cada caso** (se lee tal cual, una sola vez, al entregarle el material; el cronómetro
+arranca al terminar de leerla):
+
+- **CP‑08.** «Esta aplicación sirve para armar y auditar presupuestos de obra. Le entrego la ficha de un
+  baño. Le pido que, sin ayuda, cargue esos datos en la aplicación y obtenga el presupuesto auditado de su
+  instalación de agua fría y que, al terminar, me diga cuántas advertencias tiene la auditoría y cuál es el
+  total. Puede pensar en voz alta. Yo solo voy a observar y a tomar notas.»
+- **CP‑09.** «Le entrego el plano de una oficina, en el archivo `of001.dxf` del escritorio. Le pido que, sin
+  ayuda, lo cargue en la aplicación, deje cargadas las alturas de los ambientes en 2,50 metros y lleve el
+  plano a la hoja del proyecto y que, al terminar, me diga el total del presupuesto. Puede pensar en voz alta.
+  Yo solo voy a observar y a tomar notas.»
+- **CP‑10.** «El proyecto de esta oficina ya está en la aplicación. Le pido que, sin ayuda, cambie la
+  cantidad de tubo de la partida AF‑TUB‑PVC‑3/4 de 1 a 1,05 metros por cada metro instalado; que intente
+  guardar ese cambio sin escribir ninguna fuente y me diga qué pasa; que lo guarde después como versión
+  nueva con la fuente y el responsable que usted escriba; y que me diga cuánto cambió el total y en qué día
+  se alcanza el punto de equilibrio. Puede pensar en voz alta. Yo solo voy a observar y a tomar notas.»
+- **CP‑11.** «Le pido que, sin ayuda, averigüe de dónde sale el precio del tubo PVC de 3/4 de pulgada
+  (código MAT‑003); que registre una cotización de 5,50 dólares de la Ferretería Los Andes, número
+  COT‑2026‑0412; que me diga dónde queda registrado ese cambio; y que obtenga el presupuesto en Excel.
+  Puede pensar en voz alta. Yo solo voy a observar y a tomar notas.»
+
+**Estado final observable** (el observador lo comprueba sobre la base y la carpeta de descargas, no sobre
+lo que quede abierto en pantalla; tras detener el cronómetro):
+
+| Caso | Se alcanza cuando… |
+|---|---|
+| CP‑08 | las tablas tienen 1 origen, 1 ambiente, 1 fuente y 2 puntos, **Cantidades derivadas** tiene las ocho filas de CP‑08, y el participante dice, de palabra, **cuatro** advertencias y un total de **172.42** (se acepta 172.42 ± 0,01) |
+| CP‑09 | **Pendiente 0** en el informe de importación, el mensaje verde de fusión (`6 ambientes, 6 fuentes y 21 puntos`), los seis ambientes con alto `2.5` en la tabla, y el participante dice un total de **2577.59** (± 0,01) |
+| CP‑10 | existe la versión `002` (vigente) de OF‑001 con **un** registro de cambio (`cantidad`, `1` → `1.05`) con una fuente y un responsable **no vacíos** (se lee en la base y en la pestaña Trazabilidad); el participante dice que el total sube **2.26** (± 0,01) y que el equilibrio se alcanza en el **Día 23**, y que sin fuente el sistema no deja guardar |
+| CP‑11 | existe la versión `003` (cotización) con el registro de `MAT‑003`; `hoja_003.xlsx` está en la carpeta de descargas con la hoja *Trazabilidad*; el participante dice que el precio salía de la lista `Lista MaPreX jul-2026 (OF-001)` **sin referencia ni cotización** |
+
+**Condiciones de parada** (la primera que ocurra; son decisiones de este caso, no medidas, y se revisan con
+evidencia tras la primera ejecución dejando constancia en [docs/bitacora/](bitacora/))
+
+1. El participante alcanza el estado final del caso (éxito).
+2. Se cumplen **15 minutos** desde el fin de la consigna del caso.
+3. Pasan **5 minutos sin una acción nueva** (abandono; la definición de acción nueva es la del punto 3 del
+   guion del observador de CP‑07).
+4. El participante declara que se rinde.
+5. La aplicación muestra una traza de error o deja de responder: el caso es **FALLA**, se registra como
+   defecto con la pantalla y el texto visible, y no se reinicia la aplicación.
+
+**Oferta única de ayuda:** a los **3 minutos** sin avanzar, una sola vez: «¿Quiere que le ayude?». Si acepta, el
+caso queda **asistido** (FALLA) y se sigue hasta una condición de parada. Si no acepta, no se vuelve a ofrecer.
+
+**Bloque B.** Al terminar **cada caso**, con el cronómetro ya detenido, el participante contesta a solas el
+bloque B del anexo A (B4 se marca «no aplica» si no hay estado vacío que evaluar); el observador no mira.
+*(Ruling de la integración: un bloque B por caso, porque RNF‑13 pide el veredicto por caso; costo: unos dos
+minutos más por caso y cuatro bloques por persona.)*
+
+**Criterio de aceptación, declarado antes de ejecutar.** Un caso **PASA** si y solo si, para **los dos
+participantes**: se alcanzó el estado final **sin ayuda**, **dentro de los 15 minutos**, y el promedio del
+bloque B de ese caso es **≥ 4,0 sin ningún ítem por debajo de 3** (el promedio de cada participante, no el
+promedio de los dos). **FALLA** en cualquier otro caso, sin negociar. RNF‑13 se cumple si y solo si pasan
+los **cuatro** casos. Una FALLA no cancela el sprint: es el dato de la tesis y de la corrección de interfaz
+que le sigue, y los puntos de detención dicen dónde.
+
+**Hoja de registro** (una por participante; una columna por caso)
+
+| Campo | CP‑08 | CP‑09 | CP‑10 | CP‑11 |
+|---|---|---|---|---|
+| Perfil del participante (sin nombre) | | | | |
+| Fecha y hora de inicio · commit probado | | | | |
+| Tiempo total (min; del fin de la consigna al estado final) | | | | |
+| Preguntas al observador (minuto · cuál) | | | | |
+| Oferta de ayuda: minuto · ¿aceptada? | | | | |
+| Puntos de detención (minuto · pantalla · qué dijo) | | | | |
+| Condición de parada (1–5) | | | | |
+| Estado final comprobado (sí/no, con el detalle) | | | | |
+| Bloque B: B1 · B2 · B3 · B4 · B5 · B6 · B7 · promedio | | | | |
+| `data/apu.db` sin cambios al terminar (sí/no) | | | | |
+| Veredicto del caso (para este participante) | | | | |
+
+**Veredicto de cada caso:** CP‑08 ____ · CP‑09 ____ · CP‑10 ____ · CP‑11 ____ (PASA solo si los dos
+participantes pasan). **Veredicto de RNF‑13:** ____ (PASA solo si pasan los cuatro casos).
+
 ## 7. Trazabilidad CP → UC / RF
 
 | Caso | UC | RF | Otros |
@@ -555,6 +916,10 @@ ejecución, dejando constancia en [docs/bitacora/](bitacora/).
 | CP‑05 | UC‑01 | RF‑06, RF‑07, RF‑08, RF‑34 | hojas de `core/budget/excel.py` |
 | CP‑06 | UC‑01, UC‑05 | RF‑02, RF‑21, RF‑23 | principio 7 de NORMAS.md §2 |
 | CP‑07 | UC‑12 | RF‑36 a RF‑43 | RNF‑10; bloque B del anexo A de [dossier_g0.md](dossier_g0.md); compuerta GU1b (Med) |
+| CP‑08 | UC‑13 | RF‑44 a RF‑47, RF‑61 | RNF‑13; memoria `bano_of001.md` |
+| CP‑09 | UC‑14 | RF‑50, RF‑51 | RNF‑13; `tests/fixtures/planos/of001.dxf` |
+| CP‑10 | UC‑15, UC‑16 | RF‑52, RF‑53, RF‑55, RF‑58 | RNF‑13; ejecutar **antes** que CP‑11 |
+| CP‑11 | UC‑15 | RF‑56, RF‑59 | RNF‑13; parte de la versión que deja CP‑10 |
 
 ## 8. Registro de la ejecución
 
@@ -564,7 +929,7 @@ ejecución, dejando constancia en [docs/bitacora/](bitacora/).
 | Fecha | |
 | Commit probado (`git log -1 --oneline`) | |
 | Sistema operativo y navegador | |
-| Comprobación de la preparación (sección 4, paso 2) | |
+| Comprobación de la preparación (sección 4, paso 2; y 4.1 para CP‑08 a CP‑11) | |
 | `data/apu.db` al empezar (existe · fecha de modificación) | |
 | `data/apu.db` sin cambios al terminar (sí/no) | |
 | Casos PASA / FALLA | |
@@ -600,3 +965,24 @@ puerta única para registrar rendimientos, de donde salen las «2 observaciones�
 (`3d9d4f0`), el guardado fuera de la página (`03c1ae0`) y la presentación (`934e835`). La
 precarga, el historial de observaciones y los avisos de CP‑02 y CP‑03 quedan **a confirmar**: se
 re‑ejecutan en la fase Med (GU1b). Si esa ejecución encuentra una diferencia, manda la ejecución.
+
+**CP‑07 a CP‑11, integración final del sprint SF (2026‑10‑05).** Los resultados esperados de CP‑08 a CP‑11
+se obtuvieron **ejecutando el sistema** sobre el commit `a8ec283` y los commits de documentos que le
+siguen (no tocan el código), con `streamlit.testing.v1.AppTest` contra una base temporal sembrada con
+`scripts/seed_of001.py` (nunca contra `data/apu.db`). `AppTest` no puede teclear en un `st.data_editor`:
+las filas de CP‑08 y CP‑09 y la cantidad de CP‑10 se sembraron en `st.session_state` con las mismas filas que
+produce la pantalla al leer el editor (el mismo recurso que usan `tests/unit/test_ui_hoja.py` y
+`tests/unit/test_ui_hoja_planos.py`); **lo que solo se ve en un navegador** (teclear en las celdas, arrastrar
+el archivo al cuadro *Plano*, descargar el libro, la apariencia de los contadores) **no se verificó** y se
+confirma en la primera sesión de Med. Se cotejó con aritmética aparte: las ocho cantidades de CP‑08 con
+`tests/fixtures/memorias/bano_of001.md` (exactas); las cantidades de CP‑09 con la hoja manual de OF‑001
+(±0,001 m, prueba `tests/integration/test_aceptacion_sf.py`) y su total con la hoja manual con los mismos
+parámetros (2577.59 USD, no 2703.86: esa cifra usa el bono adoptado del caso, 5.81, y un borrador nuevo
+usa el de la aplicación, 1.00); el total de CP‑10, 2703.86 + 6,93 × 0,05 × 5,1648 × 1,15 × 1,10 =
+2706.12, y el 56,60 % del equilibrio como 0,15 / 0,265. El total de CP‑08 (172.42) se obtuvo ejecutando
+el sistema: no tiene una memoria a mano propia (la suma de los renglones redondeados da 172.43).
+
+**Puesta al día de CP‑07.** Solo cambia la interfaz que describe (menú superior, barra de herramientas,
+y el aviso de que «Exportar Excel» de la barra no produce `presupuesto_<código>*.xlsx`); su consigna, sus
+paradas y su criterio **no se tocaron**. Se verificó que el recorrido de CP‑07 sigue existiendo con las
+pruebas `tests/unit/test_ui_recorridos.py` y `tests/unit/test_ui_app.py`; no se ejecutó con una persona.
