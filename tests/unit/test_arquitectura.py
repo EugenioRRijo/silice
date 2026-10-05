@@ -22,6 +22,7 @@ PAQUETES_FUERA_DEL_NUCLEO = ("adapters", "ml", "ui", "api", "scripts", "tests")
 #: Un adaptador nuevo necesita su fila: lo exige `test_toda_carpeta_de_adapters_tiene_su_regla`.
 TERCEROS_POR_ADAPTADOR: dict[str, frozenset[str]] = {
     "civil": frozenset({"ifcopenshell"}),
+    "espacio": frozenset({"sqlalchemy"}),
     "industrial": frozenset(),
     "sistemas": frozenset(),
     "telecom": frozenset(),
