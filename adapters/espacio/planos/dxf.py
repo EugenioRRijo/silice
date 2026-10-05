@@ -21,8 +21,17 @@ Que se decide y que no: el nombre del texto es el `id` del ambiente; un no recta
 importa por su caja envolvente y se declara; la altura del ambiente queda PENDIENTE (alto
 provisional, R8 la marca); la fuente de un punto es la compatible de su ambiente o la mas
 cercana; la unidad sale de `$INSUNITS` y si falta la importacion se DETIENE y pide la unidad.
-Lo que no sigue la convencion va al informe, no a la hoja. Un archivo malformado o de mas de
-20 MB se rechaza con un mensaje, sin traza (RNF-12).
+Lo que no sigue la convencion va al informe, no a la hoja. Un archivo malformado, de mas de
+20 MB o con mas de `MAX_ENTIDADES_DXF` entidades se rechaza con un mensaje, sin traza (RNF-12).
+
+Un punto que cae en el borde de varios ambientes va al de MENOR AREA y, a igual area, al de `id`
+menor (se declara; el atributo AMBIENTE lo decide). Un circuito importado lleva los conductores y
+los puntos maximos SUPUESTOS (SF5-1, SF5-2) y un origen SUPUESTO que R8 lee (RS-17): avisa
+mientras el circuito conserve esos valores y deja de avisar cuando el usuario los declara.
+
+Falso positivo conocido (RS-15): la altura pendiente de un ambiente se reconoce por la marca
+`altura=pendiente` de su origen Y por tener el alto provisional (2,5 m); un alto REAL de 2,5 m con
+la marca puesta sigue en ADVERTENCIA hasta `cargar_alturas`, que quita la marca.
 """
 
 from __future__ import annotations
@@ -68,9 +77,19 @@ from adapters.espacio.planos.comun import (
     superficie_de,
 )
 from adapters.espacio.planos.informe import EstadoImportacion, ResultadoImportacion, TipoItem
-from adapters.espacio.reglas import ALTO_PROVISIONAL, ALTURA_PENDIENTE, ORIGEN_ALTURA_PENDIENTE
+from adapters.espacio.reglas import (
+    ALTO_PROVISIONAL,
+    ALTURA_PENDIENTE,
+    ORIGEN_ALTURA_PENDIENTE,
+    origen_circuito_supuesto,
+)
 
-__all__ = ["LIMITE_BYTES", "importar_dxf"]
+__all__ = ["LIMITE_BYTES", "MAX_ENTIDADES_DXF", "importar_dxf"]
+
+#: Tope de entidades del espacio modelo tras abrir el archivo (RNF-12, memoria). SUPUESTO_DECLARADO:
+#: proteccion propia sin fuente normativa; 20 MB de DXF caben en menos de 140 000 entidades de
+#: dibujo. Riesgo residual: el documento ya esta en memoria cuando se cuenta (spec §8.2).
+MAX_ENTIDADES_DXF = 100_000
 
 #: `$INSUNITS` (codigo DXF) -> metros por unidad. 0 es «sin unidad»; los demas no se soportan.
 _METROS_POR_CODIGO = {
@@ -281,9 +300,14 @@ class _Lector:
                 tabla, e, f"{fila}: el ambiente {elegido!r} del atributo AMBIENTE no existe", fila
             )
             return None
-        candidatos = sorted(
-            a.id for a in self.acc.ambientes.values() if contiene_en_planta(a, x, y)
-        )
+        # el de menor area y, a igualdad, el de id menor (no el alfabetico a secas)
+        candidatos = [
+            a.id
+            for a in sorted(
+                (a for a in self.acc.ambientes.values() if contiene_en_planta(a, x, y)),
+                key=lambda a: (a.largo * a.ancho, a.id),
+            )
+        ]
         if not candidatos:
             self._no_reconocido(tabla, e, f"{fila}: queda fuera de todo ambiente", fila)
             return None
@@ -291,8 +315,8 @@ class _Lector:
             self.acc.item(
                 TipoItem.APROXIMADO,
                 tabla,
-                f"{fila}: cae en varios ambientes ({', '.join(candidatos)}); se toma "
-                f"{candidatos[0]} (el atributo AMBIENTE lo decide)",
+                f"{fila}: cae en varios ambientes ({', '.join(sorted(candidatos))}); se toma "
+                f"{candidatos[0]}, el de menor area (el atributo AMBIENTE lo decide)",
                 e.dxf.handle,
                 fila,
             )
@@ -564,7 +588,7 @@ class _Lector:
             tablero = self._tablero(cid, puntos, tableros)
             calibre = self._calibre(cid, puntos)
             numero_ = digitos_finales(cid) or indice
-            self.acc.circuitos[cid] = Circuito(
+            circuito = Circuito(
                 id=cid,
                 tablero=tablero.id,
                 numero=numero_,
@@ -572,6 +596,13 @@ class _Lector:
                 calibre=calibre,
                 puntos_maximos=int(PUNTOS_MAXIMOS_POR_DEFECTO.valor),
             )
+            self.acc.circuitos[cid] = circuito
+            marca = origen_circuito_supuesto(
+                circuito,
+                (CONDUCTORES_POR_DEFECTO.id, PUNTOS_MAXIMOS_POR_DEFECTO.id),
+                "conductores y puntos maximos del circuito importado: el plano no los trae",
+            )
+            self.acc.origenes[marca.id] = marca
             self.acc.item(
                 TipoItem.APROXIMADO,
                 "esp_circuitos",
@@ -770,19 +801,34 @@ def _bloque(e, tipo: str, capa: str, clave: str, grupos, sueltas) -> None:
 
 
 def importar_dxf(
-    contenido: bytes | Path | str, *, unidades: str | None = None, nombre: str | None = None
+    contenido: bytes | Path | str,
+    *,
+    unidades: str | None = None,
+    nombre: str | None = None,
+    max_entidades: int = MAX_ENTIDADES_DXF,
 ) -> ResultadoImportacion:
     """Importa un DXF con la convencion de capas del spec §6.6.1.
 
     `contenido`: los bytes del archivo o su ruta. `unidades`: la unidad del dibujo (`m`, `cm`, `mm`,
     `dm`, `in`, `ft`) cuando el plano no declara `$INSUNITS`; si el plano la declara, esa manda.
     `nombre`: el nombre de archivo que cita el origen (por defecto el de la ruta, o `plano.dxf`).
+    `max_entidades`: tope de entidades del espacio modelo (RNF-12; por defecto `MAX_ENTIDADES_DXF`).
 
-    Nunca lanza por un archivo malo: devuelve un resultado `RECHAZADA` (malformado, mas de 20 MB) o
-    `DETENIDA` (falta la unidad, con `pide_unidad`) con su mensaje y sin filas."""
+    Nunca lanza por un archivo malo: devuelve un resultado `RECHAZADA` (malformado, mas de 20 MB o
+    mas entidades que el tope) o `DETENIDA` (falta la unidad, con `pide_unidad`) con su mensaje y
+    sin filas."""
     doc, archivo, rechazo = _leer(contenido, nombre)
     if rechazo is not None:
         return rechazo
+    entidades = len(doc.modelspace())
+    if entidades > max_entidades:
+        return sin_filas(
+            "dxf",
+            archivo,
+            EstadoImportacion.RECHAZADA,
+            f"{archivo}: el DXF trae {entidades} entidades y supera el tope de {max_entidades}; "
+            "divida el plano o exporte solo las capas de la convencion.",
+        )
     factor, codigo, estado = _factor(doc, unidades)
     if factor is None and estado == "indicada":
         return sin_filas(

@@ -16,6 +16,8 @@ from adapters.espacio.planos.informe import (
     ResultadoImportacion,
     TipoItem,
     cargar_alturas,
+    declarar_circuito,
+    declarar_circuitos,
     fusionar,
 )
 
@@ -25,5 +27,7 @@ __all__ = [
     "ResultadoImportacion",
     "TipoItem",
     "cargar_alturas",
+    "declarar_circuito",
+    "declarar_circuitos",
     "fusionar",
 ]

@@ -149,7 +149,8 @@ def test_la_importacion_da_las_filas_de_la_memoria(importado):
     assert importado.filas["esp_puntos"] == 21
     assert importado.filas["esp_circuitos"] == 2
     assert importado.filas["esp_recorridos"] == 0  # no hay capas REC: todos son propuestos
-    assert importado.filas["esp_origenes"] == 33
+    # 33 del plano (6 + 6 + 21) y 2 origenes SUPUESTOS, uno por circuito (RS-17)
+    assert importado.filas["esp_origenes"] == 35
 
 
 def test_nada_del_dxf_queda_sin_reconocer(importado):

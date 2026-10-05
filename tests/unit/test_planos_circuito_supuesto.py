@@ -139,7 +139,9 @@ def test_declarar_valores_propios_quita_la_advertencia_de_ese_circuito(importado
     assert (c1.conductores, c1.puntos_maximos) == ((2, 1, 1), 4)
     assert _de_circuitos(r.espacio()) == ["esp_circuitos:C2"]  # C2 sigue supuesto
     assert not [
-        i for i in r.informe if i.tabla == "esp_circuitos" and i.fila == "C1" and "supuest" in i.mensaje
+        i
+        for i in r.informe
+        if i.tabla == "esp_circuitos" and i.fila == "C1" and "supuest" in i.mensaje
     ]
     assert [i.fila for i in r.informe if i.tabla == "esp_circuitos" and "supuest" in i.mensaje] == [
         "C2"
@@ -156,7 +158,7 @@ def test_declarar_un_circuito_que_no_existe_se_ignora(importado):
 
 
 def test_confirmar_los_mismos_valores_tambien_quita_la_advertencia(importado):
-    """Declarar es una decision del usuario: confirmar 1-1-1 y 6 retira la marca aunque coincidan."""
+    """Declarar es una decision del usuario: confirmar 1-1-1 y 6 retira la marca."""
     espacio = declarar_circuito(importado.espacio(), "C1")
     assert _de_circuitos(espacio) == ["esp_circuitos:C2"]
     assert next(c for c in espacio.circuitos if c.id == "C1").puntos_maximos == 6
@@ -172,7 +174,7 @@ def test_declarar_en_el_espacio_cambia_solo_lo_pedido(importado):
 
 
 def test_editar_los_valores_sin_declarar_tambien_apaga_la_advertencia(importado):
-    """Si la hoja cambia los valores (otro camino de edicion), la marca ya no describe al circuito."""
+    """Si la hoja cambia los valores por otro camino, la marca ya no describe al circuito."""
     from dataclasses import replace
 
     espacio = importado.espacio()
@@ -224,7 +226,9 @@ def test_un_circuito_nuevo_de_la_reimportacion_trae_su_marca(importado):
 
 
 def test_el_informe_de_importacion_sigue_marcando_los_supuestos(importado):
-    aprox = [i for i in importado.informe if i.tipo is TipoItem.APROXIMADO and i.tabla == "esp_circuitos"]
+    aprox = [
+        i for i in importado.informe if i.tipo is TipoItem.APROXIMADO and i.tabla == "esp_circuitos"
+    ]
     assert sorted(i.fila for i in aprox) == ["C1", "C2"]
 
 
@@ -251,7 +255,5 @@ def test_of001_por_dxf_conjunto_exacto_de_hallazgos(of001_dxf):
 
 
 def test_of001_por_dxf_sin_advertencia_tras_declarar_los_dos_circuitos(of001_dxf):
-    declarado = declarar_circuitos(
-        of001_dxf, {"C1": ((1, 1, 1), 6), "C2": ((1, 1, 1), 6)}
-    )
+    declarado = declarar_circuitos(of001_dxf, {"C1": ((1, 1, 1), 6), "C2": ((1, 1, 1), 6)})
     assert _r8(declarado.espacio()) == []

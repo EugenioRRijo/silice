@@ -17,7 +17,9 @@ existe, «origen sin referencia» si al origen le falta un dato de su referencia
 modelo acepta ambos casos: es esta regla la que los valida (RF-44, UC-13a). ADVERTENCIA si ese
 origen es un supuesto, si el punto declara su altura pendiente (`especificaciones["altura"] ==
 "pendiente"`), si un ambiente importado de un plano conserva su alto provisional, si la fila
-ya no esta en el plano de donde vino (SF5) o si un segmento vigente tiene diametro o empotrado
+ya no esta en el plano de donde vino (SF5), si un circuito importado de un plano conserva los
+conductores y puntos maximos SUPUESTOS (RS-17: origen SUPUESTO ligado al circuito por su referencia;
+deja de avisar cuando el usuario los declara) o si un segmento vigente tiene diametro o empotrado
 fijados a mano. Una sobrescritura huerfana no produce cantidad: es de R9.
 
 **R9** (siempre ERROR), en este orden: 1. punto o fuente fuera de su ambiente (`Espacio.validar`,
@@ -60,13 +62,14 @@ from adapters.espacio.geometria import (
 from adapters.espacio.modelo import (
     TOLERANCIA,
     Ambiente,
+    Circuito,
     Coord,
     Espacio,
     Recorrido,
     TipoPunto,
     Tramo,
 )
-from adapters.espacio.origen import clave_esp
+from adapters.espacio.origen import OrigenMedida, TipoOrigen, clave_esp
 from core.contracts.presupuesto import Presupuesto
 from core.contracts.verificacion import Hallazgo, ReglaVerificacion, Severidad
 
@@ -76,12 +79,15 @@ __all__ = [
     "CODIGO_R8",
     "CODIGO_R10",
     "CODIGO_R9",
+    "CLAVE_CIRCUITO_SUPUESTO",
     "CoherenciaEspacial",
     "Limites",
     "LimitesDeEspecialidad",
     "ORIGEN_ALTURA_PENDIENTE",
     "ORIGEN_DESAPARECIDA",
     "OrigenDeLaMedida",
+    "circuito_supuesto",
+    "origen_circuito_supuesto",
     "reglas_espacio",
 ]
 
@@ -106,6 +112,12 @@ ORIGEN_DESAPARECIDA = ("importacion", "desaparecida")
 #: 2,5 m es el alto de OF-001 (memoria `of001.md`); sin fuente normativa. R8 lo marca hasta
 #: que se cargue el real.
 ALTO_PROVISIONAL = Decimal("2.5")
+
+#: Clave de la referencia de un origen SUPUESTO que ata el supuesto a un circuito (SF5, RS-17): el
+#: circuito importado de un plano con conductores y puntos maximos que el plano no trae. `Circuito`
+#: no tiene origen; el supuesto vive en un origen de `Espacio.origenes` (no en `parametros`,
+#: DA-SF-8).
+CLAVE_CIRCUITO_SUPUESTO = "circuito"
 
 _TABLA_SEGMENTOS = "esp_segmentos"
 
@@ -135,6 +147,41 @@ def _hallazgo(
 
 def _clave_segmento(clave: str) -> str:
     return clave_esp(_TABLA_SEGMENTOS, clave)
+
+
+def _conductores_texto(conductores: tuple[int, int, int]) -> str:
+    return "-".join(str(c) for c in conductores)
+
+
+def origen_circuito_supuesto(
+    circuito: Circuito, fuentes: tuple[str, ...], motivo: str
+) -> OrigenMedida:
+    """El origen SUPUESTO que marca los valores supuestos (conductores y puntos maximos) de un
+    circuito importado. Guarda los valores supuestos: la marca vale mientras el circuito los
+    conserve. `fuentes`: los `id` de las constantes declaradas (p. ej. `SF5-1`, `SF5-2`)."""
+    return OrigenMedida(
+        id=f"SUP-CIR-{circuito.id}",
+        tipo=TipoOrigen.SUPUESTO,
+        referencia=(
+            ("motivo", motivo),
+            (CLAVE_CIRCUITO_SUPUESTO, circuito.id),
+            ("conductores", _conductores_texto(circuito.conductores)),
+            ("puntos_maximos", str(circuito.puntos_maximos)),
+            ("constantes", ", ".join(fuentes)),
+        ),
+    )
+
+
+def circuito_supuesto(origen: OrigenMedida, circuito: Circuito) -> bool:
+    """True si `origen` marca a `circuito` con supuestos y el circuito aun los conserva."""
+    if origen.tipo is not TipoOrigen.SUPUESTO:
+        return False
+    ref = dict(origen.referencia)
+    return (
+        ref.get(CLAVE_CIRCUITO_SUPUESTO) == circuito.id
+        and ref.get("conductores") == _conductores_texto(circuito.conductores)
+        and ref.get("puntos_maximos") == str(circuito.puntos_maximos)
+    )
 
 
 # --- R8 -----------------------------------------------------------------------------------
@@ -206,6 +253,20 @@ def _hallazgos_r8(espacio: Espacio) -> list[Hallazgo]:
                     Severidad.ADVERTENCIA,
                     clave,
                     f"{quien}: ya no esta en el plano (origen {origen.id}); revisarla o retirarla",
+                )
+            )
+    for c in espacio.circuitos:  # RS-17: circuito importado con valores supuestos sin declarar
+        marca = next((o for o in espacio.origenes if circuito_supuesto(o, c)), None)
+        if marca is not None:
+            constantes = dict(marca.referencia).get("constantes", "")
+            hallazgos.append(
+                _hallazgo(
+                    CODIGO_R8,
+                    Severidad.ADVERTENCIA,
+                    clave_esp("esp_circuitos", c.id),
+                    f"circuito {c.id}: circuito importado con conductores y puntos supuestos "
+                    f"({_conductores_texto(c.conductores)} y {c.puntos_maximos} puntos maximos; "
+                    f"{constantes}); declarelos en la hoja",
                 )
             )
     vigentes = {s.clave for s in unir_segmentos(espacio)}

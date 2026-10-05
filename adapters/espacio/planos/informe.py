@@ -17,6 +17,9 @@ Decisiones (bitacora SF, SF5):
 * Los circuitos no vienen de una entidad con origen: los existentes se conservan tal cual (el
   usuario
   edita su orden y su maximo) y solo se agregan los nuevos.
+* El circuito importado lleva un origen SUPUESTO (RS-17) que R8 lee mientras conserve los valores
+  supuestos; `declarar_circuitos` (sobre el resultado) y `declarar_circuito` (sobre la hoja) lo
+  retiran. Un circuito que ya existe no recibe marca nueva al reimportar.
 * Un recorrido declarado no tiene origen en el modelo: se empareja por su `id` (`REC-<handle>`) y,
   si desaparece, solo se informa; no se puede marcar.
 * Una fila nueva cuyo `id` ya usa otra fila de la hoja (por ejemplo una escrita a mano) se OMITE con
@@ -32,7 +35,12 @@ from enum import StrEnum
 
 from adapters.espacio.modelo import Ambiente, Circuito, Espacio, Fuente, Punto, Recorrido
 from adapters.espacio.origen import OrigenMedida, TipoOrigen
-from adapters.espacio.reglas import ALTO_PROVISIONAL, ORIGEN_ALTURA_PENDIENTE, ORIGEN_DESAPARECIDA
+from adapters.espacio.reglas import (
+    ALTO_PROVISIONAL,
+    CLAVE_CIRCUITO_SUPUESTO,
+    ORIGEN_ALTURA_PENDIENTE,
+    ORIGEN_DESAPARECIDA,
+)
 
 __all__ = [
     "EstadoImportacion",
@@ -41,6 +49,8 @@ __all__ = [
     "TABLAS",
     "TipoItem",
     "cargar_alturas",
+    "declarar_circuito",
+    "declarar_circuitos",
     "fusionar",
 ]
 
@@ -172,6 +182,68 @@ def cargar_alturas(
         if not (i.tipo is TipoItem.PENDIENTE and i.tabla == "esp_ambientes" and i.fila in cargados)
     )
     return replace(resultado, ambientes=ambientes, origenes=origenes, informe=informe)
+
+
+def _es_marca_de(origen: OrigenMedida, circuito_id: str) -> bool:
+    """True si `origen` es el origen SUPUESTO que ata los supuestos a ese circuito (RS-17)."""
+    return (
+        origen.tipo is TipoOrigen.SUPUESTO
+        and dict(origen.referencia).get(CLAVE_CIRCUITO_SUPUESTO) == circuito_id
+    )
+
+
+def _declarado(c: Circuito, conductores, puntos_maximos) -> Circuito:
+    return replace(
+        c,
+        conductores=c.conductores if conductores is None else tuple(conductores),
+        puntos_maximos=c.puntos_maximos if puntos_maximos is None else puntos_maximos,
+    )
+
+
+def declarar_circuitos(
+    resultado: ResultadoImportacion,
+    valores: Mapping[str, tuple[tuple[int, int, int], int]],
+) -> ResultadoImportacion:
+    """El usuario declara `(conductores, puntos_maximos)` de los circuitos cuyo `id` esta en
+    `valores`: se fijan esos valores y se retira su marca de supuesto (en el origen SUPUESTO y en el
+    informe), asi que R8 deja de avisar. Un `id` que no existe se ignora. No muta el original."""
+    ids = {c.id for c in resultado.circuitos if c.id in valores}
+    if not ids:
+        return resultado
+    circuitos = tuple(
+        _declarado(c, *valores[c.id]) if c.id in ids else c for c in resultado.circuitos
+    )
+    origenes = tuple(o for o in resultado.origenes if not any(_es_marca_de(o, i) for i in ids))
+    informe = tuple(
+        i
+        for i in resultado.informe
+        if not (
+            i.tipo is TipoItem.APROXIMADO
+            and i.tabla == "esp_circuitos"
+            and i.fila in ids
+            and "supuestos declarados" in i.mensaje
+        )
+    )
+    return replace(resultado, circuitos=circuitos, origenes=origenes, informe=informe)
+
+
+def declarar_circuito(
+    espacio: Espacio,
+    circuito_id: str,
+    *,
+    conductores: tuple[int, int, int] | None = None,
+    puntos_maximos: int | None = None,
+) -> Espacio:
+    """Como `declarar_circuitos`, sobre la hoja: fija lo que se pase (lo omitido se conserva, o sea
+    se CONFIRMA) y retira la marca de supuesto del circuito. `KeyError` si no existe."""
+    if circuito_id not in {c.id for c in espacio.circuitos}:
+        raise KeyError(circuito_id)
+    circuitos = tuple(
+        _declarado(c, conductores, puntos_maximos) if c.id == circuito_id else c
+        for c in espacio.circuitos
+    )
+    origenes = tuple(o for o in espacio.origenes if not _es_marca_de(o, circuito_id))
+    return replace(espacio, circuitos=circuitos, origenes=origenes)
 
 
 def _identificador(origen: OrigenMedida | None) -> str | None:
@@ -313,6 +385,12 @@ class _Fusion:
                 continue
             tablero = self.ids["esp_fuentes"].get(c.tablero, c.tablero)
             self.circuitos[c.id] = replace(c, tablero=tablero, orden=())
+            for id_ in [i for i, o in self.origenes.items() if _es_marca_de(o, c.id)]:
+                del self.origenes[id_]  # una marca vieja de un circuito que ya no existe
+            for marca in self.resultado.origenes:
+                if _es_marca_de(marca, c.id):
+                    libre = self._origen_libre(marca)
+                    self.origenes[libre.id] = libre
             self.ids["esp_circuitos"][c.id] = c.id
             self._item(TipoItem.IMPORTADO, "esp_circuitos", "", c.id, f"{c.id}: agregado")
 

@@ -31,6 +31,7 @@ necesita de `adapters/civil/ifc.py` (abrir un STEP y rechazar uno malformado) se
 
 from __future__ import annotations
 
+import tempfile
 from collections import Counter, defaultdict
 from dataclasses import dataclass
 from decimal import Decimal
@@ -63,7 +64,15 @@ from adapters.espacio.planos.comun import (
 )
 from adapters.espacio.planos.informe import EstadoImportacion, ResultadoImportacion, TipoItem
 
-__all__ = ["CLASES_POR_ESQUEMA", "LIMITE_BYTES", "ClasesIfc", "importar_ifc"]
+__all__ = ["CLASES_POR_ESQUEMA", "LIMITE_BYTES", "MAX_ELEMENTOS_IFC", "ClasesIfc", "importar_ifc"]
+
+#: Tope de elementos (`IfcElement` mas `IfcSpace`) tras abrir el archivo (RNF-12, memoria).
+#: SUPUESTO_DECLARADO: proteccion propia sin fuente normativa. Riesgo residual: ifcopenshell ya
+#: expandio el modelo en memoria cuando se cuenta (spec §8.2); el tope evita medir y recorrer.
+MAX_ELEMENTOS_IFC = 50_000
+
+#: Bytes de cada extremo del archivo donde se buscan la cabecera y el pie STEP (sin copiar todo).
+_VENTANA = 8192
 
 _CABECERA_STEP = b"ISO-10303-21"
 _PIE_STEP = b"END-ISO-10303-21;"
@@ -131,44 +140,68 @@ def _rechazo(archivo: str, motivo: str) -> ResultadoImportacion:
     )
 
 
+def _demasiado_grande(archivo: str, tamano: int) -> ResultadoImportacion:
+    mb = Decimal(tamano) / (1024 * 1024)
+    return sin_filas(
+        "ifc",
+        archivo,
+        EstadoImportacion.RECHAZADA,
+        f"{archivo}: el archivo IFC pesa {mb:.1f} MB y supera el limite de 20 MB.",
+    )
+
+
+def _extremos(contenido: bytes | Path) -> tuple[bytes, bytes]:
+    """Los primeros y los ultimos `_VENTANA` bytes, sin leer ni copiar el archivo entero."""
+    if isinstance(contenido, bytes):
+        return contenido[:_VENTANA], contenido[-_VENTANA:]
+    with contenido.open("rb") as f:
+        inicio = f.read(_VENTANA)
+        f.seek(0, 2)
+        f.seek(max(0, f.tell() - _VENTANA))
+        return inicio, f.read()
+
+
+def _abrir_modelo(ruta: Path):
+    try:
+        return ifcopenshell.open(str(ruta)), ""
+    except Exception as error:  # noqa: BLE001 - ifcopenshell lanza tipos propios y de C++
+        return None, f"{type(error).__name__}: {en_una_linea(error)}"
+
+
 def _abrir(contenido: bytes | Path | str, nombre: str | None):
-    """`(modelo, archivo, rechazo)`: el modelo ifcopenshell o el resultado de rechazo."""
-    datos: bytes | None = None
+    """`(modelo, archivo, rechazo)`: el modelo ifcopenshell o el resultado de rechazo.
+
+    No duplica el archivo en memoria: la cabecera y el pie se buscan en sus extremos y ifcopenshell
+    lee del disco (los bytes recibidos se escriben antes a una carpeta temporal)."""
     if isinstance(contenido, bytes | bytearray):
         archivo, datos = nombre or "plano.ifc", bytes(contenido)
-        tamano = len(datos)
+        tamano, ruta = len(datos), None
     else:
         ruta = Path(contenido)
-        archivo = nombre or ruta.name
+        archivo, datos = nombre or ruta.name, None
         try:
             tamano = ruta.stat().st_size
         except OSError as error:
             return None, archivo, _rechazo(archivo, en_una_linea(error))
     if tamano > LIMITE_BYTES:
-        mb = Decimal(tamano) / (1024 * 1024)
-        return (
-            None,
-            archivo,
-            sin_filas(
-                "ifc",
-                archivo,
-                EstadoImportacion.RECHAZADA,
-                f"{archivo}: el archivo IFC pesa {mb:.1f} MB y supera el limite de 20 MB.",
-            ),
-        )
-    if datos is None:
-        try:
-            datos = Path(contenido).read_bytes()
-        except OSError as error:
-            return None, archivo, _rechazo(archivo, en_una_linea(error))
-    if not datos.lstrip().startswith(_CABECERA_STEP):
-        return None, archivo, _rechazo(archivo, "no empieza con la cabecera STEP ISO-10303-21")
-    if not datos.rstrip().endswith(_PIE_STEP):
-        return None, archivo, _rechazo(archivo, "esta truncado: no cierra con END-ISO-10303-21")
+        return None, archivo, _demasiado_grande(archivo, tamano)
     try:
-        modelo = ifcopenshell.file.from_string(datos.decode("utf-8", errors="replace"))
-    except Exception as error:  # noqa: BLE001 - ifcopenshell lanza tipos propios y de C++
-        return None, archivo, _rechazo(archivo, f"{type(error).__name__}: {en_una_linea(error)}")
+        inicio, fin = _extremos(datos if ruta is None else ruta)
+    except OSError as error:
+        return None, archivo, _rechazo(archivo, en_una_linea(error))
+    if not inicio.lstrip().startswith(_CABECERA_STEP):
+        return None, archivo, _rechazo(archivo, "no empieza con la cabecera STEP ISO-10303-21")
+    if not fin.rstrip().endswith(_PIE_STEP):
+        return None, archivo, _rechazo(archivo, "esta truncado: no cierra con END-ISO-10303-21")
+    if ruta is None:
+        with tempfile.TemporaryDirectory() as carpeta:
+            temporal = Path(carpeta) / "plano.ifc"
+            temporal.write_bytes(datos)
+            modelo, motivo = _abrir_modelo(temporal)
+    else:
+        modelo, motivo = _abrir_modelo(ruta)
+    if modelo is None:
+        return None, archivo, _rechazo(archivo, motivo)
     if _esquema(modelo) is None:
         return None, archivo, _rechazo(archivo, f"el esquema {modelo.schema} no esta soportado")
     return modelo, archivo, None
@@ -499,18 +532,31 @@ class _Lector:
 
 
 def importar_ifc(
-    contenido: bytes | Path | str, *, nombre: str | None = None
+    contenido: bytes | Path | str,
+    *,
+    nombre: str | None = None,
+    max_elementos: int = MAX_ELEMENTOS_IFC,
 ) -> ResultadoImportacion:
     """Importa un IFC (IFC2X3, IFC4 o IFC4X3) a filas de la hoja con su informe.
 
     `contenido`: los bytes del archivo o su ruta. `nombre`: el nombre de archivo que cita el origen
-    (por defecto el de la ruta, o `plano.ifc`).
+    (por defecto el de la ruta, o `plano.ifc`). `max_elementos`: tope de `IfcElement` mas `IfcSpace`
+    (RNF-12; por defecto `MAX_ELEMENTOS_IFC`).
 
     Nunca lanza por un archivo malo: devuelve un resultado `RECHAZADA` (malformado, truncado,
-    esquema no soportado, mas de 20 MB) con su mensaje y sin filas."""
+    esquema no soportado, mas de 20 MB o mas elementos que el tope) con su mensaje y sin filas."""
     modelo, archivo, rechazo = _abrir(contenido, nombre)
     if rechazo is not None:
         return rechazo
+    elementos = len(modelo.by_type("IfcElement")) + len(modelo.by_type("IfcSpace"))
+    if elementos > max_elementos:
+        return sin_filas(
+            "ifc",
+            archivo,
+            EstadoImportacion.RECHAZADA,
+            f"{archivo}: el IFC trae {elementos} elementos y supera el tope de {max_elementos}; "
+            "exporte solo los espacios, terminales y tableros.",
+        )
     lector = _Lector(modelo, archivo, _esquema(modelo))
     lector.ambientes()
     lector.elementos()
