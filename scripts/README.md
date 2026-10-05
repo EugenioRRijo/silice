@@ -30,6 +30,7 @@ escribe con `--db`; con `--db` hacia otra ruta basta `--reiniciar`.
 | `extraer_arenaza.py` | genera y verifica contra los PDF los dos CSV de presupuestos ARENAZA en `data/telecom/fuentes/` (necesita `--with pymupdf`) | M1.1 · telecom |
 | `derivar_listas_telecom.py` | deriva las dos listas de precios canónicas de UC‑02 del dominio telecom (ARENAZA y MaPreX) | M1.3 · telecom |
 | `generar_tanquilla_ifc.py` | genera `data/samples/tanquilla.ifc`, el modelo IFC de muestra de la compuerta G1 (necesita el extra `civil`) | I3.1 · civil |
+| `dibujar_of001_dxf.py` | dibuja `tests/fixtures/planos/of001.dxf` entidad por entidad con `ezdxf` desde las tablas de las memorias de cálculo de OF‑001 (nunca desde la hoja manual); necesita el extra `planos` | RF‑50 · SF5 |
 
 ## Simulación y medición
 
