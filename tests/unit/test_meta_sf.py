@@ -5,7 +5,15 @@ import json
 import pytest
 
 from scripts.meta_alpha import Estado
-from scripts.meta_sf import FASES, TITULOS, evaluar_s1_requisitos, main, metas_hasta
+from scripts.meta_sf import (
+    FASES,
+    TITULOS,
+    evaluar_s1_requisitos,
+    evaluar_s10_cobertura,
+    main,
+    metas_hasta,
+    porcentaje_espacio,
+)
 
 
 def test_metas_hasta_acumula_fases_en_orden():
@@ -77,3 +85,47 @@ def test_s1_sobre_la_ers_real_y_json(capsys):
 def test_main_devuelve_codigo_distinto_de_cero_con_pendientes(capsys):
     assert main(["--hasta", "SF1"]) == 1
     assert "S2" in capsys.readouterr().out
+
+
+def test_s10_ok_en_la_frontera_80():
+    estado, detalle = evaluar_s10_cobertura(80.0)
+    assert estado is Estado.OK
+    assert "80" in detalle
+
+
+def test_s10_falla_justo_debajo_de_80():
+    estado, detalle = evaluar_s10_cobertura(79.99)
+    assert estado is Estado.FALLA
+    assert "79,99" in detalle or "79.99" in detalle
+
+
+def test_s10_pendiente_sin_dato_o_sin_adaptador():
+    assert evaluar_s10_cobertura(None)[0] is Estado.PENDIENTE
+    assert evaluar_s10_cobertura(95.0, existe_adaptador=False)[0] is Estado.PENDIENTE
+
+
+def test_porcentaje_espacio_suma_solo_los_archivos_del_adaptador():
+    texto = json.dumps(
+        {
+            "files": {
+                "adapters/espacio/a.py": {"summary": {"covered_lines": 8, "num_statements": 10}},
+                "adapters\espacio\b.py": {"summary": {"covered_lines": 2, "num_statements": 10}},
+                "core/x.py": {"summary": {"covered_lines": 0, "num_statements": 100}},
+            }
+        }
+    )
+    assert porcentaje_espacio(texto) == 50.0
+    assert porcentaje_espacio(json.dumps({"files": {}})) is None
+    assert porcentaje_espacio("no es json") is None
+
+
+def test_s10_no_ejecuta_pytest_dentro_de_la_meta(monkeypatch):
+    import subprocess
+
+    def prohibido(*a, **k):
+        raise AssertionError("la meta no debe lanzar procesos")
+
+    monkeypatch.setattr(subprocess, "run", prohibido)
+    monkeypatch.setattr(subprocess, "Popen", prohibido)
+    evaluar_s10_cobertura(85.0)
+    main(["--hasta", "SF1"])
