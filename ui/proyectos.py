@@ -76,7 +76,7 @@ def listar_proyectos(ruta: Path) -> list[str]:
 def crear_proyecto_nuevo(ruta: Path, nombre: str) -> str:
     """Crea el proyecto y devuelve su nombre limpio. `ProyectoInvalido` si el nombre queda vacio,
     ya existe (sin distinguir mayusculas) o el caso no existe."""
-    limpio = nombre.strip()
+    limpio = " ".join(nombre.split())  # sin espacios sobrantes ni dobles
     if not limpio:
         raise ProyectoInvalido("Escriba un nombre para el proyecto: no puede quedar vacio.")
     if not ruta.exists():

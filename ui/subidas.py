@@ -10,7 +10,7 @@ reutiliza tal cual: `ui` no importa `api`): se conserva solo el **ultimo compone
 porque los lectores deducen el formato de su extension, y un nombre sin componente utilizable es
 un `ValueError`. Reglas adicionales, propias de Windows: los componentes se separan por `/` y por
 `\` en cualquier sistema (la subida viene de otro equipo); los caracteres que Windows prohibe
-(`<>:"|?*` y los de control) pasan a `_`; los espacios y puntos finales se quitan; un nombre
+(`<>"|?*` y los de control) pasan a `_`; el primer `:` corta el nombre (flujos alternos de datos de NTFS); los espacios y puntos finales se quitan; un nombre
 reservado se renombra con un `_` delante (se prefiere salvar el archivo a rechazarlo); y el nombre
 se acota a `LONGITUD_MAXIMA` caracteres conservando la extension.
 
@@ -31,8 +31,11 @@ _RESERVADOS = frozenset(
     {"CON", "PRN", "AUX", "NUL"}
     | {f"COM{n}" for n in range(1, 10)}
     | {f"LPT{n}" for n in range(1, 10)}
+    | {"CONIN$", "CONOUT$"}
+    | {f"COM{c}" for c in "¹²³"}
+    | {f"LPT{c}" for c in "¹²³"}
 )
-_SIN_NOMBRE = "el archivo subido no trae un nombre utilizable"
+_SIN_NOMBRE = "El archivo subido no trae un nombre utilizable"
 
 
 class Subida(Protocol):
@@ -49,6 +52,9 @@ def nombre_seguro(nombre: str | None) -> str:
     `ValueError` si no queda nada utilizable (vacio, `.`, `..`, solo separadores o puntos).
     """
     ultimo = _SEPARADORES.split(nombre or "")[-1]
+    # El primer `:` corta: lo que sigue es un flujo alterno de datos de NTFS (`a.csv:x`,
+    # `a.csv::$DATA`) y cambiaria lo que el lector entiende por extension.
+    ultimo = ultimo.split(":", 1)[0]
     limpio = _PROHIBIDOS.sub("_", ultimo).strip().rstrip(" .")
     if not limpio:
         raise ValueError(_SIN_NOMBRE)

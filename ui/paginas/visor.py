@@ -91,7 +91,7 @@ def render() -> None:
         try:
             ruta_temporal = guardar_subida(carpeta, archivo)
         except ValueError as error:
-            st.error(f"{error}. Renombre el archivo y vuelva a subirlo.")
+            st.error(f"{str(error).rstrip('.')}. Renombre el archivo y vuelva a subirlo.")
             return
         _render_desde_ruta(ruta_temporal)
 

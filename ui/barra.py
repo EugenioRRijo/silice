@@ -16,7 +16,7 @@ que el usuario quiere con `ui.caso.pedir_accion` y la pantalla de destino lo ati
 
 **Ganchos declarados.** `FUNCIONES_DE_SF3` nombra las dos funciones que `ui.hoja` debe exponer para
 habilitar Guardar version y Exportar Excel; mientras falte alguna, los botones quedan deshabilitados
-con el texto «disponible cuando se complete SF3» (`hay_guardado_y_exportacion`). Al habilitarse, el
+con el texto de `TEXTO_SF3` y un aviso visible (`AVISO_SF3`, sin siglas internas; `hay_guardado_y_exportacion`). Al habilitarse, el
 boton lleva a la hoja con la accion pedida (`ACCION_GUARDAR_VERSION`, `ACCION_EXPORTAR_EXCEL`): el
 guardado exige fuente y responsable (RF-53) y la descarga del Excel se genera solo al pulsar, asi
 que ambos viven en la pantalla de la hoja, no en la barra.
@@ -65,7 +65,10 @@ ROTULO_RETOMAR = "Retomar: {}"
 ROTULO_CREAR = "Crear proyecto"
 ROTULO_ABRIR = "Abrir"
 
-TEXTO_SF3 = "disponible cuando se complete SF3"
+TEXTO_SF3 = "Todavía no está disponible en esta versión del prototipo."
+AVISO_SF3 = (
+    "Guardar versión y Exportar Excel se habilitarán cuando la hoja del proyecto esté completa."
+)
 
 CLAVE_NOMBRE_NUEVO = "barra_proyecto_nombre"
 CLAVE_ABRIR = "barra_proyecto_abrir"
@@ -142,7 +145,7 @@ def _proyecto_vigente(nombres: list[str]) -> str | None:
 def _pintar_proyecto(nombres: list[str], abierto: str | None) -> None:
     ruta = ruta_caso()
     estado = estado_caso(ruta)
-    st.caption(f"Caso abierto: {ruta}")
+    st.caption(f"Caso abierto: {ruta.name}", help=str(ruta))
     if abierto is None:
         st.caption("Ningun proyecto abierto.")
     else:
@@ -155,10 +158,6 @@ def _pintar_proyecto(nombres: list[str], abierto: str | None) -> None:
         st.markdown(f"**{abierto}** · {detalle}")
     if estado.error is not None:
         st.error(f"No se pudo leer el caso: {estado.error}")
-
-    mensaje = st.session_state.pop(CLAVE_MENSAJE, None)
-    if mensaje is not None:
-        (st.error if mensaje[0] == "error" else st.success)(mensaje[1])
 
     st.text_input(
         "Nombre del proyecto nuevo",
@@ -184,7 +183,7 @@ def _pintar_auditoria(abierto: str | None) -> None:
     if resumen is None:
         st.caption(
             "El proyecto no tiene version guardada. La hoja del proyecto audita su borrador en "
-            "cada edicion."
+            "cada edicion (véalo en la hoja del proyecto)."
         )
         return
     detalle = ", ".join(f"{n} {s.lower()}" for s, n in resumen.por_severidad.items() if n)
@@ -245,3 +244,12 @@ def pintar_barra(ruta: str, ir_a: Callable[[str], None]) -> None:
                 rotulo = ROTULO_RETOMAR.format(recorrido.nombre)
             if st.button(rotulo, width="stretch", key="barra_recorrido"):
                 ir_a(destino_de_recorrido(recorrido, ruta))
+
+    # Fuera del popover, que puede cerrarse al recargar: lo que el usuario debe ver siempre.
+    mensaje = st.session_state.pop(CLAVE_MENSAJE, None)
+    if mensaje is not None:
+        (st.error if mensaje[0] == "error" else st.success)(mensaje[1])
+    if abierto is not None:
+        st.markdown(f"Proyecto abierto: **{abierto}**")
+    if not con_sf3:
+        st.caption(AVISO_SF3)

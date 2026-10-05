@@ -152,7 +152,7 @@ def test_ninguna_pantalla_une_el_nombre_del_cliente_a_una_carpeta(pagina):
     [
         ("a.csv:x", "a.csv"),
         ("a.csv::$DATA", "a.csv"),
-        ("carpeta\a.csv:flujo:otro", "a.csv"),
+        ("carpeta/a.csv:flujo:otro", "a.csv"),
         ("../a.xlsx:Zone.Identifier", "a.xlsx"),
         ("CON:x.csv", "_CON"),  # tras cortar queda un reservado
     ],
