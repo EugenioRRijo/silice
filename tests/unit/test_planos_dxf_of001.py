@@ -13,6 +13,7 @@ import ast
 import datetime
 import json
 import re
+import sys
 from decimal import Decimal
 from pathlib import Path
 
@@ -73,7 +74,7 @@ def test_el_dxf_existe_con_su_procedencia_declarada():
     assert DXF.is_file()
     texto = README.read_text(encoding="utf-8")
     for dicho in ("of001.dxf", "memorias/of001.md", "ezdxf", "programático"):
-        assert dicho in texto, dicho
+        assert dicho in texto.lower(), dicho
     assert re.search(r"RNF[-‑]09", texto)
     assert "dibujar_of001_dxf.py" in texto
 
@@ -91,14 +92,33 @@ def test_el_script_que_dibuja_no_importa_la_hoja_ni_los_adaptadores():
     }
 
 
-def test_el_script_regenera_el_mismo_archivo(tmp_path):
+def _resumen(ruta: Path) -> list:
+    """Contenido del espacio modelo (tipo, capa, handle, geometria, atributos y texto), sin el orden
+    interno de las tablas de ezdxf, que depende de la semilla de hash de Python."""
+    filas = []
+    for e in ezdxf.readfile(ruta).modelspace():
+        d = e.dxf
+        geometria = (
+            tuple(round(c, 6) for c in d.insert)
+            if e.dxftype() in ("INSERT", "TEXT")
+            else tuple(tuple(round(c, 6) for c in p) for p in e.get_points("xy"))
+        )
+        atributos = tuple(sorted((a.dxf.tag, a.dxf.text) for a in getattr(e, "attribs", ())))
+        texto = d.text if e.dxftype() == "TEXT" else ""
+        filas.append((e.dxftype(), d.layer, d.handle, geometria, atributos, texto))
+    return filas
+
+
+def test_el_script_regenera_el_mismo_contenido(tmp_path):
     import importlib.util
 
     spec = importlib.util.spec_from_file_location("dibujar_of001_dxf", SCRIPT)
     modulo = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = modulo  # los dataclass con slots buscan su modulo
     spec.loader.exec_module(modulo)
     salida = modulo.dibujar(tmp_path / "otra.dxf")
-    assert salida.read_bytes() == DXF.read_bytes()
+    assert _resumen(salida) == _resumen(DXF)
+    assert len(_resumen(DXF)) == 39  # 6 polilineas, 6 textos, 6 fuentes y 21 puntos
 
 
 def test_el_dxf_declara_metros_y_la_convencion_de_capas():

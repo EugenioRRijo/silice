@@ -3,8 +3,9 @@
 Procedencia declarada: `ifcopenshell.api` (0.8.x) arma una oficina minima, en IFC2X3 y en IFC4, con
 espacios de geometria extruida y terminales colocados. NO provienen de Revit, ArchiCAD ni Bonsai:
 igual que `data/samples/tanquilla.ifc`, heredan la salvedad de RNF-09 (archivo programatico, no
-export de un programa de modelado). Las clases por esquema que usa el importador se comprueban contra el propio
-esquema de ifcopenshell en `tests/unit/test_planos_ifc.py` (ninguna se supone).
+export de un programa de modelado). Las clases por esquema que usa el importador se
+comprueban contra el propio esquema de ifcopenshell en `tests/unit/test_planos_ifc.py`
+(ninguna se supone).
 
 Las coordenadas son supuestos declarados del caso, no un plano real. Contenido (en metros):
 

@@ -21,4 +21,6 @@ estudio real: sus coordenadas son los supuestos declarados de las memorias de c�
 * **Altura de los ambientes.** No se dibuja: queda pendiente (spec §6.6.1) y se carga al importar. Es 2,500 m
   en todos los ambientes (memoria `of001.md`).
 * **Regenerar.** `uv run python scripts/dibujar_of001_dxf.py` (necesita `uv sync --extra planos`).
-  Escribe con metadatos fijos, así que el archivo es reproducible.
+  Escribe con metadatos fijos: el contenido del espacio modelo es reproducible (el orden interno
+  de algunas tablas de `ezdxf` depende de la semilla de hash de Python, así que los bytes pueden
+  variar entre corridas; la prueba compara el contenido, no los bytes).

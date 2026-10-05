@@ -302,7 +302,8 @@ def test_un_punto_sin_altura_queda_pendiente_y_r8_lo_marca():
     p.bloque("PTO-DATOS", 1, 1, id="X")
     r = importar_dxf(p.bytes(), nombre="a.dxf")
     assert ALTURA_PENDIENTE in r.puntos[0].especificaciones
-    assert [i.fila for i in tipos(r, TipoItem.PENDIENTE) if i.tabla == "esp_puntos"] == ["X"]
+    de_altura = [i for i in tipos(r, TipoItem.PENDIENTE) if "altura" in i.mensaje]
+    assert [i.fila for i in de_altura if i.tabla == "esp_puntos"] == ["X"]
 
 
 def test_una_altura_que_no_es_numero_queda_pendiente_con_su_motivo():

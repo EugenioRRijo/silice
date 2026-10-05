@@ -16,8 +16,9 @@ medida registrado y completo; si no, ERROR («origen no registrado» si el `orig
 existe, «origen sin referencia» si al origen le falta un dato de su referencia obligatoria). El
 modelo acepta ambos casos: es esta regla la que los valida (RF-44, UC-13a). ADVERTENCIA si ese
 origen es un supuesto, si el punto declara su altura pendiente (`especificaciones["altura"] ==
-"pendiente"`) o si un segmento vigente tiene diametro o empotrado fijados a mano. Una sobrescritura
-huerfana no produce cantidad: es de R9.
+"pendiente"`), si un ambiente importado de un plano conserva su alto provisional, si la fila
+ya no esta en el plano de donde vino (SF5) o si un segmento vigente tiene diametro o empotrado
+fijados a mano. Una sobrescritura huerfana no produce cantidad: es de R9.
 
 **R9** (siempre ERROR), en este orden: 1. punto o fuente fuera de su ambiente (`Espacio.validar`,
 tolerancia de §6.1; una altura de punto sobre el techo es esto mismo y se informa una vez);
@@ -70,6 +71,7 @@ from core.contracts.presupuesto import Presupuesto
 from core.contracts.verificacion import Hallazgo, ReglaVerificacion, Severidad
 
 __all__ = [
+    "ALTO_PROVISIONAL",
     "ALTURA_PENDIENTE",
     "CODIGO_R8",
     "CODIGO_R10",
@@ -77,6 +79,8 @@ __all__ = [
     "CoherenciaEspacial",
     "Limites",
     "LimitesDeEspecialidad",
+    "ORIGEN_ALTURA_PENDIENTE",
+    "ORIGEN_DESAPARECIDA",
     "OrigenDeLaMedida",
     "reglas_espacio",
 ]
@@ -88,6 +92,20 @@ CODIGO_R10 = "R10"
 #: Convencion de la altura pendiente: un punto cuya especificacion `altura` vale `pendiente`
 #: (p. ej. un punto importado de un plano sin la altura cargada, SF5). No es un campo del modelo.
 ALTURA_PENDIENTE = ("altura", "pendiente")
+
+#: Marcas que la importacion de planos (SF5) deja en la REFERENCIA del origen de una fila. El modelo
+#: no tiene campo para ellas (`Ambiente.alto` es obligatorio y las filas no tienen estado):
+#: viven en el
+#: origen, que ya se guarda con sus pares clave-valor.
+#: «altura pendiente» (un ambiente importado de un DXF) vale mientras su alto siga siendo el
+#: provisional.
+ORIGEN_ALTURA_PENDIENTE = ("altura", "pendiente")
+#: «desaparecida»: la fila vino de un plano y la ultima reimportacion ya no la trae (no se borra).
+ORIGEN_DESAPARECIDA = ("importacion", "desaparecida")
+#: Alto con que entra un ambiente cuyo plano no dice su altura. SUPUESTO_DECLARADO (RS-SF5-1):
+#: 2,5 m es el alto de OF-001 (memoria `of001.md`); sin fuente normativa. R8 lo marca hasta
+#: que se cargue el real.
+ALTO_PROVISIONAL = Decimal("2.5")
 
 _TABLA_SEGMENTOS = "esp_segmentos"
 
@@ -124,6 +142,7 @@ def _clave_segmento(clave: str) -> str:
 
 def _hallazgos_r8(espacio: Espacio) -> list[Hallazgo]:
     origenes = {o.id: o for o in espacio.origenes}
+    altos = {a.id: a.alto for a in espacio.ambientes}
     hallazgos: list[Hallazgo] = []
     filas = (
         [("esp_ambientes", "ambiente", a.id, a.origen_id, False) for a in espacio.ambientes]
@@ -166,6 +185,11 @@ def _hallazgos_r8(espacio: Espacio) -> list[Hallazgo]:
                     f"{quien}: la medida es un supuesto declarado (origen {origen.id}: {motivo})",
                 )
             )
+        if tabla == "esp_ambientes":
+            # importado de un plano sin altura: pendiente mientras siga el alto provisional
+            pendiente = ORIGEN_ALTURA_PENDIENTE in origen.referencia and (
+                altos[id_] == ALTO_PROVISIONAL
+            )
         if pendiente:
             hallazgos.append(
                 _hallazgo(
@@ -173,6 +197,15 @@ def _hallazgos_r8(espacio: Espacio) -> list[Hallazgo]:
                     Severidad.ADVERTENCIA,
                     clave,
                     f"{quien}: altura pendiente; la medida vertical es provisional",
+                )
+            )
+        if ORIGEN_DESAPARECIDA in origen.referencia:
+            hallazgos.append(
+                _hallazgo(
+                    CODIGO_R8,
+                    Severidad.ADVERTENCIA,
+                    clave,
+                    f"{quien}: ya no esta en el plano (origen {origen.id}); revisarla o retirarla",
                 )
             )
     vigentes = {s.clave for s in unir_segmentos(espacio)}

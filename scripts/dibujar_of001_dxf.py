@@ -246,13 +246,13 @@ def dibujar(salida: Path = SALIDA) -> Path:
     ambientes = leer_ambientes(of001)
     calibres = leer_circuitos(of001)
 
-    ezdxf.options.write_fixed_meta_data_for_testing = True  # archivo reproducible byte a byte
+    ezdxf.options.write_fixed_meta_data_for_testing = True  # fechas y GUID fijos
     doc = ezdxf.new("R2010")
     doc.units = 6  # metros ($INSUNITS = 6)
     for capa in ("AMBIENTES", *(c for c, _ in FUENTES.values()), *CAPA_PUNTO.values()):
         if capa not in doc.layers:
             doc.layers.add(capa)
-    for bloque in {b for _, b in FUENTES.values()} | {"PUNTO"}:
+    for bloque in sorted({b for _, b in FUENTES.values()} | {"PUNTO"}):  # orden fijo
         definicion = doc.blocks.new(bloque)
         definicion.add_circle((0, 0), 0.05)
         for i, tag in enumerate(ATRIBUTOS_PUNTO):
