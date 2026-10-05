@@ -198,6 +198,9 @@ def actualizar_precios(
         list(dict.fromkeys(item.codigo_partida for item in items)),
     )
     exigir_composiciones(items, composiciones)
+    # SF‑E8: el reparto que se le pasa (escrito o calculado) es el que se guarda con la versión;
+    # inferirlo de la curva pierde las partidas repartidas en varios períodos.
+    reparto = _CapturaPlan(plan)
     nuevo = elaborar(
         [*items, *_cargar_pendientes(session, modelo)],
         composiciones,
@@ -205,7 +208,7 @@ def actualizar_precios(
         codigo=codigo_nuevo,
         fecha=lista_nueva.fecha_vigencia,
         moneda=anterior.moneda,
-        plan=plan,
+        plan=reparto.para_elaborar(),
         reglas=reglas,
     )
     # SF‑E1: los hallazgos de reglas externas de la versión anterior (p. ej. los de la hoja de
@@ -227,12 +230,36 @@ def actualizar_precios(
         lista=lista_aplicada,
         parametros=parametros,
         pendientes=nuevo.pendientes,
+        plan=reparto.guardable(),
         version_origen=modelo,
         motivo="revaloracion",
     )
 
     _registrar_incidencias(session, cambios, anterior, nuevo.presupuesto, modelo.id)
     return nuevo, _comparar(anterior, nuevo.presupuesto, len(cambios))
+
+
+class _CapturaPlan:
+    """Recuerda el reparto con el que se elaboró la versión nueva, sea el plan ya escrito o el
+    que calcula un `GeneradorPlan` sobre el presupuesto valorado (SF‑E8)."""
+
+    def __init__(self, plan: Sequence[PeriodoPlan] | GeneradorPlan | None) -> None:
+        self._plan = plan
+        self._calculado: Sequence[PeriodoPlan] | None = None
+
+    def para_elaborar(self) -> Sequence[PeriodoPlan] | GeneradorPlan | None:
+        if not callable(self._plan):
+            return self._plan
+        generador = self._plan
+
+        def capturar(presupuesto: Presupuesto) -> Sequence[PeriodoPlan]:
+            self._calculado = generador(presupuesto)
+            return self._calculado
+
+        return capturar
+
+    def guardable(self) -> Sequence[PeriodoPlan] | None:
+        return self._calculado if callable(self._plan) else self._plan
 
 
 def descartar_version(

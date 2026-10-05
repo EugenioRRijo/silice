@@ -17,6 +17,7 @@ copia de N, con su registro: nada se borra y la restaurada pasa a ser la vigente
 
 from __future__ import annotations
 
+import re
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, replace
 from datetime import datetime
@@ -51,6 +52,9 @@ __all__ = [
 #: Qué puede cambiar un `RegistroCambio`: metraje (hoja de espacio), APU (líneas o rendimiento),
 #: cantidad (sobrescritura en el presupuesto), precio (cotización), plan, parámetro y versión
 #: (restauración).
+#: Código de versión: prefijo libre y número final (`001`, `TI-001`).
+_CODIGO_VERSION = re.compile(r"^(.*?)(\d+)$")
+
 OBJETOS = ("metraje", "apu", "cantidad", "precio", "plan", "parametro", "version")
 
 #: Gancho de quien guarda: recibe la sesión y la versión recién creada (con `id`).
@@ -226,18 +230,27 @@ def version_vigente(session: Session, proyecto_nombre: str) -> models.Presupuest
 
 
 def siguiente_codigo(session: Session, proyecto_nombre: str) -> str:
-    """El código de la próxima versión: el mayor código numérico del proyecto más uno, con el ancho
-    del mayor (`001` → `002`); `001` si ninguno es numérico."""
+    """El código de la próxima versión (SF‑E9): prefijo y número del código de la última versión
+    guardada, con el número del mayor código de ese prefijo más uno y su ancho (mínimo tres).
+
+    `TI-001` → `TI-002`, `001` → `002`; con `001` y luego `TI-001` manda la última (`TI-002`).
+    Un código sin número final se ignora; sin ninguno reconocible, `001`. Nunca devuelve un
+    código que el proyecto ya tenga."""
     codigos = session.scalars(
         select(models.Presupuesto.codigo)
         .join(models.Proyecto)
         .where(models.Proyecto.nombre == proyecto_nombre)
+        .order_by(models.Presupuesto.id)
     ).all()
-    numericos = [codigo for codigo in codigos if codigo.isdigit()]
-    if not numericos:
-        return "001"
-    ancho = max(len(codigo) for codigo in numericos)
-    return str(max(int(codigo) for codigo in numericos) + 1).zfill(max(ancho, 3))
+    partes = [(m.group(1), m.group(2)) for c in codigos if (m := _CODIGO_VERSION.match(c))]
+    prefijo = partes[-1][0] if partes else ""
+    mismos = [numero for pref, numero in partes if pref == prefijo]
+    ancho = max([len(numero) for numero in mismos], default=3)
+    siguiente = max((int(numero) for numero in mismos), default=0) + 1
+    existentes = set(codigos)
+    while (candidato := f"{prefijo}{str(siguiente).zfill(max(ancho, 3))}") in existentes:
+        siguiente += 1
+    return candidato
 
 
 def registros_de_version(

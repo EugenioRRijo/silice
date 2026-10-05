@@ -72,7 +72,7 @@ def test_la_version_revalorada_guarda_el_plan_que_se_le_pasa(sesion, v001_partid
     nueva = _buscar(sesion, NOMBRE_PROYECTO, "002")
     assert plan_de_version(sesion, nueva) == _plan_partido()
     curva = cargar_elaboracion(sesion, NOMBRE_PROYECTO, "002", Catalogo(sesion)).presupuesto.curva
-    assert [p.periodo for p in curva] == [1, 2]
+    assert [p.periodo.split(" [")[0] for p in curva] == ["Semana 1", "Semana 2"]
     total = cargar_elaboracion(sesion, NOMBRE_PROYECTO, "002", Catalogo(sesion)).presupuesto.total
     assert abs(curva[0].monto - total * D("0.4")) <= D("0.01")
     assert abs(curva[-1].acumulado - total) <= D("0.01")
