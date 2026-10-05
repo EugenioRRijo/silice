@@ -1,5 +1,9 @@
 """Origen de la medida (spec §6.3): de dónde sale cada dato, con su referencia obligatoria.
 
+Una referencia incompleta NO se rechaza al construir (RF-44, UC-13a): el origen se acepta, se guarda
+y se recarga con la marca `incompleto`, y quien lo marca ERROR es R8 («origen sin referencia»). Solo
+un id vacío o un tipo que no existe son errores de construcción: sin ellos no hay origen que citar.
+
 El origen de medida es de la fila. La fuente del cambio es del `RegistroCambio` del núcleo y no se
 modela aquí.
 """
@@ -51,13 +55,17 @@ class OrigenMedida:
             raise ValueError("el id del origen no puede estar vacío")
         object.__setattr__(self, "tipo", TipoOrigen(self.tipo))
         object.__setattr__(self, "referencia", pares(self.referencia))
+
+    @property
+    def faltantes(self) -> tuple[str, ...]:
+        """Datos de la referencia obligatoria de su tipo que faltan o están en blanco."""
         dada = dict(self.referencia)
-        for clave in REFERENCIA_OBLIGATORIA[self.tipo]:
-            if not dada.get(clave, "").strip():
-                raise ValueError(
-                    f"el origen {self.id!r} de tipo {self.tipo.value} exige «{clave}» "
-                    "en su referencia"
-                )
+        return tuple(c for c in REFERENCIA_OBLIGATORIA[self.tipo] if not dada.get(c, "").strip())
+
+    @property
+    def incompleto(self) -> bool:
+        """True si le falta algún dato de su referencia obligatoria (R8: ERROR)."""
+        return bool(self.faltantes)
 
     @property
     def es_supuesto(self) -> bool:

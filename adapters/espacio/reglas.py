@@ -11,7 +11,9 @@ es lo que usa la columna Estado. No implementan `atribuir` (`ReglaAtribuible` no
 orden es estable: por tabla y, dentro de ella, por id (el modelo ya ordena sus tuplas).
 
 **R8**, una fila del espacio que produce cantidad (ambiente, fuente o punto) cita un origen de
-medida registrado; si no, ERROR. ADVERTENCIA si ese origen es un supuesto, si el punto declara su
+medida registrado y completo; si no, ERROR («origen no registrado» si el `origen_id` esta vacio o no
+existe, «origen sin referencia» si al origen le falta un dato de su referencia obligatoria). El
+modelo acepta ambos casos: es esta regla la que los valida (RF-44, UC-13a). ADVERTENCIA si ese origen es un supuesto, si el punto declara su
 altura pendiente (`especificaciones["altura"] == "pendiente"`) o si un segmento vigente tiene
 diametro o empotrado fijados a mano. Una sobrescritura huerfana no produce cantidad: es de R9.
 
@@ -105,12 +107,22 @@ def _hallazgos_r8(espacio: Espacio) -> list[Hallazgo]:
                     CODIGO_R8,
                     Severidad.ERROR,
                     clave,
-                    f"{quien}: no cita un origen de medida registrado (origen_id {origen_id!r})",
+                    f"{quien}: origen no registrado (origen_id {origen_id!r})",
                 )
             )
             continue
-        if origen.es_supuesto:
-            motivo = dict(origen.referencia)["motivo"]
+        if origen.incompleto:
+            faltan = ", ".join(f"«{c}»" for c in origen.faltantes)
+            hallazgos.append(
+                _hallazgo(
+                    CODIGO_R8,
+                    Severidad.ERROR,
+                    clave,
+                    f"{quien}: origen sin referencia (origen {origen.id}: falta {faltan})",
+                )
+            )
+        elif origen.es_supuesto:
+            motivo = dict(origen.referencia).get("motivo", "")
             hallazgos.append(
                 _hallazgo(
                     CODIGO_R8,

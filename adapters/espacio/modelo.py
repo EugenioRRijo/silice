@@ -116,7 +116,6 @@ class Ambiente:
 
     def __post_init__(self) -> None:
         _no_vacio(self.id, "el id del ambiente")
-        _no_vacio(self.origen_id, "el origen del ambiente")
         _decimal(self.x0, "x0")
         _decimal(self.y0, "y0")
         _positivo(self.largo, "largo")
@@ -312,7 +311,8 @@ class Espacio:
             raise ValueError("claves repetidas en sobrescrituras")
 
     def _exigir_referencias(self) -> None:
-        origenes = {o.id for o in self.origenes}
+        # el origen de medida es el unico enlace que no se exige aqui: la fila sin origen o con un
+        # origen que no esta registrado se acepta en la version y R8 la marca ERROR (RF-44, UC-13a)
         ambientes = {a.id for a in self.ambientes}
         fuentes = {f.id for f in self.fuentes}
         puntos = {p.id for p in self.puntos}
@@ -322,14 +322,10 @@ class Espacio:
             if not existe:
                 raise ValueError(f"{quien} cita {que} inexistente: {ref!r}")
 
-        for a in self.ambientes:
-            exigir(a.origen_id in origenes, "un origen", f"el ambiente {a.id!r}", a.origen_id)
         for f in self.fuentes:
-            exigir(f.origen_id in origenes, "un origen", f"la fuente {f.id!r}", f.origen_id)
             exigir(f.ambiente_id in ambientes, "un ambiente", f"la fuente {f.id!r}", f.ambiente_id)
         for p in self.puntos:
             quien = f"el punto {p.id!r}"
-            exigir(p.origen_id in origenes, "un origen", quien, p.origen_id)
             exigir(p.ambiente_id in ambientes, "un ambiente", quien, p.ambiente_id)
             if p.fuente_id is not None:
                 exigir(p.fuente_id in fuentes, "una fuente", quien, p.fuente_id)
