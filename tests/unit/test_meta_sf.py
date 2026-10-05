@@ -263,3 +263,62 @@ def test_contar_resultados_agrupa_por_prefijo_de_nodeid():
 
 def test_contar_resultados_grupo_ausente_es_cero():
     assert contar_resultados("", {"A": ("tests/unit/test_a.py",)}) == {"A": (0, 0)}
+
+
+# --- S10: el coverage.json debe ser posterior al codigo que mide -------------------------------
+
+
+def test_s10_pendiente_si_el_coverage_json_es_anterior_al_codigo():
+    estado, detalle = evaluar_s10_cobertura(95.0, vigente=False)
+    assert estado is Estado.PENDIENTE
+    assert "anterior" in detalle
+
+
+def test_s10_ok_si_el_dato_esta_vigente():
+    assert evaluar_s10_cobertura(95.0, vigente=True)[0] is Estado.OK
+
+
+def test_cobertura_vigente_compara_con_el_codigo_mas_reciente(tmp_path):
+    import os
+
+    from scripts.meta_sf import cobertura_vigente
+
+    codigo = tmp_path / "adapters" / "espacio"
+    (codigo / "especialidades").mkdir(parents=True)
+    viejo, nuevo = codigo / "a.py", codigo / "especialidades" / "b.py"
+    viejo.write_text("x = 1\n")
+    nuevo.write_text("y = 2\n")
+    informe = tmp_path / "coverage.json"
+    informe.write_text("{}")
+    os.utime(viejo, (1_000, 1_000))
+    os.utime(nuevo, (3_000, 3_000))
+    os.utime(informe, (2_000, 2_000))
+    assert not cobertura_vigente(informe, codigo)  # el codigo de un subpaquete es mas nuevo
+    os.utime(informe, (4_000, 4_000))
+    assert cobertura_vigente(informe, codigo)
+    assert not cobertura_vigente(tmp_path / "no_existe.json", codigo)
+
+
+# --- S8: un nodeid declarado que ya no esta en disco es una FALLA ------------------------------
+
+
+def test_s8_falla_si_una_prueba_de_regresion_declarada_no_esta_en_disco():
+    estado, detalle = evaluar_s8_regresion({"linea base": (10, 10), "R4": None}, ausentes=["R4"])
+    assert estado is Estado.FALLA
+    assert "R4" in detalle and "disco" in detalle
+
+
+def test_cada_prueba_de_regresion_declarada_existe_en_disco():
+    from scripts.meta_sf import REGRESION, _existe
+
+    ausentes = [i for ids in REGRESION.values() for i in ids if not _existe(i)]
+    assert ausentes == []
+
+
+def test_existe_exige_la_funcion_y_no_solo_el_archivo():
+    from scripts.meta_sf import _existe
+
+    assert _existe("tests/unit/test_meta_sf.py")
+    assert _existe("tests/unit/test_meta_sf.py::test_s10_ok_si_el_dato_esta_vigente")
+    assert not _existe("tests/unit/test_meta_sf.py::test_que_no_existe")
+    assert not _existe("tests/unit/no_existe.py")
