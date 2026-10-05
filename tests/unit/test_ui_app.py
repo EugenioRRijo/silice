@@ -279,3 +279,74 @@ def test_en_el_ultimo_paso_no_hay_siguiente(monkeypatch, base_sembrada) -> None:
 def test_una_pantalla_fuera_del_recorrido_no_muestra_siguiente(monkeypatch, base_sembrada) -> None:
     at = _marco(monkeypatch, base_sembrada, "historico", {CLAVE_RECORRIDO: NOMBRE_DEMOSTRACION})
     assert CLAVE_BOTON_SIGUIENTE not in {boton.key for boton in at.button}
+
+
+# --- SF4 4.1: navegacion arriba (RF-60) y once pantallas (RF-37, RF-39, RF-42) -----------------
+
+
+def test_el_extra_ui_exige_la_version_de_streamlit_con_navegacion_superior() -> None:
+    """`position="top"` existe desde Streamlit 1.62 (la fija el extra `ui` de pyproject.toml)."""
+    import tomllib
+
+    datos = tomllib.loads((RUTA_APP.parents[1] / "pyproject.toml").read_text(encoding="utf-8"))
+    requisitos = [r.replace(" ", "") for r in datos["project"]["optional-dependencies"]["ui"]]
+    assert "streamlit>=1.62" in requisitos
+
+
+def test_el_streamlit_instalado_acepta_navigation_con_position_top() -> None:
+    """Falla con una version de Streamlit sin la navegacion superior."""
+    import inspect
+
+    import streamlit as st
+
+    parametros = inspect.signature(st.navigation).parameters
+    assert "position" in parametros
+    assert "top" in str(parametros["position"].annotation)
+
+
+def test_la_aplicacion_declara_la_navegacion_arriba_con_los_dos_grupos(
+    monkeypatch, tmp_path: Path
+) -> None:
+    import streamlit as st
+
+    llamadas: list[tuple[object, dict[str, object]]] = []
+    original = st.navigation
+
+    def espia(paginas, **kwargs):
+        llamadas.append((paginas, kwargs))
+        return original(paginas, **kwargs)
+
+    monkeypatch.setattr(st, "navigation", espia)
+    at = _aplicacion(monkeypatch, tmp_path)
+    assert not at.exception, [excepcion.value for excepcion in at.exception]
+    assert len(llamadas) == 1
+    paginas, kwargs = llamadas[0]
+    assert kwargs.get("position") == "top"
+    assert list(paginas) == [SECCION_TRABAJO, SECCION_INVESTIGACION]
+
+
+def test_modo_entrega_declara_solo_el_grupo_trabajo_en_la_navegacion_superior(
+    monkeypatch, tmp_path: Path
+) -> None:
+    import streamlit as st
+
+    llamadas: list[tuple[object, dict[str, object]]] = []
+    original = st.navigation
+
+    def espia(paginas, **kwargs):
+        llamadas.append((paginas, kwargs))
+        return original(paginas, **kwargs)
+
+    monkeypatch.setattr(st, "navigation", espia)
+    monkeypatch.setenv(VARIABLE_MODO_ENTREGA, "1")
+    _aplicacion(monkeypatch, tmp_path)
+    paginas, kwargs = llamadas[0]
+    assert kwargs.get("position") == "top"
+    assert list(paginas) == [SECCION_TRABAJO]
+
+
+def test_son_once_pantallas_y_la_hoja_va_justo_despues_de_elaborar() -> None:
+    rutas = [p.ruta_url for p in PAGINAS]
+    assert len(rutas) == 11
+    assert rutas.index("hoja") == rutas.index("elaborar") + 1
+    assert pagina_por_ruta("hoja").seccion == SECCION_TRABAJO
