@@ -169,7 +169,9 @@ def test_el_registro_de_creacion_es_exactamente_uno_con_fuente_y_responsable(bas
     nacida = _modelo(sesion, "001")
     fila = sesion.scalars(select(models.RegistroCambio)).one()
     assert (fila.version_origen_id, fila.version_resultante_id) == (None, nacida.id)
-    assert sesion.get(models.VersionOrigen, nacida.id) is None  # nace de cero: sin version de origen
+    assert (
+        sesion.get(models.VersionOrigen, nacida.id) is None
+    )  # nace de cero: sin version de origen
 
 
 def test_el_historial_dice_que_la_001_nacio_de_cero_con_un_registro(base):
@@ -349,3 +351,14 @@ def test_sin_lista_de_precios_vigente_el_error_lo_dice_y_no_inventa_precios(base
         _crear(base, _borrador(fecha=date(2000, 1, 1)))
 
     assert _cuenta(sesion) == antes
+
+
+# --- el motivo que la pantalla muestra en el boton --------------------------------------------
+
+
+def test_el_motivo_para_no_crear_la_primera_dice_que_falta_en_orden():
+    vacio = hoja.Borrador(fecha=caso_of001.FECHA)
+    assert "vacia" in hoja.motivo_para_no_crear_primera(vacio, FUENTE, RESPONSABLE)
+    assert "fuente" in hoja.motivo_para_no_crear_primera(_borrador(), " ", RESPONSABLE)
+    assert "responsable" in hoja.motivo_para_no_crear_primera(_borrador(), FUENTE, "")
+    assert hoja.motivo_para_no_crear_primera(_borrador(), FUENTE, RESPONSABLE) is None

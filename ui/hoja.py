@@ -1693,6 +1693,22 @@ def guardar_version(
     )
 
 
+def motivo_para_no_crear_primera(borrador: Borrador, fuente: str, responsable: str) -> str | None:
+    """Por que no se puede guardar ahora la primera version de un proyecto nuevo, o `None`.
+
+    Es el equivalente de `motivo_para_no_guardar` cuando no hay version abierta: sin espacio, sin
+    items ni cantidades escritas no hay nada que guardar."""
+    if borrador.espacio == Espacio() and not borrador.items_base and not borrador.cantidades:
+        return (
+            "La hoja esta vacia: describa o importe el espacio antes de guardar la primera version."
+        )
+    if not fuente.strip():
+        return "Escriba la fuente de la medida: de donde salen los datos (un plano, un acta)."
+    if not responsable.strip():
+        return "Escriba el responsable: quien crea esta primera version."
+    return None
+
+
 def crear_primera_version(
     sesion: Session,
     catalogo: Catalogo,
