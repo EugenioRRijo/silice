@@ -720,8 +720,9 @@ def test_el_fcas_de_ti001_recalcula_y_queda_en_el_registro(ti001):
         sesion, catalogo, abierta, editado, fuente=FUENTE, responsable=RESPONSABLE
     )
 
-    # `siguiente_codigo` solo cuenta los codigos numericos: «TI-001» no lo es, y la nueva es «001»
-    assert guardada.codigo == "001"
+    # SF-E9: `siguiente_codigo` reconoce prefijo y numero, asi que «TI-001» sigue en «TI-002»
+    # (antes de SF-E9 solo contaba los codigos numericos y la nueva salia «001»)
+    assert guardada.codigo == "TI-002"
     assert guardada.total > abierta.guardada.presupuesto.total
     [registro] = hoja.registros_de_version(sesion, NOMBRE_TI001, guardada.codigo)
     assert (registro.objeto, registro.clave, registro.campo) == ("parametro", "fcas", "valor")
