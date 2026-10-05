@@ -6,6 +6,8 @@ import pytest
 
 from scripts.meta_alpha import Estado
 from scripts.meta_sf import (
+    BASES_S4,
+    BASES_S4_SF5,
     FASES,
     TITULOS,
     base_de_core,
@@ -14,6 +16,7 @@ from scripts.meta_sf import (
     evaluar_s2_memorias,
     evaluar_s3_especialidades,
     evaluar_s4_core,
+    evaluar_s7_planos,
     evaluar_s8_regresion,
     evaluar_s10_cobertura,
     main,
@@ -440,4 +443,75 @@ def test_s4_sobre_el_repositorio_real_no_falla():
     from scripts.meta_sf import _s4
 
     estado, detalle = _s4()
+    assert estado is not Estado.FALLA, detalle
+
+
+# --- SF5: S7 importacion de planos y S4 desde gsf4 / inc/sf2 ------------------------------------
+
+
+def test_s7_ok_si_pasan_las_pruebas_de_dxf_e_ifc():
+    estado, detalle = evaluar_s7_planos(True, (60, 60), True, (40, 40))
+    assert estado is Estado.OK
+    assert "dxf (60/60)" in detalle and "ifc (40/40)" in detalle
+
+
+def test_s7_falla_y_nombra_el_formato_que_falla():
+    estado, detalle = evaluar_s7_planos(True, (59, 60), True, (40, 40))
+    assert estado is Estado.FALLA and "dxf (59/60)" in detalle and "ifc" not in detalle
+    estado, detalle = evaluar_s7_planos(True, (60, 60), True, (39, 40))
+    assert estado is Estado.FALLA and "ifc (39/40)" in detalle
+
+
+def test_s7_falla_pesa_mas_que_pendiente():
+    estado, _ = evaluar_s7_planos(True, (1, 2), False, None)
+    assert estado is Estado.FALLA
+
+
+def test_s7_pendiente_si_faltan_las_pruebas_o_no_recolectaron_casos():
+    estado, detalle = evaluar_s7_planos(False, None, True, (40, 40))
+    assert estado is Estado.PENDIENTE and "dxf" in detalle
+    estado, detalle = evaluar_s7_planos(True, (60, 60), False, None)
+    assert estado is Estado.PENDIENTE and "ifc" in detalle
+    estado, detalle = evaluar_s7_planos(True, (0, 0), True, (40, 40))
+    assert estado is Estado.PENDIENTE and "no recolectaron" in detalle
+
+
+def test_s7_ya_no_es_pendiente_fijo_en_la_orquestacion(monkeypatch):
+    import scripts.meta_sf as meta
+
+    consultadas = []
+
+    def falso(ids):
+        consultadas.append(tuple(ids))
+        return True, (len(ids), len(ids))
+
+    monkeypatch.setattr(meta, "_resultado_de", falso)
+    fila = meta._evaluar_metas(["S7"], "SF5")[0]
+    assert fila.estado is Estado.OK, fila.detalle
+    asi = {i for grupo in consultadas for i in grupo}
+    assert "tests/unit/test_planos_ifc.py" in asi and "tests/unit/test_planos_dxf_of001.py" in asi
+
+
+def test_la_base_de_s4_en_sf5_es_gsf4_y_si_no_existe_inc_sf2():
+    assert base_de_core(lambda ref: True, BASES_S4_SF5) == "gsf4"
+    assert base_de_core(lambda ref: ref == "inc/sf2", BASES_S4_SF5) == "inc/sf2"
+    assert base_de_core(lambda ref: ref == "gsf1", BASES_S4_SF5) is None
+
+
+def test_la_base_de_s4_por_fase():
+    from scripts.meta_sf import bases_de_s4
+
+    assert bases_de_s4("SF2") == BASES_S4 and bases_de_s4("SF4") == BASES_S4
+    assert bases_de_s4("SF5") == BASES_S4_SF5 and bases_de_s4(None) == BASES_S4_SF5
+
+
+def test_s4_pendiente_nombra_las_bases_que_busco():
+    estado, detalle = evaluar_s4_core(None, None, BASES_S4_SF5)
+    assert estado is Estado.PENDIENTE and "gsf4" in detalle and "inc/sf2" in detalle
+
+
+def test_s4_en_sf5_sobre_el_repositorio_real_no_falla():
+    from scripts.meta_sf import _s4
+
+    estado, detalle = _s4("SF5")
     assert estado is not Estado.FALLA, detalle

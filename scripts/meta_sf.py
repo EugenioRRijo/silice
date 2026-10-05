@@ -24,6 +24,11 @@ Nota: `FASES` agrupa cada meta en la fase donde ARRANCA su evaluacion. S3 («SF1
 arranca en SF1 y S8 («todas») se conecta en SF1; por eso sus titulos llevan el alcance de la spec y
 no la fase de agrupacion.
 
+S7 (SF5) pesa las pruebas de importacion de planos: DXF (`test_planos_dxf.py`,
+`test_planos_dxf_of001.py` con la equivalencia de OF-001 con la hoja, y el informe y la
+reimportacion de `test_planos_informe.py`) e IFC (`test_planos_ifc.py`). Desde SF5, S4 compara
+`core/` contra `gsf4` (o, mientras no exista, contra la rama `inc/sf2`).
+
 Uso: `uv run python scripts/meta_sf.py [--hasta SF0|SF1|SF2|SF3|SF4|SF5] [--json]`.
 """
 
@@ -78,12 +83,22 @@ RUTA_MEMORIAS = RAIZ / "tests" / "fixtures" / "memorias"
 RUTA_ESPACIO = RAIZ / "adapters" / "espacio"
 RUTA_PRUEBAS_AGUA = "tests/unit/test_espacio_agua.py"
 RUTA_PRUEBAS_DATOS = ("tests/unit/test_espacio_datos.py",)
+RUTA_PRUEBAS_DXF = (
+    "tests/unit/test_planos_dxf.py",
+    "tests/unit/test_planos_dxf_of001.py",
+    "tests/unit/test_planos_informe.py",
+)
+RUTA_PRUEBAS_IFC = ("tests/unit/test_planos_ifc.py",)
 RUTA_PRUEBAS_ELECTRICIDAD = (
     "tests/unit/test_espacio_electricidad.py",
     "tests/unit/test_espacio_circuitos.py",
 )
 #: Etiqueta de la compuerta GSF1 y, si todavia no existe, la rama de SF1: base de S4.
 BASES_S4: tuple[str, ...] = ("gsf1", "inc/sf1")
+#: Desde SF5 (spec 12.2: «desde gsf4 al cerrar SF5»): la etiqueta GSF4 y, si no existe, la rama
+#: de SF2
+#: sobre la que se apila `inc/sf5` (el nucleo de SF3 vive en otra rama y no es base de esta).
+BASES_S4_SF5: tuple[str, ...] = ("gsf4", "inc/sf2")
 
 #: Memorias de calculo de SF1: nombre -> argumentos de `git log` que localizan el PRIMER commit del
 #: codigo que ellas rigen. La del bano rige la geometria; la del drenaje, la derivacion de agua y
@@ -285,14 +300,16 @@ def evaluar_s3_especialidades(
     return Estado.OK, f"pruebas en verde: {detalle}"
 
 
-def evaluar_s4_core(base: str | None, diff: str | None) -> tuple[Estado, str]:
+def evaluar_s4_core(
+    base: str | None, diff: str | None, bases: tuple[str, ...] = BASES_S4
+) -> tuple[Estado, str]:
     """S4: `core/` no cambio desde `base` (`git diff --stat <base>..HEAD -- core/` vacio).
 
     `base` es None si no hay etiqueta ni rama de referencia, y `diff` es None si git no
     respondio: en ambos casos no hay evidencia (PENDIENTE). Un diff con contenido es FALLA y
     nombra lo que cambio."""
     if base is None:
-        return Estado.PENDIENTE, "sin base: ni la etiqueta gsf1 ni la rama inc/sf1 existen"
+        return Estado.PENDIENTE, "sin base: no existe ninguna de " + ", ".join(bases)
     if diff is None:
         return Estado.PENDIENTE, f"git no respondio al comparar core/ con {base}"
     cambios = [linea.strip() for linea in diff.splitlines() if linea.strip()]
@@ -301,9 +318,43 @@ def evaluar_s4_core(base: str | None, diff: str | None) -> tuple[Estado, str]:
     return Estado.OK, f"core/ intacto desde {base} (git diff vacio)"
 
 
-def base_de_core(existe: Callable[[str], bool]) -> str | None:
-    """La primera base de S4 que existe (`gsf1`, y si no `inc/sf1`); None si no hay ninguna."""
-    return next((ref for ref in BASES_S4 if existe(ref)), None)
+def base_de_core(existe: Callable[[str], bool], bases: tuple[str, ...] = BASES_S4) -> str | None:
+    """La primera base de S4 que existe (por defecto `gsf1`, y si no `inc/sf1`); None si no hay."""
+    return next((ref for ref in bases if existe(ref)), None)
+
+
+def bases_de_s4(fase: str | None) -> tuple[str, ...]:
+    """Bases de S4 segun la fase evaluada: desde SF5 (o sin `--hasta`), `gsf4`/`inc/sf2`."""
+    orden = list(FASES)
+    desde_sf5 = fase is None or orden.index(fase) >= orden.index("SF5")
+    return BASES_S4_SF5 if desde_sf5 else BASES_S4
+
+
+def evaluar_s7_planos(
+    existe_dxf: bool,
+    resultado_dxf: tuple[int, int] | None,
+    existe_ifc: bool,
+    resultado_ifc: tuple[int, int] | None,
+) -> tuple[Estado, str]:
+    """S7: las pruebas de DXF y de IFC existen y pasan (`resultado_*` = (pasan, total)).
+
+    Una que falla pesa mas que una que falta; una que falta o no recolecto casos es PENDIENTE."""
+    formatos = {"dxf": (existe_dxf, resultado_dxf), "ifc": (existe_ifc, resultado_ifc)}
+    fallan = [
+        f"{nombre} ({r[0]}/{r[1]})"
+        for nombre, (existe, r) in formatos.items()
+        if existe and r is not None and r[1] > 0 and r[0] < r[1]
+    ]
+    if fallan:
+        return Estado.FALLA, "pruebas que fallan: " + ", ".join(fallan)
+    faltan = [nombre for nombre, (existe, _) in formatos.items() if not existe]
+    if faltan:
+        return Estado.PENDIENTE, "faltan las pruebas de " + ", ".join(faltan)
+    sin_casos = [nombre for nombre, (_, r) in formatos.items() if r is None or r[1] == 0]
+    if sin_casos:
+        return Estado.PENDIENTE, "las pruebas de " + ", ".join(sin_casos) + " no recolectaron casos"
+    detalle = ", ".join(f"{nombre} ({r[0]}/{r[1]})" for nombre, (_, r) in formatos.items())  # type: ignore[index]
+    return Estado.OK, f"pruebas de importacion en verde: {detalle}"
 
 
 def evaluar_s8_regresion(
@@ -448,10 +499,11 @@ def _referencia_existe(ref: str) -> bool:
     return bool(_git("rev-parse", "--verify", "--quiet", f"{ref}^{{commit}}"))
 
 
-def _s4() -> tuple[Estado, str]:
-    base = base_de_core(_referencia_existe)
+def _s4(fase: str | None = None) -> tuple[Estado, str]:
+    bases = bases_de_s4(fase)
+    base = base_de_core(_referencia_existe, bases)
     if base is None:
-        return evaluar_s4_core(None, None)
+        return evaluar_s4_core(None, None, bases)
     try:
         r = subprocess.run(
             ["git", "diff", "--stat", f"{base}..HEAD", "--", "core/"],
@@ -462,8 +514,14 @@ def _s4() -> tuple[Estado, str]:
             check=False,
         )
     except OSError:
-        return evaluar_s4_core(base, None)
-    return evaluar_s4_core(base, r.stdout if r.returncode == 0 else None)
+        return evaluar_s4_core(base, None, bases)
+    return evaluar_s4_core(base, r.stdout if r.returncode == 0 else None, bases)
+
+
+def _s7() -> tuple[Estado, str]:
+    existe_dxf, resultado_dxf = _resultado_de(RUTA_PRUEBAS_DXF)
+    existe_ifc, resultado_ifc = _resultado_de(RUTA_PRUEBAS_IFC)
+    return evaluar_s7_planos(existe_dxf, resultado_dxf, existe_ifc, resultado_ifc)
 
 
 def _s8() -> tuple[Estado, str]:
@@ -490,10 +548,10 @@ def _evaluar_metas(codigos: list[str], fase: str | None = None) -> list[Fila]:
         "S1": lambda: evaluar_s1_requisitos(_leer(RUTA_ERS)),
         "S2": lambda: _s2(sf2),
         "S3": lambda: _s3(sf2),
-        "S4": _s4,
+        "S4": lambda: _s4(fase),
         "S5": _pendiente("la hoja del proyecto llega con SF3"),
         "S6": _pendiente("la barra superior llega con SF4"),
-        "S7": _pendiente("la importacion de planos llega con SF5"),
+        "S7": _s7,
         "S8": _s8,
         "S9": _pendiente("la medicion de RNF-11 llega con SF3"),
         "S10": _s10,
