@@ -157,3 +157,49 @@ def test_importar_plano_aparece_con_el_paquete_de_planos_real_y_lleva_al_flujo(m
     assert at.session_state[CLAVE_PESTANA] == "Espacio y metrajes"
     flujo = next(e for e in at.expander if e.label == "Importar plano (DXF o IFC)")
     assert flujo.proto.expanded is True
+
+
+# --- el proyecto que abre la barra es el que muestra la hoja -------------------------------------
+
+
+def test_el_proyecto_abierto_en_la_barra_es_el_que_abre_la_hoja(monkeypatch, base):
+    from ui.caso import CLAVE_PROYECTO as PROYECTO_DE_LA_BARRA
+    from ui.paginas.hoja import CLAVE_ABIERTA
+
+    caso = importlib.import_module("ui.caso")
+    monkeypatch.setattr(caso, "RUTA_BASE_POR_DEFECTO", str(base))
+    at = AppTest.from_string(GUION, default_timeout=120)
+    at.session_state[PROYECTO_DE_LA_BARRA] = NOMBRE_OF001  # el usuario lo abrio en la barra
+    at.run()
+    assert not at.exception, [e.value for e in at.exception]
+    abierta = at.session_state[CLAVE_ABIERTA] if CLAVE_ABIERTA in at.session_state else None
+    assert abierta is not None and abierta.proyecto == NOMBRE_OF001
+    selector = next(s for s in at.selectbox if s.label == "Proyecto" and s.key.startswith("hoja_"))
+    assert selector.value == NOMBRE_OF001
+
+
+def test_sin_proyecto_en_la_barra_la_hoja_sigue_en_el_borrador_nuevo(monkeypatch, base):
+    from ui.paginas.hoja import SIN_PROYECTO
+
+    caso = importlib.import_module("ui.caso")
+    monkeypatch.setattr(caso, "RUTA_BASE_POR_DEFECTO", str(base))
+    at = AppTest.from_string(GUION, default_timeout=120)
+    at.run()
+    assert not at.exception, [e.value for e in at.exception]
+    selector = next(s for s in at.selectbox if s.label == "Proyecto" and s.key.startswith("hoja_"))
+    assert selector.value == SIN_PROYECTO
+
+
+def test_el_proyecto_que_la_barra_abre_despues_tambien_cambia_la_hoja(monkeypatch, base):
+    from ui.caso import CLAVE_PROYECTO as PROYECTO_DE_LA_BARRA
+    from ui.paginas.hoja import CLAVE_ABIERTA
+
+    caso = importlib.import_module("ui.caso")
+    monkeypatch.setattr(caso, "RUTA_BASE_POR_DEFECTO", str(base))
+    at = AppTest.from_string(GUION, default_timeout=120)
+    at.run()
+    assert CLAVE_ABIERTA not in at.session_state or at.session_state[CLAVE_ABIERTA] is None
+    at.session_state[PROYECTO_DE_LA_BARRA] = NOMBRE_OF001
+    at.run()
+    assert not at.exception, [e.value for e in at.exception]
+    assert at.session_state[CLAVE_ABIERTA].proyecto == NOMBRE_OF001
