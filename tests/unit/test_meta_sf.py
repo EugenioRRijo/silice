@@ -7,6 +7,7 @@ import pytest
 from scripts.meta_alpha import Estado
 from scripts.meta_sf import (
     FASES,
+    GRUPOS_S5,
     TITULOS,
     base_de_core,
     contar_resultados,
@@ -14,12 +15,14 @@ from scripts.meta_sf import (
     evaluar_s2_memorias,
     evaluar_s3_especialidades,
     evaluar_s4_core,
+    evaluar_s5_nucleo,
     evaluar_s8_regresion,
     evaluar_s10_cobertura,
     main,
     memorias_exigidas,
     metas_hasta,
     porcentaje_espacio,
+    punta_de_s4,
 )
 
 
@@ -441,3 +444,64 @@ def test_s4_sobre_el_repositorio_real_no_falla():
 
     estado, detalle = _s4()
     assert estado is not Estado.FALLA, detalle
+
+
+# --- SF3 (rama de nucleo): S4 solo vigila SF2 y SF5; S5 parcial; S9 pendiente ------------------
+
+
+def test_la_punta_de_s4_es_el_fin_de_sf2_y_si_no_existe_head():
+    """S4 vigila SF2 (y SF5): en una rama de SF3 que SI toca `core/` (expedientes SF-E2 a SF-E7,
+    spec 12.2) se compara el fin de SF2, no la punta de la rama."""
+    assert punta_de_s4(lambda ref: True) == "gsf2"
+    assert punta_de_s4(lambda ref: ref == "inc/sf2") == "inc/sf2"
+    assert punta_de_s4(lambda ref: False) == "HEAD"
+
+
+def test_s4_nombra_la_punta_con_que_comparo():
+    estado, detalle = evaluar_s4_core("inc/sf1", "", "inc/sf2")
+    assert estado is Estado.OK and "inc/sf1..inc/sf2" in detalle
+    estado, detalle = evaluar_s4_core("inc/sf1", " core/x.py | 1 +", "inc/sf2")
+    assert estado is Estado.FALLA and "inc/sf1..inc/sf2" in detalle
+
+
+def test_hasta_sf3_agrega_s5_y_s9():
+    assert metas_hasta("SF3") == ["S1", "S2", "S3", "S8", "S10", "S4", "S5", "S9"]
+
+
+def test_s5_ok_si_pasan_todos_los_grupos_del_nucleo():
+    grupos = {g: (4, 4) for g in GRUPOS_S5}
+    estado, detalle = evaluar_s5_nucleo(grupos)
+    assert estado is Estado.OK
+    assert "nucleo" in detalle and "SF3" in detalle
+
+
+def test_s5_falla_y_nombra_el_grupo_que_falla():
+    grupos = {g: (4, 4) for g in GRUPOS_S5}
+    grupos["punto de equilibrio"] = (3, 4)
+    estado, detalle = evaluar_s5_nucleo(grupos)
+    assert estado is Estado.FALLA and "punto de equilibrio (3/4)" in detalle
+
+
+def test_s5_pendiente_si_un_grupo_no_tiene_pruebas():
+    grupos = {g: (4, 4) for g in GRUPOS_S5}
+    grupos["Excel"] = None
+    estado, detalle = evaluar_s5_nucleo(grupos)
+    assert estado is Estado.PENDIENTE and "Excel" in detalle
+    grupos["Excel"] = (0, 0)
+    assert evaluar_s5_nucleo(grupos)[0] is Estado.PENDIENTE
+
+
+def test_s5_falla_pesa_mas_que_pendiente():
+    grupos = {g: None for g in GRUPOS_S5}
+    grupos["Excel"] = (1, 2)
+    assert evaluar_s5_nucleo(grupos)[0] is Estado.FALLA
+
+
+def test_los_grupos_de_s5_cubren_edicion_restauracion_pe_y_excel():
+    assert {"edicion, versiones y restauracion", "punto de equilibrio", "Excel"} <= set(GRUPOS_S5)
+    from pathlib import Path
+
+    raiz = Path(__file__).resolve().parents[2]
+    for ids in GRUPOS_S5.values():
+        for ruta in ids:
+            assert (raiz / ruta).is_file(), ruta
