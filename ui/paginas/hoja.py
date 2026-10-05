@@ -32,7 +32,7 @@ importarse: todo vive dentro de `render()`.
 from __future__ import annotations
 
 import tempfile
-from collections.abc import Callable, Iterator, Sequence
+from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
 from dataclasses import replace
 from datetime import date
@@ -335,11 +335,10 @@ def _selector_de_version(cambios: Sequence) -> None:
 
 
 def _atender() -> str | None:
-    """La accion pendiente de la barra superior (`ui.caso.pedir_accion`, si ya existe en este
-    marco). Se guarda en la sesion hasta que la hoja pueda atenderla: abrir una version reinicia
-    la ejecucion y la accion no puede perderse en ese reinicio."""
-    tomar: Callable[[], str | None] | None = getattr(caso, "tomar_accion", None)
-    nueva = tomar() if tomar is not None else None
+    """La accion pendiente de la barra superior (`ui.caso.pedir_accion`). Se guarda en la sesion
+    hasta que la hoja pueda atenderla: abrir una version reinicia la ejecucion y la accion no
+    puede perderse en ese reinicio."""
+    nueva = caso.tomar_accion()
     if nueva is not None:
         st.session_state[CLAVE_ACCION_PENDIENTE] = nueva
     return st.session_state.get(CLAVE_ACCION_PENDIENTE)

@@ -437,25 +437,17 @@ def test_editar_despues_de_preparar_descarta_el_excel_que_ya_no_es_el_vigente(mo
 
 
 def test_la_accion_exportar_de_la_barra_prepara_el_excel(monkeypatch, base_of):
-    caso = importlib.import_module("ui.caso")
-    pedidas = ["exportar_excel"]
-    monkeypatch.setattr(
-        caso, "tomar_accion", lambda: pedidas.pop() if pedidas else None, raising=False
-    )
+    from ui.caso import ACCION_EXPORTAR_EXCEL, CLAVE_ACCION
 
-    at = _abrir_of(monkeypatch, base_of)
+    at = _abrir_of(monkeypatch, base_of, **{CLAVE_ACCION: ACCION_EXPORTAR_EXCEL})
 
     assert at.session_state[CLAVE_EXCEL][0] == "hoja_001.xlsx"
 
 
 def test_la_accion_precios_de_la_barra_lleva_a_la_pestana_precios(monkeypatch, base_of):
-    caso = importlib.import_module("ui.caso")
-    pedidas = ["precios"]
-    monkeypatch.setattr(
-        caso, "tomar_accion", lambda: pedidas.pop() if pedidas else None, raising=False
-    )
+    from ui.caso import ACCION_PRECIOS, CLAVE_ACCION
 
-    at = _abrir_of(monkeypatch, base_of)
+    at = _abrir_of(monkeypatch, base_of, **{CLAVE_ACCION: ACCION_PRECIOS})
 
     assert at.session_state[CLAVE_PESTANA] == "Precios"
     assert any("Referencia" in d.value.columns for d in at.dataframe)
