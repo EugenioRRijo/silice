@@ -175,7 +175,7 @@ def _poner_borrador(nuevo: hoja.Borrador, *, resembrar: bool = False) -> None:
             if sesion is not None:
                 lista = None
                 if abierta is not None:
-                    lista = hoja._modelo(sesion, abierta.proyecto, abierta.codigo).lista_precios
+                    lista = hoja.lista_de_version(sesion, abierta.proyecto, abierta.codigo)
                 nuevo = hoja.completar_composiciones(Catalogo(sesion), nuevo, lista=lista)
     except (SQLAlchemyError, CatalogoIncompleto) as error:
         st.warning(_error_de_base(error))
@@ -667,7 +667,7 @@ def _pestana_apu() -> None:
         editadas.append(tabla.to_dict("records"))
     rendimiento = st.text_input(
         "Rendimiento",
-        value=hoja._numero(inicial.rendimiento),
+        value=hoja.texto_numero(inicial.rendimiento),
         key=_clave("rendimiento", codigo),
     )
     try:

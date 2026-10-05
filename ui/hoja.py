@@ -1393,6 +1393,16 @@ def _modelo(sesion: Session, proyecto: str, codigo: str) -> models.Presupuesto:
     return modelo
 
 
+def lista_de_version(sesion: Session, proyecto: str, codigo: str) -> models.ListaPrecios:
+    """La lista de precios con que se valoro la version (la del proyecto si tiene cotizaciones)."""
+    return _modelo(sesion, proyecto, codigo).lista_precios
+
+
+def texto_numero(valor: Decimal) -> str:
+    """Un decimal como lo teclea una persona: sin ceros de relleno ni notacion cientifica."""
+    return _numero(valor)
+
+
 def espacio_de_version(sesion: Session, modelo: models.Presupuesto) -> tuple[Espacio, str | None]:
     """El espacio de una version y el codigo de la version que lo aporta (spec §5.3).
 
