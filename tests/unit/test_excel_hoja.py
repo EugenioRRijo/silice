@@ -1,7 +1,8 @@
 """SF-E4 (RF-59, spec 9.5): el Excel de la hoja con formulas vivas.
 
 El oraculo es un evaluador de formulas de Excel (paquete `formulas`, grupo `dev`): calcula cada
-celda del libro escrito y se compara con el `Decimal` del sistema con tolerancia de +-0,005 por celda
+celda del libro escrito y se compara con el `Decimal` del sistema con tolerancia de +-0,005 por
+celda
 (Excel trabaja en coma flotante). Oraculo adicional: la linea base sigue sumando 1 586,61 USD.
 Casos: la linea base (5 partidas), TI-001 (10 partidas, bono por oficio) y un presupuesto sintetico
 con mano de obra a destajo y equipos. Nada escribe fuera de `tmp_path`.
