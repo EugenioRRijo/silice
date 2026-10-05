@@ -564,8 +564,8 @@ def test_fr2_una_fuente_sin_puntos_y_un_punto_sin_recorrido_declarado_no_dividen
 
 def test_fr3_dos_recorridos_con_un_tramo_parcial_colineal_no_cuentan_la_tuberia_dos_veces():
     """P1 sube 2,5, cruza el techo 1,5 y baja 1,9 (5,9 m); P2 sube lo mismo, cruza el techo 1,0
-    (dentro del tramo de P1), 1,5 mas y baja 1,3 (6,3 m). Unido: 2,5 + 1,5 + 1,9 + 1,5 + 1,3 = 8,7 m, mas la reserva de compra de 10 %
-    de la memoria del bano."""
+    (dentro del tramo de P1), 1,5 mas y baja 1,3 (6,3 m). Unido: 2,5 + 1,5 + 1,9 + 1,5 + 1,3 = 8,7 m,
+    mas el desperdicio de 10 % de la memoria del bano."""
     base = borrador_bano(con_plan=False)
     filas = hoja.filas_desde_espacio(base.espacio)
     filas["tramos"] = [t for t in filas["tramos"] if t["recorrido_id"] == "R-P1"]

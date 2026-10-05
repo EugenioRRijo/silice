@@ -32,7 +32,7 @@ vacio, ningun item derivado, solo `items_base`. La hoja deriva agua, datos y ele
 
 Sin Streamlit, sin `pandas` y sin `ui.caso`; lo vigila
 `tests/unit/test_arquitectura.py::test_ui_respeta_sus_importaciones_prohibidas`.
-"""
+"""  # noqa: E501 (la tabla de funciones lleva una fila por linea)
 
 from __future__ import annotations
 
