@@ -128,3 +128,27 @@ def test_los_escenarios_de_un_base_con_pendientes_los_declaran(cliente_con_pendi
     assert cuerpo["total_base"] == formatear_decimal(
         linea_base.TOTAL_EXACTO_LINEA_BASE, DECIMALES_PRESENTACION
     )
+
+
+def test_el_escenario_base_de_una_version_editada_en_la_hoja_cuadra_con_su_presupuesto(
+    cliente, sesion, presupuesto_001
+):
+    """SF3: la hoja edita la copia de composiciones de la version (DA-SF-7), no el catalogo. El
+    escenario sin cambios de la version 002 debe valer lo que ella: si las composiciones se
+    leyeran del catalogo en vivo, el cemento editado desapareceria y habria variacion."""
+    from tests.fixtures.versiones import editar_apu_en_la_hoja
+
+    guardada = editar_apu_en_la_hoja(sesion)
+    assert guardada.total != presupuesto_001["total"]  # la edicion si movio el total
+
+    respuesta = cliente.post(
+        "/presupuestos/002/escenarios", json={"escenarios": [{"nombre": "igual"}]}
+    )
+
+    assert respuesta.status_code == 200
+    cuerpo = respuesta.json()
+    escenario = cuerpo["escenarios"][0]
+    assert escenario["total"] == cuerpo["total_base"] == formatear_decimal(
+        guardada.total, DECIMALES_PRESENTACION
+    )
+    assert escenario["variacion"] == "0.00"

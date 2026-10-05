@@ -53,3 +53,34 @@ def test_el_escenario_de_un_base_con_pendientes_los_declara(monkeypatch, tmp_pat
     fila = tabla[tabla["escenario"] == NOMBRE_ESCENARIO]
     assert list(fila["total"]) == [total]
     assert huella(RUTA_BASE_REAL) == antes
+
+
+def test_el_escenario_base_de_una_version_editada_en_la_hoja_cuadra_con_su_presupuesto(
+    monkeypatch, tmp_path
+):
+    """SF3: la pagina toma las composiciones de la instantanea de la version, no del catalogo."""
+    from core.catalog import Catalogo, abrir_sesion, crear_esquema, crear_motor
+    from scripts.seed import sembrar
+    from tests.fixtures.versiones import editar_apu_en_la_hoja, elaborar_001, guardar_001
+
+    base = tmp_path / "caso.db"
+    motor = crear_motor(f"sqlite:///{base.as_posix()}")
+    crear_esquema(motor)
+    with abrir_sesion(motor) as sesion:
+        guardar_001(sesion, sembrar(sesion), elaborar_001(sesion))
+        sesion.commit()
+        total = editar_apu_en_la_hoja(sesion, Catalogo(sesion)).total
+    motor.dispose()
+    caso = importlib.import_module("ui.caso")
+    monkeypatch.setattr(caso, "RUTA_BASE_POR_DEFECTO", str(base))
+
+    at = AppTest.from_string(SCRIPT, default_timeout=120)
+    at.run()
+    elegido = next(o for o in at.selectbox[0].options if o.endswith("/ 002"))
+    at.selectbox[0].select(elegido).run()
+    next(b for b in at.button if b.label == ROTULO_GENERAR).click().run()
+
+    assert not at.exception, [e.value for e in at.exception]
+    exacto = formatear_decimal(total, DECIMALES_PRESENTACION)
+    tabla = next(d.value for d in at.dataframe if "escenario" in d.value.columns)
+    assert list(tabla[tabla["escenario"] == NOMBRE_ESCENARIO]["total"]) == [exacto]

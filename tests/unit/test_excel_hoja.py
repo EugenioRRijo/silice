@@ -10,11 +10,8 @@ con mano de obra a destajo y equipos. Nada escribe fuera de `tmp_path`.
 
 from __future__ import annotations
 
-import re
-import warnings
 from datetime import date
 from decimal import ROUND_HALF_UP, Decimal
-from pathlib import Path
 
 import pytest
 from openpyxl import load_workbook
@@ -35,6 +32,7 @@ from core.contracts.item_computo import ItemComputo, OrigenTipo
 from tests.fixtures import apu_linea_base as linea_base
 from tests.fixtures import caso_ti001 as ti001
 from tests.fixtures.computo_auditado import items_auditados
+from tests.fixtures.evaluador_excel import _celda, evaluar
 
 D = Decimal
 TOLERANCIA = D("0.005")
@@ -55,36 +53,8 @@ HOJAS_SIN_EXTRAS = [
 # ---------------------------------------------------------------------------------------------
 
 
-def evaluar(ruta: Path) -> dict[tuple[str, str], float]:
-    """Todas las celdas del libro calculadas: `{(HOJA EN MAYUSCULAS, "C7"): valor}`."""
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")  # `formulas` emite SyntaxWarning al compilar sus modulos
-        import formulas
-
-        modelo = formulas.ExcelModel().loads(str(ruta)).finish()
-        solucion = modelo.calculate()
-    celdas: dict[tuple[str, str], float] = {}
-    for clave, valor in solucion.items():
-        coincide = re.fullmatch(r"'\[[^\]]+\]([^']+)'!([A-Z]+[0-9]+)", clave)
-        if not coincide:
-            continue
-        try:
-            celdas[(coincide.group(1), coincide.group(2))] = float(valor.value[0][0])
-        except (TypeError, ValueError, IndexError):
-            continue
-    return celdas
-
-
 def _cerca(calculado: float, exacto: Decimal) -> bool:
     return abs(D(str(calculado)) - exacto) <= TOLERANCIA
-
-
-def _celda(libro, hoja: str, etiqueta: str, columna: str = "B") -> str:
-    """La direccion de la celda de `columna` en la fila cuya columna A es `etiqueta`."""
-    for fila in libro[hoja].iter_rows(min_col=1, max_col=1):
-        if fila[0].value == etiqueta:
-            return f"{columna}{fila[0].row}"
-    raise AssertionError(f"{etiqueta!r} no esta en {hoja}")
 
 
 # ---------------------------------------------------------------------------------------------

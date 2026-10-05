@@ -42,15 +42,18 @@ from pathlib import Path
 
 import streamlit as st
 from pandas import DataFrame
+from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
+from core import models
 from core.budget import (
     Comparativo,
     DetectorAtipicos,
     actualizar_precios,
     descartar_version,
     exportar_excel,
+    plan_de_version,
 )
 from core.catalog import (
     Catalogo,
@@ -300,6 +303,14 @@ def _actualizar(
     dados_de_alta = tuple(
         f"{insumo.descripcion} ({insumo.codigo})" for insumo in resumen.dados_de_alta
     )
+    origen = sesion.scalars(
+        select(models.Presupuesto)
+        .join(models.Proyecto)
+        .where(
+            models.Proyecto.nombre == str(parametros["proyecto"]),
+            models.Presupuesto.codigo == str(parametros["codigo"]),
+        )
+    ).one_or_none()
     nuevo, comparativo = actualizar_precios(
         sesion,
         str(parametros["proyecto"]),
@@ -307,6 +318,8 @@ def _actualizar(
         resumen.lista,
         str(parametros["codigo_nuevo"]),
         detectar_atipicos=_detector_de_atipicos(),
+        # SF3 (RF-56, SF3-R4): revalorar conserva el plan guardado de la version de origen
+        plan=None if origen is None else plan_de_version(sesion, origen),
     )
     libro = exportar_excel(
         nuevo.presupuesto, nuevo.informe, carpeta / f"presupuesto_{nuevo.presupuesto.codigo}.xlsx"

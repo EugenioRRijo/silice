@@ -29,6 +29,7 @@ from scripts.seed import NOMBRE_PROYECTO as NOMBRE_CLINICA
 from scripts.seed import sembrar
 from tests.fixtures import apu_linea_base as linea_base
 from tests.fixtures.espacio_of001 import espacio_of001
+from tests.fixtures.evaluador_excel import _celda, evaluar
 from tests.fixtures.hoja_en_base import (
     NOMBRE_OF001,
     NOMBRE_TI001,
@@ -37,7 +38,6 @@ from tests.fixtures.hoja_en_base import (
     plantilla_ti001,
 )
 from tests.fixtures.versiones import elaborar_001, guardar_001
-from tests.unit.test_excel_hoja import _celda, evaluar
 from ui import hoja
 
 D = Decimal

@@ -72,9 +72,11 @@ from core.budget import (
     exportar_excel,
     generar_escenario,
     guardar_presupuesto,
+    hallazgos_externos,
     importar_presupuesto,
     plan_secuencial,
 )
+from core.budget.instantanea import composiciones_de_presupuesto
 from core.catalog import Catalogo, CatalogoIncompleto, proponer_rendimiento
 from core.contracts import Dominio, ItemComputo, OrigenTipo, ParametrosCosto
 from core.contracts.apu import TipoRendimiento
@@ -382,14 +384,10 @@ def escenarios_de_presupuesto(
     catalogo = Catalogo(sesion)
     elaboracion = cargar_elaboracion(sesion, modelo.proyecto.nombre, codigo, catalogo)
     base = elaboracion.presupuesto
-    composiciones = {
-        codigo_partida: catalogo.composicion(
-            codigo_partida, fecha=modelo.fecha, lista=modelo.lista_precios
-        )
-        for codigo_partida in dict.fromkeys(
-            partida.item.codigo_partida for partida in base.partidas
-        )
-    }
+    # SF3: las composiciones son las de la instantanea de la version (la hoja las edita ahi); los
+    # hallazgos de reglas externas (R8 a R10) se vuelven a declarar en cada escenario (SF-E1).
+    composiciones = composiciones_de_presupuesto(sesion, modelo.proyecto.nombre, codigo, catalogo)
+    externos = hallazgos_externos(elaboracion.informe)
 
     respuestas: list[EscenarioRespuesta] = []
     for datos in peticion.escenarios:
@@ -398,7 +396,12 @@ def escenarios_de_presupuesto(
             for descripcion, texto in datos.precios.items()
         }
         escenario = generar_escenario(
-            datos.nombre, base, composiciones, _parametros_escenario(modelo, datos), precios=precios
+            datos.nombre,
+            base,
+            composiciones,
+            _parametros_escenario(modelo, datos),
+            precios=precios,
+            externos=externos,
         )
         comparativo = comparar_por_partida(base, escenario)
         respuestas.append(
