@@ -85,6 +85,7 @@ CLAVE_EXCEL = "hoja_excel"  # (nombre, bytes) del ultimo Excel preparado
 CLAVE_ACCION_PENDIENTE = "hoja_accion_pendiente"  # accion de la barra que aun no se atendio
 CLAVE_IMPORTACION = "hoja_importacion"  # el `ResultadoImportacion` del plano que se esta revisando
 CLAVE_PLANO = "hoja_plano"  # ruta (texto) del plano guardado, para reanudarlo con la unidad
+CLAVE_PROYECTO_DE_LA_BARRA = "hoja_proyecto_de_la_barra"  # el de la barra que la hoja vio al final
 CLAVE_PLANO_ABIERTO = "hoja_plano_abierto"  # la barra pidio abrir el flujo de importar
 CLAVE_PLANO_DIRECTORIO = "hoja_plano_directorio"  # carpeta temporal de los planos subidos
 CLAVE_PLANO_FUSION = "hoja_plano_fusion"  # el informe de la ultima fusion
@@ -272,6 +273,21 @@ def _seguir_editando() -> None:
     _volver_los_selectores_a_lo_abierto()
 
 
+def _seguir_al_proyecto_de_la_barra(proyectos: Sequence[str], clave_proyecto: str) -> None:
+    """El proyecto que el usuario abre en la barra superior es el que muestra la hoja.
+
+    Solo se actua cuando el proyecto de la barra CAMBIA respecto del que la hoja vio por ultima vez:
+    asi lo que el usuario elige despues en el selector de la hoja no se pisa en cada ejecucion. Un
+    nombre que ya no esta en el caso se ignora.
+    """
+    de_la_barra = caso.proyecto_abierto()
+    if de_la_barra == st.session_state.get(CLAVE_PROYECTO_DE_LA_BARRA):
+        return
+    st.session_state[CLAVE_PROYECTO_DE_LA_BARRA] = de_la_barra
+    if de_la_barra in proyectos:
+        st.session_state[clave_proyecto] = de_la_barra
+
+
 def _selector_de_version(cambios: Sequence) -> None:
     """Proyecto y version a editar; cambiar con ediciones sin guardar pide confirmar (15c)."""
     ruta = str(ruta_caso())
@@ -280,6 +296,7 @@ def _selector_de_version(cambios: Sequence) -> None:
     with _sesion() as sesion:
         proyectos = [] if sesion is None else list(sesion.scalars(select(models.Proyecto.nombre)))
         opciones = [SIN_PROYECTO, *proyectos]
+        _seguir_al_proyecto_de_la_barra(proyectos, clave_proyecto)
         elegido = st.session_state.get(clave_proyecto)
         if elegido is None and abierto is not None and abierto[1] in proyectos:
             elegido = abierto[1]
