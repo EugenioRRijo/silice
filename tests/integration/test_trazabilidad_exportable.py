@@ -1,6 +1,7 @@
 """SF-E2 + SF-E4: los `RegistroCambio` de una version como hoja Trazabilidad del Excel (spec 9.5).
 
-Oraculo: los valores con que se guardo la edicion (`tests/fixtures/versiones.py`) y el libro releido.
+Oraculo: los valores con que se guardo la edicion (`tests/fixtures/versiones.py`) y el libro
+releido.
 """
 
 from __future__ import annotations

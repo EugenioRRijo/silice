@@ -25,6 +25,7 @@ from sqlalchemy import exists, select
 from sqlalchemy.orm import Session
 
 from core import models
+from core.budget.excel import COLUMNAS_TRAZABILIDAD, PESTANA_TRAZABILIDAD, TablaExportable
 from core.budget.instantanea import plan_de_version
 from core.budget.persistencia import (
     _buscar,
@@ -43,6 +44,7 @@ __all__ = [
     "registros_de_version",
     "restaurar_version",
     "siguiente_codigo",
+    "tabla_trazabilidad",
     "version_vigente",
 ]
 
@@ -247,3 +249,30 @@ def registros_de_version(
             .order_by(models.RegistroCambio.id)
         )
     )
+
+
+def tabla_trazabilidad(session: Session, modelo: models.Presupuesto) -> TablaExportable:
+    """Los registros de la versión como la hoja Trazabilidad del Excel (spec §9.5): columnas de
+    `COLUMNAS_TRAZABILIDAD`, con los códigos de las versiones de origen y resultante."""
+    codigos = {
+        fila.id: fila.codigo
+        for fila in session.scalars(
+            select(models.Presupuesto).where(models.Presupuesto.proyecto_id == modelo.proyecto_id)
+        )
+    }
+    filas = tuple(
+        (
+            codigos.get(registro.version_origen_id, ""),
+            codigos.get(registro.version_resultante_id, ""),
+            registro.objeto,
+            registro.clave,
+            registro.campo,
+            registro.valor_anterior,
+            registro.valor_nuevo,
+            registro.fuente,
+            registro.responsable,
+            registro.fecha_hora,
+        )
+        for registro in registros_de_version(session, modelo)
+    )
+    return TablaExportable(PESTANA_TRAZABILIDAD, COLUMNAS_TRAZABILIDAD, filas)
