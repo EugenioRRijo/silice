@@ -8,6 +8,7 @@ from __future__ import annotations
 import json
 import random
 import re
+import sys
 import time
 from dataclasses import replace
 from decimal import Decimal
@@ -29,6 +30,7 @@ from adapters.espacio import (
     TipoFuente,
     TipoPunto,
     Tramo,
+    derivar,
     geometria,
 )
 from adapters.espacio.geometria import (
@@ -40,6 +42,7 @@ from adapters.espacio.geometria import (
     tramos_de,
     unir_segmentos,
 )
+from adapters.espacio.reglas import reglas_espacio
 from tests.fixtures.espacio_bano import espacio_bano
 
 D = Decimal
@@ -545,28 +548,221 @@ def _resumen(esp: Espacio) -> tuple:
     )
 
 
+def _agrupar_referencia(coords) -> dict[Coord, Coord]:
+    """El agrupamiento de nodos como era antes de la cuadricula hash: barrido completo de pares.
+
+    Single-linkage (distancia <= TOLERANCIA) con la minima lexicografica como representante."""
+    unicas = sorted(set(coords), key=lambda k: (k.x, k.y, k.z))
+    padre = list(range(len(unicas)))
+
+    def raiz(i: int) -> int:
+        while padre[i] != i:
+            i = padre[i]
+        return i
+
+    for i, a in enumerate(unicas):
+        for j in range(i + 1, len(unicas)):
+            b = unicas[j]
+            if (b.x - a.x) ** 2 + (b.y - a.y) ** 2 + (b.z - a.z) ** 2 <= TOL * TOL:
+                ri, rj = raiz(i), raiz(j)
+                if ri != rj:
+                    padre[max(ri, rj)] = min(ri, rj)
+    return {k: unicas[raiz(i)] for i, k in enumerate(unicas)}
+
+
+def _nube(semilla: int, n: int, paso: str, ancho: int, ruido: bool) -> list[Coord]:
+    """`n` coordenadas en una reticula de `paso` m con `ancho` pasos por eje; con `ruido`, algunas
+    se desplazan hasta 0,0009 m (a veces dentro de la tolerancia, a veces fuera, y en cadena)."""
+    rng = random.Random(semilla)
+    pts = []
+    for _ in range(n):
+        v = [D(rng.randint(0, ancho)) * D(paso) for _ in range(3)]
+        if ruido:
+            v = [x + D(rng.randint(-9, 9)) / D(10000) if rng.random() < 0.6 else x for x in v]
+        pts.append(Coord(*v))
+    return pts
+
+
+@pytest.mark.parametrize("semilla", range(8))
+@pytest.mark.parametrize(
+    ("paso", "ancho"), [("0.5", 6), ("0.001", 5), ("0.0005", 8), ("1", 1)], ids=str
+)
+def test_la_cuadricula_hash_agrupa_igual_que_el_barrido_completo(semilla, paso, ancho) -> None:
+    nube = _nube(semilla, 150, paso, ancho, ruido=semilla % 2 == 1)
+    assert geometria._agrupar_nodos(nube) == _agrupar_referencia(nube)
+
+
+def test_la_cuadricula_hash_agrupa_igual_cuando_muchos_nodos_comparten_x() -> None:
+    nube = [Coord(D("1"), D(i) * D("0.00095"), D("2.5")) for i in range(300)]  # cadena en y
+    nube += [Coord(D("1"), D(i) * D("0.01"), D("2.5")) for i in range(300)]
+    assert geometria._agrupar_nodos(nube) == _agrupar_referencia(nube)
+
+
+def test_el_agrupamiento_es_single_linkage_y_el_representante_es_la_minima_lexicografica() -> None:
+    """Limite documentado en `_agrupar_nodos`: una hilera de extremos a <= 0,001 m del siguiente
+    colapsa en un solo nodo aunque los de las puntas queden a mas de 0,001 m entre si."""
+    hilera = [Coord(D("1") + D(i) * D("0.0009"), D("0"), D("0")) for i in range(4)]
+    rep = geometria._agrupar_nodos(reversed(hilera))  # el orden de entrada no importa
+    assert set(rep.values()) == {hilera[0]}  # un solo grupo, con la minima lexicografica
+    assert hilera[0].distancia(hilera[-1]) > TOL  # las puntas estan a mas de la tolerancia
+    # a mas de TOLERANCIA de la hilera no se une: vecindad estricta de <= TOLERANCIA
+    lejos = Coord(hilera[-1].x + D("0.0011"), D("0"), D("0"))
+    assert geometria._agrupar_nodos([*hilera, lejos])[lejos] == lejos
+
+
+@pytest.fixture
+def sin_cache():
+    """La union se calcula una vez por `Espacio`: cada prueba parte de una cache vacia."""
+    geometria._segmentos_de_fuente.cache_clear()
+    yield
+    geometria._segmentos_de_fuente.cache_clear()
+
+
+def _con_referencias(monkeypatch) -> None:
+    """Sustituye la cuadricula hash por el barrido completo (agrupar y probar todos los nodos)."""
+    monkeypatch.setattr(geometria, "_agrupar_nodos", _agrupar_referencia)
+    monkeypatch.setattr(
+        geometria._IndiceNodos, "cercanos", lambda self, a, b: list(range(len(self.todos)))
+    )
+
+
 @pytest.mark.parametrize("semilla", range(6))
-def test_el_indice_da_lo_mismo_que_el_barrido_completo(monkeypatch, semilla: int) -> None:
+def test_el_indice_da_lo_mismo_que_el_barrido_completo(monkeypatch, sin_cache, semilla) -> None:
     esp = espacio_rutas(_rutas_aleatorias(semilla, 12, ruido=semilla % 2 == 1))
     indexado = _resumen(esp)
-    monkeypatch.setattr(geometria._IndiceNodos, "cercanos", lambda self, a, b: self.todos)
+    geometria._segmentos_de_fuente.cache_clear()
+    _con_referencias(monkeypatch)
     assert _resumen(esp) == indexado
 
 
-def test_el_indice_da_lo_mismo_en_el_bano(monkeypatch) -> None:
+def test_el_indice_da_lo_mismo_en_el_bano(monkeypatch, sin_cache) -> None:
     esp = espacio_bano()
     indexado = _resumen(esp)
-    monkeypatch.setattr(geometria._IndiceNodos, "cercanos", lambda self, a, b: self.todos)
+    geometria._segmentos_de_fuente.cache_clear()
+    _con_referencias(monkeypatch)
     assert _resumen(esp) == indexado
 
 
+def test_el_indice_da_lo_mismo_en_el_pasillo(monkeypatch, sin_cache) -> None:
+    esp = _pasillo(60)
+    indexado = _resumen(esp)
+    geometria._segmentos_de_fuente.cache_clear()
+    _con_referencias(monkeypatch)
+    assert _resumen(esp) == indexado
+
+
+def test_cercanos_da_los_mismos_nodos_que_probar_todos_en_la_caja() -> None:
+    rng = random.Random(3)
+    nodos = sorted(
+        {Coord(*(D(rng.randint(0, 40)) * D("0.25") for _ in range(3))) for _ in range(400)},
+        key=lambda k: (k.x, k.y, k.z),
+    )
+    indice = geometria._IndiceNodos(nodos)
+    for _ in range(60):
+        a, b = rng.choice(nodos), rng.choice(nodos)
+        t = TOL
+        esperados = [
+            r
+            for r, n in enumerate(nodos)
+            if min(a.x, b.x) - t <= n.x <= max(a.x, b.x) + t
+            and min(a.y, b.y) - t <= n.y <= max(a.y, b.y) + t
+            and min(a.z, b.z) - t <= n.z <= max(a.z, b.z) + t
+        ]
+        assert sorted(indice.cercanos(a, b)) == esperados
+
+
+# --- escala (RNF-11) ------------------------------------------------------------------------
+
+
+def _pasillo(n: int) -> Espacio:
+    """`n` puntos cuyos recorridos comparten el tramo en x y el eje en y: todos los nodos con la
+    misma x (el peor caso del barrido por x) y tramos nunca partidos en un solo nodo."""
+    rutas = {
+        f"Q{i}": [("0", "0", "2.5"), ("1", "0", "2.5"), ("1", f"{D(i) * D('0.01'):.2f}", "2.5")]
+        for i in range(1, n + 1)
+    }
+    return espacio_rutas(rutas)
+
+
+def _con_trazado() -> bool:
+    """True si hay un trazador de cobertura o de depuracion: el pure-Python va 2 a 4 veces mas lento
+    y un umbral de segundos no mide el algoritmo sino la instrumentacion."""
+    if sys.gettrace() is not None:
+        return True
+    try:
+        import coverage
+    except ImportError:  # pragma: no cover
+        return False
+    return coverage.Coverage.current() is not None
+
+
+sin_trazado = pytest.mark.skipif(
+    _con_trazado(),
+    reason="la cobertura (--cov, como en la CI) o un depurador ralentizan el pure-Python; el "
+    "umbral de RNF-11 se verifica en la corrida sin trazador (uv run pytest -q)",
+)
+
+
+def _mediana_de_tres(trabajo) -> float:
+    """Mediana de tres corridas, cada una con la cache vacia (si no, la 2.a y la 3.a medirian un
+    acierto de cache y no el calculo)."""
+    tiempos = []
+    for _ in range(3):
+        geometria._segmentos_de_fuente.cache_clear()
+        inicio = time.perf_counter()
+        trabajo()
+        tiempos.append(time.perf_counter() - inicio)
+    return sorted(tiempos)[1]
+
+
+def _ciclo(esp: Espacio) -> None:
+    """Lo que hace un ciclo de la hoja con el mismo espacio: derivar, R8 y R9."""
+    derivar(esp, "agua")
+    for regla in reglas_espacio(esp):
+        regla.evaluar(None)  # type: ignore[arg-type]
+
+
+def _cuadricula_500() -> Espacio:
+    return espacio_rutas(_rutas_aleatorias(7, 500, ruido=True, rango=80))
+
+
+@sin_trazado
 def test_escala_500_puntos_en_menos_de_un_segundo_y_medio() -> None:
-    esp = espacio_rutas(_rutas_aleatorias(7, 500, ruido=True, rango=80))
-    inicio = time.perf_counter()
-    g = analizar(esp, Especialidad.AGUA)
-    segundos = time.perf_counter() - inicio
-    assert len(g.segmentos) > 500
-    assert segundos < 1.5, f"analizar tardo {segundos:.2f} s con 500 puntos"
+    """`analizar` con 500 puntos (cuadricula): mediana de tres corridas, umbral laxo (1,5 s)."""
+    esp = _cuadricula_500()
+    segs = []
+
+    def trabajo() -> None:
+        segs[:] = analizar(esp, Especialidad.AGUA).segmentos
+
+    segundos = _mediana_de_tres(trabajo)
+    assert len(segs) > 500
+    assert segundos < 1.5, f"analizar tardo {segundos:.2f} s (mediana de 3) con 500 puntos"
+
+
+@sin_trazado
+@pytest.mark.parametrize("forma", ["cuadricula", "pasillo"])
+def test_el_ciclo_derivar_r8_r9_con_500_puntos_cabe_en_un_segundo_y_medio(forma) -> None:
+    """RNF-11: derivar + R8 + R9 sobre el mismo espacio, union calculada una sola vez.
+
+    Antes de la correccion: 2,3 s (cuadricula) y 11,6 s (pasillo), por tres uniones y un indice
+    cuadratico cuando muchos nodos comparten x."""
+    esp = _cuadricula_500() if forma == "cuadricula" else _pasillo(500)
+    segundos = _mediana_de_tres(lambda: _ciclo(esp))
+    assert segundos < 1.5, f"{forma}: el ciclo tardo {segundos:.2f} s (mediana de 3)"
+
+
+def test_derivar_r8_y_r9_comparten_una_sola_union(monkeypatch, sin_cache) -> None:
+    llamadas = []
+    original = geometria._agrupar_nodos
+    monkeypatch.setattr(
+        geometria, "_agrupar_nodos", lambda coords: llamadas.append(1) or original(coords)
+    )
+    esp = espacio_bano()  # una sola fuente con recorridos
+    _ciclo(esp)
+    assert len(llamadas) == 1  # antes: derivar, R8 y R9 la repetian (3)
+    _ciclo(esp)  # el mismo Espacio no se recalcula
+    assert len(llamadas) == 1
 
 
 def test_drenaje_por_el_piso_va_empotrado_por_defecto() -> None:
