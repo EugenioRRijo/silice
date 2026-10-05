@@ -11,7 +11,8 @@ Reglas (spec §9.3): todo guardado exige **fuente del cambio** y **responsable**
 de tocar la base); guardar sin cambios no crea versión ni registros vacíos (FR‑4: devuelve `None`);
 toda versión nueva declara su `version_origen`. **Restaurar** la versión N crea una versión nueva,
 copia de N, con su registro: nada se borra y la restaurada pasa a ser la vigente (la de mayor
-`id` no descartada). Ninguna función confirma la transacción; si algo falla, quien llama hace `rollback`.
+`id` no descartada). Ninguna función confirma la transacción; si algo falla, quien llama hace
+`rollback`.
 """
 
 from __future__ import annotations
