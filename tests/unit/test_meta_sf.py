@@ -109,7 +109,7 @@ def test_porcentaje_espacio_suma_solo_los_archivos_del_adaptador():
         {
             "files": {
                 "adapters/espacio/a.py": {"summary": {"covered_lines": 8, "num_statements": 10}},
-                "adapters\espacio\b.py": {"summary": {"covered_lines": 2, "num_statements": 10}},
+                "adapters\\espacio\\b.py": {"summary": {"covered_lines": 2, "num_statements": 10}},
                 "core/x.py": {"summary": {"covered_lines": 0, "num_statements": 100}},
             }
         }
