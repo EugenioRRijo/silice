@@ -29,12 +29,16 @@ Sin Streamlit, sin `pandas` y sin `ui.caso`; lo vigila
 from __future__ import annotations
 
 import re
+import tempfile
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field, replace
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 from enum import StrEnum
+from pathlib import Path
 from typing import TYPE_CHECKING
+
+from sqlalchemy import func, select
 
 from adapters.espacio import (
     ESPECIALIDADES,
@@ -54,22 +58,41 @@ from adapters.espacio import (
     TipoPunto,
     Tramo,
     cargar_espacio,
+    crear_esquema_espacio,
     derivar,
+    guardar_espacio,
 )
 from adapters.espacio.reglas import CantidadEscrita, reglas_espacio
+from core import models
 from core.budget import (
     CODIGO_PENDIENTE,
     CambioEditado,
     EstadoEquilibrio,
     PuntoEquilibrio,
     ResultadoElaboracion,
+    ResultadoInstantanea,
+    TablaExportable,
+    asegurar_instantanea,
+    cargar_elaboracion,
+    cotizar_insumo,
     elaborar,
+    exportar_hoja,
+    guardar_edicion,
+    plan_de_version,
     plan_secuencial,
     punto_equilibrio,
+    restaurar_version,
+    siguiente_codigo,
+    tabla_trazabilidad,
+    version_vigente,
 )
+from core.budget import registros_de_version as registros_de_version_core
+from core.budget import retirar_cotizacion as _retirar_cotizacion
 from core.budget.curva import FORMATO_PERIODO
+from core.budget.instantanea import composiciones_de_version
 from core.budget.presupuesto import MONEDA_POR_DEFECTO
-from core.catalog import Catalogo
+from core.catalog import Catalogo, CatalogoIncompleto
+from core.catalog.origen import origen_de_precios
 from core.contracts import ComposicionAPU, ItemComputo, ParametrosCosto, Severidad
 from core.contracts.item_computo import OrigenTipo
 from core.verification import REGLAS
@@ -81,6 +104,7 @@ if TYPE_CHECKING:
     from sqlalchemy.orm import Session
 
     from core.budget import GeneradorPlan, PeriodoPlan
+    from core.catalog.origen import OrigenPrecio
     from core.contracts.verificacion import Hallazgo
     from core.verification.informe import InformeAuditoria
 
@@ -124,6 +148,9 @@ ROTULOS: dict[str, str] = {
     "puntos": "puntos",
     "tramos": "vertices de recorridos",
 }
+
+#: Tablas editables que muestran la columna Estado, con el prefijo de sus claves `esp_*`.
+TABLAS_CON_ESTADO = {"ambientes": "esp_ambientes", "fuentes": "esp_fuentes", "puntos": "esp_puntos"}
 
 #: Estado de una fila que ningun hallazgo toca.
 TEXTO_OK = "OK"
@@ -1107,3 +1134,712 @@ def estado_de_items(
         falta_apu = (item.codigo_partida, item.origen_id) in pendientes
         estado[clave] = _estado_de(grupos, [item.codigo_partida] if falta_apu else None)
     return estado
+
+
+# --- abrir una version guardada -----------------------------------------------------------------
+
+#: Versiones que no copian filas `esp_*`: su espacio es el de su version de origen (spec §5.3).
+MOTIVOS_QUE_HEREDAN_EL_ESPACIO = ("restauracion", "cotizacion", "revaloracion")
+
+
+@dataclass(frozen=True, slots=True)
+class VersionAbierta:
+    """Lo que `abrir_version` entrega: el borrador de partida y la version tal como se guardo.
+
+    * `borrador`: la version como borrador editable (el espacio efectivo, la copia de sus
+      composiciones, sus parametros y su plan, los items que no vienen del espacio y las
+      cantidades escritas a mano). Es la base con que `cambios_entre` y `guardar_version`
+      comparan lo editado.
+    * `guardada`: la version recargada con su informe **reauditado** con R8 a R10 sobre la
+      instantanea de su espacio (§8.4): reemplaza los hallazgos guardados de esas reglas.
+    * `espacio_de`: el codigo de la version cuyas filas `esp_*` aportan el espacio (la misma, o
+      la primera de su cadena de `version_origen`); `None` si ninguna tiene.
+    * `instantanea`: lo que se congelo al abrir (UC-15e); `solo_lectura` es True si alguna
+      partida no tiene composicion vigente: no se puede recalcular sin cambiar su precio.
+    """
+
+    proyecto: str
+    codigo: str
+    lista: str
+    borrador: Borrador
+    guardada: ResultadoElaboracion
+    espacio_de: str | None
+    instantanea: ResultadoInstantanea
+    solo_lectura: bool = False
+
+
+def _modelo(sesion: Session, proyecto: str, codigo: str) -> models.Presupuesto:
+    modelo = sesion.scalars(
+        select(models.Presupuesto)
+        .join(models.Proyecto)
+        .where(models.Proyecto.nombre == proyecto, models.Presupuesto.codigo == codigo)
+    ).one_or_none()
+    if modelo is None:
+        raise HojaInvalida(
+            f"El proyecto {proyecto!r} no tiene una version {codigo!r}: elija una de la lista."
+        )
+    return modelo
+
+
+def espacio_de_version(sesion: Session, modelo: models.Presupuesto) -> tuple[Espacio, str | None]:
+    """El espacio de una version y el codigo de la version que lo aporta (spec §5.3).
+
+    Una version con filas `esp_*` propias lo trae; una creada por restaurar, cotizar o revalorar
+    (UC-02) no copia filas y hereda el de su `version_origen`, subiendo por la cadena hasta la
+    primera que tenga filas propias. Una version de la hoja (edicion) o elaborada de cero es
+    siempre la ultima de la cadena: su espacio, aunque haya quedado vacio, es suyo y no sube.
+    """
+    actual, visitadas = modelo, set()
+    while True:
+        propio = cargar_espacio(sesion, actual.id)
+        if propio != Espacio():
+            return propio, actual.codigo
+        origen = sesion.get(models.VersionOrigen, actual.id)
+        visitadas.add(actual.id)
+        if (
+            origen is None
+            or origen.origen_id is None
+            or origen.motivo not in MOTIVOS_QUE_HEREDAN_EL_ESPACIO
+            or origen.origen_id in visitadas
+        ):
+            return Espacio(), None
+        siguiente = sesion.get(models.Presupuesto, origen.origen_id)
+        if siguiente is None:
+            return Espacio(), None
+        actual = siguiente
+
+
+def _parametros_de_version(modelo: models.Presupuesto) -> ParametrosCosto:
+    return ParametrosCosto(
+        fcas=modelo.fcas,
+        bono_alimentacion=modelo.bono_alimentacion,
+        administracion=modelo.administracion,
+        utilidad=modelo.utilidad,
+    )
+
+
+def _composiciones_de_la_version(
+    sesion: Session, catalogo: Catalogo, modelo: models.Presupuesto
+) -> tuple[dict[str, ComposicionAPU], bool]:
+    """La copia de las composiciones de la version (instantanea y, solo donde falta, catalogo)
+    y si alguna partida valorada quedo sin ellas."""
+    composiciones = dict(composiciones_de_version(sesion, modelo))
+    completa = True
+    for codigo in dict.fromkeys(r.partida.codigo for r in modelo.partidas):
+        if codigo in composiciones:
+            continue
+        try:
+            composiciones[codigo] = catalogo.composicion(
+                codigo, fecha=modelo.fecha, lista=modelo.lista_precios
+            )
+        except (KeyError, ValueError, CatalogoIncompleto):
+            completa = False
+    return composiciones, completa
+
+
+def _clasificar(
+    espacio: Espacio, guardados: Sequence[ItemComputo]
+) -> tuple[tuple[ItemComputo, ...], dict[str, Decimal]]:
+    """Los items guardados que no vienen del espacio y las cantidades escritas a mano.
+
+    Un item guardado es del espacio si su clave (`partida|origen_id`) es la de uno que deriva el
+    espacio; si ademas su cantidad difiere de la derivada, esa cantidad se escribio a mano.
+    """
+    derivados = items_del_borrador(espacio, TODAS)
+    derivada = dict(zip(claves_de_items(derivados), derivados, strict=True))
+    base: list[ItemComputo] = []
+    escritas: dict[str, Decimal] = {}
+    for clave, item in zip(claves_de_items(guardados), guardados, strict=True):
+        calculado = derivada.get(clave)
+        if calculado is None:
+            base.append(item)
+        elif item.cantidad != calculado.cantidad:
+            escritas[clave] = item.cantidad
+    return tuple(base), escritas
+
+
+def abrir_version(
+    sesion: Session,
+    catalogo: Catalogo,
+    proyecto: str,
+    codigo: str,
+    *,
+    responsable: str = "sistema",
+    ahora: datetime | None = None,
+) -> VersionAbierta:
+    """Abre una version guardada como borrador editable (RF-52), sea de la hoja o no (FR-5).
+
+    1. `asegurar_instantanea`: una version sin instantanea (clinica, TI-001, importadas) la
+       crea desde el catalogo vigente si este todavia reproduce su precio, y lo **registra**
+       (UC-15e). Es la unica escritura al abrir y se confirma aqui.
+    2. Espacio por `espacio_de_version`; composiciones, parametros y plan de la version.
+    3. Los items guardados se separan en los del espacio y los de la version, y las cantidades
+       diferentes de la derivada son cantidades escritas a mano.
+    4. La version se recarga con `REGLAS + reglas_espacio(espacio)`: R8 a R10 se recalculan
+       sobre la instantanea del espacio y reemplazan las guardadas (§8.4).
+
+    `HojaInvalida` si la version no existe o ya no se puede reconstruir.
+    """
+    modelo = _modelo(sesion, proyecto, codigo)
+    try:
+        instantanea = asegurar_instantanea(
+            sesion, proyecto, codigo, catalogo, responsable=responsable, ahora=ahora
+        )
+        sesion.commit()
+        espacio, espacio_de = espacio_de_version(sesion, modelo)
+        composiciones, completa = _composiciones_de_la_version(sesion, catalogo, modelo)
+        emitida = cargar_elaboracion(sesion, proyecto, codigo, catalogo)
+        guardados = [p.item for p in emitida.presupuesto.partidas] + list(emitida.pendientes)
+        items_base, escritas = _clasificar(espacio, guardados)
+        derivados = items_del_borrador(espacio, TODAS)
+        derivada = dict(zip(claves_de_items(derivados), derivados, strict=True))
+        cantidades = [
+            CantidadEscrita(
+                derivada[k].codigo_partida, derivada[k].origen_id, derivada[k].cantidad, v
+            )
+            for k, v in escritas.items()
+        ]
+        guardada = cargar_elaboracion(
+            sesion,
+            proyecto,
+            codigo,
+            catalogo,
+            reglas=(*REGLAS, *reglas_espacio(espacio, cantidades)),
+        )
+    except (ValueError, CatalogoIncompleto, KeyError) as error:
+        sesion.rollback()
+        raise HojaInvalida(
+            f"No se pudo abrir la version {codigo!r} del proyecto {proyecto!r}: {error}"
+        ) from error
+    plan = plan_de_version(sesion, modelo)
+    borrador = Borrador(
+        fecha=emitida.presupuesto.fecha,
+        moneda=emitida.presupuesto.moneda,
+        espacio=espacio,
+        items_base=items_base,
+        composiciones=composiciones,
+        parametros=_parametros_de_version(modelo),
+        plan=None if plan is None else tuple((e, tuple(r)) for e, r in plan),
+        cantidades=escritas,
+    )
+    return VersionAbierta(
+        proyecto=proyecto,
+        codigo=codigo,
+        lista=modelo.lista_precios.nombre,
+        borrador=borrador,
+        guardada=guardada,
+        espacio_de=espacio_de,
+        instantanea=instantanea,
+        solo_lectura=not completa,
+    )
+
+
+def completar_composiciones(
+    catalogo: Catalogo, borrador: Borrador, lista: models.ListaPrecios | None = None
+) -> Borrador:
+    """El borrador con la composicion de cada partida nueva que el catalogo conoce.
+
+    Editar el espacio puede derivar una partida que la version no tenia: su composicion sale del
+    catalogo (con `lista`, o la vigente a la fecha del borrador) y pasa a ser parte de la copia
+    de la version. Una partida sin composicion en el catalogo queda pendiente (UC-01 3a).
+    """
+    nuevas = {
+        i.codigo_partida
+        for i in items_elaborados(borrador)
+        if i.codigo_partida not in borrador.composiciones
+    }
+    if not nuevas:
+        return borrador
+    existentes = {p.codigo for p in catalogo.partidas()}
+    composiciones = dict(borrador.composiciones)
+    for codigo in sorted(nuevas & existentes):
+        try:
+            composiciones[codigo] = catalogo.composicion(codigo, fecha=borrador.fecha, lista=lista)
+        except (KeyError, ValueError, CatalogoIncompleto):
+            continue
+    return replace(borrador, composiciones=composiciones)
+
+
+# --- guardar, restaurar y versiones -------------------------------------------------------------
+
+
+def motivo_para_no_guardar(
+    base: Borrador, actual: Borrador, fuente: str, responsable: str
+) -> str | None:
+    """Por que no se puede guardar ahora, o `None` si se puede (RF-53).
+
+    Sin cambios no hay nada que guardar (FR-4); con cambios, cada guardado exige la fuente del
+    cambio y el responsable (spec §9.3).
+    """
+    if not cambios_entre(base, actual):
+        return "No hay cambios para guardar: edite alguna celda primero."
+    if not fuente.strip():
+        return "Escriba la fuente del cambio: por que se cambia y con que respaldo."
+    if not responsable.strip():
+        return "Escriba el responsable del cambio: quien lo hace."
+    return None
+
+
+def puede_guardar(base: Borrador, actual: Borrador, fuente: str, responsable: str) -> bool:
+    """True si hay cambios y se declararon la fuente y el responsable (`guardar_version`)."""
+    return motivo_para_no_guardar(base, actual, fuente, responsable) is None
+
+
+@dataclass(frozen=True, slots=True)
+class VersionGuardada:
+    """La version que creo `guardar_version`: su codigo, cuantas celdas registro y su total."""
+
+    codigo: str
+    cambios: int
+    total: Decimal
+
+
+def guardar_version(
+    sesion: Session,
+    catalogo: Catalogo,
+    abierta: VersionAbierta,
+    borrador: Borrador,
+    *,
+    fuente: str,
+    responsable: str,
+    ahora: datetime | None = None,
+) -> VersionGuardada | None:
+    """Guarda `borrador` como version nueva de la abierta, en UNA sola `Session` (spec §5.3).
+
+    Sin cambios (`cambios_entre` vacio) no hace nada y devuelve `None` (FR-4). Con cambios exige
+    `fuente` y `responsable` (`HojaInvalida` antes de tocar la base). En una transaccion:
+    `core.budget.edicion.guardar_edicion` crea la version con su informe, la instantanea de sus
+    composiciones, su plan y un `RegistroCambio` por celda, y el gancho copia las filas `esp_*` del
+    espacio con la clave de la version nueva (`adapters.espacio`). Confirma si todo sale bien; si
+    algo falla, deshace todo y propaga el error.
+    """
+    cambios = cambios_entre(abierta.borrador, borrador)
+    if not cambios:
+        return None
+    motivo = motivo_para_no_guardar(abierta.borrador, borrador, fuente, responsable)
+    if motivo is not None:
+        raise HojaInvalida(motivo)
+    if abierta.solo_lectura:
+        raise HojaInvalida(
+            "Esta version esta en solo lectura: alguna de sus partidas ya no tiene composicion "
+            "vigente en el catalogo, asi que recalcularla cambiaria sus precios."
+        )
+    try:
+        origen = _modelo(sesion, abierta.proyecto, abierta.codigo)
+        borrador = completar_composiciones(catalogo, borrador, lista=origen.lista_precios)
+        codigo = siguiente_codigo(sesion, abierta.proyecto)
+        resultado = elaborar_borrador(borrador, codigo=codigo)
+        con_espacio = borrador.espacio != Espacio()
+        if con_espacio:
+            crear_esquema_espacio(sesion.connection())
+
+        def copiar_espacio(sesion_: Session, version: models.Presupuesto) -> None:
+            guardar_espacio(sesion_, version.id, borrador.espacio)
+
+        nueva = guardar_edicion(
+            sesion,
+            abierta.proyecto,
+            abierta.codigo,
+            resultado.elaboracion,
+            borrador.parametros,
+            cambios,
+            fuente=fuente,
+            responsable=responsable,
+            plan=resultado.plan,
+            ahora=ahora,
+            gancho=copiar_espacio if con_espacio else None,
+        )
+        sesion.commit()
+    except BaseException:
+        sesion.rollback()
+        raise
+    assert nueva is not None  # `cambios` no estaba vacio
+    return VersionGuardada(
+        codigo=nueva.codigo, cambios=len(cambios), total=resultado.elaboracion.presupuesto.total
+    )
+
+
+def _en_una_transaccion(sesion: Session, accion: Callable[[], str]) -> str:
+    """Corre `accion` y confirma; ante cualquier error deshace y, si es un `ValueError` del
+    nucleo, lo vuelve `HojaInvalida` con su mismo mensaje."""
+    try:
+        codigo = accion()
+        sesion.commit()
+    except HojaInvalida:
+        sesion.rollback()
+        raise
+    except ValueError as error:
+        sesion.rollback()
+        raise HojaInvalida(str(error)) from error
+    except BaseException:
+        sesion.rollback()
+        raise
+    return codigo
+
+
+def restaurar(
+    sesion: Session,
+    catalogo: Catalogo,
+    proyecto: str,
+    codigo: str,
+    *,
+    fuente: str,
+    responsable: str,
+    ahora: datetime | None = None,
+) -> str:
+    """RF-54: crea una version nueva, copia de `codigo`, y devuelve su codigo. Nada se borra.
+
+    La nueva pasa a ser la vigente y su espacio es el de la restaurada (no copia filas `esp_*`).
+    """
+
+    def accion() -> str:
+        nuevo = siguiente_codigo(sesion, proyecto)
+        restaurar_version(
+            sesion, proyecto, codigo, nuevo, catalogo,
+            fuente=fuente, responsable=responsable, ahora=ahora,
+        )  # fmt: skip
+        return nuevo
+
+    return _en_una_transaccion(sesion, accion)
+
+
+def cotizar(
+    sesion: Session,
+    catalogo: Catalogo,
+    proyecto: str,
+    codigo_origen: str,
+    *,
+    insumo: str,
+    precio: Decimal,
+    proveedor: str,
+    numero: str,
+    fecha: date,
+    responsable: str,
+    fuente: str = "",
+    ahora: datetime | None = None,
+) -> str:
+    """RF-56: cotiza `insumo` (su codigo) para el proyecto y devuelve el codigo de la version
+    nueva, que referencia la lista del proyecto y conserva el plan y la curva."""
+
+    def accion() -> str:
+        nuevo = siguiente_codigo(sesion, proyecto)
+        cotizar_insumo(
+            sesion, proyecto, codigo_origen, nuevo, catalogo,
+            insumo=insumo, precio=precio, proveedor=proveedor, numero=numero, fecha=fecha,
+            responsable=responsable, fuente=fuente, ahora=ahora,
+        )  # fmt: skip
+        return nuevo
+
+    return _en_una_transaccion(sesion, accion)
+
+
+def retirar_cotizacion(
+    sesion: Session,
+    catalogo: Catalogo,
+    proyecto: str,
+    codigo_origen: str,
+    *,
+    insumo: str,
+    fuente: str,
+    responsable: str,
+    ahora: datetime | None = None,
+) -> str:
+    """Retira la cotizacion de `insumo` (con su registro) y devuelve el codigo de la version
+    nueva, que vuelve al precio de la lista base para ese insumo."""
+
+    def accion() -> str:
+        nuevo = siguiente_codigo(sesion, proyecto)
+        _retirar_cotizacion(
+            sesion, proyecto, codigo_origen, nuevo, catalogo,
+            insumo=insumo, fuente=fuente, responsable=responsable, ahora=ahora,
+        )  # fmt: skip
+        return nuevo
+
+    return _en_una_transaccion(sesion, accion)
+
+
+def codigo_vigente(sesion: Session, proyecto: str) -> str | None:
+    """El codigo de la version vigente del proyecto (la de mayor id no descartada), o `None`."""
+    vigente = version_vigente(sesion, proyecto)
+    return None if vigente is None else vigente.codigo
+
+
+@dataclass(frozen=True, slots=True)
+class FilaVersion:
+    """Una fila del historial: la version, por que se creo, de cual salio y cuanto cambio.
+
+    `motivo` es `""` si se elaboro de cero; `origen` es el codigo de la version de que salio.
+    """
+
+    codigo: str
+    fecha: date
+    motivo: str
+    origen: str
+    vigente: bool
+    descartada: bool
+    cambios: int
+
+
+def historial_de_versiones(sesion: Session, proyecto: str) -> list[FilaVersion]:
+    """Todas las versiones del proyecto, de la mas antigua a la mas reciente (el historial solo
+    crece, RF-54)."""
+    versiones = list(
+        sesion.scalars(
+            select(models.Presupuesto)
+            .join(models.Proyecto)
+            .where(models.Proyecto.nombre == proyecto)
+            .order_by(models.Presupuesto.id)
+        )
+    )
+    codigos = {v.id: v.codigo for v in versiones}
+    descartadas = set(sesion.scalars(select(models.DescarteVersion.presupuesto_id)))
+    registros = dict(
+        sesion.execute(
+            select(models.RegistroCambio.version_resultante_id, func.count())
+            .where(models.RegistroCambio.version_resultante_id.in_(codigos))
+            .group_by(models.RegistroCambio.version_resultante_id)
+        ).all()
+    )
+    vigente = codigo_vigente(sesion, proyecto)
+    filas = []
+    for version in versiones:
+        origen = sesion.get(models.VersionOrigen, version.id)
+        filas.append(
+            FilaVersion(
+                codigo=version.codigo,
+                fecha=version.fecha,
+                motivo=origen.motivo if origen is not None else "",
+                origen=codigos.get(origen.origen_id, "") if origen is not None else "",
+                vigente=version.codigo == vigente,
+                descartada=version.id in descartadas,
+                cambios=registros.get(version.id, 0),
+            )
+        )
+    return filas
+
+
+@dataclass(frozen=True, slots=True)
+class FilaRegistro:
+    """Un `RegistroCambio` como lo muestra la pestana Trazabilidad."""
+
+    objeto: str
+    clave: str
+    campo: str
+    valor_anterior: str
+    valor_nuevo: str
+    fuente: str
+    responsable: str
+    fecha_hora: datetime
+
+
+def registros_de_version(sesion: Session, proyecto: str, codigo: str) -> list[FilaRegistro]:
+    """Los registros que produjeron la version, en el orden en que se guardaron."""
+    return [
+        FilaRegistro(
+            r.objeto,
+            r.clave,
+            r.campo,
+            r.valor_anterior,
+            r.valor_nuevo,
+            r.fuente,
+            r.responsable,
+            r.fecha_hora,
+        )  # fmt: skip
+        for r in registros_de_version_core(sesion, _modelo(sesion, proyecto, codigo))
+    ]
+
+
+def tabla_de_trazabilidad(sesion: Session, proyecto: str, codigo: str) -> TablaExportable:
+    """La hoja Trazabilidad del Excel de la version (`core.budget.edicion.tabla_trazabilidad`)."""
+    return tabla_trazabilidad(sesion, _modelo(sesion, proyecto, codigo))
+
+
+# --- precios con su origen ----------------------------------------------------------------------
+
+COLUMNAS_PRECIOS = (
+    "Insumo",
+    "Código",
+    "Tipo",
+    "Precio",
+    "Lista",
+    "Moneda",
+    "Fecha del precio",
+    "Tasa",
+    "Fecha de la tasa",
+    "Referencia",
+    "Cotización",
+    "Estado",
+)
+
+
+@dataclass(frozen=True, slots=True)
+class FilaPrecio:
+    """El origen del precio de un insumo (pestana Precios, RF-56): lista, referencia, fecha,
+    moneda original y tasa con su fecha; `estado` marca el que no tiene fuente o fecha."""
+
+    codigo: str
+    descripcion: str
+    tipo: str
+    precio: Decimal
+    lista: str
+    moneda: str
+    fecha: date
+    tasa: Decimal | None
+    fecha_tasa: date | None
+    referencia: str
+    cotizacion: str
+    alcance: str
+    estado: str
+
+
+def _estado_de_precio(o: OrigenPrecio) -> str:
+    avisos = []
+    if not o.referencia and not o.cotizacion:
+        avisos.append("Sin referencia ni cotización: el precio no tiene fuente")
+    if o.tasa is not None and o.fecha_tasa is None:
+        avisos.append("La tasa de cambio no declara su fecha")
+    return "; ".join(avisos) if avisos else TEXTO_OK
+
+
+def precios_de_version(sesion: Session, proyecto: str, codigo: str) -> list[FilaPrecio]:
+    """El origen de cada precio que usa la version, ordenado por codigo de insumo (§9.6)."""
+    return [
+        FilaPrecio(
+            codigo=o.codigo,
+            descripcion=o.descripcion,
+            tipo=o.tipo,
+            precio=o.precio,
+            lista=o.lista,
+            moneda=o.moneda,
+            fecha=o.fecha_vigencia,
+            tasa=o.tasa,
+            fecha_tasa=o.fecha_tasa,
+            referencia=o.referencia,
+            cotizacion=o.cotizacion,
+            alcance=o.alcance,
+            estado=_estado_de_precio(o),
+        )
+        for o in origen_de_precios(sesion, _modelo(sesion, proyecto, codigo))
+    ]
+
+
+# --- Excel de la hoja ---------------------------------------------------------------------------
+
+#: Titulo de la hoja de metrajes del Excel y de cada tabla del espacio (spec §9.5).
+TITULOS_TABLAS_ESPACIO = {
+    "origenes": "Esp origenes",
+    "ambientes": "Esp ambientes",
+    "fuentes": "Esp fuentes",
+    "puntos": "Esp puntos",
+    "tramos": "Esp vertices",
+}
+
+
+def tabla_de_precios(precios: Sequence[FilaPrecio]) -> TablaExportable:
+    """La hoja Precios: una fila por insumo, con precios y tasas como numeros."""
+    return TablaExportable(
+        "Precios",
+        COLUMNAS_PRECIOS,
+        tuple(
+            (
+                p.descripcion,
+                p.codigo,
+                p.tipo,
+                p.precio,
+                p.lista,
+                p.moneda,
+                p.fecha,
+                p.tasa,
+                p.fecha_tasa,
+                p.referencia,
+                p.cotizacion,
+                p.estado,
+            )  # fmt: skip
+            for p in precios
+        ),
+    )
+
+
+def tablas_de_espacio(
+    espacio: Espacio, derivados: Sequence[ItemComputo], estado: Mapping[str, EstadoFila]
+) -> list[TablaExportable]:
+    """Las hojas del espacio que `core` no conoce: «Espacio y metrajes» (las cantidades que deriva
+    la hoja, con su origen) y una hoja por tabla editable, con el Estado de cada fila."""
+    cantidades = TablaExportable(
+        "Espacio y metrajes",
+        ("Partida", "Descripción", "Unidad", "Cantidad", "Origen"),
+        tuple(
+            (i.codigo_partida, i.descripcion, i.unidad, i.cantidad, i.origen_id) for i in derivados
+        ),
+    )
+    filas = filas_desde_espacio(espacio)
+    tablas = [cantidades]
+    for tabla, columnas in COLUMNAS.items():
+        con_estado = tabla in TABLAS_CON_ESTADO
+        encabezado = (*columnas, "Estado") if con_estado else columnas
+        tablas.append(
+            TablaExportable(
+                TITULOS_TABLAS_ESPACIO[tabla],
+                encabezado,
+                tuple(
+                    (
+                        *(fila[c] for c in columnas),
+                        *(
+                            (
+                                estado.get(
+                                    f"{TABLAS_CON_ESTADO[tabla]}:{fila['id']}", EstadoFila(None, "")
+                                ).texto,
+                            )
+                            if con_estado
+                            else ()
+                        ),
+                    )
+                    for fila in filas[tabla]
+                ),
+            )
+        )
+    return tablas
+
+
+def exportar_excel_hoja(
+    ruta: Path,
+    resultado: ResultadoHoja,
+    borrador: Borrador,
+    *,
+    trazabilidad: TablaExportable | None = None,
+    precios: Sequence[FilaPrecio] = (),
+) -> Path:
+    """Escribe el libro de la hoja (spec §9.5) con lo que muestra `resultado`: una hoja por
+    pestana, mas Trazabilidad y Auditoria, con formulas vivas. Solo se llama al pulsar Exportar.
+    """
+    extras = [
+        *tablas_de_espacio(borrador.espacio, resultado.items, resultado.estado),
+        tabla_de_precios(precios),
+    ]
+    return exportar_hoja(
+        resultado.elaboracion.presupuesto,
+        resultado.elaboracion.informe,
+        ruta,
+        borrador.parametros,
+        trazabilidad=trazabilidad,
+        hojas_extra=extras,
+    )
+
+
+def excel_de_hoja_en_bytes(
+    resultado: ResultadoHoja,
+    borrador: Borrador,
+    *,
+    trazabilidad: TablaExportable | None = None,
+    precios: Sequence[FilaPrecio] = (),
+) -> bytes:
+    """El libro de `exportar_excel_hoja` como bytes, para `st.download_button`."""
+    with tempfile.TemporaryDirectory() as carpeta:
+        ruta = exportar_excel_hoja(
+            Path(carpeta) / "hoja.xlsx",
+            resultado,
+            borrador,
+            trazabilidad=trazabilidad,
+            precios=precios,
+        )
+        return ruta.read_bytes()

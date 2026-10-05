@@ -20,7 +20,7 @@ import pytest
 from openpyxl import load_workbook
 from sqlalchemy import func, select
 
-from adapters.espacio import cargar_espacio, crear_esquema_espacio, guardar_espacio
+from adapters.espacio import cargar_espacio, guardar_espacio
 from core import models
 from core.budget import cargar_elaboracion
 from core.catalog import Catalogo, abrir_sesion, crear_motor
@@ -668,7 +668,6 @@ def test_editar_la_clinica_guarda_una_version_con_el_espacio_que_se_le_agrega(cl
     sesion, catalogo = clinica
     abierta = hoja.abrir_version(sesion, catalogo, NOMBRE_CLINICA, linea_base.CODIGO_PRESUPUESTO)
     espacio = espacio_of001()
-    crear_esquema_espacio(sesion.connection())
     editado = replace(
         abierta.borrador, espacio=replace(espacio, puntos=(), recorridos=(), circuitos=())
     )
@@ -687,11 +686,11 @@ def test_abrir_ti001_da_el_total_y_el_punto_de_equilibrio_del_caso(ti001):
     """RF-58 por la hoja: 50 503,27 USD y PE de 28 586,76 USD (56,60 %) en el Dia 6."""
     sesion, catalogo = ti001
 
-    abierta = hoja.abrir_version(sesion, catalogo, NOMBRE_TI001, "001")
+    abierta = hoja.abrir_version(sesion, catalogo, NOMBRE_TI001, "TI-001")
 
     assert abs(abierta.guardada.presupuesto.total - D("50503.27")) <= D("0.01")
     assert abierta.espacio_de is None
-    pe = hoja.elaborar_borrador(abierta.borrador, codigo="001").equilibrio
+    pe = hoja.elaborar_borrador(abierta.borrador, codigo="TI-001").equilibrio
     assert abs(pe.punto - D("28586.76")) <= D("0.01")
     assert abs(pe.porcentaje - D("56.60")) <= D("0.01")
     assert pe.periodo.startswith("Dia 6")
@@ -700,9 +699,9 @@ def test_abrir_ti001_da_el_total_y_el_punto_de_equilibrio_del_caso(ti001):
 
 def test_ti001_sin_instantanea_se_abre_con_su_plan_inferido(ti001):
     sesion, catalogo = ti001
-    borrar_instantanea(sesion, NOMBRE_TI001)
+    borrar_instantanea(sesion, NOMBRE_TI001, "TI-001")
 
-    abierta = hoja.abrir_version(sesion, catalogo, NOMBRE_TI001, "001")
+    abierta = hoja.abrir_version(sesion, catalogo, NOMBRE_TI001, "TI-001")
 
     assert len(abierta.instantanea.creadas) == 10
     assert abs(abierta.guardada.presupuesto.total - D("50503.27")) <= D("0.01")
@@ -711,7 +710,7 @@ def test_ti001_sin_instantanea_se_abre_con_su_plan_inferido(ti001):
 def test_el_fcas_de_ti001_recalcula_y_queda_en_el_registro(ti001):
     """RF-57: cambiar el FCAS recalcula todos los APU de la version y queda registrado."""
     sesion, catalogo = ti001
-    abierta = hoja.abrir_version(sesion, catalogo, NOMBRE_TI001, "001")
+    abierta = hoja.abrir_version(sesion, catalogo, NOMBRE_TI001, "TI-001")
     editado = replace(
         abierta.borrador,
         parametros=replace(abierta.borrador.parametros, fcas=D("7.00")),
@@ -721,8 +720,10 @@ def test_el_fcas_de_ti001_recalcula_y_queda_en_el_registro(ti001):
         sesion, catalogo, abierta, editado, fuente=FUENTE, responsable=RESPONSABLE
     )
 
+    # `siguiente_codigo` solo cuenta los codigos numericos: «TI-001» no lo es, y la nueva es «001»
+    assert guardada.codigo == "001"
     assert guardada.total > abierta.guardada.presupuesto.total
-    [registro] = hoja.registros_de_version(sesion, NOMBRE_TI001, "002")
+    [registro] = hoja.registros_de_version(sesion, NOMBRE_TI001, guardada.codigo)
     assert (registro.objeto, registro.clave, registro.campo) == ("parametro", "fcas", "valor")
     assert (registro.valor_anterior, registro.valor_nuevo) == ("6.00", "7.00")
 
@@ -765,7 +766,7 @@ def test_el_excel_de_la_hoja_se_reabre_y_sus_formulas_dan_el_total_del_sistema(o
     assert abs(D(str(total)) - exacto) <= D("0.005")
     # el espacio y la trazabilidad llegan como tablas
     espacio = libro["Espacio y metrajes"]
-    assert espacio.max_row == 1 + len(resultado.todos)
+    assert espacio.max_row == 1 + len(resultado.items)
     traza = libro["Trazabilidad"]
     assert [c.value for c in traza[2]][2:5] == ["metraje", "esp_ambientes:BAN-01", "largo"]
     assert traza.max_row == 1 + 3
