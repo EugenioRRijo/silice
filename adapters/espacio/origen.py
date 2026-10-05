@@ -29,6 +29,11 @@ REFERENCIA_OBLIGATORIA: dict[TipoOrigen, tuple[str, ...]] = {
 }
 
 
+def clave_esp(tabla: str, id_fila: str) -> str:
+    """Clave de una fila `esp_*` como la citan los hallazgos en `origen_ids` (spec §8.2)."""
+    return f"{tabla}:{id_fila}"
+
+
 def pares(valor: Mapping[str, str] | tuple[tuple[str, str], ...]) -> tuple[tuple[str, str], ...]:
     """Normaliza un mapa a una tupla de pares ordenada por clave (hashable e inmutable)."""
     items = valor.items() if isinstance(valor, Mapping) else valor

@@ -6,6 +6,8 @@ especialidades con `derivar(espacio, especialidad)`. Persistencia propia `esp_*`
 
 from adapters.espacio.derivacion import ESPECIALIDADES, derivar
 from adapters.espacio.modelo import (
+    LLAVE_DE_PASO,
+    TOLERANCIA,
     Ambiente,
     Circuito,
     Coord,
@@ -22,10 +24,13 @@ from adapters.espacio.modelo import (
     TipoPunto,
     Tramo,
 )
-from adapters.espacio.origen import REFERENCIA_OBLIGATORIA, OrigenMedida, TipoOrigen
+from adapters.espacio.origen import REFERENCIA_OBLIGATORIA, OrigenMedida, TipoOrigen, clave_esp
 from adapters.espacio.persistencia import cargar_espacio, crear_esquema_espacio, guardar_espacio
 
 __all__ = [
+    "LLAVE_DE_PASO",
+    "TOLERANCIA",
+    "clave_esp",
     "ESPECIALIDADES",
     "REFERENCIA_OBLIGATORIA",
     "Ambiente",

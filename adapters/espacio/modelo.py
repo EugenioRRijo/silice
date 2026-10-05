@@ -13,7 +13,7 @@ from dataclasses import dataclass, field
 from decimal import Decimal
 from enum import StrEnum
 
-from adapters.espacio.origen import OrigenMedida, pares
+from adapters.espacio.origen import OrigenMedida, clave_esp, pares
 
 
 class Especialidad(StrEnum):
@@ -55,6 +55,13 @@ class SuperficieTramo(StrEnum):
 class ModoRecorrido(StrEnum):
     PROPUESTO = "propuesto"
     DECLARADO = "declarado"
+
+
+#: Tolerancia geométrica de la hoja, en metros (spec §6.1).
+TOLERANCIA = Decimal("0.001")
+
+#: Único valor admitido de la especificación «llave_de_paso» de un punto de agua fría.
+LLAVE_DE_PASO = "si"
 
 
 def _decimal(valor: object, nombre: str) -> Decimal:
@@ -116,11 +123,13 @@ class Ambiente:
         _positivo(self.ancho, "ancho")
         _positivo(self.alto, "alto")
 
-    def contiene(self, p: Coord) -> bool:
+    def contiene(self, p: Coord, tolerancia: Decimal = TOLERANCIA) -> bool:
+        """True si `p` está dentro del ambiente, con la tolerancia de §6.1 (borde incluido)."""
+        t = tolerancia
         return (
-            self.x0 <= p.x <= self.x0 + self.largo
-            and self.y0 <= p.y <= self.y0 + self.ancho
-            and 0 <= p.z <= self.alto
+            self.x0 - t <= p.x <= self.x0 + self.largo + t
+            and self.y0 - t <= p.y <= self.y0 + self.ancho + t
+            and -t <= p.z <= self.alto + t
         )
 
 
@@ -183,6 +192,9 @@ class Punto:
         object.__setattr__(self, "tipo", TipoPunto(self.tipo))
         object.__setattr__(self, "superficie", SuperficiePunto(self.superficie))
         object.__setattr__(self, "especificaciones", pares(self.especificaciones))
+        llave = dict(self.especificaciones).get("llave_de_paso")
+        if llave is not None and llave != LLAVE_DE_PASO:
+            raise ValueError(f"llave_de_paso solo admite {LLAVE_DE_PASO!r}, no {llave!r}")
         if not isinstance(self.posicion, Coord):
             raise TypeError("la posición del punto debe ser una Coord con Decimal")
 
@@ -233,6 +245,9 @@ class Recorrido:
         if (self.punto_id is None) == (self.circuito_id is None):
             raise ValueError("un recorrido pertenece a un punto o a un circuito, no a ambos")
         object.__setattr__(self, "modo", ModoRecorrido(self.modo))
+        ordenes = [t.orden for t in self.tramos]
+        if len(ordenes) != len(set(ordenes)):
+            raise ValueError(f"el recorrido {self.id!r} repite el orden de un tramo: {ordenes}")
         object.__setattr__(self, "tramos", tuple(sorted(self.tramos, key=lambda t: t.orden)))
 
 
@@ -330,15 +345,30 @@ class Espacio:
             if r.circuito_id is not None:
                 exigir(r.circuito_id in circuitos, "un circuito", quien, r.circuito_id)
 
-    def validar(self) -> list[str]:
-        """Problemas del borrador que no impiden construirlo (se informan, no se lanzan)."""
-        problemas: list[str] = []
+    def validar(self) -> list[tuple[str, str]]:
+        """Pares `(clave_esp, mensaje)` de las filas fuera de su ambiente (tolerancia de §6.1).
+
+        Es informativo: no lanza ni impide guardar. Las reglas R8/R9 (tarea 1.6) lo usan o recorren
+        el modelo con `Ambiente.contiene()`; la clave (`esp_puntos:P1`, formato de
+        `origen.clave_esp`) es la que citan en `origen_ids` (spec §8.2). «Ambiente sin puntos» no
+        se informa: un borrador empieza por el ambiente y ninguna regla lo pide.
+        """
         ambientes = {a.id: a for a in self.ambientes}
-        con_puntos = {p.ambiente_id for p in self.puntos}
-        for a in self.ambientes:
-            if a.id not in con_puntos:
-                problemas.append(f"ambiente {a.id}: sin puntos")
+        problemas: list[tuple[str, str]] = []
+        for f in self.fuentes:
+            if not ambientes[f.ambiente_id].contiene(f.posicion):
+                problemas.append(
+                    (
+                        clave_esp("esp_fuentes", f.id),
+                        f"fuente {f.id}: fuera del ambiente {f.ambiente_id}",
+                    )
+                )
         for p in self.puntos:
             if not ambientes[p.ambiente_id].contiene(p.posicion):
-                problemas.append(f"punto {p.id}: fuera del ambiente {p.ambiente_id}")
+                problemas.append(
+                    (
+                        clave_esp("esp_puntos", p.id),
+                        f"punto {p.id}: fuera del ambiente {p.ambiente_id}",
+                    )
+                )
         return problemas

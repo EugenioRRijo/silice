@@ -23,6 +23,7 @@ from sqlalchemy import (
     Text,
     delete,
     insert,
+    inspect,
     select,
 )
 from sqlalchemy.orm import Session
@@ -278,7 +279,15 @@ def guardar_espacio(sesion: Session, version_id: int, espacio: Espacio) -> None:
 
 
 def cargar_espacio(sesion: Session, version_id: int) -> Espacio:
-    """El espacio guardado de una versión; vacío si no tiene (FR-1)."""
+    """El espacio guardado de una versión; vacío si no tiene (FR-1).
+
+    Si la base no tiene (todas) las tablas `esp_*` (una clínica o TI-001 anteriores a la hoja,
+    FR-5) devuelve el espacio vacío sin crearlas ni escribir. Quien guarde debe llamar antes a
+    `crear_esquema_espacio`.
+    """
+    tablas = set(inspect(sesion.connection()).get_table_names())
+    if not {t.name for t in TABLAS} <= tablas:
+        return Espacio()
 
     def filas(tabla: Table):
         return sesion.execute(select(tabla).where(tabla.c.version_id == version_id)).mappings()
