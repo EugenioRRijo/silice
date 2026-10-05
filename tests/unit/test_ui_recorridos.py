@@ -100,3 +100,40 @@ def test_recorrido_por_nombre() -> None:
     assert recorrido_por_nombre(NOMBRE_PRECIOS) is RECORRIDOS[2]
     assert recorrido_por_nombre(None) is None
     assert recorrido_por_nombre("no existe") is None
+
+
+# --- SF4: a donde lleva «Recorrido guiado» de la barra (UC-12) ---------------------------------
+
+
+def test_destino_sin_recorrido_activo_es_el_inicio():
+    from ui.recorridos import RUTA_INICIO, destino_de_recorrido
+
+    assert destino_de_recorrido(None, "catalogo") == RUTA_INICIO
+
+
+def test_destino_es_el_paso_siguiente_desde_un_paso_intermedio():
+    from ui.recorridos import RECORRIDOS, destino_de_recorrido
+
+    r = RECORRIDOS[0]
+    assert destino_de_recorrido(r, r.pasos[0].pagina) == r.pasos[1].pagina
+
+
+def test_destino_desde_el_inicio_es_el_primer_paso():
+    from ui.recorridos import RECORRIDOS, RUTA_INICIO, destino_de_recorrido
+
+    r = RECORRIDOS[0]
+    assert destino_de_recorrido(r, RUTA_INICIO) == r.pasos[0].pagina
+
+
+def test_destino_desde_una_pantalla_ajena_es_el_primer_paso():
+    from ui.recorridos import RECORRIDOS, destino_de_recorrido
+
+    r = RECORRIDOS[0]
+    assert destino_de_recorrido(r, "historico") == r.pasos[0].pagina
+
+
+def test_destino_desde_el_ultimo_paso_es_el_inicio():
+    from ui.recorridos import RECORRIDOS, RUTA_INICIO, destino_de_recorrido
+
+    r = RECORRIDOS[0]
+    assert destino_de_recorrido(r, r.pasos[-1].pagina) == RUTA_INICIO
