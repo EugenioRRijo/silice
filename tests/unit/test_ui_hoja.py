@@ -34,7 +34,7 @@ def _arrancar(monkeypatch, base: Path, borrador=None) -> AppTest:
 def test_la_pantalla_arranca_con_el_borrador_vacio(monkeypatch, tmp_path):
     at = _arrancar(monkeypatch, tmp_path / "no_existe.db")
     # los cinco editores: origenes, ambientes, fuentes, puntos y vertices de recorridos
-    assert len(at.get("arrow_data_frame")) >= 5
+    assert len(at.dataframe) == 5
     assert at.info  # sin espacio no hay cantidades derivadas: la pantalla lo dice
 
 
