@@ -46,7 +46,7 @@ from core.contracts import ComposicionAPU, ItemComputo
 from core.verification.informe import DECIMALES_PRESENTACION
 from core.verification.texto import formatear_decimal
 from ui import hoja
-from ui.caso import ruta_caso
+from ui.caso import ACCION_PRECIOS, ruta_caso, tomar_accion
 
 PESTANAS = ("Espacio y metrajes",)
 CLAVE_BORRADOR = "hoja_borrador"  # el Espacio vigente: no es la clave de ningun widget
@@ -212,8 +212,21 @@ def _pestana_espacio() -> None:
     st.markdown(resultado.elaboracion.informe.a_markdown())
 
 
+def _atender_accion() -> None:
+    """Atiende lo que la barra superior pidio (`ui.caso.pedir_accion`) y lo consume.
+
+    Hoy solo «Precios» (elige esa pestana si existe). Guardar version, Exportar Excel e Importar
+    plano llegan con SF3 y SF5: la barra los deshabilita u oculta hasta entonces, y una accion
+    desconocida se descarta sin efecto.
+    """
+    accion = tomar_accion()
+    if accion == ACCION_PRECIOS and "Precios" in PESTANAS:
+        st.session_state[CLAVE_PESTANA] = "Precios"
+
+
 def render() -> None:
     """La hoja del proyecto: la pestana activa y su contenido."""
+    _atender_accion()
     pestana = st.segmented_control(
         "Pestana",
         PESTANAS,

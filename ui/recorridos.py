@@ -163,3 +163,19 @@ def paso_siguiente(recorrido: Recorrido | None, ruta: str) -> Paso | None:
     if posicion is None or posicion == len(recorrido.pasos):
         return None
     return recorrido.pasos[posicion]
+
+
+def destino_de_recorrido(recorrido: Recorrido | None, ruta: str) -> str:
+    """La pantalla a la que lleva «Recorrido guiado» de la barra desde la pantalla `ruta`.
+
+    Sin recorrido activo, el Inicio (donde se elige). Con uno: el paso siguiente; desde una
+    pantalla ajena, su primer paso (se retoma); y desde el ultimo paso, el Inicio (terminado).
+    """
+    if recorrido is None:
+        return RUTA_INICIO
+    paso = paso_siguiente(recorrido, ruta)
+    if paso is not None:
+        return paso.pagina
+    if recorrido.posicion(ruta) is not None:  # estaba en el ultimo paso
+        return RUTA_INICIO
+    return recorrido.pasos[0].pagina
