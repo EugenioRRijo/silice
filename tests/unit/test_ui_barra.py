@@ -318,3 +318,17 @@ def test_auditar_resume_el_informe_de_la_version_vigente(monkeypatch, caso_con_v
 def test_auditar_sin_proyecto_abierto_lo_pide(monkeypatch, caso_con_version):
     at = _barra(monkeypatch, caso_con_version[0])
     assert "Abra un proyecto" in _textos(at)
+
+
+def test_abrir_esta_deshabilitado_si_el_caso_no_tiene_proyectos(monkeypatch, tmp_path):
+    from core.catalog import crear_esquema, crear_motor
+
+    vacio = tmp_path / "vacio.db"
+    motor = crear_motor(f"sqlite:///{vacio.as_posix()}")
+    try:
+        crear_esquema(motor)
+    finally:
+        motor.dispose()
+    at = _barra(monkeypatch, vacio)
+    assert _boton(at, barra.ROTULO_ABRIR).disabled is True
+    assert at.selectbox(key=barra.CLAVE_ABRIR).options == []
