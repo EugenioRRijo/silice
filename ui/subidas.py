@@ -10,7 +10,8 @@ reutiliza tal cual: `ui` no importa `api`): se conserva solo el **ultimo compone
 porque los lectores deducen el formato de su extension, y un nombre sin componente utilizable es
 un `ValueError`. Reglas adicionales, propias de Windows: los componentes se separan por `/` y por
 `\` en cualquier sistema (la subida viene de otro equipo); los caracteres que Windows prohibe
-(`<>"|?*` y los de control) pasan a `_`; el primer `:` corta el nombre (flujos alternos de datos de NTFS); los
+(`<>"|?*` y los de control) pasan a `_`; el primer `:` corta el nombre
+(flujos alternos de datos de NTFS); los
 espacios y puntos finales se quitan; un nombre
 reservado se renombra con un `_` delante (se prefiere salvar el archivo a rechazarlo); y el nombre
 se acota a `LONGITUD_MAXIMA` caracteres conservando la extension.
