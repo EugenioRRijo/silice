@@ -80,6 +80,7 @@ SECCION_TRABAJO = "Trabajo"
 SECCION_INVESTIGACION = "Investigacion"
 ROTULO_SIGUIENTE = "Siguiente: {}"
 CLAVE_BOTON_SIGUIENTE = "marco_siguiente"
+POSICION_NAVEGACION = "top"  # RF-60: la navegacion va arriba (Streamlit >= 1.62)
 
 
 @dataclass(frozen=True, slots=True)
@@ -227,7 +228,7 @@ def main() -> None:
         seccion: [paginas[definicion.ruta_url] for definicion in definiciones]
         for seccion, definiciones in secciones_visibles(modo_entrega).items()
     }
-    actual = st.navigation(secciones)
+    actual = st.navigation(secciones, position=POSICION_NAVEGACION)
     marco(
         pagina_por_ruta(ruta_actual(actual.url_path)),
         actual.run,
