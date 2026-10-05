@@ -24,6 +24,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core import models
+from core.budget._modelo import _buscar, _parametros_de
 from core.budget.curva import PeriodoPlan
 from core.catalog import Catalogo
 from core.catalog.errores import CatalogoIncompleto
@@ -151,8 +152,6 @@ def composiciones_de_presupuesto(
     """Las composiciones con que se valoró una versión: la instantánea y, solo para las partidas
     que no la tienen, el catálogo con la lista y la fecha de la versión. Es lo que usan los
     escenarios y la hoja (SF‑E6)."""
-    from core.budget.persistencia import _buscar  # ciclo con persistencia
-
     modelo = _buscar(session, proyecto_nombre, codigo)
     congeladas = composiciones_de_version(session, modelo)
     return {
@@ -286,14 +285,52 @@ def _resolver_insumos(
     return resueltos
 
 
+def _insumos_heredados(
+    session: Session,
+    origen: models.Presupuesto,
+    composicion: ComposicionAPU,
+    lineas: Sequence[LineaCatalogo],
+) -> list[int | None] | None:
+    """El `insumo_id` de cada línea tomado de la instantánea de `origen` (SF3 R‑7), o `None` si no
+    se puede heredar (la versión de origen no congeló la partida o la estructura de líneas cambió).
+
+    Regla: una línea que sigue en la misma posición con el mismo tipo y descripción hereda el
+    `insumo_id` de origen **si conserva su precio**; si el precio cambió es un precio manual y
+    queda sin insumo (`None`), para que una revaloración posterior (UC‑02) no lo pise con la lista.
+    """
+    fila = session.scalars(
+        select(models.ComposicionVersion).where(
+            models.ComposicionVersion.presupuesto_id == origen.id,
+            models.ComposicionVersion.codigo_partida == composicion.codigo_partida,
+        )
+    ).first()
+    if fila is None:
+        return None
+    anteriores = sorted(fila.lineas, key=lambda linea: linea.orden)
+    if len(anteriores) != len(lineas) or any(
+        anterior.tipo != linea.tipo.value or anterior.descripcion != linea.descripcion
+        for anterior, linea in zip(anteriores, lineas, strict=True)
+    ):
+        return None
+    return [
+        anterior.insumo_id if anterior.precio == linea.precio else None
+        for anterior, linea in zip(anteriores, lineas, strict=True)
+    ]
+
+
 def _escribir_composicion(
     session: Session,
     modelo: models.Presupuesto,
     composicion: ComposicionAPU,
     lista: models.ListaPrecios,
+    origen: models.Presupuesto | None = None,
 ) -> None:
     lineas = lineas_de(composicion)
-    insumos = _resolver_insumos(session, lineas, lista)
+    insumos = (
+        _insumos_heredados(session, origen, composicion, lineas) if origen is not None else None
+    )
+    if insumos is None:
+        insumos = _resolver_insumos(session, lineas, lista)
     fila = models.ComposicionVersion(
         presupuesto_id=modelo.id,
         codigo_partida=composicion.codigo_partida,
@@ -364,14 +401,18 @@ def congelar(
     presupuesto: Presupuesto,
     lista: models.ListaPrecios,
     plan: Sequence[PeriodoPlan] | None = None,
+    origen: models.Presupuesto | None = None,
 ) -> None:
     """Congela en `modelo` (ya con `id`) el `apu` de cada código de partida distinto del
-    presupuesto y su plan: el dado o, sin él, el inferible de la curva."""
+    presupuesto y su plan: el dado o, sin él, el inferible de la curva.
+
+    Con `origen`, el insumo de cada línea se hereda de la instantánea de esa versión (restaurar,
+    editar) en vez de re‑resolverse por tipo, descripción y precio (`_insumos_heredados`)."""
     vistos: set[str] = set()
     for partida in presupuesto.partidas:
         if partida.apu.codigo_partida not in vistos:
             vistos.add(partida.apu.codigo_partida)
-            _escribir_composicion(session, modelo, partida.apu, lista)
+            _escribir_composicion(session, modelo, partida.apu, lista, origen)
     if plan is None:
         plan = _plan_inferido(
             [punto.periodo for punto in presupuesto.curva],
@@ -417,8 +458,6 @@ def asegurar_instantanea(
     congela el plan si la versión no lo tiene y la curva lo revela. Si congeló algo, lo registra con
     un `RegistroCambio` (objeto `apu`, campo `instantanea`; UC‑15e). No hace `commit`.
     """
-    from core.budget.persistencia import _buscar, _parametros_de
-
     modelo = _buscar(session, proyecto_nombre, codigo)
     parametros = parametros or _parametros_de(modelo)
     congeladas = {fila.codigo_partida for fila in _filas(session, modelo)}

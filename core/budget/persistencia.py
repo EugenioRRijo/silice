@@ -33,9 +33,10 @@ from collections.abc import Mapping, Sequence
 from decimal import Decimal
 
 from sqlalchemy import exists, select
-from sqlalchemy.orm import Session, object_session
+from sqlalchemy.orm import Session
 
 from core import models
+from core.budget._modelo import _buscar, _parametros_de, _sesion_de
 from core.budget.curva import PeriodoPlan
 from core.budget.instantanea import composiciones_de_version, congelar
 
@@ -116,6 +117,7 @@ def guardar_presupuesto(
     plan: Sequence[PeriodoPlan] | None = None,
     version_origen: models.Presupuesto | None = None,
     motivo: str = "",
+    heredar_insumos: bool = False,
 ) -> models.Presupuesto:
     """Persiste el presupuesto con su cómputo, su curva y los hallazgos de su informe.
 
@@ -136,7 +138,8 @@ def guardar_presupuesto(
     SF‑E6: congela además la instantánea de la versión (la composición y el rendimiento de cada
     partida distinta, y el plan: `plan` o, sin él, el que revela la curva si es inferible).
     SF‑E2: `version_origen` y `motivo` (`models.MOTIVOS_VERSION`) declaran de qué versión salió
-    esta; van juntos o ninguno.
+    esta; van juntos o ninguno. `heredar_insumos` (solo con `version_origen`: edición y
+    restauración) copia el `insumo_id` de cada línea de la instantánea de origen (SF3 R‑7).
     """
     if (version_origen is None) != (motivo == ""):
         raise ValueError("version_origen y motivo se declaran juntos o ninguno")
@@ -203,7 +206,9 @@ def guardar_presupuesto(
 
     session.add(modelo)
     session.flush()
-    congelar(session, modelo, presupuesto, lista, plan)
+    congelar(
+        session, modelo, presupuesto, lista, plan, version_origen if heredar_insumos else None
+    )
     if version_origen is not None:
         session.add(
             models.VersionOrigen(
@@ -228,10 +233,11 @@ def cargar_presupuesto(
 
 def _presupuesto_de(modelo: models.Presupuesto, catalogo: Catalogo) -> Presupuesto:
     """La reconstrucción de `cargar_presupuesto` sobre una fila ya encontrada."""
+    sesion = _sesion_de(modelo)
     parametros = _parametros_de(modelo)
     # SF‑E6: la composición de cada partida sale de la instantánea de la versión y, solo si falta,
     # del catálogo (versiones anteriores a SF‑E6).
-    congeladas = composiciones_de_version(object_session(modelo), modelo)
+    congeladas = composiciones_de_version(sesion, modelo)
 
     partidas = tuple(
         _a_contrato_renglon(renglon, modelo, catalogo, parametros, congeladas)
@@ -413,31 +419,6 @@ def _json_decimales(valores: Mapping[str, Decimal]) -> str:
 # ---------------------------------------------------------------------------------------------
 # Modelo -> contrato
 # ---------------------------------------------------------------------------------------------
-
-
-def _buscar(session: Session, proyecto_nombre: str, codigo: str) -> models.Presupuesto:
-    modelo = session.scalars(
-        select(models.Presupuesto)
-        .join(models.Proyecto)
-        .where(models.Proyecto.nombre == proyecto_nombre, models.Presupuesto.codigo == codigo)
-    ).one_or_none()
-    if modelo is None:
-        raise KeyError(f"no hay ningún presupuesto {codigo!r} en el proyecto {proyecto_nombre!r}")
-    return modelo
-
-
-def _parametros_de(modelo: models.Presupuesto) -> ParametrosCosto:
-    """Los `ParametrosCosto` congelados en la fila del presupuesto.
-
-    El contrato `Presupuesto` no los lleva (insuficiencia registrada en la bitácora de I0.5): la
-    fila sí, y de ahí salen.
-    """
-    return ParametrosCosto(
-        fcas=modelo.fcas,
-        bono_alimentacion=modelo.bono_alimentacion,
-        administracion=modelo.administracion,
-        utilidad=modelo.utilidad,
-    )
 
 
 def _a_contrato_renglon(

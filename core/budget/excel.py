@@ -85,6 +85,8 @@ _HOJAS_PROPIAS = {
     PESTANA_TRAZABILIDAD,
 }
 _CARACTERES_PROHIBIDOS = set("[]:*?/\\")
+#: Excel no distingue mayúsculas en los títulos de hoja: se compara en minúsculas.
+_PROPIAS_EN_MINUSCULAS = {titulo.lower() for titulo in _HOJAS_PROPIAS}
 COLUMNAS_TRAZABILIDAD = (
     "Versión de origen",
     "Versión resultante",
@@ -390,7 +392,7 @@ def _validar_titulos(tablas: Sequence[TablaExportable]) -> list[TablaExportable]
             raise ValueError(
                 f"titulo de hoja invalido: {titulo!r} (1 a 31 caracteres, sin []:*?/\\)"
             )
-        if titulo in _HOJAS_PROPIAS or titulo.lower() in vistos:
+        if titulo.lower() in _PROPIAS_EN_MINUSCULAS or titulo.lower() in vistos:
             raise ValueError(f"titulo de hoja repetido: {titulo!r}")
         vistos.add(titulo.lower())
     return list(tablas)
