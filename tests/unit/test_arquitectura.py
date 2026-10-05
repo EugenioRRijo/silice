@@ -214,6 +214,8 @@ PROHIBIDOS_EN_UI: dict[str, tuple[str, ...]] = {
     "ui/resultado.py": ("sqlalchemy.orm", "core.costing", "core.catalog"),
     # RF-37: los recorridos se declaran en un modulo sin Streamlit ni base de datos (A6, R-3).
     "ui/recorridos.py": ("streamlit", "sqlalchemy", "core.catalog", "ui.caso", "ui.app"),
+    # SF4: las operaciones sobre proyectos no pintan ni leen la sesion de Streamlit.
+    "ui/proyectos.py": ("streamlit", "pandas", "ui.caso", "ui.app", "ui.barra"),
 }
 
 
@@ -257,6 +259,20 @@ def test_ui_respeta_sus_importaciones_prohibidas(modulo):
 
 #: Las paginas de ui/ (y su `__init__`): el marco `ui/app.py` las importa, ninguna lo importa a el.
 PAGINAS_DE_UI = sorted((RAIZ / "ui" / "paginas").glob("*.py"))
+
+
+def test_solo_ui_app_importa_la_barra_de_herramientas():
+    """SF4 4.2: `ui/barra.py` es parte del marco; lo importa SOLO `ui/app.py`."""
+    importadores = sorted(
+        archivo.relative_to(RAIZ).as_posix()
+        for archivo in (RAIZ / "ui").rglob("*.py")
+        if archivo.name != "barra.py"
+        and any(
+            nombre == "ui.barra" or nombre.startswith("ui.barra.")
+            for nombre in _imports_de_ejecucion(archivo)
+        )
+    )
+    assert importadores == ["ui/app.py"]
 
 
 def _importa_el_marco(ruta: Path) -> list[str]:

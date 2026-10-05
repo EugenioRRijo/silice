@@ -76,7 +76,8 @@ def _boton(at: AppTest, rotulo: str):
 
 
 def _rotulos(at: AppTest) -> list[str]:
-    return [b.label for b in at.button]
+    """Los botones de la barra; los de dentro del popover Proyecto (crear, abrir) no cuentan."""
+    return [b.label for b in at.button if b.label not in (barra.ROTULO_CREAR, barra.ROTULO_ABRIR)]
 
 
 def _textos(at: AppTest) -> str:
@@ -87,6 +88,10 @@ def _textos(at: AppTest) -> str:
         + [s.value for s in at.success]
         + [i.value for i in at.info]
     )
+
+
+def _abierto(at: AppTest):
+    return at.session_state[CLAVE_PROYECTO] if CLAVE_PROYECTO in at.session_state else None
 
 
 def _sin_funciones_de_sf3(monkeypatch) -> None:
@@ -143,7 +148,7 @@ def test_la_barra_oculta_importar_plano_mientras_sf5_no_llega(monkeypatch, caso_
         barra.ROTULO_EXPORTAR,
         barra.ROTULO_RECORRIDO,
     ]
-    assert [p.label for p in at.get("popover")] == [barra.ROTULO_PROYECTO, barra.ROTULO_AUDITAR]
+    assert [p.proto.popover.label for p in at.get("popover")] == [barra.ROTULO_PROYECTO, barra.ROTULO_AUDITAR]
 
 
 def test_importar_plano_aparece_si_existe_el_paquete_y_lleva_a_la_hoja(
@@ -251,13 +256,13 @@ def test_proyecto_muestra_el_caso_y_que_no_hay_proyecto_abierto(monkeypatch, cas
 def test_proyecto_nuevo_con_nombre_vacio_se_rechaza_con_mensaje(monkeypatch, caso):
     at = _crear(_barra(monkeypatch, caso), "   ")
     assert "no puede quedar vacio" in _textos(at)
-    assert at.session_state[CLAVE_PROYECTO] is None
+    assert _abierto(at) is None
 
 
 def test_proyecto_nuevo_con_nombre_repetido_se_rechaza_con_mensaje(monkeypatch, caso):
     at = _crear(_barra(monkeypatch, caso), NOMBRE_PROYECTO.lower())
     assert "Ya existe un proyecto" in _textos(at)
-    assert at.session_state[CLAVE_PROYECTO] is None
+    assert _abierto(at) is None
 
 
 def test_proyecto_nuevo_valido_se_crea_se_abre_y_limpia_el_campo(monkeypatch, caso):

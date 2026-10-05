@@ -350,3 +350,43 @@ def test_son_once_pantallas_y_la_hoja_va_justo_despues_de_elaborar() -> None:
     assert len(rutas) == 11
     assert rutas.index("hoja") == rutas.index("elaborar") + 1
     assert pagina_por_ruta("hoja").seccion == SECCION_TRABAJO
+
+
+# --- SF4 4.2: la barra de herramientas va en el marco (RF-60) ----------------------------------
+
+ROTULOS_DE_LA_BARRA = ("Precios", "Guardar version", "Exportar Excel", "Recorrido guiado")
+
+
+def _rotulos_de_botones(at: AppTest) -> list[str]:
+    return [boton.label for boton in at.button]
+
+
+def test_la_aplicacion_pinta_la_barra_encima_de_la_pantalla(monkeypatch, tmp_path: Path) -> None:
+    at = _aplicacion(monkeypatch, tmp_path)
+    assert not at.exception, [excepcion.value for excepcion in at.exception]
+    rotulos = _rotulos_de_botones(at)
+    for esperado in ROTULOS_DE_LA_BARRA:
+        assert esperado in rotulos
+    assert [p.proto.popover.label for p in at.get("popover")] == ["Proyecto", "Auditar"]
+
+
+def test_el_modo_entrega_conserva_la_barra_completa(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.setenv(VARIABLE_MODO_ENTREGA, "1")
+    at = _aplicacion(monkeypatch, tmp_path)
+    assert not at.exception, [excepcion.value for excepcion in at.exception]
+    for esperado in ROTULOS_DE_LA_BARRA:
+        assert esperado in _rotulos_de_botones(at)
+
+
+def test_la_barra_se_pinta_antes_que_el_titulo_de_cada_pantalla(
+    monkeypatch, base_sembrada
+) -> None:
+    at = _marco(monkeypatch, base_sembrada, "catalogo")
+    assert "Recorrido guiado" in _rotulos_de_botones(at)
+    assert [titulo.value for titulo in at.title] == ["Catalogo de partidas e insumos"]
+
+
+def test_el_boton_de_la_barra_lleva_a_la_pantalla_con_ir_a(monkeypatch, base_sembrada) -> None:
+    at = _marco(monkeypatch, base_sembrada, "catalogo")
+    next(b for b in at.button if b.label == "Precios").click().run()
+    assert at.session_state["destino"] == "actualizacion"
