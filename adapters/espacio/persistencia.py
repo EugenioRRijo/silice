@@ -15,6 +15,7 @@ from decimal import Decimal
 from sqlalchemy import (
     Boolean,
     Column,
+    Connection,
     Engine,
     Integer,
     MetaData,
@@ -140,9 +141,13 @@ TABLAS = (
 )
 
 
-def crear_esquema_espacio(motor: Engine) -> None:
-    """Crea las tablas `esp_*` que falten. Idempotente; no toca las demás tablas de la base."""
-    _metadata.create_all(motor)
+def crear_esquema_espacio(destino: Engine | Connection) -> None:
+    """Crea las tablas `esp_*` que falten. Idempotente; no toca las demás tablas de la base.
+
+    `destino` es el motor o, para guardar una version y sus filas en UNA sola sesion (SF3), la
+    conexion de esa sesion (`sesion.connection()`): una segunda conexion no puede crear tablas
+    mientras la sesion ya escribio."""
+    _metadata.create_all(destino)
 
 
 def _coord_a_texto(c: Coord) -> str:
