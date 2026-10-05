@@ -1,7 +1,7 @@
 """Interfaz de derivación de cantidades: `derivar(espacio, especialidad) -> list[ItemComputo]`.
 
-Despacha por especialidad. Agua llega con la tarea 1.5; datos y electricidad (2.1) devuelven
-lista vacía hasta entonces. Un espacio vacío no deriva nada (FR-1).
+Despacha por especialidad. Agua llega con la tarea 1.5, datos con la 2.1; electricidad (2.2)
+devuelve lista vacía hasta entonces. Un espacio vacío no deriva nada (FR-1).
 """
 
 from __future__ import annotations
@@ -9,6 +9,7 @@ from __future__ import annotations
 from collections.abc import Callable
 
 from adapters.espacio.especialidades.agua import derivar_agua
+from adapters.espacio.especialidades.datos import derivar_datos
 from adapters.espacio.modelo import Espacio
 from core.contracts.item_computo import ItemComputo
 
@@ -19,7 +20,7 @@ def _sin_partidas(_espacio: Espacio) -> list[ItemComputo]:
 
 _DERIVADORES: dict[str, Callable[[Espacio], list[ItemComputo]]] = {
     "agua": derivar_agua,
-    "datos": _sin_partidas,
+    "datos": derivar_datos,
     "electricidad": _sin_partidas,
 }
 

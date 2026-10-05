@@ -19,13 +19,23 @@ from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
 from decimal import Decimal
 
-from adapters.espacio.especialidades import SUPUESTO_DECLARADO, Constante, porcentaje
+from adapters.espacio.especialidades import SUPUESTO_DECLARADO, Constante
+from adapters.espacio.especialidades.comun import (
+    CERO,
+    UNIDAD_CONTEO,
+    UNIDAD_LONGITUD,
+    UNO,
+    codigo_diametro,
+    datos_de_valor,
+    etiqueta,
+    texto_diametro,
+    valor_de,
+)
+from adapters.espacio.especialidades.comun import item as _item_comun
 from adapters.espacio.geometria import (
     Accesorio,
     Segmento,
     contar_accesorios,
-    magnitud_diametro,
-    normalizar_diametro,
     unir_segmentos,
 )
 from adapters.espacio.modelo import (
@@ -40,7 +50,7 @@ from adapters.espacio.modelo import (
 )
 from adapters.espacio.origen import clave_esp
 from core.contracts.dominio import Dominio
-from core.contracts.item_computo import ItemComputo, OrigenTipo
+from core.contracts.item_computo import ItemComputo
 
 # --- constantes (un solo lugar) ----------------------------------------------------------
 
@@ -60,11 +70,6 @@ DESPERDICIO_TUBERIA_AGUA_FRIA = Decimal(_D1.valor)
 DESPERDICIO_TUBERIA_DRENAJE = Decimal(_D1B.valor)
 DESPERDICIO_ACCESORIOS_Y_PICADO = Decimal(_D2.valor)
 MATERIAL_POR_DEFECTO = str(_D6.valor)
-
-UNIDAD_LONGITUD = "m"
-UNIDAD_CONTEO = "u"
-CERO = Decimal(0)
-UNO = Decimal(1)
 
 
 @dataclass(frozen=True, slots=True)
@@ -101,46 +106,6 @@ _DRENAJE = _Sistema(
 # --- utilidades -----------------------------------------------------------------------------
 
 
-LIMITE_ORIGEN = 120  # core/models/entidades.py: origen_id es String(120)
-
-
-def _origen(principales: Iterable[str], secundarios: Iterable[str]) -> str:
-    """`origen_id` de a lo más 120 caracteres, determinista y trazable hasta la fuente.
-
-    Cita primero las referencias principales (fuentes) y luego las secundarias (segmentos o
-    puntos), cada grupo ordenado, mientras quepan; las que no caben se resumen en un sufijo `;+N`.
-    La lista completa no se guarda (el contrato no tiene dónde): se recalcula desde la fuente.
-    """
-    refs = sorted(set(principales))
-    refs += sorted(set(secundarios) - set(refs))
-    elegidas: list[str] = []
-    largo = 0
-    for i, ref in enumerate(refs):
-        nuevo = largo + (1 if elegidas else 0) + len(ref)
-        reserva = len(f";+{len(refs)}") if i < len(refs) - 1 else 0
-        if nuevo + reserva > LIMITE_ORIGEN:
-            break
-        elegidas.append(ref)
-        largo = nuevo
-    if not elegidas:  # una sola referencia desmedida: se corta, no se desborda
-        elegidas = [refs[0][: LIMITE_ORIGEN - 8]]
-    omitidas = len(refs) - len(elegidas)
-    texto = ";".join(elegidas)
-    return f"{texto};+{omitidas}" if omitidas else texto
-
-
-def _codigo_diametro(diametro: str | None) -> str:
-    return diametro.replace(" ", "-") if diametro else "SIN-DIAMETRO"
-
-
-def _texto_diametro(diametro: str | None) -> str:
-    return f'{diametro}"' if diametro else "sin diámetro declarado"
-
-
-def _etiqueta(c: Constante) -> str:
-    return f"desperdicio {porcentaje(Decimal(c.valor))}: {c.fuente}"
-
-
 def _item(
     codigo: str,
     descripcion: str,
@@ -152,55 +117,18 @@ def _item(
     parametros: dict[str, Decimal],
     especificaciones: dict[str, str],
 ) -> ItemComputo:
-    return ItemComputo(
-        codigo_partida=codigo,
-        descripcion=descripcion,
-        unidad=unidad,
-        cantidad=cantidad,
-        origen_id=_origen(principales, secundarios),
-        origen_tipo=OrigenTipo.REGLA,
-        dominio=Dominio.CIVIL,
-        regla=regla,
-        parametros=parametros,
-        especificaciones=especificaciones,
+    return _item_comun(
+        codigo,
+        descripcion,
+        unidad,
+        cantidad,
+        principales,
+        secundarios,
+        regla,
+        parametros,
+        especificaciones,
+        Dominio.CIVIL,
     )
-
-
-def _datos_de_material(puntos: dict[str, Punto]) -> dict[str, tuple[int, str]]:
-    """Por punto: rango de la magnitud de su diametro (-1 vale lo que no declara; los rangos
-    conservan el orden de las magnitudes, asi la comparacion por segmento es entre enteros) y su
-    material en mayusculas ('' si no declara). Se calcula una vez por derivacion, no por segmento
-    (RNF-11)."""
-    magnitudes = {
-        i: magnitud_diametro(d) if (d := normalizar_diametro(p.espec.get("diametro"))) else -1
-        for i, p in puntos.items()
-    }
-    rango = {m: r for r, m in enumerate(sorted(set(magnitudes.values())))}
-    return {
-        i: (
-            rango[m],
-            puntos[i].espec.get("material", "").strip().upper(),
-        )
-        for i, m in magnitudes.items()
-    }
-
-
-def _material_de(
-    segmento: Segmento,
-    puntos: dict[str, Punto],
-    datos: dict[str, tuple[int, str]] | None = None,
-) -> tuple[str, bool]:
-    """Material del segmento y si es el de por defecto (D-6).
-
-    Entre los puntos de mayor diámetro que lo sirven, el primero en orden alfabético de los
-    materiales declarados: no depende de los ids ni del orden de entrada."""
-    datos = _datos_de_material(puntos) if datos is None else datos
-    servidos = [datos[i] for i in segmento.sirve if i in datos]
-    mayor = max((m for m, _ in servidos), default=-1)
-    declarados = sorted(mat for m, mat in servidos if m == mayor and mat)
-    if declarados:
-        return declarados[0], False
-    return MATERIAL_POR_DEFECTO, True
 
 
 def superficie_de_segmento(s: Segmento) -> str:
@@ -226,9 +154,9 @@ def _tuberias(
     sistema: _Sistema, segmentos: list[Segmento], puntos: dict[str, Punto]
 ) -> Iterator[ItemComputo]:
     grupos: dict[tuple[str, str | None], list[tuple[Segmento, bool]]] = defaultdict(list)
-    datos = _datos_de_material(puntos)
+    datos = datos_de_valor(puntos, "material")
     for s in segmentos:
-        material, por_defecto = _material_de(s, puntos, datos)
+        material, por_defecto = valor_de(s.sirve, datos, MATERIAL_POR_DEFECTO)
         grupos[(material, s.diametro)].append((s, por_defecto))
     desperdicio = Decimal(sistema.desperdicio_tuberia.valor)
     for (material, diametro), con_flag in grupos.items():
@@ -239,9 +167,9 @@ def _tuberias(
         if diametro:
             especificaciones["diametro"] = f"{diametro} pulg"
         yield _item(
-            f"{sistema.prefijo}-TUB-{material}-{_codigo_diametro(diametro)}",
-            f"Tubería de {sistema.nombre} {material} {_texto_diametro(diametro)} "
-            f"({_etiqueta(sistema.desperdicio_tuberia)}{nota})",
+            f"{sistema.prefijo}-TUB-{material}-{codigo_diametro(diametro)}",
+            f"Tubería de {sistema.nombre} {material} {texto_diametro(diametro)} "
+            f"({etiqueta(sistema.desperdicio_tuberia)}{nota})",
             UNIDAD_LONGITUD,
             longitud * (UNO + desperdicio),
             (clave_esp("esp_fuentes", s.fuente_id) for s in segs),
@@ -260,8 +188,8 @@ def _accesorios(sistema: _Sistema, segmentos: list[Segmento]) -> Iterator[ItemCo
         conteo = Decimal(sum(a.cantidad for a in accs))
         nombre = "Codo" if tipo == "codo" else "Tee"
         yield _item(
-            f"{sistema.prefijo}-{tipo.upper()}-{_codigo_diametro(diametro)}",
-            f"{nombre} de {sistema.nombre} {_texto_diametro(diametro)} ({_etiqueta(_D2)})",
+            f"{sistema.prefijo}-{tipo.upper()}-{codigo_diametro(diametro)}",
+            f"{nombre} de {sistema.nombre} {texto_diametro(diametro)} ({etiqueta(_D2)})",
             UNIDAD_CONTEO,
             conteo * (UNO + DESPERDICIO_ACCESORIOS_Y_PICADO),
             (clave_esp("esp_fuentes", a.fuente_id) for a in accs),
@@ -282,7 +210,7 @@ def _picado(sistema: _Sistema, segmentos: list[Segmento]) -> Iterator[ItemComput
         yield _item(
             f"{sistema.prefijo}-PICADO-{superficie}",
             f"Picado y resane de {superficie.lower()} para tubería de {sistema.nombre} "
-            f"({_etiqueta(_D2)})",
+            f"({etiqueta(_D2)})",
             UNIDAD_LONGITUD,
             longitud * (UNO + DESPERDICIO_ACCESORIOS_Y_PICADO),
             (clave_esp("esp_fuentes", s.fuente_id) for s in segs),
@@ -304,7 +232,7 @@ def _por_punto(sistema: _Sistema, puntos: list[Punto]) -> Iterator[ItemComputo]:
         n = Decimal(len(con_llave))
         yield _item(
             f"{sistema.prefijo}-LLAVE",
-            f"Llave de paso de {sistema.nombre} ({_etiqueta(_D2)})",
+            f"Llave de paso de {sistema.nombre} ({etiqueta(_D2)})",
             UNIDAD_CONTEO,
             n * factor,
             _fuentes_de(con_llave),
@@ -317,7 +245,7 @@ def _por_punto(sistema: _Sistema, puntos: list[Punto]) -> Iterator[ItemComputo]:
         n = Decimal(len(puntos))
         yield _item(
             f"{sistema.prefijo}-SALIDA",
-            f"{sistema.salida} ({_etiqueta(_D2)})",
+            f"{sistema.salida} ({etiqueta(_D2)})",
             UNIDAD_CONTEO,
             n * factor,
             _fuentes_de(puntos),
