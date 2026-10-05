@@ -90,8 +90,10 @@ def test_los_enlaces_son_trazables_por_regla():
         # (regla R1 de verificacion: trazabilidad geometrica)
         assert evaluar_regla(enlace.regla, enlace.parametros) == enlace.cantidad
         assert enlace.unidad == "m"
-        assert enlace.especificaciones["origen"]
-        assert enlace.especificaciones["destino"]
+        # M-3: el extremo de un enlace no es una especificacion comparable (R4 daba un INFO por
+        # clave sin valor): lo traza `origen_id` (la fila del CSV) y la topologia
+        assert "origen" not in enlace.especificaciones
+        assert "destino" not in enlace.especificaciones
 
 
 def test_origen_id_es_la_clave_de_fila():

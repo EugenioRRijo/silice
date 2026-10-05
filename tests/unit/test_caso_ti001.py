@@ -53,11 +53,14 @@ def test_precios_unitarios(resultado, codigo, precio_unitario):
 
 
 def test_auditoria_cumple_sin_errores(resultado):
-    """Las siete reglas corren; los únicos avisos son INFO de R4 (origen/destino de los tramos)."""
+    """Las siete reglas corren y no queda ningún hallazgo. Hasta SF‑2 quedaban 40 INFO de R4 (M‑3: el
+    adaptador telecom emitía `origen` y `destino` como especificaciones y R4 no los reconocía en el
+    APU); cambia a propósito, con el ruling SF2‑M3 de `docs/bitacora/2026-10-sf.md` (spec §8.3)."""
     informe = resultado.informe
     assert informe.cumple
-    assert {h.regla for h in informe.hallazgos} == {"R4"}
-    assert all(h.severidad is Severidad.INFO for h in informe.hallazgos)
+    assert len(informe.reglas_evaluadas) == 7
+    assert not informe.hallazgos
+    assert not [h for h in informe.hallazgos if h.regla == "R4"]
 
 
 def test_el_motor_coincide_con_el_recalculo_independiente(resultado):
