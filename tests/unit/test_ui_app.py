@@ -390,3 +390,28 @@ def test_el_boton_de_la_barra_lleva_a_la_pantalla_con_ir_a(monkeypatch, base_sem
     at = _marco(monkeypatch, base_sembrada, "catalogo")
     next(b for b in at.button if b.label == "Precios").click().run()
     assert at.session_state["destino"] == "actualizacion"
+
+
+def test_el_modo_entrega_mantiene_importar_plano_y_guardar_y_oculta_investigacion(
+    monkeypatch, tmp_path: Path
+) -> None:
+    import streamlit as st
+
+    from ui import barra
+
+    llamadas: list[object] = []
+    original = st.navigation
+
+    def espia(paginas, **kwargs):
+        llamadas.append(paginas)
+        return original(paginas, **kwargs)
+
+    monkeypatch.setattr(st, "navigation", espia)
+    monkeypatch.setattr(barra, "hay_importacion_de_planos", lambda *a: True)
+    monkeypatch.setenv(VARIABLE_MODO_ENTREGA, "1")
+    at = _aplicacion(monkeypatch, tmp_path)
+    assert not at.exception, [excepcion.value for excepcion in at.exception]
+    rotulos = _rotulos_de_botones(at)
+    assert "Importar plano" in rotulos
+    assert "Guardar version" in rotulos
+    assert list(llamadas[0]) == [SECCION_TRABAJO]  # ninguna seccion de Investigacion

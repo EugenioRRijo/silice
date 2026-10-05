@@ -41,7 +41,7 @@ class Subida:
         ("/etc/passwd", "passwd"),
         ("C:\\Windows\\win.ini", "win.ini"),
         ("\\\\servidor\\recurso\\datos.csv", "datos.csv"),
-        ("C:datos.csv", "C_datos.csv"),
+        ("C:datos.csv", "C"),  # el `:` corta: lo que sigue seria un flujo de datos de NTFS
         ('a<b>c|d?e*f"g.csv', "a_b_c_d_e_f_g.csv"),
         ("con\x00trol\x1f.csv", "con_trol_.csv"),
         ("  espacios.csv  ", "espacios.csv"),
@@ -145,3 +145,51 @@ def test_las_pantallas_con_subida_usan_el_guardado_seguro(pagina):
 def test_ninguna_pantalla_une_el_nombre_del_cliente_a_una_carpeta(pagina):
     texto = (RAIZ / "ui" / "paginas" / f"{pagina}.py").read_text(encoding="utf-8")
     assert "/ archivo.name" not in texto
+
+
+@pytest.mark.parametrize(
+    ("entrada", "esperado"),
+    [
+        ("a.csv:x", "a.csv"),
+        ("a.csv::$DATA", "a.csv"),
+        ("carpeta\a.csv:flujo:otro", "a.csv"),
+        ("../a.xlsx:Zone.Identifier", "a.xlsx"),
+        ("CON:x.csv", "_CON"),  # tras cortar queda un reservado
+    ],
+)
+def test_los_flujos_alternos_de_datos_no_cambian_la_extension(entrada, esperado):
+    assert nombre_seguro(entrada) == esperado
+
+
+@pytest.mark.parametrize("entrada", [":x", "::$DATA", "carpeta/:x.csv"])
+def test_un_nombre_que_empieza_en_dos_puntos_se_rechaza(entrada):
+    with pytest.raises(ValueError, match="nombre utilizable"):
+        nombre_seguro(entrada)
+
+
+@pytest.mark.parametrize(
+    ("entrada", "esperado"),
+    [
+        ("CONIN$", "_CONIN$"),
+        ("conin$.csv", "_conin$.csv"),
+        ("CONOUT$.txt", "_CONOUT$.txt"),
+        ("ConOut$", "_ConOut$"),
+        ("COM¹", "_COM¹"),
+        ("com².csv", "_com².csv"),
+        ("COM³.tar.gz", "_COM³.tar.gz"),
+        ("LPT¹", "_LPT¹"),
+        ("lpt².csv", "_lpt².csv"),
+        ("LPT³.xlsx", "_LPT³.xlsx"),
+        ("CONIN.csv", "CONIN.csv"),  # sin el `$` no es reservado
+        ("COM⁴.csv", "COM⁴.csv"),
+    ],
+)
+def test_reservados_con_dolar_y_superindices_se_renombran(entrada, esperado):
+    assert nombre_seguro(entrada) == esperado
+
+
+def test_el_mensaje_de_nombre_inutilizable_empieza_con_mayuscula():
+    with pytest.raises(ValueError) as error:
+        nombre_seguro("..")
+    assert str(error.value)[0].isupper()
+    assert str(error.value) == "El archivo subido no trae un nombre utilizable"

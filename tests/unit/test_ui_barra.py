@@ -171,7 +171,7 @@ def test_guardar_y_exportar_estan_deshabilitados_hasta_que_llegue_sf3(
     at = _barra(monkeypatch, caso_con_version[0])
     boton = _boton(at, rotulo)
     assert boton.disabled is True
-    assert boton.help == "disponible cuando se complete SF3"
+    assert boton.help == "Todavía no está disponible en esta versión del prototipo."
     assert "destino" not in at.session_state
 
 
@@ -250,7 +250,8 @@ def _crear(at: AppTest, nombre: str) -> AppTest:
 def test_proyecto_muestra_el_caso_y_que_no_hay_proyecto_abierto(monkeypatch, caso):
     at = _barra(monkeypatch, caso)
     texto = _textos(at)
-    assert str(caso) in texto
+    assert caso.name in texto
+    assert str(caso) not in texto  # la ruta completa va en el tooltip, no a la vista
     assert "Ningun proyecto abierto" in texto
 
 
@@ -332,3 +333,86 @@ def test_abrir_esta_deshabilitado_si_el_caso_no_tiene_proyectos(monkeypatch, tmp
     at = _barra(monkeypatch, vacio)
     assert _boton(at, barra.ROTULO_ABRIR).disabled is True
     assert at.selectbox(key=barra.CLAVE_ABRIR).options == []
+
+
+# --- correcciones de la revision de usabilidad -------------------------------------------------
+
+AVISO_SIN_HOJA = (
+    "Guardar versión y Exportar Excel se habilitarán cuando la hoja del proyecto esté completa."
+)
+
+
+def test_aviso_visible_bajo_los_botones_deshabilitados_y_sin_siglas_internas(
+    monkeypatch, caso_con_version
+):
+    _sin_funciones_de_sf3(monkeypatch)
+    at = _barra(monkeypatch, caso_con_version[0])
+    assert AVISO_SIN_HOJA in [c.value for c in at.caption]
+    for texto in (_textos(at), _boton(at, barra.ROTULO_GUARDAR).help):
+        assert "SF3" not in texto
+        assert "SF5" not in texto
+
+
+def test_con_la_hoja_completa_el_aviso_desaparece(monkeypatch, caso_con_version):
+    _con_funciones_de_sf3(monkeypatch)
+    at = _barra(monkeypatch, caso_con_version[0])
+    assert AVISO_SIN_HOJA not in [c.value for c in at.caption]
+
+
+def test_auditar_sin_version_manda_a_verlo_en_la_hoja(monkeypatch, caso):
+    from ui.proyectos import crear_proyecto_nuevo
+
+    crear_proyecto_nuevo(caso, "Torre B")
+    at = _barra(monkeypatch, caso, estado={CLAVE_PROYECTO: "Torre B"})
+    assert "(véalo en la hoja del proyecto)" in _textos(at)
+
+
+def test_el_caso_muestra_solo_el_nombre_y_la_ruta_completa_va_en_la_ayuda(monkeypatch, caso):
+    at = _barra(monkeypatch, caso)
+    leyenda = next(c for c in at.caption if c.value.startswith("Caso abierto"))
+    assert leyenda.value == f"Caso abierto: {caso.name}"
+    assert leyenda.help == str(caso)
+
+
+def _fuera_del_popover(at: AppTest) -> str:
+    """Textos de la barra que no estan dentro de un desplegable (los que se ven siempre)."""
+    textos: list[str] = []
+
+    def recorrer(bloque) -> None:
+        for hijo in bloque.children.values():
+            tipo = getattr(hijo, "type", "")
+            if tipo == "popover":
+                continue
+            if hasattr(hijo, "children"):
+                recorrer(hijo)
+            elif tipo in ("success", "error", "markdown", "caption"):
+                textos.append(hijo.value)
+
+    recorrer(at.main)
+    return " ".join(textos)
+
+
+def test_el_mensaje_de_crear_se_ve_tambien_fuera_del_popover(monkeypatch, caso):
+    at = _crear(_barra(monkeypatch, caso), "Torre B")
+    assert any("Torre B" in e.value and "creado" in e.value for e in at.success)
+    assert "Torre B" in _fuera_del_popover(at)
+
+
+def test_el_error_de_crear_se_ve_fuera_del_popover(monkeypatch, caso):
+    at = _crear(_barra(monkeypatch, caso), "   ")
+    assert any("no puede quedar vacio" in e.value for e in at.error)
+    assert "no puede quedar vacio" in _fuera_del_popover(at)
+
+
+def test_el_mensaje_de_abrir_se_ve_fuera_del_popover_y_una_sola_vez(monkeypatch, caso):
+    at = _barra(monkeypatch, caso)
+    at.selectbox(key=barra.CLAVE_ABRIR).select(NOMBRE_PROYECTO)
+    _boton(at, barra.ROTULO_ABRIR).click().run()
+    assert [e.value for e in at.success].count(f"Proyecto «{NOMBRE_PROYECTO}» abierto.") == 1
+    at.run()
+    assert not at.success  # el mensaje se consumio
+
+
+def test_el_proyecto_abierto_se_nombra_bajo_la_barra(monkeypatch, caso_con_version):
+    at = _barra(monkeypatch, caso_con_version[0], estado={CLAVE_PROYECTO: NOMBRE_PROYECTO})
+    assert f"Proyecto abierto: **{NOMBRE_PROYECTO}**" in [m.value for m in at.markdown]

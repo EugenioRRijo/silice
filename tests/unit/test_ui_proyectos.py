@@ -100,3 +100,17 @@ def test_resumen_de_auditoria_coincide_con_el_informe_emitido(base):
     for severidad in Severidad:
         assert resumen.por_severidad[severidad.name] == esperado.get(severidad.name, 0)
     assert resumen.total >= 1  # la base lleva un pendiente: el informe no esta vacio
+
+
+def test_crear_normaliza_los_espacios_interiores(base):
+    ruta, _ = base
+    assert proyectos.crear_proyecto_nuevo(ruta, "  Torre   B	 norte ") == "Torre B norte"
+    assert "Torre B norte" in proyectos.listar_proyectos(ruta)
+
+
+def test_el_nombre_normalizado_se_compara_sin_distinguir_mayusculas(base):
+    ruta, _ = base
+    proyectos.crear_proyecto_nuevo(ruta, "Torre B")
+    with pytest.raises(ProyectoInvalido, match="Ya existe"):
+        proyectos.crear_proyecto_nuevo(ruta, "TORRE    b")
+    assert proyectos.listar_proyectos(ruta).count("Torre B") == 1
