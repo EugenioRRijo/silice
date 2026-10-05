@@ -531,9 +531,13 @@ def test_s9_falla_si_la_mediana_supera_el_umbral_y_dice_la_cifra():
 
 def test_s9_con_un_registro_ilegible_o_de_otro_tamano_es_pendiente():
     assert evaluar_s9_rnf11({})[0] is Estado.PENDIENTE
-    assert evaluar_s9_rnf11({"mediana_s": "x", "umbral_s": 2.0, "puntos": 500})[0] is Estado.PENDIENTE
+    assert (
+        evaluar_s9_rnf11({"mediana_s": "x", "umbral_s": 2.0, "puntos": 500})[0] is Estado.PENDIENTE
+    )
     # una medicion de menos de 500 puntos no es la que pide RNF-11
-    assert evaluar_s9_rnf11({"mediana_s": 0.1, "umbral_s": 2.0, "puntos": 30})[0] is Estado.PENDIENTE
+    assert (
+        evaluar_s9_rnf11({"mediana_s": 0.1, "umbral_s": 2.0, "puntos": 30})[0] is Estado.PENDIENTE
+    )
 
 
 def test_s9_lee_el_registro_que_deja_el_script(tmp_path):

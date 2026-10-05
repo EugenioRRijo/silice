@@ -35,3 +35,6 @@ Thumbs.db
 # Salida de la prueba descartable del editor de tablas (SF0)
 scripts/_salida_prueba_editor.log
 coverage.json
+
+# Cifra de RNF-11 que deja scripts/medir_rnf11.py (la lee la meta S9)
+scripts/_salida_rnf11.json

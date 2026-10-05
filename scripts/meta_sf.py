@@ -23,6 +23,10 @@ SF-E2 a SF-E7, spec 12.2), asi que S4 compara `gsf1` contra el FIN de SF2 (`gsf2
 versiones, restauracion, instantanea, cotizacion, punto de equilibrio y Excel) y llega a OK con
 ellas, a la espera de las de la pantalla (rama `inc/sf3`); S9 sigue PENDIENTE hasta
 `medir_rnf11.py`.
+Desde la rama `inc/sf3` (hoja) S9 lee la cifra que deja `scripts/medir_rnf11.py` en
+`scripts/_salida_rnf11.json`: PENDIENTE si no hay cifra (o no es de 500 puntos), OK si la
+mediana es <= 2 s y FALLA si la supera. El veredicto se toma en el equipo de desarrollo; la CI
+solo registra la cifra y no ejecuta esta meta.
 S10 mide con el `coverage.json` que deja la corrida con `--cov`, y solo si es posterior al codigo
 de `adapters/espacio` (`cobertura_vigente`); si no, queda PENDIENTE.
 
@@ -79,6 +83,9 @@ RUTA_ERS = RAIZ / "docs" / "ERS.md"
 #: Informe de cobertura (`coverage json`) que deja la corrida de la suite con `--cov`.
 RUTA_COBERTURA = RAIZ / "coverage.json"
 UMBRAL_COBERTURA_ESPACIO = 80.0
+#: Cifra de RNF-11 que deja `scripts/medir_rnf11.py` (ignorada por git) y puntos que exige la spec.
+RUTA_RNF11 = RAIZ / "scripts" / "_salida_rnf11.json"
+PUNTOS_RNF11 = 500
 
 RUTA_MEMORIAS = RAIZ / "tests" / "fixtures" / "memorias"
 RUTA_ESPACIO = RAIZ / "adapters" / "espacio"
@@ -103,6 +110,12 @@ GRUPOS_S5: dict[str, tuple[str, ...]] = {
     "cotizacion por proyecto": ("tests/integration/test_cotizacion_proyecto.py",),
     "punto de equilibrio": ("tests/unit/test_equilibrio.py",),
     "Excel": ("tests/unit/test_excel_hoja.py", "tests/unit/test_excel_m1.py"),
+    # rama `inc/sf3`: la hoja sobre el nucleo (borrador, versiones en una base y pantalla)
+    "hoja del proyecto": (
+        "tests/unit/test_hoja_borrador.py",
+        "tests/integration/test_hoja_versiones.py",
+        "tests/unit/test_ui_hoja.py",
+    ),
 }
 
 #: Memorias de calculo de SF1: nombre -> argumentos de `git log` que localizan el PRIMER commit del
@@ -305,9 +318,7 @@ def evaluar_s3_especialidades(
     return Estado.OK, f"pruebas en verde: {detalle}"
 
 
-def evaluar_s4_core(
-    base: str | None, diff: str | None, punta: str = "HEAD"
-) -> tuple[Estado, str]:
+def evaluar_s4_core(base: str | None, diff: str | None, punta: str = "HEAD") -> tuple[Estado, str]:
     """S4: `core/` no cambio desde `base` hasta `punta` (`git diff --stat <base>..<punta> -- core/`
     vacio; `punta` es `HEAD` o, desde SF3, el fin de SF2: ver `punta_de_s4`).
 
@@ -335,7 +346,7 @@ def punta_de_s4(existe: Callable[[str], bool]) -> str:
 def evaluar_s5_nucleo(grupos: dict[str, tuple[int, int] | None]) -> tuple[Estado, str]:
     """S5 (nucleo de SF3): cada grupo es `(pasan, total)`; `None` o `(0, 0)` si aun no tiene
     pruebas (PENDIENTE). Un fallo pesa mas que una ausencia. OK es parcial: cubre el nucleo; las
-    pruebas de la pantalla de la hoja llegan con la rama `inc/sf3`."""
+    pruebas de la hoja (grupo `hoja del proyecto`) son de la rama `inc/sf3`."""
     fallan = [f"{g} ({r[0]}/{r[1]})" for g, r in grupos.items() if r and r[1] > 0 and r[0] < r[1]]
     if fallan:
         return Estado.FALLA, "pruebas del nucleo que fallan: " + ", ".join(fallan)
@@ -345,9 +356,38 @@ def evaluar_s5_nucleo(grupos: dict[str, tuple[int, int] | None]) -> tuple[Estado
     total = sum(r[1] for r in grupos.values() if r)
     return (
         Estado.OK,
-        f"{len(grupos)} grupos del nucleo en verde ({total} pruebas); la pantalla de la hoja "
-        "llega con SF3 (inc/sf3)",
+        f"{len(grupos)} grupos del nucleo y de la hoja de SF3 en verde ({total} pruebas)",
     )
+
+
+def registro_rnf11(ruta: Path = RUTA_RNF11) -> dict | None:
+    """El registro de `medir_rnf11.py`, o `None` si no existe o no es JSON."""
+    try:
+        registro = json.loads(ruta.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    return registro if isinstance(registro, dict) else None
+
+
+def evaluar_s9_rnf11(registro: dict | None) -> tuple[Estado, str]:
+    """S9: la mediana registrada de la hoja de 500 puntos es <= al umbral (2 s, RNF-11).
+
+    Pura: recibe el registro ya leido. Sin cifra, con una cifra ilegible o de una carga distinta de
+    500 puntos no hay evidencia (PENDIENTE); una mediana por encima del umbral es FALLA."""
+    comando = "corre `uv run python scripts/medir_rnf11.py`"
+    if registro is None:
+        return Estado.PENDIENTE, f"sin cifra de RNF-11: {comando}"
+    try:
+        mediana, umbral = float(registro["mediana_s"]), float(registro["umbral_s"])
+        puntos = int(registro["puntos"])
+    except (KeyError, TypeError, ValueError):
+        return Estado.PENDIENTE, f"el registro de RNF-11 es ilegible: {comando}"
+    if puntos != PUNTOS_RNF11:
+        return Estado.PENDIENTE, f"la cifra es de {puntos} puntos y RNF-11 pide 500: {comando}"
+    texto = f"mediana {mediana:.3f} s con {puntos} puntos (umbral {umbral:.3f} s)".replace(".", ",")
+    if mediana <= umbral:
+        return Estado.OK, texto
+    return Estado.FALLA, texto + ": supera el umbral"
 
 
 def base_de_core(existe: Callable[[str], bool]) -> str | None:
@@ -552,7 +592,7 @@ def _evaluar_metas(codigos: list[str], fase: str | None = None) -> list[Fila]:
         "S6": _pendiente("la barra superior llega con SF4"),
         "S7": _pendiente("la importacion de planos llega con SF5"),
         "S8": _s8,
-        "S9": _pendiente("la medicion de RNF-11 llega con SF3 (medir_rnf11.py, rama inc/sf3)"),
+        "S9": lambda: evaluar_s9_rnf11(registro_rnf11()),
         "S10": _s10,
     }
     return [Fila(codigo, TITULOS[codigo], *chequeos[codigo]()) for codigo in codigos]

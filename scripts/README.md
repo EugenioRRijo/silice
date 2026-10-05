@@ -39,6 +39,7 @@ escribe con `--db`; con `--db` hacia otra ruta basta `--reiniciar`.
 | `simular_corpus.py` | corpus simulado y determinista de composiciones APU | P4.3 · prototipo |
 | `generar_hoja_prueba.py` | generador determinista de puntos (`generar_items`) y composiciones simples para medir la hoja | RNF‑11 · SF0 |
 | `prueba_data_editor.py` | app Streamlit descartable de la prueba corta de `st.data_editor` con 500 puntos (procedimiento en `medir_data_editor.md`) | spec SF §11.3 · SF0 |
+| `medir_rnf11.py` | mide RNF‑11: la hoja del proyecto con 500 puntos del generador, en `ui.hoja` sin Streamlit, desde aplicar una edición hasta tener presupuesto, informe y punto de equilibrio sin persistir (una corrida de calentamiento y la mediana de cinco); **solo registra** la cifra en `scripts/_salida_rnf11.json`, de donde la lee la meta S9 | RNF‑11 · SF3 |
 | `medir_rnf03.py` | mide RNF‑03: el tiempo del recálculo masivo de UC‑02 con N partidas en SQLite local | RNF‑03 |
 | `probar_precios_maprex.py` | prueba los casos didácticos con precios de referencia publicados (MaPreX de julio de 2026 y tabulador CIV): cobertura del listado MaPreX en USD, revaloración del presupuesto 001 civil y de TC‑001/TC‑002, comprobación de MNT‑001 y SIS‑001; siempre en un directorio temporal, sin `--db` (con el extra `ml`, que instala `uv sync --all-extras`, marca los precios atípicos; sin él corre igual y lo declara) | C6 · todos |
 
