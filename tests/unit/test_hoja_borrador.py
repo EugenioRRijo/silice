@@ -361,3 +361,116 @@ def test_un_cambio_de_plan_es_un_cambio_por_partida_y_periodo():
         CambioEditado("plan", codigo, primero[0], "1", "0.5"),
         CambioEditado("plan", codigo, segundo[0], "0", "0.5"),
     ]
+
+
+# --- edicion del APU en la copia de la version (DA-SF-7) -----------------------------------------
+
+
+def _apu_con_tres_grupos():
+    from core.contracts.apu import LineaEquipo, LineaManoObra, LineaMaterial
+
+    return replace(
+        borrador_bano().composiciones["AF-LLAVE"],
+        materiales=(
+            LineaMaterial("Llave", "pza", D("1"), D("10")),
+            LineaMaterial("Cinta", "m", D("0.5"), D("2")),
+        ),
+        equipos=(LineaEquipo("Herramienta", D("2"), D("3"), D("0.03")),),
+        mano_obra=(LineaManoObra("Plomero", D("1"), D("20")),),
+    )
+
+
+def test_las_cantidades_de_linea_se_leen_de_las_tres_tablas_y_el_resto_no_se_toca():
+    apu = _apu_con_tres_grupos()
+    materiales, equipos, mano = hoja.filas_de_apu(apu)
+    materiales[1]["cantidad"] = "0.75"
+    equipos[0]["cantidad"] = "4"
+    mano[0]["cantidad"] = "2"
+    materiales[0]["precio"] = "999"  # una columna no editable: se ignora
+
+    editada = hoja.composicion_con_cantidades(apu, materiales, equipos, mano, "2.5")
+
+    assert editada.rendimiento == D("2.5")
+    assert [m.cantidad for m in editada.materiales] == [D("1"), D("0.75")]
+    assert editada.equipos[0].cantidad == D("4") and editada.mano_obra[0].cantidad == D("2")
+    assert editada.materiales[0].precio == D("10")  # el precio de la lista no se edita aqui
+    assert editada.materiales[1].descripcion == "Cinta"
+
+
+@pytest.mark.parametrize(
+    ("grupo", "valor", "rendimiento", "mensaje"),
+    [
+        (0, "mucho", "1", "cantidad"),
+        (0, "-1", "1", "cantidad"),
+        (0, "1", "0", "rendimiento"),
+        (0, "1", "poco", "rendimiento"),
+    ],
+)
+def test_una_cantidad_o_rendimiento_invalido_dice_cual_y_no_cambia_nada(
+    grupo, valor, rendimiento, mensaje
+):
+    apu = _apu_con_tres_grupos()
+    tablas = list(hoja.filas_de_apu(apu))
+    tablas[grupo][0]["cantidad"] = valor
+
+    with pytest.raises(hoja.HojaInvalida, match=mensaje):
+        hoja.composicion_con_cantidades(apu, *tablas, rendimiento)
+
+
+def test_un_cambio_de_filas_distinto_en_numero_se_rechaza():
+    apu = _apu_con_tres_grupos()
+    materiales, equipos, mano = hoja.filas_de_apu(apu)
+
+    with pytest.raises(hoja.HojaInvalida, match="lineas"):
+        hoja.composicion_con_cantidades(apu, materiales[:1], equipos, mano, "1")
+
+
+def test_cambiar_el_insumo_de_una_linea_toma_la_descripcion_la_unidad_y_el_precio_de_la_lista():
+    apu = _apu_con_tres_grupos()
+    candidato = hoja.FilaInsumo("MT-9", "Llave de bola 1/2", "pza", D("12.50"))
+
+    nueva = hoja.cambiar_insumo(apu, "material", 0, candidato)
+
+    assert (nueva.materiales[0].descripcion, nueva.materiales[0].unidad) == (
+        "Llave de bola 1/2",
+        "pza",
+    )
+    assert nueva.materiales[0].precio == D("12.50") and nueva.materiales[0].cantidad == D("1")
+    assert nueva.materiales[1] == apu.materiales[1]
+    assert nueva.equipos == apu.equipos
+    mano = hoja.cambiar_insumo(
+        apu, "mano_obra", 0, hoja.FilaInsumo("MO-1", "Ayudante", "dia", D("8"))
+    )
+    assert (mano.mano_obra[0].descripcion, mano.mano_obra[0].sueldo) == ("Ayudante", D("8"))
+    equipo = hoja.cambiar_insumo(
+        apu, "equipo", 0, hoja.FilaInsumo("EQ-1", "Taladro", "dia", D("9"))
+    )
+    assert (equipo.equipos[0].descripcion, equipo.equipos[0].precio) == ("Taladro", D("9"))
+    assert equipo.equipos[0].depreciacion == D("0.03")  # la depreciacion es de la linea
+
+
+def test_cambiar_el_insumo_de_una_linea_que_no_existe_o_de_un_tipo_ajeno_se_rechaza():
+    apu = _apu_con_tres_grupos()
+    candidato = hoja.FilaInsumo("MT-9", "x", "pza", D("1"))
+
+    with pytest.raises(hoja.HojaInvalida, match="linea"):
+        hoja.cambiar_insumo(apu, "material", 7, candidato)
+    with pytest.raises(hoja.HojaInvalida, match="tipo"):
+        hoja.cambiar_insumo(apu, "maquinaria", 0, candidato)
+
+
+def test_crear_el_plan_secuencial_da_una_curva_que_cierra_en_el_total():
+    sin_plan = borrador_bano(con_plan=False)
+
+    con_plan = hoja.con_plan_secuencial(sin_plan)
+
+    assert con_plan.plan is not None
+    resultado = hoja.elaborar_borrador(con_plan)
+    assert (
+        resultado.elaboracion.presupuesto.curva[-1].acumulado
+        == resultado.elaboracion.presupuesto.total
+    )
+    codigos = {i.codigo_partida for i in hoja.items_elaborados(con_plan)}
+    assert [r[0][0] for _, r in con_plan.plan] == sorted(
+        codigos, key=lambda c: [i.codigo_partida for i in hoja.items_elaborados(con_plan)].index(c)
+    )

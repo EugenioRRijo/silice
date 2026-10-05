@@ -834,3 +834,26 @@ def test_la_trazabilidad_de_la_version_lista_sus_celdas(of001):
         ("parametro", "valor"),
     ]
     assert hoja.registros_de_version(sesion, NOMBRE_OF001, "001") == []
+
+
+# ---------------------------------------------------------------------------------------------
+# Insumos candidatos para cambiar la linea de un APU
+# ---------------------------------------------------------------------------------------------
+
+
+def test_los_insumos_candidatos_salen_del_catalogo_con_el_precio_de_la_lista_de_la_version(of001):
+    sesion, _ = of001
+
+    candidatos = hoja.insumos_candidatos(sesion, NOMBRE_OF001, "001", "material", "tubo pvc")
+
+    assert candidatos
+    assert all("tubo pvc" in c.descripcion.lower() for c in candidatos)
+    pvc34 = next(c for c in candidatos if "3/4" in c.descripcion)
+    precio = next(
+        p.precio
+        for p in _modelo(sesion, NOMBRE_OF001, "001").lista_precios.precios
+        if p.insumo_id == _insumo_pvc34(sesion).id
+    )
+    assert pvc34.precio == precio and pvc34.unidad == "m"
+    assert hoja.insumos_candidatos(sesion, NOMBRE_OF001, "001", "equipo", "no existe este") == []
+    assert len(hoja.insumos_candidatos(sesion, NOMBRE_OF001, "001", "material", "", limite=3)) == 3
