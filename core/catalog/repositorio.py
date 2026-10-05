@@ -20,7 +20,7 @@ from dataclasses import dataclass, field
 from datetime import date
 from decimal import Decimal
 
-from sqlalchemy import select
+from sqlalchemy import exists, select
 from sqlalchemy.orm import Session
 
 from core import models
@@ -99,11 +99,19 @@ class Catalogo:
         return [a_rendimiento(modelo) for modelo in self._sesion.scalars(consulta)]
 
     def lista_vigente(self, fecha: date | None = None) -> models.ListaPrecios:
-        """La lista de mayor `fecha_vigencia` menor o igual a `fecha`; hoy si `fecha` es None."""
+        """La lista global de mayor `fecha_vigencia` menor o igual a `fecha` (hoy, sin `fecha`).
+
+        Las listas de alcance de proyecto (cotizaciones, SF‑E7) no se resuelven aquí.
+        """
         limite = fecha if fecha is not None else date.today()
+        # SF‑E7 (DA‑SF‑9): una lista de proyecto nace de una cotización y no es global.
+        de_proyecto = exists().where(
+            models.ListaPreciosOrigen.lista_id == models.ListaPrecios.id,
+            models.ListaPreciosOrigen.alcance == models.ALCANCE_PROYECTO,
+        )
         lista = self._sesion.scalars(
             select(models.ListaPrecios)
-            .where(models.ListaPrecios.fecha_vigencia <= limite)
+            .where(models.ListaPrecios.fecha_vigencia <= limite, ~de_proyecto)
             .order_by(models.ListaPrecios.fecha_vigencia.desc(), models.ListaPrecios.id.desc())
             .limit(1)
         ).one_or_none()

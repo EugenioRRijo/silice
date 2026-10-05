@@ -62,6 +62,7 @@ from core.budget.presupuesto import (
     exigir_composiciones,
 )
 from core.catalog import Catalogo
+from core.catalog.origen import cotizaciones_activas, crear_lista_de_proyecto, lista_base
 from core.catalog.precios import cambios_precio, registrar_cambios, variacion_relativa
 from core.contracts.presupuesto import PartidaPresupuestada, Presupuesto
 from core.contracts.verificacion import Hallazgo, ReglaVerificacion, Severidad
@@ -173,8 +174,17 @@ def actualizar_precios(
     reglas = tuple(reglas)
     modelo = _buscar(session, proyecto_nombre, codigo_presupuesto)
     parametros = _parametros_de(modelo)
-    lista_anterior = modelo.lista_precios
+    # SF‑E7: el historial compara listas base; una cotización activa de la versión (lista de
+    # proyecto) prevalece sobre la lista nueva: se repone sobre ella en otra lista de proyecto.
+    lista_anterior = lista_base(session, modelo.lista_precios)
     catalogo = Catalogo(session)
+    lista_aplicada = crear_lista_de_proyecto(
+        session,
+        modelo.proyecto,
+        lista_nueva,
+        cotizaciones_activas(session, modelo.lista_precios),
+        f"{lista_nueva.nombre} + cotizaciones de {modelo.proyecto.nombre} ({codigo_nuevo})",
+    )
 
     anterior = cargar_presupuesto(session, proyecto_nombre, codigo_presupuesto, catalogo)
     items = [partida.item for partida in anterior.partidas]
@@ -184,7 +194,7 @@ def actualizar_precios(
         session,
         modelo,
         catalogo,
-        lista_nueva,
+        lista_aplicada,
         list(dict.fromkeys(item.codigo_partida for item in items)),
     )
     exigir_composiciones(items, composiciones)
@@ -214,7 +224,7 @@ def actualizar_precios(
         nuevo.presupuesto,
         nuevo.informe,
         proyecto=modelo.proyecto,
-        lista=lista_nueva,
+        lista=lista_aplicada,
         parametros=parametros,
         pendientes=nuevo.pendientes,
         version_origen=modelo,

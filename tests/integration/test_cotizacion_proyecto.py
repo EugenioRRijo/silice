@@ -394,7 +394,7 @@ def test_una_cotizacion_incompleta_o_sin_efecto_se_rechaza_sin_dejar_filas(
     listas = _contar(sesion, models.ListaPrecios)
 
     with pytest.raises(ValueError, match=mensaje):
-        _cotizar(sesion, cemento, "20", **cambios)
+        _cotizar(sesion, cemento, cambios.pop("precio", "20"), **cambios)
 
     assert _contar(sesion, models.Presupuesto) == 1
     assert _contar(sesion, models.ListaPrecios) == listas
