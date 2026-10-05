@@ -18,6 +18,7 @@ Uso: `uv run python scripts/meta_sf.py [--hasta SF0|SF1|SF2|SF3|SF4|SF5] [--json
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import sys
 from collections.abc import Callable
@@ -56,6 +57,9 @@ TITULOS: dict[str, str] = {
 _GUION = "[-‑]"
 
 RUTA_ERS = RAIZ / "docs" / "ERS.md"
+#: Informe de cobertura (`coverage json`) que deja la corrida de la suite con `--cov`.
+RUTA_COBERTURA = RAIZ / "coverage.json"
+UMBRAL_COBERTURA_ESPACIO = 80.0
 
 #: Identificadores que la ERS enmendada debe declarar (spec 4): (prefijo, numeros).
 REQUISITOS_SF: tuple[tuple[str, range], ...] = (
@@ -109,6 +113,41 @@ def evaluar_s1_requisitos(texto_ers: str | None) -> tuple[Estado, str]:
     return Estado.OK, f"los {total} requisitos del sprint final estan definidos en docs/ERS.md"
 
 
+def porcentaje_espacio(texto_json: str) -> float | None:
+    """Porcentaje de lineas cubiertas de `adapters/espacio` en un `coverage.json` (o None)."""
+    try:
+        archivos = json.loads(texto_json).get("files", {})
+    except (ValueError, AttributeError):
+        return None
+    cubiertas = total = 0
+    for ruta, datos in archivos.items():
+        if "adapters/espacio/" in ruta.replace("\\", "/"):
+            resumen = datos.get("summary", {})
+            cubiertas += resumen.get("covered_lines", 0)
+            total += resumen.get("num_statements", 0)
+    return None if total == 0 else 100.0 * cubiertas / total
+
+
+def evaluar_s10_cobertura(
+    porcentaje: float | None, existe_adaptador: bool = True
+) -> tuple[Estado, str]:
+    """S10: cobertura de `adapters/espacio` >= 80 %. Pura: no ejecuta pytest, recibe el dato."""
+    if not existe_adaptador:
+        return Estado.PENDIENTE, "adapters/espacio aun no existe"
+    if porcentaje is None:
+        return Estado.PENDIENTE, "sin dato: corre la suite con --cov y `coverage json`"
+    texto = f"{porcentaje:.2f}".replace(".", ",")
+    if porcentaje >= UMBRAL_COBERTURA_ESPACIO:
+        return Estado.OK, f"cobertura de adapters/espacio {texto} % (umbral 80 %)"
+    return Estado.FALLA, f"cobertura de adapters/espacio {texto} % < 80 %"
+
+
+def _s10() -> tuple[Estado, str]:
+    existe = (RAIZ / "adapters" / "espacio").is_dir()
+    texto = _leer(RUTA_COBERTURA)
+    return evaluar_s10_cobertura(None if texto is None else porcentaje_espacio(texto), existe)
+
+
 def _pendiente(motivo: str) -> Callable[[], tuple[Estado, str]]:
     return lambda: (Estado.PENDIENTE, motivo)
 
@@ -133,7 +172,7 @@ def _evaluar_metas(codigos: list[str]) -> list[Fila]:
         "S7": _pendiente("la importacion de planos llega con SF5"),
         "S8": _pendiente("la regresion se conecta al abrir SF1"),
         "S9": _pendiente("la medicion de RNF-11 llega con SF3"),
-        "S10": _pendiente("adapters/espacio llega con SF1"),
+        "S10": _s10,
     }
     return [Fila(codigo, TITULOS[codigo], *chequeos[codigo]()) for codigo in codigos]
 

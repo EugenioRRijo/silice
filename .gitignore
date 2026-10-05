@@ -34,3 +34,4 @@ Thumbs.db
 
 # Salida de la prueba descartable del editor de tablas (SF0)
 scripts/_salida_prueba_editor.log
+coverage.json
