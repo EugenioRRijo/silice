@@ -64,15 +64,30 @@ def _presupuesto(prefijo: str):
     return resultado.presupuesto, replace(resultado.informe, hallazgos=(hallazgo,))
 
 
+def _leido(prefijo: str) -> str:
+    """Como vuelve el prefijo tras guardar y leer el XML: el analizador normaliza CR a LF."""
+    return "\n" if prefijo == "\r" else prefijo
+
+
 def _celdas_de_texto(ruta: Path, prefijo: str):
+    """Las celdas con el texto del usuario (carga util o encabezado de la tabla) que empiezan por
+    el prefijo; las formulas propias del sistema empiezan por `=` y no cuentan."""
     libro = load_workbook(ruta)
     return [
         (hoja.title, c)
         for hoja in libro
         for fila in hoja.iter_rows()
         for c in fila
-        if isinstance(c.value, str) and c.value.startswith(prefijo)
+        if isinstance(c.value, str)
+        and c.value.startswith(_leido(prefijo))
+        and ("cmd" in c.value or c.value.endswith("col"))
     ]
+
+
+def _hojas_esperadas(prefijo: str, todas: set[str]) -> set[str]:
+    """El contrato recorta los espacios iniciales de algunos textos (descripcion, periodo): con
+    tabulador o retorno de carro solo llegan al libro los que no pasan por ahi."""
+    return {"APU", "Auditoria"} if prefijo in ("\t", "\r") else todas
 
 
 def _formulas_con_carga(ruta: Path) -> list[str]:
@@ -92,7 +107,7 @@ def test_exportar_excel_escribe_como_texto_cada_prefijo_peligroso(prefijo, tmp_p
 
     celdas = _celdas_de_texto(ruta, prefijo)
     hojas = {titulo for titulo, _ in celdas}
-    assert {"Presupuesto", "APU", "Curva", "Auditoria"} <= hojas
+    assert _hojas_esperadas(prefijo, {"Presupuesto", "APU", "Curva", "Auditoria"}) <= hojas
     for titulo, celda in celdas:
         assert celda.data_type == "s", (titulo, celda.coordinate)
         assert celda.quotePrefix, (titulo, celda.coordinate)
@@ -114,7 +129,9 @@ def test_exportar_hoja_escribe_como_texto_cada_prefijo_peligroso(prefijo, tmp_pa
 
     celdas = _celdas_de_texto(ruta, prefijo)
     hojas = {titulo for titulo, _ in celdas}
-    assert {"Presupuesto", "APU", "Plan y curva", "Auditoria", "Espacio y metrajes"} <= hojas
+    todas = {"Presupuesto", "APU", "Plan y curva", "Auditoria", "Espacio y metrajes"}
+    assert _hojas_esperadas(prefijo, todas | set()) <= hojas
+    assert "Espacio y metrajes" in hojas
     for titulo, celda in celdas:
         assert celda.data_type == "s", (titulo, celda.coordinate)
         assert celda.quotePrefix, (titulo, celda.coordinate)

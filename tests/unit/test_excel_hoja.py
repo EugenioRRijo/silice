@@ -1,7 +1,7 @@
 """SF-E4 (RF-59, spec 9.5): el Excel de la hoja con formulas vivas.
 
-El oraculo es un evaluador de formulas de Excel (paquete `formulas`, grupo `dev`): calcula cada celda
-del libro escrito y se compara con el `Decimal` del sistema con tolerancia de +-0,005 por celda
+El oraculo es un evaluador de formulas de Excel (paquete `formulas`, grupo `dev`): calcula cada
+celda del libro escrito y se compara con el `Decimal` del sistema con tolerancia de +-0,005 por celda
 (Excel trabaja en coma flotante). Oraculo adicional: la linea base sigue sumando 1 586,61 USD.
 Casos: la linea base (5 partidas), TI-001 (10 partidas, bono por oficio) y un presupuesto sintetico
 con mano de obra a destajo y equipos. Nada escribe fuera de `tmp_path`.
@@ -18,7 +18,7 @@ from pathlib import Path
 import pytest
 from openpyxl import load_workbook
 
-from core.budget import elaborar, exportar_excel, generar_presupuesto, plan_secuencial
+from core.budget import elaborar, exportar_excel, plan_secuencial
 from core.budget.equilibrio import punto_equilibrio
 from core.budget.excel import TablaExportable, exportar_hoja
 from core.contracts.apu import (
@@ -31,7 +31,6 @@ from core.contracts.apu import (
 )
 from core.contracts.dominio import Dominio
 from core.contracts.item_computo import ItemComputo, OrigenTipo
-from core.verification import auditar
 from tests.fixtures import apu_linea_base as linea_base
 from tests.fixtures import caso_ti001 as ti001
 from tests.fixtures.computo_auditado import items_auditados
