@@ -137,3 +137,10 @@ def test_codos_y_tees_por_grado_de_nodo(memoria: dict) -> None:
                 codos[diametro] = codos.get(diametro, 0) + 1
     assert codos == memoria["codos"]
     assert tees == memoria["tees"]
+
+
+def test_claves_de_la_tabla_markdown_coinciden_con_el_json(memoria: dict) -> None:
+    texto = MEMORIA.read_text(encoding="utf-8")
+    impresas = dict(re.findall(r"^\| (S\d) \| `([^`]+)` \|$", texto, flags=re.MULTILINE))
+    impresas = {k: v.replace("\\|", "|") for k, v in impresas.items()}
+    assert impresas == {s["id"]: s["clave"] for s in memoria["segmentos"]}
