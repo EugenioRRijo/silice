@@ -311,7 +311,7 @@ def test_llave_de_paso_solo_si_se_declara() -> None:
     una = _con_puntos(sin_p1, p2)
     llaves = [i for i in derivar(una, "agua") if i.codigo_partida == "AF-LLAVE"]
     assert len(llaves) == 1 and llaves[0].cantidad == 1
-    assert llaves[0].origen_id == "esp_puntos:P2"
+    assert llaves[0].origen_id == "esp_fuentes:F1;esp_puntos:P2"
     ninguna = replace(una, puntos=(sin_p1, _punto(p2, espec={"llave_de_paso": None})))
     assert not [i for i in derivar(ninguna, "agua") if i.codigo_partida == "AF-LLAVE"]
 

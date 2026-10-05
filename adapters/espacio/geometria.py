@@ -205,6 +205,8 @@ class Segmento:
     diametro: str | None
     empotrado: bool
     conflicto_empotrado: bool = False
+    #: superficie declarada por los tramos que lo forman; None si discrepan
+    superficie: SuperficieTramo | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -223,6 +225,7 @@ class _Pieza:
     sirve: str
     diametro: str | None
     empotrado: bool
+    superficie: SuperficieTramo
 
 
 def _empotrado_de(t: Tramo) -> bool:
@@ -238,7 +241,7 @@ def _piezas_de_fuente(espacio: Espacio, fuente: Fuente) -> list[_Pieza]:
         for t in tramos:
             for a, b in zip(t.vertices, t.vertices[1:], strict=False):
                 if _nodo(a) != _nodo(b):
-                    piezas.append(_Pieza(a, b, sirve, diametro, _empotrado_de(t)))
+                    piezas.append(_Pieza(a, b, sirve, diametro, _empotrado_de(t), t.superficie))
 
     for p in espacio.puntos:
         if p.fuente_id == fuente.id:
@@ -335,12 +338,20 @@ def _segmentos_de_fuente(espacio: Espacio, fuente: Fuente) -> tuple[list[_Pieza]
         ):
             llave = (n1, n2) if (n1.x, n1.y, n1.z) <= (n2.x, n2.y, n2.z) else (n2, n1)
             reg = acumulado.setdefault(
-                llave, {"sirve": set(), "diametros": [], "empotrados": set(), "largo": CERO}
+                llave,
+                {
+                    "sirve": set(),
+                    "diametros": [],
+                    "empotrados": set(),
+                    "superficies": set(),
+                    "largo": CERO,
+                },
             )
             reg["sirve"].add(pz.sirve)
             if pz.diametro is not None:
                 reg["diametros"].append(pz.diametro)
             reg["empotrados"].add(pz.empotrado)
+            reg["superficies"].add(pz.superficie)
             reg["largo"] = max(reg["largo"], (t2 - t1) * largo)
 
     sobre = {s.clave: s for s in espacio.sobrescrituras}
@@ -350,6 +361,8 @@ def _segmentos_de_fuente(espacio: Espacio, fuente: Fuente) -> tuple[list[_Pieza]
         diametro = max(reg["diametros"], key=_magnitud_diametro) if reg["diametros"] else None
         conflicto = len(reg["empotrados"]) > 1
         empotrado = reg["empotrados"] == {True}
+        superficies = reg["superficies"]
+        superficie = next(iter(superficies)) if len(superficies) == 1 else None
         s = sobre.get(clave)
         if s is not None:
             if s.diametro is not None:
@@ -367,6 +380,7 @@ def _segmentos_de_fuente(espacio: Espacio, fuente: Fuente) -> tuple[list[_Pieza]
                 diametro=diametro,
                 empotrado=empotrado,
                 conflicto_empotrado=conflicto,
+                superficie=superficie,
             )
         )
     segmentos.sort(key=lambda s: s.clave)

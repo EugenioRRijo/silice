@@ -34,6 +34,7 @@ from adapters.espacio.modelo import (
     Espacio,
     Especialidad,
     Punto,
+    SuperficieTramo,
     TipoFuente,
     TipoPunto,
 )
@@ -100,8 +101,32 @@ _DRENAJE = _Sistema(
 # --- utilidades -----------------------------------------------------------------------------
 
 
-def _referencias(refs: Iterable[str]) -> str:
-    return ";".join(sorted(set(refs)))
+LIMITE_ORIGEN = 120  # core/models/entidades.py: origen_id es String(120)
+
+
+def _origen(principales: Iterable[str], secundarios: Iterable[str]) -> str:
+    """`origen_id` de a lo más 120 caracteres, determinista y trazable hasta la fuente.
+
+    Cita primero las referencias principales (fuentes) y luego las secundarias (segmentos o
+    puntos), cada grupo ordenado, mientras quepan; las que no caben se resumen en un sufijo `;+N`.
+    La lista completa no se guarda (el contrato no tiene dónde): se recalcula desde la fuente.
+    """
+    refs = sorted(set(principales))
+    refs += sorted(set(secundarios) - set(refs))
+    elegidas: list[str] = []
+    largo = 0
+    for i, ref in enumerate(refs):
+        nuevo = largo + (1 if elegidas else 0) + len(ref)
+        reserva = len(f";+{len(refs)}") if i < len(refs) - 1 else 0
+        if nuevo + reserva > LIMITE_ORIGEN:
+            break
+        elegidas.append(ref)
+        largo = nuevo
+    if not elegidas:  # una sola referencia desmedida: se corta, no se desborda
+        elegidas = [refs[0][: LIMITE_ORIGEN - 8]]
+    omitidas = len(refs) - len(elegidas)
+    texto = ";".join(elegidas)
+    return f"{texto};+{omitidas}" if omitidas else texto
 
 
 def _codigo_diametro(diametro: str | None) -> str:
@@ -121,7 +146,8 @@ def _item(
     descripcion: str,
     unidad: str,
     cantidad: Decimal,
-    refs: Iterable[str],
+    principales: Iterable[str],
+    secundarios: Iterable[str],
     regla: str,
     parametros: dict[str, Decimal],
     especificaciones: dict[str, str],
@@ -131,7 +157,7 @@ def _item(
         descripcion=descripcion,
         unidad=unidad,
         cantidad=cantidad,
-        origen_id=_referencias(refs),
+        origen_id=_origen(principales, secundarios),
         origen_tipo=OrigenTipo.REGLA,
         dominio=Dominio.CIVIL,
         regla=regla,
@@ -140,28 +166,39 @@ def _item(
     )
 
 
-def _material_de(segmento: Segmento, puntos: dict[str, Punto]) -> str:
-    """Material declarado por el punto de mayor diámetro que sirve el segmento (empate: id menor);
-    sin declaración, el material por defecto (D-6)."""
+def _material_de(segmento: Segmento, puntos: dict[str, Punto]) -> tuple[str, bool]:
+    """Material del segmento y si es el de por defecto (D-6).
+
+    Entre los puntos de mayor diámetro que lo sirven, el primero en orden alfabético de los
+    materiales declarados: no depende de los ids ni del orden de entrada."""
     servidos = [puntos[i] for i in segmento.sirve if i in puntos]
+    magnitudes = {
+        p.id: magnitud_diametro(d) if (d := normalizar_diametro(p.espec.get("diametro"))) else -1
+        for p in servidos
+    }
+    mayor = max(magnitudes.values(), default=-1)
+    declarados = sorted(
+        m.upper()
+        for p in servidos
+        if magnitudes[p.id] == mayor and (m := p.espec.get("material", "").strip())
+    )
+    if declarados:
+        return declarados[0], False
+    return MATERIAL_POR_DEFECTO, True
 
-    def orden(p: Punto) -> tuple[Decimal | int, str]:
-        d = normalizar_diametro(p.espec.get("diametro"))
-        return (-magnitud_diametro(d) if d else 1, p.id)  # type: ignore[return-value]
 
-    if servidos:
-        material = min(servidos, key=orden).espec.get("material", "").strip()
-        if material:
-            return material.upper()
-    return MATERIAL_POR_DEFECTO
+def superficie_de_segmento(s: Segmento) -> str:
+    """Superficie del picado de un segmento empotrado: `PARED` o `PISO` (spec §7.1 no prevé otra).
 
-
-def _superficie_empotrada(s: Segmento) -> str:
-    """D-7: vertical = pared; horizontal a nivel del piso = piso; cualquier otro horizontal
-    empotrado (un muro corrido o una losa) se cuenta como pared, que la spec no distingue."""
+    Manda la superficie que declaran los tramos. Si discrepan (`None`), se deduce: vertical = pared;
+    horizontal con z <= tolerancia en ambos extremos (incluye cotas negativas: pendiente o drenaje
+    enterrado) = piso; cualquier otro horizontal = pared. Techo, plafón y bandeja empotrados se
+    cuentan como pared (D-7)."""
+    if s.superficie is not None:
+        return "PISO" if s.superficie is SuperficieTramo.PISO else "PARED"
     if abs(s.a.x - s.b.x) <= TOLERANCIA and abs(s.a.y - s.b.y) <= TOLERANCIA:
         return "PARED"
-    if abs(s.a.z) <= TOLERANCIA and abs(s.b.z) <= TOLERANCIA:
+    if s.a.z <= TOLERANCIA and s.b.z <= TOLERANCIA:
         return "PISO"
     return "PARED"
 
@@ -172,11 +209,14 @@ def _superficie_empotrada(s: Segmento) -> str:
 def _tuberias(
     sistema: _Sistema, segmentos: list[Segmento], puntos: dict[str, Punto]
 ) -> Iterator[ItemComputo]:
-    grupos: dict[tuple[str, str | None], list[Segmento]] = defaultdict(list)
+    grupos: dict[tuple[str, str | None], list[tuple[Segmento, bool]]] = defaultdict(list)
     for s in segmentos:
-        grupos[(_material_de(s, puntos), s.diametro)].append(s)
+        material, por_defecto = _material_de(s, puntos)
+        grupos[(material, s.diametro)].append((s, por_defecto))
     desperdicio = Decimal(sistema.desperdicio_tuberia.valor)
-    for (material, diametro), segs in grupos.items():
+    for (material, diametro), con_flag in grupos.items():
+        segs = [s for s, _ in con_flag]
+        nota = f"; material por defecto: {_D6.fuente}" if any(f for _, f in con_flag) else ""
         longitud = sum((s.longitud for s in segs), CERO)
         especificaciones = {"material": material}
         if diametro:
@@ -184,9 +224,10 @@ def _tuberias(
         yield _item(
             f"{sistema.prefijo}-TUB-{material}-{_codigo_diametro(diametro)}",
             f"Tubería de {sistema.nombre} {material} {_texto_diametro(diametro)} "
-            f"({_etiqueta(sistema.desperdicio_tuberia)})",
+            f"({_etiqueta(sistema.desperdicio_tuberia)}{nota})",
             UNIDAD_LONGITUD,
             longitud * (UNO + desperdicio),
+            (clave_esp("esp_fuentes", s.fuente_id) for s in segs),
             (clave_esp("esp_segmentos", s.clave) for s in segs),
             "longitud_unida * (1 + desperdicio)",
             {"longitud_unida": longitud, "desperdicio": desperdicio},
@@ -207,6 +248,7 @@ def _accesorios(sistema: _Sistema, segmentos: list[Segmento]) -> Iterator[ItemCo
             UNIDAD_CONTEO,
             conteo * (UNO + DESPERDICIO_ACCESORIOS_Y_PICADO),
             (clave_esp("esp_fuentes", a.fuente_id) for a in accs),
+            (),
             "conteo * (1 + desperdicio)",
             {"conteo": conteo, "desperdicio": DESPERDICIO_ACCESORIOS_Y_PICADO},
             {"diametro": f"{diametro} pulg"} if diametro else {},
@@ -217,7 +259,7 @@ def _picado(sistema: _Sistema, segmentos: list[Segmento]) -> Iterator[ItemComput
     grupos: dict[str, list[Segmento]] = defaultdict(list)
     for s in segmentos:
         if s.empotrado:
-            grupos[_superficie_empotrada(s)].append(s)
+            grupos[superficie_de_segmento(s)].append(s)
     for superficie, segs in grupos.items():
         longitud = sum((s.longitud for s in segs), CERO)
         yield _item(
@@ -226,11 +268,16 @@ def _picado(sistema: _Sistema, segmentos: list[Segmento]) -> Iterator[ItemComput
             f"({_etiqueta(_D2)})",
             UNIDAD_LONGITUD,
             longitud * (UNO + DESPERDICIO_ACCESORIOS_Y_PICADO),
+            (clave_esp("esp_fuentes", s.fuente_id) for s in segs),
             (clave_esp("esp_segmentos", s.clave) for s in segs),
             "longitud_empotrada * (1 + desperdicio)",
             {"longitud_empotrada": longitud, "desperdicio": DESPERDICIO_ACCESORIOS_Y_PICADO},
             {},
         )
+
+
+def _fuentes_de(puntos: Iterable[Punto]) -> list[str]:
+    return [clave_esp("esp_fuentes", p.fuente_id) for p in puntos if p.fuente_id is not None]
 
 
 def _por_punto(sistema: _Sistema, puntos: list[Punto]) -> Iterator[ItemComputo]:
@@ -243,6 +290,7 @@ def _por_punto(sistema: _Sistema, puntos: list[Punto]) -> Iterator[ItemComputo]:
             f"Llave de paso de {sistema.nombre} ({_etiqueta(_D2)})",
             UNIDAD_CONTEO,
             n * factor,
+            _fuentes_de(con_llave),
             (clave_esp("esp_puntos", p.id) for p in con_llave),
             "puntos_con_llave * (1 + desperdicio)",
             {"puntos_con_llave": n, "desperdicio": DESPERDICIO_ACCESORIOS_Y_PICADO},
@@ -255,6 +303,7 @@ def _por_punto(sistema: _Sistema, puntos: list[Punto]) -> Iterator[ItemComputo]:
             f"{sistema.salida} ({_etiqueta(_D2)})",
             UNIDAD_CONTEO,
             n * factor,
+            _fuentes_de(puntos),
             (clave_esp("esp_puntos", p.id) for p in puntos),
             "puntos * (1 + desperdicio)",
             {"puntos": n, "desperdicio": DESPERDICIO_ACCESORIOS_Y_PICADO},
