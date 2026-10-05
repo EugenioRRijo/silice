@@ -336,12 +336,45 @@ def test_el_atributo_superficie_manda_sobre_la_inferencia():
     assert importar_dxf(p.bytes(), nombre="a.dxf").puntos[0].superficie is SuperficiePunto.PARED
 
 
-def test_un_punto_en_el_borde_de_dos_ambientes_sin_atributo_toma_el_primero_y_se_aproxima():
-    p = plano_base()  # SALA llega a x = 4 y COCINA empieza en x = 4
+def test_un_punto_en_el_borde_de_dos_ambientes_sin_atributo_toma_el_mas_pequeno_y_se_aproxima():
+    p = plano_base()  # SALA (12 m2) llega a x = 4 y COCINA (6 m2) empieza en x = 4
     p.bloque("PTO-DATOS", 4, 1, id="X", altura="0.3")
     r = importar_dxf(p.bytes(), nombre="a.dxf")
-    assert r.puntos[0].ambiente_id == "COCINA"  # el primero por id
+    assert r.puntos[0].ambiente_id == "COCINA"  # el de menor area
     assert any("varios ambientes" in i.mensaje for i in tipos(r, TipoItem.APROXIMADO))
+
+
+def test_en_el_borde_gana_el_de_menor_area_aunque_su_id_sea_posterior():
+    """Revision SF5: no se elige por orden alfabetico. A-GRANDE (4 x 3 = 12 m2) precede a B-CHICA
+    (2 x 3 = 6 m2) en el alfabeto, pero el borde x = 4 se asigna al mas pequeno."""
+    p = Plano()
+    p.sala("A-GRANDE", 0, 0, 4, 3)
+    p.sala("B-CHICA", 4, 0, 6, 3)
+    p.bloque("PTO-DATOS", 4, 1, id="X", altura="0.3")
+    r = importar_dxf(p.bytes(), nombre="a.dxf")
+    assert r.puntos[0].ambiente_id == "B-CHICA"
+    aviso = next(i for i in tipos(r, TipoItem.APROXIMADO) if "varios ambientes" in i.mensaje)
+    assert "se toma B-CHICA" in aviso.mensaje and "A-GRANDE" in aviso.mensaje
+
+
+def test_en_el_borde_con_igual_area_gana_el_id_menor():
+    p = Plano()
+    p.sala("B-IGUAL", 0, 0, 4, 3)
+    p.sala("A-IGUAL", 4, 0, 8, 3)  # misma area (12 m2)
+    p.bloque("FTE-DATOS", 4, 2, nombre="CAJA", id="R1", altura="1")
+    p.bloque("PTO-DATOS", 4, 1, id="X", altura="0.3")
+    r = importar_dxf(p.bytes(), nombre="a.dxf")
+    assert next(x for x in r.puntos if x.id == "X").ambiente_id == "A-IGUAL"
+    assert next(f for f in r.fuentes if f.id == "R1").ambiente_id == "A-IGUAL"
+
+
+def test_la_eleccion_del_ambiente_de_borde_es_determinista():
+    p = Plano()
+    p.sala("A-GRANDE", 0, 0, 4, 3)
+    p.sala("B-CHICA", 4, 0, 6, 3)
+    p.bloque("PTO-DATOS", 4, 1, id="X", altura="0.3")
+    datos = p.bytes()
+    assert importar_dxf(datos, nombre="a.dxf") == importar_dxf(datos, nombre="a.dxf")
 
 
 def test_el_atributo_ambiente_resuelve_el_borde():

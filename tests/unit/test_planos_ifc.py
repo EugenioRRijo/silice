@@ -313,3 +313,45 @@ def test_reimportar_el_mismo_ifc_no_cambia_nada():
     segundo, informe = fusionar(primero, importar_ifc(datos, nombre="of.ifc"))
     assert segundo == primero
     assert not [i for i in informe if i.tipo in (TipoItem.DESAPARECIDO, TipoItem.OMITIDO)]
+
+
+# --- RNF-12: tope de elementos tras abrir el archivo (revision SF5) ----------
+
+
+def _elementos(datos: bytes) -> int:
+    modelo = ifcopenshell.file.from_string(datos.decode("utf-8"))
+    return len(modelo.by_type("IfcElement")) + len(modelo.by_type("IfcSpace"))
+
+
+def test_un_ifc_con_mas_elementos_que_el_tope_se_rechaza_sin_traza():
+    from adapters.espacio.planos.ifc import MAX_ELEMENTOS_IFC
+
+    assert MAX_ELEMENTOS_IFC == 50_000
+    datos = contenido("IFC4")
+    n = _elementos(datos)
+    assert n > 3
+    r = importar_ifc(datos, nombre="denso.ifc", max_elementos=n - 1)
+    assert r.estado is EstadoImportacion.RECHAZADA
+    assert r.espacio().vacio
+    assert "denso.ifc" in r.mensaje and "tope" in r.mensaje and str(n) in r.mensaje
+    assert "Traceback" not in r.mensaje and "\n" not in r.mensaje
+
+
+def test_un_ifc_con_exactamente_el_tope_de_elementos_se_importa():
+    datos = contenido("IFC4")
+    r = importar_ifc(datos, nombre="a.ifc", max_elementos=_elementos(datos))
+    assert r.estado is EstadoImportacion.IMPORTADA
+
+
+def test_el_tope_de_elementos_tambien_rige_para_una_ruta(tmp_path):
+    ruta = tmp_path / "a.ifc"
+    ruta.write_bytes(contenido("IFC2X3"))
+    assert importar_ifc(ruta, max_elementos=2).estado is EstadoImportacion.RECHAZADA
+
+
+def test_los_bytes_y_la_ruta_de_un_ifc_dan_el_mismo_resultado(tmp_path):
+    """Al leer sin duplicar memoria (archivo directo) el resultado no cambia."""
+    datos = contenido("IFC4")
+    ruta = tmp_path / "a.ifc"
+    ruta.write_bytes(datos)
+    assert importar_ifc(ruta) == importar_ifc(datos, nombre="a.ifc")
