@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
-from decimal import Decimal as D
+from decimal import Decimal
 
 import pytest
 from sqlalchemy import create_engine, inspect, text
@@ -13,8 +13,8 @@ from adapters.espacio import (
     Ambiente,
     Circuito,
     Coord,
-    Especialidad,
     Espacio,
+    Especialidad,
     OrigenMedida,
     Punto,
     SuperficiePunto,
@@ -25,6 +25,8 @@ from adapters.espacio import (
     guardar_espacio,
 )
 from tests.fixtures.espacio_bano import espacio_bano
+
+D = Decimal
 
 TABLAS = {
     "esp_ambientes",

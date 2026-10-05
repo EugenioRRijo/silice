@@ -5,13 +5,13 @@ Coordenadas supuestas y declaradas como tales (NORMAS.md §1): no provienen de u
 
 from __future__ import annotations
 
-from decimal import Decimal as D
+from decimal import Decimal
 
 from adapters.espacio import (
     Ambiente,
     Coord,
-    Especialidad,
     Espacio,
+    Especialidad,
     Fuente,
     ModoRecorrido,
     OrigenMedida,
@@ -25,6 +25,8 @@ from adapters.espacio import (
     TipoPunto,
     Tramo,
 )
+
+D = Decimal
 
 
 def _tramo(orden, superficie, empotrado, a, b) -> Tramo:
@@ -100,7 +102,9 @@ def espacio_bano() -> Espacio:
                 tramos=(
                     _tramo(1, SuperficieTramo.PARED, True, ("0", "0", "0"), ("0", "0", "2.5")),
                     _tramo(2, SuperficieTramo.TECHO, False, ("0", "0", "2.5"), ("1.5", "0", "2.5")),
-                    _tramo(3, SuperficieTramo.PARED, True, ("1.5", "0", "2.5"), ("1.5", "0", "0.6")),
+                    _tramo(
+                        3, SuperficieTramo.PARED, True, ("1.5", "0", "2.5"), ("1.5", "0", "0.6")
+                    ),
                 ),
             ),
             Recorrido(id="R-P2", punto_id="P2", modo=ModoRecorrido.PROPUESTO),

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import dataclasses
-from decimal import Decimal as D
+from decimal import Decimal
 from pathlib import Path
 
 import pytest
@@ -12,8 +12,8 @@ from adapters.espacio import (
     Ambiente,
     Circuito,
     Coord,
-    Especialidad,
     Espacio,
+    Especialidad,
     Fuente,
     ModoRecorrido,
     OrigenMedida,
@@ -27,6 +27,8 @@ from adapters.espacio import (
     Tramo,
 )
 from tests.fixtures.espacio_bano import espacio_bano
+
+D = Decimal
 
 
 def _ambiente(**cambios):
