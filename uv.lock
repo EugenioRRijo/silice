@@ -5,9 +5,12 @@ resolution-markers = [
     "python_full_version >= '3.14' and sys_platform == 'win32'",
     "python_full_version >= '3.14' and sys_platform == 'emscripten'",
     "python_full_version >= '3.14' and sys_platform != 'emscripten' and sys_platform != 'win32'",
-    "python_full_version < '3.14' and sys_platform == 'win32'",
-    "python_full_version < '3.14' and sys_platform == 'emscripten'",
-    "python_full_version < '3.14' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version == '3.13.*' and sys_platform == 'win32'",
+    "python_full_version < '3.13' and sys_platform == 'win32'",
+    "python_full_version == '3.13.*' and sys_platform == 'emscripten'",
+    "python_full_version < '3.13' and sys_platform == 'emscripten'",
+    "python_full_version == '3.13.*' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version < '3.13' and sys_platform != 'emscripten' and sys_platform != 'win32'",
 ]
 
 [[package]]
@@ -91,6 +94,7 @@ ui = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "formulas" },
     { name = "httpx2" },
     { name = "pytest" },
     { name = "pytest-cov" },
@@ -117,6 +121,7 @@ provides-extras = ["ui", "api", "civil", "ml", "informes"]
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "formulas", specifier = ">=1.3.4" },
     { name = "httpx2", specifier = ">=2.12" },
     { name = "pytest", specifier = ">=8.0" },
     { name = "pytest-cov", specifier = ">=5.0" },
@@ -651,6 +656,26 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/10/37/cdc6b213c9fbabdf36e9169f845e8596b419c7e0cceba48e5594b952d2cf/fonttools-4.66.1-cp315-cp315t-win32.whl", hash = "sha256:c258eba62260beb33c110b03a6912cefa3635239c4ab5615b7225fb6f7b85238", size = 2468614, upload-time = "2026-09-29T16:11:47.363Z" },
     { url = "https://files.pythonhosted.org/packages/fb/35/e2247e7e29e8da213e02691a6ada7a30592c7bc0d1db8d2786ebb9bea138/fonttools-4.66.1-cp315-cp315t-win_amd64.whl", hash = "sha256:5de5d80fbc0e50ff794c244e8fb7afd3eadfe0fa232ba8b162b8c551df22fcb4", size = 2516977, upload-time = "2026-09-29T16:11:49.425Z" },
     { url = "https://files.pythonhosted.org/packages/f6/10/d45b74135d5d642cb3a4fb0a957c1613ef93de4c8548671dfc3a5bf38299/fonttools-4.66.1-py3-none-any.whl", hash = "sha256:7234ae9e28db64273fbbfa72caebd0a97e3bdba6b05064114741b9539ef339d0", size = 1202222, upload-time = "2026-09-29T16:11:51.678Z" },
+]
+
+[[package]]
+name = "formulas"
+version = "1.3.4"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "click" },
+    { name = "numpy" },
+    { name = "numpy-financial", version = "1.0.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.13'" },
+    { name = "numpy-financial", version = "1.1.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.13'" },
+    { name = "python-dateutil" },
+    { name = "regex" },
+    { name = "schedula" },
+    { name = "scipy" },
+    { name = "tqdm" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/a1/03/87e2931f7e134cfffb6c6199003ce1a59feeea5160abd774dfad1c19e1ef/formulas-1.3.4.tar.gz", hash = "sha256:018ee4c43056d2ea2497243e83bb61d92c0f1039ca8eb82a8f0e969562e3e8e9", size = 149229, upload-time = "2026-03-11T18:20:03.198Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/96/a0/4ddef4c1e4ccfa320f8780070fd6364b63a094b0ca6afd5d6fcf8c440669/formulas-1.3.4-py2.py3-none-any.whl", hash = "sha256:ee2c9795217885158d9ce8d68a78ea0fb0a96e0814d491aa83759ef96e5645a0", size = 126489, upload-time = "2026-03-11T18:20:01.464Z" },
 ]
 
 [[package]]
@@ -1359,6 +1384,50 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/42/06/6e11443f7b64ee376c860506091103bf68f92d2cab9e8d96d4501babf07c/numpy-2.5.2-cp315-cp315t-win32.whl", hash = "sha256:7354826bc6f8f69402e9b7fe28d15fcd34feebd74f856f111585c5b0c9fb0251", size = 6269775, upload-time = "2026-08-09T13:48:17.543Z" },
     { url = "https://files.pythonhosted.org/packages/f1/18/195d6b86cd72dbbc501edfa778005fa6b87afd34c153e46028cd3a0938f4/numpy-2.5.2-cp315-cp315t-win_amd64.whl", hash = "sha256:e5651f3f87add730ee6608d915009e19c911fba0cb000c7e3ea994b7d768eb12", size = 12782559, upload-time = "2026-08-09T13:48:21.023Z" },
     { url = "https://files.pythonhosted.org/packages/b4/07/458c344f0f0c178f4481dad5cca790626ffe4c34eabf9467069d06ee4999/numpy-2.5.2-cp315-cp315t-win_arm64.whl", hash = "sha256:5f8e00be2ec6f45f4e8a41a527f68d44a7d96fee92a650e4d8b1326f77f61e6e", size = 10748103, upload-time = "2026-08-09T13:48:24.21Z" },
+]
+
+[[package]]
+name = "numpy-financial"
+version = "1.0.0"
+source = { registry = "https://pypi.org/simple" }
+resolution-markers = [
+    "python_full_version < '3.13' and sys_platform == 'win32'",
+    "python_full_version < '3.13' and sys_platform == 'emscripten'",
+    "python_full_version < '3.13' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+]
+dependencies = [
+    { name = "numpy", marker = "python_full_version < '3.13'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/0f/4e/6dff3733162d4a96140f0195f3b529c2d56f90d3245c8c1b506913d11f91/numpy-financial-1.0.0.tar.gz", hash = "sha256:f84341bc62b2485d5604a73d5fac7e91975b4b9cd5f4a5a9cf608902ea00cb40", size = 13185, upload-time = "2019-10-18T16:13:45.23Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/6a/be/d07585e440d58835bad8f1c9ca7823b5252ffeda4c797e653a20215fca65/numpy_financial-1.0.0-py3-none-any.whl", hash = "sha256:bae534b357516f12258862d1f0181d911032d0467f215bfcd1c264b4da579047", size = 14025, upload-time = "2019-10-18T16:13:43.241Z" },
+]
+
+[[package]]
+name = "numpy-financial"
+version = "1.1.0"
+source = { registry = "https://pypi.org/simple" }
+resolution-markers = [
+    "python_full_version >= '3.14' and sys_platform == 'win32'",
+    "python_full_version >= '3.14' and sys_platform == 'emscripten'",
+    "python_full_version >= '3.14' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version == '3.13.*' and sys_platform == 'win32'",
+    "python_full_version == '3.13.*' and sys_platform == 'emscripten'",
+    "python_full_version == '3.13.*' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+]
+dependencies = [
+    { name = "numpy", marker = "python_full_version >= '3.13'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/55/c9/cc76e044ce717a8236d6b51dc3decbec9b4fa69faef45cbda3432ace6c35/numpy_financial-1.1.0.tar.gz", hash = "sha256:45d45578473ff1bc5cebd586c42f7d0821ac5d7d7cd87f7289a58d0a6c9ad71c", size = 43264, upload-time = "2026-09-15T07:39:38.273Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/f2/e1/6609b2a2694d20fd7629d0e551bfdf7813b34fdfd805a2d7e4c94a377f9e/numpy_financial-1.1.0-cp313-cp313-macosx_10_13_x86_64.whl", hash = "sha256:52c24a0a40dd2ba797c61c9621daf565e80f4b500907e44506835a2dcdaf66dc", size = 93734, upload-time = "2026-09-15T07:39:29.251Z" },
+    { url = "https://files.pythonhosted.org/packages/e3/ac/3d839657a5e6faf1805d228b7f75a2a930bd2817f912e8258babe832c4ae/numpy_financial-1.1.0-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:3902ab6a22716da94096e56c057fba6a92cc750c321b6729475be8d8438f6811", size = 86260, upload-time = "2026-09-15T07:39:30.483Z" },
+    { url = "https://files.pythonhosted.org/packages/2e/1f/2d939fd45027dcd2c3598fc93495bcd50c029054d7b3639d09e4d06bfca3/numpy_financial-1.1.0-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:8e90529704e311edd4c9994886b5d4c5eebbe4d93ee000b96c2df437be8898bc", size = 118525, upload-time = "2026-09-15T07:39:31.567Z" },
+    { url = "https://files.pythonhosted.org/packages/0f/70/78f68426d3b76ea35c7c4d3d9ac862c4db2a160482467a0f0bb6db311f9a/numpy_financial-1.1.0-cp313-cp313-win_amd64.whl", hash = "sha256:1e8bfe8b873d98f5e15b3e7d26bc8f412e89a183b2a8e951bee2d911c0ae6a62", size = 122179, upload-time = "2026-09-15T07:39:32.697Z" },
+    { url = "https://files.pythonhosted.org/packages/05/d0/aa1c7afc4d80ad2e945a816a64a64ec064a0c7bfd61fbeed4dd7576c0afd/numpy_financial-1.1.0-cp314-cp314-macosx_10_15_x86_64.whl", hash = "sha256:aa3f3b7e0aa5f36a7fbd1dd4e70754b557b41573b83e440b78d2d46959c41b2e", size = 93868, upload-time = "2026-09-15T07:39:33.801Z" },
+    { url = "https://files.pythonhosted.org/packages/28/fd/e8ca1e65b0d5f22df9b0ada599b0d1238cffc374cce86d15d608d9054941/numpy_financial-1.1.0-cp314-cp314-macosx_11_0_arm64.whl", hash = "sha256:40954af654a3c30c7c27fc2b222b10be13c9b91e055a6487fcb0761f45bf8364", size = 86533, upload-time = "2026-09-15T07:39:34.949Z" },
+    { url = "https://files.pythonhosted.org/packages/6c/73/f09872846ff3d470ad0ff154d4d9195395c2080c41eea27f61a70bbf219c/numpy_financial-1.1.0-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:199e0e9e716fca0d520c1cdf46a724eeef19715e007f0bb6c75766fe146b2782", size = 118944, upload-time = "2026-09-15T07:39:36.143Z" },
+    { url = "https://files.pythonhosted.org/packages/3e/cc/c47bd10824f28f7942bbeed023d0aa2755801bd06f6e912778a7e093d180/numpy_financial-1.1.0-cp314-cp314-win_amd64.whl", hash = "sha256:ec250a0215805b9629486d725c6d2eef218b280c1125cb85c50120aa0b7c5c99", size = 125881, upload-time = "2026-09-15T07:39:37.204Z" },
 ]
 
 [[package]]
@@ -2215,6 +2284,15 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/8e/3f/73ccf82579412b4a71c4ca673f10b5f1f888d7cf5af7fe24f27d30307be4/safetensors-0.8.0-cp310-abi3-win32.whl", hash = "sha256:2ddf52eac562eda224f99acfa7889d02968c1fd59a5b011ae7d8137c37e9c02d", size = 342401, upload-time = "2026-06-09T07:52:28.895Z" },
     { url = "https://files.pythonhosted.org/packages/1b/6d/3fba214c1e5e0f69991677ec3bc17023f0421776975e1de0c682dca475e2/safetensors-0.8.0-cp310-abi3-win_amd64.whl", hash = "sha256:096ec1a98435df7beb08853bb5aa9081a84f23d0adc67ed1a0a10550f608373f", size = 355540, upload-time = "2026-06-09T07:52:27.832Z" },
     { url = "https://files.pythonhosted.org/packages/8d/fc/7eedc3510d97878876e32774eebbeb61c43f148a96e915c84229a3e967aa/safetensors-0.8.0-cp310-abi3-win_arm64.whl", hash = "sha256:f7838e5135a406ad3e02efdcb8cf2e5397d368b0154537c4fec682dbc544d452", size = 340500, upload-time = "2026-06-09T07:52:26.745Z" },
+]
+
+[[package]]
+name = "schedula"
+version = "1.6.15"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/f5/16/25b477d86e12af6a40f17e648c5399c69408391e91835c2bee8e076f9b12/schedula-1.6.15.tar.gz", hash = "sha256:85654c82cb8e73fb5ca48952c317119157cd8da248c9d395bac90ffb9a01927c", size = 6210508, upload-time = "2026-03-04T22:16:16.459Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/24/96/b24b329a5a1aac05814ed9842fa37378434dab5b6ec602db8ecf939040f6/schedula-1.6.15-py2.py3-none-any.whl", hash = "sha256:69b7c84931d484406828d7568f3d7d86c4edea319e349a021a8b08db518b8c39", size = 6371149, upload-time = "2026-03-04T22:16:12.556Z" },
 ]
 
 [[package]]
