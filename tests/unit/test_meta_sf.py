@@ -441,3 +441,62 @@ def test_s4_sobre_el_repositorio_real_no_falla():
 
     estado, detalle = _s4()
     assert estado is not Estado.FALLA, detalle
+
+
+# --- SF4: S6 (AppTest de la barra) y la base de S4 desde inc/sf2 -------------------------------
+
+
+def test_hasta_sf4_agrega_s6_despues_de_las_metas_de_sf3():
+    assert metas_hasta("SF4") == ["S1", "S2", "S3", "S8", "S10", "S4", "S5", "S9", "S6"]
+
+
+def test_s6_ok_si_pasan_todas_las_pruebas_de_la_barra():
+    from scripts.meta_sf import evaluar_s6_barra
+
+    estado, detalle = evaluar_s6_barra(True, (25, 25))
+    assert estado is Estado.OK
+    assert "25/25" in detalle
+
+
+def test_s6_falla_si_una_prueba_de_la_barra_falla():
+    from scripts.meta_sf import evaluar_s6_barra
+
+    estado, detalle = evaluar_s6_barra(True, (24, 25))
+    assert estado is Estado.FALLA
+    assert "24/25" in detalle
+
+
+def test_s6_pendiente_si_faltan_las_pruebas_o_no_recolectaron_casos():
+    from scripts.meta_sf import evaluar_s6_barra
+
+    assert evaluar_s6_barra(False, None)[0] is Estado.PENDIENTE
+    assert evaluar_s6_barra(True, (0, 0))[0] is Estado.PENDIENTE
+    assert evaluar_s6_barra(True, None)[0] is Estado.PENDIENTE
+
+
+def test_las_pruebas_de_s6_existen_en_disco():
+    from scripts.meta_sf import RUTA_PRUEBAS_BARRA, _existe
+
+    assert RUTA_PRUEBAS_BARRA
+    assert all(_existe(ruta) for ruta in RUTA_PRUEBAS_BARRA)
+
+
+def test_desde_sf4_la_base_de_s4_es_gsf2_y_si_no_existe_inc_sf2():
+    from scripts.meta_sf import bases_de_core
+
+    assert bases_de_core("SF2") == ("gsf1", "inc/sf1")
+    assert bases_de_core("SF3") == ("gsf1", "inc/sf1")
+    assert bases_de_core("SF4") == ("gsf2", "inc/sf2")
+    assert bases_de_core("SF5") == ("gsf2", "inc/sf2")
+    assert bases_de_core(None) == ("gsf2", "inc/sf2")
+    assert base_de_core(lambda ref: ref == "inc/sf2", bases_de_core("SF4")) == "inc/sf2"
+    assert base_de_core(lambda ref: ref in ("gsf2", "inc/sf2"), bases_de_core("SF4")) == "gsf2"
+    assert base_de_core(lambda ref: ref == "inc/sf1", bases_de_core("SF4")) is None
+
+
+def test_s4_sobre_el_repositorio_real_desde_sf4_no_falla():
+    """En inc/sf4 `core/` no cambio desde inc/sf2: OK; sin la base, PENDIENTE."""
+    from scripts.meta_sf import _s4
+
+    estado, detalle = _s4("SF4")
+    assert estado is not Estado.FALLA, detalle
