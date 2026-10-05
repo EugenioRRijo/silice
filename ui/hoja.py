@@ -1,26 +1,34 @@
-"""La hoja del proyecto, sin Streamlit: borrador, derivacion, elaboracion y Estado por fila.
+"""La hoja del proyecto, sin Streamlit: borrador, versiones, guardado, cotizacion y Excel.
 
-Orquesta lo que la pantalla `ui/paginas/hoja.py` solo pinta (spec del sprint final, §5.3 y §9.2):
+Orquesta lo que la pantalla `ui/paginas/hoja.py` solo pinta (spec del sprint final, §5.3, §9.2 a
+§9.6) sobre `core.budget` y `adapters.espacio`; no tiene logica de negocio propia.
 
-1. **Borrador en memoria.** El modelo espacial (`adapters.espacio.Espacio`) se edita como tablas de
-   texto (`COLUMNAS`): `filas_desde_espacio` lo vuelca a filas y `espacio_desde_filas` lo
-   reconstruye, conservando de la base lo que el editor no muestra (circuitos, sobrescrituras de
-   segmento y recorridos propuestos). Una fila mala es un `HojaInvalida` con la fila y el campo;
-   la pantalla conserva entonces el ultimo borrador valido. Las celdas se leen con
-   `ui.composicion.texto_de_celda`, la unica lectura de celdas de `ui/` (INV-046).
-2. **Derivacion y elaboracion.** `elaborar_hoja` deriva los `ItemComputo` con
-   `adapters.espacio.derivar`, les suma los items de la version que no vienen del espacio
-   (`items_base`) y llama a `core.budget.elaborar` con `reglas = REGLAS + reglas_espacio(espacio)`:
-   el `Espacio` inmutable es la instantanea que reciben R8, R9 y R10 (DA-SF-8).
-3. **Estado por fila** (RF-55). `estado_de_filas` asigna a cada fila editable el peor hallazgo que
-   la toca, por las claves `esp_*` que los hallazgos citan en `origen_ids` (tambien dentro del
-   `origen_id` compuesto de un item, que separa sus fuentes con «;»). Las advertencias de una misma
-   fila van en un solo texto: R8 marca una por origen supuesto y, sin agrupar, el baño correcto
-   del ejemplo pintaria cinco lineas.
+**1. El borrador (`Borrador`).** Reune lo que la hoja edita sin persistir: el espacio, la copia de
+las composiciones de la version (DA-SF-7), los parametros, el plan y las cantidades escritas a mano
+(DA-SF-5). El espacio se edita como tablas de texto (`COLUMNAS`): `filas_desde_espacio` y
+`espacio_desde_filas` (una fila mala es un `HojaInvalida` con la fila y el campo; la pantalla
+conserva el ultimo borrador valido). Las celdas se leen con `ui.composicion.texto_de_celda`.
+`elaborar_borrador` deriva, valora, ajusta el plan (`ajustar_plan`), audita con `REGLAS +
+reglas_espacio(espacio, cantidades_escritas)` y calcula el punto de equilibrio y el Estado por fila
+(`estado_de_filas`, `estado_de_items`): es el recalculo de RF-52 y lo que mide `scripts/medir_rnf11.py`.
+
+**2. Versiones, en UNA sola `Session`** (RF-53, RF-54, RF-56):
+
+| Funcion | Que hace |
+|---|---|
+| `abrir_version(sesion, catalogo, proyecto, codigo)` | abre una version como borrador; crea y registra su instantanea si no la tiene (UC-15e); reaudita con R8 a R10 sobre la instantanea del espacio, que **reemplaza** los hallazgos guardados de esas reglas (§8.4) |
+| `puede_guardar` / `motivo_para_no_guardar(base, actual, fuente, responsable)` | sin cambios no hay nada que guardar (FR-4); con cambios se exigen fuente y responsable |
+| `guardar_version(sesion, catalogo, abierta, borrador, fuente=, responsable=)` | **la funcion de Guardar version de la barra de SF4**: `core.budget.edicion.guardar_edicion` con el gancho que copia las filas `esp_*` con la clave de la version nueva; confirma o deshace todo |
+| `restaurar(...)`, `cotizar(...)`, `retirar_cotizacion(...)` | version nueva por restauracion (RF-54) o cotizacion (RF-56); su espacio es el de su `version_origen` |
+| `exportar_excel(ruta, resultado, borrador, ...)`, `excel_de_hoja_en_bytes(...)` | **la funcion de Exportar Excel de la barra**: el libro de `exportar_hoja` con las `TablaExportable` del espacio y de los precios; solo se llama al pulsar Exportar |
+| `espacio_de_version`, `historial_de_versiones`, `registros_de_version`, `codigo_vigente`, `precios_de_version` | lecturas para las pestanas Trazabilidad y Precios |
+
+**3. Espacio de una version que no crea la hoja.** Restaurar, cotizar y revalorar no copian filas
+`esp_*`: `espacio_de_version` sube por `version_origen` hasta la primera version con filas propias; una
+version de la hoja o elaborada de cero es el final de la cadena aunque su espacio quede vacio.
 
 Un presupuesto sin espacio (la clinica, TI-001) abre igual que antes de la hoja (FR-5): espacio
-vacio, ningun item derivado, solo `items_base`; R8, R9 y R10 se declaran evaluadas sin hallazgos.
-La hoja deriva agua, datos y electricidad (`TODAS`). **No persiste**: guardar una version es SF3.
+vacio, ningun item derivado, solo `items_base`. La hoja deriva agua, datos y electricidad (`TODAS`).
 
 Sin Streamlit, sin `pandas` y sin `ui.caso`; lo vigila
 `tests/unit/test_arquitectura.py::test_ui_respeta_sus_importaciones_prohibidas`.

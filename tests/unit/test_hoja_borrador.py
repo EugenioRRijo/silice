@@ -518,3 +518,80 @@ def test_las_filas_de_la_curva_cierran_en_el_total_con_su_porcentaje():
     assert filas[-1]["acumulado"] == f"{presupuesto.total:.2f}"
     assert filas[-1]["porcentaje"] == "100.00"
     assert all(" [" not in f["periodo"] for f in filas)  # los codigos del periodo no se muestran
+
+
+# --- Foco de revision FR-1 a FR-3 por la hoja (FR-4 y FR-5 estan en test_hoja_versiones) ----------
+
+
+def _longitud_de_tuberia(borrador) -> Decimal:
+    return sum(
+        (
+            i.cantidad
+            for i in hoja.items_elaborados(borrador)
+            if i.codigo_partida.startswith("AF-TUB-PVC")
+        ),
+        D(0),
+    )
+
+
+def test_fr1_borrar_todas_las_filas_deja_la_hoja_vacia_y_no_falla():
+    base = borrador_bano()
+    filas = {tabla: [] for tabla in hoja.COLUMNAS}
+
+    vacio = replace(base, espacio=hoja.espacio_desde_filas(filas, base=base.espacio))
+    resultado = hoja.elaborar_borrador(vacio)
+
+    assert resultado.items == [] and resultado.estado == {}
+    assert resultado.elaboracion.presupuesto.total == 0
+    assert resultado.equilibrio.estado is EstadoEquilibrio.NO_APLICABLE
+
+
+def test_fr2_una_fuente_sin_puntos_y_un_punto_sin_recorrido_declarado_no_dividen_por_cero():
+    base = borrador_bano()
+    filas = hoja.filas_desde_espacio(base.espacio)
+    sin_puntos = {**filas, "puntos": [], "tramos": []}
+    solo_fuente = replace(base, espacio=hoja.espacio_desde_filas(sin_puntos, base=base.espacio))
+    sin_tramos = {**filas, "tramos": []}  # los puntos pierden su recorrido declarado
+    propuestos = replace(base, espacio=hoja.espacio_desde_filas(sin_tramos, base=base.espacio))
+
+    assert _longitud_de_tuberia(solo_fuente) == 0
+    assert hoja.elaborar_borrador(solo_fuente).elaboracion.presupuesto.total >= 0
+    assert _longitud_de_tuberia(propuestos) > 0  # la hoja propone el recorrido
+    assert all(
+        i.cantidad > 0 for i in hoja.items_elaborados(propuestos)
+    )  # sin tramos de largo cero
+
+
+def test_fr3_dos_recorridos_con_un_tramo_parcial_colineal_no_cuentan_la_tuberia_dos_veces():
+    """P1 sube 2,5, cruza el techo 1,5 y baja 1,9 (5,9 m); P2 sube lo mismo, cruza el techo 1,0
+    (dentro del tramo de P1), 1,5 mas y baja 1,3 (6,3 m). Unido: 2,5 + 1,5 + 1,9 + 1,5 + 1,3 = 8,7 m, mas la reserva de compra de 10 %
+    de la memoria del bano."""
+    base = borrador_bano(con_plan=False)
+    filas = hoja.filas_desde_espacio(base.espacio)
+    filas["tramos"] = [t for t in filas["tramos"] if t["recorrido_id"] == "R-P1"]
+    p2 = [
+        ("1", "pared", "si", "0,0,0; 0,0,2.5"),
+        ("2", "techo", "no", "0,0,2.5; 1,0,2.5"),
+        ("3", "techo", "no", "1,0,2.5; 1,1.5,2.5"),
+        ("4", "pared", "si", "1,1.5,2.5; 1,1.5,1.2"),
+    ]
+    filas["tramos"] += [
+        {
+            "recorrido_id": "R-P2",
+            "punto_id": "P2",
+            "circuito_id": "",
+            "orden": orden,
+            "superficie": superficie,
+            "empotrado": empotrado,
+            "pendiente": "",
+            "vertices": vertices,
+        }
+        for orden, superficie, empotrado, vertices in p2
+    ]
+    espacio = hoja.espacio_desde_filas(filas, base=base.espacio)
+
+    unido = _longitud_de_tuberia(replace(base, espacio=espacio))
+
+    assert abs(unido - D("8.7") * D("1.10")) <= D(
+        "0.001"
+    )  # y no 12,2 x 1,10 de sumar cada recorrido aparte
