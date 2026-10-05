@@ -10,6 +10,12 @@ incumplimiento. Hoy se evaluan de verdad S1 (requisitos en la ERS), S2 (memorias
 S8 (regresion) y S10 (cobertura); la orquestacion lee disco, consulta git y ejecuta pytest, y
 cada evaluador recibe solo el dato ya leido.
 
+S3 pesa solo las pruebas de `tests/unit/test_espacio_agua.py`; R8 y R9 (`reglas.py`) no entran en
+S3: las pesan S8 (regresion) y las pruebas del adaptador (`test_espacio_reglas.py`) con la
+cobertura de S10.
+S10 mide con el `coverage.json` que deja la corrida con `--cov`, y solo si es posterior al codigo
+de `adapters/espacio` (`cobertura_vigente`); si no, queda PENDIENTE.
+
 Nota: `FASES` agrupa cada meta en la fase donde ARRANCA su evaluacion. S3 («SF1-SF2» en la spec)
 arranca en SF1 y S8 («todas») se conecta en SF1; por eso sus titulos llevan el alcance de la spec y
 no la fase de agrupacion.
@@ -24,7 +30,7 @@ import json
 import re
 import subprocess
 import sys
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parents[1]
@@ -165,14 +171,32 @@ def porcentaje_espacio(texto_json: str) -> float | None:
     return None if total == 0 else 100.0 * cubiertas / total
 
 
+def cobertura_vigente(informe: Path, codigo: Path) -> bool:
+    """True si `informe` (coverage.json) es posterior al ultimo cambio de los `.py` de `codigo`.
+
+    Un informe anterior al codigo mide otro codigo: no vale como evidencia de S10."""
+    if not informe.is_file():
+        return False
+    ultimo = max((f.stat().st_mtime for f in codigo.rglob("*.py")), default=0.0)
+    return informe.stat().st_mtime >= ultimo
+
+
 def evaluar_s10_cobertura(
-    porcentaje: float | None, existe_adaptador: bool = True
+    porcentaje: float | None, existe_adaptador: bool = True, vigente: bool = True
 ) -> tuple[Estado, str]:
-    """S10: cobertura de `adapters/espacio` >= 80 %. Pura: no ejecuta pytest, recibe el dato."""
+    """S10: cobertura de `adapters/espacio` >= 80 %. Pura: no ejecuta pytest, recibe el dato.
+
+    `vigente` es False si el `coverage.json` es anterior al codigo medido: PENDIENTE, no se usa."""
     if not existe_adaptador:
         return Estado.PENDIENTE, "adapters/espacio aun no existe"
     if porcentaje is None:
         return Estado.PENDIENTE, "sin dato: corre la suite con --cov y `coverage json`"
+    if not vigente:
+        return (
+            Estado.PENDIENTE,
+            "coverage.json es anterior al codigo de adapters/espacio: vuelve a correr la suite "
+            "con --cov y `coverage json`",
+        )
     texto = f"{porcentaje:.2f}".replace(".", ",")
     if porcentaje >= UMBRAL_COBERTURA_ESPACIO:
         return Estado.OK, f"cobertura de adapters/espacio {texto} % (umbral 80 %)"
@@ -224,9 +248,16 @@ def evaluar_s3_especialidades(
     return Estado.OK, f"pruebas de agua en verde ({pasan}/{total}); datos y electricidad: SF2"
 
 
-def evaluar_s8_regresion(grupos: dict[str, tuple[int, int] | None]) -> tuple[Estado, str]:
+def evaluar_s8_regresion(
+    grupos: dict[str, tuple[int, int] | None], ausentes: Sequence[str] = ()
+) -> tuple[Estado, str]:
     """S8: cada grupo de regresion es `(pasan, total)`; None si aun no tiene prueba (PENDIENTE).
-    Un fallo pesa mas que una ausencia."""
+
+    `ausentes` son los grupos con una prueba declarada que ya no esta en disco: desde SF1 son FALLA
+    (se borro o renombro una prueba de regresion). Un fallo pesa mas que una ausencia."""
+    if ausentes:
+        faltan = ", ".join(ausentes)
+        return Estado.FALLA, f"pruebas de regresion declaradas que ya no estan en disco: {faltan}"
     fallan = [f"{g} ({r[0]}/{r[1]})" for g, r in grupos.items() if r and r[1] > 0 and r[0] < r[1]]
     if fallan:
         return Estado.FALLA, "regresion rota en: " + ", ".join(fallan)
@@ -255,9 +286,13 @@ def contar_resultados(
 
 
 def _s10() -> tuple[Estado, str]:
-    existe = (RAIZ / "adapters" / "espacio").is_dir()
+    existe = RUTA_ESPACIO.is_dir()
     texto = _leer(RUTA_COBERTURA)
-    return evaluar_s10_cobertura(None if texto is None else porcentaje_espacio(texto), existe)
+    return evaluar_s10_cobertura(
+        None if texto is None else porcentaje_espacio(texto),
+        existe,
+        existe and cobertura_vigente(RUTA_COBERTURA, RUTA_ESPACIO),
+    )
 
 
 def _pendiente(motivo: str) -> Callable[[], tuple[Estado, str]]:
@@ -316,7 +351,13 @@ def _correr_pytest(ids: list[str]) -> str:
 
 
 def _existe(nodeid: str) -> bool:
-    return (RAIZ / nodeid.split("::")[0]).is_file()
+    """El archivo del nodeid existe y, si nombra una prueba, esa funcion esta definida en el."""
+    archivo, _, prueba = nodeid.partition("::")
+    ruta = RAIZ / archivo
+    if not ruta.is_file():
+        return False
+    patron = rf"^\s*def {re.escape(prueba)}\("
+    return not prueba or re.search(patron, ruta.read_text("utf-8"), re.MULTILINE) is not None
 
 
 def _s3() -> tuple[Estado, str]:
@@ -330,9 +371,10 @@ def _s3() -> tuple[Estado, str]:
 
 def _s8() -> tuple[Estado, str]:
     presentes = {g: ids for g, ids in REGRESION.items() if all(_existe(i) for i in ids)}
+    ausentes = [g for g in REGRESION if g not in presentes]  # desde SF1 la ausencia es FALLA
     ids = [i for grupo in presentes.values() for i in grupo]
     cuenta = contar_resultados(_correr_pytest(ids), presentes) if ids else {}
-    return evaluar_s8_regresion({g: cuenta.get(g) for g in REGRESION})
+    return evaluar_s8_regresion({g: cuenta.get(g) for g in REGRESION}, ausentes)
 
 
 def _leer(ruta: Path) -> str | None:
