@@ -168,8 +168,9 @@ def _item(
 
 def _datos_de_material(puntos: dict[str, Punto]) -> dict[str, tuple[int, str]]:
     """Por punto: rango de la magnitud de su diametro (-1 vale lo que no declara; los rangos
-    conservan el orden de las magnitudes, asi la comparacion por segmento es entre enteros) y su material en
-    mayusculas ('' si no declara). Se calcula una vez por derivacion, no por segmento (RNF-11)."""
+    conservan el orden de las magnitudes, asi la comparacion por segmento es entre enteros) y su
+    material en mayusculas ('' si no declara). Se calcula una vez por derivacion, no por segmento
+    (RNF-11)."""
     magnitudes = {
         i: magnitud_diametro(d) if (d := normalizar_diametro(p.espec.get("diametro"))) else -1
         for i, p in puntos.items()

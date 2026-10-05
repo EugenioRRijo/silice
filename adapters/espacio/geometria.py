@@ -275,7 +275,8 @@ def _agrupar_nodos(coords: Iterable[Coord]) -> dict[Coord, Coord]:
 
     Cuadrícula espacial hash de lado TOLERANCIA: dos coordenadas a TOLERANCIA o menos caen en la
     misma celda o en una vecina, así que cada una solo se prueba contra las 27 celdas de su entorno
-    (costo lineal con densidad acotada; el barrido por x era cuadrático si muchos nodos comparten x).
+    (costo lineal con densidad acotada; el barrido por x era cuadrático si muchos nodos comparten
+    x).
     El resultado es el del barrido completo de todos los pares.
 
     Límite conocido del single-linkage: una cadena de extremos, cada uno a 0,001 m o menos del
@@ -434,7 +435,8 @@ def _segmentos_de_fuente(
                 reg = acumulado[llave] = [set(), {}, set(), set(), CERO]
             reg[0].add(pz.sirve)
             if pz.diametro is not None:
-                reg[1][pz.diametro] = None  # sin repetir y en orden de aparicion (max desempata igual)
+                # sin repetir y en orden de aparicion: `max` desempata igual que con la lista entera
+                reg[1][pz.diametro] = None
             reg[2].add(pz.empotrado)
             reg[3].add(pz.superficie)
             tramo = (t_sig - t_ant) * largo
