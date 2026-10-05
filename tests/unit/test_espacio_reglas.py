@@ -41,7 +41,7 @@ from core.contracts.presupuesto import Presupuesto
 from tests.fixtures.espacio_bano import espacio_bano, espacio_bano_con_drenaje
 
 D = Decimal
-VACIO = Presupuesto(codigo="X", fecha=date(2026, 1, 1), moneda="USD")
+VACIO = Presupuesto(codigo="X", fecha=date(2026, 1, 1), moneda="USD", partidas=())
 CLAVE_VERTICAL = "F|0.000,0.000,0.000|0.000,0.000,2.500"
 
 LEVANTAMIENTO = OrigenMedida(
@@ -359,9 +359,7 @@ def _recorrido_vertical(id_, punto_id, empotrado) -> Recorrido:
         id=id_,
         punto_id=punto_id,
         modo=ModoRecorrido.DECLARADO,
-        tramos=(
-            tramo(1, SuperficieTramo.PARED, ("0", "0", "0"), ("0", "0", "2.5"), empotrado),
-        ),
+        tramos=(tramo(1, SuperficieTramo.PARED, ("0", "0", "0"), ("0", "0", "2.5"), empotrado),),
     )
 
 
@@ -430,7 +428,7 @@ def _supuesto(tabla, id_, quien) -> Hallazgo:
         "R8",
         Severidad.ADVERTENCIA,
         f"{tabla}:{id_}",
-        f"{quien}: la medida es un supuesto declarado (origen O1: ejemplo de memoria de calculo)",
+        f"{quien}: la medida es un supuesto declarado (origen O1: ejemplo de memoria de cálculo)",
     )
 
 

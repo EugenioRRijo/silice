@@ -15,6 +15,7 @@ from adapters.espacio import Coord, derivar
 from adapters.espacio.reglas import reglas_espacio
 from core.budget import cargar_elaboracion, elaborar, guardar_presupuesto, plan_secuencial
 from core.catalog import Catalogo, abrir_sesion, crear_esquema, crear_motor
+from core.contracts import Severidad
 from core.verification import REGLAS
 from scripts.seed import NOMBRE_PROYECTO, sembrar
 from tests.fixtures import apu_linea_base as linea_base
@@ -36,9 +37,10 @@ def sesion(tmp_path):
 
 
 def _elaborar(sesion, espacio):
-    items = list(items_auditados()) + derivar(espacio, "agua")
+    auditados = list(items_auditados())
+    items = auditados + derivar(espacio, "agua")  # las del bano quedan pendientes: no hay APU
     composiciones = Catalogo(sesion).composiciones(
-        dict.fromkeys(i.codigo_partida for i in items), fecha=linea_base.FECHA_LINEA_BASE
+        dict.fromkeys(i.codigo_partida for i in auditados), fecha=linea_base.FECHA_LINEA_BASE
     )
     return elaborar(
         items,
@@ -79,8 +81,8 @@ def test_el_informe_del_bano_incluye_r8_y_sobrevive_a_la_recarga(sesion):
     emitido = _elaborar(sesion, espacio)
 
     # el bano limpio: 5 advertencias de R8 (4 filas con supuesto + 1 sobrescritura), ningun R9
-    assert [(h.regla, h.severidad.value) for h in _del_espacio(emitido.informe)] == [
-        ("R8", "ADVERTENCIA")
+    assert [(h.regla, h.severidad) for h in _del_espacio(emitido.informe)] == [
+        ("R8", Severidad.ADVERTENCIA)
     ] * 5
     assert ("R8", "Origen de la medida") in emitido.informe.reglas_evaluadas
     assert ("R9", "Coherencia espacial") in emitido.informe.reglas_evaluadas
