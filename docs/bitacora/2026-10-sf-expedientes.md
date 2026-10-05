@@ -321,3 +321,45 @@ expediente debe agregarlo aquí en el mismo commit. Nada lo exige mecánicamente
   cotizaciones activas sobre la lista base nueva). Prueba: `tests/integration/test_cotizacion_proyecto.py` (19).
   Rojo: `ModuleNotFoundError: No module named 'core.budget.cotizacion'` en `8fc8799`; implementación `5ee15f0`.
 - **Estado:** espera visto bueno del tutor.
+
+---
+
+## SF‑E8: revalorar guarda el reparto por partida que recibe (hallazgo de la hoja de SF3)
+
+- **Regla que lo motiva:** RF‑54/RF‑56 y SF‑E6: toda versión conserva su plan por partida. `actualizar_precios`
+  elaboraba con `plan=` pero llamaba a `guardar_presupuesto` sin él, que lo infería de la curva; con una partida
+  repartida en varios períodos el plan no es inferible y la versión revalorada quedaba **sin `PlanVersion`**.
+- **Por qué es genérico:** revalorar (UC‑02) y guardar un plan son propios de cualquier presupuesto valorado; no
+  interviene ninguna especialidad.
+- **Cambio:** `actualizar_precios` pasa a `guardar_presupuesto` el mismo reparto con el que elaboró: el plan ya
+  escrito, o el que calcula el `GeneradorPlan` (se captura al ejecutarlo, sin calcularlo dos veces). Sin `plan=`
+  nada cambia: **ruling SF3‑R4 se mantiene** (UC‑02 no conserva el plan por defecto; la pantalla pasa
+  `plan_de_version(...)`).
+- **Prueba que lo demuestra** (`tests/integration/test_sf3_defectos_nucleo.py`): origen con reparto 40/60 por
+  partida (literal escrito a mano); revalorar con `plan=plan_de_version(origen)` → la nueva versión recarga con
+  el mismo reparto exacto y la misma curva (dos períodos, primer monto = 40 % del total ±0,01, acumulado final =
+  total); plan como función se guarda igual al del origen; sin `plan=` la versión queda sin plan (R4).
+- **Impacto:** compatible hacia atrás (solo añade filas de `PlanVersion` cuando antes se perdían); las líneas base
+  no se mueven.
+- **Costo si es erróneo:** una versión revalorada con un plan que el llamador pasó mal; se corrige pasando el
+  correcto. Si se revierte, vuelve a perderse el reparto.
+- **Implementación y rojo observado (2026‑10‑05):** rojo `plan_de_version(...)` devolvía `None` para la versión
+  `002` y siete casos de `siguiente_codigo` fallaban (SF‑E9); implementación en el commit siguiente.
+- **Estado:** espera visto bueno del tutor.
+
+## SF‑E9: `siguiente_codigo` reconoce prefijo y número (hallazgo de la hoja de SF3)
+
+- **Regla que lo motiva:** la convención de códigos de versión (`001`, `TI-001`). `siguiente_codigo` solo veía
+  códigos solo‑dígitos: en un proyecto con `TI-001` devolvía `001`, que choca con la convención (y con una
+  versión existente si ya hubiera `001`).
+- **Por qué es genérico:** cualquier proyecto puede nombrar sus versiones con prefijo (caso TI‑001, importados).
+- **Cambio:** cada código se lee como prefijo libre + número final (`^(.*?)(\d+)$`). El prefijo es el de la última
+  versión guardada; el número, el mayor de ese prefijo más uno, con el ancho del mayor (mínimo 3); se salta
+  cualquier código existente. Sin código reconocible: `001`.
+- **Prueba que lo demuestra:** `TI-001`→`TI-002`; `001`→`002`; `001,002`→`003`; huecos (`TI-001,TI-003`→`TI-004`);
+  mezcla (`001,TI-001`→`TI-002`, `TI-001,002`→`003`); sin número (`PRE`)→`001`; ancho (`TI-0999`→`TI-1000`);
+  proyecto sin versiones→`001`; nunca un código existente.
+- **Impacto:** los proyectos con códigos solo numéricos dan lo mismo que antes.
+- **Costo si es erróneo:** un código con otro prefijo del esperado; el usuario lo puede cambiar. Ruling: con
+  mezcla de prefijos manda la última versión guardada.
+- **Estado:** espera visto bueno del tutor.
