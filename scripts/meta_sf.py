@@ -17,6 +17,12 @@ R8 a R10 (`reglas.py`) no entran en S3: las pesan S8 (regresion) y las pruebas d
 (`test_espacio_reglas.py`, `test_espacio_r10.py`) con la cobertura de S10.
 S2 exige, desde SF2, `of001.md` versionada antes del primer codigo de datos. S4 compara `core/`
 contra `gsf1` (o, mientras esa etiqueta no exista, contra la rama `inc/sf1`): `git diff` vacio.
+Desde SF3 (rama `inc/sf3-nucleo`): S4 vigila SF2 y SF5, y esa rama SI toca `core/` (expedientes
+SF-E2 a SF-E7, spec 12.2), asi que S4 compara `gsf1` contra el FIN de SF2 (`gsf2` o, si no existe,
+`inc/sf2`) y no contra la punta de la rama; S5 pesa las pruebas del nucleo de la hoja (edicion,
+versiones, restauracion, instantanea, cotizacion, punto de equilibrio y Excel) y llega a OK con
+ellas, a la espera de las de la pantalla (rama `inc/sf3`); S9 sigue PENDIENTE hasta
+`medir_rnf11.py`.
 S10 mide con el `coverage.json` que deja la corrida con `--cov`, y solo si es posterior al codigo
 de `adapters/espacio` (`cobertura_vigente`); si no, queda PENDIENTE.
 
@@ -84,6 +90,20 @@ RUTA_PRUEBAS_ELECTRICIDAD = (
 )
 #: Etiqueta de la compuerta GSF1 y, si todavia no existe, la rama de SF1: base de S4.
 BASES_S4: tuple[str, ...] = ("gsf1", "inc/sf1")
+#: Fin de SF2, con que S4 compara la base desde que ramas posteriores tocan `core/` (SF3 nucleo).
+PUNTAS_S4: tuple[str, ...] = ("gsf2", "inc/sf2")
+
+#: S5 (nucleo de SF3): grupo -> archivos de prueba que deben existir y pasar.
+GRUPOS_S5: dict[str, tuple[str, ...]] = {
+    "edicion, versiones y restauracion": (
+        "tests/integration/test_edicion_versiones.py",
+        "tests/integration/test_trazabilidad_exportable.py",
+    ),
+    "instantanea de composiciones": ("tests/integration/test_instantanea_composiciones.py",),
+    "cotizacion por proyecto": ("tests/integration/test_cotizacion_proyecto.py",),
+    "punto de equilibrio": ("tests/unit/test_equilibrio.py",),
+    "Excel": ("tests/unit/test_excel_hoja.py", "tests/unit/test_excel_m1.py"),
+}
 
 #: Memorias de calculo de SF1: nombre -> argumentos de `git log` que localizan el PRIMER commit del
 #: codigo que ellas rigen. La del bano rige la geometria; la del drenaje, la derivacion de agua y
@@ -285,8 +305,11 @@ def evaluar_s3_especialidades(
     return Estado.OK, f"pruebas en verde: {detalle}"
 
 
-def evaluar_s4_core(base: str | None, diff: str | None) -> tuple[Estado, str]:
-    """S4: `core/` no cambio desde `base` (`git diff --stat <base>..HEAD -- core/` vacio).
+def evaluar_s4_core(
+    base: str | None, diff: str | None, punta: str = "HEAD"
+) -> tuple[Estado, str]:
+    """S4: `core/` no cambio desde `base` hasta `punta` (`git diff --stat <base>..<punta> -- core/`
+    vacio; `punta` es `HEAD` o, desde SF3, el fin de SF2: ver `punta_de_s4`).
 
     `base` es None si no hay etiqueta ni rama de referencia, y `diff` es None si git no
     respondio: en ambos casos no hay evidencia (PENDIENTE). Un diff con contenido es FALLA y
@@ -297,8 +320,34 @@ def evaluar_s4_core(base: str | None, diff: str | None) -> tuple[Estado, str]:
         return Estado.PENDIENTE, f"git no respondio al comparar core/ con {base}"
     cambios = [linea.strip() for linea in diff.splitlines() if linea.strip()]
     if cambios:
-        return Estado.FALLA, f"core/ cambio desde {base}: " + "; ".join(cambios[:5])
-    return Estado.OK, f"core/ intacto desde {base} (git diff vacio)"
+        return Estado.FALLA, f"core/ cambio en {base}..{punta}: " + "; ".join(cambios[:5])
+    return Estado.OK, f"core/ intacto en {base}..{punta} (git diff vacio)"
+
+
+def punta_de_s4(existe: Callable[[str], bool]) -> str:
+    """El fin de SF2 contra el que S4 compara: `gsf2`, si no `inc/sf2`, y `HEAD` si ninguno existe.
+
+    S4 vigila SF2 y SF5 (spec 12.2). Una rama de SF3 que toca `core/` con expediente no es una
+    violacion: se compara el fin de SF2, no la punta de la rama."""
+    return next((ref for ref in PUNTAS_S4 if existe(ref)), "HEAD")
+
+
+def evaluar_s5_nucleo(grupos: dict[str, tuple[int, int] | None]) -> tuple[Estado, str]:
+    """S5 (nucleo de SF3): cada grupo es `(pasan, total)`; `None` o `(0, 0)` si aun no tiene
+    pruebas (PENDIENTE). Un fallo pesa mas que una ausencia. OK es parcial: cubre el nucleo; las
+    pruebas de la pantalla de la hoja llegan con la rama `inc/sf3`."""
+    fallan = [f"{g} ({r[0]}/{r[1]})" for g, r in grupos.items() if r and r[1] > 0 and r[0] < r[1]]
+    if fallan:
+        return Estado.FALLA, "pruebas del nucleo que fallan: " + ", ".join(fallan)
+    pendientes = [g for g, r in grupos.items() if r is None or r[1] == 0]
+    if pendientes:
+        return Estado.PENDIENTE, "sin pruebas del nucleo: " + ", ".join(pendientes)
+    total = sum(r[1] for r in grupos.values() if r)
+    return (
+        Estado.OK,
+        f"{len(grupos)} grupos del nucleo en verde ({total} pruebas); la pantalla de la hoja "
+        "llega con SF3 (inc/sf3)",
+    )
 
 
 def base_de_core(existe: Callable[[str], bool]) -> str | None:
@@ -452,9 +501,10 @@ def _s4() -> tuple[Estado, str]:
     base = base_de_core(_referencia_existe)
     if base is None:
         return evaluar_s4_core(None, None)
+    punta = punta_de_s4(_referencia_existe)
     try:
         r = subprocess.run(
-            ["git", "diff", "--stat", f"{base}..HEAD", "--", "core/"],
+            ["git", "diff", "--stat", f"{base}..{punta}", "--", "core/"],
             cwd=RAIZ,
             capture_output=True,
             text=True,
@@ -462,8 +512,15 @@ def _s4() -> tuple[Estado, str]:
             check=False,
         )
     except OSError:
-        return evaluar_s4_core(base, None)
-    return evaluar_s4_core(base, r.stdout if r.returncode == 0 else None)
+        return evaluar_s4_core(base, None, punta)
+    return evaluar_s4_core(base, r.stdout if r.returncode == 0 else None, punta)
+
+
+def _s5() -> tuple[Estado, str]:
+    presentes = {g: ids for g, ids in GRUPOS_S5.items() if all((RAIZ / i).is_file() for i in ids)}
+    ids = [i for grupo in presentes.values() for i in grupo]
+    cuenta = contar_resultados(_correr_pytest(ids), presentes) if ids else {}
+    return evaluar_s5_nucleo({g: cuenta.get(g) for g in GRUPOS_S5})
 
 
 def _s8() -> tuple[Estado, str]:
@@ -491,11 +548,11 @@ def _evaluar_metas(codigos: list[str], fase: str | None = None) -> list[Fila]:
         "S2": lambda: _s2(sf2),
         "S3": lambda: _s3(sf2),
         "S4": _s4,
-        "S5": _pendiente("la hoja del proyecto llega con SF3"),
+        "S5": _s5,
         "S6": _pendiente("la barra superior llega con SF4"),
         "S7": _pendiente("la importacion de planos llega con SF5"),
         "S8": _s8,
-        "S9": _pendiente("la medicion de RNF-11 llega con SF3"),
+        "S9": _pendiente("la medicion de RNF-11 llega con SF3 (medir_rnf11.py, rama inc/sf3)"),
         "S10": _s10,
     }
     return [Fila(codigo, TITULOS[codigo], *chequeos[codigo]()) for codigo in codigos]
