@@ -224,9 +224,7 @@ def _cabecera() -> tuple[str, str, str, Dominio, date]:
     unidad = columnas[2].text_input("Unidad")
 
     columnas_dominio = st.columns(2)
-    dominio = columnas_dominio[0].selectbox(
-        "Dominio", list(Dominio), format_func=lambda d: d.value
-    )
+    dominio = columnas_dominio[0].selectbox("Dominio", list(Dominio), format_func=lambda d: d.value)
     fecha = columnas_dominio[1].date_input("Fecha", value=date.today())
     return codigo, descripcion, unidad, dominio, fecha
 

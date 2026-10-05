@@ -1,0 +1,17 @@
+{
+  "requisito": "RNF-11",
+  "puntos": 500,
+  "corridas_s": [
+    0.125105,
+    0.134566,
+    0.125101,
+    0.121109,
+    0.126236
+  ],
+  "mediana_s": 0.125105,
+  "mediana_texto": "0.125",
+  "umbral_s": 2.0,
+  "cumple": true,
+  "equipo": "Windows-11-10.0.26200-SP0; AMD64 Family 23 Model 104 Stepping 1, AuthenticAMD; 16 nucleos; Python 3.13.2",
+  "fecha": "2026-10-05T16:43:14"
+}

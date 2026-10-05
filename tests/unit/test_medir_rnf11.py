@@ -95,8 +95,14 @@ def test_con_estricto_el_script_falla_solo_si_supera_el_umbral(tmp_path):
     lento = _reloj([0.0, 5.0, 5.0, 5.0, 5.0, 5.0])
     rapido = _reloj([0.0, 0.5, 0.5, 0.5, 0.5, 0.5])
 
-    assert medir.main(["--puntos", "20", "--estricto", "--salida", str(tmp_path / "a")], reloj=lento) == 1
-    assert medir.main(["--puntos", "20", "--estricto", "--salida", str(tmp_path / "b")], reloj=rapido) == 0
+    assert (
+        medir.main(["--puntos", "20", "--estricto", "--salida", str(tmp_path / "a")], reloj=lento)
+        == 1
+    )
+    assert (
+        medir.main(["--puntos", "20", "--estricto", "--salida", str(tmp_path / "b")], reloj=rapido)
+        == 0
+    )
     assert json.loads((tmp_path / "b").read_text(encoding="utf-8"))["cumple"] is True
 
 

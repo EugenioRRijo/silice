@@ -152,9 +152,7 @@ def _material_desde_fila(fila: Mapping[str, str], indice: int) -> LineaMaterial 
             descripcion=descripcion, unidad=unidad, cantidad=cantidad, precio=precio
         )
     except ValueError as error:
-        raise ComposicionInvalida(
-            f"materiales, fila {indice} ({descripcion}): {error}"
-        ) from error
+        raise ComposicionInvalida(f"materiales, fila {indice} ({descripcion}): {error}") from error
 
 
 def _equipo_desde_fila(fila: Mapping[str, str], indice: int) -> LineaEquipo | None:
@@ -174,9 +172,7 @@ def _equipo_desde_fila(fila: Mapping[str, str], indice: int) -> LineaEquipo | No
             descripcion=descripcion, cantidad=cantidad, precio=precio, depreciacion=depreciacion
         )
     except ValueError as error:
-        raise ComposicionInvalida(
-            f"equipos, fila {indice} ({descripcion}): {error}"
-        ) from error
+        raise ComposicionInvalida(f"equipos, fila {indice} ({descripcion}): {error}") from error
 
 
 def _mano_obra_desde_fila(fila: Mapping[str, str], indice: int) -> LineaManoObra | None:

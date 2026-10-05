@@ -1,39 +1,49 @@
-"""Pantalla «Hoja del proyecto»: la pestana Espacio y metrajes (SF 1.8, spec §9.1 y §9.2).
+"""Pantalla «Hoja del proyecto»: nueve pestanas sobre un borrador editable (SF3, spec §9).
 
-El usuario describe el espacio —origenes de medida, ambientes, fuentes, puntos y los vertices de
-los recorridos que declara— en tablas editables (`st.data_editor`); debajo ve las cantidades que la
-hoja deriva de ese espacio y el informe de auditoria del presupuesto que resulta (principio 7 de
-NORMAS.md §2: se genera siempre). Toda la logica vive en `ui.hoja` (sin Streamlit); aqui solo se
-pinta.
+Pestanas: Espacio y metrajes, APU, Presupuesto, Plan y curva, Punto de equilibrio, Precios,
+Parametros, Auditoria y Trazabilidad. Cada una edita solo lo que la spec §9.2 declara editable y
+pinta lo calculado aparte. Toda la logica vive en `ui.hoja` (sin Streamlit); aqui solo se pinta.
 
-Tres decisiones de pantalla (spec §5.3 y §9.2):
+Decisiones de pantalla (spec §5.3, §5.4 y §9.2):
 
-* **El borrador vive en `st.session_state[CLAVE_BORRADOR]`**, una clave que no es de ningun widget:
-  Streamlit descarta el estado de los widgets que no se vuelven a montar. Las tablas del editor se
-  siembran **una sola vez** desde el borrador (`CLAVE_PARTIDA`); si se le devolviera al editor la
-  tabla recalculada en cada edicion, se reiniciaria.
-* **La columna Estado va fuera del editor**: un `st.dataframe` aparte, junto a cada tabla, con el
-  peor hallazgo de cada fila (`ui.hoja.estado_de_filas`). Se pinta despues de elaborar, en el hueco
-  que se reservo al lado del editor.
-* **La pestana activa es un `st.segmented_control`** con su propia clave. Hoy solo existe la
-  primera; las demas (APU, Presupuesto, Plan y curva...) llegan con SF2 a SF4.
+* **El borrador vive en `st.session_state[CLAVE_BORRADOR]`**, una clave que no es de ningun widget
+  (Streamlit descarta el estado de los widgets que no se vuelven a montar). Es un
+  `ui.hoja.Borrador`: espacio, copia de las composiciones de la version, parametros, plan y
+  cantidades escritas a mano. Cada edicion valida produce otro borrador; una fila invalida se
+  muestra como error y la hoja sigue con el ultimo borrador valido.
+* **Los editores se siembran con `CLAVE_PARTIDA`**, no con el borrador vigente: devolverle al
+  editor la tabla recalculada en cada edicion lo reiniciaria. Al cambiar de pestana, abrir una
+  version o aplicar una accion que no es del editor, la siembra se renueva (`_resembrar`: sube la
+  generacion que forma parte de la clave de cada editor).
+* **La columna Estado y lo calculado van fuera de los editores**, en `st.dataframe` aparte.
+* **La pestana activa es un `st.segmented_control`**: solo se ejecuta esa pestana en cada edicion.
+  El resultado (`ui.hoja.elaborar_borrador`) se calcula una sola vez por borrador nuevo y se
+  guarda junto a el.
+* **El Excel se genera solo al pulsar «Preparar Excel»** (o cuando la barra superior pide
+  `ACCION_EXPORTAR_EXCEL`) y se ofrece con `st.download_button`.
+* **Aviso de ediciones sin guardar (15c):** mientras haya cambios la pantalla lo dice, y cambiar de
+  version o de proyecto pide confirmar que se descartan. Cerrar la pestana del navegador no se
+  puede interceptar desde Streamlit: queda como diferido declarado.
 
-Una fila invalida no pierde el trabajo: `ui.hoja.HojaInvalida` se muestra como error y la hoja sigue
-con el ultimo borrador valido. Esta pantalla **no guarda**: guardar una version es SF3. Sin efectos
-al importarse: todo vive dentro de `render()`.
+Guardar, restaurar y cotizar escriben en el caso por `ui.hoja` en UNA sola sesion. Sin efectos al
+importarse: todo vive dentro de `render()`.
 """
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Callable, Iterator, Sequence
+from contextlib import contextmanager
+from dataclasses import replace
 from datetime import date
+from decimal import Decimal
+from typing import Any
 
 import streamlit as st
 from pandas import DataFrame
+from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 
 from adapters.espacio import (
-    Espacio,
     Especialidad,
     SuperficiePunto,
     SuperficieTramo,
@@ -41,25 +51,399 @@ from adapters.espacio import (
     TipoOrigen,
     TipoPunto,
 )
-from core.catalog import Catalogo, CatalogoIncompleto, abrir_sesion, crear_motor
-from core.contracts import ComposicionAPU, ItemComputo
+from core import models
+from core.catalog import Catalogo, CatalogoIncompleto, abrir_sesion, crear_esquema, crear_motor
 from core.verification.informe import DECIMALES_PRESENTACION
 from core.verification.texto import formatear_decimal
-from ui import hoja
+from ui import caso, hoja
 from ui.caso import ruta_caso
 
-PESTANAS = ("Espacio y metrajes",)
-CLAVE_BORRADOR = "hoja_borrador"  # el Espacio vigente: no es la clave de ningun widget
-CLAVE_PARTIDA = "hoja_partida"  # el Espacio con que se sembraron las tablas del editor
-CLAVE_PESTANA = "hoja_pestana"  # clave del st.segmented_control
+PESTANAS = (
+    "Espacio y metrajes",
+    "APU",
+    "Presupuesto",
+    "Plan y curva",
+    "Punto de equilibrio",
+    "Precios",
+    "Parámetros",
+    "Auditoría",
+    "Trazabilidad",
+)
+
+# Claves de `st.session_state` que NO son de ningun widget.
+CLAVE_BORRADOR = "hoja_borrador"  # el `Borrador` vigente
+CLAVE_PARTIDA = "hoja_partida"  # el `Borrador` con que se sembraron los editores
+CLAVE_ABIERTA = "hoja_abierta"  # la `VersionAbierta` (o None: borrador sin version)
+CLAVE_ABIERTA_EN = "hoja_abierta_en"  # (ruta, proyecto, codigo) de lo abierto
+CLAVE_RESULTADO = "hoja_resultado"  # (borrador, ResultadoHoja, cambios) del ultimo calculo
+CLAVE_GENERACION = "hoja_generacion"  # sube al renovar la siembra de los editores
+CLAVE_ULTIMA_PESTANA = "hoja_ultima_pestana"
+CLAVE_EXCEL = "hoja_excel"  # (nombre, bytes) del ultimo Excel preparado
+CLAVE_ACCION_PENDIENTE = "hoja_accion_pendiente"  # accion de la barra que aun no se atendio
+CLAVE_SELECTORES = "hoja_selectores"  # sube para que los selectores vuelvan a la version abierta
+CLAVE_MENSAJE = "hoja_mensaje"  # (tipo, texto) del ultimo intento de guardar, restaurar o cotizar
+
+# Claves de widgets (los selectores llevan ademas el numero de `CLAVE_SELECTORES`).
+CLAVE_PESTANA = "hoja_pestana"
+CLAVE_PROYECTO = "hoja_proyecto"
+CLAVE_VERSION = "hoja_version"
+CLAVE_FUENTE = "hoja_fuente"
+CLAVE_RESPONSABLE = "hoja_responsable"
 PREFIJO_EDITOR = "hoja_editor_"
-TABLAS_CON_ESTADO = {"ambientes": "esp_ambientes", "fuentes": "esp_fuentes", "puntos": "esp_puntos"}
+
+SIN_PROYECTO = "(borrador nuevo, sin guardar)"
+TABLAS_CON_ESTADO = hoja.TABLAS_CON_ESTADO
 
 _AYUDA_ESPACIO = (
     "Describa el espacio en metros (eje z hacia arriba desde el piso terminado). Cada fila cita un "
     "origen de medida; un punto de agua fria sin recorrido declarado usa el recorrido propuesto. "
     "Los vertices se escriben como `x,y,z; x,y,z` y la longitud de cada tramo se calcula."
 )
+
+
+# --- acceso al caso -------------------------------------------------------------------------------
+
+
+@contextmanager
+def _sesion() -> Iterator[Any]:
+    """Una sesion sobre el caso abierto, o `None` si el archivo no existe (no se crea nada)."""
+    ruta = ruta_caso()
+    if not ruta.exists():
+        yield None
+        return
+    motor = crear_motor(f"sqlite:///{ruta.as_posix()}")
+    try:
+        crear_esquema(motor)  # las tablas aditivas faltan en una base anterior (B de SF3)
+        with abrir_sesion(motor) as sesion:
+            yield sesion
+    finally:
+        motor.dispose()
+
+
+def _mensaje(tipo: str, texto: str) -> None:
+    st.session_state[CLAVE_MENSAJE] = (tipo, texto)
+
+
+def _error_de_base(error: Exception) -> str:
+    return (
+        "No se pudo leer o escribir el caso: "
+        f"{getattr(error, 'orig', None) or error}. Revise que el archivo exista y no este abierto "
+        "en otro programa."
+    )
+
+
+# --- estado ---------------------------------------------------------------------------------------
+
+
+def _borrador() -> hoja.Borrador:
+    actual = st.session_state.get(CLAVE_BORRADOR)
+    if not isinstance(actual, hoja.Borrador):
+        actual = hoja.Borrador(fecha=date.today())
+        st.session_state[CLAVE_BORRADOR] = actual
+    if not isinstance(st.session_state.get(CLAVE_PARTIDA), hoja.Borrador):
+        st.session_state[CLAVE_PARTIDA] = actual
+    return actual
+
+
+def _partida() -> hoja.Borrador:
+    _borrador()
+    return st.session_state[CLAVE_PARTIDA]
+
+
+def _abierta() -> hoja.VersionAbierta | None:
+    return st.session_state.get(CLAVE_ABIERTA)
+
+
+def _generacion() -> int:
+    return st.session_state.setdefault(CLAVE_GENERACION, 0)
+
+
+def _resembrar() -> None:
+    """Los editores vuelven a sembrarse con el borrador vigente (cambia la clave de cada uno)."""
+    st.session_state[CLAVE_PARTIDA] = _borrador()
+    st.session_state[CLAVE_GENERACION] = _generacion() + 1
+
+
+def _poner_borrador(nuevo: hoja.Borrador, *, resembrar: bool = False) -> None:
+    """Fija el borrador vigente (completando las composiciones de las partidas nuevas) y olvida el
+    resultado y el Excel, que ya no son de este borrador."""
+    if nuevo == st.session_state.get(CLAVE_BORRADOR):
+        return
+    abierta = _abierta()
+    try:
+        with _sesion() as sesion:
+            if sesion is not None:
+                lista = None
+                if abierta is not None:
+                    lista = hoja._modelo(sesion, abierta.proyecto, abierta.codigo).lista_precios
+                nuevo = hoja.completar_composiciones(Catalogo(sesion), nuevo, lista=lista)
+    except (SQLAlchemyError, CatalogoIncompleto) as error:
+        st.warning(_error_de_base(error))
+    st.session_state[CLAVE_BORRADOR] = nuevo
+    st.session_state.pop(CLAVE_RESULTADO, None)
+    st.session_state.pop(CLAVE_EXCEL, None)
+    if resembrar:
+        _resembrar()
+
+
+def _base_de_comparacion() -> hoja.Borrador:
+    abierta = _abierta()
+    if abierta is not None:
+        return abierta.borrador
+    actual = _borrador()
+    return hoja.Borrador(fecha=actual.fecha, moneda=actual.moneda)
+
+
+def _calculo() -> tuple[hoja.ResultadoHoja, list]:
+    """El resultado y los cambios del borrador vigente; se calculan una vez por borrador."""
+    actual = _borrador()
+    guardado = st.session_state.get(CLAVE_RESULTADO)
+    if guardado is None or guardado[0] is not actual:
+        resultado = hoja.elaborar_borrador(actual)
+        cambios = hoja.cambios_entre(_base_de_comparacion(), actual)
+        guardado = (actual, resultado, cambios)
+        st.session_state[CLAVE_RESULTADO] = guardado
+    return guardado[1], guardado[2]
+
+
+# --- version abierta y aviso de ediciones sin guardar --------------------------------------------
+
+
+def _abrir(proyecto: str | None, codigo: str | None) -> None:
+    """Abre la version elegida (o un borrador nuevo) y renueva la siembra de los editores."""
+    if proyecto is None or codigo is None:
+        st.session_state[CLAVE_ABIERTA] = None
+        st.session_state[CLAVE_ABIERTA_EN] = (str(ruta_caso()), None, None)
+        st.session_state[CLAVE_BORRADOR] = hoja.Borrador(fecha=date.today())
+    else:
+        try:
+            with _sesion() as sesion:
+                abierta = hoja.abrir_version(sesion, Catalogo(sesion), proyecto, codigo)
+        except hoja.HojaInvalida as error:
+            st.error(str(error))
+            return
+        except SQLAlchemyError as error:
+            st.error(_error_de_base(error))
+            return
+        st.session_state[CLAVE_ABIERTA] = abierta
+        st.session_state[CLAVE_ABIERTA_EN] = (str(ruta_caso()), proyecto, codigo)
+        st.session_state[CLAVE_BORRADOR] = abierta.borrador
+        if abierta.instantanea.creadas:
+            _mensaje(
+                "info",
+                "Se creo y registro la instantanea de las composiciones de esta version "
+                f"({len(abierta.instantanea.creadas)} partidas): sus APU ya no cambian si cambia "
+                "el catalogo.",
+            )
+    st.session_state.pop(CLAVE_RESULTADO, None)
+    st.session_state.pop(CLAVE_EXCEL, None)
+    _volver_los_selectores_a_lo_abierto()
+    _resembrar()
+
+
+def _volver_los_selectores_a_lo_abierto() -> None:
+    """Los selectores cambian de clave y, al ser nuevos, parten de lo que esta abierto."""
+    st.session_state[CLAVE_SELECTORES] = st.session_state.get(CLAVE_SELECTORES, 0) + 1
+
+
+def _clave_selector(base: str) -> str:
+    n = st.session_state.get(CLAVE_SELECTORES, 0)
+    return base if n == 0 else f"{base}_{n}"
+
+
+def _descartar_y_abrir(proyecto: str | None, codigo: str | None) -> None:
+    _abrir(proyecto, codigo)
+
+
+def _seguir_editando() -> None:
+    _volver_los_selectores_a_lo_abierto()
+
+
+def _selector_de_version(cambios: Sequence) -> None:
+    """Proyecto y version a editar; cambiar con ediciones sin guardar pide confirmar (15c)."""
+    ruta = str(ruta_caso())
+    abierto = st.session_state.get(CLAVE_ABIERTA_EN)
+    clave_proyecto = _clave_selector(CLAVE_PROYECTO)
+    with _sesion() as sesion:
+        proyectos = [] if sesion is None else list(sesion.scalars(select(models.Proyecto.nombre)))
+        opciones = [SIN_PROYECTO, *proyectos]
+        elegido = st.session_state.get(clave_proyecto)
+        if elegido is None and abierto is not None and abierto[1] in proyectos:
+            elegido = abierto[1]
+        versiones: list[hoja.FilaVersion] = []
+        if sesion is not None and elegido in proyectos:
+            versiones = hoja.historial_de_versiones(sesion, elegido)
+    if not proyectos:
+        return
+    columnas = st.columns(2)
+    proyecto = columnas[0].selectbox(
+        "Proyecto",
+        opciones,
+        index=opciones.index(elegido) if elegido in opciones else 0,
+        key=clave_proyecto,
+    )
+    codigo = None
+    if proyecto != SIN_PROYECTO:
+        codigos = [v.codigo for v in versiones if not v.descartada] or [v.codigo for v in versiones]
+        vigente = next((v.codigo for v in versiones if v.vigente), codigos[-1])
+        abierta_aqui = abierto[2] if abierto is not None and abierto[1] == proyecto else None
+        inicial = abierta_aqui if abierta_aqui in codigos else vigente
+        codigo = columnas[1].selectbox(
+            "Version",
+            codigos,
+            index=codigos.index(inicial) if inicial in codigos else 0,
+            key=_clave_selector(CLAVE_VERSION),
+            format_func=lambda c: f"{c} (vigente)" if c == vigente else c,
+        )
+    deseado = (ruta, None if proyecto == SIN_PROYECTO else proyecto, codigo)
+    if abierto == deseado:
+        return
+    if abierto is None and not cambios and deseado[1] is None:
+        st.session_state[CLAVE_ABIERTA_EN] = deseado
+        return
+    if cambios and abierto is not None:
+        st.warning(
+            f"Tiene {len(cambios)} cambios sin guardar. Si abre otra version se pierden: guarde "
+            "primero o descarte."
+        )
+        izquierda, derecha = st.columns(2)
+        izquierda.button(
+            "Descartar los cambios y abrir la version elegida",
+            on_click=_descartar_y_abrir,
+            args=(deseado[1], deseado[2]),
+        )
+        derecha.button("Seguir editando", on_click=_seguir_editando)
+        return
+    _abrir(deseado[1], deseado[2])
+    st.rerun()
+
+
+# --- guardar y exportar ---------------------------------------------------------------------------
+
+
+def _atender() -> str | None:
+    """La accion pendiente de la barra superior (`ui.caso.pedir_accion`, si ya existe en este
+    marco). Se guarda en la sesion hasta que la hoja pueda atenderla: abrir una version reinicia
+    la ejecucion y la accion no puede perderse en ese reinicio."""
+    tomar: Callable[[], str | None] | None = getattr(caso, "tomar_accion", None)
+    nueva = tomar() if tomar is not None else None
+    if nueva is not None:
+        st.session_state[CLAVE_ACCION_PENDIENTE] = nueva
+    return st.session_state.get(CLAVE_ACCION_PENDIENTE)
+
+
+def _guardar() -> None:
+    """Callback del boton Guardar: una sola sesion; el resultado se dice en el mensaje."""
+    abierta, borrador = _abierta(), _borrador()
+    if abierta is None:
+        _mensaje("error", "Abra una version guardada para poder guardar cambios.")
+        return
+    try:
+        with _sesion() as sesion:
+            guardada = hoja.guardar_version(
+                sesion,
+                Catalogo(sesion),
+                abierta,
+                borrador,
+                fuente=st.session_state.get(CLAVE_FUENTE, ""),
+                responsable=st.session_state.get(CLAVE_RESPONSABLE, ""),
+            )
+    except hoja.HojaInvalida as error:
+        _mensaje("error", str(error))
+        return
+    except (SQLAlchemyError, ValueError, CatalogoIncompleto) as error:
+        _mensaje("error", f"No se guardo nada: {getattr(error, 'orig', None) or error}")
+        return
+    if guardada is None:
+        _mensaje("info", "No hay cambios para guardar.")
+        return
+    _mensaje(
+        "success",
+        f"Se guardo la version {guardada.codigo} con {guardada.cambios} cambios registrados.",
+    )
+    _abrir(abierta.proyecto, guardada.codigo)
+    st.session_state[CLAVE_FUENTE] = ""
+
+
+def _preparar_excel() -> None:
+    """Callback de Preparar Excel: el libro se genera aqui y no antes."""
+    borrador = _borrador()
+    resultado, _ = _calculo()
+    abierta = _abierta()
+    trazabilidad, precios = None, ()
+    try:
+        if abierta is not None:
+            with _sesion() as sesion:
+                trazabilidad = hoja.tabla_de_trazabilidad(sesion, abierta.proyecto, abierta.codigo)
+                precios = hoja.precios_de_version(sesion, abierta.proyecto, abierta.codigo)
+        contenido = hoja.excel_de_hoja_en_bytes(
+            resultado, borrador, trazabilidad=trazabilidad, precios=precios
+        )
+    except (SQLAlchemyError, ValueError) as error:
+        _mensaje("error", f"No se pudo preparar el Excel: {getattr(error, 'orig', None) or error}")
+        return
+    nombre = f"hoja_{abierta.codigo}.xlsx" if abierta is not None else "hoja_borrador.xlsx"
+    st.session_state[CLAVE_EXCEL] = (nombre, contenido)
+
+
+def _panel_de_guardado(cambios: Sequence, accion: str | None) -> None:
+    abierta = _abierta()
+    pide_guardar = accion == "guardar_version"
+    if accion == "exportar_excel":
+        _preparar_excel()
+    if cambios:
+        st.warning(
+            f"{len(cambios)} cambios sin guardar. Si cierra la hoja o abre otra version se pierden."
+        )
+    with st.expander("Guardar version y exportar a Excel", expanded=bool(cambios) or pide_guardar):
+        if abierta is None:
+            st.caption(
+                "Esta es un borrador sin version guardada: abra una version del proyecto para "
+                "poder guardar. Si, el Excel se puede preparar igual."
+            )
+        else:
+            st.caption(
+                f"Version abierta: {abierta.codigo}. Cada guardado crea una version nueva y "
+                "registra cada celda cambiada, con su fuente y su responsable."
+            )
+            if abierta.solo_lectura:
+                st.warning(
+                    "Esta version esta en solo lectura: alguna partida ya no tiene composicion "
+                    "vigente en el catalogo."
+                )
+        fuente, responsable = st.columns(2)
+        fuente.text_input("Fuente del cambio (por que y con que respaldo)", key=CLAVE_FUENTE)
+        responsable.text_input("Responsable", key=CLAVE_RESPONSABLE)
+        motivo = (
+            "Abra una version guardada para poder guardar."
+            if abierta is None
+            else hoja.motivo_para_no_guardar(
+                abierta.borrador,
+                _borrador(),
+                st.session_state.get(CLAVE_FUENTE, ""),
+                st.session_state.get(CLAVE_RESPONSABLE, ""),
+            )
+        )
+        izquierda, derecha = st.columns(2)
+        izquierda.button(
+            "Guardar version",
+            on_click=_guardar,
+            disabled=motivo is not None or (abierta is not None and abierta.solo_lectura),
+            help=motivo,
+            type="primary",
+        )
+        derecha.button("Preparar Excel", on_click=_preparar_excel)
+        excel = st.session_state.get(CLAVE_EXCEL)
+        if excel is not None:
+            st.download_button(
+                "Descargar Excel",
+                excel[1],
+                file_name=excel[0],
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
+
+
+# --- ayudas de pantalla ---------------------------------------------------------------------------
 
 
 def _opciones(*enums: type) -> list[str]:
@@ -86,29 +470,12 @@ def _configuracion(tabla: str) -> dict[str, object]:
     }
 
 
-def _composiciones(
-    items: Sequence[ItemComputo], fecha: date
-) -> tuple[dict[str, ComposicionAPU], str | None]:
-    """Las composiciones del catalogo del caso abierto para los items derivados, y un aviso.
-
-    Sin archivo, sin items o con un catalogo ilegible no se escribe nada: el informe declara
-    entonces cada item como pendiente (UC-01 3a).
-    """
-    ruta = ruta_caso()
-    if not items or not ruta.exists():
-        return {}, None
-    motor = crear_motor(f"sqlite:///{ruta.as_posix()}")
-    try:
-        with abrir_sesion(motor) as sesion:
-            return hoja.composiciones_del_catalogo(Catalogo(sesion), items, fecha), None
-    except (SQLAlchemyError, CatalogoIncompleto) as error:
-        return {}, f"No se pudo leer el catalogo del caso: {getattr(error, 'orig', None) or error}"
-    finally:
-        motor.dispose()
+def _dinero(valor: Decimal, moneda: str) -> str:
+    return f"{formatear_decimal(valor, DECIMALES_PRESENTACION)} {moneda}"
 
 
 def _pintar_estado(
-    hueco, tabla: str, filas: Sequence[dict[str, str]], estado: dict[str, hoja.EstadoFila]
+    hueco: Any, tabla: str, filas: Sequence[dict[str, str]], estado: dict[str, hoja.EstadoFila]
 ) -> None:
     prefijo = TABLAS_CON_ESTADO[tabla]
     with hueco:
@@ -123,7 +490,14 @@ def _pintar_estado(
         )
 
 
-def _cantidades(items: Sequence[ItemComputo]) -> None:
+def _clave(*partes: object) -> str:
+    return PREFIJO_EDITOR + "_".join(str(p) for p in (*partes, _generacion()))
+
+
+# --- pestana Espacio y metrajes ------------------------------------------------------------------
+
+
+def _cantidades(items: Sequence[Any]) -> None:
     st.subheader("Cantidades derivadas")
     if not items:
         st.info(
@@ -148,16 +522,7 @@ def _cantidades(items: Sequence[ItemComputo]) -> None:
 
 def _pestana_espacio() -> None:
     st.caption(_AYUDA_ESPACIO)
-    borrador = st.session_state.get(CLAVE_BORRADOR)
-    if not isinstance(borrador, Espacio):
-        borrador = Espacio()
-        st.session_state[CLAVE_BORRADOR] = borrador
-    partida = st.session_state.get(CLAVE_PARTIDA)
-    if not isinstance(partida, Espacio):
-        partida = borrador
-        st.session_state[CLAVE_PARTIDA] = partida
-    base = hoja.filas_desde_espacio(partida)
-
+    base = hoja.filas_desde_espacio(_partida().espacio)
     huecos: dict[str, object] = {}
     editadas: dict[str, list[dict[str, object]]] = {}
     for tabla, columnas in hoja.COLUMNAS.items():
@@ -173,47 +538,595 @@ def _pestana_espacio() -> None:
                 hide_index=True,
                 width="stretch",
                 column_config=_configuracion(tabla),
-                key=f"{PREFIJO_EDITOR}{tabla}",
+                key=_clave(tabla),
             )
         editadas[tabla] = tabla_editada.to_dict("records")
 
     try:
-        borrador = hoja.espacio_desde_filas(editadas, base=partida)
-        st.session_state[CLAVE_BORRADOR] = borrador
+        espacio = hoja.espacio_desde_filas(editadas, base=_borrador().espacio)
+        _poner_borrador(replace(_borrador(), espacio=espacio))
     except hoja.HojaInvalida as error:
         st.error(f"{error}. La hoja sigue con el ultimo borrador valido.")
-        borrador = st.session_state[CLAVE_BORRADOR]
 
-    fecha = date.today()
-    items = hoja.items_del_borrador(borrador, hoja.TODAS)
-    composiciones, aviso = _composiciones(items, fecha)
-    if aviso is not None:
-        st.warning(aviso)
-    resultado = hoja.elaborar_hoja(
-        borrador, composiciones, codigo="HOJA", fecha=fecha, especialidad=hoja.TODAS
-    )
-
-    filas_borrador = hoja.filas_desde_espacio(borrador)
+    resultado, _ = _calculo()
+    filas_borrador = hoja.filas_desde_espacio(_borrador().espacio)
     for tabla, hueco in huecos.items():
         _pintar_estado(hueco, tabla, filas_borrador[tabla], resultado.estado)
 
     _cantidades(resultado.items)
     presupuesto = resultado.elaboracion.presupuesto
-    st.metric(
-        "Total del presupuesto",
-        f"{formatear_decimal(presupuesto.total, DECIMALES_PRESENTACION)} {presupuesto.moneda}",
-    )
+    st.metric("Total del presupuesto", _dinero(presupuesto.total, presupuesto.moneda))
     if resultado.elaboracion.pendientes:
         st.warning(
-            f"{len(resultado.elaboracion.pendientes)} partida(s) derivada(s) no tienen "
-            "composicion en el catalogo del caso: quedan pendientes y no suman al total."
+            f"{len(resultado.elaboracion.pendientes)} partida(s) no tienen composicion en el "
+            "catalogo del caso: quedan pendientes y no suman al total."
         )
     st.subheader("Informe de auditoria")
     st.markdown(resultado.elaboracion.informe.a_markdown())
 
 
+# --- pestana APU ---------------------------------------------------------------------------------
+
+_GRUPOS_APU = (
+    ("materiales", "Materiales", ("descripcion", "unidad", "cantidad", "precio")),
+    ("equipos", "Equipos", ("descripcion", "cantidad", "precio", "depreciacion")),
+    ("mano de obra", "Mano de obra", ("descripcion", "cantidad", "sueldo", "modalidad")),
+)
+
+
+def _codigos_valorados(resultado: hoja.ResultadoHoja) -> list[str]:
+    return list(
+        dict.fromkeys(p.item.codigo_partida for p in resultado.elaboracion.presupuesto.partidas)
+    )
+
+
+def _cambiar_insumo(codigo: str, tipo: str, indice: int, insumo: hoja.FilaInsumo) -> None:
+    borrador = _borrador()
+    try:
+        nueva = hoja.cambiar_insumo(borrador.composiciones[codigo], tipo, indice, insumo)
+    except hoja.HojaInvalida as error:
+        _mensaje("error", str(error))
+        return
+    _poner_borrador(
+        replace(borrador, composiciones={**borrador.composiciones, codigo: nueva}), resembrar=True
+    )
+
+
+def _formulario_de_insumo(codigo: str, apu: Any) -> None:
+    abierta = _abierta()
+    with st.expander("Cambiar el insumo de una linea (en la copia de esta version)"):
+        if abierta is None:
+            st.caption("Abra una version guardada: los insumos se eligen de su lista de precios.")
+            return
+        tipo = st.selectbox("Tipo de linea", hoja.TIPOS_DE_LINEA, key=_clave("tipo", codigo))
+        grupo = {"material": apu.materiales, "equipo": apu.equipos, "mano_obra": apu.mano_obra}[
+            tipo
+        ]
+        if not grupo:
+            st.caption("Este APU no tiene lineas de ese tipo.")
+            return
+        indice = st.selectbox(
+            "Linea",
+            range(len(grupo)),
+            format_func=lambda i: grupo[i].descripcion,
+            key=_clave("linea", codigo),
+        )
+        texto = st.text_input("Buscar insumo por nombre", key=_clave("buscar", codigo))
+        with _sesion() as sesion:
+            candidatos = (
+                []
+                if sesion is None
+                else hoja.insumos_candidatos(sesion, abierta.proyecto, abierta.codigo, tipo, texto)
+            )
+        if not candidatos:
+            st.caption("Ningun insumo de la lista coincide: pruebe con otra palabra.")
+            return
+        elegido = st.selectbox(
+            "Insumo",
+            candidatos,
+            format_func=lambda c: f"{c.descripcion} · {c.unidad} · {c.precio:f}",
+            key=_clave("insumo", codigo),
+        )
+        st.button(
+            "Usar este insumo",
+            on_click=_cambiar_insumo,
+            args=(codigo, tipo, indice, elegido),
+            key=_clave("usar", codigo),
+        )
+
+
+def _pestana_apu() -> None:
+    resultado, _ = _calculo()
+    codigos = _codigos_valorados(resultado)
+    if not codigos:
+        st.info("Todavia no hay partidas valoradas: derive cantidades en Espacio y metrajes.")
+        return
+    codigo = st.selectbox("Partida", codigos, key="hoja_apu_partida")
+    borrador, siembra = _borrador(), _partida()
+    actual = borrador.composiciones[codigo]
+    inicial = siembra.composiciones.get(codigo, actual)
+    st.caption(
+        f"{actual.descripcion} · unidad {actual.unidad}. Se editan la cantidad de cada linea y el "
+        "rendimiento, en la copia de esta version: el catalogo no cambia."
+    )
+    tablas = hoja.filas_de_apu(inicial)
+    editadas = []
+    for (_, rotulo, columnas), filas in zip(_GRUPOS_APU, tablas, strict=True):
+        st.markdown(f"**{rotulo}**")
+        if not filas:
+            st.caption("Sin lineas.")
+            editadas.append([])
+            continue
+        tabla = st.data_editor(
+            DataFrame(filas, columns=list(columnas), dtype=str),
+            hide_index=True,
+            width="stretch",
+            disabled=[c for c in columnas if c != "cantidad"],
+            key=_clave("apu", codigo, rotulo),
+        )
+        editadas.append(tabla.to_dict("records"))
+    rendimiento = st.text_input(
+        "Rendimiento",
+        value=hoja._numero(inicial.rendimiento),
+        key=_clave("rendimiento", codigo),
+    )
+    try:
+        nueva = hoja.composicion_con_cantidades(actual, *editadas, rendimiento)
+        if nueva != actual:
+            _poner_borrador(
+                replace(borrador, composiciones={**borrador.composiciones, codigo: nueva})
+            )
+            resultado, _ = _calculo()
+    except hoja.HojaInvalida as error:
+        st.error(f"{error}. La hoja sigue con el ultimo APU valido.")
+    _calculado_de_apu(resultado, codigo)
+    _formulario_de_insumo(codigo, _borrador().composiciones[codigo])
+
+
+def _calculado_de_apu(resultado: hoja.ResultadoHoja, codigo: str) -> None:
+    renglon = next(
+        (p for p in resultado.elaboracion.presupuesto.partidas if p.item.codigo_partida == codigo),
+        None,
+    )
+    if renglon is None:
+        return
+    moneda = resultado.elaboracion.presupuesto.moneda
+    r = renglon.resultado
+    columnas = st.columns(4)
+    columnas[0].metric("Materiales", _dinero(r.materiales, moneda))
+    columnas[1].metric("Equipos", _dinero(r.equipos, moneda))
+    columnas[2].metric("Mano de obra", _dinero(r.mano_obra, moneda))
+    columnas[3].metric("Precio unitario", _dinero(r.precio_unitario, moneda))
+    filas = [
+        f
+        for f in hoja.filas_del_presupuesto(resultado)
+        if f["partida"] == codigo and f["estado"] != hoja.TEXTO_OK
+    ]
+    for fila in filas:
+        st.caption(f"Estado de {fila['clave']}: {fila['estado']}")
+
+
+# --- pestana Presupuesto -------------------------------------------------------------------------
+
+
+def _pestana_presupuesto() -> None:
+    resultado, _ = _calculo()
+    borrador, siembra = _borrador(), _partida()
+    if not resultado.todos:
+        st.info("El presupuesto no tiene renglones todavia.")
+        return
+    st.caption(
+        "Escribir una cantidad a mano la saca del calculo del sistema: R8 la marca como "
+        "advertencia y queda en el registro de la version. El precio unitario y el total se "
+        "calculan."
+    )
+    sembradas = hoja.filas_del_presupuesto(hoja.elaborar_borrador(siembra))
+    editor = DataFrame(sembradas, columns=["clave", "partida", "descripcion", "unidad", "cantidad"])
+    editada = st.data_editor(
+        editor,
+        hide_index=True,
+        width="stretch",
+        disabled=["partida", "descripcion", "unidad"],
+        column_config={"clave": None},
+        key=_clave("presupuesto"),
+    )
+    try:
+        escritas = hoja.cantidades_desde_filas(
+            editada.to_dict("records"), hoja.items_sin_escribir(borrador)
+        )
+        if escritas != dict(borrador.cantidades):
+            _poner_borrador(replace(borrador, cantidades=escritas))
+            resultado, _ = _calculo()
+    except hoja.HojaInvalida as error:
+        st.error(f"{error}. La hoja sigue con las ultimas cantidades validas.")
+    st.subheader("Calculado")
+    filas = hoja.filas_del_presupuesto(resultado)
+    st.dataframe(
+        DataFrame(
+            {
+                "Partida": [f["partida"] for f in filas],
+                "Cantidad": [f["cantidad"] for f in filas],
+                "Precio unitario": [f["pu"] for f in filas],
+                "Total": [f["total"] for f in filas],
+                "Estado": [f["estado"] for f in filas],
+            }
+        ),
+        hide_index=True,
+        width="stretch",
+    )
+    presupuesto = resultado.elaboracion.presupuesto
+    st.metric("Total del presupuesto", _dinero(presupuesto.total, presupuesto.moneda))
+
+
+# --- pestana Plan y curva ------------------------------------------------------------------------
+
+
+def _crear_plan() -> None:
+    _poner_borrador(hoja.con_plan_secuencial(_borrador()), resembrar=True)
+
+
+def _pestana_plan() -> None:
+    resultado, _ = _calculo()
+    borrador = _borrador()
+    if borrador.plan is None:
+        st.info("Esta version no tiene plan de trabajo, asi que no hay curva de inversion.")
+        st.button("Crear plan secuencial (una partida por periodo)", on_click=_crear_plan)
+        return
+    codigos = _codigos_valorados(resultado)
+    st.caption(
+        "Reparta cada partida entre los periodos: cada fila debe sumar exactamente 1. Los montos, "
+        "los acumulados y los porcentajes se calculan."
+    )
+    siembra = hoja.elaborar_borrador(_partida()).plan or ()
+    etiquetas, filas = hoja.plan_como_filas(siembra, codigos)
+    editada = st.data_editor(
+        DataFrame(filas, columns=["partida", *etiquetas], dtype=str),
+        hide_index=True,
+        width="stretch",
+        disabled=["partida"],
+        key=_clave("plan"),
+    )
+    try:
+        plan = tuple(hoja.plan_desde_filas(editada.to_dict("records"), etiquetas))
+        if plan != tuple(resultado.plan or ()):
+            _poner_borrador(replace(borrador, plan=plan))
+            resultado, _ = _calculo()
+    except hoja.HojaInvalida as error:
+        st.error(f"{error}. La hoja sigue con el ultimo plan valido.")
+    st.subheader("Curva de inversion")
+    curva = hoja.filas_de_curva(resultado.elaboracion.presupuesto)
+    st.dataframe(
+        DataFrame(
+            {
+                "Periodo": [f["periodo"] for f in curva],
+                "Monto": [f["monto"] for f in curva],
+                "Acumulado": [f["acumulado"] for f in curva],
+                "% acumulado": [f["porcentaje"] for f in curva],
+            }
+        ),
+        hide_index=True,
+        width="stretch",
+    )
+    if curva:
+        st.line_chart(
+            DataFrame(
+                {"Acumulado": [float(f["acumulado"]) for f in curva]},
+                index=[f["periodo"] for f in curva],
+            )
+        )
+
+
+# --- pestana Punto de equilibrio -----------------------------------------------------------------
+
+
+def _pestana_equilibrio() -> None:
+    resultado, _ = _calculo()
+    pe = resultado.equilibrio
+    moneda = resultado.elaboracion.presupuesto.moneda
+    st.caption("No se edita: se mueve con las cantidades, los precios, los parametros y el plan.")
+    columnas = st.columns(4)
+    columnas[0].metric("Ventas (contrato)", _dinero(pe.venta, moneda))
+    columnas[1].metric("Costo variable", _dinero(pe.costo_variable, moneda))
+    columnas[2].metric("Costo fijo", _dinero(pe.costo_fijo, moneda))
+    columnas[3].metric("Utilidad", _dinero(pe.utilidad, moneda))
+    if pe.punto is not None and pe.porcentaje is not None:
+        a, b = st.columns(2)
+        a.metric("Punto de equilibrio", _dinero(pe.punto, moneda))
+        b.metric("Como % de las ventas", f"{formatear_decimal(pe.porcentaje, 2)} %")
+    st.info(hoja.texto_equilibrio(pe))
+
+
+# --- pestana Precios -----------------------------------------------------------------------------
+
+
+def _reabrir_nueva(codigo: str) -> None:
+    abierta = _abierta()
+    if abierta is not None:
+        _abrir(abierta.proyecto, codigo)
+
+
+def _pestana_precios(cambios: Sequence) -> None:
+    abierta = _abierta()
+    if abierta is None:
+        st.info("Abra una version guardada para ver el origen de sus precios.")
+        return
+    with _sesion() as sesion:
+        precios = hoja.precios_de_version(sesion, abierta.proyecto, abierta.codigo)
+    st.caption(
+        "Lista, referencia, fecha, moneda y tasa de cada insumo. Una cotizacion (con su proveedor, "
+        "numero y fecha) vale solo para este proyecto y prevalece sobre la lista global hasta que "
+        "se retire."
+    )
+    st.dataframe(
+        DataFrame(
+            {
+                "Insumo": [p.descripcion for p in precios],
+                "Codigo": [p.codigo for p in precios],
+                "Precio": [formatear_decimal(p.precio, DECIMALES_PRESENTACION) for p in precios],
+                "Lista": [p.lista for p in precios],
+                "Moneda": [p.moneda for p in precios],
+                "Fecha del precio": [p.fecha.isoformat() for p in precios],
+                "Tasa": ["" if p.tasa is None else f"{p.tasa:f}" for p in precios],
+                "Fecha de la tasa": [
+                    "" if p.fecha_tasa is None else p.fecha_tasa.isoformat() for p in precios
+                ],
+                "Referencia": [p.referencia for p in precios],
+                "Cotizacion": [p.cotizacion for p in precios],
+                "Estado": [p.estado for p in precios],
+            }
+        ),
+        hide_index=True,
+        width="stretch",
+    )
+    if cambios:
+        st.warning(
+            "Cotizar crea una version nueva desde la guardada: guarde o descarte primero los "
+            f"{len(cambios)} cambios pendientes."
+        )
+        return
+    if not precios:
+        return
+    with st.form("hoja_cotizar"):
+        st.markdown("**Registrar una cotizacion**")
+        insumo = st.selectbox(
+            "Insumo", precios, format_func=lambda p: f"{p.codigo} · {p.descripcion}"
+        )
+        precio = st.text_input("Precio cotizado")
+        a, b, c = st.columns(3)
+        proveedor = a.text_input("Proveedor")
+        numero = b.text_input("Numero de la cotizacion")
+        fecha = c.date_input("Fecha de la cotizacion", value=date.today())
+        fuente = st.text_input("Evidencia (opcional: archivo, enlace, nota)")
+        responsable = st.text_input("Responsable")
+        enviar = st.form_submit_button("Cotizar")
+    if enviar:
+        try:
+            valor = hoja.decimal_desde_texto(precio, "precio")
+            with _sesion() as sesion:
+                nuevo = hoja.cotizar(
+                    sesion,
+                    Catalogo(sesion),
+                    abierta.proyecto,
+                    abierta.codigo,
+                    insumo=insumo.codigo,
+                    precio=valor,
+                    proveedor=proveedor,
+                    numero=numero,
+                    fecha=fecha,
+                    responsable=responsable,
+                    fuente=fuente,
+                )
+        except (hoja.HojaInvalida, ValueError) as error:
+            st.error(f"{error}. No se guardo nada.")
+        except SQLAlchemyError as error:
+            st.error(_error_de_base(error))
+        else:
+            _mensaje(
+                "success", f"Se guardo la version {nuevo} con la cotizacion de {insumo.codigo}."
+            )
+            _reabrir_nueva(nuevo)
+            st.rerun()
+    cotizadas = [p for p in precios if p.cotizacion]
+    if cotizadas:
+        with st.form("hoja_retirar"):
+            st.markdown("**Retirar una cotizacion**")
+            retirada = st.selectbox(
+                "Insumo cotizado",
+                cotizadas,
+                format_func=lambda p: f"{p.codigo} · {p.descripcion} ({p.cotizacion})",
+            )
+            motivo = st.text_input("Por que se retira")
+            quien = st.text_input("Responsable ")
+            retirar = st.form_submit_button("Retirar cotizacion")
+        if retirar:
+            try:
+                with _sesion() as sesion:
+                    nuevo = hoja.retirar_cotizacion(
+                        sesion,
+                        Catalogo(sesion),
+                        abierta.proyecto,
+                        abierta.codigo,
+                        insumo=retirada.codigo,
+                        fuente=motivo,
+                        responsable=quien,
+                    )
+            except (hoja.HojaInvalida, ValueError) as error:
+                st.error(f"{error}. No se guardo nada.")
+            except SQLAlchemyError as error:
+                st.error(_error_de_base(error))
+            else:
+                _mensaje("success", f"Se guardo la version {nuevo} sin la cotizacion.")
+                _reabrir_nueva(nuevo)
+                st.rerun()
+
+
+# --- pestana Parametros --------------------------------------------------------------------------
+
+_ROTULOS_PARAMETROS = {
+    "fcas": "FCAS (fraccion: 6.00 = prestaciones del 600 %)",
+    "bono_alimentacion": "Bono de alimentacion (por obrero y dia)",
+    "administracion": "Administracion (fraccion del costo directo)",
+    "utilidad": "Utilidad (fraccion, en cascada sobre la administracion)",
+}
+
+
+def _pestana_parametros() -> None:
+    borrador, siembra = _borrador(), _partida()
+    st.caption(
+        "Los parametros de costo de esta version. Cambiarlos recalcula todos sus APU; el cambio "
+        "queda en el registro con su fuente."
+    )
+    textos = {}
+    columnas = st.columns(len(hoja.CAMPOS_PARAMETROS))
+    for campo, columna in zip(hoja.CAMPOS_PARAMETROS, columnas, strict=True):
+        textos[campo] = columna.text_input(
+            _ROTULOS_PARAMETROS[campo],
+            value=str(getattr(siembra.parametros, campo)),
+            key=_clave("param", campo),
+        )
+    try:
+        parametros = hoja.parametros_desde_texto(textos)
+        if parametros != borrador.parametros:
+            _poner_borrador(replace(borrador, parametros=parametros))
+    except hoja.HojaInvalida as error:
+        st.error(f"{error}. La hoja sigue con los ultimos parametros validos.")
+    resultado, _ = _calculo()
+    presupuesto = resultado.elaboracion.presupuesto
+    st.metric("Total del presupuesto", _dinero(presupuesto.total, presupuesto.moneda))
+
+
+# --- pestana Auditoria ---------------------------------------------------------------------------
+
+
+def _pestana_auditoria() -> None:
+    resultado, _ = _calculo()
+    informe = resultado.elaboracion.informe
+    st.caption("El informe se genera siempre, con las diez reglas, sobre el borrador vigente.")
+    st.markdown(informe.a_markdown())
+    if informe.hallazgos:
+        st.subheader("Detalle de los hallazgos")
+        st.dataframe(
+            DataFrame(
+                {
+                    "Regla": [h.regla for h in informe.hallazgos],
+                    "Severidad": [h.severidad.name for h in informe.hallazgos],
+                    "Descripcion": [h.descripcion for h in informe.hallazgos],
+                    "Origen": ["; ".join(h.origen_ids) for h in informe.hallazgos],
+                }
+            ),
+            hide_index=True,
+            width="stretch",
+        )
+
+
+# --- pestana Trazabilidad ------------------------------------------------------------------------
+
+
+def _restaurar(codigo: str) -> None:
+    abierta = _abierta()
+    if abierta is None:
+        return
+    try:
+        with _sesion() as sesion:
+            nuevo = hoja.restaurar(
+                sesion,
+                Catalogo(sesion),
+                abierta.proyecto,
+                codigo,
+                fuente=st.session_state.get("hoja_restaurar_fuente", ""),
+                responsable=st.session_state.get("hoja_restaurar_responsable", ""),
+            )
+    except (hoja.HojaInvalida, SQLAlchemyError) as error:
+        _mensaje("error", f"No se restauro nada: {getattr(error, 'orig', None) or error}")
+        return
+    _mensaje("success", f"La version {codigo} se restauro como la version {nuevo} (la vigente).")
+    _reabrir_nueva(nuevo)
+
+
+def _pestana_trazabilidad(cambios: Sequence) -> None:
+    abierta = _abierta()
+    if abierta is None:
+        st.info("Abra una version guardada para ver su historial y sus registros de cambio.")
+        return
+    with _sesion() as sesion:
+        historial = hoja.historial_de_versiones(sesion, abierta.proyecto)
+        registros = hoja.registros_de_version(sesion, abierta.proyecto, abierta.codigo)
+    st.subheader("Versiones del proyecto")
+    st.dataframe(
+        DataFrame(
+            {
+                "Version": [v.codigo for v in historial],
+                "Fecha": [v.fecha.isoformat() for v in historial],
+                "Motivo": [v.motivo or "elaborada" for v in historial],
+                "Sale de": [v.origen for v in historial],
+                "Cambios": [v.cambios for v in historial],
+                "Vigente": ["si" if v.vigente else "" for v in historial],
+            }
+        ),
+        hide_index=True,
+        width="stretch",
+    )
+    st.subheader(f"Registro de cambios de la version {abierta.codigo}")
+    if registros:
+        st.dataframe(
+            DataFrame(
+                {
+                    "Objeto": [r.objeto for r in registros],
+                    "Clave": [r.clave for r in registros],
+                    "Campo": [r.campo for r in registros],
+                    "Antes": [r.valor_anterior for r in registros],
+                    "Despues": [r.valor_nuevo for r in registros],
+                    "Fuente": [r.fuente for r in registros],
+                    "Responsable": [r.responsable for r in registros],
+                    "Fecha y hora": [r.fecha_hora.isoformat(sep=" ") for r in registros],
+                }
+            ),
+            hide_index=True,
+            width="stretch",
+        )
+    else:
+        st.caption("Esta version no nacio de una edicion: no tiene registros de cambio.")
+    if cambios:
+        st.warning("Guarde o descarte los cambios pendientes antes de restaurar otra version.")
+        return
+    with st.form("hoja_restaurar"):
+        st.markdown(
+            "**Restaurar una version.** Crea una version nueva, copia de la elegida; nada se borra."
+        )
+        elegida = st.selectbox("Version a restaurar", [v.codigo for v in historial])
+        st.text_input("Fuente (por que se restaura)", key="hoja_restaurar_fuente")
+        st.text_input("Responsable", key="hoja_restaurar_responsable")
+        enviar = st.form_submit_button("Restaurar")
+    if enviar:
+        _restaurar(elegida)
+        st.rerun()
+
+
+# --- pantalla -------------------------------------------------------------------------------------
+
+
+def _mostrar_mensaje() -> None:
+    mensaje = st.session_state.pop(CLAVE_MENSAJE, None)
+    if mensaje is None:
+        return
+    tipo, texto = mensaje
+    {"error": st.error, "success": st.success}.get(tipo, st.info)(texto)
+
+
 def render() -> None:
-    """La hoja del proyecto: la pestana activa y su contenido."""
+    """La hoja del proyecto: version abierta, guardado y la pestana activa."""
+    _borrador()
+    accion = _atender()
+    if accion == "precios":  # la herramienta Precios de la barra lleva a su pestana
+        st.session_state[CLAVE_PESTANA] = "Precios"
+        st.session_state.pop(CLAVE_ACCION_PENDIENTE, None)
+        accion = None
+    _mostrar_mensaje()
+    _, cambios = _calculo()
+    _selector_de_version(cambios)
+    # El panel de guardado se pinta arriba pero se llena al final, cuando ya se leyeron los
+    # editores de la pestana: asi muestra los cambios de ESTA ejecucion y no los de la anterior.
+    panel = st.container()
     pestana = st.segmented_control(
         "Pestana",
         PESTANAS,
@@ -221,5 +1134,32 @@ def render() -> None:
         key=CLAVE_PESTANA,
         label_visibility="collapsed",
     )
-    if pestana in (None, PESTANAS[0]):  # sin seleccion (se deselecciono): la primera
-        _pestana_espacio()
+    pestana = pestana or PESTANAS[0]  # sin seleccion (se deselecciono): la primera
+    if st.session_state.get(CLAVE_ULTIMA_PESTANA, pestana) != pestana:
+        _resembrar()  # los editores de la pestana nueva parten del borrador vigente
+    st.session_state[CLAVE_ULTIMA_PESTANA] = pestana
+    try:
+        if pestana == "Espacio y metrajes":
+            _pestana_espacio()
+        elif pestana == "APU":
+            _pestana_apu()
+        elif pestana == "Presupuesto":
+            _pestana_presupuesto()
+        elif pestana == "Plan y curva":
+            _pestana_plan()
+        elif pestana == "Punto de equilibrio":
+            _pestana_equilibrio()
+        elif pestana == "Precios":
+            _pestana_precios(_calculo()[1])
+        elif pestana == "Parámetros":
+            _pestana_parametros()
+        elif pestana == "Auditoría":
+            _pestana_auditoria()
+        else:
+            _pestana_trazabilidad(_calculo()[1])
+    except SQLAlchemyError as error:
+        st.error(_error_de_base(error))
+    with panel:
+        _panel_de_guardado(_calculo()[1], accion)
+    if accion in ("guardar_version", "exportar_excel"):
+        st.session_state.pop(CLAVE_ACCION_PENDIENTE, None)
