@@ -696,11 +696,10 @@ def _con_trazado() -> bool:
     return coverage.Coverage.current() is not None
 
 
-sin_trazado = pytest.mark.skipif(
-    _con_trazado(),
-    reason="la cobertura (--cov, como en la CI) o un depurador ralentizan el pure-Python; el "
-    "umbral de RNF-11 se verifica en la corrida sin trazador (uv run pytest -q)",
-)
+#: Margen extra del umbral cuando hay trazador (cobertura de la CI o depurador). Las pruebas de
+#: escala NO se omiten: la CI exige cero omitidas (scripts/verificar_omitidas.py). Una regresion
+#: cuadratica (11 s en el pasillo) sigue superando el umbral aun con este margen.
+_MARGEN_CON_TRAZADO = 2.0
 
 
 #: Lo que tarda en una maquina de desarrollo sin carga la carga de referencia de `_lentitud()`.
@@ -737,9 +736,10 @@ def _mediana_de_tres(trabajo) -> float:
 
 
 def _umbral() -> float:
-    """1,5 s en la maquina de referencia, escalado por su lentitud actual: el umbral es relativo.
+    """1,5 s en la maquina de referencia, escalado por su lentitud actual (y por el margen con
+    trazador): el umbral es relativo.
     Una regresion cuadratica (11 s en el pasillo) lo supera aun con la maquina 5 veces mas lenta."""
-    return 1.5 * _lentitud()
+    return 1.5 * _lentitud() * (_MARGEN_CON_TRAZADO if _con_trazado() else 1.0)
 
 
 def _ciclo(esp: Espacio) -> None:
@@ -753,7 +753,6 @@ def _cuadricula_500() -> Espacio:
     return espacio_rutas(_rutas_aleatorias(7, 500, ruido=True, rango=80))
 
 
-@sin_trazado
 def test_escala_500_puntos_en_menos_de_un_segundo_y_medio() -> None:
     """`analizar` con 500 puntos (cuadricula): mediana de tres corridas, umbral laxo y relativo
     (1,5 s en la maquina de referencia, escalado por su lentitud actual)."""
@@ -769,7 +768,6 @@ def test_escala_500_puntos_en_menos_de_un_segundo_y_medio() -> None:
     assert segundos < umbral, f"analizar tardo {segundos:.2f} s (mediana de 3; umbral {umbral:.2f})"
 
 
-@sin_trazado
 @pytest.mark.parametrize("forma", ["cuadricula", "pasillo"])
 def test_el_ciclo_derivar_r8_r9_con_500_puntos_cabe_en_un_segundo_y_medio(forma) -> None:
     """RNF-11: derivar + R8 + R9 sobre el mismo espacio, union calculada una sola vez.
