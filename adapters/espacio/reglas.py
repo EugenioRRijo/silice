@@ -21,8 +21,10 @@ huerfana no produce cantidad: es de R9.
 **R9** (siempre ERROR), en este orden: 1. punto o fuente fuera de su ambiente (`Espacio.validar`,
 tolerancia de §6.1; una altura de punto sobre el techo es esto mismo y se informa una vez);
 2. un recorrido con una altura de vertice mayor que la del ambiente; 3. un recorrido mas corto que
-la distancia ortogonal minima entre sus extremos; 4. segmentos solapados con empotrado distinto sin
-declarar; 5. sobrescrituras de segmento huerfanas.
+la distancia ortogonal minima entre los extremos de su camino (los de los tramos encadenados, no
+los de la lista; sin camino, sin extremos, no se compara); 4. segmentos solapados con empotrado
+distinto sin declarar; 5. sobrescrituras de segmento huerfanas. Un recorrido en diagonal (mas corto
+que la distancia ortogonal) es ERROR.
 """
 
 from __future__ import annotations
@@ -30,11 +32,12 @@ from __future__ import annotations
 from decimal import Decimal
 
 from adapters.espacio.geometria import (
+    _agrupar_nodos,
     longitud_tramos,
     normalizar_diametro,
     unir_segmentos,
 )
-from adapters.espacio.modelo import TOLERANCIA, Ambiente, Espacio, Recorrido
+from adapters.espacio.modelo import TOLERANCIA, Ambiente, Coord, Espacio, Recorrido, Tramo
 from adapters.espacio.origen import clave_esp
 from core.contracts.presupuesto import Presupuesto
 from core.contracts.verificacion import Hallazgo, ReglaVerificacion, Severidad
@@ -199,6 +202,39 @@ def _ambientes_del_recorrido(espacio: Espacio, r: Recorrido) -> list[Ambiente]:
     return [ambientes[i] for i in sorted(ids) if i in ambientes]
 
 
+def _extremos_del_camino(tramos: tuple[Tramo, ...]) -> tuple[Coord, Coord] | None:
+    """Los dos extremos del camino que forman `tramos`, o `None` si no forman un camino.
+
+    Si encadenan en el orden declarado (cada tramo empieza a TOLERANCIA o menos de donde termino el
+    anterior) son el inicio del primero y el fin del ultimo. Si no (el `orden` no sigue la
+    geometria), se encadenan por sus extremos: un camino tiene exactamente dos nodos de grado impar
+    y una sola componente. Un recorrido ramificado, cerrado o partido no tiene extremos: R9 no le
+    exige distancia ortogonal minima (ruling SF1, ledger)."""
+    if all(
+        a.vertices[-1].distancia(b.vertices[0]) <= TOLERANCIA
+        for a, b in zip(tramos, tramos[1:], strict=False)
+    ):
+        return tramos[0].vertices[0], tramos[-1].vertices[-1]
+    rep = _agrupar_nodos(c for t in tramos for c in (t.vertices[0], t.vertices[-1]))
+    grado: dict[Coord, int] = {}
+    padre: dict[Coord, Coord] = {n: n for n in set(rep.values())}
+
+    def raiz(n: Coord) -> Coord:
+        while padre[n] != n:
+            n = padre[n]
+        return n
+
+    for t in tramos:
+        a, b = rep[t.vertices[0]], rep[t.vertices[-1]]
+        grado[a] = grado.get(a, 0) + 1
+        grado[b] = grado.get(b, 0) + 1
+        padre[raiz(a)] = raiz(b)
+    impares = [n for n, g in grado.items() if g % 2]
+    if len(impares) != 2 or len({raiz(n) for n in grado}) != 1:
+        return None
+    return impares[0], impares[1]
+
+
 def _hallazgos_r9(espacio: Espacio) -> list[Hallazgo]:
     hallazgos = [
         _hallazgo(CODIGO_R9, Severidad.ERROR, clave, mensaje)
@@ -226,7 +262,10 @@ def _hallazgos_r9(espacio: Espacio) -> list[Hallazgo]:
             )
 
     for r in con_tramos:  # 3. recorrido mas corto que la distancia ortogonal minima
-        a, b = r.tramos[0].vertices[0], r.tramos[-1].vertices[-1]
+        extremos = _extremos_del_camino(r.tramos)
+        if extremos is None:
+            continue
+        a, b = extremos
         minima = abs(b.x - a.x) + abs(b.y - a.y) + abs(b.z - a.z)
         longitud = longitud_tramos(r.tramos)
         if longitud < minima:
