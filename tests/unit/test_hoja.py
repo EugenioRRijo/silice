@@ -330,3 +330,41 @@ def test_circuitos_y_sobrescrituras_se_conservan_al_editar():
     nuevo = hoja.espacio_desde_filas(filas, base=espacio)
     assert nuevo.sobrescrituras == espacio.sobrescrituras
 
+
+
+# --- Estado: sin APU en el catalogo frente a error de medida ------------------------------------
+
+
+def _elaborar_sin_apu(espacio: Espacio) -> hoja.ResultadoHoja:
+    """El catalogo no tiene las partidas del agua (AF-*, DR-*): todos los items quedan pendientes."""
+    return hoja.elaborar_hoja(espacio, {}, codigo="OF-001", fecha=FECHA)
+
+
+def test_un_item_pendiente_no_se_confunde_con_un_error_de_medida_en_el_estado():
+    estado = _elaborar_sin_apu(_limpio()).estado
+    p1 = estado["esp_puntos:P1"]
+    assert p1.severidad is Severidad.ERROR  # el informe lo declara ERROR: no cumple
+    assert p1.texto.startswith("PENDIENTE: sin APU en el catálogo")
+    assert "AF-SALIDA" in p1.texto  # dice que partida falta
+    assert "fuera del ambiente" not in p1.texto and "origen" not in p1.texto
+    assert "no tiene composicion" not in p1.texto  # el texto largo del nucleo no se repite en la fila
+
+
+def test_una_fila_con_error_de_medida_y_partida_pendiente_dice_las_dos_cosas_por_separado():
+    espacio = _limpio()
+    fuera = replace(
+        espacio,
+        puntos=(
+            replace(espacio.puntos[0], posicion=Coord(D("9"), D("0"), D("0.6"))),
+            espacio.puntos[1],
+        ),
+    )
+    texto = _elaborar_sin_apu(fuera).estado["esp_puntos:P1"].texto
+    medida, pendiente = texto.split(" | ")
+    assert medida.startswith("ERROR: ") and "fuera del ambiente" in medida
+    assert pendiente.startswith("PENDIENTE: sin APU en el catálogo")
+
+
+def test_con_las_partidas_en_el_catalogo_ninguna_fila_dice_pendiente():
+    estado = _elaborar(_limpio()).estado
+    assert all("PENDIENTE" not in e.texto and "sin APU" not in e.texto for e in estado.values())
