@@ -5,6 +5,7 @@ Coordenadas supuestas y declaradas como tales (NORMAS.md §1): no provienen de u
 
 from __future__ import annotations
 
+from dataclasses import replace
 from decimal import Decimal
 
 from adapters.espacio import (
@@ -114,4 +115,46 @@ def espacio_bano() -> Espacio:
                 clave="F1|0.000,0.000,0.000|0.000,0.000,2.500", diametro='3/4"', empotrado=True
             ),
         ),
+    )
+
+
+def espacio_bano_con_drenaje() -> Espacio:
+    """El baño de agua fría más el drenaje de `bano_drenaje_of001.md` (sección 1)."""
+    base = espacio_bano()
+    colector = Fuente(
+        id="FD1",
+        especialidad=Especialidad.AGUA,
+        tipo=TipoFuente.COLECTOR_DRENAJE,
+        ambiente_id="BAN-01",
+        posicion=Coord(D("2"), D("0.750"), D("0")),
+        origen_id="O1",
+    )
+    ducha = Punto(
+        id="D1",
+        nombre="desague de la ducha",
+        especialidad=Especialidad.AGUA,
+        tipo=TipoPunto.DRENAJE,
+        ambiente_id="BAN-01",
+        superficie=SuperficiePunto.PISO,
+        posicion=Coord(D("1"), D("1.500"), D("0")),
+        fuente_id="FD1",
+        especificaciones={"diametro": '2"'},
+        origen_id="O1",
+    )
+    lavamanos = Punto(
+        id="D2",
+        nombre="desague del lavamanos",
+        especialidad=Especialidad.AGUA,
+        tipo=TipoPunto.DRENAJE,
+        ambiente_id="BAN-01",
+        superficie=SuperficiePunto.PARED,
+        posicion=Coord(D("1.500"), D("0"), D("0.500")),
+        fuente_id="FD1",
+        especificaciones={"diametro": '1 1/2"'},
+        origen_id="O1",
+    )
+    return replace(
+        base,
+        fuentes=base.fuentes + (colector,),
+        puntos=base.puntos + (ducha, lavamanos),
     )

@@ -567,3 +567,39 @@ def test_escala_500_puntos_en_menos_de_un_segundo_y_medio() -> None:
     segundos = time.perf_counter() - inicio
     assert len(g.segmentos) > 500
     assert segundos < 1.5, f"analizar tardo {segundos:.2f} s con 500 puntos"
+
+
+def test_drenaje_por_el_piso_va_empotrado_por_defecto() -> None:
+    """D-4 corregida (tarea 1.5): pared y piso se empotran; techo, plafon y bandeja no."""
+    esp = espacio_bano()
+    colector = Fuente(
+        id="C1",
+        especialidad=Especialidad.AGUA,
+        tipo=TipoFuente.COLECTOR_DRENAJE,
+        ambiente_id="BAN-01",
+        posicion=c("2", "1.5", "0"),
+        origen_id="O1",
+    )
+    p = replace(
+        punto(esp, "P1"),
+        id="D1",
+        tipo=TipoPunto.DRENAJE,
+        superficie=SuperficiePunto.PARED,
+        posicion=c("0.5", "0.5", "0.4"),
+        fuente_id="C1",
+    )
+    esp = replace(esp, fuentes=esp.fuentes + (colector,))
+    assert [t.empotrado for t in recorrido_propuesto(esp, p)] == [True, True, True]
+    sin_declarar = Tramo(
+        orden=1,
+        superficie=SuperficieTramo.PISO,
+        vertices=(c("0.5", "0.5", "0"), c("2", "0.5", "0")),
+    )
+    declarado = replace(
+        esp,
+        puntos=esp.puntos + (p,),
+        recorridos=esp.recorridos
+        + (Recorrido(id="R-D1", punto_id="D1", modo=ModoRecorrido.DECLARADO, tramos=(sin_declarar,)),),
+    )
+    (segmento,) = [s for s in analizar(declarado, "agua").segmentos if s.sirve == ("D1",)]
+    assert segmento.empotrado is True
