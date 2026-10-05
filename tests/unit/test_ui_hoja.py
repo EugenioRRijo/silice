@@ -72,3 +72,35 @@ def test_la_oficina_sembrada_muestra_las_tres_especialidades(monkeypatch, tmp_pa
     assert {"AF-TUB-PVC-3/4", "DR-TUB-PVC-2", "DT-UTP-CAT-6", "EL-COND-12-AWG"} <= partidas
     estados = [d for d in at.dataframe if "Estado" in list(d.value.columns)]
     assert len(estados) == 3
+
+
+# --- SF4: acciones que pide la barra superior --------------------------------------------------
+
+
+def test_la_accion_precios_de_la_barra_elige_la_pestana_precios_si_existe(monkeypatch, tmp_path):
+    from ui.caso import ACCION_PRECIOS, CLAVE_ACCION
+    from ui.paginas import hoja as pantalla
+
+    monkeypatch.setattr(pantalla, "PESTANAS", ("Espacio y metrajes", "Precios"))
+    caso = importlib.import_module("ui.caso")
+    monkeypatch.setattr(caso, "RUTA_BASE_POR_DEFECTO", str(tmp_path / "no_existe.db"))
+    at = AppTest.from_string(SCRIPT, default_timeout=120)
+    at.session_state[CLAVE_ACCION] = ACCION_PRECIOS
+    at.run()
+    assert not at.exception, [e.value for e in at.exception]
+    assert at.session_state[pantalla.CLAVE_PESTANA] == "Precios"
+    assert CLAVE_ACCION not in at.session_state  # la accion se consume
+
+
+def test_la_accion_precios_sin_pestana_precios_no_cambia_la_pestana(monkeypatch, tmp_path):
+    from ui.caso import ACCION_PRECIOS, CLAVE_ACCION
+    from ui.paginas import hoja as pantalla
+
+    caso = importlib.import_module("ui.caso")
+    monkeypatch.setattr(caso, "RUTA_BASE_POR_DEFECTO", str(tmp_path / "no_existe.db"))
+    at = AppTest.from_string(SCRIPT, default_timeout=120)
+    at.session_state[CLAVE_ACCION] = ACCION_PRECIOS
+    at.run()
+    assert not at.exception, [e.value for e in at.exception]
+    assert at.session_state[pantalla.CLAVE_PESTANA] == pantalla.PESTANAS[0]
+    assert CLAVE_ACCION not in at.session_state
