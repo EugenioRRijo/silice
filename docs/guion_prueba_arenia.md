@@ -610,23 +610,23 @@ ejecución, dejando constancia en [docs/bitacora/](bitacora/).
   unos minutos al caso: ver la nota de RNF‑13 en 6.1.) La persona tiene en papel la **ficha del
   baño** (tabla siguiente).
 
-**Ficha del baño** (se entrega impresa; metros; eje z hacia arriba desde el piso terminado; son supuestos
+**Ficha del baño** (se entrega impresa, con los rótulos que muestran las tablas; las palabras en cursiva se eligen de la lista; metros; eje z hacia arriba desde el piso terminado; son supuestos
 declarados de la memoria `tests/fixtures/memorias/bano_of001.md`, no un plano real)
 
 | Tabla | id | Datos |
 |---|---|---|
-| Orígenes de medida | `O1` | tipo `supuesto`; referencia `motivo=ejemplo de memoria de calculo` |
-| Ambientes | `BAN-01` | nombre `Bano`; x0 `0`; y0 `0`; largo `2`; ancho `1.5`; alto `2.5`; origen `O1` |
-| Fuentes | `F1` | especialidad `agua`; tipo `montante_agua`; ambiente `BAN-01`; x `0`; y `0`; z `0`; origen `O1` |
-| Puntos | `P1` | nombre `lavamanos`; especialidad `agua`; tipo `agua_fria`; ambiente `BAN-01`; superficie `pared`; x `1.5`; y `0`; z `0.6`; fuente `F1`; circuito vacío; especificaciones `diametro=1/2"; llave_de_paso=si`; origen `O1` |
-| Puntos | `P2` | nombre `ducha`; especialidad `agua`; tipo `agua_fria`; ambiente `BAN-01`; superficie `pared`; x `1`; y `1.5`; z `1.2`; fuente `F1`; circuito vacío; especificaciones `diametro=3/4"; llave_de_paso=si`; origen `O1` |
+| Orígenes de medida | `O1` | Tipo de origen *Supuesto*; Referencia `motivo=ejemplo de memoria de calculo` |
+| Ambientes | `BAN-01` | Nombre `Bano`; Esquina X `0`; Esquina Y `0`; Largo `2`; Ancho `1.5`; Alto `2.5`; Origen de la medida `O1` |
+| Fuentes | `F1` | Especialidad *Agua*; Tipo de fuente *Montante de agua fría*; Ambiente `BAN-01`; Posición X `0`; Posición Y `0`; Altura `0`; Origen de la medida `O1` |
+| Puntos | `P1` | Nombre `lavamanos`; Especialidad *Agua*; Tipo de punto *Agua fría*; Ambiente `BAN-01`; Superficie *Pared*; Posición X `1.5`; Posición Y `0`; Altura `0.6`; Fuente que lo alimenta `F1`; Circuito vacío; Especificaciones `diametro=1/2"; llave_de_paso=si`; Origen de la medida `O1` |
+| Puntos | `P2` | Nombre `ducha`; Especialidad *Agua*; Tipo de punto *Agua fría*; Ambiente `BAN-01`; Superficie *Pared*; Posición X `1`; Posición Y `1.5`; Altura `1.2`; Fuente que lo alimenta `F1`; Circuito vacío; Especificaciones `diametro=3/4"; llave_de_paso=si`; Origen de la medida `O1` |
 | Vértices de recorridos | — | ninguna fila: el sistema propone el recorrido de cada punto |
 
 **Pasos**
 
 1. En la tabla **Origenes de medida**, agregue una fila (el **+** bajo la tabla) y escriba los datos de `O1`.
 2. Repita para **Ambientes** (`BAN-01`), **Fuentes** (`F1`) y **Puntos** (`P1` y `P2`). Las columnas con lista
-   (*tipo*, *especialidad*, *superficie*) se eligen de la lista. Deje **Vertices de recorridos** vacía.
+   (*Tipo*, *Especialidad*, *Superficie*) se eligen de la lista, con el nombre en español que muestra la tabla. Deje **Vertices de recorridos** vacía.
 3. Observe la columna **Estado** junto a cada tabla y la tabla **Cantidades derivadas**.
 4. Observe el **Total del presupuesto** y baje a **Informe de auditoria**.
 5. En la pestaña **Presupuesto**, observe el precio unitario y el total de cada renglón.
