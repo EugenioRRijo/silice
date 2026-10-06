@@ -98,6 +98,22 @@ def test_cp_10_tiene_el_paso_negativo_de_guardar_sin_fuente():
     assert "Escriba la fuente del cambio" in caso  # el texto que el sistema da
 
 
+def test_cp_11_tiene_el_paso_negativo_de_cotizar_sin_proveedor():
+    caso = " ".join(_caso("CP‑11").split())
+    assert "sin proveedor" in caso and "No se guardo nada" in caso
+    assert "no crea ninguna version" in caso  # y el historial no gana una fila
+
+
+def test_cp_10_exige_resembrar_la_base_porque_cp_08_y_cp_09_ya_guardaron_proyectos():
+    """Tras CP-08 y CP-09 la base ya tiene los proyectos que ellos guardaron: CP-10 pide la base
+    recien sembrada, asi que el guion manda resembrar y reabrir antes, sin contar ese tiempo."""
+    caso = " ".join(_caso("CP‑10").split())
+    seccion = " ".join(_caso("6.1").split())
+    for texto in (caso, seccion):
+        assert "--reiniciar" in texto and "reabr" in texto
+    assert "no cuenta" in seccion and "15" in seccion
+
+
 def test_cp_09_declara_que_el_dxf_trae_varias_marcas_y_que_se_resuelve():
     caso = _caso("CP‑09")
     assert "Nota de alcance" in caso and "varias" in caso
