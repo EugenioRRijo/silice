@@ -751,7 +751,12 @@ declarados de la memoria `tests/fixtures/memorias/bano_of001.md`, no un plano re
   punto de equilibrio, comprobar que guardar sin fuente se rechaza y guardar con fuente y responsable.
 - **Trazabilidad:** UC‑15, UC‑16; RF‑52, RF‑53, RF‑55, RF‑58; RNF‑13.
 - **Precondición:** `data/prueba_sf.db` recién sembrada (sección 4.1) y la aplicación recién arrancada
-  sobre ella (**CP‑10 se ejecuta antes que CP‑11**, que parte de la versión que deja este caso). En
+  sobre ella (**CP‑10 se ejecuta antes que CP‑11**, que parte de la versión que deja este caso). Si se
+  llega de CP‑08 y CP‑09, la base ya contiene los proyectos que ellos guardaron («Baño de prueba» y
+  «Oficina del plano»): **antes de CP‑10 resiembre la base** con
+  `uv run python scripts/seed_of001.py --db data/prueba_sf.db --reiniciar` y **reabra la aplicación**
+  (deténgala y arránquela de nuevo con `ARENIA_CASO`); ese tiempo de preparación no cuenta en los 15 min
+  (sección 6.1). En
   **Hoja del proyecto**: *Proyecto* `OF-001: oficina con baño, cocineta y puestos (caso de prueba)` y
   *Version* `001 (vigente)` (se pueden elegir en la propia pantalla o abriendo el proyecto con la
   herramienta **Proyecto** de la barra).
@@ -804,12 +809,14 @@ declarados de la memoria `tests/fixtures/memorias/bano_of001.md`, no un plano re
 
 1. En la barra de herramientas pulse **Precios**. Busque en la tabla el insumo `MAT-003`, el tubo PVC de
    3/4 pulg, y lea su precio, su lista y su Estado.
-2. En **Registrar una cotizacion** elija el insumo `MAT-003`; escriba *Precio cotizado* `5.50`, *Proveedor*
-   `Ferreteria Los Andes`, *Numero de la cotizacion* `COT-2026-0412` y *Responsable* `Ing. Participante`;
-   deje la fecha de hoy y pulse **Cotizar**.
-3. Observe el mensaje y la fila de `MAT-003` en la tabla de precios.
-4. Abra la pestaña **Trazabilidad**.
-5. En la barra de herramientas pulse **Exportar Excel** y, en el panel *Guardar version y exportar a Excel*,
+2. **Paso negativo.** En **Registrar una cotizacion** elija el insumo `MAT-003`; escriba *Precio cotizado*
+   `5.50`, *Numero de la cotizacion* `COT-2026-0412` y *Responsable* `Ing. Participante`, **deje en blanco
+   el *Proveedor*** y pulse **Cotizar**. Observe el mensaje y el selector *Version*.
+3. Ahora escriba *Proveedor* `Ferreteria Los Andes` (los demás datos quedan como están), deje la fecha de
+   hoy y pulse **Cotizar**.
+4. Observe el mensaje y la fila de `MAT-003` en la tabla de precios.
+5. Abra la pestaña **Trazabilidad**.
+6. En la barra de herramientas pulse **Exportar Excel** y, en el panel *Guardar version y exportar a Excel*,
    **Descargar Excel**. Abra el archivo.
 
 **Resultado esperado**
@@ -817,14 +824,17 @@ declarados de la memoria `tests/fixtures/memorias/bano_of001.md`, no un plano re
 - Paso 1: se abre la pestaña **Precios** (la tabla de **49** insumos). `MAT-003`: `Tubo PVC 3/4 pulg A.B.
   presion agua fria [MT2050]`, **Precio** `5.16`, **Lista** `Lista MaPreX jul-2026 (OF-001)`, moneda `USD`,
   **Estado** `Sin referencia ni cotización: el precio no tiene fuente`.
-- Paso 3: mensaje verde `Se guardo la version 003 con la cotizacion de MAT-003.`; la fila de `MAT-003`
+- Paso 2 (negativo): mensaje rojo que dice que el proveedor es obligatorio y termina en `No se guardo
+  nada.`; la cotización sin proveedor (o sin fuente) se rechaza, no crea ninguna version y *Version* sigue
+  ofreciendo solo `001` y `002 (vigente)`.
+- Paso 4: mensaje verde `Se guardo la version 003 con la cotizacion de MAT-003.`; la fila de `MAT-003`
   pasa a **Precio** `5.50`, **Cotizacion** `Ferreteria Los Andes, COT-2026-0412, <fecha de hoy>` y **Estado**
   `OK`.
-- Paso 4: el historial tiene `001` (elaborada), `002` (edición, sale de `001`) y `003` (**cotizacion**, sale
+- Paso 5: el historial tiene `001` (elaborada), `002` (edición, sale de `001`) y `003` (**cotizacion**, sale
   de `002`, 1 cambio, vigente); el registro de la `003`: objeto `precio`, clave `MAT-003`, campo
   `cotizacion`, antes `5.1648`, después `5.50`, fuente `Cotizacion COT-2026-0412 de Ferreteria Los Andes
   (<fecha de hoy>).` y su responsable.
-- Paso 5: el archivo se llama `hoja_003.xlsx` y tiene **catorce hojas**, en este orden: *Espacio y
+- Paso 6: el archivo se llama `hoja_003.xlsx` y tiene **catorce hojas**, en este orden: *Espacio y
   metrajes*, *APU*, *Presupuesto*, *Plan y curva*, *Punto de equilibrio*, *Precios*, *Parametros*,
   *Auditoria*, *Trazabilidad*, *Esp origenes*, *Esp ambientes*, *Esp fuentes*, *Esp puntos* y *Esp
   vertices*. La hoja *Trazabilidad* tiene **una** fila de datos (`002`, `003`, `precio`, `MAT-003`,
@@ -859,6 +869,13 @@ umbral). **CP‑10 y CP‑11 siguen partiendo de OF‑001 `001` de `data/prueba_
 CP‑09**: sus valores esperados (2703.86, Día 23, `MAT‑003`) son los de OF‑001 con el bono adoptado del caso y
 los de lo creado en CP‑08 y CP‑09 serían otros (172.42 y 2577.59, con el bono por defecto); partir de lo
 creado obligaría a reescribir y volver a ejecutar esos dos casos. Queda declarado.
+
+**Resiembra antes de CP‑10.** CP‑08 y CP‑09 dejan guardados sus proyectos nuevos en `data/prueba_sf.db`, y
+CP‑10 exige la base recién sembrada: entre CP‑09 y CP‑10 el observador resiembra con
+`uv run python scripts/seed_of001.py --db data/prueba_sf.db --reiniciar` y reabre la aplicación. Es
+preparación del observador, no tarea del participante: **no cuenta en los 15 min** (el cronómetro de cada
+caso arranca al terminar de leer su consigna) ni se anota como ayuda. CP‑11 no resiembra: continúa de
+la versión que deja CP‑10.
 
 **Condiciones.** Las de CP‑07: copia desechable (sección 4, paso 1), base propia
 `data/prueba_sf.db` sembrada de nuevo antes de **cada participante** (sección 4.1), `ARENIA_MODO_ENTREGA`
@@ -1024,6 +1041,15 @@ hoja (`tests/integration/test_primera_version.py`), **no** con el plano subido p
 CP‑10, 2703.86 + 6,93 × 0,05 × 5,1648 × 1,15 × 1,10 =
 2706.12, y el 56,60 % del equilibrio como 0,15 / 0,265. El total de CP‑08 (172.42) se obtuvo ejecutando
 el sistema: no tiene una memoria a mano propia (la suma de los renglones redondeados da 172.43).
+
+**Cifras de CP‑10 y CP‑11, comprobadas con base real (revisión final).** Además de leerse de la pantalla, las
+cifras de CP‑10 (total 2706.12; Día 23; costo variable 2137.44 → 2139.23; punto de equilibrio 1530.49 →
+1531.77; precio unitario 9.45 → 9.78; subida 2.26) y de CP‑11 (49 insumos; cotización 5.1648 → 5.50; la
+`003`; el paso negativo de cotizar sin proveedor) se aplican a la `001` de OF‑001 en
+`tests/integration/test_guion_cp10_cp11.py` y se comparan con aritmética aparte (±0,01): el precio del tubo
+como 3 271,19 Bs / 633,3644, la cantidad de la memoria del baño (6,300 × 1,10 = 6,930 m), la cascada de
+administración y utilidad (× 1,15 × 1,10) y el equilibrio como 0,15 / 0,265 de las ventas. Todas las cifras
+del guion resultaron correctas; ninguna se corrigió.
 
 **Puesta al día de CP‑07.** Solo cambia la interfaz que describe (menú superior, barra de herramientas,
 y el aviso de que «Exportar Excel» de la barra no produce `presupuesto_<código>*.xlsx`); su consigna, sus
