@@ -1,4 +1,9 @@
-# Expedientes del núcleo de SF3 (SF3‑E0, SF‑E6, SF‑E2, SF‑E3, SF‑E4, SF‑E7)
+# Expedientes del núcleo de SF3 (SF3‑E0, SF‑E2, SF‑E3, SF‑E4, SF‑E6, SF‑E7, SF‑E8, SF‑E9)
+
+**Contenido de este archivo:** SF3‑E0 (tablas aditivas), SF‑E2 (edición y versiones), SF‑E3 (punto de equilibrio),
+SF‑E4 (Excel), SF‑E6 (instantánea), SF‑E7 (origen de precios), SF‑E8 (revalorar) y SF‑E9 (`siguiente_codigo`).
+**Índice cruzado:** SF‑E1 (reglas externas en cada camino de auditoría) y SF‑E5 (R4 compara especificaciones
+normalizadas) están en la bitácora principal, [2026-10-sf.md](2026-10-sf.md), sección «SF1».
 
 **Fecha:** 2026‑10‑05 · **Rama:** `inc/sf3-nucleo` (apilada sobre `inc/sf2`) · **Plan:** [PLAN_SF.md](../../PLAN_SF.md),
 fase SF3, tareas 3.1 a 3.5 · **Spec:** [2026-10-04-sprint-final-prototipo-design.md](../especificaciones/2026-10-04-sprint-final-prototipo-design.md)
