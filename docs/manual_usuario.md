@@ -484,7 +484,7 @@ viene marcada). Nueve pestañas; solo se ejecuta la que está abierta:
 | **Trazabilidad** | El historial de versiones (cuál es la vigente, de cuál sale cada una), el registro de cada celda cambiada con su fuente, responsable y hora, y **Restaurar** una versión anterior (crea una versión nueva, copia de la elegida; nada se borra) |
 
 **De dónde salen los precios.** Los precios de referencia del sistema salen de los listados
-**MaPreX de julio de 2026** (materiales, equipos y mano de obra); un insumo que no viene de una lista aparece marcado como «sin fuente». Los listados están en bolívares y el
+**MaPreX de julio de 2026** (materiales, equipos y mano de obra); un insumo que no viene de una lista aparece con el estado «Sin referencia». Los listados están en bolívares y el
 sistema los convierte a dólares con la tasa **633,3644 Bs/USD del 01/07/2026**. En la pestaña
 **Precios** cada insumo muestra la **lista** de la que sale, su **referencia** (*Ref*, el renglón del
 listado), la **fecha** del precio, la **moneda** y la **tasa** usada. Si usted tiene una cotización
