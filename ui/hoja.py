@@ -178,6 +178,99 @@ ROTULOS: dict[str, str] = {
 #: Tablas editables que muestran la columna Estado, con el prefijo de sus claves `esp_*`.
 TABLAS_CON_ESTADO = {"ambientes": "esp_ambientes", "fuentes": "esp_fuentes", "puntos": "esp_puntos"}
 
+#: Rotulo en espanol de cada columna de las tablas editables, para quien no conoce los nombres
+#: internos (`ambiente_id`). Solo es de pantalla: los datos y los nombres de columna del editor no
+#: cambian (`COLUMNAS`).
+ROTULOS_DE_COLUMNA: dict[str, dict[str, str]] = {
+    "origenes": {"id": "Código", "tipo": "Tipo de origen", "referencia": "Referencia"},
+    "ambientes": {
+        "id": "Código",
+        "nombre": "Nombre",
+        "x0": "Esquina X (m)",
+        "y0": "Esquina Y (m)",
+        "largo": "Largo (m)",
+        "ancho": "Ancho (m)",
+        "alto": "Alto (m)",
+        "origen_id": "Origen de la medida",
+    },
+    "fuentes": {
+        "id": "Código",
+        "especialidad": "Especialidad",
+        "tipo": "Tipo de fuente",
+        "ambiente_id": "Ambiente",
+        "x": "Posición X (m)",
+        "y": "Posición Y (m)",
+        "z": "Altura (m)",
+        "origen_id": "Origen de la medida",
+    },
+    "puntos": {
+        "id": "Código",
+        "nombre": "Nombre",
+        "especialidad": "Especialidad",
+        "tipo": "Tipo de punto",
+        "ambiente_id": "Ambiente",
+        "superficie": "Superficie",
+        "x": "Posición X (m)",
+        "y": "Posición Y (m)",
+        "z": "Altura (m)",
+        "fuente_id": "Fuente que lo alimenta",
+        "circuito_id": "Circuito",
+        "especificaciones": "Especificaciones",
+        "origen_id": "Origen de la medida",
+    },
+    "tramos": {
+        "recorrido_id": "Recorrido",
+        "punto_id": "Punto",
+        "circuito_id": "Circuito",
+        "orden": "Orden del vértice",
+        "superficie": "Superficie",
+        "empotrado": "Empotrado",
+        "pendiente": "Pendiente",
+        "vertices": "Vértices",
+    },
+}
+
+#: Rotulo en espanol de cada valor de las listas cerradas (tipos, especialidades, superficies).
+ROTULOS_DE_VALOR: dict[str, str] = {
+    # tipo de origen
+    "plano": "Plano",
+    "dxf": "Archivo DXF",
+    "ifc": "Archivo IFC",
+    "levantamiento": "Levantamiento en obra",
+    "supuesto": "Supuesto",
+    # especialidad
+    "agua": "Agua",
+    "datos": "Datos",
+    "electricidad": "Electricidad",
+    # tipo de fuente
+    "acometida_agua": "Acometida de agua",
+    "montante_agua": "Montante de agua fría",
+    "colector_drenaje": "Colector de drenaje",
+    "rack": "Rack de datos",
+    "tablero": "Tablero eléctrico",
+    # tipo de punto ("datos" ya es la especialidad; el punto se llama igual)
+    "agua_fria": "Agua fría",
+    "drenaje": "Drenaje",
+    "tomacorriente": "Tomacorriente",
+    "iluminacion": "Iluminación",
+    # superficie
+    "pared": "Pared",
+    "techo": "Techo",
+    "piso": "Piso",
+    "plafon": "Plafón",
+    "bandeja": "Bandeja",
+    # empotrado
+    "si": "Sí",
+    "no": "No",
+}
+
+
+def rotulo_de_valor(valor: str) -> str:
+    """El valor interno de una lista cerrada con el nombre que el usuario reconoce; el que no tiene
+    rotulo (o el vacio) se devuelve tal cual."""
+    return ROTULOS_DE_VALOR.get(valor, valor)
+
+
 #: Estado de una fila que ningun hallazgo toca.
 TEXTO_OK = "OK"
 
@@ -2311,6 +2404,60 @@ def resumen_del_informe(informe: Iterable[ItemInforme]) -> list[tuple[str, int]]
         for tipo in TipoItem
         if tipo in _FIJOS_DEL_INFORME or cuenta[tipo]
     ]
+
+
+@dataclass(frozen=True, slots=True)
+class ResumenDeFusion:
+    """El informe de una fusion contado una sola vez (revision final).
+
+    El informe de la fusion es el de la importacion MAS una linea «agregada» por cada fila que la
+    fusion puso en el borrador; contarlo entero mostraba el doble (Importado 68 y no 33). Aqui:
+
+    * `por_tipo`: lo que leyo el plano (importado, no reconocido, aproximado, pendiente) y, solo si
+      aparecen, lo propio de una reimportacion (ya no esta en el plano, omitido);
+    * `filas_por_tabla`: las filas que la fusion agrego o actualizo, por tabla;
+    * `origenes`: los origenes de medida que trae el plano, aparte de las filas.
+    """
+
+    por_tipo: list[tuple[str, int]]
+    filas_por_tabla: list[tuple[str, int]]
+    origenes: int
+
+
+_ROTULOS_DE_TABLA_DEL_INFORME = {
+    "esp_ambientes": "Ambientes",
+    "esp_fuentes": "Fuentes",
+    "esp_puntos": "Puntos",
+    "esp_circuitos": "Circuitos",
+    "esp_origenes": "Orígenes",
+}
+
+
+def resumen_de_la_fusion(
+    resultado: ResultadoImportacion, informe: Sequence[ItemInforme]
+) -> ResumenDeFusion:
+    """Cuenta el informe de la fusion de `resultado` sin repetir lo que ya dijo la importacion."""
+    propias = (
+        informe[len(resultado.informe) :]
+        if tuple(informe[: len(resultado.informe)]) == tuple(resultado.informe)
+        else informe
+    )
+    por_tipo = dict(resumen_del_informe(resultado.informe))
+    for tipo in (TipoItem.DESAPARECIDO, TipoItem.OMITIDO):
+        cuantas = sum(1 for i in propias if i.tipo is tipo)
+        if cuantas:
+            por_tipo[ROTULOS_DEL_INFORME[tipo]] = cuantas
+    por_tabla: dict[str, int] = {}
+    for item in propias:
+        if item.tipo is TipoItem.IMPORTADO and item.tabla in _ROTULOS_DE_TABLA_DEL_INFORME:
+            rotulo = _ROTULOS_DE_TABLA_DEL_INFORME[item.tabla]
+            por_tabla[rotulo] = por_tabla.get(rotulo, 0) + 1
+    orden = list(_ROTULOS_DE_TABLA_DEL_INFORME.values())
+    return ResumenDeFusion(
+        por_tipo=list(por_tipo.items()),
+        filas_por_tabla=sorted(por_tabla.items(), key=lambda par: orden.index(par[0])),
+        origenes=len(resultado.origenes),
+    )
 
 
 def resumen_de_importacion(

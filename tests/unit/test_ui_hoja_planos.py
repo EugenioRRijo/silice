@@ -7,6 +7,7 @@ archivo en disco, y aqui el pintado, con la importacion ya leida y precargada en
 from __future__ import annotations
 
 import importlib
+import json
 from pathlib import Path
 
 import ezdxf
@@ -221,3 +222,56 @@ def test_los_botones_del_flujo_tienen_rotulos_que_el_usuario_reconoce(
 ):
     at = _arrancar(monkeypatch, tmp_path, **{CLAVE_IMPORTACION: _cargado()})
     assert _hay_boton(at, rotulo)
+
+
+# --- rotulos en espanol (revision final, H) -------------------------------------------------------
+
+
+def _editores(at: AppTest) -> dict[str, dict]:
+    """La configuracion de columnas que recibe cada `st.data_editor`, por tabla de la hoja."""
+    por_columnas = {tuple(columnas): tabla for tabla, columnas in hoja.COLUMNAS.items()}
+    editores = {}
+    for d in at.dataframe:
+        tabla = por_columnas.get(tuple(d.value.columns))
+        if tabla is not None and d.proto.editing_mode:
+            editores[tabla] = json.loads(d.proto.columns)
+    return editores
+
+
+def test_las_tablas_editables_muestran_rotulos_en_espanol_y_conservan_sus_columnas(
+    monkeypatch, tmp_path
+):
+    at = _arrancar(monkeypatch, tmp_path)
+    editores = _editores(at)
+    assert set(editores) == set(hoja.COLUMNAS)  # las cinco tablas; las columnas internas intactas
+    for tabla, columnas in editores.items():
+        for columna, rotulo in hoja.ROTULOS_DE_COLUMNA[tabla].items():
+            assert columnas[columna]["label"] == rotulo, (tabla, columna)
+            assert "_" not in columnas[columna]["label"]
+
+
+def test_las_listas_cerradas_muestran_el_nombre_claro_y_guardan_el_valor_interno(
+    monkeypatch, tmp_path
+):
+    at = _arrancar(monkeypatch, tmp_path)
+    tipo_de_fuente = _editores(at)["fuentes"]["tipo"]["type_config"]
+    assert tipo_de_fuente["type"] == "selectbox"
+    texto = json.dumps(tipo_de_fuente, ensure_ascii=False)
+    assert "Montante de agua fría" in texto and "montante_agua" in texto
+    tipo_de_punto = json.dumps(_editores(at)["puntos"]["tipo"]["type_config"], ensure_ascii=False)
+    assert "Agua fría" in tipo_de_punto and "agua_fria" in tipo_de_punto
+
+
+def test_el_informe_de_la_ultima_fusion_cuenta_las_filas_una_vez_y_los_origenes_aparte(
+    monkeypatch, tmp_path
+):
+    at = _arrancar(monkeypatch, tmp_path, **{CLAVE_IMPORTACION: _cargado()})
+    _boton(at, FUSIONAR).click().run()
+    assert not at.exception, [e.value for e in at.exception]
+    assert any(s.value == "Informe de la última fusión" for s in at.subheader)
+    metricas = _metricas(at)
+    assert metricas["Importado"] == "33"  # 6 ambientes + 6 fuentes + 21 puntos, no 68
+    assert metricas["Pendiente"] == "6"
+    texto = " ".join(c.value for c in at.caption)
+    assert "Ambientes 6" in texto and "Fuentes 6" in texto and "Puntos 21" in texto
+    assert "orígenes de medida del plano" in texto
