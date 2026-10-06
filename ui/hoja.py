@@ -2283,7 +2283,8 @@ def leer_plano(ruta: Path | str, *, unidades: str | None = None) -> ResultadoImp
         extra = "planos" if formato == "dxf" else "civil"
         raise HojaInvalida(
             f"Falta instalar el componente para leer planos {formato.upper()}. "
-            f"Instale el extra «{extra}» y vuelva a intentarlo."
+            f"Instale el extra «{extra}» con el comando «uv sync --extra {extra}» "
+            "y vuelva a intentarlo."
         ) from error
 
 
