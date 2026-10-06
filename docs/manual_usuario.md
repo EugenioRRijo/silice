@@ -162,7 +162,7 @@ La barra lateral queda para lo que ya mostraba: el caso abierto y el paso del re
 | Herramienta | Qué hace |
 |---|---|
 | **Proyecto** | Muestra el caso abierto, el proyecto abierto y su versión vigente. Permite **crear** un proyecto nuevo y **abrir** uno del caso. |
-| **Importar plano** | Lleva a la pestaña *Espacio y metrajes* de la hoja del proyecto con el bloque **Importar plano (DXF o IFC)** abierto (sección 3.8, «Importar un plano», UC‑14). Si la importación de planos no estuviera instalada, la herramienta no se muestra. |
+| **Importar plano** | Lleva a la pestaña *Espacio y metrajes* de la hoja del proyecto con el bloque **Importar plano (DXF o IFC)** abierto (sección 3.8, «Importar un plano», UC‑14). La herramienta solo falta si la copia del programa está incompleta (no trae el paquete de importación de planos). Lo que falta de los componentes opcionales para leer el archivo se avisa al pulsar **Leer plano**, con el comando para instalarlo. |
 | **Precios** | Lleva a la pestaña *Precios* de la hoja del proyecto: el origen de cada precio y las cotizaciones. |
 | **Auditar** | Resume el informe de auditoría de la versión vigente del proyecto abierto: cuántos hallazgos y de qué severidad. El sistema audita siempre; el botón solo lo muestra. |
 | **Guardar version** | Lleva a la hoja del proyecto con el panel **Guardar version y exportar a Excel** abierto: ahí se escriben la fuente y el responsable y se guarda (sección 3.8). |
@@ -483,6 +483,17 @@ viene marcada). Nueve pestañas; solo se ejecuta la que está abierta:
 | **Auditoría** | El informe de auditoría del borrador (sección 4), con las reglas del espacio |
 | **Trazabilidad** | El historial de versiones (cuál es la vigente, de cuál sale cada una), el registro de cada celda cambiada con su fuente, responsable y hora, y **Restaurar** una versión anterior (crea una versión nueva, copia de la elegida; nada se borra) |
 
+**De dónde salen los precios.** Los precios de referencia del sistema salen de los listados
+**MaPreX de julio de 2026** (materiales, equipos y mano de obra); un insumo que no viene de una lista aparece marcado como «sin fuente». Los listados están en bolívares y el
+sistema los convierte a dólares con la tasa **633,3644 Bs/USD del 01/07/2026**. En la pestaña
+**Precios** cada insumo muestra la **lista** de la que sale, su **referencia** (*Ref*, el renglón del
+listado), la **fecha** del precio, la **moneda** y la **tasa** usada. Si usted tiene una cotización
+distinta, la registra con su fuente (proveedor, número y fecha): vale **solo para ese proyecto**, no
+cambia la lista ni los demás proyectos, y se puede retirar para volver al precio de la lista. La
+pestaña **Precios** solo se llena cuando hay una versión guardada: sin versión dice «Abra una version
+guardada para ver el origen de sus precios». Son **referencias de julio de 2026**, no una lista vigente:
+antes de usar un presupuesto para contratar, valide los precios con una ronda actual.
+
 Una fila inválida muestra un mensaje que dice fila y campo, y la hoja sigue con el último borrador
 válido. Mientras haya cambios sin guardar la hoja lo avisa, y cambiar de versión o de proyecto pide
 confirmar que se descartan.
@@ -640,7 +651,7 @@ Cada carpeta trae su `README.md` con el formato exacto de columnas.
 | «Escriba un nombre para el proyecto» o «Ya existe un proyecto llamado …» al crear un proyecto | El nombre quedó en blanco o ya lo usa otro proyecto del caso: escribir otro, o abrir el existente con **Abrir** |
 | **Guardar version** (o **Guardar primera versión**) de la hoja está deshabilitado | La ayuda del botón dice por qué: el borrador no pertenece a ningún proyecto (elija o cree uno), no hay cambios, falta la fuente o el responsable, o la versión está en solo lectura |
 | **Guardar version** o **Exportar Excel** de la barra aparecen deshabilitados con «Todavía no está disponible…» | La hoja del proyecto no está instalada en esta copia: actualizar el repositorio |
-| **Importar plano** no aparece en la barra | El componente de planos no está instalado en esta copia; con `uv sync --extra planos` (DXF) o `--extra civil` (IFC) vuelve a funcionar |
-| «Falta instalar el componente para leer planos DXF» al leer un plano | Falta el extra `planos` (DXF) o `civil` (IFC): `uv sync --extra planos` |
+| **Importar plano** no aparece en la barra | La copia del programa está incompleta: falta el paquete de importación de planos. Actualice o vuelva a descargar el repositorio. (No depende de los extras `planos` o `civil`: si faltan, la herramienta aparece y el aviso sale al pulsar **Leer plano**) |
+| «Falta instalar el componente para leer planos DXF» (o IFC) al pulsar **Leer plano** | Falta el extra `planos` (DXF) o `civil` (IFC): ejecute `uv sync --extra planos` (DXF) o `uv sync --extra civil` (IFC) y vuelva a pulsar **Leer plano** |
 | Un archivo subido se guarda con otro nombre (por ejemplo `_CON.csv`) | El nombre original era reservado en Windows (`CON`, `NUL`, `COM1`…) o traía caracteres no permitidos: se limpia para guardarlo, y el contenido no cambia |
 | La barra lateral no muestra el caso esperado bajo «Caso abierto» | Abrirlo en **Inicio** (*Archivo del caso (SQLite)* y *Abrir este caso*) o arrancar con `ARENIA_CASO=<ruta>`: recargar la página (F5) vuelve a la ruta de `ARENIA_CASO` o, sin ella, a `data/apu.db` |
