@@ -565,10 +565,17 @@ def _configuracion(tabla: str) -> dict[str, object]:
         "tramos": {"superficie": _opciones(SuperficieTramo), "empotrado": ["", "si", "no"]},
     }
     listas = por_tabla.get(tabla, {})
-    return {
-        columna: st.column_config.SelectboxColumn(columna, options=opciones)
-        for columna, opciones in listas.items()
-    }
+    rotulos = hoja.ROTULOS_DE_COLUMNA[tabla]
+    configuracion: dict[str, object] = {}
+    for columna in hoja.COLUMNAS[tabla]:
+        if columna in listas:
+            # el usuario ve el nombre claro; la celda sigue guardando el valor interno
+            configuracion[columna] = st.column_config.SelectboxColumn(
+                rotulos[columna], options=listas[columna], format_func=hoja.rotulo_de_valor
+            )
+        else:
+            configuracion[columna] = st.column_config.TextColumn(rotulos[columna])
+    return configuracion
 
 
 def _dinero(valor: Decimal, moneda: str) -> str:
@@ -797,7 +804,7 @@ def _fusionar_importacion() -> bool:
     _poner_borrador(nuevo, resembrar=True)
     filas = resultado.filas
     _descartar_importacion()
-    st.session_state[CLAVE_PLANO_FUSION] = informe
+    st.session_state[CLAVE_PLANO_FUSION] = (informe, hoja.resumen_de_la_fusion(resultado, informe))
     _mensaje(
         "success",
         f"Se fusionó «{resultado.archivo}» con el borrador de la hoja: {filas['esp_ambientes']} "
@@ -811,6 +818,16 @@ def _fusionar_importacion() -> bool:
 def _pintar_conteos(resumen: Sequence[tuple[str, int]]) -> None:
     for columna, (rotulo, cantidad) in zip(st.columns(len(resumen)), resumen, strict=True):
         columna.metric(rotulo, str(cantidad))
+
+
+def _pintar_filas_de_la_fusion(resumen: hoja.ResumenDeFusion) -> None:
+    """Las filas que la fusion puso en el borrador, por tabla, y los origenes aparte."""
+    por_tabla = " · ".join(f"{tabla} {n}" for tabla, n in resumen.filas_por_tabla)
+    st.caption(f"Filas que entraron al borrador: {por_tabla or 'ninguna'}.")
+    st.caption(
+        f"{resumen.origenes} orígenes de medida del plano, aparte de las filas: cada fila "
+        "importada cita el suyo."
+    )
 
 
 def _pintar_tabla_del_informe(informe: Sequence[Any]) -> None:
@@ -902,9 +919,11 @@ def _importar_plano() -> None:
         if resultado is not None:
             _pintar_importacion(resultado)
         elif fusion:
+            informe, resumen = fusion
             st.subheader("Informe de la última fusión")
-            _pintar_conteos(hoja.resumen_del_informe(fusion))
-            _pintar_tabla_del_informe(fusion)
+            _pintar_conteos(resumen.por_tipo)
+            _pintar_filas_de_la_fusion(resumen)
+            _pintar_tabla_del_informe(informe)
 
 
 # --- pestana APU ---------------------------------------------------------------------------------
