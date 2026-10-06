@@ -92,6 +92,24 @@ def test_leer_un_archivo_roto_no_lanza_y_dice_que_no_se_pudo_leer(tmp_path):
     assert resultado.mensaje
 
 
+@pytest.mark.parametrize(
+    ("nombre", "modulo", "comando"),
+    [
+        ("a.dxf", "adapters.espacio.planos.dxf", "uv sync --extra planos"),
+        ("a.ifc", "adapters.espacio.planos.ifc", "uv sync --extra civil"),
+    ],
+)
+def test_si_falta_el_extra_el_mensaje_dice_el_comando_para_instalarlo(
+    monkeypatch, tmp_path, nombre, modulo, comando
+):
+    monkeypatch.setitem(__import__("sys").modules, modulo, None)  # simula el extra ausente
+    ruta = tmp_path / nombre
+    ruta.write_bytes(b"x")
+    with pytest.raises(hoja.HojaInvalida) as error:
+        hoja.leer_plano(ruta)
+    assert comando in str(error.value)
+
+
 def test_subir_el_plano_lo_guarda_con_nombre_seguro_y_lo_lee(tmp_path):
     subida = _Subida("..\\..\\of001.dxf", DXF.read_bytes())
     ruta, resultado = hoja.subir_plano(subida, tmp_path)
