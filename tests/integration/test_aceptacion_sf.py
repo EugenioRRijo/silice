@@ -27,6 +27,7 @@ AF-LLAVE (tres llaves de paso en la memoria); el punto de equilibrio como 0,15 /
 
 from __future__ import annotations
 
+import re
 import shutil
 from dataclasses import dataclass, replace
 from datetime import datetime
@@ -57,6 +58,11 @@ AHORA = datetime(2026, 10, 5, 16, 30, 0)
 TOLERANCIA_M = D("0.001")
 TOLERANCIA_EXCEL = D("0.005")
 TOTAL_MEMORIA = D("2703.86")
+MEMORIA = Path(__file__).resolve().parents[1] / "fixtures" / "memorias" / "of001.md"
+#: Literales documentados de OF-001 (memoria y guion CP-10): CV 2137,44; PE 1530,49; Dia 23.
+CV_DOCUMENTADO = D("2137.44")
+PE_DOCUMENTADO = D("1530.49")
+PERIODO_DOCUMENTADO = "Dia 23"
 
 
 @dataclass
@@ -91,8 +97,11 @@ def _proyecto_nuevo(sesion) -> None:
 
 
 def _altura_de_la_memoria() -> str:
-    """La altura de los seis ambientes, como la teclearia el usuario (la dice la memoria)."""
-    return "2,50"
+    """La altura de los seis ambientes, como la teclearia el usuario: la LEE de la memoria de
+    OF-001 (seccion 1: «Todos los ambientes miden 2,500 de alto»), no es un literal propio."""
+    coincidencia = re.search(r"miden (\d+,\d+) de alto", MEMORIA.read_text(encoding="utf-8"))
+    assert coincidencia, "la memoria de OF-001 ya no declara la altura de sus ambientes"
+    return coincidencia.group(1)
 
 
 @pytest.fixture(scope="module")
@@ -361,6 +370,9 @@ def test_restaurar_la_001_crea_la_003_igual_a_ella_y_no_borra_nada(historia, ses
     v1 = hoja.abrir_version(sesion, catalogo, NOMBRE_PLANO, "001")
     v3 = hoja.abrir_version(sesion, catalogo, NOMBRE_PLANO, "003")
     assert v3.guardada.presupuesto.total == v1.guardada.presupuesto.total
+    # y la restaurada sigue siendo el total de la memoria, no solo "igual a la 001"
+    assert abs(historia.resultado_003.elaboracion.presupuesto.total - TOTAL_MEMORIA) <= D("0.01")
+    assert abs(v3.guardada.presupuesto.total - TOTAL_MEMORIA) <= D("0.01")
     assert v3.borrador.espacio == v1.borrador.espacio
     assert dict(v3.borrador.cantidades) == {}  # las cinco llaves de la 002 no volvieron
     filas = hoja.historial_de_versiones(sesion, NOMBRE_PLANO)
@@ -380,6 +392,11 @@ def test_el_punto_de_equilibrio_es_el_de_la_aritmetica_de_la_version(historia):
     # oraculo cerrado: V = CV x 1,265 (administracion 15 % y utilidad 10 % en cascada), asi que
     # PE = CF x V / (V - CV) = 0,15 x V / 0,265 y es el 56,60 % de las ventas, como en TI-001
     assert abs(pe.porcentaje - D("56.60")) <= D("0.01")
+    # y con los literales documentados de OF-001 (memoria y guion CP-10), no solo con 0,15 / 0,265
+    assert abs(total - TOTAL_MEMORIA) <= D("0.01")
+    assert abs(pe.costo_variable - CV_DOCUMENTADO) <= D("0.01")
+    assert abs(pe.punto - PE_DOCUMENTADO) <= D("0.01")
+    assert pe.periodo.split(" [")[0] == PERIODO_DOCUMENTADO  # «Dia 23 [EL-CAJA]»: periodo y partida
     assert abs(pe.punto - total * D("0.15") / D("0.265")) <= D("0.01")
     # y por el camino largo, con las cifras de cada renglon que trae la version guardada
     cv = sum(
@@ -437,3 +454,27 @@ def test_el_excel_lleva_el_espacio_importado_y_la_trazabilidad_de_la_restauracio
     assert len(libro["Esp ambientes"]["A"]) == 1 + 6
     traza = libro["Trazabilidad"]
     assert traza.max_row >= 2  # la restauracion deja su registro
+
+
+def test_las_hojas_auditoria_y_apu_del_excel_cuentan_lo_que_dice_el_informe(historia):
+    """Las filas de la hoja Auditoria (hallazgos y reglas evaluadas) y los bloques de la hoja APU
+    salen del informe y del presupuesto de la version, no de un recuento propio del libro."""
+    libro = load_workbook(historia.excel)
+    informe = historia.resultado_003.elaboracion.informe
+    auditoria = libro["Auditoria"]
+    hallazgos_en_hoja = [f for f in range(2, auditoria.max_row + 1) if auditoria.cell(f, 1).value]
+    assert len(hallazgos_en_hoja) == len(informe.hallazgos)
+    reglas_en_hoja = [f for f in range(2, auditoria.max_row + 1) if auditoria.cell(f, 7).value]
+    assert len(reglas_en_hoja) == len(informe.cuenta_por_regla_evaluada()) > 0
+
+    partidas = historia.resultado_003.elaboracion.presupuesto.partidas
+    apu = libro["APU"]
+    encabezados = [
+        str(apu.cell(f, 1).value)
+        for f in range(1, apu.max_row + 1)
+        if " · " in str(apu.cell(f, 1).value)
+    ]
+    assert len(encabezados) == len(partidas)
+    assert sorted(e.split(" · ")[0] for e in encabezados) == sorted(
+        p.apu.codigo_partida for p in partidas
+    )
