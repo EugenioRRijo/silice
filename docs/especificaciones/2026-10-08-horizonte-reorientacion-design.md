@@ -2,8 +2,8 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | **propuesta de horizonte** (fase R0). Pendiente de la aprobación de Eugenio y del visto bueno del tutor. Cada fase R1–R4 tendrá su propio spec detallado, revisado por los encargos, antes de construirse |
-| Fecha | 2026‑10‑08 |
+| Estado | **propuesta de horizonte, revisión 2** (fase R0). Pendiente de la aprobación de Eugenio y del visto bueno del tutor. Cada fase R1–R4 tendrá su propio spec detallado, revisado por los encargos, antes de construirse |
+| Fecha | 2026‑10‑08; revisión 2 el 2026‑10‑09 (las dos personas y el paquete auditado, base de precios por empresa, auditoría de planos, indicador del administrador) |
 | Rama | `inc/spec-horizonte`, desde `main` |
 | Se apoya en | el sprint final del prototipo (SF), [spec del 2026‑10‑04](2026-10-04-sprint-final-prototipo-design.md), construido y revisado en la pila de PR #22–#29, aún sin fusionar |
 | Antecedentes | [informe de antecedentes del 2026‑10‑08](../tesis/antecedentes-reorientacion-2026-10-08.md) (cada dato marcado VERIFICADO, INDICIO o NO ENCONTRADO) |
@@ -35,6 +35,12 @@ no el tema.
 **Tesis en una frase:** *la IA propone el presupuesto, un auditor de reglas lo verifica, y el valor ganado lo
 mantiene cuadrado con la norma y los índices venezolanos.*
 
+**Por qué auditar si el sistema calcula.** Las cuentas del núcleo no fallan; lo que falla es lo que entra y lo que
+pasa con el tiempo: una medida mal escrita, una partida o una unidad equivocada, un precio de la base vencido o con
+un error de tipeo, una propuesta errada de la IA, un número cambiado después sin decir por qué, una obra que se
+atrasa o unos precios que suben. La calculadora multiplica bien un dato malo; el auditor exige el origen de cada
+número y lo vuelve a comprobar.
+
 ### 2.1 Objetivos específicos propuestos (a acordar con el tutor)
 
 Los objetivos vigentes del capítulo I (OE1–OE6, y OE7 en la variante A, decisión D3 aún pendiente) se conservan en
@@ -47,6 +53,7 @@ lo construido. Se proponen como **nuevos o reformulados**:
 | OE‑H3 | Implementar el control del presupuesto durante la obra con valor ganado, separando el desvío por plazo del desvío por precio, con valuaciones por cantidades ejecutadas |
 | OE‑H4 | Implementar el reajuste de precios en la moneda elegida por el proyecto, por fórmula escalatoria con índices del BCV y por comprobación directa, conforme a la Ley de Contrataciones Públicas (a cotejar con la Gaceta) |
 | OE‑H5 | Proponer opciones de recuperación de retrasos con su costo, calculadas con el rendimiento y la cuadrilla de los APU |
+| OE‑H6 | Auditar los planos que alimentan el presupuesto (validaciones del plano y comparación entre dos fuentes) y entregar el presupuesto como un paquete auditado cuya integridad pueda comprobar quien lo recibe |
 
 ### 2.2 Alcance
 
@@ -66,6 +73,29 @@ construcción».
 - **El administrador** que revisa presupuestos: el sistema cuadra y le señala dónde no cuadra.
 - **Los entes contratantes**: pueden auditar el presupuesto que reciben, lo haya hecho quien lo haya hecho.
 
+### 2.4 Dos personas unidas por el mismo auditor
+
+El sistema sirve a quien **arma** el presupuesto y a quien lo **revisa**. Entre los dos viaja un **paquete
+auditado**: el presupuesto, su informe de auditoría y su registro de cambios encadenado con huellas.
+
+```
+   LA CONTRATISTA (arma)                                  EL ADMINISTRADOR (revisa)
+   hoja del proyecto: a mano / con plano / con IA         recibe el paquete
+   precios de SU empresa                                  ├─ ¿alguien lo alteró después de auditarlo? (huellas)
+   ├─ el auditor revisa EN VIVO (control de calidad)      ├─ el auditor lo vuelve a revisar (no confía en el informe ajeno)
+   └─► entrega el PAQUETE AUDITADO ─────────────────────► ├─ ve en qué difiere y cuánto dinero representa
+                                                          └─ durante la obra: valuaciones, reajuste en Bs, alertas
+```
+
+| Persona | Actor de la ERS | Lo que gana |
+|---|---|---|
+| **Quien arma** (contratista, proyectista) | proyectista / estimador | arma más rápido (hoja, IA, su base de precios) y entrega un presupuesto difícil de rechazar, porque cada número trae su origen |
+| **Quien revisa** (administrador, cliente, ente contratante) | gerente, ampliado a «administrador que revisa» | no rehace el presupuesto: lo verifica; ve qué no cuadra, cuánto dinero representa y si lo tocaron después de auditado |
+
+Si el presupuesto que recibe el administrador **no viene de este sistema** (otro programa, el plugin de la otra
+tesis, OneEstimate), no hay paquete auditado: el sistema audita lo que puede y declara «no contrastable» lo que no
+puede verificar, en vez de darlo por bueno.
+
 ## 3. Decisiones tomadas por Eugenio (2026‑10‑08)
 
 | # | Tema | Decisión | Consecuencia de diseño |
@@ -76,6 +106,10 @@ construcción».
 | H‑D4 | IA | **Independiente del proveedor**: Claude como principal y un modelo local (Ollama) sin conexión, con el experimento de errores detectados por el auditor | La IA nunca escribe un número final: propone espacio y partidas mediante funciones del sistema; el núcleo calcula y el auditor verifica |
 | H‑D5 | Avance real | **Por cantidades ejecutadas**, como una valuación de obra venezolana, a mano o importada de Excel, con su fuente | El auditor revisa las valuaciones (p. ej. lo ejecutado no supera lo presupuestado sin una variación registrada) |
 | H‑D6 | Selección de mejoras | Valor ganado con separación plazo/precio; asistente con IA verificada; registro encadenado a prueba de manipulación; auditar el APU de otras herramientas; anomalías en variaciones de precio | Ver §5: el informe de antecedentes reordena cuáles son aporte y cuáles soporte |
+| H‑D7 | Para quién (2026‑10‑09) | **Para las dos personas**: quien arma el presupuesto a mano (o con plano o IA) y el administrador que lo revisa | El auditor trabaja en vivo para quien arma y es el producto para quien revisa; el paquete auditado los une (§2.4) |
+| H‑D8 | Base de precios por empresa (2026‑10‑09) | Cada empresa guarda **sus propios precios** («el m³ de piedra picada vale X»), con fecha, moneda y fuente | Es una lista de precios más, con su origen (el sistema ya maneja listas y cotizaciones por proyecto); el auditor la compara con el mercado (MaPreX) y con el tiempo («este precio está vencido» o «fuera de rango») |
+| H‑D9 | Auditoría de planos (2026‑10‑09) | Auditar planos malos, erróneos o hechos con IA | Validaciones del plano al importar y comparación entre dos fuentes (§5.1). El auditor detecta inconsistencias, no «mentiras consistentes»: un plano coherente pero equivocado solo se descubre comparándolo con otra fuente |
+| H‑D10 | Paquete auditado (2026‑10‑09) | Exportar e importar el presupuesto con su informe y sus huellas, y verificar que nadie lo alteró | El registro encadenado deja de ser solo un requisito de integridad: es el puente entre las dos personas |
 
 ## 4. Restricciones que salen de los antecedentes
 
@@ -106,9 +140,36 @@ de cotejo con la Gaceta Oficial** antes de citarlas en la tesis.
 | IA que propone y auditor de reglas que verifica | sin antecedentes en presupuestos (el más cercano, SYNAPSE 2026, es de estructuras) | **aporte central** |
 | Valor ganado que separa plazo y precio, con reajuste por la ley y los índices del BCV, en dos monedas | no encontrado en Venezuela ni Latinoamérica | **aporte central** |
 | Recuperación de retrasos desde el rendimiento y la cuadrilla del APU | aplicación de Lee (2022) | aporte de aplicación |
-| Registro encadenado con huellas SHA‑256 | técnica conocida (Hamledari y Fischer 2021) | requisito de integridad, no aporte |
+| Registro encadenado con huellas SHA‑256 | técnica conocida (Hamledari y Fischer 2021) | **puente** entre quien arma y quien revisa (paquete auditado): su papel es nuevo, la técnica no |
 | Auditar el APU de otras herramientas (Excel, API) | — | soporte del aporte central: muestra que el auditor es independiente del generador |
+| Auditoría de planos (validaciones y comparación entre dos fuentes) | validación de IFC con IDS es estándar de buildingSMART; no hallado aplicado a presupuestos | soporte del aporte central: el auditor también verifica la entrada geométrica |
+| Base de precios por empresa auditada contra el mercado y el tiempo | — | aplicación; da sentido práctico a la auditoría de precios |
 | Anomalías en variaciones de precio | existe en compras públicas; no validable con precios ficticios | complemento menor |
+
+### 5.1 Auditoría de planos: qué detecta y con qué herramientas
+
+**Detecta hoy** (sprint SF): elementos fuera de la convención (informe de importación), plano sin unidades,
+puntos fuera de su ambiente o sobre el techo y recorridos imposibles (R9), alturas pendientes, circuitos con valores
+supuestos y elementos que desaparecieron al reimportar (R8), y límites de especialidad (R10).
+
+**No puede detectar:** un plano coherente pero equivocado (salvo que se compare con otra fuente), si el diseño es
+bueno (dimensionar está fuera del alcance) ni planos en PDF o escaneados.
+
+**Se agrega en R3:**
+
+| Para detectar | Herramienta | Estado |
+|---|---|---|
+| DXF dañado o mal construido | la auditoría de archivo de `ezdxf` | ya en el sistema |
+| IFC que no trae lo mínimo (espacio sin altura, aparato sin diámetro, tomacorriente sin circuito) | requisitos declarados en **IDS** (estándar de buildingSMART) y comprobados con **`ifctester`** (IfcOpenShell) | IfcOpenShell ya está; falta el IDS |
+| Geometría absurda: ambientes superpuestos, puntos duplicados, escalas imposibles, puntos sin fuente | **`shapely`** con su índice espacial | nueva dependencia |
+| Diferencias entre dos fuentes (plano contra levantamiento; plano nuevo contra anterior), traducidas a dinero | `shapely` para emparejar con tolerancia y el núcleo para valorar la diferencia | parcial |
+| Lo que propone la IA | salida estructurada validada con Pydantic, y luego las reglas del auditor | Pydantic ya está |
+| Ver el error sobre el plano | dibujo de `ezdxf` con `matplotlib`, o plotly | parcial |
+| Choques físicos en un IFC (tubo contra columna) | IfcClash (IfcOpenShell) | **opcional**: solo sirve si el IFC trae la estructura |
+
+**Cómo se demuestra que funciona:** con **errores sembrados**, el método ya usado en TI‑001 (6 de 7 detectados):
+se toman planos correctos (OF‑001) y planos o presupuestos generados por la IA, se les siembran errores conocidos y
+se mide la **tasa de detección** y las **falsas alarmas**.
 
 ## 6. Fases
 
@@ -120,13 +181,24 @@ interfaz, y fichas de rol de los subagentes (`sf-*`).
 | Fase | Contenido | Entrega que funciona | Depende de |
 |---|---|---|---|
 | **R0** | Propuesta para el tutor (este documento como base): pregunta, objetivos OE‑H1…H5, alcance, sector; **cotejo** de los arts. 133–134 con la Gaceta y de los artículos del Reglamento; decisión D3 pendiente; aval del sprint SF | aprobación del tutor | — |
-| **R1** | Moneda por proyecto; precio con moneda, fecha y tasa; importación de los archivos del BCV (tasa, INPC, índice de insumos de la construcción) con fuente; reajuste por escalatoria y por comprobación directa, lado a lado, respetando el primer año y «solo lo ejecutado en el período» | un proyecto en Bs y otro en USD con su reajuste comparado | R0 |
+| **R1** | Moneda por proyecto; precio con moneda, fecha y tasa; **base de precios por empresa** (lista propia con fecha, moneda y fuente, auditada contra MaPreX y contra el tiempo); importación de los archivos del BCV (tasa, INPC, índice de insumos de la construcción) con fuente; reajuste por escalatoria y por comprobación directa, lado a lado, respetando el primer año y «solo lo ejecutado en el período» | un proyecto en Bs y otro en USD con su reajuste comparado; una empresa con su lista propia y sus precios vencidos o fuera de rango marcados | R0 |
 | **R2** | Valuaciones por cantidades ejecutadas; valor ganado con desvío por plazo y por precio; alertas y reproyección; opciones de recuperación con su costo desde el rendimiento y la cuadrilla; registro de la decisión | una obra con retraso detectado, reproyectada y recuperada con una opción elegida | R1 |
-| **R3** | Registro encadenado a prueba de manipulación; importar y auditar el APU de otras herramientas (Excel y una ruta de la API para plugins); anomalías en variaciones como complemento | un APU externo importado y auditado; una alteración en la base detectada | R0 (puede ir en paralelo a R2) |
+| **R3** | Registro encadenado a prueba de manipulación; **paquete auditado** (exportar e importar el presupuesto con su informe y sus huellas, y verificar que nadie lo alteró); vista del **administrador que revisa**; importar y auditar el APU de otras herramientas (Excel y una ruta de la API para plugins); **auditoría de planos** (§5.1); anomalías en variaciones como complemento | un paquete armado por la contratista, recibido y verificado por el administrador; una alteración detectada; un APU externo auditado; errores sembrados en planos con su tasa de detección | R0 (puede ir en paralelo a R2) |
 | **R4** | Asistente independiente del proveedor (Claude y un modelo local); la IA solo propone mediante funciones del sistema; experimento: misma tarea a los dos modelos y conteo de errores detectados por el auditor | un presupuesto pedido en lenguaje natural, verificado, y el resultado del experimento | R1–R3 |
 
-**Orden de caída si el tiempo aprieta:** primero las anomalías (R3), luego el modelo local de R4 (queda solo
-Claude), luego el registro encadenado. R1 y R2 y el núcleo de R4 no se recortan: son la tesis.
+**Orden de caída si el tiempo aprieta:** primero las anomalías (R3), luego IfcClash, luego el modelo local de R4
+(queda solo Claude). R1, R2, el paquete auditado de R3 y el núcleo de R4 no se recortan: son la tesis.
+
+### 6.1 Evaluación: un indicador por persona
+
+| Persona | Qué se mide | Cómo |
+|---|---|---|
+| Quien arma | tiempo para armar el presupuesto y errores atrapados mientras lo arma | el indicador 3 vigente (tiempo de elaboración frente al método manual), con el auditor en vivo |
+| Quien revisa | **tiempo para revisar un presupuesto y errores detectados** frente a los sembrados | **indicador nuevo**: el mismo presupuesto con errores sembrados, revisado a mano y con el sistema, por personas que no son el autor; tasa de detección y falsas alarmas |
+| El auditor sobre la IA | errores de cada modelo atrapados por el auditor | experimento de R4 |
+| El auditor sobre planos | tasa de detección de errores sembrados en planos | §5.1 |
+
+Los protocolos se escriben antes de medir, como los vigentes del indicador 3 y de RNF‑04.
 
 ## 7. Riesgos
 
@@ -155,3 +227,5 @@ Claude), luego el registro encadenado. R1 y R2 y el núcleo de R4 no se recortan
 4. ¿Qué se hace con «zona industrial del Estado Miranda» del título: reflejarla en el sistema (precios zonificados,
    caso de una contratista de la zona) o ajustar el título?
 5. ¿Aprueba los cambios en `core/` del sprint SF (expedientes SF‑E1…E9, PR #22 y #25)?
+6. ¿Acepta que la tesis sirva a dos personas (quien arma y quien revisa) con un indicador para cada una, o prefiere
+   una sola como protagonista?
