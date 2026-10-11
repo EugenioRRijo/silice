@@ -9,6 +9,9 @@ from __future__ import annotations
 from dataclasses import replace
 from decimal import Decimal
 
+from sqlalchemy import select
+
+from core import models
 from core.budget import ResultadoElaboracion, elaborar, guardar_presupuesto, plan_secuencial
 from core.budget.edicion import CambioEditado
 from core.catalog import Catalogo
@@ -79,3 +82,24 @@ def elaborar_editada(sesion, composiciones, codigo: str, plan=plan_secuencial):
         moneda=linea_base.MONEDA,
         plan=plan,
     )
+
+
+def editar_apu_en_la_hoja(sesion, catalogo=None, codigo=linea_base.CODIGO_PRESUPUESTO):
+    """Abre `codigo` en la hoja, sube el cemento del concreto en su copia y guarda la version
+    siguiente. Devuelve el total exacto de la version nueva (el catalogo no cambia)."""
+    from ui import hoja
+
+    catalogo = catalogo or Catalogo(sesion)
+    nombre = sesion.scalars(select(models.Proyecto.nombre)).one()
+    abierta = hoja.abrir_version(sesion, catalogo, nombre, codigo)
+    composiciones = dict(abierta.borrador.composiciones)
+    composiciones[CODIGO_CONCRETO] = con_cemento(composiciones[CODIGO_CONCRETO])
+    guardada = hoja.guardar_version(
+        sesion,
+        catalogo,
+        abierta,
+        replace(abierta.borrador, composiciones=composiciones),
+        fuente=FUENTE,
+        responsable=RESPONSABLE,
+    )
+    return guardada

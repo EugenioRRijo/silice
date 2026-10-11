@@ -1,43 +1,57 @@
-"""La hoja del proyecto, sin Streamlit: borrador, derivacion, elaboracion y Estado por fila.
+"""La hoja del proyecto, sin Streamlit: borrador, versiones, guardado, cotizacion y Excel.
 
-Orquesta lo que la pantalla `ui/paginas/hoja.py` solo pinta (spec del sprint final, §5.3 y §9.2):
+Orquesta lo que la pantalla `ui/paginas/hoja.py` solo pinta (spec del sprint final, §5.3, §9.2 a
+§9.6) sobre `core.budget` y `adapters.espacio`; no tiene logica de negocio propia.
 
-1. **Borrador en memoria.** El modelo espacial (`adapters.espacio.Espacio`) se edita como tablas de
-   texto (`COLUMNAS`): `filas_desde_espacio` lo vuelca a filas y `espacio_desde_filas` lo
-   reconstruye, conservando de la base lo que el editor no muestra (circuitos, sobrescrituras de
-   segmento y recorridos propuestos). Una fila mala es un `HojaInvalida` con la fila y el campo;
-   la pantalla conserva entonces el ultimo borrador valido. Las celdas se leen con
-   `ui.composicion.texto_de_celda`, la unica lectura de celdas de `ui/` (INV-046).
-2. **Derivacion y elaboracion.** `elaborar_hoja` deriva los `ItemComputo` con
-   `adapters.espacio.derivar`, les suma los items de la version que no vienen del espacio
-   (`items_base`) y llama a `core.budget.elaborar` con `reglas = REGLAS + reglas_espacio(espacio)`:
-   el `Espacio` inmutable es la instantanea que reciben R8, R9 y R10 (DA-SF-8).
-3. **Estado por fila** (RF-55). `estado_de_filas` asigna a cada fila editable el peor hallazgo que
-   la toca, por las claves `esp_*` que los hallazgos citan en `origen_ids` (tambien dentro del
-   `origen_id` compuesto de un item, que separa sus fuentes con «;»). Las advertencias de una misma
-   fila van en un solo texto: R8 marca una por origen supuesto y, sin agrupar, el baño correcto
-   del ejemplo pintaria cinco lineas.
+**1. El borrador (`Borrador`).** Reune lo que la hoja edita sin persistir: el espacio, la copia de
+las composiciones de la version (DA-SF-7), los parametros, el plan y las cantidades escritas a mano
+(DA-SF-5). El espacio se edita como tablas de texto (`COLUMNAS`): `filas_desde_espacio` y
+`espacio_desde_filas` (una fila mala es un `HojaInvalida` con la fila y el campo; la pantalla
+conserva el ultimo borrador valido). Las celdas se leen con `ui.composicion.texto_de_celda`.
+`elaborar_borrador` deriva, valora, ajusta el plan (`ajustar_plan`), audita con `REGLAS +
+reglas_espacio(espacio, cantidades_escritas)` y calcula el punto de equilibrio y el Estado por fila
+(`estado_de_filas`, `estado_de_items`): es el recalculo de RF-52 y lo que mide `scripts/medir_rnf11.py`.
+
+**2. Versiones, en UNA sola `Session`** (RF-53, RF-54, RF-56):
+
+| Funcion | Que hace |
+|---|---|
+| `abrir_version(sesion, catalogo, proyecto, codigo)` | abre una version como borrador; crea y registra su instantanea si no la tiene (UC-15e); reaudita con R8 a R10 sobre la instantanea del espacio, que **reemplaza** los hallazgos guardados de esas reglas (§8.4) |
+| `puede_guardar` / `motivo_para_no_guardar(base, actual, fuente, responsable)` | sin cambios no hay nada que guardar (FR-4); con cambios se exigen fuente y responsable |
+| `guardar_version(sesion, catalogo, abierta, borrador, fuente=, responsable=)` | **la funcion de Guardar version de la barra de SF4**: `core.budget.edicion.guardar_edicion` con el gancho que copia las filas `esp_*` con la clave de la version nueva; confirma o deshace todo |
+| `restaurar(...)`, `cotizar(...)`, `retirar_cotizacion(...)` | version nueva por restauracion (RF-54) o cotizacion (RF-56); su espacio es el de su `version_origen` |
+| `exportar_excel(ruta, resultado, borrador, ...)`, `excel_de_hoja_en_bytes(...)` | **la funcion de Exportar Excel de la barra**: el libro de `exportar_hoja` con las `TablaExportable` del espacio y de los precios; solo se llama al pulsar Exportar |
+| `espacio_de_version`, `historial_de_versiones`, `registros_de_version`, `codigo_vigente`, `precios_de_version` | lecturas para las pestanas Trazabilidad y Precios |
+
+**3. Espacio de una version que no crea la hoja.** Restaurar, cotizar y revalorar no copian filas
+`esp_*`: `espacio_de_version` sube por `version_origen` hasta la primera version con filas propias; una
+version de la hoja o elaborada de cero es el final de la cadena aunque su espacio quede vacio.
 
 Un presupuesto sin espacio (la clinica, TI-001) abre igual que antes de la hoja (FR-5): espacio
-vacio, ningun item derivado, solo `items_base`; R8, R9 y R10 se declaran evaluadas sin hallazgos.
-La hoja deriva agua, datos y electricidad (`TODAS`). **No persiste**: guardar una version es SF3.
+vacio, ningun item derivado, solo `items_base`. La hoja deriva agua, datos y electricidad (`TODAS`).
 
 Sin Streamlit, sin `pandas` y sin `ui.caso`; lo vigila
 `tests/unit/test_arquitectura.py::test_ui_respeta_sus_importaciones_prohibidas`.
-"""
+"""  # noqa: E501 (la tabla de funciones lleva una fila por linea)
 
 from __future__ import annotations
 
+import re
+import tempfile
 from collections.abc import Callable, Iterable, Mapping, Sequence
-from dataclasses import dataclass
-from datetime import date
-from decimal import Decimal
+from dataclasses import dataclass, field, replace
+from datetime import date, datetime
+from decimal import Decimal, InvalidOperation
 from enum import StrEnum
+from pathlib import Path
 from typing import TYPE_CHECKING
+
+from sqlalchemy import func, select
 
 from adapters.espacio import (
     ESPECIALIDADES,
     Ambiente,
+    Circuito,
     Coord,
     Espacio,
     Especialidad,
@@ -53,20 +67,71 @@ from adapters.espacio import (
     TipoPunto,
     Tramo,
     cargar_espacio,
+    crear_esquema_espacio,
     derivar,
+    guardar_espacio,
 )
-from adapters.espacio.reglas import reglas_espacio
-from core.budget import CODIGO_PENDIENTE, ResultadoElaboracion, elaborar, plan_secuencial
+from adapters.espacio.planos import (
+    EstadoImportacion,
+    ItemInforme,
+    ResultadoImportacion,
+    TipoItem,
+    cargar_alturas,
+    declarar_circuitos,
+    fusionar,
+)
+from adapters.espacio.reglas import CantidadEscrita, reglas_espacio
+from core import models
+from core.budget import (
+    CODIGO_PENDIENTE,
+    CambioEditado,
+    EstadoEquilibrio,
+    PuntoEquilibrio,
+    ResultadoElaboracion,
+    ResultadoInstantanea,
+    TablaExportable,
+    asegurar_instantanea,
+    cargar_elaboracion,
+    cotizar_insumo,
+    elaborar,
+    exportar_hoja,
+    guardar_edicion,
+    guardar_presupuesto,
+    plan_de_version,
+    plan_secuencial,
+    punto_equilibrio,
+    restaurar_version,
+    siguiente_codigo,
+    tabla_trazabilidad,
+    version_vigente,
+)
+from core.budget import registros_de_version as registros_de_version_core
+from core.budget import retirar_cotizacion as _retirar_cotizacion
+from core.budget.curva import FORMATO_PERIODO
+from core.budget.instantanea import composiciones_de_version
 from core.budget.presupuesto import MONEDA_POR_DEFECTO
-from core.catalog import Catalogo
+from core.catalog import Catalogo, CatalogoIncompleto
+from core.catalog.origen import origen_de_precios
 from core.contracts import ComposicionAPU, ItemComputo, ParametrosCosto, Severidad
+from core.contracts.item_computo import OrigenTipo
+from core.contracts.presupuesto import Presupuesto
 from core.verification import REGLAS
-from ui.composicion import ComposicionInvalida, decimal_desde_texto, texto_de_celda
+from core.verification.informe import DECIMALES_PRESENTACION
+from core.verification.texto import formatear_decimal
+from ui.composicion import (
+    ComposicionInvalida,
+    decimal_desde_texto,
+    filas_desde_composicion,
+    texto_de_celda,
+)
+from ui.subidas import Subida, guardar_subida
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
 
     from core.budget import GeneradorPlan, PeriodoPlan
+    from core.catalog.origen import OrigenPrecio
+    from core.contracts.verificacion import Hallazgo
     from core.verification.informe import InformeAuditoria
 
 #: Columnas de cada tabla editable del borrador: la clave interna de cada celda, no su rotulo.
@@ -110,6 +175,102 @@ ROTULOS: dict[str, str] = {
     "tramos": "vertices de recorridos",
 }
 
+#: Tablas editables que muestran la columna Estado, con el prefijo de sus claves `esp_*`.
+TABLAS_CON_ESTADO = {"ambientes": "esp_ambientes", "fuentes": "esp_fuentes", "puntos": "esp_puntos"}
+
+#: Rotulo en espanol de cada columna de las tablas editables, para quien no conoce los nombres
+#: internos (`ambiente_id`). Solo es de pantalla: los datos y los nombres de columna del editor no
+#: cambian (`COLUMNAS`).
+ROTULOS_DE_COLUMNA: dict[str, dict[str, str]] = {
+    "origenes": {"id": "Código", "tipo": "Tipo de origen", "referencia": "Referencia"},
+    "ambientes": {
+        "id": "Código",
+        "nombre": "Nombre",
+        "x0": "Esquina X (m)",
+        "y0": "Esquina Y (m)",
+        "largo": "Largo (m)",
+        "ancho": "Ancho (m)",
+        "alto": "Alto (m)",
+        "origen_id": "Origen de la medida",
+    },
+    "fuentes": {
+        "id": "Código",
+        "especialidad": "Especialidad",
+        "tipo": "Tipo de fuente",
+        "ambiente_id": "Ambiente",
+        "x": "Posición X (m)",
+        "y": "Posición Y (m)",
+        "z": "Altura (m)",
+        "origen_id": "Origen de la medida",
+    },
+    "puntos": {
+        "id": "Código",
+        "nombre": "Nombre",
+        "especialidad": "Especialidad",
+        "tipo": "Tipo de punto",
+        "ambiente_id": "Ambiente",
+        "superficie": "Superficie",
+        "x": "Posición X (m)",
+        "y": "Posición Y (m)",
+        "z": "Altura (m)",
+        "fuente_id": "Fuente que lo alimenta",
+        "circuito_id": "Circuito",
+        "especificaciones": "Especificaciones",
+        "origen_id": "Origen de la medida",
+    },
+    "tramos": {
+        "recorrido_id": "Recorrido",
+        "punto_id": "Punto",
+        "circuito_id": "Circuito",
+        "orden": "Orden del vértice",
+        "superficie": "Superficie",
+        "empotrado": "Empotrado",
+        "pendiente": "Pendiente",
+        "vertices": "Vértices",
+    },
+}
+
+#: Rotulo en espanol de cada valor de las listas cerradas (tipos, especialidades, superficies).
+ROTULOS_DE_VALOR: dict[str, str] = {
+    # tipo de origen
+    "plano": "Plano",
+    "dxf": "Archivo DXF",
+    "ifc": "Archivo IFC",
+    "levantamiento": "Levantamiento en obra",
+    "supuesto": "Supuesto",
+    # especialidad
+    "agua": "Agua",
+    "datos": "Datos",
+    "electricidad": "Electricidad",
+    # tipo de fuente
+    "acometida_agua": "Acometida de agua",
+    "montante_agua": "Montante de agua fría",
+    "colector_drenaje": "Colector de drenaje",
+    "rack": "Rack de datos",
+    "tablero": "Tablero eléctrico",
+    # tipo de punto ("datos" ya es la especialidad; el punto se llama igual)
+    "agua_fria": "Agua fría",
+    "drenaje": "Drenaje",
+    "tomacorriente": "Tomacorriente",
+    "iluminacion": "Iluminación",
+    # superficie
+    "pared": "Pared",
+    "techo": "Techo",
+    "piso": "Piso",
+    "plafon": "Plafón",
+    "bandeja": "Bandeja",
+    # empotrado
+    "si": "Sí",
+    "no": "No",
+}
+
+
+def rotulo_de_valor(valor: str) -> str:
+    """El valor interno de una lista cerrada con el nombre que el usuario reconoce; el que no tiene
+    rotulo (o el vacio) se devuelve tal cual."""
+    return ROTULOS_DE_VALOR.get(valor, valor)
+
+
 #: Estado de una fila que ningun hallazgo toca.
 TEXTO_OK = "OK"
 
@@ -133,11 +294,49 @@ class EstadoFila:
 
 @dataclass(frozen=True, slots=True)
 class ResultadoHoja:
-    """Lo que la pantalla pinta: los items derivados, la elaboracion y el Estado por fila."""
+    """Lo que la pantalla pinta de un borrador (spec §5.3).
+
+    `items` son los derivados del espacio (como antes de SF3); `todos` son los que se elaboraron
+    (los de la version que no vienen del espacio mas los derivados, con las cantidades escritas a
+    mano ya aplicadas) y `estado_items` es el Estado de cada uno por su clave (`claves_de_items`).
+    `estado` es el de las filas editables del espacio. `plan` es el plan efectivo con que se hizo
+    la curva (ya ajustado a las partidas del presupuesto) y `equilibrio` el punto de equilibrio.
+    """
 
     items: list[ItemComputo]
     elaboracion: ResultadoElaboracion
     estado: dict[str, EstadoFila]
+    equilibrio: PuntoEquilibrio
+    plan: tuple[PeriodoPlan, ...] | None = None
+    todos: list[ItemComputo] = field(default_factory=list)
+    estado_items: dict[str, EstadoFila] = field(default_factory=dict)
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class Borrador:
+    """Lo que la hoja edita sin persistir (spec §5.3 y §9.2): el borrador completo de una version.
+
+    * `espacio`: el modelo espacial (pestana Espacio y metrajes);
+    * `items_base`: los items de la version que no vienen del espacio (la clinica, TI-001);
+    * `composiciones`: **la copia de la version** de los APU (DA-SF-7): cantidades de linea,
+      insumo elegido y rendimiento se editan aqui, nunca en el catalogo;
+    * `parametros`: los de `ParametrosCosto` (FCAS, bono, administracion y utilidad);
+    * `plan`: el reparto de cada partida por periodo (`None`: la version no tiene plan);
+    * `cantidades`: las cantidades escritas a mano (DA-SF-5), por la clave de su item
+      (`claves_de_items`). R8 las marca.
+
+    Es inmutable: cada edicion produce otro borrador con `dataclasses.replace`, y la pantalla
+    compara el vigente con el abierto (`cambios_entre`) para saber si hay algo sin guardar.
+    """
+
+    fecha: date
+    moneda: str = MONEDA_POR_DEFECTO
+    espacio: Espacio = field(default_factory=Espacio)
+    items_base: tuple[ItemComputo, ...] = ()
+    composiciones: Mapping[str, ComposicionAPU] = field(default_factory=dict)
+    parametros: ParametrosCosto = field(default_factory=ParametrosCosto)
+    plan: tuple[PeriodoPlan, ...] | None = None
+    cantidades: Mapping[str, Decimal] = field(default_factory=dict)
 
 
 # --- filas -> modelo ----------------------------------------------------------------------------
@@ -397,8 +596,16 @@ def espacio_desde_filas(
     base = base if base is not None else Espacio()
     declarados = _recorridos_declarados(filas.get("tramos", ()))
     nombres = {r.id for r in declarados}
+    puntos = tuple(_construir("puntos", filas.get("puntos", ()), _punto))
+    existentes = {p.id for p in puntos}
+    # un recorrido propuesto no guarda datos: solo marca que el punto usa el camino que propone la
+    # hoja; si el punto se quita de la tabla, su recorrido propuesto se va con el
     propuestos = [
-        r for r in base.recorridos if r.modo is ModoRecorrido.PROPUESTO and r.id not in nombres
+        r
+        for r in base.recorridos
+        if r.modo is ModoRecorrido.PROPUESTO
+        and r.id not in nombres
+        and (r.punto_id is None or r.punto_id in existentes)
     ]
     try:
         return Espacio(
@@ -406,7 +613,7 @@ def espacio_desde_filas(
             ambientes=tuple(_construir("ambientes", filas.get("ambientes", ()), _ambiente)),
             fuentes=tuple(_construir("fuentes", filas.get("fuentes", ()), _fuente)),
             circuitos=base.circuitos,
-            puntos=tuple(_construir("puntos", filas.get("puntos", ()), _punto)),
+            puntos=puntos,
             recorridos=(*propuestos, *declarados),
             sobrescrituras=base.sobrescrituras,
         )
@@ -464,30 +671,675 @@ def elaborar_hoja(
     items_base: Sequence[ItemComputo] = (),
     parametros: ParametrosCosto | None = None,
     moneda: str = MONEDA_POR_DEFECTO,
-    plan: Sequence[PeriodoPlan] | GeneradorPlan = plan_secuencial,
+    plan: Sequence[PeriodoPlan] | GeneradorPlan | None = plan_secuencial,
+    cantidades: Mapping[str, Decimal] | None = None,
 ) -> ResultadoHoja:
     """Deriva, elabora y audita el borrador: `REGLAS + reglas_espacio(espacio)`, siempre.
 
     `items_base` son los items de la version que no vienen del espacio (la clinica, TI-001, o las
     cantidades escritas a mano): se elaboran junto a los derivados. Con espacio vacio y sin
     `items_base` el presupuesto sale vacio y el Estado, `{}` (FR-1).
+
+    `cantidades` son las cantidades escritas a mano por clave de item (DA-SF-5): el item deja de
+    ser de regla y R8 lo marca. Un `plan` ya escrito se ajusta a las partidas valoradas
+    (`ajustar_plan`); sin plan (`None`) no hay curva. El punto de equilibrio sale siempre.
     """
+    parametros = parametros if parametros is not None else ParametrosCosto()
     derivados = items_del_borrador(espacio, especialidad)
+    sin_escribir = [*items_base, *derivados]
+    todos = _con_cantidades(sin_escribir, cantidades or {})
+    escritas = _cantidades_escritas(sin_escribir, cantidades or {})
+    if plan is not None and not callable(plan):
+        valoradas = [i.codigo_partida for i in todos if i.codigo_partida in composiciones]
+        plan = ajustar_plan(plan, valoradas)
+    usado: list[tuple[PeriodoPlan, ...]] = []
+    plan_final: Sequence[PeriodoPlan] | GeneradorPlan | None = plan
+    if callable(plan):
+        generador = plan
+
+        def plan_capturado(presupuesto):
+            reparto = tuple(generador(presupuesto))
+            usado.append(reparto)
+            return reparto
+
+        plan_final = plan_capturado
     elaboracion = elaborar(
-        [*items_base, *derivados],
+        todos,
         composiciones,
-        parametros if parametros is not None else ParametrosCosto(),
+        parametros,
         codigo=codigo,
         fecha=fecha,
         moneda=moneda,
-        plan=plan,
-        reglas=(*REGLAS, *reglas_espacio(espacio)),
+        plan=plan_final,
+        reglas=(*REGLAS, *reglas_espacio(espacio, escritas)),
     )
+    if usado:
+        efectivo: tuple[PeriodoPlan, ...] | None = usado[0]
+    else:
+        efectivo = None if plan_final is None else tuple(plan_final)
     return ResultadoHoja(
         items=derivados,
         elaboracion=elaboracion,
         estado=estado_de_filas(espacio, elaboracion.informe),
+        equilibrio=punto_equilibrio(elaboracion.presupuesto, parametros),
+        plan=efectivo,
+        todos=todos,
+        estado_items=estado_de_items(todos, elaboracion.informe),
     )
+
+
+def elaborar_borrador(
+    borrador: Borrador, codigo: str = "HOJA", especialidad: str | Iterable[str] = TODAS
+) -> ResultadoHoja:
+    """Elabora el borrador completo (RF-52): lo que cambia al aplicar una edicion, sin persistir.
+
+    Es la unica via de la pantalla, de `guardar_version` y de `scripts/medir_rnf11.py`: deriva,
+    valora con la copia de composiciones del borrador, ajusta el plan, audita con R1 a R10 y
+    calcula el punto de equilibrio. `codigo` es el de la version que saldra si se guarda.
+    """
+    return elaborar_hoja(
+        borrador.espacio,
+        borrador.composiciones,
+        codigo=codigo,
+        fecha=borrador.fecha,
+        especialidad=especialidad,
+        items_base=borrador.items_base,
+        parametros=borrador.parametros,
+        moneda=borrador.moneda,
+        plan=borrador.plan,
+        cantidades=borrador.cantidades,
+    )
+
+
+# --- items, claves y cantidades escritas a mano -------------------------------------------------
+
+
+def claves_de_items(items: Sequence[ItemComputo]) -> list[str]:
+    """La clave estable de cada item: `partida|origen_id`, con `#2`, `#3`... si se repite.
+
+    Es la identidad con que se escribe una cantidad a mano y con que el Estado y el registro de
+    cambios nombran un renglon del presupuesto.
+    """
+    vistas: dict[str, int] = {}
+    claves: list[str] = []
+    for item in items:
+        base = f"{item.codigo_partida}|{item.origen_id}"
+        veces = vistas.get(base, 0) + 1
+        vistas[base] = veces
+        claves.append(base if veces == 1 else f"{base}#{veces}")
+    return claves
+
+
+def _con_cantidades(
+    items: Sequence[ItemComputo], cantidades: Mapping[str, Decimal]
+) -> list[ItemComputo]:
+    """Los items con las cantidades escritas aplicadas. Un item escrito a mano deja de ser de
+    la regla que lo derivo y declara como regla su propio valor (`"9"`): R1 compara la cantidad
+    con su regla (seria un falso ERROR) o, sin regla, advierte que es manual, y la marca de la
+    cantidad escrita es de R8 (DA-SF-5), no de R1. Una clave sin item se ignora."""
+    if not cantidades:
+        return list(items)
+    return [
+        replace(
+            item,
+            cantidad=cantidades[clave],
+            origen_tipo=OrigenTipo.MANUAL,
+            regla=_numero(cantidades[clave]),
+            parametros={},
+        )
+        if clave in cantidades and cantidades[clave] != item.cantidad
+        else item
+        for clave, item in zip(claves_de_items(items), items, strict=True)
+    ]
+
+
+def _cantidades_escritas(
+    items: Sequence[ItemComputo], cantidades: Mapping[str, Decimal]
+) -> list[CantidadEscrita]:
+    return [
+        CantidadEscrita(item.codigo_partida, item.origen_id, item.cantidad, cantidades[clave])
+        for clave, item in zip(claves_de_items(items), items, strict=True)
+        if clave in cantidades and cantidades[clave] != item.cantidad
+    ]
+
+
+def items_sin_escribir(borrador: Borrador) -> list[ItemComputo]:
+    """Los items del borrador con la cantidad calculada o guardada (sin lo escrito a mano): el
+    valor con que `cantidades_desde_filas` compara cada fila de la tabla del Presupuesto."""
+    return [*borrador.items_base, *items_del_borrador(borrador.espacio, TODAS)]
+
+
+def items_elaborados(borrador: Borrador) -> list[ItemComputo]:
+    """Los items que se elaboran: los de la version que no vienen del espacio, los derivados del
+    espacio y las cantidades escritas a mano ya aplicadas (DA-SF-5)."""
+    return _con_cantidades(items_sin_escribir(borrador), borrador.cantidades)
+
+
+def cantidades_escritas(borrador: Borrador) -> list[CantidadEscrita]:
+    """Las cantidades que el borrador escribe a mano y difieren de la calculada o guardada."""
+    return _cantidades_escritas(items_sin_escribir(borrador), borrador.cantidades)
+
+
+def cantidades_desde_filas(
+    filas: Sequence[Mapping[str, object]], items: Sequence[ItemComputo]
+) -> dict[str, Decimal]:
+    """Las cantidades escritas a mano que describe la tabla del Presupuesto, por clave de item.
+
+    La tabla tiene la `clave` de cada item y su `cantidad` editable; solo cuentan las filas cuyo
+    valor difiere del calculado (`items`, los de `items_sin_escribir`). `HojaInvalida` con la fila
+    culpable si no es un numero no negativo.
+    """
+    por_clave = dict(zip(claves_de_items(items), items, strict=True))
+    escritas: dict[str, Decimal] = {}
+    for numero, fila in enumerate(filas, start=1):
+        clave = texto_de_celda(fila, "clave")
+        item = por_clave.get(clave)
+        if item is None:
+            continue
+        donde = f"presupuesto, fila {numero} ({item.codigo_partida})"
+        try:
+            valor = decimal_desde_texto(texto_de_celda(fila, "cantidad"), "cantidad")
+        except ComposicionInvalida as error:
+            raise HojaInvalida(f"{donde}: {error}") from error
+        if valor < 0:
+            raise HojaInvalida(
+                f"{donde}: la cantidad no puede ser negativa; escriba cero o una cantidad positiva"
+            )
+        if valor != item.cantidad:
+            escritas[clave] = valor
+    return escritas
+
+
+# --- edicion del APU en la copia de la version (DA-SF-7) -----------------------------------------
+
+
+def filas_de_apu(
+    composicion: ComposicionAPU,
+) -> tuple[list[dict[str, str]], list[dict[str, str]], list[dict[str, str]]]:
+    """Las tres tablas de texto de un APU (materiales, equipos, mano de obra) para el editor.
+
+    Solo la `cantidad` de cada linea y el rendimiento se editan en la hoja: el resto de las
+    columnas son del insumo (su precio sale de la lista de la version, pestana Precios)."""
+    return filas_desde_composicion(composicion)
+
+
+def _cantidades_de_tabla(
+    filas: Sequence[Mapping[str, object]], grupo: str, esperadas: int
+) -> list[Decimal]:
+    if len(filas) != esperadas:
+        raise HojaInvalida(
+            f"{grupo}: la tabla tiene {len(filas)} lineas y el APU {esperadas}; en la hoja solo "
+            "se edita la cantidad de cada linea (para agregar o quitar una, use Componer)"
+        )
+    cantidades = []
+    for numero, fila in enumerate(filas, start=1):
+        donde = f"{grupo}, fila {numero}"
+        try:
+            valor = decimal_desde_texto(texto_de_celda(fila, "cantidad"), f"{donde}: cantidad")
+        except ComposicionInvalida as error:
+            raise HojaInvalida(str(error)) from error
+        if valor < 0:
+            raise HojaInvalida(f"{donde}: la cantidad no puede ser negativa")
+        cantidades.append(valor)
+    return cantidades
+
+
+def composicion_con_cantidades(
+    base: ComposicionAPU,
+    materiales: Sequence[Mapping[str, object]],
+    equipos: Sequence[Mapping[str, object]],
+    mano_obra: Sequence[Mapping[str, object]],
+    rendimiento: str,
+) -> ComposicionAPU:
+    """El APU `base` con las cantidades de linea de las tres tablas y el rendimiento escritos.
+
+    Solo cambian la cantidad de cada linea y el rendimiento; descripcion, unidad, precio y
+    depreciacion son los de `base`. `HojaInvalida` dice la tabla, la fila y el campo.
+    """
+    cant_m = _cantidades_de_tabla(materiales, "materiales", len(base.materiales))
+    cant_e = _cantidades_de_tabla(equipos, "equipos", len(base.equipos))
+    cant_o = _cantidades_de_tabla(mano_obra, "mano de obra", len(base.mano_obra))
+    try:
+        valor = decimal_desde_texto(rendimiento, "rendimiento")
+        return replace(
+            base,
+            rendimiento=valor,
+            materiales=tuple(
+                replace(linea, cantidad=c) for linea, c in zip(base.materiales, cant_m, strict=True)
+            ),
+            equipos=tuple(
+                replace(linea, cantidad=c) for linea, c in zip(base.equipos, cant_e, strict=True)
+            ),
+            mano_obra=tuple(
+                replace(linea, cantidad=c) for linea, c in zip(base.mano_obra, cant_o, strict=True)
+            ),
+        )
+    except (ComposicionInvalida, ValueError) as error:
+        raise HojaInvalida(str(error)) from error
+
+
+@dataclass(frozen=True, slots=True)
+class FilaInsumo:
+    """Un insumo del catalogo con el precio que tiene en la lista de la version."""
+
+    codigo: str
+    descripcion: str
+    unidad: str
+    precio: Decimal
+
+
+#: Los tres tipos de linea de un APU, como los llama el catalogo.
+TIPOS_DE_LINEA = ("material", "equipo", "mano_obra")
+
+
+def insumos_candidatos(
+    sesion: Session, proyecto: str, codigo: str, tipo: str, texto: str, limite: int = 20
+) -> list[FilaInsumo]:
+    """Los insumos de `tipo` cuya descripcion contiene `texto` y que la lista de la version
+    valora, con ese precio: los que se pueden elegir para una linea de un APU (spec §9.2).
+
+    Ordenados por descripcion; a lo sumo `limite`. Sin `texto`, los primeros.
+    """
+    lista = _modelo(sesion, proyecto, codigo).lista_precios
+    consulta = (
+        select(models.Insumo, models.PrecioInsumo.precio)
+        .join(models.PrecioInsumo, models.PrecioInsumo.insumo_id == models.Insumo.id)
+        .where(models.PrecioInsumo.lista_id == lista.id, models.Insumo.tipo == tipo)
+        .order_by(models.Insumo.descripcion, models.Insumo.id)
+        .limit(limite)
+    )
+    if texto.strip():
+        consulta = consulta.where(models.Insumo.descripcion.ilike(f"%{texto.strip()}%"))
+    return [
+        FilaInsumo(insumo.codigo, insumo.descripcion, insumo.unidad or "", precio)
+        for insumo, precio in sesion.execute(consulta)
+    ]
+
+
+def cambiar_insumo(
+    composicion: ComposicionAPU, tipo: str, indice: int, insumo: FilaInsumo
+) -> ComposicionAPU:
+    """El APU con la linea `indice` (desde 0) del grupo `tipo` apuntando a otro insumo: toma su
+    descripcion, su unidad y su precio; conserva la cantidad (y la depreciacion de un equipo)."""
+    if tipo not in TIPOS_DE_LINEA:
+        raise HojaInvalida(f"tipo de linea {tipo!r} desconocido; se espera uno de {TIPOS_DE_LINEA}")
+    grupo = {
+        "material": composicion.materiales,
+        "equipo": composicion.equipos,
+        "mano_obra": composicion.mano_obra,
+    }[tipo]
+    if not 0 <= indice < len(grupo):
+        raise HojaInvalida(
+            f"la linea {indice + 1} no existe: el grupo {tipo} tiene {len(grupo)} lineas"
+        )
+    linea = grupo[indice]
+    if tipo == "material":
+        nueva = replace(
+            linea, descripcion=insumo.descripcion, unidad=insumo.unidad, precio=insumo.precio
+        )
+    elif tipo == "equipo":
+        nueva = replace(linea, descripcion=insumo.descripcion, precio=insumo.precio)
+    else:
+        nueva = replace(linea, descripcion=insumo.descripcion, sueldo=insumo.precio)
+    cambiado = (*grupo[:indice], nueva, *grupo[indice + 1 :])
+    campo = {"material": "materiales", "equipo": "equipos", "mano_obra": "mano_obra"}[tipo]
+    try:
+        return replace(composicion, **{campo: cambiado})
+    except ValueError as error:
+        raise HojaInvalida(str(error)) from error
+
+
+# --- tablas calculadas de la pantalla -----------------------------------------------------------
+
+
+def filas_del_presupuesto(resultado: ResultadoHoja) -> list[dict[str, str]]:
+    """Una fila por renglon del presupuesto, como texto: `clave`, `partida`, `descripcion`,
+    `unidad`, `cantidad` (exacta), `pu`, `total` (a dos decimales) y `estado`.
+
+    Una partida sin APU (pendiente) sale sin `pu` ni `total`. Las columnas `pu`, `total` y
+    `estado` son calculadas: la pantalla las pinta aparte de la `cantidad`, que es la editable.
+    """
+    valorados = resultado.elaboracion.presupuesto.partidas
+    por_clave = dict(zip(claves_de_items([p.item for p in valorados]), valorados, strict=True))
+    filas = []
+    for clave, item in zip(claves_de_items(resultado.todos), resultado.todos, strict=True):
+        renglon = por_clave.get(clave)
+        estado = resultado.estado_items.get(clave, EstadoFila(None, TEXTO_OK))
+        filas.append(
+            {
+                "clave": clave,
+                "partida": item.codigo_partida,
+                "descripcion": item.descripcion,
+                "unidad": item.unidad,
+                "cantidad": _numero(item.cantidad),
+                "pu": ""
+                if renglon is None
+                else formatear_decimal(renglon.resultado.precio_unitario, DECIMALES_PRESENTACION),
+                "total": ""
+                if renglon is None
+                else formatear_decimal(renglon.total, DECIMALES_PRESENTACION),
+                "estado": estado.texto,
+            }
+        )
+    return filas
+
+
+def filas_de_curva(presupuesto: Presupuesto) -> list[dict[str, str]]:
+    """La curva de inversion como texto: `periodo` (sin los codigos de partida), `monto`,
+    `acumulado` y `porcentaje` acumulado, a dos decimales."""
+    filas = []
+    for punto in presupuesto.curva:
+        porcentaje = punto.acumulado / presupuesto.total * 100 if presupuesto.total else Decimal(0)
+        filas.append(
+            {
+                "periodo": _CODIGOS_AL_FINAL.sub("", punto.periodo),
+                "monto": formatear_decimal(punto.monto, DECIMALES_PRESENTACION),
+                "acumulado": formatear_decimal(punto.acumulado, DECIMALES_PRESENTACION),
+                "porcentaje": formatear_decimal(porcentaje, DECIMALES_PRESENTACION),
+            }
+        )
+    return filas
+
+
+# --- parametros ---------------------------------------------------------------------------------
+
+#: Los campos de `ParametrosCosto` que la pestana Parametros edita (no se agregan nuevos).
+CAMPOS_PARAMETROS = ("fcas", "bono_alimentacion", "administracion", "utilidad")
+
+
+def parametros_desde_texto(textos: Mapping[str, str]) -> ParametrosCosto:
+    """Los `ParametrosCosto` que escriben los cuadros de texto; `HojaInvalida` dice el campo."""
+    try:
+        return ParametrosCosto(
+            **{c: decimal_desde_texto(textos.get(c, ""), c) for c in CAMPOS_PARAMETROS}
+        )
+    except (ComposicionInvalida, ValueError) as error:
+        raise HojaInvalida(f"parametros: {error}") from error
+
+
+# --- plan ---------------------------------------------------------------------------------------
+
+
+def ajustar_plan(plan: Sequence[PeriodoPlan], codigos: Iterable[str]) -> list[PeriodoPlan]:
+    """El plan con exactamente las partidas `codigos`: conserva el reparto de las que ya estaban,
+    quita las que ya no estan (y los periodos que quedan vacios) y agrega un periodo de cierre
+    por cada partida nueva, ejecutada al 100 %.
+
+    Asi editar el espacio (agregar o quitar una partida) no rompe la curva con `PlanInvalido`.
+    """
+    codigos = list(dict.fromkeys(codigos))
+    presentes = set(codigos)
+    periodos: list[PeriodoPlan] = []
+    for etiqueta, reparto in plan:
+        filtrado = tuple((c, f) for c, f in reparto if c in presentes)
+        if filtrado or not reparto:
+            periodos.append((etiqueta, filtrado))
+    cubiertos = {c for _, reparto in periodos for c, _ in reparto}
+    siguiente = len(plan)
+    for codigo in codigos:
+        if codigo not in cubiertos:
+            siguiente += 1
+            periodos.append((FORMATO_PERIODO.format(n=siguiente), ((codigo, Decimal(1)),)))
+    return periodos
+
+
+def con_plan_secuencial(borrador: Borrador) -> Borrador:
+    """El borrador con un plan secuencial: una partida por periodo, al 100 %, en el orden del
+    presupuesto (`core.budget.plan_secuencial`). Para una version que no tiene plan."""
+    presupuesto = elaborar_borrador(replace(borrador, plan=None)).elaboracion.presupuesto
+    return replace(borrador, plan=tuple(plan_secuencial(presupuesto)))
+
+
+def plan_como_filas(
+    plan: Sequence[PeriodoPlan], codigos: Sequence[str]
+) -> tuple[list[str], list[dict[str, str]]]:
+    """La matriz del plan para el editor: una fila por partida y una columna por periodo.
+
+    Devuelve las etiquetas de los periodos (unicas: si dos coinciden, la segunda lleva ` (2)`) y
+    las filas `{"partida": codigo, etiqueta: fraccion}` con la fraccion como texto.
+    """
+    etiquetas: list[str] = []
+    for etiqueta, _ in plan:
+        candidata, n = etiqueta, 1
+        while candidata in etiquetas:
+            n += 1
+            candidata = f"{etiqueta} ({n})"
+        etiquetas.append(candidata)
+    filas = []
+    for codigo in codigos:
+        fila = {"partida": codigo}
+        for etiqueta, (_, reparto) in zip(etiquetas, plan, strict=True):
+            fila[etiqueta] = _numero(sum((f for c, f in reparto if c == codigo), Decimal(0)))
+        filas.append(fila)
+    return etiquetas, filas
+
+
+def plan_desde_filas(
+    filas: Sequence[Mapping[str, object]], etiquetas: Sequence[str]
+) -> list[PeriodoPlan]:
+    """El plan que describe la matriz del editor, o `HojaInvalida`: cada partida debe sumar
+    exactamente 1 y ninguna fraccion puede ser negativa. Una celda vacia es 0."""
+    reparto: dict[str, list[tuple[str, Decimal]]] = {etiqueta: [] for etiqueta in etiquetas}
+    for fila in filas:
+        codigo = texto_de_celda(fila, "partida")
+        if not codigo:
+            continue
+        suma = Decimal(0)
+        for etiqueta in etiquetas:
+            texto = texto_de_celda(fila, etiqueta) or "0"
+            try:
+                fraccion = decimal_desde_texto(texto, etiqueta)
+            except ComposicionInvalida as error:
+                raise HojaInvalida(f"plan, partida {codigo}: {error}") from error
+            if fraccion < 0:
+                raise HojaInvalida(
+                    f"plan, partida {codigo}: la fraccion de {etiqueta} no puede ser negativa"
+                )
+            suma += fraccion
+            if fraccion > 0:
+                reparto[etiqueta].append((codigo, fraccion))
+        if suma != Decimal(1):
+            raise HojaInvalida(
+                f"plan, partida {codigo}: las fracciones suman {_numero(suma)} y deben sumar "
+                "exactamente 1; repartala entre los periodos hasta completar 1"
+            )
+    return [(etiqueta, tuple(reparto[etiqueta])) for etiqueta in etiquetas]
+
+
+# --- punto de equilibrio ------------------------------------------------------------------------
+
+_CODIGOS_AL_FINAL = re.compile(r"\s*\[[^\[\]]*\]\s*$")
+
+
+def texto_equilibrio(pe: PuntoEquilibrio) -> str:
+    """La salida declarada de cada caso del punto de equilibrio (spec §9.4), en una frase."""
+    if pe.estado is EstadoEquilibrio.NO_APLICABLE:
+        return "El presupuesto no tiene ventas: el punto de equilibrio no aplica."
+    if pe.estado is EstadoEquilibrio.NO_EXISTE:
+        return (
+            "No existe punto de equilibrio: el margen de contribución no es positivo "
+            "(los costos directos igualan o superan las ventas)."
+        )
+    if pe.estado is EstadoEquilibrio.NO_SE_ALCANZA:
+        punto = formatear_decimal(pe.punto, DECIMALES_PRESENTACION)
+        venta = formatear_decimal(pe.venta, DECIMALES_PRESENTACION)
+        return f"El punto de equilibrio ({punto}) no se alcanza dentro del contrato ({venta})."
+    if pe.periodo is None or pe.fraccion_periodo is None:
+        return "Sin curva de inversión: el punto de equilibrio no se ubica en el plan."
+    periodo = _CODIGOS_AL_FINAL.sub("", pe.periodo)
+    avance = formatear_decimal(pe.fraccion_periodo * 100, 0)
+    return f"Se alcanza en {periodo}, al {avance} % de ese período."
+
+
+# --- cambios entre dos borradores ---------------------------------------------------------------
+
+_TABLAS_ESP = {
+    "origenes": "esp_origenes",
+    "ambientes": "esp_ambientes",
+    "fuentes": "esp_fuentes",
+    "puntos": "esp_puntos",
+    "tramos": "esp_tramos",
+}
+_LLAVES = {
+    "origenes": ("id",),
+    "ambientes": ("id",),
+    "fuentes": ("id",),
+    "puntos": ("id",),
+    "tramos": ("recorrido_id", "orden"),
+}
+
+
+def _clave_de_fila(tabla: str, fila: Mapping[str, str]) -> str:
+    return _TABLAS_ESP[tabla] + ":" + "#".join(fila[c] for c in _LLAVES[tabla])
+
+
+def _resumen_de_fila(fila: Mapping[str, str]) -> str:
+    return "; ".join(f"{k}={v}" for k, v in fila.items() if v)
+
+
+def _cambios_de_metraje(base: Espacio, actual: Espacio) -> list[CambioEditado]:
+    antes, despues = filas_desde_espacio(base), filas_desde_espacio(actual)
+    cambios: list[CambioEditado] = []
+    for tabla in COLUMNAS:
+        previas = {_clave_de_fila(tabla, f): f for f in antes[tabla]}
+        nuevas = {_clave_de_fila(tabla, f): f for f in despues[tabla]}
+        for clave in [*previas, *(k for k in nuevas if k not in previas)]:
+            if clave not in nuevas:
+                resumen = _resumen_de_fila(previas[clave])
+                cambios.append(CambioEditado("metraje", clave, "fila", resumen, ""))
+            elif clave not in previas:
+                resumen = _resumen_de_fila(nuevas[clave])
+                cambios.append(CambioEditado("metraje", clave, "fila", "", resumen))
+            else:
+                cambios += [
+                    CambioEditado(
+                        "metraje", clave, columna, previas[clave][columna], nuevas[clave][columna]
+                    )
+                    for columna in COLUMNAS[tabla]
+                    if previas[clave][columna] != nuevas[clave][columna]
+                ]
+    return cambios
+
+
+def _lineas(composicion: ComposicionAPU) -> list[tuple[str, Decimal, Decimal]]:
+    """Las lineas de un APU como `(descripcion, cantidad, precio)`: materiales, equipos y mano
+    de obra, en ese orden."""
+    return [
+        *((m.descripcion, m.cantidad, m.precio) for m in composicion.materiales),
+        *((e.descripcion, e.cantidad, e.precio) for e in composicion.equipos),
+        *((o.descripcion, o.cantidad, o.sueldo) for o in composicion.mano_obra),
+    ]
+
+
+def _cambios_de_apu(
+    base: Mapping[str, ComposicionAPU], actual: Mapping[str, ComposicionAPU]
+) -> list[CambioEditado]:
+    cambios: list[CambioEditado] = []
+    for codigo, despues in actual.items():
+        if codigo not in base:  # partida nueva traida del catalogo: no es una celda editada
+            continue
+        antes = base[codigo]
+        if antes.rendimiento != despues.rendimiento:
+            cambios.append(
+                CambioEditado(
+                    "apu",
+                    codigo,
+                    "rendimiento",
+                    _numero(antes.rendimiento),
+                    _numero(despues.rendimiento),
+                )
+            )
+        for (d0, c0, p0), (d1, c1, p1) in zip(_lineas(antes), _lineas(despues), strict=False):
+            clave = f"{codigo}|{d0}"
+            if d0 != d1:
+                cambios.append(CambioEditado("apu", clave, "insumo", d0, d1))
+            if c0 != c1:
+                cambios.append(CambioEditado("apu", clave, "cantidad", _numero(c0), _numero(c1)))
+            if p0 != p1:
+                cambios.append(CambioEditado("apu", clave, "precio", _numero(p0), _numero(p1)))
+    return cambios
+
+
+def _cambios_de_parametros(base: ParametrosCosto, actual: ParametrosCosto) -> list[CambioEditado]:
+    return [
+        CambioEditado(
+            "parametro", campo, "valor", str(getattr(base, campo)), str(getattr(actual, campo))
+        )
+        for campo in CAMPOS_PARAMETROS
+        if getattr(base, campo) != getattr(actual, campo)
+    ]
+
+
+def plan_efectivo(borrador: Borrador) -> tuple[PeriodoPlan, ...] | None:
+    """El plan del borrador ajustado a las partidas que se valoran (el que se guarda)."""
+    if borrador.plan is None:
+        return None
+    valoradas = [
+        i.codigo_partida
+        for i in items_elaborados(borrador)
+        if i.codigo_partida in borrador.composiciones
+    ]
+    return tuple(ajustar_plan(borrador.plan, valoradas))
+
+
+def _celdas_del_plan(plan: Sequence[PeriodoPlan] | None) -> dict[tuple[str, str], Decimal]:
+    celdas: dict[tuple[str, str], Decimal] = {}
+    for etiqueta, reparto in plan or ():
+        for codigo, fraccion in reparto:
+            celdas[(codigo, etiqueta)] = celdas.get((codigo, etiqueta), Decimal(0)) + fraccion
+    return celdas
+
+
+def _cambios_de_plan(base: Borrador, actual: Borrador) -> list[CambioEditado]:
+    plan_base = plan_efectivo(base)
+    antes, despues = _celdas_del_plan(plan_base), _celdas_del_plan(plan_efectivo(actual))
+    vacio = "" if plan_base is None else "0"
+    orden = [*antes, *(k for k in despues if k not in antes)]
+    return [
+        CambioEditado(
+            "plan",
+            codigo,
+            etiqueta,
+            _numero(antes[(codigo, etiqueta)]) if (codigo, etiqueta) in antes else vacio,
+            _numero(despues[(codigo, etiqueta)]) if (codigo, etiqueta) in despues else "0",
+        )
+        for codigo, etiqueta in orden
+        if antes.get((codigo, etiqueta)) != despues.get((codigo, etiqueta))
+    ]
+
+
+def _cambios_de_cantidades(base: Borrador, actual: Borrador) -> list[CambioEditado]:
+    def efectivas(b: Borrador) -> dict[str, Decimal]:
+        sin = items_sin_escribir(b)
+        return {
+            clave: b.cantidades.get(clave, item.cantidad)
+            for clave, item in zip(claves_de_items(sin), sin, strict=True)
+        }
+
+    antes, despues = efectivas(base), efectivas(actual)
+    claves = [*base.cantidades, *(k for k in actual.cantidades if k not in base.cantidades)]
+    return [
+        CambioEditado("cantidad", clave, "cantidad", _numero(antes[clave]), _numero(despues[clave]))
+        for clave in claves
+        if clave in antes and clave in despues and antes[clave] != despues[clave]
+    ]
+
+
+def cambios_entre(base: Borrador, actual: Borrador) -> list[CambioEditado]:
+    """Las celdas que cambiaron del borrador abierto (`base`) al vigente (`actual`), una por celda,
+    en el orden metraje, APU, cantidad, parametro y plan (spec §9.3).
+
+    Cada `CambioEditado` lleva objeto, clave de fila, campo y los dos valores como texto. Lo
+    arma la hoja, que conoce las claves `esp_*`: `core` no las interpreta. Sin cambios, lista
+    vacia (y guardar no hace nada: FR-4).
+    """
+    return [
+        *_cambios_de_metraje(base.espacio, actual.espacio),
+        *_cambios_de_apu(base.composiciones, actual.composiciones),
+        *_cambios_de_cantidades(base, actual),
+        *_cambios_de_parametros(base.parametros, actual.parametros),
+        *_cambios_de_plan(base, actual),
+    ]
 
 
 # --- Estado por fila ----------------------------------------------------------------------------
@@ -541,19 +1393,1186 @@ def estado_de_filas(espacio: Espacio, informe: InformeAuditoria) -> dict[str, Es
             textos = por_fila.setdefault(clave, {}).setdefault(hallazgo.severidad, [])
             if hallazgo.descripcion not in textos:
                 textos.append(hallazgo.descripcion)
-    estado: dict[str, EstadoFila] = {}
-    for clave in _claves_de_filas(espacio):
-        grupos = por_fila.get(clave, {})
-        partidas = sin_apu.get(clave)
-        if not grupos and not partidas:
-            estado[clave] = EstadoFila(None, TEXTO_OK)
+    return {
+        clave: _estado_de(por_fila.get(clave, {}), sin_apu.get(clave))
+        for clave in _claves_de_filas(espacio)
+    }
+
+
+def _estado_de(
+    grupos: Mapping[Severidad, Sequence[str]], partidas: Sequence[str] | None
+) -> EstadoFila:
+    """El Estado de una fila a partir de sus hallazgos por severidad y de sus partidas sin APU."""
+    if not grupos and not partidas:
+        return EstadoFila(None, TEXTO_OK)
+    segmentos = [(s, f"{s.name}: {'; '.join(grupos[s])}") for s in grupos]
+    if partidas:
+        segmentos.append((Severidad.ERROR, f"{TEXTO_PENDIENTE} ({'; '.join(sorted(partidas))})"))
+    # de la mas grave a la menos; a igual severidad la medida va antes que la partida pendiente
+    segmentos.sort(key=lambda sg: (-sg[0], sg[1].startswith(TEXTO_PENDIENTE)))
+    return EstadoFila(segmentos[0][0], " | ".join(t for _, t in segmentos))
+
+
+def estado_de_items(
+    items: Sequence[ItemComputo], informe: InformeAuditoria
+) -> dict[str, EstadoFila]:
+    """El Estado de cada renglon del presupuesto, por su clave (`claves_de_items`).
+
+    Un hallazgo toca un item si cita su `origen_id` o si el informe lo atribuye a su partida
+    (`InformeAuditoria.partida_de`). Un hallazgo `PENDIENTE` es solo del item que cita (partida y
+    origen). Mismo formato que `estado_de_filas`.
+    """
+    por_origen: dict[str, list[Hallazgo]] = {}
+    por_partida: dict[str, list[Hallazgo]] = {}
+    pendientes: dict[tuple[str, ...], bool] = {}
+    for hallazgo in informe.hallazgos:
+        if hallazgo.regla == CODIGO_PENDIENTE:
+            pendientes[hallazgo.origen_ids] = True
             continue
-        segmentos = [(s, f"{s.name}: {'; '.join(grupos[s])}") for s in grupos]
-        if partidas:
-            segmentos.append(
-                (Severidad.ERROR, f"{TEXTO_PENDIENTE} ({'; '.join(sorted(partidas))})")
-            )
-        # de la mas grave a la menos; a igual severidad la medida va antes que la partida pendiente
-        segmentos.sort(key=lambda sg: (-sg[0], sg[1].startswith(TEXTO_PENDIENTE)))
-        estado[clave] = EstadoFila(segmentos[0][0], " | ".join(t for _, t in segmentos))
+        for origen in hallazgo.origen_ids:
+            por_origen.setdefault(origen, []).append(hallazgo)
+        partida = informe.partida_de(hallazgo)
+        if partida is not None:
+            por_partida.setdefault(partida, []).append(hallazgo)
+    estado: dict[str, EstadoFila] = {}
+    for clave, item in zip(claves_de_items(items), items, strict=True):
+        grupos: dict[Severidad, list[str]] = {}
+        vistos: set[int] = set()
+        for hallazgo in [
+            *por_origen.get(item.origen_id, ()),
+            *por_partida.get(item.codigo_partida, ()),
+        ]:
+            if id(hallazgo) in vistos:
+                continue
+            vistos.add(id(hallazgo))
+            textos = grupos.setdefault(hallazgo.severidad, [])
+            if hallazgo.descripcion not in textos:
+                textos.append(hallazgo.descripcion)
+        falta_apu = (item.codigo_partida, item.origen_id) in pendientes
+        estado[clave] = _estado_de(grupos, [item.codigo_partida] if falta_apu else None)
     return estado
+
+
+# --- abrir una version guardada -----------------------------------------------------------------
+
+#: Versiones que no copian filas `esp_*`: su espacio es el de su version de origen (spec §5.3).
+MOTIVOS_QUE_HEREDAN_EL_ESPACIO = ("restauracion", "cotizacion", "revaloracion")
+
+
+@dataclass(frozen=True, slots=True)
+class VersionAbierta:
+    """Lo que `abrir_version` entrega: el borrador de partida y la version tal como se guardo.
+
+    * `borrador`: la version como borrador editable (el espacio efectivo, la copia de sus
+      composiciones, sus parametros y su plan, los items que no vienen del espacio y las
+      cantidades escritas a mano). Es la base con que `cambios_entre` y `guardar_version`
+      comparan lo editado.
+    * `guardada`: la version recargada con su informe **reauditado** con R8 a R10 sobre la
+      instantanea de su espacio (§8.4): reemplaza los hallazgos guardados de esas reglas.
+    * `espacio_de`: el codigo de la version cuyas filas `esp_*` aportan el espacio (la misma, o
+      la primera de su cadena de `version_origen`); `None` si ninguna tiene.
+    * `instantanea`: lo que se congelo al abrir (UC-15e); `solo_lectura` es True si alguna
+      partida no tiene composicion vigente: no se puede recalcular sin cambiar su precio.
+    """
+
+    proyecto: str
+    codigo: str
+    lista: str
+    borrador: Borrador
+    guardada: ResultadoElaboracion
+    espacio_de: str | None
+    instantanea: ResultadoInstantanea
+    solo_lectura: bool = False
+
+
+def _modelo(sesion: Session, proyecto: str, codigo: str) -> models.Presupuesto:
+    modelo = sesion.scalars(
+        select(models.Presupuesto)
+        .join(models.Proyecto)
+        .where(models.Proyecto.nombre == proyecto, models.Presupuesto.codigo == codigo)
+    ).one_or_none()
+    if modelo is None:
+        raise HojaInvalida(
+            f"El proyecto {proyecto!r} no tiene una version {codigo!r}: elija una de la lista."
+        )
+    return modelo
+
+
+def lista_de_version(sesion: Session, proyecto: str, codigo: str) -> models.ListaPrecios:
+    """La lista de precios con que se valoro la version (la del proyecto si tiene cotizaciones)."""
+    return _modelo(sesion, proyecto, codigo).lista_precios
+
+
+def texto_numero(valor: Decimal) -> str:
+    """Un decimal como lo teclea una persona: sin ceros de relleno ni notacion cientifica."""
+    return _numero(valor)
+
+
+def espacio_de_version(sesion: Session, modelo: models.Presupuesto) -> tuple[Espacio, str | None]:
+    """El espacio de una version y el codigo de la version que lo aporta (spec §5.3).
+
+    Una version con filas `esp_*` propias lo trae; una creada por restaurar, cotizar o revalorar
+    (UC-02) no copia filas y hereda el de su `version_origen`, subiendo por la cadena hasta la
+    primera que tenga filas propias. Una version de la hoja (edicion) o elaborada de cero es
+    siempre la ultima de la cadena: su espacio, aunque haya quedado vacio, es suyo y no sube.
+    """
+    actual, visitadas = modelo, set()
+    while True:
+        propio = cargar_espacio(sesion, actual.id)
+        if propio != Espacio():
+            return propio, actual.codigo
+        origen = sesion.get(models.VersionOrigen, actual.id)
+        visitadas.add(actual.id)
+        if (
+            origen is None
+            or origen.origen_id is None
+            or origen.motivo not in MOTIVOS_QUE_HEREDAN_EL_ESPACIO
+            or origen.origen_id in visitadas
+        ):
+            return Espacio(), None
+        siguiente = sesion.get(models.Presupuesto, origen.origen_id)
+        if siguiente is None:
+            return Espacio(), None
+        actual = siguiente
+
+
+def _parametros_de_version(modelo: models.Presupuesto) -> ParametrosCosto:
+    return ParametrosCosto(
+        fcas=modelo.fcas,
+        bono_alimentacion=modelo.bono_alimentacion,
+        administracion=modelo.administracion,
+        utilidad=modelo.utilidad,
+    )
+
+
+def _composiciones_de_la_version(
+    sesion: Session, catalogo: Catalogo, modelo: models.Presupuesto
+) -> tuple[dict[str, ComposicionAPU], bool]:
+    """La copia de las composiciones de la version (instantanea y, solo donde falta, catalogo)
+    y si alguna partida valorada quedo sin ellas."""
+    composiciones = dict(composiciones_de_version(sesion, modelo))
+    completa = True
+    for codigo in dict.fromkeys(r.partida.codigo for r in modelo.partidas):
+        if codigo in composiciones:
+            continue
+        try:
+            composiciones[codigo] = catalogo.composicion(
+                codigo, fecha=modelo.fecha, lista=modelo.lista_precios
+            )
+        except (KeyError, ValueError, CatalogoIncompleto):
+            completa = False
+    return composiciones, completa
+
+
+def _clasificar(
+    espacio: Espacio, guardados: Sequence[ItemComputo]
+) -> tuple[tuple[ItemComputo, ...], dict[str, Decimal]]:
+    """Los items guardados que no vienen del espacio y las cantidades escritas a mano.
+
+    Un item guardado es del espacio si su clave (`partida|origen_id`) es la de uno que deriva el
+    espacio; si ademas su cantidad difiere de la derivada, esa cantidad se escribio a mano.
+    """
+    derivados = items_del_borrador(espacio, TODAS)
+    derivada = dict(zip(claves_de_items(derivados), derivados, strict=True))
+    base: list[ItemComputo] = []
+    escritas: dict[str, Decimal] = {}
+    for clave, item in zip(claves_de_items(guardados), guardados, strict=True):
+        calculado = derivada.get(clave)
+        if calculado is None:
+            base.append(item)
+        elif item.cantidad != calculado.cantidad:
+            escritas[clave] = item.cantidad
+    return tuple(base), escritas
+
+
+def abrir_version(
+    sesion: Session,
+    catalogo: Catalogo,
+    proyecto: str,
+    codigo: str,
+    *,
+    responsable: str = "sistema",
+    ahora: datetime | None = None,
+) -> VersionAbierta:
+    """Abre una version guardada como borrador editable (RF-52), sea de la hoja o no (FR-5).
+
+    1. `asegurar_instantanea`: una version sin instantanea (clinica, TI-001, importadas) la
+       crea desde el catalogo vigente si este todavia reproduce su precio, y lo **registra**
+       (UC-15e). Es la unica escritura al abrir y se confirma aqui.
+    2. Espacio por `espacio_de_version`; composiciones, parametros y plan de la version.
+    3. Los items guardados se separan en los del espacio y los de la version, y las cantidades
+       diferentes de la derivada son cantidades escritas a mano.
+    4. La version se recarga con `REGLAS + reglas_espacio(espacio)`: R8 a R10 se recalculan
+       sobre la instantanea del espacio y reemplazan las guardadas (§8.4).
+
+    `HojaInvalida` si la version no existe o ya no se puede reconstruir.
+    """
+    modelo = _modelo(sesion, proyecto, codigo)
+    try:
+        instantanea = asegurar_instantanea(
+            sesion, proyecto, codigo, catalogo, responsable=responsable, ahora=ahora
+        )
+        sesion.commit()
+        espacio, espacio_de = espacio_de_version(sesion, modelo)
+        composiciones, completa = _composiciones_de_la_version(sesion, catalogo, modelo)
+        emitida = cargar_elaboracion(sesion, proyecto, codigo, catalogo)
+        guardados = [p.item for p in emitida.presupuesto.partidas] + list(emitida.pendientes)
+        items_base, escritas = _clasificar(espacio, guardados)
+        derivados = items_del_borrador(espacio, TODAS)
+        derivada = dict(zip(claves_de_items(derivados), derivados, strict=True))
+        cantidades = [
+            CantidadEscrita(
+                derivada[k].codigo_partida, derivada[k].origen_id, derivada[k].cantidad, v
+            )
+            for k, v in escritas.items()
+        ]
+        guardada = cargar_elaboracion(
+            sesion,
+            proyecto,
+            codigo,
+            catalogo,
+            reglas=(*REGLAS, *reglas_espacio(espacio, cantidades)),
+        )
+    except (ValueError, CatalogoIncompleto, KeyError) as error:
+        sesion.rollback()
+        raise HojaInvalida(
+            f"No se pudo abrir la version {codigo!r} del proyecto {proyecto!r}: {error}"
+        ) from error
+    plan = plan_de_version(sesion, modelo)
+    borrador = Borrador(
+        fecha=emitida.presupuesto.fecha,
+        moneda=emitida.presupuesto.moneda,
+        espacio=espacio,
+        items_base=items_base,
+        composiciones=composiciones,
+        parametros=_parametros_de_version(modelo),
+        plan=None if plan is None else tuple((e, tuple(r)) for e, r in plan),
+        cantidades=escritas,
+    )
+    return VersionAbierta(
+        proyecto=proyecto,
+        codigo=codigo,
+        lista=modelo.lista_precios.nombre,
+        borrador=borrador,
+        guardada=guardada,
+        espacio_de=espacio_de,
+        instantanea=instantanea,
+        solo_lectura=not completa,
+    )
+
+
+def completar_composiciones(
+    catalogo: Catalogo, borrador: Borrador, lista: models.ListaPrecios | None = None
+) -> Borrador:
+    """El borrador con la composicion de cada partida nueva que el catalogo conoce.
+
+    Editar el espacio puede derivar una partida que la version no tenia: su composicion sale del
+    catalogo (con `lista`, o la vigente a la fecha del borrador) y pasa a ser parte de la copia
+    de la version. Una partida sin composicion en el catalogo queda pendiente (UC-01 3a).
+    """
+    nuevas = {
+        i.codigo_partida
+        for i in items_elaborados(borrador)
+        if i.codigo_partida not in borrador.composiciones
+    }
+    if not nuevas:
+        return borrador
+    existentes = {p.codigo for p in catalogo.partidas()}
+    composiciones = dict(borrador.composiciones)
+    for codigo in sorted(nuevas & existentes):
+        try:
+            composiciones[codigo] = catalogo.composicion(codigo, fecha=borrador.fecha, lista=lista)
+        except (KeyError, ValueError, CatalogoIncompleto):
+            continue
+    return replace(borrador, composiciones=composiciones)
+
+
+# --- guardar, restaurar y versiones -------------------------------------------------------------
+
+
+def motivo_para_no_guardar(
+    base: Borrador, actual: Borrador, fuente: str, responsable: str
+) -> str | None:
+    """Por que no se puede guardar ahora, o `None` si se puede (RF-53).
+
+    Sin cambios no hay nada que guardar (FR-4); con cambios, cada guardado exige la fuente del
+    cambio y el responsable (spec §9.3).
+    """
+    if not cambios_entre(base, actual):
+        return "No hay cambios para guardar: edite alguna celda primero."
+    if not fuente.strip():
+        return "Escriba la fuente del cambio: por que se cambia y con que respaldo."
+    if not responsable.strip():
+        return "Escriba el responsable del cambio: quien lo hace."
+    return None
+
+
+def puede_guardar(base: Borrador, actual: Borrador, fuente: str, responsable: str) -> bool:
+    """True si hay cambios y se declararon la fuente y el responsable (`guardar_version`)."""
+    return motivo_para_no_guardar(base, actual, fuente, responsable) is None
+
+
+@dataclass(frozen=True, slots=True)
+class VersionGuardada:
+    """La version que creo `guardar_version`: su codigo, cuantas celdas registro y su total."""
+
+    codigo: str
+    cambios: int
+    total: Decimal
+
+
+def guardar_version(
+    sesion: Session,
+    catalogo: Catalogo,
+    abierta: VersionAbierta,
+    borrador: Borrador,
+    *,
+    fuente: str,
+    responsable: str,
+    ahora: datetime | None = None,
+) -> VersionGuardada | None:
+    """Guarda `borrador` como version nueva de la abierta, en UNA sola `Session` (spec §5.3).
+
+    Sin cambios (`cambios_entre` vacio) no hace nada y devuelve `None` (FR-4). Con cambios exige
+    `fuente` y `responsable` (`HojaInvalida` antes de tocar la base). En una transaccion:
+    `core.budget.edicion.guardar_edicion` crea la version con su informe, la instantanea de sus
+    composiciones, su plan y un `RegistroCambio` por celda, y el gancho copia las filas `esp_*` del
+    espacio con la clave de la version nueva (`adapters.espacio`). Confirma si todo sale bien; si
+    algo falla, deshace todo y propaga el error.
+    """
+    cambios = cambios_entre(abierta.borrador, borrador)
+    if not cambios:
+        return None
+    motivo = motivo_para_no_guardar(abierta.borrador, borrador, fuente, responsable)
+    if motivo is not None:
+        raise HojaInvalida(motivo)
+    if abierta.solo_lectura:
+        raise HojaInvalida(
+            "Esta version esta en solo lectura: alguna de sus partidas ya no tiene composicion "
+            "vigente en el catalogo, asi que recalcularla cambiaria sus precios."
+        )
+    try:
+        origen = _modelo(sesion, abierta.proyecto, abierta.codigo)
+        borrador = completar_composiciones(catalogo, borrador, lista=origen.lista_precios)
+        codigo = siguiente_codigo(sesion, abierta.proyecto)
+        resultado = elaborar_borrador(borrador, codigo=codigo)
+        con_espacio = borrador.espacio != Espacio()
+        if con_espacio:
+            crear_esquema_espacio(sesion.connection())
+
+        def copiar_espacio(sesion_: Session, version: models.Presupuesto) -> None:
+            guardar_espacio(sesion_, version.id, borrador.espacio)
+
+        nueva = guardar_edicion(
+            sesion,
+            abierta.proyecto,
+            abierta.codigo,
+            resultado.elaboracion,
+            borrador.parametros,
+            cambios,
+            fuente=fuente,
+            responsable=responsable,
+            plan=resultado.plan,
+            ahora=ahora,
+            gancho=copiar_espacio if con_espacio else None,
+        )
+        sesion.commit()
+    except BaseException:
+        sesion.rollback()
+        raise
+    assert nueva is not None  # `cambios` no estaba vacio
+    return VersionGuardada(
+        codigo=nueva.codigo, cambios=len(cambios), total=resultado.elaboracion.presupuesto.total
+    )
+
+
+def motivo_para_no_crear_primera(borrador: Borrador, fuente: str, responsable: str) -> str | None:
+    """Por que no se puede guardar ahora la primera version de un proyecto nuevo, o `None`.
+
+    Es el equivalente de `motivo_para_no_guardar` cuando no hay version abierta: sin espacio, sin
+    items ni cantidades escritas no hay nada que guardar."""
+    if borrador.espacio == Espacio() and not borrador.items_base and not borrador.cantidades:
+        return (
+            "La hoja esta vacia: describa o importe el espacio antes de guardar la primera version."
+        )
+    if not fuente.strip():
+        return "Escriba la fuente de la medida: de donde salen los datos (un plano, un acta)."
+    if not responsable.strip():
+        return "Escriba el responsable: quien crea esta primera version."
+    return None
+
+
+def crear_primera_version(
+    sesion: Session,
+    catalogo: Catalogo,
+    proyecto: str,
+    borrador: Borrador,
+    *,
+    codigo: str | None = None,
+    fuente: str,
+    responsable: str,
+    fecha: date | None = None,
+    ahora: datetime | None = None,
+) -> VersionGuardada:
+    """Guarda `borrador` como la PRIMERA version de un proyecto que todavia no tiene ninguna (RI-7).
+
+    Es el camino «crear un presupuesto nuevo a partir del espacio»: `guardar_version` exige una
+    version abierta de la que partir y un proyecto recien creado no la tiene. Todo en UNA `Session`
+    y con `core` tal como esta (no hay un motivo de creacion en `MOTIVOS_VERSION`):
+
+    * la lista de precios es la **vigente** a `fecha` (por defecto la del borrador): si el catalogo
+      no tiene ninguna, `HojaInvalida` lo dice y no se inventa un precio;
+    * los parametros son los del borrador (los del contrato por defecto, o los que el usuario ya
+      cambio en la pestana Parametros); las composiciones, las del catalogo vigente para cada
+      partida derivada (`completar_composiciones`), congeladas en la instantanea de la version;
+    * sin plan en el borrador, el plan secuencial de `core` (una partida por periodo): sin el no
+      habria curva ni punto de equilibrio en el tiempo, y el usuario lo edita despues;
+    * la version nace sin `version_origen` ni motivo (nace de cero) y deja UN `RegistroCambio`
+      (`objeto='version'`, `campo='creacion'`) con la fuente y el responsable, obligatorios;
+    * el espacio se copia con la clave de la version nueva, en la misma transaccion.
+
+    `HojaInvalida` (sin tocar la base) si falta la fuente o el responsable, si el proyecto no existe
+    o ya tiene versiones (guardar dos veces no duplica; desde la segunda se usa `guardar_version`),
+    si la hoja esta vacia o si no hay lista de precios. Confirma si todo sale bien; si algo falla,
+    deshace todo y propaga el error.
+    """
+    fuente, responsable = fuente.strip(), responsable.strip()
+    if not fuente:
+        raise HojaInvalida(
+            "Escriba la fuente de la medida: de donde salen los datos (un plano, un acta)."
+        )
+    if not responsable:
+        raise HojaInvalida("Escriba el responsable: quien crea esta primera version.")
+    modelo_proyecto = sesion.scalars(
+        select(models.Proyecto).where(models.Proyecto.nombre == proyecto)
+    ).one_or_none()
+    if modelo_proyecto is None:
+        raise HojaInvalida(
+            f"El proyecto {proyecto!r} no existe: creelo desde la barra superior (Proyectos)."
+        )
+    if sesion.scalar(
+        select(func.count())
+        .select_from(models.Presupuesto)
+        .where(models.Presupuesto.proyecto_id == modelo_proyecto.id)
+    ):
+        raise HojaInvalida(
+            f"El proyecto {proyecto!r} ya tiene versiones: abra una y use Guardar version."
+        )
+    fecha = fecha or borrador.fecha
+    try:
+        lista = catalogo.lista_vigente(fecha)
+    except CatalogoIncompleto as error:
+        raise HojaInvalida(
+            f"No hay una lista de precios vigente al {fecha:%d/%m/%Y}: cargue una en Actualizar "
+            "precios (o cambie la fecha del presupuesto) y vuelva a guardar."
+        ) from error
+    borrador = completar_composiciones(catalogo, replace(borrador, fecha=fecha), lista=lista)
+    if borrador.plan is None:
+        borrador = con_plan_secuencial(borrador)
+    try:
+        nuevo_codigo = (codigo or "").strip() or siguiente_codigo(sesion, proyecto)
+        resultado = elaborar_borrador(borrador, codigo=nuevo_codigo)
+        elaboracion = resultado.elaboracion
+        if not elaboracion.presupuesto.partidas and not elaboracion.pendientes:
+            raise HojaInvalida(
+                "La hoja esta vacia: dibuje o importe el espacio (o escriba cantidades) antes de "
+                "guardar la primera version."
+            )
+        if borrador.espacio != Espacio():
+            crear_esquema_espacio(sesion.connection())
+        nueva = guardar_presupuesto(
+            sesion,
+            elaboracion.presupuesto,
+            elaboracion.informe,
+            proyecto=modelo_proyecto,
+            lista=lista,
+            parametros=borrador.parametros,
+            pendientes=elaboracion.pendientes,
+            plan=resultado.plan,
+        )
+        sesion.add(
+            models.RegistroCambio(
+                proyecto_id=modelo_proyecto.id,
+                version_origen_id=None,
+                version_resultante_id=nueva.id,
+                objeto="version",
+                clave=nuevo_codigo,
+                campo="creacion",
+                valor_anterior="",
+                valor_nuevo=nuevo_codigo,
+                fuente=fuente,
+                responsable=responsable,
+                fecha_hora=ahora or datetime.now(),
+            )
+        )
+        sesion.flush()
+        if borrador.espacio != Espacio():
+            guardar_espacio(sesion, nueva.id, borrador.espacio)
+        sesion.commit()
+    except HojaInvalida:
+        sesion.rollback()
+        raise
+    except ValueError as error:
+        sesion.rollback()
+        raise HojaInvalida(str(error)) from error
+    except BaseException:
+        sesion.rollback()
+        raise
+    return VersionGuardada(codigo=nuevo_codigo, cambios=1, total=elaboracion.presupuesto.total)
+
+
+def _en_una_transaccion(sesion: Session, accion: Callable[[], str]) -> str:
+    """Corre `accion` y confirma; ante cualquier error deshace y, si es un `ValueError` del
+    nucleo, lo vuelve `HojaInvalida` con su mismo mensaje."""
+    try:
+        codigo = accion()
+        sesion.commit()
+    except HojaInvalida:
+        sesion.rollback()
+        raise
+    except ValueError as error:
+        sesion.rollback()
+        raise HojaInvalida(str(error)) from error
+    except BaseException:
+        sesion.rollback()
+        raise
+    return codigo
+
+
+def restaurar(
+    sesion: Session,
+    catalogo: Catalogo,
+    proyecto: str,
+    codigo: str,
+    *,
+    fuente: str,
+    responsable: str,
+    ahora: datetime | None = None,
+) -> str:
+    """RF-54: crea una version nueva, copia de `codigo`, y devuelve su codigo. Nada se borra.
+
+    La nueva pasa a ser la vigente y su espacio es el de la restaurada (no copia filas `esp_*`).
+    """
+
+    def accion() -> str:
+        nuevo = siguiente_codigo(sesion, proyecto)
+        restaurar_version(
+            sesion, proyecto, codigo, nuevo, catalogo,
+            fuente=fuente, responsable=responsable, ahora=ahora,
+        )  # fmt: skip
+        return nuevo
+
+    return _en_una_transaccion(sesion, accion)
+
+
+def cotizar(
+    sesion: Session,
+    catalogo: Catalogo,
+    proyecto: str,
+    codigo_origen: str,
+    *,
+    insumo: str,
+    precio: Decimal,
+    proveedor: str,
+    numero: str,
+    fecha: date,
+    responsable: str,
+    fuente: str = "",
+    ahora: datetime | None = None,
+) -> str:
+    """RF-56: cotiza `insumo` (su codigo) para el proyecto y devuelve el codigo de la version
+    nueva, que referencia la lista del proyecto y conserva el plan y la curva."""
+
+    def accion() -> str:
+        nuevo = siguiente_codigo(sesion, proyecto)
+        cotizar_insumo(
+            sesion, proyecto, codigo_origen, nuevo, catalogo,
+            insumo=insumo, precio=precio, proveedor=proveedor, numero=numero, fecha=fecha,
+            responsable=responsable, fuente=fuente, ahora=ahora,
+        )  # fmt: skip
+        return nuevo
+
+    return _en_una_transaccion(sesion, accion)
+
+
+def retirar_cotizacion(
+    sesion: Session,
+    catalogo: Catalogo,
+    proyecto: str,
+    codigo_origen: str,
+    *,
+    insumo: str,
+    fuente: str,
+    responsable: str,
+    ahora: datetime | None = None,
+) -> str:
+    """Retira la cotizacion de `insumo` (con su registro) y devuelve el codigo de la version
+    nueva, que vuelve al precio de la lista base para ese insumo."""
+
+    def accion() -> str:
+        nuevo = siguiente_codigo(sesion, proyecto)
+        _retirar_cotizacion(
+            sesion, proyecto, codigo_origen, nuevo, catalogo,
+            insumo=insumo, fuente=fuente, responsable=responsable, ahora=ahora,
+        )  # fmt: skip
+        return nuevo
+
+    return _en_una_transaccion(sesion, accion)
+
+
+def codigo_vigente(sesion: Session, proyecto: str) -> str | None:
+    """El codigo de la version vigente del proyecto (la de mayor id no descartada), o `None`."""
+    vigente = version_vigente(sesion, proyecto)
+    return None if vigente is None else vigente.codigo
+
+
+@dataclass(frozen=True, slots=True)
+class FilaVersion:
+    """Una fila del historial: la version, por que se creo, de cual salio y cuanto cambio.
+
+    `motivo` es `""` si se elaboro de cero; `origen` es el codigo de la version de que salio.
+    """
+
+    codigo: str
+    fecha: date
+    motivo: str
+    origen: str
+    vigente: bool
+    descartada: bool
+    cambios: int
+
+
+def historial_de_versiones(sesion: Session, proyecto: str) -> list[FilaVersion]:
+    """Todas las versiones del proyecto, de la mas antigua a la mas reciente (el historial solo
+    crece, RF-54)."""
+    versiones = list(
+        sesion.scalars(
+            select(models.Presupuesto)
+            .join(models.Proyecto)
+            .where(models.Proyecto.nombre == proyecto)
+            .order_by(models.Presupuesto.id)
+        )
+    )
+    codigos = {v.id: v.codigo for v in versiones}
+    descartadas = set(sesion.scalars(select(models.DescarteVersion.presupuesto_id)))
+    registros = dict(
+        sesion.execute(
+            select(models.RegistroCambio.version_resultante_id, func.count())
+            .where(models.RegistroCambio.version_resultante_id.in_(codigos))
+            .group_by(models.RegistroCambio.version_resultante_id)
+        ).all()
+    )
+    vigente = codigo_vigente(sesion, proyecto)
+    filas = []
+    for version in versiones:
+        origen = sesion.get(models.VersionOrigen, version.id)
+        filas.append(
+            FilaVersion(
+                codigo=version.codigo,
+                fecha=version.fecha,
+                motivo=origen.motivo if origen is not None else "",
+                origen=codigos.get(origen.origen_id, "") if origen is not None else "",
+                vigente=version.codigo == vigente,
+                descartada=version.id in descartadas,
+                cambios=registros.get(version.id, 0),
+            )
+        )
+    return filas
+
+
+@dataclass(frozen=True, slots=True)
+class FilaRegistro:
+    """Un `RegistroCambio` como lo muestra la pestana Trazabilidad."""
+
+    objeto: str
+    clave: str
+    campo: str
+    valor_anterior: str
+    valor_nuevo: str
+    fuente: str
+    responsable: str
+    fecha_hora: datetime
+
+
+def registros_de_version(sesion: Session, proyecto: str, codigo: str) -> list[FilaRegistro]:
+    """Los registros que produjeron la version, en el orden en que se guardaron."""
+    return [
+        FilaRegistro(
+            r.objeto,
+            r.clave,
+            r.campo,
+            r.valor_anterior,
+            r.valor_nuevo,
+            r.fuente,
+            r.responsable,
+            r.fecha_hora,
+        )  # fmt: skip
+        for r in registros_de_version_core(sesion, _modelo(sesion, proyecto, codigo))
+    ]
+
+
+def tabla_de_trazabilidad(sesion: Session, proyecto: str, codigo: str) -> TablaExportable:
+    """La hoja Trazabilidad del Excel de la version (`core.budget.edicion.tabla_trazabilidad`)."""
+    return tabla_trazabilidad(sesion, _modelo(sesion, proyecto, codigo))
+
+
+# --- precios con su origen ----------------------------------------------------------------------
+
+COLUMNAS_PRECIOS = (
+    "Insumo",
+    "Código",
+    "Tipo",
+    "Precio",
+    "Lista",
+    "Moneda",
+    "Fecha del precio",
+    "Tasa",
+    "Fecha de la tasa",
+    "Referencia",
+    "Cotización",
+    "Estado",
+)
+
+
+@dataclass(frozen=True, slots=True)
+class FilaPrecio:
+    """El origen del precio de un insumo (pestana Precios, RF-56): lista, referencia, fecha,
+    moneda original y tasa con su fecha; `estado` marca el que no tiene fuente o fecha."""
+
+    codigo: str
+    descripcion: str
+    tipo: str
+    precio: Decimal
+    lista: str
+    moneda: str
+    fecha: date
+    tasa: Decimal | None
+    fecha_tasa: date | None
+    referencia: str
+    cotizacion: str
+    alcance: str
+    estado: str
+
+
+def _estado_de_precio(o: OrigenPrecio) -> str:
+    avisos = []
+    if not o.referencia and not o.cotizacion:
+        avisos.append("Sin referencia ni cotización: el precio no tiene fuente")
+    if o.tasa is not None and o.fecha_tasa is None:
+        avisos.append("La tasa de cambio no declara su fecha")
+    return "; ".join(avisos) if avisos else TEXTO_OK
+
+
+def precios_de_version(sesion: Session, proyecto: str, codigo: str) -> list[FilaPrecio]:
+    """El origen de cada precio que usa la version, ordenado por codigo de insumo (§9.6)."""
+    return [
+        FilaPrecio(
+            codigo=o.codigo,
+            descripcion=o.descripcion,
+            tipo=o.tipo,
+            precio=o.precio,
+            lista=o.lista,
+            moneda=o.moneda,
+            fecha=o.fecha_vigencia,
+            tasa=o.tasa,
+            fecha_tasa=o.fecha_tasa,
+            referencia=o.referencia,
+            cotizacion=o.cotizacion,
+            alcance=o.alcance,
+            estado=_estado_de_precio(o),
+        )
+        for o in origen_de_precios(sesion, _modelo(sesion, proyecto, codigo))
+    ]
+
+
+# --- Excel de la hoja ---------------------------------------------------------------------------
+
+#: Titulo de la hoja de metrajes del Excel y de cada tabla del espacio (spec §9.5).
+TITULOS_TABLAS_ESPACIO = {
+    "origenes": "Esp origenes",
+    "ambientes": "Esp ambientes",
+    "fuentes": "Esp fuentes",
+    "puntos": "Esp puntos",
+    "tramos": "Esp vertices",
+}
+
+
+def tabla_de_precios(precios: Sequence[FilaPrecio]) -> TablaExportable:
+    """La hoja Precios: una fila por insumo, con precios y tasas como numeros."""
+    return TablaExportable(
+        "Precios",
+        COLUMNAS_PRECIOS,
+        tuple(
+            (
+                p.descripcion,
+                p.codigo,
+                p.tipo,
+                p.precio,
+                p.lista,
+                p.moneda,
+                p.fecha,
+                p.tasa,
+                p.fecha_tasa,
+                p.referencia,
+                p.cotizacion,
+                p.estado,
+            )  # fmt: skip
+            for p in precios
+        ),
+    )
+
+
+def tablas_de_espacio(
+    espacio: Espacio, derivados: Sequence[ItemComputo], estado: Mapping[str, EstadoFila]
+) -> list[TablaExportable]:
+    """Las hojas del espacio que `core` no conoce: «Espacio y metrajes» (las cantidades que deriva
+    la hoja, con su origen) y una hoja por tabla editable, con el Estado de cada fila."""
+    cantidades = TablaExportable(
+        "Espacio y metrajes",
+        ("Partida", "Descripción", "Unidad", "Cantidad", "Origen"),
+        tuple(
+            (i.codigo_partida, i.descripcion, i.unidad, i.cantidad, i.origen_id) for i in derivados
+        ),
+    )
+    filas = filas_desde_espacio(espacio)
+    tablas = [cantidades]
+    for tabla, columnas in COLUMNAS.items():
+        con_estado = tabla in TABLAS_CON_ESTADO
+        encabezado = (*columnas, "Estado") if con_estado else columnas
+        tablas.append(
+            TablaExportable(
+                TITULOS_TABLAS_ESPACIO[tabla],
+                encabezado,
+                tuple(
+                    (
+                        *(fila[c] for c in columnas),
+                        *(
+                            (
+                                estado.get(
+                                    f"{TABLAS_CON_ESTADO[tabla]}:{fila['id']}", EstadoFila(None, "")
+                                ).texto,
+                            )
+                            if con_estado
+                            else ()
+                        ),
+                    )
+                    for fila in filas[tabla]
+                ),
+            )
+        )
+    return tablas
+
+
+def exportar_excel(
+    ruta: Path,
+    resultado: ResultadoHoja,
+    borrador: Borrador,
+    *,
+    trazabilidad: TablaExportable | None = None,
+    precios: Sequence[FilaPrecio] = (),
+) -> Path:
+    """Escribe el libro de la hoja (spec §9.5) con lo que muestra `resultado`: una hoja por
+    pestana, mas Trazabilidad y Auditoria, con formulas vivas. Solo se llama al pulsar Exportar.
+    """
+    extras = [
+        *tablas_de_espacio(borrador.espacio, resultado.items, resultado.estado),
+        tabla_de_precios(precios),
+    ]
+    return exportar_hoja(
+        resultado.elaboracion.presupuesto,
+        resultado.elaboracion.informe,
+        ruta,
+        borrador.parametros,
+        trazabilidad=trazabilidad,
+        hojas_extra=extras,
+    )
+
+
+def excel_de_hoja_en_bytes(
+    resultado: ResultadoHoja,
+    borrador: Borrador,
+    *,
+    trazabilidad: TablaExportable | None = None,
+    precios: Sequence[FilaPrecio] = (),
+) -> bytes:
+    """El libro de `exportar_excel` como bytes, para `st.download_button`."""
+    with tempfile.TemporaryDirectory() as carpeta:
+        ruta = exportar_excel(
+            Path(carpeta) / "hoja.xlsx",
+            resultado,
+            borrador,
+            trazabilidad=trazabilidad,
+            precios=precios,
+        )
+        return ruta.read_bytes()
+
+
+# --- importar un plano (RF-50, RF-51; integracion de SF5 con la hoja de SF3) ----------------------
+#
+# El plano crea filas en el BORRADOR con su origen y un informe de lo que no reconocio; nunca salta
+# la hoja ni la auditoria (DA-SF-6): las filas se revisan como cualquier otra y las reglas de
+# espacio las auditan. `ezdxf` e `ifcopenshell` son extras perezosos: se importan al leer.
+
+#: Extension del archivo -> formato del plano.
+FORMATOS_DE_PLANO: Mapping[str, str] = {".dxf": "dxf", ".ifc": "ifc"}
+
+#: Unidades que acepta el lector de DXF cuando el dibujo no declara la suya.
+UNIDADES_DE_PLANO: tuple[str, ...] = ("m", "cm", "mm", "dm", "in", "ft")
+
+#: Altura maxima que se acepta al cargar (metros): una cifra mayor es casi seguro otra unidad.
+ALTURA_MAXIMA_M = Decimal(250)
+
+#: Como se llama cada tipo de linea del informe de importacion, para quien no conoce el sistema.
+ROTULOS_DEL_INFORME: Mapping[TipoItem, str] = {
+    TipoItem.IMPORTADO: "Importado",
+    TipoItem.NO_RECONOCIDO: "No reconocido",
+    TipoItem.APROXIMADO: "Aproximado",
+    TipoItem.PENDIENTE: "Pendiente",
+    TipoItem.DESAPARECIDO: "Ya no está en el plano",
+    TipoItem.OMITIDO: "Omitido",
+}
+_FIJOS_DEL_INFORME = (
+    TipoItem.IMPORTADO,
+    TipoItem.NO_RECONOCIDO,
+    TipoItem.APROXIMADO,
+    TipoItem.PENDIENTE,
+)
+COLUMNAS_DEL_INFORME = ("Tipo", "En el plano", "Fila de la hoja", "Qué pasó")
+_TEXTO_CIRCUITO_SUPUESTO = "supuestos declarados"
+#: Las referencias internas entre parentesis, p. ej. `(SF5-1, SF5-2)`, no le dicen nada al usuario.
+_REFERENCIA_INTERNA = re.compile(r"\s*\((?:SF\d+-\d+(?:,\s*)?)+\)")
+
+
+def formato_de_plano(nombre: str) -> str:
+    """`dxf` o `ifc`, por la extension (sin distinguir mayusculas); `HojaInvalida` si es otra."""
+    formato = FORMATOS_DE_PLANO.get(Path(nombre or "").suffix.lower())
+    if formato is None:
+        raise HojaInvalida(
+            f"El archivo «{nombre}» no es un plano que se pueda importar. "
+            "Suba un plano en formato DXF o IFC."
+        )
+    return formato
+
+
+def leer_plano(ruta: Path | str, *, unidades: str | None = None) -> ResultadoImportacion:
+    """Lee un plano DXF o IFC del disco y devuelve la importacion con su informe.
+
+    Nunca lanza por un archivo malo: devuelve un resultado `RECHAZADA` (con su mensaje) o
+    `DETENIDA` (falta la unidad del dibujo: `pide_unidad`; se reanuda volviendo a leer con
+    `unidades`). Lanza `HojaInvalida` si la extension no es DXF ni IFC o si falta instalar el
+    lector.
+    """
+    ruta = Path(ruta)
+    formato = formato_de_plano(ruta.name)
+    try:
+        if formato == "dxf":
+            from adapters.espacio.planos.dxf import importar_dxf
+
+            return importar_dxf(ruta, unidades=unidades)
+        from adapters.espacio.planos.ifc import importar_ifc
+
+        return importar_ifc(ruta)
+    except ImportError as error:
+        extra = "planos" if formato == "dxf" else "civil"
+        raise HojaInvalida(
+            f"Falta instalar el componente para leer planos {formato.upper()}. "
+            f"Instale el extra «{extra}» con el comando «uv sync --extra {extra}» "
+            "y vuelva a intentarlo."
+        ) from error
+
+
+def subir_plano(
+    subida: Subida, directorio: Path | str, *, unidades: str | None = None
+) -> tuple[Path, ResultadoImportacion]:
+    """Guarda el archivo subido con `ui.subidas.guardar_subida` (nombre seguro, A-1) y lo lee.
+
+    Un formato ajeno se rechaza ANTES de escribir nada. Devuelve la ruta guardada y la importacion.
+    """
+    formato_de_plano(subida.name or "")
+    ruta = guardar_subida(directorio, subida)
+    return ruta, leer_plano(ruta, unidades=unidades)
+
+
+def resumen_del_informe(informe: Iterable[ItemInforme]) -> list[tuple[str, int]]:
+    """Cuantas lineas del informe hay de cada tipo: importado, no reconocido, aproximado y
+    pendiente siempre; los tipos propios de una reimportacion, solo si aparecen."""
+    cuenta = dict.fromkeys(TipoItem, 0)
+    for linea in informe:
+        cuenta[linea.tipo] += 1
+    return [
+        (ROTULOS_DEL_INFORME[tipo], cuenta[tipo])
+        for tipo in TipoItem
+        if tipo in _FIJOS_DEL_INFORME or cuenta[tipo]
+    ]
+
+
+@dataclass(frozen=True, slots=True)
+class ResumenDeFusion:
+    """El informe de una fusion contado una sola vez (revision final).
+
+    El informe de la fusion es el de la importacion MAS una linea «agregada» por cada fila que la
+    fusion puso en el borrador; contarlo entero mostraba el doble (Importado 68 y no 33). Aqui:
+
+    * `por_tipo`: lo que leyo el plano (importado, no reconocido, aproximado, pendiente) y, solo si
+      aparecen, lo propio de una reimportacion (ya no esta en el plano, omitido);
+    * `filas_por_tabla`: las filas que la fusion agrego o actualizo, por tabla;
+    * `origenes`: los origenes de medida que trae el plano, aparte de las filas.
+    """
+
+    por_tipo: list[tuple[str, int]]
+    filas_por_tabla: list[tuple[str, int]]
+    origenes: int
+
+
+_ROTULOS_DE_TABLA_DEL_INFORME = {
+    "esp_ambientes": "Ambientes",
+    "esp_fuentes": "Fuentes",
+    "esp_puntos": "Puntos",
+    "esp_circuitos": "Circuitos",
+    "esp_origenes": "Orígenes",
+}
+
+
+def resumen_de_la_fusion(
+    resultado: ResultadoImportacion, informe: Sequence[ItemInforme]
+) -> ResumenDeFusion:
+    """Cuenta el informe de la fusion de `resultado` sin repetir lo que ya dijo la importacion."""
+    propias = (
+        informe[len(resultado.informe) :]
+        if tuple(informe[: len(resultado.informe)]) == tuple(resultado.informe)
+        else informe
+    )
+    por_tipo = dict(resumen_del_informe(resultado.informe))
+    for tipo in (TipoItem.DESAPARECIDO, TipoItem.OMITIDO):
+        cuantas = sum(1 for i in propias if i.tipo is tipo)
+        if cuantas:
+            por_tipo[ROTULOS_DEL_INFORME[tipo]] = cuantas
+    por_tabla: dict[str, int] = {}
+    for item in propias:
+        if item.tipo is TipoItem.IMPORTADO and item.tabla in _ROTULOS_DE_TABLA_DEL_INFORME:
+            rotulo = _ROTULOS_DE_TABLA_DEL_INFORME[item.tabla]
+            por_tabla[rotulo] = por_tabla.get(rotulo, 0) + 1
+    orden = list(_ROTULOS_DE_TABLA_DEL_INFORME.values())
+    return ResumenDeFusion(
+        por_tipo=list(por_tipo.items()),
+        filas_por_tabla=sorted(por_tabla.items(), key=lambda par: orden.index(par[0])),
+        origenes=len(resultado.origenes),
+    )
+
+
+def resumen_de_importacion(
+    resultado: ResultadoImportacion, informe: Sequence[ItemInforme] | None = None
+) -> list[tuple[str, int]]:
+    """El resumen del informe de la importacion o, si se pasa, del informe de la fusion."""
+    return resumen_del_informe(resultado.informe if informe is None else informe)
+
+
+def filas_del_informe(informe: Iterable[ItemInforme]) -> list[dict[str, str]]:
+    """Las lineas del informe como filas de tabla, con rotulos en espanol."""
+    return [
+        {
+            COLUMNAS_DEL_INFORME[0]: ROTULOS_DEL_INFORME[i.tipo],
+            COLUMNAS_DEL_INFORME[1]: i.referencia,
+            COLUMNAS_DEL_INFORME[2]: i.fila,
+            COLUMNAS_DEL_INFORME[3]: _REFERENCIA_INTERNA.sub("", i.mensaje),
+        }
+        for i in informe
+    ]
+
+
+def alturas_pendientes(resultado: ResultadoImportacion) -> list[tuple[str, str]]:
+    """Los ambientes cuya altura el plano no trae: `(id, nombre)`, en el orden del plano."""
+    pendientes = {
+        i.fila
+        for i in resultado.informe
+        if i.tipo is TipoItem.PENDIENTE and i.tabla == "esp_ambientes"
+    }
+    return [(a.id, a.nombre) for a in resultado.ambientes if a.id in pendientes]
+
+
+def _altura(identificador: str, texto: str) -> Decimal:
+    """Una altura en metros escrita por el usuario (acepta coma decimal)."""
+    try:
+        valor: Decimal | None = Decimal(texto.strip().replace(",", "."))
+    except InvalidOperation:
+        valor = None
+    if valor is None or not valor.is_finite() or not Decimal(0) < valor <= ALTURA_MAXIMA_M:
+        raise HojaInvalida(
+            f"Altura de «{identificador}»: «{texto}» no es una altura valida. "
+            f"Escriba un numero de metros mayor que 0 y hasta {ALTURA_MAXIMA_M}, por ejemplo 2,50."
+        )
+    return valor
+
+
+def cargar_alturas_desde_texto(
+    resultado: ResultadoImportacion, textos: Mapping[str, str]
+) -> ResultadoImportacion:
+    """Carga las alturas escritas (metros); una celda en blanco deja ese ambiente pendiente.
+
+    Si alguna es invalida lanza `HojaInvalida` y no carga ninguna (todo o nada)."""
+    cargar = {
+        identificador: _altura(identificador, texto)
+        for identificador, texto in textos.items()
+        if texto.strip()
+    }
+    return cargar_alturas(resultado, cargar)
+
+
+def circuitos_supuestos(resultado: ResultadoImportacion) -> list[Circuito]:
+    """Los circuitos que entraron con conductores y puntos maximos supuestos: por declarar."""
+    ids = {
+        i.fila
+        for i in resultado.informe
+        if i.tipo is TipoItem.APROXIMADO
+        and i.tabla == "esp_circuitos"
+        and _TEXTO_CIRCUITO_SUPUESTO in i.mensaje
+    }
+    return [c for c in resultado.circuitos if c.id in ids]
+
+
+def _entero(identificador: str, rotulo: str, texto: str, minimo: int) -> int:
+    try:
+        valor: int | None = int(texto.strip())
+    except ValueError:
+        valor = None
+    if valor is None or valor < minimo:
+        raise HojaInvalida(
+            f"Circuito «{identificador}»: {rotulo} debe ser un numero entero de {minimo} o mas "
+            f"(se escribio «{texto}»)."
+        )
+    return valor
+
+
+def declarar_circuitos_desde_texto(
+    resultado: ResultadoImportacion, valores: Mapping[str, tuple[str, str, str, str]]
+) -> ResultadoImportacion:
+    """Declara circuitos: `{id: (fase, neutro, tierra, puntos maximos)}` como texto.
+
+    Fija esos valores y retira la marca de supuesto del circuito. `HojaInvalida` si alguno no es
+    un entero valido (y no declara ninguno)."""
+    declarados: dict[str, tuple[tuple[int, int, int], int]] = {}
+    for identificador, (fase, neutro, tierra, puntos) in valores.items():
+        conductores = (
+            _entero(identificador, "los conductores de fase", fase, 0),
+            _entero(identificador, "los conductores de neutro", neutro, 0),
+            _entero(identificador, "los conductores de tierra", tierra, 0),
+        )
+        maximo = _entero(identificador, "los puntos maximos", puntos, 1)
+        declarados[identificador] = (conductores, maximo)
+    return declarar_circuitos(resultado, declarados)
+
+
+def fusionar_plano(
+    borrador: Borrador, resultado: ResultadoImportacion
+) -> tuple[Borrador, tuple[ItemInforme, ...]]:
+    """Fusiona la importacion con el espacio del borrador: actualiza, agrega y marca lo que ya no
+    esta en el plano. Devuelve el borrador nuevo (el original no cambia) y el informe de la fusion.
+
+    Las filas entran al BORRADOR, no a una version: hay que revisarlas, y la auditoria las evalua
+    como a cualquier otra (DA-SF-6). Una importacion detenida o rechazada no se fusiona
+    (`HojaInvalida` con su motivo)."""
+    if resultado.estado is not EstadoImportacion.IMPORTADA:
+        motivo = resultado.mensaje or "el plano no se pudo importar"
+        raise HojaInvalida(f"No se puede fusionar «{resultado.archivo}»: {motivo}")
+    espacio, informe = fusionar(borrador.espacio, resultado)
+    return replace(borrador, espacio=espacio), informe

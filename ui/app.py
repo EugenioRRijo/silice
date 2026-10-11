@@ -28,10 +28,15 @@ cuando la app se ejecuta de verdad (`if __name__ == "__main__"`); lo comprueba
 La pagina por defecto tiene `url_path == ""` en Streamlit (no la ruta que se le declaro): por eso
 `ruta_actual()` traduce la ruta vacia al Inicio antes de buscar su definicion.
 
+Barra superior (SF4, RF-60). Con `position="top"` el menu va arriba (Streamlit >= 1.62) y,
+debajo, `ui.barra.pintar_barra` pinta la barra de herramientas: Proyecto, Importar plano (si SF5
+la entrega), Precios, Auditar, Guardar version, Exportar Excel y Recorrido guiado. Solo este
+modulo importa `ui.barra`; la barra lateral queda para el caso abierto y el paso del recorrido.
+
 Modo entrega (Sesion P5.1, prototipo AREN.IA). Con `ARENIA_MODO_ENTREGA=1` (exactamente `"1"`) el
 menu **omite** la seccion Investigacion —escenarios, similares, simulador y visor 3D—; la seccion
-Trabajo queda completa (RF-43). Las secciones no se pueden colapsar en la barra lateral de
-Streamlit (solo con `position="top"`), por eso se omite en vez de plegarse.
+Trabajo queda completa (RF-43). Se omite en vez de plegarse: la barra de herramientas y el resto
+del marco no cambian.
 
 Uso (con `python -m`: `streamlit run` a secas pone en `sys.path` la carpeta `ui/` y no la raiz
 del repositorio, y entonces `import ui` falla; `python -m` agrega el directorio actual)::
@@ -57,6 +62,7 @@ from dataclasses import dataclass
 
 import streamlit as st
 
+from ui import barra
 from ui.caso import estado_caso, recorrido_activo, resumen_caso, ruta_caso
 from ui.paginas import (
     actualizacion,
@@ -80,6 +86,7 @@ SECCION_TRABAJO = "Trabajo"
 SECCION_INVESTIGACION = "Investigacion"
 ROTULO_SIGUIENTE = "Siguiente: {}"
 CLAVE_BOTON_SIGUIENTE = "marco_siguiente"
+POSICION_NAVEGACION = "top"  # RF-60: la navegacion va arriba (Streamlit >= 1.62)
 
 
 @dataclass(frozen=True, slots=True)
@@ -132,7 +139,7 @@ def modo_entrega_activo(entorno: Mapping[str, str] | None = None) -> bool:
 
 
 def paginas_visibles(modo_entrega: bool) -> tuple[DefinicionPagina, ...]:
-    """Las pantallas que se muestran: las diez, o sin la seccion Investigacion en modo entrega."""
+    """Las pantallas que se muestran: las once, o sin la seccion Investigacion en modo entrega."""
     if not modo_entrega:
         return PAGINAS
     return tuple(pagina for pagina in PAGINAS if pagina.seccion != SECCION_INVESTIGACION)
@@ -170,6 +177,7 @@ def marco(
     `pintar` pinta la pantalla (`Page.run` en la aplicacion, `render` en las pruebas); `ir_a` lleva
     a la pantalla de una ruta (`st.switch_page` en la aplicacion, un registrador en las pruebas).
     """
+    barra.pintar_barra(definicion.ruta_url, ir_a)
     st.title(definicion.titulo)
     if definicion.caso_uso is not None:
         st.caption(f"Caso de uso {definicion.caso_uso}")
@@ -227,7 +235,7 @@ def main() -> None:
         seccion: [paginas[definicion.ruta_url] for definicion in definiciones]
         for seccion, definiciones in secciones_visibles(modo_entrega).items()
     }
-    actual = st.navigation(secciones)
+    actual = st.navigation(secciones, position=POSICION_NAVEGACION)
     marco(
         pagina_por_ruta(ruta_actual(actual.url_path)),
         actual.run,

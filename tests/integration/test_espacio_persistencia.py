@@ -249,3 +249,20 @@ def test_ida_y_vuelta_de_of001_completa_con_recorrido_de_circuito(motor):
     assert recargado.circuitos[0].orden == ("TA1", "TA2", "TB1", "TB2")
     for especialidad in ("agua", "datos", "electricidad"):
         assert derivar(recargado, especialidad) == derivar(original, especialidad)
+
+
+def test_el_esquema_se_crea_dentro_de_la_transaccion_de_una_sesion_con_escrituras(tmp_path):
+    """SF3: la hoja guarda la version y sus filas esp_* en UNA sesion; las tablas se aseguran con
+    la conexion de la sesion (una segunda conexion chocaria con su escritura: base bloqueada)."""
+    motor = create_engine(f"sqlite:///{tmp_path / 'una_sesion.db'}", connect_args={"timeout": 0.2})
+    try:
+        with Session(motor) as sesion:
+            sesion.execute(text("CREATE TABLE otra (x INTEGER)"))
+            sesion.execute(text("INSERT INTO otra VALUES (1)"))  # la sesion ya escribe
+            crear_esquema_espacio(sesion.connection())
+            guardar_espacio(sesion, 5, espacio_bano())
+            sesion.commit()
+        with Session(motor) as sesion:
+            assert cargar_espacio(sesion, 5) == espacio_bano()
+    finally:
+        motor.dispose()

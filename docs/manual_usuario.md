@@ -11,11 +11,14 @@ Qué es el sistema y por qué calcula como calcula está en [NORMAS.md](../NORMA
 - Clonar o copiar la carpeta del proyecto y, dentro de ella, ejecutar:
 
 ```
-uv sync --extra ui --extra api --extra civil --extra ml
+uv sync --extra ui --extra api --extra civil --extra planos --extra ml
 ```
 
 No hay más pasos (RNF‑07). Notas:
 
+- El extra `ui` exige **Streamlit 1.62 o superior**: el menú superior (`position="top"`) no existe en versiones anteriores.
+- El extra `planos` instala `ezdxf` (importar planos DXF en la hoja del proyecto) y `civil`,
+  `ifcopenshell` (importar planos IFC); sin ellos, importar un plano avisa que falta el componente.
 - El extra `civil` instala `ifcopenshell` (modelos IFC); `ml` instala scikit‑learn y
   sentence‑transformers. Sin el extra correspondiente, esas funciones avisan que faltan en vez de
   fallar en silencio.
@@ -90,8 +93,10 @@ No hay más pasos (RNF‑07). Notas:
 
 ## 3. Las pantallas
 
-La interfaz tiene diez pantallas en dos secciones del menú lateral, **Trabajo** e
-**Investigacion** (en modo entrega, solo Trabajo; sección 2). Se abre en **Inicio**. Cada pantalla
+La interfaz tiene once pantallas en dos secciones del **menú superior** (desde el sprint final
+el menú va arriba, no a la izquierda), **Trabajo** e **Investigacion** (en modo entrega, solo
+Trabajo; sección 2). Bajo el menú, en todas las pantallas, está la **barra de herramientas**
+(sección 3.0 bis). Se abre en **Inicio**. Cada pantalla
 muestra su título; las cinco que implementan un caso de uso de la ERS (componer, elaborar,
 actualizar precios, escenarios y similares) muestran además su código como subtítulo. El Inicio y
 el histórico, aunque la tabla los asocie a UC‑12 y UC‑02, no lo muestran. La barra lateral
@@ -104,6 +109,7 @@ cálculo interno redondea**: el redondeo es solo de presentación.
 | Trabajo | **Catalogo de partidas e insumos** | consulta | Partidas e insumos con su precio vigente |
 | Trabajo | **Componer una partida** | UC‑10 / UC‑11 | Armar a mano una partida nueva o editar una existente, presupuestarla y exportarla (sección 3.7) |
 | Trabajo | **Elaborar un presupuesto** | UC‑01 | Extraer cantidades de una fuente por dominio y presupuestarlas (sección 3.1) |
+| Trabajo | **Hoja del proyecto** | UC‑13 a UC‑16 | Describir el espacio en tablas o importar un plano, editar APU, precios y parámetros, ver el punto de equilibrio, guardar versiones con fuente, cotizar y exportar el Excel (sección 3.8) |
 | Trabajo | **Actualizar precios** | UC‑02 | Cargar una lista de precios nueva (CSV/XLSX) y revalorar un presupuesto guardado |
 | Trabajo | **Historico de cambios de precio** | UC‑02 | Cambios de precio registrados, con filtros |
 | Investigacion | **Escenarios de sensibilidad** | UC‑08 | Recalcular un presupuesto bajo supuestos («¿y si…?») sin alterarlo |
@@ -120,8 +126,9 @@ demás se operan por otra capa (la correspondencia completa entre caso de uso y 
 adaptador civil (`adapters/civil/recalculo.py`) y no tiene pantalla ni ruta de la API. UC‑05 se ve
 en el informe de auditoría que acompaña a todo presupuesto elaborado (sección 4). El presupuesto
 de un tercero se importa solo por la API, sin pantalla (RF‑24, desde la fase C6; sección 3.4 bis).
-UC‑01 también tiene un paso por la API: `POST /proyectos` crea el proyecto sobre el que luego se
-elabora o se importa (la interfaz no crea proyectos).
+UC‑01 también tiene un paso previo: crear el proyecto sobre el que luego se elabora o se importa.
+Se hace con `POST /proyectos` en la API y, desde el sprint final, con la herramienta **Proyecto**
+de la barra superior (RF‑63, sección 3.0 bis); las dos rechazan el nombre vacío o repetido.
 Los rendimientos medidos de UC‑06 se registran por la API (sección 3.4), y las métricas y el
 contraste completo de UC‑07 se generan con un script (sección 3.5); de los dos, la pantalla
 **Componer una partida** ofrece una parte como ayudas: propone el rendimiento del histórico,
@@ -146,6 +153,36 @@ un presupuesto** propone también el rendimiento del histórico cuando a una par
    un presupuesto* y *Actualizar precios*. Al elegir uno, el Inicio lista sus pasos; en cada
    pantalla del recorrido la barra lateral dice en qué paso está, qué hacer y cómo saber que
    terminó, y al pie aparece el botón **Siguiente: <paso>**, salvo en el último paso.
+
+### 3.0 bis La barra de herramientas y los proyectos (RF‑60, RF‑63)
+
+Debajo del menú superior, y en el mismo lugar de todas las pantallas, hay una fila de herramientas.
+La barra lateral queda para lo que ya mostraba: el caso abierto y el paso del recorrido activo.
+
+| Herramienta | Qué hace |
+|---|---|
+| **Proyecto** | Muestra el caso abierto, el proyecto abierto y su versión vigente. Permite **crear** un proyecto nuevo y **abrir** uno del caso. |
+| **Importar plano** | Lleva a la pestaña *Espacio y metrajes* de la hoja del proyecto con el bloque **Importar plano (DXF o IFC)** abierto (sección 3.8, «Importar un plano», UC‑14). La herramienta solo falta si la copia del programa está incompleta (no trae el paquete de importación de planos). Lo que falta de los componentes opcionales para leer el archivo se avisa al pulsar **Leer plano**, con el comando para instalarlo. |
+| **Precios** | Lleva a la pestaña *Precios* de la hoja del proyecto: el origen de cada precio y las cotizaciones. |
+| **Auditar** | Resume el informe de auditoría de la versión vigente del proyecto abierto: cuántos hallazgos y de qué severidad. El sistema audita siempre; el botón solo lo muestra. |
+| **Guardar version** | Lleva a la hoja del proyecto con el panel **Guardar version y exportar a Excel** abierto: ahí se escriben la fuente y el responsable y se guarda (sección 3.8). |
+| **Exportar Excel** | Lleva a la hoja del proyecto y prepara el libro de Excel de la hoja (no el de *Elaborar un presupuesto*); se descarga con **Descargar Excel** en el mismo panel. Archivo: `hoja_<código de la versión>.xlsx`. |
+| **Recorrido guiado** | Sin recorrido elegido, lleva al Inicio para elegir uno. Con uno elegido dice **Retomar: <recorrido>** y lleva a su paso siguiente (o a su primer paso si usted está en otra pantalla). |
+
+**Crear un proyecto.** Abra el desplegable **Proyecto**, escriba el nombre en *Nombre del proyecto
+nuevo* y pulse **Crear proyecto**. El nombre debe ser **único en el caso** y **no vacío**: un nombre
+en blanco se rechaza con «Escriba un nombre para el proyecto: no puede quedar vacio», y uno que ya
+existe (aunque cambien las mayúsculas o los espacios sobrantes) con «Ya existe un proyecto llamado
+…». Si el caso no existe todavía, el mensaje lo dice y no crea el archivo: ábralo o siémbrelo antes
+en el Inicio. Al crearlo, el proyecto queda abierto; un proyecto nuevo aún no tiene versión
+vigente («sin version guardada»), y la hoja del proyecto lo trata como un proyecto sin versiones:
+se describe el espacio o se importa un plano y se guarda la **primera versión** con **Guardar
+primera versión** (sección 3.8, «Guardar la primera versión»).
+
+**Abrir un proyecto.** En el mismo desplegable, elija uno en *Abrir un proyecto del caso* y pulse
+**Abrir**. La **versión vigente** es la última versión guardada del proyecto que no se descartó
+(la que marca *vigente* el historial de la hoja). Al abrir un proyecto en la barra, la **Hoja del
+proyecto** lo muestra abierto en su versión vigente.
 
 ### 3.1 Elaborar un presupuesto (UC‑01)
 
@@ -426,6 +463,88 @@ a paso con resultados esperados está el [guion de prueba manual](guion_prueba_a
     de APU muestra la columna *Modalidad* de cada línea de mano de obra, para que un destajo no se
     lea como sueldo diario.
 
+### 3.8 Hoja del proyecto (UC‑13 a UC‑16)
+
+La **Hoja del proyecto** es el borrador de un presupuesto de obra: se describe el espacio, el sistema
+deriva las cantidades (agua, datos y electricidad), las valora con los APU del caso, las audita y las
+guarda como **versiones** con su fuente y su responsable. Arriba, el selector **Proyecto** elige
+**(borrador nuevo, sin guardar)** o un proyecto del caso, y **Version** elige cuál abrir (la vigente
+viene marcada). Nueve pestañas; solo se ejecuta la que está abierta:
+
+| Pestaña | Qué hace |
+|---|---|
+| **Espacio y metrajes** | Tablas editables de orígenes de medida, ambientes, fuentes, puntos y vértices de recorridos; el bloque **Importar plano (DXF o IFC)**; las **cantidades derivadas**; la columna **Estado** de cada fila (el peor hallazgo que la toca); el total y el informe de auditoría |
+| **APU** | Elegir una partida y editar la **cantidad** de cada línea y el **rendimiento**, o cambiar el insumo de una línea. Se edita la **copia de esta versión**: el catálogo no cambia |
+| **Presupuesto** | Un renglón por partida con su cantidad, precio unitario, total y Estado |
+| **Plan y curva** | El reparto de las partidas por periodo y la curva de inversión |
+| **Punto de equilibrio** | Ventas, costo variable, costo fijo, utilidad, el punto de equilibrio, su porcentaje de las ventas y el periodo en que se alcanza. Se **deriva** de los costos, los parámetros y el plan: se mueve al editarlos, no se escribe |
+| **Precios** | De dónde sale el precio de cada insumo (lista, referencia, fecha, moneda, tasa) y las **cotizaciones**: registrar una (proveedor, número, fecha, responsable) crea una versión nueva; retirarla, otra |
+| **Parámetros** | Factor de prestaciones (FCAS), bono de alimentación, administración y utilidad |
+| **Auditoría** | El informe de auditoría del borrador (sección 4), con las reglas del espacio |
+| **Trazabilidad** | El historial de versiones (cuál es la vigente, de cuál sale cada una), el registro de cada celda cambiada con su fuente, responsable y hora, y **Restaurar** una versión anterior (crea una versión nueva, copia de la elegida; nada se borra) |
+
+**De dónde salen los precios.** Los precios de referencia del sistema salen de los listados
+**MaPreX de julio de 2026** (materiales, equipos y mano de obra); un insumo que no viene de una lista aparece con el estado «Sin referencia». Los listados están en bolívares y el
+sistema los convierte a dólares con la tasa **633,3644 Bs/USD del 01/07/2026**. En la pestaña
+**Precios** cada insumo muestra la **lista** de la que sale, su **referencia** (*Ref*, el renglón del
+listado), la **fecha** del precio, la **moneda** y la **tasa** usada. Si usted tiene una cotización
+distinta, la registra con su fuente (proveedor, número y fecha): vale **solo para ese proyecto**, no
+cambia la lista ni los demás proyectos, y se puede retirar para volver al precio de la lista. La
+pestaña **Precios** solo se llena cuando hay una versión guardada: sin versión dice «Abra una version
+guardada para ver el origen de sus precios». Son **referencias de julio de 2026**, no una lista vigente:
+antes de usar un presupuesto para contratar, valide los precios con una ronda actual.
+
+Una fila inválida muestra un mensaje que dice fila y campo, y la hoja sigue con el último borrador
+válido. Mientras haya cambios sin guardar la hoja lo avisa, y cambiar de versión o de proyecto pide
+confirmar que se descartan.
+
+**Importar un plano (UC‑14).** Pulse **Importar plano** en la barra, o abra el bloque **Importar plano
+(DXF o IFC)** en *Espacio y metrajes*.
+
+1. Elija el archivo en el cuadro *Plano* (solo `.dxf` o `.ifc`) y pulse **Leer plano**. Si el dibujo no
+   declara su unidad, el sistema lo dice y pide **Unidad del dibujo**: elíjala y pulse **Continuar con
+   esta unidad**. Un archivo que no se puede leer se explica y no cambia nada.
+2. Lea el **informe de la importación**: cuatro contadores (**Importado**, **No reconocido**,
+   **Aproximado**, **Pendiente**) y una tabla con cada línea («En el plano», «Fila de la hoja», «Qué
+   pasó»). Lo no reconocido no se adivina: queda en el informe.
+3. En **Alturas pendientes** escriba en metros (por ejemplo `2,50`) la altura de cada ambiente que el
+   plano no trae y pulse **Cargar alturas**; los que deje en blanco siguen pendientes y entran con
+   2,5 m provisionales. En **Circuitos por declarar** confirme o corrija los conductores y los puntos
+   máximos de los circuitos que el plano no trae (se supusieron) y pulse **Declarar circuitos**.
+4. Pulse **Fusionar con el espacio del borrador**: las filas entran al **borrador**, nunca a una
+   versión, y la auditoría las evalúa como a las demás. Reimportar el mismo plano actualiza las filas y
+   marca las que ya no están. Para descartar sin fusionar, **Descartar la importación**.
+
+Las filas importadas citan el plano como origen de medida: la auditoría deja de marcarlas como
+supuestos. Nada queda guardado hasta que usted guarde una versión.
+
+**Guardar una versión (UC‑15).** Con una versión abierta y cambios, el panel **Guardar version y
+exportar a Excel** pide la **Fuente del cambio** (por qué y con qué respaldo) y el **Responsable**; sin
+ellos el botón **Guardar version** está deshabilitado y su ayuda dice qué falta. Al guardar, cada celda
+cambiada queda en el registro de la versión nueva. Sin cambios no hay nada que guardar, y una versión en
+solo lectura (alguna partida ya no tiene APU vigente) no se puede guardar.
+
+**Guardar la primera versión de un proyecto nuevo.** Un proyecto recién creado en la barra no tiene
+versiones: la hoja lo dice con el aviso **Este proyecto aún no tiene versiones**. Describa el espacio
+(o importe un plano) —lo que ya había escrito se conserva al elegir el proyecto—, abra el panel
+**Guardar version y exportar a Excel**, escriba la **Fuente de la medida** (de dónde salen los datos:
+un plano, un acta) y el **Responsable**, y pulse **Guardar primera versión**. La hoja guarda la `001`
+y la abre. Decisiones que conviene conocer: los **precios** son los de la lista vigente a la fecha
+del borrador (si el catálogo no tiene ninguna, el mensaje lo dice y no se guarda nada: cárguela
+en *Actualizar precios*); los **parámetros** son los que muestra la pestaña *Parámetros* (los de la
+aplicación mientras no los cambie; los puede editar después y guardar una versión nueva); si no
+hay plan de trabajo se usa el **plan secuencial** (una partida por periodo), que puede editar en
+*Plan y curva*; y la versión deja **un registro de creación** (pestaña *Trazabilidad*) con su fuente y
+su responsable. Desde la segunda versión se usa **Guardar version**, como siempre.
+
+**Exportar el Excel (UC‑16).** **Exportar Excel** de la barra, o **Preparar Excel** en el panel, genera el
+libro de la hoja y **Descargar Excel** lo entrega (`hoja_<código>.xlsx`): las hojas de la hoja del
+proyecto con sus fórmulas vivas, más una hoja por tabla del espacio. El libro se genera solo al pedirlo.
+
+**Limitaciones del prototipo.** (1) Cerrar la pestaña del navegador con
+cambios sin guardar los pierde: Streamlit no deja avisar. (2) Los datos de ejemplo (OF‑001) son un caso
+construido, no una obra ejecutada.
+
 ## 4. El informe de auditoría
 
 Se genera **siempre** — no existe forma de obtener un presupuesto sin él. Ejecuta las siete
@@ -529,4 +648,10 @@ Cada carpeta trae su `README.md` con el formato exacto de columnas.
 | 500 en `POST /presupuestos/{codigo}/actualizacion` con una lista que carga bien | Dos listas con el mismo nombre (por ejemplo, al cargar dos veces el archivo para ver los desconocidos): el nombre debe ser único |
 | «Guardar composicion» no se puede pulsar | Faltan las condiciones del rendimiento (RF‑33): escribirlas |
 | «no hay ninguna lista de precios vigente» al guardar | La base está vacía o la fecha es anterior a toda lista: sembrar con `scripts/seed_demo.py` o cambiar la fecha |
+| «Escriba un nombre para el proyecto» o «Ya existe un proyecto llamado …» al crear un proyecto | El nombre quedó en blanco o ya lo usa otro proyecto del caso: escribir otro, o abrir el existente con **Abrir** |
+| **Guardar version** (o **Guardar primera versión**) de la hoja está deshabilitado | La ayuda del botón dice por qué: el borrador no pertenece a ningún proyecto (elija o cree uno), no hay cambios, falta la fuente o el responsable, o la versión está en solo lectura |
+| **Guardar version** o **Exportar Excel** de la barra aparecen deshabilitados con «Todavía no está disponible…» | La hoja del proyecto no está instalada en esta copia: actualizar el repositorio |
+| **Importar plano** no aparece en la barra | La copia del programa está incompleta: falta el paquete de importación de planos. Actualice o vuelva a descargar el repositorio. (No depende de los extras `planos` o `civil`: si faltan, la herramienta aparece y el aviso sale al pulsar **Leer plano**) |
+| «Falta instalar el componente para leer planos DXF» (o IFC) al pulsar **Leer plano** | Falta el extra `planos` (DXF) o `civil` (IFC): ejecute `uv sync --extra planos` (DXF) o `uv sync --extra civil` (IFC) y vuelva a pulsar **Leer plano** |
+| Un archivo subido se guarda con otro nombre (por ejemplo `_CON.csv`) | El nombre original era reservado en Windows (`CON`, `NUL`, `COM1`…) o traía caracteres no permitidos: se limpia para guardarlo, y el contenido no cambia |
 | La barra lateral no muestra el caso esperado bajo «Caso abierto» | Abrirlo en **Inicio** (*Archivo del caso (SQLite)* y *Abrir este caso*) o arrancar con `ARENIA_CASO=<ruta>`: recargar la página (F5) vuelve a la ruta de `ARENIA_CASO` o, sin ella, a `data/apu.db` |

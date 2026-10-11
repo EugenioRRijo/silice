@@ -108,6 +108,9 @@ jobs:
       - name: Sin pruebas omitidas
         run: uv run --no-sync python scripts/verificar_omitidas.py reporte-pruebas.xml
 
+      - name: Medicion de RNF-11 (solo registra la cifra; no rompe la corrida)
+        run: uv run --no-sync python scripts/medir_rnf11.py
+
       - name: Cobertura de core >= 80 % (RNF-06)
         if: runner.os == 'Linux'
         run: uv run --no-sync coverage report --include="core/*" --fail-under=80

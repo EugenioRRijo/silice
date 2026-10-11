@@ -37,7 +37,9 @@ from core.budget import (
     comparar_escenarios,
     comparar_por_partida,
     generar_escenario,
+    hallazgos_externos,
 )
+from core.budget.instantanea import composiciones_de_presupuesto
 from core.catalog import Catalogo, abrir_sesion, crear_esquema, crear_motor
 from core.contracts import ItemComputo, ParametrosCosto
 from core.verification.informe import DECIMALES_PRESENTACION
@@ -72,16 +74,12 @@ def render() -> None:
 
 
 def _pagina(sesion, ruta: Path) -> None:
-    modelos = list(
-        sesion.scalars(select(models.Presupuesto).order_by(models.Presupuesto.codigo))
-    )
+    modelos = list(sesion.scalars(select(models.Presupuesto).order_by(models.Presupuesto.codigo)))
     if not modelos:
         st.info("No hay presupuestos guardados todavia: elabore uno primero (UC-01).")
         return
 
-    etiquetas = {
-        f"{modelo.proyecto.nombre} / {modelo.codigo}": modelo for modelo in modelos
-    }
+    etiquetas = {f"{modelo.proyecto.nombre} / {modelo.codigo}": modelo for modelo in modelos}
     eleccion = st.selectbox("Presupuesto base", list(etiquetas))
     modelo = etiquetas[eleccion]
 
@@ -102,7 +100,7 @@ def _pagina(sesion, ruta: Path) -> None:
         **{nombre: getattr(modelo, nombre) for nombre in _CAMPOS_PARAMETROS}
     )
 
-    _formulario(modelo, base, catalogo, parametros_base)
+    _formulario(sesion, modelo, base, elaboracion.informe, catalogo, parametros_base)
     _resultados(base)
 
 
@@ -121,7 +119,9 @@ def _declarar_pendientes(pendientes: Sequence[ItemComputo]) -> None:
     )
 
 
-def _formulario(modelo, base, catalogo: Catalogo, parametros_base: ParametrosCosto) -> None:
+def _formulario(
+    sesion, modelo, base, informe_base, catalogo: Catalogo, parametros_base: ParametrosCosto
+) -> None:
     with st.form("nuevo_escenario"):
         nombre = st.text_input(
             "Nombre del escenario",
@@ -163,11 +163,19 @@ def _formulario(modelo, base, catalogo: Catalogo, parametros_base: ParametrosCos
         for fila in precios_tabla.itertuples(index=False)
         if str(fila.insumo).strip()
     }
-    composiciones = {
-        codigo: catalogo.composicion(codigo, fecha=modelo.fecha, lista=modelo.lista_precios)
-        for codigo in dict.fromkeys(partida.item.codigo_partida for partida in base.partidas)
-    }
-    escenario = generar_escenario(nombre, base, composiciones, parametros, precios=precios)
+    # SF3: las composiciones son las de la instantanea de la version (la hoja las edita ahi), no
+    # las del catalogo en vivo; los hallazgos de R8 a R10 se vuelven a declarar (SF-E1).
+    composiciones = composiciones_de_presupuesto(
+        sesion, modelo.proyecto.nombre, modelo.codigo, catalogo
+    )
+    escenario = generar_escenario(
+        nombre,
+        base,
+        composiciones,
+        parametros,
+        precios=precios,
+        externos=hallazgos_externos(informe_base),
+    )
     st.session_state[_ESTADO_ESCENARIOS].append(escenario)
 
 
@@ -202,6 +210,7 @@ def _resultados(base) -> None:
 
 def _presentar(tabla: DataFrame) -> DataFrame:
     """Copia de presentacion: `Decimal` a texto con los dos decimales del sistema."""
+
     def _celda(valor: object) -> object:
         if isinstance(valor, Decimal):
             return formatear_decimal(valor, DECIMALES_PRESENTACION)

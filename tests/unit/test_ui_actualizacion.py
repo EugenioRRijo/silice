@@ -37,7 +37,7 @@ SCRIPT = "from ui.paginas.actualizacion import render\nrender()\n"
 CODIGO_NUEVO = "002"
 
 
-def _base_con_version_nueva(ruta: Path, *, revalorar: bool = True) -> None:
+def _base_con_version_nueva(ruta: Path, *, revalorar: bool = True, plan_guardado=None) -> None:
     """001 guardado y 002 revalorado con la muestra, ambos confirmados, por el nucleo directo.
     Con `revalorar=False`, solo 001."""
     motor = crear_motor(f"sqlite:///{ruta.as_posix()}")
@@ -54,7 +54,7 @@ def _base_con_version_nueva(ruta: Path, *, revalorar: bool = True) -> None:
                 codigo=linea_base.CODIGO_PRESUPUESTO,
                 fecha=linea_base.FECHA_LINEA_BASE,
                 moneda=linea_base.MONEDA,
-                plan=plan_secuencial,
+                plan=plan_guardado or plan_secuencial,
             )
             guardar_presupuesto(
                 sesion,
@@ -63,6 +63,7 @@ def _base_con_version_nueva(ruta: Path, *, revalorar: bool = True) -> None:
                 proyecto=proyecto,
                 lista=catalogo.lista_vigente(linea_base.FECHA_LINEA_BASE),
                 parametros=linea_base.PARAMETROS_LINEA_BASE,
+                plan=plan_guardado,
             )
             if not revalorar:
                 sesion.commit()
@@ -279,3 +280,79 @@ def test_revalorar_otra_vez_tras_descartar_vuelve_a_ofrecer_el_boton(monkeypatch
     assert _contar_si_existe(base, models.DescarteVersion) == 0
     assert _descartadas(at) == []
     assert ROTULO_DESCARTAR in _rotulos(at)
+
+
+def test_revalorar_desde_la_pantalla_conserva_el_plan_guardado_de_la_version(monkeypatch, tmp_path):
+    """SF3 (RF-56, SF3-R4): UC-02 pasa `plan_de_version`; sin el, la version revalorada saldria
+    sin plan o con otro reparto. Se guarda la 001 con un plan que parte una partida en dos dias."""
+    from decimal import Decimal
+
+    from core.budget import plan_de_version
+
+    c = linea_base.CODIGOS_LINEA_BASE
+    plan = [
+        ("Dia 1", [(c[0], Decimal("0.5"))]),
+        ("Dia 2", [(c[0], Decimal("0.5")), (c[1], Decimal("1"))]),
+        ("Dia 3", [(c[2], Decimal("1")), (c[3], Decimal("1")), (c[4], Decimal("1"))]),
+    ]
+    base = tmp_path / "caso.db"
+    _base_con_version_nueva(base, revalorar=False, plan_guardado=plan)
+
+    _abrir(monkeypatch, base, base, MUESTRA)
+
+    motor = crear_motor(f"sqlite:///{base.as_posix()}")
+    try:
+        with abrir_sesion(motor) as sesion:
+            modelos = {m.codigo: m for m in sesion.scalars(select(models.Presupuesto))}
+            assert set(modelos) == {"001", "002"}
+            # el plan guardado llega a la curva de la revaloracion: 3 dias y no los 5 del secuencial
+            # (hallazgo para el nucleo: `actualizar_precios` no guarda el plan en `PlanVersion`)
+            assert plan_de_version(sesion, modelos["001"]) == [(e, tuple(r)) for e, r in plan]
+            assert [p.periodo.split(" [")[0] for p in modelos["002"].curva] == [
+                "Dia 1",
+                "Dia 2",
+                "Dia 3",
+            ]
+            assert modelos["002"].curva[-1].acumulado == sum(
+                (r.cantidad * r.precio_unitario for r in modelos["002"].partidas), Decimal(0)
+            )
+    finally:
+        motor.dispose()
+# --- un nombre inutilizable no se confunde con «sin ofertas» (revision de usabilidad) -----------
+
+
+def _vista_con_nombre(ruta: str, nombre: str) -> None:
+    from pathlib import Path
+    from types import SimpleNamespace
+
+    import streamlit as st
+
+    from ui.paginas import actualizacion
+
+    archivo = SimpleNamespace(name=nombre, getvalue=lambda: b"codigo,precio\nX,1\n")
+    ofrecidos = actualizacion._ofrecer_alta(Path(ruta), archivo)
+    st.write(f"ofrecidos={len(ofrecidos)}")
+
+
+def test_la_vista_previa_con_nombre_inutilizable_muestra_el_motivo(tmp_path):
+    caso = tmp_path / "caso.db"
+    _base_con_version_nueva(caso, revalorar=False)
+    at = AppTest.from_function(
+        _vista_con_nombre, kwargs={"ruta": str(caso), "nombre": ".."}, default_timeout=60
+    )
+    at.run()
+    assert not at.exception, [e.value for e in at.exception]
+    assert len(at.error) == 1
+    assert "nombre utilizable" in at.error[0].value
+    assert "Renombre" in at.error[0].value
+
+
+def test_la_vista_previa_con_nombre_valido_no_muestra_error(tmp_path):
+    caso = tmp_path / "caso.db"
+    _base_con_version_nueva(caso, revalorar=False)
+    at = AppTest.from_function(
+        _vista_con_nombre, kwargs={"ruta": str(caso), "nombre": "lista.csv"}, default_timeout=60
+    )
+    at.run()
+    assert not at.exception, [e.value for e in at.exception]
+    assert not at.error

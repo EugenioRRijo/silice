@@ -6,7 +6,7 @@ import pytest
 
 from tests.fixtures.subproceso import importar_en_limpio, modulos_cargados
 
-EXTRAS = ("ifcopenshell", "sentence_transformers")
+EXTRAS = ("ifcopenshell", "ezdxf", "sentence_transformers")
 
 
 @pytest.mark.parametrize("extra", EXTRAS)

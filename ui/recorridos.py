@@ -116,6 +116,13 @@ RECORRIDOS: tuple[Recorrido, ...] = (
                 "«Elaborar presupuesto»; descargue el Excel.",
                 "Se descarga el libro con su hoja de auditoria.",
             ),
+            Paso(
+                "Revisar en la hoja del proyecto",
+                "hoja",
+                "Abra la hoja del proyecto: describa el espacio en las tablas y revise las "
+                "cantidades derivadas, la columna Estado de cada fila y el informe de auditoria.",
+                "Ve el total del presupuesto y el informe de auditoria del borrador.",
+            ),
         ),
     ),
     Recorrido(
@@ -163,3 +170,19 @@ def paso_siguiente(recorrido: Recorrido | None, ruta: str) -> Paso | None:
     if posicion is None or posicion == len(recorrido.pasos):
         return None
     return recorrido.pasos[posicion]
+
+
+def destino_de_recorrido(recorrido: Recorrido | None, ruta: str) -> str:
+    """La pantalla a la que lleva «Recorrido guiado» de la barra desde la pantalla `ruta`.
+
+    Sin recorrido activo, el Inicio (donde se elige). Con uno: el paso siguiente; desde una
+    pantalla ajena, su primer paso (se retoma); y desde el ultimo paso, el Inicio (terminado).
+    """
+    if recorrido is None:
+        return RUTA_INICIO
+    paso = paso_siguiente(recorrido, ruta)
+    if paso is not None:
+        return paso.pagina
+    if recorrido.posicion(ruta) is not None:  # estaba en el ultimo paso
+        return RUTA_INICIO
+    return recorrido.pasos[0].pagina

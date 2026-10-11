@@ -100,3 +100,54 @@ def test_recorrido_por_nombre() -> None:
     assert recorrido_por_nombre(NOMBRE_PRECIOS) is RECORRIDOS[2]
     assert recorrido_por_nombre(None) is None
     assert recorrido_por_nombre("no existe") is None
+
+
+# --- SF4: a donde lleva «Recorrido guiado» de la barra (UC-12) ---------------------------------
+
+
+def test_destino_sin_recorrido_activo_es_el_inicio():
+    from ui.recorridos import RUTA_INICIO, destino_de_recorrido
+
+    assert destino_de_recorrido(None, "catalogo") == RUTA_INICIO
+
+
+def test_destino_es_el_paso_siguiente_desde_un_paso_intermedio():
+    from ui.recorridos import RECORRIDOS, destino_de_recorrido
+
+    r = RECORRIDOS[0]
+    assert destino_de_recorrido(r, r.pasos[0].pagina) == r.pasos[1].pagina
+
+
+def test_destino_desde_el_inicio_es_el_primer_paso():
+    from ui.recorridos import RECORRIDOS, RUTA_INICIO, destino_de_recorrido
+
+    r = RECORRIDOS[0]
+    assert destino_de_recorrido(r, RUTA_INICIO) == r.pasos[0].pagina
+
+
+def test_destino_desde_una_pantalla_ajena_es_el_primer_paso():
+    from ui.recorridos import RECORRIDOS, destino_de_recorrido
+
+    r = RECORRIDOS[0]
+    assert destino_de_recorrido(r, "historico") == r.pasos[0].pagina
+
+
+def test_destino_desde_el_ultimo_paso_es_el_inicio():
+    from ui.recorridos import RECORRIDOS, RUTA_INICIO, destino_de_recorrido
+
+    r = RECORRIDOS[0]
+    assert destino_de_recorrido(r, r.pasos[-1].pagina) == RUTA_INICIO
+
+
+def test_el_recorrido_de_presupuesto_termina_en_la_hoja_del_proyecto():
+    """RF-37 (enmienda del sprint final): los recorridos incluyen la pantalla «Hoja del proyecto»;
+    va despues de Elaborar, que es de donde se abre el resultado (spec §9.1)."""
+    r = recorrido_por_nombre(NOMBRE_PRESUPUESTO)
+    paginas = [paso.pagina for paso in r.pasos]
+    assert paginas == ["catalogo", "componer", "elaborar", "hoja"]
+    assert paso_siguiente(r, "elaborar").pagina == "hoja"
+    assert paso_siguiente(r, "hoja") is None
+
+
+def test_algun_recorrido_pasa_por_la_hoja():
+    assert any(p.pagina == "hoja" for r in RECORRIDOS for p in r.pasos)

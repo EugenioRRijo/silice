@@ -20,6 +20,7 @@ escribe con `--db`; con `--db` hacia otra ruta basta `--reiniciar`.
 | `seed_industrial.py` | catálogo de mantenimiento industrial en `data/apu_industrial.db` y su presupuesto `MNT-001` | M2.2 · industrial |
 | `seed_sistemas.py` | catálogo de sistemas (puntos de función) en `data/apu_sistemas.db` y su presupuesto `SIS-001` | M3.2 · sistemas |
 | `seed_telecom.py` | catálogo telecom (ARENAZA) en `data/apu_telecom.db` y la reproducción de sus dos presupuestos | M1.2 · telecom |
+| `seed_of001.py` | la oficina OF‑001 con su espacio y la versión `001` en `data/prueba_sf.db`, la base propia de CP‑08 a CP‑11 del guion; se niega a escribir en `data/apu.db` y exige `--reiniciar` si el archivo existe | SF · integración |
 
 ## Datos derivados de las fuentes
 
@@ -30,6 +31,7 @@ escribe con `--db`; con `--db` hacia otra ruta basta `--reiniciar`.
 | `extraer_arenaza.py` | genera y verifica contra los PDF los dos CSV de presupuestos ARENAZA en `data/telecom/fuentes/` (necesita `--with pymupdf`) | M1.1 · telecom |
 | `derivar_listas_telecom.py` | deriva las dos listas de precios canónicas de UC‑02 del dominio telecom (ARENAZA y MaPreX) | M1.3 · telecom |
 | `generar_tanquilla_ifc.py` | genera `data/samples/tanquilla.ifc`, el modelo IFC de muestra de la compuerta G1 (necesita el extra `civil`) | I3.1 · civil |
+| `dibujar_of001_dxf.py` | dibuja `tests/fixtures/planos/of001.dxf` entidad por entidad con `ezdxf` desde las tablas de las memorias de cálculo de OF‑001 (nunca desde la hoja manual); necesita el extra `planos` | RF‑50 · SF5 |
 
 ## Simulación y medición
 
@@ -39,6 +41,8 @@ escribe con `--db`; con `--db` hacia otra ruta basta `--reiniciar`.
 | `simular_corpus.py` | corpus simulado y determinista de composiciones APU | P4.3 · prototipo |
 | `generar_hoja_prueba.py` | generador determinista de puntos (`generar_items`) y composiciones simples para medir la hoja | RNF‑11 · SF0 |
 | `prueba_data_editor.py` | app Streamlit descartable de la prueba corta de `st.data_editor` con 500 puntos (procedimiento en `medir_data_editor.md`) | spec SF §11.3 · SF0 |
+| `medir_data_editor.md` | procedimiento escrito de la prueba corta de `st.data_editor` con 500 puntos (qué se mide, cómo y con qué umbrales); lo ejecuta una persona en el navegador con `prueba_data_editor.py`, porque `AppTest` no escribe en el editor | spec SF §11.3 · SF0 |
+| `medir_rnf11.py` | mide RNF‑11: la hoja del proyecto con 500 puntos del generador, en `ui.hoja` sin Streamlit, desde aplicar una edición hasta tener presupuesto, informe y punto de equilibrio sin persistir (una corrida de calentamiento y la mediana de cinco); **solo registra** la cifra en `scripts/_salida_rnf11.json`, de donde la lee la meta S9 | RNF‑11 · SF3 |
 | `medir_rnf03.py` | mide RNF‑03: el tiempo del recálculo masivo de UC‑02 con N partidas en SQLite local | RNF‑03 |
 | `probar_precios_maprex.py` | prueba los casos didácticos con precios de referencia publicados (MaPreX de julio de 2026 y tabulador CIV): cobertura del listado MaPreX en USD, revaloración del presupuesto 001 civil y de TC‑001/TC‑002, comprobación de MNT‑001 y SIS‑001; siempre en un directorio temporal, sin `--db` (con el extra `ml`, que instala `uv sync --all-extras`, marca los precios atípicos; sin él corre igual y lo declara) | C6 · todos |
 
