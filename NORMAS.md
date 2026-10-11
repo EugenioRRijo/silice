@@ -76,15 +76,15 @@ Convenciones operativas:
 
 | Convención | Regla |
 |---|---|
-| Ramas | `main` para Fase 0 y esqueleto; desde I0.3 una rama por incremento: `inc/I1-actualizacion-precios` |
+| Ramas | `main` es la única rama de integración. Desde Sílice (0.6.0), ramas cortas por fase: cada una sale del `main` del momento (`origin/main`), recibe `main` a menudo, corre la CI en cada *push* y se fusiona al cruzar la compuerta de su fase, no al final de la versión. Nada se apila. Hay un solo carril de núcleo abierto a la vez (orden del maestro §6.1: S1‑1 → S1‑3 → S1‑4 → S2‑1 … S2‑3 → S3‑2); una rama `-nucleo` toca solo `core/`, `migraciones/`, `tests/` y `docs/`. Una rama que agrega archivos bajo `adapters/` sale de `main` sin núcleo pendiente |
 | Commits | Conventional Commits en español sin tildes en el asunto: `feat(core): …`, `test(core): …`, `docs(ers): …` |
 | Sesiones | Una sesión por incremento, `/clear` entre ellas; modo plan antes de cambios grandes |
 | Entorno | `uv sync` · `uv run pytest` · `uv run ruff check .` |
 | Idioma | Código, docstrings, docs y commits en español; identificadores sin tildes |
-| Worktrees | Uno por sprint en `.worktrees/<nombre-corto>`; se borra al fusionar. Solo coexisten el checkout principal y el worktree del sprint vigente: varios worktrees vivos a la vez es lo que dejó `main` dos semanas desactualizado |
-| Fusión | Un PR por incremento **contra `main`**, fusionado en cuanto la CI esté verde. No acumular pilas: `gh pr merge` fusiona en la base *actual* del PR, así que una pila hay que reorientarla con `gh pr edit <n> --base main` antes de fusionar, o se fusiona cada PR dentro de su padre y `main` no recibe nada |
-| Etiquetas | Una por compuerta cruzada (`g0-docs`, `g1-ifc`, `g2-datos`…) y una **base por sprint** (`i6-base`, `m-base`, `a-base`, `r-base`, `p-base`) que sirve de referencia a `git diff <base> --stat -- core/` |
-| Metas | `scripts/meta_<sprint>.py` audita las metas del sprint; una fase se cruza con `--hasta <fase>` en OK **y** la compuerta anotada en `docs/bitacora/` |
+| Worktrees | Como máximo tres worktrees vivos además del checkout principal, en `.worktrees/<nombre-corto>`: el del carril de núcleo y hasta dos de carriles sin núcleo. Se borra con `git worktree remove` al fusionar su rama (nunca con `--force`; si se niega, se revisa qué quedó sin guardar) |
+| Fusión | Un PR por fase **contra `main`**, fusionado en cuanto la CI esté verde y la compuerta cruzada, con *merge commit* (`gh pr merge <n> --merge`, nunca *squash*: la meta comprueba que el commit de cada prueba precede al de su implementación). No acumular pilas: `gh pr merge` fusiona en la base *actual* del PR |
+| Etiquetas | Una por compuerta cruzada y, desde Sílice, `vX.Y.Z` anotada en `main`, en orden numérico (`v0.6.0` antes que `v0.7.0` aunque un carril llegue antes) |
+| Metas | Desde la 0.6.0, una sola meta: `scripts/meta_silice.py --version X --hasta FASE`; una fase se cruza con la meta en OK **y** la compuerta anotada en `docs/bitacora/`. Las metas `meta_<sprint>.py` anteriores quedan como registro |
 
 ---
 
