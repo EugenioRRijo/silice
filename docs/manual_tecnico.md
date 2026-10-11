@@ -404,7 +404,7 @@ catálogo de otro dominio apuntando `APU_BASE` a su base (`sqlite:///data/apu_te
   algo que en realidad es una limitación declarada. RNF‑07 ya no figura entre ellos: la CI lo
   verifica en Linux y Windows en cada cambio.
 
-## 10. El prototipo AREN.IA: composición de APU a mano (sprint P0–P5)
+## 10. El prototipo AREN.IA (hoy Sílice): composición de APU a mano (sprint P0–P5)
 
 El sprint del prototipo añadió la pantalla que compone y edita una partida a mano (UC‑10 y UC‑11
 de la [ERS](ERS.md), RF‑33 a RF‑35). El diseño y su porqué están en la
@@ -521,10 +521,14 @@ C3‑3). Para que su informe recargado declare los pendientes, esa base se vuelv
 **Menú y marco.** `ui/app.py` llama a `st.navigation(secciones, position="top")` (Streamlit ≥ 1.62,
 fijado en el extra `ui` de `pyproject.toml`; `tests/unit/test_ui_app.py` falla con una versión sin
 `position="top"`). Son once pantallas en dos grupos, Trabajo e Investigación; la «Hoja del
-proyecto» va en Trabajo, justo después de Elaborar; `ARENIA_MODO_ENTREGA=1` sigue omitiendo
+proyecto» va en Trabajo, justo después de Elaborar; `SILICE_MODO_ENTREGA=1` sigue omitiendo
 Investigación. `marco()` pinta, en este orden: la barra de herramientas, el título, el subtítulo
 del caso de uso, el caso abierto (barra lateral), el paso del recorrido, la pantalla y el botón
 «Siguiente».
+
+> **Nombres de las variables.** Desde la 0.6.0 se llaman `SILICE_CASO` y `SILICE_MODO_ENTREGA`.
+> Los nombres anteriores, `ARENIA_CASO` y `ARENIA_MODO_ENTREGA`, se aceptan como alias solo
+> hasta la 0.6.0; si están las dos, manda la nueva (`ui/entorno.py`).
 
 **Barra de herramientas (`ui/barra.py`).** La importa **solo** `ui/app.py` (lo vigila
 `test_solo_ui_app_importa_la_barra_de_herramientas`); ninguna página importa el marco. No conoce

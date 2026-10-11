@@ -1,4 +1,4 @@
-"""Meta del sprint del prototipo AREN.IA: 12 metas agrupadas en seis fases (P0-P5).
+"""Meta del sprint del prototipo AREN.IA (hoy Sílice): 12 metas agrupadas en seis fases (P0-P5).
 
 Se define ANTES de las sesiones de `PLAN_PROTOTIPO.md`, igual que `meta_asistente.py`: las metas
 existen primero y cada fase se trabaja para ponerlas en OK. Reutiliza de `scripts/meta_alpha.py`
@@ -367,7 +367,7 @@ def _evaluar_metas(codigos: list[str]) -> list[Fila]:
 def _parsear_args(argv: list[str] | None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         prog="meta_prototipo.py",
-        description="Evalua las 12 metas del sprint del prototipo AREN.IA, agrupadas en P0-P5.",
+        description="Evalua las 12 metas del sprint del prototipo AREN.IA (hoy Sílice), agrupadas en P0-P5.",
     )
     parser.add_argument(
         "--hasta",

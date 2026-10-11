@@ -49,7 +49,7 @@ palabra; las cifras y los estados de los requisitos no se repiten: viven en su f
 |---|---|
 | [../PLAN_DESARROLLO.md](../PLAN_DESARROLLO.md) — las 20 sesiones del desarrollo | completo (20 de 20) |
 | [../PLAN_MULTIDOMINIO.md](../PLAN_MULTIDOMINIO.md) — catálogos y precios publicados para telecom, industrial y sistemas (M0–M4, GM1–GM4) | completo (11 de 11) |
-| [../PLAN_PROTOTIPO.md](../PLAN_PROTOTIPO.md) — prototipo AREN.IA: componer una partida a mano (P0–P5) | completo (12 de 12 metas) |
+| [../PLAN_PROTOTIPO.md](../PLAN_PROTOTIPO.md) — prototipo AREN.IA (hoy Sílice): componer una partida a mano (P0–P5) | completo (12 de 12 metas) |
 | [../PLAN_UI.md](../PLAN_UI.md) — recorrido guiado de la interfaz (U0–U3) | U0 y U1 hechas (GU1a cruzada); GU1b en Med; U2 y U3 condicionales |
 | [../PLAN_ASISTENTE.md](../PLAN_ASISTENTE.md) — asistente de presupuestos con IA (UC‑09) | fuera del límite de la tesis: trabajo futuro |
 | [../PLAN_CIERRE.md](../PLAN_CIERRE.md) — el final de la tesis (C0–C4, Med, Red) | en curso |

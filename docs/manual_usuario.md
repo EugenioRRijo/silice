@@ -46,12 +46,16 @@ No hay más pasos (RNF‑07). Notas:
    Para trabajar con uno de esos catálogos en la interfaz, el caso se abre una vez en **Inicio**
    (campo *Archivo del caso (SQLite)* y botón *Abrir este caso*); la barra lateral lo muestra bajo
    **Caso abierto** y todas las pantallas trabajan sobre él (por defecto, `data/apu.db`). También se
-   puede arrancar la interfaz con la variable `ARENIA_CASO=<ruta>`. En la API, arrancar con la
+   puede arrancar la interfaz con la variable `SILICE_CASO=<ruta>`. En la API, arrancar con la
    variable de entorno `APU_BASE` apuntando a esa base (por ejemplo
    `sqlite:///data/apu_telecom.db`). De dónde sale cada precio y con qué fecha: [manual técnico,
    sección 8.1](manual_tecnico.md#81-catálogos-por-dominio).
 
-   **Dejar lista la aplicación para componer partidas (prototipo AREN.IA).** Una sola orden siembra
+> **Nombres de las variables.** Desde la 0.6.0 se llaman `SILICE_CASO` y `SILICE_MODO_ENTREGA`.
+> Los nombres anteriores, `ARENIA_CASO` y `ARENIA_MODO_ENTREGA`, se aceptan como alias solo
+> hasta la 0.6.0; si están las dos, manda la nueva (`ui/entorno.py`).
+
+   **Dejar lista la aplicación para componer partidas.** Una sola orden siembra
    la línea base de la clínica, tres partidas de demostración (`DEMO-01-INST`, `DEMO-02-VALV`,
    `DEMO-03-PRUEBA`) y el presupuesto de ejemplo `DEMO-001` con su informe de auditoría:
 
@@ -75,11 +79,11 @@ No hay más pasos (RNF‑07). Notas:
    **Modo entrega.** Para mostrar solo la sección **Trabajo** (Inicio y las cinco pantallas que
    usa quien presupuesta: catálogo, componer, elaborar, actualizar precios e histórico) y omitir la
    sección **Investigacion** (escenarios, partidas similares, simulador y visor 3D), se arranca con
-   la variable `ARENIA_MODO_ENTREGA` en `1` (exactamente `1`; cualquier otro valor la deja apagada):
+   la variable `SILICE_MODO_ENTREGA` en `1` (exactamente `1`; cualquier otro valor la deja apagada):
 
    ```
-   ARENIA_MODO_ENTREGA=1 uv run python -m streamlit run ui/app.py                  # bash
-   $env:ARENIA_MODO_ENTREGA = "1"; uv run python -m streamlit run ui/app.py        # PowerShell
+   SILICE_MODO_ENTREGA=1 uv run python -m streamlit run ui/app.py                  # bash
+   $env:SILICE_MODO_ENTREGA = "1"; uv run python -m streamlit run ui/app.py        # PowerShell
    ```
 
 3. **API HTTP** (opcional, para integrar con otro software):
@@ -117,7 +121,7 @@ cálculo interno redondea**: el redondeo es solo de presentación.
 | Investigacion | **Simulador de listas** | apoyo | Generar listas de precios de prueba, deterministas |
 | Investigacion | **Visor 3D del modelo** | apoyo a UC‑01 | Ver el modelo IFC junto a la tabla elemento ↔ partida |
 
-Con `ARENIA_CASO=<ruta>` la aplicación fija ese caso sin tener que abrirlo en el Inicio (la
+Con `SILICE_CASO=<ruta>` la aplicación fija ese caso sin tener que abrirlo en el Inicio (la
 aplicación sigue arrancando en el Inicio).
 
 **Casos de uso sin pantalla propia.** La tabla cubre los casos de uso que tienen pantalla; los
@@ -380,7 +384,7 @@ está en `POST /presupuestos/{codigo}/escenarios` (API) y en `core.budget.genera
 con `codigo_partida`, `descripcion`, `unidad`, `cantidad` (texto decimal exacto) y `origen_id`, sin
 propuestas; la lista queda vacía si el base no tiene pendientes.
 
-### 3.7 Componer o editar una partida a mano (UC‑10 y UC‑11, prototipo AREN.IA)
+### 3.7 Componer o editar una partida a mano (UC‑10 y UC‑11)
 
 La página **Componer una partida** (UC‑10 / UC‑11) es el recorrido completo de quien presupuesta:
 arma el análisis de precio de una partida, lo guarda en el catálogo, le asigna cantidades de obra y
@@ -654,4 +658,4 @@ Cada carpeta trae su `README.md` con el formato exacto de columnas.
 | **Importar plano** no aparece en la barra | La copia del programa está incompleta: falta el paquete de importación de planos. Actualice o vuelva a descargar el repositorio. (No depende de los extras `planos` o `civil`: si faltan, la herramienta aparece y el aviso sale al pulsar **Leer plano**) |
 | «Falta instalar el componente para leer planos DXF» (o IFC) al pulsar **Leer plano** | Falta el extra `planos` (DXF) o `civil` (IFC): ejecute `uv sync --extra planos` (DXF) o `uv sync --extra civil` (IFC) y vuelva a pulsar **Leer plano** |
 | Un archivo subido se guarda con otro nombre (por ejemplo `_CON.csv`) | El nombre original era reservado en Windows (`CON`, `NUL`, `COM1`…) o traía caracteres no permitidos: se limpia para guardarlo, y el contenido no cambia |
-| La barra lateral no muestra el caso esperado bajo «Caso abierto» | Abrirlo en **Inicio** (*Archivo del caso (SQLite)* y *Abrir este caso*) o arrancar con `ARENIA_CASO=<ruta>`: recargar la página (F5) vuelve a la ruta de `ARENIA_CASO` o, sin ella, a `data/apu.db` |
+| La barra lateral no muestra el caso esperado bajo «Caso abierto» | Abrirlo en **Inicio** (*Archivo del caso (SQLite)* y *Abrir este caso*) o arrancar con `SILICE_CASO=<ruta>`: recargar la página (F5) vuelve a la ruta de `SILICE_CASO` o, sin ella, a `data/apu.db` |

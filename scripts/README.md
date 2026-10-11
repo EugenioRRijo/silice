@@ -16,7 +16,7 @@ escribe con `--db`; con `--db` hacia otra ruta basta `--reiniciar`.
 | Script | Qué hace | Sesión o dominio |
 |---|---|---|
 | `seed.py` | carga la línea base (`tests/fixtures/apu_linea_base.py`) en `data/apu.db` para reproducir el presupuesto completo; define `RUTA_POR_DEFECTO`, la ruta de trabajo que importan los demás | I0.4 · civil |
-| `seed_demo.py` | en una sola orden: línea base, las tres partidas `DEMO-*` del caso didáctico de AREN.IA y el presupuesto `DEMO-001` guardado con su informe | P4.2 · prototipo |
+| `seed_demo.py` | en una sola orden: línea base, las tres partidas `DEMO-*` del caso didáctico de Sílice y el presupuesto `DEMO-001` guardado con su informe | P4.2 · prototipo |
 | `seed_industrial.py` | catálogo de mantenimiento industrial en `data/apu_industrial.db` y su presupuesto `MNT-001` | M2.2 · industrial |
 | `seed_sistemas.py` | catálogo de sistemas (puntos de función) en `data/apu_sistemas.db` y su presupuesto `SIS-001` | M3.2 · sistemas |
 | `seed_telecom.py` | catálogo telecom (ARENAZA) en `data/apu_telecom.db` y la reproducción de sus dos presupuestos | M1.2 · telecom |
@@ -86,7 +86,7 @@ Cada una audita las metas de su sprint (`OK`/`FALLA`/`PENDIENTE`); una fase se c
 | `meta_alpha.py` | corre la suite, ruff y el historial de git para reportar las 12 metas del sprint alpha | sprint alpha |
 | `meta_i6.py` | las 12 metas del sprint I6 (Sesiones I6.2 e I6.3) | sprint I6 |
 | `meta_multidominio.py` | las 12 metas del sprint multidominio (fases M0 a M4) | sprint multidominio |
-| `meta_prototipo.py` | las 12 metas del prototipo AREN.IA, en seis fases (P0 a P5) | sprint prototipo |
+| `meta_prototipo.py` | las 12 metas del prototipo AREN.IA (hoy Sílice), en seis fases (P0 a P5) | sprint prototipo |
 | `meta_sf.py` | las 10 metas del sprint final, en seis fases (SF0 a SF5) | sprint final |
 | `meta_asistente.py` | las 12 metas del plan del asistente de presupuestos (UC‑09) | plan del asistente |
 | `meta_redaccion.py` | los 12 chequeos de la redacción de la tesis (R1 a R12) | sprint R1 |

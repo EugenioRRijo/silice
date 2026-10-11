@@ -1,9 +1,10 @@
-# APU System
+# Sílice
 
 Sistema de generación y auditoría de Análisis de Precios Unitarios (APU) multidominio, asistido por
-modelo BIM‑5D y aprendizaje automático. Trabajo de grado; caso de estudio: obra civil del sistema de
-drenaje de una clínica (ejercicio académico ficticio con el contenido y el formato de un APU venezolano, no una obra ejecutada;
-ver [docs/linea_base.md](docs/linea_base.md)).
+modelo BIM‑5D y aprendizaje automático. Nombre del producto desde la versión 0.6.0; el prototipo de
+septiembre de 2026 se llamó AREN.IA (hoy Sílice). Trabajo de grado; caso de estudio: obra civil del
+sistema de drenaje de una clínica (ejercicio académico ficticio con el contenido y el formato de un APU
+venezolano, no una obra ejecutada; ver [docs/linea_base.md](docs/linea_base.md)).
 
 La hipótesis central del trabajo es que **un núcleo de costeo y verificación puede permanecer intacto
 mientras se agregan dominios (civil, telecom, industrial, sistemas) mediante adaptadores**. La prueba
@@ -34,6 +35,8 @@ uv run python scripts/seed.py             # carga la línea base en data/apu.db 
 uv run python -m streamlit run ui/app.py  # la interfaz: abre en Inicio, con el caso abierto y los recorridos guiados
 uv run uvicorn api.main:app               # la API (documentación interactiva en http://127.0.0.1:8000/docs)
 ```
+
+La interfaz escucha solo en 127.0.0.1 y sin telemetría: lo fija `.streamlit/config.toml`, versionado.
 
 La operación completa está en el [manual de usuario](docs/manual_usuario.md); cómo mantener y
 extender el sistema, en el [manual técnico](docs/manual_tecnico.md).
