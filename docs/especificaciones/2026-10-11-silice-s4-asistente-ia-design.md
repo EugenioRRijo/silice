@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | **propuesta, revisión 2**: incorpora la revisión del 2026‑10‑11 (requisitos, arquitectura, pruebas, hechos y seguridad) y sus rulings RV‑1…RV‑26. Pendiente de la aprobación de Eugenio. La excepción a RNF‑08 y el experimento como indicador de la tesis necesitan además el visto bueno del tutor (§14, pregunta 1) |
+| Estado | **APROBADA por Eugenio el 2026‑10‑11** (revisión 2): incorpora la revisión del 2026‑10‑11 (requisitos, arquitectura, pruebas, hechos y seguridad) y sus rulings RV‑1…RV‑26. La excepción a RNF‑08 y el experimento como indicador de la tesis necesitan además el visto bueno del tutor (§14, pregunta 1) |
 | Fecha | 2026‑10‑11 |
 | Rama | spec en `inc/silice`. Construcción en ramas cortas **por fase** desde el `main` del momento, con PR contra `main` y fusión al cruzar la compuerta de cada fase (RV‑2). S4.0–S4.2 (`asistente` sin interfaz) pueden adelantarse desde `main` como carril sin núcleo (RV‑1); el resto, después de la 0.8.0. La etiqueta `v0.9.0` va en `main` después de `v0.8.0` (§11) |
 | Versión que entrega | **0.9.0** |

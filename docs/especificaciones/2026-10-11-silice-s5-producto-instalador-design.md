@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | **propuesta corregida** tras la revisión por encargo del 2026‑10‑11 (requisitos, arquitectura, pruebas y calidad, verificador de hechos y **seguridad**; rulings RV‑1…RV‑26 del orquestador). Pendiente de la aprobación de Eugenio y de la revisión de usabilidad (maestro §6). Los rulings de §14 que no cierra un RV quedan «pendientes de ratificar por Eugenio» |
+| Estado | **APROBADA por Eugenio el 2026‑10‑11** (revisión 2) tras la revisión por encargo del 2026‑10‑11 (requisitos, arquitectura, pruebas y calidad, verificador de hechos y **seguridad**; rulings RV‑1…RV‑26 del orquestador). Pendiente de la revisión de usabilidad (maestro §6). Los rulings de §14 que no cierra un RV quedan «pendientes de ratificar por Eugenio» |
 | Fecha | 2026‑10‑11 |
 | Rama del spec | `inc/silice` (worktree `.worktrees/silice`) |
 | Construcción | **ramas cortas por fase** desde el `main` del momento, con PR contra `main` y fusión al cruzar la compuerta de la fase (RV‑2): `inc/silice-s5-1`, `inc/silice-s5-2`, … Nunca una pila de ramas |
@@ -886,7 +886,7 @@ corren las comunes, S5‑M1 (su parte), S5‑M2, S5‑M3 y S5‑M8.
 - **5.** ¿Se compra un certificado de firma de código o se acepta el aviso de SmartScreen con `SHA256SUMS` firmado (RS5‑10)?
 - **6.** ¿Quién publica el *release* y firma `SHA256SUMS` (el controlador a mano, por defecto, o la CI con permiso de
   escritura y la clave en un secreto)?
-- **7.** ¿Qué licencia lleva Sílice? (**maestro §10, P9**). El repositorio no tiene archivo `LICENSE` y un instalador que se
+- ~~**7.** ¿Qué licencia lleva Sílice?~~ **Cerrada: propietaria (todos los derechos reservados), decidida por Eugenio el 2026‑10‑11 (maestro §10, P9).** Texto original: El repositorio no tiene archivo `LICENSE` y un instalador que se
   entrega a empresas debe mostrar una (el asistente de Inno puede presentarla). Bloquea publicar el instalador.
 - **8.** ¿Qué se hace con los `.bat`, el paquete portable y `requirements.txt` sin versionar (RS5‑12)?
 - **9.** ¿Hay un segundo equipo o máquina virtual para la prueba a mano en limpio? Windows 11 Home no trae Sandbox ni

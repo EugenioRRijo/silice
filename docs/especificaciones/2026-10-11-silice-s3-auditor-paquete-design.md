@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | **propuesta, revisión 2** (2026‑10‑11). Incorpora los rulings RV‑1 … RV‑26 de la revisión por encargo (requisitos, arquitectura, pruebas y calidad, verificador de hechos y **seguridad**; maestro §10). Eugenio ratificó P1 y P2 y decidió P3 y P5 el 2026‑10‑11 (maestro §10.3); pendiente de su aprobación y de sus respuestas a P4 y P8. Los expedientes SL‑E7, SL‑E8, SL‑E9 y SL‑E12 necesitan además el visto bueno del tutor |
+| Estado | **APROBADA por Eugenio el 2026‑10‑11** (revisión 2). Incorpora los rulings RV‑1 … RV‑26 de la revisión por encargo (requisitos, arquitectura, pruebas y calidad, verificador de hechos y **seguridad**; maestro §10). Eugenio ratificó P1 y P2 y decidió P3 y P5 el 2026‑10‑11 (maestro §10.3). Los expedientes SL‑E7, SL‑E8, SL‑E9 y SL‑E12 necesitan además el visto bueno del tutor |
 | Fecha | 2026‑10‑11 |
 | Rama del spec | `inc/silice` (worktree `.worktrees/silice`) |
 | Ramas de construcción | ramas cortas **por fase**, desde el `main` del momento, con PR contra `main` y fusión al cruzar la compuerta de esa fase (RV‑2, §14). S3‑2 es el único carril de núcleo y se abre después de cerrar S2‑3; S3‑1 y S3‑5 son carriles sin núcleo |
@@ -241,7 +241,7 @@ Prioridad: E = esencial, D = deseable. Fases de §14.
 | RF‑86 | Importar y verificar un paquete: límites leídos con tope (§8.4), integridad (huellas del manifiesto), autenticidad (firma de una empresa registrada y no revocada, con separación de dominio), cadena, posición respecto de paquetes ya recibidos y banner de versión; **siempre** se reaudita con las reglas propias | UC‑23 | E | S3‑4 | cada caso de §13.3 da su estado declarado, con las fronteras exactas de §8.4; un paquete no verificado se audita igual; ninguna entrada del ZIP sale de su carpeta ni excede los límites; el banner dice la versión y la última recibida |
 | RF‑87 | Vista de revisión: estado de verificación, reauditoría con los anexos (R11–R14 recomputadas, R12 a la fecha de emisión), **diferencia entre versiones** y su costo (desvío por cantidad y por precio) frente a la entrega anterior y frente a la base de precios del revisor, Excel regenerado desde `presupuesto.json`, dictamen atado al SHA‑256 del archivo y aviso cuando quien revisa es quien armó (maestro §4.1, P2) | UC‑23 | E | S3‑4 | con el par de presupuestos de la memoria de diferencias (§13.1) la vista da los montos de la memoria; R11–R14 del paquete de prueba dan el conjunto exacto de su memoria; el dictamen queda con usuario, fecha, SHA‑256 del archivo, estado de verificación y `revisor_armo`; con un paquete de la empresa propia, un revisor que es el usuario emisor o el `usuario` de un eslabón ve el aviso y su dictamen queda con `revisor_armo` = sí; otro revisor de la misma empresa, o un paquete de una empresa ajena, no lo ve |
 | RF‑88 | APU de otras herramientas: Excel con el formato UC‑05 (plantilla descargable) auditado en memoria desde la vista de revisión, y ruta `POST /v1/auditorias` con **clave de API** que recibe el documento canónico (§6.1) y devuelve el informe; cuerpo limitado por un middleware; `TrustedHostMiddleware` | UC‑23, UC‑05 | E | S3‑4 | Excel con partidas del catálogo se audita sin el rechazo de `importacion.py:208`; sin clave o con clave revocada, 401 sin auditar; cuerpo de 20 MiB pasa y de 20 MiB + 1 B da 413 sin leerlo entero; con clave, el informe coincide con el de la vista |
-| RF‑89 | Auditoría de planos: auditoría de archivo DXF, requisitos IDS del IFC con `ifctester`, R15 (coherencia geométrica, `shapely`, severidad por condición), R16 (contraste entre dos fuentes, con el costo de la diferencia) y evaluación por **errores sembrados** con el protocolo de §13.5 | UC‑14 | E | S3‑5 | cada error del catálogo sembrado se detecta con la regla o el ítem de informe declarados; cada fila de R15 y R16 cumple sus fronteras (§11.3, §11.4); OF‑001 limpio da el conjunto exacto escrito en S3‑0; la tasa de detección y las falsas alarmas cumplen la meta del protocolo: 100 % de lo detectable y 0 falsas alarmas (valor por defecto, a ratificar por Eugenio, pregunta P8 del maestro §10.3) |
+| RF‑89 | Auditoría de planos: auditoría de archivo DXF, requisitos IDS del IFC con `ifctester`, R15 (coherencia geométrica, `shapely`, severidad por condición), R16 (contraste entre dos fuentes, con el costo de la diferencia) y evaluación por **errores sembrados** con el protocolo de §13.5 | UC‑14 | E | S3‑5 | cada error del catálogo sembrado se detecta con la regla o el ítem de informe declarados; cada fila de R15 y R16 cumple sus fronteras (§11.3, §11.4); OF‑001 limpio da el conjunto exacto escrito en S3‑0; la tasa de detección y las falsas alarmas cumplen la meta del protocolo: 100 % de lo detectable y 0 falsas alarmas (ratificada por Eugenio el 2026‑10‑11, pregunta P8 del maestro §10.3) |
 | RF‑100 | Anomalías en variaciones de precio: sobre la serie fechada de precios de un insumo (listas de la empresa de S1, RF‑67, y listas MaPreX, cada precio con su fecha), llevada a USD con la tasa de cada precio (RF‑65) y reducida a variaciones entre puntos consecutivos, el sistema marca las variaciones atípicas como **ADVERTENCIA** (`CODIGO_ATIPICO`), **nunca ERROR**, reutilizando el detector existente `ml.anomaly.precios_atipicos` (Isolation Forest, `SEMILLA` = 42, `UMBRAL_ATIPICO` = −0,05, se abstiene con menos de `MINIMO_OBSERVACIONES` = 8 variaciones) | UC‑17, UC‑23 | **D** | S3‑6 | serie sembrada de 10 precios (9 variaciones) con **un** atípico sembrado → el conjunto exacto de hallazgos es ese único punto, con severidad ADVERTENCIA; serie de 10 precios **sin** atípico → conjunto vacío; serie de 8 precios (7 variaciones) → abstención (vacío); ningún hallazgo de RF‑100 es ERROR ni bloquea guardar, exportar o firmar; sin el extra `ml` no hay hallazgo ni traza |
 
 **RF‑100 (D) cae primero** (decisión de Eugenio del 2026‑10‑11, P5): no tiene número de RNF, no toca `core/` y no
@@ -701,7 +701,7 @@ tabla, todos opcionales:
 | `anexos/espacio.json` | espacio de la versión, si tiene | reauditar R8–R10 y R15 | no |
 | `anexos/reajuste.json` | S1: índices usados con su fuente y la huella del archivo del BCV; estudios de reajuste | reauditar R11–R12 y el reajuste | no |
 | `anexos/control.json` | S2: línea base de control y calendario, valuaciones (con su fecha de registro; sin conformación, maestro P3), anulaciones, costos reales, decisiones de recuperación | reauditar R13–R14 y el valor ganado | no |
-| `anexos/ia.json` | S4: pasos y citas del asistente, sin uso de fichas, sin costo y nunca con la clave (valor por defecto, a ratificar por Eugenio, pregunta P4) | ver qué propuso la IA y con qué fuente | no |
+| `anexos/ia.json` | S4: pasos y citas del asistente, sin uso de fichas, sin costo y nunca con la clave (ratificada por Eugenio el 2026‑10‑11, pregunta P4) | ver qué propuso la IA y con qué fuente | no |
 
 - Cada entrada de `reajuste.json` y `control.json` lleva su propia huella SHA‑256; **no tienen cadena propia** (S2 ya
   es solo‑agregar en `core`): borrar una fila en la base antes de exportar no se detecta, salvo entre entregas (§6.5).
@@ -903,7 +903,7 @@ con otro plano o levantamiento»): otro DXF/IFC u otra versión.
   uno y varios errores por archivo, con su lista. **Medición** (`scripts/medir_deteccion_planos.py`): tasa de
   detección = detectados / sembrados detectables, por categoría; falsas alarmas = hallazgos fuera del conjunto exacto
   esperado. Protocolo en §13.5 b, versionado antes de medir; meta 100 % en lo detectable y cero falsas alarmas sobre
-  OF‑001 limpio (valor por defecto, a ratificar por Eugenio, pregunta P8 del maestro §10.3).
+  OF‑001 limpio (ratificada por Eugenio el 2026‑10‑11, pregunta P8 del maestro §10.3).
 - **Conjunto exacto de OF‑001 limpio.** No se pudo fijar leyendo el código en esta revisión: R15 y R16 todavía no
   existen. Lo que se sabe: las **33 ADVERTENCIAS de R8** por constantes supuestas (las que cita S4) y, sin segunda
   fuente, R16 no corre. **S3‑0 escribe el conjunto como literal** (regla, severidad y `origen_ids` de cada hallazgo de
@@ -1050,7 +1050,7 @@ Los dos se escriben en S3‑0 y se versionan con su huella SHA‑256 **antes de 
   se siembran juntos y cómo se tratan los que se enmascaran), la parte del catálogo escrita por quien no programa las
   reglas sin ver la implementación, los «no detectables» informados con su número, y las amenazas: validez de
   constructo (errores sintéticos) y externa (un solo caso, OF‑001). Meta: 100 % de lo detectable y 0 falsas alarmas
-  (valor por defecto, a ratificar por Eugenio, pregunta P8 del maestro §10.3).
+  (ratificada por Eugenio el 2026‑10‑11, pregunta P8 del maestro §10.3).
 
 **Casos con personas (Med):** CP‑R1 (revisar un paquete con diferencias sembradas, dentro del protocolo a) y CP‑R2
 (registrar una clave comprobando su huella), casos IEEE 829 del guion; RNF‑17 fija consigna, paradas y criterio antes
@@ -1160,7 +1160,7 @@ Las que dependen de Eugenio remiten al maestro §10.3; las que cerró la revisi�
    2026‑10‑11 (pregunta P1).
 6. ¿El tutor acepta SL‑E7, SL‑E8, SL‑E9 y SL‑E12 en `core/`? — Tutor.
 7. ¿La meta de §11.5 (100 % en lo detectable y cero falsas alarmas sobre OF‑001 limpio) es la correcta? — **Valor
-   por defecto fijado por RV‑20**; a ratificar en la pregunta P8 del maestro §10.3.
+   por defecto fijado por RV‑20**; ratificada por Eugenio el 2026‑10‑11 en la pregunta P8 del maestro §10.3.
 8. ¿CP‑R1 y CP‑R2 entran en Med o en una medición propia del indicador del administrador? — **Cerrada en parte por
    RV‑20:** S3‑0 es dueño del protocolo del indicador, con dos condiciones (§13.5 a), y CP‑R1 es su condición «con el
    sistema». Si se mide en la misma sesión de Med o en otra lo fija ese protocolo.

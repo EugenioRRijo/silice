@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | **propuesta, revisión 2**: revisada el 2026‑10‑11 por los cinco encargos (requisitos, arquitectura, pruebas y calidad, verificador de hechos, seguridad) y corregida según los rulings RV‑1…RV‑26 de esa revisión; pendiente de la aprobación de Eugenio. Los tres expedientes de `core/` (§11) necesitan además el visto bueno del tutor |
+| Estado | **APROBADA por Eugenio el 2026‑10‑11** (revisión 2): revisada el 2026‑10‑11 por los cinco encargos (requisitos, arquitectura, pruebas y calidad, verificador de hechos, seguridad) y corregida según los rulings RV‑1…RV‑26 de esa revisión. Los tres expedientes de `core/` (§11) necesitan además el visto bueno del tutor |
 | Versión que entrega | **0.6.0** (spec maestro §5) = **S5‑1 adelantado** (Alembic, respaldo, `preparar_base`, casos en carpeta; spec S5) **+ S1** (RV‑1, RV‑3). La 0.5.0 ya está en `main` (8610053, etiqueta anotada `v0.5.0`) |
 | Fecha | 2026‑10‑11 |
 | Rama del spec | `inc/silice` (worktree `.worktrees/silice`, ya contiene `main`). Construcción en ramas cortas por fase desde `main`, con PR contra `main` (RV‑2, §10) |

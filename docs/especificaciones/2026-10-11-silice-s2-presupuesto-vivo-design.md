@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | **propuesta corregida** tras la revisión de los cinco encargos (requisitos, arquitectura, pruebas y calidad, verificador de hechos, seguridad) y sus rulings RV‑1…RV‑26 del 2026‑10‑11; pregunta P3 del maestro decidida por Eugenio el 2026‑10‑11 (valuaciones sin conformación, S2‑R14); pendiente de la aprobación de Eugenio. Los tres expedientes de `core/` (§5.4) necesitan además el visto bueno del tutor |
+| Estado | **APROBADA por Eugenio el 2026‑10‑11** (revisión 2) tras la revisión de los cinco encargos (requisitos, arquitectura, pruebas y calidad, verificador de hechos, seguridad) y sus rulings RV‑1…RV‑26 del 2026‑10‑11; pregunta P3 del maestro decidida por Eugenio el 2026‑10‑11 (valuaciones sin conformación, S2‑R14). Los tres expedientes de `core/` (§5.4) necesitan además el visto bueno del tutor |
 | Versión que entrega | **0.7.0** (spec maestro §5; RV‑1); condición: 0.6.0 fusionada (S5‑1 adelantado: Alembic, respaldo, `preparar_base`; y S1: moneda, tasa fechada, reajuste). La 0.8.0 (S3) se construye **sobre** la 0.7.0, porque el paquete lleva los anexos de S2 |
 | Fecha | 2026‑10‑11 |
 | Rama del spec | `inc/silice` (worktree `.worktrees/silice`). Construcción (RV‑2): una rama corta por **fase** desde el `main` del momento, PR contra `main` y fusión al cruzar la compuerta de la fase (§8); un solo carril de núcleo abierto a la vez: S1‑1 → S1‑3 → S1‑4 → **S2‑1 → S2‑2 → S2‑3** → S3‑2; la fase de interfaz S2‑4 con la guardia M9 |
