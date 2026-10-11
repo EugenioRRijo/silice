@@ -511,6 +511,20 @@ parciales, 0 sin prueba y 4 no implementados. El único parcial que queda es UC�
 la pantalla no tiene prueba e INV‑103 está en limitaciones); los tres no implementados son UC‑03 5,
 UC‑04 5 (RF‑20) y UC‑08 4a (decisión D6).
 
+### 8.2 Filas de Sílice 0.6.0 (S5‑1): RF‑96
+
+Fuente: [spec S5 §12](especificaciones/2026-10-11-silice-s5-producto-instalador-design.md). El commit de cada
+prueba va antes que el de su implementación, con el rojo observado. Estas filas no entran en el resumen de §8.
+
+| RF | Prueba(s) que lo demuestran | Estado |
+|---|---|---|
+| RF‑96 (a) | `tests/integration/test_preparar_base.py::test_una_base_que_no_existe_nace_en_head_sin_juego`, `tests/integration/test_preparar_base.py::test_una_base_de_la_0_5_0_se_adopta_con_juego_y_recarga_igual_que_su_ficha`, `tests/integration/test_preparar_base.py::test_migrar_lleva_todo_a_head_con_un_solo_juego`, `tests/integration/test_preparar_base.py::test_la_base_de_la_instalacion_nace_vacia_con_su_alembic_version` | parcial (bases de 0.6.0…0.9.0 e `instalacion.db` con tablas: en su versión) |
+| RF‑96 (b) | `tests/integration/test_respaldo.py::test_el_juego_trae_la_copia_verificada_y_su_ficha`, `tests/integration/test_respaldo.py::test_la_instalacion_va_siempre_en_el_juego_aunque_no_se_migre`, `tests/integration/test_respaldo.py::test_se_conservan_los_cinco_ultimos_de_migracion_y_todos_los_manuales` | verde |
+| RF‑96 (c) | `tests/integration/test_preparar_base.py::test_un_fallo_inyectado_en_una_revision_deja_la_base_como_estaba`, `tests/integration/test_preparar_base.py::test_disco_lleno_al_respaldar_no_migra_ni_toca_la_base` | verde |
+| RF‑96 (d) | `tests/integration/test_preparar_base.py::test_una_base_sin_modalidad_no_es_adoptable_y_no_se_toca`, `tests/integration/test_preparar_base.py::test_una_base_de_una_version_mas_nueva_no_se_toca`, `tests/integration/test_api_preparar_base.py::test_una_base_mas_nueva_responde_503_y_no_se_toca` | verde |
+| RF‑96 (e) | `tests/unit/test_casos.py::test_unc_absolutas_puntos_y_carpetas_se_rechazan_sin_tocar_el_disco`, `tests/unit/test_ui_caso.py::test_estado_caso_no_emite_ddl_ni_cambia_el_archivo`, `tests/unit/test_ui_inicio.py::test_el_inicio_no_ofrece_una_ruta_libre` | verde |
+| RF‑96 (f) | `tests/integration/test_respaldo.py::test_restaurar_un_juego_con_la_instalacion_vacia_de_la_0_6_0`, `tests/integration/test_respaldo.py::test_restaurar_la_instalacion_lista_los_eventos_posteriores_al_juego` | parcial (el bloqueo de operaciones sensibles hasta la revisión llega con S3 y S5‑2) |
+
 ## 9. Trazabilidad RNF → verificación
 
 | RNF | Cómo se verificó | Resultado |
@@ -528,6 +542,7 @@ UC‑04 5 (RF‑20) y UC‑08 4a (decisión D6).
 | RNF‑11 desempeño de la hoja | `scripts/medir_rnf11.py` con el generador determinista de 500 puntos (SF0): desde aplicar una edición hasta tener presupuesto, informe y PE, sin persistir, en `ui.hoja` sin Streamlit; mediana de cinco corridas tras una de calentamiento ≤ 2 s. Veredicto en el equipo de desarrollo (como RNF‑03); la CI registra la cifra en Linux y Windows sin romper la corrida | **cumple en el equipo de desarrollo**: mediana 0,125 s (2026‑10‑05, §10 «Medición de RNF‑11»); la CI solo registra |
 | RNF‑12 seguridad de exportes y subidas | una prueba por cada prefijo de fórmula (`=`, `+`, `-`, `@`, tabulador, retorno de carro; un negativo sigue siendo número) y por cada ruta peligrosa (`..\`, `../`, absoluta, nombres reservados de Windows); DXF/IFC de más de 20 MB o malformados se rechazan con mensaje: `tests/unit/test_excel_m1.py::test_exportar_excel_escribe_como_texto_cada_prefijo_peligroso`, `tests/unit/test_excel_m1.py::test_exportar_hoja_escribe_como_texto_cada_prefijo_peligroso`, `tests/unit/test_excel_m1.py::test_un_numero_negativo_legitimo_sigue_siendo_numero_y_un_texto_negativo_sigue_siendo_texto`, `tests/integration/test_hoja_versiones.py::test_un_texto_con_prefijo_de_formula_no_se_exporta_como_formula`, `tests/unit/test_ui_subidas.py::test_nombre_seguro_deja_un_solo_componente_limpio`, `tests/unit/test_ui_subidas.py::test_nombres_reservados_de_windows_se_renombran_y_los_demas_no`, `tests/unit/test_ui_subidas.py::test_guardar_nunca_deja_archivos_fuera_de_la_carpeta`, `tests/unit/test_planos_ifc.py::test_un_archivo_de_mas_de_20_mb_se_rechaza`, `tests/unit/test_planos_ifc.py::test_un_ifc_con_mas_elementos_que_el_tope_se_rechaza_sin_traza`, `tests/unit/test_planos_dxf.py::test_un_dxf_con_mas_entidades_que_el_tope_se_rechaza_sin_traza` | **cumple** (automatizado, SF3–SF5) |
 | RNF‑13 usabilidad de la hoja | CP‑08 a CP‑11 del [guion](guion_prueba_arenia.md), con el mismo número y perfil de participantes que CP‑07 pero personas distintas: cada caso sin ayuda en ≤ 15 min por todos, bloque B ≥ 4,0 y ningún ítem < 3; veredicto por caso. Consigna, paradas y criterio se fijan antes de medir | pendiente de la fase de mediciones (guion CP‑08…11 listo; ninguna persona lo ha ejecutado) |
+| RNF‑20 deriva de esquema | `tests/integration/test_migraciones.py::test_head_en_vacio_es_igual_a_create_all`, `::test_la_autogeneracion_contra_head_no_propone_cambios`, `::test_toda_metadata_con_tablas_esta_en_la_lista_de_su_destino`, `::test_cada_revision_baja_y_vuelve_a_subir`, en los dos destinos | cumple (desde la 0.6.0) |
 
 ## 10. Registro de la ejecución (CI de la compuerta GC6, 2026‑09‑29)
 

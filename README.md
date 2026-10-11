@@ -30,9 +30,8 @@ uv sync --all-extras                      # crea .venv con las dependencias, el 
 uv run python scripts/descargar_modelo.py      # una vez: modelo de similitud (la suite corre sin red)
 uv run pytest -W error                    # suite de pruebas (advertencia = error)
 uv run ruff check .                       # estilo
-uv run python scripts/seed.py             # carga la línea base en data/apu.db (idempotente; recrear: --reiniciar --confirmar)
-# ^ sobre la base por defecto, --reiniciar exige --confirmar; con --db hacia otra ruta basta --reiniciar
-# ^ si su data/apu.db es anterior a P2, añada la columna `modalidad` con ALTER TABLE o use --reiniciar --confirmar (docs/bitacora/2026-09-20-P2-hallazgo-migraciones.md)
+uv run python -m operacion adoptar data/apu.db --nombre silice   # una vez, si trae una base de la 0.5.0: la copia a data/casos/silice.db y la migra (el original no se toca)
+uv run python scripts/seed_demo.py --db data/casos/silice.db     # o, sin base anterior: el caso de demostración en el caso por defecto
 uv run python -m streamlit run ui/app.py  # la interfaz: abre en Inicio, con el caso abierto y los recorridos guiados
 uv run uvicorn api.main:app               # la API (documentación interactiva en http://127.0.0.1:8000/docs)
 ```
