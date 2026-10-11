@@ -7097,7 +7097,7 @@ sprint»: `| `meta_silice_s5.py` | parte S5 de la meta única: RF‑96 y RNF‑2
 
 - [ ] **Paso 4: Correrla y ver el verde** (y la suite del módulo)
 Run: `uv run pytest tests/unit/test_documentos_s5_1.py tests/unit/test_meta_silice_s5.py tests/unit/test_meta_silice.py tests/unit/test_meta_datos.py -v -W error && uv run python scripts/meta_datos.py`
-Esperado: PASS y la meta de datos en OK (ningún documento presenta como reales los datos construidos). Tras el commit del
+Esperado: PASS y la meta de datos en OK (ningún documento afirma que los datos construidos sean datos de obras verdaderas). Tras el commit del
 paso 5: `uv run pytest -q -W error -p no:cacheprovider --junitxml=reporte-pruebas.xml`, `uv run python scripts/medir_rnf11.py`
 y `uv run python scripts/meta_silice.py --version 0.6.0 --hasta S5-1 --junit reporte-pruebas.xml` → todas las filas en OK.
 
