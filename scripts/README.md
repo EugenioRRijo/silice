@@ -93,3 +93,4 @@ Cada una audita las metas de su sprint (`OK`/`FALLA`/`PENDIENTE`); una fase se c
 | `meta_asistente.py` | las 12 metas del plan del asistente de presupuestos (UC‑09) | plan del asistente |
 | `meta_redaccion.py` | los 12 chequeos de la redacción de la tesis (R1 a R12) | sprint R1 |
 | `meta_datos.py` | tres chequeos (D1 a D3): la documentación del repositorio no presenta sus datos como reales | limpieza de datos |
+| `meta_silice.py` | meta única de Sílice: siete comprobaciones comunes (ERS por presencia, cero omitidas, prueba antes que código, contratos y regresión intactos desde v0.5.0, cifras de tiempo, guardia de red) más las de cada parte en `meta_silice_<parte>.py` | 0.6.0 a 1.0.0 |
