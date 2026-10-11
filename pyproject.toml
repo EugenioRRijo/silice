@@ -24,6 +24,7 @@ civil = ["ifcopenshell>=0.8"]
 planos = ["ezdxf>=1.3"]
 ml = ["scikit-learn>=1.4", "sentence-transformers>=3.0", "xgboost>=2.0"]
 informes = ["reportlab>=4.0", "matplotlib>=3.8"]
+bcv = ["xlrd>=2.0"]  # adapters/bcv: archivos .xls del BCV (licencia BSD, docs/bitacora/2026-10-silice-060.md)
 
 [dependency-groups]
 dev = [
