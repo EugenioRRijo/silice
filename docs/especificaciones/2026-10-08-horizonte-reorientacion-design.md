@@ -159,9 +159,9 @@ bueno (dimensionar está fuera del alcance) ni planos en PDF o escaneados.
 
 | Para detectar | Herramienta | Estado |
 |---|---|---|
-| DXF dañado o mal construido | la auditoría de archivo de `ezdxf` | ya en el sistema |
+| DXF dañado o mal construido | la auditoría de archivo de `ezdxf` | la biblioteca ya está, pero **hoy no se ejecuta ninguna auditoría** (`adapters/espacio/planos/dxf.py` solo lee el archivo); se agrega en S3 (RF‑89). Corregido el 2026‑10‑11 |
 | IFC que no trae lo mínimo (espacio sin altura, aparato sin diámetro, tomacorriente sin circuito) | requisitos declarados en **IDS** (estándar de buildingSMART) y comprobados con **`ifctester`** (IfcOpenShell) | IfcOpenShell ya está; falta el IDS |
-| Geometría absurda: ambientes superpuestos, puntos duplicados, escalas imposibles, puntos sin fuente | **`shapely`** con su índice espacial | nueva dependencia |
+| Geometría absurda: ambientes superpuestos, puntos duplicados, escalas imposibles, puntos sin fuente | **`shapely`** con su índice espacial | ya instalada como dependencia de IfcOpenShell; se declara como dependencia directa |
 | Diferencias entre dos fuentes (plano contra levantamiento; plano nuevo contra anterior), traducidas a dinero | `shapely` para emparejar con tolerancia y el núcleo para valorar la diferencia | parcial |
 | Lo que propone la IA | salida estructurada validada con Pydantic, y luego las reglas del auditor | Pydantic ya está |
 | Ver el error sobre el plano | dibujo de `ezdxf` con `matplotlib`, o plotly | parcial |
