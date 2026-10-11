@@ -14,6 +14,7 @@ el 2026-09-16 (`ls docs/fuentes/`). Once archivos, ocho fichas: algunas fichas c
 | `Dodi_Salas_2019_FCAS_UJAP.pdf` | Dodi Scovino, K. S., y Salas Caraballo, J. M. (2019). Trabajo de grado, Universidad José Antonio Páez: rangos de FCAS de 78 % a 2 386 % según qué cláusulas se incluyan | No aplica (trabajo académico, no Gaceta) | Repositorio de la Universidad José Antonio Páez | spec §5; dossier G0, decisión D4 |
 | `Bases_Anteproyecto_BIM5D_APU.docx` | Bases del anteproyecto de esta tesis | No aplica | Ya estaba en la carpeta al abrir esta sesión | NORMAS.md §1; docs/ERS.md |
 | `Estado_del_Arte_BIM5D_ML_APU.pdf` | Estado del arte del anteproyecto | No aplica | Ya estaba en la carpeta al abrir esta sesión | docs/metodologia.md |
+| `bcv_formatos.md` | Formatos de los archivos del BCV (tasa trimestral, INPC) verificados abriendo los archivos reales; sus copias y huellas están en `tests/fixtures/bcv/` con `FUENTE.md` | No aplica | bcv.org.ve (2026-10-11) | S1 §7 |
 
 ## Salvedades
 
