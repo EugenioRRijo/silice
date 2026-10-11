@@ -26,7 +26,7 @@ de cada rama que incorpora un dominio—, la vigila `tests/unit/test_arquitectur
 ## Arranque rápido
 
 ```powershell
-uv sync --all-extras                      # crea .venv con las dependencias, el grupo dev y los extras (ui, api, civil, ml)
+uv sync --all-extras                      # crea .venv con las dependencias, el grupo dev y los extras (ui, api, civil, ifc, planos, ml, anomalias, similitud, informes, bcv, ia)
 uv run pytest -W error                    # suite de pruebas (advertencia = error)
 uv run ruff check .                       # estilo
 uv run python scripts/seed.py             # carga la línea base en data/apu.db (idempotente; recrear: --reiniciar --confirmar)
