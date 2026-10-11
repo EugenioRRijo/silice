@@ -269,8 +269,7 @@ la IA» al agrupar hallazgos; si los encargos o el tutor lo exigen, SL‑E10 se 
   `presupuesto.json`. El registro `ia_*` de las sesiones cuyas propuestas se aceptaron viaja en
   **`anexos/ia.json`**, cubierto por `huella_anexos` del manifiesto firmado: pedido, turnos, llamadas con sus citas y
   su validación, y decisiones del usuario, **sin** uso de fichas ni costo y **nunca** con la clave de IA de la
-  empresa. Valor por defecto, a ratificar por Eugenio (RV‑19; pregunta P4 del maestro §10). Si no se ratifica, el
-  anexo no se escribe y la procedencia queda solo en el prefijo `ia:` y en el `RegistroCambio.fuente`.
+  empresa. Ratificada por Eugenio el 2026‑10‑11 (RV‑19; pregunta P4 del maestro §10).
 
 ## 6. Herramientas expuestas al modelo
 
@@ -293,7 +292,7 @@ Reglas comunes:
 | Herramienta | Tipo | Argumentos (todos requeridos; `?` = admite `null`) | Devuelve al modelo |
 |---|---|---|---|
 | `consultar_borrador` | lectura | — | resumen minimizado del borrador (§8.1): ambientes, fuentes, puntos y recorridos con ids y geometría; partidas de `items_base` con código, descripción, unidad y cantidad; ids ya usados. Sin precios, montos ni nombres |
-| `buscar_partidas` | lectura | `texto`, `especialidad?` (`agua`, `datos`, `electricidad`), `cuantos` (1–10) | código, descripción, unidad y puntaje de similitud (UC‑03, `ml.normalization.proponedor`); si el módulo opcional de similitud no está instalado, búsqueda por palabras declarada como tal. Nunca precios. En modo nube, de MaPreX solo código y unidad (§8.1, P7). Tope de **≈ 50 partidas distintas por sesión** (§8.7): al alcanzarlo, la herramienta devuelve solo partidas ya vistas en la sesión y lo dice |
+| `buscar_partidas` | lectura | `texto`, `especialidad?` (`agua`, `datos`, `electricidad`), `cuantos` (1–10) | código, descripción, unidad y puntaje de similitud (UC‑03, `ml.normalization.proponedor`); si el módulo opcional de similitud no está instalado, búsqueda por palabras declarada como tal. Nunca precios. En modo nube, de MaPreX solo código y unidad (§8.1, P7, ratificada por Eugenio el 2026‑10‑11). Tope de **≈ 50 partidas distintas por sesión** (§8.7): al alcanzarlo, la herramienta devuelve solo partidas ya vistas en la sesión y lo dice |
 | `consultar_partida` | lectura | `codigo` | descripción, unidad y tipos de insumo de la composición, **sin cantidades ni precios** (en modo nube, sin descripción si es de MaPreX, §8.1); cuenta para el tope de ≈ 50 partidas |
 | `proponer_ambiente` | propuesta | `id`, `nombre`, `x0`, `y0`, `largo`, `ancho`, `alto`, `citas`, `supuestos` | id de la propuesta o motivo del rechazo |
 | `proponer_fuente` | propuesta | `id`, `especialidad`, `tipo` (`TipoFuente`), `ambiente_id`, `x`, `y`, `z`, `citas`, `supuestos` | ídem |
@@ -360,7 +359,7 @@ fila que la hoja no construye; texto de `terminar` con montos.
 | las instrucciones del sistema y los esquemas de las herramientas (fijos, versionados) | precios, montos, totales, APU, curva, punto de equilibrio, cotizaciones, listas de precios |
 | el pedido y las respuestas del usuario, **tal como los escribe** (la vista previa lo advierte) | nombre del proyecto (se envía un alias `P1`), nombre de la empresa, de usuarios o del cliente |
 | el resumen del borrador de `consultar_borrador` (ids, geometría, códigos, descripciones, unidades, cantidades) | archivos: planos, Excel, PDF de MaPreX o de terceros, el paquete |
-| descripciones y unidades de **hasta 10** partidas candidatas por búsqueda y ≈ 50 distintas por sesión (§8.7). De las partidas que vienen de MaPreX, en modo nube **solo el código y la unidad**, sin descripción (valor por defecto, a ratificar por Eugenio, pregunta P7 del maestro §10); las descripciones propias de la empresa sí viajan | el catálogo completo |
+| descripciones y unidades de **hasta 10** partidas candidatas por búsqueda y ≈ 50 distintas por sesión (§8.7). De las partidas que vienen de MaPreX, en modo nube **solo el código y la unidad**, sin descripción (ratificada por Eugenio el 2026‑10‑11, pregunta P7 del maestro §10; el piloto mide la pérdida); las descripciones propias de la empresa sí viajan | el catálogo completo |
 | hallazgos minimizados: regla, severidad, claves de fila y descripción; en R2 y R7 la descripción se reemplaza por un texto fijo sin montos; el campo `impacto` nunca | la clave de IA de la empresa (va en el encabezado de autenticación del SDK, nunca en el contenido), el registro `ia_*`, otras versiones |
 
 **Modo local:** lo mismo se envía al proceso de Ollama **dentro del equipo**; nada sale (RNF‑18 a).
@@ -749,14 +748,14 @@ Las preguntas de Eugenio y del tutor se consolidan en el spec maestro §10; aqu�
 
 1. **Tutor (abierta; maestro §10.3, «para el tutor»):** ¿acepta la excepción a RNF‑08 (asistente en la nube,
    apagado por defecto) y el experimento de §9 como medición de OE‑H2?
-2. **Eugenio, pregunta P7 del maestro §10.3 (valor por defecto: no):** ¿se pueden enviar a un proveedor externo las
-   **descripciones** de partidas que provienen de MaPreX? Mientras no responda, en modo nube de MaPreX viajan solo
-   código y unidad; las descripciones propias de la empresa sí (§8.1). Bloquea cerrar la lista blanca en S4.2.
+2. **Cerrada, P7 del maestro §10.3 (ratificada por Eugenio el 2026‑10‑11):** las **descripciones** de partidas
+   que provienen de MaPreX no se envían a un proveedor externo; en modo nube de MaPreX viajan solo código y unidad;
+   las descripciones propias de la empresa sí (§8.1). El piloto mide la pérdida. Ya no bloquea la lista blanca de S4.2.
 3. **Parámetro (maestro §10.4):** ¿qué modelo local y qué equipo de referencia (memoria, tarjeta gráfica) tiene una
    contratista típica? Define si el modo local es de uso real o solo de experimento.
 4. **Cerrada por RV‑8 y RV‑19:** el registro `ia_*` viaja en `anexos/ia.json` del paquete formato v1, con pasos y
-   citas, sin uso ni costo y nunca con la clave de IA de la empresa (§5.5). Valor por defecto, **a ratificar por
-   Eugenio (pregunta P4 del maestro §10.3)**.
+   citas, sin uso ni costo y nunca con la clave de IA de la empresa (§5.5). **Ratificada por Eugenio el
+   2026‑10‑11 (pregunta P4 del maestro §10.3)**.
 5. **Parámetro (maestro §10.4):** ¿quién es la segunda persona que revisa el banco de tareas antes de congelarlo?
 6. **Parámetro (maestro §10.4):** ¿proveedor elegido por instalación o también por usuario? Por defecto, de la
    instalación (maestro §4.4), con cambio por sesión.

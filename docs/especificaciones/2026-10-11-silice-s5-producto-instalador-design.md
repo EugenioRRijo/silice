@@ -55,7 +55,9 @@ del instalador básico con lo pesado en módulos opcionales (maestro §3, §8).
   (`ui/paginas/inicio.py:18`), `scripts.seed` (`ui/paginas/actualizacion.py:69`) y `scripts.simular_lista`
   (`ui/paginas/simulador.py:22`), y estos importan `tests.fixtures` (NORMAS §6 ya lo advierte). Un instalador que
   copie solo `core/ adapters/ ml/ ui/ api/` no arranca; uno que copie todo `tests/fixtures/` arrastraría los `.xls`
-  del BCV, las grabaciones de S4, las bases de prueba y el catálogo de planos (ARQ‑H21).
+  del BCV, las grabaciones de S4, las bases de prueba y el catálogo de planos (ARQ‑H21). Los `.xls` del BCV se
+  versionan solo en el repositorio privado (`tests/fixtures/bcv/`, con `FUENTE.md`) y **no viajan** en el instalador:
+  cada empresa descarga los suyos (maestro §10.3, P6, ratificada por Eugenio el 2026‑10‑11).
 - **Streamlit 1.62.0, probado aquí con un Python autónomo de `uv`:**
   - sin `server.address`, escucha en **todas las interfaces** (`0.0.0.0:8598` y `[::]:8598` en `netstat`) e imprime
     una «External URL» con la IP pública: el arranque actual (README, manual de usuario §2) ya expone la aplicación a
@@ -480,7 +482,7 @@ API revocadas, cuentas desactivadas, roles retirados y revocaciones ajenas regis
    trae (diferencia de conjuntos, como en §1.3), más `silice_similitud.pth` (va en el componente).
 3. Copia el código según `instalador/manifiesto.toml` (lista blanca): los paquetes del producto; de `scripts/` y
    `tests/fixtures/`, **solo el cierre de importaciones** de `scripts.seed*` y `scripts.simular_lista`, calculado al
-   construir y comprobado por `test_manifiesto`; **nunca** todo `tests/fixtures/` (ni los `.xls` del BCV, ni las
+   construir y comprobado por `test_manifiesto`; **nunca** todo `tests/fixtures/` (ni los `.xls` del BCV de `tests/fixtures/bcv/`, que no viajan por P6, ni las
    grabaciones de S4, ni las bases de prueba, ni el catálogo de planos); de `data/`, solo lo que el producto lee (los
    PDF de `data/precios` no viajan mientras su redistribución no esté aclarada); `pyproject.toml`; y
    `instalador/streamlit_config.toml` como `codigo\.streamlit\config.toml`, el único `config.toml` permitido. Nunca

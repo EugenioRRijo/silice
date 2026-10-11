@@ -683,9 +683,9 @@ en S1‑0 (con Excel o LibreOffice, no con `xlrd`): el número N de hojas; la pr
 cada una con su fecha valor y sus valores de compra y venta del USD; y el literal ya verificado de la tasa con
 fecha valor 01‑10‑2026: **858,02 / 860,18 Bs** (antecedentes §6). Del INPC, la misma transcripción para el
 primer mes, el último y uno del medio, con su marca de provisional. La prueba compara lo que entrega el
-adaptador con esa transcripción; así el oráculo no sale de la biblioteca que se prueba. Si los archivos no se
-pueden redistribuir (pregunta 8 = P6 del spec maestro §10.3), la transcripción queda y los archivos se reemplazan por cuadrículas
-transcritas a mano (S1‑R13).
+adaptador con esa transcripción; así el oráculo no sale de la biblioteca que se prueba. Los `.xls` se versionan
+en el repositorio privado como *fixtures* de prueba y no van en el instalador: cada empresa descarga los suyos
+(S1‑R13; pregunta 8 = P6 del spec maestro §10.3, ratificada por Eugenio el 2026‑10‑11).
 
 ### 9.4 Meta de la versión (RV‑17)
 
@@ -764,7 +764,7 @@ y el reajuste lado a lado no se recortan: son el criterio de éxito de la 0.6.0.
 | S1‑R10 | Índice del período = mes en que cierra; `I0` = mes declarado, obligatorio | promedio del período; mes de la oferta por defecto | diferencias de un mes de inflación; parámetro |
 | S1‑R11 | Reajuste en la moneda de `Vo`; USD con índice en Bs da ADVERTENCIA, no se bloquea | convertir `Vo` a Bs siempre | sobreestimar el reajuste de un contrato en USD |
 | S1‑R12 | `.xls` con `xlrd` (como el spec maestro §3) en el extra `bcv`, que entra en el instalador básico (RV‑24) | `python-calamine`; pedir al usuario que convierta a `.xlsx` | cambiar `libro.py`; la cuadrícula neutra aísla el resto |
-| S1‑R13 | Archivos reales del BCV versionados como datos de prueba con su fuente y huella | archivos sintéticos | si no se pueden redistribuir, se reemplazan por cuadrículas transcritas a mano y se pierde la prueba del lector real |
+| S1‑R13 | Archivos reales del BCV versionados en el repositorio privado como datos de prueba (`tests/fixtures/bcv/`) con su fuente, huella y `FUENTE.md` transcrito a mano; no van en el instalador (ratificada por Eugenio el 2026‑10‑11, P6) | archivos sintéticos | sin el archivo real se pierde la prueba del lector real |
 | S1‑R14 | `R` no se aplica a la comprobación directa salvo que la cláusula lo declare | aplicarla siempre | comparación lado a lado sesgada |
 | S1‑R15 | Monedas guardadas como `"Bs"` y `"USD"` (las palabras de H‑D1), no códigos ISO | código ISO del bolívar | renombrar un valor en datos nuevos; ninguna base existente tiene `"Bs"` |
 | S1‑R16 | Desvío de R11 con una sola división y **sin cuantizar** antes de comparar; fronteras de la memoria construidas en la misma moneda y tasa (PRU‑H11) | cuantizar el desvío a 0,01 % antes de comparar | una frontera que pasa o falla por el dígito 28 de un cociente |
@@ -815,8 +815,9 @@ quedan para la trazabilidad. Mientras no haya respuesta, rige el valor por defec
    por su fecha *hasta*; criterio en RF‑71 y entrega en RF‑72 de S2 (§8.6).
 7. ¿Se aceptan el rango de R11 (−20 % / +30 %) y el plazo de R12 (30 días) como supuestos por defecto, o
    Eugenio prefiere otros? → parámetros con valor por defecto, spec maestro §10.4.
-8. ¿Se pueden redistribuir en el repositorio los archivos del BCV (S1‑R13)? → pregunta P6 del spec maestro
-   §10.3; por defecto, sí, en el repositorio privado como *fixture* de pruebas y no en el instalador, así que
-   no bloquea S1‑0. Si la respuesta es no, queda la transcripción a mano de §9.3.
+8. ~~Redistribución de los archivos del BCV.~~ **Cerrada:** ratificada por Eugenio el 2026‑10‑11 (pregunta P6
+   del spec maestro §10.3): los `.xls` se versionan en el repositorio privado como *fixtures* de prueba
+   (`tests/fixtures/bcv/`) con `FUENTE.md` transcrito a mano, que sigue siendo el oráculo (§9.3); no van en el
+   instalador, cada empresa descarga los suyos (S1‑R13).
 9. ¿Se marca algo (más que una nota) cuando las variaciones superan el 10 % del monto original, una vez
    confirmado el artículo de la Comisión de Contrataciones? → normativa a cotejar, spec maestro §10.4.

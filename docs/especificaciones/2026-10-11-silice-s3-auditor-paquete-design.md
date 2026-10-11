@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | **propuesta, revisión 2** (2026‑10‑11). Incorpora los rulings RV‑1 … RV‑26 de la revisión por encargo (requisitos, arquitectura, pruebas y calidad, verificador de hechos y **seguridad**; maestro §10). Eugenio ratificó P1 y P2 y decidió P3 el 2026‑10‑11 (maestro §10.3); pendiente de su aprobación y de sus respuestas a P4 y P8. Los expedientes SL‑E7, SL‑E8, SL‑E9 y SL‑E12 necesitan además el visto bueno del tutor |
+| Estado | **propuesta, revisión 2** (2026‑10‑11). Incorpora los rulings RV‑1 … RV‑26 de la revisión por encargo (requisitos, arquitectura, pruebas y calidad, verificador de hechos y **seguridad**; maestro §10). Eugenio ratificó P1 y P2 y decidió P3 y P5 el 2026‑10‑11 (maestro §10.3); pendiente de su aprobación y de sus respuestas a P4 y P8. Los expedientes SL‑E7, SL‑E8, SL‑E9 y SL‑E12 necesitan además el visto bueno del tutor |
 | Fecha | 2026‑10‑11 |
 | Rama del spec | `inc/silice` (worktree `.worktrees/silice`) |
 | Ramas de construcción | ramas cortas **por fase**, desde el `main` del momento, con PR contra `main` y fusión al cruzar la compuerta de esa fase (RV‑2, §14). S3‑2 es el único carril de núcleo y se abre después de cerrar S2‑3; S3‑1 y S3‑5 son carriles sin núcleo |
@@ -88,14 +88,17 @@ audita por Excel y por la API. En los planos de OF‑001 con errores sembrados s
 **Incluye:** cuentas, roles y sesión (§5); reglas de la red local que tocan a S3 (§5.6); registro encadenado y su
 concurrencia (§6); claves y firma por empresa (§7); paquete auditado con anexos (§8); vista de revisión y diferencia
 entre versiones con su costo (§9); APU de otras herramientas (§10); auditoría de planos y errores sembrados (§11);
-amenazas (§12); los dos protocolos de medición de quien revisa y de planos (§13.5).
+amenazas (§12); los dos protocolos de medición de quien revisa y de planos (§13.5); y, como **deseable (D)**, la
+detección de anomalías en variaciones de precio (RF‑100, fase opcional S3‑6, §3.2), lo primero que cae si falta
+tiempo.
 
 **No incluye:** TLS en la red local y activar la API (S5); abrir casos de una lista y Alembic (S5‑1, adelantado a la
 0.6.0; S3 solo agrega sus tablas y sus revisiones); servidor en internet (2.x); sellado de tiempo por un tercero
 (RFC 3161, exige internet); cifrar el contenido del paquete (se firma, no se oculta); inicio de sesión con un proveedor
 externo (`st.login` usa OpenID Connect, contrario a S‑D3); recuperar una clave cuya contraseña se perdió; respuesta
-firmada del revisor (pregunta 9); anomalías en variaciones de precio (fuera de la 1.0.0, maestro §1, RV‑21; valor por
-defecto, a ratificar por Eugenio, pregunta P5 del maestro §10.3).
+firmada del revisor (pregunta 9). Las anomalías en variaciones de precio ya **no** quedan fuera: entran **dentro como
+D (RF‑100), decidido por Eugenio el 2026‑10‑11** (pregunta P5 del maestro §10.3; deja sin efecto, para S3, el valor
+por defecto de RV‑21).
 
 ---
 
@@ -239,6 +242,17 @@ Prioridad: E = esencial, D = deseable. Fases de §14.
 | RF‑87 | Vista de revisión: estado de verificación, reauditoría con los anexos (R11–R14 recomputadas, R12 a la fecha de emisión), **diferencia entre versiones** y su costo (desvío por cantidad y por precio) frente a la entrega anterior y frente a la base de precios del revisor, Excel regenerado desde `presupuesto.json`, dictamen atado al SHA‑256 del archivo y aviso cuando quien revisa es quien armó (maestro §4.1, P2) | UC‑23 | E | S3‑4 | con el par de presupuestos de la memoria de diferencias (§13.1) la vista da los montos de la memoria; R11–R14 del paquete de prueba dan el conjunto exacto de su memoria; el dictamen queda con usuario, fecha, SHA‑256 del archivo, estado de verificación y `revisor_armo`; con un paquete de la empresa propia, un revisor que es el usuario emisor o el `usuario` de un eslabón ve el aviso y su dictamen queda con `revisor_armo` = sí; otro revisor de la misma empresa, o un paquete de una empresa ajena, no lo ve |
 | RF‑88 | APU de otras herramientas: Excel con el formato UC‑05 (plantilla descargable) auditado en memoria desde la vista de revisión, y ruta `POST /v1/auditorias` con **clave de API** que recibe el documento canónico (§6.1) y devuelve el informe; cuerpo limitado por un middleware; `TrustedHostMiddleware` | UC‑23, UC‑05 | E | S3‑4 | Excel con partidas del catálogo se audita sin el rechazo de `importacion.py:208`; sin clave o con clave revocada, 401 sin auditar; cuerpo de 20 MiB pasa y de 20 MiB + 1 B da 413 sin leerlo entero; con clave, el informe coincide con el de la vista |
 | RF‑89 | Auditoría de planos: auditoría de archivo DXF, requisitos IDS del IFC con `ifctester`, R15 (coherencia geométrica, `shapely`, severidad por condición), R16 (contraste entre dos fuentes, con el costo de la diferencia) y evaluación por **errores sembrados** con el protocolo de §13.5 | UC‑14 | E | S3‑5 | cada error del catálogo sembrado se detecta con la regla o el ítem de informe declarados; cada fila de R15 y R16 cumple sus fronteras (§11.3, §11.4); OF‑001 limpio da el conjunto exacto escrito en S3‑0; la tasa de detección y las falsas alarmas cumplen la meta del protocolo: 100 % de lo detectable y 0 falsas alarmas (valor por defecto, a ratificar por Eugenio, pregunta P8 del maestro §10.3) |
+| RF‑100 | Anomalías en variaciones de precio: sobre la serie fechada de precios de un insumo (listas de la empresa de S1, RF‑67, y listas MaPreX, cada precio con su fecha), llevada a USD con la tasa de cada precio (RF‑65) y reducida a variaciones entre puntos consecutivos, el sistema marca las variaciones atípicas como **ADVERTENCIA** (`CODIGO_ATIPICO`), **nunca ERROR**, reutilizando el detector existente `ml.anomaly.precios_atipicos` (Isolation Forest, `SEMILLA` = 42, `UMBRAL_ATIPICO` = −0,05, se abstiene con menos de `MINIMO_OBSERVACIONES` = 8 variaciones) | UC‑17, UC‑23 | **D** | S3‑6 | serie sembrada de 10 precios (9 variaciones) con **un** atípico sembrado → el conjunto exacto de hallazgos es ese único punto, con severidad ADVERTENCIA; serie de 10 precios **sin** atípico → conjunto vacío; serie de 8 precios (7 variaciones) → abstención (vacío); ningún hallazgo de RF‑100 es ERROR ni bloquea guardar, exportar o firmar; sin el extra `ml` no hay hallazgo ni traza |
+
+**RF‑100 (D) cae primero** (decisión de Eugenio del 2026‑10‑11, P5): no tiene número de RNF, no toca `core/` y no
+entra en el criterio de éxito de §1.3. **No se inventa un método nuevo:** se reutiliza `ml/anomaly/detector.py`
+(I6.1, RF‑29) y el código `CODIGO_ATIPICO` de `core/budget/presupuesto.py`, con severidad ADVERTENCIA, como ya hacen
+`core/budget/actualizacion.py` (UC‑07, paso 5) y `ui/composicion.py:advertencia_precio_atipico`; lo nuevo es solo
+armar la serie fechada en USD de un insumo (en `ml/anomaly/` o en `ui/composicion.py`, sin importar la base desde
+`ml/`). Los umbrales del detector son los ya declarados en ese módulo (SUPUESTO_DECLARADO, RS3‑6); no se ajustan para
+S3. **Amenaza declarada:** con datos ficticios no se valida la tasa real de detección ni de falsas alarmas; RF‑100 se
+prueba solo con **series sembradas** cuyo oráculo se escribe a mano antes del código (qué punto es el atípico y cuál
+es el conjunto exacto de hallazgos), y la tesis lo presenta como apoyo al revisor, no como medición.
 
 **IfcClash queda fuera de RF‑89** (REQ‑21): es una mejora deseable (D) sin número propio (§11.6). Si se construye, se
 agrega como criterio D de UC‑14 en la enmienda de la ERS, sin cambiar el criterio esencial de RF‑89.
@@ -263,6 +277,9 @@ La tabla única de qué regla corre en cada contexto está en el maestro §3.3 (
 - **API `POST /v1/auditorias`:** R8–R10 y R15 si viene el anexo de espacio; R11–R12 con lo que traiga el documento;
   R13–R14 no. La fecha de evaluación de R12 viaja en el cuerpo (`fecha_evaluacion`, obligatoria; valor por defecto,
   a confirmar en S3‑0) y la respuesta la declara, para que la misma petición dé siempre el mismo informe.
+- **Hoja y lista de precios (RF‑100, D):** la advertencia de variación atípica corre al ver la pestaña Precios de la
+  hoja y al importar o revisar la lista de la empresa de S1; no corre en la reauditoría del paquete (§9) ni en la
+  API, y nunca es ERROR.
 - **Toda reevaluación es en memoria:** nunca reescribe filas ni hallazgos guardados, así que no cambia
   `huella_contenido` ni rompe la cadena.
 
@@ -977,6 +994,7 @@ de red en `tests/conftest.py` (maestro §6.3).
 | RF‑87 | memoria de diferencias; «no contrastable»; reauditoría que encuentra un hallazgo no declarado; R11–R14 recomputadas = conjunto exacto; R12 a la fecha de emisión (el mismo paquete reauditado otro día da lo mismo); `revalorar` en `core` con su prueba; Excel regenerado sin el Excel del emisor; dictamen con SHA‑256 y estado; **quien revisa es quien armó**: con un paquete de la empresa propia, revisor = usuario emisor → aviso y `revisor_armo` = sí; revisor = `usuario` de un eslabón anterior → aviso; otro revisor → sin aviso; paquete de una empresa ajena con un login igual → sin aviso |
 | RF‑88 | plantilla descargada → auditada; Excel con partidas del catálogo sin rechazo; Excel con una fórmula `HYPERLINK` → se lee su valor, nunca la fórmula; API sin clave, con clave revocada y con clave válida (`TestClient`); toda ruta `/v1/` exige la clave (recorriendo `app.routes`); cuerpo de 20 MiB y de 20 MiB + 1 B; `Host` ajeno → rechazo; `NaN` y cifra `1E+999999999` → 422 |
 | RF‑89 | auditoría DXF de un archivo dañado a propósito; IDS con un fallo por requisito; cada fila de R15 con sus fronteras (§11.3); R16 con 0,10 / 0,11 m y 1,00 / 1,01 m, faltante, sobrante y desplazado con su costo de la memoria; ningún error sembrado da R9 y R15 a la vez; OF‑001 limpio = conjunto exacto literal; IFC sin el extra instalado |
+| RF‑100 (D) | oráculo a mano en `tests/fixtures/memorias/atipicos_s3.md`: serie de 10 precios fechados con un atípico sembrado → conjunto exacto `{ese punto}` en ADVERTENCIA; serie de 10 sin atípico → vacío; 8 precios → abstención; conversión a USD con la tasa de cada precio (dos precios en Bs con tasas distintas dan la variación en USD de la memoria); ningún hallazgo ERROR; sin el extra `ml` → sin hallazgo |
 | RNF‑16 | §13.3 y §13.4; ningún secreto en registros (prueba que captura la salida y el registro de accesos) |
 | Arquitectura | `test_arquitectura_s3.py`: importaciones de `seguridad`, `paquete`, `ui/acceso.py`, `ui/entrega.py`, `ui/revision.py`, `ui/texto_seguro.py`; `PAQUETES_FUERA_DEL_NUCLEO`; caché por usuario; ningún `unsafe_allow_html` |
 | Interfaz | AppTest de arranque con y sin sesión; acceso (con el aviso de conexión sin cifrar cuando el cliente es remoto), primer administrador, cambio de contraseña; navegación por rol y modo entrega (RF‑43); recorridos de UC‑12 por rol; Administración; Revisar con un paquete de prueba en `st.file_uploader` (a confirmar que AppTest lo admite; si no, se prueba `ui.revision` sin Streamlit y la subida a mano); un nombre de empresa con una imagen Markdown hacia `127.0.0.1:9` deja el proxy testigo en 0 peticiones |
@@ -1044,7 +1062,9 @@ de medir.
   comunes (presencia de los números de la ERS de S3, cero omitidas, prueba antes que implementación, `git diff` vacío
   en `core/contracts/`, `git diff v0.5.0..HEAD` vacío sobre las pruebas de regresión, pruebas de tiempo con su cifra,
   guardia de red activa) y las propias de S3: huella de los dos protocolos de §13.5 presente antes de Med; conjunto
-  exacto de OF‑001 limpio presente; ningún `unsafe_allow_html`; la rama de S3‑5 no toca `core/`.
+  exacto de OF‑001 limpio presente; ningún `unsafe_allow_html`; las ramas de S3‑5 y S3‑6 no tocan `core/`. RF‑100 solo
+  se exige con `--hasta S3‑6` (si la fase cae, la meta de la 0.8.0 se cierra en S3‑5 y RF‑100 se declara no
+  construido).
 - **Regresión en cada compuerta (no se editan):** cinco APU a ± 0,01; 7 de 7; R4 de 3/4 pulg
   (`test_r4_marca_3_4_pulg_y_no_marca_pvc`); TI‑001 total, PU y punto de equilibrio 28 586,76 USD en el Día 6; las
   dos huellas de RNF‑04; las cuatro hojas de `exportar_excel`. Además, todo AppTest de UC‑12. Si un cambio de S3
@@ -1061,12 +1081,13 @@ publicar.
 
 | Fase | Contenido | Rol | Compuerta | Base de la rama |
 |---|---|---|---|---|
-| **S3‑0** | ERS (UC‑21 a UC‑23 con flujo principal y postcondiciones, RF‑80 a RF‑89, RNF‑16, RNF‑17, actores y su mapa a los roles, **enmienda única de RNF‑08**), arquitectura, modelo de datos y plan de pruebas enmendados; licencias (en el PR «dependencias Sílice»); API exacta de `argon2-cffi`, `cryptography`, `ezdxf` (recuperación), `ifctester`, `st.context.ip_address`, reanudación de sesiones de Streamlit y `BEGIN IMMEDIATE` con SQLAlchemy; patrón de cifras del lector JSON; nombre de la cabecera de la API y `fecha_evaluacion`; IDS; catálogo de errores (con la parte de quien no programa las reglas); memorias (`diferencias_s3.md` con el costo de R16, vector de huella a mano, reauditoría con anexos); **conjunto exacto de OF‑001 limpio como literal**; los dos protocolos de §13.5 con su huella; comprobaciones de S3 en `meta_silice.py` | líder, interfaz, adaptadores, pruebas | GS3‑0 | `main` (0.7.0) |
+| **S3‑0** | ERS (UC‑21 a UC‑23 con flujo principal y postcondiciones, RF‑80 a RF‑89 y RF‑100 (D), RNF‑16, RNF‑17, actores y su mapa a los roles, **enmienda única de RNF‑08**), arquitectura, modelo de datos y plan de pruebas enmendados; licencias (en el PR «dependencias Sílice»); API exacta de `argon2-cffi`, `cryptography`, `ezdxf` (recuperación), `ifctester`, `st.context.ip_address`, reanudación de sesiones de Streamlit y `BEGIN IMMEDIATE` con SQLAlchemy; patrón de cifras del lector JSON; nombre de la cabecera de la API y `fecha_evaluacion`; IDS; catálogo de errores (con la parte de quien no programa las reglas); memorias (`diferencias_s3.md` con el costo de R16, vector de huella a mano, reauditoría con anexos); **conjunto exacto de OF‑001 limpio como literal**; los dos protocolos de §13.5 con su huella; comprobaciones de S3 en `meta_silice.py` | líder, interfaz, adaptadores, pruebas | GS3‑0 | `main` (0.7.0) |
 | **S3‑1** | `seguridad` (cuentas, sesiones, bloqueo y freno global, código de instalación, registro de accesos, `secretos.py`, `red.py`, empresa propia); `ui/acceso.py`; `ui/texto_seguro.py` (y su aplicación a lo existente); reglas de red local de §5.6; navegación y matriz por rol; RF‑82 en la hoja | interfaz | GS3‑1 | sin núcleo: puede adelantarse desde `main`; si se fusiona antes de la 0.7.0, queda detrás de una opción apagada hasta la 0.8.0 y la parte de RF‑82 y de la matriz que toca pantallas de S1 y S2 se cierra en S3‑3 |
 | **S3‑2** | Núcleo, **único carril de núcleo abierto**, después de cerrar S2‑3: SL‑E8, SL‑E7 (en el embudo), SL‑E9 (diferencia entre versiones y `revalorar`), SL‑E12, con expediente y rojo observado | núcleo | GS3‑2 | `main` con S2 fusionada |
 | **S3‑3** | `seguridad.firma`, `seguridad.empresas` (retiro, revocación); `paquete` (formato v1 con anexos, lector estricto, exportar, verificar); Entregar paquete; Administración; RF‑82 en las pantallas de S1 y S2 si faltaba | interfaz | GS3‑3 | `main` con S3‑2 |
 | **S3‑4** | `ui/revision.py`, Revisar, reauditoría con anexos, diferencia entre versiones, Excel regenerado, dictamen, plantilla Excel, `POST /v1/auditorias`, claves de API, middleware y `TrustedHostMiddleware` | interfaz | GS3‑4 | `main` con S3‑3 |
 | **S3‑5** | auditoría DXF, IDS, R15, R16, sembrador y medición; IfcClash si sobra tiempo; guion CP‑R1 y CP‑R2 | adaptadores, pruebas | GS3‑5 | sin núcleo: sale de `main` **sin núcleo pendiente** (agrega archivos bajo `adapters/`, `scripts/meta_alpha.py:_ramas_adaptador`); va en secuencia, no a la vez, con la parte de S4 que toca `adapters/espacio` |
+| **S3‑6 (D)** | RF‑100: serie fechada en USD de un insumo, `ml.anomaly.precios_atipicos` reutilizado, advertencia en la pestaña Precios y en la lista de la empresa; memoria `atipicos_s3.md` antes del código | interfaz, pruebas | GS3‑6 | sin núcleo: `main` con S1‑3 (lista de la empresa); toca solo `ml/` y `ui/` |
 
 S3‑1 y S3‑5 son independientes y pueden adelantarse en paralelo; S3‑3 necesita S3‑2. Cada compuerta: `meta_silice.py
 --version 0.8.0 --hasta S3‑n` en OK, CI verde en Linux y Windows, los encargos y, en GS3‑1, GS3‑3 y GS3‑4, **el de
@@ -1074,7 +1095,7 @@ seguridad**; en GS3‑1 y GS3‑4 el de usabilidad (Nielsen e ISO 9241‑110). G
 S3‑5 no toca `core/` (la auditoría de planos no toca el núcleo). La etiqueta `v0.8.0` se pone en `main` después de
 `v0.7.0` (orden numérico, RV‑1).
 
-**Orden de caída:** IfcClash; el QR; la ruta de la API (queda solo el Excel); la comparación contra la base del
+**Orden de caída:** **S3‑6 (RF‑100) primero**; IfcClash; el QR; la ruta de la API (queda solo el Excel); la comparación contra la base del
 revisor (queda la entrega anterior). Cuentas, cadena, firma, paquete con anexos y reauditoría no se recortan.
 
 ### 14.1 Expedientes en `core/`
@@ -1147,3 +1168,6 @@ Las que dependen de Eugenio remiten al maestro §10.3; las que cerró la revisi�
    firmada)? — Fuera de este spec (candidata a 1.x o 2.x); la separación de dominio de §7.1 ya le reserva su prefijo.
 10. ~~¿Qué rol hace cada acción de S1 y S2?~~ **La matriz de §5.1** (REQ‑4, maestro §4.1), ratificada por Eugenio el
     2026‑10‑11 (pregunta P2 del maestro §10.3).
+11. ~~¿Entran a la 1.0.0 las anomalías en variaciones de precio (RV‑21)?~~ **Decidida por Eugenio el 2026‑10‑11**
+    (pregunta P5 del maestro §10.3): entran como deseable, RF‑100 (D), en la fase opcional S3‑6, reutilizando
+    `ml.anomaly.precios_atipicos`; es lo primero que cae si falta tiempo.
