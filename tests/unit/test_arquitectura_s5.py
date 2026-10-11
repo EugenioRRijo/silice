@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import pytest
 
-from tests.fixtures.arquitectura import archivos, importaciones, ruta
+from tests.fixtures.arquitectura import RAIZ, archivos, importaciones, llamadas, ruta
 
 #: Lo único de `operacion` que `ui` y `api` pueden importar (spec S5 §5.2).
 PUBLICOS_DE_OPERACION = (
@@ -66,3 +66,42 @@ def test_ui_y_api_solo_importan_los_modulos_publicos_de_operacion() -> None:
         and not any(modulo == p or modulo.startswith(p + ".") for p in PUBLICOS_DE_OPERACION)
     )
     assert infractores == []
+
+
+#: Las nueve páginas que abren el caso con un motor propio (spec S5 §1.2): todas lo preparan.
+PAGINAS_QUE_ABREN_EL_CASO = (
+    "actualizacion",
+    "catalogo",
+    "componer",
+    "elaborar",
+    "escenarios",
+    "historico",
+    "hoja",
+    "similares",
+    "simulador",
+)
+
+
+def test_ni_la_interfaz_ni_la_api_crean_el_esquema() -> None:
+    """RV-5: `crear_esquema` queda para las pruebas en memoria y los scripts de siembra."""
+    infractores = sorted(
+        f"{ruta(archivo)}:{linea}"
+        for paquete in ("ui", "api")
+        for archivo in archivos(paquete)
+        for linea in llamadas(archivo, "crear_esquema")
+    )
+    assert infractores == []
+
+
+def test_la_lista_de_paginas_que_abren_el_caso_esta_completa() -> None:
+    con_motor = sorted(
+        archivo.stem
+        for archivo in (RAIZ / "ui" / "paginas").glob("*.py")
+        if llamadas(archivo, "crear_motor")
+    )
+    assert con_motor == sorted(PAGINAS_QUE_ABREN_EL_CASO)
+
+
+@pytest.mark.parametrize("pagina", PAGINAS_QUE_ABREN_EL_CASO)
+def test_cada_pagina_que_abre_el_caso_lo_prepara(pagina: str) -> None:
+    assert llamadas(RAIZ / "ui" / "paginas" / f"{pagina}.py", "preparar_base")

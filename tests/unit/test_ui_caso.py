@@ -6,14 +6,19 @@ sesion si alguna toca `data/apu.db`.
 
 from __future__ import annotations
 
+import hashlib
 import re
 from pathlib import Path
 
+from sqlalchemy import Engine, event
+
 from core.catalog import abrir_sesion, crear_esquema, crear_motor
+from operacion.config import ruta_caso_por_defecto
 from scripts.seed import sembrar
 from tests.fixtures.apu_linea_base import APUS_LINEA_BASE
+from tests.fixtures.bases_prueba import crear_base_futura
+from ui import caso as caso_ui
 from ui.caso import (
-    RUTA_BASE_POR_DEFECTO,
     VARIABLE_RUTA_CASO,
     EstadoCaso,
     argv_siembra,
@@ -54,8 +59,12 @@ def test_una_variable_de_entorno_vacia_no_cuenta() -> None:
     assert resolver_ruta(None, {VARIABLE_RUTA_CASO: "  "}, "defecto.db") == Path("defecto.db")
 
 
-def test_sin_sesion_ni_entorno_queda_la_ruta_por_defecto() -> None:
-    assert resolver_ruta(None, {}, RUTA_BASE_POR_DEFECTO) == Path("data/apu.db")
+def test_sin_sesion_ni_entorno_queda_el_caso_por_defecto_de_la_carpeta_de_datos(
+    tmp_path: Path,
+) -> None:
+    assert caso_ui.RUTA_BASE_POR_DEFECTO is None
+    por_defecto = str(ruta_caso_por_defecto({"SILICE_DATOS": str(tmp_path)}))
+    assert resolver_ruta(None, {}, por_defecto) == tmp_path.resolve() / "casos" / "silice.db"
 
 
 # --- estado del caso (RF-39) ------------------------------------------------------------------
@@ -151,3 +160,35 @@ def test_la_ruta_por_defecto_se_define_una_sola_vez_en_ui() -> None:
         if re.search(r"^RUTA_BASE_POR_DEFECTO\s*=", archivo.read_text(encoding="utf-8"), re.M)
     ]
     assert definiciones == ["ui/caso.py"]
+
+
+# --- estado sin DDL y bases que no están en head (RV-5) ---------------------------------------
+
+
+def test_estado_caso_no_emite_ddl_ni_cambia_el_archivo(tmp_path: Path) -> None:
+    ruta = _base_sembrada(tmp_path / "sembrada.db")
+    antes = hashlib.sha256(ruta.read_bytes()).hexdigest()
+    sentencias: list[str] = []
+
+    def anotar(_conexion, _cursor, sentencia, *_resto) -> None:
+        sentencias.append(sentencia)
+
+    event.listen(Engine, "before_cursor_execute", anotar)
+    try:
+        estado = estado_caso(ruta)
+    finally:
+        event.remove(Engine, "before_cursor_execute", anotar)
+    assert estado.partidas == len(APUS_LINEA_BASE) and estado.por_migrar
+    primeras = {s.lstrip().split(" ", 1)[0].upper() for s in sentencias}
+    assert sentencias and not primeras & {"CREATE", "ALTER", "DROP", "INSERT", "UPDATE", "DELETE"}
+    assert hashlib.sha256(ruta.read_bytes()).hexdigest() == antes
+
+
+def test_estado_de_una_base_mas_nueva_es_un_error_con_mensaje(tmp_path: Path) -> None:
+    estado = estado_caso(crear_base_futura(tmp_path / "futura.db"))
+    assert estado.error and "versión más nueva" in estado.error
+
+
+def test_el_resumen_avisa_que_el_caso_se_actualizara(tmp_path: Path) -> None:
+    estado = EstadoCaso(tmp_path / "x.db", True, partidas=1, insumos=2, por_migrar=True)
+    assert resumen_caso(estado).endswith("se actualizara al abrirlo")

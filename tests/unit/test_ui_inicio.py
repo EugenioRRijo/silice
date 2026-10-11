@@ -14,8 +14,18 @@ from pathlib import Path
 from streamlit.testing.v1 import AppTest
 from streamlit.testing.v1.element_tree import ElementList
 
-from ui.caso import CLAVE_CASO, CLAVE_RECORRIDO, estado_caso
-from ui.paginas.inicio import ROTULO_ABRIR, ROTULO_ARCHIVO, ROTULO_RECORRIDO, ROTULO_SEMBRAR
+from operacion.base_datos import Destino, leer_estado, preparar_base, resolver_caso, revision_head
+from operacion.config import carpeta_casos
+from ui.caso import CLAVE_CASO, CLAVE_RECORRIDO, SIN_PERMISO_DE_CAMBIO, estado_caso
+from ui.paginas.inicio import (
+    PREFIJO_CASO_ABIERTO,
+    ROTULO_ABRIR,
+    ROTULO_CASO,
+    ROTULO_CREAR,
+    ROTULO_NUEVO,
+    ROTULO_RECORRIDO,
+    ROTULO_SEMBRAR,
+)
 from ui.recorridos import NOMBRE_PRECIOS, RECORRIDOS
 
 SCRIPT = "from ui.paginas.inicio import render\nrender()\n"
@@ -38,10 +48,17 @@ def _inicio(monkeypatch, base: Path, *, tiempo: int = 60) -> AppTest:
     at = AppTest.from_string(SCRIPT, default_timeout=tiempo)
     at.run()
     assert not at.exception, [e.value for e in at.exception]
-    assert _por_rotulo(at.text_input, ROTULO_ARCHIVO).value == str(base), (
+    assert any(c.value == f"{PREFIJO_CASO_ABIERTO}{base}" for c in at.caption), (
         "la desviacion de ui.caso.RUTA_BASE_POR_DEFECTO no surtio efecto"
     )
     return at
+
+
+def _casos(*nombres: str) -> Path:
+    carpeta = carpeta_casos()
+    for nombre in nombres:
+        preparar_base(carpeta / nombre)
+    return carpeta
 
 
 def test_el_inicio_ofrece_los_tres_recorridos(monkeypatch, tmp_path: Path) -> None:
@@ -102,21 +119,50 @@ def test_con_partidas_no_se_ofrece_sembrar(monkeypatch, tmp_path: Path) -> None:
     assert ROTULO_SEMBRAR not in [boton.label for boton in at.button]
 
 
-def test_abrir_otro_caso_lo_fija_en_la_clave_propia(monkeypatch, tmp_path: Path) -> None:
+def test_abrir_un_caso_de_la_lista_lo_fija_en_la_clave_propia(monkeypatch, tmp_path: Path) -> None:
+    carpeta = _casos("a.db", "b.db")
     at = _inicio(monkeypatch, tmp_path / "caso.db")
-    otra = tmp_path / "otra.db"
-    _por_rotulo(at.text_input, ROTULO_ARCHIVO).set_value(str(otra))
+    selector = _por_rotulo(at.selectbox, ROTULO_CASO)
+    assert list(selector.options) == ["a.db", "b.db"]
+    selector.set_value("b.db")
     _por_rotulo(at.button, ROTULO_ABRIR).click().run()
-    assert at.session_state[CLAVE_CASO] == str(otra)
-    assert CLAVE_CASO not in {widget.key for widget in at.text_input}
+    assert not at.exception, [e.value for e in at.exception]
+    assert at.session_state[CLAVE_CASO] == str(resolver_caso("b.db", carpeta))
 
 
-def test_abrir_un_caso_vacio_avisa_y_conserva_el_anterior(monkeypatch, tmp_path: Path) -> None:
+def test_el_inicio_no_ofrece_una_ruta_libre(monkeypatch, tmp_path: Path) -> None:
     at = _inicio(monkeypatch, tmp_path / "caso.db")
-    _por_rotulo(at.text_input, ROTULO_ARCHIVO).set_value("   ")
-    _por_rotulo(at.button, ROTULO_ABRIR).click().run()
-    assert any("no puede quedar vacia" in error.value for error in at.error)
+    assert [campo.label for campo in at.text_input] == [ROTULO_NUEVO]
+
+
+def test_un_nombre_que_sale_de_la_carpeta_se_rechaza_sin_crear_nada(
+    monkeypatch, tmp_path: Path
+) -> None:
+    at = _inicio(monkeypatch, tmp_path / "caso.db")
+    _por_rotulo(at.text_input, ROTULO_NUEVO).set_value("..\\fuera.db")
+    _por_rotulo(at.button, ROTULO_CREAR).click().run()
+    assert any("sale de la carpeta" in error.value for error in at.error)
     assert CLAVE_CASO not in at.session_state
+    assert not (carpeta_casos().parent / "fuera.db").exists()
+
+
+def test_crear_un_caso_nuevo_lo_deja_en_head_y_abierto(monkeypatch, tmp_path: Path) -> None:
+    at = _inicio(monkeypatch, tmp_path / "caso.db")
+    _por_rotulo(at.text_input, ROTULO_NUEVO).set_value("Obra Ñandú")
+    _por_rotulo(at.button, ROTULO_CREAR).click().run()
+    ruta = resolver_caso("Obra Ñandú", carpeta_casos())
+    assert at.session_state[CLAVE_CASO] == str(ruta)
+    assert leer_estado(ruta).revision == revision_head(Destino.CASO)
+
+
+def test_sin_permiso_no_se_ofrece_cambiar_de_caso(monkeypatch, tmp_path: Path) -> None:
+    caso = importlib.import_module("ui.caso")
+    monkeypatch.setattr(caso, "puede_cambiar_de_caso", lambda: False)
+    _casos("a.db")
+    at = _inicio(monkeypatch, tmp_path / "caso.db")
+    assert any(SIN_PERMISO_DE_CAMBIO in info.value for info in at.info)
+    assert ROTULO_ABRIR not in [boton.label for boton in at.button]
+    assert len(at.selectbox) == 0
 
 
 def test_un_archivo_ilegible_se_informa_sin_ofrecer_sembrar(monkeypatch, tmp_path: Path) -> None:
