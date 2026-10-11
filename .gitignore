@@ -38,3 +38,13 @@ coverage.json
 
 # Cifra de RNF-11 que deja scripts/medir_rnf11.py (la lee la meta S9)
 scripts/_salida_rnf11.json
+
+# Carpeta de datos de desarrollo de Silice: SILICE_DATOS por defecto (maestro §4.2; spec S5 §5.3)
+data/instalacion.db
+data/codigo_instalacion.txt
+data/paquetes/
+data/casos/
+data/respaldos/
+data/eventos_perdidos_*.json
+# Copias de trabajo de una migracion interrumpida (operacion.base_datos)
+*.migrando
