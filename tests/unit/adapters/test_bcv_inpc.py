@@ -172,3 +172,14 @@ def test_filas_negativas_del_formato_por_ano_se_rechazan_con_su_motivo(filas, mo
     informe, valores = _leer_anios(*((a, b, None) for a, b in filas))
     assert informe.rechazos and any(motivo in r.motivo for r in informe.rechazos)
     assert len(valores) < len(filas)
+
+
+def test_una_nota_al_pie_sin_valor_no_es_un_rechazo_pero_un_mes_sin_valor_si():
+    informe, valores = _leer_anios(
+        ("2026", None, None),
+        ("Enero", D("100.5"), None),
+        ("Febrero", None, None),
+        ("Fuente: B.C.V. - I.N.E.", None, None),
+    )
+    assert [r.motivo for r in informe.rechazos] == ["valor no numerico"]
+    assert len(valores) == 1

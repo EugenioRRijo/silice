@@ -201,6 +201,8 @@ def _entradas_por_anio(hoja: Hoja, formato: FormatoMensual, archivo: str) -> lis
             provisional = bool(marca) and isinstance(celda_periodo, str) and marca in celda_periodo
             continue
         numero_mes = _mes_por_nombre(celda_periodo)
+        if numero_mes is None and celda_valor is None:
+            continue  # nota al pie («Fuente: B.C.V. - I.N.E.»), no un dato
         if numero_mes is None:
             entradas.append((lugar, None, celda_valor, False, "mes ilegible"))
         elif anio is None:
