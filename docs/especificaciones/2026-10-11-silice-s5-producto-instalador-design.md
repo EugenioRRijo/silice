@@ -36,7 +36,7 @@ del instalador básico con lo pesado en módulos opcionales (maestro §3, §8).
   (manual técnico §10.5; ruling SF3‑E0). Hay **dos** `MetaData`: `core.models.Base.metadata` (25 tablas en
   `entidades.py`) y la privada `_metadata` de `adapters/espacio/persistencia.py:45` (tablas `esp_*`, creadas aparte
   por `crear_esquema_espacio`). Los specs ya prevén cambios de columnas en tablas publicadas entre la 0.6.0 y la
-  0.9.0 (empresa de la lista de precios, ejecutado que cita valuaciones, estado de la valuación; ARQ‑H11): con solo
+  0.9.0 (empresa de la lista de precios, ejecutado que cita valuaciones; ARQ‑H11): con solo
   `create_all`, una revisión base de la 0.9.0 daría `BaseNoAdoptable` con las bases de 0.6.0 y 0.7.0. Por eso
   Alembic entra con la 0.6.0 (RV‑3, §6).
 - **Dos bases, no una.** S3 separa la **base de la instalación** (`instalacion.db`: cuentas, sesiones, claves de

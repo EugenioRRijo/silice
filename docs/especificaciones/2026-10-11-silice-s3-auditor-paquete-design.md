@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | **propuesta, revisión 2** (2026‑10‑11). Incorpora los rulings RV‑1 … RV‑26 de la revisión por encargo (requisitos, arquitectura, pruebas y calidad, verificador de hechos y **seguridad**; maestro §10). Pendiente de la aprobación de Eugenio y de sus respuestas a P1, P2, P3, P4 y P8 (maestro §10.3). Los expedientes SL‑E7, SL‑E8, SL‑E9 y SL‑E12 necesitan además el visto bueno del tutor |
+| Estado | **propuesta, revisión 2** (2026‑10‑11). Incorpora los rulings RV‑1 … RV‑26 de la revisión por encargo (requisitos, arquitectura, pruebas y calidad, verificador de hechos y **seguridad**; maestro §10). Eugenio ratificó P1 y P2 y decidió P3 el 2026‑10‑11 (maestro §10.3); pendiente de su aprobación y de sus respuestas a P4 y P8. Los expedientes SL‑E7, SL‑E8, SL‑E9 y SL‑E12 necesitan además el visto bueno del tutor |
 | Fecha | 2026‑10‑11 |
 | Rama del spec | `inc/silice` (worktree `.worktrees/silice`) |
 | Ramas de construcción | ramas cortas **por fase**, desde el `main` del momento, con PR contra `main` y fusión al cruzar la compuerta de esa fase (RV‑2, §14). S3‑2 es el único carril de núcleo y se abre después de cerrar S2‑3; S3‑1 y S3‑5 son carriles sin núcleo |
@@ -113,8 +113,8 @@ consolida en S5‑0; ningún otro spec enmienda RNF‑08.
 
 ### 3.0 Actores
 
-La ERS §2.3 se enmienda con los tres roles de S‑D4 y el mapa del maestro §4.1 (valor por defecto, a ratificar por
-Eugenio, pregunta P2 del maestro §10.3):
+La ERS §2.3 se enmienda con los tres roles de S‑D4 y el mapa del maestro §4.1 (ratificado por Eugenio el
+2026‑10‑11, pregunta P2 del maestro §10.3):
 
 | Actor de la ERS §2.3 o nuevo | Rol en Sílice |
 |---|---|
@@ -162,9 +162,9 @@ Eugenio, pregunta P2 del maestro §10.3):
 
 #### UC‑22 — Entregar el paquete auditado
 
-- **Actor principal:** quien arma. Para firmar hace falta la contraseña de la clave, que por defecto conoce el
-  administrador (maestro §4.1, P1): en una empresa pequeña es la misma persona con los dos roles, o el administrador
-  la teclea.
+- **Actor principal:** quien arma. Para firmar hace falta la contraseña de la clave, que conoce **solo** el
+  administrador (maestro §4.1, P1, ratificada por Eugenio el 2026‑10‑11): en una empresa pequeña es la misma
+  persona con los dos roles, o el administrador la teclea.
 - **Precondiciones:** versión guardada y sellada; clave de firma de la empresa activa (si no, 22a); cliente en el
   propio equipo para firmar (22e).
 - **Flujo principal**
@@ -199,7 +199,8 @@ Eugenio, pregunta P2 del maestro §10.3):
   3. El sistema reaudita en memoria con sus propias reglas y los anexos (§9, paso 3).
   4. Muestra la **diferencia entre versiones** y su costo frente a la entrega anterior o frente a su base de precios
      (§9, paso 4).
-  5. Muestra quién cambió qué.
+  5. Muestra quién cambió qué y, si quien revisa es también quien armó (usuario emisor o responsable de algún
+     eslabón de la cadena del paquete), lo indica (§9, paso 5).
   6. Quien revisa registra su dictamen; el sistema lo guarda atado al SHA‑256 del archivo y con el estado de
      verificación de ese momento.
 - **Flujos alternativos**
@@ -213,7 +214,7 @@ Eugenio, pregunta P2 del maestro §10.3):
   - *23g. El destinatario es otra empresa:* aviso ámbar «Este paquete se emitió para *X*».
   - *23h. El mismo archivo ya se recibió (mismo SHA‑256):* se abre el registro existente, no se duplica.
 - **Postcondiciones:** `paq_recibido` con el SHA‑256 del archivo, su `paquete_id`, su estado y su cadena;
-  `paq_dictamen` si se dictaminó; nada escrito en el catálogo ni en las versiones del caso.
+  `paq_dictamen` si se dictaminó, con quién revisó y si coincide con quien armó; nada escrito en el catálogo ni en las versiones del caso.
 
 #### UC existentes que se enmiendan
 
@@ -231,11 +232,11 @@ Prioridad: E = esencial, D = deseable. Fases de §14.
 | RF‑80 | Cuentas locales con roles *arma*, *revisa* y *administrador de la instalación* (uno o varios por cuenta) y la matriz de §5.1; contraseñas con Argon2; el primer administrador se crea solo con el **código de instalación** de un solo uso, de al menos 100 bits | UC‑21 | E | S3‑1 | sin código o con código usado se rechaza; el código tiene 20 caracteres base32; ninguna contraseña aparece en la base, en el registro de accesos ni en los mensajes; cada página y cada acción de la matriz rechaza un rol que no le corresponde aunque se llegue por URL |
 | RF‑81 | Sesión propia en Streamlit: expira por inactividad (30 min) y por antigüedad (12 h); ficha nueva al entrar y al cambiar la contraseña; todas las sesiones de una cuenta se cierran al restablecerla, desactivarla o cambiar sus roles; roles leídos de la base en cada ejecución; bloqueo tras 5 intentos fallidos seguidos durante 15 min, con el mismo contador y mensaje para usuarios inexistentes; freno global con espera progresiva; cierre de sesión; varios usuarios a la vez sin mezclar estado | UC‑21 | E | S3‑1 | reloj inyectado: 29:59 sigue, 30:00 expira; 4 fallos no bloquean, el 5.º sí, con un login existente y con uno inexistente; cambiar los roles en la base cambia el menú en la ejecución siguiente; dos sesiones AppTest con usuarios distintos no comparten borrador ni caso; prueba de concurrencia de §13.4 |
 | RF‑82 | El responsable de todo `RegistroCambio`, de todo eslabón y de **todo campo `responsable`** de las tablas de S1 y S2 (`importacion_indice`, `moneda_proyecto`, `estudio_reajuste`, `linea_base_control`, `valuacion`, `anulacion_valuacion`, `costo_real`, `decision_recuperacion`) es el **usuario autenticado**, congelado como `Nombre <login>` en el momento del cambio; la caja «Responsable» desaparece de la hoja y de las pantallas de S1 y S2 | UC‑15, UC‑21 | E | S3‑1 (S3‑3 para las pantallas de S1 y S2 si S3‑1 se adelanta) | guardar, restaurar, cotizar, convertir, decidir una recuperación, crear la primera versión, asegurar la instantánea, importar índices, registrar valuaciones, anulaciones y costos reales registran al usuario de la sesión; una prueba recorre los metadatos y lista **toda** columna `responsable`: cada una tiene su prueba, y una columna nueva sin prueba hace fallar la lista; ningún camino de `ui/` pasa `"sistema"`; desactivar una cuenta no cambia sus registros |
-| RF‑83 | Registro encadenado: cada versión nueva se sella, **en el embudo `guardar_presupuesto` y en la misma transacción**, con un eslabón SHA‑256 que encadena su contenido, sus `RegistroCambio`, sus anexos y el eslabón anterior (§6); el sellado es una invariante de **todo** `MOTIVOS_VERSION` (incluidos `conversion` de S1 y `recuperacion` de S2) y del motivo vacío (versión sin origen); las versiones anteriores se sellan una vez de forma **retroactiva** y declarada; el sistema verifica la cadena | UC‑15, UC‑22 | E | S3‑2 | una prueba recorre la tupla `MOTIVOS_VERSION` y el motivo vacío, y crea una versión de cada uno; otra enumera a **todos** los llamadores del embudo (§1.2) y falla si aparece uno nuevo sin prueba; cambiar un byte de una partida, de un registro, de un anexo o de un eslabón en la base rompe la cadena **en esa versión** y lo dice; una versión posterior al génesis sin eslabón es un error de cadena; confirmar una versión sin usuario se rechaza; guardar y recargar no cambia ninguna huella |
+| RF‑83 | Registro encadenado: cada versión nueva, que nace en el embudo `guardar_presupuesto`, se sella **al confirmar la transacción que la crea** (evento `before_commit`, §6.2) y en esa misma transacción, con un eslabón SHA‑256 que encadena su contenido, sus `RegistroCambio`, sus anexos y el eslabón anterior (§6); el sellado es una invariante de **todo** `MOTIVOS_VERSION` (incluidos `conversion` de S1 y `recuperacion` de S2) y del motivo vacío (versión sin origen); las versiones anteriores se sellan una vez de forma **retroactiva** y declarada; el sistema verifica la cadena | UC‑15, UC‑22 | E | S3‑2 | una prueba recorre la tupla `MOTIVOS_VERSION` y el motivo vacío, y crea una versión de cada uno; otra enumera a **todos** los llamadores del embudo (§1.2) y falla si aparece uno nuevo sin prueba; cambiar un byte de una partida, de un registro, de un anexo o de un eslabón en la base rompe la cadena **en esa versión** y lo dice; una versión posterior al génesis sin eslabón es un error de cadena; confirmar una versión sin usuario se rechaza; guardar y recargar no cambia ninguna huella |
 | RF‑84 | Clave de firma de la empresa Ed25519 generada en el equipo, con la privada **cifrada con su propia contraseña** por `seguridad/secretos.py` (Argon2id → AES‑GCM, maestro §4.4); huella corta legible (§7.2); registro de claves públicas de otras empresas con la comprobación de su huella; retiro (se destruye la privada) y revocación; separación de dominio en todo lo que se firma | UC‑21 | E | S3‑3 | la privada nunca aparece sin cifrar en disco ni en el paquete; contraseña de clave errónea da `InvalidTag` y un mensaje sin traza; una contraseña de la lista corta de comunes se rechaza; la huella es la misma en las dos instalaciones; al retirar, la privada deja de existir en la base; una clave revocada deja de verificar |
 | RF‑85 | Exportar el paquete auditado (§8): documento canónico (con moneda del proyecto y `precio_origen`), informe, cadena, anexos (`espacio`, `reajuste`, `control`, `ia`), manifiesto con `paquete_id`, `destinatario` opcional y `huella_anexos`, y firma; **sin Excel**; el emisor guarda el SHA‑256 de cada paquete exportado; firmar solo desde el propio equipo | UC‑22 | E | S3‑3 | el paquete exportado se verifica como «Verificado» en otra base con la clave registrada; sin clave se exporta «sin firma» y así se declara; la cadena rota impide exportar; el SHA‑256 del archivo descargado está en `evento_acceso`; una firma pedida desde una IP que no es de bucle local se rechaza |
 | RF‑86 | Importar y verificar un paquete: límites leídos con tope (§8.4), integridad (huellas del manifiesto), autenticidad (firma de una empresa registrada y no revocada, con separación de dominio), cadena, posición respecto de paquetes ya recibidos y banner de versión; **siempre** se reaudita con las reglas propias | UC‑23 | E | S3‑4 | cada caso de §13.3 da su estado declarado, con las fronteras exactas de §8.4; un paquete no verificado se audita igual; ninguna entrada del ZIP sale de su carpeta ni excede los límites; el banner dice la versión y la última recibida |
-| RF‑87 | Vista de revisión: estado de verificación, reauditoría con los anexos (R11–R14 recomputadas, R12 a la fecha de emisión), **diferencia entre versiones** y su costo (desvío por cantidad y por precio) frente a la entrega anterior y frente a la base de precios del revisor, Excel regenerado desde `presupuesto.json`, y dictamen atado al SHA‑256 del archivo | UC‑23 | E | S3‑4 | con el par de presupuestos de la memoria de diferencias (§13.1) la vista da los montos de la memoria; R11–R14 del paquete de prueba dan el conjunto exacto de su memoria; el dictamen queda con usuario, fecha, SHA‑256 del archivo y estado de verificación |
+| RF‑87 | Vista de revisión: estado de verificación, reauditoría con los anexos (R11–R14 recomputadas, R12 a la fecha de emisión), **diferencia entre versiones** y su costo (desvío por cantidad y por precio) frente a la entrega anterior y frente a la base de precios del revisor, Excel regenerado desde `presupuesto.json`, dictamen atado al SHA‑256 del archivo y aviso cuando quien revisa es quien armó (maestro §4.1, P2) | UC‑23 | E | S3‑4 | con el par de presupuestos de la memoria de diferencias (§13.1) la vista da los montos de la memoria; R11–R14 del paquete de prueba dan el conjunto exacto de su memoria; el dictamen queda con usuario, fecha, SHA‑256 del archivo, estado de verificación y `revisor_armo`; con un paquete de la empresa propia, un revisor que es el usuario emisor o el `usuario` de un eslabón ve el aviso y su dictamen queda con `revisor_armo` = sí; otro revisor de la misma empresa, o un paquete de una empresa ajena, no lo ve |
 | RF‑88 | APU de otras herramientas: Excel con el formato UC‑05 (plantilla descargable) auditado en memoria desde la vista de revisión, y ruta `POST /v1/auditorias` con **clave de API** que recibe el documento canónico (§6.1) y devuelve el informe; cuerpo limitado por un middleware; `TrustedHostMiddleware` | UC‑23, UC‑05 | E | S3‑4 | Excel con partidas del catálogo se audita sin el rechazo de `importacion.py:208`; sin clave o con clave revocada, 401 sin auditar; cuerpo de 20 MiB pasa y de 20 MiB + 1 B da 413 sin leerlo entero; con clave, el informe coincide con el de la vista |
 | RF‑89 | Auditoría de planos: auditoría de archivo DXF, requisitos IDS del IFC con `ifctester`, R15 (coherencia geométrica, `shapely`, severidad por condición), R16 (contraste entre dos fuentes, con el costo de la diferencia) y evaluación por **errores sembrados** con el protocolo de §13.5 | UC‑14 | E | S3‑5 | cada error del catálogo sembrado se detecta con la regla o el ítem de informe declarados; cada fila de R15 y R16 cumple sus fronteras (§11.3, §11.4); OF‑001 limpio da el conjunto exacto escrito en S3‑0; la tasa de detección y las falsas alarmas cumplen la meta del protocolo: 100 % de lo detectable y 0 falsas alarmas (valor por defecto, a ratificar por Eugenio, pregunta P8 del maestro §10.3) |
 
@@ -311,11 +312,12 @@ prueba de deriva de RNF‑20 recorre también `seguridad` y `paquete`. Paquetes 
 nombre de `nombre_seguro` y su huella. Abrir un caso: solo de la lista de `datos\casos\` y con
 `operacion.base_datos.preparar_base` (maestro §4.3, S5‑1).
 
-**Empresa (maestro §4.1, RV‑6; valor por defecto, a ratificar por Eugenio, pregunta P1).** Una sola **empresa propia**
+**Empresa (maestro §4.1, RV‑6; ratificada por Eugenio el 2026‑10‑11, pregunta P1).** Una sola **empresa propia**
 por instalación (tabla `empresa_propia` en `instalacion.db`: nombre, RIF, ciudad opcional) y las **empresas ajenas**
 registradas (`empresa_registrada`). Desde S3, los campos `empresa_nombre` y `empresa_rif` de la lista de precios de S1
 se rellenan desde la empresa propia (instantánea de texto, sin clave foránea entre bases). La contraseña de la clave
-de firma la conoce el administrador; no hay no repudio individual: el paquete declara el usuario emisor (SEG‑6).
+de firma la conoce **solo** el administrador; no hay no repudio individual: el paquete declara el usuario emisor
+(SEG‑6). Las empresas de los paquetes recibidos se registran como ajenas (`empresa_registrada`), nunca como propia.
 
 `tests/unit/test_arquitectura_s3.py` (archivo propio, con los ayudantes compartidos de `test_arquitectura.py`,
 RV‑2): `seguridad` solo con biblioteca estándar, `sqlalchemy`, `argon2` y `cryptography`; `paquete` sin `ui`, `api`,
@@ -387,14 +389,14 @@ revisar paquete -> guardar_subida -> paquete.verificar (lectura con tope) -> can
 
 ### 5.1 Roles y permisos
 
-Matriz por defecto del maestro §4.1 (a ratificar por Eugenio, pregunta P2 del maestro §10.3), con las acciones de S1,
-S2 y S3:
+Matriz del maestro §4.1 (ratificada por Eugenio el 2026‑10‑11, pregunta P2 del maestro §10.3), con las acciones de
+S1, S2 y S3:
 
 | Acción | arma | revisa | administrador |
 |---|---|---|---|
 | Crear proyecto, editar la hoja, guardar versión, importar plano, contrastar planos (R16), exportar el Excel de la hoja | sí | solo lectura | no |
 | Convertir la moneda del proyecto y hacer estudios de reajuste (S1) | sí | solo lectura | no |
-| Línea base de control, valuaciones, anulaciones y costos reales (S2) | sí | solo lectura | no |
+| Línea base de control, valuaciones (registrar y anular), costos reales (S2) | sí | solo lectura | no |
 | Decidir una recuperación (S2) | sí | solo lectura | no |
 | Entregar paquete (firmar exige además la contraseña de la clave y el propio equipo) | sí | no | no |
 | Cambiar de caso (elegirlo de la lista de `datos\casos\`) | sí | no | sí |
@@ -405,8 +407,10 @@ S2 y S3:
 | Red local y API; claves de API (crear solo desde el propio equipo) | no | no | sí |
 | Cambiar la carpeta de datos (S5) | no | no | sí, solo desde el propio equipo |
 
-Una cuenta puede tener varios roles (en una empresa pequeña una persona es las tres cosas); la pantalla de cuentas
-**avisa** cuando una cuenta arma y revisa a la vez («la misma persona no debería revisar lo que armó»). El rol se
+Una cuenta puede tener varios roles (en una empresa pequeña una persona es las tres cosas); una misma persona
+**puede** tener *arma* y *revisa* (P2, ratificada). La pantalla de cuentas lo **informa** sin impedirlo («esta cuenta
+podrá revisar paquetes que ella misma armó; la vista de revisión lo indicará»); el paquete y la cadena registran
+quién armó, y el dictamen quién revisó y si coincide (§9, paso 5). El rol se
 comprueba en la navegación **y** dentro de `render()` de cada página o de la función de `ui/` que ejecuta la acción,
 con los roles leídos de la base en cada ejecución.
 
@@ -658,7 +662,8 @@ huella_cambios, huella_anexos, huella_eslabon, usuario, fecha_hora, tipo (`norma
 `paq_recibido` (id, archivo, huella del archivo (SHA‑256), `paquete_id`, destinatario, ruta, empresa declarada,
 empresa verificada, estado, proyecto, código, fecha de emisión, cadena en JSON, huellas de las entradas de los
 anexos en JSON, recibido_por, fecha) y `paq_dictamen` (paquete, huella del archivo, resultado: conforme, con
-observaciones o rechazado; notas, usuario, fecha, estado de verificación al dictaminar).
+observaciones o rechazado; notas, usuario, fecha, estado de verificación al dictaminar, `revisor_armo` (sí o no,
+§9 paso 5)).
 
 ---
 
@@ -678,7 +683,7 @@ tabla, todos opcionales:
 | `cadena.json` | todos los eslabones del proyecto hasta la versión entregada y los `RegistroCambio` de cada una | verificar la cadena y ver quién cambió qué | sí |
 | `anexos/espacio.json` | espacio de la versión, si tiene | reauditar R8–R10 y R15 | no |
 | `anexos/reajuste.json` | S1: índices usados con su fuente y la huella del archivo del BCV; estudios de reajuste | reauditar R11–R12 y el reajuste | no |
-| `anexos/control.json` | S2: línea base de control y calendario, valuaciones (con su estado, *presentada* o *conformada*, maestro P3), anulaciones, costos reales, decisiones de recuperación | reauditar R13–R14 y el valor ganado | no |
+| `anexos/control.json` | S2: línea base de control y calendario, valuaciones (con su fecha de registro; sin conformación, maestro P3), anulaciones, costos reales, decisiones de recuperación | reauditar R13–R14 y el valor ganado | no |
 | `anexos/ia.json` | S4: pasos y citas del asistente, sin uso de fichas, sin costo y nunca con la clave (valor por defecto, a ratificar por Eugenio, pregunta P4) | ver qué propuso la IA y con qué fuente | no |
 
 - Cada entrada de `reajuste.json` y `control.json` lleva su propia huella SHA‑256; **no tienen cadena propia** (S2 ya
@@ -774,9 +779,14 @@ patrón estricto **antes** de pasarla a `Decimal` (p. ej. `1E+999999999`; patró
    de S2 (término cruzado en el consumo, precio = (PU_real − PU_base) · Q_base; RV‑10): cada una tiene su nombre y su
    memoria, y S2 no reutiliza SL‑E9.
 5. **Quién cambió qué**: los `RegistroCambio` entre la entrega anterior y esta, con responsable y fuente (los
-   hechos tras un restablecimiento del administrador, marcados).
+   hechos tras un restablecimiento del administrador, marcados). **Quien revisa es quien armó** (maestro §4.1, P2):
+   si el paquete es de la empresa propia (firmado con su clave, o sin firma y con la empresa propia declarada) y
+   el login de quien revisa es el del usuario emisor o el del `usuario` de algún eslabón de `cadena.json`, un aviso
+   ámbar fijo arriba dice «Usted armó o cambió este presupuesto: lo está revisando la misma persona que lo armó»,
+   con las versiones en que aparece; no impide el dictamen.
 6. **Dictamen**: conforme, con observaciones o rechazado, con notas obligatorias salvo «conforme»; se guarda en
-   `paq_dictamen` atado al **SHA‑256 del archivo** y con el estado de verificación de ese momento. **Exportar la
+   `paq_dictamen` atado al **SHA‑256 del archivo**, con el estado de verificación de ese momento, quién revisó y
+   `revisor_armo`. **Exportar la
    revisión** a Excel (hojas Verificación, Hallazgos, Diferencias, Cambios) y **Descargar el presupuesto en Excel**
    (regenerado desde `presupuesto.json` con `exportar_hoja`), los dos con el escape de M‑1.
 
@@ -964,7 +974,7 @@ de red en `tests/conftest.py` (maestro §6.3).
 | SL‑E12 | concurrencia de §13.4 |
 | RF‑84 | generar, cifrar, cargar con contraseña buena y **errónea** (`InvalidTag`, mensaje sin traza); contraseña de la lista de comunes rechazada; huella igual en dos bases; búsqueda interna por clave completa (dos claves con los mismos 100 bits iniciales, construidas en la prueba, no se confunden); retirar destruye la privada; revocar; aviso de revocación firmado, uno con firma falsa y uno firmado con el prefijo de paquete (no vale) |
 | RF‑85, RF‑86 | ida y vuelta entre dos bases temporales con los cuatro anexos; SHA‑256 del exportado en `evento_acceso`; firma pedida con una IP que no es de bucle local → rechazo; todos los casos de §13.3 |
-| RF‑87 | memoria de diferencias; «no contrastable»; reauditoría que encuentra un hallazgo no declarado; R11–R14 recomputadas = conjunto exacto; R12 a la fecha de emisión (el mismo paquete reauditado otro día da lo mismo); `revalorar` en `core` con su prueba; Excel regenerado sin el Excel del emisor; dictamen con SHA‑256 y estado |
+| RF‑87 | memoria de diferencias; «no contrastable»; reauditoría que encuentra un hallazgo no declarado; R11–R14 recomputadas = conjunto exacto; R12 a la fecha de emisión (el mismo paquete reauditado otro día da lo mismo); `revalorar` en `core` con su prueba; Excel regenerado sin el Excel del emisor; dictamen con SHA‑256 y estado; **quien revisa es quien armó**: con un paquete de la empresa propia, revisor = usuario emisor → aviso y `revisor_armo` = sí; revisor = `usuario` de un eslabón anterior → aviso; otro revisor → sin aviso; paquete de una empresa ajena con un login igual → sin aviso |
 | RF‑88 | plantilla descargada → auditada; Excel con partidas del catálogo sin rechazo; Excel con una fórmula `HYPERLINK` → se lee su valor, nunca la fórmula; API sin clave, con clave revocada y con clave válida (`TestClient`); toda ruta `/v1/` exige la clave (recorriendo `app.routes`); cuerpo de 20 MiB y de 20 MiB + 1 B; `Host` ajeno → rechazo; `NaN` y cifra `1E+999999999` → 422 |
 | RF‑89 | auditoría DXF de un archivo dañado a propósito; IDS con un fallo por requisito; cada fila de R15 con sus fronteras (§11.3); R16 con 0,10 / 0,11 m y 1,00 / 1,01 m, faltante, sobrante y desplazado con su costo de la memoria; ningún error sembrado da R9 y R15 a la vez; OF‑001 limpio = conjunto exacto literal; IFC sin el extra instalado |
 | RNF‑16 | §13.3 y §13.4; ningún secreto en registros (prueba que captura la salida y el registro de accesos) |
@@ -1085,13 +1095,13 @@ revisor (queda la entrega anterior). Cuentas, cadena, firma, paquete con anexos 
 | RS3‑1 | DA‑S3‑1 a DA‑S3‑11 (§4.5) | el costo de cada una, en su fila | DA‑S3‑9 a DA‑S3‑11 los fijan RV‑7, RV‑8 y RV‑13; el resto, Eugenio |
 | RS3‑2 | 30 min de inactividad, 12 h de antigüedad, 5 intentos y 15 min de bloqueo; freno global de 20 fallos en 10 min | cambiar constantes y sus pruebas de frontera | Eugenio |
 | RS3‑3 | Primer administrador con código de instalación de 100 bits en un archivo local | si el instalador de S5 lo resuelve de otro modo, se retira la pantalla | entropía fijada por RV‑16; el mecanismo, Eugenio |
-| RS3‑4 | Una cuenta puede armar y revisar, con aviso | prohibirlo exige dos personas en empresas de una | pregunta P2 del maestro §10.3 |
+| RS3‑4 | Una cuenta puede armar y revisar; la vista de revisión lo indica cuando coinciden y el dictamen lo registra | prohibirlo exige dos personas en empresas de una | **ratificada por Eugenio el 2026‑10‑11** (pregunta P2 del maestro §10.3) |
 | RS3‑5 | Sellado retroactivo automático al abrir el caso, declarado | un botón del administrador; versiones sin sellar mientras tanto | Eugenio |
 | RS3‑6 | Umbrales de R15, distancias de R16 y límites del ZIP, del JSON y de la API como supuestos declarados, con sus fronteras exactas | cifras discutibles hasta medir o verificar fuente | fronteras fijadas por RV‑16 y PRU‑H4; las cifras, Eugenio |
 | RS3‑7 | Revocar invalida todos los paquetes de esa clave (no hay fecha confiable) | un paquete legítimo antiguo deja de verificar; su dictamen se conserva | Eugenio |
 | RS3‑8 | Red local sin TLS en 0.8.0, con las condiciones de §5.6 | adelantar a S3 la configuración de TLS de S5 | condiciones fijadas por RV‑15; aceptar sin TLS, Eugenio |
-| RS3‑9 | Matriz de roles de §5.1 y mapa de actores de §3.0 | reasignar acciones y ajustar las pruebas de la matriz | pregunta P2 del maestro §10.3 |
-| RS3‑10 | Una empresa propia por instalación; la contraseña de la clave la conoce el administrador | rehacer `empresa_propia` y la pantalla | pregunta P1 del maestro §10.3 |
+| RS3‑9 | Matriz de roles de §5.1 y mapa de actores de §3.0 | reasignar acciones y ajustar las pruebas de la matriz | **ratificada por Eugenio el 2026‑10‑11** (pregunta P2 del maestro §10.3) |
+| RS3‑10 | Una empresa propia por instalación; la contraseña de la clave la conoce solo el administrador; las empresas de los paquetes recibidos, ajenas | rehacer `empresa_propia` y la pantalla | **ratificada por Eugenio el 2026‑10‑11** (pregunta P1 del maestro §10.3) |
 | RS3‑11 | Meta de planos: 100 % de lo detectable y 0 falsas alarmas sobre OF‑001 limpio | fijar otro umbral en el protocolo de §13.5 b antes de medir | pregunta P8 del maestro §10.3 |
 
 ---
@@ -1118,13 +1128,15 @@ revisor (queda la entrega anterior). Cuentas, cadena, firma, paquete con anexos 
 Las que dependen de Eugenio remiten al maestro §10.3; las que cerró la revisión se marcan.
 
 1. ¿Eugenio acepta que recargar la página pida entrar de nuevo (DA‑S3‑1, RS3‑1)? — Eugenio.
-2. ¿La misma persona puede armar y revisar en la misma instalación (RS3‑4)? — **Valor por defecto: sí, con aviso**;
-   a ratificar en la pregunta P2 del maestro §10.3.
+2. ~~¿La misma persona puede armar y revisar en la misma instalación (RS3‑4)?~~ **Ratificada por Eugenio el
+   2026‑10‑11** (pregunta P2 del maestro §10.3): sí; la vista de revisión lo indica y el dictamen lo registra (§9,
+   paso 5).
 3. ¿Se acepta la red local sin TLS en 0.8.0, o se adelanta TLS desde S5 (RS3‑8)? — Las condiciones las fijó RV‑15
    (§5.6); la decisión sigue siendo de Eugenio.
 4. Tiempos de sesión y bloqueo (RS3‑2): ¿son razonables para una oficina de obra? — Eugenio.
 5. ¿Qué datos de la empresa van en la clave pública y quién en la empresa conoce la contraseña de la clave? —
-   **Cerrada por RV‑6** (nombre, RIF y ciudad opcional; la conoce el administrador); a ratificar en la pregunta P1.
+   **Cerrada por RV‑6** (nombre, RIF y ciudad opcional; la conoce solo el administrador); ratificada por Eugenio el
+   2026‑10‑11 (pregunta P1).
 6. ¿El tutor acepta SL‑E7, SL‑E8, SL‑E9 y SL‑E12 en `core/`? — Tutor.
 7. ¿La meta de §11.5 (100 % en lo detectable y cero falsas alarmas sobre OF‑001 limpio) es la correcta? — **Valor
    por defecto fijado por RV‑20**; a ratificar en la pregunta P8 del maestro §10.3.
@@ -1133,5 +1145,5 @@ Las que dependen de Eugenio remiten al maestro §10.3; las que cerró la revisi�
    sistema». Si se mide en la misma sesión de Med o en otra lo fija ese protocolo.
 9. ¿El revisor debe poder **devolver** el paquete con observaciones firmadas por su propia empresa (respuesta
    firmada)? — Fuera de este spec (candidata a 1.x o 2.x); la separación de dominio de §7.1 ya le reserva su prefijo.
-10. ¿Qué rol hace cada acción de S1 y S2? — **Valor por defecto: la matriz de §5.1** (REQ‑4, maestro §4.1); a ratificar en la
-    pregunta P2 del maestro §10.3.
+10. ~~¿Qué rol hace cada acción de S1 y S2?~~ **La matriz de §5.1** (REQ‑4, maestro §4.1), ratificada por Eugenio el
+    2026‑10‑11 (pregunta P2 del maestro §10.3).

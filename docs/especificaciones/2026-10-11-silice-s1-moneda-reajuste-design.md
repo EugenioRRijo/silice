@@ -90,14 +90,14 @@ escalatoria y comprobación directa lado a lado; pantallas y exportación a Exce
 - Descargar del BCV: el sistema **no se conecta**; el usuario trae los archivos (RNF‑14).
 - Valuaciones por cantidades ejecutadas (S2, 0.7.0). En la 0.6.0, lo ejecutado de cada período se escribe
   **a mano** en el estudio de reajuste, con su fuente; desde la 0.7.0 el estudio **cita** las valuaciones
-  conformadas de S2 (RV‑11, RV‑18; §8.6).
+  registradas no anuladas de S2 (RV‑11, RV‑18; §8.6).
 - Variaciones de obra (aumentos, disminuciones, obras extra): S2.
 - Monedas distintas de Bs y USD.
 - Rutas nuevas de la API (la API se amplía en S3 y S5).
 - Cuentas de usuario: el responsable sigue siendo un nombre declarado hasta S3 (S‑D4).
 - Una entidad «empresa» con claves y firma: S3. Hasta S3, la lista de empresa guarda `empresa_nombre` y
   `empresa_rif` como texto (instantánea, sin clave foránea entre bases); desde S3 se rellenan desde la empresa
-  propia de la instalación (RV‑6, a ratificar en la pregunta P1 del spec maestro §10.3; §6.1).
+  propia de la instalación (RV‑6, ratificada por Eugenio el 2026‑10‑11, pregunta P1 del spec maestro §10.3; §6.1).
 - El paquete auditado: es de S3. S1 solo deja sus datos listos para viajar en él (§8.7, RV‑8).
 - Decidir si hubo ruptura del equilibrio económico: el sistema registra la excepción que el usuario declara,
   no la juzga.
@@ -152,20 +152,23 @@ informativo: hoy la ERS tiene 62 RF (RF‑32 vacante), 15 UC (UC‑09 reservado,
 #### UC‑18 — Reajustar los precios de la obra ejecutada
 
 - **Actor principal:** proyectista (quien arma). **Secundario:** gerente / administrador que revisa. Desde
-  S3, rol *arma* (valor por defecto de la pregunta P2 del spec maestro §10.3).
+  S3, rol *arma* (pregunta P2 del spec maestro §10.3, ratificada por Eugenio el 2026‑10‑11).
 - **Precondiciones:** versión del contrato guardada; cláusula de reajuste declarada (§8.1); índices
   importados (UC‑17); para la comprobación directa, una versión revalorada por UC‑02 por período.
 - **Flujo principal**
   1. El usuario abre la versión del contrato y su cláusula de reajuste.
   2. Declara, por período, las cantidades ejecutadas por partida con su **fuente** (número y fecha del acta o
      de la valuación). En la 0.6.0 las escribe a mano; desde la 0.7.0 el sistema las toma de las valuaciones
-     **conformadas** y no anuladas de S2, asignando cada valuación al período de la cláusula que contiene su
+     **registradas** y no anuladas de S2, asignando cada valuación al período de la cláusula que contiene su
      fecha *hasta*, y el estudio cita cada valuación (§8.6, RV‑11, RV‑18).
   3. El sistema calcula la **escalatoria** de cada período con las restricciones de §8.2.
   4. El usuario elige, por período, la versión revalorada por UC‑02 que sirve de **comprobación directa**.
   5. El sistema muestra, por período y en total, los dos montos lado a lado, su diferencia, y cada monto en
      las dos monedas con la tasa de la fecha de cierre del período.
-  6. El usuario guarda el estudio (fuente y responsable obligatorios) y lo exporta a Excel.
+  6. El usuario guarda el estudio (fuente y responsable obligatorios) y lo exporta a Excel. El estudio lleva su
+     **monto reconocido** por período: el del mecanismo de la cláusula; con `ambos`, el del mecanismo que la
+     cláusula declara **pagadero** (`mecanismo_pagadero`, §8.1) y, si no lo declara, la escalatoria, con la
+     comprobación como referencia (S1‑R20).
 - **Flujos alternativos**
   - *3a. Período dentro del primer año (contrato de más de un año):* reajuste cero, con la nota «precios
     fijos el primer año (art. 134, a cotejar)».
@@ -183,6 +186,9 @@ informativo: hoy la ERS tiene 62 RF (RF‑32 vacante), 15 UC (UC‑09 reservado,
   - *5a. Proyecto en USD con índices en Bs:* ADVERTENCIA visible (§8.4).
   - *6a. La suma de reajustes supera el 10 % del monto original:* nota informativa sobre la opinión de la
     Comisión de Contrataciones, marcada INDICIO (artículo sin confirmar).
+  - *6b. El último período del estudio es un mes que aún no cierra:* se guarda con estado **«parcial al corte»**
+    y su fecha de corte; al cerrar el mes se guarda un estudio nuevo que lo **reemplaza** (fila nueva que cita al
+    parcial; el parcial se conserva, solo‑agregar) (S1‑R21).
 - **Postcondiciones:** estudio guardado con sus entradas, la importación de cada índice usado, sus
   resultados y su registro; la versión del contrato no cambia.
 
@@ -207,7 +213,7 @@ Prioridad: E = esencial, D = deseable. Fases: §10.
 | RF‑68 | Reglas **R11** (precio fuera de rango frente a MaPreX) y **R12** (precio vencido o sin trazabilidad de tasa) con la severidad de §6.3, el impacto en dinero y la fecha de evaluación en cada hallazgo | UC‑17, UC‑15 | E | S1‑3 | conjunto **exacto** de hallazgos de la memoria `s1_precios_empresa.md` (regla, severidad, insumo, impacto a ± 0,01) a la fecha de evaluación que fija la memoria, con sus fronteras exactas (§9.1); reevaluar a otra fecha no reescribe ninguna fila guardada |
 | RF‑69 | Importación sin conexión de la tasa (.xls trimestral), el INPC (.xls mensual) y el índice de insumos de la construcción, con validación de formato, fuente y fecha, informe previo, huella SHA‑256 e importaciones idempotentes | UC‑17 | E | S1‑2 | el archivo real versionado de un trimestre da sus N hojas como N valores de compra y de venta del USD, y la primera, la última y una del medio dan los valores **transcritos a mano** en `FUENTE.md` (§9.3; incluye 858,02 / 860,18 Bs con fecha valor 01‑10‑2026); cada caso negativo de la fila RF‑69 de §9.2 se rechaza con su mensaje; reimportar la misma huella no escribe nada |
 | RF‑70 | Reajuste por **fórmula escalatoria** (§8.3) con las restricciones del art. 134 de §8.2 («a cotejar») y la cláusula declarada (§8.1) | UC‑18 | E | S1‑4 | la memoria `s1_reajuste.md` (estructura `declarada`) da 15 300,00 Bs en el período del ejemplo; la memoria `s1_reajuste_por_partida.md` (estructura `por_partida`, dos partidas) da K_A = 1,175, K_B = 1,185 y 10 298,34 Bs (§9.1.2); cada frontera de §9.2 da su salida declarada |
-| RF‑71 | **Comprobación directa** (con la versión revalorada por UC‑02) lado a lado con la escalatoria, por período y total, en las dos monedas; el estudio se guarda con fuente y responsable y se exporta por `hojas_extra`. Desde la 0.7.0, lo ejecutado de cada período sale de las valuaciones conformadas de S2, citadas, asignadas por su fecha *hasta* (§8.6) | UC‑18 | E | S1‑4 (0.7.0 para el último criterio) | la memoria da 16 000,00 Bs y una diferencia de −700,00 Bs; 18,00 y 18,82 USD a la tasa del ejemplo; la memoria por partida da 11 680,00 Bs y −1 381,66 Bs; el estudio recargado es idéntico al guardado; lo ejecutado por encima de lo presupuestado se guarda con aviso y se reajusta sobre `min(Q, q)` (3f). **Criterio del puente (0.7.0, lo entrega RF‑72 de S2):** una valuación conformada con *hasta* = último día del mes cae en ese período y una con *hasta* = primer día del mes siguiente cae en el siguiente; una presentada o anulada no cuenta; el estudio cita el número de cada valuación usada |
+| RF‑71 | **Comprobación directa** (con la versión revalorada por UC‑02) lado a lado con la escalatoria, por período y total, en las dos monedas; el estudio se guarda con fuente y responsable y se exporta por `hojas_extra`. Con `ambos`, el monto reconocido es el del mecanismo pagadero de la cláusula, o la escalatoria si no lo declara; el estudio de un mes en curso se guarda «parcial al corte» y se reemplaza al cerrar el mes (§8.5). Desde la 0.7.0, lo ejecutado de cada período sale de las valuaciones registradas no anuladas de S2, citadas, asignadas por su fecha *hasta* (§8.6) | UC‑18 | E | S1‑4 (0.7.0 para el último criterio) | la memoria da 16 000,00 Bs y una diferencia de −700,00 Bs; 18,00 y 18,82 USD a la tasa del ejemplo; la memoria por partida da 11 680,00 Bs y −1 381,66 Bs; el estudio recargado es idéntico al guardado; con la memoria `s1_reajuste.md` y `mecanismo` = `ambos`, el reconocido es 16 000,00 Bs si `mecanismo_pagadero` = `comprobacion` y 15 300,00 Bs (la escalatoria) si la cláusula no lo declara; un estudio guardado antes del cierre de su mes queda «parcial al corte» y el del cierre lo reemplaza sin borrarlo; lo ejecutado por encima de lo presupuestado se guarda con aviso y se reajusta sobre `min(Q, q)` (3f). **Criterio del puente (0.7.0, lo entrega RF‑72 de S2):** una valuación registrada con *hasta* = último día del mes cae en ese período y una con *hasta* = primer día del mes siguiente cae en el siguiente; una anulada no cuenta; el estudio cita el número de cada valuación usada |
 
 ### 3.3 Requisito no funcional
 
@@ -331,7 +337,7 @@ existentes (clínica, TI‑001, importadas): no tienen filas nuevas y todo cae a
 | `valor_indice` | `id`, `serie_id`, `importacion_id`, `fecha` (fecha valor o primer día del período), `valor`, `provisional` | SL‑E1; única por (`serie_id`, `fecha`, `importacion_id`) |
 | `moneda_proyecto` | `id`, `proyecto_id`, `moneda`, `desde` (fecha y hora), `version_id`, `responsable`, `fuente` | SL‑E1; historial: la vigente es la última; sin filas, la de su versión vigente |
 | `precio_origen` | `precio_id` (PK → `precio_insumo`), `moneda_original`, `precio_original`, `fecha_precio`, `tasa`, `fecha_tasa`, `fuente_tasa` (id de importación o texto), `fuente` | SL‑E1 |
-| `lista_empresa` | `lista_id` (PK), `empresa_nombre`, `empresa_rif` (texto, instantánea sin clave foránea a `instalacion.db`; RV‑6, a ratificar, P1), `lista_base_id`, `lista_referencia_id` (MaPreX), `plazo_vigencia_dias`, `rango_inferior`, `rango_superior` | SL‑E2 |
+| `lista_empresa` | `lista_id` (PK), `empresa_nombre`, `empresa_rif` (texto, instantánea sin clave foránea a `instalacion.db`; RV‑6, ratificada por Eugenio el 2026‑10‑11, P1), `lista_base_id`, `lista_referencia_id` (MaPreX), `plazo_vigencia_dias`, `rango_inferior`, `rango_superior` | SL‑E2 |
 | `clausula_reajuste`, `componente_clausula` | §8.1 | SL‑E3 |
 | `estudio_reajuste`, `periodo_reajuste`, `ejecutado_periodo` | §8.5 | SL‑E3 |
 
@@ -370,8 +376,8 @@ fijado dentro de la función (el resultado no depende del contexto global); se r
 cada precio convertido y su `PrecioOrigen`; toma las líneas de la instantánea (SF‑E6) con esa lista; convierte
 el precio de las líneas sin insumo (precio manual) con la misma tasa; convierte `bono_alimentacion`; conserva
 el plan (fracciones); elabora, guarda con `version_origen` (motivo `conversion`) **por
-`core/budget/persistencia.guardar_presupuesto`**, el único embudo que crea versiones (desde S3 ahí se sella y
-`usuario` es obligatorio; RV‑7), agrega una fila a `moneda_proyecto` y un `RegistroCambio` (objeto `moneda`,
+`core/budget/persistencia.guardar_presupuesto`**, el único embudo que crea versiones (desde S3 la versión se sella al confirmar la
+transacción que la crea, con `usuario` exigido al confirmar; RV‑7), agrega una fila a `moneda_proyecto` y un `RegistroCambio` (objeto `moneda`,
 valores anterior y nuevo, fuente = importación de la tasa). Desde la 0.7.0, si el proyecto tiene una línea
 base de control declarada (S2), la conversión la deja **invalidada** y hay que declararla de nuevo sobre la
 versión convertida (RV‑11). Como el PU es homogéneo de grado 1 en los montos (precios y bono; las fracciones no cambian), el total
@@ -391,7 +397,7 @@ con `convertir_lista` y su `PrecioOrigen`) con los precios propios encima, cada 
 referenciándola explícitamente, como una lista de proyecto (DA‑SF‑9). Una cotización sobre una versión
 valorada con lista de empresa toma esa lista como base (SF‑E7 sin cambios).
 
-**Empresa (RV‑6, valor por defecto a ratificar por Eugenio, pregunta P1 del spec maestro §10.3).** Una
+**Empresa (RV‑6, ratificada por Eugenio el 2026‑10‑11, pregunta P1 del spec maestro §10.3).** Una
 instalación tiene **una sola empresa propia** (tabla de S3 en `instalacion.db`: nombre, RIF, ciudad opcional) y las empresas **ajenas**
 registradas que llegan en los paquetes. Antes de S3 (0.6.0 y 0.7.0) la empresa de una lista es el texto
 `empresa_nombre` + `empresa_rif` que declara el administrador del catálogo; desde S3 la interfaz los
@@ -479,6 +485,7 @@ del riesgo «el BCV cambia el formato» (spec maestro §8).
 | `fecha_referencia_primer_anio` | fecha desde la que corre el primer año (por defecto `fecha_inicio`; **a cotejar**: firma, inicio o acta de inicio) | precios fijos el primer año |
 | `periodicidad` | mensual, trimestral u otra declarada | num. 3, periodicidad |
 | `mecanismo` | `escalatoria`, `comprobacion` o `ambos` (H‑D3: el sistema muestra los dos aunque el contrato elija uno) | num. 2, mecanismos de ajuste |
+| `mecanismo_pagadero` | solo con `ambos`: `escalatoria` o `comprobacion`, el que el contrato declara pagadero (opcional, con su fuente). Fija el **monto reconocido**; si falta, se reconoce la escalatoria y la comprobación queda como referencia (S1‑R20) | num. 2 |
 | `estructura` | `por_partida` (pesos de cada partida desde su `ResultadoAPU`: materiales, equipos y mano de obra sobre el costo directo) o `declarada` (pesos globales escritos en el contrato) | num. 1, estructura de costos por renglón o partida |
 | `componente_clausula` | por componente: peso (si es declarada), **serie** con su organismo (p. ej. índice de insumos de la construcción, INPC) | num. 4, índices y órgano que los genera |
 | `fecha_base_indices` | mes del índice base `I0` (obligatorio, sin valor por defecto) | — (S1‑R10) |
@@ -530,18 +537,29 @@ dólares cuenta dos veces la devaluación (S1‑R11).
 
 ### 8.5 Estudio guardado
 
-`estudio_reajuste` (versión del contrato, cláusula, fecha de cálculo, fuente, responsable), `periodo_reajuste`
-(desde, hasta, `Km`, escalatoria, comprobación, versión revalorada usada, importación de cada índice, marcas:
-primer año, provisional, excepción, exceso sobre lo presupuestado) y `ejecutado_periodo` (partida, cantidad,
-fuente). Recargar un estudio lo **recalcula** con las importaciones citadas y exige igualdad exacta con lo
-guardado (RNF‑14). Un estudio guardado es inmutable; rehacerlo es guardar otro.
+`estudio_reajuste` (versión del contrato, cláusula, fecha de cálculo, **estado** (`cerrado` o `parcial al
+corte`), fecha de corte si es parcial, `reemplaza_a` (el estudio parcial que reemplaza, anulable), fuente,
+responsable), `periodo_reajuste` (desde, hasta, `Km`, escalatoria, comprobación, **monto reconocido** y su
+mecanismo, versión revalorada usada, importación de cada índice, marcas: primer año, provisional, excepción, exceso
+sobre lo presupuestado) y `ejecutado_periodo` (partida, cantidad, fuente). Recargar un estudio lo **recalcula** con
+las importaciones citadas y exige igualdad exacta con lo guardado (RNF‑14). Un estudio guardado es inmutable;
+rehacerlo es guardar otro.
+
+- **Monto reconocido (S1‑R20).** Con mecanismo `escalatoria` o `comprobacion`, el de ese mecanismo. Con `ambos`,
+  el del `mecanismo_pagadero` de la cláusula (§8.1); si la cláusula no lo declara, la **escalatoria**, y la
+  comprobación se muestra como referencia. Si el mecanismo reconocido quedó «no disponible» en un período (3c,
+  4a), ese período no tiene monto reconocido y se declara; no se toma el otro.
+- **Mes en curso (S1‑R21).** Un estudio cuyo último período es un mes que aún no cierra a la fecha de cálculo se
+  guarda con estado **«parcial al corte»** (lo ejecutado y los índices disponibles a esa fecha). Al cerrar el mes
+  se guarda un estudio **nuevo**, `cerrado`, con `reemplaza_a` = el parcial: solo‑agregar, el parcial se conserva
+  y deja de sumar desde la fecha de cálculo del que lo reemplaza. Un parcial se reemplaza una sola vez.
 
 ### 8.6 Puente con S2: lo ejecutado del período (RV‑11, RV‑18, RV‑12)
 
 | Versión | De dónde sale lo ejecutado | Qué cita el estudio |
 |---|---|---|
 | **0.6.0** | escrito a mano por período y partida en `ejecutado_periodo`, con su fuente textual (número y fecha del acta o de la valuación) | la fuente textual |
-| **0.7.0** | `ejecutado_por_periodo` de S2: las valuaciones **conformadas** y no anuladas (RV‑18; las *presentadas* no cuentan); cada valuación entra entera en el período de la cláusula (mensual en el caso común; §8.1 `periodicidad`) que contiene su fecha *hasta*; una valuación semanal que cruza el cierre del mes no se prorratea | cada valuación usada (S2 agrega la cita en su revisión de Alembic de `ejecutado_periodo`) |
+| **0.7.0** | `ejecutado_por_periodo` de S2: las valuaciones **registradas** y no anuladas (RV‑18, decidida por Eugenio el 2026‑10‑11: sin conformación; cuentan desde su registro y solo la anulación las saca); cada valuación entra entera en el período de la cláusula (mensual en el caso común; §8.1 `periodicidad`) que contiene su fecha *hasta*; una valuación semanal que cruza el cierre del mes no se prorratea | cada valuación usada (S2 agrega la cita en su revisión de Alembic de `ejecutado_periodo`) |
 
 - **Ejecutado mayor que lo presupuestado:** se guarda; R13 lo marca ERROR en la valuación (S2) y el estudio lo
   reajusta solo hasta `min(Q, q)` con aviso (§8.2, UC‑18 3f).
@@ -550,7 +568,8 @@ guardado (RNF‑14). Un estudio guardado es inmutable; rehacerlo es guardar otro
   cambia: sigue citando la versión del contrato que usó.
 - **Reajuste reconocido (RV‑12):** el punto de equilibrio proyectado de S2 suma solo el reajuste **ya
   reconocido**, es decir, el de los estudios de S1 guardados hasta la fecha, nunca uno proyectado. S1 entrega
-  los estudios guardados con su monto por período y mecanismo; qué suma S2 lo fija S2.
+  los estudios guardados con su **monto reconocido** por período (§8.5, S1‑R20), su estado y `reemplaza_a`; un
+  estudio reemplazado por otro guardado hasta esa fecha no suma (S1‑R21). Qué suma S2 lo fija S2 (§4.7).
 - **Criterio y prueba:** el criterio del puente está en RF‑71 (§3.2). Su prueba
   (`test_estudio_cita_valuaciones_por_fecha_hasta`) la escribe S2 en la fase que entrega `ejecutado_por_periodo`
   (RF‑72), con el rojo observado antes de la implementación, y queda en la matriz de S1 (§9.2).
@@ -636,7 +655,7 @@ cuentas a la memoria y las rehace a mano antes del código.
 | RF‑68 | conjunto **exacto** de la memoria a su fecha de evaluación fija: desvío −20,00 % pasa, −20,01 % ADVERTENCIA, +30,00 % pasa, +30,01 % ADVERTENCIA (fronteras en Bs contra Bs con la misma tasa, desvío exacto; PRU‑H11); 30 días pasa, 31 ADVERTENCIA; tasa sin fecha ERROR; tasa sin fuente ADVERTENCIA; sin referencia → un INFO con la cuenta; impacto a ± 0,01 recalculado a mano; reevaluar R12 a otra fecha cambia lo mostrado y deja intactas las filas guardadas y `huella_contenido` (RV‑9) |
 | RF‑69 | archivo real del trimestre: N hojas → N valores de compra y venta del USD con su fecha valor; N y los valores de la primera hoja, la última y una del medio se comparan con la **transcripción a mano** de `FUENTE.md` (§9.3), no con un conteo hecho con `xlrd` (PRU‑H13); cuadrículas negativas: falta la etiqueta, fecha repetida, fecha fuera del trimestre, fecha posterior a la descarga, valor no numérico, valor ≤ 0, hoja de otra moneda; `.xlsx` renombrado `.xls`; > 20 MB; dominio ajeno; misma huella dos veces; revisión del INPC como importación nueva |
 | RF‑70 | las dos memorias de reajuste (`declarada` y `por_partida`); fronteras: cierre el día anterior al aniversario → 0; inicio en el aniversario → reajusta; período que lo cruza → rechazo; contrato de 12 meses exactos → sin congelamiento; pesos que suman 0,9999 → rechazo; índice faltante → período no calculado; provisional marcado; excepción declarada marcada |
-| RF‑71 | las dos memorias de reajuste (comprobación y diferencia, dos monedas; diferencia en USD redondeada una vez); sin versión revalorada → «no disponible»; proyecto en USD con índice en Bs → ADVERTENCIA; > 10 % → nota INDICIO; ejecutado acumulado = Q pasa sin aviso, Q + 0,001 se guarda con aviso y reajusta solo Q (3f); estudio recargado = guardado; Excel por `hojas_extra` con sus totales. **0.7.0** (la escribe S2, §8.6): `test_estudio_cita_valuaciones_por_fecha_hasta` (*hasta* = último día del mes → ese período; primer día del mes siguiente → el siguiente; presentada y anulada no cuentan; cita de cada valuación) |
+| RF‑71 | las dos memorias de reajuste (comprobación y diferencia, dos monedas; diferencia en USD redondeada una vez); sin versión revalorada → «no disponible»; proyecto en USD con índice en Bs → ADVERTENCIA; > 10 % → nota INDICIO; ejecutado acumulado = Q pasa sin aviso, Q + 0,001 se guarda con aviso y reajusta solo Q (3f); estudio recargado = guardado; Excel por `hojas_extra` con sus totales. **0.7.0** (la escribe S2, §8.6): `test_estudio_cita_valuaciones_por_fecha_hasta` (*hasta* = último día del mes → ese período; primer día del mes siguiente → el siguiente; una registrada cuenta sin otro paso y una anulada no cuenta; cita de cada valuación). Monto reconocido con la memoria `s1_reajuste.md` y `ambos`: `mecanismo_pagadero` = `comprobacion` → 16 000,00 Bs; sin `mecanismo_pagadero` → 15 300,00 Bs (escalatoria); comprobación «no disponible» con `mecanismo_pagadero` = `comprobacion` → período sin monto reconocido, declarado. Mes en curso: fecha de cálculo = último día del mes → `cerrado`; un día antes → «parcial al corte»; el estudio de cierre con `reemplaza_a` deja el parcial en la base; reemplazar dos veces el mismo parcial se rechaza |
 | RNF‑14 | la suite corre bajo la guardia de red única de `tests/conftest.py` (solo 127.0.0.1 y ::1; RV‑17), sin guardias propias por *fixture*; la meta comprueba que está activa; estudio recalculado tras importar una revisión: diferencia 0 |
 | Bases anteriores | una base de la 0.5.0 (clínica, TI‑001, importada) abre por `preparar_base`: entra por la revisión base de Alembic, sube a `head` con la revisión de S1 (con respaldo previo), gana las tablas de §5.2 sin perder filas, recarga y audita igual que su ficha (total literal, huella del informe, filas por tabla, escrita con el código de `v0.5.0`; RV‑3, PRU‑H15); deriva de esquema 0 (RNF‑20) |
 | Arquitectura | `adapters/bcv` solo importa biblioteca estándar, `xlrd` y `openpyxl`; `ui/indices.py` y `ui/reajuste.py` sin Streamlit (`tests/unit/test_arquitectura_s1.py`); `core/` no importa `adapters/`; `git diff v0.5.0..HEAD -- core/contracts/` vacío |
@@ -750,8 +769,10 @@ y el reajuste lado a lado no se recortan: son el criterio de éxito de la 0.6.0.
 | S1‑R15 | Monedas guardadas como `"Bs"` y `"USD"` (las palabras de H‑D1), no códigos ISO | código ISO del bolívar | renombrar un valor en datos nuevos; ninguna base existente tiene `"Bs"` |
 | S1‑R16 | Desvío de R11 con una sola división y **sin cuantizar** antes de comparar; fronteras de la memoria construidas en la misma moneda y tasa (PRU‑H11) | cuantizar el desvío a 0,01 % antes de comparar | una frontera que pasa o falla por el dígito 28 de un cociente |
 | S1‑R17 | Ejecutado por encima de lo presupuestado: se guarda con aviso y se reajusta sobre `min(Q, q)` (RV‑11, alineado con R13 y S2‑R8) | rechazarlo (versión 1 de este spec) | reajuste reclamado sobre obra no aprobada, o un estudio imposible de guardar con datos reales |
-| S1‑R18 | Desde la 0.7.0, cada valuación conformada entra entera en el período que contiene su *hasta* (RV‑11, RV‑18) | prorratear por días | hasta un mes de desfase en lo ejecutado de una valuación que cruza el cierre |
+| S1‑R18 | Desde la 0.7.0, cada valuación registrada no anulada entra entera en el período que contiene su *hasta* (RV‑11, RV‑18) | prorratear por días | hasta un mes de desfase en lo ejecutado de una valuación que cruza el cierre |
 | S1‑R19 | Porcentaje de erosión = `1 − T0/T1` (sobre el valor a la fecha del precio), el mismo en las dos monedas | erosión en Bs sobre `P` | mostrar 35,81 % donde la pérdida de valor es 26,37 % |
+| S1‑R20 | Con `ambos`, el monto reconocido es el del `mecanismo_pagadero` que declara la cláusula; si no lo declara, la escalatoria, y la comprobación queda como referencia (cierra la pregunta 10 de S2) | reconocer el mayor o el menor de los dos | un reajuste reconocido que el contrato no paga; se corrige un campo de la cláusula |
+| S1‑R21 | El estudio de un mes en curso se guarda «parcial al corte» y se reemplaza al cerrar el mes con una fila nueva (`reemplaza_a`), solo‑agregar (cierra la pregunta 10 de S2) | prohibir guardar antes del cierre | sin él, el PE proyectado de S2 no vería el reajuste del mes en curso; con él, dos estudios del mismo mes que hay que no sumar dos veces |
 
 ---
 
@@ -765,7 +786,7 @@ y el reajuste lado a lado no se recortan: son el criterio de éxito de la 0.6.0.
 | El índice de la construcción no se puede leer | CSV canónico con fuente declarada; orden de caída de §10 |
 | INPC 2026 provisional y revisado | valor marcado; importación nueva; el estudio cita la que usó |
 | Tres expedientes más en `core/` | TDD con rojo visto, tablas aditivas, contratos intactos, aval del tutor |
-| Solapamiento con S2 (ejecutado) y S3 (empresa) | resuelto por RV‑11 y RV‑6: puente de §8.6 (a mano en 0.6.0, valuaciones conformadas citadas en 0.7.0) y empresa como texto que S3 rellena (§6.1); con Alembic desde la 0.6.0, la cita a la valuación es una revisión más |
+| Solapamiento con S2 (ejecutado) y S3 (empresa) | resuelto por RV‑11 y RV‑6: puente de §8.6 (a mano en 0.6.0, valuaciones registradas no anuladas citadas en 0.7.0) y empresa como texto que S3 rellena (§6.1); con Alembic desde la 0.6.0, la cita a la valuación es una revisión más |
 | Conflictos al integrar con S2 y S3 (mismos archivos de núcleo) | carril único de núcleo, ramas cortas por fase contra `main`, tablas en `core/models/moneda.py` y reglas de arquitectura en su propio archivo (§10, RV‑2) |
 | Precisión de los cocientes en `DecimalExacto` (texto de 40 caracteres) | contexto de 28 dígitos fijo; prueba de ida y vuelta de almacenamiento con los valores más largos de las memorias |
 
@@ -785,11 +806,12 @@ quedan para la trazabilidad. Mientras no haya respuesta, rige el valor por defec
 4. ¿Qué significan `R` y `Km` en la fórmula del INDICIO, y qué índice del BCV va con cada componente
    (productor o mayorista; general o por grupo)? Hace falta un experto o el documento con autor. →
    normativa a cotejar, spec maestro §10.4.
-5. ~~Empresa.~~ **Cerrada por RV‑6** (valor por defecto, a ratificar por Eugenio, pregunta P1 del spec
+5. ~~Empresa.~~ **Cerrada por RV‑6** (ratificada por Eugenio el 2026‑10‑11, pregunta P1 del spec
    maestro §10.3): una empresa propia por instalación; la lista guarda `empresa_nombre` y `empresa_rif` como
    texto, que S3 rellena desde la empresa propia; no hay texto que migrar (§6.1).
-6. ~~Lo ejecutado del período.~~ **Cerrada por RV‑11** (y RV‑18, a ratificar en la pregunta P3 del spec
-   maestro §10.3): a mano en la 0.6.0; desde la 0.7.0 el estudio cita las valuaciones conformadas, asignadas
+6. ~~Lo ejecutado del período.~~ **Cerrada por RV‑11** (y RV‑18, decidida por Eugenio el 2026‑10‑11 en la
+   pregunta P3 del spec maestro §10.3: todas las registradas, sin conformación): a mano en la 0.6.0; desde la
+   0.7.0 el estudio cita las valuaciones registradas no anuladas, asignadas
    por su fecha *hasta*; criterio en RF‑71 y entrega en RF‑72 de S2 (§8.6).
 7. ¿Se aceptan el rango de R11 (−20 % / +30 %) y el plazo de R12 (30 días) como supuestos por defecto, o
    Eugenio prefiere otros? → parámetros con valor por defecto, spec maestro §10.4.

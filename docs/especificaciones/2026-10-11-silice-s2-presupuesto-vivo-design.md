@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | **propuesta corregida** tras la revisión de los cinco encargos (requisitos, arquitectura, pruebas y calidad, verificador de hechos, seguridad) y sus rulings RV‑1…RV‑26 del 2026‑10‑11; pendiente de la aprobación de Eugenio. Los tres expedientes de `core/` (§5.4) necesitan además el visto bueno del tutor |
+| Estado | **propuesta corregida** tras la revisión de los cinco encargos (requisitos, arquitectura, pruebas y calidad, verificador de hechos, seguridad) y sus rulings RV‑1…RV‑26 del 2026‑10‑11; pregunta P3 del maestro decidida por Eugenio el 2026‑10‑11 (valuaciones sin conformación, S2‑R14); pendiente de la aprobación de Eugenio. Los tres expedientes de `core/` (§5.4) necesitan además el visto bueno del tutor |
 | Versión que entrega | **0.7.0** (spec maestro §5; RV‑1); condición: 0.6.0 fusionada (S5‑1 adelantado: Alembic, respaldo, `preparar_base`; y S1: moneda, tasa fechada, reajuste). La 0.8.0 (S3) se construye **sobre** la 0.7.0, porque el paquete lleva los anexos de S2 |
 | Fecha | 2026‑10‑11 |
 | Rama del spec | `inc/silice` (worktree `.worktrees/silice`). Construcción (RV‑2): una rama corta por **fase** desde el `main` del momento, PR contra `main` y fusión al cruzar la compuerta de la fase (§8); un solo carril de núcleo abierto a la vez: S1‑1 → S1‑3 → S1‑4 → **S2‑1 → S2‑2 → S2‑3** → S3‑2; la fase de interfaz S2‑4 con la guardia M9 |
@@ -21,9 +21,10 @@ LOTTT del repositorio (`docs/fuentes/LOTTT_GO_6076_Ext_2012-05-07.txt`).
 ## 1. Qué se quiere
 
 1. **Valuaciones por cantidades ejecutadas** (H‑D5), por partida y período, con su fuente (número de valuación,
-   inspector, fecha), escritas a mano o importadas de Excel, en dos estados (*presentada* y *conformada*), y
-   **auditadas**: lo ejecutado no supera lo presupuestado sin una variación registrada, ninguna partida fuera del
-   plan, ninguna fecha fuera de su período. Lo ejecutado de las conformadas alimenta el reajuste de S1.
+   inspector, fecha), escritas a mano o importadas de Excel, y **auditadas**: lo ejecutado no supera lo
+   presupuestado sin una variación registrada, ninguna partida fuera del plan, ninguna fecha fuera de su período.
+   Toda valuación registrada y no anulada cuenta desde su registro (RV‑18, sin conformación) y lo ejecutado
+   alimenta el reajuste de S1.
 2. **Valor ganado** en la moneda del proyecto (S1), con fórmulas declaradas, y la **separación del desvío de
    control** en tres componentes: **plazo** (cantidad a precios de la línea base), **precio** (lo que la obra ejecutada cuesta
    de más por los precios del corte) y **consumo** (el resto). Es el aporte central del horizonte (§5): separar
@@ -60,8 +61,8 @@ su plan, su curva y su registro.
 
 ## 2. Alcance
 
-**Incluye:** línea base de control y calendario; valuaciones con fuente, en dos estados (presentada y
-conformada), anulación sin borrado e importación de Excel; entrega a S1 de lo ejecutado por período; costos
+**Incluye:** línea base de control y calendario; valuaciones con fuente (cuentan desde su registro, sin
+conformación), anulación sin borrado e importación de Excel; entrega a S1 de lo ejecutado por período; costos
 reales con moneda, fecha y fuente; reglas R13 y R14; valor ganado y separación del desvío de control; alertas;
 reproyección del término, del costo final y del punto de equilibrio; cuatro opciones de recuperación; decisión
 registrada como versión nueva; pantalla «Control de obra»; hojas de control en el Excel de la hoja.
@@ -76,8 +77,8 @@ multas contractuales con fuente normativa (no verificadas: la penalización es u
 
 | Con | Qué usa o entrega S2 |
 |---|---|
-| S1 | **Usa** `MONEDAS`, `moneda_del_proyecto`, `tasa_aplicable` y `convertir` (S1 §5.3) para los costos reales; el **precio del corte** de cada partida sale de S1 por comprobación directa (PU de la versión revalorada por UC‑02) o por escalatoria (`Kⱼ,m` por partida, S1 §8.3); el **reajuste reconocido** (la suma de los estudios de reajuste de S1 **guardados** hasta el corte, nunca uno proyectado; RV‑12) entra al PE proyectado (§4.7). **Entrega** a S1 lo ejecutado por período (RV‑11, criterio en RF‑72): solo las valuaciones **conformadas** no anuladas, cada una asignada al período mensual de la cláusula por su fecha *hasta*; lo ejecutado por encima de lo presupuestado se **guarda** con R13 ERROR (S1 UC‑18 3f se alinea: no rechaza) y el reajuste se calcula sobre `min(Q, q)` con aviso. Un cambio de moneda del proyecto (S1 RF‑64) después de declarar la línea base de control la **invalida**: hay que declararla de nuevo sobre la versión convertida |
-| S3 | Las filas de línea base, valuación, conformación, anulación, costo real y decisión viajan en `anexos/control.json` del paquete formato v1 (RV‑8), cubiertas por `huella_anexos` del manifiesto firmado, **sin cadena propia**: las tablas de S2 ya son solo‑agregar, salvo los parámetros de control, que se cambian con su `RegistroCambio` (límite declarado). La reauditoría de S3 §9 recomputa R13–R14 desde ese anexo. La versión que crea una decisión (motivo `recuperacion`) se sella como cualquier otra en el embudo `persistencia.guardar_presupuesto` (RV‑7). S3 asigna rol a registrar, conformar y anular valuaciones, registrar costos y decidir una recuperación (REQ‑4). La «separación del desvío de control» de S2 y la «diferencia entre versiones» de S3 (SL‑E9) son descomposiciones **distintas** (§4.3; RV‑10) |
+| S1 | **Usa** `MONEDAS`, `moneda_del_proyecto`, `tasa_aplicable` y `convertir` (S1 §5.3) para los costos reales; el **precio del corte** de cada partida sale de S1 por comprobación directa (PU de la versión revalorada por UC‑02) o por escalatoria (`Kⱼ,m` por partida, S1 §8.3); el **reajuste reconocido** (la suma de los montos reconocidos de los estudios de reajuste de S1 **guardados** hasta el corte, sin los reemplazados, nunca uno proyectado; RV‑12, S1‑R20, S1‑R21) entra al PE proyectado (§4.7). **Entrega** a S1 lo ejecutado por período (RV‑11, criterio en RF‑72): las valuaciones **registradas** no anuladas, cada una asignada al período mensual de la cláusula por su fecha *hasta*; lo ejecutado por encima de lo presupuestado se **guarda** con R13 ERROR (S1 UC‑18 3f se alinea: no rechaza) y el reajuste se calcula sobre `min(Q, q)` con aviso. Un cambio de moneda del proyecto (S1 RF‑64) después de declarar la línea base de control la **invalida**: hay que declararla de nuevo sobre la versión convertida |
+| S3 | Las filas de línea base, valuación, anulación, costo real y decisión viajan en `anexos/control.json` del paquete formato v1 (RV‑8), cubiertas por `huella_anexos` del manifiesto firmado, **sin cadena propia**: las tablas de S2 ya son solo‑agregar, salvo los parámetros de control, que se cambian con su `RegistroCambio` (límite declarado). La reauditoría de S3 §9 recomputa R13–R14 desde ese anexo. La versión que crea una decisión (motivo `recuperacion`) nace en el embudo `persistencia.guardar_presupuesto` y se sella como cualquier otra al confirmar la transacción que la crea (RV‑7). S3 asigna rol a registrar y anular valuaciones, registrar costos y decidir una recuperación (REQ‑4). La «separación del desvío de control» de S2 y la «diferencia entre versiones» de S3 (SL‑E9) son descomposiciones **distintas** (§4.3; RV‑10) |
 | S5 | S5‑1 (Alembic) se adelanta a la 0.6.0 (RV‑3): S2 agrega **su revisión** de Alembic con sus tablas aditivas; la prueba de deriva (RNF‑20) las recorre. La base de prueba de la 0.7.0 se genera en la compuerta GS2 con su ficha escrita con el código de esa etiqueta (total literal, huella del informe, filas por tabla) |
 
 Sin S1 la 0.7.0 no se construye (spec maestro §5). Si los precios del corte de una partida no están disponibles,
@@ -102,11 +103,11 @@ con otros specs no la rompa.
   calendario; RF‑72).
 - **Flujo principal:** 1) el actor abre «Control de obra»; 2) escribe la valuación (número, período desde/hasta,
   fecha, inspector) y sus líneas (partida, cantidad del período, fecha de medición opcional), o la importa de
-  Excel; 3) declara fuente y responsable; 4) el sistema la guarda **presentada**, **sin modificar ninguna
-  anterior**, corre R13 y R14 y emite el informe de control (principio 7); 5) cuando el inspector la conforma, el
-  actor registra la **conformación** (fecha, fuente, responsable; una fila aparte, la valuación no cambia); 6) el
+  Excel; 3) declara fuente y responsable; 4) el sistema la guarda **sin modificar ninguna anterior**, con su
+  fecha de registro visible, corre R13 y R14 y emite el informe de control (principio 7); desde ese momento la
+  valuación **cuenta**, sin otro paso (RV‑18, decidida por Eugenio el 2026‑10‑11: sin conformación); 5) el
   sistema calcula al corte (fecha *hasta*) el valor ganado, las alertas y la reproyección (UC‑20, pasos 1–3) con
-  las valuaciones **conformadas** (RV‑18, valor por defecto a ratificar).
+  las valuaciones **registradas no anuladas**.
 - **Flujos alternativos:** *2a* Excel malformado o columnas faltantes: se rechaza con mensaje y fila, sin
   *traceback*, sin escribir nada; *2b* cantidad negativa o no numérica: se rechaza la entrada (una corrección es
   una anulación, 4c); *4a* sin inspector o sin número: se guarda y R14 la marca ERROR; *4b* acumulado de una
@@ -114,16 +115,16 @@ con otros specs no la rompa.
   monto como impacto; el sistema ofrece registrar la **variación de obra** por la hoja (UC‑15, versión nueva con
   la cantidad cambiada) y declararla nueva línea base (RF‑72); *4c* anular una valuación: fila de anulación con
   fuente y responsable; la anulada se conserva y deja de contar; *4d* período solapado con otra valuación: R14
-  ERROR; *5a* conformar una valuación anulada o ya conformada: se rechaza con mensaje; *5b* una valuación que
-  nunca se conforma sigue en R13–R14 pero no entra al valor ganado ni a lo ejecutado que recibe S1.
-- **Postcondiciones:** valuación inmutable con su fuente y su estado (presentada o conformada); informe de control
-  emitido; ningún presupuesto cambia.
+  ERROR; *4e* el cliente aún no aprobó la valuación: cuenta igual desde su registro; si no la aprueba, se anula
+  (4c) y sale del valor ganado y de lo ejecutado que recibe S1 (riesgo aceptado, S2‑R14).
+- **Postcondiciones:** valuación inmutable con su fuente y su fecha de registro; informe de control emitido;
+  ningún presupuesto cambia.
 
 #### UC‑20 — Controlar el avance y recuperar un retraso
 
 - **Actor principal:** proyectista (quien arma). **Secundarios:** gerente y administrador que revisa (consultan).
 - **Precondiciones:** línea base de control vigente (no invalidada por un cambio de moneda, RF‑72) y al menos
-  una valuación conformada no anulada.
+  una valuación registrada no anulada.
 - **Flujo principal:** 1) el sistema calcula al corte PV, EV, AC y sus índices (RF‑75) y separa el desvío
   (RF‑76); 2) evalúa las alertas (RF‑77); 3) reproyecta término, costo final y PE (RF‑77) — pasos 1 a 3
   **siempre**, sin que se pidan; 4) a pedido, calcula las opciones de recuperación con su costo (RF‑78); 5) el
@@ -143,7 +144,7 @@ con otros specs no la rompa.
 
 **UC que se enmiendan.** UC‑15: una variación de obra es una edición de cantidad (objeto `cantidad`) con su
 acta como fuente. UC‑16: el PE de la versión se complementa con el PE proyectado de UC‑20. UC‑18 (S1): desde la
-0.7.0 lo ejecutado por período viene de las valuaciones conformadas (RF‑72; RV‑11); en la 0.6.0 se escribe a
+0.7.0 lo ejecutado por período viene de las valuaciones registradas no anuladas (RF‑72; RV‑11, RV‑18); en la 0.6.0 se escribe a
 mano; el paso 3f deja de rechazar el exceso sobre lo presupuestado y lo marca como R13.
 
 ### 3.2 Requisitos funcionales
@@ -152,12 +153,12 @@ Prioridad: E = esencial, D = deseable.
 
 | RF | Requisito | UC | Pri. | Fase | Criterio de aceptación |
 |---|---|---|---|---|---|
-| RF‑72 | El sistema registrará la **línea base de control** (versión, perspectiva *costo* o *precio*, fecha desde, fuente, responsable) y su **calendario** (fecha de inicio, días hábiles por período, feriados), y valuaciones con número, período, fecha, inspector y líneas por partida, en estado *presentada* hasta que se registre su **conformación** (fecha, fuente, responsable; RV‑18); las valuaciones no se editan ni se borran: se anulan con fuente. Entregará a S1 **lo ejecutado por período** (`ejecutado_por_periodo`, RV‑11): solo valuaciones conformadas no anuladas, cada una asignada entera al período mensual de la cláusula que contiene su fecha *hasta*, con la cantidad del período y la **cantidad reajustable** `min(Q acumulado al cierre, q) − min(Q acumulado al cierre anterior, q)`, con aviso cuando difieren. Un cambio de moneda del proyecto posterior a la línea base de control la **invalida** | UC‑19 | E | S2‑1 | OB‑S2 se registra completa; editar o borrar una valuación no es posible por ninguna función de `core`; anular deja la anulada en la base y fuera del cálculo; cantidad negativa → `ValueError`; OB‑S2 entrega para noviembre de 2026 A 90 y B 60 (V‑01 y V‑02 conformadas) y la V‑S presentada no entra; con una valuación conformada más de B 150 en noviembre, B entrega cantidad 210, reajustable 200 y el aviso, y R13 da ERROR; una valuación del 2026‑11‑30 al 2026‑12‑04 va entera a diciembre; tras convertir la moneda del proyecto, `instantanea_control` rechaza con «línea base invalidada: declárela de nuevo» |
-| RF‑73 | El sistema importará valuaciones (con su conformación, si la trae) y costos reales desde un XLSX con las hojas y columnas de §6.2, con informe de importación; un archivo malformado se rechaza entero | UC‑19 | E (decisión H‑D5; cae solo si Eugenio lo acepta, REQ‑21) | S2‑1 | el XLSX de OB‑S2 da las mismas valuaciones que la entrada a mano; cada malformación de §7.2 (fila RF‑73) da su mensaje sin *traceback* y sin escribir |
-| RF‑74 | Al registrar, importar, conformar o anular, el sistema ejecutará **R13 y R14** (§3.4) sobre las valuaciones no anuladas (presentadas y conformadas) y emitirá el informe de control | UC‑19 | E | S2‑1 | la valuación sembrada V‑S de §7.1 da **exactamente** los seis hallazgos de §7.1 (regla, severidad, impacto); cada frontera de §7.3; R13 sobre una valuación de SIS‑001 (presupuesto de sistemas) da su conjunto exacto (ARQ‑H3) |
-| RF‑75 | El sistema calculará al corte PV, EV, AC, SV, CV, SPI, CPI, BAC, EAC (dos métodos), VAC y la fecha estimada de término (dos métodos) con las fórmulas de §4.2, en la moneda del proyecto, solo con valuaciones conformadas; los costos reales se convierten con la tasa de su fecha (S1) y, sin tasa aplicable, su AC queda «no disponible» y se declara | UC‑20 | E | S2‑2 | OB‑S2 da los valores de §7.1 a ± 0,01 (montos) y ± 0,0001 (índices); las fechas, exactas; un costo real en Bs con más de 7 días sin tasa: AC, CV, CPI, consumo y EAC «no disponible» con ese costo listado, y PV, EV, SPI iguales a los de §7.1 (REQ‑25) |
+| RF‑72 | El sistema registrará la **línea base de control** (versión, perspectiva *costo* o *precio*, fecha desde, fuente, responsable) y su **calendario** (fecha de inicio, días hábiles por período, feriados), y valuaciones con número, período, fecha, inspector y líneas por partida, que **cuentan desde su registro**, sin conformación (RV‑18; S2‑R14); las valuaciones no se editan ni se borran: se anulan con fuente, y la anulación es la única forma de sacarlas del cálculo. Entregará a S1 **lo ejecutado por período** (`ejecutado_por_periodo`, RV‑11): las valuaciones registradas no anuladas, cada una asignada entera al período mensual de la cláusula que contiene su fecha *hasta*, con la cantidad del período y la **cantidad reajustable** `min(Q acumulado al cierre, q) − min(Q acumulado al cierre anterior, q)`, con aviso cuando difieren. Un cambio de moneda del proyecto posterior a la línea base de control la **invalida** | UC‑19 | E | S2‑1 | OB‑S2 se registra completa; editar o borrar una valuación no es posible por ninguna función de `core`; anular deja la anulada en la base y fuera del cálculo; cantidad negativa → `ValueError`; OB‑S2 entrega para noviembre de 2026 A 90 y B 60 (V‑01 y V‑02, registradas); una valuación anulada no entra; con una valuación registrada más de B 150 en noviembre, B entrega cantidad 210, reajustable 200 y el aviso, y R13 da ERROR; una valuación del 2026‑11‑30 al 2026‑12‑04 va entera a diciembre; tras convertir la moneda del proyecto, `instantanea_control` rechaza con «línea base invalidada: declárela de nuevo» |
+| RF‑73 | El sistema importará valuaciones y costos reales desde un XLSX con las hojas y columnas de §6.2, con informe de importación; un archivo malformado se rechaza entero | UC‑19 | E (decisión H‑D5; cae solo si Eugenio lo acepta, REQ‑21) | S2‑1 | el XLSX de OB‑S2 da las mismas valuaciones que la entrada a mano; cada malformación de §7.2 (fila RF‑73) da su mensaje sin *traceback* y sin escribir |
+| RF‑74 | Al registrar, importar o anular, el sistema ejecutará **R13 y R14** (§3.4) sobre las valuaciones no anuladas y emitirá el informe de control | UC‑19 | E | S2‑1 | la valuación sembrada V‑S de §7.1 da **exactamente** los seis hallazgos de §7.1 (regla, severidad, impacto); cada frontera de §7.3; R13 sobre una valuación de SIS‑001 (presupuesto de sistemas) da su conjunto exacto (ARQ‑H3) |
+| RF‑75 | El sistema calculará al corte PV, EV, AC, SV, CV, SPI, CPI, BAC, EAC (dos métodos), VAC y la fecha estimada de término (dos métodos) con las fórmulas de §4.2, en la moneda del proyecto, con las valuaciones registradas no anuladas; los costos reales se convierten con la tasa de su fecha (S1) y, sin tasa aplicable, su AC queda «no disponible» y se declara | UC‑20 | E | S2‑2 | OB‑S2 da los valores de §7.1 a ± 0,01 (montos) y ± 0,0001 (índices); las fechas, exactas; un costo real en Bs con más de 7 días sin tasa: AC, CV, CPI, consumo y EAC «no disponible» con ese costo listado, y PV, EV, SPI iguales a los de §7.1 (REQ‑25) |
 | RF‑76 | El sistema hará la **separación del desvío de control** en **plazo** (SV), **precio** y **consumo** (§4.3; término cruzado en el consumo), con el método y la fuente del precio del corte (S1), y la identidad CV = precio + consumo será **exacta**. Es distinta de la «diferencia entre versiones» de S3 (RV‑10) | UC‑20 | E | S2‑2 | OB‑S2: precio −60,00, consumo −20,00, CV −80,00; la identidad con `Decimal` da diferencia cero en OB‑S2 y en el generador de RNF‑15 |
-| RF‑77 | Al registrar o conformar una valuación, el sistema evaluará las **alertas** AL‑1 a AL‑6 con sus umbrales declarados (§4.5) y **reproyectará** plan, término, costo final y PE (§4.4, §4.7), sin que se pida | UC‑19, UC‑20 | E | S2‑2 | OB‑S2: las alertas exactas de §7.1 en sus dos escenarios (sin reajuste y con el reajuste reconocido); término reproyectado 2026‑12‑02; plan reproyectado de §7.1; cada frontera de umbral de §7.3 |
+| RF‑77 | Al registrar o anular una valuación, el sistema evaluará las **alertas** AL‑1 a AL‑6 con sus umbrales declarados (§4.5) y **reproyectará** plan, término, costo final y PE (§4.4, §4.7), sin que se pida | UC‑19, UC‑20 | E | S2‑2 | OB‑S2: las alertas exactas de §7.1 en sus dos escenarios (sin reajuste y con el reajuste reconocido); término reproyectado 2026‑12‑02; plan reproyectado de §7.1; cada frontera de umbral de §7.3 |
 | RF‑78 | A pedido, el sistema calculará las opciones **más cuadrillas, horas extra, partidas en paralelo y aceptar el retraso** (§4.6) desde el rendimiento y la cuadrilla del APU de cada partida, con su término, costo directo adicional, costo indirecto, EAC y PE, y la lista de supuestos usados con su naturaleza (fuente o supuesto declarado) | UC‑20 | E | S2‑3 | OB‑S2: los cuatro resultados de §7.1 con el PE' de sus dos escenarios; horas extra nunca superan los límites de la LOTTT (§4.6.2); cada supuesto aparece en la salida; una partida de TI‑001 y una de SIS‑001 sin mano de obra a jornal (§4.6) dan «no aplica» tipado en cuadrillas y horas extra, sin división entre cero (ARQ‑H3) |
 | RF‑79 | Elegir una opción creará una **versión nueva** (motivo `recuperacion`) con el plan de la opción, su curva y su informe, un `RegistroCambio` por fracción del plan que cambió y una `DecisionRecuperacion` con la foto de indicadores, opción y supuestos; fuente y responsable obligatorios; la línea base no cambia | UC‑20 | E | S2‑3 | tras elegir «más cuadrillas» en OB‑S2: R2 y R7 sin hallazgos, la curva cierra en el total, los registros de §7.1, la decisión recarga idéntica y el SPI al mismo corte sigue en 0,80 |
 
@@ -171,7 +172,7 @@ Prioridad: E = esencial, D = deseable.
 
 En `core/verification/valuaciones.py`; implementan `ReglaVerificacion` (contrato sin cambios), se construyen con
 la **instantánea de control** (línea base, calendario, plan de la línea base, valuaciones no anuladas hasta el
-corte, presentadas y conformadas: el documento se audita aunque aún no cuente para el valor ganado) y entran por
+corte: las mismas que cuentan para el valor ganado) y entran por
 `reglas=` como R8–R12; **no** entran en `REGLAS` (el 7 de 7 y las huellas de RNF‑04 no se mueven). Sus hallazgos
 citan en `origen_ids` la clave de la línea (`valuacion:<número>:<código>`) **y** el `origen_id` del ítem de la
 partida, para que el informe atribuya la partida (C5.1).
@@ -209,7 +210,7 @@ de la siguiente: de viernes a lunes no hay hueco.
 Para cada partida *p* de la línea base: `q_p` cantidad; `u_p` **unitario base** según la perspectiva (*costo*:
 costo directo unitario de su `ResultadoAPU`; *precio*: precio unitario); `f_p,n` fracción del plan en el período
 *n*; `n_p` número de períodos con `f_p,n > 0`; `inicio_p` el primero. `L` = días hábiles por período; `N` =
-períodos del plan; `D = N · L`. Al corte *t*: `Q_p` acumulado de las valuaciones **conformadas** no anuladas
+períodos del plan; `D = N · L`. Al corte *t*: `Q_p` acumulado de las valuaciones **registradas** no anuladas
 (S2‑R14); `qe_p = min(Q_p, q_p)` (S2‑R8); `u'_p` **unitario del corte** (S1); `AC` costo real.
 
 Todo en `Decimal`. Las divisiones van en un contexto local de 28 dígitos con `ROUND_HALF_EVEN`, fijado dentro de
@@ -291,7 +292,7 @@ Sea *c* el último período terminado al corte. Para cada partida con obra pendi
    del período *c*+1, ese período aporta solo `r_p` × (días hábiles que le quedan / `L`).
 4. **Reparto:** cada período recibe `min(r_p, pendiente)`; la última fracción es el resto exacto (como
    `generar_curva`), así que la partida suma 1.
-5. **Lo ejecutado** de cada valuación conformada entra como fracción `cantidad/q_p` en el período que contiene su *hasta*;
+5. **Lo ejecutado** de cada valuación registrada no anulada entra como fracción `cantidad/q_p` en el período que contiene su *hasta*;
    fracciones de la misma partida en el mismo período se suman.
 6. **Fin de la partida** en días hábiles: `(k − 1)·L + (x_k / r_p)·L`, con *k* su último período y `x_k` su
    última fracción. **Término (plan)** = día hábil `⌈máx_p fin_p⌉`; si nada queda pendiente, la fecha *hasta* de la
@@ -388,11 +389,13 @@ Plan = la reproyección. Costo = costo indirecto `CF' − CF` (§4.7) + `penaliz
 
 ### 4.7 Punto de equilibrio proyectado (perspectiva *costo*)
 
-`V' = V + reajuste reconocido`. El **reajuste reconocido** (RV‑12, S2‑R15) es la suma de los montos de los
-estudios de reajuste de S1 **guardados** con fecha de cálculo ≤ corte, en la moneda del proyecto: cada uno es el
-reajuste de lo ejecutado en sus períodos (art. 134, «solo lo ejecutado en el período», S1 §8.2), con lo
-ejecutado que S2 le entrega (RF‑72), por el mecanismo de su cláusula (con `ambos`, §11 pregunta 10). **Nunca**
-se suma un reajuste proyectado sobre la obra pendiente ni una comprobación de toda la obra, que S1 no produce;
+`V' = V + reajuste reconocido`. El **reajuste reconocido** (RV‑12, S2‑R15) es la suma de los **montos
+reconocidos** de los estudios de reajuste de S1 **guardados** con fecha de cálculo ≤ corte, en la moneda del
+proyecto: cada uno es el reajuste de lo ejecutado en sus períodos (art. 134, «solo lo ejecutado en el período»,
+S1 §8.2), con lo ejecutado que S2 le entrega (RF‑72), por el mecanismo de su cláusula; con `ambos`, el del
+mecanismo que la cláusula declara pagadero o, si no lo declara, la escalatoria (S1‑R20). Un estudio «parcial al
+corte» reemplazado por otro guardado con fecha de cálculo ≤ corte **no suma**: de un parcial y su reemplazo
+cuenta solo el más reciente (S1‑R21). **Nunca** se suma un reajuste proyectado sobre la obra pendiente ni una comprobación de toda la obra, que S1 no produce;
 sin estudio guardado, 0. La salida cita los estudios sumados. `equilibrio_proyectado` es pura y recibe el
 reajuste reconocido como dato; `ui.control` lo arma desde los estudios guardados.
 
@@ -422,7 +425,7 @@ y se registra (NORMAS §5).
 |---|---|---|---|
 | `core/models/control.py` (nuevo) | tablas aditivas de §6.1, en módulo propio y reexportadas desde `core.models` (archivos calientes, RV‑2); su revisión de Alembic (RV‑3) | — | **SL‑E4, SL‑E6** |
 | `core/models/entidades.py` | `MOTIVOS_VERSION` + `recuperacion` (una línea) | — | **SL‑E6** |
-| `core/budget/valuaciones.py` (nuevo) | tipos `LineaBaseControl`, `Calendario`, `Valuacion`, `LineaValuacion`, `CostoReal`; `registrar_linea_base`, `registrar_valuacion`, `conformar_valuacion`, `anular_valuacion`, `registrar_costo`, `instantanea_control` (rechaza una línea base invalidada por cambio de moneda), `ejecutado_por_periodo` (para S1, RF‑72); `leer_valuaciones_excel` (fuente única del formato, §6.2); `tabla_valuaciones` (`TablaExportable`); `anexo_control` (las filas de §6.1 para `anexos/control.json` de S3) | `core.models`, `openpyxl`, `core.catalog.moneda` (S1) | **SL‑E4** |
+| `core/budget/valuaciones.py` (nuevo) | tipos `LineaBaseControl`, `Calendario`, `Valuacion`, `LineaValuacion`, `CostoReal`; `registrar_linea_base`, `registrar_valuacion`, `anular_valuacion`, `registrar_costo`, `instantanea_control` (rechaza una línea base invalidada por cambio de moneda), `ejecutado_por_periodo` (para S1, RF‑72); `leer_valuaciones_excel` (fuente única del formato, §6.2); `tabla_valuaciones` (`TablaExportable`); `anexo_control` (las filas de §6.1 para `anexos/control.json` de S3) | `core.models`, `openpyxl`, `core.catalog.moneda` (S1) | **SL‑E4** |
 | `core/verification/valuaciones.py` (nuevo) | `ValuacionDentroDelPresupuesto` (R13), `FuenteYFechasDeValuacion` (R14); fuera de `REGLAS` | `core.contracts` | **SL‑E4** |
 | `core/budget/calendario.py` (nuevo) | `dias_habiles`, `dia_habil`, `periodo_de` (puras) | — | **SL‑E5** |
 | `core/budget/valor_ganado.py` (nuevo) | `PreciosDelCorte`, `ParametrosControl`, `Indicadores`, `Separacion`, `Alerta`, `Reproyeccion`; `indicadores`, `separar_desvio`, `reproyectar`, `alertas`, `equilibrio_proyectado` (puras); `tabla_indicadores` | `core.budget.curva`, `core.budget.equilibrio`, `core.budget.calendario` | **SL‑E5** |
@@ -451,20 +454,20 @@ ui.control ──> core.budget.valuaciones.registrar     ui.control ──> recu
 ```
 
 **Qué se guarda y qué se recalcula** (S2‑R13): se guardan las **entradas** (línea base, calendario, valuaciones,
-conformaciones, anulaciones, costos reales, parámetros) y la **decisión** con la foto de lo que el usuario vio;
+anulaciones, costos reales, parámetros) y la **decisión** con la foto de lo que el usuario vio;
 los indicadores, las alertas, los hallazgos de R13–R14 y la reproyección se **recalculan** (deterministas, en
 memoria, sin reescribir filas; RV‑9). Los hallazgos de R13 y R14 no entran al informe guardado de ninguna
 versión, así que RF‑62 no se afecta.
 
 **Persistencia de la decisión.** `aplicar_decision` crea la versión por `guardar_edicion(motivo="recuperacion")`,
-que pasa por el embudo único `core/budget/persistencia.guardar_presupuesto` con `usuario` obligatorio; allí S3
-sella toda versión de `MOTIVOS_VERSION` (RV‑7). S2 no agrega otro camino que cree versiones.
+que pasa por el embudo único `core/budget/persistencia.guardar_presupuesto`; S3 sella toda versión de
+`MOTIVOS_VERSION` al confirmar la transacción que la crea, con `usuario` exigido al confirmar (RV‑7). S2 no agrega otro camino que cree versiones.
 
 ### 5.4 Expedientes de `core/` (resumen; el texto completo va en `docs/bitacora/2026-10-silice-s2-expedientes.md`, commiteado antes del código)
 
 | Expediente | Regla que lo motiva | Por qué es genérico | Prueba que lo demuestra | Impacto | Costo si es erróneo |
 |---|---|---|---|---|---|
-| **SL‑E4** Valuaciones, línea base de control y su auditoría | H‑D5; RF‑72 a RF‑74; principio 7 | toda obra se valúa por cantidades de sus partidas, sea del dominio que sea | `test_valuaciones.py` (OB‑S2 a mano y por Excel; inmutabilidad; conformación; anulación), `test_ejecutado_por_periodo.py` (RF‑72: asignación por *hasta*, solo conformadas, reajustable con `min`, línea base invalidada por cambio de moneda), `test_r13_r14.py` (conjunto exacto de V‑S, SIS‑001 y fronteras), `test_base_anterior_abre_con_tablas_de_control` | 8 tablas aditivas en `core/models/control.py` y su revisión de Alembic; ninguna lectura anterior cambia; R13–R14 fuera de `REGLAS` | una revisión de Alembic más (RV‑3); severidades = parámetros |
+| **SL‑E4** Valuaciones, línea base de control y su auditoría | H‑D5; RF‑72 a RF‑74; principio 7 | toda obra se valúa por cantidades de sus partidas, sea del dominio que sea | `test_valuaciones.py` (OB‑S2 a mano y por Excel; inmutabilidad; anulación), `test_ejecutado_por_periodo.py` (RF‑72: asignación por *hasta*, registradas no anuladas, reajustable con `min`, línea base invalidada por cambio de moneda), `test_r13_r14.py` (conjunto exacto de V‑S, SIS‑001 y fronteras), `test_base_anterior_abre_con_tablas_de_control` | 7 tablas aditivas en `core/models/control.py` y su revisión de Alembic; ninguna lectura anterior cambia; R13–R14 fuera de `REGLAS` | una revisión de Alembic más (RV‑3); severidades = parámetros |
 | **SL‑E5** Valor ganado, separación del desvío de control y reproyección | H‑D2; RF‑75 a RF‑77; aporte central del horizonte §5 | se calcula sobre `Presupuesto`, plan y valuaciones, sin conocer dominios | `test_valor_ganado.py` (OB‑S2, §7.1), `test_identidad_separacion` (también con el generador), `test_equilibrio_extraido` (**TI‑001 sigue en 28 586,76 USD, Día 6**, literal sin editar), `test_pe_proyectado_coincide_con_sf_e3_segun_plan`, `test_pe_proyectado_dos_escenarios` (sin reajuste y con el reconocido de §7.1) | `equilibrio.py` se refactoriza sin cambiar su resultado; funciones puras nuevas | si el tutor prefiere otra separación u otro EAC, cambian dos funciones puras y su memoria (S2‑R1, S2‑R11) |
 | **SL‑E6** Opciones de recuperación y decisión | H‑D2; RF‑78, RF‑79; horizonte §4 (Lee 2022) | el costo sale del rendimiento y la cuadrilla de cualquier APU | `test_recuperacion.py` (cuatro opciones de OB‑S2; límites de la LOTTT; monotonía: más *k* nunca alarga; «no aplica» sin jornal en TI‑001 y SIS‑001), `test_decision_crea_version.py` (registro, curva, línea base intacta), `test_guardar_edicion_motivo_por_defecto` (SF‑E2 sin cambios) | `guardar_edicion` gana un parámetro con valor por defecto; un motivo más; una tabla | cambiar `η`, `k_máx` o `a` es un parámetro; cambiar el modelo `E(k)` es una función pura (S2‑R5) |
 
@@ -472,8 +475,8 @@ sella toda versión de `MOTIVOS_VERSION` (RV‑7). S2 no agrega otro camino que 
 
 Una pantalla de la sección Trabajo, con cinco pestañas: **Línea base** (versión, perspectiva, calendario,
 parámetros de control con su naturaleza visible); **Valuaciones** (tabla editable para la nueva, importación de
-Excel con informe previo, conformar y anular con fuente; las guardadas en solo lectura con su estado presentada
-o conformada; columna Estado con el peor hallazgo de R13–R14, como RF‑55); **Valor ganado** (tabla de §4.2,
+Excel con informe previo, anular con fuente; las guardadas en solo lectura con su **fecha de registro** visible
+(S2‑R14); columna Estado con el peor hallazgo de R13–R14, como RF‑55); **Valor ganado** (tabla de §4.2,
 curva PV/EV/AC en el tiempo, separación del desvío de control en plazo, precio y consumo, cada monto en las dos
 monedas con la tasa del corte, S1; los «no disponible» con su motivo); **Alertas y reproyección** (siempre
 visibles al abrir: alertas AL‑1 a AL‑6, término por los dos métodos, EAC, PE proyectado con los estudios de
@@ -497,9 +500,8 @@ viven en la base del caso (`casos\*.db`, RV‑4).
 | `linea_base_control` | `id`, `proyecto_id`, `presupuesto_id` (versión), `desde` (fecha), `perspectiva` (`costo`/`precio`), `fuente`, `responsable`, `fecha_hora` | la vigente al corte es la de mayor `desde` ≤ corte; cambiarla es declarar una fila nueva; queda **invalidada** si la moneda de su versión ya no es la del proyecto (RV‑11): se calcula, no se escribe |
 | `calendario_obra` | `linea_base_id` (PK), `fecha_inicio`, `dias_por_periodo` (≥ 1), `feriados` (texto JSON de fechas ISO) | — |
 | `parametros_control` | `proyecto_id` (PK), umbrales de §4.5, `eta_cuadrilla`, `cuadrillas_max`, `eta_horas_extra`, `horas_extra_dia`, `recargo_horas_extra`, `fcas_en_horas_extra`, `penalizacion_diaria`, `fuente_penalizacion` | sin fila, los valores por defecto de §4.5 y §4.6 |
-| `valuacion` | `id`, `proyecto_id`, `numero`, `desde`, `hasta`, `fecha`, `inspector`, `origen` (`manual` o `excel:<archivo>`), `fuente`, `responsable`, `fecha_hora` | sin `UPDATE` ni `DELETE` en `core`; número y campos pueden faltar (R14 los marca) |
+| `valuacion` | `id`, `proyecto_id`, `numero`, `desde`, `hasta`, `fecha`, `inspector`, `origen` (`manual` o `excel:<archivo>`), `fuente`, `responsable`, `fecha_hora` | sin `UPDATE` ni `DELETE` en `core`; número y campos pueden faltar (R14 los marca); cuenta desde su registro (`fecha_hora`, visible en la pantalla y en el anexo) hasta que se anula (RV‑18, S2‑R14) |
 | `linea_valuacion` | `id`, `valuacion_id`, `codigo_partida`, `cantidad` (≥ 0), `fecha_medicion` (anulable), `observacion` | cantidad **del período**, no acumulada |
-| `conformacion_valuacion` | `valuacion_id` (PK), `fecha` (de la conformación), `fuente` (acta o firma del inspector), `responsable`, `fecha_hora` | sin fila, la valuación está *presentada*; con fila, *conformada* (RV‑18, a ratificar); la valuación no cambia |
 | `anulacion_valuacion` | `valuacion_id` (PK), `motivo`, `responsable`, `fecha_hora` | la anulada se conserva |
 | `costo_real` | `id`, `proyecto_id`, `valuacion_id` (anulable), `codigo_partida` (anulable = no asignado), `monto`, `moneda`, `fecha`, `fuente`, `responsable` | se convierte con `tasa_aplicable(fecha)` de S1; no se guarda el convertido |
 | `decision_recuperacion` | `id`, `proyecto_id`, `linea_base_id`, `version_resultante_id`, `fecha_corte`, `opcion`, `detalle` (JSON: partidas, *k*, *h*, declaración de independencia), `costo_directo_adicional`, `costo_indirecto`, `penalizacion`, `termino` (fecha), `spi`, `cpi`, `eac`, `pe` (anulable), `supuestos` (JSON: nombre, valor, naturaleza), `fuente`, `responsable`, `fecha_hora` | la foto de lo que el usuario vio |
@@ -512,8 +514,7 @@ propia** (RV‑8; límite declarado).
 
 ### 6.2 Formato del XLSX de valuaciones (fuente única en `core/budget/valuaciones.py`)
 
-- `Valuaciones`: `numero`, `desde`, `hasta`, `fecha` (ISO), `inspector`, `conformada` (fecha ISO, opcional) y
-  `fuente_conformacion` (obligatoria si hay `conformada`).
+- `Valuaciones`: `numero`, `desde`, `hasta`, `fecha` (ISO), `inspector`.
 - `Lineas`: `numero`, `codigo_partida`, `cantidad`, `fecha_medicion` (opcional), `observacion` (opcional).
 - `Costos` (opcional): `numero` (opcional), `codigo_partida` (opcional), `monto`, `moneda` (`Bs`/`USD`), `fecha`,
   `fuente`.
@@ -550,7 +551,7 @@ plan de dos semanas por partida, cada `R` es el de una cuadrilla. La memoria des
 BAC = 4 000,00; V = 5 060,00; CF = 600,00; PE base = 2 864,15 USD (56,60 %), en S3.
 
 **Valuaciones** (inspector «Ing. Ficticio», declarado): V‑01, 2026‑11‑02 a 11‑06, fecha 11‑09: A 40. V‑02,
-2026‑11‑09 a 11‑13, fecha 11‑16: A 50, B 60. Las dos **conformadas** el día de su fecha (fuente: acta ficticia
+2026‑11‑09 a 11‑13, fecha 11‑16: A 50, B 60. Las dos cuentan desde su registro (RV‑18; fuente: acta ficticia
 declarada). Costos reales: 1 280,00 USD. **Corte:** 2026‑11‑13 (*c* = 2). Nada de lo que sigue en la tabla
 depende del reajuste.
 
@@ -572,7 +573,8 @@ Fines: A 11,11; B 21,67; C 22,5 días hábiles.
 la cantidad reajustable es la misma (ningún acumulado supera lo presupuestado).
 
 **Reajuste reconocido** (RV‑12; §4.7). Escenario *con reajuste*: un estudio de S1 guardado al corte (fecha de
-cálculo 2026‑11‑13), período noviembre, comprobación directa (S1 §8.4) contra la versión revalorada al corte
+cálculo 2026‑11‑13), período noviembre, con estado «parcial al corte» porque noviembre aún no cierra (S1‑R21),
+comprobación directa (S1 §8.4) contra la versión revalorada al corte
 (los `u'` de la tabla de datos), sobre lo ejecutado de ese período:
 
 - PU del contrato = `u` × 1,265: A 12,65; B 6,325. PU comprobado = `u'` × 1,265: A 12,65; B 7,59.
@@ -623,11 +625,11 @@ solape con V‑02, R14 ERROR medición fuera del período. (El corte de esta pru
 
 | RF / RNF | Prueba |
 |---|---|
-| RF‑72 | OB‑S2 a mano; inmutabilidad (ninguna función de `core` emite `UPDATE`/`DELETE` sobre `valuacion`, `linea_valuacion`, `conformacion_valuacion` ni `anulacion_valuacion`); conformación (una sola vez; nunca sobre una anulada); anulación; cantidad negativa; `ejecutado_por_periodo` con los casos del criterio de RF‑72 (solo conformadas, asignación por *hasta* incluso cruzando el mes, cantidad reajustable con `min` y aviso); línea base invalidada tras un cambio de moneda |
-| RF‑73 | XLSX de OB‑S2 = entrada a mano (con su conformación); cada malformación (hoja o columna faltante, fecha ilegible, número repetido, `conformada` sin `fuente_conformacion`, más de 20 MB) da su mensaje y no escribe |
+| RF‑72 | OB‑S2 a mano; inmutabilidad (ninguna función de `core` emite `UPDATE`/`DELETE` sobre `valuacion`, `linea_valuacion` ni `anulacion_valuacion`); anulación (una sola vez; la anulada se conserva y deja de contar); cantidad negativa; `ejecutado_por_periodo` con los casos del criterio de RF‑72 (registradas no anuladas, asignación por *hasta* incluso cruzando el mes, cantidad reajustable con `min` y aviso); línea base invalidada tras un cambio de moneda |
+| RF‑73 | XLSX de OB‑S2 = entrada a mano; cada malformación (hoja o columna faltante, fecha ilegible, número repetido, más de 20 MB) da su mensaje y no escribe |
 | RF‑74 | V‑S da el conjunto exacto; cada condición de R13 y R14 por separado; R13 sobre SIS‑001 |
-| RF‑75, RF‑76 | tabla de §7.1; una valuación presentada sin conformar no cambia EV; perspectiva *precio* con los mismos datos (ΔC = 0); costo real en Bs convertido con la tasa de su fecha (S1); costo real sin tasa aplicable: AC y lo que depende de él «no disponible» y declarado, PV, EV y SPI intactos; identidad exacta con el generador |
-| RF‑77 | plan reproyectado y alertas de §7.1 en los dos escenarios; reajuste reconocido = suma de los estudios guardados con fecha ≤ corte (un estudio guardado después del corte no cuenta); partida detenida (AL‑6); SPI global 0 («no proyectable»); corte a mitad de período |
+| RF‑75, RF‑76 | tabla de §7.1; una valuación registrada cuenta en EV sin otro paso y, anulada, deja de contar (EV vuelve al de §7.1); perspectiva *precio* con los mismos datos (ΔC = 0); costo real en Bs convertido con la tasa de su fecha (S1); costo real sin tasa aplicable: AC y lo que depende de él «no disponible» y declarado, PV, EV y SPI intactos; identidad exacta con el generador |
+| RF‑77 | plan reproyectado y alertas de §7.1 en los dos escenarios; reajuste reconocido = suma de los montos reconocidos de los estudios guardados con fecha ≤ corte (un estudio guardado después del corte no cuenta; un parcial y el estudio de cierre que lo reemplaza, ambos con fecha ≤ corte, suman solo el de cierre; con `ambos`, el monto del mecanismo pagadero); partida detenida (AL‑6); SPI global 0 («no proyectable»); corte a mitad de período |
 | RF‑78 | las cuatro opciones de §7.1 con su PE' en los dos escenarios; monotonía en *k*; `h` = 3 rechazada; 100 h extra en el año pasa y 101 se rechaza; «no aplica» sin jornal (TI‑001, SIS‑001); los supuestos aparecen con su naturaleza |
 | RF‑79 | decisión de §7.1; sin fuente o sin responsable se rechaza; la decisión recarga idéntica; SPI al mismo corte = 0,80 |
 | RNF‑15 | `scripts/medir_rnf15.py`; la meta comprueba que dejó su cifra |
@@ -677,7 +679,7 @@ al final de la versión (RV‑2). Las fases de núcleo S2‑1…S2‑3 forman el
 | Fase | Contenido | Rama | Compuerta |
 |---|---|---|---|
 | **S2‑0** | ERS (UC‑19, UC‑20, RF‑72…79, RNF‑15, R13–R14), modelo de datos §2.6, arquitectura, plan de pruebas; **memoria OB‑S2 a mano** (con los dos escenarios de PE') y su XLSX; partidas frontera de TI‑001 y SIS‑001 fijadas; expedientes SL‑E4…E6 escritos; verificación de fuentes por el verificador de hechos (definiciones de valor ganado; texto completo de Lee 2022 si es accesible; arts. 104, 118, 173, 178 y 182 de la LOTTT contra la Gaceta); generador de RNF‑15; comprobaciones de la 0.7.0 en `scripts/meta_silice.py` | `inc/silice-s2-0` (docs) | GS2‑0: documentos aprobados |
-| **S2‑1** | SL‑E4: tablas y revisión de Alembic, valuaciones, conformación, anulación, costos reales, `ejecutado_por_periodo`, importación XLSX, R13, R14, informe de control | `inc/silice-s2-1` (núcleo; empieza con S1‑4 fusionada) | pruebas de RF‑72 a RF‑74 en verde; fusión |
+| **S2‑1** | SL‑E4: tablas y revisión de Alembic, valuaciones, anulación, costos reales, `ejecutado_por_periodo`, importación XLSX, R13, R14, informe de control | `inc/silice-s2-1` (núcleo; empieza con S1‑4 fusionada) | pruebas de RF‑72 a RF‑74 en verde; fusión |
 | **S2‑2** | SL‑E5: calendario, valor ganado, separación del desvío de control, reproyección, alertas, extracción de `equilibrio`, PE proyectado con el reajuste reconocido | `inc/silice-s2-2` (núcleo) | OB‑S2 = memoria en los dos escenarios; TI‑001 intacto; fusión |
 | **S2‑3** | SL‑E6: opciones, `motivo` en `guardar_edicion`, `aplicar_decision` | `inc/silice-s2-3` (núcleo) | RF‑78, RF‑79; fusión (libera el carril de núcleo para S3‑2) |
 | **S2‑4** | `ui/control.py`, pantalla, herramienta de la barra, hojas extra del Excel, AppTest; RNF‑15 | `inc/silice-s2-4` (interfaz, guardia M9) | GS2: meta en OK, CI verde Linux y Windows, encargos de revisión; fusión |
@@ -716,9 +718,9 @@ fase R2 del horizonte.
 | S2‑R11 | Las fórmulas de valor ganado son definiciones del sistema hasta verificar una fuente; EAC del sistema propio y declarado | citar una fuente sin verificar | una cita falsa en la tesis |
 | S2‑R12 | Precios del corte sin proyectar inflación futura; cada costo real convertido con la tasa de su fecha | proyectar con el INPC | un EAC optimista con inflación alta; se declara en la pantalla |
 | S2‑R13 | Se guardan entradas y decisiones; indicadores, alertas y hallazgos de R13–R14 se recalculan | guardar los indicadores de cada corte | si una fórmula cambia, los cortes pasados se ven distintos; la decisión conserva su foto |
-| S2‑R14 | Dos estados de la valuación, *presentada* y *conformada* (fila de conformación aparte); el valor ganado y lo ejecutado que recibe S1 usan solo las conformadas; R13–R14 auditan todas las no anuladas (RV‑18; **valor por defecto, a ratificar por Eugenio, pregunta P3 del maestro §10**) | contar toda valuación registrada | un EV y un reajuste sobre obra que el inspector aún no aceptó; si Eugenio prefiere un solo estado, la conformación se vuelve automática y la tabla queda sin uso |
+| S2‑R14 | Una valuación registrada **cuenta desde su registro**; la anulación es la única forma de sacarla (solo‑agregar). El valor ganado, lo ejecutado que recibe S1 y R13–R14 usan las mismas: las registradas no anuladas; al corte se toman por su *hasta* (§4.1). **Riesgo aceptado:** el avance puede incluir valuaciones que el cliente aún no aprobó; se mitiga con la anulación y con la fecha de registro visible en la pantalla y en `anexos/control.json` (RV‑18; **decidida por Eugenio el 2026‑10‑11, pregunta P3 del maestro §10**) | dos estados, *presentada* y *conformada*, con una fila de conformación aparte (valor por defecto anterior, descartado) | un EV y un reajuste sobre obra que el cliente aún no aprobó, hasta que se anula la valuación |
 | S2‑R15 | V' del PE proyectado = V + reajuste **ya reconocido** (suma de los estudios de S1 guardados con fecha ≤ corte); nunca uno proyectado (RV‑12) | proyectar el reajuste de la obra pendiente, o tomar una comprobación de toda la obra | un PE proyectado que cuenta como ingreso un reajuste que nadie reconoció; si se quisiera proyectar, haría falta una función nueva de S1 y su memoria |
-| S2‑R16 | Puente a S1 (RV‑11): conformadas asignadas enteras al período mensual de la cláusula por su *hasta*; el exceso sobre lo presupuestado se guarda con R13 ERROR y el reajuste usa `min(Q, q)` con aviso; un cambio de moneda posterior invalida la línea base de control | prorratear por días; rechazar el exceso (S1 3f anterior); convertir la línea base | hasta un período de desfase en el reajuste de una valuación que cruza el mes; se cambia una función pura |
+| S2‑R16 | Puente a S1 (RV‑11): registradas no anuladas asignadas enteras al período mensual de la cláusula por su *hasta*; el exceso sobre lo presupuestado se guarda con R13 ERROR y el reajuste usa `min(Q, q)` con aviso; un cambio de moneda posterior invalida la línea base de control | prorratear por días; rechazar el exceso (S1 3f anterior); convertir la línea base | hasta un período de desfase en el reajuste de una valuación que cruza el mes; se cambia una función pura |
 | S2‑R17 | Un costo real sin tasa aplicable (S1‑R2) deja AC «no disponible», declarado, con lo que depende de él; nada se estima (REQ‑25) | omitir ese costo o usar la última tasa conocida | un AC parcial que mejora el CPI sin que nadie lo vea |
 
 ---
@@ -734,6 +736,7 @@ fase R2 del horizonte.
 | Tres expedientes más en `core/` | TDD con rojo visto, tablas aditivas, contratos intactos, aval del tutor |
 | Refactor de `equilibrio.py` mueve el PE de TI‑001 | prueba literal de TI‑001 sin editar como regresión; la extracción es mecánica |
 | El PE proyectado se lee como pronóstico del reajuste | S2‑R15: solo el reajuste reconocido, con los estudios citados en la pantalla; sin estudio, V' = V y se dice |
+| El avance incluye valuaciones que el cliente aún no aprobó (sin conformación, RV‑18) | riesgo aceptado por Eugenio (S2‑R14): la anulación las saca del cálculo y la fecha de registro se ve en la pantalla y en el paquete |
 | S1 y S2 tocan los mismos archivos de núcleo | carril único de núcleo (RV‑2): S2‑1 empieza con S1‑4 fusionada; tablas en `core/models/control.py` |
 
 ---
@@ -757,16 +760,17 @@ cerró la revisión dicen con qué ruling.
    ¿Se agrega en 0.7.0 o queda declarado? (maestro §10)
 6. **Tolerancia de medición en R13**: ¿la igualdad exacta es la regla, o se admite una tolerancia declarada por
    unidad? (maestro §10)
-7. **Valuación presentada o conformada**: valor por defecto fijado por **RV‑18** (dos estados; el valor ganado y el
-   reajuste usan solo las conformadas; S2‑R14), **a ratificar por Eugenio: pregunta P3 del maestro §10**.
+7. ~~Valuación presentada o conformada.~~ **Decidida por Eugenio el 2026‑10‑11** (pregunta P3 del maestro §10,
+   RV‑18): todas las registradas, sin conformación; cuentan desde su registro y solo la anulación las saca
+   (S2‑R14).
 8. **Penalización por retraso**: ¿la LCP o su Reglamento fijan una? No está verificado; hoy es un dato del contrato
    (maestro §10).
 9. **S1, pregunta 6** (que el estudio de reajuste cite las valuaciones): **cerrada por RV‑11**. El estudio de la
-   0.7.0 cita las conformadas por `ejecutado_por_periodo`, asignadas por su *hasta* al período mensual de la
+   0.7.0 cita las registradas no anuladas por `ejecutado_por_periodo`, asignadas por su *hasta* al período mensual de la
    cláusula (RF‑72); en la 0.6.0 lo ejecutado se escribe a mano.
-10. **Monto reconocido de un estudio de S1** (coordinación con S1, no es pregunta para Eugenio): con mecanismo
-    `ambos`, ¿qué monto da el estudio como reconocido, la escalatoria o la comprobación? Y ¿S1 admite guardar el
-    estudio de un mes que aún no cierra, como el de noviembre al corte 2026‑11‑13 del escenario con reajuste de
-    §7.1? Si S1 lo prohíbe, las cifras de §7.1 no cambian: `equilibrio_proyectado` es pura y recibe el reajuste
-    reconocido como dato (75,90); solo la prueba que lo lee de la base fecha el estudio al cierre del mes y usa un
-    corte posterior.
+10. ~~Monto reconocido de un estudio de S1.~~ **Cerrada por el orquestador el 2026‑10‑11** (S1‑R20, S1‑R21):
+    con mecanismo `ambos`, el monto reconocido es el del mecanismo que la cláusula declara pagadero
+    (`mecanismo_pagadero`); si no lo declara, la escalatoria, y la comprobación queda como referencia. S1 admite
+    guardar el estudio de un mes en curso con estado «parcial al corte» y lo reemplaza (fila nueva, solo‑agregar)
+    al cerrar el mes. El escenario con reajuste de §7.1 es ese caso: su estudio de noviembre al corte 2026‑11‑13
+    es parcial, y las cifras no cambian (75,90).
