@@ -1,10 +1,14 @@
 """Fixtures compartidas de la suite.
 
 Los datos viven en tests/fixtures/apu_linea_base.py (única copia, principio DRY).
+
+Tres guardias de sesión: la base real intacta, las variables de Sílice del entorno fuera y la
+guardia de red única (maestro §6.3, RV-17): ninguna prueba se conecta fuera de 127.0.0.1 y ::1.
 """
 
 import os
-from collections.abc import Iterator
+import socket
+from collections.abc import Callable, Iterator, Sequence
 from pathlib import Path
 
 import pytest
@@ -16,6 +20,55 @@ from ui.entorno import ALIAS_ANTERIORES
 #: errores (`client.showErrorDetails = "none"`, S5 §10.1). Las variables `STREAMLIT_*` mandan sobre
 #: el archivo: la suite conserva el mensaje completo de cada excepcion de AppTest.
 os.environ["STREAMLIT_CLIENT_SHOW_ERROR_DETAILS"] = "full"
+
+#: La suite corre sin red: Hugging Face lee esta variable al importarse y la guardia de red
+#: bloquearia cualquier descarga. El modelo se baja antes, una vez, con
+#: `scripts/descargar_modelo.py`.
+os.environ["HF_HUB_OFFLINE"] = "1"
+os.environ.setdefault("HF_HUB_DISABLE_SYMLINKS_WARNING", "1")
+
+#: Destinos a los que una prueba puede conectarse (maestro §6.3, RV-17): el bucle local.
+DESTINOS_PERMITIDOS = frozenset({"127.0.0.1", "::1", "localhost"})
+
+#: Cada conexion bloqueada en la sesion, como `repr` de su direccion. Si una prueba se traga el
+#: error, la sesion falla igual al cerrar (`veredicto_de_la_guardia`).
+INTENTOS_BLOQUEADOS: list[str] = []
+
+
+class ConexionSalienteBloqueada(OSError):  # noqa: N818 (nombre fijado por el plan 0.6.0, A3)
+    """Una prueba intento conectarse fuera del equipo. Es `OSError`, como la red ausente real."""
+
+
+def destino_permitido(familia: int, direccion: object) -> bool:
+    """True si el destino es el bucle local; las familias que no son IP no salen del equipo."""
+    if familia not in (socket.AF_INET, socket.AF_INET6):
+        return True
+    anfitrion = direccion[0] if isinstance(direccion, tuple) and direccion else direccion
+    return str(anfitrion).split("%", 1)[0] in DESTINOS_PERMITIDOS
+
+
+def veredicto_de_la_guardia(intentos: Sequence[str]) -> str | None:
+    """El mensaje de fallo de la sesion si hubo intentos bloqueados; `None` si no hubo ninguno."""
+    if not intentos:
+        return None
+    return (
+        f"guardia de red: la suite intento {len(intentos)} conexion(es) fuera del equipo: "
+        + ", ".join(intentos[:5])
+    )
+
+
+def _vigilar(original: Callable) -> Callable:
+    def conectar(sock: socket.socket, direccion: object):
+        if not destino_permitido(sock.family, direccion):
+            INTENTOS_BLOQUEADOS.append(repr(direccion))
+            raise ConexionSalienteBloqueada(
+                f"guardia de red (tests/conftest.py): conexion bloqueada hacia {direccion!r}; "
+                "la suite solo admite 127.0.0.1 y ::1 (RV-17)"
+            )
+        return original(sock, direccion)
+
+    return conectar
+
 
 #: `pytester` corre sesiones de pytest aparte: con él, `tests/unit/test_salvaguarda.py` observa la
 #: salvaguarda en rojo sin tocar la base real.
@@ -87,3 +140,15 @@ def presupuesto_auditado():
 @pytest.fixture(scope="session")
 def curva_auditada():
     return linea_base.CURVA_AUDITADA
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _guardia_de_red() -> Iterator[None]:
+    """Guardia de red unica (RV-17): toda la sesion solo conecta con el bucle local."""
+    with pytest.MonkeyPatch.context() as parche:
+        parche.setattr(socket.socket, "connect", _vigilar(socket.socket.connect))
+        parche.setattr(socket.socket, "connect_ex", _vigilar(socket.socket.connect_ex))
+        yield
+    mensaje = veredicto_de_la_guardia(INTENTOS_BLOQUEADOS)
+    if mensaje is not None:
+        pytest.fail(mensaje, pytrace=False)

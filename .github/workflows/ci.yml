@@ -76,6 +76,8 @@ jobs:
   pruebas:
     name: pruebas (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
+    env:
+      HF_HUB_OFFLINE: "1" # la suite corre sin red (maestro 6.3, RV-17); solo baja el paso del modelo
     strategy:
       fail-fast: false
       matrix:
@@ -98,6 +100,11 @@ jobs:
 
       - name: Entorno completo (todos los extras)
         run: uv sync --locked --all-extras
+
+      - name: Modelo de similitud (antes de pytest; con la cache no baja nada)
+        env:
+          HF_HUB_OFFLINE: "0"
+        run: uv run --no-sync python scripts/descargar_modelo.py
 
       - name: Suite (pytest -W error)
         run: >-
