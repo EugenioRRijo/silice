@@ -110,7 +110,8 @@ def test_se_respalda_con_la_base_abierta_y_una_escritura_sin_confirmar(datos: Da
     try:
         otro.execute("BEGIN IMMEDIATE")
         otro.execute(
-            "INSERT INTO proyecto (nombre, descripcion, dominio) VALUES ('sin confirmar', '', 'civil')"
+            "INSERT INTO proyecto (nombre, descripcion, dominio) "
+            "VALUES ('sin confirmar', '', 'civil')"
         )
         juego = _respaldar(datos, [caso])
     finally:
@@ -200,7 +201,8 @@ def test_restaurar_la_instalacion_lista_los_eventos_posteriores_al_juego(datos: 
     with closing(sqlite3.connect(datos.instalacion)) as conexion:
         # Las columnas que lee la lista son las de `evento_acceso` de S3 §12 (id, fecha_hora).
         conexion.execute(
-            "CREATE TABLE evento_acceso (id INTEGER PRIMARY KEY, fecha_hora TEXT NOT NULL, tipo TEXT NOT NULL)"
+            "CREATE TABLE evento_acceso "
+            "(id INTEGER PRIMARY KEY, fecha_hora TEXT NOT NULL, tipo TEXT NOT NULL)"
         )
         conexion.executemany(
             "INSERT INTO evento_acceso VALUES (?, ?, ?)",
