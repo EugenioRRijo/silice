@@ -1,0 +1,2 @@
+# Bases de prueba de cada version: binarias, sin conversion de fin de linea (su SHA-256 esta en la ficha)
+tests/fixtures/bases/*/*.db binary

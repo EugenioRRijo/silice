@@ -42,4 +42,4 @@ def test_las_bases_cubren_el_espacio_la_demostracion_y_ti001() -> None:
     assert (NOMBRE_OF001, "001") in {(p["proyecto"], p["codigo"]) for p in of001["presupuestos"]}
     assert "DEMO-001" in {p["codigo"] for p in FICHA["bases"]["demo.db"]["presupuestos"]}
     ti001 = {(p["proyecto"], p["codigo"]) for p in FICHA["bases"]["ti001.db"]["presupuestos"]}
-    assert (NOMBRE_TI001, "001") in ti001
+    assert (NOMBRE_TI001, "TI-001") in ti001  # el código del presupuesto es TI-001

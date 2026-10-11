@@ -48,3 +48,6 @@ data/respaldos/
 data/eventos_perdidos_*.json
 # Copias de trabajo de una migracion interrumpida (operacion.base_datos)
 *.migrando
+
+# Bases de prueba de cada version, con su ficha (RV-3, PRU-H15): SI se versionan
+!tests/fixtures/bases/*/*.db
