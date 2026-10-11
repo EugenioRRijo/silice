@@ -1,0 +1,11 @@
+tipo,insumo,unidad,precio,fecha,fuente,referencia,moneda,tasa,fecha_tasa,fuente_tasa
+material,"CEMENTO GRIS PORTLAND SACO 42.5 KG/93,7 LB",sco,13288.00,2026-09-20,Cotizacion interna CI-001 (ficticia),CEM019,Bs,633.3644,2026-07-01,"MaPreX: 01JUL @ 633,3644 BS/$"
+material,"CODO PVC 90 GRADOS A.N. D=4""",pza,3624.00,2026-09-20,Cotizacion interna CI-001 (ficticia),PLO035,Bs,633.3644,2026-07-01,"MaPreX: 01JUL @ 633,3644 BS/$"
+material,"UNION PVC A.B. 4""",pza,4227.4715,2026-09-20,Cotizacion interna CI-001 (ficticia),PLO560,Bs,633.3644,2026-07-01,"MaPreX: 01JUL @ 633,3644 BS/$"
+material,PIEDRA PICADA PARA CONCRETO,m3,49075.00,2026-09-20,Cotizacion interna CI-001 (ficticia),AGR081,Bs,633.3644,2026-07-01,"MaPreX: 01JUL @ 633,3644 BS/$"
+material,ARENA LAVADA,m3,49078.775,2026-09-20,Cotizacion interna CI-001 (ficticia),MZ0027,Bs,633.3644,2026-07-01,"MaPreX: 01JUL @ 633,3644 BS/$"
+material,AGUA SUMINISTRADA EN CAMION CISTERNA O TANQUE,m3,7550.00,2026-09-01,Cotizacion interna CI-001 (ficticia),AGR003,Bs,633.3644,2026-07-01,"MaPreX: 01JUL @ 633,3644 BS/$"
+material,"CLAVO DE ACERO LISO L=2 1/2""",pza,302.00,2026-08-31,Cotizacion interna CI-001 (ficticia),ACE076,Bs,633.3644,2026-07-01,"MaPreX: 01JUL @ 633,3644 BS/$"
+material,PEGAMENTO PARA PVC  1/4 GL TANGIT  O SIM,env,30.00,2026-09-25,Cotizacion proveedor PV-77 (ficticia),MT539,USD,700,,Tasa del proveedor (ficticia)
+material,"TUBO PVC A.N. D=4"" / 110 MM E = 2,2 MM NORMA",m,12.00,2026-09-26,Cotizacion proveedor PV-78 (ficticia),PLOA38,USD,735.00,2026-09-26,
+material,LIJA DE AGUA N 100,pza,150.00,2026-09-20,Cotizacion interna CI-002 (ficticia),,Bs,,,
