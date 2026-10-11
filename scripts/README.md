@@ -28,6 +28,7 @@ escribe con `--db`; con `--db` hacia otra ruta basta `--reiniciar`.
 |---|---|---|
 | `extraer_maprex.py` | extrae de los tres listados MaPreX de julio de 2026 las referencias de precios por dominio en `data/precios/maprex_2026-07/` (necesita `--with pymupdf`) | M0.2 · todos |
 | `lista_maprex_usd.py` | deriva, de las cuatro referencias MaPreX por dominio, la lista de precios en el formato canónico de UC‑02 (`tipo,insumo,unidad,precio`) | UC‑02 · todos |
+| `lista_maprex_bs.py` | deriva la lista MaPreX en Bs (`precio`, `fecha`, `fuente`, `referencia`) copiando `precio_bs` tal cual, referencia de R11 (S1 §6.2) | S1 · todos |
 | `extraer_arenaza.py` | genera y verifica contra los PDF los dos CSV de presupuestos ARENAZA en `data/telecom/fuentes/` (necesita `--with pymupdf`) | M1.1 · telecom |
 | `derivar_listas_telecom.py` | deriva las dos listas de precios canónicas de UC‑02 del dominio telecom (ARENAZA y MaPreX) | M1.3 · telecom |
 | `generar_tanquilla_ifc.py` | genera `data/samples/tanquilla.ifc`, el modelo IFC de muestra de la compuerta G1 (necesita el extra `civil`) | I3.1 · civil |
