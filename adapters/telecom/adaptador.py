@@ -151,11 +151,9 @@ class AdaptadorTelecom(AdaptadorDominio):
             "reserva": _reserva(fila, ubicacion),
         }
         cantidad = evaluar_regla(_REGLA_LONGITUD_ENLACE, parametros)
-        especificaciones = {
-            "origen": fila["origen"],
-            "destino": fila["destino"],
-            **_parsear_especificaciones(fila.get("especificaciones")),
-        }
+        # M-3: `origen` y `destino` no son especificaciones comparables con el APU (R4 daba un INFO
+        # por clave): el extremo del enlace lo traza `origen_id` (la fila del CSV) y la topologia.
+        especificaciones = _parsear_especificaciones(fila.get("especificaciones"))
         return ItemComputo(
             codigo_partida=fila["codigo_partida"],
             descripcion=fila["descripcion"],

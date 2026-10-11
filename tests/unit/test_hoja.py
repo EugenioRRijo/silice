@@ -70,9 +70,7 @@ def _limpio() -> Espacio:
 
 def _elaborar(espacio: Espacio, **kw) -> hoja.ResultadoHoja:
     items = hoja.items_del_borrador(espacio, "agua")
-    return hoja.elaborar_hoja(
-        espacio, _composiciones(items), codigo="OF-001", fecha=FECHA, **kw
-    )
+    return hoja.elaborar_hoja(espacio, _composiciones(items), codigo="OF-001", fecha=FECHA, **kw)
 
 
 # --- borrador -> items -> presupuesto (memoria a mano) -----------------------------------------
@@ -331,7 +329,6 @@ def test_circuitos_y_sobrescrituras_se_conservan_al_editar():
     assert nuevo.sobrescrituras == espacio.sobrescrituras
 
 
-
 # --- Estado: sin APU en el catalogo frente a error de medida ------------------------------------
 
 
@@ -368,3 +365,39 @@ def test_una_fila_con_error_de_medida_y_partida_pendiente_dice_las_dos_cosas_por
 def test_con_las_partidas_en_el_catalogo_ninguna_fila_dice_pendiente():
     estado = _elaborar(_limpio()).estado
     assert all("PENDIENTE" not in e.texto and "sin APU" not in e.texto for e in estado.values())
+
+
+# --- SF2: las tres especialidades en la hoja -----------------------------------------------------
+
+
+def test_todas_son_las_tres_especialidades_del_adaptador():
+    from adapters.espacio import ESPECIALIDADES
+
+    assert hoja.TODAS == ESPECIALIDADES == ("agua", "datos", "electricidad")
+
+
+def test_los_items_del_borrador_aceptan_una_especialidad_o_varias():
+    from tests.fixtures.espacio_of001 import espacio_of001
+
+    espacio = espacio_of001()
+    agua = hoja.items_del_borrador(espacio, "agua")
+    datos = hoja.items_del_borrador(espacio, "datos")
+    electricidad = hoja.items_del_borrador(espacio, "electricidad")
+    assert agua and datos and electricidad
+    todas = hoja.items_del_borrador(espacio, hoja.TODAS)
+    assert todas == agua + datos + electricidad  # en el orden de las especialidades pedidas
+    solo_dos = hoja.items_del_borrador(espacio, ("electricidad", "datos"))
+    assert solo_dos == electricidad + datos
+    assert hoja.items_del_borrador(Espacio(), hoja.TODAS) == []  # FR-1
+
+
+def test_elaborar_hoja_con_una_sola_especialidad_no_cambia():
+    from tests.fixtures.espacio_of001 import espacio_of001
+
+    espacio = espacio_of001()
+    solo_agua = hoja.elaborar_hoja(espacio, {}, codigo="X", fecha=FECHA, especialidad="agua")
+    por_defecto = hoja.elaborar_hoja(espacio, {}, codigo="X", fecha=FECHA)
+    assert [i.codigo_partida for i in solo_agua.items] == [
+        i.codigo_partida for i in por_defecto.items
+    ]
+    assert {i.codigo_partida[:2] for i in solo_agua.items} == {"AF", "DR"}

@@ -219,3 +219,33 @@ def test_cargar_con_el_esquema_a_medias_tambien_devuelve_vacio(tmp_path):
             assert cargar_espacio(sesion, 1) == Espacio()
     finally:
         motor.dispose()
+
+
+def test_ida_y_vuelta_de_of001_completa_con_recorrido_de_circuito(motor):
+    """SF2: la oficina con las tres especialidades, un circuito con orden y un recorrido declarado
+    de circuito, se guarda y se recarga identica; la derivacion no cambia con la recarga."""
+    from adapters.espacio import ModoRecorrido, Recorrido, Tramo, derivar
+    from tests.fixtures.espacio_of001 import espacio_of001
+
+    base = espacio_of001()
+    tramo = Tramo(
+        orden=1,
+        superficie="pared",
+        vertices=(Coord(D("4"), D("1"), D("1.5")), Coord(D("4"), D("1"), D("2.5"))),
+        empotrado=True,
+    )
+    original = replace(
+        base,
+        recorridos=(
+            Recorrido(id="R-C2", circuito_id="C2", modo=ModoRecorrido.DECLARADO, tramos=(tramo,)),
+        ),
+    )
+    with Session(motor) as sesion:
+        guardar_espacio(sesion, 3, original)
+        sesion.commit()
+    with Session(motor) as sesion:
+        recargado = cargar_espacio(sesion, 3)
+    assert recargado == original
+    assert recargado.circuitos[0].orden == ("TA1", "TA2", "TB1", "TB2")
+    for especialidad in ("agua", "datos", "electricidad"):
+        assert derivar(recargado, especialidad) == derivar(original, especialidad)

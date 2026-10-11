@@ -128,7 +128,7 @@ def _cantidades(items: Sequence[ItemComputo]) -> None:
     if not items:
         st.info(
             "El borrador todavia no deriva cantidades: agregue un ambiente, una fuente y los "
-            "puntos de agua fria o de drenaje."
+            "puntos de agua, de datos o de electricidad."
         )
         return
     st.dataframe(
@@ -185,11 +185,13 @@ def _pestana_espacio() -> None:
         borrador = st.session_state[CLAVE_BORRADOR]
 
     fecha = date.today()
-    items = hoja.items_del_borrador(borrador, Especialidad.AGUA.value)
+    items = hoja.items_del_borrador(borrador, hoja.TODAS)
     composiciones, aviso = _composiciones(items, fecha)
     if aviso is not None:
         st.warning(aviso)
-    resultado = hoja.elaborar_hoja(borrador, composiciones, codigo="HOJA", fecha=fecha)
+    resultado = hoja.elaborar_hoja(
+        borrador, composiciones, codigo="HOJA", fecha=fecha, especialidad=hoja.TODAS
+    )
 
     filas_borrador = hoja.filas_desde_espacio(borrador)
     for tabla, hueco in huecos.items():

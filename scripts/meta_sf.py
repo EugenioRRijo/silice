@@ -6,13 +6,17 @@ primero y cada fase se trabaja para ponerlas en OK (spec 2026-10-04, seccion 12.
 
 Cada chequeo de contenido es una funcion pura sobre texto ya leido (`evaluar_*`). Las metas de
 fases todavia no construidas dan PENDIENTE, nunca FALLA: es evidencia ausente, no un
-incumplimiento. Hoy se evaluan de verdad S1 (requisitos en la ERS), S2 (memorias), S3 (agua),
-S8 (regresion) y S10 (cobertura); la orquestacion lee disco, consulta git y ejecuta pytest, y
-cada evaluador recibe solo el dato ya leido.
+incumplimiento. Hoy se evaluan de verdad S1 (requisitos en la ERS), S2 (memorias), S3 (agua,
+datos y electricidad), S4 (`core/` intacto), S8 (regresion) y S10 (cobertura); la orquestacion
+lee disco, consulta git y ejecuta pytest, y cada evaluador recibe solo el dato ya leido.
 
-S3 pesa solo las pruebas de `tests/unit/test_espacio_agua.py`; R8 y R9 (`reglas.py`) no entran en
-S3: las pesan S8 (regresion) y las pruebas del adaptador (`test_espacio_reglas.py`) con la
-cobertura de S10.
+S3 pesa las pruebas de `tests/unit/test_espacio_agua.py` y, desde SF2, las de datos
+(`test_espacio_datos.py`) y electricidad (`test_espacio_electricidad.py` y
+`test_espacio_circuitos.py`);
+R8 a R10 (`reglas.py`) no entran en S3: las pesan S8 (regresion) y las pruebas del adaptador
+(`test_espacio_reglas.py`, `test_espacio_r10.py`) con la cobertura de S10.
+S2 exige, desde SF2, `of001.md` versionada antes del primer codigo de datos. S4 compara `core/`
+contra `gsf1` (o, mientras esa etiqueta no exista, contra la rama `inc/sf1`): `git diff` vacio.
 S10 mide con el `coverage.json` que deja la corrida con `--cov`, y solo si es posterior al codigo
 de `adapters/espacio` (`cobertura_vigente`); si no, queda PENDIENTE.
 
@@ -73,6 +77,13 @@ UMBRAL_COBERTURA_ESPACIO = 80.0
 RUTA_MEMORIAS = RAIZ / "tests" / "fixtures" / "memorias"
 RUTA_ESPACIO = RAIZ / "adapters" / "espacio"
 RUTA_PRUEBAS_AGUA = "tests/unit/test_espacio_agua.py"
+RUTA_PRUEBAS_DATOS = ("tests/unit/test_espacio_datos.py",)
+RUTA_PRUEBAS_ELECTRICIDAD = (
+    "tests/unit/test_espacio_electricidad.py",
+    "tests/unit/test_espacio_circuitos.py",
+)
+#: Etiqueta de la compuerta GSF1 y, si todavia no existe, la rama de SF1: base de S4.
+BASES_S4: tuple[str, ...] = ("gsf1", "inc/sf1")
 
 #: Memorias de calculo de SF1: nombre -> argumentos de `git log` que localizan el PRIMER commit del
 #: codigo que ellas rigen. La del bano rige la geometria; la del drenaje, la derivacion de agua y
@@ -81,8 +92,11 @@ MEMORIAS_SF1: dict[str, tuple[str, ...]] = {
     "bano_of001.md": ("--diff-filter=A", "--", "adapters/espacio/geometria.py"),
     "bano_drenaje_of001.md": ("--diff-filter=A", "--", "adapters/espacio/especialidades/agua.py"),
 }
-#: Memorias de fases posteriores: si faltan no hacen fallar la fase actual.
-MEMORIAS_SF2: tuple[str, ...] = ("of001.md",)
+#: Memorias de SF2: se exigen al evaluar SF2 o mas. `of001.md` rige el primer codigo de datos
+#: (`especialidades/datos.py`), que es el primero de la fase.
+MEMORIAS_SF2: dict[str, tuple[str, ...]] = {
+    "of001.md": ("--diff-filter=A", "--", "adapters/espacio/especialidades/datos.py"),
+}
 
 #: Regresion de spec 11.2 que ya tiene prueba: grupo -> nodeids (archivo o archivo::prueba).
 #: De TI-001 solo entran las pruebas que la spec 8.3 declara invariantes (total, PU, punto de
@@ -234,18 +248,62 @@ def evaluar_s2_memorias(
 
 
 def evaluar_s3_especialidades(
-    existe_agua: bool, resultado_agua: tuple[int, int] | None
+    existe_agua: bool,
+    resultado_agua: tuple[int, int] | None,
+    existe_datos: bool | None = None,
+    resultado_datos: tuple[int, int] | None = None,
+    existe_electricidad: bool | None = None,
+    resultado_electricidad: tuple[int, int] | None = None,
 ) -> tuple[Estado, str]:
-    """S3 hasta SF1: las pruebas de agua existen y pasan (`resultado_agua` = (pasan, total)).
-    Datos y electricidad llegan en SF2 y no se exigen aqui."""
-    if not existe_agua:
-        return Estado.PENDIENTE, "faltan las pruebas de agua"
-    if resultado_agua is None or resultado_agua[1] == 0:
-        return Estado.PENDIENTE, "las pruebas de agua no recolectaron casos"
-    pasan, total = resultado_agua
-    if pasan < total:
-        return Estado.FALLA, f"pruebas de agua: pasan {pasan} de {total}"
-    return Estado.OK, f"pruebas de agua en verde ({pasan}/{total}); datos y electricidad: SF2"
+    """S3: las pruebas de las especialidades existen y pasan (cada `resultado_*` = (pasan, total)).
+
+    Sin los argumentos de datos y electricidad (`None`, SF1) solo se exige el agua. Con ellos
+    (SF2 en adelante) se exigen las tres: una prueba que falla pesa mas que una que falta, y una
+    que falta o que no recolecto casos es PENDIENTE (evidencia ausente, no incumplimiento)."""
+    exigidas = {"agua": (existe_agua, resultado_agua)}
+    if existe_datos is not None:
+        exigidas["datos"] = (existe_datos, resultado_datos)
+    if existe_electricidad is not None:
+        exigidas["electricidad"] = (existe_electricidad, resultado_electricidad)
+    fallan = [
+        f"{nombre} ({r[0]}/{r[1]})"
+        for nombre, (existe, r) in exigidas.items()
+        if existe and r is not None and r[1] > 0 and r[0] < r[1]
+    ]
+    if fallan:
+        return Estado.FALLA, "pruebas que fallan: " + ", ".join(fallan)
+    faltan = [nombre for nombre, (existe, _) in exigidas.items() if not existe]
+    if faltan:
+        return Estado.PENDIENTE, "faltan las pruebas de " + ", ".join(faltan)
+    sin_casos = [nombre for nombre, (_, r) in exigidas.items() if r is None or r[1] == 0]
+    if sin_casos:
+        return Estado.PENDIENTE, "las pruebas de " + ", ".join(sin_casos) + " no recolectaron casos"
+    if len(exigidas) == 1:
+        pasan, total = resultado_agua  # type: ignore[misc]
+        return Estado.OK, f"pruebas de agua en verde ({pasan}/{total}); datos y electricidad: SF2"
+    detalle = ", ".join(f"{nombre} ({r[0]}/{r[1]})" for nombre, (_, r) in exigidas.items())  # type: ignore[index]
+    return Estado.OK, f"pruebas en verde: {detalle}"
+
+
+def evaluar_s4_core(base: str | None, diff: str | None) -> tuple[Estado, str]:
+    """S4: `core/` no cambio desde `base` (`git diff --stat <base>..HEAD -- core/` vacio).
+
+    `base` es None si no hay etiqueta ni rama de referencia, y `diff` es None si git no
+    respondio: en ambos casos no hay evidencia (PENDIENTE). Un diff con contenido es FALLA y
+    nombra lo que cambio."""
+    if base is None:
+        return Estado.PENDIENTE, "sin base: ni la etiqueta gsf1 ni la rama inc/sf1 existen"
+    if diff is None:
+        return Estado.PENDIENTE, f"git no respondio al comparar core/ con {base}"
+    cambios = [linea.strip() for linea in diff.splitlines() if linea.strip()]
+    if cambios:
+        return Estado.FALLA, f"core/ cambio desde {base}: " + "; ".join(cambios[:5])
+    return Estado.OK, f"core/ intacto desde {base} (git diff vacio)"
+
+
+def base_de_core(existe: Callable[[str], bool]) -> str | None:
+    """La primera base de S4 que existe (`gsf1`, y si no `inc/sf1`); None si no hay ninguna."""
+    return next((ref for ref in BASES_S4 if existe(ref)), None)
 
 
 def evaluar_s8_regresion(
@@ -330,10 +388,17 @@ def _ordenar_memoria(memoria: str, criterio_codigo: tuple[str, ...]) -> bool | N
     return ancestro.returncode == 0
 
 
-def _s2() -> tuple[Estado, str]:
-    presentes = {m: (RUTA_MEMORIAS / m).is_file() for m in MEMORIAS_SF1}
-    orden = {m: _ordenar_memoria(m, criterio) for m, criterio in MEMORIAS_SF1.items()}
-    posteriores = {m: (RUTA_MEMORIAS / m).is_file() for m in MEMORIAS_SF2}
+def memorias_exigidas(exigir_sf2: bool) -> dict[str, tuple[str, ...]]:
+    """Memorias que S2 exige y los argumentos de `git log` que localizan el primer commit del codigo
+    que cada una rige: las de SF1 siempre; `of001.md` desde SF2."""
+    return {**MEMORIAS_SF1, **(MEMORIAS_SF2 if exigir_sf2 else {})}
+
+
+def _s2(exigir_sf2: bool = False) -> tuple[Estado, str]:
+    exigidas = memorias_exigidas(exigir_sf2)
+    presentes = {m: (RUTA_MEMORIAS / m).is_file() for m in exigidas}
+    orden = {m: _ordenar_memoria(m, criterio) for m, criterio in exigidas.items()}
+    posteriores = {} if exigir_sf2 else {m: (RUTA_MEMORIAS / m).is_file() for m in MEMORIAS_SF2}
     return evaluar_s2_memorias(presentes, orden, RUTA_ESPACIO.is_dir(), posteriores)
 
 
@@ -360,13 +425,45 @@ def _existe(nodeid: str) -> bool:
     return not prueba or re.search(patron, ruta.read_text("utf-8"), re.MULTILINE) is not None
 
 
-def _s3() -> tuple[Estado, str]:
-    existe = _existe(RUTA_PRUEBAS_AGUA)
-    resultado = None
-    if existe:
-        grupo = {"agua": (RUTA_PRUEBAS_AGUA,)}
-        resultado = contar_resultados(_correr_pytest([RUTA_PRUEBAS_AGUA]), grupo)["agua"]
-    return evaluar_s3_especialidades(existe, resultado)
+def _resultado_de(ids: Sequence[str]) -> tuple[bool, tuple[int, int] | None]:
+    """(existen todas las pruebas, (pasan, total)); sin ellas no se corre pytest."""
+    existen = all(_existe(i) for i in ids)
+    if not existen:
+        return False, None
+    return True, contar_resultados(_correr_pytest(list(ids)), {"g": tuple(ids)})["g"]
+
+
+def _s3(exigir_sf2: bool = False) -> tuple[Estado, str]:
+    existe, resultado = _resultado_de((RUTA_PRUEBAS_AGUA,))
+    if not exigir_sf2:
+        return evaluar_s3_especialidades(existe, resultado)
+    existe_d, resultado_d = _resultado_de(RUTA_PRUEBAS_DATOS)
+    existe_e, resultado_e = _resultado_de(RUTA_PRUEBAS_ELECTRICIDAD)
+    return evaluar_s3_especialidades(
+        existe, resultado, existe_d, resultado_d, existe_e, resultado_e
+    )
+
+
+def _referencia_existe(ref: str) -> bool:
+    return bool(_git("rev-parse", "--verify", "--quiet", f"{ref}^{{commit}}"))
+
+
+def _s4() -> tuple[Estado, str]:
+    base = base_de_core(_referencia_existe)
+    if base is None:
+        return evaluar_s4_core(None, None)
+    try:
+        r = subprocess.run(
+            ["git", "diff", "--stat", f"{base}..HEAD", "--", "core/"],
+            cwd=RAIZ,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            check=False,
+        )
+    except OSError:
+        return evaluar_s4_core(base, None)
+    return evaluar_s4_core(base, r.stdout if r.returncode == 0 else None)
 
 
 def _s8() -> tuple[Estado, str]:
@@ -381,12 +478,19 @@ def _leer(ruta: Path) -> str | None:
     return ruta.read_text(encoding="utf-8") if ruta.exists() else None
 
 
-def _evaluar_metas(codigos: list[str]) -> list[Fila]:
+def _incluye_sf2(fase: str | None) -> bool:
+    """True si la evaluacion cubre SF2 o una fase posterior (sin `--hasta`, todas)."""
+    orden = list(FASES)
+    return fase is None or orden.index(fase) >= orden.index("SF2")
+
+
+def _evaluar_metas(codigos: list[str], fase: str | None = None) -> list[Fila]:
+    sf2 = _incluye_sf2(fase)
     chequeos: dict[str, Callable[[], tuple[Estado, str]]] = {
         "S1": lambda: evaluar_s1_requisitos(_leer(RUTA_ERS)),
-        "S2": _s2,
-        "S3": _s3,
-        "S4": _pendiente("se evalua al cerrar SF2 (git diff gsf1..HEAD -- core/)"),
+        "S2": lambda: _s2(sf2),
+        "S3": lambda: _s3(sf2),
+        "S4": _s4,
         "S5": _pendiente("la hoja del proyecto llega con SF3"),
         "S6": _pendiente("la barra superior llega con SF4"),
         "S7": _pendiente("la importacion de planos llega con SF5"),
@@ -418,7 +522,7 @@ def main(argv: list[str] | None = None) -> int:
         codigos = metas_hasta(args.hasta)
     else:
         codigos = [codigo for metas in FASES.values() for codigo in metas]
-    filas = _evaluar_metas(codigos)
+    filas = _evaluar_metas(codigos, args.hasta)
     print(_filas_a_json(filas) if args.json else render_tabla(filas))
     return 0 if all(fila.estado is Estado.OK for fila in filas) else 1
 

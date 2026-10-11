@@ -11,7 +11,7 @@ Orquesta lo que la pantalla `ui/paginas/hoja.py` solo pinta (spec del sprint fin
 2. **Derivacion y elaboracion.** `elaborar_hoja` deriva los `ItemComputo` con
    `adapters.espacio.derivar`, les suma los items de la version que no vienen del espacio
    (`items_base`) y llama a `core.budget.elaborar` con `reglas = REGLAS + reglas_espacio(espacio)`:
-   el `Espacio` inmutable es la instantanea que reciben R8 y R9 (DA-SF-8).
+   el `Espacio` inmutable es la instantanea que reciben R8, R9 y R10 (DA-SF-8).
 3. **Estado por fila** (RF-55). `estado_de_filas` asigna a cada fila editable el peor hallazgo que
    la toca, por las claves `esp_*` que los hallazgos citan en `origen_ids` (tambien dentro del
    `origen_id` compuesto de un item, que separa sus fuentes con «;»). Las advertencias de una misma
@@ -19,8 +19,8 @@ Orquesta lo que la pantalla `ui/paginas/hoja.py` solo pinta (spec del sprint fin
    del ejemplo pintaria cinco lineas.
 
 Un presupuesto sin espacio (la clinica, TI-001) abre igual que antes de la hoja (FR-5): espacio
-vacio, ningun item derivado, solo `items_base`; R8 y R9 se declaran evaluadas sin hallazgos. Solo
-agua por ahora. **No persiste**: guardar una version es SF3.
+vacio, ningun item derivado, solo `items_base`; R8, R9 y R10 se declaran evaluadas sin hallazgos.
+La hoja deriva agua, datos y electricidad (`TODAS`). **No persiste**: guardar una version es SF3.
 
 Sin Streamlit, sin `pandas` y sin `ui.caso`; lo vigila
 `tests/unit/test_arquitectura.py::test_ui_respeta_sus_importaciones_prohibidas`.
@@ -36,6 +36,7 @@ from enum import StrEnum
 from typing import TYPE_CHECKING
 
 from adapters.espacio import (
+    ESPECIALIDADES,
     Ambiente,
     Coord,
     Espacio,
@@ -426,9 +427,18 @@ def borrador_de_version(sesion: Session, version_id: int) -> Espacio:
     return cargar_espacio(sesion, version_id)
 
 
-def items_del_borrador(espacio: Espacio, especialidad: str) -> list[ItemComputo]:
-    """Los `ItemComputo` que deriva el borrador para una especialidad (vacio si no hay espacio)."""
-    return derivar(espacio, especialidad)
+#: Las tres especialidades que deriva la hoja (agua, datos y electricidad), en este orden.
+TODAS: tuple[str, ...] = ESPECIALIDADES
+
+
+def items_del_borrador(
+    espacio: Espacio, especialidad: str | Iterable[str] = Especialidad.AGUA.value
+) -> list[ItemComputo]:
+    """Los `ItemComputo` que deriva el borrador para una especialidad o para varias, en el orden
+    pedido (`TODAS` pide las tres). Vacio si no hay espacio (FR-1)."""
+    if isinstance(especialidad, str):
+        return derivar(espacio, especialidad)
+    return [item for una in especialidad for item in derivar(espacio, una)]
 
 
 def composiciones_del_catalogo(
@@ -450,7 +460,7 @@ def elaborar_hoja(
     *,
     codigo: str,
     fecha: date,
-    especialidad: str = Especialidad.AGUA.value,
+    especialidad: str | Iterable[str] = Especialidad.AGUA.value,
     items_base: Sequence[ItemComputo] = (),
     parametros: ParametrosCosto | None = None,
     moneda: str = MONEDA_POR_DEFECTO,

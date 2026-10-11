@@ -125,13 +125,14 @@ def hallazgo(regla, severidad, origen, mensaje, **extra) -> Hallazgo:
 # --- contrato -----------------------------------------------------------------------------
 
 
-def test_reglas_espacio_entrega_r8_y_r9_con_codigos_cortos_y_sin_atribuir():
+def test_reglas_espacio_entrega_r8_r9_y_r10_con_codigos_cortos_y_sin_atribuir():
     reglas = reglas_espacio(minimo())
 
     assert isinstance(reglas, tuple)
     assert [(r.codigo, r.nombre) for r in reglas] == [
         ("R8", "Origen de la medida"),
         ("R9", "Coherencia espacial"),
+        ("R10", "Límites de la especialidad"),
     ]
     for regla in reglas:
         assert isinstance(regla, ReglaVerificacion)

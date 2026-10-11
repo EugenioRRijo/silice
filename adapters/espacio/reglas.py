@@ -1,4 +1,5 @@
-"""Reglas de auditoria del espacio: R8 (origen de la medida) y R9 (coherencia espacial), spec §8.2.
+"""Reglas de auditoria del espacio: R8 (origen de la medida), R9 (coherencia espacial) y R10
+(limites de la especialidad), spec §8.2.
 
 Son `ReglaVerificacion` del contrato de `core`: `elaborar(reglas=REGLAS + reglas_espacio(espacio))`
 las corre con las siete. Cada regla guarda la instantanea del espacio de la version (DA-SF-8): el
@@ -25,19 +26,45 @@ la distancia ortogonal minima entre los extremos de su camino (los de los tramos
 los de la lista; sin camino, sin extremos, no se compara); 4. segmentos solapados con empotrado
 distinto sin declarar; 5. sobrescrituras de segmento huerfanas. Un recorrido en diagonal (mas corto
 que la distancia ortogonal) es ERROR.
+
+**R10**, en este orden: 1. pendiente del drenaje: un tramo de un recorrido de drenaje que declara su
+pendiente (fraccion, positiva si baja hacia el colector) por debajo de la minima; un tramo sin
+pendiente declarada no se evalua (la propuesta de §6.4 no la trae); 2. enlace de datos: recorrido
+mas holguras (`datos.longitud_enlace`, sin la reserva) mayor que 90 m; 3. puntos por circuito: mas
+puntos (los que citan el circuito mas los de su orden) que el maximo declarado. Severidad: ERROR si
+la fuente del limite esta verificada, ADVERTENCIA si es un supuesto declarado (hoy los tres lo son).
+Cada limite es una `Constante` de su especialidad; `Limites` los junta para probar ambos casos.
+Limitacion (pendiente): R10 evalua solo tramos de drenaje que declaran su pendiente; el recorrido
+propuesto de §6.4 no la trae, asi que con recorridos propuestos la condicion 1 no se dispara.
+Decision (puntos por circuito, R10d): el maximo lo declara el usuario en cada circuito, pero la
+severidad sigue a la fuente del limite base (`LIMITE_PUNTOS_POR_CIRCUITO`): mientras esa fuente sea
+supuesta (RS-11, pendiente de ratificar por Eugenio) un exceso es ADVERTENCIA, no ERROR.
 """
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from decimal import Decimal
 
+from adapters.espacio.especialidades import Constante
+from adapters.espacio.especialidades.agua import LIMITE_PENDIENTE_DRENAJE
+from adapters.espacio.especialidades.datos import LIMITE_ENLACE, longitud_enlace
+from adapters.espacio.especialidades.electricidad import LIMITE_PUNTOS_POR_CIRCUITO
 from adapters.espacio.geometria import (
     _agrupar_nodos,
     longitud_tramos,
     normalizar_diametro,
     unir_segmentos,
 )
-from adapters.espacio.modelo import TOLERANCIA, Ambiente, Coord, Espacio, Recorrido, Tramo
+from adapters.espacio.modelo import (
+    TOLERANCIA,
+    Ambiente,
+    Coord,
+    Espacio,
+    Recorrido,
+    TipoPunto,
+    Tramo,
+)
 from adapters.espacio.origen import clave_esp
 from core.contracts.presupuesto import Presupuesto
 from core.contracts.verificacion import Hallazgo, ReglaVerificacion, Severidad
@@ -45,14 +72,18 @@ from core.contracts.verificacion import Hallazgo, ReglaVerificacion, Severidad
 __all__ = [
     "ALTURA_PENDIENTE",
     "CODIGO_R8",
+    "CODIGO_R10",
     "CODIGO_R9",
     "CoherenciaEspacial",
+    "Limites",
+    "LimitesDeEspecialidad",
     "OrigenDeLaMedida",
     "reglas_espacio",
 ]
 
 CODIGO_R8 = "R8"
 CODIGO_R9 = "R9"
+CODIGO_R10 = "R10"
 
 #: Convencion de la altura pendiente: un punto cuya especificacion `altura` vale `pendiente`
 #: (p. ej. un punto importado de un plano sin la altura cargada, SF5). No es un campo del modelo.
@@ -69,7 +100,7 @@ def _n(valor: Decimal) -> str:
 def _hallazgo(
     regla: str,
     severidad: Severidad,
-    origen: str,
+    origen: str | tuple[str, ...],
     descripcion: str,
     observado: Decimal | None = None,
     esperado: Decimal | None = None,
@@ -78,7 +109,7 @@ def _hallazgo(
         regla=regla,
         severidad=severidad,
         descripcion=descripcion,
-        origen_ids=(origen,),
+        origen_ids=(origen,) if isinstance(origen, str) else tuple(origen),
         valor_observado=observado,
         valor_esperado=esperado,
     )
@@ -322,9 +353,102 @@ class CoherenciaEspacial(ReglaVerificacion):
         return _hallazgos_r9(self.espacio)
 
 
-def reglas_espacio(espacio: Espacio) -> tuple[ReglaVerificacion, ...]:
-    """R8 y R9 sobre la instantanea `espacio`, listas para `elaborar(reglas=REGLAS + ...)`.
+# --- R10 ----------------------------------------------------------------------------------
 
-    R10 (limites de la especialidad) llega con SF2 y se agregara aqui.
-    """
-    return (OrigenDeLaMedida(espacio), CoherenciaEspacial(espacio))
+
+@dataclass(frozen=True, slots=True)
+class Limites:
+    """Los tres limites de R10, cada uno con su fuente (una `Constante` de su especialidad)."""
+
+    pendiente_minima: Constante
+    enlace_maximo: Constante
+    puntos_por_circuito: Constante
+
+    @classmethod
+    def por_defecto(cls) -> Limites:
+        return cls(LIMITE_PENDIENTE_DRENAJE, LIMITE_ENLACE, LIMITE_PUNTOS_POR_CIRCUITO)
+
+
+def _severidad_del_limite(limite: Constante) -> Severidad:
+    """ERROR si el limite tiene fuente verificada; ADVERTENCIA si es un supuesto declarado."""
+    return Severidad.ADVERTENCIA if limite.supuesto_declarado else Severidad.ERROR
+
+
+def _hallazgos_r10(espacio: Espacio, limites: Limites) -> list[Hallazgo]:
+    hallazgos: list[Hallazgo] = []
+    puntos = {p.id: p for p in espacio.puntos}
+
+    minima = Decimal(limites.pendiente_minima.valor)
+    gravedad = _severidad_del_limite(limites.pendiente_minima)
+    for r in espacio.recorridos:  # 1. pendiente del drenaje
+        punto = puntos.get(r.punto_id) if r.punto_id is not None else None
+        if punto is None or punto.tipo is not TipoPunto.DRENAJE:
+            continue
+        for t in r.tramos:
+            if t.pendiente is not None and t.pendiente < minima:
+                hallazgos.append(
+                    _hallazgo(
+                        CODIGO_R10,
+                        gravedad,
+                        (clave_esp("esp_recorridos", r.id), clave_esp("esp_puntos", punto.id)),
+                        f"recorrido {r.id}: pendiente {_n(t.pendiente)} del tramo {t.orden} menor "
+                        f"que la minima {_n(minima)} del drenaje "
+                        f"(limite: {limites.pendiente_minima.fuente})",
+                        observado=t.pendiente,
+                        esperado=minima,
+                    )
+                )
+
+    maximo = Decimal(limites.enlace_maximo.valor)
+    gravedad = _severidad_del_limite(limites.enlace_maximo)
+    for p in espacio.puntos:  # 2. enlace de datos
+        enlace = longitud_enlace(espacio, p)
+        if enlace is not None and enlace > maximo:
+            hallazgos.append(
+                _hallazgo(
+                    CODIGO_R10,
+                    gravedad,
+                    clave_esp("esp_puntos", p.id),
+                    f"punto {p.id}: enlace de {_n(enlace)} m mayor que el maximo de {_n(maximo)} m "
+                    f"(recorrido mas holguras; limite: {limites.enlace_maximo.fuente})",
+                    observado=enlace,
+                    esperado=maximo,
+                )
+            )
+
+    gravedad = _severidad_del_limite(limites.puntos_por_circuito)
+    for c in espacio.circuitos:  # 3. puntos por circuito
+        ids = sorted({p.id for p in espacio.puntos if p.circuito_id == c.id} | set(c.orden))
+        if len(ids) > c.puntos_maximos:
+            hallazgos.append(
+                _hallazgo(
+                    CODIGO_R10,
+                    gravedad,
+                    (clave_esp("esp_circuitos", c.id), *(clave_esp("esp_puntos", i) for i in ids)),
+                    f"circuito {c.id}: {len(ids)} puntos, mas que el maximo declarado de "
+                    f"{c.puntos_maximos} (limite: {limites.puntos_por_circuito.fuente})",
+                    observado=Decimal(len(ids)),
+                    esperado=Decimal(c.puntos_maximos),
+                )
+            )
+    return hallazgos
+
+
+class LimitesDeEspecialidad(ReglaVerificacion):
+    """R10: pendiente minima del drenaje, 90 m por enlace de datos y puntos por circuito
+    (spec §8.2). ERROR si el limite tiene fuente verificada, ADVERTENCIA si es supuesto."""
+
+    codigo = CODIGO_R10
+    nombre = "Límites de la especialidad"
+
+    def __init__(self, espacio: Espacio, limites: Limites | None = None) -> None:
+        self.espacio = espacio
+        self.limites = limites if limites is not None else Limites.por_defecto()
+
+    def evaluar(self, presupuesto: Presupuesto) -> list[Hallazgo]:
+        return _hallazgos_r10(self.espacio, self.limites)
+
+
+def reglas_espacio(espacio: Espacio) -> tuple[ReglaVerificacion, ...]:
+    """R8, R9 y R10 sobre la instantanea `espacio`, listas para `elaborar(reglas=REGLAS + ...)`."""
+    return (OrigenDeLaMedida(espacio), CoherenciaEspacial(espacio), LimitesDeEspecialidad(espacio))
