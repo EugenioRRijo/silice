@@ -36,3 +36,17 @@ def test_el_modelo_se_descarga_antes_de_pytest_y_con_cache() -> None:
         if str(paso.get("uses", "")).startswith("actions/cache")
     )
     assert cache < descarga
+
+
+def test_la_meta_de_silice_corre_tras_la_suite_con_historia_completa() -> None:
+    trabajo = _pruebas()
+    checkout = next(
+        paso
+        for paso in trabajo["steps"]
+        if str(paso.get("uses", "")).startswith("actions/checkout")
+    )
+    assert checkout["with"]["fetch-depth"] == 0
+    meta = _indice(trabajo, "scripts/meta_silice.py")
+    assert _indice(trabajo, "pytest -W error") < meta
+    assert _indice(trabajo, "scripts/medir_rnf11.py") < meta
+    assert "--junit reporte-pruebas.xml" in trabajo["steps"][meta]["run"]
