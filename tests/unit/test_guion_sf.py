@@ -73,7 +73,7 @@ def test_la_trazabilidad_de_la_spec_se_cumple_por_caso():
 def test_la_base_propia_es_prueba_sf_y_ninguna_orden_usa_la_de_trabajo():
     texto = _texto()
     assert "scripts/seed_of001.py --db data/prueba_sf.db --reiniciar" in texto
-    assert "ARENIA_CASO=data/prueba_sf.db" in texto
+    assert "SILICE_CASO=data/prueba_sf.db" in texto
     ordenes = [
         linea
         for linea in texto.splitlines()
@@ -81,8 +81,8 @@ def test_la_base_propia_es_prueba_sf_y_ninguna_orden_usa_la_de_trabajo():
     ]
     assert ordenes and all("--db data/prueba_sf.db" in linea for linea in ordenes)
     for linea in texto.splitlines():
-        if "uv run" in linea or "ARENIA_CASO" in linea:
-            assert "ARENIA_CASO=data/apu.db" not in linea and "--db data/apu.db" not in linea
+        if "uv run" in linea or "SILICE_CASO" in linea:
+            assert "SILICE_CASO=data/apu.db" not in linea and "--db data/apu.db" not in linea
 
 
 def test_cp_10_va_antes_que_cp_11_y_cp_11_lo_dice():
