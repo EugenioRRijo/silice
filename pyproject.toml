@@ -1,7 +1,9 @@
 [project]
-name = "apu-system"
+name = "silice"
 version = "0.1.0"
-description = "Sistema de generacion y auditoria de Analisis de Precios Unitarios multidominio (BIM-5D asistido por aprendizaje automatico)"
+description = "Sílice: generacion y auditoria de presupuestos con Analisis de Precios Unitarios multidominio"
+license = "LicenseRef-Propietaria"
+license-files = ["LICENSE"]
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [

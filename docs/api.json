@@ -1,7 +1,7 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "Sistema APU multidominio",
+    "title": "Sílice",
     "description": "API HTTP sobre el nucleo del sistema de Analisis de Precios Unitarios (APU).\n\n**Los montos viajan como texto, nunca como numero JSON.** Todo campo monetario o dimensional\n(precios, cantidades, factores, totales) se serializa como `str` en formato decimal\n(por ejemplo `\"1586.61\"`) tanto en las peticiones como en las respuestas; la conversion a\n`Decimal` ocurre siempre en la frontera de la API, construyendo desde el texto exacto. Esto evita\nla perdida de precision de `float` en JSON (regla 3 de NORMAS.md).\n",
     "version": "0.1.0"
   },

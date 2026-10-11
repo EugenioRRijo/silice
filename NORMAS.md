@@ -168,7 +168,7 @@ Las anotaciones «— sesión» de las carpetas de código nombran las sesiones 
 `tests/` y `docs/` crecen en casi todas las sesiones y no llevan anotación.
 
 ```
-NORMAS.md  README.md  pyproject.toml  uv.lock
+NORMAS.md  README.md  LICENSE  pyproject.toml  uv.lock  .streamlit/config.toml
 PLAN_DESARROLLO.md  PLAN_MULTIDOMINIO.md  PLAN_PROTOTIPO.md  PLAN_UI.md  PLAN_ASISTENTE.md  PLAN_CIERRE.md  PLAN_SF.md
 core/
   contracts/      estables (sección 5)                                   — I0.1
