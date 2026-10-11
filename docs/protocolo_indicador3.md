@@ -272,10 +272,10 @@ entregable fue correcto hasta terminar la segunda condición.
 3. **Base del participante:** `uv run python scripts/seed.py --db data/i3/<código>.db` (la línea
    base: cinco partidas y la lista del 28/04/2026). Nunca sin `--db`: sin esa opción escribe en
    `data/apu.db`.
-4. **Aplicación:** en bash, `ARENIA_CASO=data/i3/<código>.db uv run python -m streamlit run ui/app.py`;
-   en PowerShell, `$env:ARENIA_CASO = "data/i3/<código>.db"; uv run python -m streamlit run ui/app.py`.
+4. **Aplicación:** en bash, `SILICE_CASO=data/i3/<código>.db uv run python -m streamlit run ui/app.py`;
+   en PowerShell, `$env:SILICE_CASO = "data/i3/<código>.db"; uv run python -m streamlit run ui/app.py`.
    Comprobar que abre en **Inicio** y que la barra lateral, bajo **Caso abierto**, nombra esa base
-   con 5 partidas. Sin modo entrega (`ARENIA_MODO_ENTREGA` sin definir).
+   con 5 partidas. Sin modo entrega (`SILICE_MODO_ENTREGA` sin definir).
 5. **Plantillas:** `data/i3/<código>_plantilla.csv` (contenido de la sección 4) y
    `data/i3/<código>_practica.csv` (la misma plantilla, para la práctica con P).
 6. **Hoja de cálculo** abierta con un libro en blanco; **carpeta de descargas** vacía (o su

@@ -1,0 +1,17 @@
+# Configuracion de Streamlit del repositorio (plan 0.6.0, tarea A1; S5 §1.2 y §10.1).
+# Sin esto, Streamlit 1.62 escucha en todas las interfaces y envia estadisticas de uso.
+# S5-2 lo toma como base del archivo oficial de {app}\codigo (instalador/streamlit_config.toml).
+
+[server]
+address = "127.0.0.1"
+enableCORS = true
+enableXsrfProtection = true
+# MB; el mismo limite que los planos (RNF-12, adapters/espacio/planos/comun.py LIMITE_BYTES)
+maxUploadSize = 20
+
+[browser]
+serverAddress = "127.0.0.1"
+gatherUsageStats = false
+
+[client]
+showErrorDetails = "none"

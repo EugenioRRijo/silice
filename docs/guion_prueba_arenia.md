@@ -1,7 +1,7 @@
-# Guion de prueba manual de AREN.IA (IEEE 829) — Sesión P4.2
+# Guion de prueba manual de Sílice (IEEE 829) — Sesión P4.2
 
 Especificación de casos de prueba manuales para la pantalla **Componer una partida** (UC‑10 / UC‑11)
-del prototipo AREN.IA (`ui/paginas/componer.py`). Está escrita para una persona que **no programa**:
+del prototipo AREN.IA (hoy Sílice) (`ui/paginas/componer.py`). Está escrita para una persona que **no programa**:
 cada caso dice qué hacer, paso a paso, y qué debe ver en pantalla. Complementa el
 [plan de pruebas](plan_pruebas.md), que cubre las pruebas automatizadas; los enunciados de los UC y
 RF citados viven una sola vez en la [ERS](ERS.md) y aquí no se repiten.
@@ -10,7 +10,7 @@ RF citados viven una sola vez en la [ERS](ERS.md) y aquí no se repiten.
 
 - **Identificador:** GP‑ARENIA‑001, versión de la Sesión P4.2 (2026‑09‑21), corregida en la fase C1
   del cierre (INV‑065: la prueba trabaja sobre su propia base, nunca sobre `data/apu.db`) y puesta
-  al día en la fase C3 (U1: el caso se abre una vez, con `ARENIA_CASO`; nombres de pantalla nuevos;
+  al día en la fase C3 (U1: el caso se abre una vez, con `SILICE_CASO`; nombres de pantalla nuevos;
   INV‑045: la pantalla presenta dos decimales).
 - **Alcance:** el recorrido completo de la pantalla de componer: componer una partida desde cero con
   la referencia MaPreX, editarla, una línea de mano de obra a destajo, la advertencia de rendimiento
@@ -58,7 +58,7 @@ obtuvieron en Windows 11 con Python 3.13 y Streamlit 1.62.0.
 > **Esta prueba trabaja sobre su propia base, `data/prueba_arenia.db`, y nunca sobre
 > `data/apu.db`**, la base de trabajo de la aplicación. La siembra con `--reiniciar` borra la base
 > que se le indica antes de volver a sembrarla: por eso toda orden de este guion lleva
-> `--db data/prueba_arenia.db`, y la aplicación se abre con `ARENIA_CASO=data/prueba_arenia.db`,
+> `--db data/prueba_arenia.db`, y la aplicación se abre con `SILICE_CASO=data/prueba_arenia.db`,
 > que fija ese caso para todas las pantallas (sección 4, paso 3).
 
 **Antes de empezar (protección de la base de trabajo).** Anote en la sección 8 si existe
@@ -68,7 +68,7 @@ no la copia desechable del paso 1) y, si existe, su fecha y hora de modificació
 Si no existe, anote «no existe».
 
 1. **Cree una copia desechable del repositorio y trabaje sobre ella, nunca sobre esta copia de
-   trabajo.** Desde U1 (fase C3) la aplicación abre el caso que nombra `ARENIA_CASO` (`ui/caso.py`)
+   trabajo.** Desde U1 (fase C3) la aplicación abre el caso que nombra `SILICE_CASO` (`ui/caso.py`)
    en todas las pantallas, pero la copia desechable se conserva como segunda barrera: si la
    variable faltara o tuviera una errata, la aplicación abriría `data/apu.db` de la carpeta desde la
    que se ejecuta. Trabajar fuera de esta copia de trabajo evita tocar su `data/apu.db` en cualquier
@@ -106,13 +106,13 @@ Si no existe, anote «no existe».
 3. Abra la aplicación con el caso de prueba. En bash:
 
    ```
-   ARENIA_CASO=data/prueba_arenia.db uv run python -m streamlit run ui/app.py
+   SILICE_CASO=data/prueba_arenia.db uv run python -m streamlit run ui/app.py
    ```
 
    En PowerShell:
 
    ```
-   $env:ARENIA_CASO = "data/prueba_arenia.db"; uv run python -m streamlit run ui/app.py
+   $env:SILICE_CASO = "data/prueba_arenia.db"; uv run python -m streamlit run ui/app.py
    ```
 
    Se abre el navegador en **Inicio**. Compruebe que la barra lateral, bajo **Caso abierto**, nombra
@@ -140,8 +140,8 @@ uv run python scripts/seed_of001.py --db data/prueba_sf.db --reiniciar
 `Proyecto: OF-001: oficina con baño, cocineta y puestos (caso de prueba)`, `Version 001: 30 partidas`,
 `Total: 2703.86 USD` y `Auditoria: 33 hallazgo(s), CUMPLE`. La orden se niega a escribir en `data/apu.db` y,
 sobre una base que ya existe, exige `--reiniciar`: cada participante empieza de la misma base. Después, la
-aplicación se abre con el caso de prueba (en bash `ARENIA_CASO=data/prueba_sf.db uv run python -m streamlit
-run ui/app.py`; en PowerShell `$env:ARENIA_CASO = "data/prueba_sf.db"; uv run python -m streamlit run
+aplicación se abre con el caso de prueba (en bash `SILICE_CASO=data/prueba_sf.db uv run python -m streamlit
+run ui/app.py`; en PowerShell `$env:SILICE_CASO = "data/prueba_sf.db"; uv run python -m streamlit run
 ui/app.py`) y la barra lateral, bajo **Caso abierto**, nombra `prueba_sf.db` con `30 partidas · 49 insumos ·
 lista vigente: Lista MaPreX jul-2026 (OF-001)`. Para CP‑09 el observador deja una copia de
 `tests/fixtures/planos/of001.dxf` en el escritorio con el nombre `of001.dxf`.
@@ -165,7 +165,7 @@ base de trabajo. Por último, borre la copia desechable (paso 1).
 - **Veredicto:** escriba **PASA** si todo lo que dice el resultado esperado se observó, y **FALLA**
   si algo no coincide; en ese caso copie en *Resultado obtenido* lo que vio (una captura de pantalla
   ayuda).
-- Los recuadros de **sugerencia** de AREN.IA (por ejemplo, «Partidas similares del catalogo» al
+- Los recuadros de **sugerencia** de Sílice (por ejemplo, «Partidas similares del catalogo» al
   escribir una descripción) pueden aparecer; son de solo lectura y no forman parte del veredicto
   salvo que el caso los mencione.
 
@@ -178,7 +178,7 @@ base de trabajo. Por último, borre la copia desechable (paso 1).
 - **Trazabilidad:** UC‑10; RF‑01, RF‑33, RF‑35.
 - **Precondición:** base recién sembrada (sección 4) y la página *Componer una partida* abierta, con
   las tablas vacías y `data/prueba_arenia.db` bajo **Caso abierto** en la barra lateral (la
-  aplicación arrancó con `ARENIA_CASO`, sección 4, paso 3).
+  aplicación arrancó con `SILICE_CASO`, sección 4, paso 3).
 
 **Pasos**
 
@@ -257,14 +257,14 @@ base de trabajo. Por último, borre la copia desechable (paso 1).
 6. Abra una **segunda pestaña** del navegador con la misma dirección de la aplicación y, en ella,
    elija **Catalogo de partidas e insumos** en el menú superior. Compruebe que la barra lateral de
    esa pestaña también muestra `data/prueba_arenia.db` bajo **Caso abierto** (la variable
-   `ARENIA_CASO` lo fija para toda pestaña nueva). Observe la tabla **Partidas**. Cierre esa pestaña
+   `SILICE_CASO` lo fija para toda pestaña nueva). Observe la tabla **Partidas**. Cierre esa pestaña
    y vuelva a la primera.
 
 **Resultado esperado**
 
 - Paso 1: el campo muestra `100`, el rendimiento guardado en CP‑01, precargado desde el historial.
 - Paso 2: **Precio unitario** `19.99` (exacto: 19.99073793585). Aparece además el aviso
-  azul de la ayuda 4 de AREN.IA: `El precio construido cae dentro del rango de la clase 3 de AACE
+  azul de la ayuda 4 de Sílice: `El precio construido cae dentro del rango de la clase 3 de AACE
   International frente a la estimacion por reglas.`
 - Paso 3: mensaje verde `Composicion guardada para la partida PRUEBA-01-TUB: precio unitario
   19.99.`
@@ -325,7 +325,7 @@ el precio unitario `0.1212291…` (de `19.99` a `20.11`).
 - **Precondición:** base sembrada (la partida `DEMO-01-INST` trae dos observaciones de rendimiento:
   50 y 60 m por día). Recargue la página con **F5** para empezar con las tablas vacías y compruebe
   que sigue `data/prueba_arenia.db` bajo **Caso abierto** en la barra lateral (la recarga no cambia
-  el caso: lo mantiene `ARENIA_CASO`).
+  el caso: lo mantiene `SILICE_CASO`).
 
 **Pasos**
 
@@ -444,7 +444,7 @@ parte de lo que se prueba (principio 7 de [NORMAS.md](../NORMAS.md)).
 ### CP‑07 — Una persona nueva llega sola del Inicio al Excel auditado
 
 > **CP‑07 es ejecutable desde U1 y se ejecuta en la fase Med (GU1b).** La fase C3 lo dejó listo:
-> `ui/caso.py` lee `ARENIA_CASO` y la aplicación abre el caso de cada escenario en todas las
+> `ui/caso.py` lee `SILICE_CASO` y la aplicación abre el caso de cada escenario en todas las
 > pantallas. La medición con personas no es de C3: C3 cierra la compuerta GU1a (U1 completa sin
 > CP‑07) y la medición cierra GU1b en Med. Con la misma protección de INV‑065 que los demás casos,
 > se ejecuta **dentro de la copia desechable de la sección 4** (paso 1,
@@ -478,11 +478,11 @@ parte de lo que se prueba (principio 7 de [NORMAS.md](../NORMAS.md)).
    `Auditoria: 3 hallazgo(s), CUMPLE`. Escenario B: compruebe que `data/cp07/escenario_b.db` **no**
    existe (bórrelo si quedó de una corrida anterior). Los `*.db` están ignorados por git.
 3. Antes de arrancar, limpie el modo entrega: CP‑07 se ejecuta en modo normal. En bash,
-   `unset ARENIA_MODO_ENTREGA`; en PowerShell,
-   `Remove-Item Env:ARENIA_MODO_ENTREGA -ErrorAction SilentlyContinue`.
+   `unset SILICE_MODO_ENTREGA`; en PowerShell,
+   `Remove-Item Env:SILICE_MODO_ENTREGA -ErrorAction SilentlyContinue`.
 4. Arranque la aplicación apuntando a esa base. En bash:
-   `ARENIA_CASO=data/cp07/escenario_a.db uv run python -m streamlit run ui/app.py`;
-   en PowerShell: `$env:ARENIA_CASO = "data/cp07/escenario_a.db"; uv run python -m streamlit run ui/app.py`
+   `SILICE_CASO=data/cp07/escenario_a.db uv run python -m streamlit run ui/app.py`;
+   en PowerShell: `$env:SILICE_CASO = "data/cp07/escenario_a.db"; uv run python -m streamlit run ui/app.py`
    (en el escenario B, `escenario_b.db`).
 5. Compruebe que el navegador abrió en **Inicio**, que el menú de pantallas está **arriba** (con la barra
    de herramientas debajo) y que la barra lateral, bajo **Caso abierto**, nombra la base del
@@ -603,7 +603,7 @@ ejecución, dejando constancia en [docs/bitacora/](bitacora/).
   informe de auditoría.
 - **Trazabilidad:** UC‑13; RF‑44 a RF‑47, RF‑61; RNF‑13.
 - **Precondición:** `data/prueba_sf.db` recién sembrada (sección 4.1); la aplicación abierta con
-  `ARENIA_CASO=data/prueba_sf.db` en **Inicio**, con `prueba_sf.db` bajo **Caso abierto**; la pantalla
+  `SILICE_CASO=data/prueba_sf.db` en **Inicio**, con `prueba_sf.db` bajo **Caso abierto**; la pantalla
   **Hoja del proyecto** (menú superior, sección **Trabajo**) con **(borrador nuevo, sin guardar)** en
   el selector *Proyecto* y la pestaña **Espacio y metrajes**. (Desde la integración final el caso **termina
   guardando**: el proyecto se crea al final, en los pasos 7 y 8, y el borrador pasa a él. Los pasos 7 y 8 suman
@@ -755,7 +755,7 @@ declarados de la memoria `tests/fixtures/memorias/bano_of001.md`, no un plano re
   llega de CP‑08 y CP‑09, la base ya contiene los proyectos que ellos guardaron («Baño de prueba» y
   «Oficina del plano»): **antes de CP‑10 resiembre la base** con
   `uv run python scripts/seed_of001.py --db data/prueba_sf.db --reiniciar` y **reabra la aplicación**
-  (deténgala y arránquela de nuevo con `ARENIA_CASO`); ese tiempo de preparación no cuenta en los 15 min
+  (deténgala y arránquela de nuevo con `SILICE_CASO`); ese tiempo de preparación no cuenta en los 15 min
   (sección 6.1). En
   **Hoja del proyecto**: *Proyecto* `OF-001: oficina con baño, cocineta y puestos (caso de prueba)` y
   *Version* `001 (vigente)` (se pueden elegir en la propia pantalla o abriendo el proyecto con la
@@ -878,7 +878,7 @@ caso arranca al terminar de leer su consigna) ni se anota como ayuda. CP‑11 no
 la versión que deja CP‑10.
 
 **Condiciones.** Las de CP‑07: copia desechable (sección 4, paso 1), base propia
-`data/prueba_sf.db` sembrada de nuevo antes de **cada participante** (sección 4.1), `ARENIA_MODO_ENTREGA`
+`data/prueba_sf.db` sembrada de nuevo antes de **cada participante** (sección 4.1), `SILICE_MODO_ENTREGA`
 sin definir, `data/apu.db` comprobada antes y después, observador distinto del participante, carpeta de
 descargas vacía, y el mismo guion del observador de CP‑07 (puntos 1 a 7: no contestar preguntas, anotar
 preguntas y puntos de detención, qué cuenta como ayuda, oferta única de ayuda) **con los umbrales de esta
@@ -965,7 +965,7 @@ participantes pasan). **Veredicto de RNF‑13:** ____ (PASA solo si pasan los cu
 | Caso | UC | RF | Otros |
 |---|---|---|---|
 | CP‑01 | UC‑10 | RF‑01, RF‑33, RF‑35 | referencia MaPreX |
-| CP‑02 | UC‑11 | RF‑26, RF‑27, RF‑33 | ayuda 4 de AREN.IA (contraste AACE) |
+| CP‑02 | UC‑11 | RF‑26, RF‑27, RF‑33 | ayuda 4 de Sílice (contraste AACE) |
 | CP‑03 | UC‑10, UC‑11 | RF‑01, RF‑34 | decisión D9 ([dossier_g0.md](dossier_g0.md)) |
 | CP‑04 | UC‑06, UC‑11 | RF‑26, RF‑27, RF‑33 | — |
 | CP‑05 | UC‑01 | RF‑06, RF‑07, RF‑08, RF‑34 | hojas de `core/budget/excel.py` |

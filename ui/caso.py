@@ -11,7 +11,8 @@ Tres invariantes (spec de UI, §3.2):
    del Inicio, se olvidaria al navegar a otra pantalla. Por eso `CLAVE_CASO` y `CLAVE_RECORRIDO` no
    son la `key` de ningun widget.
 2. **Respaldo declarado.** Se puede entrar por URL a cualquier pantalla sin pasar por el Inicio. Sin
-   caso fijado, manda la variable de entorno `ARENIA_CASO` (el guion CP-07 la usa) y, si no esta,
+   caso fijado, manda la variable de entorno `SILICE_CASO` (el guion CP-07 la usa; la lee
+   `ui.entorno.leer_variable`) y, si no esta,
    `RUTA_BASE_POR_DEFECTO`. `ruta_caso()` lee esa constante **al llamarse**, no al definirse: las
    pruebas la parchan en el objeto modulo de `sys.modules`.
 3. **El motor de SQLAlchemy no va a la sesion.** Cada pantalla lo crea y lo cierra con
@@ -33,13 +34,14 @@ import streamlit as st
 from sqlalchemy.exc import SQLAlchemyError
 
 from core.catalog import Catalogo, CatalogoIncompleto, abrir_sesion, crear_esquema, crear_motor
+from ui.entorno import VARIABLE_CASO, leer_variable
 
 RUTA_BASE_POR_DEFECTO = "data/apu.db"
-VARIABLE_RUTA_CASO = "ARENIA_CASO"
-CLAVE_CASO = "arenia_caso_ruta"
-CLAVE_RECORRIDO = "arenia_recorrido_activo"
-CLAVE_PROYECTO = "arenia_proyecto_abierto"
-CLAVE_ACCION = "arenia_accion_pedida"
+VARIABLE_RUTA_CASO = VARIABLE_CASO  # nombre que ya importan las pruebas (RF-38)
+CLAVE_CASO = "silice_caso_ruta"
+CLAVE_RECORRIDO = "silice_recorrido_activo"
+CLAVE_PROYECTO = "silice_proyecto_abierto"
+CLAVE_ACCION = "silice_accion_pedida"
 #: Acciones que la barra superior le pide a la hoja del proyecto (`pedir_accion`).
 ACCION_PRECIOS = "precios"
 ACCION_IMPORTAR_PLANO = "importar_plano"
@@ -51,7 +53,7 @@ def resolver_ruta(guardada: str | None, entorno: Mapping[str, str], por_defecto:
     """La ruta del caso: la fijada en la sesion; si no, la del entorno; si no, la por defecto."""
     if guardada:
         return Path(guardada)
-    del_entorno = entorno.get(VARIABLE_RUTA_CASO, "").strip()
+    del_entorno = (leer_variable(entorno, VARIABLE_RUTA_CASO) or "").strip()
     return Path(del_entorno or por_defecto)
 
 

@@ -33,10 +33,10 @@ debajo, `ui.barra.pintar_barra` pinta la barra de herramientas: Proyecto, Import
 la entrega), Precios, Auditar, Guardar version, Exportar Excel y Recorrido guiado. Solo este
 modulo importa `ui.barra`; la barra lateral queda para el caso abierto y el paso del recorrido.
 
-Modo entrega (Sesion P5.1, prototipo AREN.IA). Con `ARENIA_MODO_ENTREGA=1` (exactamente `"1"`) el
+Modo entrega (Sesion P5.1 del prototipo). Con `SILICE_MODO_ENTREGA=1` (exactamente `"1"`) el
 menu **omite** la seccion Investigacion —escenarios, similares, simulador y visor 3D—; la seccion
 Trabajo queda completa (RF-43). Se omite en vez de plegarse: la barra de herramientas y el resto
-del marco no cambian.
+del marco no cambian. Las variables se leen con `ui.entorno.leer_variable`.
 
 Uso (con `python -m`: `streamlit run` a secas pone en `sys.path` la carpeta `ui/` y no la raiz
 del repositorio, y entonces `import ui` falla; `python -m` agrega el directorio actual)::
@@ -46,11 +46,11 @@ del repositorio, y entonces `import ui` falla; `python -m` agrega el directorio 
 
 Otro caso que `data/apu.db`, y modo entrega, en bash::
 
-    ARENIA_CASO=data/otro.db ARENIA_MODO_ENTREGA=1 uv run python -m streamlit run ui/app.py
+    SILICE_CASO=data/otro.db SILICE_MODO_ENTREGA=1 uv run python -m streamlit run ui/app.py
 
 y en PowerShell::
 
-    $env:ARENIA_CASO = "data/otro.db"; $env:ARENIA_MODO_ENTREGA = "1"
+    $env:SILICE_CASO = "data/otro.db"; $env:SILICE_MODO_ENTREGA = "1"
     uv run python -m streamlit run ui/app.py
 """
 
@@ -64,6 +64,7 @@ import streamlit as st
 
 from ui import barra
 from ui.caso import estado_caso, recorrido_activo, resumen_caso, ruta_caso
+from ui.entorno import VARIABLE_MODO_ENTREGA, leer_variable
 from ui.paginas import (
     actualizacion,
     catalogo,
@@ -79,8 +80,7 @@ from ui.paginas import (
 )
 from ui.recorridos import RUTA_INICIO, Recorrido, paso_siguiente, recorrido_por_nombre
 
-TITULO_APP = "Sistema APU"
-VARIABLE_MODO_ENTREGA = "ARENIA_MODO_ENTREGA"
+TITULO_APP = "Sílice"
 VALOR_MODO_ENTREGA = "1"
 SECCION_TRABAJO = "Trabajo"
 SECCION_INVESTIGACION = "Investigacion"
@@ -135,7 +135,7 @@ def modo_entrega_activo(entorno: Mapping[str, str] | None = None) -> bool:
     """
     if entorno is None:
         entorno = os.environ
-    return entorno.get(VARIABLE_MODO_ENTREGA) == VALOR_MODO_ENTREGA
+    return leer_variable(entorno, VARIABLE_MODO_ENTREGA) == VALOR_MODO_ENTREGA
 
 
 def paginas_visibles(modo_entrega: bool) -> tuple[DefinicionPagina, ...]:

@@ -108,14 +108,14 @@ from core.contracts import (  # noqa: E402
 )
 from scripts import seed  # noqa: E402
 
-NOMBRE_PROYECTO = "AREN.IA: caso de demostracion (linea de agua potable, didactico)"
+NOMBRE_PROYECTO = "Sílice: caso de demostracion (linea de agua potable, didactico)"
 DESCRIPCION_PROYECTO = (
-    "Caso didactico sembrado para que el prototipo AREN.IA no abra con el catalogo vacio: tres "
+    "Caso didactico sembrado para que Sílice no abra con el catalogo vacio: tres "
     "partidas ficticias de una linea de agua potable que, entre las tres, ejercitan mano de obra "
     "a jornal y a destajo en la misma partida (decision D9), materiales con desperdicio y equipos "
     "con depreciacion parcial. No representa obra ejecutada."
 )
-NOMBRE_LISTA = "Lista de referencia del caso de demostracion AREN.IA"
+NOMBRE_LISTA = "Lista de referencia del caso de demostracion de Sílice"
 ORIGEN_LISTA = "scripts/seed_demo.py (precios de ejemplo, no cotizados)"
 CODIGO_PRESUPUESTO = "DEMO-001"
 MONEDA = "USD"

@@ -104,7 +104,7 @@ suite estuvo deliberadamente roja en `test_costing.py` (marcador `rojo_esperado`
 
 **Entregables:** este plan, [calidad_iso25010.md](calidad_iso25010.md), la bitácora de la sesión,
 el reporte de cobertura (sección 10) y `scripts/medir_rnf03.py` (evidencia reproducible del
-RNF‑03). Desde la Sesión P4.2, además, el [guion de prueba manual de AREN.IA](guion_prueba_arenia.md)
+RNF‑03). Desde la Sesión P4.2, además, el [guion de prueba manual de Sílice](guion_prueba_arenia.md)
 (casos CP‑01 a CP‑06 de la pantalla de componer, para quien pruebe sin programar).
 
 **Entorno de la última corrida de la CI (§10):** los runners de GitHub `ubuntu-latest` (Python

@@ -148,7 +148,7 @@ produce presupuesto, curva de inversión, informe de auditoría y exportación a
 
 UC‑09 queda vacante en este documento: [PLAN_ASISTENTE.md](../PLAN_ASISTENTE.md) (Sesión A0.1, aún no
 ejecutada) lo reserva para «Generar presupuesto asistido desde las necesidades del usuario». UC‑10 y
-UC‑11 se declararon en la Sesión P0.1 del sprint del prototipo AREN.IA
+UC‑11 se declararon en la Sesión P0.1 del sprint del prototipo AREN.IA (hoy Sílice)
 ([PLAN_PROTOTIPO.md](../PLAN_PROTOTIPO.md)); su implementación en `ui/composicion.py` y
 `ui/paginas/componer.py` corresponde a las Fases P1 y P2 de ese plan
 (`docs/bitacora/2026-09-16-sprint-prototipo.md`); ver RF‑33 a RF‑35 (§3.2). Esta sección no lleva estado: la prueba o el caso manual de cada paso y de cada flujo alternativo de **los quince** casos de uso,
@@ -883,14 +883,14 @@ aquí: cada corrección está en su fila del [inventario del cierre](auditoria/2
 | UC‑06 | RF‑25, RF‑26, RF‑27 | I0.1, I6.1, I6.2 | 2 |
 | UC‑07 | RF‑28, RF‑29 | I6.1, I6.3 | 5 |
 | UC‑08 | RF‑30, RF‑31 | cierre UC‑08 (2026‑08‑31) | 2 (apoyo) |
-| UC‑10 | RF‑33, RF‑34, RF‑35 | P0.1 (declarado), P1–P4 ([PLAN_PROTOTIPO.md](../PLAN_PROTOTIPO.md)) | prototipo de entrega AREN.IA, fuera de los cinco indicadores de [docs/metodologia.md §8](metodologia.md#8-indicadores-de-la-tesis) |
-| UC‑11 | RF‑33, RF‑34 | P0.1 (declarado), P1.2, P2.2 | prototipo de entrega AREN.IA, fuera de los cinco indicadores de [docs/metodologia.md §8](metodologia.md#8-indicadores-de-la-tesis) |
+| UC‑10 | RF‑33, RF‑34, RF‑35 | P0.1 (declarado), P1–P4 ([PLAN_PROTOTIPO.md](../PLAN_PROTOTIPO.md)) | prototipo de entrega AREN.IA (hoy Sílice), fuera de los cinco indicadores de [docs/metodologia.md §8](metodologia.md#8-indicadores-de-la-tesis) |
+| UC‑11 | RF‑33, RF‑34 | P0.1 (declarado), P1.2, P2.2 | prototipo de entrega AREN.IA (hoy Sílice), fuera de los cinco indicadores de [docs/metodologia.md §8](metodologia.md#8-indicadores-de-la-tesis) |
 | UC‑12 | RF‑36, RF‑37, RF‑38, RF‑39, RF‑40, RF‑41, RF‑42, RF‑43 | U0.1 (declarado), U1 ([PLAN_UI.md](../PLAN_UI.md)) | fuera de los cinco indicadores de [docs/metodologia.md §8](metodologia.md#8-indicadores-de-la-tesis); aporta la medición de usabilidad de [calidad_iso25010.md §4](calidad_iso25010.md) |
-| UC‑13 | RF‑44, RF‑45, RF‑46, RF‑47, RF‑48, RF‑49, RF‑61 | SF0 (declarado), SF1–SF2 ([PLAN_SF.md](../PLAN_SF.md)) | prototipo de entrega AREN.IA, fuera de los cinco indicadores de [docs/metodologia.md §8](metodologia.md#8-indicadores-de-la-tesis); la ausencia de cambios en `core/` al agregar datos y electricidad es evidencia del indicador 4 |
-| UC‑14 | RF‑50, RF‑51 | SF0 (declarado), SF5 | prototipo de entrega AREN.IA, fuera de los cinco indicadores |
-| UC‑15 | RF‑52, RF‑53, RF‑54, RF‑55, RF‑56, RF‑57, RF‑59, RF‑61, RF‑62 | SF0 (declarado), SF1, SF3 | prototipo de entrega AREN.IA, fuera de los cinco indicadores |
-| UC‑16 | RF‑58 | SF0 (declarado), SF3 | prototipo de entrega AREN.IA, fuera de los cinco indicadores |
-| Transversal | RF‑60 | SF4 | prototipo de entrega AREN.IA, fuera de los cinco indicadores |
+| UC‑13 | RF‑44, RF‑45, RF‑46, RF‑47, RF‑48, RF‑49, RF‑61 | SF0 (declarado), SF1–SF2 ([PLAN_SF.md](../PLAN_SF.md)) | prototipo de entrega AREN.IA (hoy Sílice), fuera de los cinco indicadores de [docs/metodologia.md §8](metodologia.md#8-indicadores-de-la-tesis); la ausencia de cambios en `core/` al agregar datos y electricidad es evidencia del indicador 4 |
+| UC‑14 | RF‑50, RF‑51 | SF0 (declarado), SF5 | prototipo de entrega AREN.IA (hoy Sílice), fuera de los cinco indicadores |
+| UC‑15 | RF‑52, RF‑53, RF‑54, RF‑55, RF‑56, RF‑57, RF‑59, RF‑61, RF‑62 | SF0 (declarado), SF1, SF3 | prototipo de entrega AREN.IA (hoy Sílice), fuera de los cinco indicadores |
+| UC‑16 | RF‑58 | SF0 (declarado), SF3 | prototipo de entrega AREN.IA (hoy Sílice), fuera de los cinco indicadores |
+| Transversal | RF‑60 | SF4 | prototipo de entrega AREN.IA (hoy Sílice), fuera de los cinco indicadores |
 
 Correspondencia RNF → verificación: RNF‑01 y RNF‑02 se comprueban en UC‑01 y UC‑02 (RF‑06, RF‑14);
 RNF‑03 en UC‑02 (RF‑11), con `scripts/medir_rnf03.py`; RNF‑04 con el juicio de expertos sobre el

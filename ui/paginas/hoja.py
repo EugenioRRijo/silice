@@ -710,7 +710,7 @@ def _directorio_de_planos() -> Path:
     """La carpeta temporal donde se guardan los planos subidos en esta sesion."""
     actual = st.session_state.get(CLAVE_PLANO_DIRECTORIO)
     if actual is None or not Path(actual).is_dir():
-        actual = tempfile.mkdtemp(prefix="arenia_planos_")
+        actual = tempfile.mkdtemp(prefix="silice_planos_")
         st.session_state[CLAVE_PLANO_DIRECTORIO] = actual
     return Path(actual)
 

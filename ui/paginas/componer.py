@@ -268,7 +268,7 @@ def _rendimiento(sesion: Session, codigo: str) -> tuple[str, AdvertenciaRendimie
     catalogo (`Catalogo.partida`, `KeyError` si no); una partida nueva (UC-10) no tiene historial
     todavia, asi que ese `KeyError` se trata igual que "sin historial": el campo queda vacio y el
     aviso lo dice, sin ser un error. `observados` (los valores crudos del historico) alimenta la
-    ayuda 3 de AREN.IA (spec §3.7): la lectura adicional de `ml.anomaly` sobre el rendimiento.
+    ayuda 3 de Sílice (spec §3.7): la lectura adicional de `ml.anomaly` sobre el rendimiento.
     """
     propuesta: PropuestaRendimiento | None = None
     dispersion: DispersionRendimiento | None = None
@@ -304,7 +304,7 @@ def _advertir_si_corresponde(
 
     Dos avisos independientes, ninguno bloqueante: el rango observado
     (`core.catalog.advertencia_rendimiento`, Tarea 1) y, cuando hay observaciones suficientes, la
-    lectura estadistica de `ml.anomaly` (ayuda 3 de AREN.IA, spec §3.7,
+    lectura estadistica de `ml.anomaly` (ayuda 3 de Sílice, spec §3.7,
     `ui.composicion.veredicto_ml_rendimiento`). Solo con el primero se pinta el campo de
     justificacion (UC-06, flujo 4a): es la advertencia que la ERS pide aceptar con un motivo.
     """
@@ -332,7 +332,7 @@ def _advertir_si_corresponde(
     veredicto = veredicto_ml_rendimiento(observados, valor)
     if veredicto is not None and veredicto.atipico:
         st.warning(
-            f"El bosque de aislamiento (ayuda 3 de AREN.IA, spec §3.7) tambien marca este "
+            f"El bosque de aislamiento (ayuda 3 de Sílice, spec §3.7) tambien marca este "
             f"rendimiento como atipico frente al historico de la partida (puntaje "
             f"{veredicto.puntaje:.3f}); el registro no queda bloqueado por esto."
         )
@@ -513,7 +513,7 @@ def _desglose_en_vivo(
 
 
 # ---------------------------------------------------------------------------------------------
-# Las cuatro ayudas de AREN.IA (Tarea 4, spec §3.7): sugieren, nunca deciden ni guardan por su
+# Las cuatro ayudas de Sílice (Tarea 4, spec §3.7): sugieren, nunca deciden ni guardan por su
 # cuenta. La logica de cada una (que hacer con el resultado, como degradar si `ml` falla o no
 # esta instalado) vive en `ui/composicion.py`; esta pagina solo arma los datos planos que esas
 # funciones piden y pinta lo que devuelven.
@@ -534,7 +534,7 @@ def _sugerencias_similares(catalogo: Catalogo, dominio: Dominio, descripcion: st
 
     st.subheader("Partidas similares del catalogo")
     st.caption(
-        "Sugerencias de solo lectura (ayuda 1 de AREN.IA, spec §3.7): copie a mano lo que le "
+        "Sugerencias de solo lectura (ayuda 1 de Sílice, spec §3.7): copie a mano lo que le "
         "sirva en las tablas de abajo; el sistema no llena nada por su cuenta."
     )
     for propuesta in propuestas:
@@ -625,7 +625,7 @@ def _advertencias_precios(sesion: Session, composicion: ComposicionAPU) -> None:
         if advertencia_precio_atipico(historico, precio_anterior, precio):
             st.warning(
                 f"El precio de «{descripcion}» ({precio}) resulta atipico frente al historico "
-                "de ese insumo (ayuda 2 de AREN.IA, spec §3.7); reviselo, aunque el sistema no "
+                "de ese insumo (ayuda 2 de Sílice, spec §3.7); reviselo, aunque el sistema no "
                 "bloquea el guardado por esto."
             )
 
@@ -669,7 +669,7 @@ def _contraste_aace(
 
     st.subheader("Contraste con la estimacion por reglas (AACE)")
     st.caption(
-        f"Ayuda 4 de AREN.IA (spec §3.7): tecnica de la compuerta G2 para este dominio: "
+        f"Ayuda 4 de Sílice (spec §3.7): tecnica de la compuerta G2 para este dominio: "
         f"{contraste.tecnica} ({registros} registro(s)). PU estimado por reglas: "
         f"{contraste.pu_estimado}."
     )
