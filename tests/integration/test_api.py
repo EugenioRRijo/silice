@@ -475,7 +475,11 @@ def test_la_propuesta_real_reconoce_la_partida_de_la_misma_descripcion(
     try:
         NormalizadorPartidas({})
     except OSError as error:  # mismo criterio que tests/unit/test_normalizacion.py
-        pytest.skip(f"el modelo de similitud no esta disponible localmente: {error}")
+        pytest.fail(
+            f"el modelo de similitud no esta en la cache local ({error}): "
+            "uv run python scripts/descargar_modelo.py",
+            pytrace=False,
+        )
 
     codigo = linea_base.APU_EXCAVACION.codigo_partida
     excavacion = next(p for p in cliente.get("/partidas").json() if p["codigo"] == codigo)

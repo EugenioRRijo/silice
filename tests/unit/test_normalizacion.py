@@ -8,9 +8,9 @@ nunca por debajo del umbral declarado (RF-15).
 
 El catalogo de estas pruebas son las cinco partidas de la linea base, tomadas de la unica copia
 (`tests/fixtures/apu_linea_base.py`, principio DRY). El modelo de similitud es una precondicion del
-UC-03 («el modelo esta disponible localmente», docs/ERS.md): si no puede cargarse (primera vez sin
-red), las pruebas se saltan declarando el motivo, igual que hacen las de ifcopenshell con el extra
-civil.
+UC-03 («el modelo esta disponible localmente», docs/ERS.md): la suite corre sin red
+(`HF_HUB_OFFLINE=1`, guardia de `tests/conftest.py`) y, si el modelo no esta en la cache, la prueba
+falla con la orden que lo descarga; nunca se omite.
 """
 
 from __future__ import annotations
@@ -49,8 +49,13 @@ def normalizador():
 
     try:
         return NormalizadorPartidas(CATALOGO)
-    except OSError as exc:  # el modelo no esta disponible localmente y no pudo descargarse
-        pytest.skip(f"modelo de similitud no disponible: {exc}")
+    except OSError as exc:  # el modelo no esta en la cache local y la suite corre sin red
+        pytest.fail(
+            f"el modelo de similitud no esta en la cache local ({exc}); la suite corre sin red "
+            "(HF_HUB_OFFLINE=1): descarguelo una vez con "
+            "`uv run python scripts/descargar_modelo.py`",
+            pytrace=False,
+        )
 
 
 def test_propuestas_ordenadas_por_puntaje_y_sobre_el_umbral(normalizador):
