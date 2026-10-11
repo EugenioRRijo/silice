@@ -5,7 +5,19 @@ import json
 import pytest
 
 from scripts.meta_alpha import Estado
-from scripts.meta_sf import FASES, TITULOS, evaluar_s1_requisitos, main, metas_hasta
+from scripts.meta_sf import (
+    FASES,
+    TITULOS,
+    contar_resultados,
+    evaluar_s1_requisitos,
+    evaluar_s2_memorias,
+    evaluar_s3_especialidades,
+    evaluar_s8_regresion,
+    evaluar_s10_cobertura,
+    main,
+    metas_hasta,
+    porcentaje_espacio,
+)
 
 
 def test_metas_hasta_acumula_fases_en_orden():
@@ -74,6 +86,239 @@ def test_s1_sobre_la_ers_real_y_json(capsys):
     assert "S1" in json.dumps(datos)
 
 
-def test_main_devuelve_codigo_distinto_de_cero_con_pendientes(capsys):
-    assert main(["--hasta", "SF1"]) == 1
-    assert "S2" in capsys.readouterr().out
+def test_main_hasta_sf0_ok_y_sf2_aun_con_pendientes(capsys):
+    assert main(["--hasta", "SF2"]) == 1  # S4 llega con SF2
+    assert "S4" in capsys.readouterr().out
+
+
+def test_s10_ok_en_la_frontera_80():
+    estado, detalle = evaluar_s10_cobertura(80.0)
+    assert estado is Estado.OK
+    assert "80" in detalle
+
+
+def test_s10_falla_justo_debajo_de_80():
+    estado, detalle = evaluar_s10_cobertura(79.99)
+    assert estado is Estado.FALLA
+    assert "79,99" in detalle or "79.99" in detalle
+
+
+def test_s10_pendiente_sin_dato_o_sin_adaptador():
+    assert evaluar_s10_cobertura(None)[0] is Estado.PENDIENTE
+    assert evaluar_s10_cobertura(95.0, existe_adaptador=False)[0] is Estado.PENDIENTE
+
+
+def test_porcentaje_espacio_suma_solo_los_archivos_del_adaptador():
+    texto = json.dumps(
+        {
+            "files": {
+                "adapters/espacio/a.py": {"summary": {"covered_lines": 8, "num_statements": 10}},
+                "adapters\\espacio\\b.py": {"summary": {"covered_lines": 2, "num_statements": 10}},
+                "core/x.py": {"summary": {"covered_lines": 0, "num_statements": 100}},
+            }
+        }
+    )
+    assert porcentaje_espacio(texto) == 50.0
+    assert porcentaje_espacio(json.dumps({"files": {}})) is None
+    assert porcentaje_espacio("no es json") is None
+
+
+def test_s10_no_ejecuta_pytest_dentro_de_la_meta(monkeypatch):
+    import subprocess
+
+    def prohibido(*a, **k):
+        raise AssertionError("la meta no debe lanzar procesos")
+
+    monkeypatch.setattr(subprocess, "run", prohibido)
+    monkeypatch.setattr(subprocess, "Popen", prohibido)
+    evaluar_s10_cobertura(85.0)
+    from scripts.meta_sf import _s10
+
+    _s10()  # S2, S3 y S8 si lanzan procesos (git y pytest); S10 solo lee coverage.json
+
+
+# --- S2 Memorias -------------------------------------------------------------------------
+
+_MEMORIAS_SF1 = ("bano_of001.md", "bano_drenaje_of001.md")
+
+
+def test_s2_ok_si_las_memorias_del_bano_existen_y_son_anteriores_al_codigo():
+    estado, detalle = evaluar_s2_memorias(
+        {m: True for m in _MEMORIAS_SF1}, {m: True for m in _MEMORIAS_SF1}
+    )
+    assert estado is Estado.OK
+    assert "bano_of001.md" in detalle
+
+
+def test_s2_falla_si_la_memoria_se_versiono_despues_del_codigo():
+    orden = {"bano_of001.md": True, "bano_drenaje_of001.md": False}
+    estado, detalle = evaluar_s2_memorias({m: True for m in _MEMORIAS_SF1}, orden)
+    assert estado is Estado.FALLA
+    assert "bano_drenaje_of001.md" in detalle
+    assert "despues" in detalle
+
+
+def test_s2_falla_si_falta_una_memoria_y_el_codigo_ya_existe():
+    presentes = {"bano_of001.md": True, "bano_drenaje_of001.md": False}
+    orden = {"bano_of001.md": True, "bano_drenaje_of001.md": None}
+    estado, detalle = evaluar_s2_memorias(presentes, orden)
+    assert estado is Estado.FALLA
+    assert "bano_drenaje_of001.md" in detalle
+
+
+def test_s2_pendiente_si_falta_la_memoria_y_aun_no_hay_codigo():
+    estado, _ = evaluar_s2_memorias({m: False for m in _MEMORIAS_SF1}, {}, codigo_existe=False)
+    assert estado is Estado.PENDIENTE
+
+
+def test_s2_la_memoria_de_sf2_ausente_no_hace_fallar_ni_pendiente_sf1():
+    estado, detalle = evaluar_s2_memorias(
+        {m: True for m in _MEMORIAS_SF1},
+        {m: True for m in _MEMORIAS_SF1},
+        posteriores={"of001.md": False},
+    )
+    assert estado is Estado.OK
+    assert "of001.md" in detalle and "SF2" in detalle
+
+
+def test_s2_memoria_presente_sin_commit_es_falla():
+    estado, detalle = evaluar_s2_memorias(
+        {m: True for m in _MEMORIAS_SF1}, {m: None for m in _MEMORIAS_SF1}
+    )
+    assert estado is Estado.FALLA  # presentes pero sin commit de memoria: no versionadas
+    assert "sin versionar" in detalle
+
+
+# --- S3 Especialidades -------------------------------------------------------------------
+
+
+def test_s3_ok_si_las_pruebas_de_agua_pasan():
+    estado, detalle = evaluar_s3_especialidades(existe_agua=True, resultado_agua=(31, 31))
+    assert estado is Estado.OK
+    assert "31" in detalle
+
+
+def test_s3_falla_si_alguna_prueba_de_agua_falla():
+    estado, detalle = evaluar_s3_especialidades(existe_agua=True, resultado_agua=(30, 31))
+    assert estado is Estado.FALLA
+    assert "30" in detalle
+
+
+def test_s3_pendiente_si_no_hay_pruebas_de_agua():
+    estado, _ = evaluar_s3_especialidades(existe_agua=False, resultado_agua=None)
+    assert estado is Estado.PENDIENTE
+
+
+def test_s3_pendiente_si_no_se_recolecto_ninguna_prueba():
+    estado, _ = evaluar_s3_especialidades(existe_agua=True, resultado_agua=(0, 0))
+    assert estado is Estado.PENDIENTE
+
+
+# --- S8 Regresion ------------------------------------------------------------------------
+
+
+def test_s8_ok_si_todos_los_grupos_pasan():
+    grupos = {"linea base": (10, 10), "7 de 7": (4, 4)}
+    estado, detalle = evaluar_s8_regresion(grupos)
+    assert estado is Estado.OK
+    assert "14" in detalle
+
+
+def test_s8_falla_y_nombra_el_grupo_que_falla():
+    grupos = {"linea base": (10, 10), "7 de 7": (3, 4), "R4": (1, 1)}
+    estado, detalle = evaluar_s8_regresion(grupos)
+    assert estado is Estado.FALLA
+    assert "7 de 7" in detalle
+    assert "linea base" not in detalle
+
+
+def test_s8_pendiente_si_un_grupo_no_tiene_prueba_y_el_resto_pasa():
+    grupos = {"linea base": (10, 10), "cuatro hojas": None}
+    estado, detalle = evaluar_s8_regresion(grupos)
+    assert estado is Estado.PENDIENTE
+    assert "cuatro hojas" in detalle
+
+
+def test_s8_falla_pesa_mas_que_pendiente():
+    estado, _ = evaluar_s8_regresion({"a": (0, 1), "b": None})
+    assert estado is Estado.FALLA
+
+
+def test_s8_un_grupo_sin_pruebas_recolectadas_es_pendiente():
+    estado, _ = evaluar_s8_regresion({"a": (0, 0)})
+    assert estado is Estado.PENDIENTE
+
+
+def test_contar_resultados_agrupa_por_prefijo_de_nodeid():
+    salida = (
+        "PASSED tests/unit/test_a.py::test_x\n"
+        "FAILED tests/unit/test_a.py::test_y - assert 0\n"
+        "PASSED tests/unit/test_b.py::test_z\n"
+    )
+    cuenta = contar_resultados(
+        salida, {"A": ("tests/unit/test_a.py",), "B": ("tests/unit/test_b.py",)}
+    )
+    assert cuenta == {"A": (1, 2), "B": (1, 1)}
+
+
+def test_contar_resultados_grupo_ausente_es_cero():
+    assert contar_resultados("", {"A": ("tests/unit/test_a.py",)}) == {"A": (0, 0)}
+
+
+# --- S10: el coverage.json debe ser posterior al codigo que mide -------------------------------
+
+
+def test_s10_pendiente_si_el_coverage_json_es_anterior_al_codigo():
+    estado, detalle = evaluar_s10_cobertura(95.0, vigente=False)
+    assert estado is Estado.PENDIENTE
+    assert "anterior" in detalle
+
+
+def test_s10_ok_si_el_dato_esta_vigente():
+    assert evaluar_s10_cobertura(95.0, vigente=True)[0] is Estado.OK
+
+
+def test_cobertura_vigente_compara_con_el_codigo_mas_reciente(tmp_path):
+    import os
+
+    from scripts.meta_sf import cobertura_vigente
+
+    codigo = tmp_path / "adapters" / "espacio"
+    (codigo / "especialidades").mkdir(parents=True)
+    viejo, nuevo = codigo / "a.py", codigo / "especialidades" / "b.py"
+    viejo.write_text("x = 1\n")
+    nuevo.write_text("y = 2\n")
+    informe = tmp_path / "coverage.json"
+    informe.write_text("{}")
+    os.utime(viejo, (1_000, 1_000))
+    os.utime(nuevo, (3_000, 3_000))
+    os.utime(informe, (2_000, 2_000))
+    assert not cobertura_vigente(informe, codigo)  # el codigo de un subpaquete es mas nuevo
+    os.utime(informe, (4_000, 4_000))
+    assert cobertura_vigente(informe, codigo)
+    assert not cobertura_vigente(tmp_path / "no_existe.json", codigo)
+
+
+# --- S8: un nodeid declarado que ya no esta en disco es una FALLA ------------------------------
+
+
+def test_s8_falla_si_una_prueba_de_regresion_declarada_no_esta_en_disco():
+    estado, detalle = evaluar_s8_regresion({"linea base": (10, 10), "R4": None}, ausentes=["R4"])
+    assert estado is Estado.FALLA
+    assert "R4" in detalle and "disco" in detalle
+
+
+def test_cada_prueba_de_regresion_declarada_existe_en_disco():
+    from scripts.meta_sf import REGRESION, _existe
+
+    ausentes = [i for ids in REGRESION.values() for i in ids if not _existe(i)]
+    assert ausentes == []
+
+
+def test_existe_exige_la_funcion_y_no_solo_el_archivo():
+    from scripts.meta_sf import _existe
+
+    assert _existe("tests/unit/test_meta_sf.py")
+    assert _existe("tests/unit/test_meta_sf.py::test_s10_ok_si_el_dato_esta_vigente")
+    assert not _existe("tests/unit/test_meta_sf.py::test_que_no_existe")
+    assert not _existe("tests/unit/no_existe.py")

@@ -112,6 +112,10 @@ jobs:
         if: runner.os == 'Linux'
         run: uv run --no-sync coverage report --include="core/*" --fail-under=80
 
+      - name: Cobertura de adapters/espacio >= 80 % (meta S10)
+        if: runner.os == 'Linux'
+        run: uv run --no-sync coverage report --include="adapters/espacio/*" --fail-under=80
+
       - name: Artefactos reproducibles
         if: runner.os == 'Linux'
         run: |

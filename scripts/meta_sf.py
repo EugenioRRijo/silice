@@ -6,7 +6,15 @@ primero y cada fase se trabaja para ponerlas en OK (spec 2026-10-04, seccion 12.
 
 Cada chequeo de contenido es una funcion pura sobre texto ya leido (`evaluar_*`). Las metas de
 fases todavia no construidas dan PENDIENTE, nunca FALLA: es evidencia ausente, no un
-incumplimiento. Hoy solo S1 (requisitos en la ERS) se evalua de verdad.
+incumplimiento. Hoy se evaluan de verdad S1 (requisitos en la ERS), S2 (memorias), S3 (agua),
+S8 (regresion) y S10 (cobertura); la orquestacion lee disco, consulta git y ejecuta pytest, y
+cada evaluador recibe solo el dato ya leido.
+
+S3 pesa solo las pruebas de `tests/unit/test_espacio_agua.py`; R8 y R9 (`reglas.py`) no entran en
+S3: las pesan S8 (regresion) y las pruebas del adaptador (`test_espacio_reglas.py`) con la
+cobertura de S10.
+S10 mide con el `coverage.json` que deja la corrida con `--cov`, y solo si es posterior al codigo
+de `adapters/espacio` (`cobertura_vigente`); si no, queda PENDIENTE.
 
 Nota: `FASES` agrupa cada meta en la fase donde ARRANCA su evaluacion. S3 («SF1-SF2» en la spec)
 arranca en SF1 y S8 («todas») se conecta en SF1; por eso sus titulos llevan el alcance de la spec y
@@ -18,9 +26,11 @@ Uso: `uv run python scripts/meta_sf.py [--hasta SF0|SF1|SF2|SF3|SF4|SF5] [--json
 from __future__ import annotations
 
 import argparse
+import json
 import re
+import subprocess
 import sys
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parents[1]
@@ -56,6 +66,43 @@ TITULOS: dict[str, str] = {
 _GUION = "[-‑]"
 
 RUTA_ERS = RAIZ / "docs" / "ERS.md"
+#: Informe de cobertura (`coverage json`) que deja la corrida de la suite con `--cov`.
+RUTA_COBERTURA = RAIZ / "coverage.json"
+UMBRAL_COBERTURA_ESPACIO = 80.0
+
+RUTA_MEMORIAS = RAIZ / "tests" / "fixtures" / "memorias"
+RUTA_ESPACIO = RAIZ / "adapters" / "espacio"
+RUTA_PRUEBAS_AGUA = "tests/unit/test_espacio_agua.py"
+
+#: Memorias de calculo de SF1: nombre -> argumentos de `git log` que localizan el PRIMER commit del
+#: codigo que ellas rigen. La del bano rige la geometria; la del drenaje, la derivacion de agua y
+#: drenaje (`especialidades/agua.py`), que nace despues que la geometria.
+MEMORIAS_SF1: dict[str, tuple[str, ...]] = {
+    "bano_of001.md": ("--diff-filter=A", "--", "adapters/espacio/geometria.py"),
+    "bano_drenaje_of001.md": ("--diff-filter=A", "--", "adapters/espacio/especialidades/agua.py"),
+}
+#: Memorias de fases posteriores: si faltan no hacen fallar la fase actual.
+MEMORIAS_SF2: tuple[str, ...] = ("of001.md",)
+
+#: Regresion de spec 11.2 que ya tiene prueba: grupo -> nodeids (archivo o archivo::prueba).
+#: De TI-001 solo entran las pruebas que la spec 8.3 declara invariantes (total, PU, punto de
+#: equilibrio); `test_auditoria_cumple_sin_errores` y `test_pruebas_de_control` cambian a proposito.
+REGRESION: dict[str, tuple[str, ...]] = {
+    "linea base": ("tests/unit/test_linea_base.py",),
+    "7 de 7": ("tests/integration/test_auditoria_7_de_7.py",),
+    "R4 de 3/4 pulg": ("tests/unit/test_verification.py::test_r4_marca_3_4_pulg_y_no_marca_pvc",),
+    "TI-001": (
+        "tests/unit/test_caso_ti001.py::test_total_y_cierre_de_la_curva",
+        "tests/unit/test_caso_ti001.py::test_precios_unitarios",
+        "tests/unit/test_caso_ti001.py::test_punto_de_equilibrio",
+    ),
+    "huellas RNF-04": ("tests/unit/test_huellas_rnf04.py",),
+    "cuatro hojas": (
+        "tests/unit/test_budget.py::test_exportar_excel_escribe_cuatro_hojas",
+        "tests/integration/test_composicion_extremo_a_extremo.py"
+        "::test_exportar_excel_escribe_las_cuatro_hojas_con_la_modalidad",
+    ),
+}
 
 #: Identificadores que la ERS enmendada debe declarar (spec 4): (prefijo, numeros).
 REQUISITOS_SF: tuple[tuple[str, range], ...] = (
@@ -109,6 +156,145 @@ def evaluar_s1_requisitos(texto_ers: str | None) -> tuple[Estado, str]:
     return Estado.OK, f"los {total} requisitos del sprint final estan definidos en docs/ERS.md"
 
 
+def porcentaje_espacio(texto_json: str) -> float | None:
+    """Porcentaje de lineas cubiertas de `adapters/espacio` en un `coverage.json` (o None)."""
+    try:
+        archivos = json.loads(texto_json).get("files", {})
+    except (ValueError, AttributeError):
+        return None
+    cubiertas = total = 0
+    for ruta, datos in archivos.items():
+        if "adapters/espacio/" in ruta.replace("\\", "/"):
+            resumen = datos.get("summary", {})
+            cubiertas += resumen.get("covered_lines", 0)
+            total += resumen.get("num_statements", 0)
+    return None if total == 0 else 100.0 * cubiertas / total
+
+
+def cobertura_vigente(informe: Path, codigo: Path) -> bool:
+    """True si `informe` (coverage.json) es posterior al ultimo cambio de los `.py` de `codigo`.
+
+    Un informe anterior al codigo mide otro codigo: no vale como evidencia de S10."""
+    if not informe.is_file():
+        return False
+    ultimo = max((f.stat().st_mtime for f in codigo.rglob("*.py")), default=0.0)
+    return informe.stat().st_mtime >= ultimo
+
+
+def evaluar_s10_cobertura(
+    porcentaje: float | None, existe_adaptador: bool = True, vigente: bool = True
+) -> tuple[Estado, str]:
+    """S10: cobertura de `adapters/espacio` >= 80 %. Pura: no ejecuta pytest, recibe el dato.
+
+    `vigente` es False si el `coverage.json` es anterior al codigo medido: PENDIENTE, no se usa."""
+    if not existe_adaptador:
+        return Estado.PENDIENTE, "adapters/espacio aun no existe"
+    if porcentaje is None:
+        return Estado.PENDIENTE, "sin dato: corre la suite con --cov y `coverage json`"
+    if not vigente:
+        return (
+            Estado.PENDIENTE,
+            "coverage.json es anterior al codigo de adapters/espacio: vuelve a correr la suite "
+            "con --cov y `coverage json`",
+        )
+    texto = f"{porcentaje:.2f}".replace(".", ",")
+    if porcentaje >= UMBRAL_COBERTURA_ESPACIO:
+        return Estado.OK, f"cobertura de adapters/espacio {texto} % (umbral 80 %)"
+    return Estado.FALLA, f"cobertura de adapters/espacio {texto} % < 80 %"
+
+
+def evaluar_s2_memorias(
+    presentes: dict[str, bool],
+    antes_del_codigo: dict[str, bool | None],
+    codigo_existe: bool = True,
+    posteriores: dict[str, bool] | None = None,
+) -> tuple[Estado, str]:
+    """S2: cada memoria de la fase existe y se versiono ANTES del codigo que rige.
+
+    `antes_del_codigo[m]`: True si su commit precede al del codigo, False si lo sigue, None si no
+    hay commit de la memoria (sin versionar). `posteriores` son memorias de fases siguientes: solo
+    se mencionan, nunca cambian el estado.
+    """
+    faltan = [m for m, ok in presentes.items() if not ok]
+    if faltan and not codigo_existe:
+        return Estado.PENDIENTE, "memorias aun no escritas: " + ", ".join(faltan)
+    if faltan:
+        return Estado.FALLA, "faltan memorias: " + ", ".join(faltan)
+    sin_versionar = [m for m in presentes if antes_del_codigo.get(m) is None]
+    if sin_versionar:
+        return Estado.FALLA, "memorias sin versionar: " + ", ".join(sin_versionar)
+    despues = [m for m in presentes if antes_del_codigo[m] is False]
+    if despues:
+        return Estado.FALLA, "memorias versionadas despues del codigo: " + ", ".join(despues)
+    detalle = "memorias antes del codigo: " + ", ".join(presentes)
+    pendientes = [m for m, ok in (posteriores or {}).items() if not ok]
+    if pendientes:
+        detalle += "; llegan con SF2: " + ", ".join(pendientes)
+    return Estado.OK, detalle
+
+
+def evaluar_s3_especialidades(
+    existe_agua: bool, resultado_agua: tuple[int, int] | None
+) -> tuple[Estado, str]:
+    """S3 hasta SF1: las pruebas de agua existen y pasan (`resultado_agua` = (pasan, total)).
+    Datos y electricidad llegan en SF2 y no se exigen aqui."""
+    if not existe_agua:
+        return Estado.PENDIENTE, "faltan las pruebas de agua"
+    if resultado_agua is None or resultado_agua[1] == 0:
+        return Estado.PENDIENTE, "las pruebas de agua no recolectaron casos"
+    pasan, total = resultado_agua
+    if pasan < total:
+        return Estado.FALLA, f"pruebas de agua: pasan {pasan} de {total}"
+    return Estado.OK, f"pruebas de agua en verde ({pasan}/{total}); datos y electricidad: SF2"
+
+
+def evaluar_s8_regresion(
+    grupos: dict[str, tuple[int, int] | None], ausentes: Sequence[str] = ()
+) -> tuple[Estado, str]:
+    """S8: cada grupo de regresion es `(pasan, total)`; None si aun no tiene prueba (PENDIENTE).
+
+    `ausentes` son los grupos con una prueba declarada que ya no esta en disco: desde SF1 son FALLA
+    (se borro o renombro una prueba de regresion). Un fallo pesa mas que una ausencia."""
+    if ausentes:
+        faltan = ", ".join(ausentes)
+        return Estado.FALLA, f"pruebas de regresion declaradas que ya no estan en disco: {faltan}"
+    fallan = [f"{g} ({r[0]}/{r[1]})" for g, r in grupos.items() if r and r[1] > 0 and r[0] < r[1]]
+    if fallan:
+        return Estado.FALLA, "regresion rota en: " + ", ".join(fallan)
+    pendientes = [g for g, r in grupos.items() if r is None or r[1] == 0]
+    if pendientes:
+        return Estado.PENDIENTE, "sin prueba que cubra: " + ", ".join(pendientes)
+    total = sum(r[1] for r in grupos.values() if r)
+    return Estado.OK, f"{len(grupos)} grupos de regresion en verde ({total} pruebas)"
+
+
+def contar_resultados(
+    salida: str, grupos: dict[str, tuple[str, ...]]
+) -> dict[str, tuple[int, int]]:
+    """Cuenta (pasan, total) por grupo a partir del resumen `-rA` de pytest (lineas «PASSED id»)."""
+    cuenta = {g: [0, 0] for g in grupos}
+    for linea in salida.splitlines():
+        estado, _, resto = linea.partition(" ")
+        if estado not in ("PASSED", "FAILED", "ERROR"):
+            continue
+        nodo = resto.split(" - ")[0].strip().replace("\\", "/")
+        for grupo, prefijos in grupos.items():
+            if nodo.startswith(prefijos):
+                cuenta[grupo][1] += 1
+                cuenta[grupo][0] += estado == "PASSED"
+    return {g: (c[0], c[1]) for g, c in cuenta.items()}
+
+
+def _s10() -> tuple[Estado, str]:
+    existe = RUTA_ESPACIO.is_dir()
+    texto = _leer(RUTA_COBERTURA)
+    return evaluar_s10_cobertura(
+        None if texto is None else porcentaje_espacio(texto),
+        existe,
+        existe and cobertura_vigente(RUTA_COBERTURA, RUTA_ESPACIO),
+    )
+
+
 def _pendiente(motivo: str) -> Callable[[], tuple[Estado, str]]:
     return lambda: (Estado.PENDIENTE, motivo)
 
@@ -118,6 +304,79 @@ def _pendiente(motivo: str) -> Callable[[], tuple[Estado, str]]:
 # --------------------------------------------------------------------------------------
 
 
+def _git(*args: str) -> list[str]:
+    """Salida de `git <args>` separada por espacios; vacia si git falla."""
+    try:
+        r = subprocess.run(
+            ["git", *args], cwd=RAIZ, capture_output=True, text=True, encoding="utf-8", check=False
+        )
+    except OSError:
+        return []
+    return r.stdout.split() if r.returncode == 0 else []
+
+
+def _ordenar_memoria(memoria: str, criterio_codigo: tuple[str, ...]) -> bool | None:
+    """True si el primer commit de la memoria es ancestro del primer commit de su codigo."""
+    ruta = f"tests/fixtures/memorias/{memoria}"
+    de_memoria = _git("log", "--reverse", "--format=%H", "--diff-filter=A", "--", ruta)
+    de_codigo = _git("log", "--reverse", "--format=%H", *criterio_codigo)
+    if not de_memoria or not de_codigo:
+        return None
+    if de_memoria[0] == de_codigo[0]:
+        return False
+    ancestro = subprocess.run(
+        ["git", "merge-base", "--is-ancestor", de_memoria[0], de_codigo[0]], cwd=RAIZ, check=False
+    )
+    return ancestro.returncode == 0
+
+
+def _s2() -> tuple[Estado, str]:
+    presentes = {m: (RUTA_MEMORIAS / m).is_file() for m in MEMORIAS_SF1}
+    orden = {m: _ordenar_memoria(m, criterio) for m, criterio in MEMORIAS_SF1.items()}
+    posteriores = {m: (RUTA_MEMORIAS / m).is_file() for m in MEMORIAS_SF2}
+    return evaluar_s2_memorias(presentes, orden, RUTA_ESPACIO.is_dir(), posteriores)
+
+
+def _correr_pytest(ids: list[str]) -> str:
+    """Ejecuta pytest sobre `ids` y devuelve su salida (resumen -rA)."""
+    r = subprocess.run(
+        [sys.executable, "-m", "pytest", "-rA", "--no-header", "-p", "no:cacheprovider", *ids],
+        cwd=RAIZ,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        check=False,
+    )
+    return r.stdout
+
+
+def _existe(nodeid: str) -> bool:
+    """El archivo del nodeid existe y, si nombra una prueba, esa funcion esta definida en el."""
+    archivo, _, prueba = nodeid.partition("::")
+    ruta = RAIZ / archivo
+    if not ruta.is_file():
+        return False
+    patron = rf"^\s*def {re.escape(prueba)}\("
+    return not prueba or re.search(patron, ruta.read_text("utf-8"), re.MULTILINE) is not None
+
+
+def _s3() -> tuple[Estado, str]:
+    existe = _existe(RUTA_PRUEBAS_AGUA)
+    resultado = None
+    if existe:
+        grupo = {"agua": (RUTA_PRUEBAS_AGUA,)}
+        resultado = contar_resultados(_correr_pytest([RUTA_PRUEBAS_AGUA]), grupo)["agua"]
+    return evaluar_s3_especialidades(existe, resultado)
+
+
+def _s8() -> tuple[Estado, str]:
+    presentes = {g: ids for g, ids in REGRESION.items() if all(_existe(i) for i in ids)}
+    ausentes = [g for g in REGRESION if g not in presentes]  # desde SF1 la ausencia es FALLA
+    ids = [i for grupo in presentes.values() for i in grupo]
+    cuenta = contar_resultados(_correr_pytest(ids), presentes) if ids else {}
+    return evaluar_s8_regresion({g: cuenta.get(g) for g in REGRESION}, ausentes)
+
+
 def _leer(ruta: Path) -> str | None:
     return ruta.read_text(encoding="utf-8") if ruta.exists() else None
 
@@ -125,15 +384,15 @@ def _leer(ruta: Path) -> str | None:
 def _evaluar_metas(codigos: list[str]) -> list[Fila]:
     chequeos: dict[str, Callable[[], tuple[Estado, str]]] = {
         "S1": lambda: evaluar_s1_requisitos(_leer(RUTA_ERS)),
-        "S2": _pendiente("las memorias de calculo llegan con SF1"),
-        "S3": _pendiente("las reglas de agua, datos y electricidad llegan con SF1-SF2"),
+        "S2": _s2,
+        "S3": _s3,
         "S4": _pendiente("se evalua al cerrar SF2 (git diff gsf1..HEAD -- core/)"),
         "S5": _pendiente("la hoja del proyecto llega con SF3"),
         "S6": _pendiente("la barra superior llega con SF4"),
         "S7": _pendiente("la importacion de planos llega con SF5"),
-        "S8": _pendiente("la regresion se conecta al abrir SF1"),
+        "S8": _s8,
         "S9": _pendiente("la medicion de RNF-11 llega con SF3"),
-        "S10": _pendiente("adapters/espacio llega con SF1"),
+        "S10": _s10,
     }
     return [Fila(codigo, TITULOS[codigo], *chequeos[codigo]()) for codigo in codigos]
 
