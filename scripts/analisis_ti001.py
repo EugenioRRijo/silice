@@ -32,6 +32,7 @@ if str(RAIZ) not in sys.path:
 
 from core.budget import ResultadoElaboracion  # noqa: E402
 from core.budget.curva import con_curva  # noqa: E402
+from core.budget.equilibrio import punto_equilibrio as calcular_punto_equilibrio  # noqa: E402
 from core.contracts import (  # noqa: E402
     ComposicionAPU,
     LineaEquipo,
@@ -306,33 +307,21 @@ def sensibilidad(presupuesto: Presupuesto) -> list[tuple[str, Decimal, Decimal, 
 def punto_equilibrio(presupuesto: Presupuesto) -> dict:
     """Costo variable = costo directo; costo fijo = administración (gastos generales).
 
-    Margen de contribución m = (V - CV) / V; PE = CF / m. Se ubica en la curva: el primer período
-    cuya valuación acumulada alcanza el PE, y la fracción de ese período en que se alcanza.
+    La definición vive en `core.budget.equilibrio.punto_equilibrio` (SF‑E3, DRY); aquí solo se
+    adapta su resultado al diccionario que usan el informe y las pruebas del caso. Los literales
+    del caso (28 586,76 USD, 56,60 %, Día 6) siguen en la bitácora y en `test_caso_ti001.py`.
     """
-    cv = sum((p.item.cantidad * p.resultado.costo_directo for p in presupuesto.partidas), CERO)
-    cf = cv * caso.PARAMETROS.administracion
-    v = presupuesto.total
-    margen = (v - cv) / v
-    pe = cf / margen
-    periodo = None
-    fraccion = None
-    anterior = CERO
-    for punto in presupuesto.curva:
-        if punto.acumulado >= pe:
-            periodo = punto.periodo
-            fraccion = (pe - anterior) / punto.monto if punto.monto else CERO
-            break
-        anterior = punto.acumulado
+    r = calcular_punto_equilibrio(presupuesto, caso.PARAMETROS)
     return {
-        "V": v,
-        "CV": cv,
-        "CF": cf,
-        "U": v - cv - cf,
-        "m": margen,
-        "PE": pe,
-        "PE_pct": pe / v * CIEN,
-        "periodo": periodo,
-        "fraccion_periodo": fraccion,
+        "V": r.venta,
+        "CV": r.costo_variable,
+        "CF": r.costo_fijo,
+        "U": r.utilidad,
+        "m": r.margen,
+        "PE": r.punto,
+        "PE_pct": r.porcentaje,
+        "periodo": r.periodo,
+        "fraccion_periodo": r.fraccion_periodo,
     }
 
 

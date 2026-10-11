@@ -36,6 +36,9 @@ from sqlalchemy import exists, select
 from sqlalchemy.orm import Session
 
 from core import models
+from core.budget._modelo import _buscar, _parametros_de, _sesion_de
+from core.budget.curva import PeriodoPlan
+from core.budget.instantanea import composiciones_de_version, congelar
 
 # `_declarar_pendientes` y `_clave_pendiente` son ayudantes del módulo hermano del mismo paquete
 # que redactan el hallazgo `PENDIENTE` y su clave: la recarga y la comprobación al guardar usan la
@@ -48,7 +51,7 @@ from core.budget.presupuesto import (
     _declarar_pendientes,
 )
 from core.catalog import Catalogo
-from core.contracts.apu import ParametrosCosto, ResultadoAPU
+from core.contracts.apu import ComposicionAPU, ParametrosCosto, ResultadoAPU
 from core.contracts.dominio import Dominio
 from core.contracts.item_computo import ItemComputo, OrigenTipo
 from core.contracts.presupuesto import PartidaPresupuestada, Presupuesto, PuntoCurva
@@ -111,6 +114,10 @@ def guardar_presupuesto(
     lista: models.ListaPrecios,
     parametros: ParametrosCosto,
     pendientes: Sequence[ItemComputo] = (),
+    plan: Sequence[PeriodoPlan] | None = None,
+    version_origen: models.Presupuesto | None = None,
+    motivo: str = "",
+    heredar_insumos: bool = False,
 ) -> models.Presupuesto:
     """Persiste el presupuesto con su cómputo, su curva y los hallazgos de su informe.
 
@@ -127,7 +134,17 @@ def guardar_presupuesto(
     referencia por clave foránea, y el informe tiene que ser el de este presupuesto (`ValueError`):
     los hallazgos se guardan colgando de él y atribuirlos a otro documento sería falsear la
     auditoría.
+
+    SF‑E6: congela además la instantánea de la versión (la composición y el rendimiento de cada
+    partida distinta, y el plan: `plan` o, sin él, el que revela la curva si es inferible).
+    SF‑E2: `version_origen` y `motivo` (`models.MOTIVOS_VERSION`) declaran de qué versión salió
+    esta; van juntos o ninguno. `heredar_insumos` (solo con `version_origen`: edición y
+    restauración) copia el `insumo_id` de cada línea de la instantánea de origen (SF3 R‑7).
     """
+    if (version_origen is None) != (motivo == ""):
+        raise ValueError("version_origen y motivo se declaran juntos o ninguno")
+    if motivo and motivo not in models.MOTIVOS_VERSION:
+        raise ValueError(f"motivo {motivo!r} desconocido; se espera {models.MOTIVOS_VERSION}")
     if informe.codigo_presupuesto != presupuesto.codigo:
         raise ValueError(
             f"el informe audita el presupuesto {informe.codigo_presupuesto!r}, "
@@ -189,6 +206,16 @@ def guardar_presupuesto(
 
     session.add(modelo)
     session.flush()
+    congelar(
+        session, modelo, presupuesto, lista, plan, version_origen if heredar_insumos else None
+    )
+    if version_origen is not None:
+        session.add(
+            models.VersionOrigen(
+                presupuesto_id=modelo.id, origen_id=version_origen.id, motivo=motivo
+            )
+        )
+        session.flush()
     return modelo
 
 
@@ -206,10 +233,15 @@ def cargar_presupuesto(
 
 def _presupuesto_de(modelo: models.Presupuesto, catalogo: Catalogo) -> Presupuesto:
     """La reconstrucción de `cargar_presupuesto` sobre una fila ya encontrada."""
+    sesion = _sesion_de(modelo)
     parametros = _parametros_de(modelo)
+    # SF‑E6: la composición de cada partida sale de la instantánea de la versión y, solo si falta,
+    # del catálogo (versiones anteriores a SF‑E6).
+    congeladas = composiciones_de_version(sesion, modelo)
 
     partidas = tuple(
-        _a_contrato_renglon(renglon, modelo, catalogo, parametros) for renglon in modelo.partidas
+        _a_contrato_renglon(renglon, modelo, catalogo, parametros, congeladas)
+        for renglon in modelo.partidas
     )
     curva = tuple(
         PuntoCurva(periodo=punto.periodo, monto=punto.monto, acumulado=punto.acumulado)
@@ -389,39 +421,15 @@ def _json_decimales(valores: Mapping[str, Decimal]) -> str:
 # ---------------------------------------------------------------------------------------------
 
 
-def _buscar(session: Session, proyecto_nombre: str, codigo: str) -> models.Presupuesto:
-    modelo = session.scalars(
-        select(models.Presupuesto)
-        .join(models.Proyecto)
-        .where(models.Proyecto.nombre == proyecto_nombre, models.Presupuesto.codigo == codigo)
-    ).one_or_none()
-    if modelo is None:
-        raise KeyError(f"no hay ningún presupuesto {codigo!r} en el proyecto {proyecto_nombre!r}")
-    return modelo
-
-
-def _parametros_de(modelo: models.Presupuesto) -> ParametrosCosto:
-    """Los `ParametrosCosto` congelados en la fila del presupuesto.
-
-    El contrato `Presupuesto` no los lleva (insuficiencia registrada en la bitácora de I0.5): la
-    fila sí, y de ahí salen.
-    """
-    return ParametrosCosto(
-        fcas=modelo.fcas,
-        bono_alimentacion=modelo.bono_alimentacion,
-        administracion=modelo.administracion,
-        utilidad=modelo.utilidad,
-    )
-
-
 def _a_contrato_renglon(
     renglon: models.PartidaPresupuestada,
     presupuesto: models.Presupuesto,
     catalogo: Catalogo,
     parametros: ParametrosCosto,
+    congeladas: Mapping[str, ComposicionAPU],
 ) -> PartidaPresupuestada:
     codigo = renglon.partida.codigo
-    composicion = catalogo.composicion(
+    composicion = congeladas.get(codigo) or catalogo.composicion(
         codigo, fecha=presupuesto.fecha, lista=presupuesto.lista_precios
     )
     reconstruido = calcular_apu(composicion, parametros)

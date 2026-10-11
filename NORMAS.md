@@ -173,9 +173,9 @@ PLAN_DESARROLLO.md  PLAN_MULTIDOMINIO.md  PLAN_PROTOTIPO.md  PLAN_UI.md  PLAN_AS
 core/
   contracts/      estables (sección 5)                                   — I0.1
   costing/        motor: calcular_apu(composicion, parametros) -> ResultadoAPU — I0.3
-  models/         SQLAlchemy según docs/modelo_datos.md (diecisiete entidades hoy; el sprint final
-                  SF agrega RegistroCambio y la instantánea de composiciones y rendimientos,
-                  modelo_datos §2.4) — I0.4
+  models/         SQLAlchemy según docs/modelo_datos.md (diecisiete entidades más las ocho tablas
+                  aditivas de SF3: instantánea de composiciones, rendimientos y plan, RegistroCambio,
+                  VersionOrigen y origen de precios, modelo_datos §2.4) — I0.4
   catalog/        partidas, insumos y composiciones; listas de precios; rendimientos — I0.4, I1, I6.2
   budget/         presupuesto, curva, Excel, persistencia, importación, actualización de precios, escenarios
                                                                          — I0.5, I1, F.1

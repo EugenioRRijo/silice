@@ -33,6 +33,7 @@ from sqlalchemy.orm import Session
 
 from core import models
 from core.budget.curva import PeriodoPlan
+from core.budget.instantanea import composiciones_revaloradas, partidas_por_insumo
 
 # `_buscar` y `_parametros_de` son ayudantes del módulo hermano del mismo paquete: el contrato
 # `Presupuesto` no lleva los `ParametrosCosto` (insuficiencia registrada en la bitácora de
@@ -61,6 +62,7 @@ from core.budget.presupuesto import (
     exigir_composiciones,
 )
 from core.catalog import Catalogo
+from core.catalog.origen import cotizaciones_activas, crear_lista_de_proyecto, lista_base
 from core.catalog.precios import cambios_precio, registrar_cambios, variacion_relativa
 from core.contracts.presupuesto import PartidaPresupuestada, Presupuesto
 from core.contracts.verificacion import Hallazgo, ReglaVerificacion, Severidad
@@ -172,16 +174,33 @@ def actualizar_precios(
     reglas = tuple(reglas)
     modelo = _buscar(session, proyecto_nombre, codigo_presupuesto)
     parametros = _parametros_de(modelo)
-    lista_anterior = modelo.lista_precios
+    # SF‑E7: el historial compara listas base; una cotización activa de la versión (lista de
+    # proyecto) prevalece sobre la lista nueva: se repone sobre ella en otra lista de proyecto.
+    lista_anterior = lista_base(session, modelo.lista_precios)
     catalogo = Catalogo(session)
+    lista_aplicada = crear_lista_de_proyecto(
+        session,
+        modelo.proyecto,
+        lista_nueva,
+        cotizaciones_activas(session, modelo.lista_precios),
+        f"{lista_nueva.nombre} + cotizaciones de {modelo.proyecto.nombre} ({codigo_nuevo})",
+    )
 
     anterior = cargar_presupuesto(session, proyecto_nombre, codigo_presupuesto, catalogo)
     items = [partida.item for partida in anterior.partidas]
-    composiciones = {
-        codigo: catalogo.composicion(codigo, fecha=lista_nueva.fecha_vigencia, lista=lista_nueva)
-        for codigo in dict.fromkeys(item.codigo_partida for item in items)
-    }
+    # SF‑E6: las líneas son las de la instantánea de la versión (con los precios de la lista
+    # nueva); solo una partida sin instantánea se reconstruye del catálogo.
+    composiciones = composiciones_revaloradas(
+        session,
+        modelo,
+        catalogo,
+        lista_aplicada,
+        list(dict.fromkeys(item.codigo_partida for item in items)),
+    )
     exigir_composiciones(items, composiciones)
+    # SF‑E8: el reparto que se le pasa (escrito o calculado) es el que se guarda con la versión;
+    # inferirlo de la curva pierde las partidas repartidas en varios períodos.
+    reparto = _CapturaPlan(plan)
     nuevo = elaborar(
         [*items, *_cargar_pendientes(session, modelo)],
         composiciones,
@@ -189,7 +208,7 @@ def actualizar_precios(
         codigo=codigo_nuevo,
         fecha=lista_nueva.fecha_vigencia,
         moneda=anterior.moneda,
-        plan=plan,
+        plan=reparto.para_elaborar(),
         reglas=reglas,
     )
     # SF‑E1: los hallazgos de reglas externas de la versión anterior (p. ej. los de la hoja de
@@ -199,20 +218,48 @@ def actualizar_precios(
     nuevo = replace(nuevo, informe=_declarar_externos(nuevo.informe, externos))
     cambios = registrar_cambios(session, lista_anterior, lista_nueva)
     if detectar_atipicos is not None:
-        atipicos = _hallazgos_atipicos(session, cambios, nuevo.presupuesto, detectar_atipicos)
+        atipicos = _hallazgos_atipicos(
+            session, cambios, nuevo.presupuesto, detectar_atipicos, modelo.id
+        )
         nuevo = replace(nuevo, informe=_declarar_atipicos(nuevo.informe, atipicos))
     guardar_presupuesto(
         session,
         nuevo.presupuesto,
         nuevo.informe,
         proyecto=modelo.proyecto,
-        lista=lista_nueva,
+        lista=lista_aplicada,
         parametros=parametros,
         pendientes=nuevo.pendientes,
+        plan=reparto.guardable(),
+        version_origen=modelo,
+        motivo="revaloracion",
     )
 
-    _registrar_incidencias(session, cambios, anterior, nuevo.presupuesto)
+    _registrar_incidencias(session, cambios, anterior, nuevo.presupuesto, modelo.id)
     return nuevo, _comparar(anterior, nuevo.presupuesto, len(cambios))
+
+
+class _CapturaPlan:
+    """Recuerda el reparto con el que se elaboró la versión nueva, sea el plan ya escrito o el
+    que calcula un `GeneradorPlan` sobre el presupuesto valorado (SF‑E8)."""
+
+    def __init__(self, plan: Sequence[PeriodoPlan] | GeneradorPlan | None) -> None:
+        self._plan = plan
+        self._calculado: Sequence[PeriodoPlan] | None = None
+
+    def para_elaborar(self) -> Sequence[PeriodoPlan] | GeneradorPlan | None:
+        if not callable(self._plan):
+            return self._plan
+        generador = self._plan
+
+        def capturar(presupuesto: Presupuesto) -> Sequence[PeriodoPlan]:
+            self._calculado = generador(presupuesto)
+            return self._calculado
+
+        return capturar
+
+    def guardable(self) -> Sequence[PeriodoPlan] | None:
+        return self._calculado if callable(self._plan) else self._plan
 
 
 def descartar_version(
@@ -259,6 +306,7 @@ def _hallazgos_atipicos(
     cambios: Sequence[models.CambioPrecio],
     nuevo: Presupuesto,
     detectar: DetectorAtipicos,
+    version_id: int,
 ) -> list[Hallazgo]:
     """Un hallazgo `CODIGO_ATIPICO` por cambio de esta lista que el detector marca y que toca
     alguna partida del presupuesto; las marcas de otros cambios del histórico no son de él."""
@@ -270,8 +318,8 @@ def _hallazgos_atipicos(
     if not marcas:
         return []
     codigos = list(dict.fromkeys(partida.item.codigo_partida for partida in nuevo.partidas))
-    partidas = _partidas_por_insumo(
-        session, [de_esta_lista[marca.id].insumo_id for marca in marcas], codigos
+    partidas = partidas_por_insumo(
+        session, version_id, [de_esta_lista[marca.id].insumo_id for marca in marcas], codigos
     )
     hallazgos: list[Hallazgo] = []
     for marca in marcas:
@@ -307,6 +355,7 @@ def _registrar_incidencias(
     cambios: Sequence[models.CambioPrecio],
     anterior: Presupuesto,
     nuevo: Presupuesto,
+    version_id: int,
 ) -> list[models.IncidenciaCambio]:
     """Una `IncidenciaCambio` por cada par (cambio de precio, partida del presupuesto que lo usa).
 
@@ -335,8 +384,8 @@ def _registrar_incidencias(
 
     precios_anteriores = _precio_unitario_por_partida(anterior)
     precios_nuevos = _precio_unitario_por_partida(nuevo)
-    partidas = _partidas_por_insumo(
-        session, [cambio.insumo_id for cambio in cambios], list(precios_anteriores)
+    partidas = partidas_por_insumo(
+        session, version_id, [cambio.insumo_id for cambio in cambios], list(precios_anteriores)
     )
 
     incidencias = [
@@ -355,33 +404,6 @@ def _registrar_incidencias(
     session.add_all(incidencias)
     session.flush()
     return incidencias
-
-
-def _partidas_por_insumo(
-    session: Session, insumos: Sequence[int], codigos: Sequence[str]
-) -> dict[int, list[models.Partida]]:
-    """Qué partidas del presupuesto llevan cada insumo, según la composición del catálogo.
-
-    Cada partida aparece **una sola vez** por insumo: nada impide que una partida repita el mismo
-    insumo en dos líneas de su composición (`composicion_apu` no tiene clave única por partida e
-    insumo), y sin eliminar el repetido el `join` registraría dos incidencias idénticas para el
-    mismo cambio de precio.
-    """
-    filas = session.execute(
-        select(models.ComposicionAPU.insumo_id, models.Partida)
-        .join(models.Partida, models.Partida.id == models.ComposicionAPU.partida_id)
-        .where(
-            models.ComposicionAPU.insumo_id.in_(insumos),
-            models.Partida.codigo.in_(codigos),
-        )
-        .order_by(models.Partida.codigo)
-    ).all()
-    por_insumo: dict[int, list[models.Partida]] = {}
-    for insumo_id, partida in filas:
-        partidas = por_insumo.setdefault(insumo_id, [])
-        if all(registrada.id != partida.id for registrada in partidas):
-            partidas.append(partida)
-    return por_insumo
 
 
 def _precio_unitario_por_partida(presupuesto: Presupuesto) -> dict[str, Decimal]:

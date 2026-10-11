@@ -26,6 +26,7 @@ from core.budget.actualizacion import (
     actualizar_precios,
     descartar_version,
 )
+from core.budget.cotizacion import cotizaciones_de_version, cotizar_insumo, retirar_cotizacion
 from core.budget.curva import (
     PeriodoPlan,
     PlanInvalido,
@@ -33,6 +34,16 @@ from core.budget.curva import (
     generar_curva,
     plan_secuencial,
 )
+from core.budget.edicion import (
+    CambioEditado,
+    guardar_edicion,
+    registros_de_version,
+    restaurar_version,
+    siguiente_codigo,
+    tabla_trazabilidad,
+    version_vigente,
+)
+from core.budget.equilibrio import EstadoEquilibrio, PuntoEquilibrio, punto_equilibrio
 from core.budget.escenarios import (
     COLUMNAS_ESCENARIOS,
     Escenario,
@@ -40,11 +51,17 @@ from core.budget.escenarios import (
     comparar_por_partida,
     generar_escenario,
 )
-from core.budget.excel import exportar_excel
+from core.budget.excel import TablaExportable, exportar_excel, exportar_hoja
 from core.budget.importacion import (
     PresupuestoImportado,
     importar_presupuesto,
     leer_presupuesto_tabular,
+)
+from core.budget.instantanea import (
+    ResultadoInstantanea,
+    asegurar_instantanea,
+    composiciones_de_presupuesto,
+    plan_de_version,
 )
 from core.budget.persistencia import (
     cargar_elaboracion,
@@ -69,31 +86,50 @@ __all__ = [
     "CODIGO_PENDIENTE",
     "COLUMNAS_COMPARATIVO",
     "COLUMNAS_ESCENARIOS",
+    "CambioEditado",
     "Comparativo",
     "DetectorAtipicos",
     "Escenario",
+    "EstadoEquilibrio",
     "GeneradorPlan",
     "MarcaAtipica",
     "PeriodoPlan",
     "PlanInvalido",
     "PresupuestoImportado",
+    "PuntoEquilibrio",
     "ResultadoElaboracion",
+    "ResultadoInstantanea",
+    "TablaExportable",
     "actualizar_precios",
+    "asegurar_instantanea",
     "cargar_elaboracion",
     "cargar_presupuesto",
     "comparar_escenarios",
     "comparar_por_partida",
+    "composiciones_de_presupuesto",
     "con_curva",
+    "cotizaciones_de_version",
+    "cotizar_insumo",
     "crear_proyecto",
     "descartar_version",
     "elaborar",
     "exportar_excel",
+    "exportar_hoja",
     "generar_curva",
     "generar_escenario",
     "generar_presupuesto",
+    "guardar_edicion",
     "guardar_presupuesto",
     "hallazgos_externos",
     "importar_presupuesto",
     "leer_presupuesto_tabular",
+    "plan_de_version",
     "plan_secuencial",
+    "punto_equilibrio",
+    "registros_de_version",
+    "restaurar_version",
+    "retirar_cotizacion",
+    "siguiente_codigo",
+    "tabla_trazabilidad",
+    "version_vigente",
 ]

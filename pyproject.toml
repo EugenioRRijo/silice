@@ -27,6 +27,7 @@ dev = [
     "pytest-cov>=5.0",
     "ruff>=0.6",
     "httpx2>=2.12",  # TestClient de FastAPI (tests/integration/test_api.py)
+    "formulas>=1.3.4",
 ]
 
 # El repositorio es una aplicacion con varios paquetes de primer nivel (core, adapters, ml, ui, api),
