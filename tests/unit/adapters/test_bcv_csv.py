@@ -18,7 +18,10 @@ FUENTE = "https://www.bcv.org.ve/estadisticas/insumos-de-la-construccion"
 BUENAS = f"IIC-GENERAL,2026-01-01,100.5,no,{FUENTE}\nIIC-GENERAL,2026-02-01,101.25,si,{FUENTE}\n"
 
 
-def _csv(tmp_path, cuerpo, encabezado=",".join(COLUMNAS_CSV)):
+ENCABEZADO = ",".join(COLUMNAS_CSV)
+
+
+def _csv(tmp_path, cuerpo, encabezado=ENCABEZADO):
     ruta = tmp_path / "serie.csv"
     ruta.write_text(f"{encabezado}\n{cuerpo}", encoding="utf-8")
     return ruta
