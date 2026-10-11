@@ -33,9 +33,16 @@ from pandas import DataFrame
 # variación porcentual y la tabla por renglón tienen una sola definición (NORMAS.md §2.1) y
 # duplicarlas aquí sería repetirla. Mismo patrón que `actualizacion` con `persistencia`.
 from core.budget.actualizacion import Comparativo, _comparar, _porcentaje
-from core.budget.presupuesto import elaborar, exigir_composiciones
+from core.budget.presupuesto import (
+    CODIGO_ATIPICO,
+    _declarar_externos,
+    elaborar,
+    exigir_composiciones,
+)
 from core.contracts.apu import ComposicionAPU, ParametrosCosto
 from core.contracts.presupuesto import Presupuesto
+from core.contracts.verificacion import Hallazgo, ReglaVerificacion
+from core.verification import REGLAS
 from core.verification.informe import InformeAuditoria
 
 __all__ = [
@@ -75,6 +82,8 @@ def generar_escenario(
     parametros: ParametrosCosto,
     *,
     precios: Mapping[str, Decimal] | None = None,
+    reglas: Sequence[ReglaVerificacion] = REGLAS,
+    externos: Sequence[Hallazgo] = (),
 ) -> Escenario:
     """Recalcula el presupuesto completo con `parametros` y, si se dan, `precios` nuevos (RF‑30).
 
@@ -83,7 +92,14 @@ def generar_escenario(
     El base no se altera: todos los contratos involucrados son inmutables. Exige composición
     para todo renglón del base (`ValueError`): un escenario con renglones pendientes no sería
     comparable con su base (INV‑013).
+
+    `reglas` son las que audita el escenario (las siete por defecto). `externos` son los hallazgos
+    del base cuya regla no está en `reglas` (`hallazgos_externos(informe_del_base, reglas)`): el
+    escenario no los puede recalcular y los vuelve a declarar tal cual (SF‑E1, RF‑62). Los
+    `CODIGO_ATIPICO` del base **no** pasan aunque vengan en `externos`: son de la lista de precios
+    del base y el escenario tiene otros precios (mismo criterio que `actualizar_precios`).
     """
+    reglas = tuple(reglas)
     precios = dict(precios or {})
     ajustadas = (
         {codigo: _con_precios(apu, precios) for codigo, apu in composiciones.items()}
@@ -99,11 +115,14 @@ def generar_escenario(
         codigo=f"{base.codigo}-{nombre}",
         fecha=base.fecha,
         moneda=base.moneda,
+        reglas=reglas,
     )
     return Escenario(
         nombre=nombre,
         presupuesto=resultado.presupuesto,
-        informe=resultado.informe,
+        informe=_declarar_externos(
+            resultado.informe, [h for h in externos if h.regla != CODIGO_ATIPICO]
+        ),
         parametros=parametros,
         insumos_variados=_variados(composiciones, precios),
     )

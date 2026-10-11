@@ -170,8 +170,9 @@ def _control(nombre: str, esperado: list[str], informe) -> dict:
 def pruebas_de_control() -> list[dict]:
     """Siete errores conocidos, cada uno en una copia del caso, y la regla que debería verlo.
 
-    El cuarto (1/2 pulg frente a 1 pulg) NO lo detecta R4: compara por subcadena y el APU cita la
-    «Dobladora de tubo EMT 1/2 a 1 1/2 pulg» (hallazgo registrado en la bitácora del caso).
+    El cuarto (1/2 pulg frente a 1 pulg) se escapaba hasta SF‑E5: R4 comparaba por subcadena y el
+    APU cita la «Dobladora de tubo EMT 1/2 a 1 1/2 pulg» (A‑2, bitácora del caso). Desde SF‑E5 R4
+    compara especificaciones normalizadas y lo detecta: siete de siete.
     """
     base = caso.items()
 

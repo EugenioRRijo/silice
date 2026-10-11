@@ -41,6 +41,7 @@ from core.budget.curva import PeriodoPlan
 # sin la reauditoría de `cargar_elaboracion`, que aquí no hace falta.
 from core.budget.persistencia import (
     _buscar,
+    _cargar_externos,
     _cargar_pendientes,
     _parametros_de,
     cargar_presupuesto,
@@ -55,13 +56,15 @@ from core.budget.presupuesto import (
     GeneradorPlan,
     ResultadoElaboracion,
     _declarar_atipicos,
+    _declarar_externos,
     elaborar,
     exigir_composiciones,
 )
 from core.catalog import Catalogo
 from core.catalog.precios import cambios_precio, registrar_cambios, variacion_relativa
 from core.contracts.presupuesto import PartidaPresupuestada, Presupuesto
-from core.contracts.verificacion import Hallazgo, Severidad
+from core.contracts.verificacion import Hallazgo, ReglaVerificacion, Severidad
+from core.verification import REGLAS
 from core.verification.texto import formatear_decimal
 
 __all__ = ["COLUMNAS_COMPARATIVO", "Comparativo", "actualizar_precios", "descartar_version"]
@@ -129,6 +132,7 @@ def actualizar_precios(
     codigo_nuevo: str,
     plan: Sequence[PeriodoPlan] | GeneradorPlan | None = None,
     detectar_atipicos: DetectorAtipicos | None = None,
+    reglas: Sequence[ReglaVerificacion] = REGLAS,
 ) -> tuple[ResultadoElaboracion, Comparativo]:
     """Revalora un presupuesto con `lista_nueva` y lo guarda como versión `codigo_nuevo`.
 
@@ -165,6 +169,7 @@ def actualizar_precios(
     historial se registra **antes** de guardar la versión nueva: `registrar_cambios` es
     idempotente y solo hace `flush`.
     """
+    reglas = tuple(reglas)
     modelo = _buscar(session, proyecto_nombre, codigo_presupuesto)
     parametros = _parametros_de(modelo)
     lista_anterior = modelo.lista_precios
@@ -185,7 +190,13 @@ def actualizar_precios(
         fecha=lista_nueva.fecha_vigencia,
         moneda=anterior.moneda,
         plan=plan,
+        reglas=reglas,
     )
+    # SF‑E1: los hallazgos de reglas externas de la versión anterior (p. ej. los de la hoja de
+    # espacio) siguen valiendo con los precios nuevos y se arrastran; los atípicos no: son de la
+    # lista anterior y los de esta los declara el detector.
+    externos = _cargar_externos(session, modelo, reglas, sin=(CODIGO_ATIPICO,))
+    nuevo = replace(nuevo, informe=_declarar_externos(nuevo.informe, externos))
     cambios = registrar_cambios(session, lista_anterior, lista_nueva)
     if detectar_atipicos is not None:
         atipicos = _hallazgos_atipicos(session, cambios, nuevo.presupuesto, detectar_atipicos)

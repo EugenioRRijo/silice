@@ -61,6 +61,7 @@ from core.budget.presupuesto import (
     ResultadoElaboracion,
     elaborar,
     generar_presupuesto,
+    hallazgos_externos,
 )
 
 __all__ = [
@@ -91,6 +92,7 @@ __all__ = [
     "generar_escenario",
     "generar_presupuesto",
     "guardar_presupuesto",
+    "hallazgos_externos",
     "importar_presupuesto",
     "leer_presupuesto_tabular",
     "plan_secuencial",
