@@ -576,7 +576,7 @@ def fila_mano_obra_desde_referencia(fila: FilaReferencia) -> dict[str, str]:
     }
 
 
-# --- Ayudas de AREN.IA (Tarea 4, spec §3.7): sugieren, nunca deciden ----------------------------
+# --- Ayudas de Sílice (Tarea 4, spec §3.7): sugieren, nunca deciden ----------------------------
 #
 # Las cuatro funciones de esta sección envuelven una llamada a `ml/` (o, para la ayuda 3, la
 # lectura adicional de `ml.anomaly` sobre el rendimiento ya cableado en la Tarea 1,

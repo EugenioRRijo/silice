@@ -3,12 +3,19 @@
 Los datos viven en tests/fixtures/apu_linea_base.py (única copia, principio DRY).
 """
 
+import os
 from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
 
 from tests.fixtures import apu_linea_base as linea_base
+from ui.entorno import ALIAS_ANTERIORES
+
+#: AppTest lee el `.streamlit/config.toml` del directorio de trabajo, que oculta los detalles de los
+#: errores (`client.showErrorDetails = "none"`, S5 §10.1). Las variables `STREAMLIT_*` mandan sobre
+#: el archivo: la suite conserva el mensaje completo de cada excepcion de AppTest.
+os.environ["STREAMLIT_CLIENT_SHOW_ERROR_DETAILS"] = "full"
 
 #: `pytester` corre sesiones de pytest aparte: con él, `tests/unit/test_salvaguarda.py` observa la
 #: salvaguarda en rojo sin tocar la base real.
@@ -56,9 +63,10 @@ def _base_real_intacta():
 
 
 @pytest.fixture(autouse=True)
-def _sin_caso_del_entorno(monkeypatch):
-    """Una `ARENIA_CASO` exportada en la terminal de quien corre la suite no debe desviar."""
-    monkeypatch.delenv("ARENIA_CASO", raising=False)
+def _sin_variables_de_silice_del_entorno(monkeypatch):
+    """Una `SILICE_*` (o su alias `ARENIA_*`) exportada en la terminal no debe desviar la suite."""
+    for nombre in (*ALIAS_ANTERIORES, *ALIAS_ANTERIORES.values()):
+        monkeypatch.delenv(nombre, raising=False)
 
 
 @pytest.fixture(scope="session")
