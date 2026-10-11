@@ -1,8 +1,8 @@
 """Variables de entorno de Sílice con sus alias anteriores (plan 0.6.0, tarea A1).
 
-Cuatro casos por variable: solo la nueva, solo la vieja, las dos (gana la nueva) y ninguna; más la nueva
-en blanco, que cede al alias. El alias vive hasta la 0.6.0 inclusive: una prueba falla cuando
-`pyproject.toml` pase de esa versión con el alias todavía declarado.
+Cuatro casos por variable: solo la nueva, solo la vieja, las dos (gana la nueva) y ninguna;
+más la nueva en blanco, que cede al alias. El alias vive hasta la 0.6.0 inclusive: una prueba
+falla cuando `pyproject.toml` pase de esa versión con el alias todavía declarado.
 """
 
 from __future__ import annotations

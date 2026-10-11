@@ -6,9 +6,9 @@ Desde la 0.6.0 se llaman `SILICE_CASO` y `SILICE_MODO_ENTREGA`; `ARENIA_CASO` y
 (`tests/unit/test_entorno_silice.py` falla cuando `pyproject.toml` pase de esa versión con el alias
 todavía declarado).
 
-Regla: manda la variable nueva si tiene texto; si falta o está en blanco, su alias; si ninguna, `None`.
-Si las dos tienen valores distintos, gana la nueva. Sin Streamlit ni terceros: lo importan `ui.caso`,
-`ui.app` y `tests/conftest.py`.
+Regla: manda la variable nueva si tiene texto; si falta o está en blanco, su alias; si ninguna,
+`None`. Si las dos tienen valores distintos, gana la nueva. Sin Streamlit ni terceros: lo importan
+`ui.caso`, `ui.app` y `tests/conftest.py`.
 """
 
 from __future__ import annotations

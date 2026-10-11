@@ -11,7 +11,8 @@ Tres invariantes (spec de UI, §3.2):
    del Inicio, se olvidaria al navegar a otra pantalla. Por eso `CLAVE_CASO` y `CLAVE_RECORRIDO` no
    son la `key` de ningun widget.
 2. **Respaldo declarado.** Se puede entrar por URL a cualquier pantalla sin pasar por el Inicio. Sin
-   caso fijado, manda la variable de entorno `SILICE_CASO` (el guion CP-07 la usa; la lee `ui.entorno.leer_variable`) y, si no esta,
+   caso fijado, manda la variable de entorno `SILICE_CASO` (el guion CP-07 la usa; la lee
+   `ui.entorno.leer_variable`) y, si no esta,
    `RUTA_BASE_POR_DEFECTO`. `ruta_caso()` lee esa constante **al llamarse**, no al definirse: las
    pruebas la parchan en el objeto modulo de `sys.modules`.
 3. **El motor de SQLAlchemy no va a la sesion.** Cada pantalla lo crea y lo cierra con

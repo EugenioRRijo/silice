@@ -367,7 +367,9 @@ def _evaluar_metas(codigos: list[str]) -> list[Fila]:
 def _parsear_args(argv: list[str] | None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         prog="meta_prototipo.py",
-        description="Evalua las 12 metas del sprint del prototipo AREN.IA (hoy Sílice), agrupadas en P0-P5.",
+        description=(
+            "Evalua las 12 metas del sprint del prototipo AREN.IA (hoy Sílice), agrupadas en P0-P5."
+        ),
     )
     parser.add_argument(
         "--hasta",

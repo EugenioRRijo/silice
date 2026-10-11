@@ -1,4 +1,4 @@
-"""`.streamlit/config.toml` del repositorio (plan 0.6.0, tarea A1; maestro §4.7 y §8; S5 §1.2 y §10.1).
+"""`.streamlit/config.toml` del repositorio (plan 0.6.0, tarea A1; maestro §4.7 y §8; S5 §1.2).
 
 Streamlit 1.62.0 sin `server.address` escucha en todas las interfaces y envia estadisticas de uso
 (S5 §1.2). Este archivo lo fija para el camino de desarrollo; S5-2 lo toma como base del archivo
