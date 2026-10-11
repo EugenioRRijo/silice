@@ -1,0 +1,18 @@
+{
+  "tasa": {
+    "trimestre_por_letra": {
+      "a": 1,
+      "b": 2,
+      "c": 3,
+      "d": 4
+    }
+  },
+  "inpc": {
+    "hoja": "Base Diciembre 2007",
+    "etiqueta_periodo": "",
+    "etiqueta_valor": "Indice",
+    "marca_provisional": "(*)",
+    "base": "Diciembre 2007 = 100",
+    "disposicion": "anio_en_filas"
+  }
+}
