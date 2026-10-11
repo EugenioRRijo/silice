@@ -59,13 +59,13 @@ from core.catalog import (
     Catalogo,
     PrecioLeido,
     abrir_sesion,
-    crear_esquema,
     crear_lista_desde_archivo,
     crear_motor,
     insumos_desconocidos,
 )
 from core.verification.informe import DECIMALES_PRESENTACION
 from core.verification.texto import formatear_decimal
+from operacion.base_datos import ErrorDeBase, preparar_base
 from scripts.seed import NOMBRE_PROYECTO, sembrar
 from ui.caso import ruta_caso
 from ui.subidas import guardar_subida, nombre_seguro
@@ -169,14 +169,16 @@ def _barra_lateral() -> dict[str, object]:
 
 
 def _sembrar(ruta: Path) -> None:
-    """Crea el esquema y carga la linea base en la base indicada, si aun no esta."""
+    """Prepara el caso (`preparar_base`, RV-5) y carga la linea base, si aun no esta."""
     motor = crear_motor(f"sqlite:///{ruta.as_posix()}")
     try:
-        crear_esquema(motor)
+        preparar_base(ruta)
         with abrir_sesion(motor) as sesion:
             sembrar(sesion)
             partidas = len(Catalogo(sesion).partidas())
         st.sidebar.success(f"Base lista en {ruta} con {partidas} partidas.")
+    except ErrorDeBase as error:
+        st.sidebar.error(str(error))
     finally:
         motor.dispose()
 
@@ -263,7 +265,7 @@ def _ejecutar(
     st.session_state.pop(CLAVE_DESCARTADA, None)
     motor = crear_motor(f"sqlite:///{parametros['ruta'].as_posix()}")
     try:
-        crear_esquema(motor)
+        preparar_base(parametros["ruta"])
         with _archivo_temporal(archivo) as ruta_archivo, abrir_sesion(motor) as sesion:
             st.session_state[CLAVE_RESULTADO] = _actualizar(
                 sesion, parametros, ruta_archivo, ruta_archivo.parent, dar_de_alta

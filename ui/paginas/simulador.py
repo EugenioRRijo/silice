@@ -18,7 +18,8 @@ from pathlib import Path
 import streamlit as st
 from pandas import DataFrame
 
-from core.catalog import Catalogo, abrir_sesion, crear_esquema, crear_motor
+from core.catalog import Catalogo, abrir_sesion, crear_motor
+from operacion.base_datos import preparar_base
 from scripts.simular_lista import simular
 from ui.caso import ruta_caso
 
@@ -72,7 +73,7 @@ def _generar(parametros: dict[str, object]) -> None:
 
     motor = crear_motor(f"sqlite:///{Path(parametros['ruta']).as_posix()}")
     try:
-        crear_esquema(motor)
+        preparar_base(Path(parametros["ruta"]))
         with abrir_sesion(motor) as sesion:
             precios = _precios_vigentes(Catalogo(sesion))
         filas = simular(precios, variacion_max, int(parametros["semilla"]), solo)

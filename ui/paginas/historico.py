@@ -16,9 +16,10 @@ from pandas import DataFrame
 from sqlalchemy.exc import SQLAlchemyError
 
 from core import models
-from core.catalog import abrir_sesion, cambios_precio, crear_esquema, crear_motor
+from core.catalog import abrir_sesion, cambios_precio, crear_motor
 from core.verification.informe import DECIMALES_PRESENTACION
 from core.verification.texto import formatear_decimal
+from operacion.base_datos import preparar_base
 from ui.caso import ruta_caso
 
 CIEN = Decimal(100)
@@ -36,12 +37,12 @@ def render() -> None:
 
     motor = crear_motor(f"sqlite:///{ruta.as_posix()}")
     try:
-        crear_esquema(motor)
+        preparar_base(ruta)
         with abrir_sesion(motor) as sesion:
             cambios = cambios_precio(sesion, insumo=insumo or None, desde=desde, hasta=hasta)
     except (LookupError, ValueError, ArithmeticError, SQLAlchemyError) as error:
         # Mismo criterio que `ui/paginas/actualizacion.py`: un archivo de base de datos corrupto
-        # o inaccesible (`OperationalError` de `crear_esquema`) es un mensaje, no una traza cruda.
+        # o inaccesible (`ErrorDeBase` de `preparar_base`) es un mensaje, no una traza cruda.
         # `return` aqui no salta el `finally`: `motor.dispose()` corre igual antes de salir.
         st.error(str(error))
         return

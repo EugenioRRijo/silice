@@ -55,9 +55,10 @@ from adapters.espacio import (
 )
 from adapters.espacio.planos import EstadoImportacion
 from core import models
-from core.catalog import Catalogo, CatalogoIncompleto, abrir_sesion, crear_esquema, crear_motor
+from core.catalog import Catalogo, CatalogoIncompleto, abrir_sesion, crear_motor
 from core.verification.informe import DECIMALES_PRESENTACION
 from core.verification.texto import formatear_decimal
+from operacion.base_datos import ErrorDeBase, preparar_base
 from ui import caso, hoja
 from ui.caso import ACCION_IMPORTAR_PLANO, ACCION_PRECIOS, ruta_caso
 
@@ -122,14 +123,20 @@ _AYUDA_ESPACIO = (
 
 @contextmanager
 def _sesion() -> Iterator[Any]:
-    """Una sesion sobre el caso abierto, o `None` si el archivo no existe (no se crea nada)."""
+    """Una sesion sobre el caso abierto, o `None` si el archivo no existe (no se crea nada) o no se
+    puede preparar (el mensaje ya se mostro). El caso se abre por `preparar_base` (RV-5)."""
     ruta = ruta_caso()
     if not ruta.exists():
         yield None
         return
+    try:
+        preparar_base(ruta)
+    except ErrorDeBase as error:
+        st.error(str(error))
+        yield None
+        return
     motor = crear_motor(f"sqlite:///{ruta.as_posix()}")
     try:
-        crear_esquema(motor)  # las tablas aditivas faltan en una base anterior (B de SF3)
         with abrir_sesion(motor) as sesion:
             yield sesion
     finally:

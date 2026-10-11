@@ -10,7 +10,7 @@ prueba como funcion (`tests/unit/test_elaboracion.py`). Lo vigila
 Es el unico modulo de `ui/` sin pagina que escribe filas en la base (regla A-2 del plan de C3):
 `guardar_composicion` y `declarar_rendimiento` (UC-01 3b, INV-088) escriben, pero no confirman;
 el `commit` es de la pagina. Filas, no esquema:
-`ui.caso.estado_caso` tambien escribe, pero solo DDL (`crear_esquema`), sin datos.
+`ui.caso.estado_caso` no escribe: lee con una conexion de solo lectura (RV-5).
 """
 
 from __future__ import annotations

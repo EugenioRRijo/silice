@@ -40,10 +40,11 @@ from core.budget import (
     hallazgos_externos,
 )
 from core.budget.instantanea import composiciones_de_presupuesto
-from core.catalog import Catalogo, abrir_sesion, crear_esquema, crear_motor
+from core.catalog import Catalogo, abrir_sesion, crear_motor
 from core.contracts import ItemComputo, ParametrosCosto
 from core.verification.informe import DECIMALES_PRESENTACION
 from core.verification.texto import formatear_decimal
+from operacion.base_datos import preparar_base
 from ui.caso import ruta_caso
 from ui.composicion import decimal_desde_texto
 
@@ -62,7 +63,7 @@ def render() -> None:
     ruta = ruta_caso()
     motor = crear_motor(f"sqlite:///{ruta.as_posix()}")
     try:
-        crear_esquema(motor)
+        preparar_base(ruta)
         with abrir_sesion(motor) as sesion:
             _pagina(sesion, ruta)
     except (LookupError, ValueError, ArithmeticError, SQLAlchemyError) as error:

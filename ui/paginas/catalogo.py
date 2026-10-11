@@ -14,9 +14,10 @@ import streamlit as st
 from pandas import DataFrame
 from sqlalchemy.exc import SQLAlchemyError
 
-from core.catalog import Catalogo, CatalogoIncompleto, abrir_sesion, crear_esquema, crear_motor
+from core.catalog import Catalogo, CatalogoIncompleto, abrir_sesion, crear_motor
 from core.verification.informe import DECIMALES_PRESENTACION
 from core.verification.texto import formatear_decimal
+from operacion.base_datos import preparar_base
 from ui.caso import ruta_caso
 
 
@@ -28,14 +29,14 @@ def render() -> None:
 
     motor = crear_motor(f"sqlite:///{ruta.as_posix()}")
     try:
-        crear_esquema(motor)
+        preparar_base(ruta)
         with abrir_sesion(motor) as sesion:
             catalogo = Catalogo(sesion)
             _mostrar_partidas(catalogo)
             _mostrar_insumos(catalogo)
     except (LookupError, ValueError, ArithmeticError, SQLAlchemyError) as error:
         # Mismo criterio que `ui/paginas/actualizacion.py`: un archivo de base de datos corrupto
-        # o inaccesible (`OperationalError` de `crear_esquema`) es un mensaje, no una traza cruda.
+        # o inaccesible (`ErrorDeBase` de `preparar_base`) es un mensaje, no una traza cruda.
         st.error(str(error))
     finally:
         motor.dispose()
