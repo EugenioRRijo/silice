@@ -21,6 +21,7 @@ PAQUETES_FUERA_DEL_NUCLEO = ("adapters", "ml", "ui", "api", "scripts", "tests")
 #: su propio paquete (INV-018: una sola guardia con la regla que antes solo regia para telecom).
 #: Un adaptador nuevo necesita su fila: lo exige `test_toda_carpeta_de_adapters_tiene_su_regla`.
 TERCEROS_POR_ADAPTADOR: dict[str, frozenset[str]] = {
+    "bcv": frozenset({"xlrd", "openpyxl"}),
     "civil": frozenset({"ifcopenshell"}),
     "espacio": frozenset({"sqlalchemy", "ezdxf", "ifcopenshell"}),
     "industrial": frozenset(),
