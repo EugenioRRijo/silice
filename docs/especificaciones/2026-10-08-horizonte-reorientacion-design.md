@@ -180,7 +180,7 @@ interfaz, y fichas de rol de los subagentes (`sf-*`).
 
 | Fase | Contenido | Entrega que funciona | Depende de |
 |---|---|---|---|
-| **R0** | Propuesta para el tutor (este documento como base): pregunta, objetivos OE‑H1…H5, alcance, sector; **cotejo** de los arts. 133–134 con la Gaceta y de los artículos del Reglamento; decisión D3 pendiente; aval del sprint SF | aprobación del tutor | — |
+| **R0** | Propuesta para el tutor (este documento como base): pregunta, objetivos OE‑H1…H6, alcance, sector; **cotejo** de los arts. 133–134 con la Gaceta y de los artículos del Reglamento; decisión D3 pendiente; aval del sprint SF | aprobación del tutor | — |
 | **R1** | Moneda por proyecto; precio con moneda, fecha y tasa; **base de precios por empresa** (lista propia con fecha, moneda y fuente, auditada contra MaPreX y contra el tiempo); importación de los archivos del BCV (tasa, INPC, índice de insumos de la construcción) con fuente; reajuste por escalatoria y por comprobación directa, lado a lado, respetando el primer año y «solo lo ejecutado en el período» | un proyecto en Bs y otro en USD con su reajuste comparado; una empresa con su lista propia y sus precios vencidos o fuera de rango marcados | R0 |
 | **R2** | Valuaciones por cantidades ejecutadas; valor ganado con desvío por plazo y por precio; alertas y reproyección; opciones de recuperación con su costo desde el rendimiento y la cuadrilla; registro de la decisión | una obra con retraso detectado, reproyectada y recuperada con una opción elegida | R1 |
 | **R3** | Registro encadenado a prueba de manipulación; **paquete auditado** (exportar e importar el presupuesto con su informe y sus huellas, y verificar que nadie lo alteró); vista del **administrador que revisa**; importar y auditar el APU de otras herramientas (Excel y una ruta de la API para plugins); **auditoría de planos** (§5.1); anomalías en variaciones como complemento | un paquete armado por la contratista, recibido y verificado por el administrador; una alteración detectada; un APU externo auditado; errores sembrados en planos con su tasa de detección | R0 (puede ir en paralelo a R2) |
@@ -222,7 +222,7 @@ Los protocolos se escriben antes de medir, como los vigentes del indicador 3 y d
 ## 9. Preguntas abiertas para el tutor
 
 1. ¿Acepta la reorientación del énfasis hacia la auditoría y el presupuesto vivo, con el mismo título?
-2. ¿Variante A o B de los objetivos (D3), y cómo se integran OE‑H1…H5?
+2. ¿Variante A o B de los objetivos (D3), y cómo se integran OE‑H1…H6?
 3. ¿Electricidad dentro del alcance (hoy no figura en el capítulo I)?
 4. ¿Qué se hace con «zona industrial del Estado Miranda» del título: reflejarla en el sistema (precios zonificados,
    caso de una contratista de la zona) o ajustar el título?
