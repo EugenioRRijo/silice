@@ -88,3 +88,12 @@ def test_arquitectura_nucleo_congelado_y_resultados():
     assert evaluar_resultados("x", None)[0] is Estado.PENDIENTE
     assert evaluar_resultados("a mano", "generado")[0] is Estado.FALLA
     assert evaluar_resultados("igual", "igual")[0] is Estado.OK
+
+
+def test_c1_reconoce_un_uc_definido_con_cero_a_la_izquierda():
+    """UC-09 se escribe con cero; el patron de definicion de la meta lo comparaba con `UC-9`."""
+    from scripts.meta_silice import evaluar_requisitos
+
+    ers = "#### UC\u201109 \u2014 Armar el presupuesto con el asistente de IA\n"
+    assert evaluar_requisitos(ers, ("UC-09",))[0] is Estado.OK
+    assert evaluar_requisitos("#### UC\u201119 \u2014 otro\n", ("UC-09",))[0] is Estado.FALLA
