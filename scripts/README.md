@@ -96,6 +96,9 @@ Cada una audita las metas de su sprint (`OK`/`FALLA`/`PENDIENTE`); una fase se c
 | `meta_silice.py` | meta única de Sílice: siete comprobaciones comunes (ERS por presencia, cero omitidas, prueba antes que código, contratos y regresión intactos desde v0.5.0, cifras de tiempo, guardia de red) más las de cada parte en `meta_silice_<parte>.py` | 0.6.0 a 1.0.0 |
 | `meta_silice_s1.py` | parte S1 de la meta única: once requisitos de S1 por presencia en la ERS, prueba antes que código de SL‑E1 a SL‑E3 y del adaptador BCV, memorias a mano (S1‑MEM), `FUENTE.md` del BCV (S1‑FUENTE) y base de prueba 0.6.0 con su ficha (S1‑BASE‑060) | 0.6.0 |
 | `meta_silice_s5.py` | parte S5 de la meta única: RF‑96 y RNF‑20, prueba antes que código de S5‑1 y base de prueba de v0.5.0 con su ficha (S5‑M3) | 0.6.0 |
+| `meta_silice_s4.py` | parte S4 de la meta única: UC‑09, RF‑32, RF‑90 a RF‑95 y RNF‑18 por presencia en la ERS, RNF‑08 con la excepción del asistente, banco de tareas con su huella, guardia de arquitectura y núcleo intacto del asistente, y congelado y resultados del experimento | 0.9.0 |
+| `escribir_banco_asistente.py` | escribe las 16 fichas del banco de tareas del asistente (memoria de cálculo a mano) en `tests/fixtures/asistente/tareas`; no se vuelve a correr tras el congelado | 0.9.0 |
+| `explorar_ia.py` | prueba exploratoria de S4.0: `keyring` y el modelo local de Ollama (`keyring` \| `ollama --modelo <nombre>`); no llama a ninguna API de pago | 0.9.0 |
 
 ## Bases de prueba y migraciones (Sílice, desde la 0.6.0)
 
