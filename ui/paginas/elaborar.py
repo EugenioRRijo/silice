@@ -49,11 +49,12 @@ from adapters.civil.tabular import AdaptadorCivilTabular
 from adapters.industrial.adaptador import AdaptadorIndustrial
 from adapters.sistemas.adaptador import AdaptadorSistemas
 from adapters.telecom.adaptador import AdaptadorTelecom
-from core.catalog import Catalogo, CatalogoIncompleto, abrir_sesion, crear_esquema, crear_motor
+from core.catalog import Catalogo, CatalogoIncompleto, abrir_sesion, crear_motor
 from core.contracts import AdaptadorDominio, Dominio, ItemComputo
 from core.contracts.apu import TipoRendimiento
 from core.verification.informe import DECIMALES_PRESENTACION
 from core.verification.texto import formatear_decimal
+from operacion.base_datos import preparar_base
 from ui import elaboracion
 from ui.caso import ruta_caso
 from ui.resultado import mostrar_elaboracion
@@ -156,7 +157,7 @@ def _codigos_civil(ruta: Path) -> dict[str, str] | None:
     """
     motor = crear_motor(f"sqlite:///{ruta.as_posix()}")
     try:
-        crear_esquema(motor)
+        preparar_base(ruta)
         with abrir_sesion(motor) as sesion:
             codigos = [partida.codigo for partida in Catalogo(sesion).partidas(Dominio.CIVIL)]
     except (LookupError, ValueError, ArithmeticError, SQLAlchemyError) as error:
@@ -265,7 +266,7 @@ def _elaborar(
     ruta = parametros["ruta"]
     motor = crear_motor(f"sqlite:///{ruta.as_posix()}")
     try:
-        crear_esquema(motor)
+        preparar_base(ruta)
         with abrir_sesion(motor) as sesion:
             catalogo = Catalogo(sesion)
             try:

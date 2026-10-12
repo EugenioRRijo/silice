@@ -29,10 +29,11 @@ import streamlit as st
 from pandas import DataFrame
 from sqlalchemy.exc import SQLAlchemyError
 
-from core.catalog import Catalogo, CatalogoIncompleto, abrir_sesion, crear_esquema, crear_motor
+from core.catalog import Catalogo, CatalogoIncompleto, abrir_sesion, crear_motor
 from core.contracts.apu import ComposicionAPU
 from core.verification.informe import DECIMALES_PRESENTACION
 from core.verification.texto import formatear_decimal
+from operacion.base_datos import preparar_base
 from ui.caso import ruta_caso
 from ui.composicion import sugerir_partidas_similares
 
@@ -60,7 +61,7 @@ def render() -> None:
 
     motor = crear_motor(f"sqlite:///{ruta.as_posix()}")
     try:
-        crear_esquema(motor)
+        preparar_base(ruta)
         with abrir_sesion(motor) as sesion:
             catalogo = Catalogo(sesion)
             partidas = {p.codigo: p.descripcion for p in catalogo.partidas()}

@@ -15,7 +15,16 @@ from pathlib import Path
 import pytest
 
 RAIZ = Path(__file__).resolve().parents[2]
-PAQUETES_FUERA_DEL_NUCLEO = ("adapters", "ml", "ui", "api", "scripts", "tests")
+PAQUETES_FUERA_DEL_NUCLEO = (
+    "adapters",
+    "ml",
+    "ui",
+    "api",
+    "scripts",
+    "tests",
+    "operacion",
+    "migraciones",
+)
 
 #: Terceros que cada adaptador puede importar, ademas de la biblioteca estandar, `core.contracts` y
 #: su propio paquete (INV-018: una sola guardia con la regla que antes solo regia para telecom).

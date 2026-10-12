@@ -63,9 +63,11 @@ select = ["E", "F", "W", "I", "B", "UP", "N"]
 "scripts/informe_ti001.py" = ["E501"]
 "scripts/auditoria_ti001.py" = ["E501"]
 "scripts/glosario_presupuestos.py" = ["E501"]
+# Revisiones de Alembic congeladas: el DDL literal de SQLite va tal cual (spec S5 §6.1).
+"migraciones/*/versions/*.py" = ["E501"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["core", "adapters", "ml", "ui", "api", "tests", "scripts"]
+known-first-party = ["core", "adapters", "ml", "ui", "api", "tests", "scripts", "operacion", "migraciones"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

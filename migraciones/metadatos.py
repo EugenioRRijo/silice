@@ -1,0 +1,16 @@
+"""La lista explícita de `MetaData` de cada destino (maestro §4.2; RF-96, RNF-20).
+
+`METADATAS_CASO` crece con `paquete` (S3) y `asistente` (S4); `METADATAS_INSTALACION` nace vacía y
+la llena S3-1 con `seguridad.modelo`. Toda `MetaData` con tablas del repositorio está en una de las
+dos: lo comprueba `tests/integration/test_migraciones.py`.
+"""
+
+from __future__ import annotations
+
+from sqlalchemy import MetaData
+
+from adapters.espacio.persistencia import METADATA_ESPACIO
+from core.models import Base
+
+METADATAS_CASO: tuple[MetaData, ...] = (Base.metadata, METADATA_ESPACIO)
+METADATAS_INSTALACION: tuple[MetaData, ...] = ()

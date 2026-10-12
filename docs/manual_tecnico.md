@@ -229,10 +229,13 @@ Los dos puntos que más preguntas generan:
   «a su fecha» usa la lista de precios vigente en esa fecha (RNF‑02, 100 % exacto).
 - **Rendimiento medido ≠ estimado:** el medido exige clave foránea a una `Ejecucion` real; la
   invariante vive en el contrato y en el esquema.
-- **No hay herramienta de migraciones:** `create_all` crea tablas ausentes pero nunca altera una
-  existente. Cambiar una columna exige la regla de la sección 10.5. Las **tablas aditivas**
-  (`descarte_version`, C3; `justificacion_rendimiento`, C6) no son migraciones: una base anterior
-  las gana al abrirse con `crear_esquema`, sin `ALTER TABLE` y conservando sus filas.
+- **Migraciones con Alembic (desde la 0.6.0, S5‑1):** dos destinos, cada uno con su `alembic_version` en su propia
+  base y su lista explícita de metadatos (`migraciones/metadatos.py`): la base del **caso** (`core.models` y
+  `METADATA_ESPACIO`; después `paquete` y `asistente`) y la de la **instalación** (vacía hasta S3‑1). Un caso se
+  abre solo con `operacion.base_datos.preparar_base`: crea la base nueva en `head`, y una anterior la respalda en
+  un juego con ficha, la migra sobre una copia de trabajo y solo entonces la devuelve. `crear_esquema` queda para
+  las bases en memoria de las pruebas y los scripts de siembra; sobre una base en `head` no emite DDL (RNF‑20).
+  La regla completa, en §10.5.
 
 ## 7. `ml/` y sus compuertas
 
@@ -498,16 +501,39 @@ falla si algún módulo de `ml/` menciona el generador o el corpus. Todas las pa
 `Dominio.CIVIL` aunque sus insumos vengan de las cuatro referencias MaPreX: el dominio del corpus
 no describe su origen.
 
-### 10.5 La regla de las migraciones
+### 10.5 La regla de las migraciones (Alembic desde la 0.6.0)
 
-El proyecto no tiene Alembic: `Base.metadata.create_all` crea las tablas ausentes y **no altera**
-las existentes, así que una columna nueva no llega a las bases ya sembradas y la interfaz falla
-con `OperationalError`. Pasó con `modalidad` en la fase P2
-([bitácora del hallazgo](bitacora/2026-09-20-P2-hallazgo-migraciones.md), con las dos salidas:
-`ALTER TABLE … ADD COLUMN` aditivo o volver a sembrar con `--reiniciar`, que sobre la ruta por
-defecto exige `--confirmar` y con `--db` hacia otra ruta no). **Regla:** toda sesión que
-añada o cambie una columna de `core/models/entidades.py` declara en su plan, antes de escribir el
-código, qué les pasa a las bases que ya existen en disco.
+Desde la 0.6.0 el esquema se versiona con Alembic (RF‑96, RNF‑20; spec S5 §6). La regla anterior («toda sesión que
+cambie una columna declara qué les pasa a las bases en disco») se cumple ahora con una **revisión**:
+
+1. **Dónde.** `migraciones/caso/versions/` y `migraciones/instalacion/versions/`. No hay `alembic.ini` ni se usa la
+   orden `alembic`: `operacion.base_datos` arma la configuración y entrega la conexión (dos entornos, decisión de
+   la sección B del plan de la 0.6.0).
+2. **La revisión base** `caso_0001_base_0_5_0` es el DDL literal de la 0.5.0, congelado con
+   `scripts/congelar_esquema.py` desde la base de prueba de `v0.5.0`; nunca se regenera desde los modelos. Es
+   idempotente: crea las tablas que faltan y verifica las demás; una diferencia es `BaseNoAdoptable` y la base no
+   se toca. Una base anterior a P2 (sin `modalidad`) no se adopta: se vuelve a sembrar.
+3. **Agregar una revisión** (cada spec la suya): cambiar el modelo; copiar `script.py.mako` del destino a
+   `versions/<destino>_<NNNN>_<tema>.py` con `revision` igual al nombre del archivo y `down_revision` igual a la
+   `head` actual (`uv run python -m operacion revision`); tablas nuevas con `crear_o_verificar` (si se quieren
+   adoptar bases creadas con `create_all`) u `op.create_table`; columnas con `op.batch_alter_table`; nunca
+   `stamp`; un `downgrade()` real. Después, `uv run pytest tests/integration/test_migraciones.py -W error`: la
+   autogeneración contra `head` debe venir vacía y `head` debe ser igual a `create_all`.
+4. **Base de prueba por versión** (RV‑3, PRU‑H15): en la compuerta de cada versión se generan sus bases y su ficha
+   con el código de su etiqueta: `git archive vX.Y.Z | tar -x -C <carpeta>`, copiar
+   `scripts/generar_base_prueba.py` a su `scripts/`, fijar `UV_PROJECT_ENVIRONMENT=<carpeta>/.venv`,
+   `uv sync --frozen --all-extras` y correrlo con `--salida tests/fixtures/bases/vX_Y_Z`. Las pruebas de adopción
+   comparan contra la ficha, nunca contra un recálculo con el código nuevo.
+5. **Respaldos.** Antes de migrar una base con datos se crea un juego en `<datos>/respaldos/` (copias con la API de
+   respaldo de SQLite, `integrity_check` y `ficha.json`); se conservan los cinco últimos de migración y todos los
+   manuales. `uv run python -m operacion respaldar` crea uno manual; `restaurar <juego> [--solo-caso <nombre>]`
+   lo restaura con Sílice detenido.
+6. **La base de trabajo anterior.** `data/apu.db` ya no es el caso por defecto (lo es `data/casos/silice.db`):
+   `uv run python -m operacion adoptar data/apu.db --nombre silice` la copia a la carpeta de casos y la migra; el
+   original no se toca.
+7. **Límite declarado.** Los `scripts/seed*.py` siguen creando con `create_all`; sus bases se adoptan (con un juego)
+   la primera vez que se abren. Cuando una revisión altere columnas de una tabla existente, los scripts de siembra
+   deben pasar a `preparar_base` en esa misma revisión (disparador anotado en la bitácora de la 0.6.0).
 
 La fase C3 dejó un caso de esa regla sin migración, declarado: desde `04ca90d` (INV‑080) un
 presupuesto se guarda con sus ítems pendientes (UC‑01 3a), y su recarga devuelve el informe

@@ -1,26 +1,28 @@
-"""El caso abierto de la sesion y el recorrido activo (sprint de UI, RF-38 a RF-40).
+"""El caso abierto de la sesion y el recorrido activo (UI, RF-38 a RF-40; Silice 0.6.0, RV-5).
 
 El archivo de la base se fija una vez por sesion y todas las pantallas operan sobre el: ninguna,
-salvo el Inicio, vuelve a pedir la ruta. Antes de este modulo cada pantalla tenia su caja de texto
-y su propia copia de `RUTA_BASE_POR_DEFECTO` (ocho copias); esta es la unica.
+salvo el Inicio, vuelve a pedir el caso. Desde la 0.6.0 el Inicio lo elige de la lista de la carpeta
+de casos (`abrir_caso`), y todo caso se abre con `operacion.base_datos.preparar_base`
+(spec S5 §6.6).
 
 Tres invariantes (spec de UI, §3.2):
 
 1. **Claves propias de `st.session_state`, nunca de widget.** Streamlit descarta las entradas de los
-   widgets que no se vuelven a montar: si el caso abierto viviera en la clave de la caja de texto
-   del Inicio, se olvidaria al navegar a otra pantalla. Por eso `CLAVE_CASO` y `CLAVE_RECORRIDO` no
-   son la `key` de ningun widget.
+   widgets que no se vuelven a montar: `CLAVE_CASO` y `CLAVE_RECORRIDO` no son la `key` de ningun
+   widget.
 2. **Respaldo declarado.** Se puede entrar por URL a cualquier pantalla sin pasar por el Inicio. Sin
    caso fijado, manda la variable de entorno `SILICE_CASO` (el guion CP-07 la usa; la lee
-   `ui.entorno.leer_variable`) y, si no esta,
-   `RUTA_BASE_POR_DEFECTO`. `ruta_caso()` lee esa constante **al llamarse**, no al definirse: las
-   pruebas la parchan en el objeto modulo de `sys.modules`.
+   `ui.entorno.leer_variable`, con su alias anterior hasta la 0.6.0; en el producto la fija el
+   lanzador) y, si no esta, el caso por defecto de la carpeta de datos (`<datos>/casos/silice.db`,
+   `operacion.config`). `SILICE_CASO` es configuracion de quien arranca, no entrada del usuario: no
+   pasa por la lista. `ruta_caso()` lee `RUTA_BASE_POR_DEFECTO` **al
+   llamarse**: las pruebas la parchan en el objeto modulo de `sys.modules`.
 3. **El motor de SQLAlchemy no va a la sesion.** Cada pantalla lo crea y lo cierra con
    `motor.dispose()`: en Windows no se puede borrar un archivo con un motor abierto.
 
-`estado_caso` comprueba si el archivo existe **antes** de crear el esquema: `crear_esquema` sobre
-una ruta con una errata crearia una base vacia en silencio. La siembra desde la interfaz nunca
-construye el flag de reinicio de `scripts/seed_demo.py`, que borra la base entera.
+`estado_caso` no crea el archivo ni emite DDL: lee con una conexion de solo lectura (RV-5). La
+siembra desde la interfaz nunca construye el flag de reinicio de `scripts/seed_demo.py`, que
+borra la base entera.
 """
 
 from __future__ import annotations
@@ -33,11 +35,26 @@ from pathlib import Path
 import streamlit as st
 from sqlalchemy.exc import SQLAlchemyError
 
-from core.catalog import Catalogo, CatalogoIncompleto, abrir_sesion, crear_esquema, crear_motor
+from core.catalog import Catalogo, CatalogoIncompleto, abrir_sesion
+from operacion.base_datos import (
+    MENSAJE_MAS_NUEVA,
+    Destino,
+    ErrorDeBase,
+    RutaDeCasoRechazada,
+    leer_estado,
+    motor_solo_lectura,
+    preparar_base,
+    resolver_caso,
+    revision_head,
+    revisiones_conocidas,
+)
+from operacion.config import ruta_caso_por_defecto
 from ui.entorno import VARIABLE_CASO, leer_variable
 
-RUTA_BASE_POR_DEFECTO = "data/apu.db"
-VARIABLE_RUTA_CASO = VARIABLE_CASO  # nombre que ya importan las pruebas (RF-38)
+#: Sin caso fijado ni `SILICE_CASO`: `None` es el caso por defecto de la carpeta de datos. Las
+#: pruebas lo desvian con una ruta de texto.
+RUTA_BASE_POR_DEFECTO = None
+VARIABLE_RUTA_CASO = VARIABLE_CASO  # nombre que ya importan las pruebas (RF-38; A1)
 CLAVE_CASO = "silice_caso_ruta"
 CLAVE_RECORRIDO = "silice_recorrido_activo"
 CLAVE_PROYECTO = "silice_proyecto_abierto"
@@ -47,6 +64,9 @@ ACCION_PRECIOS = "precios"
 ACCION_IMPORTAR_PLANO = "importar_plano"
 ACCION_GUARDAR_VERSION = "guardar_version"
 ACCION_EXPORTAR_EXCEL = "exportar_excel"
+SIN_PERMISO_DE_CAMBIO = (
+    "Su cuenta no puede cambiar de caso: pidaselo a quien arma o al administrador."
+)
 
 
 def resolver_ruta(guardada: str | None, entorno: Mapping[str, str], por_defecto: str) -> Path:
@@ -59,15 +79,37 @@ def resolver_ruta(guardada: str | None, entorno: Mapping[str, str], por_defecto:
 
 def ruta_caso() -> Path:
     """La ruta del caso abierto en esta sesion."""
-    return resolver_ruta(st.session_state.get(CLAVE_CASO), os.environ, RUTA_BASE_POR_DEFECTO)
+    por_defecto = RUTA_BASE_POR_DEFECTO or str(ruta_caso_por_defecto())
+    return resolver_ruta(st.session_state.get(CLAVE_CASO), os.environ, por_defecto)
 
 
 def fijar_caso(ruta: Path | str) -> None:
     """Fija el caso abierto para toda la sesion. `ValueError` si la ruta queda vacia."""
     texto = str(ruta).strip()
     if not texto:
-        raise ValueError("Escriba la ruta del archivo del caso: no puede quedar vacia.")
+        raise ValueError("Elija un caso de la lista: no puede quedar vacio.")
     st.session_state[CLAVE_CASO] = texto
+
+
+def puede_cambiar_de_caso() -> bool:
+    """«Cambiar de caso»: solo *arma* y administrador (maestro §4.3). En la 0.6.0 no hay cuentas,
+    asi que todos pueden; S3-1 reemplaza este cuerpo por la comprobacion del rol de la sesion."""
+    return True
+
+
+def abrir_caso(nombre: str, carpeta: Path | None = None) -> Path:
+    """Abre un caso de la lista (RV-5): valida el nombre dentro de la carpeta de casos, lo prepara
+    con `preparar_base` (lo migra con respaldo si hace falta) y lo fija para la sesion.
+    `PermissionError` sin permiso de cambiar de caso; `ErrorDeBase` con el mensaje si no se
+    puede."""
+    if not puede_cambiar_de_caso():
+        raise PermissionError(SIN_PERMISO_DE_CAMBIO)
+    ruta = resolver_caso(nombre, carpeta)
+    if not ruta.exists():
+        raise RutaDeCasoRechazada(f"El caso {ruta.name} ya no esta en la carpeta de casos.")
+    preparar_base(ruta)
+    fijar_caso(ruta)
+    return ruta
 
 
 def recorrido_activo() -> str | None:
@@ -91,11 +133,7 @@ def fijar_proyecto(nombre: str | None) -> None:
 
 
 def pedir_accion(accion: str) -> None:
-    """Deja una accion de la barra superior para la pantalla de destino (la hoja del proyecto).
-
-    La barra no conoce las claves de la hoja: solo deja el nombre de lo que el usuario pidio y la
-    pantalla lo atiende con `tomar_accion` en su proxima ejecucion.
-    """
+    """Deja una accion de la barra superior para la pantalla de destino (la hoja del proyecto)."""
     st.session_state[CLAVE_ACCION] = accion
 
 
@@ -114,6 +152,7 @@ class EstadoCaso:
     insumos: int = 0
     lista_vigente: str | None = None
     error: str | None = None
+    por_migrar: bool = False
 
     @property
     def vacio(self) -> bool:
@@ -122,12 +161,20 @@ class EstadoCaso:
 
 
 def estado_caso(ruta: Path) -> EstadoCaso:
-    """El estado del caso en `ruta`, sin crear el archivo si no existe."""
+    """El estado del caso en `ruta`, sin crear el archivo y sin DDL (RV-5)."""
     if not ruta.exists():
         return EstadoCaso(ruta=ruta, existe=False)
-    motor = crear_motor(f"sqlite:///{ruta.as_posix()}")
     try:
-        crear_esquema(motor)
+        base = leer_estado(ruta)
+    except ErrorDeBase as error:
+        return EstadoCaso(ruta=ruta, existe=True, error=str(error))
+    if base.revision is not None and base.revision not in revisiones_conocidas(Destino.CASO):
+        texto = MENSAJE_MAS_NUEVA.format(nombre=ruta.name, revision=base.revision)
+        return EstadoCaso(ruta=ruta, existe=True, error=texto)
+    if base.sin_datos:
+        return EstadoCaso(ruta=ruta, existe=True)
+    motor = motor_solo_lectura(ruta)
+    try:
         with abrir_sesion(motor) as sesion:
             catalogo = Catalogo(sesion)
             try:
@@ -140,6 +187,7 @@ def estado_caso(ruta: Path) -> EstadoCaso:
                 partidas=len(catalogo.partidas()),
                 insumos=len(catalogo.insumos()),
                 lista_vigente=lista,
+                por_migrar=base.revision != revision_head(Destino.CASO),
             )
     except SQLAlchemyError as error:
         # `orig` (el mensaje de SQLite, sin la sentencia SQL) solo existe en `DBAPIError`.
@@ -154,10 +202,11 @@ def resumen_caso(estado: EstadoCaso) -> str:
         return f"No se pudo leer: {estado.error}"
     if not estado.existe:
         return "El archivo no existe todavia."
-    return (
+    texto = (
         f"{estado.partidas} partidas · {estado.insumos} insumos · "
         f"lista vigente: {estado.lista_vigente or 'ninguna'}"
     )
+    return texto + (" · se actualizara al abrirlo" if estado.por_migrar else "")
 
 
 def argv_siembra(ruta: Path) -> list[str]:

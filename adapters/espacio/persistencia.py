@@ -42,13 +42,15 @@ from adapters.espacio.modelo import (
 )
 from adapters.espacio.origen import OrigenMedida
 
-_metadata = MetaData()
+#: El esquema `esp_*` del adaptador: publico porque es parte del destino de migracion del caso
+#: (`migraciones/metadatos.py`, maestro §4.2). Antes, `_metadata` privada.
+METADATA_ESPACIO = MetaData()
 
 
 def _tabla(nombre: str, *columnas: Column) -> Table:
     return Table(
         nombre,
-        _metadata,
+        METADATA_ESPACIO,
         Column("version_id", Integer, primary_key=True),
         *columnas,
     )
@@ -147,7 +149,7 @@ def crear_esquema_espacio(destino: Engine | Connection) -> None:
     `destino` es el motor o, para guardar una version y sus filas en UNA sola sesion (SF3), la
     conexion de esa sesion (`sesion.connection()`): una segunda conexion no puede crear tablas
     mientras la sesion ya escribio."""
-    _metadata.create_all(destino)
+    METADATA_ESPACIO.create_all(destino)
 
 
 def _coord_a_texto(c: Coord) -> str:

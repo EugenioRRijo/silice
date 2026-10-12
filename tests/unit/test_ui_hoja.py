@@ -581,7 +581,9 @@ def test_ti001_abre_con_su_plan_y_su_punto_de_equilibrio(monkeypatch, base_ti):
     assert pe.value.startswith("28586.7")
 
 
-def test_abrir_ti001_en_la_pantalla_no_crea_tablas_ni_versiones(monkeypatch, base_ti):
+def test_abrir_ti001_en_la_pantalla_no_crea_versiones_ni_filas_de_espacio(monkeypatch, base_ti):
+    """Abrir el caso lo adopta por `preparar_base` (RV-5): las tablas `esp_*` nacen vacias, pero
+    abrir la pantalla no guarda ninguna version ni escribe filas de espacio."""
     _arrancar(monkeypatch, base_ti, **{CLAVE_PROYECTO: NOMBRE_TI001})
 
     assert _contar(base_ti, models.Presupuesto) == 1
@@ -589,7 +591,14 @@ def test_abrir_ti001_en_la_pantalla_no_crea_tablas_ni_versiones(monkeypatch, bas
     try:
         from sqlalchemy import inspect
 
-        assert not any(t.startswith("esp_") for t in inspect(motor).get_table_names())
+        tablas_esp = [t for t in inspect(motor).get_table_names() if t.startswith("esp_")]
+        assert tablas_esp, "preparar_base adopta el caso con el esquema completo"
+        with motor.connect() as conexion:
+            filas = {
+                t: conexion.exec_driver_sql(f'SELECT count(*) FROM "{t}"').scalar()
+                for t in tablas_esp
+            }
+        assert set(filas.values()) == {0}, filas
     finally:
         motor.dispose()
 
@@ -599,6 +608,8 @@ def test_proyecto_nuevo_sin_version_muestra_el_borrador_vacio(monkeypatch, base_
 
     assert CLAVE_ABIERTA not in at.session_state or at.session_state[CLAVE_ABIERTA] is None
     assert at.session_state[CLAVE_BORRADOR].espacio.ambientes == ()
+
+
 # --- SF4: acciones que pide la barra superior --------------------------------------------------
 
 

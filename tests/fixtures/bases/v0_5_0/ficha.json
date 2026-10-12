@@ -1,0 +1,132 @@
+{
+  "bases": {
+    "demo.db": {
+      "filas_por_tabla": {
+        "cambio_precio": 0,
+        "composicion_apu": 74,
+        "composicion_version": 3,
+        "cotizacion": 0,
+        "descarte_version": 0,
+        "ejecucion": 0,
+        "hallazgo": 3,
+        "incidencia_cambio": 0,
+        "insumo": 58,
+        "item_computo": 3,
+        "justificacion_rendimiento": 0,
+        "linea_composicion_version": 20,
+        "lista_precios": 2,
+        "lista_precios_origen": 0,
+        "partida": 8,
+        "partida_presupuestada": 3,
+        "plan_version": 3,
+        "precio_insumo": 99,
+        "presupuesto": 1,
+        "proyecto": 2,
+        "punto_curva": 3,
+        "referencia_precio": 0,
+        "registro_cambio": 0,
+        "rendimiento": 9,
+        "version_origen": 0
+      },
+      "presupuestos": [
+        {
+          "codigo": "DEMO-001",
+          "huella_informe": "8490f6d3af2487972afa86d77cf77f8a4fbede830070f0b1e1ec54f661efe218",
+          "proyecto": "AREN.IA: caso de demostracion (linea de agua potable, didactico)",
+          "total": "4131.095741666666666666666665"
+        }
+      ],
+      "revision_alembic": null,
+      "sha256_base": "c0fd00be42238683c5cf0260f71729a0eb769c67b901d47cfbddbcddc45192c2"
+    },
+    "of001.db": {
+      "filas_por_tabla": {
+        "cambio_precio": 0,
+        "composicion_apu": 168,
+        "composicion_version": 30,
+        "cotizacion": 0,
+        "descarte_version": 0,
+        "ejecucion": 0,
+        "esp_ambientes": 6,
+        "esp_circuitos": 2,
+        "esp_fuentes": 6,
+        "esp_origenes": 1,
+        "esp_puntos": 21,
+        "esp_recorridos": 0,
+        "esp_sobrescrituras": 0,
+        "esp_tramos": 0,
+        "hallazgo": 33,
+        "incidencia_cambio": 0,
+        "insumo": 49,
+        "item_computo": 30,
+        "justificacion_rendimiento": 0,
+        "linea_composicion_version": 168,
+        "lista_precios": 1,
+        "lista_precios_origen": 0,
+        "partida": 30,
+        "partida_presupuestada": 30,
+        "plan_version": 30,
+        "precio_insumo": 49,
+        "presupuesto": 1,
+        "proyecto": 1,
+        "punto_curva": 30,
+        "referencia_precio": 0,
+        "registro_cambio": 0,
+        "rendimiento": 30,
+        "version_origen": 0
+      },
+      "presupuestos": [
+        {
+          "codigo": "001",
+          "huella_informe": "f6acd5d7f3714e7a76076f6ff0d9c4c65244f50b45de73e461f0197469304098",
+          "proyecto": "OF-001: oficina con baño, cocineta y puestos (caso de prueba)",
+          "total": "2703.860232344044033333333333"
+        }
+      ],
+      "revision_alembic": null,
+      "sha256_base": "dea5a05eb6fe7dde48d8724904c5366949813e867c7bc16f66fd0650807b8292"
+    },
+    "ti001.db": {
+      "filas_por_tabla": {
+        "cambio_precio": 0,
+        "composicion_apu": 77,
+        "composicion_version": 10,
+        "cotizacion": 0,
+        "descarte_version": 0,
+        "ejecucion": 0,
+        "hallazgo": 0,
+        "incidencia_cambio": 0,
+        "insumo": 39,
+        "item_computo": 27,
+        "justificacion_rendimiento": 0,
+        "linea_composicion_version": 77,
+        "lista_precios": 1,
+        "lista_precios_origen": 0,
+        "partida": 10,
+        "partida_presupuestada": 27,
+        "plan_version": 23,
+        "precio_insumo": 39,
+        "presupuesto": 1,
+        "proyecto": 1,
+        "punto_curva": 10,
+        "referencia_precio": 0,
+        "registro_cambio": 0,
+        "rendimiento": 10,
+        "version_origen": 0
+      },
+      "presupuestos": [
+        {
+          "codigo": "TI-001",
+          "huella_informe": "4896215177d606a20747a39a1e647d8e7e3a8937b0c1843dd52b7d17a574ec55",
+          "proyecto": "TI-001: telecomunicaciones (caso de prueba)",
+          "total": "50503.27296861491150000000003"
+        }
+      ],
+      "revision_alembic": null,
+      "sha256_base": "1716d009d43c792fd96bc01af96a832de728024f3c08e1d606ac9a7891a87b7f"
+    }
+  },
+  "commit": "86100531f2b740642d18eac9b4914b369ca32335",
+  "etiqueta": "v0.5.0",
+  "version": "0.5.0"
+}

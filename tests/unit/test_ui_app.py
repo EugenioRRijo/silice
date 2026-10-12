@@ -201,6 +201,7 @@ marco(definicion, definicion.render, ir_a)
 @pytest.fixture(scope="module")
 def base_sembrada(tmp_path_factory) -> Path:
     from core.catalog import abrir_sesion, crear_esquema, crear_motor
+    from operacion.base_datos import preparar_base
     from scripts.seed import sembrar
 
     base = tmp_path_factory.mktemp("marco") / "caso.db"
@@ -212,6 +213,10 @@ def base_sembrada(tmp_path_factory) -> Path:
             sesion.commit()
     finally:
         motor.dispose()
+    # La base sembrada con `crear_esquema` se adopta una vez (RV-5): así todas las pantallas ven el
+    # mismo estado y ninguna la migra a mitad de la parametrizacion. El juego va a una carpeta
+    # temporal: esta fixture es de modulo y corre antes de la `SILICE_DATOS` de cada prueba.
+    preparar_base(base, entorno={"SILICE_DATOS": str(base.parent / "datos")})
     return base
 
 
@@ -378,9 +383,7 @@ def test_el_modo_entrega_conserva_la_barra_completa(monkeypatch, tmp_path: Path)
         assert esperado in _rotulos_de_botones(at)
 
 
-def test_la_barra_se_pinta_antes_que_el_titulo_de_cada_pantalla(
-    monkeypatch, base_sembrada
-) -> None:
+def test_la_barra_se_pinta_antes_que_el_titulo_de_cada_pantalla(monkeypatch, base_sembrada) -> None:
     at = _marco(monkeypatch, base_sembrada, "catalogo")
     assert "Recorrido guiado" in _rotulos_de_botones(at)
     assert [titulo.value for titulo in at.title] == ["Catalogo de partidas e insumos"]

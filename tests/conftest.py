@@ -79,6 +79,9 @@ pytest_plugins = ["pytester"]
 #: (hallazgo 5 de su bitácora de cierre), y una convención escrita en docstrings no lo impidió.
 RUTA_BASE_REAL = Path(__file__).resolve().parents[1] / "data" / "apu.db"
 
+#: La base de la instalacion de desarrollo (S5-1, maestro §4.2): ninguna prueba la crea ni la toca.
+RUTA_INSTALACION_REAL = RUTA_BASE_REAL.parent / "instalacion.db"
+
 
 def huella(ruta: Path) -> tuple[bool, int | None, int | None]:
     """Existencia, `mtime` en nanosegundos y tamaño del archivo.
@@ -120,6 +123,21 @@ def _sin_variables_de_silice_del_entorno(monkeypatch):
     """Una `SILICE_*` (o su alias `ARENIA_*`) exportada en la terminal no debe desviar la suite."""
     for nombre in (*ALIAS_ANTERIORES, *ALIAS_ANTERIORES.values()):
         monkeypatch.delenv(nombre, raising=False)
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _instalacion_real_intacta():
+    """Falla la sesión si alguna prueba creó o modificó `data/instalacion.db`."""
+    yield from vigilar_base(RUTA_INSTALACION_REAL)
+
+
+@pytest.fixture(autouse=True)
+def _datos_de_silice_temporales(monkeypatch, tmp_path_factory):
+    """Toda prueba trabaja con una carpeta de datos temporal (`SILICE_DATOS`): nada llega a
+    `data/casos/`, `data/respaldos/` ni `data/instalacion.db` (spec S5 §12)."""
+    monkeypatch.setenv("SILICE_DATOS", str(tmp_path_factory.mktemp("silice_datos")))
+    monkeypatch.delenv("SILICE_INSTALACION", raising=False)
+    monkeypatch.delenv("SILICE_RESPALDOS", raising=False)
 
 
 @pytest.fixture(scope="session")

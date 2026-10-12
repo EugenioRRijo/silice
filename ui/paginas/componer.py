@@ -46,7 +46,6 @@ from core.catalog import (
     abrir_sesion,
     advertencia_rendimiento,
     cambios_precio,
-    crear_esquema,
     crear_motor,
     dispersion_rendimientos,
     justificar_rendimiento,
@@ -55,6 +54,7 @@ from core.catalog import (
 from core.contracts import ComposicionAPU, Dominio, ItemComputo, ModalidadManoObra
 from core.verification.informe import DECIMALES_PRESENTACION
 from core.verification.texto import formatear_decimal
+from operacion.base_datos import preparar_base
 from ui.caso import ruta_caso
 from ui.composicion import (
     ComposicionInvalida,
@@ -143,7 +143,7 @@ def render() -> None:
     ruta = ruta_caso()
     motor = crear_motor(f"sqlite:///{ruta.as_posix()}")
     try:
-        crear_esquema(motor)
+        preparar_base(ruta)
         with abrir_sesion(motor) as sesion:
             _pagina(sesion)
     except (LookupError, ValueError, ArithmeticError, SQLAlchemyError) as error:

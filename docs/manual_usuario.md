@@ -44,8 +44,9 @@ No hay más pasos (RNF‑07). Notas:
    ```
 
    Para trabajar con uno de esos catálogos en la interfaz, el caso se abre una vez en **Inicio**
-   (campo *Archivo del caso (SQLite)* y botón *Abrir este caso*); la barra lateral lo muestra bajo
-   **Caso abierto** y todas las pantallas trabajan sobre él (por defecto, `data/apu.db`). También se
+   (lista *Casos de la carpeta de datos* y botón *Abrir este caso*; la base se copia antes a
+   `data/casos/` con `uv run python -m operacion adoptar <ruta> --nombre <caso>`); la barra lateral lo muestra bajo
+   **Caso abierto** y todas las pantallas trabajan sobre él (por defecto, `data/casos/silice.db`). También se
    puede arrancar la interfaz con la variable `SILICE_CASO=<ruta>`. En la API, arrancar con la
    variable de entorno `APU_BASE` apuntando a esa base (por ejemplo
    `sqlite:///data/apu_telecom.db`). De dónde sale cada precio y con qué fecha: [manual técnico,
@@ -142,10 +143,11 @@ un presupuesto** propone también el rendimiento del histórico cuando a una par
 
 ### 3.0 Inicio: el caso abierto y los recorridos guiados (UC‑12)
 
-1. **El caso.** El campo *Archivo del caso (SQLite)* y el botón *Abrir este caso* fijan la base
-   con que trabajan todas las pantallas durante la sesión; ninguna otra pantalla vuelve a pedir la
-   ruta. Abrir una ruta que no existe no crea el archivo: la barra lateral dice «El archivo no
-   existe todavia».
+1. **El caso.** La lista *Casos de la carpeta de datos* y el botón *Abrir este caso* fijan la base con que trabajan
+   todas las pantallas durante la sesión. Los casos viven en la carpeta de datos (`data/casos/` en desarrollo): se
+   elige uno de la lista, se crea con un nombre (*Crear o subir un caso*) o se sube un `.db`. No hay campo con la
+   ruta: una ruta de red, absoluta o con `..` se rechaza sin crear nada. Si el caso es de una versión anterior,
+   Sílice lo respalda y lo actualiza al abrirlo.
 2. **El estado vacío.** Si el caso no existe todavía o no tiene partidas, el Inicio lo dice y
    ofrece **Cargar el caso de demostracion** (la línea base de la clínica, la demostración
    didáctica y su presupuesto auditado). La comprobación es solo sobre las **partidas**: una base
@@ -658,4 +660,4 @@ Cada carpeta trae su `README.md` con el formato exacto de columnas.
 | **Importar plano** no aparece en la barra | La copia del programa está incompleta: falta el paquete de importación de planos. Actualice o vuelva a descargar el repositorio. (No depende de los extras `planos` o `civil`: si faltan, la herramienta aparece y el aviso sale al pulsar **Leer plano**) |
 | «Falta instalar el componente para leer planos DXF» (o IFC) al pulsar **Leer plano** | Falta el extra `planos` (DXF) o `civil` (IFC): ejecute `uv sync --extra planos` (DXF) o `uv sync --extra civil` (IFC) y vuelva a pulsar **Leer plano** |
 | Un archivo subido se guarda con otro nombre (por ejemplo `_CON.csv`) | El nombre original era reservado en Windows (`CON`, `NUL`, `COM1`…) o traía caracteres no permitidos: se limpia para guardarlo, y el contenido no cambia |
-| La barra lateral no muestra el caso esperado bajo «Caso abierto» | Abrirlo en **Inicio** (*Archivo del caso (SQLite)* y *Abrir este caso*) o arrancar con `SILICE_CASO=<ruta>`: recargar la página (F5) vuelve a la ruta de `SILICE_CASO` o, sin ella, a `data/apu.db` |
+| La barra lateral no muestra el caso esperado bajo «Caso abierto» | Abrirlo en **Inicio** (lista de casos y *Abrir este caso*) o arrancar con `SILICE_CASO=<ruta>`: recargar la página (F5) vuelve a la ruta de `SILICE_CASO` o, sin ella, a `data/casos/silice.db` |
