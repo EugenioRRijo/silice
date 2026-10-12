@@ -681,6 +681,25 @@ que el sistema supone, para que usted lo vea y lo pueda discutir:
 **Recorrido guiado.** En **Inicio**, «Moneda, precios de empresa y reajuste» lo lleva paso a paso por
 **Indices del BCV**, **Precios de la empresa**, la **Hoja del proyecto** y **Reajuste de precios**.
 
+### 3.10 Tablero del proyecto
+
+Muestra de un vistazo la versión vigente del proyecto abierto. Las cuatro tarjetas son el total
+del contrato, el costo directo, el punto de equilibrio y el resultado de la auditoría. Si el
+proyecto tiene línea base y valuaciones, se agregan los anillos de avance físico, SPI y CPI, el
+costo final estimado y la curva PV, EV y AC; si no, el tablero dice que falta. Debajo están el
+desglose del costo por rubro, las partidas de mayor peso (las primeras que conviene cotizar) y el
+comparativo de versiones. Solo lee: para cambiar algo, use la Hoja del proyecto.
+
+### 3.11 APU en tres paneles
+
+En la pestaña APU de la hoja, la columna izquierda lista las partidas valoradas y tiene un
+buscador por código o descripción. La del centro muestra el APU de la partida elegida por rubro
+(materiales, equipos y mano de obra), cada uno con su subtotal; se editan la cantidad de cada
+línea y el rendimiento, y el insumo de una línea se cambia con un selector que busca al escribir.
+La de la derecha tiene los factores de la versión (FCAS, bono, administración y utilidad) y el
+cierre de la partida, del costo directo al precio unitario. Cada cambio recalcula al momento y la
+barra superior indica cuántos cambios faltan por guardar.
+
 ## 4. El informe de auditoría
 
 Se genera **siempre** — no existe forma de obtener un presupuesto sin él. Ejecuta las siete
@@ -802,22 +821,3 @@ Cada carpeta trae su `README.md` con el formato exacto de columnas.
 | «… una version solo se valora con una lista de su moneda (RF-65)» | La lista elegida (o la vigente) está en otra moneda que la versión: cree o elija una lista en la moneda del proyecto, o convierta la versión en **Parámetros** |
 | «un parcial se reemplaza una sola vez (S1-R21)» | Ese estudio parcial ya tiene su estudio de cierre: no hace falta otro |
 | Un período del reajuste dice «índice faltante: período no calculado» | Falta el índice del mes base o del mes de cierre de alguna serie: impórtelo en **Indices del BCV** y vuelva a calcular |
-
-### 3.10 Tablero del proyecto
-
-Muestra de un vistazo la versión vigente del proyecto abierto. Las cuatro tarjetas son el total
-del contrato, el costo directo, el punto de equilibrio y el resultado de la auditoría. Si el
-proyecto tiene línea base y valuaciones, se agregan los anillos de avance físico, SPI y CPI, el
-costo final estimado y la curva PV, EV y AC; si no, el tablero dice que falta. Debajo están el
-desglose del costo por rubro, las partidas de mayor peso (las primeras que conviene cotizar) y el
-comparativo de versiones. Solo lee: para cambiar algo, use la Hoja del proyecto.
-
-### 3.11 APU en tres paneles
-
-En la pestaña APU de la hoja, la columna izquierda lista las partidas valoradas y tiene un
-buscador por código o descripción. La del centro muestra el APU de la partida elegida por rubro
-(materiales, equipos y mano de obra), cada uno con su subtotal; se editan la cantidad de cada
-línea y el rendimiento, y el insumo de una línea se cambia con un selector que busca al escribir.
-La de la derecha tiene los factores de la versión (FCAS, bono, administración y utilidad) y el
-cierre de la partida, del costo directo al precio unitario. Cada cambio recalcula al momento y la
-barra superior indica cuántos cambios faltan por guardar.
