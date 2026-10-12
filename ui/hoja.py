@@ -108,15 +108,20 @@ from core.budget import (
 from core.budget import registros_de_version as registros_de_version_core
 from core.budget import retirar_cotizacion as _retirar_cotizacion
 from core.budget.curva import FORMATO_PERIODO
-from core.budget.instantanea import composiciones_de_version
+from core.budget.instantanea import composiciones_de_version, instantanea_precios
+from core.budget.moneda import convertir_version, moneda_del_proyecto
 from core.budget.presupuesto import MONEDA_POR_DEFECTO
 from core.catalog import Catalogo, CatalogoIncompleto
+from core.catalog.empresa import es_heredado, lista_de_referencia
+from core.catalog.indices import LADO_POR_DEFECTO, tasa_aplicable, valor_en
+from core.catalog.moneda import Erosion, TasaDeclarada, erosion, erosion_por_indice
 from core.catalog.origen import origen_de_precios
 from core.contracts import ComposicionAPU, ItemComputo, ParametrosCosto, Severidad
 from core.contracts.item_computo import OrigenTipo
 from core.contracts.presupuesto import Presupuesto
 from core.verification import REGLAS
 from core.verification.informe import DECIMALES_PRESENTACION
+from core.verification.precios import estado_por_insumo, reglas_precios
 from core.verification.texto import formatear_decimal
 from ui.composicion import (
     ComposicionInvalida,
@@ -131,8 +136,9 @@ if TYPE_CHECKING:
 
     from core.budget import GeneradorPlan, PeriodoPlan
     from core.catalog.origen import OrigenPrecio
-    from core.contracts.verificacion import Hallazgo
+    from core.contracts.verificacion import Hallazgo, ReglaVerificacion
     from core.verification.informe import InformeAuditoria
+    from core.verification.precios import PrecioAuditado
 
 #: Columnas de cada tabla editable del borrador: la clave interna de cada celda, no su rotulo.
 COLUMNAS: dict[str, tuple[str, ...]] = {
@@ -324,6 +330,8 @@ class Borrador:
     * `plan`: el reparto de cada partida por periodo (`None`: la version no tiene plan);
     * `cantidades`: las cantidades escritas a mano (DA-SF-5), por la clave de su item
       (`claves_de_items`). R8 las marca.
+    * `reglas_extra`: R11 y R12 evaluadas al abrir, a la fecha de hoy (S1 §4.3); no son un cambio
+      (no cuentan para "cambios sin guardar").
 
     Es inmutable: cada edicion produce otro borrador con `dataclasses.replace`, y la pantalla
     compara el vigente con el abierto (`cambios_entre`) para saber si hay algo sin guardar.
@@ -337,6 +345,7 @@ class Borrador:
     parametros: ParametrosCosto = field(default_factory=ParametrosCosto)
     plan: tuple[PeriodoPlan, ...] | None = None
     cantidades: Mapping[str, Decimal] = field(default_factory=dict)
+    reglas_extra: tuple[ReglaVerificacion, ...] = field(default=(), compare=False)
 
 
 # --- filas -> modelo ----------------------------------------------------------------------------
@@ -673,6 +682,7 @@ def elaborar_hoja(
     moneda: str = MONEDA_POR_DEFECTO,
     plan: Sequence[PeriodoPlan] | GeneradorPlan | None = plan_secuencial,
     cantidades: Mapping[str, Decimal] | None = None,
+    reglas_extra: Sequence[ReglaVerificacion] = (),
 ) -> ResultadoHoja:
     """Deriva, elabora y audita el borrador: `REGLAS + reglas_espacio(espacio)`, siempre.
 
@@ -711,7 +721,7 @@ def elaborar_hoja(
         fecha=fecha,
         moneda=moneda,
         plan=plan_final,
-        reglas=(*REGLAS, *reglas_espacio(espacio, escritas)),
+        reglas=(*REGLAS, *reglas_espacio(espacio, escritas), *reglas_extra),
     )
     if usado:
         efectivo: tuple[PeriodoPlan, ...] | None = usado[0]
@@ -748,6 +758,7 @@ def elaborar_borrador(
         moneda=borrador.moneda,
         plan=borrador.plan,
         cantidades=borrador.cantidades,
+        reglas_extra=borrador.reglas_extra,
     )
 
 
@@ -1456,7 +1467,7 @@ def estado_de_items(
 # --- abrir una version guardada -----------------------------------------------------------------
 
 #: Versiones que no copian filas `esp_*`: su espacio es el de su version de origen (spec §5.3).
-MOTIVOS_QUE_HEREDAN_EL_ESPACIO = ("restauracion", "cotizacion", "revaloracion")
+MOTIVOS_QUE_HEREDAN_EL_ESPACIO = ("restauracion", "cotizacion", "revaloracion", "conversion")
 
 
 @dataclass(frozen=True, slots=True)
@@ -1593,6 +1604,7 @@ def abrir_version(
     *,
     responsable: str = "sistema",
     ahora: datetime | None = None,
+    fecha_evaluacion: date | None = None,
 ) -> VersionAbierta:
     """Abre una version guardada como borrador editable (RF-52), sea de la hoja o no (FR-5).
 
@@ -1604,6 +1616,9 @@ def abrir_version(
        diferentes de la derivada son cantidades escritas a mano.
     4. La version se recarga con `REGLAS + reglas_espacio(espacio)`: R8 a R10 se recalculan
        sobre la instantanea del espacio y reemplazan las guardadas (§8.4).
+    5. Con `fecha_evaluacion` (la pantalla pasa hoy, M §3.3), R11 y R12 se evaluan a esa fecha
+       sobre la instantanea de precios de la version, **solo en memoria**: entran a la recarga y
+       quedan en `borrador.reglas_extra`; ninguna fila guardada cambia (S1 §4.3).
 
     `HojaInvalida` si la version no existe o ya no se puede reconstruir.
     """
@@ -1626,12 +1641,17 @@ def abrir_version(
             )
             for k, v in escritas.items()
         ]
+        extra: tuple[ReglaVerificacion, ...] = ()
+        if fecha_evaluacion is not None:
+            extra = reglas_precios(
+                instantanea_precios(sesion, modelo, lista_de_referencia(sesion), fecha_evaluacion)
+            )
         guardada = cargar_elaboracion(
             sesion,
             proyecto,
             codigo,
             catalogo,
-            reglas=(*REGLAS, *reglas_espacio(espacio, cantidades)),
+            reglas=(*REGLAS, *reglas_espacio(espacio, cantidades), *extra),
         )
     except (ValueError, CatalogoIncompleto, KeyError) as error:
         sesion.rollback()
@@ -1648,6 +1668,7 @@ def abrir_version(
         parametros=_parametros_de_version(modelo),
         plan=None if plan is None else tuple((e, tuple(r)) for e, r in plan),
         cantidades=escritas,
+        reglas_extra=extra,
     )
     return VersionAbierta(
         proyecto=proyecto,
@@ -1813,6 +1834,7 @@ def crear_primera_version(
     responsable: str,
     fecha: date | None = None,
     ahora: datetime | None = None,
+    lista: models.ListaPrecios | None = None,
 ) -> VersionGuardada:
     """Guarda `borrador` como la PRIMERA version de un proyecto que todavia no tiene ninguna (RI-7).
 
@@ -1859,14 +1881,25 @@ def crear_primera_version(
             f"El proyecto {proyecto!r} ya tiene versiones: abra una y use Guardar version."
         )
     fecha = fecha or borrador.fecha
-    try:
-        lista = catalogo.lista_vigente(fecha)
-    except CatalogoIncompleto as error:
+    moneda = moneda_del_proyecto(sesion, modelo_proyecto)
+    if lista is None:
+        try:
+            lista = catalogo.lista_vigente(fecha)
+        except CatalogoIncompleto as error:
+            raise HojaInvalida(
+                f"No hay una lista de precios vigente al {fecha:%d/%m/%Y}: cargue una en "
+                "Actualizar precios (o cambie la fecha del presupuesto) y vuelva a guardar."
+            ) from error
+    if lista.moneda != moneda:
         raise HojaInvalida(
-            f"No hay una lista de precios vigente al {fecha:%d/%m/%Y}: cargue una en Actualizar "
-            "precios (o cambie la fecha del presupuesto) y vuelva a guardar."
-        ) from error
-    borrador = completar_composiciones(catalogo, replace(borrador, fecha=fecha), lista=lista)
+            f"El proyecto {proyecto!r} esta en {moneda} y la lista {lista.nombre!r} en "
+            f"{lista.moneda}: una version solo se valora con una lista de su moneda (RF-65). "
+            "Elija una lista en la moneda del proyecto (Precios de la empresa) y vuelva a "
+            "guardar."
+        )
+    borrador = completar_composiciones(
+        catalogo, replace(borrador, fecha=fecha, moneda=moneda), lista=lista
+    )
     if borrador.plan is None:
         borrador = con_plan_secuencial(borrador)
     try:
@@ -2020,6 +2053,36 @@ def retirar_cotizacion(
     return _en_una_transaccion(sesion, accion)
 
 
+def convertir(
+    sesion: Session,
+    catalogo: Catalogo,
+    proyecto: str,
+    codigo: str,
+    moneda: str,
+    *,
+    lado: str,
+    fecha: date,
+    fuente: str,
+    responsable: str,
+) -> str:
+    """RF-64 desde Parametros: la version `codigo` convertida a `moneda` con la tasa del BCV
+    aplicable a `fecha` (hoy, en pantalla; S1-R1, S1-R2). Devuelve el codigo de la version nueva.
+    Sin tasa en los 7 dias anteriores, `HojaInvalida` con el motivo y nada escrito."""
+    try:
+        tasa = TasaDeclarada.de_importacion(tasa_aplicable(sesion, fecha, lado=lado))
+        nuevo = siguiente_codigo(sesion, proyecto)
+        convertir_version(sesion, proyecto, codigo, nuevo, moneda, tasa, fuente=fuente,
+                          responsable=responsable, catalogo=catalogo)
+        sesion.commit()
+    except ValueError as error:  # TasaNoDisponible es ValueError
+        sesion.rollback()
+        raise HojaInvalida(f"No se convirtio nada: {error}") from error
+    except BaseException:
+        sesion.rollback()
+        raise
+    return nuevo
+
+
 def codigo_vigente(sesion: Session, proyecto: str) -> str | None:
     """El codigo de la version vigente del proyecto (la de mayor id no descartada), o `None`."""
     vigente = version_vigente(sesion, proyecto)
@@ -2130,14 +2193,26 @@ COLUMNAS_PRECIOS = (
     "Fecha de la tasa",
     "Referencia",
     "Cotización",
+    "Moneda original",
+    "Precio original",
+    "Fuente de la tasa",
+    "Fuente",
+    "Propio/heredado",
+    "Erosión USD",
+    "Erosión Bs",
+    "Erosión %",
+    "Erosión por índice",
     "Estado",
 )
 
 
 @dataclass(frozen=True, slots=True)
 class FilaPrecio:
-    """El origen del precio de un insumo (pestana Precios, RF-56): lista, referencia, fecha,
-    moneda original y tasa con su fecha; `estado` marca el que no tiene fuente o fecha."""
+    """El origen del precio de un insumo (pestana Precios, RF-56 y RF-65): lista, referencia,
+    fecha **del precio**, moneda y precio originales, tasa con su fecha y su fuente, fuente del
+    precio, propio o heredado (lista de empresa) y, con fecha de evaluacion, la erosion en las dos
+    monedas, su porcentaje (S1 §5.3) y la erosion por indice; `estado` marca el que no tiene
+    fuente o fecha y suma el texto de R11 y R12 de la misma evaluacion."""
 
     codigo: str
     descripcion: str
@@ -2152,6 +2227,51 @@ class FilaPrecio:
     cotizacion: str
     alcance: str
     estado: str
+    moneda_original: str = ""
+    precio_original: Decimal | None = None
+    fuente_tasa: str = ""
+    fuente: str = ""
+    propio: bool | None = None
+    erosion_usd: Decimal | None = None
+    erosion_bs: Decimal | None = None
+    erosion_pct: Decimal | None = None
+    erosion_indice: Decimal | None = None
+
+
+def texto_propio(propio: bool | None) -> str:
+    """«propio», «heredado» o vacio (la lista no es de empresa)."""
+    return "" if propio is None else ("propio" if propio else "heredado")
+
+
+def _erosion_de(
+    auditado: PrecioAuditado | None, tasa_evaluacion: Decimal | None
+) -> Erosion | None:
+    """La erosion del precio original con su T0 (declarada o la del BCV a su fecha) y T1 (S1 §5.3);
+    `None` sin evaluacion o sin alguna de las dos tasas. Un original en USD da 0 (declarado)."""
+    if auditado is None:
+        return None
+    t0 = auditado.tasa or auditado.tasa_a_su_fecha
+    if auditado.moneda_original == "USD":
+        return erosion(auditado.precio_original, "USD", t0 or Decimal(1),
+                       tasa_evaluacion or Decimal(1))
+    if t0 is None or tasa_evaluacion is None:
+        return None
+    return erosion(auditado.precio_original, "Bs", t0, tasa_evaluacion)
+
+
+def _erosion_por_indice_de(
+    sesion: Session, origen: OrigenPrecio, serie: str | None, fecha: date | None
+) -> Decimal | None:
+    """P·(I1/I0 − 1) en Bs con el indice del mes del precio y el del mes de evaluacion (columna
+    aparte, no se suma); `None` sin serie, sin evaluacion, para un original en USD o sin indice."""
+    if serie is None or fecha is None or origen.moneda_original != "Bs":
+        return None
+    desde = origen.fecha_precio or origen.fecha_vigencia
+    inicial = valor_en(sesion, serie, date(desde.year, desde.month, 1))
+    final = valor_en(sesion, serie, date(fecha.year, fecha.month, 1))
+    if inicial is None or final is None or origen.precio_original is None:
+        return None
+    return erosion_por_indice(origen.precio_original, inicial.valor, final.valor)
 
 
 def _estado_de_precio(o: OrigenPrecio) -> str:
@@ -2163,26 +2283,66 @@ def _estado_de_precio(o: OrigenPrecio) -> str:
     return "; ".join(avisos) if avisos else TEXTO_OK
 
 
-def precios_de_version(sesion: Session, proyecto: str, codigo: str) -> list[FilaPrecio]:
-    """El origen de cada precio que usa la version, ordenado por codigo de insumo (§9.6)."""
-    return [
-        FilaPrecio(
-            codigo=o.codigo,
-            descripcion=o.descripcion,
-            tipo=o.tipo,
-            precio=o.precio,
-            lista=o.lista,
-            moneda=o.moneda,
-            fecha=o.fecha_vigencia,
-            tasa=o.tasa,
-            fecha_tasa=o.fecha_tasa,
-            referencia=o.referencia,
-            cotizacion=o.cotizacion,
-            alcance=o.alcance,
-            estado=_estado_de_precio(o),
+def precios_de_version(
+    sesion: Session,
+    proyecto: str,
+    codigo: str,
+    *,
+    fecha_evaluacion: date | None = None,
+    serie_indice: str | None = None,
+    lado: str = LADO_POR_DEFECTO,
+) -> list[FilaPrecio]:
+    """El origen de cada precio que usa la version, ordenado por codigo de insumo (§9.6).
+
+    Sin `fecha_evaluacion`, el origen (S1 §5.1) sin erosion y el Estado de siempre. Con ella (la
+    pantalla pasa hoy), la erosion y el texto de R11 y R12 de **esa** evaluacion, en memoria
+    (M §3.3): nada se escribe. Con `serie_indice`, ademas la erosion por indice."""
+    modelo = _modelo(sesion, proyecto, codigo)
+    lista = modelo.lista_precios
+    por_insumo = {precio.insumo_id: precio for precio in lista.precios}
+    auditados: dict[int, PrecioAuditado] = {}
+    textos: dict[int, list[str]] = {}
+    tasa_evaluacion: Decimal | None = None
+    if fecha_evaluacion is not None:
+        instantanea = instantanea_precios(
+            sesion, modelo, lista_de_referencia(sesion), fecha_evaluacion, lado=lado
         )
-        for o in origen_de_precios(sesion, _modelo(sesion, proyecto, codigo))
-    ]
+        auditados = {a.insumo_id: a for a in instantanea.precios}
+        textos = estado_por_insumo(instantanea)
+        tasa_evaluacion = instantanea.tasa_evaluacion
+    filas = []
+    for o in origen_de_precios(sesion, modelo):
+        heredado = es_heredado(sesion, lista, por_insumo[o.insumo_id])
+        perdida = _erosion_de(auditados.get(o.insumo_id), tasa_evaluacion)
+        avisos = [aviso for aviso in (_estado_de_precio(o),) if aviso != TEXTO_OK]
+        avisos += textos.get(o.insumo_id, [])
+        filas.append(
+            FilaPrecio(
+                codigo=o.codigo,
+                descripcion=o.descripcion,
+                tipo=o.tipo,
+                precio=o.precio,
+                lista=o.lista,
+                moneda=o.moneda,
+                fecha=o.fecha_precio or o.fecha_vigencia,
+                tasa=o.tasa,
+                fecha_tasa=o.fecha_tasa,
+                referencia=o.referencia,
+                cotizacion=o.cotizacion,
+                alcance=o.alcance,
+                estado="; ".join(avisos) or TEXTO_OK,
+                moneda_original=o.moneda_original,
+                precio_original=o.precio_original,
+                fuente_tasa=o.fuente_tasa,
+                fuente=o.fuente,
+                propio=None if heredado is None else not heredado,
+                erosion_usd=None if perdida is None else perdida.usd,
+                erosion_bs=None if perdida is None else perdida.bs,
+                erosion_pct=None if perdida is None else perdida.porcentaje,
+                erosion_indice=_erosion_por_indice_de(sesion, o, serie_indice, fecha_evaluacion),
+            )
+        )
+    return filas
 
 
 # --- Excel de la hoja ---------------------------------------------------------------------------
@@ -2198,7 +2358,8 @@ TITULOS_TABLAS_ESPACIO = {
 
 
 def tabla_de_precios(precios: Sequence[FilaPrecio]) -> TablaExportable:
-    """La hoja Precios: una fila por insumo, con precios y tasas como numeros."""
+    """La hoja Precios: una fila por insumo, con precios, tasas y erosiones como numeros (la
+    erosion en porcentaje ya multiplicada por 100)."""
     return TablaExportable(
         "Precios",
         COLUMNAS_PRECIOS,
@@ -2215,6 +2376,15 @@ def tabla_de_precios(precios: Sequence[FilaPrecio]) -> TablaExportable:
                 p.fecha_tasa,
                 p.referencia,
                 p.cotizacion,
+                p.moneda_original,
+                p.precio_original,
+                p.fuente_tasa,
+                p.fuente,
+                texto_propio(p.propio),
+                p.erosion_usd,
+                p.erosion_bs,
+                None if p.erosion_pct is None else p.erosion_pct * 100,
+                p.erosion_indice,
                 p.estado,
             )  # fmt: skip
             for p in precios

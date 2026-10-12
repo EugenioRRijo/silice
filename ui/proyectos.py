@@ -28,8 +28,15 @@ from sqlalchemy import select
 
 from core import models
 from core.budget import crear_proyecto
+from core.budget.moneda import declarar_moneda
 from core.catalog import abrir_sesion, crear_motor
+from core.catalog.moneda import MONEDAS
 from core.contracts import Severidad
+
+#: Las monedas que ofrece la barra al crear un proyecto (sin valor por defecto en la interfaz).
+MONEDAS_DEL_PROYECTO = MONEDAS
+#: Quien declara la moneda al crear desde la barra: en la 0.6.0 no hay cuentas (S3 las trae).
+RESPONSABLE_DE_LA_INTERFAZ = "interfaz (sin cuentas hasta S3)"
 
 
 class ProyectoInvalido(ValueError):  # noqa: N818
@@ -73,9 +80,11 @@ def listar_proyectos(ruta: Path) -> list[str]:
     return sorted(nombres, key=str.casefold)
 
 
-def crear_proyecto_nuevo(ruta: Path, nombre: str) -> str:
-    """Crea el proyecto y devuelve su nombre limpio. `ProyectoInvalido` si el nombre queda vacio,
-    ya existe (sin distinguir mayusculas) o el caso no existe."""
+def crear_proyecto_nuevo(ruta: Path, nombre: str, moneda: str | None = None) -> str:
+    """Crea el proyecto y devuelve su nombre limpio. Con `moneda`, la declara en `moneda_proyecto`
+    (UC-01 paso 1, S1); sin ella el proyecto queda como antes (USD por defecto de `elaborar`).
+    `ProyectoInvalido` si el nombre queda vacio, ya existe (sin distinguir mayusculas), la moneda
+    no es Bs ni USD o el caso no existe."""
     limpio = " ".join(nombre.split())  # sin espacios sobrantes ni dobles
     if not limpio:
         raise ProyectoInvalido("Escriba un nombre para el proyecto: no puede quedar vacio.")
@@ -97,8 +106,12 @@ def crear_proyecto_nuevo(ruta: Path, nombre: str) -> str:
                     f"Ya existe un proyecto llamado «{limpio}»: elija otro nombre o abra ese."
                 )
             try:
-                crear_proyecto(sesion, limpio)
-            except ValueError as error:  # el nucleo repite las dos reglas; por si cambian
+                proyecto = crear_proyecto(sesion, limpio)
+                if moneda is not None:
+                    declarar_moneda(
+                        sesion, proyecto, moneda, responsable=RESPONSABLE_DE_LA_INTERFAZ
+                    )
+            except ValueError as error:  # el nucleo repite las reglas; por si cambian
                 raise ProyectoInvalido(str(error)) from error
             sesion.commit()
     finally:
