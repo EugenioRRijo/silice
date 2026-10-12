@@ -88,6 +88,7 @@ from ui.paginas import (
     revisar,
     similares,
     simulador,
+    tablero,
     visor,
 )
 from ui.recorridos import RUTA_INICIO, Recorrido, paso_siguiente, recorrido_por_nombre
@@ -132,17 +133,22 @@ _CONTROLA = Accion.CONTROL_DE_OBRA
 
 PAGINAS: tuple[DefinicionPagina, ...] = (
     PAGINA_INICIO,
-    DefinicionPagina(catalogo.render, "Catalogo de partidas e insumos", SECCION_TRABAJO,
-                     accion=_LEE),
-    DefinicionPagina(componer.render, "Componer una partida", SECCION_TRABAJO, "UC-10 / UC-11",
-                     _EDITA),
+    DefinicionPagina(tablero.render, "Tablero del proyecto", SECCION_TRABAJO, accion=_LEE),
+    DefinicionPagina(
+        catalogo.render, "Catalogo de partidas e insumos", SECCION_TRABAJO, accion=_LEE
+    ),
+    DefinicionPagina(
+        componer.render, "Componer una partida", SECCION_TRABAJO, "UC-10 / UC-11", _EDITA
+    ),
     DefinicionPagina(elaborar.render, "Elaborar un presupuesto", SECCION_TRABAJO, "UC-01", _EDITA),
     DefinicionPagina(hoja.render, "Hoja del proyecto", SECCION_TRABAJO, accion=_EDITA),
     DefinicionPagina(actualizacion.render, "Actualizar precios", SECCION_TRABAJO, "UC-02", _EDITA),
-    DefinicionPagina(historico.render, "Historico de cambios de precio", SECCION_TRABAJO,
-                     accion=_LEE),
-    DefinicionPagina(precios_empresa.render, "Precios de la empresa", SECCION_TRABAJO, "UC-17",
-                     _PRECIOS),
+    DefinicionPagina(
+        historico.render, "Historico de cambios de precio", SECCION_TRABAJO, accion=_LEE
+    ),
+    DefinicionPagina(
+        precios_empresa.render, "Precios de la empresa", SECCION_TRABAJO, "UC-17", _PRECIOS
+    ),
     DefinicionPagina(indices.render, "Indices del BCV", SECCION_TRABAJO, "UC-17", _PRECIOS),
     DefinicionPagina(reajuste.render, "Reajuste de precios", SECCION_TRABAJO, "UC-18", _REAJUSTA),
     DefinicionPagina(control.render, "Control de obra", SECCION_TRABAJO, "UC-19 / UC-20",
@@ -158,10 +164,10 @@ PAGINAS: tuple[DefinicionPagina, ...] = (
     DefinicionPagina(
         escenarios.render, "Escenarios de sensibilidad", SECCION_INVESTIGACION, "UC-08", _EDITA
     ),
-    DefinicionPagina(similares.render, "Partidas similares", SECCION_INVESTIGACION, "UC-03",
-                     _EDITA),
-    DefinicionPagina(simulador.render, "Simulador de listas", SECCION_INVESTIGACION,
-                     accion=_EDITA),
+    DefinicionPagina(
+        similares.render, "Partidas similares", SECCION_INVESTIGACION, "UC-03", _EDITA
+    ),
+    DefinicionPagina(simulador.render, "Simulador de listas", SECCION_INVESTIGACION, accion=_EDITA),
     DefinicionPagina(visor.render, "Visor 3D del modelo", SECCION_INVESTIGACION, accion=_EDITA),
 )
 
@@ -184,7 +190,8 @@ def paginas_visibles(
     y, en modo entrega, sin la seccion Investigacion. La navegacion no es el control: cada
     `render()` vuelve a exigir su accion (S3 5.1)."""
     return tuple(
-        pagina for pagina in PAGINAS
+        pagina
+        for pagina in PAGINAS
         if not (modo_entrega and pagina.seccion == SECCION_INVESTIGACION)
         and (roles is None or pagina.accion is None or permitido(roles, pagina.accion))
     )
@@ -231,8 +238,11 @@ def marco(
     omite los pasos de pantallas que el rol no ve (RF-37).
     """
     roles = ui_sesion.DESARROLLO.roles if sesion is None else sesion.roles
-    if permitido(roles, Accion.EDITAR_HOJA):
+    puede_editar = permitido(roles, Accion.EDITAR_HOJA)
+    estado = None
+    if puede_editar:
         barra.pintar_barra(definicion.ruta_url, ir_a)
+        estado = st.empty()  # se llena al final: ve el resumen que la pantalla publica ahora
     st.title(definicion.titulo)
     if definicion.caso_uso is not None:
         st.caption(f"Caso de uso {definicion.caso_uso}")
@@ -243,6 +253,9 @@ def marco(
         recorrido = recorrido.visible_en(visibles)
     _pintar_posicion(recorrido, definicion.ruta_url)
     pintar()
+    if estado is not None:
+        with estado.container():
+            barra.pintar_estado()
     paso = paso_siguiente(recorrido, definicion.ruta_url)
     if paso is not None and st.button(
         ROTULO_SIGUIENTE.format(paso.titulo), type="primary", key=CLAVE_BOTON_SIGUIENTE

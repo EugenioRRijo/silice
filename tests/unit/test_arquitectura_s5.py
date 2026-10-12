@@ -78,6 +78,7 @@ PAGINAS_QUE_ABREN_EL_CASO = (
     "revisar",
     "similares",
     "simulador",
+    "tablero",
 )
 
 

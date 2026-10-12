@@ -40,6 +40,7 @@ from ui.recorridos import NOMBRE_DEMOSTRACION, RECORRIDOS, RUTA_INICIO
 
 TITULOS_TRABAJO = (
     "Inicio",
+    "Tablero del proyecto",
     "Catalogo de partidas e insumos",
     "Componer una partida",
     "Elaborar un presupuesto",
@@ -370,9 +371,9 @@ def test_modo_entrega_declara_solo_el_grupo_trabajo_en_la_navegacion_superior(
     assert list(paginas) == [SECCION_TRABAJO, SECCION_REVISION]
 
 
-def test_son_diecinueve_pantallas_y_la_hoja_va_justo_despues_de_elaborar() -> None:
+def test_son_veinte_pantallas_y_la_hoja_va_justo_despues_de_elaborar() -> None:
     rutas = [p.ruta_url for p in PAGINAS]
-    assert len(rutas) == 19
+    assert len(rutas) == 20
     assert rutas.index("hoja") == rutas.index("elaborar") + 1
     assert pagina_por_ruta("hoja").seccion == SECCION_TRABAJO
 

@@ -66,6 +66,7 @@ from ui import caso, control, entrega, hoja
 from ui import sesion as ui_sesion
 from ui.caso import ACCION_IMPORTAR_PLANO, ACCION_PRECIOS, ruta_caso
 from ui.resultado import mostrar_informe
+from ui.texto_seguro import texto_seguro
 
 PESTANAS = (
     "Espacio y metrajes",
@@ -991,6 +992,9 @@ def _cambiar_insumo(codigo: str, tipo: str, indice: int, insumo: hoja.FilaInsumo
     )
 
 
+LIMITE_INSUMOS = 300  # el selectbox filtra en el navegador; mas alla, se acota en la base
+
+
 def _formulario_de_insumo(codigo: str, apu: Any) -> None:
     abierta = _abierta()
     with st.expander("Cambiar el insumo de una linea (en la copia de esta version)"):
@@ -1010,20 +1014,45 @@ def _formulario_de_insumo(codigo: str, apu: Any) -> None:
             format_func=lambda i: grupo[i].descripcion,
             key=_clave("linea", codigo),
         )
-        texto = st.text_input("Buscar insumo por nombre", key=_clave("buscar", codigo))
+        acotar = ""
         with _sesion() as sesion:
             candidatos = (
                 []
                 if sesion is None
-                else hoja.insumos_candidatos(sesion, abierta.proyecto, abierta.codigo, tipo, texto)
+                else hoja.insumos_candidatos(
+                    sesion,
+                    abierta.proyecto,
+                    abierta.codigo,
+                    tipo,
+                    acotar,
+                    limite=LIMITE_INSUMOS + 1,
+                )
             )
+        if len(candidatos) > LIMITE_INSUMOS:
+            candidatos = candidatos[:LIMITE_INSUMOS]
+            acotar = st.text_input(
+                f"Hay mas de {LIMITE_INSUMOS} insumos: escriba parte de la descripcion para acotar",
+                key=_clave("buscar", codigo),
+            )
+            if acotar.strip():
+                with _sesion() as sesion:
+                    candidatos = hoja.insumos_candidatos(
+                        sesion,
+                        abierta.proyecto,
+                        abierta.codigo,
+                        tipo,
+                        acotar,
+                        limite=LIMITE_INSUMOS,
+                    )
         if not candidatos:
             st.caption("Ningun insumo de la lista coincide: pruebe con otra palabra.")
             return
         elegido = st.selectbox(
-            "Insumo",
+            "Insumo (escriba para buscar por codigo o descripcion)",
             candidatos,
-            format_func=lambda c: f"{c.descripcion} · {c.unidad} · {c.precio:f}",
+            index=None,
+            placeholder="Elegir insumo de la lista de precios",
+            format_func=lambda c: f"{c.codigo} · {c.descripcion} · {c.unidad} · {c.precio:f}",
             key=_clave("insumo", codigo),
         )
         st.button(
@@ -1031,41 +1060,87 @@ def _formulario_de_insumo(codigo: str, apu: Any) -> None:
             on_click=_cambiar_insumo,
             args=(codigo, tipo, indice, elegido),
             key=_clave("usar", codigo),
+            disabled=elegido is None,
         )
 
 
-def _pestana_apu() -> None:
+CLAVE_PARTIDA_APU = "hoja_apu_partida"
+CLAVE_FILTRO_APU = "hoja_apu_filtro"
+ANCHOS_APU = (1.1, 3.2, 1.6)  # partidas · tabla del APU · cierre de partida
+
+
+def _lista_de_partidas(resultado: hoja.ResultadoHoja, codigos: list[str]) -> str:
+    """Panel izquierdo: buscador y lista de las partidas valoradas (RU-6: no hay capitulos)."""
+    descripciones = {
+        p.item.codigo_partida: p.apu.descripcion for p in resultado.elaboracion.presupuesto.partidas
+    }
+    st.markdown("**Partidas**")
+    texto = st.text_input(
+        "Buscar partida", key=CLAVE_FILTRO_APU, placeholder="codigo o descripcion"
+    )
+    visibles = hoja.filtrar_partidas(codigos, descripciones, texto)
+    if not visibles:
+        st.caption("Ninguna partida coincide; se muestran todas.")
+        visibles = codigos
+    if st.session_state.get(CLAVE_PARTIDA_APU) not in visibles:
+        st.session_state.pop(CLAVE_PARTIDA_APU, None)  # foco 4: nunca un valor fuera de la lista
+    return st.radio(
+        "Partida",
+        visibles,
+        format_func=lambda c: texto_seguro(f"{c} · {descripciones.get(c, '')}"),
+        key=CLAVE_PARTIDA_APU,
+        label_visibility="collapsed",
+    )
+
+
+def _renglon(resultado: hoja.ResultadoHoja, codigo: str) -> Any:
+    return next(
+        (p for p in resultado.elaboracion.presupuesto.partidas if p.item.codigo_partida == codigo),
+        None,
+    )
+
+
+def _subtotal_de_rubro(codigo: str, clave: str) -> str:
     resultado, _ = _calculo()
-    codigos = _codigos_valorados(resultado)
-    if not codigos:
-        st.info("Todavia no hay partidas valoradas: derive cantidades en Espacio y metrajes.")
-        return
-    codigo = st.selectbox("Partida", codigos, key="hoja_apu_partida")
+    renglon = _renglon(resultado, codigo)
+    if renglon is None:
+        return ""
+    r = renglon.resultado
+    valor = {"materiales": r.materiales, "equipos": r.equipos, "mano de obra": r.mano_obra}[clave]
+    return _dinero(valor, resultado.elaboracion.presupuesto.moneda)
+
+
+def _tabla_de_apu(codigo: str) -> None:
+    """Panel central: un bloque por rubro con su subtotal, el rendimiento y el cambio de insumo.
+    Cada edicion recalcula en el servidor (RU-5)."""
     borrador, siembra = _borrador(), _partida()
     actual = borrador.composiciones[codigo]
     inicial = siembra.composiciones.get(codigo, actual)
     st.caption(
-        f"{actual.descripcion} · unidad {actual.unidad}. Se editan la cantidad de cada linea y el "
-        "rendimiento, en la copia de esta version: el catalogo no cambia."
+        f"{texto_seguro(actual.descripcion)} · unidad {texto_seguro(actual.unidad)}. Se edita la "
+        "cantidad de cada linea y el rendimiento, en la copia de esta version: el catalogo no "
+        "cambia."
     )
     tablas = hoja.filas_de_apu(inicial)
     editadas = []
+    huecos = []  # el subtotal de cada rubro se escribe DESPUES de aplicar la edicion
     for (_, rotulo, columnas), filas in zip(_GRUPOS_APU, tablas, strict=True):
-        st.markdown(f"**{rotulo}**")
-        if not filas:
-            st.caption("Sin lineas.")
-            editadas.append([])
-            continue
-        tabla = st.data_editor(
-            DataFrame(filas, columns=list(columnas), dtype=str),
-            hide_index=True,
-            width="stretch",
-            disabled=[c for c in columnas if c != "cantidad"],
-            key=_clave("apu", codigo, rotulo),
-        )
-        editadas.append(tabla.to_dict("records"))
+        with st.expander(f"{rotulo} · {len(filas)} linea(s)", expanded=True):
+            huecos.append(st.empty())
+            if not filas:
+                st.caption("Sin lineas.")
+                editadas.append([])
+                continue
+            tabla = st.data_editor(
+                DataFrame(filas, columns=list(columnas), dtype=str),
+                hide_index=True,
+                width="stretch",
+                disabled=[c for c in columnas if c != "cantidad"],
+                key=_clave("apu", codigo, rotulo),
+            )
+            editadas.append(tabla.to_dict("records"))
     rendimiento = st.text_input(
-        "Rendimiento",
+        "Rendimiento (unidades por dia)",
         value=hoja.texto_numero(inicial.rendimiento),
         key=_clave("rendimiento", codigo),
     )
@@ -1075,34 +1150,72 @@ def _pestana_apu() -> None:
             _poner_borrador(
                 replace(borrador, composiciones={**borrador.composiciones, codigo: nueva})
             )
-            resultado, _ = _calculo()
     except hoja.HojaInvalida as error:
-        st.error(f"{error}. La hoja sigue con el ultimo APU valido.")
-    _calculado_de_apu(resultado, codigo)
+        st.error(f"{texto_seguro(str(error))}. La hoja sigue con el ultimo APU valido.")
+    for (clave, rotulo, _), hueco in zip(_GRUPOS_APU, huecos, strict=True):
+        hueco.caption(f"Subtotal de {rotulo.lower()}: {_subtotal_de_rubro(codigo, clave)}")
     _formulario_de_insumo(codigo, _borrador().composiciones[codigo])
 
 
+def _factores() -> None:
+    """Panel derecho, arriba: los factores de la version. Se leen ANTES que la lista y la tabla,
+    para que los subtotales de la tabla salgan con los factores vigentes."""
+    with st.container(border=True):
+        st.markdown("**Factores de la version**")
+        _editar_parametros([st] * len(hoja.CAMPOS_PARAMETROS), "factor")
+
+
+def _cierre_de_partida(codigo: str) -> None:
+    """Panel derecho, abajo: el cierre paso a paso de la partida elegida, ya con la edicion de la
+    tabla aplicada. Imprevistos no existe en el modelo (RU-3)."""
+    resultado, _ = _calculo()
+    renglon = _renglon(resultado, codigo)
+    if renglon is None:
+        return
+    moneda = resultado.elaboracion.presupuesto.moneda
+    with st.container(border=True):
+        st.markdown("**Cierre de partida**")
+        st.dataframe(
+            DataFrame(
+                hoja.filas_de_cierre(renglon.resultado, _borrador().parametros, moneda),
+                columns=["Concepto", "Monto", "Nota"],
+            ),
+            hide_index=True,
+            width="stretch",
+        )
+        _calculado_de_apu(resultado, codigo)
+
+
+def _pestana_apu() -> None:
+    resultado, _ = _calculo()
+    codigos = _codigos_valorados(resultado)
+    if not codigos:
+        st.info("Todavia no hay partidas valoradas: derive cantidades en Espacio y metrajes.")
+        return
+    izquierda, centro, derecha = st.columns(ANCHOS_APU, gap="medium")
+    with derecha:
+        _factores()  # primero: los factores cambian los subtotales de la tabla
+    with izquierda:
+        codigo = _lista_de_partidas(resultado, codigos)
+    with centro:
+        _tabla_de_apu(codigo)
+    with derecha:
+        _cierre_de_partida(codigo)  # al final: con la edicion de la tabla ya aplicada
+
+
 def _calculado_de_apu(resultado: hoja.ResultadoHoja, codigo: str) -> None:
-    renglon = next(
-        (p for p in resultado.elaboracion.presupuesto.partidas if p.item.codigo_partida == codigo),
-        None,
-    )
+    renglon = _renglon(resultado, codigo)
     if renglon is None:
         return
     moneda = resultado.elaboracion.presupuesto.moneda
     r = renglon.resultado
-    columnas = st.columns(4)
-    columnas[0].metric("Materiales", _dinero(r.materiales, moneda))
-    columnas[1].metric("Equipos", _dinero(r.equipos, moneda))
-    columnas[2].metric("Mano de obra", _dinero(r.mano_obra, moneda))
-    columnas[3].metric("Precio unitario", _dinero(r.precio_unitario, moneda))
-    filas = [
-        f
-        for f in hoja.filas_del_presupuesto(resultado)
-        if f["partida"] == codigo and f["estado"] != hoja.TEXTO_OK
-    ]
-    for fila in filas:
-        st.caption(f"Estado de {fila['clave']}: {fila['estado']}")
+    st.metric("Materiales", _dinero(r.materiales, moneda))
+    st.metric("Equipos", _dinero(r.equipos, moneda))
+    st.metric("Mano de obra", _dinero(r.mano_obra, moneda))
+    st.metric("Precio unitario", _dinero(r.precio_unitario, moneda), border=True)
+    for fila in hoja.filas_del_presupuesto(resultado):
+        if fila["partida"] == codigo and fila["estado"] != hoja.TEXTO_OK:
+            st.caption(texto_seguro(f"Estado de {fila['clave']}: {fila['estado']}"))
 
 
 # --- pestana Presupuesto -------------------------------------------------------------------------
@@ -1386,26 +1499,30 @@ _ROTULOS_PARAMETROS = {
 }
 
 
-def _pestana_parametros() -> None:
+def _editar_parametros(contenedores: Sequence[Any], prefijo: str) -> None:
+    """Un campo exacto por parametro de costo (RU-7); un cambio valido recalcula todos los APU."""
     borrador, siembra = _borrador(), _partida()
-    st.caption(
-        "Los parametros de costo de esta version. Cambiarlos recalcula todos sus APU; el cambio "
-        "queda en el registro con su fuente."
-    )
     textos = {}
-    columnas = st.columns(len(hoja.CAMPOS_PARAMETROS))
-    for campo, columna in zip(hoja.CAMPOS_PARAMETROS, columnas, strict=True):
-        textos[campo] = columna.text_input(
+    for campo, contenedor in zip(hoja.CAMPOS_PARAMETROS, contenedores, strict=True):
+        textos[campo] = contenedor.text_input(
             _ROTULOS_PARAMETROS[campo],
             value=str(getattr(siembra.parametros, campo)),
-            key=_clave("param", campo),
+            key=_clave(prefijo, campo),
         )
     try:
         parametros = hoja.parametros_desde_texto(textos)
         if parametros != borrador.parametros:
             _poner_borrador(replace(borrador, parametros=parametros))
     except hoja.HojaInvalida as error:
-        st.error(f"{error}. La hoja sigue con los ultimos parametros validos.")
+        st.error(f"{texto_seguro(str(error))}. La hoja sigue con los ultimos parametros validos.")
+
+
+def _pestana_parametros() -> None:
+    st.caption(
+        "Los parametros de costo de esta version. Cambiarlos recalcula todos sus APU; el cambio "
+        "queda en el registro con su fuente."
+    )
+    _editar_parametros(st.columns(len(hoja.CAMPOS_PARAMETROS)), "param")
     resultado, cambios = _calculo()
     presupuesto = resultado.elaboracion.presupuesto
     st.metric("Total del presupuesto", _dinero(presupuesto.total, presupuesto.moneda))
@@ -1571,6 +1688,29 @@ def _mostrar_mensaje() -> None:
     {"error": st.error, "success": st.success}.get(tipo, st.info)(texto)
 
 
+def _publicar_resumen() -> None:
+    """Lo que la barra muestra en su linea de estado (PLAN_SILICE_UI, tarea 5)."""
+    abierta = _abierta()
+    if abierta is None:  # un borrador nuevo no se atribuye al proyecto abierto de la barra
+        caso.publicar_resumen(None)
+        return
+    proyecto = abierta.proyecto
+    resultado, cambios = _calculo()
+    presupuesto = resultado.elaboracion.presupuesto
+    if cambios:
+        estado = f"borrador con {len(cambios)} cambio(s) sin guardar"
+    else:
+        estado = "guardada"
+    caso.publicar_resumen(
+        caso.ResumenDeTrabajo(
+            proyecto=proyecto,
+            version=abierta.codigo,
+            estado=estado,
+            total=_dinero(presupuesto.total, presupuesto.moneda),
+        )
+    )
+
+
 def render() -> None:
     """La hoja del proyecto: version abierta, guardado y la pestana activa."""
     ui_sesion.exigir(Accion.EDITAR_HOJA)
@@ -1626,5 +1766,6 @@ def render() -> None:
         st.error(_error_de_base(error))
     with panel:
         _panel_de_guardado(_calculo()[1], accion)
+    _publicar_resumen()
     if accion in ("guardar_version", "exportar_excel"):
         st.session_state.pop(CLAVE_ACCION_PENDIENTE, None)

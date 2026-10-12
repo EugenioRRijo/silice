@@ -48,6 +48,7 @@ from ui.caso import (
     pedir_accion,
     proyecto_abierto,
     recorrido_activo,
+    resumen_publicado,
     ruta_caso,
 )
 from ui.proyectos import (
@@ -59,6 +60,7 @@ from ui.proyectos import (
     version_vigente,
 )
 from ui.recorridos import destino_de_recorrido, recorrido_por_nombre
+from ui.texto_seguro import texto_seguro
 
 ROTULO_PROYECTO = "Proyecto"
 ROTULO_IMPORTAR = "Importar plano"
@@ -284,3 +286,28 @@ def pintar_barra(ruta: str, ir_a: Callable[[str], None]) -> None:
         st.markdown(f"Proyecto abierto: **{abierto}**")
     if not con_sf3:
         st.caption(AVISO_SF3)
+
+
+def pintar_estado() -> None:
+    """La linea de estado bajo la barra: version, estado y total (PLAN_SILICE_UI, 5).
+
+    El total y el estado solo aparecen si la hoja publico el resumen del proyecto abierto; si no,
+    la version vigente guardada. Todo texto ajeno pasa por `texto_seguro` (RU-9).
+    """
+    abierto = proyecto_abierto()
+    if abierto is None:
+        return
+    resumen = resumen_publicado()
+    partes: list[str] = []
+    if resumen is not None and resumen.proyecto == abierto:
+        if resumen.version is not None:
+            partes.append(f"Version {texto_seguro(resumen.version)}")
+        partes += [f"Estado: {resumen.estado}", f"Total: {texto_seguro(resumen.total)}"]
+    else:
+        vigente = version_vigente(ruta_caso(), abierto)
+        partes.append(
+            "sin version guardada"
+            if vigente is None
+            else f"Version vigente {texto_seguro(vigente.codigo)} del {vigente.fecha.isoformat()}"
+        )
+    st.caption(" · ".join(partes))
