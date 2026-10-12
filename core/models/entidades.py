@@ -502,7 +502,14 @@ class PlanVersion(Base):
 
 
 #: Motivos con que una versión nueva declara su `VersionOrigen`.
-MOTIVOS_VERSION = ("edicion", "restauracion", "cotizacion", "revaloracion", "conversion")
+MOTIVOS_VERSION = (
+    "edicion",
+    "restauracion",
+    "cotizacion",
+    "revaloracion",
+    "conversion",
+    "recuperacion",
+)
 
 
 class VersionOrigen(Base):
