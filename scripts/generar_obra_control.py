@@ -218,6 +218,7 @@ def sembrar(sesion, obra: ObraGenerada, *, con_valuaciones: bool = True) -> None
         lista=lista,
         parametros=PARAMETROS,
         plan=list(obra.plan),
+        usuario="script:generar_obra_control",
     )
     registrar_linea_base(
         sesion, NOMBRE, CODIGO, desde=INICIO, perspectiva="costo", calendario=obra.calendario,

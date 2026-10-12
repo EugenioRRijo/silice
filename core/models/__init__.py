@@ -5,6 +5,7 @@ coinciden con tipos de `core.contracts` y mezclarlos sin cualificar los haría i
 """
 
 from core.models.base import Base
+from core.models.cadena import EslabonVersion
 from core.models.control import (
     AnulacionValuacion,
     CalendarioObra,
@@ -90,6 +91,7 @@ __all__ = [
     "DescarteVersion",
     "Ejecucion",
     "EjecutadoPeriodo",
+    "EslabonVersion",
     "EstudioReajuste",
     "Hallazgo",
     "ImportacionIndice",
