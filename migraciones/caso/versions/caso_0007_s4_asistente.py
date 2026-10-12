@@ -9,7 +9,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision = "caso_0007_s4_asistente"
-down_revision = "caso_0005_s2_valuaciones"
+down_revision = "caso_0006_s2_decision"
 branch_labels = None
 depends_on = None
 
