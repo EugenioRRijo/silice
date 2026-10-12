@@ -256,13 +256,21 @@ def test_cada_revision_baja_y_vuelve_a_subir(tmp_path: Path, destino: Destino) -
     assert _instantanea(base) == {}
 
 
-def test_la_instalacion_nace_sin_tablas_y_con_su_alembic_version(tmp_path: Path) -> None:
+def test_la_instalacion_nace_con_las_tablas_de_seguridad_y_su_alembic_version(
+    tmp_path: Path,
+) -> None:
+    """S3-1 llena el destino de la instalación (hasta la 0.7.0 nacía vacío)."""
     base = tmp_path / "instalacion.db"
     aplicar_revisiones(base, Destino.INSTALACION)
-    assert revision_head(Destino.INSTALACION) is None
+    assert revision_head(Destino.INSTALACION) == "ins_0001_seguridad"
     with closing(sqlite3.connect(base)) as conexion:
-        tablas = [
+        tablas = {
             n for (n,) in conexion.execute("SELECT name FROM sqlite_master WHERE type = 'table'")
-        ]
-        assert tablas == ["alembic_version"]
-        assert conexion.execute("SELECT count(*) FROM alembic_version").fetchone()[0] == 0
+        }
+        assert tablas == {
+            "alembic_version", "usuario", "intento_acceso", "sesion", "evento_acceso",
+            "codigo_instalacion", "empresa_propia", "clave_empresa", "empresa_registrada",
+            "clave_api",
+        }
+        assert conexion.execute("SELECT version_num FROM alembic_version").fetchall() == [
+            ("ins_0001_seguridad",)]

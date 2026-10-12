@@ -67,6 +67,8 @@ from core.verification.informe import DECIMALES_PRESENTACION
 from core.verification.texto import formatear_decimal
 from operacion.base_datos import ErrorDeBase, preparar_base
 from scripts.seed import NOMBRE_PROYECTO, sembrar
+from seguridad.permisos import Accion
+from ui import sesion as ui_sesion
 from ui.caso import ruta_caso
 from ui.subidas import guardar_subida, nombre_seguro
 
@@ -117,6 +119,7 @@ class Presentacion:
 
 def render() -> None:
     """Pantalla unica: parametros en la barra lateral, archivo y resultados en el cuerpo."""
+    ui_sesion.exigir(Accion.EDITAR_HOJA)
     st.caption(
         "Carga una lista de precios nueva (CSV o XLSX con las columnas tipo, insumo, unidad y "
         "precio) y el sistema revalora el presupuesto guardado, registra que cambio y audita la "

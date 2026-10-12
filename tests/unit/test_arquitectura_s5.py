@@ -16,6 +16,7 @@ PUBLICOS_DE_OPERACION = (
     "operacion.version",
     "operacion.respaldo",
     "operacion.base_datos",
+    "operacion.instalacion",  # S3-1: la base de la instalación, la comparten la interfaz y la API
 )
 
 

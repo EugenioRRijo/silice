@@ -55,6 +55,8 @@ from core.contracts import ComposicionAPU, Dominio, ItemComputo, ModalidadManoOb
 from core.verification.informe import DECIMALES_PRESENTACION
 from core.verification.texto import formatear_decimal
 from operacion.base_datos import preparar_base
+from seguridad.permisos import Accion
+from ui import sesion as ui_sesion
 from ui.caso import ruta_caso
 from ui.composicion import (
     ComposicionInvalida,
@@ -133,6 +135,7 @@ def _presentar(valor: Decimal) -> str:
 
 def render() -> None:
     """Cabecera de la partida, tres tablas de insumos, desglose en vivo y boton de guardado."""
+    ui_sesion.exigir(Accion.EDITAR_HOJA)
     st.caption(
         "Componga una partida a mano: declare su cabecera y sus tres tablas de insumos, vea el "
         "precio unitario desglosarse en vivo (sin necesidad de guardar) y guarde la composicion. "

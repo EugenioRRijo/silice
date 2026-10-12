@@ -16,7 +16,9 @@ from sqlalchemy.exc import SQLAlchemyError
 from core.catalog import abrir_sesion, crear_motor
 from core.catalog.indices import PERIODICIDADES, UNIDAD_INDICE_BS, DefinicionSerie
 from operacion.base_datos import ErrorDeBase, preparar_base
+from seguridad.permisos import Accion
 from ui import indices
+from ui import sesion as ui_sesion
 from ui.caso import ruta_caso
 from ui.subidas import guardar_subida
 from ui.texto_seguro import texto_seguro
@@ -41,6 +43,7 @@ def _motor_del_caso():
 
 
 def render() -> None:
+    ui_sesion.exigir(Accion.ADMINISTRAR_PRECIOS)
     st.caption(
         "Importe la tasa de referencia del BCV, el INPC o una serie en CSV. «Leer» no escribe "
         "nada: muestra lo que se importaria. «Confirmar» guarda los valores con la huella del "

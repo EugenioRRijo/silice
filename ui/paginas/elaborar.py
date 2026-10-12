@@ -55,7 +55,9 @@ from core.contracts.apu import TipoRendimiento
 from core.verification.informe import DECIMALES_PRESENTACION
 from core.verification.texto import formatear_decimal
 from operacion.base_datos import preparar_base
+from seguridad.permisos import Accion
 from ui import elaboracion
+from ui import sesion as ui_sesion
 from ui.caso import ruta_caso
 from ui.resultado import mostrar_elaboracion
 from ui.subidas import guardar_subida
@@ -87,6 +89,7 @@ _ADAPTADORES_SIN_CODIGOS: dict[Dominio, type[AdaptadorDominio]] = {
 
 def render() -> None:
     """Selector de dominio y archivo; tabla de cómputo; botón de elaboración e informe."""
+    ui_sesion.exigir(Accion.EDITAR_HOJA)
     st.caption(
         "Elige un dominio, carga su archivo de muestra (data/samples/<dominio>/) y extrae el "
         "cómputo con el adaptador correspondiente; luego elabora el presupuesto, que se audita "

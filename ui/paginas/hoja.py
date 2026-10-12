@@ -61,7 +61,9 @@ from core.catalog.moneda import MONEDAS
 from core.verification.informe import DECIMALES_PRESENTACION
 from core.verification.texto import formatear_decimal
 from operacion.base_datos import ErrorDeBase, preparar_base
+from seguridad.permisos import Accion
 from ui import caso, hoja
+from ui import sesion as ui_sesion
 from ui.caso import ACCION_IMPORTAR_PLANO, ACCION_PRECIOS, ruta_caso
 from ui.resultado import mostrar_informe
 
@@ -1540,6 +1542,7 @@ def _mostrar_mensaje() -> None:
 
 def render() -> None:
     """La hoja del proyecto: version abierta, guardado y la pestana activa."""
+    ui_sesion.exigir(Accion.EDITAR_HOJA)
     _borrador()
     accion = _atender()
     if accion == ACCION_PRECIOS:  # la herramienta Precios de la barra lleva a su pestana

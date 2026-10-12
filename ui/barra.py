@@ -34,6 +34,8 @@ from collections.abc import Callable
 
 import streamlit as st
 
+from seguridad.permisos import Accion
+from ui import sesion as ui_sesion
 from ui.caso import (
     ACCION_EXPORTAR_EXCEL,
     ACCION_GUARDAR_VERSION,
@@ -114,6 +116,7 @@ def _hay_pestana_precios() -> bool:
 
 
 def _crear_proyecto() -> None:
+    ui_sesion.exigir(Accion.EDITAR_HOJA)
     moneda = st.session_state.get(CLAVE_MONEDA_NUEVA)
     if moneda is None:
         st.session_state[CLAVE_MENSAJE] = ("error", MENSAJE_SIN_MONEDA)
