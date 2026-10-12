@@ -37,6 +37,7 @@ from sqlalchemy.orm import Session
 
 from core import models
 from core.budget._modelo import _buscar, _parametros_de, _sesion_de
+from core.budget.cadena import AnexosDe, marcar_por_sellar
 from core.budget.curva import PeriodoPlan
 from core.budget.instantanea import composiciones_de_version, congelar
 
@@ -128,6 +129,8 @@ def guardar_presupuesto(
     version_origen: models.Presupuesto | None = None,
     motivo: str = "",
     heredar_insumos: bool = False,
+    usuario: str | None = None,
+    anexos_de: AnexosDe | None = None,
 ) -> models.Presupuesto:
     """Persiste el presupuesto con su cómputo, su curva y los hallazgos de su informe.
 
@@ -150,6 +153,12 @@ def guardar_presupuesto(
     SF‑E2: `version_origen` y `motivo` (`models.MOTIVOS_VERSION`) declaran de qué versión salió
     esta; van juntos o ninguno. `heredar_insumos` (solo con `version_origen`: edición y
     restauración) copia el `insumo_id` de cada línea de la instantánea de origen (SF3 R‑7).
+
+    SL‑E7 (S3 §6.2): este es el único embudo de versiones. Marca la versión como **por sellar**:
+    al confirmar la transacción raíz, un evento `before_commit` escribe su eslabón en la misma
+    transacción. `usuario` (quien confirma) es obligatorio AL CONFIRMAR, no al llamar: sin él, el
+    `commit` falla con `SelladoSinUsuario` y no se escribe nada. `anexos_de` da los anexos de la
+    versión que la cadena cubre (hoy, el espacio de la hoja).
     """
     if (version_origen is None) != (motivo == ""):
         raise ValueError("version_origen y motivo se declaran juntos o ninguno")
@@ -239,6 +248,7 @@ def guardar_presupuesto(
             )
         )
         session.flush()
+    marcar_por_sellar(session, modelo, usuario, anexos_de)
     return modelo
 
 

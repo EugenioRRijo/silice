@@ -443,7 +443,8 @@ def guardar_presupuesto_demo(
     lista = Catalogo(sesion).lista_vigente(caso.fecha)
     resultado = elaborar_caso_demo(caso)
     return guardar_presupuesto(
-        sesion, resultado.presupuesto, resultado.informe, proyecto, lista, caso.parametros
+        sesion, resultado.presupuesto, resultado.informe, proyecto, lista, caso.parametros,
+        usuario="script:seed_demo",
     )
 
 

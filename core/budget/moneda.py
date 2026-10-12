@@ -96,7 +96,7 @@ def convertir_version(
     version = guardar_presupuesto(session, nuevo.presupuesto, nuevo.informe,
                                   proyecto=origen.proyecto, lista=lista, parametros=parametros,
                                   pendientes=nuevo.pendientes, plan=plan, version_origen=origen,
-                                  motivo="conversion")
+                                  motivo="conversion", usuario=responsable)
     momento = ahora or datetime.now()
     session.add(models.MonedaProyecto(proyecto_id=origen.proyecto_id, moneda=moneda, desde=momento,
                                       version_id=version.id, responsable=responsable,

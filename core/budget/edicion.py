@@ -139,6 +139,7 @@ def guardar_edicion(
         version_origen=origen,
         motivo=motivo,
         heredar_insumos=True,
+        usuario=responsable,
     )
     momento = ahora or datetime.now()
     session.add_all(
@@ -198,6 +199,7 @@ def restaurar_version(
         version_origen=origen,
         motivo="restauracion",
         heredar_insumos=True,
+        usuario=responsable,
     )
     session.add(
         models.RegistroCambio(

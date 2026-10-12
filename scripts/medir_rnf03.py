@@ -129,6 +129,7 @@ def medir(partidas_objetivo: int, directorio: Path) -> tuple[Decimal, int, int]:
                 proyecto=proyecto,
                 lista=catalogo.lista_vigente(linea_base.FECHA_LINEA_BASE),
                 parametros=linea_base.PARAMETROS_LINEA_BASE,
+                usuario="script:medir_rnf03",
             )
             sesion.commit()
 
@@ -144,7 +145,8 @@ def medir(partidas_objetivo: int, directorio: Path) -> tuple[Decimal, int, int]:
 
             inicio = time.perf_counter()
             _, comparativo = actualizar_precios(
-                sesion, NOMBRE_PROYECTO, CODIGO_BASE, resumen.lista, CODIGO_NUEVO
+                sesion, NOMBRE_PROYECTO, CODIGO_BASE, resumen.lista, CODIGO_NUEVO,
+                usuario="script:medir_rnf03",
             )
             sesion.commit()
             segundos = Decimal(str(time.perf_counter() - inicio))

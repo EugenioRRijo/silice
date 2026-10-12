@@ -2,12 +2,12 @@
 
 Carga un archivo `.ifc` (por defecto ofrece `data/samples/tanquilla.ifc`, la muestra de T5), lo
 tesela con `ui.visor3d.mallas` y renderiza el resultado con three.js dentro de un
-`st.components.v1.html` (three.js se carga desde cdnjs, version fija: cdnjs dejo de publicar el
-build UMD `three.min.js` despues de r147 aproximadamente, por eso se fija `r128`, la ultima
-etiqueta `rNNN` que si trae ese archivo). `OrbitControls` no viene en `three.min.js` y no esta
-publicado por separado en cdnjs para esta version: en vez de reimplementar un control de orbita
-completo, el visor gira el modelo automaticamente sobre su propio centro (alcance que el brief
-permite explicitamente).
+`st.components.v1.html` (three.js va incrustado desde `ui/estaticos/`, version fija: cdnjs dejo
+de publicar el build UMD `three.min.js` despues de r147 aproximadamente, por eso se fija
+`r128`, la ultima etiqueta `rNNN` que si trae ese archivo). `OrbitControls` no viene en
+`three.min.js` y no esta publicado por separado en cdnjs para esta version: en vez de
+reimplementar un control de orbita completo, el visor gira el modelo automaticamente sobre su
+propio centro (alcance que el brief permite explicitamente).
 
 Al lado se muestra la misma tabla GlobalId <-> codigo_partida <-> cantidad que produce
 `AdaptadorCivilIFC` sobre el mismo archivo (adapters/civil/ifc.py, T6): el visor no reemplaza la
@@ -53,8 +53,10 @@ if TYPE_CHECKING:
 
 RUTA_POR_DEFECTO = "data/samples/tanquilla.ifc"
 ALTURA_VISOR = 480
+RUTA_THREE_JS = Path(__file__).resolve().parents[1] / "estaticos" / "three.min.js"
 VERSION_THREE_JS = "r128"
-URL_THREE_JS = f"https://cdnjs.cloudflare.com/ajax/libs/three.js/{VERSION_THREE_JS}/three.min.js"
+TAMANO_THREE_JS = 603_445
+SHA256_THREE_JS = "9274bbcec8d96168626c732b5d31c775aa8cfb7eaa0599bec0c175908a2c1ce2"
 _MENSAJE_SIN_EXTRA_CIVIL = (
     "El visor 3D necesita el extra 'civil' (ifcopenshell): instala con "
     "'uv sync --extra civil' y vuelve a intentar."
@@ -157,17 +159,18 @@ def _mostrar_tabla(items: list[ItemComputo]) -> None:
 
 
 def _html_visor(mallas_encontradas: list[dict]) -> str:
-    """Incrusta el visor three.js con las mallas ya teseladas, listas para `BufferGeometry`."""
+    """Incrusta el visor three.js con las mallas ya teseladas. three.js va dentro del HTML
+    (RP10-5): el visor no pide nada fuera del equipo (RNF-08)."""
     return (
         _PLANTILLA_HTML.replace("__DATOS__", json.dumps(mallas_encontradas))
-        .replace("__URL_THREE__", URL_THREE_JS)
         .replace("__ALTURA__", str(ALTURA_VISOR))
+        .replace("__THREE__", RUTA_THREE_JS.read_text(encoding="utf-8"))
     )
 
 
 _PLANTILLA_HTML = """
 <div id="contenedor-visor" style="width:100%;height:__ALTURA__px;"></div>
-<script src="__URL_THREE__"></script>
+<script>__THREE__</script>
 <script>
 (function () {
   var datos = __DATOS__;

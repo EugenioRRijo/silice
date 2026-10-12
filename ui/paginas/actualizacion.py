@@ -66,7 +66,6 @@ from core.catalog import (
 from core.verification.informe import DECIMALES_PRESENTACION
 from core.verification.texto import formatear_decimal
 from operacion.base_datos import ErrorDeBase, preparar_base
-from scripts.seed import NOMBRE_PROYECTO, sembrar
 from seguridad.permisos import Accion
 from ui import sesion as ui_sesion
 from ui.caso import ruta_caso
@@ -151,6 +150,8 @@ def _barra_lateral() -> dict[str, object]:
             _sembrar(ruta)
 
         st.header("Presupuesto")
+        from scripts.seed import NOMBRE_PROYECTO  # diferido (RV-25)
+
         proyecto = st.text_input("Proyecto", value=NOMBRE_PROYECTO)
         codigo = st.text_input("Codigo del presupuesto base", value=CODIGO_BASE_POR_DEFECTO)
         codigo_nuevo = st.text_input("Codigo de la version nueva", value=CODIGO_NUEVO_POR_DEFECTO)
@@ -173,6 +174,8 @@ def _barra_lateral() -> dict[str, object]:
 
 def _sembrar(ruta: Path) -> None:
     """Prepara el caso (`preparar_base`, RV-5) y carga la linea base, si aun no esta."""
+    from scripts.seed import sembrar  # diferido (RV-25)
+
     motor = crear_motor(f"sqlite:///{ruta.as_posix()}")
     try:
         preparar_base(ruta)
@@ -330,6 +333,7 @@ def _actualizar(
         detectar_atipicos=_detector_de_atipicos(),
         # SF3 (RF-56, SF3-R4): revalorar conserva el plan guardado de la version de origen
         plan=None if origen is None else plan_de_version(sesion, origen),
+        usuario=ui_sesion.responsable_actual(),  # RF-82: quien confirma lo sella en la cadena
     )
     libro = exportar_excel(
         nuevo.presupuesto, nuevo.informe, carpeta / f"presupuesto_{nuevo.presupuesto.codigo}.xlsx"

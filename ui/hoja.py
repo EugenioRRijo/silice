@@ -1665,13 +1665,19 @@ def _clasificar(
     return tuple(base), escritas
 
 
+#: Quien responde por lo que la hoja registra al abrir una version sin que nadie lo diga. Solo con
+#: el acceso apagado (transicion, RP8-4): con el acceso encendido manda la sesion (RF-82). Es el
+#: UNICO lugar de `ui/` con este literal.
+RESPONSABLE_POR_OMISION = "sistema"
+
+
 def abrir_version(
     sesion: Session,
     catalogo: Catalogo,
     proyecto: str,
     codigo: str,
     *,
-    responsable: str = "sistema",
+    responsable: str = RESPONSABLE_POR_OMISION,
     ahora: datetime | None = None,
     fecha_evaluacion: date | None = None,
 ) -> VersionAbierta:
@@ -1991,6 +1997,7 @@ def crear_primera_version(
             parametros=borrador.parametros,
             pendientes=elaboracion.pendientes,
             plan=resultado.plan,
+            usuario=responsable,
         )
         sesion.add(
             models.RegistroCambio(
@@ -2140,8 +2147,17 @@ def convertir(
     try:
         tasa = TasaDeclarada.de_importacion(tasa_aplicable(sesion, fecha, lado=lado))
         nuevo = siguiente_codigo(sesion, proyecto)
-        convertir_version(sesion, proyecto, codigo, nuevo, moneda, tasa, fuente=fuente,
-                          responsable=responsable, catalogo=catalogo)
+        convertir_version(
+            sesion,
+            proyecto,
+            codigo,
+            nuevo,
+            moneda,
+            tasa,
+            fuente=fuente,
+            responsable=responsable,
+            catalogo=catalogo,
+        )
         sesion.commit()
     except ValueError as error:  # TasaNoDisponible es ValueError
         sesion.rollback()

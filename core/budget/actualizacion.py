@@ -135,6 +135,7 @@ def actualizar_precios(
     plan: Sequence[PeriodoPlan] | GeneradorPlan | None = None,
     detectar_atipicos: DetectorAtipicos | None = None,
     reglas: Sequence[ReglaVerificacion] = REGLAS,
+    usuario: str | None = None,
 ) -> tuple[ResultadoElaboracion, Comparativo]:
     """Revalora un presupuesto con `lista_nueva` y lo guarda como versión `codigo_nuevo`.
 
@@ -239,6 +240,7 @@ def actualizar_precios(
         plan=reparto.guardable(),
         version_origen=modelo,
         motivo="revaloracion",
+        usuario=usuario,
     )
 
     _registrar_incidencias(session, cambios, anterior, nuevo.presupuesto, modelo.id)

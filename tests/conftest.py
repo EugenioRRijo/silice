@@ -133,18 +133,51 @@ def _instalacion_real_intacta():
 
 @pytest.fixture(autouse=True)
 def _datos_de_silice_temporales(monkeypatch, tmp_path_factory):
-    """Toda prueba trabaja con una carpeta de datos temporal (`SILICE_DATOS`): nada llega a
-    `data/casos/`, `data/respaldos/` ni `data/instalacion.db` (spec S5 §12)."""
-    monkeypatch.setenv("SILICE_DATOS", str(tmp_path_factory.mktemp("silice_datos")))
+    """Toda prueba trabaja con carpetas temporales: nada llega a `data/casos/`, `data/respaldos/`,
+    `data/instalacion.db`, `data/config/`, `data/registros/` ni `data/estado/` (spec S5 §12)."""
+    carpeta = tmp_path_factory.mktemp("silice_datos")
+    monkeypatch.setenv("SILICE_DATOS", str(carpeta))
+    monkeypatch.setenv("SILICE_USUARIO", str(carpeta))
     monkeypatch.delenv("SILICE_INSTALACION", raising=False)
     monkeypatch.delenv("SILICE_RESPALDOS", raising=False)
 
 
+#: El `usuario` que el embudo recibe en las pruebas que no lo declaran (RF-83).
+USUARIO_DE_PRUEBA = "Prueba <prueba>"
+
+#: Estado de la fixture de abajo: las pruebas marcadas `sin_usuario_por_omision` lo apagan.
+_USUARIO_POR_OMISION = {"activo": True}
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _usuario_de_prueba_en_el_embudo() -> Iterator[None]:
+    """S3-2 (RF-83): confirmar una versión exige `usuario`. Las pruebas que no son del sellado
+    guardan sin declarar uno y el embudo recibe el de prueba. De sesión, y no por prueba, porque
+    las fixtures de módulo y de sesión que siembran bases también guardan versiones. La prueba de
+    arquitectura vigila que ningún llamador FUERA de `tests/` dependa de este valor."""
+    from core.budget import persistencia
+
+    original = persistencia.marcar_por_sellar
+
+    def con_usuario(session, version, usuario, anexos_de=None):
+        por_omision = USUARIO_DE_PRUEBA if _USUARIO_POR_OMISION["activo"] else None
+        return original(session, version, usuario or por_omision, anexos_de)
+
+    with pytest.MonkeyPatch.context() as parche:
+        parche.setattr(persistencia, "marcar_por_sellar", con_usuario)
+        yield
+
+
 @pytest.fixture(autouse=True)
-def _acceso_apagado(monkeypatch) -> Iterator[None]:
-    """S3-1: la interfaz no pide entrar (`SILICE_ACCESO=0`; las pruebas de S3 lo encienden)."""
+def _acceso_apagado_y_usuario_por_prueba(request, monkeypatch) -> Iterator[None]:
+    """S3-1: la interfaz no pide entrar (`SILICE_ACCESO=0`; las pruebas de S3 lo encienden).
+    S3-2: `@pytest.mark.sin_usuario_por_omision` apaga el usuario de prueba del embudo."""
     monkeypatch.setenv("SILICE_ACCESO", "0")
+    _USUARIO_POR_OMISION["activo"] = (
+        request.node.get_closest_marker("sin_usuario_por_omision") is None
+    )
     yield
+    _USUARIO_POR_OMISION["activo"] = True
 
 
 @pytest.fixture(scope="session")

@@ -21,7 +21,6 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from operacion.base_datos import ErrorDeBase, crear_caso, listar_casos, preparar_base, subir_caso
 from operacion.config import BASE_ANTERIOR, carpeta_casos
-from scripts.seed_demo import main as sembrar_demostracion
 from seguridad.permisos import Accion
 from ui import caso
 from ui import sesion as ui_sesion
@@ -133,6 +132,8 @@ def _estado(estado: EstadoCaso) -> None:
         with st.spinner("Cargando la linea base, la demostracion y su presupuesto auditado..."):
             try:
                 preparar_base(estado.ruta)
+                from scripts.seed_demo import main as sembrar_demostracion  # diferido (RV-25)
+
                 sembrar_demostracion(argv_siembra(estado.ruta))
             except (LookupError, ValueError, ArithmeticError, OSError, SQLAlchemyError) as error:
                 st.error(f"No se pudo cargar el caso de demostracion: {error}")

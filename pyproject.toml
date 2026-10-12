@@ -76,3 +76,6 @@ known-first-party = [
 testpaths = ["tests"]
 pythonpath = ["."]
 addopts = "-q --strict-markers"
+markers = [
+    "sin_usuario_por_omision: la prueba guarda versiones sin el usuario de prueba (RF-83).",
+]
