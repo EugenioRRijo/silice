@@ -10,7 +10,6 @@ from core.budget.reajuste import cargar_estudio
 from core.catalog import abrir_sesion, crear_motor
 from operacion.base_datos import Destino, leer_estado, preparar_base, revision_head
 from tests.fixtures.caso_s1 import plantilla_s1
-from tests.fixtures.reajuste_s1 import NOMBRE
 
 
 def test_la_plantilla_s1_trae_la_clinica_convertida_la_lista_de_empresa_y_el_estudio(tmp_path):
@@ -21,11 +20,7 @@ def test_la_plantilla_s1_trae_la_clinica_convertida_la_lista_de_empresa_y_el_est
     motor = crear_motor(f"sqlite:///{ruta.as_posix()}")
     try:
         with abrir_sesion(motor) as sesion:
-            motivos = sesion.scalars(
-                select(models.Presupuesto.motivo).join(models.Proyecto).where(
-                    models.Proyecto.nombre != NOMBRE
-                )
-            ).all()
+            motivos = sesion.scalars(select(models.VersionOrigen.motivo)).all()
             assert "conversion" in motivos
             assert sesion.scalars(select(models.ListaEmpresa)).all()
             estudio = sesion.scalars(select(models.EstudioReajuste)).one()

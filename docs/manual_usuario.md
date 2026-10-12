@@ -551,6 +551,136 @@ proyecto con sus fórmulas vivas, más una hoja por tabla del espacio. El libro 
 cambios sin guardar los pierde: Streamlit no deja avisar. (2) Los datos de ejemplo (OF‑001) son un caso
 construido, no una obra ejecutada.
 
+### 3.9 Moneda, precios de la empresa, índices del BCV y reajuste (UC‑17 y UC‑18)
+
+Desde la versión 0.6.0 cada proyecto tiene **su moneda** (Bs o USD), cada precio dice de dónde sale y
+cuánto valor perdió, una empresa puede tener **su lista de precios**, el sistema lee los archivos del
+**BCV** que usted descarga y calcula el **reajuste** de la obra ejecutada de dos maneras, lado a lado.
+Nada de esto usa internet: el sistema lee lo que usted bajó.
+
+**La moneda del proyecto.** Al crear un proyecto en la barra (**Proyecto**), elija la **Moneda del
+proyecto**: Bs o USD. No tiene valor por defecto; sin elegirla, el proyecto no se crea. Una versión se
+valora solo con una lista de su moneda: guardar o revalorar con una lista de otra moneda se rechaza y el
+mensaje lo dice. En la pestaña **Parámetros** de la hoja verá la moneda del proyecto y el bloque
+**Cambiar la moneda**: elija la moneda destino y la tasa del BCV (venta, por defecto, o compra), escriba
+por qué se cambia y quién lo hace, y pulse **Convertir la version**. Se crea una **versión nueva**
+convertida con la tasa del BCV de hoy (la de fecha valor más reciente que no pase de hoy); la versión
+anterior no cambia. Si la última tasa importada tiene más de 7 días, no se convierte nada y el mensaje
+lo dice: importe antes la tasa en **Indices del BCV**.
+
+**De dónde sale cada precio.** La pestaña **Precios** de la hoja muestra, por insumo, la moneda y el
+precio originales, la fecha del precio, la tasa con su fecha y su fuente, la fuente del precio, si es
+**propio** o **heredado** de la lista base (en una lista de empresa) y la **erosión** a hoy: cuánto
+valor perdió el precio, en USD, en Bs y en porcentaje. El porcentaje es la fracción del valor que se
+perdió (1 − tasa del precio ÷ tasa de hoy), no la erosión en Bs dividida entre el precio. Ejemplo: un
+precio de 1 000 Bs del 01/07/2026 (tasa 633,3644) evaluado al 01/10/2026 (tasa 860,18) perdió 0,42 USD,
+que son 358,11 Bs, un **26,37 %** (no 35,81 %). Un precio en USD tiene erosión 0: el sistema no tiene un
+índice de inflación en dólares y lo declara. Si hay una serie de índices cargada, la **erosión por
+índice** va en su propia columna y no se suma a la otra. La columna **Estado** agrega los hallazgos de
+R11 y R12 de hoy.
+
+**Índices del BCV (UC‑17, pasos 1 a 3).** En la pantalla **Indices del BCV**:
+
+1. Elija qué archivo es: la **tasa de referencia** (el `.xls` trimestral), el **INPC** (`.xls` mensual)
+   o **una serie en CSV canónico**. Súbalo, escriba la dirección de la página del BCV de donde lo bajó
+   (tiene que ser de `bcv.org.ve`) y la fecha de descarga, y pulse **Leer**.
+2. Lea el **informe previo**: las series, cuántas filas se leyeron, cuántas se rechazaron y por qué
+   (fecha repetida, fuera del trimestre, posterior a la descarga, valor no numérico…) y cuántas son
+   provisionales. Todavía no se guardó nada.
+3. Escriba el **responsable** y pulse **Confirmar la importacion**. El mismo archivo dos veces no
+   escribe nada. Un INPC revisado por el BCV entra como una importación nueva: los estudios de reajuste
+   ya guardados siguen usando la que citaron.
+
+El **CSV canónico** sirve para el índice de insumos de la construcción (mientras su formato no esté
+documentado) o para cualquier serie si el BCV cambia su formato: columnas
+`serie,fecha,valor,provisional,fuente`, fechas `AAAA-MM-DD`, punto decimal, `si`/`no` en
+`provisional` y la **fuente en cada fila**. Al confirmar, declare el nombre, el organismo, la unidad y la
+periodicidad de cada serie.
+
+**Precios de la empresa (UC‑17, pasos 4 y 5).** En la pantalla **Precios de la empresa**:
+
+1. Pulse **Cargar la referencia MaPreX en Bs** (una vez por caso): los 111 precios de julio de 2026 en
+   bolívares, con su Ref, contra los que se comparan los de la empresa.
+2. Cree la lista: nombre y RIF de la empresa, **lista base** (la que completa los insumos que la empresa
+   no cotiza), **moneda** (sin valor por defecto), fecha, fuente y el archivo (CSV o XLSX con las
+   columnas `tipo`, `insumo`, `unidad`, `precio` y, opcionales, `fecha`, `fuente`, `referencia`,
+   `moneda`, `tasa`, `fecha_tasa`, `fuente_tasa`). **Use punto decimal**: `13288.00`, nunca
+   `13.288,00`; una cifra con coma se rechaza con su fila. Los insumos que el catálogo no conoce se
+   listan y no entran. La lista de una empresa no es la lista vigente de nadie: solo la usa la versión
+   que la elige, y no cambia la valoración de ningún otro proyecto.
+3. Revise los **precios vencidos o fuera de rango** a la fecha de evaluación (hoy, por defecto). Sin
+   versión, el impacto es por unidad de insumo; en la hoja de una versión es el dinero en su total.
+
+| Regla | Qué marca | Severidad |
+|---|---|---|
+| **R11** Precio fuera de rango | el precio frente a su referencia MaPreX, los dos llevados a USD con la tasa de cada uno, fuera de −20 % / +30 %; exactamente −20 % o +30 % pasa | ADVERTENCIA por insumo, y **un** INFO que cuenta los insumos sin referencia o sin tasa a su fecha |
+| **R12** Precio vencido o sin trazabilidad de tasa | un precio con más de 30 días a la fecha de evaluación (30 pasa), o convertido con una tasa sin fuente | ADVERTENCIA |
+| **R12** | un precio convertido con una tasa **sin fecha**: no se puede reproducir | ERROR |
+
+R11 y R12 no son parte de las siete reglas del informe de cada presupuesto (sección 4): se evalúan a una
+fecha que usted ve, y volver a evaluar a otra fecha cambia lo que se muestra, nunca lo guardado.
+
+**Reajuste de precios (UC‑18).** Abra el proyecto en la barra y vaya a **Reajuste de precios**:
+
+1. Elija la **versión del contrato**.
+2. Declare la **cláusula**: inicio y duración del contrato, desde cuándo corre el primer año,
+   periodicidad, mecanismo (escalatoria, comprobación o ambos; con ambos, cuál es el **pagadero** y su
+   fuente), estructura (**por partida**: los pesos salen del APU de cada partida; **declarada**: un peso
+   por componente, que sumen exactamente 1), el **mes base** de los índices, **R** con su fuente (si el
+   contrato no la trae, escriba 0 y dígalo), la fuente de la cláusula y el responsable. En la tabla de
+   componentes escriba la serie importada de materiales, equipos y mano de obra.
+3. Escriba los **períodos** (desde, hasta, la versión revalorada que sirve de comprobación y, si la hay,
+   la excepción declarada) y lo **ejecutado** por período y partida, con su fuente (número y fecha del
+   acta o de la valuación).
+4. Pulse **Calcular**: ve por período y en total la **escalatoria**, la **comprobación directa**, su
+   diferencia y el monto **reconocido**, en la moneda del proyecto y en la otra (con la tasa del cierre
+   de cada período; la diferencia se convierte una sola vez). Nada se guarda todavía.
+5. Escriba la fuente y el responsable y pulse **Guardar estudio**. Si el último período es un mes que
+   aún no cierra, el estudio queda **«parcial al corte»**; al cerrar el mes, calcule otra vez y guárdelo
+   eligiendo el parcial que **reemplaza** (una sola vez; el parcial no se borra).
+6. **Preparar Excel** y **Descargar Excel**: el libro de la versión del contrato con las hojas
+   **Reajuste** y **Ejecutado**.
+
+Lo que el sistema decide solo, y le dice: un período anterior al aniversario de un contrato de más de un
+año tiene reajuste 0 con la nota «precios fijos el primer año (art. 134, a cotejar)»; un período que
+cruza el aniversario se rechaza (pártalo); si falta el índice de un mes, ese período no se calcula; un
+índice provisional se marca; lo ejecutado por encima de lo presupuestado se guarda con aviso y se
+reajusta solo hasta lo presupuestado; sin versión revalorada, la comprobación queda «no disponible»; un
+proyecto en USD con índices en Bs lleva una ADVERTENCIA; si los reajustes superan el 10 % del monto
+original sale una nota marcada INDICIO. Un estudio guardado no cambia aunque después se importe una
+revisión de los índices: cita las importaciones que usó.
+
+**Supuestos declarados, todos a cotejar con la Gaceta o con un experto.** El reajuste sigue una
+transcripción de la ley, no la Gaceta Oficial; la fórmula `Vo · (Km − 1) · (1 − R)` es un INDICIO. Lo
+que el sistema supone, para que usted lo vea y lo pueda discutir:
+
+| # | Supuesto |
+|---|---|
+| S1‑R1 | La tasa para convertir es la de **venta** del BCV; se puede elegir compra |
+| S1‑R2 | Tasa aplicable: la de fecha valor más reciente que no pase de la fecha; con más de 7 días sin tasa no se convierte |
+| S1‑R3 | Cambiar la moneda crea una versión nueva convertida; nada se reescribe |
+| S1‑R4 | La lista de una empresa no es la vigente de nadie: la usa la versión que la elige |
+| S1‑R5 | R11: rango −20 % / +30 % por analogía con la clase 3 de AACE (no es una fuente de rango por insumo) |
+| S1‑R6 | R12: un precio vence a los 30 días (supuesto sin fuente) |
+| S1‑R7 | R11 y R12 no entran en las siete reglas del informe |
+| S1‑R8 | La fórmula escalatoria `Vo · (Km − 1) · (1 − R)` es un INDICIO, a verificar |
+| S1‑R9 | Primer año: solo en contratos de más de 12 meses; el período que cruza el aniversario se rechaza; la excepción por equilibrio económico se declara |
+| S1‑R10 | El índice de un período es el del mes en que cierra; el mes base se declara |
+| S1‑R11 | El reajuste se calcula en la moneda del contrato; USD con índice en Bs da ADVERTENCIA |
+| S1‑R12 | Los `.xls` se leen con `xlrd` (extra `bcv`, incluido en la instalación básica) |
+| S1‑R13 | Los archivos del BCV de prueba no vienen con el programa: cada empresa descarga los suyos |
+| S1‑R14 | R no se aplica a la comprobación directa salvo que la cláusula lo diga |
+| S1‑R15 | Las monedas se escriben `Bs` y `USD` |
+| S1‑R16 | El desvío de R11 se calcula con una sola división y sin redondear antes de comparar |
+| S1‑R17 | Lo ejecutado por encima de lo presupuestado se guarda con aviso y se reajusta hasta lo presupuestado |
+| S1‑R18 | Desde la 0.7.0, cada valuación entra entera en el período que contiene su fecha *hasta* |
+| S1‑R19 | El porcentaje de erosión es 1 − tasa del precio ÷ tasa de evaluación |
+| S1‑R20 | Con «ambos», se reconoce el mecanismo pagadero de la cláusula; sin él, la escalatoria |
+| S1‑R21 | El estudio de un mes en curso se guarda «parcial al corte» y se reemplaza una vez al cerrar el mes |
+
+**Recorrido guiado.** En **Inicio**, «Moneda, precios de empresa y reajuste» lo lleva paso a paso por
+**Indices del BCV**, **Precios de la empresa**, la **Hoja del proyecto** y **Reajuste de precios**.
+
 ## 4. El informe de auditoría
 
 Se genera **siempre** — no existe forma de obtener un presupuesto sin él. Ejecuta las siete
@@ -604,6 +734,10 @@ adivina. Es un **ancla** para ubicar el hallazgo, y la descripción da el detall
   (el cierre de la curva de R2, las declaraciones «no aplicable», un período del plan que no nombra
   ninguna partida) o un hallazgo cuyo origen comparten varias partidas sin que ninguna regla lo haya
   declarado.
+
+**Reglas de precios (R11 y R12, desde la 0.6.0).** No son parte de las siete: se evalúan sobre la lista
+de precios a una fecha de evaluación que se declara (en la hoja, hoy) y su impacto es dinero en el total
+de la versión. Están en la sección 3.9.
 
 ## 5. Exportar
 
@@ -661,3 +795,10 @@ Cada carpeta trae su `README.md` con el formato exacto de columnas.
 | «Falta instalar el componente para leer planos DXF» (o IFC) al pulsar **Leer plano** | Falta el extra `planos` (DXF) o `civil` (IFC): ejecute `uv sync --extra planos` (DXF) o `uv sync --extra civil` (IFC) y vuelva a pulsar **Leer plano** |
 | Un archivo subido se guarda con otro nombre (por ejemplo `_CON.csv`) | El nombre original era reservado en Windows (`CON`, `NUL`, `COM1`…) o traía caracteres no permitidos: se limpia para guardarlo, y el contenido no cambia |
 | La barra lateral no muestra el caso esperado bajo «Caso abierto» | Abrirlo en **Inicio** (lista de casos y *Abrir este caso*) o arrancar con `SILICE_CASO=<ruta>`: recargar la página (F5) vuelve a la ruta de `SILICE_CASO` o, sin ella, a `data/casos/silice.db` |
+| «… con mas de 7 dias naturales sin tasa no se convierte (S1-R2)» al convertir | No hay tasa del BCV importada en los 7 días anteriores: importe el archivo trimestral en **Indices del BCV** y vuelva a convertir |
+| «… lleva coma; use punto como separador decimal» al cargar una lista o un CSV | El archivo usa coma decimal: escriba `13288.00`, no `13.288,00` ni `13288,00`. Nada se escribió |
+| «… no es una direccion de bcv.org.ve» al leer un archivo del BCV | La dirección declarada no es del BCV: copie la de la página de donde bajó el archivo |
+| «Elija la moneda del proyecto (Bs o USD)» al crear un proyecto | La moneda no tiene valor por defecto: elíjala en la barra y vuelva a pulsar **Crear proyecto** |
+| «… una version solo se valora con una lista de su moneda (RF-65)» | La lista elegida (o la vigente) está en otra moneda que la versión: cree o elija una lista en la moneda del proyecto, o convierta la versión en **Parámetros** |
+| «un parcial se reemplaza una sola vez (S1-R21)» | Ese estudio parcial ya tiene su estudio de cierre: no hace falta otro |
+| Un período del reajuste dice «índice faltante: período no calculado» | Falta el índice del mes base o del mes de cierre de alguna serie: impórtelo en **Indices del BCV** y vuelva a calcular |

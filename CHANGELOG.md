@@ -6,6 +6,8 @@ etiquetar, las líneas pasan a la sección de la versión. La historia anterior 
 
 ## [Sin publicar]
 
+## [0.6.0] - 2026-10-12
+
 ### Agregado
 
 - T0‑A1: el producto se llama Sílice; variables `SILICE_CASO` y `SILICE_MODO_ENTREGA` (alias `ARENIA_*` hasta la 0.6.0); `.streamlit/config.toml` en 127.0.0.1 sin telemetría; licencia propietaria (`LICENSE`).
@@ -17,3 +19,9 @@ etiquetar, las líneas pasan a la sección de la versión. La historia anterior 
 - S1‑0: ERS con UC‑17, UC‑18, RF‑64 a RF‑71 y RNF‑14; modelo de datos §2.5; filas previstas en el plan de pruebas; parte S1 de la meta (`scripts/meta_silice_s1.py`).
 - S1‑3 (interfaz): pantallas «Precios de la empresa» e «Índices del BCV» (UC‑17); la hoja ofrece la moneda del proyecto en Parámetros, conversión a la otra moneda, origen, erosión y R11/R12 en Precios y en la auditoría; la barra exige la moneda al crear un proyecto; `ui/texto_seguro.py` escapa el texto ajeno.
 - S1‑4 (SL‑E3, núcleo): reajuste por fórmula escalatoria y por comprobación directa lado a lado (`core/budget/reajuste.py`), estudio guardado con las importaciones que cita y recalculable sin cambios (RNF‑14), parcial al corte; tablas aditivas con la revisión `caso_0004_s1_reajuste`.
+- S1‑4 (interfaz): pantalla «Reajuste de precios» (UC‑18): cláusula, periodos y ejecutado con su fuente, escalatoria y comprobación lado a lado en las dos monedas, guardado del estudio (con reemplazo del parcial al corte) y Excel con las hojas Reajuste y Ejecutado; los errores nombran el campo como se ve en pantalla.
+- S1‑5 (cierre): recorrido guiado «Moneda, precios de empresa y reajuste»; cuarta base de prueba (`s1.db`) con la clínica convertida a Bs, la lista de empresa y un estudio de reajuste; secciones 3.9 del manual de usuario y 13 del manual técnico.
+
+### Corregido
+
+- SEG‑3: el informe de auditoría ya no se interpreta como Markdown; el nombre de un insumo importado con `![x](http://…)` dentro de un hallazgo R11/R12 se ve como texto, en la hoja y en las pantallas de elaborar y componer (`ui.resultado.mostrar_informe`). Queda pendiente la pantalla de actualizar precios.
