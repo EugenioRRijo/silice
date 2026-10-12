@@ -5,6 +5,7 @@ from fastapi.responses import JSONResponse
 
 from api.rutas import catalogo, computos, listas, presupuestos, rendimientos
 from core.catalog import CatalogoIncompleto
+from operacion.version import version
 
 DESCRIPCION = """API HTTP sobre el nucleo del sistema de Analisis de Precios Unitarios (APU).
 
@@ -15,7 +16,7 @@ DESCRIPCION = """API HTTP sobre el nucleo del sistema de Analisis de Precios Uni
 la perdida de precision de `float` en JSON (regla 3 de NORMAS.md).
 """
 
-app = FastAPI(title="Sílice", version="0.1.0", description=DESCRIPCION)
+app = FastAPI(title="Sílice", version=version(), description=DESCRIPCION)
 app.include_router(catalogo.router)
 app.include_router(listas.router)
 app.include_router(computos.router)
