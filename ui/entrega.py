@@ -25,7 +25,7 @@ from sqlalchemy.orm import Session
 
 from adapters.espacio import cargar_espacio
 from adapters.espacio.serie import espacio_a_objeto
-from asistente.registro import anexo_ia
+from asistente import registro as registro_ia
 from core import models
 from core.budget import cadena, canonico
 from core.contracts.verificacion import Severidad
@@ -72,7 +72,7 @@ def anexo_de_ia(session: Session, version: models.Presupuesto) -> bytes | None:
     propuestas aceptadas y guardadas hasta esta versión, sin fichas ni costos ni claves (RV-19).
     `None` si no hay ninguna o si la base aún no tiene el registro de IA."""
     try:
-        return anexo_ia(session.connection(), version.proyecto.nombre, version.codigo)
+        return registro_ia.anexo_ia(session.connection(), version.proyecto.nombre, version.codigo)
     except SQLAlchemyError:
         return None
 
