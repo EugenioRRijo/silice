@@ -148,7 +148,9 @@ def test_el_item_sin_partida_queda_pendiente_con_sus_propuestas(monkeypatch, bas
     assert any(t.startswith("**T-99**") and "XX-99-NUE" in t for t in textos), textos
     assert list(at.selectbox(key="elaborar_propuesta_0").options) == ["LB-02-TUB", "LB-01-EXC"]
     assert any("0.91" in t for t in textos) and any("0.55" in t for t in textos)
-    assert any("PENDIENTE" in t for t in textos)  # el informe en markdown lo declara
+    # el informe (en celdas de tabla, no en Markdown: SEG-3) declara el pendiente
+    celdas = [str(v) for d in at.dataframe for v in d.value.to_numpy().ravel()]
+    assert any("PENDIENTE" in c for c in celdas)
 
 
 # --- D6: aceptar una propuesta y volver a elaborar ------------------------------------------

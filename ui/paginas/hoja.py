@@ -63,6 +63,7 @@ from core.verification.texto import formatear_decimal
 from operacion.base_datos import ErrorDeBase, preparar_base
 from ui import caso, hoja
 from ui.caso import ACCION_IMPORTAR_PLANO, ACCION_PRECIOS, ruta_caso
+from ui.resultado import mostrar_informe
 
 PESTANAS = (
     "Espacio y metrajes",
@@ -684,7 +685,7 @@ def _pestana_espacio() -> None:
             "catalogo del caso: quedan pendientes y no suman al total."
         )
     st.subheader("Informe de auditoria")
-    st.markdown(resultado.elaboracion.informe.a_markdown())
+    mostrar_informe(resultado.elaboracion.informe)
 
 
 # --- importar un plano (RF-50, RF-51) -------------------------------------------------------------
@@ -1440,21 +1441,7 @@ def _pestana_auditoria() -> None:
     resultado, _ = _calculo()
     informe = resultado.elaboracion.informe
     st.caption("El informe se genera siempre, con todas las reglas, sobre el borrador vigente.")
-    st.markdown(informe.a_markdown())
-    if informe.hallazgos:
-        st.subheader("Detalle de los hallazgos")
-        st.dataframe(
-            DataFrame(
-                {
-                    "Regla": [h.regla for h in informe.hallazgos],
-                    "Severidad": [h.severidad.name for h in informe.hallazgos],
-                    "Descripcion": [h.descripcion for h in informe.hallazgos],
-                    "Origen": ["; ".join(h.origen_ids) for h in informe.hallazgos],
-                }
-            ),
-            hide_index=True,
-            width="stretch",
-        )
+    mostrar_informe(informe)
 
 
 # --- pestana Trazabilidad ------------------------------------------------------------------------
