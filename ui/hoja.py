@@ -245,6 +245,7 @@ ROTULOS_DE_VALOR: dict[str, str] = {
     "ifc": "Archivo IFC",
     "levantamiento": "Levantamiento en obra",
     "supuesto": "Supuesto",
+    "ia": "Propuesta de IA",
     # especialidad
     "agua": "Agua",
     "datos": "Datos",
@@ -280,6 +281,10 @@ def rotulo_de_valor(valor: str) -> str:
 
 #: Estado de una fila que ningun hallazgo toca.
 TEXTO_OK = "OK"
+
+#: Prefijo del `origen_id` de una partida propuesta por el asistente de IA (`ia:<sesion>:<id>`,
+#: S4 §5.4): el asistente lo escribe y el Estado de la fila lo muestra como «Propuesta de IA».
+PREFIJO_ORIGEN_IA = "ia:"
 
 #: Estado de una fila cuyos items citan partidas sin APU en el catalogo (no es error de medida).
 TEXTO_PENDIENTE = "PENDIENTE: sin APU en el catálogo"
@@ -1425,6 +1430,14 @@ def _estado_de(
     return EstadoFila(segmentos[0][0], " | ".join(t for _, t in segmentos))
 
 
+def _con_procedencia(estado: EstadoFila, origen_id: str) -> EstadoFila:
+    """La procedencia de una partida propuesta por la IA, junto a su Estado (S4 §5.4)."""
+    if not origen_id.startswith(PREFIJO_ORIGEN_IA):
+        return estado
+    sesion = origen_id.split(":")[1] if origen_id.count(":") >= 2 else "?"
+    return replace(estado, texto=f"{estado.texto} | Propuesta de IA (sesion {sesion})")
+
+
 def estado_de_items(
     items: Sequence[ItemComputo], informe: InformeAuditoria
 ) -> dict[str, EstadoFila]:
@@ -1461,7 +1474,9 @@ def estado_de_items(
             if hallazgo.descripcion not in textos:
                 textos.append(hallazgo.descripcion)
         falta_apu = (item.codigo_partida, item.origen_id) in pendientes
-        estado[clave] = _estado_de(grupos, [item.codigo_partida] if falta_apu else None)
+        estado[clave] = _con_procedencia(
+            _estado_de(grupos, [item.codigo_partida] if falta_apu else None), item.origen_id
+        )
     return estado
 
 

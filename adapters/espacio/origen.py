@@ -21,6 +21,7 @@ class TipoOrigen(StrEnum):
     IFC = "ifc"
     LEVANTAMIENTO = "levantamiento"
     SUPUESTO = "supuesto"
+    IA = "ia"
 
 
 #: Datos que cada tipo de origen debe traer, no vacíos (spec §6.3, RF-44).
@@ -30,7 +31,13 @@ REFERENCIA_OBLIGATORIA: dict[TipoOrigen, tuple[str, ...]] = {
     TipoOrigen.IFC: ("archivo", "global_id"),
     TipoOrigen.LEVANTAMIENTO: ("fecha", "responsable"),
     TipoOrigen.SUPUESTO: ("motivo",),
+    TipoOrigen.IA: ("proveedor", "modelo", "sesion", "propuesta"),
 }
+
+#: Prefijo de las claves de la referencia de un origen IA que declaran un campo supuesto por el
+#: modelo (`supuesto.x0` = «esquina del baño en el origen»). R8 emite una ADVERTENCIA por cada una
+#: (S4 §5.4).
+PREFIJO_SUPUESTO_IA = "supuesto."
 
 
 def clave_esp(tabla: str, id_fila: str) -> str:
@@ -70,3 +77,14 @@ class OrigenMedida:
     @property
     def es_supuesto(self) -> bool:
         return self.tipo is TipoOrigen.SUPUESTO
+
+
+def supuestos_de_ia(origen: OrigenMedida) -> tuple[tuple[str, str], ...]:
+    """Los campos que la IA supuso, como pares (campo, motivo) ordenados; vacio si no es IA."""
+    if origen.tipo is not TipoOrigen.IA:
+        return ()
+    return tuple(
+        (clave.removeprefix(PREFIJO_SUPUESTO_IA), motivo)
+        for clave, motivo in origen.referencia
+        if clave.startswith(PREFIJO_SUPUESTO_IA)
+    )

@@ -70,7 +70,7 @@ from adapters.espacio.modelo import (
     TipoPunto,
     Tramo,
 )
-from adapters.espacio.origen import OrigenMedida, TipoOrigen, clave_esp
+from adapters.espacio.origen import OrigenMedida, TipoOrigen, clave_esp, supuestos_de_ia
 from core.contracts.presupuesto import Presupuesto
 from core.contracts.verificacion import Hallazgo, ReglaVerificacion, Severidad
 
@@ -234,6 +234,17 @@ def _hallazgos_r8(espacio: Espacio) -> list[Hallazgo]:
                     f"{quien}: la medida es un supuesto declarado (origen {origen.id}: {motivo})",
                 )
             )
+        elif origen.tipo is TipoOrigen.IA:
+            for campo, motivo in supuestos_de_ia(origen):
+                hallazgos.append(
+                    _hallazgo(
+                        CODIGO_R8,
+                        Severidad.ADVERTENCIA,
+                        clave,
+                        f"{quien}: alto supuesto por la IA: {campo} ({motivo}) "
+                        f"(origen {origen.id})",
+                    )
+                )
         if tabla == "esp_ambientes":
             # importado de un plano sin altura: pendiente mientras siga el alto provisional
             pendiente = ORIGEN_ALTURA_PENDIENTE in origen.referencia and (
