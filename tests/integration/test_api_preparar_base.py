@@ -9,10 +9,10 @@ import pytest
 from fastapi.testclient import TestClient
 
 import api.dependencias as dependencias
-from api.main import app
 from operacion import respaldo
 from operacion.base_datos import Destino, leer_estado, revision_head
 from tests.fixtures import bases_prueba
+from tests.fixtures.claves_api import cliente_de_prueba
 
 
 @pytest.fixture
@@ -21,7 +21,7 @@ def cliente_sobre(monkeypatch):
 
     def abrir(ruta: Path) -> TestClient:
         monkeypatch.setenv(dependencias.VARIABLE_BASE, f"sqlite:///{ruta.as_posix()}")
-        return TestClient(app)
+        return cliente_de_prueba()
 
     yield abrir
     if dependencias._motor is not None:

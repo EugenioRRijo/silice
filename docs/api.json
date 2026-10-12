@@ -6,32 +6,6 @@
     "version": "0.6.0"
   },
   "paths": {
-    "/salud": {
-      "get": {
-        "tags": [
-          "catalogo"
-        ],
-        "summary": "Salud",
-        "description": "Ping de disponibilidad, sin tocar la base de datos.",
-        "operationId": "salud_salud_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": {
-                    "type": "string"
-                  },
-                  "type": "object",
-                  "title": "Response Salud Salud Get"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/partidas": {
       "get": {
         "tags": [
@@ -947,6 +921,32 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/salud": {
+      "get": {
+        "tags": [
+          "catalogo"
+        ],
+        "summary": "Salud",
+        "description": "Ping de disponibilidad, sin clave, sin versión y sin tocar la base (spec S5 §8.3).",
+        "operationId": "salud_salud_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object",
+                  "title": "Response Salud Salud Get"
                 }
               }
             }

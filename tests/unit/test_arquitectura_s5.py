@@ -10,14 +10,8 @@ import pytest
 
 from tests.fixtures.arquitectura import RAIZ, archivos, importaciones, llamadas, ruta
 
-#: Lo único de `operacion` que `ui` y `api` pueden importar (spec S5 §5.2).
-PUBLICOS_DE_OPERACION = (
-    "operacion.config",
-    "operacion.version",
-    "operacion.respaldo",
-    "operacion.base_datos",
-    "operacion.instalacion",  # S3-1: la base de la instalación, la comparten la interfaz y la API
-)
+#: Lo único de `operacion` que `ui` y `api` NO pueden importar: arrancar y la CLI (spec S5 §5.2).
+PRIVADOS_DE_OPERACION = ("operacion.lanzador", "operacion.ordenes_100", "operacion.__main__")
 
 
 def _raiz(modulo: str) -> str:
@@ -56,15 +50,13 @@ def test_ui_y_api_no_importan_migraciones() -> None:
     assert _infractores(("ui", "api"), {"migraciones"}) == []
 
 
-def test_ui_y_api_solo_importan_los_modulos_publicos_de_operacion() -> None:
+def test_ui_y_api_no_importan_el_lanzador_ni_la_cli() -> None:
     infractores = sorted(
         f"{ruta(archivo)}: {modulo}"
         for paquete in ("ui", "api")
         for archivo in archivos(paquete)
         for modulo in importaciones(archivo)
-        if _raiz(modulo) == "operacion"
-        and modulo != "operacion"
-        and not any(modulo == p or modulo.startswith(p + ".") for p in PUBLICOS_DE_OPERACION)
+        if any(modulo == p or modulo.startswith(p + ".") for p in PRIVADOS_DE_OPERACION)
     )
     assert infractores == []
 
