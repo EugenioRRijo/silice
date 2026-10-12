@@ -72,16 +72,17 @@ from ui.entorno import VARIABLE_MODO_ENTREGA, leer_variable
 from ui.paginas import (
     acerca,
     actualizacion,
+    administracion,
     catalogo,
     componer,
     control,
     elaborar,
+    entregar,
     escenarios,
     historico,
     hoja,
     indices,
     inicio,
-    instalacion,
     precios_empresa,
     reajuste,
     revisar,
@@ -147,9 +148,11 @@ PAGINAS: tuple[DefinicionPagina, ...] = (
     DefinicionPagina(control.render, "Control de obra", SECCION_TRABAJO, "UC-19 / UC-20",
                      _CONTROLA),
     DefinicionPagina(acerca.render, "Acerca de Sílice", SECCION_TRABAJO),
-    # S5-2: mientras S3-3 no traiga la página Administración, la pestaña vive como pantalla propia.
-    DefinicionPagina(instalacion.render, "Instalación", SECCION_TRABAJO,
-                     accion=Accion.ADMINISTRAR_RED_Y_API),
+    DefinicionPagina(entregar.render, "Entregar paquete", SECCION_TRABAJO, "UC-22",
+                     Accion.ENTREGAR_PAQUETE),
+    # S3-3: cuentas, empresa y claves, accesos y (pestaña «Instalación») red, API y respaldos.
+    DefinicionPagina(administracion.render, "Administración", SECCION_TRABAJO, "UC-21",
+                     Accion.ADMINISTRAR_CUENTAS),
     DefinicionPagina(revisar.render, "Revisar un paquete", SECCION_REVISION, "UC-23",
                      Accion.REVISAR_PAQUETE),
     DefinicionPagina(

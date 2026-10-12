@@ -118,3 +118,4 @@ Cada una audita las metas de su sprint (`OK`/`FALLA`/`PENDIENTE`); una fase se c
 | `generar_ids_silice.py` | escribe (o con `--comprobar`, verifica) `data/ids/silice_instalaciones.ids`, los requisitos IDS del IFC (necesita el extra `ifc`) | S3-5 · RF-89 |
 | `sembrar_errores_planos.py` | siembra errores conocidos en el DXF de OF-001 y en el IFC de oficina (catálogo de S3) | S3-5 · RF-89 |
 | `medir_deteccion_planos.py` | mide la tasa de detección y las falsas alarmas de la auditoría de planos sobre esos errores | S3-5 · RF-89 |
+| `restablecer_administrador.py` | emite un código de instalación nuevo (20 caracteres, 100 bits, un solo uso) y cierra las sesiones de los administradores; exige el equipo | S3-3 · RF-80 |
