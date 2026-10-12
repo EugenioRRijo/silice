@@ -73,6 +73,8 @@
 > criterios (a) para la base del caso, (b), (c), (d) y (e), y (f) con la base de la instalación sin tablas; el resto
 > llega con S3 (`instalacion.db` con tablas) y S5‑2. Los conteos los calcula la meta (maestro §6.1).
 
+> **Enmienda de Sílice 0.7.0 (S2; spec [S2](especificaciones/2026-10-11-silice-s2-presupuesto-vivo-design.md) §3):** se agregan **UC‑19** (registrar una valuación de obra) y **UC‑20** (controlar el avance y recuperar un retraso), **RF‑72 a RF‑79**, **RNF‑15** y las reglas externas **R13** y **R14** (§3.4); se enmiendan UC‑15, UC‑16 y UC‑18 (§2.2). Las referencias «§» de esos casos de uso y requisitos son al spec S2. Los conteos los calcula la meta (`scripts/meta_silice.py`, `scripts/meta_silice_s2.py`), que comprueba la **presencia** de cada número.
+
 > **Enmienda de Sílice 0.8.0 (S3‑0; spec
 > [S3](especificaciones/2026-10-11-silice-s3-auditor-paquete-design.md) §3; maestro RV‑7 a RV‑16, RV‑20,
 > RV‑23):** se agregan **UC‑21 a UC‑23** (cuentas y sesión, entregar el paquete auditado, revisar un
@@ -169,6 +171,8 @@ produce presupuesto, curva de inversión, informe de auditoría y exportación a
 | UC‑16 | Analizar el punto de equilibrio | SF0 (declarado), SF3 |
 | UC‑17 | Mantener la base de precios de la empresa y los índices del BCV | S1‑2, S1‑3 (Sílice 0.6.0) |
 | UC‑18 | Reajustar los precios de la obra ejecutada | S1‑4 (Sílice 0.6.0) |
+| UC‑19 | Registrar una valuación de obra | S2‑1 (Sílice 0.7.0) |
+| UC‑20 | Controlar el avance y recuperar un retraso | S2‑2, S2‑3 (Sílice 0.7.0) |
 
 UC‑09 queda vacante en este documento: [PLAN_ASISTENTE.md](../PLAN_ASISTENTE.md) (Sesión A0.1, aún no
 ejecutada) lo reserva para «Generar presupuesto asistido desde las necesidades del usuario». UC‑10 y
@@ -763,6 +767,53 @@ implementados en `core/contracts/`.
 - **Postcondiciones:** estudio guardado con sus entradas, la importación de cada índice usado, sus
   resultados y su registro; la versión del contrato no cambia.
 
+#### UC‑19 — Registrar una valuación de obra
+
+- **Actor principal:** residente de obra (ERS §2.3; registra lo ejecutado). **Secundarios:** proyectista;
+  administrador que revisa. El **inspector** no es usuario: su nombre es la fuente de la valuación.
+- **Precondiciones:** versión del contrato guardada; **línea base de control** declarada (versión, perspectiva,
+  calendario; RF‑72).
+- **Flujo principal:** 1) el actor abre «Control de obra»; 2) escribe la valuación (número, período desde/hasta,
+  fecha, inspector) y sus líneas (partida, cantidad del período, fecha de medición opcional), o la importa de
+  Excel; 3) declara fuente y responsable; 4) el sistema la guarda **sin modificar ninguna anterior**, con su
+  fecha de registro visible, corre R13 y R14 y emite el informe de control (principio 7); desde ese momento la
+  valuación **cuenta**, sin otro paso (RV‑18, decidida por Eugenio el 2026‑10‑11: sin conformación); 5) el
+  sistema calcula al corte (fecha *hasta*) el valor ganado, las alertas y la reproyección (UC‑20, pasos 1–3) con
+  las valuaciones **registradas no anuladas**.
+- **Flujos alternativos:** *2a* Excel malformado o columnas faltantes: se rechaza con mensaje y fila, sin
+  *traceback*, sin escribir nada; *2b* cantidad negativa o no numérica: se rechaza la entrada (una corrección es
+  una anulación, 4c); *4a* sin inspector o sin número: se guarda y R14 la marca ERROR; *4b* acumulado de una
+  partida mayor que lo presupuestado o partida que el presupuesto no tiene: se guarda y R13 la marca ERROR, con el
+  monto como impacto; el sistema ofrece registrar la **variación de obra** por la hoja (UC‑15, versión nueva con
+  la cantidad cambiada) y declararla nueva línea base (RF‑72); *4c* anular una valuación: fila de anulación con
+  fuente y responsable; la anulada se conserva y deja de contar; *4d* período solapado con otra valuación: R14
+  ERROR; *4e* el cliente aún no aprobó la valuación: cuenta igual desde su registro; si no la aprueba, se anula
+  (4c) y sale del valor ganado y de lo ejecutado que recibe S1 (riesgo aceptado, S2‑R14).
+- **Postcondiciones:** valuación inmutable con su fuente y su fecha de registro; informe de control emitido;
+  ningún presupuesto cambia.
+
+#### UC‑20 — Controlar el avance y recuperar un retraso
+
+- **Actor principal:** proyectista (quien arma). **Secundarios:** gerente y administrador que revisa (consultan).
+- **Precondiciones:** línea base de control vigente (no invalidada por un cambio de moneda, RF‑72) y al menos
+  una valuación registrada no anulada.
+- **Flujo principal:** 1) el sistema calcula al corte PV, EV, AC y sus índices (RF‑75) y separa el desvío
+  (RF‑76); 2) evalúa las alertas (RF‑77); 3) reproyecta término, costo final y PE (RF‑77) — pasos 1 a 3
+  **siempre**, sin que se pidan; 4) a pedido, calcula las opciones de recuperación con su costo (RF‑78); 5) el
+  usuario elige una, declara fuente y responsable; 6) el sistema crea una versión nueva con el plan de la opción,
+  su curva y su informe, guarda la decisión con la foto de los indicadores y reproyecta (RF‑79).
+- **Flujos alternativos:** *1a* PV = 0 (corte antes de todo trabajo planificado): SPI «no aplica»; *1b* AC = 0:
+  CPI «no aplica»; *1c* sin precios del corte (S1) para una partida: separación «no disponible» para ella;
+  *1d* un costo real en otra moneda sin tasa aplicable (más de 7 días sin tasa, S1‑R2): el AC de ese costo queda
+  «no disponible» y se declara con la lista de esos costos; AC y lo que depende de él (CV, CPI, consumo, EAC, VAC,
+  PE proyectado) quedan «no disponible»; PV, EV, SV, SPI, precio y el término se calculan (REQ‑25); *3a* partida
+  detenida (PV > 0, EV = 0): se reproyecta al ritmo global con ADVERTENCIA; *3b* SPI global = 0: término «no
+  proyectable»; *4a* ninguna opción alcanza el término objetivo: se muestra la mejor y el retraso que queda; *4b*
+  sin partidas por empezar: «partidas en paralelo» no aplica; *4c* partida sin mano de obra a jornal (solo destajo
+  o sin mano de obra): «más cuadrillas» y «horas extra» dan «no aplica» tipado para ella (§4.6); *5a* el usuario
+  no elige: nada cambia salvo lo de los pasos 1–3; *6a* sin fuente o responsable: se rechaza (como UC‑15a).
+- **Postcondiciones:** la **línea base no cambia** (S2‑R3); la versión de la decisión es la vigente de la hoja.
+
 #### UC existentes que se enmiendan
 
 | UC | Enmienda |
@@ -770,6 +821,9 @@ implementados en `core/contracts/`.
 | UC‑01 | Paso 1: al crear el proyecto (RF‑63) se **elige** la moneda (Bs o USD), sin valor por defecto en la interfaz. La API y `elaborar` conservan `"USD"` por defecto (líneas base intactas) |
 | UC‑02 | Sin cambios de flujo. Su versión revalorada es la entrada de la comprobación directa (UC‑18). Revalorar con una lista de otra moneda se rechaza (SL‑E1) |
 | UC‑15 | La pestaña Parámetros muestra y cambia la moneda (RF‑64); la pestaña Precios agrega moneda original, fecha del precio, tasa con fecha y fuente, erosión en dos monedas y el Estado de R11 y R12 |
+| UC‑15 (S2) | Una variación de obra es una edición de cantidad (objeto `cantidad`) con su acta como fuente; el exceso que R13 marca se resuelve por esta vía (RF‑72) |
+| UC‑16 (S2) | El punto de equilibrio de la versión se complementa con el PE proyectado de UC‑20 (RF‑77) |
+| UC‑18 (S2) | Desde la 0.7.0 lo ejecutado por período viene de las valuaciones registradas no anuladas (RF‑72; RV‑11, RV‑18); en la 0.6.0 se escribe a mano; el paso 3f deja de rechazar el exceso sobre lo presupuestado y lo marca como R13 |
 
 #### UC‑21 — Iniciar sesión y administrar cuentas y claves
 
@@ -1022,6 +1076,14 @@ la corrija.
 | RF‑69 | Importación sin conexión de la tasa (.xls trimestral), el INPC (.xls mensual) y el índice de insumos de la construcción, con validación de formato, fuente y fecha, informe previo, huella SHA‑256 e importaciones idempotentes | Esencial | UC‑17 | S1‑2 | el archivo real versionado de un trimestre da sus N hojas como N valores de compra y de venta del USD, y la primera, la última y una del medio dan los valores **transcritos a mano** en `FUENTE.md` (§9.3; incluye 858,02 / 860,18 Bs con fecha valor 01‑10‑2026); cada caso negativo de la fila RF‑69 de §9.2 se rechaza con su mensaje; reimportar la misma huella no escribe nada |
 | RF‑70 | Reajuste por **fórmula escalatoria** (§8.3) con las restricciones del art. 134 de §8.2 («a cotejar») y la cláusula declarada (§8.1) | Esencial | UC‑18 | S1‑4 | la memoria `s1_reajuste.md` (estructura `declarada`) da 15 300,00 Bs en el período del ejemplo; la memoria `s1_reajuste_por_partida.md` (estructura `por_partida`, dos partidas) da K_A = 1,175, K_B = 1,185 y 10 298,34 Bs (§9.1.2); cada frontera de §9.2 da su salida declarada |
 | RF‑71 | **Comprobación directa** (con la versión revalorada por UC‑02) lado a lado con la escalatoria, por período y total, en las dos monedas; el estudio se guarda con fuente y responsable y se exporta por `hojas_extra`. Con `ambos`, el monto reconocido es el del mecanismo pagadero de la cláusula, o la escalatoria si no lo declara; el estudio de un mes en curso se guarda «parcial al corte» y se reemplaza al cerrar el mes (§8.5). Desde la 0.7.0, lo ejecutado de cada período sale de las valuaciones registradas no anuladas de S2, citadas, asignadas por su fecha *hasta* (§8.6) | Esencial | UC‑18 | S1‑4 (0.7.0 para el último criterio) | la memoria da 16 000,00 Bs y una diferencia de −700,00 Bs; 18,00 y 18,82 USD a la tasa del ejemplo; la memoria por partida da 11 680,00 Bs y −1 381,66 Bs; el estudio recargado es idéntico al guardado; con la memoria `s1_reajuste.md` y `mecanismo` = `ambos`, el reconocido es 16 000,00 Bs si `mecanismo_pagadero` = `comprobacion` y 15 300,00 Bs (la escalatoria) si la cláusula no lo declara; un estudio guardado antes del cierre de su mes queda «parcial al corte» y el del cierre lo reemplaza sin borrarlo; lo ejecutado por encima de lo presupuestado se guarda con aviso y se reajusta sobre `min(Q, q)` (3f). **Criterio del puente (0.7.0, lo entrega RF‑72 de S2):** una valuación registrada con *hasta* = último día del mes cae en ese período y una con *hasta* = primer día del mes siguiente cae en el siguiente; una anulada no cuenta; el estudio cita el número de cada valuación usada |
+| RF‑72 | El sistema registrará la **línea base de control** (versión, perspectiva *costo* o *precio*, fecha desde, fuente, responsable) y su **calendario** (fecha de inicio, días hábiles por período, feriados), y valuaciones con número, período, fecha, inspector y líneas por partida, que **cuentan desde su registro**, sin conformación (RV‑18; S2‑R14); las valuaciones no se editan ni se borran: se anulan con fuente, y la anulación es la única forma de sacarlas del cálculo. Entregará a S1 **lo ejecutado por período** (`ejecutado_por_periodo`, RV‑11): las valuaciones registradas no anuladas, cada una asignada entera al período mensual de la cláusula que contiene su fecha *hasta*, con la cantidad del período y la **cantidad reajustable** `min(Q acumulado al cierre, q) − min(Q acumulado al cierre anterior, q)`, con aviso cuando difieren. Un cambio de moneda del proyecto posterior a la línea base de control la **invalida** | Esencial | UC‑19 | S2‑1 | OB‑S2 se registra completa; editar o borrar una valuación no es posible por ninguna función de `core`; anular deja la anulada en la base y fuera del cálculo; cantidad negativa → `ValueError`; OB‑S2 entrega para noviembre de 2026 A 90 y B 60 (V‑01 y V‑02, registradas); una valuación anulada no entra; con una valuación registrada más de B 150 en noviembre, B entrega cantidad 210, reajustable 200 y el aviso, y R13 da ERROR; una valuación del 2026‑11‑30 al 2026‑12‑04 va entera a diciembre; tras convertir la moneda del proyecto, `instantanea_control` rechaza con «línea base invalidada: declárela de nuevo» |
+| RF‑73 | El sistema importará valuaciones y costos reales desde un XLSX con las hojas y columnas de §6.2, con informe de importación; un archivo malformado se rechaza entero | Esencial (decisión H‑D5; cae solo si Eugenio lo acepta, REQ‑21) | UC‑19 | S2‑1 | el XLSX de OB‑S2 da las mismas valuaciones que la entrada a mano; cada malformación de §7.2 (fila RF‑73) da su mensaje sin *traceback* y sin escribir |
+| RF‑74 | Al registrar, importar o anular, el sistema ejecutará **R13 y R14** (§3.4) sobre las valuaciones no anuladas y emitirá el informe de control | Esencial | UC‑19 | S2‑1 | la valuación sembrada V‑S de §7.1 da **exactamente** los seis hallazgos de §7.1 (regla, severidad, impacto); cada frontera de §7.3; R13 sobre una valuación de SIS‑001 (presupuesto de sistemas) da su conjunto exacto (ARQ‑H3) |
+| RF‑75 | El sistema calculará al corte PV, EV, AC, SV, CV, SPI, CPI, BAC, EAC (dos métodos), VAC y la fecha estimada de término (dos métodos) con las fórmulas de §4.2, en la moneda del proyecto, con las valuaciones registradas no anuladas; los costos reales se convierten con la tasa de su fecha (S1) y, sin tasa aplicable, su AC queda «no disponible» y se declara | Esencial | UC‑20 | S2‑2 | OB‑S2 da los valores de §7.1 a ± 0,01 (montos) y ± 0,0001 (índices); las fechas, exactas; un costo real en Bs con más de 7 días sin tasa: AC, CV, CPI, consumo y EAC «no disponible» con ese costo listado, y PV, EV, SPI iguales a los de §7.1 (REQ‑25) |
+| RF‑76 | El sistema hará la **separación del desvío de control** en **plazo** (SV), **precio** y **consumo** (§4.3; término cruzado en el consumo), con el método y la fuente del precio del corte (S1), y la identidad CV = precio + consumo será **exacta**. Es distinta de la «diferencia entre versiones» de S3 (RV‑10) | Esencial | UC‑20 | S2‑2 | OB‑S2: precio −60,00, consumo −20,00, CV −80,00; la identidad con `Decimal` da diferencia cero en OB‑S2 y en el generador de RNF‑15 |
+| RF‑77 | Al registrar o anular una valuación, el sistema evaluará las **alertas** AL‑1 a AL‑6 con sus umbrales declarados (§4.5) y **reproyectará** plan, término, costo final y PE (§4.4, §4.7), sin que se pida | Esencial | UC‑19, UC‑20 | S2‑2 | OB‑S2: las alertas exactas de §7.1 en sus dos escenarios (sin reajuste y con el reajuste reconocido); término reproyectado 2026‑12‑02; plan reproyectado de §7.1; cada frontera de umbral de §7.3 |
+| RF‑78 | A pedido, el sistema calculará las opciones **más cuadrillas, horas extra, partidas en paralelo y aceptar el retraso** (§4.6) desde el rendimiento y la cuadrilla del APU de cada partida, con su término, costo directo adicional, costo indirecto, EAC y PE, y la lista de supuestos usados con su naturaleza (fuente o supuesto declarado) | Esencial | UC‑20 | S2‑3 | OB‑S2: los cuatro resultados de §7.1 con el PE' de sus dos escenarios; horas extra nunca superan los límites de la LOTTT (§4.6.2); cada supuesto aparece en la salida; una partida de TI‑001 y una de SIS‑001 sin mano de obra a jornal (§4.6) dan «no aplica» tipado en cuadrillas y horas extra, sin división entre cero (ARQ‑H3) |
+| RF‑79 | Elegir una opción creará una **versión nueva** (motivo `recuperacion`) con el plan de la opción, su curva y su informe, un `RegistroCambio` por fracción del plan que cambió y una `DecisionRecuperacion` con la foto de indicadores, opción y supuestos; fuente y responsable obligatorios; la línea base no cambia | Esencial | UC‑20 | S2‑3 | tras elegir «más cuadrillas» en OB‑S2: R2 y R7 sin hallazgos, la curva cierra en el total, los registros de §7.1, la decisión recarga idéntica y el SPI al mismo corte sigue en 0,80 |
 | RF‑96 | **Migraciones con respaldo y vuelta atrás, en dos bases.** El esquema se versiona con Alembic en dos destinos, cada uno con su `alembic_version` y su lista `METADATAS` explícita: la **instalación** (`seguridad`) y el **caso** (`core.models`, `METADATA_ESPACIO`, `paquete`, `asistente`). La revisión base del caso es el esquema de la 0.5.0 y cada cambio posterior trae su revisión, desde la 0.6.0. Antes de aplicar cualquier revisión pendiente se respaldan **juntas** la instalación y los casos que se migran, en un juego con una sola ficha; si la migración falla, la base no queda modificada. Las bases de la 0.5.0 se adoptan. Un caso se abre solo con `preparar_base` y desde `datos\casos\` | Esencial | UC‑24 (S5‑0) | S5‑1 (0.6.0) | (a) una base vacía, una base de la 0.5.0 sin `alembic_version` y la base de prueba de cada versión 0.6.0…0.9.0 (generada en su compuerta con el código de su etiqueta) llegan a `head` y sus presupuestos recargan con el total literal, la huella del informe y las filas por tabla de su ficha; lo mismo para `instalacion.db` desde la 0.8.0; (b) cada base del juego de respaldo pasa `PRAGMA integrity_check` y su huella está en la ficha; (c) con un fallo inyectado en una revisión, la huella SHA‑256 de cada base tras el intento es igual a la de antes; (d) una base con revisión desconocida o no adoptable no se modifica (huella igual) y el mensaje dice qué hacer; (e) una ruta UNC, absoluta o con `..` se rechaza sin crear archivo, y `estado_caso` no emite DDL; (f) restaurar un juego con `instalacion.db` lista los eventos de seguridad perdidos y deja pendiente la revisión del administrador |
 | RF‑80 | Cuentas locales con roles *arma*, *revisa* y *administrador de la instalación* (uno o varios por cuenta) y la matriz de §5.1; contraseñas con Argon2; el primer administrador se crea solo con el **código de instalación** de un solo uso, de al menos 100 bits | Esencial | UC‑21 | S3‑1 | sin código o con código usado se rechaza; el código tiene 20 caracteres base32; ninguna contraseña aparece en la base, en el registro de accesos ni en los mensajes; cada página y cada acción de la matriz rechaza un rol que no le corresponde aunque se llegue por URL |
 | RF‑81 | Sesión propia en Streamlit: expira por inactividad (30 min) y por antigüedad (12 h); ficha nueva al entrar y al cambiar la contraseña; todas las sesiones de una cuenta se cierran al restablecerla, desactivarla o cambiar sus roles; roles leídos de la base en cada ejecución; bloqueo tras 5 intentos fallidos seguidos durante 15 min, con el mismo contador y mensaje para usuarios inexistentes; freno global con espera progresiva; cierre de sesión; varios usuarios a la vez sin mezclar estado | Esencial | UC‑21 | S3‑1 | reloj inyectado: 29:59 sigue, 30:00 expira; 4 fallos no bloquean, el 5.º sí, con un login existente y con uno inexistente; cambiar los roles en la base cambia el menú en la ejecución siguiente; dos sesiones AppTest con usuarios distintos no comparten borrador ni caso; prueba de concurrencia de §13.4 |
@@ -1066,11 +1128,13 @@ Cobertura por caso de uso (mínimos exigidos por el criterio de cierre entre par
 | UC‑16 | RF‑58 | 1 (sin mínimo declarado; UC nuevo, Sesión SF0) |
 | UC‑17 | RF‑65, RF‑66, RF‑67, RF‑68, RF‑69 | S1 (Sílice 0.6.0; la meta cuenta) |
 | UC‑18 | RF‑70, RF‑71 | S1 (Sílice 0.6.0; la meta cuenta) |
+| UC‑19 | RF‑72, RF‑73, RF‑74, RF‑77 | S2 (Sílice 0.7.0; la meta cuenta) |
+| UC‑20 | RF‑75, RF‑76, RF‑77, RF‑78, RF‑79 | S2 (Sílice 0.7.0; la meta cuenta) |
 | UC‑21 | Iniciar sesión y administrar cuentas y claves | S3‑0 (declarado), S3‑1, S3‑3 |
 | UC‑22 | Entregar el paquete auditado | S3‑0 (declarado), S3‑3 |
 | UC‑23 | Revisar un paquete o un presupuesto externo | S3‑0 (declarado), S3‑4 |
 | Transversales | RF‑60 (todos los UC); RF‑63 y RF‑64 (UC‑01); RF‑64, RF‑65, RF‑66 y RF‑68 (también UC‑15); RF‑62 (también UC‑05); RF‑56 (también UC‑02 y UC‑07) | — |
-| **Total** | RF‑01 … RF‑31, RF‑33 … RF‑63 y, desde Sílice 0.6.0, RF‑64 … RF‑71 y RF‑96 (RF‑32 vacante — reservado a UC‑09; RF‑03 traza a dos UC; RF‑33 y RF‑34 trazan a UC‑10 y UC‑11; RF‑56, RF‑61 y RF‑62 trazan a más de un UC) | **62** hasta el sprint final; desde Sílice 0.6.0 los cuenta la meta |
+| **Total** | RF‑01 … RF‑31, RF‑33 … RF‑63 y, desde Sílice 0.6.0, RF‑64 … RF‑71 y RF‑96 y, desde Sílice 0.7.0, RF‑72 … RF‑79 (RF‑32 vacante — reservado a UC‑09; RF‑03 traza a dos UC; RF‑33 y RF‑34 trazan a UC‑10 y UC‑11; RF‑56, RF‑61 y RF‑62 trazan a más de un UC) | **62** hasta el sprint final; desde Sílice 0.6.0 los cuenta la meta |
 
 ### 3.3 Requisitos no funcionales (ISO/IEC 25010)
 
@@ -1090,6 +1154,7 @@ Cobertura por caso de uso (mínimos exigidos por el criterio de cierre entre par
 | Seguridad | RNF‑12 ningún texto exportado se interpreta como fórmula (prefijos `=`, `+`, `-`, `@`, tabulador, retorno de carro) y un número negativo sigue siendo número; ningún archivo subido sale de su carpeta (`..\`, `../`, ruta absoluta, nombres reservados de Windows); un DXF o IFC de más de 20 MB, malformado o con más entidades o elementos que el tope (`MAX_ENTIDADES_DXF`, `MAX_ELEMENTOS_IFC`) se rechaza con un mensaje | pruebas por caso | 0 casos que se evalúen como fórmula o escapen de su carpeta; 100 % de los rechazos con mensaje y sin *traceback* |
 | Usabilidad | RNF‑13 capacidad de uso de la hoja: en las condiciones de CP‑07, con el **mismo número y perfil** de participantes que CP‑07 pero **personas distintas**, cada caso de CP‑08 a CP‑11 se completa sin ayuda | guion de pruebas con personas, en la fase Med; consigna, paradas y criterio fijados antes de medir | ≤ 15 min por todos los participantes, bloque B ≥ 4,0 y ningún ítem < 3; veredicto por caso. El costo en participantes se suma al plan de Med |
 | Fiabilidad | RNF‑14 reproducible y sin conexión: importar, convertir, auditar con R11/R12 y reajustar no hacen ninguna llamada de red; el mismo estudio de reajuste, con las mismas importaciones citadas, da el mismo resultado aunque después se importe una revisión de los índices | suite bajo la guardia de red única de `tests/conftest.py` (solo 127.0.0.1 y ::1) y recálculo del estudio tras importar una revisión | cero intentos de conexión a otro destino, guardia activa verificada por la meta; diferencia 0 exacta |
+| Eficiencia de desempeño | RNF‑15 en `ui.control`, sin Streamlit, desde registrar una valuación hasta tener informe de control, indicadores, alertas y reproyección, y desde pedir las opciones hasta tener las cuatro, para una obra de 500 partidas, 52 períodos semanales y 26 valuaciones | mediana de cinco corridas tras una de calentamiento, con `scripts/medir_rnf15.py` y un generador determinista versionado (`scripts/generar_obra_control.py`) | ≤ 2 s en cada uno de los dos trabajos. El veredicto se toma en el equipo de desarrollo, como RNF‑03 y RNF‑11; la CI ejecuta el script en Linux y Windows y **registra** la cifra sin romper la corrida; la meta comprueba que el script corrió y dejó su cifra: sin cifra es FALLA, no OK (PRU‑H21) |
 | Mantenibilidad | RNF‑20 cero deriva de esquema en cada destino: una base llevada a `head` por las migraciones es igual a la creada con `create_all` de sus `METADATAS`, la autogeneración de Alembic contra ella no propone cambios, toda `MetaData` con tablas está en la lista de su destino y cada revisión baja y vuelve a subir | `tests/integration/test_migraciones.py` en Linux y Windows en cada PR | deriva 0 en los dos destinos, desde la 0.6.0 |
 | Seguridad | RNF‑16 Contraseñas de cuenta solo como Argon2 (parámetros por defecto de `argon2-cffi`, con semáforo); clave privada solo cifrada con `seguridad/secretos.py`; ningún secreto en registros, mensajes ni paquete; el 100 % de las alteraciones de §13.3 detectadas; ninguna página, acción ni ruta nueva accesible sin sesión, rol o clave; operaciones sensibles solo desde el propio equipo; límites del ZIP, del JSON y de la API (§8.4); texto ajeno siempre por `texto_seguro()`; mensajes sin traza | pruebas de §13.3 y §13.4; revisión por el encargo de seguridad con la tabla de amenazas (§12) | todas las pruebas de §13.3 y §13.4 del spec S3 en verde |
 | Usabilidad | RNF‑17 En las condiciones de CP‑07, con personas que no son el autor: (a) quien revisa abre un paquete y dice su estado de verificación y quién lo emitió, sin ayuda, en ≤ 5 min; (b) encuentra las diferencias sembradas de CP‑R1 en ≤ 20 min; (c) quien administra registra la clave de otra empresa comprobando su huella por teléfono en ≤ 10 min; bloque B ≥ 4,0, ningún ítem < 3 | guion en Med, con consigna, paradas y criterio fijados antes de medir. El **indicador del administrador** (horizonte §6.1) no se reduce a RNF‑17: se mide con su propio protocolo de dos condiciones (§13.5 a) | bloque B ≥ 4,0 y ningún ítem < 3, en los tiempos de la medición |
@@ -1098,6 +1163,39 @@ Cobertura por caso de uso (mínimos exigidos por el criterio de cierre entre par
 Fórmula de cálculo: [NORMAS.md §4](../NORMAS.md#4-especificación-del-cálculo-y-línea-base).
 Reglas de verificación R1–R7: [NORMAS.md §7](../NORMAS.md#7-siete-reglas-de-verificación-coreverification-sesión-i4).
 Criterios de degradación del módulo predictivo: [NORMAS.md §8.1](../NORMAS.md#8-compuertas-y-criterios-de-degradación).
+
+#### Reglas nuevas R13 y R14 (Sílice 0.7.0, S2)
+
+En `core/verification/valuaciones.py`; implementan `ReglaVerificacion` (contrato sin cambios), se construyen con
+la **instantánea de control** (línea base, calendario, plan de la línea base, valuaciones no anuladas hasta el
+corte: las mismas que cuentan para el valor ganado) y entran por
+`reglas=` como R8–R12; **no** entran en `REGLAS` (el 7 de 7 y las huellas de RNF‑04 no se mueven). Sus hallazgos
+citan en `origen_ids` la clave de la línea (`valuacion:<número>:<código>`) **y** el `origen_id` del ítem de la
+partida, para que el informe atribuya la partida (C5.1).
+
+**Contextos** (tabla única de reglas externas del maestro, RV‑9). R13–R14, con la instantánea de control como
+entrada, corren: en la hoja y en «Control de obra» (corte = el que el usuario elige, por defecto la fecha *hasta*
+de la última valuación); en la reauditoría del paquete de S3 §9, desde `anexos/control.json` (corte = el
+declarado en el anexo); en `POST /v1/auditorias` y en el experimento de S4, según lo que fije esa tabla. Toda
+reevaluación es **en memoria** y nunca reescribe filas guardadas (no cambia `huella_contenido`).
+
+| Regla | Condición | Severidad | Impacto |
+|---|---|---|---|
+| **R13 Valuación dentro del presupuesto** | (a) acumulado no anulado de una partida > cantidad de la línea base | ERROR | exceso × unitario base |
+| | (b) partida valuada que la línea base no tiene | ERROR | sin unitario: no se cuantifica y se declara |
+| | (c) partida presupuestada que el plan de la línea base no programa en ningún período | ADVERTENCIA | — |
+| **R14 Fuente y fechas de la valuación** | (a) falta número, inspector o fecha | ERROR | — |
+| | (b) *desde* > *hasta*; o fecha de la valuación anterior a *hasta*; o *hasta* posterior al corte; o *desde* anterior al inicio del calendario | ERROR | — |
+| | (c) período solapado con otra valuación no anulada; o número repetido | ERROR | — |
+| | (d) fecha de medición de una línea fuera de [*desde*, *hasta*] | ERROR | — |
+| | (e) números no consecutivos cuando siguen el patrón prefijo + número (`V-01`, `V-03`) | ADVERTENCIA | — |
+| | (f) hueco de días hábiles entre dos valuaciones consecutivas | INFO | — |
+
+R13 compara con la **línea base vigente al corte**: una variación registrada (versión nueva con la cantidad y
+declarada línea base) es lo que la hace pasar. La igualdad exacta pasa (`≤`); no hay tolerancia de medición
+(§11, pregunta 6). R13 sirve igual a un presupuesto de cualquier dominio: se prueba también sobre SIS‑001
+(ARQ‑H3). En R14(f), un hueco es al menos un día hábil sin cubrir entre el *hasta* de una valuación y el *desde*
+de la siguiente: de viernes a lunes no hay hueco.
 
 ---
 
@@ -1129,6 +1227,8 @@ aquí: cada corrección está en su fila del [inventario del cierre](auditoria/2
 | UC‑16 | RF‑58 | SF0 (declarado), SF3 | prototipo de entrega AREN.IA (hoy Sílice), fuera de los cinco indicadores |
 | UC‑17 | RF‑65, RF‑66, RF‑67, RF‑68, RF‑69 | S1‑1 a S1‑3 (Sílice 0.6.0) | Sílice 0.6.0, fuera de los cinco indicadores |
 | UC‑18 | RF‑70, RF‑71 | S1‑4 (Sílice 0.6.0) | Sílice 0.6.0, fuera de los cinco indicadores |
+| UC‑19 | RF‑72, RF‑73, RF‑74, RF‑77 | S2‑1, S2‑2 (Sílice 0.7.0) | Sílice 0.7.0, fuera de los cinco indicadores |
+| UC‑20 | RF‑75, RF‑76, RF‑77, RF‑78, RF‑79 | S2‑2, S2‑3 (Sílice 0.7.0) | Sílice 0.7.0, fuera de los cinco indicadores |
 | Transversal | RF‑60 | SF4 | prototipo de entrega AREN.IA (hoy Sílice), fuera de los cinco indicadores |
 | UC‑21 | RF‑80, RF‑81, RF‑82, RF‑84 | S3‑0 (declarado), S3‑1, S3‑3 | fuera de los cinco indicadores (seguridad de la entrega, S3) |
 | UC‑22 | RF‑83, RF‑84, RF‑85 | S3‑0 (declarado), S3‑2, S3‑3 | fuera de los cinco indicadores (seguridad de la entrega, S3) |

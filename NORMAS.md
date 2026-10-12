@@ -182,6 +182,10 @@ core/
   verification/   las siete reglas (sección 7) y el informe de auditoría  — I4
                   S1 (Sílice 0.6.0): moneda, origen de precios, lista de empresa, índices, R11/R12
                   y reajuste, con sus tablas aditivas en core/models (modelo_datos §2.5)
+                  S2 (Sílice 0.7.0, en construcción): valuaciones, R13/R14 (fuera de REGLAS) y sus
+                  tipos en verification/valuaciones.py; en budget/: calendario, valuaciones,
+                  puente, valor_ganado, control, recuperacion y decision; tablas aditivas en
+                  core/models/control.py (modelo_datos §2.6)
 adapters/
   civil/          IFC con ifcopenshell, entrada tabular, reglas paramétricas y recálculo — I3.1, I3.2
   bcv/            (S1, Sílice 0.6.0) importación sin conexión de la tasa, el INPC y los índices del BCV
@@ -200,6 +204,8 @@ ui/               Streamlit: app.py (enrutador), paginas/ (diez pantallas) y los
                   composicion, elaboracion, resultado, caso, recorridos, visor3d — I1, F.1;
                   SF agrega hoja.py (lógica de la hoja, sin Streamlit), barra.py (barra superior,
                   solo la importa app.py) y paginas/hoja.py
+                  S2 (0.7.0, en construcción) agrega control.py (sin Streamlit) y paginas/control.py
+                  («Control de obra»)
 api/              FastAPI (main.py, rutas/); esquema OpenAPI exportado a docs/api.json — F.1
 scripts/          siembra (seed*.py), simulación, extracción de fuentes, metas (meta_*.py) y
                   utilidades de la suite; una fila por script en scripts/README.md
