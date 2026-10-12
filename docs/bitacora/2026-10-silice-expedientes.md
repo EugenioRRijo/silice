@@ -127,3 +127,59 @@ ningún contrato de `core/contracts/` cambia (NORMAS §5 y §9). La aprobación 
   ruling; si el rango o el plazo son malos, son parámetros por lista (`lista_empresa`) y constantes de
   `core/catalog/empresa.py`; si la lista de referencia debiera resolverse como vigente, se retira un alcance
   de `ALCANCES_FUERA_DE_VIGENTE`. Una tabla que deba cambiar es una revisión más de Alembic.
+
+## SL‑E3: reajuste por escalatoria y por comprobación directa, estudio guardado y RNF‑14
+
+**Fecha:** 2026‑10‑12 · **Rama:** `inc/060-s1-4-nucleo` (sale de `origin/main` con S1‑3 fusionado) ·
+**Plan:** tareas 11 (SL‑E3a) y 12 (SL‑E3b) de la sección C · **Spec:** S1 §8 y §11.
+
+- **Regla que lo motiva:** H‑D3, RF‑70 y RF‑71, y los artículos 133 y 134 de la LCP **según la transcripción**
+  (todo «a cotejar con la Gaceta»). Un contrato de más de un año reajusta sus precios, y quien lo estudia
+  necesita ver a la vez la fórmula escalatoria y la comprobación directa contra una versión revalorada, con su
+  diferencia, en las dos monedas, y poder volver a abrir el estudio años después y obtener exactamente lo mismo.
+- **Por qué es genérico:** la ley aplica a obras y servicios de cualquier dominio. Nada del módulo nombra una
+  especialidad: la estructura sale de los tres montos del `ResultadoAPU` (materiales, equipos, mano de obra),
+  las series de índices son texto con su unidad, la partida es un código y el contrato es una versión
+  cualquiera. Ningún contrato de `core/contracts/` cambia: `ResultadoAPU` solo se lee.
+- **Diseño:**
+  1. **Funciones puras** en `core/budget/reajuste.py`: `coeficiente`, `coeficiente_de_partida`,
+     `reajuste_escalatorio` (`Vpm = Vo·(Km−1)·(1−R)`, INDICIO S1‑R8), `reajuste_por_comprobacion` (R no se
+     aplica salvo declaración, S1‑R14), `comparar_reajustes` y `calcular_estudio`. Toda división va dentro de
+     `localcontext(prec=28, ROUND_HALF_EVEN)`; nada se redondea antes de presentar. La diferencia en la otra
+     moneda es la diferencia en la moneda del proyecto convertida **una sola vez**, no la resta de dos
+     importes ya convertidos (−1 381,66/850 = −1,63 USD, mientras que 12,12 − 13,74 = −1,62).
+  2. **Cantidad reajustable** = `min(q_m, máx(0, Q − Σ q anteriores))`: lo ejecutado por encima de lo
+     presupuestado se guarda, se reajusta solo hasta Q y lleva aviso (no se rechaza; R13 lo marca en 0.7.0).
+     El reajuste es solo sobre lo ejecutado de cada período (art. 134), nunca sobre el saldo.
+  3. **Primer año** (contrato > 12 meses): un período que cierra antes del aniversario de la fecha de
+     referencia vale cero y lo dice; uno que lo cruza se rechaza (3b); la excepción declarada con
+     justificación lo reajusta y queda marcada (3e). Un contrato de 12 meses o menos no tiene primer año fijo.
+  4. **Monto reconocido** (S1‑R20): con `ambos`, el del `mecanismo_pagadero`; si no se declara, la
+     escalatoria. Si el mecanismo reconocido no está disponible, el período no tiene monto reconocido y se
+     declara; no se toma el otro. **Parcial al corte** (S1‑R21): un estudio cuyo último mes no ha cerrado se
+     guarda así y se reemplaza una sola vez por uno cerrado que lo cita en `reemplaza_a`
+     (`UniqueConstraint`), sin borrarlo.
+  5. **Tablas aditivas** `clausula_reajuste`, `componente_clausula`, `estudio_reajuste`, `periodo_reajuste`
+     y `ejecutado_periodo` (`core/models/moneda.py`; revisión `caso_0004_s1_reajuste` escrita a mano,
+     `down_revision` = salida de `revision_head(Destino.CASO)` = `caso_0003_s1_lista_empresa`,
+     `create_table` solo de lo que falta como las revisiones 0002 y 0003, `downgrade()` real). Un estudio
+     guardado solo agrega filas: ni la versión del contrato ni ninguna tabla existente cambia.
+  6. **RNF‑14.** El período guarda la importación de cada índice que usó, la tasa de su cierre y la versión de
+     comprobación. `cargar_estudio` recalcula con **lo citado** (no con lo vigente) y exige igualdad exacta de
+     escalatoria, comprobación y reconocido con lo guardado; una revisión posterior de un índice no lo mueve.
+- **Prueba que lo demuestra:** las memorias `tests/fixtures/memorias/s1_reajuste.md` (Km 1,17; escalatoria
+  15 300; comprobación 16 000; diferencia −700; 18,00 y 18,82 USD) y `s1_reajuste_por_partida.md` (K_A 1,175,
+  K_B 1,185; 10 298,34 / 11 680,00 / −1 381,66 Bs; 12,12 / 13,74 / −1,63 USD; testigo declarada 9 785,88),
+  cuyas cifras se escribieron a mano antes del código y no se recalculan con él;
+  `tests/unit/test_reajuste.py` (fronteras de 1 000 y 1 000,001, primer año, aniversario, 12 meses, 3b, 3e,
+  pesos que no suman 1, índice faltante, provisional, USD con índice en Bs, parcial al corte);
+  `tests/integration/test_estudio_reajuste.py` (recarga idéntica y citada, RNF‑14 con una revisión posterior,
+  parcial reemplazado una sola vez, sin fuente no se guarda); las pruebas de migración y de deriva RNF‑20 de
+  B sin cambios.
+- **Impacto:** módulo nuevo y cinco tablas aditivas con su revisión; no toca el motor, ni las versiones, ni
+  los contratos, ni `REGLAS`. El bloque de regresión no se mueve. Quien abre una base anterior la migra con
+  respaldo y la nueva revisión solo crea tablas vacías.
+- **Costo si es erróneo:** si la Gaceta o un experto cambian la fórmula, se cambia una función pura y su
+  memoria; si cambia el primer año, es un parámetro de la cláusula; si el reconocido debe ser otro, es la
+  elección de `elegido` en `calcular_estudio`. Una tabla que deba cambiar es una revisión más de Alembic.
+  Los estudios ya guardados no se reescriben: se rehacen guardando otro.
