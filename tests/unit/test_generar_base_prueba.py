@@ -32,8 +32,8 @@ def test_la_revision_es_none_sin_alembic_y_la_fila_con_alembic(tmp_path: Path) -
     assert generador.revision_alembic(base) == "caso_0001_base_0_5_0"
 
 
-def test_los_tres_casos_de_la_base_de_prueba() -> None:
-    assert list(generador.CONSTRUCTORES) == ["demo.db", "of001.db", "ti001.db"]
+def test_los_casos_de_la_base_de_prueba() -> None:
+    assert list(generador.CONSTRUCTORES) == ["demo.db", "of001.db", "ti001.db", "s1.db"]
 
 
 def test_se_niega_a_reescribir_una_base_de_prueba(tmp_path: Path, capsys) -> None:
