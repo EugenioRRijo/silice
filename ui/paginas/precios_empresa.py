@@ -17,7 +17,9 @@ from sqlalchemy.exc import SQLAlchemyError
 from core.catalog import abrir_sesion, crear_motor
 from core.catalog.moneda import MONEDAS
 from operacion.base_datos import ErrorDeBase, preparar_base
+from seguridad.permisos import Accion
 from ui import precios_empresa
+from ui import sesion as ui_sesion
 from ui.caso import ruta_caso
 from ui.subidas import guardar_subida
 from ui.texto_seguro import texto_seguro
@@ -35,6 +37,7 @@ def _motor_del_caso():
 
 
 def render() -> None:
+    ui_sesion.exigir(Accion.ADMINISTRAR_PRECIOS)
     st.caption(
         "La lista de su empresa: una copia de la lista base con sus precios encima, cada uno con "
         "su fecha y su fuente. No cambia la valoracion de ningun proyecto que no la use."

@@ -14,7 +14,9 @@ from sqlalchemy.exc import SQLAlchemyError
 from core.budget.reajuste import COMPONENTES, EstadoEstudio, Estructura, Mecanismo
 from core.catalog import abrir_sesion, crear_motor
 from operacion.base_datos import ErrorDeBase, preparar_base
+from seguridad.permisos import Accion
 from ui import reajuste
+from ui import sesion as ui_sesion
 from ui.caso import proyecto_abierto, ruta_caso
 from ui.hoja import HojaInvalida, historial_de_versiones
 from ui.texto_seguro import texto_seguro
@@ -35,6 +37,7 @@ def _motor_del_caso():
 
 
 def render() -> None:
+    ui_sesion.exigir(Accion.CONVERTIR_Y_REAJUSTAR)
     proyecto = proyecto_abierto()
     if proyecto is None:
         st.info("Abra un proyecto en la barra superior (Proyecto) para reajustar sus precios.")

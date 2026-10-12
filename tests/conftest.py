@@ -140,6 +140,13 @@ def _datos_de_silice_temporales(monkeypatch, tmp_path_factory):
     monkeypatch.delenv("SILICE_RESPALDOS", raising=False)
 
 
+@pytest.fixture(autouse=True)
+def _acceso_apagado(monkeypatch) -> Iterator[None]:
+    """S3-1: la interfaz no pide entrar (`SILICE_ACCESO=0`; las pruebas de S3 lo encienden)."""
+    monkeypatch.setenv("SILICE_ACCESO", "0")
+    yield
+
+
 @pytest.fixture(scope="session")
 def parametros_linea_base():
     return linea_base.PARAMETROS_LINEA_BASE

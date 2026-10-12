@@ -92,15 +92,19 @@ def test_el_juego_trae_la_copia_verificada_y_su_ficha(datos: Datos) -> None:
 
 
 def test_la_instalacion_va_siempre_en_el_juego_aunque_no_se_migre(datos: Datos) -> None:
-    _instalacion_vacia(datos)
+    _instalacion_vacia(datos)  # desde S3-1: en `head`, con las tablas de seguridad sin filas
     juego = _respaldar(datos, [])
     [base] = respaldo.leer_ficha(juego)["bases"]
     assert (base["archivo"], base["destino"], base["revision_origen"]) == (
         "instalacion.db",
         "instalacion",
-        None,
+        "ins_0001_seguridad",
     )
-    assert base["filas_por_tabla"] == {"alembic_version": 0}
+    assert base["filas_por_tabla"] == {
+        "alembic_version": 1, "usuario": 0, "intento_acceso": 0, "sesion": 0,
+        "evento_acceso": 0, "codigo_instalacion": 0, "empresa_propia": 0, "clave_empresa": 0,
+        "empresa_registrada": 0, "clave_api": 0,
+    }
 
 
 def test_se_respalda_con_la_base_abierta_y_una_escritura_sin_confirmar(datos: Datos) -> None:

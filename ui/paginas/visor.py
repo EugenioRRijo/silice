@@ -43,6 +43,8 @@ from pandas import DataFrame
 from core.contracts import ItemComputo
 from core.verification.informe import DECIMALES_PRESENTACION
 from core.verification.texto import formatear_decimal
+from seguridad.permisos import Accion
+from ui import sesion as ui_sesion
 from ui.subidas import guardar_subida
 from ui.visor3d import mallas
 
@@ -75,6 +77,7 @@ def _cargar_dependencias_civiles() -> tuple[ModuleType, type[AdaptadorCivilIFC]]
 
 def render() -> None:
     """Selector de archivo IFC; visor three.js y tabla de cómputo lado a lado."""
+    ui_sesion.exigir(Accion.EDITAR_HOJA)
     st.caption(
         "Carga un modelo IFC y compara su geometria con el cómputo que extrae el adaptador civil: "
         "cada malla del visor corresponde a una fila de la tabla, unidas por el GlobalId (regla R1 "

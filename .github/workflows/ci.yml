@@ -125,8 +125,12 @@ jobs:
         run: >-
           uv run --no-sync python scripts/meta_silice.py
           --version 0.6.0 --hasta S1-5 --junit reporte-pruebas.xml
-          && uv run --no-sync python scripts/meta_silice.py
-          --version 0.9.0 --hasta S4-0 --junit reporte-pruebas.xml
+
+      - name: Meta de Silice 0.7.0
+        if: runner.os == 'Linux'
+        run: >-
+          uv run --no-sync python scripts/meta_silice.py
+          --version 0.7.0 --hasta S2-0 --junit reporte-pruebas.xml
 
       - name: Cobertura de core >= 80 % (RNF-06)
         if: runner.os == 'Linux'

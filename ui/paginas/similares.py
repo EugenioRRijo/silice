@@ -34,6 +34,8 @@ from core.contracts.apu import ComposicionAPU
 from core.verification.informe import DECIMALES_PRESENTACION
 from core.verification.texto import formatear_decimal
 from operacion.base_datos import preparar_base
+from seguridad.permisos import Accion
+from ui import sesion as ui_sesion
 from ui.caso import ruta_caso
 from ui.composicion import sugerir_partidas_similares
 
@@ -48,6 +50,7 @@ _MENSAJE_SIN_EXTRA_ML = (
 
 def render() -> None:
     """Descripcion en texto libre -> tres propuestas con puntaje, desglose y rendimiento."""
+    ui_sesion.exigir(Accion.EDITAR_HOJA)
     st.caption(
         "Escribe la descripcion de la partida: el sistema propone las mas parecidas del catalogo "
         "para reutilizar su desglose y su rendimiento (similitud semantica, sin entrenamiento)."

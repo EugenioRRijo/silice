@@ -20,6 +20,8 @@ from core.catalog import abrir_sesion, cambios_precio, crear_motor
 from core.verification.informe import DECIMALES_PRESENTACION
 from core.verification.texto import formatear_decimal
 from operacion.base_datos import preparar_base
+from seguridad.permisos import Accion
+from ui import sesion as ui_sesion
 from ui.caso import ruta_caso
 
 CIEN = Decimal(100)
@@ -27,6 +29,7 @@ CIEN = Decimal(100)
 
 def render() -> None:
     """Filtros en la barra lateral; la tabla de cambios en el cuerpo."""
+    ui_sesion.exigir(Accion.LEER_PROYECTO)
     st.caption(
         "Cada fila es un insumo que cambio de precio entre la lista anterior y la lista nueva de "
         "una actualizacion (UC-02)."

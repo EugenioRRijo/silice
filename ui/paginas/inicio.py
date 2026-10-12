@@ -22,7 +22,9 @@ from sqlalchemy.exc import SQLAlchemyError
 from operacion.base_datos import ErrorDeBase, crear_caso, listar_casos, preparar_base, subir_caso
 from operacion.config import BASE_ANTERIOR, carpeta_casos
 from scripts.seed_demo import main as sembrar_demostracion
+from seguridad.permisos import Accion
 from ui import caso
+from ui import sesion as ui_sesion
 from ui.caso import (
     SIN_PERMISO_DE_CAMBIO,
     EstadoCaso,
@@ -127,7 +129,7 @@ def _estado(estado: EstadoCaso) -> None:
         "demostracion —la linea base de la clinica y una linea de agua potable didactica, con su "
         "presupuesto auditado— o abrir otro caso arriba."
     )
-    if st.button(ROTULO_SEMBRAR, type="primary"):
+    if ui_sesion.puede(Accion.EDITAR_HOJA) and st.button(ROTULO_SEMBRAR, type="primary"):
         with st.spinner("Cargando la linea base, la demostracion y su presupuesto auditado..."):
             try:
                 preparar_base(estado.ruta)

@@ -57,12 +57,15 @@ y en PowerShell::
 from __future__ import annotations
 
 import os
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Collection, Mapping
 from dataclasses import dataclass
 
 import streamlit as st
 
-from ui import barra
+from seguridad.permisos import Accion, Rol, permitido
+from seguridad.sesiones import SesionActiva
+from ui import acceso, barra
+from ui import sesion as ui_sesion
 from ui.caso import estado_caso, recorrido_activo, resumen_caso, ruta_caso
 from ui.entorno import VARIABLE_MODO_ENTREGA, leer_variable
 from ui.paginas import (
@@ -100,6 +103,7 @@ class DefinicionPagina:
     titulo: str
     seccion: str
     caso_uso: str | None = None  # codigo de la ERS; el marco lo pinta como subtitulo (RF-42)
+    accion: Accion | None = None  # la de la matriz de roles (S3 5.1); None = toda cuenta la ve
 
     @property
     def ruta_url(self) -> str:
@@ -113,23 +117,34 @@ class DefinicionPagina:
 
 PAGINA_INICIO = DefinicionPagina(inicio.render, "Inicio", SECCION_TRABAJO)
 
+_EDITA = Accion.EDITAR_HOJA
+_LEE = Accion.LEER_PROYECTO
+_PRECIOS = Accion.ADMINISTRAR_PRECIOS
+_REAJUSTA = Accion.CONVERTIR_Y_REAJUSTAR
+
 PAGINAS: tuple[DefinicionPagina, ...] = (
     PAGINA_INICIO,
-    DefinicionPagina(catalogo.render, "Catalogo de partidas e insumos", SECCION_TRABAJO),
-    DefinicionPagina(componer.render, "Componer una partida", SECCION_TRABAJO, "UC-10 / UC-11"),
-    DefinicionPagina(elaborar.render, "Elaborar un presupuesto", SECCION_TRABAJO, "UC-01"),
-    DefinicionPagina(hoja.render, "Hoja del proyecto", SECCION_TRABAJO),
-    DefinicionPagina(actualizacion.render, "Actualizar precios", SECCION_TRABAJO, "UC-02"),
-    DefinicionPagina(historico.render, "Historico de cambios de precio", SECCION_TRABAJO),
-    DefinicionPagina(precios_empresa.render, "Precios de la empresa", SECCION_TRABAJO, "UC-17"),
-    DefinicionPagina(indices.render, "Indices del BCV", SECCION_TRABAJO, "UC-17"),
-    DefinicionPagina(reajuste.render, "Reajuste de precios", SECCION_TRABAJO, "UC-18"),
+    DefinicionPagina(catalogo.render, "Catalogo de partidas e insumos", SECCION_TRABAJO,
+                     accion=_LEE),
+    DefinicionPagina(componer.render, "Componer una partida", SECCION_TRABAJO, "UC-10 / UC-11",
+                     _EDITA),
+    DefinicionPagina(elaborar.render, "Elaborar un presupuesto", SECCION_TRABAJO, "UC-01", _EDITA),
+    DefinicionPagina(hoja.render, "Hoja del proyecto", SECCION_TRABAJO, accion=_EDITA),
+    DefinicionPagina(actualizacion.render, "Actualizar precios", SECCION_TRABAJO, "UC-02", _EDITA),
+    DefinicionPagina(historico.render, "Historico de cambios de precio", SECCION_TRABAJO,
+                     accion=_LEE),
+    DefinicionPagina(precios_empresa.render, "Precios de la empresa", SECCION_TRABAJO, "UC-17",
+                     _PRECIOS),
+    DefinicionPagina(indices.render, "Indices del BCV", SECCION_TRABAJO, "UC-17", _PRECIOS),
+    DefinicionPagina(reajuste.render, "Reajuste de precios", SECCION_TRABAJO, "UC-18", _REAJUSTA),
     DefinicionPagina(
-        escenarios.render, "Escenarios de sensibilidad", SECCION_INVESTIGACION, "UC-08"
+        escenarios.render, "Escenarios de sensibilidad", SECCION_INVESTIGACION, "UC-08", _EDITA
     ),
-    DefinicionPagina(similares.render, "Partidas similares", SECCION_INVESTIGACION, "UC-03"),
-    DefinicionPagina(simulador.render, "Simulador de listas", SECCION_INVESTIGACION),
-    DefinicionPagina(visor.render, "Visor 3D del modelo", SECCION_INVESTIGACION),
+    DefinicionPagina(similares.render, "Partidas similares", SECCION_INVESTIGACION, "UC-03",
+                     _EDITA),
+    DefinicionPagina(simulador.render, "Simulador de listas", SECCION_INVESTIGACION,
+                     accion=_EDITA),
+    DefinicionPagina(visor.render, "Visor 3D del modelo", SECCION_INVESTIGACION, accion=_EDITA),
 )
 
 
@@ -144,17 +159,25 @@ def modo_entrega_activo(entorno: Mapping[str, str] | None = None) -> bool:
     return leer_variable(entorno, VARIABLE_MODO_ENTREGA) == VALOR_MODO_ENTREGA
 
 
-def paginas_visibles(modo_entrega: bool) -> tuple[DefinicionPagina, ...]:
-    """Las pantallas que se muestran: las trece, o sin la seccion Investigacion en modo entrega."""
-    if not modo_entrega:
-        return PAGINAS
-    return tuple(pagina for pagina in PAGINAS if pagina.seccion != SECCION_INVESTIGACION)
+def paginas_visibles(
+    modo_entrega: bool, roles: Collection[Rol] | None = None
+) -> tuple[DefinicionPagina, ...]:
+    """Las pantallas que se muestran: las que los `roles` permiten (todas si `roles` es `None`)
+    y, en modo entrega, sin la seccion Investigacion. La navegacion no es el control: cada
+    `render()` vuelve a exigir su accion (S3 5.1)."""
+    return tuple(
+        pagina for pagina in PAGINAS
+        if not (modo_entrega and pagina.seccion == SECCION_INVESTIGACION)
+        and (roles is None or pagina.accion is None or permitido(roles, pagina.accion))
+    )
 
 
-def secciones_visibles(modo_entrega: bool) -> dict[str, tuple[DefinicionPagina, ...]]:
+def secciones_visibles(
+    modo_entrega: bool, roles: Collection[Rol] | None = None
+) -> dict[str, tuple[DefinicionPagina, ...]]:
     """Las pantallas visibles agrupadas por seccion; el `dict` conserva el orden de `PAGINAS`."""
     secciones: dict[str, tuple[DefinicionPagina, ...]] = {}
-    for pagina in paginas_visibles(modo_entrega):
+    for pagina in paginas_visibles(modo_entrega, roles):
         secciones[pagina.seccion] = (*secciones.get(pagina.seccion, ()), pagina)
     return secciones
 
@@ -176,19 +199,30 @@ def ruta_actual(url_path: str) -> str:
 
 
 def marco(
-    definicion: DefinicionPagina, pintar: Callable[[], None], ir_a: Callable[[str], None]
+    definicion: DefinicionPagina,
+    pintar: Callable[[], None],
+    ir_a: Callable[[str], None],
+    sesion: SesionActiva | None = None,
 ) -> None:
     """Los elementos comunes alrededor de una pantalla.
 
     `pintar` pinta la pantalla (`Page.run` en la aplicacion, `render` en las pruebas); `ir_a` lleva
     a la pantalla de una ruta (`st.switch_page` en la aplicacion, un registrador en las pruebas).
+    `sesion` es quien entro (S3): sin ella, la de desarrollo con todos los roles. La barra de
+    herramientas escribe, asi que solo la ve quien puede editar la hoja; el recorrido guiado
+    omite los pasos de pantallas que el rol no ve (RF-37).
     """
-    barra.pintar_barra(definicion.ruta_url, ir_a)
+    roles = ui_sesion.DESARROLLO.roles if sesion is None else sesion.roles
+    if permitido(roles, Accion.EDITAR_HOJA):
+        barra.pintar_barra(definicion.ruta_url, ir_a)
     st.title(definicion.titulo)
     if definicion.caso_uso is not None:
         st.caption(f"Caso de uso {definicion.caso_uso}")
     _pintar_caso_abierto()
     recorrido = recorrido_por_nombre(recorrido_activo())
+    if recorrido is not None:
+        visibles = {pagina.ruta_url for pagina in paginas_visibles(False, roles)}
+        recorrido = recorrido.visible_en(visibles)
     _pintar_posicion(recorrido, definicion.ruta_url)
     pintar()
     paso = paso_siguiente(recorrido, definicion.ruta_url)
@@ -227,6 +261,8 @@ def _pintar_posicion(recorrido: Recorrido | None, ruta: str) -> None:
 def main() -> None:
     """Punto de entrada de `streamlit run ui/app.py`: configura, enruta y enmarca la pantalla."""
     st.set_page_config(page_title=TITULO_APP, layout="wide")
+    sesion = acceso.exigir_sesion()  # sin sesion valida pinta el acceso y detiene el guion
+    acceso.pintar_sesion(sesion)
     modo_entrega = modo_entrega_activo()
     paginas = {
         definicion.ruta_url: st.Page(
@@ -235,17 +271,18 @@ def main() -> None:
             url_path=definicion.ruta_url,
             default=definicion is PAGINA_INICIO,
         )
-        for definicion in paginas_visibles(modo_entrega)
+        for definicion in paginas_visibles(modo_entrega, sesion.roles)
     }
     secciones = {
         seccion: [paginas[definicion.ruta_url] for definicion in definiciones]
-        for seccion, definiciones in secciones_visibles(modo_entrega).items()
+        for seccion, definiciones in secciones_visibles(modo_entrega, sesion.roles).items()
     }
     actual = st.navigation(secciones, position=POSICION_NAVEGACION)
     marco(
         pagina_por_ruta(ruta_actual(actual.url_path)),
         actual.run,
         lambda ruta: st.switch_page(paginas[ruta]),
+        sesion,
     )
 
 

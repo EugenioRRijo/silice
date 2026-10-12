@@ -1,0 +1,332 @@
+"""Cuentas, contraseñas, bloqueo y primer administrador (RF-80, RF-81; spec S3 §5.2 a §5.5)."""
+
+from __future__ import annotations
+
+import threading
+import time
+from datetime import timedelta
+from pathlib import Path
+
+import pytest
+
+from seguridad import cuentas, eventos
+from seguridad.modelo import CodigoInstalacion, EventoAcceso, Usuario
+from seguridad.permisos import PermisoDenegado
+from tests.fixtures.instalacion import AHORA, CONTRASENA, administrador, instalacion, persona
+
+MALA = "mala contrasena larga"
+
+
+@pytest.fixture
+def freno() -> cuentas.FrenoGlobal:
+    return cuentas.FrenoGlobal()
+
+
+def _entrar(sesion, login, contrasena, freno, cuando=AHORA):
+    return cuentas.autenticar(
+        sesion, login, contrasena, cuando, freno=freno, dormir=lambda segundos: None
+    )
+
+
+# --- primer administrador -------------------------------------------------------------------
+
+
+def test_el_codigo_tiene_20_caracteres_base32_y_su_huella_no_es_el_codigo(tmp_path: Path):
+    with instalacion(tmp_path) as sesion:
+        codigo = cuentas.emitir_codigo(sesion, tmp_path, AHORA)
+        assert len(codigo) == 20 and set(codigo) <= set(cuentas.ALFABETO_CODIGO)
+        archivo = (tmp_path / cuentas.NOMBRE_ARCHIVO_CODIGO).read_text()
+        assert archivo.strip().replace("-", "") == codigo
+        fila = sesion.query(CodigoInstalacion).one()
+        assert fila.huella != codigo and len(fila.huella) == 64 and fila.usado is None
+
+
+def test_cien_codigos_no_se_repiten(tmp_path: Path) -> None:
+    with instalacion(tmp_path) as sesion:
+        codigos = {cuentas.emitir_codigo(sesion, tmp_path, AHORA) for _ in range(100)}
+    assert len(codigos) == 100
+
+
+def test_el_primer_administrador_se_crea_con_el_codigo_y_el_archivo_se_borra(tmp_path: Path):
+    with instalacion(tmp_path) as sesion:
+        codigo = cuentas.preparar_primera_vez(sesion, tmp_path, AHORA)
+        assert codigo is not None and (tmp_path / cuentas.NOMBRE_ARCHIVO_CODIGO).exists()
+        assert cuentas.preparar_primera_vez(sesion, tmp_path, AHORA) is None  # ya hay uno vigente
+        usuario = cuentas.reclamar_instalacion(
+            sesion, codigo.lower(), "Admin", "Ana Admin", CONTRASENA, AHORA, tmp_path
+        )
+        assert usuario.roles == "administrador" and usuario.login == "admin"
+        assert not (tmp_path / cuentas.NOMBRE_ARCHIVO_CODIGO).exists()
+        assert sesion.query(CodigoInstalacion).one().usado == AHORA
+
+
+def test_un_codigo_usado_o_ajeno_se_rechaza(tmp_path: Path, freno) -> None:
+    with instalacion(tmp_path) as sesion:
+        codigo = cuentas.emitir_codigo(sesion, tmp_path, AHORA)
+        cuentas.reclamar_instalacion(sesion, codigo, "admin", "A", CONTRASENA, AHORA, tmp_path)
+        for malo in (codigo, "A" * 20, ""):
+            with pytest.raises(cuentas.ErrorDeAcceso, match="código de instalación"):
+                cuentas.reclamar_instalacion(
+                    sesion, malo, "otro", "B", CONTRASENA, AHORA, tmp_path, freno=freno
+                )
+        assert sesion.query(Usuario).count() == 1
+
+
+def test_con_cuentas_el_codigo_de_primera_vez_no_sirve_pero_el_de_restablecimiento_si(
+    tmp_path: Path, freno
+) -> None:
+    with instalacion(tmp_path) as sesion:
+        admin = administrador(sesion, tmp_path)
+        tardio = cuentas.emitir_codigo(sesion, tmp_path, AHORA)  # primera vez, con cuentas
+        with pytest.raises(cuentas.ErrorDeAcceso):
+            cuentas.reclamar_instalacion(
+                sesion, tardio, "nuevo", "N", CONTRASENA, AHORA, tmp_path, freno=freno
+            )
+        rescate = cuentas.emitir_codigo_de_restablecimiento(sesion, tmp_path, AHORA)
+        otra = "otra contrasena larga distinta"
+        recuperado = cuentas.reclamar_instalacion(
+            sesion, rescate, admin.login, "Admin", otra, AHORA, tmp_path, freno=freno
+        )
+        assert recuperado.id == admin.id
+        assert _entrar(sesion, "admin", otra, freno).id == admin.id
+
+
+def test_5_codigos_malos_seguidos_bloquean_el_reclamo(tmp_path: Path, freno) -> None:
+    with instalacion(tmp_path) as sesion:
+        cuentas.emitir_codigo(sesion, tmp_path, AHORA)
+        for _ in range(4):
+            with pytest.raises(cuentas.ErrorDeAcceso) as error:
+                cuentas.reclamar_instalacion(
+                    sesion, "A" * 20, "x", "x", CONTRASENA, AHORA, tmp_path, freno=freno
+                )
+            assert not isinstance(error.value, cuentas.CuentaBloqueada)
+        with pytest.raises(cuentas.CuentaBloqueada):
+            cuentas.reclamar_instalacion(
+                sesion, "A" * 20, "x", "x", CONTRASENA, AHORA, tmp_path, freno=freno
+            )
+
+
+# --- contraseñas ----------------------------------------------------------------------------
+
+
+def test_politica_de_contrasenas() -> None:
+    cuentas.validar_contrasena("a" * 10, "ana")  # 10 pasa
+    with pytest.raises(cuentas.ContrasenaInvalida):
+        cuentas.validar_contrasena("a" * 9, "ana")
+    cuentas.validar_contrasena("ñ" * 128, "ana")  # 128 pasa, Unicode
+    with pytest.raises(cuentas.ContrasenaInvalida):
+        cuentas.validar_contrasena("a" * 129, "ana")
+    with pytest.raises(cuentas.ContrasenaInvalida, match="igual al usuario"):
+        cuentas.validar_contrasena("administrador", "Administrador")
+    with pytest.raises(cuentas.ContrasenaInvalida, match="común"):
+        cuentas.validar_contrasena("1234567890", "ana")
+
+
+def test_ninguna_contrasena_queda_en_la_base_ni_en_los_eventos(tmp_path: Path, freno) -> None:
+    secreta = "esta-contrasena-no-debe-aparecer-1"
+    with instalacion(tmp_path) as sesion:
+        admin = administrador(sesion, tmp_path)
+        cuentas.crear_usuario(sesion, admin, "luis", "Luis", ["arma"], secreta, AHORA)
+        with pytest.raises(cuentas.ErrorDeAcceso):
+            _entrar(sesion, "luis", secreta + "x", freno)
+        cuentas.restablecer(sesion, admin, 2, secreta + "2", AHORA)
+        texto = " ".join(
+            f"{e.login_intentado} {e.detalle} {e.tipo}" for e in eventos.ultimos(sesion)
+        )
+        assert secreta not in texto and CONTRASENA not in texto
+        huella = sesion.get(Usuario, 2).huella_clave
+        assert huella.startswith("$argon2id$") and secreta not in huella
+        sesion.commit()
+    bruto = (tmp_path / "instalacion.db").read_bytes()
+    for secreto in (secreta, CONTRASENA):
+        assert secreto.encode() not in bruto
+
+
+# --- bloqueo --------------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("existe", [True, False])
+def test_4_fallos_no_bloquean_y_el_quinto_si(tmp_path: Path, freno, existe: bool) -> None:
+    with instalacion(tmp_path) as sesion:
+        admin = administrador(sesion, tmp_path)
+        login = "admin" if existe else "fantasma"
+        for _ in range(4):
+            with pytest.raises(cuentas.ErrorDeAcceso) as error:
+                _entrar(sesion, login, MALA, freno)
+            assert str(error.value) == cuentas.MENSAJE_FALLO
+        if existe:  # el cuarto fallo no bloqueó: la contraseña buena aún entra y reinicia
+            assert _entrar(sesion, login, CONTRASENA, freno).id == admin.id
+            for _ in range(4):
+                with pytest.raises(cuentas.ErrorDeAcceso):
+                    _entrar(sesion, login, MALA, freno)
+        with pytest.raises(cuentas.CuentaBloqueada) as quinto:
+            _entrar(sesion, login, MALA, freno)
+        assert str(quinto.value) == cuentas.MENSAJE_BLOQUEO
+        with pytest.raises(cuentas.CuentaBloqueada):  # ni con la buena mientras dure
+            _entrar(sesion, login, CONTRASENA, freno)
+
+
+def test_el_bloqueo_dura_15_minutos_exactos(tmp_path: Path, freno) -> None:
+    with instalacion(tmp_path) as sesion:
+        administrador(sesion, tmp_path)
+        for _ in range(5):
+            with pytest.raises(cuentas.ErrorDeAcceso):
+                _entrar(sesion, "admin", MALA, freno)
+        casi = AHORA + timedelta(minutes=15) - timedelta(seconds=1)
+        with pytest.raises(cuentas.CuentaBloqueada):
+            _entrar(sesion, "admin", CONTRASENA, freno, casi)
+        assert _entrar(sesion, "admin", CONTRASENA, freno, AHORA + timedelta(minutes=15))
+
+
+def test_el_administrador_desbloquea(tmp_path: Path, freno) -> None:
+    with instalacion(tmp_path) as sesion:
+        admin = administrador(sesion, tmp_path)
+        luis = persona(sesion, admin, "luis", ("arma",))
+        for _ in range(5):
+            with pytest.raises(cuentas.ErrorDeAcceso):
+                _entrar(sesion, "luis", MALA, freno)
+        cuentas.desbloquear(sesion, admin, "luis", AHORA)
+        assert _entrar(sesion, "luis", CONTRASENA, freno).id == luis.id
+        with pytest.raises(PermisoDenegado):  # luis no es administrador
+            cuentas.desbloquear(sesion, luis, "luis", AHORA)
+
+
+def test_un_login_inexistente_se_verifica_contra_la_huella_de_relleno(
+    tmp_path: Path, freno, monkeypatch
+) -> None:
+    vistas: list[str] = []
+    verdadera = cuentas._coincide
+
+    def espia(huella: str, contrasena: str) -> bool:
+        vistas.append(huella)
+        return verdadera(huella, contrasena)
+
+    monkeypatch.setattr(cuentas, "_coincide", espia)
+    with instalacion(tmp_path) as sesion:
+        admin = administrador(sesion, tmp_path)
+        with pytest.raises(cuentas.ErrorDeAcceso):
+            _entrar(sesion, "no-existe", CONTRASENA, freno)
+        with pytest.raises(cuentas.ErrorDeAcceso):
+            _entrar(sesion, "admin", MALA, freno)
+        assert vistas[0] == cuentas._huella_de_relleno()
+        assert vistas[1] == admin.huella_clave != vistas[0]
+
+
+def test_una_cuenta_desactivada_no_entra_con_el_mismo_mensaje(tmp_path: Path, freno) -> None:
+    with instalacion(tmp_path) as sesion:
+        admin = administrador(sesion, tmp_path)
+        luis = persona(sesion, admin, "luis", ("arma",))
+        cuentas.desactivar(sesion, admin, luis.id, AHORA)
+        with pytest.raises(cuentas.ErrorDeAcceso) as error:
+            _entrar(sesion, "luis", CONTRASENA, freno)
+        assert str(error.value) == cuentas.MENSAJE_FALLO
+
+
+@pytest.mark.parametrize(
+    "fallos,espera",
+    [(19, 0.0), (20, 1.0), (21, 2.0), (22, 4.0), (25, 32.0), (26, 60.0), (40, 60.0)],
+)
+def test_freno_global_espera_progresiva(fallos: int, espera: float) -> None:
+    freno = cuentas.FrenoGlobal()
+    for _ in range(fallos):
+        freno.registrar_fallo(AHORA)
+    assert freno.espera(AHORA) == espera
+    assert freno.espera(AHORA + timedelta(minutes=10)) == 0.0  # la ventana de 10 min se vació
+
+
+def test_el_freno_global_hace_dormir_al_intento(tmp_path: Path) -> None:
+    freno, dormidas = cuentas.FrenoGlobal(), []
+    for _ in range(20):
+        freno.registrar_fallo(AHORA)
+    with instalacion(tmp_path) as sesion:
+        administrador(sesion, tmp_path)
+        cuentas.autenticar(sesion, "admin", CONTRASENA, AHORA, freno=freno, dormir=dormidas.append)
+    assert dormidas == [1.0]
+
+
+def test_el_semaforo_limita_las_verificaciones_simultaneas(monkeypatch) -> None:
+    activas, maxima, candado = [0], [0], threading.Lock()
+
+    class HasherLento:
+        def verify(self, huella: str, contrasena: str) -> bool:
+            with candado:
+                activas[0] += 1
+                maxima[0] = max(maxima[0], activas[0])
+            time.sleep(0.03)
+            with candado:
+                activas[0] -= 1
+            return True
+
+    monkeypatch.setattr(cuentas, "_hasher", HasherLento())
+    hilos = [threading.Thread(target=cuentas._coincide, args=("h", "c")) for _ in range(16)]
+    [h.start() for h in hilos]
+    [h.join() for h in hilos]
+    assert 1 <= maxima[0] <= cuentas.VERIFICACIONES_SIMULTANEAS
+
+
+def test_los_contadores_de_logins_inexistentes_se_purgan_a_las_24_horas(tmp_path, freno):
+    with instalacion(tmp_path) as sesion:
+        administrador(sesion, tmp_path)
+        with pytest.raises(cuentas.ErrorDeAcceso):
+            _entrar(sesion, "fantasma", MALA, freno)
+        assert cuentas.purgar_intentos_de_inexistentes(sesion, AHORA + timedelta(hours=23)) == 0
+        assert cuentas.purgar_intentos_de_inexistentes(sesion, AHORA + timedelta(hours=24)) == 1
+
+
+# --- administrar ----------------------------------------------------------------------------
+
+
+def test_alta_con_temporal_obliga_a_cambiarla_y_cambiarla_da_ficha_nueva(tmp_path, freno):
+    with instalacion(tmp_path) as sesion:
+        admin = administrador(sesion, tmp_path)
+        luis = persona(sesion, admin, "luis", ("arma",))
+        assert luis.debe_cambiar_clave
+        entrada = _entrar(sesion, "luis", CONTRASENA, freno)
+        nueva = "otra contrasena larga y nueva"
+        ficha = cuentas.cambiar_contrasena(sesion, entrada.id, CONTRASENA, nueva, AHORA)
+        assert ficha and not sesion.get(Usuario, luis.id).debe_cambiar_clave
+        assert _entrar(sesion, "luis", nueva, freno).id == luis.id
+        with pytest.raises(cuentas.ErrorDeAcceso):
+            cuentas.cambiar_contrasena(sesion, luis.id, "no es la actual", nueva + "2", AHORA)
+
+
+def test_no_se_puede_dejar_la_instalacion_sin_administrador(tmp_path: Path) -> None:
+    with instalacion(tmp_path) as sesion:
+        admin = administrador(sesion, tmp_path)
+        with pytest.raises(ValueError, match="al menos un administrador"):
+            cuentas.desactivar(sesion, admin, admin.id, AHORA)
+        with pytest.raises(ValueError, match="al menos un administrador"):
+            cuentas.cambiar_roles(sesion, admin, admin.id, ["arma"], AHORA)
+
+
+def test_un_alta_repetida_o_con_login_malo_se_rechaza(tmp_path: Path) -> None:
+    with instalacion(tmp_path) as sesion:
+        admin = administrador(sesion, tmp_path)
+        persona(sesion, admin, "luis", ("arma",))
+        with pytest.raises(ValueError, match="Ya existe"):
+            persona(sesion, admin, "LUIS", ("arma",))
+        for malo in ("ab", "con espacio", "x" * 41, "ñandú"):
+            with pytest.raises(ValueError, match="usuario"):
+                cuentas.validar_login(malo)
+
+
+def test_el_responsable_es_nombre_y_login_y_se_marca_tras_un_restablecimiento(tmp_path):
+    with instalacion(tmp_path) as sesion:
+        admin = administrador(sesion, tmp_path)
+        luis = persona(sesion, admin, "luis", ("arma",), "Luis Pérez")
+        assert cuentas.responsable_de(luis) == "Luis Pérez <luis>"
+        cuentas.restablecer(sesion, admin, luis.id, "otra contrasena temporal", AHORA)
+        marcado = cuentas.responsable_de(sesion.get(Usuario, luis.id))
+        assert marcado == "Luis Pérez <luis> (tras restablecimiento)"
+        largo = Usuario(login="x" * 40, nombre="N" * 300, roles="arma", restablecida_por_admin=True)
+        assert len(cuentas.responsable_de(largo)) <= 120
+
+
+def test_cada_accion_de_administracion_queda_en_el_registro(tmp_path: Path) -> None:
+    with instalacion(tmp_path) as sesion:
+        admin = administrador(sesion, tmp_path)
+        luis = persona(sesion, admin, "luis", ("arma",))
+        cuentas.cambiar_roles(sesion, admin, luis.id, ["arma", "revisa"], AHORA)
+        cuentas.desactivar(sesion, admin, luis.id, AHORA)
+        tipos = [e.tipo for e in sesion.query(EventoAcceso).order_by(EventoAcceso.id)]
+        assert {"alta", "cambio de roles", "baja", "codigo de instalacion"} <= set(tipos)

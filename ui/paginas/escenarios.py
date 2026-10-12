@@ -45,6 +45,8 @@ from core.contracts import ItemComputo, ParametrosCosto
 from core.verification.informe import DECIMALES_PRESENTACION
 from core.verification.texto import formatear_decimal
 from operacion.base_datos import preparar_base
+from seguridad.permisos import Accion
+from ui import sesion as ui_sesion
 from ui.caso import ruta_caso
 from ui.composicion import decimal_desde_texto
 
@@ -55,6 +57,7 @@ _ESTADO_BASE = "uc08_base"
 
 def render() -> None:
     """Selector de presupuesto, formulario de supuestos y tabla comparativa de RF-31."""
+    ui_sesion.exigir(Accion.EDITAR_HOJA)
     st.caption(
         "Recalcula un presupuesto guardado variando parametros de costo o precios de insumos. "
         "El presupuesto base no se altera y ningun escenario se guarda."
