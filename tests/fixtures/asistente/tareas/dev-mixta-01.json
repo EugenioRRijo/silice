@@ -1,0 +1,78 @@
+{
+  "base": "vacio",
+  "conjunto": "desarrollo",
+  "especialidad": "datos",
+  "id": "dev-mixta-01",
+  "pedido": "Cuarto de equipos de 3,0 x 3,0 m con alto de 2,5 m, esquina en el origen. Rack en la esquina (0;0;0). Un punto de datos en la pared sur: x = 2,0 m, y = 0 m, z = 0,3 m. Ademas: 1 UPS y 1 switch para el rack.",
+  "posicion_libre": false,
+  "referencia": {
+    "ambientes": [
+      {
+        "alto": "2.5",
+        "ancho": "3",
+        "id": "A1",
+        "largo": "3",
+        "nombre": "Equipos",
+        "x0": "0",
+        "y0": "0"
+      }
+    ],
+    "fuentes": [
+      {
+        "ambiente_id": "A1",
+        "especialidad": "datos",
+        "id": "RK1",
+        "tipo": "rack",
+        "x": "0",
+        "y": "0",
+        "z": "0"
+      }
+    ],
+    "partidas": [
+      {
+        "cantidad": "1",
+        "codigo": "TI-UPS",
+        "dominio": "telecom",
+        "unidad": "pieza"
+      },
+      {
+        "cantidad": "1",
+        "codigo": "TI-SW",
+        "dominio": "telecom",
+        "unidad": "pieza"
+      }
+    ],
+    "puntos": [
+      {
+        "ambiente_id": "A1",
+        "circuito_id": "",
+        "especialidad": "datos",
+        "especificaciones": "",
+        "fuente_id": "RK1",
+        "id": "D1",
+        "nombre": "dato 1",
+        "superficie": "pared",
+        "tipo": "datos",
+        "x": "2",
+        "y": "0",
+        "z": "0.3"
+      }
+    ]
+  },
+  "respuestas": [
+    {
+      "palabras": [
+        "cuantos",
+        "ups"
+      ],
+      "texto": "Una UPS"
+    },
+    {
+      "palabras": [
+        "switch"
+      ],
+      "texto": "Un switch"
+    }
+  ],
+  "sembrados": []
+}

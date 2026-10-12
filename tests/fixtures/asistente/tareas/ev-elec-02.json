@@ -1,0 +1,127 @@
+{
+  "base": "circuito",
+  "conjunto": "evaluacion",
+  "especialidad": "electricidad",
+  "id": "ev-elec-02",
+  "pedido": "Taller de 6,0 x 5,0 m con alto de 3,0 m, esquina en el origen. Tablero T1 en (0;0;1,2). Circuito C1 ya existe. Cuatro tomacorrientes del circuito C1 a 1,0 m del piso en la pared sur: x = 1,0; 2,5; 4,0; 5,5 (y = 0). Dos luminarias del circuito C1 en el techo: (2,0;2,5;3,0) y (4,0;2,5;3,0).",
+  "posicion_libre": false,
+  "referencia": {
+    "ambientes": [
+      {
+        "alto": "3",
+        "ancho": "5",
+        "id": "A1",
+        "largo": "6",
+        "nombre": "Taller",
+        "x0": "0",
+        "y0": "0"
+      }
+    ],
+    "fuentes": [
+      {
+        "ambiente_id": "A1",
+        "especialidad": "electricidad",
+        "id": "T1",
+        "tipo": "tablero",
+        "x": "0",
+        "y": "0",
+        "z": "1.2"
+      }
+    ],
+    "puntos": [
+      {
+        "ambiente_id": "A1",
+        "circuito_id": "C1",
+        "especialidad": "electricidad",
+        "especificaciones": "",
+        "fuente_id": "T1",
+        "id": "E1",
+        "nombre": "toma 1",
+        "superficie": "pared",
+        "tipo": "tomacorriente",
+        "x": "1",
+        "y": "0",
+        "z": "1"
+      },
+      {
+        "ambiente_id": "A1",
+        "circuito_id": "C1",
+        "especialidad": "electricidad",
+        "especificaciones": "",
+        "fuente_id": "T1",
+        "id": "E2",
+        "nombre": "toma 2",
+        "superficie": "pared",
+        "tipo": "tomacorriente",
+        "x": "2.5",
+        "y": "0",
+        "z": "1"
+      },
+      {
+        "ambiente_id": "A1",
+        "circuito_id": "C1",
+        "especialidad": "electricidad",
+        "especificaciones": "",
+        "fuente_id": "T1",
+        "id": "E3",
+        "nombre": "toma 3",
+        "superficie": "pared",
+        "tipo": "tomacorriente",
+        "x": "4",
+        "y": "0",
+        "z": "1"
+      },
+      {
+        "ambiente_id": "A1",
+        "circuito_id": "C1",
+        "especialidad": "electricidad",
+        "especificaciones": "",
+        "fuente_id": "T1",
+        "id": "E4",
+        "nombre": "toma 4",
+        "superficie": "pared",
+        "tipo": "tomacorriente",
+        "x": "5.5",
+        "y": "0",
+        "z": "1"
+      },
+      {
+        "ambiente_id": "A1",
+        "circuito_id": "C1",
+        "especialidad": "electricidad",
+        "especificaciones": "",
+        "fuente_id": "T1",
+        "id": "L1",
+        "nombre": "luz 1",
+        "superficie": "techo",
+        "tipo": "iluminacion",
+        "x": "2",
+        "y": "2.5",
+        "z": "3"
+      },
+      {
+        "ambiente_id": "A1",
+        "circuito_id": "C1",
+        "especialidad": "electricidad",
+        "especificaciones": "",
+        "fuente_id": "T1",
+        "id": "L2",
+        "nombre": "luz 2",
+        "superficie": "techo",
+        "tipo": "iluminacion",
+        "x": "4",
+        "y": "2.5",
+        "z": "3"
+      }
+    ]
+  },
+  "respuestas": [
+    {
+      "palabras": [
+        "alto"
+      ],
+      "texto": "3,0 m"
+    }
+  ],
+  "sembrados": []
+}

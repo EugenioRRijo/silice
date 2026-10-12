@@ -1,0 +1,85 @@
+{
+  "base": "circuito",
+  "conjunto": "desarrollo",
+  "especialidad": "electricidad",
+  "id": "dev-elec-01",
+  "pedido": "Sala de 5,0 x 4,0 m con alto de 2,5 m, esquina en el origen. Tablero T1 en la pared oeste: x = 0 m, y = 0 m, z = 1,2 m. Circuito C1 ya existe. Tomacorrientes del circuito C1 en la pared sur: x = 1,0 m, y = 0 m, z = 0,3 m; y x = 3,0 m, y = 0 m, z = 0,3 m. Luminaria del circuito C1 en el techo: x = 2,5 m, y = 2,0 m, z = 2,5 m.",
+  "posicion_libre": false,
+  "referencia": {
+    "ambientes": [
+      {
+        "alto": "2.5",
+        "ancho": "4",
+        "id": "A1",
+        "largo": "5",
+        "nombre": "Sala",
+        "x0": "0",
+        "y0": "0"
+      }
+    ],
+    "fuentes": [
+      {
+        "ambiente_id": "A1",
+        "especialidad": "electricidad",
+        "id": "T1",
+        "tipo": "tablero",
+        "x": "0",
+        "y": "0",
+        "z": "1.2"
+      }
+    ],
+    "puntos": [
+      {
+        "ambiente_id": "A1",
+        "circuito_id": "C1",
+        "especialidad": "electricidad",
+        "especificaciones": "",
+        "fuente_id": "T1",
+        "id": "E1",
+        "nombre": "toma 1",
+        "superficie": "pared",
+        "tipo": "tomacorriente",
+        "x": "1",
+        "y": "0",
+        "z": "0.3"
+      },
+      {
+        "ambiente_id": "A1",
+        "circuito_id": "C1",
+        "especialidad": "electricidad",
+        "especificaciones": "",
+        "fuente_id": "T1",
+        "id": "E2",
+        "nombre": "toma 2",
+        "superficie": "pared",
+        "tipo": "tomacorriente",
+        "x": "3",
+        "y": "0",
+        "z": "0.3"
+      },
+      {
+        "ambiente_id": "A1",
+        "circuito_id": "C1",
+        "especialidad": "electricidad",
+        "especificaciones": "",
+        "fuente_id": "T1",
+        "id": "L1",
+        "nombre": "luz 1",
+        "superficie": "techo",
+        "tipo": "iluminacion",
+        "x": "2.5",
+        "y": "2",
+        "z": "2.5"
+      }
+    ]
+  },
+  "respuestas": [
+    {
+      "palabras": [
+        "circuito"
+      ],
+      "texto": "C1"
+    }
+  ],
+  "sembrados": []
+}

@@ -24,6 +24,7 @@ PAQUETES_FUERA_DEL_NUCLEO = (
     "tests",
     "operacion",
     "migraciones",
+    "asistente",
 )
 
 #: Terceros que cada adaptador puede importar, ademas de la biblioteca estandar, `core.contracts` y

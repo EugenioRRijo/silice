@@ -1,0 +1,99 @@
+{
+  "base": "vacio",
+  "conjunto": "evaluacion",
+  "especialidad": "datos",
+  "id": "ev-datos-02",
+  "pedido": "Sala de 6,0 x 3,0 m con alto de 2,5 m (posicion libre en el plano). Rack en la esquina del ambiente a nivel del piso. Cuatro puntos de datos a 30 cm del piso en la pared sur: a 1,0 m, 2,5 m, 4,0 m y 5,5 m de la esquina donde esta el rack.",
+  "posicion_libre": true,
+  "referencia": {
+    "ambientes": [
+      {
+        "alto": "2.5",
+        "ancho": "3",
+        "id": "A1",
+        "largo": "6",
+        "nombre": "Sala",
+        "x0": "0",
+        "y0": "0"
+      }
+    ],
+    "fuentes": [
+      {
+        "ambiente_id": "A1",
+        "especialidad": "datos",
+        "id": "RK1",
+        "tipo": "rack",
+        "x": "0",
+        "y": "0",
+        "z": "0"
+      }
+    ],
+    "puntos": [
+      {
+        "ambiente_id": "A1",
+        "circuito_id": "",
+        "especialidad": "datos",
+        "especificaciones": "",
+        "fuente_id": "RK1",
+        "id": "D1",
+        "nombre": "dato 1",
+        "superficie": "pared",
+        "tipo": "datos",
+        "x": "1",
+        "y": "0",
+        "z": "0.3"
+      },
+      {
+        "ambiente_id": "A1",
+        "circuito_id": "",
+        "especialidad": "datos",
+        "especificaciones": "",
+        "fuente_id": "RK1",
+        "id": "D2",
+        "nombre": "dato 2",
+        "superficie": "pared",
+        "tipo": "datos",
+        "x": "2.5",
+        "y": "0",
+        "z": "0.3"
+      },
+      {
+        "ambiente_id": "A1",
+        "circuito_id": "",
+        "especialidad": "datos",
+        "especificaciones": "",
+        "fuente_id": "RK1",
+        "id": "D3",
+        "nombre": "dato 3",
+        "superficie": "pared",
+        "tipo": "datos",
+        "x": "4",
+        "y": "0",
+        "z": "0.3"
+      },
+      {
+        "ambiente_id": "A1",
+        "circuito_id": "",
+        "especialidad": "datos",
+        "especificaciones": "",
+        "fuente_id": "RK1",
+        "id": "D4",
+        "nombre": "dato 4",
+        "superficie": "pared",
+        "tipo": "datos",
+        "x": "5.5",
+        "y": "0",
+        "z": "0.3"
+      }
+    ]
+  },
+  "respuestas": [
+    {
+      "palabras": [
+        "esquina"
+      ],
+      "texto": "Use la esquina inferior izquierda en (0;0)"
+    }
+  ],
+  "sembrados": []
+}

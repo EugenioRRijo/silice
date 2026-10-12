@@ -67,7 +67,10 @@ select = ["E", "F", "W", "I", "B", "UP", "N"]
 "migraciones/*/versions/*.py" = ["E501"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["core", "adapters", "ml", "ui", "api", "tests", "scripts", "operacion", "migraciones"]
+known-first-party = [
+    "asistente", "core", "adapters", "ml", "ui", "api", "tests", "scripts", "operacion",
+    "migraciones",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

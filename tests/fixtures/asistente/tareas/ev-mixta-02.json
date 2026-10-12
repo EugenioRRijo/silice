@@ -1,0 +1,105 @@
+{
+  "base": "vacio",
+  "conjunto": "evaluacion",
+  "especialidad": "datos",
+  "id": "ev-mixta-02",
+  "pedido": "Oficina de 5,0 x 4,0 m con alto de 2,5 m, esquina en el origen. Rack en (0;0;0). Tres puntos de datos a 30 cm del piso: x = 1,0 y = 0; x = 3,0 y = 0; x = 5,0 y = 2,0. Ademas: 1 UPS y 3 laptops.",
+  "posicion_libre": false,
+  "referencia": {
+    "ambientes": [
+      {
+        "alto": "2.5",
+        "ancho": "4",
+        "id": "A1",
+        "largo": "5",
+        "nombre": "Oficina",
+        "x0": "0",
+        "y0": "0"
+      }
+    ],
+    "fuentes": [
+      {
+        "ambiente_id": "A1",
+        "especialidad": "datos",
+        "id": "RK1",
+        "tipo": "rack",
+        "x": "0",
+        "y": "0",
+        "z": "0"
+      }
+    ],
+    "partidas": [
+      {
+        "cantidad": "1",
+        "codigo": "TI-UPS",
+        "dominio": "telecom",
+        "unidad": "pieza"
+      },
+      {
+        "cantidad": "3",
+        "codigo": "TI-LAP",
+        "dominio": "telecom",
+        "unidad": "pieza"
+      }
+    ],
+    "puntos": [
+      {
+        "ambiente_id": "A1",
+        "circuito_id": "",
+        "especialidad": "datos",
+        "especificaciones": "",
+        "fuente_id": "RK1",
+        "id": "D1",
+        "nombre": "dato 1",
+        "superficie": "pared",
+        "tipo": "datos",
+        "x": "1",
+        "y": "0",
+        "z": "0.3"
+      },
+      {
+        "ambiente_id": "A1",
+        "circuito_id": "",
+        "especialidad": "datos",
+        "especificaciones": "",
+        "fuente_id": "RK1",
+        "id": "D2",
+        "nombre": "dato 2",
+        "superficie": "pared",
+        "tipo": "datos",
+        "x": "3",
+        "y": "0",
+        "z": "0.3"
+      },
+      {
+        "ambiente_id": "A1",
+        "circuito_id": "",
+        "especialidad": "datos",
+        "especificaciones": "",
+        "fuente_id": "RK1",
+        "id": "D3",
+        "nombre": "dato 3",
+        "superficie": "pared",
+        "tipo": "datos",
+        "x": "5",
+        "y": "2",
+        "z": "0.3"
+      }
+    ]
+  },
+  "respuestas": [
+    {
+      "palabras": [
+        "laptops"
+      ],
+      "texto": "Tres laptops"
+    },
+    {
+      "palabras": [
+        "ups"
+      ],
+      "texto": "Una UPS"
+    }
+  ],
+  "sembrados": []
+}

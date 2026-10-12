@@ -1,0 +1,77 @@
+{
+  "base": "vacio",
+  "conjunto": "desarrollo",
+  "especialidad": "agua",
+  "id": "dev-agua-01",
+  "pedido": "Bano de 2,0 x 1,5 m con alto de 2,5 m, esquina en el origen (0;0). Montante de agua en la esquina (0;0;0). Lavamanos en la pared sur: x = 1,5 m, y = 0 m, a 60 cm del piso, diametro 1/2\" con llave de paso. Ducha en la pared norte: x = 1,0 m, y = 1,5 m, a 1,2 m del piso, diametro 3/4\" con llave de paso.",
+  "posicion_libre": false,
+  "referencia": {
+    "ambientes": [
+      {
+        "alto": "2.5",
+        "ancho": "1.5",
+        "id": "A1",
+        "largo": "2",
+        "nombre": "Bano",
+        "x0": "0",
+        "y0": "0"
+      }
+    ],
+    "fuentes": [
+      {
+        "ambiente_id": "A1",
+        "especialidad": "agua",
+        "id": "F1",
+        "tipo": "montante_agua",
+        "x": "0",
+        "y": "0",
+        "z": "0"
+      }
+    ],
+    "puntos": [
+      {
+        "ambiente_id": "A1",
+        "circuito_id": "",
+        "especialidad": "agua",
+        "especificaciones": "diametro=1/2\"; llave_de_paso=si",
+        "fuente_id": "F1",
+        "id": "P1",
+        "nombre": "lavamanos",
+        "superficie": "pared",
+        "tipo": "agua_fria",
+        "x": "1.5",
+        "y": "0",
+        "z": "0.6"
+      },
+      {
+        "ambiente_id": "A1",
+        "circuito_id": "",
+        "especialidad": "agua",
+        "especificaciones": "diametro=3/4\"; llave_de_paso=si",
+        "fuente_id": "F1",
+        "id": "P2",
+        "nombre": "ducha",
+        "superficie": "pared",
+        "tipo": "agua_fria",
+        "x": "1",
+        "y": "1.5",
+        "z": "1.2"
+      }
+    ]
+  },
+  "respuestas": [
+    {
+      "palabras": [
+        "alto"
+      ],
+      "texto": "2,5 m"
+    },
+    {
+      "palabras": [
+        "diametro"
+      ],
+      "texto": "Los diametros estan en el pedido"
+    }
+  ],
+  "sembrados": []
+}

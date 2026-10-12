@@ -1,0 +1,71 @@
+{
+  "base": "vacio",
+  "conjunto": "evaluacion",
+  "especialidad": "agua",
+  "id": "ev-agua-01",
+  "pedido": "Bano de 2,4 x 1,5 m con alto de 2,5 m, esquina en el origen. Montante de agua en (0;0;0). Lavamanos en la pared sur: x = 1,2 m, y = 0 m, a 55 cm del piso, diametro 1/2\" con llave de paso. Poceta en la pared sur: x = 2,0 m, y = 0 m, a 25 cm del piso, diametro 1/2\" con llave de paso.",
+  "posicion_libre": false,
+  "referencia": {
+    "ambientes": [
+      {
+        "alto": "2.5",
+        "ancho": "1.5",
+        "id": "A1",
+        "largo": "2.4",
+        "nombre": "Bano",
+        "x0": "0",
+        "y0": "0"
+      }
+    ],
+    "fuentes": [
+      {
+        "ambiente_id": "A1",
+        "especialidad": "agua",
+        "id": "F1",
+        "tipo": "montante_agua",
+        "x": "0",
+        "y": "0",
+        "z": "0"
+      }
+    ],
+    "puntos": [
+      {
+        "ambiente_id": "A1",
+        "circuito_id": "",
+        "especialidad": "agua",
+        "especificaciones": "diametro=1/2\"; llave_de_paso=si",
+        "fuente_id": "F1",
+        "id": "P1",
+        "nombre": "lavamanos",
+        "superficie": "pared",
+        "tipo": "agua_fria",
+        "x": "1.2",
+        "y": "0",
+        "z": "0.55"
+      },
+      {
+        "ambiente_id": "A1",
+        "circuito_id": "",
+        "especialidad": "agua",
+        "especificaciones": "diametro=1/2\"; llave_de_paso=si",
+        "fuente_id": "F1",
+        "id": "P2",
+        "nombre": "poceta",
+        "superficie": "pared",
+        "tipo": "agua_fria",
+        "x": "2",
+        "y": "0",
+        "z": "0.25"
+      }
+    ]
+  },
+  "respuestas": [
+    {
+      "palabras": [
+        "alto"
+      ],
+      "texto": "2,5 m"
+    }
+  ],
+  "sembrados": []
+}
