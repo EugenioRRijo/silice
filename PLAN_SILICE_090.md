@@ -210,6 +210,30 @@ caché por
 `fallbacks="default"`. **T3 y T11 lo releen** contra la documentación vigente antes de congelar
 nada.
 
+## Correcciones del ejecutor a los supuestos (2026-10-12, contra `origin/main` con v0.6.0)
+
+Cotejadas con `git grep` las interfaces que el plan suponía; lo que difiere queda aquí y en
+`docs/bitacora/2026-10-silice-090.md`.
+
+- **Meta (T1).** `FASES` ya trae `"0.7.0"` y `"0.8.0"`; `fases_hasta` acumula las fases anteriores, de
+  modo que `--version 0.9.0 --hasta S4-n` exige también S2 y S3: el paso de CI de la 0.9.0 entra cuando
+  esas dos versiones estén completas. `_patron_definicion` no reconocía `UC-09` (comparaba con `UC-9`);
+  se corrigió con `0*`.
+- **Documentos (T1).** En `docs/plan_pruebas.md` la subsección de S4 es la §8.0d (S2 tomó la §8.0c); en
+  `docs/modelo_datos.md`, la §2.7 (S1 §2.5, S2 §2.6).
+- **T3.** `tests/unit/test_dependencias_silice.py` dueña de `ollama` y `keyring` solo `asistente/`: se
+  agregó `scripts/explorar_ia.py`. Cada script nuevo necesita su fila en `scripts/README.md`.
+- **T9.** La cabeza del caso en `main` es `caso_0004_s1_reajuste`; S2 reserva 0005 y 0006, así que la
+  revisión del asistente es `caso_0007_s4_asistente` con `down_revision` provisional (hoy `caso_0005_s2_valuaciones`, la cabeza de `main` al abrir el PR).
+  **Al fusionar, quien llegue segundo re-apunta `down_revision` a la cabeza vigente** (una sola cabeza,
+  RNF-20).
+- **T11.** El test del adaptador de Claude fijaba la fecha de los precios en 2026-09-25; es la de la
+  verificación de T3 (2026-10-12).
+- **T13.** `seguridad/secretos.py` ya está en `main`, pero su interfaz no es la supuesta:
+  `cifrar(...)` devuelve un `SecretoCifrado` y `descifrar(cifrado, contrasena, huella_publica)`. La
+  tarea se hizo contra esa interfaz (`Secretos` recibe el módulo; el respaldo en disco es JSON con
+  base64), sin las pruebas de T13 (ver bitácora).
+
 ## Orden y ramas
 
 - **1**. Rama: `inc/090-s4-0-docs`; Tareas: T1-T3 (GS4-0); Condición: 0.6.0 fusionada (meta, guardia
