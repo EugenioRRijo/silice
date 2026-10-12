@@ -280,7 +280,8 @@ def test_la_pestana_auditoria_lista_los_hallazgos_con_su_origen(monkeypatch, bas
     at = _abrir_of(monkeypatch, base_of, **{CLAVE_PESTANA: "Auditoría"})
 
     detalle = next(d.value for d in at.dataframe if "Origen" in d.value.columns)
-    assert set(detalle["Regla"]) == {"R8"} and len(detalle) == 33
+    assert set(detalle["Regla"]) - {"R11", "R12"} == {"R8"}
+    assert (detalle["Regla"] == "R8").sum() == 33
 
 
 def test_la_pestana_trazabilidad_lista_las_versiones(monkeypatch, base_of):

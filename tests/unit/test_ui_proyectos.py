@@ -9,12 +9,15 @@ from collections import Counter
 from pathlib import Path
 
 import pytest
+from sqlalchemy import select
 
+from core import models
+from core.catalog import Catalogo, abrir_sesion, crear_motor
 from core.contracts import Severidad
 from scripts.seed import NOMBRE_PROYECTO
 from tests.fixtures import apu_linea_base as linea_base
 from tests.fixtures.base_con_pendiente import guardar_base_con_pendiente
-from ui import proyectos
+from ui import hoja, proyectos
 from ui.proyectos import ProyectoInvalido
 
 
@@ -114,3 +117,43 @@ def test_el_nombre_normalizado_se_compara_sin_distinguir_mayusculas(base):
     with pytest.raises(ProyectoInvalido, match="Ya existe"):
         proyectos.crear_proyecto_nuevo(ruta, "TORRE    b")
     assert proyectos.listar_proyectos(ruta).count("Torre B") == 1
+
+
+# `from core import models`, `from core.catalog import Catalogo, abrir_sesion, crear_motor` y
+# `from ui import hoja`; al final:
+def test_proyecto_nuevo_con_moneda_declara_moneda_proyecto(base):
+    """UC-01 paso 1 (enmienda de S1): la moneda elegida queda en `moneda_proyecto`, y la primera
+    version no se valora con una lista de otra moneda (RF-65)."""
+    ruta, _ = base
+    assert proyectos.crear_proyecto_nuevo(ruta, "Obra en Bs", "Bs") == "Obra en Bs"
+    motor = crear_motor(f"sqlite:///{ruta.as_posix()}")
+    try:
+        with abrir_sesion(motor) as sesion:
+            proyecto = sesion.scalars(
+                select(models.Proyecto).where(models.Proyecto.nombre == "Obra en Bs")
+            ).one()
+            filas = sesion.scalars(
+                select(models.MonedaProyecto)
+                .where(models.MonedaProyecto.proyecto_id == proyecto.id)
+            ).all()
+            assert [fila.moneda for fila in filas] == ["Bs"]
+            with pytest.raises(hoja.HojaInvalida, match="Bs"):
+                hoja.crear_primera_version(
+                    sesion, Catalogo(sesion), "Obra en Bs",
+                    hoja.Borrador(fecha=linea_base.FECHA_LINEA_BASE),
+                    fuente="plano A-01", responsable="Ing. Prueba",
+                )
+    finally:
+        motor.dispose()
+
+
+def test_sin_moneda_el_proyecto_no_declara_ninguna(base):
+    ruta, _ = base
+    proyectos.crear_proyecto_nuevo(ruta, "Obra sin moneda")
+    motor = crear_motor(f"sqlite:///{ruta.as_posix()}")
+    try:
+        with abrir_sesion(motor) as sesion:
+            assert not sesion.scalars(select(models.MonedaProyecto)).all()
+    finally:
+        motor.dispose()
+
