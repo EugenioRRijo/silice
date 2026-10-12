@@ -76,6 +76,7 @@ from ui.paginas import (
     indices,
     inicio,
     precios_empresa,
+    reajuste,
     similares,
     simulador,
     visor,
@@ -122,6 +123,7 @@ PAGINAS: tuple[DefinicionPagina, ...] = (
     DefinicionPagina(historico.render, "Historico de cambios de precio", SECCION_TRABAJO),
     DefinicionPagina(precios_empresa.render, "Precios de la empresa", SECCION_TRABAJO, "UC-17"),
     DefinicionPagina(indices.render, "Indices del BCV", SECCION_TRABAJO, "UC-17"),
+    DefinicionPagina(reajuste.render, "Reajuste de precios", SECCION_TRABAJO, "UC-18"),
     DefinicionPagina(
         escenarios.render, "Escenarios de sensibilidad", SECCION_INVESTIGACION, "UC-08"
     ),

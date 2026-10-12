@@ -68,7 +68,7 @@ def test_ui_y_api_solo_importan_los_modulos_publicos_de_operacion() -> None:
     assert infractores == []
 
 
-#: Las nueve páginas que abren el caso con un motor propio (spec S5 §1.2): todas lo preparan.
+#: Las doce páginas que abren el caso con un motor propio (spec S5 §1.2): todas lo preparan.
 PAGINAS_QUE_ABREN_EL_CASO = (
     "actualizacion",
     "catalogo",
@@ -79,6 +79,7 @@ PAGINAS_QUE_ABREN_EL_CASO = (
     "hoja",
     "indices",
     "precios_empresa",
+    "reajuste",
     "similares",
     "simulador",
 )
