@@ -72,6 +72,7 @@ from ui.paginas import (
     actualizacion,
     catalogo,
     componer,
+    control,
     elaborar,
     escenarios,
     historico,
@@ -121,6 +122,7 @@ _EDITA = Accion.EDITAR_HOJA
 _LEE = Accion.LEER_PROYECTO
 _PRECIOS = Accion.ADMINISTRAR_PRECIOS
 _REAJUSTA = Accion.CONVERTIR_Y_REAJUSTAR
+_CONTROLA = Accion.CONTROL_DE_OBRA
 
 PAGINAS: tuple[DefinicionPagina, ...] = (
     PAGINA_INICIO,
@@ -137,6 +139,8 @@ PAGINAS: tuple[DefinicionPagina, ...] = (
                      _PRECIOS),
     DefinicionPagina(indices.render, "Indices del BCV", SECCION_TRABAJO, "UC-17", _PRECIOS),
     DefinicionPagina(reajuste.render, "Reajuste de precios", SECCION_TRABAJO, "UC-18", _REAJUSTA),
+    DefinicionPagina(control.render, "Control de obra", SECCION_TRABAJO, "UC-19 / UC-20",
+                     _CONTROLA),
     DefinicionPagina(
         escenarios.render, "Escenarios de sensibilidad", SECCION_INVESTIGACION, "UC-08", _EDITA
     ),
