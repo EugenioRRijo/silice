@@ -1029,6 +1029,10 @@ civil e industrial admiten suma, resta, producto, división, potencia y signo ne
 cuatro operaciones; sistemas, solo suma y producto. Son cuatro de las cinco copias del evaluador
 declaradas en la ADR 8.
 
+#### Sílice 0.6.0 (S1): `adapters/bcv` y `core/models/moneda.py` (previstos)
+
+Spec [S1 §4.2](especificaciones/2026-10-11-silice-s1-moneda-reajuste-design.md). `adapters/bcv` importa archivos del BCV **sin conexión** (tasa trimestral y INPC en `.xls`, índice de insumos por CSV canónico): de `core` importa solo `core.contracts`; además, su paquete, la biblioteca estándar y los terceros `xlrd` (extra `bcv`, importado dentro de `libro.py::_xls`) y `openpyxl`. `core/models/moneda.py` agrega las tablas de moneda, origen de precio e índices (modelo_datos §2.5) y `core/catalog` y `core/budget` la conversión, la erosión y el reajuste como funciones puras en `Decimal`. `core/` no importa `adapters/`. Estas piezas se implementan en las fases S1‑1 a S1‑4; este párrafo declara la vista antes de su código.
+
 ### 2.4 Composición y elaboración en la interfaz (`ui/`, Sesión P2.1 y fase C3)
 
 Debajo de las diez pantallas de `ui/paginas/` hay una capa sin pantalla (INV‑043, fase C3):

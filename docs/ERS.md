@@ -63,6 +63,8 @@
 > Los RF nuevos quedan **sin implementar** hasta su fase (columna «Incremento»); el estado de cada uno
 > vive solo en [plan_pruebas.md §8](plan_pruebas.md#8-especificación-de-casos-trazabilidad-rf--prueba).
 
+> **Enmienda de Sílice 0.6.0 (S1; spec [S1](especificaciones/2026-10-11-silice-s1-moneda-reajuste-design.md) §3):** se agregan **UC‑17** (base de precios de la empresa e índices del BCV) y **UC‑18** (reajuste de la obra ejecutada), **RF‑64 a RF‑71** y **RNF‑14**; se enmiendan UC‑01 (moneda al crear), UC‑02 y UC‑15 (§2.2). Las referencias «§» de esos casos de uso y requisitos son al spec S1. Los conteos los calcula la meta (`scripts/meta_silice.py`), que comprueba la **presencia** de cada número.
+
 > **Enmienda de Sílice 0.6.0 (S5‑1 adelantado; spec
 > [S5](especificaciones/2026-10-11-silice-s5-producto-instalador-design.md) §4; maestro RV‑3, RV‑4, RV‑5):** se
 > agregan **RF‑96** (migraciones con respaldo y vuelta atrás, en dos bases; abrir un caso solo con `preparar_base`
@@ -153,6 +155,8 @@ produce presupuesto, curva de inversión, informe de auditoría y exportación a
 | UC‑14 | Importar un plano a la hoja | SF0 (declarado), SF5 |
 | UC‑15 | Editar la hoja del proyecto | SF0 (declarado), SF3 |
 | UC‑16 | Analizar el punto de equilibrio | SF0 (declarado), SF3 |
+| UC‑17 | Mantener la base de precios de la empresa y los índices del BCV | S1‑2, S1‑3 (Sílice 0.6.0) |
+| UC‑18 | Reajustar los precios de la obra ejecutada | S1‑4 (Sílice 0.6.0) |
 
 UC‑09 queda vacante en este documento: [PLAN_ASISTENTE.md](../PLAN_ASISTENTE.md) (Sesión A0.1, aún no
 ejecutada) lo reserva para «Generar presupuesto asistido desde las necesidades del usuario». UC‑10 y
@@ -669,6 +673,92 @@ implementados en `core/contracts/`.
 - **Postcondiciones:** el actor conoce el PE, su ubicación o la razón por la que no existe; el análisis
   no modifica el presupuesto.
 
+#### UC‑17 — Mantener la base de precios de la empresa y los índices del BCV
+
+- **Actor principal:** administrador del catálogo. **Secundario:** proyectista. Desde S3, rol
+  *administrador* (valor por defecto de la pregunta P2 del spec maestro §10.3).
+- **Precondiciones:** catálogo con insumos; archivos del BCV ya descargados en el equipo; lista de referencia
+  MaPreX cargada (S1‑0, tarea 0.4).
+- **Flujo principal**
+  1. El administrador elige uno o varios archivos del BCV y declara la **fuente** (dirección de la página del
+     BCV de donde los bajó) y la **fecha de descarga**.
+  2. El sistema lee cada archivo **sin conexión**, valida formato, fuente y fechas (§7.2) y muestra el
+     informe de importación sin escribir nada: series, fechas, filas leídas, rechazadas y provisionales.
+  3. El administrador confirma; el sistema guarda los valores con la huella SHA‑256 del archivo.
+  4. El administrador carga la lista de su empresa (CSV o XLSX: las cuatro columnas de UC‑02 y, opcionales,
+     `fecha`, `fuente` y `referencia` por fila), declara la empresa (nombre y RIF, como texto hasta S3; RV‑6),
+     moneda, fecha y fuente de la lista y la **lista base** que completa los insumos que la empresa no cotiza.
+  5. El sistema crea la lista de empresa (§6.2) y audita sus precios con R11 y R12 a la fecha de evaluación
+     declarada; muestra cada hallazgo con el dinero que representa.
+- **Flujos alternativos**
+  - *2a. Formato no reconocido:* se rechaza el archivo con un mensaje que nombra la etiqueta o la hoja que
+    faltó, sin *traceback* y sin escribir nada.
+  - *2b. Fecha fuera del período del archivo, repetida o posterior a la fecha de descarga:* la fila se
+    rechaza y se reporta; las demás se procesan.
+  - *2c. Archivo ya importado (misma huella):* se informa y no se escribe nada.
+  - *2d. Valor revisado (un INPC provisional que cambió):* se guarda como una importación nueva; los estudios
+    de reajuste anteriores siguen citando la importación que usaron.
+  - *2e. Nombre de archivo fuera de los patrones conocidos* (el BCV usa nombres irregulares algunos años): se
+    importa si el formato valida, con ADVERTENCIA en el informe.
+  - *2f. Índice de insumos de la construcción con formato aún no documentado:* se carga la serie desde el CSV
+    canónico de §7.3, con su fuente declarada.
+  - *4a. Insumos desconocidos o unidad no equivalente:* como UC‑02 2a y 2b.
+  - *4b. Moneda distinta de Bs o USD:* se rechaza la lista.
+  - *5a. Insumo sin referencia MaPreX:* R11 no lo contrasta y lo cuenta en su hallazgo INFO «no contrastable».
+- **Postcondiciones:** series con su importación y huella; lista de empresa inmutable, fuera de
+  `lista_vigente`, con origen por precio; informe de R11 y R12 a la fecha de evaluación.
+
+#### UC‑18 — Reajustar los precios de la obra ejecutada
+
+- **Actor principal:** proyectista (quien arma). **Secundario:** gerente / administrador que revisa. Desde
+  S3, rol *arma* (pregunta P2 del spec maestro §10.3, ratificada por Eugenio el 2026‑10‑11).
+- **Precondiciones:** versión del contrato guardada; cláusula de reajuste declarada (§8.1); índices
+  importados (UC‑17); para la comprobación directa, una versión revalorada por UC‑02 por período.
+- **Flujo principal**
+  1. El usuario abre la versión del contrato y su cláusula de reajuste.
+  2. Declara, por período, las cantidades ejecutadas por partida con su **fuente** (número y fecha del acta o
+     de la valuación). En la 0.6.0 las escribe a mano; desde la 0.7.0 el sistema las toma de las valuaciones
+     **registradas** y no anuladas de S2, asignando cada valuación al período de la cláusula que contiene su
+     fecha *hasta*, y el estudio cita cada valuación (§8.6, RV‑11, RV‑18).
+  3. El sistema calcula la **escalatoria** de cada período con las restricciones de §8.2.
+  4. El usuario elige, por período, la versión revalorada por UC‑02 que sirve de **comprobación directa**.
+  5. El sistema muestra, por período y en total, los dos montos lado a lado, su diferencia, y cada monto en
+     las dos monedas con la tasa de la fecha de cierre del período.
+  6. El usuario guarda el estudio (fuente y responsable obligatorios) y lo exporta a Excel. El estudio lleva su
+     **monto reconocido** por período: el del mecanismo de la cláusula; con `ambos`, el del mecanismo que la
+     cláusula declara **pagadero** (`mecanismo_pagadero`, §8.1) y, si no lo declara, la escalatoria, con la
+     comprobación como referencia (S1‑R20).
+- **Flujos alternativos**
+  - *3a. Período dentro del primer año (contrato de más de un año):* reajuste cero, con la nota «precios
+    fijos el primer año (art. 134, a cotejar)».
+  - *3b. Período que cruza el aniversario:* se rechaza y se pide partirlo; el sistema no prorratea.
+  - *3c. Falta el índice de un mes:* ese período no se calcula y se declara; no se extrapola.
+  - *3d. Índice provisional:* se calcula y se marca «provisional».
+  - *3e. Excepción del primer año por ruptura del equilibrio económico:* el usuario la declara con
+    justificación y fuente; el período se calcula y se marca «excepción declarada».
+  - *3f. Lo ejecutado acumulado supera lo presupuestado de una partida:* **se guarda**, con un aviso en el
+    estudio, y el reajuste se calcula sobre `min(Q, q)` (la parte que no excede lo presupuestado, §8.2); desde
+    la 0.7.0 la valuación que lo produce ya lleva el ERROR de R13 (S2). Se alinea con R13 y con S2‑R8 (RV‑11);
+    las variaciones de obra son de S2.
+  - *4a. Sin versión revalorada para el período:* la comprobación directa queda «no disponible» y se muestra
+    solo la escalatoria.
+  - *5a. Proyecto en USD con índices en Bs:* ADVERTENCIA visible (§8.4).
+  - *6a. La suma de reajustes supera el 10 % del monto original:* nota informativa sobre la opinión de la
+    Comisión de Contrataciones, marcada INDICIO (artículo sin confirmar).
+  - *6b. El último período del estudio es un mes que aún no cierra:* se guarda con estado **«parcial al corte»**
+    y su fecha de corte; al cerrar el mes se guarda un estudio nuevo que lo **reemplaza** (fila nueva que cita al
+    parcial; el parcial se conserva, solo‑agregar) (S1‑R21).
+- **Postcondiciones:** estudio guardado con sus entradas, la importación de cada índice usado, sus
+  resultados y su registro; la versión del contrato no cambia.
+
+#### UC existentes que se enmiendan
+
+| UC | Enmienda |
+|---|---|
+| UC‑01 | Paso 1: al crear el proyecto (RF‑63) se **elige** la moneda (Bs o USD), sin valor por defecto en la interfaz. La API y `elaborar` conservan `"USD"` por defecto (líneas base intactas) |
+| UC‑02 | Sin cambios de flujo. Su versión revalorada es la entrada de la comprobación directa (UC‑18). Revalorar con una lista de otra moneda se rechaza (SL‑E1) |
+| UC‑15 | La pestaña Parámetros muestra y cambia la moneda (RF‑64); la pestaña Precios agrega moneda original, fecha del precio, tasa con fecha y fuente, erosión en dos monedas y el Estado de R11 y R12 |
+
 ### 2.3 Características de los usuarios
 
 | Actor | Descripción | UC principales |
@@ -726,6 +816,7 @@ reconocimiento de planos en PDF o escaneados (la importación de DXF e IFC ya no
 | UC‑10, UC‑11 | «Componer una partida» | ninguna | — |
 | UC‑12 | «Inicio» y el marco común de las pantallas (`ui/app.py`) | ninguna | — |
 | UC‑13, UC‑15, UC‑16 | «Hoja del proyecto» (pestañas Espacio y metrajes, APU, Presupuesto, Plan y curva, Punto de equilibrio, Precios, Parámetros, Auditoría y Trazabilidad) | ninguna: la API conserva sus rutas | — |
+| UC‑17, UC‑18 | páginas «Índices», «Precios de la empresa» y «Reajuste» (Sílice 0.6.0) | ninguna | `adapters/bcv` (importación sin conexión) |
 | UC‑14 | herramienta «Importar plano» de la barra superior (RF‑60) | ninguna | — |
 - **Archivos de entrada:** IFC (IFC2x3 e IFC 4) y DXF de planos (UC‑14), IFC 4 (dominio civil), CSV de topología (telecom), registro de activos
   (industrial), alcance funcional (sistemas), listas de precios CSV/XLSX y, desde C6, el
@@ -814,6 +905,14 @@ la corrija.
 | RF‑61 | El sistema ejecutará las reglas de auditoría R8, R9 y R10 (spec §8.2) | Esencial | UC‑13, UC‑15 | SF1–SF2 | Un error sembrado por condición, con valores frontera, se detecta *Hecho en SF2: R8, R9 y R10 con fronteras exactas; R10 da ADVERTENCIA mientras sus tres límites sean supuestos declarados; el máximo de puntos por circuito, aunque lo declare el usuario, también baja a ADVERTENCIA mientras el límite base sea supuesto. Limitación: R10 evalúa solo tramos de drenaje que declaran su pendiente (el recorrido propuesto de §6.4 no la trae), por lo que esa condición no se dispara con recorridos propuestos.* **Alcance vigente:** R10 no propone pendiente propia; sus tres límites (pendiente mínima, enlace máximo y máximo de puntos por circuito) son supuestos declarados y por eso bajan a ADVERTENCIA (RS‑11) |
 | RF‑62 | Los hallazgos de reglas que no están en las siete se conservarán al recargar, revalorar, simular escenarios, importar y en la API (spec §8.4) | Esencial | UC‑05, UC‑15 | SF1 | El informe recargado de una versión con hoja es idéntico al emitido |
 | RF‑63 | La interfaz creará proyectos con nombre único y no vacío | Esencial | UC‑01 | SF4 | Nombre vacío o repetido se rechaza con mensaje |
+| RF‑64 | La moneda del proyecto (Bs o USD) se elige al crearlo; cambiarla crea una versión nueva **convertida** (motivo `conversion`), con la tasa fechada y su fuente, el bono de alimentación convertido, el plan conservado y un `RegistroCambio` (objeto `moneda`); la versión anterior no cambia | Esencial | UC‑01, UC‑15 | S1‑1 | total convertido = total ÷ tasa (de Bs a USD) o × tasa (de USD a Bs) a ± 0,01 en la presentación, para la clínica y TI‑001; la versión de origen recarga idéntica; sin tasa, sin fecha o sin fuente se rechaza. Desde la 0.7.0: si el proyecto tiene una línea base de control declarada (S2), la conversión la deja **invalidada** y hay que declararla de nuevo sobre la versión convertida (RV‑11; la prueba la escribe S2) |
+| RF‑65 | Cada precio tiene moneda original, precio original, fecha, y, si se convirtió, tasa con su fecha y su fuente (§5.1); una versión solo se valora con una lista de **su** moneda | Esencial | UC‑15, UC‑17 | S1‑1 | la pestaña Precios muestra los seis datos por insumo; guardar una versión en Bs con una lista en USD se rechaza; las bases anteriores muestran el origen heredado de la lista |
+| RF‑66 | La erosión de cada precio (§5.3) se muestra en Bs y en USD a una fecha de evaluación declarada, por insumo y por versión | Esencial | UC‑15, UC‑17 | S1‑1 | la memoria `s1_conversion.md` (§9.1) se reproduce con 28 dígitos y a ± 0,01 en la presentación |
+| RF‑67 | La lista de una empresa es una lista de alcance `empresa`: copia de una lista base declarada con los precios propios (fecha, moneda y fuente por precio), inmutable, fuera de `lista_vigente`, usable para valorar una versión | Esencial | UC‑17 | S1‑3 | `lista_vigente` no la devuelve; un precio propio prevalece sobre el de la base; cada precio dice si es propio o heredado; la lista de una empresa no cambia la valoración de otra ni la de ningún proyecto que no la referencie |
+| RF‑68 | Reglas **R11** (precio fuera de rango frente a MaPreX) y **R12** (precio vencido o sin trazabilidad de tasa) con la severidad de §6.3, el impacto en dinero y la fecha de evaluación en cada hallazgo | Esencial | UC‑17, UC‑15 | S1‑3 | conjunto **exacto** de hallazgos de la memoria `s1_precios_empresa.md` (regla, severidad, insumo, impacto a ± 0,01) a la fecha de evaluación que fija la memoria, con sus fronteras exactas (§9.1); reevaluar a otra fecha no reescribe ninguna fila guardada |
+| RF‑69 | Importación sin conexión de la tasa (.xls trimestral), el INPC (.xls mensual) y el índice de insumos de la construcción, con validación de formato, fuente y fecha, informe previo, huella SHA‑256 e importaciones idempotentes | Esencial | UC‑17 | S1‑2 | el archivo real versionado de un trimestre da sus N hojas como N valores de compra y de venta del USD, y la primera, la última y una del medio dan los valores **transcritos a mano** en `FUENTE.md` (§9.3; incluye 858,02 / 860,18 Bs con fecha valor 01‑10‑2026); cada caso negativo de la fila RF‑69 de §9.2 se rechaza con su mensaje; reimportar la misma huella no escribe nada |
+| RF‑70 | Reajuste por **fórmula escalatoria** (§8.3) con las restricciones del art. 134 de §8.2 («a cotejar») y la cláusula declarada (§8.1) | Esencial | UC‑18 | S1‑4 | la memoria `s1_reajuste.md` (estructura `declarada`) da 15 300,00 Bs en el período del ejemplo; la memoria `s1_reajuste_por_partida.md` (estructura `por_partida`, dos partidas) da K_A = 1,175, K_B = 1,185 y 10 298,34 Bs (§9.1.2); cada frontera de §9.2 da su salida declarada |
+| RF‑71 | **Comprobación directa** (con la versión revalorada por UC‑02) lado a lado con la escalatoria, por período y total, en las dos monedas; el estudio se guarda con fuente y responsable y se exporta por `hojas_extra`. Con `ambos`, el monto reconocido es el del mecanismo pagadero de la cláusula, o la escalatoria si no lo declara; el estudio de un mes en curso se guarda «parcial al corte» y se reemplaza al cerrar el mes (§8.5). Desde la 0.7.0, lo ejecutado de cada período sale de las valuaciones registradas no anuladas de S2, citadas, asignadas por su fecha *hasta* (§8.6) | Esencial | UC‑18 | S1‑4 (0.7.0 para el último criterio) | la memoria da 16 000,00 Bs y una diferencia de −700,00 Bs; 18,00 y 18,82 USD a la tasa del ejemplo; la memoria por partida da 11 680,00 Bs y −1 381,66 Bs; el estudio recargado es idéntico al guardado; con la memoria `s1_reajuste.md` y `mecanismo` = `ambos`, el reconocido es 16 000,00 Bs si `mecanismo_pagadero` = `comprobacion` y 15 300,00 Bs (la escalatoria) si la cláusula no lo declara; un estudio guardado antes del cierre de su mes queda «parcial al corte» y el del cierre lo reemplaza sin borrarlo; lo ejecutado por encima de lo presupuestado se guarda con aviso y se reajusta sobre `min(Q, q)` (3f). **Criterio del puente (0.7.0, lo entrega RF‑72 de S2):** una valuación registrada con *hasta* = último día del mes cae en ese período y una con *hasta* = primer día del mes siguiente cae en el siguiente; una anulada no cuenta; el estudio cita el número de cada valuación usada |
 | RF‑96 | **Migraciones con respaldo y vuelta atrás, en dos bases.** El esquema se versiona con Alembic en dos destinos, cada uno con su `alembic_version` y su lista `METADATAS` explícita: la **instalación** (`seguridad`) y el **caso** (`core.models`, `METADATA_ESPACIO`, `paquete`, `asistente`). La revisión base del caso es el esquema de la 0.5.0 y cada cambio posterior trae su revisión, desde la 0.6.0. Antes de aplicar cualquier revisión pendiente se respaldan **juntas** la instalación y los casos que se migran, en un juego con una sola ficha; si la migración falla, la base no queda modificada. Las bases de la 0.5.0 se adoptan. Un caso se abre solo con `preparar_base` y desde `datos\casos\` | Esencial | UC‑24 (S5‑0) | S5‑1 (0.6.0) | (a) una base vacía, una base de la 0.5.0 sin `alembic_version` y la base de prueba de cada versión 0.6.0…0.9.0 (generada en su compuerta con el código de su etiqueta) llegan a `head` y sus presupuestos recargan con el total literal, la huella del informe y las filas por tabla de su ficha; lo mismo para `instalacion.db` desde la 0.8.0; (b) cada base del juego de respaldo pasa `PRAGMA integrity_check` y su huella está en la ficha; (c) con un fallo inyectado en una revisión, la huella SHA‑256 de cada base tras el intento es igual a la de antes; (d) una base con revisión desconocida o no adoptable no se modifica (huella igual) y el mensaje dice qué hacer; (e) una ruta UNC, absoluta o con `..` se rechaza sin crear archivo, y `estado_caso` no emite DDL; (f) restaurar un juego con `instalacion.db` lista los eventos de seguridad perdidos y deja pendiente la revisión del administrador |
 
 Los criterios de esta tabla son afirmaciones comprobables y no llevan estado. **La prueba que
@@ -845,8 +944,10 @@ Cobertura por caso de uso (mínimos exigidos por el criterio de cierre entre par
 | UC‑14 | RF‑50, RF‑51 | 2 (sin mínimo declarado; UC nuevo, Sesión SF0) |
 | UC‑15 | RF‑52, RF‑53, RF‑54, RF‑55, RF‑56, RF‑57, RF‑59, RF‑61, RF‑62 | 9 (sin mínimo declarado; UC nuevo, Sesión SF0) |
 | UC‑16 | RF‑58 | 1 (sin mínimo declarado; UC nuevo, Sesión SF0) |
-| Transversales | RF‑60 (todos los UC); RF‑63 (UC‑01); RF‑62 (también UC‑05); RF‑56 (también UC‑02 y UC‑07) | — |
-| **Total** | RF‑01 … RF‑31, RF‑33 … RF‑63 (RF‑32 vacante — reservado a UC‑09; RF‑03 traza a dos UC; RF‑33 y RF‑34 trazan a UC‑10 y UC‑11; RF‑56, RF‑61 y RF‑62 trazan a más de un UC) | **62** |
+| UC‑17 | RF‑65, RF‑66, RF‑67, RF‑68, RF‑69 | S1 (Sílice 0.6.0; la meta cuenta) |
+| UC‑18 | RF‑70, RF‑71 | S1 (Sílice 0.6.0; la meta cuenta) |
+| Transversales | RF‑60 (todos los UC); RF‑63 y RF‑64 (UC‑01); RF‑64, RF‑65, RF‑66 y RF‑68 (también UC‑15); RF‑62 (también UC‑05); RF‑56 (también UC‑02 y UC‑07) | — |
+| **Total** | RF‑01 … RF‑31, RF‑33 … RF‑63 y, desde Sílice 0.6.0, RF‑64 … RF‑71 y RF‑96 (RF‑32 vacante — reservado a UC‑09; RF‑03 traza a dos UC; RF‑33 y RF‑34 trazan a UC‑10 y UC‑11; RF‑56, RF‑61 y RF‑62 trazan a más de un UC) | **62** hasta el sprint final; desde Sílice 0.6.0 los cuenta la meta |
 
 ### 3.3 Requisitos no funcionales (ISO/IEC 25010)
 
@@ -865,6 +966,7 @@ Cobertura por caso de uso (mínimos exigidos por el criterio de cierre entre par
 | Eficiencia de desempeño | RNF‑11 en `ui.hoja`, sin Streamlit, desde aplicar una edición hasta tener presupuesto, informe y punto de equilibrio (sin persistir) para un proyecto de 500 puntos | mediana de cinco corridas tras una de calentamiento, con `scripts/medir_rnf11.py` (se crea en SF3) y un generador determinista versionado (`scripts/generar_hoja_prueba.py`, ya en SF0) | ≤ 2 s. El veredicto se toma en el equipo de desarrollo, como RNF‑03; la CI ejecuta el script en Linux y Windows y **registra** la cifra sin romper la corrida; todo se anota en plan_pruebas §10 |
 | Seguridad | RNF‑12 ningún texto exportado se interpreta como fórmula (prefijos `=`, `+`, `-`, `@`, tabulador, retorno de carro) y un número negativo sigue siendo número; ningún archivo subido sale de su carpeta (`..\`, `../`, ruta absoluta, nombres reservados de Windows); un DXF o IFC de más de 20 MB, malformado o con más entidades o elementos que el tope (`MAX_ENTIDADES_DXF`, `MAX_ELEMENTOS_IFC`) se rechaza con un mensaje | pruebas por caso | 0 casos que se evalúen como fórmula o escapen de su carpeta; 100 % de los rechazos con mensaje y sin *traceback* |
 | Usabilidad | RNF‑13 capacidad de uso de la hoja: en las condiciones de CP‑07, con el **mismo número y perfil** de participantes que CP‑07 pero **personas distintas**, cada caso de CP‑08 a CP‑11 se completa sin ayuda | guion de pruebas con personas, en la fase Med; consigna, paradas y criterio fijados antes de medir | ≤ 15 min por todos los participantes, bloque B ≥ 4,0 y ningún ítem < 3; veredicto por caso. El costo en participantes se suma al plan de Med |
+| Fiabilidad | RNF‑14 reproducible y sin conexión: importar, convertir, auditar con R11/R12 y reajustar no hacen ninguna llamada de red; el mismo estudio de reajuste, con las mismas importaciones citadas, da el mismo resultado aunque después se importe una revisión de los índices | suite bajo la guardia de red única de `tests/conftest.py` (solo 127.0.0.1 y ::1) y recálculo del estudio tras importar una revisión | cero intentos de conexión a otro destino, guardia activa verificada por la meta; diferencia 0 exacta |
 | Mantenibilidad | RNF‑20 cero deriva de esquema en cada destino: una base llevada a `head` por las migraciones es igual a la creada con `create_all` de sus `METADATAS`, la autogeneración de Alembic contra ella no propone cambios, toda `MetaData` con tablas está en la lista de su destino y cada revisión baja y vuelve a subir | `tests/integration/test_migraciones.py` en Linux y Windows en cada PR | deriva 0 en los dos destinos, desde la 0.6.0 |
 
 ### 3.4 Reglas de negocio
@@ -884,7 +986,7 @@ aquí: cada corrección está en su fila del [inventario del cierre](auditoria/2
 
 | UC | RF | Incremento | Indicador de la tesis |
 |---|---|---|---|
-| UC‑01 | RF‑01, RF‑03, RF‑04, RF‑05, RF‑06, RF‑07, RF‑08, RF‑63 | I0.1, I0.3, I0.4, I0.5, I3.1, SF4 | 2, 3 |
+| UC‑01 | RF‑01, RF‑03, RF‑04, RF‑05, RF‑06, RF‑07, RF‑08, RF‑63, RF‑64 | I0.1, I0.3, I0.4, I0.5, I3.1, SF4, S1‑1 | 2, 3 |
 | UC‑01 (transversal) | RF‑09 | I0.1, I5 | 4 |
 | UC‑02 | RF‑10, RF‑11, RF‑12, RF‑13, RF‑14 | I0.4, I1 | 3 |
 | UC‑03 | RF‑15, RF‑16, RF‑17 | I2 | 3 |
@@ -898,8 +1000,10 @@ aquí: cada corrección está en su fila del [inventario del cierre](auditoria/2
 | UC‑12 | RF‑36, RF‑37, RF‑38, RF‑39, RF‑40, RF‑41, RF‑42, RF‑43 | U0.1 (declarado), U1 ([PLAN_UI.md](../PLAN_UI.md)) | fuera de los cinco indicadores de [docs/metodologia.md §8](metodologia.md#8-indicadores-de-la-tesis); aporta la medición de usabilidad de [calidad_iso25010.md §4](calidad_iso25010.md) |
 | UC‑13 | RF‑44, RF‑45, RF‑46, RF‑47, RF‑48, RF‑49, RF‑61 | SF0 (declarado), SF1–SF2 ([PLAN_SF.md](../PLAN_SF.md)) | prototipo de entrega AREN.IA (hoy Sílice), fuera de los cinco indicadores de [docs/metodologia.md §8](metodologia.md#8-indicadores-de-la-tesis); la ausencia de cambios en `core/` al agregar datos y electricidad es evidencia del indicador 4 |
 | UC‑14 | RF‑50, RF‑51 | SF0 (declarado), SF5 | prototipo de entrega AREN.IA (hoy Sílice), fuera de los cinco indicadores |
-| UC‑15 | RF‑52, RF‑53, RF‑54, RF‑55, RF‑56, RF‑57, RF‑59, RF‑61, RF‑62 | SF0 (declarado), SF1, SF3 | prototipo de entrega AREN.IA (hoy Sílice), fuera de los cinco indicadores |
+| UC‑15 | RF‑52, RF‑53, RF‑54, RF‑55, RF‑56, RF‑57, RF‑59, RF‑61, RF‑62, RF‑64, RF‑65, RF‑66, RF‑68 | SF0 (declarado), SF1, SF3, S1‑1, S1‑3 | prototipo de entrega AREN.IA (hoy Sílice), fuera de los cinco indicadores |
 | UC‑16 | RF‑58 | SF0 (declarado), SF3 | prototipo de entrega AREN.IA (hoy Sílice), fuera de los cinco indicadores |
+| UC‑17 | RF‑65, RF‑66, RF‑67, RF‑68, RF‑69 | S1‑1 a S1‑3 (Sílice 0.6.0) | Sílice 0.6.0, fuera de los cinco indicadores |
+| UC‑18 | RF‑70, RF‑71 | S1‑4 (Sílice 0.6.0) | Sílice 0.6.0, fuera de los cinco indicadores |
 | Transversal | RF‑60 | SF4 | prototipo de entrega AREN.IA (hoy Sílice), fuera de los cinco indicadores |
 
 Correspondencia RNF → verificación: RNF‑01 y RNF‑02 se comprueban en UC‑01 y UC‑02 (RF‑06, RF‑14);
@@ -909,7 +1013,7 @@ RNF‑07 en la integración continua; RNF‑08 por inspección del repositorio y
 RNF‑09 en la compuerta G1 (RF‑04); RNF‑10 con el caso con persona CP‑07, en la compuerta GU1b
 (fase Med) de [PLAN_UI.md](../PLAN_UI.md); RNF‑11 en UC‑15 (RF‑52), con `scripts/medir_rnf11.py`
 (SF3); RNF‑12 en UC‑14 y UC‑15 (RF‑50, RF‑51 y RF‑59), por pruebas por caso; RNF‑13 en UC‑13 a
-UC‑16, con los casos con personas CP‑08 a CP‑11 de la fase Med. RNF‑04 y RNF‑10 son requisitos
+UC‑16, con los casos con personas CP‑08 a CP‑11 de la fase Med; RNF‑14 en UC‑17 y UC‑18 (RF‑69, RF‑71), con la guardia de red única de la suite. RNF‑04 y RNF‑10 son requisitos
 distintos, con mediciones distintas. El resultado de cada verificación está en [plan_pruebas.md §9](plan_pruebas.md#9-trazabilidad-rnf--verificación).
 
 La columna "Indicador" enlaza con [docs/metodologia.md §8](metodologia.md#8-indicadores-de-la-tesis) y

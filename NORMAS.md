@@ -180,8 +180,11 @@ core/
   budget/         presupuesto, curva, Excel, persistencia, importación, actualización de precios, escenarios
                                                                          — I0.5, I1, F.1
   verification/   las siete reglas (sección 7) y el informe de auditoría  — I4
+                  S1 (Sílice 0.6.0): moneda, origen de precios, lista de empresa, índices, R11/R12
+                  y reajuste, con sus tablas aditivas en core/models (modelo_datos §2.5)
 adapters/
   civil/          IFC con ifcopenshell, entrada tabular, reglas paramétricas y recálculo — I3.1, I3.2
+  bcv/            (S1, Sílice 0.6.0) importación sin conexión de la tasa, el INPC y los índices del BCV
   telecom/        topología de red en CSV (nodos, enlaces, longitudes)     — I5
   industrial/     registro de activos con frecuencia de intervención      — I5
   sistemas/       alcance funcional (módulos, casos de uso, puntos de función) — I5
