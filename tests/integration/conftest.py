@@ -58,18 +58,18 @@ def _cliente_http(fabrica_de_sesion: Callable[[], Any]) -> Iterator[Any]:
 
     `fabrica_de_sesion` es lo que FastAPI llama en cada petición: una función que devuelve una
     sesión o un generador que la entrega. Importa FastAPI aquí dentro: el extra `api` solo hace
-    falta en las pruebas que piden un cliente, no en todo el paquete de integración. La
-    sustitución se deshace en un `finally`: si el arranque del cliente falla, la siguiente prueba
-    no hereda la base de esta.
+    falta en las pruebas que piden un cliente, no en todo el paquete de integración. El cliente
+    llega desde 127.0.0.1 con una clave de API real de la instalación temporal (RF-98: toda ruta
+    menos `/salud` la exige). La sustitución se deshace en un `finally`: si el arranque del
+    cliente falla, la siguiente prueba no hereda la base de esta.
     """
-    from fastapi.testclient import TestClient
-
     from api.dependencias import sesion_api
     from api.main import app
+    from tests.fixtures.claves_api import cliente_de_prueba
 
     app.dependency_overrides[sesion_api] = fabrica_de_sesion
     try:
-        with TestClient(app) as cliente:
+        with cliente_de_prueba() as cliente:
             yield cliente
     finally:
         app.dependency_overrides.clear()
