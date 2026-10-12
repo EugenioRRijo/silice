@@ -1,6 +1,6 @@
 """Interfaz Streamlit multipagina del sistema APU: enrutador y marco comun (sprint de UI).
 
-Dos papeles. **Enrutador:** `st.navigation` sobre las trece pantallas de `ui/paginas/`, agrupadas en
+Dos papeles. **Enrutador:** `st.navigation` sobre las pantallas de `ui/paginas/`, agrupadas en
 dos secciones —Trabajo e Investigacion— en el orden del trabajo real, con el Inicio como pagina por
 defecto (RF-36, RF-42). **Marco comun:** alrededor de cada pantalla, `marco()` pinta el titulo y el
 caso de uso que implementa, el caso abierto y su estado en la barra lateral (RF-39), en que paso del
@@ -83,6 +83,7 @@ from ui.paginas import (
     reajuste,
     similares,
     simulador,
+    tablero,
     visor,
 )
 from ui.recorridos import RUTA_INICIO, Recorrido, paso_siguiente, recorrido_por_nombre
@@ -126,6 +127,7 @@ _CONTROLA = Accion.CONTROL_DE_OBRA
 
 PAGINAS: tuple[DefinicionPagina, ...] = (
     PAGINA_INICIO,
+    DefinicionPagina(tablero.render, "Tablero del proyecto", SECCION_TRABAJO, accion=_LEE),
     DefinicionPagina(
         catalogo.render, "Catalogo de partidas e insumos", SECCION_TRABAJO, accion=_LEE
     ),

@@ -39,6 +39,7 @@ from ui.recorridos import NOMBRE_DEMOSTRACION, RECORRIDOS, RUTA_INICIO
 
 TITULOS_TRABAJO = (
     "Inicio",
+    "Tablero del proyecto",
     "Catalogo de partidas e insumos",
     "Componer una partida",
     "Elaborar un presupuesto",

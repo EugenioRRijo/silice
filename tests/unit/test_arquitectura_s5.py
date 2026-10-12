@@ -84,6 +84,7 @@ PAGINAS_QUE_ABREN_EL_CASO = (
     "reajuste",
     "similares",
     "simulador",
+    "tablero",
 )
 
 
