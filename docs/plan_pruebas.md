@@ -581,6 +581,54 @@ prueba va antes que el de su implementación, con el rojo observado. Estas filas
 | RF‑96 (e) | `tests/unit/test_casos.py::test_unc_absolutas_puntos_y_carpetas_se_rechazan_sin_tocar_el_disco`, `tests/unit/test_ui_caso.py::test_estado_caso_no_emite_ddl_ni_cambia_el_archivo`, `tests/unit/test_ui_inicio.py::test_el_inicio_no_ofrece_una_ruta_libre` | verde |
 | RF‑96 (f) | `tests/integration/test_respaldo.py::test_restaurar_un_juego_con_la_instalacion_vacia_de_la_0_6_0`, `tests/integration/test_respaldo.py::test_restaurar_la_instalacion_lista_los_eventos_posteriores_al_juego` | parcial (el bloqueo de operaciones sensibles hasta la revisión llega con S3 y S5‑2) |
 
+### 8.3 Filas de Sílice 1.0.0 (S5): RF‑97 a RF‑99 y RNF‑19
+
+Fuente: [spec S5 §12](especificaciones/2026-10-11-silice-s5-producto-instalador-design.md). El commit de cada prueba va antes que el de su implementación, con el rojo observado. La meta (S5‑TRAZ) comprueba que cada prueba citada existe.
+
+- **RF‑97** (instalador). Por construir. (a)–(f) las cubre la prueba de humo `instalador/humo.ps1`
+  en la CI; el resto:
+  `tests/unit/test_manifiesto.py::test_el_cierre_de_importaciones_de_la_siembra_esta_completo`,
+  `tests/unit/test_manifiesto.py::test_ui_y_api_se_importan_solo_con_el_arbol_del_manifiesto`,
+  `tests/unit/test_manifiesto.py::test_un_unico_config_toml_y_es_el_oficial`,
+  `tests/unit/test_manifiesto.py::test_nunca_viajan_fixtures_bcv_bases_ni_db`,
+  `tests/unit/test_iss.py::test_el_iss_instala_por_usuario_y_con_el_appid_fijo`,
+  `tests/unit/test_iss.py::test_el_iss_no_toca_la_carpeta_de_datos_ni_descarga_nada`,
+  `tests/unit/test_construir.py::test_el_manifiesto_json_cubre_codigo_y_python`,
+  `tests/unit/test_ui_similares_modulo.py::test_en_el_producto_nombra_el_modulo`.
+- **RF‑98** (operación segura). Por construir. «0 conexiones salientes»: prueba de humo.
+  `tests/unit/test_ajustes.py::test_los_valores_por_defecto_apagan_la_red_y_la_api`,
+  `tests/unit/test_ajustes.py::test_un_archivo_danado_da_defectos_y_nunca_red_encendida`,
+  `tests/unit/test_lanzador.py::test_ninguna_configuracion_produce_0_0_0_0`,
+  `tests/unit/test_lanzador.py::test_las_opciones_fijas_van_en_la_orden_de_streamlit`,
+  `tests/unit/test_lanzador.py::test_la_ip_elegida_se_usa_solo_si_sigue_existiendo`,
+  `tests/integration/test_arranque_real.py::test_arranca_en_el_bucle_local_y_se_detiene`,
+  `tests/unit/test_red.py::test_ordenes_netsh_exactas`,
+  `tests/unit/test_red.py::test_es_cliente_local`,
+  `tests/integration/test_api_clave.py::test_cada_ruta_menos_salud_da_401_sin_clave`,
+  `tests/integration/test_api_clave.py::test_ip_publica_simulada_recibe_403`,
+  `tests/integration/test_api_clave.py::test_un_host_ajeno_recibe_400`,
+  `tests/unit/test_ui_cliente.py::test_una_operacion_sensible_se_rechaza_desde_una_ip_remota`,
+  `tests/unit/test_ui_cliente.py::test_el_cliente_remoto_ve_el_aviso_sin_cifrar`,
+  `tests/unit/test_registro.py::test_secretos_sembrados_no_llegan_al_archivo`,
+  `tests/integration/test_restaurar_eventos.py::test_restaurar_lista_lo_perdido_y_bloquea`.
+- **RF‑99** (versión). Por construir. `scripts/meta_silice_s5b.py` (S5‑M5):
+  `tests/unit/test_version.py::test_la_version_de_la_api_es_la_de_pyproject`,
+  `tests/unit/test_verificar_version.py::test_etiqueta_que_coincide`,
+  `tests/unit/test_ui_acerca.py::test_la_pantalla_muestra_todo_sin_excepciones`.
+- **RNF‑19** (instalabilidad). Por medir. Instalación en cuenta estándar a mano y prueba de humo:
+  `tests/unit/test_tamanos.py::test_el_limite_es_exacto`,
+  `tests/unit/test_medir_arranque.py::test_resumen_calcula_la_mediana_de_cinco`.
+- **RNF‑20** (mantenibilidad, desde la 0.6.0). Cumple por la prueba de deriva de cada destino:
+  `tests/integration/test_migraciones.py::test_head_en_vacio_es_igual_a_create_all`,
+  `tests/integration/test_migraciones.py::test_la_autogeneracion_contra_head_no_propone_cambios`,
+  `tests/integration/test_migraciones.py::test_cada_revision_baja_y_vuelve_a_subir`.
+- **Firma de `SHA256SUMS`** (spec S5 §10.4). Por construir.
+  `tests/unit/test_firma_sumas.py::test_la_firma_se_verifica_con_una_biblioteca_independiente`,
+  `tests/unit/test_firma_sumas.py::test_la_firma_lleva_separacion_de_dominio`,
+  `tests/unit/test_firma_sumas.py::test_sumas_con_crlf_no_verifican`,
+  `tests/unit/test_firma_sumas.py::test_la_privada_se_guarda_cifrada_y_exige_la_contrasena`,
+  `tests/unit/test_publicar.py::test_el_sha256sums_reunido_se_firma_y_verifica`.
+
 ## 9. Trazabilidad RNF → verificación
 
 | RNF | Cómo se verificó | Resultado |
@@ -602,6 +650,7 @@ prueba va antes que el de su implementación, con el rojo observado. Estas filas
 | RNF‑15 desempeño del control de obra | planeado (S2‑4): `scripts/medir_rnf15.py` con el generador determinista de 500 partidas, 52 períodos y 26 valuaciones: desde registrar una valuación hasta el informe, los indicadores, las alertas y la reproyección, y las cuatro opciones, mediana de cinco corridas tras una de calentamiento ≤ 2 s en cada trabajo; la CI registra la cifra | pendiente (S2‑4) |
 | RNF‑18 confidencialidad del asistente | planeado (S4.0 a S4.2): `test_asistente_clave.py`, `test_asistente_ollama.py` (IP resuelta), `test_clave_ia_nunca_aparece.py` y la guardia de red única de la suite | pendiente (S4) |
 | RNF‑20 deriva de esquema | `tests/integration/test_migraciones.py::test_head_en_vacio_es_igual_a_create_all`, `::test_la_autogeneracion_contra_head_no_propone_cambios`, `::test_toda_metadata_con_tablas_esta_en_la_lista_de_su_destino`, `::test_cada_revision_baja_y_vuelve_a_subir`, en los dos destinos | cumple (desde la 0.6.0) |
+| RNF‑19 | `tests/unit/test_tamanos.py::test_el_limite_es_exacto` y humo | por medir |
 
 ## 10. Registro de la ejecución (CI de la compuerta GC6, 2026‑09‑29)
 

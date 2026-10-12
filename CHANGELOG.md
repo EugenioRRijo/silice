@@ -6,6 +6,7 @@ etiquetar, las líneas pasan a la sección de la versión. La historia anterior 
 
 ## [Sin publicar]
 
+- 1.0.0 · S5‑0: apertura (fases de la 1.0.0, enmiendas de ERS con UC‑24, RF‑97 a RF‑99 y RNF‑19, arquitectura, plan de pruebas y calidad) y `instalador/medir_capas.py`; la parte S5 de la meta queda diferida.
 - S4‑1 (T5, T6): `asistente/` con las 13 herramientas sin campos de precio, el catálogo, las propuestas pendientes y la validación en cuatro capas; guardia de arquitectura propia.
 
 - S3-5 (planos): DXF dañado con lectura de recuperación, requisitos IDS del IFC (`data/ids`), R15 de coherencia geométrica (también en la hoja) y R16 de contraste entre dos fuentes; sembrador de errores y medición de detección (100 % y 0 falsas alarmas sobre OF-001). Falta el costo de la diferencia (espera a SL-E9).
