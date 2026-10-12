@@ -389,6 +389,30 @@ qué se cambió): se piden por separado. El espacio no se serializa dentro de `I
 (`Mapping[str, Decimal]`, no admite texto) ni en `especificaciones` (R4 haría ruido): R8 a R10 reciben
 la instantánea del espacio de la versión (DA‑SF‑8).
 
+### 2.5 Enmienda de Sílice 0.6.0 (S1): moneda, origen de precios, lista de empresa e índices del BCV
+
+Fuente: [spec S1 §5.2](especificaciones/2026-10-11-silice-s1-moneda-reajuste-design.md). Todas las tablas son aditivas (ruling SF3‑E0: tablas, no columnas); entran con revisiones de Alembic propias (`caso_0002` a `caso_0004`) y no alteran ninguna tabla existente. La **empresa va como texto** (`empresa_nombre`, `empresa_rif`), sin clave foránea a `instalacion.db` hasta S3 (RV‑6, ruling RV‑6 ratificado por Eugenio el 2026‑10‑11). Las tablas de las secciones 1 a 4 de este modelo no cambian. Las pruebas de estas tablas aún no existen: se escriben en cada fase de núcleo.
+
+| Tabla | Columnas | Expediente |
+|---|---|---|
+| `serie_indice` | `id`, `codigo` (único), `nombre`, `organismo`, `unidad`, `periodicidad` (diaria, mensual, trimestral, anual), `base` (texto tal como lo trae el archivo) | SL‑E1 |
+| `importacion_indice` | `id`, `serie_id`, `archivo`, `huella` (SHA‑256), `fuente` (dirección declarada), `fecha_descarga`, `fecha_importacion`, `responsable`, `filas_leidas`, `filas_rechazadas`, `informe` (texto) | SL‑E1 |
+| `valor_indice` | `id`, `serie_id`, `importacion_id`, `fecha` (fecha valor o primer día del período), `valor`, `provisional` | SL‑E1; única por (`serie_id`, `fecha`, `importacion_id`) |
+| `moneda_proyecto` | `id`, `proyecto_id`, `moneda`, `desde` (fecha y hora), `version_id`, `responsable`, `fuente` | SL‑E1; historial: la vigente es la última; sin filas, la de su versión vigente |
+| `precio_origen` | `precio_id` (PK → `precio_insumo`), `moneda_original`, `precio_original`, `fecha_precio`, `tasa`, `fecha_tasa`, `fuente_tasa` (id de importación o texto), `fuente` | SL‑E1 |
+| `lista_empresa` | `lista_id` (PK), `empresa_nombre`, `empresa_rif` (texto, instantánea sin clave foránea a `instalacion.db`; RV‑6, ratificada por Eugenio el 2026‑10‑11, P1), `lista_base_id`, `lista_referencia_id` (MaPreX), `plazo_vigencia_dias`, `rango_inferior`, `rango_superior` | SL‑E2 |
+| `clausula_reajuste`, `componente_clausula` | §8.1 | SL‑E3 |
+| `estudio_reajuste`, `periodo_reajuste`, `ejecutado_periodo` | §8.5 | SL‑E3 |
+
+**Migraciones (RV‑1, RV‑3).** La 0.6.0 **empieza** con S5‑1 adelantado: Alembic con su revisión base = esquema
+de la 0.5.0, respaldo, `operacion.base_datos.preparar_base` y casos en `datos\casos\`. S5 conserva la propiedad
+del spec de Alembic; S1 solo agrega **su** revisión con las tablas de esta sección (todas aditivas, sin
+`ALTER TABLE` sobre tablas existentes). Las bases anteriores (clínica, TI‑001, importadas, de la 0.5.0) entran
+por la **revisión base** de Alembic y suben a `head` con la revisión de S1 al abrirse por `preparar_base`; S1
+no usa `stamp`. La prueba de deriva (RNF‑20, de S5) está activa desde S1: una base llevada a `head` es igual a
+la creada desde los metadatos. Como Alembic ya está, un cambio posterior de columnas (p. ej. la cita a la
+valuación que agrega S2 en `ejecutado_periodo`, §8.6) es una revisión más, no una tabla rehecha.
+
 ## 3. Diagrama entidad‑relación
 
 ```mermaid
