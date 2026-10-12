@@ -73,8 +73,8 @@ def test_ida_y_vuelta_y_ti001(clinica, tmp_path):
     motor = crear_motor(url_sqlite(plantilla_ti001(tmp_path / "ti.db")))
     try:
         with abrir_sesion(motor) as otra:
-            antes = _total(otra, NOMBRE_TI001, "001")
-            _convertir(otra, NOMBRE_TI001, "001", "TI-002")
+            antes = _total(otra, NOMBRE_TI001, "TI-001")
+            _convertir(otra, NOMBRE_TI001, "TI-001", "TI-002")
             assert (_total(otra, NOMBRE_TI001, "TI-002") - antes * TASA.valor).copy_abs() <= CENT
     finally:
         motor.dispose()
