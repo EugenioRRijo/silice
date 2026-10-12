@@ -106,6 +106,21 @@ def _diagnostico_similitud(_argumentos: argparse.Namespace) -> int:
     return 0
 
 
+def _verificar_programa(_argumentos: argparse.Namespace) -> int:
+    from operacion import programa
+
+    try:
+        diferencias = programa.verificar(config.RAIZ.parent)
+    except FileNotFoundError:
+        print("Esto no es una instalación de Sílice (falta manifiesto.json).", file=sys.stderr)
+        return 1
+    if diferencias:
+        print("\n".join(diferencias), file=sys.stderr)
+        return 1
+    print("El programa coincide con su manifiesto.")
+    return 0
+
+
 def _eventos(argumentos: argparse.Namespace) -> int:
     from operacion import eventos_perdidos
 
@@ -135,6 +150,7 @@ def registrar(
     activar.add_argument("--elevado", action="store_true", help=argparse.SUPPRESS)
     acciones.add_parser("desactivar")
     acciones.add_parser("estado")
+    ordenes.add_parser("verificar-programa", help="compara {app} con manifiesto.json")
     ordenes.add_parser("diagnostico-similitud", help="carga el modelo de similitud sin red")
     eventos = ordenes.add_parser("eventos", help="eventos de seguridad perdidos tras restaurar")
     sub = eventos.add_subparsers(dest="accion", required=True)
@@ -147,6 +163,7 @@ def registrar(
             "demostracion": _demostracion,
             "red-local": _red_local,
             "diagnostico-similitud": _diagnostico_similitud,
+            "verificar-programa": _verificar_programa,
             "eventos": _eventos,
         }
     )
