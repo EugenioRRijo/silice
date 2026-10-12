@@ -43,6 +43,8 @@ def render() -> None:
         preparar_base(ruta)
         with abrir_sesion(motor) as sesion:
             cambios = cambios_precio(sesion, insumo=insumo or None, desde=desde, hasta=hasta)
+            # La tabla lee `cambio.insumo` (relacion perezosa): se dibuja con la sesion abierta.
+            _mostrar(cambios)
     except (LookupError, ValueError, ArithmeticError, SQLAlchemyError) as error:
         # Mismo criterio que `ui/paginas/actualizacion.py`: un archivo de base de datos corrupto
         # o inaccesible (`ErrorDeBase` de `preparar_base`) es un mensaje, no una traza cruda.
@@ -51,8 +53,6 @@ def render() -> None:
         return
     finally:
         motor.dispose()
-
-    _mostrar(cambios)
 
 
 def _filtros() -> tuple[str, date | None, date | None]:
