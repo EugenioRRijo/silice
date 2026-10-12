@@ -55,7 +55,13 @@ def _imprimir_resumen(ruta: Path) -> None:
     motor = crear_motor(f"sqlite:///{ruta.as_posix()}")
     try:
         with abrir_sesion(motor) as sesion:
-            abierta = hoja.abrir_version(sesion, Catalogo(sesion), NOMBRE_OF001, CODIGO_VERSION)
+            abierta = hoja.abrir_version(
+                sesion,
+                Catalogo(sesion),
+                NOMBRE_OF001,
+                CODIGO_VERSION,
+                responsable="script:seed_of001",
+            )
             presupuesto = abierta.guardada.presupuesto
             print(f"Base de datos: {ruta}")
             print(f"Proyecto: {NOMBRE_OF001}")

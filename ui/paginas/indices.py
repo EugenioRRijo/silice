@@ -111,7 +111,7 @@ def _pintar(tipo: str, informe) -> None:
     for advertencia in informe.advertencias:
         st.text(advertencia)
     definiciones = _definiciones_csv(informe) if tipo == "csv" else None
-    responsable = st.text_input("Responsable de la importacion")
+    responsable = ui_sesion.caja_de_responsable("Responsable de la importacion")
     if st.button("Confirmar la importacion", type="primary"):
         _confirmar(informe, responsable, definiciones)
 

@@ -22,6 +22,8 @@ from operacion.config import ruta_caso_por_defecto
 
 VARIABLE_BASE = "APU_BASE"
 _PREFIJO_ARCHIVO = "sqlite:///"
+#: El `usuario` de lo que crean las rutas antiguas, que S3 no protege con clave (S5 decide).
+USUARIO_SIN_CLAVE = "api (sin clave)"
 _motor = None
 
 
