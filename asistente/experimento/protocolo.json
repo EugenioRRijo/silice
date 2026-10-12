@@ -10,6 +10,7 @@
   "tolerancia_medida_m": "0.001",
   "esfuerzo": "high",
   "modelo_claude": "claude-opus-5-5",
+  "modelo_local": "muse-glimmer",
   "fecha_de_evaluacion_r12": "2026-10-31",
   "condiciones": {"A": "sin retroalimentacion", "B": "con pedir_informe_auditoria"},
   "umbrales": {"deteccion": "0.80", "falsas_alarmas": "0.10"},

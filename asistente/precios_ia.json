@@ -1,0 +1,18 @@
+{
+  "fecha_verificacion": "2026-10-12",
+  "fuente": "https://platform.claude.com/docs/en/about-claude/pricing (Claude Opus 5.5: 4 / 5 (escritura 5m) / 0,20 (lectura) / 20 USD por MTok)",
+  "usd_por_millon_de_fichas": {
+    "claude-opus-5-5": {
+      "entrada": "4.00",
+      "salida": "20.00",
+      "cache_lectura": "0.20",
+      "cache_escritura": "5.00"
+    },
+    "local": {
+      "entrada": "0",
+      "salida": "0",
+      "cache_lectura": "0",
+      "cache_escritura": "0"
+    }
+  }
+}
