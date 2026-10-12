@@ -118,18 +118,20 @@ from core.catalog.indices import LADO_POR_DEFECTO, tasa_aplicable, valor_en
 from core.catalog.moneda import Erosion, TasaDeclarada, erosion, erosion_por_indice
 from core.catalog.origen import origen_de_precios
 from core.contracts import ComposicionAPU, ItemComputo, ParametrosCosto, Severidad
+from core.contracts.apu import ResultadoAPU
 from core.contracts.item_computo import OrigenTipo
 from core.contracts.presupuesto import Presupuesto
 from core.verification import REGLAS
 from core.verification.informe import DECIMALES_PRESENTACION
 from core.verification.precios import estado_por_insumo, reglas_precios
-from core.verification.texto import formatear_decimal
+from core.verification.texto import formatear_decimal, normalizar_texto
 from ui.composicion import (
     ComposicionInvalida,
     decimal_desde_texto,
     filas_desde_composicion,
     texto_de_celda,
 )
+from ui.estilo import porcentaje
 from ui.subidas import Subida, guardar_subida
 
 if TYPE_CHECKING:
@@ -878,6 +880,57 @@ def filas_de_apu(
     Solo la `cantidad` de cada linea y el rendimiento se editan en la hoja: el resto de las
     columnas son del insumo (su precio sale de la lista de la version, pestana Precios)."""
     return filas_desde_composicion(composicion)
+
+
+def filtrar_partidas(
+    codigos: Sequence[str], descripciones: Mapping[str, str], texto: str
+) -> list[str]:
+    """Los codigos cuyo codigo o descripcion contienen `texto`, sin acentos ni mayusculas
+    (PLAN_SILICE_UI, tarea 6). Sin texto, todos; el orden de `codigos` se conserva."""
+    buscado = normalizar_texto(texto).strip()
+    if not buscado:
+        return list(codigos)
+    return [
+        c
+        for c in codigos
+        if buscado in normalizar_texto(c) or buscado in normalizar_texto(descripciones.get(c, ""))
+    ]
+
+
+def filas_de_cierre(
+    r: ResultadoAPU, parametros: ParametrosCosto, moneda: str
+) -> list[dict[str, str]]:
+    """El cierre de una partida, del costo directo al precio unitario, con la misma cascada de
+    `core.costing.motor.calcular_apu` (montos por unidad de partida)."""
+
+    def monto(valor: Decimal) -> str:
+        return f"{formatear_decimal(valor, DECIMALES_PRESENTACION)} {moneda}"
+
+    return [
+        {"Concepto": "Materiales", "Monto": monto(r.materiales), "Nota": "completos"},
+        {"Concepto": "Equipos", "Monto": monto(r.equipos), "Nota": "entre el rendimiento"},
+        {
+            "Concepto": "Mano de obra",
+            "Monto": monto(r.mano_obra),
+            "Nota": (
+                f"FCAS {texto_numero(parametros.fcas)} y bono "
+                f"{texto_numero(parametros.bono_alimentacion)}, entre el rendimiento"
+            ),
+        },
+        {"Concepto": "= Costo directo", "Monto": monto(r.costo_directo), "Nota": ""},
+        {
+            "Concepto": "+ Administracion",
+            "Monto": monto(r.con_administracion - r.costo_directo),
+            "Nota": f"{porcentaje(parametros.administracion)} del costo directo",
+        },
+        {"Concepto": "= Con administracion", "Monto": monto(r.con_administracion), "Nota": ""},
+        {
+            "Concepto": "+ Utilidad",
+            "Monto": monto(r.precio_unitario - r.con_administracion),
+            "Nota": f"{porcentaje(parametros.utilidad)} en cascada",
+        },
+        {"Concepto": "= Precio unitario", "Monto": monto(r.precio_unitario), "Nota": ""},
+    ]
 
 
 def _cantidades_de_tabla(
