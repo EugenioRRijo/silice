@@ -6,13 +6,7 @@ etiquetar, las líneas pasan a la sección de la versión. La historia anterior 
 
 ## [Sin publicar]
 
-### Interfaz de trabajo (PLAN_SILICE_UI)
-- Pantalla «Tablero del proyecto»: tarjetas, control de obra (avance, SPI, CPI y EAC), curva,
-  desglose del costo, partidas de mayor peso y comparativo de versiones.
-- Línea de estado bajo la barra superior: proyecto, versión, estado y total.
-- Pestaña APU en tres paneles: lista de partidas, APU por rubro y cierre de partida con factores.
-- Tema visual en `.streamlit/config.toml`; Altair declarado en el extra `ui`.
-
+- Interfaz de trabajo (PLAN_SILICE_UI): pantalla «Tablero del proyecto» (tarjetas, control de obra, curva, desglose, Pareto, comparativo); línea de estado en la barra; pestaña APU en tres paneles; tema visual y Altair en extra `ui`.
 - S4‑1 (T5, T6): `asistente/` con las 13 herramientas sin campos de precio, el catálogo, las propuestas pendientes y la validación en cuatro capas; guardia de arquitectura propia.
 - S3-5 (planos): DXF dañado con lectura de recuperación, requisitos IDS del IFC (`data/ids`), R15 de coherencia geométrica (también en la hoja) y R16 de contraste entre dos fuentes; sembrador de errores y medición de detección (100 % y 0 falsas alarmas sobre OF-001). Falta el costo de la diferencia (espera a SL-E9).
 - S4‑2 (T7 a T12): interfaz de proveedor, proveedor guionado y tarifas con fecha; privacidad por lista blanca; registro `ia_*` con su revisión de Alembic y el anexo `ia.json`; orquestador reanudable; adaptadores de Claude y de Ollama con clientes falsos. La clave de IA (T13) queda diferida.
