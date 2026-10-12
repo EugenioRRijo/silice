@@ -149,7 +149,7 @@ evaluador de expresiones trazables existe en cinco copias, la del núcleo y una 
 
 **Veredicto: cumple.**
 
-## 6. Portabilidad (RNF‑07)
+## 6. Portabilidad (RNF‑07 y RNF‑19)
 
 Instalación con `uv sync --locked` (+ extras) sin pasos manuales. Se verificó primero en Windows 11
 (equipo de desarrollo) y, desde 2026‑09‑15
@@ -159,6 +159,8 @@ Windows (`windows-latest`): suite completa con `-W error` y 0 omitidas en ambos 
 corrida vigente, en [plan_pruebas.md §10](plan_pruebas.md)). Portar no exigió ningún cambio de
 código ni de pruebas: no hay rutas codificadas ni dependencias del sistema operativo en el código
 propio.
+
+**RNF‑19 (1.0.0).** El camino de usuario pasa a ser el instalador de Windows: sin administrador ni internet, con Python propio, ≤ 150 MB el básico y ≤ 650 MB el completo, arranque a la salud 200 en ≤ 60 s en la CI y ≤ 20 s en el equipo de desarrollo, y actualización que conserva el 100 % de las dos bases. La evidencia la dan el flujo `instalador.yml` (tamaño y prueba de humo en cada versión) y la medición de [plan_pruebas.md §10](plan_pruebas.md); hasta que esa medición exista, este punto está **por medir**.
 
 **Veredicto: cumple** (las dos plataformas declaradas, con evidencia automatizada en cada cambio).
 

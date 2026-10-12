@@ -107,7 +107,7 @@ número real se mide en S5‑3.4).
 | `xgboost` | | +58 MB | no va al instalador |
 | Similitud: `sentence-transformers` y su cierre (torch 466, transformers, tokenizers…) | | +589 MB | 88 MB |
 | Modelo `paraphrase-multilingual-MiniLM-L12-v2` (`model.safetensors` 449 MB) | | 458 MB | 408 MB |
-| Dependencias de S1 (`bcv`: `xlrd`, < 1 MB), S3 (`argon2-cffi`, `cryptography`; `ifctester` va en `civil`), S4 (`anthropic`, cliente de Ollama, `keyring`) y `alembic` | | **a medir en S5‑0.3** | **a medir en S5‑0.3** |
+| Dependencias de S1 (`bcv`: `xlrd`, < 1 MB), S3 (`argon2-cffi`, `cryptography`; `ifctester` va en `civil`), S4 (`anthropic`, cliente de Ollama, `keyring`) y `alembic` | | medido en S5‑0.3: `bcv` 0,4 MB, `ia` 8,6 MB; `alembic`, `argon2-cffi` y `cryptography` caen en la capa «base» (bitácora 1.0.0) | `bcv` 0,1 MB, `ia` 0,9 MB; cabe: básico 130,2 MB y completo 625,7 MB |
 
 Con esas cifras: **instalador básico ≈ 126 MB** más S1/S3/S4 (Python, código, básico, civil y anomalías), unos
 650 MB instalado; el módulo de **similitud ≈ 496 MB** comprimido y ≈ 1,05 GB instalado; el **completo ≈ 622 MB**
