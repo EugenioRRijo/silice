@@ -556,6 +556,10 @@ class RegistroCambio(Base):
 #: Alcances de una lista de precios.
 ALCANCE_GLOBAL = "global"
 ALCANCE_PROYECTO = "proyecto"
+ALCANCE_EMPRESA = "empresa"  # SL-E2: la lista de una empresa (S1 §6.1)
+ALCANCE_REFERENCIA = "referencia"  # SL-E2: MaPreX en Bs, solo para contrastar con R11 (S1 §6.2)
+#: Alcances que `Catalogo.lista_vigente` nunca resuelve: una versión los referencia explícitamente.
+ALCANCES_FUERA_DE_VIGENTE = (ALCANCE_PROYECTO, ALCANCE_EMPRESA, ALCANCE_REFERENCIA)
 
 
 class ListaPreciosOrigen(Base):

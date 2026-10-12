@@ -61,6 +61,7 @@ from core.budget.instantanea import (
     ResultadoInstantanea,
     asegurar_instantanea,
     composiciones_de_presupuesto,
+    instantanea_precios,
     plan_de_version,
 )
 from core.budget.moneda import convertir_version, declarar_moneda, moneda_del_proyecto
@@ -125,6 +126,7 @@ __all__ = [
     "guardar_presupuesto",
     "hallazgos_externos",
     "importar_presupuesto",
+    "instantanea_precios",
     "leer_presupuesto_tabular",
     "moneda_del_proyecto",
     "plan_de_version",

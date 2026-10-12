@@ -72,6 +72,18 @@ __all__ = [
 #: Columnas obligatorias del archivo de precios.
 COLUMNAS_ARCHIVO = ("tipo", "insumo", "unidad", "precio")
 
+#: Columnas opcionales de una lista de empresa (UC-17 4; RF-67): por precio, su fecha y su fuente,
+#: el Ref de MaPreX y, si el precio se convirtió, su moneda original y la tasa con fecha y fuente.
+COLUMNAS_OPCIONALES = (
+    "fecha",
+    "fuente",
+    "referencia",
+    "moneda",
+    "tasa",
+    "fecha_tasa",
+    "fuente_tasa",
+)
+
 #: Extensiones que se saben leer. `.xls` exige `xlrd`, que no es dependencia del proyecto.
 SUFIJO_CSV = ".csv"
 SUFIJOS_EXCEL = (".xlsx", ".xlsm")
@@ -97,6 +109,14 @@ class PrecioLeido:
     descripcion: str
     unidad: str | None
     precio: Decimal
+    # SL-E2: columnas opcionales de una lista de empresa (UC-17 4, RF-67); vacías si no vienen.
+    fecha: date | None = None
+    fuente: str = ""
+    referencia: str = ""
+    moneda: str = ""
+    tasa: Decimal | None = None
+    fecha_tasa: date | None = None
+    fuente_tasa: str = ""
 
 
 @dataclass(frozen=True, slots=True)
@@ -161,7 +181,10 @@ def leer_lista_precios(ruta: Path) -> list[PrecioLeido]:
     valoraría el presupuesto en silencio (UC‑02, flujo 2a de docs/ERS.md).
 
     El separador decimal es el punto. Aceptar también la coma exigiría decidir qué significa el
-    separador de miles, y ninguna fuente del proyecto lo necesita todavía.
+    separador de miles, y ninguna fuente del proyecto lo necesita todavía: una cifra con coma se
+    rechaza con su número de fila (SL-E2). Las columnas opcionales de `COLUMNAS_OPCIONALES` (fecha,
+    fuente, Ref, moneda, tasa) se leen si vienen; un archivo con solo las cuatro obligatorias se lee
+    igual.
     """
     tabla = leer_tabla(ruta)
     faltantes = [columna for columna in COLUMNAS_ARCHIVO if columna not in tabla.columns]
@@ -248,12 +271,32 @@ def _a_precio_leido(fila: dict[str, object], numero: int, ruta: Path) -> PrecioL
     if not descripcion:
         raise ValueError(f"{ruta.name}, fila {numero}: la columna insumo está vacía")
     unidad = _texto(fila["unidad"])
+    opcional = {columna: _texto(fila.get(columna, "")) for columna in COLUMNAS_OPCIONALES}
     return PrecioLeido(
         tipo=_a_tipo(_texto(fila["tipo"]), numero, ruta),
         descripcion=descripcion,
         unidad=normalizar_unidad(unidad) if unidad else None,
         precio=_a_precio(_texto(fila["precio"]), numero, ruta),
+        fecha=_a_fecha(opcional["fecha"], "fecha", numero, ruta),
+        fuente=opcional["fuente"],
+        referencia=opcional["referencia"],
+        moneda=opcional["moneda"],
+        tasa=_a_precio(opcional["tasa"], numero, ruta) if opcional["tasa"] else None,
+        fecha_tasa=_a_fecha(opcional["fecha_tasa"], "fecha_tasa", numero, ruta),
+        fuente_tasa=opcional["fuente_tasa"],
     )
+
+
+def _a_fecha(valor: str, campo: str, numero: int, ruta: Path) -> date | None:
+    """Una fecha AAAA-MM-DD (una celda fecha del XLSX llega como `2026-09-20 00:00:00`)."""
+    if not valor:
+        return None
+    try:
+        return date.fromisoformat(valor.split(" ")[0].split("T")[0])
+    except ValueError:
+        raise ValueError(
+            f"{ruta.name}, fila {numero}: {campo} {valor!r} no es una fecha AAAA-MM-DD"
+        ) from None
 
 
 def _texto(valor: object) -> str:
@@ -287,6 +330,12 @@ def _a_tipo(valor: str, numero: int, ruta: Path) -> models.TipoInsumo:
 
 
 def _a_precio(valor: str, numero: int, ruta: Path) -> Decimal:
+    # [Foco 4] `13.288,00` o `1,5` nunca se leen como otro número: la coma se rechaza por su nombre.
+    if "," in valor:
+        raise ValueError(
+            f"{ruta.name}, fila {numero}: {valor!r} lleva coma; use punto como separador "
+            "decimal (1234.56)"
+        )
     try:
         precio = Decimal(valor)
     except InvalidOperation as error:

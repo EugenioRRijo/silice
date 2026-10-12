@@ -108,3 +108,23 @@ class PrecioOrigen(Base):
     fecha_tasa: Mapped[date | None] = mapped_column(Date, default=None)
     fuente_tasa: Mapped[str] = mapped_column(String(300), default="")
     fuente: Mapped[str] = mapped_column(String(300), default="")
+
+
+class ListaEmpresa(Base):
+    """SL-E2: la lista de una empresa (S1 §6.1). La empresa es texto (RV-6): una instantánea sin
+    clave foránea a `instalacion.db`; S3 la rellena desde la empresa propia."""
+
+    __tablename__ = "lista_empresa"
+
+    lista_id: Mapped[int] = mapped_column(
+        ForeignKey("lista_precios.id", ondelete="CASCADE"), primary_key=True
+    )
+    empresa_nombre: Mapped[str] = mapped_column(String(200))
+    empresa_rif: Mapped[str] = mapped_column(String(20))
+    lista_base_id: Mapped[int] = mapped_column(ForeignKey("lista_precios.id"))
+    lista_referencia_id: Mapped[int | None] = mapped_column(
+        ForeignKey("lista_precios.id"), default=None
+    )
+    plazo_vigencia_dias: Mapped[int] = mapped_column(Integer)
+    rango_inferior: Mapped[Decimal] = mapped_column(DecimalExacto)
+    rango_superior: Mapped[Decimal] = mapped_column(DecimalExacto)
