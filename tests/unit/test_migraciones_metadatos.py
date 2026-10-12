@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-from migraciones.metadatos import METADATAS_CASO, METADATAS_INSTALACION
-
 from adapters.espacio import persistencia
 from core.models import Base
+from migraciones.metadatos import METADATAS_CASO, METADATAS_INSTALACION
 
 
 def test_metadata_espacio_es_publica_y_es_la_de_las_tablas_esp() -> None:
