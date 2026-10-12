@@ -20,7 +20,6 @@ from pandas import DataFrame
 
 from core.catalog import Catalogo, abrir_sesion, crear_motor
 from operacion.base_datos import preparar_base
-from scripts.simular_lista import simular
 from seguridad.permisos import Accion
 from ui import sesion as ui_sesion
 from ui.caso import ruta_caso
@@ -73,6 +72,8 @@ def _generar(parametros: dict[str, object]) -> None:
 
     texto_insumos = str(parametros["insumos"]).strip()
     solo = {i.strip() for i in texto_insumos.split(",") if i.strip()} if texto_insumos else None
+
+    from scripts.simular_lista import simular  # diferido (RV-25)
 
     motor = crear_motor(f"sqlite:///{Path(parametros['ruta']).as_posix()}")
     try:
