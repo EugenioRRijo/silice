@@ -1,8 +1,9 @@
 """API FastAPI que expone las operaciones del nucleo (Sesion F.1)."""
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 
+from api.proteccion import exigir_clave_api, opciones_documentacion, proteger
 from api.rutas import catalogo, computos, listas, presupuestos, rendimientos
 from core.catalog import CatalogoIncompleto
 from operacion.version import version
@@ -16,12 +17,21 @@ DESCRIPCION = """API HTTP sobre el nucleo del sistema de Analisis de Precios Uni
 la perdida de precision de `float` en JSON (regla 3 de NORMAS.md).
 """
 
-app = FastAPI(title="Sílice", version=version(), description=DESCRIPCION)
-app.include_router(catalogo.router)
-app.include_router(listas.router)
-app.include_router(computos.router)
-app.include_router(presupuestos.router)
-app.include_router(rendimientos.router)
+app = FastAPI(
+    title="Sílice", version=version(), description=DESCRIPCION, **opciones_documentacion()
+)
+CON_CLAVE = [Depends(exigir_clave_api)]  # RF-98: clave en todas las rutas salvo /salud
+app.include_router(catalogo.router, dependencies=CON_CLAVE)
+app.include_router(listas.router, dependencies=CON_CLAVE)
+app.include_router(computos.router, dependencies=CON_CLAVE)
+app.include_router(presupuestos.router, dependencies=CON_CLAVE)
+app.include_router(rendimientos.router, dependencies=CON_CLAVE)
+
+
+@app.get("/salud", tags=["catalogo"])
+def salud() -> dict[str, str]:
+    """Ping de disponibilidad, sin clave, sin versión y sin tocar la base (spec S5 §8.3)."""
+    return {"estado": "ok"}
 
 
 @app.exception_handler(CatalogoIncompleto)
@@ -49,3 +59,6 @@ def manejar_lookup_error(_request: Request, exc: LookupError) -> JSONResponse:
 def manejar_value_error(_request: Request, exc: ValueError) -> JSONResponse:
     """Datos de entrada invalidos segun las reglas del nucleo."""
     return JSONResponse(status_code=422, content={"detalle": str(exc)})
+
+
+proteger(app)  # al final: ya están todas las rutas y los filtros envuelven la aplicación
