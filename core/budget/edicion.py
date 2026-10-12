@@ -106,6 +106,7 @@ def guardar_edicion(
     lista: models.ListaPrecios | None = None,
     ahora: datetime | None = None,
     gancho: Gancho | None = None,
+    motivo: str = "edicion",
 ) -> models.Presupuesto | None:
     """Guarda `resultado` (la elaboración ya editada) como versión nueva de `codigo_origen`.
 
@@ -113,7 +114,9 @@ def guardar_edicion(
     `cambios` son las celdas que cambiaron: las de valor anterior igual al nuevo no cuentan, y si no
     queda ninguna no se crea nada y se devuelve `None` (FR‑4). Crea un `RegistroCambio` por celda.
     `lista` es la de la versión de origen salvo que se diga otra; `plan` se guarda con la versión.
-    `gancho(session, version)` corre tras crearla, en la misma sesión. No confirma.
+    `gancho(session, version)` corre tras crearla, en la misma sesión. `motivo` es uno de
+    `MOTIVOS_VERSION` (por defecto `edicion`; `recuperacion` lo pasa `core.budget.decision`). No
+    confirma.
     """
     fuente, responsable = _exigir_respaldo(fuente, responsable)
     for cambio in cambios:
@@ -134,7 +137,7 @@ def guardar_edicion(
         pendientes=resultado.pendientes,
         plan=plan,
         version_origen=origen,
-        motivo="edicion",
+        motivo=motivo,
         heredar_insumos=True,
     )
     momento = ahora or datetime.now()

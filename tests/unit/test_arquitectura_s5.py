@@ -74,6 +74,7 @@ PAGINAS_QUE_ABREN_EL_CASO = (
     "actualizacion",
     "catalogo",
     "componer",
+    "control",
     "elaborar",
     "escenarios",
     "historico",
