@@ -109,7 +109,15 @@ __all__ = [
 ]
 
 _CAMPOS_DE_CAMBIO = (
-    "version", "objeto", "clave", "campo", "antes", "despues", "fuente", "responsable", "fecha",
+    "version",
+    "objeto",
+    "clave",
+    "campo",
+    "antes",
+    "despues",
+    "fuente",
+    "responsable",
+    "fecha",
     "marca",
 )
 _LOGIN = re.compile(r"<([^<>]+)>")
@@ -239,7 +247,9 @@ def revisor_armo(
     if not propia:
         return []
     donde = [
-        e["codigo"] for e in v.cadena["eslabones"] if login_de(e.get("usuario", "")) == login_revisor
+        e["codigo"]
+        for e in v.cadena["eslabones"]
+        if login_de(e.get("usuario", "")) == login_revisor
     ]
     emisor = login_de(str(v.manifiesto.get("usuario_emisor") or ""))
     if emisor == login_revisor and not donde:
@@ -349,7 +359,12 @@ def recibir(
     avisos = (*v.avisos, *anterioridad.avisos)
     if existente is not None:
         return Recibido(
-            v, existente["id"], Path(existente["ruta"]), True, avisos, anterioridad.ultima_recibida,
+            v,
+            existente["id"],
+            Path(existente["ruta"]),
+            True,
+            avisos,
+            anterioridad.ultima_recibida,
             existente["fecha"].date().isoformat(),
         )
     carpeta_paquetes.mkdir(parents=True, exist_ok=True)
@@ -495,7 +510,11 @@ def tablas_de_revision(
     filas = (
         tuple(
             (
-                p.codigo_partida, p.descripcion, p.estado, p.desvio_cantidad, p.desvio_precio,
+                p.codigo_partida,
+                p.descripcion,
+                p.estado,
+                p.desvio_cantidad,
+                p.desvio_precio,
                 p.desvio_total,
             )
             for p in diferencia.partidas
@@ -514,8 +533,16 @@ def tablas_de_revision(
         TablaExportable(
             "Cambios",
             (
-                "Versión", "Objeto", "Clave", "Campo", "Antes", "Después", "Fuente", "Responsable",
-                "Fecha", "Marca",
+                "Versión",
+                "Objeto",
+                "Clave",
+                "Campo",
+                "Antes",
+                "Después",
+                "Fuente",
+                "Responsable",
+                "Fecha",
+                "Marca",
             ),
             tuple(tuple(c[k] for k in _CAMPOS_DE_CAMBIO) for c in cambios),
         ),

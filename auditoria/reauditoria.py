@@ -168,7 +168,11 @@ def instantanea_del_documento(
                 tasa_referencia=referencia.tasa if referencia else None,
                 codigo_referencia=extra.referencia or "",
                 erosion=servicios.erosion(
-                    precio, moneda, moneda_original, precio_original, tasa or a_su_fecha,
+                    precio,
+                    moneda,
+                    moneda_original,
+                    precio_original,
+                    tasa or a_su_fecha,
                     tasa_evaluacion,
                 ),
                 heredado=origen.get("heredado"),
@@ -308,7 +312,10 @@ def _trabajo(
                 por = d.cantidad if campo == "precio_unitario" else 1
                 diferencias.append(
                     DiferenciaDeclarada(
-                        item.codigo_partida, campo, declarado, calculado,
+                        item.codigo_partida,
+                        campo,
+                        declarado,
+                        calculado,
                         (declarado - calculado) * por,
                     )
                 )
