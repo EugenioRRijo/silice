@@ -23,6 +23,8 @@ MODULOS_SIN_PAGINA = (
     "ui.indices",
     "ui.precios_empresa",
     "ui.reajuste",
+    "ui.sesion",  # S3: el acceso y la sesion
+    "ui.acceso",
 )
 
 
