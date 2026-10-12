@@ -6,6 +6,8 @@ etiquetar, las líneas pasan a la sección de la versión. La historia anterior 
 
 ## [Sin publicar]
 
+- S3-5 (planos): DXF dañado con lectura de recuperación, requisitos IDS del IFC (`data/ids`), R15 de coherencia geométrica (también en la hoja) y R16 de contraste entre dos fuentes; sembrador de errores y medición de detección (100 % y 0 falsas alarmas sobre OF-001). Falta el costo de la diferencia (espera a SL-E9).
+
 ## [0.6.0] - 2026-10-12
 
 ### Agregado
