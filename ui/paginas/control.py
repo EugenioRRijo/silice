@@ -157,7 +157,7 @@ def _linea_base(sesion, proyecto: str) -> None:
         dias = d.text_input("Dias habiles por periodo", value="5", key="control_lb_dias")
         feriados = e.text_area("Feriados (AAAA-MM-DD, separados por comas)", key="control_lb_fer")
         fuente = st.text_input("Fuente de la linea base", key="control_lb_fuente")
-        responsable = st.text_input("Responsable", key="control_lb_responsable")
+        responsable = ui_sesion.caja_de_responsable("Responsable", key="control_lb_responsable")
         if st.button("Declarar linea base", key="control_lb_declarar") and _intentar(
             lambda: control.declarar_linea_base(
                 sesion,
@@ -193,7 +193,9 @@ def _parametros(sesion, proyecto: str) -> None:
         width="stretch",
     )
     fuente = st.text_input("Fuente del cambio de parametros", key="control_par_fuente")
-    responsable = st.text_input("Responsable del cambio", key="control_par_responsable")
+    responsable = ui_sesion.caja_de_responsable(
+        "Responsable del cambio", key="control_par_responsable"
+    )
     if st.button("Guardar parametros", key="control_par_guardar"):
         try:
             cambiados = control.guardar_los_parametros(
@@ -253,7 +255,7 @@ def _registrar(sesion, proyecto: str, catalogo: Catalogo) -> None:
             width="stretch",
         )
         fuente = st.text_input("Fuente (acta, oficio)", key="control_v_fuente")
-        responsable = st.text_input("Responsable", key="control_v_responsable")
+        responsable = ui_sesion.caja_de_responsable("Responsable", key="control_v_responsable")
         if st.button("Registrar y controlar", type="primary", key="control_v_registrar"):
             try:
                 resultado = control.registrar_y_controlar(
@@ -305,7 +307,9 @@ def _importar(sesion, proyecto: str) -> None:
         for linea in lectura.informe:
             st.markdown(f"- {texto_seguro(linea)}")
         fuente = st.text_input("Fuente de la importacion", key="control_x_fuente")
-        responsable = st.text_input("Responsable de la importacion", key="control_x_responsable")
+        responsable = ui_sesion.caja_de_responsable(
+            "Responsable de la importacion", key="control_x_responsable"
+        )
         if st.button("Importar", key="control_x_importar"):
             try:
                 cuantas = control.importar_excel(
@@ -327,7 +331,9 @@ def _anular(sesion, proyecto: str) -> None:
         rotulos = {rotulo: id_ for id_, rotulo in opciones}
         elegida = st.selectbox("Valuacion", list(rotulos), key="control_a_valuacion")
         motivo = st.text_input("Motivo", key="control_a_motivo")
-        responsable = st.text_input("Responsable de la anulacion", key="control_a_responsable")
+        responsable = ui_sesion.caja_de_responsable(
+            "Responsable de la anulacion", key="control_a_responsable"
+        )
         if st.button("Anular", key="control_a_anular") and _intentar(
             lambda: control.anular(
                 sesion, rotulos[elegida], motivo=motivo, responsable=responsable
@@ -346,7 +352,7 @@ def _costo(sesion, proyecto: str) -> None:
         fecha = c.text_input("Fecha (AAAA-MM-DD)", key="control_c_fecha")
         partida = st.text_input("Partida (opcional)", key="control_c_partida")
         fuente = st.text_input("Fuente del costo", key="control_c_fuente")
-        responsable = st.text_input("Responsable", key="control_c_responsable")
+        responsable = ui_sesion.caja_de_responsable("Responsable", key="control_c_responsable")
         if st.button("Anotar costo", key="control_c_anotar") and _intentar(
             lambda: control.registrar_costo_real(
                 sesion,
@@ -511,7 +517,9 @@ def _elegir(sesion, catalogo: Catalogo, resultado, todas) -> None:
             key="control_r_independencia",
         )
     fuente = st.text_input("Fuente de la decision", key="control_r_fuente")
-    responsable = st.text_input("Responsable de la decision", key="control_r_responsable")
+    responsable = ui_sesion.caja_de_responsable(
+        "Responsable de la decision", key="control_r_responsable"
+    )
     if st.button("Elegir y crear la version", type="primary", key="control_r_elegir"):
         try:
             codigo = control.elegir_opcion(

@@ -62,7 +62,7 @@ from core.verification.informe import DECIMALES_PRESENTACION
 from core.verification.texto import formatear_decimal
 from operacion.base_datos import ErrorDeBase, preparar_base
 from seguridad.permisos import Accion
-from ui import caso, control, hoja
+from ui import caso, control, entrega, hoja
 from ui import sesion as ui_sesion
 from ui.caso import ACCION_IMPORTAR_PLANO, ACCION_PRECIOS, ruta_caso
 from ui.resultado import mostrar_informe
@@ -143,9 +143,19 @@ def _sesion() -> Iterator[Any]:
     motor = crear_motor(f"sqlite:///{ruta.as_posix()}")
     try:
         with abrir_sesion(motor) as sesion:
-            yield sesion
+            yield entrega.con_anexos_de_cadena(sesion)  # la cadena cubre el espacio (RF-83)
     finally:
         motor.dispose()
+
+
+def _responsable() -> str:
+    """Quien responde por lo que se guarda (RF-82): con el acceso encendido, la persona de la
+    sesion; con el acceso apagado (transicion), lo escrito en el cuadro. Sin sesion vigente
+    devuelve vacio: el guardado lo rechaza y la pantalla pide entrar."""
+    try:
+        return ui_sesion.responsable_de_la_hoja(st.session_state.get(CLAVE_RESPONSABLE, ""))
+    except PermissionError:
+        return ""
 
 
 def _mensaje(tipo: str, texto: str) -> None:
@@ -248,7 +258,12 @@ def _abrir(proyecto: str | None, codigo: str | None) -> None:
         try:
             with _sesion() as sesion:
                 abierta = hoja.abrir_version(
-                    sesion, Catalogo(sesion), proyecto, codigo, fecha_evaluacion=date.today()
+                    sesion,
+                    Catalogo(sesion),
+                    proyecto,
+                    codigo,
+                    fecha_evaluacion=date.today(),
+                    responsable=_responsable() or hoja.RESPONSABLE_POR_OMISION,
                 )
         except hoja.HojaInvalida as error:
             st.error(str(error))
@@ -400,7 +415,7 @@ def _guardar() -> None:
                 abierta,
                 borrador,
                 fuente=st.session_state.get(CLAVE_FUENTE, ""),
-                responsable=st.session_state.get(CLAVE_RESPONSABLE, ""),
+                responsable=_responsable(),
             )
     except hoja.HojaInvalida as error:
         _mensaje("error", str(error))
@@ -441,7 +456,7 @@ def _guardar_primera(borrador: hoja.Borrador) -> None:
                 proyecto,
                 borrador,
                 fuente=st.session_state.get(CLAVE_FUENTE, ""),
-                responsable=st.session_state.get(CLAVE_RESPONSABLE, ""),
+                responsable=_responsable(),
             )
     except hoja.HojaInvalida as error:
         _mensaje("error", str(error))
@@ -532,19 +547,19 @@ def _panel_de_guardado(cambios: Sequence, accion: str | None) -> None:
             else "Fuente del cambio (por que y con que respaldo)",
             key=CLAVE_FUENTE,
         )
-        responsable.text_input("Responsable", key=CLAVE_RESPONSABLE)
+        ui_sesion.caja_de_responsable("Responsable", key=CLAVE_RESPONSABLE, contenedor=responsable)
         if abierta is not None:
             motivo = hoja.motivo_para_no_guardar(
                 abierta.borrador,
                 _borrador(),
                 st.session_state.get(CLAVE_FUENTE, ""),
-                st.session_state.get(CLAVE_RESPONSABLE, ""),
+                _responsable(),
             )
         elif proyecto_nuevo is not None:
             motivo = hoja.motivo_para_no_crear_primera(
                 _borrador(),
                 st.session_state.get(CLAVE_FUENTE, ""),
-                st.session_state.get(CLAVE_RESPONSABLE, ""),
+                _responsable(),
             )
         else:
             motivo = "Elija o cree un proyecto (barra superior) para poder guardar."
@@ -1298,7 +1313,7 @@ def _pestana_precios(cambios: Sequence) -> None:
         numero = b.text_input("Numero de la cotizacion")
         fecha = c.date_input("Fecha de la cotizacion", value=date.today())
         fuente = st.text_input("Evidencia (opcional: archivo, enlace, nota)")
-        responsable = st.text_input("Responsable")
+        responsable = ui_sesion.caja_de_responsable("Responsable")
         enviar = st.form_submit_button("Cotizar")
     if enviar:
         try:
@@ -1337,7 +1352,7 @@ def _pestana_precios(cambios: Sequence) -> None:
                 format_func=lambda p: f"{p.codigo} · {p.descripcion} ({p.cotizacion})",
             )
             motivo = st.text_input("Por que se retira")
-            quien = st.text_input("Responsable ")
+            quien = ui_sesion.caja_de_responsable("Responsable ")
             retirar = st.form_submit_button("Retirar cotizacion")
         if retirar:
             try:
@@ -1421,7 +1436,7 @@ def _moneda(cambios: Sequence) -> None:
         destino = st.selectbox("Moneda destino", [m for m in MONEDAS if m != actual])
         lado = st.selectbox("Tasa del BCV", ("venta", "compra"), help="Por defecto, venta (S1-R1).")
         fuente = st.text_input("Por que se cambia la moneda (fuente)")
-        responsable = st.text_input("Responsable del cambio")
+        responsable = ui_sesion.caja_de_responsable("Responsable del cambio")
         enviar = st.form_submit_button("Convertir la version")
     if not enviar:
         return
@@ -1430,8 +1445,15 @@ def _moneda(cambios: Sequence) -> None:
             if sesion is None:
                 return
             nuevo = hoja.convertir(
-                sesion, Catalogo(sesion), abierta.proyecto, abierta.codigo, destino, lado=lado,
-                fecha=date.today(), fuente=fuente, responsable=responsable,
+                sesion,
+                Catalogo(sesion),
+                abierta.proyecto,
+                abierta.codigo,
+                destino,
+                lado=lado,
+                fecha=date.today(),
+                fuente=fuente,
+                responsable=responsable,
             )
     except hoja.HojaInvalida as error:
         st.error(str(error))
@@ -1468,9 +1490,11 @@ def _restaurar(codigo: str) -> None:
                 abierta.proyecto,
                 codigo,
                 fuente=st.session_state.get("hoja_restaurar_fuente", ""),
-                responsable=st.session_state.get("hoja_restaurar_responsable", ""),
+                responsable=ui_sesion.responsable_de_la_hoja(
+                    st.session_state.get("hoja_restaurar_responsable", "")
+                ),
             )
-    except (hoja.HojaInvalida, SQLAlchemyError) as error:
+    except (hoja.HojaInvalida, SQLAlchemyError, PermissionError) as error:
         _mensaje("error", f"No se restauro nada: {getattr(error, 'orig', None) or error}")
         return
     _mensaje("success", f"La version {codigo} se restauro como la version {nuevo} (la vigente).")
@@ -1529,7 +1553,7 @@ def _pestana_trazabilidad(cambios: Sequence) -> None:
         )
         elegida = st.selectbox("Version a restaurar", [v.codigo for v in historial])
         st.text_input("Fuente (por que se restaura)", key="hoja_restaurar_fuente")
-        st.text_input("Responsable", key="hoja_restaurar_responsable")
+        ui_sesion.caja_de_responsable("Responsable", key="hoja_restaurar_responsable")
         enviar = st.form_submit_button("Restaurar")
     if enviar:
         _restaurar(elegida)

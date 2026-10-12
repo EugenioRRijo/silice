@@ -333,6 +333,7 @@ def _actualizar(
         detectar_atipicos=_detector_de_atipicos(),
         # SF3 (RF-56, SF3-R4): revalorar conserva el plan guardado de la version de origen
         plan=None if origen is None else plan_de_version(sesion, origen),
+        usuario=ui_sesion.responsable_actual(),  # RF-82: quien confirma lo sella en la cadena
     )
     libro = exportar_excel(
         nuevo.presupuesto, nuevo.informe, carpeta / f"presupuesto_{nuevo.presupuesto.codigo}.xlsx"

@@ -84,7 +84,7 @@ def _clausula() -> tuple[dict[str, str], list[dict[str, str]]]:
     fuente_r = st.text_input("Fuente de R (si el contrato no la trae, escriba 0 y declarelo)")
     r_en_comprobacion = st.checkbox("La clausula aplica R tambien a la comprobacion (S1-R14)")
     fuente = st.text_input("Fuente de la clausula (contrato, numero, fecha)")
-    responsable = st.text_input("Responsable")
+    responsable = ui_sesion.caja_de_responsable("Responsable")
     st.caption("Componentes: la serie de cada uno y, si la estructura es declarada, su peso.")
     componentes = st.data_editor(
         DataFrame({"componente": list(COMPONENTES), "serie": [""] * 3, "peso": [""] * 3}),
@@ -187,7 +187,9 @@ def _guardar(motor, proyecto, contrato, clausula, periodos, resultado, filas_per
     with abrir_sesion(motor) as sesion:
         parciales = reajuste.parciales_por_reemplazar(sesion, proyecto, contrato)
     fuente = st.text_input("Fuente del estudio", key="reajuste_fuente")
-    responsable = st.text_input("Responsable del estudio", key="reajuste_responsable")
+    responsable = ui_sesion.caja_de_responsable(
+        "Responsable del estudio", key="reajuste_responsable"
+    )
     reemplaza = None
     if parciales and resultado.estado is EstadoEstudio.CERRADO:
         elegido = st.selectbox(
