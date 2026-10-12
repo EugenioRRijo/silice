@@ -169,7 +169,7 @@ def test_el_uso_trae_los_tokens_de_cache_y_el_motivo_del_rechazo():
     # costo a mano con la tarifa de Opus 5.5: 10000*4/1e6 + 3000*20/1e6 + 6000*0.2/1e6
     tarifa = cargar_tarifas()["claude-opus-5-5"]
     assert tarifa.costo(t.uso) == Decimal("0.1012")
-    assert fecha_de_los_precios() == "2026-09-25"
+    assert fecha_de_los_precios() == "2026-10-12"  # fecha de la verificacion de S4.0 (tarea 3)
 
 
 class AuthenticationError(Exception):
