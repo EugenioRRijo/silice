@@ -1766,3 +1766,48 @@ experimento lo trata
 abriría el expediente SL‑E10. Con el prefijo `ia:` y el registro `ia_*` la procedencia queda completa y R1 ya trata
 esas cantidades como no derivables. **Costo (RS4‑3):** el núcleo no distingue «manual de una persona» de «manual de
 la IA» al agrupar hallazgos; si los encargos o el tutor lo exigen, SL‑E10 se abre con su TDD y su rama de núcleo.
+
+## Enmienda de Sílice 1.0.0 (S5): producto, instalador y operación
+
+Fuente: [spec S5](especificaciones/2026-10-11-silice-s5-producto-instalador-design.md) §5 a §11.
+S5 no toca `core/` (NORMAS §2): lo que agrega vive fuera del núcleo y el núcleo no lo importa.
+
+### Vista lógica y de desarrollo
+
+- `operacion/` (sin Streamlit): `config` (carpetas de datos y `silice.toml`), `base_datos` y
+  `respaldo` (0.6.0), `version`, `registro` (sin secretos), `red` (IP explícita, cortafuegos,
+  «el propio equipo»), `lanzador` (arrancar y parar), `eventos_perdidos` (SEG‑12), `programa`
+  (el manifiesto), `firma_sumas` (Ed25519 de `SHA256SUMS`) y `ordenes_100` con `__main__` (la CLI).
+  Importa `core.catalog`, `migraciones`, SQLAlchemy y la biblioteca estándar. `ui` y `api`
+  importan de él todo menos `lanzador`, `ordenes_100` y `__main__`.
+- `api/proteccion.py`: clave en toda ruta menos `/salud`, hosts permitidos, filtro de redes
+  privadas y documentación apagada en el producto. `ui/cliente.py`: «solo desde este equipo», la
+  IP del cliente y el aviso «sin cifrar». `ui/paginas/acerca.py` e `instalacion.py`.
+- `instalador/` (no viaja ni lo importa el producto): `manifiesto.toml` y `manifiesto.py` (lista
+  blanca), `construir.py`, `silice.iss`, `humo.ps1`, `navegador.py`, `proxy_testigo.py`,
+  `verificar_bases.py`, `auditar.py`, `tamanos.py`, `publicar.py` y `licencias.py`.
+
+### Vista física
+
+- `%LOCALAPPDATA%\Programs\Silice` (`{app}`: `python\`, `modulos\similitud\`, `codigo\`,
+  `manifiesto.json`, `LICENCIAS\`) se reemplaza entero al actualizar.
+- `%LOCALAPPDATA%\Silice` guarda `config\silice.toml`, `datos\` (`instalacion.db`, `casos\`,
+  `codigo_instalacion.txt`, `paquetes\`), `respaldos\`, `registros\` y
+  `estado\servidor.json`; el desinstalador no lo toca. Límite declarado: `{app}` lo puede
+  escribir cualquier proceso del usuario (instalación sin administrador, RS5‑3).
+
+### Vista de procesos
+
+`python.exe -E -s -B -X utf8 -m operacion arrancar`: una sola instancia (`servidor.json` y la
+salud), `silice.toml`, `preparar_base` de la instalación y del caso, dirección (`127.0.0.1` o la IP
+elegida si sigue existiendo), Streamlit (y Uvicorn si la API está activa) como hijos con las
+opciones fijas de §10.1, espera de la salud (≤ 60 s) y navegador. Cerrar la ventana o `parar`
+lo detiene todo.
+Actualizar es ejecutar el instalador nuevo: detiene Sílice, borra `python\`, `modulos\` y
+`codigo\`, copia, y `operacion migrar` respalda y migra las dos bases con un solo juego.
+
+### Decisiones
+
+DA‑S5‑1 a DA‑S5‑8 del spec S5 §5.5 (dependencias preinstaladas en capas, sin entorno virtual,
+instalación por usuario, un solo camino de migración, consola minimizada como servidor, red local en
+IP explícita). Rulings de este plan: `docs/bitacora/2026-10-silice-100.md`.
