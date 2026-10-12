@@ -6,6 +6,8 @@ etiquetar, las líneas pasan a la sección de la versión. La historia anterior 
 
 ## [Sin publicar]
 
+- `start.py`: arranque con un comando (`uv run start.py`), siembra los casos de demostración en `data/casos/` y abre la app en 127.0.0.1.
+
 - Interfaz de trabajo (PLAN_SILICE_UI): pantalla «Tablero del proyecto» (tarjetas, control de obra, curva, desglose, Pareto, comparativo); línea de estado en la barra; pestaña APU en tres paneles; tema visual y Altair en extra `ui`.
 - S3‑3 (T16, T17): pantalla «Entregar paquete» (UC‑22) con `ui/entrega.py` completo (anexos de S1, S2 y S4, cadena verificada, firma desde el propio equipo y SHA‑256 en el registro de accesos), página «Administración» (cuentas, empresa, clave de firma, empresas registradas, claves de API, accesos e «Instalación») y `scripts/restablecer_administrador.py`; el acceso sigue apagado por omisión.
 - 1.0.0 · S5-3/S5-4 (RF-97, RF-98, RNF-19): `instalador/silice.iss` (por usuario, migración en `[Code]`, datos conservados), prueba de humo (`humo.ps1`, `navegador.py`, `proxy_testigo.py`, `verificar_bases.py`), `auditar.py` con `docs/pip-audit-aceptadas.toml`, flujo `.github/workflows/instalador.yml`, `scripts/medir_arranque.py` y manual de instalación; sin pruebas nuevas por decisión de Eugenio; sin compilar con Inno Setup.
