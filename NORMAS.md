@@ -192,6 +192,9 @@ adapters/
                   propias del adaptador (no cuentan entre las entidades de core/models), agua, datos,
                   electricidad, reglas R8-R10 e importación de planos DXF/IFC; no implementa
                   AdaptadorDominio (docs/arquitectura.md §7)
+asistente/        (S4, 0.9.0) IA verificada: herramientas, validación, orquestador,
+                  proveedores (Claude y Ollama), privacidad, clave de IA, registro ia_* y experimento;
+                  no es del núcleo ni un adaptador
 ml/
   normalization/  sentence-transformers, similitud del coseno             — I2
   anomaly/        Isolation Forest sobre precios y rendimientos           — I6.1

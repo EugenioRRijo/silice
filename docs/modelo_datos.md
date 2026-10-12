@@ -413,6 +413,22 @@ no usa `stamp`. La prueba de deriva (RNF‑20, de S5) está activa desde S1: una
 la creada desde los metadatos. Como Alembic ya está, un cambio posterior de columnas (p. ej. la cita a la
 valuación que agrega S2 en `ejecutado_periodo`, §8.6) es una revisión más, no una tabla rehecha.
 
+### 2.6 Tablas del asistente `ia_*` (S4)
+
+Fuente: [spec S4](especificaciones/2026-10-11-silice-s4-asistente-ia-design.md) §5.5. Tablas **aditivas** de la
+base del **caso**, propias del paquete `asistente/` (como las `esp_*` del adaptador del espacio): no cuentan entre
+las entidades de `core/models` y **no tienen clave foránea a `core/models`**. Las crea una revisión propia de
+Alembic (tarea 9 de `PLAN_SILICE_090.md`) y `asistente` figura en la lista `METADATAS` del caso.
+
+| Tabla | Columnas |
+|---|---|
+| `ia_sesiones` | identificador, proyecto, versión de partida, versión guardada (si se guardó), proveedor, modelo pedido, pedido, topes (turnos, llamadas, costo), inicio, fin, motivo de fin |
+| `ia_turnos` | sesión, orden, modelo que respondió, fin del turno, uso de fichas, costo estimado, texto del modelo |
+| `ia_llamadas` | turno, orden, herramienta, argumentos en JSON con claves ordenadas, resultado de la validación, motivo |
+| `ia_propuestas` | sesión, identificador, tipo, estado (pendiente, aceptada, editada, rechazada), quién y cuándo decidió |
+
+La clave de IA de la empresa nunca se guarda aquí (RNF‑18 c).
+
 ## 3. Diagrama entidad‑relación
 
 ```mermaid

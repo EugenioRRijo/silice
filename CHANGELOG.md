@@ -6,6 +6,8 @@ etiquetar, las líneas pasan a la sección de la versión. La historia anterior 
 
 ## [Sin publicar]
 
+- S4.0: ERS (UC‑09, RF‑32, RF‑90 a RF‑95, RNF‑18), excepción a RNF‑08 y parte S4 de la meta (`scripts/meta_silice_s4.py`).
+
 ## [0.6.0] - 2026-10-12
 
 ### Agregado

@@ -1672,3 +1672,93 @@ guardados de esas reglas; no se suman.
 Nota de nomenclatura: la deuda de §6.1 sobre insumos homónimos habla de una «candidata a regla R8».
 Esa numeración queda superada: R8, R9 y R10 son, en SF, las reglas del espacio (spec §8.2); la regla de
 homónimos, si se aprueba, tomará el número siguiente.
+
+## Enmienda de Sílice 0.9.0 (S4): el asistente de IA
+
+Fuente: [spec S4](especificaciones/2026-10-11-silice-s4-asistente-ia-design.md) §5; ruling RP9-3 de `PLAN_SILICE_090.md`. Las referencias «§» son a ese spec.
+
+**Principio.** La IA no vive en `core/` y el núcleo no la conoce; tampoco en `adapters/`. Va en el paquete de primer nivel `asistente/`, del mismo rango que `api/` y `ui/`.
+
+### Vista lógica (S4 §5.2)
+
+| Paquete o módulo | Qué contiene | Importa | Toca `core/` |
+|---|---|---|---|
+| `asistente/proveedores/base.py` | `ProveedorIA` (Protocol), tipos neutrales: `Mensaje`, `LlamadaHerramienta`, `Turno`, `FinTurno`, `Uso`, `Disponibilidad` | biblioteca estándar | no |
+| `asistente/proveedores/claude.py` | adaptador de Claude con el SDK oficial `anthropic` (import diferido, extra `ia`) | `anthropic`, `base` | no |
+| `asistente/proveedores/ollama_local.py` | adaptador del modelo local con el cliente oficial de Ollama para Python (a confirmar en S4.0) | `ollama` (a confirmar), `base` | no |
+| `asistente/proveedores/guionado.py` | doble de prueba: reproduce turnos grabados (JSON) | `base` | no |
+| `asistente/herramientas.py` | modelos Pydantic de cada herramienta (§6), su esquema JSON y su ejecución | `pydantic`, `ui.hoja`, `adapters.espacio`, `ml.normalization` (opcional) | no |
+| `asistente/validacion.py` | validación semántica y de citas (§7) | `asistente.herramientas` | no |
+| `asistente/propuestas.py` | lista de propuestas pendientes; aplicar las aceptadas al `Borrador` (`dataclasses.replace`) | `ui.hoja`, `adapters.espacio` | no |
+| `asistente/orquestador.py` | el bucle de §5.3, topes, registro | todos los anteriores | no |
+| `asistente/privacidad.py` | lista blanca y vista previa de lo enviado (§8.1, §8.2); limpieza de textos ajenos, delimitación de resultados de herramientas, filtro de secretos y tope de partidas por sesión (§8.7) | `ui.hoja` | no |
+| `asistente/clave.py` | guardar y leer la clave de IA de la empresa (§8.3). **No reimplementa el cifrado**: el respaldo cifrado con contraseña lo hace `seguridad/secretos.py` (RV‑13), el mismo que usa la clave de firma de S3 | `keyring` (a confirmar), `seguridad.secretos` | no |
+| `asistente/registro.py` | tablas `ia_*` y su escritura; exportación de `anexos/ia.json` para el paquete (§5.5) | `sqlalchemy` | no |
+| `asistente/experimento/` | banco de tareas, comparador con la referencia y métricas (§9) | `asistente`, `ui.hoja` | no |
+| `adapters/espacio/origen.py` | `TipoOrigen.IA` y su referencia obligatoria (§5.4) | — | no |
+| `adapters/espacio/reglas.py` | R8 lee los supuestos de un origen IA (§5.4) | `core.contracts` | no |
+| `ui/paginas/hoja.py` | panel del asistente: pedido, vista previa, costo, diff de propuestas, aceptar o rechazar; todo texto del modelo se muestra con `texto_seguro()` (RV‑14) | `asistente`, `ui.hoja` | no |
+| `ui/paginas/administracion.py` (de S3; S5 le agrega la pestaña Instalación) | activar el asistente, registrar la clave de IA de la empresa (solo desde el propio equipo, §8.3), elegir proveedor y modelo, tope de costo (solo el administrador de la instalación) | `asistente.clave` | no |
+
+**Guardia de arquitectura** (reglas de S4 en su propio archivo, `tests/unit/test_arquitectura_asistente.py`, con
+los ayudantes compartidos de `tests/unit/test_arquitectura.py`, RV‑2; entra en S4.1):
+- `asistente` entra en `PAQUETES_FUERA_DEL_NUCLEO` (el núcleo no lo importa), junto con `seguridad`, `paquete` y
+  `operacion` que agregan S3 y S5 (RV‑22); lo exige ya
+  `test_la_guardia_cubre_todo_paquete_de_primer_nivel_fuera_del_nucleo`.
+- **Capas (RV‑22, ARQ‑H8):** `ui.hoja` queda **debajo** de `asistente`, y `asistente` **debajo** de `ui.paginas`.
+  De `ui`, `asistente` solo importa `ui.hoja`; de `ui`, solo `ui.paginas.hoja` y `ui.paginas.administracion`
+  importan `asistente`. `ui/hoja.py` y `adapters/` no importan `asistente`. Así no hay ciclo de paquetes.
+- De `seguridad`, `asistente` solo importa `seguridad.secretos`.
+- `asistente` no importa `streamlit`; `anthropic` solo se importa en `asistente/proveedores/claude.py` y el cliente
+  de Ollama solo en `ollama_local.py`.
+- Ningún módulo usa `unsafe_allow_html` (prueba común de RV‑14).
+
+**RP9-3 (ruling, pendiente de Eugenio):** `ui.entrega` (S3) es un tercer importador de `asistente`, limitado a `asistente.registro`, para armar `anexos/ia.json`; si no se ratifica, el anexo se inyecta desde `ui.paginas.hoja`.
+
+### El bucle neutral (S4 §5.3)
+
+```
+ProveedorIA (Protocol)
+  nombre, modelo, envia_fuera_del_equipo: bool
+  disponible() -> Disponibilidad            # clave presente / servicio local arriba y modelo instalado
+  turno(sistema, mensajes, herramientas) -> Turno
+Turno: texto, llamadas: tuple[LlamadaHerramienta], fin: FinTurno {FIN, HERRAMIENTAS, LIMITE, RECHAZO},
+       uso: Uso(entrada, salida, cache_lectura, cache_escritura), modelo_que_respondio, crudo (opaco)
+
+orquestador.ejecutar(sesion, pedido, borrador, proveedor, topes):
+  repetir hasta FIN, tope de turnos (12), de llamadas (60) o de costo:
+    turno = proveedor.turno(...)                      # el historial es SOLO de agregar (append-only)
+    registrar turno y uso
+    si turno.fin es LIMITE o RECHAZO: descartar el turno, informar (9e, 9j), terminar
+    para cada llamada, en su orden:
+      validar (esquema -> semántica -> citas -> construcción del modelo espacial)   # §7
+      si es de lectura: ejecutar y devolver el resultado minimizado (§8.1), limpio y delimitado (§8.7)
+      si es de propuesta y es válida: agregarla a las pendientes; devolver su id
+      si no es válida: devolver el motivo como error de la herramienta (9c)
+    devolver TODOS los resultados del turno en un solo mensaje
+  -> propuestas pendientes + resultado hipotético (elaborar_borrador sobre borrador + pendientes)
+```
+
+- **Un proveedor por sesión (RS4‑5).** El historial de Claude guarda los bloques del modelo tal como llegaron
+  (`Turno.crudo`); con los modelos vigentes los bloques de razonamiento están atados al modelo y a la conversación, y
+  editar o mezclar el historial los invalida. Cambiar de proveedor abre **otra sesión** con el mismo pedido y el
+  borrador vigente; nunca se mezclan transcripciones.
+- **Determinismo del lado del sistema.** Mismo guion grabado → mismas propuestas, mismo orden, mismo registro. El
+  modelo real no es determinista (en Claude Opus 5.5 no se fijan parámetros de muestreo; a reverificar en S4.0); el
+experimento lo trata
+  con repeticiones (§9.4).
+- **Rendimiento.** `pedir_informe_auditoria` y el resultado hipotético usan `elaborar_borrador`, sujeto a RNF‑11
+  (≤ 2 s con 500 puntos); el bucle no agrega cálculo propio.
+
+### Origen «propuesta de IA» sin tocar el núcleo (S4 §5.4)
+
+| Dónde | Cómo se marca | Quién lo lee |
+|---|---|---|
+| Filas del espacio (ambientes, fuentes, puntos, recorridos) | un `OrigenMedida` por propuesta aceptada con **`TipoOrigen.IA`** (nuevo, en `adapters/espacio/origen.py`), referencia obligatoria `proveedor`, `modelo`, `sesion`, `propuesta`; opcional `supuestos` (campos que el modelo supuso, con su motivo) | R8: referencia incompleta → ERROR (como cualquier origen); con `supuestos` → **ADVERTENCIA** por campo supuesto («alto supuesto por la IA: …»); sin supuestos y completa → sin hallazgo. La hoja muestra «Propuesta de IA» como rótulo del tipo |
+| Partidas que no vienen del espacio | `ItemComputo` en `Borrador.items_base` con `origen_tipo = MANUAL` y `origen_id = "ia:<sesion>:<propuesta>"`; sin texto en `parametros` (DA‑SF‑8) ni en `especificaciones` | R1 ya advierte toda cantidad MANUAL sin regla; el Estado y la pestaña de trazabilidad muestran «Propuesta de IA» por el prefijo `ia:` y la fila de `ia_propuestas` |
+| La versión guardada | `RegistroCambio.fuente` = «propuesta de IA, sesión N, <proveedor>/<modelo>»; `responsable` = usuario | trazabilidad de UC‑15; paquete auditado de S3 |
+
+**Por qué no `OrigenTipo.IA` en `core/contracts`.** Sería un cambio aditivo al contrato congelado (NORMAS §5) y
+abriría el expediente SL‑E10. Con el prefijo `ia:` y el registro `ia_*` la procedencia queda completa y R1 ya trata
+esas cantidades como no derivables. **Costo (RS4‑3):** el núcleo no distingue «manual de una persona» de «manual de
+la IA» al agrupar hallazgos; si los encargos o el tutor lo exigen, SL‑E10 se abre con su TDD y su rama de núcleo.
