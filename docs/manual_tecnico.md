@@ -690,3 +690,38 @@ función pura) y su memoria en `tests/fixtures/memorias/`, con expediente si est
 de `tests/fixtures/bcv/FUENTE.md` se versionaron antes que el código que prueban (`S1-MEM`, `S1-FUENTE`
 de `scripts/meta_silice.py`). La base de prueba de la 0.6.0 (`tests/fixtures/bases/v0_6_0/`, con
 `s1.db`) se generó con el código de la etiqueta `v0.6.0` (`scripts/generar_base_prueba.py`).
+
+## 14. Construir el instalador
+
+`uv run python instalador/construir.py --perfil basico|completo` (solo Windows, con Inno Setup 6):
+instala el Python autónomo de `uv`, exporta las capas desde `uv.lock` (`--frozen`, nunca resuelve),
+copia el código según `instalador/manifiesto.toml` (lista blanca), compila, reúne las licencias y
+llama a `ISCC.exe` con `instalador/silice.iss` (UTF‑8 con BOM, lo agrega `construir.py`). El
+resultado
+queda en `build/salida/` con `manifiesto.json` y `SHA256SUMS-<perfil>`. Lo que no está en el
+manifiesto
+no viaja; `tests/unit/test_manifiesto.py` lo comprueba. La CI lo repite en `instalador.yml` y corre
+la
+prueba de humo (`instalador/humo.ps1`).
+
+## 15. La orden `operacion`
+
+`python -m operacion <orden>`: `arrancar`, `parar`, `migrar`, `respaldar`, `restaurar`, `adoptar`,
+`casos`, `revision`, `demostracion`, `red-local {activar,desactivar,estado}`, `eventos
+{pendientes,revisar}`, `verificar-programa`, `verificar-instalador`, `generar-clave-proyecto`,
+`firmar-sumas`, `huella-clave-proyecto` y `diagnostico-similitud` (las de la clave del proyecto y
+`verificar-instalador` llegan con la Tarea 3 del plan, que la genera Eugenio). Los accesos directos del
+instalador llaman a `arrancar` y `parar` con `-E -s -B -X utf8`.
+
+## 16. Publicar una versión
+
+1. `CHANGELOG.md`: las líneas de `[Sin publicar]` pasan a `## [x.y.z] - AAAA-MM-DD`.
+2. `pyproject.toml`: la versión en PEP 440 (`1.0.0rc1`); `uv lock`.
+3. `uv run python scripts/meta_silice.py --version <x.y.z> --hasta <última fase> --junit
+   reporte-pruebas.xml` en OK.
+4. PR, CI verde, fusión con merge commit y etiqueta anotada `vX.Y.Z[-rc.N]` en `main`
+   (`scripts/verificar_version.py` la compara con `pyproject.toml`).
+5. Bajar los artefactos del flujo (`gh run download`), `instalador/publicar.py reunir …` (Tarea 20 del plan) arma el
+   `SHA256SUMS` único y el controlador lo firma en su equipo con `firmar-sumas` (la clave privada no
+   está en el repositorio ni en la CI).
+6. `v1.0-tesis` es un alias anotado que apunta al commit de `v1.0.0` (o de un `v1.0.x`).

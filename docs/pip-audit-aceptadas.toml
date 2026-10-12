@@ -1,0 +1,8 @@
+# Vulnerabilidades conocidas que la 1.0.0 acepta, cada una con su ruling y su vencimiento (SEG-14).
+# Sin entrada aquí, una vulnerabilidad hace fallar el flujo del instalador (spec S5 §10.2).
+#
+# [[aceptada]]
+# id = "PYSEC-0000-00000"        # el id de pip-audit o cualquiera de sus alias (CVE-…, GHSA-…)
+# ruling = "RP10-20"             # el ruling de la bitácora que la acepta
+# hasta = 2026-12-31             # fecha de vencimiento: después vuelve a ser un fallo
+# razon = "no se llama a la función afectada"
