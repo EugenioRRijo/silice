@@ -413,6 +413,35 @@ no usa `stamp`. La prueba de deriva (RNF‑20, de S5) está activa desde S1: una
 la creada desde los metadatos. Como Alembic ya está, un cambio posterior de columnas (p. ej. la cita a la
 valuación que agrega S2 en `ejecutado_periodo`, §8.6) es una revisión más, no una tabla rehecha.
 
+### 2.6 Control de obra (S2): valuaciones, costos reales y decisión de recuperación
+
+Fuente: [spec S2 §6.1](especificaciones/2026-10-11-silice-s2-presupuesto-vivo-design.md). Todas las tablas son aditivas
+(ruling SF3‑E0: tablas, no columnas), viven en un solo módulo, `core/models/control.py` (reexportadas desde
+`core.models`), y entran con las revisiones de Alembic `caso_0005_s2_valuaciones` (ocho tablas) y
+`caso_0006_s2_decision` (`decision_recuperacion`), encadenadas tras `caso_0004_s1_reajuste` (RV‑3). Viven en la
+base del caso (RV‑4). Ningún modelo existente gana columnas. Son **nueve** tablas: las siete del expediente del
+spec, `decision_recuperacion` y la cita de un período de reajuste a sus valuaciones (`cita_valuacion`, ruling RP7‑4
+del plan de la 0.7.0: S1 no se enmienda con una columna en `ejecutado_periodo`).
+
+| Tabla | Columnas | Expediente |
+|---|---|---|
+| `linea_base_control` | `id`, `proyecto_id`, `presupuesto_id` (versión), `desde` (fecha), `perspectiva` (`costo`/`precio`), `fuente`, `responsable`, `fecha_hora` | SL‑E4; la vigente al corte es la de mayor `desde` ≤ corte; cambiarla es declarar una fila nueva; queda **invalidada** si la moneda de su versión ya no es la del proyecto (RV‑11): se calcula, no se escribe |
+| `calendario_obra` | `linea_base_id` (PK), `fecha_inicio`, `dias_por_periodo` (≥ 1), `feriados` (texto JSON de fechas ISO) | SL‑E4 |
+| `parametros_control` | `proyecto_id` (PK), umbrales de §4.5, `eta_cuadrilla`, `cuadrillas_max`, `eta_horas_extra`, `horas_extra_dia`, `recargo_horas_extra`, `fcas_en_horas_extra`, `penalizacion_diaria`, `fuente_penalizacion` | SL‑E4; sin fila, los valores por defecto de §4.5 y §4.6 |
+| `valuacion` | `id`, `proyecto_id`, `numero`, `desde`, `hasta`, `fecha`, `inspector`, `origen` (`manual` o `excel:<archivo>`), `fuente`, `responsable`, `fecha_hora` | SL‑E4; sin `UPDATE` ni `DELETE` en `core`; número y campos pueden faltar (R14 los marca); cuenta desde su registro (`fecha_hora`) hasta que se anula (RV‑18, S2‑R14) |
+| `linea_valuacion` | `id`, `valuacion_id`, `codigo_partida`, `cantidad` (≥ 0), `fecha_medicion` (anulable), `observacion` | SL‑E4; cantidad **del período**, no acumulada |
+| `anulacion_valuacion` | `valuacion_id` (PK), `motivo`, `responsable`, `fecha_hora` | SL‑E4; la anulada se conserva |
+| `costo_real` | `id`, `proyecto_id`, `valuacion_id` (anulable), `codigo_partida` (anulable = no asignado), `monto`, `moneda`, `fecha`, `fuente`, `responsable` | SL‑E4; se convierte con `tasa_aplicable(fecha)` de S1; no se guarda el convertido |
+| `cita_valuacion` | `id`, `periodo_id` (→ `periodo_reajuste`), `valuacion_id` (→ `valuacion`); única por (`periodo_id`, `valuacion_id`) | SL‑E4 (RP7‑4); las valuaciones que un período de un estudio de S1 usó para su ejecutado |
+| `decision_recuperacion` | `id`, `proyecto_id`, `linea_base_id`, `version_resultante_id`, `fecha_corte`, `opcion`, `detalle` (JSON: partidas, *k*, *h*, declaración de independencia), `costo_directo_adicional`, `costo_indirecto`, `penalizacion`, `termino` (fecha), `spi`, `cpi`, `eac`, `pe` (anulable), `supuestos` (JSON: nombre, valor, naturaleza), `fuente`, `responsable`, `fecha_hora` | SL‑E6 (`caso_0006`); la foto de lo que el usuario vio |
+
+Todos los montos y cantidades en `DecimalExacto`. Una base anterior (clínica, TI‑001, importadas y las de S1) abre
+por `preparar_base` (`upgrade head`) y gana las tablas sin perder filas (prueba de SL‑E4). Ninguna función de
+`core` emite `UPDATE` ni `DELETE` sobre estas tablas, salvo `parametros_control` (que se cambia con su
+`RegistroCambio`): por eso sus filas viajan en `anexos/control.json` del paquete de S3 con huella y **sin cadena
+propia** (RV‑8; límite declarado). Se **guardan** las entradas y la decisión; indicadores, alertas y hallazgos de
+R13 y R14 se **recalculan** y no se guardan (S2‑R13).
+
 ## 3. Diagrama entidad‑relación
 
 ```mermaid

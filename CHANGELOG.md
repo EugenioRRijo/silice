@@ -6,6 +6,8 @@ etiquetar, las líneas pasan a la sección de la versión. La historia anterior 
 
 ## [Sin publicar]
 
+- S2‑0 (0.7.0 en construcción): especificación de valuaciones, valor ganado, alertas y recuperación (UC‑19, UC‑20, RF‑72 a RF‑79, RNF‑15, R13 y R14 en la ERS); memoria a mano OB‑S2 con su XLSX y las fronteras de otros dominios; expedientes SL‑E4, SL‑E5 y SL‑E6; parte S2 de la meta (`scripts/meta_silice_s2.py`, `--version 0.7.0 --hasta S2-0`).
+
 ## [0.6.0] - 2026-10-12
 
 ### Agregado

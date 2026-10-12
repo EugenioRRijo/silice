@@ -60,6 +60,7 @@ NOMBRE_GUARDIA = "_guardia_de_red"
 #: Fases de cada version, en orden de evaluacion (no de fusion). T0 es la fase transversal.
 FASES: dict[str, tuple[str, ...]] = {
     "0.6.0": ("T0", "S5-1", "S1-0", "S1-1", "S1-2", "S1-3", "S1-4", "S1-5"),
+    "0.7.0": ("S2-0", "S2-1", "S2-2", "S2-3", "S2-4", "S2-5"),
 }
 
 #: Bloque de regresion literal (maestro §6.3): grupo -> nodeids. Estas pruebas no se editan; si un
