@@ -14,6 +14,7 @@ modulo no importa `ui.app`, que si importa Streamlit.
 
 from __future__ import annotations
 
+from collections.abc import Collection
 from dataclasses import dataclass
 
 #: Ruta URL de la pantalla de Inicio (el nombre de su modulo, `ui/paginas/inicio.py`). El Inicio no
@@ -57,6 +58,12 @@ class Recorrido:
                 f"el recorrido {self.nombre!r} pasa dos veces por la misma pantalla: el paso "
                 "siguiente seria ambiguo"
             )
+
+    def visible_en(self, rutas: Collection[str]) -> Recorrido | None:
+        """El recorrido sin los pasos de pantallas que el rol no ve (S3 §5.7, RF-37): ningún
+        paso apunta a una pantalla ausente del menú. `None` si no queda ninguno."""
+        pasos = tuple(paso for paso in self.pasos if paso.pagina in rutas)
+        return Recorrido(self.nombre, self.proposito, pasos) if pasos else None
 
     def posicion(self, ruta: str) -> int | None:
         """Numero del paso (desde 1) que ocurre en la pantalla `ruta`.

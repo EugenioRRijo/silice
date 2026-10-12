@@ -18,11 +18,14 @@ from core.catalog import Catalogo, CatalogoIncompleto, abrir_sesion, crear_motor
 from core.verification.informe import DECIMALES_PRESENTACION
 from core.verification.texto import formatear_decimal
 from operacion.base_datos import preparar_base
+from seguridad.permisos import Accion
+from ui import sesion as ui_sesion
 from ui.caso import ruta_caso
 
 
 def render() -> None:
     """Dos tablas de solo lectura: partidas del catalogo e insumos con su precio vigente."""
+    ui_sesion.exigir(Accion.LEER_PROYECTO)
     st.caption("Partidas e insumos del catalogo, con el precio vigente de cada insumo.")
 
     ruta = ruta_caso()

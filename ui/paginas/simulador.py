@@ -21,6 +21,8 @@ from pandas import DataFrame
 from core.catalog import Catalogo, abrir_sesion, crear_motor
 from operacion.base_datos import preparar_base
 from scripts.simular_lista import simular
+from seguridad.permisos import Accion
+from ui import sesion as ui_sesion
 from ui.caso import ruta_caso
 
 COLUMNAS_CSV = ("tipo", "insumo", "unidad", "precio")
@@ -29,6 +31,7 @@ CLAVE_RESULTADO = "resultado_simulador"
 
 def render() -> None:
     """Formulario en la barra lateral; vista previa y descarga del CSV en el cuerpo."""
+    ui_sesion.exigir(Accion.EDITAR_HOJA)
     st.caption(
         "Toma la lista de precios vigente del catalogo y aplica variaciones deterministas segun "
         "una semilla, en el formato tipo,insumo,unidad,precio. Herramienta de prueba, no una "

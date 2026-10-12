@@ -49,6 +49,8 @@ from operacion.base_datos import (
     revisiones_conocidas,
 )
 from operacion.config import ruta_caso_por_defecto
+from seguridad.permisos import Accion
+from ui import sesion as ui_sesion
 from ui.entorno import VARIABLE_CASO, leer_variable
 
 #: Sin caso fijado ni `SILICE_CASO`: `None` es el caso por defecto de la carpeta de datos. Las
@@ -92,9 +94,9 @@ def fijar_caso(ruta: Path | str) -> None:
 
 
 def puede_cambiar_de_caso() -> bool:
-    """«Cambiar de caso»: solo *arma* y administrador (maestro §4.3). En la 0.6.0 no hay cuentas,
-    asi que todos pueden; S3-1 reemplaza este cuerpo por la comprobacion del rol de la sesion."""
-    return True
+    """«Cambiar de caso»: solo *arma* y administrador (maestro §4.3, S3 §5.1). Con el acceso
+    apagado (transicion, RP8-4) la sesion de desarrollo tiene todos los roles."""
+    return ui_sesion.puede(Accion.CAMBIAR_CASO)
 
 
 def abrir_caso(nombre: str, carpeta: Path | None = None) -> Path:
