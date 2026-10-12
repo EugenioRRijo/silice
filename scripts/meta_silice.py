@@ -62,6 +62,7 @@ FASES: dict[str, tuple[str, ...]] = {
     "0.6.0": ("T0", "S5-1", "S1-0", "S1-1", "S1-2", "S1-3", "S1-4", "S1-5"),
     "0.7.0": ("S2-0", "S2-1", "S2-2", "S2-3", "S2-4", "S2-5"),
     "0.8.0": ("S3-0", "S3-1", "S3-2", "S3-3", "S3-4", "S3-5", "S3-6", "S3-7"),
+    "0.9.0": ("S4-0", "S4-1", "S4-2", "S4-3", "S4-4"),
 }
 
 #: Bloque de regresion literal (maestro §6.3): grupo -> nodeids. Estas pruebas no se editan; si un

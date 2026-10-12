@@ -63,6 +63,8 @@
 > Los RF nuevos quedan **sin implementar** hasta su fase (columna «Incremento»); el estado de cada uno
 > vive solo en [plan_pruebas.md §8](plan_pruebas.md#8-especificación-de-casos-trazabilidad-rf--prueba).
 
+> **Enmienda S4.0 (2026‑10‑11):** la reserva de UC‑09 queda resuelta con RF‑32 y RF‑90 a RF‑95 (maestro §9); RF‑64 pertenece a S1. Se agregan además UC‑09 y RNF‑18; se enmienda RNF‑08 (§3.3). Los conteos los calcula la meta (`scripts/meta_silice.py`), que comprueba la **presencia** de cada número.
+
 > **Enmienda de Sílice 0.6.0 (S1; spec [S1](especificaciones/2026-10-11-silice-s1-moneda-reajuste-design.md) §3):** se agregan **UC‑17** (base de precios de la empresa e índices del BCV) y **UC‑18** (reajuste de la obra ejecutada), **RF‑64 a RF‑71** y **RNF‑14**; se enmiendan UC‑01 (moneda al crear), UC‑02 y UC‑15 (§2.2). Las referencias «§» de esos casos de uso y requisitos son al spec S1. Los conteos los calcula la meta (`scripts/meta_silice.py`), que comprueba la **presencia** de cada número.
 
 > **Enmienda de Sílice 0.6.0 (S5‑1 adelantado; spec
@@ -173,8 +175,9 @@ produce presupuesto, curva de inversión, informe de auditoría y exportación a
 | UC‑18 | Reajustar los precios de la obra ejecutada | S1‑4 (Sílice 0.6.0) |
 | UC‑19 | Registrar una valuación de obra | S2‑1 (Sílice 0.7.0) |
 | UC‑20 | Controlar el avance y recuperar un retraso | S2‑2, S2‑3 (Sílice 0.7.0) |
+| UC‑09 | Armar el presupuesto con el asistente de IA | S4.2 a S4.3 (Sílice 0.9.0) |
 
-UC‑09 queda vacante en este documento: [PLAN_ASISTENTE.md](../PLAN_ASISTENTE.md) (Sesión A0.1, aún no
+**Enmienda S4.0 (2026‑10‑11):** UC‑09 queda definido en §2.2 y sus requisitos son RF‑32 y RF‑90 a RF‑95 (RF‑64 pertenece a S1). Lo que sigue es la historia de la reserva. UC‑09 queda vacante en este documento: [PLAN_ASISTENTE.md](../PLAN_ASISTENTE.md) (Sesión A0.1, aún no
 ejecutada) lo reserva para «Generar presupuesto asistido desde las necesidades del usuario». UC‑10 y
 UC‑11 se declararon en la Sesión P0.1 del sprint del prototipo AREN.IA (hoy Sílice)
 ([PLAN_PROTOTIPO.md](../PLAN_PROTOTIPO.md)); su implementación en `ui/composicion.py` y
@@ -813,6 +816,49 @@ implementados en `core/contracts/`.
   o sin mano de obra): «más cuadrillas» y «horas extra» dan «no aplica» tipado para ella (§4.6); *5a* el usuario
   no elige: nada cambia salvo lo de los pasos 1–3; *6a* sin fuente o responsable: se rechaza (como UC‑15a).
 - **Postcondiciones:** la **línea base no cambia** (S2‑R3); la versión de la decisión es la vigente de la hoja.
+#### UC‑09 — Armar el presupuesto con el asistente de IA
+
+> Enmienda S4.0 (2026‑10‑11, spec [S4](especificaciones/2026-10-11-silice-s4-asistente-ia-design.md) §3.1): las referencias «§» de este caso de uso y de RF‑32, RF‑90 a RF‑95 y RNF‑18 son al spec S4.
+
+- **Actor principal:** **quien arma** (proyectista o estimador; rol de S3)
+- **Actores secundarios:** el **proveedor de IA** (sistema externo en modo nube, proceso local en modo local); el **administrador de la instalación**, que activa el asistente, registra la clave de IA de la empresa (solo desde el propio equipo, RV‑15) y fija el tope de costo
+- **Precondiciones:** sesión iniciada con rol *quien arma* (S3); proyecto abierto en la hoja (UC‑15) en una versión que no esté en solo lectura; al menos un proveedor **disponible** (§5.3)
+- **Disparador:** el usuario escribe su pedido en lenguaje natural («baño de 2 × 1,5 m con lavamanos, poceta y ducha; oficina contigua con 4 puntos de datos»)
+
+**Flujo principal.**
+1. El usuario abre el panel del asistente en la hoja, elige el proveedor (o queda el de la instalación) y ve la
+   **vista previa de lo que se enviará** (§8.2) y la **estimación de costo** (§8.4).
+2. Escribe el pedido y pulsa *Proponer*. El sistema abre una **sesión del asistente** (registro en `ia_*`, §5.5).
+3. El modelo consulta el borrador y busca partidas con las herramientas de lectura (§6).
+4. El modelo propone ambientes, fuentes, puntos, recorridos y partidas con las herramientas de propuesta. Cada
+   llamada se **valida** (esquema Pydantic, validación semántica y construcción del modelo espacial, §7) antes de
+   quedar como **propuesta pendiente**; una llamada inválida se devuelve al modelo con el motivo.
+5. El sistema muestra las propuestas pendientes como un **diff del borrador**, y el resultado que tendrían: presupuesto,
+   informe de auditoría completo y Estado por fila, calculados por el sistema sobre un borrador hipotético.
+6. El usuario **acepta, edita o rechaza** cada propuesta. Las aceptadas entran al borrador con **origen «propuesta de
+   IA»** (§5.4). El borrador se recalcula y se audita (RF‑52): el informe se genera siempre (NORMAS §2.7).
+7. El usuario guarda la versión por el camino de siempre (UC‑15, RF‑53): `guardar_version` exige **fuente** (el
+   sistema la prellena: «propuesta de IA, sesión N, proveedor y modelo») y **responsable** (el usuario que inició
+   sesión). La IA nunca es responsable.
+
+**Flujos alternos.**
+
+| # | Condición | Comportamiento |
+|---|---|---|
+| 9a | modo nube sin conexión, sin clave de IA o con la clave de IA rechazada | el sistema lo dice con un mensaje claro y ofrece el modo local si está disponible; nunca reintenta en silencio con otro proveedor (RS4‑5) |
+| 9b | modo local: el servicio de Ollama no responde o el modelo no está instalado | mensaje con lo que falta; el asistente queda inactivo; la hoja sigue funcionando a mano |
+| 9c | una llamada no pasa la validación (§7) | no toca el borrador; el motivo vuelve al modelo como error de la herramienta; tras **3** rechazos seguidos de la misma herramienta la sesión se detiene y lo informa |
+| 9d | una necesidad sin partida en el catálogo | el modelo la declara con `declarar_sin_partida`; queda en el informe de la sesión como pendiente (UC‑03 / RF‑16); **no se inventa** una partida |
+| 9e | el proveedor rechaza el pedido (`refusal` en Claude) | se informa con la categoría si existe; las propuestas ya validadas se conservan |
+| 9f | se alcanza el tope de turnos, de llamadas o de costo de la sesión (§8.4) | la sesión se detiene y conserva las propuestas válidas; el usuario puede abrir otra |
+| 9g | el modelo pregunta (`preguntar_al_usuario`) | la pregunta se muestra como texto ajeno (`texto_seguro()`, RV‑14) con el rótulo «pregunta generada por la IA: no escriba contraseñas, claves ni precios»; el turno espera la respuesta, que pasa el filtro de secretos de §8.7 y entra al registro como parte del pedido (sus cifras se pueden citar, §7.3) |
+| 9h | el usuario rechaza todo o cancela | el borrador queda idéntico al de antes de la sesión; el registro de la sesión se conserva |
+| 9i | la versión abierta está en solo lectura (UC‑15e) | el asistente no se abre; se explica por qué |
+| 9j | respuesta cortada por el límite de salida (`max_tokens`) o turno mal formado | el turno se descarta entero (no se aplican llamadas a medias) y se informa |
+
+**Postcondiciones.** Nada se persiste en el presupuesto sin la confirmación y el guardado del usuario. Toda fila
+aceptada cita su origen «propuesta de IA». El registro de la sesión (pedido, turnos, llamadas, validaciones,
+decisiones, proveedor, modelo, uso y costo) queda guardado aunque no se guarde la versión.
 
 #### UC existentes que se enmiendan
 
@@ -1004,6 +1050,8 @@ asignado (RF‑64 (el siguiente número libre tras RF‑63; la reserva de UC‑0
 [PLAN_ASISTENTE.md](../PLAN_ASISTENTE.md):78‑80, que queda desactualizada hasta que la Sesión A0.1
 la corrija.
 
+**Enmienda S4.0 (2026‑10‑11):** la reserva de UC‑09 queda resuelta con RF‑32 y RF‑90 a RF‑95 (maestro §9); RF‑64 pertenece a S1.
+
 | RF | Enunciado | Prioridad | UC | Incremento | Criterio de aceptación |
 |---|---|---|---|---|---|
 | RF‑01 | El sistema calculará el precio unitario de una partida a partir de su composición y los parámetros de costo según la fórmula de NORMAS.md §4 | Esencial | UC‑01 | I0.3 | Los cinco precios unitarios de la línea base se reproducen con ± 0,01; los materiales no se dividen entre el rendimiento y la administración y la utilidad se aplican en cascada |
@@ -1096,6 +1144,13 @@ la corrija.
 | RF‑88 | APU de otras herramientas: Excel con el formato UC‑05 (plantilla descargable) auditado en memoria desde la vista de revisión, y ruta `POST /v1/auditorias` con **clave de API** que recibe el documento canónico (§6.1) y devuelve el informe; cuerpo limitado por un middleware; `TrustedHostMiddleware` | Esencial | UC‑23, UC‑05 | S3‑4 | Excel con partidas del catálogo se audita sin el rechazo de `importacion.py:208`; sin clave o con clave revocada, 401 sin auditar; cuerpo de 20 MiB pasa y de 20 MiB + 1 B da 413 sin leerlo entero; con clave, el informe coincide con el de la vista |
 | RF‑89 | Auditoría de planos: auditoría de archivo DXF, requisitos IDS del IFC con `ifctester`, R15 (coherencia geométrica, `shapely`, severidad por condición), R16 (contraste entre dos fuentes, con el costo de la diferencia) y evaluación por **errores sembrados** con el protocolo de §13.5 | Esencial | UC‑14 | S3‑5 | cada error del catálogo sembrado se detecta con la regla o el ítem de informe declarados; cada fila de R15 y R16 cumple sus fronteras (§11.3, §11.4); OF‑001 limpio da el conjunto exacto escrito en S3‑0; la tasa de detección y las falsas alarmas cumplen la meta del protocolo: 100 % de lo detectable y 0 falsas alarmas (ratificada por Eugenio el 2026‑10‑11, pregunta P8 del maestro §10.3) |
 | RF‑100 | Anomalías en variaciones de precio: sobre la serie fechada de precios de un insumo (listas de la empresa de S1, RF‑67, y listas MaPreX, cada precio con su fecha), llevada a USD con la tasa de cada precio (RF‑65) y reducida a variaciones entre puntos consecutivos, el sistema marca las variaciones atípicas como **ADVERTENCIA** (`CODIGO_ATIPICO`), **nunca ERROR**, reutilizando el detector existente `ml.anomaly.precios_atipicos` (Isolation Forest, `SEMILLA` = 42, `UMBRAL_ATIPICO` = −0,05, se abstiene con menos de `MINIMO_OBSERVACIONES` = 8 variaciones) | Deseable | UC‑17, UC‑23 | S3‑6 | serie sembrada de 10 precios (9 variaciones) con **un** atípico sembrado → el conjunto exacto de hallazgos es ese único punto, con severidad ADVERTENCIA; serie de 10 precios **sin** atípico → conjunto vacío; serie de 8 precios (7 variaciones) → abstención (vacío); ningún hallazgo de RF‑100 es ERROR ni bloquea guardar, exportar o firmar; sin el extra `ml` no hay hallazgo ni traza |
+| RF‑32 | El asistente recibe un pedido en lenguaje natural sobre el proyecto abierto y responde **solo con propuestas** sobre el borrador de la hoja, mediante las herramientas de §6 | Esencial | UC‑09 | S4.2 (Sílice 0.9.0) | con el proveedor guionado (§10.1), un pedido produce propuestas pendientes y **ningún cambio** en el borrador hasta que el usuario acepta |
+| RF‑90 | Una interfaz común de proveedor (`ProveedorIA`, §5.3) con dos implementaciones, Claude (API de Anthropic, uso de herramientas) y un modelo local por Ollama; elección por instalación y por sesión; si el proveedor elegido no está disponible, se ofrece el otro sin cambiar de proveedor a mitad de una sesión | Esencial | UC‑09 | S4.2 (Sílice 0.9.0) | **(a)** la interfaz común y el adaptador de Claude pasan las pruebas de contrato sobre respuestas grabadas; **(b)** el adaptador local pasa las **mismas** pruebas de contrato y, sin conexión, se ofrece el local (9a). Si la prueba exploratoria de S4.0 (§8.6) declara el modo local «solo para pruebas» o el orden de caída (§11) lo retira, (b) se enmienda con ruling registrado; no se da por cumplido en silencio |
+| RF‑91 | Cada llamada del modelo se valida antes de tocar el borrador: esquema Pydantic estricto, validación semántica y construcción del modelo espacial (§7); todo dato numérico de entrada trae **cita literal** del pedido o **supuesto declarado**; no existe campo de precio, total ni cantidad derivada | Esencial | UC‑09 | S4.1 (Sílice 0.9.0) | cada causa de rechazo de §7.4 tiene su prueba con el caso frontera; un número sin cita no entra |
+| RF‑92 | Las propuestas quedan pendientes, el usuario las acepta, edita o rechaza una por una, y las aceptadas entran al borrador con **origen «propuesta de IA»**; el borrador se audita siempre con R1–R7 y las reglas externas que la tabla del maestro asigna a la hoja (RV‑9); guardar exige fuente y responsable humano | Esencial | UC‑09, UC‑15 | S4.1, S4.3 (Sílice 0.9.0) | una propuesta rechazada deja el borrador igual (comparación exacta); una aceptada aparece con su origen en la hoja, en el Estado y en el Excel; la versión guardada lleva el `RegistroCambio` con la fuente de la sesión |
+| RF‑93 | Registro de cada sesión del asistente (`ia_*`): pedido, turnos, llamadas con su resultado de validación, decisiones del usuario, proveedor, modelo que respondió, uso de tokens y costo estimado | Esencial | UC‑09 | S4.2 (Sílice 0.9.0) | una sesión guionada deja exactamente las filas esperadas, en orden; la clave de IA de la empresa nunca aparece (RNF‑18) |
+| RF‑94 | Privacidad y costo: vista previa de lo que se enviará, minimización (§8.1), modo local sin envío fuera del equipo, clave de IA de cada empresa protegida (§8.3), defensas ante texto ajeno (§8.7) y **tope de costo por sesión** (§8.4) | Esencial | UC‑09 | S4.2, S4.3 (Sílice 0.9.0) | la instantánea de lo enviado para el borrador de prueba coincide con la lista blanca de §8.1; con el proveedor guionado y precios de prueba, la sesión se detiene (9f) en el turno exacto en que el costo acumulado alcanza el tope, calculado a mano, y conserva las propuestas válidas; RNF‑18 |
+| RF‑95 | El experimento de §9: banco de tareas de referencia congelado, corrida reproducible con los dos proveedores y cálculo de las métricas, que genera `docs/resultados_asistente.md` | Esencial | — (tesis, OE‑H2) | S4.0, S4.4 (Sílice 0.9.0) | el script de métricas, con corridas de prueba hechas a mano, da las cifras calculadas a mano (oráculo independiente, §10.1) |
 
 Los criterios de esta tabla son afirmaciones comprobables y no llevan estado. **La prueba que
 demuestra cada criterio y su estado (verde, parcial, sin prueba o no implementado) viven una sola vez,
@@ -1133,6 +1188,7 @@ Cobertura por caso de uso (mínimos exigidos por el criterio de cierre entre par
 | UC‑21 | Iniciar sesión y administrar cuentas y claves | S3‑0 (declarado), S3‑1, S3‑3 |
 | UC‑22 | Entregar el paquete auditado | S3‑0 (declarado), S3‑3 |
 | UC‑23 | Revisar un paquete o un presupuesto externo | S3‑0 (declarado), S3‑4 |
+| UC‑09 | RF‑32, RF‑90, RF‑91, RF‑92, RF‑93, RF‑94, RF‑95 | S4 (Sílice 0.9.0; la meta cuenta) |
 | Transversales | RF‑60 (todos los UC); RF‑63 y RF‑64 (UC‑01); RF‑64, RF‑65, RF‑66 y RF‑68 (también UC‑15); RF‑62 (también UC‑05); RF‑56 (también UC‑02 y UC‑07) | — |
 | **Total** | RF‑01 … RF‑31, RF‑33 … RF‑63 y, desde Sílice 0.6.0, RF‑64 … RF‑71 y RF‑96 y, desde Sílice 0.7.0, RF‑72 … RF‑79 (RF‑32 vacante — reservado a UC‑09; RF‑03 traza a dos UC; RF‑33 y RF‑34 trazan a UC‑10 y UC‑11; RF‑56, RF‑61 y RF‑62 trazan a más de un UC) | **62** hasta el sprint final; desde Sílice 0.6.0 los cuenta la meta |
 
@@ -1147,7 +1203,7 @@ Cobertura por caso de uso (mínimos exigidos por el criterio de cierre entre par
 | Mantenibilidad | RNF‑05 agregar un dominio no modifica `core/` | `git diff --stat core/`, `test_arquitectura.py` | vacío / verde |
 | Mantenibilidad | RNF‑06 cobertura de pruebas del núcleo | pytest‑cov | ≥ 80 % |
 | Portabilidad | RNF‑07 instalación con `uv sync` en Windows y Linux | pasos manuales | 0 |
-| Seguridad | RNF‑08 ejecución local: el sistema no requiere servicios externos ni credenciales de terceros, no invoca servicios externos en tiempo de ejecución y los datos residen en un archivo SQLite del equipo del usuario; las únicas credenciales son **locales**: las cuentas de la instalación (S3), guardadas en el propio equipo (enmienda única de la 0.8.0; la redacción final con todas sus excepciones, en S5‑0) | credenciales versionadas; llamadas de red durante la operación | 0 y 0, con dos excepciones declaradas: la descarga inicial del modelo de `sentence-transformers` (I2), del lado del servidor, que se cachea localmente; y la biblioteca three.js (`r128`), que el navegador descarga de `cdnjs.cloudflare.com` cada vez que se abre el Visor 3D (`URL_THREE_JS` en `ui/paginas/visor.py`), sin caché propia del sistema (INV‑077) |
+| Seguridad | RNF‑08 ejecución local: el sistema no requiere servicios externos ni credenciales de terceros, no invoca servicios externos en tiempo de ejecución y los datos residen en un archivo SQLite del equipo del usuario; las únicas credenciales son **locales**: las cuentas de la instalación (S3), guardadas en el propio equipo (enmienda única de la 0.8.0; la redacción final con todas sus excepciones, en S5‑0) | credenciales versionadas; llamadas de red durante la operación | 0 y 0, con dos excepciones declaradas: la descarga inicial del modelo de `sentence-transformers` (I2), del lado del servidor, que se cachea localmente; y la biblioteca three.js (`r128`), que el navegador descarga de `cdnjs.cloudflare.com` cada vez que se abre el Visor 3D (`URL_THREE_JS` en `ui/paginas/visor.py`), sin caché propia del sistema (INV‑077); y el asistente de IA en **modo nube** (S4, UC‑09), apagado por defecto: solo se activa cuando el administrador de la instalación registra la clave de IA de su empresa; envía al proveedor únicamente la lista blanca de S4 §8.1 (sin precios, montos ni nombres de proyecto, empresa o usuarios) y nada más. El modo local no es excepción. Pendiente del visto bueno del tutor (S5-0 consolida la numeración final, RV‑23) |
 | Compatibilidad | RNF‑09 entrada IFC 4 de cualquier modelador | archivos de ≥ 2 herramientas (p. ej. Revit y Bonsai) | cantidades extraídas iguales al cálculo manual en ambos; la compuerta G1 (I3.1) se cruzó con salvedad sobre un modelo generado programáticamente (sección 2.5); faltan los exports de dos modeladores, y la alternativa declarada es la entrada tabular |
 | Usabilidad | RNF‑10 capacidad de aprendizaje de la interfaz: una persona que nunca vio la aplicación llega sola del Inicio a un presupuesto en Excel con su hoja de auditoría | caso con persona CP‑07 ([guion_prueba_arenia.md](guion_prueba_arenia.md)) y bloque B del anexo A de [dossier_g0.md](dossier_g0.md) | en cada uno de los dos escenarios de CP‑07 (CP‑07 pasa solo si pasan ambos): sin ayuda, ≤ 20 min, bloque B ≥ 4,0 y ningún ítem < 3 |
 | Eficiencia de desempeño | RNF‑11 en `ui.hoja`, sin Streamlit, desde aplicar una edición hasta tener presupuesto, informe y punto de equilibrio (sin persistir) para un proyecto de 500 puntos | mediana de cinco corridas tras una de calentamiento, con `scripts/medir_rnf11.py` (se crea en SF3) y un generador determinista versionado (`scripts/generar_hoja_prueba.py`, ya en SF0) | ≤ 2 s. El veredicto se toma en el equipo de desarrollo, como RNF‑03; la CI ejecuta el script en Linux y Windows y **registra** la cifra sin romper la corrida; todo se anota en plan_pruebas §10 |
@@ -1155,6 +1211,7 @@ Cobertura por caso de uso (mínimos exigidos por el criterio de cierre entre par
 | Usabilidad | RNF‑13 capacidad de uso de la hoja: en las condiciones de CP‑07, con el **mismo número y perfil** de participantes que CP‑07 pero **personas distintas**, cada caso de CP‑08 a CP‑11 se completa sin ayuda | guion de pruebas con personas, en la fase Med; consigna, paradas y criterio fijados antes de medir | ≤ 15 min por todos los participantes, bloque B ≥ 4,0 y ningún ítem < 3; veredicto por caso. El costo en participantes se suma al plan de Med |
 | Fiabilidad | RNF‑14 reproducible y sin conexión: importar, convertir, auditar con R11/R12 y reajustar no hacen ninguna llamada de red; el mismo estudio de reajuste, con las mismas importaciones citadas, da el mismo resultado aunque después se importe una revisión de los índices | suite bajo la guardia de red única de `tests/conftest.py` (solo 127.0.0.1 y ::1) y recálculo del estudio tras importar una revisión | cero intentos de conexión a otro destino, guardia activa verificada por la meta; diferencia 0 exacta |
 | Eficiencia de desempeño | RNF‑15 en `ui.control`, sin Streamlit, desde registrar una valuación hasta tener informe de control, indicadores, alertas y reproyección, y desde pedir las opciones hasta tener las cuatro, para una obra de 500 partidas, 52 períodos semanales y 26 valuaciones | mediana de cinco corridas tras una de calentamiento, con `scripts/medir_rnf15.py` y un generador determinista versionado (`scripts/generar_obra_control.py`) | ≤ 2 s en cada uno de los dos trabajos. El veredicto se toma en el equipo de desarrollo, como RNF‑03 y RNF‑11; la CI ejecuta el script en Linux y Windows y **registra** la cifra sin romper la corrida; la meta comprueba que el script corrió y dejó su cifra: sin cifra es FALLA, no OK (PRU‑H21) |
+| Seguridad (confidencialidad) | RNF‑18 **(a)** En modo local, cero conexiones fuera del equipo: el anfitrión de Ollama debe ser de bucle local, comprobado por la **IP resuelta** (`127.0.0.0/8` o `::1`), no por el nombre; si no lo es, se trata como modo nube y se avisa. Se exige una **versión mínima** de Ollama, fijada en S4.0 (no tiene autenticación y ha tenido vulnerabilidades, SEG‑18). **(b)** En modo nube, solo viaja lo de la lista blanca de §8.1. **(c)** La clave de IA de la empresa nunca aparece en la base, en el registro `ia_*`, en los registros de la aplicación, en `st.session_state`, en el Excel ni en el paquete (incluido `anexos/ia.json`), y la pantalla nunca la muestra completa. **(d)** Ninguna prueba de la CI abre la red | pruebas por caso (§10.1): la guardia única de red de `tests/conftest.py` (RV‑17); búsqueda de la clave de prueba en todos esos destinos tras una sesión; instantánea de lo enviado; anfitrión cuyo nombre resuelve a una IP no local → tratado como nube | cero apariciones de la clave de IA; cero conexiones en la CI |
 | Mantenibilidad | RNF‑20 cero deriva de esquema en cada destino: una base llevada a `head` por las migraciones es igual a la creada con `create_all` de sus `METADATAS`, la autogeneración de Alembic contra ella no propone cambios, toda `MetaData` con tablas está en la lista de su destino y cada revisión baja y vuelve a subir | `tests/integration/test_migraciones.py` en Linux y Windows en cada PR | deriva 0 en los dos destinos, desde la 0.6.0 |
 | Seguridad | RNF‑16 Contraseñas de cuenta solo como Argon2 (parámetros por defecto de `argon2-cffi`, con semáforo); clave privada solo cifrada con `seguridad/secretos.py`; ningún secreto en registros, mensajes ni paquete; el 100 % de las alteraciones de §13.3 detectadas; ninguna página, acción ni ruta nueva accesible sin sesión, rol o clave; operaciones sensibles solo desde el propio equipo; límites del ZIP, del JSON y de la API (§8.4); texto ajeno siempre por `texto_seguro()`; mensajes sin traza | pruebas de §13.3 y §13.4; revisión por el encargo de seguridad con la tabla de amenazas (§12) | todas las pruebas de §13.3 y §13.4 del spec S3 en verde |
 | Usabilidad | RNF‑17 En las condiciones de CP‑07, con personas que no son el autor: (a) quien revisa abre un paquete y dice su estado de verificación y quién lo emitió, sin ayuda, en ≤ 5 min; (b) encuentra las diferencias sembradas de CP‑R1 en ≤ 20 min; (c) quien administra registra la clave de otra empresa comprobando su huella por teléfono en ≤ 10 min; bloque B ≥ 4,0, ningún ítem < 3 | guion en Med, con consigna, paradas y criterio fijados antes de medir. El **indicador del administrador** (horizonte §6.1) no se reduce a RNF‑17: se mide con su propio protocolo de dos condiciones (§13.5 a) | bloque B ≥ 4,0 y ningún ítem < 3, en los tiempos de la medición |
@@ -1229,6 +1286,7 @@ aquí: cada corrección está en su fila del [inventario del cierre](auditoria/2
 | UC‑18 | RF‑70, RF‑71 | S1‑4 (Sílice 0.6.0) | Sílice 0.6.0, fuera de los cinco indicadores |
 | UC‑19 | RF‑72, RF‑73, RF‑74, RF‑77 | S2‑1, S2‑2 (Sílice 0.7.0) | Sílice 0.7.0, fuera de los cinco indicadores |
 | UC‑20 | RF‑75, RF‑76, RF‑77, RF‑78, RF‑79 | S2‑2, S2‑3 (Sílice 0.7.0) | Sílice 0.7.0, fuera de los cinco indicadores |
+| UC‑09 | RF‑32, RF‑90, RF‑91, RF‑92, RF‑93, RF‑94, RF‑95 | S4.0 a S4.4 (Sílice 0.9.0) | Sílice 0.9.0, OE‑H2 (experimento del asistente), fuera de los cinco indicadores |
 | Transversal | RF‑60 | SF4 | prototipo de entrega AREN.IA (hoy Sílice), fuera de los cinco indicadores |
 | UC‑21 | RF‑80, RF‑81, RF‑82, RF‑84 | S3‑0 (declarado), S3‑1, S3‑3 | fuera de los cinco indicadores (seguridad de la entrega, S3) |
 | UC‑22 | RF‑83, RF‑84, RF‑85 | S3‑0 (declarado), S3‑2, S3‑3 | fuera de los cinco indicadores (seguridad de la entrega, S3) |
@@ -1241,7 +1299,7 @@ RNF‑07 en la integración continua; RNF‑08 por inspección del repositorio y
 RNF‑09 en la compuerta G1 (RF‑04); RNF‑10 con el caso con persona CP‑07, en la compuerta GU1b
 (fase Med) de [PLAN_UI.md](../PLAN_UI.md); RNF‑11 en UC‑15 (RF‑52), con `scripts/medir_rnf11.py`
 (SF3); RNF‑12 en UC‑14 y UC‑15 (RF‑50, RF‑51 y RF‑59), por pruebas por caso; RNF‑13 en UC‑13 a
-UC‑16, con los casos con personas CP‑08 a CP‑11 de la fase Med; RNF‑14 en UC‑17 y UC‑18 (RF‑69, RF‑71), con la guardia de red única de la suite; RNF‑16 en UC‑21 a UC‑23 (RF‑80 a RF‑89), con las pruebas de seguridad de S3 (§13.3 y §13.4 del spec) y la revisión del encargo de seguridad; RNF‑17 en UC‑23, con los casos con personas CP‑R1 y CP‑R2 de la fase Med. RNF‑04 y RNF‑10 son requisitos
+UC‑16, con los casos con personas CP‑08 a CP‑11 de la fase Med; RNF‑14 en UC‑17 y UC‑18 (RF‑69, RF‑71), con la guardia de red única de la suite; RNF‑16 en UC‑21 a UC‑23 (RF‑80 a RF‑89), con las pruebas de seguridad de S3 (§13.3 y §13.4 del spec) y la revisión del encargo de seguridad; RNF‑17 en UC‑23, con los casos con personas CP‑R1 y CP‑R2 de la fase Med; RNF‑18 en UC‑09 (RF‑94), con las pruebas por caso de S4 y la misma guardia. RNF‑04 y RNF‑10 son requisitos
 distintos, con mediciones distintas. El resultado de cada verificación está en [plan_pruebas.md §9](plan_pruebas.md#9-trazabilidad-rnf--verificación).
 
 La columna "Indicador" enlaza con [docs/metodologia.md §8](metodologia.md#8-indicadores-de-la-tesis) y

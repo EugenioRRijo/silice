@@ -302,6 +302,21 @@ Fuente: [spec S2 §7.2 y §7.3](especificaciones/2026-10-11-silice-s2-presupuest
 | Bases anteriores | una base de la 0.6.0 abre por `preparar_base` y sube a `head` con `caso_0005` y `caso_0006` sin perder filas (RNF‑20) |
 
 **Regresión en cada compuerta:** el bloque literal de la meta (`scripts/meta_silice.py`, C5), sin editar ninguna de esas pruebas; las cuatro memorias de S1 sin cambios desde `v0.6.0` (`S2-REG-S1`). Los pasos de UC‑19 y UC‑20 de §8.1 se completan en el cierre de la 0.7.0 (tarea 15 del plan).
+### 8.0d Filas de Sílice 0.9.0 (S4): RF‑32 y RF‑90 a RF‑95
+
+Fuente: [spec S4 §10](especificaciones/2026-10-11-silice-s4-asistente-ia-design.md) y `PLAN_SILICE_090.md`. Las filas
+se abren en S4.0 **sin pruebas ejecutadas**: cada una nombra lo que se probará.
+
+| RF / RNF | Prueba prevista |
+|---|---|
+| RF‑32 | `test_asistente_propuestas.py` (rechazar todo deja el borrador `==`), `test_asistente_orquestador.py`, `test_ui_hoja_asistente.py` |
+| RF‑90 | `test_asistente_claude.py` y `test_asistente_ollama.py` (mismos escenarios de contrato), `test_asistente_orquestador.py` (9a) |
+| RF‑91 | `test_asistente_herramientas.py` (sin campos de precio), `test_asistente_validacion.py` (una por causa) |
+| RF‑92 | `test_asistente_propuestas.py`, `test_espacio_origen_ia.py`, `test_hoja_origen_ia.py`, `test_asistente_servicio.py` |
+| RF‑93 | `test_asistente_registro.py`, `test_asistente_orquestador.py` (mismo guion, mismo registro) |
+| RF‑94 | `test_asistente_privacidad.py` (lista blanca, 80 caracteres, 50/51 partidas), `test_asistente_orquestador.py` (tope de costo) |
+| RF‑95 | `test_experimento_*.py`, `test_evaluar_asistente.py`, comprobaciones `S4-CONGELADO` y `S4-RESULTADOS` de la meta |
+| RNF‑18 | `test_asistente_clave.py`, `test_ui_administracion_asistente.py`, `tests/integration/test_clave_ia_nunca_aparece.py`, `test_asistente_ollama.py` (IP resuelta) |
 
 ### 8.1 Trazabilidad por paso de todos los casos de uso
 
@@ -577,7 +592,7 @@ prueba va antes que el de su implementación, con el rojo observado. Estas filas
 | RNF‑05 núcleo cerrado | `git diff --stat core/` vacío tras I5 y tras cada adaptador; `test_arquitectura.py` verde | cumple |
 | RNF‑06 cobertura | cobertura de `core/` en la corrida de §10 (meta ≥ 80 %, que la CI exige con `--fail-under=80`) | cumple |
 | RNF‑07 portabilidad | `uv sync --locked --all-extras` sin pasos manuales y la suite completa en verde en Linux y en Windows en la corrida de §10 ([36520879630](https://github.com/EugenioRRijo/tesis-apu-multidominio/actions/runs/36520879630)) | cumple |
-| RNF‑08 seguridad | inspección: 0 credenciales versionadas, 0 llamadas de red en operación salvo las dos excepciones que declara la ERS: la descarga inicial del modelo (cacheada) y three.js desde `cdnjs.cloudflare.com` en el Visor 3D (INV‑077) | cumple, con las dos excepciones declaradas |
+| RNF‑08 seguridad | inspección: 0 credenciales versionadas, 0 llamadas de red en operación salvo las dos excepciones que declara la ERS: la descarga inicial del modelo (cacheada) y three.js desde `cdnjs.cloudflare.com` en el Visor 3D (INV‑077) | cumple, con las dos excepciones declaradas, con las excepciones declaradas por la ERS, entre ellas el asistente de IA en modo nube (apagado por defecto) |
 | RNF‑09 compatibilidad IFC | G1 con salvedad: exacto contra modelo programático; faltan exports de ≥ 2 modeladores | parcial |
 | RNF‑10 aprendizaje de la interfaz | caso con persona CP‑07 ([guion_prueba_arenia.md](guion_prueba_arenia.md)), dos escenarios con personas distintas, bloque B del anexo A | pendiente (GU1b, fase Med) |
 | RNF‑11 desempeño de la hoja | `scripts/medir_rnf11.py` con el generador determinista de 500 puntos (SF0): desde aplicar una edición hasta tener presupuesto, informe y PE, sin persistir, en `ui.hoja` sin Streamlit; mediana de cinco corridas tras una de calentamiento ≤ 2 s. Veredicto en el equipo de desarrollo (como RNF‑03); la CI registra la cifra en Linux y Windows sin romper la corrida | **cumple en el equipo de desarrollo**: mediana 0,125 s (2026‑10‑05, §10 «Medición de RNF‑11»); la CI solo registra |
@@ -585,6 +600,7 @@ prueba va antes que el de su implementación, con el rojo observado. Estas filas
 | RNF‑13 usabilidad de la hoja | CP‑08 a CP‑11 del [guion](guion_prueba_arenia.md), con el mismo número y perfil de participantes que CP‑07 pero personas distintas: cada caso sin ayuda en ≤ 15 min por todos, bloque B ≥ 4,0 y ningún ítem < 3; veredicto por caso. Consigna, paradas y criterio se fijan antes de medir | pendiente de la fase de mediciones (guion CP‑08…11 listo; ninguna persona lo ha ejecutado) |
 | RNF‑14 reproducible y sin conexión | planeado (S1‑0 a S1‑4): la suite corre bajo la guardia de red única de `tests/conftest.py` (activa desde A3, comprobada por la meta); el estudio de la memoria se recalcula igual tras importar una revisión de los índices | pendiente (S1‑4) |
 | RNF‑15 desempeño del control de obra | planeado (S2‑4): `scripts/medir_rnf15.py` con el generador determinista de 500 partidas, 52 períodos y 26 valuaciones: desde registrar una valuación hasta el informe, los indicadores, las alertas y la reproyección, y las cuatro opciones, mediana de cinco corridas tras una de calentamiento ≤ 2 s en cada trabajo; la CI registra la cifra | pendiente (S2‑4) |
+| RNF‑18 confidencialidad del asistente | planeado (S4.0 a S4.2): `test_asistente_clave.py`, `test_asistente_ollama.py` (IP resuelta), `test_clave_ia_nunca_aparece.py` y la guardia de red única de la suite | pendiente (S4) |
 | RNF‑20 deriva de esquema | `tests/integration/test_migraciones.py::test_head_en_vacio_es_igual_a_create_all`, `::test_la_autogeneracion_contra_head_no_propone_cambios`, `::test_toda_metadata_con_tablas_esta_en_la_lista_de_su_destino`, `::test_cada_revision_baja_y_vuelve_a_subir`, en los dos destinos | cumple (desde la 0.6.0) |
 
 ## 10. Registro de la ejecución (CI de la compuerta GC6, 2026‑09‑29)

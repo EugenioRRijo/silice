@@ -441,6 +441,21 @@ por `preparar_base` (`upgrade head`) y gana las tablas sin perder filas (prueba 
 `RegistroCambio`): por eso sus filas viajan en `anexos/control.json` del paquete de S3 con huella y **sin cadena
 propia** (RV‑8; límite declarado). Se **guardan** las entradas y la decisión; indicadores, alertas y hallazgos de
 R13 y R14 se **recalculan** y no se guardan (S2‑R13).
+### 2.7 Tablas del asistente `ia_*` (S4)
+
+Fuente: [spec S4](especificaciones/2026-10-11-silice-s4-asistente-ia-design.md) §5.5. Tablas **aditivas** de la
+base del **caso**, propias del paquete `asistente/` (como las `esp_*` del adaptador del espacio): no cuentan entre
+las entidades de `core/models` y **no tienen clave foránea a `core/models`**. Las crea una revisión propia de
+Alembic (tarea 9 de `PLAN_SILICE_090.md`) y `asistente` figura en la lista `METADATAS` del caso.
+
+| Tabla | Columnas |
+|---|---|
+| `ia_sesiones` | identificador, proyecto, versión de partida, versión guardada (si se guardó), proveedor, modelo pedido, pedido, topes (turnos, llamadas, costo), inicio, fin, motivo de fin |
+| `ia_turnos` | sesión, orden, modelo que respondió, fin del turno, uso de fichas, costo estimado, texto del modelo |
+| `ia_llamadas` | turno, orden, herramienta, argumentos en JSON con claves ordenadas, resultado de la validación, motivo |
+| `ia_propuestas` | sesión, identificador, tipo, estado (pendiente, aceptada, editada, rechazada), quién y cuándo decidió |
+
+La clave de IA de la empresa nunca se guarda aquí (RNF‑18 c).
 
 ## 3. Diagrama entidad‑relación
 

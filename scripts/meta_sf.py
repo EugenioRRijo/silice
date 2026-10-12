@@ -202,7 +202,7 @@ def metas_hasta(fase: str) -> list[str]:
 def _patron_definicion(prefijo: str, numero: int) -> str:
     """Linea que DEFINE el requisito: UC por encabezado, RF por fila de tabla, RNF por fila de la
     tabla de calidad (el identificador va en la 2.a celda)."""
-    id_ = rf"{prefijo}{_GUION}{numero}(?!\d)"
+    id_ = rf"{prefijo}{_GUION}0*{numero}(?!\d)"
     if prefijo == "UC":
         return rf"^#{{3,4}}\s+{id_}"
     if prefijo == "RF":

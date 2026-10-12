@@ -1,0 +1,71 @@
+{
+  "base": "vacio",
+  "conjunto": "evaluacion",
+  "especialidad": "agua",
+  "id": "ev-agua-02",
+  "pedido": "Cocina de 3,0 x 2,0 m con alto de 2,5 m, esquina en el origen. Montante de agua en (0;2,0;0). Fregadero en la pared norte: x = 1,5 m, y = 2,0 m, a 90 cm del piso, diametro 1/2\" con llave de paso. Lavadora en la pared este: x = 3,0 m, y = 1,0 m, a 1,0 m del piso, diametro 1/2\" con llave de paso.",
+  "posicion_libre": false,
+  "referencia": {
+    "ambientes": [
+      {
+        "alto": "2.5",
+        "ancho": "2",
+        "id": "A1",
+        "largo": "3",
+        "nombre": "Cocina",
+        "x0": "0",
+        "y0": "0"
+      }
+    ],
+    "fuentes": [
+      {
+        "ambiente_id": "A1",
+        "especialidad": "agua",
+        "id": "F1",
+        "tipo": "montante_agua",
+        "x": "0",
+        "y": "2",
+        "z": "0"
+      }
+    ],
+    "puntos": [
+      {
+        "ambiente_id": "A1",
+        "circuito_id": "",
+        "especialidad": "agua",
+        "especificaciones": "diametro=1/2\"; llave_de_paso=si",
+        "fuente_id": "F1",
+        "id": "P1",
+        "nombre": "fregadero",
+        "superficie": "pared",
+        "tipo": "agua_fria",
+        "x": "1.5",
+        "y": "2",
+        "z": "0.9"
+      },
+      {
+        "ambiente_id": "A1",
+        "circuito_id": "",
+        "especialidad": "agua",
+        "especificaciones": "diametro=1/2\"; llave_de_paso=si",
+        "fuente_id": "F1",
+        "id": "P2",
+        "nombre": "lavadora",
+        "superficie": "pared",
+        "tipo": "agua_fria",
+        "x": "3",
+        "y": "1",
+        "z": "1"
+      }
+    ]
+  },
+  "respuestas": [
+    {
+      "palabras": [
+        "diametro"
+      ],
+      "texto": "1/2 pulgada"
+    }
+  ],
+  "sembrados": []
+}

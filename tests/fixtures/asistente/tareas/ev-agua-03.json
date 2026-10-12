@@ -1,0 +1,71 @@
+{
+  "base": "vacio",
+  "conjunto": "evaluacion",
+  "especialidad": "agua",
+  "id": "ev-agua-03",
+  "pedido": "Lavanderia de 2,0 x 2,0 m con alto de 2,5 m (la posicion en el plano es libre: ponga la esquina donde quiera). Montante de agua en la esquina del ambiente a nivel del piso. Lavadero en la pared norte, en el centro del ambiente, a 85 cm del piso, 1/2\" con llave de paso. Lavadora en la pared este, en el centro del ambiente, a 1,0 m del piso, 1/2\" con llave de paso.",
+  "posicion_libre": true,
+  "referencia": {
+    "ambientes": [
+      {
+        "alto": "2.5",
+        "ancho": "2",
+        "id": "A1",
+        "largo": "2",
+        "nombre": "Lavanderia",
+        "x0": "0",
+        "y0": "0"
+      }
+    ],
+    "fuentes": [
+      {
+        "ambiente_id": "A1",
+        "especialidad": "agua",
+        "id": "F1",
+        "tipo": "montante_agua",
+        "x": "0",
+        "y": "0",
+        "z": "0"
+      }
+    ],
+    "puntos": [
+      {
+        "ambiente_id": "A1",
+        "circuito_id": "",
+        "especialidad": "agua",
+        "especificaciones": "diametro=1/2\"; llave_de_paso=si",
+        "fuente_id": "F1",
+        "id": "P1",
+        "nombre": "lavadero",
+        "superficie": "pared",
+        "tipo": "agua_fria",
+        "x": "1",
+        "y": "2",
+        "z": "0.85"
+      },
+      {
+        "ambiente_id": "A1",
+        "circuito_id": "",
+        "especialidad": "agua",
+        "especificaciones": "diametro=1/2\"; llave_de_paso=si",
+        "fuente_id": "F1",
+        "id": "P2",
+        "nombre": "lavadora",
+        "superficie": "pared",
+        "tipo": "agua_fria",
+        "x": "2",
+        "y": "1",
+        "z": "1"
+      }
+    ]
+  },
+  "respuestas": [
+    {
+      "palabras": [
+        "esquina"
+      ],
+      "texto": "Cualquiera; use la esquina inferior izquierda en (0;0)"
+    }
+  ],
+  "sembrados": []
+}

@@ -1,0 +1,84 @@
+{
+  "base": "circuito",
+  "conjunto": "evaluacion",
+  "especialidad": "electricidad",
+  "id": "ev-elec-03",
+  "pedido": "Sala de 5,0 x 4,0 m con alto de 2,5 m, esquina en el origen. Tablero T1 en (0;0;1,2). Circuito C1 ya existe. Dos tomacorrientes del circuito C1 a 30 cm del piso: x = 1,0 y = 0; y una toma en el pasillo: x = 3,0 m, y = 6,0 m (a 30 cm del piso).",
+  "posicion_libre": false,
+  "referencia": {
+    "ambientes": [
+      {
+        "alto": "2.5",
+        "ancho": "4",
+        "id": "A1",
+        "largo": "5",
+        "nombre": "Sala",
+        "x0": "0",
+        "y0": "0"
+      }
+    ],
+    "fuentes": [
+      {
+        "ambiente_id": "A1",
+        "especialidad": "electricidad",
+        "id": "T1",
+        "tipo": "tablero",
+        "x": "0",
+        "y": "0",
+        "z": "1.2"
+      }
+    ],
+    "puntos": [
+      {
+        "ambiente_id": "A1",
+        "circuito_id": "C1",
+        "especialidad": "electricidad",
+        "especificaciones": "",
+        "fuente_id": "T1",
+        "id": "E1",
+        "nombre": "toma 1",
+        "superficie": "pared",
+        "tipo": "tomacorriente",
+        "x": "1",
+        "y": "0",
+        "z": "0.3"
+      },
+      {
+        "ambiente_id": "A1",
+        "circuito_id": "C1",
+        "especialidad": "electricidad",
+        "especificaciones": "",
+        "fuente_id": "T1",
+        "id": "E2",
+        "nombre": "toma pasillo",
+        "superficie": "pared",
+        "tipo": "tomacorriente",
+        "x": "3",
+        "y": "4",
+        "z": "0.3"
+      }
+    ]
+  },
+  "respuestas": [
+    {
+      "palabras": [
+        "pasillo"
+      ],
+      "texto": "No hay pasillo; la toma va en la pared norte, y = 4,0 m"
+    },
+    {
+      "palabras": [
+        "medida"
+      ],
+      "texto": "y = 4,0 m"
+    }
+  ],
+  "sembrados": [
+    {
+      "campo": "y",
+      "clase": "punto",
+      "id": "E2",
+      "valor": "6.0"
+    }
+  ]
+}
