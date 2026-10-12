@@ -195,11 +195,11 @@ def tarjetas_de_control(datos: DatosControl, moneda: str) -> list[Tarjeta]:
     return [
         Tarjeta("Avance fisico (EV/BAC)", porcentaje(avance_fisico(ind))),
         Tarjeta("SPI (plazo)", indice(ind.spi), motivo.get("SPI", "")),
-        Tarjeta("CPI (costo)", indice(ind.cpi), motivo.get("CPI", "")),
+        Tarjeta("CPI (costo)", indice(ind.cpi), motivo.get("CPI") or motivo.get("AC", "")),
         Tarjeta(
             "EAC (costo final estimado)",
             dinero(ind.eac_indice, moneda),
-            motivo.get("EAC") or motivo.get("CPI", ""),
+            motivo.get("EAC") or motivo.get("CPI") or motivo.get("AC", ""),
         ),
     ]
 
