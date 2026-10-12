@@ -12,7 +12,7 @@ from pathlib import Path
 RAIZ = Path(__file__).resolve().parents[2]
 ENMIENDA = RAIZ / "docs" / "bitacora" / "2026-10-silice-enmienda-normas-3.md"
 REGLAS = (
-    "Como máximo tres worktrees vivos",
+    "Como máximo cinco worktrees vivos",
     "ramas cortas por fase",
     "un solo carril de núcleo",
 )
