@@ -592,7 +592,7 @@ def test_desde_sf4_s4_agrega_el_tramo_posterior_al_nucleo_de_sf3_ruling_rs4_10()
 
     esperado = [
         (("gsf1", "inc/sf1"), ("gsf2", "inc/sf2")),
-        (("gsf4", "gsf3", "inc/sf3", "inc/sf3-nucleo"), ("HEAD",)),
+        (("gsf4", "gsf3", "inc/sf3", "inc/sf3-nucleo"), ("v0.5.0", "8610053")),
     ]
     assert intervalos_s4("SF4") == esperado
     assert intervalos_s4("SF5") == esperado
@@ -632,6 +632,52 @@ def test_s4_sobre_el_repositorio_real_desde_sf4_no_falla():
 
     estado, detalle = _s4("SF5")
     assert estado is not Estado.FALLA, detalle
+
+
+def _repo_s4(tmp_path):
+    """Repo git temporal: base (etiqueta b), cierre (etiqueta f) y un cambio posterior en core/."""
+    import subprocess
+
+    def git(*args):
+        subprocess.run(
+            ["git", "-c", "user.name=t", "-c", "user.email=t@t", *args],
+            cwd=tmp_path,
+            check=True,
+            capture_output=True,
+        )
+
+    (tmp_path / "core").mkdir()
+    (tmp_path / "core" / "a.py").write_text("x = 1\n", encoding="utf-8")
+    git("init", "-q")
+    git("add", ".")
+    git("commit", "-q", "-m", "base")
+    git("tag", "b")
+    (tmp_path / "otro.txt").write_text("sf\n", encoding="utf-8")
+    git("add", ".")
+    git("commit", "-q", "-m", "cierre")
+    git("tag", "f")
+    (tmp_path / "core" / "a.py").write_text("x = 2\n", encoding="utf-8")
+    git("add", ".")
+    git("commit", "-q", "-m", "despues: core cambia legitimamente")
+
+
+def test_el_tramo_final_de_s4_termina_en_el_cierre_y_no_en_head(tmp_path):
+    """Un cambio de core/ posterior al cierre no debe hacer fallar a S4; uno anterior, si."""
+    from scripts.meta_sf import _tramo_s4
+
+    _repo_s4(tmp_path)
+    estado, detalle = _tramo_s4(("b",), ("f",), cwd=tmp_path)
+    assert estado is Estado.OK and "b..f" in detalle
+    estado, detalle = _tramo_s4(("b",), ("HEAD",), cwd=tmp_path)  # control: HEAD si ve el cambio
+    assert estado is Estado.FALLA and "core/a.py" in detalle
+
+
+def test_el_tramo_final_sin_cierre_es_pendiente_no_head(tmp_path):
+    from scripts.meta_sf import _tramo_s4
+
+    _repo_s4(tmp_path)
+    estado, _ = _tramo_s4(("b",), ("no-existe",), cwd=tmp_path, sin_punta_es_head=False)
+    assert estado is Estado.PENDIENTE
 
 
 # --- SF5: S7 importacion de planos ---------------------------------------------------------------

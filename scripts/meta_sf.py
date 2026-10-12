@@ -117,6 +117,9 @@ PUNTAS_S4: tuple[str, ...] = ("gsf2", "inc/sf2")
 #: rama (barra, planos, integracion) `core/` no debe cambiar; el nucleo de SF3 SI lo toco, con
 #: expediente.
 BASES_S4_FINAL: tuple[str, ...] = ("gsf4", "gsf3", "inc/sf3", "inc/sf3-nucleo")
+#: Fin del tramo final de S4: el commit de cierre de SF (etiqueta `v0.5.0`; si no existe, el
+#: merge #29, 8610053). S4 vigila el sprint SF, no lo que venga despues (Silice: `core/` cambia).
+PUNTAS_S4_FINAL: tuple[str, ...] = ("v0.5.0", "8610053")
 #: Pruebas AppTest de la navegacion superior y de las herramientas de la barra (S6).
 RUTA_PRUEBAS_BARRA = ("tests/unit/test_ui_barra.py", "tests/unit/test_ui_app.py")
 
@@ -412,11 +415,11 @@ def intervalos_s4(fase: str | None) -> list[tuple[tuple[str, ...], tuple[str, ..
 
     Siempre el de SF2 (`gsf1..gsf2`). Desde SF4 (o sin `--hasta`) se agrega el posterior al nucleo
     de SF3, que SI toco `core/` con expediente (spec 12.2, RS4-10): desde su cierre hasta la punta
-    de la rama (`HEAD`: barra, planos e integracion) no debe haber cambios."""
+    del sprint (`PUNTAS_S4_FINAL`, no `HEAD`: barra, planos e integracion) no debe haber cambios."""
     tramos: list[tuple[tuple[str, ...], tuple[str, ...]]] = [(BASES_S4, PUNTAS_S4)]
     orden = list(FASES)
     if fase is None or orden.index(fase) >= orden.index("SF4"):
-        tramos.append((BASES_S4_FINAL, ("HEAD",)))
+        tramos.append((BASES_S4_FINAL, PUNTAS_S4_FINAL))
     return tramos
 
 
@@ -606,19 +609,40 @@ def _s3(exigir_sf2: bool = False) -> tuple[Estado, str]:
     )
 
 
-def _referencia_existe(ref: str) -> bool:
-    return bool(_git("rev-parse", "--verify", "--quiet", f"{ref}^{{commit}}"))
+def _referencia_existe(ref: str, cwd: Path = RAIZ) -> bool:
+    try:
+        r = subprocess.run(
+            ["git", "rev-parse", "--verify", "--quiet", f"{ref}^{{commit}}"],
+            cwd=cwd,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            check=False,
+        )
+    except OSError:
+        return False
+    return r.returncode == 0 and bool(r.stdout.split())
 
 
-def _tramo_s4(bases: tuple[str, ...], puntas: tuple[str, ...]) -> tuple[Estado, str]:
-    base = base_de_core(_referencia_existe, bases)
+def _tramo_s4(
+    bases: tuple[str, ...],
+    puntas: tuple[str, ...],
+    cwd: Path = RAIZ,
+    sin_punta_es_head: bool = True,
+) -> tuple[Estado, str]:
+    def existe(ref: str) -> bool:
+        return _referencia_existe(ref, cwd)
+
+    base = base_de_core(existe, bases)
     if base is None:
         return Estado.PENDIENTE, "sin base: no existe ninguna de " + ", ".join(bases)
-    punta = next((ref for ref in puntas if _referencia_existe(ref)), "HEAD")
+    punta = next((ref for ref in puntas if existe(ref)), "HEAD" if sin_punta_es_head else None)
+    if punta is None:
+        return Estado.PENDIENTE, "sin cierre: no existe ninguna de " + ", ".join(puntas)
     try:
         r = subprocess.run(
             ["git", "diff", "--stat", f"{base}..{punta}", "--", "core/"],
-            cwd=RAIZ,
+            cwd=cwd,
             capture_output=True,
             text=True,
             encoding="utf-8",
@@ -630,7 +654,9 @@ def _tramo_s4(bases: tuple[str, ...], puntas: tuple[str, ...]) -> tuple[Estado, 
 
 
 def _s4(fase: str | None = None) -> tuple[Estado, str]:
-    return combinar_s4([_tramo_s4(b, p) for b, p in intervalos_s4(fase)])
+    return combinar_s4(
+        [_tramo_s4(b, p, sin_punta_es_head=p != PUNTAS_S4_FINAL) for b, p in intervalos_s4(fase)]
+    )
 
 
 def _s7() -> tuple[Estado, str]:
