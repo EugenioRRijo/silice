@@ -446,6 +446,18 @@ def _git(*argumentos: str) -> list[str]:
     return [linea.strip() for linea in resultado.stdout.splitlines() if linea.strip()]
 
 
+def _es_ancestro(antecesor: str, descendiente: str) -> bool:
+    """True si `antecesor` es alcanzable desde `descendiente` (git merge-base --is-ancestor)."""
+    return (
+        subprocess.run(
+            ["git", "merge-base", "--is-ancestor", antecesor, descendiente],
+            cwd=RAIZ,
+            capture_output=True,
+        ).returncode
+        == 0
+    )
+
+
 def _ramas_adaptador(base: str) -> list[tuple[str, list[str]]]:
     """Ramas fusionadas que **incorporan** un dominio, con los archivos de `core/` que cambian.
 
@@ -461,7 +473,8 @@ def _ramas_adaptador(base: str) -> list[tuple[str, list[str]]]:
 
     Solo se miran las fusiones de la **linea principal** (las de `--first-parent`): una fusion de
     `main` *hacia dentro* de una rama en curso tiene los papeles invertidos (su segundo padre es la
-    linea principal) y su rango no es lo que la rama introdujo. De una fusion se toman el primer y
+    linea principal) y su rango no es lo que la rama introdujo; se reconoce porque ese segundo
+    padre ya esta en la base y se salta. De una fusion se toman el primer y
     el segundo padre; una fusion de pulpo (tres o mas padres) no la produce este proyecto y se
     evalua solo por su segunda rama.
     """
@@ -474,6 +487,8 @@ def _ramas_adaptador(base: str) -> list[tuple[str, list[str]]]:
         padres = _git("rev-parse", f"{sha}^1", f"{sha}^2")
         if len(padres) != 2:
             continue
+        if _es_ancestro(padres[1], base):
+            continue  # main traida a la rama: su segundo padre ya esta en la base
         rango = f"{padres[0]}...{padres[1]}"
         if not _git("diff", "--name-only", "--diff-filter=A", rango, "--", "adapters", "ml"):
             continue
