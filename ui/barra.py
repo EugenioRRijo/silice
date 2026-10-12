@@ -11,6 +11,7 @@ que el usuario quiere con `ui.caso.pedir_accion` y la pantalla de destino lo ati
 | Importar plano | solo si `adapters.espacio.planos` es importable (SF5); lleva a la hoja |
 | Precios | la pestana Precios de la hoja si existe; si no, la pantalla Actualizar precios |
 | Auditar | resume el informe de la version vigente (se audita siempre; el boton lo muestra) |
+| Registrar valuacion | lleva a «Control de obra», pestana Valuaciones (UC-19, S2) |
 | Guardar version, Exportar Excel | dependen de SF3: deshabilitados hasta que `ui.hoja` exista |
 | Recorrido guiado | abre o retoma el recorrido de UC-12 |
 
@@ -41,6 +42,7 @@ from ui.caso import (
     ACCION_GUARDAR_VERSION,
     ACCION_IMPORTAR_PLANO,
     ACCION_PRECIOS,
+    ACCION_REGISTRAR_VALUACION,
     estado_caso,
     fijar_proyecto,
     pedir_accion,
@@ -64,6 +66,7 @@ ROTULO_PROYECTO = "Proyecto"
 ROTULO_IMPORTAR = "Importar plano"
 ROTULO_PRECIOS = "Precios"
 ROTULO_AUDITAR = "Auditar"
+ROTULO_VALUACION = "Registrar valuacion"
 ROTULO_GUARDAR = "Guardar version"
 ROTULO_EXPORTAR = "Exportar Excel"
 ROTULO_RECORRIDO = "Recorrido guiado"
@@ -88,6 +91,7 @@ FUNCIONES_DE_SF3: tuple[str, ...] = ("guardar_version", "exportar_excel")
 PAQUETE_DE_PLANOS = "adapters.espacio.planos"
 RUTA_HOJA = "hoja"
 RUTA_ACTUALIZACION = "actualizacion"
+RUTA_CONTROL = "control"
 PESTANA_PRECIOS = "Precios"
 
 
@@ -235,7 +239,7 @@ def pintar_barra(ruta: str, ir_a: Callable[[str], None]) -> None:
     recorrido = recorrido_por_nombre(recorrido_activo())
 
     with st.container(key="barra_herramientas"):
-        columnas = st.columns(7 if con_planos else 6, vertical_alignment="bottom")
+        columnas = st.columns(8 if con_planos else 7, vertical_alignment="bottom")
         celdas = iter(columnas)
         with next(celdas), st.popover(ROTULO_PROYECTO, width="stretch"):
             _pintar_proyecto(nombres, abierto)
@@ -251,6 +255,9 @@ def pintar_barra(ruta: str, ir_a: Callable[[str], None]) -> None:
                     _ir_con_accion(ir_a, RUTA_ACTUALIZACION, None)
         with next(celdas), st.popover(ROTULO_AUDITAR, width="stretch"):
             _pintar_auditoria(abierto)
+        with next(celdas):
+            if st.button(ROTULO_VALUACION, width="stretch", key="barra_valuacion"):
+                _ir_con_accion(ir_a, RUTA_CONTROL, ACCION_REGISTRAR_VALUACION)
         for rotulo, accion, clave in (
             (ROTULO_GUARDAR, ACCION_GUARDAR_VERSION, "barra_guardar"),
             (ROTULO_EXPORTAR, ACCION_EXPORTAR_EXCEL, "barra_exportar"),

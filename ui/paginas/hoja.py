@@ -62,7 +62,7 @@ from core.verification.informe import DECIMALES_PRESENTACION
 from core.verification.texto import formatear_decimal
 from operacion.base_datos import ErrorDeBase, preparar_base
 from seguridad.permisos import Accion
-from ui import caso, hoja
+from ui import caso, control, hoja
 from ui import sesion as ui_sesion
 from ui.caso import ACCION_IMPORTAR_PLANO, ACCION_PRECIOS, ruta_caso
 from ui.resultado import mostrar_informe
@@ -465,7 +465,7 @@ def _preparar_excel() -> None:
     borrador = _borrador()
     resultado, _ = _calculo()
     abierta = _abierta()
-    trazabilidad, precios = None, ()
+    trazabilidad, precios, hojas_de_control = None, (), []
     try:
         if abierta is not None:
             with _sesion() as sesion:
@@ -473,8 +473,15 @@ def _preparar_excel() -> None:
                 precios = hoja.precios_de_version(
                     sesion, abierta.proyecto, abierta.codigo, fecha_evaluacion=date.today()
                 )
+                hojas_de_control = control.tablas_de_control(
+                    sesion, abierta.proyecto, Catalogo(sesion)
+                )
         contenido = hoja.excel_de_hoja_en_bytes(
-            resultado, borrador, trazabilidad=trazabilidad, precios=precios
+            resultado,
+            borrador,
+            trazabilidad=trazabilidad,
+            precios=precios,
+            control=hojas_de_control,
         )
     except (SQLAlchemyError, ValueError) as error:
         _mensaje("error", f"No se pudo preparar el Excel: {getattr(error, 'orig', None) or error}")

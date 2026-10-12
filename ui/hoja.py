@@ -2509,13 +2509,16 @@ def exportar_excel(
     *,
     trazabilidad: TablaExportable | None = None,
     precios: Sequence[FilaPrecio] = (),
+    control: Sequence[TablaExportable] = (),
 ) -> Path:
     """Escribe el libro de la hoja (spec §9.5) con lo que muestra `resultado`: una hoja por
     pestana, mas Trazabilidad y Auditoria, con formulas vivas. Solo se llama al pulsar Exportar.
+    `control` son las hojas «Valuaciones», «Valor ganado» y «Decisiones» de S2 (`ui.control`).
     """
     extras = [
         *tablas_de_espacio(borrador.espacio, resultado.items, resultado.estado),
         tabla_de_precios(precios),
+        *control,
     ]
     return exportar_hoja(
         resultado.elaboracion.presupuesto,
@@ -2533,6 +2536,7 @@ def excel_de_hoja_en_bytes(
     *,
     trazabilidad: TablaExportable | None = None,
     precios: Sequence[FilaPrecio] = (),
+    control: Sequence[TablaExportable] = (),
 ) -> bytes:
     """El libro de `exportar_excel` como bytes, para `st.download_button`."""
     with tempfile.TemporaryDirectory() as carpeta:
@@ -2542,6 +2546,7 @@ def excel_de_hoja_en_bytes(
             borrador,
             trazabilidad=trazabilidad,
             precios=precios,
+            control=control,
         )
         return ruta.read_bytes()
 

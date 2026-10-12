@@ -66,6 +66,7 @@ ACCION_PRECIOS = "precios"
 ACCION_IMPORTAR_PLANO = "importar_plano"
 ACCION_GUARDAR_VERSION = "guardar_version"
 ACCION_EXPORTAR_EXCEL = "exportar_excel"
+ACCION_REGISTRAR_VALUACION = "registrar_valuacion"  # S2: lleva a «Control de obra»
 SIN_PERMISO_DE_CAMBIO = (
     "Su cuenta no puede cambiar de caso: pidaselo a quien arma o al administrador."
 )
