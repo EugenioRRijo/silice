@@ -30,7 +30,7 @@ from functools import partial
 from pathlib import Path
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from core import models
 from core.budget._modelo import _buscar, _parametros_de
@@ -488,7 +488,9 @@ def instantanea_control(
     plan = plan_de_version(session, version)
     if plan is None:
         raise ValueError(f"la version {version.codigo!r} no tiene plan de trabajo")
+    cargadas = _precargar(session, version)
     presupuesto = cargar_presupuesto(session, proyecto_nombre, version.codigo, catalogo)
+    del cargadas  # el Presupuesto del contrato ya no necesita las filas
     costos = tuple(
         CostoReal(
             c.id,
@@ -517,6 +519,33 @@ def instantanea_control(
         valuaciones=tuple(cuentan),
         costos=costos,
     )
+
+
+def _precargar(session: Session, version: models.Presupuesto) -> list[object]:
+    """Trae de una vez los renglones, sus ítems, las composiciones congeladas y la curva de la
+    versión (cuatro consultas en vez de unas 1 500 cargas perezosas de `cargar_presupuesto`): para
+    una obra de 500 partidas es lo que mantiene el control dentro de RNF-15. Devuelve las filas
+    cargadas: la sesión las guarda con referencias débiles, así que quien llama las conserva
+    mientras lee la versión."""
+    versiones = session.scalars(
+        select(models.Presupuesto)
+        .where(models.Presupuesto.id == version.id)
+        .options(
+            selectinload(models.Presupuesto.partidas).selectinload(
+                models.PartidaPresupuestada.partida
+            ),
+            selectinload(models.Presupuesto.partidas).selectinload(
+                models.PartidaPresupuestada.item_computo
+            ),
+            selectinload(models.Presupuesto.curva),
+        )
+    ).all()
+    composiciones = session.scalars(
+        select(models.ComposicionVersion)
+        .where(models.ComposicionVersion.presupuesto_id == version.id)
+        .options(selectinload(models.ComposicionVersion.lineas))
+    ).all()
+    return [versiones, composiciones]
 
 
 def dia_del_corte(instantanea: InstantaneaControl) -> int:
