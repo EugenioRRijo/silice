@@ -17311,7 +17311,28 @@ y otra herramienta puede pedir la misma reauditoría por `POST /v1/auditorias` c
 
 ### Tarea 19: Reauditoría en memoria y la vista de quien revisa (`auditoria/`, `ui/revision.py`)
 
-**Rama:** `inc/080-s3-4-revision` (sale de `main` con S3-3 fusionada; PR a `main`)
+**Rama:** `inc/080-s3-4-auditoria` (sale de `main` con S3-3 fusionada; PR a `main`; sin núcleo)
+
+> **Cotejado con el código real (2026-10-12).** Lo que difiere del bloque de código de abajo, que
+> queda como borrador; el código de registro es `auditoria/` y `ui/revision.py`:
+> (1) `reauditar` no usa `with ThreadPoolExecutor`: su `__exit__` espera al hilo y anulaba el
+> corte de 60 s; el ejecutor se crea a mano y se apaga con `shutdown(wait=False)`. (2) Un
+> documento con la forma equivocada (`KeyError`, `TypeError`, `InvalidOperation`...) es
+> `PaqueteRechazado`, no una traza. (3) Los hallazgos se separan como **multiconjuntos**
+> (`Counter`), no con diccionarios que colapsan los repetidos. (4) R13 y R14: el puente de S2 no
+> existe (`core.budget.valuaciones.anexo_control` solo escribe el anexo; nada lo reconstruye en
+> una `InstantaneaDeControl`), así que quedan apagadas y `Reauditoria.avisos` lo declara si el
+> paquete trae `anexos/control.json`. (5) `Recibido` suma `ya_recibido_el` y `ui.revision`
+> suma `banner_de_version(r)` («Versión 005 del …; la última que usted recibió de este proyecto:
+> …», «es la primera que recibe» o «ya recibió este mismo paquete el …»). (6) `recibir` valida el
+> manifiesto y la cadena antes de escribir el archivo (un manifiesto sin `proyecto` o `emitido`
+> legible es «rechazado») y usa un nombre de archivo por omisión si `nombre_seguro` falla.
+> (7) `auditoria` entra a `PAQUETES_FUERA_DEL_NUCLEO` de `tests/unit/test_arquitectura.py` en este
+> mismo paso (la guardia de «todo paquete de primer nivel» lo exige), no en la tarea 23.
+> (8) `leer_documento_json` se importa de `auditoria.reauditoria`; `ui.revision` solo reexporta
+> `leer_documento`. (9) `erosion` de S1 es `erosion(precio, moneda, t0, t1) -> Erosion(usd, bs,
+> ...)`; la forma por unidad de `servicios._erosion` copia la privada
+> `core.catalog.empresa._erosion_en_lista`.
 **Rol:** sf-ingeniero-interfaz
 **Archivos:**
 - Crear: `auditoria/__init__.py`, `auditoria/reauditoria.py`, `auditoria/servicios.py`,
@@ -18833,7 +18854,22 @@ git commit -m "feat(revision): reauditoria en memoria y vista de quien revisa" \
 
 ### Tarea 20: La pantalla Revisar (UC-23) y el recorrido del paquete
 
-**Rama:** `inc/080-s3-4-revision`   **Rol:** sf-ingeniero-interfaz
+**Rama:** `inc/080-s3-4-auditoria`   **Rol:** sf-ingeniero-interfaz
+
+> **Cotejado con el código real (2026-10-12).** (1) El menú de `main` ya trae 17 pantallas (S1, S2
+> y S5 sumaron las suyas), no 13: con Revisar son **18**, en cuatro secciones solo cuando exista
+> Administración (T17); hoy son Trabajo, Revision e Investigacion. `RECORRIDOS` ya trae cuatro
+> (el de moneda, de S1): con el del paquete serían cinco, y los índices `RECORRIDOS[3]` de
+> `test_ui_roles.py` del plan no valen. (2) El recorrido «Entregar y revisar un paquete» solo
+> se agrega cuando la pantalla `entregar` (T16) esté fusionada: `test_ui_app.py` exige que todo
+> paso apunte a una pantalla registrada. (3) La pantalla calcula una vez por archivo
+> (`st.session_state["revisar_estado"]`, atado al SHA-256 y al login) y genera los dos Excel solo
+> al pulsar «Preparar»; el Excel del emisor no se ofrece. (4) Banner de versión siempre; aviso
+> ámbar de P2 con el texto del spec §9 («Usted armó o cambió este presupuesto: ...»). (5) El botón
+> «Registrar su clave» del banner ámbar queda como texto hasta que exista Administración (T17).
+> (6) Pruebas existentes que cambian: `test_arquitectura.py` (auditoria), `test_arquitectura_s5.py`
+> (`revisar` abre el caso), `test_ui_app.py` (secciones y 18 pantallas), `test_ui_importable.py`
+> (`ui.revision`, 18 páginas).
 **Archivos:**
 - Crear: `ui/paginas/revisar.py`
 - Modificar: `ui/app.py`, `ui/recorridos.py:25,143-170` (el recorrido «Entregar y revisar un
@@ -19585,32 +19621,37 @@ git commit -m "feat(ui): pantalla Revisar con dictamen y el recorrido de entrega
 
 ### Tarea 21: `POST /v1/auditorias`, claves de API, tope de cuerpo y hosts
 
-**Rama:** `inc/080-s3-4-revision`   **Rol:** sf-ingeniero-interfaz
+**Rama:** `inc/080-s3-4-auditoria`   **Rol:** sf-ingeniero-interfaz
 **Archivos:**
-- Crear: `api/seguridad.py`, `api/rutas/auditorias.py`
-- Modificar: `api/main.py:3-30`, `docs/api.json` (regenerado), `tests/integration/conftest.py:69`,
-  `tests/integration/test_api_preparar_base.py:24`
+- Crear: `api/rutas/auditorias.py` (**no** `api/seguridad.py`: ver la corrección de abajo)
+- Modificar: `api/main.py` (una línea: `include_router(auditorias.router, dependencies=CON_CLAVE)`),
+  `docs/api.json` (regenerado)
 - Prueba: `tests/integration/test_api_auditorias.py`
 
+> **Cotejado con el código real (2026-10-12).** El PR #73 ya dejó en `api/proteccion.py` la clave
+> en toda ruta (`exigir_clave_api(request) -> None`, 401 con el mismo mensaje y un `fallo` en
+> `evento_acceso`), `LimiteDeCuerpo` (20 MiB, 413), `TrustedHostMiddleware` y el filtro de redes
+> privadas, instalados por `proteger(app)`. Crear `api/seguridad.py` habría dejado **dos** firmas
+> de la clave y dos middlewares de cuerpo: no se crea. La ruta se monta con `CON_CLAVE` como las
+> demás; los hosts extra los fija `SILICE_DIRECCION` (la IP privada del equipo, `proteger`), no
+> `SILICE_HOSTS_PERMITIDOS`; el `conftest` de integración no necesita `base_url` porque
+> `proteger` ya lo cubrió. La ruta no recibe `ClaveDep` (no usa la clave). Una cifra mandada
+> como número JSON (que el lector estricto entrega como `Decimal`) vuelve a texto antes de pasar
+> por el patrón estricto; la respuesta suma `avisos` (el aviso de R13-R14 apagadas).
+
 **Interfaces:**
-- Consume: `seguridad.claves_api.*` y `seguridad.eventos` (tareas 5 y 17), `operacion.instalacion.
-  sesion_de_instalacion` (tarea 3), `auditoria.reauditoria.{Servicios, leer_documento_json,
-  reauditar}` y `auditoria.servicios.servicios_de_la_instalacion` (tarea 19),
+- Consume: `api.proteccion.exigir_clave_api` y `LimiteDeCuerpo` (PR #73, ya montados por
+  `api.main`), `seguridad.claves_api` (tarea 5), `auditoria.reauditoria.{Servicios,
+  leer_documento_json, reauditar}` y `auditoria.servicios.servicios_de_la_instalacion` (tarea 19),
   `api.dependencias.SesionDep`, `paquete.formato.PaqueteRechazado`, `seguridad.json_estricto` (tarea
   4), `adapters.espacio.serie` (tarea 11).
 - Produce:
-  - `api.seguridad`: `def ahora() -> datetime`
-  - `api.seguridad`: `def hosts_permitidos(entorno: Mapping[str, str] | None=None) -> list[str]`
-  - `api.seguridad`: `def sesion_instalacion() -> Iterator[Session]`
-  - `api.seguridad`: `def exigir_clave(instalacion: InstalacionDep, x_silice_clave:
-      Annotated[str | None, Header(alias=CABECERA)]=None) -> ClaveApi`
-  - `api.seguridad`: `class LimiteDeCuerpo`
   - `api.rutas.auditorias`: `def servicios_de_la_api(sesion: SesionDep) -> Servicios`
   - `api.rutas.auditorias`: `class HallazgoRespuesta(BaseModel)`
   - `api.rutas.auditorias`: `class DiferenciaRespuesta(BaseModel)`
   - `api.rutas.auditorias`: `class AuditoriaRespuesta(BaseModel)`
-  - `api.rutas.auditorias`: `def auditar_documento(peticion: Request, clave: ClaveDep,
-      servicios: ServiciosDep) -> AuditoriaRespuesta`
+  - `api.rutas.auditorias`: `def auditar_documento(peticion: Request, servicios: ServiciosDep) ->
+      AuditoriaRespuesta`
   - La ruta `POST /v1/auditorias` y la dependencia `servicios_de_la_api` (las pruebas la
     sustituyen).
 

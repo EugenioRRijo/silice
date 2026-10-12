@@ -928,6 +928,53 @@
         }
       }
     },
+    "/v1/auditorias": {
+      "post": {
+        "tags": [
+          "auditorias"
+        ],
+        "summary": "Auditar Documento",
+        "operationId": "auditar_documento_v1_auditorias_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "documento": {
+                    "type": "object"
+                  },
+                  "fecha_evaluacion": {
+                    "type": "string",
+                    "format": "date"
+                  },
+                  "anexo_espacio": {
+                    "type": "object"
+                  }
+                },
+                "type": "object",
+                "required": [
+                  "documento",
+                  "fecha_evaluacion"
+                ]
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditoriaRespuesta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/salud": {
       "get": {
         "tags": [
@@ -975,6 +1022,76 @@
         ],
         "title": "ActualizacionPeticion",
         "description": "UC-02 sobre un presupuesto guardado: la lista nueva y el código de la versión que produce."
+      },
+      "AuditoriaRespuesta": {
+        "properties": {
+          "fecha_evaluacion": {
+            "type": "string",
+            "title": "Fecha Evaluacion"
+          },
+          "contextos": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Contextos"
+          },
+          "termino": {
+            "type": "boolean",
+            "title": "Termino"
+          },
+          "avisos": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Avisos"
+          },
+          "total_recalculado": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Recalculado"
+          },
+          "hallazgos": {
+            "items": {
+              "$ref": "#/components/schemas/HallazgoRespuesta"
+            },
+            "type": "array",
+            "title": "Hallazgos"
+          },
+          "no_declarados": {
+            "items": {
+              "$ref": "#/components/schemas/HallazgoRespuesta"
+            },
+            "type": "array",
+            "title": "No Declarados"
+          },
+          "diferencias": {
+            "items": {
+              "$ref": "#/components/schemas/DiferenciaRespuesta"
+            },
+            "type": "array",
+            "title": "Diferencias"
+          }
+        },
+        "type": "object",
+        "required": [
+          "fecha_evaluacion",
+          "contextos",
+          "termino",
+          "avisos",
+          "total_recalculado",
+          "hallazgos",
+          "no_declarados",
+          "diferencias"
+        ],
+        "title": "AuditoriaRespuesta"
       },
       "Body_cargar_lista_precios_listas_precios_post": {
         "properties": {
@@ -1175,6 +1292,39 @@
         ],
         "title": "ComparativoRespuesta",
         "description": "El comparativo completo de UC-02: totales antes y después, y una fila por renglón."
+      },
+      "DiferenciaRespuesta": {
+        "properties": {
+          "codigo_partida": {
+            "type": "string",
+            "title": "Codigo Partida"
+          },
+          "campo": {
+            "type": "string",
+            "title": "Campo"
+          },
+          "declarado": {
+            "type": "string",
+            "title": "Declarado"
+          },
+          "recalculado": {
+            "type": "string",
+            "title": "Recalculado"
+          },
+          "monto": {
+            "type": "string",
+            "title": "Monto"
+          }
+        },
+        "type": "object",
+        "required": [
+          "codigo_partida",
+          "campo",
+          "declarado",
+          "recalculado",
+          "monto"
+        ],
+        "title": "DiferenciaRespuesta"
       },
       "DispersionRespuesta": {
         "properties": {
@@ -1530,6 +1680,48 @@
         },
         "type": "object",
         "title": "HTTPValidationError"
+      },
+      "HallazgoRespuesta": {
+        "properties": {
+          "regla": {
+            "type": "string",
+            "title": "Regla"
+          },
+          "severidad": {
+            "type": "string",
+            "title": "Severidad"
+          },
+          "descripcion": {
+            "type": "string",
+            "title": "Descripcion"
+          },
+          "origen_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Origen Ids"
+          },
+          "impacto": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Impacto"
+          }
+        },
+        "type": "object",
+        "required": [
+          "regla",
+          "severidad",
+          "descripcion",
+          "origen_ids"
+        ],
+        "title": "HallazgoRespuesta"
       },
       "InsumoRespuesta": {
         "properties": {
