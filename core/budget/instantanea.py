@@ -16,8 +16,8 @@ from __future__ import annotations
 import re
 from collections import Counter
 from collections.abc import Callable, Sequence
-from dataclasses import dataclass
-from datetime import datetime
+from dataclasses import dataclass, replace
+from datetime import date, datetime
 from decimal import Decimal
 
 from sqlalchemy import select
@@ -27,7 +27,9 @@ from core import models
 from core.budget._modelo import _buscar, _parametros_de
 from core.budget.curva import PeriodoPlan
 from core.catalog import Catalogo
+from core.catalog.empresa import instantanea_de_lista
 from core.catalog.errores import CatalogoIncompleto
+from core.catalog.indices import LADO_POR_DEFECTO
 from core.catalog.mapeo import LineaCatalogo, lineas_de
 from core.contracts.apu import (
     ComposicionAPU,
@@ -40,6 +42,7 @@ from core.contracts.apu import (
 from core.contracts.presupuesto import Presupuesto
 from core.costing import calcular_apu
 from core.verification.directivas import codigos_en_etiqueta
+from core.verification.precios import InstantaneaPrecios, PartidaPrecios
 
 __all__ = [
     "ResultadoInstantanea",
@@ -48,6 +51,7 @@ __all__ = [
     "composiciones_de_version",
     "composiciones_revaloradas",
     "congelar",
+    "instantanea_precios",
     "partidas_por_insumo",
     "plan_de_version",
     "tiene_instantanea",
@@ -276,9 +280,7 @@ def _resolver_insumos(
             candidatos[clave] = list(
                 session.scalars(
                     select(models.Insumo.id)
-                    .where(
-                        models.Insumo.tipo == clave[0], models.Insumo.descripcion == clave[1]
-                    )
+                    .where(models.Insumo.tipo == clave[0], models.Insumo.descripcion == clave[1])
                     .order_by(models.Insumo.id)
                 )
             )
@@ -515,10 +517,71 @@ def asegurar_instantanea(
         is not None
     )
     if not tiene_plan:
-        plan = _plan_inferido(
-            [punto.periodo for punto in modelo.curva], set(_codigos_de(modelo))
-        )
+        plan = _plan_inferido([punto.periodo for punto in modelo.curva], set(_codigos_de(modelo)))
         if plan:
             _escribir_plan(session, modelo, plan)
             session.flush()
     return ResultadoInstantanea(creadas=tuple(creadas), sin_composicion=tuple(sin))
+
+
+# ---------------------------------------------------------------------------------------------
+# SL-E2b: R11 y R12 de una versión
+# ---------------------------------------------------------------------------------------------
+
+#: Orden de las líneas de un `ComposicionAPU`: (*materiales, *equipos, *mano_obra).
+_ORDEN_TIPOS = (models.TipoInsumo.MATERIAL, models.TipoInsumo.EQUIPO, models.TipoInsumo.MANO_OBRA)
+
+
+def _insumos_alineados(lineas: Sequence[tuple[str, int | None]]) -> tuple[int | None, ...]:
+    """El insumo de cada línea (`(tipo, insumo_id)` ya en su `orden`) alineado con
+    (*materiales, *equipos, *mano_obra) de la composición."""
+    return tuple(insumo for tipo in _ORDEN_TIPOS for t, insumo in lineas if t == tipo)
+
+
+def instantanea_precios(
+    session: Session,
+    version: models.Presupuesto,
+    referencia: models.ListaPrecios | None,
+    fecha_evaluacion: date,
+    *,
+    lado: str = LADO_POR_DEFECTO,
+) -> InstantaneaPrecios:
+    """R11 y R12 de una versión (S1 §4.3): los precios de su lista que usan sus partidas, con el
+    impacto llevado al total por `calcular_apu` sobre sus composiciones (instantánea y, sin ella,
+    catálogo) y sus parámetros. Con lista de empresa, la referencia es la que declara su
+    `ListaEmpresa`. Una partida cuya composición ya no se puede reconstruir no entra (la hoja la
+    abre en solo lectura). Toda evaluación es en memoria: no escribe ni reescribe hallazgos."""
+    lista = version.lista_precios
+    de_empresa = session.get(models.ListaEmpresa, lista.id)
+    if de_empresa is not None and de_empresa.lista_referencia_id is not None:
+        referencia = session.get(models.ListaPrecios, de_empresa.lista_referencia_id)
+    cantidades: dict[str, Decimal] = {}
+    for renglon in version.partidas:
+        codigo = renglon.partida.codigo
+        cantidades[codigo] = cantidades.get(codigo, Decimal(0)) + renglon.cantidad
+    filas = {fila.codigo_partida: fila for fila in _filas(session, version)}
+    catalogo = Catalogo(session)
+    partidas: list[PartidaPrecios] = []
+    for codigo, cantidad in cantidades.items():
+        if codigo in filas:
+            lineas = sorted(filas[codigo].lineas, key=lambda linea: linea.orden)
+            composicion = _a_composicion(filas[codigo])
+            insumos = _insumos_alineados([(linea.tipo, linea.insumo_id) for linea in lineas])
+        else:
+            try:
+                composicion = catalogo.composicion(codigo, fecha=version.fecha, lista=lista)
+            except (KeyError, CatalogoIncompleto):
+                continue
+            lineas = sorted(catalogo.partida(codigo).composicion, key=lambda linea: linea.orden)
+            insumos = _insumos_alineados([(linea.insumo.tipo, linea.insumo_id) for linea in lineas])
+        partidas.append(PartidaPrecios(codigo, cantidad, composicion, insumos))
+    usados = {insumo for p in partidas for insumo in p.insumos if insumo is not None}
+    de_lista = instantanea_de_lista(
+        session, lista, referencia, fecha_evaluacion, insumos=usados, lado=lado
+    )
+    return replace(
+        de_lista,
+        moneda=version.moneda,
+        partidas=tuple(partidas),
+        parametros=_parametros_de(version),
+    )

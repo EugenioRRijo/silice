@@ -65,7 +65,9 @@ def sembrar(sesion):
     usados = {p.insumo.descripcion.upper(): p for p in lista.precios}
     descripciones = [fila["insumo"] for fila in _filas()] + [GRANULAR]
     lineas = tuple(
-        LineaMaterial(d, usados[d].insumo.unidad, Decimal(1), usados[d].precio)
+        LineaMaterial(
+            usados[d].insumo.descripcion, usados[d].insumo.unidad, Decimal(1), usados[d].precio
+        )
         for d in descripciones
     )
     sesion.add(

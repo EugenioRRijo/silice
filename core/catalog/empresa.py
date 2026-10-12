@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections import Counter
+from collections.abc import Collection, Sequence
 from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
@@ -12,8 +13,15 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core import models
-from core.catalog.moneda import TasaDeclarada, convertir, copiar_precios, exigir_moneda
-from core.catalog.origen import origenes_efectivos
+from core.catalog.indices import LADO_POR_DEFECTO, TasaNoDisponible, tasa_aplicable
+from core.catalog.moneda import (
+    TasaDeclarada,
+    convertir,
+    copiar_precios,
+    erosion,
+    exigir_moneda,
+)
+from core.catalog.origen import OrigenEfectivo, origenes_efectivos
 from core.catalog.precios import (
     PrecioLeido,
     _identidad_alta,
@@ -21,6 +29,7 @@ from core.catalog.precios import (
     leer_lista_precios,
 )
 from core.catalog.repositorio import Catalogo
+from core.verification.precios import InstantaneaPrecios, PrecioAuditado
 
 RANGO_INFERIOR = Decimal("-0.20")  # S1-R5, por analogía con AACE clase 3
 RANGO_SUPERIOR = Decimal("0.30")
@@ -249,19 +258,161 @@ def lista_de_referencia(session: Session) -> models.ListaPrecios | None:
     ).one_or_none()
 
 
-def es_heredado(
-    session: Session, lista: models.ListaPrecios, precio: models.PrecioInsumo
-) -> bool | None:
-    """`None` si la lista no es de empresa. Heredado = mismo insumo en la base con igual moneda y
-    precio originales, fecha y fuente (la tasa puede diferir si la base se convirtió)."""
+_CAMPOS_DE_HERENCIA = ("moneda_original", "precio_original", "fecha_precio", "fuente")
+
+
+def _heredados(
+    session: Session,
+    lista: models.ListaPrecios,
+    origenes: dict[int, OrigenEfectivo] | None = None,
+) -> dict[int, bool] | None:
+    """Por `precio_id` de `lista`: si conserva el origen del mismo insumo en su base. `None` si la
+    lista no es de empresa. Una sola lectura de los orígenes de la base, no una por precio."""
     fila = session.get(models.ListaEmpresa, lista.id)
     if fila is None:
         return None
     base = session.get(models.ListaPrecios, fila.lista_base_id)
     en_base = {p.insumo_id: p for p in base.precios}
-    if precio.insumo_id not in en_base:
-        return False
-    propio = origenes_efectivos(session, lista)[precio.id]
-    de_base = origenes_efectivos(session, base)[en_base[precio.insumo_id].id]
-    campos = ("moneda_original", "precio_original", "fecha_precio", "fuente")
-    return all(getattr(propio, c) == getattr(de_base, c) for c in campos)
+    propios = origenes if origenes is not None else origenes_efectivos(session, lista)
+    de_base = origenes_efectivos(session, base)
+    salida: dict[int, bool] = {}
+    for precio in lista.precios:
+        previo = en_base.get(precio.insumo_id)
+        salida[precio.id] = previo is not None and all(
+            getattr(propios[precio.id], campo) == getattr(de_base[previo.id], campo)
+            for campo in _CAMPOS_DE_HERENCIA
+        )
+    return salida
+
+
+def es_heredado(
+    session: Session, lista: models.ListaPrecios, precio: models.PrecioInsumo
+) -> bool | None:
+    """`None` si la lista no es de empresa. Heredado = mismo insumo en la base con igual moneda y
+    precio originales, fecha y fuente (la tasa puede diferir si la base se convirtió)."""
+    heredados = _heredados(session, lista)
+    return None if heredados is None else heredados[precio.id]
+
+
+# ---------------------------------------------------------------------------------------------
+# SL-E2b: R11 y R12 de una lista sola
+# ---------------------------------------------------------------------------------------------
+
+
+def _referencias(session: Session, lista: models.ListaPrecios) -> dict[int, str]:
+    """`precio_id` -> Ref (`ReferenciaPrecio`) de los precios de `lista`."""
+    return dict(
+        session.execute(
+            select(models.ReferenciaPrecio.precio_id, models.ReferenciaPrecio.referencia)
+            .join(models.PrecioInsumo, models.PrecioInsumo.id == models.ReferenciaPrecio.precio_id)
+            .where(models.PrecioInsumo.lista_id == lista.id)
+        ).all()
+    )
+
+
+def _tasa_o_nada(session: Session, fecha: date, lado: str) -> Decimal | None:
+    """La tasa aplicable a `fecha`; `None` si no la hay (Foco 2: un día sin tasa no revienta)."""
+    try:
+        return tasa_aplicable(session, fecha, lado=lado).valor
+    except TasaNoDisponible:
+        return None
+
+
+def _erosion_en_lista(
+    precio: Decimal,
+    moneda_lista: str,
+    moneda_original: str,
+    precio_original: Decimal,
+    t0: Decimal | None,
+    t1: Decimal | None,
+) -> Decimal | None:
+    """Erosión por unidad en la moneda de la lista (S1 §5.3): 0 si el original es USD (declarado);
+    `None` sin la tasa del precio o la de evaluación."""
+    if moneda_original == "USD":
+        return Decimal(0)
+    if t0 is None or t1 is None:
+        return None
+    if moneda_lista == "Bs":
+        return erosion(precio, "Bs", t0, t1).bs
+    return erosion(precio_original, "Bs", t0, t1).usd
+
+
+def instantanea_de_lista(
+    session: Session,
+    lista: models.ListaPrecios,
+    referencia: models.ListaPrecios | None,
+    fecha_evaluacion: date,
+    *,
+    insumos: Collection[int] | None = None,
+    lado: str = LADO_POR_DEFECTO,
+) -> InstantaneaPrecios:
+    """R11 y R12 de una lista sola (S1 §6.3): un `PrecioAuditado` por precio de `lista` (o solo los
+    de `insumos`) con su origen efectivo, su referencia MaPreX (por insumo y, si no, por Ref
+    **única** en la referencia: una Ref repetida no contrasta) y las tasas a la fecha del precio y
+    a `fecha_evaluacion`. Sin partidas: el impacto de cada hallazgo es por unidad. No escribe."""
+    origenes = origenes_efectivos(session, lista)
+    heredados = _heredados(session, lista, origenes)
+    refs_lista = _referencias(session, lista)
+    por_insumo: dict[int, models.PrecioInsumo] = {}
+    por_ref: dict[str, models.PrecioInsumo] = {}
+    refs_ref: dict[int, str] = {}
+    origenes_ref: dict[int, OrigenEfectivo] = {}
+    if referencia is not None:
+        por_insumo = {p.insumo_id: p for p in referencia.precios}
+        refs_ref = _referencias(session, referencia)
+        veces = Counter(refs_ref.values())
+        por_id = {p.id: p for p in referencia.precios}
+        por_ref = {ref: por_id[pid] for pid, ref in refs_ref.items() if veces[ref] == 1}
+        origenes_ref = origenes_efectivos(session, referencia)
+    t1 = _tasa_o_nada(session, fecha_evaluacion, lado)
+    tasas_a_fecha: dict[date, Decimal | None] = {}
+    auditados = []
+    for precio in sorted(lista.precios, key=lambda p: p.insumo.codigo):
+        if insumos is not None and precio.insumo_id not in insumos:
+            continue
+        o = origenes[precio.id]
+        ref = por_insumo.get(precio.insumo_id) or por_ref.get(refs_lista.get(precio.id, ""))
+        a_su_fecha = None
+        if o.tasa is None:
+            if o.fecha_precio not in tasas_a_fecha:
+                tasas_a_fecha[o.fecha_precio] = _tasa_o_nada(session, o.fecha_precio, lado)
+            a_su_fecha = tasas_a_fecha[o.fecha_precio]
+        auditados.append(
+            PrecioAuditado(
+                precio.insumo_id,
+                precio.insumo.codigo,
+                precio.insumo.descripcion,
+                precio.precio,
+                lista.moneda,
+                o.moneda_original,
+                o.precio_original,
+                o.fecha_precio,
+                o.tasa,
+                o.fecha_tasa,
+                o.fuente_tasa,
+                a_su_fecha,
+                None if ref is None else ref.precio,
+                "" if referencia is None else referencia.moneda,
+                None if ref is None else origenes_ref[ref.id].tasa,
+                "" if ref is None else refs_ref.get(ref.id, ""),
+                _erosion_en_lista(
+                    precio.precio,
+                    lista.moneda,
+                    o.moneda_original,
+                    o.precio_original,
+                    o.tasa or a_su_fecha,
+                    t1,
+                ),
+                None if heredados is None else heredados[precio.id],
+            )
+        )
+    fila = session.get(models.ListaEmpresa, lista.id)
+    return InstantaneaPrecios(
+        fecha_evaluacion,
+        lista.moneda,
+        tuple(auditados),
+        t1,
+        fila.rango_inferior if fila else RANGO_INFERIOR,
+        fila.rango_superior if fila else RANGO_SUPERIOR,
+        fila.plazo_vigencia_dias if fila else PLAZO_VIGENCIA_DIAS,
+    )
