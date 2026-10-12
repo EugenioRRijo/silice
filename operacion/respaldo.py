@@ -358,6 +358,11 @@ def restaurar(
     )
     perdidos = None
     if any(base["destino"] == "instalacion" for base in elegidas):
+        from operacion import eventos_perdidos as perdidos_mod  # diferido: evita un ciclo
+
+        copia_instalacion = next(
+            juego / base["archivo"] for base in elegidas if base["destino"] == "instalacion"
+        )
         carpeta_datos.mkdir(parents=True, exist_ok=True)
         perdidos = carpeta_datos / f"eventos_perdidos_{momento:%Y%m%d-%H%M%S}.json"
         _escribir_json(
@@ -367,6 +372,7 @@ def restaurar(
                 "fecha": momento.isoformat(timespec="seconds"),
                 "revisado": False,
                 "eventos": eventos_perdidos(ruta_instalacion, ficha.get("ultimo_evento_acceso")),
+                "diferencias": perdidos_mod.diferencias(ruta_instalacion, copia_instalacion),
             },
         )
     restauradas = []

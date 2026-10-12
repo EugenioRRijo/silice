@@ -106,6 +106,18 @@ def _diagnostico_similitud(_argumentos: argparse.Namespace) -> int:
     return 0
 
 
+def _eventos(argumentos: argparse.Namespace) -> int:
+    from operacion import eventos_perdidos
+
+    if argumentos.accion == "pendientes":
+        for archivo in eventos_perdidos.pendientes():
+            print(archivo.name)
+        return 0
+    eventos_perdidos.marcar_revisado(Path(argumentos.archivo), por="administrador")
+    print(f"Revisado: {argumentos.archivo}")
+    return 0
+
+
 def registrar(
     ordenes: argparse._SubParsersAction,  # type: ignore[type-arg]
     tabla: dict[str, Callable[[argparse.Namespace], int]],
@@ -124,6 +136,10 @@ def registrar(
     acciones.add_parser("desactivar")
     acciones.add_parser("estado")
     ordenes.add_parser("diagnostico-similitud", help="carga el modelo de similitud sin red")
+    eventos = ordenes.add_parser("eventos", help="eventos de seguridad perdidos tras restaurar")
+    sub = eventos.add_subparsers(dest="accion", required=True)
+    sub.add_parser("pendientes")
+    sub.add_parser("revisar").add_argument("archivo")
     tabla.update(
         {
             "arrancar": _arrancar,
@@ -131,5 +147,6 @@ def registrar(
             "demostracion": _demostracion,
             "red-local": _red_local,
             "diagnostico-similitud": _diagnostico_similitud,
+            "eventos": _eventos,
         }
     )
