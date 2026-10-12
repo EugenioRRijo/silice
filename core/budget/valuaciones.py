@@ -21,11 +21,13 @@ registradas y no anuladas, cada una entera en el período que contiene su fecha 
 from __future__ import annotations
 
 import json
+from collections import defaultdict
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date, datetime
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from functools import partial
+from pathlib import Path
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -41,6 +43,7 @@ from core.budget.moneda import moneda_del_proyecto
 from core.budget.persistencia import cargar_presupuesto
 from core.catalog import Catalogo
 from core.catalog.moneda import exigir_moneda
+from core.catalog.precios import PRIMERA_FILA_DE_DATOS, leer_tabla
 from core.contracts.apu import ParametrosCosto
 from core.contracts.presupuesto import Presupuesto
 from core.contracts.verificacion import ReglaVerificacion
@@ -56,22 +59,44 @@ from core.verification.valuaciones import (
 )
 
 __all__ = [
+    "COLUMNAS_COSTOS",
+    "COLUMNAS_LINEAS",
+    "COLUMNAS_VALUACIONES",
+    "HOJA_COSTOS",
+    "HOJA_LINEAS",
+    "HOJA_VALUACIONES",
+    "LIMITE_BYTES",
     "Calendario",
+    "CostoLeido",
     "CostoReal",
+    "EjecutadoDelPeriodo",
     "InstantaneaControl",
+    "LecturaControl",
     "LineaBase",
+    "LineaEjecutada",
     "LineaBaseInvalidada",
     "anexo_control",
     "anular_valuacion",
+    "ejecutado_por_periodo",
     "instantanea_control",
+    "leer_valuaciones_excel",
     "registrar_costo",
+    "registrar_lectura",
     "registrar_linea_base",
     "registrar_valuacion",
     "tabla_valuaciones",
 ]
 
 CERO = Decimal(0)
+LIMITE_BYTES = 20 * 1024 * 1024  # RNF-12: el mismo límite que los planos
+HOJA_VALUACIONES = "Valuaciones"
+HOJA_LINEAS = "Lineas"
+HOJA_COSTOS = "Costos"
+COLUMNAS_VALUACIONES = ("numero", "desde", "hasta", "fecha", "inspector")
+COLUMNAS_LINEAS = ("numero", "codigo_partida", "cantidad", "fecha_medicion", "observacion")
+COLUMNAS_COSTOS = ("numero", "codigo_partida", "monto", "moneda", "fecha", "fuente")
 ORIGEN_MANUAL = "manual"
+PREFIJO_ORIGEN_EXCEL = "excel:"
 MENSAJE_INVALIDADA = "linea base invalidada: declarela de nuevo"
 
 
@@ -505,9 +530,326 @@ def dia_del_corte(instantanea: InstantaneaControl) -> int:
 # ---------------------------------------------------------------------------------------------
 
 
+@dataclass(frozen=True, slots=True)
+class LineaEjecutada:
+    """Lo ejecutado de una partida en un período: `cantidad` es la del período y `reajustable`
+    `min(Q al cierre, q) - min(Q al cierre anterior, q)`; `valuaciones` son las que la aportan.
+    Una partida que la línea base no tiene (`en_linea_base` falso) no tiene reajustable: R13 la
+    marca y no se entrega a S1, que no tiene PU del contrato para ella."""
+
+    codigo: str
+    cantidad: Decimal
+    reajustable: Decimal
+    valuaciones: tuple[str, ...]
+    en_linea_base: bool = True
+
+
+@dataclass(frozen=True, slots=True)
+class EjecutadoDelPeriodo:
+    """Lo ejecutado de un período de la cláusula: las valuaciones citadas, las partidas y los
+    avisos (por ejemplo, lo ejecutado por encima de lo presupuestado, que R13 marca)."""
+
+    desde: date
+    hasta: date
+    valuaciones: tuple[Valuacion, ...]
+    lineas: tuple[LineaEjecutada, ...]
+    avisos: tuple[str, ...] = field(default=())
+
+
+def _cantidades_de_la_linea_base(version: models.Presupuesto) -> dict[str, Decimal]:
+    cantidades: dict[str, Decimal] = defaultdict(lambda: CERO)
+    for renglon in version.partidas:
+        cantidades[renglon.partida.codigo] += renglon.cantidad
+    return cantidades
+
+
+def ejecutado_por_periodo(
+    session: Session,
+    proyecto_nombre: str,
+    periodos: Sequence[tuple[date, date]],
+) -> tuple[EjecutadoDelPeriodo, ...]:
+    """Lo ejecutado de cada período `(desde, hasta)` de la cláusula, con las valuaciones
+    registradas y no anuladas, cada una entera en el período que contiene su *hasta* (S2-R16).
+
+    La cantidad reajustable usa lo acumulado desde el inicio de la obra (incluidas las valuaciones
+    de períodos anteriores al primero que se pide) contra lo presupuestado de la línea base
+    vigente al último cierre. `LineaBaseInvalidada` si un cambio de moneda la invalidó."""
+    if not periodos:
+        raise ValueError("pida al menos un periodo")
+    ordenados = sorted(periodos)
+    proyecto = _proyecto(session, proyecto_nombre)
+    cierre = ordenados[-1][1]
+    candidatas = [f for f in _lineas_base(session, proyecto.id) if f.desde <= cierre]
+    if not candidatas:
+        raise ValueError(f"no hay linea base de control declarada al {cierre.isoformat()}")
+    version = session.get(models.Presupuesto, candidatas[-1].presupuesto_id)
+    if version.moneda != moneda_del_proyecto(session, proyecto):
+        raise LineaBaseInvalidada(MENSAJE_INVALIDADA)
+    presupuestado = _cantidades_de_la_linea_base(version)
+    cuentan = valuaciones_registradas(session, proyecto_nombre)
+    acumulado: dict[str, Decimal] = defaultdict(lambda: CERO)
+    for valuacion in cuentan:
+        if valuacion.hasta < ordenados[0][0]:
+            for linea in valuacion.lineas:
+                acumulado[linea.codigo_partida] += linea.cantidad
+    salida: list[EjecutadoDelPeriodo] = []
+    for desde, hasta in ordenados:
+        del_periodo = [v for v in cuentan if desde <= v.hasta <= hasta]
+        cantidades: dict[str, Decimal] = defaultdict(lambda: CERO)
+        citas: dict[str, list[str]] = defaultdict(list)
+        for valuacion in del_periodo:
+            for linea in valuacion.lineas:
+                cantidades[linea.codigo_partida] += linea.cantidad
+                if valuacion.clave not in citas[linea.codigo_partida]:
+                    citas[linea.codigo_partida].append(valuacion.clave)
+        lineas: list[LineaEjecutada] = []
+        avisos: list[str] = []
+        for codigo, cantidad in cantidades.items():
+            q = presupuestado.get(codigo, CERO)
+            antes = acumulado[codigo]
+            despues = antes + cantidad
+            reajustable = min(despues, q) - min(antes, q)
+            acumulado[codigo] = despues
+            lineas.append(
+                LineaEjecutada(
+                    codigo, cantidad, reajustable, tuple(citas[codigo]), codigo in presupuestado
+                )
+            )
+            if reajustable != cantidad:
+                avisos.append(
+                    f"{codigo}: ejecutado {cantidad} en el periodo y solo {reajustable} es "
+                    f"reajustable (presupuestado {q}; lo que excede lo marca R13)"
+                )
+        salida.append(
+            EjecutadoDelPeriodo(desde, hasta, tuple(del_periodo), tuple(lineas), tuple(avisos))
+        )
+    return tuple(salida)
+
+
 # ---------------------------------------------------------------------------------------------
 # Importación de Excel (RF-73, §6.2)
 # ---------------------------------------------------------------------------------------------
+
+
+@dataclass(frozen=True, slots=True)
+class CostoLeido:
+    """Una fila de la hoja `Costos`: el costo, y el número de la valuación que lo cita si lo hay."""
+
+    numero: str
+    codigo_partida: str | None
+    monto: Decimal
+    moneda: str
+    fecha: date
+    fuente: str
+
+
+@dataclass(frozen=True, slots=True)
+class LecturaControl:
+    """Lo que se lee del XLSX antes de escribir nada: las valuaciones (sin registrar), los costos
+    y el informe previo (una línea por hoja)."""
+
+    valuaciones: tuple[Valuacion, ...]
+    costos: tuple[CostoLeido, ...]
+    informe: tuple[str, ...]
+
+
+def _donde(ruta: Path, hoja: str, fila: int | None = None) -> str:
+    return f"{ruta.name}, hoja {hoja}" + (f", fila {fila}" if fila is not None else "")
+
+
+def _decimal(texto: str, donde: str, columna: str) -> Decimal:
+    try:
+        valor = Decimal(texto)
+    except InvalidOperation:
+        raise ValueError(f"{donde}: {columna} {texto!r} no es un numero decimal") from None
+    if not valor.is_finite():
+        raise ValueError(f"{donde}: {columna} {texto!r} no es un numero finito")
+    return valor
+
+
+def _fecha(texto: str, donde: str, columna: str, *, opcional: bool = False) -> date | None:
+    if not texto and opcional:
+        return None
+    try:
+        return date.fromisoformat(texto[:10])
+    except ValueError:
+        raise ValueError(f"{donde}: {columna} {texto!r} no es una fecha ISO (AAAA-MM-DD)") from None
+
+
+def _filas(ruta: Path, hoja: str, columnas: tuple[str, ...]) -> list[tuple[int, dict[str, str]]]:
+    tabla = leer_tabla(ruta, hoja)
+    faltan = [c for c in columnas if c not in tabla.columns]
+    if faltan:
+        raise ValueError(
+            f"{_donde(ruta, hoja)}: faltan las columnas {', '.join(faltan)}; "
+            f"se esperan {', '.join(columnas)}"
+        )
+    return [
+        (numero, {c: str(fila[c]).strip() for c in columnas})
+        for numero, fila in enumerate(tabla.to_dict("records"), start=PRIMERA_FILA_DE_DATOS)
+    ]
+
+
+def leer_valuaciones_excel(ruta: Path) -> LecturaControl:
+    """Lee un XLSX de valuaciones (y costos) con las hojas y columnas de §6.2. No toca la base.
+
+    Todo error de forma es `ValueError` con el archivo, la hoja y la fila, sin *traceback* útil
+    para el usuario: archivo de más de 20 MB, formato que no es XLSX, hoja o columna ausente,
+    número repetido, número de `Lineas` sin su valuación, fecha o número ilegibles, cantidad
+    negativa. Un archivo malformado se rechaza entero."""
+    if ruta.suffix.lower() not in (".xlsx", ".xlsm"):
+        raise ValueError(f"{ruta.name}: las valuaciones se importan de un libro .xlsx")
+    if ruta.stat().st_size > LIMITE_BYTES:
+        raise ValueError(f"{ruta.name}: pesa mas de {LIMITE_BYTES // (1024 * 1024)} MB")
+    cabeceras: dict[str, dict[str, str]] = {}
+    for numero, fila in _filas(ruta, HOJA_VALUACIONES, COLUMNAS_VALUACIONES):
+        donde = _donde(ruta, HOJA_VALUACIONES, numero)
+        if not fila["numero"]:
+            raise ValueError(f"{donde}: falta el numero de la valuacion")
+        if fila["numero"] in cabeceras:
+            raise ValueError(f"{donde}: el numero {fila['numero']} esta repetido en el archivo")
+        _fecha(fila["desde"], donde, "desde")
+        _fecha(fila["hasta"], donde, "hasta")
+        _fecha(fila["fecha"], donde, "fecha", opcional=True)
+        cabeceras[fila["numero"]] = fila
+    lineas: dict[str, list[LineaValuacion]] = defaultdict(list)
+    for numero, fila in _filas(ruta, HOJA_LINEAS, COLUMNAS_LINEAS):
+        donde = _donde(ruta, HOJA_LINEAS, numero)
+        if fila["numero"] not in cabeceras:
+            raise ValueError(
+                f"{donde}: la valuacion {fila['numero']!r} no esta en la hoja {HOJA_VALUACIONES}"
+            )
+        cantidad = _decimal(fila["cantidad"], donde, "cantidad")
+        try:
+            lineas[fila["numero"]].append(
+                LineaValuacion(
+                    fila["codigo_partida"],
+                    cantidad,
+                    _fecha(fila["fecha_medicion"], donde, "fecha_medicion", opcional=True),
+                    fila["observacion"],
+                )
+            )
+        except ValueError as error:
+            raise ValueError(f"{donde}: {error}") from None
+    sin_lineas = [n for n in cabeceras if not lineas[n]]
+    if sin_lineas:
+        raise ValueError(
+            f"{_donde(ruta, HOJA_LINEAS)}: las valuaciones {', '.join(sin_lineas)} no tienen lineas"
+        )
+    valuaciones = tuple(
+        Valuacion(
+            id=0,
+            numero=n,
+            desde=_fecha(c["desde"], "", "desde"),
+            hasta=_fecha(c["hasta"], "", "hasta"),
+            fecha=_fecha(c["fecha"], "", "fecha", opcional=True),
+            inspector=c["inspector"],
+            lineas=tuple(lineas[n]),
+            origen=f"{PREFIJO_ORIGEN_EXCEL}{ruta.name}",
+        )
+        for n, c in cabeceras.items()
+    )
+    costos = _leer_costos(ruta, cabeceras)
+    informe = (
+        f"{HOJA_VALUACIONES}: {len(valuaciones)} valuacion(es)",
+        f"{HOJA_LINEAS}: {sum(len(v.lineas) for v in valuaciones)} linea(s)",
+        f"{HOJA_COSTOS}: {len(costos)} costo(s)",
+    )
+    return LecturaControl(valuaciones, costos, informe)
+
+
+def _leer_costos(ruta: Path, cabeceras: Mapping[str, object]) -> tuple[CostoLeido, ...]:
+    if HOJA_COSTOS not in _hojas(ruta):
+        return ()
+    costos: list[CostoLeido] = []
+    for numero, fila in _filas(ruta, HOJA_COSTOS, COLUMNAS_COSTOS):
+        donde = _donde(ruta, HOJA_COSTOS, numero)
+        if fila["numero"] and fila["numero"] not in cabeceras:
+            raise ValueError(f"{donde}: la valuacion {fila['numero']!r} no esta en el archivo")
+        if not fila["fuente"]:
+            raise ValueError(f"{donde}: falta la fuente del costo")
+        monto = _decimal(fila["monto"], donde, "monto")
+        if monto < CERO:
+            raise ValueError(f"{donde}: el monto no puede ser negativo ({monto})")
+        try:
+            moneda = exigir_moneda(fila["moneda"])
+        except ValueError as error:
+            raise ValueError(f"{donde}: {error}") from None
+        costos.append(
+            CostoLeido(
+                fila["numero"],
+                fila["codigo_partida"] or None,
+                monto,
+                moneda,
+                _fecha(fila["fecha"], donde, "fecha"),
+                fila["fuente"],
+            )
+        )
+    return tuple(costos)
+
+
+def _hojas(ruta: Path) -> list[str]:
+    import openpyxl
+
+    libro = openpyxl.load_workbook(ruta, read_only=True)
+    try:
+        return list(libro.sheetnames)
+    finally:
+        libro.close()
+
+
+def registrar_lectura(
+    session: Session,
+    proyecto_nombre: str,
+    lectura: LecturaControl,
+    *,
+    fuente: str,
+    responsable: str,
+    ahora: datetime | None = None,
+) -> tuple[list[models.Valuacion], list[models.CostoReal]]:
+    """Registra todo lo leído, o nada: una valuación del archivo con el mismo número que una
+    guardada y no anulada se rechaza (el archivo no corrige: se anula y se vuelve a registrar)."""
+    fuente, responsable = _exigir_respaldo(fuente, responsable)
+    guardadas = {v.numero for v in valuaciones_registradas(session, proyecto_nombre)}
+    repetidas = sorted(v.numero for v in lectura.valuaciones if v.numero in guardadas)
+    if repetidas:
+        raise ValueError(
+            f"las valuaciones {', '.join(repetidas)} ya estan registradas: anule la anterior y "
+            "vuelva a importar"
+        )
+    registradas = [
+        registrar_valuacion(
+            session,
+            proyecto_nombre,
+            numero=v.numero,
+            desde=v.desde,
+            hasta=v.hasta,
+            fecha=v.fecha,
+            inspector=v.inspector,
+            lineas=v.lineas,
+            fuente=fuente,
+            responsable=responsable,
+            origen=v.origen,
+            ahora=ahora,
+        )
+        for v in lectura.valuaciones
+    ]
+    por_numero = {fila.numero: fila.id for fila in registradas}
+    costos = [
+        registrar_costo(
+            session,
+            proyecto_nombre,
+            monto=c.monto,
+            moneda=c.moneda,
+            fecha=c.fecha,
+            fuente=c.fuente,
+            responsable=responsable,
+            codigo_partida=c.codigo_partida,
+            valuacion_id=por_numero.get(c.numero),
+        )
+        for c in lectura.costos
+    ]
+    return registradas, costos
 
 
 # ---------------------------------------------------------------------------------------------
