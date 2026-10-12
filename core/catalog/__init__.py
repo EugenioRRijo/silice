@@ -24,7 +24,12 @@ from core.catalog.rendimientos import (
     registrar_rendimiento,
 )
 from core.catalog.repositorio import Catalogo, ResumenCarga
-from core.catalog.sesion import abrir_sesion, crear_esquema, crear_motor
+from core.catalog.sesion import (
+    abrir_sesion,
+    abrir_sesion_de_escritura,
+    crear_esquema,
+    crear_motor,
+)
 
 __all__ = [
     "MINIMO_OBSERVADO_PARA_ADVERTIR",
@@ -37,6 +42,7 @@ __all__ = [
     "ResumenCarga",
     "ResumenLista",
     "abrir_sesion",
+    "abrir_sesion_de_escritura",
     "advertencia_rendimiento",
     "cambios_precio",
     "crear_esquema",

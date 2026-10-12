@@ -175,6 +175,7 @@ def importar_presupuesto(
     ruta: Path,
     proyecto: models.Proyecto,
     reglas: Sequence[ReglaVerificacion] = REGLAS,
+    usuario: str | None = None,
 ) -> ResultadoElaboracion:
     """UC‑05 con el archivo de un tercero: lee, audita siempre y persiste con su informe.
 
@@ -243,6 +244,7 @@ def importar_presupuesto(
         proyecto=proyecto,
         lista=lista,
         parametros=importado.parametros,
+        usuario=usuario,
     )
     return ResultadoElaboracion(presupuesto=presupuesto, informe=informe)
 

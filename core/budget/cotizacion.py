@@ -116,6 +116,7 @@ def _guardar_version(
     catalogo: Catalogo,
     lista: models.ListaPrecios,
     reglas: Sequence[ReglaVerificacion],
+    usuario: str,
 ) -> models.Presupuesto:
     """La versión `codigo_nuevo` valorada con `lista`: mismas cantidades, parámetros, pendientes,
     plan y curva; composiciones de la instantánea con los precios de `lista`; externos
@@ -159,6 +160,7 @@ def _guardar_version(
         plan=plan,
         version_origen=origen,
         motivo="cotizacion",
+        usuario=usuario,
     )
 
 
@@ -251,7 +253,7 @@ def cotizar_insumo(
         _nombre_de_lista(base, origen.proyecto, codigo_nuevo),
     )
     nueva = _guardar_version(
-        session, proyecto_nombre, codigo_origen, codigo_nuevo, catalogo, lista, reglas
+        session, proyecto_nombre, codigo_origen, codigo_nuevo, catalogo, lista, reglas, responsable
     )
     _registrar(
         session,
@@ -303,7 +305,7 @@ def retirar_cotizacion(
         _nombre_de_lista(base, origen.proyecto, codigo_nuevo),
     )
     nueva = _guardar_version(
-        session, proyecto_nombre, codigo_origen, codigo_nuevo, catalogo, lista, reglas
+        session, proyecto_nombre, codigo_origen, codigo_nuevo, catalogo, lista, reglas, responsable
     )
     vuelve = _precio_en(base, insumo)
     _registrar(

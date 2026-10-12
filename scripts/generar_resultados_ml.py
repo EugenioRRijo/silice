@@ -168,6 +168,7 @@ def evaluar_sobre_linea_base(
         proyecto=proyecto,
         lista=catalogo.lista_vigente(linea_base.FECHA_LINEA_BASE),
         parametros=linea_base.PARAMETROS_LINEA_BASE,
+        usuario="script:generar_resultados_ml",
     )
 
     resumen = crear_lista_desde_archivo(
@@ -185,6 +186,7 @@ def evaluar_sobre_linea_base(
         resumen.lista,
         "002",
         plan=plan_secuencial,
+        usuario="script:generar_resultados_ml",
     )
 
     pus_base = {

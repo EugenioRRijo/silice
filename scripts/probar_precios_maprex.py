@@ -466,6 +466,7 @@ def _guardar_base(
         lista=lista,
         parametros=parametros,
         pendientes=resultado.pendientes,
+        usuario="script:probar_precios_maprex",
     )
     sesion.commit()
     return resultado.informe
@@ -529,7 +530,8 @@ def _revalorar(
     registrado = _DetectorRegistrado(detectar_atipicos) if detectar_atipicos else None
     detector: DetectorAtipicos | None = registrado
     nuevo, comparativo = actualizar_precios(
-        sesion, proyecto, codigo, lista, codigo_nuevo, plan=plan, detectar_atipicos=detector
+        sesion, proyecto, codigo, lista, codigo_nuevo, plan=plan, detectar_atipicos=detector,
+        usuario="script:probar_precios_maprex",
     )
     historico = cambios_precio(sesion)
     de_esta = {cambio.id for cambio in historico if cambio.lista_nueva_id == lista.id}
@@ -707,7 +709,8 @@ def comprobar_siembra(
         origen=ruta_lista.name,
     )
     _, comparativo = actualizar_precios(
-        sesion, proyecto.nombre, codigo, resumen.lista, f"{codigo}{SUFIJO_VERSION}"
+        sesion, proyecto.nombre, codigo, resumen.lista, f"{codigo}{SUFIJO_VERSION}",
+        usuario="script:probar_precios_maprex",
     )
     sesion.rollback()  # flujo 3a: no hay nada que guardar
     return Comprobacion(
