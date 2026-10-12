@@ -33,7 +33,9 @@ PAQUETES_FUERA_DEL_NUCLEO = (
 TERCEROS_POR_ADAPTADOR: dict[str, frozenset[str]] = {
     "bcv": frozenset({"xlrd", "openpyxl"}),
     "civil": frozenset({"ifcopenshell"}),
-    "espacio": frozenset({"sqlalchemy", "ezdxf", "ifcopenshell"}),
+    "espacio": frozenset(
+        {"sqlalchemy", "ezdxf", "ifcopenshell", "shapely", "ifctester", "xmlschema"}
+    ),
     "industrial": frozenset(),
     "sistemas": frozenset(),
     "telecom": frozenset(),

@@ -164,9 +164,10 @@ def test_of001_limpia_da_el_conjunto_exacto_de_hallazgos(resultado) -> None:
         assert "supuesto declarado" in h.descripcion
 
 
-def test_el_informe_declara_las_diez_reglas(resultado) -> None:
+def test_el_informe_declara_las_once_reglas(resultado) -> None:
+    """R1 a R10 y, desde la 0.8.0, R15 (coherencia geométrica del plano; no da hallazgos)."""
     reglas = [codigo for codigo, _ in resultado.elaboracion.informe.reglas_evaluadas]
-    assert reglas == [f"R{i}" for i in range(1, 11)]
+    assert reglas == [*(f"R{i}" for i in range(1, 11)), "R15"]
 
 
 def test_el_estado_de_cada_fila_es_su_advertencia_de_origen(resultado) -> None:
