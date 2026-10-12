@@ -209,6 +209,9 @@ ui/               Streamlit: app.py (enrutador), paginas/ (diez pantallas) y los
                   solo la importa app.py) y paginas/hoja.py
                   S2 (0.7.0, en construcción) agrega control.py (sin Streamlit) y paginas/control.py
                   («Control de obra»)
+                - `estilo.py` (paleta y formatos), `tablero.py` (datos del tablero, solo lectura) y
+                  `graficos.py` (gráficos en Altair): sin Streamlit (PLAN_SILICE_UI).
+                - `paginas/tablero.py` («Tablero del proyecto»).
 api/              FastAPI (main.py, rutas/); esquema OpenAPI exportado a docs/api.json — F.1
 scripts/          siembra (seed*.py), simulación, extracción de fuentes, metas (meta_*.py) y
                   utilidades de la suite; una fila por script en scripts/README.md

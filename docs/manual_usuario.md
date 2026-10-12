@@ -551,7 +551,26 @@ proyecto con sus fórmulas vivas, más una hoja por tabla del espacio. El libro 
 cambios sin guardar los pierde: Streamlit no deja avisar. (2) Los datos de ejemplo (OF‑001) son un caso
 construido, no una obra ejecutada.
 
-### 3.9 Moneda, precios de la empresa, índices del BCV y reajuste (UC‑17 y UC‑18)
+### 3.9 Tablero del proyecto
+
+Muestra de un vistazo la versión vigente del proyecto abierto. Las cuatro tarjetas son el total
+del contrato, el costo directo, el punto de equilibrio y el resultado de la auditoría. Si el
+proyecto tiene línea base y valuaciones, se agregan los anillos de avance físico, SPI y CPI, el
+costo final estimado y la curva PV, EV y AC; si no, el tablero dice que falta. Debajo están el
+desglose del costo por rubro, las partidas de mayor peso (las primeras que conviene cotizar) y el
+comparativo de versiones. Solo lee: para cambiar algo, use la Hoja del proyecto.
+
+### 3.10 APU en tres paneles
+
+En la pestaña APU de la hoja, la columna izquierda lista las partidas valoradas y tiene un
+buscador por código o descripción. La del centro muestra el APU de la partida elegida por rubro
+(materiales, equipos y mano de obra), cada uno con su subtotal; se editan la cantidad de cada
+línea y el rendimiento, y el insumo de una línea se cambia con un selector que busca al escribir.
+La de la derecha tiene los factores de la versión (FCAS, bono, administración y utilidad) y el
+cierre de la partida, del costo directo al precio unitario. Cada cambio recalcula al momento y la
+barra superior indica cuántos cambios faltan por guardar.
+
+### 3.11 Moneda, precios de la empresa, índices del BCV y reajuste (UC‑17 y UC‑18)
 
 Desde la versión 0.6.0 cada proyecto tiene **su moneda** (Bs o USD), cada precio dice de dónde sale y
 cuánto valor perdió, una empresa puede tener **su lista de precios**, el sistema lee los archivos del
