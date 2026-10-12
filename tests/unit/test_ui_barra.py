@@ -144,6 +144,7 @@ def test_la_barra_oculta_importar_plano_mientras_sf5_no_llega(monkeypatch, caso_
     at = _barra(monkeypatch, caso_con_version[0])
     assert _rotulos(at) == [
         barra.ROTULO_PRECIOS,
+        barra.ROTULO_VALUACION,
         barra.ROTULO_GUARDAR,
         barra.ROTULO_EXPORTAR,
         barra.ROTULO_RECORRIDO,

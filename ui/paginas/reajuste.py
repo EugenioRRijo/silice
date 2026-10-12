@@ -23,6 +23,7 @@ from ui.texto_seguro import texto_seguro
 
 CLAVE_CALCULO = "reajuste_calculo"  # (contrato, clausula, periodos, resultado): no es de widget
 CLAVE_EXCEL = "reajuste_excel"  # bytes del ultimo Excel preparado
+CLAVE_VALUACIONES = "reajuste_con_valuaciones"  # casilla de la 0.7.0
 
 
 def _motor_del_caso():
@@ -123,6 +124,13 @@ def _periodos(versiones) -> tuple[list[dict[str, str]], list[dict[str, str]]]:
         hide_index=True,
         key="reajuste_periodos",
     )
+    st.checkbox(
+        "Tomar lo ejecutado de las valuaciones registradas (cada una al periodo de su fecha hasta)",
+        key=CLAVE_VALUACIONES,
+    )
+    if st.session_state.get(CLAVE_VALUACIONES):
+        st.caption("Lo ejecutado sale de las valuaciones no anuladas y el estudio las cita.")
+        return periodos.to_dict("records"), []
     ejecutado = st.data_editor(
         DataFrame({"periodo": ["1"], "partida": [""], "cantidad": [""], "fuente": [""]}),
         num_rows="dynamic",
@@ -140,8 +148,11 @@ def _pintar(motor, proyecto: str, versiones) -> None:
     if st.button("Calcular", type="primary"):
         try:
             clausula = reajuste.clausula_desde_textos(campos, componentes)
-            periodos = reajuste.periodos_desde_filas(filas_periodos, filas_ejecutado)
             with abrir_sesion(motor) as sesion:
+                if st.session_state.get(CLAVE_VALUACIONES):
+                    periodos = reajuste.periodos_desde_valuaciones(sesion, proyecto, filas_periodos)
+                else:
+                    periodos = reajuste.periodos_desde_filas(filas_periodos, filas_ejecutado)
                 resultado = reajuste.calcular(
                     sesion, proyecto, contrato, clausula, periodos, fecha_calculo=date.today()
                 )
@@ -167,11 +178,11 @@ def _pintar(motor, proyecto: str, versiones) -> None:
             f"El ultimo periodo aun no cierra: el estudio se guardara «parcial al corte» al "
             f"{resultado.fecha_corte:%d/%m/%Y} y se reemplaza al cerrar el mes (S1-R21)."
         )
-    _guardar(motor, proyecto, contrato, clausula, periodos, resultado)
+    _guardar(motor, proyecto, contrato, clausula, periodos, resultado, filas_periodos)
     _excel(motor, proyecto, contrato, resultado, periodos)
 
 
-def _guardar(motor, proyecto, contrato, clausula, periodos, resultado) -> None:
+def _guardar(motor, proyecto, contrato, clausula, periodos, resultado, filas_periodos) -> None:
     st.subheader("4. Guardar el estudio")
     with abrir_sesion(motor) as sesion:
         parciales = reajuste.parciales_por_reemplazar(sesion, proyecto, contrato)
@@ -190,17 +201,30 @@ def _guardar(motor, proyecto, contrato, clausula, periodos, resultado) -> None:
     if st.button("Guardar estudio"):
         try:
             with abrir_sesion(motor) as sesion:
-                estudio = reajuste.guardar(
-                    sesion,
-                    proyecto,
-                    contrato,
-                    clausula,
-                    periodos,
-                    fecha_calculo=date.today(),
-                    fuente=fuente,
-                    responsable=responsable,
-                    reemplaza_a=reemplaza,
-                )
+                if st.session_state.get(CLAVE_VALUACIONES):
+                    estudio = reajuste.guardar_con_valuaciones(
+                        sesion,
+                        proyecto,
+                        contrato,
+                        clausula,
+                        filas_periodos,
+                        fecha_calculo=date.today(),
+                        fuente=fuente,
+                        responsable=responsable,
+                        reemplaza_a=reemplaza,
+                    )
+                else:
+                    estudio = reajuste.guardar(
+                        sesion,
+                        proyecto,
+                        contrato,
+                        clausula,
+                        periodos,
+                        fecha_calculo=date.today(),
+                        fuente=fuente,
+                        responsable=responsable,
+                        reemplaza_a=reemplaza,
+                    )
         except HojaInvalida as error:
             st.error(texto_seguro(str(error)))
         else:
