@@ -51,6 +51,10 @@ def test_la_suite_se_reparte_en_tramos_que_cubren_todos_los_archivos() -> None:
     assert trabajo["strategy"]["fail-fast"] is False
     assert "scripts/dividir_suite.py" in trabajo["steps"][_indice(trabajo, "dividir_suite")]["run"]
     assert "--junitxml=reporte-$SISTEMA-$TRAMO.xml" in str(trabajo["steps"])
+    tramos = len(trabajo["strategy"]["matrix"]["shard"])
+    assert trabajo["env"]["TRAMOS"] == str(tramos)
+    esperados = str(_agregar()["steps"])
+    assert esperados.count(f"--esperados {tramos}") == 2
 
 
 def test_la_meta_de_silice_y_las_garantias_corren_en_agregar_con_historia_completa() -> None:

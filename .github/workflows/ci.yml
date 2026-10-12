@@ -77,23 +77,19 @@ jobs:
         run: uv run --no-sync python scripts/meta_datos.py
 
   pruebas:
-    name: pruebas (${{ matrix.os }} ${{ matrix.shard }}/${{ matrix.os == 'windows-latest' && 6 || 3 }})
+    name: pruebas (${{ matrix.os }} ${{ matrix.shard }}/5)
     runs-on: ${{ matrix.os }}
     env:
       HF_HUB_OFFLINE: "1" # la suite corre sin red (maestro 6.3, RV-17); solo baja el paso del modelo
       TRAMO: ${{ matrix.shard }}
-      TRAMOS: ${{ matrix.os == 'windows-latest' && 6 || 3 }}
+      TRAMOS: "5" # igual a la longitud de matrix.shard
       SISTEMA: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         # Windows (la corrida mas lenta) no corre en cada PR: corre en cada fusion a main.
         os: ${{ fromJSON(github.event_name == 'pull_request' && '["ubuntu-latest"]' || '["ubuntu-latest","windows-latest"]') }}
-        shard: [1, 2, 3, 4, 5, 6] # Ubuntu usa 3 tramos; Windows 6
-        exclude:
-          - { os: ubuntu-latest, shard: 4 }
-          - { os: ubuntu-latest, shard: 5 }
-          - { os: ubuntu-latest, shard: 6 }
+        shard: [1, 2, 3, 4, 5]
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -194,11 +190,11 @@ jobs:
       - name: Unir los JUnit por sistema operativo (falla si falta un tramo)
         if: needs.pruebas.result == 'success'
         run: |
-          uv run --no-sync python scripts/unir_junit.py --esperados 3 \
+          uv run --no-sync python scripts/unir_junit.py --esperados 5 \
             --salida reporte-pruebas-ubuntu-latest.xml --pesos pesos-suite-ubuntu-latest.json \
             reporte-ubuntu-latest-*.xml
           if [ "${{ github.event_name }}" != "pull_request" ]; then
-            uv run --no-sync python scripts/unir_junit.py --esperados 6 \
+            uv run --no-sync python scripts/unir_junit.py --esperados 5 \
               --salida reporte-pruebas-windows-latest.xml \
               --pesos pesos-suite-windows-latest.json reporte-windows-latest-*.xml
           fi
