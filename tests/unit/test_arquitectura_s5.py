@@ -74,6 +74,7 @@ PAGINAS_QUE_ABREN_EL_CASO = (
     "indices",
     "precios_empresa",
     "reajuste",
+    "revisar",
     "similares",
     "simulador",
     "tablero",

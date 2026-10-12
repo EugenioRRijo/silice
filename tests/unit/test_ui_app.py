@@ -25,6 +25,7 @@ from ui.app import (
     PAGINAS,
     ROTULO_SIGUIENTE,
     SECCION_INVESTIGACION,
+    SECCION_REVISION,
     SECCION_TRABAJO,
     VARIABLE_MODO_ENTREGA,
     modo_entrega_activo,
@@ -54,6 +55,8 @@ TITULOS_TRABAJO = (
     "Instalación",
 )
 
+TITULOS_REVISION = ("Revisar un paquete",)
+
 TITULOS_INVESTIGACION = (
     "Escenarios de sensibilidad",
     "Partidas similares",
@@ -70,6 +73,7 @@ CASOS_DE_USO = {
     "indices": "UC-17",
     "precios_empresa": "UC-17",
     "reajuste": "UC-18",
+    "revisar": "UC-23",
     "similares": "UC-03",
 }
 
@@ -81,16 +85,17 @@ def _titulos(paginas) -> tuple[str, ...]:
 # --- secciones y orden (RF-42, RF-43) ---------------------------------------------------------
 
 
-def test_sin_modo_entrega_dos_secciones_en_el_orden_del_trabajo() -> None:
+def test_sin_modo_entrega_tres_secciones_en_el_orden_del_trabajo() -> None:
     secciones = secciones_visibles(False)
-    assert tuple(secciones) == (SECCION_TRABAJO, SECCION_INVESTIGACION)
+    assert tuple(secciones) == (SECCION_TRABAJO, SECCION_REVISION, SECCION_INVESTIGACION)
     assert _titulos(secciones[SECCION_TRABAJO]) == TITULOS_TRABAJO
+    assert _titulos(secciones[SECCION_REVISION]) == TITULOS_REVISION
     assert _titulos(secciones[SECCION_INVESTIGACION]) == TITULOS_INVESTIGACION
 
 
 def test_modo_entrega_omite_investigacion_y_conserva_todo_trabajo() -> None:
     secciones = secciones_visibles(True)
-    assert tuple(secciones) == (SECCION_TRABAJO,)
+    assert tuple(secciones) == (SECCION_TRABAJO, SECCION_REVISION)
     assert secciones[SECCION_TRABAJO] == secciones_visibles(False)[SECCION_TRABAJO]
 
 
@@ -111,7 +116,7 @@ def test_ningun_titulo_lleva_codigo_de_caso_de_uso() -> None:
     assert [p.titulo for p in PAGINAS if "UC-" in p.titulo or "UC‑" in p.titulo] == []
 
 
-def test_las_cinco_pantallas_con_caso_de_uso_lo_declaran() -> None:
+def test_las_pantallas_con_caso_de_uso_lo_declaran() -> None:
     declarados = {p.ruta_url: p.caso_uso for p in PAGINAS if p.caso_uso is not None}
     assert declarados == CASOS_DE_USO
 
@@ -134,7 +139,9 @@ def test_la_ruta_vacia_de_la_pagina_por_defecto_es_el_inicio() -> None:
 
 def test_cada_pagina_tiene_una_ruta_url_propia() -> None:
     rutas = [pagina.ruta_url for pagina in paginas_visibles(False)]
-    assert len(set(rutas)) == len(rutas) == len(TITULOS_TRABAJO) + len(TITULOS_INVESTIGACION)
+    assert len(set(rutas)) == len(rutas) == (
+        len(TITULOS_TRABAJO) + len(TITULOS_REVISION) + len(TITULOS_INVESTIGACION)
+    )
     assert "componer" in rutas
 
 
@@ -338,7 +345,7 @@ def test_la_aplicacion_declara_la_navegacion_arriba_con_los_dos_grupos(
     assert len(llamadas) == 1
     paginas, kwargs = llamadas[0]
     assert kwargs.get("position") == "top"
-    assert list(paginas) == [SECCION_TRABAJO, SECCION_INVESTIGACION]
+    assert list(paginas) == [SECCION_TRABAJO, SECCION_REVISION, SECCION_INVESTIGACION]
 
 
 def test_modo_entrega_declara_solo_el_grupo_trabajo_en_la_navegacion_superior(
@@ -358,12 +365,12 @@ def test_modo_entrega_declara_solo_el_grupo_trabajo_en_la_navegacion_superior(
     _aplicacion(monkeypatch, tmp_path)
     paginas, kwargs = llamadas[0]
     assert kwargs.get("position") == "top"
-    assert list(paginas) == [SECCION_TRABAJO]
+    assert list(paginas) == [SECCION_TRABAJO, SECCION_REVISION]
 
 
-def test_son_dieciocho_pantallas_y_la_hoja_va_justo_despues_de_elaborar() -> None:
+def test_son_diecinueve_pantallas_y_la_hoja_va_justo_despues_de_elaborar() -> None:
     rutas = [p.ruta_url for p in PAGINAS]
-    assert len(rutas) == 18
+    assert len(rutas) == 19
     assert rutas.index("hoja") == rutas.index("elaborar") + 1
     assert pagina_por_ruta("hoja").seccion == SECCION_TRABAJO
 
@@ -429,4 +436,5 @@ def test_el_modo_entrega_mantiene_importar_plano_y_guardar_y_oculta_investigacio
     rotulos = _rotulos_de_botones(at)
     assert "Importar plano" in rotulos
     assert "Guardar version" in rotulos
-    assert list(llamadas[0]) == [SECCION_TRABAJO]  # ninguna seccion de Investigacion
+    # ninguna seccion de Investigacion
+    assert list(llamadas[0]) == [SECCION_TRABAJO, SECCION_REVISION]
