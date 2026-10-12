@@ -133,9 +133,11 @@ def _instalacion_real_intacta():
 
 @pytest.fixture(autouse=True)
 def _datos_de_silice_temporales(monkeypatch, tmp_path_factory):
-    """Toda prueba trabaja con una carpeta de datos temporal (`SILICE_DATOS`): nada llega a
-    `data/casos/`, `data/respaldos/` ni `data/instalacion.db` (spec S5 §12)."""
-    monkeypatch.setenv("SILICE_DATOS", str(tmp_path_factory.mktemp("silice_datos")))
+    """Toda prueba trabaja con carpetas temporales: nada llega a `data/casos/`, `data/respaldos/`,
+    `data/instalacion.db`, `data/config/`, `data/registros/` ni `data/estado/` (spec S5 §12)."""
+    carpeta = tmp_path_factory.mktemp("silice_datos")
+    monkeypatch.setenv("SILICE_DATOS", str(carpeta))
+    monkeypatch.setenv("SILICE_USUARIO", str(carpeta))
     monkeypatch.delenv("SILICE_INSTALACION", raising=False)
     monkeypatch.delenv("SILICE_RESPALDOS", raising=False)
 
