@@ -19,27 +19,39 @@ entre versiones» de S3 (el término cruzado queda aquí en el consumo, allá en
 
 from __future__ import annotations
 
+import re
 from collections import defaultdict
-from collections.abc import Mapping, Sequence
+from collections.abc import Collection, Mapping, Sequence
 from dataclasses import dataclass
 from decimal import ROUND_CEILING, ROUND_HALF_EVEN, Decimal, localcontext
 
 from core.budget.curva import PeriodoPlan
-from core.contracts.presupuesto import Presupuesto
+from core.budget.equilibrio import EstadoEquilibrio, PuntoEquilibrio, equilibrio
+from core.contracts.presupuesto import Presupuesto, PuntoCurva
+from core.contracts.verificacion import Severidad
 
 __all__ = [
     "NATURALEZA_DECLARADA",
     "PERSPECTIVA_COSTO",
     "PERSPECTIVA_PRECIO",
+    "Alerta",
+    "Alertas",
     "EstadoObra",
     "Indicadores",
     "ParametrosControl",
     "PartidaControl",
     "PreciosDelCorte",
+    "ProyeccionPartida",
+    "Reproyeccion",
     "Separacion",
+    "alertas",
+    "equilibrio_proyectado",
+    "fin_excede",
     "indicadores",
     "partidas_de_plan",
     "precios_por_escalatoria",
+    "proyectar_partida",
+    "reproyectar",
     "separar_desvio",
     "techo_de_dias",
 ]
@@ -51,6 +63,8 @@ CERO = Decimal(0)
 UNO = Decimal(1)
 CIEN = Decimal(100)
 PRECISION_DE_DIAS = Decimal("1e-12")
+LIMITE_DE_PERIODOS = 10_000
+_ETIQUETA = re.compile(r"^(.*?)(\d+)$")
 
 
 def _contexto():
@@ -458,6 +472,425 @@ def _motivo_sin_precios(estado: EstadoObra, partidas: Sequence[str]) -> str:
 # ---------------------------------------------------------------------------------------------
 
 
+@dataclass(frozen=True, slots=True)
+class ProyeccionPartida:
+    """Lo proyectado de una partida (§4.4). `fin` es el día hábil (con decimales) en que termina
+    su obra pendiente; `None` si no le queda obra o no es proyectable (`motivo`)."""
+
+    codigo: str
+    indice: Decimal | None
+    ritmo: Decimal | None
+    pendiente: Decimal
+    fin: Decimal | None
+    detenida: bool = False
+    sin_evidencia: bool = False
+    motivo: str = ""
+
+
+@dataclass(frozen=True, slots=True)
+class Reproyeccion:
+    """El plan reproyectado (lo ejecutado más lo proyectado, un `PeriodoPlan` válido para
+    `generar_curva`), la proyección de cada partida y el término en días hábiles (`None` si alguna
+    partida con obra pendiente no es proyectable)."""
+
+    plan: tuple[PeriodoPlan, ...]
+    partidas: tuple[ProyeccionPartida, ...]
+    termino: int | None
+    motivo_termino: str
+
+    @property
+    def detenidas(self) -> tuple[str, ...]:
+        return tuple(p.codigo for p in self.partidas if p.detenida)
+
+    @property
+    def no_proyectables(self) -> tuple[str, ...]:
+        return tuple(p.codigo for p in self.partidas if p.motivo)
+
+    def de(self, codigo: str) -> ProyeccionPartida:
+        return next(p for p in self.partidas if p.codigo == codigo)
+
+
+def _etiqueta_siguiente(etiquetas: Sequence[str], numero: int) -> str:
+    """La etiqueta del período `numero` si pasa del plan: «Semana 4» continúa «Semana 5»."""
+    if etiquetas:
+        encontrada = _ETIQUETA.match(etiquetas[-1])
+        if encontrada:
+            avance = numero - len(etiquetas)
+            return f"{encontrada.group(1)}{int(encontrada.group(2)) + avance}"
+    return f"Periodo {numero}"
+
+
+def _ejecutado_por_periodo(
+    estado: EstadoObra, partida: PartidaControl
+) -> tuple[dict[int, Decimal], Decimal]:
+    """Las fracciones ya ejecutadas de la partida por período (con tope en 1, S2-R8) y su suma."""
+    fracciones: dict[int, Decimal] = {}
+    acumulado = CERO
+    periodos = sorted(n for (codigo, n) in estado.por_periodo if codigo == partida.codigo)
+    with _contexto():
+        for n in periodos:
+            fraccion = min(
+                estado.por_periodo[(partida.codigo, n)] / partida.cantidad, UNO - acumulado
+            )
+            if fraccion > CERO:
+                fracciones[n] = fracciones.get(n, CERO) + fraccion
+                acumulado += fraccion
+    if estado.cantidad_ejecutada(partida) == partida.cantidad and fracciones:
+        ultimo = max(fracciones)
+        fracciones[ultimo] += UNO - acumulado
+        acumulado = UNO
+    return fracciones, acumulado
+
+
+def reproyectar(
+    estado: EstadoObra,
+    *,
+    multiplicador: Mapping[str, Decimal] | None = None,
+    adelantar: Collection[str] = (),
+) -> Reproyeccion:
+    """Reproyecta el plan al ritmo real (§4.4).
+
+    `multiplicador` escala el ritmo de una partida (más cuadrillas, horas extra) y `adelantar`
+    lleva su inicio al período siguiente al corte (partidas en paralelo). Cada partida con obra
+    pendiente avanza a `r = s / n · multiplicador` por período, con `s` el índice de la partida
+    (`EV_p / PV_p`) o, sin evidencia propia, el SPI global."""
+    multiplicador = multiplicador or {}
+    cantidad_de_periodos = estado.periodos
+    siguiente, restantes = _corte(estado)
+    ind = indicadores(estado)
+    ritmos: dict[str, tuple[dict[int, Decimal], ProyeccionPartida]] = {}
+    for partida in estado.partidas:
+        ritmos[partida.codigo] = _proyectar_partida(
+            estado,
+            partida,
+            ind.spi,
+            multiplicador.get(partida.codigo, UNO),
+            partida.codigo in adelantar,
+            (siguiente, restantes),
+        )
+    ultimo = max(
+        [cantidad_de_periodos] + [max(fracciones, default=0) for fracciones, _ in ritmos.values()]
+    )
+    plan: list[PeriodoPlan] = []
+    for n in range(1, ultimo + 1):
+        etiqueta = (
+            estado.etiquetas[n - 1]
+            if n <= cantidad_de_periodos
+            else _etiqueta_siguiente(estado.etiquetas, n)
+        )
+        reparto = tuple(
+            (partida.codigo, ritmos[partida.codigo][0][n])
+            for partida in estado.partidas
+            if ritmos[partida.codigo][0].get(n, CERO) > CERO
+        )
+        plan.append((etiqueta, reparto))
+    while len(plan) > 1 and not plan[-1][1]:
+        plan.pop()
+    proyecciones = tuple(proyeccion for _, proyeccion in ritmos.values())
+    termino, motivo = _termino(estado, proyecciones)
+    return Reproyeccion(tuple(plan), proyecciones, termino, motivo)
+
+
+def proyectar_partida(
+    estado: EstadoObra,
+    codigo: str,
+    *,
+    multiplicador: Decimal = UNO,
+    adelantada: bool = False,
+    spi_global: Decimal | None = None,
+) -> ProyeccionPartida:
+    """La proyección de una sola partida: lo mismo que `reproyectar` hace con cada una, sin
+    recorrer las demás. `spi_global` es el de `indicadores(estado).spi`."""
+    partida = next(p for p in estado.partidas if p.codigo == codigo)
+    siguiente, restantes = _corte(estado)
+    return _proyectar_partida(
+        estado, partida, spi_global, multiplicador, adelantada, (siguiente, restantes)
+    )[1]
+
+
+def fin_excede(fin: Decimal, objetivo: int) -> bool:
+    """True si el día hábil `fin` (con decimales) pasa del día `objetivo`: la igualdad exacta
+    cuenta como recuperado (§7.3)."""
+    return fin.quantize(PRECISION_DE_DIAS) > objetivo
+
+
+def _corte(estado: EstadoObra) -> tuple[int, int]:
+    """El período siguiente al corte y los días hábiles que le quedan."""
+    completos, transcurridos = divmod(estado.dia, estado.dias_por_periodo)
+    return completos + 1, estado.dias_por_periodo - transcurridos
+
+
+def _proyectar_partida(
+    estado: EstadoObra,
+    partida: PartidaControl,
+    spi_global: Decimal | None,
+    multiplicador: Decimal,
+    adelantada: bool,
+    corte: tuple[int, int],
+) -> tuple[dict[int, Decimal], ProyeccionPartida]:
+    siguiente, restantes = corte
+    largo = estado.dias_por_periodo
+    if partida.cantidad == CERO:
+        base = {n: f for n, f in enumerate(partida.plan, start=1) if f > CERO}
+        return base, ProyeccionPartida(partida.codigo, None, None, CERO, None)
+    hechas, hecho = _ejecutado_por_periodo(estado, partida)
+    pendiente = UNO - hecho
+    fracciones = dict(hechas)
+    if pendiente <= CERO:
+        return fracciones, ProyeccionPartida(partida.codigo, None, None, CERO, None)
+    qe = estado.cantidad_ejecutada(partida)
+    planificada = estado.fraccion_planificada(partida)
+    detenida = planificada > CERO and qe == CERO
+    with _contexto():
+        if planificada > CERO and qe > CERO:
+            indice: Decimal | None = qe / (partida.cantidad * planificada)
+            sin_evidencia = False
+        else:
+            indice = UNO if spi_global is None else spi_global
+            sin_evidencia = not detenida
+    if partida.periodos_activos == 0:
+        return fracciones, ProyeccionPartida(
+            partida.codigo, indice, None, pendiente, None, motivo="la partida no esta en el plan"
+        )
+    if not indice:
+        return fracciones, ProyeccionPartida(
+            partida.codigo,
+            indice,
+            None,
+            pendiente,
+            None,
+            detenida=detenida,
+            motivo="el SPI global es 0: sin ritmo no se proyecta",
+        )
+    with _contexto():
+        ritmo = indice / partida.periodos_activos * multiplicador
+    empezada = qe > CERO or partida.inicio <= siguiente
+    inicio = siguiente if (empezada or adelantada) else partida.inicio
+    restante = pendiente
+    n = inicio
+    ultimo_n, ultima = inicio, CERO
+    while restante > CERO:
+        if n - inicio > LIMITE_DE_PERIODOS:
+            raise ValueError("la reproyeccion no termina: el ritmo es demasiado bajo")
+        with _contexto():
+            tope = ritmo * restantes / largo if n == siguiente else ritmo
+        tomado = min(tope, restante)
+        fracciones[n] = fracciones.get(n, CERO) + tomado
+        restante -= tomado
+        ultimo_n, ultima = n, tomado
+        n += 1
+    with _contexto():
+        base = estado.dia if ultimo_n == siguiente else (ultimo_n - 1) * largo
+        fin = Decimal(base) + ultima * largo / ritmo
+    return fracciones, ProyeccionPartida(
+        partida.codigo,
+        indice,
+        ritmo,
+        pendiente,
+        fin,
+        detenida=detenida,
+        sin_evidencia=sin_evidencia,
+    )
+
+
+def _termino(
+    estado: EstadoObra, proyecciones: Sequence[ProyeccionPartida]
+) -> tuple[int | None, str]:
+    sin_ritmo = [p.codigo for p in proyecciones if p.motivo]
+    if sin_ritmo:
+        return None, "no proyectable: " + ", ".join(sin_ritmo)
+    fines = [p.fin for p in proyecciones if p.fin is not None]
+    if not fines:
+        return estado.dia_ultima_valuacion, "nada queda pendiente: la fecha de la ultima valuacion"
+    return techo_de_dias(max(fines)), ""
+
+
 # ---------------------------------------------------------------------------------------------
 # Punto de equilibrio proyectado y alertas
 # ---------------------------------------------------------------------------------------------
+
+
+def equilibrio_proyectado(
+    *,
+    venta: Decimal,
+    costo_variable: Decimal,
+    costo_fijo: Decimal,
+    dias_plan: int,
+    dias_proyectados: int,
+    reajuste_reconocido: Decimal,
+    curva: Sequence[PuntoCurva],
+) -> PuntoEquilibrio:
+    """El punto de equilibrio con `V' = V + reajuste reconocido`, `CV'` dado y `CF' = CF · D'/D`
+    (S2-R7), ubicado en la curva reproyectada (§4.7). No suma ningún reajuste proyectado: recibe
+    el ya reconocido como dato (S2-R15). `curva` es la del plan reproyectado sobre la venta `V`:
+    se reescala a `V'` para ubicar el punto por su fracción del total."""
+    if dias_plan < 1:
+        raise ValueError("los dias del plan base deben ser 1 o mas")
+    with _contexto():
+        venta_proyectada = venta + reajuste_reconocido
+        fijo = costo_fijo * dias_proyectados / dias_plan
+        if reajuste_reconocido != CERO and venta != CERO:
+            curva = tuple(
+                PuntoCurva(
+                    p.periodo,
+                    p.monto * venta_proyectada / venta,
+                    p.acumulado * venta_proyectada / venta,
+                )
+                for p in curva
+            )
+        return equilibrio(venta_proyectada, costo_variable, fijo, curva)
+
+
+@dataclass(frozen=True, slots=True)
+class Alerta:
+    """Una alerta con su umbral y la naturaleza de este (§4.5)."""
+
+    codigo: str
+    severidad: Severidad
+    descripcion: str
+    valor_observado: Decimal | None
+    umbral: Decimal | None
+    naturaleza_umbral: str = NATURALEZA_DECLARADA
+
+
+@dataclass(frozen=True, slots=True)
+class Alertas:
+    """Las alertas que saltaron y las que no se pudieron evaluar, con el motivo (UC-20 1a-1d)."""
+
+    alertas: tuple[Alerta, ...]
+    no_evaluadas: Mapping[str, str]
+
+
+def alertas(
+    ind: Indicadores,
+    sep: Separacion,
+    reproyeccion: Reproyeccion,
+    *,
+    dias_plan: int,
+    equilibrio_base: PuntoEquilibrio | None,
+    equilibrio_proyectado: PuntoEquilibrio | None,
+    parametros: ParametrosControl,
+) -> Alertas:
+    """Evalúa AL-1 a AL-6 (§4.5). Si el indicador de una alerta no está disponible, no se evalúa."""
+    salidas: list[Alerta] = []
+    no_evaluadas: dict[str, str] = {}
+    if ind.spi is None:
+        no_evaluadas["AL-1"] = ind.no_disponible.get("SPI", "SPI no aplica")
+    elif ind.spi < UNO:
+        error = ind.spi < parametros.spi_error
+        salidas.append(
+            Alerta(
+                "AL-1",
+                Severidad.ERROR if error else Severidad.ADVERTENCIA,
+                f"retraso: SPI {_cuatro(ind.spi)}",
+                ind.spi,
+                parametros.spi_error,
+            )
+        )
+    if ind.cpi is None:
+        no_evaluadas["AL-2"] = ind.no_disponible.get("CPI", "CPI no disponible")
+    elif ind.cpi < UNO:
+        error = ind.cpi < parametros.cpi_error
+        salidas.append(
+            Alerta(
+                "AL-2",
+                Severidad.ERROR if error else Severidad.ADVERTENCIA,
+                f"sobrecosto: CPI {_cuatro(ind.cpi)}",
+                ind.cpi,
+                parametros.cpi_error,
+            )
+        )
+    salidas.extend(_alerta_de_termino(reproyeccion, dias_plan, parametros, no_evaluadas))
+    salidas.extend(
+        _alerta_de_equilibrio(equilibrio_base, equilibrio_proyectado, parametros, no_evaluadas)
+    )
+    if sep.precio is None or ind.ev <= CERO:
+        no_evaluadas["AL-5"] = sep.no_disponible.get("precio", "sin avance ejecutado")
+    elif abs(sep.precio) >= parametros.precio_info * ind.ev:
+        salidas.append(
+            Alerta(
+                "AL-5",
+                Severidad.INFO,
+                "evaluar el reajuste (S1; LCP art. 133, a cotejar): el precio del corte desvia "
+                f"{sep.precio} sobre un valor ganado de {ind.ev}",
+                abs(sep.precio),
+                parametros.precio_info * ind.ev,
+            )
+        )
+    salidas.extend(
+        Alerta(
+            "AL-6",
+            Severidad.ADVERTENCIA,
+            f"la partida {codigo} tiene trabajo planificado y ningun avance (detenida)",
+            None,
+            None,
+        )
+        for codigo in reproyeccion.detenidas
+    )
+    return Alertas(tuple(salidas), no_evaluadas)
+
+
+def _cuatro(valor: Decimal) -> str:
+    return format(valor.quantize(Decimal("0.0001")), "f")
+
+
+def _alerta_de_termino(
+    reproyeccion: Reproyeccion,
+    dias_plan: int,
+    parametros: ParametrosControl,
+    no_evaluadas: dict[str, str],
+) -> list[Alerta]:
+    if reproyeccion.termino is None:
+        no_evaluadas["AL-3"] = reproyeccion.motivo_termino
+        return []
+    retraso = reproyeccion.termino - dias_plan
+    if retraso <= 0:
+        return []
+    error = Decimal(retraso) > parametros.retraso_error * dias_plan
+    return [
+        Alerta(
+            "AL-3",
+            Severidad.ERROR if error else Severidad.ADVERTENCIA,
+            f"el termino proyectado (dia {reproyeccion.termino}) pasa {retraso} dia(s) habil(es) "
+            f"del plan base (dia {dias_plan})",
+            Decimal(retraso),
+            parametros.retraso_error * dias_plan,
+        )
+    ]
+
+
+def _alerta_de_equilibrio(
+    base: PuntoEquilibrio | None,
+    proyectado: PuntoEquilibrio | None,
+    parametros: ParametrosControl,
+    no_evaluadas: dict[str, str],
+) -> list[Alerta]:
+    if proyectado is None or base is None:
+        no_evaluadas["AL-4"] = "el punto de equilibrio no aplica o AC no esta disponible"
+        return []
+    if proyectado.estado in (EstadoEquilibrio.NO_SE_ALCANZA, EstadoEquilibrio.NO_EXISTE):
+        return [
+            Alerta(
+                "AL-4",
+                Severidad.ERROR,
+                f"el punto de equilibrio proyectado: {proyectado.mensaje}",
+                proyectado.porcentaje,
+                base.porcentaje,
+            )
+        ]
+    if (
+        proyectado.porcentaje is not None
+        and base.porcentaje is not None
+        and proyectado.porcentaje - base.porcentaje > parametros.equilibrio_puntos
+    ):
+        return [
+            Alerta(
+                "AL-4",
+                Severidad.ADVERTENCIA,
+                "el punto de equilibrio proyectado sube mas de "
+                f"{parametros.equilibrio_puntos} puntos porcentuales sobre el de la linea base",
+                proyectado.porcentaje - base.porcentaje,
+                parametros.equilibrio_puntos,
+            )
+        ]
+    return []
