@@ -1,0 +1,36 @@
+# Lo que viaja en el instalador (spec S5 §7.1 y §7.2). Lista blanca: lo que no está aquí no viaja.
+
+[python]
+# CPython autónomo de python-build-standalone que instala `uv` (3.13.13 en uv 0.11.9, 2026-10-11).
+version = "3.13.13"
+
+[capas]
+# Extras de pyproject.toml de la capa básica. `xgboost` y `ml` nunca (ningún código los importa).
+basica = ["ui", "api", "planos", "informes", "bcv", "civil", "anomalias", "ia"]
+# `ifctester` (extra `ifc`) arrastra `bcf-client`, GPLv3, incompatible con la licencia propietaria
+# (RP10-4). Pasa a true solo con un ruling que cite la resolución de S3-0.
+ifc = false
+# Capa opcional del instalador completo: paquetes + modelo, en `modulos\similitud`.
+similitud = ["similitud"]
+
+[codigo]
+paquetes = [
+  "core", "adapters", "ml", "ui", "api", "operacion", "migraciones",
+  "seguridad", "asistente",
+]
+archivos = ["pyproject.toml", "LICENSE"]
+# De scripts/ y tests/fixtures/ viaja solo el cierre de importaciones de estos módulos (RV-25).
+cierre_desde = [
+  "scripts.seed", "scripts.seed_demo", "scripts.seed_industrial", "scripts.seed_of001",
+  "scripts.seed_sistemas", "scripts.seed_telecom", "scripts.simular_lista",
+]
+
+[datos]
+# Lista blanca de data/. Los PDF de MaPreX no viajan mientras su redistribución no esté aclarada
+# (pregunta 12); los .xls del BCV tampoco (P6): cada empresa descarga los suyos.
+incluir = [
+  "data/samples", "data/civil", "data/industrial", "data/precios/maprex_2026-07/*.csv",
+  # el lector de IDS (adapters/espacio/planos/ids.py) lee este archivo en tiempo de ejecucion
+  "data/ids/silice_instalaciones.ids",
+]
+excluir_sufijos = [".pdf", ".db", ".xls", ".xlsx"]

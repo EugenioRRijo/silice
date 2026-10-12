@@ -59,3 +59,8 @@ data/estado/
 
 # Cifra de la medicion de RNF-15 (la lee la meta de la 0.7.0)
 scripts/_salida_rnf15.json
+
+# Construccion del instalador, publicacion y salidas de la prueba de humo (S5-3, S5-4)
+build/
+publicacion/
+humo-salida/
