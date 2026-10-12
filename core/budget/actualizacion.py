@@ -173,6 +173,12 @@ def actualizar_precios(
     """
     reglas = tuple(reglas)
     modelo = _buscar(session, proyecto_nombre, codigo_presupuesto)
+    if lista_nueva.moneda != modelo.moneda:
+        raise ValueError(
+            f"la version {codigo_presupuesto} esta en {modelo.moneda} y la lista "
+            f"{lista_nueva.nombre!r} en {lista_nueva.moneda}: una version solo se revalora con "
+            "una lista de su moneda (RF-65)"
+        )
     parametros = _parametros_de(modelo)
     # SF‑E7: el historial compara listas base; una cotización activa de la versión (lista de
     # proyecto) prevalece sobre la lista nueva: se repone sobre ella en otra lista de proyecto.

@@ -55,7 +55,7 @@ __all__ = [
 #: Código de versión: prefijo libre y número final (`001`, `TI-001`).
 _CODIGO_VERSION = re.compile(r"^(.*?)(\d+)$")
 
-OBJETOS = ("metraje", "apu", "cantidad", "precio", "plan", "parametro", "version")
+OBJETOS = ("metraje", "apu", "cantidad", "precio", "plan", "parametro", "version", "moneda")
 
 #: Gancho de quien guarda: recibe la sesión y la versión recién creada (con `id`).
 Gancho = Callable[[Session, models.Presupuesto], None]

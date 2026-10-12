@@ -37,6 +37,13 @@ from core.models.entidades import (
     TipoInsumo,
     VersionOrigen,
 )
+from core.models.moneda import (
+    ImportacionIndice,
+    MonedaProyecto,
+    PrecioOrigen,
+    SerieIndice,
+    ValorIndice,
+)
 from core.models.tipos import DecimalExacto
 
 __all__ = [
@@ -53,6 +60,7 @@ __all__ = [
     "DescarteVersion",
     "Ejecucion",
     "Hallazgo",
+    "ImportacionIndice",
     "IncidenciaCambio",
     "Insumo",
     "ItemComputo",
@@ -60,16 +68,20 @@ __all__ = [
     "LineaComposicionVersion",
     "ListaPrecios",
     "ListaPreciosOrigen",
+    "MonedaProyecto",
     "Partida",
     "PartidaPresupuestada",
     "PlanVersion",
     "PrecioInsumo",
+    "PrecioOrigen",
     "Presupuesto",
     "Proyecto",
     "PuntoCurva",
     "ReferenciaPrecio",
     "RegistroCambio",
     "Rendimiento",
+    "SerieIndice",
     "TipoInsumo",
+    "ValorIndice",
     "VersionOrigen",
 ]
