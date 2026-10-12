@@ -25,6 +25,12 @@ de cada rama que incorpora un dominio—, la vigila `tests/unit/test_arquitectur
 
 ## Arranque rápido
 
+**Para usar Sílice:** instale `Silice-<versión>.exe` (sin administrador, sin internet) después de
+comprobar su huella y su firma ([manual de instalación](docs/manual_instalacion.md)) y abra
+«Sílice» desde el menú Inicio.
+
+**Para desarrollar:**
+
 ```powershell
 uv sync --all-extras                      # crea .venv con las dependencias, el grupo dev y los extras (ui, api, civil, ifc, planos, ml, anomalias, similitud, informes, bcv, ia)
 uv run python scripts/descargar_modelo.py      # una vez: modelo de similitud (la suite corre sin red)
@@ -32,8 +38,8 @@ uv run pytest -W error                    # suite de pruebas (advertencia = erro
 uv run ruff check .                       # estilo
 uv run python -m operacion adoptar data/apu.db --nombre silice   # una vez, si trae una base de la 0.5.0: la copia a data/casos/silice.db y la migra (el original no se toca)
 uv run python scripts/seed_demo.py --db data/casos/silice.db     # o, sin base anterior: el caso de demostración en el caso por defecto
-uv run python -m streamlit run ui/app.py  # la interfaz: abre en Inicio, con el caso abierto y los recorridos guiados
-uv run uvicorn api.main:app               # la API (documentación interactiva en http://127.0.0.1:8000/docs)
+uv run python -m streamlit run ui/app.py --server.address 127.0.0.1  # la interfaz: abre en Inicio, con el caso abierto y los recorridos guiados
+uv run uvicorn api.main:app --host 127.0.0.1            # la API (documentación interactiva en http://127.0.0.1:8000/docs)
 ```
 
 La interfaz escucha solo en 127.0.0.1 y sin telemetría: lo fija `.streamlit/config.toml`, versionado.
