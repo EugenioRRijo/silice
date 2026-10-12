@@ -18,6 +18,7 @@ palabra; las cifras y los estados de los requisitos no se repiten: viven en su f
 | [calidad_iso25010.md](calidad_iso25010.md) — evaluación ISO/IEC 25010 | vigente; RNF‑04 y RNF‑10 por medir en Med | F.2 ✔; fase C4 del cierre |
 | [guion_prueba_arenia.md](guion_prueba_arenia.md) — guion de prueba manual, casos CP‑01 a CP‑07 | vigente; CP‑07 se ejecuta en Med (GU1b) | P4.2 ✔; U0.2 |
 | [manual_usuario.md](manual_usuario.md), [manual_tecnico.md](manual_tecnico.md) — operación y extensión (guía del adaptador nuevo) | vigentes | F.3 ✔; fase C4 del cierre |
+| [manual_instalacion.md](manual_instalacion.md) — instalar, actualizar, respaldar y desinstalar Sílice (RF‑97, RF‑98) | borrador; falta la huella de la clave (H1) | S5 T19 |
 | [protocolo_precios.md](protocolo_precios.md) — obtención y registro de precios por dominio | vigente | M0.1 |
 | [resultados_ml.md](resultados_ml.md) — métricas del módulo predictivo y compuerta G2 | completo, regenerado por la CI | I6.3 ✔; M4.1 |
 | [api.json](api.json) — esquema OpenAPI exportado | completo, regenerado por la CI | F.1 ✔ |
