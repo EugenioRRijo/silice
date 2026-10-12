@@ -2,8 +2,9 @@
 sola, sin version: el impacto es por unidad (memoria tests/fixtures/memorias/s1_precios_empresa.md,
 columna «Δ por unidad»). La lista sola trae ademas los R12 de los precios heredados de la base: la
 prueba exige las filas de la memoria, no el conjunto exacto (ese es de la version, Tarea 8)."""
+
 from datetime import date
-from decimal import Decimal as D
+from decimal import Decimal
 from pathlib import Path
 
 from core import models
@@ -31,7 +32,9 @@ DE_LA_MEMORIA = {
 def _es(fila, regla, severidad, insumo):
     if (fila["Regla"], fila["Severidad"]) != (regla, severidad):
         return False
-    texto = fila["Descripción"]
+    # El catalogo trae «Arena lavada» y la lista «ARENA LAVADA»: misma identidad, otra caja.
+    texto = fila["Descripción"].casefold()
+    insumo = insumo.casefold()
     return insumo in texto if severidad == "INFO" else texto.startswith(f"{insumo}:")
 
 
@@ -48,16 +51,28 @@ def test_referencia_lista_de_empresa_y_hallazgos_de_la_memoria(tmp_path):
                 models.TipoInsumo.MATERIAL, "LIJA DE AGUA N 100", "pza"
             )
             registrar_importacion(
-                sesion, definicion_tasa("venta"), [Observacion(EVALUACION, D("860.18"))],
-                archivo="FUENTE.md", huella="e" * 64, fuente="https://www.bcv.org.ve/",
-                fecha_descarga=date(2026, 10, 8), responsable="Admin", filas_leidas=1,
+                sesion,
+                definicion_tasa("venta"),
+                [Observacion(EVALUACION, Decimal("860.18"))],
+                archivo="FUENTE.md",
+                huella="e" * 64,
+                fuente="https://www.bcv.org.ve/",
+                fecha_descarga=date(2026, 10, 8),
+                responsable="Admin",
+                filas_leidas=1,
                 filas_rechazadas=0,
             )
             sesion.commit()
             resumen = precios_empresa.crear_lista(
-                sesion, CSV, empresa_nombre="Constructora Ejemplo, C.A.",
-                empresa_rif="J-00000000-0", base_id=lista_de_referencia(sesion).id, moneda="Bs",
-                fecha=date(2026, 9, 20), fuente="lista interna 2026-09", nombre="",
+                sesion,
+                CSV,
+                empresa_nombre="Constructora Ejemplo, C.A.",
+                empresa_rif="J-00000000-0",
+                base_id=lista_de_referencia(sesion).id,
+                moneda="Bs",
+                fecha=date(2026, 9, 20),
+                fuente="lista interna 2026-09",
+                nombre="",
             )
             assert (resumen.propios, resumen.desconocidos) == (10, ())
             ((lista_id, nombre),) = precios_empresa.listas_de_empresa(sesion)

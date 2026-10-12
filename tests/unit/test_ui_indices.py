@@ -10,8 +10,12 @@ from ui import indices
 
 def test_leer_no_escribe_y_confirmar_es_idempotente(tmp_path):
     ruta = CARPETA / campo("Tasa", "Archivo")
-    informe = indices.leer(ruta, "tasa", fuente=campo("Tasa", "Dirección"),
-                           fecha_descarga=date.fromisoformat(campo("Tasa", "Fecha de descarga")))
+    informe = indices.leer(
+        ruta,
+        "tasa",
+        fuente=campo("Tasa", "Dirección"),
+        fecha_descarga=date.fromisoformat(campo("Tasa", "Fecha de descarga")),
+    )
     motor = crear_motor(f"sqlite:///{(tmp_path / 'c.db').as_posix()}")
     crear_esquema(motor)
     with abrir_sesion(motor) as sesion:

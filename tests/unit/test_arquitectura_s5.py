@@ -77,6 +77,8 @@ PAGINAS_QUE_ABREN_EL_CASO = (
     "escenarios",
     "historico",
     "hoja",
+    "indices",
+    "precios_empresa",
     "similares",
     "simulador",
 )
