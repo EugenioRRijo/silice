@@ -21,10 +21,14 @@ from core.contracts.dominio import Dominio
 from tests.fixtures import caso_of001, caso_ti001
 from tests.fixtures.espacio_of001 import espacio_of001
 from ui import hoja
+from ui.entrega import con_anexos_de_cadena
 
 NOMBRE_OF001 = "OF-001: oficina con baño, cocineta y puestos (caso de prueba)"
 NOMBRE_TI001 = "TI-001: telecomunicaciones (caso de prueba)"
 CONDICIONES = "caso de prueba de la hoja: rendimiento supuesto"
+#: Quien guarda la version `001` de las plantillas (RF-83: toda version se confirma a nombre de
+#: alguien; `scripts/generar_base_prueba.py` las corre fuera de pytest, sin el usuario de prueba).
+USUARIO_DE_LA_PLANTILLA = "Plantilla <plantilla>"
 
 
 def _lista(sesion, nombre: str, moneda: str, fecha: date) -> models.ListaPrecios:
@@ -43,6 +47,7 @@ def plantilla_of001(ruta: Path) -> Path:
     crear_esquema_espacio(motor)
     try:
         with abrir_sesion(motor) as sesion:
+            con_anexos_de_cadena(sesion)  # la cadena cubre el espacio que se guarda abajo
             lista = _lista(sesion, "Lista MaPreX jul-2026 (OF-001)", "USD", caso_of001.FECHA)
             catalogo = Catalogo(sesion)
             for composicion in caso_of001.COMPOSICIONES.values():
@@ -70,6 +75,7 @@ def plantilla_of001(ruta: Path) -> Path:
                 parametros=caso_ti001.PARAMETROS,
                 pendientes=resultado.elaboracion.pendientes,
                 plan=resultado.plan,
+                usuario=USUARIO_DE_LA_PLANTILLA,
             )
             guardar_espacio(sesion, version.id, espacio)
             sesion.commit()
@@ -101,6 +107,7 @@ def plantilla_ti001(ruta: Path) -> Path:
                 parametros=caso_ti001.PARAMETROS,
                 pendientes=resultado.pendientes,
                 plan=caso_ti001.PLAN,
+                usuario=USUARIO_DE_LA_PLANTILLA,
             )
             sesion.commit()
     finally:

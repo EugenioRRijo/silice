@@ -30,7 +30,7 @@ from sqlalchemy.orm import Session
 from starlette.background import BackgroundTask
 
 from api.archivos import guardar_subida
-from api.dependencias import SesionDep
+from api.dependencias import USUARIO_SIN_CLAVE, SesionDep
 from api.esquemas import (
     ActualizacionPeticion,
     ComparativoRespuesta,
@@ -177,6 +177,7 @@ def crear_presupuesto(
         lista=catalogo.lista_vigente(peticion.fecha),
         parametros=parametros,
         pendientes=resultado.pendientes,
+        usuario=USUARIO_SIN_CLAVE,
     )
     sesion.commit()
 
@@ -220,7 +221,7 @@ def importar_presupuesto_de_tercero(
         ruta = guardar_subida(directorio, archivo)
         comprobar_libro_legible(ruta)
         try:
-            resultado = importar_presupuesto(sesion, ruta, destino)
+            resultado = importar_presupuesto(sesion, ruta, destino, usuario=USUARIO_SIN_CLAVE)
         except ValueError:
             sesion.rollback()
             raise
@@ -341,6 +342,7 @@ def actualizar_presupuesto(
         lista_nueva,
         peticion.codigo_nuevo,
         detectar_atipicos=_detector_de_atipicos(),
+        usuario=USUARIO_SIN_CLAVE,
     )
     if comparativo.insumos_afectados == 0:
         raise HTTPException(
