@@ -42,8 +42,6 @@ from dataclasses import replace
 from decimal import Decimal
 from pathlib import Path
 
-import ezdxf
-
 from adapters.espacio.modelo import (
     TOLERANCIA,
     Ambiente,
@@ -61,6 +59,7 @@ from adapters.espacio.modelo import (
     Tramo,
 )
 from adapters.espacio.origen import OrigenMedida, TipoOrigen
+from adapters.espacio.planos.auditoria_archivo import Auditoria, auditar_archivo, texto_del_informe
 from adapters.espacio.planos.comun import (
     CALIBRE_PENDIENTE,
     CONDUCTORES_POR_DEFECTO,
@@ -167,35 +166,38 @@ def _demasiado_grande(archivo: str, tamano: int) -> ResultadoImportacion:
 
 
 def _abrir(ruta: Path):
+    """`(documento, motivo, auditoria)`: lectura con recuperación y auditoría de `ezdxf` (S3
+    §11.1); lo irrecuperable da `documento = None` y su mensaje en `motivo`."""
     try:
-        return ezdxf.readfile(ruta), ""
+        doc, auditoria = auditar_archivo(ruta)
     except Exception as error:  # noqa: BLE001 - un lector de CAD puede lanzar cualquier cosa
-        return None, f"{type(error).__name__}: {en_una_linea(error)}"
+        return None, f"{type(error).__name__}: {en_una_linea(error)}", Auditoria()
+    return doc, "", auditoria
 
 
 def _leer(contenido: bytes | Path | str, nombre: str | None):
-    """`(documento, archivo, rechazo)`: el documento ezdxf o el resultado de rechazo."""
+    """`(documento, archivo, rechazo, auditoria)`: el documento ezdxf o el resultado de rechazo."""
     if isinstance(contenido, bytes | bytearray):
         archivo = nombre or "plano.dxf"
         if len(contenido) > LIMITE_BYTES:
-            return None, archivo, _demasiado_grande(archivo, len(contenido))
+            return None, archivo, _demasiado_grande(archivo, len(contenido)), Auditoria()
         with tempfile.TemporaryDirectory() as carpeta:
             ruta = Path(carpeta) / "plano.dxf"
             ruta.write_bytes(bytes(contenido))
-            doc, motivo = _abrir(ruta)
+            doc, motivo, auditoria = _abrir(ruta)
     else:
         ruta = Path(contenido)
         archivo = nombre or ruta.name
         try:
             tamano = ruta.stat().st_size
         except OSError as error:
-            return None, archivo, _rechazo(archivo, en_una_linea(error))
+            return None, archivo, _rechazo(archivo, en_una_linea(error)), Auditoria()
         if tamano > LIMITE_BYTES:
-            return None, archivo, _demasiado_grande(archivo, tamano)
-        doc, motivo = _abrir(ruta)
+            return None, archivo, _demasiado_grande(archivo, tamano), Auditoria()
+        doc, motivo, auditoria = _abrir(ruta)
     if doc is None:
-        return None, archivo, _rechazo(archivo, motivo)
-    return doc, archivo, None
+        return None, archivo, _rechazo(archivo, motivo), Auditoria()
+    return doc, archivo, None, auditoria
 
 
 def _factor(doc, unidades: str | None) -> tuple[Decimal | None, int, str]:
@@ -817,7 +819,7 @@ def importar_dxf(
     Nunca lanza por un archivo malo: devuelve un resultado `RECHAZADA` (malformado, mas de 20 MB o
     mas entidades que el tope) o `DETENIDA` (falta la unidad, con `pide_unidad`) con su mensaje y
     sin filas."""
-    doc, archivo, rechazo = _leer(contenido, nombre)
+    doc, archivo, rechazo, auditoria = _leer(contenido, nombre)
     if rechazo is not None:
         return rechazo
     entidades = len(doc.modelspace())
@@ -851,6 +853,8 @@ def importar_dxf(
         )
     grupos, ajenas, sueltas = _capas(doc)
     lector = _Lector(doc, archivo, factor)
+    for texto in texto_del_informe(auditoria):  # S3 §11.1: lo que `ezdxf` reparó o no pudo
+        lector.acc.item(TipoItem.APROXIMADO, "dxf", texto)
     for tabla, e, mensaje in sueltas:
         lector._no_reconocido(tabla, e, mensaje)
     lector.ambientes(grupos["poligonos"], grupos["textos"])

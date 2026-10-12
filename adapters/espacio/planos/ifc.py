@@ -62,6 +62,7 @@ from adapters.espacio.planos.comun import (
     sin_filas,
     superficie_de,
 )
+from adapters.espacio.planos.ids import auditar_ids
 from adapters.espacio.planos.informe import EstadoImportacion, ResultadoImportacion, TipoItem
 
 __all__ = ["CLASES_POR_ESQUEMA", "LIMITE_BYTES", "MAX_ELEMENTOS_IFC", "ClasesIfc", "importar_ifc"]
@@ -562,6 +563,7 @@ def importar_ifc(
     lector.elementos()
     lector.pendientes()
     acc = lector.acc
+    acc.informe.extend(auditar_ids(modelo))  # S3 §11.2: lo que el IDS exige y el IFC no trae
     if not (acc.ambientes or acc.fuentes or acc.puntos):
         return acc.resultado(
             mensaje=f"{archivo}: el IFC no trae espacios, terminales ni tableros de la convencion; "

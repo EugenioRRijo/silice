@@ -1,0 +1,88 @@
+<?xml version='1.0' encoding='utf-8'?>
+<ids xmlns="http://standards.buildingsmart.org/IDS" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://standards.buildingsmart.org/IDS http://standards.buildingsmart.org/IDS/1.0/ids.xsd">
+    <info>
+        <title>Silice: requisitos minimos de una instalacion</title>
+        <version>1.0</version>
+        <description>Lo que la hoja de metrajes necesita y la geometria de un IFC no da.</description>
+        <author>silice@invalid.example</author>
+        <date>2026-10-11</date>
+    </info>
+    <specifications>
+        <specification name="Espacio con altura" ifcVersion="IFC4" description="La altura del espacio, para las cantidades verticales.">
+            <applicability minOccurs="0" maxOccurs="unbounded">
+                <entity>
+                    <name>
+                        <simpleValue>IFCSPACE</simpleValue>
+                    </name>
+                </entity>
+            </applicability>
+            <requirements>
+                <property cardinality="required">
+                    <propertySet>
+                        <simpleValue>Qto_SpaceBaseQuantities</simpleValue>
+                    </propertySet>
+                    <baseName>
+                        <simpleValue>Height</simpleValue>
+                    </baseName>
+                </property>
+            </requirements>
+        </specification>
+        <specification name="Aparato sanitario con diametro" ifcVersion="IFC4" description="El diametro nominal de la tuberia que lo sirve.">
+            <applicability minOccurs="0" maxOccurs="unbounded">
+                <entity>
+                    <name>
+                        <simpleValue>IFCSANITARYTERMINAL</simpleValue>
+                    </name>
+                </entity>
+            </applicability>
+            <requirements>
+                <property cardinality="required">
+                    <propertySet>
+                        <simpleValue>Silice_Hoja</simpleValue>
+                    </propertySet>
+                    <baseName>
+                        <simpleValue>DiametroNominal</simpleValue>
+                    </baseName>
+                </property>
+            </requirements>
+        </specification>
+        <specification name="Tomacorriente con circuito" ifcVersion="IFC4" description="El circuito al que pertenece, para agrupar los puntos.">
+            <applicability minOccurs="0" maxOccurs="unbounded">
+                <entity>
+                    <name>
+                        <simpleValue>IFCOUTLET</simpleValue>
+                    </name>
+                    <predefinedType>
+                        <simpleValue>POWEROUTLET</simpleValue>
+                    </predefinedType>
+                </entity>
+            </applicability>
+            <requirements>
+                <property cardinality="required">
+                    <propertySet>
+                        <simpleValue>Silice_Hoja</simpleValue>
+                    </propertySet>
+                    <baseName>
+                        <simpleValue>Circuito</simpleValue>
+                    </baseName>
+                </property>
+            </requirements>
+        </specification>
+        <specification name="Tablero con nombre" ifcVersion="IFC4" description="El nombre del tablero, que es la fuente de sus circuitos.">
+            <applicability minOccurs="0" maxOccurs="unbounded">
+                <entity>
+                    <name>
+                        <simpleValue>IFCELECTRICDISTRIBUTIONBOARD</simpleValue>
+                    </name>
+                </entity>
+            </applicability>
+            <requirements>
+                <attribute cardinality="required">
+                    <name>
+                        <simpleValue>Name</simpleValue>
+                    </name>
+                </attribute>
+            </requirements>
+        </specification>
+    </specifications>
+</ids>

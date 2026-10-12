@@ -33,7 +33,7 @@ EXTRAS_SILICE: dict[str, tuple[str, ...]] = {
 #: Tercero (nombre de importacion) -> carpetas que pueden importarlo. Fuera de ellas, ningun modulo.
 DUENOS_DE_TERCEROS: dict[str, tuple[str, ...]] = {
     "xlrd": ("adapters/bcv/",),
-    "ifctester": ("adapters/espacio/planos/",),
+    "ifctester": ("adapters/espacio/planos/", "scripts/generar_ids_silice.py"),
     "shapely": ("adapters/espacio/planos/",),
     "anthropic": ("asistente/",),
     "ollama": ("asistente/", "scripts/explorar_ia.py"),

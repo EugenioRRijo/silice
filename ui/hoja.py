@@ -80,6 +80,7 @@ from adapters.espacio.planos import (
     declarar_circuitos,
     fusionar,
 )
+from adapters.espacio.planos.geometria_plano import reglas_plano
 from adapters.espacio.reglas import CantidadEscrita, reglas_espacio
 from core import models
 from core.budget import (
@@ -721,7 +722,7 @@ def elaborar_hoja(
         fecha=fecha,
         moneda=moneda,
         plan=plan_final,
-        reglas=(*REGLAS, *reglas_espacio(espacio, escritas), *reglas_extra),
+        reglas=(*REGLAS, *reglas_espacio(espacio, escritas), *reglas_plano(espacio), *reglas_extra),
     )
     if usado:
         efectivo: tuple[PeriodoPlan, ...] | None = usado[0]
@@ -1651,7 +1652,7 @@ def abrir_version(
             proyecto,
             codigo,
             catalogo,
-            reglas=(*REGLAS, *reglas_espacio(espacio, cantidades), *extra),
+            reglas=(*REGLAS, *reglas_espacio(espacio, cantidades), *reglas_plano(espacio), *extra),
         )
     except (ValueError, CatalogoIncompleto, KeyError) as error:
         sesion.rollback()
