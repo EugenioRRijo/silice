@@ -15,8 +15,16 @@ def test_metadata_espacio_es_publica_y_es_la_de_las_tablas_esp() -> None:
     assert all(tabla.metadata is persistencia.METADATA_ESPACIO for tabla in persistencia.TABLAS)
 
 
-def test_el_caso_lleva_el_nucleo_y_el_espacio_y_la_instalacion_lleva_seguridad() -> None:
-    assert len(METADATAS_CASO) == 2
+def test_el_caso_lleva_el_nucleo_y_el_espacio_al_principio() -> None:
     assert METADATAS_CASO[0] is Base.metadata
     assert METADATAS_CASO[1] is persistencia.METADATA_ESPACIO
+
+
+def test_el_caso_lleva_el_registro_del_asistente() -> None:
+    from asistente.registro import METADATA_IA
+
+    assert METADATA_IA in METADATAS_CASO
+
+
+def test_la_instalacion_lleva_seguridad() -> None:
     assert METADATAS_INSTALACION == (BaseSeguridad.metadata,)

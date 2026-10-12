@@ -24,7 +24,7 @@ TABLAS_DE_S2_1 = {
     "costo_real",
     "cita_valuacion",
 }
-TABLAS_DE_S2_3: set[str] = set()
+TABLAS_DE_S2_3 = {"decision_recuperacion"}
 
 
 def _tablas(ruta: Path) -> set[str]:

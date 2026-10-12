@@ -183,3 +183,34 @@ class CitaValuacion(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     periodo_id: Mapped[int] = mapped_column(ForeignKey("periodo_reajuste.id", ondelete="CASCADE"))
     valuacion_id: Mapped[int] = mapped_column(ForeignKey("valuacion.id", ondelete="CASCADE"))
+
+
+class DecisionRecuperacion(Base):
+    """SL-E6: la decisión de recuperación, con la foto de lo que el usuario vio (S2 §6.1)."""
+
+    __tablename__ = "decision_recuperacion"
+    __table_args__ = (Index("ix_decision_recuperacion_proyecto", "proyecto_id"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    proyecto_id: Mapped[int] = mapped_column(ForeignKey("proyecto.id", ondelete="CASCADE"))
+    linea_base_id: Mapped[int] = mapped_column(
+        ForeignKey("linea_base_control.id", ondelete="CASCADE")
+    )
+    version_resultante_id: Mapped[int] = mapped_column(
+        ForeignKey("presupuesto.id", ondelete="CASCADE")
+    )
+    fecha_corte: Mapped[date] = mapped_column(Date)
+    opcion: Mapped[str] = mapped_column(String(20))
+    detalle: Mapped[str] = mapped_column(Text, default="{}")
+    costo_directo_adicional: Mapped[Decimal] = mapped_column(DecimalExacto)
+    costo_indirecto: Mapped[Decimal] = mapped_column(DecimalExacto)
+    penalizacion: Mapped[Decimal] = mapped_column(DecimalExacto)
+    termino: Mapped[date] = mapped_column(Date)
+    spi: Mapped[Decimal | None] = mapped_column(DecimalExacto, default=None)
+    cpi: Mapped[Decimal | None] = mapped_column(DecimalExacto, default=None)
+    eac: Mapped[Decimal | None] = mapped_column(DecimalExacto, default=None)
+    pe: Mapped[Decimal | None] = mapped_column(DecimalExacto, default=None)
+    supuestos: Mapped[str] = mapped_column(Text, default="[]")
+    fuente: Mapped[str] = mapped_column(String(300))
+    responsable: Mapped[str] = mapped_column(String(120))
+    fecha_hora: Mapped[datetime] = mapped_column(DateTime)

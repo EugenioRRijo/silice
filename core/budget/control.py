@@ -13,6 +13,7 @@ lista de esos costos; PV, EV, SPI, el precio y el término se calculan igual (S2
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, fields
 from datetime import date, datetime
 from decimal import Decimal
@@ -27,6 +28,7 @@ from core.budget.edicion import CambioEditado, _exigir_respaldo, version_vigente
 from core.budget.equilibrio import PuntoEquilibrio, punto_equilibrio
 from core.budget.persistencia import cargar_presupuesto
 from core.budget.puente import ReajusteReconocido, reajuste_reconocido
+from core.budget.recuperacion import ContextoRecuperacion
 from core.budget.valor_ganado import (
     PERSPECTIVA_COSTO,
     Alertas,
@@ -55,6 +57,7 @@ __all__ = [
     "calcular_control",
     "construir_estado",
     "composiciones_de_la_linea_base",
+    "contexto_de_recuperacion",
     "costo_real_al_corte",
     "guardar_parametros",
     "parametros_de_control",
@@ -343,3 +346,34 @@ def guardar_parametros(
 def composiciones_de_la_linea_base(resultado: ResultadoControl) -> dict[str, ComposicionAPU]:
     """Los APU congelados de la línea base por código (SF-E6): `Presupuesto.partidas[i].apu`."""
     return {p.item.codigo_partida: p.apu for p in resultado.instantanea.presupuesto.partidas}
+
+
+def contexto_de_recuperacion(
+    resultado: ResultadoControl,
+    composiciones: Mapping[str, ComposicionAPU],
+    *,
+    objetivo: int | None = None,
+    horas_previas: Decimal = CERO,
+    independientes: frozenset[str] = frozenset(),
+    origen_costo_diario: str = "composiciones de la linea base",
+) -> ContextoRecuperacion:
+    """Arma el contexto de las opciones de recuperacion (SL-E6) desde el control al corte: el
+    estado, la reproyeccion base, los indicadores, los APU dados, los parametros y los montos del
+    punto de equilibrio (venta, costo fijo y reajuste reconocido)."""
+    instantanea = resultado.instantanea
+    return ContextoRecuperacion(
+        estado=resultado.estado,
+        base=resultado.reproyeccion,
+        indicadores=resultado.indicadores,
+        composiciones=composiciones,
+        parametros_costo=instantanea.parametros_costo,
+        parametros=resultado.parametros,
+        presupuesto=instantanea.presupuesto,
+        venta=resultado.venta,
+        costo_fijo=resultado.costo_fijo,
+        reajuste=resultado.reajuste.monto,
+        objetivo=objetivo,
+        origen_costo_diario=origen_costo_diario,
+        horas_previas=horas_previas,
+        independientes=independientes,
+    )
