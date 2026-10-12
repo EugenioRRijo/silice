@@ -14860,6 +14860,8 @@ git commit -m "feat(paquete): exportar el .silice firmado y verificarlo en cuatr
 
 ### Tarea 16: Entregar el paquete (UC-22): `ui/entrega.py` y la pantalla
 
+> **Nota de ejecución (2026-10-12, cotejada con `main`).** (1) `ui/entrega.py` ya traía `anexos_de_cadena` y `con_anexos_de_cadena` (tarea 18); esta tarea agrega lo demás sin cambiarlos. (2) El plan manda `exigir_local(Sensible.FIRMAR)`: se conserva, porque `ui.sesion.exigir_local` llama a `ui.cliente.operacion_sensible_permitida`, que usa `operacion.red.es_cliente_local` (el mismo criterio de `seguridad.empresas.exigir_equipo_propio`) y además respeta los eventos de seguridad perdidos. (3) `anexos/ia.json` tiene productor en `main`: `asistente.registro.anexo_ia`; `anexos_del_paquete` lo usa si no se le pasa `ia` (`ui.entrega.anexo_de_ia`). (4) `tests/fixtures/canonico_minimo.py` no existe en `main`: las pruebas del plan no se escribieron (método de Eugenio). (5) La pantalla elige por omisión el proyecto abierto en la barra superior.
+
 **Rama:** `inc/080-s3-3-paquete`   **Rol:** sf-ingeniero-interfaz
 **Archivos:**
 - Crear: `ui/entrega.py`, `ui/paginas/entregar.py`
@@ -15685,6 +15687,8 @@ git commit -m "feat(ui): pantalla Entregar paquete con resumen, firma y registro
 ```
 
 ### Tarea 17: Administración (cuentas, empresa, claves, accesos) y restablecer el administrador
+
+> **Nota de ejecución (2026-10-12, cotejada con `main`).** (1) `seguridad/claves_api.py` ya existe (PR #73) con el código literal del plan; no se toca. (2) La pantalla «Instalación» del PR #73 pasa a ser la sexta pestaña (`ui.paginas.instalacion.render_pestana`, `PESTANAS` en `administracion`) y sale de `PAGINAS`; `instalacion.py` queda sin `render()`. (3) Solo se dibuja la pestaña elegida (`st.segmented_control`), no las seis con `st.tabs`. (4) Con el acceso apagado no hay cuenta que firme cambios de cuentas: esa pestaña muestra la lista y lo avisa; las demás usan el login de la sesión (`desarrollo`). (5) Los campos de contraseña van en formularios que se vacían al enviar. (6) `ui/acceso.py` no dejaba usar el código de `restablecer_administrador.py` si ya había cuentas: se agregó el expander «Perdí el acceso del administrador». (7) `scripts/README.md` lleva la fila del script. `LONGITUD_CODIGO = 20` base32 ya da 100 bits.
 
 **Rama:** `inc/080-s3-3-paquete`   **Rol:** sf-ingeniero-interfaz
 **Archivos:**
