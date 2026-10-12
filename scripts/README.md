@@ -78,6 +78,8 @@ rack), con datos en `tests/fixtures/caso_ti001.py` y cantidades en
 |---|---|---|
 | `guardia_nucleo.py` | la hipótesis central sobre `<base>..HEAD`: falla si un commit toca `core/` junto a `adapters/` o `ml/`, o si una rama fusionada que incorpora un dominio cambia `core/` | CI |
 | `verificar_omitidas.py` | falla si el JUnit de pytest trae alguna prueba omitida | CI |
+| `dividir_suite.py` | reparte los archivos `tests/**/test_*.py` en tramos balanceados (voraz «mayor primero», pesos de `pesos_suite.json` o tamaño) para los runners paralelos | CI |
+| `unir_junit.py` | une los JUnit de los tramos en uno por sistema operativo, exige que lleguen todos y escribe los pesos medidos por archivo | CI |
 | `descargar_modelo.py` | descarga una vez el modelo de similitud a la caché de Hugging Face; la suite corre sin red (`HF_HUB_OFFLINE=1`) y la CI lo corre antes de pytest | CI · RV‑17 |
 
 ## Metas de sprint

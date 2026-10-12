@@ -81,7 +81,7 @@ Convenciones operativas:
 | Sesiones | Una sesión por incremento, `/clear` entre ellas; modo plan antes de cambios grandes |
 | Entorno | `uv sync` · `uv run pytest` · `uv run ruff check .` |
 | Idioma | Código, docstrings, docs y commits en español; identificadores sin tildes |
-| Worktrees | Como máximo tres worktrees vivos además del checkout principal, en `.worktrees/<nombre-corto>`: el del carril de núcleo y hasta dos de carriles sin núcleo. Se borra con `git worktree remove` al fusionar su rama (nunca con `--force`; si se niega, se revisa qué quedó sin guardar) |
+| Worktrees | Como máximo cinco worktrees vivos además del checkout principal, en `.worktrees/<nombre-corto>`: el del carril de núcleo (uno solo) y hasta cuatro de carriles sin núcleo (enmienda del 2026-10-12, a pedido de Eugenio). Se borra con `git worktree remove` al fusionar su rama (nunca con `--force`; si se niega, se revisa qué quedó sin guardar) |
 | Fusión | Un PR por fase **contra `main`**, fusionado en cuanto la CI esté verde y la compuerta cruzada, con *merge commit* (`gh pr merge <n> --merge`, nunca *squash*: la meta comprueba que el commit de cada prueba precede al de su implementación). No acumular pilas: `gh pr merge` fusiona en la base *actual* del PR |
 | Etiquetas | Una por compuerta cruzada y, desde Sílice, `vX.Y.Z` anotada en `main`, en orden numérico (`v0.6.0` antes que `v0.7.0` aunque un carril llegue antes) |
 | Metas | Desde la 0.6.0, una sola meta: `scripts/meta_silice.py --version X --hasta FASE`; una fase se cruza con la meta en OK **y** la compuerta anotada en `docs/bitacora/`. Las metas `meta_<sprint>.py` anteriores quedan como registro |
