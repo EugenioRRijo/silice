@@ -23,6 +23,7 @@ RUTA_INICIO = "inicio"
 NOMBRE_DEMOSTRACION = "Ver la demostracion auditada"
 NOMBRE_PRESUPUESTO = "Armar un presupuesto"
 NOMBRE_PRECIOS = "Actualizar precios"
+NOMBRE_MONEDA = "Moneda, precios de empresa y reajuste"
 
 
 @dataclass(frozen=True, slots=True)
@@ -142,6 +143,37 @@ RECORRIDOS: tuple[Recorrido, ...] = (
                 "Cargue la lista nueva (CSV o XLSX con columnas tipo, insumo, unidad y precio) y "
                 "pulse «Revalorar presupuesto».",
                 "Aparecen el comparativo por partida y la auditoria de la version nueva.",
+            ),
+        ),
+    ),
+    Recorrido(
+        NOMBRE_MONEDA,
+        "Llevar un proyecto a su moneda, auditar los precios de la empresa y reajustarlos.",
+        (
+            Paso(
+                "Importar la tasa del BCV",
+                "indices",
+                "Suba el archivo trimestral de la tasa, revise el informe previo y confirme.",
+                "La tasa queda importada con su fuente y su huella.",
+            ),
+            Paso(
+                "Crear la lista de la empresa",
+                "precios_empresa",
+                "Cargue la referencia MaPreX en Bs y cree la lista de la empresa con su archivo.",
+                "Ve los hallazgos R11 y R12 a la fecha de evaluacion.",
+            ),
+            Paso(
+                "Revisar la moneda y los precios",
+                "hoja",
+                "Abra la version, revise la moneda en Parametros y el origen y la erosion en "
+                "Precios.",
+                "Cada precio muestra su origen, su erosion y su estado.",
+            ),
+            Paso(
+                "Reajustar y exportar",
+                "reajuste",
+                "Declare la clausula, los periodos y el ejecutado; calcule y exporte el Excel.",
+                "Ve la escalatoria y la comprobacion lado a lado y descarga el Excel.",
             ),
         ),
     ),

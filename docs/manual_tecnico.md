@@ -635,3 +635,58 @@ su total puede diferir del de una versión guardada con otros parámetros.
 **Base de CP‑08 a CP‑11.** `scripts/seed_of001.py` siembra OF‑001 (catálogo, lista, proyecto, versión
 `001` con su espacio) en `data/prueba_sf.db`; se niega a escribir en `data/apu.db` y exige `--reiniciar`
 si el archivo existe (`tests/unit/test_seed_of001.py`).
+
+## 13. Moneda, precios de empresa, BCV y reajuste (Sílice 0.6.0, S1)
+
+Spec: `docs/especificaciones/2026-10-11-silice-s1-moneda-reajuste-design.md`. Tres expedientes de núcleo
+(SL‑E1 a SL‑E3, en `docs/bitacora/2026-10-silice-expedientes.md`); ningún contrato de `core/contracts/`
+cambió.
+
+**Capas.**
+
+| Paquete | Qué hace |
+|---|---|
+| `core/models/moneda.py` | Las tablas aditivas de S1, reexportadas en `core.models`: series, importaciones y valores de índices, moneda del proyecto, origen por precio (SL‑E1); lista de empresa (SL‑E2); cláusula, estudio, períodos y ejecutado del reajuste (SL‑E3). Revisiones de Alembic `caso_0002_s1_moneda`, `caso_0003_s1_lista_empresa` y `caso_0004_s1_reajuste` |
+| `core/catalog/indices.py` | `registrar_importacion` (idempotente por huella SHA‑256; una revisión es otra importación), `valor_en` (con la importación citada o la más reciente) y `tasa_aplicable` (S1‑R1, S1‑R2) |
+| `core/catalog/moneda.py` | `convertir`, `erosion`, `erosion_por_indice` (puras, 28 dígitos y `ROUND_HALF_EVEN` fijados dentro), `TasaDeclarada`, `convertir_lista` |
+| `core/catalog/origen.py` | `origenes_efectivos`: **una sola regla de precedencia**: la fila de `precio_origen` y, sin ella, la lista (así abren las bases anteriores) |
+| `core/catalog/empresa.py` | `crear_lista_de_empresa`, `crear_lista_de_referencia`, `es_heredado` e `instantanea_de_lista` (R11/R12 de una lista sola) |
+| `core/budget/moneda.py` | `moneda_del_proyecto`, `declarar_moneda`, `convertir_version` (versión nueva con motivo `conversion`, por `guardar_presupuesto`) |
+| `core/verification/precios.py` | R11 `PrecioFueraDeRango` y R12 `PrecioVencido`: reglas **externas** (como R8–R10), fuera de `REGLAS`; reciben la instantánea con la fecha de evaluación explícita y nunca leen el reloj |
+| `core/budget/reajuste.py` | Las funciones puras del reajuste (`calcular_estudio` y sus partes) y `guardar_estudio` / `cargar_estudio` |
+| `adapters/bcv/` | `libro.py` convierte `.xls` (`xlrd`, importado dentro de la función) y `.xlsx` en una **cuadrícula neutra**; `tasa.py`, `inpc.py` y `csv_canonico.py` la interpretan; no importa `core` |
+| `ui/indices.py`, `ui/precios_empresa.py`, `ui/reajuste.py`, `ui/texto_seguro.py` | Sin Streamlit, sin pandas y sin `ui.caso` (`tests/unit/test_arquitectura_s1.py`) |
+| `ui/paginas/indices.py`, `precios_empresa.py`, `reajuste.py` | Abren el caso con `preparar_base` antes de `crear_motor` (están en `PAGINAS_QUE_ABREN_EL_CASO`) |
+
+**Reglas que no se rompen.** Todo monto es `Decimal`; cada división fija su contexto dentro de la
+función y se redondea solo al presentar. Una reevaluación de R11/R12 es siempre en memoria: la hoja abre
+la versión con `abrir_version(..., fecha_evaluacion=hoy)` y no escribe hallazgos. El texto ajeno (hojas y
+etiquetas del BCV, descripciones de una lista importada) se muestra en celdas o con
+`ui.texto_seguro.texto_seguro`, nunca con `unsafe_allow_html`. Una página nueva no importa `scripts/` al
+cargarse (la referencia MaPreX se importa dentro de la acción).
+
+**Cuando el BCV cambia un formato.** Los formatos verificados viven en `docs/fuentes/bcv_formatos.md`; su
+tabla «Formatos para `adapters/bcv/formatos.json`» se copia tal cual al JSON (una clave por fila, con
+prefijo `tasa.` o `inpc.`, y su valor JSON) y `test_formatos_json_copia_bcv_formatos_md` compara los
+dos. Pasos: abrir el archivo nuevo con Excel o LibreOffice, corregir la tabla, regenerar el JSON, volver a transcribir a mano en
+`tests/fixtures/bcv/FUENTE.md` la primera, la última y una hoja del medio, y correr
+`uv run pytest tests/unit/adapters -W error`. Mientras tanto, la serie entra por el CSV canónico.
+
+**Reajuste reproducible (RNF‑14).** `guardar_estudio` guarda la cláusula, la tasa de cada cierre, la
+versión revalorada usada y, en `periodo_reajuste.importaciones`, la importación de cada índice
+(`{"serie@AAAA-MM-DD": id}`). `cargar_estudio` recalcula con esas citas y exige igualdad exacta: una
+revisión importada después no lo cambia. Un parcial al corte se reemplaza una sola vez
+(`uq_estudio_reemplaza_a`); el reemplazado no se borra.
+
+**Dónde vive cada supuesto (S1‑R1 a S1‑R21, spec S1 §12).** Lado de la tasa: `LADO_POR_DEFECTO`; siete
+días: `DIAS_MAXIMOS_SIN_TASA` (`core/catalog/indices.py`). Rango y plazo: `RANGO_INFERIOR`,
+`RANGO_SUPERIOR`, `PLAZO_VIGENCIA_DIAS` (`core/catalog/empresa.py`), y por lista en `lista_empresa`.
+Monedas: `MONEDAS` (`core/catalog/moneda.py`). Primer año, R, mecanismo pagadero y parcial al corte: la
+cláusula y `calcular_estudio` (`core/budget/reajuste.py`), con sus notas en las constantes `MARCA_*`,
+`AVISO_USD_BS`, `NOTA_COMISION` y `NOTA_RECONSIDERACION`. Cambiar uno es cambiar esa constante (o la
+función pura) y su memoria en `tests/fixtures/memorias/`, con expediente si está en `core/`.
+
+**Oráculos.** Las cuatro memorias a mano de `tests/fixtures/memorias/s1_*.md` y la transcripción a mano
+de `tests/fixtures/bcv/FUENTE.md` se versionaron antes que el código que prueban (`S1-MEM`, `S1-FUENTE`
+de `scripts/meta_silice.py`). La base de prueba de la 0.6.0 (`tests/fixtures/bases/v0_6_0/`, con
+`s1.db`) se generó con el código de la etiqueta `v0.6.0` (`scripts/generar_base_prueba.py`).

@@ -54,7 +54,7 @@ MENSAJE_BASE_ANTERIOR = (
 
 
 def render() -> None:
-    """El caso abierto, su estado vacio si lo tiene y los tres recorridos."""
+    """El caso abierto, su estado vacio si lo tiene y los recorridos."""
     st.caption(
         "Esta aplicacion arma, costea y audita analisis de precios unitarios. Elija el caso con "
         "que va a trabajar y lo que quiere hacer: cada pantalla le indicara el paso siguiente."

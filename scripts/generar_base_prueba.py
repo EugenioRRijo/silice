@@ -6,12 +6,14 @@ Se corre con el código DE LA ETIQUETA, nunca con el de la rama: la etiqueta se 
 por tabla de cada base) queda escrita con ese código: las pruebas de adopción comparan contra ella,
 nunca contra un recálculo con el código nuevo.
 
-Tres bases, cada una en su archivo (casos construidos, NORMAS.md §1):
+Cuatro bases (la cuarta, desde la 0.6.0), cada una en su archivo (casos construidos, NORMAS.md §1):
 
 - `demo.db`: línea base de la clínica, la demostración y `DEMO-001` (`scripts.seed_demo`);
 - `of001.db`: la oficina OF-001 con su espacio `esp_*` y la versión `001`
   (`tests.fixtures.hoja_en_base.plantilla_of001`);
-- `ti001.db`: TI-001 con su versión `001` y su plan (`plantilla_ti001`).
+- `ti001.db`: TI-001 con su versión `001` y su plan (`plantilla_ti001`);
+- `s1.db` (desde la 0.6.0): el caso S1, la clínica convertida a Bs, la lista de empresa de la
+  memoria y el estudio de reajuste guardado (`tests.fixtures.caso_s1.plantilla_s1`).
 
 Desde la 0.6.0 cada base nace por `operacion.base_datos.preparar_base` (en `head`); en la 0.5.0 ese
 módulo no existe y la crea `create_all`, como la creaba la 0.5.0.
@@ -44,6 +46,7 @@ from core import models  # noqa: E402
 from core.budget import cargar_elaboracion  # noqa: E402
 from core.catalog import Catalogo, abrir_sesion, crear_motor  # noqa: E402
 from scripts import seed_demo  # noqa: E402
+from tests.fixtures.caso_s1 import plantilla_s1  # noqa: E402
 from tests.fixtures.hoja_en_base import plantilla_of001, plantilla_ti001  # noqa: E402
 
 NOMBRE_FICHA = "ficha.json"
@@ -59,6 +62,7 @@ CONSTRUCTORES: dict[str, Callable[[Path], object]] = {
     "demo.db": _demo,
     "of001.db": plantilla_of001,
     "ti001.db": plantilla_ti001,
+    "s1.db": plantilla_s1,
 }
 
 

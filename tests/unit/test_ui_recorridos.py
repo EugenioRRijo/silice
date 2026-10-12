@@ -11,6 +11,7 @@ import pytest
 
 from ui.recorridos import (
     NOMBRE_DEMOSTRACION,
+    NOMBRE_MONEDA,
     NOMBRE_PRECIOS,
     NOMBRE_PRESUPUESTO,
     RECORRIDOS,
@@ -25,12 +26,23 @@ PASO = Paso("Ver el catalogo", "catalogo", "Revise las partidas.", "Ve la tabla 
 OTRO = Paso("Componer", "componer", "Componga la partida.", "La partida queda guardada.")
 
 
-def test_hay_tres_recorridos_en_el_orden_declarado() -> None:
+def test_hay_cuatro_recorridos_en_el_orden_declarado() -> None:
     assert tuple(r.nombre for r in RECORRIDOS) == (
         NOMBRE_DEMOSTRACION,
         NOMBRE_PRESUPUESTO,
         NOMBRE_PRECIOS,
+        NOMBRE_MONEDA,
     )
+
+
+def test_el_recorrido_de_moneda_pasa_por_las_pantallas_de_s1() -> None:
+    recorrido = recorrido_por_nombre(NOMBRE_MONEDA)
+    assert [paso.pagina for paso in recorrido.pasos] == [
+        "indices",
+        "precios_empresa",
+        "hoja",
+        "reajuste",
+    ]
 
 
 def test_los_recorridos_son_inmutables() -> None:
