@@ -54,12 +54,12 @@ def test_varios_roles_suman_sus_pantallas_sin_repetir() -> None:
 
 
 def test_sin_roles_solo_queda_lo_que_no_pide_accion() -> None:
-    assert _rutas(set()) == ["inicio"]
+    assert _rutas(set()) == ["inicio", "acerca"]
 
 
 def test_toda_pantalla_menos_el_inicio_declara_la_accion_que_la_protege() -> None:
     """Una pantalla nueva (también las de S1 y S2) sin `accion` la vería cualquier cuenta."""
-    assert [p.ruta_url for p in PAGINAS if p.accion is None] == ["inicio"]
+    assert [p.ruta_url for p in PAGINAS if p.accion is None] == ["inicio", "acerca"]
 
 
 def test_un_recorrido_omite_los_pasos_de_pantallas_que_el_rol_no_ve() -> None:

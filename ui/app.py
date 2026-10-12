@@ -69,6 +69,7 @@ from ui import sesion as ui_sesion
 from ui.caso import estado_caso, recorrido_activo, resumen_caso, ruta_caso
 from ui.entorno import VARIABLE_MODO_ENTREGA, leer_variable
 from ui.paginas import (
+    acerca,
     actualizacion,
     catalogo,
     componer,
@@ -79,6 +80,7 @@ from ui.paginas import (
     hoja,
     indices,
     inicio,
+    instalacion,
     precios_empresa,
     reajuste,
     similares,
@@ -147,6 +149,10 @@ PAGINAS: tuple[DefinicionPagina, ...] = (
     DefinicionPagina(reajuste.render, "Reajuste de precios", SECCION_TRABAJO, "UC-18", _REAJUSTA),
     DefinicionPagina(control.render, "Control de obra", SECCION_TRABAJO, "UC-19 / UC-20",
                      _CONTROLA),
+    DefinicionPagina(acerca.render, "Acerca de Sílice", SECCION_TRABAJO),
+    # S5-2: mientras S3-3 no traiga la página Administración, la pestaña vive como pantalla propia.
+    DefinicionPagina(instalacion.render, "Instalación", SECCION_TRABAJO,
+                     accion=Accion.ADMINISTRAR_RED_Y_API),
     DefinicionPagina(
         escenarios.render, "Escenarios de sensibilidad", SECCION_INVESTIGACION, "UC-08", _EDITA
     ),

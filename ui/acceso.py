@@ -14,11 +14,12 @@ import streamlit as st
 from sqlalchemy.orm import Session
 
 from operacion.config import carpeta_datos
+from operacion.red import AVISO_ACCESO
 from seguridad import cuentas, sesiones
 from seguridad.modelo import Sesion, Usuario
 from seguridad.permisos import aviso_de_roles
-from seguridad.red import es_local, red_local_activa
 from seguridad.sesiones import SesionActiva
+from ui import cliente
 from ui import sesion as ui_sesion
 from ui.sesion import (
     CLAVE_AVISO,
@@ -38,10 +39,7 @@ __all__ = [
     "pintar_sesion",
 ]
 
-AVISO_SIN_CIFRAR = (
-    "Conexión sin cifrar: su contraseña viaja legible por la red. Úsela solo en una red de "
-    "confianza."
-)
+AVISO_SIN_CIFRAR = AVISO_ACCESO  # el texto y la regla de «cliente remoto» son de S5 (ui.cliente)
 AVISO_EXPIRADA = "Su sesión se cerró por inactividad. Entre de nuevo: su borrador sigue aquí."
 AVISO_OTRO_USUARIO = "Entró otra persona: el borrador de la sesión anterior se descartó."
 TITULO_ACCESO = "Sílice: acceso"
@@ -85,8 +83,7 @@ def _iniciar(bd: Session, usuario: Usuario) -> None:
 
 
 def _aviso_de_red() -> None:
-    if not es_local(_ip(), red_local_encendida=red_local_activa()):
-        st.warning(AVISO_SIN_CIFRAR)
+    cliente.pintar_aviso_sin_cifrar(_ip())
 
 
 def _formulario_de_entrada(bd: Session) -> None:

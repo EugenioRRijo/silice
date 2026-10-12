@@ -28,8 +28,8 @@ from sqlalchemy.orm import Session
 from operacion.instalacion import cerrar_motores, sesion_de_instalacion
 from seguridad import sesiones
 from seguridad.permisos import ROL_DE_LO_SENSIBLE, Accion, Rol, Sensible, permitido
-from seguridad.red import es_local, red_local_activa
 from seguridad.sesiones import SesionActiva
+from ui import cliente
 from ui.texto_seguro import texto_seguro
 
 __all__ = [
@@ -91,10 +91,9 @@ def instalacion() -> Iterator[Session]:
 
 
 def ip_del_cliente() -> str | None:
-    """`st.context.ip_address` como texto, o `None` si no se sabe. Bajo `AppTest` Streamlit
-    entrega un simulacro que NO es un `str`: se descarta (se sustituye en las pruebas)."""
-    ip = getattr(st.context, "ip_address", None)
-    return ip if isinstance(ip, str) else None
+    """La IP del navegador, como la lee `ui.cliente` (el bucle local llega como `127.0.0.1`);
+    `None` si no se pudo leer. Se conserva aquí porque las pruebas de S3 la sustituyen."""
+    return cliente.ip_del_cliente()
 
 
 def sesion_actual() -> SesionActiva | None:
@@ -156,7 +155,8 @@ def exigir_local(sensible: Sensible) -> SesionActiva:
     """Como `exigir`, y además el cliente debe ser el propio equipo (firmar, clave de firma,
     claves de API...). Rechaza con el mensaje de 21j."""
     sesion = exigir(ROL_DE_LO_SENSIBLE[sensible])
-    if not es_local(ip_del_cliente(), red_local_encendida=red_local_activa()):
-        st.error(MENSAJE_SOLO_LOCAL)
+    permitida, motivo = cliente.operacion_sensible_permitida()
+    if not permitida:
+        st.error(motivo)
         st.stop()
     return sesion

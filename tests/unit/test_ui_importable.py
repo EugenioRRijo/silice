@@ -29,6 +29,7 @@ MODULOS_SIN_PAGINA = (
     "ui.control",
     "ui.sesion",  # S3: el acceso y la sesion
     "ui.acceso",
+    "ui.cliente",  # S5: quien llega y las operaciones sensibles
 )
 
 
@@ -36,7 +37,7 @@ def test_las_paginas_se_importan_sin_efectos(tmp_path):
     """Importar cada modulo de ui/ en un proceso limpio, con cwd temporal: no crea archivos ni
     llama a Streamlit fuera de `main()` (spec de UI, §4 regla 3)."""
     modulos = (*MODULOS_SIN_PAGINA, *(p.render.__module__ for p in PAGINAS))
-    assert len(modulos) == len(MODULOS_SIN_PAGINA) + 16  # las dieciseis paginas del marco
+    assert len(modulos) == len(MODULOS_SIN_PAGINA) + 18  # las dieciocho paginas del marco
     assert "ui.paginas.componer" in modulos  # meta P8 del prototipo (scripts/meta_prototipo.py)
     salida = importar_en_limpio(modulos, cwd=tmp_path)
     assert salida.returncode == 0, salida.stderr
