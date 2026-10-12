@@ -1,4 +1,7 @@
-"""Rutas de consulta del catalogo: salud, partidas e insumos con su precio vigente."""
+"""Rutas de consulta del catalogo: partidas e insumos con su precio vigente.
+
+`GET /salud` vive en `api/main.py`: es la unica ruta sin clave de API (RF-98).
+"""
 
 from __future__ import annotations
 
@@ -10,12 +13,6 @@ from core.catalog import Catalogo, CatalogoIncompleto
 from core.contracts.dominio import Dominio
 
 router = APIRouter(tags=["catalogo"])
-
-
-@router.get("/salud")
-def salud() -> dict[str, str]:
-    """Ping de disponibilidad, sin tocar la base de datos."""
-    return {"estado": "ok"}
 
 
 @router.get("/partidas", response_model=list[PartidaRespuesta])
