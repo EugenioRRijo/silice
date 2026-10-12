@@ -21,6 +21,7 @@ from sqlalchemy import select
 
 from core import models
 from core.budget import TablaExportable, cargar_elaboracion, exportar_hoja
+from core.budget.puente import PeriodoDelEstudio, estudio_con_valuaciones, periodos_declarados
 from core.budget.reajuste import (
     Clausula,
     Componente,
@@ -273,6 +274,68 @@ def guardar(
             _version(sesion, proyecto, codigo),
             clausula,
             periodos,
+            fecha_calculo=fecha_calculo,
+            fuente=fuente,
+            responsable=responsable,
+            reemplaza_a=reemplaza_a,
+        )
+        sesion.commit()
+    except HojaInvalida:
+        sesion.rollback()
+        raise
+    except ValueError as error:
+        sesion.rollback()
+        raise HojaInvalida(f"No se guardo el estudio: {error}") from error
+    except BaseException:
+        sesion.rollback()
+        raise
+    return estudio.id
+
+
+# --- lo ejecutado desde las valuaciones (S2, UC-18 enmendado) ------------------------------------
+
+
+def _periodos_del_estudio(periodos: Sequence[Mapping[str, str]]) -> list[PeriodoDelEstudio]:
+    return [
+        PeriodoDelEstudio(
+            _fecha(_campo(fila, "desde"), "desde"),
+            _fecha(_campo(fila, "hasta"), "hasta"),
+            _campo(fila, "version_comprobacion", obligatorio=False),
+            _campo(fila, "excepcion", obligatorio=False),
+        )
+        for fila in periodos
+        if _con_datos(fila)
+    ]
+
+
+def periodos_desde_valuaciones(
+    sesion, proyecto: str, periodos: Sequence[Mapping[str, str]]
+) -> list[PeriodoDeclarado]:
+    """Los periodos de la pantalla con lo ejecutado de las valuaciones registradas y no anuladas
+    (cada una al periodo que contiene su *hasta*; UC-18 enmendado, RF-72). No escribe nada."""
+    return periodos_declarados(sesion, proyecto, _periodos_del_estudio(periodos))
+
+
+def guardar_con_valuaciones(
+    sesion,
+    proyecto: str,
+    codigo: str,
+    clausula: Clausula,
+    periodos: Sequence[Mapping[str, str]],
+    *,
+    fecha_calculo: date,
+    fuente: str,
+    responsable: str,
+    reemplaza_a: int | None = None,
+) -> int:
+    """Como `guardar`, pero con lo ejecutado de las valuaciones, que el estudio cita. Confirma."""
+    try:
+        estudio = estudio_con_valuaciones(
+            sesion,
+            proyecto,
+            codigo,
+            clausula,
+            _periodos_del_estudio(periodos),
             fecha_calculo=fecha_calculo,
             fuente=fuente,
             responsable=responsable,
