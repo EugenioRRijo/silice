@@ -106,6 +106,16 @@ def crear_proyecto(
     return proyecto
 
 
+def moneda_declarada(session: Session, proyecto_id: int) -> str | None:
+    """La última moneda de `moneda_proyecto`; `None` si el proyecto nunca la declaró."""
+    return session.scalar(
+        select(models.MonedaProyecto.moneda)
+        .where(models.MonedaProyecto.proyecto_id == proyecto_id)
+        .order_by(models.MonedaProyecto.desde.desc(), models.MonedaProyecto.id.desc())
+        .limit(1)
+    )
+
+
 def guardar_presupuesto(
     session: Session,
     presupuesto: Presupuesto,
@@ -145,6 +155,19 @@ def guardar_presupuesto(
         raise ValueError("version_origen y motivo se declaran juntos o ninguno")
     if motivo and motivo not in models.MOTIVOS_VERSION:
         raise ValueError(f"motivo {motivo!r} desconocido; se espera {models.MOTIVOS_VERSION}")
+    if lista.moneda != presupuesto.moneda:
+        raise ValueError(
+            f"la version {presupuesto.codigo} esta en {presupuesto.moneda} y la lista "
+            f"{lista.nombre!r} en {lista.moneda}: una version solo se valora con una lista de su "
+            "moneda (RF-65)"
+        )
+    declarada = moneda_declarada(session, proyecto.id) if proyecto.id is not None else None
+    if declarada is not None and declarada != presupuesto.moneda and motivo != "conversion":
+        raise ValueError(
+            f"el proyecto esta en {declarada} y la version {presupuesto.codigo} en "
+            f"{presupuesto.moneda}: convierta la version (RF-64) antes de editarla, restaurarla o "
+            "revalorarla"
+        )
     if informe.codigo_presupuesto != presupuesto.codigo:
         raise ValueError(
             f"el informe audita el presupuesto {informe.codigo_presupuesto!r}, "

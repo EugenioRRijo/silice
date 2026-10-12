@@ -63,6 +63,7 @@ from core.budget.instantanea import (
     composiciones_de_presupuesto,
     plan_de_version,
 )
+from core.budget.moneda import convertir_version, declarar_moneda, moneda_del_proyecto
 from core.budget.persistencia import (
     cargar_elaboracion,
     cargar_presupuesto,
@@ -108,9 +109,11 @@ __all__ = [
     "comparar_por_partida",
     "composiciones_de_presupuesto",
     "con_curva",
+    "convertir_version",
     "cotizaciones_de_version",
     "cotizar_insumo",
     "crear_proyecto",
+    "declarar_moneda",
     "descartar_version",
     "elaborar",
     "exportar_excel",
@@ -123,6 +126,7 @@ __all__ = [
     "hallazgos_externos",
     "importar_presupuesto",
     "leer_presupuesto_tabular",
+    "moneda_del_proyecto",
     "plan_de_version",
     "plan_secuencial",
     "punto_equilibrio",

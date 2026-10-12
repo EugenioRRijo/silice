@@ -17,7 +17,7 @@ No hace `commit`.
 from __future__ import annotations
 
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from datetime import date
 from decimal import Decimal
 
@@ -28,6 +28,7 @@ from core import models
 
 __all__ = [
     "Cotizado",
+    "OrigenEfectivo",
     "OrigenPrecio",
     "alcance_de",
     "cotizaciones_activas",
@@ -35,6 +36,7 @@ __all__ = [
     "fijar_referencia",
     "lista_base",
     "origen_de_precios",
+    "origenes_efectivos",
     "registrar_origen_lista",
 ]
 
@@ -72,6 +74,64 @@ class OrigenPrecio:
     referencia: str
     alcance: str
     cotizacion: str
+    moneda_original: str = ""
+    precio_original: Decimal | None = None
+    fecha_precio: date | None = None
+    fuente_tasa: str = ""
+    fuente: str = ""
+
+
+@dataclass(frozen=True, slots=True)
+class OrigenEfectivo:
+    """El origen de un precio por la regla única de precedencia (S1 §5.1). Los nombres son los
+    de las columnas de `PrecioOrigen`, sin `precio_id`."""
+
+    moneda_original: str
+    precio_original: Decimal
+    fecha_precio: date
+    tasa: Decimal | None
+    fecha_tasa: date | None
+    fuente_tasa: str
+    fuente: str
+
+
+def origenes_efectivos(session: Session, lista: models.ListaPrecios) -> dict[int, OrigenEfectivo]:
+    """Por `precio_id`: la fila de `PrecioOrigen` y, si falta, la lista (moneda, vigencia, tasa de
+    `ListaPreciosOrigen` sin fuente, `origen`). Así abren las bases anteriores."""
+    de_lista = session.get(models.ListaPreciosOrigen, lista.id)
+    filas = {
+        f.precio_id: f
+        for f in session.scalars(
+            select(models.PrecioOrigen)
+            .join(models.PrecioInsumo, models.PrecioInsumo.id == models.PrecioOrigen.precio_id)
+            .where(models.PrecioInsumo.lista_id == lista.id)
+        )
+    }
+    salida: dict[int, OrigenEfectivo] = {}
+    for precio in lista.precios:
+        f = filas.get(precio.id)
+        salida[precio.id] = (
+            OrigenEfectivo(
+                f.moneda_original,
+                f.precio_original,
+                f.fecha_precio,
+                f.tasa,
+                f.fecha_tasa,
+                f.fuente_tasa,
+                f.fuente,
+            )
+            if f is not None
+            else OrigenEfectivo(
+                lista.moneda,
+                precio.precio,
+                lista.fecha_vigencia,
+                de_lista.tasa if de_lista else None,
+                de_lista.fecha_tasa if de_lista else None,
+                "",
+                lista.origen,
+            )
+        )
+    return salida
 
 
 def alcance_de(session: Session, lista: models.ListaPrecios) -> str:
@@ -219,6 +279,14 @@ def crear_lista_de_proyecto(
         if referencia is not None
     )
     session.flush()
+    efectivos = origenes_efectivos(session, base)
+    ids_base = {precio.insumo_id: precio.id for precio in base.precios}
+    session.add_all(
+        models.PrecioOrigen(precio_id=copia.id, **asdict(efectivos[ids_base[copia.insumo_id]]))
+        for copia, _ in copias
+        if copia.insumo_id in ids_base and copia.insumo_id not in cotizados
+    )
+    session.flush()
     session.expire(lista, ["precios"])
     return lista
 
@@ -270,6 +338,7 @@ def origen_de_precios(session: Session, version: models.Presupuesto) -> list[Ori
         ).all()
     )
     cotizadas = {c.insumo_id: c for c in cotizaciones_activas(session, lista)}
+    efectivos = origenes_efectivos(session, lista)
     filas: list[OrigenPrecio] = []
     for insumo in session.scalars(
         select(models.Insumo).where(models.Insumo.id.in_(ids)).order_by(models.Insumo.codigo)
@@ -278,6 +347,7 @@ def origen_de_precios(session: Session, version: models.Presupuesto) -> list[Ori
         if precio is None:
             continue
         cotizacion = cotizadas.get(insumo.id)
+        efectivo = efectivos[precio.id]
         filas.append(
             OrigenPrecio(
                 insumo_id=insumo.id,
@@ -288,8 +358,8 @@ def origen_de_precios(session: Session, version: models.Presupuesto) -> list[Ori
                 lista=lista.nombre,
                 fecha_vigencia=lista.fecha_vigencia,
                 moneda=lista.moneda,
-                tasa=origen.tasa if origen else None,
-                fecha_tasa=origen.fecha_tasa if origen else None,
+                tasa=efectivo.tasa,
+                fecha_tasa=efectivo.fecha_tasa,
                 referencia=referencias.get(precio.id, ""),
                 alcance=origen.alcance if origen else models.ALCANCE_GLOBAL,
                 cotizacion=(
@@ -297,6 +367,11 @@ def origen_de_precios(session: Session, version: models.Presupuesto) -> list[Ori
                     if cotizacion
                     else ""
                 ),
+                moneda_original=efectivo.moneda_original,
+                precio_original=efectivo.precio_original,
+                fecha_precio=efectivo.fecha_precio,
+                fuente_tasa=efectivo.fuente_tasa,
+                fuente=efectivo.fuente,
             )
         )
     return filas

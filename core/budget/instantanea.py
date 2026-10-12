@@ -167,10 +167,13 @@ def composiciones_revaloradas(
     catalogo: Catalogo,
     lista: models.ListaPrecios,
     codigos: Sequence[str],
+    *,
+    precio_sin_insumo: Callable[[Decimal], Decimal] | None = None,
 ) -> dict[str, ComposicionAPU]:
     """UC‑02: las líneas de la instantánea con los precios de `lista` (por insumo).
 
-    Una línea sin insumo conserva su precio; un insumo sin precio en `lista` es
+    Una línea sin insumo conserva su precio, o el que le da `precio_sin_insumo` (la conversión de
+    moneda, SL‑E1); un insumo sin precio en `lista` es
     `CatalogoIncompleto`. Una partida sin instantánea se reconstruye del catálogo con `lista`.
     """
     filas = {fila.codigo_partida: fila for fila in _filas(session, modelo)}
@@ -178,7 +181,7 @@ def composiciones_revaloradas(
 
     def precio_de(linea: models.LineaComposicionVersion) -> Decimal:
         if linea.insumo_id is None:
-            return linea.precio
+            return linea.precio if precio_sin_insumo is None else precio_sin_insumo(linea.precio)
         precio = precios.get(linea.insumo_id)
         if precio is None:
             raise CatalogoIncompleto(
