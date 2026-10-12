@@ -38,6 +38,7 @@ uv run pytest -W error                    # suite de pruebas (advertencia = erro
 uv run ruff check .                       # estilo
 uv run python -m operacion adoptar data/apu.db --nombre silice   # una vez, si trae una base de la 0.5.0: la copia a data/casos/silice.db y la migra (el original no se toca)
 uv run python scripts/seed_demo.py --db data/casos/silice.db     # o, sin base anterior: el caso de demostración en el caso por defecto
+uv run start.py                            # EL COMANDO: siembra los casos de demostración la primera vez y abre la app en 127.0.0.1
 uv run python -m streamlit run ui/app.py --server.address 127.0.0.1  # la interfaz: abre en Inicio, con el caso abierto y los recorridos guiados
 uv run uvicorn api.main:app --host 127.0.0.1            # la API (documentación interactiva en http://127.0.0.1:8000/docs)
 ```
