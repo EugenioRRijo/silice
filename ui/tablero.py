@@ -116,9 +116,10 @@ def leer_control(sesion: Session, catalogo: Catalogo, proyecto: str) -> DatosCon
         resultado = control.calcular_el_control(
             sesion, proyecto, catalogo, corte=control.corte_por_defecto(sesion, proyecto)
         )
-    except control.ControlInvalido as error:
+        curva = control.curva_pv_ev_ac(sesion, resultado)
+    except (control.ControlInvalido, ValueError, LookupError) as error:
         return DatosControl(None, [], str(error))
-    return DatosControl(resultado.indicadores, control.curva_pv_ev_ac(sesion, resultado), "")
+    return DatosControl(resultado.indicadores, curva, "")
 
 
 def filas_comparativo(sesion: Session, proyecto: str) -> list[dict[str, object]]:

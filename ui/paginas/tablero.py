@@ -14,6 +14,7 @@ de `ui.graficos`. Texto ajeno solo por `texto_seguro`, en tablas o en tooltips (
 from __future__ import annotations
 
 from decimal import Decimal
+from pathlib import Path
 
 import streamlit as st
 from pandas import DataFrame
@@ -26,35 +27,35 @@ from ui import caso, graficos, tablero
 from ui import sesion as ui_sesion
 from ui.caso import ruta_caso
 from ui.estilo import COLOR_ATENCION, COLOR_BIEN, indice, porcentaje
+from ui.proyectos import listar_proyectos
 from ui.texto_seguro import texto_seguro
 
-SIN_PROYECTO = (
-    "Abra un proyecto con la herramienta Proyecto de la barra superior para ver su tablero."
-)
+SIN_PROYECTO = "Elija un proyecto para ver su tablero."
+SIN_PROYECTOS = "Este caso todavia no tiene proyectos."
+CLAVE_PROYECTO_VISTO = "tablero_proyecto_visto"  # el elegido aqui; no abre el proyecto de la barra
 SIN_VERSION = "El proyecto todavia no tiene una version guardada: armela en la Hoja del proyecto."
 
 
 def render() -> None:
     """El tablero del proyecto abierto, o lo que falta para tenerlo."""
     ui_sesion.exigir(Accion.LEER_PROYECTO)
-    proyecto = caso.proyecto_abierto()
-    if proyecto is None:
-        st.info(SIN_PROYECTO)
-        return
     ruta = ruta_caso()
     if not ruta.exists():
-        st.info(SIN_PROYECTO)
+        st.info(SIN_PROYECTOS)
         return
     try:
         preparar_base(ruta)
     except ErrorDeBase as error:
         st.error(texto_seguro(str(error)))
         return
+    proyecto = _proyecto_a_ver(ruta)
+    if proyecto is None:
+        return
     motor = crear_motor(f"sqlite:///{ruta.as_posix()}")
     try:
         with abrir_sesion(motor) as sesion:
             datos = tablero.leer_tablero(sesion, Catalogo(sesion), proyecto)
-    except (SQLAlchemyError, ValueError) as error:
+    except (SQLAlchemyError, ValueError, LookupError) as error:
         st.error("No se pudo leer el proyecto: " + texto_seguro(str(error)))
         return
     finally:
@@ -68,6 +69,28 @@ def render() -> None:
     _curva_y_desglose(datos)
     _pareto(datos)
     _versiones(datos)
+
+
+def _proyecto_a_ver(ruta: Path) -> str | None:
+    """El proyecto abierto en la barra; si no hay (el rol que solo lee no tiene la barra), el que
+    se elija aqui, de solo lectura y sin abrirlo. `None` si falta elegir, ya con su aviso."""
+    abierto = caso.proyecto_abierto()
+    if abierto is not None:
+        return abierto
+    nombres = listar_proyectos(ruta)
+    if not nombres:
+        st.info(SIN_PROYECTOS)
+        return None
+    elegido = st.selectbox(
+        "Proyecto",
+        nombres,
+        index=None,
+        placeholder="Elija un proyecto",
+        key=CLAVE_PROYECTO_VISTO,
+    )
+    if elegido is None:
+        st.info(SIN_PROYECTO)
+    return elegido
 
 
 def _encabezado(datos: tablero.DatosTablero) -> None:

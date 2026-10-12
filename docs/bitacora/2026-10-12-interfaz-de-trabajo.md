@@ -29,13 +29,28 @@ como datos de la lista, sin debilitar ninguna aserción:
 - `test_ui_app.py`: `test_son_quince_pantallas...` → `test_son_dieciseis_pantallas...` (==16)
 
 ## Desviaciones del plan
-- `ui/tablero.py` `tarjetas_de_control` lee las claves `no_disponible` "SPI" (fallback "AC"),
-  "CPI" (fallback "AC"), y "EAC" (fallback "CPI", luego "AC"). El plan incluía solo las claves en
+- `ui/tablero.py` `tarjetas_de_control` lee las claves `no_disponible` "SPI" (sin respaldo),
+  "CPI" (cae a "AC") y "EAC" (cae a "CPI" y luego a "AC"). El plan incluía solo las claves en
   minúsculas que `core/budget/valor_ganado.py` nunca escribe.
 - Formateo: `ruff format` no se ejecutó sobre archivos grandes preexistentes tras la Tarea 5;
   la Tarea 5 sí refluyó código no relacionado en `ui/app.py` y `ui/paginas/hoja.py` (solo formato).
 - Orden de ejecución: 1, 3, 5, 6, 2, 4, 7 porque las Tareas 2 y 4 esperaban PR #63
   (`ui/control.py`).
+
+## Correcciones de la revision final
+1. Subtotales por rubro de la pestana APU: se leen los factores, la lista y la tabla antes de
+   pintar el subtotal; el rotulo del bloque ya no lleva monto y el subtotal se escribe en un hueco
+   tras aplicar la edicion; `_cierre_de_partida` se parte en `_factores` y el cierre.
+2. El tablero sirve al rol que solo lee: sin proyecto abierto en la barra ofrece un selector de
+   solo lectura con los proyectos del caso (no abre el proyecto); el aviso ya no remite a la barra.
+3. `leer_control` captura `ValueError` y `LookupError` de la curva y devuelve el motivo; la pagina
+   tambien captura `LookupError` al leer.
+4. La linea de estado de la barra ya no repite el prefijo "Proyecto: <nombre>".
+5. `_publicar_resumen` publica `None` si no hay version abierta (un borrador nuevo no se atribuye
+   al proyecto de la barra).
+6. Cambio de insumo: el aviso "Hay mas de ..." aparece solo si hay mas de 300 (se consulta 301) y
+   pide acotar por descripcion.
+10. `filas_de_curva`: la variable local `porcentaje` pasa a `porcion` para no ocultar la importada.
 
 ## Hallazgo fuera de alcance
 `ui/barra.py` interpola el nombre del proyecto sin `texto_seguro` en dos `st.markdown` (§0.4 del

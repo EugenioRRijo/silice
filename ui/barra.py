@@ -289,7 +289,7 @@ def pintar_barra(ruta: str, ir_a: Callable[[str], None]) -> None:
 
 
 def pintar_estado() -> None:
-    """La linea de estado bajo la barra: proyecto, version, estado y total (PLAN_SILICE_UI, 5).
+    """La linea de estado bajo la barra: version, estado y total (PLAN_SILICE_UI, 5).
 
     El total y el estado solo aparecen si la hoja publico el resumen del proyecto abierto; si no,
     la version vigente guardada. Todo texto ajeno pasa por `texto_seguro` (RU-9).
@@ -298,14 +298,13 @@ def pintar_estado() -> None:
     if abierto is None:
         return
     resumen = resumen_publicado()
+    partes: list[str] = []
     if resumen is not None and resumen.proyecto == abierto:
-        partes = [f"Proyecto: {texto_seguro(abierto)}"]
         if resumen.version is not None:
             partes.append(f"Version {texto_seguro(resumen.version)}")
         partes += [f"Estado: {resumen.estado}", f"Total: {texto_seguro(resumen.total)}"]
     else:
         vigente = version_vigente(ruta_caso(), abierto)
-        partes = [f"Proyecto: {texto_seguro(abierto)}"]
         partes.append(
             "sin version guardada"
             if vigente is None

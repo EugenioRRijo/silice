@@ -1099,13 +1099,13 @@ def filas_de_curva(presupuesto: Presupuesto) -> list[dict[str, str]]:
     `acumulado` y `porcentaje` acumulado, a dos decimales."""
     filas = []
     for punto in presupuesto.curva:
-        porcentaje = punto.acumulado / presupuesto.total * 100 if presupuesto.total else Decimal(0)
+        porcion = punto.acumulado / presupuesto.total * 100 if presupuesto.total else Decimal(0)
         filas.append(
             {
                 "periodo": _CODIGOS_AL_FINAL.sub("", punto.periodo),
                 "monto": formatear_decimal(punto.monto, DECIMALES_PRESENTACION),
                 "acumulado": formatear_decimal(punto.acumulado, DECIMALES_PRESENTACION),
-                "porcentaje": formatear_decimal(porcentaje, DECIMALES_PRESENTACION),
+                "porcentaje": formatear_decimal(porcion, DECIMALES_PRESENTACION),
             }
         )
     return filas

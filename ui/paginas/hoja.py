@@ -1005,12 +1005,18 @@ def _formulario_de_insumo(codigo: str, apu: Any) -> None:
                 []
                 if sesion is None
                 else hoja.insumos_candidatos(
-                    sesion, abierta.proyecto, abierta.codigo, tipo, acotar, limite=LIMITE_INSUMOS
+                    sesion,
+                    abierta.proyecto,
+                    abierta.codigo,
+                    tipo,
+                    acotar,
+                    limite=LIMITE_INSUMOS + 1,
                 )
             )
-        if len(candidatos) == LIMITE_INSUMOS:
+        if len(candidatos) > LIMITE_INSUMOS:
+            candidatos = candidatos[:LIMITE_INSUMOS]
             acotar = st.text_input(
-                f"Hay mas de {LIMITE_INSUMOS} insumos: escriba parte del nombre para acotar",
+                f"Hay mas de {LIMITE_INSUMOS} insumos: escriba parte de la descripcion para acotar",
                 key=_clave("buscar", codigo),
             )
             if acotar.strip():
@@ -1102,11 +1108,10 @@ def _tabla_de_apu(codigo: str) -> None:
     )
     tablas = hoja.filas_de_apu(inicial)
     editadas = []
-    for (clave, rotulo, columnas), filas in zip(_GRUPOS_APU, tablas, strict=True):
-        with st.expander(
-            f"{rotulo} · {len(filas)} linea(s) · {_subtotal_de_rubro(codigo, clave)}",
-            expanded=True,
-        ):
+    huecos = []  # el subtotal de cada rubro se escribe DESPUES de aplicar la edicion
+    for (_, rotulo, columnas), filas in zip(_GRUPOS_APU, tablas, strict=True):
+        with st.expander(f"{rotulo} · {len(filas)} linea(s)", expanded=True):
+            huecos.append(st.empty())
             if not filas:
                 st.caption("Sin lineas.")
                 editadas.append([])
@@ -1132,15 +1137,22 @@ def _tabla_de_apu(codigo: str) -> None:
             )
     except hoja.HojaInvalida as error:
         st.error(f"{texto_seguro(str(error))}. La hoja sigue con el ultimo APU valido.")
+    for (clave, rotulo, _), hueco in zip(_GRUPOS_APU, huecos, strict=True):
+        hueco.caption(f"Subtotal de {rotulo.lower()}: {_subtotal_de_rubro(codigo, clave)}")
     _formulario_de_insumo(codigo, _borrador().composiciones[codigo])
 
 
-def _cierre_de_partida(codigo: str) -> None:
-    """Panel derecho: factores de la version y el cierre paso a paso de la partida elegida.
-    Imprevistos no existe en el modelo (RU-3)."""
+def _factores() -> None:
+    """Panel derecho, arriba: los factores de la version. Se leen ANTES que la lista y la tabla,
+    para que los subtotales de la tabla salgan con los factores vigentes."""
     with st.container(border=True):
         st.markdown("**Factores de la version**")
         _editar_parametros([st] * len(hoja.CAMPOS_PARAMETROS), "factor")
+
+
+def _cierre_de_partida(codigo: str) -> None:
+    """Panel derecho, abajo: el cierre paso a paso de la partida elegida, ya con la edicion de la
+    tabla aplicada. Imprevistos no existe en el modelo (RU-3)."""
     resultado, _ = _calculo()
     renglon = _renglon(resultado, codigo)
     if renglon is None:
@@ -1166,12 +1178,14 @@ def _pestana_apu() -> None:
         st.info("Todavia no hay partidas valoradas: derive cantidades en Espacio y metrajes.")
         return
     izquierda, centro, derecha = st.columns(ANCHOS_APU, gap="medium")
+    with derecha:
+        _factores()  # primero: los factores cambian los subtotales de la tabla
     with izquierda:
         codigo = _lista_de_partidas(resultado, codigos)
     with centro:
         _tabla_de_apu(codigo)
     with derecha:
-        _cierre_de_partida(codigo)
+        _cierre_de_partida(codigo)  # al final: con la edicion de la tabla ya aplicada
 
 
 def _calculado_de_apu(resultado: hoja.ResultadoHoja, codigo: str) -> None:
@@ -1660,22 +1674,20 @@ def _mostrar_mensaje() -> None:
 def _publicar_resumen() -> None:
     """Lo que la barra muestra en su linea de estado (PLAN_SILICE_UI, tarea 5)."""
     abierta = _abierta()
-    proyecto = abierta.proyecto if abierta is not None else caso.proyecto_abierto()
-    if proyecto is None:
+    if abierta is None:  # un borrador nuevo no se atribuye al proyecto abierto de la barra
         caso.publicar_resumen(None)
         return
+    proyecto = abierta.proyecto
     resultado, cambios = _calculo()
     presupuesto = resultado.elaboracion.presupuesto
     if cambios:
         estado = f"borrador con {len(cambios)} cambio(s) sin guardar"
-    elif abierta is not None:
-        estado = "guardada"
     else:
-        estado = "borrador nuevo"
+        estado = "guardada"
     caso.publicar_resumen(
         caso.ResumenDeTrabajo(
             proyecto=proyecto,
-            version=None if abierta is None else abierta.codigo,
+            version=abierta.codigo,
             estado=estado,
             total=_dinero(presupuesto.total, presupuesto.moneda),
         )
