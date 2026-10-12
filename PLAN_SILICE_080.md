@@ -1794,7 +1794,7 @@ PARTE = Parte(
 +↳ no comparten borrador ni caso; prueba de concurrencia de §13.4 |
 +| RF‑82 | El responsable de todo `RegistroCambio`, de todo eslabón y de **todo campo
 +↳ `responsable`** de las tablas de S1 y S2 (`importacion_indice`, `moneda_proyecto`,
-+↳ `estudio_reajuste`, `linea_base_control`, `valuacion`, `anulacion_valuacion`, `costo_real`,
++↳ `clausula_reajuste`, `estudio_reajuste`, `linea_base_control`, `valuacion`, `anulacion_valuacion`, `costo_real`,
 +↳ `decision_recuperacion`) es el **usuario autenticado**, congelado como `Nombre <login>` en el
 +↳ momento del cambio; la caja «Responsable» desaparece de la hoja y de las pantallas de S1 y S2 |
 +↳ Esencial | UC‑15, UC‑21 | S3‑1 | guardar, restaurar, cotizar, convertir, decidir una
@@ -16671,8 +16671,9 @@ _CAJA = "tests/unit/test_responsables.py::test_las_pantallas_de_s1_y_s2_usan_la_
 COBERTURA = {
     "registro_cambio": _HOJA,
     **dict.fromkeys(
-        ("importacion_indice", "moneda_proyecto", "estudio_reajuste", "linea_base_control",
-         "valuacion", "anulacion_valuacion", "costo_real", "decision_recuperacion"),
+        ("importacion_indice", "moneda_proyecto", "clausula_reajuste", "estudio_reajuste",
+         "linea_base_control", "valuacion", "anulacion_valuacion", "costo_real",
+         "decision_recuperacion"),
         _CAJA,
     ),
 }
