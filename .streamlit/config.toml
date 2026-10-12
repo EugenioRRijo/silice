@@ -15,3 +15,16 @@ gatherUsageStats = false
 
 [client]
 showErrorDetails = "none"
+
+[theme]
+# Interfaz de trabajo (PLAN_SILICE_UI, tarea 1). Los mismos valores que ui/estilo.py (una copia
+# por formato: Streamlit no lee Python). Sin CSS (RU-8).
+base = "light"
+primaryColor = "#1F4E79"
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#F3F5F8"
+textColor = "#1B1F24"
+borderColor = "#D5DAE1"
+showWidgetBorder = true
+baseRadius = "small"
+font = "sans-serif"

@@ -24,7 +24,7 @@ dependencies = [
 #   ifc  (S3: IDS con ifctester; fuera del instalador mientras S3-0 no resuelva la GPLv3 de bcf-client)
 #   ia   (S4: Claude, Ollama y el almacen de claves del sistema operativo)
 [project.optional-dependencies]
-ui = ["streamlit>=1.62"]
+ui = ["streamlit>=1.62", "altair>=6"]
 api = ["fastapi>=0.110", "uvicorn>=0.29"]
 civil = ["ifcopenshell>=0.8"]
 ifc = ["ifctester>=0.8.5,<0.9"]
