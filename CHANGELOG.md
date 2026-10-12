@@ -6,6 +6,7 @@ etiquetar, las líneas pasan a la sección de la versión. La historia anterior 
 
 ## [Sin publicar]
 
+- 1.0.0 · S5‑3 (RF‑97, RNF‑19, RNF‑20): `instalador/manifiesto.toml` (lista blanca de lo que viaja), `manifiesto.py` (cierre de importaciones de los sembradores y `simular_lista`, un solo `config.toml`), `operacion.programa` y la orden `verificar-programa`; `construir.py` (`--solo-carpeta` sin Inno Setup), `licencias.py` y `tamanos.py`.
 - 1.0.0 · S5‑2 (RF‑98, RF‑99, T9, T10 y T12): la API exige clave en toda ruta menos `/salud` y filtra hosts y redes ajenas con tope de cuerpo; `operacion.eventos_perdidos` y `ui.cliente` (SEG‑12 y «solo este equipo»); pantallas «Acerca de» e «Instalación»; sin pruebas nuevas por decisión de Eugenio.
 - 1.0.0 · S5‑2 (RF‑98, RF‑99): `operacion.version`, `registro` sin secretos, `silice.toml` y carpetas de usuario en `config`, `red` (IP explícita y reglas de cortafuegos), `lanzador` y las órdenes `arrancar`, `parar`, `demostracion`, `red-local` y `diagnostico-similitud`; la versión de la API sale de `pyproject.toml`; sin pruebas nuevas todavía.
 - 1.0.0 · S5‑0: apertura (fases de la 1.0.0, enmiendas de ERS con UC‑24, RF‑97 a RF‑99 y RNF‑19, arquitectura, plan de pruebas y calidad) y `instalador/medir_capas.py`; la parte S5 de la meta queda diferida.
