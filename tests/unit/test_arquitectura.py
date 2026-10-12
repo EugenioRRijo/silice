@@ -26,6 +26,7 @@ PAQUETES_FUERA_DEL_NUCLEO = (
     "migraciones",
     "seguridad",
     "paquete",
+    "auditoria",
     "asistente",
     "instalador",
 )

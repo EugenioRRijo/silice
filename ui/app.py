@@ -1,10 +1,11 @@
 """Interfaz Streamlit multipagina del sistema APU: enrutador y marco comun (sprint de UI).
 
-Dos papeles. **Enrutador:** `st.navigation` sobre las trece pantallas de `ui/paginas/`, agrupadas en
-dos secciones —Trabajo e Investigacion— en el orden del trabajo real, con el Inicio como pagina por
-defecto (RF-36, RF-42). **Marco comun:** alrededor de cada pantalla, `marco()` pinta el titulo y el
-caso de uso que implementa, el caso abierto y su estado en la barra lateral (RF-39), en que paso del
-recorrido activo esta el usuario y, al pie, el boton «Siguiente» (RF-41). Streamlit describe asi el
+Dos papeles. **Enrutador:** `st.navigation` sobre las pantallas de `ui/paginas/`, agrupadas en
+secciones —Trabajo, Revision (UC-23, S3) e Investigacion— en el orden del trabajo real, con el
+Inicio como pagina por defecto (RF-36, RF-42). **Marco comun:** alrededor de cada pantalla,
+`marco()` pinta el titulo y el caso de uso que implementa, el caso abierto y su estado en la barra
+lateral (RF-39), en que paso del recorrido activo esta el usuario y, al pie, el boton «Siguiente»
+(RF-41). Streamlit describe asi el
 archivo de entrada de `st.navigation`: «acts like a router or frame of common elements around each
 of your pages».
 
@@ -83,6 +84,7 @@ from ui.paginas import (
     instalacion,
     precios_empresa,
     reajuste,
+    revisar,
     similares,
     simulador,
     visor,
@@ -92,6 +94,7 @@ from ui.recorridos import RUTA_INICIO, Recorrido, paso_siguiente, recorrido_por_
 TITULO_APP = "Sílice"
 VALOR_MODO_ENTREGA = "1"
 SECCION_TRABAJO = "Trabajo"
+SECCION_REVISION = "Revision"
 SECCION_INVESTIGACION = "Investigacion"
 ROTULO_SIGUIENTE = "Siguiente: {}"
 CLAVE_BOTON_SIGUIENTE = "marco_siguiente"
@@ -147,6 +150,8 @@ PAGINAS: tuple[DefinicionPagina, ...] = (
     # S5-2: mientras S3-3 no traiga la página Administración, la pestaña vive como pantalla propia.
     DefinicionPagina(instalacion.render, "Instalación", SECCION_TRABAJO,
                      accion=Accion.ADMINISTRAR_RED_Y_API),
+    DefinicionPagina(revisar.render, "Revisar un paquete", SECCION_REVISION, "UC-23",
+                     Accion.REVISAR_PAQUETE),
     DefinicionPagina(
         escenarios.render, "Escenarios de sensibilidad", SECCION_INVESTIGACION, "UC-08", _EDITA
     ),
