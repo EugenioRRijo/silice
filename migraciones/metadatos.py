@@ -12,7 +12,13 @@ from sqlalchemy import MetaData
 from adapters.espacio.persistencia import METADATA_ESPACIO
 from asistente.registro import METADATA_IA
 from core.models import Base
+from paquete.modelo import METADATA_PAQUETE
 from seguridad.modelo import Base as BaseSeguridad
 
-METADATAS_CASO: tuple[MetaData, ...] = (Base.metadata, METADATA_ESPACIO, METADATA_IA)
+METADATAS_CASO: tuple[MetaData, ...] = (
+    Base.metadata,
+    METADATA_ESPACIO,
+    METADATA_IA,
+    METADATA_PAQUETE,
+)
 METADATAS_INSTALACION: tuple[MetaData, ...] = (BaseSeguridad.metadata,)
