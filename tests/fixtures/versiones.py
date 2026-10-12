@@ -47,13 +47,13 @@ def elaborar_001(sesion, codigo=linea_base.CODIGO_PRESUPUESTO, plan=plan_secuenc
     )
 
 
-def guardar_001(sesion, proyecto, resultado: ResultadoElaboracion, **opciones):
+def guardar_001(sesion, proyecto, resultado: ResultadoElaboracion, *, lista=None, **opciones):
     return guardar_presupuesto(
         sesion,
         resultado.presupuesto,
         resultado.informe,
         proyecto=proyecto,
-        lista=Catalogo(sesion).lista_vigente(linea_base.FECHA_LINEA_BASE),
+        lista=lista or Catalogo(sesion).lista_vigente(linea_base.FECHA_LINEA_BASE),
         parametros=linea_base.PARAMETROS_LINEA_BASE,
         pendientes=resultado.pendientes,
         **opciones,
