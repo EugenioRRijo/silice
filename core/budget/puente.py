@@ -21,14 +21,18 @@ from sqlalchemy.orm import Session
 
 from core import models
 from core.budget._modelo import _buscar
+from core.budget.moneda import moneda_del_proyecto
 from core.budget.reajuste import Clausula, Ejecutado, PeriodoDeclarado, guardar_estudio
 from core.budget.valuaciones import EjecutadoDelPeriodo, ejecutado_por_periodo
 from core.catalog.indices import LADO_POR_DEFECTO
 
 __all__ = [
+    "EstudioSumado",
     "PeriodoDelEstudio",
+    "ReajusteReconocido",
     "estudio_con_valuaciones",
     "periodos_declarados",
+    "reajuste_reconocido",
 ]
 
 CERO = Decimal(0)
@@ -141,3 +145,69 @@ def valuaciones_citadas(session: Session, estudio_id: int) -> dict[int, list[str
     for orden, numero, _ in filas:
         citadas.setdefault(orden, []).append(numero)
     return citadas
+
+
+@dataclass(frozen=True, slots=True)
+class EstudioSumado:
+    """Un estudio de S1 y lo que aporta al reajuste reconocido."""
+
+    id: int
+    version_id: int
+    fecha_calculo: date
+    estado: str
+    monto: Decimal
+    moneda: str
+
+
+@dataclass(frozen=True, slots=True)
+class ReajusteReconocido:
+    """La suma de los montos reconocidos de los estudios guardados hasta el corte (S2-R15).
+    `estudios` son los que suman; `omitidos` son los guardados en otra moneda que la del proyecto,
+    que no se convierten ni se suman en silencio."""
+
+    monto: Decimal
+    moneda: str
+    estudios: tuple[EstudioSumado, ...]
+    omitidos: tuple[EstudioSumado, ...] = ()
+
+
+def reajuste_reconocido(session: Session, proyecto_nombre: str, corte: date) -> ReajusteReconocido:
+    """El reajuste ya reconocido al `corte` (RV-12): los estudios de S1 guardados con fecha de
+    cálculo menor o igual al corte. De un parcial y su reemplazo (`reemplaza_a`), ambos con fecha
+    menor o igual al corte, cuenta solo el más reciente; el reemplazo guardado después del corte
+    no quita al parcial. Sin estudios, 0."""
+    modelo = session.scalars(
+        select(models.Proyecto).where(models.Proyecto.nombre == proyecto_nombre)
+    ).one()
+    moneda = moneda_del_proyecto(session, modelo)
+    filas = list(
+        session.scalars(
+            select(models.EstudioReajuste)
+            .join(
+                models.Presupuesto, models.Presupuesto.id == models.EstudioReajuste.presupuesto_id
+            )
+            .where(
+                models.Presupuesto.proyecto_id == modelo.id,
+                models.EstudioReajuste.fecha_calculo <= corte,
+            )
+            .order_by(models.EstudioReajuste.id)
+        )
+    )
+    reemplazados = {fila.reemplaza_a for fila in filas if fila.reemplaza_a is not None}
+    suman: list[EstudioSumado] = []
+    omitidos: list[EstudioSumado] = []
+    for fila in filas:
+        if fila.id in reemplazados:
+            continue
+        estudio = EstudioSumado(
+            fila.id,
+            fila.presupuesto_id,
+            fila.fecha_calculo,
+            fila.estado,
+            fila.total_reconocido,
+            fila.moneda,
+        )
+        (suman if fila.moneda == moneda else omitidos).append(estudio)
+    return ReajusteReconocido(
+        sum((e.monto for e in suman), CERO), moneda, tuple(suman), tuple(omitidos)
+    )
