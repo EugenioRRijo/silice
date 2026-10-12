@@ -10,6 +10,8 @@ aviso (21d).
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import streamlit as st
 from sqlalchemy.orm import Session
 
@@ -109,6 +111,22 @@ def _formulario_primer_administrador(bd: Session) -> None:
         "No hay ninguna cuenta. Abra el archivo `codigo_instalacion.txt` de la carpeta de datos "
         "de Sílice, copie el código de 20 caracteres y cree la cuenta del administrador."
     )
+    _formulario_de_codigo(bd, carpeta)
+
+
+def _recuperar_administrador(bd: Session) -> None:
+    """Con cuentas ya creadas, el código de `scripts/restablecer_administrador.py` (S3 §5.4) deja
+    devolver el acceso a un administrador desde esta misma pantalla."""
+    with st.expander("Perdí el acceso del administrador"):
+        st.write(
+            "Quien tenga acceso al equipo ejecuta `restablecer_administrador.py` (ver el manual); "
+            "escriba aquí el código nuevo de 20 caracteres que le da, junto con el usuario del "
+            "administrador y una contraseña nueva."
+        )
+        _formulario_de_codigo(bd, carpeta_datos())
+
+
+def _formulario_de_codigo(bd: Session, carpeta: Path) -> None:
     with st.form("silice_primer_administrador"):
         codigo = st.text_input("Código de instalación", key="acceso_codigo")
         login = st.text_input("Usuario", key="acceso_nuevo_login")
@@ -140,6 +158,7 @@ def _pantalla_de_acceso(bd: Session) -> None:
         st.info(aviso)
     if cuentas.hay_usuarios(bd):
         _formulario_de_entrada(bd)
+        _recuperar_administrador(bd)
     else:
         _formulario_primer_administrador(bd)
 

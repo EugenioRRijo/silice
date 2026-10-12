@@ -21,7 +21,7 @@ MENSAJE_REMOTO = (
 )
 MENSAJE_PENDIENTE = (
     "Se restauró un respaldo y hay eventos de seguridad perdidos sin revisar. El administrador "
-    "debe revisarlos (pestaña Instalación) antes de esta operación."
+    "debe revisarlos (Administración, pestaña Instalación) antes de esta operación."
 )
 BUCLE_LOCAL = "127.0.0.1"
 

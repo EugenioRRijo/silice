@@ -1,8 +1,8 @@
 """Pestaña «Instalación»: red local y API, respaldos y eventos de seguridad perdidos (RF-98; spec S5
 §5.2 y §6.5). Los cambios de red no se hacen desde el navegador.
 
-`render_pestana()` es el cuerpo para la página Administración de S3-3 (`PESTANAS`); mientras esa
-página no exista en `main`, `render()` lo muestra como pantalla propia del menú.
+`render_pestana()` es el cuerpo de la pestaña «Instalación» de la página Administración
+(`ui.paginas.administracion.PESTANAS`, S3-3); ya no es una pantalla propia del menú.
 """
 
 from __future__ import annotations
@@ -17,9 +17,7 @@ from pathlib import Path
 import streamlit as st
 
 from operacion import base_datos, config, eventos_perdidos
-from seguridad.permisos import Accion
 from ui import cliente
-from ui import sesion as ui_sesion
 from ui.texto_seguro import texto_seguro
 
 
@@ -145,8 +143,3 @@ def render_pestana() -> None:
     _red_y_api()
     _respaldos()
     _eventos()
-
-
-def render() -> None:
-    ui_sesion.exigir(Accion.ADMINISTRAR_RED_Y_API)
-    render_pestana()
