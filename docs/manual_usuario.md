@@ -5,7 +5,21 @@ para el proyectista. No hace falta saber programar: todo se opera desde la inter
 Qué es el sistema y por qué calcula como calcula está en [NORMAS.md](../NORMAS.md) y en la
 [ERS](ERS.md); este manual solo explica **cómo usarlo**.
 
-## 1. Requisitos e instalación
+## 1. Instalación
+
+La forma normal de instalar Sílice es el instalador de Windows (`Silice-<versión>.exe`, o
+`Silice-<versión>-completo.exe` con la similitud de partidas): no necesita permisos de
+administrador ni internet. Compruebe su huella y su firma antes de ejecutarlo; todos los pasos, la
+red local, los respaldos y los problemas frecuentes están en el
+[manual de instalación](manual_instalacion.md).
+
+Después de instalar, el acceso «Sílice» del menú Inicio abre la aplicación en el navegador. Para
+detenerla, cierre la ventana minimizada «Sílice» o use «Detener Sílice».
+
+### Instalación para desarrollo
+
+Quien trabaja sobre el código (no el usuario final) sigue esta ruta; el entorno de desarrollo
+completo está en el [manual técnico](manual_tecnico.md#2-entorno-de-desarrollo).
 
 - Windows o Linux con **Python 3.12 o superior** y [uv](https://docs.astral.sh/uv/) instalados.
 - Clonar o copiar la carpeta del proyecto y, dentro de ella, ejecutar:
@@ -26,6 +40,8 @@ No hay más pasos (RNF‑07). Notas:
   caché local. Es la única conexión de red del sistema (RNF‑08); todo lo demás corre local.
 
 ## 2. Puesta en marcha
+
+Con el instalador no hace falta sembrar nada a mano; Inicio ofrece el caso de demostración.
 
 1. **Sembrar la base de datos** (una sola vez; crea `data/apu.db` con los cinco APU del caso de
    estudio):
