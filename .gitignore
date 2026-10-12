@@ -52,5 +52,10 @@ data/eventos_perdidos_*.json
 # Bases de prueba de cada version, con su ficha (RV-3, PRU-H15): SI se versionan
 !tests/fixtures/bases/*/*.db
 
+# Configuración, registros y estado del servidor de desarrollo (S5-2)
+data/config/
+data/registros/
+data/estado/
+
 # Cifra de la medicion de RNF-15 (la lee la meta de la 0.7.0)
 scripts/_salida_rnf15.json

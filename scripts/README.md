@@ -48,6 +48,7 @@ escribe con `--db`; con `--db` hacia otra ruta basta `--reiniciar`.
 | `medir_rnf03.py` | mide RNF‑03: el tiempo del recálculo masivo de UC‑02 con N partidas en SQLite local | RNF‑03 |
 | `generar_obra_control.py` | obra determinista de control (partidas, plan, línea base y valuaciones por período) para medir RNF‑15 (500 partidas, 52 períodos, 26 valuaciones) | RNF‑15 · Sílice 0.7.0 |
 | `probar_precios_maprex.py` | prueba los casos didácticos con precios de referencia publicados (MaPreX de julio de 2026 y tabulador CIV): cobertura del listado MaPreX en USD, revaloración del presupuesto 001 civil y de TC‑001/TC‑002, comprobación de MNT‑001 y SIS‑001; siempre en un directorio temporal, sin `--db` (con el extra `ml`, que instala `uv sync --all-extras`, marca los precios atípicos; sin él corre igual y lo declara) | C6 · todos |
+| `verificar_version.py` | compara la etiqueta de git (`v` + SemVer) con la versión de `pyproject.toml` normalizada a PEP 440 y puede imprimir la versión en SemVer o la del parche siguiente (`--imprimir`) | RF‑99 · S5 |
 
 ## Artefactos reproducibles
 
