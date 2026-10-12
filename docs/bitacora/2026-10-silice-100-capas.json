@@ -1,0 +1,45 @@
+{
+  "python": {
+    "version": "3.13.13",
+    "instalado_mb": 62.407748,
+    "comprimido_mb": 15.3707
+  },
+  "capas": {
+    "base": {
+      "paquetes": 22,
+      "instalado_mb": 108.879731,
+      "comprimido_mb": 19.850336
+    },
+    "basica": {
+      "paquetes": 42,
+      "instalado_mb": 231.2278,
+      "comprimido_mb": 45.751336
+    },
+    "bcv": {
+      "paquetes": 1,
+      "instalado_mb": 0.366556,
+      "comprimido_mb": 0.072332
+    },
+    "civil": {
+      "paquetes": 3,
+      "instalado_mb": 81.553894,
+      "comprimido_mb": 15.074488
+    },
+    "anomalias": {
+      "paquetes": 4,
+      "instalado_mb": 135.869954,
+      "comprimido_mb": 26.010592
+    },
+    "ia": {
+      "paquetes": 19,
+      "instalado_mb": 8.566791,
+      "comprimido_mb": 0.938756
+    },
+    "similitud": {
+      "paquetes": 42,
+      "instalado_mb": 585.703145,
+      "comprimido_mb": 87.533516
+    }
+  },
+  "recorte": []
+}
