@@ -103,6 +103,8 @@ Cada una audita las metas de su sprint (`OK`/`FALLA`/`PENDIENTE`); una fase se c
 | `meta_silice_s4.py` | parte S4 de la meta única: UC‑09, RF‑32, RF‑90 a RF‑95 y RNF‑18 por presencia en la ERS, RNF‑08 con la excepción del asistente, banco de tareas con su huella, guardia de arquitectura y núcleo intacto del asistente, y congelado y resultados del experimento | 0.9.0 |
 | `escribir_banco_asistente.py` | escribe las 16 fichas del banco de tareas del asistente (memoria de cálculo a mano) en `tests/fixtures/asistente/tareas`; no se vuelve a correr tras el congelado | 0.9.0 |
 | `explorar_ia.py` | prueba exploratoria de S4.0: `keyring` y el modelo local de Ollama (`keyring` \| `ollama --modelo <nombre>`); no llama a ninguna API de pago | 0.9.0 |
+| `_experimento.py` | lo común de los scripts del experimento del asistente: contexto (banco, composiciones, catálogo) y proveedor real con la clave del almacén de credenciales; no se ejecuta solo | 0.9.0 |
+| `prueba_real_asistente.py` | prueba manual del asistente con la API real: **gasta dinero** y exige `--acepto-costo`, que autoriza una persona; solo tareas de desarrollo; no la corre la CI ni el plan | 0.9.0 |
 
 ## Bases de prueba y migraciones (Sílice, desde la 0.6.0)
 
