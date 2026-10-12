@@ -110,5 +110,6 @@ def test_la_huella_es_la_misma_con_saltos_de_linea_de_windows_y_de_linux(tmp_pat
     copia = tmp_path / "tareas"
     copia.mkdir()
     for ruta in CARPETA_TAREAS.glob("*.json"):
-        (copia / ruta.name).write_bytes(ruta.read_bytes().replace(b"\n", b"\r\n"))
+        crudo = ruta.read_bytes().replace(b"\r\n", b"\n")  # el checkout de Windows trae CRLF
+        (copia / ruta.name).write_bytes(crudo.replace(b"\n", b"\r\n"))
     assert huella_del_banco(copia) == huella_del_banco()
