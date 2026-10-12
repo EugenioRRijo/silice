@@ -101,17 +101,17 @@ class Catalogo:
     def lista_vigente(self, fecha: date | None = None) -> models.ListaPrecios:
         """La lista global de mayor `fecha_vigencia` menor o igual a `fecha` (hoy, sin `fecha`).
 
-        Las listas de alcance de proyecto (cotizaciones, SF‑E7) no se resuelven aquí.
+        Las listas de proyecto (cotizaciones, SF‑E7), de empresa y de referencia (SL‑E2) no se
+        resuelven aquí: una versión las referencia explícitamente (DA‑SF‑9).
         """
         limite = fecha if fecha is not None else date.today()
-        # SF‑E7 (DA‑SF‑9): una lista de proyecto nace de una cotización y no es global.
-        de_proyecto = exists().where(
+        fuera_de_vigente = exists().where(
             models.ListaPreciosOrigen.lista_id == models.ListaPrecios.id,
-            models.ListaPreciosOrigen.alcance == models.ALCANCE_PROYECTO,
+            models.ListaPreciosOrigen.alcance.in_(models.ALCANCES_FUERA_DE_VIGENTE),
         )
         lista = self._sesion.scalars(
             select(models.ListaPrecios)
-            .where(models.ListaPrecios.fecha_vigencia <= limite, ~de_proyecto)
+            .where(models.ListaPrecios.fecha_vigencia <= limite, ~fuera_de_vigente)
             .order_by(models.ListaPrecios.fecha_vigencia.desc(), models.ListaPrecios.id.desc())
             .limit(1)
         ).one_or_none()

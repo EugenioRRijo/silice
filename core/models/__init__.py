@@ -6,8 +6,11 @@ coinciden con tipos de `core.contracts` y mezclarlos sin cualificar los haría i
 
 from core.models.base import Base
 from core.models.entidades import (
+    ALCANCE_EMPRESA,
     ALCANCE_GLOBAL,
     ALCANCE_PROYECTO,
+    ALCANCE_REFERENCIA,
+    ALCANCES_FUERA_DE_VIGENTE,
     MOTIVOS_VERSION,
     PREFIJO_CODIGO_INSUMO,
     CambioPrecio,
@@ -39,6 +42,7 @@ from core.models.entidades import (
 )
 from core.models.moneda import (
     ImportacionIndice,
+    ListaEmpresa,
     MonedaProyecto,
     PrecioOrigen,
     SerieIndice,
@@ -47,8 +51,11 @@ from core.models.moneda import (
 from core.models.tipos import DecimalExacto
 
 __all__ = [
+    "ALCANCES_FUERA_DE_VIGENTE",
+    "ALCANCE_EMPRESA",
     "ALCANCE_GLOBAL",
     "ALCANCE_PROYECTO",
+    "ALCANCE_REFERENCIA",
     "MOTIVOS_VERSION",
     "PREFIJO_CODIGO_INSUMO",
     "Base",
@@ -66,6 +73,7 @@ __all__ = [
     "ItemComputo",
     "JustificacionRendimiento",
     "LineaComposicionVersion",
+    "ListaEmpresa",
     "ListaPrecios",
     "ListaPreciosOrigen",
     "MonedaProyecto",
