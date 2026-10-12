@@ -94,6 +94,7 @@ Cada una audita las metas de su sprint (`OK`/`FALLA`/`PENDIENTE`); una fase se c
 | `meta_redaccion.py` | los 12 chequeos de la redacción de la tesis (R1 a R12) | sprint R1 |
 | `meta_datos.py` | tres chequeos (D1 a D3): la documentación del repositorio no presenta sus datos como reales | limpieza de datos |
 | `meta_silice.py` | meta única de Sílice: siete comprobaciones comunes (ERS por presencia, cero omitidas, prueba antes que código, contratos y regresión intactos desde v0.5.0, cifras de tiempo, guardia de red) más las de cada parte en `meta_silice_<parte>.py` | 0.6.0 a 1.0.0 |
+| `meta_silice_s1.py` | parte S1 de la meta única: once requisitos de S1 por presencia en la ERS, prueba antes que código de SL‑E1 a SL‑E3 y del adaptador BCV, memorias a mano (S1‑MEM), `FUENTE.md` del BCV (S1‑FUENTE) y base de prueba 0.6.0 con su ficha (S1‑BASE‑060) | 0.6.0 |
 | `meta_silice_s5.py` | parte S5 de la meta única: RF‑96 y RNF‑20, prueba antes que código de S5‑1 y base de prueba de v0.5.0 con su ficha (S5‑M3) | 0.6.0 |
 
 ## Bases de prueba y migraciones (Sílice, desde la 0.6.0)

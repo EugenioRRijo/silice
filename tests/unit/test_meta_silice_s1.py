@@ -31,8 +31,17 @@ def test_la_parte_s1_se_descubre_y_usa_fases_de_la_0_6_0() -> None:
 
 def test_los_once_requisitos_y_las_cuatro_memorias() -> None:
     assert REQUISITOS_S1 == (
-        "UC-17", "UC-18", "RF-64", "RF-65", "RF-66", "RF-67", "RF-68", "RF-69", "RF-70",
-        "RF-71", "RNF-14",
+        "UC-17",
+        "UC-18",
+        "RF-64",
+        "RF-65",
+        "RF-66",
+        "RF-67",
+        "RF-68",
+        "RF-69",
+        "RF-70",
+        "RF-71",
+        "RNF-14",
     )
     assert sorted(MEMORIAS_S1) == [
         "s1_conversion.md",
@@ -66,3 +75,25 @@ def test_la_base_0_6_0_exige_su_ficha_y_la_huella_de_cada_base(tmp_path: Path) -
     (carpeta / "s1.db").write_bytes(b"y")
     estado, detalle = evaluar_base_060(carpeta)
     assert estado is Estado.FALLA and "s1.db" in detalle
+
+
+def test_la_ers_define_los_once_requisitos_y_una_ers_sin_ellos_falla() -> None:
+    from scripts.meta_silice import evaluar_requisitos
+
+    raiz = Path(__file__).resolve().parents[2]
+    ers = (raiz / "docs" / "ERS.md").read_text(encoding="utf-8")
+    assert evaluar_requisitos(ers, REQUISITOS_S1)[0] is Estado.OK
+    # una mencion suelta no define: la meta exige el encabezado, la fila o la celda
+    estado, detalle = evaluar_requisitos("Se menciona UC-17 y RF-64 sin definirlos.", REQUISITOS_S1)
+    assert estado is Estado.FALLA and "RNF-14" in detalle and "UC-18" in detalle
+
+
+def test_la_base_060_rechaza_una_ficha_de_otra_version(tmp_path: Path) -> None:
+    (tmp_path / "ficha.json").write_text(
+        json.dumps({"version": "0.5.0", "etiqueta": "v0.5.0", "bases": {}}), encoding="utf-8"
+    )
+    assert evaluar_base_060(tmp_path)[0] is Estado.FALLA
+    (tmp_path / "ficha.json").write_text(
+        json.dumps({"version": "0.6.0", "etiqueta": "v0.6.0", "bases": {}}), encoding="utf-8"
+    )
+    assert evaluar_base_060(tmp_path)[0] is Estado.FALLA  # sin bases no hay huella que comprobar
