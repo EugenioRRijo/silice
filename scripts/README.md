@@ -106,3 +106,5 @@ Cada una audita las metas de su sprint (`OK`/`FALLA`/`PENDIENTE`); una fase se c
 | `generar_base_prueba.py` | genera, **con el código de una etiqueta**, las bases de prueba `demo.db`, `of001.db` y `ti001.db` de esa versión y su `ficha.json` (filas por tabla, total literal y huella del informe) en `tests/fixtures/bases/v<X_Y_Z>/`; se niega a reescribirlas | S5‑1 · RV‑3 |
 | `congelar_esquema.py` | escribe una revisión base de Alembic con el DDL literal (`sqlite_master`) de una base de prueba, en orden de creación; se niega a pisar una revisión existente (la revisión base queda congelada) | S5‑1 · RF‑96 |
 | `generar_ids_silice.py` | escribe (o con `--comprobar`, verifica) `data/ids/silice_instalaciones.ids`, los requisitos IDS del IFC (necesita el extra `ifc`) | S3-5 · RF-89 |
+| `sembrar_errores_planos.py` | siembra errores conocidos en el DXF de OF-001 y en el IFC de oficina (catálogo de S3) | S3-5 · RF-89 |
+| `medir_deteccion_planos.py` | mide la tasa de detección y las falsas alarmas de la auditoría de planos sobre esos errores | S3-5 · RF-89 |
