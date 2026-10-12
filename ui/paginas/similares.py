@@ -33,6 +33,7 @@ from core.catalog import Catalogo, CatalogoIncompleto, abrir_sesion, crear_motor
 from core.contracts.apu import ComposicionAPU
 from core.verification.informe import DECIMALES_PRESENTACION
 from core.verification.texto import formatear_decimal
+from operacion import config
 from operacion.base_datos import preparar_base
 from seguridad.permisos import Accion
 from ui import sesion as ui_sesion
@@ -43,9 +44,19 @@ if TYPE_CHECKING:
     from ml.normalization import PartidaSimilar
 
 _MENSAJE_SIN_EXTRA_ML = (
-    "Las propuestas de partidas similares necesitan el extra 'ml' (sentence-transformers): "
-    "instala con 'uv sync --extra ml' y vuelve a intentar."
+    "Las propuestas de partidas similares necesitan el extra 'similitud' (sentence-transformers): "
+    "instala con 'uv sync --extra similitud' y vuelve a intentar."
 )
+_MENSAJE_SIN_MODULO = (
+    "El módulo de similitud de partidas no está instalado en este equipo. Ejecute el instalador "
+    "completo (Silice-<versión>-completo.exe) para agregarlo; sus datos se conservan."
+)
+
+
+def _mensaje_sin_modulo() -> str:
+    # `es_producto` llega con la T5 (S5-1); mientras no exista, el equipo es de desarrollo.
+    es_producto = getattr(config, "es_producto", lambda: False)
+    return _MENSAJE_SIN_MODULO if es_producto() else _MENSAJE_SIN_EXTRA_ML
 
 
 def render() -> None:
@@ -74,7 +85,7 @@ def render() -> None:
                 # el aviso de instalarlo; con otra falla declarada (sin red en la primera descarga,
                 # pesos corruptos), el error del modelo: un mensaje, no una traza.
                 if propuesta.falla.startswith("ImportError"):
-                    st.error(_MENSAJE_SIN_EXTRA_ML)
+                    st.error(_mensaje_sin_modulo())
                 else:
                     st.error(f"El modelo de similitud no esta disponible: {propuesta.falla}")
                 return

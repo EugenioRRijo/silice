@@ -6,3 +6,4 @@ tests/fixtures/bases/*/*.db binary
 docs/protocolo_indicador_administrador.md text eol=lf
 docs/protocolo_indicador_administrador_lista.md text eol=lf
 docs/protocolo_deteccion_planos.md text eol=lf
+ui/estaticos/three.min.js binary
