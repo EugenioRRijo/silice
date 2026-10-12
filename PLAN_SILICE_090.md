@@ -224,7 +224,7 @@ Cotejadas con `git grep` las interfaces que el plan suponía; lo que difiere que
 - **T3.** `tests/unit/test_dependencias_silice.py` dueña de `ollama` y `keyring` solo `asistente/`: se
   agregó `scripts/explorar_ia.py`. Cada script nuevo necesita su fila en `scripts/README.md`.
 - **T9.** La cabeza del caso en `main` es `caso_0004_s1_reajuste`; S2 reserva 0005 y 0006, así que la
-  revisión del asistente es `caso_0007_s4_asistente` con `down_revision` provisional `caso_0004...`.
+  revisión del asistente es `caso_0007_s4_asistente` con `down_revision` provisional (hoy `caso_0005_s2_valuaciones`, la cabeza de `main` al abrir el PR).
   **Al fusionar, quien llegue segundo re-apunta `down_revision` a la cabeza vigente** (una sola cabeza,
   RNF-20).
 - **T11.** El test del adaptador de Claude fijaba la fecha de los precios en 2026-09-25; es la de la
