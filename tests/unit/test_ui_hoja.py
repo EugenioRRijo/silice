@@ -84,7 +84,8 @@ def _borrador(espacio) -> hoja.Borrador:
 def test_la_pantalla_arranca_con_el_borrador_vacio(monkeypatch, tmp_path):
     at = _arrancar(monkeypatch, tmp_path / "no_existe.db")
     # los cinco editores: origenes, ambientes, fuentes, puntos y vertices de recorridos
-    assert len(at.dataframe) == 5
+    editores = [d for d in at.dataframe if (d.key or "").startswith("hoja_editor_")]
+    assert len(editores) == 5
     assert at.info  # sin espacio no hay cantidades derivadas: la pantalla lo dice
 
 
@@ -99,7 +100,8 @@ def test_el_bano_sembrado_muestra_cantidades_derivadas_y_el_informe(monkeypatch,
     texto = " ".join(m.value for m in at.markdown)
     assert "AF-TUB-PVC-3/4" in texto or any("AF-TUB-PVC-3/4" in str(d.value) for d in at.dataframe)
     assert "Informe de auditoria" in " ".join(s.value for s in at.subheader)
-    assert "R8" in texto  # el informe declara las reglas del espacio
+    reglas = {r for d in at.dataframe if "Regla" in d.value.columns for r in d.value["Regla"]}
+    assert "R8" in reglas  # el informe (en celdas, SEG-3) declara las reglas del espacio
 
 
 def test_el_estado_va_fuera_de_los_editores(monkeypatch, tmp_path):
@@ -124,7 +126,11 @@ def test_las_pestanas_son_las_nueve_de_la_spec_y_la_primera_es_espacio_y_metraje
 
 def test_la_oficina_sembrada_muestra_las_tres_especialidades(monkeypatch, tmp_path):
     at = _arrancar(monkeypatch, tmp_path / "no_existe.db", _borrador(espacio_of001()))
-    cantidades = [d.value for d in at.dataframe if "Partida" in list(d.value.columns)]
+    cantidades = [
+        d.value
+        for d in at.dataframe
+        if "Partida" in list(d.value.columns) and "Regla" not in list(d.value.columns)
+    ]
     assert len(cantidades) == 1
     partidas = set(cantidades[0]["Partida"])
     assert {"AF-TUB-PVC-3/4", "DR-TUB-PVC-2", "DT-UTP-CAT-6", "EL-COND-12-AWG"} <= partidas

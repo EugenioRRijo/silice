@@ -22,16 +22,74 @@ from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
 import streamlit as st
+from pandas import DataFrame
 
-from core.verification.informe import DECIMALES_PRESENTACION
+from core.verification.informe import DECIMALES_PRESENTACION, SIN_HALLAZGOS
 from core.verification.texto import formatear_decimal
+from ui.texto_seguro import texto_seguro
 
 if TYPE_CHECKING:
     from core.budget import ResultadoElaboracion
     from core.contracts import ItemComputo
+    from core.verification.informe import InformeAuditoria
     from ui.elaboracion import PendienteConPropuestas
 
 MIME_EXCEL = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
+
+def _monto(valor) -> str:
+    return "" if valor is None else formatear_decimal(valor, DECIMALES_PRESENTACION)
+
+
+def mostrar_informe(informe: InformeAuditoria) -> None:
+    """El informe de auditoria sin interpretar su texto como Markdown (SEG-3, RV-14).
+
+    `InformeAuditoria.a_markdown` mete la descripcion de cada hallazgo en una tabla Markdown, y
+    esa descripcion puede traer el nombre de un insumo importado (R11, R12): `![x](http://...)`
+    seria una imagen y `[x](http://...)` un enlace. Aqui lo ajeno va en celdas de `st.dataframe`
+    (texto plano) o, si va en Markdown, por `texto_seguro`. Lo que el sistema escribe (veredicto,
+    conteos) es texto propio.
+    """
+    veredicto = "CUMPLE" if informe.cumple else "NO CUMPLE"
+    st.markdown(
+        f"**Presupuesto {texto_seguro(informe.codigo_presupuesto)}** · "
+        f"Hallazgos: {len(informe.hallazgos)} · Resultado: {veredicto}"
+    )
+    if informe.reglas_evaluadas:
+        st.caption("Reglas evaluadas")
+        st.dataframe(
+            DataFrame(
+                [
+                    {"Regla": codigo, "Nombre": nombre, "Hallazgos": cuenta}
+                    for codigo, nombre, cuenta in informe.cuenta_por_regla_evaluada()
+                ]
+            ),
+            hide_index=True,
+            width="stretch",
+        )
+    if not informe.hallazgos:
+        st.caption(SIN_HALLAZGOS)
+        return
+    st.dataframe(
+        DataFrame(
+            [
+                {
+                    "#": numero,
+                    "Regla": h.regla,
+                    "Severidad": h.severidad.name,
+                    "Partida": informe.partida_de(h) or "-",
+                    "Descripcion": h.descripcion,
+                    "Impacto": _monto(h.impacto),
+                    "Observado": _monto(h.valor_observado),
+                    "Esperado": _monto(h.valor_esperado),
+                    "Origen": "; ".join(h.origen_ids),
+                }
+                for numero, h in enumerate(informe.hallazgos, start=1)
+            ]
+        ),
+        hide_index=True,
+        width="stretch",
+    )
 
 
 def mostrar_elaboracion(
@@ -71,7 +129,7 @@ def mostrar_elaboracion(
     eleccion = _pendientes(resultado, propuestas, prefijo)
 
     st.subheader("Informe de auditoria")
-    st.markdown(resultado.informe.a_markdown())
+    mostrar_informe(resultado.informe)
     return eleccion
 
 
