@@ -242,8 +242,10 @@ def test_recorrido_guiado_desde_su_ultimo_paso_vuelve_al_inicio(monkeypatch, cas
 # --- Proyecto (RF-63) --------------------------------------------------------------------------
 
 
-def _crear(at: AppTest, nombre: str) -> AppTest:
+def _crear(at: AppTest, nombre: str, moneda: str | None = "USD") -> AppTest:
     at.text_input(key=barra.CLAVE_NOMBRE_NUEVO).set_value(nombre)
+    if moneda is not None:
+        at.selectbox(key=barra.CLAVE_MONEDA_NUEVA).select(moneda)
     return _boton(at, barra.ROTULO_CREAR).click().run()
 
 
@@ -281,6 +283,13 @@ def test_proyecto_nuevo_no_se_crea_dos_veces(monkeypatch, caso):
     at = _crear(_barra(monkeypatch, caso), "Torre B")
     at = _crear(at, "Torre B")
     assert "Ya existe un proyecto" in _textos(at)
+
+
+def test_proyecto_nuevo_sin_moneda_se_rechaza_con_mensaje(monkeypatch, caso):
+    at = _crear(_barra(monkeypatch, caso), "Torre B", moneda=None)
+    assert "Elija la moneda" in _textos(at)
+    assert _abierto(at) is None
+    assert "Torre B" not in at.selectbox(key=barra.CLAVE_ABRIR).options
 
 
 def test_abrir_un_proyecto_muestra_su_version_vigente(monkeypatch, caso):

@@ -15,4 +15,5 @@ etiquetar, las líneas pasan a la sección de la versión. La historia anterior 
 - T0‑A5: enmienda propuesta a NORMAS §3 (worktrees, ramas cortas por fase, un carril de núcleo).
 - Migraciones con Alembic en dos destinos (caso e instalación); revisión base `caso_0001_base_0_5_0` = esquema de la 0.5.0; `preparar_base` con respaldo previo, casos en la carpeta de datos y `python -m operacion` (RF‑96, RNF‑20; S5‑1).
 - S1‑0: ERS con UC‑17, UC‑18, RF‑64 a RF‑71 y RNF‑14; modelo de datos §2.5; filas previstas en el plan de pruebas; parte S1 de la meta (`scripts/meta_silice_s1.py`).
+- S1‑3 (interfaz): pantallas «Precios de la empresa» e «Índices del BCV» (UC‑17); la hoja ofrece la moneda del proyecto en Parámetros, conversión a la otra moneda, origen, erosión y R11/R12 en Precios y en la auditoría; la barra exige la moneda al crear un proyecto; `ui/texto_seguro.py` escapa el texto ajeno.
 - S1‑4 (SL‑E3, núcleo): reajuste por fórmula escalatoria y por comprobación directa lado a lado (`core/budget/reajuste.py`), estudio guardado con las importaciones que cita y recalculable sin cambios (RNF‑14), parcial al corte; tablas aditivas con la revisión `caso_0004_s1_reajuste`.

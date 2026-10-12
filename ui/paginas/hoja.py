@@ -55,7 +55,9 @@ from adapters.espacio import (
 )
 from adapters.espacio.planos import EstadoImportacion
 from core import models
+from core.budget.moneda import moneda_del_proyecto
 from core.catalog import Catalogo, CatalogoIncompleto, abrir_sesion, crear_motor
+from core.catalog.moneda import MONEDAS
 from core.verification.informe import DECIMALES_PRESENTACION
 from core.verification.texto import formatear_decimal
 from operacion.base_datos import ErrorDeBase, preparar_base
@@ -242,7 +244,9 @@ def _abrir(proyecto: str | None, codigo: str | None) -> None:
     else:
         try:
             with _sesion() as sesion:
-                abierta = hoja.abrir_version(sesion, Catalogo(sesion), proyecto, codigo)
+                abierta = hoja.abrir_version(
+                    sesion, Catalogo(sesion), proyecto, codigo, fecha_evaluacion=date.today()
+                )
         except hoja.HojaInvalida as error:
             st.error(str(error))
             return
@@ -462,7 +466,9 @@ def _preparar_excel() -> None:
         if abierta is not None:
             with _sesion() as sesion:
                 trazabilidad = hoja.tabla_de_trazabilidad(sesion, abierta.proyecto, abierta.codigo)
-                precios = hoja.precios_de_version(sesion, abierta.proyecto, abierta.codigo)
+                precios = hoja.precios_de_version(
+                    sesion, abierta.proyecto, abierta.codigo, fecha_evaluacion=date.today()
+                )
         contenido = hoja.excel_de_hoja_en_bytes(
             resultado, borrador, trazabilidad=trazabilidad, precios=precios
         )
@@ -1213,17 +1219,23 @@ def _reabrir_nueva(codigo: str) -> None:
         _abrir(abierta.proyecto, codigo)
 
 
+def _monto(valor: Decimal | None) -> str:
+    return "" if valor is None else formatear_decimal(valor, DECIMALES_PRESENTACION)
+
+
 def _pestana_precios(cambios: Sequence) -> None:
     abierta = _abierta()
     if abierta is None:
         st.info("Abra una version guardada para ver el origen de sus precios.")
         return
     with _sesion() as sesion:
-        precios = hoja.precios_de_version(sesion, abierta.proyecto, abierta.codigo)
+        precios = hoja.precios_de_version(
+            sesion, abierta.proyecto, abierta.codigo, fecha_evaluacion=date.today()
+        )
     st.caption(
-        "Lista, referencia, fecha, moneda y tasa de cada insumo. Una cotizacion (con su proveedor, "
-        "numero y fecha) vale solo para este proyecto y prevalece sobre la lista global hasta que "
-        "se retire."
+        "Lista, referencia, fecha, moneda y tasa de cada insumo, su origen y cuanto valor perdio "
+        "hasta hoy (erosion). Una cotizacion (con su proveedor, numero y fecha) vale solo para "
+        "este proyecto y prevalece sobre la lista global hasta que se retire."
     )
     st.dataframe(
         DataFrame(
@@ -1240,6 +1252,17 @@ def _pestana_precios(cambios: Sequence) -> None:
                 ],
                 "Referencia": [p.referencia for p in precios],
                 "Cotizacion": [p.cotizacion for p in precios],
+                "Moneda original": [p.moneda_original for p in precios],
+                "Precio original": [_monto(p.precio_original) for p in precios],
+                "Fuente de la tasa": [p.fuente_tasa for p in precios],
+                "Fuente": [p.fuente for p in precios],
+                "Propio/heredado": [hoja.texto_propio(p.propio) for p in precios],
+                "Erosion USD": [_monto(p.erosion_usd) for p in precios],
+                "Erosion Bs": [_monto(p.erosion_bs) for p in precios],
+                "Erosion %": [
+                    _monto(None if p.erosion_pct is None else p.erosion_pct * 100) for p in precios
+                ],
+                "Erosion por indice": [_monto(p.erosion_indice) for p in precios],
                 "Estado": [p.estado for p in precios],
             }
         ),
@@ -1358,9 +1381,56 @@ def _pestana_parametros() -> None:
             _poner_borrador(replace(borrador, parametros=parametros))
     except hoja.HojaInvalida as error:
         st.error(f"{error}. La hoja sigue con los ultimos parametros validos.")
-    resultado, _ = _calculo()
+    resultado, cambios = _calculo()
     presupuesto = resultado.elaboracion.presupuesto
     st.metric("Total del presupuesto", _dinero(presupuesto.total, presupuesto.moneda))
+    _moneda(cambios)
+
+
+def _moneda(cambios: Sequence) -> None:
+    """RF-64: la moneda del proyecto y su cambio, que crea una version convertida (S1 §5.3)."""
+    abierta = _abierta()
+    if abierta is None:
+        return
+    with _sesion() as sesion:
+        if sesion is None:
+            return
+        proyecto = sesion.scalars(
+            select(models.Proyecto).where(models.Proyecto.nombre == abierta.proyecto)
+        ).one()
+        actual = moneda_del_proyecto(sesion, proyecto)
+    st.markdown(f"**Moneda del proyecto:** {actual}")
+    if cambios:
+        st.warning(
+            "Cambiar la moneda crea una version nueva desde la guardada: guarde o descarte primero "
+            f"los {len(cambios)} cambios pendientes."
+        )
+        return
+    with st.form("hoja_moneda"):
+        st.markdown("**Cambiar la moneda** (crea una version convertida; la actual no cambia)")
+        destino = st.selectbox("Moneda destino", [m for m in MONEDAS if m != actual])
+        lado = st.selectbox("Tasa del BCV", ("venta", "compra"), help="Por defecto, venta (S1-R1).")
+        fuente = st.text_input("Por que se cambia la moneda (fuente)")
+        responsable = st.text_input("Responsable del cambio")
+        enviar = st.form_submit_button("Convertir la version")
+    if not enviar:
+        return
+    try:
+        with _sesion() as sesion:
+            if sesion is None:
+                return
+            nuevo = hoja.convertir(
+                sesion, Catalogo(sesion), abierta.proyecto, abierta.codigo, destino, lado=lado,
+                fecha=date.today(), fuente=fuente, responsable=responsable,
+            )
+    except hoja.HojaInvalida as error:
+        st.error(str(error))
+    except SQLAlchemyError as error:
+        st.error(_error_de_base(error))
+    else:
+        _mensaje("success", f"Se guardo la version {nuevo}, convertida a {destino}.")
+        _reabrir_nueva(nuevo)
+        st.rerun()
 
 
 # --- pestana Auditoria ---------------------------------------------------------------------------
@@ -1369,7 +1439,7 @@ def _pestana_parametros() -> None:
 def _pestana_auditoria() -> None:
     resultado, _ = _calculo()
     informe = resultado.elaboracion.informe
-    st.caption("El informe se genera siempre, con las diez reglas, sobre el borrador vigente.")
+    st.caption("El informe se genera siempre, con todas las reglas, sobre el borrador vigente.")
     st.markdown(informe.a_markdown())
     if informe.hallazgos:
         st.subheader("Detalle de los hallazgos")

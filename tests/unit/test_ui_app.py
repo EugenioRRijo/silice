@@ -45,6 +45,8 @@ TITULOS_TRABAJO = (
     "Hoja del proyecto",
     "Actualizar precios",
     "Historico de cambios de precio",
+    "Precios de la empresa",
+    "Indices del BCV",
 )
 
 TITULOS_INVESTIGACION = (
@@ -59,6 +61,8 @@ CASOS_DE_USO = {
     "componer": "UC-10 / UC-11",
     "elaborar": "UC-01",
     "escenarios": "UC-08",
+    "indices": "UC-17",
+    "precios_empresa": "UC-17",
     "similares": "UC-03",
 }
 
@@ -350,9 +354,9 @@ def test_modo_entrega_declara_solo_el_grupo_trabajo_en_la_navegacion_superior(
     assert list(paginas) == [SECCION_TRABAJO]
 
 
-def test_son_once_pantallas_y_la_hoja_va_justo_despues_de_elaborar() -> None:
+def test_son_trece_pantallas_y_la_hoja_va_justo_despues_de_elaborar() -> None:
     rutas = [p.ruta_url for p in PAGINAS]
-    assert len(rutas) == 11
+    assert len(rutas) == 13
     assert rutas.index("hoja") == rutas.index("elaborar") + 1
     assert pagina_por_ruta("hoja").seccion == SECCION_TRABAJO
 

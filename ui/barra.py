@@ -47,6 +47,7 @@ from ui.caso import (
     ruta_caso,
 )
 from ui.proyectos import (
+    MONEDAS_DEL_PROYECTO,
     ProyectoInvalido,
     crear_proyecto_nuevo,
     listar_proyectos,
@@ -72,6 +73,8 @@ AVISO_SF3 = (
 )
 
 CLAVE_NOMBRE_NUEVO = "barra_proyecto_nombre"
+CLAVE_MONEDA_NUEVA = "barra_proyecto_moneda"
+MENSAJE_SIN_MONEDA = "Elija la moneda del proyecto (Bs o USD): no tiene valor por defecto."
 CLAVE_ABRIR = "barra_proyecto_abrir"
 CLAVE_MENSAJE = "barra_mensaje"  # (tipo, texto) del ultimo intento de crear: no es de widget
 
@@ -111,14 +114,24 @@ def _hay_pestana_precios() -> bool:
 
 
 def _crear_proyecto() -> None:
+    moneda = st.session_state.get(CLAVE_MONEDA_NUEVA)
+    if moneda is None:
+        st.session_state[CLAVE_MENSAJE] = ("error", MENSAJE_SIN_MONEDA)
+        return
     try:
-        nombre = crear_proyecto_nuevo(ruta_caso(), st.session_state.get(CLAVE_NOMBRE_NUEVO, ""))
+        nombre = crear_proyecto_nuevo(
+            ruta_caso(), st.session_state.get(CLAVE_NOMBRE_NUEVO, ""), moneda
+        )
     except ProyectoInvalido as error:
         st.session_state[CLAVE_MENSAJE] = ("error", str(error))
         return
     fijar_proyecto(nombre)
     st.session_state[CLAVE_NOMBRE_NUEVO] = ""
-    st.session_state[CLAVE_MENSAJE] = ("exito", f"Proyecto «{nombre}» creado y abierto.")
+    st.session_state[CLAVE_MONEDA_NUEVA] = None
+    st.session_state[CLAVE_MENSAJE] = (
+        "exito",
+        f"Proyecto «{nombre}» creado y abierto en {moneda}.",
+    )
 
 
 def _abrir_proyecto() -> None:
@@ -164,6 +177,13 @@ def _pintar_proyecto(nombres: list[str], abierto: str | None) -> None:
         "Nombre del proyecto nuevo",
         key=CLAVE_NOMBRE_NUEVO,
         help="Unico en este caso y no vacio.",
+    )
+    st.selectbox(
+        "Moneda del proyecto",
+        MONEDAS_DEL_PROYECTO,
+        index=None,
+        placeholder="Elija Bs o USD",
+        key=CLAVE_MONEDA_NUEVA,
     )
     st.button(ROTULO_CREAR, on_click=_crear_proyecto, key="barra_crear")
     st.selectbox(
