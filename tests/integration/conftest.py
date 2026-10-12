@@ -126,3 +126,26 @@ def items_payload():
         }
         for item in items_auditados()
     ]
+
+
+@pytest.fixture
+def obra_sin_linea_base(motor):
+    """OB-S2 (S2 §7.1) en una base vacía: la versión OB-001 con su plan, sin línea base de control.
+
+    Datos ficticios (NORMAS.md §1). No confirma: la sesión se cierra con el motor."""
+    from tests.fixtures import control_ob_s2 as ob
+
+    with abrir_sesion(motor) as sesion:
+        ob.sembrar(sesion)
+        sesion.commit()  # un caso guardado: un `rollback` de la pantalla no lo deshace
+        yield sesion
+
+
+@pytest.fixture
+def obra(obra_sin_linea_base):
+    """OB-S2 con su línea base de control declarada (perspectiva costo, desde el 2026-11-02)."""
+    from tests.fixtures import control_ob_s2 as ob
+
+    ob.declarar_linea_base(obra_sin_linea_base)
+    obra_sin_linea_base.commit()
+    return obra_sin_linea_base

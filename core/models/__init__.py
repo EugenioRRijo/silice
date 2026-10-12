@@ -5,6 +5,16 @@ coinciden con tipos de `core.contracts` y mezclarlos sin cualificar los haría i
 """
 
 from core.models.base import Base
+from core.models.control import (
+    AnulacionValuacion,
+    CalendarioObra,
+    CitaValuacion,
+    CostoReal,
+    LineaBaseControl,
+    LineaValuacion,
+    ParametrosControl,
+    Valuacion,
+)
 from core.models.entidades import (
     ALCANCE_EMPRESA,
     ALCANCE_GLOBAL,
@@ -63,12 +73,16 @@ __all__ = [
     "ALCANCE_REFERENCIA",
     "MOTIVOS_VERSION",
     "PREFIJO_CODIGO_INSUMO",
+    "AnulacionValuacion",
     "Base",
+    "CalendarioObra",
     "CambioPrecio",
+    "CitaValuacion",
     "ClausulaReajuste",
     "ComponenteClausula",
     "ComposicionAPU",
     "ComposicionVersion",
+    "CostoReal",
     "Cotizacion",
     "DecimalExacto",
     "DescarteVersion",
@@ -81,11 +95,14 @@ __all__ = [
     "Insumo",
     "ItemComputo",
     "JustificacionRendimiento",
+    "LineaBaseControl",
     "LineaComposicionVersion",
+    "LineaValuacion",
     "ListaEmpresa",
     "ListaPrecios",
     "ListaPreciosOrigen",
     "MonedaProyecto",
+    "ParametrosControl",
     "Partida",
     "PartidaPresupuestada",
     "PeriodoReajuste",
@@ -101,5 +118,6 @@ __all__ = [
     "SerieIndice",
     "TipoInsumo",
     "ValorIndice",
+    "Valuacion",
     "VersionOrigen",
 ]
