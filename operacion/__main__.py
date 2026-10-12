@@ -1,8 +1,8 @@
 """`python -m operacion` (spec S5 §6.5): casos, revisión, migrar, respaldar, restaurar y adoptar.
 
 En la 0.6.0 se corre a mano en desarrollo (`uv run python -m operacion …`); desde la 1.0.0 la llaman
-el instalador y el lanzador. `restaurar` exige Sílice detenido: hasta que el lanzador (S5-2) deje
-`estado/servidor.json`, lo comprueba quien la ejecuta.
+el instalador y el lanzador. `restaurar` exige Sílice detenido: hasta que el lanzador (S5-2) deja
+`estado/servidor.json`, la orden se niega si hay una instancia que responde.
 """
 
 from __future__ import annotations
@@ -58,6 +58,14 @@ def _respaldar(_argumentos: argparse.Namespace) -> int:
 
 
 def _restaurar(argumentos: argparse.Namespace) -> int:
+    from operacion import lanzador
+
+    if lanzador.hay_instancia():
+        print(
+            "Sílice está en marcha: deténgalo con «Detener Sílice» antes de restaurar.",
+            file=sys.stderr,
+        )
+        return 1
     resultado = base_datos.restaurar_juego(argumentos.juego, solo_caso=argumentos.solo_caso)
     print("Restauradas: " + ", ".join(ruta.name for ruta in resultado.restauradas))
     print(f"Bases de antes de restaurar: {resultado.antes}")
@@ -104,6 +112,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     adoptar.add_argument("origen", type=Path)
     adoptar.add_argument("--nombre")
+    from operacion import ordenes_100
+
+    ordenes_100.registrar(ordenes, _ORDENES)
     argumentos = analizador.parse_args(argv)
     try:
         return _ORDENES[argumentos.orden](argumentos)
