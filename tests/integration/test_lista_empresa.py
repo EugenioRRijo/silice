@@ -57,7 +57,8 @@ def test_ni_la_empresa_ni_la_referencia_entran_a_lista_vigente(sesion, referenci
 
 def test_propio_prevalece_heredado_marcado_y_empresa_como_texto(sesion, referencia):
     lista = _empresa(sesion, referencia)
-    precios = {p.insumo.descripcion: p for p in lista.precios}
+    # El catálogo trae «Arena lavada» (la clínica) y MaPreX «ARENA LAVADA»: misma identidad.
+    precios = {p.insumo.descripcion.upper(): p for p in lista.precios}
     assert precios["ARENA LAVADA"].precio == Decimal("49078.775")
     assert es_heredado(sesion, lista, precios["MATERIAL GRANULAR INTEGRAL"]) is True
     assert es_heredado(sesion, lista, precios["ARENA LAVADA"]) is False
