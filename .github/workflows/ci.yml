@@ -1,6 +1,8 @@
 # Integracion continua (spec: 2026-09-14-ci-integracion-continua-design.md).
 # Cuatro garantias: suite + ruff en Linux sin omitidas, guardia del nucleo, cobertura de core/
 # >= 80 % y artefactos reproducibles, y la suite tambien en Windows (RNF-06, RNF-07).
+# La suite se reparte en tramos paralelos por archivo (scripts/dividir_suite.py); el trabajo
+# agregar une los JUnit y la cobertura de los tramos y aplica las garantias de siempre.
 # Desde la sesion de limpieza (2026-09-15) se suma la meta de datos: ninguna afirmacion de la
 # documentacion presenta como reales los APU y presupuestos didacticos del repositorio.
 name: CI
@@ -75,15 +77,23 @@ jobs:
         run: uv run --no-sync python scripts/meta_datos.py
 
   pruebas:
-    name: pruebas (${{ matrix.os }})
+    name: pruebas (${{ matrix.os }} ${{ matrix.shard }}/${{ matrix.os == 'windows-latest' && 6 || 3 }})
     runs-on: ${{ matrix.os }}
     env:
       HF_HUB_OFFLINE: "1" # la suite corre sin red (maestro 6.3, RV-17); solo baja el paso del modelo
+      TRAMO: ${{ matrix.shard }}
+      TRAMOS: ${{ matrix.os == 'windows-latest' && 6 || 3 }}
+      SISTEMA: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        # Windows (la corrida mas lenta, ~23 min) no corre en cada PR: corre en cada fusion a main.
+        # Windows (la corrida mas lenta) no corre en cada PR: corre en cada fusion a main.
         os: ${{ fromJSON(github.event_name == 'pull_request' && '["ubuntu-latest"]' || '["ubuntu-latest","windows-latest"]') }}
+        shard: [1, 2, 3, 4, 5, 6] # Ubuntu usa 3 tramos; Windows 6
+        exclude:
+          - { os: ubuntu-latest, shard: 4 }
+          - { os: ubuntu-latest, shard: 5 }
+          - { os: ubuntu-latest, shard: 6 }
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -110,41 +120,143 @@ jobs:
           HF_HUB_OFFLINE: "0"
         run: uv run --no-sync python scripts/descargar_modelo.py
 
-      - name: Suite (pytest -W error)
-        run: >-
-          uv run --no-sync pytest -W error -p no:cacheprovider
-          --junitxml=reporte-pruebas.xml
-          --cov=core --cov=ml --cov=api --cov=adapters --cov-report=term
-
-      - name: Sin pruebas omitidas
-        run: uv run --no-sync python scripts/verificar_omitidas.py reporte-pruebas.xml
+      - name: Suite del tramo (pytest -W error)
+        # Cada archivo de prueba cae en exactamente un tramo (scripts/dividir_suite.py). La
+        # cobertura (solo Linux, donde se exige) va a un archivo por tramo que `agregar` combina.
+        run: |
+          uv run --no-sync python scripts/dividir_suite.py "$TRAMO" "$TRAMOS" | tr -d '\r' > tramo.txt
+          mapfile -t archivos < tramo.txt
+          echo "tramo $TRAMO/$TRAMOS: ${#archivos[@]} archivos"
+          opciones=(-W error -p no:cacheprovider "--junitxml=reporte-$SISTEMA-$TRAMO.xml")
+          if [ "$RUNNER_OS" = "Linux" ]; then
+            export COVERAGE_FILE="cobertura-$SISTEMA-$TRAMO"
+            opciones+=(--cov=core --cov=ml --cov=api --cov=adapters --cov-report=)
+          fi
+          uv run --no-sync pytest "${opciones[@]}" "${archivos[@]}"
 
       - name: Medicion de RNF-11 (solo registra la cifra; no rompe la corrida)
+        if: matrix.shard == 1
+        run: uv run --no-sync python scripts/medir_rnf11.py
+
+      - name: Subir JUnit y cobertura del tramo
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: tramo-${{ matrix.os }}-${{ matrix.shard }}
+          path: |
+            reporte-${{ matrix.os }}-${{ matrix.shard }}.xml
+            cobertura-${{ matrix.os }}-${{ matrix.shard }}
+          if-no-files-found: ignore
+          retention-days: 14
+
+  agregar:
+    name: agregar (JUnit, omitidas, cobertura y metas)
+    needs: pruebas
+    if: always()
+    runs-on: ubuntu-latest
+    env:
+      HF_HUB_OFFLINE: "1"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # C3 y C5 de la meta leen el historial y la etiqueta v0.5.0
+
+      - name: Instalar uv
+        uses: astral-sh/setup-uv@v10.1.0 # sin etiqueta flotante v10: version exacta
+        with:
+          version: "0.11.9"
+          enable-cache: true
+
+      - name: Cache del modelo de similitud
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/huggingface
+          key: hf-${{ runner.os }}-paraphrase-multilingual-MiniLM-L12-v2
+
+      - name: Entorno completo (todos los extras)
+        if: needs.pruebas.result == 'success'
+        run: uv sync --locked --all-extras
+
+      - name: Modelo de similitud (la meta C5 corre pytest)
+        if: needs.pruebas.result == 'success'
+        env:
+          HF_HUB_OFFLINE: "0"
+        run: uv run --no-sync python scripts/descargar_modelo.py
+
+      - name: Descargar los tramos
+        if: needs.pruebas.result == 'success'
+        uses: actions/download-artifact@v8
+        with:
+          pattern: tramo-*
+          merge-multiple: true
+
+      - name: Unir los JUnit por sistema operativo (falla si falta un tramo)
+        if: needs.pruebas.result == 'success'
+        run: |
+          uv run --no-sync python scripts/unir_junit.py --esperados 3 \
+            --salida reporte-pruebas-ubuntu-latest.xml --pesos pesos-suite-ubuntu-latest.json \
+            reporte-ubuntu-latest-*.xml
+          if [ "${{ github.event_name }}" != "pull_request" ]; then
+            uv run --no-sync python scripts/unir_junit.py --esperados 6 \
+              --salida reporte-pruebas-windows-latest.xml \
+              --pesos pesos-suite-windows-latest.json reporte-windows-latest-*.xml
+          fi
+
+      - name: Sin pruebas omitidas
+        if: needs.pruebas.result == 'success'
+        run: |
+          for reporte in reporte-pruebas-*.xml; do
+            echo "== $reporte"
+            uv run --no-sync python scripts/verificar_omitidas.py "$reporte"
+          done
+
+      - name: Medicion de RNF-11 (solo registra la cifra; no rompe la corrida)
+        if: needs.pruebas.result == 'success'
         run: uv run --no-sync python scripts/medir_rnf11.py
 
       - name: Meta de Silice (maestro 6.3, RV-17)
-        if: runner.os == 'Linux'
+        if: needs.pruebas.result == 'success'
         run: >-
           uv run --no-sync python scripts/meta_silice.py
-          --version 0.6.0 --hasta S1-5 --junit reporte-pruebas.xml
+          --version 0.6.0 --hasta S1-5 --junit reporte-pruebas-ubuntu-latest.xml
 
       - name: Meta de Silice 0.7.0
-        if: runner.os == 'Linux'
+        if: needs.pruebas.result == 'success'
         run: >-
           uv run --no-sync python scripts/meta_silice.py
-          --version 0.7.0 --hasta S2-2 --junit reporte-pruebas.xml
+          --version 0.7.0 --hasta S2-2 --junit reporte-pruebas-ubuntu-latest.xml
+
+      - name: Combinar la cobertura de los tramos
+        if: needs.pruebas.result == 'success'
+        run: uv run --no-sync coverage combine cobertura-ubuntu-latest-*
 
       - name: Cobertura de core >= 80 % (RNF-06)
-        if: runner.os == 'Linux'
+        if: needs.pruebas.result == 'success'
         run: uv run --no-sync coverage report --include="core/*" --fail-under=80
 
       - name: Cobertura de adapters/espacio >= 80 % (meta S10)
-        if: runner.os == 'Linux'
+        if: needs.pruebas.result == 'success'
         run: uv run --no-sync coverage report --include="adapters/espacio/*" --fail-under=80
 
       - name: Artefactos reproducibles
-        if: runner.os == 'Linux'
+        if: needs.pruebas.result == 'success'
         run: |
           uv run --no-sync python scripts/exportar_openapi.py
           uv run --no-sync python scripts/generar_resultados_ml.py
           git diff --exit-code -- docs/api.json docs/resultados_ml.md
+
+      - name: Subir los pesos medidos (para rebalancear scripts/pesos_suite.json)
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: pesos-suite
+          path: pesos-suite-*.json
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Todos los tramos de pruebas pasaron
+        if: always()
+        run: |
+          echo "resultado de los tramos: ${{ needs.pruebas.result }}"
+          test "${{ needs.pruebas.result }}" = "success"
