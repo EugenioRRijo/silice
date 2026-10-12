@@ -1423,8 +1423,15 @@ def _moneda(cambios: Sequence) -> None:
             if sesion is None:
                 return
             nuevo = hoja.convertir(
-                sesion, Catalogo(sesion), abierta.proyecto, abierta.codigo, destino, lado=lado,
-                fecha=date.today(), fuente=fuente, responsable=responsable,
+                sesion,
+                Catalogo(sesion),
+                abierta.proyecto,
+                abierta.codigo,
+                destino,
+                lado=lado,
+                fecha=date.today(),
+                fuente=fuente,
+                responsable=responsable,
             )
     except hoja.HojaInvalida as error:
         st.error(str(error))
@@ -1540,6 +1547,31 @@ def _mostrar_mensaje() -> None:
     {"error": st.error, "success": st.success}.get(tipo, st.info)(texto)
 
 
+def _publicar_resumen() -> None:
+    """Lo que la barra muestra en su linea de estado (PLAN_SILICE_UI, tarea 5)."""
+    abierta = _abierta()
+    proyecto = abierta.proyecto if abierta is not None else caso.proyecto_abierto()
+    if proyecto is None:
+        caso.publicar_resumen(None)
+        return
+    resultado, cambios = _calculo()
+    presupuesto = resultado.elaboracion.presupuesto
+    if cambios:
+        estado = f"borrador con {len(cambios)} cambio(s) sin guardar"
+    elif abierta is not None:
+        estado = "guardada"
+    else:
+        estado = "borrador nuevo"
+    caso.publicar_resumen(
+        caso.ResumenDeTrabajo(
+            proyecto=proyecto,
+            version=None if abierta is None else abierta.codigo,
+            estado=estado,
+            total=_dinero(presupuesto.total, presupuesto.moneda),
+        )
+    )
+
+
 def render() -> None:
     """La hoja del proyecto: version abierta, guardado y la pestana activa."""
     ui_sesion.exigir(Accion.EDITAR_HOJA)
@@ -1595,5 +1627,6 @@ def render() -> None:
         st.error(_error_de_base(error))
     with panel:
         _panel_de_guardado(_calculo()[1], accion)
+    _publicar_resumen()
     if accion in ("guardar_version", "exportar_excel"):
         st.session_state.pop(CLAVE_ACCION_PENDIENTE, None)

@@ -214,3 +214,34 @@ def resumen_caso(estado: EstadoCaso) -> str:
 def argv_siembra(ruta: Path) -> list[str]:
     """Argumentos de `scripts.seed_demo.main` para sembrar el caso: nunca el flag de reinicio."""
     return ["--db", str(ruta)]
+
+
+# --- resumen de trabajo para la barra (PLAN_SILICE_UI, tarea 5) --------------------------------
+
+CLAVE_RESUMEN = "caso_resumen_de_trabajo"  # clave propia, no de widget
+
+
+@dataclass(frozen=True, slots=True)
+class ResumenDeTrabajo:
+    """Lo que la hoja publica para la linea de estado de la barra: textos ya formateados.
+
+    `proyecto` y `version` son texto ajeno: quien los pinte los escapa (RU-9).
+    """
+
+    proyecto: str
+    version: str | None
+    estado: str
+    total: str
+
+
+def publicar_resumen(resumen: ResumenDeTrabajo | None) -> None:
+    """La hoja deja su resumen (o lo retira con `None`)."""
+    if resumen is None:
+        st.session_state.pop(CLAVE_RESUMEN, None)
+    else:
+        st.session_state[CLAVE_RESUMEN] = resumen
+
+
+def resumen_publicado() -> ResumenDeTrabajo | None:
+    resumen = st.session_state.get(CLAVE_RESUMEN)
+    return resumen if isinstance(resumen, ResumenDeTrabajo) else None
