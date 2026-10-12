@@ -231,7 +231,8 @@ Cotejadas con `git grep` las interfaces que el plan suponía; lo que difiere que
   verificación de T3 (2026-10-12).
 - **T13.** `seguridad/secretos.py` ya está en `main`, pero su interfaz no es la supuesta:
   `cifrar(...)` devuelve un `SecretoCifrado` y `descifrar(cifrado, contrasena, huella_publica)`. La
-  tarea se rehace contra esa interfaz y queda **diferida** (no hecha en esta ronda).
+  tarea se hizo contra esa interfaz (`Secretos` recibe el módulo; el respaldo en disco es JSON con
+  base64), sin las pruebas de T13 (ver bitácora).
 
 ## Orden y ramas
 
