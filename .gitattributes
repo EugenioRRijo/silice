@@ -1,2 +1,8 @@
 # Bases de prueba de cada version: binarias, sin conversion de fin de linea (su SHA-256 esta en la ficha)
 tests/fixtures/bases/*/*.db binary
+
+# Protocolos de S3 (0.8.0): su SHA-256 esta en docs/protocolos_s3.json; con fin de linea LF fijo la
+# huella es la misma en Linux y en Windows con core.autocrlf (meta S3-M1)
+docs/protocolo_indicador_administrador.md text eol=lf
+docs/protocolo_indicador_administrador_lista.md text eol=lf
+docs/protocolo_deteccion_planos.md text eol=lf

@@ -1,0 +1,8 @@
+{
+  "algoritmo": "sha256",
+  "protocolos": {
+    "docs/protocolo_indicador_administrador.md": "7cb78f509c2930185ccb8d9dc1214cef282ddb455edab2e62e31ea52635d7df9",
+    "docs/protocolo_deteccion_planos.md": "10cd1610ce0ab11b80b53cb3539bf00291e1839567ef2f6c7fdefa10d4e4eec6",
+    "docs/protocolo_indicador_administrador_lista.md": "391566b0644768bbff143021ce550afd978ad5650375dd9d97676b53bdc771d2"
+  }
+}
