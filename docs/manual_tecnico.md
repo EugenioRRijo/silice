@@ -725,3 +725,118 @@ instalador llaman a `arrancar` y `parar` con `-E -s -B -X utf8`.
    `SHA256SUMS` único y el controlador lo firma en su equipo con `firmar-sumas` (la clave privada no
    está en el repositorio ni en la CI).
 6. `v1.0-tesis` es un alias anotado que apunta al commit de `v1.0.0` (o de un `v1.0.x`).
+
+## 17. Asistente
+
+El asistente de IA (UC‑09, S4; spec
+[S4](especificaciones/2026-10-11-silice-s4-asistente-ia-design.md)) es el paquete
+`asistente/`, que **no es del núcleo ni un adaptador**: `core/` no lo conoce. La IA no escribe
+números finales: invoca herramientas que **proponen** datos de entrada para el borrador de la
+hoja, el sistema deriva, valora y audita, y una persona acepta y guarda.
+
+**Capas** (las vigila `tests/unit/test_arquitectura_asistente.py`):
+
+- `ui.hoja` queda debajo de `asistente`, y `asistente` debajo de `ui.paginas`. De `ui`, `asistente`
+  solo importa `ui.hoja`; solo `ui/paginas/hoja.py`, `ui/paginas/administracion.py` y
+  `ui/entrega.py` importan `asistente` (este último, solo `asistente.registro`, para el anexo).
+- `anthropic` solo en `proveedores/claude.py`; el cliente de Ollama solo en
+  `proveedores/ollama_local.py`; `keyring` solo en `clave.py`; `streamlit` en ningún módulo del
+  paquete. Los tres son del extra `ia` (`uv sync --extra ia`) y se importan de forma diferida.
+- Módulos: `herramientas.py` (esquemas), `validacion.py`, `propuestas.py`, `orquestador.py` (el
+  bucle), `servicio.py` (la sesión tal como la usa la pantalla), `privacidad.py` (lista blanca),
+  `registro.py` (tablas `ia_*` y anexo), `configuracion.py`, `fabrica.py` e `instalacion.py`
+  (proveedores disponibles), `clave.py`, `administracion.py` y `experimento/` (S4.4).
+
+**Herramientas.** Trece, con modelos Pydantic estrictos (`extra="forbid"`, todos los campos
+requeridos, números como texto decimal): de lectura (`consultar_borrador`, `buscar_partidas`,
+`consultar_partida`), de propuesta (`proponer_ambiente`, `proponer_fuente`, `proponer_punto`,
+`proponer_recorrido`, `proponer_partida`, `declarar_sin_partida`, `retirar_propuesta`) y de control
+(`pedir_informe_auditoria`, `preguntar_al_usuario`, `terminar`). **Ninguna tiene un campo de precio,
+de total o de cantidad derivada**: lo impide el esquema, no una instrucción (RF‑91).
+
+**Validación en cuatro capas** (`validacion.py`): esquema; semántica (ids, referencias, catálogo,
+unidades); citas y supuestos (cada número lleva una cita literal del pedido o un supuesto declarado:
+es la guarda contra el número inventado); y construcción del modelo espacial por la misma puerta que
+una edición a mano. El catálogo de causas de rechazo (`Causa`) es cerrado. Una propuesta válida
+queda **pendiente**: el borrador no cambia hasta que una persona la acepta. Los errores
+geométricos que el modelo admite se dejan a la regla R9 del auditor.
+
+**Bucle y topes** (`orquestador.py`): un solo bucle para los dos proveedores, con historial solo de
+agregar. Topes de 12 turnos, 60 llamadas, costo por sesión (2 USD de fábrica, configurable) y tres
+rechazos seguidos de la misma herramienta. Una pregunta del modelo pausa la sesión y la pantalla la
+contesta.
+
+**Registro `ia_*`.** Cuatro tablas aditivas en la base del caso (`ia_sesiones`, `ia_turnos`,
+`ia_llamadas`, `ia_propuestas`; [modelo_datos.md](modelo_datos.md) §2.7), sin clave foránea a
+`core/models`, creadas por la revisión de Alembic `caso_0007_s4_asistente`. Registran el pedido, las
+fichas y el costo por turno, las llamadas con su validación y la decisión de cada propuesta (quién y
+cuándo). La clave de IA nunca se guarda ahí.
+
+**Anexo `anexos/ia.json`.** `ui/entrega.py` (`anexo_de_ia`, `anexos_del_paquete`) llama a
+`asistente.registro.anexo_ia(conexion, proyecto, hasta_codigo)`. Al guardar una versión con
+propuestas aceptadas, la hoja marca la sesión con `RegistroIA.marcar_guardada(sesion, codigo)`; el
+anexo trae las sesiones del proyecto con alguna propuesta aceptada o editada y guardadas **hasta**
+esa versión: pedido, turnos, llamadas con su validación, citas, supuestos y quién decidió. **No
+lleva uso de fichas, costo, topes ni claves** (RV‑19). Es opcional: sin sesiones, el paquete no lo
+trae. Lo cubre la `huella_anexos` del manifiesto (que cubre todos los archivos `anexos/`); no tiene
+cadena propia, como los anexos de S1 y S2 (límite declarado). Si la base no tiene aún las tablas
+`ia_*`, `anexo_de_ia` devuelve `None` en vez de fallar.
+
+**Clave de IA.** Es la clave de API del proveedor, distinta de la clave de firma de S3.
+`asistente/clave.py` la registra solo desde un cliente del propio equipo (IP de bucle local) y la
+guarda con `keyring` bajo el servicio `silice-ia`: en Windows, el Administrador de credenciales, es
+decir, **por usuario de Windows**. Descifrada vive solo en la memoria del proceso (un atributo de
+`ClaveDeIA`), nunca en `st.session_state`, en disco ni en variables de entorno, y los registros la
+enmascaran (`FiltroDeSecretos`). Si el almacén no está disponible, se guarda un respaldo cifrado con
+`seguridad.secretos` (Argon2id y AES‑GCM) en `ia_clave.cifrada`, en la carpeta de datos.
+
+- **Fuera de los respaldos (se declara).** El juego de `operacion respaldar` copia la base de la
+  instalación y las de los casos: ni el Administrador de credenciales, ni `ia_clave.cifrada`, ni
+  `ia_config.json` viajan en él. Tras restaurar en otro equipo (u otro usuario de Windows), el
+  administrador debe volver a activar el asistente y registrar la clave.
+- **La clave se recarga del almacén al construir los proveedores.** Al reiniciar el servidor, la
+  memoria del proceso está vacía: `proveedores_de_la_instalacion` y la pestaña de Administración
+  llaman a `cargar_clave_guardada`, que trae la clave del almacén de credenciales sin mostrarla.
+- **Hueco abierto.** No se puede reactivar la clave **desde el respaldo cifrado por pantalla**:
+  `cargar_clave_guardada` no pide la contraseña del respaldo y ninguna pantalla lo hace. Si el
+  almacén de credenciales no responde tras reiniciar, la hoja se queda sin Claude hasta que se
+  decida dónde pedir esa contraseña (anotado en la bitácora de la 0.9.0).
+
+**Privacidad** (`privacidad.py`): lista blanca de lo que viaja (ids, geometría, códigos,
+descripciones, unidades, cantidades y hallazgos sin montos); en modo nube, de las partidas de
+MaPreX solo código y unidad; todo texto que devuelve una herramienta se trata como dato no confiable
+(se limpia, se corta a 80 caracteres y va dentro de un delimitador fijo), y la pantalla lo muestra
+con `texto_seguro`. Una respuesta del usuario con `sk-ant-` o `-----BEGIN` no se envía ni se
+registra. La retención de datos del proveedor **no está verificada**
+([asistente_verificacion.md](fuentes/asistente_verificacion.md)).
+
+**Agregar un tercer proveedor sin construirlo.** Un proveedor es una clase que cumple el
+protocolo `ProveedorIA` de `asistente/proveedores/base.py`: los atributos `nombre`, `modelo` y
+`envia_fuera_del_equipo`, el método `disponible() -> Disponibilidad` y el método
+`turno(sistema, mensajes, herramientas) -> Turno`, con los tipos neutrales de ese módulo (`Turno`,
+`LlamadaHerramienta`, `Uso`, `FinTurno`). Pasos:
+
+1. Escribir el adaptador en `asistente/proveedores/<nombre>.py`, importando el SDK solo ahí y de
+   forma diferida; agregar el SDK al extra `ia` y a `PAQUETES_DE_TERCEROS` de la prueba de
+   arquitectura.
+2. Agregar el nombre a `PROVEEDORES` en `configuracion.py` y a `ETIQUETAS_DE_PROVEEDOR` de la
+   pestaña de Administración.
+3. Ofrecerlo en `fabrica.proveedores`, con el motivo cuando no esté disponible.
+4. Agregar su tarifa con fecha a `precios_ia.json`.
+5. Probarlo primero con `ProveedorGuionado` (turnos escritos a mano, sin red) y con un cliente
+   falso.
+
+El orquestador, la validación, el registro y el anexo no cambian.
+
+**Prueba manual con la API real** (`scripts/prueba_real_asistente.py`). No corre en la CI y gasta:
+
+```
+uv run python scripts/prueba_real_asistente.py --proveedor claude|ollama \
+    --tarea <tarea de desarrollo> --acepto-costo [--grabar <archivo.json>]
+```
+
+Exige `--acepto-costo` (el gasto lo autoriza una persona, nunca el plan), corre **una** tarea de
+desarrollo (nunca una de evaluación), toma la clave del almacén (jamás de un argumento), imprime
+fichas, costo, modelo que respondió y propuestas, y agrega una entrada a la bitácora
+`docs/bitacora/2026-10-silice-090.md`. `--grabar` guarda los turnos para reproducirlos con
+`asistente.proveedores.guionado.guion_desde_archivo`.

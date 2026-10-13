@@ -716,6 +716,102 @@ La de la derecha tiene los factores de la versión (FCAS, bono, administración 
 cierre de la partida, del costo directo al precio unitario. Cada cambio recalcula al momento y la
 barra superior indica cuántos cambios faltan por guardar.
 
+### 3.12 El asistente de IA (UC‑09)
+
+El asistente le ayuda a **empezar** la hoja del proyecto: usted le cuenta con sus palabras qué
+necesita armar (por ejemplo, «un baño de 2,4 por 1,5 metros con un lavamanos») y él **propone**
+ambientes, fuentes, puntos, recorridos o partidas. **La IA propone y usted decide.** Nada de lo que
+propone entra en la hoja hasta que usted lo acepte, y los números que importan (las cantidades
+derivadas, los precios, el total y los hallazgos del auditor) **los calcula siempre el sistema**,
+nunca la IA: el asistente no tiene ninguna herramienta para escribir un precio ni un total.
+
+**Viene apagado de fábrica.** Mientras el administrador de la instalación no lo active (sección
+siguiente), el panel solo dice que el asistente está apagado y no se envía nada a ninguna parte.
+
+**Cómo pedir.** En **Hoja del proyecto**, abra el panel **Asistente de IA: propone, usted decide**
+(no se abre en una versión de solo lectura).
+
+1. En **Proveedor** elija con quién trabajar. Si solo hay uno disponible, es ese; los que no lo
+   están aparecen con el motivo (por ejemplo, que falta la clave de IA).
+2. En **Que necesita armar (en sus palabras)** escriba el pedido. No escriba datos personales ni
+   claves: el pedido viaja tal como usted lo escribe.
+3. Antes de enviar, el panel le dice el **destino** («Anthropic, en internet» o «este equipo») y
+   la **estimación de costo** de la tarea en dólares. Abra **Lo que se enviara** para ver, palabra
+   por palabra, el mensaje que recibirá el modelo. Es la vista previa: lo que ahí no está, no sale.
+4. Pulse **Proponer**. La hoja no cambia: aparecen las propuestas en una lista.
+
+**Qué se envía y qué no.** Se envían el pedido, un resumen del borrador (nombres de ambientes,
+medidas, puntos), códigos, descripciones y unidades de partidas, y los hallazgos del auditor sin
+sus montos. **Nunca** se envían precios, montos, totales, análisis de precios unitarios, curvas,
+cotizaciones, ni los nombres del proyecto, de su empresa o de los usuarios, ni archivos. De las
+partidas de MaPreX, en la nube solo viajan el código y la unidad.
+
+**Aceptar, editar o rechazar.** Cada propuesta trae su descripción, su estado y, si la IA tuvo que
+suponer algo, la línea **Supuestos de la IA** (revíselos: son lo que no estaba en su pedido).
+
+| Botón | Qué hace |
+|---|---|
+| **Aceptar** | La propuesta entra en el borrador de la hoja. |
+| **Aceptar y editar** | Igual, marcada como editada: usted la ajusta después en las tablas. |
+| **Rechazar** | No toca el borrador. Si rechaza todo, el borrador queda idéntico al de antes. |
+
+Si usted editó la hoja a mano después de la última decisión, aceptar otra propuesta reconstruye el
+borrador y esas ediciones se perderían: el panel se lo avisa y le pide elegir **Aplicar de todos
+modos** o **No aplicar**. Debajo de la lista, el panel dice qué calcularía el **sistema** si usted
+aceptara todo («un total de … y N hallazgos del auditor»). **Descartar lo pendiente** cierra la
+sesión: lo ya aceptado se queda en el borrador y lo pendiente no entra.
+
+Si el modelo necesita un dato que no está en su pedido, **pregunta**. La pregunta aparece rotulada
+«Pregunta generada por la IA»: respóndala en **Su respuesta** y pulse **Responder**, o pulse
+**Cancelar la sesion**. No escriba contraseñas, claves ni precios en la respuesta.
+
+**Guardar.** Se guarda como siempre (sección 3.8): el panel prellena la fuente del cambio con
+«propuesta de IA, sesión N» y el proveedor y el modelo; el **responsable** es siempre una persona.
+En la columna **Estado** y en el registro de cambios, lo que vino de la IA se reconoce por su
+origen «ia:». Cuando entregue el paquete (pantalla **Entregar paquete**), la versión trae el
+anexo `anexos/ia.json` con el pedido, las llamadas del asistente con su validación, las citas
+y quién decidió cada propuesta. El anexo no trae uso de fichas, costo ni claves.
+
+**Costo y tope.** La estimación que ve antes de enviar es una cota por tarea. Cada sesión tiene un
+**tope de costo** (2 USD de fábrica, lo fija el administrador): si se alcanza, la sesión se detiene
+y se conservan las propuestas válidas hasta ese punto. El modo local no tiene costo en dinero.
+
+**Modo local.** Si el administrador configuró **Ollama**, el pedido se procesa en este mismo equipo
+y no sale nada. Es una opción **para pruebas**: la calidad de su respuesta en español todavía no
+se ha comprobado. Si la dirección de Ollama no es de este equipo, el panel la trata como un
+servicio en la nube y lo avisa antes de enviar.
+
+**Si no hay conexión.** El panel muestra que el proveedor no respondió, la hoja queda como estaba.
+Puede seguir trabajando a mano en las tablas, reintentar con **Proponer** cuando vuelva la
+conexión, o elegir otro proveedor si hay uno disponible. Si el mensaje habla de la clave, avise al administrador: la clave de IA se corrige en **Administración**.
+
+**Quién lo configura: pestaña «Asistente de IA» de Administración.** Solo el administrador de la
+instalación ve esta pestaña con sus controles; las demás cuentas solo ven un aviso.
+
+- **Activar el asistente de IA (viene apagado)**, **Proveedor por defecto** (Claude, en la nube, o
+  Ollama, local), **Modelo de Claude**, **Modelo local (Ollama)**, **Dirección de Ollama** y
+  **Tope de costo por sesión (USD)** (mayor que cero; acepta coma o punto). Se guardan con **Guardar
+  la configuración**. La pestaña advierte que, con la nube activa, el pedido y el resumen del
+  borrador viajan al proveedor, sin precios, montos ni nombres.
+- **Clave de IA de la empresa.** Se registra con **Registrar la clave** y **solo desde el propio
+  equipo donde está instalado Sílice**: desde otro equipo de la red el formulario aparece
+  deshabilitado y lo dice, porque por la red local la clave viajaría sin cifrar. Se guarda en el
+  Administrador de credenciales de **este usuario de Windows**; la pantalla solo muestra sus
+  últimos cuatro caracteres, y **no viaja en los respaldos**. **Olvidar la clave** la borra del
+  equipo. Si el almacén de credenciales no está disponible, puede indicar una contraseña para un
+  respaldo cifrado.
+- Hace falta el componente opcional del asistente: si la pestaña dice que falta, ejecute
+  `uv sync --extra ia` y vuelva a abrir Sílice.
+
+**Qué hace el proveedor con lo que se le envía (retención y uso de datos).** Este punto **no está
+verificado**. Al 2026‑10‑12 (fecha de la verificación de datos externos del asistente,
+[asistente_verificacion.md](fuentes/asistente_verificacion.md)) no se pudo comprobar la política
+vigente de retención y de uso de datos del proveedor de la nube, y este manual no la inventa. Antes
+de activar el modo en la nube, el administrador debe leer la política vigente del proveedor en su
+sitio oficial y decidir si el pedido y el resumen del borrador pueden salir del equipo. Si no
+pueden, deje el asistente apagado o use solo el modo local. Cuando se verifique, se anotará aquí
+con su fecha.
+
 ## 4. El informe de auditoría
 
 Se genera **siempre** — no existe forma de obtener un presupuesto sin él. Ejecuta las siete
