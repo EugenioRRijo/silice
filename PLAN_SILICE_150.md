@@ -28,7 +28,7 @@ existentes. Los libros reales se usan en local y nunca entran al repositorio.
 |---|---|---|---|---|
 | **V0** | spec, contrato, enmiendas (NORMAS, horizonte, 1.0.0, S3), meta de datos D4, bitácora | líder | — | hecha |
 | **V1** | guardia + perfil + lector · PDF (L10, L11) · anonimizador | 3 | V0 | hecha |
-| **V2** | reglas L1-L9 (+ unión del borrador C-1) · `fusion/` (mapeo, F1, alertas, proceso) · escritor calcado | 3 
+| **V2** | reglas L1-L9 (+ unión del borrador C-1) · `fusion/` (mapeo, F1, alertas, proceso) · escritor calcado | 3 | V1 | hecha |
 | **V3** | página "Libro de la empresa" (UI) · rutas `/v1/libros` (API) · `scripts/fusion_verificar.py` (aceptación) | 3 | interfaces fijas (arriba) | hecha |
 | **V4** | integración: correr la aceptación sobre los libros reales, corregir por área (un subagente por módulo con fallas), ruff de todo, meta de datos | 1-3 | V2 + V3 | hecha: **96/96 metas OK** con el código congelado (53b6aa2) |
 | **V5** | revisión por encargos: requisitos, arquitectura, pruebas y calidad, verificador de hechos, seguridad. Rulings en la bitácora; corrección de lo bloqueante | 5 + arreglos | V4 | en curso |
