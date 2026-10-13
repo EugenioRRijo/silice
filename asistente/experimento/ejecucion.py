@@ -8,7 +8,6 @@ la referencia. Las respuestas a las preguntas del modelo las da la regla automat
 
 from __future__ import annotations
 
-import json
 import time
 from collections.abc import Callable, Mapping
 from dataclasses import replace
@@ -23,46 +22,34 @@ from asistente.experimento.banco import (
     respuesta_preparada,
 )
 from asistente.experimento.comparador import Veredicto, comparar, evaluar_hallazgos
-from asistente.experimento.congelado import PROTOCOLO
 from asistente.experimento.metricas import Corrida
 from asistente.experimento.modelo import Referencia
-from asistente.orquestador import Servicios, Topes, ejecutar
+from asistente.orquestador import MotivoFin, Servicios, Topes, ejecutar
 from asistente.propuestas import EstadoPropuesta, OrigenIA, aplicar
 from asistente.proveedores.base import ProveedorIA, Tarifa
 from core.contracts import Hallazgo
+from core.verification.informe import InformeAuditoria
 from ui import hoja
 from ui.hoja import Borrador
 
 Auditor = Callable[[Borrador], tuple[Hallazgo, ...]]
 
 
-def _reglas_del_protocolo() -> tuple[str, ...]:
-    datos = json.loads(PROTOCOLO.read_text(encoding="utf-8"))
-    return tuple(datos["reglas_del_experimento"])
-
-
 def auditor_de_la_hoja(borrador: Borrador) -> tuple[Hallazgo, ...]:
-    """Los hallazgos de las reglas del protocolo (R1-R10); la reevaluacion es en memoria.
-
-    La hoja de hoy corre ademas R15 (plano) y, con fecha, R11 y R12; el experimento cuenta SOLO
-    las reglas que el protocolo congela (`reglas_del_experimento`, maestro §3.3), y sus archivos son
-    los que cubre el congelado. Lo demas se descarta aqui, en un solo lugar.
-    """
-    reglas = _reglas_del_protocolo()
-    hallazgos = hoja.elaborar_borrador(borrador).elaboracion.informe.hallazgos
-    return tuple(h for h in hallazgos if h.regla in reglas)
+    """Los hallazgos de las reglas que corre la hoja: R1-R10 y R15 (plano), que son las de
+    `protocolo.json::reglas_del_experimento` (maestro §3.3, columna «Experimento de S4»).
+    S1 y S3 agregan R11 y R12 con la fecha FIJA del protocolo. La reevaluacion es en memoria."""
+    return hoja.elaborar_borrador(borrador).elaboracion.informe.hallazgos
 
 
 def reglas_del_auditor(borrador: Borrador) -> tuple[str, ...]:
     """Los codigos de las reglas que corre `auditor_de_la_hoja`, en su orden.
 
     El protocolo fija el conjunto exacto de reglas del experimento (`reglas_del_experimento`,
-    maestro §3.3, columna «Experimento de S4»); la hoja evalua mas reglas que esas (R15) y aqui se
-    reducen a las del protocolo, en el orden en que la hoja las evalua.
+    maestro §3.3); una prueba exige que sean estas, sin filtro.
     """
-    reglas = _reglas_del_protocolo()
     informe = hoja.elaborar_borrador(borrador).elaboracion.informe
-    return tuple(codigo for codigo, _ in informe.reglas_evaluadas if codigo in reglas)
+    return tuple(codigo for codigo, _ in informe.reglas_evaluadas)
 
 
 def correr(
@@ -82,7 +69,7 @@ def correr(
     servicios = Servicios(
         catalogo=catalogo,
         tarifa=tarifa,
-        auditar=lambda b: hoja.elaborar_borrador(b).elaboracion.informe,
+        auditar=lambda b: InformeAuditoria(hallazgos=auditor(b)),
         responder=lambda pregunta: respuesta_preparada(ficha, pregunta),
         informe_permitido=condicion == "B",
     )
@@ -115,7 +102,7 @@ def correr(
         elementos_presentes=presentes,
         costo_usd=sesion.costo,
         segundos=segundos,
-        rechazo_del_proveedor=sesion.motivo.value == "rehusado",
+        rechazo_del_proveedor=sesion.motivo is MotivoFin.REHUSADO,
     )
 
 

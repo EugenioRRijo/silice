@@ -60,7 +60,9 @@ def wilson(aciertos: int, ensayos: int, z: float = Z_95) -> tuple[float, float]:
     z2 = z * z
     centro = (p + z2 / (2 * ensayos)) / (1 + z2 / ensayos)
     mitad = z * math.sqrt(p * (1 - p) / ensayos + z2 / (4 * ensayos**2)) / (1 + z2 / ensayos)
-    return max(centro - mitad, 0.0), min(centro + mitad, 1.0)
+    bajo = 0.0 if aciertos == 0 else max(centro - mitad, 0.0)
+    alto = 1.0 if aciertos == ensayos else min(centro + mitad, 1.0)
+    return bajo, alto
 
 
 def bootstrap_agrupado(
@@ -127,6 +129,8 @@ def resumir(
     por_tarea: dict[str, list[int]] = defaultdict(lambda: [0, 0])
     for c in corridas:
         detectados = set(c.veredicto.detectados)
+        # TODAS las tareas se remuestrean (§9.5), tengan o no errores detectables
+        por_tarea.setdefault(c.tarea, [0, 0])
         for e in c.errores:
             if not detectable(e.tipo, hipotesis):
                 no_det[e.tipo] += 1

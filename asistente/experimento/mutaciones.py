@@ -4,7 +4,8 @@ A las REFERENCIAS de evaluacion aplica una mutacion de cada tipo E1-E8 con semil
 la deteccion con un n fijo por tipo, independiente de lo que haga el modelo. Mismas entradas, mismos
 mutantes. Cada mutante se elabora y audita igual que una corrida. Una mutacion que no aplica a una
 tarea (E1 sin partidas, E8 sin sembrados) se salta: los `n` mutantes se reparten por turno entre las
-tareas donde SI aplica (protocolo: «hasta dos por tarea» se declara como «n por tipo»).
+tareas donde SI aplica (protocolo: «hasta dos por tarea» se declara como «n por tipo»). Los mutantes
+repetidos se descartan (ver `generar`): el n efectivo puede ser menor que `n`.
 
 * E1 cambia el codigo de una partida por otro del catalogo con unidad equivalente;
 * E2 cambia su unidad por una incompatible;
@@ -19,7 +20,7 @@ tareas donde SI aplica (protocolo: «hasta dos por tarea» se declara como «n p
 from __future__ import annotations
 
 import random
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import dataclass, replace
 from decimal import Decimal
 
@@ -177,6 +178,16 @@ def _sembrar(espacio: Espacio, s) -> Espacio:
     return replace(espacio, ambientes=ambientes)
 
 
+#: indices seguidos sin un mutante nuevo tras los cuales una tarea se da por agotada (el azar de
+#: `mutar` elige entre pocas opciones: con 200 intentos sin novedad el espacio ya se vio todo)
+PACIENCIA = 200
+
+
+def _contenido(m: Mutante) -> str:
+    """Lo que hace distinto a un mutante: su espacio y sus partidas, nunca su indice."""
+    return repr((m.espacio, m.items))
+
+
 def generar(
     tipo: str,
     referencias: Mapping[str, Referencia],
@@ -184,15 +195,48 @@ def generar(
     n: int,
     catalogo: Sequence[tuple[str, str]] = (),
 ) -> list[Mutante]:
-    """`n` mutantes del `tipo`, repartidos por turno entre las tareas (por id) donde aplica."""
-    tareas = sorted(referencias)
-    aplicables = [t for t in tareas if mutar(tipo, t, referencias[t], semilla, 0, catalogo)]
-    if not aplicables:
-        return []
+    """Hasta `n` mutantes DISTINTOS del `tipo`, repartidos por turno entre las tareas (por id).
+
+    El auditor es determinista: dos mutantes iguales no son dos ensayos independientes, asi que se
+    avanza el indice hasta tener un mutante de contenido nuevo (espacio e items). Una tarea que deja
+    de dar mutantes nuevos (o a la que la mutacion no aplica) sale del turno. Si el espacio de
+    mutantes distintos se agota antes de `n`, el resultado trae MENOS: su longitud es el n efectivo
+    del tipo (Wilson se calcula con ese n, no con 24).
+    """
+    siguientes = {
+        t: _distintos(tipo, t, referencias[t], semilla, catalogo) for t in sorted(referencias)
+    }
     mutantes: list[Mutante] = []
-    for i in range(n):
-        tarea = aplicables[i % len(aplicables)]
-        mutante = mutar(tipo, tarea, referencias[tarea], semilla, i // len(aplicables), catalogo)
-        if mutante is not None:
-            mutantes.append(mutante)
+    turno = list(siguientes)
+    while turno and len(mutantes) < n:
+        for tarea in list(turno):
+            if len(mutantes) >= n:
+                break
+            mutante = next(siguientes[tarea], None)
+            if mutante is None:
+                turno.remove(tarea)
+            else:
+                mutantes.append(mutante)
     return mutantes
+
+
+def _distintos(
+    tipo: str,
+    tarea: str,
+    referencia: Referencia,
+    semilla: int,
+    catalogo: Sequence[tuple[str, str]],
+) -> Iterator[Mutante]:
+    vistos: set[str] = set()
+    sin_novedad = 0
+    indice = 0
+    while sin_novedad < PACIENCIA:
+        mutante = mutar(tipo, tarea, referencia, semilla, indice, catalogo)
+        indice += 1
+        clave = _contenido(mutante) if mutante is not None else None
+        if clave is None or clave in vistos:
+            sin_novedad += 1
+            continue
+        vistos.add(clave)
+        sin_novedad = 0
+        yield mutante

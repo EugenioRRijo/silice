@@ -50,7 +50,8 @@ que **queda en el borrador**; no se cuenta además como E3, ni su punto «fuera�
 - **E4**. Regla que debería detectarlo: R9; Nota: punto fuera de su ambiente
 - **E5**. Regla que debería detectarlo: R10; Nota: circuito o fuente equivocados
 - **E6**. Regla que debería detectarlo: ninguna; Nota: sin fila que citar: no detectable por diseño
-- **E7**. Regla que debería detectarlo: R10; Nota: duplicado que excede el límite del circuito
+- **E7**. Regla que debería detectarlo: R10, R15; Nota: duplicado que excede el límite del circuito
+  (R10) o dos puntos a menos de 0,001 m (R15)
 - **E8**. Regla que debería detectarlo: R9; Nota: valor imposible copiado del pedido
 
 
@@ -66,9 +67,12 @@ con su número.
 - 12 tareas × 2 modelos × 2 condiciones × 3 repeticiones = 144 corridas (72 con Claude). Aceptación
   automática de toda propuesta válida (mide al modelo, no a la persona). Respaldo del servidor
   desactivado. Registro de modelo, esfuerzo, versión del SDK, de Ollama y del modelo local.
-- Reglas del auditor: las de `protocolo.json::reglas_del_experimento`; R12 (cuando exista) a la
-  fecha
-  **fija** `fecha_de_evaluacion_r12`. La reevaluación es en memoria.
+- Reglas del auditor: las de `protocolo.json::reglas_del_experimento`: R1-R10 y **R15** (maestro
+  §3.3, columna «Experimento de S4»; S4 §9.1: las de R8-R16 que apliquen al borrador). Las 16
+  referencias del banco dan cero hallazgos de R15. R12 (cuando exista) a la fecha **fija**
+  `fecha_de_evaluacion_r12`. La reevaluación es en memoria. El congelado cubre los archivos de esas
+  reglas, sus umbrales (`LIMITE_*`) y el instrumento de medición (banco, comparador, métricas,
+  mutaciones y corrida).
 
 ## 6. Métricas y umbrales (se congelan con el protocolo)
 
@@ -86,8 +90,9 @@ sistema. La comparación entre modelos es descriptiva (12 tareas no dan signific
 Sembrador determinista con semilla fija: `n = 24` mutantes por tipo, repartidos por turno entre las
 tareas de evaluación donde el tipo aplica (RP9-7: E1 y E2 solo en las 2 mixtas; E8 solo donde la
 ficha
-declara un sembrado construible). Intervalo de Wilson al 95 % por tipo. Se corre **después** del
-congelado.
+declara un sembrado construible). Los mutantes repetidos se descartan (el auditor es determinista:
+un duplicado no es un ensayo independiente) y se informa el **n efectivo** por tipo; Wilson se calcula
+con ese n. Intervalo de Wilson al 95 % por tipo. Se corre **después** del congelado.
 
 ## 8. Costo y aprobación
 
