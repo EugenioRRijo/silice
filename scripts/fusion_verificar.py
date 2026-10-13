@@ -615,8 +615,8 @@ def _l3_filas(filas: tuple[int, ...]) -> Comprobacion:
 
 
 def _c2_l3_o_parche(ev: Evaluacion) -> tuple[bool, str]:
-    """Spec §7 pide L3 en las filas 19 y 22 de C-2. El ruling RL-7 del líder (bitácora 1.5) lo
-    enmienda: ningún libro tiene valores guardados desactualizados (lo confirma un oráculo aparte
+    """Spec §7 (errata RL-7): L2 ADVERTENCIA en las filas 19 y 22 de C-2 (el original pedía L3).
+    RL-7: ningún libro tiene valores guardados desactualizados (lo confirma un oráculo aparte
     sobre las referencias directas de esas filas); el parche manual por fila es L2 ADVERTENCIA."""
     ok_l3, t_l3 = _l3_filas((19, 22))(ev)
     filas_l2 = _filas_en(_de(ev.hallazgos, "L2", "ADVERTENCIA"), "PRESUPUESTO")
@@ -643,8 +643,13 @@ def _c1_l3_o_l2(ev: Evaluacion) -> tuple[bool, str]:
         or ({c[0] for c in _celdas(h)} & hojas_conflicto)
         for h in l2
     )
-    return ok_l3 or ok_l2, (
-        f"{t_l3}; oraculo conflicto de APU: "
+    # Spec §7 (con la errata RL-7): el conflicto de APU (L2) Y los enlaces parcheados de las
+    # filas 23 y 24 (L2 ADVERTENCIA); L3 en esas filas vale en lugar del parche.
+    filas_adv = _filas_en(_de(ev.hallazgos, "L2", "ADVERTENCIA"), "PRESUPUESTO")
+    ok_parche = ok_l3 or {23, 24} <= filas_adv
+    return ok_l2 and ok_parche, (
+        f"{t_l3}; L2 ADVERTENCIA en filas {_lista(filas_adv) or 'ninguna'}; "
+        f"oraculo conflicto de APU: "
         f"{ {f: len(h) for f, h in conflicto.items()} or 'ninguno' }; {len(l2)} L2"
         f" ({'cubre el conflicto' if ok_l2 else 'no cubre el conflicto'})"
     )
@@ -954,7 +959,7 @@ METAS_REGLAS: dict[str, tuple[MetaLibro, ...]] = {
         MetaLibro("L7", "L7 en MEDICIONES", _l7_mediciones),
         MetaLibro("L6", "L6 utilidad 30 % en APU-09!G59 (H18)", _l6_util30_b2),
     ),
-    "C-1": (MetaLibro("L3-L2", "L3 en filas 23 y 24, o L2 del conflicto", _c1_l3_o_l2),),
+    "C-1": (MetaLibro("L2", "L2 del conflicto y parches en filas 23 y 24", _c1_l3_o_l2),),
     "C-2": (
         MetaLibro("F1", "F1 en fila 24, impacto 205,92", _f1_c2),
         MetaLibro("L4", "L4 en APU-07", _l4_c2),

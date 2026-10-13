@@ -25,7 +25,7 @@ Errores: extensión equivocada 415; un cuerpo de más de 20 MiB 413 (el tope rea
 `api.proteccion` al cuerpo entero de la petición, sin leerlo; cada archivo se lee además por
 bloques y se corta al pasar ese mismo tope); fecha o umbral mal escritos 422; archivo rechazado por
 la guardia (`ArchivoRechazado`, F-D10) o libro que no se puede interpretar (`LibroNoInterpretable`)
-422 con su mensaje, escrito para el usuario; cualquier otro fallo al procesar 422 con un mensaje
+422 con su mensaje, escrito para el usuario; cualquier otro fallo al procesar 500 con un mensaje
 fijo y el detalle solo en el registro del servidor (`logging`), nunca en la respuesta. La clave de
 API, el tope del cuerpo y los hosts permitidos los pone `api.proteccion` para toda la aplicación
 (`CON_CLAVE` en `api.main`).
@@ -289,12 +289,15 @@ ContextoDep = Annotated[ContextoPrecios, Depends(contexto_de_la_api)]
 
 
 def _rechazo(error: Exception, mensaje_fijo: str, que: str) -> HTTPException:
-    """422 en la frontera: el mensaje de un error del usuario tal cual; cualquier otro, un mensaje
-    fijo, y el detalle (con la traza) solo al registro del servidor."""
+    """Frontera: un error del usuario es 422 con su mensaje tal cual; cualquier otro es un fallo
+    del servidor, 500 con un mensaje fijo, y el detalle (con la traza) solo al registro.
+
+    Revisión de calidad V5: responder 422 a un defecto propio lo hacía pasar por error del cliente.
+    """
     if isinstance(error, ERRORES_DEL_USUARIO):
         return HTTPException(422, str(error))
     LOG.error("%s: fallo inesperado (%s)", que, type(error).__name__, exc_info=error)
-    return HTTPException(422, mensaje_fijo)
+    return HTTPException(500, mensaje_fijo)
 
 
 async def _procesar(entrada: _Entrada, contexto: ContextoPrecios) -> ResultadoFusion:

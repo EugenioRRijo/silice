@@ -5,7 +5,7 @@ Para cada insumo de INSUMOS se producen, cuando aplican, cuatro clases de alerta
 1. **Sin fuente** (`TIPO_SIN_FUENTE`): la columna FUENTE está vacía o dice "REFERENCIAL…" (o "POR
    COTIZAR", que tampoco es una fuente). Un precio sin fuente no se puede rastrear.
 2. **Base de la empresa** (`TIPO_EMPRESA`): la instalación tiene un precio propio con el mismo
-   código y la diferencia supera el umbral (en la moneda del libro).
+   código y la diferencia alcanza o supera el umbral (en la moneda del libro).
 3. **Otra versión** (`TIPO_VERSION`): se procesó otra versión del mismo libro (por ejemplo B-1 y
    B-2) y el precio del código cambió, o el código no estaba en la otra.
 4. **USD-Bs** (`TIPO_BS`): el equivalente en bolívares a la tasa del BCV de la fecha del libro y a
