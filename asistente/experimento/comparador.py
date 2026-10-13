@@ -29,11 +29,15 @@ from adapters.espacio import Espacio
 from asistente.experimento.modelo import Referencia
 from core.contracts.item_computo import ItemComputo, OrigenTipo
 from core.contracts.unidades import unidades_equivalentes
-from core.contracts.verificacion import Hallazgo
+from core.contracts.verificacion import Hallazgo, Severidad
 
 TOLERANCIA_EMPAREJAMIENTO = Decimal("0.10")  # SUPUESTO_DECLARADO (la de R16)
 TOLERANCIA_MEDIDA = Decimal("0.001")
 CLASES = ("ambiente", "fuente", "punto", "recorrido", "partida")
+#: campos que un `Sembrado` puede nombrar (ambientes, fuentes, puntos y partidas)
+CAMPOS_SEMBRABLES = ("x0", "y0", "x", "y", "z", "largo", "ancho", "alto", "cantidad")
+#: S4 §9.5: un hallazgo cuenta (como deteccion o falsa alarma) desde ADVERTENCIA
+SEVERIDAD_MINIMA = Severidad.ADVERTENCIA
 
 
 @dataclass(frozen=True, slots=True)
@@ -193,6 +197,11 @@ def _esquina(espacio: Espacio) -> tuple[Decimal, Decimal] | None:
 
 
 def comparar(referencia: Referencia, espacio: Espacio, items: Sequence[ItemComputo]) -> Comparacion:
+    for s in referencia.sembrados:
+        if s.campo not in CAMPOS_SEMBRABLES:
+            raise ValueError(
+                f"el campo sembrado {s.campo!r} no se reconoce; los validos son {CAMPOS_SEMBRABLES}"
+            )
     dx = dy = Decimal(0)
     if referencia.posicion_libre:
         esquina_ref, esquina_b = _esquina(referencia.espacio), _esquina(espacio)
@@ -230,7 +239,8 @@ def comparar(referencia: Referencia, espacio: Espacio, items: Sequence[ItemCompu
             Error("E7", clase, _clave(b), None) for b in por_clase[clase][1] if b.id not in usados_b
         )
     errores = _aplicar_sembrados(errores, referencia, emparejados, pares_id)
-    return Comparacion(tuple(errores), pares_id, (dx, dy))
+    sobrantes = tuple(e.clave_referencia for e in errores if e.tipo == "E6" and e.clave_referencia)
+    return Comparacion(tuple(errores), pares_id, (dx, dy), sobrantes)
 
 
 def _emparejar_sembrados(clase, sembrados, elementos, pares) -> list[tuple[_El, _El]]:
@@ -438,11 +448,16 @@ def evaluar_hallazgos(
     hallazgos_referencia: Sequence[Hallazgo],
 ) -> Veredicto:
     """Un error se DETECTA si algun hallazgo NO esperado cita su fila o su item; una FALSA ALARMA
-    es un hallazgo no esperado que no cita ninguna fila con error. Los hallazgos que da la
-    referencia misma (R8 de constantes supuestas, R1 de cada MANUAL...) no cuentan (§9.5)."""
-    esperados = Counter(clave_de_hallazgo(h, None) for h in hallazgos_referencia)
+    es un hallazgo no esperado que no cita ninguna fila con error. Solo cuentan los hallazgos de
+    ADVERTENCIA o mas (S4 §9.5): los INFO se descartan, del borrador y de la referencia. Los que
+    da la referencia misma (R8 de constantes supuestas, R1 de cada MANUAL...) no cuentan (§9.5)."""
+    esperados = Counter(
+        clave_de_hallazgo(h, None) for h in hallazgos_referencia if h.severidad >= SEVERIDAD_MINIMA
+    )
     inesperados: list[Hallazgo] = []
     for h in hallazgos_borrador:
+        if h.severidad < SEVERIDAD_MINIMA:
+            continue
         clave = clave_de_hallazgo(h, comparacion.pares)
         if esperados[clave] > 0:
             esperados[clave] -= 1
