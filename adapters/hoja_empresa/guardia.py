@@ -17,8 +17,8 @@ rechaza con un mensaje claro para el usuario, en dos pasos:
    piezas y no solo `xl/worksheets/`, porque openpyxl llega a cada hoja por las relaciones del
    libro y la pieza puede llamarse de cualquier forma.
 
-Límites (F-D10 y revisión de seguridad 1.5): 25 MB el archivo, 5 000 entradas, 60 MB
-descomprimidos en total y 30 MB por pieza, razón de compresión ≤ 200 por entrada y en total,
+Límites (F-D10 y revisión de seguridad 1.5): 25 MiB el archivo, 5 000 entradas, 60 MiB
+descomprimidos en total y 30 MiB por pieza, razón de compresión ≤ 200 por entrada y en total,
 200 000 celdas combinadas por libro y 2 000 000 de celdas declaradas por hoja. Los libros reales
 de la empresa están muy lejos de esos límites (medido el 2026-10-13 sobre los cinco libros: el
 mayor pesa 0,3 MB, tiene 121 entradas y 1,4 MB descomprimidos, su pieza mayor ocupa 0,14 MB, su
@@ -26,6 +26,8 @@ peor razón es 13,6, combina 4 850 celdas y su hoja más grande declara 2 548).
 
 El barrido no reconoce un XML codificado en UTF-16 (ningún libro de Excel lo usa): en ese caso no
 encuentra etiquetas y no rechaza; los demás límites siguen valiendo.
+
+Unidades: los tamaños se miden en potencias de 2 (1 MiB = 2**20 bytes) y los mensajes dicen "MiB".
 """
 
 from __future__ import annotations
@@ -51,9 +53,10 @@ __all__ = [
 EXTENSION = ".xlsx"
 MAX_BYTES = 25 * 1024 * 1024
 MAX_ENTRADAS = 5000
-#: SUPUESTO_DECLARADO (revisión de seguridad 1.5): 60 MB descomprimidos en total y 30 MB por pieza.
-#: Bajan de los 250 MB de F-D10 porque openpyxl en modo normal ocupa en memoria varias veces el
-#: tamaño del XML; el libro real mayor descomprime 1,4 MB, así que el margen sigue siendo de 40.
+#: SUPUESTO_DECLARADO (revisión de seguridad 1.5): 60 MiB descomprimidos en total y 30 MiB por
+#: pieza. Bajan de los 250 MB de F-D10 porque openpyxl en modo normal ocupa en memoria varias
+#: veces el tamaño del XML; el libro real mayor descomprime 1,4 MB, así que el margen sigue siendo
+#: de 40.
 MAX_DESCOMPRIMIDO = 60 * 1024 * 1024
 MAX_PIEZA = 30 * 1024 * 1024
 MAX_RAZON = 200
@@ -94,7 +97,7 @@ def _extension(nombre: str) -> str:
     return base[punto:].lower() if punto > 0 else ""
 
 
-def _mb(n: int) -> str:
+def _mib(n: int) -> str:
     return f"{n / (1024 * 1024):.1f}".replace(".", ",")
 
 
@@ -187,8 +190,8 @@ def verificar_archivo(datos: bytes, nombre: str) -> None:
         )
     if len(datos) > MAX_BYTES:
         raise ArchivoRechazado(
-            f"El archivo «{nombre}» pesa {_mb(len(datos))} MB y supera el máximo de "
-            f"{MAX_BYTES // 2**20} MB."
+            f"El archivo «{nombre}» pesa {_mib(len(datos))} MiB y supera el máximo de "
+            f"{MAX_BYTES // 2**20} MiB."
         )
     try:
         zf = zipfile.ZipFile(io.BytesIO(datos))
@@ -237,13 +240,13 @@ def _verificar_contenedor(entradas: list[zipfile.ZipInfo], nombre: str) -> None:
         if e.file_size > MAX_PIEZA:
             raise ArchivoRechazado(
                 f"El archivo «{nombre}» tiene una pieza interna ({e.filename}) que ocupa "
-                f"{_mb(e.file_size)} MB descomprimida y supera el máximo de "
-                f"{MAX_PIEZA // 2**20} MB por pieza."
+                f"{_mib(e.file_size)} MiB descomprimida y supera el máximo de "
+                f"{MAX_PIEZA // 2**20} MiB por pieza."
             )
     if total > MAX_DESCOMPRIMIDO:
         raise ArchivoRechazado(
-            f"El archivo «{nombre}» ocupa {_mb(total)} MB descomprimido y supera el máximo de "
-            f"{MAX_DESCOMPRIMIDO // 2**20} MB."
+            f"El archivo «{nombre}» ocupa {_mib(total)} MiB descomprimido y supera el máximo de "
+            f"{MAX_DESCOMPRIMIDO // 2**20} MiB."
         )
     if total and (comprimido == 0 or total > MAX_RAZON * comprimido):
         raise ArchivoRechazado(

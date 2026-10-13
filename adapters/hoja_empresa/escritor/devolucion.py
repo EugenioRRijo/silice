@@ -77,6 +77,7 @@ CODIGOS_TRANSFORMACION: dict[str, str] = {
     "Valor guardado conservado": "VALOR-CONSERVADO",
     "Filas añadidas a PROCURA": "FILAS-ANADIDAS",
     "Semanas del cronograma": "SEMANAS-ANADIDAS",
+    "Semanas del cronograma no añadidas": "SEMANAS-NO-ANADIDAS",
     "Gráfico omitido": "GRAFICO-OMITIDO",
     "Paneles inmovilizados omitidos": "PANELES-OMITIDOS",
     "Partida sin APU unido": "PARTIDA-SIN-APU",

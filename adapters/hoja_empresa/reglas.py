@@ -30,6 +30,8 @@ Límites declarados:
 - L4 y L6 solo miran los APU unidos a una partida: una plantilla sin partida no entra al
   presupuesto (L2 la informa).
 - Los impactos de L6 son informativos: suponen que el resto del APU no cambia.
+- En PROCURA, L9 no informa la fila "Dif. vs Costo Directo" si alguna "Dif. vs componente" ya dio
+  hallazgo: el Costo Directo es la suma de los cuatro componentes y la contaría dos veces.
 """
 
 from __future__ import annotations
@@ -1562,18 +1564,39 @@ def _celdas_con_formula(ctx: _Contexto, hoja: str) -> Iterator[tuple[str, int, D
             yield k, _partir(k.split("!", 1)[1])[1], v
 
 
-def _l9_dif(ctx: _Contexto, logica: str, prefijos: tuple[str, ...], que: str) -> list[Hallazgo]:
+#: Fila de PROCURA que compara el Costo Directo; las otras "Dif." son por componente.
+_PROCURA_DIF_CD = "Dif. vs Costo Directo"
+
+
+def _l9_dif(
+    ctx: _Contexto,
+    logica: str,
+    prefijos: tuple[str, ...],
+    que: str,
+    prefijo_total: str | None = None,
+) -> list[Hallazgo]:
+    """Filas de verificación ("Dif.", "Verificación") que deberían valer 0.
+
+    `prefijo_total` marca una fila que es la suma de las demás (en PROCURA, "Dif. vs Costo
+    Directo" = materiales + mano de obra + equipos + transporte). Si alguna de las otras ya dio
+    hallazgo, la del total repetiría la misma diferencia (doble conteo) y no se emite; si solo la
+    del total difiere, sí se emite, porque es lo único que delata el descuadre.
+    """
     hoja = ctx.an.hoja(ctx.perfil.hoja(logica))
     if hoja is None:
         return []
     out: list[Hallazgo] = []
+    del_total: list[Hallazgo] = []
     for k, fila, v in _celdas_con_formula(ctx, hoja):
         etiqueta = ctx.etiqueta(hoja, fila)
         if not any(normalizar(etiqueta).startswith(normalizar(x)) for x in prefijos):
             continue
         if abs(v) < _TOL_CENTAVO:
             continue
-        out.append(
+        es_total = prefijo_total is not None and normalizar(etiqueta).startswith(
+            normalizar(prefijo_total)
+        )
+        (del_total if es_total else out).append(
             Hallazgo(
                 regla="L9",
                 severidad=Severidad.ERROR,
@@ -1586,6 +1609,8 @@ def _l9_dif(ctx: _Contexto, logica: str, prefijos: tuple[str, ...], que: str) ->
                 valor_esperado=_CERO,
             )
         )
+    if del_total and not out:
+        return del_total
     return out
 
 
@@ -1649,6 +1674,7 @@ def _l9(ctx: _Contexto) -> list[Hallazgo]:
             "PROCURA",
             ("Dif.",),
             "la lista de compras no corresponde al presupuesto (se compraría de más o de menos).",
+            prefijo_total=_PROCURA_DIF_CD,
         )
         + _l9_dif(
             ctx,

@@ -408,7 +408,9 @@ def abrir_libro(origen: bytes):
     `<dimension>` que declara el archivo; uno que la falsee se abre entero, acotado igual por la
     guardia (F-D10).
     """
-    from openpyxl import load_workbook  # perezoso: la página se importa sin cargar openpyxl
+    # Perezoso solo para este módulo (que se importa sin openpyxl); la página ya lo tiene cargado
+    # porque importa `core.catalog`, que lo usa para leer precios.
+    from openpyxl import load_workbook
 
     ligero = load_workbook(io.BytesIO(origen), read_only=True, data_only=True)
     try:

@@ -80,7 +80,8 @@ TOLERANCIA = MEDIO_CENTAVO
 UMBRAL_SIMILITUD = Decimal("0.8")
 
 #: Tamaño máximo del PDF que se abre. SUPUESTO_DECLARADO: el mismo tope que F-D10 fija para el
-#: libro (se reutiliza `guardia.MAX_BYTES`, 25 MB); el PDF impreso más pesado recibido ronda 6,3 MB.
+#: libro (se reutiliza `guardia.MAX_BYTES`, 25 MiB); el PDF impreso más pesado recibido ronda
+#: 6,3 MB.
 MAX_BYTES_PDF = MAX_BYTES
 
 #: Páginas máximas del PDF. SUPUESTO_DECLARADO (revisión de seguridad 1.5): el PDF real más largo
@@ -667,8 +668,8 @@ def _verificar_bytes(datos: bytes, nombre: str) -> None:
     """
     if len(datos) > MAX_BYTES_PDF:
         raise ArchivoRechazado(
-            f"El PDF «{nombre}» pesa {f'{len(datos) / 2**20:.1f}'.replace('.', ',')} MB y supera "
-            f"el máximo de {MAX_BYTES_PDF // 2**20} MB."
+            f"El PDF «{nombre}» pesa {f'{len(datos) / 2**20:.1f}'.replace('.', ',')} MiB y supera "
+            f"el máximo de {MAX_BYTES_PDF // 2**20} MiB."
         )
     if b"%PDF-" not in datos[:1024]:  # la norma admite bytes previos en el primer kilobyte
         raise ArchivoRechazado(f"El archivo «{nombre}» no es un PDF (no tiene la cabecera %PDF-).")

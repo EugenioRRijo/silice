@@ -3,8 +3,12 @@
 Llevan la paleta y la fuente del propio libro (tomadas del kit de los APU), para que se lean como
 parte de él. Nada de lo que muestran se calcula aquí: los hallazgos, las alertas y la trazabilidad
 llegan hechos en `DatosDevolucion`; el resumen por severidad de AUDITORÍA y el número de hallazgos
-de cada regla evaluada son fórmulas (COUNTIF y SUMIF) sobre la tabla de hallazgos. Una alerta sin
-tasa dice "no contrastable": nunca se escribe un número que no se pueda rastrear (§4).
+de cada regla evaluada son fórmulas (COUNTIF) sobre la tabla de hallazgos. Una alerta sin tasa dice
+"no contrastable": nunca se escribe un número que no se pueda rastrear (§4).
+
+Los impactos NO se suman en ninguna parte: un mismo error real puede aparecer en varias reglas (por
+ejemplo F1, L4 y L9 por el mismo equipo omitido del costo directo) y una suma lo contaría varias
+veces. El resumen por severidad solo cuenta hallazgos y una nota bajo la tabla lo advierte.
 
 AUDITORÍA lleva, debajo de los hallazgos, las reglas evaluadas, las NO evaluadas con su motivo
 (R11, R12 y L10 u L11 según el PDF recibido; errata 4 y 6 del spec) y los "Cambios del calcado"
@@ -26,6 +30,11 @@ __all__ = ["HOJAS_NUEVAS", "hoja_alertas", "hoja_auditoria", "hoja_trazabilidad"
 
 HOJAS_NUEVAS = ("AUDITORÍA", "TRAZABILIDAD", "ALERTAS USD-Bs")
 NO_CONTRASTABLE = "no contrastable"
+#: Nota bajo la tabla de hallazgos de AUDITORÍA.
+NOTA_IMPACTOS = (
+    "Los impactos no se suman: un mismo error puede aparecer en varias reglas (por ejemplo F1, L4 "
+    "y L9)."
+)
 _SEVERIDADES = ("CRITICO", "ERROR", "ADVERTENCIA", "INFO")
 _COLOR_SEVERIDAD = {
     "CRITICO": ("7B1E1E", "FFFFFF"),
@@ -113,20 +122,18 @@ def hoja_auditoria(
         "recibido (los APU de esta devolución tienen forma uniforme).",
         6,
     )
-    _seccion(h, p, 4, "RESUMEN POR SEVERIDAD", 3)
-    _encabezados(h, p, 5, ("Severidad", "Hallazgos", impacto))
+    # Solo se cuentan hallazgos: los impactos no se suman (ver la nota bajo la tabla).
+    _seccion(h, p, 4, "RESUMEN POR SEVERIDAD", 2)
+    _encabezados(h, p, 5, ("Severidad", "Hallazgos"))
     ini = 13
     fin = ini + max(len(hallazgos), 1) - 1
     rango_b = f"$B${ini}:$B${fin}"
-    rango_e = f"$E${ini}:$E${fin}"
     for i, sev in enumerate(_SEVERIDADES):
         fila = 6 + i
         h.poner(fila, 1, sev, estilo=p.etiqueta)
         h.poner(fila, 2, formula=f'=COUNTIF({rango_b},"{sev}")', estilo=p.entero)
-        h.poner(fila, 3, formula=f'=SUMIF({rango_b},"{sev}",{rango_e})', estilo=p.numero)
     h.poner(10, 1, "Total", estilo=p.total)
     h.poner(10, 2, formula="=SUM(B6:B9)", estilo=p.total_entero)
-    h.poner(10, 3, formula="=SUM(C6:C9)", estilo=p.total_num)
     _seccion(h, p, 11, "HALLAZGOS", 6)
     _encabezados(h, p, 12, ("Código", "Severidad", "Descripción", "Celda", impacto, "Acción"))
     if not hallazgos:
@@ -155,7 +162,11 @@ def hoja_auditoria(
                 Estilo(patron=1, fondo=fondo, color=color, negrita=True),
             )
         )
-    ultima = _reglas_y_cambios(h, p, fin + 2, datos, f"$A${ini}:$A${fin}", transformaciones)
+    h.poner(fin + 1, 1, NOTA_IMPACTOS, estilo=p.tenue)
+    for c in range(2, 7):
+        h.poner(fin + 1, c, None, estilo=p.tenue)
+    h.combinadas.append((fin + 1, 1, fin + 1, 6))
+    ultima = _reglas_y_cambios(h, p, fin + 3, datos, f"$A${ini}:$A${fin}", transformaciones)
     h.anchos = {1: (12.0, False), 2: (14.0, False), 3: (70.0, False), 4: (24.0, False)}
     h.anchos |= {5: (15.0, False), 6: (14.0, False)}
     h.paneles = (12, 0)
