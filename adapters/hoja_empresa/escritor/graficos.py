@@ -10,6 +10,10 @@ no sale en la devolución se omite y queda anotado.
 Límites declarados: no se reproducen formatos finos (ejes secundarios, etiquetas de datos con
 formato, rellenos degradados, estilos de línea): el gráfico conserva tipo, datos, colores sólidos,
 títulos, leyenda y tamaño.
+
+Anclajes acotados (revisión de seguridad 1.5): la fila y la columna de `<xdr:from>`/`<xdr:to>` se
+acotan a la hoja de Excel (1 048 576 filas, 16 384 columnas) y los desplazamientos y el tamaño a
+`TOPE_PX` píxeles: un anclaje enorme o negativo en un libro ajeno no puede colgar el escritor.
 """
 
 from __future__ import annotations
@@ -20,9 +24,14 @@ import zipfile
 from dataclasses import dataclass, field
 from typing import Any
 
-__all__ = ["Grafico", "leer_graficos"]
+from adapters.hoja_empresa.escritor.formulas import MAX_COL, MAX_FILA
+
+__all__ = ["TOPE_PX", "Grafico", "leer_graficos"]
 
 _EMU_PX = 9525
+#: Tope de un desplazamiento o de un lado del gráfico, en píxeles (unas 60 pantallas de alto: ningún
+#: gráfico real se le acerca). SUPUESTO_DECLARADO: elegido para acotar el cómputo, no sale de Excel.
+TOPE_PX = 65_536
 _TIPOS = {
     "barChart": "column",
     "bar3DChart": "column",
@@ -257,9 +266,24 @@ def _de_dibujo(zf: zipfile.ZipFile, ruta: str) -> list[Grafico]:
         if desde is None:
             continue
 
-        def num(el: Any, nombre: str) -> int:
+        def num(el: Any, nombre: str, tope: int) -> int:
+            """Entero del hijo `nombre`, acotado a [0, tope]."""
             x = _hijo(el, nombre)
-            return int(x.text) if x is not None and x.text else 0
+            n = int(x.text) if x is not None and x.text else 0
+            return min(max(n, 0), tope)
+
+        def fila(el: Any) -> int:
+            return num(el, "row", MAX_FILA - 1) + 1
+
+        def col(el: Any) -> int:
+            return num(el, "col", MAX_COL - 1) + 1
+
+        def px(el: Any, nombre: str) -> int:
+            return num(el, nombre, TOPE_PX * _EMU_PX) // _EMU_PX
+
+        def lado(texto: str | None) -> int:
+            n = int(texto) if texto else 0
+            return min(max(n, 0), TOPE_PX * _EMU_PX) // _EMU_PX
 
         hasta = _hijo(anc, "to")
         ext = _hijo(anc, "ext")
@@ -272,24 +296,14 @@ def _de_dibujo(zf: zipfile.ZipFile, ruta: str) -> list[Grafico]:
                 eje_x=g["eje_x"],
                 eje_y=g["eje_y"],
                 leyenda=g["leyenda"],
-                fila=num(desde, "row") + 1,
-                col=num(desde, "col") + 1,
-                x_offset=num(desde, "colOff") // _EMU_PX,
-                y_offset=num(desde, "rowOff") // _EMU_PX,
-                hasta=(
-                    num(hasta, "row") + 1,
-                    num(hasta, "col") + 1,
-                    num(hasta, "colOff") // _EMU_PX,
-                    num(hasta, "rowOff") // _EMU_PX,
-                )
+                fila=fila(desde),
+                col=col(desde),
+                x_offset=px(desde, "colOff"),
+                y_offset=px(desde, "rowOff"),
+                hasta=(fila(hasta), col(hasta), px(hasta, "colOff"), px(hasta, "rowOff"))
                 if hasta is not None
                 else None,
-                tamano=(
-                    int(ext.get("cx", "0")) // _EMU_PX,
-                    int(ext.get("cy", "0")) // _EMU_PX,
-                )
-                if ext is not None
-                else None,
+                tamano=(lado(ext.get("cx")), lado(ext.get("cy"))) if ext is not None else None,
                 hojas=g["hojas"],
             )
         )

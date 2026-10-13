@@ -15,7 +15,7 @@ from decimal import Decimal
 
 from openpyxl.formula.translate import Translator
 
-from adapters.hoja_empresa.escritor.calculos import Evaluador
+from adapters.hoja_empresa.escritor.calculos import Evaluador, NoSoportado
 from adapters.hoja_empresa.escritor.contexto import Contexto
 from adapters.hoja_empresa.escritor.formulas import Ref, analizar_ref, cita, letra, reescribir
 from adapters.hoja_empresa.escritor.hoja import CeldaSalida, HojaSalida
@@ -68,7 +68,10 @@ def extender_semanas(ctx: Contexto, ev: Evaluador) -> int:
     dsem_txt = ctx.nombres.get("DSEM")
     dsem = None
     if dsem_txt:
-        v = ev.formula(dsem_txt, h.nombre)
+        try:
+            v = ev.formula(dsem_txt, h.nombre)
+        except NoSoportado:  # función desconocida o presupuesto agotado: no se extiende
+            v = None
         dsem = v if isinstance(v, Decimal) and v > 0 else None
     if dsem is None:
         return 0

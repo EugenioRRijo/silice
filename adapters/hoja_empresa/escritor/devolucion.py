@@ -11,12 +11,21 @@ Pasos:
    las fórmulas que no se pueden conservar y calcular todas las demás (`calculos`).
 5. Extender el cronograma si la obra lo necesita (`programacion`) y volcar con XlsxWriter
    (`salida`).
+
+Todo cambio del calcado respecto del libro recibido (hojas omitidas, fórmulas sustituidas por su
+valor, fórmulas peligrosas pasadas a valor, valores guardados conservados, filas añadidas, gráficos
+omitidos, APU sin cálculo de Silice) se anota una vez en `LibroSalida.notas`: va a TRAZABILIDAD
+("Transformaciones del calcado") y, como lista estructurada (`transformaciones_del_calcado`), a la
+sección "Cambios del calcado" de AUDITORÍA.
 """
 
 from __future__ import annotations
 
 import io
+import re
+import unicodedata
 import warnings
+from collections.abc import Sequence
 from datetime import datetime
 from decimal import Decimal
 
@@ -30,24 +39,80 @@ from adapters.hoja_empresa.escritor.apu import (
 )
 from adapters.hoja_empresa.escritor.calculos import Err, Evaluador, NoSoportado
 from adapters.hoja_empresa.escritor.contexto import ERRORES, Contexto
-from adapters.hoja_empresa.escritor.copia import aspecto_de_hoja, copiar_hoja
+from adapters.hoja_empresa.escritor.copia import Aviso, aspecto_de_hoja, copiar_hoja
 from adapters.hoja_empresa.escritor.derivadas import anotar_pendiente, transformar_hoja
 from adapters.hoja_empresa.escritor.estilos import LectorEstilos
-from adapters.hoja_empresa.escritor.formulas import letra
+from adapters.hoja_empresa.escritor.formulas import letra, motivo_peligro
 from adapters.hoja_empresa.escritor.graficos import leer_graficos
-from adapters.hoja_empresa.escritor.hoja import NADA
+from adapters.hoja_empresa.escritor.hoja import NADA, Nota
 from adapters.hoja_empresa.escritor.presupuesto import regenerar_presupuesto, sembrar_totales
 from adapters.hoja_empresa.escritor.procura import ajustar_procura
 from adapters.hoja_empresa.escritor.programacion import extender_semanas
-from adapters.hoja_empresa.escritor.salida import escribir_xlsx
+from adapters.hoja_empresa.escritor.salida import escribir_xlsx, revisar_grafico
 from adapters.hoja_empresa.escritor.silice import hoja_alertas, hoja_auditoria, hoja_trazabilidad
 from adapters.hoja_empresa.guardia import ArchivoRechazado
 from adapters.hoja_empresa.modelo import ApuCalculado, ApuLeido, DatosDevolucion, Rotulo, clave
 from adapters.hoja_empresa.perfil import Perfil, cargar_perfil
 
-__all__ = ["escribir_devolucion"]
+__all__ = [
+    "CODIGOS_TRANSFORMACION",
+    "TITULO_DEVUELTO",
+    "escribir_devolucion",
+    "transformaciones_del_calcado",
+]
 
 _CERO = Decimal(0)
+#: Título del documento devuelto: no se conserva el del libro recibido (revisión de seguridad 1.5).
+TITULO_DEVUELTO = "Libro devuelto por Silice"
+
+#: Código corto de cada clase de transformación del calcado (el `dato` de la nota).
+CODIGOS_TRANSFORMACION: dict[str, str] = {
+    "Hoja que no sale en la devolución": "HOJA-OMITIDA",
+    "APU sin cálculo de Silice": "APU-SIN-CALCULO",
+    "Fórmula sustituida por su valor": "FORMULA-A-VALOR",
+    "Fórmula peligrosa pasada a valor": "FORMULA-PELIGROSA",
+    "Validación omitida": "VALIDACION-OMITIDA",
+    "Formato condicional omitido": "FORMATO-OMITIDO",
+    "Nombre definido omitido": "NOMBRE-OMITIDO",
+    "Valor guardado conservado": "VALOR-CONSERVADO",
+    "Filas añadidas a PROCURA": "FILAS-ANADIDAS",
+    "Semanas del cronograma": "SEMANAS-ANADIDAS",
+    "Gráfico omitido": "GRAFICO-OMITIDO",
+    "Partida sin APU unido": "PARTIDA-SIN-APU",
+}
+_MAX_DESCRIPCION = 500
+
+
+def _codigo(dato: str) -> str:
+    codigo = CODIGOS_TRANSFORMACION.get(dato)
+    if codigo is not None:
+        return codigo
+    plano = unicodedata.normalize("NFKD", dato).encode("ascii", "ignore").decode()
+    return re.sub(r"[^A-Z0-9]+", "-", plano.upper()).strip("-")[:24] or "OTRO"
+
+
+def transformaciones_del_calcado(notas: Sequence[Nota]) -> list[tuple[str, str, str]]:
+    """Las notas del calcado como (tipo, celda, descripción), en el orden en que se hicieron.
+
+    `tipo` es el código corto (`CODIGOS_TRANSFORMACION`); `celda`, la celda u hoja de origen
+    (HOJA!CELDA); `descripción`, qué se cambió y por qué, con el valor escrito si lo hay. Es lo que
+    lista la sección "Cambios del calcado" de AUDITORÍA; TRAZABILIDAD lleva las mismas notas.
+    """
+    out: list[tuple[str, str, str]] = []
+    for n in notas:
+        desc = f"{n.dato}: {n.nota}"
+        if n.valor and n.valor != n.origen:
+            desc += f" (valor escrito: {n.valor})"
+        if len(desc) > _MAX_DESCRIPCION:
+            desc = desc[: _MAX_DESCRIPCION - 1] + "…"
+        out.append((_codigo(n.dato), n.origen, desc))
+    return out
+
+
+def _anotar_avisos(ctx: Contexto, avisos: Sequence[Aviso]) -> None:
+    """Las fórmulas peligrosas que `copia` no copió como fórmula, a las transformaciones."""
+    for dato, ref, original, motivo in avisos:
+        ctx.salida.anotar(dato, None, ref, f"{motivo}: {original[:300]}")
 
 
 def _abrir(origen: bytes):  # noqa: ANN202 - openpyxl.Workbook
@@ -65,13 +130,21 @@ def _abrir(origen: bytes):  # noqa: ANN202 - openpyxl.Workbook
         ) from exc
 
 
-def _calculado_de_respaldo(a: ApuLeido) -> ApuCalculado:
+def _calculado_de_respaldo(a: ApuLeido) -> tuple[ApuCalculado, list[str]]:
+    """El APU con los valores guardados en el libro, y los rótulos que no tenían valor (van a 0).
+
+    Solo se usa cuando Silice no trae el cálculo de ese APU; quien lo llama lo anota en las
+    transformaciones del calcado (nunca es silencioso).
+    """
     g = a.guardados
+    faltan: list[str] = []
 
     def v(r: Rotulo) -> Decimal:
+        if r not in g:
+            faltan.append(r.value)
         return g.get(r, _CERO)
 
-    return ApuCalculado(
+    calc = ApuCalculado(
         hoja=a.hoja,
         materiales=v(Rotulo.MAT),
         mano_obra=v(Rotulo.MO),
@@ -86,6 +159,7 @@ def _calculado_de_respaldo(a: ApuLeido) -> ApuCalculado:
         equipos_dia=v(Rotulo.EQ_DIA),
         herramientas=v(Rotulo.HERR),
     )
+    return calc, faltan
 
 
 def _kit(ctx: Contexto) -> Kit:
@@ -153,13 +227,11 @@ def _construir(ctx: Contexto, kit: Kit) -> None:
             assert a is not None and ctx.maqueta is not None
             calc = datos.apus.get(nombre)
             if calc is None:
-                calc = _calculado_de_respaldo(a)
-                salida.anotar(
-                    "APU sin cálculo de Silice",
-                    nombre,
-                    nombre,
-                    "se escriben los valores guardados del libro recibido",
-                )
+                calc, faltan = _calculado_de_respaldo(a)
+                nota = f"APU {nombre}: sin cálculo de Silice; se conservan los valores del libro"
+                if faltan:
+                    nota += f" (sin valor guardado, se escribe 0: {', '.join(faltan)})"
+                salida.anotar("APU sin cálculo de Silice", None, nombre, nota)
             p = ctx.unidos[nombre]
             h = generar_apu(
                 DatosApu(
@@ -180,7 +252,9 @@ def _construir(ctx: Contexto, kit: Kit) -> None:
             salida.agregar(h)
             continue
         ws = ctx.wb[nombre]
-        h = copiar_hoja(ws, ctx.estilos, ctx.libro.valores)
+        avisos: list[Aviso] = []
+        h = copiar_hoja(ws, ctx.estilos, ctx.libro.valores, avisos=avisos)
+        _anotar_avisos(ctx, avisos)
         resueltas: set[tuple[int, int]] = set()
         if nombre == ctx.hoja_presupuesto:
             resueltas = regenerar_presupuesto(ctx, h)
@@ -204,6 +278,39 @@ def _adjuntar_graficos(ctx: Contexto, origen: bytes) -> None:
                 )
                 continue
             h.graficos.append(g)
+
+
+def _revisar_graficos(ctx: Contexto) -> None:
+    """Un gráfico que no se puede escribir (serie peligrosa, XlsxWriter lo rechaza) se omite y se
+    anota; se revisa después de extender el cronograma, que cambia sus series."""
+    for h in ctx.salida.hojas.values():
+        quedan = []
+        for g in h.graficos:
+            motivo = revisar_grafico(h, g)
+            if motivo is None:
+                quedan.append(g)
+            else:
+                ctx.salida.anotar("Gráfico omitido", g.titulo or g.tipo, h.nombre, motivo)
+        h.graficos = quedan
+
+
+def _peligrosas_a_valor(ctx: Contexto) -> None:
+    """Barrera antes de escribir: ninguna fórmula que la lista negra rechaza llega a la salida
+    (las del libro recibido ya las convirtió `copia`; esto cubre cualquier otra vía)."""
+    for h in ctx.salida.hojas.values():
+        for (f, c), cel in h.celdas.items():
+            motivo = motivo_peligro(cel.formula) if cel.formula else None
+            if motivo is None or cel.formula is None:
+                continue
+            valor = cel.fijo if cel.fijo is not NADA else cel.calculado
+            valor = cel.respaldo if valor is NADA or isinstance(valor, Err) else valor
+            ctx.salida.anotar(
+                "Fórmula peligrosa pasada a valor",
+                valor,
+                clave(h.nombre, f"{letra(c)}{f}"),
+                f"{motivo}: {cel.formula[:300]}",
+            )
+            cel.formula, cel.valor, cel.fijo = None, valor, NADA
 
 
 def _resolver_pendientes(ctx: Contexto, ev: Evaluador) -> None:
@@ -289,7 +396,7 @@ def escribir_devolucion(
     origen: bytes, datos: DatosDevolucion, perfil: Perfil | None = None
 ) -> bytes:
     """Devuelve los bytes del `.xlsx` calcado con los valores de Silice y las tres hojas nuevas."""
-    perfil = perfil or cargar_perfil()
+    perfil = perfil or cargar_perfil(datos.libro.perfil)
     wb = _abrir(origen)
     try:
         estilos = LectorEstilos(getattr(wb, "loaded_theme", None))
@@ -317,6 +424,8 @@ def escribir_devolucion(
                     cel.calculado = NADA
             _evaluar(ctx, ev, orden)
         _largas_a_valor(ctx)
+        _peligrosas_a_valor(ctx)
+        _revisar_graficos(ctx)
         for hoja, f, c, motivo in ev.respaldos:
             ctx.salida.anotar(
                 "Valor guardado conservado",
@@ -326,7 +435,9 @@ def escribir_devolucion(
             )
 
         nuevas = (
-            hoja_auditoria(datos, kit),
+            hoja_auditoria(
+                datos, kit, transformaciones=transformaciones_del_calcado(ctx.salida.notas)
+            ),
             hoja_trazabilidad(datos, ctx.salida.notas, kit),
             hoja_alertas(datos, kit),
         )
@@ -339,10 +450,9 @@ def escribir_devolucion(
         _evaluar(ctx, ev, [h.nombre for h in nuevas])
 
         meta = datos.metadatos
-        titulo = (wb.properties.title or "") if wb.properties is not None else ""
         ctx.salida.propiedades = {
             "created": _fecha_creacion(meta.get("fecha", "")),
-            "title": titulo,
+            "title": TITULO_DEVUELTO,
             "author": "Silice",
             "company": "Silice",
             "comments": "Libro calcado por Silice: valores recalculados, hojas AUDITORÍA, "

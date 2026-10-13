@@ -18,7 +18,8 @@ mensaje "no contrastable: la instalación no tiene la tasa del BCV de <fecha>". 
 ejemplo, la verificación local sin base), todas las alertas en Bs son "no contrastable".
 
 `variacion` es una **fracción** (0,05 = 5 %), como el umbral, sin redondear: se redondea solo al
-presentar (NORMAS §2.3).
+presentar (NORMAS §2.3). Las conversiones entre monedas son las del catálogo
+(`core.catalog.moneda.convertir`, con sus `MONEDAS` Bs y USD).
 
 Este módulo no lee el reloj: las dos fechas las da quien llama (`fusion.proceso`).
 """
@@ -33,6 +34,7 @@ from decimal import Decimal
 
 from adapters.hoja_empresa.modelo import FilaAlerta, InsumoLeido, LibroLeido
 from adapters.hoja_empresa.perfil import normalizar
+from core.catalog.moneda import MONEDAS, convertir
 from fusion.mapeo import moneda_del_libro
 
 __all__ = [
@@ -147,6 +149,14 @@ def _alerta_empresa(
     precio, fecha, moneda_propia = propio
     referencia = f"precio propio de la instalación {_texto(precio)} {moneda_propia} del {fecha}"
     if moneda_propia != moneda:
+        if moneda_propia not in MONEDAS or moneda not in MONEDAS:
+            return _fila(
+                insumo,
+                TIPO_EMPRESA,
+                moneda,
+                fecha_libro,
+                f"no contrastable: {referencia}; Silice solo convierte entre {' y '.join(MONEDAS)}",
+            )
         tasa = _tasa(contexto, fecha)
         if tasa is None or tasa == 0:
             return _fila(
@@ -157,7 +167,7 @@ def _alerta_empresa(
                 f"no contrastable: {referencia}; la instalación no tiene la tasa del BCV de "
                 f"{fecha.isoformat()} para llevarlo a {moneda}",
             )
-        precio = precio * tasa if moneda == "Bs" else precio / tasa
+        precio = convertir(precio, moneda_propia, moneda, tasa)
         referencia += f" ({_texto(precio)} {moneda} a la tasa {_texto(tasa)})"
     variacion = _variacion(insumo.precio, precio)
     if variacion is None or abs(variacion) < contexto.umbral:
@@ -243,14 +253,16 @@ def _alerta_bs(
             + _faltan(((fecha_libro, t_libro), (fecha_devolucion, t_devolucion))),
         )
     if moneda == "Bs":
-        antes, ahora = insumo.precio / t_libro, insumo.precio / t_devolucion
+        antes = convertir(insumo.precio, "Bs", "USD", t_libro)
+        ahora = convertir(insumo.precio, "Bs", "USD", t_devolucion)
         precio_bs = insumo.precio
         detalle = (
             f"{_texto(antes)} USD al {fecha_libro} (tasa {_texto(t_libro)}) y "
             f"{_texto(ahora)} USD al {fecha_devolucion} (tasa {_texto(t_devolucion)})"
         )
     else:
-        antes, ahora = insumo.precio * t_libro, insumo.precio * t_devolucion
+        antes = convertir(insumo.precio, "USD", "Bs", t_libro)
+        ahora = convertir(insumo.precio, "USD", "Bs", t_devolucion)
         precio_bs = ahora
         detalle = (
             f"{_texto(antes)} Bs al {fecha_libro} (tasa {_texto(t_libro)}) y "

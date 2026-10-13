@@ -1,32 +1,44 @@
-"""`/v1/libros`: auditar y devolver calcado el libro de presupuesto de la empresa (spec 1.5 §5).
+"""`/v1/libros`: auditar y devolver calcado el libro de presupuesto de la empresa, o revisar solo
+el PDF simple de un presupuesto (spec 1.5 §5, UC-25).
 
 Dos rutas con la misma entrada multipart:
 
 - `libro` (obligatorio): el `.xlsx` de la empresa.
-- `pdf` (opcional): el PDF que se entregó (L10 si es un documento simple, L11 si es el impreso).
+- `pdf` (opcional): el PDF que se entregó. Si trae el bloque de totales del libro impreso, se
+  cotejan su subtotal, IVA y total con los del libro (L11); si es un PDF simple (tablas de
+  cómputos o de presupuesto), se revisa consigo mismo (L10). Un PDF simple **sin** libro va por
+  `POST /v1/libros/pdf`.
 - `anterior` (opcional): otra versión del mismo libro, para las alertas de cambio de precio (§4).
 - `fecha_libro` (opcional, ISO): sin ella, la de la PORTADA (F-D8).
 - `fecha_devolucion` (**obligatoria**, ISO): la API nunca usa el reloj para auditar; la misma
   petición da siempre la misma respuesta (como `POST /v1/auditorias`).
+- `umbral` (opcional, decimal con punto, 0 < umbral < 1): la variación de precio desde la que hay
+  alerta, como fracción (`0.05` = 5 %, el valor por omisión).
 
 `POST /v1/libros/auditoria` responde el informe en JSON; `POST /v1/libros/devolucion`, el libro
-calcado (`.xlsx`). Todo ocurre **en memoria** (F-D9): ningún archivo toca el disco y nada se
-guarda en la base. Los montos viajan como texto.
+calcado (`.xlsx`). `POST /v1/libros/pdf` recibe solo `pdf` (el presupuesto impreso, formato
+001/002, sin Excel) y responde en JSON los hallazgos L10 del PDF cotejado consigo mismo. Todo
+ocurre **en memoria** (F-D9): ningún archivo toca el disco y nada se guarda en la base. Los montos
+viajan como texto.
 
-Errores: extensión equivocada 415; un archivo de más de 25 MB 413 (se lee por bloques y se corta
-al pasar el tope); fecha mal escrita 422; archivo rechazado por la guardia o el lector
-(`ArchivoRechazado`, F-D10) 422 con su mensaje, escrito para el usuario. La clave de API, el tope
-de 20 MiB del cuerpo entero y los hosts permitidos los pone `api.proteccion` para toda la
-aplicación (`CON_CLAVE` en `api.main`).
+Errores: extensión equivocada 415; un cuerpo de más de 20 MiB 413 (el tope real lo pone
+`api.proteccion` al cuerpo entero de la petición, sin leerlo; cada archivo se lee además por
+bloques y se corta al pasar ese mismo tope); fecha o umbral mal escritos 422; archivo rechazado por
+la guardia (`ArchivoRechazado`, F-D10) o libro que no se puede interpretar (`LibroNoInterpretable`)
+422 con su mensaje, escrito para el usuario; cualquier otro fallo al procesar 422 con un mensaje
+fijo y el detalle solo en el registro del servidor (`logging`), nunca en la respuesta. La clave de
+API, el tope del cuerpo y los hosts permitidos los pone `api.proteccion` para toda la aplicación
+(`CON_CLAVE` en `api.main`).
 """
 
 from __future__ import annotations
 
+import logging
 import re
 import unicodedata
 from dataclasses import dataclass
 from datetime import date
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
@@ -35,14 +47,31 @@ from pydantic import BaseModel
 from starlette.concurrency import run_in_threadpool
 
 from adapters.hoja_empresa.guardia import MAX_BYTES, ArchivoRechazado
+from adapters.hoja_empresa.modelo import LibroNoInterpretable
 from api.dependencias import SesionDep
+from api.proteccion import LIMITE_CUERPO
 from fusion.alertas import ContextoPrecios
-from fusion.proceso import ResultadoFusion, devolver, procesar_libro, servicios_desde_sesion
+from fusion.proceso import (
+    ResultadoFusion,
+    auditar_pdf_simple,
+    devolver,
+    procesar_libro,
+    servicios_desde_sesion,
+)
 
 router = APIRouter(prefix="/v1/libros", tags=["libros"])
 
+LOG = logging.getLogger(__name__)
+
 TIPO_XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 BLOQUE = 1024 * 1024  # se lee de a 1 MiB: un archivo de más se corta sin leerlo entero
+# El tope real: el middleware corta el cuerpo entero en 20 MiB antes de que la ruta lo vea, así que
+# el de la guardia (25 MB por archivo, F-D10) no se alcanza por la API.
+TOPE_BYTES = min(MAX_BYTES, LIMITE_CUERPO)
+UMBRAL_POR_OMISION = Decimal("0.05")
+ERRORES_DEL_USUARIO = (ArchivoRechazado, LibroNoInterpretable)  # su mensaje es para el usuario
+MENSAJE_LIBRO = "El libro no se pudo interpretar."
+MENSAJE_PDF = "El PDF no se pudo interpretar."
 
 
 # --- Esquemas de la respuesta --------------------------------------------------------------------
@@ -97,6 +126,25 @@ class LibroAuditadoRespuesta(BaseModel):
     metadatos: dict[str, str]
 
 
+class PdfOrigenRespuesta(BaseModel):
+    nombre: str
+    sha256: str
+    numero: str
+    fecha: str
+
+
+class PdfSimpleRespuesta(BaseModel):
+    pdf: PdfOrigenRespuesta
+    cumple: bool
+    por_severidad: dict[str, int]
+    renglones_computos: int
+    renglones_presupuesto: int
+    total_computos: str | None
+    total_impreso: str | None
+    notas: list[str]
+    hallazgos: list[HallazgoLibroRespuesta]
+
+
 # --- Entrada -------------------------------------------------------------------------------------
 
 
@@ -110,6 +158,7 @@ class _Entrada:
     anterior_nombre: str
     fecha_libro: date | None
     fecha_devolucion: date
+    umbral: Decimal = UMBRAL_POR_OMISION
 
 
 def _nombre(archivo: UploadFile) -> str:
@@ -127,17 +176,20 @@ def _exigir_extension(nombre: str, extension: str, campo: str) -> None:
 
 
 async def _leer(archivo: UploadFile, campo: str) -> bytes:
-    """Los bytes de la subida, por bloques; 413 en cuanto pasan de `MAX_BYTES` (25 MB, F-D10)."""
+    """Los bytes de la subida, por bloques; 413 en cuanto pasan de `TOPE_BYTES` (20 MiB: el tope
+    del cuerpo entero que pone `api.proteccion`, más estricto que los 25 MB de la guardia)."""
     excedido = HTTPException(
-        413, f"'{campo}' supera el máximo de {MAX_BYTES // 2**20} MB por archivo."
+        413,
+        f"'{campo}' supera el máximo de {TOPE_BYTES // 2**20} MiB (el tope de la petición "
+        "entera, con todos sus archivos).",
     )
-    if archivo.size is not None and archivo.size > MAX_BYTES:
+    if archivo.size is not None and archivo.size > TOPE_BYTES:
         raise excedido
     partes: list[bytes] = []
     total = 0
     while bloque := await archivo.read(BLOQUE):
         total += len(bloque)
-        if total > MAX_BYTES:
+        if total > TOPE_BYTES:
             raise excedido
         partes.append(bloque)
     return b"".join(partes)
@@ -154,6 +206,23 @@ def _fecha(texto: str | None, campo: str) -> date | None:
         ) from None
 
 
+def _umbral(texto: str | None) -> Decimal:
+    """La fracción de alerta (0 < u < 1); sin ella, 0.05. 422 si no es un decimal en ese rango."""
+    if texto is None or not texto.strip():
+        return UMBRAL_POR_OMISION
+    try:
+        valor = Decimal(texto.strip())
+    except InvalidOperation:
+        valor = None
+    if valor is None or not valor.is_finite() or not Decimal(0) < valor < Decimal(1):
+        raise HTTPException(
+            422,
+            f"'umbral' debe ser un decimal con punto mayor que 0 y menor que 1 (0.05 = 5 %): "
+            f"«{texto[:40]}».",
+        )
+    return valor
+
+
 def _presente(archivo: UploadFile | None) -> bool:
     """Un campo de archivo opcional que el navegador manda vacío cuenta como ausente."""
     return archivo is not None and bool(archivo.filename)
@@ -164,15 +233,22 @@ async def entrada_del_libro(
     fecha_devolucion: Annotated[
         str, Form(description="Fecha de devolución, ISO (AAAA-MM-DD). Obligatoria.")
     ],
-    pdf: Annotated[UploadFile | None, File(description="PDF entregado (opcional)")] = None,
+    pdf: Annotated[
+        UploadFile | None, File(description="PDF entregado (opcional; L11 o L10)")
+    ] = None,
     anterior: Annotated[
         UploadFile | None, File(description="Otra versión del libro (.xlsx, opcional)")
     ] = None,
     fecha_libro: Annotated[
         str | None, Form(description="Fecha del libro, ISO; sin ella, la de la PORTADA")
     ] = None,
+    umbral: Annotated[
+        str | None,
+        Form(description="Variación de precio desde la que hay alerta, 0 < umbral < 1 (0.05)"),
+    ] = None,
 ) -> _Entrada:
-    """Valida y lee la petición multipart: extensiones (415), tamaños (413) y fechas (422)."""
+    """Valida y lee la petición multipart: extensiones (415), tamaños (413), fechas y umbral
+    (422)."""
     nombre = _nombre(libro)
     _exigir_extension(nombre, ".xlsx", "libro")
     hay_pdf = _presente(pdf)
@@ -185,6 +261,7 @@ async def entrada_del_libro(
     if devolucion is None:
         raise HTTPException(422, "falta 'fecha_devolucion' (ISO, AAAA-MM-DD).")
     fecha = _fecha(fecha_libro, "fecha_libro")
+    fraccion = _umbral(umbral)
     return _Entrada(
         libro=await _leer(libro, "libro"),
         nombre=nombre,
@@ -194,17 +271,30 @@ async def entrada_del_libro(
         anterior_nombre=_nombre(anterior) if hay_anterior else "",
         fecha_libro=fecha,
         fecha_devolucion=devolucion,
+        umbral=fraccion,
     )
 
 
-def contexto_de_la_api(sesion: SesionDep) -> ContextoPrecios:
-    """Tasas del BCV y precios propios de ESTA instalación (F-D8). Las pruebas sustituyen esta
-    dependencia."""
-    return servicios_desde_sesion(sesion)
-
-
 EntradaDep = Annotated[_Entrada, Depends(entrada_del_libro)]
+
+
+def contexto_de_la_api(sesion: SesionDep, entrada: EntradaDep) -> ContextoPrecios:
+    """Tasas del BCV y precios propios de ESTA instalación (F-D8), con el umbral de la petición.
+    FastAPI resuelve `entrada` una sola vez por petición. Las pruebas sustituyen esta
+    dependencia."""
+    return servicios_desde_sesion(sesion, umbral=entrada.umbral)
+
+
 ContextoDep = Annotated[ContextoPrecios, Depends(contexto_de_la_api)]
+
+
+def _rechazo(error: Exception, mensaje_fijo: str, que: str) -> HTTPException:
+    """422 en la frontera: el mensaje de un error del usuario tal cual; cualquier otro, un mensaje
+    fijo, y el detalle (con la traza) solo al registro del servidor."""
+    if isinstance(error, ERRORES_DEL_USUARIO):
+        return HTTPException(422, str(error))
+    LOG.error("%s: fallo inesperado (%s)", que, type(error).__name__, exc_info=error)
+    return HTTPException(422, mensaje_fijo)
 
 
 async def _procesar(entrada: _Entrada, contexto: ContextoPrecios) -> ResultadoFusion:
@@ -222,8 +312,8 @@ async def _procesar(entrada: _Entrada, contexto: ContextoPrecios) -> ResultadoFu
                 **({"otro_nombre": entrada.anterior_nombre} if entrada.anterior else {}),
             )
         )
-    except ArchivoRechazado as error:
-        raise HTTPException(422, str(error)) from None
+    except Exception as error:  # noqa: BLE001 - frontera: nunca un 500 ni una traza al cliente
+        raise _rechazo(error, MENSAJE_LIBRO, "POST /v1/libros") from None
 
 
 # --- Serialización -------------------------------------------------------------------------------
@@ -312,8 +402,8 @@ async def devolver_libro(entrada: EntradaDep, contexto: ContextoDep) -> Response
     r = await _procesar(entrada, contexto)
     try:
         contenido = await run_in_threadpool(devolver, r)
-    except ArchivoRechazado as error:
-        raise HTTPException(422, str(error)) from None
+    except Exception as error:  # noqa: BLE001 - frontera: nunca un 500 ni una traza al cliente
+        raise _rechazo(error, MENSAJE_LIBRO, "POST /v1/libros/devolucion") from None
     return Response(
         content=contenido,
         media_type=TIPO_XLSX,
@@ -323,4 +413,50 @@ async def devolver_libro(entrada: EntradaDep, contexto: ContextoDep) -> Response
             ),
             "X-Silice-Sha256-Origen": r.libro.sha256,
         },
+    )
+
+
+@router.post("/pdf", response_model=PdfSimpleRespuesta)
+async def revisar_pdf(
+    pdf: Annotated[
+        UploadFile,
+        File(description="Presupuesto en PDF simple, sin Excel (formato 001/002)"),
+    ],
+) -> PdfSimpleRespuesta:
+    """Revisa solo un PDF simple (el presupuesto impreso, sin el libro de Excel): coteja el PDF
+    consigo mismo (L10) y responde sus hallazgos. Sin libro no hay recálculo ni devolución. No
+    guarda nada."""
+    nombre = _nombre(pdf)
+    _exigir_extension(nombre, ".pdf", "pdf")
+    datos = await _leer(pdf, "pdf")
+    try:
+        r = await run_in_threadpool(auditar_pdf_simple, datos, nombre)
+    except Exception as error:  # noqa: BLE001 - frontera: nunca un 500 ni una traza al cliente
+        raise _rechazo(error, MENSAJE_PDF, "POST /v1/libros/pdf") from None
+    leido = r.pdf
+    por_severidad: dict[str, int] = {}
+    for h in r.hallazgos_tabla:
+        por_severidad[h.severidad] = por_severidad.get(h.severidad, 0) + 1
+    return PdfSimpleRespuesta(
+        pdf=PdfOrigenRespuesta(
+            nombre=nombre, sha256=r.sha256, numero=leido.numero, fecha=leido.fecha
+        ),
+        cumple=not (por_severidad.get("CRITICO", 0) or por_severidad.get("ERROR", 0)),
+        por_severidad=por_severidad,
+        renglones_computos=len(leido.computos),
+        renglones_presupuesto=len(leido.presupuesto),
+        total_computos=_texto(leido.total_computos),
+        total_impreso=_texto(leido.total_impreso),
+        notas=list(leido.notas),
+        hallazgos=[
+            HallazgoLibroRespuesta(
+                codigo=h.codigo,
+                severidad=h.severidad,
+                descripcion=h.descripcion,
+                celda=h.celda,
+                impacto=_texto(h.impacto),
+                accion=h.accion,
+            )
+            for h in r.hallazgos_tabla
+        ],
     )

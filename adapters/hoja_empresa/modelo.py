@@ -31,6 +31,7 @@ __all__ = [
     "FilaTraza",
     "InsumoLeido",
     "LibroLeido",
+    "LibroNoInterpretable",
     "LineaApu",
     "ParametrosLibro",
     "PartidaLeida",
@@ -40,6 +41,12 @@ __all__ = [
     "TipoInsumo",
     "clave",
 ]
+
+
+class LibroNoInterpretable(ValueError):  # noqa: N818 (nombre fijado por el contrato 1.5)
+    """El libro pasó la guardia y se leyó, pero sus datos no permiten recalcularlo (por ejemplo, un
+    FCAS menor que 1 o un APU que el motor no acepta). El mensaje está escrito para mostrarlo al
+    usuario tal cual; la causa técnica va encadenada (`__cause__`)."""
 
 
 def clave(hoja: str, ref: str) -> str:
@@ -243,7 +250,12 @@ class LibroLeido:
     'TIEMPO_CONTRATADO', 'ANTICIPO', 'N_VALUACIONES', 'RETENCION' (solo las que el libro tiene).
     `ejecutado`,
     `final_previsto` y `gastado` van por número de partida (CONTROL DE OBRA secciones A y C, y
-    GASTOS).
+    GASTOS). `perfil` es el nombre del perfil de plantilla con que se leyó el libro
+    (`adapters.hoja_empresa.perfil.cargar_perfil(libro.perfil)` lo recupera): todo consumidor lo
+    toma de aquí y no supone otro.
+
+    `apu(hoja)` e `insumo(codigo)` consultan índices armados una vez al crear el libro (si un nombre
+    se repite, gana el primero, como en el recorrido lineal).
     """
 
     nombre: str
@@ -264,12 +276,25 @@ class LibroLeido:
     ejecutado: Mapping[int, Decimal] = field(default_factory=dict)
     final_previsto: Mapping[int, Decimal] = field(default_factory=dict)
     gastado: Mapping[int, Decimal] = field(default_factory=dict)
+    perfil: str = "arenaza"
+    _por_hoja: Mapping[str, ApuLeido] = field(init=False, repr=False, compare=False)
+    _por_codigo: Mapping[str, InsumoLeido] = field(init=False, repr=False, compare=False)
+
+    def __post_init__(self) -> None:
+        por_hoja: dict[str, ApuLeido] = {}
+        for a in self.apus:
+            por_hoja.setdefault(a.hoja, a)
+        por_codigo: dict[str, InsumoLeido] = {}
+        for i in self.insumos:
+            por_codigo.setdefault(i.codigo, i)
+        object.__setattr__(self, "_por_hoja", por_hoja)
+        object.__setattr__(self, "_por_codigo", por_codigo)
 
     def apu(self, hoja: str) -> ApuLeido | None:
-        return next((a for a in self.apus if a.hoja == hoja), None)
+        return self._por_hoja.get(hoja)
 
     def insumo(self, codigo: str) -> InsumoLeido | None:
-        return next((i for i in self.insumos if i.codigo == codigo), None)
+        return self._por_codigo.get(codigo)
 
 
 # --- Lo que el escritor recibe --------------------------------------------------------------------
@@ -345,6 +370,10 @@ class DatosDevolucion:
     partida); `totales` con las claves 'SUBSINIVA', 'IVATOT' y 'TOTALGEN' según Silice. `metadatos`
     lleva al menos
     'sha256_origen', 'version', 'fecha' y 'producido_por'.
+
+    `reglas_evaluadas` son `(código, nombre)` de las reglas que corrieron; `reglas_no_evaluadas`,
+    `(código, nombre, motivo)` de las que no (R11, R12, L10 u L11 según el caso): AUDITORÍA lista
+    ambas. `moneda` es la del libro ('USD' o 'Bs'), la de los impactos de AUDITORÍA.
     """
 
     libro: LibroLeido
@@ -355,3 +384,6 @@ class DatosDevolucion:
     alertas: tuple[FilaAlerta, ...] = ()
     trazabilidad: tuple[FilaTraza, ...] = ()
     metadatos: Mapping[str, str] = field(default_factory=dict)
+    reglas_evaluadas: tuple[tuple[str, str], ...] = ()
+    reglas_no_evaluadas: tuple[tuple[str, str, str], ...] = ()
+    moneda: str = "USD"

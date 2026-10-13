@@ -7,22 +7,38 @@ paneles inmovilizados, visibilidad, color de pestaña, zoom, cuadrícula e imág
 
 Límites declarados: los gráficos no se copian (openpyxl no los lee); tampoco los hipervínculos, la
 protección de hoja ni los formatos condicionales de barras, escalas o iconos.
+
+Fórmulas peligrosas (revisión de seguridad 1.5): una fórmula del libro recibido que la lista negra
+de `formulas.motivo_peligro` rechaza (DDE, WEBSERVICE, HYPERLINK, CALL, REGISTER, EXEC, FILTERXML,
+INFO, RTD, vínculo a otro libro) no entra al modelo: la celda se copia con su valor guardado, y la
+validación o el formato condicional que la usa se omite. Cada caso se devuelve en `avisos` para
+que la devolución lo anote en las transformaciones del calcado.
 """
 
 from __future__ import annotations
 
 import io
-from collections.abc import Mapping
+from collections.abc import Mapping, MutableSequence
 from datetime import date, datetime, time
 from decimal import Decimal
 from typing import Any
 
 from adapters.hoja_empresa.escritor.estilos import Estilo, LectorEstilos
-from adapters.hoja_empresa.escritor.formulas import col_num, letra
+from adapters.hoja_empresa.escritor.formulas import col_num, letra, motivo_peligro
 from adapters.hoja_empresa.escritor.hoja import CeldaSalida, HojaSalida, Imagen
 from adapters.hoja_empresa.modelo import clave
 
-__all__ = ["aspecto_de_hoja", "copiar_hoja", "formula_de", "tamano_imagen", "valor_literal"]
+__all__ = [
+    "Aviso",
+    "aspecto_de_hoja",
+    "copiar_hoja",
+    "formula_de",
+    "tamano_imagen",
+    "valor_literal",
+]
+
+#: (qué se cambió, celda o rango HOJA!REF, texto original, motivo).
+Aviso = tuple[str, str, str, str]
 
 _EMU_PX = 9525
 _OPERADORES = {
@@ -86,16 +102,27 @@ def copiar_hoja(
     estilos: LectorEstilos,
     guardados: Mapping[str, object],
     nombre: str | None = None,
+    avisos: MutableSequence[Aviso] | None = None,
 ) -> HojaSalida:
-    """Copia la hoja openpyxl `ws` a una `HojaSalida` (por defecto con el mismo nombre)."""
+    """Copia la hoja openpyxl `ws` a una `HojaSalida` (por defecto con el mismo nombre).
+
+    `avisos` recibe las fórmulas peligrosas que no se copiaron como fórmula (ver el módulo).
+    """
     h = HojaSalida(nombre or ws.title)
+    avisos = avisos if avisos is not None else []
     for (f, c), cel in ws._cells.items():
         formula = formula_de(cel)
         estilo = estilos.de_celda(cel) if getattr(cel, "has_style", False) else None
         out = CeldaSalida(estilo=estilo)
         if formula is not None:
-            out.formula = formula
-            out.respaldo = guardados.get(clave(ws.title, f"{letra(c)}{f}"))
+            ref = clave(ws.title, f"{letra(c)}{f}")
+            motivo = motivo_peligro(formula)
+            if motivo is None:
+                out.formula = formula
+                out.respaldo = guardados.get(ref)
+            else:
+                out.valor = valor_literal(guardados.get(ref))
+                avisos.append(("Fórmula peligrosa pasada a valor", ref, formula, motivo))
         else:
             out.valor = valor_literal(cel.value)
         comentario = getattr(cel, "comment", None)
@@ -107,8 +134,8 @@ def copiar_hoja(
     _dimensiones(ws, h)
     for rango in ws.merged_cells.ranges:
         h.combinadas.append((rango.min_row, rango.min_col, rango.max_row, rango.max_col))
-    _validaciones(ws, h)
-    _condicionales(ws, h, estilos)
+    _validaciones(ws, h, avisos)
+    _condicionales(ws, h, estilos, avisos)
     _impresion(ws, h)
     if ws.freeze_panes:
         celda = str(ws.freeze_panes)
@@ -153,7 +180,18 @@ def _dimensiones(ws: Any, h: HojaSalida) -> None:
         h.alto_defecto = float(fmt.defaultRowHeight)
 
 
-def _validaciones(ws: Any, h: HojaSalida) -> None:
+def _peligro_en(opciones: Mapping[str, Any], claves: tuple[str, ...]) -> tuple[str, str] | None:
+    """(texto, motivo) de la primera fórmula peligrosa entre `claves` de unas opciones."""
+    for k in claves:
+        v = opciones.get(k)
+        if isinstance(v, str):
+            motivo = motivo_peligro(v)
+            if motivo is not None:
+                return v, motivo
+    return None
+
+
+def _validaciones(ws: Any, h: HojaSalida, avisos: MutableSequence[Aviso]) -> None:
     for dv in ws.data_validations.dataValidation:
         tipo = _VALIDACIONES.get(dv.type or "")
         if tipo is None:
@@ -178,6 +216,11 @@ def _validaciones(ws: Any, h: HojaSalida) -> None:
                 opciones["maximum"] = _numero_o_formula(dv.formula2)
             else:
                 opciones["value"] = _numero_o_formula(f1)
+        peligro = _peligro_en(opciones, ("source", "value", "minimum", "maximum"))
+        if peligro is not None:
+            for rango in _rangos(dv.sqref):
+                avisos.append(("Validación omitida", f"{ws.title}!{rango}", *peligro))
+            continue
         opciones["ignore_blank"] = bool(dv.allow_blank)
         if dv.showErrorMessage is False:
             opciones["show_error"] = False
@@ -202,7 +245,9 @@ def _numero_o_formula(f: str | None) -> object:
         return "=" + f.lstrip("=")
 
 
-def _condicionales(ws: Any, h: HojaSalida, estilos: LectorEstilos) -> None:
+def _condicionales(
+    ws: Any, h: HojaSalida, estilos: LectorEstilos, avisos: MutableSequence[Aviso]
+) -> None:
     for cf in ws.conditional_formatting:
         for regla in cf.rules:
             estilo = _estilo_dxf(regla.dxf, estilos)
@@ -219,6 +264,11 @@ def _condicionales(ws: Any, h: HojaSalida, estilos: LectorEstilos) -> None:
             elif regla.type == "expression" and regla.formula:
                 opciones = {"type": "formula", "criteria": "=" + regla.formula[0]}
             else:
+                continue
+            peligro = _peligro_en(opciones, ("value", "minimum", "maximum", "criteria"))
+            if peligro is not None:
+                for rango in _rangos(cf.sqref):
+                    avisos.append(("Formato condicional omitido", f"{ws.title}!{rango}", *peligro))
                 continue
             if regla.stopIfTrue:
                 opciones["stop_if_true"] = True

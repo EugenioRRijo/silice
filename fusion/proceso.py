@@ -5,12 +5,23 @@ Sigue el patrón de la reauditoría (`auditoria/reauditoria.py`): procesa un doc
 memoria**, no guarda nada, y **no cree los precios escritos**: cada P.U. se recalcula con el motor
 del núcleo desde la composición del APU y los precios de INSUMOS (`fusion.mapeo`, F-D1). Lo que el
 libro guarda (P de PRESUPUESTO, totales con nombre) solo se usa para compararlo con Silice (F1, L3,
-L11) y para lo que Silice no puede recalcular (una partida sin APU entra con su monto guardado y se
-informa).
+L11) y para lo que Silice no puede recalcular: una partida sin APU entra a los totales con su monto
+guardado, L2 la informa y TRAZABILIDAD dice de qué celda salió el monto (F1 es solo "P.U.
+recalculado", errata 5 del spec).
 
 Los servicios de la instalación (tasas del BCV, precios propios) llegan inyectados en un
-`ContextoPrecios` (`servicios_desde_sesion` lo arma desde una sesión de la base); sin contexto, las
-alertas en Bs dicen "no contrastable".
+`ContextoPrecios` (`fusion.servicios.servicios_desde_sesion` lo arma desde una sesión de la base;
+se re-exporta aquí); sin contexto, las alertas en Bs dicen "no contrastable".
+
+PDF (errata 6). Si junto con el libro llega un PDF, Silice decide qué es: si trae el bloque de
+totales del libro impreso ("Costo de la obra", "TOTAL PRESUPUESTO (USD)"), es el entregado y se
+coteja con el libro (L11); si no, y tiene tablas de cómputos o de presupuesto, es un PDF simple y
+se revisa consigo mismo (L10). Un PDF simple sin libro se revisa con `auditar_pdf_simple`.
+
+Errores en la frontera. `procesar_libro` y `auditar_pdf_simple` dejan pasar `ArchivoRechazado` (la
+guardia o el lector rechazan el archivo) y `LibroNoInterpretable` (se leyó, pero sus datos no
+permiten recalcularlo); cualquier otro error de datos se traduce a una de las dos, con un mensaje
+para el usuario y la causa encadenada. La interfaz y la API muestran el mensaje tal cual.
 
 Fechas (F-D8). La del libro es la de la PORTADA ("Julio 2026" -> 31/07/2026) salvo que quien llama
 dé otra. La de devolución la pasa explícita la interfaz o la API; `date.today()` es SOLO el valor
@@ -28,43 +39,47 @@ from datetime import date
 from decimal import Decimal
 from types import MappingProxyType
 
-from sqlalchemy import select
-from sqlalchemy.orm import Session
-
 from adapters.hoja_empresa.escritor import escribir_devolucion
+from adapters.hoja_empresa.guardia import ArchivoRechazado
 from adapters.hoja_empresa.lector import leer_libro
 from adapters.hoja_empresa.modelo import (
     ApuCalculado,
+    ApuLeido,
     DatosDevolucion,
     FilaAlerta,
     FilaHallazgo,
     FilaTraza,
     LibroLeido,
+    LibroNoInterpretable,
     PartidaLeida,
     Rotulo,
 )
-from adapters.hoja_empresa.pdf import TotalesImpresos, cotejar_con_libro, leer_totales_impresos
+from adapters.hoja_empresa.pdf import (
+    PdfSimple,
+    TotalesImpresos,
+    cotejar_con_libro,
+    leer_pdf_simple,
+    leer_totales_impresos,
+    reglas_pdf_simple,
+)
 from adapters.hoja_empresa.perfil import Perfil, cargar_perfil, normalizar
 from adapters.hoja_empresa.reglas import REGLAS_LIBRO, reglas_del_libro
-from core import models
-from core.catalog.origen import origenes_efectivos
 from core.contracts.apu import ResultadoAPU
 from core.contracts.presupuesto import Presupuesto
 from core.contracts.verificacion import Hallazgo, Severidad
-from core.costing.motor import calcular_apu
 from core.verification.informe import InformeAuditoria, auditar
+from core.verification.precios import CODIGO_R11, CODIGO_R12, PrecioFueraDeRango, PrecioVencido
 from core.verification.texto import formatear_decimal
 from fusion.alertas import ContextoPrecios, alertas_de_precios
 from fusion.mapeo import (
     CalculoPartida,
-    avisos_de_composicion,
+    calcular_partida,
     codigos_de_partida,
-    componentes,
-    composicion_nucleo,
+    fcas_nucleo,
     hoja_presupuesto,
-    parametros_nucleo,
     presupuesto_nucleo,
 )
+from fusion.servicios import servicios_desde_sesion
 from operacion.version import version
 
 __all__ = [
@@ -72,8 +87,13 @@ __all__ = [
     "ACCION_CORREGIDO",
     "ACCION_INFORMADO",
     "REGLA_F1",
+    "REGLA_L10",
     "REGLA_L11",
+    "REGLA_R11",
+    "REGLA_R12",
     "ResultadoFusion",
+    "ResultadoPdf",
+    "auditar_pdf_simple",
     "devolver",
     "fecha_del_libro",
     "procesar_libro",
@@ -81,7 +101,27 @@ __all__ = [
 ]
 
 REGLA_F1 = ("F1", "P.U. recalculado")
+REGLA_L10 = ("L10", "Documento sin modelo (PDF simple)")
 REGLA_L11 = ("L11", "Libro ↔ PDF entregado")
+REGLA_R11 = (CODIGO_R11, PrecioFueraDeRango.nombre)
+REGLA_R12 = (CODIGO_R12, PrecioVencido.nombre)
+
+#: Por qué R11 y R12 no se evalúan en la 1.5 (errata 4 del spec): AUDITORÍA lo dice tal cual.
+MOTIVO_R11 = (
+    "no se evalúa en la 1.5: no hay un mapeo de los códigos MT/MO/EQ de la empresa a MaPreX, así "
+    "que ningún precio del libro tiene referencia con qué compararse"
+)
+MOTIVO_R12 = (
+    "no se evalúa en la 1.5: los libros no traen la fecha de cada precio (solo la de la PORTADA), "
+    "así que no se puede saber si un precio está vencido"
+)
+_SIN_PDF_L10 = "no se recibió un PDF simple (sin modelo) para revisar"
+_SIN_PDF_L11 = "no se recibió el PDF entregado, así que no hay totales impresos con qué cotejar"
+_PDF_ES_IMPRESO = "el PDF recibido es el impreso del libro: se cotejó con L11"
+_PDF_ES_SIMPLE = (
+    "el PDF recibido no trae el bloque de totales del libro impreso: es un PDF simple y se revisó "
+    "con L10"
+)
 
 ACCION_CORREGIDO = "corregido"
 ACCION_A_CONFIRMAR = "a confirmar"
@@ -100,6 +140,8 @@ UMBRAL_F1 = Decimal("0.01")
 PRODUCIDO_POR = "Silice"
 #: Nombre por omisión de la otra versión del libro (la guardia exige la extensión `.xlsx`).
 _NOMBRE_OTRA_VERSION = "otra_version.xlsx"
+#: Errores de datos que, dentro del proceso, significan "el libro no se puede interpretar".
+_ERRORES_DE_DATOS = (ValueError, ArithmeticError, LookupError)
 
 _MESES = {
     "enero": 1,
@@ -133,6 +175,9 @@ class ResultadoFusion:
     PRESUPUESTO (P.U. de Silice); `totales_silice` con las claves 'SUBSINIVA', 'IVATOT' y
     'TOTALGEN'. `origen` son los bytes del libro recibido: `devolver` calca sobre ellos.
     `fecha_libro` es `None` si la PORTADA no trae una fecha legible y nadie dio otra.
+    `pdf_totales` es el PDF entregado (L11) y `pdf_simple` el PDF simple (L10): a lo sumo uno de
+    los dos. Las reglas evaluadas están en `informe.reglas_evaluadas`; `reglas_no_evaluadas` son
+    `(código, nombre, motivo)`.
     """
 
     libro: LibroLeido
@@ -150,6 +195,8 @@ class ResultadoFusion:
     fecha_libro: date | None
     fecha_devolucion: date
     metadatos: Mapping[str, str]
+    reglas_no_evaluadas: tuple[tuple[str, str, str], ...] = ()
+    pdf_simple: PdfSimple | None = None
 
     def __post_init__(self) -> None:
         for nombre in (
@@ -160,6 +207,17 @@ class ResultadoFusion:
             "metadatos",
         ):
             object.__setattr__(self, nombre, MappingProxyType(dict(getattr(self, nombre))))
+
+
+@dataclass(frozen=True, slots=True)
+class ResultadoPdf:
+    """Lo que produce `auditar_pdf_simple`: el PDF leído, sus hallazgos L10, la tabla para mostrar
+    (todos "informado": un PDF no se devuelve corregido) y el SHA-256 del archivo recibido."""
+
+    pdf: PdfSimple
+    hallazgos: tuple[Hallazgo, ...]
+    hallazgos_tabla: tuple[FilaHallazgo, ...]
+    sha256: str
 
 
 # --- Fecha del libro ----------------------------------------------------------------------------
@@ -243,32 +301,42 @@ def _hallazgo_f1(calculo: CalculoPartida, hoja: str, col_pu: str) -> Hallazgo | 
     )
 
 
-def _monto_guardado(partida: PartidaLeida, col_pu: str, col_monto: str) -> Decimal:
-    """El monto de una partida que Silice no puede recalcular: el guardado en la columna de monto
-    o, si no lo hay, cantidad × P guardado; 0 si tampoco."""
-    if (monto := partida.guardados.get(col_monto)) is not None:
-        return monto
-    if (pu := partida.guardados.get(col_pu)) is not None:
-        return partida.cantidad * pu
-    return Decimal(0)
+@dataclass(frozen=True, slots=True)
+class _SinRecalculo:
+    """Una partida que Silice no puede recalcular: entra a los totales con su monto guardado."""
+
+    partida: PartidaLeida
+    monto: Decimal
+    origen: str
+    nota: str
 
 
-def _hallazgo_sin_apu(partida: PartidaLeida, hoja: str, col_monto: str, monto: Decimal) -> Hallazgo:
+def _sin_recalculo(partida: PartidaLeida, hoja: str, col_pu: str, col_monto: str) -> _SinRecalculo:
+    """El monto guardado de una partida sin APU (L2 la informa) o con cantidad negativa (no entra
+    al núcleo): el de la columna de monto o, si no lo hay, cantidad × P guardado; 0 si tampoco.
+    La nota de TRAZABILIDAD dice por qué y de qué celda sale."""
     motivo = (
         "tiene cantidad negativa y no entra al núcleo"
         if partida.cantidad < 0 and partida.hoja_apu
-        else "no tiene APU"
+        else "no tiene APU (L2)"
     )
-    return Hallazgo(
-        regla=REGLA_F1[0],
-        severidad=Severidad.ADVERTENCIA,
-        descripcion=(
-            f"partida {partida.numero} ({partida.codigo or 'sin código'}) {motivo}: Silice no "
-            f"puede recalcular su P.U. y la suma a los totales con su monto guardado "
-            f"({formatear_decimal(monto, 2)})"
-        ),
-        origen_ids=(f"{hoja}!{col_monto}{partida.fila}",),
-        valor_observado=monto,
+    sigue = "Silice no puede recalcular su P.U. y suma a los totales"
+    if (monto := partida.guardados.get(col_monto)) is not None:
+        return _SinRecalculo(
+            partida, monto, f"{hoja}!{col_monto}{partida.fila}", f"{motivo}: {sigue} este monto"
+        )
+    if (pu := partida.guardados.get(col_pu)) is not None:
+        return _SinRecalculo(
+            partida,
+            partida.cantidad * pu,
+            f"{hoja}!{col_pu}{partida.fila}",
+            f"{motivo}: {sigue} cantidad × P.U. guardado (no hay monto guardado)",
+        )
+    return _SinRecalculo(
+        partida,
+        Decimal(0),
+        f"{hoja}!{col_monto}{partida.fila}",
+        f"{motivo}: no hay monto ni P.U. guardado, así que suma 0 a los totales",
     )
 
 
@@ -285,7 +353,9 @@ def _accion(hallazgo: Hallazgo, informados: frozenset[Hallazgo]) -> str:
     return ACCION_INFORMADO
 
 
-def _tabla(informe: InformeAuditoria, informados: frozenset[Hallazgo]) -> tuple[FilaHallazgo, ...]:
+def _tabla(
+    hallazgos: Sequence[Hallazgo], informados: frozenset[Hallazgo]
+) -> tuple[FilaHallazgo, ...]:
     return tuple(
         FilaHallazgo(
             codigo=h.regla,
@@ -295,7 +365,7 @@ def _tabla(informe: InformeAuditoria, informados: frozenset[Hallazgo]) -> tuple[
             impacto=h.impacto,
             accion=_accion(h, informados),
         )
-        for h in informe.hallazgos
+        for h in hallazgos
     )
 
 
@@ -304,6 +374,7 @@ def _trazabilidad(
     perfil: Perfil,
     codigos: Mapping[int, str],
     calculos: Sequence[CalculoPartida],
+    sin_recalculo: Sequence[_SinRecalculo],
     fecha_libro: date | None,
     origen_fecha: str,
     fecha_presupuesto: date,
@@ -335,10 +406,9 @@ def _trazabilidad(
         valor: Decimal = getattr(p, campo)
         nota = ""
         if campo == "fcas":
-            al_nucleo = valor - 1 if valor else valor
             nota = (
-                f"factor de la plantilla; el núcleo recibe fcas = {_num(al_nucleo)} y bono de "
-                "alimentación 0 (F-D1)"
+                f"factor de la plantilla; el núcleo recibe fcas = {_num(fcas_nucleo(libro))} y "
+                "bono de alimentación 0 (F-D1)"
             )
         filas.append(
             FilaTraza(
@@ -368,14 +438,79 @@ def _trazabilidad(
                 partida.unidad,
             )
         )
+    for s in sin_recalculo:
+        filas.append(
+            FilaTraza(
+                f"Monto guardado partida {s.partida.numero} ({codigos[s.partida.fila]})",
+                formatear_decimal(s.monto, 2),
+                s.origen,
+                s.nota,
+            )
+        )
     vistos: set[str] = set()
     for calculo in calculos:
         if calculo.apu.hoja in vistos:
             continue
         vistos.add(calculo.apu.hoja)
-        for aviso in avisos_de_composicion(calculo.apu, libro):
+        for aviso in calculo.avisos:
             filas.append(FilaTraza("Aviso del mapeo", "", aviso.origen, aviso.mensaje))
     return tuple(filas)
+
+
+# --- PDF ----------------------------------------------------------------------------------------
+
+
+def _pdf_ilegible(nombre: str, exc: Exception) -> ArchivoRechazado:
+    detalle = f" ({exc})" if isinstance(exc, ValueError) and str(exc) else ""
+    return ArchivoRechazado(
+        f"No se pudo leer el PDF «{nombre}»{detalle}. Compruebe que es un PDF de texto (no una "
+        "imagen escaneada), sin contraseña, y vuelva a subirlo."
+    )
+
+
+def _leer_pdf(datos: bytes, nombre: str) -> TotalesImpresos | PdfSimple:
+    """El PDF que llegó con el libro: sus totales impresos si es el impreso del libro (L11), o el
+    PDF simple si no trae ese bloque pero sí tablas (L10). Un PDF sin nada de eso se trata como
+    impreso: L11 dirá que no encontró las cifras."""
+    try:
+        totales = leer_totales_impresos(datos, nombre)
+        if totales.bloques or any(
+            v is not None for v in (totales.subtotal, totales.iva, totales.total)
+        ):
+            return totales
+        simple = leer_pdf_simple(datos, nombre)
+    except ArchivoRechazado:
+        raise
+    except Exception as exc:  # pdfplumber/pdfminer lanzan sus propias excepciones
+        raise _pdf_ilegible(nombre, exc) from exc
+    return simple if simple.computos or simple.presupuesto else totales
+
+
+def auditar_pdf_simple(datos: bytes, nombre: str) -> ResultadoPdf:
+    """Revisa un PDF simple (sin libro) consigo mismo con L10 (spec §3, errata 6): lo lee con
+    `leer_pdf_simple` y le aplica `reglas_pdf_simple`. No guarda nada.
+
+    Lanza `ArchivoRechazado` si el archivo no se puede leer como PDF y `LibroNoInterpretable` si no
+    tiene ninguna tabla de cómputos ni de presupuesto (no hay nada que revisar).
+    """
+    try:
+        pdf = leer_pdf_simple(datos, nombre)
+    except ArchivoRechazado:
+        raise
+    except Exception as exc:  # pdfplumber/pdfminer lanzan sus propias excepciones
+        raise _pdf_ilegible(nombre, exc) from exc
+    if not pdf.computos and not pdf.presupuesto:
+        raise LibroNoInterpretable(
+            f"El PDF «{nombre}» no tiene una tabla de cómputos ni de presupuesto (con columnas "
+            "Items, Descripción, Unidad y Cantidad): no hay nada que revisar."
+        )
+    hallazgos = tuple(reglas_pdf_simple(pdf))
+    return ResultadoPdf(
+        pdf=pdf,
+        hallazgos=hallazgos,
+        hallazgos_tabla=_tabla(hallazgos, frozenset(hallazgos)),
+        sha256=pdf.sha256,
+    )
 
 
 # --- Proceso ------------------------------------------------------------------------------------
@@ -392,22 +527,79 @@ def procesar_libro(
     fecha_devolucion: date | None = None,
     otro: bytes | None = None,
     otro_nombre: str = _NOMBRE_OTRA_VERSION,
+    perfil: str | None = None,
 ) -> ResultadoFusion:
     """Lee el libro, recalcula cada APU con el motor del núcleo, lo audita y arma las alertas.
 
-    Pasos: `leer_libro` -> por cada partida unida a un APU, `calcular_apu` con la composición y los
-    parámetros de `fusion.mapeo` -> F1 -> `auditar` el presupuesto del núcleo (R1-R7) -> L1-L9
-    (`reglas_del_libro`) -> L11 si hay PDF -> informe combinado -> totales de Silice -> alertas.
+    Pasos: `leer_libro` -> por cada partida unida a un APU, `calcular_partida` (composición,
+    parámetros y `calcular_apu`, `fusion.mapeo`) -> F1 -> `auditar` el presupuesto del núcleo
+    (R1-R7) -> L1-L9 (`reglas_del_libro`) -> L11 o L10 si hay PDF -> informe combinado -> totales
+    de Silice -> alertas.
 
-    `fecha_devolucion` la pasa la interfaz (o la API) explícita; por omisión es hoy, y ese es el
-    único lugar donde se lee el reloj. `otro` son los bytes de otra versión del mismo libro, para
-    las alertas de cambio de precio. Lanza `ArchivoRechazado` si la guardia o el lector rechazan el
-    libro (o la otra versión).
+    `perfil` es el nombre del perfil de plantilla (`adapters/hoja_empresa/perfiles/<perfil>.json`);
+    por omisión, el del lector. Todo lo demás usa el perfil con que se leyó el libro
+    (`libro.perfil`). `fecha_devolucion` la pasa la interfaz (o la API) explícita; por omisión es
+    hoy, y ese es el único lugar donde se lee el reloj. `otro` son los bytes de otra versión del
+    mismo libro, para las alertas de cambio de precio.
+
+    Lanza `ArchivoRechazado` si la guardia o el lector rechazan el libro, la otra versión o el PDF,
+    y `LibroNoInterpretable` si los datos del libro no permiten recalcularlo. No deja escapar otro
+    error de datos sin ese contexto.
     """
     if fecha_devolucion is None:
         fecha_devolucion = date.today()
-    perfil = cargar_perfil()
-    libro = leer_libro(datos, nombre, perfil)
+    perfil_pedido = cargar_perfil(perfil) if perfil is not None else None
+    libro = leer_libro(datos, nombre, perfil_pedido)
+    try:
+        return _procesar(
+            libro,
+            datos,
+            pdf=pdf,
+            pdf_nombre=pdf_nombre,
+            contexto=contexto,
+            fecha_libro=fecha_libro,
+            fecha_devolucion=fecha_devolucion,
+            otro=otro,
+            otro_nombre=otro_nombre,
+        )
+    except (ArchivoRechazado, LibroNoInterpretable):
+        raise
+    except _ERRORES_DE_DATOS as exc:
+        raise LibroNoInterpretable(
+            f"Silice leyó el libro «{nombre}» pero no pudo recalcularlo: alguno de sus datos no "
+            "tiene la forma de la plantilla. Revise los parámetros de INSUMOS y los APU, y vuelva "
+            "a subirlo."
+        ) from exc
+
+
+def _calcular(
+    partida: PartidaLeida, apu: ApuLeido, libro: LibroLeido, codigo: str, perfil: Perfil
+) -> CalculoPartida:
+    """`calcular_partida` con el nombre de la hoja en el mensaje si el núcleo no acepta el APU."""
+    try:
+        return calcular_partida(partida, apu, libro, codigo, perfil)
+    except LibroNoInterpretable:
+        raise
+    except _ERRORES_DE_DATOS as exc:
+        raise LibroNoInterpretable(
+            f"El APU {apu.hoja} (partida {partida.numero}) no se puede recalcular: {exc}. "
+            "Corríjalo en el libro (por ejemplo, un rendimiento 0) y vuelva a subirlo."
+        ) from exc
+
+
+def _procesar(
+    libro: LibroLeido,
+    datos: bytes,
+    *,
+    pdf: bytes | None,
+    pdf_nombre: str,
+    contexto: ContextoPrecios | None,
+    fecha_libro: date | None,
+    fecha_devolucion: date,
+    otro: bytes | None,
+    otro_nombre: str,
+) -> ResultadoFusion:
+    perfil = cargar_perfil(libro.perfil)
     fecha_portada = fecha_del_libro(libro)
     fecha = fecha_libro or fecha_portada
     if fecha_libro is not None:
@@ -423,24 +615,13 @@ def procesar_libro(
     codigos = codigos_de_partida(libro)
 
     calculos: list[CalculoPartida] = []
-    sin_apu: list[tuple[PartidaLeida, Decimal]] = []
+    sin_recalculo: list[_SinRecalculo] = []
     for partida in libro.partidas:
         apu = libro.apu(partida.hoja_apu) if partida.hoja_apu else None
         if apu is None or partida.cantidad < 0:
-            sin_apu.append((partida, _monto_guardado(partida, col_pu, col_monto)))
+            sin_recalculo.append(_sin_recalculo(partida, hoja, col_pu, col_monto))
             continue
-        composicion = composicion_nucleo(apu, libro, codigos[partida.fila])
-        resultado = calcular_apu(composicion, parametros_nucleo(apu, libro))
-        calculos.append(
-            CalculoPartida(
-                partida=partida,
-                apu=apu,
-                codigo=codigos[partida.fila],
-                composicion=composicion,
-                resultado=resultado,
-                calculado=componentes(apu, libro, resultado),
-            )
-        )
+        calculos.append(_calcular(partida, apu, libro, codigos[partida.fila], perfil))
 
     f1: list[Hallazgo] = []
     atribucion_f1: dict[Hallazgo, str | None] = {}
@@ -449,26 +630,33 @@ def procesar_libro(
         if hallazgo is not None:
             f1.append(hallazgo)
             atribucion_f1[hallazgo] = calculo.codigo
-    informados: set[Hallazgo] = set()
-    for partida, monto in sin_apu:
-        hallazgo = _hallazgo_sin_apu(partida, hoja, col_monto, monto)
-        f1.append(hallazgo)
-        informados.add(hallazgo)
 
     fecha_presupuesto = fecha or fecha_devolucion
     presupuesto = presupuesto_nucleo(libro, calculos, fecha_presupuesto, perfil)
     informe_nucleo = auditar(presupuesto)
-    del_libro = reglas_del_libro(libro)
+    del_libro = reglas_del_libro(libro, perfil)
 
     pdf_totales: TotalesImpresos | None = None
+    pdf_simple: PdfSimple | None = None
     del_pdf: list[Hallazgo] = []
     reglas_evaluadas = (*informe_nucleo.reglas_evaluadas, REGLA_F1, *REGLAS_LIBRO)
+    no_evaluadas = [(*REGLA_R11, MOTIVO_R11), (*REGLA_R12, MOTIVO_R12)]
     if pdf is not None:
         pdf_nombre = pdf_nombre or "entregado.pdf"
-        pdf_totales = leer_totales_impresos(pdf, pdf_nombre)
-        del_pdf = cotejar_con_libro(pdf_totales, libro)
-        reglas_evaluadas = (*reglas_evaluadas, REGLA_L11)
-    informados.update(del_pdf)
+        leido = _leer_pdf(pdf, pdf_nombre)
+        if isinstance(leido, PdfSimple):
+            pdf_simple = leido
+            del_pdf = reglas_pdf_simple(leido)
+            reglas_evaluadas = (*reglas_evaluadas, REGLA_L10)
+            no_evaluadas.append((*REGLA_L11, _PDF_ES_SIMPLE))
+        else:
+            pdf_totales = leido
+            del_pdf = cotejar_con_libro(leido, libro)
+            reglas_evaluadas = (*reglas_evaluadas, REGLA_L11)
+            no_evaluadas.append((*REGLA_L10, _PDF_ES_IMPRESO))
+    else:
+        no_evaluadas += [(*REGLA_L10, _SIN_PDF_L10), (*REGLA_L11, _SIN_PDF_L11)]
+    informados = frozenset(del_pdf)
 
     informe = InformeAuditoria(
         codigo_presupuesto=presupuesto.codigo,
@@ -479,7 +667,7 @@ def procesar_libro(
     )
 
     subtotal = sum((c.partida.cantidad * c.resultado.precio_unitario for c in calculos), Decimal(0))
-    subtotal += sum((monto for _, monto in sin_apu), Decimal(0))
+    subtotal += sum((s.monto for s in sin_recalculo), Decimal(0))
     iva = subtotal * libro.parametros.iva
     totales = {"SUBSINIVA": subtotal, "IVATOT": iva, "TOTALGEN": subtotal + iva}
 
@@ -511,23 +699,27 @@ def procesar_libro(
             perfil,
             codigos,
             calculos,
+            sin_recalculo,
             fecha,
             origen_fecha,
             fecha_presupuesto,
             pdf,
             pdf_nombre,
         ),
-        hallazgos_tabla=_tabla(informe, frozenset(informados)),
+        hallazgos_tabla=_tabla(informe.hallazgos, informados),
         totales_silice=totales,
         fecha_libro=fecha,
         fecha_devolucion=fecha_devolucion,
         metadatos=metadatos,
+        reglas_no_evaluadas=tuple(no_evaluadas),
+        pdf_simple=pdf_simple,
     )
 
 
 def devolver(resultado: ResultadoFusion) -> bytes:
     """El libro calcado (`.xlsx`) con los valores de Silice y las hojas AUDITORÍA, TRAZABILIDAD y
-    ALERTAS USD-Bs (spec §1). Lo escribe el adaptador sobre los bytes del libro recibido."""
+    ALERTAS USD-Bs (spec §1). Lo escribe el adaptador sobre los bytes del libro recibido; la
+    moneda de los impactos es la del presupuesto del núcleo (la del libro)."""
     datos = DatosDevolucion(
         libro=resultado.libro,
         apus=resultado.calculos,
@@ -537,71 +729,8 @@ def devolver(resultado: ResultadoFusion) -> bytes:
         alertas=resultado.alertas,
         trazabilidad=resultado.trazabilidad,
         metadatos=resultado.metadatos,
+        reglas_evaluadas=resultado.informe.reglas_evaluadas,
+        reglas_no_evaluadas=resultado.reglas_no_evaluadas,
+        moneda=resultado.presupuesto.moneda,
     )
     return escribir_devolucion(resultado.origen, datos)
-
-
-# --- Servicios de la instalación ----------------------------------------------------------------
-
-
-def _precios_de_empresa(session: Session) -> dict[str, tuple[Decimal, date, str]]:
-    """Código -> (precio, fecha, moneda) de la lista de empresa más reciente de la instalación.
-
-    El código de la empresa (MT-01, MO-03…) se busca primero como Ref del precio
-    (`ReferenciaPrecio`, solo las Ref únicas en la lista, como hace la reauditoría con MaPreX) y
-    luego como código del insumo del catálogo. La fecha es la del origen efectivo del precio
-    (`PrecioOrigen` o, si falta, la vigencia de la lista).
-    """
-    lista = session.scalars(
-        select(models.ListaPrecios)
-        .join(models.ListaEmpresa, models.ListaEmpresa.lista_id == models.ListaPrecios.id)
-        .order_by(models.ListaPrecios.id.desc())
-        .limit(1)
-    ).one_or_none()
-    if lista is None:
-        return {}
-    origenes = origenes_efectivos(session, lista)
-    refs = dict(
-        session.execute(
-            select(models.ReferenciaPrecio.precio_id, models.ReferenciaPrecio.referencia)
-            .join(models.PrecioInsumo, models.PrecioInsumo.id == models.ReferenciaPrecio.precio_id)
-            .where(models.PrecioInsumo.lista_id == lista.id)
-        ).all()
-    )
-    veces: dict[str, int] = {}
-    for ref in refs.values():
-        veces[ref] = veces.get(ref, 0) + 1
-    salida: dict[str, tuple[Decimal, date, str]] = {}
-    for precio in lista.precios:
-        dato = (precio.precio, origenes[precio.id].fecha_precio, lista.moneda)
-        salida.setdefault(precio.insumo.codigo, dato)
-    for precio in lista.precios:
-        ref = refs.get(precio.id)
-        if ref and veces[ref] == 1:
-            salida[ref] = (precio.precio, origenes[precio.id].fecha_precio, lista.moneda)
-    return salida
-
-
-def servicios_desde_sesion(session: Session) -> ContextoPrecios:
-    """El `ContextoPrecios` de esta instalación: las tasas del BCV que importó (las mismas de la
-    reauditoría, `auditoria.servicios.servicios_de_la_instalacion`) y los precios de su lista de
-    empresa más reciente.
-
-    Los precios se leen una vez, al armar el contexto: la sesión puede cerrarse después de
-    consultar las alertas, pero no antes (las tasas se consultan con ella).
-
-    Límite: la lista de empresa es una copia de su lista base con los propios encima (S1 §6.1);
-    aquí cuentan todos sus precios, heredados o propios, porque todos son "el precio de la empresa"
-    en la instalación. Un código de la empresa que no es Ref ni código del catálogo no contrasta.
-    """
-    # Importación diferida a propósito: `auditoria` importa la reauditoría, que arrastra
-    # `adapters.espacio` y con él el extra `planos` (shapely, ezdxf). Leer, recalcular y devolver
-    # un libro no lo necesita; solo armar el contexto desde la base de la instalación.
-    from auditoria.servicios import servicios_de_la_instalacion
-
-    servicios = servicios_de_la_instalacion(session)
-    precios = _precios_de_empresa(session)
-    return ContextoPrecios(
-        tasa_en=servicios.tasa_en,
-        precio_propio=precios.get if precios else None,
-    )

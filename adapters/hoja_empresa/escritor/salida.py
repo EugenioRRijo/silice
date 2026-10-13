@@ -6,6 +6,12 @@
   personalizadas `silice_sha256_origen`, `silice_version` y `silice_fecha`.
 - Las celdas combinadas se escriben antes que el contenido, para que cada celda conserve su propio
   estilo (bordes) dentro del rango.
+- Última barrera de seguridad (revisión 1.5): una fórmula, validación, formato condicional, nombre
+  definido o serie de gráfico que la lista negra de `formulas.motivo_peligro` rechaza no se escribe
+  como fórmula (la celda sale con su valor, como texto si es texto). La devolución ya las convierte
+  y anota antes (`devolucion`); aquí solo se impide que una se cuele.
+- Un gráfico se escribe con su tamaño acotado (`graficos.TOPE_PX`) y, si XlsxWriter lo rechaza, se
+  omite: `revisar_grafico` lo prueba antes en un libro de ensayo para que la devolución lo anote.
 """
 
 from __future__ import annotations
@@ -13,6 +19,7 @@ from __future__ import annotations
 import io
 import re
 import warnings
+import zipfile
 from datetime import date, datetime
 from decimal import Decimal
 from typing import Any
@@ -22,9 +29,14 @@ from xlsxwriter.exceptions import OverlappingRange
 
 from adapters.hoja_empresa.escritor.calculos import Err
 from adapters.hoja_empresa.escritor.estilos import Estilo
+from adapters.hoja_empresa.escritor.formulas import MAX_COL, MAX_FILA, es_formula_peligrosa
+from adapters.hoja_empresa.escritor.graficos import TOPE_PX
 from adapters.hoja_empresa.escritor.hoja import NADA, HojaSalida, LibroSalida
 
-__all__ = ["escribir_xlsx", "valor_para_xlsx"]
+__all__ = ["escribir_xlsx", "revisar_grafico", "tamano_grafico", "valor_para_xlsx"]
+
+#: Máximo de columnas o filas que se recorren para medir un gráfico anclado a dos celdas.
+_MAX_PASOS = 2_000
 
 _OPCIONES = {
     "in_memory": True,
@@ -91,8 +103,7 @@ def _sin_hoja(rango: str) -> str:
     return rango.split("!")[-1].replace("$", "")
 
 
-def _escribir_hoja(wb: Any, fm: _Formatos, h: HojaSalida) -> Any:
-    ws = wb.add_worksheet(h.nombre)
+def _dimensiones(ws: Any, h: HojaSalida) -> None:
     if h.alto_defecto:
         ws.set_default_row(h.alto_defecto)
     for c, (ancho, oculta) in sorted(h.anchos.items()):
@@ -101,6 +112,11 @@ def _escribir_hoja(wb: Any, fm: _Formatos, h: HojaSalida) -> Any:
     for f, (alto, oculta) in sorted(h.altos.items()):
         opciones = {"hidden": True} if oculta else {}
         ws.set_row(f - 1, alto, None, opciones)
+
+
+def _escribir_hoja(wb: Any, fm: _Formatos, h: HojaSalida) -> Any:
+    ws = wb.add_worksheet(h.nombre)
+    _dimensiones(ws, h)
     for f1, c1, f2, c2 in h.combinadas:
         if (f1, c1) == (f2, c2):
             continue
@@ -112,11 +128,15 @@ def _escribir_hoja(wb: Any, fm: _Formatos, h: HojaSalida) -> Any:
     for (f, c), cel in sorted(h.celdas.items()):
         r, k = f - 1, c - 1
         fmt = fm.de(cel.estilo)
-        if cel.formula:
+        if cel.formula and not es_formula_peligrosa(cel.formula):
             valor = cel.fijo if cel.fijo is not NADA else cel.calculado
             ws.write_formula(r, k, cel.formula, fmt, valor_para_xlsx(valor))
         else:
             v = cel.valor
+            if cel.formula:  # peligrosa: su valor, nunca la fórmula
+                v = cel.fijo if cel.fijo is not NADA else cel.calculado
+                v = cel.respaldo if v is NADA else v
+                v = v.codigo if isinstance(v, Err) else v
             if isinstance(v, str):
                 if v == "":
                     ws.write_blank(r, k, None, fmt)
@@ -137,8 +157,12 @@ def _escribir_hoja(wb: Any, fm: _Formatos, h: HojaSalida) -> Any:
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         for rango, opciones in h.validaciones:
+            if _opciones_peligrosas(opciones):
+                continue
             ws.data_validation(_sin_hoja(rango), opciones)
         for rango, opciones, estilo in h.condicionales:
+            if _opciones_peligrosas(opciones):
+                continue
             op = dict(opciones)
             if estilo is not None:
                 op["format"] = fm.dxf(estilo)
@@ -158,8 +182,22 @@ def _escribir_hoja(wb: Any, fm: _Formatos, h: HojaSalida) -> Any:
             img.fila - 1, img.col - 1, nombre, {"image_data": io.BytesIO(img.datos), **img.opciones}
         )
     for g in h.graficos:
-        _grafico(wb, ws, h, g)
+        try:
+            _grafico(wb, ws, h, g)
+        except Exception:  # noqa: BLE001 - un gráfico que XlsxWriter rechaza se omite
+            continue
     return ws
+
+
+def _opciones_peligrosas(opciones: dict[str, Any]) -> bool:
+    return any(
+        es_formula_peligrosa(opciones.get(k))
+        for k in ("source", "value", "minimum", "maximum", "criteria")
+    )
+
+
+def _serie_peligrosa(serie: dict[str, Any]) -> bool:
+    return any(es_formula_peligrosa(serie.get(k)) for k in ("name", "categories", "values"))
 
 
 def _px_col(h: HojaSalida, c: int) -> int:
@@ -178,7 +216,73 @@ def _px_fila(h: HojaSalida, f: int) -> int:
     return int(pt * 4 / 3 + 0.5)
 
 
+def _px_tramo(medida: Any, h: HojaSalida, ini: int, fin: int) -> int:
+    """Píxeles de las columnas (o filas) [ini, fin) según `medida`, sin pasar de `TOPE_PX` ni de
+    `_MAX_PASOS` recorridas: un anclaje enorme no recorre un millón de filas."""
+    total = 0
+    for i in range(ini, min(fin, ini + _MAX_PASOS)):
+        total += medida(h, i)
+        if total >= TOPE_PX:
+            return TOPE_PX
+    return total
+
+
+def _acotar(n: int) -> int:
+    return min(max(int(n), 0), TOPE_PX)
+
+
+def tamano_grafico(h: HojaSalida, g: Any) -> tuple[int, int]:
+    """Ancho y alto en píxeles con que se escribe el gráfico, acotados a `TOPE_PX`."""
+    if g.hasta is not None:
+        f2, c2, dx, dy = g.hasta
+        ancho = _px_tramo(_px_col, h, g.col, c2) - g.x_offset + dx
+        alto = _px_tramo(_px_fila, h, g.fila, f2) - g.y_offset + dy
+    elif g.tamano is not None:
+        ancho, alto = g.tamano
+    else:
+        ancho, alto = 480, 288
+    return _acotar(ancho), _acotar(alto)
+
+
+def revisar_grafico(h: HojaSalida, g: Any) -> str | None:
+    """None si el gráfico se puede escribir; si no, por qué se omite.
+
+    Lo prueba en un libro de ensayo en memoria (la misma llamada que `escribir_xlsx`, cerrando el
+    libro para que XlsxWriter valide también las series), así la devolución puede anotarlo en las
+    transformaciones del calcado antes de escribir.
+    """
+    if any(_serie_peligrosa(s) for s in g.series):
+        return "una serie lee otro libro o usa una función que sale del libro"
+    buf = io.BytesIO()
+    wb = xlsxwriter.Workbook(buf, _OPCIONES)
+    try:
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            ws = wb.add_worksheet(h.nombre)
+            _dimensiones(ws, h)
+            _grafico(wb, ws, h, g)
+            wb.close()
+    except Exception as exc:  # noqa: BLE001 - cualquier rechazo de XlsxWriter omite el gráfico
+        wb.fileclosed = True
+        return f"XlsxWriter no lo pudo escribir ({type(exc).__name__})"
+    try:
+        with zipfile.ZipFile(io.BytesIO(buf.getvalue())) as zf:
+            dibujos = [n for n in zf.namelist() if n.startswith("xl/drawings/drawing")]
+            xml = zf.read(dibujos[0]).decode("utf-8") if dibujos else ""
+    except (zipfile.BadZipFile, KeyError, UnicodeDecodeError):
+        return "XlsxWriter no lo pudo escribir"
+    if not xml:
+        return "XlsxWriter no lo pudo anclar en la hoja"
+    ancla = re.compile(r"<xdr:col>(\d+)</xdr:col>.*?<xdr:row>(\d+)</xdr:row>", re.S)
+    for col, fila in ancla.findall(xml):
+        if int(col) >= MAX_COL or int(fila) >= MAX_FILA:
+            return "su anclaje queda fuera de la hoja"
+    return None
+
+
 def _grafico(wb: Any, ws: Any, h: HojaSalida, g: Any) -> None:
+    if any(_serie_peligrosa(s) for s in g.series):
+        return
     opciones: dict[str, Any] = {"type": g.tipo}
     if g.subtipo and g.tipo in ("column", "bar", "line", "area"):
         opciones["subtype"] = g.subtipo
@@ -198,21 +302,14 @@ def _grafico(wb: Any, ws: Any, h: HojaSalida, g: Any) -> None:
         chart.set_legend({"none": True})
     elif g.leyenda:
         chart.set_legend({"position": g.leyenda})
-    if g.hasta is not None:
-        f2, c2, dx, dy = g.hasta
-        ancho = sum(_px_col(h, c) for c in range(g.col, c2)) - g.x_offset + dx
-        alto = sum(_px_fila(h, f) for f in range(g.fila, f2)) - g.y_offset + dy
-    elif g.tamano is not None:
-        ancho, alto = g.tamano
-    else:
-        ancho, alto = 480, 288
+    ancho, alto = tamano_grafico(h, g)
     if ancho > 20 and alto > 20:
         chart.set_size({"width": ancho, "height": alto})
     ws.insert_chart(
         g.fila - 1,
         g.col - 1,
         chart,
-        {"x_offset": g.x_offset, "y_offset": g.y_offset, "object_position": 1},
+        {"x_offset": _acotar(g.x_offset), "y_offset": _acotar(g.y_offset), "object_position": 1},
     )
 
 
@@ -259,6 +356,8 @@ def escribir_xlsx(libro: LibroSalida) -> bytes:
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         for nombre, texto in sorted(libro.nombres.items()):
+            if es_formula_peligrosa(texto):
+                continue
             wb.define_name(nombre, texto)
     wb.set_properties(dict(libro.propiedades))
     for k, v in libro.propiedades_extra.items():

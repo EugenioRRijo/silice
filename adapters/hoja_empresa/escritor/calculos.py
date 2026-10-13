@@ -15,13 +15,30 @@ Toda la aritmética es `Decimal` (NORMAS §2.3). Una función que el calculador 
 Semántica de Excel que se respeta: vacío = 0 en aritmética y "" en texto; comparación de textos sin
 distinguir mayúsculas; números < textos < lógicos al comparar tipos distintos; errores que se
 propagan (salvo en IFERROR/ISERROR); ROUND y ROUNDUP alejándose del cero; intersección implícita
-cuando un rango se usa como escalar.
+cuando un rango se usa como escalar; `#NUM!` cuando un número sale del rango de Excel (desborde) y
+`#VALUE!` cuando un texto pasa de 32 767 caracteres.
+
+Defensas ante un libro hostil (revisión de seguridad 1.5). El libro viene de fuera y una fórmula
+puede pedir un trabajo desmedido; ninguna defensa cambia el valor de una fórmula que termina:
+
+- Los rangos se RECORREN solo hasta la última fila y columna usadas de la hoja destino: más allá
+  todas las celdas están vacías, y lo que aportan se calcula sin visitarlas (COUNTIF cuenta las
+  vacías de una vez). El rango conserva su tamaño nominal, porque la intersección implícita, INDEX,
+  el número de columna de VLOOKUP y la forma de SUMPRODUCT dependen de él.
+- Un presupuesto de celdas visitadas (`MAX_VISITAS`) y de tiempo (`MAX_SEGUNDOS`) por libro, y una
+  profundidad máxima de referencias encadenadas (`MAX_PROFUNDIDAD`). Al pasarse, la fórmula se
+  corta ENTERA (`NoSoportado`): la celda más externa toma su valor guardado del libro recibido y
+  queda anotada, en vez de calcularse a medias con un número equivocado.
+- Los números fuera del rango de Excel dan `#NUM!` (nunca se convierten a entero: `int()` de un
+  `Decimal` de mil millones de cifras no termina) y los comodines de COUNTIF/SUMIF/MATCH/VLOOKUP se
+  comparan sin expresiones regulares (un patrón como `*a*a*a*a*b` hacía retroceder sin fin).
 """
 
 from __future__ import annotations
 
 import math
 import re
+import time
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from datetime import date, datetime
@@ -33,15 +50,58 @@ from openpyxl.formula.tokenizer import Token
 from adapters.hoja_empresa.escritor.formulas import MAX_COL, MAX_FILA, Ref, analizar_ref, tokens
 from adapters.hoja_empresa.escritor.hoja import NADA, LibroSalida
 
-__all__ = ["Err", "Evaluador", "NoSoportado", "a_numero", "texto_general"]
+__all__ = [
+    "MAX_PROFUNDIDAD",
+    "MAX_SEGUNDOS",
+    "MAX_VISITAS",
+    "Err",
+    "Evaluador",
+    "NoSoportado",
+    "a_numero",
+    "texto_general",
+]
 
 _CERO = Decimal(0)
 _UNO = Decimal(1)
 _EPOCA = datetime(1899, 12, 30)
 
+#: Celdas que un `Evaluador` visita como máximo en todo el libro (cada lectura de una celda cuenta,
+#: también las que ya estaban calculadas). SUPUESTO_DECLARADO (revisión de seguridad 1.5): la
+#: devolución del libro real más grande visita del orden de cien mil celdas; cinco millones dejan
+#: un margen de decenas de veces y se recorren en pocos segundos.
+MAX_VISITAS = 5_000_000
+#: Segundos de cálculo por libro (`time.monotonic`, desde la primera celda visitada).
+#: SUPUESTO_DECLARADO (revisión de seguridad 1.5): un libro real se calcula en menos de un segundo;
+#: 30 s es lo más que se hace esperar al usuario antes de conservar los valores guardados.
+MAX_SEGUNDOS = 30.0
+#: Celdas con fórmula anidadas como máximo (A1 usa A2, que usa A3...). SUPUESTO_DECLARADO (revisión
+#: de seguridad 1.5): cada nivel ocupa entre 5 y 10 marcos de la pila de Python, cuyo límite es
+#: 1 000; con 80 niveles el corte llega antes que el `RecursionError` y no depende de quién llame.
+#: Los libros reales no pasan de unos pocos niveles porque se evalúan fila por fila y lo calculado
+#: queda en memoria.
+MAX_PROFUNDIDAD = 80
+#: Exponente decimal máximo de un número de Excel (doble IEEE: 1,8E+308). Fuera de él, `#NUM!`; por
+#: debajo de 1E-308, cero.
+_MAX_EXPONENTE = 308
+#: Caracteres máximos de un texto: el límite de una celda que Microsoft publica en "Especificaciones
+#: y límites de Excel" (32 767). Pasarlo da `#VALUE!`, como en Excel; además impide que una cadena
+#: A2=A1&A1, A3=A2&A2... duplique el texto en cada fila hasta agotar la memoria.
+_MAX_TEXTO = 32767
+_MOTIVO_PROFUNDO = f"cadena de referencias de más de {MAX_PROFUNDIDAD} niveles"
+
 
 class NoSoportado(Exception):  # noqa: N818
     """La fórmula usa algo que el calculador no implementa."""
+
+
+class _Corte(NoSoportado):
+    """La fórmula no se calcula ENTERA: se agotó el presupuesto de celdas o de tiempo, o la cadena
+    de referencias es demasiado profunda.
+
+    A diferencia de un `NoSoportado` corriente, las celdas intermedias no lo atrapan (tomarían su
+    valor guardado y la de arriba se calcularía a medias, con un número equivocado): sube hasta la
+    celda más externa, que es la que conserva su valor guardado y queda anotada.
+    """
 
 
 @dataclass(frozen=True, slots=True)
@@ -127,7 +187,57 @@ def _texto_a_numero(s: str) -> Decimal | None:
         return None
     if not n.is_finite():
         return None
+    if n and n.adjusted() > _MAX_EXPONENTE:
+        return None  # VALUE("1E999") es #VALUE! en Excel
+    if n and n.adjusted() < -_MAX_EXPONENTE:
+        return _CERO
     return n / 100 if pct else n
+
+
+def _acotar(n: Decimal) -> Decimal:
+    """Un resultado numérico dentro del rango de Excel: `#NUM!` si se desborda, cero si es menor
+    que el número positivo más pequeño."""
+    if not n.is_finite():
+        raise _Propaga(_NUM)
+    if n:
+        e = n.adjusted()
+        if e > _MAX_EXPONENTE:
+            raise _Propaga(_NUM)
+        if e < -_MAX_EXPONENTE:
+            return _CERO
+    return n
+
+
+def _texto_acotado(t: str) -> str:
+    if len(t) > _MAX_TEXTO:
+        raise _Propaga(_VALOR)
+    return t
+
+
+def _coincide(texto: str, patron: str) -> bool:
+    """Comodines de Excel (`*` cualquier tira, `?` un carácter) sin expresiones regulares.
+
+    Algoritmo de dos punteros con vuelta a la última estrella: a lo sumo len(texto) × len(patron)
+    pasos, nunca el retroceso exponencial de `re` con varias `.*`. Ambos textos llegan ya en
+    `casefold`.
+    """
+    t = p = 0
+    estrella, marca = -1, 0
+    while t < len(texto):
+        if p < len(patron) and patron[p] == "*":
+            estrella, marca = p, t
+            p += 1
+        elif p < len(patron) and (patron[p] == "?" or patron[p] == texto[t]):
+            t += 1
+            p += 1
+        elif estrella >= 0:
+            marca += 1
+            t, p = marca, estrella + 1
+        else:
+            return False
+    while p < len(patron) and patron[p] == "*":
+        p += 1
+    return p == len(patron)
 
 
 def texto_general(v: object) -> str:
@@ -287,7 +397,10 @@ class _Analizador:
         t = self._tomar()
         if t.type == Token.OPERAND:
             if t.subtype == Token.NUMBER:
-                return ("n", Decimal(t.value))
+                n = Decimal(t.value)
+                if n and n.adjusted() > _MAX_EXPONENTE:
+                    return ("e", "#NUM!")  # Excel no admite 1E999 en una fórmula
+                return ("n", n if not n or n.adjusted() >= -_MAX_EXPONENTE else _CERO)
             if t.subtype == Token.TEXT:
                 return ("s", t.value[1:-1].replace('""', '"'))
             if t.subtype == Token.LOGICAL:
@@ -358,7 +471,11 @@ class Evaluador:
         self._ctx: list[tuple[str, int, int]] = []
         self.rota_blanca = False
         self.respaldos: list[tuple[str, int, int, str]] = []
-        self._max: dict[str, tuple[int, int]] = {}
+        self._max: dict[str, tuple[int, int, int]] = {}
+        # Presupuesto de todo el libro: `olvidar` no lo repone.
+        self._visitas = 0
+        self._inicio: float | None = None
+        self._agotado: str | None = None
 
     def olvidar(self) -> None:
         self._memo.clear()
@@ -366,8 +483,32 @@ class Evaluador:
 
     # -- celdas --
 
+    def _gastar(self) -> None:
+        """Cuenta una visita; al agotarse el presupuesto, corta la fórmula en curso.
+
+        Solo corta si hay una fórmula en curso (`_ctx`): la celda más externa nunca lanza, toma su
+        valor guardado. El reloj se mira cada 1 024 visitas para que medir no cueste.
+        """
+        self._visitas += 1
+        if self._agotado is None:
+            if self._inicio is None:
+                self._inicio = time.monotonic()
+            if self._visitas > MAX_VISITAS:
+                self._agotado = (
+                    f"se agotó el presupuesto de cálculo ({MAX_VISITAS:,} celdas visitadas)"
+                ).replace(",", ".")
+            elif not self._visitas & 0x3FF and time.monotonic() - self._inicio > MAX_SEGUNDOS:
+                self._agotado = f"se agotó el tiempo de cálculo ({MAX_SEGUNDOS:g} s por libro)"
+        if self._agotado is not None and self._ctx:
+            raise _Corte(self._agotado)
+
+    def _conservar(self, hoja: str, f: int, c: int, respaldo: object, motivo: str) -> object:
+        self.respaldos.append((hoja, f, c, motivo))
+        return respaldo
+
     def celda(self, hoja: str, f: int, c: int) -> object:
         clave = (hoja, f, c)
+        self._gastar()
         if clave in self._memo:
             return self._memo[clave]
         h = self.libro.hojas.get(hoja)
@@ -379,14 +520,28 @@ class Evaluador:
         elif cel.formula:
             if clave in self._curso:
                 return Err("#CIRC")
-            self._curso.add(clave)
-            try:
-                v = self.formula(cel.formula, hoja, f, c)
-            except (NoSoportado, RecursionError) as exc:
-                v = cel.respaldo
-                self.respaldos.append((hoja, f, c, str(exc) or type(exc).__name__))
-            finally:
-                self._curso.discard(clave)
+            if self._agotado is not None:  # solo llega aquí la celda más externa
+                v = self._conservar(hoja, f, c, cel.respaldo, self._agotado)
+            elif len(self._curso) >= MAX_PROFUNDIDAD:
+                raise _Corte(_MOTIVO_PROFUNDO)  # hay celdas en curso: alguna la contiene
+            else:
+                self._curso.add(clave)
+                try:
+                    v = self.formula(cel.formula, hoja, f, c)
+                except _Corte as exc:
+                    if self._ctx:  # una fórmula contiene a esta: el corte sube entero
+                        raise
+                    v = self._conservar(hoja, f, c, cel.respaldo, str(exc))
+                except RecursionError:
+                    if self._ctx:
+                        raise _Corte(_MOTIVO_PROFUNDO) from None
+                    v = self._conservar(hoja, f, c, cel.respaldo, _MOTIVO_PROFUNDO)
+                except NoSoportado as exc:
+                    v = self._conservar(hoja, f, c, cel.respaldo, str(exc) or type(exc).__name__)
+                except ArithmeticError:  # desborde de Decimal que escapó: Excel da #NUM!
+                    v = _NUM
+                finally:
+                    self._curso.discard(clave)
         else:
             v = cel.valor
             if isinstance(v, int | float) and not isinstance(v, bool):
@@ -407,6 +562,8 @@ class Evaluador:
                 v = self._escalar(v)
             except _Propaga as p:
                 v = p.err
+            except ArithmeticError:  # decimal.Overflow, InvalidOperation...: como Excel, #NUM!
+                v = _NUM
         finally:
             self._ctx.pop()
         if v is None:
@@ -420,12 +577,26 @@ class Evaluador:
         return self._ctx[-1][0]
 
     def _maximo(self, hoja: str) -> tuple[int, int]:
+        """Última fila y columna usadas de la hoja, en memoria mientras no cambie su número de
+        celdas: de ellas depende qué parte de cada rango se recorre (`_usado`), así que una celda
+        añadida después de calcularlas no puede quedar fuera."""
+        h = self.libro.hojas.get(hoja)
+        if h is None:
+            return 0, 0
         m = self._max.get(hoja)
-        if m is None:
-            h = self.libro.hojas.get(hoja)
-            m = (h.max_fila, h.max_col) if h is not None else (0, 0)
+        if m is None or m[0] != len(h.celdas):
+            m = (len(h.celdas), h.max_fila, h.max_col)
             self._max[hoja] = m
-        return m
+        return m[1], m[2]
+
+    def _usado(self, r: Rango) -> tuple[int, int]:
+        """Filas y columnas del rango, desde su esquina, que caen dentro de lo usado de su hoja.
+
+        Más allá todas las celdas están vacías: recorrer solo esto da el mismo resultado y acota el
+        trabajo de `=COUNTIF(A1:XFC1000000;">0")` a lo que la hoja tiene.
+        """
+        mf, mc = self._maximo(r.hoja)
+        return max(0, min(r.f2, mf) - r.f1 + 1), max(0, min(r.c2, mc) - r.c1 + 1)
 
     def _rango_de_ref(self, r: Ref) -> Rango | Err:
         if r.externa:
@@ -493,18 +664,26 @@ class Evaluador:
                 if isinstance(v, Err):
                     raise _Propaga(v)
                 return v  # el + unario de Excel no convierte: =+A1 con texto da el texto
-            return -a_numero(v)
+            return _acotar(-a_numero(v))
         if tipo == "pct":
-            return a_numero(self._val(nodo[1])) / 100
+            return _acotar(a_numero(self._val(nodo[1])) / 100)
         if tipo == "bin":
             return self._binario(nodo[1], self._val(nodo[2]), self._val(nodo[3]))
         if tipo == "f":
-            return self._funcion(nodo[1], nodo[2])
+            v = self._funcion(nodo[1], nodo[2])
+            if isinstance(v, Decimal):
+                return _acotar(v)
+            if isinstance(v, str):
+                return _texto_acotado(v)
+            return v
         raise NoSoportado(tipo)
 
     def _binario(self, op: str, a: object, b: object) -> object:
         if op == "&":
-            return _a_texto(a) + _a_texto(b)
+            ta, tb = _a_texto(a), _a_texto(b)
+            if len(ta) + len(tb) > _MAX_TEXTO:
+                raise _Propaga(_VALOR)
+            return ta + tb
         if op in ("=", "<>", "<", ">", "<=", ">="):
             k = _comparar(a, b)
             return {
@@ -516,43 +695,40 @@ class Evaluador:
                 ">=": k >= 0,
             }[op]
         x, y = a_numero(a), a_numero(b)
-        if op == "+":
-            return x + y
-        if op == "-":
-            return x - y
-        if op == "*":
-            return x * y
-        if op == "/":
-            if y == 0:
-                raise _Propaga(_DIV0)
-            return x / y
-        if op == "^":
-            try:
+        try:
+            if op == "+":
+                return _acotar(x + y)
+            if op == "-":
+                return _acotar(x - y)
+            if op == "*":
+                return _acotar(x * y)
+            if op == "/":
+                if y == 0:
+                    raise _Propaga(_DIV0)
+                return _acotar(x / y)
+            if op == "^":
                 if y == y.to_integral_value() and abs(y) < 1000:
-                    return x ** int(y)
-                return Decimal(str(math.pow(float(x), float(y))))
-            except (ValueError, ZeroDivisionError, OverflowError, InvalidOperation) as exc:
-                raise _Propaga(_NUM) from exc
+                    return _acotar(x ** int(y))
+                return _acotar(Decimal(str(math.pow(float(x), float(y)))))
+        except (ArithmeticError, ValueError) as exc:  # Overflow, InvalidOperation, dominio de pow
+            raise _Propaga(_NUM) from exc
         raise NoSoportado(op)
 
     # -- rangos --
 
     def _celdas(self, v: object) -> Iterator[object]:
-        """Valores de un argumento: las celdas de un rango, o el escalar mismo."""
+        """Valores de un argumento: las celdas de un rango, o el escalar mismo.
+
+        De un rango salen solo las celdas de la parte usada (`_usado`): las demás están vacías y
+        ninguna función que llama a `_celdas` las cuenta (COUNTIF suma las vacías aparte).
+        """
         if isinstance(v, Rango):
-            for f in range(v.f1, v.f2 + 1):
-                for c in range(v.c1, v.c2 + 1):
+            nf, nc = self._usado(v)
+            for f in range(v.f1, v.f1 + nf):
+                for c in range(v.c1, v.c1 + nc):
                     yield self.celda(v.hoja, f, c)
         else:
             yield v
-
-    def _matriz(self, v: object) -> list[list[object]]:
-        if isinstance(v, Rango):
-            return [
-                [self.celda(v.hoja, f, c) for c in range(v.c1, v.c2 + 1)]
-                for f in range(v.f1, v.f2 + 1)
-            ]
-        return [[v]]
 
     # -- funciones --
 
@@ -584,6 +760,8 @@ def _f_iferror(ev: Evaluador, a: list[tuple | None]) -> object:
         v = ev._val(a[0])
     except _Propaga as p:
         v = p.err
+    except ArithmeticError:
+        v = _NUM
     if isinstance(v, Err):
         return ev._ev(a[1]) if len(a) > 1 and a[1] is not None else _CERO
     return v
@@ -592,7 +770,7 @@ def _f_iferror(ev: Evaluador, a: list[tuple | None]) -> object:
 def _f_iserror(ev: Evaluador, a: list[tuple | None]) -> object:
     try:
         v = ev._val(a[0])
-    except _Propaga:
+    except (_Propaga, ArithmeticError):
         return True
     return isinstance(v, Err)
 
@@ -899,14 +1077,13 @@ def _criterio(ev: Evaluador, crit: object) -> Callable[[object], bool]:
             ]
 
         return num
-    patron = "^" + re.escape(s.casefold()).replace(r"\*", ".*").replace(r"\?", ".") + "$"
-    rx = re.compile(patron, re.DOTALL)
+    patron = s.casefold()
 
     def texto(v: object) -> bool:
         if op in ("=", "<>"):
             if s == "" and op == "=":
                 return v is None or v == ""
-            ok = isinstance(v, str) and rx.match(v.casefold()) is not None
+            ok = isinstance(v, str) and _coincide(v.casefold(), patron)
             return ok if op == "=" else not ok
         if not isinstance(v, str):
             return False
@@ -926,9 +1103,15 @@ def _f_sumif(ev: Evaluador, a: list[object]) -> object:
     r = _como_rango(a[0])
     ok = _criterio(ev, a[1])
     s = _como_rango(a[2]) if len(a) > 2 and a[2] is not None else r
+    # Solo la parte usada: una fila vacía del criterio cuenta solo si el criterio acepta el vacío,
+    # y entonces suma lo que haya en la parte usada del rango de suma.
+    nf, nc = ev._usado(r)
+    if ok(None):
+        sf, sc = ev._usado(s)
+        nf, nc = max(nf, min(sf, r.filas)), max(nc, min(sc, r.cols))
     total = _CERO
-    for i in range(r.filas):
-        for j in range(r.cols):
+    for i in range(nf):
+        for j in range(nc):
             if ok(ev.celda(r.hoja, r.f1 + i, r.c1 + j)):
                 v = ev.celda(s.hoja, s.f1 + i, s.c1 + j)
                 if isinstance(v, Err):
@@ -941,22 +1124,33 @@ def _f_sumif(ev: Evaluador, a: list[object]) -> object:
 def _f_countif(ev: Evaluador, a: list[object]) -> object:
     r = _como_rango(a[0])
     ok = _criterio(ev, a[1])
-    return Decimal(sum(1 for v in ev._celdas(r) if ok(v)))
+    n = sum(1 for v in ev._celdas(r) if ok(v))
+    nf, nc = ev._usado(r)
+    vacias = r.filas * r.cols - nf * nc  # las celdas fuera de lo usado, sin visitarlas
+    if vacias and ok(None):
+        n += vacias
+    return Decimal(n)
 
 
 def _f_sumproduct(ev: Evaluador, a: list[object]) -> object:
-    mats = [ev._matriz(x) for x in a]
-    if not mats:
+    if not a:
         return _CERO
-    filas, cols = len(mats[0]), len(mats[0][0])
-    if any(len(m) != filas or len(m[0]) != cols for m in mats):
+    formas = [(x.filas, x.cols) if isinstance(x, Rango) else (1, 1) for x in a]
+    if any(fc != formas[0] for fc in formas):
         raise _Propaga(_VALOR)
+    filas, cols = formas[0]
+    # Fuera de la parte usada de TODOS los rangos cada producto tiene un factor vacío (0) y no hay
+    # errores que propagar: basta recorrer hasta la mayor parte usada.
+    usadas = [ev._usado(x) for x in a if isinstance(x, Rango)]
+    if usadas:
+        filas = min(filas, max(nf for nf, _ in usadas))
+        cols = min(cols, max(nc for _, nc in usadas))
     total = _CERO
     for i in range(filas):
         for j in range(cols):
             prod = _UNO
-            for m in mats:
-                v = m[i][j]
+            for x in a:
+                v = ev.celda(x.hoja, x.f1 + i, x.c1 + j) if isinstance(x, Rango) else x
                 if isinstance(v, Err):
                     raise _Propaga(v)
                 prod *= v if isinstance(v, Decimal) and not isinstance(v, bool) else _CERO
@@ -966,10 +1160,9 @@ def _f_sumproduct(ev: Evaluador, a: list[object]) -> object:
 
 def _buscar_exacto(ev: Evaluador, x: object, valores: list[object]) -> int | None:
     if isinstance(x, str) and ("*" in x or "?" in x):
-        patron = "^" + re.escape(x.casefold()).replace(r"\*", ".*").replace(r"\?", ".") + "$"
-        rx = re.compile(patron)
+        patron = x.casefold()
         for i, v in enumerate(valores):
-            if isinstance(v, str) and rx.match(v.casefold()):
+            if isinstance(v, str) and _coincide(v.casefold(), patron):
                 return i
         return None
     for i, v in enumerate(valores):
@@ -1002,7 +1195,8 @@ def _f_vlookup(ev: Evaluador, a: list[object]) -> object:
     exacto = len(a) > 3 and a[3] is not None and not _a_bool(_esc(ev, a[3]))
     if col < 1 or col > r.cols:
         raise _Propaga(_REF)
-    primera = [ev.celda(r.hoja, f, r.c1) for f in range(r.f1, r.f2 + 1)]
+    filas, _ = ev._usado(r)  # más abajo todo está vacío y nunca coincide
+    primera = [ev.celda(r.hoja, f, r.c1) for f in range(r.f1, r.f1 + filas)]
     i = _buscar_exacto(ev, x, primera) if exacto else _buscar_aprox(ev, x, primera, 1)
     if i is None:
         raise _Propaga(_NA)

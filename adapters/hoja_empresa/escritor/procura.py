@@ -25,8 +25,8 @@ from openpyxl.formula.translate import Translator
 from adapters.hoja_empresa.escritor.contexto import Contexto
 from adapters.hoja_empresa.escritor.formulas import cita, col_num, letra, tokens
 from adapters.hoja_empresa.escritor.hoja import CeldaSalida, HojaSalida
-from adapters.hoja_empresa.escritor.plantilla import es_destajo, fila_de, filas_base_mo
 from adapters.hoja_empresa.modelo import TipoInsumo
+from adapters.hoja_empresa.plantilla import es_destajo, fila_de, filas_base_mo
 
 __all__ = ["ajustar_procura", "insertar_filas"]
 

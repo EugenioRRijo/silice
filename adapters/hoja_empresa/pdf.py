@@ -23,6 +23,12 @@ página, no cantidades: todo número del presupuesto es `Decimal` (NORMAS §2.3)
 `pdfplumber` (licencia MIT) se importa dentro de las funciones que leen, para que el resto del
 adaptador no dependa del extra `pdf`. No se usa PyMuPDF (AGPL).
 
+El PDF viene de fuera (revisión de seguridad 1.5): antes de abrirlo se mira el tamaño (el mismo
+tope que el libro, `guardia.MAX_BYTES`), la cabecera `%PDF-` y, en los bytes crudos, `/Encrypt` y
+`/JavaScript`; al abrirlo, el número de páginas (≤ 60). Cualquier falla al abrir o leer (pdfminer
+lanza tipos muy variados ante un PDF dañado u hostil) se convierte en `ArchivoRechazado` con un
+mensaje fijo para el usuario, sin el texto técnico de la excepción.
+
 Lo que no sigue la convención no se adivina: un renglón sin descripción ni cifras se descarta como
 fila vacía de la plantilla, un precio escrito como expresión (`3*99.75`) se guarda como texto y no
 como número, y un renglón de cómputos que no se empareja con uno del presupuesto se informa en vez
@@ -36,11 +42,13 @@ import hashlib
 import io
 import re
 import unicodedata
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable, Iterator, Sequence
+from contextlib import contextmanager
 from dataclasses import dataclass
 from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from typing import TYPE_CHECKING, Any
 
+from adapters.hoja_empresa.guardia import MAX_BYTES, ArchivoRechazado
 from core.contracts.verificacion import Hallazgo, Severidad
 
 if TYPE_CHECKING:
@@ -48,6 +56,7 @@ if TYPE_CHECKING:
 
 __all__ = [
     "MAX_BYTES_PDF",
+    "MAX_PAGINAS_PDF",
     "TOLERANCIA",
     "UMBRAL_SIMILITUD",
     "PdfSimple",
@@ -69,9 +78,21 @@ TOLERANCIA = Decimal("0.005")
 #: con "Teipe Eléctrico Negro Cobra" sin emparejar dos productos distintos de la misma familia.
 UMBRAL_SIMILITUD = Decimal("0.8")
 
-#: Tamaño máximo del PDF que se abre. SUPUESTO_DECLARADO: el mismo tope de 25 MB que F-D10 fija
-#: para el libro; el PDF impreso más pesado recibido ronda los 7 MB.
-MAX_BYTES_PDF = 25 * 1024 * 1024
+#: Tamaño máximo del PDF que se abre. SUPUESTO_DECLARADO: el mismo tope que F-D10 fija para el
+#: libro (se reutiliza `guardia.MAX_BYTES`, 25 MB); el PDF impreso más pesado recibido ronda 6,3 MB.
+MAX_BYTES_PDF = MAX_BYTES
+
+#: Páginas máximas del PDF. SUPUESTO_DECLARADO (revisión de seguridad 1.5): el PDF real más largo
+#: tiene 24 páginas (medido el 2026-10-13); 60 deja margen y acota el trabajo de pdfminer, que
+#: analiza cada página entera para extraer sus palabras.
+MAX_PAGINAS_PDF = 60
+
+#: Mensaje fijo cuando el PDF no se puede abrir o leer: el texto técnico de pdfminer no le dice
+#: nada al usuario y podría mostrar rutas internas.
+_PDF_ILEGIBLE = (
+    "El PDF «{nombre}» no se pudo leer: está dañado, protegido o no es un PDF de presupuesto. "
+    "Imprímalo de nuevo a PDF desde el programa original."
+)
 
 _REGLA_PDF = "L10"
 _REGLA_COTEJO = "L11"
@@ -635,16 +656,79 @@ def _numero_y_fecha(lineas: Sequence[Sequence[_Palabra]]) -> tuple[str, str]:
     return "", ""
 
 
-def _abrir(datos: bytes) -> Any:
+def _verificar_bytes(datos: bytes, nombre: str) -> None:
+    """Lo que se decide sin abrir el PDF: tamaño, cabecera, cifrado y JavaScript.
+
+    `/Encrypt` y `/JavaScript` se buscan en los bytes crudos: un presupuesto impreso no los
+    necesita, y un PDF cifrado no se puede leer sin su clave. Si el PDF los esconde dentro de un
+    flujo comprimido, la búsqueda no los ve; no importa, porque pdfplumber no ejecuta JavaScript y
+    un PDF cifrado falla al leerse (y esa falla también se rechaza).
+    """
     if len(datos) > MAX_BYTES_PDF:
-        raise ValueError(
-            f"el PDF pesa {len(datos)} bytes; el máximo admitido es {MAX_BYTES_PDF} bytes"
+        raise ArchivoRechazado(
+            f"El PDF «{nombre}» pesa {f'{len(datos) / 2**20:.1f}'.replace('.', ',')} MB y supera "
+            f"el máximo de {MAX_BYTES_PDF // 2**20} MB."
         )
     if b"%PDF-" not in datos[:1024]:  # la norma admite bytes previos en el primer kilobyte
-        raise ValueError("el archivo no es un PDF (no hay cabecera %PDF- en el primer kilobyte)")
-    import pdfplumber
+        raise ArchivoRechazado(f"El archivo «{nombre}» no es un PDF (no tiene la cabecera %PDF-).")
+    if b"/Encrypt" in datos:
+        raise ArchivoRechazado(
+            f"El PDF «{nombre}» está cifrado o protegido con contraseña. Imprímalo de nuevo a PDF "
+            "sin protección."
+        )
+    if b"/JavaScript" in datos:
+        raise ArchivoRechazado(
+            f"El PDF «{nombre}» contiene JavaScript, que un presupuesto no necesita. Se rechaza "
+            "por seguridad: imprímalo de nuevo a PDF desde el programa original."
+        )
 
-    return pdfplumber.open(io.BytesIO(datos))
+
+def _paginas_declaradas(doc: Any) -> int | None:
+    """El `/Count` del árbol de páginas, sin construir las páginas (None si no se puede leer)."""
+    from pdfminer.pdftypes import resolve1
+
+    raiz = resolve1(doc.doc.catalog.get("Pages"))
+    cuenta = resolve1(raiz.get("Count")) if isinstance(raiz, dict) else None
+    return cuenta if isinstance(cuenta, int) else None
+
+
+@contextmanager
+def _abrir(datos: bytes, nombre: str) -> Iterator[Any]:
+    """Abre el PDF para leerlo dentro de un `with`; lanza `ArchivoRechazado` si no se debe abrir
+    o si cualquier cosa falla al abrirlo o al leerlo.
+
+    Las páginas se cuentan dos veces: primero el `/Count` que declara el documento (barato, antes
+    de que pdfplumber construya cada página) y después `len(doc.pages)`, porque el `/Count` puede
+    mentir. Las dos van antes de leer ninguna página.
+    """
+    _verificar_bytes(datos, nombre)
+    try:
+        import pdfplumber
+    except ImportError as exc:
+        raise ArchivoRechazado(
+            "Esta instalación no puede leer PDF: falta el componente pdf."
+        ) from exc
+    try:
+        doc = pdfplumber.open(io.BytesIO(datos))
+    except Exception as exc:  # pdfminer lanza tipos muy variados ante un PDF dañado
+        raise ArchivoRechazado(_PDF_ILEGIBLE.format(nombre=nombre)) from exc
+    try:
+        declaradas = _paginas_declaradas(doc)
+        paginas = declaradas if declaradas is not None and declaradas > MAX_PAGINAS_PDF else None
+        if paginas is None:
+            paginas = len(doc.pages)
+        if paginas > MAX_PAGINAS_PDF:
+            raise ArchivoRechazado(
+                f"El PDF «{nombre}» tiene {paginas} páginas y el máximo es {MAX_PAGINAS_PDF}. "
+                "No parece un presupuesto."
+            )
+        yield doc
+    except ArchivoRechazado:
+        raise
+    except Exception as exc:  # cualquier falla de lectura, dentro del `with` incluida
+        raise ArchivoRechazado(_PDF_ILEGIBLE.format(nombre=nombre)) from exc
+    finally:
+        doc.close()
 
 
 def leer_pdf_simple(datos: bytes, nombre: str) -> PdfSimple:
@@ -661,7 +745,7 @@ def leer_pdf_simple(datos: bytes, nombre: str) -> PdfSimple:
     total_computos: Decimal | None = None
     total_impreso: Decimal | None = None
     numero = fecha = ""
-    with _abrir(datos) as doc:
+    with _abrir(datos, nombre) as doc:
         for num, page in enumerate(doc.pages, start=1):
             palabras = _palabras(page)
             if not numero and not fecha:
@@ -1180,7 +1264,7 @@ def leer_totales_impresos(datos: bytes, nombre: str) -> TotalesImpresos:
     """
     bloques: list[_Bloque] = []
     opcion = ""
-    with _abrir(datos) as doc:
+    with _abrir(datos, nombre) as doc:
         paginas = len(doc.pages)
         for num, page in enumerate(doc.pages, start=1):
             lineas = [_limpiar(t) for t in (page.extract_text() or "").splitlines()]

@@ -802,4 +802,5 @@ def leer_libro(datos: bytes, nombre: str, perfil: Perfil | None = None) -> Libro
             h_control, sec["inicio_final"], sec["fin_final"], col_num, col_cant
         ),
         gastado=_gastado(_buscar_hoja(hojas, perfil.hoja("GASTOS")), perfil),
+        perfil=perfil.nombre,
     )

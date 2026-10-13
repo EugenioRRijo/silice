@@ -1,4 +1,4 @@
-"""Libro de la empresa (spec 1.5 §1 y §5): subir el libro → resumen → hallazgos con la vista
+"""Libro de la empresa (spec 1.5 §1 y §5, UC-25): subir el libro → resumen → hallazgos con la vista
 calcada → alertas USD-Bs → descargar el libro devuelto.
 
 Quien trabaja sube el Excel de su empresa (y, si lo tiene, el PDF que se entregó al cliente y una
@@ -7,24 +7,38 @@ lo audita y devuelve el libro calcado con las hojas AUDITORÍA, TRAZABILIDAD y A
 (`fusion.proceso`). Todo en memoria (F-D9): el caso solo se lee, para las tasas del BCV y los
 precios propios de esta instalación.
 
-Fechas (F-D8): la del libro se propone desde la PORTADA y el usuario puede cambiarla; la de
-devolución es hoy, a la vista y editable. El resultado se calcula una vez al pulsar «Auditar» y se
-guarda en `st.session_state` con una clave que no es de widget; el libro devuelto se genera solo al
-pulsar «Preparar el libro devuelto». La vista activa se elige con `st.segmented_control`, así que
-una edición solo pinta la vista que se ve. Lo pesado se importa dentro de las acciones: la página
-se importa sin efectos y sin cargar `fusion` ni el lector del PDF.
+Sin Excel, la página acepta **solo un PDF simple** (el presupuesto impreso, formato 001/002): lo
+coteja consigo mismo (L10, `fusion.proceso.auditar_pdf_simple`) y muestra el resumen y los
+hallazgos; sin libro no hay recálculo ni libro devuelto.
+
+Fechas (F-D8): la del libro, si se deja vacía, es la de la PORTADA, que se lee una sola vez al
+auditar (no se abre el libro dos veces para proponerla); el resumen dice cuál se usó y de dónde
+salió. La de devolución es hoy, a la vista y editable. El resultado se calcula una vez al pulsar
+«Auditar» y se guarda en `st.session_state` con una clave que no es de widget; el libro devuelto se
+genera solo al pulsar «Preparar el libro devuelto». El libro abierto para la vista calcada vive en
+`st.cache_resource` con su SHA-256 como clave, no en la sesión. La vista activa se elige con
+`st.segmented_control`, así que una edición solo pinta la vista que se ve. Lo pesado se importa
+dentro de las acciones: la página se importa sin efectos y sin cargar `fusion` ni el lector del PDF.
+
+Errores (directriz 4): un archivo rechazado o un libro que no se puede interpretar dicen por qué; un
+fallo inesperado da un mensaje fijo y, plegado, solo el nombre de la clase de error. El detalle va
+al registro del servidor (`logging`), nunca a la pantalla.
 """
 
 from __future__ import annotations
 
 import hashlib
+import logging
 from dataclasses import dataclass
 from datetime import date
+from decimal import Decimal
 
 import streamlit as st
 
 from adapters.hoja_empresa.guardia import ArchivoRechazado, verificar_archivo
+from adapters.hoja_empresa.modelo import LibroNoInterpretable
 from core.catalog import abrir_sesion, crear_motor
+from core.verification.texto import formatear_decimal
 from operacion.base_datos import ErrorDeBase, preparar_base
 from seguridad.permisos import Accion
 from ui import libros
@@ -33,23 +47,37 @@ from ui.caso import ruta_caso
 from ui.subidas import nombre_seguro
 from ui.texto_seguro import texto_seguro
 
+LOG = logging.getLogger(__name__)
+
 CLAVE_RESULTADO = "libros_resultado"  # lo auditado: no es clave de ningún widget
-CLAVE_FECHA_SUGERIDA = "libros_fecha_sugerida"  # (sha, fecha, de dónde salió)
+CLAVE_RESULTADO_PDF = "libros_resultado_pdf"  # lo revisado de un PDF simple (L10)
+CLAVE_VERIFICADO = "libros_verificado"  # SHA-256 del último libro que pasó la guardia
 CLAVE_DEVUELTO = "libros_devuelto"  # (firma, nombre, octetos) del libro devuelto
 CLAVE_VISTAS = "libros_vistas"  # vistas calcadas ya armadas, por (sha, hoja, desde, ocultas)
-CLAVE_ABIERTO = "libros_abierto"  # (sha, libro de openpyxl): se lee una vez por resultado
 CLAVE_SECCION = "libros_seccion"
 SECCIONES = ("Hallazgos", "Vista de la hoja", "Alertas USD-Bs")
 MAX_VISTAS_GUARDADAS = 12
+UMBRAL_POR_DEFECTO_PCT = 5.0
 MIME_XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+ERRORES_DEL_USUARIO = (ArchivoRechazado, LibroNoInterpretable)  # su mensaje es para el usuario
 MENSAJE_FALLO = (
     "No se pudo auditar el libro por un problema inesperado. Revise que sea el libro de "
-    "presupuesto de la empresa y vuelva a intentarlo; si se repite, guarde el detalle de abajo y "
-    "comuníquelo a quien administra Silice."
+    "presupuesto de la empresa y vuelva a intentarlo; si se repite, comunique a quien administra "
+    "Silice el tipo de error de abajo (el detalle quedó en el registro del servidor)."
+)
+MENSAJE_FALLO_PDF = (
+    "No se pudo revisar el PDF por un problema inesperado. Revise que sea el presupuesto impreso "
+    "(formato 001/002) y vuelva a intentarlo; si se repite, comunique a quien administra Silice el "
+    "tipo de error de abajo (el detalle quedó en el registro del servidor)."
 )
 ACCIONES_F_D7 = (
     "**corregido**: Silice lo corrigió en el libro devuelto · **a confirmar**: se conservó lo "
     "escrito y la empresa debe confirmarlo · **informado**: solo se informa."
+)
+LEYENDA_PDF = "Un PDF no se devuelve corregido: todos sus hallazgos son **informado**."
+LIMITES_DEL_CALCADO = (
+    "No se copian hipervínculos, protección de hoja ni formatos condicionales de barras, escalas "
+    "o iconos; todo cambio queda en AUDITORÍA y TRAZABILIDAD."
 )
 
 
@@ -63,12 +91,36 @@ class Auditado:
     resultado: object  # fusion.proceso.ResultadoFusion (importado de forma perezosa)
 
 
+@dataclass(frozen=True, slots=True)
+class Entrada:
+    """Lo que el usuario subió y eligió. `xlsx` es `None` en el modo «solo un PDF simple»."""
+
+    xlsx: object | None
+    pdf: object | None
+    otro: object | None
+    fecha_libro: date | None = None
+    fecha_devolucion: date | None = None
+    umbral: Decimal = Decimal("0.05")
+
+
 def _sha(datos: bytes | None) -> str:
     return hashlib.sha256(datos).hexdigest() if datos is not None else "-"
 
 
-def _firma(xlsx: bytes, pdf: bytes | None, otro: bytes | None, f_libro, f_dev) -> str:
-    return "|".join((_sha(xlsx), _sha(pdf), _sha(otro), str(f_libro), str(f_dev)))
+def _firma(e: Entrada) -> str:
+    def octetos(subida) -> bytes | None:
+        return subida.getvalue() if subida is not None else None
+
+    return "|".join(
+        (
+            _sha(octetos(e.xlsx)),
+            _sha(octetos(e.pdf)),
+            _sha(octetos(e.otro)),
+            str(e.fecha_libro),
+            str(e.fecha_devolucion),
+            str(e.umbral),
+        )
+    )
 
 
 def _nombre(subida, defecto: str) -> str:
@@ -87,48 +139,47 @@ def _dia(fecha: date | None) -> str:
     return fecha.strftime("%d/%m/%Y") if fecha is not None else "sin fecha"
 
 
-def _fallo_inesperado(error: Exception) -> None:
-    """Mensaje claro y el detalle plegado, sin traza (directriz 4)."""
-    st.error(MENSAJE_FALLO)
+def _detalle_tecnico(error: BaseException, que: str) -> None:
+    """Solo el nombre de la clase de error, plegado; el detalle y la traza, al registro."""
+    LOG.error("%s: %s", que, type(error).__name__, exc_info=error)
     with st.expander("Detalle técnico"):
-        st.code(f"{type(error).__name__}: {error}", language=None)
+        st.code(type(error).__name__, language=None)
+
+
+def _fallo_inesperado(error: Exception, mensaje: str = MENSAJE_FALLO) -> None:
+    """Mensaje claro y la clase del error plegada, sin traza ni texto del error (directriz 4)."""
+    st.error(mensaje)
+    _detalle_tecnico(error, "Libro de la empresa: fallo inesperado")
+
+
+@st.cache_resource(max_entries=4, ttl=1800, show_spinner=False)
+def _libro_abierto(sha: str, _origen: bytes):
+    """El libro abierto para la vista calcada, uno por SHA-256 (el `_` deja los octetos fuera de la
+    clave). Se comparte entre reruns sin guardarlo en la sesión; solo lo alcanza quien sube los
+    mismos octetos."""
+    return libros.abrir_libro(_origen)
 
 
 # --- entrada --------------------------------------------------------------------------------------
 
 
-def _fecha_sugerida(datos: bytes, nombre: str) -> tuple[date, str] | None:
-    """La fecha de la PORTADA (F-D8), leída una vez por archivo; `None` si el archivo se rechaza
-    (el error ya se mostró)."""
+def _verificar(datos: bytes, nombre: str) -> bool:
+    """La guardia (F-D10), barata y una vez por archivo: un archivo rechazado se dice al subirlo.
+    No lee el libro: eso pasa una sola vez, al auditar."""
     sha = _sha(datos)
-    guardada = st.session_state.get(CLAVE_FECHA_SUGERIDA)
-    if guardada is not None and guardada[0] == sha:
-        return guardada[1], guardada[2]
+    if st.session_state.get(CLAVE_VERIFICADO) == sha:
+        return True
     try:
         verificar_archivo(datos, nombre)
     except ArchivoRechazado as error:
         st.error(texto_seguro(str(error)))
-        return None
-    fecha, origen = _hoy(), "la PORTADA no trae una fecha legible; se propone hoy"
-    try:
-        from adapters.hoja_empresa.lector import leer_libro
-        from fusion.proceso import fecha_del_libro
-
-        de_portada = fecha_del_libro(leer_libro(datos, nombre))
-        if de_portada is not None:
-            fecha, origen = de_portada, "tomada de la PORTADA"
-    except ArchivoRechazado as error:
-        st.error(texto_seguro(str(error)))
-        return None
-    except Exception:  # noqa: BLE001 - si no se puede leer aquí, «Auditar» dirá por qué
-        pass
-    st.session_state[CLAVE_FECHA_SUGERIDA] = (sha, fecha, origen)
-    return fecha, origen
+        return False
+    st.session_state[CLAVE_VERIFICADO] = sha
+    return True
 
 
-def _entrada():
-    """Los archivos y las fechas. Devuelve `(xlsx, pdf, otro, fecha_libro, fecha_devolucion)` o
-    `None` si todavía no hay libro."""
+def _entrada() -> Entrada | None:
+    """Los archivos, las fechas y el umbral. `None` si todavía no hay nada que revisar."""
     xlsx = st.file_uploader(
         "Libro de Excel de la empresa (.xlsx)",
         type=["xlsx"],
@@ -137,10 +188,14 @@ def _entrada():
     )
     a, b = st.columns(2)
     pdf = a.file_uploader(
-        "PDF entregado al cliente (opcional)",
+        "PDF entregado al cliente (opcional si sube el Excel)",
         type=["pdf"],
         key="libros_pdf",
-        help="Silice coteja el subtotal, el IVA y el total impresos con los del libro.",
+        help=(
+            "Con el Excel: si es el impreso desde el libro, Silice coteja su subtotal, IVA y "
+            "total con los del libro; si es un PDF simple, lo revisa consigo mismo. Sin el Excel, "
+            "revisa solo el PDF del presupuesto (formato 001/002)."
+        ),
     )
     otro = b.file_uploader(
         "Versión anterior del libro (opcional)",
@@ -149,19 +204,27 @@ def _entrada():
         help="Para avisar de los precios que cambiaron entre una versión y otra.",
     )
     if xlsx is None:
-        st.info("Suba el libro de Excel de la empresa para empezar.")
+        if pdf is not None:
+            if otro is not None:
+                st.caption("Sin el Excel, la versión anterior no se usa: se revisa solo el PDF.")
+            return Entrada(None, pdf, None)
+        st.info(
+            "Suba el libro de Excel de la empresa para empezar. Si solo tiene el presupuesto en "
+            "PDF (formato 001/002), súbalo solo y Silice lo revisa sin el Excel."
+        )
         return None
-    sugerida = _fecha_sugerida(xlsx.getvalue(), _nombre(xlsx, "libro.xlsx"))
-    if sugerida is None:
+    if not _verificar(xlsx.getvalue(), _nombre(xlsx, "libro.xlsx")):
         return None
-    fecha, origen = sugerida
-    c, d = st.columns(2)
+    c, d, e = st.columns(3)
     fecha_libro = c.date_input(
         "Fecha del libro",
-        value=fecha,
+        value=None,
         key=f"libros_fecha_{_sha(xlsx.getvalue())[:12]}",
         format="DD/MM/YYYY",
-        help=f"Fija la tasa del BCV de partida ({origen}). Cámbiela si el libro es de otra fecha.",
+        help=(
+            "Fija la tasa del BCV de partida. Vacía, se toma la de la PORTADA al auditar; escriba "
+            "otra si el libro es de otra fecha."
+        ),
     )
     fecha_dev = d.date_input(
         "Fecha de devolución",
@@ -170,23 +233,36 @@ def _entrada():
         format="DD/MM/YYYY",
         help="La tasa del BCV con la que se compara el precio en Bs. Por defecto, hoy.",
     )
-    c.caption(f"Fecha del libro {origen}.")
-    return xlsx, pdf, otro, fecha_libro, fecha_dev
+    porcentaje = e.number_input(
+        "Umbral de alerta (%)",
+        min_value=0.1,
+        max_value=99.9,
+        value=UMBRAL_POR_DEFECTO_PCT,
+        step=0.5,
+        format="%.1f",
+        key="libros_umbral",
+        help="Un precio que cambia más que esto (frente al de la empresa o al de la otra versión) "
+        "genera una alerta.",
+    )
+    c.caption("Vacía: la de la PORTADA." if fecha_libro is None else "Escrita por usted.")
+    umbral = Decimal(str(porcentaje)) / 100
+    return Entrada(xlsx, pdf, otro, fecha_libro, fecha_dev, umbral)
 
 
-def _auditar(sesion, xlsx, pdf, otro, fecha_libro, fecha_dev, firma: str) -> Auditado | None:
+def _auditar(sesion, e: Entrada, firma: str) -> Auditado:
     """Procesa el libro con las tasas y precios de esta instalación. Sin caso legible, audita
     igual sin ellos (las alertas en Bs dirán «no contrastable»)."""
+    from fusion.alertas import ContextoPrecios
     from fusion.proceso import procesar_libro, servicios_desde_sesion
 
-    datos = xlsx.getvalue()
-    nombre = _nombre(xlsx, "libro.xlsx")
+    datos = e.xlsx.getvalue()
+    nombre = _nombre(e.xlsx, "libro.xlsx")
     argumentos = {
-        "pdf": pdf.getvalue() if pdf is not None else None,
-        "pdf_nombre": _nombre(pdf, "entregado.pdf") if pdf is not None else "",
-        "fecha_libro": fecha_libro,
-        "fecha_devolucion": fecha_dev,
-        "otro": otro.getvalue() if otro is not None else None,
+        "pdf": e.pdf.getvalue() if e.pdf is not None else None,
+        "pdf_nombre": _nombre(e.pdf, "entregado.pdf") if e.pdf is not None else "",
+        "fecha_libro": e.fecha_libro,
+        "fecha_devolucion": e.fecha_devolucion,
+        "otro": e.otro.getvalue() if e.otro is not None else None,
     }
     ruta = ruta_caso()
     try:
@@ -196,12 +272,13 @@ def _auditar(sesion, xlsx, pdf, otro, fecha_libro, fecha_dev, firma: str) -> Aud
             texto_seguro(f"No se pudo abrir el caso ({error}).")
             + " Se audita sin las tasas del BCV ni los precios de la empresa."
         )
-        resultado = procesar_libro(datos, nombre, contexto=None, **argumentos)
+        contexto = ContextoPrecios(umbral=e.umbral)
+        resultado = procesar_libro(datos, nombre, contexto=contexto, **argumentos)
         return Auditado(firma, sesion.login, nombre, resultado)
     motor = crear_motor(f"sqlite:///{ruta.as_posix()}")
     try:
         with abrir_sesion(motor) as caso:
-            contexto = servicios_desde_sesion(caso)
+            contexto = servicios_desde_sesion(caso, umbral=e.umbral)
             resultado = procesar_libro(datos, nombre, contexto=contexto, **argumentos)
     finally:
         motor.dispose()
@@ -209,6 +286,24 @@ def _auditar(sesion, xlsx, pdf, otro, fecha_libro, fecha_dev, firma: str) -> Aud
 
 
 # --- resultado ------------------------------------------------------------------------------------
+
+
+def _conteo(severidades) -> dict[str, int]:
+    conteo: dict[str, int] = {}
+    for s in severidades:
+        conteo[s] = conteo.get(s, 0) + 1
+    return conteo
+
+
+def _veredicto(conteo: dict[str, int], donde: str) -> None:
+    c = st.columns(len(libros.ORDEN_SEVERIDAD))
+    for columna, severidad in zip(c, libros.ORDEN_SEVERIDAD, strict=True):
+        columna.metric(severidad.capitalize(), conteo.get(severidad, 0))
+    graves = conteo.get("CRITICO", 0) + conteo.get("ERROR", 0)
+    if not graves:
+        st.success("Cumple: ningún hallazgo de error ni crítico.")
+    else:
+        st.error(f"No cumple: {graves} hallazgo(s) de error o crítico(s). Véalos en {donde}.")
 
 
 def _resumen(a: Auditado) -> None:
@@ -221,6 +316,11 @@ def _resumen(a: Auditado) -> None:
         f"fecha del libro {_dia(r.fecha_libro)} · devolución {_dia(r.fecha_devolucion)}"
         + (f" · moneda {texto_seguro(moneda)}" if moneda else "")
     )
+    if r.fecha_libro is None:
+        st.warning(
+            "La PORTADA no trae una fecha legible y no se escribió otra: sin fecha del libro, las "
+            "alertas en Bs no se contrastan. Escriba la «Fecha del libro» y vuelva a auditar."
+        )
     filas = libros.filas_totales(libro.totales, r.totales_silice, r.pdf_totales)
     principal = filas[0]
     m = st.columns(3)
@@ -228,35 +328,26 @@ def _resumen(a: Auditado) -> None:
     m[1].metric("Sin IVA, según Silice", principal["Según Silice"])
     m[2].metric("Diferencia (Silice − libro)", principal["Diferencia"] or "—")
     st.dataframe(filas, hide_index=True, width="stretch")
-
-    informe = r.informe
-    conteo = {s.name: n for s, n in informe.por_severidad().items()}
-    c = st.columns(len(libros.ORDEN_SEVERIDAD))
-    for columna, severidad in zip(c, libros.ORDEN_SEVERIDAD, strict=True):
-        columna.metric(severidad.capitalize(), conteo.get(severidad, 0))
-    graves = conteo.get("CRITICO", 0) + conteo.get("ERROR", 0)
-    if informe.cumple:
-        st.success("Cumple: ningún hallazgo de error ni crítico.")
-    else:
-        st.error(
-            f"No cumple: {graves} hallazgo(s) de error o crítico(s). Véalos en «Hallazgos» y en "
-            "la hoja AUDITORÍA del libro devuelto."
-        )
+    conteo = {s.name: n for s, n in r.informe.por_severidad().items()}
+    _veredicto(conteo, "«Hallazgos» y en la hoja AUDITORÍA del libro devuelto")
 
 
-def _hallazgos(a: Auditado) -> None:
-    filas = a.resultado.hallazgos_tabla
+def _tabla_hallazgos(filas, prefijo: str, leyenda: str = ACCIONES_F_D7) -> None:
     if not filas:
         st.success("No hay hallazgos.")
         return
     severidades, reglas, hojas = libros.opciones_de_filtro(filas)
     f = st.columns(3)
-    sev = f[0].multiselect("Severidad", severidades, key="libros_f_sev", placeholder="Todas")
-    reg = f[1].multiselect("Regla", reglas, key="libros_f_regla", placeholder="Todas")
-    hoj = f[2].multiselect("Hoja", hojas, key="libros_f_hoja", placeholder="Todas")
+    sev = f[0].multiselect("Severidad", severidades, key=f"{prefijo}_sev", placeholder="Todas")
+    reg = f[1].multiselect("Regla", reglas, key=f"{prefijo}_regla", placeholder="Todas")
+    hoj = f[2].multiselect("Hoja", hojas, key=f"{prefijo}_hoja", placeholder="Todas")
     elegidas = libros.filtrar_hallazgos(filas, sev, reg, hoj)
-    st.caption(f"{len(elegidas)} de {len(filas)} hallazgos. " + ACCIONES_F_D7)
+    st.caption(f"{len(elegidas)} de {len(filas)} hallazgos. " + leyenda)
     st.dataframe(libros.filas_hallazgos(elegidas), hide_index=True, width="stretch")
+
+
+def _hallazgos(a: Auditado) -> None:
+    _tabla_hallazgos(a.resultado.hallazgos_tabla, "libros_f")
 
 
 def _vista(a: Auditado) -> None:
@@ -298,22 +389,20 @@ def _vista(a: Auditado) -> None:
     vista = vistas.get(clave)
     if vista is None:
         try:
-            abierto = st.session_state.get(CLAVE_ABIERTO)
-            if abierto is None or abierto[0] != sha:
-                with st.spinner("Abriendo el libro para dibujar sus hojas…"):
-                    abierto = (sha, libros.abrir_libro(origen))
-                st.session_state[CLAVE_ABIERTO] = abierto
+            with st.spinner("Abriendo el libro para dibujar sus hojas…"):
+                abierto = _libro_abierto(sha, origen)
             vista = libros.vista_calcada(
-                abierto[1], hoja, marcas.get(hoja), desde=desde, ocultas=ocultas
+                abierto, hoja, marcas.get(hoja), desde=desde, ocultas=ocultas
             )
         except Exception as error:  # noqa: BLE001 - la vista es una ayuda: su fallo no tumba nada
             st.warning("No se pudo dibujar esta hoja; los hallazgos siguen en la tabla.")
-            with st.expander("Detalle técnico"):
-                st.code(f"{type(error).__name__}: {error}", language=None)
+            _detalle_tecnico(error, "Libro de la empresa: vista calcada")
             return
         if len(vistas) >= MAX_VISTAS_GUARDADAS:
             vistas.pop(next(iter(vistas)))
         vistas[clave] = vista
+    if vista.aviso:
+        st.warning(vista.aviso)
     st.caption(
         f"Filas {vista.desde} a {vista.hasta} de {vista.filas}, "
         "columnas A a Z como máximo. Las celdas con borde rojo las cita un hallazgo (pase el "
@@ -359,6 +448,7 @@ def _descarga(a: Auditado) -> None:
         "El mismo libro, con forma uniforme por dentro, los valores de Silice y tres hojas nuevas: "
         "AUDITORÍA, TRAZABILIDAD y ALERTAS USD-Bs."
     )
+    st.caption(LIMITES_DEL_CALCADO)
     if st.button("Preparar el libro devuelto", key="libros_preparar"):
         from fusion.proceso import devolver
 
@@ -368,10 +458,11 @@ def _descarga(a: Auditado) -> None:
                 libros.nombre_devuelto(a.nombre),
                 devolver(a.resultado),
             )
+        except ERRORES_DEL_USUARIO as error:
+            st.error(texto_seguro(str(error)))
         except Exception as error:  # noqa: BLE001 - mensaje claro, sin traza
             st.error("No se pudo preparar el libro devuelto.")
-            with st.expander("Detalle técnico"):
-                st.code(f"{type(error).__name__}: {error}", language=None)
+            _detalle_tecnico(error, "Libro de la empresa: libro devuelto")
     listo = st.session_state.get(CLAVE_DEVUELTO)
     if listo and listo[0] == a.firma:
         st.download_button(
@@ -384,6 +475,61 @@ def _descarga(a: Auditado) -> None:
         )
 
 
+# --- solo un PDF simple (L10) ---------------------------------------------------------------------
+
+
+def _resumen_pdf(a: Auditado) -> None:
+    r = a.resultado
+    pdf = r.pdf
+    numero = str(getattr(pdf, "numero", "") or "").strip()
+    fecha = str(getattr(pdf, "fecha", "") or "").strip()
+    st.subheader("Resumen del PDF")
+    st.caption(
+        f"PDF: {texto_seguro(a.nombre)} · SHA-256 {r.sha256[:16]}…"
+        + (f" · N.º {texto_seguro(numero)}" if numero else "")
+        + (f" · fecha {texto_seguro(fecha)}" if fecha else "")
+    )
+    m = st.columns(3)
+    m[0].metric("Renglones de cómputos", len(getattr(pdf, "computos", ()) or ()))
+    m[1].metric("Renglones del presupuesto", len(getattr(pdf, "presupuesto", ()) or ()))
+    total = getattr(pdf, "total_impreso", None)
+    m[2].metric("Total impreso", "no disponible" if total is None else formatear_decimal(total, 2))
+    _veredicto(_conteo(f.severidad for f in r.hallazgos_tabla), "la tabla de abajo")
+    st.caption(
+        "Sin el libro de Excel no hay recálculo ni libro devuelto: Silice coteja el PDF consigo "
+        "mismo (cómputos contra presupuesto, cantidades por precio y la suma impresa). Para la "
+        "auditoría completa suba también el Excel."
+    )
+
+
+def _solo_pdf(sesion, pdf) -> None:
+    datos = pdf.getvalue()
+    nombre = _nombre(pdf, "presupuesto.pdf")
+    firma = "pdf|" + _sha(datos)
+    if st.button("Revisar el PDF", type="primary", key="libros_auditar_pdf"):
+        from fusion.proceso import auditar_pdf_simple
+
+        try:
+            with st.spinner("Leyendo y revisando el PDF…"):
+                resultado = auditar_pdf_simple(datos, nombre)
+        except ERRORES_DEL_USUARIO as error:
+            st.error(texto_seguro(str(error)))
+            return
+        except Exception as error:  # noqa: BLE001 - nunca una traza en pantalla (directriz 4)
+            _fallo_inesperado(error, MENSAJE_FALLO_PDF)
+            return
+        st.session_state[CLAVE_RESULTADO_PDF] = Auditado(firma, sesion.login, nombre, resultado)
+    revisado = st.session_state.get(CLAVE_RESULTADO_PDF)
+    if revisado is None or revisado.login != sesion.login or revisado.firma != firma:
+        st.caption("Pulse «Revisar el PDF» para ver el resultado.")
+        return
+    _resumen_pdf(revisado)
+    _tabla_hallazgos(revisado.resultado.hallazgos_tabla, "libros_fp", LEYENDA_PDF)
+
+
+# --- página ---------------------------------------------------------------------------------------
+
+
 def render() -> None:
     sesion = ui_sesion.exigir(Accion.LEER_PROYECTO)
     st.caption(
@@ -394,33 +540,32 @@ def render() -> None:
     entrada = _entrada()
     if entrada is None:
         return
-    xlsx, pdf, otro, fecha_libro, fecha_dev = entrada
-    firma = _firma(
-        xlsx.getvalue(),
-        pdf.getvalue() if pdf is not None else None,
-        otro.getvalue() if otro is not None else None,
-        fecha_libro,
-        fecha_dev,
-    )
+    if entrada.xlsx is None:
+        _solo_pdf(sesion, entrada.pdf)
+        return
+    firma = _firma(entrada)
     if st.button("Auditar", type="primary", key="libros_auditar"):
         try:
             with st.spinner("Leyendo, recalculando y auditando el libro…"):
-                auditado = _auditar(sesion, xlsx, pdf, otro, fecha_libro, fecha_dev, firma)
-        except ArchivoRechazado as error:
+                auditado = _auditar(sesion, entrada, firma)
+        except ERRORES_DEL_USUARIO as error:
             st.error(texto_seguro(str(error)))
             return
         except Exception as error:  # noqa: BLE001 - nunca una traza en pantalla (directriz 4)
             _fallo_inesperado(error)
             return
         st.session_state[CLAVE_RESULTADO] = auditado
-        for clave in (CLAVE_DEVUELTO, CLAVE_ABIERTO, CLAVE_VISTAS):
+        for clave in (CLAVE_DEVUELTO, CLAVE_VISTAS):
             st.session_state.pop(clave, None)
     auditado = st.session_state.get(CLAVE_RESULTADO)
     if auditado is None or auditado.login != sesion.login:
         st.caption("Pulse «Auditar» para ver el resultado.")
         return
     if auditado.firma != firma:
-        st.info("Cambió un archivo o una fecha: pulse «Auditar» para actualizar el resultado.")
+        st.info(
+            "Cambió un archivo, una fecha o el umbral: pulse «Auditar» para actualizar el "
+            "resultado."
+        )
         return
     _resumen(auditado)
     st.session_state.setdefault(CLAVE_SECCION, SECCIONES[0])

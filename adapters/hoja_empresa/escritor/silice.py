@@ -2,9 +2,14 @@
 
 Llevan la paleta y la fuente del propio libro (tomadas del kit de los APU), para que se lean como
 parte de él. Nada de lo que muestran se calcula aquí: los hallazgos, las alertas y la trazabilidad
-llegan hechos en `DatosDevolucion`; el resumen por severidad de AUDITORÍA son fórmulas (COUNTIF y
-SUMIF) sobre la tabla de hallazgos. Una alerta sin tasa dice "no contrastable": nunca se escribe un
-número que no se pueda rastrear (§4).
+llegan hechos en `DatosDevolucion`; el resumen por severidad de AUDITORÍA y el número de hallazgos
+de cada regla evaluada son fórmulas (COUNTIF y SUMIF) sobre la tabla de hallazgos. Una alerta sin
+tasa dice "no contrastable": nunca se escribe un número que no se pueda rastrear (§4).
+
+AUDITORÍA lleva, debajo de los hallazgos, las reglas evaluadas, las NO evaluadas con su motivo
+(R11, R12 y L10 u L11 según el PDF recibido; errata 4 y 6 del spec) y los "Cambios del calcado"
+(errata 3): lo que la devolución no pudo dejar como estaba en el libro recibido. Los impactos van en
+la moneda del libro (`DatosDevolucion.moneda`).
 """
 
 from __future__ import annotations
@@ -87,10 +92,17 @@ def _encabezados(h: HojaSalida, p: _Paleta, fila: int, textos: Sequence[str]) ->
     h.altos[fila] = (28.0, False)
 
 
-def hoja_auditoria(datos: DatosDevolucion, kit: Kit) -> HojaSalida:
+def hoja_auditoria(
+    datos: DatosDevolucion,
+    kit: Kit,
+    transformaciones: Sequence[tuple[str, str, str]] = (),
+) -> HojaSalida:
+    """La hoja AUDITORÍA. `transformaciones` son `(tipo, celda, descripción)` de los cambios que
+    hizo el calcado (sección "CAMBIOS DEL CALCADO")."""
     p = _Paleta(kit)
     h = HojaSalida("AUDITORÍA")
     hallazgos = datos.hallazgos
+    impacto = f"Impacto ({datos.moneda})"
     _titulo(
         h,
         p,
@@ -102,7 +114,7 @@ def hoja_auditoria(datos: DatosDevolucion, kit: Kit) -> HojaSalida:
         6,
     )
     _seccion(h, p, 4, "RESUMEN POR SEVERIDAD", 3)
-    _encabezados(h, p, 5, ("Severidad", "Hallazgos", "Impacto (USD)"))
+    _encabezados(h, p, 5, ("Severidad", "Hallazgos", impacto))
     ini = 13
     fin = ini + max(len(hallazgos), 1) - 1
     rango_b = f"$B${ini}:$B${fin}"
@@ -116,9 +128,7 @@ def hoja_auditoria(datos: DatosDevolucion, kit: Kit) -> HojaSalida:
     h.poner(10, 2, formula="=SUM(B6:B9)", estilo=p.total_entero)
     h.poner(10, 3, formula="=SUM(C6:C9)", estilo=p.total_num)
     _seccion(h, p, 11, "HALLAZGOS", 6)
-    _encabezados(
-        h, p, 12, ("Código", "Severidad", "Descripción", "Celda", "Impacto (USD)", "Acción")
-    )
+    _encabezados(h, p, 12, ("Código", "Severidad", "Descripción", "Celda", impacto, "Acción"))
     if not hallazgos:
         h.poner(ini, 1, "Sin hallazgos.", estilo=p.tenue)
         h.combinadas.append((ini, 1, ini, 6))
@@ -145,11 +155,70 @@ def hoja_auditoria(datos: DatosDevolucion, kit: Kit) -> HojaSalida:
                 Estilo(patron=1, fondo=fondo, color=color, negrita=True),
             )
         )
+    ultima = _reglas_y_cambios(h, p, fin + 2, datos, f"$A${ini}:$A${fin}", transformaciones)
     h.anchos = {1: (12.0, False), 2: (14.0, False), 3: (70.0, False), 4: (24.0, False)}
     h.anchos |= {5: (15.0, False), 6: (14.0, False)}
     h.paneles = (12, 0)
-    h.impresion = {"orientacion": "landscape", "ajuste": (1, 0), "area": f"A1:F{fin}"}
+    h.impresion = {"orientacion": "landscape", "ajuste": (1, 0), "area": f"A1:F{ultima}"}
     return h
+
+
+def _fila_larga(h: HojaSalida, p: _Paleta, fila: int, textos: Sequence[str]) -> None:
+    """Código, nombre (columna B) y un texto largo combinado en C:F."""
+    h.poner(fila, 1, textos[0], estilo=p.etiqueta)
+    h.poner(fila, 2, textos[1], estilo=p.texto)
+    h.poner(fila, 3, textos[2], estilo=p.texto)
+    for c in range(4, 7):
+        h.poner(fila, c, None, estilo=p.texto)
+    h.combinadas.append((fila, 3, fila, 6))
+
+
+def _reglas_y_cambios(
+    h: HojaSalida,
+    p: _Paleta,
+    fila: int,
+    datos: DatosDevolucion,
+    rango_codigos: str,
+    transformaciones: Sequence[tuple[str, str, str]],
+) -> int:
+    """Reglas evaluadas (con su número de hallazgos), reglas no evaluadas (con su motivo) y cambios
+    del calcado, desde `fila`. Devuelve la última fila escrita."""
+    _seccion(h, p, fila, "REGLAS EVALUADAS", 6)
+    fila += 1
+    _encabezados(h, p, fila, ("Código", "Regla", "Hallazgos"))
+    if not datos.reglas_evaluadas:
+        fila += 1
+        h.poner(fila, 1, "—", estilo=p.tenue)
+    for codigo, nombre in datos.reglas_evaluadas:
+        fila += 1
+        h.poner(fila, 1, codigo, estilo=p.etiqueta)
+        h.poner(fila, 2, nombre, estilo=p.texto)
+        h.poner(fila, 3, formula=f'=COUNTIF({rango_codigos},"{codigo}")', estilo=p.entero)
+    fila += 2
+    _seccion(h, p, fila, "REGLAS NO EVALUADAS", 6)
+    fila += 1
+    _encabezados(h, p, fila, ("Código", "Regla", "Motivo"))
+    if not datos.reglas_no_evaluadas:
+        fila += 1
+        h.poner(fila, 1, "Todas las reglas se evaluaron.", estilo=p.tenue)
+        h.combinadas.append((fila, 1, fila, 6))
+    for codigo, nombre, motivo in datos.reglas_no_evaluadas:
+        fila += 1
+        _fila_larga(h, p, fila, (codigo, nombre, motivo))
+    fila += 2
+    _seccion(h, p, fila, "CAMBIOS DEL CALCADO", 6)
+    fila += 1
+    _encabezados(h, p, fila, ("Tipo", "Celda", "Descripción"))
+    if not transformaciones:
+        fila += 1
+        h.poner(
+            fila, 1, "El calcado no cambió nada fuera de los valores de Silice.", estilo=p.tenue
+        )
+        h.combinadas.append((fila, 1, fila, 6))
+    for tipo, celda, descripcion in transformaciones:
+        fila += 1
+        _fila_larga(h, p, fila, (tipo, celda, descripcion))
+    return fila
 
 
 def hoja_trazabilidad(datos: DatosDevolucion, notas: Sequence[Nota], kit: Kit) -> HojaSalida:

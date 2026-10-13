@@ -1055,6 +1055,48 @@
         }
       }
     },
+    "/v1/libros/pdf": {
+      "post": {
+        "tags": [
+          "libros"
+        ],
+        "summary": "Revisar Pdf",
+        "description": "Revisa solo un PDF simple (el presupuesto impreso, sin el libro de Excel): coteja el PDF\nconsigo mismo (L10) y responde sus hallazgos. Sin libro no hay recálculo ni devolución. No\nguarda nada.",
+        "operationId": "revisar_pdf_v1_libros_pdf_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_revisar_pdf_v1_libros_pdf_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PdfSimpleRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/salud": {
       "get": {
         "tags": [
@@ -1278,7 +1320,7 @@
               }
             ],
             "title": "Pdf",
-            "description": "PDF entregado (opcional)"
+            "description": "PDF entregado (opcional; L11 o L10)"
           },
           "anterior": {
             "anyOf": [
@@ -1304,6 +1346,18 @@
             ],
             "title": "Fecha Libro",
             "description": "Fecha del libro, ISO; sin ella, la de la PORTADA"
+          },
+          "umbral": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Umbral",
+            "description": "Variación de precio desde la que hay alerta, 0 < umbral < 1 (0.05)"
           }
         },
         "type": "object",
@@ -1407,7 +1461,7 @@
               }
             ],
             "title": "Pdf",
-            "description": "PDF entregado (opcional)"
+            "description": "PDF entregado (opcional; L11 o L10)"
           },
           "anterior": {
             "anyOf": [
@@ -1433,6 +1487,18 @@
             ],
             "title": "Fecha Libro",
             "description": "Fecha del libro, ISO; sin ella, la de la PORTADA"
+          },
+          "umbral": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Umbral",
+            "description": "Variación de precio desde la que hay alerta, 0 < umbral < 1 (0.05)"
           }
         },
         "type": "object",
@@ -1462,6 +1528,21 @@
           "proyecto"
         ],
         "title": "Body_importar_presupuesto_de_tercero_presupuestos_importar_post"
+      },
+      "Body_revisar_pdf_v1_libros_pdf_post": {
+        "properties": {
+          "pdf": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "Pdf",
+            "description": "Presupuesto en PDF simple, sin Excel (formato 001/002)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "pdf"
+        ],
+        "title": "Body_revisar_pdf_v1_libros_pdf_post"
       },
       "CambioRespuesta": {
         "properties": {
@@ -2491,6 +2572,109 @@
         ],
         "title": "PartidaRespuesta",
         "description": "Cabecera de una partida del catalogo."
+      },
+      "PdfOrigenRespuesta": {
+        "properties": {
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          },
+          "sha256": {
+            "type": "string",
+            "title": "Sha256"
+          },
+          "numero": {
+            "type": "string",
+            "title": "Numero"
+          },
+          "fecha": {
+            "type": "string",
+            "title": "Fecha"
+          }
+        },
+        "type": "object",
+        "required": [
+          "nombre",
+          "sha256",
+          "numero",
+          "fecha"
+        ],
+        "title": "PdfOrigenRespuesta"
+      },
+      "PdfSimpleRespuesta": {
+        "properties": {
+          "pdf": {
+            "$ref": "#/components/schemas/PdfOrigenRespuesta"
+          },
+          "cumple": {
+            "type": "boolean",
+            "title": "Cumple"
+          },
+          "por_severidad": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Por Severidad"
+          },
+          "renglones_computos": {
+            "type": "integer",
+            "title": "Renglones Computos"
+          },
+          "renglones_presupuesto": {
+            "type": "integer",
+            "title": "Renglones Presupuesto"
+          },
+          "total_computos": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Computos"
+          },
+          "total_impreso": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Impreso"
+          },
+          "notas": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Notas"
+          },
+          "hallazgos": {
+            "items": {
+              "$ref": "#/components/schemas/HallazgoLibroRespuesta"
+            },
+            "type": "array",
+            "title": "Hallazgos"
+          }
+        },
+        "type": "object",
+        "required": [
+          "pdf",
+          "cumple",
+          "por_severidad",
+          "renglones_computos",
+          "renglones_presupuesto",
+          "total_computos",
+          "total_impreso",
+          "notas",
+          "hallazgos"
+        ],
+        "title": "PdfSimpleRespuesta"
       },
       "PendienteRespuesta": {
         "properties": {

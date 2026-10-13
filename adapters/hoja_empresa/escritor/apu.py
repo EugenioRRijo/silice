@@ -27,12 +27,6 @@ from typing import Any
 from adapters.hoja_empresa.escritor.estilos import Estilo, LectorEstilos
 from adapters.hoja_empresa.escritor.formulas import cita, dir_celda, letra
 from adapters.hoja_empresa.escritor.hoja import NADA, HojaSalida
-from adapters.hoja_empresa.escritor.plantilla import (
-    divisor_equipos,
-    es_destajo,
-    factor_linea,
-    filas_base_mo,
-)
 from adapters.hoja_empresa.modelo import (
     ApuCalculado,
     ApuLeido,
@@ -42,6 +36,12 @@ from adapters.hoja_empresa.modelo import (
     TipoInsumo,
 )
 from adapters.hoja_empresa.perfil import Perfil, coincide, normalizar
+from adapters.hoja_empresa.plantilla import (
+    divisor_equipos,
+    es_destajo,
+    factor_linea,
+    filas_base_mo,
+)
 
 __all__ = [
     "PUBLICADOS",

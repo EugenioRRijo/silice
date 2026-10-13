@@ -74,6 +74,7 @@ CASOS_DE_USO = {
     "entregar": "UC-22",
     "escenarios": "UC-08",
     "indices": "UC-17",
+    "libros": "UC-25",
     "precios_empresa": "UC-17",
     "reajuste": "UC-18",
     "revisar": "UC-23",

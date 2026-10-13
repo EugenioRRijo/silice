@@ -35,7 +35,8 @@ app.include_router(computos.router, dependencies=CON_CLAVE)
 app.include_router(presupuestos.router, dependencies=CON_CLAVE)
 app.include_router(rendimientos.router, dependencies=CON_CLAVE)
 app.include_router(auditorias.router, dependencies=CON_CLAVE)  # S3 §10: POST /v1/auditorias
-app.include_router(libros.router, dependencies=CON_CLAVE)  # 1.5: /v1/libros (auditoria, devolucion)
+# 1.5: /v1/libros (auditoria, devolucion y pdf)
+app.include_router(libros.router, dependencies=CON_CLAVE)
 
 
 @app.get("/salud", tags=["catalogo"])

@@ -10,6 +10,11 @@ Reglas de referencias (`Contexto.rango`), para toda fórmula que se conserva:
   la fórmula se sustituye por su valor.
 - Columna completa de un APU (`'APU-01'!$B:$B`) → se conserva: la hoja mantiene su nombre.
 - Todo lo demás se conserva tal cual (las hojas copiadas conservan sus posiciones).
+
+Nombres definidos del libro recibido: uno cuyo texto rechaza la lista negra de
+`formulas.motivo_peligro` (DDE, WEBSERVICE, HYPERLINK, CALL, REGISTER, EXEC, FILTERXML, INFO, RTD,
+otro libro) no sale y queda anotado en las transformaciones del calcado; las fórmulas que lo usan
+pasan a su valor por la regla de "nombre que no sale".
 """
 
 from __future__ import annotations
@@ -20,7 +25,14 @@ from typing import Any
 
 from adapters.hoja_empresa.escritor.apu import PUBLICADOS, Maqueta
 from adapters.hoja_empresa.escritor.estilos import LectorEstilos
-from adapters.hoja_empresa.escritor.formulas import MAX_FILA, Ref, analizar_ref, cita, dir_celda
+from adapters.hoja_empresa.escritor.formulas import (
+    MAX_FILA,
+    Ref,
+    analizar_ref,
+    cita,
+    dir_celda,
+    motivo_peligro,
+)
 from adapters.hoja_empresa.escritor.hoja import LibroSalida
 from adapters.hoja_empresa.modelo import ApuLeido, DatosDevolucion, PartidaLeida, Rotulo
 from adapters.hoja_empresa.perfil import Perfil, normalizar
@@ -114,7 +126,18 @@ class Contexto:
             if nombre.startswith("_xlnm") or "!_xlnm" in nombre:
                 continue
             t = (texto or "").strip().lstrip("=")
-            if not t or "[" in t or "#REF!" in t.upper():
+            if not t:
+                continue
+            motivo = motivo_peligro(t)
+            if motivo is not None:
+                self.salida.anotar(
+                    "Nombre definido omitido",
+                    None,
+                    nombre,
+                    f"no sale como fórmula, {motivo}: ={t[:255]}",
+                )
+                continue
+            if "#REF!" in t.upper():
                 continue
             hojas = {h for h in (_hojas_de(t)) if h is not None}
             if any(h not in salen for h in hojas):

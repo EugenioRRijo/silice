@@ -8,6 +8,8 @@ openpyxl, en la que se resaltan las celdas que cita algún hallazgo (`origen_ids
 Todo el libro es texto ajeno (spec S3, texto ajeno): cada texto que entra al HTML pasa por
 `html.escape`, y los colores solo se aceptan como seis dígitos hexadecimales. La vista se limita a
 una ventana de `FILAS_VISTA` × `COLUMNAS_VISTA` celdas; lo citado que queda fuera se declara.
+Un libro con alguna hoja de más de `TOPE_FILAS` filas o `TOPE_COLUMNAS` columnas usadas se abre
+en modo ligero (solo la ventana) y la vista lo avisa.
 
 Sin Streamlit, sin pandas y sin `ui.caso`: se prueba como cualquier función.
 """
@@ -34,6 +36,9 @@ __all__ = [
     "FILAS_VISTA",
     "ORDEN_SEVERIDAD",
     "SIN_HOJA",
+    "TOPE_AREA_COMBINADA",
+    "TOPE_COLUMNAS",
+    "TOPE_FILAS",
     "VistaHoja",
     "abrir_libro",
     "filas_alertas",
@@ -54,6 +59,12 @@ FILAS_VISTA = 80
 COLUMNAS_VISTA = 26
 MAX_TEXTO_CELDA = 200
 MAX_CELDAS_RANGO = 500  # un origen `A1:Z999` no se expande sin cota
+TOPE_FILAS = 20_000  # una hoja más grande se abre en modo ligero (solo la ventana)
+TOPE_COLUMNAS = 200
+TOPE_AREA_COMBINADA = TOPE_FILAS * TOPE_COLUMNAS  # celdas cubiertas por combinadas, sumadas
+_BLOQUE_XML = 1 << 20
+_SOLAPE_XML = 512  # una etiqueta <mergeCell> partida entre dos bloques se lee en el siguiente
+_RE_COMBINADA = re.compile(rb'<(?:[A-Za-z_][\w.-]*:)?mergeCell\b[^>]{0,200}?\bref="([^"]{1,40})"')
 SIN_HOJA = "(sin celda)"
 NO_CONTRASTABLE = "no contrastable"
 SUFIJO_DEVUELTO = " - devuelto por Silice.xlsx"
@@ -307,7 +318,9 @@ class VistaHoja:
 
     `fuera` son las celdas citadas que no se ven (fuera de la ventana u ocultas), con sus códigos;
     `filas` y `columnas` son el tamaño usado de la hoja en el original; `desde` y `hasta`, las filas
-    que la ventana muestra.
+    que la ventana muestra. `aviso` no está vacío cuando el libro se abrió en modo ligero (pasa
+    del tope `TOPE_FILAS` × `TOPE_COLUMNAS`): la vista es solo la ventana, sin combinadas ni
+    ocultas.
     """
 
     html: str
@@ -316,13 +329,98 @@ class VistaHoja:
     columnas: int
     desde: int = 1
     hasta: int = 1
+    aviso: str = ""
+
+
+def _medida(hoja) -> tuple[int, int]:
+    """Filas y columnas usadas de una hoja. En modo de solo lectura se toman de la etiqueta
+    `<dimension>` del archivo y, si falta, se cuentan leyendo la hoja por partes (sin cargarla)."""
+    if getattr(hoja, "max_row", None) is None or getattr(hoja, "max_column", None) is None:
+        try:
+            hoja.calculate_dimension(force=True)
+        except Exception:  # noqa: BLE001 - una hoja vacía sin <dimension> no tiene tamaño
+            return 1, 1
+    return hoja.max_row or 1, hoja.max_column or 1
+
+
+def _miles(n: int) -> str:
+    return f"{n:,}".replace(",", ".")
+
+
+def _excede(filas: int, columnas: int) -> bool:
+    return filas > TOPE_FILAS or columnas > TOPE_COLUMNAS
+
+
+def _limites_ref(ref: str) -> tuple[int, int, int, int] | None:
+    """`B3:D9` -> (3, 2, 9, 4): fila y columna mínimas y máximas. `None` si no es una referencia."""
+    extremos = ref.replace("$", "").strip().split(":")
+    if len(extremos) > 2:
+        return None
+    partes = [_REF.match(e) for e in extremos]
+    if not all(partes):
+        return None
+    filas = [int(m.group(2)) for m in partes]  # type: ignore[union-attr]
+    cols = [_letras_a_numero(m.group(1)) for m in partes]  # type: ignore[union-attr]
+    return min(filas), min(cols), max(filas), max(cols)
+
+
+def _combinadas_excesivas(ligero) -> bool:
+    """True si alguna hoja declara celdas combinadas más allá del tope o que en total cubren más
+    de `TOPE_AREA_COMBINADA` celdas. Se mira leyendo el XML de la hoja por bloques, sin cargarla:
+    openpyxl, al abrir el libro entero, recorre CADA celda de cada rango combinado, y un
+    `C3:XFD1048576` lo dejaría colgado."""
+    archivo = getattr(ligero, "_archive", None)
+    if archivo is None:
+        return False
+    for hoja in ligero.worksheets:
+        ruta = getattr(hoja, "_worksheet_path", None)
+        if not ruta:
+            continue
+        area = 0
+        resto = b""
+        with archivo.open(ruta) as fuente:
+            while bloque := fuente.read(_BLOQUE_XML):
+                datos = resto + bloque
+                ultimo = 0
+                for m in _RE_COMBINADA.finditer(datos):
+                    ultimo = m.end()
+                    limites = _limites_ref(m.group(1).decode("ascii", "replace"))
+                    if limites is None:
+                        continue
+                    f0, c0, f1, c1 = limites
+                    if _excede(f1, c1):
+                        return True
+                    area += (f1 - f0 + 1) * (c1 - c0 + 1)
+                    if area > TOPE_AREA_COMBINADA:
+                        return True
+                resto = datos[max(ultimo, len(datos) - _SOLAPE_XML) :]
+    return False
 
 
 def abrir_libro(origen: bytes):
     """El libro recibido abierto con openpyxl (valores guardados, estilos y combinadas), para
-    dibujar varias hojas sin volver a leerlo: leerlo cuesta segundos y dibujar una hoja, no."""
+    dibujar varias hojas sin volver a leerlo: leerlo cuesta segundos y dibujar una hoja, no.
+
+    Con tope: primero se abre en modo de solo lectura (no carga las celdas) y se mide cada hoja. Si
+    alguna pasa de `TOPE_FILAS` filas o `TOPE_COLUMNAS` columnas usadas, o declara celdas
+    combinadas más allá de ese tope o que en total pasan de `TOPE_AREA_COMBINADA` celdas, el libro
+    se queda en ese modo ligero y `vista_calcada` lee solo la ventana (sin combinadas, anchos ni
+    ocultas) y lo avisa; si no, se abre entero. Límite: el tamaño de las celdas sale de la etiqueta
+    `<dimension>` que declara el archivo; uno que la falsee se abre entero, acotado igual por la
+    guardia (F-D10).
+    """
     from openpyxl import load_workbook  # perezoso: la página se importa sin cargar openpyxl
 
+    ligero = load_workbook(io.BytesIO(origen), read_only=True, data_only=True)
+    try:
+        grande = any(_excede(*_medida(h)) for h in ligero.worksheets)
+        grande = grande or _combinadas_excesivas(ligero)
+    except Exception:
+        ligero.close()
+        raise
+    if grande:
+        return ligero
+    ligero.close()
     return load_workbook(io.BytesIO(origen), data_only=True)
 
 
@@ -438,16 +536,17 @@ def _texto_celda(valor: object, formato: str) -> str:
     return texto if len(texto) <= MAX_TEXTO_CELDA else texto[: MAX_TEXTO_CELDA - 1] + "…"
 
 
-def _columnas(hoja) -> dict[int, tuple[float | None, bool]]:
-    """Ancho y si está oculta, por número de columna. Una dimensión de openpyxl puede cubrir un
-    tramo (`min`..`max`), no solo la columna de su letra."""
+def _columnas(hoja, hasta_col: int = COLUMNAS_VISTA) -> dict[int, tuple[float | None, bool]]:
+    """Ancho y si está oculta, por número de columna, solo hasta `hasta_col` (la ventana). Una
+    dimensión de openpyxl puede cubrir un tramo (`min`..`max`), no solo la columna de su letra; el
+    tramo se recorta a la ventana antes de recorrerlo."""
     salida: dict[int, tuple[float | None, bool]] = {}
     for letra, dim in hoja.column_dimensions.items():
         if not letra.isalpha():
             continue
         propia = _letras_a_numero(letra)
         desde, hasta = dim.min or propia, dim.max or propia
-        for c in range(desde, min(hasta, desde + 16384) + 1):
+        for c in range(max(1, desde), min(hasta, hasta_col) + 1):
             salida[c] = (dim.width or None, bool(dim.hidden))
     return salida
 
@@ -458,6 +557,16 @@ def _ancho(ancho: float | None) -> int:
 
 ENCABEZADO = "background:#E6E9EE;border:1px solid #BFC5CD;font-weight:normal;color:#333333;"
 ENCABEZADO_OCULTO = "background:#F3E2BC;border:1px solid #BFC5CD;font-weight:normal;color:#5C4813;"
+
+
+def _celdas_de_la_ventana(hoja, desde: int, hasta: int, ultima_col: int) -> dict:
+    """Modo ligero: las celdas de la ventana, leídas por partes (`iter_rows` de solo lectura)."""
+    celdas: dict[tuple[int, int], Any] = {}
+    filas = hoja.iter_rows(min_row=desde, max_row=hasta, min_col=1, max_col=ultima_col)
+    for f, fila in enumerate(filas, start=desde):
+        for c, celda in enumerate(fila, start=1):
+            celdas[(f, c)] = celda
+    return celdas
 
 
 def vista_calcada(
@@ -477,6 +586,8 @@ def vista_calcada(
     Con `ocultas` se muestran también las filas y columnas que el libro oculta, con el encabezado
     en ámbar: un auditor necesita verlas (un hallazgo puede citar una fila oculta). Sin `ocultas`,
     la vista es la de Excel y lo citado que queda oculto se declara en `fuera`.
+    Todo lo que se recorre (combinadas, anchos, celdas) se recorta antes a la ventana: un rango
+    combinado `A1:XFD1048576` cuesta lo mismo que uno de dos celdas.
     `KeyError` si el libro no tiene esa hoja.
     """
     marcas = {ref.upper(): tuple(c) for ref, c in (marcas or {}).items()}
@@ -485,36 +596,63 @@ def vista_calcada(
     try:
         hoja = libro[nombre_hoja]
         tema = _tema(libro)
-        max_fila = hoja.max_row or 1
-        max_col = hoja.max_column or 1
+        ligero = bool(getattr(libro, "read_only", False))
+        if ligero:
+            max_fila, max_col = _medida(hoja)
+        else:
+            max_fila, max_col = hoja.max_row or 1, hoja.max_column or 1
         desde = max(1, min(desde, max_fila))
         hasta = min(max_fila, desde + filas - 1)
         ultima_col = min(max_col, columnas)
-        dims = _columnas(hoja)
-        ocultas_col = {c for c, (_, oculta) in dims.items() if oculta}
-        ocultas_fila = {n for n, dim in hoja.row_dimensions.items() if dim.hidden}
+        aviso = ""
+        if ligero:
+            # Solo lectura: sin combinadas, anchos ni ocultas; las celdas, solo las de la ventana.
+            dims: dict[int, tuple[float | None, bool]] = {}
+            ocultas_col: set[int] = set()
+            ocultas_fila: set[int] = set()
+            rangos: Iterable[Any] = ()
+            celdas = _celdas_de_la_ventana(hoja, desde, hasta, ultima_col)
+            aviso = (
+                f"El libro tiene alguna hoja de más de {_miles(TOPE_FILAS)} filas o "
+                f"{TOPE_COLUMNAS} columnas usadas, o celdas combinadas que pasan de ese tope "
+                f"(esta hoja: {_miles(max_fila)} × {_miles(max_col)}). Para no agotar la memoria "
+                "se abrió en modo ligero: se muestra solo la ventana, sin celdas combinadas, "
+                "anchos de columna ni filas o columnas ocultas."
+            )
+        else:
+            dims = _columnas(hoja, ultima_col)
+            ocultas_col = {c for c, (_, oculta) in dims.items() if oculta}
+            ocultas_fila = {
+                n for n, dim in hoja.row_dimensions.items() if dim.hidden and desde <= n <= hasta
+            }
+            rangos = hoja.merged_cells.ranges
+            celdas = None
         cols = [c for c in range(1, ultima_col + 1) if ocultas or c not in ocultas_col]
         filas_vistas = [f for f in range(desde, hasta + 1) if ocultas or f not in ocultas_fila]
 
         # Celdas combinadas: la esquina lleva rowspan/colspan (recortados a la ventana) y las
-        # demás no se pintan. Una marca en cualquier celda del bloque se muestra en la esquina.
+        # demás no se pintan. Cada bloque se RECORTA a la ventana antes de recorrerlo. Una marca en
+        # cualquier celda del bloque (aun fuera de la ventana) se muestra en la esquina visible.
         esquina: dict[tuple[int, int], tuple[int, int, int, int]] = {}
         cubiertas: dict[tuple[int, int], tuple[int, int]] = {}
-        for rango in hoja.merged_cells.ranges:
+        bloques: list[tuple[int, int, int, int, tuple[int, int]]] = []
+        for rango in rangos:
             f0, c0, f1, c1 = rango.min_row, rango.min_col, rango.max_row, rango.max_col
             if f1 < desde or f0 > hasta or c0 > ultima_col:
                 continue
-            fa, ca = max(f0, desde), c0
-            vis_f = [f for f in filas_vistas if fa <= f <= min(f1, hasta)]
-            vis_c = [c for c in cols if ca <= c <= min(c1, ultima_col)]
+            fa, fz = max(f0, desde), min(f1, hasta)
+            ca, cz = max(c0, 1), min(c1, ultima_col)
+            vis_f = [f for f in filas_vistas if fa <= f <= fz]
+            vis_c = [c for c in cols if ca <= c <= cz]
             if not vis_f or not vis_c:
                 continue
             ancla = (vis_f[0], vis_c[0])
             esquina[ancla] = (len(vis_f), len(vis_c), f0, c0)
-            for f in range(f0, f1 + 1):
-                for c in range(c0, c1 + 1):
+            for f in range(fa, fz + 1):
+                for c in range(ca, cz + 1):
                     if (f, c) != ancla:
                         cubiertas[(f, c)] = ancla
+            bloques.append((f0, c0, f1, c1, ancla))
 
         visibles = {(f, c) for f in filas_vistas for c in cols}
         marcas_en: dict[tuple[int, int], list[str]] = {}
@@ -525,6 +663,11 @@ def vista_calcada(
                 continue
             pos = (int(m.group(2)), _letras_a_numero(m.group(1)))
             destino = cubiertas.get(pos, pos)
+            if destino not in visibles:
+                destino = next(
+                    (b[4] for b in bloques if b[0] <= pos[0] <= b[2] and b[1] <= pos[1] <= b[3]),
+                    destino,
+                )
             if destino in visibles:
                 lista = marcas_en.setdefault(destino, [])
                 lista.extend(c for c in codigos if c not in lista)
@@ -565,7 +708,10 @@ def vista_calcada(
                 combinada = esquina.get((f, c))
                 # la esquina visible de un bloque combinado muestra el valor y el estilo del bloque
                 fila_o, col_o = (combinada[2], combinada[3]) if combinada else (f, c)
-                celda = hoja.cell(row=fila_o, column=col_o)
+                if celdas is not None:
+                    celda = celdas.get((fila_o, col_o), _VACIA)
+                else:
+                    celda = hoja.cell(row=fila_o, column=col_o)
                 partes.append(
                     _celda_html(
                         celda, tema, combinada, marcas_en.get((f, c)), f"{_numero_a_letras(c)}{f}"
@@ -573,10 +719,26 @@ def vista_calcada(
                 )
             partes.append("</tr>")
         partes.append("</tbody></table></div>")
-        return VistaHoja("".join(partes), tuple(sorted(fuera)), max_fila, max_col, desde, hasta)
+        return VistaHoja(
+            "".join(partes), tuple(sorted(fuera)), max_fila, max_col, desde, hasta, aviso
+        )
     finally:
         if propio:
             libro.close()
+
+
+class _CeldaVacia:
+    """Una celda que la ventana ligera no trae (fila o columna sin datos): sin valor ni estilo."""
+
+    __slots__ = ()
+    value = None
+    font = None
+    fill = None
+    alignment = None
+    number_format = None
+
+
+_VACIA = _CeldaVacia()
 
 
 def _celda_html(celda, tema, combinada, codigos, ref: str) -> str:

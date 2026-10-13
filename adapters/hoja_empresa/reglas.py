@@ -1660,11 +1660,11 @@ _REGLAS = (_l1, _l2, _l3, _l4, _l5, _l6, _l7, _l8, _l9)
 def reglas_del_libro(libro: LibroLeido, perfil: Perfil | None = None) -> list[Hallazgo]:
     """Aplica L1-L9 al libro y devuelve los hallazgos en orden de regla y de celda.
 
-    `perfil` es la plantilla con que se leyó el libro (por defecto la de la empresa). Las reglas no
+    `perfil` es la plantilla con que se leyó el libro (por defecto `libro.perfil`). Las reglas no
     modifican el libro ni lanzan por una rareza: lo que no se puede juzgar se omite (ver los
     límites declarados en la cabecera del módulo).
     """
-    ctx = _Contexto(libro, perfil or cargar_perfil())
+    ctx = _Contexto(libro, perfil or cargar_perfil(libro.perfil))
     hallazgos: list[Hallazgo] = []
     for regla in _REGLAS:
         hallazgos.extend(regla(ctx))
