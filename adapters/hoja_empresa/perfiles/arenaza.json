@@ -1,0 +1,133 @@
+{
+  "nombre": "arenaza",
+  "descripcion": "Plantilla de presupuesto de la empresa (libros A, B y C, julio 2026). Rotulos y variantes tomados de los libros reales; la comparacion ignora mayusculas, espacios repetidos y NBSP.",
+  "hojas": {
+    "PORTADA": "PORTADA",
+    "MEDICIONES": "MEDICIONES",
+    "PRESUPUESTO": "PRESUPUESTO",
+    "INSUMOS": "INSUMOS",
+    "RESUMEN": "RESUMEN",
+    "CRONOGRAMA": "CRONOGRAMA",
+    "CONTROL DE OBRA": "CONTROL DE OBRA",
+    "PLAN DE PAGOS": "PLAN DE PAGOS",
+    "PROCURA": "PROCURA",
+    "GASTOS": "GASTOS",
+    "CONTROL DE GASTOS": "CONTROL DE GASTOS",
+    "AUX": "AUX"
+  },
+  "apu": {
+    "prefijo": "APU",
+    "celda_titulo": "A2",
+    "columna_rotulos": "A",
+    "columna_cabecera": "B",
+    "rotulos_codigo_partida": ["Código de partida:"],
+    "rotulos_unidad": ["Unidad:"],
+    "columna_porcentaje": "F",
+    "respaldo_rendimiento": "Rendimiento",
+    "columnas_linea": {
+      "codigo": "B",
+      "descripcion": "C",
+      "unidad": "D",
+      "cantidad": "E",
+      "precio": "F"
+    },
+    "rotulos": {
+      "MAT": {"variantes": ["Materiales (USD/u)"], "columna": "G"},
+      "MO": {"variantes": ["Mano de obra (USD/u)"], "columna": "G"},
+      "EQ": {"variantes": ["Equipos y herramientas (USD/u)", "Equipos (USD/u)"], "columna": "G"},
+      "TR": {"variantes": ["Transporte y disposición (USD/u)"], "columna": "G"},
+      "CD": {"variantes": ["COSTO DIRECTO TOTAL"], "columna": "G"},
+      "ADM": {"variantes": ["Administración y gastos generales"], "columna": "G"},
+      "SUB": {"variantes": ["SUB-TOTAL (Costo Directo"], "columna": "G"},
+      "UTI": {"variantes": ["Utilidad e imprevistos"], "columna": "G"},
+      "PU": {"variantes": ["PRECIO UNITARIO TOTAL"], "columna": "G"},
+      "REND": {"variantes": ["FCAS × Rendimiento"], "columna": "F"},
+      "ESC": {"variantes": ["Escombro a botar", "Escombro generado"], "columna": "G"},
+      "BASE_MO": {"variantes": ["Subtotal salarios base"], "columna": "G"},
+      "EQ_DIA": {"variantes": ["Subtotal equipos ($/día)", "Subtotal equipos ("], "columna": "G"},
+      "HERR": {"variantes": ["Herramientas menores"], "columna": "G"}
+    }
+  },
+  "patron_codigo_insumo": "^(MT|MO|EQ)-\\d+",
+  "parametros": {
+    "fcas": "FCAS",
+    "herramientas": "HERR",
+    "administracion": "ADMON",
+    "utilidad": "UTIL",
+    "iva": "IVA",
+    "capacidad_camion": "CAMION",
+    "flete": "FLETE",
+    "tarifa_vertedero": "VERT"
+  },
+  "totales": ["SUBSINIVA", "IVATOT", "TOTALGEN"],
+  "portada": {
+    "rotulos": {
+      "cliente": ["CLIENTE"],
+      "contratista": ["CONTRATISTA"],
+      "ubicacion": ["UBICACIÓN"],
+      "norma": ["NORMA DE REFERENCIA"],
+      "moneda": ["MONEDA"],
+      "fecha_texto": ["FECHA"]
+    },
+    "ancla_obra": "PRESUPUESTO DE OBRA"
+  },
+  "presupuesto": {
+    "encabezado": {"B": ["Nº", "N°", "No."], "C": ["CÓDIGO"]},
+    "columnas": {
+      "numero": "B",
+      "codigo": "C",
+      "descripcion": "D",
+      "unidad": "E",
+      "rendimiento": "F",
+      "cantidad": "G",
+      "precio_unitario": "P",
+      "monto": "Q",
+      "verificacion": "R",
+      "peso": "S"
+    },
+    "desglose": ["H", "I", "J", "K", "L", "M", "N", "O", "P"],
+    "guardados": ["F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "S"],
+    "filas_especiales": {
+      "total_sin_iva": ["TOTAL COSTO DE LA OBRA"],
+      "total": ["TOTAL PRESUPUESTO"],
+      "subtotal": ["SUBTOTAL"],
+      "iva": ["IVA"]
+    }
+  },
+  "insumos": {
+    "columnas": {"codigo": "B", "descripcion": "C", "unidad": "D", "precio": "E", "fuente": "F"}
+  },
+  "programacion": {
+    "DSEM": {"hoja": "CRONOGRAMA", "rotulos": ["Días laborables por semana"]},
+    "FRENTES": {"hoja": "CRONOGRAMA", "rotulos": ["Frentes de trabajo"]},
+    "SEMANA_CORTE": {"hoja": "CONTROL DE OBRA", "rotulos": ["Semana de corte"]},
+    "TIEMPO_CONTRATADO": {"hoja": "CONTROL DE OBRA", "rotulos": ["Tiempo contratado"]},
+    "ANTICIPO": {"hoja": "PLAN DE PAGOS", "rotulos": ["Anticipo"]},
+    "N_VALUACIONES": {"hoja": "PLAN DE PAGOS", "rotulos": ["Número de valuaciones"]},
+    "RETENCION": {"hoja": "PLAN DE PAGOS", "rotulos": ["Retención"]}
+  },
+  "control_obra": {
+    "inicio_ejecutado": ["A ·"],
+    "fin_ejecutado": ["B ·", "C ·"],
+    "inicio_final": ["C ·"],
+    "fin_final": ["D ·"],
+    "columna_numero": "A",
+    "columna_cantidad": "D"
+  },
+  "gastos": {"columna_numero": "A", "columna_gastado": "D"},
+  "estilo": {
+    "fuente": "Arial",
+    "paleta": {
+      "titulo": "501C1C",
+      "encabezado": "7F2D2D",
+      "subtotal": "FBEFD6",
+      "editable": "FFF6DD",
+      "total": "E9C1C1",
+      "texto": "1F2328",
+      "texto_secundario": "6B5B5B",
+      "enlazado": "1E7D46",
+      "fila_alterna": "F5F8FA",
+      "blanco": "FFFFFF"
+    }
+  }
+}
