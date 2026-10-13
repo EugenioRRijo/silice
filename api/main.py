@@ -4,7 +4,15 @@ from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 
 from api.proteccion import exigir_clave_api, opciones_documentacion, proteger
-from api.rutas import auditorias, catalogo, computos, listas, presupuestos, rendimientos
+from api.rutas import (
+    auditorias,
+    catalogo,
+    computos,
+    libros,
+    listas,
+    presupuestos,
+    rendimientos,
+)
 from core.catalog import CatalogoIncompleto
 from operacion.version import version
 
@@ -27,6 +35,8 @@ app.include_router(computos.router, dependencies=CON_CLAVE)
 app.include_router(presupuestos.router, dependencies=CON_CLAVE)
 app.include_router(rendimientos.router, dependencies=CON_CLAVE)
 app.include_router(auditorias.router, dependencies=CON_CLAVE)  # S3 §10: POST /v1/auditorias
+# 1.5: /v1/libros (auditoria, devolucion y pdf)
+app.include_router(libros.router, dependencies=CON_CLAVE)
 
 
 @app.get("/salud", tags=["catalogo"])

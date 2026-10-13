@@ -1171,3 +1171,15 @@ Las que dependen de Eugenio remiten al maestro §10.3; las que cerró la revisi�
 11. ~~¿Entran a la 1.0.0 las anomalías en variaciones de precio (RV‑21)?~~ **Decidida por Eugenio el 2026‑10‑11**
     (pregunta P5 del maestro §10.3): entran como deseable, RF‑100 (D), en la fase opcional S3‑6, reutilizando
     `ml.anomaly.precios_atipicos`; es lo primero que cae si falta tiempo.
+
+## Enmienda 1.5 (2026-10-13)
+
+Decidida por Eugenio el 2026-10-13 ([spec 1.5](2026-10-13-silice-1.5-fusion-design.md), W3 y W4).
+
+- **RF-88 / UC-05:** además del formato neutro UC-05, Silice lee el libro de la empresa **tal como es**, mediante
+  un perfil de plantilla (`adapters/hoja_empresa/perfiles/`).
+- **DA-S3-10:** sigue valiendo para el `.silice` v1 (el Excel del emisor no viaja). El libro calcado que produce
+  Silice es una entrega aparte, con su SHA-256 de origen en TRAZABILIDAD y en las propiedades del documento.
+- **Amenaza declarada «con datos ficticios no se valida la tasa real de detección»:** queda atenuada. Los 17
+  hallazgos reales de [causas raíz](../auditoria/2026-10-13-causas-raiz-libros-arenaza.md) son la primera medida
+  sobre presupuestos entregados de verdad.

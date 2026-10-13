@@ -27,7 +27,7 @@ RAIZ = Path(__file__).resolve().parents[1]
 REQUISITO = re.compile(r"^([A-Za-z0-9][A-Za-z0-9._\-]*)==([^\s;]+)")
 MB = 1_000_000
 LIMITE_BASICO_MB = 150.0
-FIJAS = ("basica", "bcv", "civil", "anomalias", "ia")
+FIJAS = ("basica", "bcv", "civil", "anomalias", "ia", "pdf")
 ORDEN_DE_RECORTE = ("civil", "anomalias")
 #: capa -> extras acumulados (el spec §7.2: «base + ui + api + planos + informes», luego cada extra)
 CAPAS: dict[str, list[str]] = {
@@ -37,6 +37,8 @@ CAPAS: dict[str, list[str]] = {
     "civil": ["ui", "api", "planos", "informes", "bcv", "civil"],
     "anomalias": ["ui", "api", "planos", "informes", "bcv", "civil", "anomalias"],
     "ia": ["ui", "api", "planos", "informes", "bcv", "civil", "anomalias", "ia"],
+    # 1.5: el extra `pdf` entra en la básica (manifiesto.toml); se mide como una capa más.
+    "pdf": ["ui", "api", "planos", "informes", "bcv", "civil", "anomalias", "ia", "pdf"],
     "similitud": [
         "ui",
         "api",
@@ -46,6 +48,7 @@ CAPAS: dict[str, list[str]] = {
         "civil",
         "anomalias",
         "ia",
+        "pdf",
         "similitud",
     ],
 }

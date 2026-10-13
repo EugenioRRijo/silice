@@ -29,6 +29,7 @@ PAQUETES_FUERA_DEL_NUCLEO = (
     "auditoria",
     "asistente",
     "instalador",
+    "fusion",
 )
 
 #: Terceros que cada adaptador puede importar, ademas de la biblioteca estandar, `core.contracts` y
@@ -40,6 +41,7 @@ TERCEROS_POR_ADAPTADOR: dict[str, frozenset[str]] = {
     "espacio": frozenset(
         {"sqlalchemy", "ezdxf", "ifcopenshell", "shapely", "ifctester", "xmlschema"}
     ),
+    "hoja_empresa": frozenset({"openpyxl", "defusedxml", "xlsxwriter", "pdfplumber", "pdfminer"}),
     "industrial": frozenset(),
     "sistemas": frozenset(),
     "telecom": frozenset(),

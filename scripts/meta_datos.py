@@ -18,6 +18,19 @@ Que NO se vigila, y por que:
   bitacora de la sesion que la descubre, no reescribiendo el registro.
 - `docs/tesis/`: lo vigila `meta_redaccion.py` (R7), con su regla mas estricta.
 
+Enmienda 1.5 (2026-10-13, NORMAS §1): ahora hay datos reales declarados (los PDF de ARENAZA,
+autorizados como referencia, y los libros de la empresa, confidenciales y fuera del repositorio). D1
+sigue vigilando que los casos CONSTRUIDOS no se presenten como reales; una oracion que nombra una de
+las clases reales declaradas no es esa afirmacion. Las marcas de esas clases son FRASES («libros de
+la empresa», «PDF de ARENAZA», «real-confidencial», «anonimizad...») y no palabras sueltas:
+«empresa» o «ARENAZA» solas excusarian tambien «los APU de ARENAZA son reales», que es justo lo
+que D1 caza (los APU de ARENAZA del repositorio siguen siendo ejercicios).
+
+D4 vigila lo nuevo: ninguna ruta versionada cae donde viven los reales confidenciales
+(`docs/auditoria/**` y `data/confidencial/**`, extension en cualquier capitalizacion), y ninguna
+hoja de calculo (.xlsx, .xlsm, .xls, .xlsb) ni PDF esta versionado fuera de `LISTA_BLANCA`, que dice
+por que cada uno puede estar en Git.
+
 Uso: `uv run python scripts/meta_datos.py [--json]`.
 """
 
@@ -41,6 +54,47 @@ TITULOS: dict[str, str] = {
     "D1": "La documentacion no presenta los datos del repositorio como reales",
     "D2": "NORMAS.md declara la naturaleza de todos los datos (incluye ARENAZA)",
     "D3": "Los documentos historicos conservan su nota de errata",
+    "D4": "Ningun libro real-confidencial esta versionado (enmienda 1.5)",
+}
+
+#: Donde viven los reales confidenciales (NORMAS §1, enmienda 1.5); ninguno puede estar en Git. En
+#: cualquier subcarpeta de `docs/auditoria/` y con la extension en cualquier capitalizacion.
+_CONFIDENCIALES = re.compile(
+    r"^(docs/auditoria/.+\.(xlsx|xlsm|xlsb|xls|pdf)|data/confidencial/.+)$", re.I
+)
+
+#: Un libro de la empresa o su impreso llega como hoja de calculo o como PDF: fuera de la lista
+#: blanca, ninguno puede estar versionado, este donde este.
+_VIGILADOS_D4 = re.compile(r"\.(xlsx|xlsm|xlsb|xls|pdf)$", re.I)
+
+#: Hojas de calculo y PDF que SI pueden estar en Git, cada uno con el porque. Rutas exactas, salvo
+#: las que terminan en `/` (carpeta entera). Anadir una entrada es una decision, no un tramite.
+LISTA_BLANCA: dict[str, str] = {
+    # Hojas de calculo
+    "tests/fixtures/control/ob_s2.xlsx": (
+        "sintetico: XLSX de la memoria OB-S2 escrita a mano (spec S2 §7.2, commit 6dfd65e); "
+        "partidas OB-A/OB-B, inspector 'Ing. Ficticio', fuente 'libro de obra ficticio'"
+    ),
+    "tests/fixtures/bcv/2_1_2c26_smc.xls": (
+        "publico: tipo de cambio del BCV descargado de bcv.org.ve el 2026-10-11; direccion y "
+        "SHA-256 en tests/fixtures/bcv/FUENTE.md (P6)"
+    ),
+    "tests/fixtures/bcv/4_5_7.xls": (
+        "publico: INPC del BCV descargado de bcv.org.ve el 2026-10-11; direccion y SHA-256 en "
+        "tests/fixtures/bcv/FUENTE.md (P6)"
+    ),
+    # PDF
+    "data/samples/telecom/Presupuesto_1_ARENAZA.pdf": (
+        "real AUTORIZADO como referencia (NORMAS §1, enmienda 1.5): PDF simple de ARENAZA"
+    ),
+    "data/samples/telecom/Presupuesto_2_ARENAZA.pdf": (
+        "real AUTORIZADO como referencia (NORMAS §1, enmienda 1.5): PDF simple de ARENAZA"
+    ),
+    "data/linea_base/APUS_CLINICA.pdf": (
+        "ejercicio academico ficticio: memoria de calculo de la linea base civil (NORMAS §1)"
+    ),
+    "data/precios/maprex_2026-07/": "publico: lista de precios MaPreX publicada (julio 2026)",
+    "docs/fuentes/": "publico: fuentes normativas y bibliograficas citadas en la tesis",
 }
 
 #: Documentos escritos antes de la aclaracion del 2026-09-15. No se reescriben sin dejar la nota.
@@ -85,6 +139,13 @@ _MARCAS: tuple[str, ...] = (
     "pendiente",
     "sin ",
     "suministr",
+    # Enmienda 1.5: las clases reales declaradas en NORMAS §1, como frases (ver el docstring).
+    "libro de la empresa",
+    "libros de la empresa",
+    "presupuestos reales de arenaza",
+    "pdf de arenaza",
+    "real-confidencial",
+    "anonimizad",
 )
 
 
@@ -141,6 +202,49 @@ def evaluar_errata(textos: Mapping[str, str]) -> tuple[Estado, str]:
     return Estado.OK, f"los {len(textos)} documentos historicos conservan su nota de errata"
 
 
+def _en_lista_blanca(ruta: str) -> bool:
+    return any(
+        ruta.startswith(permitida) if permitida.endswith("/") else ruta == permitida
+        for permitida in LISTA_BLANCA
+    )
+
+
+def evaluar_confidenciales(versionados: list[str]) -> tuple[Estado, str]:
+    """D4: ninguna ruta versionada cae donde viven los reales confidenciales, y ninguna hoja de
+    calculo ni PDF versionado queda fuera de `LISTA_BLANCA`. Lo confidencial falla aunque alguien
+    lo anada a la lista blanca."""
+    rutas = [r.replace("\\", "/") for r in versionados]
+    expuestos = sorted(r for r in rutas if _CONFIDENCIALES.match(r))
+    sin_permiso = sorted(
+        r
+        for r in rutas
+        if _VIGILADOS_D4.search(r) and not _CONFIDENCIALES.match(r) and not _en_lista_blanca(r)
+    )
+    problemas = []
+    if expuestos:
+        problemas.append("reales confidenciales versionados: " + ", ".join(expuestos))
+    if sin_permiso:
+        problemas.append(
+            "hojas de calculo o PDF versionados fuera de la lista blanca: " + ", ".join(sin_permiso)
+        )
+    if problemas:
+        return Estado.FALLA, "; ".join(problemas)
+    vigilados = sum(1 for r in rutas if _VIGILADOS_D4.search(r))
+    return Estado.OK, (
+        f"{len(versionados)} archivo(s) versionados, ninguno confidencial; "
+        f"{vigilados} hoja(s) de calculo o PDF, todos en la lista blanca"
+    )
+
+
+def _versionados(raiz: Path) -> list[str]:
+    import subprocess
+
+    salida = subprocess.run(
+        ["git", "ls-files"], cwd=raiz, capture_output=True, text=True, check=False
+    )
+    return salida.stdout.splitlines() if salida.returncode == 0 else []
+
+
 def es_vigilado(relativo: str) -> bool:
     """Solo documentacion (`.md`) del proyecto, fuera de los registros fechados y de la tesis."""
     ruta = relativo.replace("\\", "/")
@@ -178,6 +282,7 @@ def _evaluar_metas() -> list[Fila]:
         "D1": lambda: evaluar_documentos(documentos),
         "D2": lambda: evaluar_naturaleza_datos(_leer(RAIZ / "NORMAS.md")),
         "D3": lambda: evaluar_errata(historicos),
+        "D4": lambda: evaluar_confidenciales(_versionados(RAIZ)),
     }
     return [Fila(codigo, TITULOS[codigo], *chequeo()) for codigo, chequeo in chequeos.items()]
 

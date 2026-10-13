@@ -83,6 +83,7 @@ from ui.paginas import (
     hoja,
     indices,
     inicio,
+    libros,
     precios_empresa,
     reajuste,
     revisar,
@@ -161,6 +162,10 @@ PAGINAS: tuple[DefinicionPagina, ...] = (
                      Accion.ADMINISTRAR_CUENTAS),
     DefinicionPagina(revisar.render, "Revisar un paquete", SECCION_REVISION, "UC-23",
                      Accion.REVISAR_PAQUETE),
+    # 1.5 (UC-25): el libro de Excel de la empresa, auditado y devuelto calcado (o solo un PDF
+    # simple, L10). Solo lee el caso (tasas y precios propios), asi que lo ve quien arma y quien
+    # revisa (LEER_PROYECTO).
+    DefinicionPagina(libros.render, "Libro de la empresa", SECCION_REVISION, "UC-25", _LEE),
     DefinicionPagina(
         escenarios.render, "Escenarios de sensibilidad", SECCION_INVESTIGACION, "UC-08", _EDITA
     ),

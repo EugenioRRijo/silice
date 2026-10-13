@@ -64,3 +64,12 @@ scripts/_salida_rnf15.json
 build/
 publicacion/
 humo-salida/
+
+# Presupuestos reales de clientes: confidenciales, nunca al repositorio (Silice 1.5, V-D3, 2026-10-13)
+# En cualquier subcarpeta de docs/auditoria/ y con la extension en cualquier capitalizacion (.XLSX):
+# git distingue mayusculas en Linux. La meta D4 (scripts/meta_datos.py) vigila ademas toda hoja de
+# calculo o PDF versionado fuera de su lista blanca.
+docs/auditoria/**/*.[xX][lL][sS]
+docs/auditoria/**/*.[xX][lL][sS][xXmMbB]
+docs/auditoria/**/*.[pP][dD][fF]
+data/confidencial/
