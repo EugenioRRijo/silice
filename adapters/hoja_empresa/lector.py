@@ -40,8 +40,12 @@ from datetime import date, datetime, time
 from decimal import Decimal
 from typing import Any
 
+from openpyxl.utils.cell import column_index_from_string as _col
+from openpyxl.utils.cell import get_column_letter as _letra
+
 from adapters.hoja_empresa.guardia import ArchivoRechazado, verificar_archivo
 from adapters.hoja_empresa.modelo import (
+    VINCULO_ILEGIBLE,
     ApuLeido,
     Celda,
     FilaEspecial,
@@ -57,13 +61,14 @@ from adapters.hoja_empresa.modelo import (
     clave,
 )
 from adapters.hoja_empresa.perfil import Perfil, cargar_perfil, coincide, normalizar
+from adapters.hoja_empresa.umbrales import MEDIO_CENTAVO
 
 __all__ = ["leer_libro"]
 
 _CERO = Decimal(0)
 _UNO = Decimal(1)
 _TOLERANCIA_PU = Decimal("0.000001")
-_TOLERANCIA_REASIGNAR = Decimal("0.005")  # medio centavo: pasada final de `_unir` (F-D6)
+_TOLERANCIA_REASIGNAR = MEDIO_CENTAVO  # pasada final de `_unir` (F-D6)
 _REF_CELDA = re.compile(r"^(?:'((?:[^']|'')+)'|([^'!\[\]]+))!\$?([A-Za-z]{1,3})\$?(\d+)$")
 _COORD = re.compile(r"^([A-Z]{1,3})(\d+)$")
 
@@ -103,21 +108,6 @@ def _texto(v: object) -> str:
     if v is None:
         return ""
     return v.strip() if isinstance(v, str) else str(v)
-
-
-def _col(letra: str) -> int:
-    n = 0
-    for ch in letra:
-        n = n * 26 + (ord(ch) - 64)
-    return n
-
-
-def _letra(col: int) -> str:
-    letras = ""
-    while col:
-        col, r = divmod(col - 1, 26)
-        letras = chr(65 + r) + letras
-    return letras
 
 
 def _ref(fila: int, col: int) -> str:
@@ -289,7 +279,10 @@ def _resolver(texto: str | None) -> Celda | None:
 
 
 def _vinculos_externos(datos: bytes) -> tuple[str, ...]:
-    """Los `Target` de `xl/externalLinks/_rels/*.rels` (el archivo al que apunta cada vínculo)."""
+    """Los `Target` de `xl/externalLinks/_rels/*.rels` (el archivo al que apunta cada vínculo).
+
+    Un `.rels` que defusedxml rechaza (XML dañado o con entidades) no se adivina ni se pierde: va
+    como `VINCULO_ILEGIBLE` + el nombre de la pieza, y L5 lo informa."""
     from defusedxml import ElementTree
 
     destinos: list[str] = []
@@ -300,7 +293,8 @@ def _vinculos_externos(datos: bytes) -> tuple[str, ...]:
                     continue
                 try:
                     raiz = ElementTree.fromstring(zf.read(n))
-                except Exception:  # XML dañado o con entidades: se omite, no se adivina
+                except Exception:  # noqa: BLE001 - XML dañado o con entidades: L5 lo informa
+                    destinos.append(f"{VINCULO_ILEGIBLE}{n}")
                     continue
                 for el in raiz.iter():
                     if el.tag.rsplit("}", 1)[-1] == "Relationship" and el.get("Target"):

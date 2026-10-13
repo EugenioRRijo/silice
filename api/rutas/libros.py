@@ -65,8 +65,9 @@ LOG = logging.getLogger(__name__)
 
 TIPO_XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 BLOQUE = 1024 * 1024  # se lee de a 1 MiB: un archivo de más se corta sin leerlo entero
-# El tope real: el middleware corta el cuerpo entero en 20 MiB antes de que la ruta lo vea, así que
-# el de la guardia (25 MB por archivo, F-D10) no se alcanza por la API.
+# El tope real: el middleware corta el cuerpo entero (todos los archivos juntos) en 20 MiB antes de
+# que la ruta lo vea, así que el de la guardia (`MAX_BYTES`, 25 MiB por archivo, F-D10) no se
+# alcanza por la API.
 TOPE_BYTES = min(MAX_BYTES, LIMITE_CUERPO)
 UMBRAL_POR_OMISION = Decimal("0.05")
 ERRORES_DEL_USUARIO = (ArchivoRechazado, LibroNoInterpretable)  # su mensaje es para el usuario
@@ -177,10 +178,10 @@ def _exigir_extension(nombre: str, extension: str, campo: str) -> None:
 
 async def _leer(archivo: UploadFile, campo: str) -> bytes:
     """Los bytes de la subida, por bloques; 413 en cuanto pasan de `TOPE_BYTES` (20 MiB: el tope
-    del cuerpo entero que pone `api.proteccion`, más estricto que los 25 MB de la guardia)."""
+    del cuerpo entero que pone `api.proteccion`, más estricto que los 25 MiB de la guardia)."""
     excedido = HTTPException(
         413,
-        f"'{campo}' supera el máximo de {TOPE_BYTES // 2**20} MiB (el tope de la petición "
+        f"'{campo}' supera el máximo de {TOPE_BYTES / 2**20:g} MiB (el tope de la petición "
         "entera, con todos sus archivos).",
     )
     if archivo.size is not None and archivo.size > TOPE_BYTES:

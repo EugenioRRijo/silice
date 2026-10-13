@@ -5,6 +5,10 @@ obra puede durar más que ese bloque (en el libro A todas las duraciones daban 0
 H6). Si hace falta, el bloque se extiende a la derecha copiando la última columna de semanas con sus
 fórmulas trasladadas y su estilo, y se amplían los rangos que lo leen (curva S, avance proyectado de
 CONTROL DE OBRA).
+
+Tope: la última columna añadida no pasa de XFD (16 384, el máximo de Excel). Si la obra pidiera más
+semanas de las que caben (datos absurdos: una duración enorme o una semana de duración ínfima), el
+bloque no se extiende y la transformación "Semanas del cronograma no añadidas" lo deja dicho.
 """
 
 from __future__ import annotations
@@ -24,6 +28,8 @@ from adapters.hoja_empresa.perfil import normalizar
 __all__ = ["extender_semanas"]
 
 _MINIMO = 12
+#: Última columna de una hoja de Excel (XFD).
+_MAX_COLUMNA = 16_384
 
 
 def _bloque_semanas(h: HojaSalida) -> tuple[int, int, int, int] | None:
@@ -81,10 +87,26 @@ def extender_semanas(ctx: Contexto, ev: Evaluador) -> int:
             v = ev.celda(h.nombre, f, c)
             if isinstance(v, Decimal) and v > fin:
                 fin = v
-    semanas = max(_MINIMO, math.ceil(fin / dsem))
-    extra = semanas - n
-    if extra <= 0:
+    try:
+        cociente = fin / dsem
+    except ArithmeticError:  # desborde del contexto decimal: no cabe en ninguna hoja
+        cociente = None
+    if cociente is None or not cociente.is_finite() or cociente > _MAX_COLUMNA:
+        semanas = None
+    else:
+        semanas = max(_MINIMO, math.ceil(cociente))
+    if semanas is not None and semanas - n <= 0:
         return 0
+    if semanas is None or c_fin + (semanas - n) > _MAX_COLUMNA:
+        ctx.salida.anotar(
+            "Semanas del cronograma no añadidas",
+            None,
+            f"{h.nombre}!{letra(c_ini)}{fila_enc}",
+            f"la obra necesitaría más semanas de las que caben hasta la columna XFD (la última de "
+            f"Excel); el bloque se dejó con sus {n} semanas",
+        )
+        return 0
+    extra = semanas - n
 
     ultima = letra(c_fin)
     for (f, c), cel in sorted(h.celdas.items()):

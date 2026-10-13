@@ -106,7 +106,8 @@ def copiar_hoja(
 ) -> HojaSalida:
     """Copia la hoja openpyxl `ws` a una `HojaSalida` (por defecto con el mismo nombre).
 
-    `avisos` recibe las fórmulas peligrosas que no se copiaron como fórmula (ver el módulo).
+    `avisos` recibe lo que no se copió tal cual: fórmulas peligrosas pasadas a valor, validaciones
+    y formatos condicionales omitidos (ver el módulo) y paneles con una celda que no es válida.
     """
     h = HojaSalida(nombre or ws.title)
     avisos = avisos if avisos is not None else []
@@ -141,7 +142,11 @@ def copiar_hoja(
         celda = str(ws.freeze_panes)
         col = "".join(ch for ch in celda if ch.isalpha())
         fila = int("".join(ch for ch in celda if ch.isdigit()) or 1)
-        h.paneles = (fila - 1, col_num(col) - 1)
+        try:
+            h.paneles = (fila - 1, col_num(col) - 1)
+        except ValueError:  # `topLeftCell` sin columna de A a ZZZ (XML ajeno): sin paneles
+            motivo = "la celda de los paneles inmovilizados no es una referencia válida"
+            avisos.append(("Paneles inmovilizados omitidos", ws.title, celda, motivo))
     h.oculta = ws.sheet_state in ("hidden", "veryHidden")
     tab = getattr(ws.sheet_properties, "tabColor", None)
     if tab is not None:

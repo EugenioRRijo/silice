@@ -305,9 +305,6 @@ class Kit:
             k = _RESPALDOS.get(k)
         return None
 
-    def tiene(self, clase: str) -> bool:
-        return bool(self.estilos.get(clase))
-
 
 def _clases_de_filas(ws: Any, apu: ApuLeido, perfil: Perfil) -> dict[int, str]:
     """Fila del APU original → clase de fila de la maqueta."""

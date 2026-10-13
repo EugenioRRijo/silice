@@ -77,7 +77,9 @@ CODIGOS_TRANSFORMACION: dict[str, str] = {
     "Valor guardado conservado": "VALOR-CONSERVADO",
     "Filas añadidas a PROCURA": "FILAS-ANADIDAS",
     "Semanas del cronograma": "SEMANAS-ANADIDAS",
+    "Semanas del cronograma no añadidas": "SEMANAS-NO-ANADIDAS",
     "Gráfico omitido": "GRAFICO-OMITIDO",
+    "Paneles inmovilizados omitidos": "PANELES-OMITIDOS",
     "Partida sin APU unido": "PARTIDA-SIN-APU",
 }
 _MAX_DESCRIPCION = 500
@@ -110,7 +112,8 @@ def transformaciones_del_calcado(notas: Sequence[Nota]) -> list[tuple[str, str, 
 
 
 def _anotar_avisos(ctx: Contexto, avisos: Sequence[Aviso]) -> None:
-    """Las fórmulas peligrosas que `copia` no copió como fórmula, a las transformaciones."""
+    """Lo que `copia` no copió tal cual (fórmulas peligrosas, validaciones, formatos condicionales,
+    paneles), a las transformaciones."""
     for dato, ref, original, motivo in avisos:
         ctx.salida.anotar(dato, None, ref, f"{motivo}: {original[:300]}")
 
@@ -343,24 +346,13 @@ def _orden_evaluacion(ctx: Contexto) -> list[str]:
 
 
 def _evaluar(ctx: Contexto, ev: Evaluador, hojas: list[str]) -> None:
-    reintentos: list[tuple[str, int, int]] = []
+    """Calcula cada fórmula. `Evaluador.celda` no deja escapar `RecursionError`: una cadena de
+    referencias demasiado profunda conserva el valor guardado y queda anotada en `ev.respaldos`."""
     for nombre in hojas:
         h = ctx.salida.hojas[nombre]
         for (f, c), cel in sorted(h.celdas.items()):
             if cel.formula:
-                try:
-                    cel.calculado = ev.celda(nombre, f, c)
-                except RecursionError:
-                    ev._curso.clear()
-                    reintentos.append((nombre, f, c))
-    for nombre, f, c in reintentos:
-        cel = ctx.salida.hojas[nombre].celdas[(f, c)]
-        try:
-            cel.calculado = ev.celda(nombre, f, c)
-        except RecursionError:
-            ev._curso.clear()
-            cel.calculado = cel.respaldo
-            ev.respaldos.append((nombre, f, c, "recursión"))
+                cel.calculado = ev.celda(nombre, f, c)
 
 
 #: Excel no abre un libro con una fórmula de más de 8 192 caracteres.

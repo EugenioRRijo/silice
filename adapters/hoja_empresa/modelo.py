@@ -39,8 +39,14 @@ __all__ = [
     "Rotulo",
     "TipoFilaEspecial",
     "TipoInsumo",
+    "VINCULO_ILEGIBLE",
     "clave",
 ]
+
+#: Prefijo de una entrada de `LibroLeido.vinculos_externos` que no es un destino sino la pieza
+#: `xl/externalLinks/_rels/*.rels` que no se pudo leer (XML dañado o con entidades): el vínculo
+#: existe pero no se sabe adónde apunta, y L5 lo informa en vez de perderlo.
+VINCULO_ILEGIBLE = "rels ilegible: "
 
 
 class LibroNoInterpretable(ValueError):  # noqa: N818 (nombre fijado por el contrato 1.5)
@@ -66,11 +72,6 @@ class Celda:
 
     def __str__(self) -> str:
         return clave(self.hoja, self.ref)
-
-    @property
-    def origen_id(self) -> str:
-        """El `origen_id` de un hallazgo o de un `ItemComputo` que sale de esta celda."""
-        return str(self)
 
 
 class TipoInsumo(StrEnum):
@@ -250,9 +251,10 @@ class LibroLeido:
     'TIEMPO_CONTRATADO', 'ANTICIPO', 'N_VALUACIONES', 'RETENCION' (solo las que el libro tiene).
     `ejecutado`,
     `final_previsto` y `gastado` van por número de partida (CONTROL DE OBRA secciones A y C, y
-    GASTOS). `perfil` es el nombre del perfil de plantilla con que se leyó el libro
-    (`adapters.hoja_empresa.perfil.cargar_perfil(libro.perfil)` lo recupera): todo consumidor lo
-    toma de aquí y no supone otro.
+    GASTOS). `vinculos_externos` trae el `Target` de cada vínculo a otro libro, o
+    `VINCULO_ILEGIBLE` + la pieza `.rels` que no se pudo leer. `perfil` es el nombre del perfil de
+    plantilla con que se leyó el libro (`adapters.hoja_empresa.perfil.cargar_perfil(libro.perfil)`
+    lo recupera): todo consumidor lo toma de aquí y no supone otro.
 
     `apu(hoja)` e `insumo(codigo)` consultan índices armados una vez al crear el libro (si un nombre
     se repite, gana el primero, como en el recorrido lineal).
