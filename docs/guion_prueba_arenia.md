@@ -897,7 +897,8 @@ un lavamanos a 60 centímetros del piso.»
 
 **Resultado esperado**
 
-- Paso 2: el destino dice «Anthropic, en internet» (nube) o «este equipo» (local), la estimación
+- Paso 2: el destino dice «Anthropic, en internet» (nube), «este equipo» (local) o la dirección
+  de Ollama «fuera de este equipo» (Ollama en otro equipo), la estimación
   está en dólares, el tope es el que fijó el administrador y **Lo que se enviara** no contiene
   precios, montos ni nombres de proyecto, empresa o usuarios.
 - Paso 3: la hoja **no cambia** al proponer; cada propuesta aparece **pendiente**. Los valores
