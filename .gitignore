@@ -73,3 +73,8 @@ docs/auditoria/**/*.[xX][lL][sS]
 docs/auditoria/**/*.[xX][lL][sS][xXmMbB]
 docs/auditoria/**/*.[pP][dD][fF]
 data/confidencial/
+
+# Corridas del piloto del experimento del asistente (S4.4): son de desarrollo y no se versionan.
+# Los resultados de la evaluacion (docs/resultados_asistente_*.json) SI se versionan en T20.
+docs/piloto_*.json
+docs/piloto_asistente_corridas.json
