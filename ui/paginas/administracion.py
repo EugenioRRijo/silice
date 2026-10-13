@@ -1,7 +1,8 @@
 """Administración de la instalación (UC-21; spec S3 §5.7, §7 y §10; RF-80, RF-84, RF-88, RF-98).
 
-Seis pestañas: Cuentas, Empresa y clave de firma, Empresas registradas, Claves de API, Accesos e
-Instalación (red local, API, respaldos y eventos de seguridad perdidos). Solo el rol
+Siete pestañas: Cuentas, Empresa y clave de firma, Empresas registradas, Claves de API, Asistente
+de IA (activarlo, proveedor, tope de costo y clave de IA, S4 §3.1 y §8.3), Accesos e Instalación
+(red local, API, respaldos y eventos de seguridad perdidos). Solo el rol
 *administrador de la instalación* llega aquí (`exigir` es lo primero de `render()`); lo que toca un
 secreto (clave de firma, claves de API) exige además el propio equipo (`exigir_local`, S3 §5.6).
 
@@ -22,6 +23,10 @@ import streamlit as st
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from asistente import administracion as ia_administracion
+from asistente.clave import ClaveDeIA, ClaveNoRegistrable, enmascarar
+from asistente.configuracion import PROVEEDORES, ConfiguracionIA, leer
+from asistente.instalacion import clave_de_la_instalacion, ruta_de_configuracion
 from seguridad import claves_api, cuentas, empresas, eventos, firma
 from seguridad.modelo import ClaveApi, EmpresaRegistrada, Usuario
 from seguridad.permisos import Accion, Rol, Sensible, aviso_de_roles
@@ -431,6 +436,209 @@ def _pestana_api(bd: Session, sesion: SesionActiva) -> None:
             st.rerun()
 
 
+# --- asistente de IA ---------------------------------------------------------------------------
+
+#: Quién configura el asistente: la acción de la matriz de roles que S3 ya liga a la clave de IA
+#: (`ROL_DE_LO_SENSIBLE[Sensible.CLAVE_DE_IA]`); hoy solo el administrador de la instalación.
+ACCION_DEL_ASISTENTE = Accion.ADMINISTRAR_EMPRESA
+EMPRESA_DE_LA_CLAVE = "empresa-propia"  # una sola empresa propia por instalación (S3, RV-6)
+AVISO_CONFIG = "ia_aviso_config"  # no son de widget: el último mensaje de cada sección, una vez
+AVISO_CLAVE = "ia_aviso_clave"
+CLAVES_DEL_FORMULARIO = ("ia_clave_nueva", "ia_contrasena_respaldo")
+ETIQUETAS_DE_PROVEEDOR = {
+    "claude": "Claude (en la nube, con la clave de la empresa)",
+    "ollama": "Ollama (local, en este equipo)",
+}
+SIN_EXTRA_IA = (
+    "Falta el componente del asistente de IA en este equipo. Instálelo con «uv sync --extra ia» "
+    "y vuelva a abrir Sílice."
+)
+
+
+def _ip_del_cliente() -> str | None:
+    """La IP del navegador (`st.context.ip_address`, vía `ui.cliente`); `None` si no se leyó."""
+    return ui_sesion.ip_del_cliente()
+
+
+def _es_administrador() -> bool:
+    return ui_sesion.puede(ACCION_DEL_ASISTENTE)
+
+
+def _clave_de_ia() -> ClaveDeIA | None:
+    """La clave de IA de la instalación, o `None` si el extra `ia` (keyring) no está instalado."""
+    try:
+        return clave_de_la_instalacion()
+    except ImportError:
+        return None
+
+
+def _avisar(destino: str, tipo: str, texto: str) -> None:
+    st.session_state[destino] = (tipo, texto)
+
+
+def _mostrar_aviso(destino: str) -> None:
+    """Muestra el último mensaje de la sección una sola vez (no queda pegado en la pantalla)."""
+    aviso = st.session_state.pop(destino, None)
+    if aviso is not None:
+        getattr(st, aviso[0])(aviso[1])
+
+
+def _guardar_configuracion() -> None:
+    try:
+        ia_administracion.configurar(
+            ruta_de_configuracion(),
+            es_administrador=_es_administrador(),
+            activo=st.session_state["ia_activo"],
+            proveedor=st.session_state["ia_proveedor"],
+            modelo_claude=st.session_state["ia_modelo_claude"],
+            modelo_local=st.session_state["ia_modelo_local"],
+            anfitrion_ollama=st.session_state["ia_anfitrion"],
+            tope_usd=st.session_state["ia_tope"],
+        )
+    except (ia_administracion.SinPermiso, ValueError) as error:
+        _avisar(AVISO_CONFIG, "error", texto_seguro(str(error)))
+        return
+    except OSError:
+        _avisar(
+            AVISO_CONFIG,
+            "error",
+            "No se pudo guardar la configuración en la carpeta de datos: revise que exista y que "
+            "se pueda escribir en ella.",
+        )
+        return
+    _avisar(AVISO_CONFIG, "success", "Configuración del asistente guardada.")
+
+
+def _registrar_clave() -> None:
+    # La clave sale del estado de la pantalla en el acto, pase lo que pase después.
+    texto = st.session_state.get("ia_clave_nueva", "")
+    respaldo = st.session_state.get("ia_contrasena_respaldo", "")
+    for nombre in CLAVES_DEL_FORMULARIO:
+        st.session_state[nombre] = ""
+    clave = _clave_de_ia()
+    if clave is None:
+        _avisar(AVISO_CLAVE, "error", SIN_EXTRA_IA)
+        return
+    permitida, motivo = cliente.operacion_sensible_permitida()
+    if not permitida:
+        _avisar(AVISO_CLAVE, "error", motivo)
+        return
+    try:
+        mostrada = ia_administracion.registrar_clave(
+            clave,
+            EMPRESA_DE_LA_CLAVE,
+            texto,
+            es_administrador=_es_administrador(),
+            ip_cliente=_ip_del_cliente(),
+            contrasena_respaldo=respaldo or None,
+        )
+    except (ia_administracion.SinPermiso, ClaveNoRegistrable, ValueError) as error:
+        _avisar(AVISO_CLAVE, "error", texto_seguro(enmascarar(str(error))))
+        return
+    except OSError:
+        _avisar(
+            AVISO_CLAVE,
+            "error",
+            "No se pudo guardar la clave: el almacén de credenciales o la carpeta de datos no "
+            "responden. Pruebe de nuevo o indique una contraseña para el respaldo cifrado.",
+        )
+        return
+    _avisar(AVISO_CLAVE, "success", f"Clave de IA registrada ({mostrada}).")
+
+
+def _olvidar_clave() -> None:
+    clave = _clave_de_ia()
+    if clave is None:
+        _avisar(AVISO_CLAVE, "error", SIN_EXTRA_IA)
+        return
+    try:
+        ia_administracion.olvidar_clave(
+            clave, EMPRESA_DE_LA_CLAVE, es_administrador=_es_administrador()
+        )
+    except ia_administracion.SinPermiso as error:
+        _avisar(AVISO_CLAVE, "error", texto_seguro(str(error)))
+        return
+    _avisar(AVISO_CLAVE, "success", "La clave de IA se olvidó: ya no está en este equipo.")
+
+
+def _seccion_configuracion(cfg: ConfiguracionIA) -> None:
+    st.checkbox("Activar el asistente de IA (viene apagado)", value=cfg.activo, key="ia_activo")
+    st.selectbox(
+        "Proveedor por defecto",
+        PROVEEDORES,
+        index=PROVEEDORES.index(cfg.proveedor),
+        format_func=lambda p: ETIQUETAS_DE_PROVEEDOR.get(p, p),
+        key="ia_proveedor",
+    )
+    st.text_input("Modelo de Claude", value=cfg.modelo_claude, key="ia_modelo_claude")
+    st.text_input(
+        "Modelo local (Ollama)",
+        value=cfg.modelo_local,
+        key="ia_modelo_local",
+        help="Déjelo vacío para usar el primer modelo instalado en Ollama.",
+    )
+    st.text_input("Dirección de Ollama", value=cfg.anfitrion_ollama, key="ia_anfitrion")
+    st.caption(
+        "Si la dirección de Ollama no es de este equipo, el asistente la trata como un servicio "
+        "en la nube y lo avisa antes de enviar nada."
+    )
+    st.text_input(
+        "Tope de costo por sesión (USD)",
+        value=str(cfg.tope_usd),
+        key="ia_tope",
+        help="Mayor que cero; puede escribir coma o punto decimal.",
+    )
+    st.button("Guardar la configuración", on_click=_guardar_configuracion, key="ia_guardar")
+    _mostrar_aviso(AVISO_CONFIG)
+
+
+def _seccion_clave(registrada: str | None) -> None:
+    st.subheader("Clave de IA de la empresa")
+    st.caption(
+        "Se registra solo desde el equipo donde está instalado Sílice y se guarda en el almacén de "
+        "credenciales de este usuario de Windows; no viaja en los respaldos."
+    )
+    permitida, motivo = cliente.operacion_sensible_permitida()
+    if not permitida:
+        st.info(motivo)
+    st.caption(f"Clave registrada: {registrada or 'ninguna'}")
+    with st.form("ia_formulario_clave", clear_on_submit=True):
+        st.text_input("Clave de IA de la empresa", type="password", key="ia_clave_nueva")
+        st.text_input(
+            "Contraseña del respaldo cifrado (solo si el almacén de credenciales no está)",
+            type="password",
+            key="ia_contrasena_respaldo",
+        )
+        st.form_submit_button("Registrar la clave", on_click=_registrar_clave, key="ia_registrar")
+    st.button("Olvidar la clave", on_click=_olvidar_clave, key="ia_olvidar")
+    _mostrar_aviso(AVISO_CLAVE)
+
+
+def pestana_asistente() -> None:
+    """Pestaña «Asistente de IA»: solo el administrador de la instalación (S4 §3.1)."""
+    if not _es_administrador():
+        st.info("El asistente de IA lo configura el administrador de la instalación.")
+        return
+    clave = _clave_de_ia()
+    if clave is None:
+        configuracion, registrada = leer(ruta_de_configuracion()), None
+    else:
+        ia_administracion.cargar_clave_guardada(clave, EMPRESA_DE_LA_CLAVE)
+        visto = ia_administracion.estado(ruta_de_configuracion(), clave)
+        configuracion, registrada = visto.configuracion, visto.clave_registrada
+    st.warning(ia_administracion.AVISO_DE_NUBE)
+    _seccion_configuracion(configuracion)
+    st.divider()
+    if clave is None:
+        st.error(SIN_EXTRA_IA)
+        return
+    _seccion_clave(registrada)
+
+
+def _pestana_asistente(bd: Session, sesion: SesionActiva) -> None:
+    pestana_asistente()
+
+
 # --- accesos -----------------------------------------------------------------------------------
 
 
@@ -470,6 +678,7 @@ PESTANAS: tuple[Pestana, ...] = (
     Pestana("Empresa y clave de firma", Accion.ADMINISTRAR_EMPRESA, _pestana_empresa),
     Pestana("Empresas registradas", Accion.ADMINISTRAR_EMPRESA, _pestana_registradas),
     Pestana("Claves de API", Accion.ADMINISTRAR_RED_Y_API, _pestana_api),
+    Pestana("Asistente de IA", ACCION_DEL_ASISTENTE, _pestana_asistente),
     Pestana("Accesos", Accion.ADMINISTRAR_CUENTAS, _pestana_accesos),
     Pestana("Instalación", Accion.ADMINISTRAR_RED_Y_API, _pestana_instalacion),
 )
