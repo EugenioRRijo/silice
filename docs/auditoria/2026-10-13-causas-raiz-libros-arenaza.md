@@ -26,6 +26,19 @@ versión de julio, 14 542,09) y "RC". Este último imprime **dos** presupuestos:
 "Opción definitiva" (15 451,69). Ninguno de los dos coincide con ningún Excel recibido. **Los PDF de B están cruzados
 de nombre:** el que se llama como B-1 imprime los totales de B-2 y al revés.
 
+**IVA y totales con IVA** (valores guardados en cada libro e impresos en su PDF; los usa como literales
+`scripts/fusion_verificar.py`):
+
+| Documento | Sin IVA | IVA 16 % | Total con IVA |
+|---|---|---|---|
+| Libro A | 9 955,65 | 1 592,90 | 11 548,55 |
+| Libro B-1 | 12 917,54 | 2 066,81 | 14 984,34 |
+| Libro B-2 | 16 491,80 | 2 638,69 | 19 130,49 |
+| Libro C (C-1 y C-2) y PDF "IR" | 24 311,92 | 3 889,91 | 28 201,83 |
+| PDF "QA v1" | 14 542,09 | 2 326,73 | 16 868,82 |
+| PDF "RC", Opción B | 11 730,51 | — | 13 607,39 |
+| PDF "RC", Opción definitiva | 15 451,69 | 2 472,27 | 17 923,97 |
+
 Método: se leyeron todas las fórmulas, los nombres definidos, los estilos y los **valores guardados** de cada hoja
 (openpyxl, `data_only`). Después se comparó cada referencia con la forma real de la hoja a la que apunta. Los PDF se
 leyeron por coordenadas de palabra, no por texto plano. Los scripts del análisis son descartables y no se versionan.
