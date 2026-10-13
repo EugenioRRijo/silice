@@ -6,7 +6,9 @@ version = "3.13.13"
 
 [capas]
 # Extras de pyproject.toml de la capa básica. `xgboost` y `ml` nunca (ningún código los importa).
-basica = ["ui", "api", "planos", "informes", "bcv", "civil", "anomalias", "ia"]
+# `pdf` (1.5: PDF simples e impresos de la empresa): pdfplumber y pdfminer.six (MIT) y pypdfium2
+# (Apache-2.0 o BSD-3-Clause), todas permisivas.
+basica = ["ui", "api", "planos", "informes", "bcv", "civil", "anomalias", "ia", "pdf"]
 # `ifctester` (extra `ifc`) arrastra `bcf-client`, GPLv3, incompatible con la licencia propietaria
 # (RP10-4). Pasa a true solo con un ruling que cite la resolución de S3-0.
 ifc = false
@@ -16,7 +18,7 @@ similitud = ["similitud"]
 [codigo]
 paquetes = [
   "core", "adapters", "ml", "ui", "api", "operacion", "migraciones",
-  "seguridad", "asistente", "paquete", "auditoria",
+  "seguridad", "asistente", "paquete", "auditoria", "fusion",
 ]
 archivos = ["pyproject.toml", "LICENSE"]
 # De scripts/ y tests/fixtures/ viaja solo el cierre de importaciones de estos módulos (RV-25).

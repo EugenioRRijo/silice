@@ -975,6 +975,128 @@
         }
       }
     },
+    "/v1/libros/auditoria": {
+      "post": {
+        "tags": [
+          "libros"
+        ],
+        "summary": "Auditar Libro",
+        "description": "Audita el libro y responde el informe (hallazgos, alertas y trazabilidad). No guarda\nnada.",
+        "operationId": "auditar_libro_v1_libros_auditoria_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_auditar_libro_v1_libros_auditoria_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LibroAuditadoRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/libros/devolucion": {
+      "post": {
+        "tags": [
+          "libros"
+        ],
+        "summary": "Devolver Libro",
+        "description": "Devuelve el libro calcado: mismas hojas, valores de Silice y las hojas AUDITORÍA,\nTRAZABILIDAD y ALERTAS USD-Bs (spec 1.5 §1). No guarda nada.",
+        "operationId": "devolver_libro_v1_libros_devolucion_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_devolver_libro_v1_libros_devolucion_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "El libro calcado (.xlsx).",
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {}
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/libros/pdf": {
+      "post": {
+        "tags": [
+          "libros"
+        ],
+        "summary": "Revisar Pdf",
+        "description": "Revisa solo un PDF simple (el presupuesto impreso, sin el libro de Excel): coteja el PDF\nconsigo mismo (L10) y responde sus hallazgos. Sin libro no hay recálculo ni devolución. No\nguarda nada.",
+        "operationId": "revisar_pdf_v1_libros_pdf_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_revisar_pdf_v1_libros_pdf_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PdfSimpleRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/salud": {
       "get": {
         "tags": [
@@ -1022,6 +1144,87 @@
         ],
         "title": "ActualizacionPeticion",
         "description": "UC-02 sobre un presupuesto guardado: la lista nueva y el código de la versión que produce."
+      },
+      "AlertaPrecioRespuesta": {
+        "properties": {
+          "codigo": {
+            "type": "string",
+            "title": "Codigo"
+          },
+          "descripcion": {
+            "type": "string",
+            "title": "Descripcion"
+          },
+          "tipo": {
+            "type": "string",
+            "title": "Tipo"
+          },
+          "moneda": {
+            "type": "string",
+            "title": "Moneda"
+          },
+          "precio": {
+            "type": "string",
+            "title": "Precio"
+          },
+          "fecha": {
+            "type": "string",
+            "title": "Fecha"
+          },
+          "fuente": {
+            "type": "string",
+            "title": "Fuente"
+          },
+          "tasa": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tasa"
+          },
+          "precio_bs": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Precio Bs"
+          },
+          "variacion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Variacion"
+          },
+          "mensaje": {
+            "type": "string",
+            "title": "Mensaje"
+          }
+        },
+        "type": "object",
+        "required": [
+          "codigo",
+          "descripcion",
+          "tipo",
+          "moneda",
+          "precio",
+          "fecha",
+          "fuente",
+          "mensaje"
+        ],
+        "title": "AlertaPrecioRespuesta"
       },
       "AuditoriaRespuesta": {
         "properties": {
@@ -1093,6 +1296,77 @@
         ],
         "title": "AuditoriaRespuesta"
       },
+      "Body_auditar_libro_v1_libros_auditoria_post": {
+        "properties": {
+          "libro": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "Libro",
+            "description": "Libro de la empresa (.xlsx sin macros)"
+          },
+          "fecha_devolucion": {
+            "type": "string",
+            "title": "Fecha Devolucion",
+            "description": "Fecha de devolución, ISO (AAAA-MM-DD). Obligatoria."
+          },
+          "pdf": {
+            "anyOf": [
+              {
+                "type": "string",
+                "contentMediaType": "application/octet-stream"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pdf",
+            "description": "PDF entregado (opcional; L11 o L10)"
+          },
+          "anterior": {
+            "anyOf": [
+              {
+                "type": "string",
+                "contentMediaType": "application/octet-stream"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Anterior",
+            "description": "Otra versión del libro (.xlsx, opcional)"
+          },
+          "fecha_libro": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fecha Libro",
+            "description": "Fecha del libro, ISO; sin ella, la de la PORTADA"
+          },
+          "umbral": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Umbral",
+            "description": "Variación de precio desde la que hay alerta, 0 < umbral < 1 (0.05)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "libro",
+          "fecha_devolucion"
+        ],
+        "title": "Body_auditar_libro_v1_libros_auditoria_post"
+      },
       "Body_cargar_lista_precios_listas_precios_post": {
         "properties": {
           "archivo": {
@@ -1163,6 +1437,77 @@
         ],
         "title": "Body_computar_computos__dominio__post"
       },
+      "Body_devolver_libro_v1_libros_devolucion_post": {
+        "properties": {
+          "libro": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "Libro",
+            "description": "Libro de la empresa (.xlsx sin macros)"
+          },
+          "fecha_devolucion": {
+            "type": "string",
+            "title": "Fecha Devolucion",
+            "description": "Fecha de devolución, ISO (AAAA-MM-DD). Obligatoria."
+          },
+          "pdf": {
+            "anyOf": [
+              {
+                "type": "string",
+                "contentMediaType": "application/octet-stream"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pdf",
+            "description": "PDF entregado (opcional; L11 o L10)"
+          },
+          "anterior": {
+            "anyOf": [
+              {
+                "type": "string",
+                "contentMediaType": "application/octet-stream"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Anterior",
+            "description": "Otra versión del libro (.xlsx, opcional)"
+          },
+          "fecha_libro": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fecha Libro",
+            "description": "Fecha del libro, ISO; sin ella, la de la PORTADA"
+          },
+          "umbral": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Umbral",
+            "description": "Variación de precio desde la que hay alerta, 0 < umbral < 1 (0.05)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "libro",
+          "fecha_devolucion"
+        ],
+        "title": "Body_devolver_libro_v1_libros_devolucion_post"
+      },
       "Body_importar_presupuesto_de_tercero_presupuestos_importar_post": {
         "properties": {
           "archivo": {
@@ -1183,6 +1528,21 @@
           "proyecto"
         ],
         "title": "Body_importar_presupuesto_de_tercero_presupuestos_importar_post"
+      },
+      "Body_revisar_pdf_v1_libros_pdf_post": {
+        "properties": {
+          "pdf": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "Pdf",
+            "description": "Presupuesto en PDF simple, sin Excel (formato 001/002)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "pdf"
+        ],
+        "title": "Body_revisar_pdf_v1_libros_pdf_post"
       },
       "CambioRespuesta": {
         "properties": {
@@ -1681,6 +2041,50 @@
         "type": "object",
         "title": "HTTPValidationError"
       },
+      "HallazgoLibroRespuesta": {
+        "properties": {
+          "codigo": {
+            "type": "string",
+            "title": "Codigo"
+          },
+          "severidad": {
+            "type": "string",
+            "title": "Severidad"
+          },
+          "descripcion": {
+            "type": "string",
+            "title": "Descripcion"
+          },
+          "celda": {
+            "type": "string",
+            "title": "Celda"
+          },
+          "impacto": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Impacto"
+          },
+          "accion": {
+            "type": "string",
+            "title": "Accion"
+          }
+        },
+        "type": "object",
+        "required": [
+          "codigo",
+          "severidad",
+          "descripcion",
+          "celda",
+          "accion"
+        ],
+        "title": "HallazgoLibroRespuesta"
+      },
       "HallazgoRespuesta": {
         "properties": {
           "regla": {
@@ -1956,6 +2360,121 @@
         "title": "ItemPendienteRespuesta",
         "description": "Un ítem sin partida en el catálogo (UC‑01, flujo 3a): no suma al total y el informe lo\ndeclara. Para aceptar una propuesta se vuelve a enviar el ítem con ese código. `propuestas`\nqueda vacía sin el extra `ml` o sin el modelo de similitud en la caché local."
       },
+      "LibroAuditadoRespuesta": {
+        "properties": {
+          "libro": {
+            "$ref": "#/components/schemas/LibroOrigenRespuesta"
+          },
+          "fecha_libro": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fecha Libro"
+          },
+          "fecha_devolucion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fecha Devolucion"
+          },
+          "cumple": {
+            "type": "boolean",
+            "title": "Cumple"
+          },
+          "por_severidad": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Por Severidad"
+          },
+          "totales_libro": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Totales Libro"
+          },
+          "totales_silice": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Totales Silice"
+          },
+          "hallazgos": {
+            "items": {
+              "$ref": "#/components/schemas/HallazgoLibroRespuesta"
+            },
+            "type": "array",
+            "title": "Hallazgos"
+          },
+          "alertas": {
+            "items": {
+              "$ref": "#/components/schemas/AlertaPrecioRespuesta"
+            },
+            "type": "array",
+            "title": "Alertas"
+          },
+          "trazabilidad": {
+            "items": {
+              "$ref": "#/components/schemas/TrazaRespuesta"
+            },
+            "type": "array",
+            "title": "Trazabilidad"
+          },
+          "metadatos": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Metadatos"
+          }
+        },
+        "type": "object",
+        "required": [
+          "libro",
+          "fecha_libro",
+          "fecha_devolucion",
+          "cumple",
+          "por_severidad",
+          "totales_libro",
+          "totales_silice",
+          "hallazgos",
+          "alertas",
+          "trazabilidad",
+          "metadatos"
+        ],
+        "title": "LibroAuditadoRespuesta"
+      },
+      "LibroOrigenRespuesta": {
+        "properties": {
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          },
+          "sha256": {
+            "type": "string",
+            "title": "Sha256"
+          }
+        },
+        "type": "object",
+        "required": [
+          "nombre",
+          "sha256"
+        ],
+        "title": "LibroOrigenRespuesta"
+      },
       "ListaRespuesta": {
         "properties": {
           "nombre": {
@@ -2053,6 +2572,109 @@
         ],
         "title": "PartidaRespuesta",
         "description": "Cabecera de una partida del catalogo."
+      },
+      "PdfOrigenRespuesta": {
+        "properties": {
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          },
+          "sha256": {
+            "type": "string",
+            "title": "Sha256"
+          },
+          "numero": {
+            "type": "string",
+            "title": "Numero"
+          },
+          "fecha": {
+            "type": "string",
+            "title": "Fecha"
+          }
+        },
+        "type": "object",
+        "required": [
+          "nombre",
+          "sha256",
+          "numero",
+          "fecha"
+        ],
+        "title": "PdfOrigenRespuesta"
+      },
+      "PdfSimpleRespuesta": {
+        "properties": {
+          "pdf": {
+            "$ref": "#/components/schemas/PdfOrigenRespuesta"
+          },
+          "cumple": {
+            "type": "boolean",
+            "title": "Cumple"
+          },
+          "por_severidad": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Por Severidad"
+          },
+          "renglones_computos": {
+            "type": "integer",
+            "title": "Renglones Computos"
+          },
+          "renglones_presupuesto": {
+            "type": "integer",
+            "title": "Renglones Presupuesto"
+          },
+          "total_computos": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Computos"
+          },
+          "total_impreso": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Impreso"
+          },
+          "notas": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Notas"
+          },
+          "hallazgos": {
+            "items": {
+              "$ref": "#/components/schemas/HallazgoLibroRespuesta"
+            },
+            "type": "array",
+            "title": "Hallazgos"
+          }
+        },
+        "type": "object",
+        "required": [
+          "pdf",
+          "cumple",
+          "por_severidad",
+          "renglones_computos",
+          "renglones_presupuesto",
+          "total_computos",
+          "total_impreso",
+          "notas",
+          "hallazgos"
+        ],
+        "title": "PdfSimpleRespuesta"
       },
       "PendienteRespuesta": {
         "properties": {
@@ -2597,6 +3219,34 @@
         ],
         "title": "RendimientosRespuesta",
         "description": "El historico completo de una partida, con dispersion y propuesta (RF-26)."
+      },
+      "TrazaRespuesta": {
+        "properties": {
+          "dato": {
+            "type": "string",
+            "title": "Dato"
+          },
+          "valor": {
+            "type": "string",
+            "title": "Valor"
+          },
+          "origen": {
+            "type": "string",
+            "title": "Origen"
+          },
+          "nota": {
+            "type": "string",
+            "title": "Nota",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "dato",
+          "valor",
+          "origen"
+        ],
+        "title": "TrazaRespuesta"
       },
       "ValidationError": {
         "properties": {

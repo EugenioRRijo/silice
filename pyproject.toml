@@ -14,6 +14,8 @@ dependencies = [
     "alembic>=1.20",      # S5-1 (0.6.0): migraciones del caso y de la instalacion (RV-3)
     "argon2-cffi>=25.1",  # S3 (0.8.0): contrasenas y secretos de seguridad/ (maestro 4.4)
     "cryptography>=44",   # S3 (0.8.0): firma Ed25519 y AES-GCM de seguridad/ (maestro 4.4)
+    "xlsxwriter>=3.2",    # 1.5: libro calcado de la empresa (formula y valor guardado; spec 1.5 F-D3)
+    "defusedxml>=0.7",    # 1.5: openpyxl lee el XML de libros ajenos con defusedxml (spec 1.5 F-D10)
 ]
 
 # Extras por capa (uv sync --extra <x>; la CI instala todos con --all-extras: cero omitidas).
@@ -35,6 +37,7 @@ ml = ["scikit-learn>=1.4", "sentence-transformers>=3.0", "xgboost>=2.0"]
 informes = ["reportlab>=4.0", "matplotlib>=3.8"]
 bcv = ["xlrd>=2.0"]
 ia = ["anthropic>=1.0", "ollama>=0.6", "keyring>=25"]
+pdf = ["pdfplumber>=0.11"]  # 1.5: PDF simples y PDF impresos de la empresa (spec 1.5 L10, L11)
 
 [dependency-groups]
 dev = [
@@ -69,7 +72,7 @@ select = ["E", "F", "W", "I", "B", "UP", "N"]
 [tool.ruff.lint.isort]
 known-first-party = [
     "asistente", "core", "adapters", "ml", "ui", "api", "tests", "scripts", "operacion",
-    "migraciones", "instalador",
+    "migraciones", "instalador", "fusion",
 ]
 
 [tool.pytest.ini_options]
