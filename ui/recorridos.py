@@ -25,6 +25,7 @@ NOMBRE_DEMOSTRACION = "Ver la demostracion auditada"
 NOMBRE_PRESUPUESTO = "Armar un presupuesto"
 NOMBRE_PRECIOS = "Actualizar precios"
 NOMBRE_MONEDA = "Moneda, precios de empresa y reajuste"
+NOMBRE_PAQUETE = "Entregar y revisar un paquete"  # S3 (UC-22 y UC-23)
 
 
 @dataclass(frozen=True, slots=True)
@@ -181,6 +182,27 @@ RECORRIDOS: tuple[Recorrido, ...] = (
                 "reajuste",
                 "Declare la clausula, los periodos y el ejecutado; calcule y exporte el Excel.",
                 "Ve la escalatoria y la comprobacion lado a lado y descarga el Excel.",
+            ),
+        ),
+    ),
+    Recorrido(
+        NOMBRE_PAQUETE,
+        "Para quien entrega y quien recibe: arma el paquete auditado de una version y lo revisa "
+        "como lo haria otra persona (con las dos cuentas, o con una que tenga los dos roles).",
+        (
+            Paso(
+                "Entregar el paquete",
+                "entregar",
+                "Elija el proyecto y la version, revise el resumen y la cadena, escriba la "
+                "contraseña de la clave de firma y pulse «Generar paquete».",
+                "Se descarga el archivo .silice y la pantalla dice si va firmado.",
+            ),
+            Paso(
+                "Revisar el paquete",
+                "revisar",
+                "Suba el .silice: lea el estado de verificacion, la reauditoria y las diferencias "
+                "con la entrega anterior; guarde su dictamen.",
+                "El dictamen queda registrado con el estado de verificacion de ese momento.",
             ),
         ),
     ),

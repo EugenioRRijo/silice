@@ -53,6 +53,7 @@ from ui.caso import (
 )
 from ui.proyectos import (
     MONEDAS_DEL_PROYECTO,
+    RESPONSABLE_DE_LA_INTERFAZ,
     ProyectoInvalido,
     crear_proyecto_nuevo,
     listar_proyectos,
@@ -129,7 +130,11 @@ def _crear_proyecto() -> None:
         return
     try:
         nombre = crear_proyecto_nuevo(
-            ruta_caso(), st.session_state.get(CLAVE_NOMBRE_NUEVO, ""), moneda
+            ruta_caso(),
+            st.session_state.get(CLAVE_NOMBRE_NUEVO, ""),
+            moneda,
+            # RF-82: con el acceso encendido declara la moneda el usuario de la sesión
+            responsable=ui_sesion.responsable_de_la_hoja(RESPONSABLE_DE_LA_INTERFAZ),
         )
     except ProyectoInvalido as error:
         st.session_state[CLAVE_MENSAJE] = ("error", str(error))

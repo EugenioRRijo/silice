@@ -22,3 +22,16 @@ gatherUsageStats = false
 [client]
 showErrorDetails = "none"
 toolbarMode = "minimal"
+
+[theme]
+# La misma interfaz de trabajo que .streamlit/config.toml del repositorio (PLAN_SILICE_UI, tarea 1;
+# ui/estilo.py). Faltaba: el programa instalado salía con el tema por defecto de Streamlit.
+base = "light"
+primaryColor = "#1F4E79"
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#F3F5F8"
+textColor = "#1B1F24"
+borderColor = "#D5DAE1"
+showWidgetBorder = true
+baseRadius = "small"
+font = "sans-serif"

@@ -24,6 +24,8 @@ from dataclasses import dataclass, field
 from decimal import Decimal
 from typing import Any
 
+from openpyxl.utils.cell import column_index_from_string
+
 from adapters.hoja_empresa.escritor.estilos import Estilo, LectorEstilos
 from adapters.hoja_empresa.escritor.formulas import cita, dir_celda, letra
 from adapters.hoja_empresa.escritor.hoja import NADA, HojaSalida
@@ -341,6 +343,26 @@ def _clases_de_filas(ws: Any, apu: ApuLeido, perfil: Perfil) -> dict[int, str]:
     return clases
 
 
+#: Filas de la cabecera del APU que se buscan por rótulo: hasta aquí, nunca dentro de las secciones.
+_FILAS_CABECERA = 12
+
+
+def _filas_cabecera(ws: Any, perfil: Perfil) -> dict[str, int]:
+    """Fila de cada línea de la cabecera del APU original, por su rótulo en la columna de rótulos:
+    `cab1` código de partida, `cab2` unidad, `cab3` moneda. Solo las que se encuentran."""
+    col = column_index_from_string(perfil.columna_rotulos_apu)
+    filas: dict[str, int] = {}
+    for fila in range(1, min(ws.max_row, _FILAS_CABECERA) + 1):
+        texto = ws.cell(fila, col).value
+        if "cab1" not in filas and coincide(texto, perfil.rotulos_codigo_partida):
+            filas["cab1"] = fila
+        elif "cab2" not in filas and coincide(texto, perfil.rotulos_unidad):
+            filas["cab2"] = fila
+        elif "cab3" not in filas and normalizar(texto).startswith("moneda"):
+            filas["cab3"] = fila
+    return filas
+
+
 def extraer_kit(
     ws: Any,
     apu: ApuLeido,
@@ -360,7 +382,14 @@ def extraer_kit(
         rd = ws.row_dimensions.get(fila) if hasattr(ws.row_dimensions, "get") else None
         return rd.height if rd is not None and rd.height else None
 
-    for clase, fila in (("titulo", 1), ("partida", 2), ("cab1", 4), ("cab2", 5), ("cab3", 6)):
+    # La cabecera se ubica por rótulo (código de partida, unidad, moneda), no por fila fija: un APU
+    # con la cabecera en otras filas daría «Unidad:» junto al código (auditoría final 1.5).
+    cabecera = _filas_cabecera(ws, perfil)
+    filas_estilo = {
+        clase: cabecera.get(clase) or cabecera.get("cab1") or fila
+        for clase, fila in (("cab1", 4), ("cab2", 5), ("cab3", 6))
+    }
+    for clase, fila in (("titulo", 1), ("partida", 2), *filas_estilo.items()):
         kit.estilos[clase] = fila_estilos(fila)
         if (h := alto(fila)) is not None:
             kit.altos[clase] = h
@@ -387,17 +416,18 @@ def extraer_kit(
             if (h := alto(fila)) is not None:
                 kit.altos["nota"] = h
             break
-    for clase, col in (("titulo", 1), ("cab1", 1), ("cab1", 5), ("cab2", 1), ("cab2", 5)):
-        texto = ws.cell({"titulo": 1, "cab1": 4, "cab2": 5}[clase], col).value
-        if isinstance(texto, str) and texto.strip():
-            kit.textos[f"{clase}_{col}"] = texto
-    for col, clave_t in ((1, "cab3_1"), (5, "cab3_5")):
-        texto = ws.cell(6, col).value
-        if isinstance(texto, str) and texto.strip():
-            kit.textos[clave_t] = texto
-    moneda = ws.cell(6, 2).value
-    if isinstance(moneda, str) and moneda.strip():
-        kit.moneda = moneda
+    texto = ws.cell(1, 1).value
+    if isinstance(texto, str) and texto.strip():
+        kit.textos["titulo_1"] = texto
+    for clase, fila in cabecera.items():
+        for col in (1, 5):
+            texto = ws.cell(fila, col).value
+            if isinstance(texto, str) and texto.strip():
+                kit.textos[f"{clase}_{col}"] = texto
+    if "cab3" in cabecera:
+        moneda = ws.cell(cabecera["cab3"], 2).value
+        if isinstance(moneda, str) and moneda.strip():
+            kit.moneda = moneda
     vista = ws.sheet_view
     if vista is not None:
         kit.sin_cuadricula = vista.showGridLines is False

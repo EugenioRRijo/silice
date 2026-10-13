@@ -136,6 +136,10 @@ def entorno_hijos(
             **variables_de_similitud(),
         }
     )
+    if config.es_producto():
+        # SEG-1 (auditoria 2026-10-13): en el producto el acceso con cuentas siempre esta encendido;
+        # sin esto `ui.sesion` daba los tres roles a cualquiera (VALOR_POR_DEFECTO "0").
+        env["SILICE_ACCESO"] = "1"
     env.pop("SILICE_MODO_ENTREGA", None)
     if not ajustes.mostrar_investigacion:
         env["SILICE_MODO_ENTREGA"] = "1"

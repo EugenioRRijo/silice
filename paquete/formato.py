@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import io
 import zipfile
+import zlib
 from collections import Counter
 from collections.abc import Mapping
 
@@ -106,7 +107,8 @@ def abrir_zip(datos: bytes) -> dict[str, bytes]:
         )
     try:
         zip_ = zipfile.ZipFile(io.BytesIO(datos))
-    except (zipfile.BadZipFile, OSError, ValueError):
+    # `NotImplementedError`: un byte dañado en la versión del ZIP («zip file version 23.5»).
+    except (zipfile.BadZipFile, OSError, ValueError, NotImplementedError):
         raise PaqueteRechazado(
             "El archivo no es un paquete de Silice válido (el ZIP está dañado). Pida uno nuevo."
         ) from None
@@ -132,7 +134,14 @@ def abrir_zip(datos: bytes) -> dict[str, bytes]:
             try:
                 with zip_.open(i) as flujo:
                     octetos = flujo.read(LIMITE_ENTRADA + 1)
-            except (zipfile.BadZipFile, EOFError, OSError, RuntimeError, NotImplementedError):
+            except (
+                zipfile.BadZipFile,
+                EOFError,
+                OSError,
+                RuntimeError,
+                NotImplementedError,
+                zlib.error,  # un flujo DEFLATE dañado no es BadZipFile: tampoco debe escapar
+            ):
                 raise PaqueteRechazado(
                     f"El archivo {i.filename!r} del paquete está dañado. Pida uno nuevo."
                 ) from None

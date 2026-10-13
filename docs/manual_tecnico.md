@@ -46,6 +46,31 @@ nunca `float` — y redondeo solo al presentar; una rama por incremento y bitác
 El estado de cada RF y la prueba que lo demuestra están en [plan_pruebas.md §8](plan_pruebas.md);
 la suite y la cobertura vigentes, con la corrida de CI que las mide, en su §10.
 
+### Instalación para desarrollo
+
+Quien trabaja sobre el código (no el usuario final, que usa el instalador de Windows: ver el
+[manual de instalación](manual_instalacion.md)) sigue esta ruta (trasladada del §1 del manual de
+usuario en la 1.0.0, T19).
+
+- Windows o Linux con **Python 3.12 o superior** y [uv](https://docs.astral.sh/uv/) instalados.
+- Clonar o copiar la carpeta del proyecto y, dentro de ella, ejecutar:
+
+```
+uv sync --extra ui --extra api --extra civil --extra planos --extra ml
+```
+
+No hay más pasos (RNF‑07). Notas:
+
+- El extra `ui` exige **Streamlit 1.62 o superior**: el menú superior (`position="top"`) no existe en versiones anteriores.
+- El extra `planos` instala `ezdxf` (importar planos DXF en la hoja del proyecto) y `civil`,
+  `ifcopenshell` (importar planos IFC); sin ellos, importar un plano avisa que falta el componente.
+- El extra `civil` instala `ifcopenshell` (modelos IFC); `ml` instala scikit‑learn y
+  sentence‑transformers. Sin el extra correspondiente, esas funciones avisan que faltan en vez de
+  fallar en silencio.
+- La **primera** consulta de «Partidas similares» descarga el modelo de lenguaje y lo deja en
+  caché local. En el camino de desarrollo es una de las dos excepciones de red declaradas de
+  RNF‑08 (la otra es el asistente de IA en modo nube); el instalador completo trae el modelo.
+
 ## 3. Mapa del código
 
 | Paquete | Papel | Piezas clave |
