@@ -28,13 +28,24 @@ def _declarada(meta) -> str:
     return " ".join(expresion.split("\n")[0].split())[:90]
 
 
+def _de_licencias_pep639(archivo) -> bool:
+    """Todo lo que la rueda deja en `*.dist-info/licenses/` (PEP 639) es texto de licencia, se
+    llame como se llame: pypdfium2 (extra `pdf`, 1.5) guarda ahí `Apache-2.0.txt` y las licencias
+    de lo que trae compilado PDFium (freetype, ICU, libjpeg...), que deben viajar con el binario."""
+    partes = archivo.parts
+    return len(partes) > 2 and partes[0].endswith(".dist-info") and partes[1] == "licenses"
+
+
 def _textos(dist) -> list[Path]:
     halladas = []
     for archivo in dist.files or []:
-        if PATRON.match(archivo.name) and (
-            "licenses" in archivo.parts
-            or len(archivo.parts) <= 2
-            or archivo.parts[0].endswith(".dist-info")
+        if _de_licencias_pep639(archivo) or (
+            PATRON.match(archivo.name)
+            and (
+                "licenses" in archivo.parts
+                or len(archivo.parts) <= 2
+                or archivo.parts[0].endswith(".dist-info")
+            )
         ):
             ruta = Path(str(dist.locate_file(archivo)))
             if ruta.is_file():

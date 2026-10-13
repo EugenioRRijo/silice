@@ -10,12 +10,23 @@ Por que el script descubre los datos en vez de traerlos escritos: una lista de n
 repositorio seria, ella misma, la fuga que se quiere evitar. Los datos identificables se leen de la
 PORTADA de la plantilla (rotulos CLIENTE, CONTRATISTA, UBICACION, firmas y nombre de la obra) y del
 patron del RIF; despues se sustituyen en todas las hojas, en los encabezados y pies de impresion, en
-los comentarios y en las propiedades del documento.
+los comentarios, en los mensajes de las validaciones de datos y en las propiedades del documento.
+
+Lo que se QUITA en vez de sustituirse, porque no se puede revisar texto por texto:
+
+- Las imagenes embebidas de cada hoja (los logos del membrete del cliente o del contratista): se
+  eliminan todas. El caso anonimizado no lleva ninguna imagen.
+- Los hipervinculos de celda (destino, texto mostrado e informacion en pantalla): una direccion web
+  o de correo identifica tanto como un nombre. El texto de la celda queda, ya sustituido.
+- Las validaciones de datos de tipo lista con los valores escritos en la propia regla
+  (`"opcion1,opcion2"`): suelen enumerar personas o empresas. Las que apuntan a un rango se
+  conservan, porque ese rango ya se anonimizo como cualquier celda.
 
 Por que verifica al final: sustituir es facil de hacer a medias (un espacio doble, una mayuscula, un
 literal dentro de una formula). Por eso el script relee la SALIDA y busca de nuevo cada dato
-descubierto; si alguno sobrevive, borra la SALIDA y termina con codigo 1. Un caso anonimizado que no
-paso esa verificacion no existe.
+descubierto (tambien en hipervinculos y validaciones) y comprueba que no quede ninguna imagen,
+ningun hipervinculo ni ninguna lista literal de validacion; si algo sobrevive, borra la SALIDA y
+termina con codigo 1. Un caso anonimizado que no paso esa verificacion no existe.
 
 Lo que no hace: no toca montos, cantidades ni fechas, y no anonimiza nombres que no esten en la
 PORTADA (por ejemplo, un proveedor citado solo en una hoja de insumos). Esa revision sigue siendo de
@@ -32,6 +43,7 @@ import argparse
 import re
 import sys
 import unicodedata
+import zipfile
 from collections import defaultdict
 from collections.abc import Iterator
 from dataclasses import dataclass
@@ -277,6 +289,45 @@ def anonimizar(libro: Workbook, datos: list[Dato]) -> dict[str, dict[str, int]]:
     return {t: dict(h) for t, h in informe.items()}
 
 
+def _es_lista_literal(validacion) -> bool:
+    """Validacion de tipo lista cuyos valores van escritos en la regla (`"a,b,c"`)."""
+    formula = (validacion.formula1 or "").strip()
+    return validacion.type == "list" and formula.startswith('"')
+
+
+_TEXTOS_VALIDACION = ("prompt", "promptTitle", "error", "errorTitle")
+
+
+def quitar_imagenes_vinculos_y_validaciones(
+    libro: Workbook, datos: list[Dato]
+) -> tuple[int, int, int]:
+    """Quita las imagenes (logos), los hipervinculos de celda y las listas literales de
+    validacion; sustituye los datos en los mensajes de las validaciones que quedan. Devuelve los
+    tres conteos."""
+    imagenes = vinculos = listas = 0
+    for hoja in libro.worksheets:
+        imagenes += len(hoja._images)
+        hoja._images = []
+        for fila in hoja.iter_rows():
+            for celda in fila:
+                if celda.hyperlink is not None:
+                    celda.hyperlink = None
+                    vinculos += 1
+        hoja._hyperlinks = []
+        conservadas = []
+        for validacion in hoja.data_validations.dataValidation:
+            if _es_lista_literal(validacion):
+                listas += 1
+                continue
+            for campo in _TEXTOS_VALIDACION:
+                texto = getattr(validacion, campo, None)
+                if texto:
+                    setattr(validacion, campo, _sustituir_texto(texto, datos)[0])
+            conservadas.append(validacion)
+        hoja.data_validations.dataValidation = conservadas
+    return imagenes, vinculos, listas
+
+
 def _es_externo(destino: str | None) -> bool:
     return bool(destino) and re.search(r"\[\d+\]", destino) is not None
 
@@ -324,6 +375,11 @@ def _textos_del_libro(libro: Workbook) -> Iterator[str]:
         for parte in _partes_encabezado(hoja):
             if parte.text:
                 yield parte.text
+        for validacion in hoja.data_validations.dataValidation:
+            for campo in ("formula1", "formula2", *_TEXTOS_VALIDACION):
+                texto = getattr(validacion, campo, None)
+                if texto:
+                    yield str(texto)
         for fila in hoja.iter_rows():
             for celda in fila:
                 valor = celda.value
@@ -334,6 +390,10 @@ def _textos_del_libro(libro: Workbook) -> Iterator[str]:
                 if celda.comment is not None:
                     yield celda.comment.text or ""
                     yield celda.comment.author or ""
+                vinculo = celda.hyperlink
+                if vinculo is not None:
+                    for campo in ("target", "location", "display", "tooltip"):
+                        yield str(getattr(vinculo, campo, None) or "")
 
 
 def verificar(salida: Path, datos: list[Dato]) -> dict[str, int]:
@@ -342,17 +402,33 @@ def verificar(salida: Path, datos: list[Dato]) -> dict[str, int]:
     restos: dict[str, int] = defaultdict(int)
     if libro._external_links:
         restos["vinculo externo"] += len(libro._external_links)
+    # Las imagenes se cuentan en el paquete y no solo en openpyxl, que sin Pillow no las carga.
+    with zipfile.ZipFile(salida) as paquete:
+        restos["imagen"] += sum(1 for n in paquete.namelist() if n.startswith("xl/media/"))
+    for hoja in libro.worksheets:
+        restos["imagen"] += len(hoja._images)
+        restos["lista de validacion literal"] += sum(
+            1 for v in hoja.data_validations.dataValidation if _es_lista_literal(v)
+        )
+        for fila in hoja.iter_rows():
+            for celda in fila:
+                if celda.hyperlink is not None:
+                    restos["hipervinculo"] += 1
     for texto in _textos_del_libro(libro):
         for dato in datos:
             if dato.patron.search(texto):
                 restos[dato.tipo] += 1
         if any(m.group(0) != RIF_NEUTRO for m in RIF.finditer(texto)):
             restos["rif"] += 1
-    return dict(restos)
+    return {tipo: n for tipo, n in restos.items() if n}
 
 
 def _imprimir_informe(
-    datos: list[Dato], informe: dict[str, dict[str, int]], vinculos: int, nombres: int
+    datos: list[Dato],
+    informe: dict[str, dict[str, int]],
+    vinculos: int,
+    nombres: int,
+    quitados: tuple[int, int, int],
 ) -> None:
     por_tipo: dict[str, int] = defaultdict(int)
     for dato in datos:
@@ -370,6 +446,10 @@ def _imprimir_informe(
         print(f"  {tipo}: {total} [{detalle}]")
     print(f"Vinculos externos quitados: {vinculos}")
     print(f"Nombres definidos externos quitados: {nombres}")
+    imagenes, hipervinculos, listas = quitados
+    print(f"Imagenes (logos) quitadas: {imagenes}")
+    print(f"Hipervinculos de celda quitados: {hipervinculos}")
+    print(f"Listas de validacion literales quitadas: {listas}")
     print(f"Propiedades del documento: '{ANONIMO}'")
 
 
@@ -408,10 +488,11 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     informe = anonimizar(libro, datos)
+    quitados = quitar_imagenes_vinculos_y_validaciones(libro, datos)
     vinculos, nombres = limpiar_vinculos_y_propiedades(libro)
     salida.parent.mkdir(parents=True, exist_ok=True)
     libro.save(salida)
-    _imprimir_informe(datos, informe, vinculos, nombres)
+    _imprimir_informe(datos, informe, vinculos, nombres, quitados)
 
     restos = verificar(salida, datos)
     if restos:

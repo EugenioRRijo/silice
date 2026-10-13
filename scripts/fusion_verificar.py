@@ -8,7 +8,7 @@ la CI.
 
 Qué comprueba, como metas OK/FALLA con su evidencia:
 
-1. **Hallazgos esperados** (tabla del spec §7 y cifras de las causas raíz H1-H17): para cada libro,
+1. **Hallazgos esperados** (tabla del spec §7 y cifras de las causas raíz H1-H18): para cada libro,
    `fusion.proceso.procesar_libro` debe producir la regla esperada en la celda esperada, con la
    severidad y el impacto documentados.
 2. **Valores de Silice**: en A, B-1 y B-2 (cuyo PRESUPUESTO cuadra con sus APU) el P.U. de Silice
@@ -19,7 +19,8 @@ Qué comprueba, como metas OK/FALLA con su evidencia:
    fórmula, con P y totales iguales a los de Silice, con las hojas AUDITORÍA, TRAZABILIDAD y
    ALERTAS USD-Bs, con el rótulo de P.U. en la misma celda en todos los APU y con la huella
    SHA-256 del libro recibido en sus propiedades.
-4. **PDF simples** (001 y 002): la regla L10 con los subtipos esperados.
+4. **PDF simples** (001 y 002), por `fusion.proceso.auditar_pdf_simple`: la regla L10 con los
+   subtipos esperados.
 
 Por qué los oráculos no salen de Silice: lo esperado viene de un literal documentado (las cifras
 de `docs/auditoria/2026-10-13-causas-raiz-libros-arenaza.md`) o de leer el libro RECIBIDO con
@@ -562,6 +563,33 @@ def _l6_c2(ev: Evaluacion) -> tuple[bool, str]:
     )
 
 
+#: H18 (causas raíz, V5): en B-2 la utilidad del APU-09 está escrita a mano en 30 %
+#: (`G59 = G58*0.3`) y no lee `=UTIL` (10 %). L6 la marca "a confirmar" con impacto informativo
+#: (global - local) x base x cantidad = -746,98 USD sin IVA (los 746,98 de más frente al 10 %).
+_RE_UTIL_30 = re.compile(r"^=\s*\+?\$?G\$?58\s*\*\s*0?\.30*\s*$", re.IGNORECASE)
+IMPACTO_H18 = Decimal("-746.98")
+
+
+def _l6_util30_b2(ev: Evaluacion) -> tuple[bool, str]:
+    ws = _hoja(ev.orig_f, "APU-09")
+    formula = str(ws["G59"].value or "") if ws is not None else ""
+    oraculo = bool(_RE_UTIL_30.match(formula.replace(" ", "")))
+    l6 = [
+        h for h in _de(ev.hallazgos, "L6", "ADVERTENCIA") if (_norm("APU-09"), "G59") in _celdas(h)
+    ]
+    impactos = [_dec(h.impacto) for h in l6]
+    con_impacto = any(_cerca(i, IMPACTO_H18, TOL_IMPACTO) for i in impactos)
+    invertido = any(_cerca(i, -IMPACTO_H18, TOL_IMPACTO) for i in impactos)
+    texto = (
+        f"oraculo APU-09!G59 {'= G58*0.3' if oraculo else 'sin G58*0.3'}; "
+        f"{len(l6)} L6 ADVERTENCIA en G59; impacto {_lista(_fmt(i) for i in impactos) or '-'} "
+        f"(H18: {_fmt(IMPACTO_H18)} +-{TOL_IMPACTO}, informativo)"
+    )
+    if invertido and not con_impacto:
+        texto += " (con signo opuesto)"
+    return oraculo and bool(l6) and con_impacto, texto
+
+
 def _l8_c2(ev: Evaluacion) -> tuple[bool, str]:
     duplicados = _numeros_duplicados(ev.orig_v)
     filas_l8 = _filas_en(_de(ev.hallazgos, "L8", "ADVERTENCIA"), "PRESUPUESTO")
@@ -924,6 +952,7 @@ METAS_REGLAS: dict[str, tuple[MetaLibro, ...]] = {
         MetaLibro("L5-RESUMEN", "L5 en los 4 #REF! de RESUMEN", _l5_refs("RESUMEN", 4)),
         MetaLibro("L5-EXT", "L5 en los 11 nombres externos", _l5_nombres(11)),
         MetaLibro("L7", "L7 en MEDICIONES", _l7_mediciones),
+        MetaLibro("L6", "L6 utilidad 30 % en APU-09!G59 (H18)", _l6_util30_b2),
     ),
     "C-1": (MetaLibro("L3-L2", "L3 en filas 23 y 24, o L2 del conflicto", _c1_l3_o_l2),),
     "C-2": (
@@ -1001,14 +1030,25 @@ def _con_subtipo(hallazgos: Iterable[Any], prefijo: str, contiene: str = "") -> 
     ]
 
 
-def _metas_pdf_simples(rutas: Sequence[Path]) -> list[Fila]:
-    from adapters.hoja_empresa.pdf import leer_pdf_simple, reglas_pdf_simple
+def _revisar_pdf_simple(datos: bytes, nombre: str) -> tuple[Any, list[Any]]:
+    """Por la entrada del producto (`fusion.proceso.auditar_pdf_simple`, la que usan la UI y la
+    API); si esa versión de `fusion` aún no la tiene, por el adaptador directamente."""
+    try:
+        from fusion.proceso import auditar_pdf_simple
+    except ImportError:
+        from adapters.hoja_empresa.pdf import leer_pdf_simple, reglas_pdf_simple
 
+        pdf = leer_pdf_simple(datos, nombre)
+        return pdf, list(reglas_pdf_simple(pdf))
+    resultado = auditar_pdf_simple(datos, nombre)
+    return resultado.pdf, list(resultado.hallazgos)
+
+
+def _metas_pdf_simples(rutas: Sequence[Path]) -> list[Fila]:
     filas: list[Fila] = []
     for k, ruta in enumerate(rutas, start=1):
         try:
-            pdf = leer_pdf_simple(ruta.read_bytes(), f"pdf_simple_{k}.pdf")
-            hallazgos = reglas_pdf_simple(pdf)
+            pdf, hallazgos = _revisar_pdf_simple(ruta.read_bytes(), f"pdf_simple_{k}.pdf")
         except Exception as e:  # noqa: BLE001 - la meta informa la falla, no la oculta
             filas.append(Fila(f"PDF-{k}.L10", "L10 sobre el PDF simple", Estado.FALLA, _falla(e)))
             continue

@@ -41,7 +41,7 @@ TERCEROS_POR_ADAPTADOR: dict[str, frozenset[str]] = {
     "espacio": frozenset(
         {"sqlalchemy", "ezdxf", "ifcopenshell", "shapely", "ifctester", "xmlschema"}
     ),
-    "hoja_empresa": frozenset({"openpyxl", "defusedxml", "xlsxwriter", "pdfplumber"}),
+    "hoja_empresa": frozenset({"openpyxl", "defusedxml", "xlsxwriter", "pdfplumber", "pdfminer"}),
     "industrial": frozenset(),
     "sistemas": frozenset(),
     "telecom": frozenset(),

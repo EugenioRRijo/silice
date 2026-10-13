@@ -74,6 +74,17 @@ rack), con datos en `tests/fixtures/caso_ti001.py` y cantidades en
 | `auditoria_ti001.py` | datos de la auditoría técnica del programa del 30/09/2026 que muestra la sección 2 del informe (instantánea fechada) | caso TI-001 · todos |
 | `glosario_presupuestos.py` | PDF con el glosario de siglas, las fuentes de cada dato y la guía para presupuestar una red (extra `informes`) | caso TI-001 · telecom |
 
+## Libros de la empresa (Sílice 1.5)
+
+Los libros reales son confidenciales y no entran al repositorio (`docs/auditoria/` y
+`data/confidencial/` están ignorados; la meta D4 de `meta_datos.py` lo vigila). Estos scripts se
+corren **a mano**, en el equipo que tiene los libros; ninguno corre en la CI.
+
+| Script | Qué hace | Sesión o dominio |
+|---|---|---|
+| `anonimizar_libro.py` | copia anonimizada de un libro real `.xlsx`: descubre en la PORTADA cliente, contratista, ubicación, firmas y RIF y los sustituye en celdas, fórmulas, comentarios, encabezados, validaciones y propiedades; quita imágenes (logos), hipervínculos, listas literales de validación y vínculos externos; relee la salida y la borra si sobrevive algún dato | 1.5 · V‑D3 |
+| `fusion_verificar.py` | aceptación de la 1.5 sobre los libros reales locales: hallazgos esperados por libro (causas raíz H1‑H18), P.U. y totales de Sílice, libro devuelto reabierto con openpyxl y L10 de los PDF simples; metas `OK`/`FALLA` sin nombres reales en la salida | 1.5 · spec §7 |
+
 ## Guardias de la CI
 
 | Script | Qué hace | Sesión o dominio |
@@ -96,7 +107,7 @@ Cada una audita las metas de su sprint (`OK`/`FALLA`/`PENDIENTE`); una fase se c
 | `meta_sf.py` | las 10 metas del sprint final, en seis fases (SF0 a SF5) | sprint final |
 | `meta_asistente.py` | las 12 metas del plan del asistente de presupuestos (UC‑09) | plan del asistente |
 | `meta_redaccion.py` | los 12 chequeos de la redacción de la tesis (R1 a R12) | sprint R1 |
-| `meta_datos.py` | tres chequeos (D1 a D3): la documentación del repositorio no presenta sus datos como reales | limpieza de datos |
+| `meta_datos.py` | cuatro chequeos (D1 a D4): la documentación del repositorio no presenta sus datos como reales, y ningún libro real‑confidencial ni hoja de cálculo o PDF fuera de la lista blanca está versionado (D4) | limpieza de datos · Sílice 1.5 |
 | `meta_silice.py` | meta única de Sílice: siete comprobaciones comunes (ERS por presencia, cero omitidas, prueba antes que código, contratos y regresión intactos desde v0.5.0, cifras de tiempo, guardia de red) más las de cada parte en `meta_silice_<parte>.py` | 0.6.0 a 1.0.0 |
 | `meta_silice_s1.py` | parte S1 de la meta única: once requisitos de S1 por presencia en la ERS, prueba antes que código de SL‑E1 a SL‑E3 y del adaptador BCV, memorias a mano (S1‑MEM), `FUENTE.md` del BCV (S1‑FUENTE) y base de prueba 0.6.0 con su ficha (S1‑BASE‑060) | 0.6.0 |
 | `meta_silice_s5.py` | parte S5 de la meta única: RF‑96 y RNF‑20, prueba antes que código de S5‑1 y base de prueba de v0.5.0 con su ficha (S5‑M3) | 0.6.0 |
