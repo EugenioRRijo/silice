@@ -14,6 +14,8 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 from openpyxl.formula.tokenizer import Token, Tokenizer
+from openpyxl.utils.cell import column_index_from_string as col_num
+from openpyxl.utils.cell import get_column_letter as letra
 
 __all__ = [
     "MAX_COL",
@@ -57,21 +59,6 @@ _RX_FUNCION_PELIGROSA = re.compile(
     r"(?<![A-Za-z0-9_])(" + "|".join(re.escape(f) for f in _FUNCIONES_PELIGROSAS) + r")\s*\(",
     re.IGNORECASE,
 )
-
-
-def col_num(letras: str) -> int:
-    n = 0
-    for ch in letras.upper():
-        n = n * 26 + (ord(ch) - 64)
-    return n
-
-
-def letra(col: int) -> str:
-    s = ""
-    while col:
-        col, r = divmod(col - 1, 26)
-        s = chr(65 + r) + s
-    return s
 
 
 def cita(hoja: str) -> str:

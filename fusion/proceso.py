@@ -36,7 +36,7 @@ import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import date
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 from types import MappingProxyType
 
 from adapters.hoja_empresa.escritor import escribir_devolucion
@@ -271,6 +271,10 @@ def _hallazgo_f1(calculo: CalculoPartida, hoja: str, col_pu: str) -> Hallazgo | 
     cobra de más (negativo) en el total sin IVA. Un impacto menor que un céntimo es redondeo y no es
     hallazgo (por eso las filas con cantidad 0 nunca dan F1, aunque su P.U. difiera: no mueven el
     total).
+
+    El impacto se informa en céntimos (ROUND_HALF_UP), igual que L4 y L9 en `reglas.py`, porque es
+    un monto del total; el umbral se mide sobre el valor sin redondear. Los P.U. observado y
+    esperado quedan tal cual (el del motor no se redondea).
     """
     p = calculo.partida
     guardado = p.guardados.get(col_pu)
@@ -278,9 +282,10 @@ def _hallazgo_f1(calculo: CalculoPartida, hoja: str, col_pu: str) -> Hallazgo | 
         return None
     silice = calculo.resultado.precio_unitario
     diferencia = silice - guardado
-    impacto = diferencia * p.cantidad
-    if abs(impacto) < UMBRAL_F1:
+    bruto = diferencia * p.cantidad
+    if abs(bruto) < UMBRAL_F1:
         return None
+    impacto = bruto.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
     celda_pu = calculo.apu.rotulos.get(Rotulo.PU)
     return Hallazgo(
         regla=REGLA_F1[0],

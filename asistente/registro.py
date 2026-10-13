@@ -106,11 +106,29 @@ def _json(datos: object) -> str:
 
 
 class RegistroIA:
-    """Escribe el registro de UNA conexion; el llamador confirma la transaccion."""
+    """Escribe el registro de UNA conexion; el llamador confirma la transaccion.
 
-    def __init__(self, conexion: Connection, ahora: Callable[[], datetime] = datetime.now) -> None:
+    Con `confirmar=True` (la pantalla, sobre una conexion propia y no la de la hoja) cada escritura
+    se confirma en el acto: el registro queda aunque la sesion falle o la version no se guarde, y
+    el bloqueo de escritura de SQLite dura lo que una sentencia, no todo el bucle del modelo.
+    """
+
+    def __init__(
+        self,
+        conexion: Connection,
+        ahora: Callable[[], datetime] = datetime.now,
+        *,
+        confirmar: bool = False,
+    ) -> None:
         self._con = conexion
         self._ahora = ahora
+        self._confirmar = confirmar
+
+    def _escribir(self, sentencia: Any) -> Any:
+        resultado = self._con.execute(sentencia)
+        if self._confirmar:
+            self._con.commit()
+        return resultado
 
     def iniciar(
         self,
@@ -133,7 +151,10 @@ class RegistroIA:
                 inicio=self._ahora(),
             )
         )
-        return int(resultado.inserted_primary_key[0])
+        numero = int(resultado.inserted_primary_key[0])
+        if self._confirmar:
+            self._con.commit()
+        return numero
 
     def turno(
         self,
@@ -146,7 +167,7 @@ class RegistroIA:
         costo: Decimal,
         texto: str,
     ) -> None:
-        self._con.execute(
+        self._escribir(
             insert(ia_turnos).values(
                 sesion_id=sesion,
                 orden=orden,
@@ -171,7 +192,7 @@ class RegistroIA:
         motivo: str,
         respuesta: str | None = None,
     ) -> None:
-        self._con.execute(
+        self._escribir(
             insert(ia_llamadas).values(
                 sesion_id=sesion,
                 turno=turno,
@@ -193,7 +214,7 @@ class RegistroIA:
         supuestos: object,
         filas: object,
     ) -> None:
-        self._con.execute(
+        self._escribir(
             insert(ia_propuestas).values(
                 sesion_id=sesion,
                 propuesta=id_,
@@ -206,21 +227,32 @@ class RegistroIA:
         )
 
     def decidir(self, sesion: int, id_: str, estado: str, quien: str) -> None:
-        self._con.execute(
+        self._escribir(
             update(ia_propuestas)
             .where(ia_propuestas.c.sesion_id == sesion, ia_propuestas.c.propuesta == id_)
             .values(estado=estado, decidida_por=quien, decidida_en=self._ahora())
         )
 
     def cerrar(self, sesion: int, motivo: str) -> None:
-        self._con.execute(
+        self._escribir(
             update(ia_sesiones)
             .where(ia_sesiones.c.id == sesion)
             .values(fin=self._ahora(), motivo_fin=motivo)
         )
 
-    def marcar_guardada(self, sesion: int, codigo_version: str) -> None:
-        self._con.execute(
+    def marcar_guardada(
+        self, sesion: int, codigo_version: str, *, proyecto: str | None = None
+    ) -> None:
+        """Anota la version en que entro la sesion. Si la sesion se hizo en un borrador sin
+        proyecto (`proyecto` vacio) y `proyecto` viene dado, la sesion pasa a ese proyecto: sin
+        eso `anexo_ia`, que filtra por proyecto, no la encontraria."""
+        if proyecto:
+            self._escribir(
+                update(ia_sesiones)
+                .where(ia_sesiones.c.id == sesion, ia_sesiones.c.proyecto == "")
+                .values(proyecto=proyecto)
+            )
+        self._escribir(
             update(ia_sesiones)
             .where(ia_sesiones.c.id == sesion)
             .values(version_guardada=codigo_version)

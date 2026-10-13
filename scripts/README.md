@@ -82,7 +82,7 @@ corren **a mano**, en el equipo que tiene los libros; ninguno corre en la CI.
 
 | Script | Qué hace | Sesión o dominio |
 |---|---|---|
-| `anonimizar_libro.py` | copia anonimizada de un libro real `.xlsx`: descubre en la PORTADA cliente, contratista, ubicación, firmas y RIF y los sustituye en celdas, fórmulas, comentarios, encabezados, validaciones y propiedades; quita imágenes (logos), hipervínculos, listas literales de validación y vínculos externos; relee la salida y la borra si sobrevive algún dato | 1.5 · V‑D3 |
+| `anonimizar_libro.py` | copia anonimizada de un libro real `.xlsx`: descubre en la PORTADA cliente, contratista, ubicación, firmas y RIF y los sustituye en celdas, fórmulas, comentarios, encabezados, validaciones y propiedades; trabaja sobre el ZIP/XML y conserva los valores guardados; sustituye las imágenes (logos) por un PNG neutro y quita hipervínculos, vínculos externos (con su ruta de red), listas literales de validación y vínculos externos; relee la salida y la borra si sobrevive algún dato | 1.5 · V‑D3 |
 | `fusion_verificar.py` | aceptación de la 1.5 sobre los libros reales locales: hallazgos esperados por libro (causas raíz H1‑H18), P.U. y totales de Sílice, libro devuelto reabierto con openpyxl y L10 de los PDF simples; metas `OK`/`FALLA` sin nombres reales en la salida | 1.5 · spec §7 |
 
 ## Guardias de la CI

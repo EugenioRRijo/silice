@@ -78,3 +78,5 @@ data/confidencial/
 # Los resultados de la evaluacion (docs/resultados_asistente_*.json) SI se versionan en T20.
 docs/piloto_*.json
 docs/piloto_asistente_corridas.json
+docs/auditoria/**/expectativas.json
+docs/auditoria/expectativas.json

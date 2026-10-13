@@ -844,6 +844,80 @@ declarados de la memoria `tests/fixtures/memorias/bano_of001.md`, no un plano re
 | Resultado obtenido | Veredicto |
 |---|---|
 
+### CP‑12 — Pedir un baño al asistente de IA, aceptarlo y guardarlo (S4)
+
+> **CP‑12 es un caso con persona, de la fase Med, y no forma parte del veredicto de RNF‑13** (que
+> son CP‑08 a CP‑11). Usa el mismo método y fija su criterio **antes de medir** en la sección 6.2.
+> Gasta dinero (el proveedor de la nube cobra por ficha): **no se ejecuta sin la autorización de
+> gasto de Eugenio**, o se hace con el modelo local si está disponible.
+
+- **Objetivo:** que quien arma el presupuesto pida un baño al asistente con sus palabras, revise lo
+  que la IA propone, acepte lo que le parezca correcto y guarde la primera versión; y que **entienda
+  qué propuso la IA y qué calculó el sistema**.
+- **Trazabilidad:** UC‑09; RF‑32, RF‑90 a RF‑95; RNF‑18.
+- **Precondición:** `data/prueba_sf.db` recién sembrada (sección 4.1) y la aplicación abierta como
+  en CP‑08, en **Hoja del proyecto**. **Antes de sentar al participante**, el observador:
+  1. Abre **Hoja del proyecto** una vez. `seed_of001.py` crea la base **sin** las tablas del
+     asistente (`ia_*`), pero la Hoja abre el caso con `preparar_base` (RV‑5): la primera vez la
+     respalda en la carpeta de respaldos (`..._migracion`), la migra a la última revisión y agrega
+     esas tablas. No hace falta migrar a mano (la orden `python -m operacion migrar` recorre la
+     carpeta de casos, no la base de `SILICE_CASO`).
+  2. Activa el asistente en **Administración**, pestaña **Asistente de IA** (*Activar el asistente
+     de IA*, el proveedor, el *Tope de costo por sesión (USD)* y, para la nube, la clave de IA
+     registrada desde ese mismo equipo), y comprueba en la hoja que el panel **Asistente de IA:
+     propone, usted decide** ofrece el proveedor y muestra el tope. Anota el tope y la autorización
+     de gasto.
+  3. Si la sesión se repite con otro participante, resiembra la base (`--reiniciar`) y repite 1.
+
+  La persona tiene en papel la **descripción del baño** (abajo), que no es una tabla.
+
+**Descripción del baño** (se entrega impresa; es el pedido de partida, la persona lo escribe con sus
+palabras): «Necesito un baño de 2,4 metros de largo por 1,5 de ancho, con 2,5 metros de alto. Lleva
+un lavamanos a 60 centímetros del piso.»
+
+**Pasos**
+
+1. En la barra de herramientas abra **Proyecto**, escriba `Baño de prueba IA` en *Nombre del
+   proyecto nuevo*, elija la moneda y pulse **Crear proyecto**. (El orden inverso, pedir primero al
+   asistente y crear el proyecto después, también funciona: la sesión pasa al proyecto al guardar.)
+2. En el panel **Asistente de IA: propone, usted decide**, escriba el pedido en *Que necesita armar
+   (en sus palabras)*. Lea el destino, la estimación de costo y el tope por sesión que muestra el
+   panel, y abra **Lo que se enviara**.
+3. Pulse **Proponer**. Observe la lista de propuestas, la línea **Supuestos de la IA** bajo cada
+   una y la línea final que dice qué calcularía el sistema.
+4. **Paso negativo.** Pulse **Rechazar** en una propuesta y observe la hoja. Después acepte las
+   demás con **Aceptar**.
+5. Observe las tablas, **Cantidades derivadas**, el **Total del presupuesto** y el **Informe de
+   auditoria**.
+6. En *Fuente de la medida* deje la que prellena el asistente («propuesta de IA…»; si está en
+   blanco, escriba la que quiera), escriba su nombre como *Responsable* y pulse **Guardar primera
+   versión**. Observe el mensaje y la pestaña **Trazabilidad**.
+7. Diga con sus palabras (el observador anota la respuesta textual): **¿qué propuso la inteligencia
+   artificial?** y **¿qué calculó el sistema?**
+
+**Resultado esperado**
+
+- Paso 2: el destino dice «Anthropic, en internet» (nube), «este equipo» (local) o la dirección
+  de Ollama «fuera de este equipo» (Ollama en otro equipo), la estimación
+  está en dólares, el tope es el que fijó el administrador y **Lo que se enviara** no contiene
+  precios, montos ni nombres de proyecto, empresa o usuarios.
+- Paso 3: la hoja **no cambia** al proponer; cada propuesta aparece **pendiente**. Los valores
+  exactos que proponga el modelo **no se fijan de antemano** (cambian de una corrida a otra): lo que
+  se comprueba es que cada medida del pedido aparezca en las propuestas y que lo que no estaba en el
+  pedido aparezca en la línea **Supuestos de la IA**.
+- Paso 4 (negativo): la propuesta rechazada no deja ninguna fila en el borrador; las aceptadas sí.
+- Paso 5: las cantidades, los precios y el total salen del **sistema**, no de las propuestas. Una
+  **partida** propuesta por la IA lleva en la columna *Estado* la marca
+  `… | Propuesta de IA (sesion N)`; los ambientes, fuentes y puntos no llevan esa marca.
+- Paso 6: mensaje verde de que se guardó la versión `001`; en **Trazabilidad**, los cambios de esa
+  versión llevan una fuente y el responsable (una persona, nunca la IA).
+- Estado final comprobable por el observador: al entregar el paquete de la versión `001`
+  (**Entregar paquete**), este trae `anexos/ia.json` y se verifica; ese anexo **no contiene** uso de
+  fichas, costo, topes ni la clave de IA.
+
+| Resultado obtenido | Veredicto |
+|---|---|
+
 ### 6.1 RNF‑13 — Cómo se miden CP‑08 a CP‑11
 
 RNF‑13 (ERS §9): en las condiciones de CP‑07, con el **mismo número y perfil** de participantes que CP‑07
@@ -960,6 +1034,63 @@ que le sigue, y los puntos de detención dicen dónde.
 **Veredicto de cada caso:** CP‑08 ____ · CP‑09 ____ · CP‑10 ____ · CP‑11 ____ (PASA solo si los dos
 participantes pasan). **Veredicto de RNF‑13:** ____ (PASA solo si pasan los cuatro casos).
 
+### 6.2 CP‑12 — Cómo se mide
+
+Todo lo de esta sección se fija **antes de medir** y no se cambia después de ver un resultado. Se
+aplica el método de 6.1 (participantes sin exposición previa, copia desechable,
+`SILICE_MODO_ENTREGA` sin definir, `data/apu.db` comprobada antes y después, observador distinto del
+participante, oferta única de ayuda a los 3 minutos, condiciones de parada 1 a 5 y bloque B al
+terminar), con estas diferencias:
+
+- **Participantes.** **n = 2**, de perfil igual al de CP‑07 y **personas distintas** de las de CP‑07
+  y de CP‑08 a CP‑11 (nadie ya expuesto a la aplicación). Hacen CP‑12 en una sesión propia.
+- **Gasto.** El observador lleva la cuenta del costo de la sesión. El tope de la precondición lo
+  fija el administrador y el asistente lo aplica, pero el turno que lo alcanza se completa: la
+  sesión **puede excederlo por un turno**. Si se alcanza, el caso se anota así y se sigue.
+- **Consigna literal** (se lee tal cual, una sola vez; el cronómetro arranca al terminar de leerla):
+  «Esta aplicación tiene un asistente de inteligencia artificial que propone datos a partir de lo
+  que usted le escribe. Le entrego la descripción de un baño. Le pido que, sin ayuda, se la pida al
+  asistente, revise lo que propone, acepte lo que le parezca correcto, y guarde el resultado como la
+  primera versión de un proyecto; y que al terminar me diga con sus palabras qué propuso la
+  inteligencia artificial y qué calculó el sistema. Puede pensar en voz alta. Yo solo voy a observar
+  y a tomar notas.»
+- **Estado final observable.** Existe el proyecto con su versión `001` guardada y el paquete de esa
+  versión trae `anexos/ia.json`.
+- **Comprensión (la medida propia de este caso).** El observador anota textualmente las dos
+  respuestas del paso 7 y las califica con esta regla, escrita ahora:
+  - *Qué propuso la IA* es **correcta** si el participante nombra lo que el asistente puso en la
+    lista de propuestas (el ambiente con sus medidas o el lavamanos) **y** reconoce que él las
+    aceptó, rechazó o revisó; es **incorrecta** si atribuye a la IA las cantidades, los precios o el
+    total.
+  - *Qué calculó el sistema* es **correcta** si el participante dice que las cantidades derivadas,
+    los precios o el total, o los hallazgos del auditor, los calculó el sistema (la aplicación) y no
+    la IA; es **incorrecta** si dice que no lo sabe o que los calculó la IA.
+- **Criterio de aceptación, declarado antes de ejecutar.** CP‑12 **PASA** si y solo si, para **los
+  dos participantes**: se alcanzó el estado final **sin ayuda**, **dentro de los 15 minutos**; las
+  **dos respuestas de comprensión son correctas**; y el promedio del bloque B es **≥ 4,0 sin ningún
+  ítem por debajo de 3**. **FALLA** en cualquier otro caso. Una FALLA no cancela el sprint: es dato
+  de la tesis y del ajuste de los rótulos del panel, y los puntos de detención dicen dónde.
+
+**Hoja de registro de CP‑12** (una por participante)
+
+| Campo | CP‑12 |
+|---|---|
+| Perfil del participante (sin nombre) | |
+| Fecha y hora de inicio · commit probado · proveedor y modelo | |
+| Costo de la sesión (USD, del panel) · tope fijado | |
+| Tiempo total (min) | |
+| Preguntas al observador · oferta de ayuda (minuto · ¿aceptada?) | |
+| Puntos de detención (minuto · pantalla · qué dijo) | |
+| Condición de parada (1–5) | |
+| Estado final comprobado (versión `001`, fuente, `anexos/ia.json`) | |
+| Respuesta textual a «¿qué propuso la IA?» · correcta (sí/no) | |
+| Respuesta textual a «¿qué calculó el sistema?» · correcta (sí/no) | |
+| Bloque B: B1 · B2 · B3 · B4 · B5 · B6 · B7 · promedio | |
+| `data/apu.db` sin cambios al terminar (sí/no) | |
+| Veredicto del caso (para este participante) | |
+
+**Veredicto de CP‑12:** ____ (PASA solo si los dos participantes pasan).
+
 ## 7. Trazabilidad CP → UC / RF
 
 | Caso | UC | RF | Otros |
@@ -975,6 +1106,7 @@ participantes pasan). **Veredicto de RNF‑13:** ____ (PASA solo si pasan los cu
 | CP‑09 | UC‑14 | RF‑50, RF‑51 | RNF‑13; `tests/fixtures/planos/of001.dxf` |
 | CP‑10 | UC‑15, UC‑16 | RF‑52, RF‑53, RF‑55, RF‑58 | RNF‑13; ejecutar **antes** que CP‑11 |
 | CP‑11 | UC‑15 | RF‑56, RF‑59 | RNF‑13; parte de la versión que deja CP‑10 |
+| CP‑12 | UC‑09 | RF‑32, RF‑90 a RF‑95 | RNF‑18; fuera de RNF‑13; gasta (6.2) |
 
 ## 8. Registro de la ejecución
 

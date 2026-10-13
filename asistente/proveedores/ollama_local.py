@@ -19,6 +19,7 @@ from typing import Any
 from urllib.parse import urlparse
 
 from asistente.proveedores.base import (
+    FALTA_EL_COMPONENTE,
     Disponibilidad,
     ErrorDeProveedor,
     EsquemaHerramienta,
@@ -106,6 +107,11 @@ class ProveedorOllama:
         self._local = es_bucle_local(anfitrion, resolver)
 
     @property
+    def anfitrion(self) -> str:
+        """La direccion del servicio, para decir a donde viaja el pedido."""
+        return self._anfitrion
+
+    @property
     def envia_fuera_del_equipo(self) -> bool:
         """Un anfitrion que no resuelve a bucle local es un destino externo: modo nube."""
         return not self._local
@@ -126,6 +132,8 @@ class ProveedorOllama:
                     False, f"Ollama {version} es anterior a la minima ({minima})."
                 )
             instalados = {m.model for m in self._crear_cliente().list().models}
+        except ImportError:
+            return Disponibilidad(False, FALTA_EL_COMPONENTE)
         except (OSError, ValueError, AttributeError) as error:
             return Disponibilidad(
                 False, f"El servicio de Ollama no responde ({type(error).__name__})."

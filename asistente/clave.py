@@ -188,6 +188,17 @@ class ClaveDeIA:
             raise ClaveNoRegistrable("No hay una clave de IA registrada para esta empresa.")
         self._en_memoria = clave
 
+    def hay_guardada(self, empresa_id: str) -> bool:
+        """True si hay una clave en el almacen o en el respaldo cifrado; no la deja en memoria."""
+        if self._ruta.exists():
+            return True
+        try:
+            return self._almacen.get_password(SERVICIO, empresa_id) is not None
+        except Exception as error:  # noqa: BLE001
+            if not _es_error_de_almacen(error):
+                raise
+            return False
+
     def desactivar(self) -> None:
         self._en_memoria = None
 

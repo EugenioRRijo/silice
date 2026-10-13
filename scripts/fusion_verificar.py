@@ -21,32 +21,75 @@ Qué comprueba, como metas OK/FALLA con su evidencia:
    SHA-256 del libro recibido en sus propiedades.
 4. **PDF simples** (001 y 002), por `fusion.proceso.auditar_pdf_simple`: la regla L10 con los
    subtipos esperados.
+5. **PDF entregados** (L11): cada PDF de la carpeta se identifica con un literal documentado
+   (`TOTALES_DOCUMENTADOS`) y la lectura del producto (`leer_totales_impresos`) se compara con ese
+   literal (metas `PDF-*.LECTURA`); en cada libro, L11 debe dar ERROR en exactamente los campos en
+   que el literal del PDF emparejado difiere del total guardado del libro (openpyxl), con impacto
+   = PDF − libro, con su signo.
+6. **Conjunto exacto de hallazgos** (meta `CONJUNTO-EXACTO`, control de falsos positivos): el
+   multiconjunto (regla, severidad, celdas de origen) de cada libro, B-1 incluido, contra el
+   congelado en `expectativas.json`. Sin ese archivo la meta queda PENDIENTE.
+7. **Valores conservados** (meta `VALORES-CONSERVADOS`): las filas "Valor guardado conservado" de
+   TRAZABILIDAD de la devolución deben ser 0 o estar en la lista blanca local.
 
 Por qué los oráculos no salen de Silice: lo esperado viene de un literal documentado (las cifras
-de `docs/auditoria/2026-10-13-causas-raiz-libros-arenaza.md`) o de leer el libro RECIBIDO con
-openpyxl, aparte del lector del adaptador (celdas con `#REF!`, nombres con vínculo externo, P
-guardado, números de partida). Comparar Silice contra Silice no demostraría nada.
+de `docs/auditoria/2026-10-13-causas-raiz-libros-arenaza.md` y del spec 1.5; los totales con IVA
+de cada PDF, del encargo V7 de la revisión de calidad), de una memoria aritmética escrita aquí
+(H1: 1,82565 × 1,10 × 1,02 por u) o de leer el libro RECIBIDO con openpyxl, aparte del lector del
+adaptador (celdas con `#REF!`, nombres con vínculo externo, P guardado, números de partida,
+fórmulas de MEDICIONES y de los APU). Comparar Silice contra Silice no demostraría nada: donde una
+meta compara la devolución con `ResultadoFusion` (D-P, D-TOTALES), compara además con el oráculo.
+La única lectura del producto que se usa para decidir qué esperar es la identificación del libro
+por contenido (`FIRMAS`), y solo cuando `expectativas.json` no lo identifica por su SHA-256.
 
-Cómo identifica cada libro sin escribir nombres de clientes en el código: si la carpeta tiene un
-`expectativas.json` (local, fuera del repositorio) se usa ese; si no, por su contenido: número de
-APU y de partidas y subtotal guardado (`FIRMAS`). C-1 y C-2 tienen el mismo subtotal; C-1 es el
-que tiene dos APU que reclaman la misma fila (conflicto L2). El PDF de cada libro es el que
-comparte nombre base con el `.xlsx`; para C-2 se cotejan además (L11) los PDF cuyos totales
-impresos coinciden. Nada de lo que imprime lleva nombres de archivo ni de clientes: los libros se
-llaman "Libro A", "Libro B-1"… y toda evidencia pasa por un filtro que borra los nombres reales.
+Cómo identifica cada libro sin escribir nombres de clientes en el código: si hay
+`expectativas.json`, por la SHA-256 del `.xlsx` (`libros_sha256`) o por su nombre (`libros`); si
+no, por su contenido: número de APU y de partidas y subtotal guardado (`FIRMAS`). C-1 y C-2 tienen
+el mismo subtotal; C-1 es el que tiene dos APU que reclaman la misma fila (conflicto L2). Cada PDF
+se identifica por su SHA-256 (`pdf_sha256`) o, si no figura, por el literal documentado cuyo total
+con IVA aparece en su texto (pdfplumber directo, sin el lector del adaptador). El PDF de cada
+libro es el que comparte nombre base con el `.xlsx`; para C-2 se cotejan además (L11) los otros
+PDF identificados como "C". Nada de lo que imprime lleva nombres de archivo ni de clientes: los
+libros se llaman "Libro A", "Libro B-1"… y toda evidencia pasa por un filtro que borra los nombres
+reales.
 
-Formato de `expectativas.json` (opcional)::
+`expectativas.json` (opcional, LOCAL, nunca al repositorio). Por defecto es
+`CARPETA/expectativas.json`; `--expectativas RUTA` lo lee (y `--congelar` lo escribe) en otra
+ruta. **Aviso:** `.gitignore` cubre las hojas de cálculo y los PDF de `docs/auditoria/**`, no los
+`.json`: un `expectativas.json` dentro del repositorio quedaría versionable. Por eso `--congelar`
+se niega a escribir dentro de un repositorio de Git en una ruta que Git no ignore, y una corrida
+que lee un archivo así lo avisa. Lleva las celdas de los hallazgos de libros confidenciales:
+guárdalo fuera del repositorio (o en una ruta ignorada). Formato::
 
-    {"libros": {"<archivo>.xlsx": "A",
-                "<otro>.xlsx": {"etiqueta": "C-2", "pdf": ["<impreso>.pdf"]}}}
+    {"libros_sha256": {"<sha256 del xlsx>": "A", ...},
+     "libros": {"<archivo>.xlsx": "A",
+                "<otro>.xlsx": {"etiqueta": "C-2", "pdf": ["<impreso>.pdf"]}},
+     "pdf_sha256": {"<sha256 del pdf>": "C", ...},
+     "hallazgos": {"A": [["L1", "ERROR", "CRONOGRAMA!F10|APU-01!F27"], ...], ...},
+     "valores_conservados": {"C-2": ["HOJA!CELDA", ...]},
+     "valores_conservados_vistos": {...}}
+
+Las claves de `pdf_sha256` son las de `TOTALES_DOCUMENTADOS` (A, B-1, B-2, C, QA, RC). En
+`hallazgos`, el tercer elemento son las celdas de origen normalizadas `HOJA!CELDA` unidas por `|`;
+un origen que no es celda (un PDF, un nombre definido) va como `~` + 10 cifras de su SHA-256, para
+no escribir rutas ni nombres. `valores_conservados_vistos` lo escribe `--congelar` como ayuda para
+la revisión: la lista blanca que cuenta es solo `valores_conservados`, que escribe una persona.
+
+`--congelar` escribe (fusionando con lo que ya tenga el archivo) `libros_sha256`, `pdf_sha256`,
+`hallazgos` y `valores_conservados_vistos` con lo que produce la corrida. La primera vez lo
+revisa una persona hallazgo por hallazgo: congelar no demuestra nada, por eso en esa corrida
+`CONJUNTO-EXACTO` queda PENDIENTE. Desde entonces la meta compara exacto (OK si idéntico, FALLA
+con lo que sobra y lo que falta).
 
 Uso::
 
     uv run python scripts/fusion_verificar.py CARPETA [--salida DIR] [--json]
         [--fecha-libro 2026-07-31] [--fecha-devolucion AAAA-MM-DD] [--pdf-simple RUTA ...]
+        [--expectativas RUTA] [--congelar]
 
-Código de salida: 0 si todas las metas están en OK, 1 si alguna falla, 2 si no se pudo correr
-(falta `fusion.proceso` o la carpeta no existe).
+Código de salida: 0 si ninguna meta falla (las PENDIENTE no fallan), 1 si alguna falla, 2 si no
+se pudo correr (falta `fusion.proceso`, la carpeta no existe o `--congelar` escribiría en una
+ruta versionable).
 """
 
 from __future__ import annotations
@@ -86,12 +129,64 @@ PDF_SIMPLES = (
     RAIZ / "data" / "samples" / "telecom" / "Presupuesto_2_ARENAZA.pdf",
 )
 
-#: Tolerancias explícitas: medio céntimo por celda (la unidad impresa es el céntimo), un céntimo
-#: para totales que suman redondeos y 0,05 para impactos documentados con dos decimales a partir
-#: de valores redondeados (H1: 1,82565 x 100,53 x 1,10 x 1,02).
+#: Tolerancias explícitas: medio céntimo por celda (la unidad impresa es el céntimo) y un céntimo
+#: para totales que suman redondeos y para impactos documentados con dos decimales (el literal
+#: está redondeado al céntimo: H1 es 205,9236 y se documenta 205,92). Los impactos se comparan
+#: CON SU SIGNO: un impacto con el signo opuesto falla.
 TOL_CELDA = Decimal("0.005")
 TOL_CENTIMO = Decimal("0.01")
-TOL_IMPACTO = Decimal("0.05")
+TOL_IMPACTO = Decimal("0.01")
+
+#: IVA documentado (causas raíz, cifras de H1: "con IVA (x1,16)").
+IVA_DOCUMENTADO = Decimal("0.16")
+
+#: H1 (causas raíz): el CD de la partida del alucobond (PRESUPUESTO fila 24 en C-1 y C-2) omite
+#: los equipos, 1,82565 USD/u. Memoria: Silice suma el equipo y conserva la administración del
+#: 10 % y la utilidad del 2 % (H2) => P.U. Silice = P guardado + 1,82565 x 1,10 x 1,02
+#: = P + 2,0483793 por u; con la cantidad 100,53, impacto 205,9236 (documentado 205,92).
+H1_FILA = 24
+H1_DELTA_PU = Decimal("1.82565") * Decimal("1.10") * Decimal("1.02")
+IMPACTO_H1 = Decimal("205.92")
+#: H1 deja fuera de `CD = G12+G21` el equipo: la fórmula literal del CD en el APU de H1.
+FORMULA_CD_H1 = "=G12+G21"
+HOJA_H1: dict[str, str] = {"C-1": "APU-09", "C-2": "APU-07"}
+#: H2: (10 % - 2 %) x 94,7004 x 100,53 = 761,62 (global - local > 0: el libro cobra de menos).
+IMPACTO_H2 = Decimal("761.62")
+#: H3: RESUMEN, composición del costo (24 495,46) - subtotal (24 311,92) = +183,53; L9 informa
+#: impacto = valor de la hoja - SUBSINIVA (`reglas._l9_resumen`), así que el signo es +.
+IMPACTO_H3 = Decimal("183.53")
+
+
+@dataclass(frozen=True, slots=True)
+class Totales:
+    """Subtotal sin IVA, IVA y total con IVA, tal como se documentan (dos decimales)."""
+
+    subtotal: Decimal
+    iva: Decimal
+    total: Decimal
+
+    def campos(self) -> tuple[Decimal, Decimal, Decimal]:
+        return self.subtotal, self.iva, self.total
+
+
+def _t(subtotal: str, iva: str, total: str) -> Totales:
+    return Totales(Decimal(subtotal), Decimal(iva), Decimal(total))
+
+
+#: Totales impresos documentados de cada PDF entregado (causas raíz, tabla de alcance y párrafo
+#: "PDF entregados"; IVA y total del encargo V7). "C" es el de C-1, C-2 e "IR" (valores
+#: idénticos); "QA" la versión de julio; "RC" el ÚLTIMO bloque ("Opción definitiva"), que es el que
+#: debe tomar `leer_totales_impresos`.
+TOTALES_DOCUMENTADOS: dict[str, Totales] = {
+    "A": _t("9955.65", "1592.90", "11548.55"),
+    "B-1": _t("12917.54", "2066.81", "14984.34"),
+    "B-2": _t("16491.80", "2638.69", "19130.49"),
+    "C": _t("24311.92", "3889.91", "28201.83"),
+    "QA": _t("14542.09", "2326.73", "16868.82"),
+    "RC": _t("15451.69", "2472.27", "17923.97"),
+}
+#: Totales documentados de lo que guarda cada libro (los de su PDF propio, sin cruzar).
+TOTALES_DEL_LIBRO: dict[str, str] = {"A": "A", "B-1": "B-1", "B-2": "B-2", "C-1": "C", "C-2": "C"}
 
 HOJAS_NUEVAS = ("AUDITORÍA", "TRAZABILIDAD", "ALERTAS USD-Bs")
 ROTULO_PU = "PRECIO UNITARIO TOTAL"
@@ -137,17 +232,21 @@ OTRA_VERSION: dict[str, str] = {"B-2": "B-1", "C-2": "C-1"}
 #: Subtotal sin IVA documentado de lo entregado (causas raíz, tabla de alcance). En C-2, Silice
 #: corrige H1 (F-D7) y conserva la utilidad del 2 % (H2): 24 311,92 + 205,92 = 24 517,85
 #: (memoria: 1,82565 x 100,53 = 183,5326; x 1,10 x 1,02 = 205,9236; 24 311,9242 + 205,9236).
+#: C-1 da lo mismo que C-2: sus hojas que no son APU son idénticas y Silice une cada partida con
+#: su APU por el título, así que el APU-09 de C-1 (el de H1) es el de la fila 24, como el APU-07
+#: de C-2.
 SUBTOTAL_SILICE: dict[str, tuple[Decimal, Decimal]] = {
     "A": (Decimal("9955.65"), TOL_CELDA + Decimal("0.001")),
     "B-1": (Decimal("12917.54"), TOL_CELDA + Decimal("0.001")),
     "B-2": (Decimal("16491.80"), TOL_CELDA + Decimal("0.001")),
+    "C-1": (Decimal("24517.85"), TOL_IMPACTO),
     "C-2": (Decimal("24517.85"), TOL_IMPACTO),
 }
 
 
 @dataclass(slots=True)
 class Caso:
-    """Un libro de la carpeta ya identificado."""
+    """Un libro de la carpeta ya identificado, con lo que `expectativas.json` dice de él."""
 
     etiqueta: str
     ruta: Path
@@ -155,6 +254,13 @@ class Caso:
     como: str  # "expectativas.json" o "contenido"
     pdf: Path | None = None
     pdf_extra: list[Path] = field(default_factory=list)
+    #: Clave de `TOTALES_DOCUMENTADOS` del PDF emparejado y de cada extra (None: sin identificar).
+    pdf_id: str | None = None
+    pdf_extra_ids: list[str | None] = field(default_factory=list)
+    #: Multiconjunto congelado de (regla, severidad, celdas); None si no hay expectativa.
+    hallazgos_esperados: Counter[tuple[str, str, str]] | None = None
+    congelado_ahora: bool = False
+    lista_blanca: frozenset[str] = frozenset()
 
 
 def _norm(texto: object) -> str:
@@ -177,10 +283,10 @@ def _dec(valor: object) -> Decimal | None:
         return None
 
 
-def _fmt(valor: Decimal | None, decimales: int = 2) -> str:
+def _fmt(valor: Decimal | None, decimales: int = 2, signo: bool = False) -> str:
     if valor is None:
         return "-"
-    return f"{valor:.{decimales}f}"
+    return f"{valor:+.{decimales}f}" if signo else f"{valor:.{decimales}f}"
 
 
 def _cerca(a: Decimal | None, b: Decimal | None, tol: Decimal) -> bool:
@@ -208,13 +314,48 @@ def _identificar(libro: Any) -> str | None:
     return None
 
 
-def _leer_expectativas(carpeta: Path) -> dict[str, tuple[str, list[str]]]:
-    ruta = carpeta / "expectativas.json"
+_CLAVES_EXPECTATIVAS = frozenset(
+    {
+        "libros",
+        "libros_sha256",
+        "pdf_sha256",
+        "hallazgos",
+        "valores_conservados",
+        "valores_conservados_vistos",
+    }
+)
+
+
+@dataclass(slots=True)
+class Expectativas:
+    """Lo que dice el `expectativas.json` local (vacío si no existe)."""
+
+    ruta: Path
+    existe: bool = False
+    libros: dict[str, tuple[str, list[str]]] = field(default_factory=dict)  # nombre -> etiqueta
+    libros_sha: dict[str, str] = field(default_factory=dict)
+    pdf_sha: dict[str, str] = field(default_factory=dict)
+    hallazgos: dict[str, Counter[tuple[str, str, str]]] = field(default_factory=dict)
+    lista_blanca: dict[str, frozenset[str]] = field(default_factory=dict)
+    crudo: dict[str, Any] = field(default_factory=dict)
+
+
+def _etiqueta_valida(etiqueta: str, validas: Iterable[str], donde: str) -> str:
+    if etiqueta not in validas:
+        raise ValueError(f"expectativas.json ({donde}): etiqueta desconocida {etiqueta!r}")
+    return etiqueta
+
+
+def _leer_expectativas(ruta: Path) -> Expectativas:
+    exp = Expectativas(ruta)
     if not ruta.is_file():
-        return {}
+        return exp
     crudo = json.loads(ruta.read_text(encoding="utf-8"))
-    libros = crudo.get("libros", crudo) if isinstance(crudo, dict) else {}
-    salida: dict[str, tuple[str, list[str]]] = {}
+    if not isinstance(crudo, dict):
+        raise ValueError("expectativas.json: se esperaba un objeto JSON")
+    exp.existe, exp.crudo = True, crudo
+    # Formato antiguo: el objeto entero es el mapa de libros por nombre.
+    libros = crudo.get("libros", {}) if _CLAVES_EXPECTATIVAS & set(crudo) else crudo
     for archivo, valor in libros.items():
         if isinstance(valor, str):
             etiqueta, pdfs = valor, []
@@ -222,10 +363,75 @@ def _leer_expectativas(carpeta: Path) -> dict[str, tuple[str, list[str]]]:
             etiqueta = str(valor.get("etiqueta", ""))
             pdf = valor.get("pdf", [])
             pdfs = [pdf] if isinstance(pdf, str) else list(pdf)
-        if etiqueta not in ETIQUETAS:
-            raise ValueError(f"expectativas.json: etiqueta desconocida {etiqueta!r}")
-        salida[archivo.lower()] = (etiqueta, pdfs)
-    return salida
+        exp.libros[archivo.lower()] = (_etiqueta_valida(etiqueta, ETIQUETAS, "libros"), pdfs)
+    for sha, etiqueta in crudo.get("libros_sha256", {}).items():
+        exp.libros_sha[sha.lower()] = _etiqueta_valida(etiqueta, ETIQUETAS, "libros_sha256")
+    for sha, clave_pdf in crudo.get("pdf_sha256", {}).items():
+        exp.pdf_sha[sha.lower()] = _etiqueta_valida(clave_pdf, TOTALES_DOCUMENTADOS, "pdf_sha256")
+    for etiqueta, lista in crudo.get("hallazgos", {}).items():
+        _etiqueta_valida(etiqueta, ETIQUETAS, "hallazgos")
+        exp.hallazgos[etiqueta] = Counter(
+            (str(r), str(s), str(c)) for r, s, c in (tuple(x) for x in lista)
+        )
+    for etiqueta, lista in crudo.get("valores_conservados", {}).items():
+        _etiqueta_valida(etiqueta, ETIQUETAS, "valores_conservados")
+        exp.lista_blanca[etiqueta] = frozenset(_norm_origen(str(o)) for o in lista)
+    return exp
+
+
+def _versionable(ruta: Path) -> bool:
+    """True si `ruta` está dentro de un repositorio de Git y Git NO la ignora (se podría añadir
+    al repositorio por error). Fuera de un repositorio, o ignorada, False."""
+    import subprocess
+
+    carpeta = ruta.resolve().parent
+    if not carpeta.is_dir():
+        return False
+    try:
+        r = subprocess.run(
+            ["git", "-C", str(carpeta), "check-ignore", "-q", ruta.name],
+            capture_output=True,
+            check=False,
+            timeout=30,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return False
+    return r.returncode == 1  # 0: ignorada; 1: no ignorada; 128: no es un repositorio
+
+
+# --- Identificación de los PDF por literal documentado (sin el lector del adaptador) -----------
+
+
+def _patron_monto(valor: Decimal) -> re.Pattern[str]:
+    """El monto tal como puede imprimirse: miles con punto, coma, espacio o nada; decimales con
+    coma o punto (`24.311,92`, `24,311.92`, `24 311,92`, `24311.92`)."""
+    entero, cent = f"{valor:.2f}".split(".")
+    grupos = []
+    while entero:
+        grupos.insert(0, entero[-3:])
+        entero = entero[:-3]
+    miles = r"[.,\s  ]?".join(grupos)
+    return re.compile(rf"(?<![\d.,]){miles}[.,]{cent}(?!\d)")
+
+
+def _texto_pdf(datos: bytes) -> str:
+    import pdfplumber
+
+    with pdfplumber.open(io.BytesIO(datos)) as doc:
+        return "\n".join((p.extract_text() or "") for p in doc.pages)
+
+
+def _identificar_pdf(datos: bytes, exp: Expectativas) -> tuple[str | None, str]:
+    """(clave de `TOTALES_DOCUMENTADOS`, cómo). Por SHA-256 si `expectativas.json` lo nombra; si
+    no, el literal cuyo TOTAL con IVA aparece en el texto del PDF (debe ser uno solo)."""
+    sha = hashlib.sha256(datos).hexdigest()
+    if sha in exp.pdf_sha:
+        return exp.pdf_sha[sha], "sha256"
+    texto = _texto_pdf(datos)
+    hallados = [k for k, t in TOTALES_DOCUMENTADOS.items() if _patron_monto(t.total).search(texto)]
+    if len(hallados) == 1:
+        return hallados[0], "literal"
+    return None, ("ningun literal" if not hallados else f"ambiguo ({', '.join(hallados)})")
 
 
 # --- Hallazgos: dónde y cuánto --------------------------------------------------------------------
@@ -246,6 +452,21 @@ def _fila_de(ref: str) -> int | None:
 
 def _celdas(h: Any) -> set[tuple[str, str]]:
     return {c for o in h.origen_ids if (c := _celda_de(str(o))) is not None}
+
+
+def _norm_origen(origen: str) -> str:
+    """`HOJA!CELDA` normalizada (hoja sin acentos en mayúsculas, celda sin `$`); otro origen, como
+    `~` + 10 cifras de su SHA-256 (así no se escriben rutas ni nombres de archivo)."""
+    c = _celda_de(origen)
+    if c is not None:
+        return f"{c[0]}!{c[1]}"
+    return "~" + hashlib.sha256(origen.encode("utf-8")).hexdigest()[:10]
+
+
+def _clave_hallazgo(h: Any) -> tuple[str, str, str]:
+    """(regla, severidad, celdas de origen en su orden, unidas por `|`)."""
+    celdas = "|".join(_norm_origen(str(o)) for o in h.origen_ids) or "~sin-origen"
+    return str(h.regla), str(h.severidad.name), celdas
 
 
 def _de(hallazgos: Iterable[Any], regla: str, severidad: str | None = None) -> list[Any]:
@@ -396,14 +617,15 @@ class Evaluacion:
     dev_f: Any = None
     dev_v: Any = None
     error_reabrir: str = ""
-    pdf_extra: list[tuple[str, list[Any]]] = field(default_factory=list)
+    #: (nombre neutro, clave documentada del PDF o None, hallazgos de `cotejar_con_libro`).
+    pdf_extra: list[tuple[str, str | None, list[Any]]] = field(default_factory=list)
 
     @property
     def etiqueta(self) -> str:
         return self.caso.etiqueta
 
 
-Comprobacion = Callable[[Evaluacion], tuple[bool, str]]
+Comprobacion = Callable[[Evaluacion], tuple[bool | Estado, str]]
 
 
 def _precios_silice(r: Any) -> dict[int, Decimal] | None:
@@ -499,10 +721,46 @@ def _l5_todo(ev: Evaluacion) -> tuple[bool, str]:
     return ok_refs and ok_nom, f"{t_refs}; {t_nom}"
 
 
+#: H12 (causas raíz): medidas escritas dentro de las fórmulas de MEDICIONES. Las tres formas
+#: documentadas, cada una en su sección: `=9.73*2.75`, `=2.75*3` y un factor `*0.28`.
+_FORMAS_H12: tuple[tuple[str, Callable[[str], bool]], ...] = (
+    ("=9.73*2.75", lambda f: f == "=9.73*2.75"),
+    ("=2.75*3", lambda f: f == "=2.75*3"),
+    ("*0.28", lambda f: re.search(r"\*\s*0?\.28(?!\d)", f) is not None),
+)
+
+
 def _l7_mediciones(ev: Evaluacion) -> tuple[bool, str]:
-    en = _en_hoja(_de(ev.hallazgos, "L7"), "MEDICIONES")
-    sev = Counter(h.severidad.name for h in en)
-    return len(en) > 0, f"{len(en)} L7 en MEDICIONES ({dict(sev) or 'ninguno'})"
+    """Oráculo: las fórmulas de MEDICIONES leídas con openpyxl. Cada forma documentada de H12
+    debe existir en el libro y TODAS sus celdas deben estar en el origen de algún L7."""
+    ws = _hoja(ev.orig_f, "MEDICIONES")
+    if ws is None:
+        return False, "el libro no tiene MEDICIONES"
+    l7 = _en_hoja(_de(ev.hallazgos, "L7"), "MEDICIONES")
+    partes, ok = [], True
+    cubren: set[int] = set()
+    for nombre, es in _FORMAS_H12:
+        celdas = [
+            c.coordinate
+            for fila in ws.iter_rows()
+            for c in fila
+            if isinstance(c.value, str) and es(c.value.replace(" ", ""))
+        ]
+        por_celda = {
+            c: [k for k, h in enumerate(l7) if ("MEDICIONES", c) in _celdas(h)] for c in celdas
+        }
+        sin = [c for c, hs in por_celda.items() if not hs]
+        cubren.update(k for hs in por_celda.values() for k in hs)
+        ok = ok and bool(celdas) and not sin
+        partes.append(
+            f"{nombre} en {_lista(celdas, 3) or 'ninguna celda'}"
+            + (f" (sin L7: {_lista(sin, 3)})" if sin else "")
+        )
+    sev = Counter(h.severidad.name for h in l7)
+    return ok, (
+        f"oraculo: {'; '.join(partes)}; {len(l7)} L7 en MEDICIONES ({dict(sev) or 'ninguno'}), "
+        f"{len(cubren)} cubren las formas documentadas"
+    )
 
 
 def _l9_procura_b2(ev: Evaluacion) -> tuple[bool, str]:
@@ -524,42 +782,75 @@ def _l9_procura_b2(ev: Evaluacion) -> tuple[bool, str]:
     return not faltan, texto
 
 
-def _f1_c2(ev: Evaluacion) -> tuple[bool, str]:
+def _signo(impactos: Iterable[Decimal | None], esperado: Decimal, tol: Decimal) -> str:
+    """Nota para la evidencia cuando el impacto solo aparece con el signo opuesto."""
+    presentes = [i for i in impactos if i is not None]
+    if any(_cerca(i, esperado, tol) for i in presentes):
+        return ""
+    return " (con signo opuesto)" if any(_cerca(i, -esperado, tol) for i in presentes) else ""
+
+
+def _f1_h1(ev: Evaluacion) -> tuple[bool, str]:
+    """F1 ERROR en la fila de H1 con impacto +205,92 ± 0,01: P.U. Silice - P guardado > 0 (el
+    libro cobra de menos; convención de `fusion.proceso._f1`)."""
     f1 = _de(ev.hallazgos, "F1")
-    en_24 = [h for h in f1 if 24 in _filas_en([h], "PRESUPUESTO")]
-    impactos = [_dec(h.impacto) for h in en_24]
+    en_fila = [h for h in f1 if H1_FILA in _filas_en([h], "PRESUPUESTO")]
+    impactos = [_dec(h.impacto) for h in en_fila]
     ok = any(
-        h.severidad.name == "ERROR" and _cerca(abs(i), Decimal("205.92"), TOL_IMPACTO)
-        for h, i in zip(en_24, impactos, strict=True)
-        if i is not None
+        h.severidad.name == "ERROR" and _cerca(i, IMPACTO_H1, TOL_IMPACTO)
+        for h, i in zip(en_fila, impactos, strict=True)
     )
     otros = sorted(_filas_en(f1, "PRESUPUESTO"))
     return ok, (
-        f"F1 en PRESUPUESTO fila 24: impacto {_lista(_fmt(i) for i in impactos) or 'ninguno'} "
-        f"(esperado 205,92 +-0,05); F1 en filas {_lista(otros) or 'ninguna'}"
+        f"F1 en PRESUPUESTO fila {H1_FILA}: impacto "
+        f"{_lista(_fmt(i, 4) for i in impactos) or 'ninguno'} (esperado +{_fmt(IMPACTO_H1)} "
+        f"+-{TOL_IMPACTO}){_signo(impactos, IMPACTO_H1, TOL_IMPACTO)}; F1 en filas "
+        f"{_lista(otros) or 'ninguna'}"
     )
 
 
-def _l4_c2(ev: Evaluacion) -> tuple[bool, str]:
-    en = _en_hoja(_de(ev.hallazgos, "L4", "ERROR"), "APU-07")
-    con_impacto = [h for h in en if _dec(h.impacto) not in (None, Decimal(0))]
-    celdas = {c[1] for h in en for c in _celdas(h) if c[0] == "APU-07"}
-    return bool(con_impacto), (
-        f"{len(en)} L4 ERROR en APU-07 ({_lista(celdas) or 'sin celda'}); impacto "
-        f"{_lista(_fmt(_dec(h.impacto), 4) for h in en) or '-'}"
+def _l4_h1(ev: Evaluacion) -> tuple[bool, str]:
+    """L4 ERROR en el APU de H1, en la celda del CD que el oráculo (openpyxl) encuentra con la
+    fórmula documentada `=G12+G21`, con impacto +205,92 ± 0,01 (la partida queda corta)."""
+    hoja = HOJA_H1[ev.etiqueta]
+    ws = _hoja(ev.orig_f, hoja)
+    oraculo = [
+        c.coordinate
+        for fila in (ws.iter_rows() if ws is not None else ())
+        for c in fila
+        if isinstance(c.value, str) and c.value.replace(" ", "").upper() == FORMULA_CD_H1
+    ]
+    en = _en_hoja(_de(ev.hallazgos, "L4", "ERROR"), hoja)
+    celdas = {c[1] for h in en for c in _celdas(h) if c[0] == _norm(hoja)}
+    impactos = [_dec(h.impacto) for h in en]
+    con_impacto = any(_cerca(i, IMPACTO_H1, TOL_IMPACTO) for i in impactos)
+    en_cd = len(oraculo) == 1 and oraculo[0] in celdas
+    return con_impacto and en_cd, (
+        f"oraculo CD {FORMULA_CD_H1} en {hoja}!{_lista(oraculo) or '-'}; {len(en)} L4 ERROR en "
+        f"{hoja} ({_lista(celdas) or 'sin celda'}); impacto "
+        f"{_lista(_fmt(i, 4) for i in impactos) or '-'} (esperado +{_fmt(IMPACTO_H1)} "
+        f"+-{TOL_IMPACTO}){_signo(impactos, IMPACTO_H1, TOL_IMPACTO)}"
     )
 
 
-def _l6_c2(ev: Evaluacion) -> tuple[bool, str]:
-    literales, divisiones = _celdas_apu(ev.orig_f, "APU-07")
-    l6 = _en_hoja(_de(ev.hallazgos, "L6", "ADVERTENCIA"), "APU-07")
-    celdas = {c[1] for h in l6 for c in _celdas(h) if c[0] == "APU-07"}
+def _l6_h2(ev: Evaluacion) -> tuple[bool, str]:
+    """L6 en el APU de H1/H2: la utilidad 0,02 escrita a mano (oráculo openpyxl), con impacto
+    (global - local) x base x cantidad = +761,62 ± 0,01 (H2), y el `/12` literal (H12)."""
+    hoja = HOJA_H1[ev.etiqueta]
+    literales, divisiones = _celdas_apu(ev.orig_f, hoja)
+    l6 = _en_hoja(_de(ev.hallazgos, "L6", "ADVERTENCIA"), hoja)
+    celdas = {c[1] for h in l6 for c in _celdas(h) if c[0] == _norm(hoja)}
     utilidad = bool(literales) and bool(celdas & set(literales))
     div12 = bool(divisiones) and bool(celdas & set(divisiones))
-    return utilidad and div12, (
-        f"L6 en APU-07: {_lista(celdas) or 'ninguna'}; oraculo utilidad 0,02 en "
-        f"{_lista(literales) or '-'} ({'OK' if utilidad else 'falta'}), '/12' en "
-        f"{_lista(divisiones) or '-'} ({'OK' if div12 else 'falta'})"
+    en_util = [h for h in l6 if {c[1] for c in _celdas(h)} & set(literales)]
+    impactos = [_dec(h.impacto) for h in en_util]
+    h2 = any(_cerca(i, IMPACTO_H2, TOL_IMPACTO) for i in impactos)
+    return utilidad and div12 and h2, (
+        f"L6 en {hoja}: {_lista(celdas) or 'ninguna'}; oraculo utilidad 0,02 en "
+        f"{_lista(literales) or '-'} ({'OK' if utilidad else 'falta'}, impacto "
+        f"{_lista(_fmt(i) for i in impactos) or '-'}, H2 +{_fmt(IMPACTO_H2)} +-{TOL_IMPACTO}"
+        f"{_signo(impactos, IMPACTO_H2, TOL_IMPACTO)}), '/12' en {_lista(divisiones) or '-'} "
+        f"({'OK' if div12 else 'falta'})"
     )
 
 
@@ -625,11 +916,12 @@ def _c2_l3_o_parche(ev: Evaluacion) -> tuple[bool, str]:
 
 
 def _l9_resumen_c2(ev: Evaluacion) -> tuple[bool, str]:
-    impactos = [_dec(h.impacto) for h in _en_hoja(_de(ev.hallazgos, "L9"), "RESUMEN")]
-    ok = any(i is not None and _cerca(abs(i), Decimal("183.53"), TOL_IMPACTO) for i in impactos)
+    impactos = [_dec(h.impacto) for h in _en_hoja(_de(ev.hallazgos, "L9", "ERROR"), "RESUMEN")]
+    ok = any(_cerca(i, IMPACTO_H3, TOL_IMPACTO) for i in impactos)
     return ok, (
-        f"impactos L9 en RESUMEN: {_lista(_fmt(i) for i in impactos) or 'ninguno'} "
-        "(esperado 183,53 +-0,05)"
+        f"impactos L9 ERROR en RESUMEN: {_lista(_fmt(i) for i in impactos) or 'ninguno'} "
+        f"(esperado H3 +{_fmt(IMPACTO_H3)} +-{TOL_IMPACTO}, composicion - subtotal)"
+        f"{_signo(impactos, IMPACTO_H3, TOL_IMPACTO)}"
     )
 
 
@@ -655,58 +947,133 @@ def _c1_l3_o_l2(ev: Evaluacion) -> tuple[bool, str]:
     )
 
 
+def _celda_nombre(wb_f: Any, nombre: str) -> str | None:
+    """`HOJA!CELDA` normalizada a la que apunta un nombre definido (openpyxl)."""
+    definido = wb_f.defined_names.get(nombre)
+    if definido is None:
+        return None
+    for hoja, coord in definido.destinations:
+        return f"{_norm(hoja)}!{coord.replace('$', '').upper()}"
+    return None
+
+
+def _l11_esperado(
+    clave_pdf: str | None, ev: Evaluacion, hallazgos: Sequence[Any]
+) -> tuple[bool, str]:
+    """L11 contra un PDF cuyo literal documentado es `clave_pdf`: ERROR en exactamente los campos
+    (subtotal, IVA, total) en que el literal difiere del total guardado del libro (openpyxl, por
+    su nombre definido), cada uno en la celda de ese nombre y con impacto = PDF - libro (con
+    signo) ± 0,01; ninguna ADVERTENCIA."""
+    if clave_pdf is None:
+        return False, "PDF sin identificar por literal ni por SHA-256: no hay oraculo"
+    impreso = TOTALES_DOCUMENTADOS[clave_pdf]
+    esperados: dict[str, Decimal] = {}
+    for nombre, valor_pdf in zip(NOMBRES_TOTALES, impreso.campos(), strict=True):
+        guardado = _valor_nombre(ev.orig_f, ev.orig_v, nombre)
+        celda = _celda_nombre(ev.orig_f, nombre)
+        if guardado is None or celda is None:
+            return False, f"el libro no guarda {nombre} (oraculo openpyxl)"
+        if abs(valor_pdf - guardado) > TOL_CELDA:
+            esperados[celda] = valor_pdf - guardado
+    errores = _de(hallazgos, "L11", "ERROR")
+    avisos = _de(hallazgos, "L11", "ADVERTENCIA")
+    por_celda: dict[str, list[Decimal | None]] = {}
+    for h in errores:
+        for c in _celdas(h):
+            por_celda.setdefault(f"{c[0]}!{c[1]}", []).append(_dec(h.impacto))
+    malos = [
+        f"{c} {_fmt(d, signo=True)}"
+        for c, d in esperados.items()
+        if not any(_cerca(i, d, TOL_IMPACTO) for i in por_celda.get(c, []))
+    ]
+    ok = len(errores) == len(esperados) and not malos and not avisos
+    texto = (
+        f"PDF '{clave_pdf}' (sin IVA {_fmt(impreso.subtotal)}): esperados {len(esperados)} L11 "
+        f"ERROR, hay {len(errores)} ERROR y {len(avisos)} ADVERTENCIA"
+    )
+    if malos:
+        texto += f"; sin el impacto PDF-libro esperado: {_lista(malos, 3)}"
+    return ok, texto
+
+
 def _l11(ev: Evaluacion) -> tuple[bool, str]:
     """L11 debe dispararse si y solo si los totales impresos del PDF emparejado difieren de los
-    guardados en el libro (leídos con openpyxl por sus nombres). El PDF "del mismo nombre" puede
-    ser de otra versión: en los libros B, los nombres de archivo de los PDF están cruzados respecto
-    de los `.xlsx`, y lo correcto entonces es que L11 lo diga."""
-    from adapters.hoja_empresa.pdf import leer_totales_impresos
-
+    guardados en el libro. Oráculo independiente: el literal documentado del PDF (identificado por
+    SHA-256 o por el literal que contiene su texto, nunca por `leer_totales_impresos`) contra los
+    totales del libro leídos con openpyxl. El PDF "del mismo nombre" puede ser de otra versión: en
+    los libros B, los nombres de archivo de los PDF están cruzados respecto de los `.xlsx`, y lo
+    correcto entonces es que L11 lo diga. Además, lo que Silice leyó del PDF (`pdf_totales`) debe
+    ser el literal."""
     if ev.caso.pdf is None:
         return False, "no se encontro el PDF impreso del libro en la carpeta"
-    impresos = leer_totales_impresos(ev.caso.pdf.read_bytes(), "pdf")
-    guardados = [_valor_nombre(ev.orig_f, ev.orig_v, n) for n in NOMBRES_TOTALES]
-    difiere = not all(
-        _cerca(a, b, TOL_CELDA)
-        for a, b in zip((impresos.subtotal, impresos.iva, impresos.total), guardados, strict=True)
-    )
-    errores = _de(ev.hallazgos, "L11", "ERROR")
-    avisos = _de(ev.hallazgos, "L11", "ADVERTENCIA")
-    extra = [(n, _de(hs, "L11", "ERROR")) for n, hs in ev.pdf_extra]
-    ok = bool(errores) == difiere and not avisos and all(not e for _, e in extra)
-    texto = (
-        f"PDF emparejado: sin IVA impreso {_fmt(impresos.subtotal)}, libro {_fmt(guardados[0])} "
-        f"({'difieren' if difiere else 'coinciden'}); {len(errores)} L11 ERROR, "
-        f"{len(avisos)} L11 ADVERTENCIA"
-    )
-    if extra:
-        texto += f"; otros {len(extra)} PDF con los mismos totales: " + ", ".join(
-            f"{len(e)} ERROR" for _, e in extra
-        )
+    ok, texto = _l11_esperado(ev.caso.pdf_id, ev, ev.hallazgos)
+    leido = getattr(ev.resultado, "pdf_totales", None)
+    if ev.caso.pdf_id is not None:
+        doc = TOTALES_DOCUMENTADOS[ev.caso.pdf_id].campos()
+        campos = (getattr(leido, n, None) for n in ("subtotal", "iva", "total"))
+        lectura = [_dec(x) for x in campos]
+        bien = all(_cerca(a, b, TOL_CELDA) for a, b in zip(lectura, doc, strict=True))
+        ok = ok and bien
+        if not bien:
+            texto += f"; Silice leyo {'/'.join(_fmt(x) for x in lectura)} del PDF"
+    for nombre, clave_pdf, hs in ev.pdf_extra:
+        ok_e, t_e = _l11_esperado(clave_pdf, ev, hs)
+        ok = ok and ok_e
+        texto += f"; extra {nombre.rsplit('_', 1)[-1]}: {t_e}"
     return ok, texto
 
 
 # Comprobaciones de valores de Silice -----------------------------------------------------------
 
 
+def _pu_oraculo(ev: Evaluacion) -> dict[int, Decimal | None]:
+    """P.U. esperado por fila de PRESUPUESTO, sin Silice: el P guardado del libro RECIBIDO
+    (openpyxl) y, en la fila de H1 de C-1 y C-2, ese P más la memoria de H1 (`H1_DELTA_PU`).
+    Las filas son las partidas del libro (B entero y E con texto, como en `_numeros_duplicados`)."""
+    ws = _hoja(ev.orig_v, "PRESUPUESTO")
+    if ws is None:
+        return {}
+    salida: dict[int, Decimal | None] = {}
+    for fila in range(1, ws.max_row + 1):
+        numero = _dec(ws[f"B{fila}"].value)
+        if numero is None or numero != numero.to_integral_value():
+            continue
+        if not str(ws[f"E{fila}"].value or "").strip():
+            continue
+        p = _dec(ws[f"P{fila}"].value)
+        if ev.etiqueta in HOJA_H1 and fila == H1_FILA and p is not None:
+            p += H1_DELTA_PU
+        salida[fila] = p
+    return salida
+
+
 def _pu_igual_guardado(partidas_documentadas: int) -> Comprobacion:
+    """P.U. de Silice = P guardado (openpyxl) en cada partida; en C-1 y C-2, en las 8 que H1 no
+    toca, y en la de H1, P + 1,82565 x 1,10 x 1,02 (memoria de H1)."""
+
     def comprobar(ev: Evaluacion) -> tuple[bool, str]:
         pus = _precios_silice(ev.resultado)
         if pus is None:
             return False, "ResultadoFusion no expone el P.U. de Silice por fila"
-        ws = _hoja(ev.orig_v, "PRESUPUESTO")
-        filas = [p.fila for p in ev.resultado.libro.partidas]
-        malas = []
-        for fila in filas:
-            guardado = _dec(ws[f"P{fila}"].value) if ws is not None else None
-            if not _cerca(pus.get(fila), guardado, TOL_CELDA):
-                malas.append(f"fila {fila}: {_fmt(pus.get(fila), 4)} vs {_fmt(guardado, 4)}")
-        ok = not malas and len(filas) == partidas_documentadas
-        texto = f"{len(filas) - len(malas)}/{len(filas)} partidas con |PU Silice - P| < 0,005"
-        if len(filas) != partidas_documentadas:
+        oraculo = _pu_oraculo(ev)
+        malas = [
+            f"fila {fila}: {_fmt(pus.get(fila), 4)} vs {_fmt(esperado, 4)}"
+            for fila, esperado in oraculo.items()
+            if not _cerca(pus.get(fila), esperado, TOL_CELDA)
+        ]
+        sobran = sorted(set(pus) - set(oraculo))
+        ok = not malas and not sobran and len(oraculo) == partidas_documentadas
+        h1 = ev.etiqueta in HOJA_H1
+        texto = (
+            f"{len(oraculo) - len(malas)}/{len(oraculo)} partidas con |PU Silice - oraculo| <= "
+            f"0,005" + (f" (fila {H1_FILA}: P + {_fmt(H1_DELTA_PU, 7)} de H1)" if h1 else "")
+        )
+        if len(oraculo) != partidas_documentadas:
             texto += f" (documentadas {partidas_documentadas})"
         if malas:
             texto += f"; {_lista(malas, 4)}"
+        if sobran:
+            texto += f"; Silice da P.U. en filas que no son partidas: {_lista(sobran)}"
         return ok, texto
 
     return comprobar
@@ -806,11 +1173,137 @@ def _hojas_xml(z: zipfile.ZipFile) -> list[tuple[str, str]]:
     return hojas
 
 
+def _cierre_par(texto: str, abre: int) -> int | None:
+    """Índice del `)` que cierra el `(` de `texto[abre]`, saltando textos `"…"` y hojas `'…'`."""
+    nivel, k, comilla = 0, abre, ""
+    while k < len(texto):
+        ch = texto[k]
+        if comilla:
+            if ch == comilla:
+                if k + 1 < len(texto) and texto[k + 1] == comilla:
+                    k += 1  # comilla doblada
+                else:
+                    comilla = ""
+        elif ch in "\"'":
+            comilla = ch
+        elif ch == "(":
+            nivel += 1
+        elif ch == ")":
+            nivel -= 1
+            if nivel == 0:
+                return k
+        k += 1
+    return None
+
+
+def _partir_args(texto: str) -> list[str]:
+    """Argumentos de nivel superior de una llamada (separados por `,` o `;`)."""
+    args, nivel, inicio, k, comilla = [], 0, 0, 0, ""
+    while k < len(texto):
+        ch = texto[k]
+        if comilla:
+            if ch == comilla:
+                if k + 1 < len(texto) and texto[k + 1] == comilla:
+                    k += 1
+                else:
+                    comilla = ""
+        elif ch in "\"'":
+            comilla = ch
+        elif ch in "({":
+            nivel += 1
+        elif ch in ")}":
+            nivel -= 1
+        elif ch in ",;" and nivel == 0:
+            args.append(texto[inicio:k].strip())
+            inicio = k + 1
+        k += 1
+    args.append(texto[inicio:].strip())
+    return args
+
+
+def _ramas_if(a: list[str]) -> list[str]:
+    return a[1:3] if len(a) >= 3 else [*a[1:2], "FALSE"]
+
+
+def _ramas_switch(a: list[str]) -> list[str]:
+    resto = a[1:]
+    return [*resto[1::2], *([resto[-1]] if len(resto) % 2 == 1 else [])]
+
+
+#: Funciones cuyo resultado es uno de sus argumentos (las "ramas"): IF(c, si, no), IFERROR(x, e),
+#: IFNA(x, e), CHOOSE(i, a, b, …), IFS(c1, r1, c2, r2, …), SWITCH(x, v1, r1, …, [otro]).
+_RAMAS: dict[str, Callable[[list[str]], list[str]]] = {
+    "IF": _ramas_if,
+    "IFERROR": lambda a: a[:2],
+    "IFNA": lambda a: a[:2],
+    "CHOOSE": lambda a: a[1:],
+    "IFS": lambda a: a[1::2],
+    "SWITCH": _ramas_switch,
+}
+_RE_LLAMADA = re.compile(r"^(?:_xlfn\.|_xlws\.)?([A-Za-z][A-Za-z0-9.]*)\(")
+
+
+def _resultados_posibles(expr: str, profundidad: int = 0) -> list[str]:
+    """Las expresiones que una fórmula puede DEVOLVER, por su forma: se baja por las ramas de
+    IF/IFERROR/IFNA/CHOOSE/IFS/SWITCH y por los paréntesis que envuelven todo; lo que no es una
+    de esas formas es una hoja del árbol. Un `""` que solo aparece en una condición (`$B12=""`)
+    no es un resultado posible."""
+    e = expr.strip()
+    if e.startswith("="):
+        e = e[1:].strip()
+    while e.startswith("+"):
+        e = e[1:].strip()
+    if profundidad > 40 or not e:
+        return [e]
+    if e.startswith("(") and _cierre_par(e, 0) == len(e) - 1:
+        return _resultados_posibles(e[1:-1], profundidad + 1)
+    m = _RE_LLAMADA.match(e)
+    if m is not None and _cierre_par(e, m.end() - 1) == len(e) - 1:
+        ramas = _RAMAS.get(m.group(1).upper())
+        if ramas is not None:
+            args = _partir_args(e[m.end() : -1])
+            return [r for a in ramas(args) for r in _resultados_posibles(a, profundidad + 1)]
+    return [e]
+
+
+def _texto_vacio_original(datos: bytes) -> set[tuple[str, str]]:
+    """(hoja normalizada, celda) del libro RECIBIDO cuyo valor guardado es texto vacío: cadena
+    compartida vacía, `t="str"`/`inlineStr` sin texto (XML crudo, no openpyxl, que confunde
+    texto vacío con celda vacía; una celda vacía en Excel vale 0, no `""`)."""
+    salida: set[tuple[str, str]] = set()
+    with zipfile.ZipFile(io.BytesIO(datos)) as z:
+        compartidas: list[str] = []
+        if "xl/sharedStrings.xml" in z.namelist():
+            raiz = leer_xml(z.read("xl/sharedStrings.xml"))
+            compartidas = [
+                "".join(t.text or "" for t in si.iter(f"{NS_MAIN}t"))
+                for si in raiz.iter(f"{NS_MAIN}si")
+            ]
+        for nombre, parte in _hojas_xml(z):
+            if parte not in z.namelist():
+                continue
+            for c in leer_xml(z.read(parte)).iter(f"{NS_MAIN}c"):
+                tipo, v = c.get("t", "n"), c.find(f"{NS_MAIN}v")
+                texto: str | None = None
+                if tipo == "s" and v is not None and (v.text or "").strip().isdigit():
+                    k = int(v.text or "0")
+                    texto = compartidas[k] if k < len(compartidas) else None
+                elif tipo == "str":
+                    texto = (v.text or "") if v is not None else ""
+                elif tipo == "inlineStr":
+                    texto = "".join(t.text or "" for t in c.iter(f"{NS_MAIN}t"))
+                if texto == "":
+                    salida.add((_norm(nombre), str(c.get("r", "")).upper()))
+    return salida
+
+
 def _d_valores_guardados(ev: Evaluacion) -> tuple[bool, str]:
     """Cada `<c>` con `<f>` tiene `<v>`. Un `<v>` vacío es texto vacío: XlsxWriter escribe así un
-    resultado `""` (sin `t="str"`). Se acepta solo si la fórmula puede devolver `""`: lleva `""`
-    escrita, o es una referencia pura (`=B13`, `=+'HOJA'!B13`) a otra celda de texto vacío ya
-    aceptada (punto fijo). Un `<v>` vacío en cualquier otra fórmula es un valor que falta."""
+    resultado `""` (sin `t="str"`). Se acepta solo si la fórmula DEVUELVE texto vacío por su
+    forma: entre sus resultados posibles (`_resultados_posibles`, las ramas de IF/IFERROR/…) hay
+    un `""` literal, o una referencia pura a una celda que es texto vacío en el libro RECIBIDO o a
+    otra celda de la devolución ya aceptada (punto fijo). Un `""` que solo está en una condición
+    no cuenta. Un `<v>` vacío en cualquier otra fórmula es un valor que falta."""
     total = 0
     vacias: dict[tuple[str, str], str] = {}  # (hoja, celda) -> fórmula, con <v> vacío o sin <v>
     sin_v: set[tuple[str, str]] = set()
@@ -825,27 +1318,51 @@ def _d_valores_guardados(ev: Evaluacion) -> tuple[bool, str]:
                 v = c.find(f"{NS_MAIN}v")
                 if v is not None and (v.text or ""):
                     continue
-                celda = (_norm(nombre), str(c.get("r", "")))
+                celda = (_norm(nombre), str(c.get("r", "")).upper())
                 vacias[celda] = f.text or ""
                 if v is None:
                     sin_v.add(celda)
-    aceptadas = {k for k, f in vacias.items() if k not in sin_v and '""' in f}
+    vacio_original = _texto_vacio_original(ev.caso.datos)
+    resultados = {k: _resultados_posibles(f) for k, f in vacias.items() if k not in sin_v}
+    aceptadas = {k for k, rs in resultados.items() if '""' in rs}
+    por_original = 0
     cambio = True
     while cambio:
         cambio = False
-        for k, f in vacias.items():
-            m = _RE_REF_PURA.match(f.strip())
-            if k in aceptadas or k in sin_v or m is None:
+        for k, rs in resultados.items():
+            if k in aceptadas:
                 continue
-            destino = (_norm(m.group(1)) if m.group(1) else k[0], f"{m.group(2)}{m.group(3)}")
-            if destino in aceptadas:
-                aceptadas.add(k)
-                cambio = True
+            for r in rs:
+                m = _RE_REF_PURA.match(r)
+                if m is None:
+                    continue
+                destino = (_norm(m.group(1)) if m.group(1) else k[0], f"{m.group(2)}{m.group(3)}")
+                if destino in aceptadas or destino in vacio_original:
+                    por_original += destino in vacio_original
+                    aceptadas.add(k)
+                    cambio = True
+                    break
     sin_valor = [f"{h}!{r}" for h, r in vacias if (h, r) not in aceptadas]
     return not sin_valor and total > 0, (
         f"{total - len(sin_valor)}/{total} formulas con valor guardado "
-        f"({len(aceptadas)} texto vacio)"
-        + (f"; sin valor: {_lista(sin_valor)}" if sin_valor else "")
+        f"({len(aceptadas)} texto vacio por su forma, {por_original} por referencia a texto "
+        "vacio del recibido)" + (f"; sin valor: {_lista(sin_valor)}" if sin_valor else "")
+    )
+
+
+def _d_valores_conservados(ev: Evaluacion) -> tuple[bool, str]:
+    """TRAZABILIDAD de la devolución: cada fila "Valor guardado conservado" es una fórmula que
+    el calculador de Silice no evaluó y cuyo valor viene del libro recibido. Se exige 0, o que la
+    celda (columna Origen) esté en la lista blanca local `valores_conservados` de
+    `expectativas.json`."""
+    origenes = _conservados_vistos(ev)
+    if origenes is None:
+        return False, "la devolucion no tiene TRAZABILIDAD"
+    fuera = [o for o in origenes if o not in ev.caso.lista_blanca]
+    return not fuera, (
+        f"{len(origenes)} valores guardados conservados; {len(origenes) - len(fuera)} en la "
+        f"lista blanca local ({len(ev.caso.lista_blanca)} celdas)"
+        + (f"; fuera de la lista: {_lista(fuera)}" if fuera else "")
     )
 
 
@@ -861,20 +1378,56 @@ def _d_p_igual_silice(ev: Evaluacion) -> tuple[bool, str]:
         guardado = _dec(ws[f"P{fila}"].value)
         if not _cerca(guardado, pu, TOL_CELDA):
             malas.append(f"P{fila}: {_fmt(guardado, 4)} vs {_fmt(pu, 4)}")
-    return not malas, f"{len(pus) - len(malas)}/{len(pus)} P de PRESUPUESTO = PU Silice" + (
-        f"; {_lista(malas, 4)}" if malas else ""
+    # Oráculo aparte de Silice: el P del libro recibido (y, en la fila de H1, P + memoria H1).
+    oraculo = _pu_oraculo(ev)
+    contra_oraculo = [
+        f"P{fila}: {_fmt(_dec(ws[f'P{fila}'].value), 4)} vs oraculo {_fmt(esperado, 4)}"
+        for fila, esperado in sorted(oraculo.items())
+        if not _cerca(_dec(ws[f"P{fila}"].value), esperado, TOL_CELDA)
+    ]
+    ok = not malas and not contra_oraculo and bool(oraculo)
+    return ok, (
+        f"{len(pus) - len(malas)}/{len(pus)} P de PRESUPUESTO = PU Silice; "
+        f"{len(oraculo) - len(contra_oraculo)}/{len(oraculo)} = oraculo (P recibido"
+        + (f", fila {H1_FILA} + H1" if ev.etiqueta in HOJA_H1 else "")
+        + ")"
+        + (f"; {_lista(malas + contra_oraculo, 4)}" if malas or contra_oraculo else "")
     )
+
+
+def _totales_oraculo(etiqueta: str) -> tuple[Totales, Decimal] | None:
+    """Totales que debe guardar la devolución, sin Silice: en A y B, los documentados del libro
+    (Silice no cambia ningún P.U.); en C, el subtotal documentado de Silice (24 517,85) con el IVA
+    documentado del 16 %. Tolerancia: medio céntimo más el redondeo del literal en A y B; un
+    céntimo en C (el literal 24 517,85 ya está redondeado)."""
+    if etiqueta in ("A", "B-1", "B-2"):
+        return TOTALES_DOCUMENTADOS[etiqueta], TOL_CELDA + Decimal("0.001")
+    esperado = SUBTOTAL_SILICE.get(etiqueta)
+    if esperado is None:
+        return None
+    sub = esperado[0]
+    iva = sub * IVA_DOCUMENTADO
+    return Totales(sub, iva, sub + iva), TOL_IMPACTO
 
 
 def _d_nombres_totales(ev: Evaluacion) -> tuple[bool, str]:
     tot = _totales_silice(ev.resultado)
-    partes, ok = [], True
-    for n in NOMBRES_TOTALES:
+    oraculo = _totales_oraculo(ev.etiqueta)
+    partes, ok = [], oraculo is not None
+    campos = oraculo[0].campos() if oraculo else (None, None, None)
+    for n, esperado in zip(NOMBRES_TOTALES, campos, strict=True):
         valor = _valor_nombre(ev.dev_f, ev.dev_v, n)
         bien = _cerca(valor, tot.get(n), TOL_CELDA)
-        ok = ok and bien
-        partes.append(f"{n} {_fmt(valor)}{'' if bien else f' vs Silice {_fmt(tot.get(n))}'}")
-    return ok, "; ".join(partes)
+        bien_o = oraculo is not None and _cerca(valor, esperado, oraculo[1])
+        ok = ok and bien and bien_o
+        partes.append(
+            f"{n} {_fmt(valor)}"
+            + ("" if bien else f" vs Silice {_fmt(tot.get(n))}")
+            + ("" if bien_o else f" vs oraculo {_fmt(esperado)}")
+        )
+    return ok, "; ".join(partes) + (
+        f" (oraculo documentado +-{oraculo[1]})" if oraculo else " (sin oraculo)"
+    )
 
 
 def _d_hojas_nuevas(ev: Evaluacion) -> tuple[bool, str]:
@@ -931,6 +1484,44 @@ def _d_huella(ev: Evaluacion) -> tuple[bool, str]:
     return ok, f"{PROPIEDAD_SHA} {'=' if ok else '!='} SHA-256 del recibido ({esperada[:12]}...)"
 
 
+def _conjunto_actual(ev: Evaluacion) -> Counter[tuple[str, str, str]]:
+    return Counter(_clave_hallazgo(h) for h in ev.hallazgos)
+
+
+def _conjunto_exacto(ev: Evaluacion) -> tuple[Estado, str]:
+    """Control de falsos positivos: el multiconjunto (regla, severidad, celdas) de los hallazgos
+    del libro debe ser IDÉNTICO al congelado y revisado en `expectativas.json`. Sin expectativa,
+    PENDIENTE (no FALLA); recién congelado, PENDIENTE (congelar no demuestra nada)."""
+    actual = _conjunto_actual(ev)
+    if ev.caso.congelado_ahora:
+        return Estado.PENDIENTE, (
+            f"congelado en esta corrida ({sum(actual.values())} hallazgos): revisarlo a mano y "
+            "volver a correr sin --congelar"
+        )
+    esperado = ev.caso.hallazgos_esperados
+    if esperado is None:
+        return Estado.PENDIENTE, (
+            f"sin conjunto congelado para el libro en expectativas.json ({sum(actual.values())} "
+            "hallazgos); generarlo con --congelar y revisarlo"
+        )
+    sobran = actual - esperado
+    faltan = esperado - actual
+    if not sobran and not faltan:
+        conteo = Counter(f"{r}/{s[:3]}" for r, s, _ in actual.elements())
+        return Estado.OK, f"identico al congelado: {sum(actual.values())} hallazgos " + (
+            f"({', '.join(f'{k} {v}' for k, v in sorted(conteo.items()))})"
+        )
+
+    def fmt(c: Counter[tuple[str, str, str]]) -> str:
+        return _lista((f"{r} {s} {celdas}" for r, s, celdas in c.elements()), 6)
+
+    return Estado.FALLA, (
+        f"{sum(actual.values())} hallazgos, congelados {sum(esperado.values())}"
+        + (f"; sobran (posible falso positivo): {fmt(sobran)}" if sobran else "")
+        + (f"; faltan: {fmt(faltan)}" if faltan else "")
+    )
+
+
 # --- Tabla de metas -------------------------------------------------------------------------------
 
 
@@ -956,28 +1547,49 @@ METAS_REGLAS: dict[str, tuple[MetaLibro, ...]] = {
         MetaLibro("L9-PROCURA", "L9 en PROCURA con los 4 Dif. de H7", _l9_procura_b2),
         MetaLibro("L5-RESUMEN", "L5 en los 4 #REF! de RESUMEN", _l5_refs("RESUMEN", 4)),
         MetaLibro("L5-EXT", "L5 en los 11 nombres externos", _l5_nombres(11)),
-        MetaLibro("L7", "L7 en MEDICIONES", _l7_mediciones),
-        MetaLibro("L6", "L6 utilidad 30 % en APU-09!G59 (H18)", _l6_util30_b2),
+        MetaLibro("L7", "L7 en MEDICIONES (=9.73*2.75, =2.75*3, *0.28)", _l7_mediciones),
+        MetaLibro("L6", "L6 utilidad 30 % en APU-09!G59 (H18, -746,98)", _l6_util30_b2),
     ),
-    "C-1": (MetaLibro("L2", "L2 del conflicto y parches en filas 23 y 24", _c1_l3_o_l2),),
+    "C-1": (
+        MetaLibro("L2", "L2 del conflicto y parches en filas 23 y 24", _c1_l3_o_l2),
+        MetaLibro("F1", "F1 en fila 24, impacto +205,92 (H1)", _f1_h1),
+        MetaLibro("L4", "L4 en APU-09 (CD =G12+G21), +205,92", _l4_h1),
+        MetaLibro("L6", "L6 utilidad 2 % (+761,62) y /12 en APU-09", _l6_h2),
+    ),
     "C-2": (
-        MetaLibro("F1", "F1 en fila 24, impacto 205,92", _f1_c2),
-        MetaLibro("L4", "L4 en APU-07", _l4_c2),
-        MetaLibro("L6", "L6 utilidad 2 % y /12 en APU-07", _l6_c2),
+        MetaLibro("F1", "F1 en fila 24, impacto +205,92 (H1)", _f1_h1),
+        MetaLibro("L4", "L4 en APU-07 (CD =G12+G21), +205,92", _l4_h1),
+        MetaLibro("L6", "L6 utilidad 2 % (+761,62) y /12 en APU-07", _l6_h2),
         MetaLibro("L8", "L8 en los numeros 6 y 7", _l8_c2),
         MetaLibro("L3-RL7", "L3 o (RL-7) L2 ADV en filas 19 y 22", _c2_l3_o_parche),
-        MetaLibro("L9-RESUMEN", "L9 en RESUMEN, 183,53", _l9_resumen_c2),
+        MetaLibro("L9-RESUMEN", "L9 en RESUMEN, +183,53 (H3)", _l9_resumen_c2),
         MetaLibro("L5-CRONO", "L5 en los 6 #REF! de CRONOGRAMA", _l5_refs("CRONOGRAMA", 6)),
     ),
 }
 
-#: Partidas documentadas de los libros cuyo PRESUPUESTO cuadra con sus APU (P.U. = P guardado).
-PARTIDAS_CUADRAN: dict[str, int] = {"A": 5, "B-1": 16, "B-2": 16}
+#: Partidas documentadas de cada libro (P.U. Silice = P guardado; en C, salvo la fila de H1, que
+#: lleva la memoria de H1).
+PARTIDAS_DOCUMENTADAS: dict[str, int] = {"A": 5, "B-1": 16, "B-2": 16, "C-1": 9, "C-2": 9}
+
+
+def _totales_del_libro(ev: Evaluacion) -> tuple[bool, str]:
+    """Oráculo de identificación: los totales guardados del libro recibido (openpyxl, por sus
+    nombres) son los documentados de ese libro."""
+    doc = TOTALES_DOCUMENTADOS[TOTALES_DEL_LIBRO[ev.etiqueta]]
+    guardados = [_valor_nombre(ev.orig_f, ev.orig_v, n) for n in NOMBRES_TOTALES]
+    ok = all(_cerca(g, d, TOL_CELDA) for g, d in zip(guardados, doc.campos(), strict=True))
+    return ok, (
+        f"guardados {'/'.join(_fmt(g) for g in guardados)}; documentados "
+        f"{'/'.join(_fmt(d) for d in doc.campos())}"
+    )
+
 
 METAS_COMUNES: tuple[MetaLibro, ...] = (
+    MetaLibro("TOT-LIBRO", "Totales guardados = documentados", _totales_del_libro),
+    MetaLibro("CONJUNTO-EXACTO", "Hallazgos = conjunto congelado", _conjunto_exacto),
     MetaLibro("L5-TODO", "L5 en todo #REF! y nombre externo", _l5_todo),
-    MetaLibro("L11", "PDF entregado = libro (sin L11)", _l11),
-    MetaLibro("TOT", "Totales de Silice coherentes", _totales_coherentes),
+    MetaLibro("L11", "L11 = literal del PDF vs libro, con signo", _l11),
+    MetaLibro("TOT", "Totales de Silice coherentes y documentados", _totales_coherentes),
 )
 
 METAS_DEVOLUCION: tuple[MetaLibro, ...] = (
@@ -992,9 +1604,18 @@ METAS_DEVOLUCION: tuple[MetaLibro, ...] = (
     MetaLibro(
         "D-VALORES", "Cada formula con valor guardado", _requiere_devolucion(_d_valores_guardados)
     ),
-    MetaLibro("D-P", "P de PRESUPUESTO = PU Silice", _requiere_devolucion(_d_p_igual_silice)),
     MetaLibro(
-        "D-TOTALES", "SUBSINIVA/IVATOT/TOTALGEN = Silice", _requiere_devolucion(_d_nombres_totales)
+        "VALORES-CONSERVADOS",
+        "Valores guardados conservados: 0 o lista blanca",
+        _requiere_devolucion(_d_valores_conservados),
+    ),
+    MetaLibro(
+        "D-P", "P de PRESUPUESTO = PU Silice = oraculo", _requiere_devolucion(_d_p_igual_silice)
+    ),
+    MetaLibro(
+        "D-TOTALES",
+        "SUBSINIVA/IVATOT/TOTALGEN = Silice = documentado",
+        _requiere_devolucion(_d_nombres_totales),
     ),
     MetaLibro(
         "D-HOJAS", "Hojas AUDITORIA, TRAZABILIDAD, ALERTAS", _requiere_devolucion(_d_hojas_nuevas)
@@ -1008,12 +1629,10 @@ METAS_DEVOLUCION: tuple[MetaLibro, ...] = (
 
 def _metas_de(etiqueta: str) -> tuple[MetaLibro, ...]:
     propias = METAS_REGLAS.get(etiqueta, ())
-    pu = (
-        (MetaLibro("PU", "PU Silice = P guardado", _pu_igual_guardado(PARTIDAS_CUADRAN[etiqueta])),)
-        if etiqueta in PARTIDAS_CUADRAN
-        else ()
+    pu = MetaLibro(
+        "PU", "PU Silice = P guardado (+H1)", _pu_igual_guardado(PARTIDAS_DOCUMENTADAS[etiqueta])
     )
-    return (*propias, *METAS_COMUNES, *pu, *METAS_DEVOLUCION)
+    return (*propias, *METAS_COMUNES, pu, *METAS_DEVOLUCION)
 
 
 # --- PDF simples (L10) ----------------------------------------------------------------------------
@@ -1113,33 +1732,61 @@ def _falla(e: BaseException) -> str:
     return f"{type(e).__name__}{donde}: {str(e)[:160]}"
 
 
-def _casos(carpeta: Path) -> tuple[dict[str, Caso], list[str]]:
+@dataclass(slots=True)
+class PdfCarpeta:
+    """Un PDF de la carpeta con su identificación por literal documentado (sin el adaptador)."""
+
+    ruta: Path
+    sha: str
+    clave: str | None
+    como: str  # "sha256", "literal", o por qué no se identificó
+
+
+def _pdfs(carpeta: Path, exp: Expectativas) -> list[PdfCarpeta]:
+    salida = []
+    for ruta in sorted(carpeta.glob("*.pdf")):
+        datos = ruta.read_bytes()
+        try:
+            clave, como = _identificar_pdf(datos, exp)
+        except Exception as e:  # noqa: BLE001 - un PDF ilegible queda sin identificar
+            clave, como = None, f"no se pudo leer ({type(e).__name__})"
+        salida.append(PdfCarpeta(ruta, hashlib.sha256(datos).hexdigest(), clave, como))
+    return sorted(salida, key=lambda p: p.sha)
+
+
+def _casos(
+    carpeta: Path, exp: Expectativas, pdfs: Sequence[PdfCarpeta]
+) -> tuple[dict[str, Caso], list[str]]:
     """Identifica los libros. Devuelve {etiqueta: Caso} y avisos (sin nombres de archivo)."""
     from adapters.hoja_empresa.lector import leer_libro
 
-    expectativas = _leer_expectativas(carpeta)
-    pdfs = sorted(carpeta.glob("*.pdf"))
+    id_pdf = {p.ruta: p.clave for p in pdfs}
     casos: dict[str, Caso] = {}
     avisos: list[str] = []
     for ruta in sorted(carpeta.glob("*.xlsx")):
         if ruta.name.startswith("~$"):
             continue
         datos = ruta.read_bytes()
-        huella = hashlib.sha256(datos).hexdigest()[:8]
+        sha = hashlib.sha256(datos).hexdigest()
+        huella = sha[:8]
         pdf_nombres: list[str] = []
-        if ruta.name.lower() in expectativas:
-            etiqueta, pdf_nombres = expectativas[ruta.name.lower()]
+        if sha in exp.libros_sha:
+            etiqueta, como = exp.libros_sha[sha], "expectativas.json (sha256)"
+            pdf_nombres = exp.libros.get(ruta.name.lower(), ("", []))[1]
+        elif ruta.name.lower() in exp.libros:
+            etiqueta, pdf_nombres = exp.libros[ruta.name.lower()]
             como = "expectativas.json"
         else:
             try:
-                etiqueta = _identificar(leer_libro(datos, ruta.name))
+                encontrada = _identificar(leer_libro(datos, ruta.name))
             except Exception as e:  # noqa: BLE001
                 avisos.append(f"libro sha {huella}: el lector fallo ({_falla(e)})")
                 continue
             como = "contenido"
-            if etiqueta is None:
+            if encontrada is None:
                 avisos.append(f"libro sha {huella}: no coincide con ninguna firma (ignorado)")
                 continue
+            etiqueta = encontrada
         if etiqueta in casos:
             avisos.append(f"libro sha {huella}: otro libro {etiqueta} (se usa el primero)")
             continue
@@ -1148,34 +1795,55 @@ def _casos(carpeta: Path) -> tuple[dict[str, Caso], list[str]]:
             rutas_pdf = [carpeta / n for n in pdf_nombres if (carpeta / n).is_file()]
             caso.pdf, caso.pdf_extra = (rutas_pdf[0], rutas_pdf[1:]) if rutas_pdf else (None, [])
         else:
-            caso.pdf = next((p for p in pdfs if p.stem.lower() == ruta.stem.lower()), None)
+            caso.pdf = next(
+                (p.ruta for p in pdfs if p.ruta.stem.lower() == ruta.stem.lower()), None
+            )
+            if etiqueta == "C-2":
+                # Los otros PDF identificados como "C" (por SHA-256 o literal, no por el lector).
+                caso.pdf_extra = [p.ruta for p in pdfs if p.clave == "C" and p.ruta != caso.pdf]
+        caso.pdf_id = id_pdf.get(caso.pdf) if caso.pdf else None
+        caso.pdf_extra_ids = [id_pdf.get(r) for r in caso.pdf_extra]
+        caso.hallazgos_esperados = exp.hallazgos.get(etiqueta)
+        caso.lista_blanca = exp.lista_blanca.get(etiqueta, frozenset())
         casos[etiqueta] = caso
-    if "C-2" in casos and not expectativas:
-        _pdf_por_totales(casos["C-2"], pdfs)
     return casos, avisos
 
 
-def _pdf_por_totales(caso: Caso, pdfs: Sequence[Path]) -> None:
-    """Para C-2: los PDF impresos cuyos totales coinciden con los guardados del libro."""
+def _metas_pdf_entregados(pdfs: Sequence[PdfCarpeta]) -> list[Fila]:
+    """Cada PDF de la carpeta: la lectura del producto (`leer_totales_impresos`, el último
+    bloque) debe dar el literal documentado con que se identificó el PDF."""
     from adapters.hoja_empresa.pdf import leer_totales_impresos
 
-    wb_f, wb_v = _abrir_wb(caso.datos, False), _abrir_wb(caso.datos, True)
-    guardado = [_valor_nombre(wb_f, wb_v, n) for n in NOMBRES_TOTALES]
-    for ruta in pdfs:
-        if ruta == caso.pdf:
+    filas: list[Fila] = []
+    vistos: Counter[str] = Counter()
+    for p in pdfs:
+        clave = p.clave or "?"
+        vistos[clave] += 1
+        codigo = f"PDF-{clave}#{vistos[clave]}.LECTURA"
+        titulo = "Totales impresos leidos = literal documentado"
+        if p.clave is None:
+            filas.append(
+                Fila(codigo, titulo, Estado.PENDIENTE, f"sha {p.sha[:10]}: sin oraculo ({p.como})")
+            )
             continue
+        doc = TOTALES_DOCUMENTADOS[p.clave]
         try:
-            t = leer_totales_impresos(ruta.read_bytes(), "pdf")
-        except Exception:  # noqa: BLE001 - un PDF que no se lee no es candidato
+            t = leer_totales_impresos(p.ruta.read_bytes(), "pdf_entregado.pdf")
+            leido = [_dec(t.subtotal), _dec(t.iva), _dec(t.total)]
+        except Exception as e:  # noqa: BLE001 - la meta informa la falla, no la oculta
+            filas.append(Fila(codigo, titulo, Estado.FALLA, _falla(e)))
             continue
-        if all(
-            _cerca(a, b, TOL_CENTIMO)
-            for a, b in zip((t.subtotal, t.iva, t.total), guardado, strict=True)
-        ):
-            if caso.pdf is None:
-                caso.pdf = ruta
-            else:
-                caso.pdf_extra.append(ruta)
+        ok = all(_cerca(a, b, TOL_CELDA) for a, b in zip(leido, doc.campos(), strict=True))
+        filas.append(
+            Fila(
+                codigo,
+                titulo,
+                Estado.OK if ok else Estado.FALLA,
+                f"sha {p.sha[:10]} (por {p.como}): leido {'/'.join(_fmt(x) for x in leido)}; "
+                f"documentado {'/'.join(_fmt(x) for x in doc.campos())}",
+            )
+        )
+    return filas
 
 
 def _evaluar_libro(
@@ -1209,10 +1877,12 @@ def _evaluar_libro(
     if caso.pdf_extra:
         from adapters.hoja_empresa.pdf import cotejar_con_libro, leer_totales_impresos
 
-        for k, ruta in enumerate(caso.pdf_extra, start=1):
+        for k, (ruta, clave) in enumerate(
+            zip(caso.pdf_extra, caso.pdf_extra_ids, strict=True), start=1
+        ):
             nombre = f"libro_{caso.etiqueta}_extra{k}.pdf"
             t = leer_totales_impresos(ruta.read_bytes(), nombre)
-            ev.pdf_extra.append((nombre, cotejar_con_libro(t, ev.resultado.libro)))
+            ev.pdf_extra.append((nombre, clave, cotejar_con_libro(t, ev.resultado.libro)))
     try:
         ev.devolucion = devolver(ev.resultado)
     except Exception as e:  # noqa: BLE001
@@ -1230,6 +1900,57 @@ def _evaluar_libro(
     return ev
 
 
+def _conservados_vistos(ev: Evaluacion) -> list[str] | None:
+    """Origen (`HOJA!CELDA` normalizada) de cada fila "Valor guardado conservado" de la hoja
+    TRAZABILIDAD de la devolución (columna A el dato, C el origen). None si no hay TRAZABILIDAD."""
+    hojas = ev.dev_v.worksheets if ev.dev_v is not None else []
+    ws = next((w for w in hojas if _norm(w.title).startswith("TRAZABILIDAD")), None)
+    if ws is None:
+        return None
+    objetivo = _norm("Valor guardado conservado")
+    return sorted(
+        _norm_origen(str(ws.cell(f, 3).value or ""))
+        for f in range(1, ws.max_row + 1)
+        if _norm(ws.cell(f, 1).value or "") == objetivo
+    )
+
+
+def _congelar(
+    exp: Expectativas,
+    evaluaciones: Sequence[Evaluacion],
+    pdfs: Sequence[PdfCarpeta],
+) -> None:
+    """Escribe en `exp.ruta` (fusionando con lo que ya tenga) el conjunto actual de hallazgos, la
+    identificación por SHA-256 de libros y PDF y los valores conservados vistos. No toca la lista
+    blanca `valores_conservados` (la escribe una persona)."""
+    crudo = dict(exp.crudo) if exp.existe else {}
+    if crudo and not (_CLAVES_EXPECTATIVAS & set(crudo)):
+        crudo = {"libros": crudo}  # formato antiguo: se conserva bajo "libros"
+    libros_sha = dict(crudo.get("libros_sha256", {}))
+    hallazgos = dict(crudo.get("hallazgos", {}))
+    vistos = dict(crudo.get("valores_conservados_vistos", {}))
+    for ev in evaluaciones:
+        if ev.error:
+            continue
+        libros_sha[hashlib.sha256(ev.caso.datos).hexdigest()] = ev.etiqueta
+        hallazgos[ev.etiqueta] = sorted([list(k) for k in _conjunto_actual(ev).elements()])
+        vistos[ev.etiqueta] = _conservados_vistos(ev) or []
+        ev.caso.congelado_ahora = True
+    pdf_sha = dict(crudo.get("pdf_sha256", {}))
+    pdf_sha.update({p.sha: p.clave for p in pdfs if p.clave is not None})
+    crudo.update(
+        {
+            "libros_sha256": dict(sorted(libros_sha.items())),
+            "pdf_sha256": dict(sorted(pdf_sha.items())),
+            "hallazgos": dict(sorted(hallazgos.items())),
+            "valores_conservados": crudo.get("valores_conservados", {}),
+            "valores_conservados_vistos": dict(sorted(vistos.items())),
+        }
+    )
+    exp.ruta.parent.mkdir(parents=True, exist_ok=True)
+    exp.ruta.write_text(json.dumps(crudo, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
+
+
 def _filas_de(ev: Evaluacion) -> list[Fila]:
     prefijo = f"{ev.etiqueta}."
     filas = [
@@ -1245,12 +1966,15 @@ def _filas_de(ev: Evaluacion) -> list[Fila]:
             filas.append(Fila(prefijo + meta.codigo, meta.titulo, Estado.FALLA, "no se proceso"))
             continue
         try:
-            ok, evidencia = meta.comprobar(ev)
+            resultado, evidencia = meta.comprobar(ev)
         except Exception as e:  # noqa: BLE001
-            ok, evidencia = False, f"la comprobacion fallo: {_falla(e)}"
-        filas.append(
-            Fila(prefijo + meta.codigo, meta.titulo, Estado.OK if ok else Estado.FALLA, evidencia)
+            resultado, evidencia = False, f"la comprobacion fallo: {_falla(e)}"
+        estado = (
+            resultado
+            if isinstance(resultado, Estado)
+            else (Estado.OK if resultado else Estado.FALLA)
         )
+        filas.append(Fila(prefijo + meta.codigo, meta.titulo, estado, evidencia))
     return filas
 
 
@@ -1295,6 +2019,18 @@ def _parsear_args(argv: list[str] | None) -> argparse.Namespace:
     p.add_argument("--fecha-libro", type=_fecha, default=FECHA_LIBRO)
     p.add_argument("--fecha-devolucion", type=_fecha, default=date.today())
     p.add_argument("--pdf-simple", type=Path, nargs="*", default=list(PDF_SIMPLES))
+    p.add_argument(
+        "--expectativas",
+        type=Path,
+        default=None,
+        help="expectativas.json LOCAL a leer (y a escribir con --congelar); por defecto "
+        "CARPETA/expectativas.json",
+    )
+    p.add_argument(
+        "--congelar",
+        action="store_true",
+        help="escribe el conjunto actual de hallazgos en las expectativas (revisarlo a mano)",
+    )
     return p.parse_args(argv)
 
 
@@ -1313,8 +2049,30 @@ def main(argv: list[str] | None = None) -> int:
             file=sys.stderr,
         )
         return 2
+    ruta_exp = args.expectativas or args.carpeta / "expectativas.json"
+    if args.congelar and _versionable(ruta_exp):
+        print(
+            "--congelar no escribe en una ruta que Git podria versionar (esta dentro de un "
+            "repositorio y no esta ignorada); usa --expectativas con una ruta fuera del "
+            "repositorio o ignorala en .gitignore.",
+            file=sys.stderr,
+        )
+        return 2
+    try:
+        exp = _leer_expectativas(ruta_exp)
+    except (ValueError, json.JSONDecodeError) as e:
+        print(f"expectativas.json invalido: {e}", file=sys.stderr)
+        return 2
 
-    casos, avisos = _casos(args.carpeta)
+    pdfs = _pdfs(args.carpeta, exp)
+    casos, avisos = _casos(args.carpeta, exp, pdfs)
+    if exp.existe and _versionable(exp.ruta):
+        avisos.append(
+            "expectativas.json esta en una ruta que Git no ignora: no lo anadas al repositorio"
+        )
+    for p in pdfs:
+        if p.clave is None:
+            avisos.append(f"PDF sha {p.sha[:8]}: sin literal documentado ({p.como})")
     evaluaciones = [
         _evaluar_libro(
             casos[e],
@@ -1326,6 +2084,12 @@ def main(argv: list[str] | None = None) -> int:
         for e in ETIQUETAS
         if e in casos
     ]
+    if args.congelar:
+        _congelar(exp, evaluaciones, pdfs)
+        avisos.append(
+            f"conjunto de hallazgos congelado en {exp.ruta} (LOCAL; revisarlo a mano antes de "
+            "usarlo como oraculo)"
+        )
     filas: list[Fila] = []
     for etiqueta in ETIQUETAS:
         if etiqueta not in casos:
@@ -1339,6 +2103,7 @@ def main(argv: list[str] | None = None) -> int:
             )
     for ev in evaluaciones:
         filas.extend(_filas_de(ev))
+    filas.extend(_metas_pdf_entregados(pdfs))
     filas.extend(_metas_pdf_simples(args.pdf_simple))
 
     prohibidos = _prohibidos(args.carpeta, evaluaciones)
@@ -1348,7 +2113,7 @@ def main(argv: list[str] | None = None) -> int:
     else:
         print(render_tabla(filas))
         print(_limpiar(_resumen(evaluaciones, avisos, args.salida), prohibidos))
-    return 0 if all(f.estado is Estado.OK for f in filas) else 1
+    return 1 if any(f.estado is Estado.FALLA for f in filas) else 0
 
 
 if __name__ == "__main__":
