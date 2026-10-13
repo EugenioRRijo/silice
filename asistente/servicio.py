@@ -149,8 +149,15 @@ def borrador_resultante(sesion: SesionDeAsistente) -> Borrador:
     return aplicar(sesion.base, sesion.pendientes.aceptadas(), sesion.origen, sesion.catalogo)
 
 
-def hipotetico(sesion: SesionDeAsistente) -> Borrador:
-    """Lo que quedaria si se aceptara todo lo pendiente ademas de lo aceptado (§3.1 paso 5)."""
+def hipotetico(sesion: SesionDeAsistente, sobre: Borrador | None = None) -> Borrador:
+    """Lo que quedaria si se aceptara todo lo pendiente ademas de lo aceptado (§3.1 paso 5).
+
+    Por el MISMO camino que aceptar (`decidir`): sin `sobre`, la base de la sesion con lo aceptado
+    y lo pendiente; con `sobre` (la hoja editada a mano, que ya lleva lo aceptado), lo pendiente
+    aplicado sobre ella. `HojaInvalida` si no se puede construir.
+    """
+    if sobre is not None:
+        return aplicar(sobre, sesion.pendientes.vigentes(), sesion.origen, sesion.catalogo)
     todas = [*sesion.pendientes.aceptadas(), *sesion.pendientes.vigentes()]
     return aplicar(sesion.base, todas, sesion.origen, sesion.catalogo)
 

@@ -784,6 +784,15 @@ def _proponer_con_asistente() -> None:
     _aviso_del_asistente("info", propuesto.resultado.mensaje)
 
 
+def _hoja_editada_a_mano(propuesto: Any) -> hoja.Borrador | None:
+    """El borrador vigente si la persona lo edito a mano desde la ultima decision reconstruida
+    (o desde el inicio de la sesion); `None` si es el que dejo esa decision. Con `None` aceptar
+    reconstruye desde la base; si no, cada propuesta se aplica sobre esta hoja."""
+    actual = _borrador()
+    aplicado = st.session_state.get(CLAVE_ASISTENTE_APLICADO, propuesto.base)
+    return None if actual is aplicado or actual == aplicado else actual
+
+
 def _decidir_propuesta(propuesta_id: str, estado: EstadoPropuesta) -> None:
     """Callback de Aceptar, Aceptar y editar o Rechazar de UNA propuesta.
 
@@ -801,7 +810,8 @@ def _decidir_propuesta(propuesta_id: str, estado: EstadoPropuesta) -> None:
         _aviso_del_asistente("error", ui_sesion.MENSAJE_SIN_ENTRAR)
         return
     cambia_el_borrador = estado is not EstadoPropuesta.RECHAZADA
-    reconstruir = _borrador() == st.session_state.get(CLAVE_ASISTENTE_APLICADO, propuesto.base)
+    sobre = _hoja_editada_a_mano(propuesto)
+    reconstruir = sobre is None
     try:
         with _registro_ia() as registro:
             nuevo = ia_servicio.decidir(
@@ -810,7 +820,7 @@ def _decidir_propuesta(propuesta_id: str, estado: EstadoPropuesta) -> None:
                 estado,
                 usuario,
                 registro,
-                sobre=None if reconstruir else _borrador(),
+                sobre=sobre,
             )
     except KeyError:
         _aviso_del_asistente("warning", f"{propuesta_id} ya no esta pendiente: ya se decidio.")
@@ -942,14 +952,17 @@ def _pintar_pregunta(propuesto: Any) -> None:
 
 
 def _resumen_hipotetico(propuesto: Any) -> Any:
-    """El resultado hipotetico, una vez por conjunto de decisiones (no en cada edicion)."""
+    """El resultado hipotetico por el mismo camino que aceptar: desde la base de la sesion o, si
+    la persona edito la hoja a mano, sobre la hoja vigente. Se calcula una vez por conjunto de
+    decisiones y por hoja editada (la clave lleva el borrador vigente si esta editado)."""
     estados = tuple((p.id, p.estado) for p in propuesto.pendientes.propuestas)
+    sobre = _hoja_editada_a_mano(propuesto)
     guardado = st.session_state.get(CLAVE_ASISTENTE_RESUMEN)
-    if guardado is None or guardado[0] != estados:
-        resumen = ia_servicio.resumen_hipotetico(ia_servicio.hipotetico(propuesto))
-        guardado = (estados, resumen)
+    if guardado is None or guardado[0] != estados or guardado[1] is not sobre:
+        resumen = ia_servicio.resumen_hipotetico(ia_servicio.hipotetico(propuesto, sobre))
+        guardado = (estados, sobre, resumen)
         st.session_state[CLAVE_ASISTENTE_RESUMEN] = guardado
-    return guardado[1]
+    return guardado[2]
 
 
 def _pintar_propuestas(propuesto: Any) -> None:

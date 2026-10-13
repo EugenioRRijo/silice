@@ -476,6 +476,14 @@ def _clave_de_ia() -> ClaveDeIA | None:
         return None
 
 
+def _hay_clave_guardada(clave: ClaveDeIA) -> bool:
+    """Si hay una clave guardada sin cargarla en memoria; un almacen que falla cuenta como no."""
+    try:
+        return clave.hay_guardada(EMPRESA_DE_LA_CLAVE)
+    except Exception:  # noqa: BLE001 - el backend de keyring en Windows falla de muchas formas
+        return False
+
+
 def _avisar(destino: str, tipo: str, texto: str) -> None:
     st.session_state[destino] = (tipo, texto)
 
@@ -604,7 +612,7 @@ def _seccion_configuracion(cfg: ConfiguracionIA) -> None:
     _mostrar_aviso(AVISO_CONFIG)
 
 
-def _seccion_clave(registrada: str | None, activo: bool) -> None:
+def _seccion_clave(registrada: str | None, activo: bool, guardada: bool) -> None:
     st.subheader("Clave de IA de la empresa")
     st.caption(
         "Se registra solo desde el equipo donde está instalado Sílice y se guarda en el almacén de "
@@ -613,10 +621,10 @@ def _seccion_clave(registrada: str | None, activo: bool) -> None:
     permitida, motivo = cliente.operacion_sensible_permitida()
     if not permitida:
         st.info(motivo)
-    if registrada is None and not activo:
+    if registrada is None and not activo and guardada:
         st.caption(
-            "Clave registrada: no se carga mientras el asistente esté apagado (se carga al "
-            "activarlo)."
+            "Clave registrada: hay una guardada, pero no se carga mientras el asistente esté "
+            "apagado (se carga al activarlo)."
         )
     else:
         st.caption(texto_seguro(f"Clave registrada: {registrada or 'ninguna'}"))
@@ -662,7 +670,8 @@ def pestana_asistente() -> None:
     if clave is None:
         st.error(SIN_EXTRA_IA)
         return
-    _seccion_clave(registrada, configuracion.activo)
+    guardada = registrada is None and not configuracion.activo and _hay_clave_guardada(clave)
+    _seccion_clave(registrada, configuracion.activo, guardada)
 
 
 def _pestana_asistente(bd: Session, sesion: SesionActiva) -> None:
