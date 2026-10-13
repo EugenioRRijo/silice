@@ -8,6 +8,11 @@
   informan aparte con su numero.
 * Propuestas validas: llamadas de propuesta que pasan las cuatro capas al primer intento.
 * Medicion controlada con mutaciones: intervalo de WILSON al 95 % por tipo (ensayos separados).
+* Deteccion POR FILA (I1): ademas de por error, filas del borrador con algun error detectable y, de
+  ellas, las que algun hallazgo cita (las cascadas no se colapsan: la cifra por fila lo compensa).
+
+Solo cuentan las corridas NORMALES (`Corrida.normal`): puntuadas, no reemplazadas y sin
+`error_de_proveedor`; las demas se informan aparte, con su costo (I3).
 """
 
 from __future__ import annotations
@@ -23,6 +28,11 @@ from asistente.experimento.comparador import Error, Veredicto
 
 TIPOS = ("E1", "E2", "E3", "E4", "E5", "E6", "E7", "E8")
 Z_95 = 1.959963984540054
+#: estado de una corrida guardada (I3): se paga, se guarda, y DESPUES se puntua
+PUNTUADA = "puntuada"
+SIN_PUNTUAR = "sin_puntuar"  # pagada y guardada; la puntuacion no llego a terminar
+FALLO_AL_PUNTUAR = "fallo_al_puntuar"  # pagada; `aplicar`, `comparar` o el auditor fallaron
+ERROR_DE_PROVEEDOR = "error_de_proveedor"  # `MotivoFin.ERROR_DE_PROVEEDOR`
 
 
 @dataclass(frozen=True, slots=True)
@@ -41,6 +51,24 @@ class Corrida:
     costo_usd: Decimal = Decimal(0)
     segundos: float = 0.0
     rechazo_del_proveedor: bool = False
+    #: lo que se pago, para reauditar sin volver a pagar (I3)
+    motivo: str = ""  # `MotivoFin` de la sesion
+    uso: Mapping[str, int] = field(default_factory=dict)  # fichas: entrada, salida, cache...
+    proveedor: str = ""  # `ProveedorIA.nombre` (va en el origen de las filas del modelo)
+    #: las propuestas de la sesion, serializadas: con la ficha reconstruyen el borrador final
+    propuestas: tuple[Mapping[str, object], ...] = ()
+    estado: str = PUNTUADA
+    fallo: str = ""  # el error al puntuar, si lo hubo
+
+    @property
+    def normal(self) -> bool:
+        """Cuenta en las metricas: puntuada y sin error del proveedor (I3)."""
+        return self.estado == PUNTUADA and self.motivo != ERROR_DE_PROVEEDOR
+
+
+def fila_del_error(e: Error) -> str:
+    """La fila del borrador que el error senala; la de la referencia si no hay (E6)."""
+    return e.clave_borrador if e.clave_borrador else f"referencia:{e.clave_referencia}"
 
 
 def detectable(tipo: str, hipotesis: Mapping[str, Sequence[str] | None]) -> bool:
@@ -84,6 +112,8 @@ def bootstrap_agrupado(
         total = sum(por_tarea[t][1] for t in elegidas)
         if total:
             razones.append(aciertos / total)
+    if not razones:  # ningun error detectable en ninguna tarea (I4): el informe lo dice
+        return 0.0, 1.0
     razones.sort()
     return percentil(razones, 2.5), percentil(razones, 97.5)
 
@@ -110,6 +140,11 @@ class Resumen:
     segundos: float
     rechazos_del_proveedor: int
     por_tarea: Mapping[str, tuple[int, int]]
+    #: I1: filas con algun error detectable y, de ellas, las citadas por algun hallazgo
+    filas_con_error: int = 0
+    filas_detectadas: int = 0
+    #: corridas pagadas que no cuentan en las metricas (I3): error del proveedor o sin puntuar
+    excluidas: int = 0
 
 
 def _razon(a: int, b: int) -> float | None:
@@ -122,8 +157,14 @@ def resumir(
     semilla: int,
     replicas: int = 10_000,
 ) -> Resumen:
-    """Las metricas de §9.5 para las corridas de UN modelo en UNA condicion."""
+    """Las metricas de §9.5 para las corridas NORMALES de UN modelo en UNA condicion.
+
+    Las que no son normales (`Corrida.normal`) no cuentan en las metricas (se cuentan en
+    `excluidas` y el informe las lista aparte), pero su costo y su tiempo SI suman: se pagaron."""
+    todas = list(corridas)
+    corridas = [c for c in todas if c.normal]
     det = defaultdict(lambda: [0, 0])
+    filas = [0, 0]
     no_det: Counter[str] = Counter()
     escapan: Counter[str] = Counter()
     por_tarea: dict[str, list[int]] = defaultdict(lambda: [0, 0])
@@ -142,6 +183,11 @@ def resumir(
                 por_tarea[c.tarea][0] += 1
             else:
                 escapan[e.tipo] += 1
+        con_error = {fila_del_error(e) for e in c.errores if detectable(e.tipo, hipotesis)}
+        filas[0] += len(con_error)
+        filas[1] += len(
+            con_error & {fila_del_error(e) for e in detectados}
+        )  # por fila: todo o nada
     detectables = sum(v[1] for v in det.values())
     acertados = sum(v[0] for v in det.values())
     inesperados = sum(c.veredicto.inesperados for c in corridas)
@@ -152,8 +198,8 @@ def resumir(
         rechazos.update(c.rechazos)
     tareas = {t: (v[0], v[1]) for t, v in por_tarea.items()}
     return Resumen(
-        modelo=corridas[0].modelo if corridas else "",
-        condicion=corridas[0].condicion if corridas else "",
+        modelo=todas[0].modelo if todas else "",
+        condicion=todas[0].condicion if todas else "",
         corridas=len(corridas),
         errores_detectables=detectables,
         detectados=acertados,
@@ -171,10 +217,13 @@ def resumir(
             sum(c.elementos_presentes for c in corridas),
             sum(c.elementos_de_referencia for c in corridas),
         ),
-        costo_usd=sum((c.costo_usd for c in corridas), Decimal(0)),
-        segundos=sum(c.segundos for c in corridas),
+        costo_usd=sum((c.costo_usd for c in todas), Decimal(0)),
+        segundos=sum(c.segundos for c in todas),
         rechazos_del_proveedor=sum(c.rechazo_del_proveedor for c in corridas),
         por_tarea=tareas,
+        filas_con_error=filas[0],
+        filas_detectadas=filas[1],
+        excluidas=len(todas) - len(corridas),
     )
 
 
@@ -209,10 +258,19 @@ def corrida_a_dict(c: Corrida) -> dict[str, object]:
         "costo_usd": str(c.costo_usd),
         "segundos": c.segundos,
         "rechazo_del_proveedor": c.rechazo_del_proveedor,
+        "motivo": c.motivo,
+        "uso": dict(c.uso),
+        "proveedor": c.proveedor,
+        "propuestas": [dict(p) for p in c.propuestas],
+        "estado": c.estado,
+        "fallo": c.fallo,
     }
 
 
 def corrida_de_dict(d: Mapping[str, object]) -> Corrida:
+    """Inversa de `corrida_a_dict`; un archivo anterior, sin los campos de I3, se lee igual
+    (esas corridas quedan `puntuada`, sin motivo, uso ni propuestas)."""
+
     def errores(clave: str) -> tuple[Error, ...]:
         return tuple(Error(**e) for e in d[clave])  # type: ignore[union-attr]
 
@@ -236,4 +294,10 @@ def corrida_de_dict(d: Mapping[str, object]) -> Corrida:
         costo_usd=Decimal(str(d["costo_usd"])),
         segundos=float(d["segundos"]),  # type: ignore[arg-type]
         rechazo_del_proveedor=bool(d["rechazo_del_proveedor"]),
+        motivo=str(d.get("motivo", "")),
+        uso={str(k): int(v) for k, v in dict(d.get("uso") or {}).items()},  # type: ignore[arg-type]
+        proveedor=str(d.get("proveedor", "")),
+        propuestas=tuple(dict(p) for p in d.get("propuestas") or ()),  # type: ignore[union-attr]
+        estado=str(d.get("estado", PUNTUADA)),
+        fallo=str(d.get("fallo", "")),
     )
