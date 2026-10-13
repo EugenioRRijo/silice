@@ -58,7 +58,7 @@ cálculo y un parámetro alterado a mano.
 | H2 | La utilidad de esa misma partida está **escrita a mano en 2 %** (`F40 = 0,02`); las demás usan `=UTIL` (10 %). La cabecera dice "Utilidad 10%" | C-1 y C-2, APU-07 | **Sí, si no fue intencional:** 761,62 USD sin IVA | C6 |
 | H3 | RESUMEN da una composición del costo de 24 495,46 y un subtotal de 24 311,92: **la hoja misma no cuadra** por 183,53 (el equipo de H1, que está en el desglose pero no en el CD) | C, RESUMEN | No (es el síntoma visible de H1) | C3 |
 | H4 | Los números de partida 6 y 7 están **duplicados**: hay filas con cantidad 0 que repiten el número. CRONOGRAMA y CONTROL DE OBRA buscan con `MATCH`, toman la primera fila y muestran la partida equivocada | C-2 | No | C2 |
-| H5 | **Valores guardados que no corresponden a sus fórmulas.** Las hojas APU se renombraron (`APU-x` → `APU-06`…), pero las fórmulas ajustadas a mano siguen apuntando a la hoja anterior. Al recalcular, la partida 6 pasa de 2 644,39 a 5 917,06 y la 7 de 9 710,63 a 0 | C-1 (borrador) | No, si se entregó C-2; **sí, si alguien recalcula C-1**: −6 437,96 sin IVA | C2 |
+| H5 | **Enlaces parcheados a mano por fila** (*corregido el 2026-10-13, ver errata*): en lugar de la fórmula de la plantilla, cada fila de PRESUPUESTO lee su APU con una referencia directa escrita a mano (`='APU-08'!G44`), atada al nombre de la hoja. Los valores guardados **sí** coinciden con sus fórmulas. Si la fila volviera a la fórmula de la plantilla (por número de partida) o se renombraran las hojas, la partida 6 pasaría de 2 644,39 a 5 917,06 y la 7 de 9 710,63 a 0 | C-1 y C-2 | No: es un riesgo, no un error del total | C2 |
 | H6 | CRONOGRAMA lee el rendimiento siempre en `F28`, pero los APU lo tienen en F27, F32, F21 o F23. **En A todas las duraciones dan 0 ("0 semanas")**. En B, seis partidas duran 0 y otras usan el rendimiento de otra celda (25 en vez de 150; 3 en vez de 15). La curva S, el avance planificado de CONTROL DE OBRA y la holgura quedan falseados | A, B | No (el cronograma es un anexo, pero se entregó) | C1, C3 |
 | H7 | PROCURA (lista de compras) **no cuadra con el presupuesto**, y sus propias filas de verificación lo muestran: −6 969,49 en materiales, −4 861,47 en MO, −246,69 en equipos y **+191 309,86 en transporte** | B-2 (y A) | No, pero la lista de compras está mal | C1, C3 |
 | H8 | AUX, que alimenta PROCURA, lee filas fijas de cada APU. Se salta líneas reales de insumos (hasta 12 en un APU), lee filas de encabezado ("Código") y toma el **flete en USD como si fueran m³ de escombro** (`G43` en vez de `G42`/`G46`). De ahí sale el +191 309,86 | A, B | No | C1, C3 |
@@ -74,6 +74,12 @@ cálculo y un parámetro alterado a mano.
 
 Cifras de H1: 1,82565 USD/u × 100,53 = 183,53 de CD. Con administración (×1,10) y utilidad de 2 % (×1,02) quedan en
 205,92, y con IVA (×1,16) en 238,87. Cifra de H2: (10 % − 2 %) × 94,7004 × 100,53 = 761,62.
+
+**Errata (2026-10-13, misma fecha).** La primera versión de H5 decía que el borrador C-1 tenía "valores guardados
+que no corresponden a sus fórmulas" y que el total "cae 6 437,96 al recalcular". Era falso: el análisis inicial
+supuso que todas las filas usaban la fórmula por número de partida, y en C las filas tienen referencias directas
+puestas a mano. Lo detectó la regla al verificarse sobre los libros. Ningún libro tiene valores guardados
+desactualizados. H5 queda corregido arriba y se informa como L2 (advertencia), no como L3.
 
 ## Causas raíz
 
