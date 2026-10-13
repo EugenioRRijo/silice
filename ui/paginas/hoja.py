@@ -54,6 +54,12 @@ from adapters.espacio import (
     TipoPunto,
 )
 from adapters.espacio.planos import EstadoImportacion
+from asistente import privacidad as ia_privacidad
+from asistente import servicio as ia_servicio
+from asistente.orquestador import ESPERAR, Servicios, Topes
+from asistente.propuestas import EstadoPropuesta
+from asistente.registro import RegistroIA
+from asistente.tarifas import tarifa_de
 from core import models
 from core.budget.moneda import moneda_del_proyecto
 from core.catalog import Catalogo, CatalogoIncompleto, abrir_sesion, crear_motor
@@ -99,6 +105,12 @@ CLAVE_PLANO_FUSION = "hoja_plano_fusion"  # el informe de la ultima fusion
 CLAVE_PLANO_MENSAJE = "hoja_plano_mensaje"  # (tipo, texto) del ultimo intento de leer o declarar
 CLAVE_SELECTORES = "hoja_selectores"  # sube para que los selectores vuelvan a la version abierta
 CLAVE_MENSAJE = "hoja_mensaje"  # (tipo, texto) del ultimo intento de guardar, restaurar o cotizar
+CLAVE_ASISTENTE = "hoja_asistente"  # la `SesionDeAsistente` vigente (o ausente)
+CLAVE_ASISTENTE_PEDIDO = "hoja_asistente_pedido"
+CLAVE_ASISTENTE_PROVEEDOR = "hoja_asistente_proveedor"
+CLAVE_ASISTENTE_AVISO = "hoja_asistente_aviso"  # (tipo, texto) del ultimo intento
+CLAVE_ASISTENTE_RESPUESTA = "hoja_asistente_respuesta"  # la respuesta a una pregunta de la IA
+CLAVE_ASISTENTE_RESUMEN = "hoja_asistente_resumen"  # (estados, resumen) del resultado hipotetico
 
 # Claves de widgets (los selectores llevan ademas el numero de `CLAVE_SELECTORES`).
 CLAVE_PESTANA = "hoja_pestana"
@@ -431,6 +443,7 @@ def _guardar() -> None:
         "success",
         f"Se guardo la version {guardada.codigo} con {guardada.cambios} cambios registrados.",
     )
+    _cerrar_asistente_al_guardar(guardada.codigo)
     _abrir(abierta.proyecto, guardada.codigo)
     st.session_state[CLAVE_FUENTE] = ""
 
@@ -471,6 +484,7 @@ def _guardar_primera(borrador: hoja.Borrador) -> None:
         f"(total {formatear_decimal(guardada.total, 2)}). Quedo registrada su creacion, con su "
         "fuente y su responsable.",
     )
+    _cerrar_asistente_al_guardar(guardada.codigo)
     _abrir(proyecto, guardada.codigo)
     st.session_state[CLAVE_FUENTE] = ""
 
@@ -581,6 +595,321 @@ def _panel_de_guardado(cambios: Sequence, accion: str | None) -> None:
                 file_name=excel[0],
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             )
+
+
+# --- asistente de IA (S4, UC-09): propone, la persona decide ------------------------------------
+
+
+def _usuario_de_la_sesion() -> str:
+    """Quien decide: el usuario de la sesion de acceso (S3); la IA nunca es el responsable.
+
+    Con el acceso apagado (transicion) es la persona de desarrollo de `ui.sesion`. Sin sesion
+    vigente devuelve vacio, como `_responsable`: la decision se rechaza y la pantalla pide entrar.
+    """
+    try:
+        return ui_sesion.responsable_actual()
+    except PermissionError:
+        return ""
+
+
+def _proveedores_del_asistente() -> dict[str, Any]:
+    """`{nombre: (proveedor | None, motivo)}` de la instalacion; los tests lo reemplazan."""
+    from asistente.instalacion import proveedores_de_la_instalacion
+
+    return proveedores_de_la_instalacion()
+
+
+def _prefijos_de_maprex() -> tuple[str, ...]:
+    """Los prefijos de codigo de MaPreX de la instalacion; los tests lo reemplazan."""
+    from asistente.instalacion import prefijos_de_maprex
+
+    return prefijos_de_maprex()
+
+
+def _tarifa_del_asistente(proveedor: Any) -> Any:
+    """La tarifa del modelo del proveedor (cero si es local), o `None` si no tiene tarifa."""
+    try:
+        return tarifa_de(proveedor.modelo, local=not proveedor.envia_fuera_del_equipo)
+    except KeyError:
+        return None
+
+
+def _catalogo_del_asistente(sesion: Any) -> Any:
+    """Las partidas del catalogo como las ve el asistente (sin precios ni composicion).
+
+    La busqueda semantica (UC-03) se arma en la primera busqueda: cargar el modelo cuesta segundos.
+    """
+    from asistente.catalogo import CatalogoDeLaBase, PartidaVista
+    from core.contracts.dominio import Dominio
+
+    if sesion is None:  # sin base: el catalogo esta vacio
+        return CatalogoDeLaBase([])
+    prefijos = _prefijos_de_maprex()
+    partidas = [
+        PartidaVista(
+            p.codigo,
+            p.descripcion,
+            p.unidad,
+            Dominio(p.dominio),
+            de_maprex=p.codigo.startswith(prefijos),
+        )
+        for p in Catalogo(sesion).partidas()
+    ]
+    armado: list[Any] = []
+
+    def semantica(texto: str) -> list[tuple[str, float]]:
+        if not armado:
+            from ml.normalization import proponedor
+
+            armado.append(proponedor({p.codigo: p.descripcion for p in partidas}))
+        return [(s.codigo, s.puntaje) for s in armado[0](texto).similares]
+
+    return CatalogoDeLaBase(partidas, semantica if partidas else None)
+
+
+def _aviso_del_asistente(tipo: str, texto: str) -> None:
+    st.session_state[CLAVE_ASISTENTE_AVISO] = (tipo, texto)
+
+
+def _proponer_con_asistente() -> None:
+    """Callback de «Proponer»: corre el bucle; el borrador NO cambia hasta que se acepta."""
+    ofertas = _proveedores_del_asistente()
+    proveedor = ofertas.get(st.session_state.get(CLAVE_ASISTENTE_PROVEEDOR, ""), (None, ""))[0]
+    if proveedor is None:
+        _aviso_del_asistente("error", "Elija un proveedor disponible.")
+        return
+    tarifa = _tarifa_del_asistente(proveedor)
+    if tarifa is None:
+        _aviso_del_asistente(
+            "error",
+            f"No hay tarifa para el modelo {proveedor.modelo}: pida al administrador agregarla.",
+        )
+        return
+    abierta, borrador = _abierta(), _borrador()
+    proyecto = abierta.proyecto if abierta else (_proyecto_sin_versiones() or "")
+    try:
+        with _sesion() as sesion:
+            registro = RegistroIA(sesion.connection()) if sesion is not None else None
+            servicios = Servicios(
+                catalogo=_catalogo_del_asistente(sesion),
+                tarifa=tarifa,
+                auditar=lambda b: hoja.elaborar_borrador(b).elaboracion.informe,
+                responder=lambda _pregunta: ESPERAR,  # la pantalla contesta (9g)
+                registro=registro,
+                proyecto=proyecto,
+                version_partida=abierta.codigo if abierta else "",
+            )
+            propuesto = ia_servicio.proponer(
+                proveedor,
+                st.session_state.get(CLAVE_ASISTENTE_PEDIDO, ""),
+                borrador,
+                servicios,
+                Topes(),
+            )
+            if sesion is not None:
+                sesion.commit()
+    except SQLAlchemyError as error:
+        _aviso_del_asistente("error", _error_de_base(error))
+        return
+    st.session_state[CLAVE_ASISTENTE] = propuesto
+    _aviso_del_asistente("info", propuesto.resultado.mensaje)
+
+
+def _decidir_propuesta(propuesta_id: str, estado: EstadoPropuesta) -> None:
+    """Callback de Aceptar, Aceptar y editar o Rechazar de UNA propuesta."""
+    propuesto = st.session_state.get(CLAVE_ASISTENTE)
+    if propuesto is None:
+        return
+    usuario = _usuario_de_la_sesion()
+    if not usuario:
+        _aviso_del_asistente("error", ui_sesion.MENSAJE_SIN_ENTRAR)
+        return
+    try:
+        with _sesion() as sesion:
+            registro = RegistroIA(sesion.connection()) if sesion is not None else None
+            ia_servicio.decidir(propuesto, propuesta_id, estado, usuario, registro)
+            if sesion is not None:
+                sesion.commit()
+        nuevo = ia_servicio.borrador_resultante(propuesto)
+    except ia_servicio.DependenciaPendiente as error:
+        _aviso_del_asistente("warning", str(error))
+        return
+    except KeyError:
+        _aviso_del_asistente("warning", f"{propuesta_id} ya no esta pendiente: ya se decidio.")
+        return
+    except hoja.HojaInvalida as error:
+        _aviso_del_asistente("error", f"No se pudo aplicar {propuesta_id}: {error}")
+        return
+    except SQLAlchemyError as error:
+        _aviso_del_asistente("error", _error_de_base(error))
+        return
+    _poner_borrador(nuevo, resembrar=True)
+    if estado is not EstadoPropuesta.RECHAZADA and not st.session_state.get(CLAVE_FUENTE):
+        st.session_state[CLAVE_FUENTE] = ia_servicio.fuente_del_cambio(propuesto)
+    _aviso_del_asistente("success", f"{propuesta_id}: {estado.value}.")
+
+
+def _responder_al_asistente(cancelar: bool = False) -> None:
+    """Callback de «Responder» (o «Cancelar»): reanuda la sesion pausada por una pregunta (9g).
+
+    La respuesta sale del estado de la pantalla en el acto: si lleva una clave, nunca se queda.
+    """
+    propuesto = st.session_state.get(CLAVE_ASISTENTE)
+    texto = st.session_state.pop(CLAVE_ASISTENTE_RESPUESTA, "")
+    if propuesto is None or propuesto.resultado.pregunta is None:
+        return
+    ia_servicio.responder(propuesto, None if cancelar else texto)
+    _aviso_del_asistente("info", propuesto.resultado.mensaje)
+
+
+def _descartar_asistente() -> None:
+    """Descarta la sesion: lo aceptado se queda en el borrador; lo pendiente no entra."""
+    st.session_state.pop(CLAVE_ASISTENTE, None)
+    st.session_state.pop(CLAVE_ASISTENTE_AVISO, None)
+    st.session_state.pop(CLAVE_ASISTENTE_RESUMEN, None)
+
+
+def _cerrar_asistente_al_guardar(codigo_version: str) -> None:
+    """Tras guardar: la sesion queda marcada con la version en que entro (anexo `ia.json`)."""
+    propuesto = st.session_state.get(CLAVE_ASISTENTE)
+    if propuesto is None or not propuesto.pendientes.aceptadas():
+        return
+    try:
+        with _sesion() as sesion:
+            if sesion is not None:
+                RegistroIA(sesion.connection()).marcar_guardada(
+                    propuesto.resultado.sesion, codigo_version
+                )
+                sesion.commit()
+    except SQLAlchemyError as error:
+        _mensaje(
+            "warning",
+            f"La version se guardo, pero no se pudo anotar la sesion del asistente: {error}",
+        )
+        return
+    _descartar_asistente()
+
+
+def _pintar_pregunta(propuesto: Any) -> None:
+    """La pregunta del modelo, rotulada como tal y escapada: es texto ajeno (RV-14, §8.7)."""
+    st.warning(
+        "Pregunta generada por la IA: no escriba contrasenas, claves ni precios.\n\n"
+        + texto_seguro(propuesto.resultado.pregunta)
+    )
+    st.text_input("Su respuesta", key=CLAVE_ASISTENTE_RESPUESTA)
+    responder, cancelar = st.columns(2)
+    responder.button("Responder", on_click=_responder_al_asistente, key="hoja_asistente_responder")
+    cancelar.button(
+        "Cancelar la sesion",
+        on_click=_responder_al_asistente,
+        args=(True,),
+        key="hoja_asistente_cancelar",
+    )
+
+
+def _resumen_hipotetico(propuesto: Any) -> Any:
+    """El resultado hipotetico, una vez por conjunto de decisiones (no en cada edicion)."""
+    estados = tuple((p.id, p.estado) for p in propuesto.pendientes.propuestas)
+    guardado = st.session_state.get(CLAVE_ASISTENTE_RESUMEN)
+    if guardado is None or guardado[0] != estados:
+        resumen = ia_servicio.resumen_hipotetico(ia_servicio.hipotetico(propuesto))
+        guardado = (estados, resumen)
+        st.session_state[CLAVE_ASISTENTE_RESUMEN] = guardado
+    return guardado[1]
+
+
+def _pintar_propuestas(propuesto: Any) -> None:
+    if propuesto.resultado.pregunta is not None:
+        _pintar_pregunta(propuesto)
+        return
+    for propuesta in propuesto.pendientes.propuestas:
+        texto, estado, botones = st.columns([6, 2, 3])
+        texto.markdown(texto_seguro(ia_servicio.descripcion(propuesta)))
+        estado.caption(propuesta.estado.value)
+        if propuesta.estado is EstadoPropuesta.PENDIENTE:
+            aceptar, editar, rechazar = botones.columns(3)
+            for columna, rotulo, nuevo in (
+                (aceptar, "Aceptar", EstadoPropuesta.ACEPTADA),
+                (editar, "Aceptar y editar", EstadoPropuesta.EDITADA),
+                (rechazar, "Rechazar", EstadoPropuesta.RECHAZADA),
+            ):
+                columna.button(
+                    rotulo,
+                    key=f"hoja_asistente_{nuevo.value}_{propuesta.id}",
+                    on_click=_decidir_propuesta,
+                    args=(propuesta.id, nuevo),
+                )
+        if propuesta.supuestos:
+            texto.caption(
+                texto_seguro(
+                    "Supuestos de la IA: " + "; ".join(f"{c}: {m}" for c, m in propuesta.supuestos)
+                )
+            )
+    try:
+        hipotetico = _resumen_hipotetico(propuesto)
+    except hoja.HojaInvalida as error:
+        st.caption(
+            "No se puede calcular el resultado si se aceptara todo: " + texto_seguro(str(error))
+        )
+    else:
+        por_severidad = ", ".join(f"{k}: {v}" for k, v in sorted(hipotetico.hallazgos.items()))
+        st.caption(
+            "Si aceptara todo, el SISTEMA calcularia un total de "
+            f"{_dinero(hipotetico.total, hipotetico.moneda)} "
+            f"y {sum(hipotetico.hallazgos.values())} hallazgos del auditor "
+            f"({por_severidad or 'ninguno'})."
+        )
+    st.button(
+        "Descartar lo pendiente", on_click=_descartar_asistente, key="hoja_asistente_descartar"
+    )
+
+
+def _panel_asistente() -> None:
+    """UC-09 en la hoja: pedido, vista previa y costo, propuestas pendientes y su decision."""
+    abierta = _abierta()
+    if abierta is not None and abierta.solo_lectura:
+        return  # 9i: el asistente no se abre en una version de solo lectura
+    ofertas = _proveedores_del_asistente()
+    with st.expander(
+        "Asistente de IA: propone, usted decide", expanded=CLAVE_ASISTENTE in st.session_state
+    ):
+        disponibles = {n: o[0] for n, o in ofertas.items() if o[0] is not None}
+        if not disponibles:
+            st.caption(" ".join(sorted({o[1] for o in ofertas.values() if o[1]})))
+            return
+        for nombre, (proveedor, motivo) in ofertas.items():
+            if proveedor is None:
+                st.caption(f"{nombre}: {motivo}")
+        nombre = st.selectbox("Proveedor", sorted(disponibles), key=CLAVE_ASISTENTE_PROVEEDOR)
+        proveedor = disponibles[nombre]
+        pedido = st.text_area("Que necesita armar (en sus palabras)", key=CLAVE_ASISTENTE_PEDIDO)
+        vista = ia_privacidad.vista_previa(
+            pedido, _borrador(), nube=proveedor.envia_fuera_del_equipo
+        )
+        tarifa = _tarifa_del_asistente(proveedor)
+        if tarifa is None:
+            st.caption(f"No hay tarifa para el modelo {proveedor.modelo}: no se puede estimar.")
+        else:
+            estimado = ia_servicio.estimar_costo(tarifa)
+            st.caption(
+                f"Destino: {vista['destino']}. Estimacion de costo por tarea (cota): "
+                f"{estimado:.2f} USD. "
+                "El pedido viaja tal como lo escribe: no escriba datos personales."
+            )
+        with st.expander("Lo que se enviara"):
+            st.text(vista["texto"])
+        st.button(
+            "Proponer",
+            on_click=_proponer_con_asistente,
+            disabled=not pedido.strip() or tarifa is None,
+            type="primary",
+        )
+        aviso = st.session_state.get(CLAVE_ASISTENTE_AVISO)
+        if aviso is not None:
+            getattr(st, aviso[0])(texto_seguro(aviso[1]))
+        propuesto = st.session_state.get(CLAVE_ASISTENTE)
+        if propuesto is not None:
+            _pintar_propuestas(propuesto)
 
 
 # --- ayudas de pantalla ---------------------------------------------------------------------------
@@ -1729,6 +2058,7 @@ def render() -> None:
     _mostrar_mensaje()
     _, cambios = _calculo()
     _selector_de_version(cambios)
+    _panel_asistente()
     # El panel de guardado se pinta arriba pero se llena al final, cuando ya se leyeron los
     # editores de la pestana: asi muestra los cambios de ESTA ejecucion y no los de la anterior.
     panel = st.container()
