@@ -69,7 +69,7 @@ def correr(
     servicios = Servicios(
         catalogo=catalogo,
         tarifa=tarifa,
-        auditar=lambda b: InformeAuditoria(hallazgos=auditor(b)),
+        auditar=lambda b: InformeAuditoria("HOJA", hallazgos=auditor(b)),
         responder=lambda pregunta: respuesta_preparada(ficha, pregunta),
         informe_permitido=condicion == "B",
     )
