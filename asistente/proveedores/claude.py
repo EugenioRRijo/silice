@@ -13,9 +13,11 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from copy import deepcopy
+from importlib.util import find_spec
 from typing import Any
 
 from asistente.proveedores.base import (
+    FALTA_EL_COMPONENTE,
     Disponibilidad,
     ErrorDeProveedor,
     EsquemaHerramienta,
@@ -156,6 +158,8 @@ class ProveedorClaude:
     def disponible(self) -> Disponibilidad:
         if not self._clave and self._cliente is None:
             return Disponibilidad(False, "Falta registrar la clave de IA de la empresa.")
+        if self._cliente is None and find_spec("anthropic") is None:
+            return Disponibilidad(False, FALTA_EL_COMPONENTE)
         return Disponibilidad(True)
 
     def _crear_cliente(self) -> Any:

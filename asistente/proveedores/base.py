@@ -89,6 +89,10 @@ class Disponibilidad:
     motivo: str = ""
 
 
+#: El motivo de «no disponible» cuando falta el extra `ia` (anthropic, ollama o keyring).
+FALTA_EL_COMPONENTE = "Falta el componente del asistente: uv sync --extra ia"
+
+
 @dataclass(frozen=True, slots=True)
 class EsquemaHerramienta:
     nombre: str

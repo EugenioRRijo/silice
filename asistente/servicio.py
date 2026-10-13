@@ -61,8 +61,13 @@ def proponer(
     servicios: Servicios,
     topes: Topes = Topes(),  # noqa: B008
 ) -> SesionDeAsistente:
-    """Corre el bucle; el borrador NO cambia (RF-32). Devuelve las propuestas pendientes."""
+    """Corre el bucle; el borrador NO cambia (RF-32). Devuelve las propuestas pendientes.
+
+    La sesion devuelta NO retiene el proveedor (que lleva la clave de IA y su cliente): la pantalla
+    la guarda en su estado y la clave nunca va ahi (§8.3). `responder` recibe el vigente.
+    """
     resultado = ejecutar(proveedor, pedido, borrador, servicios, topes)
+    _soltar_proveedor(resultado)
     origen = OrigenIA(proveedor.nombre, proveedor.modelo, resultado.sesion)
     return SesionDeAsistente(
         resultado,
@@ -77,47 +82,65 @@ def proponer(
 _IGUAL: Any = object()  # «no cambiar el registro»: distinto de `None` (sin registro)
 
 
-def _instantanea(continuacion: Any) -> dict[str, Any]:
-    """Copia lo mutable del estado pausado del orquestador, para poder devolverlo si falla."""
-    copia: dict[str, Any] = {}
-    for nombre, valor in vars(continuacion).items():
-        if isinstance(valor, list | Counter | dict):
-            valor = copy.copy(valor)
-        elif isinstance(valor, Pendientes):
-            valor = Pendientes(list(valor.propuestas))
-        elif nombre == "partidas_vistas":
-            valor = copy.deepcopy(valor)
-        copia[nombre] = valor
+def _soltar_proveedor(resultado: ResultadoSesion) -> None:
+    """Quita el proveedor de la sesion pausada: con el, la clave quedaria en el estado (§8.3)."""
+    if resultado.continuacion is not None:
+        resultado.continuacion.proveedor = None
+
+
+def _copia_de_trabajo(continuacion: Any) -> Any:
+    """Una copia del estado pausado del orquestador sobre la que se reanuda: si el bucle falla, la
+    sesion original sigue intacta esperando la misma pregunta.
+
+    Lo mutable de `orquestador._Sesion` se copia por su nombre; lo demas (borrador, servicios,
+    topes, contadores, tuplas) es inmutable y se comparte.
+    """
+    copia = copy.copy(continuacion)
+    for nombre in ("textos", "mensajes", "modelos", "restantes", "resultados", "respuestas"):
+        setattr(copia, nombre, list(getattr(continuacion, nombre)))
+    copia.rechazos = Counter(continuacion.rechazos)
+    copia.rechazos_por_causa = Counter(continuacion.rechazos_por_causa)
+    copia.pendientes = Pendientes(list(continuacion.pendientes.propuestas))
+    copia.partidas_vistas = copy.deepcopy(continuacion.partidas_vistas)
     return copia
 
 
 def responder(
-    sesion: SesionDeAsistente, respuesta: str | None, registro: RegistroIA | None = _IGUAL
+    sesion: SesionDeAsistente,
+    respuesta: str | None,
+    registro: RegistroIA | None = _IGUAL,
+    *,
+    proveedor: ProveedorIA | None = None,
 ) -> None:
     """La respuesta de la persona a la pregunta del modelo (9g); `None` cancela la sesion (9h).
 
     Reanuda el bucle: las propuestas nuevas llegan como pendientes. No se puede decidir una
     propuesta mientras haya una pregunta sin responder.
 
+    `proveedor` es el VIGENTE de la instalacion (la sesion guardada no lo retiene, por la clave):
+    hace falta para responder y no para cancelar. Al terminar se suelta otra vez.
+
     `registro` es el de la conexion VIGENTE (la de la ejecucion ya se cerro): la pantalla abre una
-    por respuesta. Si el bucle falla (por ejemplo, la base), la sesion vuelve a esperar la misma
-    pregunta y el error sube; el llamador deshace su transaccion.
+    por respuesta. Si el bucle falla (por ejemplo, la base), la sesion sigue esperando la misma
+    pregunta y el error sube.
     """
     continuacion = sesion.resultado.continuacion
     if continuacion is None:
         raise ValueError("la sesion no esta esperando una respuesta")
-    previo, servicios_previos = _instantanea(continuacion), sesion.servicios
+    if respuesta is not None and proveedor is None:
+        raise ValueError("responder exige el proveedor vigente de la instalacion")
+    trabajo = _copia_de_trabajo(continuacion)
+    trabajo.proveedor = proveedor
+    servicios = sesion.servicios
     if registro is not _IGUAL:
-        continuacion.servicios = replace(continuacion.servicios, registro=registro)
-        sesion.servicios = replace(sesion.servicios, registro=registro)
+        trabajo.servicios = replace(trabajo.servicios, registro=registro)
+        servicios = replace(servicios, registro=registro)
     try:
-        resultado = continuar(sesion.resultado, respuesta)
-    except Exception:
-        vars(continuacion).clear()
-        vars(continuacion).update(previo)
-        sesion.servicios = servicios_previos
-        raise
+        resultado = continuar(replace(sesion.resultado, continuacion=trabajo), respuesta)
+    finally:
+        trabajo.proveedor = None  # la copia puede quedar como la continuacion de otra pregunta
     sesion.resultado = resultado
+    sesion.servicios = servicios
     sesion.pendientes = Pendientes(list(resultado.propuestas))
 
 
@@ -138,8 +161,19 @@ def decidir(
     estado: EstadoPropuesta,
     usuario: str,
     registro: RegistroIA | None = None,
-) -> None:
+    *,
+    sobre: Borrador | None = None,
+) -> Borrador | None:
     """Acepta, edita o rechaza UNA propuesta pendiente y lo anota en el registro `ia_*`.
+
+    Devuelve el borrador con la decision aplicada (`None` al rechazar, que no lo toca):
+
+    * sin `sobre`, la base de la sesion con todo lo aceptado (`borrador_resultante` tras decidir);
+    * con `sobre` (la hoja tal como la dejo la persona al editarla a mano), SOLO esta propuesta
+      aplicada sobre ella: sus ediciones se conservan.
+
+    Si la propuesta depende de otra aun pendiente, `DependenciaPendiente`; si no se puede aplicar
+    sobre `sobre`, `HojaInvalida`. En los dos casos nada queda decidido ni registrado.
 
     `registro` es el de la conexion VIGENTE (la de la ejecucion ya se cerro): la pantalla abre una
     por decision.
@@ -149,21 +183,28 @@ def decidir(
     propuesta = sesion.pendientes.buscar(propuesta_id)
     if propuesta is None or propuesta.estado is not EstadoPropuesta.PENDIENTE:
         raise KeyError(f"no hay una propuesta pendiente {propuesta_id!r}")
+    nuevo: Borrador | None = None
     if estado is not EstadoPropuesta.RECHAZADA:
+        decidida = replace(propuesta, estado=estado)
+        # lo aceptado tal como quedara tras decidir, en el orden de la lista (`aceptadas()`)
+        aceptadas = [
+            decidida if p.id == propuesta_id else p
+            for p in sesion.pendientes.propuestas
+            if p.id == propuesta_id
+            or p.estado in (EstadoPropuesta.ACEPTADA, EstadoPropuesta.EDITADA)
+        ]
         try:
-            aplicar(
-                sesion.base,
-                [*sesion.pendientes.aceptadas(), propuesta],
-                sesion.origen,
-                sesion.catalogo,
-            )
+            nuevo = aplicar(sesion.base, aceptadas, sesion.origen, sesion.catalogo)
         except HojaInvalida as error:
             raise DependenciaPendiente(
                 f"{propuesta_id} depende de una propuesta que aun no acepto: {error}"
             ) from error
+        if sobre is not None:
+            nuevo = aplicar(sobre, [decidida], sesion.origen, sesion.catalogo)
     if registro is not None:  # primero el registro: si la base falla, nada queda decidido
         registro.decidir(sesion.resultado.sesion, propuesta_id, estado.value, usuario)
     sesion.pendientes.marcar(propuesta_id, estado)
+    return nuevo
 
 
 def fuente_del_cambio(sesion: SesionDeAsistente) -> str:

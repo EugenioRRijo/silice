@@ -498,6 +498,7 @@ def _guardar_configuracion() -> None:
             modelo_local=st.session_state["ia_modelo_local"],
             anfitrion_ollama=st.session_state["ia_anfitrion"],
             tope_usd=st.session_state["ia_tope"],
+            clave=_clave_de_ia(),
         )
     except (ia_administracion.SinPermiso, ValueError) as error:
         _avisar(AVISO_CONFIG, "error", texto_seguro(str(error)))
@@ -583,7 +584,10 @@ def _seccion_configuracion(cfg: ConfiguracionIA) -> None:
         "Modelo local (Ollama)",
         value=cfg.modelo_local,
         key="ia_modelo_local",
-        help="Déjelo vacío para usar el primer modelo instalado en Ollama.",
+        help=(
+            "El nombre exacto de un modelo ya instalado en Ollama (el que muestra «ollama list»). "
+            "Vacío: el modo local no se ofrece."
+        ),
     )
     st.text_input("Dirección de Ollama", value=cfg.anfitrion_ollama, key="ia_anfitrion")
     st.caption(
@@ -600,7 +604,7 @@ def _seccion_configuracion(cfg: ConfiguracionIA) -> None:
     _mostrar_aviso(AVISO_CONFIG)
 
 
-def _seccion_clave(registrada: str | None) -> None:
+def _seccion_clave(registrada: str | None, activo: bool) -> None:
     st.subheader("Clave de IA de la empresa")
     st.caption(
         "Se registra solo desde el equipo donde está instalado Sílice y se guarda en el almacén de "
@@ -609,7 +613,13 @@ def _seccion_clave(registrada: str | None) -> None:
     permitida, motivo = cliente.operacion_sensible_permitida()
     if not permitida:
         st.info(motivo)
-    st.caption(texto_seguro(f"Clave registrada: {registrada or 'ninguna'}"))
+    if registrada is None and not activo:
+        st.caption(
+            "Clave registrada: no se carga mientras el asistente esté apagado (se carga al "
+            "activarlo)."
+        )
+    else:
+        st.caption(texto_seguro(f"Clave registrada: {registrada or 'ninguna'}"))
     with st.form("ia_formulario_clave", clear_on_submit=True):
         st.text_input(
             "Clave de IA de la empresa",
@@ -642,7 +652,8 @@ def pestana_asistente() -> None:
     if clave is None:
         configuracion, registrada = leer(ruta_de_configuracion()), None
     else:
-        cargar_clave_guardada(clave)
+        if leer(ruta_de_configuracion()).activo:  # apagado, la clave no vuelve a la memoria (§8.3)
+            cargar_clave_guardada(clave)
         visto = ia_administracion.estado(ruta_de_configuracion(), clave)
         configuracion, registrada = visto.configuracion, visto.clave_registrada
     st.warning(ia_administracion.AVISO_DE_NUBE)
@@ -651,7 +662,7 @@ def pestana_asistente() -> None:
     if clave is None:
         st.error(SIN_EXTRA_IA)
         return
-    _seccion_clave(registrada)
+    _seccion_clave(registrada, configuracion.activo)
 
 
 def _pestana_asistente(bd: Session, sesion: SesionActiva) -> None:

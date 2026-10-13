@@ -68,9 +68,14 @@ def configurar(
     modelo_local: str,
     anfitrion_ollama: str,
     tope_usd: str,
+    clave: ClaveDeIA | None = None,
 ) -> ConfiguracionIA:
     """Guarda la configuración; un tope no numérico o no positivo se rechaza con `ValueError`
-    y no toca el archivo."""
+    y no toca el archivo.
+
+    Al desactivar el asistente, la clave de IA sale de la memoria del proceso (§8.3); sigue en el
+    almacén de credenciales y vuelve a cargarse al activarlo.
+    """
     _exigir(es_administrador)
     nueva = replace(
         leer(ruta),
@@ -82,6 +87,8 @@ def configurar(
         tope_usd=_tope(tope_usd),
     )
     guardar(ruta, nueva)
+    if not activo and clave is not None:
+        clave.desactivar()
     return nueva
 
 

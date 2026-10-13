@@ -20,8 +20,9 @@ from asistente.clave import (
     enmascarar,
     es_bucle_local,
 )
-from asistente.configuracion import NOMBRE_DEL_ARCHIVO, leer
+from asistente.configuracion import NOMBRE_DEL_ARCHIVO, PROVEEDORES, leer
 from asistente.fabrica import Oferta, proveedores
+from asistente.proveedores.base import FALTA_EL_COMPONENTE
 from asistente.proveedores.ollama_local import version_a_tupla
 
 if TYPE_CHECKING:
@@ -93,11 +94,23 @@ def topes_de_la_instalacion() -> Topes:
     return Topes(costo=leer(ruta_de_configuracion()).tope_usd)
 
 
+def proveedor_por_defecto() -> str:
+    """El proveedor que el administrador eligio por defecto (el panel lo preselecciona)."""
+    return leer(ruta_de_configuracion()).proveedor
+
+
 def proveedores_de_la_instalacion() -> dict[str, Oferta]:
-    """Apagado (de fabrica): sin tocar la clave, `seguridad` ni `keyring`; la pantalla no cambia."""
+    """Apagado (de fabrica): sin tocar la clave, `seguridad` ni `keyring`; la pantalla no cambia.
+
+    Sin el extra `ia` (keyring, anthropic u ollama) ningun proveedor esta disponible y el motivo
+    dice como instalarlo: la hoja no se cae.
+    """
     configuracion = leer(ruta_de_configuracion())
     if not configuracion.activo:
         return proveedores(configuracion, None, (0,))
-    clave = clave_de_la_instalacion()
-    cargar_clave_guardada(clave)
-    return proveedores(configuracion, clave, version_minima_ollama())
+    try:
+        clave = clave_de_la_instalacion()
+        cargar_clave_guardada(clave)
+        return proveedores(configuracion, clave, version_minima_ollama())
+    except ImportError:
+        return {n: (None, FALTA_EL_COMPONENTE) for n in PROVEEDORES}
