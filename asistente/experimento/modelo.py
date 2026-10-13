@@ -5,11 +5,24 @@ Dos tipos compartidos por el banco (que los construye de una ficha), el comparad
 
 from __future__ import annotations
 
+import functools
+import json
 from dataclasses import dataclass
 from decimal import Decimal
+from pathlib import Path
+from typing import Any
 
 from adapters.espacio import Espacio
 from core.contracts.item_computo import ItemComputo
+
+#: El protocolo versionado del experimento (S4 §9.1): una sola fuente de sus parametros.
+RUTA_PROTOCOLO = Path(__file__).with_name("protocolo.json")
+
+
+@functools.cache
+def protocolo() -> dict[str, Any]:
+    """`protocolo.json` leido una vez: tolerancias, fecha de R12, semilla... (M2)."""
+    return json.loads(RUTA_PROTOCOLO.read_text(encoding="utf-8"))
 
 
 @dataclass(frozen=True, slots=True)

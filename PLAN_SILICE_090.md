@@ -13858,8 +13858,10 @@ uv run python scripts/evaluar_asistente.py corrida --proveedor claude --conjunto
 uv run python scripts/evaluar_asistente.py corrida --proveedor claude --conjunto desarrollo \
   --esfuerzo high --tope-usd 8 --acepto-costo --corridas docs/piloto_high.json
 uv run python scripts/evaluar_asistente.py corrida --proveedor ollama --conjunto desarrollo \
-  --tope-usd 0 --acepto-costo --corridas docs/piloto_ollama.json
+  --tope-usd 1 --acepto-costo --corridas docs/piloto_ollama.json
 ```
+El costo de Ollama es 0 (tarifa local), pero `--tope-usd` debe ser finito y mayor que cero:
+con Ollama basta 1 USD, que nunca se alcanza.
 Los archivos `docs/piloto_*.json` son de trabajo: no se versionan (se agregan al `.gitignore` en
 este
 paso). Cada corrida se guarda tras cada tarea; si el tope se alcanza, el script se detiene con
@@ -13909,8 +13911,9 @@ uv run python scripts/evaluar_asistente.py corrida --proveedor claude --conjunto
 uv run python scripts/evaluar_asistente.py corrida --proveedor claude --conjunto evaluacion \
   --condicion B --tope-usd <tope aprobado> --acepto-costo
 uv run python scripts/evaluar_asistente.py corrida --proveedor ollama --conjunto evaluacion \
-  --condicion A --tope-usd 0 --acepto-costo
+  --condicion A --tope-usd 1 --acepto-costo
 ```
+Con Ollama el tope es 1 USD (su costo es 0; el tope debe ser finito y mayor que cero).
 Es reanudable: repetir el comando no vuelve a pagar lo ya corrido. Una caída de red o del servidor a
 mitad
 queda registrada como corrida con su `motivo` y no se descarta ni se reemplaza (se reporta como
