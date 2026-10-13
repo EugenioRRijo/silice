@@ -64,3 +64,10 @@ scripts/_salida_rnf15.json
 build/
 publicacion/
 humo-salida/
+
+# Presupuestos reales de clientes: confidenciales, nunca al repositorio (Silice 1.5, V-D3, 2026-10-13)
+docs/auditoria/*.xlsx
+docs/auditoria/*.xlsm
+docs/auditoria/*.xls
+docs/auditoria/*.pdf
+data/confidencial/
