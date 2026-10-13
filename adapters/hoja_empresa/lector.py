@@ -63,6 +63,7 @@ __all__ = ["leer_libro"]
 _CERO = Decimal(0)
 _UNO = Decimal(1)
 _TOLERANCIA_PU = Decimal("0.000001")
+_TOLERANCIA_REASIGNAR = Decimal("0.005")  # medio centavo: pasada final de `_unir` (F-D6)
 _REF_CELDA = re.compile(r"^(?:'((?:[^']|'')+)'|([^'!\[\]]+))!\$?([A-Za-z]{1,3})\$?(\d+)$")
 _COORD = re.compile(r"^([A-Z]{1,3})(\d+)$")
 
@@ -570,6 +571,18 @@ def _unir(
        el de P.U. guardado igual al P guardado de la fila; si tampoco, el primero en el orden del
        libro (determinista). El conflicto lo informa L2, no el lector.
     3. Una partida sin APU se une por número a `APU-nn` si esa hoja existe y no está tomada.
+    4. Pasada final: una partida que sigue sin APU toma un APU todavía libre cuyo P.U. guardado
+       coincide con el P guardado de la fila (tolerancia `_TOLERANCIA_REASIGNAR`); si hay varios,
+       el primero en el orden del libro.
+
+    Por qué la pasada 4: un APU que pierde un conflicto en el paso 2 queda libre, pero su título
+    apunta a la fila equivocada (causa C2: parche atado al nombre de la hoja), así que ningún paso
+    anterior lo vuelve a mirar. En el libro C-1, APU-08 y APU-09 reclaman la fila 23; gana APU-08 y
+    la fila 24 (alucobond, el ~40 % de la obra) quedaba sin APU aunque el P.U. de APU-09 es
+    exactamente su P guardado. Sin esta pasada la partida de mayor monto se recalcularía sin
+    análisis. La coincidencia de precio es una evidencia fuerte (dos APU distintos con el mismo
+    P.U. a 0,005 son raros) y el conflicto sigue informado por L2, así que la reasignación queda a
+    la vista del usuario. La tolerancia de 0,005 es medio centavo: el redondeo de presentación.
     """
     reclamos: dict[int, list[ApuLeido]] = {}
     for a in apus:
@@ -610,6 +623,23 @@ def _unir(
             tomadas.add(hoja)
         else:
             union[r.fila] = None
+    for r in renglones:
+        p_fila = r.guardados.get(col_pu)
+        if union.get(r.fila) is not None or p_fila is None:
+            continue
+        libre = next(
+            (
+                a
+                for a in apus
+                if a.hoja not in tomadas
+                and Rotulo.PU in a.guardados
+                and abs(a.guardados[Rotulo.PU] - p_fila) <= _TOLERANCIA_REASIGNAR
+            ),
+            None,
+        )
+        if libre is not None:
+            union[r.fila] = libre.hoja
+            tomadas.add(libre.hoja)
     return union
 
 
