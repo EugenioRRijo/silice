@@ -16,10 +16,25 @@ no sean de evaluacion). Cada corrida guardada declara el esfuerzo con que se hiz
 no salta una corrida hecha con otro esfuerzo. La evaluacion y la medicion controlada exigen el
 protocolo congelado (`congelado.verificar()` vacio) y la evaluacion usa el esfuerzo del protocolo.
 
-Tope de gasto (`--tope-usd`): se compara con `>=` ANTES de cada corrida y NO corta una sesion a
-medias (alteraria lo medido); el gasto puede superar el tope, como maximo, en el costo de una
-sesion, que tiene su propio tope (`Topes.costo` de `correr`). El acumulado cuenta TODAS las corridas
-del archivo, de cualquier modelo. Se corre un proceso a la vez por archivo de corridas.
+Tope de gasto (`--tope-usd`, finito y mayor que cero): se compara con `>=` ANTES de cada corrida y
+NO corta una sesion a medias (alteraria lo medido); el gasto puede superar el tope, como maximo, en
+el costo de una sesion, que tiene su propio tope (`Topes.costo` de `correr`). El acumulado cuenta
+TODAS las corridas del archivo, de cualquier modelo. Se corre un proceso a la vez por archivo.
+
+Lo pagado se guarda ANTES de puntuar (I3): cada sesion se escribe con `estado = sin_puntuar`, su
+`motivo`, `uso`, costo y propuestas; luego se puntua y se reescribe. Al reanudar:
+
+* ninguna corrida guardada se vuelve a pagar, cualquiera sea su estado o motivo (una caida del
+  proveedor queda como corrida con `motivo = error_de_proveedor`, no se reemplaza y el informe la
+  lista aparte, fuera de las metricas);
+* las que quedaron `sin_puntuar` o `fallo_al_puntuar` se puntuan de nuevo SIN pagar, desde sus
+  propuestas guardadas (tambien con `repuntuar`); si alguna sigue fallando, se detiene con codigo
+  5 ANTES de gastar mas;
+* un fallo al puntuar durante la corrida guarda la corrida (con su costo) y detiene el proceso con
+  codigo 5: el instrumento fallo y no se sigue pagando sin el.
+
+La evaluacion y la medicion controlada exigen ademas que el auditor corra exactamente
+`reglas_del_experimento` (I5) e `informe` exige el congelado vigente y las corridas completas (M4).
 """
 
 from __future__ import annotations
@@ -27,9 +42,11 @@ from __future__ import annotations
 import argparse
 import functools
 import json
+import math
 import os
 import sys
 from collections.abc import Mapping, Sequence
+from dataclasses import replace
 from decimal import Decimal
 from pathlib import Path
 
@@ -38,6 +55,9 @@ if str(RAIZ) not in sys.path:
     sys.path.insert(0, str(RAIZ))
 
 from asistente.experimento.metricas import (  # noqa: E402
+    ERROR_DE_PROVEEDOR,
+    FALLO_AL_PUNTUAR,
+    SIN_PUNTUAR,
     TIPOS,
     Corrida,
     Resumen,
@@ -58,7 +78,9 @@ CONTROLADO = RAIZ / "docs" / "resultados_asistente_controlado.json"
 SALIDA = RAIZ / "docs" / "resultados_asistente.md"
 Controlado = Mapping[str, tuple[int, int, tuple[float, float]]]
 NO_DETECTABLE = "no detectable por diseno"
+SIN_DETECTABLES = "sin errores detectables"
 SIN_ESFUERZO = "-"  # el modelo local no tiene esfuerzo
+POR_PUNTUAR = (SIN_PUNTUAR, FALLO_AL_PUNTUAR)
 CABECERA = (
     "<!-- GENERADO por scripts/evaluar_asistente.py: no se edita a mano (RF-95). -->\n"
     "# Resultados del experimento del asistente (OE-H2)\n"
@@ -71,6 +93,19 @@ def porcentaje(valor: float | None) -> str:
 
 def intervalo(par: tuple[float, float]) -> str:
     return f"[{porcentaje(par[0])}; {porcentaje(par[1])}]"
+
+
+def _ic_deteccion(r: Resumen) -> str:
+    """El intervalo bootstrap, o «sin errores detectables» si no hubo ninguno (I4)."""
+    return intervalo(r.intervalo_deteccion) if r.errores_detectables else SIN_DETECTABLES
+
+
+def _estado(c: Corrida) -> str:
+    return ERROR_DE_PROVEEDOR if c.motivo == ERROR_DE_PROVEEDOR else c.estado
+
+
+def _orden_de_corrida(c: Corrida) -> tuple:
+    return (c.tarea, c.modelo, c.condicion, c.repeticion)
 
 
 def cumple(valor: float | None, umbral: float, *, minimo: bool) -> str:
@@ -102,20 +137,27 @@ def generar_informe(
     lineas += [
         "",
         "## Deteccion del auditor y falsas alarmas (por modelo y condicion)\n",
+        "Solo cuentan las corridas normales; las excluidas (error del proveedor o sin puntuar) "
+        "se listan aparte y su costo SI suma. Un error por par y tipo; las cascadas no se "
+        "colapsan: la deteccion por fila (filas con algun error detectable y, de ellas, las "
+        "citadas por algun hallazgo) lo compensa.\n",
         "| Modelo | Cond. | Corridas | Detectables | Detectados | Deteccion | IC 95 % "
         "(bootstrap por tarea) | Veredicto | Falsas alarmas | Veredicto | Propuestas "
-        "validas | Exhaustividad | USD | Segundos |",
-        "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|",
+        "validas | Exhaustividad | USD | Segundos | Filas con error | Filas detectadas | "
+        "Deteccion por fila | Excluidas |",
+        "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|",
     ]
     for r in resumenes:
+        por_fila = r.filas_detectadas / r.filas_con_error if r.filas_con_error else None
         lineas.append(
             f"| {r.modelo} | {r.condicion} | {r.corridas} | {r.errores_detectables} | "
-            f"{r.detectados} | {porcentaje(r.deteccion)} | {intervalo(r.intervalo_deteccion)} | "
+            f"{r.detectados} | {porcentaje(r.deteccion)} | {_ic_deteccion(r)} | "
             f"{cumple(r.deteccion, float(u['deteccion']), minimo=True)} | "
             f"{porcentaje(r.tasa_falsas_alarmas)} | "
             f"{cumple(r.tasa_falsas_alarmas, float(u['falsas_alarmas']), minimo=False)} | "
             f"{porcentaje(r.propuestas_validas)} | {porcentaje(r.exhaustividad)} | "
-            f"{r.costo_usd:.2f} | {r.segundos:.0f} |"
+            f"{r.costo_usd:.2f} | {r.segundos:.0f} | {r.filas_con_error} | "
+            f"{r.filas_detectadas} | {porcentaje(por_fila)} | {r.excluidas} |"
         )
     lineas += [
         "",
@@ -168,15 +210,27 @@ def generar_informe(
     for tipo, (d, n, par) in controlado.items():
         nota = NO_DETECTABLE if hipotesis.get(tipo, "?") is None else ""
         lineas.append(f"| {tipo} | {d} | {n} | {intervalo(par)} | {pedido} | {nota} |")
+    excluidas = [c for c in corridas if not c.normal]
+    lineas += [
+        "",
+        "## Corridas excluidas de las metricas (pagadas; se informan como estan)\n",
+        "| Tarea | Modelo | Cond. | Rep. | Estado | Motivo de la sesion | Fallo | USD |",
+        "|---|---|---|---|---|---|---|---|",
+    ]
+    lineas += [
+        f"| {c.tarea} | {c.modelo} | {c.condicion} | {c.repeticion} | {_estado(c)} | "
+        f"{c.motivo or '-'} | {c.fallo or '-'} | {c.costo_usd:.2f} |"
+        for c in sorted(excluidas, key=_orden_de_corrida)
+    ] or ["| - | - | - | - | ninguna | - | - | - |"]
     lineas += [
         "",
         "## Todas las corridas\n",
-        "| Tarea | Modelo | Cond. | Rep. | Errores | Detectados | Falsas alarmas | USD |",
-        "|---|---|---|---|---|---|---|---|",
+        "| Tarea | Modelo | Cond. | Rep. | Estado | Errores | Detectados | Falsas alarmas | USD |",
+        "|---|---|---|---|---|---|---|---|---|",
     ]
-    for c in sorted(corridas, key=lambda c: (c.tarea, c.modelo, c.condicion, c.repeticion)):
+    for c in sorted(corridas, key=_orden_de_corrida):
         lineas.append(
-            f"| {c.tarea} | {c.modelo} | {c.condicion} | {c.repeticion} | "
+            f"| {c.tarea} | {c.modelo} | {c.condicion} | {c.repeticion} | {_estado(c)} | "
             f"{','.join(e.tipo for e in c.errores) or '-'} | {len(c.veredicto.detectados)} | "
             f"{c.veredicto.falsas_alarmas} | {c.costo_usd:.2f} |"
         )
@@ -263,6 +317,29 @@ def _tope_de_sesion() -> Decimal:
     return inspect.signature(correr).parameters["topes"].default.costo
 
 
+def _gastado(entradas: Sequence[Mapping[str, object]]) -> Decimal:
+    """Lo gastado segun el archivo: TODAS las corridas guardadas, de cualquier modelo y estado."""
+    return sum((Decimal(str(d["costo_usd"])) for d in entradas), Decimal(0))
+
+
+def _repuntuar_pendientes(entradas: list[dict], banco, catalogo, composiciones) -> list[str]:
+    """Puntua SIN pagar las corridas `sin_puntuar` o `fallo_al_puntuar` (I3), desde sus propuestas
+    guardadas; las reescribe en `entradas` (con su `esfuerzo`). Devuelve las que siguen fallando."""
+    from asistente.experimento.ejecucion import puntuar
+
+    siguen: list[str] = []
+    for i, d in enumerate(entradas):
+        if d.get("estado") not in POR_PUNTUAR:
+            continue
+        corrida = puntuar(
+            corrida_de_dict(d), banco[d["tarea"]], catalogo=catalogo, composiciones=composiciones
+        )
+        entradas[i] = {**d, **corrida_a_dict(corrida)}
+        if corrida.estado != "puntuada":
+            siguen.append(f"{d['tarea']} rep {d['repeticion']}: {corrida.fallo}")
+    return siguen
+
+
 def _correr_real(
     args: argparse.Namespace, protocolo: Mapping[str, object], ruta: Path, esfuerzo: str
 ) -> int:
@@ -271,6 +348,16 @@ def _correr_real(
 
     protocolo = {**protocolo, "esfuerzo": esfuerzo}
     banco, composiciones, catalogo, _, _ = contexto_del_experimento()
+    entradas = _entradas(ruta)
+    siguen = _repuntuar_pendientes(entradas, banco, catalogo, composiciones)
+    if entradas:
+        _guardar_corridas(ruta, entradas)
+    if siguen:
+        return _rechazo(
+            "Corridas pagadas que siguen sin poder puntuarse; no se gasta mas:\n  "
+            + "\n  ".join(siguen),
+            5,
+        )
     proveedor = proveedor_real(args.proveedor, protocolo, args.empresa)
     disponibilidad = proveedor.disponible()
     if not disponibilidad.disponible:
@@ -278,19 +365,18 @@ def _correr_real(
         return 3
     tarifa = tarifa_de(proveedor.modelo, local=args.proveedor == "ollama")
     usado = esfuerzo if args.proveedor == "claude" else SIN_ESFUERZO
-    entradas = _entradas(ruta)
+    # ninguna corrida guardada se vuelve a pagar, sea cual sea su estado o motivo (I3)
     hechas = {
         (d["tarea"], d["modelo"], d["condicion"], d["repeticion"], d.get("esfuerzo"))
         for d in entradas
     }
-    # el acumulado cuenta TODAS las corridas del archivo, de cualquier modelo
-    gastado = sum((Decimal(str(d["costo_usd"])) for d in entradas), Decimal(0))
     tope = Decimal(str(args.tope_usd))
     fichas = sorted((f for f in banco.values() if f.conjunto == args.conjunto), key=lambda f: f.id)
     for ficha in fichas:
         for repeticion in range(1, int(protocolo["repeticiones"]) + 1):
             if (ficha.id, proveedor.modelo, args.condicion, repeticion, usado) in hechas:
                 continue
+            gastado = _gastado(entradas)
             if gastado >= tope:
                 print(
                     f"Tope de {tope} USD alcanzado (gastado {gastado:.2f} USD, todas las corridas "
@@ -300,6 +386,13 @@ def _correr_real(
                     file=sys.stderr,
                 )
                 return 4
+            pagada: list[int] = []
+
+            def al_pagar(c: Corrida, pagada: list[int] = pagada) -> None:
+                entradas.append({**corrida_a_dict(c), "esfuerzo": usado})
+                pagada.append(len(entradas) - 1)
+                _guardar_corridas(ruta, entradas)  # el costo, ANTES de puntuar
+
             corrida = correr(
                 ficha,
                 proveedor,
@@ -308,15 +401,33 @@ def _correr_real(
                 composiciones=composiciones,
                 condicion=args.condicion,
                 repeticion=repeticion,
+                al_pagar=al_pagar,
             )
-            entradas.append({**corrida_a_dict(corrida), "esfuerzo": usado})
-            gastado += corrida.costo_usd
+            entrada = {**corrida_a_dict(corrida), "esfuerzo": usado}
+            if pagada:
+                entradas[pagada[0]] = entrada
+            else:
+                entradas.append(entrada)
             _guardar_corridas(ruta, entradas)  # se guarda tras CADA corrida
             print(
                 f"{ficha.id} rep {repeticion}: errores {[e.tipo for e in corrida.errores]}, "
-                f"{corrida.costo_usd:.2f} USD (acumulado {gastado:.2f})"
+                f"{corrida.costo_usd:.2f} USD (acumulado {_gastado(entradas):.2f}), "
+                f"motivo {corrida.motivo or '-'}, {corrida.estado}"
             )
-    print(f"Fin: gastado {gastado:.2f} USD en total en {ruta.name}.")
+            if corrida.estado == FALLO_AL_PUNTUAR:
+                return _rechazo(
+                    f"Fallo al puntuar {ficha.id} rep {repeticion} ({corrida.fallo}): la corrida "
+                    "quedo guardada con su costo; se detiene sin gastar mas. Al reanudar (o con "
+                    "`repuntuar`) se puntua de nuevo sin pagar.",
+                    5,
+                )
+            if corrida.motivo == ERROR_DE_PROVEEDOR:
+                print(
+                    f"{ficha.id} rep {repeticion}: error del proveedor; queda guardada como esta, "
+                    "fuera de las metricas, y no se repite al reanudar.",
+                    file=sys.stderr,
+                )
+    print(f"Fin: gastado {_gastado(entradas):.2f} USD en total en {ruta.name}.")
     return 0
 
 
@@ -325,7 +436,34 @@ def _rechazo(motivo: str, codigo: int) -> int:
     return codigo
 
 
+def faltantes_de_evaluacion(corridas: Sequence[Corrida], protocolo: Mapping[str, object]) -> list:
+    """M4: lo que falta para que cada (modelo, condicion) presente tenga TODAS las tareas de
+    evaluacion por `repeticiones`, y las corridas que siguen sin puntuar. Una corrida con error
+    del proveedor cuenta como hecha (se informa como esta, fuera de las metricas)."""
+    from asistente.experimento.banco import cargar_banco
+
+    tareas = sorted(f.id for f in cargar_banco().values() if f.conjunto == "evaluacion")
+    repeticiones = range(1, int(protocolo["repeticiones"]) + 1)
+    hechas = {(c.modelo, c.condicion, c.tarea, c.repeticion) for c in corridas}
+    grupos = sorted({(c.modelo, c.condicion) for c in corridas})
+    faltan = [
+        f"{m} {cond} {t} rep {r}"
+        for m, cond in grupos
+        for t in tareas
+        for r in repeticiones
+        if (m, cond, t, r) not in hechas
+    ]
+    faltan += [
+        f"{c.modelo} {c.condicion} {c.tarea} rep {c.repeticion}: {c.estado} (use `repuntuar`)"
+        for c in corridas
+        if c.estado in POR_PUNTUAR
+    ]
+    return faltan
+
+
 def _informe(args: argparse.Namespace, protocolo: Mapping[str, object]) -> int:
+    from asistente.experimento import congelado
+
     faltan = []
     if not args.corridas.is_file():
         faltan.append(f"{args.corridas}: lo escribe `corrida --conjunto evaluacion` (T20)")
@@ -335,12 +473,21 @@ def _informe(args: argparse.Namespace, protocolo: Mapping[str, object]) -> int:
         faltan.append(f"{CONGELADO}: lo escribe `asistente.experimento.congelado` (T20)")
     if faltan:
         return _rechazo("No se puede generar el informe; falta:\n  " + "\n  ".join(faltan), 3)
+    cambios = congelado.verificar(CONGELADO)
+    if cambios:
+        return _rechazo("No se puede generar el informe: " + "; ".join(cambios), 3)
     try:
         corridas = corridas_de_evaluacion(args.corridas, protocolo)
     except ValueError as motivo:
         return _rechazo(f"No se puede generar el informe: {motivo}", 3)
     if not corridas:
         return _rechazo(f"No se puede generar el informe: {args.corridas} no trae corridas.", 3)
+    incompletas = faltantes_de_evaluacion(corridas, protocolo)
+    if incompletas:
+        return _rechazo(
+            "No se puede generar el informe: corridas incompletas:\n  " + "\n  ".join(incompletas),
+            3,
+        )
     controlado = {
         t: (d, n, tuple(par))
         for t, (d, n, par) in json.loads(CONTROLADO.read_text(encoding="utf-8")).items()
@@ -353,21 +500,75 @@ def _informe(args: argparse.Namespace, protocolo: Mapping[str, object]) -> int:
     return 0
 
 
+def reglas_desalineadas(protocolo: Mapping[str, object]) -> str | None:
+    """I5: el auditor debe correr EXACTAMENTE `reglas_del_experimento`, en su orden, sobre cada
+    referencia de evaluacion; `None` si es asi, o el motivo. No llama a ningun modelo."""
+    from asistente.experimento.banco import borrador_de_partida
+    from asistente.experimento.ejecucion import FECHA_R12, reglas_del_auditor
+
+    banco, composiciones, _, _, referencia_de = contexto_del_experimento()
+    esperadas = tuple(protocolo["reglas_del_experimento"])
+    for ficha in sorted(
+        (f for f in banco.values() if f.conjunto == "evaluacion"), key=lambda f: f.id
+    ):
+        referencia = referencia_de(ficha)
+        borrador = replace(
+            borrador_de_partida(ficha, FECHA_R12),
+            composiciones=composiciones,
+            espacio=referencia.espacio,
+            items_base=referencia.items,
+        )
+        corren = reglas_del_auditor(borrador)
+        if corren != esperadas:
+            return (
+                f"el auditor corre {list(corren)} en {ficha.id} y el protocolo fija "
+                f"{list(esperadas)}"
+            )
+    return None
+
+
 def _validar_corrida(args: argparse.Namespace, protocolo: Mapping[str, object]) -> int | None:
     """Los rechazos de la corrida real ANTES de pedir la clave o tocar la red; `None` si pasa."""
     from asistente.experimento import congelado
 
-    if args.tope_usd <= 0:
-        return _rechazo("--tope-usd debe ser mayor que cero.", 2)
+    if not math.isfinite(args.tope_usd) or args.tope_usd <= 0:
+        return _rechazo("--tope-usd debe ser un numero finito mayor que cero.", 2)
     if args.conjunto == "evaluacion":
         if args.esfuerzo and args.esfuerzo != protocolo["esfuerzo"]:
             return _rechazo("La evaluacion usa el esfuerzo del protocolo congelado.", 2)
         cambios = congelado.verificar()
         if cambios:
             return _rechazo("La evaluacion exige el protocolo congelado: " + "; ".join(cambios), 2)
+        desalineadas = reglas_desalineadas(protocolo)
+        if desalineadas:
+            return _rechazo(f"La evaluacion exige las reglas del protocolo: {desalineadas}", 2)
     elif args.corridas.resolve() == CORRIDAS.resolve():
         return _rechazo(f"El piloto no escribe en {CORRIDAS.name}: es el de la evaluacion.", 2)
     return None
+
+
+def _repuntuar(args: argparse.Namespace, protocolo: Mapping[str, object]) -> int:
+    """Puntua sin pagar las corridas guardadas sin puntuar o con fallo al puntuar (I3)."""
+    from asistente.experimento import congelado
+
+    entradas = _entradas(args.corridas)
+    if not entradas:
+        return _rechazo(f"{args.corridas} no trae corridas.", 3)
+    banco, composiciones, catalogo, _, _ = contexto_del_experimento()
+    evaluacion = {f.id for f in banco.values() if f.conjunto == "evaluacion"}
+    if any(d["tarea"] in evaluacion for d in entradas):  # se puntua con el auditor congelado
+        cambios = congelado.verificar()
+        if cambios:
+            return _rechazo("Puntuar la evaluacion exige el congelado: " + "; ".join(cambios), 2)
+        desalineadas = reglas_desalineadas(protocolo)
+        if desalineadas:
+            return _rechazo(f"Puntuar la evaluacion exige sus reglas: {desalineadas}", 2)
+    siguen = _repuntuar_pendientes(entradas, banco, catalogo, composiciones)
+    _guardar_corridas(args.corridas, entradas)
+    if siguen:
+        return _rechazo("Siguen sin poder puntuarse:\n  " + "\n  ".join(siguen), 5)
+    print(f"{args.corridas}: todas las corridas pagadas estan puntuadas (sin gastar nada).")
+    return 0
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -378,6 +579,8 @@ def main(argv: list[str] | None = None) -> int:
     informe.add_argument("--salida", type=Path, default=SALIDA)
     mutaciones = sub.add_parser("mutaciones")
     mutaciones.add_argument("--salida", type=Path, default=CONTROLADO)
+    repuntuar = sub.add_parser("repuntuar")
+    repuntuar.add_argument("--corridas", type=Path, required=True)
     real = sub.add_parser("corrida")
     real.add_argument("--proveedor", choices=("claude", "ollama"), required=True)
     real.add_argument("--conjunto", choices=("desarrollo", "evaluacion"), required=True)
@@ -388,9 +591,10 @@ def main(argv: list[str] | None = None) -> int:
         "--tope-usd",
         type=float,
         required=True,
-        help="mayor que cero; se comprueba (>=) antes de cada corrida contra TODO lo gastado en "
-        "el archivo y no corta una sesion a medias: el gasto puede superarlo, como maximo, en el "
-        f"costo de una sesion (tope por sesion {_tope_de_sesion()} USD)",
+        help="finito y mayor que cero (con Ollama, cuyo costo es 0, basta 1); se comprueba (>=) "
+        "antes de cada corrida contra TODO lo gastado en el archivo y no corta una sesion a "
+        "medias: el gasto puede superarlo, como maximo, en el costo de una sesion (tope por "
+        f"sesion {_tope_de_sesion()} USD)",
     )
     real.add_argument(
         "--corridas",
@@ -411,6 +615,9 @@ def main(argv: list[str] | None = None) -> int:
         cambios = congelado.verificar()
         if cambios:  # la medicion sobre evaluacion se hace con el protocolo ya congelado
             return _rechazo("La medicion controlada exige el congelado: " + "; ".join(cambios), 2)
+        desalineadas = reglas_desalineadas(protocolo)
+        if desalineadas:
+            return _rechazo(f"La medicion controlada exige sus reglas: {desalineadas}", 2)
         controlado = medicion_controlada(protocolo)
         args.salida.write_text(
             json.dumps(controlado, indent=1, sort_keys=True) + "\n", encoding="utf-8"
@@ -418,6 +625,8 @@ def main(argv: list[str] | None = None) -> int:
         detalle = ", ".join(f"{t} {d}/{n}" for t, (d, n, _) in controlado.items())
         print(f"{args.salida} (detectados/n efectivo): {detalle}")
         return 0
+    if args.orden == "repuntuar":
+        return _repuntuar(args, protocolo)
     if args.orden == "corrida":
         if args.corridas is None:
             args.corridas = CORRIDAS if args.conjunto == "evaluacion" else PILOTO
