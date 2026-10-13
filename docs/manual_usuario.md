@@ -716,6 +716,30 @@ La de la derecha tiene los factores de la versión (FCAS, bono, administración 
 cierre de la partida, del costo directo al precio unitario. Cada cambio recalcula al momento y la
 barra superior indica cuántos cambios faltan por guardar.
 
+### 3.12 Libro de presupuesto de la empresa (UC‑25, Sílice 1.5)
+
+En **Revisión → Libro de la empresa**:
+
+1. **Suba** el Excel de su presupuesto. Si quiere, suba también el PDF que entregó al cliente o una versión
+   anterior del libro. También puede subir **solo un PDF** de presupuesto simple; en ese caso Sílice revisa el PDF y
+   no devuelve libro.
+2. **Revise las fechas.** La fecha del libro sale de la PORTADA y se puede cambiar. La fecha de devolución es hoy.
+   Si quiere, ajuste el umbral de alerta (5 % por defecto) y pulse **Auditar**.
+3. **Lea el resumen**: el total del libro, el total según Sílice y la diferencia.
+4. **Revise los hallazgos.** Cada uno trae su código, la celda y la acción:
+   - *corregido*: la devolución lo arregla;
+   - *a confirmar*: un valor escrito a mano que puede ser intencional, como una utilidad distinta;
+   - *informado*: solo se avisa.
+
+   La vista de la hoja marca en rojo las celdas citadas.
+5. **Revise las alertas de precio** en USD y Bs. Sin las tasas del BCV de esas fechas, las alertas dicen «no
+   contrastable».
+6. **Descargue el libro devuelto.** Tiene el mismo aspecto que el suyo, con los APU ordenados por dentro, los
+   valores de Sílice y tres hojas más: AUDITORÍA, TRAZABILIDAD y ALERTAS USD‑Bs.
+
+No se copian hipervínculos, protección de hoja ni algunos formatos condicionales; todo cambio queda anotado. Sus
+libros no se guardan en Sílice: se procesan en memoria.
+
 ## 4. El informe de auditoría
 
 Se genera **siempre** — no existe forma de obtener un presupuesto sin él. Ejecuta las siete

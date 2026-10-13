@@ -1811,3 +1811,18 @@ Actualizar es ejecutar el instalador nuevo: detiene Sílice, borra `python\`, `m
 DA‑S5‑1 a DA‑S5‑8 del spec S5 §5.5 (dependencias preinstaladas en capas, sin entorno virtual,
 instalación por usuario, un solo camino de migración, consola minimizada como servidor, red local en
 IP explícita). Rulings de este plan: `docs/bitacora/2026-10-silice-100.md`.
+
+## Enmienda de Sílice 1.5: libros de presupuesto de la empresa
+
+- **Vista lógica.** Hay dos piezas nuevas:
+  - `adapters/hoja_empresa/` (guardia, perfil, lector, reglas L1-L9, pdf L10/L11, plantilla, escritor/) solo
+    importa `core.contracts`;
+  - `fusion/` (mapeo, proceso, alertas, servicios) es un paquete de primer nivel fuera del núcleo, como
+    `auditoria/`, y los une con el motor (`core.costing`), `auditar` y las tasas de la instalación.
+- **Hipótesis central.** El núcleo no cambia. El transporte de escombros es una `LineaMaterial`, las herramientas
+  menores son una `LineaEquipo`, y el FCAS de la empresa (factor) pasa como `fcas − 1` (spec 1.5, F-D1). El motor
+  reproduce al centavo los P.U. de la plantilla.
+- **Vista de proceso.** Todo ocurre en memoria (F-D9): subida → guardia → lector → motor → reglas → informe →
+  escritor (XlsxWriter) → descarga. No hay tablas nuevas.
+- **Decisión.** Las reglas de la plantilla que el mapeo y el escritor comparten (factores literales, destajo,
+  divisor de equipos) viven en una sola fuente, `adapters/hoja_empresa/plantilla.py` (revisión de arquitectura V5).

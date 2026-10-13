@@ -18,13 +18,13 @@ de 0,80 × 0,80 × 0,80 m con paredes de 0,10 m, cinco partidas, 1 586,61 USD), 
 fue auditado y presenta **siete inconsistencias** que el sistema debe detectar (y hacer imposibles por
 construcción). Detalle en [docs/linea_base.md](docs/linea_base.md).
 
-**Naturaleza de los datos** (enmienda 1.5, Eugenio, 2026-10-13). Hay tres clases de caso:
-**real-confidencial**, **anonimizado** y **construido**.
+**Naturaleza de los datos** (enmienda 1.5, Eugenio, 2026-10-13). Hay cuatro clases de caso:
+**real-confidencial**, **real autorizado**, **anonimizado** y **construido**.
 
 - **Real-confidencial:** los libros de Excel de presupuestos entregados por la empresa y sus PDF impresos. Viven
   solo en el equipo (`docs/auditoria/*.xlsx|pdf`, `data/confidencial/`, ignorados por Git) y **nunca** se
   versionan.
-- **Reales autorizados como referencia:** los dos PDF de ARENAZA de `data/samples/telecom/` son **presupuestos
+- **Real autorizado:** los dos PDF de ARENAZA de `data/samples/telecom/` son **presupuestos
   reales** (antes se declararon ejercicio de clase) y se quedan en el repositorio por decisión de Eugenio.
 - **Anonimizado:** derivado de un real con `scripts/anonimizar_libro.py`; puede versionarse tras revisión.
 
@@ -34,8 +34,8 @@ no representa valores reales ni obras ejecutadas. `MNT-001` (industrial), `SIS-0
 para el proyecto. Reproducen el contenido y el formato de la práctica
 venezolana: por eso sirven como línea base normativa de las pruebas y como casos **didácticos** en la
 tesis. Los listados MaPreX de julio de 2026 y el tabulador CIV son referencias publicadas aportadas por
-el usuario. Cuando se suministren APU de casos reales, se incorporarán como evidencia adicional en
-`data/` (con fixture propio en `tests/fixtures/`) sin sustituir la línea base, salvo decisión explícita
+el usuario. Cuando se suministren APU de casos reales, entran al repositorio **solo como casos anonimizados**
+(con fixture propio en `tests/fixtures/`) sin sustituir la línea base, salvo decisión explícita
 documentada en `docs/bitacora/`. Este párrafo es la **fuente única** de la naturaleza de los datos; los
 demás documentos lo enlazan.
 
@@ -205,6 +205,10 @@ adapters/
                   propias del adaptador (no cuentan entre las entidades de core/models), agua, datos,
                   electricidad, reglas R8-R10 e importación de planos DXF/IFC; no implementa
                   AdaptadorDominio (docs/arquitectura.md §7)
+  hoja_empresa/   (1.5) libro de presupuesto de la empresa en Excel: guardia, perfil, lector, reglas
+                  L1-L11, PDF y escritor del libro calcado; solo importa core.contracts
+fusion/           (1.5) orquesta lector -> motor -> auditoría -> alertas USD-Bs -> calcado; fuera del
+                  núcleo
 asistente/        (S4, 0.9.0) IA verificada: herramientas, validación, orquestador,
                   proveedores (Claude y Ollama), privacidad, clave de IA, registro ia_* y experimento;
                   no es del núcleo ni un adaptador
@@ -299,3 +303,14 @@ tutor antes de I0.3. Los esqueletos ya existen; se completan en las Sesiones 0.1
   cierre (INV‑007).
 - Al cerrar una sesión: verificar el criterio de cierre, ejecutar `uv run pytest` y
   `uv run ruff check .`, hacer el commit indicado en el PLAN y anotar la bitácora del sprint.
+
+---
+
+## Registro de enmiendas
+
+**Enmienda 1.5 (2026-10-13, Eugenio).** El párrafo «Naturaleza de los datos» de §1 se reescribió en su sitio porque
+es la **fuente única** de la naturaleza de los datos: un apéndice lo habría dejado contradiciéndose. El texto
+sustituido decía: «Todos los APU y presupuestos del repositorio son ejercicios académicos ficticios. El de la clínica
+(línea base) y los dos de ARENAZA (telecom) provienen de ejercicios de clase y no representan valores reales ni obras
+ejecutadas.» La oración final cambió de «se incorporarán como evidencia adicional en `data/`» a «entran al
+repositorio solo como casos anonimizados». Spec: `docs/especificaciones/2026-10-13-silice-1.5-fusion-design.md`.

@@ -13,12 +13,18 @@ une cada nombre neutro con su archivo real queda solo en el equipo de Eugenio.
 |---|---|---|---|
 | **Libro A** | Mantenimiento y reconstrucción de paredes de un apartamento | una | 9 955,65 |
 | **Libro B** | Rehabilitación de paredes, frisos, carpintería y vigas de un piso | B-1 y B-2 (montos distintos) | 12 917,54 (B-1) y 16 491,80 (B-2) |
-| **Libro C** | Rehabilitación de paredes, frisos y revestimientos de áreas comunes | C-1 (20:15) y C-2 (21:03); por la hora, C-1 es el borrador | 24 311,92 (las dos) |
+| **Libro C** | Rehabilitación de paredes, frisos y revestimientos de áreas comunes | C-1 (20:15) y C-2 (21:03); por la hora, C-1 es el borrador. Sus hojas que no son APU son idénticas | 24 311,92 (las dos) |
 | **PDF 001** | Puntos WiFi de oficina | una | 1 109,29 |
 | **PDF 002** | Puntos de red y CCTV con rack | una | 5 410,73 |
 
-Los PDF ya estaban en el repositorio desde la sesión I5 (`data/samples/telecom/`). Sus errores aritméticos ya
+Los PDF ya estaban en el repositorio desde el 2026-08-26 (`data/samples/telecom/`). Sus errores aritméticos ya
 figuran en `data/telecom/fuentes/README.md`, y el auditor ya detecta la diferencia de 80 m contra 90 m (regla R1).
+
+**PDF entregados de los libros** (también confidenciales, en la carpeta local). Hay uno por libro y tres más:
+"IR" (24 311,92, igual a C-1 y C-2: no se puede saber de cuál salió, porque sus valores son idénticos), "QA v1" (una
+versión de julio, 14 542,09) y "RC". Este último imprime **dos** presupuestos: una "Opción B" (11 730,51) y la
+"Opción definitiva" (15 451,69). Ninguno de los dos coincide con ningún Excel recibido. **Los PDF de B están cruzados
+de nombre:** el que se llama como B-1 imprime los totales de B-2 y al revés.
 
 Método: se leyeron todas las fórmulas, los nombres definidos, los estilos y los **valores guardados** de cada hoja
 (openpyxl, `data_only`). Después se comparó cada referencia con la forma real de la hoja a la que apunta. Los PDF se
@@ -54,16 +60,16 @@ cálculo y un parámetro alterado a mano.
 
 | # | Hallazgo | Dónde | ¿Cambia el total aprobado? | Causa |
 |---|---|---|---|---|
-| H1 | Los costos directos de la partida de mayor monto (alucobond, ~40 % de la obra) **omiten los equipos**: `CD = G12+G21` deja fuera `G29` (1,8257 USD/u) | C-1 y C-2, APU-07 | **Sí:** faltan 205,92 USD sin IVA (238,87 con IVA) | C3 |
-| H2 | La utilidad de esa misma partida está **escrita a mano en 2 %** (`F40 = 0,02`); las demás usan `=UTIL` (10 %). La cabecera dice "Utilidad 10%" | C-1 y C-2, APU-07 | **Sí, si no fue intencional:** 761,62 USD sin IVA | C6 |
+| H1 | Los costos directos de la partida de mayor monto (alucobond, ~40 % de la obra) **omiten los equipos**: `CD = G12+G21` deja fuera `G29` (1,8257 USD/u) | C-2 APU-07 y C-1 APU-09 | **Sí:** faltan 205,92 USD sin IVA (238,87 con IVA) | C3 |
+| H2 | La utilidad de esa misma partida está **escrita a mano en 2 %** (`F40 = 0,02`); las demás usan `=UTIL` (10 %). La cabecera dice "Utilidad 10%" | C-2 APU-07 y C-1 APU-09 | **Sí, si no fue intencional:** 761,62 USD sin IVA | C6 |
 | H3 | RESUMEN da una composición del costo de 24 495,46 y un subtotal de 24 311,92: **la hoja misma no cuadra** por 183,53 (el equipo de H1, que está en el desglose pero no en el CD) | C, RESUMEN | No (es el síntoma visible de H1) | C3 |
-| H4 | Los números de partida 6 y 7 están **duplicados**: hay filas con cantidad 0 que repiten el número. CRONOGRAMA y CONTROL DE OBRA buscan con `MATCH`, toman la primera fila y muestran la partida equivocada | C-2 | No | C2 |
-| H5 | **Enlaces parcheados a mano por fila** (*corregido el 2026-10-13, ver errata*): en lugar de la fórmula de la plantilla, cada fila de PRESUPUESTO lee su APU con una referencia directa escrita a mano (`='APU-08'!G44`), atada al nombre de la hoja. Los valores guardados **sí** coinciden con sus fórmulas. Si la fila volviera a la fórmula de la plantilla (por número de partida) o se renombraran las hojas, la partida 6 pasaría de 2 644,39 a 5 917,06 y la 7 de 9 710,63 a 0 | C-1 y C-2 | No: es un riesgo, no un error del total | C2 |
-| H6 | CRONOGRAMA lee el rendimiento siempre en `F28`, pero los APU lo tienen en F27, F32, F21 o F23. **En A todas las duraciones dan 0 ("0 semanas")**. En B, seis partidas duran 0 y otras usan el rendimiento de otra celda (25 en vez de 150; 3 en vez de 15). La curva S, el avance planificado de CONTROL DE OBRA y la holgura quedan falseados | A, B | No (el cronograma es un anexo, pero se entregó) | C1, C3 |
+| H4 | Los números de partida 6 y 7 están **duplicados**: hay filas con cantidad 0 que repiten el número (filas 19 y 22 frente a 23 y 24). En C ninguna hoja derivada busca por número, así que hoy no tiene efecto; es un riesgo para cualquier búsqueda futura | C-1 y C-2 | No | C2 |
+| H5 | **Enlaces parcheados a mano por fila** (*corregido el 2026-10-13, ver errata*): en lugar de la fórmula de la plantilla, cada fila de PRESUPUESTO lee su APU con una referencia directa escrita a mano (`='APU-08'!G44`), atada al nombre de la hoja. Los valores guardados **sí** coinciden con sus fórmulas. Si la fila volviera a la fórmula de la plantilla (por número de partida) o se renombraran las hojas, en C-1 la partida 6 pasaría de 2 644,39 a 5 917,06 y la 7 de 9 710,63 a 0 (en C-2 no cambiaría nada) | C-1 y C-2 | No: es un riesgo, no un error del total | C2 |
+| H6 | CRONOGRAMA lee el rendimiento siempre en `F28`, pero los APU lo tienen en F27, F32, F21 o F23. **En A todas las duraciones dan 0 ("0 semanas")**. En B, ocho partidas duran 0 (1-6, 15 y 16) y otras usan el rendimiento de otra celda (25 en vez de 150; 3 en vez de 15). La curva S, el avance planificado de CONTROL DE OBRA y la holgura quedan falseados | A, B | No (el cronograma es un anexo, pero se entregó) | C1, C3 |
 | H7 | PROCURA (lista de compras) **no cuadra con el presupuesto**, y sus propias filas de verificación lo muestran: −6 969,49 en materiales, −4 861,47 en MO, −246,69 en equipos y **+191 309,86 en transporte** | B-2 (y A) | No, pero la lista de compras está mal | C1, C3 |
-| H8 | AUX, que alimenta PROCURA, lee filas fijas de cada APU. Se salta líneas reales de insumos (hasta 12 en un APU), lee filas de encabezado ("Código") y toma el **flete en USD como si fueran m³ de escombro** (`G43` en vez de `G42`/`G46`). De ahí sale el +191 309,86 | A, B | No | C1, C3 |
+| H8 | AUX, que alimenta PROCURA, lee filas fijas de cada APU. Se salta líneas reales de insumos (hasta 12 en un APU), lee filas de encabezado ("Código") y toma el **flete en USD como si fueran m³ de escombro** (`G43` en vez de la celda del escombro). De ahí sale el +191 309,86: casi todo viene de APU-14 de B, donde `G43` vale 410 (el flete) y el escombro está en `G41` | A, B | No | C1, C3 |
 | H9 | La columna REND. de PRESUPUESTO muestra 25 en las partidas 15 y 16, cuyo rendimiento real es 11 y 12 (lee `F21` en vez de `F23`) | B | No (solo se muestra) | C1 |
-| H10 | `#REF!` en RESUMEN: 4 de 5 capítulos sin monto (A y B). También en CRONOGRAMA (C, 6) y en la plantilla APU-ejm (B, 3) | A, B, C | No | C4 |
+| H10 | `#REF!` en RESUMEN: 4 de 5 capítulos sin monto (A y B). También en CRONOGRAMA (C, 6, incluida la fila del alucobond) y en la plantilla APU-ejm (B, 3); CONTROL DE OBRA de C hereda 22 valores `#REF!` | A, B, C | No | C4 |
 | H11 | Los nombres `MEDP1`…`MEDP11` apuntan a **otro libro en un servidor de la red de la empresa** | A, B | No (fuera de esa red, `#REF!`) | C5 |
 | H12 | Medidas **escritas dentro de las fórmulas** (`=9.73*2.75`), un factor `0.28` sin explicación y un rendimiento fijo (`=G27/12`) en lugar de la celda de rendimiento | B (MEDICIONES), C (APU-07) | No en sí, pero no se pueden rastrear | C6 |
 | H13 | Unidad y cantidad no concuerdan: "90 **metros**" a 99,75 da 299,25. El precio es por rollo (en el PDF 001 está escrito como texto: `3*99.75`). Coherente sería 3 rollos o 8 977,50 | PDF 001 y 002 | No (el monto es el que se quiso), pero el documento se contradice | C7 |
@@ -71,6 +77,7 @@ cálculo y un parámetro alterado a mano.
 | H15 | Notas: "la mano de obra será el 50 % del presupuesto total", pero **no está en el TOTAL**. Un precio en amarillo "en veremos por los precios del señor…" se entrega como firme. Las notas de 001 están copiadas en 002 (misceláneos que 002 no tiene) | PDF 001 y 002 | **Sí: el total no incluye la mano de obra declarada** | C7 |
 | H16 | Cómputos contra presupuesto en 002: además de 80/90 m, protector 3 contra 4, cajetín 10 contra 5, dos renglones de los cómputos que no se presupuestan y seis presupuestados que no están en los cómputos | PDF 002 | Indirecto | C7 |
 | H17 | Aritmética de fila: 5 × 289,00 ≠ 1 446,65 y 7 × 42,99 ≠ 303,93 (+4,65). *Ya registrado en septiembre* | PDF 002 | Sí, +4,65 | C7 |
+| H18 | En B-2, la utilidad del APU-09 está **escrita a mano en 30 %** (`G59 = G58*0.3`); B-1 usa `=UTIL` (10 %). El PDF definitivo "RC" también imprime el 30 % | B-2, APU-09 | **Sí, si no fue intencional:** 746,98 USD sin IVA de más frente al 10 % | C6 |
 
 Cifras de H1: 1,82565 USD/u × 100,53 = 183,53 de CD. Con administración (×1,10) y utilidad de 2 % (×1,02) quedan en
 205,92, y con IVA (×1,16) en 238,87. Cifra de H2: (10 % − 2 %) × 94,7004 × 100,53 = 761,62.
@@ -81,9 +88,14 @@ supuso que todas las filas usaban la fórmula por número de partida, y en C las
 puestas a mano. Lo detectó la regla al verificarse sobre los libros. Ningún libro tiene valores guardados
 desactualizados. H5 queda corregido arriba y se informa como L2 (advertencia), no como L3.
 
+**Correcciones del verificador de hechos (2026-10-13, revisión V5).** H1 y H2 están en APU-07 de C-2 y en APU-09 de
+C-1. El efecto de H4 sobre CRONOGRAMA era falso y se quitó. En B duran 0 ocho partidas, no seis. El APU "estándar"
+de C3 es el de 59 filas. En C también hay formato condicional. Se añadió H18 (utilidad del 30 % en B-2), que el
+primer análisis no vio y que la regla L6 sí detectó.
+
 ## Causas raíz
 
-Diecisiete hallazgos salen de **siete causas**. La primera explica casi todos los del Excel.
+Dieciocho hallazgos salen de **siete causas**. La primera explica casi todos los del Excel.
 
 **C1. Referencias por posición fija dentro de texto.** PRESUPUESTO, CRONOGRAMA y AUX leen los APU con
 `INDIRECT("'APU-"&nº&"'!$G$48")`. La dirección es un *texto*, así que Excel no la corrige cuando se insertan o borran
@@ -98,7 +110,7 @@ o reordenar los APU (C-1) o al reutilizar un número de partida (H4), el parche 
 avisa.
 
 **C3. Hojas derivadas escritas para una sola forma de APU.** CRONOGRAMA, AUX y PROCURA suponen el APU "estándar" de
-58 filas: rendimiento en F28, insumos en filas 10-17/22-25/33-36, escombro en G43. Ninguna se rehízo cuando
+59 filas (APU-ejm): rendimiento en F28, insumos en filas 10-17/22-25/33-36, escombro en G43. Ninguna se rehízo cuando
 aparecieron APU de otras formas. H1 es la misma causa dentro de un APU: se copió un bloque de equipos y la fórmula
 del CD no se amplió para incluirlo.
 
@@ -109,7 +121,7 @@ las fórmulas que los citaban quedan en `#REF!` y nadie lo nota porque el total 
 vínculo al libro de origen (H11).
 
 **C6. Datos y decisiones metidos en fórmulas.** Medidas, factores, rendimientos y un parámetro global (la utilidad)
-quedan escritos dentro de fórmulas sueltas, sin fuente ni marca de "valor manual" (H2, H12). La convención "ámbar =
+quedan escritos dentro de fórmulas sueltas, sin fuente ni marca de "valor manual" (H2, H12, H18). La convención "ámbar =
 editable" existe, pero nada impide editar otra celda.
 
 **C7. Documento sin modelo detrás (PDF).** Los PDF son tablas escritas a mano: no hay relación entre cómputos y
@@ -118,7 +130,7 @@ entregados como firmes y notas que contradicen el total (H13-H17).
 
 **Por qué nadie lo vio.** Los controles que tienen los libros no pueden detectar estas causas. La columna VERIF.
 comprueba que `P.U. = subtotal + utilidad` *de la misma fila*, así que da 0 aunque la fila lea otro APU. Las filas
-"Dif. vs presupuesto" de PROCURA y la composición de RESUMEN **sí muestran el error** (H3, H7), pero solo PLAN DE
+"Dif. vs presupuesto" de PROCURA y la composición de RESUMEN **sí muestran el error** (H3, H7), pero en A y B solo PLAN DE
 PAGOS tiene formato condicional: nada se pinta, nada bloquea y nada se informa.
 
 ## Qué significa para Silice

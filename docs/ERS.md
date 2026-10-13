@@ -1361,6 +1361,57 @@ con la matriz de [docs/tesis/esqueleto_tesis.md](tesis/esqueleto_tesis.md).
 
 ---
 
+## Enmienda Sílice 1.5 (2026-10-13): libros de presupuesto de la empresa
+
+Aprobada por Eugenio el 2026-10-13 ([spec 1.5](especificaciones/2026-10-13-silice-1.5-fusion-design.md),
+[plan](../PLAN_SILICE_150.md), [bitácora](bitacora/2026-10-13-silice-150.md)). Enmienda **RF‑88/UC‑05**: además
+del formato neutro, Sílice lee el libro de la empresa tal como es.
+
+#### UC‑25 — Auditar y devolver el libro de presupuesto de la empresa
+
+- **Actor principal:** quien arma o quien revisa (acción `LEER_PROYECTO`). **Secundario:** el administrador que
+  importó las tasas del BCV y la lista de precios de la empresa.
+- **Precondiciones:** un libro `.xlsx` de la empresa con la plantilla de su perfil (`adapters/hoja_empresa/perfiles/`);
+  opcionalmente el PDF que se entregó y una versión anterior del libro.
+- **Flujo principal**
+  1. El usuario sube el libro en «Libro de la empresa» (o lo envía a `POST /v1/libros/auditoria`).
+  2. Sílice comprueba el archivo (tamaño, ZIP, macros, celdas) y lo lee por rótulos y nombres definidos.
+  3. Recalcula cada APU con el motor del núcleo, sin cambiarlo, y compara el P.U. con el escrito (F1).
+  4. Aplica las reglas del libro L1‑L9, las del núcleo R1‑R7, y L10 o L11 si hay PDF.
+  5. Muestra el resumen (total del libro frente al de Sílice), los hallazgos sobre la vista calcada, las alertas de
+     precio en USD y Bs y la trazabilidad.
+  6. El usuario descarga el libro devuelto: mismo aspecto, APU de forma uniforme, valores de Sílice, y las hojas
+     AUDITORÍA, TRAZABILIDAD y ALERTAS USD‑Bs.
+- **Flujos alternativos**
+  - *2a. Archivo rechazado* (macros, extensión, tamaño, combinadas o dimensiones desmedidas): mensaje claro; no se
+    lee nada.
+  - *2b. Libro que no se puede interpretar* (sin PRESUPUESTO, FCAS menor que 1): mensaje claro.
+  - *1a. Solo un PDF simple* (sin Excel): Sílice aplica L10 y muestra los hallazgos, sin devolución.
+  - *5a. La instalación no tiene la tasa del BCV de la fecha:* las alertas en Bs dicen «no contrastable».
+- **Postcondiciones:** nada se guarda en la base ni en disco (F‑D9); el libro devuelto lleva el SHA‑256 del
+  recibido.
+
+| RF | Requisito | Fuente |
+|---|---|---|
+| RF‑101 | Leer el libro de la empresa por rótulos y nombres definidos, con la celda de origen de todo dato | F‑D3, F‑D6 |
+| RF‑102 | Rechazar archivos peligrosos o desmedidos antes de leerlos | F‑D10 |
+| RF‑103 | Recalcular cada APU con el motor del núcleo sin cambiarlo e informar F1 | F‑D1, §3 |
+| RF‑104 | Reglas del libro L1‑L9 | §3 |
+| RF‑105 | Reglas de PDF: L10 (PDF simple) y L11 (libro frente al PDF entregado) | §3 |
+| RF‑106 | Alertas de precio en USD y Bs, con tasa BCV de la instalación y umbral configurable | §4, F‑D8 |
+| RF‑107 | Libro calcado: mismo aspecto, APU uniformes, nombres definidos, sin `INDIRECT` ni `#REF!`, valores de Sílice | F‑D4, F‑D5 |
+| RF‑108 | Hojas AUDITORÍA (hallazgos, reglas evaluadas y no evaluadas, cambios del calcado), TRAZABILIDAD y ALERTAS | §1, F‑D7 |
+| RF‑109 | Página «Libro de la empresa» y rutas `/v1/libros` (auditoría, devolución, PDF) con clave de API | §5 |
+| RF‑110 | Ningún libro real-confidencial se versiona; anonimizador para derivar casos | V‑D3, NORMAS §1 |
+
+| RNF | Requisito |
+|---|---|
+| RNF‑21 | Límites de recursos al leer libros y PDF ajenos: tamaño, entradas, celdas combinadas, dimensión, presupuesto de celdas y de tiempo del evaluador, páginas del PDF (revisión de seguridad V5) |
+
+Trazabilidad: UC‑25 → RF‑101 … RF‑110, RNF‑21 → Sílice 1.5 (sesiones V1‑V5) → indicadores 1 (errores
+detectados) y del administrador (horizonte §6.1). Pruebas: en la auditoría final (regla del 2026-10-12); la
+aceptación local es `scripts/fusion_verificar.py`.
+
 ## Apéndices
 - A. Caso de estudio y línea base: [docs/linea_base.md](linea_base.md).
 - B. Modelo de datos: [docs/modelo_datos.md](modelo_datos.md).

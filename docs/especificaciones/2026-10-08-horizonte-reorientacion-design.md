@@ -238,3 +238,7 @@ bloque y de fibrocemento, frisos, revestimientos, pintura, carpintería y recubr
 datos y CCTV. **Siguen fuera:** el cálculo estructural, el dimensionamiento de instalaciones y los planos escaneados.
 **Datos:** la frase «los datos siguen siendo ficticios» queda sustituida por las tres clases de caso de NORMAS §1
 (enmienda 1.5). El texto original de arriba se conserva como registro de lo aprobado el 2026-10-08.
+
+**Pendiente del visto bueno del tutor** (este documento lo exige para cambiar el alcance). Pregunta para la
+entrevista: ¿acepta ampliar el alcance a la rehabilitación de edificaciones con los presupuestos reales de la
+empresa, auditados y devueltos por Silice 1.5?
