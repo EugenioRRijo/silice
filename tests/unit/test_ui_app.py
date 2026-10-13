@@ -24,6 +24,7 @@ from ui.app import (
     PAGINA_INICIO,
     PAGINAS,
     ROTULO_SIGUIENTE,
+    SECCION_ADMINISTRACION,
     SECCION_INVESTIGACION,
     SECCION_REVISION,
     SECCION_TRABAJO,
@@ -53,10 +54,12 @@ TITULOS_TRABAJO = (
     "Control de obra",
     "Acerca de Sílice",
     "Entregar paquete",
-    "Administración",
 )
 
 TITULOS_REVISION = ("Revisar un paquete", "Libro de la empresa")
+
+#: RF-42 (S3 §5.7): Administración es la cuarta sección, no una pantalla de Trabajo.
+TITULOS_ADMINISTRACION = ("Administración",)
 
 TITULOS_INVESTIGACION = (
     "Escenarios de sensibilidad",
@@ -89,17 +92,20 @@ def _titulos(paginas) -> tuple[str, ...]:
 # --- secciones y orden (RF-42, RF-43) ---------------------------------------------------------
 
 
-def test_sin_modo_entrega_tres_secciones_en_el_orden_del_trabajo() -> None:
+def test_sin_modo_entrega_cuatro_secciones_en_el_orden_del_trabajo() -> None:
+    """RF-42 enmendado por S3 §5.7: Trabajo, Revisión, Investigación y Administración."""
     secciones = secciones_visibles(False)
-    assert tuple(secciones) == (SECCION_TRABAJO, SECCION_REVISION, SECCION_INVESTIGACION)
+    assert tuple(secciones) == (
+        SECCION_TRABAJO, SECCION_REVISION, SECCION_INVESTIGACION, SECCION_ADMINISTRACION)
     assert _titulos(secciones[SECCION_TRABAJO]) == TITULOS_TRABAJO
     assert _titulos(secciones[SECCION_REVISION]) == TITULOS_REVISION
     assert _titulos(secciones[SECCION_INVESTIGACION]) == TITULOS_INVESTIGACION
+    assert _titulos(secciones[SECCION_ADMINISTRACION]) == TITULOS_ADMINISTRACION
 
 
 def test_modo_entrega_omite_investigacion_y_conserva_todo_trabajo() -> None:
     secciones = secciones_visibles(True)
-    assert tuple(secciones) == (SECCION_TRABAJO, SECCION_REVISION)
+    assert tuple(secciones) == (SECCION_TRABAJO, SECCION_REVISION, SECCION_ADMINISTRACION)
     assert secciones[SECCION_TRABAJO] == secciones_visibles(False)[SECCION_TRABAJO]
 
 
@@ -144,7 +150,10 @@ def test_la_ruta_vacia_de_la_pagina_por_defecto_es_el_inicio() -> None:
 def test_cada_pagina_tiene_una_ruta_url_propia() -> None:
     rutas = [pagina.ruta_url for pagina in paginas_visibles(False)]
     assert len(set(rutas)) == len(rutas) == (
-        len(TITULOS_TRABAJO) + len(TITULOS_REVISION) + len(TITULOS_INVESTIGACION)
+        len(TITULOS_TRABAJO)
+        + len(TITULOS_REVISION)
+        + len(TITULOS_INVESTIGACION)
+        + len(TITULOS_ADMINISTRACION)
     )
     assert "componer" in rutas
 
@@ -349,7 +358,8 @@ def test_la_aplicacion_declara_la_navegacion_arriba_con_los_dos_grupos(
     assert len(llamadas) == 1
     paginas, kwargs = llamadas[0]
     assert kwargs.get("position") == "top"
-    assert list(paginas) == [SECCION_TRABAJO, SECCION_REVISION, SECCION_INVESTIGACION]
+    assert list(paginas) == [
+        SECCION_TRABAJO, SECCION_REVISION, SECCION_INVESTIGACION, SECCION_ADMINISTRACION]
 
 
 def test_modo_entrega_declara_solo_el_grupo_trabajo_en_la_navegacion_superior(
@@ -369,7 +379,7 @@ def test_modo_entrega_declara_solo_el_grupo_trabajo_en_la_navegacion_superior(
     _aplicacion(monkeypatch, tmp_path)
     paginas, kwargs = llamadas[0]
     assert kwargs.get("position") == "top"
-    assert list(paginas) == [SECCION_TRABAJO, SECCION_REVISION]
+    assert list(paginas) == [SECCION_TRABAJO, SECCION_REVISION, SECCION_ADMINISTRACION]
 
 
 def test_son_veintiuna_pantallas_y_la_hoja_va_justo_despues_de_elaborar() -> None:
@@ -441,4 +451,4 @@ def test_el_modo_entrega_mantiene_importar_plano_y_guardar_y_oculta_investigacio
     assert "Importar plano" in rotulos
     assert "Guardar version" in rotulos
     # ninguna seccion de Investigacion
-    assert list(llamadas[0]) == [SECCION_TRABAJO, SECCION_REVISION]
+    assert list(llamadas[0]) == [SECCION_TRABAJO, SECCION_REVISION, SECCION_ADMINISTRACION]
