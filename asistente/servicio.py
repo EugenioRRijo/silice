@@ -8,9 +8,11 @@ prellena («propuesta de IA, sesion N, proveedor/modelo»); el responsable es si
 
 from __future__ import annotations
 
+import copy
 from collections import Counter
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from decimal import Decimal
+from typing import Any
 
 from asistente.catalogo import CatalogoVista
 from asistente.orquestador import ResultadoSesion, Servicios, Topes, continuar, ejecutar
@@ -72,14 +74,51 @@ def proponer(
     )
 
 
-def responder(sesion: SesionDeAsistente, respuesta: str | None) -> None:
+_IGUAL: Any = object()  # «no cambiar el registro»: distinto de `None` (sin registro)
+
+
+def _instantanea(continuacion: Any) -> dict[str, Any]:
+    """Copia lo mutable del estado pausado del orquestador, para poder devolverlo si falla."""
+    copia: dict[str, Any] = {}
+    for nombre, valor in vars(continuacion).items():
+        if isinstance(valor, list | Counter | dict):
+            valor = copy.copy(valor)
+        elif isinstance(valor, Pendientes):
+            valor = Pendientes(list(valor.propuestas))
+        elif nombre == "partidas_vistas":
+            valor = copy.deepcopy(valor)
+        copia[nombre] = valor
+    return copia
+
+
+def responder(
+    sesion: SesionDeAsistente, respuesta: str | None, registro: RegistroIA | None = _IGUAL
+) -> None:
     """La respuesta de la persona a la pregunta del modelo (9g); `None` cancela la sesion (9h).
 
     Reanuda el bucle: las propuestas nuevas llegan como pendientes. No se puede decidir una
     propuesta mientras haya una pregunta sin responder.
+
+    `registro` es el de la conexion VIGENTE (la de la ejecucion ya se cerro): la pantalla abre una
+    por respuesta. Si el bucle falla (por ejemplo, la base), la sesion vuelve a esperar la misma
+    pregunta y el error sube; el llamador deshace su transaccion.
     """
-    sesion.resultado = continuar(sesion.resultado, respuesta)
-    sesion.pendientes = Pendientes(list(sesion.resultado.propuestas))
+    continuacion = sesion.resultado.continuacion
+    if continuacion is None:
+        raise ValueError("la sesion no esta esperando una respuesta")
+    previo, servicios_previos = _instantanea(continuacion), sesion.servicios
+    if registro is not _IGUAL:
+        continuacion.servicios = replace(continuacion.servicios, registro=registro)
+        sesion.servicios = replace(sesion.servicios, registro=registro)
+    try:
+        resultado = continuar(sesion.resultado, respuesta)
+    except Exception:
+        vars(continuacion).clear()
+        vars(continuacion).update(previo)
+        sesion.servicios = servicios_previos
+        raise
+    sesion.resultado = resultado
+    sesion.pendientes = Pendientes(list(resultado.propuestas))
 
 
 def borrador_resultante(sesion: SesionDeAsistente) -> Borrador:
@@ -122,9 +161,9 @@ def decidir(
             raise DependenciaPendiente(
                 f"{propuesta_id} depende de una propuesta que aun no acepto: {error}"
             ) from error
-    sesion.pendientes.marcar(propuesta_id, estado)
-    if registro is not None:
+    if registro is not None:  # primero el registro: si la base falla, nada queda decidido
         registro.decidir(sesion.resultado.sesion, propuesta_id, estado.value, usuario)
+    sesion.pendientes.marcar(propuesta_id, estado)
 
 
 def fuente_del_cambio(sesion: SesionDeAsistente) -> str:

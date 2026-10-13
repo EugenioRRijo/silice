@@ -111,6 +111,8 @@ CLAVE_ASISTENTE_PROVEEDOR = "hoja_asistente_proveedor"
 CLAVE_ASISTENTE_AVISO = "hoja_asistente_aviso"  # (tipo, texto) del ultimo intento
 CLAVE_ASISTENTE_RESPUESTA = "hoja_asistente_respuesta"  # la respuesta a una pregunta de la IA
 CLAVE_ASISTENTE_RESUMEN = "hoja_asistente_resumen"  # (estados, resumen) del resultado hipotetico
+CLAVE_ASISTENTE_APLICADO = "hoja_asistente_aplicado"  # el borrador que dejo la ultima decision
+CLAVE_ASISTENTE_CONFIRMAR = "hoja_asistente_confirmar"  # (id, estado) a la espera de confirmar
 
 # Claves de widgets (los selectores llevan ademas el numero de `CLAVE_SELECTORES`).
 CLAVE_PESTANA = "hoja_pestana"
@@ -264,6 +266,7 @@ def _abrir(proyecto: str | None, codigo: str | None) -> None:
     """Abre la version elegida (o un borrador nuevo) y renueva la siembra de los editores."""
     if proyecto is None or codigo is None:
         # Sin proyecto, o un proyecto nuevo que todavia no tiene version: borrador en blanco.
+        _descartar_asistente()  # la sesion del asistente es de la version que se deja
         st.session_state[CLAVE_ABIERTA] = None
         st.session_state[CLAVE_ABIERTA_EN] = (str(ruta_caso()), proyecto, None)
         st.session_state[CLAVE_BORRADOR] = hoja.Borrador(fecha=date.today())
@@ -284,6 +287,7 @@ def _abrir(proyecto: str | None, codigo: str | None) -> None:
         except SQLAlchemyError as error:
             st.error(_error_de_base(error))
             return
+        _descartar_asistente()  # la sesion del asistente es de la version que se deja
         st.session_state[CLAVE_ABIERTA] = abierta
         st.session_state[CLAVE_ABIERTA_EN] = (str(ruta_caso()), proyecto, codigo)
         st.session_state[CLAVE_BORRADOR] = abierta.borrador
@@ -711,12 +715,20 @@ def _proponer_con_asistente() -> None:
     except SQLAlchemyError as error:
         _aviso_del_asistente("error", _error_de_base(error))
         return
+    _descartar_asistente()  # nada de la sesion anterior (resumen, confirmaciones) sobrevive
     st.session_state[CLAVE_ASISTENTE] = propuesto
     _aviso_del_asistente("info", propuesto.resultado.mensaje)
 
 
-def _decidir_propuesta(propuesta_id: str, estado: EstadoPropuesta) -> None:
-    """Callback de Aceptar, Aceptar y editar o Rechazar de UNA propuesta."""
+def _decidir_propuesta(
+    propuesta_id: str, estado: EstadoPropuesta, confirmado: bool = False
+) -> None:
+    """Callback de Aceptar, Aceptar y editar o Rechazar de UNA propuesta.
+
+    Aceptar reconstruye el borrador desde la base de la sesion mas lo aceptado. Si la persona
+    edito la hoja a mano despues de la ultima decision, eso se perderia: se avisa y se pide
+    confirmar («Aplicar de todos modos»). Rechazar no toca el borrador.
+    """
     propuesto = st.session_state.get(CLAVE_ASISTENTE)
     if propuesto is None:
         return
@@ -724,49 +736,92 @@ def _decidir_propuesta(propuesta_id: str, estado: EstadoPropuesta) -> None:
     if not usuario:
         _aviso_del_asistente("error", ui_sesion.MENSAJE_SIN_ENTRAR)
         return
+    st.session_state.pop(CLAVE_ASISTENTE_CONFIRMAR, None)
+    cambia_el_borrador = estado is not EstadoPropuesta.RECHAZADA
+    aplicado = st.session_state.get(CLAVE_ASISTENTE_APLICADO, propuesto.base)
+    if cambia_el_borrador and not confirmado and _borrador() != aplicado:
+        st.session_state[CLAVE_ASISTENTE_CONFIRMAR] = (propuesta_id, estado)
+        _aviso_del_asistente(
+            "warning",
+            "Usted edito la hoja despues de la ultima decision del asistente. Aceptar "
+            "reconstruye el borrador desde el que tenia la sesion al empezar: esas ediciones se "
+            "perderian. Confirme abajo o guarde antes sus cambios.",
+        )
+        return
+    antes = list(propuesto.pendientes.propuestas)
     try:
         with _sesion() as sesion:
             registro = RegistroIA(sesion.connection()) if sesion is not None else None
-            ia_servicio.decidir(propuesto, propuesta_id, estado, usuario, registro)
+            try:
+                ia_servicio.decidir(propuesto, propuesta_id, estado, usuario, registro)
+            except KeyError:
+                _aviso_del_asistente(
+                    "warning", f"{propuesta_id} ya no esta pendiente: ya se decidio."
+                )
+                return
+            nuevo = ia_servicio.borrador_resultante(propuesto)
             if sesion is not None:
                 sesion.commit()
-        nuevo = ia_servicio.borrador_resultante(propuesto)
     except ia_servicio.DependenciaPendiente as error:
         _aviso_del_asistente("warning", str(error))
         return
-    except KeyError:
-        _aviso_del_asistente("warning", f"{propuesta_id} ya no esta pendiente: ya se decidio.")
-        return
     except hoja.HojaInvalida as error:
+        propuesto.pendientes.propuestas[:] = antes
         _aviso_del_asistente("error", f"No se pudo aplicar {propuesta_id}: {error}")
         return
     except SQLAlchemyError as error:
+        propuesto.pendientes.propuestas[:] = antes  # la base no registro la decision
         _aviso_del_asistente("error", _error_de_base(error))
         return
-    _poner_borrador(nuevo, resembrar=True)
-    if estado is not EstadoPropuesta.RECHAZADA and not st.session_state.get(CLAVE_FUENTE):
-        st.session_state[CLAVE_FUENTE] = ia_servicio.fuente_del_cambio(propuesto)
+    if cambia_el_borrador:
+        _poner_borrador(nuevo, resembrar=True)
+        st.session_state[CLAVE_ASISTENTE_APLICADO] = st.session_state[CLAVE_BORRADOR]
+        if not st.session_state.get(CLAVE_FUENTE):
+            st.session_state[CLAVE_FUENTE] = ia_servicio.fuente_del_cambio(propuesto)
     _aviso_del_asistente("success", f"{propuesta_id}: {estado.value}.")
+
+
+def _no_aplicar_decision() -> None:
+    st.session_state.pop(CLAVE_ASISTENTE_CONFIRMAR, None)
+    st.session_state.pop(CLAVE_ASISTENTE_AVISO, None)
 
 
 def _responder_al_asistente(cancelar: bool = False) -> None:
     """Callback de «Responder» (o «Cancelar»): reanuda la sesion pausada por una pregunta (9g).
 
     La respuesta sale del estado de la pantalla en el acto: si lleva una clave, nunca se queda.
+    La reanudacion escribe en el registro por una conexion nueva (la de la ejecucion se cerro).
     """
     propuesto = st.session_state.get(CLAVE_ASISTENTE)
     texto = st.session_state.pop(CLAVE_ASISTENTE_RESPUESTA, "")
     if propuesto is None or propuesto.resultado.pregunta is None:
         return
-    ia_servicio.responder(propuesto, None if cancelar else texto)
+    try:
+        with _sesion() as sesion:
+            registro = RegistroIA(sesion.connection()) if sesion is not None else None
+            ia_servicio.responder(propuesto, None if cancelar else texto, registro)
+            if sesion is not None:
+                sesion.commit()
+    except SQLAlchemyError as error:
+        # `responder` ya devolvio la sesion a la misma pregunta: se puede volver a contestar
+        _aviso_del_asistente(
+            "error", _error_de_base(error) + " La pregunta sigue esperando: vuelva a responder."
+        )
+        return
+    st.session_state.pop(CLAVE_ASISTENTE_RESUMEN, None)
     _aviso_del_asistente("info", propuesto.resultado.mensaje)
 
 
 def _descartar_asistente() -> None:
     """Descarta la sesion: lo aceptado se queda en el borrador; lo pendiente no entra."""
-    st.session_state.pop(CLAVE_ASISTENTE, None)
-    st.session_state.pop(CLAVE_ASISTENTE_AVISO, None)
-    st.session_state.pop(CLAVE_ASISTENTE_RESUMEN, None)
+    for clave in (
+        CLAVE_ASISTENTE,
+        CLAVE_ASISTENTE_AVISO,
+        CLAVE_ASISTENTE_RESUMEN,
+        CLAVE_ASISTENTE_APLICADO,
+        CLAVE_ASISTENTE_CONFIRMAR,
+    ):
+        st.session_state.pop(clave, None)
 
 
 def _cerrar_asistente_al_guardar(codigo_version: str) -> None:
@@ -793,7 +848,7 @@ def _cerrar_asistente_al_guardar(codigo_version: str) -> None:
 def _pintar_pregunta(propuesto: Any) -> None:
     """La pregunta del modelo, rotulada como tal y escapada: es texto ajeno (RV-14, §8.7)."""
     st.warning(
-        "Pregunta generada por la IA: no escriba contrasenas, claves ni precios.\n\n"
+        "Pregunta generada por la IA: no escriba contraseñas, claves ni precios.\n\n"
         + texto_seguro(propuesto.resultado.pregunta)
     )
     st.text_input("Su respuesta", key=CLAVE_ASISTENTE_RESPUESTA)
@@ -822,6 +877,18 @@ def _pintar_propuestas(propuesto: Any) -> None:
     if propuesto.resultado.pregunta is not None:
         _pintar_pregunta(propuesto)
         return
+    pendiente = st.session_state.get(CLAVE_ASISTENTE_CONFIRMAR)
+    if pendiente is not None:
+        aplicar, no_aplicar = st.columns(2)
+        aplicar.button(
+            "Aplicar de todos modos",
+            key="hoja_asistente_forzar",
+            on_click=_decidir_propuesta,
+            args=(pendiente[0], pendiente[1], True),
+        )
+        no_aplicar.button(
+            "No aplicar", key="hoja_asistente_no_forzar", on_click=_no_aplicar_decision
+        )
     for propuesta in propuesto.pendientes.propuestas:
         texto, estado, botones = st.columns([6, 2, 3])
         texto.markdown(texto_seguro(ia_servicio.descripcion(propuesta)))
@@ -875,11 +942,11 @@ def _panel_asistente() -> None:
     ):
         disponibles = {n: o[0] for n, o in ofertas.items() if o[0] is not None}
         if not disponibles:
-            st.caption(" ".join(sorted({o[1] for o in ofertas.values() if o[1]})))
+            st.caption(texto_seguro(" ".join(sorted({o[1] for o in ofertas.values() if o[1]}))))
             return
         for nombre, (proveedor, motivo) in ofertas.items():
             if proveedor is None:
-                st.caption(f"{nombre}: {motivo}")
+                st.caption(texto_seguro(f"{nombre}: {motivo}"))
         nombre = st.selectbox("Proveedor", sorted(disponibles), key=CLAVE_ASISTENTE_PROVEEDOR)
         proveedor = disponibles[nombre]
         pedido = st.text_area("Que necesita armar (en sus palabras)", key=CLAVE_ASISTENTE_PEDIDO)
