@@ -73,6 +73,7 @@ PAGINAS_QUE_ABREN_EL_CASO = (
     "historico",
     "hoja",
     "indices",
+    "libros",
     "precios_empresa",
     "reajuste",
     "revisar",
