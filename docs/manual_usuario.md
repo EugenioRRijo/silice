@@ -767,14 +767,16 @@ Si el modelo necesita un dato que no está en su pedido, **pregunta**. La pregun
 
 **Guardar.** Se guarda como siempre (sección 3.8): el panel prellena la fuente del cambio con
 «propuesta de IA, sesión N» y el proveedor y el modelo; el **responsable** es siempre una persona.
-En la columna **Estado** y en el registro de cambios, lo que vino de la IA se reconoce por su
-origen «ia:». Cuando entregue el paquete (pantalla **Entregar paquete**), la versión trae el
-anexo `anexos/ia.json` con el pedido, las llamadas del asistente con su validación, las citas
-y quién decidió cada propuesta. El anexo no trae uso de fichas, costo ni claves.
+En la columna **Estado** de las **partidas** que propuso la IA se lee «… | Propuesta de IA (sesion
+N)». Cuando entregue el paquete (pantalla **Entregar paquete**), la versión trae el anexo
+`anexos/ia.json` con el pedido, las llamadas del asistente con su validación, las citas y quién
+decidió cada propuesta. El anexo no trae uso de fichas, costo ni claves.
 
 **Costo y tope.** La estimación que ve antes de enviar es una cota por tarea. Cada sesión tiene un
-**tope de costo** (2 USD de fábrica, lo fija el administrador): si se alcanza, la sesión se detiene
-y se conservan las propuestas válidas hasta ese punto. El modo local no tiene costo en dinero.
+**tope de costo** que fija el administrador (2 USD de fábrica) y que el panel muestra junto a la
+estimación. El turno que alcanza el tope se completa, así que una sesión **puede excederlo por un
+turno**; después se detiene y se conservan las propuestas válidas hasta ese punto. El modo local no
+tiene costo en dinero.
 
 **Modo local.** Si el administrador configuró **Ollama**, el pedido se procesa en este mismo equipo
 y no sale nada. Es una opción **para pruebas**: la calidad de su respuesta en español todavía no
@@ -783,10 +785,11 @@ servicio en la nube y lo avisa antes de enviar.
 
 **Si no hay conexión.** El panel muestra que el proveedor no respondió, la hoja queda como estaba.
 Puede seguir trabajando a mano en las tablas, reintentar con **Proponer** cuando vuelva la
-conexión, o elegir otro proveedor si hay uno disponible. Si el mensaje habla de la clave, avise al administrador: la clave de IA se corrige en **Administración**.
+conexión, o elegir otro proveedor si hay uno disponible. Si el mensaje habla de la clave, avise
+al administrador: la clave de IA se corrige en **Administración**.
 
-**Quién lo configura: pestaña «Asistente de IA» de Administración.** Solo el administrador de la
-instalación ve esta pestaña con sus controles; las demás cuentas solo ven un aviso.
+**Quién lo configura: pestaña «Asistente de IA» de Administración.** Es una pestaña solo del
+administrador de la instalación.
 
 - **Activar el asistente de IA (viene apagado)**, **Proveedor por defecto** (Claude, en la nube, o
   Ollama, local), **Modelo de Claude**, **Modelo local (Ollama)**, **Dirección de Ollama** y
@@ -799,18 +802,20 @@ instalación ve esta pestaña con sus controles; las demás cuentas solo ven un 
   Administrador de credenciales de **este usuario de Windows**; la pantalla solo muestra sus
   últimos cuatro caracteres, y **no viaja en los respaldos**. **Olvidar la clave** la borra del
   equipo. Si el almacén de credenciales no está disponible, puede indicar una contraseña para un
-  respaldo cifrado.
+  respaldo cifrado. **Advertencia:** hoy no hay pantalla para reactivar la clave desde ese respaldo
+  (tras reiniciar sin almacén, la hoja se queda sin Claude hasta que se decida dónde pedir la
+  contraseña; véase el manual técnico, sección 17).
 - Hace falta el componente opcional del asistente: si la pestaña dice que falta, ejecute
   `uv sync --extra ia` y vuelva a abrir Sílice.
 
 **Qué hace el proveedor con lo que se le envía (retención y uso de datos).** Este punto **no está
 verificado**. Al 2026‑10‑12 (fecha de la verificación de datos externos del asistente,
-[asistente_verificacion.md](fuentes/asistente_verificacion.md)) no se pudo comprobar la política
-vigente de retención y de uso de datos del proveedor de la nube, y este manual no la inventa. Antes
-de activar el modo en la nube, el administrador debe leer la política vigente del proveedor en su
-sitio oficial y decidir si el pedido y el resumen del borrador pueden salir del equipo. Si no
-pueden, deje el asistente apagado o use solo el modo local. Cuando se verifique, se anotará aquí
-con su fecha.
+[asistente_verificacion.md](fuentes/asistente_verificacion.md)) la política vigente de retención y
+de uso de datos del proveedor de la nube **no se comprobó (pendiente)**, y este manual no la
+inventa. Antes de activar el modo en la nube, el administrador debe leer la política vigente del
+proveedor en su sitio oficial y decidir si el pedido y el resumen del borrador pueden salir del
+equipo. Si no pueden, deje el asistente apagado o use solo el modo local. Cuando se verifique, se
+anotará aquí con su fecha.
 
 ## 4. El informe de auditoría
 

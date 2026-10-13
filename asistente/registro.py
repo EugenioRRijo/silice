@@ -219,7 +219,18 @@ class RegistroIA:
             .values(fin=self._ahora(), motivo_fin=motivo)
         )
 
-    def marcar_guardada(self, sesion: int, codigo_version: str) -> None:
+    def marcar_guardada(
+        self, sesion: int, codigo_version: str, *, proyecto: str | None = None
+    ) -> None:
+        """Anota la version en que entro la sesion. Si la sesion se hizo en un borrador sin
+        proyecto (`proyecto` vacio) y `proyecto` viene dado, la sesion pasa a ese proyecto: sin
+        eso `anexo_ia`, que filtra por proyecto, no la encontraria."""
+        if proyecto:
+            self._con.execute(
+                update(ia_sesiones)
+                .where(ia_sesiones.c.id == sesion, ia_sesiones.c.proyecto == "")
+                .values(proyecto=proyecto)
+            )
         self._con.execute(
             update(ia_sesiones)
             .where(ia_sesiones.c.id == sesion)

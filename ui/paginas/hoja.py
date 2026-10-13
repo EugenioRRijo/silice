@@ -447,7 +447,7 @@ def _guardar() -> None:
         "success",
         f"Se guardo la version {guardada.codigo} con {guardada.cambios} cambios registrados.",
     )
-    _cerrar_asistente_al_guardar(guardada.codigo)
+    _cerrar_asistente_al_guardar(guardada.codigo, abierta.proyecto)
     _abrir(abierta.proyecto, guardada.codigo)
     st.session_state[CLAVE_FUENTE] = ""
 
@@ -488,7 +488,7 @@ def _guardar_primera(borrador: hoja.Borrador) -> None:
         f"(total {formatear_decimal(guardada.total, 2)}). Quedo registrada su creacion, con su "
         "fuente y su responsable.",
     )
-    _cerrar_asistente_al_guardar(guardada.codigo)
+    _cerrar_asistente_al_guardar(guardada.codigo, proyecto)
     _abrir(proyecto, guardada.codigo)
     st.session_state[CLAVE_FUENTE] = ""
 
@@ -630,6 +630,14 @@ def _prefijos_de_maprex() -> tuple[str, ...]:
     return prefijos_de_maprex()
 
 
+def _topes_del_asistente() -> Topes:
+    """Los topes de una sesion, con el de costo que fijo el administrador (RF-94); los tests lo
+    reemplazan."""
+    from asistente.instalacion import topes_de_la_instalacion
+
+    return topes_de_la_instalacion()
+
+
 def _tarifa_del_asistente(proveedor: Any) -> Any:
     """La tarifa del modelo del proveedor (cero si es local), o `None` si no tiene tarifa."""
     try:
@@ -708,7 +716,7 @@ def _proponer_con_asistente() -> None:
                 st.session_state.get(CLAVE_ASISTENTE_PEDIDO, ""),
                 borrador,
                 servicios,
-                Topes(),
+                _topes_del_asistente(),
             )
             if sesion is not None:
                 sesion.commit()
@@ -824,8 +832,9 @@ def _descartar_asistente() -> None:
         st.session_state.pop(clave, None)
 
 
-def _cerrar_asistente_al_guardar(codigo_version: str) -> None:
-    """Tras guardar: la sesion queda marcada con la version en que entro (anexo `ia.json`)."""
+def _cerrar_asistente_al_guardar(codigo_version: str, proyecto: str) -> None:
+    """Tras guardar: la sesion queda marcada con la version en que entro y con su proyecto, por si
+    se hizo en un borrador sin proyecto (anexo `ia.json`)."""
     propuesto = st.session_state.get(CLAVE_ASISTENTE)
     if propuesto is None or not propuesto.pendientes.aceptadas():
         return
@@ -833,7 +842,7 @@ def _cerrar_asistente_al_guardar(codigo_version: str) -> None:
         with _sesion() as sesion:
             if sesion is not None:
                 RegistroIA(sesion.connection()).marcar_guardada(
-                    propuesto.resultado.sesion, codigo_version
+                    propuesto.resultado.sesion, codigo_version, proyecto=proyecto
                 )
                 sesion.commit()
     except SQLAlchemyError as error:
@@ -958,9 +967,11 @@ def _panel_asistente() -> None:
             st.caption(f"No hay tarifa para el modelo {proveedor.modelo}: no se puede estimar.")
         else:
             estimado = ia_servicio.estimar_costo(tarifa)
+            tope = _topes_del_asistente().costo
             st.caption(
                 f"Destino: {vista['destino']}. Estimacion de costo por tarea (cota): "
-                f"{estimado:.2f} USD. "
+                f"{estimado:.2f} USD. Tope por sesion (lo fija el administrador): "
+                f"{'sin tope' if tope is None else f'{tope:.2f} USD'}. "
                 "El pedido viaja tal como lo escribe: no escriba datos personales."
             )
         with st.expander("Lo que se enviara"):

@@ -11,6 +11,7 @@ import json
 import logging
 from collections.abc import Callable
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from asistente.clave import (
     ClaveDeIA,
@@ -22,6 +23,9 @@ from asistente.clave import (
 from asistente.configuracion import NOMBRE_DEL_ARCHIVO, leer
 from asistente.fabrica import Oferta, proveedores
 from asistente.proveedores.ollama_local import version_a_tupla
+
+if TYPE_CHECKING:
+    from asistente.orquestador import Topes
 
 CONFIG_IA = Path(__file__).with_name("config_ia.json")
 #: Una sola empresa propia por instalacion (S3, RV-6): bajo este id vive la clave de IA.
@@ -80,6 +84,13 @@ def version_minima_ollama(ruta: Path = CONFIG_IA) -> tuple[int, ...]:
 
 def prefijos_de_maprex() -> tuple[str, ...]:
     return leer(ruta_de_configuracion()).prefijos_de_maprex
+
+
+def topes_de_la_instalacion() -> Topes:
+    """Los topes de una sesion: los del orquestador, con el costo que fijo el administrador."""
+    from asistente.orquestador import Topes
+
+    return Topes(costo=leer(ruta_de_configuracion()).tope_usd)
 
 
 def proveedores_de_la_instalacion() -> dict[str, Oferta]:

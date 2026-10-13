@@ -749,10 +749,11 @@ hoja, el sistema deriva, valora y audita, y una persona acepta y guarda.
 
 **Herramientas.** Trece, con modelos Pydantic estrictos (`extra="forbid"`, todos los campos
 requeridos, números como texto decimal): de lectura (`consultar_borrador`, `buscar_partidas`,
-`consultar_partida`), de propuesta (`proponer_ambiente`, `proponer_fuente`, `proponer_punto`,
-`proponer_recorrido`, `proponer_partida`, `declarar_sin_partida`, `retirar_propuesta`) y de control
-(`pedir_informe_auditoria`, `preguntar_al_usuario`, `terminar`). **Ninguna tiene un campo de precio,
-de total o de cantidad derivada**: lo impide el esquema, no una instrucción (RF‑91).
+`consultar_partida`, `pedir_informe_auditoria`), de propuesta (`proponer_ambiente`,
+`proponer_fuente`, `proponer_punto`, `proponer_recorrido`, `proponer_partida`,
+`declarar_sin_partida`, `retirar_propuesta`) y de control (`preguntar_al_usuario`, `terminar`).
+**Ninguna tiene un campo de precio, de total o de cantidad derivada**: lo impide el esquema, no una
+instrucción (RF‑91).
 
 **Validación en cuatro capas** (`validacion.py`): esquema; semántica (ids, referencias, catálogo,
 unidades); citas y supuestos (cada número lleva una cita literal del pedido o un supuesto declarado:
@@ -762,9 +763,12 @@ queda **pendiente**: el borrador no cambia hasta que una persona la acepta. Los 
 geométricos que el modelo admite se dejan a la regla R9 del auditor.
 
 **Bucle y topes** (`orquestador.py`): un solo bucle para los dos proveedores, con historial solo de
-agregar. Topes de 12 turnos, 60 llamadas, costo por sesión (2 USD de fábrica, configurable) y tres
-rechazos seguidos de la misma herramienta. Una pregunta del modelo pausa la sesión y la pantalla la
-contesta.
+agregar. Topes de 12 turnos, 60 llamadas, costo por sesión y tres rechazos seguidos de la misma
+herramienta. El tope de costo lo fija el administrador (`ConfiguracionIA.tope_usd`, 2 USD de
+fábrica): la hoja lo lee con `asistente.instalacion.topes_de_la_instalacion` y lo pasa a `ejecutar`
+como `Topes(costo=...)`. El turno que lo alcanza se completa (sus llamadas se validan y se
+registran) y la sesión se detiene, así que **puede excederlo por un turno**. Una pregunta del modelo
+pausa la sesión y la pantalla la contesta.
 
 **Registro `ia_*`.** Cuatro tablas aditivas en la base del caso (`ia_sesiones`, `ia_turnos`,
 `ia_llamadas`, `ia_propuestas`; [modelo_datos.md](modelo_datos.md) §2.7), sin clave foránea a
@@ -774,7 +778,9 @@ cuándo). La clave de IA nunca se guarda ahí.
 
 **Anexo `anexos/ia.json`.** `ui/entrega.py` (`anexo_de_ia`, `anexos_del_paquete`) llama a
 `asistente.registro.anexo_ia(conexion, proyecto, hasta_codigo)`. Al guardar una versión con
-propuestas aceptadas, la hoja marca la sesión con `RegistroIA.marcar_guardada(sesion, codigo)`; el
+propuestas aceptadas, la hoja marca la sesión con
+`RegistroIA.marcar_guardada(sesion, codigo, proyecto=...)` (si la sesión se hizo en un borrador sin
+proyecto, queda en el de la versión guardada); el
 anexo trae las sesiones del proyecto con alguna propuesta aceptada o editada y guardadas **hasta**
 esa versión: pedido, turnos, llamadas con su validación, citas, supuestos y quién decidió. **No
 lleva uso de fichas, costo, topes ni claves** (RV‑19). Es opcional: sin sesiones, el paquete no lo
