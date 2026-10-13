@@ -19,7 +19,8 @@ Que NO se vigila, y por que:
 - `docs/tesis/`: lo vigila `meta_redaccion.py` (R7), con su regla mas estricta.
 
 Enmienda 1.5 (2026-10-13, NORMAS §1): ahora hay datos reales declarados (los PDF de ARENAZA,
-autorizados como referencia, y los libros de la empresa, confidenciales y fuera del repositorio). D1 sigue
+autorizados como referencia, y los libros de la empresa, confidenciales y fuera del repositorio). D1
+sigue
 vigilando que los casos CONSTRUIDOS no se presenten como reales; una oracion que habla de las clases
 reales declaradas (la empresa, ARENAZA, lo confidencial o anonimizado, lo entregado) no es esa
 afirmacion. D4 vigila lo nuevo: que ningun libro real-confidencial este versionado.
