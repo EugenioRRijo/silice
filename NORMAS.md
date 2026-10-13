@@ -18,9 +18,18 @@ de 0,80 × 0,80 × 0,80 m con paredes de 0,10 m, cinco partidas, 1 586,61 USD), 
 fue auditado y presenta **siete inconsistencias** que el sistema debe detectar (y hacer imposibles por
 construcción). Detalle en [docs/linea_base.md](docs/linea_base.md).
 
-**Naturaleza de los datos.** Todos los APU y presupuestos del repositorio son **ejercicios académicos
-ficticios**. El de la clínica (línea base) y los dos de ARENAZA (telecom) provienen de ejercicios de
-clase y no representan valores reales ni obras ejecutadas. `MNT-001` (industrial), `SIS-001`
+**Naturaleza de los datos** (enmienda 1.5, Eugenio, 2026-10-13). Hay tres clases de caso:
+**real-confidencial**, **anonimizado** y **construido**.
+
+- **Real-confidencial:** los libros de Excel de presupuestos entregados por la empresa y sus PDF impresos. Viven
+  solo en el equipo (`docs/auditoria/*.xlsx|pdf`, `data/confidencial/`, ignorados por Git) y **nunca** se
+  versionan.
+- **Reales autorizados como referencia:** los dos PDF de ARENAZA de `data/samples/telecom/` son **presupuestos
+  reales** (antes se declararon ejercicio de clase) y se quedan en el repositorio por decisión de Eugenio.
+- **Anonimizado:** derivado de un real con `scripts/anonimizar_libro.py`; puede versionarse tras revisión.
+
+Lo que sigue describe los casos **construidos**, que son **ficticios**. El de la clínica (línea base) proviene de un ejercicio de clase y
+no representa valores reales ni obras ejecutadas. `MNT-001` (industrial), `SIS-001`
 (sistemas) y `TI-001` (telecom: laptops HP, cableado Cat 6 y servidor en rack) son casos construidos
 para el proyecto. Reproducen el contenido y el formato de la práctica
 venezolana: por eso sirven como línea base normativa de las pruebas y como casos **didácticos** en la

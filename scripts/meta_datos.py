@@ -18,6 +18,12 @@ Que NO se vigila, y por que:
   bitacora de la sesion que la descubre, no reescribiendo el registro.
 - `docs/tesis/`: lo vigila `meta_redaccion.py` (R7), con su regla mas estricta.
 
+Enmienda 1.5 (2026-10-13, NORMAS §1): ahora hay datos reales declarados (los PDF de ARENAZA,
+autorizados como referencia, y los libros de la empresa, confidenciales y fuera del repositorio). D1 sigue
+vigilando que los casos CONSTRUIDOS no se presenten como reales; una oracion que habla de las clases
+reales declaradas (la empresa, ARENAZA, lo confidencial o anonimizado, lo entregado) no es esa
+afirmacion. D4 vigila lo nuevo: que ningun libro real-confidencial este versionado.
+
 Uso: `uv run python scripts/meta_datos.py [--json]`.
 """
 
@@ -41,7 +47,13 @@ TITULOS: dict[str, str] = {
     "D1": "La documentacion no presenta los datos del repositorio como reales",
     "D2": "NORMAS.md declara la naturaleza de todos los datos (incluye ARENAZA)",
     "D3": "Los documentos historicos conservan su nota de errata",
+    "D4": "Ningun libro real-confidencial esta versionado (enmienda 1.5)",
 }
+
+#: Donde viven los reales confidenciales (NORMAS §1, enmienda 1.5); ninguno puede estar en Git.
+_CONFIDENCIALES = re.compile(
+    r"^(docs/auditoria/[^/]+\.(xlsx|xlsm|xls|pdf)|data/confidencial/.+)$", re.I
+)
 
 #: Documentos escritos antes de la aclaracion del 2026-09-15. No se reescriben sin dejar la nota.
 DOCUMENTOS_HISTORICOS: tuple[str, ...] = (
@@ -85,6 +97,12 @@ _MARCAS: tuple[str, ...] = (
     "pendiente",
     "sin ",
     "suministr",
+    # Enmienda 1.5: las clases reales declaradas en NORMAS §1.
+    "arenaza",
+    "confidencial",
+    "anonimiz",
+    "empresa",
+    "entregad",
 )
 
 
@@ -141,6 +159,23 @@ def evaluar_errata(textos: Mapping[str, str]) -> tuple[Estado, str]:
     return Estado.OK, f"los {len(textos)} documentos historicos conservan su nota de errata"
 
 
+def evaluar_confidenciales(versionados: list[str]) -> tuple[Estado, str]:
+    """D4: ninguna ruta versionada cae donde viven los reales confidenciales."""
+    expuestos = sorted(r for r in versionados if _CONFIDENCIALES.match(r.replace("\\", "/")))
+    if expuestos:
+        return Estado.FALLA, "reales confidenciales versionados: " + ", ".join(expuestos)
+    return Estado.OK, f"{len(versionados)} archivo(s) versionados, ninguno confidencial"
+
+
+def _versionados(raiz: Path) -> list[str]:
+    import subprocess
+
+    salida = subprocess.run(
+        ["git", "ls-files"], cwd=raiz, capture_output=True, text=True, check=False
+    )
+    return salida.stdout.splitlines() if salida.returncode == 0 else []
+
+
 def es_vigilado(relativo: str) -> bool:
     """Solo documentacion (`.md`) del proyecto, fuera de los registros fechados y de la tesis."""
     ruta = relativo.replace("\\", "/")
@@ -178,6 +213,7 @@ def _evaluar_metas() -> list[Fila]:
         "D1": lambda: evaluar_documentos(documentos),
         "D2": lambda: evaluar_naturaleza_datos(_leer(RAIZ / "NORMAS.md")),
         "D3": lambda: evaluar_errata(historicos),
+        "D4": lambda: evaluar_confidenciales(_versionados(RAIZ)),
     }
     return [Fila(codigo, TITULOS[codigo], *chequeo()) for codigo, chequeo in chequeos.items()]
 

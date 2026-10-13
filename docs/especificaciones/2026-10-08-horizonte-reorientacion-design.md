@@ -229,3 +229,12 @@ Los protocolos se escriben antes de medir, como los vigentes del indicador 3 y d
 5. ¿Aprueba los cambios en `core/` del sprint SF (expedientes SF‑E1…E9, PR #22 y #25)?
 6. ¿Acepta que la tesis sirva a dos personas (quien arma y quien revisa) con un indicador para cada una, o prefiere
    una sola como protagonista?
+
+## Enmienda 1.5 (2026-10-13)
+
+Decidida por Eugenio el 2026-10-13 ([spec 1.5](2026-10-13-silice-1.5-fusion-design.md), W1). **Alcance:** entra la
+rehabilitación y el mantenimiento de edificaciones tal como la presupuesta la empresa real: demoliciones, paredes de
+bloque y de fibrocemento, frisos, revestimientos, pintura, carpintería y recubrimiento de columnas. Siguen las redes de
+datos y CCTV. **Siguen fuera:** el cálculo estructural, el dimensionamiento de instalaciones y los planos escaneados.
+**Datos:** la frase «los datos siguen siendo ficticios» queda sustituida por las tres clases de caso de NORMAS §1
+(enmienda 1.5). El texto original de arriba se conserva como registro de lo aprobado el 2026-10-08.
