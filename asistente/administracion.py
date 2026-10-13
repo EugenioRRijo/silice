@@ -13,7 +13,7 @@ from dataclasses import dataclass, replace
 from decimal import Decimal
 from pathlib import Path
 
-from asistente.clave import ClaveDeIA, ClaveNoRegistrable
+from asistente.clave import ClaveDeIA
 from asistente.configuracion import ConfiguracionIA, guardar, leer
 
 AVISO_DE_NUBE = (
@@ -104,17 +104,3 @@ def registrar_clave(
 def olvidar_clave(clave: ClaveDeIA, empresa_id: str, *, es_administrador: bool) -> None:
     _exigir(es_administrador)
     clave.olvidar(empresa_id)
-
-
-def cargar_clave_guardada(clave: ClaveDeIA, empresa_id: str) -> None:
-    """Si el proceso arrancó sin la clave en memoria, la trae del almacén de credenciales.
-
-    Sin permiso que exigir: no cambia nada guardado ni muestra la clave. Si no hay clave en el
-    almacén (o solo existe el respaldo cifrado, que pide contraseña), no hace nada.
-    """
-    if clave.vigente is not None:
-        return
-    try:
-        clave.activar(empresa_id)
-    except ClaveNoRegistrable:
-        return

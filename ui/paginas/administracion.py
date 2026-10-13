@@ -26,7 +26,12 @@ from sqlalchemy.orm import Session
 from asistente import administracion as ia_administracion
 from asistente.clave import ClaveDeIA, ClaveNoRegistrable, enmascarar
 from asistente.configuracion import PROVEEDORES, ConfiguracionIA, leer
-from asistente.instalacion import clave_de_la_instalacion, ruta_de_configuracion
+from asistente.instalacion import (
+    EMPRESA_DE_LA_CLAVE,
+    cargar_clave_guardada,
+    clave_de_la_instalacion,
+    ruta_de_configuracion,
+)
 from seguridad import claves_api, cuentas, empresas, eventos, firma
 from seguridad.modelo import ClaveApi, EmpresaRegistrada, Usuario
 from seguridad.permisos import Accion, Rol, Sensible, aviso_de_roles
@@ -441,7 +446,6 @@ def _pestana_api(bd: Session, sesion: SesionActiva) -> None:
 #: Quién configura el asistente: la acción de la matriz de roles que S3 ya liga a la clave de IA
 #: (`ROL_DE_LO_SENSIBLE[Sensible.CLAVE_DE_IA]`); hoy solo el administrador de la instalación.
 ACCION_DEL_ASISTENTE = Accion.ADMINISTRAR_EMPRESA
-EMPRESA_DE_LA_CLAVE = "empresa-propia"  # una sola empresa propia por instalación (S3, RV-6)
 AVISO_CONFIG = "ia_aviso_config"  # no son de widget: el último mensaje de cada sección, una vez
 AVISO_CLAVE = "ia_aviso_clave"
 CLAVES_DEL_FORMULARIO = ("ia_clave_nueva", "ia_contrasena_respaldo")
@@ -543,13 +547,17 @@ def _registrar_clave() -> None:
             "responden. Pruebe de nuevo o indique una contraseña para el respaldo cifrado.",
         )
         return
-    _avisar(AVISO_CLAVE, "success", f"Clave de IA registrada ({mostrada}).")
+    _avisar(AVISO_CLAVE, "success", texto_seguro(f"Clave de IA registrada ({mostrada})."))
 
 
 def _olvidar_clave() -> None:
     clave = _clave_de_ia()
     if clave is None:
         _avisar(AVISO_CLAVE, "error", SIN_EXTRA_IA)
+        return
+    permitida, motivo = cliente.operacion_sensible_permitida()
+    if not permitida:
+        _avisar(AVISO_CLAVE, "error", motivo)
         return
     try:
         ia_administracion.olvidar_clave(
@@ -601,16 +609,27 @@ def _seccion_clave(registrada: str | None) -> None:
     permitida, motivo = cliente.operacion_sensible_permitida()
     if not permitida:
         st.info(motivo)
-    st.caption(f"Clave registrada: {registrada or 'ninguna'}")
+    st.caption(texto_seguro(f"Clave registrada: {registrada or 'ninguna'}"))
     with st.form("ia_formulario_clave", clear_on_submit=True):
-        st.text_input("Clave de IA de la empresa", type="password", key="ia_clave_nueva")
+        st.text_input(
+            "Clave de IA de la empresa",
+            type="password",
+            key="ia_clave_nueva",
+            disabled=not permitida,
+        )
         st.text_input(
             "Contraseña del respaldo cifrado (solo si el almacén de credenciales no está)",
             type="password",
             key="ia_contrasena_respaldo",
+            disabled=not permitida,
         )
-        st.form_submit_button("Registrar la clave", on_click=_registrar_clave, key="ia_registrar")
-    st.button("Olvidar la clave", on_click=_olvidar_clave, key="ia_olvidar")
+        st.form_submit_button(
+            "Registrar la clave",
+            on_click=_registrar_clave,
+            key="ia_registrar",
+            disabled=not permitida,
+        )
+    st.button("Olvidar la clave", on_click=_olvidar_clave, key="ia_olvidar", disabled=not permitida)
     _mostrar_aviso(AVISO_CLAVE)
 
 
@@ -623,7 +642,7 @@ def pestana_asistente() -> None:
     if clave is None:
         configuracion, registrada = leer(ruta_de_configuracion()), None
     else:
-        ia_administracion.cargar_clave_guardada(clave, EMPRESA_DE_LA_CLAVE)
+        cargar_clave_guardada(clave)
         visto = ia_administracion.estado(ruta_de_configuracion(), clave)
         configuracion, registrada = visto.configuracion, visto.clave_registrada
     st.warning(ia_administracion.AVISO_DE_NUBE)

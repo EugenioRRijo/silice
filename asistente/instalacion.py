@@ -8,15 +8,25 @@ lo usa cuando el asistente esta activo.
 from __future__ import annotations
 
 import json
+import logging
 from collections.abc import Callable
 from pathlib import Path
 
-from asistente.clave import ClaveDeIA, almacen_del_sistema, es_bucle_local
+from asistente.clave import (
+    ClaveDeIA,
+    ClaveNoRegistrable,
+    almacen_del_sistema,
+    enmascarar,
+    es_bucle_local,
+)
 from asistente.configuracion import NOMBRE_DEL_ARCHIVO, leer
 from asistente.fabrica import Oferta, proveedores
 from asistente.proveedores.ollama_local import version_a_tupla
 
 CONFIG_IA = Path(__file__).with_name("config_ia.json")
+#: Una sola empresa propia por instalacion (S3, RV-6): bajo este id vive la clave de IA.
+EMPRESA_DE_LA_CLAVE = "empresa-propia"
+_registro = logging.getLogger(__name__)
 _CLAVE: ClaveDeIA | None = None
 
 
@@ -46,6 +56,24 @@ def clave_de_la_instalacion(es_local: Callable[[str | None], bool] = es_bucle_lo
     return _CLAVE
 
 
+def cargar_clave_guardada(clave: ClaveDeIA, empresa_id: str = EMPRESA_DE_LA_CLAVE) -> None:
+    """Si el proceso arranco sin la clave en memoria, la trae del almacen de credenciales.
+
+    Silenciosa: no cambia nada guardado ni muestra la clave. Sin clave en el almacen, o con solo el
+    respaldo cifrado (que pide contrasena y aun no tiene pantalla), no hace nada. Cualquier otro
+    error del almacen (en Windows, el backend puede fallar de muchas formas) se anota enmascarado
+    en el registro y no llega a la pantalla.
+    """
+    if clave.vigente is not None:
+        return
+    try:
+        clave.activar(empresa_id)
+    except ClaveNoRegistrable:
+        return  # nada guardado, o solo el respaldo cifrado: es lo normal, no se anota
+    except Exception as error:  # noqa: BLE001
+        _registro.warning("No se pudo cargar la clave de IA guardada: %s", enmascarar(str(error)))
+
+
 def version_minima_ollama(ruta: Path = CONFIG_IA) -> tuple[int, ...]:
     return version_a_tupla(json.loads(ruta.read_text(encoding="utf-8"))["version_minima_ollama"])
 
@@ -59,4 +87,6 @@ def proveedores_de_la_instalacion() -> dict[str, Oferta]:
     configuracion = leer(ruta_de_configuracion())
     if not configuracion.activo:
         return proveedores(configuracion, None, (0,))
-    return proveedores(configuracion, clave_de_la_instalacion(), version_minima_ollama())
+    clave = clave_de_la_instalacion()
+    cargar_clave_guardada(clave)
+    return proveedores(configuracion, clave, version_minima_ollama())
