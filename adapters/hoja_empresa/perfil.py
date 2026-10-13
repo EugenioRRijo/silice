@@ -224,6 +224,11 @@ def _columnas(nombre: str, d: Any, claves: tuple[str, ...], donde: str) -> Mappi
 
 def _construir(nombre: str, crudo: Any) -> Perfil:
     raiz = _dic(nombre, crudo, "la raíz")
+    # `LibroLeido.perfil` guarda este campo y `cargar_perfil(libro.perfil)` busca el archivo por él:
+    # si no coincidieran, se cargaría otro perfil (o ninguno).
+    declarado = _texto(nombre, raiz.get("nombre"), "nombre")
+    if declarado != nombre:
+        raise _error(nombre, f"nombre {declarado!r} no coincide con el del archivo ({nombre}.json)")
     hojas = _dic(nombre, raiz.get("hojas"), "hojas")
     faltan = [h for h in _HOJAS if h not in hojas]
     if faltan:
@@ -286,7 +291,7 @@ def _construir(nombre: str, crudo: Any) -> Perfil:
             raise _error(nombre, f"estilo.paleta.{papel}: color hex de 6 cifras, no {color!r}")
 
     return Perfil(
-        nombre=_texto(nombre, raiz.get("nombre"), "nombre"),
+        nombre=declarado,
         hojas=MappingProxyType({h: _texto(nombre, hojas[h], f"hojas.{h}") for h in hojas}),
         prefijo_apu=_texto(nombre, apu.get("prefijo"), "apu.prefijo"),
         celda_titulo_apu=celda_titulo,
@@ -356,7 +361,8 @@ def _construir(nombre: str, crudo: Any) -> Perfil:
 def cargar_perfil(nombre: str = "arenaza") -> Perfil:
     """Carga y valida `perfiles/<nombre>.json`. El perfil es inmutable, así que se guarda en caché.
 
-    Lanza `PerfilInvalido` si el nombre no es un perfil del paquete o si el JSON está incompleto.
+    Lanza `PerfilInvalido` si el nombre no es un perfil del paquete, si el JSON está incompleto o
+    si su campo `nombre` no es el del archivo.
     """
     if not re.fullmatch(r"[a-z0-9_]+", nombre):
         raise PerfilInvalido(f"nombre de perfil no válido: {nombre!r}")

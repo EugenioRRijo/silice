@@ -49,6 +49,7 @@ from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from typing import TYPE_CHECKING, Any
 
 from adapters.hoja_empresa.guardia import MAX_BYTES, ArchivoRechazado
+from adapters.hoja_empresa.umbrales import MEDIO_CENTAVO
 from core.contracts.verificacion import Hallazgo, Severidad
 
 if TYPE_CHECKING:
@@ -70,7 +71,7 @@ __all__ = [
 
 #: Tolerancia de cuadre de montos (USD): medio céntimo, la mitad de la unidad impresa. Por debajo
 #: de ella una diferencia es redondeo de la impresión, no un error del documento.
-TOLERANCIA = Decimal("0.005")
+TOLERANCIA = MEDIO_CENTAVO
 
 #: Similitud mínima (difflib, 0 a 1) para emparejar un renglón de cómputos con uno del presupuesto.
 #: SUPUESTO_DECLARADO (spec 1.5, encargo de L10): las descripciones de la página de presupuesto

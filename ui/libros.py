@@ -99,18 +99,17 @@ _NS_A = "{http://schemas.openxmlformats.org/drawingml/2006/main}"
 
 
 def _letras_a_numero(letras: str) -> int:
-    n = 0
-    for c in letras.upper():
-        n = n * 26 + (ord(c) - 64)
-    return n
+    """`AB` -> 28, con openpyxl (perezoso: este módulo se importa sin cargarlo)."""
+    from openpyxl.utils.cell import column_index_from_string
+
+    return column_index_from_string(letras)
 
 
 def _numero_a_letras(n: int) -> str:
-    letras = ""
-    while n:
-        n, resto = divmod(n - 1, 26)
-        letras = chr(65 + resto) + letras
-    return letras
+    """28 -> `AB`, con openpyxl (perezoso: este módulo se importa sin cargarlo)."""
+    from openpyxl.utils.cell import get_column_letter
+
+    return get_column_letter(n)
 
 
 def _separar(origen: str) -> tuple[str, str] | None:

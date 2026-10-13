@@ -40,7 +40,11 @@ from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
 from decimal import ROUND_HALF_UP, Decimal
 
+from openpyxl.utils.cell import column_index_from_string as _col
+from openpyxl.utils.cell import get_column_letter as _letra
+
 from adapters.hoja_empresa.modelo import (
+    VINCULO_ILEGIBLE,
     ApuLeido,
     Celda,
     LibroLeido,
@@ -49,6 +53,7 @@ from adapters.hoja_empresa.modelo import (
     clave,
 )
 from adapters.hoja_empresa.perfil import Perfil, cargar_perfil, normalizar
+from adapters.hoja_empresa.umbrales import MEDIO_CENTAVO
 from core.contracts.verificacion import Hallazgo, Severidad
 
 __all__ = ["REGLAS_LIBRO", "reglas_del_libro"]
@@ -68,7 +73,7 @@ REGLAS_LIBRO: tuple[tuple[str, str], ...] = (
 _CERO = Decimal(0)
 _UNO = Decimal(1)
 #: Medio centavo: por debajo, una diferencia de cuadre es redondeo de presentación.
-_TOL_CUADRE = Decimal("0.005")
+_TOL_CUADRE = MEDIO_CENTAVO
 #: Tolerancia relativa de L3 (valor guardado contra valor leído): ruido de coma flotante de Excel.
 _TOL_RELATIVA = Decimal("0.000001")
 #: Un `_TOL_CUADRE` sobre un monto ya redondeado a centavos por el propio libro (ROUND(…,2)).
@@ -123,21 +128,6 @@ _RX_SECCION = re.compile(r"^\s*[\w.]+\s*·")
 
 
 # --- Utilidades de celdas y números ---------------------------------------------------------------
-
-
-def _col(letras: str) -> int:
-    n = 0
-    for ch in letras:
-        n = n * 26 + (ord(ch) - 64)
-    return n
-
-
-def _letra(col: int) -> str:
-    out = ""
-    while col:
-        col, r = divmod(col - 1, 26)
-        out = chr(65 + r) + out
-    return out
 
 
 def _partir(ref: str) -> tuple[str, int]:
@@ -969,7 +959,10 @@ def _lectura_precios(ctx: _Contexto, formula: str, hoja: str) -> Celda | None:
     mr = re.match(r"^(?:'((?:[^']|'')+)'|([^!]+))!\$?([A-Z]{1,3})\$?\d+:", rango.strip())
     if insumo is None or mr is None:
         return None
-    col = _letra(_col(mr.group(3)) + int(m.group(3)) - 1)
+    try:
+        col = _letra(_col(mr.group(3)) + int(m.group(3)) - 1)
+    except ValueError:  # columna 0 de VLOOKUP (Excel da #VALUE!) o más allá de ZZZ: no lee nada
+        return None
     return Celda(insumo.celda.hoja, f"{col}{_partir(insumo.celda.ref)[1]}")
 
 
@@ -1227,7 +1220,22 @@ def _l5(ctx: _Contexto) -> list[Hallazgo]:
                 origen_ids=tuple(f"nombre:{n}" for n in con_libro),
             )
         )
-    for destino in dict.fromkeys(_archivo(v) for v in ctx.libro.vinculos_externos):
+    ilegibles = [v for v in ctx.libro.vinculos_externos if v.startswith(VINCULO_ILEGIBLE)]
+    legibles = [v for v in ctx.libro.vinculos_externos if not v.startswith(VINCULO_ILEGIBLE)]
+    for pieza in dict.fromkeys(v.removeprefix(VINCULO_ILEGIBLE) for v in ilegibles):
+        out.append(
+            Hallazgo(
+                regla="L5",
+                severidad=Severidad.ADVERTENCIA,
+                descripcion=(
+                    f"El libro guarda un vínculo a otro libro cuya relación («{pieza}») no se "
+                    "pudo leer (XML dañado o con entidades): no se sabe a qué archivo apunta. "
+                    "Efecto: Excel puede pedir actualizarlo al abrir; la devolución lo quita."
+                ),
+                origen_ids=(f"vinculo:{pieza}",),
+            )
+        )
+    for destino in dict.fromkeys(_archivo(v) for v in legibles):
         out.append(
             Hallazgo(
                 regla="L5",

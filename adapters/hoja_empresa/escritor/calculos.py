@@ -43,7 +43,6 @@ from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from datetime import date, datetime
 from decimal import ROUND_DOWN, ROUND_HALF_UP, ROUND_UP, Decimal, InvalidOperation
-from typing import Any
 
 from openpyxl.formula.tokenizer import Token
 
@@ -1288,7 +1287,3 @@ _FUNCIONES: dict[str, Callable[[Evaluador, list[object]], object]] = {
     "INDEX": _f_index,
     "INDIRECT": _f_indirect,
 }
-
-
-def es_error(v: Any) -> bool:
-    return isinstance(v, Err)
