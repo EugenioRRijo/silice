@@ -73,3 +73,5 @@ docs/auditoria/**/*.[xX][lL][sS]
 docs/auditoria/**/*.[xX][lL][sS][xXmMbB]
 docs/auditoria/**/*.[pP][dD][fF]
 data/confidencial/
+docs/auditoria/**/expectativas.json
+docs/auditoria/expectativas.json
