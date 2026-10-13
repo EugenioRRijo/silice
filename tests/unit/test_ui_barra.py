@@ -23,6 +23,7 @@ from ui.caso import (
     ACCION_GUARDAR_VERSION,
     ACCION_IMPORTAR_PLANO,
     ACCION_PRECIOS,
+    ACCION_REGISTRAR_VALUACION,
     CLAVE_ACCION,
     CLAVE_PROYECTO,
     CLAVE_RECORRIDO,
@@ -426,3 +427,12 @@ def test_el_mensaje_de_abrir_se_ve_fuera_del_popover_y_una_sola_vez(monkeypatch,
 def test_el_proyecto_abierto_se_nombra_bajo_la_barra(monkeypatch, caso_con_version):
     at = _barra(monkeypatch, caso_con_version[0], estado={CLAVE_PROYECTO: NOMBRE_PROYECTO})
     assert f"Proyecto abierto: **{NOMBRE_PROYECTO}**" in [m.value for m in at.markdown]
+
+
+def test_registrar_valuacion_lleva_a_control_de_obra_con_su_accion(monkeypatch, caso_con_version):
+    """Plan 0.7.0, tarea 13 (agregada en la auditoría final, 2026-10-13): el botón de la barra
+    lleva a «Control de obra» y deja la acción que abre la pestaña Valuaciones."""
+    at = _barra(monkeypatch, caso_con_version[0])
+    _boton(at, barra.ROTULO_VALUACION).click().run()
+    assert at.session_state["destino"] == barra.RUTA_CONTROL == "control"
+    assert at.session_state[CLAVE_ACCION] == ACCION_REGISTRAR_VALUACION == "registrar_valuacion"

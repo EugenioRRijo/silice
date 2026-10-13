@@ -200,7 +200,11 @@ def tarjetas_de_control(datos: DatosControl, moneda: str) -> list[Tarjeta]:
         Tarjeta(
             "EAC (costo final estimado)",
             dinero(ind.eac_indice, moneda),
-            motivo.get("EAC") or motivo.get("CPI") or motivo.get("AC", ""),
+            # La tarjeta es el EAC por indice (BAC / CPI): falta solo si falta el CPI. La clave
+            # "EAC" de `no_disponible` habla del EAC del sistema y es el ultimo respaldo.
+            ""
+            if ind.eac_indice is not None
+            else motivo.get("CPI") or motivo.get("AC") or motivo.get("EAC", ""),
         ),
     ]
 
