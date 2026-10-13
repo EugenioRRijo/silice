@@ -10,34 +10,47 @@ como R16 (S3 §11.4):
    ambiente (en orden canonico) coincida con la de la referencia; la traslacion se registra;
 3. vecino mas cercano con tolerancia: todos los pares candidatos por distancia (empates: orden
    canonico por coordenadas, nunca por id) y se toma cada par con los dos lados libres y distancia
-   <= 0,10 m (`SUPUESTO_DECLARADO`, la de R16);
-4. clasificacion de cada par, 5. sobrantes (E6 de la referencia, E7 del borrador).
+   <= 0,10 m (`SUPUESTO_DECLARADO`, la de R16). Con los pares se traducen los ids del borrador a
+   los de la referencia (ambiente, fuente, punto, recorrido, partida y circuito);
+4. clasificacion de cada par: UN error por par y tipo (I1): un E3 lista en `campo` todos los campos
+   que difieren (`x,y`), un E5 la fuente y el circuito si difieren los dos; 5. sobrantes (E6 de la
+   referencia, E7 del borrador). Las cascadas NO se colapsan (protocolo §3).
 
 Un elemento desplazado mas de 0,10 m cuenta como omitido mas sobrante (E6 + E7), no como E3
 (RS4-12).
 E8: el valor sembrado en el pedido que QUEDA en el borrador (no lo que el modelo diga en texto).
+
+Partidas (desviacion declarada del paso 4 de §9.5, protocolo §3): se emparejan primero por
+codigo igual y luego las sobrantes de la misma especialidad, pero los empates NO se resuelven por
+el orden de `items_base` sino por la menor discrepancia (unidad equivalente, luego cantidad mas
+cercana, luego el orden de la referencia y el contenido de la fila): el orden en que el modelo
+lista sus partidas no cambia la clasificacion.
 """
 
 from __future__ import annotations
 
 from collections import Counter
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from decimal import Decimal
 
-from adapters.espacio import Espacio
-from asistente.experimento.modelo import Referencia
+from adapters.espacio import Circuito, Coord, Espacio
+from adapters.espacio.geometria import clave_segmento
+from asistente.experimento.modelo import Referencia, protocolo
 from core.contracts.item_computo import ItemComputo, OrigenTipo
 from core.contracts.unidades import unidades_equivalentes
 from core.contracts.verificacion import Hallazgo, Severidad
 
-TOLERANCIA_EMPAREJAMIENTO = Decimal("0.10")  # SUPUESTO_DECLARADO (la de R16)
-TOLERANCIA_MEDIDA = Decimal("0.001")
+#: SUPUESTO_DECLARADO (la de R16); se lee del protocolo congelado (M2)
+TOLERANCIA_EMPAREJAMIENTO = Decimal(protocolo()["tolerancia_emparejamiento_m"])
+TOLERANCIA_MEDIDA = Decimal(protocolo()["tolerancia_medida_m"])
 CLASES = ("ambiente", "fuente", "punto", "recorrido", "partida")
 #: campos que un `Sembrado` puede nombrar (ambientes, fuentes, puntos y partidas)
 CAMPOS_SEMBRABLES = ("x0", "y0", "x", "y", "z", "largo", "ancho", "alto", "cantidad")
 #: S4 §9.5: un hallazgo cuenta (como deteccion o falsa alarma) desde ADVERTENCIA
 SEVERIDAD_MINIMA = Severidad.ADVERTENCIA
+#: separador de los campos de un error que nombra varios (un E3 por par, I1)
+SEPARADOR_DE_CAMPOS = ","
 
 
 @dataclass(frozen=True, slots=True)
@@ -46,13 +59,19 @@ class Error:
     clase: str
     clave_borrador: str | None  # `esp_puntos:P1`, `ia:7:P5`...; None si no hay fila (E6)
     clave_referencia: str | None
+    #: el o los campos que difieren, separados por coma (`x,y`); vacio si el tipo no nombra campo
     campo: str = ""
+
+    @property
+    def campos(self) -> tuple[str, ...]:
+        return tuple(c for c in self.campo.split(SEPARADOR_DE_CAMPOS) if c)
 
 
 @dataclass(frozen=True, slots=True)
 class Comparacion:
     errores: tuple[Error, ...]
-    #: (clase, id del borrador) -> id de la referencia, para traducir las claves de los hallazgos
+    #: (clase, id del borrador) -> id de la referencia, para traducir las claves de los hallazgos;
+    #: las clases son las de `CLASES` y `circuito`
     pares: dict[tuple[str, str], str]
     traslacion: tuple[Decimal, Decimal] = (Decimal(0), Decimal(0))
     sobrantes_de_referencia: tuple[str, ...] = field(default=())
@@ -181,8 +200,10 @@ TABLAS = {
     "fuente": "esp_fuentes",
     "punto": "esp_puntos",
     "recorrido": "esp_recorridos",
+    "circuito": "esp_circuitos",
 }
 CLASE_DE_TABLA = {tabla: clase for clase, tabla in TABLAS.items()}
+TABLA_SEGMENTOS = "esp_segmentos"
 
 
 def _clave(el: _El) -> str:
@@ -222,6 +243,10 @@ def comparar(referencia: Referencia, espacio: Espacio, items: Sequence[ItemCompu
         emparejados[clase] = pares
         for r, b in pares:
             pares_id[(clase, b.id)] = r.id
+    for b_id, r_id in _pares_de_circuitos(
+        referencia.espacio.circuitos, espacio.circuitos, pares_id
+    ).items():
+        pares_id[("circuito", b_id)] = r_id
     emparejados["recorrido"] = _pares_de_recorridos(*por_clase["recorrido"], pares_id)
     emparejados["partida"] = _pares_de_partidas(*por_clase["partida"])
     for clase in ("recorrido", "partida"):
@@ -231,14 +256,14 @@ def comparar(referencia: Referencia, espacio: Espacio, items: Sequence[ItemCompu
         usados_r = {r.id for r, _ in emparejados[clase]}
         usados_b = {b.id for _, b in emparejados[clase]}
         for r, b in emparejados[clase]:
-            errores.extend(_clasificar(clase, r, b, referencia, espacio, pares_id))
+            errores.extend(_clasificar(clase, r, b, espacio, pares_id))
         errores.extend(
             Error("E6", clase, None, _clave(r)) for r in por_clase[clase][0] if r.id not in usados_r
         )
         errores.extend(
             Error("E7", clase, _clave(b), None) for b in por_clase[clase][1] if b.id not in usados_b
         )
-    errores = _aplicar_sembrados(errores, referencia, emparejados, pares_id)
+    errores = _aplicar_sembrados(errores, referencia, emparejados)
     sobrantes = tuple(e.clave_referencia for e in errores if e.tipo == "E6" and e.clave_referencia)
     return Comparacion(tuple(errores), pares_id, (dx, dy), sobrantes)
 
@@ -266,17 +291,44 @@ def _emparejar_sembrados(clase, sembrados, elementos, pares) -> list[tuple[_El, 
     return nuevos
 
 
+def _pares_de_circuitos(
+    refs: Sequence[Circuito], bs: Sequence[Circuito], pares_id: Mapping[tuple[str, str], str]
+) -> dict[str, str]:
+    """Id del circuito del borrador -> id del de la referencia, NUNCA por id (§9.5 paso 3).
+
+    Los circuitos vienen de la base de la ficha (la validacion exige que el `circuito_id` de una
+    propuesta exista en el borrador): se emparejan por sus datos, con el tablero traducido por los
+    pares de fuentes (si su fuente no tiene par, el tablero tal cual), numero, conductores, calibre
+    y puntos maximos. Empates (dos circuitos iguales salvo el id): el orden de la base.
+    """
+
+    def llave(c: Circuito, traducir: bool) -> tuple:
+        tablero = pares_id.get(("fuente", c.tablero), c.tablero) if traducir else c.tablero
+        return (tablero, c.numero, c.conductores, c.calibre, c.puntos_maximos)
+
+    libres = list(bs)
+    resultado: dict[str, str] = {}
+    for r in refs:
+        b = next((x for x in libres if llave(x, True) == llave(r, False)), None)
+        if b is not None:
+            libres.remove(b)
+            resultado[b.id] = r.id
+    return resultado
+
+
+def _traducir_id(pares_id, clase: str, id_: str | None) -> str | None:
+    return pares_id.get((clase, id_)) if id_ else None
+
+
 def _pares_de_recorridos(refs, bs, pares_id):
     pares, libres = [], list(bs)
     for r in refs:
         for b in libres:
-            traducido = (
-                pares_id.get(("punto", b.datos["punto_id"])) if b.datos["punto_id"] else None
-            )
+            traducido = _traducir_id(pares_id, "punto", b.datos["punto_id"])
             mismo_punto = r.datos["punto_id"] is not None and traducido == r.datos["punto_id"]
+            circuito = _traducir_id(pares_id, "circuito", b.datos["circuito_id"])
             mismo_circuito = (
-                r.datos["circuito_id"] is not None
-                and r.datos["circuito_id"] == b.datos["circuito_id"]
+                r.datos["circuito_id"] is not None and r.datos["circuito_id"] == circuito
             )
             if mismo_punto or mismo_circuito:
                 pares.append((r, b))
@@ -285,28 +337,56 @@ def _pares_de_recorridos(refs, bs, pares_id):
     return pares
 
 
+def _contenido_partida(el: _El) -> tuple:
+    """Orden canonico de una partida por su contenido, NUNCA por su id ni su lugar en la lista."""
+    return (str(el.datos["codigo"]), str(el.datos["unidad"]), el.datos["cantidad"])
+
+
 def _pares_de_partidas(refs, bs):
-    pares, libres_r, libres_b = [], list(refs), list(bs)
-    for r in list(libres_r):  # primero, por codigo igual
-        for b in libres_b:
-            if b.datos["codigo"] == r.datos["codigo"]:
-                pares.append((r, b))
-                libres_r.remove(r)
-                libres_b.remove(b)
-                break
-    for r in list(
-        libres_r
-    ):  # luego, las sobrantes de la misma especialidad, en el orden de los items
-        for b in libres_b:
-            if b.especialidad == r.especialidad:
-                pares.append((r, b))
-                libres_r.remove(r)
-                libres_b.remove(b)
-                break
+    """Partidas (§9.5 paso 4, con la desviacion declarada en el protocolo §3).
+
+    1. por codigo igual; 2. las sobrantes de la misma especialidad. En cada pase se toman todos los
+    candidatos ordenados por menor discrepancia (unidad no equivalente al final, cantidad mas
+    cercana), luego por el orden de la referencia (que fija la ficha, no el modelo) y por el
+    contenido de la partida del borrador; asi el orden de `items_base` del borrador no cambia el
+    resultado (un E1 que copia el codigo de otra partida no roba su par y no da E3 espurios).
+    """
+    pares: list[tuple[_El, _El]] = []
+    usados_r: set[int] = set()
+    usados_b: set[int] = set()
+
+    def tomar(condicion) -> None:
+        candidatos = sorted(
+            (
+                not unidades_equivalentes(r.datos["unidad"], b.datos["unidad"]),
+                abs(r.datos["cantidad"] - b.datos["cantidad"]),
+                i,
+                _contenido_partida(b),
+                j,
+            )
+            for i, r in enumerate(refs)
+            for j, b in enumerate(bs)
+            if condicion(r, b)
+        )
+        for *_, i, _, j in candidatos:
+            if i not in usados_r and j not in usados_b:
+                usados_r.add(i)
+                usados_b.add(j)
+                pares.append((refs[i], bs[j]))
+
+    tomar(lambda r, b: b.datos["codigo"] == r.datos["codigo"])
+    tomar(lambda r, b: b.especialidad == r.especialidad)
     return pares
 
 
-def _clasificar(clase, r: _El, b: _El, referencia, espacio, pares_id) -> list[Error]:
+def _campos_que_difieren(nombres, ref, borrador) -> str:
+    return SEPARADOR_DE_CAMPOS.join(
+        n for n, vr, vb in zip(nombres, ref, borrador, strict=True) if _difiere(vr, vb)
+    )
+
+
+def _clasificar(clase, r: _El, b: _El, espacio, pares_id) -> list[Error]:
+    """Un error por tipo y par (I1): «par con alguna dimension o coordenada que difiere → E3»."""
     cb, cr = _clave(b), _clave(r)
 
     def e(tipo: str, campo: str = "") -> Error:
@@ -314,28 +394,29 @@ def _clasificar(clase, r: _El, b: _El, referencia, espacio, pares_id) -> list[Er
 
     errores: list[Error] = []
     if clase == "ambiente":
-        for campo, vr, vb in zip(("x0", "y0"), r.pos, b.pos, strict=True):
-            if _difiere(vr, vb):
-                errores.append(e("E3", campo))
-        for campo, vr, vb in zip(
-            ("largo", "ancho", "alto"), r.datos["dims"], b.datos["dims"], strict=True
-        ):
-            if _difiere(vr, vb):
-                errores.append(e("E3", campo))
+        difieren = _campos_que_difieren(
+            ("x0", "y0", "largo", "ancho", "alto"),
+            (*r.pos, *r.datos["dims"]),
+            (*b.pos, *b.datos["dims"]),
+        )
+        if difieren:
+            errores.append(e("E3", difieren))
     elif clase in ("fuente", "punto"):
-        for campo, vr, vb in zip(("x", "y", "z"), r.pos, b.pos, strict=True):
-            if _difiere(vr, vb):
-                errores.append(e("E3", campo))
+        difieren = _campos_que_difieren(("x", "y", "z"), r.pos, b.pos)
+        if difieren:
+            errores.append(e("E3", difieren))
         if pares_id.get(("ambiente", b.datos["ambiente_id"])) != r.datos["ambiente_id"]:
             errores.append(e("E4", "ambiente_id"))
         elif clase == "punto" and not any(a.contiene(b.datos["coord"]) for a in espacio.ambientes):
             errores.append(e("E4", "fuera"))
         if clase == "punto":
-            fuente_b = b.datos["fuente_id"]
-            if (pares_id.get(("fuente", fuente_b)) if fuente_b else None) != r.datos["fuente_id"]:
-                errores.append(e("E5", "fuente_id"))
-            if b.datos["circuito_id"] != r.datos["circuito_id"]:
-                errores.append(e("E5", "circuito_id"))
+            equivocados = []
+            if _traducir_id(pares_id, "fuente", b.datos["fuente_id"]) != r.datos["fuente_id"]:
+                equivocados.append("fuente_id")
+            if _traducir_id(pares_id, "circuito", b.datos["circuito_id"]) != r.datos["circuito_id"]:
+                equivocados.append("circuito_id")
+            if equivocados:
+                errores.append(e("E5", SEPARADOR_DE_CAMPOS.join(equivocados)))
     elif clase == "recorrido":
         if r.tipo != b.tipo:
             errores.append(e("E3", "modo"))
@@ -379,8 +460,9 @@ def _valor(el: _El, campo: str) -> Decimal | None:
     return None
 
 
-def _aplicar_sembrados(errores, referencia, emparejados, pares_id) -> list[Error]:
-    """E8: el valor sembrado queda en el borrador. Un E8 no se cuenta ademas como E3."""
+def _aplicar_sembrados(errores, referencia, emparejados) -> list[Error]:
+    """E8: el valor sembrado queda en el borrador. Un E8 no se cuenta ademas como E3: el campo
+    sembrado sale del E3 de su par; si el par difiere ademas en otro campo, ese sigue como E3."""
     resultado = list(errores)
     for s in referencia.sembrados:
         par = next((p for p in emparejados[s.clase] if p[0].id == s.id_referencia), None)
@@ -390,18 +472,21 @@ def _aplicar_sembrados(errores, referencia, emparejados, pares_id) -> list[Error
         if valor is None or _difiere(valor, s.valor):
             continue
         clave_ref = _clave(par[0])
-        for i, e in enumerate(resultado):
-            if (e.tipo, e.clase, e.clave_referencia, e.campo) == (
-                "E3",
-                s.clase,
-                clave_ref,
-                s.campo,
+        nuevo: list[Error] = []
+        for e in resultado:
+            if (e.tipo, e.clase, e.clave_referencia) != ("E3", s.clase, clave_ref) or (
+                s.campo not in e.campos
             ):
-                resultado[i] = Error("E8", e.clase, e.clave_borrador, e.clave_referencia, e.campo)
+                nuevo.append(e)
+                continue
+            nuevo.append(Error("E8", e.clase, e.clave_borrador, e.clave_referencia, s.campo))
+            resto = SEPARADOR_DE_CAMPOS.join(c for c in e.campos if c != s.campo)
+            if resto:
+                nuevo.append(Error("E3", e.clase, e.clave_borrador, e.clave_referencia, resto))
         # el mismo defecto no se cuenta dos veces: el punto «fuera» por el valor sembrado es E8
         resultado = [
             e
-            for e in resultado
+            for e in nuevo
             if not (e.tipo == "E4" and e.campo == "fuera" and e.clave_referencia == clave_ref)
         ]
     return resultado
@@ -414,11 +499,59 @@ def _partes(origen_ids: Iterable[str]) -> list[str]:
     return [p.strip() for o in origen_ids for p in o.split(";") if p.strip()]
 
 
-def _traducir(clave: str, pares_id: dict[tuple[str, str], str] | None) -> str:
-    """La clave del borrador llevada a la de la referencia; `None`: ya es de la referencia."""
+def _es_resumen(parte: str) -> bool:
+    """El sufijo `+N` de un `origen_id` derivado cortado a 120 caracteres."""
+    return parte.startswith("+") and parte[1:].isdigit()
+
+
+def _claves_para_empatar(origen_id: str) -> list[str]:
+    """Las partes de un `origen_id` que identifican la fila sin depender del largo de los ids.
+
+    Un `origen_id` DERIVADO (`esp_fuentes:F;esp_segmentos:F|...;esp_puntos:P;+N`, de
+    `adapters.espacio.especialidades.comun.origen`) se corta a 120 caracteres: cuantas claves
+    secundarias (segmentos, puntos, circuitos) caben y el `+N` cambian con el LARGO de los ids que
+    eligio el modelo. Para empatar con los hallazgos de la referencia se usan solo sus claves
+    principales (las fuentes, que van primero) y nada de lo demas; un `origen_id` simple se usa
+    entero. La deteccion (que filas cita un hallazgo) sigue usando TODAS las partes.
+    """
+    partes = [p.strip() for p in origen_id.split(";") if p.strip()]
+    if len(partes) < 2:
+        return partes
+    return [p for p in partes if p.partition(":")[0] == TABLAS["fuente"] and not _es_resumen(p)]
+
+
+def _traducir_segmento(
+    id_: str, pares_id: Mapping[tuple[str, str], str], traslacion: tuple[Decimal, Decimal]
+) -> str | None:
+    """`<fuente>|x,y,z|x,y,z`: la fuente por su par y los extremos con la traslacion (§9.5)."""
+    fuente, *nodos = id_.split("|")
+    ref = pares_id.get(("fuente", fuente))
+    if ref is None or len(nodos) != 2:
+        return None
+    dx, dy = traslacion
+    try:
+        a, b = (tuple(Decimal(v) for v in n.split(",")) for n in nodos)
+        return clave_segmento(
+            ref, Coord(a[0] + dx, a[1] + dy, a[2]), Coord(b[0] + dx, b[1] + dy, b[2])
+        )
+    except (ArithmeticError, ValueError, IndexError):
+        return None
+
+
+def _traducir(
+    clave: str,
+    pares_id: Mapping[tuple[str, str], str] | None,
+    traslacion: tuple[Decimal, Decimal] = (Decimal(0), Decimal(0)),
+) -> str:
+    """La clave del borrador llevada a la de la referencia; `None`: ya es de la referencia.
+
+    Una clave `esp_*` sin par se marca con `?` (no empata con ninguna de la referencia)."""
     if pares_id is None:
         return clave
     tabla, _, id_ = clave.partition(":")
+    if tabla == TABLA_SEGMENTOS:
+        ref = _traducir_segmento(id_, pares_id, traslacion)
+        return f"{tabla}:{ref}" if ref is not None else f"?{clave}"
     if tabla in CLASE_DE_TABLA:
         ref = pares_id.get((CLASE_DE_TABLA[tabla], id_))
         return f"{tabla}:{ref}" if ref is not None else f"?{clave}"
@@ -426,9 +559,17 @@ def _traducir(clave: str, pares_id: dict[tuple[str, str], str] | None) -> str:
     return ref if ref is not None else clave
 
 
-def clave_de_hallazgo(h: Hallazgo, pares_id: dict[tuple[str, str], str] | None) -> tuple:
-    """(regla, severidad, claves traducidas): sin descripcion, que repite los ids del modelo."""
-    claves = sorted(_traducir(c, pares_id) for c in _partes(h.origen_ids))
+def clave_de_hallazgo(
+    h: Hallazgo,
+    pares_id: Mapping[tuple[str, str], str] | None,
+    traslacion: tuple[Decimal, Decimal] = (Decimal(0), Decimal(0)),
+) -> tuple:
+    """(regla, severidad, claves traducidas): sin descripcion, que repite los ids del modelo.
+
+    De un `origen_id` derivado solo cuentan sus fuentes (`_claves_para_empatar`)."""
+    claves = sorted(
+        _traducir(c, pares_id, traslacion) for o in h.origen_ids for c in _claves_para_empatar(o)
+    )
     return (h.regla, h.severidad.name, tuple(claves))
 
 
@@ -458,7 +599,7 @@ def evaluar_hallazgos(
     for h in hallazgos_borrador:
         if h.severidad < SEVERIDAD_MINIMA:
             continue
-        clave = clave_de_hallazgo(h, comparacion.pares)
+        clave = clave_de_hallazgo(h, comparacion.pares, comparacion.traslacion)
         if esperados[clave] > 0:
             esperados[clave] -= 1
         else:
