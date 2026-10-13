@@ -25,6 +25,8 @@
     "E8": ["R9"]
   },
   "reglas_del_experimento": ["R1", "R2", "R3", "R4", "R5", "R6", "R7", "R8", "R9", "R10", "R15"],
+  "hallazgos_de_la_elaboracion": ["PENDIENTE"],
+  "criterio_de_conteo": "un error por par y tipo; las cascadas no se colapsan (por ratificar)",
   "archivos_del_auditor": [
     "core/verification/__init__.py",
     "core/verification/directivas.py",
@@ -45,7 +47,30 @@
     "asistente/experimento/comparador.py",
     "asistente/experimento/metricas.py",
     "asistente/experimento/mutaciones.py",
-    "asistente/experimento/ejecucion.py"
+    "asistente/experimento/ejecucion.py",
+    "asistente/experimento/modelo.py",
+    "asistente/experimento/congelado.py",
+    "core/budget/presupuesto.py",
+    "ui/hoja.py",
+    "adapters/espacio/derivacion.py",
+    "adapters/espacio/especialidades/comun.py",
+    "asistente/privacidad.py",
+    "asistente/herramientas.py",
+    "asistente/validacion.py",
+    "asistente/orquestador.py",
+    "asistente/propuestas.py",
+    "asistente/catalogo.py",
+    "asistente/tarifas.py",
+    "asistente/precios_ia.json",
+    "asistente/config_ia.json",
+    "asistente/proveedores/base.py",
+    "asistente/proveedores/claude.py",
+    "asistente/proveedores/ollama_local.py",
+    "scripts/evaluar_asistente.py",
+    "scripts/_experimento.py",
+    "tests/fixtures/asistente_banco.py",
+    "tests/fixtures/caso_of001.py",
+    "tests/fixtures/caso_ti001.py"
   ],
   "limites": "12 tareas construidas, 3 con errores sembrados; comparacion solo descriptiva."
 }
