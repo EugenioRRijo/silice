@@ -113,7 +113,9 @@ jobs:
         run: >-
           uv run --no-sync pytest -W error -p no:cacheprovider
           --junitxml=reporte-pruebas.xml
-          --cov=core --cov=ml --cov=api --cov=adapters --cov-report=term
+          --cov=core --cov=ml --cov=api --cov=adapters
+          --cov=seguridad --cov=paquete --cov=asistente --cov=operacion
+          --cov-report=term
 
       - name: Sin pruebas omitidas
         run: uv run --no-sync python scripts/verificar_omitidas.py reporte-pruebas.xml
@@ -140,6 +142,10 @@ jobs:
       - name: Cobertura de adapters/espacio >= 80 % (meta S10)
         if: runner.os == 'Linux'
         run: uv run --no-sync coverage report --include="adapters/espacio/*" --fail-under=80
+
+      - name: Cobertura de seguridad y paquete >= 80 % (S3-M4)
+        if: runner.os == 'Linux'
+        run: uv run --no-sync coverage report --include="seguridad/*,paquete/*" --fail-under=80
 
       - name: Artefactos reproducibles
         if: runner.os == 'Linux'
