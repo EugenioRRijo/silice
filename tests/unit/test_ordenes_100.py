@@ -249,4 +249,8 @@ def test_las_ordenes_de_la_1_0_0_estan_registradas() -> None:
         "diagnostico-similitud",
         "verificar-programa",
         "eventos",
+        "generar-clave-proyecto",
+        "firmar-sumas",
+        "verificar-instalador",
+        "huella-clave-proyecto",
     }
