@@ -738,3 +738,8 @@ un equipo y una cuadrilla cada una) y ningún espacio: mide el costo de valorar 
 no la derivación espacial (`adapters.espacio`, que la spec de SF2 midió aparte: 500 puntos en un
 circuito, derivar 0,431 s). La CI ejecuta el script en Linux y Windows y **solo registra** la cifra (el
 paso no rompe la corrida); la meta S9 de `scripts/meta_sf.py` lee `scripts/_salida_rnf11.json`.
+
+### Medición de arranque (RNF‑19)
+
+2026-10-15, Windows-11-10.0.26200-SP0: 11,68; 11,20; 11,73; 11,77; 11,33 s; mediana 11,68 s frente al umbral de 20 s en el equipo de desarrollo.
+
