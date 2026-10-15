@@ -6,6 +6,13 @@ etiquetar, las líneas pasan a la sección de la versión. La historia anterior 
 
 ## [Sin publicar]
 
+## [1.0.0] - 2026-10-15
+
+### Agregado
+
+- S5 (cierre y lanzamiento 1.0.0, RF-97 a RF-99, RNF-19, RNF-20): instalador reproducible para Windows (`Silice-1.0.0.exe`), flujo `.github/workflows/instalador.yml`, medición de arranque RNF-19 (mediana 11.68 s <= 20.0 s), auditoría pip-audit limpia de vulnerabilidades y verificación con firma Ed25519 (`verificar_sumas.py` y `operacion.firma_sumas`).
+- Ceremonia de la clave del proyecto (H1): clave pública Ed25519 versionada en `operacion/clave_proyecto.pub`, con su huella SHA-256 registrada en `docs/manual_instalacion.md`.
+
 - `start.py`: arranque con un comando (`uv run start.py`), siembra los casos de demostración en `data/casos/` y abre la app en 127.0.0.1.
 - S4‑3 (T14 a T16): panel «Asistente de IA» en la hoja (vista previa del envío, costo, aceptar, editar o rechazar, y la sesión marcada con la versión guardada), pestaña «Asistente de IA» en Administración (activación, tope de costo y clave solo desde el propio equipo), el anexo `anexos/ia.json` del paquete (ya armado por `ui/entrega.py`, verificado sin uso, costo ni clave) y los manuales y el caso CP‑12 del guion; sin pruebas nuevas por decisión de Eugenio; la compuerta GS4‑3 no se cruza todavía.
 - Interfaz de trabajo (PLAN_SILICE_UI): pantalla «Tablero del proyecto» (tarjetas, control de obra, curva, desglose, Pareto, comparativo); línea de estado en la barra; pestaña APU en tres paneles; tema visual y Altair en extra `ui`.
