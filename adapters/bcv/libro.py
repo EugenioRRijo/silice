@@ -5,6 +5,9 @@ declara en `Libro.avisos` (S1 §7.2)."""
 from __future__ import annotations
 
 import hashlib
+import io
+import zipfile
+import zlib
 from dataclasses import dataclass
 from datetime import date, datetime
 from decimal import Decimal
@@ -16,6 +19,60 @@ Celda = str | Decimal | date | None
 LIMITE_BYTES = 20 * 1024 * 1024
 FIRMA_OLE2 = bytes.fromhex("D0CF11E0A1B11AE1")
 FIRMA_ZIP = b"PK\x03\x04"
+MAX_ENTRADAS = 5000
+MAX_DESCOMPRIMIDO = 60 * 1024 * 1024
+MAX_PIEZA = 30 * 1024 * 1024
+MAX_RAZON = 200
+
+
+def _verificar_xlsx_seguro(contenido: bytes, nombre: str) -> None:
+    """Verifica que el contenedor sea un ZIP válido y seguro antes de pasarlo a openpyxl (SEG-2).
+    Protege contra zip corrupto, zip bombs, compresión anómala y macros."""
+    try:
+        zf = zipfile.ZipFile(io.BytesIO(contenido))
+    except (zipfile.BadZipFile, zipfile.LargeZipFile, ValueError, OSError, EOFError) as exc:
+        raise FormatoNoReconocido(
+            f"{nombre}: no es un libro .xlsx valido (esta danado o no es de Excel)"
+        ) from exc
+    with zf:
+        entradas = zf.infolist()
+        if len(entradas) > MAX_ENTRADAS:
+            raise FormatoNoReconocido(
+                f"{nombre}: tiene {len(entradas)} piezas internas; "
+                f"supera el maximo de {MAX_ENTRADAS}"
+            )
+        total = 0
+        comprimido = 0
+        for e in entradas:
+            total += e.file_size
+            comprimido += e.compress_size
+            if e.file_size and (e.compress_size == 0 or e.file_size > MAX_RAZON * e.compress_size):
+                raise FormatoNoReconocido(
+                    f"{nombre}: la pieza {e.filename} tiene compresion anomala "
+                    f"(mas de {MAX_RAZON} a 1)"
+                )
+            if e.file_size > MAX_PIEZA:
+                raise FormatoNoReconocido(
+                    f"{nombre}: la pieza {e.filename} supera el limite de {MAX_PIEZA // 2**20} MB"
+                )
+        if total > MAX_DESCOMPRIMIDO:
+            raise FormatoNoReconocido(
+                f"{nombre}: tamano descomprimido supera el limite de "
+                f"{MAX_DESCOMPRIMIDO // 2**20} MB"
+            )
+        if total and (comprimido == 0 or total > MAX_RAZON * comprimido):
+            raise FormatoNoReconocido(f"{nombre}: razon de compresion global anomala")
+        nombres = {e.filename.replace("\\", "/") for e in entradas}
+        if any(n.rsplit("/", 1)[-1].lower() == "vbaproject.bin" for n in nombres):
+            raise FormatoNoReconocido(f"{nombre}: contiene macros (vbaProject.bin)")
+        if "xl/workbook.xml" not in nombres:
+            raise FormatoNoReconocido(f"{nombre}: no tiene la estructura de un libro de Excel")
+        try:
+            fallo = zf.testzip()
+            if fallo:
+                raise FormatoNoReconocido(f"{nombre}: archivo corrupto en la pieza {fallo}")
+        except (zlib.error, zipfile.BadZipFile, RuntimeError, ValueError) as exc:
+            raise FormatoNoReconocido(f"{nombre}: error de descompresion ({exc})") from exc
 
 
 @dataclass(frozen=True, slots=True)
@@ -50,6 +107,7 @@ def abrir_libro(ruta: Path) -> Libro:
             raise FormatoNoReconocido(
                 f"{ruta.name}: la extension .xlsx no coincide con el contenido"
             )
+        _verificar_xlsx_seguro(contenido, ruta.name)
         hojas, floats = _xlsx(ruta)
     else:
         raise FormatoNoReconocido(f"{ruta.name}: se leen .xls y .xlsx")
@@ -94,7 +152,10 @@ def _xls(contenido: bytes, nombre: str) -> tuple[tuple[Hoja, ...], int]:
 def _xlsx(ruta: Path) -> tuple[tuple[Hoja, ...], int]:
     import openpyxl
 
-    libro = openpyxl.load_workbook(ruta, read_only=True, data_only=True)
+    try:
+        libro = openpyxl.load_workbook(ruta, read_only=True, data_only=True)
+    except Exception as error:
+        raise FormatoNoReconocido(f"{ruta.name}: no se pudo abrir ({error})") from error
     floats, hojas = 0, []
     try:
         for hoja in libro.worksheets:
