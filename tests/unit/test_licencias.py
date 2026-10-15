@@ -160,3 +160,14 @@ def test_sin_la_licencia_de_python_falla(tmp_path: Path) -> None:
     resultado = _correr(sitio, tmp_path / "L", tmp_path / "no_existe.txt")
     assert resultado.returncode == 1 and "Python" in resultado.stderr
     assert not (tmp_path / "L" / "Python").exists()
+
+
+def test_ifcopenshell_sin_texto_en_dist_info_no_falla(tmp_path: Path) -> None:
+    """ARQ-2: ifcopenshell no tiene archivo de licencia en dist-info; no debe fallar."""
+    sitio, salida = tmp_path / "sitio", tmp_path / "LICENCIAS"
+    sitio.mkdir()
+    _dist(sitio, "ifcopenshell", "0.8.5", "LGPL-3.0-or-later", {})
+    resultado = _correr(sitio, salida, _psf(tmp_path))
+    assert resultado.returncode == 0, resultado.stderr
+    indice = (salida / "INDICE.md").read_text(encoding="utf-8")
+    assert "| ifcopenshell | 0.8.5 | LGPL-3.0-or-later |" in indice

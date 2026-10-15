@@ -25,6 +25,7 @@ archivos = ["pyproject.toml", "LICENSE"]
 cierre_desde = [
   "scripts.seed", "scripts.seed_demo", "scripts.seed_industrial", "scripts.seed_of001",
   "scripts.seed_sistemas", "scripts.seed_telecom", "scripts.simular_lista",
+  "scripts.lista_maprex_bs",
 ]
 
 [datos]
