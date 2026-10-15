@@ -115,6 +115,7 @@ Cada una audita las metas de su sprint (`OK`/`FALLA`/`PENDIENTE`); una fase se c
 | `meta_silice_s3.py` | parte S3 de la meta: UC‑21 a UC‑23, RF‑80 a RF‑89 y RF‑100, protocolos con huella, OF‑001 limpio (S3‑M1 a S3‑M5) | 0.8.0 |
 | `huellas_protocolos_s3.py` | escribe `docs/protocolos_s3.json`: el SHA‑256 de los dos protocolos de S3 y su lista | 0.8.0 |
 | `meta_silice_s4.py` | parte S4 de la meta única: UC‑09, RF‑32, RF‑90 a RF‑95 y RNF‑18 por presencia en la ERS, RNF‑08 con la excepción del asistente, banco de tareas con su huella, guardia de arquitectura y núcleo intacto del asistente, y congelado y resultados del experimento | 0.9.0 |
+| `meta_silice_s5b.py` | parte S5 de la 1.0.0: ERS final, versión única, flujo del instalador, tamaños, arranque, pip-audit, clave y etiquetas | 1.0.0 |
 | `escribir_banco_asistente.py` | escribe las 16 fichas del banco de tareas del asistente (memoria de cálculo a mano) en `tests/fixtures/asistente/tareas`; no se vuelve a correr tras el congelado | 0.9.0 |
 | `explorar_ia.py` | prueba exploratoria de S4.0: `keyring` y el modelo local de Ollama (`keyring` \| `ollama --modelo <nombre>`); no llama a ninguna API de pago | 0.9.0 |
 | `_experimento.py` | lo común de los scripts del experimento del asistente: contexto (banco, composiciones, catálogo) y proveedor real con la clave del almacén de credenciales; no se ejecuta solo | 0.9.0 |
