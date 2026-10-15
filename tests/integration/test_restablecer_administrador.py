@@ -217,3 +217,25 @@ def test_el_script_corre_solo_desde_la_consola(instalacion_con_gente) -> None:
     with sesion_de_instalacion() as bd:
         assert sesiones.validar(bd, ficha_admin, AHORA) is None
         assert bd.query(CodigoInstalacion).filter_by(motivo="restablecimiento").count() == 1
+
+
+def test_el_script_help_sale_con_cero_sin_emitir_codigo(instalacion_con_gente) -> None:
+    """`python scripts/restablecer_administrador.py --help` muestra la ayuda y sale con 0."""
+    carpeta, _ = instalacion_con_gente
+    cerrar_motores()
+    entorno = {**os.environ, "PYTHONIOENCODING": "utf-8"}
+    resultado = subprocess.run(
+        [sys.executable, str(RAIZ / "scripts" / "restablecer_administrador.py"), "--help"],
+        cwd=carpeta,
+        env=entorno,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        timeout=120,
+        check=False,
+    )
+    assert resultado.returncode == 0, resultado.stderr
+    assert not (carpeta / "codigo_instalacion.txt").exists()
+    assert "usage:" in resultado.stdout or "uso:" in resultado.stdout.lower()
+    with sesion_de_instalacion() as bd:
+        assert bd.query(CodigoInstalacion).filter_by(motivo="restablecimiento").count() == 0
