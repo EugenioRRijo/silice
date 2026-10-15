@@ -119,6 +119,7 @@ Cada una audita las metas de su sprint (`OK`/`FALLA`/`PENDIENTE`); una fase se c
 | `explorar_ia.py` | prueba exploratoria de S4.0: `keyring` y el modelo local de Ollama (`keyring` \| `ollama --modelo <nombre>`); no llama a ninguna API de pago | 0.9.0 |
 | `_experimento.py` | lo común de los scripts del experimento del asistente: contexto (banco, composiciones, catálogo) y proveedor real con la clave del almacén de credenciales; no se ejecuta solo | 0.9.0 |
 | `prueba_real_asistente.py` | prueba manual del asistente con la API real: **gasta dinero** y exige `--acepto-costo`, que autoriza una persona; solo tareas de desarrollo; no la corre la CI ni el plan | 0.9.0 |
+| `evaluar_asistente.py` | corre el protocolo del experimento del asistente (OE-H2) y **genera** `docs/resultados_asistente.md`, que nunca se edita a mano: `informe` (desde las corridas guardadas, sin costo), `mutaciones` (medición controlada del auditor, determinista, sin IA; exige el protocolo congelado e informa el n efectivo por tipo) y `corrida` (API real: **gasta dinero**, exige `--acepto-costo` y `--tope-usd`; el piloto escribe aparte en `docs/piloto_asistente_corridas.json`, la evaluación exige el congelado; se guarda tras cada corrida y se reanuda; no la corre la CI) | 0.9.0 |
 
 ## Bases de prueba y migraciones (Sílice, desde la 0.6.0)
 

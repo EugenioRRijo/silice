@@ -201,20 +201,25 @@ def _resultados(_ctx: Contexto) -> tuple[Estado, str]:
         CONTROLADO,
         CORRIDAS,
         PROTOCOLO,
-        _cargar_corridas,
+        corridas_de_evaluacion,
         generar_informe,
     )
 
     actual = _leer(RUTA_RESULTADOS)
     if not (CORRIDAS.is_file() and CONTROLADO.is_file() and congelado.CONGELADO.is_file()):
         return evaluar_resultados(actual, None)
+    protocolo = json.loads(PROTOCOLO.read_text(encoding="utf-8"))
+    try:
+        corridas = corridas_de_evaluacion(CORRIDAS, protocolo)
+    except ValueError as motivo:
+        return Estado.FALLA, str(motivo)
     controlado = {
         tipo: (d, n, tuple(par))
         for tipo, (d, n, par) in json.loads(CONTROLADO.read_text(encoding="utf-8")).items()
     }
     regenerado = generar_informe(
-        _cargar_corridas(CORRIDAS),
-        json.loads(PROTOCOLO.read_text(encoding="utf-8")),
+        corridas,
+        protocolo,
         controlado,
         json.loads(congelado.CONGELADO.read_text(encoding="utf-8")),
     )
