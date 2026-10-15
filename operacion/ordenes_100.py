@@ -1,20 +1,17 @@
-"""Órdenes de la 1.0.0 de `python -m operacion` (spec S5 §5.4, §6.5 y §8.2).
-
-Aquí viven `arrancar`, `parar`, `demostracion`, `red-local` y `diagnostico-similitud`. Las
-órdenes de la clave del proyecto y `verificar-instalador` (Tarea 3, que genera Eugenio) se agregan a
-`registrar` cuando esa tarea se fusione. Solo `__main__` importa este módulo: `ui` y `api` no
-(spec S5 §5.2).
-"""
+"""Órdenes de la 1.0.0 de `python -m operacion` (spec S5 §5.4, §6.5, §8.2 y §10.4)."""
 
 from __future__ import annotations
 
 import argparse
+import getpass
 import os
 import sys
 from collections.abc import Callable
 from pathlib import Path
 
-from operacion import base_datos, config, lanzador, red
+from cryptography.exceptions import InvalidTag
+
+from operacion import base_datos, config, firma_sumas, lanzador, red
 
 
 def _arrancar(argumentos: argparse.Namespace) -> int:
@@ -133,6 +130,99 @@ def _eventos(argumentos: argparse.Namespace) -> int:
     return 0
 
 
+def _generar_clave(argumentos: argparse.Namespace) -> int:
+    salida = Path(argumentos.salida).resolve()
+    if salida.is_relative_to(config.RAIZ.resolve()):
+        print("La clave privada no puede vivir dentro del repositorio.", file=sys.stderr)
+        return 1
+    if "onedrive" in str(salida).lower():
+        print(
+            "La clave privada no puede vivir en una carpeta de OneDrive (se sincroniza).",
+            file=sys.stderr,
+        )
+        return 1
+    if (salida / "clave_proyecto.enc").exists():
+        print(f"Ya hay una clave en {salida}: no se pisa.", file=sys.stderr)
+        return 1
+    contrasena = getpass.getpass("Contraseña de la clave del proyecto (mínimo 12 caracteres): ")
+    if contrasena != getpass.getpass("Repítala: "):
+        print("Las contraseñas no coinciden.", file=sys.stderr)
+        return 1
+    privada = firma_sumas.generar_par()
+    try:
+        firma_sumas.guardar_privada(privada, contrasena, salida / "clave_proyecto.enc")
+    except ValueError as error:
+        print(str(error), file=sys.stderr)
+        return 1
+    publica = firma_sumas.bytes_publicos(privada)
+    (salida / "clave_proyecto.pub").write_text(publica.hex() + "\n", encoding="utf-8")
+    print(f"Clave pública: {publica.hex()}")
+    print(f"Huella SHA-256: {firma_sumas.huella(publica)}")
+    print(
+        f"Copie {salida / 'clave_proyecto.pub'} a operacion/clave_proyecto.pub y versione SOLO ese "
+        f"archivo. Guarde {salida / 'clave_proyecto.enc'} y su contraseña en dos lugares fuera del "
+        "repositorio."
+    )
+    return 0
+
+
+def _firmar_sumas(argumentos: argparse.Namespace) -> int:
+    sumas = Path(argumentos.sumas)
+    clave = Path(argumentos.clave)
+    clave = clave / "clave_proyecto.enc" if clave.is_dir() else clave
+    try:
+        privada = firma_sumas.cargar_privada(
+            clave, getpass.getpass("Contraseña de la clave del proyecto: ")
+        )
+    except InvalidTag:
+        print("Contraseña incorrecta (o la clave no es la que dice ser).", file=sys.stderr)
+        return 1
+    try:
+        publica_del_programa = firma_sumas.leer_publica()
+    except (FileNotFoundError, ValueError) as error:
+        print(f"No hay clave del proyecto en este programa: {error}", file=sys.stderr)
+        return 1
+    if firma_sumas.bytes_publicos(privada) != publica_del_programa:
+        print(
+            "Esa clave no es la clave del proyecto (operacion/clave_proyecto.pub): no se firma "
+            "nada.",
+            file=sys.stderr,
+        )
+        return 1
+    datos = sumas.read_bytes()
+    firma = firma_sumas.firmar(datos, privada)
+    assert firma_sumas.verificar(datos, firma, publica_del_programa)
+    destino = sumas.with_name(sumas.name + ".ed25519")
+    destino.write_bytes(firma)
+    print(f"Firmado: {destino}")
+    return 0
+
+
+def _verificar_instalador(argumentos: argparse.Namespace) -> int:
+    try:
+        publica = (
+            bytes.fromhex(argumentos.publica) if argumentos.publica else firma_sumas.leer_publica()
+        )
+    except (FileNotFoundError, ValueError) as error:
+        print(f"No hay clave del proyecto para comprobar: {error}", file=sys.stderr)
+        return 1
+    ok, mensaje = firma_sumas.verificar_instalador(
+        Path(argumentos.exe),
+        Path(argumentos.sumas).read_bytes(),
+        Path(argumentos.firma).read_bytes(),
+        publica,
+    )
+    print(mensaje, file=sys.stdout if ok else sys.stderr)
+    return 0 if ok else 1
+
+
+def _huella(_argumentos: argparse.Namespace) -> int:
+    publica = firma_sumas.leer_publica()
+    print(firma_sumas.huella(publica))
+    print(firma_sumas.huella_agrupada(publica))
+    return 0
+
+
 def registrar(
     ordenes: argparse._SubParsersAction,  # type: ignore[type-arg]
     tabla: dict[str, Callable[[argparse.Namespace], int]],
@@ -156,6 +246,24 @@ def registrar(
     sub = eventos.add_subparsers(dest="accion", required=True)
     sub.add_parser("pendientes")
     sub.add_parser("revisar").add_argument("archivo")
+    generar = ordenes.add_parser(
+        "generar-clave-proyecto", help="genera el par Ed25519 del proyecto"
+    )
+    generar.add_argument(
+        "--salida", required=True, help="carpeta FUERA del repositorio y de OneDrive"
+    )
+    firmar = ordenes.add_parser("firmar-sumas", help="firma SHA256SUMS con la clave del proyecto")
+    firmar.add_argument("sumas")
+    firmar.add_argument("--clave", required=True, help="clave_proyecto.enc o su carpeta")
+    verificar = ordenes.add_parser("verificar-instalador", help="huella y firma de un instalador")
+    for nombre in ("exe", "sumas", "firma"):
+        verificar.add_argument(nombre)
+    verificar.add_argument(
+        "--publica", help="clave pública en hexadecimal (por defecto, la del programa)"
+    )
+    ordenes.add_parser(
+        "huella-clave-proyecto", help="huella SHA-256 de la clave pública del proyecto"
+    )
     tabla.update(
         {
             "arrancar": _arrancar,
@@ -165,5 +273,9 @@ def registrar(
             "diagnostico-similitud": _diagnostico_similitud,
             "verificar-programa": _verificar_programa,
             "eventos": _eventos,
+            "generar-clave-proyecto": _generar_clave,
+            "firmar-sumas": _firmar_sumas,
+            "verificar-instalador": _verificar_instalador,
+            "huella-clave-proyecto": _huella,
         }
     )

@@ -15,9 +15,11 @@ la convierte en un mensaje sin traza.
 
 from __future__ import annotations
 
+import base64
 import json
 import secrets
 from dataclasses import dataclass
+from typing import Any
 
 from argon2.low_level import Type, hash_secret_raw
 from cryptography.exceptions import InvalidTag
@@ -139,20 +141,48 @@ def _dato_asociado(huella_publica: str) -> bytes:
 def cifrar(
     secreto: bytes,
     contrasena: str,
-    huella_publica: str,
+    huella_publica: str = "",
     parametros: ParametrosKdf | None = None,
-) -> SecretoCifrado:
+    *,
+    asociado: bytes | None = None,
+) -> Any:
     """Cifra `secreto` con la contraseña. Sal y nonce nuevos en cada llamada."""
     parametros = parametros or ParametrosKdf()
     sal = secrets.token_bytes(TAMANO_SAL)
     nonce = secrets.token_bytes(TAMANO_NONCE)
     clave = _derivar(contrasena, sal, parametros)
-    cifrado = AESGCM(clave).encrypt(nonce, secreto, _dato_asociado(huella_publica))
+    ad = asociado if asociado is not None else _dato_asociado(huella_publica)
+    cifrado = AESGCM(clave).encrypt(nonce, secreto, ad)
+    if asociado is not None:
+        sobre_dict = {
+            "kdf": parametros.a_json(),
+            "sal": base64.b64encode(sal).decode("ascii"),
+            "nonce": base64.b64encode(nonce).decode("ascii"),
+            "cifrado": base64.b64encode(cifrado).decode("ascii"),
+        }
+        return json.dumps(sobre_dict, sort_keys=True).encode("utf-8")
     return SecretoCifrado(parametros.a_json(), sal, nonce, cifrado)
 
 
-def descifrar(cifrado: SecretoCifrado, contrasena: str, huella_publica: str) -> bytes:
+def descifrar(
+    cifrado: Any,
+    contrasena: str,
+    huella_publica: str = "",
+    *,
+    asociado: bytes | None = None,
+) -> bytes:
     """El secreto original; `InvalidTag` si la contraseña o la huella no son las del cifrado."""
-    parametros = ParametrosKdf.de_json(cifrado.kdf)
-    clave = _derivar(contrasena, cifrado.sal, parametros)
-    return AESGCM(clave).decrypt(cifrado.nonce, cifrado.cifrado, _dato_asociado(huella_publica))
+    if isinstance(cifrado, (bytes, bytearray)):
+        datos = json.loads(cifrado)
+        parametros = ParametrosKdf.de_json(datos["kdf"])
+        sal = base64.b64decode(datos["sal"])
+        nonce = base64.b64decode(datos["nonce"])
+        cuerpo = base64.b64decode(datos["cifrado"])
+    else:
+        parametros = ParametrosKdf.de_json(cifrado.kdf)
+        sal = cifrado.sal
+        nonce = cifrado.nonce
+        cuerpo = cifrado.cifrado
+    clave = _derivar(contrasena, sal, parametros)
+    ad = asociado if asociado is not None else _dato_asociado(huella_publica)
+    return AESGCM(clave).decrypt(nonce, cuerpo, ad)
