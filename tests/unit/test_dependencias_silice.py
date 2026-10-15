@@ -39,13 +39,13 @@ DUENOS_DE_TERCEROS: dict[str, tuple[str, ...]] = {
     "ollama": ("asistente/", "scripts/explorar_ia.py"),
     "keyring": ("asistente/", "scripts/explorar_ia.py"),
     "argon2": ("seguridad/",),
-    "cryptography": ("seguridad/",),
+    "cryptography": ("seguridad/", "operacion/", "instalador/"),
     "alembic": ("migraciones/", "operacion/"),
 }
 #: Terceros de un extra: se importan dentro de una funcion, nunca al cargar el modulo.
 DIFERIDOS = frozenset({"xlrd", "ifctester", "anthropic", "ollama", "keyring"})
 #: Carpetas que no son codigo del producto (las pruebas pueden importar cualquier tercero).
-_EXCLUIDAS = frozenset({"tests", "data", "docs"})
+_EXCLUIDAS = frozenset({"tests", "data", "docs", "build", "publicacion", "humo-salida"})
 
 
 def _proyecto() -> dict:
@@ -154,6 +154,6 @@ def test_la_guardia_de_terceros_ve_cada_caso() -> None:
         == []
     )
     assert violaciones("api/main.py", "from cryptography.fernet import Fernet\n") == [
-        "api/main.py: cryptography fuera de seguridad/"
+        "api/main.py: cryptography fuera de seguridad/, operacion/, instalador/"
     ]
     assert violaciones("ui/x.py", "import pandas\n") == []

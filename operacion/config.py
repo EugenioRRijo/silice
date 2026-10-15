@@ -134,7 +134,13 @@ def _direccion_valida(texto: str) -> bool:
         ip = ipaddress.ip_address(texto)
     except ValueError:
         return False
-    return ip.version == 4 and ip.is_private and not (ip.is_unspecified or ip.is_multicast)
+    # La misma familia que ofrece `operacion.red.interfaces_privadas`: sin bucle local ni enlace
+    # local (auditoría final: 127.0.0.1 y 169.254.x.x pasaban por «IP privada»).
+    return (
+        ip.version == 4
+        and ip.is_private
+        and not (ip.is_unspecified or ip.is_multicast or ip.is_loopback or ip.is_link_local)
+    )
 
 
 def _puerto(valor: object, defecto: int, nombre: str, avisos: list[str]) -> int:
@@ -178,8 +184,12 @@ def cargar_ajustes(ruta: Path) -> Ajustes:
     puerto = _puerto(servidor.get("puerto"), PUERTO_STREAMLIT, "la interfaz", avisos)
     puerto_api = _puerto(api.get("puerto"), PUERTO_API, "la API", avisos)
     if puerto_api == puerto:
-        avisos.append("La interfaz y la API no pueden usar el mismo puerto; la API vuelve a 8000.")
-        puerto_api = PUERTO_API
+        # Si la interfaz ocupa justo el 8000, la API no puede «volver» a 8000 (auditoría final).
+        alterno = PUERTO_API if puerto != PUERTO_API else PUERTO_API + 1
+        avisos.append(
+            f"La interfaz y la API no pueden usar el mismo puerto; la API pasa al {alterno}."
+        )
+        puerto_api = alterno
     red_local = _booleano(servidor.get("red_local"), "red_local", avisos)
     direccion = servidor.get("direccion", "")
     if red_local and not (isinstance(direccion, str) and _direccion_valida(direccion)):

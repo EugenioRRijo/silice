@@ -49,6 +49,10 @@ def cargar_aceptadas(ruta: Path = RUTA_ACEPTADAS) -> dict[str, Aceptada]:
         for campo in CAMPOS:
             if campo not in entrada:
                 raise ValueError(f"{ruta.name}: una excepción no tiene «{campo}»")
+        # una fecha TOML sin comillas (`hasta = 2026-12-31`); texto o fecha con hora no se
+        # podrían comparar con la de hoy
+        if type(entrada["hasta"]) is not date:
+            raise ValueError(f"{ruta.name}: «hasta» de {entrada['id']} no es una fecha AAAA-MM-DD")
         aceptadas[entrada["id"]] = Aceptada(
             entrada["id"], entrada["ruling"], entrada["hasta"], entrada["razon"]
         )

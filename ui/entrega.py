@@ -269,7 +269,8 @@ def entregar(
         paquete_id=paquete_id,
     )
     sha = hashlib.sha256(datos).hexdigest()
-    detalle = f"{paquete_id}; version {version.codigo}; sha256 {sha}"
+    # UC-22 paso 5: SHA-256, `paquete_id`, versión y el usuario que entregó.
+    detalle = f"{paquete_id}; version {version.codigo}; sha256 {sha}; usuario {usuario}"
     if privada is not None:
         eventos.registrar(instalacion, "firma", ahora, detalle=detalle)
     eventos.registrar(instalacion, "paquete exportado", ahora, detalle=detalle)

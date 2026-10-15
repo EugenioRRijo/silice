@@ -101,13 +101,23 @@ def anexo_de_tablas(
         condicion = None
         if "proyecto_id" in tabla.c:
             condicion = tabla.c.proyecto_id == proyecto_id
-        else:  # sin proyecto: se filtra por el padre ya incluido; sin padre, es global
-            for clave in tabla.foreign_keys:
+        else:  # sin proyecto: por el padre ya incluido, o por un padre con `proyecto_id`
+            claves = sorted(tabla.foreign_keys, key=lambda c: c.parent.name)
+            for clave in claves:
                 padre = clave.column.table.name
                 if padre in incluidas:
                     ids = {fila[clave.column.name] for fila in incluidas[padre]}
                     condicion = clave.parent.in_(ids) if ids else false()
                     break
+            else:  # p. ej. `clausula_reajuste` -> `presupuesto`; sin ninguno de los dos, global
+                for clave in claves:
+                    padre_t = clave.column.table
+                    if padre_t is not tabla and "proyecto_id" in padre_t.c:
+                        del_proyecto = select(clave.column).where(
+                            padre_t.c.proyecto_id == proyecto_id
+                        )
+                        condicion = clave.parent.in_(del_proyecto)
+                        break
         incluidas[tabla_nombre] = _filas(sesion, tabla, condicion)
     entradas = [
         {"tabla": tabla, "fila": fila, "huella": huella(json_canonico(fila))}

@@ -15,7 +15,11 @@ import sys
 from importlib import metadata
 from pathlib import Path
 
+RAIZ = Path(__file__).resolve().parents[1]
 PATRON = re.compile(r"(?i)^(licen[cs]e|copying|notice|authors)([-_. ].*)?$")
+RESPALDO_LICENCIAS: dict[str, str] = {
+    "ifcopenshell": "GNU Lesser General Public License v3 or later (LGPLv3+)",
+}
 
 
 def _declarada(meta) -> str:
@@ -53,6 +57,14 @@ def _textos(dist) -> list[Path]:
     return halladas
 
 
+def _textos_respaldo(nombre: str) -> list[Path]:
+    """Textos de respaldo para paquetes conocidos sin archivo de licencia en dist-info (ARQ-2)."""
+    if nombre.lower() == "ifcopenshell":
+        candidatos = [RAIZ / "docs" / "licencias_ifc.md"]
+        return [c for c in candidatos if c.is_file()]
+    return []
+
+
 def main(argv: list[str] | None = None) -> int:
     analizador = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     analizador.add_argument("--salida", required=True, type=Path)
@@ -74,6 +86,10 @@ def main(argv: list[str] | None = None) -> int:
     for dist in sorted(metadata.distributions(**filtro), key=lambda d: d.metadata["Name"].lower()):
         nombre, version = dist.metadata["Name"], dist.version
         declarada, textos = _declarada(dist.metadata), _textos(dist)
+        if not declarada:
+            declarada = RESPALDO_LICENCIAS.get(nombre.lower(), "")
+        if not textos:
+            textos = _textos_respaldo(nombre)
         if not declarada and not textos:
             problemas.append(f"{nombre} {version}: sin licencia declarada ni texto de licencia")
         carpeta = argumentos.salida / f"{nombre}-{version}"

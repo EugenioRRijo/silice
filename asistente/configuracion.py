@@ -42,7 +42,8 @@ def leer(ruta: Path) -> ConfiguracionIA:
         datos["tope_usd"] = Decimal(str(datos.get("tope_usd", "2")))
         datos["prefijos_de_maprex"] = tuple(datos.get("prefijos_de_maprex", ()))
         return ConfiguracionIA(**datos)
-    except (OSError, ValueError, TypeError, ArithmeticError):
+    except (OSError, ValueError, TypeError, AttributeError, ArithmeticError):
+        # AttributeError: un JSON valido que no es un objeto (`[]`, `"texto"`) no tiene `.get`
         return ConfiguracionIA()
 
 

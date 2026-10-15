@@ -12,6 +12,7 @@ import openpyxl
 from fastapi import APIRouter, File, Form, UploadFile, status
 from sqlalchemy import select
 
+from adapters.hoja_empresa.guardia import ArchivoRechazado, verificar_archivo
 from api.archivos import guardar_subida
 from api.dependencias import SesionDep
 from api.esquemas import CambioRespuesta, CargaListaRespuesta, ListaRespuesta
@@ -102,6 +103,12 @@ def comprobar_libro_legible(ruta: Path) -> None:
     """
     if ruta.suffix.lower() not in SUFIJOS_EXCEL:
         return
+    try:
+        verificar_archivo(ruta.read_bytes(), ruta.name)
+    except ArchivoRechazado as error:
+        raise ValueError(
+            f"{ruta.name}: no se puede leer como libro de Excel ({error})"
+        ) from error
     # El flujo lo abre y lo cierra esta funcion: si openpyxl falla a mitad, en Windows dejaria el
     # archivo abierto y el directorio temporal de la ruta no se podria borrar.
     with ruta.open("rb") as flujo:

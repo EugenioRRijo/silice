@@ -168,10 +168,11 @@ propio.
 
 Por inspección del repositorio y de las dependencias: 0 credenciales versionadas; ejecución
 enteramente local (SQLite en el equipo del usuario, API y UI en localhost). En operación hay **dos
-llamadas de red, ambas declaradas**: la descarga inicial del modelo de `sentence-transformers`
-(I2), que queda en caché, y three.js, que el Visor 3D carga desde `cdnjs.cloudflare.com` con
-versión fija cada vez que se pinta (`ui/paginas/visor.py`, `URL_THREE_JS`; INV‑077, declarada en
-C4). Sin red, el navegador no obtiene three.js y el visor no puede dibujar el modelo. Que la suite
+excepciones de red, ambas declaradas** (RNF‑08, redacción final de la 1.0.0): la descarga inicial
+del modelo de `sentence-transformers` (I2) en el camino de desarrollo, que queda en caché (el
+instalador completo lo trae incluido), y el asistente de IA en modo nube, apagado por defecto, que
+solo activa el administrador. three.js ya no se descarga: el Visor 3D lo incrusta desde
+`ui/estaticos/three.min.js` con su SHA‑256 fijado (RP10‑5, Tarea 11 de la 1.0.0). Que la suite
 pase sin red una vez poblada la caché **no se ha verificado con la red cortada**. Hay solo un
 indicio: con `HF_HUB_OFFLINE=1` y `TRANSFORMERS_OFFLINE=1`, `tests/unit/test_normalizacion.py` pasa
 (revisión de pruebas de GC4). La corrida sin red se mide en Med.

@@ -16,28 +16,8 @@ red local, los respaldos y los problemas frecuentes están en el
 Después de instalar, el acceso «Sílice» del menú Inicio abre la aplicación en el navegador. Para
 detenerla, cierre la ventana minimizada «Sílice» o use «Detener Sílice».
 
-### Instalación para desarrollo
-
-Quien trabaja sobre el código (no el usuario final) sigue esta ruta; el entorno de desarrollo
-completo está en el [manual técnico](manual_tecnico.md#2-entorno-de-desarrollo).
-
-- Windows o Linux con **Python 3.12 o superior** y [uv](https://docs.astral.sh/uv/) instalados.
-- Clonar o copiar la carpeta del proyecto y, dentro de ella, ejecutar:
-
-```
-uv sync --extra ui --extra api --extra civil --extra planos --extra ml
-```
-
-No hay más pasos (RNF‑07). Notas:
-
-- El extra `ui` exige **Streamlit 1.62 o superior**: el menú superior (`position="top"`) no existe en versiones anteriores.
-- El extra `planos` instala `ezdxf` (importar planos DXF en la hoja del proyecto) y `civil`,
-  `ifcopenshell` (importar planos IFC); sin ellos, importar un plano avisa que falta el componente.
-- El extra `civil` instala `ifcopenshell` (modelos IFC); `ml` instala scikit‑learn y
-  sentence‑transformers. Sin el extra correspondiente, esas funciones avisan que faltan en vez de
-  fallar en silencio.
-- La **primera** consulta de «Partidas similares» descarga el modelo de lenguaje y lo deja en
-  caché local. Es la única conexión de red del sistema (RNF‑08); todo lo demás corre local.
+> La instalación para desarrollo pasó al [manual
+  técnico](manual_tecnico.md#2-entorno-de-desarrollo).
 
 ## 2. Puesta en marcha
 

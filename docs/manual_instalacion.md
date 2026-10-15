@@ -25,7 +25,8 @@ Junto al instalador vienen tres archivos: `SHA256SUMS`, `SHA256SUMS.ed25519` y `
 3. **Huella de la clave.** El script imprime la huella SHA-256 de la clave pública que usó; debe ser
    exactamente esta (también está en la tesis):
 
-   Huella de la clave: `<PENDIENTE H1: se pega aquí la salida de huella-clave-proyecto>`
+   Huella de la clave: `07513b7c432cea1ad6a86ce3771ed08d3a4e9d7dbdce1d678830f45ab5068057`
+   (`07513b7c 432cea1a d6a86ce3 771ed08d 3a4e9d7d bdce1d67 8830f45a b5068057`)
 
    Si no coincide, **no instale** y avise a quien le entregó el instalador.
 

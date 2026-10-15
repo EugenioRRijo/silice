@@ -332,7 +332,7 @@ def _paquete(sesion) -> None:
             st.metric("Total recalculado", formatear_decimal(r.total_recalculado, 2))
             st.caption(
                 "Reglas corridas a la fecha de emisión ("
-                + str(r.fecha_evaluacion)
+                + f"{r.fecha_evaluacion:%Y-%m-%d}"
                 + "): "
                 + ", ".join(texto_seguro(c) for c in r.contextos)
                 + "."

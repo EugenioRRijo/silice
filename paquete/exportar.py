@@ -24,10 +24,12 @@ from paquete.formato import (
     FORMATO_PAQUETE,
     NOMBRE_FIRMA,
     NOMBRE_MANIFIESTO,
+    RELACION_MAXIMA,
     VERSION_FORMATO,
     PaqueteRechazado,
     comprobar_salida,
     huella_de_anexos,
+    relacion_aceptable,
 )
 from seguridad import firma
 
@@ -115,6 +117,12 @@ def construir_paquete(
             info.compress_type = zipfile.ZIP_DEFLATED
             info.external_attr = 0o600 << 16
             zip_.writestr(info, octetos)
+            if not relacion_aceptable(info.file_size, info.compress_size):
+                # el revisor lo rechazaría (abrir_zip): no se genera (22f)
+                raise PaqueteRechazado(
+                    f"{nombre} se comprime más de {RELACION_MAXIMA}:1 y el revisor lo "
+                    "rechazaría: no se genera."
+                )
     datos = flujo.getvalue()
     comprobar_salida(contenido, len(datos))
     return datos

@@ -80,11 +80,17 @@ def listar_proyectos(ruta: Path) -> list[str]:
     return sorted(nombres, key=str.casefold)
 
 
-def crear_proyecto_nuevo(ruta: Path, nombre: str, moneda: str | None = None) -> str:
+def crear_proyecto_nuevo(
+    ruta: Path,
+    nombre: str,
+    moneda: str | None = None,
+    responsable: str = RESPONSABLE_DE_LA_INTERFAZ,
+) -> str:
     """Crea el proyecto y devuelve su nombre limpio. Con `moneda`, la declara en `moneda_proyecto`
     (UC-01 paso 1, S1); sin ella el proyecto queda como antes (USD por defecto de `elaborar`).
     `ProyectoInvalido` si el nombre queda vacio, ya existe (sin distinguir mayusculas), la moneda
-    no es Bs ni USD o el caso no existe."""
+    no es Bs ni USD o el caso no existe. `responsable` firma la declaración de la moneda (RF-82):
+    la barra pasa el usuario de la sesión con el acceso encendido."""
     limpio = " ".join(nombre.split())  # sin espacios sobrantes ni dobles
     if not limpio:
         raise ProyectoInvalido("Escriba un nombre para el proyecto: no puede quedar vacio.")
@@ -108,9 +114,7 @@ def crear_proyecto_nuevo(ruta: Path, nombre: str, moneda: str | None = None) -> 
             try:
                 proyecto = crear_proyecto(sesion, limpio)
                 if moneda is not None:
-                    declarar_moneda(
-                        sesion, proyecto, moneda, responsable=RESPONSABLE_DE_LA_INTERFAZ
-                    )
+                    declarar_moneda(sesion, proyecto, moneda, responsable=responsable)
             except ValueError as error:  # el nucleo repite las reglas; por si cambian
                 raise ProyectoInvalido(str(error)) from error
             sesion.commit()

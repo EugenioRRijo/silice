@@ -99,6 +99,7 @@ VALOR_MODO_ENTREGA = "1"
 SECCION_TRABAJO = "Trabajo"
 SECCION_REVISION = "Revision"
 SECCION_INVESTIGACION = "Investigacion"
+SECCION_ADMINISTRACION = "Administracion"  # RF-42 (S3 §5.7): cuarta seccion, rol administrador
 ROTULO_SIGUIENTE = "Siguiente: {}"
 CLAVE_BOTON_SIGUIENTE = "marco_siguiente"
 POSICION_NAVEGACION = "top"  # RF-60: la navegacion va arriba (Streamlit >= 1.62)
@@ -157,9 +158,6 @@ PAGINAS: tuple[DefinicionPagina, ...] = (
     DefinicionPagina(acerca.render, "Acerca de Sílice", SECCION_TRABAJO),
     DefinicionPagina(entregar.render, "Entregar paquete", SECCION_TRABAJO, "UC-22",
                      Accion.ENTREGAR_PAQUETE),
-    # S3-3: cuentas, empresa y claves, accesos y (pestaña «Instalación») red, API y respaldos.
-    DefinicionPagina(administracion.render, "Administración", SECCION_TRABAJO, "UC-21",
-                     Accion.ADMINISTRAR_CUENTAS),
     DefinicionPagina(revisar.render, "Revisar un paquete", SECCION_REVISION, "UC-23",
                      Accion.REVISAR_PAQUETE),
     # 1.5 (UC-25): el libro de Excel de la empresa, auditado y devuelto calcado (o solo un PDF
@@ -174,6 +172,10 @@ PAGINAS: tuple[DefinicionPagina, ...] = (
     ),
     DefinicionPagina(simulador.render, "Simulador de listas", SECCION_INVESTIGACION, accion=_EDITA),
     DefinicionPagina(visor.render, "Visor 3D del modelo", SECCION_INVESTIGACION, accion=_EDITA),
+    # S3-3: cuentas, empresa y claves, accesos y (pestaña «Instalación») red, API y respaldos.
+    # RF-42 (S3 §5.7): su propia seccion, la cuarta, que solo ve el rol administrador.
+    DefinicionPagina(administracion.render, "Administración", SECCION_ADMINISTRACION, "UC-21",
+                     Accion.ADMINISTRAR_CUENTAS),
 )
 
 

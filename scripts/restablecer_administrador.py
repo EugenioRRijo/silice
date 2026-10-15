@@ -13,6 +13,7 @@ borra al usarse. Quien lo corre queda en `evento_acceso` (tipo `codigo de instal
 
 from __future__ import annotations
 
+import argparse
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -36,6 +37,8 @@ def restablecer(ahora: datetime | None = None) -> tuple[str, Path]:
 
 
 def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.parse_args(argv)
     try:
         codigo, archivo = restablecer()
     finally:

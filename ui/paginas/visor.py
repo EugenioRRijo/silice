@@ -161,8 +161,11 @@ def _mostrar_tabla(items: list[ItemComputo]) -> None:
 def _html_visor(mallas_encontradas: list[dict]) -> str:
     """Incrusta el visor three.js con las mallas ya teseladas. three.js va dentro del HTML
     (RP10-5): el visor no pide nada fuera del equipo (RNF-08)."""
+    # El `GlobalId` sale del `.ifc` subido: un `</script>` en él cerraría el bloque de datos
+    # (auditoría final). `<\/` es el mismo texto para JavaScript y para JSON.
+    datos = json.dumps(mallas_encontradas).replace("</", "<\\/")
     return (
-        _PLANTILLA_HTML.replace("__DATOS__", json.dumps(mallas_encontradas))
+        _PLANTILLA_HTML.replace("__DATOS__", datos)
         .replace("__ALTURA__", str(ALTURA_VISOR))
         .replace("__THREE__", RUTA_THREE_JS.read_text(encoding="utf-8"))
     )

@@ -12,6 +12,7 @@ import pytest
 from ui.recorridos import (
     NOMBRE_DEMOSTRACION,
     NOMBRE_MONEDA,
+    NOMBRE_PAQUETE,
     NOMBRE_PRECIOS,
     NOMBRE_PRESUPUESTO,
     RECORRIDOS,
@@ -26,13 +27,23 @@ PASO = Paso("Ver el catalogo", "catalogo", "Revise las partidas.", "Ve la tabla 
 OTRO = Paso("Componer", "componer", "Componga la partida.", "La partida queda guardada.")
 
 
-def test_hay_cuatro_recorridos_en_el_orden_declarado() -> None:
+def test_hay_cinco_recorridos_en_el_orden_declarado() -> None:
     assert tuple(r.nombre for r in RECORRIDOS) == (
         NOMBRE_DEMOSTRACION,
         NOMBRE_PRESUPUESTO,
         NOMBRE_PRECIOS,
         NOMBRE_MONEDA,
+        NOMBRE_PAQUETE,
     )
+
+
+def test_el_recorrido_del_paquete_pasa_por_entregar_y_revisar() -> None:
+    """S3 (tarea 20): quien solo arma ve el primer paso; quien solo revisa, el segundo (RF-37)."""
+    recorrido = recorrido_por_nombre(NOMBRE_PAQUETE)
+    assert [paso.pagina for paso in recorrido.pasos] == ["entregar", "revisar"]
+    assert [p.pagina for p in recorrido.visible_en({"entregar"}).pasos] == ["entregar"]
+    assert [p.pagina for p in recorrido.visible_en({"revisar"}).pasos] == ["revisar"]
+    assert recorrido.visible_en({"hoja"}) is None
 
 
 def test_el_recorrido_de_moneda_pasa_por_las_pantallas_de_s1() -> None:

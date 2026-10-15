@@ -83,6 +83,19 @@ def test_fases_hasta_acumula_en_orden() -> None:
         fases_hasta("0.5.0", "T0")
 
 
+def test_la_1_0_0_acumula_todas_las_versiones_y_termina_en_s5_5() -> None:
+    """Apertura de la 1.0.0 (PLAN_SILICE_100, T1): 8 + 6 + 8 + 5 fases previas y las 5 de S5."""
+    fases = fases_hasta("1.0.0", "S5-5")
+    assert fases[-5:] == ("S5-0", "S5-2", "S5-3", "S5-4", "S5-5")
+    assert len(fases) == 8 + 6 + 8 + 5 + 5 and len(set(fases)) == len(fases)
+    assert "S5-1" in fases and "S1-5" in fases  # lo de la 0.6.0 se evalúa también
+    assert fases.index("S4-4") < fases.index("S5-0")  # la 0.9.0 antes que la 1.0.0
+    assert fases_hasta("1.0.0", "S5-0")[-1] == "S5-0"
+    assert fases_hasta("1.0.0", "S5-4")[-2:] == ("S5-3", "S5-4")
+    with pytest.raises(ValueError, match="fase desconocida"):
+        fases_hasta("1.0.0", "S5-1")  # S5-1 es de la 0.6.0, no de la 1.0.0
+
+
 def test_los_requisitos_se_exigen_por_presencia_y_por_fase() -> None:
     parte = Parte("S5", requisitos={"S5-1": ("RF-96", "RNF-20")})
     assert requisitos_exigidos((parte,), ("T0",)) == ()
