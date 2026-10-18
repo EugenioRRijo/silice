@@ -3,6 +3,7 @@
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 
+from api import interfaz
 from api.proteccion import exigir_clave_api, opciones_documentacion, proteger
 from api.rutas import (
     auditorias,
@@ -12,6 +13,7 @@ from api.rutas import (
     listas,
     presupuestos,
     rendimientos,
+    sesion,
 )
 from core.catalog import CatalogoIncompleto
 from operacion.version import version
@@ -37,6 +39,10 @@ app.include_router(rendimientos.router, dependencies=CON_CLAVE)
 app.include_router(auditorias.router, dependencies=CON_CLAVE)  # S3 §10: POST /v1/auditorias
 # 1.5: /v1/libros (auditoria, devolucion y pdf)
 app.include_router(libros.router, dependencies=CON_CLAVE)
+# 1.2.0 (RT-9): acceso del navegador por cuenta y cookie; sin clave de API a propósito
+app.include_router(sesion.router)
+# 1.2.0 (RT-2): la interfaz nueva, estática y sin secretos, en /app con CSP
+interfaz.montar(app)
 
 
 @app.get("/salud", tags=["catalogo"])

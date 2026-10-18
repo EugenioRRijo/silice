@@ -1097,6 +1097,151 @@
         }
       }
     },
+    "/v1/sesion": {
+      "get": {
+        "tags": [
+          "sesion"
+        ],
+        "summary": "Consultar",
+        "description": "La sesión vigente del navegador, con su token anti-CSRF.",
+        "operationId": "consultar_v1_sesion_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SesionRespuesta"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sin sesión vigente.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detalle"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "La cuenta debe cambiar su contraseña.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detalle"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "sesion"
+        ],
+        "summary": "Entrar",
+        "description": "Entra con la cuenta de la instalación y deja la cookie de sesión. No hay cookie si la\ncuenta debe cambiar su contraseña: eso se hace en la interfaz clásica.",
+        "operationId": "entrar_v1_sesion_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Credenciales"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SesionRespuesta"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Usuario o contraseña incorrectos.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detalle"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Debe cambiar la contraseña, u origen ajeno.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detalle"
+                }
+              }
+            }
+          },
+          "423": {
+            "description": "Cuenta bloqueada por intentos fallidos.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detalle"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "sesion"
+        ],
+        "summary": "Salir",
+        "description": "Cierra la sesión del navegador (exige CSRF y `Origin`) y borra la cookie.",
+        "operationId": "salir_v1_sesion_delete",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "Sin sesión vigente.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detalle"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Falta el CSRF o el origen no es propio.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detalle"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/salud": {
       "get": {
         "tags": [
@@ -1652,6 +1797,39 @@
         ],
         "title": "ComparativoRespuesta",
         "description": "El comparativo completo de UC-02: totales antes y después, y una fila por renglón."
+      },
+      "Credenciales": {
+        "properties": {
+          "login": {
+            "type": "string",
+            "maxLength": 120,
+            "title": "Login"
+          },
+          "contrasena": {
+            "type": "string",
+            "maxLength": 128,
+            "title": "Contrasena"
+          }
+        },
+        "type": "object",
+        "required": [
+          "login",
+          "contrasena"
+        ],
+        "title": "Credenciales"
+      },
+      "Detalle": {
+        "properties": {
+          "detalle": {
+            "type": "string",
+            "title": "Detalle"
+          }
+        },
+        "type": "object",
+        "required": [
+          "detalle"
+        ],
+        "title": "Detalle"
       },
       "DiferenciaRespuesta": {
         "properties": {
@@ -3219,6 +3397,37 @@
         ],
         "title": "RendimientosRespuesta",
         "description": "El historico completo de una partida, con dispersion y propuesta (RF-26)."
+      },
+      "SesionRespuesta": {
+        "properties": {
+          "login": {
+            "type": "string",
+            "title": "Login"
+          },
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          },
+          "roles": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Roles"
+          },
+          "csrf": {
+            "type": "string",
+            "title": "Csrf"
+          }
+        },
+        "type": "object",
+        "required": [
+          "login",
+          "nombre",
+          "roles",
+          "csrf"
+        ],
+        "title": "SesionRespuesta"
       },
       "TrazaRespuesta": {
         "properties": {
