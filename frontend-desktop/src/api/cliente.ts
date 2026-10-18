@@ -6,13 +6,17 @@ export class ErrorDeApi extends Error {
   readonly estado: number;
   readonly detalle: string;
   readonly reintentarEnSegundos: number | null;
+  // El cuerpo JSON de la respuesta tal cual (o null si no era JSON): algunas rutas traen campos extra, como `faltan`
+  // en la importacion de la bascula. No se muestra: lo que se le dice a la persona es siempre `detalle`.
+  readonly cuerpo: unknown;
 
-  constructor(estado: number, detalle: string, reintentarEnSegundos: number | null = null) {
+  constructor(estado: number, detalle: string, reintentarEnSegundos: number | null = null, cuerpo: unknown = null) {
     super(detalle);
     this.name = "ErrorDeApi";
     this.estado = estado;
     this.detalle = detalle;
     this.reintentarEnSegundos = reintentarEnSegundos;
+    this.cuerpo = cuerpo;
   }
 }
 
@@ -77,6 +81,7 @@ async function enviar(ruta: string, opciones: OpcionesDePeticion): Promise<Respo
       respuesta.status,
       detalleDe(contenido, respuesta.status),
       Number.isFinite(espera) && espera > 0 ? espera : null,
+      contenido,
     );
   }
   return respuesta;

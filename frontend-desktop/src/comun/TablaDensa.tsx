@@ -8,6 +8,7 @@ import {
   TableHeader,
   TableRow,
 } from "@carbon/react";
+import type { ReactNode } from "react";
 import { EstadoVacio } from "./EstadoVacio";
 
 export interface ColumnaDensa {
@@ -17,6 +18,9 @@ export interface ColumnaDensa {
   numerica?: boolean;
   // Por omision todas se ordenan.
   ordenable?: boolean;
+  // Como se pinta la celda (un icono con su texto, un boton, una cifra con coma decimal). Sin ella se muestra el
+  // texto de la fila. El orden sigue usando siempre el texto de la fila, no lo que devuelva esta funcion.
+  celda?: (fila: FilaDensa) => ReactNode;
 }
 
 // Los valores son texto tal como los manda la API: la tabla no los redondea ni los reformatea.
@@ -86,6 +90,12 @@ export function TablaDensa({ etiqueta, columnas, filas, cargando = false, vacio 
   const numericas = new Set(columnas.filter((c) => c.numerica).map((c) => c.clave));
   const sinOrden = new Set(columnas.filter((c) => c.ordenable === false).map((c) => c.clave));
   const cabeceras = columnas.map((c) => ({ key: c.clave, header: c.titulo }));
+  const pintores = new Map(columnas.flatMap((c) => (c.celda ? [[c.clave, c.celda] as const] : [])));
+  const filaPorId = new Map(filas.map((f) => [f.id, f]));
+  const pintar = (clave: string, valor: ReactNode, original: FilaDensa | undefined): ReactNode => {
+    const pinta = pintores.get(clave);
+    return pinta && original ? pinta(original) : valor;
+  };
 
   return (
     <div className="silice-tabla">
@@ -124,7 +134,7 @@ export function TablaDensa({ etiqueta, columnas, filas, cargando = false, vacio 
                   <TableRow key={key} {...propiedades}>
                     {fila.cells.map((celda) => (
                       <TableCell key={celda.id} className={numericas.has(celda.info.header) ? "silice-cifra" : undefined}>
-                        {celda.value}
+                        {pintar(celda.info.header, celda.value, filaPorId.get(fila.id))}
                       </TableCell>
                     ))}
                   </TableRow>

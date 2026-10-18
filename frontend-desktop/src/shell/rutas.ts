@@ -36,6 +36,13 @@ export const PAGINAS: readonly PaginaDef[] = [
   { id: "control", titulo: "Control de obra", seccion: "Trabajo", accion: "control_de_obra" },
   { id: "acerca", titulo: "Acerca de Sílice", seccion: "Trabajo", accion: null },
   { id: "entregar", titulo: "Entregar paquete", seccion: "Trabajo", accion: "entregar_paquete" },
+  {
+    id: "existencias",
+    titulo: "Existencias de la arenera",
+    seccion: "Trabajo",
+    accion: "operar_arenera",
+    cargar: () => import("../paginas/existencias"),
+  },
   { id: "revisar", titulo: "Revisar un paquete", seccion: "Revisión", accion: "revisar_paquete" },
   {
     id: "libros",

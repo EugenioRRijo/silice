@@ -24,35 +24,35 @@ describe("mostrarCantidad", () => {
 
 describe("leerCantidad", () => {
   test("acepta coma o punto decimal y entrega siempre punto", () => {
-    expect(leerCantidad("24,5", "la entrada")).toEqual({ valor: "24.5" });
-    expect(leerCantidad("24.5", "la entrada")).toEqual({ valor: "24.5" });
-    expect(leerCantidad("  1234  ", "la entrada")).toEqual({ valor: "1234" });
-    expect(leerCantidad("0,25", "la entrada")).toEqual({ valor: "0.25" });
+    expect(leerCantidad("24,5", "de la entrada")).toEqual({ valor: "24.5" });
+    expect(leerCantidad("24.5", "de la entrada")).toEqual({ valor: "24.5" });
+    expect(leerCantidad("  1234  ", "de la entrada")).toEqual({ valor: "1234" });
+    expect(leerCantidad("0,25", "de la entrada")).toEqual({ valor: "0.25" });
   });
 
   test("rechaza el separador de miles con una indicacion concreta, sin adivinar", () => {
-    expect(leerCantidad("1.234,5", "la entrada")).toEqual({
+    expect(leerCantidad("1.234,5", "de la entrada")).toEqual({
       error: "La cantidad de la entrada no debe llevar separador de miles: escriba, por ejemplo, 1234,5.",
     });
-    expect(leerCantidad("1,234.5", "la entrada")).toHaveProperty("error");
+    expect(leerCantidad("1,234.5", "de la entrada")).toHaveProperty("error");
   });
 
   test("pide la cantidad cuando esta vacia", () => {
-    expect(leerCantidad("   ", "el despacho")).toEqual({ error: "Escriba la cantidad de el despacho." });
+    expect(leerCantidad("   ", "del despacho")).toEqual({ error: "Escriba la cantidad del despacho." });
   });
 
   test("rechaza lo que no es un numero, el signo y los exponentes", () => {
     for (const malo of ["abc", "12abc", "-5", "+5", "1e3", "1,2,3", "1..2", ",", "."]) {
-      expect(leerCantidad(malo, "la entrada"), malo).toHaveProperty("error");
+      expect(leerCantidad(malo, "de la entrada"), malo).toHaveProperty("error");
     }
   });
 
   test("el cero se rechaza salvo que se permita (conteo, existencia minima)", () => {
-    expect(leerCantidad("0", "la entrada")).toEqual({
+    expect(leerCantidad("0", "de la entrada")).toEqual({
       error: "La cantidad de la entrada debe ser un número mayor que cero.",
     });
-    expect(leerCantidad("0,00", "la entrada")).toHaveProperty("error");
-    expect(leerCantidad("0", "el conteo", { permiteCero: true })).toEqual({ valor: "0" });
+    expect(leerCantidad("0,00", "de la entrada")).toHaveProperty("error");
+    expect(leerCantidad("0", "del conteo", { permiteCero: true })).toEqual({ valor: "0" });
   });
 });
 
