@@ -6,6 +6,8 @@ import sqlite3
 from contextlib import closing
 from pathlib import Path
 
+import pytest
+
 from scripts import generar_base_prueba as generador
 
 
@@ -43,3 +45,18 @@ def test_se_niega_a_reescribir_una_base_de_prueba(tmp_path: Path, capsys) -> Non
     )
     assert codigo == 1
     assert "se genera una sola vez" in capsys.readouterr().err
+
+
+@pytest.mark.sin_usuario_por_omision
+def test_el_generador_firma_las_versiones_que_llegan_sin_usuario(tmp_path: Path) -> None:
+    """Desde la 1.0.0 (S3-2, RF-83) confirmar una versión exige `usuario` y las plantillas de
+    `tests/` no lo declaran: en pytest lo pone `tests/conftest.py`; fuera de pytest, en el árbol de
+    la etiqueta, nadie lo ponía y `s1.db` no se podía confirmar (`SelladoSinUsuario`)."""
+    salida = tmp_path / "v"
+    codigo = generador.main(
+        ["--salida", str(salida), "--version", "1.0.0", "--etiqueta", "v1.0.0", "--commit", "x"]
+    )
+    assert codigo == 0
+    with closing(sqlite3.connect(salida / "s1.db")) as conexion:
+        usuarios = {fila[0] for fila in conexion.execute("SELECT usuario FROM eslabon_version")}
+    assert generador.USUARIO_GENERADOR in usuarios
