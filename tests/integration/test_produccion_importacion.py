@@ -454,3 +454,86 @@ def test_existencia_final_con_la_serie_a_mano(sesion: Session) -> None:
     importar(sesion, _basico(), usuario=USUARIO)
 
     assert existencia(sesion, arena) == D("82.3125")  # 100 - 28,3 / 1,60 = 100 - 17,6875
+
+
+def _acumulado() -> LecturaBascula:
+    """Reporte del dia siguiente: los 6 tickets de ayer mas TCK-007 (tara mayor que el bruto)."""
+    nueva = "TCK-007;2026-10-17;EJ-007;Cliente Ejemplo C;ARENA;40000;45000;-5000\n"
+    return leer(construir.csv_basico() + nueva.encode(), "acumulado.csv", fecha_referencia=HOY)
+
+
+def test_un_reporte_acumulado_no_duplica_sospechosos(sesion: Session) -> None:
+    _catalogo(sesion)
+    primera = importar(sesion, _basico(), usuario=USUARIO)
+    lectura = _acumulado()
+    assert lectura.huella != primera.huella  # otro archivo: la clave (huella, fila) no basta
+
+    resultado = importar(sesion, lectura, usuario=USUARIO)
+
+    assert (resultado.registrados, resultado.ya_registrados, resultado.a_la_bandeja) == (0, 2, 1)
+    assert _cuantos(sesion, Movimiento) == 2
+    assert [p.ticket for p in pendientes(sesion)] == [
+        "TCK-003",
+        "TCK-004",
+        "TCK-005",
+        "TCK-006",
+        "TCK-007",
+    ]
+    nuevo = _sospechoso(sesion, "TCK-007")
+    assert (nuevo.motivo, nuevo.fila, nuevo.huella_archivo) == (
+        "tara mayor o igual que el bruto",
+        8,
+        lectura.huella,
+    )
+    assert _cuantos(sesion, PesajeSospechoso) == 5
+
+
+def test_un_sospechoso_descartado_no_resucita(sesion: Session) -> None:
+    _catalogo(sesion)
+    importar(sesion, _basico(), usuario=USUARIO)
+    descartar(sesion, _id_de(sesion, "TCK-004"), usuario="ana", ahora=AHORA)
+    resuelto = resolver(
+        sesion,
+        _id_de(sesion, "TCK-003"),
+        material_codigo="ARENA",
+        fecha=date(2026, 10, 16),
+        neto_t=D("28.3"),
+        ticket="TCK-003",
+        usuario="ana",
+        ahora=AHORA,
+    )
+
+    resultado = importar(sesion, _acumulado(), usuario=USUARIO)
+
+    assert (resultado.registrados, resultado.ya_registrados, resultado.a_la_bandeja) == (0, 3, 1)
+    assert (
+        resuelto.ticket == "TCK-003"
+    )  # el resuelto ya es un movimiento: cuenta como ya registrado
+    estados = {
+        p.ticket: p.estado
+        for p in sesion.scalars(select(PesajeSospechoso))
+        if p.ticket != "TCK-007"
+    }
+    assert estados == {
+        "TCK-003": "resuelto",
+        "TCK-004": "descartado",
+        "TCK-005": "pendiente",
+        "TCK-006": "pendiente",
+    }
+    assert _cuantos(sesion, PesajeSospechoso) == 5
+    assert [p.ticket for p in pendientes(sesion)] == ["TCK-005", "TCK-006", "TCK-007"]
+
+
+def test_sin_ticket_la_clave_sigue_siendo_huella_y_fila(sesion: Session) -> None:
+    _catalogo(sesion)
+    sin_ticket = (
+        "Ticket;Fecha;Placa;Cliente;Material;Bruto (kg);Tara (kg);Neto (kg)\n"
+        ";2026-10-15;EJ-1;Cliente Ejemplo A;ARENA;40000;15000;25000\n"
+    ).encode()
+    lectura = leer(sin_ticket, "sin_ticket.csv", fecha_referencia=HOY)
+    otra = leer(sin_ticket + b"\n", "sin_ticket_2.csv", fecha_referencia=HOY)
+
+    assert importar(sesion, lectura, usuario=USUARIO).a_la_bandeja == 1
+    assert importar(sesion, lectura, usuario=USUARIO).a_la_bandeja == 0  # mismo archivo
+    assert importar(sesion, otra, usuario=USUARIO).a_la_bandeja == 1  # otro archivo: sin ticket
+    assert _cuantos(sesion, PesajeSospechoso) == 2
