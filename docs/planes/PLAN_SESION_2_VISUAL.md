@@ -85,6 +85,7 @@ anota el ruling; nunca se sube a una más nueva. Acción de CI: `actions/setup-n
 | RS2-7 | Indicadores calculados por la API: campo nuevo y **aditivo** `indicadores` en `LibroAuditadoRespuesta` (actual = libro, meta = Sílice, `sentido = "costo"`: que el libro declare más de lo que calcula Sílice es desfavorable). | Bajo |
 | RS2-8 | Halos como capa DOM sincronizada con el viewport de Univer (no se pintan estilos dentro de la réplica: la réplica debe verse como el original). | Medio: si la API de rectángulos de Univer no basta, se usa su popup anclado a celda |
 | RS2-9 | La interfaz nueva se usa con la API encendida (`[api] activa = true`), en `http://127.0.0.1:<puerto_api>/app/`; el lanzador no cambia en 1.2.0. | Bajo |
+| RS2-10 | Las celdas cubiertas por una combinada no se listan en la réplica salvo que traigan valor o borde propio: Excel dibuja el rango con el estilo de la celda de origen (oráculo de la 2.6). | Bajo |
 
 ## Review Focus
 

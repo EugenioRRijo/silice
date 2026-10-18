@@ -45,6 +45,9 @@ Límites declarados:
   lo que openpyxl asume (13). Los rangos `min..max` se reparten columna por columna. Se omite el
   ancho por omisión de Excel (8,43) y el alto por omisión (15 pt). Los anchos y altos de 0 no se
   escriben (la columna o fila oculta va en `ocultas_*`).
+- **Celdas cubiertas por una combinada:** no se listan salvo que traigan valor o un borde propio
+  (openpyxl las carga como `MergedCell`); Excel dibuja el rango con el estilo de la celda de
+  origen, y el visor solo necesita `combinadas` y esa celda (ruling RS2-10, oráculo de la 2.6).
 - **Tope:** más de `MAX_CELDAS_VISUALES` celdas con valor o estilo en todo el libro →
   `LibroDemasiadoGrande`.
 
