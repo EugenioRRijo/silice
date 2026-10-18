@@ -139,7 +139,7 @@ def test_unidad_densidad_y_minima_invalidas_se_rechazan(sesion: Session) -> None
     for mala in (D("0"), D("-1.6")):
         with pytest.raises(ErrorDeInventario, match="densidad"):
             crear_material(sesion, unidad_venta="m3", densidad_t_m3=mala, **base)  # type: ignore[arg-type]
-    with pytest.raises(ErrorDeInventario, match="minima"):
+    with pytest.raises(ErrorDeInventario, match="mínima"):
         crear_material(sesion, codigo="Y", nombre="Y", unidad_venta="t", existencia_minima=D("-1"))
 
 

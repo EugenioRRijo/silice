@@ -47,7 +47,7 @@ def _material(sesion: Session, material_id: int) -> Material:
 
 def _exigir_positiva(cantidad: Decimal, que: str) -> None:
     if not isinstance(cantidad, Decimal) or not cantidad.is_finite() or cantidad <= CERO:
-        raise ErrorDeInventario(f"La cantidad de {que} debe ser un numero mayor que cero.")
+        raise ErrorDeInventario(f"La cantidad de {que} debe ser un número mayor que cero.")
 
 
 def crear_material(
@@ -62,7 +62,7 @@ def crear_material(
     codigo = codigo.strip()
     nombre = nombre.strip()
     if not codigo or not nombre:
-        raise ErrorDeInventario("Indique el codigo y el nombre del material.")
+        raise ErrorDeInventario("Indique el código y el nombre del material.")
     if unidad_venta not in UNIDADES_VALIDAS:
         raise ErrorDeInventario("La unidad de venta debe ser m3 o t.")
     if (
@@ -70,15 +70,15 @@ def crear_material(
         or not existencia_minima.is_finite()
         or existencia_minima < CERO
     ):
-        raise ErrorDeInventario("La existencia minima debe ser un numero de cero o mas.")
+        raise ErrorDeInventario("La existencia mínima debe ser un número de cero o más.")
     if densidad_t_m3 is not None and (
         not isinstance(densidad_t_m3, Decimal)
         or not densidad_t_m3.is_finite()
         or densidad_t_m3 <= CERO
     ):
-        raise ErrorDeInventario("La densidad (t/m3) debe ser un numero mayor que cero.")
+        raise ErrorDeInventario("La densidad (t/m3) debe ser un número mayor que cero.")
     if sesion.scalar(select(Material.id).where(Material.codigo == codigo)) is not None:
-        raise ErrorDeInventario(f"Ya existe un material con el codigo {codigo}.")
+        raise ErrorDeInventario(f"Ya existe un material con el código {codigo}.")
     material = Material(
         codigo=codigo,
         nombre=nombre,
@@ -155,7 +155,7 @@ def registrar_despacho(
     if ticket is not None and (
         sesion.scalar(select(Movimiento.id).where(Movimiento.ticket == ticket)) is not None
     ):
-        raise ErrorDeInventario(f"El ticket {ticket} ya esta registrado.")
+        raise ErrorDeInventario(f"El ticket {ticket} ya está registrado.")
     return _registrar(
         sesion,
         material_id,
@@ -185,7 +185,7 @@ def registrar_ajuste_por_conteo(
         or not conteo_fisico.is_finite()
         or conteo_fisico < CERO
     ):
-        raise ErrorDeInventario("El conteo fisico debe ser un numero de cero o mas.")
+        raise ErrorDeInventario("El conteo físico debe ser un número de cero o más.")
     diferencia = conteo_fisico - existencia(sesion, material_id, fecha)
     if diferencia == CERO:
         return None
