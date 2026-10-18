@@ -7,8 +7,9 @@ La comparten la vista de quien revisa (`ui/revision.py`) y la ruta `POST /v1/aud
 
 NUNCA confía en lo que trae el documento: recalcula cada precio unitario con el motor desde las
 composiciones y los parámetros (no se creen los precios ni los totales escritos), corre `REGLAS` y
-las reglas externas del contexto «reauditoría» (maestro §3.3): R8-R10 y R15 con el anexo de
-espacio; R11-R12 con el `precio_origen` del documento, **a la fecha que se le da** (la de emisión
+las reglas externas del contexto «reauditoría» (maestro §3.3): R8-R10, R15 y R17 con el anexo de
+espacio (R17, tarea 1.7: sin ella sus avisos guardados caerian en `ya_no` como si se hubieran
+corregido); R11-R12 con el `precio_origen` del documento, **a la fecha que se le da** (la de emisión
 en un paquete, la del cuerpo en la API; nunca el reloj), contra la referencia MaPreX de quien
 revisa; R13-R14 con el anexo de control **solo si hay servicio de S2 que lo recompute** (el puente
 no existe todavía: queda apagada y se declara en `avisos`). R16 no corre aquí. Toda reevaluación
@@ -27,6 +28,7 @@ from decimal import Decimal, InvalidOperation
 from typing import Any
 
 from adapters.espacio import Espacio
+from adapters.espacio.conexion import reglas_conexion
 from adapters.espacio.planos.geometria_plano import reglas_plano
 from adapters.espacio.reglas import reglas_espacio
 from adapters.espacio.serie import espacio_desde_objeto
@@ -260,8 +262,8 @@ def _reglas_externas(
     avisos: list[str] = []
     if espacio_json is not None:
         espacio: Espacio = espacio_desde_objeto(leer_json(espacio_json), a_decimal)
-        reglas += [*reglas_espacio(espacio), *reglas_plano(espacio)]
-        contextos += ["R8-R10", "R15"]
+        reglas += [*reglas_espacio(espacio), *reglas_plano(espacio), *reglas_conexion(espacio)]
+        contextos += ["R8-R10", "R15", "R17"]
     reglas += list(reglas_precios(instantanea_del_documento(doc, servicios, fecha_evaluacion)))
     contextos.append("R11-R12")
     if control_json is not None:

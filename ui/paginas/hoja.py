@@ -19,6 +19,10 @@ Decisiones de pantalla (spec §5.3, §5.4 y §9.2):
 * **La pestana activa es un `st.segmented_control`**: solo se ejecuta esa pestana en cada edicion.
   El resultado (`ui.hoja.elaborar_borrador`) se calcula una sola vez por borrador nuevo y se
   guarda junto a el.
+* **R17 (conexion de cada punto, tarea 1.7) se liga al espacio que se elabora**, no al de la
+  version abierta: `ui/hoja.py` esta congelado por el experimento, asi que la pagina la agrega con
+  `_con_conexion` en cada elaboracion (`_elaborar`), al guardar y en el resultado hipotetico del
+  asistente. Nunca se guarda en el borrador de la sesion: ligada ahi quedaria vieja al editar.
 * **El Excel se genera solo al pulsar «Preparar Excel»** (o cuando la barra superior pide
   `ACCION_EXPORTAR_EXCEL`) y se ofrece con `st.download_button`.
 * **Aviso de ediciones sin guardar (15c):** mientras haya cambios la pantalla lo dice, y cambiar de
@@ -53,6 +57,7 @@ from adapters.espacio import (
     TipoOrigen,
     TipoPunto,
 )
+from adapters.espacio.conexion import con_conexion
 from adapters.espacio.planos import EstadoImportacion
 from asistente import privacidad as ia_privacidad
 from asistente import servicio as ia_servicio
@@ -278,12 +283,25 @@ def _base_de_comparacion() -> hoja.Borrador:
     return hoja.Borrador(fecha=actual.fecha, moneda=actual.moneda)
 
 
+def _con_conexion(borrador: hoja.Borrador) -> hoja.Borrador:
+    """El borrador con R17 ligada a SU espacio (tarea 1.7), junto a las demas reglas extra.
+
+    Un R17 que ya trajera (ligado a otro espacio) se reemplaza: asi nunca queda viejo. Las reglas
+    extra no cuentan para "cambios sin guardar" (`Borrador.reglas_extra` no se compara)."""
+    return replace(borrador, reglas_extra=con_conexion(borrador.reglas_extra, borrador.espacio))
+
+
+def _elaborar(borrador: hoja.Borrador) -> hoja.ResultadoHoja:
+    """La unica via de la pagina a `ui.hoja.elaborar_borrador`: con R17 del espacio vigente."""
+    return hoja.elaborar_borrador(_con_conexion(borrador))
+
+
 def _calculo() -> tuple[hoja.ResultadoHoja, list]:
     """El resultado y los cambios del borrador vigente; se calculan una vez por borrador."""
     actual = _borrador()
     guardado = st.session_state.get(CLAVE_RESULTADO)
     if guardado is None or guardado[0] is not actual:
-        resultado = hoja.elaborar_borrador(actual)
+        resultado = _elaborar(actual)
         cambios = hoja.cambios_entre(_base_de_comparacion(), actual)
         guardado = (actual, resultado, cambios)
         st.session_state[CLAVE_RESULTADO] = guardado
@@ -463,7 +481,7 @@ def _guardar() -> None:
                 sesion,
                 Catalogo(sesion),
                 abierta,
-                borrador,
+                _con_conexion(borrador),
                 fuente=st.session_state.get(CLAVE_FUENTE, ""),
                 responsable=_responsable(),
             )
@@ -505,7 +523,7 @@ def _guardar_primera(borrador: hoja.Borrador) -> None:
                 sesion,
                 Catalogo(sesion),
                 proyecto,
-                borrador,
+                _con_conexion(borrador),
                 fuente=st.session_state.get(CLAVE_FUENTE, ""),
                 responsable=_responsable(),
             )
@@ -760,7 +778,7 @@ def _proponer_con_asistente() -> None:
             servicios = Servicios(
                 catalogo=catalogo,
                 tarifa=tarifa,
-                auditar=lambda b: hoja.elaborar_borrador(b).elaboracion.informe,
+                auditar=lambda b: _elaborar(b).elaboracion.informe,
                 responder=lambda _pregunta: ESPERAR,  # la pantalla contesta (9g)
                 registro=registro,
                 proyecto=proyecto,
@@ -959,7 +977,9 @@ def _resumen_hipotetico(propuesto: Any) -> Any:
     sobre = _hoja_editada_a_mano(propuesto)
     guardado = st.session_state.get(CLAVE_ASISTENTE_RESUMEN)
     if guardado is None or guardado[0] != estados or guardado[1] is not sobre:
-        resumen = ia_servicio.resumen_hipotetico(ia_servicio.hipotetico(propuesto, sobre))
+        resumen = ia_servicio.resumen_hipotetico(
+            _con_conexion(ia_servicio.hipotetico(propuesto, sobre))
+        )
         guardado = (estados, sobre, resumen)
         st.session_state[CLAVE_ASISTENTE_RESUMEN] = guardado
     return guardado[2]
@@ -1732,7 +1752,7 @@ def _pestana_presupuesto() -> None:
         "advertencia y queda en el registro de la version. El precio unitario y el total se "
         "calculan."
     )
-    sembradas = hoja.filas_del_presupuesto(hoja.elaborar_borrador(siembra))
+    sembradas = hoja.filas_del_presupuesto(_elaborar(siembra))
     editor = DataFrame(sembradas, columns=["clave", "partida", "descripcion", "unidad", "cantidad"])
     editada = st.data_editor(
         editor,
@@ -1789,7 +1809,7 @@ def _pestana_plan() -> None:
         "Reparta cada partida entre los periodos: cada fila debe sumar exactamente 1. Los montos, "
         "los acumulados y los porcentajes se calculan."
     )
-    siembra = hoja.elaborar_borrador(_partida()).plan or ()
+    siembra = _elaborar(_partida()).plan or ()
     etiquetas, filas = hoja.plan_como_filas(siembra, codigos)
     editada = st.data_editor(
         DataFrame(filas, columns=["partida", *etiquetas], dtype=str),
