@@ -366,3 +366,45 @@ def test_solo_las_dos_pantallas_de_precios_importan_la_busqueda_de_rf_100() -> N
             if nombres & {"ui.atipicos", "ml.anomaly.series"}:
                 importadores.add(archivo.relative_to(raiz).as_posix())
     assert importadores <= permitidos, importadores - permitidos
+
+
+def test_un_propio_igual_al_de_la_base_pero_de_otra_fecha_no_es_herencia(sesion, insumo) -> None:
+    """Cada campo del criterio de herencia cuenta: la fecha del precio distingue la observación."""
+    base = _lista(sesion, 1, "Base")
+    _precio(sesion, base, insumo, 10)
+    _empresa(sesion, base, insumo, 10, date(2026, 3, 1), "Empresa")
+    puntos = atipicos.puntos_del_insumo(sesion, "ATIP-001")
+    assert [(p.origen, p.fecha, p.monto) for p in puntos] == [
+        ("Base", date(2026, 1, 1), D(10)),
+        ("Empresa", date(2026, 3, 1), D(10)),
+    ]
+    assert list(variaciones(a_usd(puntos)).values()) == [D(0)]
+
+
+def test_un_propio_igual_al_de_la_base_con_otra_fuente_no_es_herencia(sesion, insumo) -> None:
+    """Misma moneda, precio y fecha, pero la fuente es otra (la cotización de la empresa)."""
+    base = _lista(sesion, 1, "Base")
+    _precio(sesion, base, insumo, 10)
+    _empresa(sesion, base, insumo, 10, date(2026, 1, 1), "Empresa")
+    puntos = atipicos.puntos_del_insumo(sesion, "ATIP-001")
+    assert [p.origen for p in puntos] == ["Base", "Empresa"]
+
+
+def test_el_criterio_de_herencia_es_el_mismo_que_el_del_nucleo() -> None:
+    """La tupla de la interfaz es copia de la del núcleo (que es privada): no se separan."""
+    from core.catalog import empresa
+
+    assert atipicos._CAMPOS_DE_HERENCIA == empresa._CAMPOS_DE_HERENCIA
+
+
+def test_una_moneda_invalida_no_tumba_la_busqueda_de_los_demas_insumos(sesion, insumo) -> None:
+    otro = _otro_insumo(sesion)
+    _precio(sesion, _lista(sesion, 1, "Lista en euros", "EUR"), otro, 5)
+    _sembrar(sesion, insumo, SERIE_CON_ATIPICO)
+    busqueda = atipicos.atipicos_de_insumos(sesion, ["ATIP-002", "ATIP-001"])
+    assert [h.origen_ids for h in busqueda.hallazgos] == [("ATIP-001|2026-09-01>2026-10-01#8",)]
+    [(codigo, motivo)] = busqueda.no_analizados
+    assert codigo == "ATIP-002" and "EUR" in motivo
+    avisos = atipicos.avisos(busqueda)
+    assert avisos[0][0] == "info" and avisos[0][1].startswith("ATIP\\-002: no se pudo analizar")
+    assert [nivel for nivel, _ in avisos[1:]] == ["warning"]
