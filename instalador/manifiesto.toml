@@ -28,6 +28,12 @@ cierre_desde = [
   "scripts.lista_maprex_bs",
 ]
 
+[interfaz]
+# Interfaz nueva (RF-112) ya compilada por la CI (`npm ci && npm run build` en frontend-desktop).
+# Viaja en `codigo\frontend-desktop\dist`, donde `api/interfaz.py` la busca (RAIZ = {app}\codigo).
+# Python nunca la compila; si falta o esta vacia, la construccion falla.
+dist = "frontend-desktop/dist"
+
 [datos]
 # Lista blanca de data/. Los PDF de MaPreX no viajan mientras su redistribución no esté aclarada
 # (pregunta 12); los .xls del BCV tampoco (P6): cada empresa descarga los suyos.

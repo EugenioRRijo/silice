@@ -67,6 +67,7 @@ class Manifiesto:
     cierre_desde: tuple[str, ...]
     datos_incluir: tuple[str, ...]
     datos_excluir_sufijos: tuple[str, ...]
+    interfaz_dist: str
 
 
 def cargar(ruta: Path = RUTA_MANIFIESTO) -> Manifiesto:
@@ -85,6 +86,7 @@ def cargar(ruta: Path = RUTA_MANIFIESTO) -> Manifiesto:
             cierre_desde=tuple(datos["codigo"]["cierre_desde"]),
             datos_incluir=tuple(datos["datos"]["incluir"]),
             datos_excluir_sufijos=tuple(datos["datos"]["excluir_sufijos"]),
+            interfaz_dist=str(datos["interfaz"]["dist"]),
         )
     except KeyError as error:
         raise ManifiestoInvalido(f"{ruta.name}: falta la clave {error}") from error
@@ -203,3 +205,30 @@ def armar_arbol(raiz: Path, destino: Path, m: Manifiesto) -> list[Path]:
     oficial.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(RUTA_CONFIG_OFICIAL, oficial)
     return [*archivos, Path(".streamlit/config.toml")]
+
+
+def copiar_interfaz(raiz: Path, destino: Path, m: Manifiesto) -> list[Path]:
+    r"""Copia el `dist` ya compilado de la interfaz a `destino / <misma ruta relativa>` (con
+    `destino` = `{app}\codigo`, `RAIZ` del producto, donde `api/interfaz.py` lo busca). No compila:
+    si falta, está vacío o no trae `index.html`, falla diciendo cómo compilarlo."""
+    origen = raiz / m.interfaz_dist
+    como_compilar = (
+        "compílela antes de construir el instalador: `npm ci && npm run build` en frontend-desktop"
+    )
+    archivos = sorted(p for p in origen.rglob("*") if p.is_file()) if origen.is_dir() else []
+    if not archivos:
+        raise ManifiestoInvalido(
+            f"la interfaz compilada no existe o está vacía ({m.interfaz_dist}); {como_compilar}"
+        )
+    if not (origen / "index.html").is_file():
+        raise ManifiestoInvalido(
+            f"la interfaz compilada no trae index.html ({m.interfaz_dist}); {como_compilar}"
+        )
+    copiados: list[Path] = []
+    for archivo in archivos:
+        relativa = archivo.relative_to(raiz)
+        copia = destino / relativa
+        copia.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(archivo, copia)
+        copiados.append(relativa)
+    return copiados

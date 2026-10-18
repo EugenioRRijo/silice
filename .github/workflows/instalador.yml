@@ -17,6 +17,7 @@ on:
     paths:
       - "instalador/**"
       - "operacion/**"
+      - "frontend-desktop/**"
       - "migraciones/**"
       - "pyproject.toml"
       - "uv.lock"
@@ -93,6 +94,21 @@ jobs:
         with:
           version: "0.11.9"
           enable-cache: true
+
+      - name: Instalar Node 22 (solo para compilar la interfaz; no viaja)
+        uses: actions/setup-node@v6.5.0 # etiqueta exacta, sin v6 flotante
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend-desktop/package-lock.json
+
+      - name: Interfaz nueva, dependencias (reproducible, desde el lock)
+        working-directory: frontend-desktop
+        run: npm ci
+
+      - name: Interfaz nueva, compilar (el instalador copia frontend-desktop/dist)
+        working-directory: frontend-desktop
+        run: npm run build
 
       - name: Inno Setup
         run: |
