@@ -100,6 +100,8 @@
 
 > **Enmienda de Sílice 1.0.0 (S5‑0; spec S5 §4 y §10.3):** se agregan UC‑24, RF‑97 a RF‑99 y RNF‑19; RNF‑07 aclara que el instalador de Windows es el camino de usuario; RNF‑08 queda con su redacción final (dos excepciones declaradas y three.js incrustado). RF‑96 y RNF‑20 llegaron con la 0.6.0. Los conteos los calcula la meta (maestro §6.1).
 
+**Enmienda de la ruta, sesión 4 (arenera; plan [PLAN_SESION_4_ARENERA.md](planes/PLAN_SESION_4_ARENERA.md)):** se agregan UC‑28 y UC‑29, RF‑127 a RF‑136 y RNF‑25. La arenera empieza por el inventario («cuánto hay y cuánto queda» de cada material) y por el reporte de la báscula; el costo horario de maquinaria espera a tener fuente verificada.
+
 ## 1. Introducción
 
 ### 1.1 Propósito
@@ -1345,6 +1347,8 @@ aquí: cada corrección está en su fila del [inventario del cierre](auditoria/2
 | UC‑21 | RF‑80, RF‑81, RF‑82, RF‑84 | S3‑0 (declarado), S3‑1, S3‑3 | fuera de los cinco indicadores (seguridad de la entrega, S3) |
 | UC‑22 | RF‑83, RF‑84, RF‑85 | S3‑0 (declarado), S3‑2, S3‑3 | fuera de los cinco indicadores (seguridad de la entrega, S3) |
 | UC‑23 | RF‑86, RF‑87, RF‑88, RF‑89, RF‑100, RF‑141 | S3‑0 (declarado), S3‑4, S3‑5, S3‑6, ruta S1 (1.1.0) | indicador del administrador (horizonte §6.1) |
+| UC‑28 | RF‑127, RF‑128, RF‑129, RF‑135, RF‑136 | Sesión 4 de la ruta (Sílice 1.4.0) | fuera de los cinco indicadores (gestor de producción) |
+| UC‑29 | RF‑130, RF‑131, RF‑132, RF‑133, RF‑134, RNF‑25 | Sesión 4 de la ruta (Sílice 1.4.0) | fuera de los cinco indicadores (gestor de producción) |
 
 Correspondencia RNF → verificación: RNF‑01 y RNF‑02 se comprueban en UC‑01 y UC‑02 (RF‑06, RF‑14);
 RNF‑03 en UC‑02 (RF‑11), con `scripts/medir_rnf03.py`; RNF‑04 con el juicio de expertos sobre el
@@ -1490,6 +1494,65 @@ Streamlit sigue siendo la principal (RT‑4); esta enmienda no cambia ningún re
 
 Trazabilidad: UC‑26 → RF‑111 … RF‑118, RNF‑22, RNF‑23 → ruta sesión 2 (Sílice 1.2.0) → indicador 1 (errores
 detectados, ahora ubicados sobre la hoja). Pruebas: TDD por tarea (RS‑2), con los nombres del plan de la sesión.
+
+#### UC‑28 — Saber cuánto hay y cuánto queda de cada material de la arenera
+
+- **Actor principal:** quien arma o el administrador (acción `OPERAR_ARENERA`). **Secundario:** quien pesa en la
+  báscula de salida.
+- **Precondiciones:** los materiales están registrados con su unidad de venta (`m3` o `t`), su existencia mínima y,
+  si se venden en m³ y se pesan en t, su densidad aparente (dato de la empresa; no hay valor por defecto).
+- **Flujo principal**
+  1. El usuario registra una entrada de producción, un despacho o un conteo físico de un material.
+  2. Sílice guarda el movimiento con su fecha, su origen (manual o báscula) y quién lo registró.
+  3. El tablero muestra por material la existencia a una fecha (Σ entradas − Σ despachos ± ajustes) frente a la
+     mínima, con la alerta «queda poco» cuando la existencia es menor o igual que la mínima.
+- **Flujos alternativos**
+  - *1a. Conteo distinto de lo registrado:* se guarda el ajuste (diferencia con signo); si no hay diferencia, no se
+    guarda nada.
+  - *1b. Despacho que deja la existencia negativa:* se registra igual (el camión salió) y el tablero lo marca
+    «falta registrar producción o conteo».
+  - *1c. Cantidad cero o negativa, o código repetido:* mensaje claro; no se guarda.
+- **Postcondiciones:** los movimientos quedan en la base de la instalación; ningún cálculo usa una cifra sin fuente.
+
+#### UC‑29 — Importar el reporte de la báscula
+
+- **Actor principal:** quien arma o el administrador (acción `OPERAR_ARENERA`).
+- **Precondiciones:** un reporte `.xlsx` o `.csv` de la báscula de salida y los materiales ya registrados.
+- **Flujo principal**
+  1. El usuario sube el reporte e indica la fecha de referencia (hoy) y, si el encabezado no la trae, la unidad
+     del peso (kg o t).
+  2. Sílice comprueba el archivo, detecta las columnas (ticket, fecha, placa, cliente, material, bruto, tara,
+     neto) y la unidad del peso.
+  3. Valida cada pesaje: lo coherente se registra como despacho; lo dudoso va a la bandeja «Pesajes sospechosos».
+  4. Muestra cuántos se registraron, cuántos ya estaban y cuántos esperan revisión.
+  5. El usuario resuelve (con los valores corregidos) o descarta cada pesaje sospechoso.
+- **Flujos alternativos**
+  - *2a. Archivo rechazado* (macros, extensión, tamaño, filas o columnas desmedidas): mensaje claro; no se lee nada.
+  - *2b. Faltan columnas o la unidad del peso:* se pide el mapeo o la unidad; no se importa nada.
+  - *3a. Reimportar el mismo reporte:* no se duplica nada.
+- **Postcondiciones:** los despachos y la bandeja quedan en la base de la instalación; el reporte original no se
+  guarda.
+
+| RF | Requisito |
+|---|---|
+| RF‑127 | Materiales de la arenera: código, nombre, unidad de venta (`m3` o `t`), densidad aparente (dato de la empresa, sin valor por defecto) y existencia mínima |
+| RF‑128 | Movimientos de producción (entrada), despacho y ajuste por conteo; existencia = Σ entradas − Σ despachos ± ajustes, por material y fecha |
+| RF‑129 | Tablero «cuánto hay y cuánto queda» con la alerta «queda poco» (existencia ≤ mínima) y la señal de existencia negativa |
+| RF‑130 | Importar reportes de báscula `.xlsx` y `.csv` con detección de columnas, del separador decimal y de la unidad del peso; sin unidad no se importa |
+| RF‑131 | Validar cada pesaje (tara ≥ bruto, neto ≠ bruto − tara, fecha futura o ilegible, número ambiguo, ticket repetido, material desconocido o sin densidad) y enviar lo dudoso a la bandeja «Pesajes sospechosos» |
+| RF‑132 | Reimportar el mismo reporte no duplica despachos ni sospechosos |
+| RF‑133 | Resolver (con valores corregidos) o descartar un pesaje sospechoso, con quién y cuándo |
+| RF‑134 | Rutas `/v1/produccion/*` con clave de API; las cantidades viajan como texto |
+| RF‑135 | Pantalla «Existencias de la arenera» con permiso por rol (acción `OPERAR_ARENERA`) |
+| RF‑136 | Registro de constantes con el estado de su fuente; los reportes reales de báscula nunca se versionan |
+
+| RNF | Requisito |
+|---|---|
+| RNF‑25 | Límites de recursos al leer reportes de báscula ajenos: 20 MiB, 100 000 filas, 60 columnas, solo lectura |
+
+Trazabilidad: UC‑28 → RF‑127 … RF‑129, RF‑135 y RF‑136; UC‑29 → RF‑130 … RF‑134, RNF‑25 → Sílice 1.4.0 (sesión 4 de
+la [ruta](planes/RUTA_SESIONES.md)). Fuera de los cinco indicadores de la tesis. Pruebas: oráculo a mano en
+`tests/fixtures/bascula/ORACULO.md` y `tests/unit/test_produccion_inventario.py`.
 
 ## Apéndices
 - A. Caso de estudio y línea base: [docs/linea_base.md](linea_base.md).

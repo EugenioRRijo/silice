@@ -640,6 +640,20 @@ Fuente: [spec S5 §12](especificaciones/2026-10-11-silice-s5-producto-instalador
   `tests/unit/test_firma_sumas.py` › `test_la_privada_se_guarda_cifrada_y_exige_la_contrasena`,
   `tests/unit/test_publicar.py` › `test_el_sha256sums_reunido_se_firma_y_verifica`.
 
+- **RF‑127 a RF‑129** (existencias de la arenera, sesión 4). Por construir. Oráculo a mano (ejemplo construido: 100,
+  −30, −45,5, +10 y conteo 40 → existencias 70 / 24,5 / 34,5 y ajuste +5,5):
+  `tests/unit/test_produccion_inventario.py` › `test_existencia_por_fecha_con_la_serie_a_mano`,
+  `test_el_ajuste_guarda_la_diferencia_con_signo`, `test_queda_poco_incluye_el_minimo_exacto`,
+  `test_despacho_que_deja_negativo_se_registra_y_marca`.
+- **RF‑130 a RF‑133** (báscula). Por construir. Oráculo en `tests/fixtures/bascula/ORACULO.md`:
+  `tests/unit/test_conector_bascula.py` › `test_pesajes_del_oraculo`, `test_sin_unidad_no_se_importa`,
+  `test_numeros_con_coma_y_punto`; `tests/integration/test_produccion_importacion.py` › `test_reimportar_no_duplica`,
+  `test_resolver_crea_el_despacho_y_cierra_el_sospechoso`.
+- **RF‑134 y RF‑135** (rutas y pantalla). Por construir: `tests/integration/test_api_produccion.py`,
+  `tests/unit/test_ui_existencias.py`, `tests/integration/test_produccion_extremo.py`.
+- **RF‑136** (fuentes). Por construir: `tests/unit/test_produccion_fuentes.py` ›
+  `test_ninguna_constante_de_calculo_es_a_cotejar_ni_sin_fuente`.
+
 ## 9. Trazabilidad RNF → verificación
 
 | RNF | Cómo se verificó | Resultado |
@@ -662,6 +676,7 @@ Fuente: [spec S5 §12](especificaciones/2026-10-11-silice-s5-producto-instalador
 | RNF‑18 confidencialidad del asistente | planeado (S4.0 a S4.2): `test_asistente_clave.py`, `test_asistente_ollama.py` (IP resuelta), `test_clave_ia_nunca_aparece.py` y la guardia de red única de la suite | pendiente (S4) |
 | RNF‑20 deriva de esquema | `tests/integration/test_migraciones.py::test_head_en_vacio_es_igual_a_create_all`, `::test_la_autogeneracion_contra_head_no_propone_cambios`, `::test_toda_metadata_con_tablas_esta_en_la_lista_de_su_destino`, `::test_cada_revision_baja_y_vuelve_a_subir`, en los dos destinos | cumple (desde la 0.6.0) |
 | RNF‑19 | `tests/unit/test_tamanos.py::test_el_limite_es_exacto` y humo | por medir |
+| RNF‑25 límites al leer reportes de báscula | `tests/unit/test_conector_bascula.py::test_archivo_desmedido_se_rechaza` y `tests/integration/test_api_produccion.py::test_archivo_con_macros_renombrado_responde_422` | por construir (sesión 4) |
 
 ## 10. Registro de la ejecución (CI de la compuerta GC6, 2026‑09‑29)
 

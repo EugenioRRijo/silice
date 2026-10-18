@@ -54,6 +54,10 @@ inventado dentro de un cálculo es un error que el auditor no puede detectar por
 | C-11 | 60 FPS con 50 000 filas | Plan gestor SA3 | igual | A MEDIR | Se mide en la sesión 2 con un libro construido de 50 000 filas |
 | C-12 | Watchdog: relanza en < 1 s | Plan gestor §7 | igual | A MEDIR | Se mide en la sesión 5 |
 
+| C-13 | Límites de lectura de reportes de báscula: 100 000 filas, 60 columnas, 30 filas de búsqueda del encabezado, tolerancia del neto 0 | Plan de la sesión 4 (`produccion/fuentes.py`), RNF-25 | — | CONSTRUIDO | Son decisiones de este sistema, no datos de la báscula; la ERS cita las mismas cifras y la prueba de `produccion/fuentes.py` las compara con la constante |
+| C-14 | Tope de cuerpo de la API: 20 MiB | `api/proteccion.py:34` | igual | CONSTRUIDO | Constante existente de la 1.0.0 (RF-98) |
+| C-15 | Densidad 1,60 t/m³ de los fixtures de báscula | `tests/fixtures/bascula/` | — | CONSTRUIDO | Ejemplo construido, distinto a propósito del 1,65 de C-5/C-6 |
+
 ### 3.3 Datos que debe aportar la empresa (bloqueo B-4)
 
 | Dato | Para qué | Forma |

@@ -12,6 +12,7 @@ from api.rutas import (
     libros,
     listas,
     presupuestos,
+    produccion,
     rendimientos,
     sesion,
 )
@@ -47,6 +48,10 @@ app.include_router(libros.router, dependencies=[Depends(exigir_clave_o_sesion(LE
 app.include_router(sesion.router)
 # 1.2.0 (RT-2): la interfaz nueva, estática y sin secretos, en /app con CSP
 interfaz.montar(app)
+# 1.4 (sesion 4 de la ruta): /v1/produccion, existencias de la arenera y bascula; clave o sesion (OPERAR_ARENERA)
+app.include_router(
+    produccion.router, dependencies=[Depends(exigir_clave_o_sesion(Accion.OPERAR_ARENERA))]
+)
 
 
 @app.get("/salud", tags=["catalogo"])
