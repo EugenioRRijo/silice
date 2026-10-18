@@ -19,6 +19,7 @@ similitud = ["similitud"]
 paquetes = [
   "core", "adapters", "ml", "ui", "api", "operacion", "migraciones",
   "seguridad", "asistente", "paquete", "auditoria", "fusion",
+  "aplicacion",  # RM-1 (sesion 2b): capa de aplicacion que importan ui/ y api/
 ]
 archivos = ["pyproject.toml", "LICENSE"]
 # De scripts/ y tests/fixtures/ viaja solo el cierre de importaciones de estos módulos (RV-25).
