@@ -15,6 +15,7 @@ from api.rutas import (
     casos,
     catalogo,
     computos,
+    entregas,
     libros,
     listas,
     presupuestos,
@@ -57,6 +58,8 @@ app.include_router(sesion.router)
 # Ola 0a (sesion 2b): el caso de la sesion web (RM-2) y los proyectos del caso
 app.include_router(casos.router)
 app.include_router(proyectos.router)
+# Ola 4 (sesion 2b): entregar el paquete auditado
+app.include_router(entregas.router)
 # 1.2.0 (RT-2): la interfaz nueva, estática y sin secretos, en /app con CSP
 interfaz.montar(app)
 
