@@ -18,7 +18,7 @@ from core.catalog import abrir_sesion, crear_motor
 from core.catalog.moneda import MONEDAS
 from operacion.base_datos import ErrorDeBase, preparar_base
 from seguridad.permisos import Accion
-from ui import precios_empresa
+from ui import atipicos, precios_empresa
 from ui import sesion as ui_sesion
 from ui.caso import ruta_caso
 from ui.subidas import guardar_subida
@@ -136,3 +136,17 @@ def _hallazgos(motor) -> None:
         hide_index=True,
         width="stretch",
     )
+    _atipicos(motor, lista[0])
+
+
+def _atipicos(motor, lista_id: int) -> None:
+    """RF-100: las variaciones atipicas de precio de los insumos de la lista elegida. Solo lee:
+    cada hallazgo es una ADVERTENCIA y no impide nada. Sin el extra `ml` lo dice y no busca."""
+    if not st.button(atipicos.ROTULO_BOTON, key="precios_empresa_atipicos"):
+        return
+    with abrir_sesion(motor) as sesion:
+        busqueda = atipicos.atipicos_de_insumos(
+            sesion, atipicos.codigos_de_la_lista(sesion, lista_id)
+        )
+    for nivel, texto in atipicos.avisos(busqueda):
+        getattr(st, nivel)(texto)

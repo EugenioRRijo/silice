@@ -11,6 +11,21 @@ etiquetar, las líneas pasan a la sección de la versión. La historia anterior 
 - Para integradores: las rutas `/v1/libros/*` aceptan ahora la clave de API **o** la sesión del navegador (RS2-5). Sin la cabecera `X-Silice-Clave` responden 401 con el mensaje de sesión (antes, el de la clave) y esa llamada ya no queda en el registro de accesos como fallo de clave; con una clave mala, todo sigue igual.
 - Sesión 2 de la ruta (en curso): plan `docs/planes/PLAN_SESION_2_VISUAL.md`, producto y diseño de la interfaz nueva (`frontend-desktop/PRODUCT.md`, `DESIGN.md`) y enmienda 1.2.0 de la ERS (UC-26, RF-111 a RF-118, RNF-22 y RNF-23).
 
+## [1.1.0] - 2026-10-18
+
+### Agregado
+
+- RF-100: advertencia de variaciones de precio atípicas en la serie fechada (USD) de cada insumo, en la pestaña Precios de la hoja y en la lista de la empresa (`ml/anomaly/series.py`, `ui/atipicos.py`).
+- RF-141 (R17): regla «Conexión de cada punto»: avisa de puntos de agua, drenaje o datos sin fuente y de tomacorrientes o iluminación sin circuito, en la hoja, al guardar, en el asistente y en la reauditoría (`adapters/espacio/conexion.py`).
+- Reactivar la clave de IA de la empresa desde su respaldo cifrado, con rastro de cada intento fallido (Administración del asistente).
+- Pruebas del experimento del asistente: comparador, métricas, mutaciones, corrida, congelado y `scripts/evaluar_asistente.py`.
+- Ruta de construcción por sesiones, fichas de subagentes con modelo y esfuerzo, y plan de fuentes de la arenera (`docs/planes/`).
+
+### Cambiado
+
+- ERS, enmienda 1.1.0: pruebas obligatorias, RF-90 (b) diferido, RF-95 en parte (la corrida real del experimento sigue en pausa, sin gasto), E3 y E5 como límite del método, RF-141.
+- Una prueba vigila que los archivos congelados del experimento no cambien (`tests/unit/test_experimento_congelado_vigente.py`).
+
 ### Corregido
 
 - `main` en rojo desde la 1.0.0: se retiran los alias `ARENIA_CASO` y `ARENIA_MODO_ENTREGA`, que solo valían hasta la 0.6.0 (`ui/entorno.py`, manuales y `tests/conftest.py`).

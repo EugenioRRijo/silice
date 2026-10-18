@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import hashlib
 import logging
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
@@ -350,38 +351,42 @@ def _hallazgos(a: Auditado) -> None:
     _tabla_hallazgos(a.resultado.hallazgos_tabla, "libros_f")
 
 
-def _vista(a: Auditado) -> None:
-    r = a.resultado
-    origen = r.origen
-    sha = r.libro.sha256
-    marcas = libros.marcas_por_hoja(r.informe.hallazgos)
-    hojas = r.libro.hojas or libros.hojas_del_libro(origen)
-    if not hojas:
-        st.info("El libro no tiene hojas que mostrar.")
-        return
-    primera = next(
-        (libros.hoja_de(f.celda) for f in r.hallazgos_tabla if libros.hoja_de(f.celda) in hojas),
-        hojas[0],
-    )
+def _dibujar_hoja(
+    prefijo: str,
+    sha: str,
+    origen: bytes,
+    hojas: Sequence[str],
+    primera: str,
+    marcas: Mapping[str, Mapping[str, Sequence[str]]] | None = None,
+    *,
+    rotulo: str = "",
+    citas: bool = False,
+) -> str | None:
+    """El selector de hoja y la hoja dibujada, con las celdas citadas en `marcas` (si las hay).
+
+    Devuelve la hoja elegida, o `None` si no se pudo dibujar. Las claves de los widgets llevan el
+    `prefijo`, así que el libro recibido y el devuelto tienen cada uno el suyo. `citas` dice que la
+    vista acompaña a la tabla de hallazgos (el libro recibido); el devuelto no lleva marcas."""
+    marcas = marcas or {}
     c = st.columns([3, 1, 1])
     hoja = c[0].selectbox(
         "Hoja del libro",
         hojas,
         index=hojas.index(primera),
-        key="libros_hoja",
+        key=f"{prefijo}_hoja",
         format_func=lambda h: (
             f"{h} ({len(marcas.get(h, {}))} celdas citadas)" if marcas.get(h) else h
         ),
     )
     desde = int(
         c[1].number_input(
-            "Desde la fila", min_value=1, value=1, step=libros.FILAS_VISTA, key="libros_desde"
+            "Desde la fila", min_value=1, value=1, step=libros.FILAS_VISTA, key=f"{prefijo}_desde"
         )
     )
     ocultas = c[2].toggle(
         "Ver lo oculto",
         value=True,
-        key="libros_ocultas",
+        key=f"{prefijo}_ocultas",
         help="Muestra las filas y columnas que el libro oculta (encabezado en ámbar).",
     )
     vistas: dict = st.session_state.setdefault(CLAVE_VISTAS, {})
@@ -395,18 +400,26 @@ def _vista(a: Auditado) -> None:
                 abierto, hoja, marcas.get(hoja), desde=desde, ocultas=ocultas
             )
         except Exception as error:  # noqa: BLE001 - la vista es una ayuda: su fallo no tumba nada
-            st.warning("No se pudo dibujar esta hoja; los hallazgos siguen en la tabla.")
+            st.warning(
+                "No se pudo dibujar esta hoja; "
+                + ("los hallazgos siguen en la tabla." if citas else "el libro se descarga igual.")
+            )
             _detalle_tecnico(error, "Libro de la empresa: vista calcada")
-            return
+            return None
         if len(vistas) >= MAX_VISTAS_GUARDADAS:
             vistas.pop(next(iter(vistas)))
         vistas[clave] = vista
     if vista.aviso:
         st.warning(vista.aviso)
     st.caption(
-        f"Filas {vista.desde} a {vista.hasta} de {vista.filas}, "
-        "columnas A a Z como máximo. Las celdas con borde rojo las cita un hallazgo (pase el "
-        "cursor por encima para ver el código); la tabla de abajo lista los de esta hoja."
+        f"{rotulo.format(hoja=hoja)}Filas {vista.desde} a {vista.hasta} de {vista.filas}, "
+        "columnas A a Z como máximo."
+        + (
+            " Las celdas con borde rojo las cita un hallazgo (pase el cursor por encima para ver "
+            "el código); la tabla de abajo lista los de esta hoja."
+            if citas
+            else ""
+        )
         + (" Encabezado en ámbar: fila o columna oculta en el libro." if ocultas else "")
     )
     st.html(vista.html)
@@ -417,9 +430,43 @@ def _vista(a: Auditado) -> None:
             + ", ".join(texto_seguro(f"{ref} ({', '.join(c)})") for ref, c in vista.fuera[:40])
             + (" …" if len(vista.fuera) > 40 else "")
         )
+    return hoja
+
+
+def _vista(a: Auditado) -> None:
+    r = a.resultado
+    origen = r.origen
+    marcas = libros.marcas_por_hoja(r.informe.hallazgos)
+    hojas = r.libro.hojas or libros.hojas_del_libro(origen)
+    if not hojas:
+        st.info("El libro no tiene hojas que mostrar.")
+        return
+    primera = next(
+        (libros.hoja_de(f.celda) for f in r.hallazgos_tabla if libros.hoja_de(f.celda) in hojas),
+        hojas[0],
+    )
+    hoja = _dibujar_hoja("libros", r.libro.sha256, origen, hojas, primera, marcas, citas=True)
+    if hoja is None:
+        return
     propios = [f for f in r.hallazgos_tabla if libros.hoja_de(f.celda) == hoja]
     if propios:
         st.dataframe(libros.filas_hallazgos(propios), hide_index=True, width="stretch")
+
+
+def _vista_devuelto(octetos: bytes) -> None:
+    """El libro devuelto dibujado como el original, con sus hojas y las tres nuevas."""
+    hojas = libros.hojas_del_libro(octetos)
+    if not hojas:
+        return
+    st.subheader("Vista del libro devuelto")
+    _dibujar_hoja(
+        "libros_dev",
+        _sha(octetos),
+        octetos,
+        hojas,
+        hojas[0],
+        rotulo="Libro devuelto, hoja {hoja}: ",
+    )
 
 
 def _alertas(a: Auditado) -> None:
@@ -473,6 +520,7 @@ def _descarga(a: Auditado) -> None:
             key="libros_bajar",
             type="primary",
         )
+        _vista_devuelto(listo[2])
 
 
 # --- solo un PDF simple (L10) ---------------------------------------------------------------------

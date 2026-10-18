@@ -1,6 +1,6 @@
 [project]
 name = "silice"
-version = "1.0.0"
+version = "1.1.0"
 description = "Sílice: generacion y auditoria de presupuestos con Analisis de Precios Unitarios multidominio"
 license = "LicenseRef-Propietaria"
 license-files = ["LICENSE"]

@@ -318,6 +318,17 @@ se abren en S4.0 **sin pruebas ejecutadas**: cada una nombra lo que se probará.
 | RF‑95 | `test_experimento_*.py`, `test_evaluar_asistente.py`, comprobaciones `S4-CONGELADO` y `S4-RESULTADOS` de la meta |
 | RNF‑18 | `test_asistente_clave.py`, `test_ui_administracion_asistente.py`, `tests/integration/test_clave_ia_nunca_aparece.py`, `test_asistente_ollama.py` (IP resuelta) |
 
+### 8.0e Filas de Sílice 1.1.0 (ruta, sesión 1): RF‑100 y RF‑141
+
+Fuente: [plan de la sesión 1](planes/PLAN_SESION_1_ASISTENTE.md) y la enmienda 1.1.0 de la ERS. Estado: **ejecutadas**
+en la suite de cierre de la sesión (6 332 pruebas, 0 fallos, 0 omitidas).
+
+| RF / RNF | Prueba |
+|---|---|
+| RF‑100 | `tests/unit/test_series_atipicas.py` (oráculo `tests/fixtures/memorias/atipicos_s3.md`), `tests/integration/test_atipicos.py` (ADVERTENCIA nunca ERROR, listas de proyecto fuera, Bs sin tasa nombrado, sin extra `ml`, no escribe, solo en Precios y lista de la empresa), `tests/unit/test_ui_hoja_atipicos.py`, `tests/unit/test_ui_precios_empresa.py` |
+| RF‑141 | `tests/unit/test_espacio_conexion.py` (casos a mano, conjunto exacto, coherencia de `_EXIGE`), `tests/unit/test_experimento_r17.py` (24/24 mutantes E5, 0 avisos en las 12 referencias), `tests/unit/test_auditoria_r17.py` (reauditoría), `tests/unit/test_ui_hoja_conexion.py` (la página no elabora ni guarda sin R17), `tests/unit/test_experimento_congelado_vigente.py` (el congelado sigue en `[]`) |
+| RF‑95 | en parte: `test_experimento_*.py` y `test_evaluar_asistente.py` ejecutadas; `S4-RESULTADOS` sigue PENDIENTE porque la corrida real está en pausa (RS-10) |
+
 ### 8.1 Trazabilidad por paso de todos los casos de uso
 
 Regla (metodología §3.4): cada paso numerado y cada flujo alternativo de un caso de uso cita la

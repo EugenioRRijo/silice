@@ -113,17 +113,17 @@ def test_una_cifra_mandada_como_numero_json_se_acepta_si_cumple_el_patron(api) -
     assert r.status_code == 200, r.text
 
 
-def test_con_el_anexo_de_espacio_corren_r8_a_r10_y_r15(api) -> None:
+def test_con_el_anexo_de_espacio_corren_r8_a_r10_r15_y_r17(api) -> None:
     from adapters.espacio.serie import espacio_a_objeto
     from tests.fixtures.espacio_of001 import espacio_of001
 
     cliente, clave = api
     r = post(cliente, clave, cuerpo(anexo_espacio=espacio_a_objeto(espacio_of001())))
     assert r.status_code == 200, r.text
-    assert r.json()["contextos"] == ["R1-R7", "R8-R10", "R15", "R11-R12"]
+    assert r.json()["contextos"] == ["R1-R7", "R8-R10", "R15", "R17", "R11-R12"]
     reglas = [h["regla"] for h in r.json()["no_declarados"]]
     assert reglas.count("R8") == 33  # memoria diferencias_s3.md §4: 33 R8 de OF-001
-    assert not {"R9", "R10", "R15"} & set(reglas)
+    assert not {"R9", "R10", "R15", "R17"} & set(reglas)
 
 
 def test_un_anexo_de_espacio_que_no_es_objeto_es_422(api) -> None:
