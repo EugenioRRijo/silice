@@ -207,6 +207,12 @@ try {
     Afirmar $bases 'la base de la instalación y el caso de demostración nacieron en la carpeta de datos'
 
     Paso '3. Inventario y manifiesto'
+    # Diagnóstico (2026-10-18): Start-Process rechazó -WorkingDirectory en la CI.
+    Write-Host ("diagnóstico: pwsh $($PSVersionTable.PSVersion); codigo existe: " +
+        "$(Test-Path -LiteralPath $Codigo); [IO.Directory]::Exists: " +
+        "$([IO.Directory]::Exists($Codigo)); ubicación: $((Get-Location).Path)")
+    Get-ChildItem -LiteralPath $Programa -ErrorAction SilentlyContinue |
+        ForEach-Object { Write-Host "  $($_.Name)" }
     Afirmar ((Operacion @('verificar-programa')) -eq 0) '{app}\codigo coincide con manifiesto.json'
     $configs = @(Get-ChildItem -LiteralPath $Codigo -Recurse -Filter 'config.toml' -File)
     $unico = $configs.Count -eq 1 -and $configs[0].FullName.EndsWith('.streamlit\config.toml')
