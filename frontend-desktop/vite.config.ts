@@ -27,5 +27,8 @@ export default defineConfig({
     setupFiles: ["./src/test/setup.ts"],
     include: ["src/**/*.test.{ts,tsx}", "scripts/**/*.test.mjs"],
     css: false,
+    // Las pruebas que escriben contrasenas largas con userEvent se acercan a los 5 s de Vitest cuando corren
+    // todos los archivos a la vez (CI y laptops lentas): 20 s evita falsos rojos sin esconder cuelgues reales.
+    testTimeout: 20_000,
   },
 });
