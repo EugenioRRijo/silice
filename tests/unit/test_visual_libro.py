@@ -569,14 +569,15 @@ def test_un_tema_incompleto_completa_con_la_paleta_de_office():
     )
     ws = wb.active
     ws.title = "H"
-    for i, tema in enumerate((0, 4, 5, 10), start=1):
+    for i, tema in enumerate((0, 4, 5, 10, 11), start=1):
         ws.cell(row=i, column=1, value=tema).fill = PatternFill("solid", fgColor=Color(theme=tema))
     libro = _replica(wb)
-    assert [_estilo(libro, "H", f"A{i}").relleno for i in (1, 2, 3, 4)] == [
+    assert [_estilo(libro, "H", f"A{i}").relleno for i in (1, 2, 3, 4, 5)] == [
         "#EEEEEE",  # propio
         "#FF6600",  # propio
         "#ED7D31",  # accent2 de Office
         "#0563C1",  # hlink de Office
+        "#954F72",  # folHlink de Office
     ]
 
 
