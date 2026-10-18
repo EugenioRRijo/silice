@@ -16,7 +16,7 @@ exista (RT-4); la versión React es la tarea 4.5, diferida.
 **Tech Stack:** Python ≥ 3.12, SQLAlchemy 2, Alembic, FastAPI, openpyxl (solo lectura), pytest `-W error`.
 
 **Spec:** [PLAN_GESTOR_PRODUCCION_Y_AUDITORIA_VISUAL.md](./PLAN_GESTOR_PRODUCCION_Y_AUDITORIA_VISUAL.md) §3, §6.3 y §7
-con las enmiendas de su §0; orden y subagentes: [RUTA_SESIONES.md](./RUTA_SESIONES.md) §5 (sesión 4, RT-7);
+con las enmiendas de su §0; orden y subagentes: [RUTA_SESIONES.md](./RUTA_SESIONES.md) §5 (sesión 4) y el ruling RT-7 de su §2;
 cifras: [PLAN_FUENTES_DATOS_CANTERA.md](./PLAN_FUENTES_DATOS_CANTERA.md).
 
 ## Global Constraints
@@ -258,7 +258,7 @@ Neto (kg)`), 6 filas, con este oráculo:
 | 5 | TCK-005 | fecha 2026-12-31 con referencia 2026-10-18 | sospechoso «fecha futura» |
 | 6 | TCK-006 | material `GRAVA9` no registrado | sospechoso «material desconocido» |
 
-(La densidad 1,60 t/m³ es del **fixture**, rotulada «ejemplo construido»; no es un valor del producto.)
+(La densidad 1,60 t/m³ es del **fixture**, rotulada «ejemplo construido»; no es un valor del producto. Tampoco es coherente a propósito con el 1,65 de PLAN_FUENTES C-5/C-6: ese es otro ejemplo y no se mezclan.)
 
 - [ ] **Step 1:** Escribir `ORACULO.md` **antes** que los generadores (los valores arriba, más los de las otras cinco
   variantes: kg sin unidad; `1.234,56` y `1,234.56`; `28,300` ambiguo; macros renombrado; 200 000 filas).
