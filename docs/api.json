@@ -2960,7 +2960,7 @@
           },
           "sentido": {
             "type": "string",
-            "const": "costo",
+            "const": "exactitud",
             "title": "Sentido"
           }
         },
@@ -2975,7 +2975,7 @@
           "sentido"
         ],
         "title": "IndicadorRespuesta",
-        "description": "Un total del libro (`actual`) frente al de Sílice (`meta`), RS2-7: `delta = actual - meta`;\n`delta_pct` en centésimas (redondeo al par), nulo si la meta es cero. `sentido = \"costo\"`: que\nel libro declare más de lo que calcula Sílice es desfavorable (IBCS)."
+        "description": "Un total del libro (`actual`) frente al de Sílice (`meta`), RS2-7: `delta = actual - meta`.\nEs presentación (RS2-12, NORMAS §2.3): los tres montos y `delta_pct` van en centésimas al par;\nel exacto está en `totales_libro` y `totales_silice`. `delta_pct` es nulo si la meta es cero.\n`sentido = \"exactitud\"` (RS2-13): la meta es el valor correcto, así que cualquier desviación es\ndesfavorable (IBCS), en un sentido o en el otro."
       },
       "InsumoRespuesta": {
         "properties": {

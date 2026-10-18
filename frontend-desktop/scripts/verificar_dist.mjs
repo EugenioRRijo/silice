@@ -35,6 +35,13 @@ export const ANFITRIONES_DE_UNIVER = new Set([
   "sharejs.org",
   "localhost",
 ]);
+// Solo en el bundle principal (index-*.js), donde queda react-router (ruling RS2B-2). Son textos que el enrutador
+// lleva dentro y que nunca se piden a la red:
+//  - reactrouter.com: enlace dentro de un mensaje de error («must be used within a data router. See ...»).
+//  - localhost: base falsa de `new URL(ruta, "http://localhost")`, para interpretar rutas relativas.
+export const ANFITRIONES_DEL_ENRUTADOR = new Set(["reactrouter.com", "localhost"]);
+const ARCHIVO_PRINCIPAL = /(^|[\\/])index-[^\\/]*\.js$/;
+
 // "reactjs.org" es un enlace de un mensaje de advertencia de React (como react.dev); "${...}" es un fragmento
 // de plantilla de texto (`https://${direccion}`), no un anfitrion.
 const ARCHIVO_DE_UNIVER = /(^|[\\/])adaptadorUniver-[^\\/]*\.(js|css)$/;
@@ -67,6 +74,7 @@ export function verificarDist(carpeta) {
       if (anfitrion.startsWith("${")) continue; // fragmento de plantilla de texto
       if (ANFITRIONES_PERMITIDOS.has(anfitrion) || vistos.has(anfitrion)) continue;
       if (ARCHIVO_DE_UNIVER.test(ruta) && ANFITRIONES_DE_UNIVER.has(anfitrion)) continue;
+      if (ARCHIVO_PRINCIPAL.test(ruta) && ANFITRIONES_DEL_ENRUTADOR.has(anfitrion)) continue;
       vistos.add(anfitrion);
       problemas.push(`${ruta}: URL hacia el anfitrion externo ${anfitrion} (RNF-22)`);
     }

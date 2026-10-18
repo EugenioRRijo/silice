@@ -16,7 +16,13 @@ export const LICENCIAS_PERMITIDAS = new Set([
   "CC0-1.0",
   "Python-2.0",
   "MIT-0", // MIT sin atribucion: mas permisiva que MIT (ruling RS2.1-1)
+  "Unlicense", // dedicacion al dominio publico (robust-predicates, de d3 via @carbon/charts; ruling RS2B-1)
 ]);
+
+// Ruling RS2B-1: licencias duales donde la persona que distribuye ELIGE una alternativa. Se admite solo para el
+// paquete y la expresion exactos, y se elige la alternativa permisiva: dompurify (de @carbon/charts) se ofrece
+// como "(MPL-2.0 OR Apache-2.0)" y Silice lo toma bajo Apache-2.0.
+export const ELECCIONES_DE_LICENCIA = new Map([["dompurify", { expresion: "(MPL-2.0 OR Apache-2.0)", eleccion: "Apache-2.0" }]]);
 
 // Ruling RS2.1-1: solo para paquetes de DESARROLLO (marcados `dev: true` en el lock), que no viajan en el dist:
 // MPL-2.0 (lightningcss, de vite 8; copyleft por archivo, aplica a quien distribuye esos archivos) y
@@ -55,7 +61,9 @@ export function verificarLock(lock) {
       continue;
     }
     cuentas[licencia] = (cuentas[licencia] ?? 0) + 1;
-    if (!licenciaPermitida(licencia, datos.dev === true)) {
+    const eleccion = ELECCIONES_DE_LICENCIA.get(nombre);
+    const efectiva = eleccion && eleccion.expresion === licencia ? eleccion.eleccion : licencia;
+    if (!licenciaPermitida(efectiva, datos.dev === true)) {
       problemas.push(`${nombre}@${datos.version ?? "?"}: licencia no permitida (${licencia})`);
     }
   }

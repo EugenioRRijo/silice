@@ -329,6 +329,23 @@ en la suite de cierre de la sesión (6 332 pruebas, 0 fallos, 0 omitidas).
 | RF‑141 | `tests/unit/test_espacio_conexion.py` (casos a mano, conjunto exacto, coherencia de `_EXIGE`), `tests/unit/test_experimento_r17.py` (24/24 mutantes E5, 0 avisos en las 12 referencias), `tests/unit/test_auditoria_r17.py` (reauditoría), `tests/unit/test_ui_hoja_conexion.py` (la página no elabora ni guarda sin R17), `tests/unit/test_experimento_congelado_vigente.py` (el congelado sigue en `[]`) |
 | RF‑95 | en parte: `test_experimento_*.py` y `test_evaluar_asistente.py` ejecutadas; `S4-RESULTADOS` sigue PENDIENTE porque la corrida real está en pausa (RS-10) |
 
+### 8.0f Filas de Sílice 1.2.0 (ruta, sesión 2): RF‑111 a RF‑118
+
+Fuente: [plan de la sesión 2](planes/PLAN_SESION_2_VISUAL.md) y la enmienda 1.2.0 de la ERS. Estado: **por ejecutar**
+en la suite de cierre de la sesión (`pytest -W error`, cero omitidas) y en el trabajo `interfaz` de la CI
+(`npm test`, `npm run lint`, `npm run build`, `npm run dist`).
+
+| RF / RNF | Prueba |
+|---|---|
+| RF‑111 | `tests/unit/test_visual_libro.py` (incluye el tope de 200 000 celdas, temas, bordes y que no escribe), `tests/unit/test_replica_oraculo.py` y `tests/integration/test_api_replica_oraculo.py` (oráculo a mano `tests/fixtures/replica/`), `tests/unit/test_api_libros_replica.py` (ruta, 415, 413, 422 y 500), `frontend-desktop/src/replica/aUniver.test.ts` (las mismas filas del oráculo en pantalla) |
+| RF‑112 | `tests/unit/test_api_interfaz.py` (404 sin compilar, CSP, cabeceras, redirección, sin clave en el HTML, sin `unsafe-eval`) |
+| RF‑113 | `tests/unit/test_api_sesion_web.py` (cookie, CSRF, `Origin`, 401, 403, 423, 429, expiración, rol), `tests/unit/test_api_libros_replica.py` (cookie y rol en las cuatro rutas), `tests/integration/test_api_clave.py` y `tests/integration/test_api_auditorias.py` (excepciones de clave), `frontend-desktop/src/api/cliente.test.ts`, `src/sesion/Entrar.test.tsx`, `src/App.test.tsx` (sesión vencida: 401, entrar de nuevo y el libro sigue) |
+| RF‑114 | `frontend-desktop/src/replica/aUniver.test.ts`, `src/replica/formatoNumero.test.ts`; el bloqueo de edición (`src/visor/adaptadorUniver.ts`) **no tiene prueba automática** (Univer no dibuja en jsdom): verificación manual registrada en la bitácora |
+| RF‑115 | `frontend-desktop/src/visor/halos.test.ts`, `CapaHalos.test.tsx`, `Visor.test.tsx`; desplazar, acercar y 1366×768: verificación manual con capturas |
+| RF‑116 | `tests/unit/test_api_libros_replica.py`, `tests/integration/test_api_libros.py`, `frontend-desktop/src/indicadores/ibcs.test.ts`, `IndicadorFiori.test.tsx`, `FranjaIndicadores.test.tsx` |
+| RF‑117 | `tests/unit/test_instalador_interfaz.py`, `tests/unit/test_manifiesto.py`, `tests/unit/test_tamanos.py`; el tope de 150 MB lo mide el flujo `instalador.yml` |
+| RF‑118 | `frontend-desktop/src/visor/ListaHallazgos.test.tsx`, `halos.test.ts` (`sinCelda`), `Visor.test.tsx` |
+
 ### 8.1 Trazabilidad por paso de todos los casos de uso
 
 Regla (metodología §3.4): cada paso numerado y cada flujo alternativo de un caso de uso cita la
@@ -662,6 +679,8 @@ Fuente: [spec S5 §12](especificaciones/2026-10-11-silice-s5-producto-instalador
 | RNF‑18 confidencialidad del asistente | planeado (S4.0 a S4.2): `test_asistente_clave.py`, `test_asistente_ollama.py` (IP resuelta), `test_clave_ia_nunca_aparece.py` y la guardia de red única de la suite | pendiente (S4) |
 | RNF‑20 deriva de esquema | `tests/integration/test_migraciones.py::test_head_en_vacio_es_igual_a_create_all`, `::test_la_autogeneracion_contra_head_no_propone_cambios`, `::test_toda_metadata_con_tablas_esta_en_la_lista_de_su_destino`, `::test_cada_revision_baja_y_vuelve_a_subir`, en los dos destinos | cumple (desde la 0.6.0) |
 | RNF‑19 | `tests/unit/test_tamanos.py::test_el_limite_es_exacto` y humo | por medir |
+| RNF‑22 | trabajo `interfaz` de la CI: `npm run licencias` (`frontend-desktop/scripts/verificar_licencias.test.mjs`), `npm run dist` (`verificar_dist.test.mjs`), `tests/unit/test_api_interfaz.py`, `src/sesion/Entrar.test.tsx` (nada en `localStorage`) | por medir |
+| RNF‑23 | tamaño: `npm run dist` (automático). Contraste, teclado, 1366×768 y `prefers-reduced-motion`: revisión manual con la lista de `DESIGN.md`, el detector de impeccable y capturas a 1366×768 y 1920×1080 en la bitácora; no hay prueba automática de contraste ni de teclado (límite declarado) | por medir |
 
 ## 10. Registro de la ejecución (CI de la compuerta GC6, 2026‑09‑29)
 

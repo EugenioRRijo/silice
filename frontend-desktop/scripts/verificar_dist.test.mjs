@@ -60,6 +60,21 @@ describe("verificarDist", () => {
     expect(verificarDist(dir).problemas).toHaveLength(1);
   });
 
+  test("los textos del enrutador pasan solo dentro del bundle principal (index-*.js)", () => {
+    const texto = 'throw Error("See https://reactrouter.com/en/main/routers/picking-a-router."); new URL(p, `http://localhost`);';
+    writeFileSync(join(dir, "index-AbC123.js"), texto);
+    expect(verificarDist(dir).problemas).toEqual([]);
+    writeFileSync(join(dir, "otro-AbC123.js"), 'new URL(p, `http://localhost`);');
+    const { problemas } = verificarDist(dir);
+    expect(problemas).toHaveLength(1);
+    expect(problemas[0]).toContain("localhost");
+  });
+
+  test("el bundle principal tampoco puede hablar con otro anfitrion", () => {
+    writeFileSync(join(dir, "index-AbC123.js"), 'fetch("https://telemetria.example.net/e")');
+    expect(verificarDist(dir).problemas).toHaveLength(1);
+  });
+
   test("15 000 001 bytes hacen fallar", () => {
     writeFileSync(join(dir, "grande.bin"), Buffer.alloc(LIMITE_BYTES + 1));
     const { problemas, bytes } = verificarDist(dir);

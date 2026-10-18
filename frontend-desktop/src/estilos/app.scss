@@ -3,6 +3,9 @@
 @use "./tokens";
 @use "../indicadores/indicadores";
 @use "../visor/visor";
+@use "../shell/shell";
+@use "../comun/comun";
+@use "../paginas/inicio/inicio";
 
 html {
   // Barras de desplazamiento y seleccion con la paleta, no con los valores del navegador.

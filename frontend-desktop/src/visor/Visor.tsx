@@ -213,7 +213,7 @@ export function Visor({ crearHoja = crearHojaUniver, alExpirar }: Props) {
   const cargando = fase === "cargando";
 
   return (
-    <main className="visor">
+    <div className="visor">
       {cargando && <div className="visor__franja-esqueleto" aria-hidden="true"><SkeletonText width="60%" /></div>}
       {fase === "listo" && auditoria && (
         <FranjaIndicadores indicadores={auditoria.indicadores ?? []} porSeveridad={porSeveridad} />
@@ -320,6 +320,6 @@ export function Visor({ crearHoja = crearHojaUniver, alExpirar }: Props) {
           </aside>
         </div>
       )}
-    </main>
+    </div>
   );
 }

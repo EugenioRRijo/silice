@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { ErrorDeApi, fijarCsrf, pedir } from "./cliente";
+import { ErrorDeApi, fijarCsrf, nombreDeDescarga, pedir, pedirBinario } from "./cliente";
 
 function respuesta(estado: number, cuerpo?: unknown, cabeceras: Record<string, string> = {}): Response {
   return new Response(cuerpo === undefined ? null : JSON.stringify(cuerpo), {
@@ -84,5 +84,57 @@ describe("cliente de la API", () => {
     expect(error).toBeInstanceOf(ErrorDeApi);
     expect(error).toMatchObject({ estado: 0 });
     expect((error as ErrorDeApi).detalle).toMatch(/servidor/i);
+  });
+
+  test("pedirBinario devuelve el contenido y el nombre del Content-Disposition", async () => {
+    fetchFalso.mockImplementation(
+      async () =>
+        new Response("hola", {
+          status: 200,
+          headers: { "Content-Type": "application/pdf", "Content-Disposition": 'attachment; filename="ficha.pdf"' },
+        }),
+    );
+    const { blob, nombre } = await pedirBinario("/v1/algo", { respaldo: "descarga.bin" });
+    expect(nombre).toBe("ficha.pdf");
+    expect(await blob.text()).toBe("hola");
+    expect(blob.type).toBe("application/pdf");
+  });
+
+  test("pedirBinario manda el token en un POST y falla con el detalle de la API", async () => {
+    fijarCsrf("tok");
+    fetchFalso.mockImplementation(async () => respuesta(409, { detalle: "No hay nada que entregar." }));
+    await expect(pedirBinario("/v1/entrega", { metodo: "POST", cuerpo: {} })).rejects.toMatchObject({
+      estado: 409,
+      detalle: "No hay nada que entregar.",
+    });
+    expect(new Headers(fetchFalso.mock.calls[0][1]?.headers).get("X-Silice-CSRF")).toBe("tok");
+  });
+
+  test("pedirBinario sin red lanza ErrorDeApi con estado 0", async () => {
+    fetchFalso.mockRejectedValue(new TypeError("fallo"));
+    await expect(pedirBinario("/v1/algo")).rejects.toMatchObject({ estado: 0 });
+  });
+});
+
+describe("nombreDeDescarga", () => {
+  test("lee filename entre comillas y sin ellas", () => {
+    expect(nombreDeDescarga('attachment; filename="a b.xlsx"', "x")).toBe("a b.xlsx");
+    expect(nombreDeDescarga("attachment; filename=a.csv", "x")).toBe("a.csv");
+  });
+
+  test("prefiere filename* con UTF-8 codificado", () => {
+    expect(
+      nombreDeDescarga("attachment; filename=\"presupuesto.xlsx\"; filename*=UTF-8''presupuesto%20%C3%B1and%C3%BA.xlsx", "x"),
+    ).toBe("presupuesto ñandú.xlsx");
+  });
+
+  test("sin cabecera usa el nombre de respaldo", () => {
+    expect(nombreDeDescarga(null, "descarga.bin")).toBe("descarga.bin");
+    expect(nombreDeDescarga("inline", "descarga.bin")).toBe("descarga.bin");
+  });
+
+  test("quita las rutas del nombre para que no escape de la carpeta de descargas", () => {
+    expect(nombreDeDescarga('attachment; filename="../../etc/passwd"', "x")).toBe("passwd");
+    expect(nombreDeDescarga('attachment; filename="C:\\malo\\a.pdf"', "x")).toBe("a.pdf");
   });
 });

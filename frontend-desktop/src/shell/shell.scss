@@ -1,0 +1,143 @@
+// Marco de la interfaz: menu lateral de 16 rem (fijo desde lg, abre con el boton de la cabecera en pantallas mas
+// angostas), contenido a su derecha y selectores en la cabecera. Sin sombras, sin animacion (DESIGN.md).
+
+.silice-saltar {
+  position: fixed;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  z-index: 9100;
+  padding: 0.75rem 1rem;
+  border: 0;
+  background: var(--cds-background-inverse);
+  color: var(--cds-text-inverse);
+  font-family: inherit;
+  cursor: pointer;
+  // Fuera de la vista hasta que recibe el foco (visualmente oculto, no display:none: tiene que ser alcanzable).
+  transform: translateY(-100%);
+
+  &:focus-visible {
+    transform: none;
+    outline: 2px solid var(--cds-focus);
+    outline-offset: -4px;
+  }
+}
+
+.silice-contenido {
+  box-sizing: border-box;
+  min-inline-size: 0;
+  min-block-size: calc(100vh - 3rem);
+
+  &:focus {
+    outline: none;
+  }
+
+  @media (min-width: 66rem) {
+    margin-inline-start: 16rem;
+  }
+}
+
+.silice-avisos {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem 0;
+
+  .cds--inline-notification {
+    max-inline-size: none;
+    margin: 0;
+  }
+}
+
+.silice-pagina-aviso {
+  padding: 1rem;
+  max-inline-size: 48rem;
+}
+
+.silice-esqueleto-pagina {
+  display: grid;
+  gap: 1rem;
+  padding: 1.5rem 1rem;
+  max-inline-size: 48rem;
+}
+
+// Selectores de caso y de proyecto en la cabecera: etiqueta y lista en una fila de 32 px.
+.silice-selector {
+  display: flex;
+  align-items: center;
+  padding-inline: 0.5rem;
+  min-inline-size: 0;
+
+  .cds--select {
+    align-items: center;
+  }
+
+  .cds--select-input__wrapper {
+    min-inline-size: 0;
+  }
+
+  .cds--select-input {
+    max-inline-size: 13rem;
+    text-overflow: ellipsis;
+  }
+}
+
+// Menu lateral.
+.silice-menu__seccion {
+  list-style: none;
+  padding-block: 0.5rem 0.25rem;
+}
+
+.silice-menu__rotulo {
+  margin: 0;
+  padding: 0.5rem 1rem 0.25rem;
+  color: var(--silice-texto-secundario);
+  font-weight: 600;
+}
+
+.silice-menu__lista {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+// Paginas que aun viven en la interfaz clasica: una linea de 32 px, sin ser enlaces de esta interfaz.
+.silice-menu__grupo {
+  list-style: none;
+  padding: 0.5rem 1rem 0.125rem;
+  color: var(--silice-texto-secundario);
+}
+
+.silice-menu__pendiente {
+  display: flex;
+  align-items: center;
+  min-block-size: 2rem;
+  padding-inline: 1rem 0.5rem;
+}
+
+.silice-menu__titulo {
+  color: var(--silice-texto-secundario);
+  cursor: not-allowed;
+}
+
+.silice-menu__clasica {
+  display: block;
+  padding-block: 0.375rem;
+  color: var(--cds-link-primary);
+  text-decoration: none;
+
+  // El icono sigue al texto aunque el titulo ocupe dos lineas.
+  svg {
+    display: inline;
+    margin-inline-start: 0.25rem;
+    vertical-align: text-bottom;
+  }
+
+  &:hover {
+    color: var(--cds-link-primary-hover);
+    text-decoration: underline;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--cds-focus);
+    outline-offset: 1px;
+  }
+}
