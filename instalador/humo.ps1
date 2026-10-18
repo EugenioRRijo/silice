@@ -112,9 +112,21 @@ function ADecimal([uint32]$N) {
 }
 function RangosSin([string]$Ip) {
     # Todo IPv4 salvo 127.0.0.0/8 y la IP propia: conectarse a la propia IP no es salir del equipo.
+    # Dos tramos (0.0.0.0-126.255.255.255 y 128.0.0.0-255.255.255.255) menos la IP, estén donde
+    # estén: Set-NetFirewallRule rechaza un rango con el final menor que el inicio.
     $n = AEntero $Ip
-    return @('0.0.0.0-126.255.255.255', ('128.0.0.0-' + (ADecimal ($n - 1))),
-        ((ADecimal ($n + 1)) + '-255.255.255.255'))
+    $salida = @()
+    foreach ($tramo in @(@([uint32]0, [uint32]2130706431), @([uint32]2147483648, [uint32]4294967295))) {
+        $desde = [uint32]$tramo[0]
+        $hasta = [uint32]$tramo[1]
+        if ($n -lt $desde -or $n -gt $hasta) {
+            $salida += ((ADecimal $desde) + '-' + (ADecimal $hasta))
+            continue
+        }
+        if ($n -gt $desde) { $salida += ((ADecimal $desde) + '-' + (ADecimal ($n - 1))) }
+        if ($n -lt $hasta) { $salida += ((ADecimal ($n + 1)) + '-' + (ADecimal $hasta)) }
+    }
+    return $salida
 }
 
 function IniciarSilice {
