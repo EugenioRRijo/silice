@@ -57,7 +57,8 @@ interfaz no calcula montos.
 
 - Libro sintético con memoria de cálculo a mano: `tests/fixtures/libros_empresa.py` (`libro_limpio()`, siembras
   H1-H18). Todos los nombres son inventados.
-- Ningún libro real anonimizado todavía (bloqueo B-3 de la ruta). No se inventan clientes, obras ni montos reales.
+- Dos libros reales de la empresa anonimizados con `scripts/anonimizar_libro.py` (B-3), **fuera del repositorio**:
+  solo para verificación manual en el navegador; nunca se versionan. No se inventan clientes, obras ni montos reales.
 
 ## Product Principles
 
