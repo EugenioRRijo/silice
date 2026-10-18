@@ -24,7 +24,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from asistente import administracion as ia_administracion
-from asistente.clave import ClaveDeIA, ClaveNoRegistrable, enmascarar
+from asistente.clave import ClaveDeIA, ClaveNoRegistrable, RespaldoNoAbre, enmascarar
 from asistente.configuracion import PROVEEDORES, ConfiguracionIA, leer
 from asistente.instalacion import (
     EMPRESA_DE_LA_CLAVE,
@@ -567,6 +567,22 @@ def _registrar_clave() -> None:
     _avisar(AVISO_CLAVE, "success", texto_seguro(f"Clave de IA registrada ({mostrada})."))
 
 
+def _rastro_de_reactivar_fallida(ip: str | None) -> None:
+    """Un evento de seguridad por intento fallido (S3 §7.4): quién y desde dónde, sin la
+    contraseña ni la clave."""
+    sesion = ui_sesion.sesion_actual()
+    with ui_sesion.instalacion() as bd:
+        eventos.registrar(
+            bd,
+            "ia_clave_reactivar_fallida",
+            _ahora(),
+            login=sesion.login if sesion is not None else "",
+            ip=ip or "",
+            detalle="la contraseña no abrió el respaldo cifrado de la clave de IA",
+        )
+        bd.commit()
+
+
 def _reactivar_clave() -> None:
     # La contraseña sale del estado de la pantalla en el acto, pase lo que pase después.
     contrasena = st.session_state.get("ia_contrasena_reactivar", "")
@@ -581,16 +597,22 @@ def _reactivar_clave() -> None:
         _avisar(AVISO_CLAVE, "error", motivo)
         return
     if not leer(ruta_de_configuracion()).activo:  # apagado, la clave no vuelve a la memoria (§8.3)
-        _avisar(AVISO_CLAVE, "error", "Active el asistente antes de reactivar la clave de IA.")
+        _avisar(AVISO_CLAVE, "error", ia_administracion.APAGADO_NO_REACTIVA)
         return
+    ip = _ip_del_cliente()
     try:
         mostrada = ia_administracion.reactivar_clave(
             clave,
             EMPRESA_DE_LA_CLAVE,
             contrasena,
+            ruta=ruta_de_configuracion(),
             es_administrador=_es_administrador(),
-            ip_cliente=_ip_del_cliente(),
+            ip_cliente=ip,
         )
+    except RespaldoNoAbre as error:
+        _rastro_de_reactivar_fallida(ip)
+        _avisar(AVISO_CLAVE, "error", texto_seguro(str(error)))
+        return
     except (ia_administracion.SinPermiso, ClaveNoRegistrable, ValueError) as error:
         _avisar(AVISO_CLAVE, "error", texto_seguro(enmascarar(str(error))))
         return

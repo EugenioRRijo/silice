@@ -14,7 +14,7 @@ from dataclasses import dataclass, replace
 from decimal import Decimal
 from pathlib import Path
 
-from asistente.clave import ClaveDeIA
+from asistente.clave import ClaveDeIA, ClaveNoRegistrable
 from asistente.configuracion import ConfiguracionIA, guardar, leer
 
 AVISO_DE_NUBE = (
@@ -109,17 +109,25 @@ def registrar_clave(
     )
 
 
+APAGADO_NO_REACTIVA = "Active el asistente antes de reactivar la clave de IA."
+
+
 def reactivar_clave(
     clave: ClaveDeIA,
     empresa_id: str,
     contrasena: str,
     *,
+    ruta: Path,
     es_administrador: bool,
     ip_cliente: str | None,
 ) -> str:
     """Trae la clave de IA desde su respaldo cifrado (almacén de credenciales caído) con la
-    contraseña; solo el administrador y solo desde el propio equipo. Devuelve sus 4 últimos."""
+    contraseña; solo el administrador, solo desde el propio equipo y solo con el asistente
+    activo en la configuración de `ruta` (apagado, la clave no vuelve a la memoria, §8.3).
+    Devuelve sus 4 últimos caracteres."""
     _exigir(es_administrador)
+    if not leer(ruta).activo:
+        raise ClaveNoRegistrable(APAGADO_NO_REACTIVA)
     return clave.reactivar(empresa_id, contrasena, ip_cliente=ip_cliente)
 
 

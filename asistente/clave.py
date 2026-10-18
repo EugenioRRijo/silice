@@ -28,12 +28,28 @@ SERVICIO = "silice-ia"
 ASOCIADO = "silice-ia-clave-v1:"
 _PATRON_CLAVE = re.compile(r"sk-ant-[A-Za-z0-9_\-]+")
 NO_ABRE_EL_RESPALDO = "La contraseña no abre el respaldo de la clave de IA."
-#: Lo que da un respaldo que no se puede leer (JSON danado, campos ausentes o base64 roto).
-_RESPALDO_ILEGIBLE = (json.JSONDecodeError, UnicodeDecodeError, KeyError, TypeError, binascii.Error)
+#: Lo que da un respaldo que no se puede leer, ademas de `InvalidTag` y `HashingError`: JSON danado
+#: o que no es texto (`JSONDecodeError`, `UnicodeDecodeError`), base64 roto (`binascii.Error`), KDF
+#: bajo el minimo o nonce invalido (`ValueError`), campos ausentes o con otra forma (`KeyError`,
+#: `TypeError`, `AttributeError`). Solo se atrapan en `_abrir_respaldo`, nunca en el almacen.
+_RESPALDO_ILEGIBLE = (
+    json.JSONDecodeError,
+    UnicodeDecodeError,
+    binascii.Error,
+    ValueError,
+    KeyError,
+    TypeError,
+    AttributeError,
+)
 
 
 class ClaveNoRegistrable(Exception):  # noqa: N818
     """No se pudo registrar o activar la clave; el mensaje es apto para mostrar."""
+
+
+class RespaldoNoAbre(ClaveNoRegistrable):
+    """La contrasena no abre el respaldo cifrado, o este no se puede leer: mensaje fijo, sin
+    traza. La pantalla deja un evento de seguridad por cada una (`ia_clave_reactivar_fallida`)."""
 
 
 class AlmacenDeClaves(Protocol):
@@ -55,6 +71,8 @@ class Secretos(Protocol):
     SecretoCifrado: type
     #: La contrasena o el dato asociado no son los del cifrado (`cryptography`, reexportada).
     InvalidTag: type[Exception]
+    #: Argon2 no deriva la clave (p. ej. una sal demasiado corta; `argon2`, reexportada).
+    HashingError: type[Exception]
 
     def cifrar(self, secreto: bytes, contrasena: str, huella_publica: str) -> Any: ...
 
@@ -186,13 +204,21 @@ class ClaveDeIA:
         if clave is None and self._ruta.exists():
             if not contrasena_respaldo:
                 raise ClaveNoRegistrable("Escriba la contrasena de la clave de IA guardada.")
-            cifrado = _deserializar(self._secretos, self._ruta.read_bytes())
-            clave = self._secretos.descifrar(
-                cifrado, contrasena_respaldo, ASOCIADO + empresa_id
-            ).decode()
+            clave = self._abrir_respaldo(empresa_id, contrasena_respaldo)
         if clave is None:
             raise ClaveNoRegistrable("No hay una clave de IA registrada para esta empresa.")
         self._en_memoria = clave
+
+    def _abrir_respaldo(self, empresa_id: str, contrasena: str) -> str:
+        """La clave descifrada del respaldo. La contrasena erronea y el respaldo ilegible dan
+        `RespaldoNoAbre` (mensaje fijo, sin la contrasena ni traza); un error al leer el archivo
+        (`OSError`) sale tal cual."""
+        crudo = self._ruta.read_bytes()
+        try:
+            cifrado = _deserializar(self._secretos, crudo)
+            return self._secretos.descifrar(cifrado, contrasena, ASOCIADO + empresa_id).decode()
+        except (self._secretos.InvalidTag, self._secretos.HashingError, *_RESPALDO_ILEGIBLE):
+            raise RespaldoNoAbre(NO_ABRE_EL_RESPALDO) from None
 
     def pide_contrasena(self, empresa_id: str) -> bool:
         """True si la clave no esta en memoria, no esta en el almacen (o este falla) y queda el
@@ -209,15 +235,12 @@ class ClaveDeIA:
     def reactivar(self, empresa_id: str, contrasena: str, *, ip_cliente: str | None) -> str:
         """Carga la clave desde el respaldo cifrado con su contrasena; solo desde el propio equipo.
 
-        La contrasena erronea (`InvalidTag`) y el respaldo ilegible dan un mensaje fijo, sin la
-        contrasena ni traza; la contrasena vacia, el de `activar`. Devuelve lo que se puede mostrar.
+        La contrasena erronea y el respaldo ilegible dan `RespaldoNoAbre` (`_abrir_respaldo`); la
+        contrasena vacia, el mensaje de `activar`. Devuelve lo que se puede mostrar.
         """
         if not self._es_local(ip_cliente):
             raise ClaveNoRegistrable("La clave de IA solo se reactiva desde el propio equipo.")
-        try:
-            self.activar(empresa_id, contrasena)
-        except (self._secretos.InvalidTag, *_RESPALDO_ILEGIBLE):
-            raise ClaveNoRegistrable(NO_ABRE_EL_RESPALDO) from None
+        self.activar(empresa_id, contrasena)
         mostrada = self.mostrada()  # activar la deja en memoria o lanza
         if mostrada is None:
             raise ClaveNoRegistrable("No hay una clave de IA registrada para esta empresa.")
