@@ -4,7 +4,8 @@ El visor de solo lectura (Univer) dibuja el libro **tal como se ve en Excel**. E
 extrae solo el **aspecto**: relleno, fuente, bordes, alineación, formato numérico, combinadas,
 anchos, altos, filas y columnas ocultas, paneles fijos, y por celda el valor mostrado y su fórmula.
 No hay un segundo parser (RT-6): las fórmulas y los valores guardados se leen con las mismas piezas
-que `lector.py` (`_abrir`, `_celdas_reales`, `_convertir`, `_texto_formula`).
+que `lector.py` (`_abrir`, `_celdas_reales`, `_convertir`, `_texto_formula`) y la paleta indexada y
+el lector del tema de `escritor/estilos.py` (`_INDEXADOS`, `_colores_tema`).
 
 Contrato neutro (RS2-1): coordenadas de Excel, fila y columna **base 1**, `ref` sin `$`. La
 conversión a la instantánea de Univer (base 0, píxeles) ocurre en un solo lugar del frontend
@@ -21,13 +22,15 @@ Aperturas del libro (siempre después de la guardia, F-D10, y sin escribir nunca
 
 Límites declarados:
 
-- **Temas personalizados:** los colores de tema (`theme`) se resuelven con la paleta de Office por
-  omisión (2013 en adelante, `_PALETA_TEMA`); el tema propio del libro (`xl/theme/theme1.xml`) no se
-  lee. Un libro con otro tema (Office 2007-2010, o uno de la empresa) mostrará esos colores con la
-  paleta de Office.
+- **Temas:** los colores de tema (`theme`) salen del tema propio del libro
+  (`xl/theme/theme1.xml`, `wb.loaded_theme`, leído con `escritor.estilos._colores_tema`). Si el
+  tema falta o es ilegible se usa la paleta de Office por omisión (2013 en adelante,
+  `_TEMA_OFFICE`), y los índices que el tema no trae se completan con ella.
 - **Tinte (`tint`):** se aplica según ECMA-376 §18.8.19 en HSL con aritmética de coma flotante;
   Excel usa enteros y puede diferir en 1 de 255 en un canal. El empate de redondeo (x,5) va hacia
-  abajo, como Excel (blanco más oscuro 50 % = #7F7F7F).
+  abajo, como Excel (blanco más oscuro 50 % = #7F7F7F). Por eso se conservan `_canal`/`_con_tinte`
+  y no se usa `LectorEstilos`: su `_tinte` redondea con `round()` (el 127,5 va al par, 128) y
+  daría #808080.
 - **Rellenos:** solo los sólidos (`solid`). Tramas (`lightGray`...) y degradados se muestran sin
   relleno.
 - **Bordes:** solo el estilo de cada lado; el color del borde no viaja. Los estilos que el
@@ -44,6 +47,10 @@ Límites declarados:
   escriben (la columna o fila oculta va en `ocultas_*`).
 - **Tope:** más de `MAX_CELDAS_VISUALES` celdas con valor o estilo en todo el libro →
   `LibroDemasiadoGrande`.
+
+Deuda: `_abrir_normal` repite lo que hace `lector._abrir` (mismos avisos silenciados, mismo
+`ArchivoRechazado`); falta un parámetro `solo_lectura` en `lector._abrir`, pero `lector.py` no se
+toca en esta sesión (ruta, sesión 2).
 """
 
 from __future__ import annotations
@@ -53,6 +60,7 @@ import hashlib
 import io
 import math
 import warnings
+from collections.abc import Mapping
 from dataclasses import dataclass
 from decimal import Decimal
 from typing import Any
@@ -60,6 +68,7 @@ from typing import Any
 from openpyxl.cell.cell import Cell
 from openpyxl.utils.cell import column_index_from_string, get_column_letter
 
+from adapters.hoja_empresa.escritor.estilos import _INDEXADOS, _colores_tema
 from adapters.hoja_empresa.guardia import ArchivoRechazado, verificar_archivo
 from adapters.hoja_empresa.lector import _abrir, _celdas_reales, _convertir, _texto_formula
 
@@ -85,27 +94,30 @@ _MAX_COLUMNA = 16384  # XFD
 
 # --- Colores -------------------------------------------------------------------------------------
 
-#: Paleta `indexed` por omisión de Excel, índices 0 a 63 (ECMA-376 §18.8.27), como «RRGGBB».
-_PALETA_INDEXADA: tuple[str, ...] = (
-    "000000", "FFFFFF", "FF0000", "00FF00", "0000FF", "FFFF00", "FF00FF", "00FFFF",  # 0-7
-    "000000", "FFFFFF", "FF0000", "00FF00", "0000FF", "FFFF00", "FF00FF", "00FFFF",  # 8-15
-    "800000", "008000", "000080", "808000", "800080", "008080", "C0C0C0", "808080",  # 16-23
-    "9999FF", "993366", "FFFFCC", "CCFFFF", "660066", "FF8080", "0066CC", "CCCCFF",  # 24-31
-    "000080", "FF00FF", "FFFF00", "00FFFF", "800080", "800000", "008080", "0000FF",  # 32-39
-    "00CCFF", "CCFFFF", "CCFFCC", "FFFF99", "99CCFF", "FF99CC", "CC99FF", "FFCC99",  # 40-47
-    "3366FF", "33CCCC", "99CC00", "FFCC00", "FF9900", "FF6600", "666699", "969696",  # 48-55
-    "003366", "339966", "003300", "333300", "993300", "993366", "333399", "333333",  # 56-63
-)  # fmt: skip
-#: Índices de sistema: 64 = color de primer plano (negro), 65 = color de fondo (blanco).
+#: Índices `indexed` de sistema (los 64 primeros son `escritor.estilos._INDEXADOS`, ECMA-376
+#: §18.8.27): 64 = color de primer plano (negro), 65 = color de fondo (blanco).
 _SISTEMA = {64: "000000", 65: "FFFFFF"}
 #: Paleta de tema de Office por omisión (2013 en adelante), en el orden de índices de `theme` de
 #: SpreadsheetML: 0 lt1, 1 dk1, 2 lt2, 3 dk2 (los dos pares van intercambiados respecto de
-#: `<a:clrScheme>`), 4-9 accent1-6, 10 hlink, 11 folHlink.
-_PALETA_TEMA: tuple[str, ...] = (
-    "FFFFFF", "000000", "E7E6E6", "44546A",
-    "4472C4", "ED7D31", "A5A5A5", "FFC000", "5B9BD5", "70AD47",
-    "0563C1", "954F72",
-)  # fmt: skip
+#: `<a:clrScheme>`), 4-9 accent1-6, 10 hlink, 11 folHlink. Solo es el respaldo del tema del libro.
+_TEMA_OFFICE: dict[int, str] = dict(
+    enumerate(
+        (
+            "FFFFFF",
+            "000000",
+            "E7E6E6",
+            "44546A",
+            "4472C4",
+            "ED7D31",
+            "A5A5A5",
+            "FFC000",
+            "5B9BD5",
+            "70AD47",
+            "0563C1",
+            "954F72",
+        )  # fmt: skip
+    )
+)
 _HEX = frozenset("0123456789abcdefABCDEF")
 
 
@@ -123,7 +135,7 @@ def _con_tinte(hexa: str, tinte: float) -> str:
     return f"{_canal(rr):02X}{_canal(gg):02X}{_canal(bb):02X}"
 
 
-def _color(c: Any) -> str | None:
+def _color(c: Any, tema: Mapping[int, str]) -> str | None:
     """Un `Color` de openpyxl → `#RRGGBB`, o `None` (sin color, automático o ilegible)."""
     if c is None:
         return None
@@ -136,11 +148,11 @@ def _color(c: Any) -> str | None:
     elif tipo == "indexed":
         i = getattr(c, "indexed", None)
         if isinstance(i, int):
-            base = _PALETA_INDEXADA[i] if 0 <= i < len(_PALETA_INDEXADA) else _SISTEMA.get(i)
+            base = _INDEXADOS[i] if 0 <= i < len(_INDEXADOS) else _SISTEMA.get(i)
     elif tipo == "theme":
         i = getattr(c, "theme", None)
-        if isinstance(i, int) and 0 <= i < len(_PALETA_TEMA):
-            base = _PALETA_TEMA[i]
+        if isinstance(i, int):
+            base = tema.get(i)
     if base is None:
         return None
     tinte = getattr(c, "tint", 0.0)
@@ -189,8 +201,8 @@ class HojaVisual:
     visible: bool  # False si hidden o veryHidden
     filas: int  # fila máxima usada (0 si la hoja no tiene celdas)
     columnas: int  # columna máxima usada (0 si la hoja no tiene celdas)
-    anchos: dict[int, str]  # columna base 1 → ancho en caracteres de Excel, texto decimal
-    altos: dict[int, str]  # fila base 1 → alto en puntos, texto decimal
+    anchos: Mapping[int, str]  # columna base 1 → ancho en caracteres de Excel, texto decimal
+    altos: Mapping[int, str]  # fila base 1 → alto en puntos, texto decimal
     ocultas_filas: tuple[int, ...]
     ocultas_columnas: tuple[int, ...]
     combinadas: tuple[str, ...]  # "A1:D1"
@@ -256,9 +268,9 @@ def _mostrado(v: object) -> str:
     return v if isinstance(v, str) else str(v)
 
 
-def _estilo_de(celda: Any) -> EstiloVisual:
+def _estilo_de(celda: Any, tema: Mapping[int, str]) -> EstiloVisual:
     f, fondo, bd, al = celda.font, celda.fill, celda.border, celda.alignment
-    relleno = _color(fondo.fgColor) if getattr(fondo, "fill_type", None) == "solid" else None
+    relleno = _color(fondo.fgColor, tema) if getattr(fondo, "fill_type", None) == "solid" else None
     tamano = f.sz
     return EstiloVisual(
         relleno=relleno,
@@ -267,7 +279,7 @@ def _estilo_de(celda: Any) -> EstiloVisual:
         negrita=bool(f.b),
         cursiva=bool(f.i),
         subrayado=f.u in _SUBRAYADOS,
-        color=_color(f.color),
+        color=_color(f.color, tema),
         alineacion_h=_ALINEACION_H.get(al.horizontal),
         alineacion_v=_ALINEACION_V.get(al.vertical),
         ajustar_texto=bool(al.wrap_text),
@@ -279,7 +291,8 @@ def _estilo_de(celda: Any) -> EstiloVisual:
 class _Estilos:
     """Registro de estilos deduplicados, con caché por `style_id` de openpyxl."""
 
-    def __init__(self, defecto: EstiloVisual) -> None:
+    def __init__(self, tema: Mapping[int, str], defecto: EstiloVisual) -> None:
+        self.tema = tema
         self.defecto = defecto
         self.lista: list[EstiloVisual] = []
         self._indice: dict[EstiloVisual, int] = {}
@@ -289,7 +302,7 @@ class _Estilos:
         sid = celda.style_id
         e = self._por_id.get(sid)
         if e is None:
-            e = self._por_id[sid] = _estilo_de(celda)
+            e = self._por_id[sid] = _estilo_de(celda, self.tema)
         return e
 
     def indice(self, e: EstiloVisual) -> int:
@@ -430,7 +443,10 @@ def replicar_libro(datos: bytes, nombre: str) -> LibroVisual:
             hojas_ws = list(wb.worksheets)
             if not hojas_ws:
                 return LibroVisual(nombre=nombre, sha256=sha, hojas=(), estilos=())
-            estilos = _Estilos(_estilo_de(Cell(hojas_ws[0], row=1, column=1)))
+            # El tema propio del libro manda; lo que no trae se completa con el de Office.
+            tema = {**_TEMA_OFFICE, **_colores_tema(wb.loaded_theme)}
+            defecto = _estilo_de(Cell(hojas_ws[0], row=1, column=1), tema)
+            estilos = _Estilos(tema, defecto)
             hojas: list[HojaVisual] = []
             usadas = 0
             for ws in hojas_ws:
