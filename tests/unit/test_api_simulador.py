@@ -279,12 +279,63 @@ def test_variacion_que_no_es_decimal_da_el_mensaje_de_streamlit(motor) -> None:
     assert r.json()["detalle"].startswith("La variacion maxima no es un numero decimal: ")
 
 
-@pytest.mark.parametrize("variacion", ["-5", "NaN", "Infinity", ""])
-def test_variaciones_invalidas_dan_422_con_detalle_en_texto(motor, variacion) -> None:
+MENSAJE_NO_FINITA = "La variacion maxima debe ser un numero finito."
+MENSAJE_NEGATIVA = "La variacion maxima no puede ser negativa"
+MENSAJE_TOPE = "La variacion maxima no puede pasar de 1000 %."
+
+
+@pytest.mark.parametrize("ruta", [RUTA, RUTA_CSV])
+@pytest.mark.parametrize(
+    ("variacion", "mensaje"),
+    [
+        ("-5", MENSAJE_NEGATIVA + "."),
+        ("-0.01", MENSAJE_NEGATIVA + "."),
+        ("-Infinity", MENSAJE_NO_FINITA),
+        ("NaN", MENSAJE_NO_FINITA),
+        ("sNaN", MENSAJE_NO_FINITA),
+        ("Infinity", MENSAJE_NO_FINITA),
+        ("1000.01", MENSAJE_TOPE),
+        ("1E+3", None),  # 1000 exacto: es el tope y entra
+    ],
+)
+def test_variaciones_fuera_de_rango_tienen_su_mensaje(motor, ruta, variacion, mensaje) -> None:
     _usar(motor)
-    r = _con_clave().post(RUTA, json=_cuerpo(variacion_max=variacion))
+    r = _con_clave().post(ruta, json=_cuerpo(variacion_max=variacion))
+    if mensaje is None:
+        assert r.status_code == 200, r.text
+    else:
+        assert r.status_code == 422, r.text
+        assert r.json() == {"detalle": mensaje}
+
+
+@pytest.mark.parametrize("ruta", [RUTA, RUTA_CSV])
+@pytest.mark.parametrize("variacion", ["1E+999999", "1E+999999999", "9" * 5000])
+def test_variacion_gigante_se_rechaza_rapido(motor, ruta, variacion) -> None:
+    """Sin tope `int(Decimal("1E+200000") * 100)` tarda segundos de CPU."""
+    import time
+
+    _usar(motor)
+    cliente = _con_clave()
+    inicio = time.perf_counter()
+    r = cliente.post(ruta, json=_cuerpo(variacion_max=variacion))
+    assert time.perf_counter() - inicio < 1
     assert r.status_code == 422, r.text
-    assert isinstance(r.json()["detalle"], str) and r.json()["detalle"]
+
+
+def test_variacion_vacia_no_es_decimal(motor) -> None:
+    _usar(motor)
+    r = _con_clave().post(RUTA, json=_cuerpo(variacion_max=""))
+    assert r.status_code == 422
+    assert r.json()["detalle"].startswith("La variacion maxima no es un numero decimal: ")
+
+
+@pytest.mark.parametrize(
+    "campo", [{"variacion_max": 5}, {"variacion_max": 5.5}, {"insumos": 7}, {"insumos": ["Arena"]}]
+)
+def test_tipos_erroneos_dan_422(motor, campo) -> None:
+    _usar(motor)
+    r = _con_clave().post(RUTA, json=_cuerpo(**campo))
+    assert r.status_code == 422, r.text
 
 
 def test_sin_lista_vigente_da_409_con_el_texto_del_error(motor_vacio) -> None:
@@ -294,11 +345,19 @@ def test_sin_lista_vigente_da_409_con_el_texto_del_error(motor_vacio) -> None:
     assert r.json()["detalle"].startswith("no hay ninguna lista de precios vigente al ")
 
 
-@pytest.mark.parametrize("semilla", [-1, "42", 1.5, None])
-def test_semilla_negativa_o_no_entera_da_422(motor, semilla) -> None:
+@pytest.mark.parametrize("semilla", [-1, 2**63, "42", 1.5, None, True])
+def test_semilla_fuera_de_rango_o_no_entera_da_422(motor, semilla) -> None:
     _usar(motor)
     r = _con_clave().post(RUTA, json=_cuerpo(semilla=semilla))
     assert r.status_code == 422, r.text
+
+
+@pytest.mark.parametrize("semilla", [0, 2**63 - 1])
+def test_semilla_en_las_fronteras_entra(motor, semilla) -> None:
+    _usar(motor)
+    r = _con_clave().post(RUTA, json=_cuerpo(semilla=semilla))
+    assert r.status_code == 200, r.text
+    assert r.json()["filas"] == _esperado(semilla, 5)
 
 
 # --- POST /v1/simulador/csv ---------------------------------------------------------------

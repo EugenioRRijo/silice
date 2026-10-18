@@ -29,6 +29,12 @@ MENSAJE_SIN_FILAS = "La simulacion no produjo ninguna fila (revise el filtro de 
 #: cambiar el modo alteraria las series ya generadas con cada semilla.
 PASO_DE_PRESENTACION = Decimal(1).scaleb(-DECIMALES_PRESENTACION)
 
+#: Tope de la variacion maxima, en porcentaje (inclusive).
+VARIACION_MAXIMA = Decimal(1000)
+MENSAJE_VARIACION_NO_FINITA = "La variacion maxima debe ser un numero finito."
+MENSAJE_VARIACION_NEGATIVA = "La variacion maxima no puede ser negativa."
+MENSAJE_VARIACION_TOPE = f"La variacion maxima no puede pasar de {VARIACION_MAXIMA} %."
+
 FilaSimulada = tuple[str, str, str, Decimal]
 
 
@@ -68,11 +74,24 @@ def simular(
 
 
 def variacion_de_texto(texto: str) -> Decimal:
-    """La variacion maxima escrita como decimal; `ValueError` con el mensaje de la pagina."""
+    """La variacion maxima (%) escrita como decimal finito, 0 <= v <= `VARIACION_MAXIMA`.
+
+    `ValueError` con el mensaje de la pagina si no es decimal; con mensaje propio si no es finita,
+    es negativa o pasa del tope. El tope evita que `int(v * 100)` de `simular` construya un entero
+    gigante (`1E+999999` tardaria segundos o minutos de CPU) y es mucho mas de lo que tiene sentido
+    para una variacion de precios.
+    """
     try:
-        return Decimal(str(texto))
+        valor = Decimal(str(texto))
     except InvalidOperation as error:
         raise ValueError(f"La variacion maxima no es un numero decimal: {error}") from error
+    if not valor.is_finite():
+        raise ValueError(MENSAJE_VARIACION_NO_FINITA)
+    if valor < 0:
+        raise ValueError(MENSAJE_VARIACION_NEGATIVA)
+    if valor > VARIACION_MAXIMA:
+        raise ValueError(MENSAJE_VARIACION_TOPE)
+    return valor
 
 
 def insumos_de_texto(texto: str | None) -> set[str] | None:
@@ -109,7 +128,12 @@ def simular_desde_catalogo(
 
 
 def csv_de(filas: list[FilaSimulada]) -> bytes:
-    """El CSV canonico (`tipo,insumo,unidad,precio`) en UTF-8."""
+    """El CSV canonico (`tipo,insumo,unidad,precio`) en UTF-8.
+
+    Deuda conocida: las celdas de texto (insumo, unidad) no se neutralizan contra la inyeccion de
+    formulas de hoja de calculo (`=`, `+`, `-`, `@` al inicio). No se cambia aqui porque rompe el
+    ida y vuelta con UC-02, que relee este mismo formato; se decide con el tutor.
+    """
     buffer = io.StringIO()
     escritor = csv.writer(buffer)
     escritor.writerow(COLUMNAS_CSV)
