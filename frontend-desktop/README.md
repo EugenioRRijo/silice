@@ -58,3 +58,29 @@ en solo lectura, con un halo de severidad sobre la celda de cada hallazgo.
 - La capa de halos (`CapaHalos.tsx`) es DOM sobre el lienzo y se recalcula cuando el visor avisa un cambio.
 - Univer trae `'unsafe-inline'` en `style-src` por necesidad: inyecta `<style>` con sus variables de tema. No usa
   `eval`, `new Function`, workers ni `blob:` para scripts.
+
+## El marco y cómo se migra una página (sesión 2b)
+
+`src/shell/` es el marco: cabecera de Carbon (nombre, selector de **caso** y de **proyecto**, «Salir»), menú lateral por
+rol y modo entrega, y la ruta de cada página. La navegación es de hash (`/app/#/libros`): el servidor de `/app` es
+estático y no responde `index.html` a `/app/libros`. El menú, las rutas y los permisos salen de **una** lista:
+`src/shell/rutas.ts` (21 páginas, las de `ui/app.py`, con su sección y su `Accion`). Lo que la persona puede ver sale de
+`acciones` y `modo_entrega` de `GET /v1/sesion`; la API vuelve a exigir cada acción.
+
+Para migrar una página (id = nombre del módulo de Streamlit, p. ej. `catalogo`):
+
+1. Crear `src/paginas/<id>/index.tsx` con un `export default` (el componente, sin props). Lo que necesita sale de
+   `useAplicacion()` (`src/shell/contexto.tsx`): `sesion`, `proyecto` elegido (código o `null`), `caso`,
+   `recargarProyectos()` y `alExpirar()` (llamarlo ante un 401).
+2. En `rutas.ts`, a su línea, agregar `cargar: () => import("../paginas/<id>")`. Sin `cargar` el menú la muestra
+   deshabilitada con «En la interfaz clásica». Cada página es un archivo aparte en el `dist`.
+3. Hablar con la API solo con `pedir` / `pedirBinario` de `src/api/cliente.ts`; los montos llegan como texto y se
+   muestran tal cual. Si cambia el caso, el marco vuelve a montar la página (pedir los datos al montar basta).
+4. Usar `src/comun/`: `TablaDensa` (Carbon `sm`, montos a la derecha, orden decimal exacto, esqueleto y estado vacío),
+   `SubidaArchivo`, `DescargaArchivo`, `AvisoError` (muestra el `detalle` de la API), `EstadoVacio`, `EsqueletoPagina`.
+5. Pruebas con Vitest y Testing Library; en las pruebas de página, inyectar un doble de `fetch` como en
+   `src/shell/Shell.test.tsx`.
+
+Librerías (RM-5): `react-router` (enrutamiento) y `@carbon/charts-react` con `@carbon/charts` (gráficos del tablero y la
+curva de control). Para tablas basta Carbon `DataTable`; no se agregan más paquetes sin ruling.
+

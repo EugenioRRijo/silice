@@ -9,6 +9,30 @@ export interface SesionRespuesta {
   nombre: string;
   roles: string[];
   csrf: string;
+  // Contrato de la ola 0a. `acciones` son las `Accion` que permite el rol (el menu se arma con ellas) y
+  // `modo_entrega` esconde la seccion Investigacion. Una API anterior no los trae: useSesion los normaliza.
+  debe_cambiar_clave: boolean;
+  acciones: string[];
+  modo_entrega: boolean;
+  // Propuesta aditiva: direccion de la interfaz Streamlit, para el enlace de las paginas aun no migradas.
+  url_clasica?: string | null;
+}
+
+export interface CasoRespuesta {
+  nombre: string;
+  ruta_relativa: string;
+}
+
+export interface CasosRespuesta {
+  actual: CasoRespuesta;
+  casos: CasoRespuesta[];
+}
+
+export interface ProyectoRespuesta {
+  codigo: string;
+  nombre: string;
+  version_vigente: number | null;
+  actualizado: string | null;
 }
 
 export interface HallazgoLibroRespuesta {

@@ -42,6 +42,14 @@ ajustan aquí cuando la construcción los fije.
 - Real = relleno sólido; plan/meta = contorno; pronóstico = achurado (IBCS). El acento de interacción es el azul
   de Carbon (`$interactive`) y solo en acciones, foco y selección.
 
+## Marco
+
+Cabecera de Carbon de 48 px (nombre de la persona, selectores de caso y de proyecto en tamaño `sm`, «Salir») y menú
+lateral de 16 rem, fijo desde 1056 px de ancho y plegable con el botón de la cabecera por debajo. Cuatro secciones como
+en Streamlit (Trabajo, Revisión, Investigación, Administración); dentro de cada una, primero las páginas migradas y,
+bajo el rótulo «En la interfaz clásica», las que aún viven en Streamlit (una línea de 32 px, sin ser enlaces de esta
+interfaz). Las que no puede ver la cuenta no aparecen; las que sí puede y no están migradas, sí.
+
 ## Movimiento
 
 Ninguno decorativo (Eugenio, 2026-10-18). Solo las transiciones de estado propias de los componentes Carbon
