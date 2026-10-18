@@ -387,6 +387,7 @@ _MODULOS_RELACIONADOS_CON_ML = (
     "ml.anomaly.detector",
     "ml.prediction",
     "ml.prediction.reglas",
+    "aplicacion.composicion",
     "ui.composicion",
     "ui.paginas.componer",
 )
