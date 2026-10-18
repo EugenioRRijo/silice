@@ -14,8 +14,12 @@ Reglas de la frontera:
   en la báscula) es obligatoria y la manda el cliente; `ahora` al resolver o descartar también.
 - **Cada petición es una transacción** (`SesionInstalacionDep`): lo que registra queda confirmado al
   terminar bien y un error, de cualquier tipo, no deja nada a medias.
-- **Usuario de lo que se escribe**: `USUARIO_API` (RT-S4-4), pues la clave no entrega su identidad
-  a la ruta.
+- **Dos entradas** (RT-9): la clave de API (`X-Silice-Clave`, integraciones) o la sesión web
+  (cookie más `X-Silice-CSRF` y `Origin` en lo que escribe; solo arma y administrador,
+  `Accion.OPERAR_ARENERA`). Una sola dependencia, `OPERAR_ARENERA`, protege el router y entrega la
+  sesión a las rutas que escriben, sin validarla dos veces.
+- **Usuario de lo que se escribe**: con clave, `USUARIO_API` (RT-S4-4), pues la clave no entrega su
+  identidad a la ruta; con sesión web, el responsable de la cuenta (`Nombre <login>`, RF-82).
 
 Errores, siempre `{"detalle": ...}`: código o ticket repetido y pesaje sospechoso ya cerrado 409;
 pesaje sospechoso inexistente 404; extensión que no es `.csv` ni `.xlsx` 415; cuerpo de más de
@@ -36,7 +40,7 @@ from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
 from typing import Annotated
 
-from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel
 from sqlalchemy import select
@@ -46,6 +50,7 @@ from starlette.concurrency import run_in_threadpool
 from adapters.hoja_empresa.guardia import ArchivoRechazado, verificar_archivo
 from api.dependencias import USUARIO_API, SesionInstalacionDep
 from api.proteccion import LIMITE_CUERPO
+from api.sesion_web import exigir_clave_o_sesion
 from produccion.conectores.bascula import ReporteRechazado, leer
 from produccion.conectores.detector_columnas import MapeoNecesario
 from produccion.importacion import descartar, importar, pendientes, resolver
@@ -59,12 +64,20 @@ from produccion.inventario import (
     tablero,
 )
 from produccion.modelo import Material, Movimiento, PesajeSospechoso
+from seguridad.permisos import Accion
+from seguridad.sesiones import SesionActiva
 
-router = APIRouter(prefix="/v1/produccion", tags=["produccion"])
+#: La puerta de la arenera: clave de API o sesión web con rol que opera la arenera. Es el mismo
+#: objeto en el router y en `_usuario`, así FastAPI la evalúa una sola vez por petición.
+OPERAR_ARENERA = exigir_clave_o_sesion(Accion.OPERAR_ARENERA)
+
+router = APIRouter(
+    prefix="/v1/produccion", tags=["produccion"], dependencies=[Depends(OPERAR_ARENERA)]
+)
 
 LOG = logging.getLogger(__name__)
 
-__all__ = ["USUARIO_API", "router"]
+__all__ = ["OPERAR_ARENERA", "USUARIO_API", "router"]
 
 EXTENSIONES = (".csv", ".xlsx")
 TIPOS_DE_MOVIMIENTO = ("entrada", "despacho", "ajuste")
@@ -73,6 +86,14 @@ BLOQUE = 1024 * 1024  # se lee de a 1 MiB: un archivo de más se corta sin leerl
 TOPE_BYTES = LIMITE_CUERPO  # el del cuerpo entero (api.proteccion): 20 MiB
 MENSAJE_IMPORTACION = "El reporte de báscula no se pudo importar."
 ERRORES_DEL_USUARIO = (ArchivoRechazado, ReporteRechazado, ErrorDeInventario)
+
+
+def _usuario(activa: Annotated[SesionActiva | None, Depends(OPERAR_ARENERA)]) -> str:
+    """Quién escribe: la cuenta de la sesión web, o `USUARIO_API` si entró con clave."""
+    return USUARIO_API if activa is None else activa.usuario
+
+
+UsuarioDep = Annotated[str, Depends(_usuario)]
 
 
 # --- Esquemas ------------------------------------------------------------------------------------
@@ -320,7 +341,7 @@ def crear_un_material(entrada: MaterialEntrada, sesion: SesionInstalacionDep) ->
     },
 )
 def registrar_un_movimiento(
-    entrada: MovimientoEntrada, sesion: SesionInstalacionDep
+    entrada: MovimientoEntrada, sesion: SesionInstalacionDep, usuario: UsuarioDep
 ) -> MovimientoRespuesta | JSONResponse:
     """Registra una entrada (producción), un despacho o un ajuste por conteo. En el ajuste,
     `cantidad` es el **conteo físico** y se guarda la diferencia con la existencia a esa fecha; si
@@ -335,15 +356,15 @@ def registrar_un_movimiento(
     with _conflictos():
         if entrada.tipo == "entrada":
             movimiento = registrar_entrada(
-                sesion, material.id, fecha, cantidad, usuario=USUARIO_API, nota=nota
+                sesion, material.id, fecha, cantidad, usuario=usuario, nota=nota
             )
         elif entrada.tipo == "despacho":
             movimiento = registrar_despacho(
-                sesion, material.id, fecha, cantidad, usuario=USUARIO_API, nota=nota
+                sesion, material.id, fecha, cantidad, usuario=usuario, nota=nota
             )
         else:
             movimiento = registrar_ajuste_por_conteo(
-                sesion, material.id, fecha, cantidad, usuario=USUARIO_API, nota=nota
+                sesion, material.id, fecha, cantidad, usuario=usuario, nota=nota
             )
     if movimiento is None:
         return JSONResponse(content=None, status_code=200)
@@ -452,6 +473,7 @@ def _mapeo(texto: str | None) -> dict[str, int] | None:
 )
 async def importar_reporte(
     sesion: SesionInstalacionDep,
+    usuario: UsuarioDep,
     archivo: Annotated[UploadFile, File(description="Reporte de la báscula (.csv o .xlsx)")],
     fecha_referencia: Annotated[
         str, Form(description="«Hoy» para detectar fechas futuras, ISO (AAAA-MM-DD). Obligatoria.")
@@ -478,7 +500,7 @@ async def importar_reporte(
         lectura = await run_in_threadpool(
             lambda: leer(datos, nombre, fecha_referencia=referencia, unidad_peso=unidad, mapeo=mapa)
         )
-        resultado = await run_in_threadpool(lambda: importar(sesion, lectura, usuario=USUARIO_API))
+        resultado = await run_in_threadpool(lambda: importar(sesion, lectura, usuario=usuario))
     except HTTPException:
         raise
     except MapeoNecesario as error:
@@ -528,7 +550,7 @@ def _sospechoso_pendiente(sesion: Session, id_sospechoso: int) -> None:
     status_code=201,
 )
 def resolver_sospechoso(
-    id_sospechoso: int, entrada: ResolverEntrada, sesion: SesionInstalacionDep
+    id_sospechoso: int, entrada: ResolverEntrada, sesion: SesionInstalacionDep, usuario: UsuarioDep
 ) -> MovimientoRespuesta:
     """Crea el despacho con los valores corregidos y cierra el sospechoso como resuelto. Ya cerrado
     o ticket ya registrado: 409; inexistente: 404."""
@@ -544,7 +566,7 @@ def resolver_sospechoso(
             fecha=fecha,
             neto_t=neto,
             ticket=entrada.ticket,
-            usuario=USUARIO_API,
+            usuario=usuario,
             ahora=ahora,
         )
     material = sesion.get(Material, movimiento.material_id)
@@ -553,10 +575,10 @@ def resolver_sospechoso(
 
 @router.post("/pesajes-sospechosos/{id_sospechoso}/descartar", status_code=204)
 def descartar_sospechoso(
-    id_sospechoso: int, entrada: DescartarEntrada, sesion: SesionInstalacionDep
+    id_sospechoso: int, entrada: DescartarEntrada, sesion: SesionInstalacionDep, usuario: UsuarioDep
 ) -> Response:
     """Cierra el sospechoso como descartado, sin crear ningún despacho. Ya cerrado: 409."""
     ahora = _instante(entrada.ahora, "ahora")
     _sospechoso_pendiente(sesion, id_sospechoso)
-    descartar(sesion, id_sospechoso, usuario=USUARIO_API, ahora=ahora)
+    descartar(sesion, id_sospechoso, usuario=usuario, ahora=ahora)
     return Response(status_code=204)
