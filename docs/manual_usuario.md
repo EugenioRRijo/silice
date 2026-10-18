@@ -716,6 +716,8 @@ En **Revisión → Libro de la empresa**:
    contrastable».
 6. **Descargue el libro devuelto.** Tiene el mismo aspecto que el suyo, con los APU ordenados por dentro, los
    valores de Sílice y tres hojas más: AUDITORÍA, TRAZABILIDAD y ALERTAS USD‑Bs.
+   Al preparar el libro, debajo del botón de descarga aparece su **vista previa**: elija la hoja (incluidas las
+   tres nuevas) y vea cómo quedó antes de descargarlo. No lleva celdas marcadas: los hallazgos están en AUDITORÍA.
 
 No se copian hipervínculos, protección de hoja ni algunos formatos condicionales; todo cambio queda anotado. Sus
 libros no se guardan en Sílice: se procesan en memoria.
