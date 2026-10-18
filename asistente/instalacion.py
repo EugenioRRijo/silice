@@ -65,7 +65,7 @@ def cargar_clave_guardada(clave: ClaveDeIA, empresa_id: str = EMPRESA_DE_LA_CLAV
     """Si el proceso arranco sin la clave en memoria, la trae del almacen de credenciales.
 
     Silenciosa: no cambia nada guardado ni muestra la clave. Sin clave en el almacen, o con solo el
-    respaldo cifrado (que pide contrasena y aun no tiene pantalla), no hace nada. Cualquier otro
+    respaldo cifrado (su contrasena la pide Administracion, `reactivar`), no hace nada. Otro
     error del almacen (en Windows, el backend puede fallar de muchas formas) se anota enmascarado
     en el registro y no llega a la pantalla.
     """

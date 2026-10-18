@@ -13,15 +13,20 @@ from __future__ import annotations
 import dataclasses
 import importlib
 import json
+import logging
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+from sqlalchemy.exc import OperationalError
 from streamlit.testing.v1 import AppTest
 
 from asistente import instalacion
 from asistente.clave import SERVICIO, ClaveDeIA, es_bucle_local
 from asistente.configuracion import ConfiguracionIA, guardar, leer
 from operacion.config import carpeta_datos
+from operacion.instalacion import sesion_de_instalacion
+from seguridad import eventos
 from seguridad.permisos import Rol
 from seguridad.sesiones import SesionActiva
 from tests.fixtures.asistente_clave import AlmacenFalso, SecretosFalsos
@@ -272,3 +277,166 @@ def test_sin_el_extra_ia_la_pestana_lo_dice_y_la_configuracion_sigue(entorno, mo
     assert entorno.pagina.SIN_EXTRA_IA in textos(at)
     assert at.button(key="ia_guardar") is not None
     assert not [b for b in at.button if b.key == "ia_registrar"]
+
+
+# --- reactivar la clave desde el respaldo cifrado (ruta, sesion 1, tarea 1.2) -----------------
+
+CONTRASENA = "una contrasena larga"
+NO_ABRE = "La contraseña no abre el respaldo de la clave de IA."
+EVENTO_FALLIDO = "clave de ia no reactivada"  # palabras y espacios, como los tipos de S3
+
+
+def eventos_de_reactivar() -> list:
+    with sesion_de_instalacion() as bd:
+        return [
+            (e.tipo, e.login_intentado, e.ip_cliente, e.detalle)
+            for e in eventos.ultimos(bd)
+            if e.tipo == EVENTO_FALLIDO
+        ]
+
+
+def errores(at: AppTest) -> list[str]:
+    return [limpio(e.value) for e in at.error]
+
+
+def con_solo_el_respaldo(entorno) -> None:
+    """Asistente activo, almacen caido, la clave en el respaldo cifrado y un proceso nuevo."""
+    guardar(entorno.ruta, ConfiguracionIA(activo=True))
+    entorno.almacen.cae = True
+    entorno.clave.registrar(
+        instalacion.EMPRESA_DE_LA_CLAVE,
+        CLAVE,
+        ip_cliente="127.0.0.1",
+        contrasena_respaldo=CONTRASENA,
+    )
+    entorno.clave.desactivar()
+
+
+def hay_reactivar(at: AppTest) -> bool:
+    return any(t.key == "ia_contrasena_reactivar" for t in at.text_input)
+
+
+def reactivar(at: AppTest, contrasena: str = CONTRASENA) -> AppTest:
+    at.text_input(key="ia_contrasena_reactivar").set_value(contrasena)
+    at.button(key="ia_reactivar").click().run()
+    assert not at.exception, [e.value for e in at.exception]
+    return at
+
+
+def test_la_contrasena_de_reactivar_no_queda_en_la_pantalla(entorno, monkeypatch):
+    con_roles(monkeypatch, Rol.ADMINISTRADOR)
+    con_solo_el_respaldo(entorno)
+    at = arrancar()
+    assert entorno.clave.vigente is None and hay_reactivar(at)
+    at.text_input(key="ia_contrasena_reactivar").set_value("otra contrasena larga")
+    at.button(key="ia_reactivar").click().run()
+    assert entorno.clave.vigente is None
+    assert errores(at) == [NO_ABRE]
+    assert at.session_state["ia_contrasena_reactivar"] == ""
+    assert not alcanza(estado(at), "otra contrasena larga")
+    # el rastro: un evento de seguridad con la IP y el login, sin la contrasena ni la clave
+    rastro = eventos_de_reactivar()
+    assert [(t, login, ip) for t, login, ip, _ in rastro] == [(EVENTO_FALLIDO, "ana", "127.0.0.1")]
+    assert not alcanza(rastro, "otra contrasena larga") and not alcanza(rastro, CLAVE)
+    reactivar(at)
+    assert entorno.clave.vigente == CLAVE
+    assert [limpio(s.value) for s in at.success] == ["Clave de IA reactivada (…5678)."]
+    assert not at.error and len(eventos_de_reactivar()) == 1  # el acierto no deja fallo
+    leido = textos(at)
+    assert "Clave registrada: …5678" in leido
+    assert CLAVE not in leido and CONTRASENA not in leido
+    assert at.session_state["ia_contrasena_reactivar"] == ""
+    assert not alcanza(estado(at), CONTRASENA) and not alcanza(estado(at), CLAVE)
+    assert not alcanza(estado(at), "ABCD1234efgh")
+    assert not hay_reactivar(at)  # cargada: la seccion ya no se pide
+
+
+def test_la_seccion_solo_aparece_si_pide_contrasena(entorno, monkeypatch):
+    con_roles(monkeypatch, Rol.ADMINISTRADOR)
+    guardar(entorno.ruta, ConfiguracionIA(activo=True))
+    assert not hay_reactivar(arrancar())  # nada guardado
+    entorno.almacen.set_password(SERVICIO, instalacion.EMPRESA_DE_LA_CLAVE, CLAVE)
+    at = arrancar()
+    assert entorno.clave.vigente == CLAVE and not hay_reactivar(at)  # el almacen la tenia
+    entorno.almacen.datos.clear()
+    entorno.clave.olvidar(instalacion.EMPRESA_DE_LA_CLAVE)
+    con_solo_el_respaldo(entorno)
+    assert hay_reactivar(arrancar())  # solo el respaldo cifrado
+    guardar(entorno.ruta, ConfiguracionIA(activo=False))
+    assert not hay_reactivar(arrancar())  # apagado, la clave no vuelve a la memoria (§8.3)
+    assert entorno.clave.vigente is None
+
+
+@pytest.mark.parametrize("roles", [(Rol.ARMA,), (Rol.REVISA,)])
+def test_la_seccion_no_aparece_para_quien_no_es_administrador(entorno, monkeypatch, roles):
+    con_solo_el_respaldo(entorno)
+    con_roles(monkeypatch, *roles)
+    assert not hay_reactivar(arrancar())
+
+
+def test_la_seccion_no_aparece_si_el_cliente_no_es_local(entorno, monkeypatch):
+    con_roles(monkeypatch, Rol.ADMINISTRADOR)
+    con_solo_el_respaldo(entorno)
+    monkeypatch.setattr(entorno.cliente, "ip_del_cliente", lambda: "192.168.1.40")
+    at = arrancar()
+    assert not hay_reactivar(at) and not [b for b in at.button if b.key == "ia_reactivar"]
+    assert entorno.clave.vigente is None
+
+
+def test_reactivar_con_la_contrasena_vacia_da_su_mensaje(entorno, monkeypatch):
+    con_roles(monkeypatch, Rol.ADMINISTRADOR)
+    con_solo_el_respaldo(entorno)
+    at = reactivar(arrancar(), contrasena="")
+    assert errores(at) == ["Escriba la contrasena de la clave de IA guardada."]
+    assert entorno.clave.vigente is None and eventos_de_reactivar() == []  # no hubo intento
+
+
+def test_si_el_asistente_se_apago_entre_tanto_no_se_reactiva(entorno, monkeypatch):
+    """La seccion se pinto con el asistente activo y otra pestana lo apago antes de enviar."""
+    con_roles(monkeypatch, Rol.ADMINISTRADOR)
+    con_solo_el_respaldo(entorno)
+    at = arrancar()
+    guardar(entorno.ruta, ConfiguracionIA(activo=False))
+    reactivar(at)
+    assert errores(at) == ["Active el asistente antes de reactivar la clave de IA."]
+    assert entorno.clave.vigente is None and eventos_de_reactivar() == []
+    assert not alcanza(estado(at), CONTRASENA)
+
+
+def test_si_falla_el_rastro_el_administrador_igual_ve_el_mensaje(entorno, monkeypatch, caplog):
+    """La anotacion del intento fallido no tapa el aviso ni muestra la pagina de error."""
+    con_roles(monkeypatch, Rol.ADMINISTRADOR)
+    con_solo_el_respaldo(entorno)
+
+    def base_caida(*args, **kwargs):
+        raise OperationalError("INSERT INTO evento_acceso", {}, Exception("database is locked"))
+
+    monkeypatch.setattr(eventos, "registrar", base_caida)
+    at = arrancar()
+    with caplog.at_level(logging.WARNING, logger="ui.paginas.administracion"):
+        reactivar(at, contrasena="otra contrasena larga")
+    assert errores(at) == [NO_ABRE] and entorno.clave.vigente is None
+    avisos = [r.getMessage() for r in caplog.records if r.name == "ui.paginas.administracion"]
+    assert avisos == ["No se pudo anotar el intento fallido de reactivar la clave de IA"]
+    assert "otra contrasena larga" not in caplog.text
+
+
+def test_si_no_se_puede_leer_el_respaldo_la_pantalla_lo_dice(entorno, monkeypatch, tmp_path):
+    con_roles(monkeypatch, Rol.ADMINISTRADOR)
+    con_solo_el_respaldo(entorno)
+    respaldo = tmp_path / "ia.cifrada"
+    leer_original = Path.read_bytes
+
+    def sin_permiso(self):
+        if self == respaldo:
+            raise PermissionError("acceso denegado al respaldo")
+        return leer_original(self)
+
+    at = arrancar()
+    monkeypatch.setattr(Path, "read_bytes", sin_permiso)
+    reactivar(at)
+    assert errores(at) == [
+        "No se pudo leer el respaldo cifrado de la clave en la carpeta de datos: revise que "
+        "exista y que se pueda leer."
+    ]
+    assert entorno.clave.vigente is None and eventos_de_reactivar() == []
