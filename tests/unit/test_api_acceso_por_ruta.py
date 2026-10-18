@@ -95,6 +95,13 @@ TABLA = {
     ("GET", "/v1/casos"): CUALQUIERA,
     ("POST", "/v1/casos/actual"): CAMBIAR_CASO,
     ("GET", "/v1/proyectos"): LEER,
+    # Ola 3 (S2-B): «Componer una partida» es de quien arma (`ui/paginas/componer.py`)
+    ("GET", "/v1/composicion/opciones"): EDITAR,
+    ("POST", "/v1/composicion/evaluar"): EDITAR,
+    ("GET", "/v1/composicion/partidas/{codigo}"): EDITAR,
+    ("GET", "/v1/composicion/referencia"): EDITAR,
+    ("GET", "/v1/composicion/similares"): EDITAR,
+    ("POST", "/v1/composicion/guardar"): EDITAR,
 }
 #: Las de la puerta de entrada: la sesión misma (con su propia regla) y el ping.
 DE_LA_SESION = {

@@ -8,6 +8,7 @@ etiquetar, las líneas pasan a la sección de la versión. La historia anterior 
 
 ### Agregado
 
+- Migración del front, ola 3 (S2-B), backend de «Componer una partida» (UC‑10, UC‑11): seis rutas `/v1/composicion/*` (`opciones`, `evaluar`, `partidas/{codigo}`, `referencia`, `similares`, `guardar`) con `EDITAR_HOJA`, montos como texto y los mensajes de la página clásica; la lógica (y `guardar_composicion`, antes en `ui/elaboracion.py`) vive en `aplicacion/composicion.py`, que `ui/` reexporta.
 - Sílice 1.2.0 (ruta, sesión 2; UC‑26, RF‑111 a RF‑118, RNF‑22 y RNF‑23): interfaz nueva y visor de solo lectura. `frontend-desktop/` (Vite, React 19, Carbon g10 y Univer, sin red externa) servida por la API en `/app` con CSP; `POST /v1/libros/replica` y `adapters/hoja_empresa/visual.py` (aspecto del libro con coordenadas de Excel); acceso del navegador por cuenta (`/v1/sesion` con cookie `HttpOnly`, anti‑CSRF y freno global con 429); campo aditivo `indicadores` en `/v1/libros/auditoria` (centésimas, sentido «exactitud», RS2‑12 y RS2‑13); el instalador lleva la interfaz compilada; trabajo `interfaz` en la CI.
 
 ### Cambiado
