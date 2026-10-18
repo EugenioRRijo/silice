@@ -281,8 +281,20 @@ describe("Inicio, panel del día", () => {
     test("si la arenera aún no existe en la API (404), avisa sin romper la página", async () => {
       existencias = () => json({ detalle: "No encontrado." }, 404);
       montar();
-      expect(await screen.findByText("La arenera aún no está disponible")).toBeInTheDocument();
+      expect(await screen.findByText("Sin datos de la arenera en esta instalación")).toBeInTheDocument();
       expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    });
+
+    test("una instalación sin las rutas de la arenera ni del historial (404 de FastAPI, a veces sin JSON) no muestra errores", async () => {
+      existencias = () => json({ detail: "Not Found" }, 404);
+      auditorias = () => new Response("<html>no encontrado</html>", { status: 404 });
+      const alExpirar = vi.fn();
+      montar({ alExpirar });
+      expect(await screen.findByText("Sin datos de la arenera en esta instalación")).toBeInTheDocument();
+      expect(await screen.findByText("El historial de auditorías aún no está disponible")).toBeInTheDocument();
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+      expect(alExpirar).not.toHaveBeenCalled();
+      expect(screen.getByRole("heading", { name: "Audite un presupuesto" })).toBeInTheDocument();
     });
 
     test("una respuesta 401 en la arenera avisa que la sesión venció y deja el bloque en error", async () => {

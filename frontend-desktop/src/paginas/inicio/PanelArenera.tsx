@@ -43,7 +43,7 @@ function Cuerpo({ carga }: { carga: Carga<ExistenciaRespuesta[]> }) {
     );
   }
   if (carga.estado === "sin_permiso") return <EstadoVacio titulo="Sin datos de la arenera para su cuenta" />;
-  if (carga.estado === "no_disponible") return <EstadoVacio titulo="La arenera aún no está disponible" />;
+  if (carga.estado === "no_disponible") return <EstadoVacio titulo="Sin datos de la arenera en esta instalación" />;
   if (carga.estado === "error") return <AvisoError error={carga.error} titulo="No se pudo leer la arenera" />;
 
   const filas = carga.datos;
