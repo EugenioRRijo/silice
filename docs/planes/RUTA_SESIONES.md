@@ -33,7 +33,7 @@ El plan del gestor dice *qué* se construye; esta ruta dice *en qué orden y con
 | RT-5 | **Transporte en el escritorio (sesión 5): bucle local `127.0.0.1` con puerto efímero y clave por sesión entregada por IPC de Tauri** (nunca en `localStorage`). En la red local sigue el puerto fijo de la configuración (`operacion/config.py`). Named Pipes queda como endurecimiento posterior. | uvicorn no sirve por Named Pipes de Windows sin un transporte propio; la API ya filtra por red (`api/proteccion.py`). | Bajo. |
 | RT-6 | **La réplica visual extiende `adapters/hoja_empresa/`**; no se crea `adapters/excel_visual/` con un segundo parser. **Costo declarado:** `lector.py` abre en solo lectura a propósito (el modo normal cuesta ~7 s por libro) y en solo lectura no hay combinadas ni dimensiones, así que `visual.py` hace una **tercera apertura en modo normal**, solo para el aspecto, después de la guardia (`adapters/hoja_empresa/guardia.py`). | El lector ya hace las dos lecturas (`data_only`) y las reglas ya apuntan a `HOJA!CELDA` (DRY). | Bajo: ~7 s más por libro abierto en el visor. |
 | RT-7 | **La arenera empieza como inventario** (entradas, despachos de báscula, ajustes por conteo). El costo horario de maquinaria espera a tener fuente verificada ([PLAN_FUENTES](./PLAN_FUENTES_DATOS_CANTERA.md)). `produccion/` entra en `PAQUETES_FUERA_DEL_NUCLEO` (`tests/unit/test_arquitectura.py`) con su propia regla de importaciones; `InsumoCanteraDTO` **vive en `produccion/`** (no en `core.contracts`) y el paso a la lista de precios de la empresa lo hace `api/` o un módulo de integración con permiso explícito de importar `core.catalog`. | RS-3; NORMAS §1 y §5. | Bajo. |
-| RT-8 | Versiones: cada sesión que entrega código cierra con su versión SemVer menor (**1.1.0, 1.2.0…**), no se reabre la 1.0.0. | La 1.0.0 está etiquetada; «Sílice 1.5» ya nombra el spec de la fusión con los libros (no es una versión). | Bajo. |
+| RT-8 | Versiones: cada sesión que entrega código cierra con una versión SemVer menor (**1.1.0, 1.2.0…**) que **toma al fusionar** (la siguiente libre en `main`, por orden de llegada, no por número de sesión); no se reabre la 1.0.0. | La 1.0.0 está etiquetada; «Sílice 1.5» ya nombra el spec de la fusión con los libros (no es una versión). | Bajo. |
 | RT-9 | **Acceso de la interfaz nueva:** `/app` es estático y público, **sin secretos**; la persona entra con su cuenta de la instalación (`seguridad/sesiones.py`, roles de S3) y recibe una cookie de sesión `HttpOnly` + `SameSite=Strict` con token anti-CSRF; las rutas que usa la interfaz se mapean a la matriz de roles. La clave de API `X-Silice-Clave` sigue siendo para integraciones, no para el navegador. La API viene apagada por defecto (`operacion/config.py`): la interfaz nueva la necesita encendida en el bucle local. | Una navegación no envía cabeceras y meter la clave en el HTML la expone a toda la red local; la API hoy no conoce usuarios ni roles. | Medio: es trabajo de seguridad propio de la sesión 2 (tarea 2.3). |
 
 ## 3. Subagentes, modelo y esfuerzo
@@ -88,8 +88,8 @@ Cada sesión se abre en una sesión nueva de Claude Code con esta orden:
    (`scripts/meta_silice*.py`, pares `ParTDD`) ya exige nombres: se adoptan esos (DRY).
 3. **Enmienda de requisitos.** El plan detallado incluye una tarea que enmienda `docs/ERS.md` (UC, RF, RNF nuevos con
    su criterio de aceptación), `docs/modelo_datos.md` si cambia una tabla y la meta de la versión. Numeración libre
-   al 2026-10-18: **UC-26, RF-111 y RNF-22 en adelante**; cada sesión toma el siguiente bloque libre y lo anota en
-   su plan.
+   al 2026-10-18: **UC-26, RF-111 y RNF-22 en adelante**, repartida por sesión en §8 para que las sesiones en
+   paralelo no choquen.
 4. **Construcción.** Una tarea por subagente, con su ficha, modelo y esfuerzo de la tabla; TDD (rojo visto → verde);
    tareas sin archivos compartidos van en paralelo, las demás en orden. Cuando la tabla pide un modelo distinto del
    de la ficha, la fila lo marca «(excepción RS-7)».
@@ -221,3 +221,30 @@ Revisores: arquitectura, seguridad, pruebas, diseño, hechos.
 | Desgaste de piezas (muelas, conos, mallas, llantas) y ensayos de acopio | Sin fuente verificada ni datos de la empresa | tras la sesión 4 |
 | Réplica visual desde PDF | El lector PDF actual solo verifica (L10/L11); la réplica en lienzo se hace sobre `.xlsx` | sesión 6 |
 | Named Pipes de Windows | RT-5: solo si una prueba real muestra un antivirus bloqueando el bucle local | sesión 5 |
+
+## 8. Sesiones en paralelo (Eugenio abre cada ventana)
+
+Cada sesión corre en **su propia conversación de Claude Code**, abierta por Eugenio. Dependencias:
+
+| Sesión | Puede empezar | Depende de |
+|---|---|---|
+| 1 Asistente | en curso | — |
+| 2 Cambio visual | **ya** | — |
+| 4 Arenera | **ya**, tareas 4.0–4.4 y la parte de backend de 4.6 | la tarea 4.5 (pantallas) espera a que la sesión 2 fusione `frontend-desktop/`; 4.6 espera fuentes verificadas |
+| 3 Auditoría en el visor | cuando la sesión 2 esté en `main` | 2 |
+| 5 Escritorio Tauri | cuando la sesión 2 esté en `main` y haya Rust (B-5) | 2 |
+| 6 Auditoría y release | al final | todas |
+
+**Reglas para no chocar:**
+
+| Recurso | Regla |
+|---|---|
+| Carpetas | cada sesión usa solo `.worktrees/s<N>*` y ramas `inc/ruta-s<N>-*`; nunca toca las de otra |
+| `git stash` | prohibido el `stash` simple (la pila es común a todas): `git stash push -u -m "<etiqueta única>"` y `apply` por SHA, o un commit WIP |
+| Numeración de la ERS | S1: ninguna nueva (cierra RF-100 y RF-95) · S2: **UC-26, RF-111–RF-118, RNF-22–RNF-23** · S3: **UC-27, RF-119–RF-126, RNF-24** · S4: **UC-28–UC-29, RF-127–RF-136, RNF-25** · S5: **RF-137–RF-140, RNF-26–RNF-27** |
+| Versión | la toma al fusionar (RT-8): `pyproject.toml` se cambia en el último commit, justo antes del PR, tras traer `main` |
+| `CHANGELOG.md` | solo líneas nuevas bajo «Sin publicar»; al chocar se conservan las dos |
+| `api/main.py`, `tests/unit/test_arquitectura.py` | solo agregar líneas; `docs/api.json` se **regenera** después de traer `main`, nunca se fusiona a mano |
+| Migraciones Alembic | una sola cabeza por base: antes del PR, `git merge origin/main` y re-apuntar la revisión nueva a la cabeza vigente |
+| Antes de cada PR | `git fetch && git merge origin/main`, suite completa, metas; la CI verde manda |
+| Carga del equipo | como máximo **tres** sesiones a la vez (cada una con sus subagentes); la suite completa no se corre en dos sesiones al mismo tiempo |
