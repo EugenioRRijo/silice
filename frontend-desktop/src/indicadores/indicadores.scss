@@ -1,0 +1,152 @@
+// Franja de indicadores Fiori (DESIGN.md): 64 px, divisores de 1 px, esquinas rectas, sin sombra ni animacion.
+.silice-oculto {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.franja-indicadores {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  min-block-size: 4rem;
+  background: var(--cds-layer);
+  border-block-end: 1px solid var(--silice-divisor);
+}
+
+.franja-indicadores__lista {
+  display: flex;
+  flex-wrap: wrap;
+  flex: 1 1 auto;
+  min-inline-size: 0;
+}
+
+.franja-indicadores__severidad {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0 0.75rem;
+  border-inline-start: 1px solid var(--silice-divisor);
+}
+
+.fiori-kpi {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas:
+    "titulo meta"
+    "actual delta"
+    "barra barra";
+  align-content: center;
+  align-items: baseline;
+  column-gap: 0.75rem;
+  row-gap: 0.125rem;
+  padding: 0.25rem 1rem;
+  min-inline-size: 13rem;
+  border-inline-end: 1px solid var(--silice-divisor);
+}
+
+.fiori-kpi:last-child {
+  border-inline-end: 0;
+}
+
+.fiori-kpi__titulo {
+  grid-area: titulo;
+  color: var(--silice-texto-secundario);
+}
+
+.fiori-kpi__meta {
+  grid-area: meta;
+  color: var(--silice-texto-secundario);
+}
+
+.fiori-kpi__actual {
+  grid-area: actual;
+  color: var(--silice-texto);
+  text-align: start;
+}
+
+.fiori-kpi__delta {
+  grid-area: delta;
+  display: inline-flex;
+  align-items: center;
+  justify-self: end;
+  gap: 0.125rem;
+}
+
+// Barras IBCS: real con relleno sólido, meta con contorno.
+.fiori-kpi__barra {
+  grid-area: barra;
+  position: relative;
+  display: block;
+  block-size: 6px;
+}
+
+.fiori-kpi__barra-real,
+.fiori-kpi__barra-meta {
+  position: absolute;
+  inset-inline-start: 0;
+  block-size: 3px;
+  box-sizing: border-box;
+}
+
+.fiori-kpi__barra-real {
+  inset-block-start: 0;
+  background: var(--silice-texto);
+}
+
+.fiori-kpi__barra-meta {
+  inset-block-start: 3px;
+  border: 1px solid var(--silice-texto);
+  background: transparent;
+}
+
+.ibcs-favorable {
+  color: var(--silice-ibcs-favorable);
+}
+
+.ibcs-desfavorable {
+  color: var(--silice-ibcs-desfavorable);
+}
+
+.ibcs-neutro {
+  color: var(--silice-ibcs-neutro);
+}
+
+// Conteos por severidad: el color va solo en el ícono; texto y número en la tinta normal.
+.silice-sev {
+  border-radius: 0;
+}
+
+.silice-sev__icono {
+  flex: none;
+  margin-inline-end: 0.25rem;
+}
+
+.silice-sev--critico .silice-sev__icono {
+  color: var(--silice-sev-critico);
+}
+
+.silice-sev--error .silice-sev__icono {
+  color: var(--silice-sev-error);
+}
+
+.silice-sev--advertencia .silice-sev__icono {
+  color: var(--silice-sev-advertencia);
+}
+
+.silice-sev--info .silice-sev__icono {
+  color: var(--silice-sev-info);
+}
+
+// 1366 px: los indicadores se estrechan y, si aun no caben, bajan de fila (nunca se cortan).
+@media (max-width: 1440px) {
+  .fiori-kpi {
+    min-inline-size: 11.5rem;
+    padding-inline: 0.75rem;
+  }
+}
