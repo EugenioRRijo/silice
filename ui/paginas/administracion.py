@@ -15,6 +15,7 @@ muestran **una vez**.
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, time
@@ -41,6 +42,7 @@ from ui import sesion as ui_sesion
 from ui.paginas import instalacion
 from ui.texto_seguro import texto_seguro
 
+_registro = logging.getLogger(__name__)
 CLAVE_PESTANA = "adm_pestana"  # no es de widget por contenido: solo recuerda la pestaña elegida
 ROLES_ELEGIBLES = tuple(rol.value for rol in Rol)
 ETIQUETAS_DE_ROL = {
@@ -574,7 +576,7 @@ def _rastro_de_reactivar_fallida(ip: str | None) -> None:
     with ui_sesion.instalacion() as bd:
         eventos.registrar(
             bd,
-            "ia_clave_reactivar_fallida",
+            "clave de ia no reactivada",
             _ahora(),
             login=sesion.login if sesion is not None else "",
             ip=ip or "",
@@ -610,8 +612,11 @@ def _reactivar_clave() -> None:
             ip_cliente=ip,
         )
     except RespaldoNoAbre as error:
-        _rastro_de_reactivar_fallida(ip)
-        _avisar(AVISO_CLAVE, "error", texto_seguro(str(error)))
+        _avisar(AVISO_CLAVE, "error", texto_seguro(str(error)))  # primero: el aviso no se pierde
+        try:
+            _rastro_de_reactivar_fallida(ip)
+        except Exception:  # noqa: BLE001 - una base ocupada no tumba la pantalla; se anota
+            _registro.warning("No se pudo anotar el intento fallido de reactivar la clave de IA")
         return
     except (ia_administracion.SinPermiso, ClaveNoRegistrable, ValueError) as error:
         _avisar(AVISO_CLAVE, "error", texto_seguro(enmascarar(str(error))))

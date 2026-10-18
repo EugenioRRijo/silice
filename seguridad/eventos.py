@@ -15,7 +15,7 @@ TIPOS = (
     "paquete exportado", "clave de api", "retiro", "revocacion", "codigo de instalacion",
     "empresa", "clave registrada",
     # S4 §8.3: la contraseña no abrió el respaldo cifrado de la clave de IA (ruta, sesión 1)
-    "ia_clave_reactivar_fallida",
+    "clave de ia no reactivada",
 )
 
 

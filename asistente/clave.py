@@ -49,7 +49,7 @@ class ClaveNoRegistrable(Exception):  # noqa: N818
 
 class RespaldoNoAbre(ClaveNoRegistrable):
     """La contrasena no abre el respaldo cifrado, o este no se puede leer: mensaje fijo, sin
-    traza. La pantalla deja un evento de seguridad por cada una (`ia_clave_reactivar_fallida`)."""
+    traza. La pantalla deja un evento de seguridad por cada una («clave de ia no reactivada»)."""
 
 
 class AlmacenDeClaves(Protocol):
