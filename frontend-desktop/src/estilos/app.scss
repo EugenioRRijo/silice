@@ -1,6 +1,7 @@
 // Estilos propios de la aplicacion. Carbon pone la gramatica visual; aqui solo van los ajustes minimos.
 @use "./fuentes";
 @use "./tokens";
+@use "../indicadores/indicadores";
 
 html {
   // Barras de desplazamiento y seleccion con la paleta, no con los valores del navegador.
