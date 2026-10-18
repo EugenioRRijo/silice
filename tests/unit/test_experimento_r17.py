@@ -61,7 +61,7 @@ def test_ninguna_referencia_da_falsa_alarma(tarea):
 
 @pytest.mark.parametrize("mutante", MUTANTES_E5, ids=[f"{m.tarea}#{m.indice}" for m in MUTANTES_E5])
 def test_cada_mutante_e5_da_un_aviso_del_punto_mutado(mutante):
-    punto_id, _ = _mutado(mutante)
+    punto_id, quitado = _mutado(mutante)
     hallazgos = ConexionDeCadaPunto(mutante.espacio).evaluar(VACIO)
     assert len(hallazgos) == 1
     (h,) = hallazgos
@@ -70,6 +70,7 @@ def test_cada_mutante_e5_da_un_aviso_del_punto_mutado(mutante):
         Severidad.ADVERTENCIA,
         (f"esp_puntos:{punto_id}",),
     )
+    assert f"no tiene {quitado}:" in h.descripcion
 
 
 def test_r17_detecta_24_de_24_y_el_reparto_es_18_fuentes_y_6_circuitos():

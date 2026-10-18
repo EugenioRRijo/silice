@@ -168,3 +168,42 @@ def test_guardar_y_el_resultado_hipotetico_reciben_el_borrador_con_r17():
         assert llamadas, nombre
         for llamada, _ in llamadas:
             assert _es_con_conexion(llamada.args[posicion]), nombre
+
+
+#: Como cada funcion de `ui.hoja` que elabora puede usarla la pagina. `con_plan_secuencial` solo lee
+#: el presupuesto (R17 no lo cambia) y su borrador vuelve a la sesion: no debe llevar R17.
+USO_PERMITIDO = {
+    "elaborar_borrador": "solo en _elaborar",
+    "guardar_version": "con _con_conexion",
+    "crear_primera_version": "con _con_conexion",
+    "con_plan_secuencial": "sin R17: solo usa el presupuesto",
+}
+
+
+def _funciones_que_elaboran() -> set[str]:
+    """Las funciones publicas de `ui.hoja` que llegan, directa o indirectamente, a `elaborar`."""
+    arbol = ast.parse(Path(hoja.__file__).read_text(encoding="utf-8"))
+    llama = {
+        f.name: {
+            n.func.id
+            for n in ast.walk(f)
+            if isinstance(n, ast.Call) and isinstance(n.func, ast.Name)
+        }
+        for f in arbol.body
+        if isinstance(f, ast.FunctionDef)
+    }
+    elaboran = {"elaborar"}
+    while True:
+        nuevas = {f for f, llamadas in llama.items() if llamadas & elaboran} - elaboran
+        if not nuevas:
+            break
+        elaboran |= nuevas
+    return {f for f in elaboran - {"elaborar"} if not f.startswith("_")}
+
+
+def test_toda_funcion_de_ui_hoja_que_elabora_y_usa_la_pagina_esta_clasificada():
+    elaboran = _funciones_que_elaboran()
+    assert {"elaborar_hoja", "elaborar_borrador", "guardar_version"} <= elaboran
+    usadas = {f for f in elaboran if _llamadas(f)}
+    assert usadas <= set(USO_PERMITIDO), usadas - set(USO_PERMITIDO)
+    assert not _llamadas("elaborar_hoja")  # la pagina no se salta elaborar_borrador

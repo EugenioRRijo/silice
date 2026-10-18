@@ -17,10 +17,14 @@ Cada falta da UN hallazgo ADVERTENCIA (nunca ERROR: el usuario decide si corrige
 
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import date
 from decimal import Decimal
 
-from adapters.espacio.conexion import CODIGO_R17, ConexionDeCadaPunto, reglas_conexion
+import pytest
+
+from adapters.espacio.conexion import _EXIGE, CODIGO_R17, ConexionDeCadaPunto, reglas_conexion
+from adapters.espacio.derivacion import ESPECIALIDADES, derivar
 from adapters.espacio.modelo import (
     Ambiente,
     Circuito,
@@ -28,11 +32,14 @@ from adapters.espacio.modelo import (
     Espacio,
     Especialidad,
     Fuente,
+    ModoRecorrido,
     Punto,
+    Recorrido,
     SuperficiePunto,
     TipoFuente,
     TipoPunto,
 )
+from adapters.espacio.origen import OrigenMedida, TipoOrigen
 from core.contracts import Hallazgo, ReglaVerificacion, Severidad
 from core.contracts.presupuesto import Presupuesto
 
@@ -224,3 +231,56 @@ def test_reglas_conexion_da_la_regla_r17_ligada_al_espacio_que_recibe():
     assert regla.nombre == "Conexión de cada punto"
     assert regla.espacio is e
     assert regla.evaluar(VACIO) == r17(e)
+
+
+# --- coherencia del ruling con lo que derivan las especialidades ---------------------------------
+
+LEV = OrigenMedida(
+    id="LEV", tipo=TipoOrigen.LEVANTAMIENTO, referencia={"fecha": "2026-10-01", "responsable": "EP"}
+)
+_FUENTE_DE = {Especialidad.AGUA: "F", Especialidad.DATOS: "RK", Especialidad.ELECTRICIDAD: "T1"}
+
+
+def _derivado(especialidad, tipo, *, fuente=True, circuito=True) -> list[tuple]:
+    """Todo lo que derivan las tres especialidades de un espacio con UN punto del par."""
+    fuente_id = "K" if tipo is TipoPunto.DRENAJE else _FUENTE_DE[especialidad]
+    p = replace(
+        punto("X", "x", especialidad, tipo),
+        fuente_id=fuente_id if fuente else None,
+        circuito_id="C1" if circuito else None,
+        especificaciones={"diametro": '1/2"'},
+    )
+    e = Espacio(
+        origenes=(LEV,),
+        ambientes=(AMBIENTE,),
+        fuentes=FUENTES,
+        circuitos=(C1,),
+        puntos=(p,),
+        recorridos=(Recorrido("R-X", ModoRecorrido.PROPUESTO, punto_id="X"),),
+    )
+    return [
+        (i.codigo_partida, i.cantidad, i.origen_id) for s in ESPECIALIDADES for i in derivar(e, s)
+    ]
+
+
+def test_exige_algo_justo_de_los_pares_cuyo_punto_derivan_las_especialidades():
+    """Si una especialidad gana un tipo de punto (o deja uno), esta prueba avisa: `_EXIGE` debe
+    cambiar con ella."""
+    derivados = {
+        (e, t)
+        for e in Especialidad
+        for t in TipoPunto
+        if any("esp_puntos:X" in origen for *_, origen in _derivado(e, t))
+    }
+    assert derivados == set(_EXIGE)
+
+
+@pytest.mark.parametrize("par", sorted(_EXIGE), ids=lambda par: f"{par[0]}-{par[1]}")
+def test_lo_que_r17_exige_es_lo_que_cambia_el_presupuesto(par):
+    especialidad, tipo = par
+    completo = _derivado(especialidad, tipo)
+    if _EXIGE[par][0] == "fuente":
+        assert _derivado(especialidad, tipo, fuente=False) != completo
+    else:  # circuito: sin el cambia el cable; sin fuente no cambia nada (no se le exige)
+        assert _derivado(especialidad, tipo, circuito=False) != completo
+        assert _derivado(especialidad, tipo, fuente=False) == completo
