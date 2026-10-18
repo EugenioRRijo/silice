@@ -31,6 +31,7 @@ from aplicacion.elaboracion import (
     plan_de,
     plan_desde_filas,
     propuestas_de_pendientes,
+    rendimiento_por_declarar,
     rendimientos_por_declarar,
 )
 from core.catalog import Catalogo
@@ -53,6 +54,7 @@ __all__ = [
     "plan_de",
     "plan_desde_filas",
     "propuestas_de_pendientes",
+    "rendimiento_por_declarar",
     "rendimientos_por_declarar",
 ]
 

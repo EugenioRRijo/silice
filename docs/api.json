@@ -842,6 +842,135 @@
         }
       }
     },
+    "/presupuestos/calcular": {
+      "post": {
+        "tags": [
+          "presupuestos"
+        ],
+        "summary": "Calcular Presupuesto",
+        "description": "UC-01 en modo «solo calcular» (la página Elaborar de Streamlit): elabora y audita el\npresupuesto con las composiciones del catálogo a la fecha, sin guardar nada.\n\nEl informe de auditoría viaja como JSON (siempre, UC-05). Los ítems sin partida quedan\npendientes con sus partidas similares (flujo 3a); aceptar una propuesta es volver a enviar el\nítem con ese código. `plan` son las filas de la tabla del plan de trabajo (paso 6); sin ellas,\n`plan_secuencial`. Una partida sin rendimiento estimado vigente responde 409 con el que\npropone el histórico (flujo 3b), que se declara con `POST /presupuestos/calcular/declarar-\nrendimiento`.",
+        "operationId": "calcular_presupuesto_presupuestos_calcular_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CalculoPeticion"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalculoRespuesta"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Falta un dato vigente del catálogo; si es un rendimiento estimado, la respuesta propone el del histórico (UC-01, flujo 3b)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RendimientosPorDeclararRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/presupuestos/calcular/excel": {
+      "post": {
+        "tags": [
+          "presupuestos"
+        ],
+        "summary": "Calcular Presupuesto Excel",
+        "description": "El libro de Excel (con su hoja de auditoría) del mismo cálculo de `POST\n/presupuestos/calcular`, que recalcula con el mismo cuerpo: sin estado, nada se guarda.",
+        "operationId": "calcular_presupuesto_excel_presupuestos_calcular_excel_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CalculoPeticion"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/presupuestos/calcular/declarar-rendimiento": {
+      "post": {
+        "tags": [
+          "presupuestos"
+        ],
+        "summary": "Declarar Rendimiento Propuesto",
+        "description": "UC-01, flujo 3b: registra el rendimiento que propone el histórico para una partida sin\nrendimiento estimado vigente a `fecha`, con el tipo que declara el proyectista.\n\nSolo un rendimiento declarado **estimado** desbloquea la elaboración: declarado medido es 422 y\nno se registra nada. Una partida que ya tiene uno vigente es 422; una que no existe, 404.",
+        "operationId": "declarar_rendimiento_propuesto_presupuestos_calcular_declarar_rendimiento_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeclararRendimientoPeticion"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeclararRendimientoRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/presupuestos/{codigo}/escenarios": {
       "post": {
         "tags": [
@@ -2181,6 +2310,118 @@
         ],
         "title": "Body_vista_previa_de_lista_listas_precios_vista_previa_post"
       },
+      "CalculoPeticion": {
+        "properties": {
+          "codigo": {
+            "type": "string",
+            "title": "Codigo"
+          },
+          "fecha": {
+            "type": "string",
+            "format": "date",
+            "title": "Fecha"
+          },
+          "moneda": {
+            "type": "string",
+            "title": "Moneda",
+            "default": "USD"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ItemComputoPeticion"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "plan": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/FilaPlan"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plan"
+          }
+        },
+        "type": "object",
+        "required": [
+          "codigo",
+          "fecha",
+          "items"
+        ],
+        "title": "CalculoPeticion",
+        "description": "UC-01 en modo «solo calcular»: nada se guarda. `plan` son las filas de la tabla del\nproyectista; sin ellas, el plan por defecto (`plan_secuencial`)."
+      },
+      "CalculoRespuesta": {
+        "properties": {
+          "codigo": {
+            "type": "string",
+            "title": "Codigo"
+          },
+          "fecha": {
+            "type": "string",
+            "format": "date",
+            "title": "Fecha"
+          },
+          "moneda": {
+            "type": "string",
+            "title": "Moneda"
+          },
+          "total": {
+            "type": "string",
+            "title": "Total"
+          },
+          "partidas": {
+            "items": {
+              "$ref": "#/components/schemas/PartidaPresupuestadaRespuesta"
+            },
+            "type": "array",
+            "title": "Partidas"
+          },
+          "por_severidad": {
+            "items": {
+              "$ref": "#/components/schemas/SeveridadRespuesta"
+            },
+            "type": "array",
+            "title": "Por Severidad"
+          },
+          "informe": {
+            "$ref": "#/components/schemas/InformeAuditoriaRespuesta"
+          },
+          "pendientes": {
+            "items": {
+              "$ref": "#/components/schemas/PendienteConPropuestasRespuesta"
+            },
+            "type": "array",
+            "title": "Pendientes"
+          },
+          "plan_por_defecto": {
+            "items": {
+              "$ref": "#/components/schemas/FilaPlan"
+            },
+            "type": "array",
+            "title": "Plan Por Defecto"
+          }
+        },
+        "type": "object",
+        "required": [
+          "codigo",
+          "fecha",
+          "moneda",
+          "total",
+          "partidas",
+          "por_severidad",
+          "informe",
+          "pendientes",
+          "plan_por_defecto"
+        ],
+        "title": "CalculoRespuesta"
+      },
       "CambioDeContrasena": {
         "properties": {
           "actual": {
@@ -2421,6 +2662,68 @@
           "contrasena"
         ],
         "title": "Credenciales"
+      },
+      "DeclararRendimientoPeticion": {
+        "properties": {
+          "codigo_partida": {
+            "type": "string",
+            "title": "Codigo Partida"
+          },
+          "tipo": {
+            "type": "string",
+            "enum": [
+              "estimado",
+              "medido"
+            ],
+            "title": "Tipo"
+          },
+          "fecha": {
+            "type": "string",
+            "format": "date",
+            "title": "Fecha"
+          }
+        },
+        "type": "object",
+        "required": [
+          "codigo_partida",
+          "tipo",
+          "fecha"
+        ],
+        "title": "DeclararRendimientoPeticion"
+      },
+      "DeclararRendimientoRespuesta": {
+        "properties": {
+          "codigo_partida": {
+            "type": "string",
+            "title": "Codigo Partida"
+          },
+          "valor": {
+            "type": "string",
+            "title": "Valor"
+          },
+          "tipo": {
+            "type": "string",
+            "title": "Tipo"
+          },
+          "fecha": {
+            "type": "string",
+            "format": "date",
+            "title": "Fecha"
+          },
+          "condiciones": {
+            "type": "string",
+            "title": "Condiciones"
+          }
+        },
+        "type": "object",
+        "required": [
+          "codigo_partida",
+          "valor",
+          "tipo",
+          "fecha",
+          "condiciones"
+        ],
+        "title": "DeclararRendimientoRespuesta"
       },
       "DescarteRespuesta": {
         "properties": {
@@ -3003,6 +3306,28 @@
         ],
         "title": "FilaComparativoRespuesta",
         "description": "Una fila de `core.budget.Comparativo`, con todos sus montos presentados a dos decimales."
+      },
+      "FilaPlan": {
+        "properties": {
+          "periodo": {
+            "type": "string",
+            "title": "Periodo",
+            "default": ""
+          },
+          "codigo_partida": {
+            "type": "string",
+            "title": "Codigo Partida",
+            "default": ""
+          },
+          "fraccion": {
+            "type": "string",
+            "title": "Fraccion",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "title": "FilaPlan",
+        "description": "Una fila de la tabla del plan de trabajo; los textos pueden venir en blanco (fila nueva)."
       },
       "HTTPValidationError": {
         "properties": {
@@ -3897,6 +4222,59 @@
           "hallazgos"
         ],
         "title": "PdfSimpleRespuesta"
+      },
+      "PendienteConPropuestasRespuesta": {
+        "properties": {
+          "codigo_partida": {
+            "type": "string",
+            "title": "Codigo Partida"
+          },
+          "descripcion": {
+            "type": "string",
+            "title": "Descripcion"
+          },
+          "unidad": {
+            "type": "string",
+            "title": "Unidad"
+          },
+          "cantidad": {
+            "type": "string",
+            "title": "Cantidad"
+          },
+          "origen_id": {
+            "type": "string",
+            "title": "Origen Id"
+          },
+          "propuestas": {
+            "items": {
+              "$ref": "#/components/schemas/PropuestaPartidaRespuesta"
+            },
+            "type": "array",
+            "title": "Propuestas"
+          },
+          "falla": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Falla"
+          }
+        },
+        "type": "object",
+        "required": [
+          "codigo_partida",
+          "descripcion",
+          "unidad",
+          "cantidad",
+          "origen_id",
+          "propuestas"
+        ],
+        "title": "PendienteConPropuestasRespuesta",
+        "description": "Un ítem sin partida con las partidas similares que se le proponen (o por qué no hay)."
       },
       "PendienteRespuesta": {
         "properties": {

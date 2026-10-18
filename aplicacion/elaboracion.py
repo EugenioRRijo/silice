@@ -274,6 +274,20 @@ def rendimientos_por_declarar(
     )
 
 
+def rendimiento_por_declarar(sesion: Session, codigo: str, fecha: date) -> RendimientoPorDeclarar:
+    """UC-01 3b para una sola partida: su propuesta del historico, si le falta el rendimiento
+    estimado vigente a `fecha`. `KeyError` (404) si la partida no existe; `ValueError` (422) si ya
+    tiene uno vigente: no hay nada que declarar."""
+    catalogo = Catalogo(sesion)
+    catalogo.partida(codigo)
+    if any(
+        rendimiento.tipo is TipoRendimiento.ESTIMADO and rendimiento.fecha <= fecha
+        for rendimiento in catalogo.rendimientos(codigo)
+    ):
+        raise ValueError(f"la partida {codigo} ya tiene un rendimiento estimado vigente al {fecha}")
+    return RendimientoPorDeclarar(codigo, proponer_rendimiento(sesion, codigo))
+
+
 def declarar_rendimiento(
     sesion: Session, por_declarar: RendimientoPorDeclarar, tipo: TipoRendimiento, fecha: date
 ) -> Rendimiento:

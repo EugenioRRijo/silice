@@ -24,7 +24,7 @@ from pathlib import Path
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
-from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
+from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, Response
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
@@ -59,7 +59,13 @@ from api.esquemas import (
 from api.esquemas_informe import informe_a_respuesta
 from api.esquemas_ola2 import (
     AvisoRespuesta,
+    CalculoPeticion,
+    CalculoRespuesta,
+    DeclararRendimientoPeticion,
+    DeclararRendimientoRespuesta,
     DescarteRespuesta,
+    FilaPlan,
+    PendienteConPropuestasRespuesta,
     PresupuestoConProyectoRespuesta,
     RevaloracionRespuesta,
 )
@@ -67,12 +73,14 @@ from api.rutas.listas import _elegidos, comprobar_libro_legible
 from api.rutas.rendimientos import propuesta_respuesta
 from api.sesion_web import exigir_clave_o_sesion
 from aplicacion import actualizacion as aplicacion_actualizacion
+from aplicacion import elaboracion as aplicacion_elaboracion
 from core import models
 from core.budget import (
     Comparativo,
     DetectorAtipicos,
     GeneradorPlan,
     PeriodoPlan,
+    ResultadoElaboracion,
     actualizar_precios,
     cargar_elaboracion,
     cargar_presupuesto,
@@ -480,6 +488,113 @@ def descartar_version_revalorada(
 
 
 @router.post(
+    "/presupuestos/calcular",
+    response_model=CalculoRespuesta,
+    dependencies=EDITAR,
+    responses={
+        status.HTTP_409_CONFLICT: {
+            "model": RendimientosPorDeclararRespuesta,
+            "description": "Falta un dato vigente del catálogo; si es un rendimiento estimado, "
+            "la respuesta propone el del histórico (UC-01, flujo 3b)",
+        }
+    },
+)
+def calcular_presupuesto(
+    sesion: SesionDep, peticion: CalculoPeticion
+) -> CalculoRespuesta | JSONResponse:
+    """UC-01 en modo «solo calcular» (la página Elaborar de Streamlit): elabora y audita el
+    presupuesto con las composiciones del catálogo a la fecha, sin guardar nada.
+
+    El informe de auditoría viaja como JSON (siempre, UC-05). Los ítems sin partida quedan
+    pendientes con sus partidas similares (flujo 3a); aceptar una propuesta es volver a enviar el
+    ítem con ese código. `plan` son las filas de la tabla del plan de trabajo (paso 6); sin ellas,
+    `plan_secuencial`. Una partida sin rendimiento estimado vigente responde 409 con el que
+    propone el histórico (flujo 3b), que se declara con `POST /presupuestos/calcular/declarar-
+    rendimiento`.
+    """
+    calculo = _elaborar_sin_guardar(sesion, peticion)
+    if isinstance(calculo, JSONResponse):
+        return calculo
+    resultado, descripciones = calculo
+    presupuesto = resultado.presupuesto
+    return CalculoRespuesta(
+        codigo=presupuesto.codigo,
+        fecha=presupuesto.fecha,
+        moneda=presupuesto.moneda,
+        total=formatear_decimal(presupuesto.total, DECIMALES_PRESENTACION),
+        partidas=_partidas_respuesta(presupuesto),
+        por_severidad=informe_a_respuesta(resultado.informe).por_severidad,
+        informe=informe_a_respuesta(resultado.informe),
+        pendientes=[
+            PendienteConPropuestasRespuesta(
+                **_campos_pendiente(entrada.item),
+                propuestas=[
+                    PropuestaPartidaRespuesta(
+                        codigo=similar.codigo,
+                        descripcion=similar.descripcion,
+                        puntaje=similar.puntaje,
+                    )
+                    for similar in entrada.similares
+                ],
+                falla=entrada.falla,
+            )
+            for entrada in aplicacion_elaboracion.propuestas_de_pendientes(
+                descripciones, resultado.pendientes
+            )
+        ],
+        plan_por_defecto=[
+            FilaPlan(**fila)
+            for fila in aplicacion_elaboracion.filas_del_plan_por_defecto(presupuesto)
+        ],
+    )
+
+
+@router.post("/presupuestos/calcular/excel", dependencies=EDITAR, response_class=Response)
+def calcular_presupuesto_excel(sesion: SesionDep, peticion: CalculoPeticion) -> Response:
+    """El libro de Excel (con su hoja de auditoría) del mismo cálculo de `POST
+    /presupuestos/calcular`, que recalcula con el mismo cuerpo: sin estado, nada se guarda."""
+    calculo = _elaborar_sin_guardar(sesion, peticion)
+    if isinstance(calculo, JSONResponse):
+        return calculo
+    libro, nombre = aplicacion_elaboracion.libro_excel(calculo[0])
+    return Response(
+        content=libro,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f'attachment; filename="{nombre}"'},
+    )
+
+
+@router.post(
+    "/presupuestos/calcular/declarar-rendimiento",
+    response_model=DeclararRendimientoRespuesta,
+    dependencies=EDITAR,
+)
+def declarar_rendimiento_propuesto(
+    sesion: SesionDep, peticion: DeclararRendimientoPeticion
+) -> DeclararRendimientoRespuesta:
+    """UC-01, flujo 3b: registra el rendimiento que propone el histórico para una partida sin
+    rendimiento estimado vigente a `fecha`, con el tipo que declara el proyectista.
+
+    Solo un rendimiento declarado **estimado** desbloquea la elaboración: declarado medido es 422 y
+    no se registra nada. Una partida que ya tiene uno vigente es 422; una que no existe, 404.
+    """
+    por_declarar = aplicacion_elaboracion.rendimiento_por_declarar(
+        sesion, peticion.codigo_partida, peticion.fecha
+    )
+    rendimiento = aplicacion_elaboracion.declarar_rendimiento(
+        sesion, por_declarar, TipoRendimiento(peticion.tipo), peticion.fecha
+    )
+    sesion.commit()
+    return DeclararRendimientoRespuesta(
+        codigo_partida=rendimiento.codigo_partida,
+        valor=str(rendimiento.valor),
+        tipo=rendimiento.tipo.value,
+        fecha=rendimiento.fecha,
+        condiciones=rendimiento.condiciones,
+    )
+
+
+@router.post(
     "/presupuestos/{codigo}/escenarios", response_model=EscenariosRespuesta, dependencies=EDITAR
 )
 def escenarios_de_presupuesto(
@@ -551,6 +666,67 @@ def escenarios_de_presupuesto(
 # ---------------------------------------------------------------------------------------------
 # Ayudantes
 # ---------------------------------------------------------------------------------------------
+
+
+def _elaborar_sin_guardar(
+    sesion: Session, peticion: CalculoPeticion
+) -> tuple[ResultadoElaboracion, dict[str, str]] | JSONResponse:
+    """Elabora `peticion` con `aplicacion.elaboracion` (la misma lógica que la página de Streamlit)
+    sin guardar nada. Devuelve el resultado y las partidas del catálogo (código → descripción), o
+    el 409 de «rendimientos por declarar» (UC-01, flujo 3b)."""
+    items = [_a_item_computo(item) for item in peticion.items]
+    plan = aplicacion_elaboracion.plan_de(
+        None if peticion.plan is None else [fila.model_dump() for fila in peticion.plan]
+    )
+    catalogo = Catalogo(sesion)
+    try:
+        resultado = aplicacion_elaboracion.elaborar_desde_catalogo(
+            catalogo, items, peticion.codigo, peticion.fecha, peticion.moneda, plan
+        )
+    except CatalogoIncompleto:
+        por_declarar = aplicacion_elaboracion.rendimientos_por_declarar(
+            sesion, items, peticion.fecha
+        )
+        if not por_declarar:
+            raise  # falta otra cosa (un precio, una unidad, la lista vigente): el 409 de siempre
+        sin_estimado = ", ".join(entrada.codigo_partida for entrada in por_declarar)
+        return JSONResponse(
+            status_code=status.HTTP_409_CONFLICT,
+            content=RendimientosPorDeclararRespuesta(
+                detalle=(
+                    f"sin rendimiento estimado vigente al {peticion.fecha}: {sin_estimado}; "
+                    "declare el rendimiento propuesto con POST "
+                    "/presupuestos/calcular/declarar-rendimiento (tipo 'estimado', fecha no "
+                    "posterior a la del presupuesto) y vuelva a calcular"
+                ),
+                rendimientos_por_declarar=[
+                    RendimientoPorDeclararRespuesta(
+                        codigo_partida=entrada.codigo_partida,
+                        propuesta=propuesta_respuesta(entrada.propuesta),
+                    )
+                    for entrada in por_declarar
+                ],
+            ).model_dump(mode="json"),
+        )
+    descripciones = {partida.codigo: partida.descripcion for partida in catalogo.partidas()}
+    return resultado, descripciones
+
+
+def _partidas_respuesta(presupuesto: Presupuesto) -> list[PartidaPresupuestadaRespuesta]:
+    """Los renglones de un presupuesto a dos decimales (NORMAS.md §2.3)."""
+    return [
+        PartidaPresupuestadaRespuesta(
+            codigo_partida=partida.item.codigo_partida,
+            descripcion=partida.item.descripcion,
+            unidad=partida.item.unidad,
+            cantidad=formatear_decimal(partida.item.cantidad, DECIMALES_PRESENTACION),
+            precio_unitario=formatear_decimal(
+                partida.resultado.precio_unitario, DECIMALES_PRESENTACION
+            ),
+            total=formatear_decimal(partida.total, DECIMALES_PRESENTACION),
+        )
+        for partida in presupuesto.partidas
+    ]
 
 
 def _detector_de_atipicos() -> DetectorAtipicos | None:
