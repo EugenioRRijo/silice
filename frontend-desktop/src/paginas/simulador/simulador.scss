@@ -1,0 +1,54 @@
+// Simulador de listas. Sin sombras ni animaciones (DESIGN.md): el formulario y el resultado van en bloques con divisor.
+
+.silice-simulador {
+  display: grid;
+  gap: 1.5rem;
+  padding: 1.5rem 1rem 2rem;
+  max-inline-size: 72rem;
+}
+
+.silice-simulador__nota {
+  max-inline-size: 65ch;
+  color: var(--silice-texto-secundario);
+}
+
+.silice-simulador__formulario {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: 1rem;
+  align-items: start;
+  padding-block-end: 1.5rem;
+  border-block-end: 1px solid var(--silice-divisor);
+}
+
+.silice-simulador__accion {
+  grid-column: 1 / -1;
+}
+
+.silice-simulador__resultado {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.silice-simulador__encabezado {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+}
+
+.silice-simulador__resumen {
+  min-block-size: 1rem;
+  color: var(--silice-texto-secundario);
+}
+
+.silice-simulador__aviso:focus {
+  outline: 2px solid var(--silice-interactivo);
+  outline-offset: 2px;
+}
+
+.silice-simulador__encabezado h2:focus {
+  outline: 2px solid var(--silice-interactivo);
+  outline-offset: 2px;
+}

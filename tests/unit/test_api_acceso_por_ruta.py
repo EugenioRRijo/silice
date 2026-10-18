@@ -96,6 +96,8 @@ TABLA = {
     ("POST", "/v1/casos/actual"): CAMBIAR_CASO,
     ("GET", "/v1/proyectos"): LEER,
     ("POST", "/v1/similares"): EDITAR,
+    ("POST", "/v1/simulador"): EDITAR,
+    ("POST", "/v1/simulador/csv"): EDITAR,
 }
 #: Las de la puerta de entrada: la sesión misma (con su propia regla) y el ping.
 DE_LA_SESION = {

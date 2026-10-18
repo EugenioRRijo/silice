@@ -1139,6 +1139,86 @@
         }
       }
     },
+    "/v1/simulador": {
+      "post": {
+        "tags": [
+          "simulador"
+        ],
+        "summary": "Simular Lista",
+        "description": "Aplica variaciones deterministas a la lista vigente y devuelve las filas.",
+        "operationId": "simular_lista_v1_simulador_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SimulacionPeticion"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SimulacionRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/simulador/csv": {
+      "post": {
+        "tags": [
+          "simulador"
+        ],
+        "summary": "Simular Lista Csv",
+        "description": "La misma simulacion como CSV para descargar.",
+        "operationId": "simular_lista_csv_v1_simulador_csv_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SimulacionPeticion"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "text/csv": {}
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/sesion": {
       "get": {
         "tags": [
@@ -2821,6 +2901,34 @@
         "title": "FilaComparativoRespuesta",
         "description": "Una fila de `core.budget.Comparativo`, con todos sus montos presentados a dos decimales."
       },
+      "FilaSimuladaRespuesta": {
+        "properties": {
+          "tipo": {
+            "type": "string",
+            "title": "Tipo"
+          },
+          "insumo": {
+            "type": "string",
+            "title": "Insumo"
+          },
+          "unidad": {
+            "type": "string",
+            "title": "Unidad"
+          },
+          "precio": {
+            "type": "string",
+            "title": "Precio"
+          }
+        },
+        "type": "object",
+        "required": [
+          "tipo",
+          "insumo",
+          "unidad",
+          "precio"
+        ],
+        "title": "FilaSimuladaRespuesta"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -4485,6 +4593,55 @@
           "mensaje"
         ],
         "title": "SimilaresRespuesta"
+      },
+      "SimulacionPeticion": {
+        "properties": {
+          "semilla": {
+            "type": "integer",
+            "maximum": 9.223372036854776e+18,
+            "minimum": 0.0,
+            "title": "Semilla",
+            "default": 42
+          },
+          "variacion_max": {
+            "type": "string",
+            "maxLength": 40,
+            "title": "Variacion Max",
+            "description": "Porcentaje, decimal como texto",
+            "default": "5"
+          },
+          "insumos": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 20000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Insumos",
+            "description": "Separados por coma; vacio o null = todos"
+          }
+        },
+        "type": "object",
+        "title": "SimulacionPeticion"
+      },
+      "SimulacionRespuesta": {
+        "properties": {
+          "filas": {
+            "items": {
+              "$ref": "#/components/schemas/FilaSimuladaRespuesta"
+            },
+            "type": "array",
+            "title": "Filas"
+          }
+        },
+        "type": "object",
+        "required": [
+          "filas"
+        ],
+        "title": "SimulacionRespuesta"
       },
       "SolicitudSimilares": {
         "properties": {

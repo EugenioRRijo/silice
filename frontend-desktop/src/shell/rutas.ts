@@ -58,7 +58,13 @@ export const PAGINAS: readonly PaginaDef[] = [
     accion: "editar_hoja",
     cargar: () => import("../paginas/similares"),
   },
-  { id: "simulador", titulo: "Simulador de listas", seccion: "Investigación", accion: "editar_hoja" },
+  {
+    id: "simulador",
+    titulo: "Simulador de listas",
+    seccion: "Investigación",
+    accion: "editar_hoja",
+    cargar: () => import("../paginas/simulador"),
+  },
   { id: "visor", titulo: "Visor 3D del modelo", seccion: "Investigación", accion: "editar_hoja" },
   { id: "administracion", titulo: "Administración", seccion: "Administración", accion: "administrar_cuentas" },
 ];
