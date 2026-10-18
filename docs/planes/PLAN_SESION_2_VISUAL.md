@@ -82,7 +82,7 @@ anota el ruling; nunca se sube a una más nueva. Acción de CI: `actions/setup-n
 | RS2-4 | Anti-CSRF **sin migración**: `csrf = sha256("csrf:" + ficha)`; la API lo recalcula desde la cookie. Se entrega en el cuerpo de `POST/GET /v1/sesion`; se exige en la cabecera `X-Silice-CSRF` de todo POST/DELETE con cookie, además de `Origin` igual al `Host`. | Bajo |
 | RS2-5 | Rutas de libros con **clave o sesión**: con `X-Silice-Clave` se comporta como hoy; sin ella, cookie válida + CSRF + rol con `Accion.LEER_PROYECTO` (arma o revisa). La matriz de permisos no cambia. | Medio: si el administrador también debe auditar, hace falta una acción nueva |
 | RS2-6 | Cookie **sin `Secure`**: la red local va por HTTP (`operacion/config.py`); se documenta como límite y se revisa en la sesión 5. | Medio |
-| RS2-7 | Indicadores calculados por la API: campo nuevo y **aditivo** `indicadores` en `LibroAuditadoRespuesta` (actual = libro, meta = Sílice, `sentido = "costo"`: que el libro declare más de lo que calcula Sílice es desfavorable). | Bajo |
+| RS2-7 | Indicadores calculados por la API: campo nuevo y **aditivo** `indicadores` en `LibroAuditadoRespuesta` (actual = libro, meta = Sílice, `sentido = "costo"`: que el libro declare más de lo que calcula Sílice es desfavorable). **Superado en el sentido por RS2-13** (`"exactitud"`), que se conserva abajo; se deja el texto original por trazabilidad. | Bajo |
 | RS2-8 | Halos como capa DOM sincronizada con el viewport de Univer (no se pintan estilos dentro de la réplica: la réplica debe verse como el original). | Medio: si la API de rectángulos de Univer no basta, se usa su popup anclado a celda |
 | RS2-9 | La interfaz nueva se usa con la API encendida (`[api] activa = true`), en `http://127.0.0.1:<puerto_api>/app/`; el lanzador no cambia en 1.2.0. | Bajo |
 | RS2-10 | Las celdas cubiertas por una combinada no se listan en la réplica salvo que traigan valor o borde propio: Excel dibuja el rango con el estilo de la celda de origen (oráculo de la 2.6). | Bajo |
@@ -102,6 +102,7 @@ anota el ruling; nunca se sube a una más nueva. Acción de CI: `actions/setup-n
    → 403 con el mensaje de ir a la interfaz clásica; ninguna clave en el HTML ni en `localStorage`.
 3. **IBCS:** `+` en costo es desfavorable (rojo), `-` favorable (verde), `0.00` y `-0.00` sin variación; `Δ%` nulo
    con meta cero; nunca verde por signo.
+   *(Superado por RS2-13: con el sentido «exactitud» toda desviación es desfavorable y `0.00` es neutro; ver ERS RF-116.)*
 4. **Sin red externa:** el `dist` no contiene `http://` ni `https://` hacia otro anfitrión (fuentes, mapas de
    fuente, telemetría de Univer apagada); la CSP no tiene `unsafe-eval`.
 5. **Lo que ya funciona:** `/v1/libros/*` con clave responde igual que antes (salvo el campo aditivo); `docs/api.json`
@@ -324,6 +325,8 @@ def replicar_libro(datos: bytes, nombre: str) -> LibroVisual: ...
 
 ### Task 2.3b: `POST /v1/libros/replica` e `indicadores` · `silice-backend` · Opus high · tras 2.2 y 2.3a
 
+> **Superado por RS2-13 y RS2-12:** el `sentido` que emite la API es `"exactitud"` (no `"costo"`) y los montos van en centésimas. Lo que sigue es el contrato original, conservado por trazabilidad; el vigente está en ERS RF-116.
+
 **Files:** Modify `api/rutas/libros.py` (ruta nueva; campo aditivo `indicadores`; las rutas de libros pasan de
 `CON_CLAVE` a `exigir_clave_o_sesion(Accion.LEER_PROYECTO)`), `api/main.py` (solo esa línea), `docs/api.json`.
 Test: `tests/unit/test_api_libros_replica.py`, ampliar `tests/integration/test_api_libros.py` existente con
@@ -400,6 +403,8 @@ la lista se resalta y recibe el foco. Íconos de severidad de `@carbon/icons-rea
 - [ ] Rojo visto, verde, lint, build, capturas; commit `feat(interfaz): visor de solo lectura con halos de severidad`.
 
 ### Task 2.5: Tarjeta `IndicadorFiori` con semántica IBCS · `silice-frontend` · Sonnet medium · tras 2.1, en paralelo con 2.4
+
+> **Superado por RS2-13:** `semanticaIbcs` debe aceptar también el sentido `"exactitud"` (toda desviación desfavorable, cero neutro) y el exacto de los totales va en el tooltip de cada indicador (ERS RF-116). Lo que sigue es el contrato original, conservado por trazabilidad.
 
 **Files:** `frontend-desktop/src/indicadores/{ibcs.ts,IndicadorFiori.tsx,FranjaIndicadores.tsx}` y sus pruebas.
 

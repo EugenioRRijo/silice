@@ -17,6 +17,10 @@
 | RM-5 | **Librerías del front, un solo cambio de `package.json` (ola 0b):** `react-router` (navegación) y `@carbon/charts-react` (gráficos del tablero y la curva de control, Apache-2.0, del mismo sistema Carbon); versiones exactas publicadas hace ≥ 2 semanas; cada página se carga con `import()` para no inflar el arranque; el tope del `dist` (15 MB) no cambia. | Un sistema de diseño por proyecto (taste §2.A); gráficos con la gramática de Carbon. | Bajo. |
 | RM-6 | **No se migran ahora** (otras sesiones las tocan): Hoja del proyecto (S1/S3), Libro de la empresa (es el visor de S2; S3 lo extiende), Revisar un paquete (S3 3.4 fija el dictamen), pestaña Asistente de IA de Administración (S1/S3). | Regla de la ruta §8: no chocar con otras sesiones. | Bajo. |
 
+**Numeración de la ERS reservada (ruta §8):** los requisitos nuevos que traiga la migración toman **RF-142 a RF-150**
+(hasta RF-141 está ocupado: S1 usa RF-141 y S2, RF-111 a RF-118). Si hacen falta más, se pide una reserva nueva en la
+ruta antes de escribirlos; nunca se reutiliza un número.
+
 ## 2. Inventario resumido (21 páginas)
 
 | Ola | Páginas | API hoy | Complejidad |

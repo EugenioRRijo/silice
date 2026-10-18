@@ -18,7 +18,8 @@ de esta interfaz (roles `arma` y `revisa` de la instalación; el administrador n
 Sílice audita el libro de presupuesto de la empresa (`POST /v1/libros/auditoria`, reglas L1-L11) y la interfaz
 nueva lo muestra **tal como se ve en Excel**, con cada hallazgo marcado sobre su celda. Éxito: el auditor llega de
 un hallazgo a su celda y de una celda a su hallazgo sin buscar, y ve la cifra exacta (lo que dice el libro frente a
-lo que calcula Sílice) sin abrir otra pantalla.
+lo que calcula Sílice) sin abrir otra pantalla. La franja de indicadores presenta en centésimas (RS2-12) y el valor
+exacto está siempre a un toque, en el tooltip de cada indicador.
 
 ## Positioning
 
@@ -61,7 +62,8 @@ interfaz no calcula montos.
 ## Product Principles
 
 1. La evidencia primero: la hoja original ocupa la pantalla; los resúmenes la acompañan, no la tapan.
-2. Ninguna cifra escondida: todo hallazgo muestra su celda, su valor y su impacto a la vista.
+2. Ninguna cifra escondida: todo hallazgo muestra su celda, su valor y su impacto a la vista. La franja presenta en
+   centésimas (RS2-12) y el valor exacto está siempre a un toque, en el tooltip.
 3. El color significa algo: severidad en la hoja, favorable/desfavorable en las variaciones; nunca decoración.
 4. Lo que funciona no se rompe: Streamlit convive hasta que la interfaz nueva cubra lo mismo.
 
