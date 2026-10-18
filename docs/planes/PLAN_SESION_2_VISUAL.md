@@ -413,7 +413,10 @@ API más los conteos por severidad (`Tag` con ícono; un conteo no es una variac
 
 - [ ] Rojo visto, verde, commit `feat(interfaz): indicadores Fiori con semantica IBCS`.
 
-### Task 2.6: Pruebas de coordenadas, oráculo compartido · `silice-pruebas` · Sonnet high · tras 2.2 y 2.4
+### Task 2.6: Pruebas de coordenadas, oráculo compartido · `silice-pruebas` · Sonnet high · tras 2.2, **antes** de 2.4
+
+> Orden corregido en la ejecución (2026-10-18): las pruebas de `aUniver.test.ts` de la 2.4 leen el JSON de
+> esta tarea, así que el oráculo (lado Python) se escribe primero; la comprobación del lado TS la agrega la 2.4.
 
 **Files:** Create `tests/fixtures/replica/libro_minimo.py` (construye el libro con openpyxl: hojas `PORTADA` y
 `PLAN DE PAGOS` con espacio, `A1:D1` combinada, columna C oculta, fila 5 oculta, `F12` con fórmula y valor guardado,
