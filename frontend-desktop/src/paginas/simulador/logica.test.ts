@@ -1,5 +1,14 @@
 import { describe, expect, test } from "vitest";
-import { cuerpoDe, errorDeSemilla, filasDeTabla, MENSAJE_SEMILLA } from "./logica";
+import {
+  AVISO_HERRAMIENTA,
+  cuerpoDe,
+  errorDeSemilla,
+  errorDeVariacion,
+  filasDeTabla,
+  MENSAJE_SEMILLA,
+  MENSAJE_VARIACION,
+  resumenDeEnvio,
+} from "./logica";
 
 describe("logica del simulador", () => {
   test("la semilla acepta enteros desde 0", () => {
@@ -28,5 +37,31 @@ describe("logica del simulador", () => {
   test("la tabla conserva el precio como texto, sin tocarlo", () => {
     const filas = filasDeTabla([{ tipo: "material", insumo: "Arena", unidad: "m3", precio: "30.00" }]);
     expect(filas).toEqual([{ id: "0", tipo: "material", insumo: "Arena", unidad: "m3", precio: "30.00" }]);
+  });
+
+  test("la variacion acepta decimales con punto entre 0 y 1000, tambien con exponente", () => {
+    for (const buena of ["0", "5", " 2.5 ", "+3", ".5", "5.", "1000", "1E2", "1e+3", "0.0001"]) {
+      expect(errorDeVariacion(buena)).toBeNull();
+    }
+  });
+
+  test("la variacion rechaza vacio, texto, coma decimal, negativos, no finitos y lo que pasa de 1000", () => {
+    for (const mala of ["", "  ", "abc", "2,5", "-1", "-0.5", "NaN", "Infinity", "1000.01", "1E+4", "1E+999999", "1_0"]) {
+      expect(errorDeVariacion(mala)).toBe(MENSAJE_VARIACION);
+    }
+  });
+
+  test("el aviso conserva que es herramienta de prueba y no lleva jerga interna", () => {
+    expect(AVISO_HERRAMIENTA).toMatch(/herramienta de prueba, no una fuente de mercado/i);
+    expect(AVISO_HERRAMIENTA).not.toMatch(/UC-07|I6\.3/);
+  });
+
+  test("el resumen de envio nombra los valores enviados", () => {
+    expect(resumenDeEnvio({ semilla: 42, variacion_max: "5", insumos: null })).toBe(
+      "semilla 42, variación 5 %, insumos: todos",
+    );
+    expect(resumenDeEnvio({ semilla: 7, variacion_max: "2.5", insumos: "Arena" })).toBe(
+      "semilla 7, variación 2.5 %, insumos: Arena",
+    );
   });
 });

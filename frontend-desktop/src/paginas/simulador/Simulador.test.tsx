@@ -8,7 +8,7 @@ import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
 import { alertaConTexto } from "../../test/ayudas";
 import PaginaSimulador from "./index";
-import { MENSAJE_SEMILLA, MENSAJE_SIN_FILAS } from "./logica";
+import { MENSAJE_SEMILLA, MENSAJE_SIN_FILAS, MENSAJE_VARIACION } from "./logica";
 
 function json(cuerpo: unknown, estado = 200): Response {
   return new Response(JSON.stringify(cuerpo), { status: estado, headers: { "Content-Type": "application/json" } });
@@ -66,12 +66,22 @@ describe("Simulador de listas", () => {
     return JSON.parse(String(init.body));
   }
 
-  test("aclara que es una herramienta de prueba y trae los valores por omision", () => {
+  test("aclara que es una herramienta de prueba, trae los valores por omision y ayuda en cada campo", () => {
     montar();
     expect(screen.getByText(/Herramienta de prueba, no una fuente de mercado/)).toBeInTheDocument();
+    expect(screen.queryByText(/UC-07/)).not.toBeInTheDocument();
     expect(screen.getByLabelText("Semilla")).toHaveValue("42");
     expect(screen.getByLabelText("Variación máxima (%)")).toHaveValue("5");
-    expect(screen.getByLabelText(/Insumos \(separados por coma/)).toHaveValue("");
+    expect(screen.getByLabelText(/^Insumos/)).toHaveValue("");
+    expect(screen.getByText("Mismo número, misma lista: sirve para repetir un resultado.")).toBeInTheDocument();
+    expect(screen.getByText("Cada precio sube o baja, como máximo, este porcentaje.")).toBeInTheDocument();
+    expect(screen.getByText("Separados por coma; vacío = todos.")).toBeInTheDocument();
+  });
+
+  test("antes de generar dice que aun no hay lista, sin tabla", () => {
+    montar();
+    expect(screen.getByText("Aún no hay lista simulada")).toBeInTheDocument();
+    expect(screen.getByText("Ajuste los parámetros y pulse Generar lista simulada.")).toBeInTheDocument();
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
   });
 
@@ -98,7 +108,7 @@ describe("Simulador de listas", () => {
     await usuario.type(screen.getByLabelText("Semilla"), "7");
     await usuario.clear(screen.getByLabelText("Variación máxima (%)"));
     await usuario.type(screen.getByLabelText("Variación máxima (%)"), "2.5");
-    await usuario.type(screen.getByLabelText(/Insumos \(separados/), "Arena lavada, Peon ficticio");
+    await usuario.type(screen.getByLabelText(/^Insumos/), "Arena lavada, Peon ficticio");
     await usuario.click(screen.getByRole("button", { name: "Generar lista simulada" }));
     await screen.findByRole("table");
     expect(cuerpoEnviado(0)).toEqual({
@@ -156,7 +166,7 @@ describe("Simulador de listas", () => {
     await usuario.click(screen.getByRole("button", { name: "Generar lista simulada" }));
     await screen.findByRole("table");
     await usuario.clear(screen.getByLabelText("Variación máxima (%)"));
-    await usuario.type(screen.getByLabelText("Variación máxima (%)"), "cinco");
+    await usuario.type(screen.getByLabelText("Variación máxima (%)"), "7");
     await usuario.click(screen.getByRole("button", { name: "Generar lista simulada" }));
     const alerta = await alertaConTexto();
     expect(alerta).toHaveTextContent("La variacion maxima no es un numero decimal");
@@ -197,8 +207,82 @@ describe("Simulador de listas", () => {
     montar();
     await usuario.click(screen.getByRole("button", { name: "Generar lista simulada" }));
     expect(await screen.findByRole("status", { name: "Cargando lista simulada" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Generar lista simulada" })).toBeDisabled();
+    expect(screen.getByText("Simulando…", { selector: "p" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Simulando…" })).toBeDisabled();
     responder(json({ filas: FILAS }));
     expect(await screen.findByRole("table", { name: "Lista simulada" })).toBeInTheDocument();
+  });
+
+  test("la variacion invalida avisa junto al campo y bloquea el boton; corregirla lo libera", async () => {
+    const usuario = userEvent.setup();
+    montar();
+    const campo = screen.getByLabelText("Variación máxima (%)");
+    for (const mala of ["-1", "abc", "2,5", "1001", "1E+999999"]) {
+      await usuario.clear(campo);
+      await usuario.type(campo, mala);
+      expect(await screen.findByText(MENSAJE_VARIACION)).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Generar lista simulada" })).toBeDisabled();
+    }
+    await usuario.clear(campo);
+    await usuario.type(campo, "1000");
+    expect(screen.queryByText(MENSAJE_VARIACION)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Generar lista simulada" })).toBeEnabled();
+    expect(fetchFalso).not.toHaveBeenCalled();
+  });
+
+  test("solo una linea de resumen es region viva: la tabla y el error quedan fuera", async () => {
+    const usuario = userEvent.setup();
+    fetchFalso.mockResolvedValue(json({ filas: FILAS }));
+    montar();
+    await usuario.click(screen.getByRole("button", { name: "Generar lista simulada" }));
+    const tabla = await screen.findByRole("table", { name: "Lista simulada" });
+    const resumen = screen.getByText("Lista simulada: 2 filas");
+    expect(resumen).toHaveAttribute("role", "status");
+    expect(resumen.contains(tabla)).toBe(false);
+    expect(tabla.closest("[aria-live]")).toBeNull();
+  });
+
+  test("el resumen usa singular con una fila", async () => {
+    const usuario = userEvent.setup();
+    fetchFalso.mockResolvedValue(json({ filas: [FILAS[0]] }));
+    montar();
+    await usuario.click(screen.getByRole("button", { name: "Generar lista simulada" }));
+    expect(await screen.findByText("Lista simulada: 1 fila")).toBeInTheDocument();
+  });
+
+  test("al terminar el foco pasa al titulo del resultado, o al aviso si fallo", async () => {
+    const usuario = userEvent.setup();
+    fetchFalso.mockResolvedValueOnce(json({ filas: FILAS }));
+    fetchFalso.mockResolvedValueOnce(json({ detalle: "no hay ninguna lista de precios vigente al 2026-10-18" }, 409));
+    montar();
+    await usuario.click(screen.getByRole("button", { name: "Generar lista simulada" }));
+    const titulo = await screen.findByRole("heading", { name: "Lista simulada" });
+    await waitFor(() => expect(titulo).toHaveFocus());
+    await usuario.click(screen.getByRole("button", { name: "Generar lista simulada" }));
+    const alerta = await alertaConTexto();
+    await waitFor(() => expect(alerta.parentElement).toHaveFocus());
+  });
+
+  test("rotula el resultado con los valores enviados y avisa si el formulario cambio despues", async () => {
+    const usuario = userEvent.setup();
+    fetchFalso.mockResolvedValue(json({ filas: FILAS }));
+    montar();
+    await usuario.click(screen.getByRole("button", { name: "Generar lista simulada" }));
+    await screen.findByRole("table", { name: "Lista simulada" });
+    expect(screen.getByText("Resultado con los valores enviados: semilla 42, variación 5 %, insumos: todos.")).toBeInTheDocument();
+    expect(screen.queryByText(/cambió el formulario/i)).not.toBeInTheDocument();
+    await usuario.clear(screen.getByLabelText("Semilla"));
+    await usuario.type(screen.getByLabelText("Semilla"), "8");
+    expect(screen.getByText(/cambió el formulario/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Descargar CSV" })).toBeInTheDocument();
+  });
+
+  test("Descargar CSV queda junto al titulo del resultado", async () => {
+    const usuario = userEvent.setup();
+    fetchFalso.mockResolvedValue(json({ filas: FILAS }));
+    montar();
+    await usuario.click(screen.getByRole("button", { name: "Generar lista simulada" }));
+    const titulo = await screen.findByRole("heading", { name: "Lista simulada" });
+    expect(titulo.parentElement).toContainElement(screen.getByRole("button", { name: "Descargar CSV" }));
   });
 });
