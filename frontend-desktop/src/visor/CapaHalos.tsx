@@ -3,7 +3,7 @@ import type { CSSProperties } from "react";
 import type { HallazgoLibroRespuesta } from "../api/tipos";
 import type { Halo } from "./halos";
 import type { HojaVisor } from "./hojaVisor";
-import { IconoDeSeveridad } from "./iconos";
+import { IconoDeSeveridad } from "../severidad/IconoDeSeveridad";
 
 interface Props {
   halos: Halo[];
@@ -62,7 +62,7 @@ export function CapaHalos({ halos, hallazgos, visor, seleccionado, onElegir }: P
             >
               <span
                 className="halo__insignia"
-                title={hallazgos[halo.indices[0]].descripcion}
+                title={`${halo.estilo.texto}: ${hallazgos[halo.indices[0]].descripcion}`}
                 onClick={() => onElegir(halo.indices[0])}
               >
                 <span role="img" aria-label={etiquetaDe(halo, hallazgos)} className="halo__icono">

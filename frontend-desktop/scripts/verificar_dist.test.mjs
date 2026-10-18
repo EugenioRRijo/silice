@@ -60,6 +60,32 @@ describe("verificarDist", () => {
     expect(verificarDist(dir).problemas).toHaveLength(1);
   });
 
+  test("un WebSocket (ws:// o wss://) hacia afuera hace fallar", () => {
+    writeFileSync(join(dir, "a.js"), 'new WebSocket("wss://telemetria.example.net/canal")');
+    writeFileSync(join(dir, "b.js"), 'new WebSocket("ws://telemetria.example.org/canal")');
+    const { problemas } = verificarDist(dir);
+    expect(problemas).toHaveLength(2);
+    expect(problemas.join(" ")).toContain("telemetria.example.net");
+  });
+
+  test("una URL sin esquema en CSS (url(//host) y @import \"//host\") hace fallar", () => {
+    writeFileSync(join(dir, "a.css"), "@font-face{src:url(//cdn.example.com/f.woff2)}");
+    writeFileSync(join(dir, "b.css"), '@import "//cdn.example.org/x.css";');
+    writeFileSync(join(dir, "c.css"), "a{background:url('//cdn.example.net/i.png')}");
+    const { problemas } = verificarDist(dir);
+    expect(problemas).toHaveLength(3);
+  });
+
+  test("las rutas propias en CSS (url(/app/...) y url(./f.woff2)) pasan", () => {
+    writeFileSync(join(dir, "a.css"), "@font-face{src:url(/app/assets/f.woff2)} b{background:url(./i.png)} c{background:url(data:image/png;base64,AAAA)}");
+    expect(verificarDist(dir).problemas).toEqual([]);
+  });
+
+  test("un src o href sin esquema en el html hace fallar", () => {
+    writeFileSync(join(dir, "index.html"), '<script src="//cdn.example.com/x.js"></script>');
+    expect(verificarDist(dir).problemas).toHaveLength(1);
+  });
+
   test("15 000 001 bytes hacen fallar", () => {
     writeFileSync(join(dir, "grande.bin"), Buffer.alloc(LIMITE_BYTES + 1));
     const { problemas, bytes } = verificarDist(dir);

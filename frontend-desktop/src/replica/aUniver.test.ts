@@ -1,10 +1,14 @@
 // Pruebas de la conversion contrato neutro (base 1, Excel) -> instantanea de Univer (base 0, pixeles).
 // Leen el oraculo compartido de la tarea 2.6 (tests/fixtures/replica/libro_minimo.json, escrito a mano a partir de
 // ORACULO.md). Los valores esperados de aqui tambien estan escritos a mano, no salen de la funcion bajo prueba.
+import { getNumfmtLocaleTag, numfmt } from "@univerjs/core";
 import { describe, expect, test } from "vitest";
 import oraculo from "../../../tests/fixtures/replica/libro_minimo.json";
-import type { LibroVisualRespuesta } from "../api/tipos";
+import type { EstiloVisualRespuesta, LibroVisualRespuesta } from "../api/tipos";
+import { construirHalos } from "../visor/halos";
 import { aUniver, pxDeAlto, pxDeAncho } from "./aUniver";
+import { aBase0 } from "./coordenadas";
+import { serialDeExcel } from "./fechaSerial";
 
 // El JSON no trae sha256 (depende de los bytes del .xlsx): se rellena con cualquier texto.
 const libro = { ...oraculo, sha256: "0".repeat(64) } as unknown as LibroVisualRespuesta;
@@ -21,6 +25,13 @@ function estiloDe(celda: { s?: unknown } | undefined | null) {
   if (typeof s === "string") return univer.styles[s] ?? undefined;
   return s as Record<string, unknown> | undefined;
 }
+
+describe("aBase0: la unica resta de uno", () => {
+  test("la fila 12 de Excel es la 11 de Univer y la columna 1 es la 0", () => {
+    expect(aBase0(12)).toBe(11);
+    expect(aBase0(1)).toBe(0);
+  });
+});
 
 describe("aUniver: hojas", () => {
   test("las hojas van en el orden del libro y cada una con su nombre", () => {
@@ -45,9 +56,10 @@ describe("aUniver: hojas", () => {
 });
 
 describe("aUniver: coordenadas (base 1 a base 0)", () => {
-  test("F12 de PLAN DE PAGOS cae en cellData[11][5]", () => {
+  test("F12 de PLAN DE PAGOS cae en cellData[11][5] como numero, con la formula en custom", () => {
     const celda = hoja("PLAN DE PAGOS").cellData?.[11]?.[5];
-    expect(celda?.v).toBe("200.00");
+    expect(celda?.v).toBe(200);
+    expect(celda?.t).toBe(2);
     expect(celda?.custom).toEqual({ mostrado: "200", formula: "=F11*2" });
   });
 
@@ -69,14 +81,52 @@ describe("aUniver: coordenadas (base 1 a base 0)", () => {
     expect(fila?.[1]).toBeUndefined();
   });
 
-  test("ninguna celda del contrato se pierde ni cae en otra posicion", () => {
+  test("el numero de celdas de cada hoja es el del contrato: no se pierde ni se inventa ninguna", () => {
     for (const h of libro.hojas) {
-      const datos = Object.values(univer.sheets).find((x) => x?.name === h.nombre)?.cellData ?? {};
+      const datos = hoja(h.nombre).cellData ?? {};
       const cuenta = Object.values(datos).reduce((n, fila) => n + Object.keys(fila ?? {}).length, 0);
       expect(cuenta).toBe(h.celdas.length);
-      for (const c of h.celdas) expect(datos[c.fila - 1]?.[c.columna - 1]).toBeDefined();
     }
   });
+
+  // Copiada A MANO de la tabla "Celdas" de tests/fixtures/replica/ORACULO.md: [hoja, ref, fila0, columna0].
+  // No se calcula nada: si la conversion se equivoca de base, esta lista lo dice.
+  const ORACULO: [string, string, number, number][] = [
+    ["PORTADA", "A1", 0, 0],
+    ["PORTADA", "A2", 1, 0],
+    ["PORTADA", "B2", 1, 1],
+    ["PORTADA", "A3", 2, 0],
+    ["PORTADA", "B3", 2, 1],
+    ["PORTADA", "A4", 3, 0],
+    ["PORTADA", "B4", 3, 1],
+    ["PLAN DE PAGOS", "A1", 0, 0],
+    ["PLAN DE PAGOS", "A2", 1, 0],
+    ["PLAN DE PAGOS", "B2", 1, 1],
+    ["PLAN DE PAGOS", "D2", 1, 3],
+    ["PLAN DE PAGOS", "A3", 2, 0],
+    ["PLAN DE PAGOS", "B3", 2, 1],
+    ["PLAN DE PAGOS", "D3", 2, 3],
+    ["PLAN DE PAGOS", "AA3", 2, 26],
+    ["PLAN DE PAGOS", "A5", 4, 0],
+    ["PLAN DE PAGOS", "F11", 10, 5],
+    ["PLAN DE PAGOS", "F12", 11, 5],
+    ["AUX", "A1", 0, 0],
+  ];
+
+  test.each(ORACULO)(
+    "%s!%s cae en cellData[%i][%i] y su halo se pide para la misma posicion",
+    (nombre, ref, fila0, columna0) => {
+      const celda = hoja(nombre).cellData?.[fila0]?.[columna0];
+      expect(celda).toBeDefined();
+      const dato = libro.hojas.find((h) => h.nombre === nombre)?.celdas.find((c) => c.ref === ref);
+      expect(celda?.custom?.mostrado).toBe(dato?.mostrado);
+
+      const { halos } = construirHalos([
+        { codigo: "L1", severidad: "ERROR", descripcion: "x", celda: `${nombre}!${ref}`, impacto: null, accion: "x" },
+      ]);
+      expect(halos[0]).toMatchObject({ hoja: nombre, fila0, columna0 });
+    },
+  );
 });
 
 describe("aUniver: combinadas, ocultas y paneles", () => {
@@ -165,26 +215,156 @@ describe("aUniver: estilos", () => {
     const b = hoja("PLAN DE PAGOS").cellData?.[1]?.[1]?.s;
     expect(a).toBe(b);
   });
+});
 
-  test("un numero con alineacion general se alinea a la derecha, como en Excel", () => {
-    expect(estiloDe(hoja("PORTADA").cellData?.[1]?.[1])).toMatchObject({ ht: 3 });
-    expect(estiloDe(hoja("PORTADA").cellData?.[1]?.[0])?.ht).toBeUndefined();
+describe("aUniver: valores (RS2-14)", () => {
+  test("los numeros van a Univer como numero con el formato del libro como patron", () => {
+    const b2 = hoja("PORTADA").cellData?.[1]?.[1];
+    expect(b2?.v).toBe(1234.5);
+    expect(b2?.t).toBe(2);
+    expect(estiloDe(b2)).toMatchObject({ n: { pattern: "#,##0.00" } });
   });
 
-  test("un booleano se centra y una fecha va a la derecha", () => {
-    expect(estiloDe(hoja("PORTADA").cellData?.[3]?.[1])).toMatchObject({ ht: 2 });
-    expect(estiloDe(hoja("PORTADA").cellData?.[2]?.[1])).toMatchObject({ ht: 3 });
+  test("una fecha va como numero de serie de Excel con su patron (2026-10-18 es 46313)", () => {
+    const b3 = hoja("PORTADA").cellData?.[2]?.[1];
+    expect(b3?.v).toBe(46313);
+    expect(b3?.t).toBe(2);
+    expect(estiloDe(b3)).toMatchObject({ n: { pattern: "dd/mm/yyyy" } });
   });
 
-  test("el valor mostrado aplica el formato de numero: 1,234.50 y 18/10/2026", () => {
-    expect(hoja("PORTADA").cellData?.[1]?.[1]?.v).toBe("1,234.50");
-    expect(hoja("PORTADA").cellData?.[2]?.[1]?.v).toBe("18/10/2026");
-    expect(hoja("PORTADA").cellData?.[3]?.[1]?.v).toBe("TRUE");
+  test("un booleano va como booleano", () => {
+    const b4 = hoja("PORTADA").cellData?.[3]?.[1];
+    expect(b4?.v).toBe(true);
+    expect(b4?.t).toBe(3);
   });
 
-  test("las celdas son siempre texto ya formateado: Univer no recalcula ni reinterpreta", () => {
-    const celda = hoja("PLAN DE PAGOS").cellData?.[11]?.[5];
-    expect(typeof celda?.v).toBe("string");
-    expect(celda?.f).toBeUndefined();
+  test("el texto va como texto, sin patron, y su valor guardado queda en custom", () => {
+    const a2 = hoja("PORTADA").cellData?.[1]?.[0];
+    expect(a2?.v).toBe("Monto contratado");
+    expect(a2?.t).toBeUndefined();
+    expect(estiloDe(a2)?.n).toBeUndefined();
+  });
+
+  test("la alineacion por tipo la da Univer (el numero va a la derecha): no se fuerza ht", () => {
+    expect(estiloDe(hoja("PORTADA").cellData?.[1]?.[1])?.ht).toBeUndefined();
+  });
+
+  test("Univer no recalcula: ninguna celda lleva formula en f", () => {
+    for (const id of univer.sheetOrder) {
+      for (const fila of Object.values(univer.sheets[id]?.cellData ?? {})) {
+        for (const celda of Object.values(fila ?? {})) expect((celda as { f?: unknown } | undefined)?.f).toBeUndefined();
+      }
+    }
+  });
+
+  test("el libro se crea con la localizacion en espanol", () => {
+    expect(univer.locale).toBe("esES");
+  });
+});
+
+// RS2-14: el patron de Excel viaja tal cual y el motor de formatos de Univer lo muestra. Son patrones de formato
+// habituales, escritos a mano. Los esperados estan escritos a mano segun Excel con separadores en espanol.
+describe("aUniver: patrones habituales de formato (motor de formatos de Univer)", () => {
+  const PATRONES: [string, string, string, number, string][] = [
+    ["moneda con signo", "\\$#,##0.00", "1234.5", 1234.5, "$1.234,50"],
+    ["negativo entre parentesis", "#,##0.00;\\(#,##0.00\\);\\-", "-5", -5, "(5,00)"],
+    ["cero como guion", "#,##0.00;\\(#,##0.00\\);\\-", "0", 0, "-"],
+    ["porcentaje con una decimal", "0.0%;\\-0.0%;\\-", "0.05", 0.05, "5,0%"],
+    ["porcentaje negativo", "0.0%;\\-0.0%;\\-", "-0.05", -0.05, "-5,0%"],
+    ["decimales opcionales", "#,##0.##", "1234.5", 1234.5, "1.234,5"],
+    ["fecha con mes abreviado", "d-mmm-yy", "2026-10-18", 46313, "18-oct-26"],
+    ["fecha con mes en letras", "mmmm", "2026-10-18", 46313, "octubre"],
+  ];
+
+  function estiloConPatron(patron: string): EstiloVisualRespuesta {
+    return {
+      relleno: null,
+      fuente: null,
+      tamano: null,
+      negrita: false,
+      cursiva: false,
+      subrayado: false,
+      color: null,
+      alineacion_h: null,
+      alineacion_v: null,
+      ajustar_texto: false,
+      formato_numero: patron,
+      bordes: [null, null, null, null],
+    };
+  }
+
+  function celdaConPatron(patron: string, valor: string) {
+    const mini: LibroVisualRespuesta = {
+      nombre: "m.xlsx",
+      sha256: "0".repeat(64),
+      estilos: [estiloConPatron(patron)],
+      hojas: [
+        {
+          nombre: "H",
+          visible: true,
+          filas: 1,
+          columnas: 1,
+          anchos: {},
+          altos: {},
+          ocultas_filas: [],
+          ocultas_columnas: [],
+          combinadas: [],
+          fijas: null,
+          celdas: [{ ref: "A1", fila: 1, columna: 1, mostrado: valor, formula: null, estilo: 0 }],
+        },
+      ],
+    };
+    const u = aUniver(mini);
+    const celda = u.sheets["hoja-0"]?.cellData?.[0]?.[0];
+    const s = celda?.s;
+    const estilo = typeof s === "string" ? u.styles[s] : s;
+    return { celda, patron: (estilo as { n?: { pattern: string } } | undefined)?.n?.pattern };
+  }
+
+  test.each(PATRONES)("%s: %s", (_nombre, patron, entrada, valor, esperado) => {
+    const { celda, patron: pasado } = celdaConPatron(patron, entrada);
+    expect(pasado).toBe(patron);
+    expect(celda?.v).toBe(valor);
+    const texto = numfmt.format(patron, celda?.v as number, {
+      locale: getNumfmtLocaleTag("esES" as never),
+      throws: false,
+    });
+    expect(texto).toBe(esperado);
+  });
+
+  test("General no pasa patron y deja que Univer muestre el numero", () => {
+    const { celda, patron } = celdaConPatron("General", "1738.407");
+    expect(patron).toBeUndefined();
+    expect(celda?.v).toBe(1738.407);
+  });
+
+  test("un texto con patron numerico se queda como texto", () => {
+    const { celda } = celdaConPatron("#,##0.00", "Hito");
+    expect(celda?.v).toBe("Hito");
+  });
+
+  test("el formato @ (texto) mantiene como texto incluso lo que parece numero", () => {
+    const { celda } = celdaConPatron("@", "100");
+    expect(celda?.v).toBe("100");
+  });
+});
+
+describe("serialDeExcel (sistema 1900)", () => {
+  test("2026-10-18 es 46313 (a mano: 46023 es el 1 de enero de 2026 y el 18 de octubre es el dia 291)", () => {
+    expect(serialDeExcel("2026-10-18")).toBe(46313);
+  });
+
+  test("una hora se vuelve fraccion del dia", () => {
+    expect(serialDeExcel("2026-10-18T12:00:00")).toBe(46313.5);
+  });
+
+  test("1900-03-01 es 61 y 1900-01-01 es 1 (Excel cuenta un 29 de febrero de 1900 que no existio)", () => {
+    expect(serialDeExcel("1900-03-01")).toBe(61);
+    expect(serialDeExcel("1900-01-01")).toBe(1);
+  });
+
+  test("lo que no es fecha ISO da null", () => {
+    expect(serialDeExcel("18/10/2026")).toBeNull();
+    expect(serialDeExcel("TRUE")).toBeNull();
   });
 });
