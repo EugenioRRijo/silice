@@ -38,7 +38,7 @@ from tests.fixtures import caso_ti001 as ti
 from tests.fixtures import control_ob_s2 as ob
 from tests.fixtures import reajuste_ob_s2 as rz
 from tests.fixtures.caso_s2 import sembrar_caso_s2
-from ui import control, tablero
+from aplicacion import control, tablero
 from ui.caso import CLAVE_PROYECTO
 from ui.paginas.tablero import (
     CLAVE_PROYECTO_VISTO,

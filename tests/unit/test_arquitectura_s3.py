@@ -303,7 +303,7 @@ LLAMADORES = {
     ("core/budget/moneda.py", "guardar_presupuesto"),
     ("core/budget/decision.py", "guardar_edicion"),
     ("ui/hoja.py", "convertir_version"),
-    ("ui/control.py", "aplicar_decision"),
+    ("aplicacion/control.py", "aplicar_decision"),
     ("scripts/generar_obra_control.py", "guardar_presupuesto"),
 }
 
@@ -311,6 +311,7 @@ LLAMADORES = {
 def _llamadas_del_embudo():
     for carpeta in (
         "core",
+        "aplicacion",
         "ui",
         "api",
         "scripts",
