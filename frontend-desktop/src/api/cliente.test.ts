@@ -53,6 +53,19 @@ describe("cliente de la API", () => {
     expect(new Headers(fetchFalso.mock.calls[1][1]?.headers).get("Content-Type")).toBeNull();
   });
 
+  test("el ErrorDeApi conserva el cuerpo de la respuesta para los campos extra (por ejemplo `faltan`)", async () => {
+    fetchFalso.mockImplementation(async () => respuesta(422, { detalle: "Faltan columnas.", faltan: ["ticket", "fecha"] }));
+    const error = await pedir("/v1/produccion/bascula/importar", { metodo: "POST", cuerpo: new FormData() }).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(ErrorDeApi);
+    expect((error as ErrorDeApi).cuerpo).toEqual({ detalle: "Faltan columnas.", faltan: ["ticket", "fecha"] });
+  });
+
+  test("sin cuerpo JSON el ErrorDeApi trae cuerpo null", async () => {
+    fetchFalso.mockImplementation(async () => new Response("<html>", { status: 502 }));
+    const error = await pedir("/v1/sesion").catch((e: unknown) => e);
+    expect((error as ErrorDeApi).cuerpo).toBeNull();
+  });
+
   test("un 401 es un ErrorDeApi con estado 401 y el detalle de la API", async () => {
     fetchFalso.mockImplementation(async () => respuesta(401, { detalle: "Usuario o contraseña incorrectos." }));
     const error = await pedir("/v1/sesion").catch((e: unknown) => e);
