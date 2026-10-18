@@ -256,7 +256,7 @@ try {
     New-Item -ItemType Directory -Force -Path $casos | Out-Null
     $bases = Join-Path $Raiz 'tests\fixtures\bases'
     Copy-Item (Join-Path $bases 'v0_5_0\demo.db') (Join-Path $casos 'v050_demo.db')
-    Copy-Item (Join-Path $bases 'v0_9_0\demo.db') (Join-Path $casos 'v090_demo.db')
+    Copy-Item (Join-Path $bases 'v1_0_0\demo.db') (Join-Path $casos 'v100_demo.db')
     $servidor = IniciarSilice
     Afirmar ($null -ne (EsperarSalud $Url 60)) 'Sílice arrancó antes de actualizar'
     $salidaActualizacion = InstalarSilencioso $Actualizacion (Join-Path $Salida 'actualizacion.log')
@@ -266,7 +266,7 @@ try {
         Where-Object { Test-Path (Join-Path $_.FullName 'ficha.json') })
     Afirmar ($juegos.Count -ge 1) 'existe un juego de respaldo con su ficha'
     & uv run python (Join-Path $Raiz 'instalador\verificar_bases.py') --casos $casos `
-        --par '0.5.0:demo.db=v050_demo.db' --par '0.9.0:demo.db=v090_demo.db'
+        --par '0.5.0:demo.db=v050_demo.db' --par '1.0.0:demo.db=v100_demo.db'
     Afirmar ($LASTEXITCODE -eq 0) 'las dos bases están en head y cuadran con su ficha'
 
     Paso '8. Red local en la IP de la interfaz'
