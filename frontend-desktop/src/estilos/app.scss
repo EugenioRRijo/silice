@@ -1,0 +1,56 @@
+// Estilos propios de la aplicacion. Carbon pone la gramatica visual; aqui solo van los ajustes minimos.
+@use "./fuentes";
+@use "./tokens";
+
+html {
+  // Barras de desplazamiento y seleccion con la paleta, no con los valores del navegador.
+  scrollbar-color: var(--cds-border-strong) var(--cds-layer);
+  color-scheme: light;
+}
+
+body {
+  margin: 0;
+  background: var(--silice-fondo);
+  color: var(--silice-texto);
+  caret-color: var(--silice-interactivo);
+}
+
+::selection {
+  background: var(--cds-highlight);
+  color: var(--silice-texto);
+}
+
+// Cifras: tabulares y alineadas a la derecha donde se usen. Referencias de celda y reglas en Plex Mono.
+.silice-cifra {
+  font-variant-numeric: tabular-nums;
+  text-align: end;
+}
+
+.silice-codigo {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+}
+
+.silice-entrada {
+  display: grid;
+  align-content: start;
+  gap: 1rem;
+  max-inline-size: 36rem;
+  padding: 2rem 1rem;
+}
+
+.silice-entrada__texto {
+  color: var(--silice-texto-secundario);
+  max-inline-size: 65ch;
+}
+
+// Sin animacion decorativa (DESIGN.md, Movimiento). Con prefers-reduced-motion se quitan tambien las
+// transiciones de estado propias de los componentes Carbon.
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition: none !important;
+    animation: none !important;
+    scroll-behavior: auto !important;
+  }
+}
