@@ -320,7 +320,7 @@ def replicar_libro(datos: bytes, nombre: str) -> LibroVisual: ...
 
 **Files:** Modify `api/rutas/libros.py` (ruta nueva; campo aditivo `indicadores`; las rutas de libros pasan de
 `CON_CLAVE` a `exigir_clave_o_sesion(Accion.LEER_PROYECTO)`), `api/main.py` (solo esa línea), `docs/api.json`.
-Test: `tests/unit/test_api_libros_replica.py`, ampliar `tests/unit/test_api_libros*.py` existente con
+Test: `tests/unit/test_api_libros_replica.py`, ampliar `tests/integration/test_api_libros.py` existente con
 `indicadores`.
 
 **Contrato:**
