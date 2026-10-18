@@ -284,3 +284,32 @@ def test_lo_que_r17_exige_es_lo_que_cambia_el_presupuesto(par):
     else:  # circuito: sin el cambia el cable; sin fuente no cambia nada (no se le exige)
         assert _derivado(especialidad, tipo, circuito=False) != completo
         assert _derivado(especialidad, tipo, fuente=False) == completo
+
+
+# --- con_conexion: R17 vigente en una lista de reglas extra ---------------------------------------
+
+
+class _R11(ReglaVerificacion):
+    codigo = nombre = "R11"
+
+    def evaluar(self, presupuesto):
+        return []
+
+
+class _R12(_R11):
+    codigo = nombre = "R12"
+
+
+def test_con_conexion_quita_la_r17_vieja_conserva_las_demas_en_orden_y_no_duplica():
+    from adapters.espacio.conexion import con_conexion
+
+    nuevo = espacio(punto("P2", "lavamanos", Especialidad.AGUA, TipoPunto.AGUA_FRIA))
+    r11, r12 = _R11(), _R12()
+    vieja = ConexionDeCadaPunto(Espacio())
+    reglas = con_conexion((r11, vieja, r12), nuevo)
+    assert reglas[:2] == (r11, r12)
+    assert [r.codigo for r in reglas] == ["R11", "R12", "R17"]
+    assert reglas[2].espacio is nuevo
+    otra_vez = con_conexion(reglas, nuevo)
+    assert [r.codigo for r in otra_vez] == ["R11", "R12", "R17"]
+    assert con_conexion((), nuevo)[0].espacio is nuevo

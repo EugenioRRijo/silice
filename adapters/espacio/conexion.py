@@ -38,12 +38,14 @@ de ellas que editara el espacio tendria que volver a correr R17.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 from adapters.espacio.modelo import Espacio, Especialidad, Punto, TipoPunto
 from adapters.espacio.origen import clave_esp
 from core.contracts.presupuesto import Presupuesto
 from core.contracts.verificacion import Hallazgo, ReglaVerificacion, Severidad
 
-__all__ = ["CODIGO_R17", "ConexionDeCadaPunto", "reglas_conexion"]
+__all__ = ["CODIGO_R17", "ConexionDeCadaPunto", "con_conexion", "reglas_conexion"]
 
 CODIGO_R17 = "R17"
 
@@ -127,3 +129,12 @@ class ConexionDeCadaPunto(ReglaVerificacion):
 def reglas_conexion(espacio: Espacio) -> tuple[ReglaVerificacion, ...]:
     """R17 sobre la instantanea `espacio`, para `reglas_extra` de la hoja."""
     return (ConexionDeCadaPunto(espacio),)
+
+
+def con_conexion(
+    reglas_extra: Sequence[ReglaVerificacion], espacio: Espacio
+) -> tuple[ReglaVerificacion, ...]:
+    """`reglas_extra` con R17 ligada a `espacio`: quita toda R17 anterior (ligada a otro espacio,
+    asi nunca queda vieja), conserva las demas en su orden y agrega la nueva al final."""
+    otras = tuple(r for r in reglas_extra if r.codigo != CODIGO_R17)
+    return (*otras, *reglas_conexion(espacio))

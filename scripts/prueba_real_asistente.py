@@ -100,11 +100,10 @@ def auditar(borrador):
     ligada al espacio del borrador que se audita (tarea 1.7, ruling 1.7-d)."""
     from dataclasses import replace
 
-    from adapters.espacio.conexion import CODIGO_R17, reglas_conexion
+    from adapters.espacio.conexion import con_conexion
     from ui import hoja
 
-    otras = tuple(r for r in borrador.reglas_extra if r.codigo != CODIGO_R17)
-    ligado = replace(borrador, reglas_extra=(*otras, *reglas_conexion(borrador.espacio)))
+    ligado = replace(borrador, reglas_extra=con_conexion(borrador.reglas_extra, borrador.espacio))
     return hoja.elaborar_borrador(ligado).elaboracion.informe
 
 

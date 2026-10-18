@@ -57,7 +57,7 @@ from adapters.espacio import (
     TipoOrigen,
     TipoPunto,
 )
-from adapters.espacio.conexion import CODIGO_R17, reglas_conexion
+from adapters.espacio.conexion import con_conexion
 from adapters.espacio.planos import EstadoImportacion
 from asistente import privacidad as ia_privacidad
 from asistente import servicio as ia_servicio
@@ -288,8 +288,7 @@ def _con_conexion(borrador: hoja.Borrador) -> hoja.Borrador:
 
     Un R17 que ya trajera (ligado a otro espacio) se reemplaza: asi nunca queda viejo. Las reglas
     extra no cuentan para "cambios sin guardar" (`Borrador.reglas_extra` no se compara)."""
-    otras = tuple(r for r in borrador.reglas_extra if r.codigo != CODIGO_R17)
-    return replace(borrador, reglas_extra=(*otras, *reglas_conexion(borrador.espacio)))
+    return replace(borrador, reglas_extra=con_conexion(borrador.reglas_extra, borrador.espacio))
 
 
 def _elaborar(borrador: hoja.Borrador) -> hoja.ResultadoHoja:
