@@ -27,6 +27,7 @@ from datetime import date
 from pathlib import Path
 
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from core import models
 from core.budget import crear_proyecto
@@ -134,6 +135,37 @@ def _vigente(sesion, nombre: str) -> models.Presupuesto | None:
         .order_by(models.Presupuesto.id.desc())
         .limit(1)
     )
+
+
+@dataclass(frozen=True, slots=True)
+class ProyectoDelCaso:
+    """Un proyecto con su version vigente, para el selector de la interfaz nueva
+    (`GET /v1/proyectos`). Sin version vigente, los tres ultimos campos son `None`."""
+
+    id: int
+    nombre: str
+    version_id: int | None
+    version_codigo: str | None
+    version_fecha: date | None
+
+
+def proyectos_del_caso(sesion: Session) -> list[ProyectoDelCaso]:
+    """Los proyectos de la base de `sesion` en orden alfabetico (como `listar_proyectos`), cada
+    uno con su version vigente. No escribe. La API la llama con la sesion del caso de la
+    peticion (RM-2), que no es necesariamente el del proceso."""
+    filas = []
+    for proyecto in sesion.scalars(select(models.Proyecto)):
+        vigente = _vigente(sesion, proyecto.nombre)
+        filas.append(
+            ProyectoDelCaso(
+                id=proyecto.id,
+                nombre=proyecto.nombre,
+                version_id=None if vigente is None else vigente.id,
+                version_codigo=None if vigente is None else vigente.codigo,
+                version_fecha=None if vigente is None else vigente.fecha,
+            )
+        )
+    return sorted(filas, key=lambda fila: fila.nombre.casefold())
 
 
 def version_vigente(ruta: Path, nombre: str) -> VersionVigente | None:

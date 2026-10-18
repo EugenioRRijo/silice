@@ -13,7 +13,10 @@ Oráculos, ninguno sale del código bajo prueba:
 - El CSRF se recalcula aquí con `hashlib` desde la ficha de la cookie (RS2-4): `sha256("csrf:" +
   ficha)` en hexadecimal.
 - Los mensajes son los literales de `seguridad.cuentas` (los mismos que la interfaz clásica) y el
-  de cambio de contraseña que fija el plan de la sesión 2.
+  de la contraseña temporal. Ola 0a de la sesión 2b: la cuenta que debe cambiar su contraseña ya
+  no recibe un 403 «cámbiela en la interfaz clásica» al entrar, sino una cookie restringida (la
+  prueba de esa cookie y de `POST /v1/sesion/contrasena` está en `test_api_sesion_contrasena.py`);
+  `GET/POST /v1/sesion` agregan `debe_cambiar_clave`, `acciones` y `modo_entrega`.
 - La expiración se provoca moviendo 31 minutos hacia atrás la `ultima_actividad` de la fila de la
   sesión (nunca `sleep`); la cota exacta (29:59 sigue, 30:00 expira) ya la prueba
   `test_sesiones.py`.
@@ -54,8 +57,17 @@ NUEVA = "otra contrasena larga de prueba"
 ORIGEN = ANFITRION  # http://127.0.0.1:8000: el mismo anfitrión que el `Host` del cliente
 COOKIE = "silice_sesion"
 CSRF = "X-Silice-CSRF"
-MENSAJE_CAMBIAR = "Cambie su contraseña en la interfaz clásica antes de usar la nueva."
+MENSAJE_CAMBIAR = "Su contraseña es temporal: elija una propia antes de seguir."  # ola 0a
 MENSAJE_PERMISO = "Su cuenta no tiene permiso para esta acción."
+#: Lo que `/v1/sesion` informa de una cuenta de arma sin contraseña temporal (ola 0a).
+_ESTADO_DE_ARMA = {
+    "debe_cambiar_clave": False,
+    "acciones": [
+        "editar_hoja", "convertir_y_reajustar", "control_de_obra", "decidir_recuperacion",
+        "entregar_paquete", "leer_proyecto", "cambiar_caso",
+    ],
+    "modo_entrega": False,
+}
 #: Login -> contraseña vigente. `tomas` conserva la temporal: debe cambiarla.
 CUENTAS = {"admin": CONTRASENA, "ana": NUEVA, "rita": NUEVA, "tomas": CONTRASENA}
 
@@ -191,7 +203,8 @@ def test_entrar_pone_cookie_httponly_samesite_strict_y_devuelve_csrf() -> None:
     assert respuesta.status_code == 200, respuesta.text
     ficha = _ficha(respuesta)
     assert respuesta.json() == {
-        "login": "ana", "nombre": "Ana", "roles": ["arma"], "csrf": _csrf(ficha)
+        "login": "ana", "nombre": "Ana", "roles": ["arma"], "csrf": _csrf(ficha),
+        **_ESTADO_DE_ARMA,
     }
     galleta = respuesta.headers["set-cookie"]
     atributos = {a.strip().split("=", 1)[0].lower(): a.strip() for a in galleta.split(";")[1:]}
@@ -241,17 +254,22 @@ def test_el_acceso_registra_la_ip_del_cliente() -> None:
     assert [tuple(f) for f in filas] == [("fallo", "192.168.1.30"), ("entrada", "192.168.1.30")]
 
 
-def test_cuenta_que_debe_cambiar_clave_da_403_sin_cookie() -> None:
+def test_cuenta_que_debe_cambiar_clave_entra_con_la_cookie_restringida() -> None:
+    """Ola 0a (sesión 2b): antes era 403 sin cookie («cámbiela en la interfaz clásica»); ahora
+    entra con una ficha cuya cuenta debe cambiar la contraseña, y nada más le sirve."""
     respuesta = _entrar(_cliente(), "tomas")
-    assert respuesta.status_code == 403
-    assert respuesta.json() == {"detalle": MENSAJE_CAMBIAR}
-    assert "set-cookie" not in respuesta.headers
+    assert respuesta.status_code == 200
+    ficha = _ficha(respuesta)
+    assert respuesta.json()["debe_cambiar_clave"] is True
+    assert respuesta.json()["acciones"] == []
     with sesion_de_instalacion() as sesion:
         tomas = sesion.scalar(select(Usuario).where(Usuario.login == "tomas"))
         abiertas = sesion.scalars(
-            select(Sesion).where(Sesion.usuario_id == tomas.id, Sesion.cerrada.is_(False))
+            select(Sesion.huella_ficha).where(
+                Sesion.usuario_id == tomas.id, Sesion.cerrada.is_(False)
+            )
         ).all()
-    assert abiertas == []
+    assert abiertas == [sesiones.huella_de(ficha)]
 
 
 def test_entrar_desde_otro_origen_da_403_sin_cookie() -> None:
@@ -386,7 +404,9 @@ def test_get_sesion_con_cookie_da_el_usuario() -> None:
     respuesta = cliente.get("/v1/sesion")
     assert respuesta.status_code == 200
     assert respuesta.json() == {
-        "login": "rita", "nombre": "Rita", "roles": ["revisa"], "csrf": _csrf(ficha)
+        "login": "rita", "nombre": "Rita", "roles": ["revisa"], "csrf": _csrf(ficha),
+        "debe_cambiar_clave": False, "acciones": ["leer_proyecto", "revisar_paquete"],
+        "modo_entrega": False,
     }
     assert ficha not in respuesta.text
 
