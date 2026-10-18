@@ -578,8 +578,8 @@ del caso de uso, el caso abierto (barra lateral), el paso del recorrido, la pant
 «Siguiente».
 
 > **Nombres de las variables.** Desde la 0.6.0 se llaman `SILICE_CASO` y `SILICE_MODO_ENTREGA`.
-> Los nombres anteriores, `ARENIA_CASO` y `ARENIA_MODO_ENTREGA`, se aceptan como alias solo
-> hasta la 0.6.0; si están las dos, manda la nueva (`ui/entorno.py`).
+> Los nombres anteriores, `ARENIA_CASO` y `ARENIA_MODO_ENTREGA`, se aceptaron como alias hasta la
+> 0.6.0 y ya no se aceptan desde la 0.7.0 (`ui/entorno.py`).
 
 **Barra de herramientas (`ui/barra.py`).** La importa **solo** `ui/app.py` (lo vigila
 `test_solo_ui_app_importa_la_barra_de_herramientas`); ninguna página importa el marco. No conoce

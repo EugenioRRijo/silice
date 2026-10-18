@@ -67,11 +67,11 @@ def test_las_variables_viejas_solo_se_nombran_como_alias() -> None:
     assert encontrados == []
 
 
-def test_los_manuales_anuncian_el_alias_y_su_retiro() -> None:
+def test_los_manuales_anuncian_el_retiro_del_alias() -> None:
     for ruta in ("docs/manual_usuario.md", "docs/manual_tecnico.md"):
         texto = _texto(ruta)
         assert "SILICE_CASO" in texto and "ARENIA_CASO" in texto, ruta
-        assert "hasta la 0.6.0" in texto, ruta
+        assert "ya no se aceptan desde la 0.7.0" in texto, ruta
 
 
 def test_la_interfaz_la_api_y_el_readme_se_llaman_silice() -> None:
