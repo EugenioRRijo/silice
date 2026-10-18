@@ -87,6 +87,10 @@ anota el ruling; nunca se sube a una más nueva. Acción de CI: `actions/setup-n
 | RS2-9 | La interfaz nueva se usa con la API encendida (`[api] activa = true`), en `http://127.0.0.1:<puerto_api>/app/`; el lanzador no cambia en 1.2.0. | Bajo |
 | RS2-10 | Las celdas cubiertas por una combinada no se listan en la réplica salvo que traigan valor o borde propio: Excel dibuja el rango con el estilo de la celda de origen (oráculo de la 2.6). | Bajo |
 | RS2-11 | El freno global del login no duerme en el hilo de la API: `POST /v1/sesion` responde 429 con `Retry-After`; mientras dura el freno no se prueba ninguna contraseña, así que el intento frenado no suma fallo (queda como evento `bloqueo` «freno global»). El 422 de `/v1/sesion` no repite lo enviado. | Bajo |
+| RS2-12 | Los indicadores son presentación (NORMAS §2.3): `actual`, `meta`, `delta` y `delta_pct` en centésimas al par; un Δ de menos de medio centavo es «sin variación» (también su Δ%). El exacto sigue en `totales_libro`/`totales_silice`. Motivo: los libros reales dan totales de 30 cifras (verificación integrada). | Bajo |
+| RS2-13 | **Sentido «exactitud»** en vez de «costo» (a ratificar por Eugenio): la meta es el valor correcto de Sílice, así que cualquier desviación del libro es desfavorable; la flecha dice si sobra o falta. Motivo: con «costo», un libro que omite costos salía verde. | Medio: si se prefiere «más barato = favorable», se revierte en dos líneas |
+| RS2-14 | Las celdas numéricas viajan a Univer como número con el código de formato de Excel (motor de formatos de Univer) en vez de texto preformateado; separadores de es-VE. Motivo: 27-41 % de las celdas de los libros reales usaban códigos fuera del subconjunto propio. | Bajo |
+| RS2-15 | `.npmrc` con `ignore-scripts=true`: ningún script de instalación de npm corre (el de Carbon envía telemetría a IBM, contra RNF-08, y falla en Windows); la compilación no los necesita. | Bajo |
 
 ## Review Focus
 
