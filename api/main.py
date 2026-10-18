@@ -11,6 +11,7 @@ from api.rutas import (
     libros,
     listas,
     presupuestos,
+    produccion,
     rendimientos,
 )
 from core.catalog import CatalogoIncompleto
@@ -37,6 +38,8 @@ app.include_router(rendimientos.router, dependencies=CON_CLAVE)
 app.include_router(auditorias.router, dependencies=CON_CLAVE)  # S3 §10: POST /v1/auditorias
 # 1.5: /v1/libros (auditoria, devolucion y pdf)
 app.include_router(libros.router, dependencies=CON_CLAVE)
+# 1.4 (sesion 4 de la ruta): /v1/produccion, existencias de la arenera y bascula
+app.include_router(produccion.router, dependencies=CON_CLAVE)
 
 
 @app.get("/salud", tags=["catalogo"])

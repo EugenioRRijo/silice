@@ -508,7 +508,7 @@ def test_mapeo_mal_formado_responde_422(http) -> None:
 
 def test_faltan_columnas_pide_el_mapeo_con_la_lista(http) -> None:
     sin_material = (
-        b"Ticket;Fecha;Placa;Cliente;Producto;Bruto (kg);Tara (kg);Neto (kg)\n"
+        b"Ticket;Fecha;Placa;Cliente;Rubro;Bruto (kg);Tara (kg);Neto (kg)\n"
         b"TCK-900;2026-10-15;EJ-900;Cliente Ejemplo A;ARENA;42500;14200;28300\n"
     )
     _catalogo_del_basico(http)
@@ -542,8 +542,10 @@ def test_un_fallo_inesperado_responde_500_con_mensaje_fijo(http, monkeypatch, ca
 def test_si_la_importacion_falla_a_medias_no_queda_nada(http, monkeypatch) -> None:
     import api.rutas.produccion as rutas
 
+    original = rutas.importar
+
     def _importar_y_romper(sesion, lectura, *, usuario):
-        resultado = rutas.importar(sesion, lectura, usuario=usuario)
+        resultado = original(sesion, lectura, usuario=usuario)
         raise RuntimeError(f"fallo después de importar {resultado.registrados}")
 
     _catalogo_del_basico(http)

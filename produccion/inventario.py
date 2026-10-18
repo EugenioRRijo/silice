@@ -25,6 +25,10 @@ class ErrorDeInventario(ValueError):  # noqa: N818 - nombre fijado por el plan
     """Dato de inventario invalido; el mensaje esta escrito para el usuario."""
 
 
+class Conflicto(ErrorDeInventario):
+    """El dato choca con uno ya registrado (codigo o ticket repetido): la API lo responde 409."""
+
+
 @dataclass(frozen=True, slots=True)
 class FilaExistencia:
     material: Material
@@ -78,7 +82,7 @@ def crear_material(
     ):
         raise ErrorDeInventario("La densidad (t/m3) debe ser un número mayor que cero.")
     if sesion.scalar(select(Material.id).where(Material.codigo == codigo)) is not None:
-        raise ErrorDeInventario(f"Ya existe un material con el código {codigo}.")
+        raise Conflicto(f"Ya existe un material con el código {codigo}.")
     material = Material(
         codigo=codigo,
         nombre=nombre,
@@ -155,7 +159,7 @@ def registrar_despacho(
     if ticket is not None and (
         sesion.scalar(select(Movimiento.id).where(Movimiento.ticket == ticket)) is not None
     ):
-        raise ErrorDeInventario(f"El ticket {ticket} ya está registrado.")
+        raise Conflicto(f"El ticket {ticket} ya está registrado.")
     return _registrar(
         sesion,
         material_id,
