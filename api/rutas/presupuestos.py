@@ -64,6 +64,7 @@ from api.esquemas_ola2 import (
     DeclararRendimientoPeticion,
     DeclararRendimientoRespuesta,
     DescarteRespuesta,
+    EscenariosBaseRespuesta,
     FilaPlan,
     PendienteConPropuestasRespuesta,
     PresupuestoConProyectoRespuesta,
@@ -78,12 +79,14 @@ from core import models
 from core.budget import (
     Comparativo,
     DetectorAtipicos,
+    Escenario,
     GeneradorPlan,
     PeriodoPlan,
     ResultadoElaboracion,
     actualizar_precios,
     cargar_elaboracion,
     cargar_presupuesto,
+    comparar_escenarios,
     comparar_por_partida,
     crear_proyecto,
     elaborar,
@@ -614,34 +617,12 @@ def escenarios_de_presupuesto(
     misma forma que los pendientes de `POST /presupuestos` pero sin propuestas. Los hallazgos de
     cada escenario no los cuentan.
     """
-    # INV-083: el base se lee con `cargar_elaboracion`, no con `cargar_presupuesto`, porque el
-    # contrato `Presupuesto` no lleva los pendientes y `generar_escenario` solo recalcula los
-    # renglones valorados (lo mismo hace la página de escenarios). El informe propio de cada
-    # escenario no los declara: ruling C4‑3 (limitaciones), sin cambio de `core/` en C4.
-    modelo = _buscar_modelo(sesion, codigo, proyecto)
-    catalogo = Catalogo(sesion)
-    elaboracion = cargar_elaboracion(sesion, modelo.proyecto.nombre, codigo, catalogo)
+    _modelo, elaboracion, escenarios = _generar_escenarios(sesion, codigo, proyecto, peticion)
     base = elaboracion.presupuesto
-    # SF3: las composiciones son las de la instantanea de la version (la hoja las edita ahi); los
-    # hallazgos de reglas externas (R8 a R10) se vuelven a declarar en cada escenario (SF-E1).
-    composiciones = composiciones_de_presupuesto(sesion, modelo.proyecto.nombre, codigo, catalogo)
-    externos = hallazgos_externos(elaboracion.informe)
+    comparativos = [comparar_por_partida(base, escenario) for escenario in escenarios]
 
     respuestas: list[EscenarioRespuesta] = []
-    for datos in peticion.escenarios:
-        precios = {
-            descripcion: decimal_desde_texto(texto, f"precio de {descripcion}")
-            for descripcion, texto in datos.precios.items()
-        }
-        escenario = generar_escenario(
-            datos.nombre,
-            base,
-            composiciones,
-            _parametros_escenario(modelo, datos),
-            precios=precios,
-            externos=externos,
-        )
-        comparativo = comparar_por_partida(base, escenario)
+    for escenario, comparativo in zip(escenarios, comparativos, strict=True):
         respuestas.append(
             EscenarioRespuesta(
                 nombre=escenario.nombre,
@@ -660,6 +641,51 @@ def escenarios_de_presupuesto(
             PendienteRespuesta(**_campos_pendiente(item)) for item in elaboracion.pendientes
         ],
         escenarios=respuestas,
+    )
+
+
+@router.get(
+    "/presupuestos/{codigo}/escenarios/base",
+    response_model=EscenariosBaseRespuesta,
+    dependencies=LEER,
+)
+def base_de_escenarios(
+    sesion: SesionDep, codigo: str, proyecto: str | None = None
+) -> EscenariosBaseRespuesta:
+    """El presupuesto base de la página de escenarios (UC-08): sus parámetros de costo congelados,
+    exactos, para precargar el formulario, y los ítems pendientes que ningún escenario recalcula
+    (INV-083)."""
+    modelo = _buscar_modelo(sesion, codigo, proyecto)
+    elaboracion = cargar_elaboracion(sesion, modelo.proyecto.nombre, codigo, Catalogo(sesion))
+    base = elaboracion.presupuesto
+    return EscenariosBaseRespuesta(
+        codigo=base.codigo,
+        proyecto=modelo.proyecto.nombre,
+        moneda=base.moneda,
+        total=formatear_decimal(base.total, DECIMALES_PRESENTACION),
+        parametros={nombre: str(getattr(modelo, nombre)) for nombre in _CAMPOS_PARAMETROS},
+        pendientes_base=[
+            PendienteRespuesta(**_campos_pendiente(item)) for item in elaboracion.pendientes
+        ],
+    )
+
+
+@router.post("/presupuestos/{codigo}/escenarios/csv", dependencies=EDITAR, response_class=Response)
+def escenarios_en_csv(
+    sesion: SesionDep,
+    codigo: str,
+    peticion: EscenariosPeticion,
+    proyecto: str | None = None,
+) -> Response:
+    """La tabla de RF-31 (el base y una fila por escenario) como CSV con los `Decimal` exactos, no
+    los dos decimales de la pantalla: el redondeo es solo de presentación (NORMAS.md §2.3). Mismo
+    cuerpo y mismos errores que `POST /presupuestos/{codigo}/escenarios`; no guarda nada."""
+    _modelo, elaboracion, escenarios = _generar_escenarios(sesion, codigo, proyecto, peticion)
+    tabla = comparar_escenarios(elaboracion.presupuesto, escenarios)
+    return Response(
+        content=tabla.to_csv(index=False),
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="escenarios_{codigo}.csv"'},
     )
 
 
@@ -727,6 +753,39 @@ def _partidas_respuesta(presupuesto: Presupuesto) -> list[PartidaPresupuestadaRe
         )
         for partida in presupuesto.partidas
     ]
+
+
+def _generar_escenarios(
+    sesion: Session, codigo: str, proyecto: str | None, peticion: EscenariosPeticion
+) -> tuple[models.Presupuesto, ResultadoElaboracion, list[Escenario]]:
+    """El base y un `Escenario` por cada supuesto de la petición (UC-08), sin guardar nada."""
+    # INV-083: el base se lee con `cargar_elaboracion`, no con `cargar_presupuesto`, porque el
+    # contrato `Presupuesto` no lleva los pendientes y `generar_escenario` solo recalcula los
+    # renglones valorados (lo mismo hace la página de escenarios). El informe propio de cada
+    # escenario no los declara: ruling C4-3 (limitaciones), sin cambio de `core/` en C4.
+    modelo = _buscar_modelo(sesion, codigo, proyecto)
+    catalogo = Catalogo(sesion)
+    elaboracion = cargar_elaboracion(sesion, modelo.proyecto.nombre, codigo, catalogo)
+    base = elaboracion.presupuesto
+    # SF3: las composiciones son las de la instantanea de la version (la hoja las edita ahi); los
+    # hallazgos de reglas externas (R8 a R10) se vuelven a declarar en cada escenario (SF-E1).
+    composiciones = composiciones_de_presupuesto(sesion, modelo.proyecto.nombre, codigo, catalogo)
+    externos = hallazgos_externos(elaboracion.informe)
+    escenarios = [
+        generar_escenario(
+            datos.nombre,
+            base,
+            composiciones,
+            _parametros_escenario(modelo, datos),
+            precios={
+                descripcion: decimal_desde_texto(texto, f"precio de {descripcion}")
+                for descripcion, texto in datos.precios.items()
+            },
+            externos=externos,
+        )
+        for datos in peticion.escenarios
+    ]
+    return modelo, elaboracion, escenarios
 
 
 def _detector_de_atipicos() -> DetectorAtipicos | None:

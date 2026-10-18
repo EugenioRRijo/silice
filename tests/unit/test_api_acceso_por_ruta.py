@@ -86,6 +86,8 @@ TABLA = {
     ("POST", "/presupuestos/calcular"): EDITAR,  # ola 2: Elaborar
     ("POST", "/presupuestos/calcular/excel"): EDITAR,  # ola 2: Elaborar
     ("POST", "/presupuestos/calcular/declarar-rendimiento"): EDITAR,  # ola 2: Elaborar
+    ("GET", "/presupuestos/{codigo}/escenarios/base"): LEER,  # ola 2: Escenarios
+    ("POST", "/presupuestos/{codigo}/escenarios/csv"): EDITAR,  # ola 2: Escenarios
     ("POST", "/presupuestos/revalorar"): EDITAR,  # ola 2: Actualizar precios
     ("POST", "/presupuestos/{codigo}/descartar"): EDITAR,  # ola 2: Actualizar precios
     ("POST", "/presupuestos/{codigo}/escenarios"): EDITAR,
@@ -252,7 +254,7 @@ ANTIGUAS = sorted(
 
 
 def test_la_referencia_monta_las_rutas_de_los_routers_de_siempre() -> None:
-    assert len(ANTIGUAS) == 20 + 6  # + ola 2: vista-previa, revalorar, descartar, calcular (3)
+    assert len(ANTIGUAS) == 20 + 8  # + ola 2 (vista previa, revalorar, ...)
     assert set(_pares(REFERENCIA)) == set(ANTIGUAS)
 
 

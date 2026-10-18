@@ -1040,6 +1040,127 @@
         }
       }
     },
+    "/presupuestos/{codigo}/escenarios/base": {
+      "get": {
+        "tags": [
+          "presupuestos"
+        ],
+        "summary": "Base De Escenarios",
+        "description": "El presupuesto base de la página de escenarios (UC-08): sus parámetros de costo congelados,\nexactos, para precargar el formulario, y los ítems pendientes que ningún escenario recalcula\n(INV-083).",
+        "operationId": "base_de_escenarios_presupuestos__codigo__escenarios_base_get",
+        "parameters": [
+          {
+            "name": "codigo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Codigo"
+            }
+          },
+          {
+            "name": "proyecto",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Proyecto"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EscenariosBaseRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/presupuestos/{codigo}/escenarios/csv": {
+      "post": {
+        "tags": [
+          "presupuestos"
+        ],
+        "summary": "Escenarios En Csv",
+        "description": "La tabla de RF-31 (el base y una fila por escenario) como CSV con los `Decimal` exactos, no\nlos dos decimales de la pantalla: el redondeo es solo de presentación (NORMAS.md §2.3). Mismo\ncuerpo y mismos errores que `POST /presupuestos/{codigo}/escenarios`; no guarda nada.",
+        "operationId": "escenarios_en_csv_presupuestos__codigo__escenarios_csv_post",
+        "parameters": [
+          {
+            "name": "codigo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Codigo"
+            }
+          },
+          {
+            "name": "proyecto",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Proyecto"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EscenariosPeticion"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/ejecuciones": {
       "get": {
         "tags": [
@@ -3045,6 +3166,50 @@
         ],
         "title": "EscenarioRespuesta",
         "description": "Una fila de la tabla de RF-31 con su detalle: total, variación contra el base, hallazgos\nde su auditoría (que se genera siempre) y el diferencial por partida (paso 3 del flujo)."
+      },
+      "EscenariosBaseRespuesta": {
+        "properties": {
+          "codigo": {
+            "type": "string",
+            "title": "Codigo"
+          },
+          "proyecto": {
+            "type": "string",
+            "title": "Proyecto"
+          },
+          "moneda": {
+            "type": "string",
+            "title": "Moneda"
+          },
+          "total": {
+            "type": "string",
+            "title": "Total"
+          },
+          "parametros": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Parametros"
+          },
+          "pendientes_base": {
+            "items": {
+              "$ref": "#/components/schemas/PendienteRespuesta"
+            },
+            "type": "array",
+            "title": "Pendientes Base"
+          }
+        },
+        "type": "object",
+        "required": [
+          "codigo",
+          "proyecto",
+          "moneda",
+          "total",
+          "parametros"
+        ],
+        "title": "EscenariosBaseRespuesta",
+        "description": "El presupuesto base de la página de escenarios: sus parámetros congelados (exactos, para\nprecargar el formulario) y los ítems pendientes que ningún escenario recalcula."
       },
       "EscenariosPeticion": {
         "properties": {
