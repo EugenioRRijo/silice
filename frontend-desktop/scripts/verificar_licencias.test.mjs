@@ -75,4 +75,23 @@ describe("verificarLock", () => {
     );
     expect(problemas).toHaveLength(1);
   });
+
+  test("Unlicense (dominio publico) pasa", () => {
+    const { problemas } = verificarLock(lock({ "node_modules/a": { version: "1.0.0", license: "Unlicense" } }));
+    expect(problemas).toEqual([]);
+  });
+
+  test("dompurify con (MPL-2.0 OR Apache-2.0) pasa porque se elige Apache-2.0 (ruling RS2B-1)", () => {
+    const { problemas } = verificarLock(
+      lock({ "node_modules/dompurify": { version: "3.4.17", license: "(MPL-2.0 OR Apache-2.0)" } }),
+    );
+    expect(problemas).toEqual([]);
+  });
+
+  test("la misma expresion en otro paquete sigue fallando: la eleccion es por paquete", () => {
+    const { problemas } = verificarLock(
+      lock({ "node_modules/otro": { version: "1.0.0", license: "(MPL-2.0 OR Apache-2.0)" } }),
+    );
+    expect(problemas).toHaveLength(1);
+  });
 });
