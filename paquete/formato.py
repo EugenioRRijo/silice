@@ -140,6 +140,7 @@ def abrir_zip(datos: bytes) -> dict[str, bytes]:
                 OSError,
                 RuntimeError,
                 NotImplementedError,
+                ValueError,  # un desplazamiento dañado da «negative seek value» al abrir la entrada
                 zlib.error,  # un flujo DEFLATE dañado no es BadZipFile: tampoco debe escapar
             ):
                 raise PaqueteRechazado(

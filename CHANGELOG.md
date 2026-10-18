@@ -24,6 +24,7 @@ etiquetar, las líneas pasan a la sección de la versión. La historia anterior 
 ### Corregido
 
 - `main` en rojo desde la 1.0.0: se retiran los alias `ARENIA_CASO` y `ARENIA_MODO_ENTREGA`, que solo valían hasta la 0.6.0 (`ui/entorno.py`, manuales y `tests/conftest.py`).
+- Un paquete con el desplazamiento del directorio central dañado ya no hace fallar la verificación con `ValueError` (`paquete/formato.py`); lo encontró la prueba de un byte cambiado en la CI de Windows.
 
 ## [1.0.0] - 2026-10-15
 
