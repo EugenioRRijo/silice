@@ -1,5 +1,6 @@
-"""`/v1/libros`: auditar y devolver calcado el libro de presupuesto de la empresa, o revisar solo
-el PDF simple de un presupuesto (spec 1.5 §5, UC-25).
+"""`/v1/libros`: auditar y devolver calcado el libro de presupuesto de la empresa, revisar solo
+el PDF simple de un presupuesto (spec 1.5 §5, UC-25) o replicar el aspecto del libro para el visor
+de la interfaz nueva (Sílice 1.2.0, RF-111, UC-26).
 
 Dos rutas con la misma entrada multipart:
 
@@ -15,20 +16,31 @@ Dos rutas con la misma entrada multipart:
 - `umbral` (opcional, decimal con punto, 0 < umbral < 1): la variación de precio desde la que hay
   alerta, como fracción (`0.05` = 5 %, el valor por omisión).
 
-`POST /v1/libros/auditoria` responde el informe en JSON; `POST /v1/libros/devolucion`, el libro
-calcado (`.xlsx`). `POST /v1/libros/pdf` recibe solo `pdf` (el presupuesto impreso, formato
-001/002, sin Excel) y responde en JSON los hallazgos L10 del PDF cotejado consigo mismo. Todo
-ocurre **en memoria** (F-D9): ningún archivo toca el disco y nada se guarda en la base. Los montos
-viajan como texto.
+`POST /v1/libros/auditoria` responde el informe en JSON, con los `indicadores` del libro frente
+a Sílice (RS2-7, RF-116; `indicadores_de`); `POST /v1/libros/devolucion`, el libro calcado
+(`.xlsx`). `POST /v1/libros/pdf` recibe solo `pdf` (el presupuesto impreso, formato 001/002, sin
+Excel) y responde en JSON los hallazgos L10 del PDF cotejado consigo mismo. `POST
+/v1/libros/replica` recibe solo `libro` y responde su réplica visual (`LibroVisualRespuesta`,
+espejo del contrato neutro `adapters.hoja_empresa.visual.LibroVisual`, RS2-1). Todo ocurre **en
+memoria** (F-D9): ningún archivo toca el disco y nada se guarda en la base. Los montos viajan como
+texto.
 
 Errores: extensión equivocada 415; un cuerpo de más de 20 MiB 413 (el tope real lo pone
 `api.proteccion` al cuerpo entero de la petición, sin leerlo; cada archivo se lee además por
 bloques y se corta al pasar ese mismo tope); fecha o umbral mal escritos 422; archivo rechazado por
 la guardia (`ArchivoRechazado`, F-D10) o libro que no se puede interpretar (`LibroNoInterpretable`)
-422 con su mensaje, escrito para el usuario; cualquier otro fallo al procesar 500 con un mensaje
-fijo y el detalle solo en el registro del servidor (`logging`), nunca en la respuesta. La clave de
-API, el tope del cuerpo y los hosts permitidos los pone `api.proteccion` para toda la aplicación
-(`CON_CLAVE` en `api.main`).
+422 con su mensaje, escrito para el usuario (también el libro demasiado grande para el visor,
+`LibroDemasiadoGrande`, que es un `ArchivoRechazado`); cualquier otro fallo al procesar 500 con un
+mensaje fijo y el detalle solo en el registro del servidor (`logging`), nunca en la respuesta. El
+tope del cuerpo y los hosts permitidos los pone `api.proteccion` para toda la aplicación; el acceso
+lo exige `api.main` con `exigir_clave_o_sesion(Accion.LEER_PROYECTO)` (RS2-5): con la cabecera
+`X-Silice-Clave`, como antes; sin ella, la cookie de sesión del navegador con CSRF y un rol que
+arma o revisa.
+
+`indicadores_de` vive aquí y no en `fusion/`: es aritmética de **presentación** sobre los totales
+que `fusion.proceso` ya calculó (una resta y un porcentaje en centésimas; NORMAS §2.3: «se
+redondea a dos decimales únicamente al presentar»), con los títulos y el sentido IBCS que solo usa
+la interfaz. No decide nada de la auditoría.
 """
 
 from __future__ import annotations
@@ -36,10 +48,11 @@ from __future__ import annotations
 import logging
 import re
 import unicodedata
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import date
-from decimal import Decimal, InvalidOperation
-from typing import Annotated
+from decimal import ROUND_HALF_EVEN, Decimal, InvalidOperation
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.responses import Response
@@ -48,6 +61,7 @@ from starlette.concurrency import run_in_threadpool
 
 from adapters.hoja_empresa.guardia import MAX_BYTES, ArchivoRechazado
 from adapters.hoja_empresa.modelo import LibroNoInterpretable
+from adapters.hoja_empresa.visual import LibroVisual, replicar_libro
 from api.dependencias import SesionDep
 from api.proteccion import LIMITE_CUERPO
 from fusion.alertas import ContextoPrecios
@@ -73,6 +87,9 @@ UMBRAL_POR_OMISION = Decimal("0.05")
 ERRORES_DEL_USUARIO = (ArchivoRechazado, LibroNoInterpretable)  # su mensaje es para el usuario
 MENSAJE_LIBRO = "El libro no se pudo interpretar."
 MENSAJE_PDF = "El PDF no se pudo interpretar."
+#: Indicadores de la franja (RS2-7): clave del total -> título, en el orden en que se muestran.
+INDICADORES = {"SUBSINIVA": "Subtotal sin IVA", "IVATOT": "IVA", "TOTALGEN": "Total general"}
+CENTESIMA = Decimal("0.01")
 
 
 # --- Esquemas de la respuesta --------------------------------------------------------------------
@@ -113,6 +130,20 @@ class TrazaRespuesta(BaseModel):
     nota: str = ""
 
 
+class IndicadorRespuesta(BaseModel):
+    """Un total del libro (`actual`) frente al de Sílice (`meta`), RS2-7: `delta = actual - meta`;
+    `delta_pct` en centésimas (redondeo al par), nulo si la meta es cero. `sentido = "costo"`: que
+    el libro declare más de lo que calcula Sílice es desfavorable (IBCS)."""
+
+    clave: str
+    titulo: str
+    actual: str
+    meta: str
+    delta: str
+    delta_pct: str | None
+    sentido: Literal["costo"]
+
+
 class LibroAuditadoRespuesta(BaseModel):
     libro: LibroOrigenRespuesta
     fecha_libro: str | None
@@ -121,6 +152,7 @@ class LibroAuditadoRespuesta(BaseModel):
     por_severidad: dict[str, int]
     totales_libro: dict[str, str]
     totales_silice: dict[str, str]
+    indicadores: list[IndicadorRespuesta]
     hallazgos: list[HallazgoLibroRespuesta]
     alertas: list[AlertaPrecioRespuesta]
     trazabilidad: list[TrazaRespuesta]
@@ -144,6 +176,60 @@ class PdfSimpleRespuesta(BaseModel):
     total_impreso: str | None
     notas: list[str]
     hallazgos: list[HallazgoLibroRespuesta]
+
+
+class EstiloVisualRespuesta(BaseModel):
+    """Espejo de `visual.EstiloVisual`; `bordes`: arriba, derecha, abajo, izquierda."""
+
+    relleno: str | None
+    fuente: str | None
+    tamano: str | None
+    negrita: bool
+    cursiva: bool
+    subrayado: bool
+    color: str | None
+    alineacion_h: str | None
+    alineacion_v: str | None
+    ajustar_texto: bool
+    formato_numero: str
+    bordes: tuple[str | None, str | None, str | None, str | None]
+
+
+class CeldaVisualRespuesta(BaseModel):
+    """Espejo de `visual.CeldaVisual`: `fila` y `columna` base 1, `ref` sin `$`."""
+
+    ref: str
+    fila: int
+    columna: int
+    mostrado: str
+    formula: str | None
+    estilo: int
+
+
+class HojaVisualRespuesta(BaseModel):
+    """Espejo de `visual.HojaVisual`. En `anchos` y `altos` la columna o la fila (base 1) va como
+    texto: las claves de un objeto JSON son texto."""
+
+    nombre: str
+    visible: bool
+    filas: int
+    columnas: int
+    anchos: dict[str, str]
+    altos: dict[str, str]
+    ocultas_filas: list[int]
+    ocultas_columnas: list[int]
+    combinadas: list[str]
+    fijas: str | None
+    celdas: list[CeldaVisualRespuesta]
+
+
+class LibroVisualRespuesta(BaseModel):
+    """Réplica visual del libro (RF-111): espejo del contrato neutro `visual.LibroVisual`."""
+
+    nombre: str
+    sha256: str
+    hojas: list[HojaVisualRespuesta]
+    estilos: list[EstiloVisualRespuesta]
 
 
 # --- Entrada -------------------------------------------------------------------------------------
@@ -335,6 +421,85 @@ def _montos(mapa) -> dict[str, str]:
     return {str(k): format(v, "f") for k, v in (mapa or {}).items() if v is not None}
 
 
+def indicadores_de(
+    totales_libro: Mapping[str, Decimal | None], totales_silice: Mapping[str, Decimal | None]
+) -> list[IndicadorRespuesta]:
+    """Los indicadores de la franja (RS2-7), en el orden de `INDICADORES` y solo con las claves
+    presentes (y no nulas) en los dos totales: `actual` = libro, `meta` = Sílice,
+    `delta = actual - meta` y `delta_pct = delta / meta * 100` en centésimas con redondeo al par,
+    o `None` si `meta == 0`. Función pura; los montos salen como texto decimal."""
+    indicadores: list[IndicadorRespuesta] = []
+    for clave, titulo in INDICADORES.items():
+        actual, meta = totales_libro.get(clave), totales_silice.get(clave)
+        if actual is None or meta is None:
+            continue
+        delta = actual - meta
+        pct = None if meta == 0 else (delta / meta * 100).quantize(CENTESIMA, ROUND_HALF_EVEN)
+        indicadores.append(
+            IndicadorRespuesta(
+                clave=clave,
+                titulo=titulo,
+                actual=format(actual, "f"),
+                meta=format(meta, "f"),
+                delta=format(delta, "f"),
+                delta_pct=_texto(pct),
+                sentido="costo",
+            )
+        )
+    return indicadores
+
+
+def _visual(libro: LibroVisual) -> LibroVisualRespuesta:
+    """`LibroVisual` -> su espejo Pydantic; las claves int de `anchos` y `altos` pasan a texto."""
+    return LibroVisualRespuesta(
+        nombre=libro.nombre,
+        sha256=libro.sha256,
+        hojas=[
+            HojaVisualRespuesta(
+                nombre=h.nombre,
+                visible=h.visible,
+                filas=h.filas,
+                columnas=h.columnas,
+                anchos={str(k): v for k, v in h.anchos.items()},
+                altos={str(k): v for k, v in h.altos.items()},
+                ocultas_filas=list(h.ocultas_filas),
+                ocultas_columnas=list(h.ocultas_columnas),
+                combinadas=list(h.combinadas),
+                fijas=h.fijas,
+                celdas=[
+                    CeldaVisualRespuesta(
+                        ref=c.ref,
+                        fila=c.fila,
+                        columna=c.columna,
+                        mostrado=c.mostrado,
+                        formula=c.formula,
+                        estilo=c.estilo,
+                    )
+                    for c in h.celdas
+                ],
+            )
+            for h in libro.hojas
+        ],
+        estilos=[
+            EstiloVisualRespuesta(
+                relleno=e.relleno,
+                fuente=e.fuente,
+                tamano=e.tamano,
+                negrita=e.negrita,
+                cursiva=e.cursiva,
+                subrayado=e.subrayado,
+                color=e.color,
+                alineacion_h=e.alineacion_h,
+                alineacion_v=e.alineacion_v,
+                ajustar_texto=e.ajustar_texto,
+                formato_numero=e.formato_numero,
+                bordes=e.bordes,
+            )
+            for e in libro.estilos
+        ],
+    )
+
+
 def _nombre_de_descarga(original: str) -> str:
     """`<nombre>-silice.xlsx` con solo [A-Za-z0-9 ._-]: sin rutas, comillas ni saltos de línea
     que rompan la cabecera `Content-Disposition`."""
@@ -360,6 +525,7 @@ async def auditar_libro(entrada: EntradaDep, contexto: ContextoDep) -> LibroAudi
         por_severidad={s.name: n for s, n in r.informe.por_severidad().items()},
         totales_libro=_montos(r.libro.totales),
         totales_silice=_montos(r.totales_silice),
+        indicadores=indicadores_de(r.libro.totales or {}, r.totales_silice or {}),
         hallazgos=[
             HallazgoLibroRespuesta(
                 codigo=h.codigo,
@@ -464,3 +630,19 @@ async def revisar_pdf(
             for h in r.hallazgos_tabla
         ],
     )
+
+
+@router.post("/replica", response_model=LibroVisualRespuesta)
+async def replicar(
+    libro: Annotated[UploadFile, File(description="Libro de la empresa (.xlsx sin macros)")],
+) -> LibroVisualRespuesta:
+    """Réplica visual del libro para el visor de solo lectura (RF-111): hojas en orden,
+    visibilidad, anchos, altos, combinadas, ocultas, paneles fijos y, por celda, el valor mostrado,
+    la fórmula y el estilo, con coordenadas de Excel (base 1). No audita ni guarda nada."""
+    nombre = _nombre(libro)
+    _exigir_extension(nombre, ".xlsx", "libro")
+    datos = await _leer(libro, "libro")
+    try:
+        return await run_in_threadpool(lambda: _visual(replicar_libro(datos, nombre)))
+    except Exception as error:  # noqa: BLE001 - frontera: nunca un 500 ni una traza al cliente
+        raise _rechazo(error, MENSAJE_LIBRO, "POST /v1/libros/replica") from None

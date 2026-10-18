@@ -1097,6 +1097,48 @@
         }
       }
     },
+    "/v1/libros/replica": {
+      "post": {
+        "tags": [
+          "libros"
+        ],
+        "summary": "Replicar",
+        "description": "Réplica visual del libro para el visor de solo lectura (RF-111): hojas en orden,\nvisibilidad, anchos, altos, combinadas, ocultas, paneles fijos y, por celda, el valor mostrado,\nla fórmula y el estilo, con coordenadas de Excel (base 1). No audita ni guarda nada.",
+        "operationId": "replicar_v1_libros_replica_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_replicar_v1_libros_replica_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LibroVisualRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/sesion": {
       "get": {
         "tags": [
@@ -1674,6 +1716,21 @@
         ],
         "title": "Body_importar_presupuesto_de_tercero_presupuestos_importar_post"
       },
+      "Body_replicar_v1_libros_replica_post": {
+        "properties": {
+          "libro": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "Libro",
+            "description": "Libro de la empresa (.xlsx sin macros)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "libro"
+        ],
+        "title": "Body_replicar_v1_libros_replica_post"
+      },
       "Body_revisar_pdf_v1_libros_pdf_post": {
         "properties": {
           "pdf": {
@@ -1765,6 +1822,52 @@
         ],
         "title": "CargaListaRespuesta",
         "description": "Lo que produjo cargar un archivo de precios (UC-02): la lista creada y los insumos del\narchivo que el catalogo no conocia.\n\n- `dados_de_alta`: los desconocidos que el administrador eligio dar de alta (flujo 2a, campo\n  de formulario `dar_de_alta`); quedan en el catalogo con codigo nuevo y su precio solo en esta\n  lista.\n- `ignorados`: los desconocidos del flujo 2a que no se eligieron; no intervienen en el\n  recalculo.\n- `rechazados`: las filas del flujo 2b, cuya descripcion si esta en el catalogo pero con una\n  unidad no equivalente; se rechazan y no se pueden dar de alta.\n- `desconocidos`: ignorados y rechazados juntos, en el orden del archivo (el campo de antes de\n  C6, que se conserva)."
+      },
+      "CeldaVisualRespuesta": {
+        "properties": {
+          "ref": {
+            "type": "string",
+            "title": "Ref"
+          },
+          "fila": {
+            "type": "integer",
+            "title": "Fila"
+          },
+          "columna": {
+            "type": "integer",
+            "title": "Columna"
+          },
+          "mostrado": {
+            "type": "string",
+            "title": "Mostrado"
+          },
+          "formula": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Formula"
+          },
+          "estilo": {
+            "type": "integer",
+            "title": "Estilo"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ref",
+          "fila",
+          "columna",
+          "mostrado",
+          "formula",
+          "estilo"
+        ],
+        "title": "CeldaVisualRespuesta",
+        "description": "Espejo de `visual.CeldaVisual`: `fila` y `columna` base 1, `ref` sin `$`."
       },
       "ComparativoRespuesta": {
         "properties": {
@@ -2152,6 +2255,161 @@
         "title": "EscenariosRespuesta",
         "description": "La comparación completa de UC-08. Nada de esto queda persistido (RF-30).\n\n`pendientes_base` lista los ítems pendientes del presupuesto base (sin partida en el\ncatálogo): ningún escenario los recalcula ni los suma a su total, y los hallazgos de cada\nescenario no los cuentan. Queda vacía si el base no tiene pendientes o si se guardó sin\nregistrarlos."
       },
+      "EstiloVisualRespuesta": {
+        "properties": {
+          "relleno": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Relleno"
+          },
+          "fuente": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fuente"
+          },
+          "tamano": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tamano"
+          },
+          "negrita": {
+            "type": "boolean",
+            "title": "Negrita"
+          },
+          "cursiva": {
+            "type": "boolean",
+            "title": "Cursiva"
+          },
+          "subrayado": {
+            "type": "boolean",
+            "title": "Subrayado"
+          },
+          "color": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Color"
+          },
+          "alineacion_h": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Alineacion H"
+          },
+          "alineacion_v": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Alineacion V"
+          },
+          "ajustar_texto": {
+            "type": "boolean",
+            "title": "Ajustar Texto"
+          },
+          "formato_numero": {
+            "type": "string",
+            "title": "Formato Numero"
+          },
+          "bordes": {
+            "prefixItems": [
+              {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            ],
+            "type": "array",
+            "maxItems": 4,
+            "minItems": 4,
+            "title": "Bordes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "relleno",
+          "fuente",
+          "tamano",
+          "negrita",
+          "cursiva",
+          "subrayado",
+          "color",
+          "alineacion_h",
+          "alineacion_v",
+          "ajustar_texto",
+          "formato_numero",
+          "bordes"
+        ],
+        "title": "EstiloVisualRespuesta",
+        "description": "Espejo de `visual.EstiloVisual`; `bordes`: arriba, derecha, abajo, izquierda."
+      },
       "FilaComparativoRespuesta": {
         "properties": {
           "codigo_partida": {
@@ -2304,6 +2562,147 @@
           "origen_ids"
         ],
         "title": "HallazgoRespuesta"
+      },
+      "HojaVisualRespuesta": {
+        "properties": {
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          },
+          "visible": {
+            "type": "boolean",
+            "title": "Visible"
+          },
+          "filas": {
+            "type": "integer",
+            "title": "Filas"
+          },
+          "columnas": {
+            "type": "integer",
+            "title": "Columnas"
+          },
+          "anchos": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Anchos"
+          },
+          "altos": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Altos"
+          },
+          "ocultas_filas": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Ocultas Filas"
+          },
+          "ocultas_columnas": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Ocultas Columnas"
+          },
+          "combinadas": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Combinadas"
+          },
+          "fijas": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fijas"
+          },
+          "celdas": {
+            "items": {
+              "$ref": "#/components/schemas/CeldaVisualRespuesta"
+            },
+            "type": "array",
+            "title": "Celdas"
+          }
+        },
+        "type": "object",
+        "required": [
+          "nombre",
+          "visible",
+          "filas",
+          "columnas",
+          "anchos",
+          "altos",
+          "ocultas_filas",
+          "ocultas_columnas",
+          "combinadas",
+          "fijas",
+          "celdas"
+        ],
+        "title": "HojaVisualRespuesta",
+        "description": "Espejo de `visual.HojaVisual`. En `anchos` y `altos` la columna o la fila (base 1) va como\ntexto: las claves de un objeto JSON son texto."
+      },
+      "IndicadorRespuesta": {
+        "properties": {
+          "clave": {
+            "type": "string",
+            "title": "Clave"
+          },
+          "titulo": {
+            "type": "string",
+            "title": "Titulo"
+          },
+          "actual": {
+            "type": "string",
+            "title": "Actual"
+          },
+          "meta": {
+            "type": "string",
+            "title": "Meta"
+          },
+          "delta": {
+            "type": "string",
+            "title": "Delta"
+          },
+          "delta_pct": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Delta Pct"
+          },
+          "sentido": {
+            "type": "string",
+            "const": "costo",
+            "title": "Sentido"
+          }
+        },
+        "type": "object",
+        "required": [
+          "clave",
+          "titulo",
+          "actual",
+          "meta",
+          "delta",
+          "delta_pct",
+          "sentido"
+        ],
+        "title": "IndicadorRespuesta",
+        "description": "Un total del libro (`actual`) frente al de Sílice (`meta`), RS2-7: `delta = actual - meta`;\n`delta_pct` en centésimas (redondeo al par), nulo si la meta es cero. `sentido = \"costo\"`: que\nel libro declare más de lo que calcula Sílice es desfavorable (IBCS)."
       },
       "InsumoRespuesta": {
         "properties": {
@@ -2590,6 +2989,13 @@
             "type": "object",
             "title": "Totales Silice"
           },
+          "indicadores": {
+            "items": {
+              "$ref": "#/components/schemas/IndicadorRespuesta"
+            },
+            "type": "array",
+            "title": "Indicadores"
+          },
           "hallazgos": {
             "items": {
               "$ref": "#/components/schemas/HallazgoLibroRespuesta"
@@ -2628,6 +3034,7 @@
           "por_severidad",
           "totales_libro",
           "totales_silice",
+          "indicadores",
           "hallazgos",
           "alertas",
           "trazabilidad",
@@ -2652,6 +3059,41 @@
           "sha256"
         ],
         "title": "LibroOrigenRespuesta"
+      },
+      "LibroVisualRespuesta": {
+        "properties": {
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          },
+          "sha256": {
+            "type": "string",
+            "title": "Sha256"
+          },
+          "hojas": {
+            "items": {
+              "$ref": "#/components/schemas/HojaVisualRespuesta"
+            },
+            "type": "array",
+            "title": "Hojas"
+          },
+          "estilos": {
+            "items": {
+              "$ref": "#/components/schemas/EstiloVisualRespuesta"
+            },
+            "type": "array",
+            "title": "Estilos"
+          }
+        },
+        "type": "object",
+        "required": [
+          "nombre",
+          "sha256",
+          "hojas",
+          "estilos"
+        ],
+        "title": "LibroVisualRespuesta",
+        "description": "Réplica visual del libro (RF-111): espejo del contrato neutro `visual.LibroVisual`."
       },
       "ListaRespuesta": {
         "properties": {
