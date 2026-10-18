@@ -93,6 +93,9 @@ def medir(
 def preparar(puntos: int = PUNTOS) -> tuple[Callable[[int], hoja.ResultadoHoja], hoja.Borrador]:
     """El borrador de `puntos` puntos y el trabajo que se mide: aplicar la edicion `i` y elaborar.
 
+    Mide SIN R17 (tarea 1.7): el borrador no tiene espacio (solo `items_base`), asi que R17 no daria
+    ningun hallazgo, y la cifra de RNF-11 sigue comparable con las ya registradas.
+
     La edicion `i` escribe a mano la cantidad del punto `i` (modulo el total). Devuelve tambien el
     borrador de partida."""
     items = generar_items(puntos, SEMILLA)

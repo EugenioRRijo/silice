@@ -25,6 +25,15 @@ pinta en la fila del punto.
 Como R8 a R10, la regla guarda la instantanea del espacio que recibe: quien la agrega tiene que
 ligarla al espacio que se elabora (la pagina de la hoja lo hace en cada elaboracion). No vive en
 `adapters/espacio/reglas.py` porque ese archivo es del auditor congelado del experimento.
+
+**Donde corre y donde se arrastra (ruling 1.7-c).** Corre en la pagina de la hoja (cada
+elaboracion, guardar y el resultado hipotetico del asistente), en la reauditoria de un paquete con
+anexo de espacio (`auditoria/reauditoria.py`: sin ella sus avisos guardados caerian en `ya_no` como
+si se hubieran corregido) y en `scripts/prueba_real_asistente.py`. No la corren `abrir_version`
+(`ui/hoja.py`, congelado) ni `actualizar_precios`, `cotizacion` y `decision` (`core/budget`): todas
+recargan el R17 GUARDADO como hallazgo externo (`_cargar_externos`), tal cual. Es correcto
+mientras copien el espacio de la version sin cambiarlo, porque el aviso habla de ese espacio; una
+de ellas que editara el espacio tendria que volver a correr R17.
 """
 
 from __future__ import annotations

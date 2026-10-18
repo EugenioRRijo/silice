@@ -176,14 +176,14 @@ def test_r12_se_evalua_a_la_fecha_de_emision_y_no_cambia_de_un_dia_a_otro() -> N
     assert [h.descripcion for h in r12] == otras
 
 
-def test_con_el_anexo_de_espacio_corren_r8_a_r10_y_r15() -> None:
+def test_con_el_anexo_de_espacio_corren_r8_a_r10_r15_y_r17() -> None:
     espacio = json_canonico(espacio_a_objeto(espacio_of001()))
     r = revision.reauditar(
         verificado(doc_json(), anexos={"anexos/espacio.json": espacio}), Servicios()
     )
-    assert r.contextos == ("R1-R7", "R8-R10", "R15", "R11-R12")
+    assert r.contextos == ("R1-R7", "R8-R10", "R15", "R17", "R11-R12")
     assert sum(1 for h in r.nuevos if h.regla == "R8") == 33  # el conjunto exacto de OF-001
-    assert not [h for h in r.nuevos if h.regla in {"R9", "R10", "R15"}]
+    assert not [h for h in r.nuevos if h.regla in {"R9", "R10", "R15", "R17"}]
 
 
 def test_con_el_anexo_de_control_y_el_servicio_de_s2_corren_r13_y_r14() -> None:
