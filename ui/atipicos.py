@@ -66,10 +66,13 @@ MENSAJE_NADA_ATIPICO = (
 @dataclass(frozen=True, slots=True)
 class BusquedaAtipicos:
     """Lo que devuelve la búsqueda de varios insumos: sus hallazgos y los orígenes (listas) de los
-    precios en Bs a los que les faltó la tasa y por eso se omitieron, sin repetir."""
+    precios en Bs a los que les faltó la tasa y por eso se omitieron, sin repetir. `no_analizados`
+    son los insumos que no se pudieron analizar, `(código, motivo)`, p. ej. por una moneda que no es
+    Bs ni USD en su lista: un insumo así no impide analizar los demás."""
 
     hallazgos: tuple[Hallazgo, ...]
     sin_tasa: tuple[str, ...]
+    no_analizados: tuple[tuple[str, str], ...] = ()
 
 
 def _cargar_series() -> ModuleType:
@@ -131,10 +134,12 @@ def puntos_del_insumo(
     return puntos
 
 
-def hallazgos_de_la_serie(codigo: str, resultado) -> list[Hallazgo]:
-    """Un hallazgo ADVERTENCIA por variación atípica, con su monto en porcentaje."""
-    from ml.anomaly.series import tramo
-
+def hallazgos_de_la_serie(
+    codigo: str, resultado, series: ModuleType | None = None
+) -> list[Hallazgo]:
+    """Un hallazgo ADVERTENCIA por variación atípica, con su monto en porcentaje. `series` es el
+    módulo que entregó `cargar_series` (de él sale `tramo`)."""
+    tramo = (series or _cargar_series()).tramo
     hallazgos = []
     for atipica in resultado.atipicas:
         porcentaje = format((atipica.valor * 100).quantize(DOS_DECIMALES), "f")
@@ -165,16 +170,21 @@ def atipicos_de_insumos(
     junta los hallazgos y las listas en Bs sin tasa que se omitieron. Solo lee."""
     hallazgos: list[Hallazgo] = []
     sin_tasa: list[str] = []
+    no_analizados: list[tuple[str, str]] = []
     origenes: dict[int, dict[int, OrigenEfectivo]] = {}
     try:
         series = cargar_series()
         for codigo in codigos:
-            resultado = series.analizar(puntos_del_insumo(session, codigo, series, origenes))
-            hallazgos.extend(hallazgos_de_la_serie(codigo, resultado))
+            try:
+                resultado = series.analizar(puntos_del_insumo(session, codigo, series, origenes))
+            except ValueError as error:  # una moneda que no es Bs ni USD: se dice y se sigue
+                no_analizados.append((codigo, str(error)))
+                continue
+            hallazgos.extend(hallazgos_de_la_serie(codigo, resultado, series))
             sin_tasa.extend(o for o in resultado.serie.sin_tasa if o not in sin_tasa)
     except ImportError:  # `scikit-learn` llega tarde: al ajustar el bosque
         return None
-    return BusquedaAtipicos(tuple(hallazgos), tuple(sin_tasa))
+    return BusquedaAtipicos(tuple(hallazgos), tuple(sin_tasa), tuple(no_analizados))
 
 
 def atipicos_del_insumo(
@@ -194,6 +204,10 @@ def avisos(busqueda: BusquedaAtipicos | None) -> list[tuple[str, str]]:
     salida = [
         ("info", f"Precio en Bs sin tasa, omitido: {texto_seguro(lista)}")
         for lista in busqueda.sin_tasa
+    ]
+    salida += [
+        ("info", f"{texto_seguro(codigo)}: no se pudo analizar ({texto_seguro(motivo)})")
+        for codigo, motivo in busqueda.no_analizados
     ]
     if not busqueda.hallazgos:
         salida.append(("success", MENSAJE_NADA_ATIPICO))
