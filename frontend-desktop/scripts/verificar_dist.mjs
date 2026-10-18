@@ -39,7 +39,13 @@ export const ANFITRIONES_DE_UNIVER = new Set([
 // de plantilla de texto (`https://${direccion}`), no un anfitrion.
 const ARCHIVO_DE_UNIVER = /(^|[\\/])adaptadorUniver-[^\\/]*\.(js|css)$/;
 
-const URL_EXTERNA = /https?:\/\/([^\s/'"`)\\<>?#:]+)/gi;
+// http, https, ws y wss con anfitrion.
+const URL_EXTERNA = /(?:https?|wss?):\/\/([^\s/'"`)\\<>?#:]+)/gi;
+// URLs sin esquema que el navegador completa con el del sitio y mandan a otro anfitrion: url(//host/...) y
+// @import "//host/..." en CSS, y src="//host/..." o href="//host/..." en HTML. Una ruta propia (/app/...) lleva una
+// sola barra y no coincide.
+const URL_SIN_ESQUEMA_CSS = /(?:url\(\s*|@import\s+)['"]?\/\/([^\s/'")\\<>?#:]+)/gi;
+const URL_SIN_ESQUEMA_HTML = /\b(?:src|href)\s*=\s*['"]\/\/([^\s/'">\\<?#:]+)/gi;
 
 function* archivos(carpeta) {
   for (const nombre of readdirSync(carpeta)) {
@@ -62,7 +68,11 @@ export function verificarDist(carpeta) {
     cuenta += 1;
     const texto = contenido.toString("latin1");
     const vistos = new Set();
-    for (const m of texto.matchAll(URL_EXTERNA)) {
+    const extension = ruta.slice(ruta.lastIndexOf(".")).toLowerCase();
+    const candidatas = [...texto.matchAll(URL_EXTERNA)];
+    if (extension === ".css") candidatas.push(...texto.matchAll(URL_SIN_ESQUEMA_CSS));
+    if (extension === ".html") candidatas.push(...texto.matchAll(URL_SIN_ESQUEMA_HTML));
+    for (const m of candidatas) {
       const anfitrion = m[1].toLowerCase();
       if (anfitrion.startsWith("${")) continue; // fragmento de plantilla de texto
       if (ANFITRIONES_PERMITIDOS.has(anfitrion) || vistos.has(anfitrion)) continue;
