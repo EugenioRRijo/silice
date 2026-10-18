@@ -21,6 +21,7 @@ from typing import Any
 import pytest
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Border, Color, Font, PatternFill, Side
+from openpyxl.styles.colors import COLOR_INDEX
 
 from adapters.hoja_empresa import visual
 from adapters.hoja_empresa.guardia import ArchivoRechazado
@@ -51,6 +52,40 @@ def _celda(libro: LibroVisual, hoja: str, ref: str) -> Any:
 
 def _estilo(libro: LibroVisual, hoja: str, ref: str) -> Any:
     return libro.estilos[_celda(libro, hoja, ref).estilo]
+
+
+_ETIQUETAS_TEMA = ("dk1", "lt1", "dk2", "lt2")
+_OFFICE_2013 = ("000000", "FFFFFF", "44546A", "E7E6E6")  # dk1, lt1, dk2, lt2 (orden del XML)
+_ACENTOS_OFFICE = ("4472C4", "ED7D31", "A5A5A5", "FFC000", "5B9BD5", "70AD47")
+
+
+def _tema_xml(
+    base: tuple[str, ...] = _OFFICE_2013,
+    acentos: tuple[str, ...] = _ACENTOS_OFFICE,
+    enlaces: tuple[str, ...] = ("0563C1", "954F72"),
+) -> bytes:
+    """`xl/theme/theme1.xml` mínimo: solo el esquema de colores, en el orden del XML
+    (dk1, lt1, dk2, lt2, accent1..6, hlink, folHlink)."""
+    nombres = [*_ETIQUETAS_TEMA[: len(base)], *(f"accent{i}" for i in range(1, len(acentos) + 1))]
+    nombres += ["hlink", "folHlink"][: len(enlaces)]
+    colores = [*base, *acentos, *enlaces]
+    hijos = "".join(
+        f'<a:{n}><a:srgbClr val="{c}"/></a:{n}>' for n, c in zip(nombres, colores, strict=True)
+    )
+    return (
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        '<a:theme xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" name="Prueba">'
+        f'<a:themeElements><a:clrScheme name="Prueba">{hijos}</a:clrScheme></a:themeElements>'
+        "</a:theme>"
+    ).encode()
+
+
+def _libro_office() -> Workbook:
+    """Libro nuevo con el tema de Office 2013 (openpyxl escribe por omisión el de 2007-2010)."""
+    wb = Workbook()
+    wb.loaded_theme = _tema_xml()
+    wb.active.title = "H"
+    return wb
 
 
 # --- Hojas, combinadas, dimensiones --------------------------------------------------------------
@@ -173,6 +208,15 @@ def test_valor_mostrado_es_el_guardado_y_conserva_la_formula():
     e12 = _celda(libro, "H", "E12")
     assert e12.mostrado == "12.25"
     assert e12.formula is None
+
+
+def test_formula_sin_valor_guardado_se_muestra_vacia():
+    wb = Workbook()  # openpyxl escribe la fórmula sin <v>: el libro nunca se calculó
+    ws = wb.active
+    ws.title = "H"
+    ws["A1"] = "=1+2"
+    c = _celda(_replica(wb), "H", "A1")
+    assert (c.mostrado, c.formula) == ("", "=1+2")
 
 
 def test_numeros_como_texto_decimal_sin_float_ni_notacion_cientifica():
@@ -311,6 +355,98 @@ def test_bordes_arriba_derecha_abajo_izquierda():
     assert _estilo(libro, "H", "B3").bordes == ("dashed", None, "hair", None)
 
 
+@pytest.mark.parametrize(
+    ("estilo", "esperado"),
+    [
+        ("thin", "thin"),
+        ("medium", "medium"),
+        ("thick", "thick"),
+        ("double", "double"),
+        ("dashed", "dashed"),
+        ("dotted", "dotted"),
+        ("hair", "hair"),
+        ("mediumDashed", "dashed"),
+        ("dashDot", "dashed"),
+        ("mediumDashDot", "dashed"),
+        ("dashDotDot", "dashed"),
+        ("mediumDashDotDot", "dashed"),
+        ("slantDashDot", "dashed"),
+    ],
+)
+def test_los_trece_estilos_de_borde_de_excel(estilo, esperado):
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "H"
+    ws["B2"] = 1
+    ws["B2"].border = Border(
+        top=Side(style=estilo), right=Side(style=estilo), bottom=Side(style=estilo)
+    )
+    assert _estilo(_replica(wb), "H", "B2").bordes == (esperado, esperado, esperado, None)
+
+
+@pytest.mark.parametrize(
+    ("horizontal", "esperado"),
+    [
+        ("general", None),
+        ("left", "left"),
+        ("center", "center"),
+        ("right", "right"),
+        ("justify", "justify"),
+        ("distributed", "justify"),
+        ("centerContinuous", "center"),
+        ("fill", None),
+    ],
+)
+def test_alineacion_horizontal_de_excel(horizontal, esperado):
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "H"
+    ws["A1"] = "x"
+    ws["A1"].alignment = Alignment(horizontal=horizontal, vertical="top")
+    e = _estilo(_replica(wb), "H", "A1")
+    assert (e.alineacion_h, e.alineacion_v) == (esperado, "top")
+
+
+@pytest.mark.parametrize(
+    ("vertical", "esperado"),
+    [
+        ("top", "top"),
+        ("center", "center"),
+        ("bottom", "bottom"),
+        ("justify", None),
+        ("distributed", None),
+    ],
+)
+def test_alineacion_vertical_de_excel(vertical, esperado):
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "H"
+    ws["A1"] = "x"
+    ws["A1"].alignment = Alignment(horizontal="left", vertical=vertical)
+    e = _estilo(_replica(wb), "H", "A1")
+    assert (e.alineacion_h, e.alineacion_v) == ("left", esperado)
+
+
+@pytest.mark.parametrize(
+    ("subrayado", "esperado"),
+    [
+        ("single", True),
+        ("double", True),
+        ("singleAccounting", True),
+        ("doubleAccounting", True),
+        ("none", False),
+        (None, False),
+    ],
+)
+def test_subrayado_de_excel(subrayado, esperado):
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "H"
+    ws["A1"] = "x"
+    ws["A1"].font = Font(u=subrayado, b=True)  # negrita: la celda nunca coincide con la de omisión
+    assert _estilo(_replica(wb), "H", "A1").subrayado is esperado
+
+
 # --- Colores -------------------------------------------------------------------------------------
 
 
@@ -327,9 +463,8 @@ def test_color_de_tema_con_tinte():
     r = 0.559981·255 = 142.80 → 143 = 0x8F; g = 0.668224·255 = 170.40 → 170 = 0xAA;
     b = 0.861171·255 = 219.60 → 220 = 0xDC. Resultado: #8FAADC.
     """
-    wb = Workbook()
+    wb = _libro_office()
     ws = wb.active
-    ws.title = "H"
     ws["A1"] = "x"
     ws["A1"].font = Font(color=Color(theme=4, tint=0.3999755851924192))
     ws["A2"] = "y"
@@ -343,9 +478,8 @@ def test_color_de_tema_con_tinte_negativo_sobre_blanco():
     """Tema 0 (lt1, blanco #FFFFFF) con tinte -0.5, a mano: L = 1, S = 0; tinte negativo (más
     oscuro): L' = L·(1+tinte) = 0.5; sin saturación r = g = b = 0.5·255 = 127.5, que Excel
     muestra como 7F (empate hacia abajo: «Blanco, fondo 1, más oscuro 50 %» es #7F7F7F)."""
-    wb = Workbook()
+    wb = _libro_office()
     ws = wb.active
-    ws.title = "H"
     ws["A1"] = "x"
     ws["A1"].fill = PatternFill("solid", fgColor=Color(theme=0, tint=-0.5))
     assert _estilo(_replica(wb), "H", "A1").relleno == "#7F7F7F"
@@ -353,7 +487,7 @@ def test_color_de_tema_con_tinte_negativo_sobre_blanco():
 
 def test_colores_de_tema_sin_tinte():
     # Indices de tema de SpreadsheetML: 0 = lt1 (blanco), 1 = dk1 (negro), 2 = lt2, 3 = dk2,
-    # 4..9 = accent1..accent6 de la paleta de Office por omision.
+    # 4..9 = accent1..accent6, 10 = hlink, 11 = folHlink (tema de Office 2013).
     esperados = {
         0: "#FFFFFF",
         1: "#000000",
@@ -365,8 +499,41 @@ def test_colores_de_tema_sin_tinte():
         7: "#FFC000",
         8: "#5B9BD5",
         9: "#70AD47",
+        10: "#0563C1",  # hlink
+        11: "#954F72",  # folHlink
+    }
+    wb = _libro_office()
+    ws = wb.active
+    for i, tema in enumerate(esperados, start=1):
+        ws.cell(row=i, column=1, value=tema).fill = PatternFill("solid", fgColor=Color(theme=tema))
+    libro = _replica(wb)
+    for i, (tema, hexa) in enumerate(esperados.items(), start=1):
+        assert _estilo(libro, "H", f"A{i}").relleno == hexa, f"tema {tema}"
+
+
+def test_el_tema_propio_del_libro_manda_sobre_el_de_office():
+    # dk1, lt1, dk2, lt2 del XML; Excel numera 0 = lt1, 1 = dk1, 2 = lt2, 3 = dk2.
+    propio = _tema_xml(
+        base=("111111", "EEEEEE", "222222", "DDDDDD"),
+        acentos=("FF6600", "00AA55", "3300CC", "CC0099", "777700", "0099AA"),
+        enlaces=("123456", "654321"),
+    )
+    esperados = {
+        0: "#EEEEEE",
+        1: "#111111",
+        2: "#DDDDDD",
+        3: "#222222",
+        4: "#FF6600",
+        5: "#00AA55",
+        6: "#3300CC",
+        7: "#CC0099",
+        8: "#777700",
+        9: "#0099AA",
+        10: "#123456",
+        11: "#654321",
     }
     wb = Workbook()
+    wb.loaded_theme = propio
     ws = wb.active
     ws.title = "H"
     for i, tema in enumerate(esperados, start=1):
@@ -374,6 +541,43 @@ def test_colores_de_tema_sin_tinte():
     libro = _replica(wb)
     for i, (tema, hexa) in enumerate(esperados.items(), start=1):
         assert _estilo(libro, "H", f"A{i}").relleno == hexa, f"tema {tema}"
+
+
+@pytest.mark.parametrize(
+    "tema",
+    [b"esto no es un xml", b"<a:theme xmlns:a='x'><a:themeElements/></a:theme>"],
+    ids=["xml roto", "sin esquema de colores"],
+)
+def test_un_tema_ilegible_cae_a_la_paleta_de_office(tema):
+    wb = Workbook()
+    wb.loaded_theme = tema
+    ws = wb.active
+    ws.title = "H"
+    ws["A1"] = "x"
+    ws["A1"].fill = PatternFill("solid", fgColor=Color(theme=4))
+    ws["A2"] = "y"
+    ws["A2"].fill = PatternFill("solid", fgColor=Color(theme=1))
+    libro = _replica(wb)
+    assert _estilo(libro, "H", "A1").relleno == "#4472C4"
+    assert _estilo(libro, "H", "A2").relleno == "#000000"
+
+
+def test_un_tema_incompleto_completa_con_la_paleta_de_office():
+    wb = Workbook()
+    wb.loaded_theme = _tema_xml(
+        base=("111111", "EEEEEE", "222222", "DDDDDD"), acentos=("FF6600",), enlaces=()
+    )
+    ws = wb.active
+    ws.title = "H"
+    for i, tema in enumerate((0, 4, 5, 10), start=1):
+        ws.cell(row=i, column=1, value=tema).fill = PatternFill("solid", fgColor=Color(theme=tema))
+    libro = _replica(wb)
+    assert [_estilo(libro, "H", f"A{i}").relleno for i in (1, 2, 3, 4)] == [
+        "#EEEEEE",  # propio
+        "#FF6600",  # propio
+        "#ED7D31",  # accent2 de Office
+        "#0563C1",  # hlink de Office
+    ]
 
 
 def test_colores_indexados_de_la_paleta_de_excel():
@@ -389,6 +593,34 @@ def test_colores_indexados_de_la_paleta_de_excel():
     libro = _replica(wb)
     for i, (indice, hexa) in enumerate(esperados.items(), start=1):
         assert _estilo(libro, "H", f"A{i}").relleno == hexa, f"indice {indice}"
+
+
+def test_los_64_colores_indexados_coinciden_con_la_paleta_de_openpyxl():
+    """Fuente externa: `openpyxl.styles.colors.COLOR_INDEX` (ARGB; se compara el RGB)."""
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "H"
+    for i in range(64):
+        ws.cell(row=i + 1, column=1, value=i).fill = PatternFill("solid", fgColor=Color(indexed=i))
+    libro = _replica(wb)
+    for i in range(64):
+        esperado = "#" + COLOR_INDEX[i][-6:]
+        assert _estilo(libro, "H", f"A{i + 1}").relleno == esperado, f"indice {i}"
+
+
+def test_indices_de_sistema_y_fuera_de_rango():
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "H"
+    for fila, i in enumerate((64, 65, 66, 200), start=1):
+        ws.cell(row=fila, column=1, value=i).fill = PatternFill("solid", fgColor=Color(indexed=i))
+    libro = _replica(wb)
+    assert [_estilo(libro, "H", f"A{f}").relleno for f in (1, 2, 3, 4)] == [
+        "#000000",
+        "#FFFFFF",
+        None,
+        None,
+    ]
 
 
 def test_color_rgb_argb_pierde_el_alfa():
@@ -446,14 +678,36 @@ def test_rechaza_lo_que_rechaza_la_guardia():
 
 
 def test_la_guardia_corre_antes_de_abrir_con_openpyxl(monkeypatch):
+    """El espía registra la llamada y lanza `OSError` (no `AssertionError`: la apertura convierte
+    cualquier excepción en `ArchivoRechazado`, así que lo único fiable es contar las llamadas)."""
     import openpyxl
 
-    def no_debe_abrirse(*a, **k):
-        raise AssertionError("openpyxl abrió un archivo que la guardia rechaza")
+    llamadas: list[int] = []
 
-    monkeypatch.setattr(openpyxl, "load_workbook", no_debe_abrirse)
+    def espia(*a, **k):
+        llamadas.append(1)
+        raise OSError("openpyxl abrió un archivo que la guardia debía rechazar")
+
+    monkeypatch.setattr(openpyxl, "load_workbook", espia)
     with pytest.raises(ArchivoRechazado):
         replicar_libro(b"esto no es un zip", NOMBRE)
+    assert llamadas == []
+
+
+def test_el_espia_de_openpyxl_si_registra_las_llamadas(monkeypatch):
+    """Control de la prueba anterior: con un `.xlsx` válido sí se llama a `load_workbook`."""
+    import openpyxl
+
+    llamadas: list[int] = []
+
+    def espia(*a, **k):
+        llamadas.append(1)
+        raise OSError("falla a propósito")
+
+    monkeypatch.setattr(openpyxl, "load_workbook", espia)
+    with pytest.raises(ArchivoRechazado):
+        replicar_libro(_bytes(Workbook()), NOMBRE)
+    assert llamadas == [1]
 
 
 def test_rechaza_mas_de_200000_celdas(monkeypatch):
@@ -466,6 +720,29 @@ def test_rechaza_mas_de_200000_celdas(monkeypatch):
         ws.cell(row=i, column=1, value=i)
     with pytest.raises(LibroDemasiadoGrande):
         _replica(wb)
+
+
+def _hoja_de_seis(wb: Workbook, nombre: str) -> None:
+    """Seis celdas aceptadas: 2 con valor, 2 solo con formato y 2 solo con fórmula."""
+    ws = wb.create_sheet(nombre)
+    ws["A1"], ws["A2"] = 1, 2
+    ws["B1"].font = Font(bold=True)
+    ws["B2"].fill = PatternFill("solid", fgColor="FFFFFF00")
+    ws["C1"], ws["C2"] = "=1+1", "=2+2"
+
+
+def test_el_tope_cuenta_todas_las_hojas_y_todas_las_clases_de_celda(monkeypatch):
+    monkeypatch.setattr(visual, "MAX_CELDAS_VISUALES", 10)
+    una = Workbook()
+    una.remove(una.active)
+    _hoja_de_seis(una, "UNA")
+    assert len(_replica(una).hojas[0].celdas) == 6  # 6 <= 10: pasa
+    dos = Workbook()
+    dos.remove(dos.active)
+    _hoja_de_seis(dos, "UNA")
+    _hoja_de_seis(dos, "DOS")
+    with pytest.raises(LibroDemasiadoGrande):  # 6 + 6 = 12 > 10
+        _replica(dos)
 
 
 def test_libro_demasiado_grande_es_un_archivo_rechazado():
@@ -483,12 +760,12 @@ def test_justo_en_el_limite_no_se_rechaza(monkeypatch):
 
 
 def test_no_escribe_sobre_el_original():
-    datos = libro_limpio().datos
-    antes = hashlib.sha256(datos).hexdigest()
+    """Se pasa un `bytearray` (mutable): si el código escribiera sobre la entrada, se notaría."""
+    datos = bytearray(libro_limpio().datos)
     copia = bytes(datos)
     replicar_libro(datos, NOMBRE)
-    assert hashlib.sha256(datos).hexdigest() == antes
-    assert datos == copia
+    assert bytes(datos) == copia
+    assert hashlib.sha256(datos).hexdigest() == hashlib.sha256(copia).hexdigest()
 
 
 def test_el_resultado_es_inmutable_y_con_slots():
