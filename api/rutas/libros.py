@@ -131,9 +131,11 @@ class TrazaRespuesta(BaseModel):
 
 
 class IndicadorRespuesta(BaseModel):
-    """Un total del libro (`actual`) frente al de Sílice (`meta`), RS2-7: `delta = actual - meta`;
-    `delta_pct` en centésimas (redondeo al par), nulo si la meta es cero. `sentido = "costo"`: que
-    el libro declare más de lo que calcula Sílice es desfavorable (IBCS)."""
+    """Un total del libro (`actual`) frente al de Sílice (`meta`), RS2-7: `delta = actual - meta`.
+    Es presentación (RS2-12, NORMAS §2.3): los tres montos y `delta_pct` van en centésimas al par;
+    el exacto está en `totales_libro` y `totales_silice`. `delta_pct` es nulo si la meta es cero.
+    `sentido = "exactitud"` (RS2-13): la meta es el valor correcto, así que cualquier desviación es
+    desfavorable (IBCS), en un sentido o en el otro."""
 
     clave: str
     titulo: str
@@ -141,7 +143,7 @@ class IndicadorRespuesta(BaseModel):
     meta: str
     delta: str
     delta_pct: str | None
-    sentido: Literal["costo"]
+    sentido: Literal["exactitud"]
 
 
 class LibroAuditadoRespuesta(BaseModel):
@@ -430,6 +432,15 @@ def _exacto(valor: Decimal) -> str:
     return "0" if texto in ("-0", "") else texto
 
 
+def _centesimas(valor: Decimal) -> str:
+    """Un monto presentado en centésimas al par; si no cabe en la precisión decimal, el exacto."""
+    try:
+        presentado = valor.quantize(CENTESIMA, ROUND_HALF_EVEN)
+    except InvalidOperation:
+        return _exacto(valor)
+    return format(presentado.copy_abs() if presentado == 0 else presentado, "f")
+
+
 def _porcentaje(delta: Decimal, meta: Decimal) -> Decimal | None:
     """Δ ÷ meta × 100 en centésimas al par; `None` si la meta es 0 o si el porcentaje no cabe en
     la precisión decimal (InvalidOperation al cuantizar: más de ~26 cifras enteras). `-0.00` sale
@@ -449,24 +460,27 @@ def indicadores_de(
     """Los indicadores de la franja (RS2-7), en el orden de `INDICADORES` y solo con las claves
     presentes (y no nulas) en los dos totales: `actual` = libro, `meta` = Sílice,
     `delta = actual - meta` y `delta_pct = delta / meta * 100` en centésimas con redondeo al par,
-    o `None` si `meta == 0` o no cabe (`_porcentaje`). Función pura; los montos salen como texto
-    decimal exacto sin ceros de relleno (`_exacto`)."""
+    o `None` si `meta == 0` o no cabe (`_porcentaje`). Función pura; los montos se presentan en
+    centésimas al par (`_centesimas`, RS2-12) y un Δ de menos de medio centavo es sin variación."""
     indicadores: list[IndicadorRespuesta] = []
     for clave, titulo in INDICADORES.items():
         actual, meta = totales_libro.get(clave), totales_silice.get(clave)
         if actual is None or meta is None:
             continue
         delta = actual - meta
+        delta_presentado = _centesimas(delta)
         pct = _porcentaje(delta, meta)
+        if pct is not None and Decimal(delta_presentado) == 0:
+            pct = Decimal("0.00")  # Δ menor que medio centavo: sin variación, también en Δ%
         indicadores.append(
             IndicadorRespuesta(
                 clave=clave,
                 titulo=titulo,
-                actual=_exacto(actual),
-                meta=_exacto(meta),
-                delta=_exacto(delta),
+                actual=_centesimas(actual),
+                meta=_centesimas(meta),
+                delta=delta_presentado,
                 delta_pct=_texto(pct),
-                sentido="costo",
+                sentido="exactitud",
             )
         )
     return indicadores

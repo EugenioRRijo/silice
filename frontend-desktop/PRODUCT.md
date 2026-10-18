@@ -18,7 +18,8 @@ de esta interfaz (roles `arma` y `revisa` de la instalación; el administrador n
 Sílice audita el libro de presupuesto de la empresa (`POST /v1/libros/auditoria`, reglas L1-L11) y la interfaz
 nueva lo muestra **tal como se ve en Excel**, con cada hallazgo marcado sobre su celda. Éxito: el auditor llega de
 un hallazgo a su celda y de una celda a su hallazgo sin buscar, y ve la cifra exacta (lo que dice el libro frente a
-lo que calcula Sílice) sin abrir otra pantalla.
+lo que calcula Sílice) sin abrir otra pantalla. La franja de indicadores presenta en centésimas (RS2-12) y el valor
+exacto está siempre a un toque, en el tooltip de cada indicador.
 
 ## Positioning
 
@@ -56,12 +57,14 @@ interfaz no calcula montos.
 
 - Libro sintético con memoria de cálculo a mano: `tests/fixtures/libros_empresa.py` (`libro_limpio()`, siembras
   H1-H18). Todos los nombres son inventados.
-- Ningún libro real anonimizado todavía (bloqueo B-3 de la ruta). No se inventan clientes, obras ni montos reales.
+- Dos libros reales de la empresa anonimizados con `scripts/anonimizar_libro.py` (B-3), **fuera del repositorio**:
+  solo para verificación manual en el navegador; nunca se versionan. No se inventan clientes, obras ni montos reales.
 
 ## Product Principles
 
 1. La evidencia primero: la hoja original ocupa la pantalla; los resúmenes la acompañan, no la tapan.
-2. Ninguna cifra escondida: todo hallazgo muestra su celda, su valor y su impacto a la vista.
+2. Ninguna cifra escondida: todo hallazgo muestra su celda, su valor y su impacto a la vista. La franja presenta en
+   centésimas (RS2-12) y el valor exacto está siempre a un toque, en el tooltip.
 3. El color significa algo: severidad en la hoja, favorable/desfavorable en las variaciones; nunca decoración.
 4. Lo que funciona no se rompe: Streamlit convive hasta que la interfaz nueva cubra lo mismo.
 

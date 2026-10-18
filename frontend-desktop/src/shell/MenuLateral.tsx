@@ -1,3 +1,4 @@
+import { Launch } from "@carbon/icons-react";
 import { SideNav, SideNavItems, SideNavLink } from "@carbon/react";
 import { NavLink } from "react-router";
 import { enlaceClasico, estaMigrada, rutaDe, seccionesVisibles } from "./rutas";
@@ -13,22 +14,24 @@ interface Props {
   alCerrar: () => void;
 }
 
+// Una linea por pagina (32 px): el texto «En la interfaz clásica» se dice una vez, visible, sobre el grupo, y en cada
+// elemento va oculto a la vista para quien lee con un lector de pantalla.
 function PaginaSinMigrar({ pagina, urlClasica }: { pagina: PaginaDef; urlClasica?: string | null }) {
   const enlace = enlaceClasico(urlClasica, pagina);
   return (
     <li className="silice-menu__pendiente cds--side-nav__item">
-      <span className="silice-menu__titulo cds--type-body-compact-01" aria-disabled="true">
-        {pagina.titulo}
-      </span>
-      <span className="silice-menu__nota cds--type-label-01">
-        {enlace ? (
-          <a href={enlace} target="_blank" rel="noopener noreferrer" className="silice-menu__clasica">
-            En la interfaz clásica<span className="cds--visually-hidden">: abrir {pagina.titulo}</span>
-          </a>
-        ) : (
-          "En la interfaz clásica"
-        )}
-      </span>
+      {enlace ? (
+        <a href={enlace} target="_blank" rel="noopener noreferrer" className="silice-menu__clasica cds--type-body-compact-01">
+          <span>{pagina.titulo}</span>
+          <Launch size={16} aria-hidden="true" />
+          <span className="cds--visually-hidden">En la interfaz clásica</span>
+        </a>
+      ) : (
+        <span className="silice-menu__titulo cds--type-body-compact-01" aria-disabled="true">
+          {pagina.titulo}
+          <span className="cds--visually-hidden"> En la interfaz clásica</span>
+        </span>
+      )}
     </li>
   );
 }
@@ -40,26 +43,35 @@ export function MenuLateral({ paginas, acciones, modoEntrega, urlClasica, abiert
   return (
     <SideNav aria-label="Menú principal" expanded={abierto} onSideNavBlur={alCerrar} onOverlayClick={alCerrar} isPersistent>
       <SideNavItems>
-        {secciones.map(({ seccion, paginas: delaSeccion }) => (
-          <li key={seccion} className="silice-menu__seccion">
-            <h2 id={`menu-${seccion}`} className="silice-menu__rotulo cds--type-label-01">
-              {seccion}
-            </h2>
-            <ul aria-labelledby={`menu-${seccion}`} className="silice-menu__lista">
-              {delaSeccion.map((pagina) =>
-                estaMigrada(pagina) ? (
-                  // tabIndex 0 a proposito: Carbon lo pone en -1 si el menu no esta "expandido", pero en pantalla ancha esta
-                  // siempre a la vista; en angosta, cerrado, el propio SideNav lo marca inert y no hay foco posible.
+        {secciones.map(({ seccion, paginas: delaSeccion }) => {
+          // Las ya migradas arriba, que son las que se pueden abrir aqui.
+          const migradas = delaSeccion.filter(estaMigrada);
+          const pendientes = delaSeccion.filter((p) => !estaMigrada(p));
+          return (
+            <li key={seccion} className="silice-menu__seccion">
+              <h2 id={`menu-${seccion}`} className="silice-menu__rotulo cds--type-label-01">
+                {seccion}
+              </h2>
+              <ul aria-labelledby={`menu-${seccion}`} className="silice-menu__lista">
+                {migradas.map((pagina) => (
+                  // tabIndex 0 a proposito: Carbon lo pone en -1 si el menu no esta "expandido", pero en pantalla
+                  // ancha esta siempre a la vista; en angosta, cerrado, el propio SideNav lo marca inert.
                   <SideNavLink key={pagina.id} as={NavLink} to={rutaDe(pagina)} onClick={alCerrar} tabIndex={0}>
                     {pagina.titulo}
                   </SideNavLink>
-                ) : (
+                ))}
+                {pendientes.length > 0 && (
+                  <li className="silice-menu__grupo cds--type-label-01" aria-hidden="true">
+                    En la interfaz clásica
+                  </li>
+                )}
+                {pendientes.map((pagina) => (
                   <PaginaSinMigrar key={pagina.id} pagina={pagina} urlClasica={urlClasica} />
-                ),
-              )}
-            </ul>
-          </li>
-        ))}
+                ))}
+              </ul>
+            </li>
+          );
+        })}
       </SideNavItems>
     </SideNav>
   );

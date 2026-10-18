@@ -42,6 +42,14 @@ ajustan aquí cuando la construcción los fije.
 - Real = relleno sólido; plan/meta = contorno; pronóstico = achurado (IBCS). El acento de interacción es el azul
   de Carbon (`$interactive`) y solo en acciones, foco y selección.
 
+## Marco
+
+Cabecera de Carbon de 48 px (nombre de la persona, selectores de caso y de proyecto en tamaño `sm`, «Salir») y menú
+lateral de 16 rem, fijo desde 1056 px de ancho y plegable con el botón de la cabecera por debajo. Cuatro secciones como
+en Streamlit (Trabajo, Revisión, Investigación, Administración); dentro de cada una, primero las páginas migradas y,
+bajo el rótulo «En la interfaz clásica», las que aún viven en Streamlit (una línea de 32 px, sin ser enlaces de esta
+interfaz). Las que no puede ver la cuenta no aparecen; las que sí puede y no están migradas, sí.
+
 ## Movimiento
 
 Ninguno decorativo (Eugenio, 2026-10-18). Solo las transiciones de estado propias de los componentes Carbon
@@ -55,7 +63,10 @@ sin frases de marketing, sin rayas (—) como adorno, sin rótulos en mayúscula
 Estados vacíos que enseñan qué hacer («Suelte aquí el libro .xlsx de la empresa»), errores con el `detalle` de la
 API tal cual.
 
+Los indicadores presentan en centésimas (RS2-12) y el valor exacto de los totales del libro y de Sílice está siempre a
+un toque, en el tooltip accesible de cada indicador.
+
 ## Prohibido
 
 Tarjetas con sombra para agrupar, íconos decorativos, puntos de color sin significado, gradientes, morado fuera de
-los atípicos, verde por ser positivo, cifras redondeadas que esconden el valor exacto, animaciones de entrada.
+los atípicos, verde por ser positivo, cifras redondeadas sin el exacto a la vista, animaciones de entrada.
