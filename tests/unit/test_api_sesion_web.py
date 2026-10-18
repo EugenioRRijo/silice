@@ -67,6 +67,7 @@ _ESTADO_DE_ARMA = {
         "entregar_paquete", "leer_proyecto", "cambiar_caso",
     ],
     "modo_entrega": False,
+    "url_clasica": "http://127.0.0.1:8501/",
 }
 #: Login -> contraseña vigente. `tomas` conserva la temporal: debe cambiarla.
 CUENTAS = {"admin": CONTRASENA, "ana": NUEVA, "rita": NUEVA, "tomas": CONTRASENA}
@@ -406,7 +407,7 @@ def test_get_sesion_con_cookie_da_el_usuario() -> None:
     assert respuesta.json() == {
         "login": "rita", "nombre": "Rita", "roles": ["revisa"], "csrf": _csrf(ficha),
         "debe_cambiar_clave": False, "acciones": ["leer_proyecto", "revisar_paquete"],
-        "modo_entrega": False,
+        "modo_entrega": False, "url_clasica": "http://127.0.0.1:8501/",
     }
     assert ficha not in respuesta.text
 

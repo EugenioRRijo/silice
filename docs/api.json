@@ -4205,6 +4205,18 @@
             "type": "boolean",
             "title": "Modo Entrega",
             "description": "`SILICE_MODO_ENTREGA` está encendido"
+          },
+          "url_clasica": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url Clasica",
+            "description": "La interfaz Streamlit, para las páginas aún no migradas (`null` si no hay)"
           }
         },
         "type": "object",
@@ -4215,7 +4227,8 @@
           "csrf",
           "debe_cambiar_clave",
           "acciones",
-          "modo_entrega"
+          "modo_entrega",
+          "url_clasica"
         ],
         "title": "SesionRespuesta"
       },
