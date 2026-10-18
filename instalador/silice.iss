@@ -189,8 +189,10 @@ begin
   if CurStep = ssPostInstall then
   begin
     if (not Exec(ExpandConstant('{app}\python\python.exe'), '{#Op} migrar',
-        ExpandConstant('{app}\codigo'), SW_HIDE, ewWaitUntilTerminated, Codigo))
-       or (Codigo <> 0) then
+        ExpandConstant('{app}\codigo'), SW_HIDE, ewWaitUntilTerminated, Codigo)) then
+      Codigo := -1;
+    Log('operacion migrar: codigo ' + IntToStr(Codigo));
+    if Codigo <> 0 then
       SuppressibleMsgBox(
         'Sílice se instaló, pero no pudo actualizar sus bases de datos. Sus datos no se ' +
         'tocaron y hay un respaldo previo. Abra Sílice: le dirá qué hacer (manual de ' +

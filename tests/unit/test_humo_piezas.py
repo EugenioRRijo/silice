@@ -11,7 +11,9 @@ from __future__ import annotations
 import http.client
 import json
 import re
+import shutil
 import sqlite3
+import subprocess
 import threading
 from contextlib import closing
 from pathlib import Path
@@ -242,3 +244,77 @@ def test_humo_no_pide_nada_a_internet_desde_el_programa() -> None:
 def test_humo_trae_bom_para_powershell_5() -> None:
     """Windows PowerShell 5.1 lee sin BOM como ANSI y rompería «Sílice» y «ñ»."""
     assert HUMO.read_bytes().startswith(b"\xef\xbb\xbf")
+
+
+def test_el_humo_espera_cada_base_cuando_el_diseno_la_crea() -> None:
+    """La instalación crea `instalacion.db` (orden `migrar`, spec S5 UC-24 paso 2) y el caso de
+    demostración (orden `demostracion`); el caso por defecto `casos/silice.db` lo crea el lanzador
+    al primer arranque (`preparar_base`, spec S5 §5.4 paso 3). Hasta 2026-10-18 el paso 2 exigía
+    `silice.db` justo después de instalar, y el humo nunca pasó en la CI."""
+    texto = HUMO.read_text(encoding="utf-8-sig")
+    paso2, paso3 = texto.index("Paso '2."), texto.index("Paso '3.")
+    paso4, paso5 = texto.index("Paso '4."), texto.index("Paso '5.")
+    instalacion = texto[paso2:paso3]
+    arranque = texto[paso4:paso5]
+    assert "'instalacion.db'" in instalacion and r"'casos\demostracion.db'" in instalacion
+    assert "silice.db" not in instalacion
+    assert r"'casos\silice.db'" in arranque
+    assert arranque.index("EsperarSalud") < arranque.index("silice.db")
+
+
+def test_ninguna_variable_del_humo_pisa_a_otra_por_mayusculas() -> None:
+    """PowerShell no distingue mayúsculas en los nombres de variable: `$codigo = InstalarSilencioso`
+    pisaba la ruta `$Codigo` con el código de salida y el paso 3 arrancaba en la carpeta «0»
+    (diagnosticado en la CI el 2026-10-18). Cada variable global del encabezado se asigna una
+    sola vez."""
+    texto = HUMO.read_text(encoding="utf-8-sig")
+    globales = ("Base", "Programa", "Usuario", "Datos", "Respaldos", "Codigo", "Python")
+    for nombre in globales:
+        asignaciones = re.findall(rf"(?im)^\s*\${nombre}\s*=", texto)
+        assert len(asignaciones) == 1, (nombre, asignaciones)
+
+
+def _funcion_del_humo(nombre: str) -> str:
+    """El texto de `function nombre ... }` de `humo.ps1` (las funciones de este archivo cierran en
+    una línea que empieza por `}` sin sangría)."""
+    texto = HUMO.read_text(encoding="utf-8-sig")
+    m = re.search(rf"^function {nombre}\b.*?^\}}$", texto, re.S | re.M)
+    assert m, nombre
+    return m.group(0)
+
+
+def _a_entero(ip: str) -> int:
+    a, b, c, d = (int(x) for x in ip.split("."))
+    return (a << 24) | (b << 16) | (c << 8) | d
+
+
+@pytest.mark.parametrize(
+    "ip",
+    ["10.1.2.3", "10.0.0.0", "172.18.0.5", "192.168.1.7", "128.0.0.0", "126.255.255.255"],
+)
+def test_rangos_sin_cubre_todo_ipv4_salvo_el_bucle_local_y_la_ip_propia(
+    ip: str, tmp_path: Path
+) -> None:
+    """Set-NetFirewallRule rechaza un rango con el final menor que el inicio: la CI de Windows lo
+    probó con una IP 10.x (inicio 128.0.0.0) y el paso 8 del humo cayó. Se corre la función
+    REAL de `humo.ps1` con PowerShell y se compara con un oráculo en enteros."""
+    pwsh = shutil.which("pwsh")
+    assert pwsh, "la prueba necesita PowerShell 7 (pwsh), igual que la CI"
+    guion = tmp_path / "rangos.ps1"
+    guion.write_text(
+        "\n".join(_funcion_del_humo(f) for f in ("AEntero", "ADecimal", "RangosSin"))
+        + f"\nRangosSin '{ip}'\n",
+        encoding="utf-8",
+    )
+    salida = subprocess.run(
+        [pwsh, "-NoProfile", "-File", str(guion)], capture_output=True, text=True, check=True
+    ).stdout.split()
+    tramos = [tuple(_a_entero(x) for x in r.split("-")) for r in salida]
+    assert all(inicio <= fin for inicio, fin in tramos), salida
+    propia = _a_entero(ip)
+    # Sin solaparse y ordenados: cada tramo empieza después del final del anterior.
+    assert all(a[1] < b[0] for a, b in zip(tramos, tramos[1:], strict=False)), salida
+    cubierto = sum(fin - inicio + 1 for inicio, fin in tramos)
+    assert cubierto == (2**32 - 2**24) - 1  # todo menos 127.0.0.0/8 y la IP propia
+    assert not any(inicio <= propia <= fin for inicio, fin in tramos)
+    assert not any(inicio <= _a_entero("127.0.0.1") <= fin for inicio, fin in tramos)

@@ -2,7 +2,7 @@
 RF-97 e; spec S5 §11.2 paso 9).
 
     uv run python instalador/verificar_bases.py --casos <carpeta> \\
-        --par 0.5.0:demo.db=v050_demo.db --par 0.9.0:demo.db=v090_demo.db
+        --par 0.5.0:demo.db=v050_demo.db --par 1.0.0:demo.db=v100_demo.db
 
 Cada `--par` es `VERSION:BASE=ARCHIVO`: el archivo de la carpeta de casos y la base de
 `tests/fixtures/bases/` de la que salió. Debe estar en `head` y dar las filas por tabla, el total
