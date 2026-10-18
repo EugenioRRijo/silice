@@ -266,7 +266,7 @@ def test_un_paquete_declarado_que_no_existe_falla(tmp_path: Path) -> None:
 def test_un_archivo_o_un_dato_declarado_que_no_existe_falla(tmp_path: Path) -> None:
     (tmp_path / "pkg").mkdir()
     (tmp_path / "pkg" / "__init__.py").write_text("", encoding="utf-8")
-    m = mf.Manifiesto("3.13.13", (), False, (), ("pkg",), (), (), (), ())
+    m = mf.Manifiesto("3.13.13", (), False, (), ("pkg",), (), (), (), (), "")
     with pytest.raises(mf.ManifiestoInvalido, match="NO_EXISTE.txt"):
         mf.archivos_de_codigo(tmp_path, replace(m, archivos=("NO_EXISTE.txt",)))
     with pytest.raises(mf.ManifiestoInvalido, match="data/no_existe"):
@@ -296,6 +296,7 @@ def test_las_bases_de_prueba_no_viajan_aunque_se_declaren(tmp_path: Path) -> Non
         cierre_desde=(),
         datos_incluir=("tests/fixtures/bases",),
         datos_excluir_sufijos=(".db",),
+        interfaz_dist="",
     )
     with pytest.raises(mf.ManifiestoInvalido, match="tests/fixtures/bases/v0_5_0/ficha.json"):
         mf.archivos_de_codigo(tmp_path, m)
@@ -308,7 +309,9 @@ def test_los_sufijos_excluidos_se_quedan_fuera_de_los_datos(tmp_path: Path) -> N
     for relativa in ("data/x/a.csv", "data/x/b.pdf", "data/x/c.DB", "data/x/d.xlsx"):
         (tmp_path / relativa).parent.mkdir(parents=True, exist_ok=True)
         (tmp_path / relativa).write_bytes(b"x")
-    m = mf.Manifiesto("3.13.13", (), False, (), (), (), (), ("data/x",), (".pdf", ".db", ".xlsx"))
+    m = mf.Manifiesto(
+        "3.13.13", (), False, (), (), (), (), ("data/x",), (".pdf", ".db", ".xlsx"), ""
+    )
     assert mf.archivos_de_codigo(tmp_path, m) == [Path("data/x/a.csv")]
 
 
