@@ -37,7 +37,7 @@ REVISION_BASE = "caso_0001_base_0_5_0"
 RAIZ = Path(__file__).resolve().parents[2]
 METADATAS = {Destino.CASO: METADATAS_CASO, Destino.INSTALACION: METADATAS_INSTALACION}
 #: Paquetes donde puede vivir una `MetaData` con tablas (spec S5 §4.3, RNF-20).
-PAQUETES_CON_TABLAS = ("core", "adapters", "ui", "seguridad", "paquete", "asistente")
+PAQUETES_CON_TABLAS = ("core", "adapters", "ui", "seguridad", "paquete", "asistente", "produccion")
 
 
 def _url(ruta: Path) -> str:
@@ -262,7 +262,7 @@ def test_la_instalacion_nace_con_las_tablas_de_seguridad_y_su_alembic_version(
     """S3-1 llena el destino de la instalación (hasta la 0.7.0 nacía vacío)."""
     base = tmp_path / "instalacion.db"
     aplicar_revisiones(base, Destino.INSTALACION)
-    assert revision_head(Destino.INSTALACION) == "ins_0001_seguridad"
+    assert revision_head(Destino.INSTALACION) == "ins_0002_produccion"
     with closing(sqlite3.connect(base)) as conexion:
         tablas = {
             n for (n,) in conexion.execute("SELECT name FROM sqlite_master WHERE type = 'table'")
@@ -270,7 +270,7 @@ def test_la_instalacion_nace_con_las_tablas_de_seguridad_y_su_alembic_version(
         assert tablas == {
             "alembic_version", "usuario", "intento_acceso", "sesion", "evento_acceso",
             "codigo_instalacion", "empresa_propia", "clave_empresa", "empresa_registrada",
-            "clave_api",
+            "clave_api", "prod_material", "prod_movimiento", "prod_pesaje_sospechoso",
         }
         assert conexion.execute("SELECT version_num FROM alembic_version").fetchall() == [
-            ("ins_0001_seguridad",)]
+            ("ins_0002_produccion",)]

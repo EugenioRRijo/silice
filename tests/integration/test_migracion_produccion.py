@@ -1,4 +1,4 @@
-"""`ins_0002_produccion`: las tablas de la arenera en la base de la instalacion (RT-S4-1, RNF-20)."""
+"""`ins_0002_produccion`: las tablas de la arenera en la instalacion (RT-S4-1, RNF-20)."""
 
 from __future__ import annotations
 

@@ -5,6 +5,7 @@ from __future__ import annotations
 from adapters.espacio import persistencia
 from core.models import Base
 from migraciones.metadatos import METADATAS_CASO, METADATAS_INSTALACION
+from produccion.modelo import METADATA_PRODUCCION
 from seguridad.modelo import Base as BaseSeguridad
 
 
@@ -27,4 +28,4 @@ def test_el_caso_lleva_el_registro_del_asistente() -> None:
 
 
 def test_la_instalacion_lleva_seguridad() -> None:
-    assert METADATAS_INSTALACION == (BaseSeguridad.metadata,)
+    assert METADATAS_INSTALACION == (BaseSeguridad.metadata, METADATA_PRODUCCION)

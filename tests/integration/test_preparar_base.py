@@ -248,7 +248,7 @@ def test_la_base_de_la_instalacion_nace_con_las_tablas_de_seguridad() -> None:
     """S3-1 llena el destino de la instalación (hasta la 0.7.0 nacía vacío)."""
     ruta = config.ruta_instalacion()
     primero = preparar_base(ruta, Destino.INSTALACION)
-    assert primero.nueva and primero.revision_destino == "ins_0001_seguridad"
+    assert primero.nueva and primero.revision_destino == "ins_0002_produccion"
     with closing(sqlite3.connect(ruta)) as conexion:
         tablas = {
             n for (n,) in conexion.execute("SELECT name FROM sqlite_master WHERE type = 'table'")
@@ -256,7 +256,7 @@ def test_la_base_de_la_instalacion_nace_con_las_tablas_de_seguridad() -> None:
     assert tablas == {
         "alembic_version", "usuario", "intento_acceso", "sesion", "evento_acceso",
         "codigo_instalacion", "empresa_propia", "clave_empresa", "empresa_registrada",
-        "clave_api",
+        "clave_api", "prod_material", "prod_movimiento", "prod_pesaje_sospechoso",
     }
     segundo = preparar_base(ruta, Destino.INSTALACION)
     assert segundo.juego is None and not segundo.nueva

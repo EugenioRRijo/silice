@@ -13,6 +13,7 @@ from adapters.espacio.persistencia import METADATA_ESPACIO
 from asistente.registro import METADATA_IA
 from core.models import Base
 from paquete.modelo import METADATA_PAQUETE
+from produccion.modelo import METADATA_PRODUCCION
 from seguridad.modelo import Base as BaseSeguridad
 
 METADATAS_CASO: tuple[MetaData, ...] = (
@@ -21,4 +22,4 @@ METADATAS_CASO: tuple[MetaData, ...] = (
     METADATA_IA,
     METADATA_PAQUETE,
 )
-METADATAS_INSTALACION: tuple[MetaData, ...] = (BaseSeguridad.metadata,)
+METADATAS_INSTALACION: tuple[MetaData, ...] = (BaseSeguridad.metadata, METADATA_PRODUCCION)
