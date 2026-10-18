@@ -29,3 +29,22 @@ def test_el_registro_trae_las_constantes_del_plan_con_su_estado():
 def test_una_constante_a_cotejar_usada_en_calculo_seria_detectada():
     mala = Constante("X", "1", EstadoDato.A_COTEJAR, "F-1", usada_en_calculo=True)
     assert mala.estado in (EstadoDato.A_COTEJAR, EstadoDato.SIN_FUENTE) and mala.usada_en_calculo
+
+
+def test_las_constantes_numericas_son_las_del_registro():
+    """Las constantes que usa el lector de bascula salen de `fuentes.py` como numeros, no como texto."""
+    from decimal import Decimal
+
+    from produccion import fuentes
+
+    por_nombre = {c.nombre: c.valor for c in CONSTANTES}
+    assert fuentes.MAX_FILAS == 100000 and isinstance(fuentes.MAX_FILAS, int)
+    assert fuentes.MAX_COLUMNAS == 60 and isinstance(fuentes.MAX_COLUMNAS, int)
+    assert fuentes.FILAS_DE_ENCABEZADO == 30 and isinstance(fuentes.FILAS_DE_ENCABEZADO, int)
+    assert fuentes.TOLERANCIA_NETO_T == Decimal("0") and isinstance(fuentes.TOLERANCIA_NETO_T, Decimal)
+    assert por_nombre == {
+        "MAX_FILAS": "100000",
+        "MAX_COLUMNAS": "60",
+        "FILAS_DE_ENCABEZADO": "30",
+        "TOLERANCIA_NETO_T": "0",
+    }
