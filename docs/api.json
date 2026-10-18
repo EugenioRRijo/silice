@@ -1139,6 +1139,99 @@
         }
       }
     },
+    "/v1/auditorias-libro": {
+      "get": {
+        "tags": [
+          "auditorias-libro"
+        ],
+        "summary": "Listar Auditorias",
+        "description": "Las auditorias mas recientes de la instalacion, la ultima primero.",
+        "operationId": "listar_auditorias_v1_auditorias_libro_get",
+        "parameters": [
+          {
+            "name": "limite",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 20,
+              "title": "Limite"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AuditoriaResumenRespuesta"
+                  },
+                  "title": "Response Listar Auditorias V1 Auditorias Libro Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/auditorias-libro/{auditoria_id}": {
+      "get": {
+        "tags": [
+          "auditorias-libro"
+        ],
+        "summary": "Ver Auditoria",
+        "description": "El resumen y los hallazgos compactos de una auditoria guardada.",
+        "operationId": "ver_auditoria_v1_auditorias_libro__auditoria_id__get",
+        "parameters": [
+          {
+            "name": "auditoria_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Auditoria Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditoriaDetalleRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/sesion": {
       "get": {
         "tags": [
@@ -1764,6 +1857,117 @@
         ],
         "title": "AlertaPrecioRespuesta"
       },
+      "AuditoriaDetalleRespuesta": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "archivo": {
+            "type": "string",
+            "title": "Archivo"
+          },
+          "fecha": {
+            "type": "string",
+            "title": "Fecha"
+          },
+          "tipo": {
+            "type": "string",
+            "enum": [
+              "libro",
+              "pdf"
+            ],
+            "title": "Tipo"
+          },
+          "errores": {
+            "type": "integer",
+            "title": "Errores"
+          },
+          "advertencias": {
+            "type": "integer",
+            "title": "Advertencias"
+          },
+          "usuario": {
+            "type": "string",
+            "title": "Usuario"
+          },
+          "sha256": {
+            "type": "string",
+            "title": "Sha256"
+          },
+          "fecha_libro": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fecha Libro"
+          },
+          "total_libro": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Libro"
+          },
+          "total_silice": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Silice"
+          },
+          "informativos": {
+            "type": "integer",
+            "title": "Informativos"
+          },
+          "atipicos": {
+            "type": "integer",
+            "title": "Atipicos"
+          },
+          "recortado": {
+            "type": "boolean",
+            "title": "Recortado"
+          },
+          "hallazgos": {
+            "items": {
+              "$ref": "#/components/schemas/HallazgoGuardadoRespuesta"
+            },
+            "type": "array",
+            "title": "Hallazgos"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "archivo",
+          "fecha",
+          "tipo",
+          "errores",
+          "advertencias",
+          "usuario",
+          "sha256",
+          "fecha_libro",
+          "total_libro",
+          "total_silice",
+          "informativos",
+          "atipicos",
+          "recortado",
+          "hallazgos"
+        ],
+        "title": "AuditoriaDetalleRespuesta"
+      },
       "AuditoriaRespuesta": {
         "properties": {
           "fecha_evaluacion": {
@@ -1833,6 +2037,48 @@
           "diferencias"
         ],
         "title": "AuditoriaRespuesta"
+      },
+      "AuditoriaResumenRespuesta": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "archivo": {
+            "type": "string",
+            "title": "Archivo"
+          },
+          "fecha": {
+            "type": "string",
+            "title": "Fecha"
+          },
+          "tipo": {
+            "type": "string",
+            "enum": [
+              "libro",
+              "pdf"
+            ],
+            "title": "Tipo"
+          },
+          "errores": {
+            "type": "integer",
+            "title": "Errores"
+          },
+          "advertencias": {
+            "type": "integer",
+            "title": "Advertencias"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "archivo",
+          "fecha",
+          "tipo",
+          "errores",
+          "advertencias"
+        ],
+        "title": "AuditoriaResumenRespuesta"
       },
       "Body_auditar_libro_v1_libros_auditoria_post": {
         "properties": {
@@ -2928,6 +3174,39 @@
         },
         "type": "object",
         "title": "HTTPValidationError"
+      },
+      "HallazgoGuardadoRespuesta": {
+        "properties": {
+          "regla": {
+            "type": "string",
+            "title": "Regla"
+          },
+          "hoja": {
+            "type": "string",
+            "title": "Hoja"
+          },
+          "celda": {
+            "type": "string",
+            "title": "Celda"
+          },
+          "severidad": {
+            "type": "string",
+            "title": "Severidad"
+          },
+          "mensaje": {
+            "type": "string",
+            "title": "Mensaje"
+          }
+        },
+        "type": "object",
+        "required": [
+          "regla",
+          "hoja",
+          "celda",
+          "severidad",
+          "mensaje"
+        ],
+        "title": "HallazgoGuardadoRespuesta"
       },
       "HallazgoLibroRespuesta": {
         "properties": {
