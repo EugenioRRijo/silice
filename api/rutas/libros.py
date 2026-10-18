@@ -421,13 +421,23 @@ def _montos(mapa) -> dict[str, str]:
     return {str(k): format(v, "f") for k, v in (mapa or {}).items() if v is not None}
 
 
+def _exacto(valor: Decimal) -> str:
+    """Texto decimal exacto sin ceros de relleno ni notación científica: `4358.2082500` ->
+    `4358.20825`, `1E+3` -> `1000`, `-0.000` -> `0`. No redondea: solo quita lo que no es cifra."""
+    texto = format(valor, "f")
+    if "." in texto:
+        texto = texto.rstrip("0").rstrip(".")
+    return "0" if texto in ("-0", "") else texto
+
+
 def indicadores_de(
     totales_libro: Mapping[str, Decimal | None], totales_silice: Mapping[str, Decimal | None]
 ) -> list[IndicadorRespuesta]:
     """Los indicadores de la franja (RS2-7), en el orden de `INDICADORES` y solo con las claves
     presentes (y no nulas) en los dos totales: `actual` = libro, `meta` = Sílice,
     `delta = actual - meta` y `delta_pct = delta / meta * 100` en centésimas con redondeo al par,
-    o `None` si `meta == 0`. Función pura; los montos salen como texto decimal."""
+    o `None` si `meta == 0`. Función pura; los montos salen como texto decimal exacto sin ceros de
+    relleno (`_exacto`)."""
     indicadores: list[IndicadorRespuesta] = []
     for clave, titulo in INDICADORES.items():
         actual, meta = totales_libro.get(clave), totales_silice.get(clave)
@@ -439,9 +449,9 @@ def indicadores_de(
             IndicadorRespuesta(
                 clave=clave,
                 titulo=titulo,
-                actual=format(actual, "f"),
-                meta=format(meta, "f"),
-                delta=format(delta, "f"),
+                actual=_exacto(actual),
+                meta=_exacto(meta),
+                delta=_exacto(delta),
                 delta_pct=_texto(pct),
                 sentido="costo",
             )

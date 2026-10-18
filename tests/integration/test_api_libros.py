@@ -455,14 +455,16 @@ def test_indicadores_del_libro_limpio_no_tienen_variacion(cliente, limpio) -> No
         ("TOTALGEN", "Total general", "costo"),
     ]
     # El libro guarda la memoria (4 358,20825; 697,31332; 5 055,52157) y Silice recalcula los
-    # mismos valores con más ceros a la derecha (7 y 9 decimales): Δ = 0 con esos decimales.
+    # mismos valores con ceros de relleno (7 y 9 decimales); los indicadores los muestran sin
+    # ellos y sin redondear: Δ = 0.
     assert _indicadores(d) == {
-        "SUBSINIVA": ("4358.20825", "4358.2082500", "0.0000000", "0.00"),
-        "IVATOT": ("697.31332", "697.313320000", "0.000000000", "0.00"),
-        "TOTALGEN": ("5055.52157", "5055.521570000", "0.000000000", "0.00"),
+        "SUBSINIVA": ("4358.20825", "4358.20825", "0", "0.00"),
+        "IVATOT": ("697.31332", "697.31332", "0", "0.00"),
+        "TOTALGEN": ("5055.52157", "5055.52157", "0", "0.00"),
     }
     for clave, (actual, meta, _, _) in _indicadores(d).items():
-        assert actual == d["totales_libro"][clave] and meta == d["totales_silice"][clave]
+        assert Decimal(actual) == Decimal(d["totales_libro"][clave])
+        assert Decimal(meta) == Decimal(d["totales_silice"][clave])
         assert Decimal(actual) == Decimal(meta) == MEMORIA[clave]
 
 
@@ -479,9 +481,9 @@ def test_indicadores_con_sobreprecio_sembrado(cliente) -> None:
     meta = MEMORIA["SUBSINIVA"]
     assert meta * Decimal("0.01405") <= Decimal("61.593") < meta * Decimal("0.01415")
     assert _indicadores(d) == {
-        "SUBSINIVA": ("4419.80125", "4358.2082500", "61.5930000", "1.41"),
-        "IVATOT": ("707.1682", "697.313320000", "9.854880000", "1.41"),
-        "TOTALGEN": ("5126.96945", "5055.521570000", "71.447880000", "1.41"),
+        "SUBSINIVA": ("4419.80125", "4358.20825", "61.593", "1.41"),
+        "IVATOT": ("707.1682", "697.31332", "9.85488", "1.41"),
+        "TOTALGEN": ("5126.96945", "5055.52157", "71.44788", "1.41"),
     }
     assert Decimal("120") * (Decimal("15") - Decimal("14.486725")) == Decimal("61.593")
     assert Decimal("0.16") * Decimal("61.593") == Decimal("9.85488")
@@ -495,9 +497,9 @@ def test_indicadores_con_h1_bajo_el_costo_de_silice(cliente, con_h1) -> None:
     meta = MEMORIA["SUBSINIVA"]
     assert meta * Decimal("0.03535") <= Decimal("154.275") < meta * Decimal("0.03545")
     assert _indicadores(d) == {
-        "SUBSINIVA": ("4203.93325", "4358.2082500", "-154.2750000", "-3.54"),
-        "IVATOT": ("672.62932", "697.313320000", "-24.684000000", "-3.54"),
-        "TOTALGEN": ("4876.56257", "5055.521570000", "-178.959000000", "-3.54"),
+        "SUBSINIVA": ("4203.93325", "4358.20825", "-154.275", "-3.54"),
+        "IVATOT": ("672.62932", "697.31332", "-24.684", "-3.54"),
+        "TOTALGEN": ("4876.56257", "5055.52157", "-178.959", "-3.54"),
     }
 
 

@@ -312,7 +312,7 @@ def test_meta_cero_da_delta_pct_nulo() -> None:
     i = _uno("12.5", "0")
     assert (i.actual, i.meta, i.delta, i.delta_pct) == ("12.5", "0", "12.5", None)
     j = _uno("0", "0.00")
-    assert (j.delta, j.delta_pct) == ("0.00", None)
+    assert (j.meta, j.delta, j.delta_pct) == ("0", "0", None)
 
 
 def test_claves_titulos_orden_y_sentido() -> None:
@@ -379,3 +379,19 @@ def test_delta_pct_en_centesimas_con_redondeo_al_par(actual, delta, delta_pct) -
 def test_los_montos_viajan_como_texto_sin_notacion_cientifica() -> None:
     i = _uno("1E+3", "5E+2")  # 1 000 y 500
     assert (i.actual, i.meta, i.delta, i.delta_pct) == ("1000", "500", "500", "100.00")
+
+
+@pytest.mark.parametrize(
+    ("actual", "meta", "esperado"),
+    [
+        # Sílice guarda ceros de relleno (4 358,2082500): se quitan sin redondear nada.
+        ("4358.20825", "4358.2082500", ("4358.20825", "4358.20825", "0")),
+        ("100.10", "100.000", ("100.1", "100", "0.1")),
+        # −0,000 se muestra como 0, sin signo
+        ("5.000", "5", ("5", "5", "0")),
+        ("1E+3", "1000.0", ("1000", "1000", "0")),
+    ],
+)
+def test_los_montos_se_muestran_sin_ceros_de_relleno(actual, meta, esperado) -> None:
+    i = _uno(actual, meta)
+    assert (i.actual, i.meta, i.delta) == esperado
