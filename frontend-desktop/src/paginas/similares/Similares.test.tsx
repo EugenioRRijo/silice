@@ -85,24 +85,75 @@ describe("Partidas similares", () => {
     expect(fetchFalso).not.toHaveBeenCalled();
   });
 
-  test("una descripcion en blanco no se envia", async () => {
+  test("con la descripcion en blanco el boton Buscar esta deshabilitado y no se envia nada", async () => {
     montar();
-    await buscar("   ");
+    const usuario = userEvent.setup();
+    expect(screen.getByRole("button", { name: "Buscar" })).toBeDisabled();
+    await usuario.type(screen.getByLabelText("Descripción de la partida"), "   ");
+    expect(screen.getByRole("button", { name: "Buscar" })).toBeDisabled();
+    await usuario.type(screen.getByLabelText("Descripción de la partida"), "{Enter}");
     expect(fetchFalso).not.toHaveBeenCalled();
+  });
+
+  test("el texto de ayuda no lleva jerga y la region de resultados esta siempre montada", () => {
+    montar();
+    expect(screen.getByText(/Sílice propone las más parecidas del catálogo/)).toBeInTheDocument();
+    expect(screen.queryByText(/semántica|entrenamiento/)).toBeNull();
+    const region = document.querySelector('[aria-live="polite"]');
+    expect(region).not.toBeNull();
+    expect(region?.getAttribute("aria-atomic")).toBe("true");
+  });
+
+  test("una sola propuesta dice «1 propuesta»", async () => {
+    respuesta = () => json({ propuestas: [CONCRETO], falla: null, mensaje: null });
+    montar();
+    await buscar("concreto");
+    expect(await screen.findByText("1 propuesta")).toBeInTheDocument();
+  });
+
+  test("si el texto cambia despues de buscar, avisa de que busco el anterior", async () => {
+    montar();
+    const usuario = await buscar("concreto");
+    await screen.findByText("2 propuestas, de mayor a menor similitud");
+    expect(screen.queryByText(/Resultados de:/)).toBeNull();
+    await usuario.type(screen.getByLabelText("Descripción de la partida"), " armado");
+    expect(screen.getByText("Resultados de: “concreto”")).toBeInTheDocument();
+  });
+
+  test("una respuesta vieja se descarta si ya se hizo otra busqueda", async () => {
+    const pendientes: ((r: Response) => void)[] = [];
+    fetchFalso.mockImplementation(() => new Promise<Response>((resolver) => pendientes.push(resolver)));
+    montar();
+    const usuario = await buscar("primera");
+    await usuario.clear(screen.getByLabelText("Descripción de la partida"));
+    await usuario.type(screen.getByLabelText("Descripción de la partida"), "segunda");
+    await usuario.click(screen.getByRole("button", { name: "Buscar" }));
+    expect(pendientes).toHaveLength(2);
+    pendientes[1](json({ propuestas: [], falla: null, mensaje: "Respuesta de la segunda." }));
+    expect(await screen.findByText("Respuesta de la segunda.")).toBeInTheDocument();
+    pendientes[0](json({ propuestas: [], falla: null, mensaje: "Respuesta de la primera." }));
+    await new Promise((r) => setTimeout(r, 20));
+    expect(screen.queryByText("Respuesta de la primera.")).toBeNull();
+    expect(screen.getByText("Respuesta de la segunda.")).toBeInTheDocument();
   });
 
   test("manda la descripcion por POST y lista las propuestas con titulo, origen y desglose", async () => {
     montar();
     const usuario = await buscar("concreto para paredes");
-    expect(await screen.findByText("2 propuesta(s), de mayor a menor similitud")).toBeInTheDocument();
+    expect(await screen.findByText("2 propuestas, de mayor a menor similitud")).toBeInTheDocument();
     const [ruta, opciones] = fetchFalso.mock.calls[0];
     expect(ruta).toBe("/v1/similares");
     expect(opciones?.method).toBe("POST");
     expect(JSON.parse(String(opciones?.body))).toEqual({ descripcion: "concreto para paredes" });
 
-    await usuario.click(screen.getByRole("button", { name: "0.91 - FIC-01 - Vaciado de concreto ficticio" }));
+    await usuario.click(screen.getByRole("button", { name: /Puntajes*0.91 - FIC-01 - Vaciado de concreto ficticio/ }));
     expect(screen.getByText("Partida de origen: FIC-01 | puntaje de similitud: 0.9137")).toBeInTheDocument();
-    expect(screen.getByText("Unidad: m3 | Rendimiento: 8.00 m3/día")).toBeInTheDocument();
+    expect(screen.getByText("Unidad:").tagName).toBe("STRONG");
+    expect(screen.getByText("Rendimiento:").tagName).toBe("STRONG");
+    expect(screen.getByText("8.00 m3/día", { exact: false })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Materiales" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Equipos" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Mano de obra" })).toBeInTheDocument();
     const materiales = screen.getByRole("table", { name: "Materiales" });
     expect(within(materiales).getByText("7.50")).toBeInTheDocument();
     expect(within(materiales).getByText("15.00")).toBeInTheDocument();
@@ -113,7 +164,7 @@ describe("Partidas similares", () => {
   test("el desglose incompleto se avisa y no se muestra a medias", async () => {
     montar();
     const usuario = await buscar("zanja");
-    await usuario.click(await screen.findByRole("button", { name: "0.64 - FIC-02 - Zanja ficticia" }));
+    await usuario.click(await screen.findByRole("button", { name: /Puntajes*0.64 - FIC-02 - Zanja ficticia/ }));
     const aviso = screen.getByText(/Desglose incompleto en la lista vigente/);
     expect(aviso).toBeInTheDocument();
     const panel = aviso.closest(".silice-similares__detalle") as HTMLElement;

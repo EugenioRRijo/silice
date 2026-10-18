@@ -6,6 +6,7 @@ import {
   filasManoObra,
   filasMateriales,
   origenDePropuesta,
+  resultadosDe,
   rendimientoEnTexto,
   tituloDePropuesta,
 } from "./logica";
@@ -31,8 +32,10 @@ describe("logica de Partidas similares", () => {
   test("el titulo y el origen son los de la pagina de Streamlit", () => {
     expect(tituloDePropuesta(PROPUESTA)).toBe("0.91 - LB-04-CON - Vaciado de concreto");
     expect(origenDePropuesta(PROPUESTA)).toBe("Partida de origen: LB-04-CON | puntaje de similitud: 0.9137");
-    expect(encabezadoDeLista(2)).toBe("2 propuesta(s), de mayor a menor similitud");
-    expect(rendimientoEnTexto(COMPOSICION)).toBe("Unidad: m3 | Rendimiento: 8.00 m3/día");
+    expect(encabezadoDeLista(2)).toBe("2 propuestas, de mayor a menor similitud");
+    expect(encabezadoDeLista(1)).toBe("1 propuesta");
+    expect(rendimientoEnTexto(COMPOSICION)).toEqual({ unidad: "m3", rendimiento: "8.00 m3/día" });
+    expect(resultadosDe("  zanja ")).toBe("Resultados de: “zanja”");
   });
 
   test("las filas conservan el texto de la API y llevan id por posicion", () => {

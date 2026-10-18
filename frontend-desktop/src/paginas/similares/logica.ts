@@ -57,11 +57,23 @@ export function origenDePropuesta(p: Propuesta): string {
 }
 
 export function encabezadoDeLista(cantidad: number): string {
-  return `${cantidad} propuesta(s), de mayor a menor similitud`;
+  return cantidad === 1 ? "1 propuesta" : `${cantidad} propuestas, de mayor a menor similitud`;
 }
 
-export function rendimientoEnTexto(c: Composicion): string {
-  return `Unidad: ${c.unidad} | Rendimiento: ${c.rendimiento} ${c.unidad}/día`;
+export const ROTULO_MATERIALES = "Materiales";
+export const ROTULO_EQUIPOS = "Equipos";
+export const ROTULO_MANO_DE_OBRA = "Mano de obra";
+
+export const AYUDA =
+  "Escriba la descripción de la partida: Sílice propone las más parecidas del catálogo para reutilizar su desglose y su rendimiento.";
+
+// Unidad y rendimiento tal como los manda la API; la interfaz solo les agrega la unidad de tiempo.
+export function rendimientoEnTexto(c: Composicion): { unidad: string; rendimiento: string } {
+  return { unidad: c.unidad, rendimiento: `${c.rendimiento} ${c.unidad}/día` };
+}
+
+export function resultadosDe(buscado: string): string {
+  return `Resultados de: “${buscado.trim()}”`;
 }
 
 // Las filas llevan un id estable (la posicion) porque una descripcion puede repetirse.
