@@ -33,9 +33,13 @@ from fusion.historial import (
     detalle,
     listar,
     registrar_auditoria,
+    registrar_resultado,
+    registrar_resultado_pdf,
 )
+from fusion.proceso import ResultadoPdf, procesar_libro
 from operacion.base_datos import Destino, aplicar_revisiones
 from seguridad.base import abrir_sesion, crear_motor
+from tests.fixtures.libros_empresa import libro_limpio
 
 SHA = "ab" * 32
 AHORA = datetime(2026, 10, 18, 14, 3, 5)
@@ -268,3 +272,37 @@ def test_detalle_de_una_auditoria_que_no_existe(sesion) -> None:
     with pytest.raises(AuditoriaInexistente):
         detalle(sesion, 99)
     assert issubclass(AuditoriaInexistente, LookupError)
+
+
+# --- desde el resultado de la fusion -------------------------------------------------------------
+
+
+def test_registrar_resultado_guarda_el_libro_limpio_con_los_numeros_de_la_memoria(sesion) -> None:
+    """Libro limpio (`tests/fixtures/libros_empresa.py`): total del libro y de Silice 5055.52157,
+    portada «Julio 2026» (fecha del libro 2026-07-31) y dos hallazgos INFO, R2 y R7."""
+    resultado = procesar_libro(
+        libro_limpio().datos, "obras\libro.xlsx", fecha_devolucion=date(2026, 10, 13)
+    )
+    guardada = registrar_resultado(sesion, resultado, usuario="Ana <ana>", ahora=AHORA)
+    assert guardada.tipo == "libro" and guardada.nombre_archivo == "libro.xlsx"
+    assert guardada.sha256 == resultado.libro.sha256 and len(guardada.sha256) == 64
+    assert guardada.fecha_libro == date(2026, 7, 31)
+    assert guardada.total_libro == Decimal("5055.52157") == guardada.total_silice
+    assert (guardada.errores, guardada.advertencias) == (0, 0)
+    assert (guardada.informativos, guardada.atipicos) == (2, 0)
+    assert sorted(h.regla for h in guardada.hallazgos) == ["R2", "R7"]
+    assert all(h.severidad == "INFO" for h in guardada.hallazgos)
+
+
+def test_registrar_resultado_pdf_guarda_la_revision_sin_totales_ni_fecha(sesion) -> None:
+    fila = FilaHallazgo("L10", "ERROR", "La fila 1 no cuadra", "F3", Decimal("1.65"), "informado")
+    resultado = ResultadoPdf(pdf=None, hallazgos=(), hallazgos_tabla=(fila,), sha256=SHA)  # type: ignore[arg-type]
+    guardada = registrar_resultado_pdf(
+        sesion, resultado, usuario="Ana <ana>", nombre_archivo="presupuesto.pdf", ahora=AHORA
+    )
+    assert (guardada.tipo, guardada.nombre_archivo, guardada.sha256) == (
+        "pdf", "presupuesto.pdf", SHA,
+    )
+    assert (guardada.fecha_libro, guardada.total_libro, guardada.total_silice) == (None, None, None)
+    assert guardada.errores == 1
+    assert guardada.hallazgos == (HallazgoCompacto("L10", "", "F3", "ERROR", "La fila 1 no cuadra"),)
