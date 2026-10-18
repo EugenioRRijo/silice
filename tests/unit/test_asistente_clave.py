@@ -241,3 +241,93 @@ def test_enmascarar(texto, esperado):
 )
 def test_es_bucle_local_acepta_solo_127_y_loopback_v6(ip, local):
     assert es_bucle_local(ip) is local
+
+
+# --- reactivar desde el respaldo cifrado (plan de la ruta, sesion 1, tarea 1.2) ----------------
+
+MENSAJE_RESPALDO = "La contraseña no abre el respaldo de la clave de IA."
+
+
+def con_solo_el_respaldo(tmp_path: Path) -> tuple[ClaveDeIA, AlmacenFalso, Path]:
+    """El almacen cae al registrar: queda solo el respaldo cifrado y el proceso se reinicia."""
+    clave, almacen, ruta = clave_de(tmp_path, AlmacenFalso(cae=True))
+    clave.registrar("EMP-1", CLAVE, ip_cliente="127.0.0.1", contrasena_respaldo=CONTRASENA)
+    clave.desactivar()  # el reinicio: la memoria del proceso se vacia
+    return clave, almacen, ruta
+
+
+def test_pide_contrasena_solo_con_respaldo_y_sin_almacen(tmp_path):
+    clave, almacen, ruta = con_solo_el_respaldo(tmp_path)
+    assert ruta.exists() and clave.pide_contrasena("EMP-1")  # almacen caido: solo el respaldo
+    almacen.cae = False
+    assert clave.pide_contrasena("EMP-1")  # el almacen responde pero no la tiene
+    almacen.set_password(SERVICIO, "EMP-1", CLAVE)
+    assert not clave.pide_contrasena("EMP-1")  # el almacen la tiene: no hace falta contrasena
+    almacen.datos.clear()
+    clave.reactivar("EMP-1", CONTRASENA, ip_cliente="127.0.0.1")
+    assert not clave.pide_contrasena("EMP-1")  # ya en memoria
+    otra = tmp_path / "otra"
+    otra.mkdir()
+    vacia, _, ruta_vacia = clave_de(otra)
+    assert not ruta_vacia.exists() and not vacia.pide_contrasena("EMP-1")  # nada guardado
+
+
+def test_reactivar_con_la_contrasena_correcta_carga_la_clave(tmp_path):
+    clave, _, _ = con_solo_el_respaldo(tmp_path)
+    assert clave.reactivar("EMP-1", CONTRASENA, ip_cliente="127.0.0.1") == "…1234"
+    assert clave.vigente == CLAVE and clave.mostrada() == "…1234"
+
+
+def test_reactivar_con_contrasena_incorrecta_mensaje_fijo_y_sin_clave(tmp_path):
+    clave, _, ruta = con_solo_el_respaldo(tmp_path)
+    antes = ruta.read_bytes()
+    with pytest.raises(ClaveNoRegistrable) as error:
+        clave.reactivar("EMP-1", "otra contrasena larga", ip_cliente="127.0.0.1")
+    assert str(error.value) == MENSAJE_RESPALDO
+    assert "otra contrasena larga" not in str(error.value) and CLAVE not in str(error.value)
+    assert error.value.__cause__ is None and error.value.__suppress_context__  # sin traza
+    assert clave.vigente is None and ruta.read_bytes() == antes  # el respaldo no se toca
+
+
+@pytest.mark.parametrize(
+    "danado",
+    [
+        b"{ roto",
+        b"",
+        b"[]",  # JSON valido que no es un objeto
+        b'{"kdf": "falso"}',  # faltan campos
+        b"\x80\x81",  # bytes que no son texto
+        b'{"kdf": "falso", "sal": "A", "nonce": "AA==", "cifrado": "AA=="}',  # base64 truncado
+    ],
+)
+def test_reactivar_con_respaldo_danado_mensaje_fijo(tmp_path, danado):
+    clave, _, ruta = con_solo_el_respaldo(tmp_path)
+    ruta.write_bytes(danado)
+    with pytest.raises(ClaveNoRegistrable) as error:
+        clave.reactivar("EMP-1", CONTRASENA, ip_cliente="127.0.0.1")
+    assert str(error.value) == MENSAJE_RESPALDO and CONTRASENA not in str(error.value)
+    assert clave.vigente is None
+
+
+def test_reactivar_con_contrasena_vacia_da_su_mensaje(tmp_path):
+    clave, _, _ = con_solo_el_respaldo(tmp_path)
+    with pytest.raises(ClaveNoRegistrable) as error:
+        clave.reactivar("EMP-1", "", ip_cliente="127.0.0.1")
+    assert str(error.value) == "Escriba la contrasena de la clave de IA guardada."  # la de activar
+    assert clave.vigente is None
+
+
+@pytest.mark.parametrize("ip", ["192.168.1.40", "10.0.0.2", None, ""])
+def test_reactivar_desde_otro_equipo_se_rechaza(tmp_path, ip):
+    clave, _, _ = con_solo_el_respaldo(tmp_path)
+    with pytest.raises(ClaveNoRegistrable) as error:
+        clave.reactivar("EMP-1", CONTRASENA, ip_cliente=ip)
+    assert str(error.value) == "La clave de IA solo se reactiva desde el propio equipo."
+    assert clave.vigente is None
+
+
+def test_reactivar_no_se_traga_un_error_que_no_es_del_respaldo(tmp_path):
+    """Solo `InvalidTag` y el respaldo ilegible se convierten en el mensaje fijo."""
+    clave, _, _ = clave_de(tmp_path, AlmacenRoto())
+    with pytest.raises(RuntimeError, match="inesperado"):
+        clave.reactivar("EMP-1", CONTRASENA, ip_cliente="127.0.0.1")

@@ -75,10 +75,18 @@ def _sello(contrasena: str, huella_publica: str) -> bytes:
     return hashlib.sha256(f"{contrasena}\x00{huella_publica}".encode()).digest()
 
 
+class EtiquetaInvalida(ValueError):  # noqa: N818
+    """El papel de `seguridad.secretos.InvalidTag` en el doble: contrasena o dato asociado erroneos.
+
+    Hereda de `ValueError` para que las pruebas anteriores (`match="erronea"`) sigan igual.
+    """
+
+
 class SecretosFalsos:
     """La forma de `seguridad.secretos` que usa `asistente.clave` (el modulo se inyecta)."""
 
     SecretoCifrado = SecretoCifradoFalso
+    InvalidTag = EtiquetaInvalida
 
     def __init__(self) -> None:
         self.politica_vista: list[str] = []
@@ -100,5 +108,5 @@ class SecretosFalsos:
         self, cifrado: SecretoCifradoFalso, contrasena: str, huella_publica: str
     ) -> bytes:
         if cifrado.sal != _sello(contrasena, huella_publica):
-            raise ValueError("contrasena erronea")
+            raise EtiquetaInvalida("contrasena erronea")
         return bytes(b ^ 0x5A for b in cifrado.cifrado)

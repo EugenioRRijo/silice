@@ -272,3 +272,86 @@ def test_sin_el_extra_ia_la_pestana_lo_dice_y_la_configuracion_sigue(entorno, mo
     assert entorno.pagina.SIN_EXTRA_IA in textos(at)
     assert at.button(key="ia_guardar") is not None
     assert not [b for b in at.button if b.key == "ia_registrar"]
+
+
+# --- reactivar la clave desde el respaldo cifrado (ruta, sesion 1, tarea 1.2) -----------------
+
+CONTRASENA = "una contrasena larga"
+
+
+def con_solo_el_respaldo(entorno) -> None:
+    """Asistente activo, almacen caido, la clave en el respaldo cifrado y un proceso nuevo."""
+    guardar(entorno.ruta, ConfiguracionIA(activo=True))
+    entorno.almacen.cae = True
+    entorno.clave.registrar(
+        instalacion.EMPRESA_DE_LA_CLAVE,
+        CLAVE,
+        ip_cliente="127.0.0.1",
+        contrasena_respaldo=CONTRASENA,
+    )
+    entorno.clave.desactivar()
+
+
+def hay_reactivar(at: AppTest) -> bool:
+    return any(t.key == "ia_contrasena_reactivar" for t in at.text_input)
+
+
+def reactivar(at: AppTest, contrasena: str = CONTRASENA) -> AppTest:
+    at.text_input(key="ia_contrasena_reactivar").set_value(contrasena)
+    at.button(key="ia_reactivar").click().run()
+    assert not at.exception, [e.value for e in at.exception]
+    return at
+
+
+def test_la_contrasena_de_reactivar_no_queda_en_la_pantalla(entorno, monkeypatch):
+    con_roles(monkeypatch, Rol.ADMINISTRADOR)
+    con_solo_el_respaldo(entorno)
+    at = arrancar()
+    assert entorno.clave.vigente is None and hay_reactivar(at)
+    at.text_input(key="ia_contrasena_reactivar").set_value("otra contrasena larga")
+    at.button(key="ia_reactivar").click().run()
+    assert entorno.clave.vigente is None
+    assert "La contraseña no abre el respaldo de la clave de IA." in textos(at)
+    assert at.session_state["ia_contrasena_reactivar"] == ""
+    assert not alcanza(estado(at), "otra contrasena larga")
+    reactivar(at)
+    assert entorno.clave.vigente == CLAVE
+    leido = textos(at)
+    assert "Clave de IA reactivada (…5678)." in leido and "Clave registrada: …5678" in leido
+    assert CLAVE not in leido and CONTRASENA not in leido
+    assert at.session_state["ia_contrasena_reactivar"] == ""
+    assert not alcanza(estado(at), CONTRASENA) and not alcanza(estado(at), CLAVE)
+    assert not alcanza(estado(at), "ABCD1234efgh")
+    assert not hay_reactivar(at)  # cargada: la seccion ya no se pide
+
+
+def test_la_seccion_solo_aparece_si_pide_contrasena(entorno, monkeypatch):
+    con_roles(monkeypatch, Rol.ADMINISTRADOR)
+    guardar(entorno.ruta, ConfiguracionIA(activo=True))
+    assert not hay_reactivar(arrancar())  # nada guardado
+    entorno.almacen.set_password(SERVICIO, instalacion.EMPRESA_DE_LA_CLAVE, CLAVE)
+    at = arrancar()
+    assert entorno.clave.vigente == CLAVE and not hay_reactivar(at)  # el almacen la tenia
+    entorno.almacen.datos.clear()
+    entorno.clave.olvidar(instalacion.EMPRESA_DE_LA_CLAVE)
+    con_solo_el_respaldo(entorno)
+    assert hay_reactivar(arrancar())  # solo el respaldo cifrado
+    guardar(entorno.ruta, ConfiguracionIA(activo=False))
+    assert not hay_reactivar(arrancar())  # apagado, la clave no vuelve a la memoria (§8.3)
+    assert entorno.clave.vigente is None
+
+
+@pytest.mark.parametrize("roles", [(Rol.ARMA,), (Rol.REVISA,)])
+def test_la_seccion_no_aparece_para_quien_no_es_administrador(entorno, monkeypatch, roles):
+    con_solo_el_respaldo(entorno)
+    con_roles(monkeypatch, *roles)
+    assert not hay_reactivar(arrancar())
+
+
+def test_la_seccion_no_aparece_si_el_cliente_no_es_local(entorno, monkeypatch):
+    con_roles(monkeypatch, Rol.ADMINISTRADOR)
+    con_solo_el_respaldo(entorno)
+    monkeypatch.setattr(entorno.cliente, "ip_del_cliente", lambda: "192.168.1.40")
+    at = arrancar()
+    assert not hay_reactivar(at) and not [b for b in at.button if b.key == "ia_reactivar"]
+    assert entorno.clave.vigente is None
