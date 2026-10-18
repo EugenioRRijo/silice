@@ -98,13 +98,13 @@ def test_la_instalacion_va_siempre_en_el_juego_aunque_no_se_migre(datos: Datos) 
     assert (base["archivo"], base["destino"], base["revision_origen"]) == (
         "instalacion.db",
         "instalacion",
-        "ins_0002_produccion",
+        "ins_0003_auditoria_libro",
     )
     assert base["filas_por_tabla"] == {
         "alembic_version": 1, "usuario": 0, "intento_acceso": 0, "sesion": 0,
         "evento_acceso": 0, "codigo_instalacion": 0, "empresa_propia": 0, "clave_empresa": 0,
         "empresa_registrada": 0, "clave_api": 0, "prod_material": 0, "prod_movimiento": 0,
-        "prod_pesaje_sospechoso": 0,
+        "prod_pesaje_sospechoso": 0, "auditoria_libro": 0,
     }
 
 

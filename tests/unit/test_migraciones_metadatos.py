@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from adapters.espacio import persistencia
 from core.models import Base
+from fusion.historial_modelo import METADATA_HISTORIAL
 from migraciones.metadatos import METADATAS_CASO, METADATAS_INSTALACION
 from produccion.modelo import METADATA_PRODUCCION
 from seguridad.modelo import Base as BaseSeguridad
@@ -27,5 +28,9 @@ def test_el_caso_lleva_el_registro_del_asistente() -> None:
     assert METADATA_IA in METADATAS_CASO
 
 
-def test_la_instalacion_lleva_seguridad() -> None:
-    assert METADATAS_INSTALACION == (BaseSeguridad.metadata, METADATA_PRODUCCION)
+def test_la_instalacion_lleva_seguridad_la_arenera_y_el_historial() -> None:
+    assert METADATAS_INSTALACION == (
+        BaseSeguridad.metadata,
+        METADATA_PRODUCCION,
+        METADATA_HISTORIAL,
+    )
