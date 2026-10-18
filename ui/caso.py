@@ -12,7 +12,7 @@ Tres invariantes (spec de UI, §3.2):
    widget.
 2. **Respaldo declarado.** Se puede entrar por URL a cualquier pantalla sin pasar por el Inicio. Sin
    caso fijado, manda la variable de entorno `SILICE_CASO` (el guion CP-07 la usa; la lee
-   `ui.entorno.leer_variable`, con su alias anterior hasta la 0.6.0; en el producto la fija el
+   `ui.entorno.leer_variable`; su alias anterior se retiro en la 0.7.0; en el producto la fija el
    lanzador) y, si no esta, el caso por defecto de la carpeta de datos (`<datos>/casos/silice.db`,
    `operacion.config`). `SILICE_CASO` es configuracion de quien arranca, no entrada del usuario: no
    pasa por la lista. `ruta_caso()` lee `RUTA_BASE_POR_DEFECTO` **al

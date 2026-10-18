@@ -6,6 +6,10 @@ etiquetar, las líneas pasan a la sección de la versión. La historia anterior 
 
 ## [Sin publicar]
 
+### Corregido
+
+- `main` en rojo desde la 1.0.0: se retiran los alias `ARENIA_CASO` y `ARENIA_MODO_ENTREGA`, que solo valían hasta la 0.6.0 (`ui/entorno.py`, manuales y `tests/conftest.py`).
+
 ## [1.0.0] - 2026-10-15
 
 ### Agregado
