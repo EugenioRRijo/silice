@@ -10,9 +10,10 @@ Dos partes:
 Oráculos a mano (ejemplo construido, mínima 20):
 * Serie de ARENA: +100 (1/10), −75,5 (2/10) = 24,5 `normal`; −4,5 (3/10) = 20 `queda poco`
   (existencia ≤ mínima); −23 (4/10) = −3 `negativa`.
-* `xlsx_basico()` con ARENA (m3, densidad 1,60) y PIEDRA34 (t) y referencia 2026-11-10: se registran
-  TCK-001, TCK-002 y TCK-004; van a la bandeja TCK-003 (neto negativo), TCK-005 (fecha futura) y
-  TCK-006 (GRAVA9, material desconocido).
+* `xlsx_basico()` (ORACULO.md §1) con ARENA (m3, densidad 1,60) y PIEDRA34 (t) y referencia
+  2026-11-10: se registran TCK-001 (17,6875 m³) y TCK-002 (24,5 t); van a la bandeja TCK-003 (tara
+  mayor o igual que el bruto), TCK-004 (neto distinto de bruto − tara), TCK-005 (fecha futura) y
+  TCK-006 (GRAVA9, material desconocido): 2 despachos y 4 sospechosos.
 """
 
 from __future__ import annotations
@@ -47,6 +48,7 @@ from ui import sesion as ui_sesion
 from ui.app import paginas_visibles
 from ui.existencias import FilaPantalla, importar_desde_pantalla, tablero_para_pantalla
 from ui.sesion import MENSAJE_SIN_PERMISO
+from ui.texto_seguro import texto_seguro
 
 D = Decimal
 MIME_XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
@@ -102,9 +104,7 @@ def test_cada_estado_se_rotula_con_icono_y_texto() -> None:
     rotulos = {e: existencias.rotulo_de_estado(e) for e in ("normal", "queda poco", "negativa")}
     assert rotulos["normal"].endswith("Normal")
     assert rotulos["queda poco"].endswith("Queda poco")
-    assert rotulos["negativa"].endswith(
-        "Existencia negativa: falta registrar producción o conteo"
-    )
+    assert rotulos["negativa"].endswith("Existencia negativa: falta registrar producción o conteo")
     # nunca solo color: cada rótulo lleva un signo propio delante del texto
     iconos = {r.split(" ", 1)[0] for r in rotulos.values()}
     assert len(iconos) == 3 and all(len(i) == 1 for i in iconos)
@@ -126,12 +126,13 @@ def test_importar_desde_pantalla_registra_y_manda_lo_dudoso_a_la_bandeja(
     resultado = importar_desde_pantalla(
         sesion, xlsx_basico(), "reporte.xlsx", date(2026, 11, 10), None, "ana"
     )
-    assert (resultado.registrados, resultado.ya_registrados, resultado.a_la_bandeja) == (3, 0, 3)
+    assert (resultado.registrados, resultado.ya_registrados, resultado.a_la_bandeja) == (2, 0, 4)
     # el commit lo hizo la pantalla: una sesión nueva sobre la misma base ve los despachos
     sesion.expire_all()
-    assert len(sesion.scalars(select(Movimiento)).all()) == 3
+    assert len(sesion.scalars(select(Movimiento)).all()) == 2
     assert {s.ticket for s in sesion.scalars(select(PesajeSospechoso))} == {
         "TCK-003",
+        "TCK-004",
         "TCK-005",
         "TCK-006",
     }
@@ -146,8 +147,8 @@ def test_reimportar_el_mismo_reporte_no_duplica(sesion: Session) -> None:
     sesion.commit()
     importar_desde_pantalla(sesion, xlsx_basico(), "r.xlsx", date(2026, 11, 10), None, "ana")
     otra = importar_desde_pantalla(sesion, xlsx_basico(), "r.xlsx", date(2026, 11, 10), None, "ana")
-    assert (otra.registrados, otra.ya_registrados, otra.a_la_bandeja) == (0, 3, 0)
-    assert len(sesion.scalars(select(Movimiento)).all()) == 3
+    assert (otra.registrados, otra.ya_registrados, otra.a_la_bandeja) == (0, 2, 0)
+    assert len(sesion.scalars(select(Movimiento)).all()) == 2
 
 
 def test_un_csv_tambien_se_importa(sesion: Session) -> None:
@@ -156,7 +157,7 @@ def test_un_csv_tambien_se_importa(sesion: Session) -> None:
     resultado = importar_desde_pantalla(
         sesion, csv_basico(), "r.csv", date(2026, 11, 10), None, "ana"
     )
-    assert resultado.registrados == 3
+    assert resultado.registrados == 2
 
 
 def test_sin_unidad_no_se_importa_nada_y_el_mensaje_es_el_del_lector(sesion: Session) -> None:
@@ -168,8 +169,10 @@ def test_sin_unidad_no_se_importa_nada_y_el_mensaje_es_el_del_lector(sesion: Ses
         )
     assert sesion.scalars(select(Movimiento)).all() == []
     # indicada la unidad, sí se importa
-    ok = importar_desde_pantalla(sesion, xlsx_sin_unidad(), "r.xlsx", date(2026, 11, 10), "kg", "ana")
-    assert ok.registrados == 3
+    ok = importar_desde_pantalla(
+        sesion, xlsx_sin_unidad(), "r.xlsx", date(2026, 11, 10), "kg", "ana"
+    )
+    assert ok.registrados == 2
 
 
 def test_un_xlsx_con_macros_renombrado_lo_rechaza_la_guardia(sesion: Session) -> None:
@@ -279,7 +282,10 @@ def test_un_error_de_inventario_se_dice_sin_traza(monkeypatch, tmp_path) -> None
     at.button(key="existencias_entrada_registrar").click()
     at = at.run()
     assert not at.exception
-    assert _errores(at) == ["La cantidad de la entrada debe ser un número mayor que cero."]
+    # el mensaje del servicio, pasado por `texto_seguro` (signos de Markdown escapados)
+    assert _errores(at) == [
+        texto_seguro("La cantidad de la entrada debe ser un número mayor que cero.")
+    ]
 
 
 def test_importar_por_la_pagina_registra_y_commitea(monkeypatch, tmp_path) -> None:
@@ -293,11 +299,11 @@ def test_importar_por_la_pagina_registra_y_commitea(monkeypatch, tmp_path) -> No
     assert not at.exception, [e.value for e in at.exception]
     assert not _errores(at)
     metricas = {m.label: m.value for m in at.metric}
-    assert metricas["Despachos registrados"] == "3"
-    assert metricas["A la bandeja de sospechosos"] == "3"
+    assert metricas["Despachos registrados"] == "2"
+    assert metricas["A la bandeja de sospechosos"] == "4"
     with ui_sesion.instalacion() as bd:
-        assert len(bd.scalars(select(Movimiento)).all()) == 3
-        assert len(bd.scalars(select(PesajeSospechoso)).all()) == 3
+        assert len(bd.scalars(select(Movimiento)).all()) == 2
+        assert len(bd.scalars(select(PesajeSospechoso)).all()) == 4
         assert [f.codigo for f in tablero_para_pantalla(bd, date(2026, 12, 31))] == [
             "ARENA",
             "PIEDRA34",
@@ -330,8 +336,12 @@ def test_la_bandeja_se_resuelve_desde_la_pagina(monkeypatch, tmp_path) -> None:
     elegida = next(o for o in opciones if "TCK-006" in o)
     at.selectbox(key="existencias_sospechoso").select(elegida)
     at = at.run()
-    at.selectbox(key="existencias_resolver_material").select("PIEDRA34 · Piedra 3/4")
-    at.text_input(key="existencias_resolver_neto").set_value("18")
+    [material] = [
+        w for w in at.selectbox if str(w.key).startswith("existencias_resolver_material_")
+    ]
+    [neto] = [w for w in at.text_input if str(w.key).startswith("existencias_resolver_neto_")]
+    material.select("PIEDRA34 · Piedra 3/4")
+    neto.set_value("18")
     at.button(key="existencias_resolver").click()
     at = at.run()
     assert not at.exception, [e.value for e in at.exception]
