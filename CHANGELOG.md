@@ -8,6 +8,7 @@ etiquetar, las líneas pasan a la sección de la versión. La historia anterior 
 
 ### Agregado
 
+- Interfaz nueva, ola 4 (sesión 2b): la entrega del paquete auditado por la API (`GET /v1/entregas/versiones` y `/resumen`, `POST /v1/entregas`, descarga binaria del `.silice`; `ENTREGAR_PAQUETE`, y firmar solo desde el propio equipo, RM-4) y su página «Entregar paquete»; la lógica de `ui/entrega.py` pasó a `aplicacion/entrega.py` (RM-1) y `ui/entrega.py` la reexporta.
 - Interfaz nueva, migración de páginas (sesión 2b): marco con menú por rol, caso y proyecto por sesión web, página de Inicio y «Partidas similares» (`POST /v1/similares`); la lógica de las páginas pasa a `aplicacion/` y `ui/` la reexporta.
 - Sílice 1.2.0 (ruta, sesión 2; UC‑26, RF‑111 a RF‑118, RNF‑22 y RNF‑23): interfaz nueva y visor de solo lectura. `frontend-desktop/` (Vite, React 19, Carbon g10 y Univer, sin red externa) servida por la API en `/app` con CSP; `POST /v1/libros/replica` y `adapters/hoja_empresa/visual.py` (aspecto del libro con coordenadas de Excel); acceso del navegador por cuenta (`/v1/sesion` con cookie `HttpOnly`, anti‑CSRF y freno global con 429); campo aditivo `indicadores` en `/v1/libros/auditoria` (centésimas, sentido «exactitud», RS2‑12 y RS2‑13); el instalador lleva la interfaz compilada; trabajo `interfaz` en la CI.
 

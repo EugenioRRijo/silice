@@ -1518,6 +1518,143 @@
         }
       }
     },
+    "/v1/entregas/versiones": {
+      "get": {
+        "tags": [
+          "entregas"
+        ],
+        "summary": "Versiones",
+        "description": "Las versiones del proyecto, la más nueva primero (como el selector de la pantalla).",
+        "operationId": "versiones_v1_entregas_versiones_get",
+        "parameters": [
+          {
+            "name": "proyecto",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Proyecto"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/VersionEntregable"
+                  },
+                  "title": "Response Versiones V1 Entregas Versiones Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/entregas/resumen": {
+      "get": {
+        "tags": [
+          "entregas"
+        ],
+        "summary": "Resumen",
+        "description": "Total, hallazgos, cadena, anexos, empresa y si hay clave de firma (UC-22 paso 2).",
+        "operationId": "resumen_v1_entregas_resumen_get",
+        "parameters": [
+          {
+            "name": "proyecto",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Proyecto"
+            }
+          },
+          {
+            "name": "version",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Version"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResumenRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/entregas": {
+      "post": {
+        "tags": [
+          "entregas"
+        ],
+        "summary": "Entregar",
+        "description": "Genera el `.silice` de la versión y lo entrega como descarga binaria.",
+        "operationId": "entregar_v1_entregas_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EntregaPeticion"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/zip": {}
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/salud": {
       "get": {
         "tags": [
@@ -2447,6 +2584,52 @@
           "nombre"
         ],
         "title": "EleccionCaso"
+      },
+      "EntregaPeticion": {
+        "properties": {
+          "proyecto": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Proyecto"
+          },
+          "version": {
+            "type": "string",
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Version"
+          },
+          "destinatario": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Destinatario"
+          },
+          "contrasena_clave": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1024
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contrasena Clave"
+          }
+        },
+        "type": "object",
+        "required": [
+          "proyecto",
+          "version"
+        ],
+        "title": "EntregaPeticion"
       },
       "EscenarioPeticion": {
         "properties": {
@@ -4381,6 +4564,87 @@
         "title": "RendimientosRespuesta",
         "description": "El historico completo de una partida, con dispersion y propuesta (RF-26)."
       },
+      "ResumenRespuesta": {
+        "properties": {
+          "proyecto": {
+            "type": "string",
+            "title": "Proyecto"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version"
+          },
+          "moneda": {
+            "type": "string",
+            "title": "Moneda"
+          },
+          "total": {
+            "type": "string",
+            "title": "Total"
+          },
+          "total_texto": {
+            "type": "string",
+            "title": "Total Texto"
+          },
+          "hallazgos_total": {
+            "type": "integer",
+            "title": "Hallazgos Total"
+          },
+          "hallazgos_por_severidad": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Hallazgos Por Severidad"
+          },
+          "cadena_integra": {
+            "type": "boolean",
+            "title": "Cadena Integra"
+          },
+          "mensaje_de_cadena": {
+            "type": "string",
+            "title": "Mensaje De Cadena"
+          },
+          "empresa": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Empresa"
+          },
+          "firma_disponible": {
+            "type": "boolean",
+            "title": "Firma Disponible"
+          },
+          "viaja_con": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Viaja Con"
+          }
+        },
+        "type": "object",
+        "required": [
+          "proyecto",
+          "version",
+          "moneda",
+          "total",
+          "total_texto",
+          "hallazgos_total",
+          "hallazgos_por_severidad",
+          "cadena_integra",
+          "mensaje_de_cadena",
+          "empresa",
+          "firma_disponible",
+          "viaja_con"
+        ],
+        "title": "ResumenRespuesta"
+      },
       "SesionRespuesta": {
         "properties": {
           "login": {
@@ -4566,6 +4830,24 @@
           "type"
         ],
         "title": "ValidationError"
+      },
+      "VersionEntregable": {
+        "properties": {
+          "codigo": {
+            "type": "string",
+            "title": "Codigo"
+          },
+          "moneda": {
+            "type": "string",
+            "title": "Moneda"
+          }
+        },
+        "type": "object",
+        "required": [
+          "codigo",
+          "moneda"
+        ],
+        "title": "VersionEntregable"
       }
     }
   }
