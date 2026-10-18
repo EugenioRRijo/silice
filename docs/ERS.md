@@ -102,6 +102,8 @@
 
 **Enmienda de la ruta, sesión 4 (arenera; plan [PLAN_SESION_4_ARENERA.md](planes/PLAN_SESION_4_ARENERA.md)):** se agregan UC‑28 y UC‑29, RF‑127 a RF‑136 y RNF‑25. La arenera empieza por el inventario («cuánto hay y cuánto queda» de cada material) y por el reporte de la báscula; el costo horario de maquinaria espera a tener fuente verificada.
 
+**Enmienda de la ruta, sesión 4 (historial de auditorías; plan [PLAN_SESION_4_HISTORIAL.md](planes/PLAN_SESION_4_HISTORIAL.md)):** se agregan UC‑30, RF‑142 a RF‑146 y RNF‑28. Eugenio decide que cada auditoría de «Libro de la empresa» se guarda (resumen y hallazgos, nunca el libro ni el PDF); UC‑25 deja de decir «nada se guarda» y lo dice solo del archivo.
+
 ## 1. Introducción
 
 ### 1.1 Propósito
@@ -1349,6 +1351,7 @@ aquí: cada corrección está en su fila del [inventario del cierre](auditoria/2
 | UC‑23 | RF‑86, RF‑87, RF‑88, RF‑89, RF‑100, RF‑141 | S3‑0 (declarado), S3‑4, S3‑5, S3‑6, ruta S1 (1.1.0) | indicador del administrador (horizonte §6.1) |
 | UC‑28 | RF‑127, RF‑128, RF‑129, RF‑135, RF‑136 | Sesión 4 de la ruta (Sílice 1.4.0) | fuera de los cinco indicadores (gestor de producción) |
 | UC‑29 | RF‑130, RF‑131, RF‑132, RF‑133, RF‑134, RNF‑25 | Sesión 4 de la ruta (Sílice 1.4.0) | fuera de los cinco indicadores (gestor de producción) |
+| UC‑30 | RF‑142, RF‑143, RF‑144, RF‑145, RF‑146, RNF‑28 | Sesión 4 de la ruta (historial; Sílice 1.2.0) | indicador 1 (errores detectados), como UC‑25 |
 
 Correspondencia RNF → verificación: RNF‑01 y RNF‑02 se comprueban en UC‑01 y UC‑02 (RF‑06, RF‑14);
 RNF‑03 en UC‑02 (RF‑11), con `scripts/medir_rnf03.py`; RNF‑04 con el juicio de expertos sobre el
@@ -1386,14 +1389,17 @@ del formato neutro, Sílice lee el libro de la empresa tal como es.
      precio en USD y Bs y la trazabilidad.
   6. El usuario descarga el libro devuelto: mismo aspecto, APU de forma uniforme, valores de Sílice, y las hojas
      AUDITORÍA, TRAZABILIDAD y ALERTAS USD‑Bs.
+  7. Sílice guarda el resumen y los hallazgos de la auditoría en el historial de la instalación (UC‑30, RF‑142); el libro no.
 - **Flujos alternativos**
   - *2a. Archivo rechazado* (macros, extensión, tamaño, combinadas o dimensiones desmedidas): mensaje claro; no se
     lee nada.
   - *2b. Libro que no se puede interpretar* (sin PRESUPUESTO, FCAS menor que 1): mensaje claro.
-  - *1a. Solo un PDF simple* (sin Excel): Sílice aplica L10 y muestra los hallazgos, sin devolución.
+  - *1a. Solo un PDF simple* (sin Excel): Sílice aplica L10 y muestra los hallazgos, sin devolución; la revisión también queda en el historial, con el tipo `pdf`.
   - *5a. La instalación no tiene la tasa del BCV de la fecha:* las alertas en Bs dicen «no contrastable».
-- **Postcondiciones:** nada se guarda en la base ni en disco (F‑D9); el libro devuelto lleva el SHA‑256 del
-  recibido.
+  - *7a. No se pudo guardar el historial:* el informe se muestra igual, con el aviso «No se pudo guardar el historial» (RF‑144).
+- **Postcondiciones:** el libro y el PDF no se guardan, ni en la base ni en disco (F‑D9, RNF‑28); el resumen y los
+  hallazgos de la auditoría sí quedan en el historial de la instalación (enmienda del historial, RF‑142 a RF‑144);
+  el libro devuelto lleva el SHA‑256 del recibido.
 
 | RF | Requisito | Fuente |
 |---|---|---|
@@ -1446,7 +1452,7 @@ Origen: [ruta por sesiones](planes/RUTA_SESIONES.md) (decisiones RS-x de Eugenio
 
 - **Numeración reservada para la ruta** (para que las sesiones en paralelo no choquen): sesión 2 UC-26, RF-111 a
   RF-118, RNF-22 y RNF-23; sesión 3 UC-27, RF-119 a RF-126, RNF-24; sesión 4 UC-28 y UC-29, RF-127 a RF-136, RNF-25;
-  sesión 5 RF-137 a RF-140, RNF-26 y RNF-27; la sesión 1 usa RF-141.
+  sesión 5 RF-137 a RF-140, RNF-26 y RNF-27; la sesión 1 usa RF-141; el historial de auditorías de la sesión 4 toma UC-30, RF-142 a RF-146 y RNF-28.
 
 ## Enmienda Sílice 1.2.0 (2026-10-18): interfaz nueva y visor de solo lectura
 
@@ -1474,7 +1480,8 @@ Streamlit sigue siendo la principal (RT‑4); esta enmienda no cambia ningún re
   - *2a. Archivo rechazado o libro no interpretable:* el mensaje de UC‑25 (2a, 2b), sin réplica.
   - *4a. Un hallazgo sin celda ubicable en el libro:* aparece en la lista, en el grupo «Sin celda en el libro».
   - *Sesión vencida* (30 min de inactividad o 12 h): vuelve a la entrada sin perder el libro abierto en pantalla.
-- **Postcondiciones:** nada se guarda en la base ni en disco; el libro original no se modifica.
+- **Postcondiciones:** el libro no se guarda ni se modifica; el resumen y los hallazgos de la auditoría quedan en el
+  historial (UC‑25, UC‑30).
 
 | RF | Requisito | Criterio de aceptación |
 |---|---|---|
@@ -1553,6 +1560,47 @@ detectados, ahora ubicados sobre la hoja). Pruebas: TDD por tarea (RS‑2), con 
 Trazabilidad: UC‑28 → RF‑127 … RF‑129, RF‑135 y RF‑136; UC‑29 → RF‑130 … RF‑134, RNF‑25 → Sílice 1.4.0 (sesión 4 de
 la [ruta](planes/RUTA_SESIONES.md)). Fuera de los cinco indicadores de la tesis. Pruebas: oráculo a mano en
 `tests/fixtures/bascula/ORACULO.md` y `tests/unit/test_produccion_inventario.py`.
+
+## Enmienda Sílice 1.2.0 (2026-10-18): historial de auditorías de «Libro de la empresa»
+
+Sesión 4 de la [ruta](planes/RUTA_SESIONES.md), [plan del historial](planes/PLAN_SESION_4_HISTORIAL.md). Decisión de
+Eugenio (2026-10-18): **cada auditoría se guarda**; se guarda el resumen y los hallazgos, **nunca el libro ni el PDF**.
+Cambia la regla F‑D9 de la 1.5 («no hay tablas nuevas»): hay una, `auditoria_libro`, en la base de la instalación.
+
+#### UC‑30 — Consultar el historial de auditorías
+
+- **Actor principal:** quien arma o quien revisa (acción `LEER_PROYECTO`) o una integración con clave de API.
+- **Precondiciones:** se corrió al menos una auditoría de UC‑25 (de un libro o de un PDF simple).
+- **Flujo principal**
+  1. El usuario abre el historial (el Inicio muestra las últimas cinco; la pantalla «Historial de auditorías» muestra
+     la lista completa).
+  2. Sílice responde las auditorías de la instalación, la más reciente primero, con su archivo, su fecha y hora, su
+     tipo (`libro` o `pdf`) y su cuenta de errores y de advertencias.
+  3. Al elegir una, muestra su resumen (quién, cuándo, huella SHA‑256, fecha y totales del libro y de Sílice, conteos
+     por severidad) y sus hallazgos, en solo lectura.
+- **Flujos alternativos**
+  - *2a. Aún no hay auditorías:* la lista llega vacía y se dice cómo empezar.
+  - *3a. La auditoría no existe:* mensaje claro (404).
+  - *3b. La auditoría tuvo más de 500 hallazgos:* se muestran los primeros 500 y el aviso de que se recortó; los
+    conteos son los de todos.
+- **Postcondiciones:** solo lectura. Para volver a trabajar sobre el libro hay que subirlo otra vez: no se conserva.
+
+| RF | Requisito | Criterio de aceptación |
+|---|---|---|
+| RF‑142 | Cada auditoría correcta de «Libro de la empresa» (libro o PDF simple) guarda **una fila nueva** en `auditoria_libro` de `instalacion.db`, sin deduplicar por SHA‑256 (repetirla es un hecho): usuario, fecha y hora, tipo, nombre y SHA‑256 del archivo, fecha del libro, total del libro y total de Sílice (texto decimal exacto; nulos en un PDF) y conteos por severidad (`errores`, `advertencias`, `informativos`, `atipicos`) | `tests/integration/test_historial_auditorias.py`: la fila guardada coincide con la escrita a mano, repetir deja dos filas, un PDF va sin totales ni fecha del libro |
+| RF‑143 | Los hallazgos se guardan **compactos** (regla, hoja, celda, severidad y mensaje, y nada más), a lo sumo 500 por auditoría; pasado el tope se guardan los primeros 500, `recortado` es verdadero y los conteos siguen siendo los de todos | 503 hallazgos dan 500 guardados, `recortado` y 503 en el conteo; con exactamente 500 no se recorta |
+| RF‑144 | Un fallo al guardar el historial **no tumba la auditoría**: el informe se responde igual, el fallo queda en el registro del servidor y la pantalla avisa «No se pudo guardar el historial» | Con el guardado forzado a fallar, `POST /v1/libros/auditoria` y `/pdf` responden 200 con el informe y el registro lleva el fallo (pruebas de la tarea que aplica el parche de [PLAN_SESION_4_HISTORIAL.md](planes/PLAN_SESION_4_HISTORIAL.md)) |
+| RF‑145 | `GET /v1/auditorias-libro?limite=N` (1 a 100, 20 por omisión) responde la lista de `{id, archivo, fecha, tipo, errores, advertencias}`, la más reciente primero, con la fecha en ISO con hora; clave de API o cuenta que arma o revisa | `tests/integration/test_api_auditorias_libro.py`: claves literales, orden, límites, 422 fuera de rango, 401 sin credenciales, 403 al administrador solo |
+| RF‑146 | `GET /v1/auditorias-libro/{id}` responde el resumen completo y los hallazgos compactos; los montos como texto; 404 si no existe | Igual archivo de pruebas: detalle exacto de una auditoría sembrada, nulos de un PDF y 404 |
+
+| RNF | Requisito |
+|---|---|
+| RNF‑28 | **Nunca se conserva el libro ni el PDF** auditados: ni sus bytes, ni una copia temporal; de ellos solo queda el nombre del archivo (sin ruta) y su SHA‑256. La tabla no tiene columna binaria y el mensaje de cada hallazgo se corta a 500 caracteres |
+
+Trazabilidad: UC‑25 → RF‑142 … RF‑144 y RNF‑28 (el guardado de cada auditoría); UC‑30 → RF‑142 … RF‑146 y
+RNF‑28 → Sílice 1.2.0 (sesión 4 de la ruta). Pruebas: `tests/integration/test_migracion_auditoria_libro.py`,
+`tests/integration/test_historial_auditorias.py`, `tests/integration/test_api_auditorias_libro.py` y
+`tests/unit/test_documentos_historial_auditorias.py`. Modelo de datos: [modelo_datos.md §10](modelo_datos.md).
 
 ## Apéndices
 - A. Caso de estudio y línea base: [docs/linea_base.md](linea_base.md).

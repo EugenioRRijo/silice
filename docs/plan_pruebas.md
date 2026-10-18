@@ -329,6 +329,22 @@ en la suite de cierre de la sesión (6 332 pruebas, 0 fallos, 0 omitidas).
 | RF‑141 | `tests/unit/test_espacio_conexion.py` (casos a mano, conjunto exacto, coherencia de `_EXIGE`), `tests/unit/test_experimento_r17.py` (24/24 mutantes E5, 0 avisos en las 12 referencias), `tests/unit/test_auditoria_r17.py` (reauditoría), `tests/unit/test_ui_hoja_conexion.py` (la página no elabora ni guarda sin R17), `tests/unit/test_experimento_congelado_vigente.py` (el congelado sigue en `[]`) |
 | RF‑95 | en parte: `test_experimento_*.py` y `test_evaluar_asistente.py` ejecutadas; `S4-RESULTADOS` sigue PENDIENTE porque la corrida real está en pausa (RS-10) |
 
+### 8.0f Filas del historial de auditorías (ruta, sesión 4): RF‑142 a RF‑146 y RNF‑28
+
+Fuente: la enmienda del historial de la ERS y [PLAN_SESION_4_HISTORIAL.md](planes/PLAN_SESION_4_HISTORIAL.md). Estado:
+**ejecutadas** (TDD con el rojo visto: las pruebas se escribieron antes del código y se subieron en rojo). Lo que falta
+es el parche en `api/rutas/libros.py` (RM‑6), cuya prueba de RF‑144 queda en la tarea que lo aplique.
+
+| RF / RNF | Prueba |
+|---|---|
+| RF‑142 | `tests/integration/test_migracion_auditoria_libro.py` (DDL literal, cero deriva, `CHECK` del tipo, base de la 1.0.0 respaldada y migrada, ida y vuelta), `tests/integration/test_historial_auditorias.py` (fila escrita a mano, repetir deja dos filas, PDF sin totales, datos inválidos no guardan nada) |
+| RF‑143 | `tests/integration/test_historial_auditorias.py::test_pasado_el_tope_se_guardan_los_primeros_500_y_los_conteos_son_los_de_todos`, `::test_con_exactamente_el_tope_no_se_recorta`, `::test_los_hallazgos_se_guardan_compactos_y_en_orden`, `::test_compactar_separa_la_hoja_de_la_celda_y_descarta_el_resto` |
+| RF‑144 | servicio: `tests/integration/test_historial_auditorias.py` (`registrar_auditoria` solo hace `flush`; quien llama decide confirmar); la ruta de `/v1/libros` que no se cae al fallar el guardado, en la tarea que aplique el parche del plan de la sesión |
+| RF‑145 | `tests/integration/test_api_auditorias_libro.py` (claves literales del contrato del Inicio, orden, `limite` por omisión de 20 y de 1 a 100, 422 fuera de rango, 401, clave, cuentas que arman o revisan, 403 al administrador solo) |
+| RF‑146 | `tests/integration/test_api_auditorias_libro.py` (detalle exacto, nulos de un PDF, 404, 422 si el id no es entero, solo lectura) |
+| RNF‑28 | `tests/integration/test_migracion_auditoria_libro.py::test_las_columnas_son_las_del_ddl_literal` (ninguna columna binaria), `tests/integration/test_historial_auditorias.py::test_un_mensaje_largo_se_corta_a_500_caracteres` y `::test_el_nombre_del_archivo_pierde_la_ruta` |
+| documentos | `tests/unit/test_documentos_historial_auditorias.py` (la ERS, el modelo de datos y este plan nombran lo construido) |
+
 ### 8.1 Trazabilidad por paso de todos los casos de uso
 
 Regla (metodología §3.4): cada paso numerado y cada flujo alternativo de un caso de uso cita la
@@ -677,6 +693,7 @@ Fuente: [spec S5 §12](especificaciones/2026-10-11-silice-s5-producto-instalador
 | RNF‑20 deriva de esquema | `tests/integration/test_migraciones.py::test_head_en_vacio_es_igual_a_create_all`, `::test_la_autogeneracion_contra_head_no_propone_cambios`, `::test_toda_metadata_con_tablas_esta_en_la_lista_de_su_destino`, `::test_cada_revision_baja_y_vuelve_a_subir`, en los dos destinos | cumple (desde la 0.6.0) |
 | RNF‑19 | `tests/unit/test_tamanos.py::test_el_limite_es_exacto` y humo | por medir |
 | RNF‑25 límites al leer reportes de báscula | `tests/unit/test_conector_bascula.py::test_archivo_desmedido_se_rechaza` y `tests/integration/test_api_produccion.py::test_archivo_con_macros_renombrado_responde_422` | por construir (sesión 4) |
+| RNF‑28 el libro y el PDF auditados no se conservan | `tests/integration/test_migracion_auditoria_libro.py::test_las_columnas_son_las_del_ddl_literal` (la tabla `auditoria_libro` no tiene columna binaria) y `tests/integration/test_historial_auditorias.py` (solo el nombre sin ruta, la huella y los hallazgos compactos); la ruta de `/v1/libros` que guarda la auditoría sin escribir el archivo en disco queda con el parche del plan de la sesión | cumple en el servicio; la ruta, por aplicar (RM‑6) |
 
 ## 10. Registro de la ejecución (CI de la compuerta GC6, 2026‑09‑29)
 

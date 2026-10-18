@@ -899,3 +899,21 @@ un proyecto. Las cantidades son texto decimal exacto (como `DecimalExacto`); `pr
 
 Existencia = Σ entradas − Σ despachos ± ajustes, por material y fecha (RF‑128). Un despacho que deja la existencia
 negativa se guarda y el tablero lo señala (RF‑129).
+
+## 10. Historial de auditorías de «Libro de la empresa» (base de la instalación, revisión `ins_0003_auditoria_libro`)
+
+Sesión 4 de la ruta (UC‑25 y UC‑30; RF‑142 a RF‑146, RNF‑28). Vive en `instalacion.db`: el historial es de la
+instalación entera y cada fila lleva a su usuario. Se guarda el resumen y los hallazgos compactos; **nunca el libro ni
+el PDF**, por eso la tabla no tiene ninguna columna binaria, solo la huella SHA‑256 del archivo. Los totales son texto
+decimal exacto (`String(40)`, como `Cantidad` de la arenera), nunca `float`. El modelo está en
+`fusion/historial_modelo.py` (`METADATA_HISTORIAL`, registrada en `METADATAS_INSTALACION`) y el servicio en
+`fusion/historial.py`.
+
+| Tabla | Columnas | Restricciones |
+|---|---|---|
+| `auditoria_libro` | `id` PK, `fecha_hora` (indexada), `usuario` (120), `tipo` (`libro` \| `pdf`), `nombre_archivo` (255, sin ruta), `sha256` (64, hexadecimal minúsculo), `fecha_libro` (nula en un PDF o sin fecha legible), `total_libro` y `total_silice` (texto decimal; nulos en un PDF), `errores` (ERROR y CRITICO), `advertencias`, `informativos`, `atipicos` (la regla `ATIPICO`, de severidad ADVERTENCIA, se cuenta aparte), `recortado` (verdadero si hubo más de 500 hallazgos), `hallazgos` (JSON en texto) | `CHECK tipo IN ('libro','pdf')`; índice `ix_auditoria_libro_fecha_hora`; sin clave única: repetir una auditoría deja otra fila |
+
+Los conteos son los de **todos** los hallazgos de la auditoría y reparten sin repetir (`errores + advertencias +
+informativos + atipicos` = total). `hallazgos` guarda a lo sumo 500, en el orden en que llegaron, como una lista JSON de
+objetos con exactamente cinco claves (`regla`, `hoja`, `celda`, `severidad`, `mensaje`); el mensaje se corta a 500
+caracteres. El orden del historial es `fecha_hora` descendente y, a igual fecha, `id` descendente.
