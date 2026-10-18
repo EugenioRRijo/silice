@@ -280,6 +280,8 @@ PROHIBIDOS_EN_UI: dict[str, tuple[str, ...]] = {
     "ui/recorridos.py": ("streamlit", "sqlalchemy", "core.catalog", "ui.caso", "ui.app"),
     # SF4: las operaciones sobre proyectos no pintan ni leen la sesion de Streamlit.
     "ui/proyectos.py": ("streamlit", "pandas", "ui.caso", "ui.app", "ui.barra"),
+    # Tarea 4.9 (RT-S4-3): la logica de la pantalla de la arenera se prueba sin Streamlit.
+    "ui/existencias.py": ("streamlit", "pandas"),
 }
 
 
