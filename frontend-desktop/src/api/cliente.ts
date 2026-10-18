@@ -27,6 +27,16 @@ export interface OpcionesDePeticion {
   cuerpo?: FormData | object;
 }
 
+export interface OpcionesBinarias extends OpcionesDePeticion {
+  // Nombre del archivo si la respuesta no trae Content-Disposition.
+  respaldo?: string;
+}
+
+export interface DescargaBinaria {
+  blob: Blob;
+  nombre: string;
+}
+
 const CON_TOKEN = new Set(["POST", "DELETE"]);
 
 function detalleDe(cuerpo: unknown, estado: number): string {
@@ -38,7 +48,9 @@ function detalleDe(cuerpo: unknown, estado: number): string {
   return `La API respondió con el estado ${estado}.`;
 }
 
-export async function pedir<T = unknown>(ruta: string, opciones: OpcionesDePeticion = {}): Promise<T> {
+// Arma la peticion (token CSRF, cuerpo JSON o multipart), la manda y, si la API contesta con error, lanza
+// ErrorDeApi con el `detalle` tal cual. Comparten esto `pedir` (JSON) y `pedirBinario` (archivos).
+async function enviar(ruta: string, opciones: OpcionesDePeticion): Promise<Response> {
   const metodo = opciones.metodo ?? "GET";
   const cabeceras = new Headers();
   if (CON_TOKEN.has(metodo) && csrf) cabeceras.set("X-Silice-CSRF", csrf);
@@ -67,6 +79,41 @@ export async function pedir<T = unknown>(ruta: string, opciones: OpcionesDePetic
       Number.isFinite(espera) && espera > 0 ? espera : null,
     );
   }
+  return respuesta;
+}
+
+export async function pedir<T = unknown>(ruta: string, opciones: OpcionesDePeticion = {}): Promise<T> {
+  const respuesta = await enviar(ruta, opciones);
   if (respuesta.status === 204) return undefined as T;
   return (await respuesta.json()) as T;
+}
+
+function quitarRuta(nombre: string): string {
+  return nombre.split(/[\\/]/).pop() ?? nombre;
+}
+
+// Nombre de archivo de un Content-Disposition: prefiere filename* (RFC 5987, UTF-8) sobre filename. Solo queda
+// el ultimo tramo del nombre: una ruta (../, C:\) no puede escaparse de la carpeta de descargas.
+export function nombreDeDescarga(cabecera: string | null, respaldo: string): string {
+  if (!cabecera) return respaldo;
+  const extendido = /filename\*\s*=\s*UTF-8''([^;]+)/i.exec(cabecera);
+  if (extendido) {
+    try {
+      const nombre = quitarRuta(decodeURIComponent(extendido[1].trim()));
+      if (nombre) return nombre;
+    } catch {
+      // codificacion rota: se prueba con filename
+    }
+  }
+  const simple = /filename\s*=\s*(?:"([^"]*)"|([^;]+))/i.exec(cabecera);
+  const nombre = quitarRuta((simple?.[1] ?? simple?.[2] ?? "").trim());
+  return nombre || respaldo;
+}
+
+// Respuestas que no son JSON (PDF, xlsx, zip): devuelve el contenido y el nombre que propone la API.
+export async function pedirBinario(ruta: string, opciones: OpcionesBinarias = {}): Promise<DescargaBinaria> {
+  const respuesta = await enviar(ruta, opciones);
+  const blob = await respuesta.blob();
+  const nombre = nombreDeDescarga(respuesta.headers.get("Content-Disposition"), opciones.respaldo ?? "descarga");
+  return { blob, nombre };
 }

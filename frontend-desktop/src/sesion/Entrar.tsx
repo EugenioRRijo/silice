@@ -1,24 +1,12 @@
 import { Button, Form, InlineNotification, PasswordInput, TextInput } from "@carbon/react";
 import { useState } from "react";
 import type { FormEvent } from "react";
-import { ErrorDeApi } from "../api/cliente";
+import { mensajeDeError } from "../comun/errores";
 
 interface Props {
   onEntrar: (login: string, contrasena: string) => Promise<void>;
   // Para decir por que se volvio a esta pantalla (por ejemplo, la sesion vencio).
   aviso?: string;
-}
-
-function mensajeDe(error: unknown): string {
-  if (error instanceof ErrorDeApi) {
-    const espera = error.reintentarEnSegundos;
-    if (error.estado === 429 && espera !== null) {
-      const unidad = espera === 1 ? "segundo" : "segundos";
-      return `${error.detalle} Espere ${espera} ${unidad} antes de volver a intentarlo.`;
-    }
-    return error.detalle;
-  }
-  return "Ocurrió un error inesperado. Inténtelo de nuevo.";
 }
 
 export function Entrar({ onEntrar, aviso }: Props) {
@@ -37,7 +25,7 @@ export function Entrar({ onEntrar, aviso }: Props) {
     try {
       await onEntrar(login.trim(), contrasena);
     } catch (e) {
-      setError(mensajeDe(e));
+      setError(mensajeDeError(e));
       setEnviando(false);
     }
   }
