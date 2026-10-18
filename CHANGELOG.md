@@ -18,7 +18,8 @@ etiquetar, las líneas pasan a la sección de la versión. La historia anterior 
 
 ### Cambiado
 
-- ERS, enmienda 1.1.0: pruebas obligatorias, RF-90 (b) diferido, RF-95 en parte, E3 y E5 como límite del método, RF-141.
+- ERS, enmienda 1.1.0: pruebas obligatorias, RF-90 (b) diferido, RF-95 en parte (la corrida real del experimento sigue en pausa, sin gasto), E3 y E5 como límite del método, RF-141.
+- Una prueba vigila que los archivos congelados del experimento no cambien (`tests/unit/test_experimento_congelado_vigente.py`).
 
 ### Corregido
 

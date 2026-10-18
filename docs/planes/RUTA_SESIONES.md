@@ -25,6 +25,7 @@ El plan del gestor dice *qué* se construye; esta ruta dice *en qué orden y con
 | RS-9 | **E3 y E5 (opción A):** el protocolo del experimento sigue congelado; su 0/24 se informa como hipótesis previa falsada y límite del método. | Eugenio (2026-10-18) |
 | RS-10 | **Sin gasto en la API de pago por ahora** («110 USD es muy caro»): la corrida real del experimento (RF-95) queda en pausa. | Eugenio (2026-10-18) |
 | RS-11 | **Que el usuario sepa qué error hay y decida si lo corrige:** se agrega la regla R17 «Conexión de cada punto» (punto sin fuente o sin circuito), como mejora del producto que el experimento congelado no mide. | Eugenio (2026-10-18) |
+| RS-12 | **La arenera (sesión 4) se instala como herramienta sin datos reales de la empresa**: datos construidos declarados como ficticios (NORMAS §1); la empresa carga los suyos cuando los tenga. El costo horario sigue esperando fuentes verificadas. | Eugenio (2026-10-18) |
 
 ## 2. Decisiones técnicas del orquestador (rulings, ratificables)
 
@@ -214,7 +215,7 @@ Revisores: arquitectura, seguridad, pruebas, diseño, hechos.
 | B-1 | ~~Autorizar el gasto de la corrida real con Claude (~110 USD)~~ **No autorizado por ahora (RS-10)** | 1 (no bloquea el resto) |
 | B-2 | ~~Instalar Ollama y el modelo local~~ **En pausa (RS-8)** | — |
 | B-3 | Un libro de la empresa **anonimizado** con `scripts/anonimizar_libro.py` para las pruebas del visor | 2 |
-| B-4 | Muestras reales de reportes de báscula y de inventario de la arenera (quedan confidenciales; se anonimizan) | 4 |
+| B-4 | ~~Muestras reales de báscula e inventario~~ **No aplica (RS-12)**: se construye con datos ficticios declarados | — |
 | B-5 | Instalar Rust | 5 |
 
 ## 7. Diferido (fuera de esta ruta, con motivo)
@@ -251,5 +252,6 @@ Cada sesión corre en **su propia conversación de Claude Code**, abierta por Eu
 | `CHANGELOG.md` | solo líneas nuevas bajo «Sin publicar»; al chocar se conservan las dos |
 | `api/main.py`, `tests/unit/test_arquitectura.py` | solo agregar líneas; `docs/api.json` se **regenera** después de traer `main`, nunca se fusiona a mano |
 | Migraciones Alembic | una sola cabeza por base: antes del PR, `git merge origin/main` y re-apuntar la revisión nueva a la cabeza vigente |
+| Archivos congelados del experimento | ningún archivo de `archivos_del_auditor` (`asistente/experimento/protocolo.json`) se toca; `tests/unit/test_experimento_congelado_vigente.py` lo vigila (RS-9) |
 | Antes de cada PR | `git fetch && git merge origin/main`, suite completa, metas; la CI verde manda |
 | Carga del equipo | como máximo **tres** sesiones a la vez (cada una con sus subagentes); la suite completa no se corre en dos sesiones al mismo tiempo |

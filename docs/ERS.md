@@ -1334,7 +1334,7 @@ aquí: cada corrección está en su fila del [inventario del cierre](auditoria/2
 | UC‑12 | RF‑36, RF‑37, RF‑38, RF‑39, RF‑40, RF‑41, RF‑42, RF‑43 | U0.1 (declarado), U1 ([PLAN_UI.md](../PLAN_UI.md)) | fuera de los cinco indicadores de [docs/metodologia.md §8](metodologia.md#8-indicadores-de-la-tesis); aporta la medición de usabilidad de [calidad_iso25010.md §4](calidad_iso25010.md) |
 | UC‑13 | RF‑44, RF‑45, RF‑46, RF‑47, RF‑48, RF‑49, RF‑61 | SF0 (declarado), SF1–SF2 ([PLAN_SF.md](../PLAN_SF.md)) | prototipo de entrega AREN.IA (hoy Sílice), fuera de los cinco indicadores de [docs/metodologia.md §8](metodologia.md#8-indicadores-de-la-tesis); la ausencia de cambios en `core/` al agregar datos y electricidad es evidencia del indicador 4 |
 | UC‑14 | RF‑50, RF‑51 | SF0 (declarado), SF5 | prototipo de entrega AREN.IA (hoy Sílice), fuera de los cinco indicadores |
-| UC‑15 | RF‑52, RF‑53, RF‑54, RF‑55, RF‑56, RF‑57, RF‑59, RF‑61, RF‑62, RF‑64, RF‑65, RF‑66, RF‑68 | SF0 (declarado), SF1, SF3, S1‑1, S1‑3 | prototipo de entrega AREN.IA (hoy Sílice), fuera de los cinco indicadores |
+| UC‑15 | RF‑52, RF‑53, RF‑54, RF‑55, RF‑56, RF‑57, RF‑59, RF‑61, RF‑62, RF‑64, RF‑65, RF‑66, RF‑68, RF‑141 | SF0 (declarado), SF1, SF3, S1‑1, S1‑3, ruta S1 (1.1.0) | prototipo de entrega AREN.IA (hoy Sílice), fuera de los cinco indicadores |
 | UC‑16 | RF‑58 | SF0 (declarado), SF3 | prototipo de entrega AREN.IA (hoy Sílice), fuera de los cinco indicadores |
 | UC‑17 | RF‑65, RF‑66, RF‑67, RF‑68, RF‑69 | S1‑1 a S1‑3 (Sílice 0.6.0) | Sílice 0.6.0, fuera de los cinco indicadores |
 | UC‑18 | RF‑70, RF‑71 | S1‑4 (Sílice 0.6.0) | Sílice 0.6.0, fuera de los cinco indicadores |
@@ -1344,7 +1344,7 @@ aquí: cada corrección está en su fila del [inventario del cierre](auditoria/2
 | Transversal | RF‑60 | SF4 | prototipo de entrega AREN.IA (hoy Sílice), fuera de los cinco indicadores |
 | UC‑21 | RF‑80, RF‑81, RF‑82, RF‑84 | S3‑0 (declarado), S3‑1, S3‑3 | fuera de los cinco indicadores (seguridad de la entrega, S3) |
 | UC‑22 | RF‑83, RF‑84, RF‑85 | S3‑0 (declarado), S3‑2, S3‑3 | fuera de los cinco indicadores (seguridad de la entrega, S3) |
-| UC‑23 | RF‑86, RF‑87, RF‑88, RF‑89, RF‑100 | S3‑0 (declarado), S3‑4, S3‑5, S3‑6 | indicador del administrador (horizonte §6.1) |
+| UC‑23 | RF‑86, RF‑87, RF‑88, RF‑89, RF‑100, RF‑141 | S3‑0 (declarado), S3‑4, S3‑5, S3‑6, ruta S1 (1.1.0) | indicador del administrador (horizonte §6.1) |
 
 Correspondencia RNF → verificación: RNF‑01 y RNF‑02 se comprueban en UC‑01 y UC‑02 (RF‑06, RF‑14);
 RNF‑03 en UC‑02 (RF‑11), con `scripts/medir_rnf03.py`; RNF‑04 con el juicio de expertos sobre el
@@ -1426,8 +1426,8 @@ Origen: [ruta por sesiones](planes/RUTA_SESIONES.md) (decisiones RS-x de Eugenio
 - **RF-95, experimento: cumplido en parte.** Hechos: el banco y el protocolo congelados y la medición controlada del
   auditor (`docs/resultados_asistente_controlado.json`: E1 0/24, E2 24/24, E3 0/24, E4 24/24, E5 0/24, E6 0/24,
   E7 24/24, E8 2/2), más las pruebas del comparador, las métricas, las mutaciones, la corrida y el congelado.
-  Pendiente: la corrida real (`evaluar_asistente.py corrida --conjunto evaluacion`), que requiere la autorización de
-  gasto de Eugenio; con RS-8, correrla solo con Claude es un apartamiento del protocolo, a ratificar.
+  Pendiente: la corrida real (`evaluar_asistente.py corrida --conjunto evaluacion`), **en pausa por RS-10** (Eugenio no
+  autoriza el gasto por ahora); con RS-8, correrla solo con Claude es un apartamiento del protocolo, a ratificar.
 - **E3 y E5 (RS-9, opción A de Eugenio).** La hipótesis previa del protocolo los daba por detectables (E3 por R9 y
   R10, E5 por R10) y la medición controlada da 0/24 en ambos. El diagnóstico descarta un defecto de la medición: E3
   mueve un punto 0,05 m **dentro** de su ambiente y E5 quita la fuente o el circuito de un punto, y ninguna regla
@@ -1438,7 +1438,7 @@ Origen: [ruta por sesiones](planes/RUTA_SESIONES.md) (decisiones RS-x de Eugenio
 
   | RF | Requisito | Prioridad | UC | Incremento | Criterio de aceptación |
   |---|---|---|---|---|---|
-  | RF‑141 | Todo punto que según su especialidad exige fuente (agua fría, drenaje, datos) o circuito (tomacorriente, iluminación) y no la tiene da un hallazgo **ADVERTENCIA** (`R17`, nunca ERROR) que nombra el punto y lo que le falta, en la hoja, al guardar, en el resultado hipotético del asistente y en la reauditoría; el usuario decide si corrige | Esencial | UC‑15, UC‑23 | Sílice 1.1.0 (ruta, sesión 1) | casos a mano con el conjunto exacto de hallazgos; sobre el banco de evaluación del experimento, R17 detecta los 24/24 mutantes E5 y da 0 avisos en las 12 referencias; `congelado.verificar()` sigue en `[]` (el experimento no mide R17) |
+  | RF‑141 | Todo punto que según su especialidad exige fuente (agua fría, drenaje, datos) o circuito (tomacorriente, iluminación) y no la tiene da un hallazgo **ADVERTENCIA** (`R17`, nunca ERROR) que nombra el punto y lo que le falta, en la hoja, al guardar, en el resultado hipotético del asistente y en la reauditoría; el usuario decide si corrige | Esencial | UC‑15, UC‑23 | Sílice 1.1.0 (ruta, sesión 1) | casos a mano con el conjunto exacto de hallazgos (`tests/unit/test_espacio_conexion.py`); sobre el banco de evaluación del experimento, R17 detecta los 24/24 mutantes E5 y da 0 avisos en las 12 referencias (`tests/unit/test_experimento_r17.py`); `congelado.verificar()` sigue en `[]` (`tests/unit/test_experimento_congelado_vigente.py`; el experimento no mide R17) |
 
 - **Numeración reservada para la ruta** (para que las sesiones en paralelo no choquen): sesión 2 UC-26, RF-111 a
   RF-118, RNF-22 y RNF-23; sesión 3 UC-27, RF-119 a RF-126, RNF-24; sesión 4 UC-28 y UC-29, RF-127 a RF-136, RNF-25;
