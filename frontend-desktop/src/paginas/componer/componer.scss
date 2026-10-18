@@ -1,0 +1,65 @@
+// Componer una partida. Sin tarjetas con sombra ni animaciones (DESIGN.md): bloques separados por un divisor, colores
+// solo por tokens, y a 1366 x 768 sin desplazamiento horizontal.
+
+.silice-componer {
+  display: grid;
+  gap: 1.5rem;
+  padding: 1.5rem 1rem 2rem;
+  max-inline-size: 90rem;
+  min-inline-size: 0;
+}
+
+.silice-componer__bloque {
+  display: grid;
+  gap: 0.75rem;
+  min-inline-size: 0;
+  padding-block-end: 1.5rem;
+  border-block-end: 1px solid var(--silice-divisor);
+}
+
+.silice-componer__nota {
+  max-inline-size: 65ch;
+  color: var(--silice-texto-secundario);
+}
+
+.silice-componer__rejilla {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: 0.75rem 1rem;
+}
+
+.silice-componer__insumo {
+  display: grid;
+  gap: 0.5rem;
+  min-inline-size: 0;
+  padding-block-end: 1rem;
+}
+
+.silice-componer__buscador {
+  display: grid;
+  grid-template-columns: minmax(12rem, 1fr) 2fr;
+  gap: 0.75rem 1rem;
+  align-items: start;
+}
+
+.silice-componer__resultado {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 0.5rem 1rem;
+}
+
+.silice-componer__tabla {
+  display: grid;
+  gap: 0.5rem;
+  min-inline-size: 0;
+}
+
+.silice-componer__tabla td {
+  padding-block: 0;
+}
+
+.silice-componer__contraste {
+  display: grid;
+  gap: 0.25rem;
+}

@@ -1598,6 +1598,273 @@
         }
       }
     },
+    "/v1/composicion/opciones": {
+      "get": {
+        "tags": [
+          "composicion"
+        ],
+        "summary": "Opciones",
+        "description": "Los dominios de la cabecera y las modalidades de mano de obra (los valores del contrato,\nlos mismos que ofrece la página clásica).",
+        "operationId": "opciones_v1_composicion_opciones_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpcionesRespuesta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/composicion/evaluar": {
+      "post": {
+        "tags": [
+          "composicion"
+        ],
+        "summary": "Evaluar",
+        "description": "El desglose en vivo con sus advertencias, sin escribir (RB-2, RB-5).",
+        "operationId": "evaluar_v1_composicion_evaluar_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PeticionEvaluar"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvaluacionRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/composicion/partidas/{codigo}": {
+      "get": {
+        "tags": [
+          "composicion"
+        ],
+        "summary": "Precargar",
+        "description": "UC-11, paso 1: las tablas de una partida existente; sin partida o sin lista vigente,\n`existe=false` y tablas vacías (UC-10), nunca 404.",
+        "operationId": "precargar_v1_composicion_partidas__codigo__get",
+        "parameters": [
+          {
+            "name": "codigo",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Codigo"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrecargaRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/composicion/referencia": {
+      "get": {
+        "tags": [
+          "composicion"
+        ],
+        "summary": "Referencia",
+        "description": "Las filas de la referencia MaPreX que contienen `q`, ya completadas para su tabla (la\nreferencia son archivos del repositorio, no el caso: no abre la base).",
+        "operationId": "referencia_v1_composicion_referencia_get",
+        "parameters": [
+          {
+            "name": "tipo",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "enum": [
+                "material",
+                "equipo",
+                "mano_obra"
+              ],
+              "type": "string",
+              "title": "Tipo"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Q"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SugerenciaRespuesta"
+                  },
+                  "title": "Response Referencia V1 Composicion Referencia Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/composicion/similares": {
+      "get": {
+        "tags": [
+          "composicion"
+        ],
+        "summary": "Similares",
+        "description": "Ayuda 1: partidas del mismo dominio parecidas a la descripción, de solo lectura.",
+        "operationId": "similares_v1_composicion_similares_get",
+        "parameters": [
+          {
+            "name": "dominio",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Dominio"
+            }
+          },
+          {
+            "name": "descripcion",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Descripcion"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SimilarRespuesta"
+                  },
+                  "title": "Response Similares V1 Composicion Similares Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/composicion/guardar": {
+      "post": {
+        "tags": [
+          "composicion"
+        ],
+        "summary": "Guardar",
+        "description": "Guarda la composición (UC-10 o UC-11) y, con la advertencia de RF-27, su justificación\n(UC-06 4a). Confirma solo con resultado; con motivo, 422 y nada se escribe.",
+        "operationId": "guardar_v1_composicion_guardar_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PeticionGuardar"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GuardadoRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/salud": {
       "get": {
         "tags": [
@@ -1645,6 +1912,31 @@
         ],
         "title": "ActualizacionPeticion",
         "description": "UC-02 sobre un presupuesto guardado: la lista nueva y el código de la versión que produce."
+      },
+      "Advertencia": {
+        "properties": {
+          "tipo": {
+            "type": "string",
+            "enum": [
+              "rendimiento",
+              "rendimiento_ml",
+              "precio_atipico",
+              "contraste_aace",
+              "partida_nueva"
+            ],
+            "title": "Tipo"
+          },
+          "texto": {
+            "type": "string",
+            "title": "Texto"
+          }
+        },
+        "type": "object",
+        "required": [
+          "tipo",
+          "texto"
+        ],
+        "title": "Advertencia"
       },
       "AlertaPrecioRespuesta": {
         "properties": {
@@ -2323,6 +2615,34 @@
         ],
         "title": "ComposicionRespuesta"
       },
+      "Contraste": {
+        "properties": {
+          "tecnica": {
+            "type": "string",
+            "title": "Tecnica"
+          },
+          "registros": {
+            "type": "integer",
+            "title": "Registros"
+          },
+          "pu_estimado": {
+            "type": "string",
+            "title": "Pu Estimado"
+          },
+          "dentro_de_rango": {
+            "type": "boolean",
+            "title": "Dentro De Rango"
+          }
+        },
+        "type": "object",
+        "required": [
+          "tecnica",
+          "registros",
+          "pu_estimado",
+          "dentro_de_rango"
+        ],
+        "title": "Contraste"
+      },
       "Credenciales": {
         "properties": {
           "login": {
@@ -2342,6 +2662,44 @@
           "contrasena"
         ],
         "title": "Credenciales"
+      },
+      "Desglose": {
+        "properties": {
+          "materiales": {
+            "type": "string",
+            "title": "Materiales"
+          },
+          "equipos": {
+            "type": "string",
+            "title": "Equipos"
+          },
+          "mano_obra": {
+            "type": "string",
+            "title": "Mano Obra"
+          },
+          "costo_directo": {
+            "type": "string",
+            "title": "Costo Directo"
+          },
+          "con_administracion": {
+            "type": "string",
+            "title": "Con Administracion"
+          },
+          "precio_unitario": {
+            "type": "string",
+            "title": "Precio Unitario"
+          }
+        },
+        "type": "object",
+        "required": [
+          "materiales",
+          "equipos",
+          "mano_obra",
+          "costo_directo",
+          "con_administracion",
+          "precio_unitario"
+        ],
+        "title": "Desglose"
       },
       "Detalle": {
         "properties": {
@@ -2847,6 +3205,71 @@
         "title": "EstiloVisualRespuesta",
         "description": "Espejo de `visual.EstiloVisual`; `bordes`: arriba, derecha, abajo, izquierda."
       },
+      "EvaluacionRespuesta": {
+        "properties": {
+          "estado": {
+            "type": "string",
+            "enum": [
+              "vacio",
+              "incompleto",
+              "valido"
+            ],
+            "title": "Estado"
+          },
+          "aviso": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Aviso"
+          },
+          "desglose": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Desglose"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "advertencias": {
+            "items": {
+              "$ref": "#/components/schemas/Advertencia"
+            },
+            "type": "array",
+            "title": "Advertencias"
+          },
+          "requiere_justificacion": {
+            "type": "boolean",
+            "title": "Requiere Justificacion"
+          },
+          "contraste": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Contraste"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "estado",
+          "aviso",
+          "desglose",
+          "advertencias",
+          "requiere_justificacion",
+          "contraste"
+        ],
+        "title": "EvaluacionRespuesta"
+      },
       "FilaComparativoRespuesta": {
         "properties": {
           "codigo_partida": {
@@ -2901,6 +3324,85 @@
         "title": "FilaComparativoRespuesta",
         "description": "Una fila de `core.budget.Comparativo`, con todos sus montos presentados a dos decimales."
       },
+      "FilaEquipo": {
+        "properties": {
+          "descripcion": {
+            "type": "string",
+            "title": "Descripcion",
+            "default": ""
+          },
+          "cantidad": {
+            "type": "string",
+            "title": "Cantidad",
+            "default": ""
+          },
+          "precio": {
+            "type": "string",
+            "title": "Precio",
+            "default": ""
+          },
+          "depreciacion": {
+            "type": "string",
+            "title": "Depreciacion",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "title": "FilaEquipo"
+      },
+      "FilaManoObra": {
+        "properties": {
+          "descripcion": {
+            "type": "string",
+            "title": "Descripcion",
+            "default": ""
+          },
+          "cantidad": {
+            "type": "string",
+            "title": "Cantidad",
+            "default": ""
+          },
+          "sueldo": {
+            "type": "string",
+            "title": "Sueldo",
+            "default": ""
+          },
+          "modalidad": {
+            "type": "string",
+            "title": "Modalidad",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "title": "FilaManoObra",
+        "description": "`modalidad` vacía es jornal (el contrato); una que no es `jornal` ni `destajo` da el aviso\nde la conversión, como en la página clásica, no un 422 de validación."
+      },
+      "FilaMaterial": {
+        "properties": {
+          "descripcion": {
+            "type": "string",
+            "title": "Descripcion",
+            "default": ""
+          },
+          "unidad": {
+            "type": "string",
+            "title": "Unidad",
+            "default": ""
+          },
+          "cantidad": {
+            "type": "string",
+            "title": "Cantidad",
+            "default": ""
+          },
+          "precio": {
+            "type": "string",
+            "title": "Precio",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "title": "FilaMaterial"
+      },
       "FilaSimuladaRespuesta": {
         "properties": {
           "tipo": {
@@ -2928,6 +3430,37 @@
           "precio"
         ],
         "title": "FilaSimuladaRespuesta"
+      },
+      "GuardadoRespuesta": {
+        "properties": {
+          "precio_unitario": {
+            "type": "string",
+            "title": "Precio Unitario"
+          },
+          "mensaje": {
+            "type": "string",
+            "title": "Mensaje"
+          },
+          "justificada": {
+            "type": "boolean",
+            "title": "Justificada"
+          },
+          "avisos": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Avisos"
+          }
+        },
+        "type": "object",
+        "required": [
+          "precio_unitario",
+          "mensaje",
+          "justificada",
+          "avisos"
+        ],
+        "title": "GuardadoRespuesta"
       },
       "HTTPValidationError": {
         "properties": {
@@ -3669,6 +4202,30 @@
         "title": "ListaRespuesta",
         "description": "Cabecera de una lista de precios registrada."
       },
+      "OpcionesRespuesta": {
+        "properties": {
+          "dominios": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Dominios"
+          },
+          "modalidades": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Modalidades"
+          }
+        },
+        "type": "object",
+        "required": [
+          "dominios",
+          "modalidades"
+        ],
+        "title": "OpcionesRespuesta"
+      },
       "PartidaPresupuestadaRespuesta": {
         "properties": {
           "codigo_partida": {
@@ -3895,6 +4452,175 @@
         ],
         "title": "PeriodoPlanPeticion",
         "description": "Un período del plan de trabajo (UC‑01, paso 6): su etiqueta y la fracción de cada partida\nque ejecuta (código → fracción, como texto decimal). Las fracciones de cada partida suman 1\nen todo el plan; si no, `PlanInvalido` responde 422."
+      },
+      "PeticionEvaluar": {
+        "properties": {
+          "materiales": {
+            "items": {
+              "$ref": "#/components/schemas/FilaMaterial"
+            },
+            "type": "array",
+            "title": "Materiales",
+            "default": []
+          },
+          "equipos": {
+            "items": {
+              "$ref": "#/components/schemas/FilaEquipo"
+            },
+            "type": "array",
+            "title": "Equipos",
+            "default": []
+          },
+          "mano_obra": {
+            "items": {
+              "$ref": "#/components/schemas/FilaManoObra"
+            },
+            "type": "array",
+            "title": "Mano Obra",
+            "default": []
+          },
+          "codigo": {
+            "type": "string",
+            "title": "Codigo",
+            "default": ""
+          },
+          "descripcion": {
+            "type": "string",
+            "title": "Descripcion",
+            "default": ""
+          },
+          "unidad": {
+            "type": "string",
+            "title": "Unidad",
+            "default": ""
+          },
+          "dominio": {
+            "$ref": "#/components/schemas/Dominio"
+          },
+          "rendimiento": {
+            "type": "string",
+            "title": "Rendimiento",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "dominio"
+        ],
+        "title": "PeticionEvaluar",
+        "description": "Cabecera y tablas tal como se teclean: todo texto, vacíos permitidos."
+      },
+      "PeticionGuardar": {
+        "properties": {
+          "materiales": {
+            "items": {
+              "$ref": "#/components/schemas/FilaMaterial"
+            },
+            "type": "array",
+            "title": "Materiales",
+            "default": []
+          },
+          "equipos": {
+            "items": {
+              "$ref": "#/components/schemas/FilaEquipo"
+            },
+            "type": "array",
+            "title": "Equipos",
+            "default": []
+          },
+          "mano_obra": {
+            "items": {
+              "$ref": "#/components/schemas/FilaManoObra"
+            },
+            "type": "array",
+            "title": "Mano Obra",
+            "default": []
+          },
+          "codigo": {
+            "type": "string",
+            "title": "Codigo",
+            "default": ""
+          },
+          "descripcion": {
+            "type": "string",
+            "title": "Descripcion",
+            "default": ""
+          },
+          "unidad": {
+            "type": "string",
+            "title": "Unidad",
+            "default": ""
+          },
+          "dominio": {
+            "$ref": "#/components/schemas/Dominio"
+          },
+          "rendimiento": {
+            "type": "string",
+            "title": "Rendimiento",
+            "default": ""
+          },
+          "fecha": {
+            "type": "string",
+            "format": "date",
+            "title": "Fecha"
+          },
+          "condiciones": {
+            "type": "string",
+            "title": "Condiciones",
+            "default": ""
+          },
+          "justificacion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Justificacion"
+          }
+        },
+        "type": "object",
+        "required": [
+          "dominio",
+          "fecha"
+        ],
+        "title": "PeticionGuardar"
+      },
+      "PrecargaRespuesta": {
+        "properties": {
+          "existe": {
+            "type": "boolean",
+            "title": "Existe"
+          },
+          "tablas": {
+            "$ref": "#/components/schemas/Tablas"
+          },
+          "rendimiento_propuesto": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rendimiento Propuesto"
+          },
+          "hay_historial": {
+            "type": "boolean",
+            "title": "Hay Historial"
+          }
+        },
+        "type": "object",
+        "required": [
+          "existe",
+          "tablas",
+          "rendimiento_propuesto",
+          "hay_historial"
+        ],
+        "title": "PrecargaRespuesta"
       },
       "PresupuestoCreadoRespuesta": {
         "properties": {
@@ -4554,6 +5280,76 @@
         ],
         "title": "SesionRespuesta"
       },
+      "SimilarRespuesta": {
+        "properties": {
+          "codigo": {
+            "type": "string",
+            "title": "Codigo"
+          },
+          "descripcion": {
+            "type": "string",
+            "title": "Descripcion"
+          },
+          "puntaje": {
+            "type": "string",
+            "title": "Puntaje"
+          },
+          "rendimiento": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rendimiento"
+          },
+          "unidad": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unidad"
+          },
+          "tablas": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Tablas"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "aviso": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Aviso"
+          }
+        },
+        "type": "object",
+        "required": [
+          "codigo",
+          "descripcion",
+          "puntaje",
+          "rendimiento",
+          "unidad",
+          "tablas",
+          "aviso"
+        ],
+        "title": "SimilarRespuesta"
+      },
       "SimilaresRespuesta": {
         "properties": {
           "propuestas": {
@@ -4655,6 +5451,62 @@
           "descripcion"
         ],
         "title": "SolicitudSimilares"
+      },
+      "SugerenciaRespuesta": {
+        "properties": {
+          "etiqueta": {
+            "type": "string",
+            "title": "Etiqueta"
+          },
+          "ref_maprex": {
+            "type": "string",
+            "title": "Ref Maprex"
+          },
+          "fila": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Fila"
+          }
+        },
+        "type": "object",
+        "required": [
+          "etiqueta",
+          "ref_maprex",
+          "fila"
+        ],
+        "title": "SugerenciaRespuesta"
+      },
+      "Tablas": {
+        "properties": {
+          "materiales": {
+            "items": {
+              "$ref": "#/components/schemas/FilaMaterial"
+            },
+            "type": "array",
+            "title": "Materiales",
+            "default": []
+          },
+          "equipos": {
+            "items": {
+              "$ref": "#/components/schemas/FilaEquipo"
+            },
+            "type": "array",
+            "title": "Equipos",
+            "default": []
+          },
+          "mano_obra": {
+            "items": {
+              "$ref": "#/components/schemas/FilaManoObra"
+            },
+            "type": "array",
+            "title": "Mano Obra",
+            "default": []
+          }
+        },
+        "type": "object",
+        "title": "Tablas"
       },
       "TrazaRespuesta": {
         "properties": {

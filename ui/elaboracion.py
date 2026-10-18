@@ -23,16 +23,17 @@ from datetime import date
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+# RB-3 (ola 3, S2-B): viven en la capa de aplicacion; se reexportan con su nombre de siempre.
+from aplicacion.composicion import Guardado as Guardado
+from aplicacion.composicion import guardar_composicion as guardar_composicion
 from core.budget import ResultadoElaboracion, elaborar, exportar_excel, plan_secuencial
 from core.catalog import Catalogo, PropuestaRendimiento, proponer_rendimiento, registrar_rendimiento
-from core.contracts import ComposicionAPU, Dominio, ItemComputo, ParametrosCosto, ResultadoAPU
+from core.contracts import Dominio, ItemComputo, ParametrosCosto
 from core.contracts.apu import Rendimiento, TipoRendimiento
 from ui.composicion import (
     ComposicionInvalida,
     decimal_desde_texto,
-    desglose,
     item_desde_cantidad,
-    motivo_para_no_reemplazar,
     texto_de_celda,
 )
 
@@ -179,45 +180,6 @@ def libro_excel(resultado: ResultadoElaboracion) -> tuple[bytes, str]:
         ruta = Path(carpeta) / f"presupuesto_{resultado.presupuesto.codigo}.xlsx"
         libro = exportar_excel(resultado.presupuesto, resultado.informe, ruta)
         return libro.read_bytes(), libro.name
-
-
-@dataclass(frozen=True, slots=True)
-class Guardado:
-    """Lo que dejo `guardar_composicion`: el desglose guardado o el motivo para no guardar."""
-
-    resultado: ResultadoAPU | None = None
-    motivo: str | None = None
-
-    def __post_init__(self) -> None:
-        if (self.resultado is None) == (self.motivo is None):
-            raise ValueError("un Guardado lleva exactamente uno de los dos: resultado o motivo")
-
-
-def guardar_composicion(
-    catalogo: Catalogo,
-    composicion: ComposicionAPU,
-    dominio: Dominio,
-    fecha: date,
-    condiciones: str,
-) -> Guardado:
-    """Persiste la composicion: UC-10 si la partida no existe, UC-11 si ya existe.
-
-    Sobre una partida existente, `motivo_para_no_reemplazar` decide antes de escribir: una
-    composicion sin lineas borraria el desglose, y una cabecera distinta se descartaria en silencio
-    (`reemplazar_composicion` solo sustituye lineas y rendimiento). En ese caso devuelve el motivo
-    y no escribe nada. **No confirma**: el `commit` lo decide la pagina.
-    """
-    lista = catalogo.lista_vigente(fecha)
-    try:
-        partida = catalogo.partida(composicion.codigo_partida)
-    except KeyError:
-        catalogo.cargar_composicion(composicion, lista, dominio, fecha, condiciones)
-    else:
-        motivo = motivo_para_no_reemplazar(partida.descripcion, partida.unidad, composicion)
-        if motivo is not None:
-            return Guardado(motivo=motivo)
-        catalogo.reemplazar_composicion(composicion, lista, dominio, fecha, condiciones)
-    return Guardado(resultado=desglose(composicion))
 
 
 # --- UC-01 3a: los pendientes, sus propuestas y la aceptacion (INV-072, D6) --------------------
