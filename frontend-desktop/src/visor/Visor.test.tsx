@@ -146,7 +146,7 @@ describe("Visor", () => {
     render(<Visor crearHoja={crearHoja} />);
     await soltar(usuario);
     const franja = await screen.findByRole("region", { name: "Indicadores del libro" });
-    expect(within(franja).getByText("1738.407")).toBeInTheDocument();
+    expect(within(franja).getByText("1.738,407")).toBeInTheDocument();
     expect(within(franja).getByRole("group", { name: "Hallazgos por severidad" })).toBeInTheDocument();
     expect(screen.getByText("El total no coincide con la suma")).toBeInTheDocument();
     expect(screen.getByRole("region", { name: /Sin celda en el libro/ })).toBeInTheDocument();
@@ -163,7 +163,7 @@ describe("Visor", () => {
     expect(screen.queryByRole("tab", { name: "AUX" })).not.toBeInTheDocument();
   });
 
-  test("un hallazgo en una hoja oculta va al grupo sin celda", async () => {
+  test("un hallazgo en una hoja oculta va al grupo de ocultos y dice cual", async () => {
     const usuario = userEvent.setup();
     const conOculta = {
       ...auditoria,
@@ -174,8 +174,9 @@ describe("Visor", () => {
     );
     render(<Visor crearHoja={crearHoja} />);
     await soltar(usuario);
-    const grupo = await screen.findByRole("region", { name: /Sin celda en el libro/ });
+    const grupo = await screen.findByRole("region", { name: /En hoja, fila o columna oculta/ });
     expect(within(grupo).getByText("Error en la hoja auxiliar")).toBeInTheDocument();
+    expect(within(grupo).getByText("hoja AUX oculta")).toBeInTheDocument();
   });
 
   test("elegir una pestana cambia de hoja", async () => {

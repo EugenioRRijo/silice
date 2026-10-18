@@ -1,32 +1,54 @@
 // Franja de indicadores Fiori (DESIGN.md): 64 px, divisores de 1 px, esquinas rectas, sin sombra ni animacion.
+// Texto solo para lectores de pantalla (el patron visually-hidden de Carbon): sin salto de linea ni espacio propio.
 .silice-oculto {
   position: absolute;
   inline-size: 1px;
   block-size: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
   overflow: hidden;
-  clip-path: inset(50%);
+  clip: rect(0, 0, 0, 0);
   white-space: nowrap;
 }
 
+// El mismo texto solo para lectores, pero DENTRO de una linea de texto: un inline-block no es de nivel bloque, asi
+// que al leer o copiar el texto no se parte la linea (el .silice-oculto absoluto si la parte).
+.silice-oculto-en-linea {
+  display: inline-block;
+  inline-size: 1px;
+  block-size: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  vertical-align: top;
+  white-space: nowrap;
+}
+
+// La franja mide 64 px y no crece: los indicadores se reparten el ancho que queda y recortan con elipsis lo que
+// no cabe (el valor completo esta en el tooltip, que se abre con el teclado); los conteos por severidad no se
+// encogen ni se mueven, asi que se ven siempre, a 1366 y a 1920.
 .franja-indicadores {
   display: flex;
-  flex-wrap: wrap;
+  flex: none; // la pantalla es una columna: sin esto la franja se encoge y se come los 64 px
+  flex-wrap: nowrap;
   align-items: stretch;
-  min-block-size: 4rem;
+  block-size: 4rem;
+  overflow: hidden;
   background: var(--cds-layer);
   border-block-end: 1px solid var(--silice-divisor);
 }
 
 .franja-indicadores__lista {
   display: flex;
-  flex-wrap: wrap;
-  flex: 1 1 auto;
+  flex: 1 1 0;
   min-inline-size: 0;
+  overflow: hidden;
 }
 
 .franja-indicadores__severidad {
   display: flex;
-  flex-wrap: wrap;
+  flex: none;
   align-items: center;
   gap: 0.25rem;
   padding: 0 0.75rem;
@@ -36,7 +58,8 @@
 .fiori-kpi {
   position: relative;
   display: grid;
-  grid-template-columns: 1fr auto;
+  flex: 1 1 0;
+  grid-template-columns: minmax(0, 1fr) minmax(0, auto);
   grid-template-areas:
     "titulo meta"
     "actual delta"
@@ -45,13 +68,25 @@
   align-items: baseline;
   column-gap: 0.75rem;
   row-gap: 0.125rem;
-  padding: 0.25rem 1rem;
-  min-inline-size: 13rem;
+  min-inline-size: 0;
+  padding: 0.25rem 0.75rem;
+  overflow: hidden;
   border-inline-end: 1px solid var(--silice-divisor);
 }
 
 .fiori-kpi:last-child {
   border-inline-end: 0;
+}
+
+// Cada texto de la tarjeta se recorta con elipsis dentro de su celda.
+.fiori-kpi__titulo,
+.fiori-kpi__meta,
+.fiori-kpi__actual,
+.fiori-kpi__delta {
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .fiori-kpi__titulo {

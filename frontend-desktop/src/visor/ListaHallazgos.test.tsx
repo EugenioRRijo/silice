@@ -1,7 +1,7 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, test, vi } from "vitest";
-import type { HallazgoLibroRespuesta } from "../api/tipos";
+import type { HallazgoLibroRespuesta, HojaVisualRespuesta } from "../api/tipos";
 import { ListaHallazgos } from "./ListaHallazgos";
 
 const hallazgos: HallazgoLibroRespuesta[] = [
@@ -38,6 +38,23 @@ const hallazgos: HallazgoLibroRespuesta[] = [
     accion: "Revisar",
   },
 ];
+
+function hoja(nombre: string, extra: Partial<HojaVisualRespuesta> = {}): HojaVisualRespuesta {
+  return {
+    nombre,
+    visible: true,
+    filas: 60,
+    columnas: 10,
+    anchos: {},
+    altos: {},
+    ocultas_filas: [],
+    ocultas_columnas: [],
+    combinadas: [],
+    fijas: null,
+    celdas: [],
+    ...extra,
+  };
+}
 
 function montar(extra: Partial<React.ComponentProps<typeof ListaHallazgos>> = {}) {
   const irACelda = vi.fn();
@@ -151,6 +168,66 @@ describe("ListaHallazgos", () => {
   test("enfocar mueve el foco del teclado a la fila pedida", () => {
     montar({ seleccionado: 1, enfocar: { indice: 1, n: 1 } });
     expect(fila("Precio unitario distinto al de INSUMOS")).toHaveFocus();
+  });
+
+  describe("hallazgos en hojas, filas o columnas ocultas", () => {
+    const ocultoEnFila: HallazgoLibroRespuesta = {
+      codigo: "L2",
+      severidad: "ERROR",
+      descripcion: "Partida con cantidad cero",
+      celda: "PRESUPUESTO!F19",
+      impacto: "5.00",
+      accion: "Revisar",
+    };
+    const hojas = [hoja("PRESUPUESTO", { ocultas_filas: [19] }), hoja("APU-01")];
+
+    test("van a su propio grupo, con lo que esta oculto, y no a Sin celda en el libro", () => {
+      montar({ hallazgos: [...hallazgos.slice(0, 1), ocultoEnFila], hojas });
+      const grupo = screen.getByRole("region", { name: /En hoja, fila o columna oculta/ });
+      expect(within(grupo).getByText("Partida con cantidad cero")).toBeInTheDocument();
+      expect(within(grupo).getByText("fila 19 oculta")).toBeInTheDocument();
+      expect(screen.queryByRole("region", { name: /Sin celda en el libro/ })).not.toBeInTheDocument();
+    });
+
+    test("al hacer clic avisa en la lista por que no se ve, y no mueve la hoja", async () => {
+      const usuario = userEvent.setup();
+      const { irACelda, onElegir } = montar({ hallazgos: [ocultoEnFila], hojas });
+      await usuario.click(fila("Partida con cantidad cero"));
+      expect(onElegir).toHaveBeenCalledWith(0);
+      expect(irACelda).not.toHaveBeenCalled();
+      expect(screen.getByRole("status")).toHaveTextContent(/fila 19 oculta/);
+    });
+
+    test("un hallazgo sin celda tambien avisa que no se puede ubicar", async () => {
+      const usuario = userEvent.setup();
+      montar();
+      await usuario.click(fila("El libro no declara la fecha de la portada"));
+      expect(screen.getByRole("status")).toHaveTextContent(/no tiene una celda/i);
+    });
+
+    test("el aviso se va al elegir un hallazgo con celda", async () => {
+      const usuario = userEvent.setup();
+      montar({ hallazgos: [ocultoEnFila, hallazgos[0]], hojas: [...hojas, hoja("PRESUPUESTO", { ocultas_filas: [19] })] });
+      await usuario.click(fila("Partida con cantidad cero"));
+      await usuario.click(fila("El total no coincide con la suma de las partidas"));
+      expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    });
+  });
+
+  test("el filtro se recuerda hacia afuera (alFiltrar) y se puede restaurar (filtroInicial)", async () => {
+    const usuario = userEvent.setup();
+    const alFiltrar = vi.fn();
+    const { rerender } = render(
+      <ListaHallazgos hallazgos={hallazgos} seleccionado={null} irACelda={vi.fn()} onElegir={vi.fn()} alFiltrar={alFiltrar} />,
+    );
+    await usuario.click(screen.getByRole("button", { name: /^Crítico/ }));
+    expect(alFiltrar).toHaveBeenLastCalledWith(["CRITICO"]);
+    rerender(<div />);
+    render(
+      <ListaHallazgos hallazgos={hallazgos} seleccionado={null} irACelda={vi.fn()} onElegir={vi.fn()} filtroInicial={["ERROR"]} />,
+    );
+    expect(screen.queryByText("El total no coincide con la suma de las partidas")).not.toBeInTheDocument();
+    expect(screen.getByText("Precio unitario distinto al de INSUMOS")).toBeInTheDocument();
   });
 
   test("sin hallazgos dice que el libro no tiene ninguno", () => {

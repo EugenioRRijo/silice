@@ -13,6 +13,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ErrorDeApi, pedir } from "../api/cliente";
 import type { ConteoPorSeveridad, LibroAuditadoRespuesta, LibroVisualRespuesta } from "../api/tipos";
 import { FranjaIndicadores } from "../indicadores/FranjaIndicadores";
+import type { Severidad } from "../indicadores/tipos";
+import { crearAlmacen } from "./almacen";
+import type { AlmacenDelVisor } from "./almacen";
 import { CapaHalos } from "./CapaHalos";
 import { construirHalos } from "./halos";
 import type { CeldaRef, CrearHojaVisor, HojaVisor } from "./hojaVisor";
@@ -27,6 +30,9 @@ interface Props {
   crearHoja?: CrearHojaVisor;
   // La API contesto 401: la sesion vencio.
   alExpirar?: () => void;
+  // Donde se guarda, en memoria, lo que esta abierto: si el Visor se desmonta (sesion vencida) y vuelve a montarse
+  // con el mismo almacen, reaparece tal cual.
+  almacen?: AlmacenDelVisor;
 }
 
 type Fase = "vacio" | "cargando" | "listo";
@@ -70,16 +76,22 @@ function Esqueleto() {
   );
 }
 
-export function Visor({ crearHoja = crearHojaUniver, alExpirar }: Props) {
-  const [fase, setFase] = useState<Fase>("vacio");
-  const [archivo, setArchivo] = useState<File | null>(null);
-  const [fecha, setFecha] = useState(hoyISO);
-  const [replica, setReplica] = useState<LibroVisualRespuesta | null>(null);
-  const [auditoria, setAuditoria] = useState<LibroAuditadoRespuesta | null>(null);
+export function Visor({ crearHoja = crearHojaUniver, alExpirar, almacen }: Props) {
+  const [propio] = useState(crearAlmacen);
+  const alm = almacen ?? propio;
+  const [guardado] = useState(() => alm.leer());
+  const [fase, setFase] = useState<Fase>(guardado ? "listo" : "vacio");
+  const [archivo, setArchivo] = useState<File | null>(guardado?.archivo ?? null);
+  const [fecha, setFecha] = useState(guardado?.fecha ?? hoyISO());
+  const [replica, setReplica] = useState<LibroVisualRespuesta | null>(guardado?.replica ?? null);
+  const [auditoria, setAuditoria] = useState<LibroAuditadoRespuesta | null>(guardado?.auditoria ?? null);
+  const [filtro, setFiltro] = useState<Severidad[]>(guardado?.filtro ?? []);
   const [error, setError] = useState<string | null>(null);
   const [visor, setVisor] = useState<HojaVisor | null>(null);
-  const [hojaActiva, setHojaActiva] = useState("");
-  const [seleccionado, setSeleccionado] = useState<number | null>(null);
+  const [hojaActiva, setHojaActiva] = useState(guardado?.hojaActiva ?? "");
+  const [seleccionado, setSeleccionado] = useState<number | null>(guardado?.seleccionado ?? null);
+  // La hoja que se veia antes de que venciera la sesion: se restaura cuando el visor nuevo este listo.
+  const hojaPorRestaurar = useRef(guardado?.hojaActiva ?? "");
   const [enfocar, setEnfocar] = useState<{ indice: number; n: number } | null>(null);
 
   // Para ignorar respuestas de una carga o auditoria que ya quedo atras.
@@ -109,6 +121,8 @@ export function Visor({ crearHoja = crearHojaUniver, alExpirar }: Props) {
       setFase("cargando");
       setSeleccionado(null);
       setEnfocar(null);
+      setFiltro([]);
+      hojaPorRestaurar.current = "";
       // Las dos llamadas salen a la vez: la hoja y la auditoria no dependen una de la otra.
       const [r, a] = await Promise.allSettled([
         pedir<LibroVisualRespuesta>("/v1/libros/replica", { metodo: "POST", cuerpo: cuerpoDeLibro(nuevo) }),
@@ -170,14 +184,26 @@ export function Visor({ crearHoja = crearHojaUniver, alExpirar }: Props) {
 
   const hallazgos = useMemo(() => auditoria?.hallazgos ?? [], [auditoria]);
   const hojasVisibles = useMemo(() => replica?.hojas.filter((h) => h.visible) ?? [], [replica]);
-  // Un hallazgo en una hoja oculta no se puede mostrar sobre la hoja: va al grupo "Sin celda en el libro".
-  const nombresDeHojas = useMemo(() => hojasVisibles.map((h) => h.nombre), [hojasVisibles]);
-  const { halos } = useMemo(() => construirHalos(hallazgos, nombresDeHojas), [hallazgos, nombresDeHojas]);
+  // Un hallazgo en una hoja, fila o columna oculta no se muestra sobre la hoja: la lista lo agrupa aparte.
+  const { halos } = useMemo(() => construirHalos(hallazgos, replica?.hojas), [hallazgos, replica]);
 
   const alCambiarVisor = useCallback((nuevo: HojaVisor | null) => {
     setVisor(nuevo);
-    setHojaActiva(nuevo ? nuevo.hojaActiva() : "");
+    if (!nuevo) return;
+    const pendiente = hojaPorRestaurar.current;
+    hojaPorRestaurar.current = "";
+    if (pendiente && pendiente !== nuevo.hojaActiva()) nuevo.irAHoja(pendiente);
+    setHojaActiva(nuevo.hojaActiva());
   }, []);
+
+  // Lo abierto se guarda en memoria (no en el navegador) para sobrevivir a una sesion vencida.
+  useEffect(() => {
+    alm.guardar(
+      fase === "listo" && replica && auditoria
+        ? { archivo, fecha, replica, auditoria, hojaActiva, filtro, seleccionado }
+        : null,
+    );
+  }, [alm, fase, archivo, fecha, replica, auditoria, hojaActiva, filtro, seleccionado]);
 
   const alFallarVisor = useCallback((mensaje: string) => setError(mensaje), []);
 
@@ -216,7 +242,12 @@ export function Visor({ crearHoja = crearHojaUniver, alExpirar }: Props) {
     <main className="visor">
       {cargando && <div className="visor__franja-esqueleto" aria-hidden="true"><SkeletonText width="60%" /></div>}
       {fase === "listo" && auditoria && (
-        <FranjaIndicadores indicadores={auditoria.indicadores ?? []} porSeveridad={porSeveridad} />
+        <FranjaIndicadores
+          indicadores={auditoria.indicadores ?? []}
+          porSeveridad={porSeveridad}
+          totalesLibro={auditoria.totales_libro}
+          totalesSilice={auditoria.totales_silice}
+        />
       )}
 
       <div className="visor__barra">
@@ -225,6 +256,7 @@ export function Visor({ crearHoja = crearHojaUniver, alExpirar }: Props) {
             id="visor-fecha"
             type="date"
             size="sm"
+            inline
             labelText="Fecha de devolución"
             value={fecha}
             onChange={(e) => cambiarFecha(e.target.value)}
@@ -311,7 +343,9 @@ export function Visor({ crearHoja = crearHojaUniver, alExpirar }: Props) {
           <aside className="visor__lista">
             <ListaHallazgos
               hallazgos={hallazgos}
-              hojasDelLibro={nombresDeHojas}
+              hojas={replica.hojas}
+              filtroInicial={filtro}
+              alFiltrar={setFiltro}
               seleccionado={seleccionado}
               enfocar={enfocar}
               irACelda={irACelda}

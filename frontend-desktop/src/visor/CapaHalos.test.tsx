@@ -95,6 +95,14 @@ describe("CapaHalos", () => {
     expect(screen.queryByRole("img", { name: /Crítico/ })).not.toBeInTheDocument();
   });
 
+  test("el title dice la severidad en texto visible (WCAG 1.4.1): el atipico no se distingue solo por el color", () => {
+    montar();
+    const atipico = screen.getByRole("img", { name: /Atípico/ }).closest(".halo__insignia");
+    expect(atipico?.getAttribute("title")).toBe("Atípico: Precio atipico");
+    const critico = screen.getByRole("img", { name: /Crítico/ }).closest(".halo__insignia");
+    expect(critico?.getAttribute("title")).toBe("Crítico: El total no coincide");
+  });
+
   test("el halo elegido se marca y lo dice con aria-current", () => {
     const hoja = crearHojaFalsa("PRESUPUESTO");
     hoja.posiciones.set(clave({ hoja: "PRESUPUESTO", fila0: 11, columna0: 5 }), { x: 300, y: 120, ancho: 80, alto: 20 });

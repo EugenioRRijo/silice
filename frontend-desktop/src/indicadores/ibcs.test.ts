@@ -7,6 +7,15 @@ describe("semanticaIbcs", () => {
     expect(semanticaIbcs("-3.10", "costo")).toBe("favorable");
   });
 
+  test("exactitud: cualquier desviacion distinta de cero es desfavorable, sea cual sea el signo", () => {
+    expect(semanticaIbcs("12.50", "exactitud")).toBe("desfavorable");
+    expect(semanticaIbcs("-3.10", "exactitud")).toBe("desfavorable");
+  });
+
+  test.each(["0", "0.00", "-0.00"])("exactitud: el cero %j sigue siendo sin variacion", (cero) => {
+    expect(semanticaIbcs(cero, "exactitud")).toBe("neutro");
+  });
+
   test("rendimiento: positivo es favorable y negativo desfavorable", () => {
     expect(semanticaIbcs("4", "rendimiento")).toBe("favorable");
     expect(semanticaIbcs("-4", "rendimiento")).toBe("desfavorable");

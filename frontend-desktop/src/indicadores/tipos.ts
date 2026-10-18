@@ -1,6 +1,8 @@
 // Contrato de la API para la franja de indicadores (RS2-7). Los montos llegan como texto decimal y la
 // interfaz solo los muestra: nunca los recalcula.
-export type SentidoIndicador = "costo" | "rendimiento";
+// "exactitud" (RS2-13): la meta es el valor correcto; cualquier desviacion es desfavorable y el signo solo
+// dice si sobra o falta.
+export type SentidoIndicador = "costo" | "rendimiento" | "exactitud";
 
 export type Severidad = "CRITICO" | "ERROR" | "ADVERTENCIA" | "INFO";
 

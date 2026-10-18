@@ -54,25 +54,33 @@ body {
   overflow: hidden;
 }
 
+// Una sola barra de 48 px: fecha de devolucion, nombre del libro y Cambiar libro, alineados en vertical.
 .visor__barra {
   display: flex;
   flex: none;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: 0.5rem 1rem;
-  padding: 0.5rem 1rem;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 1rem;
+  block-size: 3rem;
+  box-sizing: border-box;
+  padding: 0 1rem;
   background: var(--cds-layer);
   border-block-end: 1px solid var(--silice-divisor);
 }
 
 .visor__fecha {
-  inline-size: 11rem;
+  flex: none;
+  inline-size: 22rem;
+
+  label {
+    white-space: nowrap;
+  }
 }
 
 .visor__archivo {
-  align-self: center;
-  padding-block: 0.125rem;
-  max-inline-size: 28rem;
+  display: block;
+  flex: 1 1 0;
+  min-inline-size: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -135,12 +143,17 @@ body {
 .hoja-lienzo {
   position: absolute;
   inset: 0;
+  // Todo lo de Univer (z-index de 1 a 100 adentro) forma un solo plano: la capa de halos, hermana de este
+  // elemento, se compara con el plano entero y no con cada pieza suelta.
+  isolation: isolate;
 }
 
+// La lista no desplaza entera: el encabezado y los filtros quedan fijos y solo el cuerpo desplaza.
 .visor__lista {
+  display: flex;
+  flex-direction: column;
   min-block-size: 0;
-  overflow-x: hidden;
-  overflow-y: auto;
+  overflow: hidden;
   background: var(--cds-layer);
 }
 
@@ -197,8 +210,12 @@ body {
 
 // --- Capa de halos (RS2-8) ---------------------------------------------------------------------------
 // Encima del lienzo; no recibe el puntero, salvo la insignia, para no estorbar a la hoja.
+// El lienzo de Univer tiene z-index 8 (su capa de contenido): sin z-index propio la capa quedaba DEBAJO y los halos
+// no se veian sobre las celdas con relleno. 20 la deja por encima del lienzo y por debajo de los popups y menus
+// (de Carbon y de Univer, de 1000 en adelante). visor.estilos.test.ts lo vigila.
 .capa-halos {
   position: absolute;
+  z-index: 20;
   overflow: hidden;
   pointer-events: none;
 }
@@ -242,10 +259,29 @@ body {
 // --- Lista de hallazgos ------------------------------------------------------------------------------
 .lista-hallazgos {
   display: flex;
+  flex: 1 1 auto;
   flex-direction: column;
+  min-block-size: 0;
+}
+
+.lista-hallazgos__cuerpo {
+  flex: 1 1 auto;
+  min-block-size: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.lista-hallazgos__aviso {
+  max-inline-size: none;
+  inline-size: 100%;
+}
+
+.hallazgo__motivo {
+  color: var(--silice-texto-secundario);
 }
 
 .lista-hallazgos__cabecera {
+  flex: none;
   display: grid;
   gap: 0.5rem;
   padding: 0.75rem;
@@ -329,4 +365,12 @@ body {
 .hallazgo__celda {
   color: var(--silice-texto-secundario);
   overflow-wrap: anywhere;
+}
+
+// El triangulo amarillo de advertencia (WarningAltFilled): su borde amarillo no alcanza 3:1 sobre fondo claro, asi
+// que el signo de exclamacion va con la tinta principal (#161616 sobre amarillo-30: unos 10:1), como promete
+// DESIGN.md. Aplica a la insignia de la hoja, a la lista y a los conteos de la franja.
+.icono-sev[data-icono="WarningAltFilled"] [data-icon-path="inner-path"] {
+  fill: var(--cds-text-primary);
+  opacity: 1;
 }
