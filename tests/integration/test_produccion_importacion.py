@@ -536,3 +536,25 @@ def test_sin_ticket_la_clave_sigue_siendo_huella_y_fila(sesion: Session) -> None
     assert importar(sesion, lectura, usuario=USUARIO).a_la_bandeja == 0  # mismo archivo
     assert importar(sesion, otra, usuario=USUARIO).a_la_bandeja == 1  # otro archivo: sin ticket
     assert _cuantos(sesion, PesajeSospechoso) == 2
+
+
+def test_un_fallo_posterior_del_llamador_deshace_lo_importado(tmp_path: Any) -> None:
+    """`pysqlite` no emite `BEGIN` antes de un `SAVEPOINT`: con una sesion sin escrituras previas,
+    el `RELEASE` del `begin_nested()` de `importar` (el mas externo) confirmaba todo, y si el
+    llamador fallaba despues, su `rollback` no deshacia nada. `importar` abre la transaccion por su
+    cuenta, sin depender de quien lo llama (la API, la pantalla)."""
+    motor = create_engine(f"sqlite:///{(tmp_path / 'instalacion.db').as_posix()}")
+    METADATA_PRODUCCION.create_all(motor)
+    with Session(motor) as preparacion:
+        _catalogo(preparacion)
+        preparacion.commit()
+
+    with Session(motor) as sesion_fresca:  # sin escrituras previas: no hay BEGIN todavia
+        resultado = importar(sesion_fresca, _basico(), usuario=USUARIO)
+        assert resultado.registrados == 2
+        sesion_fresca.rollback()  # el llamador falla despues de importar y deshace
+
+    with Session(motor) as verificacion:
+        assert _cuantos(verificacion, Movimiento) == 0
+        assert _cuantos(verificacion, PesajeSospechoso) == 0
+    motor.dispose()
