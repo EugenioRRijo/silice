@@ -772,3 +772,49 @@ def test_sin_leer_proyecto_no_ve_la_pagina(monkeypatch, tmp_path) -> None:
     at = _abrir(monkeypatch, tmp_path, rol="administrador")
     assert [e.value for e in at.error] == [MENSAJE_SIN_PERMISO]
     assert not at.file_uploader and not at.info
+
+
+def test_el_libro_devuelto_se_previsualiza_con_sus_hojas_nuevas(
+    monkeypatch, tmp_path, limpio
+) -> None:
+    """Tras «Preparar el libro devuelto» la página dibuja ese libro (no el recibido): el selector
+    de hojas trae las tres nuevas y la vista de AUDITORÍA muestra las reglas evaluadas."""
+    c, _ = limpio
+    at = _abrir(monkeypatch, tmp_path)
+    at = _subir(at, "libros_xlsx", "libro de prueba.xlsx", c.datos, MIME_XLSX)
+    at = _pulsar(at, "libros_auditar")
+    assert not at.get("html")  # antes de preparar no hay libro devuelto que dibujar
+    assert not [s for s in at.selectbox if s.key == "libros_dev_hoja"]
+
+    at = _pulsar(at, "libros_preparar")
+    hojas = at.selectbox(key="libros_dev_hoja").options
+    assert hojas[-3:] == ["AUDITORÍA", "TRAZABILIDAD", "ALERTAS USD-Bs"]  # al final, tras las suyas
+    assert hojas[0] == "PORTADA"
+    at.selectbox(key="libros_dev_hoja").set_value("AUDITORÍA")
+    at = at.run()
+    assert not at.exception, [e.value for e in at.exception]
+    [html] = [h.proto.body for h in at.get("html")]
+    assert "RESUMEN POR SEVERIDAD" in html and "REGLAS EVALUADAS" in html
+    assert "R2 no aplicable" in html  # los dos hallazgos INFO del libro limpio
+    assert any(x.value.startswith("Libro devuelto, hoja AUDITORÍA") for x in at.caption)
+
+
+def test_si_no_se_puede_dibujar_el_libro_devuelto_la_descarga_sigue(
+    monkeypatch, tmp_path, limpio
+) -> None:
+    c, _ = limpio
+    at = _abrir(monkeypatch, tmp_path)
+    at = _subir(at, "libros_xlsx", "libro de prueba.xlsx", c.datos, MIME_XLSX)
+    at = _pulsar(at, "libros_auditar")
+
+    def rota(*_, **__):
+        raise RuntimeError("detalle interno /ruta/secreta")
+
+    monkeypatch.setattr(libros, "vista_calcada", rota)
+    at = _pulsar(at, "libros_preparar")
+    assert [w.value for w in at.warning] == [
+        "No se pudo dibujar esta hoja; el libro se descarga igual."
+    ]
+    assert "/ruta/secreta" not in _textos(at)
+    [boton] = at.get("download_button")
+    assert boton.proto.label.startswith("Descargar «")
