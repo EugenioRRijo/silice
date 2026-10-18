@@ -1434,9 +1434,15 @@ Origen: [ruta por sesiones](planes/RUTA_SESIONES.md) (decisiones RS-x de Eugenio
   exige ni puede ver eso. El protocolo **no se modifica**; el resultado se informa como **hipótesis previa
   falsada** y límite del método, junto a E1 y E6: el auditor verifica la coherencia interna del espacio y sus
   límites normativos, no que la posición, la fuente o el circuito de un punto sean los que el cliente pidió.
+- **RF-141 (nuevo, RS-11), regla R17 «Conexión de cada punto».**
+
+  | RF | Requisito | Prioridad | UC | Incremento | Criterio de aceptación |
+  |---|---|---|---|---|---|
+  | RF‑141 | Todo punto que según su especialidad exige fuente (agua fría, drenaje, datos) o circuito (tomacorriente, iluminación) y no la tiene da un hallazgo **ADVERTENCIA** (`R17`, nunca ERROR) que nombra el punto y lo que le falta, en la hoja, al guardar, en el resultado hipotético del asistente y en la reauditoría; el usuario decide si corrige | Esencial | UC‑15, UC‑23 | Sílice 1.1.0 (ruta, sesión 1) | casos a mano con el conjunto exacto de hallazgos; sobre el banco de evaluación del experimento, R17 detecta los 24/24 mutantes E5 y da 0 avisos en las 12 referencias; `congelado.verificar()` sigue en `[]` (el experimento no mide R17) |
+
 - **Numeración reservada para la ruta** (para que las sesiones en paralelo no choquen): sesión 2 UC-26, RF-111 a
   RF-118, RNF-22 y RNF-23; sesión 3 UC-27, RF-119 a RF-126, RNF-24; sesión 4 UC-28 y UC-29, RF-127 a RF-136, RNF-25;
-  sesión 5 RF-137 a RF-140, RNF-26 y RNF-27.
+  sesión 5 RF-137 a RF-140, RNF-26 y RNF-27; la sesión 1 usa RF-141.
 
 ## Apéndices
 - A. Caso de estudio y línea base: [docs/linea_base.md](linea_base.md).
