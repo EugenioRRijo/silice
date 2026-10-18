@@ -10,6 +10,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 
+from api.acceso import EDITAR
 from api.archivos import guardar_subida
 from api.esquemas import ItemComputoRespuesta
 from core.contracts import AdaptadorDominio, Dominio, ItemComputo
@@ -62,7 +63,7 @@ def _adaptador(
     raise ValueError(f"dominio no reconocido: {dominio!r}")
 
 
-@router.post("/computos/{dominio}", response_model=list[ItemComputoRespuesta])
+@router.post("/computos/{dominio}", response_model=list[ItemComputoRespuesta], dependencies=EDITAR)
 def computar(
     dominio: str,
     archivo: Annotated[UploadFile, File()],
