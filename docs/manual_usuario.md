@@ -49,8 +49,8 @@ Con el instalador no hace falta sembrar nada a mano; Inicio ofrece el caso de de
    sección 8.1](manual_tecnico.md#81-catálogos-por-dominio).
 
 > **Nombres de las variables.** Desde la 0.6.0 se llaman `SILICE_CASO` y `SILICE_MODO_ENTREGA`.
-> Los nombres anteriores, `ARENIA_CASO` y `ARENIA_MODO_ENTREGA`, se aceptan como alias solo
-> hasta la 0.6.0; si están las dos, manda la nueva (`ui/entorno.py`).
+> Los nombres anteriores, `ARENIA_CASO` y `ARENIA_MODO_ENTREGA`, se aceptaron como alias hasta la
+> 0.6.0 y ya no se aceptan desde la 0.7.0 (`ui/entorno.py`).
 
    **Dejar lista la aplicación para componer partidas.** Una sola orden siembra
    la línea base de la clínica, tres partidas de demostración (`DEMO-01-INST`, `DEMO-02-VALV`,

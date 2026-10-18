@@ -14,7 +14,7 @@ from pathlib import Path
 import pytest
 
 from tests.fixtures import apu_linea_base as linea_base
-from ui.entorno import ALIAS_ANTERIORES
+from ui.entorno import ALIAS_ANTERIORES, VARIABLE_CASO, VARIABLE_MODO_ENTREGA
 
 #: AppTest lee el `.streamlit/config.toml` del directorio de trabajo, que oculta los detalles de los
 #: errores (`client.showErrorDetails = "none"`, S5 §10.1). Las variables `STREAMLIT_*` mandan sobre
@@ -120,8 +120,9 @@ def _base_real_intacta():
 
 @pytest.fixture(autouse=True)
 def _sin_variables_de_silice_del_entorno(monkeypatch):
-    """Una `SILICE_*` (o su alias `ARENIA_*`) exportada en la terminal no debe desviar la suite."""
-    for nombre in (*ALIAS_ANTERIORES, *ALIAS_ANTERIORES.values()):
+    """Una `SILICE_*` (o un `ARENIA_*` viejo) exportada en la terminal no debe desviar la suite."""
+    nombres = (VARIABLE_CASO, VARIABLE_MODO_ENTREGA, "ARENIA_CASO", "ARENIA_MODO_ENTREGA")
+    for nombre in (*nombres, *ALIAS_ANTERIORES, *ALIAS_ANTERIORES.values()):
         monkeypatch.delenv(nombre, raising=False)
 
 
