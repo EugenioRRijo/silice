@@ -18,6 +18,9 @@ etiquetar, las líneas pasan a la sección de la versión. La historia anterior 
 - Sesión 2b, ola 0a (backend del marco de la interfaz nueva): capa `aplicacion/` (RM-1); caso por sesión del navegador con `GET /v1/casos` y `POST /v1/casos/actual` (RM-2); `GET /v1/proyectos`; cambio de contraseña obligatorio desde la interfaz nueva (`POST /v1/sesion/contrasena`); `GET/POST /v1/sesion` informan `debe_cambiar_clave`, `acciones`, `modo_entrega` y `url_clasica` (la interfaz Streamlit, para las páginas aún no migradas); dependencia «solo desde el propio equipo» para la API (RM-4).
 - Para integradores (RM-3): todas las rutas antiguas aceptan ahora la clave de API **o** la sesión del navegador con el rol de su página (tabla en `api/acceso.py`). Con `X-Silice-Clave` responden igual que antes; sin ella ni cookie, 401 con el mensaje de sesión y sin evento de «fallo de clave», como ya hacían las de `/v1/libros`.
 - Sesión 2 de la ruta (en curso): plan `docs/planes/PLAN_SESION_2_VISUAL.md`, producto y diseño de la interfaz nueva (`frontend-desktop/PRODUCT.md`, `DESIGN.md`) y enmienda 1.2.0 de la ERS (UC-26, RF-111 a RF-118, RNF-22 y RNF-23).
+### Corregido
+
+- La prueba de humo del instalador exigía el caso por defecto (`casos\silice.db`) justo después de instalar, pero el diseño lo crea al primer arranque (spec S5 §5.4): ahora lo comprueba tras arrancar, y el instalador deja en su registro el código de `migrar` (`instalador/humo.ps1`, `instalador/silice.iss`). El workflow del instalador no había pasado nunca en la CI por esto.
 
 ## [1.1.0] - 2026-10-18
 
@@ -37,6 +40,7 @@ etiquetar, las líneas pasan a la sección de la versión. La historia anterior 
 ### Corregido
 
 - `main` en rojo desde la 1.0.0: se retiran los alias `ARENIA_CASO` y `ARENIA_MODO_ENTREGA`, que solo valían hasta la 0.6.0 (`ui/entorno.py`, manuales y `tests/conftest.py`).
+- Un paquete con el desplazamiento del directorio central dañado ya no hace fallar la verificación con `ValueError` (`paquete/formato.py`); lo encontró la prueba de un byte cambiado en la CI de Windows.
 
 ## [1.0.0] - 2026-10-15
 

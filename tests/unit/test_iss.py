@@ -210,3 +210,9 @@ def test_las_definiciones_que_pasa_construir_son_las_que_lee_el_iss(tmp_path: Pa
     leidas = set(re.findall(r"^#ifn?def (\w+)", _texto(), re.M))
     assert pasadas == {"Version", "Completo", "Org", "Salida", "Raiz"}
     assert pasadas <= leidas
+
+
+def test_el_resultado_de_migrar_queda_en_el_registro_aunque_sea_silencioso() -> None:
+    """En modo silencioso `SuppressibleMsgBox` no se muestra: el código de `migrar` debe quedar en
+    el registro de Inno Setup para que la prueba de humo y el soporte lo vean."""
+    assert "Log('operacion migrar: codigo ' + IntToStr(Codigo))" in _texto()

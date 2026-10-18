@@ -18,6 +18,10 @@ Cuatro bases (la cuarta, desde la 0.6.0), cada una en su archivo (casos construi
 Desde la 0.6.0 cada base nace por `operacion.base_datos.preparar_base` (en `head`); en la 0.5.0 ese
 módulo no existe y la crea `create_all`, como la creaba la 0.5.0.
 
+Desde la 1.0.0 (S3-2, RF-83) confirmar una versión exige `usuario` y las plantillas de `tests/` no
+lo declaran (en pytest lo pone `tests/conftest.py`): el generador firma a su nombre
+(`USUARIO_GENERADOR`) las versiones que llegan sin usuario. Antes de la 1.0.0 no hace nada.
+
 Uso, dentro del árbol de la etiqueta:
     uv run python scripts/generar_base_prueba.py --salida <repo>/tests/fixtures/bases/v0_5_0 \
         --version 0.5.0 --etiqueta v0.5.0 --commit <sha de la etiqueta>
@@ -31,8 +35,8 @@ import importlib.util
 import json
 import sqlite3
 import sys
-from collections.abc import Callable, Sequence
-from contextlib import closing
+from collections.abc import Callable, Iterator, Sequence
+from contextlib import closing, contextmanager
 from pathlib import Path
 from typing import Any
 
@@ -51,6 +55,8 @@ from tests.fixtures.hoja_en_base import plantilla_of001, plantilla_ti001  # noqa
 
 NOMBRE_FICHA = "ficha.json"
 TABLA_VERSION = "alembic_version"
+#: Quien confirma las versiones que las plantillas guardan sin usuario (desde la 1.0.0, RF-83).
+USUARIO_GENERADOR = "script:generar_base_prueba"
 
 
 def _demo(ruta: Path) -> None:
@@ -143,6 +149,30 @@ def _preparar_si_existe(ruta: Path) -> None:
         preparar_base(ruta)
 
 
+@contextmanager
+def _usuario_del_generador() -> Iterator[None]:
+    """El embudo recibe `USUARIO_GENERADOR` cuando la plantilla no declara usuario: el mismo parche
+    que `tests/conftest.py` pone en pytest. Sin `marcar_por_sellar` (antes de la 1.0.0), nada."""
+    try:
+        from core.budget import persistencia
+    except ImportError:
+        yield
+        return
+    original = getattr(persistencia, "marcar_por_sellar", None)
+    if original is None:
+        yield
+        return
+
+    def con_usuario(session, version, usuario, anexos_de=None):
+        return original(session, version, usuario or USUARIO_GENERADOR, anexos_de)
+
+    persistencia.marcar_por_sellar = con_usuario
+    try:
+        yield
+    finally:
+        persistencia.marcar_por_sellar = original
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     analizador = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     analizador.add_argument("--salida", type=Path, required=True)
@@ -161,11 +191,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 1
     salida.mkdir(parents=True, exist_ok=True)
     bases: dict[str, Any] = {}
-    for nombre, construir in CONSTRUCTORES.items():
-        ruta = salida / nombre
-        _preparar_si_existe(ruta)
-        construir(ruta)
-        bases[nombre] = ficha_de(ruta)
+    with _usuario_del_generador():
+        for nombre, construir in CONSTRUCTORES.items():
+            ruta = salida / nombre
+            _preparar_si_existe(ruta)
+            construir(ruta)
+            bases[nombre] = ficha_de(ruta)
     ficha = {
         "version": argumentos.version,
         "etiqueta": argumentos.etiqueta,

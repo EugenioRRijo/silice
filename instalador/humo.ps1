@@ -112,9 +112,21 @@ function ADecimal([uint32]$N) {
 }
 function RangosSin([string]$Ip) {
     # Todo IPv4 salvo 127.0.0.0/8 y la IP propia: conectarse a la propia IP no es salir del equipo.
+    # Dos tramos (0.0.0.0-126.255.255.255 y 128.0.0.0-255.255.255.255) menos la IP, estén donde
+    # estén: Set-NetFirewallRule rechaza un rango con el final menor que el inicio.
     $n = AEntero $Ip
-    return @('0.0.0.0-126.255.255.255', ('128.0.0.0-' + (ADecimal ($n - 1))),
-        ((ADecimal ($n + 1)) + '-255.255.255.255'))
+    $salida = @()
+    foreach ($tramo in @(@([uint32]0, [uint32]2130706431), @([uint32]2147483648, [uint32]4294967295))) {
+        $desde = [uint32]$tramo[0]
+        $hasta = [uint32]$tramo[1]
+        if ($n -lt $desde -or $n -gt $hasta) {
+            $salida += ((ADecimal $desde) + '-' + (ADecimal $hasta))
+            continue
+        }
+        if ($n -gt $desde) { $salida += ((ADecimal $desde) + '-' + (ADecimal ($n - 1))) }
+        if ($n -lt $hasta) { $salida += ((ADecimal ($n + 1)) + '-' + (ADecimal $hasta)) }
+    }
+    return $salida
 }
 
 function IniciarSilice {
@@ -193,12 +205,18 @@ try {
         '--registro', (Join-Path $Salida 'proxy.log'))
 
     Paso '2. Instalación silenciosa en una ruta con espacios y acentos'
-    $codigo = InstalarSilencioso $Instalador (Join-Path $Salida 'instalacion.log')
-    Afirmar ($codigo -eq 0) "el instalador terminó con 0 (fue $codigo)"
+    $salidaInstalador = InstalarSilencioso $Instalador (Join-Path $Salida 'instalacion.log')
+    Afirmar ($salidaInstalador -eq 0) "el instalador terminó con 0 (fue $salidaInstalador)"
     Afirmar (Test-Path $Python) 'python.exe quedó en la ruta con espacios y ñ'
+    # La instalación crea instalacion.db (orden migrar) y el caso de demostración (orden
+    # demostracion); el caso por defecto lo crea el lanzador al primer arranque (spec S5 §5.4, paso 4).
     $bases = (Test-Path (Join-Path $Datos 'instalacion.db')) -and
-        (Test-Path (Join-Path $Datos 'casos\silice.db'))
-    Afirmar $bases 'las dos bases nacieron en la carpeta de datos'
+        (Test-Path (Join-Path $Datos 'casos\demostracion.db'))
+    if (-not $bases) {
+        Get-ChildItem -LiteralPath $Usuario -Recurse -ErrorAction SilentlyContinue |
+            Select-Object -ExpandProperty FullName | Set-Content (Join-Path $Salida 'datos.txt')
+    }
+    Afirmar $bases 'la base de la instalación y el caso de demostración nacieron en la carpeta de datos'
 
     Paso '3. Inventario y manifiesto'
     Afirmar ((Operacion @('verificar-programa')) -eq 0) '{app}\codigo coincide con manifiesto.json'
@@ -217,6 +235,7 @@ try {
     $servidor = IniciarSilice
     $segundos = EsperarSalud $Url 60
     Afirmar ($null -ne $segundos) "la salud respondió 200 en <= 60 s (fueron $segundos s)"
+    Afirmar (Test-Path (Join-Path $Datos 'casos\silice.db')) 'el arranque creó el caso por defecto'
     @{ salud_s = $segundos; perfil = $Perfil; version = $Version } | ConvertTo-Json |
         Set-Content (Join-Path $Salida 'tiempos.json')
     $escuchas = Escuchas $servidor.Id
@@ -249,17 +268,17 @@ try {
     New-Item -ItemType Directory -Force -Path $casos | Out-Null
     $bases = Join-Path $Raiz 'tests\fixtures\bases'
     Copy-Item (Join-Path $bases 'v0_5_0\demo.db') (Join-Path $casos 'v050_demo.db')
-    Copy-Item (Join-Path $bases 'v0_9_0\demo.db') (Join-Path $casos 'v090_demo.db')
+    Copy-Item (Join-Path $bases 'v1_0_0\demo.db') (Join-Path $casos 'v100_demo.db')
     $servidor = IniciarSilice
     Afirmar ($null -ne (EsperarSalud $Url 60)) 'Sílice arrancó antes de actualizar'
-    $codigo = InstalarSilencioso $Actualizacion (Join-Path $Salida 'actualizacion.log')
-    Afirmar ($codigo -eq 0) "la actualización terminó con 0 (fue $codigo)"
+    $salidaActualizacion = InstalarSilencioso $Actualizacion (Join-Path $Salida 'actualizacion.log')
+    Afirmar ($salidaActualizacion -eq 0) "la actualización terminó con 0 (fue $salidaActualizacion)"
     Afirmar ($null -eq (EsperarSalud $Url 3)) 'el instalador detuvo Sílice antes de copiar'
     $juegos = @(Get-ChildItem -LiteralPath $Respaldos -Directory -ErrorAction SilentlyContinue |
         Where-Object { Test-Path (Join-Path $_.FullName 'ficha.json') })
     Afirmar ($juegos.Count -ge 1) 'existe un juego de respaldo con su ficha'
     & uv run python (Join-Path $Raiz 'instalador\verificar_bases.py') --casos $casos `
-        --par '0.5.0:demo.db=v050_demo.db' --par '0.9.0:demo.db=v090_demo.db'
+        --par '0.5.0:demo.db=v050_demo.db' --par '1.0.0:demo.db=v100_demo.db'
     Afirmar ($LASTEXITCODE -eq 0) 'las dos bases están en head y cuadran con su ficha'
 
     Paso '8. Red local en la IP de la interfaz'
