@@ -30,6 +30,7 @@ from sqlalchemy.orm import Session
 from adapters.hoja_empresa.modelo import FilaHallazgo
 from core.budget.presupuesto import CODIGO_ATIPICO
 from fusion.historial_modelo import AuditoriaLibro
+from fusion.proceso import ResultadoFusion, ResultadoPdf
 
 __all__ = [
     "TOPE_HALLAZGOS",
@@ -42,6 +43,8 @@ __all__ = [
     "detalle",
     "listar",
     "registrar_auditoria",
+    "registrar_resultado",
+    "registrar_resultado_pdf",
 ]
 
 TOPE_HALLAZGOS = 500
@@ -49,6 +52,7 @@ TOPE_MENSAJE = 500
 TIPOS = ("libro", "pdf")
 SEVERIDADES = frozenset({"INFO", "ADVERTENCIA", "ERROR", "CRITICO"})
 _TOPE_REGLA, _TOPE_HOJA, _TOPE_CELDA, _TOPE_USUARIO, _TOPE_ARCHIVO = 40, 80, 40, 120, 255
+_TOTAL_GENERAL = "TOTALGEN"
 _SHA256 = re.compile(r"[0-9a-f]{64}")
 _SEPARADOR_DE_RUTA = re.compile(r"[\\/]")
 
@@ -247,6 +251,51 @@ def registrar_auditoria(
     sesion.add(fila)
     sesion.flush()
     return _guardada(fila)
+
+
+def registrar_resultado(
+    sesion: Session, resultado: ResultadoFusion, *, usuario: str, ahora: datetime
+) -> AuditoriaGuardada:
+    """Guarda la auditoria de un libro (`fusion.proceso.procesar_libro`): el nombre y la huella del
+    libro recibido, la fecha del libro, el total general del libro y el de Silice (`TOTALGEN`) y la
+    tabla de hallazgos compactada. Es lo que llaman `POST /v1/libros/auditoria` y la pagina
+    «Libro de la empresa»."""
+    return registrar_auditoria(
+        sesion,
+        usuario=usuario,
+        tipo="libro",
+        nombre_archivo=resultado.libro.nombre,
+        sha256=resultado.libro.sha256,
+        fecha_libro=resultado.fecha_libro,
+        total_libro=(resultado.libro.totales or {}).get(_TOTAL_GENERAL),
+        total_silice=(resultado.totales_silice or {}).get(_TOTAL_GENERAL),
+        hallazgos=[compactar(fila) for fila in resultado.hallazgos_tabla],
+        ahora=ahora,
+    )
+
+
+def registrar_resultado_pdf(
+    sesion: Session,
+    resultado: ResultadoPdf,
+    *,
+    usuario: str,
+    nombre_archivo: str,
+    ahora: datetime,
+) -> AuditoriaGuardada:
+    """Guarda la revision de un PDF simple (`fusion.proceso.auditar_pdf_simple`, L10): sin fecha
+    del libro ni totales, porque un PDF no se recalcula."""
+    return registrar_auditoria(
+        sesion,
+        usuario=usuario,
+        tipo="pdf",
+        nombre_archivo=nombre_archivo,
+        sha256=resultado.sha256,
+        fecha_libro=None,
+        total_libro=None,
+        total_silice=None,
+        hallazgos=[compactar(fila) for fila in resultado.hallazgos_tabla],
+        ahora=ahora,
+    )
 
 
 def listar(sesion: Session, limite: int) -> list[ResumenAuditoria]:

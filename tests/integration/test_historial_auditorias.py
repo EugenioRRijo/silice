@@ -120,8 +120,20 @@ def test_registrar_guarda_el_resumen_y_devuelve_lo_guardado(sesion, ruta) -> Non
     assert guardada.hallazgos == tuple(SEIS)
     [fila] = _filas(ruta)
     assert fila[:14] == (
-        1, "2026-10-18 14:03:05.000000", "Ana <ana>", "libro", "presupuesto.xlsx", SHA,
-        "2026-10-01", "1586.61", "1500.00", 2, 2, 1, 1, 0,
+        1,
+        "2026-10-18 14:03:05.000000",
+        "Ana <ana>",
+        "libro",
+        "presupuesto.xlsx",
+        SHA,
+        "2026-10-01",
+        "1586.61",
+        "1500.00",
+        2,
+        2,
+        1,
+        1,
+        0,
     )
 
 
@@ -131,7 +143,10 @@ def test_los_hallazgos_se_guardan_compactos_y_en_orden(sesion, ruta) -> None:
     guardados = json.loads(_filas(ruta)[0][14])
     assert [set(h) for h in guardados] == [{"regla", "hoja", "celda", "severidad", "mensaje"}] * 6
     assert guardados[0] == {
-        "regla": "F1", "hoja": "APU-02", "celda": "G1", "severidad": "CRITICO",
+        "regla": "F1",
+        "hoja": "APU-02",
+        "celda": "G1",
+        "severidad": "CRITICO",
         "mensaje": "mensaje 1",
     }
     assert [h["regla"] for h in guardados] == ["F1", "L4", "L2", "R3", "R2", "ATIPICO"]
@@ -165,7 +180,10 @@ def test_sin_hallazgos_se_guarda_una_lista_vacia(sesion, ruta) -> None:
     guardada = _registrar(sesion, hallazgos=[])
     sesion.commit()
     assert (guardada.errores, guardada.advertencias, guardada.informativos, guardada.atipicos) == (
-        0, 0, 0, 0,
+        0,
+        0,
+        0,
+        0,
     )
     assert _filas(ruta)[0][14] == "[]"
 
@@ -225,8 +243,12 @@ def test_el_nombre_del_archivo_pierde_la_ruta(sesion) -> None:
 
 def test_compactar_separa_la_hoja_de_la_celda_y_descarta_el_resto() -> None:
     fila = FilaHallazgo(
-        codigo="L4", severidad="ERROR", descripcion="El CD no suma", celda="APU-02!G12",
-        impacto=Decimal("1.65"), accion="informado",
+        codigo="L4",
+        severidad="ERROR",
+        descripcion="El CD no suma",
+        celda="APU-02!G12",
+        impacto=Decimal("1.65"),
+        accion="informado",
     )
     assert compactar(fila) == HallazgoCompacto(
         regla="L4", hoja="APU-02", celda="G12", severidad="ERROR", mensaje="El CD no suma"
@@ -281,7 +303,7 @@ def test_registrar_resultado_guarda_el_libro_limpio_con_los_numeros_de_la_memori
     """Libro limpio (`tests/fixtures/libros_empresa.py`): total del libro y de Silice 5055.52157,
     portada «Julio 2026» (fecha del libro 2026-07-31) y dos hallazgos INFO, R2 y R7."""
     resultado = procesar_libro(
-        libro_limpio().datos, "obras\libro.xlsx", fecha_devolucion=date(2026, 10, 13)
+        libro_limpio().datos, r"obras\libro.xlsx", fecha_devolucion=date(2026, 10, 13)
     )
     guardada = registrar_resultado(sesion, resultado, usuario="Ana <ana>", ahora=AHORA)
     assert guardada.tipo == "libro" and guardada.nombre_archivo == "libro.xlsx"
@@ -301,8 +323,12 @@ def test_registrar_resultado_pdf_guarda_la_revision_sin_totales_ni_fecha(sesion)
         sesion, resultado, usuario="Ana <ana>", nombre_archivo="presupuesto.pdf", ahora=AHORA
     )
     assert (guardada.tipo, guardada.nombre_archivo, guardada.sha256) == (
-        "pdf", "presupuesto.pdf", SHA,
+        "pdf",
+        "presupuesto.pdf",
+        SHA,
     )
     assert (guardada.fecha_libro, guardada.total_libro, guardada.total_silice) == (None, None, None)
     assert guardada.errores == 1
-    assert guardada.hallazgos == (HallazgoCompacto("L10", "", "F3", "ERROR", "La fila 1 no cuadra"),)
+    assert guardada.hallazgos == (
+        HallazgoCompacto("L10", "", "F3", "ERROR", "La fila 1 no cuadra"),
+    )
