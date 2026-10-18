@@ -83,9 +83,7 @@ def test_ningun_hallazgo_de_rf_100_es_error(sesion, insumo) -> None:
 
 def test_las_listas_de_proyecto_no_entran_en_la_serie(sesion, insumo) -> None:
     _precio(sesion, _lista(sesion, 1, "Global"), insumo, 10)
-    _precio(
-        sesion, _lista(sesion, 2, "Cotización", alcance=models.ALCANCE_PROYECTO), insumo, 99
-    )
+    _precio(sesion, _lista(sesion, 2, "Cotización", alcance=models.ALCANCE_PROYECTO), insumo, 99)
     puntos = atipicos.puntos_del_insumo(sesion, "ATIP-001")
     assert [(p.origen, p.monto) for p in puntos] == [("Global", D(10))]
 
@@ -130,9 +128,7 @@ def test_el_origen_del_precio_manda_sobre_la_lista(sesion, insumo) -> None:
     assert (punto.fecha, punto.moneda, punto.monto) == (date(2026, 4, 20), "USD", D(12))
 
 
-def test_dos_listas_con_la_misma_fecha_se_ordenan_por_el_nombre_de_la_lista(
-    sesion, insumo
-) -> None:
+def test_dos_listas_con_la_misma_fecha_se_ordenan_por_el_nombre_de_la_lista(sesion, insumo) -> None:
     """Memoria §5: a igual fecha manda el nombre de la lista, no el orden de las filas."""
     _precio(sesion, _lista(sesion, 6, "Zeta"), insumo, 30)
     _precio(sesion, _lista(sesion, 6, "Alfa"), insumo, 10)

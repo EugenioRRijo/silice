@@ -69,7 +69,7 @@ from core.verification.informe import DECIMALES_PRESENTACION
 from core.verification.texto import formatear_decimal
 from operacion.base_datos import ErrorDeBase, preparar_base
 from seguridad.permisos import Accion
-from ui import caso, control, entrega, hoja
+from ui import atipicos, caso, control, entrega, hoja
 from ui import sesion as ui_sesion
 from ui.caso import ACCION_IMPORTAR_PLANO, ACCION_PRECIOS, ruta_caso
 from ui.resultado import mostrar_informe
@@ -1861,6 +1861,27 @@ def _monto(valor: Decimal | None) -> str:
     return "" if valor is None else formatear_decimal(valor, DECIMALES_PRESENTACION)
 
 
+def _pintar_atipicos(precios: Sequence) -> None:
+    """RF-100: «Buscar variaciones atípicas de precio» sobre los insumos de la versión abierta.
+
+    Solo lee: no guarda nada y no impide guardar, exportar ni firmar (cada hallazgo es una
+    ADVERTENCIA). Sin el extra `ml` lo dice y no busca."""
+    if not st.button(atipicos.ROTULO_BOTON, key="hoja_atipicos"):
+        return
+    hallazgos = []
+    with _sesion() as sesion:
+        for precio in precios:
+            hallados = atipicos.atipicos_del_insumo(sesion, precio.codigo)
+            if hallados is None:
+                st.info(atipicos.AVISO_SIN_ML)
+                return
+            hallazgos.extend(hallados)
+    if not hallazgos:
+        st.success(atipicos.MENSAJE_NADA_ATIPICO)
+    for hallazgo in hallazgos:
+        st.warning(texto_seguro(hallazgo.descripcion))
+
+
 def _pestana_precios(cambios: Sequence) -> None:
     abierta = _abierta()
     if abierta is None:
@@ -1907,6 +1928,7 @@ def _pestana_precios(cambios: Sequence) -> None:
         hide_index=True,
         width="stretch",
     )
+    _pintar_atipicos(precios)
     if cambios:
         st.warning(
             "Cotizar crea una version nueva desde la guardada: guarde o descarte primero los "

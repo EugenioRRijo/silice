@@ -97,7 +97,7 @@ def test_la_pagina_no_importa_el_script_de_maprex_al_cargarse(tmp_path):
     assert "scripts.lista_maprex_bs" not in modulos_cargados(salida)
 
 
-# --- RF-100: el boton de variaciones atipicas al revisar la lista de la empresa ---------------------
+# --- RF-100: el boton de variaciones atipicas en la lista de la empresa ----------------------
 
 ROTULO_ATIPICOS = "Buscar variaciones atípicas de precio"
 #: Memoria `atipicos_s3.md` §1 y §2: nueve precios de listas globales (enero a septiembre de 2026) y
