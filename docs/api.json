@@ -1346,6 +1346,48 @@
         }
       }
     },
+    "/v1/similares": {
+      "post": {
+        "tags": [
+          "similares"
+        ],
+        "summary": "Proponer",
+        "description": "Las tres partidas mas parecidas a la descripcion, de mayor a menor similitud.",
+        "operationId": "proponer_v1_similares_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SolicitudSimilares"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SimilaresRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/casos": {
       "get": {
         "tags": [
@@ -2158,6 +2200,48 @@
         ],
         "title": "ComparativoRespuesta",
         "description": "El comparativo completo de UC-02: totales antes y después, y una fila por renglón."
+      },
+      "ComposicionRespuesta": {
+        "properties": {
+          "unidad": {
+            "type": "string",
+            "title": "Unidad"
+          },
+          "rendimiento": {
+            "type": "string",
+            "title": "Rendimiento"
+          },
+          "materiales": {
+            "items": {
+              "$ref": "#/components/schemas/LineaMaterialRespuesta"
+            },
+            "type": "array",
+            "title": "Materiales"
+          },
+          "equipos": {
+            "items": {
+              "$ref": "#/components/schemas/LineaEquipoRespuesta"
+            },
+            "type": "array",
+            "title": "Equipos"
+          },
+          "mano_obra": {
+            "items": {
+              "$ref": "#/components/schemas/LineaManoObraRespuesta"
+            },
+            "type": "array",
+            "title": "Mano Obra"
+          }
+        },
+        "type": "object",
+        "required": [
+          "unidad",
+          "rendimiento",
+          "materiales",
+          "equipos",
+          "mano_obra"
+        ],
+        "title": "ComposicionRespuesta"
       },
       "Credenciales": {
         "properties": {
@@ -3368,6 +3452,85 @@
         "title": "LibroVisualRespuesta",
         "description": "Réplica visual del libro (RF-111): espejo del contrato neutro `visual.LibroVisual`."
       },
+      "LineaEquipoRespuesta": {
+        "properties": {
+          "descripcion": {
+            "type": "string",
+            "title": "Descripcion"
+          },
+          "cantidad": {
+            "type": "string",
+            "title": "Cantidad"
+          },
+          "precio": {
+            "type": "string",
+            "title": "Precio"
+          },
+          "depreciacion": {
+            "type": "string",
+            "title": "Depreciacion"
+          }
+        },
+        "type": "object",
+        "required": [
+          "descripcion",
+          "cantidad",
+          "precio",
+          "depreciacion"
+        ],
+        "title": "LineaEquipoRespuesta"
+      },
+      "LineaManoObraRespuesta": {
+        "properties": {
+          "descripcion": {
+            "type": "string",
+            "title": "Descripcion"
+          },
+          "cantidad": {
+            "type": "string",
+            "title": "Cantidad"
+          },
+          "sueldo": {
+            "type": "string",
+            "title": "Sueldo"
+          }
+        },
+        "type": "object",
+        "required": [
+          "descripcion",
+          "cantidad",
+          "sueldo"
+        ],
+        "title": "LineaManoObraRespuesta"
+      },
+      "LineaMaterialRespuesta": {
+        "properties": {
+          "descripcion": {
+            "type": "string",
+            "title": "Descripcion"
+          },
+          "unidad": {
+            "type": "string",
+            "title": "Unidad"
+          },
+          "cantidad": {
+            "type": "string",
+            "title": "Cantidad"
+          },
+          "precio": {
+            "type": "string",
+            "title": "Precio"
+          }
+        },
+        "type": "object",
+        "required": [
+          "descripcion",
+          "unidad",
+          "cantidad",
+          "precio"
+        ],
+        "title": "LineaMaterialRespuesta"
+      },
       "ListaRespuesta": {
         "properties": {
           "nombre": {
@@ -3850,6 +4013,57 @@
         "title": "PropuestaRendimientoRespuesta",
         "description": "La propuesta al componer un APU: rendimiento elegido mas su dispersion."
       },
+      "PropuestaRespuesta": {
+        "properties": {
+          "codigo": {
+            "type": "string",
+            "title": "Codigo"
+          },
+          "descripcion": {
+            "type": "string",
+            "title": "Descripcion"
+          },
+          "puntaje": {
+            "type": "string",
+            "title": "Puntaje"
+          },
+          "puntaje_corto": {
+            "type": "string",
+            "title": "Puntaje Corto"
+          },
+          "composicion": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ComposicionRespuesta"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "aviso": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Aviso"
+          }
+        },
+        "type": "object",
+        "required": [
+          "codigo",
+          "descripcion",
+          "puntaje",
+          "puntaje_corto",
+          "composicion",
+          "aviso"
+        ],
+        "title": "PropuestaRespuesta"
+      },
       "ProyectoDelCasoRespuesta": {
         "properties": {
           "codigo": {
@@ -4231,6 +4445,59 @@
           "url_clasica"
         ],
         "title": "SesionRespuesta"
+      },
+      "SimilaresRespuesta": {
+        "properties": {
+          "propuestas": {
+            "items": {
+              "$ref": "#/components/schemas/PropuestaRespuesta"
+            },
+            "type": "array",
+            "title": "Propuestas"
+          },
+          "falla": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Falla"
+          },
+          "mensaje": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mensaje"
+          }
+        },
+        "type": "object",
+        "required": [
+          "propuestas",
+          "falla",
+          "mensaje"
+        ],
+        "title": "SimilaresRespuesta"
+      },
+      "SolicitudSimilares": {
+        "properties": {
+          "descripcion": {
+            "type": "string",
+            "title": "Descripcion"
+          }
+        },
+        "type": "object",
+        "required": [
+          "descripcion"
+        ],
+        "title": "SolicitudSimilares"
       },
       "TrazaRespuesta": {
         "properties": {
