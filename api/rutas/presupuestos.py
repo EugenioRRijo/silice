@@ -23,9 +23,10 @@ from datetime import date
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
 from sqlalchemy import select
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 from starlette.background import BackgroundTask
 
@@ -48,7 +49,6 @@ from api.esquemas import (
     PresupuestoCreadoRespuesta,
     PresupuestoDetalleRespuesta,
     PresupuestoPeticion,
-    PresupuestoResumenRespuesta,
     PropuestaPartidaRespuesta,
     ProyectoPeticion,
     ProyectoRespuesta,
@@ -56,8 +56,17 @@ from api.esquemas import (
     RendimientosPorDeclararRespuesta,
     decimal_desde_texto,
 )
-from api.rutas.listas import comprobar_libro_legible
+from api.esquemas_informe import informe_a_respuesta
+from api.esquemas_ola2 import (
+    AvisoRespuesta,
+    DescarteRespuesta,
+    PresupuestoConProyectoRespuesta,
+    RevaloracionRespuesta,
+)
+from api.rutas.listas import _elegidos, comprobar_libro_legible
 from api.rutas.rendimientos import propuesta_respuesta
+from api.sesion_web import exigir_clave_o_sesion
+from aplicacion import actualizacion as aplicacion_actualizacion
 from core import models
 from core.budget import (
     Comparativo,
@@ -78,15 +87,21 @@ from core.budget import (
     plan_secuencial,
 )
 from core.budget.instantanea import composiciones_de_presupuesto
-from core.catalog import Catalogo, CatalogoIncompleto, proponer_rendimiento
+from core.catalog import Catalogo, CatalogoIncompleto, insumos_desconocidos, proponer_rendimiento
 from core.contracts import Dominio, ItemComputo, OrigenTipo, ParametrosCosto
 from core.contracts.apu import TipoRendimiento
 from core.contracts.presupuesto import Presupuesto
 from core.verification.informe import DECIMALES_PRESENTACION, InformeAuditoria
 from core.verification.texto import formatear_decimal
 from ml.normalization import propuestas_para
+from seguridad.permisos import Accion
+from seguridad.sesiones import SesionActiva
 
 router = APIRouter(tags=["presupuestos"])
+
+#: Una sola dependencia de edicion, compartida por las rutas que ademas necesitan a la persona
+#: (FastAPI la ejecuta una vez por peticion): su `usuario` firma lo que se guarda (RF-82).
+_QUIEN_EDITA = exigir_clave_o_sesion(Accion.EDITAR_HOJA)
 
 _CAMPOS_PARAMETROS = ("fcas", "bono_alimentacion", "administracion", "utilidad")
 
@@ -243,18 +258,21 @@ def importar_presupuesto_de_tercero(
     )
 
 
-@router.get("/presupuestos", response_model=list[PresupuestoResumenRespuesta], dependencies=LEER)
-def listar_presupuestos(sesion: SesionDep) -> list[PresupuestoResumenRespuesta]:
-    """Códigos y totales de todos los presupuestos guardados, ordenados por código."""
+@router.get(
+    "/presupuestos", response_model=list[PresupuestoConProyectoRespuesta], dependencies=LEER
+)
+def listar_presupuestos(sesion: SesionDep) -> list[PresupuestoConProyectoRespuesta]:
+    """Códigos, totales y proyecto de todos los presupuestos guardados, ordenados por código."""
     catalogo = Catalogo(sesion)
-    resumenes: list[PresupuestoResumenRespuesta] = []
+    resumenes: list[PresupuestoConProyectoRespuesta] = []
     consulta = select(models.Presupuesto).order_by(models.Presupuesto.codigo)
     for modelo in sesion.scalars(consulta):
         presupuesto = cargar_presupuesto(sesion, modelo.proyecto.nombre, modelo.codigo, catalogo)
         resumenes.append(
-            PresupuestoResumenRespuesta(
+            PresupuestoConProyectoRespuesta(
                 codigo=presupuesto.codigo,
                 total=formatear_decimal(presupuesto.total, DECIMALES_PRESENTACION),
+                proyecto=modelo.proyecto.nombre,
             )
         )
     return resumenes
@@ -368,6 +386,97 @@ def actualizar_presupuesto(
         insumos_afectados=comparativo.insumos_afectados,
         filas=_filas_comparativo(comparativo),
     )
+
+
+@router.post(
+    "/presupuestos/revalorar",
+    response_model=RevaloracionRespuesta,
+    dependencies=[Depends(_QUIEN_EDITA)],  # antes que `sesion_api`: sin permiso no se abre el caso
+)
+def revalorar_presupuesto(
+    sesion: SesionDep,
+    quien: Annotated[SesionActiva | None, Depends(_QUIEN_EDITA)],
+    archivo: Annotated[UploadFile, File(description="La lista de precios nueva, CSV o XLSX")],
+    proyecto: Annotated[str, Form()],
+    codigo: Annotated[str, Form(description="Código del presupuesto base")],
+    codigo_nuevo: Annotated[str, Form(description="Código de la versión nueva")],
+    nombre: Annotated[str, Form(description="Nombre de la lista nueva")],
+    moneda: Annotated[str, Form()],
+    fecha_vigencia: Annotated[date, Form()],
+    dar_de_alta: Annotated[
+        list[str] | None,
+        Form(description="Descripciones de los insumos desconocidos que se dan de alta (2a)"),
+    ] = None,
+) -> RevaloracionRespuesta:
+    """UC-02 de una vez, como la página de Streamlit: crea la lista desde el archivo, revalora el
+    presupuesto `codigo` y guarda la versión `codigo_nuevo` si algún insumo cambió de precio.
+
+    Sin cambios de precio (flujo 3a) no se guarda nada, ni la lista ni las altas, y la respuesta lo
+    dice en `avisos` con `version_guardada: null`. Un código nuevo repetido es 409. La versión
+    guardada se puede descartar con `POST /presupuestos/{codigo}/descartar` (flujo 7a).
+    """
+    with tempfile.TemporaryDirectory() as directorio:
+        ruta = guardar_subida(directorio, archivo)
+        comprobar_libro_legible(ruta)
+        elegidos = _elegidos(insumos_desconocidos(sesion, ruta), dar_de_alta or (), ruta.name)
+        try:
+            resultado = aplicacion_actualizacion.revalorar(
+                sesion,
+                {
+                    "proyecto": proyecto,
+                    "codigo": codigo,
+                    "codigo_nuevo": codigo_nuevo,
+                    "nombre": nombre,
+                    "moneda": moneda,
+                    "vigencia": fecha_vigencia,
+                },
+                ruta,
+                dar_de_alta=elegidos,
+                detector=_detector_de_atipicos(),
+                usuario=USUARIO_SIN_CLAVE if quien is None else quien.usuario,
+            )
+        except SQLAlchemyError as error:
+            sesion.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT, detail=str(getattr(error, "orig", error))
+            ) from error
+    comparativo = resultado.comparativo
+    return RevaloracionRespuesta(
+        proyecto=proyecto,
+        codigo_base=codigo,
+        codigo_nuevo=codigo_nuevo,
+        moneda=resultado.nuevo.presupuesto.moneda,
+        total_anterior=formatear_decimal(comparativo.total_anterior, DECIMALES_PRESENTACION),
+        total_nuevo=formatear_decimal(comparativo.total_nuevo, DECIMALES_PRESENTACION),
+        variacion=formatear_decimal(comparativo.variacion, DECIMALES_PRESENTACION),
+        variacion_pct=formatear_decimal(comparativo.variacion_pct, DECIMALES_PRESENTACION),
+        resumen=resultado.resumen,
+        insumos_afectados=comparativo.insumos_afectados,
+        filas=_filas_comparativo(comparativo),
+        dados_de_alta=list(resultado.dados_de_alta),
+        ignorados=list(resultado.ignorados),
+        rechazados=list(resultado.rechazados),
+        version_guardada=resultado.version_guardada,
+        avisos=[AvisoRespuesta(nivel=a.nivel, texto=a.texto) for a in resultado.avisos],
+        informe=informe_a_respuesta(resultado.nuevo.informe),
+    )
+
+
+@router.post(
+    "/presupuestos/{codigo}/descartar", response_model=DescarteRespuesta, dependencies=EDITAR
+)
+def descartar_version_revalorada(
+    sesion: SesionDep, codigo: str, proyecto: str | None = None
+) -> DescarteRespuesta:
+    """UC-02, flujo 7a: marca como descartada la última versión revalorada del proyecto.
+
+    La versión sigue guardada como documento y su historial de cambios se conserva. Solo la última
+    versión del proyecto, y una sola vez; en otro caso 422 con el motivo del núcleo.
+    """
+    modelo = _buscar_modelo(sesion, codigo, proyecto)
+    hoy = date.today()
+    aplicacion_actualizacion.descartar(sesion, modelo.proyecto.nombre, codigo, hoy)
+    return DescarteRespuesta(codigo=codigo, descartada=True, fecha=hoy)
 
 
 @router.post(

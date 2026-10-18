@@ -56,9 +56,7 @@ def csrf_de(ficha: str) -> str:
 
 def poner_cookie(respuesta: Response, ficha: str) -> None:
     """`silice_sesion` de sesión (sin `Max-Age`), `HttpOnly`, `SameSite=Strict`, sin `Secure`."""
-    respuesta.set_cookie(
-        COOKIE, ficha, path="/", httponly=True, samesite="strict", secure=False
-    )
+    respuesta.set_cookie(COOKIE, ficha, path="/", httponly=True, samesite="strict", secure=False)
 
 
 def borrar_cookie(respuesta: Response) -> None:

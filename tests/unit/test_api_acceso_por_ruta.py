@@ -72,6 +72,7 @@ TABLA = {
     ("GET", "/insumos"): LEER,
     ("GET", "/listas-precios"): LEER,
     ("POST", "/listas-precios"): EDITAR,
+    ("POST", "/listas-precios/vista-previa"): EDITAR,  # ola 2: Actualizar precios
     ("GET", "/cambios-precio"): LEER,
     ("POST", "/computos/{dominio}"): EDITAR,
     ("POST", "/proyectos"): EDITAR,
@@ -82,6 +83,8 @@ TABLA = {
     ("GET", "/presupuestos/{codigo}/informe"): LEER,
     ("GET", "/presupuestos/{codigo}/excel"): LEER,
     ("POST", "/presupuestos/{codigo}/actualizacion"): EDITAR,
+    ("POST", "/presupuestos/revalorar"): EDITAR,  # ola 2: Actualizar precios
+    ("POST", "/presupuestos/{codigo}/descartar"): EDITAR,  # ola 2: Actualizar precios
     ("POST", "/presupuestos/{codigo}/escenarios"): EDITAR,
     ("POST", "/ejecuciones"): EDITAR,
     ("GET", "/ejecuciones"): LEER,
@@ -245,8 +248,8 @@ ANTIGUAS = sorted(
 )
 
 
-def test_la_referencia_monta_las_veinte_rutas_antiguas() -> None:
-    assert len(ANTIGUAS) == 20
+def test_la_referencia_monta_las_rutas_de_los_routers_de_siempre() -> None:
+    assert len(ANTIGUAS) == 20 + 3  # + ola 2: vista-previa, revalorar y descartar
     assert set(_pares(REFERENCIA)) == set(ANTIGUAS)
 
 
