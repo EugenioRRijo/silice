@@ -6,6 +6,10 @@ etiquetar, las líneas pasan a la sección de la versión. La historia anterior 
 
 ## [Sin publicar]
 
+### Agregado
+
+- Sesión 2 de la ruta (en curso): plan `docs/planes/PLAN_SESION_2_VISUAL.md`, producto y diseño de la interfaz nueva (`frontend-desktop/PRODUCT.md`, `DESIGN.md`) y enmienda 1.2.0 de la ERS (UC-26, RF-111 a RF-118, RNF-22 y RNF-23).
+
 ### Corregido
 
 - `main` en rojo desde la 1.0.0: se retiran los alias `ARENIA_CASO` y `ARENIA_MODO_ENTREGA`, que solo valían hasta la 0.6.0 (`ui/entorno.py`, manuales y `tests/conftest.py`).

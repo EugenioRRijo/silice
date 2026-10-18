@@ -1412,6 +1412,53 @@ Trazabilidad: UC‑25 → RF‑101 … RF‑110, RNF‑21 → Sílice 1.5 (sesio
 detectados) y del administrador (horizonte §6.1). Pruebas: en la auditoría final (regla del 2026-10-12); la
 aceptación local es `scripts/fusion_verificar.py`.
 
+## Enmienda Sílice 1.2.0 (2026-10-18): interfaz nueva y visor de solo lectura
+
+Ruta por sesiones, sesión 2 ([RUTA_SESIONES.md](planes/RUTA_SESIONES.md) §5; decisiones RS‑1 a RS‑7 de Eugenio y
+rulings RT‑1 a RT‑9), [plan de la sesión](planes/PLAN_SESION_2_VISUAL.md) (rulings RS2‑1 a RS2‑9). Criterio de
+diseño: IBM Carbon, SAP Fiori e IBCS (RS‑6), registrado en `frontend-desktop/PRODUCT.md` y `DESIGN.md`. La interfaz
+Streamlit sigue siendo la principal (RT‑4); esta enmienda no cambia ningún requisito anterior.
+
+#### UC‑26 — Auditar un libro en el visor
+
+- **Actor principal:** el ingeniero de costos que audita (rol arma o revisa; acción `LEER_PROYECTO`).
+- **Precondiciones:** la API de la instalación está encendida (`[api] activa = true`) y la persona tiene cuenta;
+  un libro `.xlsx` de la empresa (la plantilla de UC‑25).
+- **Flujo principal**
+  1. La persona abre `/app/` en el navegador de su PC o de otra de la red local y entra con su cuenta.
+  2. Suelta el libro y la fecha de devolución (hoy, por omisión).
+  3. Sílice responde la réplica visual del libro (`POST /v1/libros/replica`) y su auditoría
+     (`POST /v1/libros/auditoria`, UC‑25).
+  4. La hoja se ve como en Excel (hojas, anchos, altos, combinadas, ocultas, formatos), sin poder editarse, con un
+     halo de severidad e ícono sobre la celda de cada hallazgo y la franja de indicadores (libro frente a Sílice).
+  5. Al tocar un hallazgo de la lista, la hoja va a su celda; al tocar una celda marcada, la lista resalta su hallazgo.
+- **Flujos alternativos**
+  - *1a. Credenciales malas o cuenta bloqueada:* mensaje de UC‑21, sin sesión.
+  - *1b. La cuenta debe cambiar su contraseña:* se le indica hacerlo en la interfaz clásica.
+  - *2a. Archivo rechazado o libro no interpretable:* el mensaje de UC‑25 (2a, 2b), sin réplica.
+  - *4a. Un hallazgo sin celda ubicable en el libro:* aparece en la lista, en el grupo «Sin celda en el libro».
+  - *Sesión vencida* (30 min de inactividad o 12 h): vuelve a la entrada sin perder el libro abierto en pantalla.
+- **Postcondiciones:** nada se guarda en la base ni en disco; el libro original no se modifica.
+
+| RF | Requisito | Criterio de aceptación |
+|---|---|---|
+| RF‑111 | Réplica visual del libro: hojas en orden y visibilidad, anchos, altos, combinadas, filas y columnas ocultas, paneles fijos y, por celda, valor mostrado, fórmula y estilo, con coordenadas de Excel (base 1) | El libro del oráculo de coordenadas (`tests/fixtures/replica/`) reproduce su tabla hecha a mano celda por celda |
+| RF‑112 | La interfaz nueva se sirve en `/app` como archivos estáticos sin secretos, con CSP `default-src 'self'` | Pruebas de `/app`: CSP exacta, sin clave en el HTML, 404 claro si no está compilada |
+| RF‑113 | Acceso del navegador por cuenta: `/v1/sesion` con cookie `HttpOnly` y `SameSite=Strict`, anti‑CSRF y `Origin` en cada escritura, rol `LEER_PROYECTO` en las rutas de libros; la clave de API sigue para integraciones | Sin cookie 401; sin CSRF u `Origin` ajeno 403; administrador sin arma ni revisa 403; con clave, igual que en la 1.5 |
+| RF‑114 | Visor de solo lectura en lienzo (Univer) con el aspecto de RF‑111 | No se puede editar ninguna celda; la conversión a coordenadas del lienzo está en un solo módulo con prueba |
+| RF‑115 | Halo de severidad con ícono y texto accesible sobre la celda de cada hallazgo, alineado al desplazar, acercar y cambiar de hoja | Pruebas de la capa de halos y verificación en el navegador a 1366×768 |
+| RF‑116 | Indicadores Fiori (valor, meta, Δ, Δ%) calculados por la API con `Decimal` (campo `indicadores`) y coloreados según IBCS: favorable o desfavorable, nunca por el signo | Pruebas de `indicadores_de` y de la semántica IBCS (costo positivo desfavorable, cero sin variación, Δ% nulo con meta cero) |
+| RF‑117 | El instalador lleva la interfaz compilada | El instalador básico sigue ≤ 150 MB (RNF‑19) |
+| RF‑118 | Lista de hallazgos filtrable por severidad y sincronizada con la hoja; los hallazgos sin celda se listan aparte | Pruebas de la lista (filtro, texto de severidad, salto a la celda) |
+
+| RNF | Requisito |
+|---|---|
+| RNF‑22 | Sin red externa ni secretos en el navegador: CSP sin `unsafe-eval`, fuentes IBM Plex alojadas, ningún URL a otro anfitrión en el `dist`, nada en `localStorage`, dependencias con licencias permisivas y sin `@univerjs-pro` (control en la CI) |
+| RNF‑23 | Usabilidad y accesibilidad: WCAG 2.1 AA (texto 4,5:1, gráficos 3:1, el color nunca solo, teclado), 1366×768 sin desplazamiento horizontal de la página, `prefers-reduced-motion`, sin animación decorativa; `dist` ≤ 15 MB sin comprimir |
+
+Trazabilidad: UC‑26 → RF‑111 … RF‑118, RNF‑22, RNF‑23 → ruta sesión 2 (Sílice 1.2.0) → indicador 1 (errores
+detectados, ahora ubicados sobre la hoja). Pruebas: TDD por tarea (RS‑2), con los nombres del plan de la sesión.
+
 ## Apéndices
 - A. Caso de estudio y línea base: [docs/linea_base.md](linea_base.md).
 - B. Modelo de datos: [docs/modelo_datos.md](modelo_datos.md).
