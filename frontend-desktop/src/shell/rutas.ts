@@ -22,7 +22,13 @@ export interface PaginaDef {
 }
 
 export const PAGINAS: readonly PaginaDef[] = [
-  { id: "inicio", titulo: "Inicio", seccion: "Trabajo", accion: null },
+  {
+    id: "inicio",
+    titulo: "Inicio",
+    seccion: "Trabajo",
+    accion: null,
+    cargar: () => import("../paginas/inicio"),
+  },
   { id: "tablero", titulo: "Tablero del proyecto", seccion: "Trabajo", accion: "leer_proyecto" },
   { id: "catalogo", titulo: "Catálogo de partidas e insumos", seccion: "Trabajo", accion: "leer_proyecto" },
   { id: "componer", titulo: "Componer una partida", seccion: "Trabajo", accion: "editar_hoja" },

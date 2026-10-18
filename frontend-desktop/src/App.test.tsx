@@ -70,26 +70,30 @@ describe("App", () => {
     expect(screen.getByText(/Comprobando su sesión/)).toBeInTheDocument();
   });
 
-  test("con sesion vigente muestra el nombre, Salir, el menu y el Libro de la empresa", async () => {
+  test("con sesion vigente muestra el nombre, Salir, el menu y aterriza en el Inicio", async () => {
     render(<App />);
     expect(await screen.findByText("Ana Pérez")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Salir" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Libro de la empresa" })).toBeInTheDocument();
-    expect(await screen.findByRole("button", { name: /Suelte aquí el libro \.xlsx de la empresa/ })).toBeInTheDocument();
-    expect(window.location.hash).toBe("#/libros");
+    // La pagina llega por import() dinamico: con la suite entera en marcha tarda mas que el plazo por omision.
+    expect(await screen.findByRole("heading", { name: "Audite un presupuesto" }, { timeout: 5000 })).toBeInTheDocument();
+    expect(window.location.hash).toBe("#/inicio");
   });
 
   test("una direccion con #/libros abre esa pagina", async () => {
     window.location.hash = "#/libros";
     render(<App />);
-    expect(await screen.findByRole("button", { name: /Suelte aquí el libro \.xlsx de la empresa/ })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("button", { name: /Suelte aquí el libro \.xlsx de la empresa/ }, { timeout: 5000 }),
+    ).toBeInTheDocument();
   });
 
   test("una API anterior, sin acciones ni modo_entrega, no tumba la pantalla", async () => {
     sesionActual = () => json({ login: "ana", nombre: "Ana Pérez", roles: ["revisa"], csrf: "tok" });
     render(<App />);
     expect(await screen.findByText("Ana Pérez")).toBeInTheDocument();
-    expect(await screen.findByText(/No hay pantallas disponibles/)).toBeInTheDocument();
+    // El Inicio no exige ninguna accion: una cuenta sin acciones igual aterriza en el.
+    expect(await screen.findByRole("heading", { name: "Audite un presupuesto" }, { timeout: 5000 })).toBeInTheDocument();
   });
 
   test("entrar con una cuenta buena abre el shell y guarda el token solo en memoria", async () => {
