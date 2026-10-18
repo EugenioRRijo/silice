@@ -43,3 +43,18 @@ La CI (`interfaz` en `.github/workflows/ci.yml`) corre todo en ese orden.
 - Fuentes: `src/estilos/fuentes.scss` declara IBM Plex desde los paquetes; la carga de fuentes de Carbon está
   apagada (`$css--font-face: false`, `$use-akamai-cdn: false`).
 - Sin animaciones decorativas; `prefers-reduced-motion: reduce` quita también las transiciones de Carbon.
+
+## El visor (tarea 2.4)
+
+Al entrar con una cuenta (`/v1/sesion`, cookie `HttpOnly`; el token anti-CSRF vive solo en memoria) la pantalla
+pide el libro `.xlsx`, llama a `/v1/libros/replica` y `/v1/libros/auditoria` en paralelo y dibuja la hoja con Univer
+en solo lectura, con un halo de severidad sobre la celda de cada hallazgo.
+
+- `src/replica/aUniver.ts` es el **único** lugar que convierte el contrato neutro (base 1, caracteres, puntos) a la
+  instantánea de Univer (base 0, píxeles). `formatoNumero.ts` da el texto que se ve en cada celda.
+- `src/visor/hojaVisor.ts` es la interfaz propia detrás de la que vive Univer; `adaptadorUniver.ts` es el único
+  archivo que importa Univer y se carga con `import()` (un archivo aparte en el `dist`). En las pruebas de jsdom,
+  donde Univer no dibuja, se usa el doble de `hojaFalsa.ts`.
+- La capa de halos (`CapaHalos.tsx`) es DOM sobre el lienzo y se recalcula cuando el visor avisa un cambio.
+- Univer trae `'unsafe-inline'` en `style-src` por necesidad: inyecta `<style>` con sus variables de tema. No usa
+  `eval`, `new Function`, workers ni `blob:` para scripts.

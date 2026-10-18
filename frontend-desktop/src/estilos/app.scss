@@ -2,6 +2,7 @@
 @use "./fuentes";
 @use "./tokens";
 @use "../indicadores/indicadores";
+@use "../visor/visor";
 
 html {
   // Barras de desplazamiento y seleccion con la paleta, no con los valores del navegador.
