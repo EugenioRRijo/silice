@@ -8,6 +8,7 @@ se rechazan (bitacora 0.9.0, T15). El archivo de configuracion se compara campo 
 from __future__ import annotations
 
 import json
+import re
 from decimal import Decimal
 
 import pytest
@@ -183,27 +184,52 @@ def test_el_aviso_de_la_nube_dice_que_no_viaja():
 # --- reactivar la clave desde el respaldo cifrado (ruta, sesion 1, tarea 1.2) -----------------
 
 
-def con_solo_el_respaldo(tmp_path):
+def con_solo_el_respaldo(tmp_path, activo=True):
+    """Devuelve la clave (solo en el respaldo cifrado) y la ruta de la configuracion."""
     clave = clave_de(tmp_path, AlmacenFalso(cae=True))
     clave.registrar("E", "sk-ant-abcd1234", ip_cliente="127.0.0.1", contrasena_respaldo="c" * 12)
     clave.desactivar()
-    return clave
+    ruta = tmp_path / "ia_config.json"
+    guardar(ruta, ConfiguracionIA(activo=activo))
+    return clave, ruta
 
 
 def test_reactivar_sin_ser_administrador_sin_permiso(tmp_path):
-    clave = con_solo_el_respaldo(tmp_path)
-    with pytest.raises(SinPermiso, match="administrador"):
-        reactivar_clave(clave, "E", "c" * 12, es_administrador=False, ip_cliente="127.0.0.1")
+    clave, ruta = con_solo_el_respaldo(tmp_path)
+    mensaje = "Solo el administrador de la instalación configura el asistente."
+    with pytest.raises(SinPermiso, match=rf"^{re.escape(mensaje)}$"):
+        reactivar_clave(
+            clave, "E", "c" * 12, ruta=ruta, es_administrador=False, ip_cliente="127.0.0.1"
+        )
     assert clave.vigente is None
     assert (
-        reactivar_clave(clave, "E", "c" * 12, es_administrador=True, ip_cliente="127.0.0.1")
+        reactivar_clave(
+            clave, "E", "c" * 12, ruta=ruta, es_administrador=True, ip_cliente="127.0.0.1"
+        )
         == "…1234"
     )
     assert clave.vigente == "sk-ant-abcd1234"
 
 
 def test_reactivar_la_clave_desde_otro_equipo_se_rechaza(tmp_path):
-    clave = con_solo_el_respaldo(tmp_path)
-    with pytest.raises(ClaveNoRegistrable, match="solo se reactiva desde el propio equipo"):
-        reactivar_clave(clave, "E", "c" * 12, es_administrador=True, ip_cliente="10.0.0.9")
+    clave, ruta = con_solo_el_respaldo(tmp_path)
+    mensaje = "La clave de IA solo se reactiva desde el propio equipo."
+    with pytest.raises(ClaveNoRegistrable, match=rf"^{re.escape(mensaje)}$"):
+        reactivar_clave(
+            clave, "E", "c" * 12, ruta=ruta, es_administrador=True, ip_cliente="10.0.0.9"
+        )
+    assert clave.vigente is None
+
+
+@pytest.mark.parametrize("activo", [False, None])  # apagado, o sin archivo (de fabrica)
+def test_reactivar_con_el_asistente_apagado_se_rechaza(tmp_path, activo):
+    """Defensa en profundidad: la pantalla ya no ofrece la seccion, y la funcion tampoco carga."""
+    clave, ruta = con_solo_el_respaldo(tmp_path, activo=bool(activo))
+    if activo is None:
+        ruta.unlink()
+    mensaje = "Active el asistente antes de reactivar la clave de IA."
+    with pytest.raises(ClaveNoRegistrable, match=rf"^{re.escape(mensaje)}$"):
+        reactivar_clave(
+            clave, "E", "c" * 12, ruta=ruta, es_administrador=True, ip_cliente="127.0.0.1"
+        )
     assert clave.vigente is None

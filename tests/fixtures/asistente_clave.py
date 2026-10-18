@@ -82,11 +82,16 @@ class EtiquetaInvalida(ValueError):  # noqa: N818
     """
 
 
+class ErrorDeArgon2(Exception):  # noqa: N818
+    """El papel de `seguridad.secretos.HashingError` (argon2): la sal del respaldo es muy corta."""
+
+
 class SecretosFalsos:
     """La forma de `seguridad.secretos` que usa `asistente.clave` (el modulo se inyecta)."""
 
     SecretoCifrado = SecretoCifradoFalso
     InvalidTag = EtiquetaInvalida
+    HashingError = ErrorDeArgon2
 
     def __init__(self) -> None:
         self.politica_vista: list[str] = []
@@ -107,6 +112,8 @@ class SecretosFalsos:
     def descifrar(
         self, cifrado: SecretoCifradoFalso, contrasena: str, huella_publica: str
     ) -> bytes:
+        if len(cifrado.sal) < 8:  # como argon2: «Salt is too short»
+            raise ErrorDeArgon2("Salt is too short")
         if cifrado.sal != _sello(contrasena, huella_publica):
             raise EtiquetaInvalida("contrasena erronea")
         return bytes(b ^ 0x5A for b in cifrado.cifrado)

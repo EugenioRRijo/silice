@@ -95,7 +95,7 @@ def test_sin_almacen_exige_contrasena_y_guarda_solo_el_cifrado(tmp_path):
     assert clave.vigente is None and clave.mostrada() is None
     with pytest.raises(ClaveNoRegistrable, match="contrasena"):
         clave.activar("EMP-1")
-    with pytest.raises(ValueError, match="erronea"):
+    with pytest.raises(ClaveNoRegistrable, match=r"^La contraseña no abre el respaldo"):
         clave.activar("EMP-1", "otra contrasena larga")
     assert clave.vigente is None
     clave.activar("EMP-1", CONTRASENA)
@@ -108,7 +108,7 @@ def test_el_respaldo_queda_atado_a_la_empresa(tmp_path):
     assert ASOCIADO == "silice-ia-clave-v1:"
     clave.registrar("EMP-1", CLAVE, ip_cliente="127.0.0.1", contrasena_respaldo=CONTRASENA)
     clave.desactivar()
-    with pytest.raises(ValueError, match="erronea"):
+    with pytest.raises(ClaveNoRegistrable, match=r"^La contraseña no abre el respaldo"):
         clave.activar("EMP-2", CONTRASENA)
 
 
@@ -298,6 +298,8 @@ def test_reactivar_con_contrasena_incorrecta_mensaje_fijo_y_sin_clave(tmp_path):
         b'{"kdf": "falso"}',  # faltan campos
         b"\x80\x81",  # bytes que no son texto
         b'{"kdf": "falso", "sal": "A", "nonce": "AA==", "cifrado": "AA=="}',  # base64 truncado
+        b'{"kdf": "falso", "sal": 5, "nonce": "AA==", "cifrado": "AA=="}',  # sal que no es texto
+        b'{"kdf": "falso", "sal": "YWJj", "nonce": "AA==", "cifrado": "AA=="}',  # sal corta
     ],
 )
 def test_reactivar_con_respaldo_danado_mensaje_fijo(tmp_path, danado):
@@ -331,3 +333,20 @@ def test_reactivar_no_se_traga_un_error_que_no_es_del_respaldo(tmp_path):
     clave, _, _ = clave_de(tmp_path, AlmacenRoto())
     with pytest.raises(RuntimeError, match="inesperado"):
         clave.reactivar("EMP-1", CONTRASENA, ip_cliente="127.0.0.1")
+
+
+class AlmacenConKeyError(AlmacenFalso):
+    """Un almacen que falla con `KeyError` (no es de `keyring` ni del respaldo)."""
+
+    def get_password(self, servicio: str, usuario: str) -> str | None:
+        raise KeyError("fallo del almacen")
+
+
+def test_un_keyerror_del_almacen_no_se_disfraza_de_contrasena(tmp_path):
+    """El `except` del respaldo no envuelve la lectura del almacen (revision de seguridad)."""
+    clave, _, ruta = con_solo_el_respaldo(tmp_path)
+    clave._almacen = AlmacenConKeyError()  # el almacen cambia tras registrar
+    assert ruta.exists()
+    with pytest.raises(KeyError, match="fallo del almacen"):
+        clave.reactivar("EMP-1", CONTRASENA, ip_cliente="127.0.0.1")
+    assert clave.vigente is None
