@@ -2,8 +2,11 @@
 
 `/v1/sesion` se ejerce sobre `api.main.app` real (con la protección de red y de hosts). La
 dependencia `exigir_clave_o_sesion` se ejerce sobre una aplicación de prueba que monta el mismo
-router de sesión, una ruta sonda y el router real de `/v1/libros` con esa dependencia (en esta
-tarea las rutas de libros de `api.main` siguen con `CON_CLAVE`; el cambio es de la 2.3b).
+router de sesión, una ruta sonda y el router real de `/v1/libros` con esa dependencia. Desde la
+2.3b `api.main` monta las rutas de libros con esa misma dependencia; la regresión «con clave
+responde igual que antes» se mide contra una aplicación de referencia con `exigir_clave_api`
+(el `CON_CLAVE` de antes) y las pruebas de la réplica (`test_api_libros_replica.py`) ejercen la
+sesión sobre `api.main.app`.
 
 Oráculos, ninguno sale del código bajo prueba:
 
@@ -34,7 +37,7 @@ from sqlalchemy import select
 
 from api import sesion_web
 from api.main import app, manejar_http_exception
-from api.proteccion import MENSAJE_SIN_CLAVE
+from api.proteccion import MENSAJE_SIN_CLAVE, exigir_clave_api
 from api.rutas import libros
 from api.rutas import sesion as rutas_sesion
 from operacion import config, registro
@@ -156,6 +159,17 @@ def _app_de_prueba() -> FastAPI:
 
 
 PRUEBA = _app_de_prueba()
+
+
+def _app_de_referencia() -> FastAPI:
+    """Las rutas de libros como estaban antes de la 2.3b: solo `exigir_clave_api` (`CON_CLAVE`)."""
+    referencia = FastAPI()
+    referencia.add_exception_handler(HTTPException, manejar_http_exception)
+    referencia.include_router(libros.router, dependencies=[Depends(exigir_clave_api)])
+    return referencia
+
+
+REFERENCIA = _app_de_referencia()
 
 
 def _libro_con_extension_mala(cliente: TestClient, **extra):
@@ -531,12 +545,14 @@ def test_rol_revisa_pasa(login: str) -> None:
 
 
 def test_con_clave_de_api_las_rutas_de_libros_siguen_igual() -> None:
-    """Con `X-Silice-Clave` (sin cookie) la dependencia responde lo mismo que `CON_CLAVE`."""
+    """Con `X-Silice-Clave` (sin cookie) la aplicación real y la de prueba responden lo mismo que
+    las rutas de antes con `CON_CLAVE` (la aplicación de referencia)."""
     clave = crear_clave_de_prueba()
     for cabeceras in ({CABECERA: clave}, {CABECERA: "AB12CD34.no-es-la-clave"}, {CABECERA: ""}):
-        nueva = _libro_con_extension_mala(_cliente(PRUEBA), headers=cabeceras)
-        actual = _libro_con_extension_mala(_cliente(app), headers=cabeceras)
-        assert (nueva.status_code, nueva.json()) == (actual.status_code, actual.json())
+        antes = _libro_con_extension_mala(_cliente(REFERENCIA), headers=cabeceras)
+        for aplicacion in (PRUEBA, app):
+            ahora = _libro_con_extension_mala(_cliente(aplicacion), headers=cabeceras)
+            assert (ahora.status_code, ahora.json()) == (antes.status_code, antes.json())
     assert _libro_con_extension_mala(_cliente(PRUEBA), headers={CABECERA: clave}).status_code == 415
     sin_clave = _libro_con_extension_mala(_cliente(PRUEBA), headers={CABECERA: "x.y"})
     assert sin_clave.json() == {"detalle": MENSAJE_SIN_CLAVE}
