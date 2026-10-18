@@ -29,6 +29,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 from starlette.background import BackgroundTask
 
+from api.acceso import EDITAR, LEER
 from api.archivos import guardar_subida
 from api.dependencias import USUARIO_SIN_CLAVE, SesionDep
 from api.esquemas import (
@@ -90,7 +91,12 @@ router = APIRouter(tags=["presupuestos"])
 _CAMPOS_PARAMETROS = ("fcas", "bono_alimentacion", "administracion", "utilidad")
 
 
-@router.post("/proyectos", response_model=ProyectoRespuesta, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/proyectos",
+    response_model=ProyectoRespuesta,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=EDITAR,
+)
 def crear_proyecto_de_presupuestos(
     sesion: SesionDep, peticion: ProyectoPeticion
 ) -> ProyectoRespuesta:
@@ -117,6 +123,7 @@ def crear_proyecto_de_presupuestos(
             "la respuesta propone el del histórico (UC-01, flujo 3b)",
         }
     },
+    dependencies=EDITAR,
 )
 def crear_presupuesto(
     sesion: SesionDep, peticion: PresupuestoPeticion
@@ -193,6 +200,7 @@ def crear_presupuesto(
     "/presupuestos/importar",
     response_model=PresupuestoCreadoRespuesta,
     status_code=status.HTTP_201_CREATED,
+    dependencies=EDITAR,
 )
 def importar_presupuesto_de_tercero(
     sesion: SesionDep,
@@ -235,7 +243,7 @@ def importar_presupuesto_de_tercero(
     )
 
 
-@router.get("/presupuestos", response_model=list[PresupuestoResumenRespuesta])
+@router.get("/presupuestos", response_model=list[PresupuestoResumenRespuesta], dependencies=LEER)
 def listar_presupuestos(sesion: SesionDep) -> list[PresupuestoResumenRespuesta]:
     """Códigos y totales de todos los presupuestos guardados, ordenados por código."""
     catalogo = Catalogo(sesion)
@@ -252,7 +260,7 @@ def listar_presupuestos(sesion: SesionDep) -> list[PresupuestoResumenRespuesta]:
     return resumenes
 
 
-@router.get("/presupuestos/{codigo}", response_model=PresupuestoDetalleRespuesta)
+@router.get("/presupuestos/{codigo}", response_model=PresupuestoDetalleRespuesta, dependencies=LEER)
 def obtener_presupuesto(
     sesion: SesionDep, codigo: str, proyecto: str | None = None
 ) -> PresupuestoDetalleRespuesta:
@@ -283,7 +291,7 @@ def obtener_presupuesto(
     )
 
 
-@router.get("/presupuestos/{codigo}/informe")
+@router.get("/presupuestos/{codigo}/informe", dependencies=LEER)
 def informe_de_auditoria(
     sesion: SesionDep, codigo: str, proyecto: str | None = None
 ) -> PlainTextResponse:
@@ -294,7 +302,7 @@ def informe_de_auditoria(
     return PlainTextResponse(informe.a_markdown(), media_type="text/markdown")
 
 
-@router.get("/presupuestos/{codigo}/excel")
+@router.get("/presupuestos/{codigo}/excel", dependencies=LEER)
 def exportar_presupuesto_excel(
     sesion: SesionDep, codigo: str, proyecto: str | None = None
 ) -> FileResponse:
@@ -311,7 +319,9 @@ def exportar_presupuesto_excel(
     )
 
 
-@router.post("/presupuestos/{codigo}/actualizacion", response_model=ComparativoRespuesta)
+@router.post(
+    "/presupuestos/{codigo}/actualizacion", response_model=ComparativoRespuesta, dependencies=EDITAR
+)
 def actualizar_presupuesto(
     sesion: SesionDep,
     codigo: str,
@@ -360,7 +370,9 @@ def actualizar_presupuesto(
     )
 
 
-@router.post("/presupuestos/{codigo}/escenarios", response_model=EscenariosRespuesta)
+@router.post(
+    "/presupuestos/{codigo}/escenarios", response_model=EscenariosRespuesta, dependencies=EDITAR
+)
 def escenarios_de_presupuesto(
     sesion: SesionDep,
     codigo: str,
