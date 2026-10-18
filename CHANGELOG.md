@@ -8,6 +8,7 @@ etiquetar, las líneas pasan a la sección de la versión. La historia anterior 
 
 ### Agregado
 
+- Para integradores: las rutas `/v1/libros/*` aceptan ahora la clave de API **o** la sesión del navegador (RS2-5). Sin la cabecera `X-Silice-Clave` responden 401 con el mensaje de sesión (antes, el de la clave) y esa llamada ya no queda en el registro de accesos como fallo de clave; con una clave mala, todo sigue igual.
 - Sesión 2 de la ruta (en curso): plan `docs/planes/PLAN_SESION_2_VISUAL.md`, producto y diseño de la interfaz nueva (`frontend-desktop/PRODUCT.md`, `DESIGN.md`) y enmienda 1.2.0 de la ERS (UC-26, RF-111 a RF-118, RNF-22 y RNF-23).
 
 ### Corregido

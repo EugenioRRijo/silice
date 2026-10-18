@@ -369,6 +369,8 @@ def test_solo_las_claves_presentes_en_los_dos_totales() -> None:
         ("998.75", "-1.25", "-0.12"),
         # 0,00049 ÷ 1 000 × 100 = 0,000049 -> 0,00
         ("1000.00049", "0.00049", "0.00"),
+        # −0,00001 ÷ 1 000 × 100 = −0,000001 -> −0,00, que se muestra sin signo: 0,00
+        ("999.99999", "-0.00001", "0.00"),
     ],
 )
 def test_delta_pct_en_centesimas_con_redondeo_al_par(actual, delta, delta_pct) -> None:
@@ -395,3 +397,27 @@ def test_los_montos_viajan_como_texto_sin_notacion_cientifica() -> None:
 def test_los_montos_se_muestran_sin_ceros_de_relleno(actual, meta, esperado) -> None:
     i = _uno(actual, meta)
     assert (i.actual, i.meta, i.delta) == esperado
+
+
+def test_un_porcentaje_que_no_cabe_en_la_precision_decimal_da_delta_pct_nulo() -> None:
+    # Δ ÷ meta × 100 = 1E+40 ÷ 0,01 × 100 = 1E+44: 45 cifras enteras, más que las 28 del
+    # contexto decimal; cuantizarlo lanzaría InvalidOperation y tumbaría toda la auditoría.
+    i = _uno("1E+40", "0.01")
+    assert i.delta_pct is None
+    assert i.delta == "1" + "0" * 40
+
+
+@pytest.mark.parametrize(
+    "ruta", ["/v1/libros/auditoria", "/v1/libros/devolucion", "/v1/libros/pdf", RUTA]
+)
+def test_las_cuatro_rutas_de_libros_niegan_el_rol_administrador_solo(ruta: str) -> None:
+    cliente, ficha = _con_cuenta("admin")
+    campo = "pdf" if ruta.endswith("/pdf") else "libro"
+    r = cliente.post(
+        ruta,
+        files={campo: ("archivo.txt", b"no es nada")},
+        data={"fecha_devolucion": "2026-10-13"},
+        headers=_protegida(ficha),
+    )
+    assert r.status_code == 403, r.text
+    assert r.json() == {"detalle": MENSAJE_PERMISO}

@@ -430,21 +430,34 @@ def _exacto(valor: Decimal) -> str:
     return "0" if texto in ("-0", "") else texto
 
 
+def _porcentaje(delta: Decimal, meta: Decimal) -> Decimal | None:
+    """Δ ÷ meta × 100 en centésimas al par; `None` si la meta es 0 o si el porcentaje no cabe en
+    la precisión decimal (InvalidOperation al cuantizar: más de ~26 cifras enteras). `-0.00` sale
+    como `0.00`: sin variación no lleva signo."""
+    if meta == 0:
+        return None
+    try:
+        pct = (delta / meta * 100).quantize(CENTESIMA, ROUND_HALF_EVEN)
+    except InvalidOperation:
+        return None
+    return pct.copy_abs() if pct == 0 else pct
+
+
 def indicadores_de(
     totales_libro: Mapping[str, Decimal | None], totales_silice: Mapping[str, Decimal | None]
 ) -> list[IndicadorRespuesta]:
     """Los indicadores de la franja (RS2-7), en el orden de `INDICADORES` y solo con las claves
     presentes (y no nulas) en los dos totales: `actual` = libro, `meta` = Sílice,
     `delta = actual - meta` y `delta_pct = delta / meta * 100` en centésimas con redondeo al par,
-    o `None` si `meta == 0`. Función pura; los montos salen como texto decimal exacto sin ceros de
-    relleno (`_exacto`)."""
+    o `None` si `meta == 0` o no cabe (`_porcentaje`). Función pura; los montos salen como texto
+    decimal exacto sin ceros de relleno (`_exacto`)."""
     indicadores: list[IndicadorRespuesta] = []
     for clave, titulo in INDICADORES.items():
         actual, meta = totales_libro.get(clave), totales_silice.get(clave)
         if actual is None or meta is None:
             continue
         delta = actual - meta
-        pct = None if meta == 0 else (delta / meta * 100).quantize(CENTESIMA, ROUND_HALF_EVEN)
+        pct = _porcentaje(delta, meta)
         indicadores.append(
             IndicadorRespuesta(
                 clave=clave,
