@@ -26,7 +26,9 @@ construcción). Detalle en [docs/linea_base.md](docs/linea_base.md).
   versionan.
 - **Real autorizado:** los dos PDF de ARENAZA de `data/samples/telecom/` son **presupuestos
   reales** (antes se declararon ejercicio de clase) y se quedan en el repositorio por decisión de Eugenio.
-- **Anonimizado:** derivado de un real con `scripts/anonimizar_libro.py`; puede versionarse tras revisión.
+- **Anonimizado:** derivado de un real con `scripts/anonimizar_libro.py`. **No se versiona** (regla de Eugenio,
+  2026-10-18): conserva los montos reales y sigue siendo dato real. Vive solo en el equipo, para trabajar; nunca en
+  commits, pruebas, capturas ni PR.
 
 Lo que sigue describe los casos **construidos**, que son **ficticios**. El de la clínica (línea base) proviene de un ejercicio de clase y
 no representa valores reales ni obras ejecutadas. `MNT-001` (industrial), `SIS-001`
@@ -34,9 +36,9 @@ no representa valores reales ni obras ejecutadas. `MNT-001` (industrial), `SIS-0
 para el proyecto. Reproducen el contenido y el formato de la práctica
 venezolana: por eso sirven como línea base normativa de las pruebas y como casos **didácticos** en la
 tesis. Los listados MaPreX de julio de 2026 y el tabulador CIV son referencias publicadas aportadas por
-el usuario. Cuando se suministren APU de casos reales, entran al repositorio **solo como casos anonimizados**
-(con fixture propio en `tests/fixtures/`) sin sustituir la línea base, salvo decisión explícita
-documentada en `docs/bitacora/`. Este párrafo es la **fuente única** de la naturaleza de los datos; los
+el usuario. Cuando se suministren APU de casos reales, **no entran al repositorio** (ni siquiera anonimizados, regla del
+2026-10-18): las pruebas usan casos **construidos** ficticios con la forma de los reales (`tests/fixtures/libros_empresa.py`,
+`tests/fixtures/libro_visual.py`), sin sustituir la línea base. Este párrafo es la **fuente única** de la naturaleza de los datos; los
 demás documentos lo enlazan.
 
 **Hipótesis central.** El núcleo (`core/`) no cambia cuando se agrega un dominio. Se demuestra con
