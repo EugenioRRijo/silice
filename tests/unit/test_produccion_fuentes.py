@@ -15,8 +15,12 @@ def test_ninguna_constante_de_calculo_es_a_cotejar_ni_sin_fuente():
 
 def test_el_registro_trae_las_constantes_del_plan_con_su_estado():
     por_nombre = {c.nombre: c for c in CONSTANTES}
-    esperadas = {"MAX_FILAS": "100000", "MAX_COLUMNAS": "60", "FILAS_DE_ENCABEZADO": "30",
-                 "TOLERANCIA_NETO_T": "0"}
+    esperadas = {
+        "MAX_FILAS": "100000",
+        "MAX_COLUMNAS": "60",
+        "FILAS_DE_ENCABEZADO": "30",
+        "TOLERANCIA_NETO_T": "0",
+    }
     assert {n: por_nombre[n].valor for n in esperadas} == esperadas
     assert all(por_nombre[n].estado is EstadoDato.CONSTRUIDO for n in esperadas)
     assert len({c.nombre for c in CONSTANTES}) == len(CONSTANTES)

@@ -18,7 +18,7 @@ similitud = ["similitud"]
 [codigo]
 paquetes = [
   "core", "adapters", "ml", "ui", "api", "operacion", "migraciones",
-  "seguridad", "asistente", "paquete", "auditoria", "fusion",
+  "seguridad", "asistente", "paquete", "auditoria", "fusion", "produccion",
 ]
 archivos = ["pyproject.toml", "LICENSE"]
 # De scripts/ y tests/fixtures/ viaja solo el cierre de importaciones de estos módulos (RV-25).

@@ -234,11 +234,12 @@ def _prohibidos_en_produccion(archivo: Path) -> list[str]:
 
 def test_produccion_respeta_su_regla(tmp_path):
     """RT-7: `produccion/` no importa `core` salvo `core.contracts`, ni `adapters`, `api`, `ui`,
-    `operacion` ni `seguridad`. La regla se prueba con archivos construidos y con el paquete real."""
+    `operacion` ni `seguridad`. Se prueba con archivos construidos y con el paquete real."""
     malo = tmp_path / "malo.py"
     malo.write_text("from core.models import Item\nimport decimal\n", encoding="utf-8")
     assert _prohibidos_en_produccion(malo) == ["core.models"]
-    for modulo in ("adapters.bcv", "api.main", "ui.app", "operacion.respaldo", "seguridad.permisos"):
+    ajenos = ("adapters.bcv", "api.main", "ui.app", "operacion.respaldo", "seguridad.permisos")
+    for modulo in ajenos:
         otro = tmp_path / "otro.py"
         otro.write_text(f"import {modulo}\n", encoding="utf-8")
         assert _prohibidos_en_produccion(otro) == [modulo]

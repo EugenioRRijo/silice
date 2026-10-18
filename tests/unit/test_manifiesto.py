@@ -67,6 +67,7 @@ def test_el_manifiesto_declara_lo_que_decide_el_spec() -> None:
         "paquete",
         "auditoria",
         "fusion",
+        "produccion",
     }
     assert "instalador" not in m.paquetes  # herramienta de construcción: no viaja
     assert set(m.archivos) == {"pyproject.toml", "LICENSE"}
