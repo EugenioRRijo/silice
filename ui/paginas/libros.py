@@ -54,6 +54,7 @@ CLAVE_RESULTADO = "libros_resultado"  # lo auditado: no es clave de ningún widg
 CLAVE_RESULTADO_PDF = "libros_resultado_pdf"  # lo revisado de un PDF simple (L10)
 CLAVE_VERIFICADO = "libros_verificado"  # SHA-256 del último libro que pasó la guardia
 CLAVE_DEVUELTO = "libros_devuelto"  # (firma, nombre, octetos) del libro devuelto
+CLAVE_PRECARGADO = "libros_precargado"  # (nombre, octetos) del libro que se subió en el Inicio
 CLAVE_VISTAS = "libros_vistas"  # vistas calcadas ya armadas, por (sha, hoja, desde, ocultas)
 CLAVE_SECCION = "libros_seccion"
 SECCIONES = ("Hallazgos", "Vista de la hoja", "Alertas USD-Bs")
@@ -80,6 +81,17 @@ LIMITES_DEL_CALCADO = (
     "No se copian hipervínculos, protección de hoja ni formatos condicionales de barras, escalas "
     "o iconos; todo cambio queda en AUDITORÍA y TRAZABILIDAD."
 )
+
+
+@dataclass(frozen=True, slots=True)
+class Precargado:
+    """El libro que se subió en el Inicio, con la forma mínima de un archivo subido."""
+
+    name: str
+    datos: bytes
+
+    def getvalue(self) -> bytes:
+        return self.datos
 
 
 @dataclass(frozen=True, slots=True)
@@ -204,6 +216,12 @@ def _entrada() -> Entrada | None:
         key="libros_otro",
         help="Para avisar de los precios que cambiaron entre una versión y otra.",
     )
+    if xlsx is None and CLAVE_PRECARGADO in st.session_state:
+        nombre, datos = st.session_state[CLAVE_PRECARGADO]
+        xlsx = Precargado(nombre, datos)
+        st.caption(
+            f"Libro traído desde el Inicio: {texto_seguro(nombre)}. Suba otro aquí para cambiarlo."
+        )
     if xlsx is None:
         if pdf is not None:
             if otro is not None:
@@ -351,7 +369,7 @@ def _hallazgos(a: Auditado) -> None:
     _tabla_hallazgos(a.resultado.hallazgos_tabla, "libros_f")
 
 
-def _dibujar_hoja(
+def dibujar_hoja(
     prefijo: str,
     sha: str,
     origen: bytes,
@@ -445,7 +463,7 @@ def _vista(a: Auditado) -> None:
         (libros.hoja_de(f.celda) for f in r.hallazgos_tabla if libros.hoja_de(f.celda) in hojas),
         hojas[0],
     )
-    hoja = _dibujar_hoja("libros", r.libro.sha256, origen, hojas, primera, marcas, citas=True)
+    hoja = dibujar_hoja("libros", r.libro.sha256, origen, hojas, primera, marcas, citas=True)
     if hoja is None:
         return
     propios = [f for f in r.hallazgos_tabla if libros.hoja_de(f.celda) == hoja]
@@ -459,7 +477,7 @@ def _vista_devuelto(octetos: bytes) -> None:
     if not hojas:
         return
     st.subheader("Vista del libro devuelto")
-    _dibujar_hoja(
+    dibujar_hoja(
         "libros_dev",
         _sha(octetos),
         octetos,

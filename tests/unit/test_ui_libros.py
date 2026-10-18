@@ -818,3 +818,14 @@ def test_si_no_se_puede_dibujar_el_libro_devuelto_la_descarga_sigue(
     assert "/ruta/secreta" not in _textos(at)
     [boton] = at.get("download_button")
     assert boton.proto.label.startswith("Descargar «")
+
+
+def test_el_libro_traido_del_inicio_ya_esta_cargado(monkeypatch, tmp_path, limpio) -> None:
+    c, _ = limpio
+    at = _abrir(monkeypatch, tmp_path)
+    at.session_state["libros_precargado"] = ("obra.xlsx", c.datos)
+    at = at.run()
+    assert not at.exception, [e.value for e in at.exception]
+    assert any("traído desde el Inicio" in x.value for x in at.caption)
+    at = _pulsar(at, "libros_auditar")
+    assert _metricas(at)["Sin IVA, libro entregado"] == "4358.21"

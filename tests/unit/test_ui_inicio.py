@@ -171,3 +171,40 @@ def test_un_archivo_ilegible_se_informa_sin_ofrecer_sembrar(monkeypatch, tmp_pat
     at = _inicio(monkeypatch, base)
     assert any("No se pudo leer" in error.value for error in at.error)
     assert ROTULO_SEMBRAR not in [boton.label for boton in at.button]
+
+
+# --- el libro de Excel, lo primero que se ve ------------------------------------------------------
+
+MIME_XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
+
+def test_el_inicio_empieza_por_subir_el_libro_de_excel(monkeypatch, tmp_path: Path) -> None:
+    at = _inicio(monkeypatch, tmp_path / "caso.db")
+    assert at.file_uploader[0].key == "inicio_libro"  # antes que la zona de los casos
+    assert not at.get("html")  # sin libro no hay nada que dibujar
+    assert [s.value for s in at.subheader][0].startswith("Su libro de Excel")
+
+
+def test_el_libro_subido_se_dibuja_como_excel_al_instante(monkeypatch, tmp_path: Path) -> None:
+    from tests.fixtures.libros_empresa import libro_limpio
+
+    datos = libro_limpio().datos
+    at = _inicio(monkeypatch, tmp_path / "caso.db")
+    at.file_uploader(key="inicio_libro").set_value(("obra.xlsx", datos, MIME_XLSX))
+    at = at.run()
+    assert not at.exception, [e.value for e in at.exception]
+    hojas = at.selectbox(key="inicio_hoja").options
+    assert hojas[0] == "PORTADA" and "PRESUPUESTO" in hojas
+    [html] = [h.proto.body for h in at.get("html")]
+    assert "Condominio Ejemplo (ficticio)" in html  # el cliente de la PORTADA del libro
+    assert any("Libro de la empresa" in c.value for c in at.caption)
+    assert at.session_state["libros_precargado"][0] == "obra.xlsx"
+
+
+def test_un_archivo_que_no_es_un_libro_se_rechaza_y_no_se_dibuja(monkeypatch, tmp_path) -> None:
+    at = _inicio(monkeypatch, tmp_path / "caso.db")
+    at.file_uploader(key="inicio_libro").set_value(("obra.xlsx", b"esto no es un ZIP", MIME_XLSX))
+    at = at.run()
+    assert not at.exception, [e.value for e in at.exception]
+    assert [e.value for e in at.error] and not at.get("html")
+    assert "libros_precargado" not in at.session_state

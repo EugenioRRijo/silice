@@ -13,16 +13,18 @@ caso se crea en `head` por `preparar_base`.
 
 from __future__ import annotations
 
+import hashlib
 from collections.abc import Callable
 from pathlib import Path
 
 import streamlit as st
 from sqlalchemy.exc import SQLAlchemyError
 
+from adapters.hoja_empresa.guardia import ArchivoRechazado, verificar_archivo
 from operacion.base_datos import ErrorDeBase, crear_caso, listar_casos, preparar_base, subir_caso
 from operacion.config import BASE_ANTERIOR, carpeta_casos
 from seguridad.permisos import Accion
-from ui import caso
+from ui import caso, libros
 from ui import sesion as ui_sesion
 from ui.caso import (
     SIN_PERMISO_DE_CAMBIO,
@@ -36,7 +38,10 @@ from ui.caso import (
     resumen_caso,
     ruta_caso,
 )
+from ui.paginas.libros import CLAVE_PRECARGADO, dibujar_hoja
 from ui.recorridos import RECORRIDOS, recorrido_por_nombre
+from ui.subidas import nombre_seguro
+from ui.texto_seguro import texto_seguro
 
 ROTULO_CASO = "Casos de la carpeta de datos"
 ROTULO_ABRIR = "Abrir este caso"
@@ -61,9 +66,58 @@ def render() -> None:
         "que va a trabajar y lo que quiere hacer: cada pantalla le indicara el paso siguiente."
     )
     _preparar_abierto()
+    _su_libro()
     _elegir_caso()
     _estado(estado_caso(ruta_caso()))
     _elegir_recorrido()
+
+
+def _su_libro() -> None:
+    """Lo primero que se ve: el libro de Excel de la persona, dibujado como Excel al subirlo.
+
+    El libro queda en la sesion (`CLAVE_PRECARGADO`) para que «Libro de la empresa» lo audite sin
+    pedirlo otra vez. Todo en memoria: no toca el caso.
+    """
+    if not ui_sesion.puede(Accion.LEER_PROYECTO):
+        return
+    st.subheader("Su libro de Excel")
+    st.caption(
+        "Suba el presupuesto de la empresa y vea sus hojas tal como estan en Excel. Despues puede "
+        "auditarlo en «Libro de la empresa»."
+    )
+    subido = st.file_uploader(
+        "Libro de Excel de la empresa (.xlsx)", type=["xlsx"], key="inicio_libro"
+    )
+    if subido is None:
+        st.session_state.pop(CLAVE_PRECARGADO, None)
+        return
+    datos = subido.getvalue()
+    try:
+        nombre = nombre_seguro(subido.name)
+    except ValueError:
+        nombre = "libro.xlsx"
+    try:
+        verificar_archivo(datos, nombre)
+        hojas = libros.hojas_del_libro(datos)
+    except ArchivoRechazado as error:
+        st.session_state.pop(CLAVE_PRECARGADO, None)
+        st.error(texto_seguro(str(error)))
+        return
+    if not hojas:
+        st.info("El libro no tiene hojas que mostrar.")
+        return
+    st.session_state[CLAVE_PRECARGADO] = (nombre, datos)
+    dibujar_hoja(
+        "inicio",
+        hashlib.sha256(datos).hexdigest(),
+        datos,
+        hojas,
+        hojas[0],
+        rotulo="Hoja {hoja}: ",
+    )
+    st.caption(
+        "Para auditarlo y descargar el libro devuelto, abra «Libro de la empresa»: ya lo tiene."
+    )
 
 
 def _preparar_abierto() -> None:

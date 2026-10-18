@@ -139,6 +139,11 @@ un presupuesto** propone también el rendimiento del histórico cuando a una par
 
 ### 3.0 Inicio: el caso abierto y los recorridos guiados (UC‑12)
 
+**Su libro de Excel.** Lo primero que muestra el Inicio es una zona para subir el libro de Excel de la empresa. Al
+subirlo se dibuja de inmediato como Excel (colores, celdas combinadas, anchos), con selector de hoja y la opción de
+ver lo oculto. Es solo la vista: el libro no se guarda en el caso. Para auditarlo y descargar el libro devuelto, abra
+**Libro de la empresa**: ya lo tiene cargado (puede subir otro allí).
+
 1. **El caso.** La lista *Casos de la carpeta de datos* y el botón *Abrir este caso* fijan la base con que trabajan
    todas las pantallas durante la sesión. Los casos viven en la carpeta de datos (`data/casos/` en desarrollo): se
    elige uno de la lista, se crea con un nombre (*Crear o subir un caso*) o se sube un `.db`. No hay campo con la
