@@ -885,3 +885,17 @@ se añadirán explícitamente si el perfilado de I1 los reclama.
   como **texto** con el valor del `StrEnum`, y `severidad` como **entero** con el valor del `IntEnum`.
   No se usa `sqlalchemy.Enum`: el tipo nativo obligaría a una migración de esquema cada vez que se
   añade un dominio, y el sistema está diseñado para admitir dominios nuevos sin tocar el núcleo.
+
+## 9. Tablas de la arenera (base de la instalación, revisión `ins_0002_produccion`)
+
+Sesión 4 de la ruta (UC‑28 y UC‑29). Viven en `instalacion.db` y no en un caso: la arenera es de la empresa, no de
+un proyecto. Las cantidades son texto decimal exacto (como `DecimalExacto`); `produccion/` no importa `core`.
+
+| Tabla | Columnas | Restricciones |
+|---|---|---|
+| `prod_material` | `id` PK, `codigo` UK (40), `nombre` (120), `unidad_venta` (`m3` \| `t`), `densidad_t_m3` (nula), `existencia_minima`, `activo` | `CHECK unidad_venta IN ('m3','t')` |
+| `prod_movimiento` | `id` PK, `material_id` FK, `fecha`, `tipo` (`entrada` \| `despacho` \| `ajuste`), `cantidad` (en la unidad de venta; con signo solo en `ajuste`), `ticket` UK (nulo), `placa`, `cliente`, `nota`, `origen` (`manual` \| `bascula`), `usuario`, `registrado` | `CHECK tipo IN (...)`; los `NULL` de `ticket` no chocan |
+| `prod_pesaje_sospechoso` | `id` PK, `huella_archivo` (64), `fila`, `ticket`, `fecha_texto`, `placa`, `material_texto`, `bruto_texto`, `tara_texto`, `neto_texto`, `motivo`, `estado` (`pendiente` \| `resuelto` \| `descartado`), `resuelto_por`, `resuelto_en` | UK (`huella_archivo`, `fila`) |
+
+Existencia = Σ entradas − Σ despachos ± ajustes, por material y fecha (RF‑128). Un despacho que deja la existencia
+negativa se guarda y el tablero lo señala (RF‑129).
