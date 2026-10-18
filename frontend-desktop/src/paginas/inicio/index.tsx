@@ -39,8 +39,8 @@ export default function PaginaInicio() {
           Audite un presupuesto
         </h2>
         <p className="silice-inicio__nota cds--type-body-compact-01">
-          Suelte el Excel de un presupuesto y Sílice recalcula cada partida, la compara con el libro y le dice lo que
-          no cuadra. El archivo no se guarda: solo queda el resumen y los hallazgos.
+          Suelte el Excel del presupuesto. Sílice recalcula cada partida y le dice lo que no cuadra. El archivo no se
+          guarda; solo quedan el resumen y los hallazgos.
         </p>
         <SubidaArchivo
           id="inicio-subida"
@@ -48,9 +48,11 @@ export default function PaginaInicio() {
           extensiones={[".xlsx"]}
           alElegir={setArchivo}
         />
+        <p role="status" className="silice-inicio__nota cds--type-body-compact-01">
+          {archivo ? `Archivo elegido: ${archivo.name}` : ""}
+        </p>
         {archivo && (
           <div className="silice-inicio__acciones">
-            <p className="cds--type-body-compact-01">{archivo.name}</p>
             <Button kind="primary" size="md" onClick={() => auditar("guiado")}>
               Auditar con recorrido guiado
             </Button>
@@ -65,7 +67,7 @@ export default function PaginaInicio() {
 
       <section className="silice-inicio__bloque" aria-labelledby="inicio-seguir">
         <h2 id="inicio-seguir" className="cds--type-heading-03">
-          Seguir donde quedó
+          Últimas auditorías guardadas
         </h2>
         <p className="silice-inicio__nota cds--type-body-compact-01">
           {`Caso abierto: ${caso?.nombre ?? "ninguno"}`}

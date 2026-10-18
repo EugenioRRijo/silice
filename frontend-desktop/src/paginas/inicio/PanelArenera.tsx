@@ -26,6 +26,14 @@ export function requierenAtencion(filas: ExistenciaRespuesta[]): ExistenciaRespu
   return [...pide.filter((f) => f.negativa), ...pide.filter((f) => !f.negativa)];
 }
 
+function EnlaceExistencias() {
+  return (
+    <Link className="cds--link" to="/existencias">
+      Ver todas las existencias
+    </Link>
+  );
+}
+
 function Cuerpo({ carga }: { carga: Carga<ExistenciaRespuesta[]> }) {
   if (carga.estado === "cargando") {
     return (
@@ -52,40 +60,50 @@ function Cuerpo({ carga }: { carga: Carga<ExistenciaRespuesta[]> }) {
     );
   }
   const pide = requierenAtencion(filas);
-  if (pide.length === 0) return <p className="silice-inicio__nota cds--type-body-compact-01">Todo sobre el mínimo</p>;
+  if (pide.length === 0) {
+    return (
+      <>
+        <p className="silice-inicio__nota cds--type-body-compact-01">Todo sobre el mínimo</p>
+        <EnlaceExistencias />
+      </>
+    );
+  }
 
   return (
-    <div className="silice-tabla">
-      <Table size="sm" aria-label="Materiales de la arenera que requieren atención">
-        <TableHead>
-          <TableRow>
-            <TableHeader>Material</TableHeader>
-            <TableHeader className="silice-cifra">Existencia</TableHeader>
-            <TableHeader className="silice-cifra">Mínima</TableHeader>
-            <TableHeader>Estado</TableHeader>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {pide.map((f) => (
-            <TableRow key={f.codigo}>
-              <TableCell>{f.nombre}</TableCell>
-              <TableCell className="silice-cifra">{`${f.existencia} ${f.unidad_venta}`}</TableCell>
-              <TableCell className="silice-cifra">{`${f.minima} ${f.unidad_venta}`}</TableCell>
-              <TableCell>
-                <span className="silice-inicio__estado">
-                  {f.negativa ? (
-                    <ErrorFilled size={16} className="silice-inicio__icono--error" title="Error" />
-                  ) : (
-                    <WarningAltFilled size={16} className="silice-inicio__icono--advertencia" title="Advertencia" />
-                  )}
-                  {f.negativa ? MENSAJE_NEGATIVA : MENSAJE_POCO}
-                </span>
-              </TableCell>
+    <>
+      <div className="silice-tabla">
+        <Table size="sm" aria-label="Materiales de la arenera que requieren atención">
+          <TableHead>
+            <TableRow>
+              <TableHeader>Material</TableHeader>
+              <TableHeader className="silice-cifra">Existencia</TableHeader>
+              <TableHeader className="silice-cifra">Mínima</TableHeader>
+              <TableHeader>Estado</TableHeader>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
+          </TableHead>
+          <TableBody>
+            {pide.map((f) => (
+              <TableRow key={f.codigo}>
+                <TableCell>{f.nombre}</TableCell>
+                <TableCell className="silice-cifra">{`${f.existencia} ${f.unidad_venta}`}</TableCell>
+                <TableCell className="silice-cifra">{`${f.minima} ${f.unidad_venta}`}</TableCell>
+                <TableCell>
+                  <span className="silice-inicio__estado">
+                    {f.negativa ? (
+                      <ErrorFilled size={16} className="silice-inicio__icono--error" />
+                    ) : (
+                      <WarningAltFilled size={16} className="silice-inicio__icono--advertencia" />
+                    )}
+                    {f.negativa ? MENSAJE_NEGATIVA : MENSAJE_POCO}
+                  </span>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+      <EnlaceExistencias />
+    </>
   );
 }
 

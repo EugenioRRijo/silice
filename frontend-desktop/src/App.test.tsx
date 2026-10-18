@@ -41,6 +41,9 @@ describe("App", () => {
       if (ruta === "/v1/sesion" && metodo === "DELETE") return new Response(null, { status: 204 });
       if (ruta === "/v1/casos") return json(casos);
       if (ruta === "/v1/proyectos") return json([]);
+      // Lo que pide el Inicio: sin esto caerian en el 401 de abajo y la sesion se daria por vencida.
+      if (ruta === "/v1/produccion/existencias") return json([]);
+      if (ruta.startsWith("/v1/auditorias-libro")) return json([]);
       return json({ detalle: "Sin sesión." }, 401);
     });
   });
@@ -78,6 +81,9 @@ describe("App", () => {
     // La pagina llega por import() dinamico: con la suite entera en marcha tarda mas que el plazo por omision.
     expect(await screen.findByRole("heading", { name: "Audite un presupuesto" }, { timeout: 5000 })).toBeInTheDocument();
     expect(window.location.hash).toBe("#/inicio");
+    // Las lecturas del Inicio ya contestaron: la sesion sigue viva (no cayo al formulario «Entrar»).
+    expect(await screen.findByText("Aún no hay materiales", {}, { timeout: 5000 })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Entrar" })).not.toBeInTheDocument();
   });
 
   test("una direccion con #/libros abre esa pagina", async () => {

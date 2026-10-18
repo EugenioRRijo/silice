@@ -15,7 +15,9 @@ describe("archivoPendiente", () => {
     const archivo = new File(["x"], "presupuesto.xlsx");
     fijarArchivoPendiente(archivo, "guiado");
     expect(hayArchivoPendiente()).toBe(true);
-    expect(tomarArchivoPendiente()).toEqual({ archivo, modo: "guiado" });
+    const pendiente = tomarArchivoPendiente();
+    expect(pendiente?.archivo).toBe(archivo);
+    expect(pendiente?.modo).toBe("guiado");
     expect(hayArchivoPendiente()).toBe(false);
     expect(tomarArchivoPendiente()).toBeNull();
   });

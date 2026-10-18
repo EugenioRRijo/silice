@@ -9,7 +9,10 @@ import { tomarArchivoPendiente } from "./archivoPendiente";
 import PaginaInicio from "./index";
 
 function json(cuerpo: unknown, estado = 200): Response {
-  return new Response(JSON.stringify(cuerpo), { status: estado, headers: { "Content-Type": "application/json" } });
+  return new Response(JSON.stringify(cuerpo), {
+    status: estado,
+    headers: { "Content-Type": "application/json" },
+  });
 }
 
 const SESION: SesionRespuesta = {
@@ -113,7 +116,7 @@ describe("Inicio, panel del día", () => {
       const usuario = userEvent.setup();
       montar();
       await usuario.upload(campoArchivo(), new File(["x"], "obra-norte.xlsx"));
-      expect(screen.getByText("obra-norte.xlsx")).toBeInTheDocument();
+      expect(screen.getByRole("status")).toHaveTextContent("Archivo elegido: obra-norte.xlsx");
       expect(screen.getByRole("button", { name: "Auditar con recorrido guiado" })).toBeEnabled();
       expect(screen.getByRole("button", { name: "Auditar por mi cuenta" })).toBeEnabled();
     });
@@ -125,7 +128,9 @@ describe("Inicio, panel del día", () => {
       await usuario.upload(campoArchivo(), archivo);
       await usuario.click(screen.getByRole("button", { name: "Auditar con recorrido guiado" }));
       expect(await screen.findByRole("heading", { name: "Pantalla del libro" })).toBeInTheDocument();
-      expect(tomarArchivoPendiente()).toEqual({ archivo, modo: "guiado" });
+      const pendiente = tomarArchivoPendiente();
+      expect(pendiente?.archivo).toBe(archivo);
+      expect(pendiente?.modo).toBe("guiado");
     });
 
     test("«Auditar por mi cuenta» lo deja en modo propio y lleva al libro", async () => {
@@ -135,7 +140,20 @@ describe("Inicio, panel del día", () => {
       await usuario.upload(campoArchivo(), archivo);
       await usuario.click(screen.getByRole("button", { name: "Auditar por mi cuenta" }));
       expect(await screen.findByRole("heading", { name: "Pantalla del libro" })).toBeInTheDocument();
-      expect(tomarArchivoPendiente()).toEqual({ archivo, modo: "propio" });
+      const pendiente = tomarArchivoPendiente();
+      expect(pendiente?.archivo).toBe(archivo);
+      expect(pendiente?.modo).toBe("propio");
+    });
+
+    test("un archivo inválido elegido después de uno válido deja intacto el anterior", async () => {
+      const usuario = userEvent.setup({ applyAccept: false });
+      montar();
+      const archivo = new File(["x"], "obra-norte.xlsx");
+      await usuario.upload(campoArchivo(), archivo);
+      await usuario.upload(campoArchivo(), new File(["x"], "foto.png"));
+      expect(screen.getByRole("status")).toHaveTextContent("Archivo elegido: obra-norte.xlsx");
+      await usuario.click(screen.getByRole("button", { name: "Auditar por mi cuenta" }));
+      expect(tomarArchivoPendiente()?.archivo).toBe(archivo);
     });
 
     test("un archivo que no es .xlsx no habilita nada", async () => {
@@ -151,8 +169,8 @@ describe("Inicio, panel del día", () => {
       montar();
       await usuario.upload(campoArchivo(), new File(["1"], "uno.xlsx"));
       await usuario.upload(campoArchivo(), new File(["2"], "dos.xlsx"));
-      expect(screen.queryByText("uno.xlsx")).not.toBeInTheDocument();
-      expect(screen.getByText("dos.xlsx")).toBeInTheDocument();
+      expect(screen.getByRole("status")).toHaveTextContent("Archivo elegido: dos.xlsx");
+      expect(screen.queryByText(/uno\.xlsx/)).not.toBeInTheDocument();
     });
   });
 
@@ -161,11 +179,22 @@ describe("Inicio, panel del día", () => {
       existencias = () =>
         json([
           existencia("ARENA"),
-          existencia("PIEDRA", { existencia: "30", minima: "50", queda_poco: true }),
-          existencia("GRAVA", { existencia: "-4.5", minima: "20", queda_poco: true, negativa: true }),
+          existencia("PIEDRA", {
+            existencia: "30",
+            minima: "50",
+            queda_poco: true,
+          }),
+          existencia("GRAVA", {
+            existencia: "-4.5",
+            minima: "20",
+            queda_poco: true,
+            negativa: true,
+          }),
         ]);
       montar();
-      const seccion = await screen.findByRole("region", { name: "Arenera: lo que requiere atención" });
+      const seccion = await screen.findByRole("region", {
+        name: "Arenera: lo que requiere atención",
+      });
       const filas = within(seccion).getAllByRole("row").slice(1); // sin el encabezado
       expect(filas).toHaveLength(2);
       expect(filas[0]).toHaveTextContent("Material GRAVA");
@@ -174,15 +203,42 @@ describe("Inicio, panel del día", () => {
       expect(filas[1]).toHaveTextContent("Material PIEDRA");
       expect(filas[1]).toHaveTextContent("Queda poco");
       expect(within(seccion).queryByText("Material ARENA")).not.toBeInTheDocument();
-      // La severidad nunca va solo en color: cada fila lleva un ícono con nombre accesible.
-      expect(within(filas[0]).getByTitle("Error")).toBeInTheDocument();
-      expect(within(filas[1]).getByTitle("Advertencia")).toBeInTheDocument();
+      // La severidad nunca va solo en color: cada fila lleva un ícono (decorativo) y el texto del estado.
+      expect(filas[0].querySelector("svg")).toHaveAttribute("aria-hidden", "true");
+      expect(filas[1].querySelector("svg")).toHaveAttribute("aria-hidden", "true");
+      // Debajo de la tabla, el paso siguiente.
+      expect(
+        within(seccion).getByRole("link", {
+          name: "Ver todas las existencias",
+        }),
+      ).toHaveAttribute("href", "/existencias");
+    });
+
+    test("una existencia negativa aparece aunque no esté por debajo del mínimo", async () => {
+      existencias = () => json([existencia("ZINC", { existencia: "-1", minima: "0", negativa: true })]);
+      montar();
+      const seccion = await screen.findByRole("region", {
+        name: "Arenera: lo que requiere atención",
+      });
+      const filas = within(seccion).getAllByRole("row").slice(1);
+      expect(filas).toHaveLength(1);
+      expect(filas[0]).toHaveTextContent("Material ZINC");
+      expect(filas[0]).toHaveTextContent("Existencia negativa: falta registrar producción o conteo");
     });
 
     test("muestra el mínimo junto a la existencia, con las cifras tal como vienen", async () => {
-      existencias = () => json([existencia("PIEDRA", { existencia: "30.00", minima: "50.000", queda_poco: true })]);
+      existencias = () =>
+        json([
+          existencia("PIEDRA", {
+            existencia: "30.00",
+            minima: "50.000",
+            queda_poco: true,
+          }),
+        ]);
       montar();
-      const seccion = await screen.findByRole("region", { name: "Arenera: lo que requiere atención" });
+      const seccion = await screen.findByRole("region", {
+        name: "Arenera: lo que requiere atención",
+      });
       expect(within(seccion).getByText("30.00 m3")).toBeInTheDocument();
       expect(within(seccion).getByText("50.000 m3")).toBeInTheDocument();
     });
@@ -190,6 +246,7 @@ describe("Inicio, panel del día", () => {
     test("si todo está sobre el mínimo, lo dice", async () => {
       montar();
       expect(await screen.findByText("Todo sobre el mínimo")).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: "Ver todas las existencias" })).toBeInTheDocument();
     });
 
     test("sin materiales, enseña a registrarlos y enlaza a Existencias", async () => {
@@ -197,16 +254,43 @@ describe("Inicio, panel del día", () => {
       const usuario = userEvent.setup();
       montar();
       expect(await screen.findByText("Aún no hay materiales")).toBeInTheDocument();
-      await usuario.click(screen.getByRole("link", { name: "Registrar materiales en Producción" }));
+      await usuario.click(
+        screen.getByRole("link", {
+          name: "Registrar materiales en Producción",
+        }),
+      );
       expect(await screen.findByRole("heading", { name: "Pantalla de existencias" })).toBeInTheDocument();
     });
 
     test("una cuenta sin permiso para la arenera lo ve como «sin datos», no como un error", async () => {
       existencias = () => json({ detalle: "Su cuenta no puede hacer esto." }, 403);
       montar();
-      const seccion = await screen.findByRole("region", { name: "Arenera: lo que requiere atención" });
+      const seccion = await screen.findByRole("region", {
+        name: "Arenera: lo que requiere atención",
+      });
       expect(await within(seccion).findByText("Sin datos de la arenera para su cuenta")).toBeInTheDocument();
       expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    });
+
+    test("mientras carga, la arenera lo dice", () => {
+      fetchFalso.mockImplementation(() => new Promise<Response>(() => {}));
+      montar();
+      expect(screen.getByLabelText("Cargando la arenera")).toHaveAttribute("aria-busy", "true");
+    });
+
+    test("si la arenera aún no existe en la API (404), avisa sin romper la página", async () => {
+      existencias = () => json({ detalle: "No encontrado." }, 404);
+      montar();
+      expect(await screen.findByText("La arenera aún no está disponible")).toBeInTheDocument();
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    });
+
+    test("una respuesta 401 en la arenera avisa que la sesión venció y deja el bloque en error", async () => {
+      const alExpirar = vi.fn();
+      existencias = () => json({ detalle: "Sesión vencida." }, 401);
+      montar({ alExpirar });
+      await waitFor(() => expect(alExpirar).toHaveBeenCalled());
+      expect(await screen.findByRole("alert")).toHaveTextContent("Sesión vencida.");
     });
 
     test("otro error de la API se muestra con su detalle", async () => {
@@ -216,27 +300,43 @@ describe("Inicio, panel del día", () => {
     });
   });
 
-  describe("seguir donde quedó", () => {
+  describe("últimas auditorías guardadas", () => {
     test("muestra el caso abierto", async () => {
       montar();
-      const seccion = await screen.findByRole("region", { name: "Seguir donde quedó" });
+      const seccion = await screen.findByRole("region", {
+        name: "Últimas auditorías guardadas",
+      });
       expect(within(seccion).getByText(/Caso abierto: clinica/)).toBeInTheDocument();
     });
 
     test("muestra el proyecto elegido si lo hay", async () => {
       montar({ proyecto: "P-01" });
-      const seccion = await screen.findByRole("region", { name: "Seguir donde quedó" });
+      const seccion = await screen.findByRole("region", {
+        name: "Últimas auditorías guardadas",
+      });
       expect(within(seccion).getByText(/Proyecto: P-01/)).toBeInTheDocument();
     });
 
     test("lista las últimas auditorías con archivo, fecha y resultado", async () => {
       auditorias = () =>
         json([
-          auditoria(7, { archivo: "obra-norte.xlsx", fecha: "2026-10-18T14:32:00", errores: 1, advertencias: 3 }),
-          auditoria(6, { archivo: "galpon.xlsx", fecha: "2026-10-17T09:05:00", errores: 0, advertencias: 0 }),
+          auditoria(7, {
+            archivo: "obra-norte.xlsx",
+            fecha: "2026-10-18T14:32:00",
+            errores: 1,
+            advertencias: 3,
+          }),
+          auditoria(6, {
+            archivo: "galpon.xlsx",
+            fecha: "2026-10-17T09:05:00",
+            errores: 0,
+            advertencias: 0,
+          }),
         ]);
       montar();
-      const seccion = await screen.findByRole("region", { name: "Seguir donde quedó" });
+      const seccion = await screen.findByRole("region", {
+        name: "Últimas auditorías guardadas",
+      });
       await within(seccion).findByText("obra-norte.xlsx");
       const filas = within(seccion).getAllByRole("row").slice(1);
       expect(filas[0]).toHaveTextContent("obra-norte.xlsx");
@@ -262,6 +362,25 @@ describe("Inicio, panel del día", () => {
       montar();
       expect(await screen.findByText("El historial de auditorías aún no está disponible")).toBeInTheDocument();
       expect(screen.getByRole("heading", { name: "Audite un presupuesto" })).toBeInTheDocument();
+    });
+
+    test("mientras cargan, las auditorías lo dicen", () => {
+      fetchFalso.mockImplementation(() => new Promise<Response>(() => {}));
+      montar();
+      expect(screen.getByLabelText("Cargando las auditorías")).toHaveAttribute("aria-busy", "true");
+    });
+
+    test("una cuenta sin permiso para las auditorías lo ve como «sin datos», no como un error", async () => {
+      auditorias = () => json({ detalle: "Su cuenta no puede hacer esto." }, 403);
+      montar();
+      await waitFor(() => expect(screen.queryByLabelText("Cargando las auditorías")).toBeNull());
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    });
+
+    test("otro error de la API en las auditorías se muestra con su detalle", async () => {
+      auditorias = () => json({ detalle: "El historial no responde." }, 500);
+      montar();
+      expect(await screen.findByRole("alert")).toHaveTextContent("El historial no responde.");
     });
 
     test("una respuesta 401 avisa que la sesión venció", async () => {

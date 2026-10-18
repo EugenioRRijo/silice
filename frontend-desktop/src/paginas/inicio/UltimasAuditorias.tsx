@@ -70,8 +70,10 @@ export function UltimasAuditorias({ carga }: { carga: Carga<AuditoriaGuardadaRes
             <TableRow key={a.id}>
               <TableCell>{a.archivo}</TableCell>
               <TableCell>{a.tipo === "pdf" ? "PDF" : "Libro"}</TableCell>
-              <TableCell>{fechaConHora(a.fecha)}</TableCell>
-              <TableCell>{resultadoEnUnaLinea(a.errores, a.advertencias)}</TableCell>
+              <TableCell className="silice-inicio__sinquiebre">{fechaConHora(a.fecha)}</TableCell>
+              <TableCell className="silice-inicio__sinquiebre">
+                {resultadoEnUnaLinea(a.errores, a.advertencias)}
+              </TableCell>
             </TableRow>
           ))}
         </TableBody>
