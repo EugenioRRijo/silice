@@ -178,6 +178,19 @@ def _bandeja_por_ticket(sesion: Session, lectura: LecturaBascula) -> set[tuple[s
 # --------------------------------------------------------------------------------------- API
 
 
+def _abrir_transaccion(sesion: Session) -> None:
+    """Deja abierta la transaccion de la conexion antes de un `begin_nested()`.
+
+    `pysqlite` solo emite `BEGIN` antes de un `INSERT`/`UPDATE`/`DELETE`, no antes de un
+    `SAVEPOINT`: con una sesion sin escrituras previas, el `RELEASE` del savepoint mas externo
+    confirma todo y un `rollback` posterior del llamador no deshace nada. Con un `BEGIN` previo, el
+    savepoint queda anidado y quien llama conserva la decision de confirmar o deshacer."""
+    conexion = sesion.connection()
+    crudo = conexion.connection.dbapi_connection
+    if not getattr(crudo, "in_transaction", True):
+        conexion.exec_driver_sql("BEGIN")
+
+
 def importar(sesion: Session, lectura: LecturaBascula, *, usuario: str) -> ResultadoImportacion:
     """Registra los despachos de la lectura y manda lo dudoso a la bandeja, todo o nada.
 
@@ -187,6 +200,7 @@ def importar(sesion: Session, lectura: LecturaBascula, *, usuario: str) -> Resul
     registrados = 0
     ya_registrados = 0
     a_la_bandeja = 0
+    _abrir_transaccion(sesion)
     with sesion.begin_nested():
         catalogo = _Catalogo(sesion)
         en_bandeja = set(
@@ -305,6 +319,7 @@ def resolver(
         raise ErrorDeInventario(
             "El peso neto es demasiado pequeño para la unidad del material; revise el valor."
         )
+    _abrir_transaccion(sesion)
     with sesion.begin_nested():
         movimiento = registrar_despacho(
             sesion,
