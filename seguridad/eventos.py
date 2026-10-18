@@ -14,6 +14,8 @@ TIPOS = (
     "alta de clave", "cambio de roles", "desbloqueo", "restablecimiento", "firma",
     "paquete exportado", "clave de api", "retiro", "revocacion", "codigo de instalacion",
     "empresa", "clave registrada",
+    # S4 §8.3: la contraseña no abrió el respaldo cifrado de la clave de IA (ruta, sesión 1)
+    "clave de ia no reactivada",
 )
 
 

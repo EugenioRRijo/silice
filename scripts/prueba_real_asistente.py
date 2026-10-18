@@ -95,6 +95,18 @@ class ProveedorGrabador:
         ruta.write_bytes(texto.encode("utf-8"))
 
 
+def auditar(borrador):
+    """El informe con que el asistente ve cada propuesta, como en el producto: R1 a R15 mas R17
+    ligada al espacio del borrador que se audita (tarea 1.7, ruling 1.7-d)."""
+    from dataclasses import replace
+
+    from adapters.espacio.conexion import con_conexion
+    from ui import hoja
+
+    ligado = replace(borrador, reglas_extra=con_conexion(borrador.reglas_extra, borrador.espacio))
+    return hoja.elaborar_borrador(ligado).elaboracion.informe
+
+
 def correr(
     proveedor: ProveedorIA, tarea: str, tarifa: Tarifa, catalogo, composiciones, hoy: date
 ) -> ResultadoSesion:
@@ -105,13 +117,11 @@ def correr(
         )
     from dataclasses import replace
 
-    from ui import hoja
-
     borrador = replace(borrador_de_partida(ficha, hoy), composiciones=composiciones)
     servicios = Servicios(
         catalogo=catalogo,
         tarifa=tarifa,
-        auditar=lambda b: hoja.elaborar_borrador(b).elaboracion.informe,
+        auditar=auditar,
         responder=lambda _pregunta: None,
     )
     return ejecutar(proveedor, ficha.pedido, borrador, servicios, Topes())

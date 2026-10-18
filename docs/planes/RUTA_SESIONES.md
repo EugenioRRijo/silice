@@ -21,6 +21,11 @@ El plan del gestor dice *qué* se construye; esta ruta dice *en qué orden y con
 | RS-5 | La tecnología la decide el orquestador (Eugenio: «te lo dejo a ti»). Ver §2. | Eugenio → ruling |
 | RS-6 | Diseño obligatorio: **IBM Carbon** (densidad y severidad, morado para atípicos), **SAP Fiori** (valor, meta y desviación) e **IBCS** (favorable/desfavorable, no positivo/negativo). | Eugenio |
 | RS-7 | Cada subagente tiene **modelo y esfuerzo** fijados en su ficha (§3); una tarea puede pedir otro en la tabla de su sesión. | Eugenio |
+| RS-8 | **Modo local con Ollama en pausa**: el código existente no se retira ni recibe trabajo nuevo; RF-90 (b) queda diferido. | Eugenio (2026-10-18) |
+| RS-9 | **E3 y E5 (opción A):** el protocolo del experimento sigue congelado; su 0/24 se informa como hipótesis previa falsada y límite del método. | Eugenio (2026-10-18) |
+| RS-10 | **Sin gasto en la API de pago por ahora** («110 USD es muy caro»): la corrida real del experimento (RF-95) queda en pausa. | Eugenio (2026-10-18) |
+| RS-11 | **Que el usuario sepa qué error hay y decida si lo corrige:** se agrega la regla R17 «Conexión de cada punto» (punto sin fuente o sin circuito), como mejora del producto que el experimento congelado no mide. | Eugenio (2026-10-18) |
+| RS-12 | **La arenera (sesión 4) se instala como herramienta sin datos reales de la empresa**: datos construidos declarados como ficticios (NORMAS §1); la empresa carga los suyos cuando los tenga. El costo horario sigue esperando fuentes verificadas. | Eugenio (2026-10-18) |
 
 ## 2. Decisiones técnicas del orquestador (rulings, ratificables)
 
@@ -132,10 +137,11 @@ en una prueba, ni usar `COMPARTIR_ONLINE.bat`.
 | 1.4 Experimento RF-95: informe `docs/resultados_asistente.md` con lo que no gasta (medición controlada) | `silice-asistente-ia` | Sonnet (excepción RS-7) | medium |
 | 1.5 Enmienda de la ERS (RF-100 → 1.1.0, estado de RF-95, deroga la regla «pruebas en la auditoría final») | orquestador | Opus | high |
 | 1.6 Cierre 1.1.0: versión, CHANGELOG, bitácora | `silice-escriba` | Haiku | low |
+| 1.7 Regla R17 «Conexión de cada punto» (RS-11, RF-141), fuera de los archivos congelados del experimento | `silice-auditoria-forense` | Opus | high |
 
 Revisores: arquitectura, seguridad, requisitos, pruebas, hechos.
-**Bloqueos conocidos (de Eugenio):** corrida real con Claude (gasto ~110 USD, autorización expresa); instalar Ollama
-y el modelo local en su equipo para la corrida local.
+**Bloqueos conocidos (de Eugenio):** la corrida real del experimento queda en pausa (RS-10, sin gasto) y el modo
+local también (RS-8).
 
 ### Sesión 2 — Cambio visual: base y visor de solo lectura · **1.2.0**
 
@@ -206,10 +212,10 @@ Revisores: arquitectura, seguridad, pruebas, diseño, hechos.
 
 | # | Qué | Sesión que lo necesita |
 |---|---|---|
-| B-1 | Autorizar el gasto de la corrida real con Claude (~110 USD) | 1 (no bloquea el resto) |
-| B-2 | Instalar Ollama y el modelo local fijado en `asistente/experimento/protocolo.json` (campo `modelo_local`) | 1 (corrida local) |
+| B-1 | ~~Autorizar el gasto de la corrida real con Claude (~110 USD)~~ **No autorizado por ahora (RS-10)** | 1 (no bloquea el resto) |
+| B-2 | ~~Instalar Ollama y el modelo local~~ **En pausa (RS-8)** | — |
 | B-3 | Un libro de la empresa **anonimizado** con `scripts/anonimizar_libro.py` para las pruebas del visor | 2 |
-| B-4 | Muestras reales de reportes de báscula y de inventario de la arenera (quedan confidenciales; se anonimizan) | 4 |
+| B-4 | ~~Muestras reales de báscula e inventario~~ **No aplica (RS-12)**: se construye con datos ficticios declarados | — |
 | B-5 | Instalar Rust | 5 |
 
 ## 7. Diferido (fuera de esta ruta, con motivo)
@@ -241,10 +247,11 @@ Cada sesión corre en **su propia conversación de Claude Code**, abierta por Eu
 |---|---|
 | Carpetas | cada sesión usa solo `.worktrees/s<N>*` y ramas `inc/ruta-s<N>-*`; nunca toca las de otra |
 | `git stash` | prohibido el `stash` simple (la pila es común a todas): `git stash push -u -m "<etiqueta única>"` y `apply` por SHA, o un commit WIP |
-| Numeración de la ERS | S1: ninguna nueva (cierra RF-100 y RF-95) · S2: **UC-26, RF-111–RF-118, RNF-22–RNF-23** · S3: **UC-27, RF-119–RF-126, RNF-24** · S4: **UC-28–UC-29, RF-127–RF-136, RNF-25** · S5: **RF-137–RF-140, RNF-26–RNF-27** |
+| Numeración de la ERS | S1: **RF-141** (R17, RS-11; cierra además RF-100 y RF-95 en parte) · S2: **UC-26, RF-111–RF-118, RNF-22–RNF-23** · S3: **UC-27, RF-119–RF-126, RNF-24** · S4: **UC-28–UC-29, RF-127–RF-136, RNF-25** · S5: **RF-137–RF-140, RNF-26–RNF-27** |
 | Versión | la toma al fusionar (RT-8): `pyproject.toml` se cambia en el último commit, justo antes del PR, tras traer `main` |
 | `CHANGELOG.md` | solo líneas nuevas bajo «Sin publicar»; al chocar se conservan las dos |
 | `api/main.py`, `tests/unit/test_arquitectura.py` | solo agregar líneas; `docs/api.json` se **regenera** después de traer `main`, nunca se fusiona a mano |
 | Migraciones Alembic | una sola cabeza por base: antes del PR, `git merge origin/main` y re-apuntar la revisión nueva a la cabeza vigente |
+| Archivos congelados del experimento | ningún archivo de `archivos_del_auditor` (`asistente/experimento/protocolo.json`) se toca; `tests/unit/test_experimento_congelado_vigente.py` lo vigila (RS-9) |
 | Antes de cada PR | `git fetch && git merge origin/main`, suite completa, metas; la CI verde manda |
 | Carga del equipo | como máximo **tres** sesiones a la vez (cada una con sus subagentes); la suite completa no se corre en dos sesiones al mismo tiempo |

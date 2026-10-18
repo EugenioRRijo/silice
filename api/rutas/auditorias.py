@@ -4,7 +4,7 @@ El cuerpo es JSON con tres claves: `documento` (el documento canónico, `core.bu
 `fecha_evaluacion` (ISO, **obligatoria**: la misma petición da siempre el mismo informe; RP8-11) y,
 opcional, `anexo_espacio`. Se lee con el lector estricto (sin `NaN`, claves duplicadas, cifras
 fuera del patrón ni más de 64 niveles: 422). Reaudita en memoria con las reglas de ESTA
-instalación (contexto de la API: R8-R10 y R15 si viene el anexo de espacio; R11-R12 con lo
+instalación (contexto de la API: R8-R10, R15 y R17 si viene el anexo de espacio; R11-R12 con lo
 que traiga el documento; R13-R14 no) y devuelve el informe. **No guarda nada.** Los montos
 viajan como texto.
 

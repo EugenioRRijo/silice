@@ -15,6 +15,7 @@ muestran **una vez**.
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, time
@@ -24,7 +25,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from asistente import administracion as ia_administracion
-from asistente.clave import ClaveDeIA, ClaveNoRegistrable, enmascarar
+from asistente.clave import ClaveDeIA, ClaveNoRegistrable, RespaldoNoAbre, enmascarar
 from asistente.configuracion import PROVEEDORES, ConfiguracionIA, leer
 from asistente.instalacion import (
     EMPRESA_DE_LA_CLAVE,
@@ -41,6 +42,7 @@ from ui import sesion as ui_sesion
 from ui.paginas import instalacion
 from ui.texto_seguro import texto_seguro
 
+_registro = logging.getLogger(__name__)
 CLAVE_PESTANA = "adm_pestana"  # no es de widget por contenido: solo recuerda la pestaña elegida
 ROLES_ELEGIBLES = tuple(rol.value for rol in Rol)
 ETIQUETAS_DE_ROL = {
@@ -448,7 +450,7 @@ def _pestana_api(bd: Session, sesion: SesionActiva) -> None:
 ACCION_DEL_ASISTENTE = Accion.ADMINISTRAR_EMPRESA
 AVISO_CONFIG = "ia_aviso_config"  # no son de widget: el último mensaje de cada sección, una vez
 AVISO_CLAVE = "ia_aviso_clave"
-CLAVES_DEL_FORMULARIO = ("ia_clave_nueva", "ia_contrasena_respaldo")
+CLAVES_DEL_FORMULARIO = ("ia_clave_nueva", "ia_contrasena_respaldo", "ia_contrasena_reactivar")
 ETIQUETAS_DE_PROVEEDOR = {
     "claude": "Claude (en la nube, con la clave de la empresa)",
     "ollama": "Ollama (local, en este equipo)",
@@ -481,6 +483,14 @@ def _hay_clave_guardada(clave: ClaveDeIA) -> bool:
     try:
         return clave.hay_guardada(EMPRESA_DE_LA_CLAVE)
     except Exception:  # noqa: BLE001 - el backend de keyring en Windows falla de muchas formas
+        return False
+
+
+def _pide_contrasena(clave: ClaveDeIA) -> bool:
+    """Si solo queda el respaldo cifrado (la clave no está en memoria ni en el almacén)."""
+    try:
+        return clave.pide_contrasena(EMPRESA_DE_LA_CLAVE)
+    except Exception:  # noqa: BLE001 - como `_hay_clave_guardada`: un almacen roto no tumba la pestaña
         return False
 
 
@@ -559,6 +569,69 @@ def _registrar_clave() -> None:
     _avisar(AVISO_CLAVE, "success", texto_seguro(f"Clave de IA registrada ({mostrada})."))
 
 
+def _rastro_de_reactivar_fallida(ip: str | None) -> None:
+    """Un evento de seguridad por intento fallido (S3 §7.4): quién y desde dónde, sin la
+    contraseña ni la clave."""
+    sesion = ui_sesion.sesion_actual()
+    with ui_sesion.instalacion() as bd:
+        eventos.registrar(
+            bd,
+            "clave de ia no reactivada",
+            _ahora(),
+            login=sesion.login if sesion is not None else "",
+            ip=ip or "",
+            detalle="la contraseña no abrió el respaldo cifrado de la clave de IA",
+        )
+        bd.commit()
+
+
+def _reactivar_clave() -> None:
+    # La contraseña sale del estado de la pantalla en el acto, pase lo que pase después.
+    contrasena = st.session_state.get("ia_contrasena_reactivar", "")
+    for nombre in CLAVES_DEL_FORMULARIO:
+        st.session_state[nombre] = ""
+    clave = _clave_de_ia()
+    if clave is None:
+        _avisar(AVISO_CLAVE, "error", SIN_EXTRA_IA)
+        return
+    permitida, motivo = cliente.operacion_sensible_permitida()
+    if not permitida:
+        _avisar(AVISO_CLAVE, "error", motivo)
+        return
+    if not leer(ruta_de_configuracion()).activo:  # apagado, la clave no vuelve a la memoria (§8.3)
+        _avisar(AVISO_CLAVE, "error", ia_administracion.APAGADO_NO_REACTIVA)
+        return
+    ip = _ip_del_cliente()
+    try:
+        mostrada = ia_administracion.reactivar_clave(
+            clave,
+            EMPRESA_DE_LA_CLAVE,
+            contrasena,
+            ruta=ruta_de_configuracion(),
+            es_administrador=_es_administrador(),
+            ip_cliente=ip,
+        )
+    except RespaldoNoAbre as error:
+        _avisar(AVISO_CLAVE, "error", texto_seguro(str(error)))  # primero: el aviso no se pierde
+        try:
+            _rastro_de_reactivar_fallida(ip)
+        except Exception:  # noqa: BLE001 - una base ocupada no tumba la pantalla; se anota
+            _registro.warning("No se pudo anotar el intento fallido de reactivar la clave de IA")
+        return
+    except (ia_administracion.SinPermiso, ClaveNoRegistrable, ValueError) as error:
+        _avisar(AVISO_CLAVE, "error", texto_seguro(enmascarar(str(error))))
+        return
+    except OSError:
+        _avisar(
+            AVISO_CLAVE,
+            "error",
+            "No se pudo leer el respaldo cifrado de la clave en la carpeta de datos: revise que "
+            "exista y que se pueda leer.",
+        )
+        return
+    _avisar(AVISO_CLAVE, "success", texto_seguro(f"Clave de IA reactivada ({mostrada})."))
+
+
 def _olvidar_clave() -> None:
     clave = _clave_de_ia()
     if clave is None:
@@ -612,7 +685,20 @@ def _seccion_configuracion(cfg: ConfiguracionIA) -> None:
     _mostrar_aviso(AVISO_CONFIG)
 
 
-def _seccion_clave(registrada: str | None, activo: bool, guardada: bool) -> None:
+def _seccion_reactivar() -> None:
+    """Solo queda el respaldo cifrado: la contraseña lo abre y la clave vuelve a la memoria."""
+    with st.form("ia_formulario_reactivar", clear_on_submit=True):
+        st.text_input(
+            "Contraseña del respaldo cifrado de la clave",
+            type="password",
+            key="ia_contrasena_reactivar",
+        )
+        st.form_submit_button("Reactivar la clave", on_click=_reactivar_clave, key="ia_reactivar")
+
+
+def _seccion_clave(
+    registrada: str | None, activo: bool, guardada: bool, pide: bool = False
+) -> None:
     st.subheader("Clave de IA de la empresa")
     st.caption(
         "Se registra solo desde el equipo donde está instalado Sílice y se guarda en el almacén de "
@@ -626,6 +712,13 @@ def _seccion_clave(registrada: str | None, activo: bool, guardada: bool) -> None
             "Clave registrada: hay una guardada, pero no se carga mientras el asistente esté "
             "apagado (se carga al activarlo)."
         )
+    elif registrada is None and pide:
+        st.caption(
+            "Clave registrada: hay una en el respaldo cifrado (el almacén de credenciales no la "
+            "tiene); escriba la contraseña del respaldo para cargarla."
+        )
+        if permitida:  # desde otro equipo la sección ni se muestra (RV-15)
+            _seccion_reactivar()
     else:
         st.caption(texto_seguro(f"Clave registrada: {registrada or 'ninguna'}"))
     with st.form("ia_formulario_clave", clear_on_submit=True):
@@ -671,7 +764,8 @@ def pestana_asistente() -> None:
         st.error(SIN_EXTRA_IA)
         return
     guardada = registrada is None and not configuracion.activo and _hay_clave_guardada(clave)
-    _seccion_clave(registrada, configuracion.activo, guardada)
+    pide = registrada is None and configuracion.activo and _pide_contrasena(clave)
+    _seccion_clave(registrada, configuracion.activo, guardada, pide)
 
 
 def _pestana_asistente(bd: Session, sesion: SesionActiva) -> None:
