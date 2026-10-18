@@ -8,21 +8,30 @@ La IP sale de `st.context.ip_address`. En Streamlit 1.62 esa propiedad devuelve 
 navegador llega por `127.0.0.1` o `::1` (o no hay contexto de cliente) y la IP del par TCP en los
 demás casos; por eso aquí `None` se lee como «bucle local». «No se pudo leer» es otra cosa: la
 excepción o un valor que no es texto, que se trata como remoto salvo con la red local apagada.
+
+El criterio («¿es el propio equipo?» y los eventos pendientes) vive en `aplicacion.equipo` desde
+la sesión 2b (RM-4), que la API comparte; aquí queda cómo se lee la IP de Streamlit.
 """
 
 from __future__ import annotations
 
 import streamlit as st
 
-from operacion import config, eventos_perdidos, red
+from aplicacion import equipo
+from aplicacion.equipo import MENSAJE_PENDIENTE, MENSAJE_REMOTO, ip_es_local
+from operacion import red
 
-MENSAJE_REMOTO = (
-    "Esta operación solo puede hacerse desde el propio equipo donde corre Sílice, no desde la red."
-)
-MENSAJE_PENDIENTE = (
-    "Se restauró un respaldo y hay eventos de seguridad perdidos sin revisar. El administrador "
-    "debe revisarlos (Administración, pestaña Instalación) antes de esta operación."
-)
+__all__ = [
+    "BUCLE_LOCAL",
+    "MENSAJE_PENDIENTE",
+    "MENSAJE_REMOTO",
+    "cliente_es_local",
+    "ip_del_cliente",
+    "ip_es_local",
+    "operacion_sensible_permitida",
+    "pintar_aviso_sin_cifrar",
+]
+
 BUCLE_LOCAL = "127.0.0.1"
 
 
@@ -38,25 +47,13 @@ def ip_del_cliente() -> str | None:
     return ip if isinstance(ip, str) else None
 
 
-def ip_es_local(ip: str | None) -> bool:
-    """¿Esa IP es el propio equipo? Con la red local encendida, el bucle local o la IP elegida;
-    sin poder leerla, local solo si la red está apagada (nadie más puede llegar)."""
-    ajustes = config.cargar_ajustes(config.ruta_ajustes())
-    if ip is None:
-        return not ajustes.red_local
-    return red.es_cliente_local(ip, ajustes.direccion if ajustes.red_local else "")
-
-
 def cliente_es_local() -> bool:
     return ip_es_local(ip_del_cliente())
 
 
 def operacion_sensible_permitida() -> tuple[bool, str]:
-    if not cliente_es_local():
-        return False, MENSAJE_REMOTO
-    if eventos_perdidos.bloqueadas():
-        return False, MENSAJE_PENDIENTE
-    return True, ""
+    """El criterio de `aplicacion.equipo` con la IP que da Streamlit."""
+    return equipo.operacion_sensible_permitida(ip_del_cliente())
 
 
 def pintar_aviso_sin_cifrar(ip: str | None = None) -> bool:

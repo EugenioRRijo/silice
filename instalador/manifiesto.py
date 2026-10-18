@@ -30,6 +30,7 @@ RAICES_PROPIAS = frozenset(
         "migraciones",
         "seguridad",
         "asistente",
+        "aplicacion",
         "scripts",
         "tests",
     }

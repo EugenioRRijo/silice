@@ -30,6 +30,7 @@ PAQUETES_FUERA_DEL_NUCLEO = (
     "asistente",
     "instalador",
     "fusion",
+    "aplicacion",  # RM-1 (sesion 2b): la capa de aplicacion
 )
 
 #: Terceros que cada adaptador puede importar, ademas de la biblioteca estandar, `core.contracts` y
@@ -608,3 +609,67 @@ def test_ui_hoja_depende_de_adapters_espacio_y_este_no_depende_de_ui():
         if m == "ui" or m.startswith("ui.")
     ]
     assert not inversa, inversa
+
+
+#: RM-1 (sesion 2b): la capa de aplicacion (`aplicacion/`) es lo que la interfaz clasica y la API
+#: comparten sin Streamlit; no conoce a ninguna de las dos, ni a los guiones ni a las pruebas.
+PROHIBIDOS_EN_APLICACION = ("streamlit", "ui", "api", "scripts", "tests")
+
+
+def test_la_capa_de_aplicacion_no_importa_interfaz_api_guiones_ni_pruebas():
+    """RM-1, por archivo: tambien las importaciones perezosas (`_imports_de_ejecucion`)."""
+    archivos = _archivos("aplicacion")
+    assert RAIZ / "aplicacion" / "proyectos.py" in archivos  # la guardia no recorre una lista vacia
+    prohibidos = sorted(
+        f"{_ruta(archivo)}: {modulo}"
+        for archivo in archivos
+        for modulo in _imports_de_ejecucion(archivo)
+        if modulo.split(".")[0] in PROHIBIDOS_EN_APLICACION
+    )
+    assert prohibidos == []
+
+
+def test_importar_la_capa_de_aplicacion_no_carga_interfaz_api_guiones_ni_pruebas():
+    """RM-1, transitivo: importar cada modulo de `aplicacion/` en un proceso limpio no deja en
+    `sys.modules` nada de `streamlit`, `ui`, `api`, `scripts` ni `tests`."""
+    import subprocess
+
+    modulos = sorted(
+        ".".join(archivo.relative_to(RAIZ).with_suffix("").parts)
+        for archivo in _archivos("aplicacion")
+        if archivo.name != "__init__.py"
+    )
+    assert "aplicacion.proyectos" in modulos
+    codigo = (
+        "import importlib, sys\n"
+        f"for m in {modulos!r}: importlib.import_module(m)\n"
+        "print(sorted({n for n in sys.modules "
+        f"if n.split('.')[0] in {PROHIBIDOS_EN_APLICACION!r}}}))\n"
+    )
+    salida = subprocess.run(
+        [sys.executable, "-c", codigo],
+        cwd=RAIZ,
+        capture_output=True,
+        text=True,
+        check=True,
+        timeout=300,
+    )
+    assert salida.stdout.strip() == "[]", salida.stdout
+
+
+def test_ui_proyectos_reexporta_la_capa_de_aplicacion():
+    """RM-1: `ui/proyectos.py` quedo como reexportacion explicita de `aplicacion/proyectos.py`:
+    los mismos objetos (no copias), y ninguna definicion propia."""
+    import aplicacion.proyectos as original
+    import ui.proyectos as reexportado
+
+    assert reexportado.__all__ and set(reexportado.__all__) <= set(vars(original))
+    for nombre in reexportado.__all__:
+        assert getattr(reexportado, nombre) is getattr(original, nombre), nombre
+    arbol = ast.parse((RAIZ / "ui" / "proyectos.py").read_text(encoding="utf-8"))
+    definiciones = [
+        nodo.name
+        for nodo in arbol.body
+        if isinstance(nodo, ast.FunctionDef | ast.ClassDef | ast.AsyncFunctionDef)
+    ]
+    assert definiciones == []
