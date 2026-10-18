@@ -50,9 +50,7 @@ def _sustituir(monkeypatch) -> None:
         if st.session_state.get("_sin_ml"):
             return None
         sin_tasa = ("Lista en Bs",) if st.session_state.get("_sin_tasa") else ()
-        return atipicos.BusquedaAtipicos(
-            tuple(h for c in codigos for h in dicho[c]), sin_tasa
-        )
+        return atipicos.BusquedaAtipicos(tuple(h for c in codigos for h in dicho[c]), sin_tasa)
 
     monkeypatch.setattr(pantalla, "_sesion", sin_base)
     monkeypatch.setattr(pantalla.atipicos, "atipicos_de_insumos", buscar)

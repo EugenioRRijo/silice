@@ -262,12 +262,28 @@ def test_lo_heredado_de_una_lista_de_empresa_que_a_su_vez_hereda_tampoco_se_repi
     base = _lista(sesion, 1, "Base")
     _precio(sesion, base, insumo, 10)
     primera = crear_lista_de_empresa(
-        sesion, "Constructora Ejemplo, C.A.", "J-00000000-0", base, [],
-        moneda="USD", fecha=date(2026, 2, 1), fuente="prueba", referencia=None, nombre="Primera",
+        sesion,
+        "Constructora Ejemplo, C.A.",
+        "J-00000000-0",
+        base,
+        [],
+        moneda="USD",
+        fecha=date(2026, 2, 1),
+        fuente="prueba",
+        referencia=None,
+        nombre="Primera",
     )
     crear_lista_de_empresa(
-        sesion, "Constructora Ejemplo, C.A.", "J-00000000-0", primera, [],
-        moneda="USD", fecha=date(2026, 3, 1), fuente="prueba", referencia=None, nombre="Segunda",
+        sesion,
+        "Constructora Ejemplo, C.A.",
+        "J-00000000-0",
+        primera,
+        [],
+        moneda="USD",
+        fecha=date(2026, 3, 1),
+        fuente="prueba",
+        referencia=None,
+        nombre="Segunda",
     )
     puntos = atipicos.puntos_del_insumo(sesion, "ATIP-001")
     assert [(p.origen, p.monto) for p in puntos] == [("Base", D(10))]

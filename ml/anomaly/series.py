@@ -35,6 +35,7 @@ __all__ = [
     "SerieEnUsd",
     "a_usd",
     "analizar",
+    "tramo",
     "variaciones",
 ]
 
@@ -75,6 +76,8 @@ def a_usd(puntos: Sequence[PuntoDePrecio]) -> SerieEnUsd:
     sin_tasa: list[str] = []
     with _contexto():
         for p in puntos:
+            if p.moneda not in ("USD", "Bs"):  # como `exigir_moneda`: no se adivina una moneda
+                raise ValueError(f"{p.origen or p.fecha}: moneda {p.moneda!r}; se espera Bs o USD")
             if p.moneda == "USD":
                 llevados.append((p.fecha, p.monto, p.origen))
             elif p.tasa is not None and p.tasa > 0:
@@ -94,6 +97,13 @@ def variaciones(serie: SerieEnUsd) -> dict[str, Decimal]:
             if p1 > 0:
                 salida[f"{f1.isoformat()}>{f2.isoformat()}#{k}"] = (p2 - p1) / p1
     return salida
+
+
+def tramo(id_variacion: str) -> tuple[date, date]:
+    """Las dos fechas de una variación: de `«AAAA-MM-DD>AAAA-MM-DD#k»` a `(desde, hasta)`. Es el
+    único lugar que conoce la forma del id (la interfaz no lo desarma)."""
+    desde, hasta = id_variacion.split("#")[0].split(">")
+    return date.fromisoformat(desde), date.fromisoformat(hasta)
 
 
 def analizar(puntos: Sequence[PuntoDePrecio]) -> ResultadoDeSerie:

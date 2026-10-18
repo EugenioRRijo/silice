@@ -1868,18 +1868,12 @@ def _pintar_atipicos(precios: Sequence) -> None:
     ADVERTENCIA). Sin el extra `ml` lo dice y no busca."""
     if not st.button(atipicos.ROTULO_BOTON, key="hoja_atipicos"):
         return
-    hallazgos = []
     with _sesion() as sesion:
-        for precio in precios:
-            hallados = atipicos.atipicos_del_insumo(sesion, precio.codigo)
-            if hallados is None:
-                st.info(atipicos.AVISO_SIN_ML)
-                return
-            hallazgos.extend(hallados)
-    if not hallazgos:
-        st.success(atipicos.MENSAJE_NADA_ATIPICO)
-    for hallazgo in hallazgos:
-        st.warning(texto_seguro(hallazgo.descripcion))
+        if sesion is None:  # el caso no existe: no hay nada que leer
+            return
+        busqueda = atipicos.atipicos_de_insumos(sesion, [p.codigo for p in precios])
+    for nivel, texto in atipicos.avisos(busqueda):
+        getattr(st, nivel)(texto)
 
 
 def _pestana_precios(cambios: Sequence) -> None:

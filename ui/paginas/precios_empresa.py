@@ -144,15 +144,9 @@ def _atipicos(motor, lista_id: int) -> None:
     cada hallazgo es una ADVERTENCIA y no impide nada. Sin el extra `ml` lo dice y no busca."""
     if not st.button(atipicos.ROTULO_BOTON, key="precios_empresa_atipicos"):
         return
-    hallazgos = []
     with abrir_sesion(motor) as sesion:
-        for codigo in atipicos.codigos_de_la_lista(sesion, lista_id):
-            hallados = atipicos.atipicos_del_insumo(sesion, codigo)
-            if hallados is None:
-                st.info(atipicos.AVISO_SIN_ML)
-                return
-            hallazgos.extend(hallados)
-    if not hallazgos:
-        st.success(atipicos.MENSAJE_NADA_ATIPICO)
-    for hallazgo in hallazgos:
-        st.warning(texto_seguro(hallazgo.descripcion))
+        busqueda = atipicos.atipicos_de_insumos(
+            sesion, atipicos.codigos_de_la_lista(sesion, lista_id)
+        )
+    for nivel, texto in atipicos.avisos(busqueda):
+        getattr(st, nivel)(texto)
