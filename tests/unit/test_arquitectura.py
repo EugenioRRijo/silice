@@ -30,6 +30,7 @@ PAQUETES_FUERA_DEL_NUCLEO = (
     "asistente",
     "instalador",
     "fusion",
+    "produccion",
 )
 
 #: Terceros que cada adaptador puede importar, ademas de la biblioteca estandar, `core.contracts` y
@@ -209,6 +210,49 @@ def test_toda_carpeta_de_adapters_tiene_su_regla():
         and archivo.relative_to(RAIZ / "adapters").parts[0] not in TERCEROS_POR_ADAPTADOR
     ]
     assert not sueltos, f"{sueltos} no estan bajo ningun paquete de TERCEROS_POR_ADAPTADOR"
+
+
+#: Terceros de `produccion/` (Tarea 4.2 de la sesion 4): dominio puro de la arenera.
+TERCEROS_DE_PRODUCCION = frozenset({"sqlalchemy", "openpyxl"})
+
+
+def _prohibidos_en_produccion(archivo: Path) -> list[str]:
+    """Importaciones de `archivo` que `produccion/` no admite: solo biblioteca estandar, los
+    terceros declarados, `core.contracts` y su propio paquete, siempre con ruta absoluta."""
+    prohibidos = []
+    for modulo in _imports(archivo):
+        raiz = modulo.split(".")[0]
+        if raiz == "core":
+            if not (modulo == "core.contracts" or modulo.startswith("core.contracts.")):
+                prohibidos.append(modulo)
+        elif raiz == "produccion":
+            continue
+        elif raiz not in _BIBLIOTECA_ESTANDAR and raiz not in TERCEROS_DE_PRODUCCION:
+            prohibidos.append(modulo)
+    return prohibidos + [f"{r} (relativa)" for r in _imports_relativos(archivo)]
+
+
+def test_produccion_respeta_su_regla(tmp_path):
+    """RT-7: `produccion/` no importa `core` salvo `core.contracts`, ni `adapters`, `api`, `ui`,
+    `operacion` ni `seguridad`. La regla se prueba con archivos construidos y con el paquete real."""
+    malo = tmp_path / "malo.py"
+    malo.write_text("from core.models import Item\nimport decimal\n", encoding="utf-8")
+    assert _prohibidos_en_produccion(malo) == ["core.models"]
+    for modulo in ("adapters.bcv", "api.main", "ui.app", "operacion.respaldo", "seguridad.permisos"):
+        otro = tmp_path / "otro.py"
+        otro.write_text(f"import {modulo}\n", encoding="utf-8")
+        assert _prohibidos_en_produccion(otro) == [modulo]
+    bueno = tmp_path / "bueno.py"
+    bueno.write_text(
+        "import decimal\nimport sqlalchemy\nimport openpyxl\nfrom core.contracts import x\n"
+        "from produccion.modelo import Material\n",
+        encoding="utf-8",
+    )
+    assert _prohibidos_en_produccion(bueno) == []
+    archivos = _archivos("produccion")
+    assert archivos, "produccion/ debe existir y tener modulos"
+    hallados = {_ruta(a): _prohibidos_en_produccion(a) for a in archivos}
+    assert not {k: v for k, v in hallados.items() if v}
 
 
 #: Lo que cada modulo de ui/ no importa en tiempo de ejecucion (fuera de `if TYPE_CHECKING:`).
