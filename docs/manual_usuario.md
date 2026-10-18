@@ -541,7 +541,7 @@ su responsable. Desde la segunda versión se usa **Guardar version**, como siemp
 
 **Exportar el Excel (UC‑16).** **Exportar Excel** de la barra, o **Preparar Excel** en el panel, genera el
 libro de la hoja y **Descargar Excel** lo entrega (`hoja_<código>.xlsx`): las hojas de la hoja del
-proyecto con sus fórmulas vivas, más una hoja por tabla del espacio. El libro se genera solo al pedirlo.
+proyecto con sus fórmulas vivas, más una hoja por tabla del espacio. El libro se genera solo al pedirlo. Con **Ver vista previa del Excel** se dibuja, hoja por hoja, el libro preparado antes de descargarlo.
 
 **Limitaciones del prototipo.** (1) Cerrar la pestaña del navegador con
 cambios sin guardar los pierde: Streamlit no deja avisar. (2) Los datos de ejemplo (OF‑001) son un caso

@@ -433,6 +433,33 @@ def test_el_excel_se_genera_solo_al_pulsar_preparar_y_se_ofrece_para_descargar(
     assert len(at.get("download_button")) == 1
 
 
+def test_el_excel_preparado_se_previsualiza_solo_si_se_pide(monkeypatch, base_of):
+    """Tras «Preparar Excel» se puede ver el libro que se descargaria, hoja por hoja."""
+    import io
+
+    from openpyxl import load_workbook
+
+    at = _abrir_of(monkeypatch, base_of)
+    next(b for b in at.button if b.label == "Preparar Excel").click().run()
+    assert not at.get("html")  # dibujar cuesta: solo con la vista pedida
+    at.toggle(key="hoja_excel_ver").set_value(True).run()
+
+    assert not at.exception, [e.value for e in at.exception]
+    _, contenido = at.session_state[CLAVE_EXCEL]
+    libro = load_workbook(io.BytesIO(contenido), read_only=True)
+    try:
+        hojas = list(libro.sheetnames)
+    finally:
+        libro.close()
+    assert at.selectbox(key="hoja_excel_hoja").options == hojas
+    [html] = [h.proto.body for h in at.get("html")]
+    assert "<table" in html
+
+    otra = hojas[-1]
+    at.selectbox(key="hoja_excel_hoja").set_value(otra).run()
+    assert any(c.value.startswith(f"Excel preparado, hoja {otra}") for c in at.caption)
+
+
 def test_editar_despues_de_preparar_descarta_el_excel_que_ya_no_es_el_vigente(monkeypatch, base_of):
     at = _abrir_of(monkeypatch, base_of, **{CLAVE_PESTANA: "Parámetros"})
     next(b for b in at.button if b.label == "Preparar Excel").click().run()

@@ -69,7 +69,7 @@ from core.verification.informe import DECIMALES_PRESENTACION
 from core.verification.texto import formatear_decimal
 from operacion.base_datos import ErrorDeBase, preparar_base
 from seguridad.permisos import Accion
-from ui import caso, control, entrega, hoja
+from ui import caso, control, entrega, hoja, libros
 from ui import sesion as ui_sesion
 from ui.caso import ACCION_IMPORTAR_PLANO, ACCION_PRECIOS, ruta_caso
 from ui.resultado import mostrar_informe
@@ -556,6 +556,29 @@ def _preparar_excel() -> None:
     st.session_state[CLAVE_EXCEL] = (nombre, contenido)
 
 
+def _vista_del_excel(contenido: bytes) -> None:
+    """El Excel preparado dibujado hoja por hoja, solo si se pide: dibujar cuesta y el libro ya se
+    puede descargar sin verlo."""
+    if not st.toggle("Ver vista previa del Excel", key="hoja_excel_ver"):
+        return
+    try:
+        hojas = libros.hojas_del_libro(contenido)
+        if not hojas:
+            return
+        elegida = st.selectbox("Hoja del Excel", hojas, key="hoja_excel_hoja")
+        vista = libros.vista_calcada(contenido, elegida)
+    except Exception:  # noqa: BLE001 - la vista es una ayuda: su fallo no tumba la hoja
+        st.warning("No se pudo dibujar el Excel; se descarga igual.")
+        return
+    if vista.aviso:
+        st.warning(vista.aviso)
+    st.caption(
+        f"Excel preparado, hoja {elegida}: filas {vista.desde} a {vista.hasta} de {vista.filas}, "
+        "columnas A a Z como maximo."
+    )
+    st.html(vista.html)
+
+
 def _panel_de_guardado(cambios: Sequence, accion: str | None) -> None:
     abierta = _abierta()
     pide_guardar = accion == "guardar_version"
@@ -632,6 +655,7 @@ def _panel_de_guardado(cambios: Sequence, accion: str | None) -> None:
                 file_name=excel[0],
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             )
+            _vista_del_excel(excel[1])
 
 
 # --- asistente de IA (S4, UC-09): propone, la persona decide ------------------------------------
