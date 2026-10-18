@@ -13,6 +13,7 @@ from fastapi import APIRouter, File, Form, UploadFile, status
 from sqlalchemy import select
 
 from adapters.hoja_empresa.guardia import ArchivoRechazado, verificar_archivo
+from api.acceso import EDITAR, LEER
 from api.archivos import guardar_subida
 from api.dependencias import SesionDep
 from api.esquemas import CambioRespuesta, CargaListaRespuesta, ListaRespuesta
@@ -29,7 +30,7 @@ from core.verification.texto import normalizar_texto
 router = APIRouter(tags=["listas"])
 
 
-@router.get("/listas-precios", response_model=list[ListaRespuesta])
+@router.get("/listas-precios", response_model=list[ListaRespuesta], dependencies=LEER)
 def listar_listas_precios(sesion: SesionDep) -> list[ListaRespuesta]:
     """Listas de precios registradas, de la mas antigua a la mas reciente."""
     consulta = select(models.ListaPrecios).order_by(
@@ -42,6 +43,7 @@ def listar_listas_precios(sesion: SesionDep) -> list[ListaRespuesta]:
     "/listas-precios",
     response_model=CargaListaRespuesta,
     status_code=status.HTTP_201_CREATED,
+    dependencies=EDITAR,
 )
 def cargar_lista_precios(
     sesion: SesionDep,
@@ -145,7 +147,7 @@ def _elegidos(
     return [c for c in candidatos if normalizar_texto(c.descripcion) in elegidas]
 
 
-@router.get("/cambios-precio", response_model=list[CambioRespuesta])
+@router.get("/cambios-precio", response_model=list[CambioRespuesta], dependencies=LEER)
 def listar_cambios_precio(
     sesion: SesionDep,
     insumo: str | None = None,

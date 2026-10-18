@@ -1145,7 +1145,7 @@
           "sesion"
         ],
         "summary": "Consultar",
-        "description": "La sesión vigente del navegador, con su token anti-CSRF.",
+        "description": "La sesión vigente del navegador, con su token anti-CSRF (también la restringida, que\ninforma `debe_cambiar_clave: true`).",
         "operationId": "consultar_v1_sesion_get",
         "responses": {
           "200": {
@@ -1167,16 +1167,6 @@
                 }
               }
             }
-          },
-          "403": {
-            "description": "La cuenta debe cambiar su contraseña.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Detalle"
-                }
-              }
-            }
           }
         }
       },
@@ -1185,7 +1175,7 @@
           "sesion"
         ],
         "summary": "Entrar",
-        "description": "Entra con la cuenta de la instalación y deja la cookie de sesión. No hay cookie si la\ncuenta debe cambiar su contraseña: eso se hace en la interfaz clásica.",
+        "description": "Entra con la cuenta de la instalación y deja la cookie de sesión. Con la contraseña\ntemporal la ficha queda restringida hasta `POST /v1/sesion/contrasena`.",
         "operationId": "entrar_v1_sesion_post",
         "requestBody": {
           "content": {
@@ -1219,7 +1209,7 @@
             }
           },
           "403": {
-            "description": "Debe cambiar la contraseña, u origen ajeno.",
+            "description": "Un `Origin` presente y ajeno.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1287,6 +1277,198 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Detalle"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/sesion/contrasena": {
+      "post": {
+        "tags": [
+          "sesion"
+        ],
+        "summary": "Cambiar Contrasena",
+        "description": "Cambia la contraseña propia: cierra todas las fichas de la cuenta y deja la cookie de una\nnueva, ya sin restricción (el cambio obligatorio de la temporal, o uno voluntario).",
+        "operationId": "cambiar_contrasena_v1_sesion_contrasena_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CambioDeContrasena"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SesionRespuesta"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sin sesión vigente.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detalle"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Contraseña actual errada, o sin CSRF u origen.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detalle"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "La política la rechaza, o cuerpo inválido.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detalle"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/casos": {
+      "get": {
+        "tags": [
+          "casos"
+        ],
+        "summary": "Consultar Casos",
+        "description": "El caso de esta sesión y los de la carpeta de casos, por nombre. No abre ninguna base.",
+        "operationId": "consultar_casos_v1_casos_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CasosRespuesta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/casos/actual": {
+      "post": {
+        "tags": [
+          "casos"
+        ],
+        "summary": "Elegir Caso",
+        "description": "Fija el caso de esta ficha de sesión (lo olvida al salir o expirar).",
+        "operationId": "elegir_caso_v1_casos_actual_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EleccionCaso"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CasoRespuesta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sin `CAMBIAR_CASO`, o sin CSRF u origen propio.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detalle"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "El caso no está en la carpeta de casos.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detalle"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Con la clave de API no se elige caso.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detalle"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "El nombre lleva rutas, `..` o no es válido.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detalle"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "El caso no se puede preparar (más nuevo...).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detalle"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/proyectos": {
+      "get": {
+        "tags": [
+          "proyectos"
+        ],
+        "summary": "Listar Proyectos Del Caso",
+        "description": "Los proyectos del caso de esta sesión con su versión vigente.",
+        "operationId": "listar_proyectos_del_caso_v1_proyectos_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ProyectoDelCasoRespuesta"
+                  },
+                  "type": "array",
+                  "title": "Response Listar Proyectos Del Caso V1 Proyectos Get"
                 }
               }
             }
@@ -1756,6 +1938,26 @@
         ],
         "title": "Body_revisar_pdf_v1_libros_pdf_post"
       },
+      "CambioDeContrasena": {
+        "properties": {
+          "actual": {
+            "type": "string",
+            "maxLength": 128,
+            "title": "Actual"
+          },
+          "nueva": {
+            "type": "string",
+            "maxLength": 128,
+            "title": "Nueva"
+          }
+        },
+        "type": "object",
+        "required": [
+          "actual",
+          "nueva"
+        ],
+        "title": "CambioDeContrasena"
+      },
       "CambioRespuesta": {
         "properties": {
           "insumo": {
@@ -1832,6 +2034,52 @@
         ],
         "title": "CargaListaRespuesta",
         "description": "Lo que produjo cargar un archivo de precios (UC-02): la lista creada y los insumos del\narchivo que el catalogo no conocia.\n\n- `dados_de_alta`: los desconocidos que el administrador eligio dar de alta (flujo 2a, campo\n  de formulario `dar_de_alta`); quedan en el catalogo con codigo nuevo y su precio solo en esta\n  lista.\n- `ignorados`: los desconocidos del flujo 2a que no se eligieron; no intervienen en el\n  recalculo.\n- `rechazados`: las filas del flujo 2b, cuya descripcion si esta en el catalogo pero con una\n  unidad no equivalente; se rechazan y no se pueden dar de alta.\n- `desconocidos`: ignorados y rechazados juntos, en el orden del archivo (el campo de antes de\n  C6, que se conserva)."
+      },
+      "CasoRespuesta": {
+        "properties": {
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          },
+          "ruta_relativa": {
+            "type": "string",
+            "title": "Ruta Relativa"
+          }
+        },
+        "type": "object",
+        "required": [
+          "nombre",
+          "ruta_relativa"
+        ],
+        "title": "CasoRespuesta"
+      },
+      "CasosRespuesta": {
+        "properties": {
+          "actual": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CasoRespuesta"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "El caso de esta sesión; `null` solo si el proceso no usa un archivo SQLite"
+          },
+          "casos": {
+            "items": {
+              "$ref": "#/components/schemas/CasoRespuesta"
+            },
+            "type": "array",
+            "title": "Casos"
+          }
+        },
+        "type": "object",
+        "required": [
+          "actual",
+          "casos"
+        ],
+        "title": "CasosRespuesta"
       },
       "CeldaVisualRespuesta": {
         "properties": {
@@ -2100,6 +2348,21 @@
         ],
         "title": "EjecucionRespuesta",
         "description": "Una obra ejecutada registrada."
+      },
+      "EleccionCaso": {
+        "properties": {
+          "nombre": {
+            "type": "string",
+            "maxLength": 200,
+            "title": "Nombre",
+            "description": "El nombre de un caso de la lista"
+          }
+        },
+        "type": "object",
+        "required": [
+          "nombre"
+        ],
+        "title": "EleccionCaso"
       },
       "EscenarioPeticion": {
         "properties": {
@@ -3587,6 +3850,60 @@
         "title": "PropuestaRendimientoRespuesta",
         "description": "La propuesta al componer un APU: rendimiento elegido mas su dispersion."
       },
+      "ProyectoDelCasoRespuesta": {
+        "properties": {
+          "codigo": {
+            "type": "string",
+            "title": "Codigo"
+          },
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          },
+          "version_vigente": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version Vigente"
+          },
+          "version_codigo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version Codigo"
+          },
+          "actualizado": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actualizado"
+          }
+        },
+        "type": "object",
+        "required": [
+          "codigo",
+          "nombre",
+          "version_vigente",
+          "version_codigo",
+          "actualizado"
+        ],
+        "title": "ProyectoDelCasoRespuesta"
+      },
       "ProyectoPeticion": {
         "properties": {
           "nombre": {
@@ -3870,6 +4187,36 @@
           "csrf": {
             "type": "string",
             "title": "Csrf"
+          },
+          "debe_cambiar_clave": {
+            "type": "boolean",
+            "title": "Debe Cambiar Clave",
+            "description": "La contraseña es temporal: hasta cambiarla, la ficha solo sirve para `POST /v1/sesion/contrasena` y para salir"
+          },
+          "acciones": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Acciones",
+            "description": "Las acciones que permite su rol (vacía con la contraseña temporal)"
+          },
+          "modo_entrega": {
+            "type": "boolean",
+            "title": "Modo Entrega",
+            "description": "`SILICE_MODO_ENTREGA` está encendido"
+          },
+          "url_clasica": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url Clasica",
+            "description": "La interfaz Streamlit, para las páginas aún no migradas (`null` si no hay)"
           }
         },
         "type": "object",
@@ -3877,7 +4224,11 @@
           "login",
           "nombre",
           "roles",
-          "csrf"
+          "csrf",
+          "debe_cambiar_clave",
+          "acciones",
+          "modo_entrega",
+          "url_clasica"
         ],
         "title": "SesionRespuesta"
       },
