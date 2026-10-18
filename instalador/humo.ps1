@@ -196,9 +196,15 @@ try {
     $codigo = InstalarSilencioso $Instalador (Join-Path $Salida 'instalacion.log')
     Afirmar ($codigo -eq 0) "el instalador terminó con 0 (fue $codigo)"
     Afirmar (Test-Path $Python) 'python.exe quedó en la ruta con espacios y ñ'
+    # La instalación crea instalacion.db (orden migrar) y el caso de demostración (orden
+    # demostracion); el caso por defecto lo crea el lanzador al primer arranque (spec S5 §5.4, paso 4).
     $bases = (Test-Path (Join-Path $Datos 'instalacion.db')) -and
-        (Test-Path (Join-Path $Datos 'casos\silice.db'))
-    Afirmar $bases 'las dos bases nacieron en la carpeta de datos'
+        (Test-Path (Join-Path $Datos 'casos\demostracion.db'))
+    if (-not $bases) {
+        Get-ChildItem -LiteralPath $Usuario -Recurse -ErrorAction SilentlyContinue |
+            Select-Object -ExpandProperty FullName | Set-Content (Join-Path $Salida 'datos.txt')
+    }
+    Afirmar $bases 'la base de la instalación y el caso de demostración nacieron en la carpeta de datos'
 
     Paso '3. Inventario y manifiesto'
     Afirmar ((Operacion @('verificar-programa')) -eq 0) '{app}\codigo coincide con manifiesto.json'
@@ -217,6 +223,7 @@ try {
     $servidor = IniciarSilice
     $segundos = EsperarSalud $Url 60
     Afirmar ($null -ne $segundos) "la salud respondió 200 en <= 60 s (fueron $segundos s)"
+    Afirmar (Test-Path (Join-Path $Datos 'casos\silice.db')) 'el arranque creó el caso por defecto'
     @{ salud_s = $segundos; perfil = $Perfil; version = $Version } | ConvertTo-Json |
         Set-Content (Join-Path $Salida 'tiempos.json')
     $escuchas = Escuchas $servidor.Id

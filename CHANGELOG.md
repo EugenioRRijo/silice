@@ -6,6 +6,10 @@ etiquetar, las líneas pasan a la sección de la versión. La historia anterior 
 
 ## [Sin publicar]
 
+### Corregido
+
+- La prueba de humo del instalador exigía el caso por defecto (`casos\silice.db`) justo después de instalar, pero el diseño lo crea al primer arranque (spec S5 §5.4): ahora lo comprueba tras arrancar, y el instalador deja en su registro el código de `migrar` (`instalador/humo.ps1`, `instalador/silice.iss`). El workflow del instalador no había pasado nunca en la CI por esto.
+
 ## [1.1.0] - 2026-10-18
 
 ### Agregado
