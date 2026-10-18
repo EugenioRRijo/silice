@@ -30,6 +30,7 @@ PAQUETES_FUERA_DEL_NUCLEO = (
     "asistente",
     "instalador",
     "fusion",
+    "aplicacion",
 )
 
 #: Terceros que cada adaptador puede importar, ademas de la biblioteca estandar, `core.contracts` y
@@ -608,3 +609,16 @@ def test_ui_hoja_depende_de_adapters_espacio_y_este_no_depende_de_ui():
         if m == "ui" or m.startswith("ui.")
     ]
     assert not inversa, inversa
+
+
+#: RM-1 (sesion 2b): la capa de aplicacion es logica sin interfaz; ni Streamlit ni los paquetes de
+#: entrega la importan hacia adentro.
+PROHIBIDOS_EN_APLICACION = ("streamlit", "ui", "api", "scripts", "tests")
+
+
+@pytest.mark.parametrize("archivo", _archivos("aplicacion"), ids=_ruta)
+def test_aplicacion_no_importa_interfaz_api_scripts_ni_tests(archivo):
+    prohibidos = [m for m in _imports(archivo) if m.split(".")[0] in PROHIBIDOS_EN_APLICACION]
+    assert not prohibidos, (
+        f"{_ruta(archivo)} importa {prohibidos}; aplicacion/ es logica sin interfaz."
+    )
