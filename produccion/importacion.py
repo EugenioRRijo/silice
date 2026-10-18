@@ -10,8 +10,11 @@ resolucion corren dentro de `Session.begin_nested()`: si algo falla, se deshace 
 esa llamada y la sesion sigue siendo util.
 
 Idempotencia: un pesaje cuyo ticket ya existe como `Movimiento` cuenta en `ya_registrados` y no se
-toca; un dudoso con la misma `(huella, fila)` ya en la bandeja no se vuelve a insertar (y no suma a
-`a_la_bandeja`). Solo se consideran materiales activos.
+toca. A la bandeja no entra un sospechoso con la misma `(huella, fila)`, ni uno con `ticket` no
+vacio que ya tenga ese mismo ticket y motivo en cualquier estado (pendiente, resuelto o
+descartado): los reportes de bascula son acumulados, y asi un descartado no resucita ni un
+pendiente se duplica. Sin ticket manda `(huella, fila)`. Lo que no entra no suma a
+`a_la_bandeja`. Solo se consideran materiales activos.
 """
 
 from __future__ import annotations
@@ -151,6 +154,27 @@ def _tickets_existentes(sesion: Session, pesajes: tuple[PesajeLeido, ...]) -> se
     return existentes
 
 
+def _bandeja_por_ticket(sesion: Session, lectura: LecturaBascula) -> set[tuple[str, str]]:
+    """Pares (ticket, motivo) ya en la bandeja, en cualquier estado, para esta lectura."""
+    tickets = sorted(
+        {
+            _corto(t, 60)
+            for t in (*(d.ticket for d in lectura.dudosos), *(p.ticket for p in lectura.pesajes))
+            if t
+        }
+    )
+    conocidos: set[tuple[str, str]] = set()
+    for inicio in range(0, len(tickets), _LOTE_DE_TICKETS):
+        lote = tickets[inicio : inicio + _LOTE_DE_TICKETS]
+        filas = sesion.execute(
+            select(PesajeSospechoso.ticket, PesajeSospechoso.motivo).where(
+                PesajeSospechoso.ticket.in_(lote)
+            )
+        )
+        conocidos.update((ticket, motivo) for ticket, motivo in filas)
+    return conocidos
+
+
 # --------------------------------------------------------------------------------------- API
 
 
@@ -174,15 +198,21 @@ def importar(sesion: Session, lectura: LecturaBascula, *, usuario: str) -> Resul
         )
         tickets = _tickets_existentes(sesion, lectura.pesajes)
 
-        def a_bandeja(fila: int, sospechoso: PesajeSospechoso) -> int:
-            if fila in en_bandeja:
+        conocidos = _bandeja_por_ticket(sesion, lectura)
+
+        def a_bandeja(sospechoso: PesajeSospechoso) -> int:
+            """1 si entra a la bandeja; 0 si ya estaba (misma huella y fila, o mismo ticket y
+            motivo en cualquier estado: un reporte acumulado no resucita ni duplica)."""
+            if sospechoso.fila in en_bandeja:
                 return 0
-            en_bandeja.add(fila)
+            if sospechoso.ticket and (sospechoso.ticket, sospechoso.motivo) in conocidos:
+                return 0
+            en_bandeja.add(sospechoso.fila)
             sesion.add(sospechoso)
             return 1
 
         for dudoso in lectura.dudosos:
-            a_la_bandeja += a_bandeja(dudoso.fila, _sospechoso_de_dudoso(lectura.huella, dudoso))
+            a_la_bandeja += a_bandeja(_sospechoso_de_dudoso(lectura.huella, dudoso))
 
         for pesaje in lectura.pesajes:
             if pesaje.ticket in tickets:
@@ -194,9 +224,7 @@ def importar(sesion: Session, lectura: LecturaBascula, *, usuario: str) -> Resul
             else:
                 cantidad, motivo = _cantidad_de_despacho(material, pesaje.neto_t)
             if material is None or cantidad is None:
-                a_la_bandeja += a_bandeja(
-                    pesaje.fila, _sospechoso_de_pesaje(lectura.huella, pesaje, motivo)
-                )
+                a_la_bandeja += a_bandeja(_sospechoso_de_pesaje(lectura.huella, pesaje, motivo))
                 continue
             registrar_despacho(
                 sesion,

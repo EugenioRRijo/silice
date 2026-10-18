@@ -505,10 +505,9 @@ def test_un_sospechoso_descartado_no_resucita(sesion: Session) -> None:
 
     resultado = importar(sesion, _acumulado(), usuario=USUARIO)
 
-    assert (resultado.registrados, resultado.ya_registrados, resultado.a_la_bandeja) == (0, 3, 1)
-    assert (
-        resuelto.ticket == "TCK-003"
-    )  # el resuelto ya es un movimiento: cuenta como ya registrado
+    assert (resultado.registrados, resultado.ya_registrados, resultado.a_la_bandeja) == (0, 2, 1)
+    assert resuelto.ticket == "TCK-003"  # el resuelto sigue como despacho y no se toca
+    assert _cuantos(sesion, Movimiento) == 3
     estados = {
         p.ticket: p.estado
         for p in sesion.scalars(select(PesajeSospechoso))
@@ -527,9 +526,9 @@ def test_un_sospechoso_descartado_no_resucita(sesion: Session) -> None:
 def test_sin_ticket_la_clave_sigue_siendo_huella_y_fila(sesion: Session) -> None:
     _catalogo(sesion)
     sin_ticket = (
-        "Ticket;Fecha;Placa;Cliente;Material;Bruto (kg);Tara (kg);Neto (kg)\n"
-        ";2026-10-15;EJ-1;Cliente Ejemplo A;ARENA;40000;15000;25000\n"
-    ).encode()
+        b"Ticket;Fecha;Placa;Cliente;Material;Bruto (kg);Tara (kg);Neto (kg)\n"
+        b";2026-10-15;EJ-1;Cliente Ejemplo A;ARENA;40000;15000;25000\n"
+    )
     lectura = leer(sin_ticket, "sin_ticket.csv", fecha_referencia=HOY)
     otra = leer(sin_ticket + b"\n", "sin_ticket_2.csv", fecha_referencia=HOY)
 
