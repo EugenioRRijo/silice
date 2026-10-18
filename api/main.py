@@ -21,6 +21,7 @@ from api.rutas import (
     proyectos,
     rendimientos,
     sesion,
+    similares,
 )
 from api.sesion_web import exigir_clave_o_sesion
 from core.catalog import CatalogoIncompleto
@@ -54,6 +55,10 @@ app.include_router(auditorias.router)  # S3 §10: POST /v1/auditorias
 app.include_router(libros.router, dependencies=[Depends(exigir_clave_o_sesion(LEER_PROYECTO))])
 # 1.2.0 (RT-9): acceso del navegador por cuenta y cookie; sin clave de API a propósito
 app.include_router(sesion.router)
+# 2b: «Partidas similares» de la interfaz nueva (UC-03); clave o sesión con editar_hoja
+app.include_router(
+    similares.router, dependencies=[Depends(exigir_clave_o_sesion(Accion.EDITAR_HOJA))]
+)
 # Ola 0a (sesion 2b): el caso de la sesion web (RM-2) y los proyectos del caso
 app.include_router(casos.router)
 app.include_router(proyectos.router)
