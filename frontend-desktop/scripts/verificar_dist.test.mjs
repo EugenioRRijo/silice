@@ -45,6 +45,21 @@ describe("verificarDist", () => {
     expect(verificarDist(dir).problemas).toHaveLength(1);
   });
 
+  test("los textos de Univer pasan solo dentro del archivo de Univer", () => {
+    const texto = 'const ayuda = "https://support.google.com/docs/answer/1"; const e = `https://${x}`;';
+    writeFileSync(join(dir, "adaptadorUniver-AbC123.js"), texto);
+    expect(verificarDist(dir).problemas).toEqual([]);
+    writeFileSync(join(dir, "index-AbC123.js"), 'const ayuda = "https://support.google.com/docs/answer/1";');
+    const { problemas } = verificarDist(dir);
+    expect(problemas).toHaveLength(1);
+    expect(problemas[0]).toContain("support.google.com");
+  });
+
+  test("un anfitrion que no esta en la lista falla tambien dentro del archivo de Univer", () => {
+    writeFileSync(join(dir, "adaptadorUniver-AbC123.js"), 'fetch("https://telemetria.example.net/e")');
+    expect(verificarDist(dir).problemas).toHaveLength(1);
+  });
+
   test("15 000 001 bytes hacen fallar", () => {
     writeFileSync(join(dir, "grande.bin"), Buffer.alloc(LIMITE_BYTES + 1));
     const { problemas, bytes } = verificarDist(dir);

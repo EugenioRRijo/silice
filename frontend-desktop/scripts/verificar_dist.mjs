@@ -9,7 +9,35 @@ export const LIMITE_BYTES = 15_000_000;
 // Lista blanca explicita (ruling RS2.1-2). Ninguno de estos anfitriones se consulta en ejecucion:
 //  - www.w3.org: espacios de nombres XML/SVG/MathML, que son identificadores y no se descargan.
 //  - react.dev, fb.me: enlaces dentro de textos de error de React y prop-types, que solo se imprimen.
-export const ANFITRIONES_PERMITIDOS = new Set(["www.w3.org", "react.dev", "fb.me"]);
+export const ANFITRIONES_PERMITIDOS = new Set(["www.w3.org", "react.dev", "fb.me", "reactjs.org"]);
+
+// Solo en el archivo de Univer (adaptadorUniver-*.js/css, el visor de la hoja; ruling RS2.4-5). Son textos y
+// identificadores que Univer lleva dentro y que nunca se piden a la red:
+//  - support.google.com, support.microsoft.com, www.wps.cn: enlaces "mas informacion" de la descripcion de cada
+//    funcion de hoja de calculo (solo se muestran).
+//  - univer.ai, github.com, example.com: ejemplos de la ayuda de HYPERLINK, IMAGE y ENCODEURL, y el URI de los
+//    tipos de operacion (ot-json, text-x) que Univer usa como nombre; example.com tambien aparece en una clase
+//    de Tailwind de ejemplo que ningun elemento usa.
+//  - universheet.net, redi.wzhu.dev: enlaces dentro de mensajes de error de consola.
+//  - sharejs.org: URI de tipo de operacion (text-unicode, json1), un identificador.
+//  - localhost: base para interpretar un enlace relativo (new URL) y una comparacion de texto.
+// Los datos de la hoja, las fuentes y la telemetria no usan ninguno (Univer no trae implementacion de telemetria
+// y no se le da workerURL). Cualquiera de estos anfitriones fuera de ese archivo sigue siendo un error.
+export const ANFITRIONES_DE_UNIVER = new Set([
+  "support.google.com",
+  "support.microsoft.com",
+  "www.wps.cn",
+  "univer.ai",
+  "github.com",
+  "example.com",
+  "universheet.net",
+  "redi.wzhu.dev",
+  "sharejs.org",
+  "localhost",
+]);
+// "reactjs.org" es un enlace de un mensaje de advertencia de React (como react.dev); "${...}" es un fragmento
+// de plantilla de texto (`https://${direccion}`), no un anfitrion.
+const ARCHIVO_DE_UNIVER = /(^|[\\/])adaptadorUniver-[^\\/]*\.(js|css)$/;
 
 const URL_EXTERNA = /https?:\/\/([^\s/'"`)\\<>?#:]+)/gi;
 
@@ -36,7 +64,9 @@ export function verificarDist(carpeta) {
     const vistos = new Set();
     for (const m of texto.matchAll(URL_EXTERNA)) {
       const anfitrion = m[1].toLowerCase();
+      if (anfitrion.startsWith("${")) continue; // fragmento de plantilla de texto
       if (ANFITRIONES_PERMITIDOS.has(anfitrion) || vistos.has(anfitrion)) continue;
+      if (ARCHIVO_DE_UNIVER.test(ruta) && ANFITRIONES_DE_UNIVER.has(anfitrion)) continue;
       vistos.add(anfitrion);
       problemas.push(`${ruta}: URL hacia el anfitrion externo ${anfitrion} (RNF-22)`);
     }

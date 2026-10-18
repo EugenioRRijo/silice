@@ -122,6 +122,11 @@
   border-radius: 0;
 }
 
+// El conteo no debe pegarse al nombre de la severidad ("Crítico 1", no "Crítico1").
+.silice-sev .silice-cifra {
+  margin-inline-start: 0.25rem;
+}
+
 .silice-sev__icono {
   flex: none;
   margin-inline-end: 0.25rem;

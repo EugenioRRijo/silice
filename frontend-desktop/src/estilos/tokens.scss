@@ -10,6 +10,10 @@
   $theme: themes.$g10
 );
 @use "@carbon/styles";
+@use "@carbon/styles/scss/type";
+
+// Carbon v11 no emite las clases .cds--type-* por si solo: se piden aqui (heading-03, body-compact-01, label-01...).
+@include type.type-classes();
 
 :root {
   // Tema g10 en la raiz: el fondo del body y los alias --silice-* leen --cds-* fuera del componente Theme.

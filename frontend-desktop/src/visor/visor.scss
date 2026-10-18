@@ -1,0 +1,332 @@
+// Visor de solo lectura (DESIGN.md): hoja a la izquierda, lista de hallazgos de 320 px a la derecha, franja de
+// indicadores arriba. Esquinas rectas, divisores de 1 px, sin sombras ni animacion. A 1366x768 la pagina no
+// tiene desplazamiento horizontal: la hoja desplaza dentro de su propio lienzo.
+
+// La cabecera de Carbon es fija (48 px).
+body {
+  padding-block-start: 3rem;
+}
+
+.silice-usuario {
+  display: inline-flex;
+  align-items: center;
+  block-size: 3rem;
+  padding-inline: 1rem;
+  color: var(--silice-texto);
+}
+
+.silice-salir {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  block-size: 3rem;
+  padding-inline: 1rem;
+  border: 0;
+  background: transparent;
+  color: var(--silice-texto);
+  font-family: inherit;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--cds-layer-hover);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--cds-focus);
+    outline-offset: -2px;
+  }
+}
+
+.silice-entrada__formulario {
+  display: grid;
+  gap: 1rem;
+  max-inline-size: 20rem;
+}
+
+.visor {
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  inline-size: 100%;
+  max-inline-size: 100vw;
+  block-size: calc(100vh - 3rem);
+  min-block-size: 0;
+  overflow: hidden;
+}
+
+.visor__barra {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.5rem 1rem;
+  padding: 0.5rem 1rem;
+  background: var(--cds-layer);
+  border-block-end: 1px solid var(--silice-divisor);
+}
+
+.visor__fecha {
+  inline-size: 11rem;
+}
+
+.visor__archivo {
+  align-self: center;
+  padding-block: 0.125rem;
+  max-inline-size: 28rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.visor__error {
+  flex: none;
+  max-inline-size: none;
+  inline-size: 100%;
+}
+
+.visor__soltar {
+  display: grid;
+  inline-size: 100%;
+  box-sizing: border-box;
+  align-content: start;
+  gap: 1rem;
+  max-inline-size: 48rem;
+  padding: 2rem 1rem;
+}
+
+.visor__soltar .cds--file,
+.visor__soltar .cds--file-browse-btn {
+  inline-size: 100%;
+  max-inline-size: none;
+}
+
+.visor__soltar .cds--file-browse-btn {
+  min-block-size: 10rem;
+}
+
+.visor__ayuda {
+  color: var(--silice-texto-secundario);
+  max-inline-size: 65ch;
+}
+
+.visor__cuerpo {
+  display: grid;
+  flex: 1 1 auto;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  min-block-size: 0;
+}
+
+.visor__hoja {
+  display: flex;
+  flex-direction: column;
+  min-inline-size: 0;
+  min-block-size: 0;
+  border-inline-end: 1px solid var(--silice-divisor);
+}
+
+.visor__lienzo {
+  position: relative;
+  flex: 1 1 auto;
+  min-block-size: 0;
+  overflow: hidden;
+  background: var(--cds-background);
+}
+
+.hoja-lienzo {
+  position: absolute;
+  inset: 0;
+}
+
+.visor__lista {
+  min-block-size: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  background: var(--cds-layer);
+}
+
+// Esqueletos de Carbon sin el brillo que recorre la pieza: nada se anima (DESIGN.md, Movimiento).
+.visor__esqueleto {
+  display: grid;
+  flex: 1 1 auto;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  min-block-size: 0;
+
+  [class*="cds--skeleton"],
+  [class*="cds--skeleton"]::before,
+  [class*="cds--skeleton"]::after {
+    animation: none !important;
+  }
+}
+
+.visor__esqueleto-hoja {
+  padding: 0;
+  border-inline-end: 1px solid var(--silice-divisor);
+}
+
+.visor__esqueleto-lienzo {
+  inline-size: 100%;
+  block-size: 100%;
+}
+
+// Mientras Univer prepara la hoja, el lienzo muestra el esqueleto (sin brillo, como los demas).
+.visor__esqueleto-sobre {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+
+  &,
+  &::before {
+    animation: none !important;
+  }
+}
+
+.visor__esqueleto-lista {
+  display: grid;
+  align-content: start;
+  gap: 1rem;
+  padding: 1rem;
+}
+
+.visor__franja-esqueleto {
+  flex: none;
+  min-block-size: 4rem;
+  padding: 1.25rem 1rem;
+  background: var(--cds-layer);
+  border-block-end: 1px solid var(--silice-divisor);
+}
+
+// --- Capa de halos (RS2-8) ---------------------------------------------------------------------------
+// Encima del lienzo; no recibe el puntero, salvo la insignia, para no estorbar a la hoja.
+.capa-halos {
+  position: absolute;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.halo {
+  position: absolute;
+  box-sizing: border-box;
+  // Solo contorno: el valor de la celda se lee entero. El color es la severidad; el icono y el texto la repiten.
+  outline: 2px solid var(--halo-color);
+  outline-offset: -2px;
+}
+
+.halo--elegido {
+  z-index: 1;
+  outline-width: 3px;
+  outline-offset: -3px;
+}
+
+// La insignia va a caballo de la esquina superior derecha: dentro de la celda taparia el final de los numeros.
+.halo__insignia {
+  position: absolute;
+  inset-block-start: -7px;
+  inset-inline-end: -7px;
+  display: block;
+  box-sizing: border-box;
+  inline-size: 14px;
+  block-size: 14px;
+  padding: 1px;
+  line-height: 0;
+  background: var(--cds-background);
+  color: var(--halo-color);
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.halo__icono {
+  display: block;
+  line-height: 0;
+}
+
+// --- Lista de hallazgos ------------------------------------------------------------------------------
+.lista-hallazgos {
+  display: flex;
+  flex-direction: column;
+}
+
+.lista-hallazgos__cabecera {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border-block-end: 1px solid var(--silice-divisor);
+}
+
+.lista-hallazgos__filtro {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.lista-hallazgos__vacio {
+  padding: 1rem 0.75rem;
+  color: var(--silice-texto-secundario);
+}
+
+.lista-hallazgos__subtitulo {
+  padding: 0.75rem 0.75rem 0.5rem;
+  border-block-start: 1px solid var(--silice-divisor);
+}
+
+.lista-hallazgos__tabla {
+  td,
+  th {
+    padding-inline: 0.5rem;
+    vertical-align: top;
+  }
+
+  td {
+    padding-block: 0.5rem;
+  }
+}
+
+.lista-hallazgos__fila {
+  cursor: pointer;
+
+  &:hover td {
+    background: var(--cds-layer-hover);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--cds-focus);
+    outline-offset: -2px;
+  }
+}
+
+.lista-hallazgos__fila--elegida td {
+  background: var(--cds-layer-selected);
+}
+
+.hallazgo {
+  display: grid;
+  gap: 0.125rem;
+  min-inline-size: 0;
+}
+
+.hallazgo__encabezado {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.hallazgo__severidad {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: var(--silice-texto);
+}
+
+.hallazgo__icono {
+  flex: none;
+  color: var(--halo-color);
+  fill: var(--halo-color);
+}
+
+.hallazgo__descripcion {
+  overflow-wrap: anywhere;
+}
+
+.hallazgo__celda {
+  color: var(--silice-texto-secundario);
+  overflow-wrap: anywhere;
+}
