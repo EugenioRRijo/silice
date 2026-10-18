@@ -32,7 +32,7 @@ def test_una_constante_a_cotejar_usada_en_calculo_seria_detectada():
 
 
 def test_las_constantes_numericas_son_las_del_registro():
-    """Las constantes que usa el lector de bascula salen de `fuentes.py` como numeros, no como texto."""
+    """Las constantes del lector de bascula salen de `fuentes.py` como numeros, no como texto."""
     from decimal import Decimal
 
     from produccion import fuentes
@@ -41,7 +41,9 @@ def test_las_constantes_numericas_son_las_del_registro():
     assert fuentes.MAX_FILAS == 100000 and isinstance(fuentes.MAX_FILAS, int)
     assert fuentes.MAX_COLUMNAS == 60 and isinstance(fuentes.MAX_COLUMNAS, int)
     assert fuentes.FILAS_DE_ENCABEZADO == 30 and isinstance(fuentes.FILAS_DE_ENCABEZADO, int)
-    assert fuentes.TOLERANCIA_NETO_T == Decimal("0") and isinstance(fuentes.TOLERANCIA_NETO_T, Decimal)
+    assert fuentes.TOLERANCIA_NETO_T == Decimal("0") and isinstance(
+        fuentes.TOLERANCIA_NETO_T, Decimal
+    )
     assert por_nombre == {
         "MAX_FILAS": "100000",
         "MAX_COLUMNAS": "60",

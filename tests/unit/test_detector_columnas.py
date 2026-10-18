@@ -1,7 +1,8 @@
 """Detector de columnas del reporte de bascula (Tarea 4.6, RT-S4-5 y RT-S4-6).
 
 Todo es EJEMPLO CONSTRUIDO: los sinonimos de encabezado son un supuesto declarado (PLAN_FUENTES C-8)
-y solo se prueban con encabezados escritos aqui. Los valores esperados estan a mano, no salen del codigo.
+y solo se prueban con encabezados escritos aqui. Los valores esperados estan a mano, no salen
+del codigo.
 """
 
 from __future__ import annotations
@@ -26,7 +27,16 @@ ENCABEZADO_BASICO = [
     "Tara (kg)",
     "Neto (kg)",
 ]
-FILA_DE_DATOS = ["TCK-001", "2026-10-15", "EJ-001", "Cliente Ejemplo A", "ARENA", 42500, 14200, 28300]
+FILA_DE_DATOS = [
+    "TCK-001",
+    "2026-10-15",
+    "EJ-001",
+    "Cliente Ejemplo A",
+    "ARENA",
+    42500,
+    14200,
+    28300,
+]
 
 
 def test_los_campos_son_los_ocho_del_plan():

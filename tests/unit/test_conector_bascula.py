@@ -38,7 +38,14 @@ def _csv(*lineas: str, cabecera: str = CABECERA) -> bytes:
     return ("\n".join([cabecera, *lineas]) + "\n").encode("utf-8")
 
 
-def _linea(ticket="TCK-900", fecha="2026-10-15", material="ARENA", bruto="40000", tara="15000", neto="25000"):
+def _linea(
+    ticket="TCK-900",
+    fecha="2026-10-15",
+    material="ARENA",
+    bruto="40000",
+    tara="15000",
+    neto="25000",
+):
     return f"{ticket};{fecha};EJ-900;Cliente Ejemplo A;{material};{bruto};{tara};{neto}"
 
 
@@ -189,7 +196,8 @@ def test_unidad_invalida_se_rechaza():
 def test_numeros_con_coma_y_punto():
     lectura = leer(construir.csv_coma_decimal(), "r.csv", fecha_referencia=HOY)
     uno, dos = lectura.pesajes
-    # ORACULO.md §3: 1.234,56 y 1,234.56 son 1234,56 kg = 1,23456 t; 234,56 kg = 0,23456 t; 1000,00 kg = 1 t.
+    # ORACULO.md §3: 1.234,56 y 1,234.56 son 1234,56 kg = 1,23456 t; 234,56 kg = 0,23456 t;
+    # 1000,00 kg = 1 t.
     assert (uno.ticket, uno.bruto_t, uno.tara_t, uno.neto_t) == (
         "TCK-101",
         Decimal("1.23456"),
@@ -219,9 +227,7 @@ def test_numeros_con_coma_y_punto():
 
 def _bruto_leido(texto: str) -> Decimal | str:
     """Lee una fila con `texto` como bruto (tara 0, neto igual) y devuelve bruto_t o el motivo."""
-    lectura = leer(
-        _csv(_linea(bruto=texto, tara="0", neto=texto)), "r.csv", fecha_referencia=HOY
-    )
+    lectura = leer(_csv(_linea(bruto=texto, tara="0", neto=texto)), "r.csv", fecha_referencia=HOY)
     if lectura.pesajes:
         return lectura.pesajes[0].bruto_t
     return lectura.dudosos[0].motivo
@@ -239,6 +245,8 @@ def _bruto_leido(texto: str) -> Decimal | str:
         ("1,2345", Decimal("0.0012345")),
         ("0,500", Decimal("0.0005")),  # un grupo de miles no empieza en cero: es decimal
         ("40000", Decimal("40")),
+        ("12345,678", Decimal("12.345678")),  # cuatro o mas cifras antes: no puede ser de miles
+        ("-5", "peso negativo"),
         ("1.234", "número ambiguo"),
         ("1,234", "número ambiguo"),
         ("999,999", "número ambiguo"),
@@ -294,7 +302,9 @@ def test_fechas_nativas_y_en_dia_mes_anio():
 def test_fecha_ilegible_va_a_la_bandeja_con_su_texto():
     lectura = leer(_csv(_linea(fecha="31/31/2026")), "r.csv", fecha_referencia=HOY)
     assert lectura.pesajes == ()
-    assert [(d.fecha_texto, d.motivo) for d in lectura.dudosos] == [("31/31/2026", "fecha ilegible")]
+    assert [(d.fecha_texto, d.motivo) for d in lectura.dudosos] == [
+        ("31/31/2026", "fecha ilegible")
+    ]
 
 
 def test_la_fecha_de_referencia_no_es_futura_pero_el_dia_siguiente_si():
@@ -306,7 +316,9 @@ def test_la_fecha_de_referencia_no_es_futura_pero_el_dia_siguiente_si():
     assert [p.ticket for p in lectura.pesajes] == ["T-1"]
     assert [(d.ticket, d.motivo) for d in lectura.dudosos] == [("T-2", "fecha futura")]
     # Con otra referencia cambia el resultado: el lector no usa el reloj.
-    despues = leer(_csv(_linea("T-2", fecha="2026-10-19")), "r.csv", fecha_referencia=date(2026, 10, 19))
+    despues = leer(
+        _csv(_linea("T-2", fecha="2026-10-19")), "r.csv", fecha_referencia=date(2026, 10, 19)
+    )
     assert [p.ticket for p in despues.pesajes] == ["T-2"]
 
 
@@ -340,7 +352,7 @@ def test_ticket_repetido_en_el_archivo():
     lectura = leer(datos, "r.csv", fecha_referencia=HOY)
     assert [(p.fila, p.ticket) for p in lectura.pesajes] == [(2, "T-1"), (3, "T-2")]
     # El primero se lee; el segundo T-1 es repetido. El primer T-3 es dudoso por su fecha y el
-    # segundo, aunque coherente, sigue siendo repetido: el ticket queda reclamado por la primera fila.
+    # segundo, aunque coherente, sigue siendo repetido: la primera fila reclama el ticket.
     assert [(d.fila, d.ticket, d.motivo) for d in lectura.dudosos] == [
         (4, "T-1", "ticket repetido en el archivo"),
         (5, "T-3", "fecha futura"),
@@ -365,7 +377,10 @@ def test_filas_en_blanco_se_saltan_pero_cuentan_en_la_numeracion():
 ORDEN_DE_REGLAS = [
     # (linea que falla ESA regla y todas las siguientes, motivo esperado)
     (_linea("", fecha="x", material="", bruto="abc", tara="9", neto="1"), "falta el ticket"),
-    (_linea("DUP", fecha="x", material="", bruto="abc", tara="9", neto="1"), "ticket repetido en el archivo"),
+    (
+        _linea("DUP", fecha="x", material="", bruto="abc", tara="9", neto="1"),
+        "ticket repetido en el archivo",
+    ),
     (_linea("T-3", fecha="x", material="", bruto="abc", tara="9", neto="1"), "fecha ilegible"),
     (_linea("T-4", fecha="2027-01-01", material="", bruto="abc"), "fecha futura"),
     (_linea("T-5", material="", bruto="abc", tara="9", neto="1"), "falta el material"),
@@ -469,7 +484,7 @@ def test_borde_de_filas_en_xlsx_y_el_lector_corta_al_pasar_el_tope(monkeypatch):
     with pytest.raises(ReporteRechazado, match="filas"):
         leer(libro(6), "r.xlsx", fecha_referencia=HOY)
 
-    # No se itera sin limite: con un tope de 5 el lector no pide mas filas que tope + encabezados + 1.
+    # No se itera sin limite: con un tope de 5 no se piden mas filas que tope + encabezados + 1.
     pedidas = []
     real = bascula._filas_de_xlsx
 
@@ -485,7 +500,9 @@ def test_borde_de_filas_en_xlsx_y_el_lector_corta_al_pasar_el_tope(monkeypatch):
             pedidas.append(fila)
             return fila
 
-    monkeypatch.setattr(bascula, "_filas_de_xlsx", lambda datos, tope: Espia(iter(real(datos, tope))))
+    monkeypatch.setattr(
+        bascula, "_filas_de_xlsx", lambda datos, tope: Espia(iter(real(datos, tope)))
+    )
     with pytest.raises(ReporteRechazado):
         leer(libro(500), "r.xlsx", fecha_referencia=HOY)
     assert len(pedidas) <= 5 + 30 + 1
@@ -512,16 +529,23 @@ def test_mapeo_explicito_manda():
     datos = _csv(_linea("T-1", bruto="42500", tara="14200", neto="28300"), cabecera=cabecera)
     with pytest.raises(MapeoNecesario):
         leer(datos, "r.csv", fecha_referencia=HOY, unidad_peso="kg")
-    mapeo = {"ticket": 0, "fecha": 1, "placa": 2, "cliente": 3, "material": 4, "bruto": 5, "tara": 6, "neto": 7}
+    mapeo = {
+        "ticket": 0,
+        "fecha": 1,
+        "placa": 2,
+        "cliente": 3,
+        "material": 4,
+        "bruto": 5,
+        "tara": 6,
+        "neto": 7,
+    }
     lectura = leer(datos, "r.csv", fecha_referencia=HOY, unidad_peso="kg", mapeo=mapeo)
-    assert [(p.ticket, p.placa, p.cliente, p.material, p.bruto_t, p.neto_t) for p in lectura.pesajes] == [
-        ("T-1", "EJ-900", "Cliente Ejemplo A", "ARENA", Decimal("42.5"), Decimal("28.3"))
-    ]
+    assert [
+        (p.ticket, p.placa, p.cliente, p.material, p.bruto_t, p.neto_t) for p in lectura.pesajes
+    ] == [("T-1", "EJ-900", "Cliente Ejemplo A", "ARENA", Decimal("42.5"), Decimal("28.3"))]
 
-    # Con encabezados reconocibles, el mapeo del usuario gana a la deteccion: ticket <- columna Placa.
-    reconocible = leer(
-        construir.csv_basico(), "r.csv", fecha_referencia=HOY, mapeo={"ticket": 2}
-    )
+    # Con encabezados reconocibles el mapeo del usuario gana a la deteccion: ticket <- Placa.
+    reconocible = leer(construir.csv_basico(), "r.csv", fecha_referencia=HOY, mapeo={"ticket": 2})
     assert [p.ticket for p in reconocible.pesajes] == ["EJ-001", "EJ-002", "EJ-006"]
     assert reconocible.pesajes[0].material == "ARENA"  # lo no mapeado se sigue detectando
 
