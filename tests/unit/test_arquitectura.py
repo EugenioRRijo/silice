@@ -30,6 +30,7 @@ PAQUETES_FUERA_DEL_NUCLEO = (
     "asistente",
     "instalador",
     "fusion",
+    "aplicacion",
 )
 
 #: Terceros que cada adaptador puede importar, ademas de la biblioteca estandar, `core.contracts` y
@@ -608,3 +609,19 @@ def test_ui_hoja_depende_de_adapters_espacio_y_este_no_depende_de_ui():
         if m == "ui" or m.startswith("ui.")
     ]
     assert not inversa, inversa
+
+
+#: RM-1: la capa de aplicacion comparte logica entre la interfaz y la API; no depende de ninguna.
+PROHIBIDOS_EN_APLICACION = ("streamlit", "ui", "api", "scripts", "tests")
+
+
+def test_aplicacion_no_importa_streamlit_ui_api_scripts_ni_tests():
+    archivos = _archivos("aplicacion")
+    assert RAIZ / "aplicacion" / "simulador.py" in archivos
+    prohibidos = sorted(
+        f"{_ruta(archivo)}: {modulo}"
+        for archivo in archivos
+        for modulo in _imports_de_ejecucion(archivo)
+        if modulo.split(".")[0] in PROHIBIDOS_EN_APLICACION
+    )
+    assert prohibidos == []

@@ -14,6 +14,7 @@ from api.rutas import (
     presupuestos,
     rendimientos,
     sesion,
+    simulador,
 )
 from api.sesion_web import exigir_clave_o_sesion
 from core.catalog import CatalogoIncompleto
@@ -43,6 +44,10 @@ app.include_router(rendimientos.router, dependencies=CON_CLAVE)
 app.include_router(auditorias.router, dependencies=CON_CLAVE)  # S3 §10: POST /v1/auditorias
 # 1.5: /v1/libros (auditoria, devolucion y pdf); 1.2.0: replica, y clave o sesión (RS2-5)
 app.include_router(libros.router, dependencies=[Depends(exigir_clave_o_sesion(LEER_PROYECTO))])
+# Migracion: el simulador de listas (no escribe en la base); clave o sesion con EDITAR_HOJA
+app.include_router(
+    simulador.router, dependencies=[Depends(exigir_clave_o_sesion(Accion.EDITAR_HOJA))]
+)
 # 1.2.0 (RT-9): acceso del navegador por cuenta y cookie; sin clave de API a propósito
 app.include_router(sesion.router)
 # 1.2.0 (RT-2): la interfaz nueva, estática y sin secretos, en /app con CSP
