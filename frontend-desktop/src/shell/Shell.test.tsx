@@ -173,11 +173,24 @@ describe("Shell", () => {
       await screen.findByRole("heading", { name: "Pantalla del tablero" });
     });
 
+    test("dentro de cada seccion van primero las migradas y luego, bajo un rotulo, las que siguen en la interfaz clasica", async () => {
+      montar();
+      const enlaces = Array.from(menu().querySelectorAll("li")).map((li) => li.textContent ?? "");
+      const migrada = enlaces.findIndex((t) => t.includes("Tablero del proyecto"));
+      const rotulo = enlaces.findIndex((t) => t === "En la interfaz clásica");
+      const pendiente = enlaces.findIndex((t) => t.startsWith("Catálogo de partidas e insumos"));
+      expect(migrada).toBeGreaterThanOrEqual(0);
+      expect(rotulo).toBeGreaterThan(migrada);
+      expect(pendiente).toBeGreaterThan(rotulo);
+      await screen.findByRole("heading", { name: "Pantalla del tablero" });
+    });
+
     test("si se conoce la direccion de Streamlit, la pagina sin migrar enlaza a ella", async () => {
       montar(sesionCon(), "/tablero", "http://127.0.0.1:8501");
       const item = within(menu()).getByText("Catálogo de partidas e insumos").closest("li") as HTMLElement;
-      const enlace = within(item).getByRole("link", { name: /interfaz clásica/i });
+      const enlace = within(item).getByRole("link", { name: /Catálogo de partidas e insumos/ });
       expect(enlace).toHaveAttribute("href", "http://127.0.0.1:8501/catalogo");
+      expect(enlace).toHaveAccessibleName(/En la interfaz clásica/);
       await screen.findByRole("heading", { name: "Pantalla del tablero" });
     });
 

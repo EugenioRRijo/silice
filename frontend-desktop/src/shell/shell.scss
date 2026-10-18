@@ -99,11 +99,18 @@
   list-style: none;
 }
 
-// Pagina que aun vive en la interfaz clasica: se ve, pero no es un enlace de esta interfaz.
+// Paginas que aun viven en la interfaz clasica: una linea de 32 px, sin ser enlaces de esta interfaz.
+.silice-menu__grupo {
+  list-style: none;
+  padding: 0.5rem 1rem 0.125rem;
+  color: var(--silice-texto-secundario);
+}
+
 .silice-menu__pendiente {
-  display: grid;
-  gap: 0.125rem;
-  padding: 0.25rem 1rem;
+  display: flex;
+  align-items: center;
+  min-block-size: 2rem;
+  padding-inline: 1rem 0.5rem;
 }
 
 .silice-menu__titulo {
@@ -111,17 +118,22 @@
   cursor: not-allowed;
 }
 
-.silice-menu__nota {
-  color: var(--silice-texto-secundario);
-}
-
 .silice-menu__clasica {
+  display: block;
+  padding-block: 0.375rem;
   color: var(--cds-link-primary);
-  text-decoration: underline;
-  text-underline-offset: 2px;
+  text-decoration: none;
+
+  // El icono sigue al texto aunque el titulo ocupe dos lineas.
+  svg {
+    display: inline;
+    margin-inline-start: 0.25rem;
+    vertical-align: text-bottom;
+  }
 
   &:hover {
     color: var(--cds-link-primary-hover);
+    text-decoration: underline;
   }
 
   &:focus-visible {
