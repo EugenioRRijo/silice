@@ -310,9 +310,9 @@ def _uno(actual: str, meta: str) -> IndicadorRespuesta:
 
 def test_meta_cero_da_delta_pct_nulo() -> None:
     i = _uno("12.5", "0")
-    assert (i.actual, i.meta, i.delta, i.delta_pct) == ("12.5", "0", "12.5", None)
+    assert (i.actual, i.meta, i.delta, i.delta_pct) == ("12.50", "0.00", "12.50", None)
     j = _uno("0", "0.00")
-    assert (j.meta, j.delta, j.delta_pct) == ("0", "0", None)
+    assert (j.meta, j.delta, j.delta_pct) == ("0.00", "0.00", None)
 
 
 def test_claves_titulos_orden_y_sentido() -> None:
@@ -323,29 +323,29 @@ def test_claves_titulos_orden_y_sentido() -> None:
         {
             "clave": "SUBSINIVA",
             "titulo": "Subtotal sin IVA",
-            "actual": "100",
-            "meta": "80",
-            "delta": "20",
+            "actual": "100.00",
+            "meta": "80.00",
+            "delta": "20.00",
             "delta_pct": "25.00",
-            "sentido": "costo",
+            "sentido": "exactitud",
         },
         {
             "clave": "IVATOT",
             "titulo": "IVA",
-            "actual": "16",
-            "meta": "16",
-            "delta": "0",
+            "actual": "16.00",
+            "meta": "16.00",
+            "delta": "0.00",
             "delta_pct": "0.00",
-            "sentido": "costo",
+            "sentido": "exactitud",
         },
         {
             "clave": "TOTALGEN",
             "titulo": "Total general",
-            "actual": "116",
-            "meta": "116",
-            "delta": "0",
+            "actual": "116.00",
+            "meta": "116.00",
+            "delta": "0.00",
             "delta_pct": "0.00",
-            "sentido": "costo",
+            "sentido": "exactitud",
         },
     ]
 
@@ -368,9 +368,9 @@ def test_solo_las_claves_presentes_en_los_dos_totales() -> None:
         # −1,25 ÷ 1 000 × 100 = −0,125 -> −0,12
         ("998.75", "-1.25", "-0.12"),
         # 0,00049 ÷ 1 000 × 100 = 0,000049 -> 0,00
-        ("1000.00049", "0.00049", "0.00"),
+        ("1000.00049", "0.00", "0.00"),  # Δ < medio centavo: 0,00
         # −0,00001 ÷ 1 000 × 100 = −0,000001 -> −0,00, que se muestra sin signo: 0,00
-        ("999.99999", "-0.00001", "0.00"),
+        ("999.99999", "0.00", "0.00"),  # ídem, sin signo
     ],
 )
 def test_delta_pct_en_centesimas_con_redondeo_al_par(actual, delta, delta_pct) -> None:
@@ -380,23 +380,33 @@ def test_delta_pct_en_centesimas_con_redondeo_al_par(actual, delta, delta_pct) -
 
 def test_los_montos_viajan_como_texto_sin_notacion_cientifica() -> None:
     i = _uno("1E+3", "5E+2")  # 1 000 y 500
-    assert (i.actual, i.meta, i.delta, i.delta_pct) == ("1000", "500", "500", "100.00")
+    assert (i.actual, i.meta, i.delta, i.delta_pct) == ("1000.00", "500.00", "500.00", "100.00")
 
 
 @pytest.mark.parametrize(
     ("actual", "meta", "esperado"),
     [
-        # Sílice guarda ceros de relleno (4 358,2082500): se quitan sin redondear nada.
-        ("4358.20825", "4358.2082500", ("4358.20825", "4358.20825", "0")),
-        ("100.10", "100.000", ("100.1", "100", "0.1")),
-        # −0,000 se muestra como 0, sin signo
-        ("5.000", "5", ("5", "5", "0")),
-        ("1E+3", "1000.0", ("1000", "1000", "0")),
+        # RS2-12: la franja presenta en centésimas al par (NORMAS §2.3); el exacto sigue en
+        # totales_libro y totales_silice. 4 358,20825 -> 4 358,21 (resto 0,00825 > medio centavo).
+        ("4358.20825", "4358.2082500", ("4358.21", "4358.21", "0.00", "0.00")),
+        ("100.10", "100.000", ("100.10", "100.00", "0.10", "0.10")),
+        # −0,000 se presenta 0,00, sin signo
+        ("5.000", "5", ("5.00", "5.00", "0.00", "0.00")),
+        # Ruido de división del libro real: Δ = −7,14E−13, menos de medio centavo -> sin variación
+        (
+            "9955.645590263035714285714286",
+            "9955.645590263036428571428572",
+            ("9955.65", "9955.65", "0.00", "0.00"),
+        ),
+        # Δ = 0,004 sobre meta 0,01 sería 40 %; como Δ se presenta 0,00, Δ% también (coherencia)
+        ("0.014", "0.01", ("0.01", "0.01", "0.00", "0.00")),
+        # 154,275 al par en centésimas -> 154,28 (el 7 es impar)
+        ("4203.93325", "4358.20825", ("4203.93", "4358.21", "-154.28", "-3.54")),
     ],
 )
-def test_los_montos_se_muestran_sin_ceros_de_relleno(actual, meta, esperado) -> None:
+def test_los_montos_se_presentan_en_centesimas_al_par(actual, meta, esperado) -> None:
     i = _uno(actual, meta)
-    assert (i.actual, i.meta, i.delta) == esperado
+    assert (i.actual, i.meta, i.delta, i.delta_pct) == esperado
 
 
 def test_un_porcentaje_que_no_cabe_en_la_precision_decimal_da_delta_pct_nulo() -> None:

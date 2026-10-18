@@ -67,6 +67,7 @@ sus enmiendas E-4, E-9, E-10, E-11; skills `.agents/skills/front-carbon-fiori-ib
 | @ibm/plex-sans, @ibm/plex-mono | 1.1.0, 2.5.0 | 2024-11-11, 2026-06-11 | OFL-1.1 | fuentes alojadas |
 | @univerjs/presets, @univerjs/preset-sheets-core | 1.0.3 | 2026-09-29 | Apache-2.0 | |
 | rxjs | 7.8.2 | 2025-02-22 | Apache-2.0 | peer de Univer |
+| @types/node | 22.20.5 | 2026-10-01 | MIT | tipos para `tsconfig.node.json` (agregado en 2.1) |
 
 Si `npm ci` revela un conflicto de pares, se baja a la versión anterior que cumpla la regla de ≥ 2 semanas y se
 anota el ruling; nunca se sube a una más nueva. Acción de CI: `actions/setup-node@v6.5.0` (etiqueta verificada con
@@ -81,12 +82,16 @@ anota el ruling; nunca se sube a una más nueva. Acción de CI: `actions/setup-n
 | RS2-3 | Tema **g10** (claro) solamente en 1.2.0 (Eugenio: laptop, a veces en obra). g100 diferido. | Bajo |
 | RS2-4 | Anti-CSRF **sin migración**: `csrf = sha256("csrf:" + ficha)`; la API lo recalcula desde la cookie. Se entrega en el cuerpo de `POST/GET /v1/sesion`; se exige en la cabecera `X-Silice-CSRF` de todo POST/DELETE con cookie, además de `Origin` igual al `Host`. | Bajo |
 | RS2-5 | Rutas de libros con **clave o sesión**: con `X-Silice-Clave` se comporta como hoy; sin ella, cookie válida + CSRF + rol con `Accion.LEER_PROYECTO` (arma o revisa). La matriz de permisos no cambia. | Medio: si el administrador también debe auditar, hace falta una acción nueva |
-| RS2-6 | Cookie **sin `Secure`**: la red local va por HTTP (`operacion/config.py`); se documenta como límite y se revisa en la sesión 5. | Medio |
-| RS2-7 | Indicadores calculados por la API: campo nuevo y **aditivo** `indicadores` en `LibroAuditadoRespuesta` (actual = libro, meta = Sílice, `sentido = "costo"`: que el libro declare más de lo que calcula Sílice es desfavorable). | Bajo |
+| RS2-6 | Cookie **sin `Secure`**: la red local va por HTTP sin TLS (`operacion/lanzador.py:86-91`, `orden_uvicorn`); se documenta como límite y se revisa en la sesión 5. | Medio |
+| RS2-7 | Indicadores calculados por la API: campo nuevo y **aditivo** `indicadores` en `LibroAuditadoRespuesta` (actual = libro, meta = Sílice, `sentido = "costo"`: que el libro declare más de lo que calcula Sílice es desfavorable). **Superado en el sentido por RS2-13** (`"exactitud"`), que se conserva abajo; se deja el texto original por trazabilidad. | Bajo |
 | RS2-8 | Halos como capa DOM sincronizada con el viewport de Univer (no se pintan estilos dentro de la réplica: la réplica debe verse como el original). | Medio: si la API de rectángulos de Univer no basta, se usa su popup anclado a celda |
 | RS2-9 | La interfaz nueva se usa con la API encendida (`[api] activa = true`), en `http://127.0.0.1:<puerto_api>/app/`; el lanzador no cambia en 1.2.0. | Bajo |
 | RS2-10 | Las celdas cubiertas por una combinada no se listan en la réplica salvo que traigan valor o borde propio: Excel dibuja el rango con el estilo de la celda de origen (oráculo de la 2.6). | Bajo |
 | RS2-11 | El freno global del login no duerme en el hilo de la API: `POST /v1/sesion` responde 429 con `Retry-After`; mientras dura el freno no se prueba ninguna contraseña, así que el intento frenado no suma fallo (queda como evento `bloqueo` «freno global»). El 422 de `/v1/sesion` no repite lo enviado. | Bajo |
+| RS2-12 | Los indicadores son presentación (NORMAS §2.3): `actual`, `meta`, `delta` y `delta_pct` en centésimas al par; un Δ de menos de medio centavo es «sin variación» (también su Δ%). El exacto sigue en `totales_libro`/`totales_silice`. Motivo: los libros reales dan totales de 30 cifras (verificación integrada). | Bajo |
+| RS2-13 | **Sentido «exactitud»** en vez de «costo» (a ratificar por Eugenio): la meta es el valor correcto de Sílice, así que cualquier desviación del libro es desfavorable; la flecha dice si sobra o falta. Motivo: con «costo», un libro que omite costos salía verde. | Medio: si se prefiere «más barato = favorable», se revierte en dos líneas |
+| RS2-14 | Las celdas numéricas viajan a Univer como número con el código de formato de Excel (motor de formatos de Univer) en vez de texto preformateado; separadores de es-VE. Motivo: 27-41 % de las celdas de los libros reales usaban códigos fuera del subconjunto propio. | Bajo |
+| RS2-15 | `.npmrc` con `ignore-scripts=true`: ningún script de instalación de npm corre (el de Carbon envía telemetría a IBM, contra RNF-08, y falla en Windows); la compilación no los necesita. | Bajo |
 
 ## Review Focus
 
@@ -98,6 +103,7 @@ anota el ruling; nunca se sube a una más nueva. Acción de CI: `actions/setup-n
    → 403 con el mensaje de ir a la interfaz clásica; ninguna clave en el HTML ni en `localStorage`.
 3. **IBCS:** `+` en costo es desfavorable (rojo), `-` favorable (verde), `0.00` y `-0.00` sin variación; `Δ%` nulo
    con meta cero; nunca verde por signo.
+   *(Superado por RS2-13: con el sentido «exactitud» toda desviación es desfavorable y `0.00` es neutro; ver ERS RF-116.)*
 4. **Sin red externa:** el `dist` no contiene `http://` ni `https://` hacia otro anfitrión (fuentes, mapas de
    fuente, telemetría de Univer apagada); la CSP no tiene `unsafe-eval`.
 5. **Lo que ya funciona:** `/v1/libros/*` con clave responde igual que antes (salvo el campo aditivo); `docs/api.json`
@@ -242,7 +248,7 @@ def replicar_libro(datos: bytes, nombre: str) -> LibroVisual: ...
   `mostrado` (o reusar la lectura de valores que ya hace `lector.py` si se puede sin cambiarlo; `lector.py` y
   `guardia.py` **no se modifican**).
 - Colores: `rgb` ARGB → `#RRGGBB`; `indexed` con la paleta por omisión de Excel (constante con fuente: ECMA-376
-  §18.8.27); `theme` con la paleta de Office por omisión y `tint` según ECMA-376 §18.8.19. Límite declarado en el
+  §18.8.27, numeración A COTEJAR; los 64 colores se cotejaron contra `openpyxl.styles.colors.COLOR_INDEX`); `theme` con la paleta de Office por omisión y `tint` según ECMA-376 (§18.8.19, numeración A COTEJAR; la fórmula HSL se verificó con dos colores conocidos de Excel). Límite declarado en el
   docstring: los temas personalizados del libro no se leen.
 - `mostrado` usa `Decimal(str(v))` y `format(d, "f")` para números (el formato numérico lo aplica el frontend con
   el código de `formato_numero`); fechas ISO.
@@ -319,6 +325,8 @@ def replicar_libro(datos: bytes, nombre: str) -> LibroVisual: ...
 - [ ] Rojo visto, verde, `uv run python scripts/exportar_openapi.py`, `ruff`, commit `feat(api): sesion del navegador con cookie y anti-CSRF y /app con CSP`.
 
 ### Task 2.3b: `POST /v1/libros/replica` e `indicadores` · `silice-backend` · Opus high · tras 2.2 y 2.3a
+
+> **Superado por RS2-13 y RS2-12:** el `sentido` que emite la API es `"exactitud"` (no `"costo"`) y los montos van en centésimas. Lo que sigue es el contrato original, conservado por trazabilidad; el vigente está en ERS RF-116.
 
 **Files:** Modify `api/rutas/libros.py` (ruta nueva; campo aditivo `indicadores`; las rutas de libros pasan de
 `CON_CLAVE` a `exigir_clave_o_sesion(Accion.LEER_PROYECTO)`), `api/main.py` (solo esa línea), `docs/api.json`.
@@ -397,12 +405,14 @@ la lista se resalta y recibe el foco. Íconos de severidad de `@carbon/icons-rea
 
 ### Task 2.5: Tarjeta `IndicadorFiori` con semántica IBCS · `silice-frontend` · Sonnet medium · tras 2.1, en paralelo con 2.4
 
+> **Superado por RS2-13:** `semanticaIbcs` debe aceptar también el sentido `"exactitud"` (toda desviación desfavorable, cero neutro) y el exacto de los totales va en el tooltip de cada indicador (ERS RF-116). Lo que sigue es el contrato original, conservado por trazabilidad.
+
 **Files:** `frontend-desktop/src/indicadores/{ibcs.ts,IndicadorFiori.tsx,FranjaIndicadores.tsx}` y sus pruebas.
 
 **Contrato:** `semanticaIbcs(delta: string, sentido: "costo" | "rendimiento"): "favorable" | "desfavorable" |
 "neutro"` sin `Number()` (signo por texto; cero si coincide con `/^-?0*(\.0*)?$/`). `IndicadorFiori` según la skill
 §2 (valor grande `heading-03`, meta en secundario, Δ y Δ% con ▲/▼ y texto oculto «favorable»/«desfavorable»); la
-meta se dibuja con **contorno** y el valor real con relleno sólido en el mini-gráfico de barra (IBCS §3.2); sin
+meta se dibuja con **contorno** y el valor real con relleno sólido en el mini-gráfico de barra (IBCS, notación de real/plan; la referencia es la §3.2 de la skill `front-carbon-fiori-ibcs`, la norma está A COTEJAR); sin
 tarjetas con sombra: celdas separadas por divisores de 1 px. `FranjaIndicadores` pinta la lista `indicadores` de la
 API más los conteos por severidad (`Tag` con ícono; un conteo no es una variación: sin rojo/verde IBCS).
 

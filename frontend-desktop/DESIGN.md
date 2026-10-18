@@ -55,7 +55,10 @@ sin frases de marketing, sin rayas (—) como adorno, sin rótulos en mayúscula
 Estados vacíos que enseñan qué hacer («Suelte aquí el libro .xlsx de la empresa»), errores con el `detalle` de la
 API tal cual.
 
+Los indicadores presentan en centésimas (RS2-12) y el valor exacto de los totales del libro y de Sílice está siempre a
+un toque, en el tooltip accesible de cada indicador.
+
 ## Prohibido
 
 Tarjetas con sombra para agrupar, íconos decorativos, puntos de color sin significado, gradientes, morado fuera de
-los atípicos, verde por ser positivo, cifras redondeadas que esconden el valor exacto, animaciones de entrada.
+los atípicos, verde por ser positivo, cifras redondeadas sin el exacto a la vista, animaciones de entrada.
