@@ -247,6 +247,117 @@ def test_entrar_desde_otro_origen_da_403_sin_cookie() -> None:
     assert "set-cookie" not in respuesta.headers
 
 
+def test_entrar_con_el_origin_propio_pasa() -> None:
+    """Un navegador siempre manda `Origin` en un POST: el de la instalación entra."""
+    respuesta = _entrar(_cliente(), "ana", headers={"Origin": ORIGEN})
+    assert respuesta.status_code == 200, respuesta.text
+    assert respuesta.json()["csrf"] == _csrf(_ficha(respuesta))
+
+
+@pytest.mark.parametrize(
+    "cuerpo",
+    [
+        {"login": "ana", "contrasena": "s" * 138},  # pasa del máximo de 128
+        {"login": "ana", "contrasena": 12345},  # no es texto
+        {"login": "ana"},  # falta la contraseña
+        {"login": ["ana-en-lista"], "contrasena": "secreto-que-no-vuelve"},
+    ],
+    ids=["larga", "numero", "sin-contrasena", "login-lista"],
+)
+def test_un_cuerpo_invalido_da_422_sin_repetir_lo_enviado(cuerpo: dict) -> None:
+    respuesta = _cliente().post("/v1/sesion", json=cuerpo)
+    assert respuesta.status_code == 422
+    assert respuesta.json() == {"detalle": rutas_sesion.MENSAJE_CUERPO_INVALIDO}
+    for valor in cuerpo.values():
+        texto = valor[0] if isinstance(valor, list) else str(valor)
+        assert texto not in respuesta.text
+    assert "set-cookie" not in respuesta.headers
+
+
+def test_el_422_de_las_demas_rutas_no_cambia() -> None:
+    """El manejador acotado a `/v1/sesion` no toca el formato de FastAPI del resto de la API."""
+    clave = crear_clave_de_prueba()
+    respuesta = _cliente().post("/v1/libros/auditoria", headers={CABECERA: clave})
+    assert respuesta.status_code == 422
+    assert "detail" in respuesta.json()  # el de FastAPI, con su lista de errores
+
+
+class _FrenoFijo:
+    """Un freno global que siempre pide esperar `segundos` (sin fallos reales)."""
+
+    def __init__(self, segundos: float) -> None:
+        self.segundos = segundos
+
+    def espera(self, _ahora) -> float:
+        return self.segundos
+
+    def registrar_fallo(self, _ahora) -> None:  # pragma: no cover - no llega a contar
+        raise AssertionError("el intento frenado no se verifica")
+
+    def reiniciar(self) -> None:
+        pass
+
+
+@pytest.fixture
+def _sin_dormir(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Ningún `time.sleep` real: si `autenticar` llegara a dormir, la prueba falla."""
+
+    def prohibido(segundos: float) -> None:
+        raise AssertionError(f"la API durmió {segundos} s dentro de su hilo")
+
+    monkeypatch.setattr(cuentas.time, "sleep", prohibido)
+
+
+def _intentos(login: str) -> int:
+    with sesion_de_instalacion() as sesion:
+        fila = sesion.get(cuentas.IntentoAcceso, login)
+        return 0 if fila is None else fila.fallos_seguidos
+
+
+@pytest.mark.usefixtures("_sin_dormir")
+def test_el_freno_global_responde_429_con_retry_after_sin_dormir() -> None:
+    """RS2-11: 21 fallos del proceso en la ventana piden 2 s (2**1); la API no duerme."""
+    ahora = sesion_web.ahora()
+    for _ in range(cuentas.FRENO_FALLOS + 1):
+        cuentas.FRENO.registrar_fallo(ahora)
+    respuesta = _entrar(_cliente(), "ana")
+    assert respuesta.status_code == 429
+    assert respuesta.headers["retry-after"] == "2"
+    assert respuesta.json() == {"detalle": rutas_sesion.MENSAJE_FRENO}
+    assert "set-cookie" not in respuesta.headers
+    assert _intentos("ana") == 0  # frenado antes de verificar: no es un intento de contraseña
+
+
+@pytest.mark.usefixtures("_sin_dormir")
+def test_el_retry_after_redondea_hacia_arriba(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(cuentas, "FRENO", _FrenoFijo(1.2))
+    respuesta = _entrar(_cliente(), "ana")
+    assert (respuesta.status_code, respuesta.headers["retry-after"]) == (429, "2")
+
+
+@pytest.mark.usefixtures("_sin_dormir")
+def test_sin_freno_el_acceso_cuenta_el_fallo_como_siempre() -> None:
+    for _ in range(cuentas.FRENO_FALLOS - 1):  # 19: todavía sin espera
+        cuentas.FRENO.registrar_fallo(sesion_web.ahora())
+    assert _entrar(_cliente(), "ana", "no es la contrasena de ana").status_code == 401
+    assert _intentos("ana") == 1
+    assert _entrar(_cliente(), "ana").status_code == 429  # el fallo 20 activa el freno
+
+
+def test_volver_a_entrar_cierra_la_ficha_anterior() -> None:
+    cliente, vieja = _con_cuenta("ana")
+    respuesta = _entrar(cliente, "ana")  # el tarro manda la cookie vieja
+    assert respuesta.status_code == 200
+    nueva = _ficha(respuesta)
+    assert nueva != vieja
+    fila = _fila(vieja)
+    assert (fila.cerrada, fila.motivo_cierre) == (True, "salida")
+    otro = _cliente()
+    otro.cookies.set(COOKIE, vieja)
+    assert otro.get("/v1/sesion").status_code == 401
+    assert cliente.get("/v1/sesion").json()["csrf"] == _csrf(nueva)
+
+
 # --- GET /v1/sesion -------------------------------------------------------------------------
 
 
@@ -282,6 +393,8 @@ def test_sesion_expirada_por_inactividad_da_401() -> None:
     respuesta = cliente.get("/v1/sesion")
     assert respuesta.status_code == 401
     assert respuesta.json() == {"detalle": sesion_web.MENSAJE_SIN_SESION}
+    galleta = respuesta.headers["set-cookie"].lower()
+    assert galleta.startswith(f"{COOKIE}=") and "max-age=0" in galleta  # borra la que no sirve
     fila = _fila(ficha)
     assert (fila.cerrada, fila.motivo_cierre) == (True, "inactividad")
 

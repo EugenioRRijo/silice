@@ -1186,6 +1186,16 @@
               }
             }
           },
+          "422": {
+            "description": "Cuerpo inválido (no repite lo enviado).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detalle"
+                }
+              }
+            }
+          },
           "423": {
             "description": "Cuenta bloqueada por intentos fallidos.",
             "content": {
@@ -1196,12 +1206,12 @@
               }
             }
           },
-          "422": {
-            "description": "Validation Error",
+          "429": {
+            "description": "Freno global: reintentar tras `Retry-After`.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/Detalle"
                 }
               }
             }
