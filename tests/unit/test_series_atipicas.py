@@ -9,7 +9,7 @@ from decimal import Decimal
 
 import pytest
 
-from ml.anomaly.series import PuntoDePrecio, a_usd, analizar, variaciones
+from ml.anomaly.series import PuntoDePrecio, a_usd, analizar, tramo, variaciones
 
 D = Decimal
 
@@ -107,3 +107,18 @@ def test_un_precio_anterior_igual_a_cero_no_genera_variacion() -> None:
 )
 def test_la_misma_serie_da_siempre_el_mismo_resultado(precios) -> None:
     assert analizar(serie(precios)) == analizar(serie(precios))
+
+
+def test_el_tramo_de_una_variacion_son_sus_dos_fechas() -> None:
+    """La interfaz no desarma el id de la variación: se lo pide a `tramo`."""
+    r = analizar(serie([1, 2, 4]))
+    assert [tramo(k) for k in r.variaciones] == [
+        (date(2026, 1, 1), date(2026, 2, 1)),
+        (date(2026, 2, 1), date(2026, 3, 1)),
+    ]
+
+
+def test_una_moneda_que_no_es_usd_ni_bs_se_rechaza_en_vez_de_tratarse_como_bs() -> None:
+    desconocida = PuntoDePrecio(date(2026, 1, 1), D(5), "EUR", D(2), "Lista en euros")
+    with pytest.raises(ValueError, match="EUR"):
+        a_usd([desconocida])

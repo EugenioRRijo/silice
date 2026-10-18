@@ -3,16 +3,19 @@ de cada precio; y sin el extra `ml`, nada (S3 §3.2 y §13.2)."""
 
 from __future__ import annotations
 
+import ast
 from datetime import date
 from decimal import Decimal
+from pathlib import Path
 
 import pytest
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from core import models
 from core.catalog.empresa import PrecioPropio, crear_lista_de_empresa
 from core.contracts.verificacion import Severidad
-from ml.anomaly.series import a_usd
+from ml.anomaly.series import a_usd, variaciones
 from tests.fixtures.sin_extra import SinExtra
 from ui import atipicos
 
@@ -202,3 +205,148 @@ def test_sin_el_extra_ml_no_hay_hallazgo_ni_traza(sesion, insumo, monkeypatch) -
 
 def test_un_insumo_sin_precios_no_da_nada(sesion) -> None:
     assert atipicos.atipicos_del_insumo(sesion, "NO-EXISTE") == []
+
+
+def _otro_insumo(sesion):
+    fila = models.Insumo(
+        codigo="ATIP-002", tipo=models.TipoInsumo.MATERIAL, descripcion="Grava", unidad="m3"
+    )
+    sesion.add(fila)
+    sesion.flush()
+    return fila
+
+
+def _empresa(sesion, base, insumo, precio, dia, nombre):
+    """Una lista de empresa con un precio propio del insumo (fecha y fuente suyas)."""
+    return crear_lista_de_empresa(
+        sesion,
+        "Constructora Ejemplo, C.A.",
+        "J-00000000-0",
+        base,
+        [PrecioPropio(insumo.id, D(precio), dia, "cotizacion de prueba")],
+        moneda="USD",
+        fecha=dia,
+        fuente="prueba",
+        referencia=None,
+        nombre=nombre,
+    )
+
+
+def test_dos_listas_independientes_con_el_mismo_precio_y_fecha_son_dos_puntos(
+    sesion, insumo
+) -> None:
+    """Solo lo heredado de la base es la misma observación: dos empresas que cotizan lo mismo el
+    mismo día son dos observaciones distintas."""
+    base = _lista(sesion, 1, "Base")
+    _precio(sesion, base, insumo, 10)
+    _empresa(sesion, base, insumo, 12, date(2026, 3, 1), "Empresa A")
+    _empresa(sesion, base, insumo, 12, date(2026, 3, 1), "Empresa B")
+    puntos = atipicos.puntos_del_insumo(sesion, "ATIP-001")
+    assert [(p.origen, p.monto) for p in puntos] == [
+        ("Base", D(10)),
+        ("Empresa A", D(12)),
+        ("Empresa B", D(12)),
+    ]
+
+
+def test_el_mismo_precio_en_dos_fechas_deja_su_variacion_de_cero(sesion, insumo) -> None:
+    _precio(sesion, _lista(sesion, 1, "Enero"), insumo, 10)
+    _precio(sesion, _lista(sesion, 2, "Febrero"), insumo, 10)
+    usd = a_usd(atipicos.puntos_del_insumo(sesion, "ATIP-001"))
+    assert list(variaciones(usd).values()) == [D(0)]
+
+
+def test_lo_heredado_de_una_lista_de_empresa_que_a_su_vez_hereda_tampoco_se_repite(
+    sesion, insumo
+) -> None:
+    base = _lista(sesion, 1, "Base")
+    _precio(sesion, base, insumo, 10)
+    primera = crear_lista_de_empresa(
+        sesion, "Constructora Ejemplo, C.A.", "J-00000000-0", base, [],
+        moneda="USD", fecha=date(2026, 2, 1), fuente="prueba", referencia=None, nombre="Primera",
+    )
+    crear_lista_de_empresa(
+        sesion, "Constructora Ejemplo, C.A.", "J-00000000-0", primera, [],
+        moneda="USD", fecha=date(2026, 3, 1), fuente="prueba", referencia=None, nombre="Segunda",
+    )
+    puntos = atipicos.puntos_del_insumo(sesion, "ATIP-001")
+    assert [(p.origen, p.monto) for p in puntos] == [("Base", D(10))]
+
+
+def test_un_precio_en_bs_sin_tasa_se_omite_y_la_busqueda_lo_nombra(sesion, insumo) -> None:
+    """«Se nombra» llega al usuario, no solo a `SerieEnUsd.sin_tasa`."""
+    _precio(sesion, _lista(sesion, 1, "Lista en USD"), insumo, 10)
+    _precio(sesion, _lista(sesion, 2, "Lista en Bs sin tasa", "Bs"), insumo, 720)
+    busqueda = atipicos.atipicos_de_insumos(sesion, ["ATIP-001"])
+    assert busqueda.sin_tasa == ("Lista en Bs sin tasa",) and busqueda.hallazgos == ()
+
+
+def test_la_busqueda_de_varios_insumos_junta_hallazgos_y_no_repite_listas_sin_tasa(
+    sesion, insumo
+) -> None:
+    otro = _otro_insumo(sesion)
+    _sembrar(sesion, insumo, SERIE_CON_ATIPICO)
+    sin_tasa = _lista(sesion, 11, "Lista en Bs sin tasa", "Bs")
+    _precio(sesion, sin_tasa, insumo, 720)
+    _precio(sesion, sin_tasa, otro, 90)
+    busqueda = atipicos.atipicos_de_insumos(sesion, ["ATIP-001", "ATIP-002"])
+    assert [h.origen_ids for h in busqueda.hallazgos] == [("ATIP-001|2026-09-01>2026-10-01#8",)]
+    assert busqueda.sin_tasa == ("Lista en Bs sin tasa",)
+
+
+def test_la_busqueda_de_varios_insumos_lee_los_origenes_de_cada_lista_una_sola_vez(
+    sesion, insumo, monkeypatch
+) -> None:
+    otro = _otro_insumo(sesion)
+    for mes in (1, 2, 3):
+        lista = _lista(sesion, mes, f"Lista {mes}")
+        _precio(sesion, lista, insumo, mes)
+        _precio(sesion, lista, otro, mes)
+    llamadas = []
+    original = atipicos.origenes_efectivos
+
+    def contado(s, lista):
+        llamadas.append(lista.id)
+        return original(s, lista)
+
+    monkeypatch.setattr(atipicos, "origenes_efectivos", contado)
+    atipicos.atipicos_de_insumos(sesion, ["ATIP-001", "ATIP-002"])
+    assert len(llamadas) == 3 == len(set(llamadas))
+
+
+def test_sin_el_extra_ml_la_busqueda_de_insumos_devuelve_none(sesion, insumo, monkeypatch) -> None:
+    _sembrar(sesion, insumo, SERIE_CON_ATIPICO)
+    relacionados = ("ml", "ml.anomaly", "ml.anomaly.series", "ml.anomaly.detector")
+    with SinExtra(monkeypatch, ("ml",), relacionados):
+        assert atipicos.atipicos_de_insumos(sesion, ["ATIP-001"]) is None
+
+
+def test_la_busqueda_no_escribe_nada_en_la_base(sesion, insumo) -> None:
+    _sembrar(sesion, insumo, SERIE_CON_ATIPICO)
+    sesion.flush()
+    tablas = (models.PrecioInsumo, models.ListaPrecios, models.PrecioOrigen)
+    antes = {t: sesion.scalar(select(func.count()).select_from(t)) for t in tablas}
+    atipicos.atipicos_de_insumos(sesion, ["ATIP-001"])
+    assert not (sesion.new or sesion.dirty or sesion.deleted)
+    assert {t: sesion.scalar(select(func.count()).select_from(t)) for t in tablas} == antes
+
+
+def test_solo_las_dos_pantallas_de_precios_importan_la_busqueda_de_rf_100() -> None:
+    """RF-100 no entra al informe de verificación, a la entrega ni al guardado: ningún módulo de
+    `core/`, `paquete/`, `api/`, `seguridad/`, `operacion/`, `asistente/`, `ui/` (salvo las dos
+    pantallas) ni `ml/` importa `ui.atipicos` ni `ml.anomaly.series`."""
+    raiz = Path(__file__).resolve().parents[2]
+    permitidos = {"ui/paginas/hoja.py", "ui/paginas/precios_empresa.py", "ui/atipicos.py"}
+    importadores = set()
+    for carpeta in ("core", "paquete", "api", "seguridad", "operacion", "asistente", "ui", "ml"):
+        for archivo in (raiz / carpeta).rglob("*.py"):
+            nombres = set()
+            for nodo in ast.walk(ast.parse(archivo.read_text(encoding="utf-8"))):
+                if isinstance(nodo, ast.Import):
+                    nombres.update(a.name for a in nodo.names)
+                elif isinstance(nodo, ast.ImportFrom) and nodo.module:
+                    nombres.add(nodo.module)
+                    nombres.update(f"{nodo.module}.{a.name}" for a in nodo.names)
+            if nombres & {"ui.atipicos", "ml.anomaly.series"}:
+                importadores.add(archivo.relative_to(raiz).as_posix())
+    assert importadores <= permitidos, importadores - permitidos

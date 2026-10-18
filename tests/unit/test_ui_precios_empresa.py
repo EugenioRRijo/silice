@@ -106,7 +106,9 @@ CON_ATIPICO = (1, 2, 4, 8, 16, 32, 64, 128, 256, 257)
 SIN_ATIPICO = (1, 2, 4, 8, 16, 32, 64, 128, 256, 512)
 
 
-def _caso_con_la_serie(monkeypatch, tmp_path: Path, precios) -> AppTest:
+def _caso_con_la_serie(
+    monkeypatch, tmp_path: Path, precios, bs_sin_tasa: bool = False
+) -> AppTest:
     ruta = tmp_path / "caso.db"
     preparar_base(ruta)
     motor = crear_motor(f"sqlite:///{ruta.as_posix()}")
@@ -133,6 +135,19 @@ def _caso_con_la_serie(monkeypatch, tmp_path: Path, precios) -> AppTest:
                     )
                 )
             sesion.flush()
+            if bs_sin_tasa:  # un precio en Bs al que le falta la tasa: se omite y se nombra
+                en_bs = models.ListaPrecios(
+                    nombre="Lista en Bs sin tasa",
+                    moneda="Bs",
+                    fecha_vigencia=date(2026, 5, 15),
+                    origen="prueba",
+                )
+                sesion.add(en_bs)
+                sesion.flush()
+                sesion.add(
+                    models.PrecioInsumo(lista_id=en_bs.id, insumo_id=insumo.id, precio=Decimal(720))
+                )
+                sesion.flush()
             crear_lista_de_empresa(
                 sesion,
                 "Constructora Ejemplo, C.A.",
@@ -176,6 +191,14 @@ def test_sin_atipico_la_lista_de_la_empresa_no_advierte(monkeypatch, tmp_path):
     at = _pulsar_atipicos(_caso_con_la_serie(monkeypatch, tmp_path, SIN_ATIPICO))
     assert not at.warning and not at.error
     assert any("Ninguna variación atípica" in s.value for s in at.success)
+
+
+def test_la_lista_de_la_empresa_nombra_el_precio_en_bs_sin_tasa_que_omitio(monkeypatch, tmp_path):
+    at = _pulsar_atipicos(_caso_con_la_serie(monkeypatch, tmp_path, CON_ATIPICO, bs_sin_tasa=True))
+    assert [i.value for i in at.info] == [
+        r"Precio en Bs sin tasa, omitido: Lista en Bs sin tasa"
+    ]
+    assert len(at.warning) == 1  # la serie de la memoria sigue dando su unico hallazgo
 
 
 def test_sin_pulsar_la_lista_de_la_empresa_no_busca_atipicos(monkeypatch, tmp_path):
