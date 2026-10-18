@@ -207,7 +207,7 @@ def test_material_sin_densidad_va_a_la_bandeja(sesion: Session) -> None:
     assert sin_densidad.motivo == "material sin densidad"
     assert sin_densidad.estado == "pendiente"
     assert sin_densidad.material_texto == "ARENA"
-    assert (sin_densidad.bruto_texto, sin_densidad.neto_texto) == ("42.5", "28.300")
+    assert (sin_densidad.bruto_texto, sin_densidad.neto_texto) == ("42.5", "28.3")
     assert _sospechoso(sesion, "TCK-006").motivo == "material desconocido"
 
 
