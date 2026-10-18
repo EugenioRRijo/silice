@@ -52,7 +52,13 @@ export const PAGINAS: readonly PaginaDef[] = [
   },
   { id: "escenarios", titulo: "Escenarios de sensibilidad", seccion: "Investigación", accion: "editar_hoja" },
   { id: "similares", titulo: "Partidas similares", seccion: "Investigación", accion: "editar_hoja" },
-  { id: "simulador", titulo: "Simulador de listas", seccion: "Investigación", accion: "editar_hoja" },
+  {
+    id: "simulador",
+    titulo: "Simulador de listas",
+    seccion: "Investigación",
+    accion: "editar_hoja",
+    cargar: () => import("../paginas/simulador"),
+  },
   { id: "visor", titulo: "Visor 3D del modelo", seccion: "Investigación", accion: "editar_hoja" },
   { id: "administracion", titulo: "Administración", seccion: "Administración", accion: "administrar_cuentas" },
 ];
