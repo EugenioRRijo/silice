@@ -256,7 +256,7 @@ Neto (kg)`), 6 filas, con este oráculo:
 | 3 | TCK-003 | tara 45 000 > bruto 42 000 | sospechoso «tara mayor o igual que el bruto» |
 | 4 | TCK-004 | neto 20 000 ≠ 40 000 − 15 000 | sospechoso «neto distinto de bruto − tara» |
 | 5 | TCK-005 | fecha 2026-12-31 con referencia 2026-10-18 | sospechoso «fecha futura» |
-| 6 | TCK-006 | material `GRAVA9` no registrado | sospechoso «material desconocido» |
+| 6 | TCK-006 | material `GRAVA9` no registrado | lo lee el lector; la importación lo manda a la bandeja «material desconocido» |
 
 (La densidad 1,60 t/m³ es del **fixture**, rotulada «ejemplo construido»; no es un valor del producto. Tampoco es coherente a propósito con el 1,65 de PLAN_FUENTES C-5/C-6: ese es otro ejemplo y no se mezclan.)
 
@@ -314,7 +314,7 @@ lee, los demás van a `dudosos` con «ticket repetido en el archivo».
   `test_sinonimos_de_encabezado` (`Boleto`, `N° Ticket`, `Placa del camión`, `Peso Neto (t)`),
   `test_faltan_columnas_pide_mapeo` (`MapeoNecesario.faltan == ("material",)`), `test_xlsx_y_csv_dan_lo_mismo`
   (`leer(csv_basico()…) == leer(xlsx_basico()…)` salvo `huella`), `test_pesajes_del_oraculo` (las seis filas de
-  `ORACULO.md`: dos leídos, cuatro dudosos con su motivo exacto), `test_sin_unidad_no_se_importa`,
+  `ORACULO.md`: el lector da tres leídos y tres dudosos con su motivo exacto; la fila 6 la decide la importación), `test_sin_unidad_no_se_importa`,
   `test_numeros_con_coma_y_punto` (`1.234,56`→`Decimal("1234.56")`, `1,234.56`→`Decimal("1234.56")`, `28,300`→
   dudoso «número ambiguo»), `test_archivo_desmedido_se_rechaza` (200 000 filas), `test_mapeo_explicito_manda`.
 - [ ] **Step 2:** `uv run pytest tests/unit/test_conector_bascula.py tests/unit/test_detector_columnas.py -W error`

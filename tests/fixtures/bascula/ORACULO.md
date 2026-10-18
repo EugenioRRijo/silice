@@ -37,15 +37,15 @@ iguales (el xlsx con `str(entero)`).
 | 3 | tara 45 000 kg ≥ bruto 42 000 kg (45 000 − 42 000 = 3 000 de exceso). El neto del archivo es 42 000 − 45 000 = −3 000, coherente con bruto − tara, así que **solo** salta la regla de la tara | **dudoso**, motivo exacto «tara mayor o igual que el bruto» |
 | 4 | bruto − tara = 40 000 − 15 000 = 25 000 kg; el archivo dice 20 000; diferencia 5 000 kg ≠ 0 (tolerancia 0) | **dudoso**, motivo exacto «neto distinto de bruto − tara» |
 | 5 | 2026-12-31 es posterior a la referencia 2026-10-18 (74 días después: 13 días de octubre + 30 de noviembre + 31 de diciembre = 74); pesos coherentes (40 000 − 15 000 = 25 000) | **dudoso**, motivo exacto «fecha futura» |
-| 6 | pesos coherentes (40 000 − 15 000 = 25 000); `GRAVA9` no está en el catálogo del caso de prueba | **dudoso**, motivo exacto «material desconocido» |
+| 6 | pesos coherentes (40 000 − 15 000 = 25 000); `GRAVA9` no está en el catálogo del caso de prueba | **leído** por el lector (no conoce el catálogo); la **importación** con catálogo (ARENA, PIEDRA34) lo manda a la bandeja con el motivo exacto «material desconocido» |
 
-Totales del archivo: **2 leídos y 4 dudosos** (6 filas de datos, sin ticket repetido). Los números de fila del
+Totales del archivo: el **lector** da **3 leídos (filas 1, 2 y 6) y 3 dudosos (filas 3, 4 y 5)**; tras la **importación** con el catálogo de la prueba quedan **2 despachos y 4 en la bandeja** (6 filas de datos, sin ticket repetido). Los números de fila del
 lector son los del archivo contando el encabezado como fila 1: las filas de datos van de la 2 a la 7 (fila de la
 tabla + 1).
 
 Nota sobre quién decide qué (para no mezclar capas): las reglas de las filas 3, 4 y 5 son de forma y salen del
-archivo y de la fecha de referencia; la de la fila 6 depende del catálogo de materiales, por lo que la puede
-decidir el lector (con un catálogo recibido) o la importación; en ambos casos el motivo escrito es el de la tabla.
+archivo y de la fecha de referencia; la de la fila 6 depende del catálogo de materiales y la decide la **importación** (decisión de la sesión 4:
+el lector no conoce el catálogo); el motivo escrito es el de la tabla.
 En la fila 3 el neto (−3000) es justo bruto − tara, por eso la regla del neto no salta y el motivo es único; si el
 lector tuviera además una regla de «neto negativo», habría que registrar aquí su motivo (hoy el plan no la tiene).
 
@@ -66,7 +66,7 @@ Mismo contenido que el reporte básico (mismos tickets, mismos números nativos)
 
 Esperado (RT-S4-6): sin `unidad_peso` explícita, el archivo **no se importa**: ningún pesaje leído, ningún
 dudoso, y el mensaje para el usuario es «Indique si los pesos están en kg o en t.». Con `unidad_peso="kg"` dado por
-el usuario, el resultado es idéntico al del reporte básico (sección 1: 2 leídos, 4 dudosos). Con `unidad_peso="t"`
+el usuario, el resultado es idéntico al del reporte básico (sección 1: el lector da 3 leídos y 3 dudosos). Con `unidad_peso="t"`
 los mismos números serían toneladas (el mismo 42 500 sería 42 500 t, absurdo): esa es la razón de no adivinar.
 
 ## 3. `csv_coma_decimal()`
