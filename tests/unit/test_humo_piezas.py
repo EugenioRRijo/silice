@@ -263,7 +263,8 @@ def test_el_humo_espera_cada_base_cuando_el_diseno_la_crea() -> None:
 def test_ninguna_variable_del_humo_pisa_a_otra_por_mayusculas() -> None:
     """PowerShell no distingue mayúsculas en los nombres de variable: `$codigo = InstalarSilencioso`
     pisaba la ruta `$Codigo` con el código de salida y el paso 3 arrancaba en la carpeta «0»
-    (diagnosticado en la CI el 2026-10-18). Cada variable global del encabezado se asigna una vez."""
+    (diagnosticado en la CI el 2026-10-18). Cada variable global del encabezado se asigna una
+    sola vez."""
     texto = HUMO.read_text(encoding="utf-8-sig")
     globales = ("Base", "Programa", "Usuario", "Datos", "Respaldos", "Codigo", "Python")
     for nombre in globales:

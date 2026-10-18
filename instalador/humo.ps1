@@ -193,8 +193,8 @@ try {
         '--registro', (Join-Path $Salida 'proxy.log'))
 
     Paso '2. Instalación silenciosa en una ruta con espacios y acentos'
-    $codigo = InstalarSilencioso $Instalador (Join-Path $Salida 'instalacion.log')
-    Afirmar ($codigo -eq 0) "el instalador terminó con 0 (fue $codigo)"
+    $salidaInstalador = InstalarSilencioso $Instalador (Join-Path $Salida 'instalacion.log')
+    Afirmar ($salidaInstalador -eq 0) "el instalador terminó con 0 (fue $salidaInstalador)"
     Afirmar (Test-Path $Python) 'python.exe quedó en la ruta con espacios y ñ'
     # La instalación crea instalacion.db (orden migrar) y el caso de demostración (orden
     # demostracion); el caso por defecto lo crea el lanzador al primer arranque (spec S5 §5.4, paso 4).
@@ -207,12 +207,6 @@ try {
     Afirmar $bases 'la base de la instalación y el caso de demostración nacieron en la carpeta de datos'
 
     Paso '3. Inventario y manifiesto'
-    # Diagnóstico (2026-10-18): Start-Process rechazó -WorkingDirectory en la CI.
-    Write-Host ("diagnóstico: pwsh $($PSVersionTable.PSVersion); codigo existe: " +
-        "$(Test-Path -LiteralPath $Codigo); [IO.Directory]::Exists: " +
-        "$([IO.Directory]::Exists($Codigo)); ubicación: $((Get-Location).Path)")
-    Get-ChildItem -LiteralPath $Programa -ErrorAction SilentlyContinue |
-        ForEach-Object { Write-Host "  $($_.Name)" }
     Afirmar ((Operacion @('verificar-programa')) -eq 0) '{app}\codigo coincide con manifiesto.json'
     $configs = @(Get-ChildItem -LiteralPath $Codigo -Recurse -Filter 'config.toml' -File)
     $unico = $configs.Count -eq 1 -and $configs[0].FullName.EndsWith('.streamlit\config.toml')
@@ -265,8 +259,8 @@ try {
     Copy-Item (Join-Path $bases 'v0_9_0\demo.db') (Join-Path $casos 'v090_demo.db')
     $servidor = IniciarSilice
     Afirmar ($null -ne (EsperarSalud $Url 60)) 'Sílice arrancó antes de actualizar'
-    $codigo = InstalarSilencioso $Actualizacion (Join-Path $Salida 'actualizacion.log')
-    Afirmar ($codigo -eq 0) "la actualización terminó con 0 (fue $codigo)"
+    $salidaActualizacion = InstalarSilencioso $Actualizacion (Join-Path $Salida 'actualizacion.log')
+    Afirmar ($salidaActualizacion -eq 0) "la actualización terminó con 0 (fue $salidaActualizacion)"
     Afirmar ($null -eq (EsperarSalud $Url 3)) 'el instalador detuvo Sílice antes de copiar'
     $juegos = @(Get-ChildItem -LiteralPath $Respaldos -Directory -ErrorAction SilentlyContinue |
         Where-Object { Test-Path (Join-Path $_.FullName 'ficha.json') })
