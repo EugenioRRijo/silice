@@ -95,10 +95,9 @@ def base(tmp_path: Path, monkeypatch) -> Iterator[Path]:
     finally:
         motor.dispose()
     monkeypatch.setenv(dependencias.VARIABLE_BASE, f"sqlite:///{ruta.as_posix()}")
-    monkeypatch.setattr(dependencias, "_motor", None)
+    dependencias.cerrar_motores()
     yield ruta
-    if dependencias._motor is not None:
-        dependencias._motor.dispose()
+    dependencias.cerrar_motores()
 
 
 def _cliente(**extra) -> TestClient:
@@ -282,3 +281,63 @@ def test_el_proponedor_inyectado_manda_sobre_el_enlace_real(base) -> None:
     assert [p.codigo for p in resultado.propuestas] == ["LB-01-EXC"]
     assert resultado.propuestas[0].puntaje == "0.5000"
     assert vacio.mensaje is not None and vacio.propuestas == ()
+
+
+def test_un_error_de_sqlalchemy_es_503_con_el_mensaje_fijo_y_sin_sql(base, monkeypatch) -> None:
+    from sqlalchemy.exc import OperationalError
+
+    def _falla(*_args, **_kwargs):
+        raise OperationalError("SELECT * FROM partida", {}, Exception("disco lleno"))
+
+    monkeypatch.setattr("api.rutas.similares.proponer_similares", _falla)
+    r = _con_clave().post(RUTA, json={"descripcion": DESCRIPCION})
+    assert r.status_code == 503
+    assert r.json()["detalle"] == "No se pudo leer el catálogo del caso abierto."
+    assert "SELECT" not in r.text
+    assert "disco lleno" not in r.text
+
+
+def test_un_error_aritmetico_al_armar_el_desglose_es_422_controlado(base, monkeypatch) -> None:
+    import decimal
+
+    from core.catalog import Catalogo
+
+    _doble_del_modelo(monkeypatch)
+
+    def _composicion(self, codigo):
+        raise decimal.InvalidOperation("[<class 'decimal.InvalidOperation'>]")
+
+    monkeypatch.setattr(Catalogo, "composicion", _composicion)
+    r = _con_clave().post(RUTA, json={"descripcion": DESCRIPCION})
+    assert r.status_code == 422, r.text
+    assert r.json()["detalle"] == (
+        "No se pudo armar el desglose de una partida: un dato numérico no es válido."
+    )
+    assert "InvalidOperation" not in r.text
+
+
+def test_catalogo_vacio_no_construye_el_modelo_y_dice_que_se_creara_desde_cero(
+    base, monkeypatch
+) -> None:
+    """Flujo 2b del UC-03, con el proponedor real: sin partidas ni se carga el modelo."""
+    from core.catalog import Catalogo
+
+    monkeypatch.setattr(Catalogo, "partidas", lambda self, *a, **k: [])
+
+    def _no_debe_cargarse(*_args, **_kwargs):
+        raise AssertionError("el modelo no debe cargarse con el catalogo vacio")
+
+    monkeypatch.setattr("ml.normalization.normalizador._cargar_modelo", _no_debe_cargarse)
+    r = _con_clave().post(RUTA, json={"descripcion": DESCRIPCION})
+    assert r.status_code == 200, r.text
+    assert r.json() == {"propuestas": [], "falla": None, "mensaje": MENSAJE_SIN_UMBRAL}
+
+
+def test_en_el_producto_la_falta_del_modulo_manda_al_instalador_completo(base, monkeypatch) -> None:
+    monkeypatch.setattr(config, "es_producto", lambda: True, raising=False)
+    _falla_del_modelo(monkeypatch, ModuleNotFoundError("No module named 'sentence_transformers'"))
+    r = _con_clave().post(RUTA, json={"descripcion": DESCRIPCION})
+    falla = r.json()["falla"]
+    assert falla.startswith("El módulo de similitud de partidas no está instalado")
+    assert "instalador" in falla
+    assert falla != MENSAJE_SIN_EXTRA

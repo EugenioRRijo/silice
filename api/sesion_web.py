@@ -13,6 +13,13 @@ sea GET ni HEAD exige ese valor en `X-Silice-CSRF` (comparado con `hmac.compare_
 
 Cookie sin `Secure` (RS2-6): la red local va por HTTP (`operacion/config.py`); se revisa en la
 sesión 5. Nada de la ficha se registra ni viaja en un cuerpo JSON.
+
+Ola 0a de la sesión 2b: la ficha de una cuenta con la contraseña temporal (`debe_cambiar_clave`)
+es la «cookie restringida»: `exigir_sesion` (y con ella toda ruta protegida) la rechaza con 403
+`MENSAJE_CAMBIAR_CLAVE`; solo sirven con ella `GET` y `DELETE /v1/sesion` y
+`POST /v1/sesion/contrasena`, que no pasan por aquí. La restricción la lee `sesiones.validar` de la
+base en cada petición: no hay una segunda cookie que robar. `exigir_clave_o_sesion(None)` acepta
+cualquier rol (lo que todos ven, como la lista de casos); `exigir_equipo_propio` es RM-4.
 """
 
 from __future__ import annotations
@@ -24,11 +31,13 @@ from datetime import datetime
 
 from fastapi import HTTPException, Request, Response
 
+from api import caso_web
 from api.proteccion import exigir_clave_api
+from aplicacion import equipo
 from operacion.base_datos import ErrorDeBase
 from operacion.instalacion import sesion_de_instalacion
 from seguridad import claves_api, sesiones
-from seguridad.permisos import Accion, PermisoDenegado, exigir
+from seguridad.permisos import ROL_DE_LO_SENSIBLE, Accion, PermisoDenegado, Sensible, exigir
 from seguridad.sesiones import SesionActiva
 
 COOKIE = "silice_sesion"
@@ -37,7 +46,7 @@ METODOS_SEGUROS = frozenset({"GET", "HEAD"})
 MENSAJE_SIN_SESION = "Sesión ausente o vencida: entre de nuevo con su cuenta."
 MENSAJE_CSRF = "Falta la comprobación anti-CSRF de la sesión o no coincide."
 MENSAJE_ORIGEN = "La petición no viene de la interfaz de esta instalación."
-MENSAJE_CAMBIAR_CLAVE = "Cambie su contraseña en la interfaz clásica antes de usar la nueva."
+MENSAJE_CAMBIAR_CLAVE = "Su contraseña es temporal: elija una propia antes de seguir."
 
 
 def csrf_de(ficha: str) -> str:
@@ -63,7 +72,8 @@ def ahora() -> datetime:
 
 def sesion_vigente(request: Request) -> tuple[str, SesionActiva] | None:
     """La ficha de la cookie y su sesión vigente, o `None` (sin cookie, cerrada o expirada:
-    `sesiones.validar` cierra la expirada). 503 si la base de la instalación no abre."""
+    `sesiones.validar` cierra la expirada y aquí se olvida su caso). 503 si la base de la
+    instalación no abre."""
     ficha = request.cookies.get(COOKIE)
     if not ficha:
         return None
@@ -72,7 +82,10 @@ def sesion_vigente(request: Request) -> tuple[str, SesionActiva] | None:
             activa = sesiones.validar(sesion, ficha, ahora())
     except ErrorDeBase as error:
         raise HTTPException(status_code=503, detail=str(error)) from error
-    return None if activa is None else (ficha, activa)
+    if activa is None:
+        caso_web.olvidar(sesiones.huella_de(ficha))
+        return None
+    return ficha, activa
 
 
 def exigir_sesion(request: Request) -> tuple[str, SesionActiva]:
@@ -103,12 +116,13 @@ def exigir_csrf_y_origen(request: Request, ficha: str) -> None:
         raise HTTPException(status_code=403, detail=MENSAJE_ORIGEN)
 
 
-def exigir_clave_o_sesion(accion: Accion) -> Callable[[Request], SesionActiva | None]:
-    """Dependencia de las rutas que usan la interfaz nueva y las integraciones (RS2-5).
+def exigir_clave_o_sesion(accion: Accion | None) -> Callable[[Request], SesionActiva | None]:
+    """Dependencia de las rutas que usan la interfaz nueva y las integraciones (RS2-5, RM-3).
 
     Con la cabecera `X-Silice-Clave` (aunque venga vacía) se comporta como `exigir_clave_api`
-    y no mira la cookie. Sin ella: cookie vigente (401), CSRF y `Origin` en métodos que escriben
-    (403) y un rol con `accion` (403). Devuelve la sesión del navegador, o `None` por clave.
+    y no mira la cookie. Sin ella: cookie vigente (401), contraseña ya cambiada (403), CSRF y
+    `Origin` en métodos que escriben (403) y un rol con `accion` (403; con `None`, cualquier
+    rol). Devuelve la sesión del navegador, o `None` por clave.
     """
 
     def dependencia(request: Request) -> SesionActiva | None:
@@ -117,11 +131,33 @@ def exigir_clave_o_sesion(accion: Accion) -> Callable[[Request], SesionActiva | 
             return None
         ficha, activa = exigir_sesion(request)
         exigir_csrf_y_origen(request, ficha)
-        try:
-            exigir(activa.roles, accion)
-        except PermisoDenegado as error:
-            raise HTTPException(status_code=403, detail=str(error)) from None
+        if accion is not None:
+            try:
+                exigir(activa.roles, accion)
+            except PermisoDenegado as error:
+                raise HTTPException(status_code=403, detail=str(error)) from None
         return activa
 
-    dependencia.__name__ = f"exigir_clave_o_sesion_{accion.value}"
+    sufijo = "cualquier_rol" if accion is None else accion.value
+    dependencia.__name__ = f"exigir_clave_o_sesion_{sufijo}"
+    return dependencia
+
+
+def exigir_equipo_propio(sensible: Sensible) -> Callable[[Request], SesionActiva | None]:
+    """«Solo desde el propio equipo» (RM-4; S3 §5.6): `exigir_clave_o_sesion` con el rol de lo
+    sensible (`ROL_DE_LO_SENSIBLE`) y, además, el criterio de `ui.sesion.exigir_local`
+    (`aplicacion.equipo`) con la IP del par TCP (`request.client.host`): 403 con su motivo. La
+    clave de API no exime del equipo. Un proxy local anula esta comprobación, como ya documenta
+    `api.proteccion`."""
+    por_rol = exigir_clave_o_sesion(ROL_DE_LO_SENSIBLE[sensible])
+
+    def dependencia(request: Request) -> SesionActiva | None:
+        activa = por_rol(request)
+        ip = request.client.host if request.client else None
+        permitida, motivo = equipo.operacion_sensible_permitida(ip)
+        if not permitida:
+            raise HTTPException(status_code=403, detail=motivo)
+        return activa
+
+    dependencia.__name__ = f"exigir_equipo_propio_{sensible.value}"
     return dependencia

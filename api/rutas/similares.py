@@ -19,6 +19,7 @@ from aplicacion.similares import ResultadoSimilares, proponer_similares
 router = APIRouter(tags=["similares"])
 
 MENSAJE_CATALOGO = "No se pudo leer el catálogo del caso abierto."
+MENSAJE_DESGLOSE = "No se pudo armar el desglose de una partida: un dato numérico no es válido."
 
 
 class SolicitudSimilares(BaseModel):
@@ -74,4 +75,7 @@ def proponer(cuerpo: SolicitudSimilares, sesion: SesionDep) -> ResultadoSimilare
     try:
         return proponer_similares(sesion, cuerpo.descripcion)
     except SQLAlchemyError:
+        # El texto de SQLAlchemy puede traer la consulta: no sale de aqui.
         raise HTTPException(status_code=503, detail=MENSAJE_CATALOGO) from None
+    except ArithmeticError:
+        raise HTTPException(status_code=422, detail=MENSAJE_DESGLOSE) from None

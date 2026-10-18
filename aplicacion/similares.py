@@ -5,8 +5,8 @@ base de datos (NORMAS.md §2): aqui se consulta `core.catalog` y se le pasan par
 descripcion) planos. Los montos y cantidades salen ya formateados (`formatear_decimal` con
 `DECIMALES_PRESENTACION`); quien consume no calcula.
 
-`sugerir_partidas_similares` vive aqui y `ui.composicion` la reexporta (la usan tambien la
-composicion a mano y el asistente).
+El proponedor es `aplicacion.composicion.sugerir_partidas_similares` (criterio unico de INV-081);
+se inyecta en `proponer_similares` para probar sin el modelo.
 """
 
 from __future__ import annotations
@@ -17,6 +17,7 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy.orm import Session
 
+from aplicacion.composicion import sugerir_partidas_similares
 from core.catalog import Catalogo, CatalogoIncompleto
 from core.contracts.apu import ComposicionAPU
 from core.verification.informe import DECIMALES_PRESENTACION
@@ -42,22 +43,6 @@ MENSAJE_SIN_DESCRIPCION = "Escriba una descripción para buscar partidas similar
 
 #: Quien propone: recibe el catalogo como pares (codigo, descripcion) y la descripcion tecleada.
 Proponedor = Callable[[Mapping[str, str], str], "Propuesta"]
-
-
-def sugerir_partidas_similares(partidas: Mapping[str, str], descripcion: str) -> Propuesta:
-    """UNICO punto de enlace con el proponedor real (criterio unico de INV-081).
-
-    TODO(S2-B / tesis-8f): cuando `sugerir_partidas_similares` pase de `ui/composicion.py` a
-    `aplicacion/composicion.py`, reemplazar el cuerpo por
-    `from aplicacion.composicion import sugerir_partidas_similares as real` y delegar. Mientras,
-    se llama directo a `ml.normalization.proponedor`, que es lo que esa funcion hace (sin importar
-    `ui/`). `ml` falta como extra -> `proponedor` devuelve una `Propuesta` con su `falla`.
-    """
-    import ml.normalization
-
-    if not descripcion.strip() or not partidas:
-        return ml.normalization.Propuesta(())
-    return ml.normalization.proponedor(partidas)(descripcion)
 
 
 @dataclass(frozen=True, slots=True)
