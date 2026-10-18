@@ -242,3 +242,19 @@ def test_humo_no_pide_nada_a_internet_desde_el_programa() -> None:
 def test_humo_trae_bom_para_powershell_5() -> None:
     """Windows PowerShell 5.1 lee sin BOM como ANSI y rompería «Sílice» y «ñ»."""
     assert HUMO.read_bytes().startswith(b"\xef\xbb\xbf")
+
+
+def test_el_humo_espera_cada_base_cuando_el_diseno_la_crea() -> None:
+    """La instalación crea `instalacion.db` (orden `migrar`, spec S5 UC-24 paso 2) y el caso de
+    demostración (orden `demostracion`); el caso por defecto `casos/silice.db` lo crea el lanzador
+    al primer arranque (`preparar_base`, spec S5 §5.4 paso 3). Hasta 2026-10-18 el paso 2 exigía
+    `silice.db` justo después de instalar, y el humo nunca pasó en la CI."""
+    texto = HUMO.read_text(encoding="utf-8-sig")
+    paso2, paso3 = texto.index("Paso '2."), texto.index("Paso '3.")
+    paso4, paso5 = texto.index("Paso '4."), texto.index("Paso '5.")
+    instalacion = texto[paso2:paso3]
+    arranque = texto[paso4:paso5]
+    assert "'instalacion.db'" in instalacion and r"'casos\demostracion.db'" in instalacion
+    assert "silice.db" not in instalacion
+    assert r"'casos\silice.db'" in arranque
+    assert arranque.index("EsperarSalud") < arranque.index("silice.db")
