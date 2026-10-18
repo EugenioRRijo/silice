@@ -51,7 +51,13 @@ export const PAGINAS: readonly PaginaDef[] = [
     cargar: () => import("../paginas/libros"),
   },
   { id: "escenarios", titulo: "Escenarios de sensibilidad", seccion: "Investigación", accion: "editar_hoja" },
-  { id: "similares", titulo: "Partidas similares", seccion: "Investigación", accion: "editar_hoja" },
+  {
+    id: "similares",
+    titulo: "Partidas similares",
+    seccion: "Investigación",
+    accion: "editar_hoja",
+    cargar: () => import("../paginas/similares"),
+  },
   {
     id: "simulador",
     titulo: "Simulador de listas",

@@ -13,7 +13,9 @@ Dos POST con el mismo cuerpo, que **no escriben** en la base (solo leen la lista
 `semilla` es un entero >= 0; `variacion_max` es un decimal en porcentaje escrito como texto;
 `insumos` son descripciones separadas por coma (vacio o `null` = todos). Errores como en
 Streamlit, en `{"detalle": ...}`: variacion no decimal o valores invalidos, 422; sin lista
-vigente, 409. El acceso lo exige `api.main` con `exigir_clave_o_sesion(Accion.EDITAR_HOJA)`.
+vigente, 409. El acceso lo exige cada ruta con `api.acceso.EDITAR` (clave o sesion con
+`EDITAR_HOJA`, RM-3). El caso es el de la sesion web (RM-2): lo resuelve
+`api.dependencias.SesionDep`.
 """
 
 from __future__ import annotations
@@ -22,6 +24,7 @@ from fastapi import APIRouter
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
+from api.acceso import EDITAR
 from api.dependencias import SesionDep
 from aplicacion.simulador import (
     MENSAJE_SIN_FILAS,
@@ -61,7 +64,7 @@ def _filas(sesion: SesionDep, peticion: SimulacionPeticion):
     )
 
 
-@router.post("", response_model=SimulacionRespuesta)
+@router.post("", response_model=SimulacionRespuesta, dependencies=EDITAR)
 def simular_lista(sesion: SesionDep, peticion: SimulacionPeticion) -> SimulacionRespuesta:
     """Aplica variaciones deterministas a la lista vigente y devuelve las filas."""
     return SimulacionRespuesta(
@@ -72,7 +75,12 @@ def simular_lista(sesion: SesionDep, peticion: SimulacionPeticion) -> Simulacion
     )
 
 
-@router.post("/csv", response_class=Response, responses={200: {"content": {"text/csv": {}}}})
+@router.post(
+    "/csv",
+    response_class=Response,
+    responses={200: {"content": {"text/csv": {}}}},
+    dependencies=EDITAR,
+)
 def simular_lista_csv(sesion: SesionDep, peticion: SimulacionPeticion) -> Response:
     """La misma simulacion como CSV para descargar."""
     filas = _filas(sesion, peticion)

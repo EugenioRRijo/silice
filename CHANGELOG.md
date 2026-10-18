@@ -8,11 +8,16 @@ etiquetar, las líneas pasan a la sección de la versión. La historia anterior 
 
 ### Agregado
 
+- Interfaz nueva, migración de páginas (sesión 2b): marco con menú por rol, caso y proyecto por sesión web, página de Inicio y «Partidas similares» (`POST /v1/similares`); la lógica de las páginas pasa a `aplicacion/` y `ui/` la reexporta.
 - Sílice 1.2.0 (ruta, sesión 2; UC‑26, RF‑111 a RF‑118, RNF‑22 y RNF‑23): interfaz nueva y visor de solo lectura. `frontend-desktop/` (Vite, React 19, Carbon g10 y Univer, sin red externa) servida por la API en `/app` con CSP; `POST /v1/libros/replica` y `adapters/hoja_empresa/visual.py` (aspecto del libro con coordenadas de Excel); acceso del navegador por cuenta (`/v1/sesion` con cookie `HttpOnly`, anti‑CSRF y freno global con 429); campo aditivo `indicadores` en `/v1/libros/auditoria` (centésimas, sentido «exactitud», RS2‑12 y RS2‑13); el instalador lleva la interfaz compilada; trabajo `interfaz` en la CI.
 
 ### Cambiado
 
 - Para integradores: las rutas `/v1/libros/*` aceptan ahora la clave de API **o** la sesión del navegador (RS2-5). Sin la cabecera `X-Silice-Clave` responden 401 con el mensaje de sesión (antes, el de la clave) y esa llamada ya no queda en el registro de accesos como fallo de clave; con una clave mala, todo sigue igual. RF‑98 ya no exige la clave en `/v1/sesion` ni en `/app` (enmienda 1.2.0 de la ERS).
+- Para integradores: las rutas `/v1/libros/*` aceptan ahora la clave de API **o** la sesión del navegador (RS2-5). Sin la cabecera `X-Silice-Clave` responden 401 con el mensaje de sesión (antes, el de la clave) y esa llamada ya no queda en el registro de accesos como fallo de clave; con una clave mala, todo sigue igual.
+- Sesión 2b, ola 0a (backend del marco de la interfaz nueva): capa `aplicacion/` (RM-1); caso por sesión del navegador con `GET /v1/casos` y `POST /v1/casos/actual` (RM-2); `GET /v1/proyectos`; cambio de contraseña obligatorio desde la interfaz nueva (`POST /v1/sesion/contrasena`); `GET/POST /v1/sesion` informan `debe_cambiar_clave`, `acciones`, `modo_entrega` y `url_clasica` (la interfaz Streamlit, para las páginas aún no migradas); dependencia «solo desde el propio equipo» para la API (RM-4).
+- Para integradores (RM-3): todas las rutas antiguas aceptan ahora la clave de API **o** la sesión del navegador con el rol de su página (tabla en `api/acceso.py`). Con `X-Silice-Clave` responden igual que antes; sin ella ni cookie, 401 con el mensaje de sesión y sin evento de «fallo de clave», como ya hacían las de `/v1/libros`.
+- Sesión 2 de la ruta (en curso): plan `docs/planes/PLAN_SESION_2_VISUAL.md`, producto y diseño de la interfaz nueva (`frontend-desktop/PRODUCT.md`, `DESIGN.md`) y enmienda 1.2.0 de la ERS (UC-26, RF-111 a RF-118, RNF-22 y RNF-23).
 
 ## [1.1.0] - 2026-10-18
 
