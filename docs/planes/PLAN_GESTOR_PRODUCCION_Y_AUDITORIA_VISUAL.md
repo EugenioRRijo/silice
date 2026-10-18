@@ -24,6 +24,8 @@ El orden de construcción, los subagentes y el modelo/esfuerzo de cada tarea viv
 | E-7 | **Pruebas obligatorias** en todas las tareas (RS-2). | todo |
 | E-8 | **Cifras:** las de §3–§6 son **ejemplos construidos** o están **a cotejar** según PLAN_FUENTES; ninguna entra en un cálculo sin estado VERIFICADO o DATO DE LA EMPRESA. Corregidos: el ejemplo del ticket (C-6) y la densidad por defecto del DTO (C-5). | §3, §4.1, §6 |
 | E-9 | **Diseño:** halos = severidad (con ícono), rojo/verde IBCS = variación; plan con contorno y pronóstico achurado (skill `front-carbon-fiori-ibcs` §1.3 y §3.2). | §4.1 |
+| E-10 | **DTOs de §6.2:** montos e impactos en `Decimal` (viajan como texto, como en la API vigente), no `float`; la severidad reutiliza `core.contracts.verificacion.Severidad` (INFO, ADVERTENCIA, ERROR, CRITICO) en vez de un `NivelSeveridad` propio. `InsumoCanteraDTO` vive en `produccion/` (ruta RT-7). | §6 |
+| E-11 | **Acceso del navegador** por cuenta y cookie de sesión, no por la clave de API (ruta RT-9). | §2, SA3, SA4 |
 
 ---
 
@@ -155,7 +157,7 @@ $$C_H = \underbrace{\frac{V_a - V_r}{V_u} + \frac{V_a \cdot (i + s + t)}{H_a}}_{
      - 🟡 **Amarillo:** Alerta de rendimiento fuera de rango o precio atípico.
      - 🔴 **Rojo:** Error de fórmula, sobreprecio crítico o partida no trazable.
 5. **Popover Contextual y Capa Delta:**
-   - Clic en una celda roja: *"La partida declara arena a \$42/m³. El costo de producción en Cantera Las Mercedes es \$18/m³ + \$9/m³ flete. Sobreprecio detectado: +55.5%."*
+   - Clic en una celda roja: *"La partida declara arena a \$42/m³. El costo de producción en Cantera Las Mercedes es \$18/m³ + \$9/m³ flete. Sobreprecio detectado: +55,6 %."* (ejemplo construido, PLAN_FUENTES C-2)
    - Botón: `[Adoptar Costo de Cantera]` $\rightarrow$ Registra el cambio en la Capa Delta (el archivo original permanece intacto) y recalcula el presupuesto al instante.
 
 ---

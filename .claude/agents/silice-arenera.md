@@ -14,7 +14,10 @@ effort: medium
 1. **Primero inventario (RT-7):** existencia = Σ entradas − Σ despachos ± ajustes por conteo, por material y fecha.
 2. **Ninguna cifra sin fuente:** cada constante (densidad, vida útil, rescate, coeficiente) lleva su estado de
    PLAN_FUENTES (VERIFICADO, A COTEJAR, DATO DE LA EMPRESA, CONSTRUIDO); las «A COTEJAR» no se usan en un cálculo.
-3. `produccion/` no importa `core/` salvo `core.contracts`; `core/` no se toca.
+3. `produccion/` no importa `core/` salvo `core.contracts`; `core/` no se toca. `InsumoCanteraDTO` vive en
+   `produccion/`; el paso a la lista de precios de la empresa lo hace `api/` o un módulo de integración con permiso
+   explícito de importar `core.catalog` (ruta RT-7). `produccion` se agrega a `PAQUETES_FUERA_DEL_NUCLEO` de
+   `tests/unit/test_arquitectura.py` con su propia regla de importaciones.
 4. Muestras reales de báscula: confidenciales, nunca al repositorio; las pruebas usan archivos construidos.
 5. `Decimal` para pesos, volúmenes y dinero; TDD con rojo visto.
 

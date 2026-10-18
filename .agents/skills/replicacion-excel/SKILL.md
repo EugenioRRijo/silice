@@ -15,31 +15,21 @@ Esta guía establece el protocolo para transformar presupuestos en formato `.xls
 
 En auditoría forense de obras civiles, una práctica común de fraude o descuido es escribir un número fijo en la celda del monto total en lugar de aplicar la multiplicación $\text{Cantidad} \times \text{Precio Unitario}$ o una suma de partidas.
 
-### Protocolo de Extracción en Backend:
-```python
-import openpyxl
+### Protocolo de Extracción en Backend (ya construido: no se escribe otro parser)
 
+> [!IMPORTANT]
+> La extracción dual **ya existe** en `adapters/hoja_empresa/lector.py` (ruta RT-6): el libro pasa primero por
+> `adapters/hoja_empresa/guardia.py` (tamaño, bombas zip), se abre en **solo lectura** dos veces (fórmulas y valores
+> guardados con `data_only=True`), cada dato se busca **por rótulo, nunca por fila o columna fija** (los APU de la
+> empresa tienen más de diez formas) y todo número es `Decimal(str(v))`. Las reglas L1–L9
+> (`adapters/hoja_empresa/reglas.py`) comparan lo que el libro *dice* con lo que *calcula*, y cada hallazgo apunta a
+> `HOJA!CELDA`. Una «celda quemada» (un número donde la plantilla espera una fórmula) es una de esas reglas, no un
+> `col == 6` fijo.
 
-def extraer_libro_dual(ruta_archivo: Path):
-    # Pasada 1: Lee las fórmulas exactas escritas por el autor
-    wb_formulas = openpyxl.load_workbook(ruta_archivo, data_only=False)
-    # Pasada 2: Lee el valor numérico calculado y guardado en la caché de Excel
-    wb_valores = openpyxl.load_workbook(ruta_archivo, data_only=True)
-
-    for hoja in wb_formulas.sheetnames:
-        sheet_f = wb_formulas[hoja]
-        sheet_v = wb_valores[hoja]
-
-        for fila in range(1, sheet_f.max_row + 1):
-            for col in range(1, sheet_f.max_column + 1):
-                val_formula = sheet_f.cell(row=fila, column=col).value
-                val_calculado = sheet_v.cell(row=fila, column=col).value
-
-                # Detección de "celda quemada": si es columna de total y no tiene fórmula
-                es_total = col == 6  # Ejemplo: Columna Total
-                if es_total and isinstance(val_formula, (int, float)):
-                    registrar_hallazgo_celda_quemada(hoja, fila, col, val_formula)
-```
+Lo único nuevo para la réplica es el **aspecto** (`adapters/hoja_empresa/visual.py`): relleno, fuente, bordes,
+alineación, formato numérico, combinadas, anchos y altos. En solo lectura openpyxl no da combinadas ni dimensiones,
+así que `visual.py` hace una **tercera apertura en modo normal** (~7 s por libro, costo declarado en RT-6), siempre
+después de la guardia y sin escribir nunca sobre el original.
 
 ---
 

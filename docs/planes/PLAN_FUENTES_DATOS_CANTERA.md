@@ -8,9 +8,10 @@
 
 ## 1. Por qué
 
-El [plan del gestor](./PLAN_GESTOR_PRODUCCION_Y_AUDITORIA_VISUAL.md) y las skills traen cifras (18,50 $/m³,
-coeficientes 1,15/1,00/0,85, densidad 1,65 t/m³, vida útil 10 000 h…) y fórmulas (costo horario «Caterpillar/USBR»)
-**sin fuente**. En una tesis cada número tiene que poder decir de dónde salió; en un producto real, un número
+El [plan del gestor](./PLAN_GESTOR_PRODUCCION_Y_AUDITORIA_VISUAL.md) y las skills, **en su texto anterior a la
+sesión 0** (antes del commit `3efffdf`), traían cifras (18,50 $/m³, coeficientes 1,15/1,00/0,85, densidad 1,65 t/m³
+por defecto, rescate 20 %, vida útil 10 000 h…) y fórmulas (costo horario «Caterpillar/USBR») **sin fuente**. La
+columna «Texto anterior» de §3.2 conserva lo que decían; la columna «Acción» dice cómo quedó. En una tesis cada número tiene que poder decir de dónde salió; en un producto real, un número
 inventado dentro de un cálculo es un error que el auditor no puede detectar porque es *consistente*.
 
 ## 2. Estados de un dato
@@ -38,20 +39,20 @@ inventado dentro de un cálculo es un error que el auditor no puede detectar por
 
 ### 3.2 Cifras
 
-| # | Cifra | Dónde aparece | Estado | Acción |
-|---|---|---|---|---|
-| C-1 | Arena 18,50 $/m³; piedra 3/4" 16,20 $/m³; DTO 18,50 / 4,20 / 6,80 / 1,30 / 30,80 | Plan gestor §6.1; skill §2 | CONSTRUIDO | Rotular «ejemplo construido» |
-| C-2 | «Cantera Las Mercedes»: 42 $/m³ declarado frente a 18 + 9 de flete, +55,5 % | Plan gestor §4.1; skill `auditoria-forense` | CONSTRUIDO | Rotular; la cuenta es correcta: (42 − 27)/27 = 55,6 % |
-| C-3 | Coeficientes de valor 1,15 / 1,00 / 0,85 | Skill §2 | **SIN FUENTE** | Retirar; reemplazar por el método F-4 |
-| C-4 | Valor de rescate 20 %; vida útil 10 000 h | Skill §1 | A COTEJAR | Por equipo, DATO DE LA EMPRESA (ficha o factura); valores de referencia de F-1 al cotejar |
-| C-5 | Densidad aparente de la arena 1,65 t/m³ (valor por defecto del DTO) | Plan gestor §6.1 | A COTEJAR | **Sin valor por defecto**: DATO DE LA EMPRESA por material, por ensayo de peso unitario (ASTM C29/C29M; COVENIN 263, a cotejar) |
-| C-6 | Ticket: 42,50 − 14,20 = 28,30 t → 17,68 m³ | Plan gestor §6.3 | CONSTRUIDO, **incoherente** | 28,30/17,68 = 1,60 t/m³, no 1,65 (el valor por defecto del mismo plan). Corregir el ejemplo |
-| C-7 | Fracciones: arena 0–4 mm; piedra 1/2" (12,5 mm), 3/4" (19 mm), 1" (25 mm) | Plan gestor §3.1 | A COTEJAR | ASTM C33 / COVENIN 277 (requisitos de agregados); el corte de la arena suele ser el tamiz N.º 4 (4,75 mm), no 4 mm |
-| C-8 | Formatos de báscula «Toledo, Cardinal» | Plan gestor SA5 | DATO DE LA EMPRESA | Cada indicador exporta distinto: hacen falta **muestras reales** (B-4), que se anonimizan |
-| C-9 | Tooltip «puntuación de anomalía > 0,65» | Skill `front-carbon-fiori-ibcs` §1.2 | **FALSO** frente al código | `ml/anomaly/detector.py`: puntaje más negativo = más anómalo, corte `UMBRAL_ATIPICO = -0.05`. Corregido en la skill |
-| C-10 | Tauri < 15 MB; 35–50 MB de RAM en reposo | Plan gestor §1 | A MEDIR | Se mide en la sesión 5 |
-| C-11 | 60 FPS con 50 000 filas | Plan gestor SA3 | A MEDIR | Se mide en la sesión 2 con un libro construido de 50 000 filas |
-| C-12 | Watchdog: relanza en < 1 s | Plan gestor §7 | A MEDIR | Se mide en la sesión 5 |
+| # | Cifra | Dónde aparece | Texto anterior (antes de `3efffdf`) | Estado | Acción |
+|---|---|---|---|---|---|
+| C-1 | Arena 18,50 $/m³; piedra 3/4" 16,20 $/m³; DTO 18,50 / 4,20 / 6,80 / 1,30 / 30,80 | Plan gestor §6.1; skill §2 | igual | CONSTRUIDO | Rotulado «ejemplo construido» en la skill |
+| C-2 | «Cantera Las Mercedes»: 42 $/m³ declarado frente a 18 + 9 de flete | Plan gestor §4.1; skill `auditoria-forense` | «+55.5%» | CONSTRUIDO | (42 − 27)/27 = 0,5556 → **+55,6 %**; corregido en el plan del gestor y rotulado |
+| C-3 | Coeficientes de valor 1,15 / 1,00 / 0,85 | Skill §2 | presentes | **SIN FUENTE** | Retirados; reemplazados por el método F-4 |
+| C-4 | Valor de rescate; vida útil | Skill §1 | «típicamente 20 %», «ej. 10.000 h» | A COTEJAR | Retirados: **sin valor por defecto**; por equipo, DATO DE LA EMPRESA (ficha o factura); valores de referencia de F-1 al cotejar |
+| C-5 | Densidad aparente de la arena 1,65 t/m³ | Plan gestor §6.1 (DTO) | `default=Decimal("1.65")` | A COTEJAR | Corregido: campo **obligatorio** (queda solo como `example`); DATO DE LA EMPRESA por material, por ensayo de peso unitario (ASTM C29/C29M; COVENIN 263, a cotejar) |
+| C-6 | Ticket: 42,50 − 14,20 = 28,30 t → volumen | Plan gestor §6.3 (DTO) | `example=17.68` (28,30/17,68 = 1,60 t/m³, incoherente con el 1,65 del mismo plan) | CONSTRUIDO | Corregido a `example=17.15` (28,30 / 1,65) |
+| C-7 | Fracciones: arena 0–4 mm; piedra 1/2" (12,5 mm), 3/4" (19 mm), 1" (25 mm) | Plan gestor §3.1 | igual | A COTEJAR | ASTM C33 / COVENIN 277 (requisitos de agregados); el corte de la arena suele ser el tamiz N.º 4 (4,75 mm), no 4 mm |
+| C-8 | Formatos de báscula «Toledo, Cardinal» | Plan gestor SA5 | igual | DATO DE LA EMPRESA | Cada indicador exporta distinto: hacen falta **muestras reales** (B-4), que se anonimizan |
+| C-9 | Tooltip de atípico | Skill `front-carbon-fiori-ibcs` §1.2 | «puntuación de anomalía > 0.65» (**falso** frente al código) | — | Corregido a la convención de `ml/anomaly/detector.py`: más negativo = más atípico, corte `UMBRAL_ATIPICO = -0.05` |
+| C-10 | Tauri < 15 MB; 35–50 MB de RAM en reposo | Plan gestor §1 | igual | A MEDIR | Se mide en la sesión 5 |
+| C-11 | 60 FPS con 50 000 filas | Plan gestor SA3 | igual | A MEDIR | Se mide en la sesión 2 con un libro construido de 50 000 filas |
+| C-12 | Watchdog: relanza en < 1 s | Plan gestor §7 | igual | A MEDIR | Se mide en la sesión 5 |
 
 ### 3.3 Datos que debe aportar la empresa (bloqueo B-4)
 

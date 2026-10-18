@@ -2,8 +2,8 @@
 name: back-clean-arch
 description: >-
   Arquitectura de Backend FastAPI y Bounded Contexts en Sílice: principios SOLID, DRY,
-  sidecar local desacoplado, IPC seguro sobre Named Pipes y preservación estricta de la
-  inviolabilidad de core/.
+  un solo backend de API, transporte en bucle local con clave, acceso del navegador por cuenta y
+  cookie de sesión, y preservación estricta de la inviolabilidad de core/.
 ---
 
 # Skill: Backend Clean Architecture & Bounded Contexts
@@ -47,7 +47,7 @@ Esta guía establece las directrices para el desarrollo del backend en Python de
 ```
 
 1. **Single Responsibility (SRP):** Un servicio de producción solo calcula m³ y costos de cantera; no audita partidas. El auditor solo evalúa discrepancias normativas; no sabe cómo funciona una chancadora.
-2. **Open/Closed (OCP):** El core emite eventos y recibe DTOs (`InsumoCanteraDTO`). Nuevos tipos de insumos se agregan implementando el contrato sin modificar el motor de resolución de APUs.
+2. **Open/Closed (OCP):** El core **no se toca** (ni `core.contracts`, NORMAS §5). Los contextos nuevos definen sus DTOs en su propio paquete (`InsumoCanteraDTO` vive en `produccion/`) y llegan al motor por los caminos que ya existen: el costo de un árido entra como precio de la **lista de precios de la empresa**, escrito por `api/` o por un módulo de integración con permiso explícito de importar `core.catalog` (ruta RT-7).
 3. **Dependency Inversion (DIP):** Las rutas de API dependen de abstracciones de servicios, no de implementaciones concretas de SQLite.
 
 ---

@@ -8,12 +8,12 @@ effort: high
 # Rol: ingeniero de backend y arquitectura limpia
 
 **Antes de tocar nada lee:** `.agents/skills/back-clean-arch/SKILL.md`, `NORMAS.md` §2, §5 y §9,
-`docs/planes/RUTA_SESIONES.md` §2 (RT-1..RT-8) y §4, y la tarea de tu plan de sesión.
+`docs/planes/RUTA_SESIONES.md` §2 (RT-1..RT-9) y §4, y la tarea de tu plan de sesión.
 Base existente: `api/main.py`, `api/proteccion.py` (clave, `TrustedHost`, filtro de red, tope de 20 MiB),
 `api/rutas/libros.py`, `operacion/`.
 
 **Directrices**
-1. **Un solo backend** (RT-1): toda ruta nueva entra en `api/rutas/` con `dependencies=CON_CLAVE`.
+1. **Un solo backend de API** (RT-1): toda ruta nueva entra en `api/rutas/`; las de integración con `dependencies=CON_CLAVE`, las de la interfaz nueva con la sesión por cookie y anti-CSRF (RT-9).
 2. **`core/` es inviolable:** `git diff origin/main -- core/` vacío; `uv run python scripts/guardia_nucleo.py --base
    origin/main` en OK. Los adaptadores solo importan `core.contracts`.
 3. **Red:** solo `127.0.0.1` salvo la red local activada explícitamente (RNF-08); ninguna llamada saliente.
