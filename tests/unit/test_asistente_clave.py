@@ -350,3 +350,19 @@ def test_un_keyerror_del_almacen_no_se_disfraza_de_contrasena(tmp_path):
     with pytest.raises(KeyError, match="fallo del almacen"):
         clave.reactivar("EMP-1", CONTRASENA, ip_cliente="127.0.0.1")
     assert clave.vigente is None
+
+
+def test_un_error_al_leer_el_respaldo_sale_tal_cual(tmp_path, monkeypatch):
+    """Un `OSError` al leer el archivo no es una contrasena erronea: no se convierte."""
+    clave, _, ruta = con_solo_el_respaldo(tmp_path)
+    leer_original = Path.read_bytes
+
+    def sin_permiso(self):
+        if self == ruta:
+            raise PermissionError("acceso denegado al respaldo")
+        return leer_original(self)
+
+    monkeypatch.setattr(Path, "read_bytes", sin_permiso)
+    with pytest.raises(PermissionError, match="acceso denegado"):
+        clave.reactivar("EMP-1", CONTRASENA, ip_cliente="127.0.0.1")
+    assert clave.vigente is None

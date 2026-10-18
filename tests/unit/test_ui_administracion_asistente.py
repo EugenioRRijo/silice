@@ -13,9 +13,12 @@ from __future__ import annotations
 import dataclasses
 import importlib
 import json
+import logging
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+from sqlalchemy.exc import OperationalError
 from streamlit.testing.v1 import AppTest
 
 from asistente import instalacion
@@ -280,7 +283,7 @@ def test_sin_el_extra_ia_la_pestana_lo_dice_y_la_configuracion_sigue(entorno, mo
 
 CONTRASENA = "una contrasena larga"
 NO_ABRE = "La contraseña no abre el respaldo de la clave de IA."
-EVENTO_FALLIDO = "ia_clave_reactivar_fallida"
+EVENTO_FALLIDO = "clave de ia no reactivada"  # palabras y espacios, como los tipos de S3
 
 
 def eventos_de_reactivar() -> list:
@@ -398,3 +401,42 @@ def test_si_el_asistente_se_apago_entre_tanto_no_se_reactiva(entorno, monkeypatc
     assert errores(at) == ["Active el asistente antes de reactivar la clave de IA."]
     assert entorno.clave.vigente is None and eventos_de_reactivar() == []
     assert not alcanza(estado(at), CONTRASENA)
+
+
+def test_si_falla_el_rastro_el_administrador_igual_ve_el_mensaje(entorno, monkeypatch, caplog):
+    """La anotacion del intento fallido no tapa el aviso ni muestra la pagina de error."""
+    con_roles(monkeypatch, Rol.ADMINISTRADOR)
+    con_solo_el_respaldo(entorno)
+
+    def base_caida(*args, **kwargs):
+        raise OperationalError("INSERT INTO evento_acceso", {}, Exception("database is locked"))
+
+    monkeypatch.setattr(eventos, "registrar", base_caida)
+    at = arrancar()
+    with caplog.at_level(logging.WARNING, logger="ui.paginas.administracion"):
+        reactivar(at, contrasena="otra contrasena larga")
+    assert errores(at) == [NO_ABRE] and entorno.clave.vigente is None
+    avisos = [r.getMessage() for r in caplog.records if r.name == "ui.paginas.administracion"]
+    assert avisos == ["No se pudo anotar el intento fallido de reactivar la clave de IA"]
+    assert "otra contrasena larga" not in caplog.text
+
+
+def test_si_no_se_puede_leer_el_respaldo_la_pantalla_lo_dice(entorno, monkeypatch, tmp_path):
+    con_roles(monkeypatch, Rol.ADMINISTRADOR)
+    con_solo_el_respaldo(entorno)
+    respaldo = tmp_path / "ia.cifrada"
+    leer_original = Path.read_bytes
+
+    def sin_permiso(self):
+        if self == respaldo:
+            raise PermissionError("acceso denegado al respaldo")
+        return leer_original(self)
+
+    at = arrancar()
+    monkeypatch.setattr(Path, "read_bytes", sin_permiso)
+    reactivar(at)
+    assert errores(at) == [
+        "No se pudo leer el respaldo cifrado de la clave en la carpeta de datos: revise que "
+        "exista y que se pueda leer."
+    ]
+    assert entorno.clave.vigente is None and eventos_de_reactivar() == []
