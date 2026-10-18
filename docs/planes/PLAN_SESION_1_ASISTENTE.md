@@ -62,26 +62,31 @@ Oráculo de RF-100: `tests/fixtures/memorias/atipicos_s3.md` (a mano, ya version
 **Files:** los de la Tarea 22 de `PLAN_SILICE_080.md`:
 - Create: `ml/anomaly/series.py`, `ui/atipicos.py`
 - Modify: `ui/paginas/hoja.py` (pestaña Precios, `_pestana_precios` en la línea ~1864 hoy; las líneas que cita la
-  Tarea 22 se movieron), `tests/unit/test_arquitectura.py` (`PROHIBIDOS_EN_UI["ui/atipicos.py"] = ("streamlit",
-  "pandas")`)
-- Test: `tests/unit/test_series_atipicas.py`, `tests/integration/test_atipicos.py`, `tests/unit/test_ui_hoja_atipicos.py`
+  Tarea 22 se movieron), `ui/paginas/precios_empresa.py` (el mismo botón al revisar la lista de la empresa, spec S3
+  §3.4), `tests/unit/test_arquitectura.py` (`PROHIBIDOS_EN_UI["ui/atipicos.py"] = ("streamlit", "pandas")`)
+- Test: `tests/unit/test_series_atipicas.py`, `tests/integration/test_atipicos.py`, `tests/unit/test_ui_hoja_atipicos.py`,
+  `tests/unit/test_ui_precios_empresa.py` (existente: agregar
+  `test_la_lista_de_la_empresa_muestra_la_advertencia_de_variacion_atipica` con la serie de la memoria §1 y
+  `test_sin_atipico_la_lista_de_la_empresa_no_advierte` con la de §2)
 
 **Interfaces:** las de la Tarea 22 (`PuntoDePrecio`, `SerieEnUsd`, `ResultadoDeSerie`, `a_usd`, `variaciones`,
-`analizar`; `puntos_del_insumo`, `hallazgos_de_la_serie`, `atipicos_del_insumo`). Para la moneda y la tasa de cada
-precio, **reutilizar** `core.catalog.origen.origenes_efectivos(session, lista)` (`core/catalog/origen.py:98`: el
-`PrecioOrigen` de cada precio y, si falta, el de su lista) y `core.catalog.moneda.convertir`
-(`core/catalog/moneda.py:55`) en vez de repetir esas consultas, siempre que las pruebas de la Tarea 22 sigan
-pasando. No se reutiliza `core.catalog.precios.cambios_precio`: da variaciones en moneda nominal y solo entre listas
-globales.
+`analizar`; `puntos_del_insumo`, `hallazgos_de_la_serie`, `atipicos_del_insumo`). Para la moneda, la fecha y la tasa
+de cada precio, `ui/atipicos.py` **reutiliza** `core.catalog.origen.origenes_efectivos(session, lista)`
+(`core/catalog/origen.py:98`: el `PrecioOrigen` de cada precio y, si falta, el de su lista) para armar cada
+`PuntoDePrecio`, en vez de repetir esa consulta. La división a USD la hace `ml.anomaly.series.a_usd` **dentro de
+`ml/`** (que solo puede importar `core.contracts`, `tests/unit/test_arquitectura.py:75-77`), con el mismo contexto
+decimal que `core/catalog/moneda.py:24-25` (`prec=28`, `ROUND_HALF_EVEN`), declarado en su docstring. No se reutiliza
+`core.catalog.precios.cambios_precio`: da variaciones en moneda nominal y solo entre listas globales.
 
-- [ ] **Step 1:** Escribir las tres pruebas de la Tarea 22 tal como están (Paso 1 de esa tarea). Valores: los de
-  `tests/fixtures/memorias/atipicos_s3.md` §1–§5 (1, 2, 4…256, 257 → solo v8; …512 → vacío; 8 precios → abstención;
-  720/36 y 1 100/44 → 0,25).
+- [ ] **Step 1:** Escribir las tres pruebas de la Tarea 22 tal como están (Paso 1 de esa tarea) y las dos de la lista
+  de la empresa. Valores: los de `tests/fixtures/memorias/atipicos_s3.md` §1–§5 (1, 2, 4…256, 257 → solo v8; …512 →
+  vacío; 8 precios → abstención; 720/36 y 1 100/44 → 0,25).
 - [ ] **Step 2: Run → FAIL** — `uv run pytest tests/unit/test_series_atipicas.py tests/integration/test_atipicos.py
-  tests/unit/test_ui_hoja_atipicos.py -W error -v` (módulos inexistentes).
+  tests/unit/test_ui_hoja_atipicos.py tests/unit/test_ui_precios_empresa.py -W error -v` (módulos inexistentes y
+  botón ausente).
 - [ ] **Step 3:** Commit de las pruebas en rojo — `test(ml): series sembradas de RF-100 en rojo`.
-- [ ] **Step 4:** Implementar `ml/anomaly/series.py`, `ui/atipicos.py` y el botón de la pestaña Precios según la
-  Tarea 22, con la reutilización de *Interfaces*; agregar la entrada de `PROHIBIDOS_EN_UI`.
+- [ ] **Step 4:** Implementar `ml/anomaly/series.py`, `ui/atipicos.py` y el botón en la pestaña Precios y en la lista
+  de la empresa según la Tarea 22, con la reutilización de *Interfaces*; agregar la entrada de `PROHIBIDOS_EN_UI`.
 - [ ] **Step 5: Run → PASS** (mismo comando) y `uv run pytest tests/unit/test_arquitectura.py -W error`.
 - [ ] **Step 6:** `uv run python scripts/meta_silice.py --version 0.8.0 --hasta S3-6` → S3-6 en OK (anotar la
   salida).
@@ -125,6 +130,7 @@ globales.
   - `test_reactivar_con_contrasena_incorrecta_mensaje_fijo_y_sin_clave` (mensaje exacto; no contiene la
     contraseña; `clave.vigente is None`).
   - `test_reactivar_con_respaldo_danado_mensaje_fijo`.
+  - `test_reactivar_con_contrasena_vacia_da_su_mensaje` (el de `activar`, no el de contraseña incorrecta).
   - `test_reactivar_desde_otro_equipo_se_rechaza` y `test_reactivar_sin_ser_administrador_sin_permiso`.
   - AppTest: `test_la_contrasena_de_reactivar_no_queda_en_la_pantalla` (tras pulsar,
     `st.session_state["ia_contrasena_reactivar"] == ""` y ningún valor del estado contiene la contraseña ni la clave).
