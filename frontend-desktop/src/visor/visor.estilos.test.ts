@@ -41,13 +41,48 @@ describe("estilos del visor", () => {
     const franja = regla(".franja-indicadores");
     expect(franja).toMatch(/block-size:\s*4rem/);
     expect(franja).toMatch(/flex-wrap:\s*nowrap/);
-    expect(franja).toMatch(/overflow:\s*hidden/);
     // Dentro de la columna de la pantalla no debe encogerse (la franja se comia sus 64 px).
     expect(franja).toMatch(/flex:\s*none/);
   });
 
-  test("los conteos por severidad no se encogen y los indicadores si recortan con elipsis", () => {
-    expect(regla(".franja-indicadores__severidad")).toMatch(/flex:\s*none/);
+  test("nada de la franja recorta: el tooltip de las cifras exactas se abre por debajo de ella (B1)", () => {
+    for (const selector of [".franja-indicadores", ".franja-indicadores__lista", ".fiori-kpi", ".visor"]) {
+      expect(regla(selector), selector).not.toMatch(/overflow(-x|-y)?:\s*(hidden|clip|auto|scroll)/);
+    }
+  });
+
+  test("el contenedor del tooltip tampoco recorta, aunque comparta la clase de los textos con elipsis", () => {
+    expect(regla(".fiori-kpi__tooltip")).toMatch(/overflow:\s*visible/);
+  });
+
+  test("las dos cifras exactas del tooltip van una debajo de la otra, no corridas en una sola linea", () => {
+    expect(regla(".fiori-kpi__exacto")).toMatch(/display:\s*grid/);
+  });
+
+  test("la cabecera de la lista (una sola columna) solo queda para lectores de pantalla y no deja una banda gris", () => {
+    const r = regla(".lista-hallazgos__tabla thead");
+    expect(r).toMatch(/position:\s*absolute/);
+    expect(r).toMatch(/clip-path:\s*inset\(50%\)/);
+  });
+
+  test("el valor con cifras exactas no se pinta como boton nativo y senala que revela algo (B2)", () => {
+    const valor = regla(".fiori-kpi__valor");
+    expect(valor).toMatch(/appearance:\s*none/);
+    expect(valor).toMatch(/background:\s*transparent/);
+    expect(valor).toMatch(/border:\s*0/);
+    expect(valor).toMatch(/padding:\s*0/);
+    expect(valor).toMatch(/margin:\s*0/);
+    expect(valor).toMatch(/font:\s*inherit/);
+    expect(valor).toMatch(/color:\s*inherit/);
+    expect(valor).toMatch(/text-align:\s*start/);
+    expect(valor).toMatch(/text-decoration:\s*underline dotted/);
+    expect(valor).toMatch(/cursor:\s*help/);
+    const foco = regla(".fiori-kpi__valor:focus-visible");
+    expect(foco).toMatch(/outline:\s*2px solid var\(--cds-focus\)/);
+    expect(foco).toMatch(/outline-offset:\s*2px/);
+  });
+
+  test("los indicadores recortan con elipsis cada texto", () => {
     expect(regla(".fiori-kpi")).toMatch(/min-inline-size:\s*0/);
     const textos = regla(".fiori-kpi__titulo,\n.fiori-kpi__meta,\n.fiori-kpi__actual,\n.fiori-kpi__delta");
     expect(textos).toMatch(/text-overflow:\s*ellipsis/);
@@ -64,6 +99,28 @@ describe("estilos del visor", () => {
     expect(regla(".visor__lista")).toMatch(/overflow:\s*hidden/);
     expect(regla(".lista-hallazgos__cuerpo")).toMatch(/overflow-y:\s*auto/);
     expect(regla(".lista-hallazgos__cabecera")).toMatch(/flex:\s*none/);
+  });
+
+  test("el halo amarillo lleva un segundo contorno oscuro de 1 px (m1)", () => {
+    const r = regla(".halo--advertencia");
+    expect(r).toMatch(/box-shadow:\s*inset 0 0 0 3px var\(--cds-text-primary\)/);
+    expect(regla(".halo--advertencia.halo--elegido")).toMatch(/box-shadow:\s*inset 0 0 0 4px var\(--cds-text-primary\)/);
+  });
+
+  test("la descripcion de la lista se recorta a 3 lineas y solo la fila elegida la muestra completa (M5)", () => {
+    expect(regla(".hallazgo__descripcion")).toMatch(/-webkit-line-clamp:\s*3/);
+    expect(regla(".lista-hallazgos__fila--elegida .hallazgo__descripcion")).toMatch(/-webkit-line-clamp:\s*unset/);
+  });
+
+  test("el esqueleto de carga no hace desplazar la pagina: recorta lo suyo, no lo de la franja (B1 sin overflow en .visor)", () => {
+    expect(regla(".visor__esqueleto")).toMatch(/overflow:\s*hidden/);
+    expect(regla(".visor__esqueleto-hoja")).toMatch(/overflow:\s*hidden/);
+  });
+
+  test("las pestanas con conteo, el cargando y la ranura de la cabecera tienen estilo (M2, m4, M3)", () => {
+    expect(regla(".pestana__conteo")).toMatch(/display:\s*inline-flex/);
+    expect(regla(".visor__esqueleto-lienzo")).toMatch(/background:\s*var\(--cds-skeleton-background\)/);
+    expect(regla(".silice-cabecera__libro")).toMatch(/flex:\s*1 1 0/);
   });
 
   test("el signo del triangulo amarillo va con la tinta principal", () => {

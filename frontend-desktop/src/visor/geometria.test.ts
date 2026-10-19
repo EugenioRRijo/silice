@@ -142,3 +142,60 @@ describe("planDeDesplazamiento", () => {
     expect(plan?.columna0).toBe(0);
   });
 });
+
+describe("planDeDesplazamiento: la descripcion de la fila no se pierde (M1)", () => {
+  const base = {
+    celda: { fila0: 4, columna0: 15 },
+    ancho: () => 100,
+    alto: () => 20,
+    area: { ancho: 900, alto: 400 },
+    congelado: { startRow: 0, startColumn: 0, ancho: 0, alto: 0 },
+    primeraVisible: { fila0: 0, columna0: 0 },
+    visible: { horizontal: false, vertical: true },
+    descripcion: 3,
+  };
+
+  test("si la descripcion y la celda caben juntas, la descripcion queda visible con el menor desplazamiento", () => {
+    // Columnas 3..15 miden 1300 px: no caben en 900. Con la celda en la 8 (columnas 3..8 = 600 px) si.
+    const plan = planDeDesplazamiento({ ...base, celda: { fila0: 4, columna0: 8 } });
+    // Desde la primera columna hasta la celda: 900 px (cabe): se vuelve a la primera.
+    expect(plan?.columna0).toBe(0);
+  });
+
+  test("menor desplazamiento: la celda queda pegada al borde derecho y la descripcion se ve", () => {
+    // Columnas 3..12 son 1000 px (no caben); con la celda en la 10: 3..10 = 800 px y desde 0..10 = 1100 (no cabe).
+    const plan = planDeDesplazamiento({ ...base, celda: { fila0: 4, columna0: 10 }, primeraVisible: { fila0: 0, columna0: 0 } });
+    // fmin: la primera columna tal que f..10 <= 900 px -> f = 2 (9 columnas); descripcion (3) >= 2: queda visible.
+    expect(plan?.columna0).toBe(2);
+  });
+
+  test("ya en la celda pero con la descripcion fuera de la vista: tambien desplaza", () => {
+    const plan = planDeDesplazamiento({
+      ...base,
+      celda: { fila0: 4, columna0: 10 },
+      visible: { horizontal: true, vertical: true, descripcion: false },
+      primeraVisible: { fila0: 0, columna0: 6 },
+    });
+    // Debe incluir la columna 3 y la 10: f..10 <= 900 -> f entre 2 y 3; el mas cercano a 6 es 3.
+    expect(plan?.columna0).toBe(3);
+  });
+
+  test("si la descripcion y la celda no caben juntas, queda la celda (comportamiento anterior)", () => {
+    const plan = planDeDesplazamiento({ ...base, celda: { fila0: 4, columna0: 20 } });
+    expect(plan?.columna0).toBe(17);
+  });
+
+  test("con la celda y la descripcion ya a la vista no se desplaza", () => {
+    const plan = planDeDesplazamiento({
+      ...base,
+      celda: { fila0: 4, columna0: 6 },
+      visible: { horizontal: true, vertical: true, descripcion: true },
+    });
+    expect(plan).toBeNull();
+  });
+
+  test("sin descripcion se comporta como antes", () => {
+    const plan = planDeDesplazamiento({ ...base, descripcion: undefined });
+    expect(plan?.columna0).toBe(12);
+  });
+});

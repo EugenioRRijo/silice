@@ -25,16 +25,16 @@
   white-space: nowrap;
 }
 
-// La franja mide 64 px y no crece: los indicadores se reparten el ancho que queda y recortan con elipsis lo que
-// no cabe (el valor completo esta en el tooltip, que se abre con el teclado); los conteos por severidad no se
-// encogen ni se mueven, asi que se ven siempre, a 1366 y a 1920.
+// La franja mide 64 px y no crece: los indicadores se reparten el ancho que queda y cada texto recorta con elipsis
+// lo que no cabe (el valor completo esta en el tooltip, que se abre con el teclado); los conteos por severidad no
+// se encogen ni se mueven, asi que se ven siempre, a 1366 y a 1920. NADA de la franja ni de sus contenedores
+// recorta (overflow): el tooltip con las cifras exactas se abre por debajo de ella y quedaria cortado.
 .franja-indicadores {
   display: flex;
   flex: none; // la pantalla es una columna: sin esto la franja se encoge y se come los 64 px
   flex-wrap: nowrap;
   align-items: stretch;
   block-size: 4rem;
-  overflow: hidden;
   background: var(--cds-layer);
   border-block-end: 1px solid var(--silice-divisor);
 }
@@ -43,16 +43,6 @@
   display: flex;
   flex: 1 1 0;
   min-inline-size: 0;
-  overflow: hidden;
-}
-
-.franja-indicadores__severidad {
-  display: flex;
-  flex: none;
-  align-items: center;
-  gap: 0.25rem;
-  padding: 0 0.75rem;
-  border-inline-start: 1px solid var(--silice-divisor);
 }
 
 .fiori-kpi {
@@ -70,7 +60,6 @@
   row-gap: 0.125rem;
   min-inline-size: 0;
   padding: 0.25rem 0.75rem;
-  overflow: hidden;
   border-inline-end: 1px solid var(--silice-divisor);
 }
 
@@ -103,6 +92,47 @@
   grid-area: actual;
   color: var(--silice-texto);
   text-align: start;
+}
+
+// El valor es un <button> solo para que el teclado lo alcance: se pinta como texto, con la tipografia y el color de
+// la cifra. Lo que senala que revela algo es el subrayado punteado y el cursor de ayuda (sin iconos).
+// El contenedor del tooltip ocupa la celda de la cifra; no recorta (el popover cuelga de el).
+.fiori-kpi__tooltip {
+  display: block;
+  overflow: visible;
+}
+
+// Las dos cifras exactas, una debajo de la otra (si no, corren en una linea y se salen de la caja del tooltip).
+.fiori-kpi__exacto {
+  display: grid;
+  gap: 0.25rem;
+  text-align: start;
+  white-space: nowrap;
+}
+
+.fiori-kpi__valor {
+  display: block;
+  max-inline-size: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  appearance: none;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  text-align: start;
+  text-decoration: underline dotted;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.25rem;
+  cursor: help;
+
+  &:focus-visible {
+    outline: 2px solid var(--cds-focus);
+    outline-offset: 2px;
+  }
 }
 
 .fiori-kpi__delta {

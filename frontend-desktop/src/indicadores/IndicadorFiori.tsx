@@ -11,13 +11,16 @@ interface Props {
   exactoSilice?: string;
 }
 
-// Proporciones solo para dibujar la barra (no es dinero): real y meta contra el mayor de los dos.
+// Proporciones solo para dibujar la barra (no es dinero): real y meta contra el mayor de los dos. Sin barra si la
+// variacion no se ve.
 function proporciones(actual: string, meta: string): { real: number; meta: number } | null {
   const a = Number(actual);
   const m = Number(meta);
   if (!Number.isFinite(a) || !Number.isFinite(m) || a < 0 || m < 0) return null;
   const tope = Math.max(a, m);
   if (tope === 0) return null;
+  // Una diferencia menor a 2 % no se distingue en una barra de 150 px: se quita en vez de dibujar dos barras iguales.
+  if (Math.abs(a - m) / tope < 0.02) return null;
   return { real: (a / tope) * 100, meta: (m / tope) * 100 };
 }
 
@@ -39,7 +42,7 @@ export function IndicadorFiori({ indicador, exactoLibro, exactoSilice }: Props) 
       </span>
       {hayExacto ? (
         <Tooltip
-          className="fiori-kpi__tooltip"
+          className="fiori-kpi__actual fiori-kpi__tooltip cds--type-heading-03 silice-cifra"
           align="bottom-start"
           description={
             <span className="fiori-kpi__exacto">
@@ -48,7 +51,7 @@ export function IndicadorFiori({ indicador, exactoLibro, exactoSilice }: Props) 
             </span>
           }
         >
-          <button type="button" className="fiori-kpi__actual fiori-kpi__valor cds--type-heading-03 silice-cifra">
+          <button type="button" className="fiori-kpi__valor">
             {formatoEsVe(actual)}
           </button>
         </Tooltip>

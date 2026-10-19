@@ -117,6 +117,20 @@ describe("IndicadorFiori", () => {
     expect(container.querySelector(".fiori-kpi__barra-meta")).not.toBeNull();
   });
 
+  test("la mini barra solo se dibuja si la variacion se ve: con menos de 2 % de diferencia se quita (m7)", () => {
+    const { container, rerender } = render(<IndicadorFiori indicador={indicador({ actual: "1015", meta: "1000" })} />);
+    expect(container.querySelector(".fiori-kpi__barra")).toBeNull();
+    rerender(<IndicadorFiori indicador={indicador({ actual: "1050", meta: "1000" })} />);
+    expect(container.querySelector(".fiori-kpi__barra")).not.toBeNull();
+  });
+
+  test("el valor con exactos no se presenta como un boton con icono: es texto con la clase del valor (B2)", () => {
+    const { container } = render(<IndicadorFiori indicador={indicador()} exactoLibro="1" exactoSilice="2" />);
+    const valor = container.querySelector("button.fiori-kpi__valor");
+    expect(valor).not.toBeNull();
+    expect(valor?.querySelector("svg")).toBeNull();
+  });
+
   test("montos no numericos no rompen la barra", () => {
     render(<IndicadorFiori indicador={indicador({ actual: "n/d", meta: "0" })} />);
     expect(screen.getByText("n/d")).toBeInTheDocument();

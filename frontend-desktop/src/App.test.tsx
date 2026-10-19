@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { fijarCsrf } from "./api/cliente";
@@ -53,6 +53,15 @@ describe("App", () => {
     expect(await screen.findByText("Ana Pérez")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Salir" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Suelte aquí el libro \.xlsx de la empresa/ })).toBeInTheDocument();
+  });
+
+  test("la fecha de devolucion va en la cabecera de 48 px, no en una banda propia (M3)", async () => {
+    fetchFalso.mockImplementation(async () => json(sesion));
+    const { container } = render(<App />);
+    await screen.findByText("Ana Pérez");
+    const cabecera = screen.getByRole("banner");
+    expect(within(cabecera).getByLabelText("Fecha de devolución")).toBeInTheDocument();
+    expect(container.querySelector(".visor__barra")).toBeNull();
   });
 
   test("entrar con una cuenta buena abre el visor y guarda el token solo en memoria", async () => {
@@ -139,7 +148,7 @@ describe("App", () => {
       );
       await screen.findByText("El total no coincide");
       // El auditor elige una hoja y filtra por Critico.
-      await usuario.click(await screen.findByRole("tab", { name: "PLAN DE PAGOS" }));
+      await usuario.click(await screen.findByRole("tab", { name: /^PLAN DE PAGOS/ }));
       await usuario.click(screen.getByRole("button", { name: /^Crítico/ }));
       // La sesion vence: la siguiente llamada (cambiar la fecha vuelve a auditar) da 401.
       vencida = true;

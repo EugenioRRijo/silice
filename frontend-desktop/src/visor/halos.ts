@@ -90,3 +90,24 @@ export function construirHalos(hallazgos: HallazgoLibroRespuesta[], hojas?: Hoja
 
   return { halos: [...porCelda.values()], sinCelda, ocultos };
 }
+
+export interface ResumenDeHoja {
+  total: number;
+  // La mas grave de la hoja.
+  severidad: Severidad;
+}
+
+// Cuantos hallazgos se ven en cada hoja y la severidad mas grave: lo que dicen las pestanas del libro.
+export function resumenPorHoja(halos: Halo[]): Map<string, ResumenDeHoja> {
+  const resumen = new Map<string, ResumenDeHoja>();
+  for (const halo of halos) {
+    const actual = resumen.get(halo.hoja);
+    if (!actual) {
+      resumen.set(halo.hoja, { total: halo.indices.length, severidad: halo.severidad });
+      continue;
+    }
+    actual.total += halo.indices.length;
+    if (gravedad(halo.severidad) > gravedad(actual.severidad)) actual.severidad = halo.severidad;
+  }
+  return resumen;
+}

@@ -15,6 +15,8 @@ interface Props {
 
 export function App({ crearHoja }: Props = {}) {
   const { estado, entrar, salir, expirar } = useSesion();
+  // La fecha de devolucion, el libro abierto y Cambiar libro viven en la cabecera: el visor los pinta aqui (portal).
+  const [ranura, setRanura] = useState<HTMLElement | null>(null);
   // El libro abierto vive aqui, por encima de la puerta de sesion, solo en memoria: si la sesion vence y entra la
   // MISMA cuenta, reaparece; si entra otra, se descarta (UC-26).
   const [almacenes] = useState(() => new Map<string, AlmacenDelVisor>());
@@ -35,6 +37,7 @@ export function App({ crearHoja }: Props = {}) {
         <HeaderName href="#" prefix="">
           Sílice
         </HeaderName>
+        {estado.tipo === "activa" && <div className="silice-cabecera__libro" ref={setRanura} />}
         {estado.tipo === "activa" && (
           <HeaderGlobalBar>
             <span className="silice-usuario cds--type-body-compact-01">{estado.sesion.nombre}</span>
@@ -61,7 +64,7 @@ export function App({ crearHoja }: Props = {}) {
           aviso={estado.expirada ? "Su sesión venció. Entre de nuevo para seguir." : undefined}
         />
       )}
-      {estado.tipo === "activa" && almacen && <Visor alExpirar={expirar} almacen={almacen} crearHoja={crearHoja} />}
+      {estado.tipo === "activa" && almacen && <Visor alExpirar={expirar} almacen={almacen} crearHoja={crearHoja} ranuraCabecera={ranura} />}
     </Theme>
   );
 }

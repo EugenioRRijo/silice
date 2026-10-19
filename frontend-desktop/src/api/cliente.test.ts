@@ -73,6 +73,17 @@ describe("cliente de la API", () => {
     expect((error as ErrorDeApi).detalle).toContain("502");
   });
 
+  test("los mensajes al usuario dicen \"el programa de Sílice\", no \"la API\" (m6)", async () => {
+    fetchFalso.mockImplementation(async () => new Response("<html>", { status: 502 }));
+    const sinDetalle = await pedir("/v1/sesion").catch((e: unknown) => e);
+    fetchFalso.mockRejectedValue(new TypeError("Failed to fetch"));
+    const sinServidor = await pedir("/v1/sesion").catch((e: unknown) => e);
+    for (const error of [sinDetalle, sinServidor]) {
+      expect((error as ErrorDeApi).detalle).toMatch(/programa de Sílice/);
+      expect((error as ErrorDeApi).detalle).not.toMatch(/\bAPI\b/);
+    }
+  });
+
   test("un 204 devuelve undefined", async () => {
     fetchFalso.mockImplementation(async () => respuesta(204));
     await expect(pedir("/v1/sesion", { metodo: "DELETE" })).resolves.toBeUndefined();
@@ -83,6 +94,6 @@ describe("cliente de la API", () => {
     const error = await pedir("/v1/sesion").catch((e: unknown) => e);
     expect(error).toBeInstanceOf(ErrorDeApi);
     expect(error).toMatchObject({ estado: 0 });
-    expect((error as ErrorDeApi).detalle).toMatch(/servidor/i);
+    expect((error as ErrorDeApi).detalle).toMatch(/no se pudo hablar/i);
   });
 });

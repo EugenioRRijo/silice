@@ -68,8 +68,10 @@ export interface EntradaPlan {
   congelado: { startRow: number; startColumn: number; ancho: number; alto: number };
   // Primera fila y columna de la zona principal ahora mismo.
   primeraVisible: { fila0: number; columna0: number };
-  // Si la celda se ve entera en cada eje.
-  visible: { horizontal: boolean; vertical: boolean };
+  // Si la celda se ve entera en cada eje y, si se conoce, si se ve la columna de descripcion de su fila.
+  visible: { horizontal: boolean; vertical: boolean; descripcion?: boolean };
+  // La columna (base 0) que dice de que trata la fila (el texto largo a la izquierda de la celda), si la hay.
+  descripcion?: number;
 }
 
 const FILAS_DE_CONTEXTO = 3;
@@ -78,27 +80,35 @@ const FILAS_DE_CONTEXTO = 3;
 //  - Si ya se ve en horizontal, solo se desplaza en vertical.
 //  - Si no, y desde la primera columna hasta la celda cabe en el ancho, se vuelve a la primera (para no esconder
 //    las columnas de descripcion); si no cabe, la celda queda a un tercio del ancho desde la izquierda.
+//  - Si hay columna de descripcion a la izquierda de la celda y las dos caben juntas, se hace el menor
+//    desplazamiento horizontal que deje ver las dos (la celda sin la descripcion no dice de que partida habla).
 //  - En vertical se dejan filas de contexto arriba, menos las que hagan falta para que la celda (aunque la fila sea
 //    alta) se vea entera; una fila mas alta que la zona se deja arriba del todo.
 export function planDeDesplazamiento(e: EntradaPlan): { fila0: number; columna0: number } | null {
   const { celda, congelado, area, primeraVisible, visible } = e;
-  if (visible.horizontal && visible.vertical) return null;
+  const descripcionALaVista = visible.descripcion !== false;
+  if (visible.horizontal && visible.vertical && descripcionALaVista) return null;
 
   let columna0 = primeraVisible.columna0;
-  if (!visible.horizontal) {
+  const conDescripcion =
+    e.descripcion !== undefined && e.descripcion < celda.columna0 && e.descripcion >= congelado.startColumn;
+  if (!visible.horizontal || !descripcionALaVista) {
     const disponible = area.ancho - congelado.ancho;
-    let desdeElInicio = 0;
-    for (let c = congelado.startColumn; c <= celda.columna0; c++) desdeElInicio += e.ancho(c);
-    if (desdeElInicio <= disponible) {
-      columna0 = congelado.startColumn;
+    // Primera columna desde la que la celda aun cabe (la mas a la izquierda posible).
+    let primeraQueCabe = celda.columna0;
+    let suma = e.ancho(celda.columna0);
+    while (primeraQueCabe > congelado.startColumn && suma + e.ancho(primeraQueCabe - 1) <= disponible) {
+      primeraQueCabe -= 1;
+      suma += e.ancho(primeraQueCabe);
+    }
+    if (conDescripcion && primeraQueCabe <= (e.descripcion as number)) {
+      // Caben las dos: la primera columna mas cercana a la actual que deje ver la descripcion y la celda.
+      columna0 = Math.min(Math.max(primeraVisible.columna0, primeraQueCabe), e.descripcion as number);
+    } else if (visible.horizontal) {
+      // La celda ya se ve y la descripcion no cabe junto con ella: se deja como esta.
+      columna0 = primeraVisible.columna0;
     } else {
-      const tercio = area.ancho / 3;
-      let acumulado = 0;
-      columna0 = celda.columna0;
-      while (columna0 > congelado.startColumn && acumulado < tercio) {
-        columna0 -= 1;
-        acumulado += e.ancho(columna0);
-      }
+      columna0 = desplazamientoSinDescripcion(e, disponible);
     }
   }
 
@@ -114,4 +124,20 @@ export function planDeDesplazamiento(e: EntradaPlan): { fila0: number; columna0:
     while (fila0 < celda.fila0 && altura() > disponible) fila0 += 1;
   }
   return { fila0, columna0 };
+}
+
+// Sin descripcion que cuidar: desde la primera columna si cabe hasta la celda; si no, la celda a un tercio del ancho.
+function desplazamientoSinDescripcion(e: EntradaPlan, disponible: number): number {
+  const { celda, congelado, area } = e;
+  let desdeElInicio = 0;
+  for (let c = congelado.startColumn; c <= celda.columna0; c++) desdeElInicio += e.ancho(c);
+  if (desdeElInicio <= disponible) return congelado.startColumn;
+  const tercio = area.ancho / 3;
+  let acumulado = 0;
+  let columna0 = celda.columna0;
+  while (columna0 > congelado.startColumn && acumulado < tercio) {
+    columna0 -= 1;
+    acumulado += e.ancho(columna0);
+  }
+  return columna0;
 }
