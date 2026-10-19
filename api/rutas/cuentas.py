@@ -39,8 +39,9 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from api.rutas.sesion import Detalle, _RutaSinEco, _sin_eco
+from api.rutas.sesion import Detalle
 from api.sesion_web import ahora, exigir_clave_o_sesion
+from api.sin_eco import RutaSinEco, sin_eco
 from operacion.base_datos import ErrorDeBase
 from operacion.instalacion import sesion_de_instalacion
 from seguridad import cuentas, eventos
@@ -68,8 +69,8 @@ ERRORES_ESPERADOS = (
 )
 
 
-class _RutaCuentas(_RutaSinEco):
-    """`_RutaSinEco` (el 422 sin eco) y, además, `Cache-Control: no-store` en TODA respuesta de
+class _RutaCuentas(RutaSinEco):
+    """`RutaSinEco` (el 422 sin eco) y, además, `Cache-Control: no-store` en TODA respuesta de
     estas rutas, también en las de error (401, 403, 404, 409, 422, 503): el `HTTPException` se
     vuelve la misma respuesta `{"detalle": ...}` de la aplicación, con la cabecera."""
 
@@ -240,7 +241,7 @@ def listar_cuentas(_: Administrador) -> CuentasRespuesta:
 @router.post(
     "/v1/cuentas", response_model=ResultadoRespuesta, status_code=201, responses=_RESPUESTAS
 )
-@_sin_eco(MENSAJE_CUERPO)
+@sin_eco(MENSAJE_CUERPO)
 def crear_cuenta(datos: CuentaNueva, activa: Administrador) -> ResultadoRespuesta:
     """Alta con contraseña temporal: la persona deberá cambiarla al entrar. La contraseña no se
     devuelve."""
@@ -262,7 +263,7 @@ def crear_cuenta(datos: CuentaNueva, activa: Administrador) -> ResultadoRespuest
 @router.post(
     "/v1/cuentas/{usuario_id}/roles", response_model=ResultadoRespuesta, responses=_RESPUESTAS
 )
-@_sin_eco(MENSAJE_CUERPO)
+@sin_eco(MENSAJE_CUERPO)
 def cambiar_roles(usuario_id: int, datos: NuevosRoles, activa: Administrador) -> ResultadoRespuesta:
     roles = list(datos.roles)
     return _actuar(
@@ -322,7 +323,7 @@ def desbloquear_cuenta(usuario_id: int, activa: Administrador) -> ResultadoRespu
     response_model=ResultadoRespuesta,
     responses=_RESPUESTAS,
 )
-@_sin_eco(MENSAJE_CUERPO)
+@sin_eco(MENSAJE_CUERPO)
 def restablecer_cuenta(
     usuario_id: int, datos: ContrasenaTemporal, activa: Administrador
 ) -> ResultadoRespuesta:
