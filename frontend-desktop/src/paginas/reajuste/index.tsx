@@ -204,7 +204,7 @@ function Formulario({
 
       <section className="silice-reajuste__bloque" aria-labelledby="reajuste-clausula">
         <h2 id="reajuste-clausula" className="cds--type-heading-03">
-          1. La cláusula de reajuste (S1 §8.1, a cotejar con la Gaceta)
+          1. La cláusula de reajuste (a cotejar con la Gaceta)
         </h2>
         <div className="silice-reajuste__rejilla">
           <TextInput id="rj-inicio" labelText="Inicio del contrato" placeholder="AAAA-MM-DD" value={form.clausula.fecha_inicio} onChange={(e) => campo("fecha_inicio", e.target.value)} />
@@ -234,7 +234,7 @@ function Formulario({
               <SelectItem key={x} value={x} text={x} />
             ))}
           </Select>
-          <TextInput id="rj-base" labelText="Mes base de los índices (I0)" placeholder="AAAA-MM-DD" value={form.clausula.fecha_base_indices} onChange={(e) => campo("fecha_base_indices", e.target.value)} />
+          <TextInput id="rj-base" labelText="Mes base de los índices" placeholder="AAAA-MM-DD" value={form.clausula.fecha_base_indices} onChange={(e) => campo("fecha_base_indices", e.target.value)} />
           <TextInput id="rj-r" labelText="R (fracción no reajustable)" value={form.clausula.r} onChange={(e) => campo("r", e.target.value)} />
           <TextInput id="rj-fuente-r" labelText="Fuente de R" helperText="Si el contrato no la trae, escriba 0 y declárelo." value={form.clausula.fuente_r} onChange={(e) => campo("fuente_r", e.target.value)} />
           <TextInput id="rj-fuente" labelText="Fuente de la cláusula" helperText="Contrato, número, fecha." value={form.clausula.fuente} onChange={(e) => campo("fuente", e.target.value)} />
@@ -242,7 +242,7 @@ function Formulario({
         </div>
         <Checkbox
           id="rj-r-comprobacion"
-          labelText="La cláusula aplica R también a la comprobación (S1-R14)"
+          labelText="La cláusula aplica R también a la comprobación"
           checked={form.clausula.r_en_comprobacion === "si"}
           onChange={(_, { checked }) => campo("r_en_comprobacion", checked ? "si" : "no")}
         />

@@ -151,6 +151,13 @@ describe("Reajuste de precios", () => {
     expect(screen.getByLabelText("Componente, Componentes fila 2")).toHaveAttribute("readonly");
   });
 
+  test("los textos visibles no llevan jerga interna de las especificaciones (V-17)", async () => {
+    montar();
+    await screen.findByLabelText("Versión del contrato");
+    const visible = document.body.textContent ?? "";
+    expect(visible).not.toMatch(/S1 §|S1-R\d+|\(I0\)/);
+    expect(screen.getByText(/La cláusula de reajuste \(a cotejar con la Gaceta\)/)).toBeInTheDocument();
+  });
   test("sin revaloradas avisa que la comprobación quedará no disponible", async () => {
     contexto = () => json({ ...CONTEXTO, versiones: [{ codigo: "001", motivo: "", revalorada: false }] });
     montar();
