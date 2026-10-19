@@ -102,8 +102,6 @@ export function Shell({ sesion, alSalir, alExpirar, paginas = PAGINAS, urlClasic
   const [recarga, setRecarga] = useState(0);
   const [error, setError] = useState<unknown>(null);
   const [aviso, setAviso] = useState<string | null>(null);
-  // Donde la pagina «Libro de la empresa» pinta sus controles en la cabecera (portal).
-  const [ranura, setRanura] = useState<HTMLElement | null>(null);
   // Cambia con el caso: las paginas se vuelven a montar y piden sus datos de nuevo.
   const [generacion, setGeneracion] = useState(0);
 
@@ -187,10 +185,9 @@ export function Shell({ sesion, alSalir, alExpirar, paginas = PAGINAS, urlClasic
       recargarProyectos,
       alExpirar,
       almacenDelLibro: almacen,
-      ranuraCabecera: ranura,
       crearHojaVisor: crearHoja,
     }),
-    [sesion, proyecto, proyectos, casos, recargarProyectos, alExpirar, almacen, ranura, crearHoja],
+    [sesion, proyecto, proyectos, casos, recargarProyectos, alExpirar, almacen, crearHoja],
   );
 
   const primera = paginas.find((p) => estaMigrada(p) && visible(p, acciones, sesion.modo_entrega));
@@ -214,7 +211,6 @@ export function Shell({ sesion, alSalir, alExpirar, paginas = PAGINAS, urlClasic
         nombre={sesion.nombre}
         alSalir={alSalir}
         selectores={selectores}
-        ranura={setRanura}
         menu={{ abierto: menuAbierto, alternar: () => setMenuAbierto((a) => !a) }}
       />
       <MenuLateral

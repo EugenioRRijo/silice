@@ -46,9 +46,9 @@ function Registrar({ proyecto, alCambiar }: { proyecto: string; alCambiar: () =>
       <summary className="cds--type-body-compact-01">Registrar una valuación</summary>
       <div className="silice-control__formulario">
         <TextInput id="val-numero" labelText="Número" value={v.numero} onChange={campo("numero")} />
-        <TextInput id="val-desde" labelText="Periodo desde (AAAA-MM-DD)" value={v.desde} onChange={campo("desde")} />
-        <TextInput id="val-hasta" labelText="Periodo hasta (AAAA-MM-DD)" value={v.hasta} onChange={campo("hasta")} />
-        <TextInput id="val-fecha" labelText="Fecha de la valuación (AAAA-MM-DD)" value={v.fecha} onChange={campo("fecha")} />
+        <TextInput id="val-desde" type="date" labelText="Período desde" value={v.desde} onChange={campo("desde")} />
+        <TextInput id="val-hasta" type="date" labelText="Período hasta" value={v.hasta} onChange={campo("hasta")} />
+        <TextInput id="val-fecha" type="date" labelText="Fecha de la valuación" value={v.fecha} onChange={campo("fecha")} />
         <TextInput id="val-inspector" labelText="Inspector" value={v.inspector} onChange={campo("inspector")} />
         <fieldset className="silice-control__lineas">
           <legend className="cds--type-label-01">Líneas medidas</legend>
@@ -56,7 +56,7 @@ function Registrar({ proyecto, alCambiar }: { proyecto: string; alCambiar: () =>
             <div key={i} className="silice-control__linea">
               <TextInput id={`val-p-${i}`} labelText={`Partida ${i + 1}`} value={l.partida} onChange={(e) => cambiarLinea(i, "partida", e.target.value)} />
               <TextInput id={`val-c-${i}`} labelText={`Cantidad ${i + 1}`} value={l.cantidad} onChange={(e) => cambiarLinea(i, "cantidad", e.target.value)} />
-              <TextInput id={`val-m-${i}`} labelText={`Fecha de medición ${i + 1}`} value={l.fecha_medicion} onChange={(e) => cambiarLinea(i, "fecha_medicion", e.target.value)} />
+              <TextInput id={`val-m-${i}`} type="date" labelText={`Fecha de medición ${i + 1}`} value={l.fecha_medicion} onChange={(e) => cambiarLinea(i, "fecha_medicion", e.target.value)} />
               <TextInput id={`val-o-${i}`} labelText={`Observación ${i + 1}`} value={l.observacion} onChange={(e) => cambiarLinea(i, "observacion", e.target.value)} />
             </div>
           ))}
@@ -195,7 +195,7 @@ function Costo({ proyecto, alCambiar }: { proyecto: string; alCambiar: () => voi
           <SelectItem value="USD" text="USD" />
           <SelectItem value="Bs" text="Bs" />
         </Select>
-        <TextInput id="cos-fecha" labelText="Fecha (AAAA-MM-DD)" value={v.fecha} onChange={campo("fecha")} />
+        <TextInput id="cos-fecha" type="date" labelText="Fecha" value={v.fecha} onChange={campo("fecha")} />
         <TextInput id="cos-partida" labelText="Partida (opcional)" value={v.partida} onChange={campo("partida")} />
         <TextInput id="cos-fuente" labelText="Fuente del costo" value={v.fuente} onChange={campo("fuente")} />
         <div>

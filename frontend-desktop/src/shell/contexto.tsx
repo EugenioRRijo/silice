@@ -17,8 +17,8 @@ export interface Aplicacion {
   // La API contesto 401: la sesion vencio.
   alExpirar: () => void;
   // «Libro de la empresa»: lo abierto vive por encima de la puerta de sesion (UC-26), asi que el almacen llega de
-  // App; la ranura es el punto de montaje de la cabecera donde la pagina pinta la fecha de devolucion, el nombre
-  // del libro y Cambiar libro (null mientras la cabecera no la ha creado); `crearHojaVisor` solo cambia en pruebas.
+  // App. `ranuraCabecera` ya no la da el Shell (V-24, T8): los controles del libro van en el cuerpo de la pagina; el
+  // campo queda solo porque el visor y su prueba aun lo aceptan. `crearHojaVisor` solo cambia en pruebas.
   almacenDelLibro?: AlmacenDelVisor;
   ranuraCabecera?: HTMLElement | null;
   crearHojaVisor?: CrearHojaVisor;

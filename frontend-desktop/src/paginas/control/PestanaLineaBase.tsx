@@ -4,6 +4,7 @@ import { pedir } from "../../api/cliente";
 import { AvisoError } from "../../comun/AvisoError";
 import { EsqueletoPagina } from "../../comun/EsqueletoPagina";
 import { TablaDensa } from "../../comun/TablaDensa";
+import { formatoMontoEsVe } from "../../indicadores/formatoEsVe";
 import { useAplicacion } from "../../shell/contexto";
 import { errorDeCarga, etiquetaDeCodigo, rutaDe, textoLlano, useAccion, useCargaSuave } from "./logica";
 import type { LineaBase } from "./logica";
@@ -51,7 +52,7 @@ function Declarar({ proyecto, versiones, alCambiar }: { proyecto: string; versio
           <SelectItem key={c} value={c} text={c} />
         ))}
       </Select>
-      <TextInput id="lb-desde" labelText="Vigente desde (AAAA-MM-DD)" value={v.desde} onChange={campo("desde")} />
+      <TextInput id="lb-desde" type="date" labelText="Vigente desde" value={v.desde} onChange={campo("desde")} />
       <Select
         id="lb-perspectiva"
         labelText="Perspectiva"
@@ -62,14 +63,14 @@ function Declarar({ proyecto, versiones, alCambiar }: { proyecto: string; versio
         <SelectItem value="costo" text="costo" />
         <SelectItem value="precio" text="precio" />
       </Select>
-      <TextInput id="lb-inicio" labelText="Inicio de obra (AAAA-MM-DD)" value={v.inicio} onChange={campo("inicio")} />
+      <TextInput id="lb-inicio" type="date" labelText="Inicio de obra" value={v.inicio} onChange={campo("inicio")} />
       <TextInput
         id="lb-dias"
-        labelText="Días hábiles por periodo"
+        labelText="Días hábiles por período"
         value={v.dias_por_periodo}
         onChange={campo("dias_por_periodo")}
       />
-      <TextArea id="lb-feriados" labelText="Feriados (AAAA-MM-DD, separados por comas)" value={v.feriados} onChange={campo("feriados")} />
+      <TextArea id="lb-feriados" labelText="Feriados (fechas como 2026-12-25, separadas por comas)" value={v.feriados} onChange={campo("feriados")} />
       <TextInput id="lb-fuente" labelText="Fuente de la línea base" value={v.fuente} onChange={campo("fuente")} />
       <div>
         <Button kind="primary" size="md" disabled={estado.enviando} onClick={() => void declarar()}>
@@ -110,7 +111,7 @@ function Parametros({ proyecto, datos, alCambiar }: { proyecto: string; datos: L
         columnas={[
           { clave: "parametro", titulo: "Parámetro", ordenable: false, presentar: etiquetaDeCodigo },
           { clave: "que_es", titulo: "Qué es", ordenable: false, presentar: textoLlano },
-          { clave: "valor", titulo: "Valor", ordenable: false },
+          { clave: "valor", titulo: "Valor", numerica: true, ordenable: false, presentar: formatoMontoEsVe },
           { clave: "naturaleza", titulo: "Naturaleza", ordenable: false, presentar: etiquetaDeCodigo },
         ]}
         filas={datos.parametros.map((p) => ({

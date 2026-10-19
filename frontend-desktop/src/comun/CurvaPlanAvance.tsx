@@ -82,7 +82,7 @@ export function CurvaPlanAvance({ titulo, series, unidad }: Props) {
   }, [series]);
 
   const columnas = [
-    { clave: "periodo", titulo: "Periodo", ordenable: false },
+    { clave: "periodo", titulo: "Período", ordenable: false },
     ...series.map((s) => ({
       clave: s.nombre,
       titulo: unidad ? `${s.nombre} (${unidad})` : s.nombre,
@@ -124,7 +124,7 @@ export function CurvaPlanAvance({ titulo, series, unidad }: Props) {
         {series.map((s) => `${s.nombre}: ${TEXTO_DE_ROL[s.rol]}`).join(" · ")}
       </figcaption>
       <details className="silice-curva__tabla">
-        <summary className="cds--type-body-compact-01">Ver los montos por periodo</summary>
+        <summary className="cds--type-body-compact-01">Ver los montos por período</summary>
         <TablaDensa etiqueta={`Montos de ${titulo}`} columnas={columnas} filas={filas} />
       </details>
     </figure>

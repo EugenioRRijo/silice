@@ -2,6 +2,7 @@
 // Los textos de las tablas ya vienen presentados por la API; aqui no se recalcula ningun monto.
 import { useCallback, useState } from "react";
 import { ErrorDeApi } from "../../api/cliente";
+import { formatoMontoEsVe } from "../../indicadores/formatoEsVe";
 import { useCarga } from "../inicio/useCarga";
 import type { Carga } from "../inicio/useCarga";
 
@@ -169,6 +170,7 @@ export const TITULOS_VISIBLES: Record<string, string> = {
   "Retraso (dias)": "Retraso (días)",
   Penalizacion: "Penalización",
   Version: "Versión",
+  Periodo: "Período",
 };
 
 export function columnasDe(
@@ -181,7 +183,10 @@ export function columnasDe(
     titulo: TITULOS_VISIBLES[t] ?? t,
     numerica: numericas.includes(t),
     ordenable: false,
-    presentar: presentar[t],
+    // Las cifras se leen en es-VE (el exacto queda en el title); una columna con texto propio lo compone encima.
+    presentar: numericas.includes(t)
+      ? (valor: string) => formatoMontoEsVe((presentar[t] ?? ((v: string) => v))(valor))
+      : presentar[t],
   }));
 }
 

@@ -229,6 +229,16 @@ describe("Shell", () => {
     });
   });
 
+  test("la cabecera no reserva una ranura vacía: ninguna página pinta ya controles allí (T8)", async () => {
+    const { container } = render(
+      <MemoryRouter initialEntries={["/tablero"]}>
+        <Shell sesion={sesionCon()} alSalir={alSalir} alExpirar={alExpirar} paginas={PAGINAS} />
+      </MemoryRouter>,
+    );
+    await screen.findByRole("heading", { name: "Pantalla del tablero" });
+    expect(container.querySelector(".silice-cabecera__libro")).toBeNull();
+  });
+
   describe("rutas", () => {
     test("carga la pagina de la ruta cuando se abre, no antes", async () => {
       const cargar = vi.fn(async () => ({ default: PaginaA }));
