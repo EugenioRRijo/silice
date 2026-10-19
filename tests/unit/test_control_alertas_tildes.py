@@ -251,6 +251,7 @@ def test_ninguna_frase_del_nucleo_queda_sin_catalogar() -> None:
         for ruta in (
             RAIZ / "core" / "budget" / "valor_ganado.py",
             RAIZ / "core" / "budget" / "equilibrio.py",
+            RAIZ / "core" / "budget" / "recuperacion.py",
         )
         for trozo in _fragmentos_de_texto(ruta)
         if not any(trozo.strip() in crudo for crudo in crudos)
