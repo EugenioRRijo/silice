@@ -492,3 +492,30 @@ def test_elegir_exige_decidir_la_recuperacion_y_una_opcion_conocida() -> None:
     navegador, cabeceras = _arma()
     respuesta = navegador.post("/v1/control/recuperacion/elegir", json=cuerpo, headers=cabeceras)
     assert respuesta.status_code == 422 and "opcion" in respuesta.json()["detalle"].lower()
+
+
+# --- V-11: el selector de la cabecera manda el `codigo` de GET /v1/proyectos ----------------
+
+
+def _codigo_del_proyecto(navegador: TestClient) -> str:
+    filas = navegador.get("/v1/proyectos").json()
+    return next(f["codigo"] for f in filas if f["nombre"] == ob.NOMBRE)
+
+
+def test_control_acepta_el_codigo_de_v1_proyectos_en_consulta() -> None:
+    navegador = _con_clave()
+    codigo = _codigo_del_proyecto(navegador)
+    por_nombre = navegador.get("/v1/control/linea-base", params=P).json()
+    por_codigo = navegador.get("/v1/control/linea-base", params={"proyecto": codigo})
+    assert por_codigo.status_code == 200
+    assert por_codigo.json() == por_nombre
+    assert navegador.get("/v1/control/valuaciones", params={"proyecto": codigo}).status_code == 200
+    calculo = navegador.get("/v1/control/calculo", params={"proyecto": codigo})
+    assert calculo.status_code == 200
+    assert calculo.json() == navegador.get("/v1/control/calculo", params=P).json()
+
+
+def test_control_con_un_codigo_inexistente_da_404_con_el_mensaje_de_siempre() -> None:
+    respuesta = _con_clave().get("/v1/control/linea-base", params={"proyecto": "987654"})
+    assert respuesta.status_code == 404
+    assert respuesta.json()["detalle"] == "El proyecto «987654» no existe en este caso."

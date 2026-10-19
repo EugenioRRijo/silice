@@ -249,3 +249,26 @@ def test_el_tablero_no_escribe_en_el_caso(_plantillas: dict[str, Path]) -> None:
     dependencias.cerrar_motores()
     assert config.ruta_instalacion().exists()
     assert _plantillas["con_control"].read_bytes() == antes
+
+
+# --- V-11: el selector de la cabecera manda el `codigo` de GET /v1/proyectos ----------------
+
+
+def _codigo_del_proyecto(navegador: TestClient) -> str:
+    filas = navegador.get("/v1/proyectos").json()
+    return next(f["codigo"] for f in filas if f["nombre"] == ob.NOMBRE)
+
+
+def test_el_tablero_acepta_el_codigo_que_da_v1_proyectos_igual_que_el_nombre() -> None:
+    navegador = _con_clave()
+    por_codigo = _tablero(navegador, _codigo_del_proyecto(navegador))
+    por_nombre = _tablero(navegador)
+    assert por_codigo.status_code == 200
+    assert por_codigo.json() == por_nombre.json()
+    assert por_codigo.json()["proyecto"] == ob.NOMBRE  # el nombre, no el codigo
+
+
+def test_un_codigo_que_no_existe_da_404_con_el_mensaje_de_siempre() -> None:
+    respuesta = _tablero(_con_clave(), "987654")
+    assert respuesta.status_code == 404
+    assert respuesta.json()["detalle"] == "El proyecto «987654» no existe en este caso."

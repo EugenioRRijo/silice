@@ -126,6 +126,28 @@ def crear_proyecto_nuevo(
     return limpio
 
 
+def resolver_proyecto(sesion: Session, referencia: str) -> models.Proyecto | None:
+    """El proyecto al que apunta `referencia`, o `None` si no existe (V-11).
+
+    La interfaz nueva guarda en la cabecera el `codigo` que da `GET /v1/proyectos` (el `id` como
+    texto), pero las rutas historicas reciben el nombre. Se acepta cualquiera de los dos:
+
+    1. si `referencia` son solo digitos ASCII y hay un proyecto con ese `id`, es ese proyecto;
+    2. si no, el proyecto cuyo nombre es **exactamente** `referencia`.
+
+    Si un nombre es un numero que coincide con el `id` de otro proyecto, **el codigo gana**: es
+    la unica lectura sin ambiguedad (el codigo es el que ofrece `GET /v1/proyectos`); ese proyecto
+    sigue alcanzable por su propio codigo. No escribe.
+    """
+    if referencia.isascii() and referencia.isdigit():
+        porcodigo = sesion.get(models.Proyecto, int(referencia))
+        if porcodigo is not None:
+            return porcodigo
+    return sesion.scalars(
+        select(models.Proyecto).where(models.Proyecto.nombre == referencia)
+    ).first()
+
+
 def _vigente(sesion, nombre: str) -> models.Presupuesto | None:
     descartados = select(models.DescarteVersion.presupuesto_id)
     return sesion.scalar(

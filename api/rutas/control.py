@@ -31,14 +31,13 @@ from zipfile import BadZipFile
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from openpyxl.utils.exceptions import InvalidFileException
 from pydantic import BaseModel, Field
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from api.archivos import guardar_subida
 from api.dependencias import USUARIO_SIN_CLAVE, SesionDep
 from api.sesion_web import exigir_clave_o_sesion
 from aplicacion import control as logica
-from core import models
+from aplicacion.proyectos import resolver_proyecto
 from core.budget.control import ResultadoControl
 from core.catalog import Catalogo
 from seguridad.permisos import Accion
@@ -65,9 +64,12 @@ def _responsable(activa: SesionActiva | None) -> str:
 
 
 def _existe(sesion: Session, proyecto: str) -> str:
-    if sesion.scalar(select(models.Proyecto.id).where(models.Proyecto.nombre == proyecto)) is None:
+    """El **nombre** del proyecto que `proyecto` nombra (V-11): llega el codigo de
+    `GET /v1/proyectos` o el nombre; el resto de la ruta trabaja con el nombre."""
+    encontrado = resolver_proyecto(sesion, proyecto)
+    if encontrado is None:
         raise HTTPException(404, f"El proyecto «{proyecto}» no existe en este caso.")
-    return proyecto
+    return encontrado.nombre
 
 
 def _corte(texto: str | None) -> date | None:
@@ -145,7 +147,7 @@ def _parametros(sesion: Session, proyecto: str) -> list[ParametroRespuesta]:
 @router.get("/linea-base", response_model=LineaBaseRespuesta)
 def linea_base(sesion: SesionDep, proyecto: str) -> LineaBaseRespuesta:
     """La línea base vigente, las versiones que se pueden declarar y los parámetros de control."""
-    _existe(sesion, proyecto)
+    proyecto = _existe(sesion, proyecto)
     return LineaBaseRespuesta(
         tiene_linea_base=logica.tiene_linea_base(sesion, proyecto),
         descripcion=logica.describir_linea_base(sesion, proyecto),
@@ -175,7 +177,7 @@ def declarar_linea_base(
     sesion: SesionDep, peticion: DeclararLineaBase, activa: Activa
 ) -> DescripcionRespuesta:
     """Declara la línea base de control (RF-72)."""
-    _existe(sesion, peticion.proyecto)
+    peticion.proyecto = _existe(sesion, peticion.proyecto)
     logica.declarar_linea_base(
         sesion,
         peticion.proyecto,
@@ -211,7 +213,7 @@ def guardar_parametros(
     sesion: SesionDep, peticion: GuardarParametros, activa: Activa
 ) -> CambiadosRespuesta:
     """Guarda los parámetros enviados (los demás quedan igual), con un registro por cada cambio."""
-    _existe(sesion, peticion.proyecto)
+    peticion.proyecto = _existe(sesion, peticion.proyecto)
     filas = logica.filas_de_parametros(logica.parametros_actuales(sesion, peticion.proyecto))
     por_nombre = {f["Parametro"]: f for f in filas}
     for cambio in peticion.parametros:
@@ -247,7 +249,7 @@ class ValuacionesRespuesta(BaseModel):
 @router.get("/valuaciones", response_model=ValuacionesRespuesta)
 def valuaciones(sesion: SesionDep, proyecto: str) -> ValuacionesRespuesta:
     """Las valuaciones guardadas (solo lectura) con su estado, y las que se pueden anular."""
-    _existe(sesion, proyecto)
+    proyecto = _existe(sesion, proyecto)
     if not logica.tiene_linea_base(sesion, proyecto):
         return ValuacionesRespuesta(
             tiene_linea_base=False, filas=[], anulables=[], corte_por_defecto=None
@@ -300,7 +302,7 @@ def registrar_valuacion(
     sesion: SesionDep, peticion: RegistrarValuacion, activa: Activa
 ) -> RegistroRespuesta:
     """UC-19 4 y 5: registra la valuación y controla al corte (su fecha *hasta*)."""
-    _existe(sesion, peticion.proyecto)
+    peticion.proyecto = _existe(sesion, peticion.proyecto)
     filas = [
         {
             "Partida": linea.partida,
@@ -360,7 +362,7 @@ class AnotarCosto(BaseModel):
 @router.post("/costos", response_model=ListoRespuesta)
 def anotar_costo(sesion: SesionDep, peticion: AnotarCosto, activa: Activa) -> ListoRespuesta:
     """Anota un costo incurrido; se convierte con la tasa de su fecha al calcular."""
-    _existe(sesion, peticion.proyecto)
+    peticion.proyecto = _existe(sesion, peticion.proyecto)
     logica.registrar_costo_real(
         sesion,
         peticion.proyecto,
@@ -408,7 +410,7 @@ def importar(
     activa: Activa,
 ) -> ImportadasRespuesta:
     """Registra todas las valuaciones y costos del XLSX, o ninguno."""
-    _existe(sesion, proyecto)
+    proyecto = _existe(sesion, proyecto)
     cuantas = logica.importar_excel(
         sesion, proyecto, _leer(archivo), fuente=fuente, responsable=_responsable(activa)
     )
@@ -478,7 +480,7 @@ def calculo(
     fuente: str = "",
 ) -> CalculoRespuesta:
     """El control al corte: valor ganado, alertas, términos, reproyección y decisiones tomadas."""
-    _existe(sesion, proyecto)
+    proyecto = _existe(sesion, proyecto)
     if not logica.tiene_linea_base(sesion, proyecto):
         return CalculoRespuesta(estado="sin_linea_base")
     if not logica.hay_valuaciones(sesion, proyecto):
@@ -558,7 +560,7 @@ class OpcionesRespuesta(BaseModel):
 
 
 def _opciones(sesion: Session, peticion: PeticionOpciones):
-    _existe(sesion, peticion.proyecto)
+    peticion.proyecto = _existe(sesion, peticion.proyecto)
     catalogo, resultado = _calcular(sesion, peticion.proyecto, peticion.corte, peticion.precios)
     todas = logica.calcular_las_opciones(
         resultado, objetivo=peticion.objetivo, horas_previas=peticion.horas_previas

@@ -18,14 +18,13 @@ from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
-from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 
 from api.dependencias import SesionDep
 from api.sesion_web import exigir_clave_o_sesion
 from aplicacion import tablero
 from aplicacion.estilo import indice, porcentaje
-from core import models
+from aplicacion.proyectos import resolver_proyecto
 from core.catalog import Catalogo
 from seguridad.permisos import Accion
 
@@ -234,14 +233,18 @@ def _tablero(datos: tablero.DatosTablero) -> TableroRespuesta:
 @router.get("", response_model=TableroRespuesta)
 def leer_tablero(
     sesion: SesionDep,
-    proyecto: str = Query(min_length=1, description="Nombre del proyecto en el caso abierto."),
+    proyecto: str = Query(
+        min_length=1,
+        description="Nombre del proyecto en el caso abierto.",
+    ),
 ) -> TableroRespuesta:
     """El tablero de la version vigente del proyecto (`LEER_PROYECTO`)."""
-    existe = sesion.scalar(select(models.Proyecto.id).where(models.Proyecto.nombre == proyecto))
-    if existe is None:
+    encontrado = resolver_proyecto(sesion, proyecto)  # codigo de /v1/proyectos o nombre (V-11)
+    if encontrado is None:
         raise HTTPException(
             status_code=404, detail=f"El proyecto «{proyecto}» no existe en este caso."
         )
+    proyecto = encontrado.nombre
     try:
         datos = tablero.leer_tablero(sesion, Catalogo(sesion), proyecto)
     except (SQLAlchemyError, ValueError, LookupError) as error:
