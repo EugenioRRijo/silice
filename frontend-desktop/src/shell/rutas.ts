@@ -1,5 +1,6 @@
 // Registro de paginas de la interfaz nueva (plan de la sesion 2b). Es la unica lista que el menu, el enrutador y
-// los permisos leen: espeja las 21 paginas de Streamlit (ui/app.py: PAGINAS) con su seccion y su accion.
+// los permisos leen: espeja las 21 paginas de Streamlit (ui/app.py: PAGINAS) con su seccion y su accion, mas el
+// historial de auditorias, que solo existe aqui (22 en total).
 //
 // Como se migra una pagina: crear `src/paginas/<id>/index.tsx` con un `export default` (el componente de la
 // pagina, sin props: lo que necesita sale de `useAplicacion()`) y agregar a su linea de abajo
@@ -129,6 +130,14 @@ export const PAGINAS: readonly PaginaDef[] = [
     accion: "leer_proyecto",
     cargar: () => import("../paginas/libros"),
   },
+  // Pagina nueva de esta interfaz (UC-30): Streamlit no tiene historial de auditorias.
+  {
+    id: "historial",
+    titulo: "Historial de auditorías",
+    seccion: "Revisión",
+    accion: "leer_proyecto",
+    cargar: () => import("../paginas/historial"),
+  },
   {
     id: "escenarios",
     titulo: "Escenarios de sensibilidad",
@@ -163,7 +172,7 @@ export function paginaPorId(id: string, paginas: readonly PaginaDef[] = PAGINAS)
   return paginas.find((p) => p.id === id);
 }
 
-export function rutaDe(pagina: PaginaDef): string {
+export function rutaDe(pagina: Pick<PaginaDef, "id">): string {
   return `/${pagina.id}`;
 }
 
@@ -264,16 +273,20 @@ export function areasVisibles(
 }
 
 // Las tres herramientas del dia a dia de la empresa (spec §2.3), siempre arriba del menu.
+// Lleva el nombre de su pantalla (la misma pantalla no se ve con dos nombres en el menu); lo suyo es la ayuda.
 export interface HerramientaPrincipal {
   pagina: string;
-  titulo: string;
   ayuda: string;
 }
 
+export interface HerramientaVisible extends HerramientaPrincipal {
+  titulo: string;
+}
+
 export const HERRAMIENTAS_PRINCIPALES: readonly HerramientaPrincipal[] = [
-  { pagina: "libros", titulo: "Auditor de APU", ayuda: "Suba un Excel y vea lo que no cuadra" },
-  { pagina: "componer", titulo: "Creador de APU", ayuda: "Componga una partida o arme un presupuesto" },
-  { pagina: "existencias", titulo: "Gestor de producción", ayuda: "Cuánto hay y cuánto queda de cada material" },
+  { pagina: "libros", ayuda: "Suba un Excel y vea lo que no cuadra" },
+  { pagina: "componer", ayuda: "Componga una partida o arme un presupuesto" },
+  { pagina: "existencias", ayuda: "Cuánto hay y cuánto queda de cada material" },
 ];
 
 // Solo las que esta cuenta puede usar y que ya viven en esta interfaz (las demas salen en su area, como «clásica»).
@@ -281,10 +294,12 @@ export function herramientasVisibles(
   acciones: readonly string[],
   modoEntrega: boolean,
   paginas: readonly PaginaDef[] = PAGINAS,
-): HerramientaPrincipal[] {
-  return HERRAMIENTAS_PRINCIPALES.filter((h) => {
+): HerramientaVisible[] {
+  return HERRAMIENTAS_PRINCIPALES.flatMap((h) => {
     const pagina = paginaPorId(h.pagina, paginas);
-    return pagina !== undefined && estaMigrada(pagina) && visible(pagina, acciones, modoEntrega);
+    return pagina !== undefined && estaMigrada(pagina) && visible(pagina, acciones, modoEntrega)
+      ? [{ ...h, titulo: pagina.titulo }]
+      : [];
   });
 }
 

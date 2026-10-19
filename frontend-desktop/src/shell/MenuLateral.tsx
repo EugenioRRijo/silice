@@ -84,7 +84,7 @@ function Area({ area, urlClasica, alCerrar, plegable }: PropsArea) {
       <p id={`${idRotulo}-ayuda`} className="silice-menu__descripcion cds--type-helper-text-01">
         {area.descripcion}
       </p>
-      <ul id={idLista} aria-labelledby={idRotulo} className="silice-menu__lista" hidden={plegable ? !plegable.abierto : undefined}>
+      <ul id={idLista} aria-labelledby={idRotulo} aria-describedby={`${idRotulo}-ayuda`} className="silice-menu__lista" hidden={plegable ? !plegable.abierto : undefined}>
         {migradas.map((pagina) => (
           <EnlaceDePagina key={pagina.id} pagina={pagina} alCerrar={alCerrar} />
         ))}
@@ -133,7 +133,7 @@ export function MenuLateral({ paginas, acciones, modoEntrega, urlClasica, abiert
                 <SideNavLink
                   key={h.pagina}
                   as={NavLink}
-                  to={`/${h.pagina}`}
+                  to={rutaDe({ id: h.pagina })}
                   onClick={alCerrar}
                   tabIndex={0}
                   aria-label={h.titulo}

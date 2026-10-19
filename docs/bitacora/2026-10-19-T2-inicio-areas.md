@@ -38,6 +38,13 @@ Fuentes: spec `2026-10-18-silice-ui-inicio-panel-del-dia-design.md` (§2.1 a §2
    `rutas.test.ts` cuando T3 lo registre (22 páginas, 19 en modo entrega); el orquestador lo recalcula.
 10. **El recorrido arranca solo con «Auditar con recorrido guiado».** «Auditar por mi cuenta» no lo activa.
 
+11. **Las herramientas principales llevan el nombre de su pantalla** («Libro de la empresa», «Componer una partida», «Existencias de la
+    arenera»), no los rótulos «Auditor de APU», «Creador de APU» y «Gestor de producción» del spec: la misma pantalla no debe verse con
+    dos nombres en el mismo menú. La función va en la línea de ayuda, que sí es la del spec. La pantalla aparece dos veces (panel y
+    área) con el mismo nombre.
+12. **Paso siguiente del Inicio:** se calcula con `pasoDeRuta` y solo se enlaza si la pantalla existe, está migrada y la cuenta puede
+    abrirla. **Fin de sesión:** `Salir` y la sesión vencida cierran el recorrido en curso (vive fuera del árbol de React).
+
 ## No hecho
 
 - El enlace «Probar con un ejemplo» (§2.1): exige un libro `.xlsx` construido y ficticio, un binario que no se genera sin
