@@ -23,9 +23,10 @@ from datetime import date
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile, status
-from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, Response
 from sqlalchemy import select
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 from starlette.background import BackgroundTask
 
@@ -48,7 +49,6 @@ from api.esquemas import (
     PresupuestoCreadoRespuesta,
     PresupuestoDetalleRespuesta,
     PresupuestoPeticion,
-    PresupuestoResumenRespuesta,
     PropuestaPartidaRespuesta,
     ProyectoPeticion,
     ProyectoRespuesta,
@@ -56,17 +56,37 @@ from api.esquemas import (
     RendimientosPorDeclararRespuesta,
     decimal_desde_texto,
 )
-from api.rutas.listas import comprobar_libro_legible
+from api.esquemas_informe import informe_a_respuesta
+from api.esquemas_ola2 import (
+    AvisoRespuesta,
+    CalculoPeticion,
+    CalculoRespuesta,
+    DeclararRendimientoPeticion,
+    DeclararRendimientoRespuesta,
+    DescarteRespuesta,
+    EscenariosBaseRespuesta,
+    FilaPlan,
+    PendienteConPropuestasRespuesta,
+    PresupuestoConProyectoRespuesta,
+    RevaloracionRespuesta,
+)
+from api.rutas.listas import _elegidos, comprobar_libro_legible
 from api.rutas.rendimientos import propuesta_respuesta
+from api.sesion_web import exigir_clave_o_sesion
+from aplicacion import actualizacion as aplicacion_actualizacion
+from aplicacion import elaboracion as aplicacion_elaboracion
 from core import models
 from core.budget import (
     Comparativo,
     DetectorAtipicos,
+    Escenario,
     GeneradorPlan,
     PeriodoPlan,
+    ResultadoElaboracion,
     actualizar_precios,
     cargar_elaboracion,
     cargar_presupuesto,
+    comparar_escenarios,
     comparar_por_partida,
     crear_proyecto,
     elaborar,
@@ -78,15 +98,21 @@ from core.budget import (
     plan_secuencial,
 )
 from core.budget.instantanea import composiciones_de_presupuesto
-from core.catalog import Catalogo, CatalogoIncompleto, proponer_rendimiento
+from core.catalog import Catalogo, CatalogoIncompleto, insumos_desconocidos, proponer_rendimiento
 from core.contracts import Dominio, ItemComputo, OrigenTipo, ParametrosCosto
 from core.contracts.apu import TipoRendimiento
 from core.contracts.presupuesto import Presupuesto
 from core.verification.informe import DECIMALES_PRESENTACION, InformeAuditoria
 from core.verification.texto import formatear_decimal
 from ml.normalization import propuestas_para
+from seguridad.permisos import Accion
+from seguridad.sesiones import SesionActiva
 
 router = APIRouter(tags=["presupuestos"])
+
+#: Una sola dependencia de edicion, compartida por las rutas que ademas necesitan a la persona
+#: (FastAPI la ejecuta una vez por peticion): su `usuario` firma lo que se guarda (RF-82).
+_QUIEN_EDITA = exigir_clave_o_sesion(Accion.EDITAR_HOJA)
 
 _CAMPOS_PARAMETROS = ("fcas", "bono_alimentacion", "administracion", "utilidad")
 
@@ -243,18 +269,21 @@ def importar_presupuesto_de_tercero(
     )
 
 
-@router.get("/presupuestos", response_model=list[PresupuestoResumenRespuesta], dependencies=LEER)
-def listar_presupuestos(sesion: SesionDep) -> list[PresupuestoResumenRespuesta]:
-    """Códigos y totales de todos los presupuestos guardados, ordenados por código."""
+@router.get(
+    "/presupuestos", response_model=list[PresupuestoConProyectoRespuesta], dependencies=LEER
+)
+def listar_presupuestos(sesion: SesionDep) -> list[PresupuestoConProyectoRespuesta]:
+    """Códigos, totales y proyecto de todos los presupuestos guardados, ordenados por código."""
     catalogo = Catalogo(sesion)
-    resumenes: list[PresupuestoResumenRespuesta] = []
+    resumenes: list[PresupuestoConProyectoRespuesta] = []
     consulta = select(models.Presupuesto).order_by(models.Presupuesto.codigo)
     for modelo in sesion.scalars(consulta):
         presupuesto = cargar_presupuesto(sesion, modelo.proyecto.nombre, modelo.codigo, catalogo)
         resumenes.append(
-            PresupuestoResumenRespuesta(
+            PresupuestoConProyectoRespuesta(
                 codigo=presupuesto.codigo,
                 total=formatear_decimal(presupuesto.total, DECIMALES_PRESENTACION),
+                proyecto=modelo.proyecto.nombre,
             )
         )
     return resumenes
@@ -371,6 +400,204 @@ def actualizar_presupuesto(
 
 
 @router.post(
+    "/presupuestos/revalorar",
+    response_model=RevaloracionRespuesta,
+    dependencies=[Depends(_QUIEN_EDITA)],  # antes que `sesion_api`: sin permiso no se abre el caso
+)
+def revalorar_presupuesto(
+    sesion: SesionDep,
+    quien: Annotated[SesionActiva | None, Depends(_QUIEN_EDITA)],
+    archivo: Annotated[UploadFile, File(description="La lista de precios nueva, CSV o XLSX")],
+    proyecto: Annotated[str, Form()],
+    codigo: Annotated[str, Form(description="Código del presupuesto base")],
+    codigo_nuevo: Annotated[str, Form(description="Código de la versión nueva")],
+    nombre: Annotated[str, Form(description="Nombre de la lista nueva")],
+    moneda: Annotated[str, Form()],
+    fecha_vigencia: Annotated[date, Form()],
+    dar_de_alta: Annotated[
+        list[str] | None,
+        Form(description="Descripciones de los insumos desconocidos que se dan de alta (2a)"),
+    ] = None,
+) -> RevaloracionRespuesta:
+    """UC-02 de una vez, como la página de Streamlit: crea la lista desde el archivo, revalora el
+    presupuesto `codigo` y guarda la versión `codigo_nuevo` si algún insumo cambió de precio.
+
+    Sin cambios de precio (flujo 3a) no se guarda nada, ni la lista ni las altas, y la respuesta lo
+    dice en `avisos` con `version_guardada: null`. Un código nuevo repetido es 409. La versión
+    guardada se puede descartar con `POST /presupuestos/{codigo}/descartar` (flujo 7a).
+    """
+    with tempfile.TemporaryDirectory() as directorio:
+        ruta = guardar_subida(directorio, archivo)
+        comprobar_libro_legible(ruta)
+        elegidos = _elegidos(insumos_desconocidos(sesion, ruta), dar_de_alta or (), ruta.name)
+        try:
+            resultado = aplicacion_actualizacion.revalorar(
+                sesion,
+                {
+                    "proyecto": proyecto,
+                    "codigo": codigo,
+                    "codigo_nuevo": codigo_nuevo,
+                    "nombre": nombre,
+                    "moneda": moneda,
+                    "vigencia": fecha_vigencia,
+                },
+                ruta,
+                dar_de_alta=elegidos,
+                detector=_detector_de_atipicos(),
+                usuario=USUARIO_SIN_CLAVE if quien is None else quien.usuario,
+            )
+        except SQLAlchemyError as error:
+            sesion.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT, detail=str(getattr(error, "orig", error))
+            ) from error
+    comparativo = resultado.comparativo
+    return RevaloracionRespuesta(
+        proyecto=proyecto,
+        codigo_base=codigo,
+        codigo_nuevo=codigo_nuevo,
+        moneda=resultado.nuevo.presupuesto.moneda,
+        total_anterior=formatear_decimal(comparativo.total_anterior, DECIMALES_PRESENTACION),
+        total_nuevo=formatear_decimal(comparativo.total_nuevo, DECIMALES_PRESENTACION),
+        variacion=formatear_decimal(comparativo.variacion, DECIMALES_PRESENTACION),
+        variacion_pct=formatear_decimal(comparativo.variacion_pct, DECIMALES_PRESENTACION),
+        resumen=resultado.resumen,
+        insumos_afectados=comparativo.insumos_afectados,
+        filas=_filas_comparativo(comparativo),
+        dados_de_alta=list(resultado.dados_de_alta),
+        ignorados=list(resultado.ignorados),
+        rechazados=list(resultado.rechazados),
+        version_guardada=resultado.version_guardada,
+        avisos=[AvisoRespuesta(nivel=a.nivel, texto=a.texto) for a in resultado.avisos],
+        informe=informe_a_respuesta(resultado.nuevo.informe),
+    )
+
+
+@router.post(
+    "/presupuestos/{codigo}/descartar", response_model=DescarteRespuesta, dependencies=EDITAR
+)
+def descartar_version_revalorada(
+    sesion: SesionDep, codigo: str, proyecto: str | None = None
+) -> DescarteRespuesta:
+    """UC-02, flujo 7a: marca como descartada la última versión revalorada del proyecto.
+
+    La versión sigue guardada como documento y su historial de cambios se conserva. Solo la última
+    versión del proyecto, y una sola vez; en otro caso 422 con el motivo del núcleo.
+    """
+    modelo = _buscar_modelo(sesion, codigo, proyecto)
+    hoy = date.today()
+    aplicacion_actualizacion.descartar(sesion, modelo.proyecto.nombre, codigo, hoy)
+    return DescarteRespuesta(codigo=codigo, descartada=True, fecha=hoy)
+
+
+@router.post(
+    "/presupuestos/calcular",
+    response_model=CalculoRespuesta,
+    dependencies=EDITAR,
+    responses={
+        status.HTTP_409_CONFLICT: {
+            "model": RendimientosPorDeclararRespuesta,
+            "description": "Falta un dato vigente del catálogo; si es un rendimiento estimado, "
+            "la respuesta propone el del histórico (UC-01, flujo 3b)",
+        }
+    },
+)
+def calcular_presupuesto(
+    sesion: SesionDep, peticion: CalculoPeticion
+) -> CalculoRespuesta | JSONResponse:
+    """UC-01 en modo «solo calcular» (la página Elaborar de Streamlit): elabora y audita el
+    presupuesto con las composiciones del catálogo a la fecha, sin guardar nada.
+
+    El informe de auditoría viaja como JSON (siempre, UC-05). Los ítems sin partida quedan
+    pendientes con sus partidas similares (flujo 3a); aceptar una propuesta es volver a enviar el
+    ítem con ese código. `plan` son las filas de la tabla del plan de trabajo (paso 6); sin ellas,
+    `plan_secuencial`. Una partida sin rendimiento estimado vigente responde 409 con el que
+    propone el histórico (flujo 3b), que se declara con `POST /presupuestos/calcular/declarar-
+    rendimiento`.
+    """
+    calculo = _elaborar_sin_guardar(sesion, peticion)
+    if isinstance(calculo, JSONResponse):
+        return calculo
+    resultado, descripciones = calculo
+    presupuesto = resultado.presupuesto
+    return CalculoRespuesta(
+        codigo=presupuesto.codigo,
+        fecha=presupuesto.fecha,
+        moneda=presupuesto.moneda,
+        total=formatear_decimal(presupuesto.total, DECIMALES_PRESENTACION),
+        partidas=_partidas_respuesta(presupuesto),
+        por_severidad=informe_a_respuesta(resultado.informe).por_severidad,
+        informe=informe_a_respuesta(resultado.informe),
+        pendientes=[
+            PendienteConPropuestasRespuesta(
+                **_campos_pendiente(entrada.item),
+                propuestas=[
+                    PropuestaPartidaRespuesta(
+                        codigo=similar.codigo,
+                        descripcion=similar.descripcion,
+                        puntaje=similar.puntaje,
+                    )
+                    for similar in entrada.similares
+                ],
+                falla=entrada.falla,
+            )
+            for entrada in aplicacion_elaboracion.propuestas_de_pendientes(
+                descripciones, resultado.pendientes
+            )
+        ],
+        plan_por_defecto=[
+            FilaPlan(**fila)
+            for fila in aplicacion_elaboracion.filas_del_plan_por_defecto(presupuesto)
+        ],
+    )
+
+
+@router.post("/presupuestos/calcular/excel", dependencies=EDITAR, response_class=Response)
+def calcular_presupuesto_excel(sesion: SesionDep, peticion: CalculoPeticion) -> Response:
+    """El libro de Excel (con su hoja de auditoría) del mismo cálculo de `POST
+    /presupuestos/calcular`, que recalcula con el mismo cuerpo: sin estado, nada se guarda."""
+    calculo = _elaborar_sin_guardar(sesion, peticion)
+    if isinstance(calculo, JSONResponse):
+        return calculo
+    libro, nombre = aplicacion_elaboracion.libro_excel(calculo[0])
+    return Response(
+        content=libro,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f'attachment; filename="{nombre}"'},
+    )
+
+
+@router.post(
+    "/presupuestos/calcular/declarar-rendimiento",
+    response_model=DeclararRendimientoRespuesta,
+    dependencies=EDITAR,
+)
+def declarar_rendimiento_propuesto(
+    sesion: SesionDep, peticion: DeclararRendimientoPeticion
+) -> DeclararRendimientoRespuesta:
+    """UC-01, flujo 3b: registra el rendimiento que propone el histórico para una partida sin
+    rendimiento estimado vigente a `fecha`, con el tipo que declara el proyectista.
+
+    Solo un rendimiento declarado **estimado** desbloquea la elaboración: declarado medido es 422 y
+    no se registra nada. Una partida que ya tiene uno vigente es 422; una que no existe, 404.
+    """
+    por_declarar = aplicacion_elaboracion.rendimiento_por_declarar(
+        sesion, peticion.codigo_partida, peticion.fecha
+    )
+    rendimiento = aplicacion_elaboracion.declarar_rendimiento(
+        sesion, por_declarar, TipoRendimiento(peticion.tipo), peticion.fecha
+    )
+    sesion.commit()
+    return DeclararRendimientoRespuesta(
+        codigo_partida=rendimiento.codigo_partida,
+        valor=str(rendimiento.valor),
+        tipo=rendimiento.tipo.value,
+        fecha=rendimiento.fecha,
+        condiciones=rendimiento.condiciones,
+    )
+
+
+@router.post(
     "/presupuestos/{codigo}/escenarios", response_model=EscenariosRespuesta, dependencies=EDITAR
 )
 def escenarios_de_presupuesto(
@@ -390,34 +617,12 @@ def escenarios_de_presupuesto(
     misma forma que los pendientes de `POST /presupuestos` pero sin propuestas. Los hallazgos de
     cada escenario no los cuentan.
     """
-    # INV-083: el base se lee con `cargar_elaboracion`, no con `cargar_presupuesto`, porque el
-    # contrato `Presupuesto` no lleva los pendientes y `generar_escenario` solo recalcula los
-    # renglones valorados (lo mismo hace la página de escenarios). El informe propio de cada
-    # escenario no los declara: ruling C4‑3 (limitaciones), sin cambio de `core/` en C4.
-    modelo = _buscar_modelo(sesion, codigo, proyecto)
-    catalogo = Catalogo(sesion)
-    elaboracion = cargar_elaboracion(sesion, modelo.proyecto.nombre, codigo, catalogo)
+    _modelo, elaboracion, escenarios = _generar_escenarios(sesion, codigo, proyecto, peticion)
     base = elaboracion.presupuesto
-    # SF3: las composiciones son las de la instantanea de la version (la hoja las edita ahi); los
-    # hallazgos de reglas externas (R8 a R10) se vuelven a declarar en cada escenario (SF-E1).
-    composiciones = composiciones_de_presupuesto(sesion, modelo.proyecto.nombre, codigo, catalogo)
-    externos = hallazgos_externos(elaboracion.informe)
+    comparativos = [comparar_por_partida(base, escenario) for escenario in escenarios]
 
     respuestas: list[EscenarioRespuesta] = []
-    for datos in peticion.escenarios:
-        precios = {
-            descripcion: decimal_desde_texto(texto, f"precio de {descripcion}")
-            for descripcion, texto in datos.precios.items()
-        }
-        escenario = generar_escenario(
-            datos.nombre,
-            base,
-            composiciones,
-            _parametros_escenario(modelo, datos),
-            precios=precios,
-            externos=externos,
-        )
-        comparativo = comparar_por_partida(base, escenario)
+    for escenario, comparativo in zip(escenarios, comparativos, strict=True):
         respuestas.append(
             EscenarioRespuesta(
                 nombre=escenario.nombre,
@@ -439,9 +644,148 @@ def escenarios_de_presupuesto(
     )
 
 
+@router.get(
+    "/presupuestos/{codigo}/escenarios/base",
+    response_model=EscenariosBaseRespuesta,
+    dependencies=LEER,
+)
+def base_de_escenarios(
+    sesion: SesionDep, codigo: str, proyecto: str | None = None
+) -> EscenariosBaseRespuesta:
+    """El presupuesto base de la página de escenarios (UC-08): sus parámetros de costo congelados,
+    exactos, para precargar el formulario, y los ítems pendientes que ningún escenario recalcula
+    (INV-083)."""
+    modelo = _buscar_modelo(sesion, codigo, proyecto)
+    elaboracion = cargar_elaboracion(sesion, modelo.proyecto.nombre, codigo, Catalogo(sesion))
+    base = elaboracion.presupuesto
+    return EscenariosBaseRespuesta(
+        codigo=base.codigo,
+        proyecto=modelo.proyecto.nombre,
+        moneda=base.moneda,
+        total=formatear_decimal(base.total, DECIMALES_PRESENTACION),
+        parametros={nombre: str(getattr(modelo, nombre)) for nombre in _CAMPOS_PARAMETROS},
+        pendientes_base=[
+            PendienteRespuesta(**_campos_pendiente(item)) for item in elaboracion.pendientes
+        ],
+    )
+
+
+@router.post("/presupuestos/{codigo}/escenarios/csv", dependencies=EDITAR, response_class=Response)
+def escenarios_en_csv(
+    sesion: SesionDep,
+    codigo: str,
+    peticion: EscenariosPeticion,
+    proyecto: str | None = None,
+) -> Response:
+    """La tabla de RF-31 (el base y una fila por escenario) como CSV con los `Decimal` exactos, no
+    los dos decimales de la pantalla: el redondeo es solo de presentación (NORMAS.md §2.3). Mismo
+    cuerpo y mismos errores que `POST /presupuestos/{codigo}/escenarios`; no guarda nada."""
+    _modelo, elaboracion, escenarios = _generar_escenarios(sesion, codigo, proyecto, peticion)
+    tabla = comparar_escenarios(elaboracion.presupuesto, escenarios)
+    return Response(
+        content=tabla.to_csv(index=False),
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="escenarios_{codigo}.csv"'},
+    )
+
+
 # ---------------------------------------------------------------------------------------------
 # Ayudantes
 # ---------------------------------------------------------------------------------------------
+
+
+def _elaborar_sin_guardar(
+    sesion: Session, peticion: CalculoPeticion
+) -> tuple[ResultadoElaboracion, dict[str, str]] | JSONResponse:
+    """Elabora `peticion` con `aplicacion.elaboracion` (la misma lógica que la página de Streamlit)
+    sin guardar nada. Devuelve el resultado y las partidas del catálogo (código → descripción), o
+    el 409 de «rendimientos por declarar» (UC-01, flujo 3b)."""
+    items = [_a_item_computo(item) for item in peticion.items]
+    plan = aplicacion_elaboracion.plan_de(
+        None if peticion.plan is None else [fila.model_dump() for fila in peticion.plan]
+    )
+    catalogo = Catalogo(sesion)
+    try:
+        resultado = aplicacion_elaboracion.elaborar_desde_catalogo(
+            catalogo, items, peticion.codigo, peticion.fecha, peticion.moneda, plan
+        )
+    except CatalogoIncompleto:
+        por_declarar = aplicacion_elaboracion.rendimientos_por_declarar(
+            sesion, items, peticion.fecha
+        )
+        if not por_declarar:
+            raise  # falta otra cosa (un precio, una unidad, la lista vigente): el 409 de siempre
+        sin_estimado = ", ".join(entrada.codigo_partida for entrada in por_declarar)
+        return JSONResponse(
+            status_code=status.HTTP_409_CONFLICT,
+            content=RendimientosPorDeclararRespuesta(
+                detalle=(
+                    f"sin rendimiento estimado vigente al {peticion.fecha}: {sin_estimado}; "
+                    "declare el rendimiento propuesto con POST "
+                    "/presupuestos/calcular/declarar-rendimiento (tipo 'estimado', fecha no "
+                    "posterior a la del presupuesto) y vuelva a calcular"
+                ),
+                rendimientos_por_declarar=[
+                    RendimientoPorDeclararRespuesta(
+                        codigo_partida=entrada.codigo_partida,
+                        propuesta=propuesta_respuesta(entrada.propuesta),
+                    )
+                    for entrada in por_declarar
+                ],
+            ).model_dump(mode="json"),
+        )
+    descripciones = {partida.codigo: partida.descripcion for partida in catalogo.partidas()}
+    return resultado, descripciones
+
+
+def _partidas_respuesta(presupuesto: Presupuesto) -> list[PartidaPresupuestadaRespuesta]:
+    """Los renglones de un presupuesto a dos decimales (NORMAS.md §2.3)."""
+    return [
+        PartidaPresupuestadaRespuesta(
+            codigo_partida=partida.item.codigo_partida,
+            descripcion=partida.item.descripcion,
+            unidad=partida.item.unidad,
+            cantidad=formatear_decimal(partida.item.cantidad, DECIMALES_PRESENTACION),
+            precio_unitario=formatear_decimal(
+                partida.resultado.precio_unitario, DECIMALES_PRESENTACION
+            ),
+            total=formatear_decimal(partida.total, DECIMALES_PRESENTACION),
+        )
+        for partida in presupuesto.partidas
+    ]
+
+
+def _generar_escenarios(
+    sesion: Session, codigo: str, proyecto: str | None, peticion: EscenariosPeticion
+) -> tuple[models.Presupuesto, ResultadoElaboracion, list[Escenario]]:
+    """El base y un `Escenario` por cada supuesto de la petición (UC-08), sin guardar nada."""
+    # INV-083: el base se lee con `cargar_elaboracion`, no con `cargar_presupuesto`, porque el
+    # contrato `Presupuesto` no lleva los pendientes y `generar_escenario` solo recalcula los
+    # renglones valorados (lo mismo hace la página de escenarios). El informe propio de cada
+    # escenario no los declara: ruling C4-3 (limitaciones), sin cambio de `core/` en C4.
+    modelo = _buscar_modelo(sesion, codigo, proyecto)
+    catalogo = Catalogo(sesion)
+    elaboracion = cargar_elaboracion(sesion, modelo.proyecto.nombre, codigo, catalogo)
+    base = elaboracion.presupuesto
+    # SF3: las composiciones son las de la instantanea de la version (la hoja las edita ahi); los
+    # hallazgos de reglas externas (R8 a R10) se vuelven a declarar en cada escenario (SF-E1).
+    composiciones = composiciones_de_presupuesto(sesion, modelo.proyecto.nombre, codigo, catalogo)
+    externos = hallazgos_externos(elaboracion.informe)
+    escenarios = [
+        generar_escenario(
+            datos.nombre,
+            base,
+            composiciones,
+            _parametros_escenario(modelo, datos),
+            precios={
+                descripcion: decimal_desde_texto(texto, f"precio de {descripcion}")
+                for descripcion, texto in datos.precios.items()
+            },
+            externos=externos,
+        )
+        for datos in peticion.escenarios
+    ]
+    return modelo, elaboracion, escenarios
 
 
 def _detector_de_atipicos() -> DetectorAtipicos | None:

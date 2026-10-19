@@ -31,7 +31,6 @@ se muestra.
 
 from __future__ import annotations
 
-import importlib.util
 import tempfile
 from collections.abc import Collection, Iterator
 from contextlib import contextmanager
@@ -42,24 +41,19 @@ from pathlib import Path
 
 import streamlit as st
 from pandas import DataFrame
-from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from core import models
+from aplicacion import actualizacion
 from core.budget import (
-    Comparativo,
     DetectorAtipicos,
-    actualizar_precios,
     descartar_version,
     exportar_excel,
-    plan_de_version,
 )
 from core.catalog import (
     Catalogo,
     PrecioLeido,
     abrir_sesion,
-    crear_lista_desde_archivo,
     crear_motor,
     insumos_desconocidos,
 )
@@ -297,116 +291,44 @@ def _actualizar(
     carpeta: Path,
     dar_de_alta: Collection[PrecioLeido] = (),
 ) -> Presentacion:
-    """Crea la lista, revalora, confirma si algun insumo cambio de precio y arma la presentacion.
-
-    `dar_de_alta` son las filas de la vista previa que el usuario eligio (UC-02, flujo 2a).
-    """
-    # La vista previa se toma antes de crear la lista: despues, los dados de alta ya no son
-    # desconocidos. Lo que la carga no uso y la vista previa no ofrecia es el flujo 2b.
-    ofrecidos = insumos_desconocidos(sesion, archivo)
-    resumen = crear_lista_desde_archivo(
+    """Revalora (`aplicacion.actualizacion.revalorar`, la misma logica que la API) y arma la
+    presentacion. `dar_de_alta` son las filas de la vista previa que el usuario eligio (2a)."""
+    revaloracion = actualizacion.revalorar(
         sesion,
+        parametros,
         archivo,
-        nombre=str(parametros["nombre"]),
-        moneda=str(parametros["moneda"]),
-        fecha_vigencia=parametros["vigencia"],
-        origen=archivo.name,
         dar_de_alta=dar_de_alta,
+        detector=_detector_de_atipicos(),
+        usuario=ui_sesion.responsable_actual(),
     )
-    dados_de_alta = tuple(
-        f"{insumo.descripcion} ({insumo.codigo})" for insumo in resumen.dados_de_alta
-    )
-    origen = sesion.scalars(
-        select(models.Presupuesto)
-        .join(models.Proyecto)
-        .where(
-            models.Proyecto.nombre == str(parametros["proyecto"]),
-            models.Presupuesto.codigo == str(parametros["codigo"]),
-        )
-    ).one_or_none()
-    nuevo, comparativo = actualizar_precios(
-        sesion,
-        str(parametros["proyecto"]),
-        str(parametros["codigo"]),
-        resumen.lista,
-        str(parametros["codigo_nuevo"]),
-        detectar_atipicos=_detector_de_atipicos(),
-        # SF3 (RF-56, SF3-R4): revalorar conserva el plan guardado de la version de origen
-        plan=None if origen is None else plan_de_version(sesion, origen),
-        usuario=ui_sesion.responsable_actual(),  # RF-82: quien confirma lo sella en la cadena
-    )
+    for aviso in revaloracion.avisos:
+        (st.warning if aviso.nivel == "advertencia" else st.info)(aviso.texto)
+    nuevo = revaloracion.nuevo
     libro = exportar_excel(
         nuevo.presupuesto, nuevo.informe, carpeta / f"presupuesto_{nuevo.presupuesto.codigo}.xlsx"
     )
-
-    if comparativo.insumos_afectados == 0:
-        # Ningun insumo cambio de precio entre la lista anterior y la nueva: no hay nada que
-        # guardar (UC-02, flujo 3a). Descartar la transaccion tambien descarta la lista nueva, que
-        # aqui es identica a la anterior en sus precios.
-        aviso = "Ningun precio cambio: no se guardo una version nueva (UC-02, flujo 3a)."
-        if dados_de_alta:
-            aviso += (
-                " Los insumos elegidos para el alta tampoco se guardaron: "
-                + ", ".join(dados_de_alta)
-                + "."
-            )
-        st.warning(aviso)
-        version_guardada = None
-        dados_de_alta = ()
-    else:
-        # Algun insumo cambio de precio (se persiste siempre, ya lo hizo actualizar_precios), pero
-        # eso no implica que el presupuesto varie: si el insumo no participa de ninguna de sus
-        # partidas, `comparativo.variacion` da cero. Antes esta rama decidia con `variacion`, que
-        # confundia ambos casos y descartaba la lista y su historial de CambioPrecio cuando el
-        # unico cambio no tocaba este presupuesto (hallazgo de la ronda de correccion 1).
-        if comparativo.variacion == CERO:
-            st.info(
-                "Cambiaron precios de insumos que no afectan a este presupuesto: se guardo la "
-                "version nueva y su historial de cambios, pero el total no vario."
-            )
-        sesion.commit()
-        # Solo la version que esta ejecucion acaba de confirmar se ofrece para descartar (UC-02
-        # 7a): es el llamador que exige el docstring de `descartar_version`.
-        version_guardada = str(parametros["codigo_nuevo"])
-
     return Presentacion(
-        tabla=_para_presentar(comparativo.tabla),
-        resumen=_resumen(comparativo, nuevo.presupuesto.moneda),
+        tabla=_para_presentar(revaloracion.comparativo.tabla),
+        resumen=revaloracion.resumen,
         informe=nuevo.informe.a_markdown(),
-        ignorados=tuple(_nombrar(d) for d in resumen.desconocidos if d in ofrecidos),
+        ignorados=revaloracion.ignorados,
         libro=libro.read_bytes(),
         nombre_libro=libro.name,
         proyecto=str(parametros["proyecto"]),
-        version_guardada=version_guardada,
+        version_guardada=revaloracion.version_guardada,
         ruta=Path(parametros["ruta"]),
-        rechazados=tuple(_nombrar(d) for d in resumen.desconocidos if d not in ofrecidos),
-        dados_de_alta=dados_de_alta,
+        rechazados=revaloracion.rechazados,
+        dados_de_alta=revaloracion.dados_de_alta,
     )
 
 
 def _detector_de_atipicos() -> DetectorAtipicos | None:
-    """`ml.anomaly.precios_atipicos`, o `None` sin el extra `ml` (UC-07, paso 5).
-
-    Import perezoso, como `ui/composicion.py`: `core` no importa `ml`, y la pantalla funciona sin
-    el extra; sin el, el informe es la auditoria de siempre, sin hallazgos `ATIPICO`.
-
-    El import perezoso no basta (H3 de la revision de A, U-9 de la de U): el paquete `ml/` siempre
-    esta y `ml.anomaly` se importa sin `scikit-learn`, que solo carga al ajustar el bosque, ya
-    dentro de `actualizar_precios`. Sin `sklearn`, con 8 o mas variaciones esa llamada lanzaria
-    `ModuleNotFoundError` y abortaria la revaloracion; por eso se pregunta antes por `sklearn`.
-    """
-    if importlib.util.find_spec("sklearn") is None:
-        return None
-    try:
-        from ml.anomaly import precios_atipicos
-    except ImportError:
-        return None
-    return precios_atipicos
+    """`aplicacion.actualizacion.detector_de_atipicos`; la pagina lo expone para sus pruebas."""
+    return actualizacion.detector_de_atipicos()
 
 
 def _nombrar(leido: PrecioLeido) -> str:
-    """Una fila del archivo como la lee el usuario: descripcion, tipo y unidad."""
-    return f"{leido.descripcion} ({leido.tipo.value}, {leido.unidad or 'sin unidad'})"
+    return actualizacion.nombrar(leido)
 
 
 # ---------------------------------------------------------------------------------------------
@@ -422,14 +344,6 @@ def _para_presentar(tabla: DataFrame) -> DataFrame:
             formatear_decimal(valor, DECIMALES_PRESENTACION) for valor in tabla[columna]
         ]
     return presentada
-
-
-def _resumen(comparativo: Comparativo, moneda: str) -> str:
-    anterior = formatear_decimal(comparativo.total_anterior, DECIMALES_PRESENTACION)
-    nuevo = formatear_decimal(comparativo.total_nuevo, DECIMALES_PRESENTACION)
-    variacion = formatear_decimal(comparativo.variacion, DECIMALES_PRESENTACION)
-    porcentaje = formatear_decimal(comparativo.variacion_pct, DECIMALES_PRESENTACION)
-    return f"{anterior} -> {nuevo} {moneda}  ({variacion} {moneda}, {porcentaje} %)"
 
 
 def _marca(presentacion: Presentacion) -> tuple[str, str, str | None]:

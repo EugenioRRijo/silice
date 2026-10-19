@@ -313,3 +313,16 @@ def test_un_flujo_deflate_danado_se_rechaza_sin_escapar_zlib_error() -> None:
     datos[inicio] = 0xFF  # tipo de bloque DEFLATE reservado (11): el inflador falla
     with pytest.raises(PaqueteRechazado, match="dañado"):
         abrir_zip(bytes(datos))
+
+
+def test_un_directorio_central_corrido_se_rechaza_sin_escapar_value_error() -> None:
+    """Un byte dañado en el desplazamiento del directorio central (fin del directorio central,
+    bytes 16 a 19) hace que `zipfile` calcule una cabecera local en una posición negativa y lance
+    `ValueError: negative seek value` al abrir la entrada. Lo encontró la prueba de un byte cambiado
+    de `tests/integration/test_entrega.py` en la CI de Windows (2026-10-18); aquí, determinista."""
+    datos = bytearray(zip_de({NOMBRE: b"{}"}))
+    fin = datos.rfind(b"PK\x05\x06")
+    desplazamiento = int.from_bytes(datos[fin + 16 : fin + 20], "little")
+    datos[fin + 16 : fin + 20] = (desplazamiento + 1000).to_bytes(4, "little")
+    with pytest.raises(PaqueteRechazado, match=r"^El archivo 'presupuesto\.json' del paquete"):
+        abrir_zip(bytes(datos))

@@ -193,12 +193,20 @@ def entrar(
         with sesion_de_instalacion() as sesion:
             try:
                 usuario = cuentas.autenticar(
-                    sesion, datos.login, datos.contrasena, momento, ip=_ip(request),
+                    sesion,
+                    datos.login,
+                    datos.contrasena,
+                    momento,
+                    ip=_ip(request),
                     dormir=_no_dormir,
                 )
             except _Frenado as frenado:
                 eventos.registrar(
-                    sesion, "bloqueo", momento, ip=_ip(request), detalle="freno global",
+                    sesion,
+                    "bloqueo",
+                    momento,
+                    ip=_ip(request),
+                    detalle="freno global",
                     login=cuentas.normalizar_login(datos.login)[:60],
                 )
                 sesion.commit()

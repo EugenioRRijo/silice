@@ -11,12 +11,15 @@ from typing import Annotated
 import openpyxl
 from fastapi import APIRouter, File, Form, UploadFile, status
 from sqlalchemy import select
+from sqlalchemy.exc import SQLAlchemyError
 
 from adapters.hoja_empresa.guardia import ArchivoRechazado, verificar_archivo
 from api.acceso import EDITAR, LEER
 from api.archivos import guardar_subida
 from api.dependencias import SesionDep
 from api.esquemas import CambioRespuesta, CargaListaRespuesta, ListaRespuesta
+from api.esquemas_ola2 import InsumoDesconocidoRespuesta, VistaPreviaRespuesta
+from aplicacion.actualizacion import nombrar
 from core import models
 from core.catalog import (
     PrecioLeido,
@@ -92,6 +95,39 @@ def cargar_lista_precios(
     )
 
 
+@router.post(
+    "/listas-precios/vista-previa", response_model=VistaPreviaRespuesta, dependencies=EDITAR
+)
+def vista_previa_de_lista(
+    sesion: SesionDep, archivo: Annotated[UploadFile, File()]
+) -> VistaPreviaRespuesta:
+    """UC-02, flujo 2a: los insumos del archivo que el catálogo no conoce y se pueden dar de alta
+    (`insumos_desconocidos`), antes de revalorar. No escribe nada.
+
+    Un archivo o una base que no se pueden leer no ofrecen nada y traen su `motivo`: el mismo fallo
+    sale con su mensaje al revalorar, que es donde se informan los errores de UC-02.
+    """
+    with tempfile.TemporaryDirectory() as directorio:
+        ruta = guardar_subida(directorio, archivo)
+        try:
+            comprobar_libro_legible(ruta)
+            ofrecidos = insumos_desconocidos(sesion, ruta)
+        except (LookupError, ValueError, ArithmeticError, SQLAlchemyError) as error:
+            return VistaPreviaRespuesta(desconocidos=[], motivo=str(error))
+    return VistaPreviaRespuesta(
+        desconocidos=[
+            InsumoDesconocidoRespuesta(
+                descripcion=leido.descripcion,
+                tipo=leido.tipo.value,
+                unidad=leido.unidad,
+                precio=str(leido.precio),
+                etiqueta=nombrar(leido),
+            )
+            for leido in ofrecidos
+        ]
+    )
+
+
 def comprobar_libro_legible(ruta: Path) -> None:
     """`ValueError` (422) con el nombre del archivo si `ruta` es un libro de Excel que openpyxl no
     puede abrir: bytes que no son un zip (`zipfile.BadZipFile`), un zip sin las partes de un libro
@@ -108,9 +144,7 @@ def comprobar_libro_legible(ruta: Path) -> None:
     try:
         verificar_archivo(ruta.read_bytes(), ruta.name)
     except ArchivoRechazado as error:
-        raise ValueError(
-            f"{ruta.name}: no se puede leer como libro de Excel ({error})"
-        ) from error
+        raise ValueError(f"{ruta.name}: no se puede leer como libro de Excel ({error})") from error
     # El flujo lo abre y lo cierra esta funcion: si openpyxl falla a mitad, en Windows dejaria el
     # archivo abierto y el directorio temporal de la ruta no se podria borrar.
     with ruta.open("rb") as flujo:
