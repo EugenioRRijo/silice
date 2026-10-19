@@ -1,8 +1,11 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { fijarCsrf } from "./api/cliente";
 import { App } from "./App";
+import oraculo from "../../tests/fixtures/replica/libro_minimo.json";
+import type { LibroAuditadoRespuesta, LibroVisualRespuesta } from "./api/tipos";
+import { crearHojaFalsa } from "./visor/hojaFalsa";
 
 function json(cuerpo: unknown, estado = 200): Response {
   return new Response(JSON.stringify(cuerpo), { status: estado, headers: { "Content-Type": "application/json" } });
@@ -203,6 +206,171 @@ describe("App", () => {
       await usuario.click(screen.getByRole("button", { name: "Cambiar contraseña" }));
       expect(await screen.findByText("La contraseña nueva es demasiado corta.")).toBeInTheDocument();
       expect(screen.getByRole("heading", { name: "Cambie su contraseña" })).toBeInTheDocument();
+    });
+  });
+
+  describe("Libro de la empresa dentro del shell", () => {
+    const replica = { ...oraculo, sha256: "a".repeat(64) } as unknown as LibroVisualRespuesta;
+    const auditoria: LibroAuditadoRespuesta = {
+      libro: { nombre: "libro_minimo.xlsx", sha256: "a".repeat(64) },
+      fecha_libro: null,
+      fecha_devolucion: "2026-10-18",
+      cumple: false,
+      por_severidad: { CRITICO: 1, ERROR: 1, ADVERTENCIA: 0, INFO: 0 },
+      totales_libro: {},
+      totales_silice: {},
+      hallazgos: [
+        { codigo: "L3", severidad: "CRITICO", descripcion: "El total no coincide", celda: "PLAN DE PAGOS!F12", impacto: null, accion: "x" },
+        { codigo: "L5", severidad: "ERROR", descripcion: "Precio distinto al de INSUMOS", celda: "PORTADA!B2", impacto: null, accion: "x" },
+      ],
+      indicadores: [],
+    };
+
+    let sesionDeLibro = sesion;
+    let vencida = false;
+    let llamadasReplica = 0;
+
+    function prepararApi() {
+      sesionDeLibro = sesion;
+      vencida = false;
+      llamadasReplica = 0;
+      window.location.hash = "#/libros";
+      fetchFalso.mockImplementation(async (entrada, init) => {
+        const ruta = String(entrada);
+        const metodo = init?.method ?? "GET";
+        if (ruta === "/v1/sesion" && metodo === "POST") {
+          vencida = false;
+          return json(sesionDeLibro);
+        }
+        if (ruta === "/v1/sesion" && metodo === "DELETE") return new Response(null, { status: 204 });
+        if (ruta === "/v1/sesion") return vencida ? json({ detalle: "Sin sesión." }, 401) : json(sesionDeLibro);
+        if (vencida) return json({ detalle: "Su sesión venció." }, 401);
+        if (ruta === "/v1/casos") return json(casos);
+        if (ruta === "/v1/proyectos") return json([]);
+        if (ruta.endsWith("/replica")) {
+          llamadasReplica += 1;
+          return json(replica);
+        }
+        if (ruta.endsWith("/auditoria")) return json(auditoria);
+        return json({ detalle: "ruta inesperada" }, 404);
+      });
+    }
+
+    const libroXlsx = () =>
+      new File([new Uint8Array([80, 75, 3, 4])], "libro_minimo.xlsx", {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+
+    async function subirLibro(usuario: ReturnType<typeof userEvent.setup>) {
+      const entrada = (await waitForInput()) as HTMLInputElement;
+      await usuario.upload(entrada, libroXlsx());
+      await screen.findByText("El total no coincide", {}, { timeout: 5000 });
+    }
+
+    async function waitForInput(): Promise<Element> {
+      await screen.findByRole("button", { name: /Suelte aquí el libro \.xlsx de la empresa/ }, { timeout: 5000 });
+      return document.querySelector('input[type="file"]') as Element;
+    }
+
+    async function cargarYVencer(usuario: ReturnType<typeof userEvent.setup>, hoja: ReturnType<typeof crearHojaFalsa>) {
+      render(<App crearHoja={async () => hoja} />);
+      await screen.findByText("Ana Pérez");
+      await subirLibro(usuario);
+      // El auditor elige una hoja y filtra por Critico.
+      await usuario.click(await screen.findByRole("tab", { name: /^PLAN DE PAGOS/ }));
+      await usuario.click(screen.getByRole("button", { name: /^Crítico/ }));
+      // La sesion vence: la siguiente llamada (cambiar la fecha vuelve a auditar) da 401.
+      vencida = true;
+      const fecha = screen.getByLabelText("Fecha de devolución");
+      await usuario.clear(fecha);
+      await usuario.type(fecha, "2026-12-01");
+      await screen.findByRole("heading", { name: "Entrar" });
+    }
+
+    async function volverAEntrar(usuario: ReturnType<typeof userEvent.setup>) {
+      await usuario.type(screen.getByLabelText("Usuario"), "x");
+      await usuario.type(screen.getByLabelText("Contraseña"), "clave");
+      await usuario.click(screen.getByRole("button", { name: "Entrar" }));
+    }
+
+    test("la fecha de devolucion, el libro y Cambiar libro van en la cabecera del shell (M3)", async () => {
+      const usuario = userEvent.setup();
+      prepararApi();
+      render(<App crearHoja={async () => crearHojaFalsa("PORTADA")} />);
+      await screen.findByText("Ana Pérez");
+      const cabecera = screen.getByRole("banner");
+      expect(await within(cabecera).findByLabelText("Fecha de devolución")).toBeInTheDocument();
+      await subirLibro(usuario);
+      expect(within(cabecera).getByText("libro_minimo.xlsx")).toBeInTheDocument();
+      expect(document.querySelector(".visor__barra")).toBeNull();
+    });
+
+    test("fuera de Libro de la empresa la cabecera no lleva los controles del libro", async () => {
+      prepararApi();
+      window.location.hash = "#/acerca";
+      render(<App crearHoja={async () => crearHojaFalsa("PORTADA")} />);
+      await screen.findByText("Ana Pérez");
+      expect(screen.queryByLabelText("Fecha de devolución")).toBeNull();
+    });
+
+    test("un 401 muestra la entrada con el aviso Su sesion vencio", async () => {
+      const usuario = userEvent.setup();
+      prepararApi();
+      await cargarYVencer(usuario, crearHojaFalsa("PORTADA"));
+      expect(screen.getByText(/Su sesión venció/)).toBeInTheDocument();
+    });
+
+    test("401, entrar con la misma cuenta: el libro sigue, sin pedirlo otra vez (UC-26)", async () => {
+      const usuario = userEvent.setup();
+      prepararApi();
+      const hoja = crearHojaFalsa("PORTADA");
+      await cargarYVencer(usuario, hoja);
+      await volverAEntrar(usuario);
+      expect(await screen.findByText("El total no coincide", {}, { timeout: 5000 })).toBeInTheDocument();
+      // El libro no se vuelve a pedir ni a subir.
+      expect(llamadasReplica).toBe(1);
+      // La hoja que se veia y el filtro siguen como estaban.
+      expect(hoja.irAHoja).toHaveBeenCalledWith("PLAN DE PAGOS");
+      expect(screen.queryByText("Precio distinto al de INSUMOS")).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /^Crítico/ })).toHaveAttribute("aria-pressed", "true");
+      expect(within(screen.getByRole("banner")).getByText("libro_minimo.xlsx")).toBeInTheDocument();
+    });
+
+    test("si entra otra cuenta, el libro se descarta", async () => {
+      const usuario = userEvent.setup();
+      prepararApi();
+      await cargarYVencer(usuario, crearHojaFalsa("PORTADA"));
+      sesionDeLibro = { ...sesion, login: "otra", nombre: "Otra Persona" };
+      await volverAEntrar(usuario);
+      expect(await screen.findByText("Otra Persona")).toBeInTheDocument();
+      expect(screen.queryByText("El total no coincide")).not.toBeInTheDocument();
+      expect(
+        await screen.findByRole("button", { name: /Suelte aquí el libro \.xlsx de la empresa/ }, { timeout: 5000 }),
+      ).toBeInTheDocument();
+    });
+
+    test("Salir a proposito tambien descarta el libro", async () => {
+      const usuario = userEvent.setup();
+      prepararApi();
+      render(<App crearHoja={async () => crearHojaFalsa("PORTADA")} />);
+      await screen.findByText("Ana Pérez");
+      await subirLibro(usuario);
+      await usuario.click(screen.getByRole("button", { name: "Salir" }));
+      await screen.findByRole("heading", { name: "Entrar" });
+      await volverAEntrar(usuario);
+      await screen.findByText("Ana Pérez");
+      expect(screen.queryByText("El total no coincide")).not.toBeInTheDocument();
+    });
+
+    test("el libro solo vive en memoria: nada va a localStorage ni sessionStorage", async () => {
+      const usuario = userEvent.setup();
+      const espia = vi.spyOn(Storage.prototype, "setItem");
+      prepararApi();
+      await cargarYVencer(usuario, crearHojaFalsa("PORTADA"));
+      await volverAEntrar(usuario);
+      await screen.findByText("El total no coincide", {}, { timeout: 5000 });
+      expect(espia).not.toHaveBeenCalled();
+      espia.mockRestore();
     });
   });
 });

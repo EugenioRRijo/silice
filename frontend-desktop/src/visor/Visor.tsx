@@ -10,11 +10,19 @@ import {
   TextInput,
 } from "@carbon/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { ErrorDeApi, pedir } from "../api/cliente";
-import type { ConteoPorSeveridad, LibroAuditadoRespuesta, LibroVisualRespuesta } from "../api/tipos";
+import { tomarArchivoPendiente } from "../paginas/inicio/archivoPendiente";
+import type { LibroAuditadoRespuesta, LibroVisualRespuesta } from "../api/tipos";
 import { FranjaIndicadores } from "../indicadores/FranjaIndicadores";
+import type { Severidad } from "../indicadores/tipos";
+import { IconoDeSeveridad } from "../severidad/IconoDeSeveridad";
+import { estiloDeSeveridad } from "../severidad/severidad";
+import { crearAlmacen } from "./almacen";
+import type { AlmacenDelVisor } from "./almacen";
 import { CapaHalos } from "./CapaHalos";
-import { construirHalos } from "./halos";
+import { contextoDeFila } from "./celdas";
+import { construirHalos, resumenPorHoja } from "./halos";
 import type { CeldaRef, CrearHojaVisor, HojaVisor } from "./hojaVisor";
 import { ListaHallazgos } from "./ListaHallazgos";
 import { UniverGrid } from "./UniverGrid";
@@ -27,11 +35,17 @@ interface Props {
   crearHoja?: CrearHojaVisor;
   // La API contesto 401: la sesion vencio.
   alExpirar?: () => void;
+  // Donde se guarda, en memoria, lo que esta abierto: si el Visor se desmonta (sesion vencida) y vuelve a montarse
+  // con el mismo almacen, reaparece tal cual.
+  almacen?: AlmacenDelVisor;
+  // Donde van la fecha de devolucion, el nombre del libro y Cambiar libro: la cabecera de 48 px de la pantalla.
+  // undefined: en una barra propia dentro del visor; null: la ranura aun no existe (no se pinta nada); un
+  // elemento: se pintan alli (portal), sin tocar la cabecera.
+  ranuraCabecera?: HTMLElement | null;
 }
 
 type Fase = "vacio" | "cargando" | "listo";
 
-const SIN_CONTEO: ConteoPorSeveridad = { CRITICO: 0, ERROR: 0, ADVERTENCIA: 0, INFO: 0 };
 const ISO = /^\d{4}-\d{2}-\d{2}$/;
 
 // Fecha de hoy en la zona del usuario (no en UTC: a las 8 p. m. en Caracas ya seria mañana).
@@ -60,6 +74,7 @@ function Esqueleto() {
   return (
     <div className="visor__esqueleto" role="status" aria-busy="true" aria-label="Cargando el libro">
       <div className="visor__esqueleto-hoja">
+        <p className="visor__cargando cds--type-body-compact-01">Leyendo el libro y auditándolo…</p>
         <SkeletonPlaceholder className="visor__esqueleto-lienzo" />
       </div>
       <div className="visor__esqueleto-lista">
@@ -70,16 +85,24 @@ function Esqueleto() {
   );
 }
 
-export function Visor({ crearHoja = crearHojaUniver, alExpirar }: Props) {
-  const [fase, setFase] = useState<Fase>("vacio");
-  const [archivo, setArchivo] = useState<File | null>(null);
-  const [fecha, setFecha] = useState(hoyISO);
-  const [replica, setReplica] = useState<LibroVisualRespuesta | null>(null);
-  const [auditoria, setAuditoria] = useState<LibroAuditadoRespuesta | null>(null);
+export function Visor({ crearHoja = crearHojaUniver, alExpirar, almacen, ranuraCabecera }: Props) {
+  const [propio] = useState(crearAlmacen);
+  const alm = almacen ?? propio;
+  const [guardado] = useState(() => alm.leer());
+  const [fase, setFase] = useState<Fase>(guardado ? "listo" : "vacio");
+  const [archivo, setArchivo] = useState<File | null>(guardado?.archivo ?? null);
+  const [fecha, setFecha] = useState(guardado?.fecha ?? hoyISO());
+  const [replica, setReplica] = useState<LibroVisualRespuesta | null>(guardado?.replica ?? null);
+  const [auditoria, setAuditoria] = useState<LibroAuditadoRespuesta | null>(guardado?.auditoria ?? null);
+  const [filtro, setFiltro] = useState<Severidad[]>(guardado?.filtro ?? []);
   const [error, setError] = useState<string | null>(null);
   const [visor, setVisor] = useState<HojaVisor | null>(null);
-  const [hojaActiva, setHojaActiva] = useState("");
-  const [seleccionado, setSeleccionado] = useState<number | null>(null);
+  const [hojaActiva, setHojaActiva] = useState(guardado?.hojaActiva ?? "");
+  const [seleccionado, setSeleccionado] = useState<number | null>(guardado?.seleccionado ?? null);
+  // La hoja que se veia antes de que venciera la sesion: se restaura cuando el visor nuevo este listo.
+  const hojaPorRestaurar = useRef(guardado?.hojaActiva ?? "");
+  // La hoja en que abre el libro: la primera con hallazgos a la vista.
+  const hojaInicial = useRef("");
   const [enfocar, setEnfocar] = useState<{ indice: number; n: number } | null>(null);
 
   // Para ignorar respuestas de una carga o auditoria que ya quedo atras.
@@ -109,6 +132,8 @@ export function Visor({ crearHoja = crearHojaUniver, alExpirar }: Props) {
       setFase("cargando");
       setSeleccionado(null);
       setEnfocar(null);
+      setFiltro([]);
+      hojaPorRestaurar.current = "";
       // Las dos llamadas salen a la vez: la hoja y la auditoria no dependen una de la otra.
       const [r, a] = await Promise.allSettled([
         pedir<LibroVisualRespuesta>("/v1/libros/replica", { metodo: "POST", cuerpo: cuerpoDeLibro(nuevo) }),
@@ -130,6 +155,16 @@ export function Visor({ crearHoja = crearHojaUniver, alExpirar }: Props) {
     },
     [fallo],
   );
+
+  // El archivo que se solto en Inicio: al montar, quien lo toma se hace cargo y lo carga con la fecha del visor.
+  const pendienteTomado = useRef(false);
+  useEffect(() => {
+    if (pendienteTomado.current) return;
+    pendienteTomado.current = true;
+    const pendiente = tomarArchivoPendiente();
+    // Fuera del efecto (cargar actualiza el estado de entrada): en el turno siguiente.
+    if (pendiente) void Promise.resolve().then(() => cargar(pendiente.archivo, fecha));
+  }, [cargar, fecha]);
 
   const volverAAuditar = useCallback(
     async (actual: File, fechaDevolucion: string) => {
@@ -170,14 +205,32 @@ export function Visor({ crearHoja = crearHojaUniver, alExpirar }: Props) {
 
   const hallazgos = useMemo(() => auditoria?.hallazgos ?? [], [auditoria]);
   const hojasVisibles = useMemo(() => replica?.hojas.filter((h) => h.visible) ?? [], [replica]);
-  // Un hallazgo en una hoja oculta no se puede mostrar sobre la hoja: va al grupo "Sin celda en el libro".
-  const nombresDeHojas = useMemo(() => hojasVisibles.map((h) => h.nombre), [hojasVisibles]);
-  const { halos } = useMemo(() => construirHalos(hallazgos, nombresDeHojas), [hallazgos, nombresDeHojas]);
+  // Un hallazgo en una hoja, fila o columna oculta no se muestra sobre la hoja: la lista lo agrupa aparte.
+  const { halos } = useMemo(() => construirHalos(hallazgos, replica?.hojas), [hallazgos, replica]);
+
+  const resumenHojas = useMemo(() => resumenPorHoja(halos), [halos]);
+  useEffect(() => {
+    hojaInicial.current = (hojasVisibles.find((h) => resumenHojas.has(h.nombre)) ?? hojasVisibles[0])?.nombre ?? "";
+  }, [hojasVisibles, resumenHojas]);
 
   const alCambiarVisor = useCallback((nuevo: HojaVisor | null) => {
     setVisor(nuevo);
-    setHojaActiva(nuevo ? nuevo.hojaActiva() : "");
+    if (!nuevo) return;
+    // Lo que se veia antes de vencer la sesion, o la primera hoja con hallazgos (no la primera del libro).
+    const objetivo = hojaPorRestaurar.current || hojaInicial.current;
+    hojaPorRestaurar.current = "";
+    if (objetivo && objetivo !== nuevo.hojaActiva()) nuevo.irAHoja(objetivo);
+    setHojaActiva(nuevo.hojaActiva());
   }, []);
+
+  // Lo abierto se guarda en memoria (no en el navegador) para sobrevivir a una sesion vencida.
+  useEffect(() => {
+    alm.guardar(
+      fase === "listo" && replica && auditoria
+        ? { archivo, fecha, replica, auditoria, hojaActiva, filtro, seleccionado }
+        : null,
+    );
+  }, [alm, fase, archivo, fecha, replica, auditoria, hojaActiva, filtro, seleccionado]);
 
   const alFallarVisor = useCallback((mensaje: string) => setError(mensaje), []);
 
@@ -204,49 +257,66 @@ export function Visor({ crearHoja = crearHojaUniver, alExpirar }: Props) {
   }, [visor, halos]);
 
   const irACelda = (celda: CeldaRef) => visor?.irA(celda);
+  const contextoDeCelda = useCallback(
+    (celda: CeldaRef) => {
+      const hojaDelLibro = replica?.hojas.find((h) => h.nombre === celda.hoja);
+      return hojaDelLibro ? contextoDeFila(hojaDelLibro, celda.fila0, celda.columna0) : null;
+    },
+    [replica],
+  );
   const indiceDePestana = Math.max(
     0,
     hojasVisibles.findIndex((h) => h.nombre === hojaActiva),
   );
 
-  const porSeveridad: ConteoPorSeveridad = { ...SIN_CONTEO, ...(auditoria?.por_severidad ?? {}) };
   const cargando = fase === "cargando";
+
+  const controles = (
+    <>
+      <div className="visor__fecha">
+        <TextInput
+          id="visor-fecha"
+          type="date"
+          size="sm"
+          inline
+          labelText="Fecha de devolución"
+          value={fecha}
+          onChange={(e) => cambiarFecha(e.target.value)}
+        />
+      </div>
+      {archivo && (
+        <>
+          <span className="visor__archivo cds--type-body-compact-01">{archivo.name}</span>
+          <FileUploaderButton
+            labelText="Cambiar libro"
+            buttonKind="ghost"
+            size="sm"
+            accept={[".xlsx"]}
+            disableLabelChanges
+            onChange={(e: { target: HTMLInputElement }) => {
+              const elegido = e.target.files?.[0];
+              if (elegido) alAgregar(e, { addedFiles: [elegido] });
+            }}
+          />
+        </>
+      )}
+    </>
+  );
 
   return (
     <div className="visor">
+      <h1 className="silice-oculto">Auditoría de libros</h1>
       {cargando && <div className="visor__franja-esqueleto" aria-hidden="true"><SkeletonText width="60%" /></div>}
       {fase === "listo" && auditoria && (
-        <FranjaIndicadores indicadores={auditoria.indicadores ?? []} porSeveridad={porSeveridad} />
+        <FranjaIndicadores
+          indicadores={auditoria.indicadores ?? []}
+          totalesLibro={auditoria.totales_libro}
+          totalesSilice={auditoria.totales_silice}
+        />
       )}
 
-      <div className="visor__barra">
-        <div className="visor__fecha">
-          <TextInput
-            id="visor-fecha"
-            type="date"
-            size="sm"
-            labelText="Fecha de devolución"
-            value={fecha}
-            onChange={(e) => cambiarFecha(e.target.value)}
-          />
-        </div>
-        {archivo && (
-          <>
-            <span className="visor__archivo cds--type-body-compact-01">{archivo.name}</span>
-            <FileUploaderButton
-              labelText="Cambiar libro"
-              buttonKind="ghost"
-              size="sm"
-              accept={[".xlsx"]}
-              disableLabelChanges
-              onChange={(e: { target: HTMLInputElement }) => {
-                const elegido = e.target.files?.[0];
-                if (elegido) alAgregar(e, { addedFiles: [elegido] });
-              }}
-            />
-          </>
-        )}
-      </div>
+      {ranuraCabecera === undefined && <div className="visor__barra">{controles}</div>}
+      {ranuraCabecera && createPortal(controles, ranuraCabecera)}
 
       {error && (
         <InlineNotification
@@ -262,6 +332,11 @@ export function Visor({ crearHoja = crearHojaUniver, alExpirar }: Props) {
 
       {fase === "vacio" && (
         <div className="visor__soltar">
+          <h2 className="cds--type-heading-04">Abra un libro para auditarlo</h2>
+          <p className="visor__ayuda-fecha cds--type-body-compact-01">
+            La fecha de devolución (en la barra de arriba) es la fecha con la que se audita el libro: con la misma
+            fecha, el mismo libro da siempre el mismo resultado.
+          </p>
           <FileUploaderDropContainer
             accept={[".xlsx"]}
             labelText="Suelte aquí el libro .xlsx de la empresa, o haga clic para elegirlo"
@@ -288,12 +363,35 @@ export function Visor({ crearHoja = crearHojaUniver, alExpirar }: Props) {
               }}
             >
               <TabList aria-label="Hojas del libro" contained>
-                {hojasVisibles.map((h) => (
-                  <Tab key={h.nombre}>{h.nombre}</Tab>
-                ))}
+                {hojasVisibles.map((h) => {
+                  const resumen = resumenHojas.get(h.nombre);
+                  return (
+                    <Tab key={h.nombre}>
+                      {h.nombre}
+                      {resumen && (
+                        <>
+                          <span
+                            className={`pestana__conteo silice-sev--${resumen.severidad.toLowerCase()}`}
+                            aria-hidden="true"
+                          >
+                            <IconoDeSeveridad
+                              nombre={estiloDeSeveridad(resumen.severidad).icono}
+                              size={16}
+                              className="silice-sev__icono"
+                            />
+                            {resumen.total}
+                          </span>
+                          <span className="silice-oculto">
+                            {` ${resumen.total} ${resumen.total === 1 ? "hallazgo" : "hallazgos"}, el más grave: ${estiloDeSeveridad(resumen.severidad).texto}`}
+                          </span>
+                        </>
+                      )}
+                    </Tab>
+                  );
+                })}
               </TabList>
             </Tabs>
-            <div className="visor__lienzo" onContextMenuCapture={(e) => e.preventDefault()}>
+            <div className="visor__lienzo" role="group" aria-label="Hoja del libro, solo lectura" onContextMenuCapture={(e) => e.preventDefault()}>
               <UniverGrid libro={replica} crearHoja={crearHoja} alCambiarVisor={alCambiarVisor} alFallar={alFallarVisor} />
               {!visor && <SkeletonPlaceholder className="visor__esqueleto-lienzo visor__esqueleto-sobre" />}
               <CapaHalos
@@ -311,10 +409,13 @@ export function Visor({ crearHoja = crearHojaUniver, alExpirar }: Props) {
           <aside className="visor__lista">
             <ListaHallazgos
               hallazgos={hallazgos}
-              hojasDelLibro={nombresDeHojas}
+              hojas={replica.hojas}
+              filtroInicial={filtro}
+              alFiltrar={setFiltro}
               seleccionado={seleccionado}
               enfocar={enfocar}
               irACelda={irACelda}
+              contextoDeCelda={contextoDeCelda}
               onElegir={setSeleccionado}
             />
           </aside>

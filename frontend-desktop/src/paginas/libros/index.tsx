@@ -3,6 +3,13 @@ import { Visor } from "../../visor/Visor";
 
 // «Libro de la empresa» (UC-25, RM-6): el visor de la sesion 2. Lo extiende la sesion 3, no la migracion.
 export default function PaginaLibros() {
-  const { alExpirar } = useAplicacion();
-  return <Visor alExpirar={alExpirar} />;
+  const { alExpirar, almacenDelLibro, ranuraCabecera, crearHojaVisor } = useAplicacion();
+  return (
+    <Visor
+      alExpirar={alExpirar}
+      almacen={almacenDelLibro}
+      ranuraCabecera={ranuraCabecera}
+      crearHoja={crearHojaVisor}
+    />
+  );
 }
