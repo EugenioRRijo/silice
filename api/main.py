@@ -22,6 +22,7 @@ from api.rutas import (
     listas,
     presupuestos,
     proyectos,
+    reajuste,
     rendimientos,
     sesion,
     similares,
@@ -76,6 +77,8 @@ app.include_router(proyectos.router)
 app.include_router(composicion.router)
 # Ola 4 (sesion 2b): entregar el paquete auditado
 app.include_router(entregas.router)
+# Ola 4 (sesion 2b): Reajuste de precios
+app.include_router(reajuste.router)
 # 1.2.0 (RT-2): la interfaz nueva, estática y sin secretos, en /app con CSP
 interfaz.montar(app)
 

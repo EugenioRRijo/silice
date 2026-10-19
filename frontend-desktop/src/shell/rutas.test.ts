@@ -44,6 +44,7 @@ describe("registro de paginas", () => {
       "elaborar",
       "actualizacion",
       "historico",
+      "reajuste",
       "acerca",
       "entregar",
       "libros",

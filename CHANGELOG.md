@@ -8,6 +8,7 @@ etiquetar, las líneas pasan a la sección de la versión. La historia anterior 
 
 ### Agregado
 
+- Interfaz nueva, ola 4b (sesión 2b): «Reajuste de precios» (UC‑18, RF‑71, RF‑72) por la API (`GET /v1/reajuste/contexto` y `/parciales`, `POST /v1/reajuste/calcular`, `/guardar`, `/excel`; `CONVERTIR_Y_REAJUSTAR`; sin estado en el servidor) y su página; la lógica de `ui/reajuste.py` pasó a `aplicacion/reajuste.py` (RM-1) y `HojaInvalida` a `aplicacion/errores.py` (`ui/hoja.py` solo la reimporta, misma clase).
 - Interfaz nueva, ola 1: páginas «Catálogo de partidas e insumos» (con búsqueda sin tildes) y «Histórico de cambios de precio» (filtros por insumo y fechas, variación en por ciento sin pasar por float), sobre `GET /v1/partidas`, `/v1/insumos` y `/v1/cambios-precio`.
 - Interfaz nueva, ola 1: página «Acerca de Sílice» sobre `GET /v1/acerca` (versión, revisiones de las dos bases, módulos; la carpeta de datos solo para quien administra o por clave de API).
 - Migración del front, ola 3 (S2-B), backend de «Componer una partida» (UC‑10, UC‑11): seis rutas `/v1/composicion/*` (`opciones`, `evaluar`, `partidas/{codigo}`, `referencia`, `similares`, `guardar`) con `EDITAR_HOJA`, montos como texto y los mensajes de la página clásica; la lógica (y `guardar_composicion`, antes en `ui/elaboracion.py`) vive en `aplicacion/composicion.py`, que `ui/` reexporta.
