@@ -1374,7 +1374,7 @@
           "libros"
         ],
         "summary": "Auditar Libro",
-        "description": "Audita el libro y responde el informe (hallazgos, alertas y trazabilidad). No guarda\nnada.",
+        "description": "Audita el libro y responde el informe (hallazgos, alertas y trazabilidad). El libro no se\nguarda; el resumen y los hallazgos compactos quedan en el historial (RM-6).",
         "operationId": "auditar_libro_v1_libros_auditoria_post",
         "requestBody": {
           "content": {
@@ -1454,7 +1454,7 @@
           "libros"
         ],
         "summary": "Revisar Pdf",
-        "description": "Revisa solo un PDF simple (el presupuesto impreso, sin el libro de Excel): coteja el PDF\nconsigo mismo (L10) y responde sus hallazgos. Sin libro no hay recálculo ni devolución. No\nguarda nada.",
+        "description": "Revisa solo un PDF simple (el presupuesto impreso, sin el libro de Excel): coteja el PDF\nconsigo mismo (L10) y responde sus hallazgos. Sin libro no hay recálculo ni devolución. El PDF\nno se guarda; el resumen y los hallazgos compactos quedan en el historial (RM-6).",
         "operationId": "revisar_pdf_v1_libros_pdf_post",
         "requestBody": {
           "content": {
@@ -9070,6 +9070,17 @@
             },
             "type": "object",
             "title": "Metadatos"
+          },
+          "aviso_historial": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Aviso Historial"
           }
         },
         "type": "object",
@@ -9087,7 +9098,8 @@
           "trazabilidad",
           "metadatos"
         ],
-        "title": "LibroAuditadoRespuesta"
+        "title": "LibroAuditadoRespuesta",
+        "description": "`aviso_historial` es `null` si la auditoría quedó en el historial; si no, el texto que la\npantalla muestra (la auditoría es válida igual, RF-144)."
       },
       "LibroOrigenRespuesta": {
         "properties": {
@@ -9941,6 +9953,17 @@
             },
             "type": "array",
             "title": "Hallazgos"
+          },
+          "aviso_historial": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Aviso Historial"
           }
         },
         "type": "object",
