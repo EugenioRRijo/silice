@@ -52,7 +52,7 @@ export function etiquetaDeCodigo(codigo: string): string {
 export function textoLlano(texto: string): string {
   return texto
     .replace(/\s*\((?:AL-[0-9]+|eta|eta_he)\)/g, "")
-    .replace(/(SUPUESTO_DECLARADO|DATO_DEL_CONTRATO)/g, (c) => (ETIQUETAS_DE_CODIGO[c] ?? c).toLowerCase());
+    .replace(/\b(SUPUESTO_DECLARADO|DATO_DEL_CONTRATO)\b/g, (c) => (ETIQUETAS_DE_CODIGO[c] ?? c).toLowerCase());
 }
 
 export interface ParametroDeControl {
