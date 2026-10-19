@@ -806,8 +806,9 @@ PLANTILLAS_DEL_NUCLEO: tuple[tuple[str, str], ...] = (
 )
 
 
-#: Más largo que esto no es una frase del núcleo (la más larga mide ~200 caracteres): se devuelve
-#: intacto sin tocar ninguna expresión regular, para que un texto hostil no cueste tiempo.
+#: Más largo que esto no es una frase del núcleo (la más larga mide ~200 caracteres): el catálogo
+#: de regex lo devuelve intacto sin tocarlas, para que un texto hostil no cueste tiempo. El
+#: desglose «no aplica (...)» no usa esas regex y no lleva tope.
 LARGO_MAXIMO_A_CORREGIR = 2_000
 
 #: Huecos con forma conocida: las cifras que el núcleo imprime. Acotarlos por clase hace lineal la
@@ -858,9 +859,12 @@ def con_tildes(texto: str) -> str:
     Función pura, sin recursión y de costo lineal. Solo actúa si la frase COMPLETA coincide con una
     plantilla del catálogo, de modo que un nombre de partida con «dia» o «ningun» puesto por el
     usuario no se altera.
+
+    Límite conocido: el núcleo arma el desglose con `"; ".join(f"{c}: {m}" ...)` (recuperacion.py,
+    intocable), así que un código de partida que contenga «; » y «: » es ambiguo con dos items y
+    solo se corrige lo que calce con un motivo del conjunto cerrado. El tope de largo vale solo
+    para el catálogo de regex; el desglose es lineal (split, rpartition, dict) y no lo necesita.
     """
-    if len(texto) > LARGO_MAXIMO_A_CORREGIR:
-        return texto
     desglose = _NO_APLICA.fullmatch(texto)
     if desglose is not None:
         # «no aplica (cod: motivo; cod: motivo)»: el código es del usuario; solo el motivo, a la
@@ -871,6 +875,8 @@ def con_tildes(texto: str) -> str:
             corregido = _MOTIVOS_POR_PARTIDA.get(motivo)
             items.append(f"{codigo}{separador}{corregido}" if separador and corregido else item)
         return "no aplica (" + "; ".join(items) + ")"
+    if len(texto) > LARGO_MAXIMO_A_CORREGIR:
+        return texto
     for patron, con_tilde in _CATALOGO_COMPILADO:
         calce = patron.fullmatch(texto)
         if calce is not None:
