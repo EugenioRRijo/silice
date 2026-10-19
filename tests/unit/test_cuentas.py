@@ -10,7 +10,7 @@ from pathlib import Path
 import pytest
 
 from seguridad import cuentas, eventos
-from seguridad.modelo import CodigoInstalacion, EventoAcceso, Usuario
+from seguridad.modelo import CodigoInstalacion, EventoAcceso, IntentoAcceso, Usuario
 from seguridad.permisos import PermisoDenegado
 from tests.fixtures.instalacion import AHORA, CONTRASENA, administrador, instalacion, persona
 
@@ -330,3 +330,135 @@ def test_cada_accion_de_administracion_queda_en_el_registro(tmp_path: Path) -> N
         cuentas.desactivar(sesion, admin, luis.id, AHORA)
         tipos = [e.tipo for e in sesion.query(EventoAcceso).order_by(EventoAcceso.id)]
         assert {"alta", "cambio de roles", "baja", "codigo de instalacion"} <= set(tipos)
+
+
+# --- el último administrador no se pierde por una carrera (hallazgo de seguridad) -----------
+
+
+@pytest.mark.parametrize("operacion", ["desactivar", "quitar el rol"])
+def test_dos_administradores_que_se_quitan_a_la_vez_dejan_uno(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, operacion: str
+) -> None:
+    """Dos hilos, dos conexiones, una base en archivo. La ventana entre «queda otro» y la
+    escritura se ensancha con una pausa. Sin una transacción que tome el bloqueo de escritura
+    ANTES de leer (`BEGIN IMMEDIATE`), ambos leen «queda otro» y confirman: cero
+    administradores. Con ella, el segundo espera, ve el resultado del primero y falla."""
+    from seguridad.base import abrir_sesion, crear_motor
+
+    with instalacion(tmp_path) as sesion:
+        a = administrador(sesion, tmp_path, "admina")
+        b = persona(sesion, a, "adminb", ("administrador",))
+        ids = {"admina": a.id, "adminb": b.id}
+    motor = crear_motor(tmp_path / "instalacion.db")
+
+    original = cuentas._exigir_otro_administrador
+
+    def con_ventana(session, usuario):
+        original(session, usuario)
+        time.sleep(0.4)  # la ventana de la carrera
+
+    monkeypatch.setattr(cuentas, "_exigir_otro_administrador", con_ventana)
+    resultados: dict[str, object] = {}
+
+    def quitar(actor_login: str, objetivo_login: str) -> None:
+        with abrir_sesion(motor) as bd:
+            actor = bd.get(Usuario, ids[actor_login])
+            try:
+                if operacion == "desactivar":
+                    cuentas.desactivar(bd, actor, ids[objetivo_login], AHORA)
+                else:
+                    cuentas.cambiar_roles(bd, actor, ids[objetivo_login], ["arma"], AHORA)
+                resultados[actor_login] = "ok"
+            except ValueError as error:
+                bd.rollback()
+                resultados[actor_login] = str(error)
+
+    hilos = [
+        threading.Thread(target=quitar, args=("admina", "adminb")),
+        threading.Thread(target=quitar, args=("adminb", "admina")),
+    ]
+    for hilo in hilos:
+        hilo.start()
+    for hilo in hilos:
+        hilo.join(timeout=30)
+
+    with abrir_sesion(motor) as bd:
+        activos = [
+            u for u in bd.query(Usuario).filter(Usuario.activo.is_(True))
+            if "administrador" in u.roles.split(",")
+        ]
+    motor.dispose()
+    assert len(activos) == 1, resultados
+    assert sorted(map(str, resultados.values())) == [
+        "Debe quedar al menos un administrador activo.", "ok",
+    ]
+
+
+# --- lo que un anónimo teclea en el usuario no se guarda si no es un usuario posible --------
+
+
+def _filas_de_eventos(sesion) -> list[str]:
+    return [
+        f"{e.login_intentado}|{e.ip_cliente}|{e.tipo}|{e.detalle}|{e.usuario_id}"
+        for e in sesion.query(EventoAcceso)
+    ]
+
+
+def test_un_usuario_con_forma_valida_se_guarda_tal_cual(tmp_path: Path, freno) -> None:
+    with instalacion(tmp_path) as sesion:
+        with pytest.raises(cuentas.ErrorDeAcceso):
+            _entrar(sesion, "  Nadie.Real  ", MALA, freno)
+        assert [e.login_intentado for e in sesion.query(EventoAcceso)] == ["nadie.real"]
+
+
+@pytest.mark.parametrize(
+    "tecleado",
+    [
+        "Mi Contraseña Muy Secreta 2026!",  # espacios, mayúsculas y símbolos
+        "x" * 60 + "cola-que-se-corta",  # largo
+        "ab",  # corto
+        "contra señal pegada",
+        "-guion-inicial",
+    ],
+)
+def test_lo_tecleado_que_no_es_un_usuario_posible_no_se_guarda(
+    tmp_path: Path, freno, tecleado: str
+) -> None:
+    with instalacion(tmp_path) as sesion:
+        with pytest.raises(cuentas.ErrorDeAcceso):
+            _entrar(sesion, tecleado, MALA, freno)
+        filas = _filas_de_eventos(sesion)
+        assert [e.login_intentado for e in sesion.query(EventoAcceso)] == ["(usuario no válido)"]
+        sesion.commit()
+        # ninguna columna de ninguna tabla guarda el texto
+        pegado = tecleado.strip().casefold()
+        volcado = " ".join(filas) + " ".join(
+            str(c) for i in sesion.query(IntentoAcceso) for c in (i.login_normalizado,)
+        )
+        assert pegado not in volcado and pegado[:20] not in volcado
+    assert pegado.encode() not in (tmp_path / "instalacion.db").read_bytes()
+
+
+def test_un_login_real_cuenta_y_bloquea_igual_y_lo_no_valido_no_bloquea_a_nadie(
+    tmp_path: Path, freno
+) -> None:
+    with instalacion(tmp_path) as sesion:
+        admin = administrador(sesion, tmp_path)
+        persona(sesion, admin, "ana", ("arma",))
+        for _ in range(cuentas.FALLOS_PARA_BLOQUEAR - 1):
+            with pytest.raises(cuentas.ErrorDeAcceso) as error:
+                _entrar(sesion, "ana", MALA, freno)
+            assert not isinstance(error.value, cuentas.CuentaBloqueada)
+        with pytest.raises(cuentas.CuentaBloqueada):
+            _entrar(sesion, "ana", MALA, freno)
+        assert [e.login_intentado for e in sesion.query(EventoAcceso).filter_by(tipo="bloqueo")] == [
+            "ana"
+        ]
+        # el bloqueo del marcador (texto imposible como usuario) no alcanza a una cuenta real
+        otra = persona(sesion, admin, "luis", ("arma",))
+        for i in range(cuentas.FALLOS_PARA_BLOQUEAR):
+            with pytest.raises(cuentas.ErrorDeAcceso):
+                _entrar(sesion, f"con espacio {i}", MALA, freno)
+        assert _entrar(sesion, otra.login, CONTRASENA, freno).login == "luis"
+        # y cada fallo, también el del marcador, alimenta el freno global
+        assert len(freno._fallos) >= 2 * cuentas.FALLOS_PARA_BLOQUEAR - 1
