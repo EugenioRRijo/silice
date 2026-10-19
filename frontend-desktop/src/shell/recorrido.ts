@@ -1,5 +1,4 @@
 import { useSyncExternalStore } from "react";
-import { rutaDe } from "./rutas";
 
 // Recorridos guiados (spec 2026-10-18 del Inicio, §2.5): una lista de pasos, uno por pantalla, cada uno con «que
 // hacer» y «sabra que termino cuando». El paso actual no se guarda: sale de la pantalla en que esta la persona. Lo
@@ -44,7 +43,7 @@ export const RECORRIDO_AUDITAR: Recorrido = {
 
 // Posicion (desde 0) del paso cuya pantalla es la de la ruta, o null si la ruta no es de ningun paso.
 export function pasoDeRuta(recorrido: Recorrido, ruta: string): number | null {
-  const i = recorrido.pasos.findIndex((p) => rutaDe({ id: p.pagina }) === ruta);
+  const i = recorrido.pasos.findIndex((p) => `/${p.pagina}` === ruta);
   return i < 0 ? null : i;
 }
 
