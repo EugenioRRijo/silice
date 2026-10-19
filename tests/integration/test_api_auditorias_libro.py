@@ -262,3 +262,21 @@ def test_el_administrador_solo_no_lee_el_historial() -> None:
     for ruta in (RUTA, f"{RUTA}/1"):
         r = cliente.get(ruta)
         assert r.status_code == 403 and r.json() == {"detalle": MENSAJE_PERMISO}
+
+
+# --- Cache-Control: no-store (el historial trae nombres de archivo y hallazgos de la empresa) ----
+
+
+@pytest.mark.parametrize("ruta", [RUTA, f"{RUTA}/1"])
+def test_el_historial_no_se_guarda_en_el_navegador(http, ruta) -> None:
+    _sembrar(1)
+    r = http.get(ruta)
+    assert r.status_code == 200
+    assert r.headers["Cache-Control"] == "no-store"
+
+
+def test_los_rechazos_del_historial_tambien_van_sin_cache(http) -> None:
+    assert http.get(f"{RUTA}/99").headers["Cache-Control"] == "no-store"  # 404
+    assert http.get(RUTA, params={"limite": 0}).headers["Cache-Control"] == "no-store"  # 422
+    assert _cliente().get(RUTA).headers["Cache-Control"] == "no-store"  # 401
+    assert _con_cuenta("admin").get(RUTA).headers["Cache-Control"] == "no-store"  # 403

@@ -1092,3 +1092,37 @@ def test_contrato_de_la_importacion_y_de_la_bandeja(http) -> None:
         }
         assert type(fila["id"]) is int and type(fila["fila"]) is int
         assert fila["estado"] == "pendiente"
+
+
+# --- Cache-Control: no-store en lo que se lee (existencias, pesajes y materiales no se guardan) ---
+
+
+@pytest.mark.parametrize(
+    "ruta",
+    [
+        "/v1/produccion/materiales",
+        "/v1/produccion/existencias",
+        "/v1/produccion/existencias?a_fecha=2026-10-02",
+        "/v1/produccion/pesajes-sospechosos",
+    ],
+)
+def test_las_lecturas_de_la_arenera_no_se_guardan_en_el_navegador(http, ruta) -> None:
+    r = http.get(ruta)
+    assert r.status_code == 200, r.text
+    assert r.headers["Cache-Control"] == "no-store"
+
+
+def test_tambien_los_rechazos_de_la_arenera_van_sin_cache(rita) -> None:
+    r = rita.get("/v1/produccion/materiales")  # revisa: sin permiso de operar la arenera
+    assert r.status_code == 403
+    assert r.headers["Cache-Control"] == "no-store"
+    sin_credenciales = TestClient(app, base_url=ANFITRION, client=IP_LOCAL)
+    r = sin_credenciales.get("/v1/produccion/existencias")
+    assert r.status_code == 401
+    assert r.headers["Cache-Control"] == "no-store"
+
+
+def test_una_fecha_mala_en_existencias_tambien_va_sin_cache(http) -> None:
+    r = http.get("/v1/produccion/existencias", params={"a_fecha": "no-es-fecha"})
+    assert r.status_code == 422
+    assert r.headers["Cache-Control"] == "no-store"
