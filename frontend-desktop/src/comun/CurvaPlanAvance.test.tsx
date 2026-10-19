@@ -3,8 +3,14 @@ import { describe, expect, test, vi } from "vitest";
 import { aplicarTrazos, CurvaPlanAvance, filasDeGrafico, periodos } from "./CurvaPlanAvance";
 import type { SerieDeCurva } from "./CurvaPlanAvance";
 
+interface OpcionesFalsas {
+  axes?: { left?: { ticks?: { formatter?: (n: number) => string } } };
+  tooltip?: { valueFormatter?: (n: number) => string };
+  color?: { scale: Record<string, string> };
+}
+
 vi.mock("./GraficoCarbon", () => ({
-  default: ({ tipo, datos, opciones }: { tipo: string; datos: unknown[]; opciones: Record<string, any> }) => (
+  default: ({ tipo, datos, opciones }: { tipo: string; datos: unknown[]; opciones: OpcionesFalsas }) => (
     <div
       data-testid="grafico"
       data-tipo={tipo}
