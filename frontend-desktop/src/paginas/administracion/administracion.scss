@@ -1,0 +1,52 @@
+// Administracion. Sin tarjetas con sombra ni animaciones (DESIGN.md).
+
+.silice-adm {
+  display: grid;
+  gap: 1.5rem;
+  padding: 1.5rem 1rem 2rem;
+  max-inline-size: 72rem;
+}
+
+.silice-adm__secciones {
+  display: grid;
+  gap: 1.5rem;
+  padding-block-start: 1rem;
+}
+
+.silice-adm__tabla {
+  display: grid;
+  gap: 1rem;
+}
+
+.silice-adm__seccion {
+  display: grid;
+  gap: 1rem;
+  max-inline-size: 36rem;
+}
+
+.silice-adm__acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.silice-adm__nota {
+  color: var(--silice-texto-secundario);
+}
+
+.silice-adm__resultado:focus {
+  outline: 2px solid var(--cds-focus, currentcolor);
+}
+
+.silice-adm__confirmar {
+  display: grid;
+  gap: 0.75rem;
+  max-inline-size: 36rem;
+  padding: 1rem;
+  background: var(--cds-layer-01, transparent);
+  border-inline-start: 4px solid var(--cds-support-error, currentcolor);
+}
+
+.silice-adm__confirmar:focus {
+  outline: 2px solid var(--cds-focus, currentcolor);
+}

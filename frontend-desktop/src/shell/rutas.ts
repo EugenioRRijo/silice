@@ -72,7 +72,13 @@ export const PAGINAS: readonly PaginaDef[] = [
     cargar: () => import("../paginas/simulador"),
   },
   { id: "visor", titulo: "Visor 3D del modelo", seccion: "Investigación", accion: "editar_hoja" },
-  { id: "administracion", titulo: "Administración", seccion: "Administración", accion: "administrar_cuentas" },
+  {
+    id: "administracion",
+    titulo: "Administración",
+    seccion: "Administración",
+    accion: "administrar_cuentas",
+    cargar: () => import("../paginas/administracion"),
+  },
 ];
 
 export function paginaPorId(id: string, paginas: readonly PaginaDef[] = PAGINAS): PaginaDef | undefined {
