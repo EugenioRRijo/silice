@@ -85,3 +85,41 @@ V-1, V-2, V-3 y V-5, que son lo único que un usuario nota sin buscar.
   la clave de firma): no se ejecutaron.
 - El tooltip del valor exacto de los indicadores (no se pasó el ratón).
 - 1056 px, teclado y lector de pantalla.
+
+---
+
+# Tercera pasada: SHA 01da0d1 (inc/ruta-s2-mig-adm-empresa), mismos datos ficticios
+
+> Servidor propio en `127.0.0.1:8123` contra `.worktrees/s2madm`, cerrado por su PID. Capturas en
+> `scratchpad/dis/capturas_v2` y `capturas_libro2`. Sin scroll horizontal en las 11 páginas medidas ni en el Libro.
+
+## Cerrados
+
+| # | Estado |
+|---|---|
+| V-11 | **Cerrado.** Tablero y Control cargan `DEMO-001` y `OBRA-GENERADA`; las peticiones ya no dan 404. |
+| V-12 | Cerrado en lo visto: Control ya no muestra `no_disponible`. |
+| V-13 | **Cerrado.** Entregar muestra «4.131,10 USD» (es-VE) y el exacto visible: «Valor exacto: 4131.095741666666666666666665 USD». |
+| V-2, V-3, V-14 | **Cerrados.** Acerca de tiene título y «Versión»; Libro de la empresa tiene `h1`, indicadores sin recorte, severidad con ícono y pestañas con su marca de hallazgos. |
+| V-5 | Cerrado: Componer sin «UC-10», «UC-11» ni «RF-33» y sin raya. |
+| V-15 | **Parcial.** El formato es único (es-VE: 4.203,93 y los hallazgos en prosa también), pero el rótulo sigue siendo **«Meta»**, no «Total según Sílice». |
+| V-1 | **Parcial.** Ya hay estado de error («No se pudo cargar el catálogo»), pero ver V-18: el error es real y permanente. |
+
+## Hallazgos nuevos
+
+| # | Gravedad | Página | Hallazgo | Arreglo sugerido |
+|---|---|---|---|---|
+| V-18 | **Bloqueante** | Catálogo, Histórico | Siguen **sin funcionar**: el front pide `/v1/partidas`, `/v1/insumos` y `/v1/cambios-precio`, pero la API sirve esas rutas **sin prefijo** (`/partidas`, `/insumos`, `/cambios-precio`, según `openapi.json`). 404 «Not Found» siempre. Las rutas están en `api/rutas/catalogo.py` y `listas.py`, montadas con `app.include_router(catalogo.router)` sin `/v1`. | Alinear el prefijo: o la API monta esas rutas también bajo `/v1`, o el front llama las rutas existentes. Prueba de API que recorra el cliente real de cada página. |
+| V-19 | Importante | Tablero | Formato numérico **distinto al de Entregar y Libro**: montos como «95066.60 USD», «4131.10 USD» y filas de tablas «2258.98 USD» (punto, sin miles); ejes de los gráficos en estilo inglés («4,131», «1,000»). No hay el exacto accesible. | Usar el mismo formateador es-VE de Entregar/Libro y poner el exacto en el `title`. |
+| V-20 | Importante | Tablero | Textos **sin tildes**: «Version», «Auditoria», «Dia 1», «Aun no hay control de obra», «Sin linea base». DESIGN.md pide ortografía correcta. | Revisar los textos de `tablero` y `control` y acentuarlos. |
+| V-21 | Importante | Tablero | Tres **donas** muestran avance, SPI y CPI como partes de un todo (por ejemplo SPI 0,98 = «97,8 % / 2,2 %»), en verde azulado y **morado**. Un índice no es una proporción, y DESIGN.md reserva el morado para atípicos. Repiten además los indicadores de debajo. | Quitar las donas o reemplazar por tarjetas con valor, meta y desviación (Fiori/IBCS); sin morado. |
+| V-22 | Importante | Control de obra | Se ven los identificadores internos: `spi_error`, `cpi_error`, `SUPUESTO_DECLARADO`, `DATO_DEL_CONTRATO`, «AL-1»… «AL-5», «eta». Textos sin tildes («Linea base vigente», «Parametros», «penalizacion») aunque la pestaña sí dice «Línea base». | Mostrar nombres en español («Umbral de SPI», «Supuesto declarado») y acentuar. |
+| V-23 | Pulido | Inicio | Muestra «Proyecto: 2» (el número) en vez del nombre. Sigue el 404 de `/v1/auditorias-libro` y `/v1/produccion/existencias` (V-4). | Mostrar el nombre del proyecto; V-4 queda hasta integrar la arenera. |
+| V-24 | Pulido | Libro de la empresa | El rótulo «Meta» (V-15), y los controles «Fecha de devolución / Cambiar libro» quedaron **en la barra superior** junto a Caso y Proyecto, mezclados con los de la cabecera. | Llevarlos a la propia página, bajo el título. |
+| V-25 | Informativo | Tablero | Las sombras y radios medidos (2 px, `0 0 0 2px`, sombra 6 px) son de los `checkbox` y la etiqueta del umbral de los gráficos de Carbon Charts, no de tarjetas. | Ninguno. |
+
+## Sigue sin comprobarse
+
+- Entregar generando el paquete (clave de firma), Elaborar y Reajuste con resultado, el tooltip del exacto, 1056 px,
+  teclado y lector de pantalla.
+- V-16 (libro menor que Sílice en rojo) sigue como decisión de Eugenio o del tutor: en esta pasada se ve igual.
