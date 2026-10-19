@@ -7,52 +7,17 @@
 
 from __future__ import annotations
 
-import io
 import json
-import zipfile
-from collections.abc import Mapping
-from dataclasses import dataclass
-from pathlib import Path
 
 import streamlit as st
 
+# RM-1 (ola de Administracion): la logica sin Streamlit vive en aplicacion/instalacion.py.
+from aplicacion.instalacion import JuegoResumen as JuegoResumen
+from aplicacion.instalacion import juegos_de_respaldo as juegos_de_respaldo
+from aplicacion.instalacion import zip_del_juego as zip_del_juego
 from operacion import base_datos, config, eventos_perdidos
 from ui import cliente
 from ui.texto_seguro import texto_seguro
-
-
-@dataclass(frozen=True, slots=True)
-class JuegoResumen:
-    nombre: str
-    motivo: str
-    bases: int
-    carpeta: Path
-
-
-def juegos_de_respaldo(entorno: Mapping[str, str] | None = None) -> list[JuegoResumen]:
-    carpeta = config.carpeta_respaldos(entorno)
-    if not carpeta.is_dir():
-        return []
-    juegos = []
-    for ruta in sorted(carpeta.iterdir(), reverse=True):
-        try:
-            ficha = json.loads((ruta / "ficha.json").read_text(encoding="utf-8"))
-        except (OSError, ValueError):
-            continue
-        juegos.append(
-            JuegoResumen(
-                ruta.name, str(ficha.get("motivo", "?")), len(ficha.get("bases", [])), ruta
-            )
-        )
-    return juegos
-
-
-def zip_del_juego(carpeta: Path) -> bytes:
-    memoria = io.BytesIO()
-    with zipfile.ZipFile(memoria, "w", zipfile.ZIP_DEFLATED) as zip_:
-        for archivo in sorted(p for p in carpeta.rglob("*") if p.is_file()):
-            zip_.write(archivo, archivo.relative_to(carpeta).as_posix())
-    return memoria.getvalue()
 
 
 def _red_y_api() -> None:
