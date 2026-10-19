@@ -148,7 +148,7 @@ def test_los_textos_fijos_son_los_de_la_pantalla_clasica() -> None:
     )
 
 
-def test_el_aviso_de_quien_armo_dice_las_versiones_y_escapa_cada_una() -> None:
+def test_el_aviso_de_quien_armo_dice_las_versiones() -> None:
     from aplicacion import revision
 
     assert revision.aviso_de_quien_armo(()) is None
@@ -157,8 +157,6 @@ def test_el_aviso_de_quien_armo_dice_las_versiones_y_escapa_cada_una() -> None:
         "armó (figura en la versión 004, 005). Su dictamen lo dejará registrado; no se le "
         "impide darlo."
     )
-    marcado = revision.aviso_de_quien_armo(("*1*",), lambda t: t.replace("*", "\\*"))
-    assert "(figura en la versión \\*1\\*)" in marcado
 
 
 def test_titulos_y_leyendas_de_las_secciones() -> None:
@@ -254,6 +252,20 @@ def test_analizar_un_paquete_firmado_lo_recibe_lo_reaudita_y_lo_compara(mundo) -
     caso, _, carpeta = mundo
     assert caso.scalar(select(paq.paq_recibido.c.huella_archivo)) == a.sha_del_archivo
     assert len(list(carpeta.iterdir())) == 1
+
+
+def test_analizar_un_paquete_alterado_lo_audita_sin_cambios_que_mostrar(mundo) -> None:
+    """Un archivo cambiado tras firmarse se audita igual (S3 §8.3) pero su cadena no se leyó: no
+    hay «quién cambió qué». Antes de T7 la pantalla clásica caía aquí con un `TypeError`."""
+    from tests.fixtures.paquetes import reempaquetar
+
+    alterado = reempaquetar(
+        paquete(par=PAR, presupuesto=_documento(), anexos={}), {"informe.json": b'{"otro":1}'}
+    )
+    a = _analizar(mundo, alterado)
+    assert a.recibido.verificacion.estado == "alterado"
+    assert a.reauditoria is not None and a.reauditoria.total_recalculado == TOTAL
+    assert a.cambios == ()
 
 
 def test_analizar_un_archivo_rechazado_no_reaudita_ni_guarda_nada(mundo) -> None:

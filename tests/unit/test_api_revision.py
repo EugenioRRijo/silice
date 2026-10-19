@@ -72,8 +72,7 @@ from tests.fixtures.sesion_web import (
 PAR = firma.generar_par()
 TOTAL = "836.7975"  # 20 m3 x 41,839875 USD/m3, la memoria del ejemplo mínimo
 VERIFICADO = (
-    "Verificado: emitido por Contratista Demo, C.A. el 2026-11-10. No se alteró desde que se "
-    "firmó."
+    "Verificado: emitido por Contratista Demo, C.A. el 2026-11-10. No se alteró desde que se firmó."
 )
 NO_VERIFICADO_SIN_FIRMA = (
     "No verificado: dice venir de Contratista Demo, C.A., pero no se pudo comprobar. El paquete "
@@ -245,11 +244,17 @@ def test_un_paquete_firmado_se_verifica_se_registra_y_se_reaudita() -> None:
     assert re["reglas"] == REGLAS
     assert re["precios_coinciden"] is True and re["mensaje_precios"] == PRECIOS_OK
     assert re["diferencias"] == []
-    assert [(lote["titulo"], lote["hallazgos"]) for lote in re["hallazgos"]] == [
-        ("El emisor no los declaró", []),
-        ("Los declaró y ya no aparecen", []),
-        ("En común", []),
+    # Sin referencia MaPreX ni tasas (servicios vacíos), R11 da un único INFO con los tres
+    # insumos, que el emisor no declaró (como `test_ui_revision`, conjunto exacto)
+    assert [lote["titulo"] for lote in re["hallazgos"]] == [
+        "El emisor no los declaró",
+        "Los declaró y ya no aparecen",
+        "En común",
     ]
+    [r11] = re["hallazgos"][0]["hallazgos"]
+    assert (r11["regla"], r11["severidad"]) == ("R11", "INFO")
+    assert r11["descripcion"].startswith("3 insumos no contrastables")
+    assert re["hallazgos"][1]["hallazgos"] == [] and re["hallazgos"][2]["hallazgos"] == []
     assert cuerpo["entrega_anterior"] is None and cuerpo["sin_entrega_anterior"] == SIN_ANTERIOR
     assert cuerpo["cambios_titulo"] == "Quién cambió qué"
     assert [c["version"] for c in cuerpo["cambios"]] == ["004", "005"]
