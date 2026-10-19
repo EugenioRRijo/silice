@@ -751,3 +751,29 @@ def test_dos_administradores_que_se_desactivan_a_la_vez_no_dejan_cero(admin, mon
     )
     assert len(activos) == 1, (resultados, activos)
     assert sorted(resultados.values()) == [200, 403] or sorted(resultados.values()) == [200, 401]
+
+
+def test_accesos_no_muestra_lo_tecleado_que_no_es_un_usuario_posible(admin) -> None:
+    """Una contraseña pegada en el campo de usuario no queda legible para el administrador."""
+    from datetime import datetime
+
+    from operacion import config
+
+    pegada = "Mi Clave Pegada Por Error 2026!"
+    navegador, _ = admin
+    motor = crear_motor(config.ruta_instalacion())
+    sesion = abrir_sesion(motor)
+    try:
+        with pytest.raises(nucleo_cuentas.ErrorDeAcceso):
+            nucleo_cuentas.autenticar(
+                sesion, pegada, "no importa la clave", datetime(2026, 11, 10, 9, 0),
+                freno=nucleo_cuentas.FrenoGlobal(), dormir=lambda s: None,
+            )
+    finally:
+        sesion.close()
+        motor.dispose()
+    respuesta = navegador.get("/v1/accesos")
+    assert respuesta.status_code == 200
+    assert "(usuario no válido)" in respuesta.text
+    assert pegada not in respuesta.text and pegada.casefold() not in respuesta.text
+    assert "Clave Pegada".casefold() not in respuesta.text.casefold()
