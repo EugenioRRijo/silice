@@ -12,9 +12,14 @@ Las filas son diccionarios de texto (las claves que produce cada tabla de la pan
 `Decimal` ni objetos del contrato: el usuario escribe texto y esta capa es la única que decide qué
 significa "vacío" y qué mensaje de error señala la fila y el campo culpables.
 
-Depende de `core.costing` solo para `desglose` (`calcular_apu` es una función pura) y **no escribe
-en la base**: la persistencia de una composición vive en `ui/elaboracion.guardar_composicion`
-(INV-043, fase C3). Lo vigila `tests/unit/test_arquitectura.py`.
+Depende de `core.costing` solo para `desglose` (`calcular_apu` es una función pura). Las funciones
+de las primeras secciones no escriben en la base; desde la ola 3 de la migración (S2-B, RB-3) la
+persistencia de una composición (`guardar_composicion`, antes en `ui/elaboracion.py`, que la
+reexporta) y lo que la API y la página comparten para componer (`evaluar_composicion`,
+`precarga_de_partida`, `similares_con_composicion`, `sugerencias_de_referencia`,
+`guardar_desde_tablas`) viven en la última sección: escriben filas, nunca confirman (el `commit`
+es de quien llama). Sin Streamlit, `ui`, `api`, `scripts` ni `tests`: lo vigila
+`tests/unit/test_arquitectura.py`.
 """
 
 from __future__ import annotations
@@ -22,11 +27,22 @@ from __future__ import annotations
 import csv
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
+from datetime import date
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from types import ModuleType
 from typing import TYPE_CHECKING
 
+from core.catalog import (
+    Catalogo,
+    CatalogoIncompleto,
+    DispersionRendimiento,
+    advertencia_rendimiento,
+    cambios_precio,
+    dispersion_rendimientos,
+    justificar_rendimiento,
+    proponer_rendimiento,
+)
 from core.contracts.apu import (
     ComposicionAPU,
     LineaEquipo,
@@ -41,9 +57,12 @@ from core.contracts.item_computo import ItemComputo, OrigenTipo
 from core.contracts.unidades import unidades_equivalentes
 from core.contracts.verificacion import Hallazgo
 from core.costing import calcular_apu
-from core.verification.texto import normalizar_texto
+from core.verification.informe import DECIMALES_PRESENTACION
+from core.verification.texto import formatear_decimal, normalizar_texto
 
 if TYPE_CHECKING:
+    from sqlalchemy.orm import Session
+
     from ml.anomaly import VeredictoRendimiento
     from ml.normalization import Propuesta
 
@@ -731,4 +750,481 @@ def contrastar_precio_con_reglas(
         return None
     return ContrasteAace(
         tecnica=str(tecnica), pu_estimado=prediccion.pu_estimado, hallazgo=hallazgo
+    )
+
+
+# --- Componer por la API y por la página (ola 3 de la migración, S2-B; RB-2 a RB-5) -------------
+#
+# Lo que `ui/paginas/componer.py` decidía en `render()` y la API necesita sin Streamlit: guardar
+# (RB-3, movido de `ui/elaboracion.py`), evaluar en vivo con las advertencias de las ayudas, la
+# precarga de UC-11, las similares con su composición y las sugerencias de la referencia. Los
+# mensajes son los de la página clásica, letra por letra (paridad, plan de la sesión 2b §3).
+# Ninguna función confirma: el `commit` es de quien llama, y solo con resultado.
+
+#: La bienvenida del formulario en blanco (`ui/paginas/componer.py`, `_desglose_en_vivo`).
+MENSAJE_FORMULARIO_VACIO = (
+    "Comience por la cabecera (codigo y descripcion) y declare al menos un insumo "
+    "en alguna de las tres tablas de abajo, o busquelo en la referencia MaPreX: el "
+    "desglose se calcula aqui automaticamente, sin necesidad de guardar."
+)
+#: RF-33: la página deshabilita el botón de guardar sin condiciones; la API lo dice con esto
+#: (la primera frase es la de la página; la segunda, la ayuda de su campo).
+MENSAJE_CONDICIONES_OBLIGATORIAS = (
+    "Las condiciones del rendimiento son obligatorias para guardar (RF-33): el sistema no "
+    "persiste una composicion cuyo rendimiento no se declare junto con las condiciones en que se "
+    "obtuvo."
+)
+MENSAJE_PARTIDA_NUEVA = (
+    "Partida nueva: la estimacion por reglas parte del PU anterior de la partida, que "
+    "no existe; el contraste no es posible (UC-07, flujo 3a)."
+)
+MENSAJE_SIN_RENDIMIENTO_NUEVO = (
+    "El guardado no registro un rendimiento nuevo (el valor y las condiciones son los "
+    "del ultimo estimado): la justificacion no se registro, porque se ligaria a otro "
+    "rendimiento (UC-06, flujo 4a)."
+)
+MENSAJE_SIN_JUSTIFICACION = (
+    "El rendimiento se guardo con la advertencia y sin justificacion (UC-06, flujo "
+    "4a): la advertencia informa, no impide el registro (RF-27)."
+)
+#: Los tres tipos de fila de la referencia MaPreX y cómo cada uno completa su tabla.
+_COMPLETAR_FILA: dict[str, Callable[[FilaReferencia], dict[str, str]]] = {
+    "material": fila_materiales_desde_referencia,
+    "equipo": fila_equipos_desde_referencia,
+    "mano_obra": fila_mano_obra_desde_referencia,
+}
+TIPOS_DE_REFERENCIA = tuple(_COMPLETAR_FILA)
+
+
+def presentar(valor: Decimal) -> str:
+    """Un `Decimal` como lo presenta el sistema: dos decimales, con la fuente única (INV-045)."""
+    return formatear_decimal(valor, DECIMALES_PRESENTACION)
+
+
+@dataclass(frozen=True, slots=True)
+class Guardado:
+    """Lo que dejo `guardar_composicion`: el desglose guardado o el motivo para no guardar."""
+
+    resultado: ResultadoAPU | None = None
+    motivo: str | None = None
+
+    def __post_init__(self) -> None:
+        if (self.resultado is None) == (self.motivo is None):
+            raise ValueError("un Guardado lleva exactamente uno de los dos: resultado o motivo")
+
+
+def guardar_composicion(
+    catalogo: Catalogo,
+    composicion: ComposicionAPU,
+    dominio: Dominio,
+    fecha: date,
+    condiciones: str,
+) -> Guardado:
+    """Persiste la composicion: UC-10 si la partida no existe, UC-11 si ya existe.
+
+    Sobre una partida existente, `motivo_para_no_reemplazar` decide antes de escribir: una
+    composicion sin lineas borraria el desglose, y una cabecera distinta se descartaria en silencio
+    (`reemplazar_composicion` solo sustituye lineas y rendimiento). En ese caso devuelve el motivo
+    y no escribe nada. **No confirma**: el `commit` lo decide la pagina.
+    """
+    lista = catalogo.lista_vigente(fecha)
+    try:
+        partida = catalogo.partida(composicion.codigo_partida)
+    except KeyError:
+        catalogo.cargar_composicion(composicion, lista, dominio, fecha, condiciones)
+    else:
+        motivo = motivo_para_no_reemplazar(partida.descripcion, partida.unidad, composicion)
+        if motivo is not None:
+            return Guardado(motivo=motivo)
+        catalogo.reemplazar_composicion(composicion, lista, dominio, fecha, condiciones)
+    return Guardado(resultado=desglose(composicion))
+
+
+@dataclass(frozen=True, slots=True)
+class Advertencia:
+    """Un aviso que no bloquea (RB-5): `tipo` es `rendimiento` (RF-27, pide justificación),
+    `rendimiento_ml` (ayuda 3), `precio_atipico` (ayuda 2), `contraste_aace` (ayuda 4) o
+    `partida_nueva` (UC-07 3a)."""
+
+    tipo: str
+    texto: str
+
+
+@dataclass(frozen=True, slots=True)
+class ContrasteEvaluado:
+    """La ayuda 4 tal como la muestra la página: técnica, registros del dominio, PU estimado y
+    si el construido cae dentro de la clase 3 de AACE (sin hallazgo)."""
+
+    tecnica: str
+    registros: int
+    pu_estimado: Decimal
+    dentro_de_rango: bool
+
+
+@dataclass(frozen=True, slots=True)
+class Evaluacion:
+    """El desglose en vivo (UC-10, paso 6): `vacio`, `incompleto` (con el aviso de la conversión)
+    o `valido` (con el `ResultadoAPU`), más las advertencias que correspondan."""
+
+    estado: str
+    aviso: str | None = None
+    resultado: ResultadoAPU | None = None
+    advertencias: tuple[Advertencia, ...] = ()
+    contraste: ContrasteEvaluado | None = None
+
+    @property
+    def requiere_justificacion(self) -> bool:
+        """UC-06 4a: solo la advertencia de rango (RF-27) se acepta con un motivo."""
+        return any(advertencia.tipo == "rendimiento" for advertencia in self.advertencias)
+
+
+def _historial_de_rendimiento(
+    sesion: Session, codigo: str
+) -> tuple[DispersionRendimiento | None, list[Decimal]]:
+    """La dispersión y los valores observados de la partida; sin partida (UC-10), nada."""
+    if not codigo.strip():
+        return None, []
+    try:
+        dispersion = dispersion_rendimientos(sesion, codigo)
+        observados = [r.valor for r in Catalogo(sesion).rendimientos(codigo)]
+    except KeyError:
+        return None, []
+    return dispersion, observados
+
+
+def _advertencias_de_rendimiento(
+    sesion: Session,
+    codigo: str,
+    rendimiento: str,
+    cargar_anomalia: Callable[[], ModuleType],
+) -> list[Advertencia]:
+    """RF-27 y ayuda 3, como `_advertir_si_corresponde` de la página: aunque la composición esté
+    incompleta, mientras el rendimiento sea un decimal válido."""
+    if not rendimiento.strip():
+        return []
+    try:
+        valor = decimal_desde_texto(rendimiento, "rendimiento")
+    except ComposicionInvalida:
+        return []
+    dispersion, observados = _historial_de_rendimiento(sesion, codigo)
+    advertencias: list[Advertencia] = []
+    por_rango = advertencia_rendimiento(dispersion, valor)
+    if por_rango:
+        advertencias.append(Advertencia("rendimiento", por_rango))
+    veredicto = veredicto_ml_rendimiento(observados, valor, cargar_anomalia)
+    if veredicto is not None and veredicto.atipico:
+        advertencias.append(
+            Advertencia(
+                "rendimiento_ml",
+                f"El bosque de aislamiento (ayuda 3 de Sílice, spec §3.7) tambien marca este "
+                f"rendimiento como atipico frente al historico de la partida (puntaje "
+                f"{veredicto.puntaje:.3f}); el registro no queda bloqueado por esto.",
+            )
+        )
+    return advertencias
+
+
+def _advertencias_de_precios(
+    sesion: Session, composicion: ComposicionAPU, cargar_anomalia: Callable[[], ModuleType]
+) -> list[Advertencia]:
+    """Ayuda 2 sobre cada línea válida, contra el histórico de su insumo (`cambios_precio`)."""
+    precios = [(linea.descripcion, linea.precio) for linea in composicion.materiales]
+    precios += [(linea.descripcion, linea.precio) for linea in composicion.equipos]
+    precios += [(linea.descripcion, linea.sueldo) for linea in composicion.mano_obra]
+    advertencias: list[Advertencia] = []
+    for descripcion, precio in precios:
+        cambios = cambios_precio(sesion, insumo=descripcion)
+        historico = {str(cambio.id): cambio.variacion for cambio in cambios}
+        anterior = cambios[-1].precio_nuevo if cambios else None
+        if advertencia_precio_atipico(historico, anterior, precio, cargar_anomalia):
+            advertencias.append(
+                Advertencia(
+                    "precio_atipico",
+                    f"El precio de «{descripcion}» ({precio}) resulta atipico frente al "
+                    "historico de ese insumo (ayuda 2 de Sílice, spec §3.7); reviselo, aunque "
+                    "el sistema no bloquea el guardado por esto.",
+                )
+            )
+    return advertencias
+
+
+def _contraste(
+    sesion: Session,
+    codigo: str,
+    dominio: Dominio,
+    composicion: ComposicionAPU,
+    cargar_prediccion: Callable[[], ModuleType],
+) -> tuple[list[Advertencia], ContrasteEvaluado | None]:
+    """Ayuda 4, como `_contraste_aace` de la página: sin PU anterior (partida nueva) se avisa que
+    el contraste no es posible; sin lista vigente o si la ayuda falla, nada."""
+    catalogo = Catalogo(sesion)
+    try:
+        pu_anterior = desglose(catalogo.composicion(codigo)).precio_unitario
+    except KeyError:
+        return [Advertencia("partida_nueva", MENSAJE_PARTIDA_NUEVA)], None
+    except CatalogoIncompleto:
+        return [], None
+    variaciones = [cambio.variacion for cambio in cambios_precio(sesion)]
+    registros = len(catalogo.partidas(dominio))
+    pu_construido = desglose(composicion).precio_unitario
+    contraste = contrastar_precio_con_reglas(
+        codigo, pu_construido, pu_anterior, variaciones, registros, cargar_prediccion
+    )
+    if contraste is None:
+        return [], None
+    evaluado = ContrasteEvaluado(
+        tecnica=contraste.tecnica,
+        registros=registros,
+        pu_estimado=contraste.pu_estimado,
+        dentro_de_rango=contraste.hallazgo is None,
+    )
+    if contraste.hallazgo is None:
+        return [], evaluado
+    return [Advertencia("contraste_aace", contraste.hallazgo.descripcion)], evaluado
+
+
+def evaluar_composicion(
+    sesion: Session,
+    codigo: str,
+    descripcion: str,
+    unidad: str,
+    dominio: Dominio,
+    rendimiento: str,
+    filas_materiales: Sequence[Mapping[str, str]],
+    filas_equipos: Sequence[Mapping[str, str]],
+    filas_mano_obra: Sequence[Mapping[str, str]],
+    *,
+    cargar_anomalia: Callable[[], ModuleType] | None = None,
+    cargar_prediccion: Callable[[], ModuleType] | None = None,
+) -> Evaluacion:
+    """El desglose en vivo con sus advertencias, sin escribir nada (RB-2, RB-5).
+
+    Una tabla a medias es el estado normal mientras se teclea: `incompleto` con el mensaje de
+    `ComposicionInvalida`, nunca una excepción. Las advertencias de rendimiento se calculan antes
+    (no dependen de que la composición sea válida); las de precios y el contraste, solo sobre una
+    composición válida. Ninguna bloquea el guardado. Los `cargar_*` son la costura de las ayudas
+    de `ml` (por defecto, los `_importar_*` de este módulo, resueltos al llamar).
+    """
+    anomalia = cargar_anomalia or _importar_anomalia
+    prediccion = cargar_prediccion or _importar_prediccion
+    advertencias = _advertencias_de_rendimiento(sesion, codigo, rendimiento, anomalia)
+    try:
+        composicion = composicion_desde_tablas(
+            codigo,
+            descripcion,
+            unidad,
+            rendimiento,
+            filas_materiales,
+            filas_equipos,
+            filas_mano_obra,
+        )
+    except ComposicionInvalida as error:
+        if formulario_vacio(codigo, descripcion, filas_materiales, filas_equipos, filas_mano_obra):
+            return Evaluacion("vacio", MENSAJE_FORMULARIO_VACIO, advertencias=tuple(advertencias))
+        return Evaluacion("incompleto", str(error), advertencias=tuple(advertencias))
+
+    advertencias += _advertencias_de_precios(sesion, composicion, anomalia)
+    del_contraste, contraste = _contraste(sesion, codigo, dominio, composicion, prediccion)
+    return Evaluacion(
+        "valido",
+        resultado=desglose(composicion),
+        advertencias=(*advertencias, *del_contraste),
+        contraste=contraste,
+    )
+
+
+TablasDeTexto = tuple[list[dict[str, str]], list[dict[str, str]], list[dict[str, str]]]
+
+
+@dataclass(frozen=True, slots=True)
+class Precarga:
+    """UC-11, paso 1: las tres tablas de una partida existente (vacías si no existe o no hay
+    lista vigente) y el rendimiento que propone su histórico (UC-06)."""
+
+    existe: bool
+    tablas: TablasDeTexto
+    rendimiento_propuesto: str | None
+    hay_historial: bool
+
+
+def precarga_de_partida(sesion: Session, codigo: str) -> Precarga:
+    """Lo que la página precarga al teclear un código (`_precargar_tablas` y `_rendimiento`)."""
+    codigo = codigo.strip()
+    vacias: TablasDeTexto = ([], [], [])
+    if not codigo:
+        return Precarga(False, vacias, None, False)
+    try:
+        propuesta = proponer_rendimiento(sesion, codigo)
+    except KeyError:
+        return Precarga(False, vacias, None, False)
+    rendimiento = None if propuesta is None else str(propuesta.rendimiento.valor)
+    try:
+        tablas = filas_desde_composicion(Catalogo(sesion).composicion(codigo))
+    except (KeyError, CatalogoIncompleto):
+        return Precarga(False, vacias, rendimiento, propuesta is not None)
+    return Precarga(True, tablas, rendimiento, propuesta is not None)
+
+
+@dataclass(frozen=True, slots=True)
+class SimilarConComposicion:
+    """Ayuda 1: una partida parecida del mismo dominio y su composición vigente (o el aviso de
+    `CatalogoIncompleto`, con el texto de la página)."""
+
+    codigo: str
+    descripcion: str
+    puntaje: float
+    composicion: ComposicionAPU | None = None
+    aviso: str | None = None
+
+
+def similares_con_composicion(
+    sesion: Session,
+    dominio: Dominio,
+    descripcion: str,
+    *,
+    cargar_normalizacion: Callable[[], ModuleType] | None = None,
+) -> list[SimilarConComposicion]:
+    """`_sugerencias_similares` de la página sin pintar: solo lectura, nada se llena solo.
+
+    Una falla declarada del modelo deja la lista vacía (criterio único de
+    `ml.normalization.proponedor`, INV-081); un defecto se propaga.
+    """
+    catalogo = Catalogo(sesion)
+    partidas = {partida.codigo: partida.descripcion for partida in catalogo.partidas(dominio)}
+    cargar = cargar_normalizacion or _importar_normalizacion
+    similares: list[SimilarConComposicion] = []
+    for propuesta in sugerir_partidas_similares(partidas, descripcion, cargar).similares:
+        try:
+            composicion = catalogo.composicion(propuesta.codigo)
+        except CatalogoIncompleto as error:
+            similares.append(
+                SimilarConComposicion(
+                    propuesta.codigo,
+                    propuesta.descripcion,
+                    propuesta.puntaje,
+                    aviso=f"Desglose incompleto en la lista vigente: {error}",
+                )
+            )
+            continue
+        similares.append(
+            SimilarConComposicion(
+                propuesta.codigo, propuesta.descripcion, propuesta.puntaje, composicion
+            )
+        )
+    return similares
+
+
+@dataclass(frozen=True, slots=True)
+class SugerenciaReferencia:
+    """Una fila de la referencia MaPreX como la ofrece el buscador: rótulo, procedencia y la fila
+    de la tabla ya completada (`fila_*_desde_referencia`)."""
+
+    etiqueta: str
+    ref_maprex: str
+    fila: dict[str, str]
+
+
+def sugerencias_de_referencia(
+    texto: str, tipo: str, raiz: Path | None = None
+) -> list[SugerenciaReferencia]:
+    """`_buscador_de_referencia` sin pintar. Sin texto, nada; un `tipo` que no es `material`,
+    `equipo` ni `mano_obra` es un `ValueError`."""
+    completar = _COMPLETAR_FILA.get(tipo)
+    if completar is None:
+        raise ValueError(
+            f"tipo de referencia desconocido: {tipo!r} (use {', '.join(TIPOS_DE_REFERENCIA)})"
+        )
+    if not texto.strip():
+        return []
+    return [
+        SugerenciaReferencia(etiqueta_referencia(fila), fila.ref_maprex, completar(fila))
+        for fila in buscar_referencia(texto, tipo, raiz)
+    ]
+
+
+@dataclass(frozen=True, slots=True)
+class ResultadoGuardado:
+    """Lo que dejó `guardar_desde_tablas`: con `precio_unitario` (texto presentado) y el
+    `mensaje` de éxito de la página, o con el `motivo` para no guardar (nada se escribió)."""
+
+    precio_unitario: str | None = None
+    mensaje: str | None = None
+    motivo: str | None = None
+    justificada: bool = False
+    avisos: tuple[str, ...] = ()
+
+
+def _cuantos_rendimientos(catalogo: Catalogo, codigo: str) -> int:
+    """Los rendimientos registrados de la partida; cero si todavia no existe (UC-10)."""
+    try:
+        return len(catalogo.rendimientos(codigo))
+    except KeyError:
+        return 0
+
+
+def guardar_desde_tablas(
+    sesion: Session,
+    codigo: str,
+    descripcion: str,
+    unidad: str,
+    dominio: Dominio,
+    rendimiento: str,
+    filas_materiales: Sequence[Mapping[str, str]],
+    filas_equipos: Sequence[Mapping[str, str]],
+    filas_mano_obra: Sequence[Mapping[str, str]],
+    *,
+    fecha: date,
+    condiciones: str,
+    justificacion: str | None = None,
+) -> ResultadoGuardado:
+    """El botón «Guardar composicion» de la página (`_guardar`), sin pintar y **sin confirmar**.
+
+    `ComposicionInvalida` si faltan las condiciones (RF-33) o la composición no es válida, antes
+    de escribir nada; `CatalogoIncompleto` (de `Catalogo.lista_vigente`) sin lista vigente a
+    `fecha`, tampoco escribe. Sobre una partida existente, `motivo_para_no_reemplazar` decide
+    (`ResultadoGuardado.motivo`). UC-06 4a: con la advertencia de rango a la vista (la misma que
+    `evaluar_composicion`, sobre el histórico de antes de guardar), la justificación se registra
+    en la misma transacción solo si el guardado registró un rendimiento nuevo y hay texto; si no,
+    `avisos` trae el mensaje de la página.
+    """
+    if not condiciones.strip():
+        raise ComposicionInvalida(MENSAJE_CONDICIONES_OBLIGATORIAS)
+    composicion = composicion_desde_tablas(
+        codigo,
+        descripcion,
+        unidad,
+        rendimiento,
+        filas_materiales,
+        filas_equipos,
+        filas_mano_obra,
+    )
+    dispersion, _ = _historial_de_rendimiento(sesion, codigo)
+    advertencia = advertencia_rendimiento(dispersion, composicion.rendimiento)
+
+    catalogo = Catalogo(sesion)
+    codigo_partida = composicion.codigo_partida
+    antes = _cuantos_rendimientos(catalogo, codigo_partida)
+    guardado = guardar_composicion(catalogo, composicion, dominio, fecha, condiciones)
+    if guardado.resultado is None:
+        return ResultadoGuardado(motivo=guardado.motivo)
+
+    justificada = False
+    avisos: list[str] = []
+    if advertencia:
+        if _cuantos_rendimientos(catalogo, codigo_partida) == antes:
+            avisos.append(MENSAJE_SIN_RENDIMIENTO_NUEVO)
+        elif justificacion is not None and justificacion.strip():
+            justificar_rendimiento(sesion, codigo_partida, justificacion, advertencia, fecha)
+            justificada = True
+        else:
+            avisos.append(MENSAJE_SIN_JUSTIFICACION)
+    precio = presentar(guardado.resultado.precio_unitario)
+    mensaje = f"Composicion guardada para la partida {codigo_partida}: precio unitario {precio}."
+    if justificada:
+        mensaje += (
+            " Justificacion de la advertencia registrada junto al rendimiento "
+            f"{composicion.rendimiento} (UC-06, flujo 4a)."
+        )
+    return ResultadoGuardado(
+        precio_unitario=precio, mensaje=mensaje, justificada=justificada, avisos=tuple(avisos)
     )

@@ -160,8 +160,8 @@ describe("Elaborar un presupuesto", () => {
     fetchFalso.mockReset();
     rutas = {
       "GET /partidas?dominio=civil": () => json(PARTIDAS),
-      "POST /v1/computos/telecom": () => json(ITEMS),
-      "POST /v1/computos/civil": () => json(ITEMS),
+      "POST /computos/telecom": () => json(ITEMS),
+      "POST /computos/civil": () => json(ITEMS),
       "POST /presupuestos/calcular": () => json(calculo()),
     };
     fetchFalso.mockImplementation(async (ruta, init) => {
@@ -253,7 +253,7 @@ describe("Elaborar un presupuesto", () => {
     await usuario.upload(campoArchivo(), new File(["a,b"], "muestra.csv"));
     await usuario.click(screen.getByRole("button", { name: "Extraer cómputo" }));
     await screen.findByText("Cómputo extraído");
-    const [, init] = llamadas("POST /v1/computos/civil")[0];
+    const [, init] = llamadas("POST /computos/civil")[0];
     const datos = init?.body as FormData;
     expect((datos.get("archivo") as File).name).toBe("muestra.csv");
     expect(JSON.parse(String(datos.get("codigos")))).toEqual({
@@ -273,14 +273,14 @@ describe("Elaborar un presupuesto", () => {
     await usuario.upload(campoArchivo(), new File(["a"], "muestra.csv"));
     await usuario.click(screen.getByRole("button", { name: "Extraer cómputo" }));
     await screen.findByText("Cómputo extraído");
-    const datos = llamadas("POST /v1/computos/civil")[0][1]?.body as FormData;
+    const datos = llamadas("POST /computos/civil")[0][1]?.body as FormData;
     expect(JSON.parse(String(datos.get("codigos"))).relleno).toBe("FIC-C2");
   });
 
   test("otro dominio extrae sin codigos y muestra la tabla del computo", async () => {
     const { usuario } = montar();
     await extraerTelecom(usuario);
-    const datos = llamadas("POST /v1/computos/telecom")[0][1]?.body as FormData;
+    const datos = llamadas("POST /computos/telecom")[0][1]?.body as FormData;
     expect(datos.has("codigos")).toBe(false);
     expect(llamadas("GET /partidas?dominio=civil")).toHaveLength(1);
     const tabla = screen.getByRole("table", { name: "Cómputo extraído" });
@@ -295,7 +295,7 @@ describe("Elaborar un presupuesto", () => {
   test("un error al extraer se muestra con su detalle y borra el computo", async () => {
     const { usuario } = montar();
     await extraerTelecom(usuario);
-    rutas["POST /v1/computos/telecom"] = () => json({ detail: "Falta la columna cantidad." }, 400);
+    rutas["POST /computos/telecom"] = () => json({ detail: "Falta la columna cantidad." }, 400);
     await usuario.click(screen.getByRole("button", { name: "Extraer cómputo" }));
     expect(await alertaConTexto()).toHaveTextContent("Falta la columna cantidad.");
     expect(screen.queryByText("Cómputo extraído")).toBeNull();
@@ -373,7 +373,7 @@ describe("Elaborar un presupuesto", () => {
   });
 
   test("lista los pendientes con falla y propuestas, y aceptar una vuelve a elaborar con el codigo cambiado", async () => {
-    rutas["POST /v1/computos/telecom"] = () => json([item("fila-1", "FIC-T1"), item("fila-9", "FIC-X", "7.0000")]);
+    rutas["POST /computos/telecom"] = () => json([item("fila-1", "FIC-T1"), item("fila-9", "FIC-X", "7.0000")]);
     rutas["POST /presupuestos/calcular"] = () => json(CON_PENDIENTE);
     const { usuario } = montar();
     await extraerTelecom(usuario);
@@ -400,7 +400,7 @@ describe("Elaborar un presupuesto", () => {
     const { usuario } = montar();
     await extraerTelecom(usuario);
     await elaborar(usuario);
-    rutas["POST /v1/computos/telecom"] = () => json({ detail: "Archivo roto." }, 400);
+    rutas["POST /computos/telecom"] = () => json({ detail: "Archivo roto." }, 400);
     await usuario.click(screen.getByRole("button", { name: "Extraer cómputo" }));
     await alertaConTexto();
     await usuario.click(screen.getByRole("button", { name: "Aplicar y volver a elaborar" }));
@@ -493,7 +493,7 @@ describe("Elaborar un presupuesto", () => {
     const { usuario } = montar();
     await extraerTelecom(usuario);
     await elaborar(usuario);
-    rutas["POST /v1/computos/telecom"] = () => json({ detail: "Archivo roto." }, 400);
+    rutas["POST /computos/telecom"] = () => json({ detail: "Archivo roto." }, 400);
     await usuario.click(screen.getByRole("button", { name: "Extraer cómputo" }));
     await alertaConTexto();
     await usuario.click(screen.getByRole("button", { name: "Aplicar plan y volver a elaborar" }));
@@ -615,7 +615,7 @@ describe("Elaborar un presupuesto", () => {
   test("un 401 al extraer avisa a la sesion", async () => {
     const { usuario, alExpirar } = montar();
     await irATelecom(usuario);
-    rutas["POST /v1/computos/telecom"] = () => json({ detalle: "Sesion vencida." }, 401);
+    rutas["POST /computos/telecom"] = () => json({ detalle: "Sesion vencida." }, 401);
     await usuario.upload(campoArchivo(), new File(["a"], "muestra.csv"));
     await usuario.click(screen.getByRole("button", { name: "Extraer cómputo" }));
     await waitFor(() => expect(alExpirar).toHaveBeenCalled());

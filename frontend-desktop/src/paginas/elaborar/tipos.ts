@@ -13,7 +13,7 @@ export interface PartidaCatalogo {
   dominio: string;
 }
 
-// POST /v1/computos/{dominio}: tal como se devuelve se reenvia a /presupuestos/calcular.
+// POST /computos/{dominio}: tal como se devuelve se reenvia a /presupuestos/calcular.
 export interface ItemComputo {
   codigo_partida: string;
   descripcion: string;

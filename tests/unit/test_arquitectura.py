@@ -673,3 +673,39 @@ def test_ui_proyectos_reexporta_la_capa_de_aplicacion():
         if isinstance(nodo, ast.FunctionDef | ast.ClassDef | ast.AsyncFunctionDef)
     ]
     assert definiciones == []
+
+
+def test_ui_composicion_reexporta_la_capa_de_aplicacion():
+    """RM-1 (ola 3, S2-B): `ui/composicion.py` quedo como reexportacion explicita de
+    `aplicacion/composicion.py`: los mismos objetos y ninguna definicion propia."""
+    import aplicacion.composicion as original
+    import ui.composicion as reexportado
+
+    assert reexportado.__all__ and set(reexportado.__all__) <= set(vars(original))
+    for nombre in reexportado.__all__:
+        assert getattr(reexportado, nombre) is getattr(original, nombre), nombre
+    arbol = ast.parse((RAIZ / "ui" / "composicion.py").read_text(encoding="utf-8"))
+    definiciones = [
+        nodo.name
+        for nodo in arbol.body
+        if isinstance(nodo, ast.FunctionDef | ast.ClassDef | ast.AsyncFunctionDef)
+    ]
+    assert definiciones == []
+
+
+def test_ui_elaboracion_toma_el_guardado_de_la_capa_de_aplicacion():
+    """RB-3 (ola 3, S2-B): `guardar_composicion` y `Guardado` viven en `aplicacion/composicion.py`
+    (la ruta de guardado de la API no puede importar `ui/`); `ui/elaboracion.py` los reexporta y
+    ya no los define."""
+    import aplicacion.composicion as original
+    import ui.elaboracion as elaboracion
+
+    assert elaboracion.Guardado is original.Guardado
+    assert elaboracion.guardar_composicion is original.guardar_composicion
+    arbol = ast.parse((RAIZ / "ui" / "elaboracion.py").read_text(encoding="utf-8"))
+    definidos = {
+        nodo.name
+        for nodo in arbol.body
+        if isinstance(nodo, ast.FunctionDef | ast.ClassDef | ast.AsyncFunctionDef)
+    }
+    assert definidos.isdisjoint({"Guardado", "guardar_composicion"})

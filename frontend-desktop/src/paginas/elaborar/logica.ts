@@ -61,7 +61,7 @@ export interface SeleccionCivil {
   relleno: string | null;
 }
 
-// El JSON `codigos` que espera POST /v1/computos/civil (adapters/civil/reglas.py).
+// El JSON `codigos` que espera POST /computos/civil (adapters/civil/reglas.py).
 export function mapeoCodigos(s: SeleccionCivil): Record<string, string> {
   const mapeo: Record<string, string> = {
     concreto: s.concreto,
@@ -73,7 +73,7 @@ export function mapeoCodigos(s: SeleccionCivil): Record<string, string> {
   return mapeo;
 }
 
-// Los items se reenvian tal cual salieron de /v1/computos (RA-5): solo cambia el codigo del aceptado.
+// Los items se reenvian tal cual salieron de /computos (RA-5): solo cambia el codigo del aceptado.
 export function aceptarPropuesta(
   items: ItemComputo[],
   pendiente: Pick<ItemComputo, "origen_id" | "codigo_partida">,

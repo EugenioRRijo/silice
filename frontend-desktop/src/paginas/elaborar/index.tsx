@@ -216,7 +216,7 @@ export default function PaginaElaborar() {
     setErrorExtraer(null);
     setErrorElaborar(null);
     try {
-      const lista = await pedir<ItemComputo[]>(`/v1/computos/${dominio}`, { metodo: "POST", cuerpo: datos });
+      const lista = await pedir<ItemComputo[]>(`/computos/${dominio}`, { metodo: "POST", cuerpo: datos });
       setItems(lista);
       setElaboracion(null);
       setRendimientos([]);

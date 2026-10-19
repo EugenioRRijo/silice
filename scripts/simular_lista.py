@@ -14,7 +14,6 @@ from __future__ import annotations
 
 import argparse
 import csv
-import random
 import sys
 from collections.abc import Sequence
 from decimal import Decimal
@@ -25,51 +24,12 @@ RAIZ = Path(__file__).resolve().parents[1]
 if str(RAIZ) not in sys.path:
     sys.path.insert(0, str(RAIZ))
 
+from aplicacion.simulador import PASO_DE_PRESENTACION, simular  # noqa: E402
 from core.catalog import Catalogo, abrir_sesion, crear_motor  # noqa: E402
-from core.verification.informe import DECIMALES_PRESENTACION  # noqa: E402
 from scripts.seed import RUTA_POR_DEFECTO  # noqa: E402
 
-#: El paso del precio simulado: los mismos dos decimales de la presentacion (INV-049). Solo el
-#: paso: el `quantize` que lo usa no fija `rounding`, asi que aplica el modo del contexto
-#: (`ROUND_HALF_EVEN`), no el `ROUND_HALF_UP` de `formatear_decimal`. Es a proposito: lo que se
-#: redondea es un precio que se guarda en la lista simulada, no un texto que se presenta, y
-#: cambiar el modo alteraria las series ya generadas con cada semilla.
-PASO_DE_PRESENTACION = Decimal(1).scaleb(-DECIMALES_PRESENTACION)
-
-
-def simular(
-    precios: dict[str, tuple[str, str, Decimal]],
-    variacion_max: Decimal,
-    semilla: int,
-    solo: set[str] | None,
-) -> list[tuple[str, str, str, Decimal]]:
-    """Aplica variaciones deterministas a una lista de precios.
-
-    Args:
-        precios: {insumo: (tipo, unidad, precio_decimal)}
-        variacion_max: porcentaje máximo de variación (ej: Decimal("10") para ±10%)
-        semilla: número para reproducibilidad
-        solo: conjunto de nombres de insumos a incluir; None para todos
-
-    Returns:
-        Lista de tuplas (tipo, insumo, unidad, precio_nuevo con variacion aplicada)
-    """
-    generador = random.Random(semilla)
-    pb_max = int(variacion_max * 100)  # puntos básicos
-
-    resultados = []
-    for insumo, (tipo, unidad, precio) in sorted(precios.items()):
-        if solo is not None and insumo not in solo:
-            continue
-
-        pb_sorteado = generador.randint(-pb_max, pb_max)
-        factor_variacion = 1 + Decimal(pb_sorteado) / Decimal(10000)
-        precio_nuevo = precio * factor_variacion
-        precio_nuevo = precio_nuevo.quantize(PASO_DE_PRESENTACION)
-
-        resultados.append((tipo, insumo, unidad, precio_nuevo))
-
-    return resultados
+# La logica vive en `aplicacion/simulador.py` (RM-1); aqui se reexporta para el CLI y sus pruebas.
+__all__ = ["PASO_DE_PRESENTACION", "main", "simular"]
 
 
 def main(argv: Sequence[str] | None = None) -> int:

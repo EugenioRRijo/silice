@@ -31,7 +31,13 @@ export const PAGINAS: readonly PaginaDef[] = [
   },
   { id: "tablero", titulo: "Tablero del proyecto", seccion: "Trabajo", accion: "leer_proyecto" },
   { id: "catalogo", titulo: "Catálogo de partidas e insumos", seccion: "Trabajo", accion: "leer_proyecto" },
-  { id: "componer", titulo: "Componer una partida", seccion: "Trabajo", accion: "editar_hoja" },
+  {
+    id: "componer",
+    titulo: "Componer una partida",
+    seccion: "Trabajo",
+    accion: "editar_hoja",
+    cargar: () => import("../paginas/componer"),
+  },
   {
     id: "elaborar",
     titulo: "Elaborar un presupuesto",
@@ -76,7 +82,13 @@ export const PAGINAS: readonly PaginaDef[] = [
     accion: "editar_hoja",
     cargar: () => import("../paginas/similares"),
   },
-  { id: "simulador", titulo: "Simulador de listas", seccion: "Investigación", accion: "editar_hoja" },
+  {
+    id: "simulador",
+    titulo: "Simulador de listas",
+    seccion: "Investigación",
+    accion: "editar_hoja",
+    cargar: () => import("../paginas/simulador"),
+  },
   { id: "visor", titulo: "Visor 3D del modelo", seccion: "Investigación", accion: "editar_hoja" },
   { id: "administracion", titulo: "Administración", seccion: "Administración", accion: "administrar_cuentas" },
 ];
