@@ -5113,12 +5113,6 @@
             "title": "Fuente",
             "default": ""
           },
-          "responsable": {
-            "type": "string",
-            "maxLength": 200,
-            "title": "Responsable",
-            "default": ""
-          },
           "definiciones": {
             "type": "string",
             "maxLength": 20000,
@@ -5153,26 +5147,31 @@
           },
           "empresa": {
             "type": "string",
+            "maxLength": 200,
             "title": "Empresa",
             "default": ""
           },
           "rif": {
             "type": "string",
+            "maxLength": 200,
             "title": "Rif",
             "default": ""
           },
           "fuente": {
             "type": "string",
+            "maxLength": 500,
             "title": "Fuente",
             "default": ""
           },
           "moneda": {
             "type": "string",
+            "maxLength": 20,
             "title": "Moneda",
             "default": ""
           },
           "nombre": {
             "type": "string",
+            "maxLength": 200,
             "title": "Nombre",
             "default": ""
           },
