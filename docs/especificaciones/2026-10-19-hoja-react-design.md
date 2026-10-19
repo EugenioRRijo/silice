@@ -5,6 +5,12 @@
 código (`docs/planes/PLAN_MIGRACION_FINAL_STREAMLIT.md`, T10). Las decisiones que no son de ingeniería están en §10
 (D-1 a D-10) con la recomendación más conservadora y reversible.
 
+**ESTADO DE LAS PUERTAS (ronda 2):** **3b, 3c, 3d y 3e están BLOQUEADAS por D-1.** Mientras Eugenio no decida sobre el
+congelado del experimento, **no se construye ninguna rebanada** y **ninguna puede tocar `ui/hoja.py`, `ui/composicion.py` ni otro
+archivo de `archivos_del_auditor`** (`asistente/experimento/protocolo.json`), salvo que Eugenio elija el **Plan C** (§5.6: no se
+toca ningún archivo congelado). Ver `docs/bitacora/2026-10-19-congelado-del-experimento-roto-por-la-migracion.md` (commit
+`1307eac`) y la tabla de puertas de §6.0.
+
 **Alcance de este documento:** solo diseño. No se escribió código de producción ni se tocó ninguna prueba.
 **Qué se migra:** la página «Hoja del proyecto» de Streamlit (`ui/paginas/hoja.py`, 2308 líneas, en adelante **P**, y
 la lógica de `ui/hoja.py`, 2835 líneas, en adelante **H**) a React + FastAPI. **Qué no:** el panel del asistente de IA
@@ -42,11 +48,13 @@ commit `275946c`.
    clásica, y exacto). La interfaz no calcula ni redondea.
 5. Toda escritura exige **sesión** (RF-82: el responsable es la persona de la sesión, nunca un campo); las lecturas de
    versiones guardadas aceptan clave de API o sesión con `editar_hoja`. Todo `no-store`; 422 sin eco.
-6. **Hallazgo grave de proceso:** `ui/hoja.py` está en el congelado del experimento del asistente
-   (`asistente/experimento/protocolo.json`, `archivos_del_auditor`). Moverlo a `aplicacion/` (RM-1) cambia su huella;
-   la prueba `test_experimento_congelado_vigente.py` **ya falla en `275946c`** por mover `ui/composicion.py` (RM-1) y
-   cambiar 5 líneas de `ui/hoja.py` (verificado, §1.1). Hace falta una decisión de Eugenio antes de 3b (D-1).
-7. El traslado RM-1 rompe **tres pruebas existentes** por razones concretas (§5.3); se corrigen en 3b.
+6. **Bloqueo de proceso (D-1):** `ui/hoja.py` y `ui/composicion.py` están en el congelado del experimento
+   (`asistente/experimento/protocolo.json`, `archivos_del_auditor`) y la prueba `test_experimento_congelado_vigente.py`
+   **ya falla en `275946c`**. La bitácora `2026-10-19-congelado-del-experimento-roto-por-la-migracion.md` (`1307eac`) fija el
+   ruling: no se toca ni se re-congela hasta que Eugenio decida. **Las cuatro rebanadas están bloqueadas** y el valor por
+   defecto de D-1 es el **Plan C** (§5.6): `aplicacion/hoja.py` propio, sin mover ni editar `ui/hoja.py`. El traslado RM-1
+   (opción T, §5.5) exige que Eugenio revoque RS-9.
+7. Solo con la opción T (traslado), RM-1 rompe **tres pruebas existentes** por razones concretas (§5.3); con el Plan C no se tocan.
 8. **No se reutiliza Univer** para editar: dibuja en lienzo (`CapaHalos` es «DOM sobre el lienzo»), no ofrece celdas
    accesibles por teclado ni lector de pantalla, y la hoja del proyecto son tablas tipadas con validación por campo en
    el servidor, no un libro (§3.4).
@@ -70,11 +78,10 @@ commit `275946c`.
   (`auditor cambio desde el congelado`). `git diff --stat cd46732 HEAD -- <archivos del auditor>` lista solo
   `ui/composicion.py` (777 líneas cambiadas: pasó a ser reexportación, RM-1, commit `a582847`) y `ui/hoja.py` (5 líneas:
   `HojaInvalida` pasó a `aplicacion/errores.py`, commit `bdf77cc`). Es decir, la guardia ya estaba rota antes de este
-  diseño; nadie lo registró en bitácora (grep de `congelado` en `docs/bitacora/2026-10-19-*.md`: sin resultados).
+  diseño; la bitácora `docs/bitacora/2026-10-19-congelado-del-experimento-roto-por-la-migracion.md` (commit `1307eac`, posterior a mi primera redacción) ya lo registra y fija el ruling del orquestador: no se re-congela ni se restaura nada, la migración no se fusiona a `main` mientras la prueba falle, y **T10 no toca `ui/hoja.py` ni `ui/composicion.py`: la implementación queda bloqueada hasta elegir A, B o C** (las letras de esa bitácora; mis opciones de §5.5 usan otras letras para no chocar).
 - `docs/planes/RUTA_SESIONES.md:256` y la decisión RS-9 (Eugenio, 2026-10-18, opción A) dicen que **ningún archivo de
   `archivos_del_auditor` se toca**. Mover `ui/hoja.py` a `aplicacion/hoja.py` lo contradice. Las alternativas están en
-  §5.5 y la decisión es **D-1** (recomendación: traslado byte a byte + re-congelar en un commit aparte, con aval
-  expreso de Eugenio; mientras tanto, 3b no empieza).
+  §5.5 y §5.6 y la decisión es **D-1**; el valor por defecto es el **Plan C** (no tocar nada congelado). Hasta que Eugenio decida, 3b a 3e no se construyen.
 - No pude determinar (no hay forma de leerlo en el repositorio) si ya se corrió alguna medición con el congelado vigente;
   la bitácora `2026-10-silice-090.md:223` y `:244` dice que el congelado real y la medición quedan pendientes de T20
   (publicación), lo que sugiere que no.
@@ -275,7 +282,7 @@ Parámetros · Auditoría · Trazabilidad**.
 #### 2.5.6 Precios (P:1899-2025)
 
 - Requiere versión abierta («Abra una version guardada para ver el origen de sus precios.»). Tabla de 21 columnas
-  (`COLUMNAS_PRECIOS`, H:2266-2288; en pantalla P:1913-1944): Insumo, Código, Precio (2 dec.), Lista, Moneda, Fecha del
+  (`COLUMNAS_PRECIOS`, H:2266-2288; en pantalla P:1913-1944): Insumo, Código, Tipo, Precio (2 dec.), Lista, Moneda, Fecha del
   precio, Tasa, Fecha de la tasa, Referencia, Cotización, Moneda original, Precio original, Fuente de la tasa, Fuente,
   Propio/heredado, Erosión USD/Bs/% (×100)/por índice, Estado. Se evalúa a **hoy** (P:1906) y es solo lectura sobre la
   versión **guardada**, no sobre el borrador.
@@ -365,7 +372,7 @@ hoja con `pedir_accion` (P:462-469, 2255-2264). En la interfaz nueva no hay barr
 | Editar en el borrador | página | solo sesión, `EDITAR_HOJA`; el borrador es de la ficha que lo creó |
 | Guardar, primera versión, restaurar, cotizar, retirar | página; responsable = sesión (`responsable_de_la_hoja`, P:202-209) | solo sesión, `EDITAR_HOJA` |
 | Convertir moneda | página (acción de la página) | solo sesión, `CONVERTIR_Y_REAJUSTAR` (D-4) |
-| Exportar Excel | página (incluye hojas de control, P:560) | `EDITAR_HOJA` (clave o sesión), lectura |
+| Exportar Excel | página (incluye hojas de control, P:560) | `EDITAR_HOJA`, **solo sesión**: exporta un borrador y todo borrador es solo cuenta (X1) |
 | Importar plano | página | solo sesión, `EDITAR_HOJA` |
 | Panel del asistente | `Accion.EDITAR_HOJA` + proveedores de la instalación | fuera de alcance |
 
@@ -401,7 +408,12 @@ Error: «No se pudo preparar el Excel: …» (P:571). Oráculo de contenido: `te
   `filas_desde_espacio`), `servicio.py:29-30` (`hoja`, `Borrador`, `HojaInvalida`; usa `hoja.elaborar_borrador` y
   `hoja.guardar_version` en comentario y `:254`), `validacion.py:34`, `experimento/banco.py:30`, `experimento/ejecucion.py:43-44`.
   Los `scripts/` (`medir_rnf11.py`, `seed_of001.py`, `prueba_real_asistente.py`) y 48 archivos de pruebas también.
-  **`ui/hoja.py` no desaparece:** queda como reexportación y esos módulos no se tocan (también porque están congelados).
+  Con la opción T `ui/hoja.py` queda como reexportación y esos módulos no se tocan. **Con el Plan C (defecto)**
+  `ui/hoja.py` queda intacto y `aplicacion.hoja.Borrador` es **otra clase** distinta de `ui.hoja.Borrador`: `asistente/*` (congelado,
+  no se toca) opera solo sobre la segunda. Costo declarado: el asistente **no puede** operar sobre el borrador vivo de la hoja nueva sin un
+  conversor explícito `aplicacion.hoja.Borrador` ↔ `ui.hoja.Borrador` (campo a campo; ambas son dataclasses con los mismos campos) o hasta
+  que Eugenio decida; por eso, bajo C, **el asistente de la hoja nueva queda fuera** y los puntos de acoplamiento de abajo describen lo que
+  se habilita con T o con un conversor, no algo que C entregue.
 - **Lo que la página entrega al asistente** (P:754-871): `auditar=lambda b: _elaborar(b).elaboracion.informe` (con R17),
   el borrador vigente, el proyecto y la versión abierta, y `ia_servicio.decidir(..., sobre=borrador)` que devuelve un
   `Borrador` nuevo que la página fija con `_poner_borrador(resembrar=True)` (P:861); `CLAVE_FUENTE` se rellena con
@@ -471,6 +483,18 @@ ortografía.)
 - **Concurrencia dentro de un borrador:** cada borrador lleva un cerrojo y un contador `rev` (sube con cada cambio aceptado).
   Toda escritura manda el `rev` que vio; si no coincide, 409 «El borrador cambió en otra ventana…». El navegador manda **una
   petición a la vez** por borrador (cola con coalescencia: la última edición gana) para no chocar consigo mismo.
+- **Integridad frente al cambio de caso (RM-2).** `api/rutas/casos.py:104` llama a `caso_web.fijar(huella, ruta)`. Un borrador guarda la
+  `ruta` del caso con que se abrió (`BorradorVivo.ruta_caso`); **toda** ruta `/borradores/{id}/…` compara con `caso_web.elegido(huella)`
+  (o el caso del proceso si no hay elección) y, si difieren, responde **409** con el mensaje fijo «El caso cambió desde que abrió este
+  borrador: ábralo de nuevo en el caso actual.» sin tocar ninguna base; además `caso_web.fijar` llama a `hoja_borradores.olvidar(huella)`
+  (descarta los borradores de esa ficha). Así `guardar` jamás toma la sesión de otro caso aunque exista un proyecto homónimo.
+- **Memoria acotada (DoS).** Tope por ficha (4) **y tope global** (64 borradores, SUPUESTO, D-9) con expulsión del más antiguo por
+  `tocado`; **barrido de vencidos (8 h) en cada `crear`** y en cada `obtener` (no hay hilo de fondo: la expiración es perezosa). Cada
+  borrador cuenta un tamaño estimado (`len(pickle.dumps)` al crear y cada 20 cambios) y si el total supera 256 MiB (SUPUESTO) se expulsa
+  el más antiguo hasta bajar. Pruebas en 3b-1 (3b-B15).
+- **Respuesta a D-2 por escrito.** Se pierde al reiniciar la API. **No se comparte entre procesos:** `operacion/lanzador.py:86-103` lanza
+  un solo `uvicorn` sin `--workers` ni `--reload`; una prueba lee `orden_uvicorn` y **falla** si aparece `--workers` o `--reload`
+  (3b-B26). Sin fuga entre cuentas: la clave del registro es la huella de la ficha; la prueba cruzada (3b-B14) cubre GET, PUT, POST y DELETE.
 - **Plan B:** si la medición de 3c (§6) muestra que el estado en memoria no convence a Eugenio o al tutor, pasar a B cambia
   las rutas de `…/borradores/{id}/…` por un solo `POST /v1/hoja/calculo` con las ediciones; el modelo `Borrador` y todas las
   funciones de `aplicacion/hoja.py` no cambian. Es la decisión D-2.
@@ -530,6 +554,8 @@ que ya hace `CurvaPlanAvance` para trazar el gráfico (no para mostrar).
 | Caché | `Cache-Control: no-store` en éxito **y** en error (`RutaSinCache`) |
 | 422 | sin eco de lo enviado: `RutaSinEco` con `mensaje_sin_eco` por ruta; los errores de **dominio** (`HojaInvalida`) llevan el mensaje de la clásica |
 | Tamaños | cada texto de celda ≤ 500 caracteres (`Annotated[str, Field(max_length=500)]`); filas por tabla: origenes ≤ 5 000, ambientes ≤ 1 000, fuentes ≤ 1 000, puntos ≤ 5 000, tramos ≤ 20 000 (SUPUESTO declarado, D-9: los topes del anexo S3 §8.4 son 5 000 ambientes y 50 000 puntos, `adapters/espacio/serie.py:40-41`; el caso medido por RNF-11 es de 500 puntos); cuerpo ≤ 8 MiB |
+| Cómo se imponen los topes de cuerpo | FastAPI no limita el cuerpo. Un middleware ASGI propio de `/v1/hoja` rechaza con **413** si `Content-Length` supera el tope (8 MiB; 25 MiB solo en la ruta del plano) y, **también sin `Content-Length` (chunked)**, envuelve `receive` y cuenta los bytes recibidos: al pasar el tope corta con 413 sin leer más. El 413 es `{"detalle": "El envío supera el tamaño máximo permitido."}` (mensaje fijo, sin eco). Prueba: un cuerpo chunked de 9 MiB se corta habiendo leído a lo sumo 8 MiB más un bloque (se cuenta lo leído) |
+| Eco de los `detalle` de dominio | `RutaSinEco` solo cubre el 422 de **forma**. Los `detalle` de `HojaInvalida` repiten el valor escrito (`'2,5' no es un numero decimal valido`, ≤ 500 caracteres): es paridad con la clásica y se **acepta** (texto que la persona acaba de enviar; ninguna ruta de la hoja recibe contraseñas) |
 | Ids en la ruta | `id` del borrador: `Annotated[str, Path(min_length=16, max_length=64, pattern=r"^[A-Za-z0-9_-]+$")]` |
 | Nada armado con la entrada | ninguna ruta del servidor se arma con texto del usuario; los planos van a una carpeta temporal propia con `aplicacion.subidas.guardar_subida` |
 
@@ -644,6 +670,12 @@ Para S2 a S5 el **front** impide la acción con cambios sin guardar (como P:1946
 servidor no conoce los borradores de otra ficha y no la exige. Todas devuelven el código de la versión nueva; el front abre
 esa versión con R2.
 
+**Carrera en guardar.** La comprobación de «versión más nueva» y `siguiente_codigo` ocurren **dentro de la misma transacción** que escribe la
+versión: `aplicacion/hoja_guardado.py` abre con `BEGIN IMMEDIATE` (`sesion.connection().exec_driver_sql("BEGIN IMMEDIATE")`, en la línea de lo que
+`sesion_instalacion_api` hace con `BEGIN`) antes de leer `codigo_vigente`; si el vigente difiere del visto y no hay confirmación, hace
+`rollback` y responde 409. Prueba de dos hilos (3d-B7): de dos guardados simultáneos sobre la misma base, **uno** crea la versión y el otro recibe 409
+(o 503 si SQLite no concede el cerrojo); nunca dos versiones con el mismo código.
+
 **Concurrencia entre personas (diferencia declarada, D-5).** La clásica guarda «de la versión abierta» aunque ya exista una más
 nueva, y la nueva quedaría vigente sin incluir lo de la otra. `Resumen.version_mas_nueva` avisa en pantalla; `S1` responde 409
 «Otra persona guardó la versión {x} después de que usted abrió la {y}. Si guarda, su versión saldrá de la {y} y quedará como
@@ -653,7 +685,7 @@ vigente sin lo de la {x}.» salvo `confirmar_version_mas_nueva = true`.
 
 | # | Ruta | Cuerpo | Responde |
 |---|---|---|---|
-| X1 | `GET /v1/hoja/borradores/{id}/excel` | — | `.xlsx` (`application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`), `Content-Disposition: attachment; filename="hoja_{código seguro}.xlsx"` (`hoja_borrador.xlsx` sin versión), `no-store`; acceso clave o sesión **del dueño del borrador** (solo cuenta, porque es del borrador); 422 «No se pudo preparar el Excel: …» |
+| X1 | `GET /v1/hoja/borradores/{id}/excel` | — | `.xlsx` (`application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`), `Content-Disposition: attachment; filename="hoja_{código seguro}.xlsx"` (`hoja_borrador.xlsx` sin versión), `no-store`; acceso **solo cuenta** (un borrador es solo cuenta, como R3 a R11; con `X-Silice-Clave`, 403); 422 «No se pudo preparar el Excel: …» |
 | P1 | `POST /v1/hoja/borradores/{id}/plano` | multipart: `archivo` (`.dxf`/`.ifc`, ≤ 25 MiB SUPUESTO), `rev` | 200 `ImportacionRespuesta`; el archivo se guarda en una carpeta temporal del borrador (se borra al descartar o vencer) |
 | P2 | `POST …/plano/unidad` | `{rev, unidades}` (una de `UNIDADES_DE_PLANO`) | `ImportacionRespuesta` (reanuda con la unidad) |
 | P3 | `POST …/plano/alturas` | `{rev, alturas: {<id>: texto}}` | `ImportacionRespuesta`; todo o nada: una inválida → 422 «… No se cargó ninguna altura.» |
@@ -688,7 +720,9 @@ DXF/IFC (el tope y la extensión son lo único que se reutiliza de ese enfoque).
 
 ## 5. Capa de aplicación y reexportación (RM-1)
 
-### 5.1 Qué se mueve y qué no
+### 5.1 Qué se mueve y qué no (opción T; con el Plan C, ver §5.6)
+
+> Esta tabla describe la opción **T** (traslado). Con el **Plan C** (defecto, §5.6) `aplicacion/hoja.py` es una **copia** (no `git mv`) y `ui/hoja.py` queda sin tocar.
 
 | Origen | Destino | Cuándo | Nota |
 |---|---|---|---|
@@ -709,7 +743,7 @@ falta para migrar y que cambiaría más bytes del archivo congelado; se deja com
 `asistente/*`, `scripts/*`, `ui/paginas/hoja.py` (solo cambian sus importaciones de constantes de texto), `ui/barra.py`,
 `ui/composicion.py` (ya es reexportación). `ui/hoja.py` sigue siendo importado por `asistente/*` (§2.10) tal cual.
 
-### 5.3 Pruebas existentes que el traslado rompe (verificado por búsqueda; se corrigen en 3b)
+### 5.3 Pruebas existentes que el traslado rompe (solo opción T; con el Plan C no se tocan)
 
 | Prueba | Por qué se rompe | Corrección |
 |---|---|---|
@@ -731,28 +765,165 @@ implementa).
 
 ### 5.5 Opciones frente al congelado (D-1)
 
+Las letras de esta tabla **no** son las de la bitácora `2026-10-19-congelado-del-experimento-roto-por-la-migracion.md` (A re-congelar,
+B restaurar byte a byte, C no tocar para la Hoja); donde importa se dice a cuál equivale.
+
 | Opción | Qué pasa | Riesgo | Reversible |
 |---|---|---|---|
-| **A (recomendada)** | Traslado puro de H a `aplicacion/hoja.py`; `ui/hoja.py` reexporta; en un commit aparte se **re-congela** (`archivos_del_auditor` pasa a listar `aplicacion/hoja.py` y `aplicacion/composicion.py` en lugar de los dos de `ui/`; `congelar` exige árbol limpio, `congelado.py:68-72`), con una nota en bitácora y un test de equivalencia (los bytes de las funciones movidas coinciden: AST sin cambios salvo las 3 importaciones) | modifica el instrumento declarado por RS-9; mitigación: el movimiento es mecánico, lo demuestra una prueba, y el experimento no se ha corrido en limpio (§1.1) | sí, `git revert` de dos commits |
-| B | No tocar `ui/hoja.py`; `aplicacion/hoja*.py` nuevos que **copian** lo que la API necesita | duplica ~1500 líneas: dos verdades (viola B2/NORMAS §2.1) | sí, pero deja deuda grave |
-| C | La API importa `ui.hoja` | `PROHIBIDOS_EN_API` y la prueba transitiva de `test_arquitectura.py:460-505` lo impiden; habría que debilitar una guardia del proyecto | no recomendable |
-| D | Esperar a que el tutor decida sobre el experimento | bloquea 3b indefinidamente | — |
+| **Plan C (defecto; = C de la bitácora)** | No se toca nada congelado. `aplicacion/hoja.py` propio con su `Borrador` y sus funciones; la clásica queda intacta. §5.6 | duplica código y exige una prueba de paridad contra `ui.hoja`; el asistente no opera sobre el borrador nuevo | sí, se borra al retirar Streamlit |
+| **T (traslado; = A de la bitácora)** | Traslado puro de H a `aplicacion/hoja.py`, `ui/hoja.py` reexporta y se **re-congela** en un commit aparte (`congelar` exige árbol limpio, `congelado.py:68-72`), con prueba de equivalencia. **Requiere que Eugenio revoque RS-9** | modifica el instrumento que RS-9 declaró inmutable | sí, `git revert` |
+| K (copia sin disciplina) | como el Plan C pero sin prueba de paridad | dos verdades que divergen sin que nadie lo vea | deja deuda grave: **descartada** |
+| I (la API importa `ui.hoja`) | `PROHIBIDOS_EN_API` y la prueba transitiva de `test_arquitectura.py:460-505` lo impiden | debilitar una guardia del proyecto | **descartada** |
+| E (esperar) | no se hace nada | bloquea 3b a 3e | — |
 
-Mientras D-1 no esté resuelta, **3b no empieza**. El resto del diseño (3c a 3e) depende solo de que exista `aplicacion.hoja`.
+(La opción B de la bitácora, restaurar `ui/hoja.py` y `ui/composicion.py` byte a byte, no aplica a la Hoja: ya están en la forma congelada salvo 5 y 777 líneas, y
+`ui/composicion.py` no es de esta tarea.)
+
+**Puerta:** mientras D-1 esté abierta no se construye ninguna de 3b, 3c, 3d, 3e, salvo que Eugenio elija el Plan C (que él puede
+autorizar sin tocar RS-9). Con T se necesita además re-congelar antes de 3b.
+
+### 5.6 Plan C: `aplicacion/hoja.py` propio, sin tocar nada congelado
+
+**Costo medido** (barrido AST de `ui/hoja.py` en `275946c`, hecho para este documento): 2 835 líneas; **121** `def`/`class` de módulo que suman
+**2 135** líneas; **77** públicas (1 682 líneas); 29 asignaciones de módulo (`COLUMNAS`, `ROTULOS_*`, etc.; sus líneas no las medí). Las únicas
+dependencias de `ui/` están en H:129-136 (`ui.composicion`, `ui.estilo`, `ui.subidas`) y las tres ya tienen equivalente en `aplicacion/`
+(`aplicacion.composicion`, `aplicacion.estilo`, `aplicacion.subidas`). El cierre transitivo de lo que llaman las rutas de este diseño (todas las
+públicas salvo `puede_guardar`, `composiciones_del_catalogo` y `borrador_de_version`, que la página clásica no usa) es **118**
+`def`/`class` y **2 115 líneas** que habría que duplicar, más las 29 constantes. Es decir, casi todo el archivo.
+
+**Reutilizable sin tocar `ui/`:** `core.budget` (cadena, `exportar_hoja`, `convertir_version`, `cotizar_insumo`, `retirar_cotizacion`,
+`guardar_edicion`, `guardar_presupuesto`, `restaurar_version`, instantánea, `punto_equilibrio`, `plan_secuencial`), `adapters.espacio`
+(modelo, `derivar`, `cargar_espacio`/`guardar_espacio`, planos, reglas, R17), `aplicacion.entrega` (cadena, anexos, `con_anexos_de_cadena`),
+`aplicacion.composicion` (`decimal_desde_texto`, `texto_de_celda`, `filas_desde_composicion`), `aplicacion.subidas`, `aplicacion.atipicos`,
+`aplicacion.control` (`tablas_de_control`), `aplicacion.errores` (`HojaInvalida`), `aplicacion.estilo`, `api.esquemas_informe`.
+
+**NO reutilizable (hay que copiar):** `Borrador` (H:327), `EstadoFila`, `ResultadoHoja`, `filas_desde_espacio`, `espacio_desde_filas` y sus ayudantes
+(`_construir`, `_enum`, `_tramo`, …), `elaborar_hoja`/`elaborar_borrador`, `claves_de_items` y las cantidades escritas,
+`cantidades_desde_filas`, `composicion_con_cantidades`, `insumos_candidatos`, `cambiar_insumo`, las tablas calculadas (`filas_del_presupuesto`,
+`filas_de_curva`, `filas_de_cierre`), `parametros_desde_texto`, el plan (`ajustar_plan`, `con_plan_secuencial`, `plan_como_filas`,
+`plan_desde_filas`), `texto_equilibrio`, `cambios_entre` y sus ayudantes, `estado_de_filas`/`estado_de_items`, `abrir_version` y
+`espacio_de_version`, `completar_composiciones`, `guardar_version`, `crear_primera_version`, `restaurar`, `cotizar`, `retirar_cotizacion`,
+`convertir`, el historial, las tablas de precios y de espacio para el Excel, y todo el bloque de planos (`leer_plano`, `subir_plano`,
+`fusionar_plano`, alturas, circuitos, resúmenes).
+
+**Cómo se evita la divergencia (la clásica queda congelada, la copia evoluciona de un solo lado):**
+
+1. **Prueba de paridad** `tests/unit/test_aplicacion_hoja_paridad.py` (las pruebas sí pueden importar `ui`): corre cada función "idéntica por
+   contrato" en `ui.hoja` y en `aplicacion.hoja` con OF-001, TI-001 y un proyecto sin versiones, y compara **resultados y mensajes de error**
+   (igualdad exacta de cadena), fijados además contra los literales de la memoria: total 2 703,86; CV 2 137,44; PE 1 530,49 (Día 23); 56,60 %;
+   con `administracion = 0.20`: 2 821,42, 1 763,39 y 62,50 %. Cubre `espacio_desde_filas`, `cambios_entre`, `elaborar_borrador`,
+   `estado_de_filas`, `cantidades_desde_filas`, `plan_desde_filas`, `parametros_desde_texto`, `guardar_version`, `restaurar`, `cotizar`, `convertir`
+   y la importación de plano (`leer_plano`, alturas, circuitos, `fusionar_plano`).
+2. **Dos listas, declaradas en el propio archivo de la prueba:** (a) *idénticas por contrato* (la prueba exige igualdad de comportamiento y de
+   mensajes): todas las funciones de §5.7 marcadas «contrato»; (b) *divergencia permitida*: `abrir_version` (aquí dividida en
+   «asegurar instantánea» + «reconstruir», §4.3), el envoltorio `elaborar` con R17, los textos y rótulos de presentación movidos a
+   `hoja_vista.py`, y los ayudantes privados. Cualquier otra divergencia hace fallar la prueba; como `ui/hoja.py` está congelado, **solo se
+   corrige la copia**, y un cambio legítimo del comportamiento exige cambiar la prueba con el aval de Eugenio.
+3. La prueba **«AST idéntico»** (3b-B3 de la primera redacción) **se retira**: fallaría ante cualquier mejora legítima. La reemplaza la
+   paridad de comportamiento de arriba (3b-B3C).
+
+**Acoplamiento con el asistente:** `asistente/*` opera sobre `ui.hoja.Borrador` (`propuestas.py:20-26`, `servicio.py:29-30`), clase distinta de
+`aplicacion.hoja.Borrador`. Costo declarado: bajo C el asistente de la hoja nueva **queda fuera** hasta que Eugenio decida; el camino
+posterior es un conversor explícito (ambos tienen los mismos campos) con su propia prueba, o T.
+
+**Deuda con fecha de retiro:** la copia y su prueba de paridad se borran **el mismo día** en que se retire Streamlit (decisión pendiente de
+T12), que es también cuando se retira `ui/hoja.py`. Se registra en bitácora al cerrar 3b.
+
+**Qué cambia en el resto del diseño bajo C:** 3b-B1, 3b-B2, 3b-B3 y 3b-B4, las correcciones del §5.3 y las filas de `test_arquitectura.py` del §11
+**aplican solo a T**; con C no se corrige ninguna prueba existente y `test_arquitectura.py` no cambia (la guarda genérica de `aplicacion/` ya
+recorre `aplicacion/hoja.py`). `docs/api.json`, rutas y esquemas no cambian.
+
+### 5.7 Cada `def` pública de H, su rebanada y quién la consume
+
+«Contrato» = idéntica por contrato (Plan C, §5.6). Una prueba (3b-B27) hace un barrido AST de `aplicacion/hoja.py` y **falla si una función pública
+no está en esta tabla** (la tabla se copia como literal en la prueba).
+
+| Función / clase pública (H:línea) | Rebanada | Ruta o vista que la consume | Clase |
+|---|---|---|---|
+| `rotulo_de_valor` (279) | 3b-2 | R5 (rótulos de listas) | contrato |
+| `EstadoFila` (299), `ResultadoHoja` (307), `Borrador` (327) | 3b-1 | todas las vistas | contrato |
+| `filas_desde_espacio` (377) | 3b-2 | R5 | contrato |
+| `espacio_desde_filas` (601) | 3c-1 | E1 | contrato |
+| `borrador_de_version` (643) | ninguna | la página clásica no la llama (solo pruebas) | no migra |
+| `items_del_borrador` (655), `elaborar_hoja` (678) | 3b-2 | internas de `elaborar_borrador` | contrato |
+| `elaborar_borrador` (746) | 3b-2 | R5, R6, R8, R9, R11 (vía `hoja_vista.elaborar`) | contrato |
+| `claves_de_items` (773), `filas_del_presupuesto` (1062), `estado_de_items` (1491) | 3b-2 | R6 | contrato |
+| `items_sin_escribir` (822) | 3c-2 | E2 | contrato |
+| `items_elaborados` (828), `cantidades_escritas` (834), `plan_efectivo` (1340) | 3c-1 | internas de E1, E2 y de `cambios_entre` | contrato |
+| `cantidades_desde_filas` (839) | 3c-2 | E2 | contrato |
+| `filas_de_apu` (872), `filtrar_partidas` (882), `filas_de_cierre` (897), `texto_numero` (1583) | 3b-2 | R7 (P:1644, 1664) | contrato |
+| `composicion_con_cantidades` (954) | 3c-3 | E6 | contrato |
+| `FilaInsumo` (989), `insumos_candidatos` (1002) | 3c-3 | E8 | contrato |
+| `cambiar_insumo` (1026) | 3c-3 | E7 | contrato |
+| `filas_de_curva` (1094), `plan_como_filas` (1160) | 3b-2 | R8 | contrato |
+| `parametros_desde_texto` (1117) | 3c-2 | E3 | contrato |
+| `ajustar_plan` (1130) | 3b-2 | interna de `elaborar_hoja` | contrato |
+| `con_plan_secuencial` (1153) | 3c-2 | E5 | contrato |
+| `plan_desde_filas` (1184) | 3c-2 | E4 | contrato |
+| `texto_equilibrio` (1221) | 3b-3 | R9 | contrato |
+| `cambios_entre` (1395) | 3b-1 (conteo) y 3c-3 (lista) | `Resumen.cambios`, E9 | contrato |
+| `estado_de_filas` (1439) | 3b-2 | R5 | contrato |
+| `VersionAbierta` (1540), `abrir_version` (1671), `espacio_de_version` (1588) | 3b-1 | R2 | divergencia permitida (`abrir_version`) / contrato |
+| `lista_de_version` (1578) | 3c-1 | `completar_composiciones` en E1 (P:267) | contrato |
+| `completar_composiciones` (1757) | 3c-1 | E1, S1 | contrato |
+| `motivo_para_no_guardar` (1786), `motivo_para_no_crear_primera` (1882) | 3d-1 | S1 | contrato |
+| `puede_guardar` (1803) | ninguna | solo pruebas | no migra |
+| `VersionGuardada` (1809), `guardar_version` (1817), `crear_primera_version` (1898) | 3d-1 | S1 | contrato |
+| `restaurar` (2048) | 3d-2 | S2 | contrato |
+| `cotizar` (2074), `retirar_cotizacion` (2104) | 3d-2 | S3, S4 | contrato |
+| `convertir` (2129) | 3d-2 | S5 | contrato |
+| `codigo_vigente` (2168), `FilaVersion` (2175), `historial_de_versiones` (2190) | 3b-1 | R1, R2, S1 | contrato |
+| `FilaRegistro` (2229), `registros_de_version` (2242) | 3b-3 | R14 | contrato |
+| `tabla_de_trazabilidad` (2259), `tablas_de_espacio` (2477), `tabla_de_precios` (2442), `exportar_excel` (2518), `excel_de_hoja_en_bytes` (2546) | 3e | X1 (P:556) | contrato |
+| `FilaPrecio` (2292), `texto_propio` (2323), `precios_de_version` (2368) | 3b-3 | R12 (P:1932) | contrato |
+| `composiciones_del_catalogo` (665) | ninguna | solo pruebas y scripts | no migra |
+| `formato_de_plano` (2603), `leer_plano` (2614), `subir_plano` (2641), `resumen_del_informe` (2653), `resumen_de_importacion` (2720), `filas_del_informe` (2727) | 3e | P1, P2 (P:1289) | contrato |
+| `ResumenDeFusion` (2667), `resumen_de_la_fusion` (2693), `fusionar_plano` (2822) | 3e | P5 | contrato |
+| `alturas_pendientes` (2740), `cargar_alturas_desde_texto` (2764) | 3e | P1, P3 | contrato |
+| `circuitos_supuestos` (2778), `declarar_circuitos_desde_texto` (2803) | 3e | P1, P4 | contrato |
 
 ---
 
 ## 6. División en rebanadas
 
+### 6.0 Puertas, subdivisión y qué es «entregable»
+
+**Puertas (todas cerradas hoy):**
+
+| Puerta | Condición | Estado |
+|---|---|---|
+| G-0 | D-1 resuelta: Plan C autorizado, o T con RS-9 revocada y re-congelado hecho | **ABIERTA (cerrada para construir)**: 3b, 3c, 3d y 3e **bloqueadas** |
+| G-1 | árbitro aprueba el diseño (este documento) | en ronda 2 |
+| G-2 | cada sub-rebanada pasa implementador → árbitro antes de empezar la siguiente | secuencial |
+| G-3 | D-6: el menú nuevo solo se activa al aprobar 3d-2 | 3b y 3c son **entregables solo por pruebas** (la página no es alcanzable desde el menú) |
+
+**Subdivisión.** Cada fila es una entrega con su ciclo propio y su criterio de «hecho» (además de `npx vitest run src/paginas/hoja`, `npm run lint`,
+`npm run build`, pruebas de backend con `-W error` y aprobación del árbitro).
+
+| Sub-rebanada | Backend | Frontend | Pruebas (ids de §6.1 a §6.4) | Criterio de «hecho» |
+|---|---|---|---|---|
+| **3b-1** | `aplicacion/hoja_vista.py` (base), `hoja_borradores.py`, copia/traslado de H (según D-1), R1 a R4, R12 a R14 | marco de la página, selector de versión, Precios, Trazabilidad, `useBorrador` | 3b-B1 a B5 (según D-1), B10 a B20, B24 a B28, F1 a F4, F10, F11, F13 a F15 | abrir/descartar un borrador de OF-001 y TI-001; versiones, precios y trazabilidad iguales a la clásica (P1, P6 a P10); cierre del puerto de memoria y de caso |
+| **3b-2** | R5 a R8 | pestañas Espacio y metrajes (lectura), APU, Presupuesto, Plan y curva | 3b-B7, B21 (parcial), B22, B23, F5 a F8 | esas cuatro pestañas muestran las cifras de P1, P2, P5 y P12 |
+| **3b-3** | R9 a R11 | pestañas Punto de equilibrio, Parámetros, Auditoría y navegación completa | 3b-B8, B9, B21, F9, F12 | las nueve pestañas completas (P3, P4, P11); medición de rendimiento registrada |
+| **3c-1** | E1, `completar_composiciones` | tablas editables del espacio (5), aviso de cambios | 3c-B6 a B9, B15 a B17, F1 a F4, F6, F7, F10 | P17, P18, P22 |
+| **3c-2** | E2 a E5 | cantidades, parámetros y plan editables | 3c-B1 a B5, B12, F8, F12 | P13 a P16, P19, P20 |
+| **3c-3** | E6 a E11, `rev`, retomar | APU editable, cambio de insumo, retomar y cambio de versión | 3c-B10, B11, B13, B14, B18, B19, F5, F9, F11, F13, F14, F15 | P21, P23; el borrador se retoma tras recargar |
+| **3d-1** | S1 (guardar y primera versión), carrera y cadena | modal «Guardar versión» | 3d-B1 a B10, B17, B18, F1 a F4, F8 | P25 a P30, P34 |
+| **3d-2** | S2 a S6 | restaurar, cotizar, retirar, convertir, cadena; **activar el menú** si D-6 | 3d-B11 a B16, F5 a F7 | P24, P31 a P33, P35 |
+| **3e** | X1, P1 a P6 | planos y Excel | 3e-B*, 3e-F* | P36 a P39; todas las filas de §9 |
+
+Cada sub-rebanada deja la anterior intacta y verde; ninguna depende de una posterior. Las tablas de pruebas de §6.1 a §6.4 conservan sus ids y se
+asignan a sub-rebanadas con esta tabla.
+
 Cada rebanada es una entrega que pasa su propio ciclo implementador → árbitro y deja la interfaz útil por sí sola. Los tamaños
 son **estimaciones mías** (líneas nuevas netas, sin contar el traslado de 3b), no medidas.
 
-### 6.1 Rebanada 3b: traslado RM-1 y lectura/navegación
+### 6.1 Rebanada 3b (**BLOQUEADA por D-1**): código de la hoja en `aplicacion/` y lectura/navegación
 
-**Hace:** traslado de H a `aplicacion/hoja.py` (+ reexportación); `aplicacion/hoja_vista.py`, `hoja_borradores.py` (solo
+**Hace:** (T) traslado de H a `aplicacion/hoja.py` + reexportación, o (Plan C, defecto) copia de H a `aplicacion/hoja.py` sin tocar `ui/`; `aplicacion/hoja_vista.py`, `hoja_borradores.py` (solo
 `crear/obtener/descartar/olvidar`); rutas R1 a R14; página `src/paginas/hoja/` de **solo lectura** con las 9 pestañas.
 **No hace:** edición, guardado, Excel, planos. **Archivos propios:** `aplicacion/hoja*.py`, `ui/hoja.py` (reexportación),
-`api/rutas/hoja.py`, `api/esquemas_hoja.py`, `api/admin_acceso.py` (parámetro `mensaje`), `src/paginas/hoja/**`,
+`api/rutas/hoja.py`, `api/esquemas_hoja.py`, `api/admin_acceso.py` (parámetro `mensaje`), `api/caso_web.py` (enganche con `hoja_borradores`), `src/paginas/hoja/**`,
 `tests/unit/test_aplicacion_hoja*.py`, `tests/unit/test_api_hoja.py`. **Compartidos (los aplica el orquestador):** §11.
 **Tamaño:** backend ~900 líneas + pruebas ~1 100; front ~1 800 + pruebas ~1 000.
 **La entrada del menú no se activa todavía** (D-6): sin `cargar` en `rutas.ts` la página no es alcanzable; las pruebas la montan directo.
@@ -761,30 +932,34 @@ son **estimaciones mías** (líneas nuevas netas, sin contar el traslado de 3b),
 
 | Id | Prueba | Valores y oráculo |
 |---|---|---|
-| 3b-B1 | `ui/hoja.py` no define nada y reexporta los mismos objetos | AST de `ui/hoja.py` sin `FunctionDef`/`ClassDef`; `ui.hoja.X is aplicacion.hoja.X` para cada nombre de `__all__` |
-| 3b-B2 | la reexportación cubre todo lo que el repositorio usa | barrido AST de `ui/`, `scripts/`, `asistente/`, `tests/`: todo `hoja.<n>` e `import … from ui.hoja` está en `__all__` (oráculo: el barrido) |
-| 3b-B3 | traslado puro | cada función de `aplicacion/hoja.py` tiene el mismo AST que en `git show 275946c:ui/hoja.py`, salvo las 3 líneas de importación (oráculo: el commit base) |
-| 3b-B4 | pruebas retargeteadas (§5.3) | las cuatro pruebas pasan sin cambiar sus expectativas |
+| 3b-B1 (solo T) | `ui/hoja.py` no define nada y reexporta los mismos objetos | AST de `ui/hoja.py` sin `FunctionDef`/`ClassDef`; `ui.hoja.X is aplicacion.hoja.X` para cada nombre de `__all__` |
+| 3b-B2 (solo T) | la reexportación cubre todo lo que el repositorio usa | barrido AST de `ui/`, `scripts/`, `asistente/`, `tests/`: todo `hoja.<n>` e `import … from ui.hoja` está en `__all__` (oráculo: el barrido) |
+| 3b-B3 (solo T) | traslado puro | huella AST **por función** guardada como literal en la prueba (SHA-256 del `ast.dump` de cada `def`/`class` de `275946c:ui/hoja.py`, calculada una vez a mano con el script de apoyo y escrita en el archivo): `aplicacion/hoja.py` debe dar la misma huella, salvo las 3 líneas de importación. Ya no se lee `git show` (falla en clones superficiales) |
+| 3b-B3C (solo Plan C) | paridad de comportamiento `ui.hoja` ↔ `aplicacion.hoja` (§5.6) | OF-001, TI-001 y proyecto sin versiones; resultados y mensajes de error iguales; literales 2 703,86 / 2 137,44 / 1 530,49 / 56,60 % / 2 821,42 / 1 763,39 |
+| 3b-B4 (solo T) | pruebas retargeteadas (§5.3) | las cuatro pruebas pasan sin cambiar sus expectativas |
 | 3b-B5 | R1 sobre OF-001 con 001, 002 (edición), 003 (restauración) | `[(001,"","",False),(002,"edicion","001",False),(003,"restauracion","001",True)]` (literal de `test_aceptacion_sf.py:378-383`); `por_omision == "003"`; con la 003 descartada → `"002"`; con todas descartadas → la última |
 | 3b-B6 | R2 sobre OF-001 v001 | `total.exacto` entre 2703,85 y 2703,87 (literal de memoria `of001.md`, `test_aceptacion_sf.py:60`); `moneda == "USD"`; `solo_lectura == False`; `cambios == 0` |
 | 3b-B7 | R5 sobre OF-001 | derivadas: AF-LLAVE `cantidad.exacto == "3"`; tubería de drenaje 2" `4.345` y de agua fría 1/2" `8.250` (memoria `of001.md` §2.4 líneas 151-170); 5 tablas con las columnas de `COLUMNAS` en su orden; estado `OK` en filas sin hallazgos |
 | 3b-B8 | R9 sobre OF-001 | CV `2137.44`, PE `1530.49` (±0,01), `porcentaje 56.60` (±0,01), `periodo` empieza por «Dia 23» (literales de `test_aceptacion_sf.py:62-65`) |
 | 3b-B9 | los cuatro casos límite de PE | V=0 → «El presupuesto no tiene ventas: el punto de equilibrio no aplica.»; m≤0, PE>V y sin curva → su frase (H:1221-1238), construidos con `Presupuesto` a mano |
 | 3b-B10 | R2 sobre TI-001 (sin espacio) | tablas del espacio vacías; presupuesto con sus `items_base`; **no** crea versiones ni filas `esp_*` (recuento SQL antes y después) |
-| 3b-B11 | R2 crea la instantánea si falta y lo informa | `instantanea.creadas == n` y el texto de P:346-351; segunda apertura `creadas == 0`; el `RegistroCambio` de creación lleva `Nombre <login>` de la sesión (RF-82) |
+| 3b-B11 | R2 crea la instantánea si falta y lo informa | `instantanea.creadas == n` y el texto de P:346-351; segunda apertura `creadas == 0`; el `RegistroCambio` de creación lleva `Nombre <login>` de la sesión (RF-82); **tras R2 sobre una versión sin instantánea, `estado_de_la_cadena(...).integra` es verdadero** (no solo tras guardar) |
 | 3b-B12 | acceso | sin sesión 401; `rita` (revisa) 403 «Su cuenta no tiene permiso para esta acción.»; `ana` 200; con `X-Silice-Clave`: R1/R12/R13/R14 200, R2/R3/R4/R5–R11 403 («… la clave de API no sirve.»); POST sin CSRF 403; `Origin` ajeno 403; `tomas` (clave temporal) 403 |
 | 3b-B13 | `Cache-Control: no-store` y 422 sin eco | en 200, 401, 403, 404 y 422 de cada ruta; cuerpo `{"proyecto": {"x": "VALOR-CENTINELA"}}` → el 422 no contiene `VALOR-CENTINELA`; un 422 de ruta **combina** ambas clases (orden §1.3-7) |
-| 3b-B14 | un borrador de otra ficha no existe | `ana` crea; `tomas` pide el mismo id → 404; ningún mensaje confirma el id |
-| 3b-B15 | ciclo de vida | reloj inyectado: pasadas 8 h → 404; el 5.º borrador de una ficha descarta el 1.º; `olvidar(huella)` los borra todos; `heredar(a, b)` los pasa |
+| 3b-B14 | un borrador de otra ficha no existe | `ana` crea; `tomas` pide el mismo id con **GET, PUT, POST y DELETE** → 404; ningún mensaje confirma el id |
+| 3b-B15 | ciclo de vida y memoria acotada | reloj inyectado: pasadas 8 h → 404 y el barrido en `crear` los elimina; el 5.º borrador de una ficha descarta el 1.º; el borrador 65.º del proceso descarta el más antiguo (tope global 64); superar 256 MiB estimados expulsa el más antiguo; `olvidar(huella)` los borra todos; `heredar(a, b)` los pasa |
 | 3b-B16 | ningún `float` | el JSON de R2, R5 a R12 recorrido: todo número es `int`; todo monto es `str` |
 | 3b-B17 | 404 y mensajes | proyecto inexistente «El proyecto «Z» no existe en este caso.»; versión inexistente: el texto exacto de H:1572 |
-| 3b-B18 | R12 sobre OF-001 | 21 columnas en el orden de `COLUMNAS_PRECIOS`; filas ordenadas por código de insumo; `Estado == "OK"` o «Sin referencia ni cotización: el precio no tiene fuente» según el insumo; erosiones `null` sin evaluación y con valores con una fecha fija inyectada (valores de la memoria `s1_conversion.md`, ya usados por `test_ui_hoja_moneda.py::test_precios_muestra_origen_y_erosion`) |
+| 3b-B18 | R12 sobre OF-001 | 21 columnas, comparadas con el literal de `COLUMNAS_PRECIOS` (H:2266-2288: Insumo, Código, **Tipo**, Precio, Lista, Moneda, Fecha del precio, Tasa, Fecha de la tasa, Referencia, Cotización, Moneda original, Precio original, Fuente de la tasa, Fuente, Propio/heredado, Erosión USD, Erosión Bs, Erosión %, Erosión por índice, Estado); filas ordenadas por código de insumo; `Estado == "OK"` o «Sin referencia ni cotización: el precio no tiene fuente» según el insumo; erosiones `null` sin evaluación y con valores con una fecha fija inyectada (valores de la memoria `s1_conversion.md`, ya usados por `test_ui_hoja_moneda.py::test_precios_muestra_origen_y_erosion`) |
 | 3b-B19 | R13 | sin el extra `ml`: `disponible == false` y el aviso `AVISO_SIN_ML`; con una serie sembrada: los `warning` de `atipicos.avisos`; no escribe (recuento de filas) |
 | 3b-B20 | R14 sobre la versión 002 | `registros == [("cantidad", clave_AF-LLAVE, "cantidad", "3", "5", FUENTE, RESPONSABLE)]` (literal de `test_aceptacion_sf.py:329-347`); versión sin edición: `vacio_mensaje == "Esta version no nacio de una edicion: no tiene registros de cambio."` |
 | 3b-B21 | R11 lleva R17 | un punto de agua sin fuente → hallazgo `R17` ADVERTENCIA nombrando el punto (réplica de `test_ui_hoja_conexion.py`); la lista de funciones que elaboran está clasificada |
 | 3b-B22 | rendimiento | `abrir` + las 7 vistas de un proyecto de 500 puntos (`scripts/generar_hoja_prueba.py`): se **registra** la mediana de cinco corridas (umbral de referencia 2 s, RNF-11); no rompe la corrida (como RNF-11) |
 | 3b-B23 | tamaño del borrador | `pickle.dumps(borrador)` de ese proyecto: se registra el tamaño (insumo para D-9) |
 | 3b-B24 | `docs/api.json` regenerado | `scripts/exportar_openapi.py` sin diferencias pendientes |
+| 3b-B26 | un solo proceso | `operacion.lanzador.orden_uvicorn(...)` no contiene `--workers` ni `--reload` (falla si alguien los agrega: el registro en memoria no se comparte) |
+| 3b-B27 | toda función pública de H está asignada | barrido AST de `aplicacion/hoja.py` contra la tabla de §5.7 copiada como literal: falla si una función pública no está |
+| 3b-B28 | integridad frente al cambio de caso | `ana` abre un borrador en el caso A, `POST /v1/casos/actual` al caso B: cualquier ruta `/borradores/{id}/…` → 409 con el mensaje fijo de §3.1 y **ninguna** base recibe filas; `caso_web.fijar` olvidó los borradores de esa ficha |
 | 3b-B25 | arquitectura | `aplicacion/hoja*.py` sin `streamlit/ui/api/scripts/tests`; `api/rutas/hoja.py` sin `ui` (guardas existentes) |
 
 **Pruebas de front (Vitest + Testing Library, `fetch` simulado):**
@@ -795,7 +970,7 @@ son **estimaciones mías** (líneas nuevas netas, sin contar el traslado de 3b),
 | 3b-F2 | sin proyecto en la cabecera: `EstadoVacio` «Elija un proyecto»; proyecto sin versiones: «Este proyecto aún no tiene versiones» (P:140) |
 | 3b-F3 | las 9 pestañas, en el orden de P:83-93, con `role="tablist"`/`tab`/`tabpanel`; flechas izquierda/derecha cambian de pestaña; solo se piden las vistas de la pestaña activa (el `fetch` simulado registra las rutas) |
 | 3b-F4 | el selector de versión ofrece las no descartadas y marca « (vigente)»; la preseleccionada es `por_omision` del servidor |
-| 3b-F5 | montos: `formatoEsVe("2703.86")` se ve «2.703,86»; el `title` y el texto accesible llevan `exacto`; un total de 30 cifras no pierde ninguna; no se llama a `Number`/`parseFloat` (prueba estática sobre `src/paginas/hoja/`) |
+| 3b-F5 | montos: `formatoEsVe("2703.86")` se ve «2.703,86»; el `title` y el texto accesible llevan `exacto`; un total de 30 cifras no pierde ninguna; no se llama a `Number`/`parseFloat` (prueba estática sobre `src/paginas/hoja/`). **Única excepción:** la conversión a número para trazar el gráfico, que está **fuera** de `src/paginas/hoja/` (`src/comun/CurvaPlanAvance.tsx:48`, solo dibujo, con tabla equivalente en texto exacto) |
 | 3b-F6 | Estado por fila: ícono + texto de severidad (el color nunca va solo); «Ver en Auditoría» lleva a la pestaña y filtra por `origen` |
 | 3b-F7 | APU: lista con búsqueda (el servidor filtra; «Ninguna partida coincide; se muestran todas.»), selección, tres rubros, cierre en el orden de `filas_de_cierre` |
 | 3b-F8 | Plan y curva: sin plan, el mensaje de P:1804; con plan, matriz y curva (`CurvaPlanAvance` con tabla equivalente) |
@@ -805,14 +980,14 @@ son **estimaciones mías** (líneas nuevas netas, sin contar el traslado de 3b),
 | 3b-F12 | Auditoría usa `InformeAuditoria` (texto plano, sin Markdown: un descripción con `![x](http://…)` no crea imagen) |
 | 3b-F13 | un 401 llama a `alExpirar`; un 404 de borrador (reinicio) muestra el aviso del §3.1 y ofrece reabrir; errores con `AvisoError` mostrando el `detalle` tal cual |
 | 3b-F14 | ninguna contraseña ni secreto en pantalla ni en `localStorage`/`sessionStorage` (no se escribe nada) |
-| 3b-F15 | al desmontar la página se hace `DELETE` del borrador (con `keepalive`) |
+| 3b-F15 | al desmontar la página se hace `DELETE` del borrador (con `keepalive`) **solo si `cambios == 0`**; con cambios se conserva y se ofrece «Retomar» (prueba de retomar en 3c-F16) |
 
 **Criterio de «hecho» de 3b:** la página abre cualquier versión del caso ficticio OF-001 y de TI-001 y muestra, pestaña por
 pestaña, las mismas cifras y mensajes que la clásica (comparación de §9, filas P1 a P12); las 4 pruebas retargeteadas pasan;
 D-1 resuelta y registrada; `npx vitest run src/paginas/hoja`, `npm run lint`, `npm run build` y las pruebas de backend con
 `-W error` en verde; el árbitro aprueba.
 
-### 6.2 Rebanada 3c: edición y borrador
+### 6.2 Rebanada 3c (BLOQUEADA por D-1): edición y borrador
 
 **Hace:** `aplicacion/hoja_edicion.py`; rutas E1 a E11; tablas editables (5 del espacio, cantidades, parámetros, plan, APU y
 cambio de insumo); aviso de cambios sin guardar; cambio de versión con confirmación; retomar borradores; recálculo y
@@ -823,9 +998,9 @@ validación con los mensajes de la clásica. **No hace:** guardar, restaurar, Ex
 
 | Id | Prueba | Valores y oráculo |
 |---|---|---|
-| 3c-B1 | parámetro válido recalcula | OF-001: `administracion = "0.20"`, utilidad 0,10: total ≈ **2821.42** (= CV 2137,44 × 1,20 × 1,10 = 2821,4208, cuenta a mano de este diseño a partir de la memoria, a confirmar contra `of001.md` antes de fijarla), PE ≈ **1763.39** (= 0,825 × CV), PE % = **62.50**, `cambios == 1`, cambio `("parametro","administracion","valor","0.15","0.20")` |
+| 3c-B1 | parámetro válido recalcula | OF-001: `administracion = "0.20"`, utilidad 0,10: total ≈ **2821.42** (= CV 2137,44 × 1,20 × 1,10), PE ≈ **1763.39** (= 0,825 × CV), PE % = **62.50**, `cambios == 1`, cambio `("parametro","administracion","valor","0.15","0.20")` (valores confirmados por el árbitro) |
 | 3c-B2 | parámetro inválido | `utilidad = "mucho"` → 422 con `detalle == "parametros: utilidad: 'mucho' no es un numero decimal valido"`; el borrador queda como antes (`rev` no sube; `fcas` previo conservado, réplica de `test_ui_hoja.py:320-339`) |
-| 3c-B3 | cantidad escrita a mano | AF-LLAVE de 3 a 5: `Δtotal == 2 × CD(AF-LLAVE) × 1,15 × 1,10` con el CD tomado de la vista APU (aritmética de dos llaves, `test_aceptacion_sf.py:350-360`); R8 ADVERTENCIA en esa fila; cambio `("cantidad", "AF-LLAVE|<origen>", "cantidad", "3", "5")` |
+| 3c-B3 | cantidad escrita a mano | AF-LLAVE de 3 a 5. **Oráculo a mano, independiente de la vista:** CD(AF-LLAVE) = llave 4 907,50 Bs ÷ 633,3644 (USD a 4 decimales: 7,7483) + herramientas 9 060,00 Bs ÷ 633,3644 (14,3046) ÷ rendimiento 20 + ((plomero 1 385,63 + ayudante 1 128,42, cada uno en USD a 4 decimales) × (1 + FCAS 6,00) + bono 3 679,85 Bs ÷ 633,3644 × 2 obreros) ÷ 20 = **10,4338**; `Δtotal = 2 × 10,4338 × 1,15 × 1,10 = 26,3975` (±0,001). Los literales salen de `tests/fixtures/caso_of001.py:78,118,140` y `caso_ti001.py:39,152-165` y de la fórmula de `NORMAS.md` §4; la prueba fija 10,4338 y 26,3975, **no** los lee de la vista. R8 ADVERTENCIA en esa fila; cambio `("cantidad", "AF-LLAVE|<origen>", "cantidad", "3", "5")` |
 | 3c-B4 | cantidad igual a la calculada deja de ser «escrita» | enviar `"3"` para AF-LLAVE → `cambios == 0` |
 | 3c-B5 | errores de cantidad | `"-1"` → «presupuesto, fila {n} (AF-LLAVE): la cantidad no puede ser negativa; escriba cero o una cantidad positiva» con `n` = posición de la fila en la tabla completa, aunque el cliente mande solo esa fila |
 | 3c-B6 | espacio | cambiar el alto de un ambiente (2,500 → 3,000) cambia las cantidades derivadas según la memoria; texto `"2,5"` → 422 «ambientes, fila {n}: alto: '2,5' no es un numero decimal valido» (con el rótulo exacto de H:180-186) |
@@ -839,7 +1014,7 @@ validación con los mensajes de la clásica. **No hace:** guardar, restaurar, Ex
 | 3c-B14 | retomar | tras 2 ediciones, `GET /borradores` lista `{cambios: 2}`; `POST /borradores` de la misma versión → 409 con `borrador_id`; con `reemplazar` se descarta el anterior |
 | 3c-B15 | R17 en cada elaboración | un punto agua fría sin fuente → R17 en la vista de auditoría y en `resumen.hallazgos`; al corregir la fuente, desaparece (no queda ligada al espacio viejo) |
 | 3c-B16 | `cambios_entre` no cuenta reglas extra | abrir una versión con R11/R12 a una fecha: `cambios == 0` |
-| 3c-B17 | tamaño y topes | 5 001 filas de `origenes` → 422 con mensaje fijo sin eco; celda de 501 caracteres → 422; cuerpo > 8 MiB → 413/422 sin eco |
+| 3c-B17 | tamaño y topes | 5 001 filas de `origenes` → 422 con mensaje fijo sin eco; celda de 501 caracteres → 422; **cuerpo con `Content-Length` de 9 MiB → 413 sin leerlo; cuerpo chunked de 9 MiB → se corta con 413 habiendo leído ≤ 8 MiB + un bloque (el contador de bytes lo demuestra)**; el 413 y el 422 no contienen lo enviado |
 | 3c-B18 | rendimiento | `PUT espacio` + vista de resumen con 500 puntos: mediana de cinco corridas **registrada** (umbral RNF-11 2 s) |
 | 3c-B19 | acceso | todas las rutas: 401/403 como 3b-B12; CSRF y `Origin` en PUT/POST/DELETE |
 
@@ -859,13 +1034,14 @@ validación con los mensajes de la clásica. **No hace:** guardar, restaurar, Ex
 | 3c-F10 | `beforeunload` solo mientras hay cambios |
 | 3c-F11 | APU: búsqueda, edición de cantidades y rendimiento, los subtotales y el cierre cambian con los factores; el selector de insumo ofrece candidatos con búsqueda y «Usar este insumo» empieza deshabilitado; con `hay_mas` pide acotar |
 | 3c-F12 | plan: «Crear plan secuencial» solo sin plan; la matriz muestra el error por fila |
+| 3c-F16 | retomar: con 2 cambios, cambiar de menú o de proyecto desmonta la página **sin** `DELETE`; al volver aparece «Retomar borrador de {proyecto} (2 cambios)» (`GET /borradores`); sin cambios sí se hace `DELETE` |
 | 3c-F13 | los textos escritos nunca se interpretan como números en el navegador (prueba estática) |
 
 **Criterio de «hecho» de 3c:** con el caso ficticio OF-001 la secuencia de la prueba de aceptación SF (cambiar parámetro, escribir
 una cantidad, editar el espacio) da en la nueva las mismas cifras y los mismos mensajes que en la clásica (§9, P13 a P24); un
 dato inválido nunca cambia el borrador; la medición de rendimiento está registrada; D-2 y D-9 resueltas; el árbitro aprueba.
 
-### 6.3 Rebanada 3d: guardado y versiones
+### 6.3 Rebanada 3d (BLOQUEADA por D-1): guardado y versiones
 
 **Hace:** `aplicacion/hoja_guardado.py`; S1 a S6; modal «Guardar versión» (fuente obligatoria, responsable = la persona de la
 sesión en solo lectura, lista de cambios, aviso de versión más nueva); primera versión; restaurar; cotizar; retirar;
@@ -910,7 +1086,7 @@ convertir moneda; cadena en Trazabilidad; **activación del menú** si D-6 lo pe
 **Criterio de «hecho» de 3d:** la nueva hace todo lo que hace la clásica salvo planos y Excel, con el mismo caso ficticio y las
 mismas cifras (§9, P25 a P38); la cadena queda íntegra; el árbitro aprueba; si D-6 lo autoriza, el menú abre la página nueva.
 
-### 6.4 Rebanada 3e: importar plano, exportar Excel y cierre de paridad
+### 6.4 Rebanada 3e (BLOQUEADA por D-1): importar plano, exportar Excel y cierre de paridad
 
 **Hace:** `aplicacion/hoja_planos.py`; X1 y P1 a P6; flujo de importación; botón «Descargar Excel»; registro de paridad.
 **Tamaño:** backend ~500 + pruebas ~900; front ~1 100 + pruebas ~800.
@@ -929,8 +1105,8 @@ mismas cifras (§9, P25 a P38); la cadena queda íntegra; el árbitro aprueba; s
 | 3e-B8 | fusionar y total | tras fusionar sobre un borrador en blanco con los parámetros de TI-001, el total es el de la memoria 2703,86 ±0,01 y las cantidades coinciden a una milésima (`test_aceptacion_sf.py:261-273`) |
 | 3e-B9 | detenida pide unidad | DXF sin unidad → `detenida`, `pide_unidad`; P2 con `m` reanuda |
 | 3e-B10 | rechazada | archivo corrupto → `rechazada` con el mensaje; no se puede fusionar (409 con el texto de H:2833) |
-| 3e-B11 | seguridad de la subida | extensión `.exe` → 422 **antes** de escribir (la carpeta temporal queda vacía); nombre `..\..\x.dxf` se guarda como `x.dxf`; archivo > 25 MiB → 413/422; `CON.dxf` → `_CON.dxf` |
-| 3e-B12 | limpieza | descartar o vencer el borrador borra su carpeta temporal |
+| 3e-B11 | seguridad de la subida | extensión `.exe` → 422 **antes** de escribir (la carpeta temporal queda vacía); nombre `..\..\x.dxf` se guarda como `x.dxf`; archivo > 25 MiB (por `Content-Length` y también chunked, que se corta sin leer más) → 413 sin eco; `CON.dxf` → `_CON.dxf` |
+| 3e-B12 | limpieza y acceso | descartar o vencer el borrador borra su carpeta temporal; **X1 con `X-Silice-Clave` → 403** y con la sesión de otra ficha → 404 |
 | 3e-B13 | falta el lector | sin `ezdxf`/`ifcopenshell`: 422 con el texto de H:2634-2638 |
 | 3e-B14 | `ResumenDeFusion` cuenta una vez | el conteo no se duplica (réplica de `test_ui_hoja_planos.py:265`) |
 
@@ -1068,6 +1244,15 @@ cual (diferencia D-3).
 
 ---
 
+### 7.6 Criterios de verificación para T11 (auditoría visual)
+
+1. A **1366 y a 1056 px** de ancho: `document.documentElement.scrollWidth <= clientWidth` en cada pestaña (sin desplazamiento horizontal de la página).
+2. Ninguna pestaña queda cortada sin un indicador de desplazamiento visible, y todas son alcanzables con el teclado (flechas y Tab).
+3. Bajo ~1200 px los tres paneles del APU **se apilan** (lista, tabla, cierre) en vez de comprimirse.
+4. La columna fija (sticky) de las tablas anchas **no oculta el elemento enfocado** (WCAG 2.4.11, foco no oculto): al tabular hacia una celda detrás de la columna fija,
+   la región se desplaza para dejarla visible.
+5. Foco visible, `h1` único y nombres accesibles de celda comprobados con el teclado.
+
 ## 8. Riesgos
 
 | # | Riesgo | Efecto | Mitigación | Estado |
@@ -1089,6 +1274,9 @@ cual (diferencia D-3).
 | R-15 | **Estado en memoria se duplica en pruebas** | pruebas que se contaminan | `olvidar_todo()` en las fixtures (como `caso_web.olvidar_todo`) | mitigado |
 | R-16 | **Catálogo cambia mientras se edita** | una partida nueva toma su APU de un catálogo distinto al visto | el APU entra a la copia de la versión **al aceptar** la edición (como P:268), no al guardar; lo que se guarda es lo que el borrador ya tiene (H:1849 solo completa lo que falta) | igual que la clásica |
 | R-17 | **API reiniciada con borradores** | mensaje de 404 | §3.1 | declarado |
+| R-18 | **Cambio de caso con un borrador abierto** (`casos.py:104`) | guardar en una base ajena | `ruta_caso` en el borrador, 409 fijo y olvido en `caso_web.fijar` (§3.1); 3b-B28 | mitigado |
+| R-19 | **Memoria del servidor sin tope global** | negación de servicio | tope global, barrido de vencidos en `crear`, tope de bytes estimado (§3.1) | mitigado |
+| R-20 | **Plan C: la copia diverge de `ui.hoja`** | dos verdades | prueba de paridad con listas «contrato» y «divergencia permitida»; retiro con Streamlit (§5.6) | declarado |
 
 ---
 
@@ -1124,7 +1312,7 @@ cual (diferencia D-3).
 | P10 | Trazabilidad: registros de la 002 | `test_aceptacion_sf.py:329-347` | 3b |
 | P11 | Auditoría con R17 | `test_ui_hoja_conexion.py` | 3b |
 | P12 | cierre de partida (cascada) | `test_ui_hoja_trabajo.py:87-130` (a mano) | 3b |
-| P13 | parámetro `administracion = 0.20` | total ≈ 2 821,42; PE ≈ 1 763,39; PE % 62,50; `cambios == 1` (cuenta a mano a confirmar) | 3c |
+| P13 | parámetro `administracion = 0.20` | total ≈ 2 821,42; PE ≈ 1 763,39; PE % 62,50; `cambios == 1` (confirmado por el árbitro) | 3c |
 | P14 | parámetro inválido `utilidad = mucho` | `parametros: utilidad: 'mucho' no es un numero decimal valido`; borrador intacto | 3c |
 | P15 | cantidad AF-LLAVE 3 → 5 | `Δ = 2 × CD × 1,15 × 1,10`; R8 ADVERTENCIA | 3c |
 | P16 | cantidad negativa | mensaje de H:861-863 | 3c |
@@ -1176,7 +1364,7 @@ cual (diferencia D-3).
 
 | Id | Decisión | Quién | Recomendación | Si se elige otra cosa |
 |---|---|---|---|---|
-| **D-1** | Mover `ui/hoja.py` a `aplicacion/hoja.py` toca un archivo congelado del experimento (RS-9) y la guardia ya está en rojo por RM-1 anteriores. ¿Se autoriza el traslado byte a byte y re-congelar? | Eugenio (y tutor si el protocolo es suyo) | **A** (§5.5): traslado puro + prueba de equivalencia + re-congelar en commit aparte + nota en bitácora; antes de 3b | B duplica código; C debilita la arquitectura; D bloquea |
+| **D-1** | `ui/hoja.py` y `ui/composicion.py` están en el congelado del experimento (RS-9) y la guardia ya está en rojo (bitácora `2026-10-19-congelado-del-experimento-roto-por-la-migracion.md`, `1307eac`). ¿Cómo se construye la hoja nueva? | Eugenio (y tutor si el protocolo es suyo) | **Plan C (defecto, §5.6):** `aplicacion/hoja.py` propio, sin tocar nada congelado, con prueba de paridad y deuda que se retira con Streamlit; es lo único que no requiere revocar RS-9. **T** (traslado + re-congelar) **solo si Eugenio revoca RS-9** | T: dos commits (traslado y re-congelado); K, I y E descartadas (§5.5). **Mientras no decida, 3b a 3e no se construyen** |
 | **D-2** | Borrador en el servidor (A) o en el navegador (B) | ingeniería (informa a Eugenio) | A (§3.1); se revisa con la medición de 3c | B: un solo `POST /calculo` con ediciones |
 | **D-3** | Mensajes de `aplicacion/hoja.py` sin tildes | Eugenio | dejarlos (D1 menor declarado) hasta una pasada futura que re-congele | pasada de tildes: cambia texto que ven el asistente y sus pruebas |
 | **D-4** | Acción de `/convertir` | ingeniería | `convertir_y_reajustar` (matriz de permisos) | `editar_hoja`, igual por ahora |
@@ -1191,7 +1379,7 @@ cual (diferencia D-3).
 
 ## 11. Texto exacto para los archivos compartidos (lo aplica el orquestador)
 
-Estos cambios los hará el orquestador cuando cada rebanada apruebe; no los hace este documento.
+Estos cambios los hará el orquestador cuando cada rebanada apruebe; no los hace este documento. Los de `test_arquitectura.py` y `protocolo.json`/`congelado.json` **aplican solo a la opción T**; con el Plan C no se tocan.
 
 **3b**
 
@@ -1230,7 +1418,6 @@ cerrar 3e, en la tabla de §4.x (interfaz nueva) anotar que UC-13, UC-14, UC-15 
 5. El tamaño real de planos DXF/IFC de la empresa (no hay en el repositorio; los reales son confidenciales): el tope de 25 MiB
    es un supuesto.
 6. Si `useBlocker` es realmente inusable con `HashRouter` (lo afirmo por la documentación de la librería; no lo probé).
-7. Los valores 2 821,42, 1 763,39 y 62,50 % de P13 son una cuenta a mano de este diseño sobre las cifras de la memoria (CV
-   2 137,44 y cascada 1,20 × 1,10); deben confirmarse contra `tests/fixtures/memorias/of001.md` antes de fijarse en una prueba.
+7. (Resuelto en la ronda 2) Los valores 2 821,42, 1 763,39 y 62,50 % de P13 fueron confirmados por el árbitro.
 8. Los valores cerrados de `SuperficiePunto` y `SuperficieTramo` (solo conozco los rótulos de H:268-273); el servidor los
    entrega desde los enums, así que no hay que copiarlos.
