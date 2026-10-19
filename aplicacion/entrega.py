@@ -16,6 +16,7 @@ camino que escribe `esp_*` (la hoja, los sembradores).
 from __future__ import annotations
 
 import hashlib
+import unicodedata
 import uuid
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -213,9 +214,14 @@ class Entrega:
 
 
 def nombre_de_archivo(proyecto: str, codigo: str) -> str:
-    """`PROYECTO-codigo.silice` con solo caracteres seguros."""
-    limpio = "".join(c if c.isalnum() else "-" for c in proyecto).strip("-")[:60] or "proyecto"
-    return f"{limpio}-{codigo}{EXTENSION}"
+    """`PROYECTO-codigo.silice` con solo caracteres seguros: ASCII, para que viaje en una cabecera
+    `Content-Disposition` (latin-1) sin romperla; lo que no tiene equivalente ASCII se descarta."""
+    ascii_ = unicodedata.normalize("NFKD", proyecto).encode("ascii", "ignore").decode("ascii")
+    limpio = "".join(c if c.isalnum() else "-" for c in ascii_).strip("-")[:60] or "proyecto"
+    codigo_seguro = "".join(
+        c if c.isascii() and (c.isalnum() or c in "._") else "-" for c in codigo
+    )
+    return f"{limpio}-{codigo_seguro}{EXTENSION}"
 
 
 def entregar(
@@ -229,6 +235,7 @@ def entregar(
     destinatario: str | None = None,
     contrasena_clave: str | None = None,
     ia: bytes | None = None,
+    ip: str = "",
 ) -> Entrega:
     """Genera el `.silice` de `version` en memoria. Con `contrasena_clave` lo firma (la UI ya
     exigió el propio equipo). `EntregaRechazada` si la cadena está rota (22c) o la versión no
@@ -274,9 +281,10 @@ def entregar(
     sha = hashlib.sha256(datos).hexdigest()
     # UC-22 paso 5: SHA-256, `paquete_id`, versión y el usuario que entregó.
     detalle = f"{paquete_id}; version {version.codigo}; sha256 {sha}; usuario {usuario}"
+    quien = {"login": usuario[:60], "ip": ip}  # consultable en el registro de acceso
     if privada is not None:
-        eventos.registrar(instalacion, "firma", ahora, detalle=detalle)
-    eventos.registrar(instalacion, "paquete exportado", ahora, detalle=detalle)
+        eventos.registrar(instalacion, "firma", ahora, detalle=detalle, **quien)
+    eventos.registrar(instalacion, "paquete exportado", ahora, detalle=detalle, **quien)
     instalacion.commit()
     return Entrega(
         datos,

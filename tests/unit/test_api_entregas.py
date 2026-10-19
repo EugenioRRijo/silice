@@ -35,13 +35,14 @@ from sqlalchemy import select
 
 from api import caso_web, dependencias
 from api.main import app
-from aplicacion.entrega import anexos_de_cadena
+from api.rutas import entregas as ruta_entregas
+from aplicacion.entrega import anexos_de_cadena, nombre_de_archivo
 from core import models
 from core.catalog import abrir_sesion, crear_motor
 from operacion import config
 from operacion.base_datos import preparar_base
 from operacion.instalacion import sesion_de_instalacion
-from seguridad import empresas
+from seguridad import cuentas, empresas
 from tests.fixtures.canonico_minimo import guardar_otra, sembrar_minimo
 from tests.fixtures.claves_api import CABECERA, crear_clave_de_prueba
 from tests.fixtures.instalacion import AHORA
@@ -89,6 +90,7 @@ def _entorno(_plantilla: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Path
     finally:
         motor.dispose()
     caso_web.olvidar_todo()
+    ruta_entregas.FRENO_FIRMA.reiniciar()
     yield ruta
     caso_web.olvidar_todo()
     dependencias.cerrar_motores()
@@ -276,7 +278,9 @@ def test_contrasena_incorrecta_o_ausente_no_entrega_ni_registra(contrasena) -> N
     cuerpo = {} if contrasena is None else {"contrasena_clave": contrasena}
     r = _pedir(navegador, ficha, **cuerpo)
     assert (r.status_code, r.json()) == (400, {"detalle": CLAVE_INCORRECTA})
-    assert _eventos()[antes:] == [], _eventos()[antes:]
+    nuevos = _eventos()[antes:]
+    assert [tipo for tipo, _ in nuevos] == ["fallo"], nuevos
+    assert nuevos[0][1] == "clave de firma" and "otra frase" not in repr(nuevos)
 
 
 def test_sin_clave_de_firma_se_ignora_la_contrasena_que_llegue() -> None:
@@ -328,3 +332,55 @@ def test_un_proyecto_o_version_inexistente_no_se_entrega() -> None:
     navegador, ficha = _ana()
     assert _pedir(navegador, ficha, proyecto="NO").status_code == 404
     assert _pedir(navegador, ficha, version="009").status_code == 404
+
+
+def _eventos_de(tipo: str) -> list[tuple[str, str]]:
+    with closing(sqlite3.connect(config.ruta_instalacion())) as bd:
+        return list(
+            bd.execute(
+                "SELECT login_intentado, ip_cliente FROM evento_acceso WHERE tipo = ?", (tipo,)
+            )
+        )
+
+
+def test_firma_y_exportacion_dejan_quien_y_desde_donde() -> None:
+    _con_empresa_y_clave()
+    navegador, ficha = _ana()
+    assert _pedir(navegador, ficha, contrasena_clave=CLAVE_DE_FIRMA).status_code == 200
+    for tipo in ("firma", "paquete exportado"):
+        filas = _eventos_de(tipo)
+        assert len(filas) == 1, (tipo, filas)
+        assert "<ana>" in filas[0][0] and filas[0][1] == "127.0.0.1", (tipo, filas)
+
+
+def test_el_fallo_de_la_contrasena_deja_evento_con_quien_y_desde_donde() -> None:
+    _con_empresa_y_clave()
+    navegador, ficha = _ana()
+    assert _pedir(navegador, ficha, contrasena_clave="otra frase").status_code == 400
+    filas = [f for f in _eventos_de("fallo") if "<ana>" in f[0]]
+    assert len(filas) == 1 and filas[0][1] == "127.0.0.1"
+
+
+def test_tras_demasiados_fallos_la_contrasena_espera_aunque_sea_correcta(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Freno progresivo (como el de las cuentas): con el límite en 2, el tercer intento se frena
+    aun con la contraseña buena, y no registra otro fallo ni entrega."""
+    monkeypatch.setattr(cuentas, "FRENO_FALLOS", 2)
+    _con_empresa_y_clave()
+    navegador, ficha = _ana()
+    for _ in range(2):
+        assert _pedir(navegador, ficha, contrasena_clave="mala").status_code == 400
+    r = _pedir(navegador, ficha, contrasena_clave=CLAVE_DE_FIRMA)
+    assert r.status_code == 429 and "Demasiados intentos" in r.json()["detalle"]
+    assert [t for t, _ in _eventos() if t in ("firma", "paquete exportado")] == []
+    assert len([f for f in _eventos_de("fallo") if "<ana>" in f[0]]) == 2
+
+
+def test_el_nombre_de_descarga_es_ascii_y_cabe_en_una_cabecera() -> None:
+    assert nombre_de_archivo("MIN-001", "001") == "MIN-001-001.silice"
+    assert nombre_de_archivo("Clínica Ñandú", "002") == "Clinica-Nandu-002.silice"
+    # Sin equivalente ASCII: no queda nada del proyecto y el nombre sigue siendo válido.
+    assert nombre_de_archivo("Ж日本", "001") == "proyecto-001.silice"
+    assert nombre_de_archivo("Obra Ж/..\\x", "001").isascii()
+    assert nombre_de_archivo("a", "00Ж1") == "a-00-1.silice"

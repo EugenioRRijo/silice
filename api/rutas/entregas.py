@@ -40,7 +40,7 @@ from core.verification.texto import formatear_decimal
 from operacion.instalacion import sesion_de_instalacion
 from operacion.version import version as version_de_silice
 from paquete.formato import PaqueteRechazado
-from seguridad import empresas
+from seguridad import cuentas, empresas, eventos
 from seguridad.empresas import ContrasenaDeClaveIncorrecta
 from seguridad.permisos import Accion
 from seguridad.sesiones import SesionActiva
@@ -50,6 +50,12 @@ MENSAJE_CUERPO_INVALIDO = (
     "firma, si los usa, también."
 )
 MENSAJE_CLAVE_INCORRECTA = "La contraseña de la clave no es correcta."
+MENSAJE_FRENO = (
+    "Demasiados intentos fallidos con la contraseña de la clave de firma. Espere unos segundos y "
+    "vuelva a probar."
+)
+#: Espera progresiva por fallos de la contraseña de la clave (del proceso, como la de las cuentas).
+FRENO_FIRMA = cuentas.FrenoGlobal()
 SIN_CACHE = {"Cache-Control": "no-store"}  # un paquete y su resumen no se guardan en el navegador
 
 router = APIRouter(prefix="/v1/entregas", tags=["entregas"], route_class=_RutaSinEco)
@@ -151,23 +157,36 @@ def entregar(
     elegida = _version(sesion, peticion.proyecto, peticion.version)
     with sesion_de_instalacion() as bd:
         firmar = empresas.clave_activa(bd) is not None
+        ip = request.client.host if request.client else None
+        usuario = USUARIO_SIN_CLAVE if activa is None else activa.usuario
         if firmar:
-            ip = request.client.host if request.client else None
             permitida, motivo = operacion_sensible_permitida(ip)
             if not permitida:
                 raise HTTPException(403, motivo)
+            espera = FRENO_FIRMA.espera(ahora())
+            if espera > 0:
+                raise HTTPException(
+                    429, MENSAJE_FRENO, headers={"Retry-After": str(int(espera) + 1)}
+                )
         try:
             generada = logica.entregar(
                 sesion,
                 bd,
                 elegida,
-                usuario=USUARIO_SIN_CLAVE if activa is None else activa.usuario,
+                usuario=usuario,
                 ahora=ahora(),
                 version_silice=version_de_silice(),
                 destinatario=(peticion.destinatario or "").strip() or None,
                 contrasena_clave=(peticion.contrasena_clave or "") if firmar else None,
+                ip=ip or "",
             )
         except ContrasenaDeClaveIncorrecta:
+            momento = ahora()
+            FRENO_FIRMA.registrar_fallo(momento)
+            eventos.registrar(
+                bd, "fallo", momento, login=usuario[:60], ip=ip or "", detalle="clave de firma"
+            )
+            bd.commit()
             raise HTTPException(400, MENSAJE_CLAVE_INCORRECTA) from None
         except logica.EntregaRechazada as error:
             raise HTTPException(409, str(error)) from None
