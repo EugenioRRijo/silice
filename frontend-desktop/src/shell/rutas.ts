@@ -29,7 +29,13 @@ export const PAGINAS: readonly PaginaDef[] = [
     accion: null,
     cargar: () => import("../paginas/inicio"),
   },
-  { id: "tablero", titulo: "Tablero del proyecto", seccion: "Trabajo", accion: "leer_proyecto" },
+  {
+    id: "tablero",
+    titulo: "Tablero del proyecto",
+    seccion: "Trabajo",
+    accion: "leer_proyecto",
+    cargar: () => import("../paginas/tablero"),
+  },
   { id: "catalogo", titulo: "Catálogo de partidas e insumos", seccion: "Trabajo", accion: "leer_proyecto" },
   {
     id: "componer",

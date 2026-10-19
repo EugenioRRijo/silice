@@ -1,0 +1,65 @@
+// Tablero del proyecto. Sin tarjetas con sombra ni animaciones (DESIGN.md): cifras en rejilla y bloques con divisor.
+
+.silice-tablero {
+  display: grid;
+  gap: 1.5rem;
+  padding: 1.5rem 1rem 2rem;
+  max-inline-size: 72rem;
+}
+
+.silice-tablero__nota {
+  color: var(--silice-texto-secundario);
+}
+
+.silice-tablero__tarjetas {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: 1rem;
+  margin: 0;
+}
+
+.silice-tablero__tarjeta {
+  display: grid;
+  gap: 0.25rem;
+  padding-inline-start: 0.75rem;
+  border-inline-start: 2px solid var(--silice-divisor);
+
+  dd {
+    margin: 0;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+.silice-tablero__bloque {
+  display: grid;
+  gap: 1rem;
+  padding-block-end: 1.5rem;
+  border-block-end: 1px solid var(--silice-divisor);
+}
+
+.silice-tablero__bloque:last-child {
+  border-block-end: 0;
+}
+
+.silice-tablero__anillos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: 1rem;
+}
+
+.silice-tablero__anillo {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0;
+  text-align: center;
+}
+
+.silice-curva {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0;
+}
+
+.silice-curva__tabla summary {
+  cursor: pointer;
+}
