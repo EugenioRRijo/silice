@@ -35,4 +35,29 @@ describe("Libro de la empresa", () => {
     expect(screen.getByRole("heading", { level: 1, name: "Libro de la empresa" })).toBeInTheDocument();
     expect(container.querySelector(".silice-pagina-libro .visor")).not.toBeNull();
   });
+
+  test("la fecha de devolución va en el cuerpo de la página aunque la cabecera ofrezca una ranura (V-24)", () => {
+    const ranura = document.createElement("div");
+    document.body.appendChild(ranura);
+    const valor: Aplicacion = {
+      sesion: SESION,
+      proyecto: null,
+      caso: null,
+      recargarProyectos: vi.fn(),
+      alExpirar: vi.fn(),
+      ranuraCabecera: ranura,
+    };
+    const { container } = render(
+      <ContextoAplicacion.Provider value={valor}>
+        <MemoryRouter>
+          <PaginaLibros />
+        </MemoryRouter>
+      </ContextoAplicacion.Provider>,
+    );
+    expect(container.querySelector(".silice-pagina-libro")).toContainElement(
+      screen.getByLabelText("Fecha de devolución"),
+    );
+    expect(ranura).toBeEmptyDOMElement();
+    ranura.remove();
+  });
 });
