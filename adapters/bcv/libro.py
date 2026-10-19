@@ -23,6 +23,8 @@ MAX_ENTRADAS = 5000
 MAX_DESCOMPRIMIDO = 60 * 1024 * 1024
 MAX_PIEZA = 30 * 1024 * 1024
 MAX_RAZON = 200
+MAX_CELDAS_XLS = 2_000_000  # filas x columnas declaradas por hoja de un .xls
+MAX_HOJAS_XLS = 50
 
 
 def _verificar_xlsx_seguro(contenido: bytes, nombre: str) -> None:
@@ -123,29 +125,43 @@ def _xls(contenido: bytes, nombre: str) -> tuple[tuple[Hoja, ...], int]:
     import xlrd  # extra `bcv` (RV‑24), importación diferida
 
     try:
-        libro = xlrd.open_workbook(file_contents=contenido)
+        libro = xlrd.open_workbook(file_contents=contenido, on_demand=True)
     except Exception as error:  # xlrd lanza varias clases ante un archivo dañado
         raise FormatoNoReconocido(f"{nombre}: no se pudo abrir ({error})") from None
-    floats, hojas = 0, []
-    for hoja in libro.sheets():
-        filas = []
-        for r in range(hoja.nrows):
-            fila: list[Celda] = []
-            for c in range(hoja.ncols):
-                celda = hoja.cell(r, c)
-                if celda.ctype in (xlrd.XL_CELL_EMPTY, xlrd.XL_CELL_BLANK):
-                    fila.append(None)
-                elif celda.ctype == xlrd.XL_CELL_TEXT:
-                    fila.append(celda.value.strip() or None)
-                elif celda.ctype == xlrd.XL_CELL_NUMBER:
-                    floats += 1
-                    fila.append(Decimal(repr(celda.value)))
-                elif celda.ctype == xlrd.XL_CELL_DATE:
-                    fila.append(xlrd.xldate_as_datetime(celda.value, libro.datemode).date())
-                else:
-                    fila.append(str(celda.value))
-            filas.append(tuple(fila))
-        hojas.append(Hoja(hoja.name, tuple(filas)))
+    try:
+        if libro.nsheets > MAX_HOJAS_XLS:
+            raise FormatoNoReconocido(
+                f"{nombre}: tiene {libro.nsheets} hojas; supera el maximo de {MAX_HOJAS_XLS}"
+            )
+        floats, hojas = 0, []
+        for indice in range(libro.nsheets):
+            hoja = libro.sheet_by_index(indice)
+            if hoja.nrows * hoja.ncols > MAX_CELDAS_XLS:
+                raise FormatoNoReconocido(
+                    f"{nombre}: la hoja {hoja.name!r} declara {hoja.nrows} filas x {hoja.ncols} "
+                    f"columnas; supera el maximo de {MAX_CELDAS_XLS} celdas"
+                )
+            filas = []
+            for r in range(hoja.nrows):
+                fila: list[Celda] = []
+                for c in range(hoja.ncols):
+                    celda = hoja.cell(r, c)
+                    if celda.ctype in (xlrd.XL_CELL_EMPTY, xlrd.XL_CELL_BLANK):
+                        fila.append(None)
+                    elif celda.ctype == xlrd.XL_CELL_TEXT:
+                        fila.append(celda.value.strip() or None)
+                    elif celda.ctype == xlrd.XL_CELL_NUMBER:
+                        floats += 1
+                        fila.append(Decimal(repr(celda.value)))
+                    elif celda.ctype == xlrd.XL_CELL_DATE:
+                        fila.append(xlrd.xldate_as_datetime(celda.value, libro.datemode).date())
+                    else:
+                        fila.append(str(celda.value))
+                filas.append(tuple(fila))
+            hojas.append(Hoja(hoja.name, tuple(filas)))
+            libro.unload_sheet(indice)
+    finally:
+        libro.release_resources()
     return tuple(hojas), floats
 
 
