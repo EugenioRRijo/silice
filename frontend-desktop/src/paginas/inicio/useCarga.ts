@@ -6,8 +6,8 @@ import { ErrorDeApi, pedir } from "../../api/cliente";
 export type Carga<T> =
   | { estado: "cargando" }
   | { estado: "listo"; datos: T }
-  | { estado: "sin_permiso" }
-  | { estado: "no_disponible" }
+  | { estado: "sin_permiso"; error: unknown }
+  | { estado: "no_disponible"; error: unknown }
   | { estado: "error"; error: unknown };
 
 // Pide `ruta` al montarse. Un 401 avisa a `alExpirar` (la sesion vencio) y queda como error.
@@ -24,8 +24,8 @@ export function useCarga<T>(ruta: string, alExpirar: () => void): Carga<T> {
         if (!vigente) return;
         if (error instanceof ErrorDeApi && error.estado === 401) alExpirar();
         let valor: Carga<T> = { estado: "error", error };
-        if (error instanceof ErrorDeApi && error.estado === 403) valor = { estado: "sin_permiso" };
-        if (error instanceof ErrorDeApi && error.estado === 404) valor = { estado: "no_disponible" };
+        if (error instanceof ErrorDeApi && error.estado === 403) valor = { estado: "sin_permiso", error };
+        if (error instanceof ErrorDeApi && error.estado === 404) valor = { estado: "no_disponible", error };
         setCarga({ ruta, valor });
       },
     );

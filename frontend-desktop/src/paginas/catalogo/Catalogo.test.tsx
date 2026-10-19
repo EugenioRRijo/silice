@@ -83,4 +83,24 @@ describe("Catálogo de partidas e insumos", () => {
     expect(tabla).toHaveTextContent("12.3400");
     expect(tabla).toHaveTextContent("Peón ficticio");
   });
+  test.each([
+    [404, "No existe el catálogo en este caso."],
+    [403, "Su cuenta no tiene permiso para el catálogo."],
+  ])("con %i de la API muestra el detalle y no se queda cargando", async (estado, detalle) => {
+    fetchFalso.mockImplementation(() => Promise.resolve(json({ detail: detalle }, estado)));
+    montar();
+    expect(await screen.findByText(detalle)).toBeInTheDocument();
+    expect(screen.queryByRole("table")).not.toBeInTheDocument();
+  });
+
+  test("con un error de red muestra un aviso en vez del esqueleto", async () => {
+    fetchFalso.mockRejectedValue(new TypeError("Failed to fetch"));
+    montar();
+    expect((await screen.findAllByRole("alert")).length).toBeGreaterThan(0);
+  });
+
+  test("el título de la página es un h1", async () => {
+    montar();
+    expect(await screen.findByRole("heading", { level: 1, name: "Catálogo de partidas e insumos" })).toBeInTheDocument();
+  });
 });

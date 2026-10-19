@@ -75,3 +75,17 @@
 .silice-informe__ok {
   color: var(--silice-verificado);
 }
+
+// Marco de una pagina de lectura: el mismo margen de 16 px y el mismo ritmo vertical en todas.
+.silice-pagina {
+  display: grid;
+  gap: 1rem;
+  padding: 1.5rem 1rem 2rem;
+  min-inline-size: 0;
+  max-inline-size: 90rem;
+}
+
+.silice-pagina > p {
+  max-inline-size: 70ch;
+  margin: 0;
+}

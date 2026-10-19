@@ -28,10 +28,17 @@ export default function PaginaCatalogo() {
   const insumos = useCarga<Insumo[]>("/v1/insumos", alExpirar);
   const [busqueda, setBusqueda] = useState("");
 
-  if (partidas.estado === "error") return <AvisoError error={partidas.error} />;
-  if (insumos.estado === "error") return <AvisoError error={insumos.error} />;
-  if (partidas.estado === "sin_permiso" || insumos.estado === "sin_permiso") {
-    return <p role="alert">Tu cuenta no puede consultar el catálogo.</p>;
+  // 403 y 404 también se dicen, con el detalle de la API tal cual: nunca esqueleto para siempre.
+  const falla = [partidas, insumos].find((c) => c.estado === "error" || c.estado === "sin_permiso" || c.estado === "no_disponible");
+  if (falla && "error" in falla) {
+    return (
+      <section className="silice-pagina" aria-labelledby="catalogo-titulo">
+        <h1 id="catalogo-titulo" className="cds--type-heading-04">
+          Catálogo de partidas e insumos
+        </h1>
+        <AvisoError error={falla.error} titulo="No se pudo cargar el catálogo" />
+      </section>
+    );
   }
   if (partidas.estado !== "listo" || insumos.estado !== "listo") return <EsqueletoPagina />;
 
@@ -50,10 +57,10 @@ export default function PaginaCatalogo() {
     }));
 
   return (
-    <section aria-labelledby="catalogo-titulo">
-      <h2 id="catalogo-titulo" className="cds--type-heading-04">
+    <section className="silice-pagina" aria-labelledby="catalogo-titulo">
+      <h1 id="catalogo-titulo" className="cds--type-heading-04">
         Catálogo de partidas e insumos
-      </h2>
+      </h1>
       <p className="cds--type-body-compact-01">Partidas e insumos del catálogo, con el precio vigente de cada insumo.</p>
       <Search
         size="sm"

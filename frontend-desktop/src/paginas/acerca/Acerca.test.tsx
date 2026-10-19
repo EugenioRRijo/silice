@@ -83,4 +83,14 @@ describe("Acerca de Sílice", () => {
     await screen.findByText("Sílice 1.2.0-dev0");
     expect(screen.queryByText("Carpeta de datos")).not.toBeInTheDocument();
   });
+
+  test("sigue el marco de las páginas: h1, sin jerga de archivos y dentro de la clase de página", async () => {
+    fetchFalso.mockResolvedValue(json(DATOS));
+    const { container } = montar();
+    const h1 = await screen.findByRole("heading", { level: 1 });
+    expect(h1).toHaveTextContent("Acerca de Sílice");
+    expect(screen.queryByText(/pyproject/)).not.toBeInTheDocument();
+    expect(screen.getByText(/^Versión:/)).toBeInTheDocument();
+    expect(container.querySelector(".silice-pagina")).not.toBeNull();
+  });
 });

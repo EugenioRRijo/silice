@@ -30,16 +30,26 @@ export default function PaginaAcerca() {
   const { alExpirar } = useAplicacion();
   const carga = useCarga<Acerca>("/v1/acerca", alExpirar);
 
-  if (carga.estado === "error") return <AvisoError error={carga.error} />;
+  if (carga.estado === "error" || carga.estado === "sin_permiso" || carga.estado === "no_disponible") {
+    return (
+      <section className="silice-pagina" aria-labelledby="acerca-titulo">
+        <h1 id="acerca-titulo" className="cds--type-heading-04">
+          Acerca de Sílice
+        </h1>
+        <AvisoError error={carga.error} titulo="No se pudo cargar la información" />
+      </section>
+    );
+  }
   if (carga.estado !== "listo") return <EsqueletoPagina />;
   const d = carga.datos;
 
   return (
-    <section aria-labelledby="acerca-titulo">
-      <h2 id="acerca-titulo" className="cds--type-heading-04">
-        Sílice {d.semver}
-      </h2>
-      <p className="cds--type-body-compact-01">Versión de pyproject.toml: {d.version}</p>
+    <section className="silice-pagina" aria-labelledby="acerca-titulo">
+      <h1 id="acerca-titulo" className="cds--type-heading-04">
+        Acerca de Sílice
+      </h1>
+      <h2 className="cds--type-heading-03">Sílice {d.semver}</h2>
+      <p className="cds--type-body-compact-01">Versión: {d.version}</p>
       <StructuredListWrapper isCondensed aria-label="Bases y carpeta de datos">
         <StructuredListBody>
           <Fila rotulo="Base de la instalación" valor={`${d.revision_instalacion} (la última es ${d.head_instalacion})`} />

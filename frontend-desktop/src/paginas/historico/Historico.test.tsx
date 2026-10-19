@@ -90,4 +90,24 @@ describe("Histórico de cambios de precio", () => {
     await usuario.click(screen.getByRole("button", { name: "Filtrar" }));
     expect(fetchFalso).toHaveBeenCalledTimes(1);
   });
+  test.each([
+    [404, "No existe el histórico en este caso."],
+    [403, "Su cuenta no tiene permiso para el histórico."],
+  ])("con %i de la API muestra el detalle y no se queda cargando", async (estado, detalle) => {
+    fetchFalso.mockImplementation(() => Promise.resolve(json({ detail: detalle }, estado)));
+    montar();
+    expect(await screen.findByText(detalle)).toBeInTheDocument();
+    expect(screen.queryByRole("table")).not.toBeInTheDocument();
+  });
+
+  test("con un error de red muestra un aviso en vez del esqueleto", async () => {
+    fetchFalso.mockRejectedValue(new TypeError("Failed to fetch"));
+    montar();
+    expect((await screen.findAllByRole("alert")).length).toBeGreaterThan(0);
+  });
+
+  test("el título de la página es un h1", async () => {
+    montar();
+    expect(await screen.findByRole("heading", { level: 1, name: "Histórico de cambios de precio" })).toBeInTheDocument();
+  });
 });

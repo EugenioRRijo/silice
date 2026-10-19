@@ -41,12 +41,12 @@ export default function PaginaHistorico() {
   const invertido = rangoInvertido(borrador.desde, borrador.hasta);
 
   return (
-    <section aria-labelledby="historico-titulo">
-      <h2 id="historico-titulo" className="cds--type-heading-04">
+    <section className="silice-pagina" aria-labelledby="historico-titulo">
+      <h1 id="historico-titulo" className="cds--type-heading-04">
         Histórico de cambios de precio
-      </h2>
+      </h1>
       <p className="cds--type-body-compact-01">
-        Cada fila es un insumo que cambió de precio entre la lista anterior y la lista nueva de una actualización (UC-02).
+        Cada fila es un insumo que cambió de precio entre la lista anterior y la lista nueva de una actualización.
       </p>
       <form
         onSubmit={(e) => {
@@ -93,8 +93,9 @@ export default function PaginaHistorico() {
           Filtrar
         </Button>
       </form>
-      {carga.estado === "error" && <AvisoError error={carga.error} />}
-      {carga.estado === "sin_permiso" && <p role="alert">Tu cuenta no puede consultar el histórico.</p>}
+      {(carga.estado === "error" || carga.estado === "sin_permiso" || carga.estado === "no_disponible") && (
+        <AvisoError error={carga.error} titulo="No se pudo cargar el histórico" />
+      )}
       {carga.estado === "cargando" && <EsqueletoPagina />}
       {carga.estado === "listo" && (
         <TablaDensa
