@@ -2395,6 +2395,463 @@
         }
       }
     },
+    "/v1/admin/empresa": {
+      "get": {
+        "tags": [
+          "administracion"
+        ],
+        "summary": "Ver",
+        "description": "La empresa, la huella de su clave activa y si este equipo puede operar con ella.",
+        "operationId": "ver_v1_admin_empresa_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmpresaRespuesta"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "administracion"
+        ],
+        "summary": "Guardar",
+        "operationId": "guardar_v1_admin_empresa_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmpresaDatos"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmpresaRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/empresa/clave": {
+      "post": {
+        "tags": [
+          "administracion"
+        ],
+        "summary": "Generar",
+        "description": "Genera el par de claves en este equipo; la privada queda cifrada con la contraseña.",
+        "operationId": "generar_v1_admin_empresa_clave_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GenerarClave"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmpresaRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/empresa/clave-publica": {
+      "get": {
+        "tags": [
+          "administracion"
+        ],
+        "summary": "Clave Publica",
+        "operationId": "clave_publica_v1_admin_empresa_clave_publica_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/octet-stream": {}
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/empresa/respaldo-clave": {
+      "get": {
+        "tags": [
+          "administracion"
+        ],
+        "summary": "Respaldo De La Clave",
+        "description": "La clave activa tal como está guardada (cifrada), para un respaldo aparte.",
+        "operationId": "respaldo_de_la_clave_v1_admin_empresa_respaldo_clave_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/octet-stream": {}
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/empresa/clave/retirar": {
+      "post": {
+        "tags": [
+          "administracion"
+        ],
+        "summary": "Retirar",
+        "description": "Cambio de clave sin compromiso: se destruye la privada de este equipo.",
+        "operationId": "retirar_v1_admin_empresa_clave_retirar_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BajaDeClave"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmpresaRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/empresa/clave/revocar": {
+      "post": {
+        "tags": [
+          "administracion"
+        ],
+        "summary": "Revocar",
+        "description": "Clave perdida o expuesta: los paquetes firmados con ella dejan de verificar.",
+        "operationId": "revocar_v1_admin_empresa_clave_revocar_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BajaDeClave"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/api__rutas__admin_empresa__AvisoRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/claves-api": {
+      "get": {
+        "tags": [
+          "administracion"
+        ],
+        "summary": "Listar",
+        "operationId": "listar_v1_admin_claves_api_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ClaveRespuesta"
+                  },
+                  "type": "array",
+                  "title": "Response Listar V1 Admin Claves Api Get"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "administracion"
+        ],
+        "summary": "Crear",
+        "description": "Crea la clave; el secreto sale aquí y no se vuelve a poder leer.",
+        "operationId": "crear_v1_admin_claves_api_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NuevaClave"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClaveCreada"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/claves-api/{clave_id}/revocar": {
+      "post": {
+        "tags": [
+          "administracion"
+        ],
+        "summary": "Revocar",
+        "operationId": "revocar_v1_admin_claves_api__clave_id__revocar_post",
+        "parameters": [
+          {
+            "name": "clave_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Clave Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClaveRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/instalacion": {
+      "get": {
+        "tags": [
+          "administracion"
+        ],
+        "summary": "Ver",
+        "operationId": "ver_v1_admin_instalacion_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstalacionRespuesta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/instalacion/respaldos": {
+      "post": {
+        "tags": [
+          "administracion"
+        ],
+        "summary": "Respaldar",
+        "description": "Un juego manual de la instalación y de todos los casos (no se poda nunca).",
+        "operationId": "respaldar_v1_admin_instalacion_respaldos_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespaldoCreado"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/instalacion/respaldos/{nombre}": {
+      "get": {
+        "tags": [
+          "administracion"
+        ],
+        "summary": "Bajar",
+        "operationId": "bajar_v1_admin_instalacion_respaldos__nombre__get",
+        "parameters": [
+          {
+            "name": "nombre",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Nombre"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/zip": {}
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/instalacion/eventos/{nombre}/revisar": {
+      "post": {
+        "tags": [
+          "administracion"
+        ],
+        "summary": "Revisar",
+        "description": "Marca el archivo como revisado (quien lo revisa consta por su login).",
+        "operationId": "revisar_v1_admin_instalacion_eventos__nombre__revisar_post",
+        "parameters": [
+          {
+            "name": "nombre",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Nombre"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Pendiente"
+                  },
+                  "title": "Response Revisar V1 Admin Instalacion Eventos  Nombre  Revisar Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/salud": {
       "get": {
         "tags": [
@@ -2619,27 +3076,27 @@
         ],
         "title": "AuditoriaRespuesta"
       },
-      "AvisoRespuesta": {
+      "BajaDeClave": {
         "properties": {
-          "nivel": {
+          "motivo": {
             "type": "string",
-            "enum": [
-              "info",
-              "advertencia"
-            ],
-            "title": "Nivel"
+            "title": "Motivo",
+            "default": ""
           },
-          "texto": {
-            "type": "string",
-            "title": "Texto"
+          "contrasena": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contrasena"
           }
         },
         "type": "object",
-        "required": [
-          "nivel",
-          "texto"
-        ],
-        "title": "AvisoRespuesta"
+        "title": "BajaDeClave"
       },
       "Body_auditar_libro_v1_libros_auditoria_post": {
         "properties": {
@@ -3283,6 +3740,87 @@
         "title": "CeldaVisualRespuesta",
         "description": "Espejo de `visual.CeldaVisual`: `fila` y `columna` base 1, `ref` sin `$`."
       },
+      "ClaveCreada": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "etiqueta": {
+            "type": "string",
+            "title": "Etiqueta"
+          },
+          "secreto": {
+            "type": "string",
+            "title": "Secreto"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "etiqueta",
+          "secreto"
+        ],
+        "title": "ClaveCreada"
+      },
+      "ClaveDatos": {
+        "properties": {
+          "estado": {
+            "type": "string",
+            "title": "Estado"
+          },
+          "huella": {
+            "type": "string",
+            "title": "Huella"
+          }
+        },
+        "type": "object",
+        "required": [
+          "estado",
+          "huella"
+        ],
+        "title": "ClaveDatos"
+      },
+      "ClaveRespuesta": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "etiqueta": {
+            "type": "string",
+            "title": "Etiqueta"
+          },
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          },
+          "estado": {
+            "type": "string",
+            "title": "Estado"
+          },
+          "ultimo_uso": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ultimo Uso"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "etiqueta",
+          "nombre",
+          "estado",
+          "ultimo_uso"
+        ],
+        "title": "ClaveRespuesta"
+      },
       "ComparativoRespuesta": {
         "properties": {
           "total_anterior": {
@@ -3713,6 +4251,63 @@
           "nombre"
         ],
         "title": "EleccionCaso"
+      },
+      "EmpresaDatos": {
+        "properties": {
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          },
+          "rif": {
+            "type": "string",
+            "title": "Rif"
+          },
+          "ciudad": {
+            "type": "string",
+            "title": "Ciudad",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "nombre",
+          "rif"
+        ],
+        "title": "EmpresaDatos"
+      },
+      "EmpresaRespuesta": {
+        "properties": {
+          "empresa": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EmpresaDatos"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "clave": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ClaveDatos"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sensible": {
+            "$ref": "#/components/schemas/SensibleEstado"
+          }
+        },
+        "type": "object",
+        "required": [
+          "empresa",
+          "clave",
+          "sensible"
+        ],
+        "title": "EmpresaRespuesta"
       },
       "EntregaPeticion": {
         "properties": {
@@ -4371,6 +4966,19 @@
         ],
         "title": "FilaSimuladaRespuesta"
       },
+      "GenerarClave": {
+        "properties": {
+          "contrasena": {
+            "type": "string",
+            "title": "Contrasena"
+          }
+        },
+        "type": "object",
+        "required": [
+          "contrasena"
+        ],
+        "title": "GenerarClave"
+      },
       "GuardadoRespuesta": {
         "properties": {
           "precio_unitario": {
@@ -4664,6 +5272,67 @@
         ],
         "title": "InformeAuditoriaRespuesta"
       },
+      "InstalacionRespuesta": {
+        "properties": {
+          "red_local": {
+            "type": "boolean",
+            "title": "Red Local"
+          },
+          "direccion": {
+            "type": "string",
+            "title": "Direccion"
+          },
+          "puerto": {
+            "type": "integer",
+            "title": "Puerto"
+          },
+          "api_activa": {
+            "type": "boolean",
+            "title": "Api Activa"
+          },
+          "puerto_api": {
+            "type": "integer",
+            "title": "Puerto Api"
+          },
+          "avisos": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Avisos"
+          },
+          "respaldos": {
+            "items": {
+              "$ref": "#/components/schemas/Juego"
+            },
+            "type": "array",
+            "title": "Respaldos"
+          },
+          "pendientes": {
+            "items": {
+              "$ref": "#/components/schemas/Pendiente"
+            },
+            "type": "array",
+            "title": "Pendientes"
+          },
+          "sensible": {
+            "$ref": "#/components/schemas/SensibleEstado"
+          }
+        },
+        "type": "object",
+        "required": [
+          "red_local",
+          "direccion",
+          "puerto",
+          "api_activa",
+          "puerto_api",
+          "avisos",
+          "respaldos",
+          "pendientes",
+          "sensible"
+        ],
+        "title": "InstalacionRespuesta"
+      },
       "InsumoDesconocidoRespuesta": {
         "properties": {
           "descripcion": {
@@ -4937,6 +5606,29 @@
         "title": "ItemPendienteRespuesta",
         "description": "Un ítem sin partida en el catálogo (UC‑01, flujo 3a): no suma al total y el informe lo\ndeclara. Para aceptar una propuesta se vuelve a enviar el ítem con ese código. `propuestas`\nqueda vacía sin el extra `ml` o sin el modelo de similitud en la caché local."
       },
+      "Juego": {
+        "properties": {
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          },
+          "motivo": {
+            "type": "string",
+            "title": "Motivo"
+          },
+          "bases": {
+            "type": "integer",
+            "title": "Bases"
+          }
+        },
+        "type": "object",
+        "required": [
+          "nombre",
+          "motivo",
+          "bases"
+        ],
+        "title": "Juego"
+      },
       "LibroAuditadoRespuesta": {
         "properties": {
           "libro": {
@@ -5204,6 +5896,19 @@
         "title": "ListaRespuesta",
         "description": "Cabecera de una lista de precios registrada."
       },
+      "NuevaClave": {
+        "properties": {
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          }
+        },
+        "type": "object",
+        "required": [
+          "nombre"
+        ],
+        "title": "NuevaClave"
+      },
       "OpcionesRespuesta": {
         "properties": {
           "dominios": {
@@ -5398,6 +6103,32 @@
           "hallazgos"
         ],
         "title": "PdfSimpleRespuesta"
+      },
+      "Pendiente": {
+        "properties": {
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          },
+          "diferencias": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Diferencias"
+          },
+          "eventos": {
+            "type": "integer",
+            "title": "Eventos"
+          }
+        },
+        "type": "object",
+        "required": [
+          "nombre",
+          "diferencias",
+          "eventos"
+        ],
+        "title": "Pendiente"
       },
       "PendienteConPropuestasRespuesta": {
         "properties": {
@@ -6298,6 +7029,19 @@
         "title": "RendimientosRespuesta",
         "description": "El historico completo de una partida, con dispersion y propuesta (RF-26)."
       },
+      "RespaldoCreado": {
+        "properties": {
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          }
+        },
+        "type": "object",
+        "required": [
+          "nombre"
+        ],
+        "title": "RespaldoCreado"
+      },
       "ResumenRespuesta": {
         "properties": {
           "proyecto": {
@@ -6462,7 +7206,7 @@
           },
           "avisos": {
             "items": {
-              "$ref": "#/components/schemas/AvisoRespuesta"
+              "$ref": "#/components/schemas/api__esquemas_ola2__AvisoRespuesta"
             },
             "type": "array",
             "title": "Avisos"
@@ -6492,6 +7236,24 @@
           "informe"
         ],
         "title": "RevaloracionRespuesta"
+      },
+      "SensibleEstado": {
+        "properties": {
+          "permitida": {
+            "type": "boolean",
+            "title": "Permitida"
+          },
+          "motivo": {
+            "type": "string",
+            "title": "Motivo"
+          }
+        },
+        "type": "object",
+        "required": [
+          "permitida",
+          "motivo"
+        ],
+        "title": "SensibleEstado"
       },
       "SesionRespuesta": {
         "properties": {
@@ -7001,6 +7763,48 @@
           "origen"
         ],
         "title": "HallazgoRespuesta"
+      },
+      "api__esquemas_ola2__AvisoRespuesta": {
+        "properties": {
+          "nivel": {
+            "type": "string",
+            "enum": [
+              "info",
+              "advertencia"
+            ],
+            "title": "Nivel"
+          },
+          "texto": {
+            "type": "string",
+            "title": "Texto"
+          }
+        },
+        "type": "object",
+        "required": [
+          "nivel",
+          "texto"
+        ],
+        "title": "AvisoRespuesta"
+      },
+      "api__rutas__admin_empresa__AvisoRespuesta": {
+        "properties": {
+          "aviso": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Aviso"
+          }
+        },
+        "type": "object",
+        "required": [
+          "aviso"
+        ],
+        "title": "AvisoRespuesta"
       },
       "api__rutas__auditorias__HallazgoRespuesta": {
         "properties": {
