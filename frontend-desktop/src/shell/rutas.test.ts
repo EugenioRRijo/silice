@@ -36,11 +36,15 @@ describe("registro de paginas", () => {
     expect(SECCIONES).toEqual(["Trabajo", "Revisión", "Investigación", "Administración"]);
   });
 
-  test("estan migradas Inicio, Componer, el Libro de la empresa (RM-6), Similares, el Simulador y Administración (Cuentas y Accesos), con carga perezosa", () => {
+  test("estan migradas las paginas ya construidas, con carga perezosa", () => {
     expect(PAGINAS.filter(estaMigrada).map((p) => p.id)).toEqual([
       "inicio",
       "componer",
+      "elaborar",
+      "actualizacion",
+      "entregar",
       "libros",
+      "escenarios",
       "similares",
       "simulador",
       "administracion",

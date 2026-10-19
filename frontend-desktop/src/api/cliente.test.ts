@@ -91,11 +91,16 @@ describe("cliente de la API", () => {
       async () =>
         new Response("hola", {
           status: 200,
-          headers: { "Content-Type": "application/pdf", "Content-Disposition": 'attachment; filename="ficha.pdf"' },
+          headers: {
+            "Content-Type": "application/pdf",
+            "Content-Disposition": 'attachment; filename="ficha.pdf"',
+            "X-Silice-SHA256": "abc123",
+          },
         }),
     );
-    const { blob, nombre } = await pedirBinario("/v1/algo", { respaldo: "descarga.bin" });
+    const { blob, nombre, cabeceras } = await pedirBinario("/v1/algo", { respaldo: "descarga.bin" });
     expect(nombre).toBe("ficha.pdf");
+    expect(cabeceras.get("X-Silice-SHA256")).toBe("abc123");
     expect(await blob.text()).toBe("hola");
     expect(blob.type).toBe("application/pdf");
   });

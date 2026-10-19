@@ -1,0 +1,105 @@
+// Elaborar un presupuesto. Sin tarjetas con sombra ni animaciones (DESIGN.md); solo tokens.
+
+.silice-elaborar {
+  display: grid;
+  gap: 1.5rem;
+  padding: 1.5rem 1rem 2rem;
+  max-inline-size: 80rem;
+  min-inline-size: 0;
+}
+
+.silice-elaborar__parametros {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: 1rem;
+  align-items: end;
+}
+
+.silice-elaborar__civil,
+.silice-elaborar__archivo,
+.silice-elaborar__bloque,
+.silice-elaborar__pendiente,
+.silice-elaborar__rendimiento {
+  display: grid;
+  gap: 0.75rem;
+  justify-items: start;
+  min-inline-size: 0;
+}
+
+.silice-elaborar__archivo,
+.silice-elaborar__bloque {
+  inline-size: 100%;
+}
+
+.silice-elaborar__bloque > * {
+  max-inline-size: 100%;
+}
+
+.silice-elaborar__selectores {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: 1rem;
+  align-items: end;
+  inline-size: 100%;
+}
+
+.silice-elaborar__aviso {
+  max-inline-size: 65ch;
+  padding: 0.75rem 1rem;
+  border-inline-start: 3px solid var(--silice-sev-advertencia);
+  background: var(--cds-layer-01);
+}
+
+.silice-elaborar__exito {
+  padding: 0.75rem 1rem;
+  border-inline-start: 3px solid var(--silice-verificado);
+  background: var(--cds-layer-01);
+}
+
+.silice-elaborar__nota {
+  color: var(--silice-texto-secundario);
+  max-inline-size: 65ch;
+}
+
+.silice-elaborar__metricas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2rem;
+}
+
+.silice-elaborar__metrica {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.silice-elaborar__metrica-titulo {
+  color: var(--silice-texto-secundario);
+}
+
+.silice-elaborar__metrica-valor {
+  font-variant-numeric: tabular-nums;
+}
+
+.silice-elaborar__propuestas {
+  margin: 0;
+  padding-inline-start: 1.25rem;
+  list-style: disc;
+}
+
+.silice-elaborar__fila-accion,
+.silice-elaborar__acciones {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 1rem;
+}
+
+.silice-elaborar__fila-accion .cds--select {
+  min-inline-size: 14rem;
+}
+
+.silice-elaborar__plan {
+  inline-size: 100%;
+  min-inline-size: 0;
+  overflow-x: auto;
+}

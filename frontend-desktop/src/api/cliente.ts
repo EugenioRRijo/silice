@@ -35,6 +35,8 @@ export interface OpcionesBinarias extends OpcionesDePeticion {
 export interface DescargaBinaria {
   blob: Blob;
   nombre: string;
+  // Cabeceras de la respuesta (p. ej. X-Silice-SHA256 de una entrega).
+  cabeceras: Headers;
 }
 
 const CON_TOKEN = new Set(["POST", "DELETE"]);
@@ -115,5 +117,5 @@ export async function pedirBinario(ruta: string, opciones: OpcionesBinarias = {}
   const respuesta = await enviar(ruta, opciones);
   const blob = await respuesta.blob();
   const nombre = nombreDeDescarga(respuesta.headers.get("Content-Disposition"), opciones.respaldo ?? "descarga");
-  return { blob, nombre };
+  return { blob, nombre, cabeceras: respuesta.headers };
 }

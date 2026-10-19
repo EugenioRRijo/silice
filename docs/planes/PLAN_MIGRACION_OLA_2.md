@@ -42,3 +42,25 @@ Una carpeta por página, con `src/comun/`; una línea por página en `src/shell/
 ## Cierre por página
 
 Pruebas (pytest `-W error`, Vitest), `ruff`, `npm run lint/build/dist`, una línea en `CHANGELOG.md`.
+
+## Contrato de las rutas (lo que consume el front)
+
+Esquemas: `api/esquemas_ola2.py`, `api/esquemas_informe.py`, `api/esquemas.py`. Errores: `{ "detalle": str }`
+(404 no existe, 409 conflicto, 422 dato inválido); el 409 de `calcular` puede traer además
+`rendimientos_por_declarar`. Las peticiones que escriben llevan `X-Silice-CSRF` (lo pone `pedir`).
+
+- `GET /presupuestos` → `[{codigo, total, proyecto}]`.
+- `POST /listas-precios/vista-previa` (multipart `archivo`) → `{desconocidos:[{descripcion,tipo,unidad,precio,etiqueta}], motivo}`.
+- `POST /presupuestos/revalorar` (multipart: `archivo, proyecto, codigo, codigo_nuevo, nombre, moneda, fecha_vigencia`,
+  `dar_de_alta` repetido) → `RevaloracionRespuesta` (resumen, filas del comparativo, dados_de_alta, ignorados,
+  rechazados, version_guardada|null, avisos[{nivel,texto}], informe).
+- `POST /presupuestos/{codigo}/descartar?proyecto=` → `{codigo, descartada, fecha}`.
+- `GET /presupuestos/{codigo}/excel?proyecto=` → xlsx de la versión guardada.
+- `POST /computos/{dominio}` (multipart `archivo`, `codigos` JSON para civil) → ítems extraídos (ya existía).
+- `GET /partidas` (ya existía) → catálogo; el civil elige códigos de las partidas de dominio civil.
+- `POST /presupuestos/calcular` `{codigo, fecha, moneda, items[], plan?[{periodo,codigo_partida,fraccion}]}` →
+  `CalculoRespuesta`; `POST /presupuestos/calcular/excel` (mismo cuerpo) → xlsx;
+  `POST /presupuestos/calcular/declarar-rendimiento` `{codigo_partida, tipo, fecha}` → rendimiento registrado.
+- `GET /presupuestos/{codigo}/escenarios/base?proyecto=` → `{codigo, proyecto, moneda, total, parametros, pendientes_base}`.
+- `POST /presupuestos/{codigo}/escenarios?proyecto=` `{escenarios:[{nombre, fcas?, bono_alimentacion?, administracion?, utilidad?, precios:{}}]}`
+  → `EscenariosRespuesta`; `POST .../escenarios/csv` (mismo cuerpo) → CSV exacto.
