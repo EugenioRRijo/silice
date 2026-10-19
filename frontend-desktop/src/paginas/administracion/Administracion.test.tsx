@@ -106,11 +106,11 @@ describe("Administracion: Cuentas y Accesos", () => {
 
   test("las pestanas aun no migradas nombran cual es, avisan que abren otra pestana y enlazan", async () => {
     montar();
-    await userEvent.setup().click(screen.getByRole("tab", { name: "Claves de API" }));
+    await userEvent.setup().click(screen.getByRole("tab", { name: "Empresas registradas" }));
     expect(await screen.findByText("En la interfaz clásica")).toBeInTheDocument();
-    expect(screen.getByText("«Claves de API» todavía se administra en la interfaz clásica de Sílice.")).toBeInTheDocument();
+    expect(screen.getByText("«Empresas registradas» todavía se administra en la interfaz clásica de Sílice.")).toBeInTheDocument();
     const enlace = screen.getByRole("link", {
-      name: "Abrir «Claves de API» en la interfaz clásica (se abre en otra pestaña)",
+      name: "Abrir «Empresas registradas» en la interfaz clásica (se abre en otra pestaña)",
     });
     expect(enlace).toHaveAttribute("href", "http://127.0.0.1:8501/administracion");
     expect(enlace).toHaveAttribute("target", "_blank");
@@ -118,7 +118,7 @@ describe("Administracion: Cuentas y Accesos", () => {
 
   test("sin direccion de la interfaz clasica hay un mensaje de respaldo, no un enlace roto", async () => {
     montar({ ...SESION, url_clasica: null });
-    await userEvent.setup().click(screen.getByRole("tab", { name: "Instalación" }));
+    await userEvent.setup().click(screen.getByRole("tab", { name: "Asistente de IA" }));
     expect(await screen.findByText(/No se conoce la dirección de la interfaz clásica/)).toBeInTheDocument();
     expect(screen.queryByRole("link")).toBeNull();
   });

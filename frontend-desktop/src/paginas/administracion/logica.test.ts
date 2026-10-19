@@ -16,7 +16,7 @@ import {
 } from "./logica";
 
 describe("logica de Administracion", () => {
-  test("las siete pestanas de Streamlit en su orden; solo Cuentas y Accesos estan migradas", () => {
+  test("las siete pestanas de Streamlit en su orden; estan migradas Cuentas, Empresa, Claves de API, Accesos e Instalacion", () => {
     expect(PESTANAS.map((p) => p.titulo)).toEqual([
       "Cuentas",
       "Empresa y clave de firma",
@@ -26,7 +26,13 @@ describe("logica de Administracion", () => {
       "Accesos",
       "Instalación",
     ]);
-    expect(PESTANAS.filter((p) => p.migrada).map((p) => p.id)).toEqual(["cuentas", "accesos"]);
+    expect(PESTANAS.filter((p) => p.migrada).map((p) => p.id)).toEqual([
+      "cuentas",
+      "empresa",
+      "api",
+      "accesos",
+      "instalacion",
+    ]);
   });
 
   test("rotulos de roles como los de Streamlit; un rol desconocido se muestra tal cual", () => {

@@ -44,12 +44,12 @@ export const ETIQUETAS_DE_ROL: Record<string, string> = {
 
 export const PESTANAS = [
   { id: "cuentas", titulo: "Cuentas", migrada: true },
-  { id: "empresa", titulo: "Empresa y clave de firma", migrada: false },
+  { id: "empresa", titulo: "Empresa y clave de firma", migrada: true },
   { id: "registradas", titulo: "Empresas registradas", migrada: false },
-  { id: "api", titulo: "Claves de API", migrada: false },
+  { id: "api", titulo: "Claves de API", migrada: true },
   { id: "asistente", titulo: "Asistente de IA", migrada: false },
   { id: "accesos", titulo: "Accesos", migrada: true },
-  { id: "instalacion", titulo: "Instalación", migrada: false },
+  { id: "instalacion", titulo: "Instalación", migrada: true },
 ] as const;
 
 // El tope sale de la API (`maximo`); antes de que llegue se usa el texto sin cifra.
