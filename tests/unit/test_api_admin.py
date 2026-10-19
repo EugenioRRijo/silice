@@ -266,6 +266,9 @@ def test_revocar_pide_motivo_y_con_contrasena_trae_el_aviso() -> None:
     assert mala.status_code == 400
     assert mala.json() == {"detalle": "La contraseña de la clave no es correcta."}
     assert _filas("SELECT estado FROM clave_empresa") == [("activa",)]
+    assert _filas("SELECT login_intentado, detalle FROM evento_acceso WHERE tipo = 'fallo'") == [
+        ("admin", "clave de firma")
+    ]
     buena = navegador.post(
         "/v1/admin/empresa/clave/revocar",
         json={"motivo": "perdida", "contrasena": FRASE},
@@ -286,6 +289,14 @@ def test_revocar_sin_contrasena_no_hay_aviso() -> None:
     )
     assert respuesta.status_code == 200
     assert respuesta.json()["aviso"] is None
+
+
+@pytest.mark.parametrize(
+    "ruta", ["/v1/admin/empresa", "/v1/admin/claves-api", "/v1/admin/instalacion"]
+)
+def test_las_respuestas_de_administracion_no_se_guardan(ruta: str) -> None:
+    navegador, _ = _admin()
+    assert navegador.get(ruta).headers["cache-control"] == "no-store"
 
 
 def test_un_post_sin_csrf_se_rechaza() -> None:

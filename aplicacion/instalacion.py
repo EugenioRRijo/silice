@@ -58,7 +58,7 @@ def juegos_de_respaldo(entorno: Mapping[str, str] | None = None) -> list[JuegoRe
 def zip_del_juego(carpeta: Path) -> bytes:
     memoria = io.BytesIO()
     with zipfile.ZipFile(memoria, "w", zipfile.ZIP_DEFLATED) as zip_:
-        for archivo in sorted(p for p in carpeta.rglob("*") if p.is_file()):
+        for archivo in sorted(p for p in carpeta.rglob("*") if p.is_file() and not p.is_symlink()):
             zip_.write(archivo, archivo.relative_to(carpeta).as_posix())
     return memoria.getvalue()
 

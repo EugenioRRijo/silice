@@ -90,8 +90,8 @@ export default function Instalacion() {
             <div key={p.nombre} className="silice-adm__seccion">
               <h3 className="cds--type-heading-compact-01">{p.nombre}</h3>
               <ul>
-                {p.diferencias.map((d) => (
-                  <li key={d} className="cds--type-body-compact-01">
+                {p.diferencias.map((d, i) => (
+                  <li key={`${i}-${d}`} className="cds--type-body-compact-01">
                     {d}
                   </li>
                 ))}

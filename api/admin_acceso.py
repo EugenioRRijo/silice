@@ -10,13 +10,18 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from fastapi import HTTPException, Request
+from fastapi import HTTPException, Request, Response
 
 from api.sesion_web import exigir_clave_o_sesion, exigir_equipo_propio
 from seguridad.permisos import Accion, Sensible
 from seguridad.sesiones import SesionActiva
 
 MENSAJE_SOLO_CUENTA = "Administrar la instalación exige entrar con una cuenta de administrador."
+
+
+def sin_cache(response: Response) -> None:
+    """Ninguna respuesta de Administracion se guarda en el navegador (huellas, etiquetas, rutas)."""
+    response.headers["Cache-Control"] = "no-store"
 
 
 def _solo_cuenta(

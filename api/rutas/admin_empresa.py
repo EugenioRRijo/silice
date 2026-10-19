@@ -24,13 +24,13 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, Field
 
-from api.admin_acceso import administrar, administrar_en_el_equipo
+from api.admin_acceso import administrar, administrar_en_el_equipo, sin_cache
 from api.rutas.entregas import FRENO_FIRMA, MENSAJE_FRENO
 from api.rutas.sesion import _RutaSinEco, _sin_eco
 from api.sesion_web import ahora
 from aplicacion.equipo import operacion_sensible_permitida
 from operacion.instalacion import sesion_de_instalacion
-from seguridad import cuentas, empresas, firma
+from seguridad import cuentas, empresas, eventos, firma
 from seguridad.permisos import Accion, Sensible
 from seguridad.sesiones import SesionActiva
 
@@ -39,7 +39,12 @@ MENSAJE_SIN_MOTIVO = "Escriba el motivo de la revocación."
 SIN_CACHE = {"Cache-Control": "no-store"}
 ERRORES_ESPERADOS = (empresas.ClaveError, cuentas.ContrasenaInvalida, LookupError, ValueError)
 
-router = APIRouter(prefix="/v1/admin/empresa", tags=["administracion"], route_class=_RutaSinEco)
+router = APIRouter(
+    prefix="/v1/admin/empresa",
+    tags=["administracion"],
+    dependencies=[Depends(sin_cache)],
+    route_class=_RutaSinEco,
+)
 ADMIN = Depends(administrar(Accion.ADMINISTRAR_EMPRESA))
 EN_EL_EQUIPO = Depends(administrar_en_el_equipo(Sensible.CLAVE_DE_FIRMA))
 
@@ -195,7 +200,9 @@ def retirar(
 
 @router.post("/clave/revocar", response_model=AvisoRespuesta)
 @_sin_eco(MENSAJE_CUERPO_INVALIDO)
-def revocar(datos: BajaDeClave, activa: Annotated[SesionActiva, EN_EL_EQUIPO]) -> AvisoRespuesta:
+def revocar(
+    datos: BajaDeClave, request: Request, activa: Annotated[SesionActiva, EN_EL_EQUIPO]
+) -> AvisoRespuesta:
     """Clave perdida o expuesta: los paquetes firmados con ella dejan de verificar."""
     if datos.motivo.strip() == "":
         raise HTTPException(status_code=400, detail=MENSAJE_SIN_MOTIVO)
@@ -213,6 +220,11 @@ def revocar(datos: BajaDeClave, activa: Annotated[SesionActiva, EN_EL_EQUIPO]) -
             )
         except empresas.ContrasenaDeClaveIncorrecta as error:
             FRENO_FIRMA.registrar_fallo(momento)
+            ip = request.client.host if request.client else ""
+            eventos.registrar(
+                bd, "fallo", momento, login=activa.login[:60], ip=ip, detalle="clave de firma"
+            )
+            bd.commit()
             raise _rechazo(error) from None
         except ERRORES_ESPERADOS as error:
             raise _rechazo(error) from None

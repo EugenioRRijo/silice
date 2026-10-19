@@ -21,7 +21,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel
 
-from api.admin_acceso import administrar, administrar_en_el_equipo
+from api.admin_acceso import administrar, administrar_en_el_equipo, sin_cache
 from api.rutas.admin_empresa import SensibleEstado
 from aplicacion import instalacion as logica
 from aplicacion.equipo import operacion_sensible_permitida
@@ -29,7 +29,9 @@ from operacion import base_datos, config, eventos_perdidos
 from seguridad.permisos import Accion, Sensible
 from seguridad.sesiones import SesionActiva
 
-router = APIRouter(prefix="/v1/admin/instalacion", tags=["administracion"])
+router = APIRouter(
+    prefix="/v1/admin/instalacion", tags=["administracion"], dependencies=[Depends(sin_cache)]
+)
 ADMIN = Depends(administrar(Accion.ADMINISTRAR_RED_Y_API))
 EN_EL_EQUIPO = Depends(administrar_en_el_equipo(Sensible.CLAVE_DE_API))
 SIN_CACHE = {"Cache-Control": "no-store"}
