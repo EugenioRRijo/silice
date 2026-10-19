@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
-import type { HallazgoLibroRespuesta } from "../api/tipos";
-import { construirHalos, estiloDeHallazgo } from "./halos";
+import type { HallazgoLibroRespuesta, HojaVisualRespuesta } from "../api/tipos";
+import { construirHalos, estiloDeHallazgo, resumenPorHoja } from "./halos";
 
 function hallazgo(parcial: Partial<HallazgoLibroRespuesta>): HallazgoLibroRespuesta {
   return {
@@ -11,6 +11,22 @@ function hallazgo(parcial: Partial<HallazgoLibroRespuesta>): HallazgoLibroRespue
     impacto: null,
     accion: "Revisar",
     ...parcial,
+  };
+}
+
+function hojaVisible(nombre: string): HojaVisualRespuesta {
+  return {
+    nombre,
+    visible: true,
+    filas: 30,
+    columnas: 10,
+    anchos: {},
+    altos: {},
+    ocultas_filas: [],
+    ocultas_columnas: [],
+    combinadas: [],
+    fijas: null,
+    celdas: [],
   };
 }
 
@@ -74,9 +90,39 @@ describe("construirHalos", () => {
   });
 
   test("una hoja que el libro no tiene tambien es sin celda", () => {
-    const { halos, sinCelda } = construirHalos([hallazgo({ celda: "FANTASMA!A1" })], ["PRESUPUESTO"]);
+    const { halos, sinCelda } = construirHalos([hallazgo({ celda: "FANTASMA!A1" })], [hojaVisible("PRESUPUESTO")]);
     expect(halos).toEqual([]);
     expect(sinCelda).toEqual([0]);
+  });
+
+  test("un hallazgo en una hoja oculta va a ocultos, con el motivo, y no es sin celda ni halo", () => {
+    const { halos, sinCelda, ocultos } = construirHalos(
+      [hallazgo({ celda: "AUX!A1" })],
+      [hojaVisible("PRESUPUESTO"), { ...hojaVisible("AUX"), visible: false }],
+    );
+    expect(halos).toEqual([]);
+    expect(sinCelda).toEqual([]);
+    expect(ocultos).toEqual([{ indice: 0, motivo: "hoja AUX oculta" }]);
+  });
+
+  test("una fila oculta dice cual: fila 19 oculta (base 1, como en Excel)", () => {
+    const hoja = { ...hojaVisible("PRESUPUESTO"), ocultas_filas: [19] };
+    const { halos, ocultos } = construirHalos([hallazgo({ celda: "PRESUPUESTO!F19" })], [hoja]);
+    expect(halos).toEqual([]);
+    expect(ocultos).toEqual([{ indice: 0, motivo: "fila 19 oculta" }]);
+  });
+
+  test("una columna oculta dice la letra, y fila y columna ocultas a la vez, las dos", () => {
+    const hoja = { ...hojaVisible("PRESUPUESTO"), ocultas_columnas: [3], ocultas_filas: [5] };
+    const columna = construirHalos([hallazgo({ celda: "PRESUPUESTO!C9" })], [hoja]);
+    expect(columna.ocultos[0].motivo).toBe("columna C oculta");
+    const ambas = construirHalos([hallazgo({ celda: "PRESUPUESTO!C5" })], [hoja]);
+    expect(ambas.ocultos[0].motivo).toBe("fila 5 oculta y columna C oculta");
+  });
+
+  test("una celda visible de una hoja con filas ocultas sigue teniendo halo", () => {
+    const hoja = { ...hojaVisible("PRESUPUESTO"), ocultas_filas: [19] };
+    expect(construirHalos([hallazgo({ celda: "PRESUPUESTO!F12" })], [hoja]).halos).toHaveLength(1);
   });
 
   test("dos hallazgos en la misma celda comparten halo y gana la mayor severidad", () => {
@@ -95,5 +141,28 @@ describe("construirHalos", () => {
       hallazgo({ codigo: "ATIPICO", severidad: "ADVERTENCIA", celda: "H!B2" }),
     ]);
     expect(halos[0].estilo.token).toBe("--silice-atipico");
+  });
+});
+
+describe("resumenPorHoja (M2)", () => {
+  test("cuenta los hallazgos de cada hoja y dice la severidad mas grave", () => {
+    const { halos } = construirHalos([
+      hallazgo({ severidad: "INFO", celda: "PRESUPUESTO!B2" }),
+      hallazgo({ severidad: "ERROR", celda: "PRESUPUESTO!C3" }),
+      hallazgo({ severidad: "ERROR", celda: "PRESUPUESTO!C3" }),
+      hallazgo({ severidad: "ADVERTENCIA", celda: "APU-01!A1" }),
+    ]);
+    const r = resumenPorHoja(halos);
+    expect(r.get("PRESUPUESTO")).toMatchObject({ total: 3, severidad: "ERROR" });
+    expect(r.get("APU-01")).toMatchObject({ total: 1, severidad: "ADVERTENCIA" });
+    expect(r.has("PORTADA")).toBe(false);
+  });
+
+  test("a igual gravedad entre celdas, la hoja conserva esa severidad", () => {
+    const { halos } = construirHalos([
+      hallazgo({ severidad: "ERROR", celda: "H!A1" }),
+      hallazgo({ severidad: "ERROR", celda: "H!A2" }),
+    ]);
+    expect(resumenPorHoja(halos).get("H")).toMatchObject({ total: 2, severidad: "ERROR" });
   });
 });

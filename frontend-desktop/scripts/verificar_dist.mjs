@@ -40,13 +40,27 @@ export const ANFITRIONES_DE_UNIVER = new Set([
 //  - reactrouter.com: enlace dentro de un mensaje de error («must be used within a data router. See ...»).
 //  - localhost: base falsa de `new URL(ruta, "http://localhost")`, para interpretar rutas relativas.
 export const ANFITRIONES_DEL_ENRUTADOR = new Set(["reactrouter.com", "localhost"]);
+// Solo en el bundle de los graficos (GraficoCarbon-*.js, Carbon Charts): enlaces de documentacion dentro de avisos de
+// consola y de mensajes de error (charts.carbondesignsystem.com, el de date-fns en github.com). Nunca se piden a la red.
+export const ANFITRIONES_DE_GRAFICOS = new Set(["charts.carbondesignsystem.com", "github.com"]);
+const ARCHIVO_DE_GRAFICOS = /(^|[\\/])GraficoCarbon-[^\\/]*\.js$/;
+// Solo en el bundle de Administracion (administracion-*.js): el texto «solo http://127.0.0.1:PUERTO» que describe la red
+// local. Es la direccion de este mismo equipo, escrita en un mensaje, no una peticion.
+export const ANFITRIONES_DE_ADMINISTRACION = new Set(["127.0.0.1"]);
+const ARCHIVO_DE_ADMINISTRACION = /(^|[\\/])administracion-[^\\/]*\.js$/;
 const ARCHIVO_PRINCIPAL = /(^|[\\/])index-[^\\/]*\.js$/;
 
 // "reactjs.org" es un enlace de un mensaje de advertencia de React (como react.dev); "${...}" es un fragmento
 // de plantilla de texto (`https://${direccion}`), no un anfitrion.
 const ARCHIVO_DE_UNIVER = /(^|[\\/])adaptadorUniver-[^\\/]*\.(js|css)$/;
 
-const URL_EXTERNA = /https?:\/\/([^\s/'"`)\\<>?#:]+)/gi;
+// http, https, ws y wss con anfitrion.
+const URL_EXTERNA = /(?:https?|wss?):\/\/([^\s/'"`)\\<>?#:]+)/gi;
+// URLs sin esquema que el navegador completa con el del sitio y mandan a otro anfitrion: url(//host/...) y
+// @import "//host/..." en CSS, y src="//host/..." o href="//host/..." en HTML. Una ruta propia (/app/...) lleva una
+// sola barra y no coincide.
+const URL_SIN_ESQUEMA_CSS = /(?:url\(\s*|@import\s+)['"]?\/\/([^\s/'")\\<>?#:]+)/gi;
+const URL_SIN_ESQUEMA_HTML = /\b(?:src|href)\s*=\s*['"]\/\/([^\s/'">\\<?#:]+)/gi;
 
 function* archivos(carpeta) {
   for (const nombre of readdirSync(carpeta)) {
@@ -69,12 +83,18 @@ export function verificarDist(carpeta) {
     cuenta += 1;
     const texto = contenido.toString("latin1");
     const vistos = new Set();
-    for (const m of texto.matchAll(URL_EXTERNA)) {
+    const extension = ruta.slice(ruta.lastIndexOf(".")).toLowerCase();
+    const candidatas = [...texto.matchAll(URL_EXTERNA)];
+    if (extension === ".css") candidatas.push(...texto.matchAll(URL_SIN_ESQUEMA_CSS));
+    if (extension === ".html") candidatas.push(...texto.matchAll(URL_SIN_ESQUEMA_HTML));
+    for (const m of candidatas) {
       const anfitrion = m[1].toLowerCase();
       if (anfitrion.startsWith("${")) continue; // fragmento de plantilla de texto
       if (ANFITRIONES_PERMITIDOS.has(anfitrion) || vistos.has(anfitrion)) continue;
       if (ARCHIVO_DE_UNIVER.test(ruta) && ANFITRIONES_DE_UNIVER.has(anfitrion)) continue;
       if (ARCHIVO_PRINCIPAL.test(ruta) && ANFITRIONES_DEL_ENRUTADOR.has(anfitrion)) continue;
+      if (ARCHIVO_DE_ADMINISTRACION.test(ruta) && ANFITRIONES_DE_ADMINISTRACION.has(anfitrion)) continue;
+      if (ARCHIVO_DE_GRAFICOS.test(ruta) && ANFITRIONES_DE_GRAFICOS.has(anfitrion)) continue;
       vistos.add(anfitrion);
       problemas.push(`${ruta}: URL hacia el anfitrion externo ${anfitrion} (RNF-22)`);
     }

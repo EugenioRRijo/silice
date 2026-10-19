@@ -15,6 +15,8 @@ import { MenuLateral } from "./MenuLateral";
 import { PAGINAS, enlaceClasico, estaMigrada, rutaDe, visible } from "./rutas";
 import type { PaginaDef } from "./rutas";
 import { SelectorCaso, SelectorProyecto } from "./Selectores";
+import type { AlmacenDelVisor } from "../visor/almacen";
+import type { CrearHojaVisor } from "../visor/hojaVisor";
 
 export const MENSAJE_SIN_PERMISO = "Su cuenta no tiene permiso para esta pantalla o acción.";
 
@@ -27,6 +29,10 @@ interface Props {
   paginas?: readonly PaginaDef[];
   // Base de la interfaz Streamlit (por ejemplo http://127.0.0.1:8501), si se conoce.
   urlClasica?: string | null;
+  // Lo abierto en «Libro de la empresa», guardado por encima de la puerta de sesion (UC-26).
+  almacen?: AlmacenDelVisor;
+  // Solo en pruebas: el visor de hojas (por omision, Univer).
+  crearHoja?: CrearHojaVisor;
 }
 
 // Un elemento `lazy` por pagina, estable entre renders: React no vuelve a pedir el archivo. Se crea fuera del
@@ -86,7 +92,7 @@ function esSinPermiso(e: unknown): boolean {
 }
 
 // Marco de la interfaz: cabecera con caso y proyecto, menu por rol y modo entrega, y la pagina de la ruta.
-export function Shell({ sesion, alSalir, alExpirar, paginas = PAGINAS, urlClasica }: Props) {
+export function Shell({ sesion, alSalir, alExpirar, paginas = PAGINAS, urlClasica, almacen, crearHoja }: Props) {
   const ubicacion = useLocation();
   const [menuAbierto, setMenuAbierto] = useState(false);
   const [casos, setCasos] = useState<CasosRespuesta | null>(null);
@@ -96,6 +102,8 @@ export function Shell({ sesion, alSalir, alExpirar, paginas = PAGINAS, urlClasic
   const [recarga, setRecarga] = useState(0);
   const [error, setError] = useState<unknown>(null);
   const [aviso, setAviso] = useState<string | null>(null);
+  // Donde la pagina «Libro de la empresa» pinta sus controles en la cabecera (portal).
+  const [ranura, setRanura] = useState<HTMLElement | null>(null);
   // Cambia con el caso: las paginas se vuelven a montar y piden sus datos de nuevo.
   const [generacion, setGeneracion] = useState(0);
 
@@ -171,8 +179,17 @@ export function Shell({ sesion, alSalir, alExpirar, paginas = PAGINAS, urlClasic
   const recargarProyectos = useCallback(() => setRecarga((n) => n + 1), []);
 
   const aplicacion = useMemo<Aplicacion>(
-    () => ({ sesion, proyecto, caso: casos?.actual ?? null, recargarProyectos, alExpirar }),
-    [sesion, proyecto, casos, recargarProyectos, alExpirar],
+    () => ({
+      sesion,
+      proyecto,
+      caso: casos?.actual ?? null,
+      recargarProyectos,
+      alExpirar,
+      almacenDelLibro: almacen,
+      ranuraCabecera: ranura,
+      crearHojaVisor: crearHoja,
+    }),
+    [sesion, proyecto, casos, recargarProyectos, alExpirar, almacen, ranura, crearHoja],
   );
 
   const primera = paginas.find((p) => estaMigrada(p) && visible(p, acciones, sesion.modo_entrega));
@@ -196,6 +213,7 @@ export function Shell({ sesion, alSalir, alExpirar, paginas = PAGINAS, urlClasic
         nombre={sesion.nombre}
         alSalir={alSalir}
         selectores={selectores}
+        ranura={setRanura}
         menu={{ abierto: menuAbierto, alternar: () => setMenuAbierto((a) => !a) }}
       />
       <MenuLateral

@@ -5,6 +5,7 @@ import oraculo from "../../../tests/fixtures/replica/libro_minimo.json";
 import type { LibroAuditadoRespuesta, LibroVisualRespuesta } from "../api/tipos";
 import { fijarCsrf } from "../api/cliente";
 import { alertaConTexto } from "../test/ayudas";
+import { hayArchivoPendiente, fijarArchivoPendiente } from "../paginas/inicio/archivoPendiente";
 import { clave, crearHojaFalsa } from "./hojaFalsa";
 import { Visor } from "./Visor";
 
@@ -146,8 +147,11 @@ describe("Visor", () => {
     render(<Visor crearHoja={crearHoja} />);
     await soltar(usuario);
     const franja = await screen.findByRole("region", { name: "Indicadores del libro" });
-    expect(within(franja).getByText("1738.407")).toBeInTheDocument();
-    expect(within(franja).getByRole("group", { name: "Hallazgos por severidad" })).toBeInTheDocument();
+    expect(within(franja).getByText("1.738,407")).toBeInTheDocument();
+    // Los conteos por severidad salen una sola vez: en los filtros de la lista, no en la franja (M3).
+    expect(within(franja).queryByRole("group", { name: "Hallazgos por severidad" })).toBeNull();
+    const filtros = screen.getByRole("group", { name: "Filtrar por severidad" });
+    expect(within(filtros).getByText("Crítico 1")).toBeInTheDocument();
     expect(screen.getByText("El total no coincide con la suma")).toBeInTheDocument();
     expect(screen.getByRole("region", { name: /Sin celda en el libro/ })).toBeInTheDocument();
     expect(crearHoja).toHaveBeenCalledTimes(1);
@@ -159,11 +163,11 @@ describe("Visor", () => {
     await soltar(usuario);
     await screen.findByRole("tablist", { name: "Hojas del libro" });
     expect(screen.getByRole("tab", { name: "PORTADA" })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "PLAN DE PAGOS" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /^PLAN DE PAGOS/ })).toBeInTheDocument();
     expect(screen.queryByRole("tab", { name: "AUX" })).not.toBeInTheDocument();
   });
 
-  test("un hallazgo en una hoja oculta va al grupo sin celda", async () => {
+  test("un hallazgo en una hoja oculta va al grupo de ocultos y dice cual", async () => {
     const usuario = userEvent.setup();
     const conOculta = {
       ...auditoria,
@@ -174,15 +178,19 @@ describe("Visor", () => {
     );
     render(<Visor crearHoja={crearHoja} />);
     await soltar(usuario);
-    const grupo = await screen.findByRole("region", { name: /Sin celda en el libro/ });
+    const grupo = await screen.findByRole("region", { name: /En hoja, fila o columna oculta/ });
     expect(within(grupo).getByText("Error en la hoja auxiliar")).toBeInTheDocument();
+    expect(within(grupo).getByText("hoja AUX oculta")).toBeInTheDocument();
   });
 
   test("elegir una pestana cambia de hoja", async () => {
     const usuario = userEvent.setup();
     render(<Visor crearHoja={crearHoja} />);
     await soltar(usuario);
-    await usuario.click(await screen.findByRole("tab", { name: "PLAN DE PAGOS" }));
+    await usuario.click(await screen.findByRole("tab", { name: "PORTADA" }));
+    expect(hoja.irAHoja).toHaveBeenLastCalledWith("PORTADA");
+    hoja.irAHoja.mockClear();
+    await usuario.click(await screen.findByRole("tab", { name: /^PLAN DE PAGOS/ }));
     expect(hoja.irAHoja).toHaveBeenCalledWith("PLAN DE PAGOS");
   });
 
@@ -216,13 +224,94 @@ describe("Visor", () => {
 
   test("pinta el halo del hallazgo sobre su celda cuando esa hoja esta a la vista", async () => {
     const usuario = userEvent.setup();
-    render(<Visor crearHoja={crearHoja} />);
+    const { container } = render(<Visor crearHoja={crearHoja} />);
     await soltar(usuario);
     await screen.findByText("El total no coincide con la suma");
-    expect(screen.queryByRole("img", { name: /PLAN DE PAGOS!F12/ })).not.toBeInTheDocument();
+    // El libro abre en la hoja del hallazgo (M2): el halo ya esta.
+    expect(container.querySelectorAll(".halo")).toHaveLength(1);
+    hoja.fijarHoja("PORTADA");
+    act(() => hoja.cambiar());
+    expect(container.querySelectorAll(".halo")).toHaveLength(0);
     hoja.fijarHoja("PLAN DE PAGOS");
     act(() => hoja.cambiar());
-    expect(screen.getByRole("img", { name: /Crítico.*PLAN DE PAGOS!F12/ })).toBeInTheDocument();
+    expect(container.querySelectorAll(".halo")).toHaveLength(1);
+  });
+
+  test("el libro abre en la primera hoja con hallazgos, no en la primera del libro (M2)", async () => {
+    const usuario = userEvent.setup();
+    render(<Visor crearHoja={crearHoja} />);
+    await soltar(usuario);
+    await screen.findByRole("tablist", { name: "Hojas del libro" });
+    await waitFor(() => expect(hoja.irAHoja).toHaveBeenCalledWith("PLAN DE PAGOS"));
+    expect(screen.getByRole("tab", { name: /PLAN DE PAGOS/ })).toHaveAttribute("aria-selected", "true");
+  });
+
+  test("si ninguna hoja tiene hallazgos, abre en la primera (M2)", async () => {
+    const usuario = userEvent.setup();
+    fetchFalso.mockImplementation(async (entrada) =>
+      String(entrada).endsWith("/replica") ? json(replica) : json({ ...auditoria, hallazgos: [] }),
+    );
+    render(<Visor crearHoja={crearHoja} />);
+    await soltar(usuario);
+    await screen.findByRole("tablist", { name: "Hojas del libro" });
+    expect(hoja.irAHoja).not.toHaveBeenCalled();
+  });
+
+  test("cada pestana con hallazgos lleva su conteo y la severidad mas grave, dicho con texto (M2)", async () => {
+    const usuario = userEvent.setup();
+    render(<Visor crearHoja={crearHoja} />);
+    await soltar(usuario);
+    const pestana = await screen.findByRole("tab", { name: /PLAN DE PAGOS/ });
+    expect(pestana).toHaveTextContent(/PLAN DE PAGOS\s*1/);
+    expect(within(pestana).getByText(/1 hallazgo, el más grave: Crítico/)).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "PORTADA" })).toBeInTheDocument();
+  });
+
+  test("con una ranura de cabecera, la fecha, el nombre del libro y Cambiar libro van alli (M3)", async () => {
+    const usuario = userEvent.setup();
+    const ranura = document.createElement("div");
+    document.body.appendChild(ranura);
+    const { container } = render(<Visor crearHoja={crearHoja} ranuraCabecera={ranura} />);
+    expect(within(ranura).getByLabelText("Fecha de devolución")).toBeInTheDocument();
+    expect(container.querySelector(".visor__barra")).toBeNull();
+    await soltar(usuario);
+    await within(ranura).findByText("libro_minimo.xlsx");
+    expect(within(ranura).getAllByText("Cambiar libro").length).toBeGreaterThan(0);
+    ranura.remove();
+  });
+
+  test("sin ranura aun (null) no pinta los controles ni los duplica (M3)", () => {
+    render(<Visor crearHoja={crearHoja} ranuraCabecera={null} />);
+    expect(screen.queryByLabelText("Fecha de devolución")).toBeNull();
+  });
+
+  test("la pagina tiene un h1 para lectores de pantalla (m3)", () => {
+    render(<Visor crearHoja={crearHoja} />);
+    expect(screen.getByRole("heading", { level: 1 })).toBeInTheDocument();
+  });
+
+  test("el estado vacio tiene titulo y explica para que sirve la fecha de devolucion (m5)", () => {
+    render(<Visor crearHoja={crearHoja} />);
+    expect(screen.getByRole("heading", { level: 2, name: /libro/i })).toBeInTheDocument();
+    expect(screen.getByText(/fecha de devolución/i, { selector: ".visor__ayuda-fecha, .visor__ayuda-fecha *" })).toBeInTheDocument();
+  });
+
+  test("al cargar dice con texto que esta pasando (m4)", async () => {
+    const usuario = userEvent.setup();
+    fetchFalso.mockImplementation(() => new Promise<Response>(() => {}));
+    render(<Visor crearHoja={crearHoja} />);
+    await soltar(usuario);
+    expect(await screen.findByText("Leyendo el libro y auditándolo…")).toBeInTheDocument();
+  });
+
+  test("la hoja del libro no es un tabulador mas: el lienzo se nombra y no entra en el orden de Tab (m3)", async () => {
+    const usuario = userEvent.setup();
+    const { container } = render(<Visor crearHoja={crearHoja} />);
+    await soltar(usuario);
+    await screen.findByRole("tablist", { name: "Hojas del libro" });
+    const lienzo = container.querySelector(".visor__lienzo") as HTMLElement;
+    expect(lienzo).toHaveAttribute("role", "group");
+    expect(lienzo).toHaveAttribute("aria-label", "Hoja del libro, solo lectura");
   });
 
   test("un error de la API se muestra con su detalle tal cual", async () => {
@@ -306,5 +395,24 @@ describe("Visor", () => {
     await screen.findByText("El total no coincide con la suma");
     vista.unmount();
     expect(hoja.destruir).toHaveBeenCalled();
+  });
+
+  test("al montar toma el archivo que Inicio dejo pendiente y lo carga con la fecha del visor", async () => {
+    fijarArchivoPendiente(libroXlsx(), "propio");
+    render(<Visor crearHoja={crearHoja} />);
+    await waitFor(() => expect(fetchFalso).toHaveBeenCalledTimes(2));
+    const rutas = fetchFalso.mock.calls.map((c) => String(c[0])).sort();
+    expect(rutas).toEqual(["/v1/libros/auditoria", "/v1/libros/replica"]);
+    const auditar = fetchFalso.mock.calls.find((c) => String(c[0]).endsWith("auditoria"));
+    expect(((auditar?.[1]?.body as FormData).get("libro") as File).name).toBe("libro_minimo.xlsx");
+    expect((auditar?.[1]?.body as FormData).get("fecha_devolucion")).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    await screen.findByText("El total no coincide con la suma");
+    // Quien lo toma se hace cargo: no queda pendiente.
+    expect(hayArchivoPendiente()).toBe(false);
+  });
+
+  test("sin archivo pendiente no pide nada al montar", () => {
+    render(<Visor crearHoja={crearHoja} />);
+    expect(fetchFalso).not.toHaveBeenCalled();
   });
 });
