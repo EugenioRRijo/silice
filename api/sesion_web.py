@@ -47,9 +47,7 @@ def csrf_de(ficha: str) -> str:
 
 def poner_cookie(respuesta: Response, ficha: str) -> None:
     """`silice_sesion` de sesión (sin `Max-Age`), `HttpOnly`, `SameSite=Strict`, sin `Secure`."""
-    respuesta.set_cookie(
-        COOKIE, ficha, path="/", httponly=True, samesite="strict", secure=False
-    )
+    respuesta.set_cookie(COOKIE, ficha, path="/", httponly=True, samesite="strict", secure=False)
 
 
 def borrar_cookie(respuesta: Response) -> None:
@@ -103,12 +101,13 @@ def exigir_csrf_y_origen(request: Request, ficha: str) -> None:
         raise HTTPException(status_code=403, detail=MENSAJE_ORIGEN)
 
 
-def exigir_clave_o_sesion(accion: Accion) -> Callable[[Request], SesionActiva | None]:
-    """Dependencia de las rutas que usan la interfaz nueva y las integraciones (RS2-5).
+def exigir_clave_o_sesion(accion: Accion | None) -> Callable[[Request], SesionActiva | None]:
+    """Dependencia de las rutas que usan la interfaz nueva y las integraciones (RS2-5, RM-3).
 
     Con la cabecera `X-Silice-Clave` (aunque venga vacía) se comporta como `exigir_clave_api`
-    y no mira la cookie. Sin ella: cookie vigente (401), CSRF y `Origin` en métodos que escriben
-    (403) y un rol con `accion` (403). Devuelve la sesión del navegador, o `None` por clave.
+    y no mira la cookie. Sin ella: cookie vigente (401), contraseña ya cambiada (403), CSRF y
+    `Origin` en métodos que escriben (403) y un rol con `accion` (403; con `None`, cualquier
+    rol). Devuelve la sesión del navegador, o `None` por clave.
     """
 
     def dependencia(request: Request) -> SesionActiva | None:
@@ -117,11 +116,13 @@ def exigir_clave_o_sesion(accion: Accion) -> Callable[[Request], SesionActiva | 
             return None
         ficha, activa = exigir_sesion(request)
         exigir_csrf_y_origen(request, ficha)
-        try:
-            exigir(activa.roles, accion)
-        except PermisoDenegado as error:
-            raise HTTPException(status_code=403, detail=str(error)) from None
+        if accion is not None:
+            try:
+                exigir(activa.roles, accion)
+            except PermisoDenegado as error:
+                raise HTTPException(status_code=403, detail=str(error)) from None
         return activa
 
-    dependencia.__name__ = f"exigir_clave_o_sesion_{accion.value}"
+    sufijo = "cualquier_rol" if accion is None else accion.value
+    dependencia.__name__ = f"exigir_clave_o_sesion_{sufijo}"
     return dependencia

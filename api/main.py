@@ -6,6 +6,7 @@ from fastapi.responses import JSONResponse
 from api import interfaz
 from api.proteccion import exigir_clave_api, opciones_documentacion, proteger
 from api.rutas import (
+    acerca,
     auditorias,
     catalogo,
     computos,
@@ -45,6 +46,8 @@ app.include_router(auditorias.router, dependencies=CON_CLAVE)  # S3 §10: POST /
 app.include_router(libros.router, dependencies=[Depends(exigir_clave_o_sesion(LEER_PROYECTO))])
 # 1.2.0 (RT-9): acceso del navegador por cuenta y cookie; sin clave de API a propósito
 app.include_router(sesion.router)
+# Ola 1 (sesion 2b): GET /v1/acerca, con la clave de API o la sesion de cualquier rol
+app.include_router(acerca.router)
 # 1.2.0 (RT-2): la interfaz nueva, estática y sin secretos, en /app con CSP
 interfaz.montar(app)
 
