@@ -119,8 +119,9 @@ export interface AvisoAtipicos {
 }
 export interface VariacionAtipica {
   insumo: string;
-  // En por ciento con dos decimales, como texto ("0.39").
+  // En por ciento con dos decimales, como texto ("0.39"), y sin redondear ("0.390625").
   porcentaje: string;
+  porcentaje_exacto: string;
   desde: string;
   hasta: string;
   severidad: string;
@@ -147,19 +148,29 @@ export function fechaCorta(iso: string): string {
   return m ? `${m[3]}/${m[2]}/${m[1]}` : iso;
 }
 
-export const COLUMNAS_ATIPICOS: ColumnaDensa[] = [
-  { clave: "insumo", titulo: "Insumo" },
-  { clave: "porcentaje", titulo: "Variación (en USD)", numerica: true, presentar: porcentajeEsVe },
-  { clave: "desde", titulo: "Desde", presentar: fechaCorta },
-  { clave: "hasta", titulo: "Hasta", presentar: fechaCorta },
-  { clave: "severidad", titulo: "Severidad", celda: "severidad" },
-];
+// La celda de la variacion guarda el exacto (su `title` y el orden) y se lee con el redondeo que hizo la API: la
+// interfaz no redondea. Un exacto que no vino en la respuesta se muestra entero.
+export function columnasAtipicos(a: Atipicos): ColumnaDensa[] {
+  const redondeo = new Map(a.variaciones.map((v) => [v.porcentaje_exacto, v.porcentaje]));
+  return [
+    { clave: "insumo", titulo: "Insumo" },
+    {
+      clave: "porcentaje",
+      titulo: "Variación (en USD)",
+      numerica: true,
+      presentar: (exacto) => porcentajeEsVe(redondeo.get(exacto) ?? exacto),
+    },
+    { clave: "desde", titulo: "Desde", presentar: fechaCorta },
+    { clave: "hasta", titulo: "Hasta", presentar: fechaCorta },
+    { clave: "severidad", titulo: "Severidad", celda: "severidad" },
+  ];
+}
 
 export function filasAtipicos(a: Atipicos): FilaDensa[] {
   return a.variaciones.map((v, i) => ({
     id: String(i),
     insumo: v.insumo,
-    porcentaje: v.porcentaje,
+    porcentaje: v.porcentaje_exacto,
     desde: v.desde,
     hasta: v.hasta,
     severidad: v.severidad,

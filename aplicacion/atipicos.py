@@ -86,11 +86,13 @@ class BusquedaAtipicos:
 @dataclass(frozen=True, slots=True)
 class VariacionAtipica:
     """Un hallazgo de RF-100 por partes, para una tabla: el insumo, la variación en por ciento con
-    dos decimales (texto, la misma cifra de la descripción), las dos fechas del tramo, la
-    severidad y la descripción completa."""
+    dos decimales (texto, la misma cifra de la descripción) y sin redondear (`porcentaje_exacto`,
+    para que el exacto quede a la vista), las dos fechas del tramo, la severidad y la descripción
+    completa."""
 
     insumo: str
     porcentaje: str
+    porcentaje_exacto: str
     desde: date
     hasta: date
     severidad: Severidad
@@ -109,6 +111,11 @@ def _tal_cual(texto: str) -> str:
 
 def _porcentaje(valor: Decimal) -> str:
     return format((valor * 100).quantize(DOS_DECIMALES), "f")
+
+
+def _porcentaje_exacto(valor: Decimal) -> str:
+    """El por ciento sin redondear y sin ceros de relleno: 0.00390625 -> «0.390625»."""
+    return format((valor * 100).normalize(), "f")
 
 
 def _es_heredado(o: OrigenEfectivo, de_base: OrigenEfectivo | None) -> bool:
@@ -272,6 +279,7 @@ def variaciones_atipicas(
             VariacionAtipica(
                 insumo=codigo,
                 porcentaje=_porcentaje(h.valor_observado),
+                porcentaje_exacto=_porcentaje_exacto(h.valor_observado),
                 desde=desde,
                 hasta=hasta,
                 severidad=h.severidad,

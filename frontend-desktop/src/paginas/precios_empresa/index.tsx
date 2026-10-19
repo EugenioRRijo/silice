@@ -1,6 +1,6 @@
 import { Button, InlineLoading, InlineNotification, Select, SelectItem, TextInput } from "@carbon/react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { FormEvent } from "react";
+import type { CSSProperties, FormEvent } from "react";
 import { ErrorDeApi, pedir } from "../../api/cliente";
 import { AvisoError } from "../../comun/AvisoError";
 import { EsqueletoPagina } from "../../comun/EsqueletoPagina";
@@ -10,7 +10,6 @@ import { TablaDensa } from "../../comun/TablaDensa";
 import { useAplicacion } from "../../shell/contexto";
 import {
   AYUDA,
-  COLUMNAS_ATIPICOS,
   COLUMNAS_DESCONOCIDOS,
   ETIQUETA_ATIPICOS,
   EXTENSIONES,
@@ -25,6 +24,7 @@ import {
   TITULO_HALLAZGOS,
   TITULO_LISTA,
   TITULO_REFERENCIA,
+  columnasAtipicos,
   columnasHallazgos,
   etiquetaBase,
   faltaAlgo,
@@ -56,6 +56,10 @@ type Creacion =
   | { tipo: "falta" }
   | { tipo: "listo"; creada: ListaCreada }
   | { tipo: "error"; error: unknown };
+
+// DESIGN.md: el atipico (RF-100) va en morado. La severidad sigue diciendo «Advertencia» con su icono; solo su color
+// toma el token de los atipicos (como los halos del visor), nunca el color solo.
+const MORADO_ATIPICO = { "--silice-sev-advertencia": "var(--silice-atipico)" } as CSSProperties;
 
 type Busqueda =
   | { tipo: "ninguna" }
@@ -392,7 +396,13 @@ function BuscarAtipicos({ listaId, alExpirar }: PropsSeccion & { listaId: number
             {busqueda.atipicos.variaciones.length > 0 && (
               <>
                 <p className="silice-precios-empresa__nota cds--type-label-01">{NOTA_ATIPICOS}</p>
-                <TablaDensa etiqueta={ETIQUETA_ATIPICOS} columnas={COLUMNAS_ATIPICOS} filas={filasAtipicos(busqueda.atipicos)} />
+                <div className="silice-precios-empresa__tabla-atipicos" style={MORADO_ATIPICO}>
+                  <TablaDensa
+                    etiqueta={ETIQUETA_ATIPICOS}
+                    columnas={columnasAtipicos(busqueda.atipicos)}
+                    filas={filasAtipicos(busqueda.atipicos)}
+                  />
+                </div>
               </>
             )}
           </>

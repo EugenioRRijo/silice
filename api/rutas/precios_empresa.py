@@ -113,10 +113,12 @@ class AvisoAtipicos(BaseModel):
 
 class VariacionAtipicaRespuesta(BaseModel):
     """Un hallazgo de RF-100: `porcentaje` es la variacion en por ciento con dos decimales, como
-    texto (la de la descripcion); `desde` y `hasta`, las fechas de los dos precios."""
+    texto (la de la descripcion), y `porcentaje_exacto` la misma sin redondear (el exacto a la
+    vista); `desde` y `hasta`, las fechas de los dos precios."""
 
     insumo: str
     porcentaje: str
+    porcentaje_exacto: str
     desde: date
     hasta: date
     severidad: str
@@ -271,6 +273,7 @@ def atipicos(lista_id: int, sesion: SesionDep) -> AtipicosRespuesta:
             VariacionAtipicaRespuesta(
                 insumo=v.insumo,
                 porcentaje=v.porcentaje,
+                porcentaje_exacto=v.porcentaje_exacto,
                 desde=v.desde,
                 hasta=v.hasta,
                 severidad=v.severidad.name,
