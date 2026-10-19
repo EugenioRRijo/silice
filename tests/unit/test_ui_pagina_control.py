@@ -118,7 +118,7 @@ def test_declarar_la_linea_base_desde_la_pantalla(monkeypatch, tmp_path):
     assert any("Linea base declarada." in s.value for s in at.success)
     assert _contar(ruta, models.LineaBaseControl) == 1
     vigente = next(m.value for m in at.markdown if "Linea base vigente" in m.value)
-    assert "perspectiva costo" in vigente and texto_seguro("version OB-001") in vigente
+    assert "perspectiva costo" in vigente and texto_seguro("versión OB-001") in vigente
 
 
 def test_una_linea_base_mal_declarada_se_muestra_como_error_y_no_escribe(monkeypatch, tmp_path):

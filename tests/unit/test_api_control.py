@@ -132,7 +132,7 @@ def test_proyecto_inexistente_da_404_y_sin_proyecto_422() -> None:
 def test_la_linea_base_vigente_y_los_parametros_con_su_naturaleza() -> None:
     datos = _con_clave().get("/v1/control/linea-base", params=P).json()
     assert datos["tiene_linea_base"] is True and datos["hay_valuaciones"] is True
-    assert "version OB-001, perspectiva costo" in datos["descripcion"]
+    assert "versión OB-001, perspectiva costo" in datos["descripcion"]
     assert datos["versiones"] == ["OB-001"]
     por_nombre = {p["parametro"]: p for p in datos["parametros"]}
     assert por_nombre["spi_error"]["naturaleza"] == "SUPUESTO_DECLARADO"

@@ -775,23 +775,23 @@ PARAMETROS_EDITABLES = (
     ("cpi_error", "CPI por debajo del cual el sobrecosto es ERROR (AL-2)", NATURALEZA_SUPUESTO),
     (
         "retraso_error",
-        "Retraso del termino, fraccion de D, que pasa a ERROR (AL-3)",
+        "Retraso del término, fracción de D, que pasa a ERROR (AL-3)",
         NATURALEZA_SUPUESTO,
     ),
-    ("precio_info", "Desvio de precio, fraccion del EV, que avisa (AL-5)", NATURALEZA_SUPUESTO),
+    ("precio_info", "Desvío de precio, fracción del EV, que avisa (AL-5)", NATURALEZA_SUPUESTO),
     (
         "equilibrio_puntos",
         "Puntos porcentuales de subida del PE que advierten (AL-4)",
         NATURALEZA_SUPUESTO,
     ),
     ("eta_cuadrilla", "Eficiencia de cada cuadrilla adicional (eta)", NATURALEZA_SUPUESTO),
-    ("cuadrillas_max", "Cuadrillas maximas por frente", NATURALEZA_SUPUESTO),
+    ("cuadrillas_max", "Cuadrillas máximas por frente", NATURALEZA_SUPUESTO),
     ("eta_horas_extra", "Eficiencia de la hora extra (eta_he)", NATURALEZA_SUPUESTO),
-    ("horas_extra_dia", "Horas extra por dia (tope legal 2)", NATURALEZA_SUPUESTO),
-    ("recargo_horas_extra", "Recargo de las horas extra (minimo legal 0,50)", NATURALEZA_SUPUESTO),
-    ("fcas_en_horas_extra", "FCAS sobre las horas extra (si o no)", NATURALEZA_SUPUESTO),
-    ("penalizacion_diaria", "Penalizacion por dia de retraso del contrato", NATURALEZA_DATO),
-    ("fuente_penalizacion", "Fuente de la penalizacion", NATURALEZA_DATO),
+    ("horas_extra_dia", "Horas extra por día (tope legal 2)", NATURALEZA_SUPUESTO),
+    ("recargo_horas_extra", "Recargo de las horas extra (mínimo legal 0,50)", NATURALEZA_SUPUESTO),
+    ("fcas_en_horas_extra", "FCAS sobre las horas extra (sí o no)", NATURALEZA_SUPUESTO),
+    ("penalizacion_diaria", "Penalización por día de retraso del contrato", NATURALEZA_DATO),
+    ("fuente_penalizacion", "Fuente de la penalización", NATURALEZA_DATO),
 )
 COLUMNAS_PARAMETROS = ("Parametro", "Que es", "Valor", "Naturaleza")
 
@@ -916,9 +916,9 @@ def describir_linea_base(sesion: Session, proyecto: str) -> str | None:
     version = sesion.get(models.Presupuesto, fila.presupuesto_id)
     calendario = fila.calendario
     return (
-        f"version {version.codigo}, perspectiva {fila.perspectiva}, vigente desde "
+        f"versión {version.codigo}, perspectiva {fila.perspectiva}, vigente desde "
         f"{fila.desde.isoformat()}; inicio de obra {calendario.fecha_inicio.isoformat()} con "
-        f"{calendario.dias_por_periodo} dia(s) habil(es) por periodo"
+        f"{calendario.dias_por_periodo} día(s) hábil(es) por periodo"
     )
 
 
