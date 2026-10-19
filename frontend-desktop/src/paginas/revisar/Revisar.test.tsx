@@ -241,8 +241,8 @@ describe("Revisar un paquete", () => {
     expect(((opciones?.body as FormData).get("paquete") as File).name).toBe("recibido.silice");
     expect(screen.getByText("Versión 005 del 2026-11-10; es la primera que recibe de este proyecto.")).toBeInTheDocument();
     expect(screen.getByText("Este paquete se emitió para Obra Norte.")).toBeInTheDocument();
-    const total = screen.getByText("836,80");
-    expect(total).toHaveAttribute("title", "Valor exacto: 836.79750000");
+    const recalculado = screen.getByText("Total recalculado").parentElement as HTMLElement;
+    expect(within(recalculado).getByText("836,80")).toHaveAttribute("title", "Valor exacto: 836.79750000");
     expect(screen.getByText("Reglas corridas a la fecha de emisión (2026-11-10): R1-R7, R11-R12.")).toBeInTheDocument();
     expect(
       screen.getByText("Los precios y totales que declara el paquete coinciden con los recalculados."),
