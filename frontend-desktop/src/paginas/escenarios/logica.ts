@@ -1,5 +1,5 @@
 // Logica pura de «Escenarios de sensibilidad» (UC-08). Sin React; los montos son texto tal como llegan.
-import type { FilaDensa } from "../../comun/TablaDensa";
+import type { ColumnaDensa, FilaDensa } from "../../comun/TablaDensa";
 import type {
   CampoParametro,
   EscenarioPeticion,
@@ -11,21 +11,34 @@ import type {
 } from "./tipos";
 
 export const AYUDA =
-  "Recalcula un presupuesto guardado variando parametros de costo o precios de insumos. " +
-  "El presupuesto base no se altera y ningun escenario se guarda.";
-export const SIN_PRESUPUESTOS = "No hay presupuestos guardados todavia: elabore uno primero (UC-01).";
-export const NOTA_PARAMETROS =
-  "Parametros de costo del escenario (por defecto, los del presupuesto base). Fracciones: 6.00 = prestaciones del 600 %.";
+  "Recalcula un presupuesto guardado variando parámetros de costo o precios de insumos. " +
+  "El presupuesto base no se altera y ningún escenario se guarda.";
+export const SIN_PRESUPUESTOS = "No hay presupuestos guardados todavía: elabore uno primero.";
+export const NOTA_PARAMETROS = "Parámetros de costo del escenario (por defecto, los del presupuesto base).";
 export const NOTA_PRECIOS =
-  "Precios de ensayo (opcional): descripcion exacta del insumo y precio nuevo. Lo no mencionado conserva su precio vigente.";
+  "Precios de ensayo (opcional): descripción exacta del insumo y precio nuevo. Lo no mencionado conserva su precio vigente.";
+export const EJEMPLO_PRECIOS = "p. ej. Cemento Portland → 18.50";
 export const SIN_ESCENARIOS = "Defina un escenario para compararlo contra el presupuesto base.";
-export const TITULO_COMPARACION = "Comparacion contra el base (RF-31)";
-export const AVISO_PENDIENTES = "El presupuesto base tiene items pendientes, sin partida en el catalogo:";
+export const TITULO_COMPARACION = "Comparación contra el base";
+export const AVISO_PENDIENTES = "El presupuesto base tiene ítems pendientes, sin partida en el catálogo:";
 export const NOTA_PENDIENTES =
-  "Pendientes del base: los escenarios solo recalculan los renglones valorados; estos items no suman al total " +
-  "del base ni de ningun escenario (UC-01 3a).";
+  "Pendientes del base: los escenarios solo recalculan los renglones valorados; estos ítems no suman al total " +
+  "del base ni de ningún escenario.";
 
 export const CAMPOS_PARAMETROS: CampoParametro[] = ["fcas", "bono_alimentacion", "administracion", "utilidad"];
+
+export const ROTULOS_PARAMETROS: Record<CampoParametro, string> = {
+  fcas: "FCAS (fracción; 6.00 = prestaciones del 600 %)",
+  bono_alimentacion: "Bono de alimentación",
+  administracion: "Administración",
+  utilidad: "Utilidad",
+};
+
+// Si el detalle de un rechazo nombra un parametro, ese campo se marca ademas del aviso.
+export function campoNombrado(detalle: string): CampoParametro | null {
+  const texto = detalle.toLowerCase();
+  return CAMPOS_PARAMETROS.find((c) => texto.includes(c)) ?? null;
+}
 
 export interface FilaPrecio {
   id: number;
@@ -71,23 +84,24 @@ export function armarEscenario(
   };
 }
 
-export const COLUMNAS_COMPARACION = [
-  { clave: "escenario", titulo: "escenario" },
-  { clave: "total", titulo: "total", numerica: true },
-  { clave: "variacion", titulo: "variacion", numerica: true },
-  { clave: "variacion_pct", titulo: "variacion_pct", numerica: true },
+export const COLUMNAS_COMPARACION: ColumnaDensa[] = [
+  { clave: "escenario", titulo: "Escenario" },
+  { clave: "total", titulo: "Total", numerica: true },
+  { clave: "variacion", titulo: "Variación", numerica: true, celda: "variacion" },
+  { clave: "variacion_pct", titulo: "Variación %", numerica: true, celda: "variacion" },
 ];
 
-export const COLUMNAS_PARTIDAS = [
-  { clave: "codigo_partida", titulo: "codigo_partida" },
-  { clave: "descripcion", titulo: "descripcion" },
-  { clave: "cantidad", titulo: "cantidad", numerica: true },
-  { clave: "pu_anterior", titulo: "pu_anterior", numerica: true },
-  { clave: "pu_nuevo", titulo: "pu_nuevo", numerica: true },
-  { clave: "variacion_pct", titulo: "variacion_pct", numerica: true },
-  { clave: "total_anterior", titulo: "total_anterior", numerica: true },
-  { clave: "total_nuevo", titulo: "total_nuevo", numerica: true },
-  { clave: "incidencia_pct", titulo: "incidencia_pct", numerica: true },
+// Lo importante primero: los totales y su variacion antes que el desglose del precio unitario.
+export const COLUMNAS_PARTIDAS: ColumnaDensa[] = [
+  { clave: "codigo_partida", titulo: "Partida" },
+  { clave: "descripcion", titulo: "Descripción" },
+  { clave: "total_anterior", titulo: "Total anterior", numerica: true },
+  { clave: "total_nuevo", titulo: "Total nuevo", numerica: true },
+  { clave: "variacion_pct", titulo: "Variación %", numerica: true, celda: "variacion" },
+  { clave: "incidencia_pct", titulo: "Incidencia %", numerica: true, celda: "variacion" },
+  { clave: "pu_anterior", titulo: "P.U. anterior", numerica: true },
+  { clave: "pu_nuevo", titulo: "P.U. nuevo", numerica: true },
+  { clave: "cantidad", titulo: "Cantidad", numerica: true },
 ];
 
 // La fila del base: variacion cero, escrita como la API escribe los montos.
@@ -117,7 +131,7 @@ export function filasPartidas(partidas: FilaComparativo[]): FilaDensa[] {
 
 export function notaHallazgos(e: EscenarioRespuesta): string {
   return (
-    `Hallazgos de la auditoria del escenario: ${e.hallazgos} (el informe se genera siempre). ` +
+    `Hallazgos de la auditoría del escenario: ${e.hallazgos} (el informe se genera siempre). ` +
     `Insumos variados: ${e.insumos_variados}.`
   );
 }

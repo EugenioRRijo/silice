@@ -125,4 +125,13 @@ def manejar_value_error(_request: Request, exc: ValueError) -> JSONResponse:
     return JSONResponse(status_code=422, content={"detalle": str(exc)})
 
 
+@app.exception_handler(ArithmeticError)
+def manejar_error_aritmetico(_request: Request, _exc: ArithmeticError) -> JSONResponse:
+    """Un importe mal formado o fuera de rango (`decimal.InvalidOperation`, `Overflow`)."""
+    return JSONResponse(
+        status_code=422,
+        content={"detalle": "un importe esta mal formado o fuera de rango"},
+    )
+
+
 proteger(app)  # al final: ya están todas las rutas y los filtros envuelven la aplicación

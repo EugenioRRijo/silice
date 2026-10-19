@@ -47,3 +47,31 @@
   justify-items: start;
   gap: 0.5rem;
 }
+
+// Celdas con semantica propia (TablaDensa `celda`): la severidad lleva icono y nombre; la variacion de costo,
+// flecha, color IBCS y texto accesible. El color nunca va solo.
+.silice-sev--celda,
+.silice-variacion {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.silice-variacion {
+  font-variant-numeric: tabular-nums;
+}
+
+.silice-informe {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.silice-informe__veredicto {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.silice-informe__ok {
+  color: var(--silice-verificado);
+}

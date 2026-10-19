@@ -64,3 +64,24 @@ Esquemas: `api/esquemas_ola2.py`, `api/esquemas_informe.py`, `api/esquemas.py`. 
 - `GET /presupuestos/{codigo}/escenarios/base?proyecto=` → `{codigo, proyecto, moneda, total, parametros, pendientes_base}`.
 - `POST /presupuestos/{codigo}/escenarios?proyecto=` `{escenarios:[{nombre, fcas?, bono_alimentacion?, administracion?, utilidad?, precios:{}}]}`
   → `EscenariosRespuesta`; `POST .../escenarios/csv` (mismo cuerpo) → CSV exacto.
+
+## Revisiones de la ola (2026-10-18)
+
+Dictámenes de `silice-rev-pruebas` (aprueba con correcciones), `silice-rev-seguridad` (rechazaba por H1) y
+`silice-rev-diseno` (aprueba con correcciones). Cerrado en esta rama:
+
+- Seguridad: H1 (código con ruta en el libro de Excel: nombre fijo en el temporal, código con patrón), H2 (nombre de
+  descarga saneado), H3 (CSV de escenarios sin fórmulas), H4 (topes: 2000 ítems, 5000 filas de plan, 20 escenarios, 1000
+  precios, propuestas solo para los 50 primeros pendientes), H5 (importe desmesurado → 422), H6 (errores de base sin SQL),
+  H8 (servidor de Vite solo en 127.0.0.1). Pruebas en `tests/integration/test_api_ola2_seguridad.py`.
+- Pruebas: hallazgos 1–13 en `tests/integration/test_api_ola2_revision.py` (usuario sellado, plan conservado, curva del
+  plan, informe exacto, aceptar propuesta con total exacto, parámetros congelados, CSV exacto, descarte, rollback, detector,
+  altas, rendimientos).
+- Diseño: severidad con icono y nombre, variación de costo con IBCS (flecha, color y texto), cabeceras en español, tildes y
+  sin códigos de especificación, informe con jerarquía, plan de trabajo sobre el pliegue, selectores civiles sin
+  preselección, detalle de escenarios a ancho completo, densidad `sm`, confirmación al descartar.
+
+Deuda anotada (no bloquea): H7 sellar con el identificador de la clave de API en vez de «api (sin clave)»;
+`POST /presupuestos` no guarda el plan en `PlanVersion` (la revaloración conserva el plan solo de versiones que sí lo
+tienen); duplicación de `_elegidos`; hallazgos 15–17 de pruebas y 12–15 de diseño (dropzone común, alineación de
+cabeceras numéricas, contraste y foco medidos en pantalla, error por campo en Elaborar).

@@ -103,3 +103,12 @@
   min-inline-size: 0;
   overflow-x: auto;
 }
+
+.silice-elaborar__pendientes {
+  inline-size: 100%;
+}
+
+.silice-elaborar__pendientes .silice-elaborar__pendiente {
+  padding-block: 0.5rem;
+  border-block-end: 1px solid var(--cds-border-subtle);
+}

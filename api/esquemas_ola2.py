@@ -6,6 +6,7 @@ texto, con los dos decimales del sistema salvo donde se dice «exacto».
 
 from __future__ import annotations
 
+import re
 from datetime import date
 from typing import Literal
 
@@ -20,6 +21,26 @@ from api.esquemas import (
     PropuestaPartidaRespuesta,
 )
 from api.esquemas_informe import InformeAuditoriaRespuesta, SeveridadRespuesta
+
+#: Un codigo de presupuesto: letras, cifras, punto, guion, guion bajo y espacio (no al inicio),
+#: hasta
+#: 64 caracteres. Sin barras, dos puntos ni comillas: el codigo acaba en nombres de descarga.
+PATRON_CODIGO = r"^[A-Za-z0-9][A-Za-z0-9._ -]{0,63}$"
+MAX_ITEMS = 2000
+MAX_FILAS_DE_PLAN = 5000
+MAX_ESCENARIOS = 20
+MAX_PRECIOS_POR_ESCENARIO = 1000
+
+
+def exigir_codigo(codigo: str, campo: str = "codigo") -> str:
+    """`ValueError` (422) si `codigo` no cumple `PATRON_CODIGO`."""
+    if not re.fullmatch(PATRON_CODIGO, codigo):
+        raise ValueError(
+            f"{campo}: {codigo!r} no es un codigo valido; use letras, cifras, punto, guion y "
+            "espacio (hasta 64 caracteres, sin empezar por un signo)"
+        )
+    return codigo
+
 
 # ---------------------------------------------------------------------------------------------
 # Listado con proyecto
@@ -105,11 +126,11 @@ class CalculoPeticion(BaseModel):
     """UC-01 en modo «solo calcular»: nada se guarda. `plan` son las filas de la tabla del
     proyectista; sin ellas, el plan por defecto (`plan_secuencial`)."""
 
-    codigo: str
+    codigo: str = Field(pattern=PATRON_CODIGO)
     fecha: date
     moneda: str = "USD"
-    items: list[ItemComputoPeticion]
-    plan: list[FilaPlan] | None = None
+    items: list[ItemComputoPeticion] = Field(max_length=MAX_ITEMS)
+    plan: list[FilaPlan] | None = Field(default=None, max_length=MAX_FILAS_DE_PLAN)
 
 
 class PendienteConPropuestasRespuesta(PendienteRespuesta):

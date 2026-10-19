@@ -197,6 +197,13 @@ describe("Elaborar un presupuesto", () => {
   const cuerpoJson = (clave: string, n = 0) => JSON.parse(String(llamadas(clave)[n][1]?.body)) as Record<string, unknown>;
   const campoArchivo = () => document.querySelector('input[type="file"]') as HTMLInputElement;
 
+  async function elegirCuatro(usuario: ReturnType<typeof userEvent.setup>) {
+    await usuario.selectOptions(screen.getByLabelText("Concreto"), "FIC-C1");
+    await usuario.selectOptions(screen.getByLabelText("Encofrado"), "FIC-C2");
+    await usuario.selectOptions(screen.getByLabelText("Excavación"), "FIC-C3");
+    await usuario.selectOptions(screen.getByLabelText("Tubería"), "FIC-C4");
+  }
+
   async function irATelecom(usuario: ReturnType<typeof userEvent.setup>) {
     await usuario.selectOptions(screen.getByLabelText("Dominio"), "telecom");
   }
@@ -216,7 +223,8 @@ describe("Elaborar un presupuesto", () => {
   test("al abrir muestra la ayuda y los parametros por defecto, con Extraer deshabilitado", async () => {
     montar();
     expect(screen.getByRole("heading", { name: "Elaborar un presupuesto" })).toBeInTheDocument();
-    expect(screen.getByText(/carga su archivo de muestra \(data\/samples\/<dominio>\/\)/)).toBeInTheDocument();
+    expect(screen.getByText(/carga su archivo de muestra \(\.csv\) y extrae el cómputo/)).toBeInTheDocument();
+    expect(screen.queryByText(/data\/samples|UC-01/)).toBeNull();
     expect(screen.getByLabelText("Código del presupuesto")).toHaveValue("P-001");
     expect(screen.getByLabelText("Moneda")).toHaveValue("USD");
     expect(screen.getByLabelText("Fecha")).toHaveValue(hoy());
@@ -230,7 +238,7 @@ describe("Elaborar un presupuesto", () => {
   test("civil sin partidas civiles avisa y no deja extraer aunque haya archivo", async () => {
     rutas["GET /partidas?dominio=civil"] = () => json([]);
     const { usuario } = montar();
-    expect(await screen.findByText(/El catalogo no tiene partidas del dominio civil todavia/)).toBeInTheDocument();
+    expect(await screen.findByText(/El catálogo no tiene partidas del dominio civil todavía/)).toBeInTheDocument();
     await usuario.upload(campoArchivo(), new File(["a"], "muestra.csv"));
     expect(screen.getByRole("button", { name: "Extraer cómputo" })).toBeDisabled();
     expect(screen.queryByLabelText("Concreto")).toBeNull();
@@ -240,12 +248,13 @@ describe("Elaborar un presupuesto", () => {
     rutas["GET /partidas?dominio=civil"] = () => json({ detalle: "La base no responde." }, 500);
     montar();
     expect(await alertaConTexto()).toHaveTextContent("La base no responde.");
-    expect(screen.getByText(/El catalogo no tiene partidas del dominio civil todavia/)).toBeInTheDocument();
+    expect(screen.getByText(/El catálogo no tiene partidas del dominio civil todavía/)).toBeInTheDocument();
   });
 
   test("civil con partidas: elige los codigos y manda el mapeo junto al CSV", async () => {
     const { usuario } = montar();
     await screen.findByLabelText("Concreto");
+    await usuario.selectOptions(screen.getByLabelText("Concreto"), "FIC-C1");
     await usuario.selectOptions(screen.getByLabelText("Encofrado"), "FIC-C2");
     await usuario.selectOptions(screen.getByLabelText("Excavación"), "FIC-C3");
     await usuario.selectOptions(screen.getByLabelText("Tubería"), "FIC-C4");
@@ -265,12 +274,33 @@ describe("Elaborar un presupuesto", () => {
     expect(new Headers(init?.headers).get("X-Silice-CSRF")).toBe("tok");
   });
 
+  test("los selectores civiles no preseleccionan nada y Extraer espera a los cuatro", async () => {
+    const { usuario } = montar();
+    await screen.findByLabelText("Concreto");
+    for (const nombre of ["Concreto", "Encofrado", "Excavación", "Tubería"]) {
+      const selector = screen.getByLabelText(nombre) as HTMLSelectElement;
+      expect(selector.value).toBe("");
+      expect(within(selector).getByRole("option", { name: "Elija una partida" })).toBeDisabled();
+    }
+    await usuario.upload(campoArchivo(), new File(["a"], "muestra.csv"));
+    expect(screen.getByRole("button", { name: "Extraer cómputo" })).toBeDisabled();
+    await usuario.selectOptions(screen.getByLabelText("Concreto"), "FIC-C1");
+    await usuario.selectOptions(screen.getByLabelText("Encofrado"), "FIC-C2");
+    await usuario.selectOptions(screen.getByLabelText("Excavación"), "FIC-C3");
+    expect(screen.getByRole("button", { name: "Extraer cómputo" })).toBeDisabled();
+    await usuario.selectOptions(screen.getByLabelText("Tubería"), "FIC-C4");
+    expect(screen.getByRole("button", { name: "Extraer cómputo" })).toBeEnabled();
+  });
+
   test("la casilla de relleno agrega el selector y la clave relleno", async () => {
     const { usuario } = montar();
     await screen.findByLabelText("Concreto");
+    await elegirCuatro(usuario);
     await usuario.click(screen.getByLabelText("Incluir relleno (balance R5)"));
-    await usuario.selectOptions(screen.getByLabelText("Relleno"), "FIC-C2");
     await usuario.upload(campoArchivo(), new File(["a"], "muestra.csv"));
+    expect(screen.getByRole("button", { name: "Extraer cómputo" })).toBeDisabled();
+    await usuario.selectOptions(screen.getByLabelText("Relleno"), "FIC-C2");
+    expect(screen.getByRole("button", { name: "Extraer cómputo" })).toBeEnabled();
     await usuario.click(screen.getByRole("button", { name: "Extraer cómputo" }));
     await screen.findByText("Cómputo extraído");
     const datos = llamadas("POST /computos/civil")[0][1]?.body as FormData;
@@ -284,7 +314,7 @@ describe("Elaborar un presupuesto", () => {
     expect(datos.has("codigos")).toBe(false);
     expect(llamadas("GET /partidas?dominio=civil")).toHaveLength(1);
     const tabla = screen.getByRole("table", { name: "Cómputo extraído" });
-    for (const titulo of ["codigo_partida", "descripcion", "unidad", "cantidad", "origen_id", "origen_tipo", "regla"]) {
+    for (const titulo of ["Partida", "Descripción", "Unidad", "Cantidad", "Origen", "Tipo de origen", "Regla"]) {
       expect(within(tabla).getByText(titulo)).toBeInTheDocument();
     }
     expect(within(tabla).getByText("12.5000")).toBeInTheDocument();
@@ -318,25 +348,26 @@ describe("Elaborar un presupuesto", () => {
     expect(screen.getByText("Total del presupuesto")).toBeInTheDocument();
     expect(screen.getByText("1234.50 USD")).toBeInTheDocument();
     const metricas = screen.getByRole("group", { name: "Métricas del presupuesto" });
-    expect(within(metricas).getByText("ERROR")).toBeInTheDocument();
+    expect(within(metricas).getByText("Error")).toBeInTheDocument();
     expect(within(metricas).getByText("2")).toBeInTheDocument();
-    expect(within(metricas).getByText("ADVERTENCIA")).toBeInTheDocument();
+    expect(within(metricas).getByText("Advertencia")).toBeInTheDocument();
     expect(within(metricas).getByText("1")).toBeInTheDocument();
     expect(screen.queryByText(/Sin hallazgos: la auditoria/)).toBeNull();
     const tabla = screen.getByRole("table", { name: "Partidas del presupuesto" });
-    expect(within(tabla).getByText("precio_unitario")).toBeInTheDocument();
+    expect(within(tabla).getByText("Precio unitario")).toBeInTheDocument();
     expect(within(tabla).getByText("1000.00")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Informe de auditoria" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Informe de auditoría" })).toBeInTheDocument();
     expect(screen.getByText("Hallazgo ficticio uno")).toBeInTheDocument();
   });
 
-  test("durante la elaboracion el boton dice Elaborando...", async () => {
+  test("durante la elaboracion se ve «Elaborando...» y el boton se deshabilita", async () => {
     let terminar: (r: Response) => void = () => {};
     const { usuario } = montar();
     await extraerTelecom(usuario);
     rutas["POST /presupuestos/calcular"] = () => new Promise<Response>((r) => (terminar = r));
     await usuario.click(screen.getByRole("button", { name: "Elaborar presupuesto" }));
-    expect(await screen.findByRole("button", { name: "Elaborando..." })).toBeDisabled();
+    expect(await screen.findByText("Elaborando...")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Elaborar presupuesto" })).toBeDisabled();
     terminar(json(calculo()));
     await screen.findByText("Presupuesto elaborado");
     expect(screen.getByRole("button", { name: "Elaborar presupuesto" })).toBeEnabled();
@@ -346,7 +377,7 @@ describe("Elaborar un presupuesto", () => {
     const { usuario } = montar();
     await extraerTelecom(usuario);
     await elaborar(usuario);
-    expect(screen.getByText("Sin hallazgos: la auditoria no encontro ninguna inconsistencia.")).toBeInTheDocument();
+    expect(screen.getByText("Sin hallazgos: la auditoría no encontró ninguna inconsistencia.")).toBeInTheDocument();
   });
 
   test("un error al elaborar sin plan se muestra y borra el resultado anterior", async () => {
@@ -378,7 +409,8 @@ describe("Elaborar un presupuesto", () => {
     const { usuario } = montar();
     await extraerTelecom(usuario);
     await elaborar(usuario);
-    expect(screen.getByText(/Estos items del computo no tienen partida en el catalogo/)).toBeInTheDocument();
+    expect(screen.getByText(/Estos ítems del cómputo no tienen partida en el catálogo/)).toBeInTheDocument();
+    expect(screen.getByText("Pendientes: 2")).toBeInTheDocument();
     expect(screen.getByText("fila-9 · FIC-X · Zanja inexistente")).toBeInTheDocument();
     expect(screen.getByText("fila-10 · FIC-Y · Muro raro")).toBeInTheDocument();
     expect(screen.getByText("El modelo de similitud no esta disponible.")).toBeInTheDocument();
@@ -392,7 +424,7 @@ describe("Elaborar un presupuesto", () => {
     await waitFor(() => expect(llamadas("POST /presupuestos/calcular")).toHaveLength(2));
     const items = cuerpoJson("POST /presupuestos/calcular", 1).items as ItemComputo[];
     expect(items.map((i) => i.codigo_partida)).toEqual(["FIC-T1", "FIC-Z2"]);
-    await waitFor(() => expect(screen.queryByText("Pendientes")).toBeNull());
+    await waitFor(() => expect(screen.queryByText("Pendientes: 2")).toBeNull());
   });
 
   test("aceptar una propuesta con el computo ya cambiado es un error y no calcula", async () => {
@@ -404,7 +436,7 @@ describe("Elaborar un presupuesto", () => {
     await usuario.click(screen.getByRole("button", { name: "Extraer cómputo" }));
     await alertaConTexto();
     await usuario.click(screen.getByRole("button", { name: "Aplicar y volver a elaborar" }));
-    const mensajes = await screen.findAllByText(/El computo cambio despues de esta elaboracion/);
+    const mensajes = await screen.findAllByText(/El cómputo cambió después de esta elaboración/);
     expect(mensajes.length).toBeGreaterThan(0);
     expect(llamadas("POST /presupuestos/calcular")).toHaveLength(1);
   });
@@ -414,10 +446,10 @@ describe("Elaborar un presupuesto", () => {
     await extraerTelecom(usuario);
     await elaborar(usuario);
     expect(screen.getByRole("heading", { name: "Plan de trabajo" })).toBeInTheDocument();
-    expect(screen.getByText(/Distribuya las partidas en periodos/)).toBeInTheDocument();
-    expect(screen.getByLabelText("Periodo, fila 1")).toHaveValue("1");
-    expect(screen.getByLabelText("Codigo de partida, fila 2")).toHaveValue("FIC-T2");
-    expect(screen.getByLabelText("Fraccion, fila 2")).toHaveValue("1");
+    expect(screen.getByText(/Distribuya las partidas en períodos/)).toBeInTheDocument();
+    expect(screen.getByLabelText("Período, fila 1")).toHaveValue("1");
+    expect(screen.getByLabelText("Partida, fila 2")).toHaveValue("FIC-T2");
+    expect(screen.getByLabelText("Fracción, fila 2")).toHaveValue("1");
     expect(screen.queryByText(/el plan editado antes se descarto/)).toBeNull();
   });
 
@@ -425,13 +457,13 @@ describe("Elaborar un presupuesto", () => {
     const { usuario } = montar();
     await extraerTelecom(usuario);
     await elaborar(usuario);
-    const fraccion = screen.getByLabelText("Fraccion, fila 1");
+    const fraccion = screen.getByLabelText("Fracción, fila 1");
     await usuario.clear(fraccion);
     await usuario.type(fraccion, "0.5");
     await usuario.click(screen.getByRole("button", { name: "Añadir fila" }));
-    await usuario.type(screen.getByLabelText("Periodo, fila 3"), "3");
-    await usuario.type(screen.getByLabelText("Codigo de partida, fila 3"), "FIC-T1");
-    await usuario.type(screen.getByLabelText("Fraccion, fila 3"), "0.5");
+    await usuario.type(screen.getByLabelText("Período, fila 3"), "3");
+    await usuario.type(screen.getByLabelText("Partida, fila 3"), "FIC-T1");
+    await usuario.type(screen.getByLabelText("Fracción, fila 3"), "0.5");
     await usuario.click(screen.getByRole("button", { name: "Aplicar plan y volver a elaborar" }));
     await waitFor(() => expect(llamadas("POST /presupuestos/calcular")).toHaveLength(2));
     expect(cuerpoJson("POST /presupuestos/calcular", 1).plan).toEqual([
@@ -446,8 +478,34 @@ describe("Elaborar un presupuesto", () => {
     await extraerTelecom(usuario);
     await elaborar(usuario);
     await usuario.click(screen.getByRole("button", { name: "Quitar fila 1" }));
-    expect(screen.queryByLabelText("Periodo, fila 2")).toBeNull();
-    expect(screen.getByLabelText("Codigo de partida, fila 1")).toHaveValue("FIC-T2");
+    expect(screen.queryByLabelText("Período, fila 2")).toBeNull();
+    expect(screen.getByLabelText("Partida, fila 1")).toHaveValue("FIC-T2");
+  });
+
+  test("el plan queda justo bajo el presupuesto, antes de pendientes e informe", async () => {
+    rutas["POST /presupuestos/calcular"] = () => json(CON_PENDIENTE);
+    const { usuario } = montar();
+    await extraerTelecom(usuario);
+    await elaborar(usuario);
+    const plan = screen.getByRole("heading", { name: "Plan de trabajo" });
+    const pendientes = screen.getByText("Pendientes: 2");
+    const informe = screen.getByRole("heading", { name: "Informe de auditoría" });
+    expect(plan.compareDocumentPosition(pendientes) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(plan.compareDocumentPosition(informe) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  test("al anadir una fila el foco pasa a su primer campo y al quitar pasa a la siguiente", async () => {
+    const { usuario } = montar();
+    await extraerTelecom(usuario);
+    await elaborar(usuario);
+    await usuario.click(screen.getByRole("button", { name: "Añadir fila" }));
+    expect(screen.getByLabelText("Período, fila 3")).toHaveFocus();
+    await usuario.click(screen.getByRole("button", { name: "Quitar fila 1" }));
+    expect(screen.getByLabelText("Período, fila 1")).toHaveFocus();
+    expect(screen.getByLabelText("Partida, fila 1")).toHaveValue("FIC-T2");
+    await usuario.click(screen.getByRole("button", { name: "Quitar fila 1" }));
+    await usuario.click(screen.getByRole("button", { name: "Quitar fila 1" }));
+    expect(screen.getByRole("button", { name: "Añadir fila" })).toHaveFocus();
   });
 
   test("un plan invalido muestra su detalle y deja a la vista el presupuesto anterior", async () => {
@@ -459,7 +517,7 @@ describe("Elaborar un presupuesto", () => {
     expect(await alertaConTexto()).toHaveTextContent("Las fracciones de FIC-T1 no suman 1.");
     expect(screen.getByText("Presupuesto elaborado")).toBeInTheDocument();
     expect(screen.getByText("1234.50 USD")).toBeInTheDocument();
-    expect(screen.getByLabelText("Periodo, fila 1")).toBeInTheDocument();
+    expect(screen.getByLabelText("Período, fila 1")).toBeInTheDocument();
   });
 
   test("avisa si elaborar sin plan descarta una tabla editada, y no si nadie la toco", async () => {
@@ -470,23 +528,23 @@ describe("Elaborar un presupuesto", () => {
     await waitFor(() => expect(llamadas("POST /presupuestos/calcular")).toHaveLength(2));
     expect(screen.queryByText(/el plan editado antes se descarto/)).toBeNull();
 
-    const fraccion = screen.getByLabelText("Fraccion, fila 1");
+    const fraccion = screen.getByLabelText("Fracción, fila 1");
     await usuario.clear(fraccion);
     await usuario.type(fraccion, "0.25");
     await usuario.click(screen.getByRole("button", { name: "Elaborar presupuesto" }));
-    expect(await screen.findByText(/el plan de trabajo volvio a una partida por dia/)).toBeInTheDocument();
-    expect(screen.getByLabelText("Fraccion, fila 1")).toHaveValue("1");
+    expect(await screen.findByText(/el plan de trabajo volvió a una partida por día/)).toBeInTheDocument();
+    expect(screen.getByLabelText("Fracción, fila 1")).toHaveValue("1");
   });
 
   test("el aviso no se arrastra: si el plan se aplica con exito desaparece", async () => {
     const { usuario } = montar();
     await extraerTelecom(usuario);
     await elaborar(usuario);
-    await usuario.type(screen.getByLabelText("Fraccion, fila 1"), "0");
+    await usuario.type(screen.getByLabelText("Fracción, fila 1"), "0");
     await usuario.click(screen.getByRole("button", { name: "Elaborar presupuesto" }));
-    await screen.findByText(/el plan de trabajo volvio a una partida por dia/);
+    await screen.findByText(/el plan de trabajo volvió a una partida por día/);
     await usuario.click(screen.getByRole("button", { name: "Aplicar plan y volver a elaborar" }));
-    await waitFor(() => expect(screen.queryByText(/el plan de trabajo volvio a una partida por dia/)).toBeNull());
+    await waitFor(() => expect(screen.queryByText(/el plan de trabajo volvió a una partida por día/)).toBeNull());
   });
 
   test("aplicar el plan sin items guardados pide extraer de nuevo", async () => {
@@ -497,7 +555,7 @@ describe("Elaborar un presupuesto", () => {
     await usuario.click(screen.getByRole("button", { name: "Extraer cómputo" }));
     await alertaConTexto();
     await usuario.click(screen.getByRole("button", { name: "Aplicar plan y volver a elaborar" }));
-    expect(await screen.findByText("Extraiga de nuevo el computo antes de aplicar el plan.")).toBeInTheDocument();
+    expect(await screen.findByText("Extraiga de nuevo el cómputo antes de aplicar el plan.")).toBeInTheDocument();
     expect(llamadas("POST /presupuestos/calcular")).toHaveLength(1);
   });
 
@@ -515,10 +573,10 @@ describe("Elaborar un presupuesto", () => {
       expect(await screen.findByRole("heading", { name: "Rendimientos por declarar" })).toBeInTheDocument();
       expect(screen.getByText(/Estas partidas no tienen rendimiento estimado vigente/)).toBeInTheDocument();
       expect(screen.getByText("FIC-T1", { selector: "strong" })).toBeInTheDocument();
-      expect(screen.getByText(/rendimiento propuesto 8.5 unidades por dia \(estimado del 2026-01-02\)/)).toBeInTheDocument();
+      expect(screen.getByText(/rendimiento propuesto 8.5 unidades por día \(estimado del 2026-01-02\)/)).toBeInTheDocument();
       expect(
         screen.getByText(
-          "Dispersion del historico: 3 observaciones (1 medidas, 2 estimadas), media 8.40, rango [7.00, 9.50].",
+          "Dispersión del histórico: 3 observaciones (1 medidas, 2 estimadas), media 8.40, rango [7.00, 9.50].",
         ),
       ).toBeInTheDocument();
       const grupo = screen.getByRole("radiogroup", { name: "Tipo declarado del rendimiento de FIC-T1" });
@@ -534,7 +592,7 @@ describe("Elaborar un presupuesto", () => {
       await usuario.click(screen.getByRole("button", { name: "Elaborar presupuesto" }));
       expect(
         await screen.findByText(
-          "FIC-T2: la partida no tiene ningun rendimiento registrado que proponer; declarelo con sus condiciones en «Componer una partida».",
+          "FIC-T2: la partida no tiene ningún rendimiento registrado que proponer; declárelo con sus condiciones en «Componer una partida».",
         ),
       ).toBeInTheDocument();
       expect(screen.queryByRole("button", { name: "Registrar y volver a elaborar" })).toBeNull();

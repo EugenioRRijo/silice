@@ -2,6 +2,7 @@ import {
   Button,
   Checkbox,
   CheckboxGroup,
+  InlineLoading,
   InlineNotification,
   Select,
   SelectItem,
@@ -17,6 +18,7 @@ import { EstadoVacio } from "../../comun/EstadoVacio";
 import { InformeAuditoria } from "../../comun/InformeAuditoria";
 import { SubidaArchivo } from "../../comun/SubidaArchivo";
 import { TablaDensa } from "../../comun/TablaDensa";
+import { Variacion } from "../../comun/Variacion";
 import { useAplicacion } from "../../shell/contexto";
 import {
   AYUDA,
@@ -33,6 +35,7 @@ import {
   formularioRevaloracion,
   hoyIso,
   nombreDeLista,
+  preguntaDescartar,
   rutaDescartar,
   rutaExcel,
   textoDadosDeAlta,
@@ -60,7 +63,7 @@ type Resultado =
   | { tipo: "listo"; respuesta: Revaloracion; proyecto: string }
   | { tipo: "error"; error: unknown };
 
-type Descarte = { tipo: "no" } | { tipo: "enCurso" } | { tipo: "hecho" } | { tipo: "error"; error: unknown };
+type Descarte = { tipo: "no" } | { tipo: "confirmar" } | { tipo: "enCurso" } | { tipo: "hecho" } | { tipo: "error"; error: unknown };
 
 // «Actualizar precios» (UC-02): una lista de precios nueva revalora un presupuesto guardado, registra que cambio y
 // audita la version nueva. La interfaz no calcula nada: los montos y el resumen llegan de la API como texto.
@@ -284,8 +287,9 @@ export default function PaginaActualizacion() {
 
           <div className="silice-actualizacion__acciones">
             <Button type="submit" kind="primary" size="md" disabled={archivo === null || revalorando}>
-              {revalorando ? "Revalorando..." : "Revalorar presupuesto"}
+              Revalorar presupuesto
             </Button>
+            {revalorando && <InlineLoading description="Revalorando..." status="active" />}
           </div>
         </form>
       )}
@@ -298,6 +302,8 @@ export default function PaginaActualizacion() {
             proyecto={resultado.proyecto}
             descarte={descarte}
             alDescartar={descartar}
+            alPedirDescarte={() => setDescarte({ tipo: "confirmar" })}
+            alCancelarDescarte={() => setDescarte({ tipo: "no" })}
             alExpirar={alExpirar}
           />
         )}
@@ -311,11 +317,25 @@ interface PropsResultado {
   proyecto: string;
   descarte: Descarte;
   alDescartar: (codigo: string, proyecto: string) => void;
+  alPedirDescarte: () => void;
+  alCancelarDescarte: () => void;
   alExpirar: () => void;
 }
 
-function ResultadoRevaloracion({ respuesta, proyecto, descarte, alDescartar, alExpirar }: PropsResultado) {
+function ResultadoRevaloracion({
+  respuesta,
+  proyecto,
+  descarte,
+  alDescartar,
+  alPedirDescarte,
+  alCancelarDescarte,
+  alExpirar,
+}: PropsResultado) {
   const guardada = respuesta.version_guardada;
+  const titulo = useRef<HTMLHeadingElement>(null);
+  useEffect(() => {
+    titulo.current?.focus();
+  }, []);
   return (
     <div className="silice-actualizacion__resultado">
       {respuesta.avisos.map((a, i) => (
@@ -329,11 +349,40 @@ function ResultadoRevaloracion({ respuesta, proyecto, descarte, alDescartar, alE
           hideCloseButton
         />
       ))}
-      <h2 className="cds--type-heading-03">Comparativo por partida</h2>
-      <div className="silice-actualizacion__metrica">
-        <span className="cds--type-label-01">Total del presupuesto</span>
-        <span className="cds--type-heading-04">{respuesta.resumen}</span>
-      </div>
+      <h2 ref={titulo} tabIndex={-1} className="cds--type-heading-03">
+        Comparativo por partida
+      </h2>
+      <section className="silice-actualizacion__totales" aria-label="Total del presupuesto">
+        <p className="cds--type-label-01">
+          Total del presupuesto <span className="cds--visually-hidden">{respuesta.resumen}</span>
+        </p>
+        <dl className="silice-actualizacion__datos">
+          <div>
+            <dt className="cds--type-label-01">Anterior</dt>
+            <dd className="cds--type-heading-04">{respuesta.total_anterior}</dd>
+          </div>
+          <div>
+            <dt className="cds--type-label-01">Nuevo</dt>
+            <dd className="cds--type-heading-04">{respuesta.total_nuevo}</dd>
+          </div>
+          <div>
+            <dt className="cds--type-label-01">Variación</dt>
+            <dd className="cds--type-heading-04">
+              <Variacion valor={respuesta.variacion} />
+            </dd>
+          </div>
+          <div>
+            <dt className="cds--type-label-01">Variación %</dt>
+            <dd className="cds--type-heading-04">
+              <Variacion valor={respuesta.variacion_pct} />
+            </dd>
+          </div>
+          <div>
+            <dt className="cds--type-label-01">Moneda</dt>
+            <dd className="cds--type-heading-04">{respuesta.moneda}</dd>
+          </div>
+        </dl>
+      </section>
       <TablaDensa
         etiqueta="Comparativo por partida"
         columnas={COLUMNAS_COMPARATIVO}
@@ -377,7 +426,7 @@ function ResultadoRevaloracion({ respuesta, proyecto, descarte, alDescartar, alE
           alExpirar={alExpirar}
         />
       )}
-      <h2 className="cds--type-heading-03">Informe de auditoria de la version nueva</h2>
+      <h2 className="cds--type-heading-03">Informe de auditoría de la versión nueva</h2>
       <InformeAuditoria informe={respuesta.informe} />
       {guardada !== null && (
         <div className="silice-actualizacion__acciones">
@@ -394,11 +443,22 @@ function ResultadoRevaloracion({ respuesta, proyecto, descarte, alDescartar, alE
             <Button
               kind="danger--tertiary"
               size="md"
-              disabled={descarte.tipo === "enCurso"}
-              onClick={() => alDescartar(guardada, proyecto)}
+              disabled={descarte.tipo === "enCurso" || descarte.tipo === "confirmar"}
+              onClick={alPedirDescarte}
             >
-              Descartar version
+              Descartar versión
             </Button>
+          )}
+          {descarte.tipo === "confirmar" && (
+            <div role="group" aria-label="Confirmar descarte" className="silice-actualizacion__confirmar">
+              <p className="cds--type-body-compact-01">{preguntaDescartar(guardada)}</p>
+              <Button kind="danger" size="sm" onClick={() => alDescartar(guardada, proyecto)}>
+                Confirmar descarte
+              </Button>
+              <Button kind="ghost" size="sm" onClick={alCancelarDescarte}>
+                Cancelar
+              </Button>
+            </div>
           )}
           {descarte.tipo === "error" && <AvisoError error={descarte.error} titulo="No se pudo descartar" />}
         </div>

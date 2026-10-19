@@ -9,8 +9,8 @@ const CON_HALLAZGOS: InformeAuditoriaRespuesta = {
   veredicto: "NO CUMPLE",
   total_hallazgos: 2,
   por_severidad: [
-    { severidad: "ALTA", total: 1 },
-    { severidad: "BAJA", total: 1 },
+    { severidad: "ERROR", total: 1 },
+    { severidad: "ADVERTENCIA", total: 1 },
   ],
   reglas_evaluadas: [
     { regla: "R1", nombre: "Cantidades positivas", hallazgos: 0 },
@@ -20,7 +20,7 @@ const CON_HALLAZGOS: InformeAuditoriaRespuesta = {
     {
       numero: 1,
       regla: "R4",
-      severidad: "ALTA",
+      severidad: "ERROR",
       partida: "LB-01-EXC",
       descripcion: "![x](http://ejemplo.invalido/p.png) insumo raro",
       impacto: "12.50",
@@ -31,7 +31,7 @@ const CON_HALLAZGOS: InformeAuditoriaRespuesta = {
     {
       numero: 2,
       regla: "R4",
-      severidad: "BAJA",
+      severidad: "ADVERTENCIA",
       partida: null,
       descripcion: "Otro hallazgo",
       impacto: null,
@@ -66,7 +66,9 @@ describe("InformeAuditoria", () => {
   test("declara las reglas evaluadas con su cuenta, aunque sea cero", () => {
     render(<InformeAuditoria informe={CON_HALLAZGOS} />);
 
-    const tabla = screen.getByRole("table", { name: "Reglas evaluadas" });
+    const acordeon = screen.getByRole("button", { name: /Reglas evaluadas: 2, con hallazgos: 1/ });
+    expect(acordeon).toBeInTheDocument();
+    const tabla = screen.getByRole("table", { name: "Reglas evaluadas", hidden: true });
     expect(within(tabla).getByText("Cantidades positivas")).toBeInTheDocument();
     expect(within(tabla).getByText("Subcadena")).toBeInTheDocument();
   });
@@ -87,6 +89,16 @@ describe("InformeAuditoria", () => {
 
     expect(screen.queryByText(/null/)).toBeNull();
     expect(screen.queryByText(/undefined/)).toBeNull();
+  });
+
+  test("la severidad lleva icono y nombre, y las columnas sin ningun valor no se muestran", () => {
+    render(<InformeAuditoria informe={CON_HALLAZGOS} />);
+
+    const tabla = screen.getByRole("table", { name: "Hallazgos" });
+    expect(within(tabla).getByText("Advertencia")).toBeInTheDocument();
+    expect(within(tabla).getByText("Error")).toBeInTheDocument();
+    expect(within(tabla).queryByText("Esperado")).toBeNull(); // ningun hallazgo trae valor esperado
+    expect(within(tabla).getByText("Impacto")).toBeInTheDocument();
   });
 
   test("sin hallazgos declara que se verificó y no muestra la tabla de hallazgos", () => {

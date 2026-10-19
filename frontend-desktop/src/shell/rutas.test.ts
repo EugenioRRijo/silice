@@ -56,6 +56,23 @@ describe("registro de paginas", () => {
       "escenarios",
       "similares",
       "simulador",
+  test("estan migradas las paginas ya construidas, con carga perezosa", () => {
+    expect(PAGINAS.filter(estaMigrada).map((p) => p.id)).toEqual([
+      "inicio",
+      "tablero",
+      "catalogo",
+      "componer",
+      "elaborar",
+      "actualizacion",
+      "historico",
+      "reajuste",
+      "control",
+      "acerca",
+      "entregar",
+      "libros",
+      "escenarios",
+      "similares",
+      "simulador",
       "administracion",
     ]);
     const libro = paginaPorId("libros");

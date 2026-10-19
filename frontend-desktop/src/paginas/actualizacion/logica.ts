@@ -4,13 +4,13 @@ import type { ColumnaDensa, FilaDensa } from "../../comun/TablaDensa";
 import type { InformeAuditoriaRespuesta } from "../../api/tipos";
 
 export const AYUDA =
-  "Carga una lista de precios nueva (CSV o XLSX con las columnas tipo, insumo, unidad y precio) y el sistema revalora el presupuesto guardado, registra que cambio y audita la version nueva.";
+  "Carga una lista de precios nueva (CSV o XLSX con las columnas tipo, insumo, unidad y precio) y el sistema revalora el presupuesto guardado, registra qué cambió y audita la versión nueva.";
 export const CODIGO_NUEVO_POR_DEFECTO = "002";
 export const MONEDA_POR_DEFECTO = "USD";
 export const EXTENSIONES = [".csv", ".xlsx"];
-export const SIN_PRESUPUESTOS = "No hay presupuestos guardados todavia";
+export const SIN_PRESUPUESTOS = "No hay presupuestos guardados todavía";
 export const INDICACION_SIN_PRESUPUESTOS =
-  "Elabore un presupuesto en la pagina Elaborar y guardelo; despues podra revalorarlo aqui con una lista de precios nueva.";
+  "Elabore un presupuesto en la página Elaborar y guárdelo; después podrá revalorarlo aquí con una lista de precios nueva.";
 
 export interface PresupuestoListado {
   codigo: string;
@@ -49,6 +49,10 @@ export interface Revaloracion {
   codigo_nuevo: string;
   moneda: string;
   resumen: string;
+  total_anterior: string;
+  total_nuevo: string;
+  variacion: string;
+  variacion_pct: string;
   filas: FilaComparativo[];
   dados_de_alta: string[];
   ignorados: string[];
@@ -64,10 +68,10 @@ export const COLUMNAS_COMPARATIVO: ColumnaDensa[] = [
   { clave: "cantidad", titulo: "Cantidad", numerica: true },
   { clave: "pu_anterior", titulo: "P.U. anterior", numerica: true },
   { clave: "pu_nuevo", titulo: "P.U. nuevo", numerica: true },
-  { clave: "variacion_pct", titulo: "Variación %", numerica: true },
+  { clave: "variacion_pct", titulo: "Variación %", numerica: true, celda: "variacion" },
   { clave: "total_anterior", titulo: "Total anterior", numerica: true },
   { clave: "total_nuevo", titulo: "Total nuevo", numerica: true },
-  { clave: "incidencia_pct", titulo: "Incidencia %", numerica: true },
+  { clave: "incidencia_pct", titulo: "Incidencia %", numerica: true, celda: "variacion" },
 ];
 
 export function filasComparativo(filas: FilaComparativo[]): FilaDensa[] {
@@ -99,9 +103,9 @@ export function etiquetasDeDesconocidos(desconocidos: InsumoDesconocido[]): stri
 
 export function avisoDesconocidos(desconocidos: InsumoDesconocido[]): string {
   return (
-    `El archivo trae ${desconocidos.length} insumo(s) que no estan en el catalogo (UC-02, flujo 2a): ` +
+    `El archivo trae ${desconocidos.length} insumo(s) que no están en el catálogo: ` +
     `${etiquetasDeDesconocidos(desconocidos)}. Elija en "Dar de alta" los que quiera crear antes de revalorar; ` +
-    "los demas se ignoran."
+    "los demás se ignoran."
   );
 }
 
@@ -111,22 +115,25 @@ export function etiquetaDeAlta(numero: number, d: InsumoDesconocido): string {
 }
 
 export function textoDadosDeAlta(nombres: string[]): string {
-  return `Se dieron de alta en el catalogo, con precio solo en la lista nueva (UC-02, flujo 2a): ${nombres.join(", ")}`;
+  return `Se dieron de alta en el catálogo, con precio solo en la lista nueva: ${nombres.join(", ")}`;
 }
 export function textoIgnorados(nombres: string[]): string {
   return (
-    "Se ignoraron los insumos del archivo que no estan en el catalogo y no se eligieron para el alta " +
-    `(UC-02, flujo 2a; no intervienen en el recalculo): ${nombres.join(", ")}`
+    "Se ignoraron los insumos del archivo que no están en el catálogo y no se eligieron para el alta " +
+    `(no intervienen en el recálculo): ${nombres.join(", ")}`
   );
 }
 export function textoRechazados(nombres: string[]): string {
   return (
-    "Se rechazaron las filas cuyo insumo esta en el catalogo con otra unidad (UC-02, flujo 2b; " +
-    `no intervienen en el recalculo): ${nombres.join(", ")}`
+    "Se rechazaron las filas cuyo insumo está en el catálogo con otra unidad " +
+    `(no intervienen en el recálculo): ${nombres.join(", ")}`
   );
 }
+export function preguntaDescartar(codigo: string): string {
+  return `¿Descartar la versión ${codigo}? La versión sigue guardada y su historial se conserva.`;
+}
 export function textoDescartada(codigo: string): string {
-  return `Version ${codigo} descartada: sigue guardada como documento y su historial de cambios se conserva (UC-02, flujo 7a).`;
+  return `Versión ${codigo} descartada: sigue guardada como documento y su historial de cambios se conserva.`;
 }
 
 export interface DatosDeRevaloracion {

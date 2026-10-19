@@ -20,31 +20,31 @@ export const CODIGO_POR_DEFECTO = "P-001";
 export const MONEDA_POR_DEFECTO = "USD";
 
 export const AYUDA =
-  "Elige un dominio, carga su archivo de muestra (data/samples/<dominio>/) y extrae el cómputo con el adaptador " +
+  "Elige un dominio, carga su archivo de muestra (.csv) y extrae el cómputo con el adaptador " +
   "correspondiente; luego elabora el presupuesto, que se audita siempre.";
 export const AVISO_SIN_PARTIDAS_CIVILES =
-  "El catalogo no tiene partidas del dominio civil todavia (o la base de datos no se pudo leer; revise el mensaje " +
-  "de error de arriba, si lo hay): cargue primero un presupuesto civil (por ejemplo, sembrando la linea base en la " +
-  "pagina de Actualizacion) antes de extraer un cómputo civil.";
-export const SIN_HALLAZGOS = "Sin hallazgos: la auditoria no encontro ninguna inconsistencia.";
+  "El catálogo no tiene partidas del dominio civil todavía (o la base de datos no se pudo leer; revise el mensaje " +
+  "de error de arriba, si lo hay): cargue primero un presupuesto civil (por ejemplo, sembrando la línea base en la " +
+  "página de Actualización) antes de extraer un cómputo civil.";
+export const SIN_HALLAZGOS = "Sin hallazgos: la auditoría no encontró ninguna inconsistencia.";
 export const TEXTO_PENDIENTES =
-  "Estos items del computo no tienen partida en el catalogo: el presupuesto se elaboro sin ellos y el informe de " +
-  "auditoria los declara.";
+  "Estos ítems del cómputo no tienen partida en el catálogo: el presupuesto se elaboró sin ellos y el informe de " +
+  "auditoría los declara.";
 export const ERROR_COMPUTO_CAMBIO =
-  "El computo cambio despues de esta elaboracion: extraigalo de nuevo y vuelva a elaborar el presupuesto antes de " +
+  "El cómputo cambió después de esta elaboración: extráigalo de nuevo y vuelva a elaborar el presupuesto antes de " +
   "aceptar una propuesta.";
 export const TEXTO_PLAN =
-  "Distribuya las partidas en periodos: cada fila es la fraccion de una partida que se ejecuta en un periodo, y las " +
-  "fracciones de cada partida suman 1. Por defecto, una partida por dia; la curva de inversion sale de este plan y " +
+  "Distribuya las partidas en períodos: cada fila es la fracción de una partida que se ejecuta en un período, y las " +
+  "fracciones de cada partida suman 1. Por defecto, una partida por día; la curva de inversión sale de este plan y " +
   "cierra en el total.";
 export const AVISO_PLAN_REINICIADO =
-  "Al volver a elaborar, el plan de trabajo volvio a una partida por dia: el plan editado antes se descarto. Vuelva " +
+  "Al volver a elaborar, el plan de trabajo volvió a una partida por día: el plan editado antes se descartó. Vuelva " +
   "a distribuirlo y aplique el plan.";
-export const ERROR_SIN_ITEMS_PLAN = "Extraiga de nuevo el computo antes de aplicar el plan.";
-export const ERROR_SIN_ITEMS_RENDIMIENTO = "Extraiga de nuevo el computo antes de registrar el rendimiento.";
+export const ERROR_SIN_ITEMS_PLAN = "Extraiga de nuevo el cómputo antes de aplicar el plan.";
+export const ERROR_SIN_ITEMS_RENDIMIENTO = "Extraiga de nuevo el cómputo antes de registrar el rendimiento.";
 export const TEXTO_RENDIMIENTOS =
-  "Estas partidas no tienen rendimiento estimado vigente a la fecha del presupuesto: se propone el del historico " +
-  "con su dispersion. Declare si es estimado o medido para registrarlo y volver a elaborar.";
+  "Estas partidas no tienen rendimiento estimado vigente a la fecha del presupuesto: se propone el del histórico " +
+  "con su dispersión. Declare si es estimado o medido para registrarlo y volver a elaborar.";
 
 export function hoy(): string {
   const d = new Date();
@@ -107,20 +107,20 @@ export function lineaPropuesta(s: PropuestaPartida): string {
 export function textoPropuestaRendimiento(e: RendimientoPorDeclarar): string {
   const r = e.propuesta?.rendimiento;
   if (!r) return "";
-  return `rendimiento propuesto ${r.valor} unidades por dia (${r.tipo} del ${r.fecha})`;
+  return `rendimiento propuesto ${r.valor} unidades por día (${r.tipo} del ${r.fecha})`;
 }
 
 export function textoDispersion(e: RendimientoPorDeclarar): string {
   const d = e.propuesta?.dispersion;
   if (!d) return "";
   return (
-    `Dispersion del historico: ${d.observaciones} observaciones (${d.medidos} medidas, ${d.estimados} estimadas), ` +
+    `Dispersión del histórico: ${d.observaciones} observaciones (${d.medidos} medidas, ${d.estimados} estimadas), ` +
     `media ${d.media}, rango [${d.minimo}, ${d.maximo}].`
   );
 }
 
 export function errorSinPropuestaDeRendimiento(codigo: string): string {
-  return `${codigo}: la partida no tiene ningun rendimiento registrado que proponer; declarelo con sus condiciones en «Componer una partida».`;
+  return `${codigo}: la partida no tiene ningún rendimiento registrado que proponer; declárelo con sus condiciones en «Componer una partida».`;
 }
 
 export function errorSinTipo(codigo: string): string {
