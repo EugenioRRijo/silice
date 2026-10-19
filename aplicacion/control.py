@@ -806,10 +806,43 @@ PLANTILLAS_DEL_NUCLEO: tuple[tuple[str, str], ...] = (
 )
 
 
+#: Más largo que esto no es una frase del núcleo (la más larga mide ~200 caracteres): se devuelve
+#: intacto sin tocar ninguna expresión regular, para que un texto hostil no cueste tiempo.
+LARGO_MAXIMO_A_CORREGIR = 2_000
+
+#: Huecos con forma conocida: las cifras que el núcleo imprime. Acotarlos por clase hace lineal la
+#: coincidencia (un `.+` voraz encadenado sería cúbico). Todo hueco no listado es texto del usuario
+#: y cada plantilla tiene a lo sumo uno, de modo que tampoco encadena.
+_HUECOS_NUMERICOS = {
+    "termino": r"\d+",
+    "retraso": r"\d+",
+    "plan": r"\d+",
+    "spi": r"[-+0-9.,E]+",
+    "cpi": r"[-+0-9.,E]+",
+    "precio": r"[-+0-9.,E]+",
+    "ev": r"[-+0-9.,E]+",
+    "puntos": r"[-+0-9.,E]+",
+}
+
+#: Los motivos por partida del desglose «no aplica (cod: motivo; ...)» de `recuperacion.py`.
+_MOTIVOS_POR_PARTIDA = {
+    "sin composicion de APU": "sin composición de APU",
+    "sin rendimiento": "sin rendimiento",
+    "sin mano de obra a jornal": "sin mano de obra a jornal",
+}
+
+
 def _compilar(crudo: str) -> re.Pattern[str]:
     """La frase del núcleo como expresión: el texto fijo literal, cada hueco `{x}` un dato."""
     partes = re.split(r"\{(\w+)\}", crudo)
-    patron = "".join(f"(?P<{p}>.+)" if i % 2 else re.escape(p) for i, p in enumerate(partes))
+    huecos = partes[1::2]
+    libres = [h for h in huecos if h not in _HUECOS_NUMERICOS]
+    if len(libres) > 1:
+        raise ValueError(f"la plantilla {crudo!r} encadena huecos de texto libre")
+    patron = "".join(
+        f"(?P<{p}>{_HUECOS_NUMERICOS.get(p, '.+')})" if i % 2 else re.escape(p)
+        for i, p in enumerate(partes)
+    )
     return re.compile(patron, re.DOTALL)
 
 
@@ -822,16 +855,21 @@ _CATALOGO_COMPILADO = tuple(
 def con_tildes(texto: str) -> str:
     """Restituye las tildes de una frase fija del núcleo; cualquier otro texto pasa sin cambios.
 
-    Función pura. Solo actúa si la frase COMPLETA coincide con una plantilla del catálogo, de modo
-    que un nombre de partida con «dia» o «ningun» puesto por el usuario no se altera.
+    Función pura, sin recursión y de costo lineal. Solo actúa si la frase COMPLETA coincide con una
+    plantilla del catálogo, de modo que un nombre de partida con «dia» o «ningun» puesto por el
+    usuario no se altera.
     """
-    lista = _NO_APLICA.fullmatch(texto)
-    if lista is not None:
-        # «no aplica (cod: motivo; cod: motivo)»: el código es del usuario, el motivo es del núcleo.
+    if len(texto) > LARGO_MAXIMO_A_CORREGIR:
+        return texto
+    desglose = _NO_APLICA.fullmatch(texto)
+    if desglose is not None:
+        # «no aplica (cod: motivo; cod: motivo)»: el código es del usuario; solo el motivo, a la
+        # derecha del último «: », se busca en el conjunto cerrado del núcleo.
         items = []
-        for item in lista.group("lista").split("; "):
-            codigo, separador, motivo = item.partition(": ")
-            items.append(codigo + separador + con_tildes(motivo) if separador else item)
+        for item in desglose.group("lista").split("; "):
+            codigo, separador, motivo = item.rpartition(": ")
+            corregido = _MOTIVOS_POR_PARTIDA.get(motivo)
+            items.append(f"{codigo}{separador}{corregido}" if separador and corregido else item)
         return "no aplica (" + "; ".join(items) + ")"
     for patron, con_tilde in _CATALOGO_COMPILADO:
         calce = patron.fullmatch(texto)

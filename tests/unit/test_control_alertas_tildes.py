@@ -394,7 +394,11 @@ def test_un_texto_adversarial_vuelve_intacto_en_menos_de_un_segundo(nombre: str,
     salida = con_tildes(texto)
     segundos = time.perf_counter() - inicio
     print(f"{nombre} n={n}: {segundos:.3f} s")
-    assert salida == texto
+    if nombre == "no_aplica_via_codigo" and n <= 2_000:
+        # Bajo el tope, el código del usuario queda igual y solo se corrige el motivo del núcleo.
+        assert salida == texto.replace("sin composicion de APU)", "sin composición de APU)")
+    else:
+        assert salida == texto
     assert segundos < LIMITE_DE_SEGUNDOS
 
 
