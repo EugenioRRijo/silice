@@ -12,6 +12,13 @@ import type { ContraLista, DictamenGuardado, ExcelExterno, Revision } from "./ti
 // textos literales de la pantalla clasica (ui/paginas/revisar.py, paquete/verificar.py) y la memoria del ejemplo
 // minimo (total 836,7975 USD). La interfaz no calcula: muestra el texto de la API con formato es-VE.
 
+// El texto que se lee de un elemento, sin lo que solo oye el lector de pantalla (el exacto de cada monto).
+function visible(elemento: Element): string {
+  const copia = elemento.cloneNode(true) as Element;
+  copia.querySelectorAll(".cds--visually-hidden").forEach((n) => n.remove());
+  return (copia.textContent ?? "").replace(/\s+/g, " ").trim();
+}
+
 function json(cuerpo: unknown, estado = 200): Response {
   return new Response(JSON.stringify(cuerpo), { status: estado, headers: { "Content-Type": "application/json" } });
 }
@@ -41,7 +48,10 @@ const CONTRA_MI_LISTA: ContraLista = {
     total_despues_texto: "887.40",
     diferencia: "50.6000",
     diferencia_texto: "50.60",
-    por_cantidad_y_precio: "Por cantidad: 0.00. Por precio: 50.60.",
+    desvio_cantidad: "0",
+    desvio_cantidad_texto: "0.00",
+    desvio_precio: "50.6000",
+    desvio_precio_texto: "50.60",
     partidas: [
       {
         codigo_partida: "MIN-001",
@@ -67,7 +77,8 @@ const CONTRA_LA_DE_PRUEBA: ContraLista = {
     total_despues_texto: "836.80",
     diferencia: "0",
     diferencia_texto: "0.00",
-    por_cantidad_y_precio: "Por cantidad: 0.00. Por precio: 0.00.",
+    desvio_precio: "0",
+    desvio_precio_texto: "0.00",
     partidas: [],
   },
   no_contrastables: null,
@@ -128,6 +139,8 @@ const REVISION: Revision = {
   ],
   dictamenes: [],
   resultados: ["conforme", "con observaciones", "rechazado"],
+  admite_dictamen: true,
+  sin_dictamen: null,
   nota_excel: "Este Excel se regeneró aquí desde presupuesto.json; el del emisor no se ofrece.",
 };
 
@@ -264,13 +277,16 @@ describe("Revisar un paquete", () => {
     expect(screen.getByText("No contrastables (no están en mi lista; no suman): EQU-001, MO-001")).toBeInTheDocument();
     const contraste = screen.getByRole("region", { name: "El paquete con los precios de mi lista" });
     expect(within(contraste).getByText("887,40")).toHaveAttribute("title", "Valor exacto: 887.3975");
-    expect(within(contraste).getByText("Por cantidad: 0.00. Por precio: 50.60.")).toBeInTheDocument();
+    // el reparto en es-VE, como el resto de las cifras, con el exacto de cada parte a mano
+    const reparto = () => contraste.querySelector(".silice-revisar__reparto") as HTMLElement;
+    expect(visible(reparto())).toBe("Por cantidad: 0,00. Por precio: 50,60.");
+    expect(within(reparto()).getByText("50,60")).toHaveAttribute("title", "Valor exacto: 50.6000");
     await usuario.selectOptions(screen.getByLabelText("Contrastar con mi lista"), "1");
     await waitFor(() => expect(llamadas("/v1/revision/contra-lista")).toHaveLength(1));
     const cuerpo = llamadas("/v1/revision/contra-lista")[0][1]?.body as FormData;
     expect(cuerpo.get("lista")).toBe("1");
     expect((cuerpo.get("paquete") as File).name).toBe("recibido.silice");
-    expect(await within(contraste).findByText("Por cantidad: 0.00. Por precio: 0.00.")).toBeInTheDocument();
+    await waitFor(() => expect(visible(reparto())).toBe("Por cantidad: 0,00. Por precio: 0,00."));
     expect(screen.queryByText(/No contrastables/)).not.toBeInTheDocument();
   });
 
@@ -281,6 +297,64 @@ describe("Revisar un paquete", () => {
     expect(await alertaConTexto()).toHaveTextContent(RECHAZADO);
     expect(screen.queryByText("Total recalculado")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Guardar dictamen" })).not.toBeInTheDocument();
+  });
+
+  test("un paquete que no admite dictamen no ofrece el formulario y dice por que", async () => {
+    const motivo = "Este paquete no quedó registrado (está alterado o no trae los datos mínimos): no admite dictamen.";
+    paquete = () => json({ ...REVISION, color: "rojo", estado: "alterado", admite_dictamen: false, sin_dictamen: motivo });
+    montar();
+    await subir();
+    expect(await screen.findByText(motivo)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Guardar dictamen" })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Notas")).not.toBeInTheDocument();
+  });
+
+  test("cada celda de diferencias de precio muestra su propia precision aunque dos exactos coincidan", async () => {
+    paquete = () =>
+      json({
+        ...REVISION,
+        reauditoria: {
+          ...REVISION.reauditoria!,
+          precios_coinciden: false,
+          mensaje_precios: "Hay precios o totales declarados que no coinciden con el recálculo.",
+          diferencias: [
+            {
+              codigo_partida: "MIN-001",
+              campo: "precio_unitario",
+              declarado: "10.12345",
+              declarado_texto: "10.1235",
+              recalculado: "9.5",
+              recalculado_texto: "9.5000",
+              monto: "10.12345",
+              monto_texto: "10.12",
+            },
+          ],
+        },
+      });
+    montar();
+    await subir();
+    const tabla = await screen.findByRole("table", { name: "Precios y totales que no coinciden" });
+    const [, celdas] = within(tabla).getAllByRole("row");
+    const textos = within(celdas).getAllByRole("cell").map((c) => c.textContent);
+    expect(textos).toEqual(["MIN-001", "precio_unitario", "10,1235", "9,5000", "10,12"]);
+  });
+
+  test("avisos repetidos no repiten la clave de React", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    paquete = () =>
+      json({
+        ...REVISION,
+        avisos: ["Aviso ficticio.", "Aviso ficticio."],
+        reauditoria: { ...REVISION.reauditoria!, avisos: ["Otro.", "Otro."] },
+        dictamenes: [DICTAMEN.dictamenes[0], DICTAMEN.dictamenes[0]],
+      });
+    montar();
+    await subir();
+    expect(await screen.findAllByText("Aviso ficticio.")).toHaveLength(2);
+    expect(screen.getAllByText("Otro.")).toHaveLength(2);
+    expect(screen.getAllByText(DICTAMEN.dictamenes[0].texto)).toHaveLength(2);
+    expect(error.mock.calls.some((c) => String(c[0]).includes("same key"))).toBe(false);
+    error.mockRestore();
   });
 
   test("un documento con la forma equivocada muestra el detalle de la API", async () => {

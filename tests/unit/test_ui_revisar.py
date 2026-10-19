@@ -183,6 +183,26 @@ def test_quien_revisa_y_figura_como_quien_armo_ve_el_aviso(monkeypatch, tmp_path
     assert len(avisos) == 1 and "figura en la versión 004, 005" in avisos[0]
 
 
+def test_el_aviso_de_quien_armo_escapa_el_codigo_de_version(monkeypatch, tmp_path, caso_db) -> None:
+    """T7: el texto sale sin escapar de `aplicacion.revision` y la pantalla lo pasa entero por
+    `texto_seguro`; un código de versión con marcas de Markdown llega escapado, no interpretado."""
+    ficha = preparar(monkeypatch, tmp_path, "arma", "revisa", login="ana")
+    _sustituir(monkeypatch)
+    _registrar_emisora()
+    with ui_sesion.instalacion() as bd:
+        empresas.guardar_empresa_propia(bd, EMPRESA, "J-0", "", "admin", AHORA)
+    at = con_ficha(AppTest.from_function(_pagina, default_timeout=120), ficha)
+    at.session_state["_archivos"] = {
+        "rev_archivo": paquete(
+            par=None, presupuesto=_documento(), anexos={}, codigos=("0*4_", "005")
+        )
+    }
+    at = at.run()
+    assert not at.exception, [e.value for e in at.exception]
+    avisos = [w.value for w in at.warning if "Usted armó o cambió este presupuesto" in w.value]
+    assert len(avisos) == 1 and "figura en la versión 0\\*4\\_, 005" in avisos[0]
+
+
 def test_otro_revisor_de_la_misma_empresa_no_ve_el_aviso(monkeypatch, tmp_path, caso_db) -> None:
     ficha = preparar(monkeypatch, tmp_path, "revisa", login="pedro")
     _sustituir(monkeypatch)

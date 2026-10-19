@@ -90,6 +90,13 @@ NOTAS_FALTAN = "Un dictamen con observaciones o de rechazo necesita notas."
 GUARDADO = "Dictamen guardado, atado al SHA-256 de este archivo."
 EXCEL_EXTERNO = "No verificado: un Excel no trae cadena ni firma. Se audita igual."
 XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+SIN_DICTAMEN = (
+    "Este paquete no quedó registrado (está alterado o no trae los datos mínimos): no admite "
+    "dictamen. Pida al emisor uno nuevo."
+)
+MENSAJE_TOPE = (
+    "El archivo pesa más de 20 MiB, el máximo de un paquete. Pida al emisor un paquete más pequeño."
+)
 
 
 def _app() -> FastAPI:
@@ -261,6 +268,7 @@ def test_un_paquete_firmado_se_verifica_se_registra_y_se_reaudita() -> None:
     assert cuerpo["cambios"][0]["responsable"] == "Ana <ana>"
     assert cuerpo["dictamenes"] == []
     assert cuerpo["resultados"] == ["conforme", "con observaciones", "rechazado"]
+    assert cuerpo["admite_dictamen"] is True and cuerpo["sin_dictamen"] is None
     [fila] = _filas("paq_recibido")
     assert (fila["huella_archivo"], fila["recibido_por"], fila["estado"]) == (
         sha,
@@ -361,7 +369,7 @@ def test_un_archivo_de_mas_del_tope_es_413_sin_guardar_nada(monkeypatch) -> None
     navegador, ficha = _rita()
     r = _subir(navegador, ficha, b"x" * 11)
     assert r.status_code == 413
-    assert r.json()["detalle"] == ruta_revision.MENSAJE_TOPE_PAQUETE
+    assert r.json()["detalle"] == MENSAJE_TOPE
     assert _filas("paq_recibido") == []
 
 
@@ -404,7 +412,11 @@ def test_la_segunda_entrega_se_compara_con_la_anterior() -> None:
     assert Decimal(previa["total_antes"]) == Decimal("1045.996875")
     assert Decimal(previa["total_despues"]) == Decimal(TOTAL)
     assert previa["diferencia_texto"] == "-209.20"
-    assert previa["por_cantidad_y_precio"] == "Por cantidad: -209.20. Por precio: 0.00."
+    # el reparto viaja como montos (exacto y texto), no como una frase con punto decimal
+    assert "por_cantidad_y_precio" not in previa
+    assert Decimal(previa["desvio_cantidad"]) == Decimal("-209.199375")
+    assert previa["desvio_cantidad_texto"] == "-209.20"
+    assert Decimal(previa["desvio_precio"]) == 0 and previa["desvio_precio_texto"] == "0.00"
     [partida] = previa["partidas"]
     assert (partida["codigo_partida"], partida["estado"]) == ("MIN-001", "cambiada")
     assert cuerpo["cambios_titulo"] == "Quién cambió qué desde la entrega anterior"
@@ -439,6 +451,8 @@ def test_el_contraste_con_mi_lista_usa_la_mas_nueva_y_se_puede_cambiar(_entorno:
     assert contra["diferencia"]["titulo"] == "El paquete con los precios de mi lista"
     assert Decimal(contra["diferencia"]["total_despues"]) == Decimal("887.3975")
     assert contra["diferencia"]["diferencia_texto"] == "50.60"
+    assert contra["diferencia"]["desvio_precio_texto"] == "50.60"
+    assert contra["diferencia"]["desvio_cantidad_texto"] == "0.00"
     assert contra["no_contrastables"] == (
         "No contrastables (no están en mi lista; no suman): EQU-001, MO-001"
     )
@@ -498,6 +512,45 @@ def test_un_dictamen_desconocido_es_422_sin_repetir_lo_enviado() -> None:
     assert r.status_code == 422
     assert "<script>" not in r.text
     assert _filas("paq_dictamen") == []
+
+
+def test_un_paquete_alterado_no_admite_dictamen_y_no_es_un_500() -> None:
+    """Un archivo cambiado tras firmarse se audita igual pero no queda registrado (recibir no lo
+    guarda): su dictamen no tendría a qué atarse. Decisión del orquestador (ronda 1 de T7)."""
+    from tests.fixtures.paquetes import reempaquetar
+
+    navegador, ficha = _rita()
+    alterado = reempaquetar(_firmado(), {"informe.json": b'{"otro":1}'})
+    cuerpo = _subir(navegador, ficha, alterado).json()
+    assert cuerpo["estado"] == "alterado"
+    assert cuerpo["admite_dictamen"] is False and cuerpo["sin_dictamen"] == SIN_DICTAMEN
+    r = _subir(
+        navegador, ficha, alterado, "/v1/revision/dictamen", resultado="rechazado", notas="x"
+    )
+    assert (r.status_code, r.json()) == (422, {"detalle": SIN_DICTAMEN})
+    assert _filas("paq_dictamen") == []
+
+
+def test_el_mismo_archivo_dos_veces_a_la_vez_no_es_un_500(monkeypatch) -> None:
+    """Carrera: la otra petición registró el archivo entre la búsqueda por huella y la inserción.
+    Se simula haciendo que la búsqueda no lo vea una vez: la recepción relee lo ya registrado."""
+    from paquete import modelo
+
+    navegador, ficha = _rita()
+    datos = _firmado()
+    assert _subir(navegador, ficha, datos).status_code == 200
+    real = modelo.buscar_por_huella
+    vistas: list[str] = []
+
+    def ciega_una_vez(sesion, huella):
+        vistas.append(huella)
+        return None if len(vistas) == 1 else real(sesion, huella)
+
+    monkeypatch.setattr(modelo, "buscar_por_huella", ciega_una_vez)
+    r = _subir(navegador, ficha, datos)
+    assert r.status_code == 200, r.text
+    assert r.json()["banner_version"].startswith("Versión 005 del 2026-11-10; ya recibió")
+    assert len(_filas("paq_recibido")) == 1
 
 
 def test_el_dictamen_de_un_paquete_rechazado_no_se_guarda() -> None:
@@ -566,7 +619,15 @@ def test_la_plantilla_se_audita_como_excel_externo_y_se_dice_no_verificado() -> 
     cuerpo = r.json()
     assert cuerpo["aviso"] == EXCEL_EXTERNO
     assert Decimal(cuerpo["total"]) == Decimal(TOTAL) and cuerpo["total_texto"] == "836.80"
-    assert isinstance(cuerpo["hallazgos"], list)
+    # La plantilla: 20 m3 sin regla (R1) y un plan «Dia 1» que no nombra la partida (R7, dos)
+    assert [(h["regla"], h["severidad"]) for h in cuerpo["hallazgos"]] == [
+        ("R1", "ADVERTENCIA"),
+        ("R7", "ADVERTENCIA"),
+        ("R7", "ADVERTENCIA"),
+    ]
+    r1, r7_periodo, r7_partida = (h["descripcion"] for h in cuerpo["hallazgos"])
+    assert r1.startswith("la cantidad de EJ-P1 (20 m3) es manual")
+    assert "'Dia 1'" in r7_periodo and "EJ-P1 no aparece" in r7_partida
     assert _filas("paq_recibido") == []  # en memoria: nada se guarda
 
 
@@ -579,3 +640,17 @@ def test_un_excel_externo_que_no_es_xlsx_lo_rechaza_la_guardia() -> None:
     )
     assert r.status_code == 422
     assert r.json()["detalle"].startswith("El archivo «macro.xlsm»")
+
+
+def test_un_excel_externo_de_mas_del_tope_es_413(monkeypatch) -> None:
+    monkeypatch.setattr(ruta_revision, "TOPE_EXCEL", 10)
+    navegador, ficha = _rita()
+    r = navegador.post(
+        "/v1/revision/excel-externo",
+        files={"presupuesto": ("externo.xlsx", b"x" * 11, XLSX)},
+        headers=protegida(ficha),
+    )
+    assert (r.status_code, r.json()) == (
+        413,
+        {"detalle": "El presupuesto en Excel supera el máximo de 20 MiB."},
+    )

@@ -43,7 +43,10 @@ export interface TablaDeDiferencia {
   total_despues_texto: string;
   diferencia: string;
   diferencia_texto: string;
-  por_cantidad_y_precio: string;
+  desvio_cantidad: string;
+  desvio_cantidad_texto: string;
+  desvio_precio: string;
+  desvio_precio_texto: string;
   partidas: PartidaDiferente[];
 }
 
@@ -100,6 +103,9 @@ export interface Revision {
   cambios: Record<string, string>[];
   dictamenes: DictamenAnterior[];
   resultados: string[];
+  // Un paquete que no quedo registrado (alterado sin cadena) no admite dictamen: la API dice por que.
+  admite_dictamen: boolean;
+  sin_dictamen: string | null;
   nota_excel: string;
 }
 

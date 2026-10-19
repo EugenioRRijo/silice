@@ -141,6 +141,11 @@ def test_los_textos_fijos_son_los_de_la_pantalla_clasica() -> None:
     assert revision.EXCEL_NO_VERIFICADO == (
         "No verificado: un Excel no trae cadena ni firma. Se audita igual."
     )
+    assert revision.CARPETA_PAQUETES == "paquetes"  # datos\\paquetes\\, como antes de T7
+    assert revision.SIN_DICTAMEN == (
+        "Este paquete no quedó registrado (está alterado o no trae los datos mínimos): no admite "
+        "dictamen. Pida al emisor uno nuevo."
+    )
     assert revision.TITULOS_DE_HALLAZGOS == (
         ("nuevos", "El emisor no los declaró"),
         ("ya_no", "Los declaró y ya no aparecen"),
@@ -266,6 +271,53 @@ def test_analizar_un_paquete_alterado_lo_audita_sin_cambios_que_mostrar(mundo) -
     assert a.recibido.verificacion.estado == "alterado"
     assert a.reauditoria is not None and a.reauditoria.total_recalculado == TOTAL
     assert a.cambios == ()
+
+
+def test_un_paquete_que_no_quedo_registrado_no_admite_dictamen(mundo) -> None:
+    """`recibir` no registra un alterado sin cadena (paquete_id 0): el dictamen es un error de
+    valor con mensaje, no un fallo de la clave foránea de `paq_dictamen`."""
+    from aplicacion import revision
+    from tests.fixtures.paquetes import reempaquetar
+
+    alterado = reempaquetar(
+        paquete(par=PAR, presupuesto=_documento(), anexos={}), {"informe.json": b'{"otro":1}'}
+    )
+    a = _analizar(mundo, alterado)
+    assert a.recibido.paquete_id == 0
+    caso, _, _ = mundo
+    with pytest.raises(ValueError, match="no admite dictamen"):
+        revision.dictaminar(
+            caso,
+            a.recibido,
+            resultado="rechazado",
+            notas="alterado",
+            revisor="Rita <rita>",
+            ahora=RECIBIDO,
+            armo=False,
+        )
+    assert caso.execute(select(paq.paq_dictamen)).all() == []
+
+
+def test_si_otra_peticion_registro_el_mismo_archivo_se_relee_lo_registrado(
+    mundo, monkeypatch
+) -> None:
+    """Carrera de dos recepciones del mismo archivo: entre la búsqueda por huella y la inserción,
+    la otra lo registró (UNIQUE de `huella_archivo`). Se relee y se trata como ya recibido."""
+    datos = paquete(par=PAR, presupuesto=_documento(), anexos={})
+    primera = _analizar(mundo, datos)
+    real = paq.buscar_por_huella
+    vistas: list[str] = []
+
+    def ciega_una_vez(sesion, huella):
+        vistas.append(huella)
+        return None if len(vistas) == 1 else real(sesion, huella)
+
+    monkeypatch.setattr(paq, "buscar_por_huella", ciega_una_vez)
+    segunda = _analizar(mundo, datos)
+    assert segunda.recibido.ya_recibido
+    assert segunda.recibido.paquete_id == primera.recibido.paquete_id
+    caso, _, _ = mundo
+    assert len(caso.execute(select(paq.paq_recibido)).all()) == 1
 
 
 def test_analizar_un_archivo_rechazado_no_reaudita_ni_guarda_nada(mundo) -> None:
