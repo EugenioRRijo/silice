@@ -72,8 +72,7 @@ describe("estilos del visor", () => {
     expect(foco).toMatch(/outline-offset:\s*2px/);
   });
 
-  test("los conteos por severidad no se encogen y los indicadores si recortan con elipsis", () => {
-    expect(regla(".franja-indicadores__severidad")).toMatch(/flex:\s*none/);
+  test("los indicadores recortan con elipsis cada texto", () => {
     expect(regla(".fiori-kpi")).toMatch(/min-inline-size:\s*0/);
     const textos = regla(".fiori-kpi__titulo,\n.fiori-kpi__meta,\n.fiori-kpi__actual,\n.fiori-kpi__delta");
     expect(textos).toMatch(/text-overflow:\s*ellipsis/);
@@ -90,6 +89,23 @@ describe("estilos del visor", () => {
     expect(regla(".visor__lista")).toMatch(/overflow:\s*hidden/);
     expect(regla(".lista-hallazgos__cuerpo")).toMatch(/overflow-y:\s*auto/);
     expect(regla(".lista-hallazgos__cabecera")).toMatch(/flex:\s*none/);
+  });
+
+  test("el halo amarillo lleva un segundo contorno oscuro de 1 px (m1)", () => {
+    const r = regla(".halo--advertencia");
+    expect(r).toMatch(/box-shadow:\s*inset 0 0 0 3px var\(--cds-text-primary\)/);
+    expect(regla(".halo--advertencia.halo--elegido")).toMatch(/box-shadow:\s*inset 0 0 0 4px var\(--cds-text-primary\)/);
+  });
+
+  test("la descripcion de la lista se recorta a 3 lineas y solo la fila elegida la muestra completa (M5)", () => {
+    expect(regla(".hallazgo__descripcion")).toMatch(/-webkit-line-clamp:\s*3/);
+    expect(regla(".lista-hallazgos__fila--elegida .hallazgo__descripcion")).toMatch(/-webkit-line-clamp:\s*unset/);
+  });
+
+  test("las pestanas con conteo, el cargando y la ranura de la cabecera tienen estilo (M2, m4, M3)", () => {
+    expect(regla(".pestana__conteo")).toMatch(/display:\s*inline-flex/);
+    expect(regla(".visor__esqueleto-lienzo")).toMatch(/background:\s*var\(--cds-skeleton-background\)/);
+    expect(regla(".silice-cabecera__libro")).toMatch(/flex:\s*1 1 0/);
   });
 
   test("el signo del triangulo amarillo va con la tinta principal", () => {

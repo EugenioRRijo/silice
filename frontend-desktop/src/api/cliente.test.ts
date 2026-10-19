@@ -80,7 +80,7 @@ describe("cliente de la API", () => {
     const sinServidor = await pedir("/v1/sesion").catch((e: unknown) => e);
     for (const error of [sinDetalle, sinServidor]) {
       expect((error as ErrorDeApi).detalle).toMatch(/programa de Sílice/);
-      expect((error as ErrorDeApi).detalle).not.toMatch(/API/);
+      expect((error as ErrorDeApi).detalle).not.toMatch(/\bAPI\b/);
     }
   });
 

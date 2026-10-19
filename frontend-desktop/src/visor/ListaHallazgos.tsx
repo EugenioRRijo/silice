@@ -13,6 +13,7 @@ import {
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
 import type { HallazgoLibroRespuesta, HojaVisualRespuesta } from "../api/tipos";
+import { formatoEsVe } from "../indicadores/formatoEsVe";
 import type { Severidad } from "../indicadores/tipos";
 import { IconoDeSeveridad } from "../severidad/IconoDeSeveridad";
 import { SEVERIDADES, estiloDeSeveridad, normalizarSeveridad } from "../severidad/severidad";
@@ -35,10 +36,8 @@ interface Props {
   onElegir: (indice: number) => void;
 }
 
-const CABECERAS = [
-  { key: "hallazgo", header: "Hallazgo" },
-  { key: "impacto", header: "Impacto" },
-];
+// Una sola columna: el impacto va en la primera linea de cada hallazgo, no en una columna aparte (casi siempre vacia).
+const CABECERAS = [{ key: "hallazgo", header: "Hallazgo" }];
 
 const severidadDe = (h: HallazgoLibroRespuesta): Severidad => normalizarSeveridad(h.severidad);
 
@@ -50,9 +49,11 @@ interface TablaProps {
   alElegir: (indice: number) => void;
   // Para los hallazgos ocultos: que esta oculto.
   motivos?: ReadonlyMap<number, string>;
+  // La fila que entra en el orden de Tab (las demas se alcanzan con las flechas).
+  paradaDeTab: number | null;
 }
 
-function TablaHallazgos({ etiqueta, hallazgos, indices, seleccionado, alElegir, motivos }: TablaProps) {
+function TablaHallazgos({ etiqueta, hallazgos, indices, seleccionado, alElegir, motivos, paradaDeTab }: TablaProps) {
   const filas = indices.map((indice) => {
     const h = hallazgos[indice];
     const estilo = estiloDeHallazgo(h);
@@ -64,21 +65,26 @@ function TablaHallazgos({ etiqueta, hallazgos, indices, seleccionado, alElegir, 
           <div className="hallazgo__encabezado cds--type-label-01">
             <span className="hallazgo__severidad" style={{ ["--halo-color" as string]: `var(${estilo.token})` }}>
               <IconoDeSeveridad nombre={estilo.icono} size={16} className="hallazgo__icono" />
-              <span>{estilo.texto}</span>
             </span>
+            {h.celda ? <span className="silice-codigo">{h.celda}</span> : <span>Sin celda</span>}
+            <span aria-hidden="true"> · </span>
+            <span>{estilo.texto}</span>
+            <span aria-hidden="true"> · </span>
             <span className="silice-codigo">{h.codigo}</span>
+            {h.impacto !== null && (
+              <>
+                <span aria-hidden="true"> · </span>
+                <span className="silice-cifra">
+                  <span className="silice-oculto">Impacto </span>
+                  {formatoEsVe(h.impacto)}
+                </span>
+              </>
+            )}
           </div>
           <div className="hallazgo__descripcion cds--type-body-compact-01">{h.descripcion}</div>
           {motivo && <div className="hallazgo__motivo cds--type-label-01">{motivo}</div>}
-          {h.celda && <div className="hallazgo__celda silice-codigo cds--type-label-01">{h.celda}</div>}
         </div>
       ),
-      impacto:
-        h.impacto === null ? (
-          <span className="silice-oculto">sin impacto</span>
-        ) : (
-          <span className="silice-cifra cds--type-body-compact-01">{h.impacto}</span>
-        ),
     };
   });
 
@@ -92,12 +98,8 @@ function TablaHallazgos({ etiqueta, hallazgos, indices, seleccionado, alElegir, 
                 {headers.map((cabecera) => {
                   const { key, ...resto } = getHeaderProps({ header: cabecera });
                   return (
-                    <TableHeader
-                      key={key}
-                      {...resto}
-                      className={cabecera.key === "impacto" ? "silice-cifra" : undefined}
-                    >
-                      {cabecera.header}
+                    <TableHeader key={key} {...resto}>
+                      <span className="silice-oculto">{cabecera.header}</span>
                     </TableHeader>
                   );
                 })}
@@ -113,7 +115,7 @@ function TablaHallazgos({ etiqueta, hallazgos, indices, seleccionado, alElegir, 
                     key={key}
                     {...resto}
                     data-indice={indice}
-                    tabIndex={0}
+                    tabIndex={indice === paradaDeTab ? 0 : -1}
                     aria-current={elegida ? "true" : undefined}
                     className={elegida ? "lista-hallazgos__fila lista-hallazgos__fila--elegida" : "lista-hallazgos__fila"}
                     onClick={() => alElegir(indice)}
@@ -126,9 +128,7 @@ function TablaHallazgos({ etiqueta, hallazgos, indices, seleccionado, alElegir, 
                     }}
                   >
                     {fila.cells.map((celda) => (
-                      <TableCell key={celda.id} className={celda.info.header === "impacto" ? "silice-cifra" : undefined}>
-                        {celda.value}
-                      </TableCell>
+                      <TableCell key={celda.id}>{celda.value}</TableCell>
                     ))}
                   </TableRow>
                 );
@@ -155,6 +155,8 @@ export function ListaHallazgos({
 }: Props) {
   const [filtro, setFiltro] = useState<ReadonlySet<Severidad>>(new Set(filtroInicial ?? []));
   const [aviso, setAviso] = useState<string | null>(null);
+  // La fila que tuvo el foco por ultimo: es la parada de Tab (roving tabindex).
+  const [conFoco, setConFoco] = useState<number | null>(null);
   const raiz = useRef<HTMLElement>(null);
   const idSinCelda = useId();
   const idOcultos = useId();
@@ -174,6 +176,31 @@ export function ListaHallazgos({
   const conCelda = hallazgos.map((_, i) => i).filter((i) => !sinCeldaSet.has(i) && !motivos.has(i) && pasan(i));
   const sinCeldaVisibles = sinCelda.filter(pasan);
   const ocultosVisibles = ocultosIndices.filter(pasan);
+
+  const orden = [...conCelda, ...ocultosVisibles, ...sinCeldaVisibles];
+  const paradaDeTab =
+    conFoco !== null && orden.includes(conFoco)
+      ? conFoco
+      : seleccionado !== null && orden.includes(seleccionado)
+        ? seleccionado
+        : (orden[0] ?? null);
+
+  // Flechas, Inicio y Fin: mueven el foco entre las filas de todos los grupos, en el orden en que se ven.
+  const moverConFlechas = (e: KeyboardEvent<HTMLElement>) => {
+    const actual = (e.target as HTMLElement).closest<HTMLElement>("tr[data-indice]");
+    if (!actual || e.target !== actual) return;
+    const filas = [...(raiz.current?.querySelectorAll<HTMLElement>("tr[data-indice]") ?? [])];
+    const posicion = filas.indexOf(actual);
+    let destino = -1;
+    if (e.key === "ArrowDown") destino = Math.min(filas.length - 1, posicion + 1);
+    else if (e.key === "ArrowUp") destino = Math.max(0, posicion - 1);
+    else if (e.key === "Home") destino = 0;
+    else if (e.key === "End") destino = filas.length - 1;
+    if (destino < 0) return;
+    e.preventDefault();
+    filas[destino].focus();
+    filas[destino].scrollIntoView?.({ block: "nearest" });
+  };
 
   useEffect(() => {
     if (!enfocar) return;
@@ -208,14 +235,27 @@ export function ListaHallazgos({
   };
 
   return (
-    <section className="lista-hallazgos" aria-label="Hallazgos de la auditoría" ref={raiz}>
+    <section
+      className="lista-hallazgos"
+      aria-label="Hallazgos de la auditoría"
+      ref={raiz}
+      onKeyDown={moverConFlechas}
+      onFocus={(e) => {
+        const f = (e.target as HTMLElement).closest<HTMLElement>("tr[data-indice]");
+        if (f && e.target === f) setConFoco(Number(f.dataset.indice));
+      }}
+    >
       <div className="lista-hallazgos__cabecera">
         <h2 className="cds--type-heading-compact-01">Hallazgos ({hallazgos.length})</h2>
         <div className="lista-hallazgos__filtro" role="group" aria-label="Filtrar por severidad">
           {SEVERIDADES.map((clave) => (
             <SelectableTag
               key={clave}
-              size="sm"
+              size="md"
+              className={`silice-sev silice-sev--${clave.toLowerCase()}`}
+              renderIcon={() => (
+                <IconoDeSeveridad nombre={estiloDeSeveridad(clave).icono} size={16} className="silice-sev__icono" />
+              )}
               text={`${estiloDeSeveridad(clave).texto} ${cuentas[clave]}`}
               selected={filtro.has(clave)}
               onChange={(activa: boolean) => alternar(clave, activa)}
@@ -250,6 +290,7 @@ export function ListaHallazgos({
               indices={conCelda}
               seleccionado={seleccionado}
               alElegir={elegir}
+              paradaDeTab={paradaDeTab}
             />
           </section>
         )}
@@ -267,6 +308,7 @@ export function ListaHallazgos({
                 seleccionado={seleccionado}
                 alElegir={elegir}
                 motivos={motivos}
+                paradaDeTab={paradaDeTab}
               />
             )}
           </section>
@@ -284,6 +326,7 @@ export function ListaHallazgos({
                 indices={sinCeldaVisibles}
                 seleccionado={seleccionado}
                 alElegir={elegir}
+                paradaDeTab={paradaDeTab}
               />
             )}
           </section>

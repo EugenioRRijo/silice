@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 import type { HallazgoLibroRespuesta, HojaVisualRespuesta } from "../api/tipos";
-import { construirHalos, estiloDeHallazgo } from "./halos";
+import { construirHalos, estiloDeHallazgo, resumenPorHoja } from "./halos";
 
 function hallazgo(parcial: Partial<HallazgoLibroRespuesta>): HallazgoLibroRespuesta {
   return {
@@ -141,5 +141,28 @@ describe("construirHalos", () => {
       hallazgo({ codigo: "ATIPICO", severidad: "ADVERTENCIA", celda: "H!B2" }),
     ]);
     expect(halos[0].estilo.token).toBe("--silice-atipico");
+  });
+});
+
+describe("resumenPorHoja (M2)", () => {
+  test("cuenta los hallazgos de cada hoja y dice la severidad mas grave", () => {
+    const { halos } = construirHalos([
+      hallazgo({ severidad: "INFO", celda: "PRESUPUESTO!B2" }),
+      hallazgo({ severidad: "ERROR", celda: "PRESUPUESTO!C3" }),
+      hallazgo({ severidad: "ERROR", celda: "PRESUPUESTO!C3" }),
+      hallazgo({ severidad: "ADVERTENCIA", celda: "APU-01!A1" }),
+    ]);
+    const r = resumenPorHoja(halos);
+    expect(r.get("PRESUPUESTO")).toMatchObject({ total: 3, severidad: "ERROR" });
+    expect(r.get("APU-01")).toMatchObject({ total: 1, severidad: "ADVERTENCIA" });
+    expect(r.has("PORTADA")).toBe(false);
+  });
+
+  test("a igual gravedad entre celdas, la hoja conserva esa severidad", () => {
+    const { halos } = construirHalos([
+      hallazgo({ severidad: "ERROR", celda: "H!A1" }),
+      hallazgo({ severidad: "ERROR", celda: "H!A2" }),
+    ]);
+    expect(resumenPorHoja(halos).get("H")).toMatchObject({ total: 2, severidad: "ERROR" });
   });
 });

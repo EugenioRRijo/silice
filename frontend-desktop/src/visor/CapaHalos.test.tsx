@@ -49,14 +49,14 @@ function montar() {
 describe("CapaHalos", () => {
   test("pone un halo con texto accesible solo en las celdas de la hoja que se ve", () => {
     montar();
-    expect(screen.getByRole("img", { name: /Crítico.*PRESUPUESTO!F12/ })).toBeInTheDocument();
-    expect(screen.getByRole("img", { name: /Atípico.*PRESUPUESTO!B3/ })).toBeInTheDocument();
-    expect(screen.queryByRole("img", { name: /APU-01!G48/ })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Crítico.*PRESUPUESTO!F12/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Atípico.*PRESUPUESTO!B3/ })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /APU-01!G48/ })).not.toBeInTheDocument();
   });
 
   test("el halo se posiciona con el rectangulo de la celda menos el origen del area de celdas", () => {
     montar();
-    const halo = screen.getByRole("img", { name: /Crítico.*PRESUPUESTO!F12/ }).closest(".halo") as HTMLElement;
+    const halo = screen.getByRole("button", { name: /Crítico.*PRESUPUESTO!F12/ }).closest(".halo") as HTMLElement;
     // area() empieza en (46, 20): 300 - 46 y 120 - 20.
     expect(halo.style.left).toBe("254px");
     expect(halo.style.top).toBe("100px");
@@ -66,8 +66,8 @@ describe("CapaHalos", () => {
 
   test("el color sale del token de severidad y el atipico del morado", () => {
     montar();
-    const critico = screen.getByRole("img", { name: /Crítico/ }).closest(".halo") as HTMLElement;
-    const atipico = screen.getByRole("img", { name: /Atípico/ }).closest(".halo") as HTMLElement;
+    const critico = screen.getByRole("button", { name: /Crítico/ }).closest(".halo") as HTMLElement;
+    const atipico = screen.getByRole("button", { name: /Atípico/ }).closest(".halo") as HTMLElement;
     expect(critico.style.getPropertyValue("--halo-color")).toBe("var(--silice-sev-critico)");
     expect(atipico.style.getPropertyValue("--halo-color")).toBe("var(--silice-atipico)");
   });
@@ -76,7 +76,7 @@ describe("CapaHalos", () => {
     const { hoja } = montar();
     hoja.posiciones.set(clave({ hoja: "PRESUPUESTO", fila0: 11, columna0: 5 }), { x: 300, y: 80, ancho: 80, alto: 20 });
     act(() => hoja.cambiar());
-    const halo = screen.getByRole("img", { name: /Crítico/ }).closest(".halo") as HTMLElement;
+    const halo = screen.getByRole("button", { name: /Crítico/ }).closest(".halo") as HTMLElement;
     expect(halo.style.top).toBe("60px");
   });
 
@@ -84,22 +84,22 @@ describe("CapaHalos", () => {
     const { hoja } = montar();
     hoja.posiciones.set(clave({ hoja: "PRESUPUESTO", fila0: 11, columna0: 5 }), null);
     act(() => hoja.cambiar());
-    expect(screen.queryByRole("img", { name: /Crítico/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Crítico/ })).not.toBeInTheDocument();
   });
 
   test("al cambiar de hoja salen los halos de la otra hoja", () => {
     const { hoja } = montar();
     hoja.fijarHoja("APU-01");
     act(() => hoja.cambiar());
-    expect(screen.getByRole("img", { name: /Advertencia.*APU-01!G48/ })).toBeInTheDocument();
-    expect(screen.queryByRole("img", { name: /Crítico/ })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Advertencia.*APU-01!G48/ })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Crítico/ })).not.toBeInTheDocument();
   });
 
   test("el title dice la severidad en texto visible (WCAG 1.4.1): el atipico no se distingue solo por el color", () => {
     montar();
-    const atipico = screen.getByRole("img", { name: /Atípico/ }).closest(".halo__insignia");
+    const atipico = screen.getByRole("button", { name: /Atípico/ }).closest(".halo__insignia");
     expect(atipico?.getAttribute("title")).toBe("Atípico: Precio atipico");
-    const critico = screen.getByRole("img", { name: /Crítico/ }).closest(".halo__insignia");
+    const critico = screen.getByRole("button", { name: /Crítico/ }).closest(".halo__insignia");
     expect(critico?.getAttribute("title")).toBe("Crítico: El total no coincide");
   });
 
@@ -108,14 +108,38 @@ describe("CapaHalos", () => {
     hoja.posiciones.set(clave({ hoja: "PRESUPUESTO", fila0: 11, columna0: 5 }), { x: 300, y: 120, ancho: 80, alto: 20 });
     const { halos } = construirHalos(hallazgos);
     render(<CapaHalos halos={halos} hallazgos={hallazgos} visor={hoja} seleccionado={0} onElegir={vi.fn()} />);
-    expect(screen.getByRole("img", { name: /Crítico/ }).closest(".halo")).toHaveAttribute("aria-current", "true");
+    expect(screen.getByRole("button", { name: /Crítico/ }).closest(".halo")).toHaveAttribute("aria-current", "true");
   });
 
   test("clic en la insignia elige el hallazgo", async () => {
     const usuario = userEvent.setup();
     const { onElegir } = montar();
-    await usuario.click(screen.getByRole("img", { name: /Crítico/ }));
+    await usuario.click(screen.getByRole("button", { name: /Crítico/ }));
     expect(onElegir).toHaveBeenCalledWith(0);
+  });
+
+  test("la insignia es un boton con nombre propio que no entra en el orden de Tab: la lista cubre el teclado (m2)", () => {
+    montar();
+    const insignia = screen.getByRole("button", { name: /Crítico.*PRESUPUESTO!F12/ });
+    expect(insignia.tagName).toBe("BUTTON");
+    expect(insignia).toHaveAttribute("tabindex", "-1");
+    expect(insignia).toHaveClass("halo__insignia");
+  });
+
+  test("solo el halo amarillo lleva el segundo contorno oscuro (m1)", () => {
+    const hoja = crearHojaFalsa("APU-01");
+    hoja.posiciones.set(clave({ hoja: "APU-01", fila0: 47, columna0: 6 }), { x: 200, y: 200, ancho: 80, alto: 20 });
+    const { halos } = construirHalos(hallazgos);
+    const { container } = render(
+      <CapaHalos halos={halos} hallazgos={hallazgos} visor={hoja} seleccionado={null} onElegir={vi.fn()} />,
+    );
+    expect(container.querySelector(".halo")).toHaveClass("halo--advertencia");
+    const otra = crearHojaFalsa("PRESUPUESTO");
+    otra.posiciones.set(clave({ hoja: "PRESUPUESTO", fila0: 11, columna0: 5 }), { x: 300, y: 120, ancho: 80, alto: 20 });
+    const resto = render(
+      <CapaHalos halos={halos} hallazgos={hallazgos} visor={otra} seleccionado={null} onElegir={vi.fn()} />,
+    );
+    expect(resto.container.querySelector(".halo")).not.toHaveClass("halo--advertencia");
   });
 
   test("sin visor no pinta nada", () => {

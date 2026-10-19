@@ -45,15 +45,6 @@
   min-inline-size: 0;
 }
 
-.franja-indicadores__severidad {
-  display: flex;
-  flex: none;
-  align-items: center;
-  gap: 0.25rem;
-  padding: 0 0.75rem;
-  border-inline-start: 1px solid var(--silice-divisor);
-}
-
 .fiori-kpi {
   position: relative;
   display: grid;

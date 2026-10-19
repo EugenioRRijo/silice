@@ -56,19 +56,30 @@ export function CapaHalos({ halos, hallazgos, visor, seleccionado, onElegir }: P
           return (
             <div
               key={halo.clave}
-              className={elegido ? "halo halo--elegido" : "halo"}
+              className={[
+                "halo",
+                elegido ? "halo--elegido" : "",
+                // El amarillo no alcanza 3:1 sobre el fondo claro: lleva un segundo contorno oscuro de 1 px.
+                halo.estilo.token === "--silice-sev-advertencia" ? "halo--advertencia" : "",
+              ]
+                .filter(Boolean)
+                .join(" ")}
               style={estilo}
               aria-current={elegido ? "true" : undefined}
             >
-              <span
+              {/* Con nombre propio pero fuera del orden de Tab: la lista de hallazgos es el camino del teclado. */}
+              <button
+                type="button"
+                tabIndex={-1}
                 className="halo__insignia"
+                aria-label={etiquetaDe(halo, hallazgos)}
                 title={`${halo.estilo.texto}: ${hallazgos[halo.indices[0]].descripcion}`}
                 onClick={() => onElegir(halo.indices[0])}
               >
-                <span role="img" aria-label={etiquetaDe(halo, hallazgos)} className="halo__icono">
+                <span className="halo__icono" aria-hidden="true">
                   <IconoDeSeveridad nombre={halo.estilo.icono} size={12} />
                 </span>
-              </span>
+              </button>
             </div>
           );
         })}

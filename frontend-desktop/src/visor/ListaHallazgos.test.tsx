@@ -87,13 +87,74 @@ describe("ListaHallazgos", () => {
     expect(within(fila("Rendimiento fuera de rango")).getByText("Información")).toBeInTheDocument();
   });
 
-  test("la celda va en Plex Mono y el impacto se muestra exacto, alineado a la derecha", () => {
+  test("la celda va en Plex Mono y el impacto sale en es-VE (coma decimal), no con el punto de la API (M4)", () => {
     montar();
     const f = fila("El total no coincide con la suma de las partidas");
     const celda = within(f).getByText("PRESUPUESTO!F12");
     expect(celda).toHaveClass("silice-codigo");
-    const impacto = within(f).getByText("238.407");
+    expect(within(f).queryByText("238.407")).toBeNull();
+    const impacto = within(f).getByText("238,407");
     expect(impacto).toHaveClass("silice-cifra");
+  });
+
+  test("la primera linea de cada fila es celda, severidad, codigo e impacto, en ese orden (M5)", () => {
+    montar();
+    const linea = fila("El total no coincide con la suma de las partidas").querySelector(".hallazgo__encabezado");
+    expect(linea?.textContent?.replace(/\s+/g, " ").trim()).toBe("PRESUPUESTO!F12 · Crítico · L3 · Impacto 238,407");
+    const sinImpacto = fila("Precio unitario distinto al de INSUMOS").querySelector(".hallazgo__encabezado");
+    expect(sinImpacto?.textContent).toContain("APU-01!G48 · Error · L5 · Impacto 12,50");
+  });
+
+  test("sin celda la primera linea lo dice, y sin impacto no deja un hueco (M4, M5)", () => {
+    montar();
+    const linea = fila("El libro no declara la fecha de la portada").querySelector(".hallazgo__encabezado");
+    expect(linea?.textContent?.replace(/\s+/g, " ").trim()).toBe("Sin celda · Advertencia · L7");
+  });
+
+  test("no hay columna Impacto: el impacto vive en la primera linea (M4)", () => {
+    montar();
+    expect(screen.queryByRole("columnheader", { name: "Impacto" })).toBeNull();
+    expect(screen.queryByText("sin impacto")).toBeNull();
+  });
+
+  test("la descripcion se recorta a 3 lineas y solo la fila elegida la muestra completa (M5)", () => {
+    montar({ seleccionado: 1 });
+    const elegida = fila("Precio unitario distinto al de INSUMOS");
+    const otra = fila("El total no coincide con la suma de las partidas");
+    expect(elegida).toHaveClass("lista-hallazgos__fila--elegida");
+    expect(otra).not.toHaveClass("lista-hallazgos__fila--elegida");
+    expect(within(otra).getByText("El total no coincide con la suma de las partidas")).toHaveClass("hallazgo__descripcion");
+  });
+
+  test("solo una fila entra en el orden de Tab y las flechas mueven el foco entre filas (m3)", async () => {
+    const usuario = userEvent.setup();
+    montar();
+    const filas = [...document.querySelectorAll<HTMLElement>("tr[data-indice]")];
+    expect(filas.filter((f) => f.tabIndex === 0)).toHaveLength(1);
+    expect(filas[0].tabIndex).toBe(0);
+    filas[0].focus();
+    await usuario.keyboard("{ArrowDown}");
+    expect(filas[1]).toHaveFocus();
+    expect(filas[1].tabIndex).toBe(0);
+    expect(filas[0].tabIndex).toBe(-1);
+    await usuario.keyboard("{End}");
+    expect(filas[filas.length - 1]).toHaveFocus();
+    await usuario.keyboard("{Home}");
+    expect(filas[0]).toHaveFocus();
+    await usuario.keyboard("{ArrowUp}");
+    expect(filas[0]).toHaveFocus();
+  });
+
+  test("con una fila elegida, esa es la parada de Tab (m3)", () => {
+    montar({ seleccionado: 1 });
+    expect(fila("Precio unitario distinto al de INSUMOS").tabIndex).toBe(0);
+    expect(fila("El total no coincide con la suma de las partidas").tabIndex).toBe(-1);
+  });
+
+  test("los filtros por severidad llevan icono ademas del texto y el numero (el color nunca va solo)", () => {
+    montar();
+    const boton = screen.getByRole("button", { name: "Crítico 1" });
+    expect(boton.querySelector("svg")).not.toBeNull();
   });
 
   test("filtrar por Critico deja solo los criticos", async () => {
