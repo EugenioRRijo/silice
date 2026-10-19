@@ -243,6 +243,8 @@ def test_recuperacion_calcula_a_pedido_y_elegir_crea_la_version(monkeypatch, tmp
     assert filas["Más cuadrillas"]["Termino"] == "día 17"
     assert filas["Partidas en paralelo"]["Nota"].startswith("ninguna partida sin empezar")
     assert any("art. 182" in c.value for c in at.caption)
+    assert any("Inspectoría del Trabajo" in c.value for c in at.caption)
+    assert any(o == "Más cuadrillas" for o in at.radio(key="control_r_elegida").options)
     at.radio(key="control_r_elegida").set_value(
         next(o for o in at.radio(key="control_r_elegida").options if "cuadrillas" in o.lower())
     )
