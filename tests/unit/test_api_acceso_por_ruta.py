@@ -55,11 +55,9 @@ from tests.fixtures.sesion_web import (
     protegida,
 )
 
-LEER, EDITAR, REVISAR, CAMBIAR_CASO, CUALQUIERA, CUENTAS_ADM = (
+LEER, EDITAR, REVISAR, CAMBIAR_CASO, CUALQUIERA, CONTROLAR, DECIDIR, CUENTAS_ADM = (
     "leer_proyecto", "editar_hoja", "revisar_paquete", "cambiar_caso", "cualquier rol",
-    "administrar_cuentas",
-LEER, EDITAR, REVISAR, CAMBIAR_CASO, CUALQUIERA, CONTROLAR, DECIDIR = (
-    "control_de_obra", "decidir_recuperacion",
+    "control_de_obra", "decidir_recuperacion", "administrar_cuentas",
 )
 ENTREGAR = "entregar_paquete"
 REAJUSTAR = "convertir_y_reajustar"
