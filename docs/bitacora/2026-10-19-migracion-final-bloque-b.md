@@ -16,6 +16,9 @@ implementadores: `docs/planes/MANUAL_SUBAGENTES_FINAL_B.md`. Sin push ni PR; la 
 | T7 Revisar un paquete | Opus | 1 | DEVUELTO (2 MAYOR: 500 al dictaminar un alterado; desvíos sin es-VE) | 378f0ba |
 | T7 | Opus | 2 | APROBADO | b2e97cb (rojo a46a815) |
 
+| T8b alertas del núcleo con tilde | Sonnet | 1 | DEVUELTO (MAYOR: huecos `.+` encadenados, costo cúbico y recursión en el desglose «no aplica») | f5310e8 |
+| T8b | Sonnet | 2 | APROBADO (MENOR: el tope de 2 000 caracteres dejaba sin corregir desgloses largos; cerrado y verificado por el orquestador) | d58e251; cierre 5a05957 (rojo 02d563e) |
+
 Compartidos aplicados por el orquestador: `30819c7` (routers, tabla de acceso, CHANGELOG, api.json) y `b49ccf0`
 (api.json tras la ronda 1 de T7). Verificación tras `30819c7`: 268 pruebas verdes de acceso, OpenAPI, rutas del front y
 arquitectura.
@@ -42,6 +45,17 @@ ni `clean` en el árbol compartido.
 - El Excel externo de «Revisar un paquete» pasa ahora por la guardia de `.xlsx`; la clásica no lo hacía.
 - La clásica sigue ofreciendo el formulario de dictamen para un paquete alterado y responde con `st.error` al enviarlo.
 
+## Límite conocido de `con_tildes` (T8b, hallazgo 2 del árbitro)
+
+El núcleo arma el desglose de partidas sin motivo con `"; ".join(f"{c}: {m}" ...)` (`core/budget/recuperacion.py`,
+intocable). Un código de partida que contenga «; » y «: » es ambiguo con dos ítems; solo se corrige lo que calce con
+un motivo del conjunto cerrado (sin composicion de APU, sin rendimiento, sin mano de obra a jornal) a la derecha del
+último «: » de cada ítem, y todo lo demás queda intacto. El tope de 2 000 caracteres vale solo para el catálogo de
+plantillas por regex; el desglose es lineal y no lo necesita. Sin corregir por ser texto propio de `aplicacion/` y de
+la ruta, con claves que usan las pruebas y el front: «Desvio de precio», «Fin (dia habil)», «Retraso (dias)»,
+«mas de 7 dias» en `api/rutas/control.py`. El cambio «Mas»→«Más» de dos pruebas quedó en el commit de implementación
+`f5310e8` y no en uno de pruebas en rojo (reescribir historia sería peor).
+
 ## Deuda anotada (MENOR de los árbitros)
 
 - `fechaDeHoy` está copiada seis veces en el front (`administracion`, `actualizacion`, `indices`, `precios_empresa`,
@@ -52,8 +66,6 @@ ni `clean` en el árbol compartido.
 - T6: el 403 por rol de ana y rita solo se prueba en el GET, no en los tres POST de la clave.
 - Resto de la ranura de cabecera en `src/visor` y `libros` (sin alimentar); «Periodo» sin tilde en `elaborar` y
   `tablero`; textos sin tilde en módulos previos («clave publica», «contrasena», «Agregar linea»).
-- Alertas del núcleo sin tilde: salen de `core/budget/valor_ganado.py` (líneas 774 a 860) y llegan por
-  `aplicacion/control.py`; la corrección, sin tocar `core/`, va en esa capa. Sin dueño todavía.
 - Una cifra con `%` pegado («15.00%») no pasa a es-VE en `formatoEsVe`.
 
 ## Pendiente
