@@ -667,6 +667,7 @@ def test_la_capa_de_aplicacion_no_importa_interfaz_api_guiones_ni_pruebas():
     """RM-1, por archivo: tambien las importaciones perezosas (`_imports_de_ejecucion`)."""
     archivos = _archivos("aplicacion")
     assert RAIZ / "aplicacion" / "proyectos.py" in archivos  # la guardia no recorre una lista vacia
+    assert RAIZ / "aplicacion" / "hoja.py" in archivos  # la copia del Plan C (T10) tambien
     prohibidos = sorted(
         f"{_ruta(archivo)}: {modulo}"
         for archivo in archivos
@@ -687,6 +688,7 @@ def test_importar_la_capa_de_aplicacion_no_carga_interfaz_api_guiones_ni_pruebas
         if archivo.name != "__init__.py"
     )
     assert "aplicacion.proyectos" in modulos
+    assert "aplicacion.hoja" in modulos  # T10, Plan C: la copia de la hoja no carga `ui`
     codigo = (
         "import importlib, sys\n"
         f"for m in {modulos!r}: importlib.import_module(m)\n"

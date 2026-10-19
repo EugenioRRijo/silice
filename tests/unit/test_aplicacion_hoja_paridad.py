@@ -1,4 +1,4 @@
-"""Plan C de la Hoja (T10, 3b-1): `aplicacion/hoja.py` es una COPIA de `ui/hoja.py` y se prueba contra ella.
+"""Plan C de la Hoja (T10, 3b-1): `aplicacion/hoja.py` es una COPIA de `ui/hoja.py`.
 
 `ui/hoja.py` esta en el congelado del experimento (RS-9) y no se toca; la interfaz nueva usa
 `aplicacion.hoja`, que es otra clase `Borrador` con las mismas funciones. Esta prueba (que SI puede
@@ -10,7 +10,7 @@ importar `ui`) corre los casos de LECTURA de la sub-rebanada 3b-1 en las dos y c
 Oraculos: los literales de la memoria de OF-001 (`tests/fixtures/memorias/of001.md`) y de la prueba
 de aceptacion SF (total 2 703,86; CV 2 137,44; PE 1 530,49 en el Dia 23; 56,60 %; con
 administracion 0,20: 2 821,42; 1 763,39; 62,50 %); ninguno sale de la copia. Los casos de
-escritura (guardar, restaurar, cotizar...) se paran a probar en las rebanadas 3c a 3e.
+escritura (guardar, restaurar, cotizar...) se prueban en las rebanadas 3c a 3e.
 
 Si la copia y la clasica divergen, la unica que se corrige es la copia: `ui/hoja.py` esta
 congelado. Un cambio legitimo del comportamiento exige cambiar esta prueba con el aval de Eugenio.
@@ -28,7 +28,7 @@ from pathlib import Path
 import pytest
 
 from core.catalog import Catalogo, abrir_sesion, crear_motor
-from tests.fixtures import caso_of001
+from tests.fixtures import caso_of001, caso_ti001
 from tests.fixtures.hoja_en_base import (
     NOMBRE_OF001,
     NOMBRE_TI001,
@@ -166,8 +166,8 @@ def _plantillas(tmp_path_factory) -> tuple[Path, Path]:
     return plantilla_of001(carpeta / "of001.db"), plantilla_ti001(carpeta / "ti001.db")
 
 
-def _abrir(plantilla: Path, destino: Path, modulo, nombre: str):
-    """Copia la plantilla, abre la version 001 con `modulo` y devuelve (abierta, historial)."""
+def _abrir(plantilla: Path, destino: Path, modulo, nombre: str, codigo: str = "001"):
+    """Copia la plantilla, abre la version `codigo` con `modulo` y devuelve (abierta, historial)."""
     copia = destino / f"{modulo.__name__}.db"
     shutil.copyfile(plantilla, copia)
     motor = crear_motor(f"sqlite:///{copia.as_posix()}")
@@ -175,7 +175,7 @@ def _abrir(plantilla: Path, destino: Path, modulo, nombre: str):
         with abrir_sesion(motor) as sesion:
             catalogo = Catalogo(sesion)
             abierta = modulo.abrir_version(
-                sesion, catalogo, nombre, "001", fecha_evaluacion=caso_of001.FECHA
+                sesion, catalogo, nombre, codigo, fecha_evaluacion=caso_of001.FECHA
             )
             historial = modulo.historial_de_versiones(sesion, nombre)
             vigente = modulo.codigo_vigente(sesion, nombre)
@@ -217,8 +217,8 @@ def _ti001(_plantillas, tmp_path_factory):
 
     destino = tmp_path_factory.mktemp("ti001_pareja")
     return (
-        _abrir(_plantillas[1], destino, clasica, NOMBRE_TI001),
-        _abrir(_plantillas[1], destino, copia, NOMBRE_TI001),
+        _abrir(_plantillas[1], destino, clasica, NOMBRE_TI001, caso_ti001.CODIGO),
+        _abrir(_plantillas[1], destino, copia, NOMBRE_TI001, caso_ti001.CODIGO),
     )
 
 
@@ -315,15 +315,19 @@ def test_el_estado_de_filas_de_of001_es_igual_en_las_dos(_of001):
     assert all(clave.startswith("esp_") for clave in estados[0])
 
 
-def test_el_estado_de_filas_marca_ok_en_una_fila_sin_hallazgos(_of001):
-    """Oraculo a mano: `EstadoFila(None, "OK")` es el de una fila que ningun hallazgo toca."""
-    (_, _, _), (nueva, _, _) = _of001
+def test_el_estado_de_filas_marca_ok_en_una_fila_que_ningun_hallazgo_toca(_of001):
+    """Oraculo a mano: sin hallazgos todas las filas son `EstadoFila(None, "OK")`."""
+    from types import SimpleNamespace
+
     from aplicacion import hoja as copia
 
-    resultado = copia.elaborar_borrador(nueva.borrador)
-    estados = copia.estado_de_filas(nueva.borrador.espacio, resultado.elaboracion.informe)
-    limpias = [e for e in estados.values() if e.severidad is None]
-    assert limpias and all(e.texto == "OK" for e in limpias)
+    (_, _, _), (nueva, _, _) = _of001
+    sin_hallazgos = SimpleNamespace(hallazgos=())
+    estados = copia.estado_de_filas(nueva.borrador.espacio, sin_hallazgos)
+    espacio = nueva.borrador.espacio
+    assert len(estados) == len(espacio.ambientes) + len(espacio.fuentes) + len(espacio.puntos)
+    assert {(e.severidad, e.texto) for e in estados.values()} == {(None, "OK")}
+    assert estados["esp_ambientes:BAN-01"] == copia.EstadoFila(None, "OK")
 
 
 def test_elaborar_ti001_da_el_punto_de_equilibrio_de_la_memoria_en_las_dos(_ti001):
