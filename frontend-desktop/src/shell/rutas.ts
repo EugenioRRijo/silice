@@ -194,6 +194,100 @@ export function seccionesVisibles(
   })).filter((s) => s.paginas.length > 0);
 }
 
+// Menu por cinco areas (spec 2026-10-18 del Inicio, §2.2). `seccion` sigue mandando en los permisos y en el modo
+// entrega; el area solo decide como se agrupa y en que orden se ve. Una sola lista por area (ids en orden): una
+// pagina que no este en ninguna cae al final de «Más» en vez de desaparecer, y un id que aun no esta en el registro
+// (el historial de auditorias) se ignora hasta que exista.
+export interface AreaDef {
+  id: string;
+  titulo: string;
+  descripcion: string;
+  paginas: readonly string[];
+}
+
+export const AREAS: readonly AreaDef[] = [
+  { id: "inicio", titulo: "Inicio", descripcion: "Empiece aquí", paginas: ["inicio"] },
+  {
+    id: "auditar",
+    titulo: "Auditar",
+    descripcion: "Revisar presupuestos y paquetes",
+    paginas: ["libros", "revisar", "historial"],
+  },
+  {
+    id: "crear",
+    titulo: "Crear",
+    descripcion: "APU, presupuestos y entregas",
+    paginas: ["componer", "elaborar", "hoja", "catalogo", "tablero", "entregar"],
+  },
+  { id: "produccion", titulo: "Producción", descripcion: "Arenera: existencias y báscula", paginas: ["existencias"] },
+  {
+    id: "mas",
+    titulo: "Más",
+    descripcion: "Precios, obra, análisis y ajustes",
+    paginas: [
+      "actualizacion",
+      "historico",
+      "precios_empresa",
+      "indices",
+      "reajuste",
+      "control",
+      "escenarios",
+      "similares",
+      "simulador",
+      "administracion",
+      "acerca",
+    ],
+  },
+];
+
+export interface AreaVisible {
+  id: string;
+  titulo: string;
+  descripcion: string;
+  paginas: PaginaDef[];
+}
+
+export function areasVisibles(
+  acciones: readonly string[],
+  modoEntrega: boolean,
+  paginas: readonly PaginaDef[] = PAGINAS,
+): AreaVisible[] {
+  const asignadas = new Set(AREAS.flatMap((a) => a.paginas));
+  const huerfanas = paginas.filter((p) => !asignadas.has(p.id));
+  return AREAS.map((area) => {
+    const ids = area.id === "mas" ? [...area.paginas, ...huerfanas.map((p) => p.id)] : area.paginas;
+    const delArea = ids
+      .map((id) => paginaPorId(id, paginas))
+      .filter((p): p is PaginaDef => p !== undefined && visible(p, acciones, modoEntrega));
+    return { id: area.id, titulo: area.titulo, descripcion: area.descripcion, paginas: delArea };
+  }).filter((a) => a.paginas.length > 0);
+}
+
+// Las tres herramientas del dia a dia de la empresa (spec §2.3), siempre arriba del menu.
+export interface HerramientaPrincipal {
+  pagina: string;
+  titulo: string;
+  ayuda: string;
+}
+
+export const HERRAMIENTAS_PRINCIPALES: readonly HerramientaPrincipal[] = [
+  { pagina: "libros", titulo: "Auditor de APU", ayuda: "Suba un Excel y vea lo que no cuadra" },
+  { pagina: "componer", titulo: "Creador de APU", ayuda: "Componga una partida o arme un presupuesto" },
+  { pagina: "existencias", titulo: "Gestor de producción", ayuda: "Cuánto hay y cuánto queda de cada material" },
+];
+
+// Solo las que esta cuenta puede usar y que ya viven en esta interfaz (las demas salen en su area, como «clásica»).
+export function herramientasVisibles(
+  acciones: readonly string[],
+  modoEntrega: boolean,
+  paginas: readonly PaginaDef[] = PAGINAS,
+): HerramientaPrincipal[] {
+  return HERRAMIENTAS_PRINCIPALES.filter((h) => {
+    const pagina = paginaPorId(h.pagina, paginas);
+    return pagina !== undefined && estaMigrada(pagina) && visible(pagina, acciones, modoEntrega);
+  });
+}
+
 // Direccion de la pagina en la interfaz Streamlit, o null si no se conoce la base (solo http o https). En
 // Streamlit la pagina de inicio es la raiz.
 export function enlaceClasico(base: string | null | undefined, pagina: PaginaDef): string | null {
