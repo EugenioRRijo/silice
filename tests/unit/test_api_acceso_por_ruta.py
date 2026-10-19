@@ -55,18 +55,30 @@ from tests.fixtures.sesion_web import (
     protegida,
 )
 
-LEER, EDITAR, REVISAR, CAMBIAR_CASO, CUALQUIERA, CONTROLAR, DECIDIR, CUENTAS_ADM = (
-    "leer_proyecto", "editar_hoja", "revisar_paquete", "cambiar_caso", "cualquier rol",
-    "control_de_obra", "decidir_recuperacion", "administrar_cuentas",
+LEER, EDITAR, REVISAR, CAMBIAR_CASO, CUALQUIERA, CUENTAS_ADM, CONTROLAR, DECIDIR = (
+    "leer_proyecto",
+    "editar_hoja",
+    "revisar_paquete",
+    "cambiar_caso",
+    "cualquier rol",
+    "administrar_cuentas",
+    "control_de_obra",
+    "decidir_recuperacion",
 )
 ENTREGAR = "entregar_paquete"
 REAJUSTAR = "convertir_y_reajustar"
+EMPRESA, RED_Y_API = (
+    "administrar_empresa",
+    "administrar_red_y_api",
+)  # Administracion: solo administra
 #: Los roles de cada acción, a mano (spec S3 §5.1).
 ROLES = {
     LEER: {"arma", "revisa"},
     EDITAR: {"arma"},
     REVISAR: {"revisa"},
     ENTREGAR: {"arma"},
+    EMPRESA: {"administrador"},
+    RED_Y_API: {"administrador"},
     REAJUSTAR: {"arma"},
     CAMBIAR_CASO: {"arma", "administrador"},
     CONTROLAR: {"arma"},
@@ -145,6 +157,20 @@ TABLA = {
     ("GET", "/v1/entregas/versiones"): ENTREGAR,
     ("GET", "/v1/entregas/resumen"): ENTREGAR,
     ("POST", "/v1/entregas"): ENTREGAR,
+    ("GET", "/v1/admin/empresa"): EMPRESA,
+    ("POST", "/v1/admin/empresa"): EMPRESA,
+    ("POST", "/v1/admin/empresa/clave"): EMPRESA,
+    ("GET", "/v1/admin/empresa/clave-publica"): EMPRESA,
+    ("GET", "/v1/admin/empresa/respaldo-clave"): EMPRESA,
+    ("POST", "/v1/admin/empresa/clave/retirar"): EMPRESA,
+    ("POST", "/v1/admin/empresa/clave/revocar"): EMPRESA,
+    ("GET", "/v1/admin/claves-api"): RED_Y_API,
+    ("POST", "/v1/admin/claves-api"): RED_Y_API,
+    ("POST", "/v1/admin/claves-api/{clave_id}/revocar"): RED_Y_API,
+    ("GET", "/v1/admin/instalacion"): RED_Y_API,
+    ("POST", "/v1/admin/instalacion/respaldos"): RED_Y_API,
+    ("GET", "/v1/admin/instalacion/respaldos/{nombre}"): RED_Y_API,
+    ("POST", "/v1/admin/instalacion/eventos/{nombre}/revisar"): RED_Y_API,
     ("GET", "/v1/reajuste/contexto"): REAJUSTAR,
     ("GET", "/v1/reajuste/parciales"): REAJUSTAR,
     ("POST", "/v1/reajuste/calcular"): REAJUSTAR,
@@ -249,9 +275,7 @@ def test_cada_ruta_exige_el_rol_de_su_accion(login: str) -> None:
     roles = CUENTAS[login][1]
     discrepancias = []
     for (metodo, ruta), accion in sorted(TABLA.items()):
-        respuesta = navegador.request(
-            metodo, _concreta(ruta), json={}, headers=protegida(ficha)
-        )
+        respuesta = navegador.request(metodo, _concreta(ruta), json={}, headers=protegida(ficha))
         if roles & ROLES[accion]:
             paso = respuesta.status_code not in (401, 403)
         else:
@@ -296,9 +320,7 @@ def _referencia() -> FastAPI:
 
 
 REFERENCIA = _referencia()
-ANTIGUAS = sorted(
-    par for par in TABLA if par in set(_pares(REFERENCIA))
-)
+ANTIGUAS = sorted(par for par in TABLA if par in set(_pares(REFERENCIA)))
 
 
 def test_la_referencia_monta_las_rutas_de_los_routers_de_siempre() -> None:

@@ -12,13 +12,16 @@ from api import interfaz
 from api.proteccion import opciones_documentacion, proteger
 from api.rutas import (
     acerca,
+    admin_claves_api,
+    admin_empresa,
+    admin_instalacion,
     auditorias,
     casos,
     catalogo,
     composicion,
     computos,
-    cuentas,
     control,
+    cuentas,
     entregas,
     libros,
     listas,
@@ -89,6 +92,10 @@ app.include_router(entregas.router)
 # Ola 4 (sesion 2b): Reajuste de precios
 app.include_router(reajuste.router)
 # 1.2.0 (RT-2): la interfaz nueva, estática y sin secretos, en /app con CSP
+# Ola 5 (sesion 2b): Administracion (empresa y firma, claves de API, instalacion); solo con sesion
+app.include_router(admin_empresa.router)
+app.include_router(admin_claves_api.router)
+app.include_router(admin_instalacion.router)
 interfaz.montar(app)
 
 
@@ -110,7 +117,10 @@ def manejar_http_exception(_request: Request, exc: HTTPException) -> JSONRespons
     proyectos, o UC-02 sin nada que confirmar): mismo formato `{"detalle": ...}` que el resto de
     la API, en vez del `{"detail": ...}` que usa FastAPI por defecto.
     """
-    return JSONResponse(status_code=exc.status_code, content={"detalle": exc.detail})
+    # Las cabeceras de la excepcion (p. ej. `Retry-After` del 429) viajan con la respuesta.
+    return JSONResponse(
+        status_code=exc.status_code, content={"detalle": exc.detail}, headers=exc.headers
+    )
 
 
 @app.exception_handler(LookupError)
