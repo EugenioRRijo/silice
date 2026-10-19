@@ -142,6 +142,7 @@ TABLA = {
     ("POST", "/v1/admin/instalacion/respaldos"): RED_Y_API,
     ("GET", "/v1/admin/instalacion/respaldos/{nombre}"): RED_Y_API,
     ("POST", "/v1/admin/instalacion/eventos/{nombre}/revisar"): RED_Y_API,
+    ("GET", "/v1/acerca"): CUALQUIERA,
 }
 #: Las de la puerta de entrada: la sesión misma (con su propia regla) y el ping.
 DE_LA_SESION = {

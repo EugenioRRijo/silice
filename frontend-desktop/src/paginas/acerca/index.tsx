@@ -1,0 +1,68 @@
+import { StructuredListBody, StructuredListCell, StructuredListRow, StructuredListWrapper, Tag } from "@carbon/react";
+import { AvisoError } from "../../comun/AvisoError";
+import { EsqueletoPagina } from "../../comun/EsqueletoPagina";
+import { useAplicacion } from "../../shell/contexto";
+import { useCarga } from "../inicio/useCarga";
+
+interface Acerca {
+  version: string;
+  semver: string;
+  revision_instalacion: string;
+  head_instalacion: string;
+  revision_caso: string;
+  head_caso: string;
+  carpeta_datos: string | null;
+  modulos: { nombre: string; instalado: boolean }[];
+}
+
+function Fila({ rotulo, valor }: { rotulo: string; valor: string }) {
+  return (
+    <StructuredListRow>
+      <StructuredListCell noWrap>{rotulo}</StructuredListCell>
+      <StructuredListCell>{valor}</StructuredListCell>
+    </StructuredListRow>
+  );
+}
+
+// «Acerca de Sílice» (RF-99): versión, revisiones de las dos bases, carpeta de datos (solo quien administra) y
+// módulos instalados. Solo lectura.
+export default function PaginaAcerca() {
+  const { alExpirar } = useAplicacion();
+  const carga = useCarga<Acerca>("/v1/acerca", alExpirar);
+
+  if (carga.estado === "error") return <AvisoError error={carga.error} />;
+  if (carga.estado !== "listo") return <EsqueletoPagina />;
+  const d = carga.datos;
+
+  return (
+    <section aria-labelledby="acerca-titulo">
+      <h2 id="acerca-titulo" className="cds--type-heading-04">
+        Sílice {d.semver}
+      </h2>
+      <p className="cds--type-body-compact-01">Versión de pyproject.toml: {d.version}</p>
+      <StructuredListWrapper isCondensed aria-label="Bases y carpeta de datos">
+        <StructuredListBody>
+          <Fila rotulo="Base de la instalación" valor={`${d.revision_instalacion} (la última es ${d.head_instalacion})`} />
+          <Fila rotulo="Base del caso abierto" valor={`${d.revision_caso} (la última es ${d.head_caso})`} />
+          {d.carpeta_datos !== null && <Fila rotulo="Carpeta de datos" valor={d.carpeta_datos} />}
+        </StructuredListBody>
+      </StructuredListWrapper>
+      <h3 className="cds--type-heading-compact-02">Módulos</h3>
+      <StructuredListWrapper isCondensed aria-label="Módulos">
+        <StructuredListBody>
+          {d.modulos.map((m) => (
+            <StructuredListRow key={m.nombre}>
+              <StructuredListCell>{m.nombre}</StructuredListCell>
+              <StructuredListCell>
+                <Tag size="sm" type={m.instalado ? "green" : "gray"}>
+                  {m.instalado ? "instalado" : "no instalado"}
+                </Tag>
+              </StructuredListCell>
+            </StructuredListRow>
+          ))}
+        </StructuredListBody>
+      </StructuredListWrapper>
+      <p className="cds--type-label-01">Sílice es software propietario; las licencias de terceros están en LICENCIAS.</p>
+    </section>
+  );
+}

@@ -11,6 +11,7 @@ from fastapi.responses import JSONResponse
 from api import interfaz
 from api.proteccion import opciones_documentacion, proteger
 from api.rutas import (
+    acerca,
     admin_claves_api,
     admin_empresa,
     admin_instalacion,
@@ -65,6 +66,8 @@ app.include_router(
 )
 # 1.2.0 (RT-9): acceso del navegador por cuenta y cookie; sin clave de API a propósito
 app.include_router(sesion.router)
+# Ola 1 (sesion 2b): GET /v1/acerca, con la clave de API o la sesion de cualquier rol
+app.include_router(acerca.router)
 # 2b: «Partidas similares» de la interfaz nueva (UC-03); clave o sesión con editar_hoja
 app.include_router(
     similares.router, dependencies=[Depends(exigir_clave_o_sesion(Accion.EDITAR_HOJA))]

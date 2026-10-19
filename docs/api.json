@@ -1819,6 +1819,28 @@
         }
       }
     },
+    "/v1/acerca": {
+      "get": {
+        "tags": [
+          "acerca"
+        ],
+        "summary": "Ver Acerca",
+        "description": "Datos de «Acerca de»; sin crear ni migrar ninguna base. Con sesión, `carpeta_datos` solo\npara quien administra; con clave de API, siempre.",
+        "operationId": "ver_acerca_v1_acerca_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcercaRespuesta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/similares": {
       "post": {
         "tags": [
@@ -2881,6 +2903,64 @@
   },
   "components": {
     "schemas": {
+      "AcercaRespuesta": {
+        "properties": {
+          "version": {
+            "type": "string",
+            "title": "Version"
+          },
+          "semver": {
+            "type": "string",
+            "title": "Semver"
+          },
+          "revision_instalacion": {
+            "type": "string",
+            "title": "Revision Instalacion"
+          },
+          "head_instalacion": {
+            "type": "string",
+            "title": "Head Instalacion"
+          },
+          "revision_caso": {
+            "type": "string",
+            "title": "Revision Caso"
+          },
+          "head_caso": {
+            "type": "string",
+            "title": "Head Caso"
+          },
+          "carpeta_datos": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Carpeta Datos"
+          },
+          "modulos": {
+            "items": {
+              "$ref": "#/components/schemas/ModuloRespuesta"
+            },
+            "type": "array",
+            "title": "Modulos"
+          }
+        },
+        "type": "object",
+        "required": [
+          "version",
+          "semver",
+          "revision_instalacion",
+          "head_instalacion",
+          "revision_caso",
+          "head_caso",
+          "carpeta_datos",
+          "modulos"
+        ],
+        "title": "AcercaRespuesta"
+      },
       "ActualizacionPeticion": {
         "properties": {
           "lista": {
@@ -5895,6 +5975,24 @@
         ],
         "title": "ListaRespuesta",
         "description": "Cabecera de una lista de precios registrada."
+      },
+      "ModuloRespuesta": {
+        "properties": {
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          },
+          "instalado": {
+            "type": "boolean",
+            "title": "Instalado"
+          }
+        },
+        "type": "object",
+        "required": [
+          "nombre",
+          "instalado"
+        ],
+        "title": "ModuloRespuesta"
       },
       "NuevaClave": {
         "properties": {
