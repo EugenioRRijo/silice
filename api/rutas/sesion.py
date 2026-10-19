@@ -30,13 +30,10 @@ de la interfaz Streamlit (los dos de `aplicacion.entorno`).
 from __future__ import annotations
 
 import math
-from collections.abc import Callable, Coroutine
-from typing import Annotated, Any
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
-from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
-from fastapi.routing import APIRoute
 from pydantic import BaseModel, Field
 
 from api import caso_web
@@ -52,6 +49,7 @@ from api.sesion_web import (
     poner_cookie,
     sesion_vigente,
 )
+from api.sin_eco import RutaSinEco, sin_eco
 from aplicacion.entorno import modo_entrega_activo, url_clasica
 from operacion.base_datos import ErrorDeBase
 from operacion.instalacion import sesion_de_instalacion
@@ -72,35 +70,11 @@ MENSAJE_FRENO = (
 )
 
 
-def _sin_eco(mensaje: str) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
-    """Fija el mensaje fijo del 422 de un punto final de este router (`_RutaSinEco`)."""
-
-    def marcar(punto_final: Callable[..., Any]) -> Callable[..., Any]:
-        punto_final.mensaje_sin_eco = mensaje  # type: ignore[attr-defined]
-        return punto_final
-
-    return marcar
+class _RutaSesion(RutaSinEco):
+    mensaje_por_omision = MENSAJE_CUERPO_INVALIDO
 
 
-class _RutaSinEco(APIRoute):
-    """El 422 de validación de estas rutas no repite lo enviado (la contraseña viajaría de
-    vuelta en `input`): `{"detalle": <mensaje fijo>}`, el de `_sin_eco` o, si no lo marca,
-    `MENSAJE_CUERPO_INVALIDO`. El resto de la API conserva el de FastAPI."""
-
-    def get_route_handler(self) -> Callable[[Request], Coroutine[Any, Any, Response]]:
-        original = super().get_route_handler()
-        mensaje = getattr(self.endpoint, "mensaje_sin_eco", MENSAJE_CUERPO_INVALIDO)
-
-        async def manejador(request: Request) -> Response:
-            try:
-                return await original(request)
-            except RequestValidationError:
-                return JSONResponse(status_code=422, content={"detalle": mensaje})
-
-        return manejador
-
-
-router = APIRouter(prefix="/v1/sesion", tags=["sesion"], route_class=_RutaSinEco)
+router = APIRouter(prefix="/v1/sesion", tags=["sesion"], route_class=_RutaSesion)
 
 
 class _Frenado(Exception):  # noqa: N818
@@ -297,7 +271,7 @@ def _ficha_aunque_temporal(request: Request) -> tuple[str, SesionActiva]:
         422: {"model": Detalle, "description": "La política la rechaza, o cuerpo inválido."},
     },
 )
-@_sin_eco(MENSAJE_CONTRASENAS_INVALIDAS)
+@sin_eco(MENSAJE_CONTRASENAS_INVALIDAS)
 def cambiar_contrasena(
     datos: CambioDeContrasena,
     vigente: Annotated[tuple[str, SesionActiva], Depends(_ficha_aunque_temporal)],
