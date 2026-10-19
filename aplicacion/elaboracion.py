@@ -20,6 +20,7 @@ el `commit` es de la pagina. Filas, no esquema:
 from __future__ import annotations
 
 import dataclasses
+import re
 import tempfile
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
@@ -175,12 +176,25 @@ def plan_desde_filas(filas: Sequence[Mapping[str, object]]) -> list[PeriodoPlan]
     return [(periodo, tuple(reparto)) for periodo, reparto in periodos.items()]
 
 
+def nombre_de_archivo(prefijo: str, codigo: str, extension: str) -> str:
+    """`<prefijo>_<codigo>.<extension>` con solo [A-Za-z0-9._ -]: sin rutas, comillas ni saltos de
+    linea. El codigo es texto de la persona y acaba en una cabecera `Content-Disposition` o en el
+    nombre de una descarga: nunca se usa tal cual para nombrar un archivo."""
+    limpio = re.sub(r"[^A-Za-z0-9._ -]", "_", codigo).replace("..", "_")
+    return f"{prefijo}_{limpio[:64]}.{extension}"
+
+
 def libro_excel(resultado: ResultadoElaboracion) -> tuple[bytes, str]:
-    """El libro de Excel del presupuesto elaborado (con su hoja de auditoria) y su nombre."""
+    """El libro de Excel del presupuesto elaborado (con su hoja de auditoria) y su nombre.
+
+    El libro se escribe con un nombre fijo dentro de un directorio temporal: el codigo del
+    presupuesto (texto de la persona) solo da el nombre de la descarga, ya saneado."""
     with tempfile.TemporaryDirectory() as carpeta:
-        ruta = Path(carpeta) / f"presupuesto_{resultado.presupuesto.codigo}.xlsx"
-        libro = exportar_excel(resultado.presupuesto, resultado.informe, ruta)
-        return libro.read_bytes(), libro.name
+        libro = exportar_excel(
+            resultado.presupuesto, resultado.informe, Path(carpeta) / "presupuesto.xlsx"
+        )
+        nombre = nombre_de_archivo("presupuesto", resultado.presupuesto.codigo, "xlsx")
+        return libro.read_bytes(), nombre
 
 
 # --- UC-01 3a: los pendientes, sus propuestas y la aceptacion (INV-072, D6) --------------------
