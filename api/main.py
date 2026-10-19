@@ -18,6 +18,7 @@ from api.rutas import (
     composicion,
     computos,
     cuentas,
+    control,
     entregas,
     libros,
     listas,
@@ -28,6 +29,7 @@ from api.rutas import (
     sesion,
     similares,
     simulador,
+    tablero,
 )
 from api.sesion_web import exigir_clave_o_sesion
 from core.catalog import CatalogoIncompleto
@@ -78,6 +80,10 @@ app.include_router(proyectos.router)
 app.include_router(cuentas.router)
 # Ola 3 (S2-B): «Componer una partida» (UC-10, UC-11)
 app.include_router(composicion.router)
+# Ola 4 (S2-C): el tablero de la obra (UC-13)
+app.include_router(tablero.router)
+# Ola 4 (S2-C): el control de obra (UC-19, UC-20)
+app.include_router(control.router)
 # Ola 4 (sesion 2b): entregar el paquete auditado
 app.include_router(entregas.router)
 # Ola 4 (sesion 2b): Reajuste de precios
