@@ -55,8 +55,9 @@ from tests.fixtures.sesion_web import (
     protegida,
 )
 
-LEER, EDITAR, REVISAR, CAMBIAR_CASO, CUALQUIERA = (
-    "leer_proyecto", "editar_hoja", "revisar_paquete", "cambiar_caso", "cualquier rol"
+LEER, EDITAR, REVISAR, CAMBIAR_CASO, CUALQUIERA, CONTROLAR, DECIDIR = (
+    "leer_proyecto", "editar_hoja", "revisar_paquete", "cambiar_caso", "cualquier rol",
+    "control_de_obra", "decidir_recuperacion",
 )
 ENTREGAR = "entregar_paquete"
 #: Los roles de cada acción, a mano (spec S3 §5.1).
@@ -66,6 +67,8 @@ ROLES = {
     REVISAR: {"revisa"},
     ENTREGAR: {"arma"},
     CAMBIAR_CASO: {"arma", "administrador"},
+    CONTROLAR: {"arma"},
+    DECIDIR: {"arma"},
     CUALQUIERA: {"arma", "revisa", "administrador"},
 }
 #: (método, ruta) -> acción. Las rutas sin sesión (`/salud`, `/v1/sesion*`) van aparte.
@@ -103,6 +106,18 @@ TABLA = {
     ("POST", "/v1/libros/pdf"): LEER,
     ("POST", "/v1/libros/replica"): LEER,
     ("GET", "/v1/tablero"): LEER,  # ola 4: Tablero
+    ("GET", "/v1/control/linea-base"): CONTROLAR,  # ola 4: Control de obra
+    ("POST", "/v1/control/linea-base"): CONTROLAR,
+    ("POST", "/v1/control/parametros"): CONTROLAR,
+    ("GET", "/v1/control/valuaciones"): CONTROLAR,
+    ("POST", "/v1/control/valuaciones"): CONTROLAR,
+    ("POST", "/v1/control/valuaciones/{valuacion_id}/anular"): CONTROLAR,
+    ("POST", "/v1/control/costos"): CONTROLAR,
+    ("POST", "/v1/control/importar/informe"): CONTROLAR,
+    ("POST", "/v1/control/importar"): CONTROLAR,
+    ("GET", "/v1/control/calculo"): CONTROLAR,
+    ("POST", "/v1/control/recuperacion/opciones"): CONTROLAR,
+    ("POST", "/v1/control/recuperacion/elegir"): DECIDIR,
     ("GET", "/v1/casos"): CUALQUIERA,
     ("POST", "/v1/casos/actual"): CAMBIAR_CASO,
     ("GET", "/v1/proyectos"): LEER,
