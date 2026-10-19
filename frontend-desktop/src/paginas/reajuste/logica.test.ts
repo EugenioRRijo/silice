@@ -59,6 +59,20 @@ describe("armarCuerpo", () => {
     expect(cuerpo.con_valuaciones).toBe(false);
   });
 
+  test("el primer anio en blanco corre desde el inicio del contrato, como en Streamlit", () => {
+    const f = { ...base, version: "001", clausula: { ...base.clausula, fecha_inicio: "2026-01-15" } };
+    expect(armarCuerpo("P", f).clausula.fecha_referencia_primer_anio).toBe("2026-01-15");
+    const g = { ...f, clausula: { ...f.clausula, fecha_referencia_primer_anio: "2026-03-01" } };
+    expect(armarCuerpo("P", g).clausula.fecha_referencia_primer_anio).toBe("2026-03-01");
+  });
+
+  test("el mes base de los indices se normaliza al dia 1; lo que no es fecha pasa tal cual", () => {
+    const con = (mes: string) => ({ ...base, version: "001", clausula: { ...base.clausula, fecha_base_indices: mes } });
+    expect(armarCuerpo("P", con("2026-03-15")).clausula.fecha_base_indices).toBe("2026-03-01");
+    expect(armarCuerpo("P", con("marzo")).clausula.fecha_base_indices).toBe("marzo");
+    expect(armarCuerpo("P", con("")).clausula.fecha_base_indices).toBe("");
+  });
+
   test("la fila de ejecutado que solo trae el numero de periodo es una fila en blanco", () => {
     expect(armarCuerpo("P", { ...base, version: "001" }).ejecutado).toEqual([]);
   });

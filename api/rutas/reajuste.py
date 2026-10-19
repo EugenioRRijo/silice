@@ -21,6 +21,7 @@ lo enviado (`RutaSinEco`). «Responsable» en blanco es la persona de la sesión
 
 from __future__ import annotations
 
+import re
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
@@ -40,6 +41,7 @@ from seguridad.sesiones import SesionActiva
 MENSAJE_CUERPO_INVALIDO = (
     "Los datos del estudio no tienen la forma esperada: escriba cada campo como texto."
 )
+MENSAJE_NUMERO_ENORME = "Un número del estudio es demasiado grande o no es válido."
 XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 SIN_CACHE = {"Cache-Control": "no-store"}
 PERIODICIDADES = ["mensual", "trimestral"]  # las que ofrece la pantalla clásica
@@ -161,6 +163,8 @@ def _preparar(sesion, p: EstudioPeticion, activa: SesionActiva | None):
         )
     except HojaInvalida as error:
         raise HTTPException(422, str(error)) from None
+    except ArithmeticError:  # Decimal fuera de rango, exponentes enormes
+        raise HTTPException(422, MENSAJE_NUMERO_ENORME) from None
     return clausula, periodos, resultado
 
 
@@ -170,6 +174,11 @@ def _parciales(sesion, proyecto: str, version: str) -> list[ParcialRespuesta]:
     except HojaInvalida as error:
         raise HTTPException(404, str(error)) from None
     return [ParcialRespuesta(id=i, fecha_calculo=f.isoformat()) for i, f in lista]
+
+
+def nombre_excel(version: str) -> str:
+    """`reajuste_<version>.xlsx` con solo caracteres seguros para una cabecera."""
+    return f"reajuste_{re.sub(r'[^A-Za-z0-9._-]', '_', version)}.xlsx"
 
 
 # --- Rutas --------------------------------------------------------------------------------
@@ -265,6 +274,8 @@ def guardar(
             )
     except HojaInvalida as error:
         raise HTTPException(422, str(error)) from None
+    except ArithmeticError:
+        raise HTTPException(422, MENSAJE_NUMERO_ENORME) from None
     return GuardadoRespuesta(estudio=estudio, estado=resultado.estado.value)
 
 
@@ -286,6 +297,6 @@ def excel(
         media_type=XLSX,
         headers={
             **SIN_CACHE,
-            "Content-Disposition": f'attachment; filename="reajuste_{peticion.version}.xlsx"',
+            "Content-Disposition": f'attachment; filename="{nombre_excel(peticion.version)}"',
         },
     )

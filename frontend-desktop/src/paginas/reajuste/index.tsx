@@ -1,5 +1,5 @@
 import { Button, Checkbox, InlineNotification, Select, SelectItem, TextInput } from "@carbon/react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { ErrorDeApi, pedir } from "../../api/cliente";
 import { AvisoError } from "../../comun/AvisoError";
 import { DescargaArchivo } from "../../comun/DescargaArchivo";
@@ -140,9 +140,12 @@ function Formulario({
   const [fuente, setFuente] = useState("");
   const [responsable, setResponsable] = useState("");
   const [reemplaza, setReemplaza] = useState("");
+  // Cuenta las ediciones: una respuesta que llega despues de editar corresponde a datos viejos y se descarta.
+  const edicion = useRef(0);
 
   // Todo cambio del formulario retira el resultado y el aviso de guardado: ya no corresponden a lo escrito.
   const editar = (cambio: (f: Formulario) => Formulario) => {
+    edicion.current += 1;
     setForm(cambio);
     setCalculo(null);
     setGuardado(null);
@@ -170,17 +173,20 @@ function Formulario({
   async function calcular() {
     setGuardado(null);
     setReemplaza("");
-    setCalculo((await enviar<Calculo>("/v1/reajuste/calcular", armarCuerpo(proyecto, form))) ?? null);
+    const marca = edicion.current;
+    const respuesta = await enviar<Calculo>("/v1/reajuste/calcular", armarCuerpo(proyecto, form));
+    if (marca === edicion.current) setCalculo(respuesta ?? null);
   }
 
   async function guardar() {
+    const marca = edicion.current;
     const respuesta = await enviar<{ estudio: number; estado: string }>("/v1/reajuste/guardar", {
       ...armarCuerpo(proyecto, form),
       fuente,
       responsable,
       reemplaza_a: reemplaza === "" ? null : Number(reemplaza),
     });
-    if (respuesta) setGuardado(`Estudio ${respuesta.estudio} guardado (${respuesta.estado}).`);
+    if (respuesta && marca === edicion.current) setGuardado(`Estudio ${respuesta.estudio} guardado (${respuesta.estado}).`);
   }
 
   return (
@@ -330,7 +336,7 @@ function Formulario({
             )}
           </div>
           <div className="silice-reajuste__acciones">
-            <Button kind="primary" size="md" disabled={ocupado} onClick={() => void guardar()}>
+            <Button kind="primary" size="md" disabled={ocupado || guardado !== null} onClick={() => void guardar()}>
               Guardar estudio
             </Button>
             <DescargaArchivo

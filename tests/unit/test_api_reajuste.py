@@ -375,3 +375,18 @@ def test_con_valuaciones_el_reconocido_es_el_de_la_memoria_ob_s2(_entorno: Path)
     )
     assert guardado.status_code == 200, guardado.text
     assert _filas_de("cita_valuacion", _entorno) > 0
+
+
+def test_un_numero_enorme_es_422_y_no_500() -> None:
+    enorme = [{**c, "peso": "1E999999999"} for c in COMPONENTES]
+    r = _post("calcular", componentes=enorme)
+    assert r.status_code == 422, r.text
+    assert isinstance(r.json()["detalle"], str)
+    g = _post("calcular", clausula={**CAMPOS, "duracion_meses": "1" + "0" * 40})
+    assert g.status_code == 422, g.text
+
+
+def test_el_nombre_del_excel_solo_lleva_caracteres_seguros() -> None:
+    assert ruta_reajuste.nombre_excel("001") == "reajuste_001.xlsx"
+    peligroso = 'a"b\r\n\u0416/..'
+    assert ruta_reajuste.nombre_excel(peligroso) == "reajuste_a_b____...xlsx"

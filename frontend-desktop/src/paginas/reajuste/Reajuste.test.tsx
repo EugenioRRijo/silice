@@ -255,6 +255,29 @@ describe("Reajuste de precios", () => {
     expect((post("/v1/reajuste/guardar") as Record<string, unknown>).reemplaza_a).toBe(3);
   });
 
+  test("tras guardar, el boton se apaga hasta que se edite algo (no hay estudios duplicados)", async () => {
+    const u = userEvent.setup();
+    montar();
+    await screen.findByLabelText("Versión del contrato");
+    await u.click(screen.getByRole("button", { name: "Calcular" }));
+    await u.click(await screen.findByRole("button", { name: "Guardar estudio" }));
+    await screen.findByText("Estudio 7 guardado (cerrado).");
+    expect(screen.getByRole("button", { name: "Guardar estudio" })).toBeDisabled();
+  });
+
+  test("una respuesta que llega despues de editar se descarta: no queda una tabla vieja", async () => {
+    let soltar: (r: Response) => void = () => undefined;
+    calcular = () => new Promise<Response>((resolver) => (soltar = resolver)) as unknown as Response;
+    const u = userEvent.setup();
+    montar();
+    await screen.findByLabelText("Versión del contrato");
+    await u.click(screen.getByRole("button", { name: "Calcular" }));
+    await u.type(screen.getByLabelText("Duración (meses)"), "2");
+    soltar(json(calculo()));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Calcular" })).toBeEnabled());
+    expect(screen.queryByRole("table", { name: "Escalatoria y comprobación, lado a lado" })).not.toBeInTheDocument();
+  });
+
   test("el Excel se descarga con el nombre que propone la API", async () => {
     const u = userEvent.setup();
     montar();

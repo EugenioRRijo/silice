@@ -94,11 +94,25 @@ export function armarCuerpo(proyecto: string, f: Formulario): CuerpoEstudio {
   return {
     proyecto,
     version: f.version,
-    clausula: f.clausula,
+    clausula: clausulaParaEnviar(f.clausula),
     componentes: f.componentes,
     periodos: f.periodos.filter(hayFilaConDatos),
     ejecutado: f.con_valuaciones ? [] : f.ejecutado.filter(ejecutadoConDatos),
     con_valuaciones: f.con_valuaciones,
+  };
+}
+
+const FECHA_ISO = /^(\d{4}-\d{2})-\d{2}$/;
+
+// Como Streamlit: el primer anio corre desde el inicio del contrato si no se escribe otra fecha, y el mes base de
+// los indices se declara con su dia 1 (se escribe cualquier dia del mes). Lo que no parece fecha pasa tal cual y
+// la API dice que esta mal.
+function clausulaParaEnviar(c: ClausulaTextos): ClausulaTextos {
+  const base = FECHA_ISO.exec(c.fecha_base_indices.trim());
+  return {
+    ...c,
+    fecha_referencia_primer_anio: c.fecha_referencia_primer_anio.trim() || c.fecha_inicio,
+    fecha_base_indices: base ? `${base[1]}-01` : c.fecha_base_indices,
   };
 }
 
