@@ -84,7 +84,7 @@ export default function PaginaReajuste() {
   const nombre = proyectos.estado === "listo" ? proyectos.datos.find((p) => p.codigo === codigo)?.nombre : undefined;
 
   return (
-    <div className="silice-reajuste">
+    <div className="silice-reajuste silice-pagina">
       <h1 className="cds--type-heading-04">Reajuste de precios</h1>
       {codigo === null && (
         <EstadoVacio

@@ -327,7 +327,7 @@ export default function PaginaElaborar() {
   const resultado = elaboracion?.respuesta ?? null;
 
   return (
-    <div className="silice-elaborar">
+    <div className="silice-elaborar silice-pagina">
       <h1 className="cds--type-heading-04">Elaborar un presupuesto</h1>
       <p className="cds--type-body-compact-01">{AYUDA}</p>
 

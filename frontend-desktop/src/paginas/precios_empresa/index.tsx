@@ -92,7 +92,7 @@ export default function PaginaPreciosEmpresa() {
   }, [leer]);
 
   return (
-    <div className="silice-precios-empresa">
+    <div className="silice-precios-empresa silice-pagina">
       <h1 className="cds--type-heading-04">{TITULO}</h1>
       <p className="cds--type-body-compact-01">{AYUDA}</p>
 

@@ -60,7 +60,7 @@ export default function PaginaEntregar() {
   const proyectos = useCarga<ProyectoDelCaso[]>("/v1/proyectos", alExpirar);
 
   return (
-    <div className="silice-entregar">
+    <div className="silice-entregar silice-pagina">
       <h1 className="cds--type-heading-04">Entregar paquete</h1>
       {proyectos.estado === "cargando" && <EsqueletoPagina etiqueta="Cargando los proyectos" />}
       {proyectos.estado === "listo" && proyectos.datos.length === 0 && (

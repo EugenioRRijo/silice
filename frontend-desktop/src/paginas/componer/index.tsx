@@ -183,7 +183,7 @@ export default function PaginaComponer() {
   const dominios = ops?.dominios ?? [cabecera.dominio];
 
   return (
-    <div className="silice-componer">
+    <div className="silice-componer silice-pagina">
       <h1 className="cds--type-heading-04">Componer una partida</h1>
       <p className="silice-componer__nota cds--type-body-compact-01">
         Componga una partida a mano: declare su cabecera y sus tres tablas de insumos, vea el precio unitario

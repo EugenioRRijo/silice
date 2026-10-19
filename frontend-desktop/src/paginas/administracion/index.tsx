@@ -51,7 +51,7 @@ export default function PaginaAdministracion() {
   const [activa, setActiva] = useState(0);
   const puede = sesion.acciones.includes("administrar_cuentas");
   return (
-    <div className="silice-adm">
+    <div className="silice-adm silice-pagina">
       <h1 className="cds--type-heading-04">Administración</h1>
       {!puede ? (
         <EstadoVacio titulo="Su cuenta no tiene permiso para administrar la instalación." />

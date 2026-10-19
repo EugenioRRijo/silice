@@ -183,7 +183,7 @@ export default function PaginaActualizacion() {
   };
 
   return (
-    <div className="silice-actualizacion">
+    <div className="silice-actualizacion silice-pagina">
       <h1 className="cds--type-heading-04">Actualizar precios</h1>
       <p className="cds--type-body-compact-01">{AYUDA}</p>
 

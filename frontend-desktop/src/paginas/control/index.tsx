@@ -72,7 +72,7 @@ export default function PaginaControl() {
   const cambiar = useCallback(() => setClave((n) => n + 1), []);
 
   return (
-    <div className="silice-control">
+    <div className="silice-control silice-pagina">
       <h1 className="cds--type-heading-04">Control de obra</h1>
       {proyecto === null ? (
         <EstadoVacio titulo="Elija un proyecto" descripcion="Abra un proyecto en la cabecera para controlar su obra." />

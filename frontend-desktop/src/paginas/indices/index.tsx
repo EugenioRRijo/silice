@@ -136,7 +136,7 @@ export default function PaginaIndices() {
   };
 
   return (
-    <div className="silice-indices">
+    <div className="silice-indices silice-pagina">
       <h1 className="cds--type-heading-04">Índices del BCV</h1>
       <p className="cds--type-body-compact-01">{AYUDA}</p>
 

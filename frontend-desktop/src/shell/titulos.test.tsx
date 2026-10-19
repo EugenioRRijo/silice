@@ -53,6 +53,8 @@ describe("Títulos de las páginas migradas", () => {
       const h1 = container.querySelectorAll("h1");
       expect(h1).toHaveLength(1);
       expect(h1[0].className).toContain("cds--type-heading-04");
+      // V-6: el marco comun de pagina (libros trae el suyo, con el visor a alto completo).
+      if (pagina.id !== "libros") expect(container.querySelector(".silice-pagina")).not.toBeNull();
     });
   }
 

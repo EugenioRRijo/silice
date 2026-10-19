@@ -31,7 +31,7 @@ export default function PaginaInicio() {
   };
 
   return (
-    <div className="silice-inicio">
+    <div className="silice-inicio silice-pagina">
       <h1 className="cds--type-heading-04">Inicio</h1>
 
       <section className="silice-inicio__bloque" aria-labelledby="inicio-excel">

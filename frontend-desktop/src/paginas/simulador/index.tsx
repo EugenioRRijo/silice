@@ -84,7 +84,7 @@ export default function PaginaSimulador() {
   }
 
   return (
-    <div className="silice-simulador">
+    <div className="silice-simulador silice-pagina">
       <h1 className="cds--type-heading-04">Simulador de listas</h1>
       <p className="silice-simulador__nota cds--type-body-compact-01">{AVISO_HERRAMIENTA}</p>
 

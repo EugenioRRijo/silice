@@ -31,9 +31,28 @@
   }
 }
 
+// Zona de soltar archivo en densidad `sm`: 96 px de alto (Carbon la deja de 160), texto centrado. El foco sigue
+// siendo el del boton de Carbon (anillo visible) y se llega con el teclado.
 .silice-subida {
   display: grid;
   gap: 0.5rem;
+
+  .cds--file__drop-container {
+    box-sizing: border-box;
+    block-size: 6rem;
+    min-block-size: 0;
+    padding: 0.5rem 1rem;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
+
+  .cds--file-browse-btn {
+    block-size: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
 
   .cds--file,
   .cds--file-browse-btn {
@@ -85,7 +104,11 @@
   max-inline-size: 90rem;
 }
 
-.silice-pagina > p {
+// Los parrafos de lectura no pasan de ~70 caracteres en ninguna pagina; tablas y formularios usan el ancho.
+.silice-pagina p {
   max-inline-size: 70ch;
+}
+
+.silice-pagina > p {
   margin: 0;
 }

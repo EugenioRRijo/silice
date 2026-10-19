@@ -185,7 +185,7 @@ export default function PaginaEscenarios() {
 
   if (errorLista !== null) {
     return (
-      <div className="silice-escenarios">
+      <div className="silice-escenarios silice-pagina">
         {encabezado}
         <AvisoError error={errorLista} titulo="No se pudo leer la lista de presupuestos" />
       </div>
@@ -193,7 +193,7 @@ export default function PaginaEscenarios() {
   }
   if (lista === null) {
     return (
-      <div className="silice-escenarios">
+      <div className="silice-escenarios silice-pagina">
         {encabezado}
         <EsqueletoPagina etiqueta="Cargando los presupuestos" />
       </div>
@@ -201,7 +201,7 @@ export default function PaginaEscenarios() {
   }
   if (lista.length === 0) {
     return (
-      <div className="silice-escenarios">
+      <div className="silice-escenarios silice-pagina">
         {encabezado}
         <EstadoVacio titulo={SIN_PRESUPUESTOS} />
       </div>
@@ -209,7 +209,7 @@ export default function PaginaEscenarios() {
   }
 
   return (
-    <div className="silice-escenarios">
+    <div className="silice-escenarios silice-pagina">
       {encabezado}
       <div className="silice-escenarios__selector">
         <Select

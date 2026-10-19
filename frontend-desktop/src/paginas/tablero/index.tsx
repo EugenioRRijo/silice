@@ -240,7 +240,7 @@ function Cargado({ proyecto }: { proyecto: string }) {
 export default function PaginaTablero() {
   const { proyecto } = useAplicacion();
   return (
-    <div className="silice-tablero">
+    <div className="silice-tablero silice-pagina">
       <h1 className="cds--type-heading-04">Tablero del proyecto</h1>
       {proyecto === null ? (
         <EstadoVacio titulo="Elija un proyecto" descripcion="El tablero muestra el proyecto elegido en la cabecera." />

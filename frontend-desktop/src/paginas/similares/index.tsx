@@ -151,7 +151,7 @@ export default function PaginaSimilares() {
   };
 
   return (
-    <div className="silice-similares">
+    <div className="silice-similares silice-pagina">
       <h1 className="cds--type-heading-04">Partidas similares</h1>
       <p className="cds--type-body-compact-01">{AYUDA}</p>
       <form className="silice-similares__formulario" onSubmit={buscar}>
