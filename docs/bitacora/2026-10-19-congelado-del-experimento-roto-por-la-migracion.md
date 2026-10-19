@@ -34,3 +34,14 @@ inmutable. Son cambios mecanicos (equivalentes), pero la guardia existe justamen
 1. **No se re-congela** ni se restaura nada: es una decision de Eugenio sobre el protocolo del experimento.
 2. La migracion **no debe fusionarse a `main`** mientras esta prueba falle; el PR, si se abre, lo declara.
 3. T10 (Hoja): no se toca `ui/hoja.py` ni `ui/composicion.py`. La implementacion queda bloqueada hasta elegir A, B o C.
+
+## Ruling 2 del orquestador (2026-10-19): la Hoja sigue por el Plan C
+
+- El diseno de la Hoja (`docs/especificaciones/2026-10-19-hoja-react-design.md`, commit `0e0427c`) pasó 3 rondas de arbitraje: la
+  ronda 3 dejo 3 hallazgos MAYOR de texto (sin BLOQUEANTE); el implementador los corrigio y los verifico el orquestador
+  (con las rondas agotadas, manual del arbitro §3). **Estado: aprobado por el orquestador, no por el arbitro.**
+- **D-1 por defecto = Plan C**: `aplicacion/hoja*.py` propio, sin tocar `ui/hoja.py` ni `ui/composicion.py`, con la clasica intacta y
+  una prueba de paridad contra ella. Es el unico camino que respeta la decision de Eugenio del 2026-10-18 (RS-9) y es reversible
+  (se borra `aplicacion/hoja*`). Costo aceptado: ~2 100 lineas duplicadas, deuda con retiro junto a Streamlit.
+- Sigue **pendiente de Eugenio** la guardia del congelado ya rota por `ui/composicion.py` y `ui/hoja.py` (opciones A/B/C arriba) y,
+  por tanto, la fusion de la migracion a `main`.

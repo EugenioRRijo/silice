@@ -148,3 +148,7 @@ autorización expresa; el retiro de Streamlit queda como decisión pendiente doc
 | Tarea | Implementador | Ronda | Veredicto | SHA |
 |---|---|---|---|---|
 | T1 | subagente T1 | 1 | APROBADO (arbitro independiente) | e79e196 |
+| T2 | subagente T2 | 1 | APROBADO; 6 menores corregidos | 70ffa25 |
+| T3 | subagente T3 | 1 | APROBADO; 3 menores corregidos | d91ff44 |
+| T4 a T8 | tesis-b9 con sus subagentes | 1 a 2 | APROBADO (arbitros independientes; T4 y T7 con una devolucion) | 3a1dda3 (fusionado en 275946c) |
+| T10a (diseno de la Hoja) | subagente T10a | 3 + 1 | APROBADO POR EL ORQUESTADOR tras 3 rondas (3 MAYOR de texto, verificados por el) | 0e0427c |
