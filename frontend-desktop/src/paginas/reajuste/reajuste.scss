@@ -1,0 +1,60 @@
+// Reajuste de precios. Sin tarjetas con sombra ni animaciones (DESIGN.md): bloques separados por un divisor.
+
+.silice-reajuste {
+  display: grid;
+  gap: 1.5rem;
+  padding: 1.5rem 1rem 2rem;
+  max-inline-size: 80rem;
+}
+
+.silice-reajuste__bloque {
+  display: grid;
+  gap: 0.75rem;
+  padding-block-end: 1.5rem;
+  border-block-end: 1px solid var(--silice-divisor);
+}
+
+.silice-reajuste__bloque:last-child {
+  border-block-end: 0;
+}
+
+.silice-reajuste__rejilla {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: 1rem;
+}
+
+.silice-reajuste__nota {
+  max-inline-size: 65ch;
+  color: var(--silice-texto-secundario);
+}
+
+.silice-reajuste__acciones {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1rem;
+}
+
+.silice-filas {
+  display: grid;
+  gap: 0.5rem;
+  justify-items: start;
+  overflow-x: auto;
+}
+
+.silice-filas__tabla {
+  border-collapse: collapse;
+  inline-size: 100%;
+
+  th {
+    padding: 0.25rem 0.5rem 0.25rem 0;
+    text-align: start;
+    color: var(--silice-texto-secundario);
+  }
+
+  td {
+    padding: 0.125rem 0.5rem 0.125rem 0;
+    min-inline-size: 9rem;
+  }
+}
