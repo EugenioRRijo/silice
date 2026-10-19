@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, onTestFinished, test, vi } from "vitest";
@@ -6,6 +6,7 @@ import { fijarCsrf } from "../api/cliente";
 import type { SesionRespuesta } from "../api/tipos";
 import { alertaConTexto } from "../test/ayudas";
 import { useAplicacion } from "./contexto";
+import { RECORRIDO_AUDITAR, iniciarRecorrido, terminarRecorrido } from "./recorrido";
 import { Shell } from "./Shell";
 import type { PaginaDef } from "./rutas";
 
@@ -134,15 +135,93 @@ describe("Shell", () => {
   });
 
   describe("menu", () => {
-    test("agrupa por seccion segun las acciones de la sesion", async () => {
+    test("agrupa por area segun las acciones de la sesion, cada una con su descripcion a la vista", async () => {
       montar();
       const nav = menu();
-      expect(within(nav).getByText("Trabajo")).toBeInTheDocument();
-      expect(within(nav).getByText("Investigación")).toBeInTheDocument();
-      expect(within(nav).queryByText("Revisión")).not.toBeInTheDocument(); // no tiene revisar_paquete
-      expect(within(nav).queryByText("Administración")).not.toBeInTheDocument();
+      const rotulos = within(nav)
+        .getAllByRole("heading", { level: 2 })
+        .map((h) => h.textContent);
+      expect(rotulos).toEqual(["Crear", "Más"]); // sin revisar_paquete ni operar_arenera no hay Auditar ni Producción
+      expect(within(nav).getByText("APU, presupuestos y entregas")).toBeInTheDocument();
+      expect(within(nav).getByText("Precios, obra, análisis y ajustes")).toBeInTheDocument();
       expect(within(nav).queryByText("Control de obra")).not.toBeInTheDocument(); // sin control_de_obra
       expect(within(nav).getByText("Acerca de Sílice")).toBeInTheDocument(); // sin accion: toda cuenta la ve
+      await screen.findByRole("heading", { name: "Pantalla del tablero" });
+    });
+
+    test("«Más» viene plegado, se abre con su boton y se abre solo si la pagina actual es de ahi", async () => {
+      const usuario = userEvent.setup();
+      montar();
+      const boton = within(menu()).getByRole("button", { name: "Más" });
+      expect(boton).toHaveAttribute("aria-expanded", "false");
+      expect(within(menu()).queryByRole("link", { name: /Escenarios/ })).not.toBeInTheDocument();
+      await usuario.click(boton);
+      expect(boton).toHaveAttribute("aria-expanded", "true");
+      expect(within(menu()).getByText("Escenarios de sensibilidad")).toBeVisible();
+      await usuario.click(boton);
+      expect(boton).toHaveAttribute("aria-expanded", "false");
+      await screen.findByRole("heading", { name: "Pantalla del tablero" });
+    });
+
+    test("estando en una pagina de «Más» ese grupo ya esta abierto", async () => {
+      const paginas: PaginaDef[] = [
+        ...PAGINAS,
+        { id: "indices", titulo: "Índices del BCV", seccion: "Trabajo", accion: "leer_proyecto", cargar: async () => ({ default: PaginaA }) },
+      ];
+      render(
+        <MemoryRouter initialEntries={["/indices"]}>
+          <Shell sesion={sesionCon()} alSalir={alSalir} alExpirar={alExpirar} paginas={paginas} />
+        </MemoryRouter>,
+      );
+      expect(within(menu()).getByRole("button", { name: "Más" })).toHaveAttribute("aria-expanded", "true");
+      expect(within(menu()).getByRole("link", { name: "Índices del BCV" })).toBeVisible();
+      await screen.findByRole("heading", { name: "Pantalla del tablero" });
+    });
+
+    test("las herramientas principales van arriba, en su orden, con su linea de ayuda, y solo las que la cuenta puede usar", async () => {
+      const migrada = async () => ({ default: PaginaA });
+      const paginas: PaginaDef[] = [
+        { id: "libros", titulo: "Libro de la empresa", seccion: "Revisión", accion: "leer_proyecto", cargar: migrada },
+        { id: "componer", titulo: "Componer una partida", seccion: "Trabajo", accion: "editar_hoja", cargar: migrada },
+        { id: "existencias", titulo: "Existencias de la arenera", seccion: "Trabajo", accion: "operar_arenera", cargar: migrada },
+      ];
+      render(
+        <MemoryRouter initialEntries={["/libros"]}>
+          <Shell sesion={sesionCon()} alSalir={alSalir} alExpirar={alExpirar} paginas={paginas} />
+        </MemoryRouter>,
+      );
+      const nav = menu();
+      const panel = within(nav).getByRole("heading", { name: "Herramientas principales" }).closest("li") as HTMLElement;
+      expect(within(panel).getAllByRole("link").map((a) => a.getAttribute("aria-label"))).toEqual([
+        "Auditor de APU",
+        "Creador de APU",
+      ]); // la cuenta de ana no opera la arenera
+      expect(within(panel).getByText("Suba un Excel y vea lo que no cuadra")).toBeInTheDocument();
+      expect(within(panel).getByRole("link", { name: "Creador de APU" })).toHaveAttribute("href", "/componer");
+      expect(within(panel).getByRole("link", { name: "Auditor de APU" })).toHaveAccessibleDescription(
+        "Suba un Excel y vea lo que no cuadra",
+      );
+      // El panel va antes que las areas.
+      const rotulos = within(nav).getAllByRole("heading", { level: 2 }).map((h) => h.textContent);
+      expect(rotulos[0]).toBe("Herramientas principales");
+      await screen.findByRole("heading", { name: "Pantalla del tablero" });
+    });
+
+    test("sin ninguna herramienta principal disponible el panel no se pinta", async () => {
+      montar();
+      expect(within(menu()).queryByRole("heading", { name: "Herramientas principales" })).not.toBeInTheDocument();
+      await screen.findByRole("heading", { name: "Pantalla del tablero" });
+    });
+
+    test("el recorrido en curso aparece en el menu y se cierra desde ahi", async () => {
+      const usuario = userEvent.setup();
+      montar();
+      expect(within(menu()).queryByRole("region", { name: "Recorrido en curso" })).not.toBeInTheDocument();
+      act(() => iniciarRecorrido(RECORRIDO_AUDITAR));
+      onTestFinished(() => terminarRecorrido());
+      const region = within(menu()).getByRole("region", { name: "Recorrido en curso" });
+      await usuario.click(within(region).getByRole("button", { name: "Terminar recorrido" }));
+      expect(within(menu()).queryByRole("region", { name: "Recorrido en curso" })).not.toBeInTheDocument();
       await screen.findByRole("heading", { name: "Pantalla del tablero" });
     });
 
