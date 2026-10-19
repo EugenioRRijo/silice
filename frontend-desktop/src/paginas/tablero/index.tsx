@@ -4,7 +4,8 @@ import { CurvaPlanAvance } from "../../comun/CurvaPlanAvance";
 import { EsqueletoPagina } from "../../comun/EsqueletoPagina";
 import { EstadoVacio } from "../../comun/EstadoVacio";
 import { TablaDensa } from "../../comun/TablaDensa";
-import { PALETA_GRAFICOS, colorPorGrupo } from "../../comun/paletaGraficos";
+import { PALETA_GRAFICOS, colorPorGrupo, formatoNumeroEsVe } from "../../comun/paletaGraficos";
+import { formatoMontoEsVe } from "../../indicadores/formatoEsVe";
 import { useAplicacion } from "../../shell/contexto";
 import { useCarga } from "../inicio/useCarga";
 import {
@@ -25,7 +26,9 @@ function Tarjetas({ tarjetas }: { tarjetas: Tarjeta[] }) {
       {tarjetas.map((t) => (
         <div key={t.rotulo} className="silice-tablero__tarjeta">
           <dt className="cds--type-label-01">{t.rotulo}</dt>
-          <dd className="cds--type-heading-04">{t.valor}</dd>
+          <dd className="cds--type-heading-04" title={t.valor}>
+            {formatoMontoEsVe(t.valor)}
+          </dd>
           {t.detalle && <dd className="cds--type-helper-text-01">{t.detalle}</dd>}
         </div>
       ))}
@@ -50,7 +53,8 @@ function Grafico({
           title: titulo,
           height: "300px",
           resizable: true,
-          donut: { center: { label: "Total" } },
+          donut: { center: { label: "Total", numberFormatter: formatoNumeroEsVe } },
+          tooltip: { valueFormatter: formatoNumeroEsVe },
           color: colorPorGrupo(datos.map((d) => d.group)),
         }
       : {
@@ -59,9 +63,10 @@ function Grafico({
           resizable: true,
           axes: {
             left: { mapsTo: "group", scaleType: "labels", title: eje?.izquierda },
-            bottom: { mapsTo: "value", title: eje?.abajo },
+            bottom: { mapsTo: "value", title: eje?.abajo, ticks: { formatter: formatoNumeroEsVe } },
           },
           legend: { enabled: false },
+          tooltip: { valueFormatter: formatoNumeroEsVe },
           color: { scale: Object.fromEntries(datos.map((d) => [d.group, PALETA_GRAFICOS[0]])) },
         };
   return (
@@ -120,7 +125,7 @@ function Contenido({ datos }: { datos: TableroRespuesta }) {
             etiqueta="Desglose del contrato"
             columnas={[
               { clave: "rubro", titulo: "Rubro" },
-              { clave: "monto", titulo: `Monto (${moneda})`, numerica: true },
+              { clave: "monto", titulo: `Monto (${moneda})`, numerica: true, presentar: formatoMontoEsVe },
               { clave: "peso", titulo: "Peso", numerica: true },
             ]}
             filas={datos.desglose.map((r) => ({ id: r.rubro, rubro: r.rubro, monto: r.monto, peso: r.peso }))}
@@ -144,7 +149,7 @@ function Contenido({ datos }: { datos: TableroRespuesta }) {
             columnas={[
               { clave: "partida", titulo: "Partida" },
               { clave: "descripcion", titulo: "Descripcion" },
-              { clave: "total", titulo: `Total (${moneda})`, numerica: true },
+              { clave: "total", titulo: `Total (${moneda})`, numerica: true, presentar: formatoMontoEsVe },
               { clave: "peso", titulo: "Peso", numerica: true },
               { clave: "acumulado", titulo: "Acumulado", numerica: true },
             ]}
@@ -177,8 +182,8 @@ function Contenido({ datos }: { datos: TableroRespuesta }) {
               { clave: "version", titulo: "Version" },
               { clave: "fecha", titulo: "Fecha" },
               { clave: "motivo", titulo: "Motivo" },
-              { clave: "costo_directo", titulo: "Costo directo", numerica: true },
-              { clave: "total", titulo: "Total", numerica: true },
+              { clave: "costo_directo", titulo: "Costo directo", numerica: true, presentar: formatoMontoEsVe },
+              { clave: "total", titulo: "Total", numerica: true, presentar: formatoMontoEsVe },
               { clave: "vigente", titulo: "Vigente" },
             ]}
             filas={datos.versiones.map((v) => ({

@@ -39,6 +39,19 @@ describe("TablaDensa", () => {
     expect(screen.getByRole("cell", { name: "P-01" })).not.toHaveClass("silice-cifra");
   });
 
+  test("presentar cambia lo que se lee pero deja el valor original en el title y ordena por el original (V-19, V-22)", async () => {
+    const usuario = userEvent.setup();
+    const cols: ColumnaDensa[] = [
+      { clave: "codigo", titulo: "Código", presentar: (v) => v.replace("P-", "Partida ") },
+      { clave: "monto", titulo: "Monto", numerica: true },
+    ];
+    render(<TablaDensa etiqueta="Partidas" columnas={cols} filas={filas} />);
+    const celda = screen.getByRole("cell", { name: "Partida 01" });
+    expect(celda.querySelector("[title='P-01']")).not.toBeNull();
+    await usuario.click(screen.getByRole("button", { name: /Monto/ }));
+    expect(codigosEnOrden()).toEqual(["Partida 04", "Partida 03", "Partida 02", "Partida 01"]);
+  });
+
   test("ordena una columna de texto al hacer clic en su encabezado", async () => {
     const usuario = userEvent.setup();
     render(<TablaDensa etiqueta="Partidas" columnas={columnas} filas={filas} />);

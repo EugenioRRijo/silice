@@ -4,8 +4,15 @@ import { aplicarTrazos, CurvaPlanAvance, filasDeGrafico, periodos } from "./Curv
 import type { SerieDeCurva } from "./CurvaPlanAvance";
 
 vi.mock("./GraficoCarbon", () => ({
-  default: ({ tipo, datos }: { tipo: string; datos: unknown[] }) => (
-    <div data-testid="grafico" data-tipo={tipo} data-filas={datos.length} />
+  default: ({ tipo, datos, opciones }: { tipo: string; datos: unknown[]; opciones: Record<string, any> }) => (
+    <div
+      data-testid="grafico"
+      data-tipo={tipo}
+      data-filas={datos.length}
+      data-eje={opciones.axes?.left?.ticks?.formatter?.(4131)}
+      data-tooltip={opciones.tooltip?.valueFormatter?.(95066.6)}
+      data-colores={JSON.stringify(opciones.color?.scale ?? null)}
+    />
   ),
 }));
 
@@ -29,9 +36,18 @@ describe("CurvaPlanAvance", () => {
     render(<CurvaPlanAvance titulo="Valor ganado" series={SERIES} unidad="USD" />);
     expect(await screen.findByTestId("grafico")).toHaveAttribute("data-tipo", "linea");
     expect(screen.getByRole("table", { name: "Montos de Valor ganado" })).toBeInTheDocument();
-    expect(screen.getByText("2500.50")).toBeInTheDocument();
+    expect(screen.getByText("2.500,50")).toBeInTheDocument();
     expect(screen.getAllByText("—")).toHaveLength(2);
     expect(screen.getByText(/EAC: pronostico \(discontinuo\)/)).toBeInTheDocument();
+  });
+
+  test("el eje y el tooltip salen en es-VE y las series tienen su color sin morado (V-19, V-21)", async () => {
+    render(<CurvaPlanAvance titulo="Valor ganado" series={SERIES} unidad="USD" />);
+    const g = await screen.findByTestId("grafico");
+    expect(g).toHaveAttribute("data-eje", "4.131");
+    expect(g).toHaveAttribute("data-tooltip", "95.066,6");
+    const colores = JSON.parse(g.getAttribute("data-colores")!) as Record<string, string>;
+    expect(Object.keys(colores)).toEqual(["PV", "EV", "EAC"]);
   });
 
   test("aplica discontinuo solo al pronostico y mas grosor a lo real", () => {

@@ -7,9 +7,15 @@ import PaginaTablero from "./index";
 import { datosDeVersiones, rolDeSerie, seriesDeCurva } from "./logica";
 import type { TableroRespuesta } from "./logica";
 
+interface Ejes {
+  axes?: { bottom?: { ticks?: { formatter?: (n: number) => string } } };
+}
+
 vi.mock("../../comun/GraficoCarbon", () => ({
   default: ({ tipo, datos, opciones }: { tipo: string; datos: unknown[]; opciones: unknown }) => (
-    <div data-testid={`grafico-${tipo}`} data-filas={datos.length} data-opciones={JSON.stringify(opciones)} />
+    <div data-testid={`grafico-${tipo}`} data-filas={datos.length} data-opciones={JSON.stringify(opciones)}
+      data-eje={(opciones as Ejes).axes?.bottom?.ticks?.formatter?.(4131)}
+    />
   ),
 }));
 
@@ -103,7 +109,8 @@ describe("Tablero del proyecto", () => {
     expect(await screen.findAllByTestId("grafico-barras")).toHaveLength(2); // Pareto y versiones
     // cada grafico tiene su tabla con los montos exactos
     const pareto = screen.getByRole("table", { name: "Partidas que mas pesan" });
-    expect(within(pareto).getByText("3000.00")).toBeInTheDocument();
+    expect(within(pareto).getByText("3.000,00")).toBeInTheDocument();
+    expect(within(pareto).getByTitle("3000.00")).toBeInTheDocument(); // el exacto, a un toque (V-19)
     expect(screen.getByRole("table", { name: "Versiones del presupuesto" })).toBeInTheDocument();
     expect(screen.getByRole("table", { name: "Montos de Valor ganado (PV, EV, AC)" })).toBeInTheDocument();
   });
@@ -118,6 +125,17 @@ describe("Tablero del proyecto", () => {
       expect(opciones.color?.scale).toBeDefined();
       expect(Object.values(opciones.color!.scale).join(" ")).not.toMatch(/8a3ffc|6929c4|a56eff|be95ff/i);
     }
+  });
+
+  test("cifras y ejes en es-VE, con el exacto en el title (V-19)", async () => {
+    fetchFalso.mockImplementation(async () =>
+      json({ ...TABLERO, tarjetas: [{ rotulo: "Total del contrato", valor: "95066.60 USD", detalle: "" }] }),
+    );
+    montar("OB-S2");
+    const tarjeta = await screen.findByText("95.066,60 USD");
+    expect(tarjeta).toHaveAttribute("title", "95066.60 USD");
+    const barras = await screen.findAllByTestId("grafico-barras");
+    for (const b of barras) expect(b).toHaveAttribute("data-eje", "4.131");
   });
 
   test("sin control de obra lo dice con su motivo", async () => {

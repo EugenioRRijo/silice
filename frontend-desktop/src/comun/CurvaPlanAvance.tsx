@@ -1,5 +1,7 @@
 import { lazy, Suspense, useEffect, useRef } from "react";
+import { formatoMontoEsVe } from "../indicadores/formatoEsVe";
 import { EsqueletoPagina } from "./EsqueletoPagina";
+import { colorPorSerie, formatoNumeroEsVe } from "./paletaGraficos";
 import { TablaDensa } from "./TablaDensa";
 
 const GraficoCarbon = lazy(() => import("./GraficoCarbon"));
@@ -79,6 +81,7 @@ export function CurvaPlanAvance({ titulo, series, unidad }: Props) {
       titulo: unidad ? `${s.nombre} (${unidad})` : s.nombre,
       numerica: true,
       ordenable: false,
+      presentar: formatoMontoEsVe,
     })),
   ];
   const filas = periodos(series).map((periodo, i) => ({
@@ -99,8 +102,10 @@ export function CurvaPlanAvance({ titulo, series, unidad }: Props) {
               height: "320px",
               axes: {
                 bottom: { mapsTo: "key", scaleType: "labels" },
-                left: { mapsTo: "value", title: unidad ?? "Monto" },
+                left: { mapsTo: "value", title: unidad ?? "Monto", ticks: { formatter: formatoNumeroEsVe } },
               },
+              tooltip: { valueFormatter: formatoNumeroEsVe },
+              color: colorPorSerie(series),
               curve: "curveMonotoneX",
               points: { enabled: false },
               toolbar: { enabled: false },

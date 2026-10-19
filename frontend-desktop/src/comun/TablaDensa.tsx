@@ -22,6 +22,9 @@ export interface ColumnaDensa {
   // Como se dibuja la celda: "severidad" = icono y nombre de la severidad; "variacion" = cifra de variacion de
   // costo con la semantica IBCS (flecha, color y texto accesible). Sin esto, el texto tal cual.
   celda?: "severidad" | "variacion";
+  // Como se lee el texto de la celda (formato es-VE, etiqueta en espanol llano). El valor original queda en el
+  // `title` para trazabilidad y el orden sigue siendo el del valor original.
+  presentar?: (valor: string) => string;
 }
 
 // Los valores son texto tal como los manda la API: la tabla no los redondea ni los reformatea.
@@ -71,8 +74,16 @@ export function compararDecimales(a: string, b: string): number {
   return (fx < fy ? -1 : 1) * signo;
 }
 
-function dibujar(tipo: "severidad" | "variacion" | undefined, valor: unknown) {
+function dibujar(
+  tipo: "severidad" | "variacion" | undefined,
+  valor: unknown,
+  presentar?: (valor: string) => string,
+) {
   const texto = String(valor ?? "");
+  if (presentar && texto) {
+    const visto = presentar(texto);
+    return <span title={texto}>{visto}</span>;
+  }
   if (tipo === "severidad" && texto) return <Severidad valor={texto} />;
   if (tipo === "variacion" && texto) return <Variacion valor={texto} />;
   return valor as string;
@@ -98,6 +109,7 @@ export function TablaDensa({ etiqueta, columnas, filas, cargando = false, vacio 
   const numericas = new Set(columnas.filter((c) => c.numerica).map((c) => c.clave));
   const sinOrden = new Set(columnas.filter((c) => c.ordenable === false).map((c) => c.clave));
   const especial = new Map(columnas.filter((c) => c.celda).map((c) => [c.clave, c.celda]));
+  const presentacion = new Map(columnas.filter((c) => c.presentar).map((c) => [c.clave, c.presentar]));
   const cabeceras = columnas.map((c) => ({ key: c.clave, header: c.titulo }));
 
   return (
@@ -137,7 +149,7 @@ export function TablaDensa({ etiqueta, columnas, filas, cargando = false, vacio 
                   <TableRow key={key} {...propiedades}>
                     {fila.cells.map((celda) => (
                       <TableCell key={celda.id} className={numericas.has(celda.info.header) ? "silice-cifra" : undefined}>
-                        {dibujar(especial.get(celda.info.header), celda.value)}
+                        {dibujar(especial.get(celda.info.header), celda.value, presentacion.get(celda.info.header))}
                       </TableCell>
                     ))}
                   </TableRow>

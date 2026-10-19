@@ -17,3 +17,18 @@ export function colorPorGrupo(grupos: string[]): { scale: Record<string, string>
 export function formatoNumeroEsVe(valor: unknown): string {
   return formatoEsVe(String(valor));
 }
+
+// Colores de las series de una curva por su rol (DESIGN.md: real = oscuro y grueso, plan = gris claro, pronostico =
+// gris medio discontinuo). Una segunda serie real toma el verde azulado para distinguirse de la primera.
+export function colorPorSerie(series: { nombre: string; rol: "plan" | "real" | "pronostico" }[]): {
+  scale: Record<string, string>;
+} {
+  const scale: Record<string, string> = {};
+  let reales = 0;
+  for (const s of series) {
+    if (s.rol === "plan") scale[s.nombre] = "#8d8d8d";
+    else if (s.rol === "pronostico") scale[s.nombre] = "#525252";
+    else scale[s.nombre] = ["#161616", "#007d79", "#198038"][reales++ % 3]!;
+  }
+  return { scale };
+}
