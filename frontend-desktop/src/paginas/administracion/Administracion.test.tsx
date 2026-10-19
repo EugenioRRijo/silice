@@ -58,6 +58,7 @@ describe("Administracion: Cuentas y Accesos", () => {
           : json({ cuentas, aviso_arma_y_revisa: AVISO } satisfies CuentasRespuesta);
       }
       if (url === "/v1/accesos") return json(accesos);
+      if (url === "/v1/admin/empresas-registradas") return json({ registradas: [], metodos: [] });
       return json({ detalle: "no esperada" }, 500);
     });
   });
@@ -93,7 +94,7 @@ describe("Administracion: Cuentas y Accesos", () => {
     expect(screen.getAllByRole("tab").map((t) => t.textContent)).toEqual([
       "Cuentas",
       "Empresa y clave de firma",
-      "Empresas registradas clásica",
+      "Empresas registradas",
       "Claves de API",
       "Asistente de IA clásica",
       "Accesos",
@@ -106,24 +107,33 @@ describe("Administracion: Cuentas y Accesos", () => {
 
   test("las pestanas aun en la interfaz clasica llevan la marca «clásica» con texto y titulo (V-9)", () => {
     montar();
-    for (const nombre of [/Empresas registradas/, /Asistente de IA/]) {
+    for (const nombre of [/Asistente de IA/]) {
       const pestana = screen.getByRole("tab", { name: nombre });
       expect(pestana).toHaveTextContent("clásica");
       expect(pestana.getAttribute("title")).toMatch(/interfaz clásica/);
     }
     expect(screen.getByRole("tab", { name: "Cuentas" })).not.toHaveAttribute("title");
+    expect(screen.getByRole("tab", { name: "Empresas registradas" })).not.toHaveAttribute("title");
   });
 
   test("las pestanas aun no migradas nombran cual es, avisan que abren otra pestana y enlazan", async () => {
     montar();
-    await userEvent.setup().click(screen.getByRole("tab", { name: /Empresas registradas/ }));
+    await userEvent.setup().click(screen.getByRole("tab", { name: /Asistente de IA/ }));
     expect(await screen.findByText("En la interfaz clásica")).toBeInTheDocument();
-    expect(screen.getByText("«Empresas registradas» todavía se administra en la interfaz clásica de Sílice.")).toBeInTheDocument();
+    expect(screen.getByText("«Asistente de IA» todavía se administra en la interfaz clásica de Sílice.")).toBeInTheDocument();
     const enlace = screen.getByRole("link", {
-      name: "Abrir «Empresas registradas» en la interfaz clásica (se abre en otra pestaña)",
+      name: "Abrir «Asistente de IA» en la interfaz clásica (se abre en otra pestaña)",
     });
     expect(enlace).toHaveAttribute("href", "http://127.0.0.1:8501/administracion");
     expect(enlace).toHaveAttribute("target", "_blank");
+  });
+
+  test("«Empresas registradas» ya se administra aqui: la pestana pide sus datos a la API", async () => {
+    montar();
+    await userEvent.setup().click(screen.getByRole("tab", { name: "Empresas registradas" }));
+    expect(await screen.findByText("Todavía no hay empresas registradas", {}, PIDE)).toBeInTheDocument();
+    expect(fetchFalso.mock.calls.map(([r]) => String(r))).toContain("/v1/admin/empresas-registradas");
+    expect(screen.queryByText("En la interfaz clásica")).toBeNull();
   });
 
   test("sin direccion de la interfaz clasica hay un mensaje de respaldo, no un enlace roto", async () => {

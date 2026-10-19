@@ -10,13 +10,16 @@ import {
   PESTANAS,
   avisoDeRoles,
   etiquetaDeRol,
+  fechaDeHoy,
   filasDeAccesos,
   filasDeCuentas,
+  filasDeRegistradas,
+  puedeRevocarRegistrada,
   rolesEnTexto,
 } from "./logica";
 
 describe("logica de Administracion", () => {
-  test("las siete pestanas de Streamlit en su orden; estan migradas Cuentas, Empresa, Claves de API, Accesos e Instalacion", () => {
+  test("las siete pestanas de Streamlit en su orden; solo el Asistente de IA sigue en la clasica", () => {
     expect(PESTANAS.map((p) => p.titulo)).toEqual([
       "Cuentas",
       "Empresa y clave de firma",
@@ -29,6 +32,7 @@ describe("logica de Administracion", () => {
     expect(PESTANAS.filter((p) => p.migrada).map((p) => p.id)).toEqual([
       "cuentas",
       "empresa",
+      "registradas",
       "api",
       "accesos",
       "instalacion",
@@ -102,5 +106,36 @@ describe("logica de Administracion", () => {
   test("la confirmacion advierte cuando la cuenta es la propia", () => {
     expect(CONFIRMACIONES.desactivar.propia).toMatch(/^Es su propia cuenta/);
     expect(CONFIRMACIONES.restablecer.propia).toMatch(/^Es su propia cuenta/);
+  });
+
+  test("filas de empresas registradas con las columnas de la clasica y el metodo dicho en espanol", () => {
+    const metodos = [
+      { valor: "telefono", etiqueta: "teléfono" },
+      { valor: "qr", etiqueta: "código QR" },
+    ];
+    expect(
+      filasDeRegistradas(
+        [
+          { id: 4, empresa: "Ajena Demo", huella: "AB12-CD34", estado: "activa", comprobada_con: "Pedro", metodo: "telefono" },
+          { id: 5, empresa: "Otra Demo", huella: "EF56-GH78", estado: "revocada", comprobada_con: "Rosa", metodo: "desconocido" },
+        ],
+        metodos,
+      ),
+    ).toEqual([
+      { id: "4", empresa: "Ajena Demo", huella: "AB12-CD34", estado: "activa", comprobada_con: "Pedro", metodo: "teléfono" },
+      { id: "5", empresa: "Otra Demo", huella: "EF56-GH78", estado: "revocada", comprobada_con: "Rosa", metodo: "desconocido" },
+    ]);
+  });
+
+  test("revocar una registrada exige el motivo escrito o el aviso firmado, como la clasica", () => {
+    expect(puedeRevocarRegistrada("", false)).toBe(false);
+    expect(puedeRevocarRegistrada("   ", false)).toBe(false);
+    expect(puedeRevocarRegistrada("clave expuesta", false)).toBe(true);
+    expect(puedeRevocarRegistrada("", true)).toBe(true);
+  });
+
+  test("la fecha de hoy en AAAA-MM-DD es la del reloj local, sin zona horaria", () => {
+    expect(fechaDeHoy(new Date(2026, 0, 5, 23, 59))).toBe("2026-01-05");
+    expect(fechaDeHoy(new Date(2026, 10, 30, 0, 1))).toBe("2026-11-30");
   });
 });

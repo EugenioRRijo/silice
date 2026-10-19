@@ -7,6 +7,7 @@ import Accesos from "./Accesos";
 import ClavesApi from "./ClavesApi";
 import Cuentas from "./Cuentas";
 import Empresa from "./Empresa";
+import EmpresasRegistradas from "./EmpresasRegistradas";
 import Instalacion from "./Instalacion";
 import { PESTANAS } from "./logica";
 import "./administracion.scss";
@@ -38,12 +39,14 @@ function Contenido({ id, titulo }: { id: string; titulo: string }) {
   if (id === "cuentas") return <Cuentas />;
   if (id === "accesos") return <Accesos />;
   if (id === "empresa") return <Empresa />;
+  if (id === "registradas") return <EmpresasRegistradas />;
   if (id === "api") return <ClavesApi />;
   if (id === "instalacion") return <Instalacion />;
   return <EnLaClasica titulo={titulo} />;
 }
 
-// «Administracion» (UC-21): se migran Cuentas, Empresa y firma, Claves de API, Accesos e Instalacion; las demas siguen en la interfaz clasica.
+// «Administracion» (UC-21): se migran Cuentas, Empresa y firma, Empresas registradas, Claves de API, Accesos e
+// Instalacion; el Asistente de IA sigue en la interfaz clasica.
 // Solo se dibuja el contenido de la pestana elegida: al cambiar de pestana lo anterior se desmonta (y con el,
 // cualquier contrasena escrita).
 export default function PaginaAdministracion() {

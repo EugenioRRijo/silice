@@ -1,5 +1,6 @@
-// Logica pura de Administracion (pestanas Cuentas y Accesos): tipos del contrato de /v1/cuentas y /v1/accesos,
-// los rotulos de Streamlit (ui/paginas/administracion.py) y las filas de las tablas. No guarda ningun secreto.
+// Logica pura de Administracion (pestanas Cuentas, Accesos y Empresas registradas): tipos del contrato de
+// /v1/cuentas, /v1/accesos y /v1/admin/empresas-registradas, los rotulos de Streamlit (ui/paginas/administracion.py)
+// y las filas de las tablas. No guarda ningun secreto.
 import type { FilaDensa } from "../../comun/TablaDensa";
 
 export interface Cuenta {
@@ -45,7 +46,7 @@ export const ETIQUETAS_DE_ROL: Record<string, string> = {
 export const PESTANAS = [
   { id: "cuentas", titulo: "Cuentas", migrada: true },
   { id: "empresa", titulo: "Empresa y clave de firma", migrada: true },
-  { id: "registradas", titulo: "Empresas registradas", migrada: false },
+  { id: "registradas", titulo: "Empresas registradas", migrada: true },
   { id: "api", titulo: "Claves de API", migrada: true },
   { id: "asistente", titulo: "Asistente de IA", migrada: false },
   { id: "accesos", titulo: "Accesos", migrada: true },
@@ -147,3 +148,59 @@ export const CONFIRMACIONES = {
     boton: "Restablecer",
   },
 } as const;
+
+// --- Empresas registradas (claves publicas de otras empresas, spec S3 §7) ---
+
+export interface Registrada {
+  id: number;
+  empresa: string;
+  huella: string;
+  estado: string;
+  comprobada_con: string;
+  metodo: string;
+}
+
+// Como se comprobo la huella: `valor` es lo que se guarda, `etiqueta` lo que se lee (los dos los da la API).
+export interface MetodoDeComprobacion {
+  valor: string;
+  etiqueta: string;
+}
+
+export interface RegistradasRespuesta {
+  registradas: Registrada[];
+  metodos: MetodoDeComprobacion[];
+}
+
+// Lo que trae el `.silice-clave` elegido: la empresa que declara y la huella que CALCULA la API.
+export interface ClaveLeida {
+  empresa: string;
+  huella: string;
+}
+
+export const MENSAJE_REVOCAR_SIN_MOTIVO = "Escriba el motivo o suba el aviso de revocación.";
+
+export function filasDeRegistradas(
+  registradas: readonly Registrada[],
+  metodos: readonly MetodoDeComprobacion[],
+): FilaDensa[] {
+  const etiquetas = new Map(metodos.map((m) => [m.valor, m.etiqueta]));
+  return registradas.map((r) => ({
+    id: String(r.id),
+    empresa: r.empresa,
+    huella: r.huella,
+    estado: r.estado,
+    comprobada_con: r.comprobada_con,
+    metodo: etiquetas.get(r.metodo) ?? r.metodo,
+  }));
+}
+
+// Como en la clasica: sin aviso firmado, revocar exige el motivo escrito.
+export function puedeRevocarRegistrada(motivo: string, hayAviso: boolean): boolean {
+  return hayAviso || motivo.trim() !== "";
+}
+
+// La fecha del reloj local en AAAA-MM-DD (el valor de un <input type="date">), sin pasar por UTC.
+export function fechaDeHoy(ahora: Date = new Date()): string {
+  const dos = (n: number) => String(n).padStart(2, "0");
+  return `${ahora.getFullYear()}-${dos(ahora.getMonth() + 1)}-${dos(ahora.getDate())}`;
+}
