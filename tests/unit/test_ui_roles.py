@@ -48,7 +48,6 @@ RUTAS_ARMA = [
     "escenarios",
     "similares",
     "simulador",
-    "visor",
 ]
 RUTAS_REVISA = ["inicio", "tablero", "catalogo", "historico", "acerca", "revisar", "libros"]
 RUTAS_ADMINISTRADOR = ["inicio", "precios_empresa", "indices", "acerca", "administracion"]

@@ -378,7 +378,7 @@ def test_ninguna_ayuda_modifica_las_filas_ni_la_composicion_resultante(monkeypat
 
 #: Modulos que un import perezoso mal hecho dejaria en cache con `ml` ya cargado; se limpian antes
 #: y se restauran despues (el mismo gestor `tests.fixtures.sin_extra.SinExtra`
-#: que usa `tests/unit/test_visor3d.py` para el extra `civil`).
+#: que usa `tests/unit/test_ui_actualizacion_alta.py` para otros extras).
 _MODULOS_RELACIONADOS_CON_ML = (
     "ml",
     "ml.normalization",

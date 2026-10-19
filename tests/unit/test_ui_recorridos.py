@@ -95,7 +95,7 @@ def test_posicion_es_de_base_uno_y_none_fuera_del_recorrido() -> None:
     recorrido = Recorrido("r", "x", (PASO, OTRO))
     assert recorrido.posicion("catalogo") == 1
     assert recorrido.posicion("componer") == 2
-    assert recorrido.posicion("visor") is None
+    assert recorrido.posicion("simulador") is None
 
 
 def test_paso_siguiente_desde_el_inicio_es_el_primero() -> None:
@@ -111,7 +111,7 @@ def test_paso_siguiente_avanza_y_se_detiene_en_el_ultimo() -> None:
 
 def test_una_pantalla_fuera_del_recorrido_no_tiene_paso_siguiente() -> None:
     recorrido = Recorrido("r", "x", (PASO, OTRO))
-    assert paso_siguiente(recorrido, "visor") is None
+    assert paso_siguiente(recorrido, "simulador") is None
 
 
 def test_sin_recorrido_activo_no_hay_paso_siguiente() -> None:

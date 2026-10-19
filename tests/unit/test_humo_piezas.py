@@ -37,7 +37,7 @@ def test_externos_ignora_el_bucle_local_y_los_esquemas_que_no_son_red() -> None:
         "data:image/png;base64,AAAA",
         "blob:http://127.0.0.1:8501/abc",
         "about:srcdoc",
-        "https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js",
+        "https://cdnjs.cloudflare.com/ajax/libs/otra/biblioteca.min.js",
         "https://browser.events.data.microsoft.com/x",
         "https://cdnjs.cloudflare.com/otro.js",  # el mismo anfitrión una sola vez
         "wss://otro.ejemplo/socket",
@@ -67,7 +67,7 @@ def test_navegador_main_escribe_el_json_y_sale_con_1_si_hay_externos(
     salida = tmp_path / "peticiones.json"
     codigo = navegador.main(["--url", "http://127.0.0.1:8501/", "--salida", str(salida)])
     assert codigo == 1
-    assert pedidas == [("http://127.0.0.1:8501", ["", "visor", "similares"])]
+    assert pedidas == [("http://127.0.0.1:8501", ["", "similares", "simulador"])]
     datos = json.loads(salida.read_text(encoding="utf-8"))
     assert datos == {"peticiones": 2, "externos": ["cdnjs.cloudflare.com"], "urls": vistas}
     monkeypatch.setattr(navegador, "recorrer", lambda url, paginas: vistas[:1])

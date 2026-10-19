@@ -30,7 +30,7 @@ def _rutas(roles) -> list[str]:
 def test_el_rol_arma_ve_lo_de_trabajo_y_no_ve_la_administracion() -> None:
     rutas = set(_rutas({Rol.ARMA}))
     assert {"inicio", "catalogo", "componer", "elaborar", "hoja", "actualizacion", "historico",
-            "escenarios", "similares", "simulador", "visor"} <= rutas
+            "escenarios", "similares", "simulador"} <= rutas
     assert "administracion" not in rutas
 
 
@@ -38,14 +38,14 @@ def test_el_rol_revisa_ve_la_lectura_y_nada_que_escriba() -> None:
     rutas = set(_rutas({Rol.REVISA}))
     assert {"inicio", "catalogo", "historico"} <= rutas
     assert not {"componer", "elaborar", "hoja", "actualizacion", "escenarios", "similares",
-                "simulador", "visor"} & rutas
+                "simulador"} & rutas
 
 
 def test_el_administrador_no_ve_ninguna_pantalla_de_trabajo() -> None:
     rutas = set(_rutas({Rol.ADMINISTRADOR}))
     assert "inicio" in rutas
     assert not {"catalogo", "componer", "elaborar", "hoja", "actualizacion", "historico",
-                "escenarios", "similares", "simulador", "visor"} & rutas
+                "escenarios", "similares", "simulador"} & rutas
 
 
 def test_varios_roles_suman_sus_pantallas_sin_repetir() -> None:

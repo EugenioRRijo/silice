@@ -22,12 +22,11 @@ const COMO_STREAMLIT: [string, string, string | null][] = [
   ["escenarios", "Investigación", "editar_hoja"],
   ["similares", "Investigación", "editar_hoja"],
   ["simulador", "Investigación", "editar_hoja"],
-  ["visor", "Investigación", "editar_hoja"],
   ["administracion", "Administración", "administrar_cuentas"],
 ];
 
 describe("registro de paginas", () => {
-  test("tiene las 21 paginas de Streamlit, en su orden, con su seccion y su accion", () => {
+  test("tiene las 20 paginas de Streamlit, en su orden, con su seccion y su accion", () => {
     expect(PAGINAS.map((p) => [p.id, p.seccion, p.accion])).toEqual(COMO_STREAMLIT);
   });
 
@@ -73,8 +72,8 @@ describe("quien ve que", () => {
     expect(PAGINAS.filter((p) => visible(p, [], false)).map((p) => p.id)).toEqual(["inicio", "acerca"]);
   });
 
-  test("con todas las acciones se ven las 21", () => {
-    expect(PAGINAS.filter((p) => visible(p, todas, false))).toHaveLength(21);
+  test("con todas las acciones se ven las 20", () => {
+    expect(PAGINAS.filter((p) => visible(p, todas, false))).toHaveLength(20);
   });
 
   test("el modo entrega esconde Investigacion y nada mas", () => {

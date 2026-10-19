@@ -2,7 +2,7 @@
 
 `UploadedFile.name` lo manda el navegador y llega tal cual: `..\\..\\x`, `/etc/passwd`, `C:\\...`,
 `CON.csv`. Los oraculos son literales escritos a mano (el nombre que debe quedar), no la salida de
-la propia funcion. Las pantallas con subida (`actualizacion`, `elaborar`, `visor`) deben usarla en
+la propia funcion. Las pantallas con subida (`actualizacion`, `elaborar`) deben usarla en
 lugar de unir el nombre del cliente a una carpeta (`Path(carpeta) / archivo.name`).
 """
 
@@ -129,9 +129,9 @@ def test_guardar_con_nombre_vacio_no_escribe_nada(tmp_path):
     assert list(tmp_path.iterdir()) == []
 
 
-# --- las tres pantallas con subida usan la funcion unica ---------------------------------------
+# --- las dos pantallas con subida usan la funcion unica ---------------------------------------
 
-PAGINAS_CON_SUBIDA = ("actualizacion", "elaborar", "visor")
+PAGINAS_CON_SUBIDA = ("actualizacion", "elaborar")
 
 
 @pytest.mark.parametrize("pagina", PAGINAS_CON_SUBIDA)
