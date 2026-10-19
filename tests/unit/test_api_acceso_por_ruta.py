@@ -100,6 +100,7 @@ TABLA = {
     ("POST", "/v1/libros/devolucion"): LEER,
     ("POST", "/v1/libros/pdf"): LEER,
     ("POST", "/v1/libros/replica"): LEER,
+    ("GET", "/v1/tablero"): LEER,  # ola 4: Tablero
     ("GET", "/v1/casos"): CUALQUIERA,
     ("POST", "/v1/casos/actual"): CAMBIAR_CASO,
     ("GET", "/v1/proyectos"): LEER,

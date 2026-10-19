@@ -24,6 +24,7 @@ from api.rutas import (
     sesion,
     similares,
     simulador,
+    tablero,
 )
 from api.sesion_web import exigir_clave_o_sesion
 from core.catalog import CatalogoIncompleto
@@ -70,6 +71,8 @@ app.include_router(casos.router)
 app.include_router(proyectos.router)
 # Ola 3 (S2-B): «Componer una partida» (UC-10, UC-11)
 app.include_router(composicion.router)
+# Ola 4 (S2-C): el tablero de la obra (UC-13)
+app.include_router(tablero.router)
 # 1.2.0 (RT-2): la interfaz nueva, estática y sin secretos, en /app con CSP
 interfaz.montar(app)
 
