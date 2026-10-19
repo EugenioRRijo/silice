@@ -17,6 +17,14 @@ function indicador(extra: Partial<IndicadorRespuesta> = {}): IndicadorRespuesta 
 }
 
 describe("IndicadorFiori", () => {
+  test("el rótulo de la cifra de comparación es «Meta» por omisión y se puede nombrar", () => {
+    const { rerender } = render(<IndicadorFiori indicador={indicador()} />);
+    expect(screen.getByText(/^Meta/)).toBeInTheDocument();
+    rerender(<IndicadorFiori indicador={indicador()} rotuloMeta="Según Sílice" />);
+    expect(screen.getByText(/^Según Sílice/)).toBeInTheDocument();
+    expect(screen.queryByText(/^Meta/)).not.toBeInTheDocument();
+  });
+
   test("muestra los montos exactos como llegan, sin redondear", () => {
     render(<IndicadorFiori indicador={indicador()} />);
     expect(screen.getByText("1738.407")).toBeInTheDocument();

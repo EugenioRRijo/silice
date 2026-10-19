@@ -4,5 +4,10 @@ import { Visor } from "../../visor/Visor";
 // «Libro de la empresa» (UC-25, RM-6): el visor de la sesion 2. Lo extiende la sesion 3, no la migracion.
 export default function PaginaLibros() {
   const { alExpirar } = useAplicacion();
-  return <Visor alExpirar={alExpirar} />;
+  return (
+    <div className="silice-pagina-libro">
+      <h1 className="cds--type-heading-04">Libro de la empresa</h1>
+      <Visor alExpirar={alExpirar} />
+    </div>
+  );
 }

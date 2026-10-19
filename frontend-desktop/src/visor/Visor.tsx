@@ -216,7 +216,11 @@ export function Visor({ crearHoja = crearHojaUniver, alExpirar }: Props) {
     <div className="visor">
       {cargando && <div className="visor__franja-esqueleto" aria-hidden="true"><SkeletonText width="60%" /></div>}
       {fase === "listo" && auditoria && (
-        <FranjaIndicadores indicadores={auditoria.indicadores ?? []} porSeveridad={porSeveridad} />
+        <FranjaIndicadores
+          indicadores={auditoria.indicadores ?? []}
+          porSeveridad={porSeveridad}
+          rotuloMeta="Según Sílice"
+        />
       )}
 
       <div className="visor__barra">

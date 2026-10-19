@@ -4,6 +4,8 @@ import type { IndicadorRespuesta } from "./tipos";
 
 interface Props {
   indicador: IndicadorRespuesta;
+  // Rotulo de la cifra de comparacion (por omision «Meta»).
+  rotuloMeta?: string;
 }
 
 // Proporciones solo para dibujar la barra (no es dinero): real y meta contra el mayor de los dos.
@@ -17,7 +19,7 @@ function proporciones(actual: string, meta: string): { real: number; meta: numbe
 }
 
 // Patron SAP Fiori: valor actual, meta y desviacion. Los montos se muestran exactos, como llegan de la API.
-export function IndicadorFiori({ indicador }: Props) {
+export function IndicadorFiori({ indicador, rotuloMeta = "Meta" }: Props) {
   const { titulo, actual, meta, delta, delta_pct: deltaPct, sentido } = indicador;
   const semantica = semanticaIbcs(delta, sentido);
   const barra = proporciones(actual, meta);
@@ -26,7 +28,7 @@ export function IndicadorFiori({ indicador }: Props) {
     <div className="fiori-kpi" role="group" aria-label={titulo}>
       <span className="fiori-kpi__titulo cds--type-label-01">{titulo}</span>
       <span className="fiori-kpi__meta cds--type-label-01 silice-cifra">
-        Meta <span>{meta}</span>
+        {rotuloMeta} <span>{meta}</span>
       </span>
       <span className="fiori-kpi__actual cds--type-heading-03 silice-cifra">{actual}</span>
       <span className={`fiori-kpi__delta cds--type-label-01 silice-cifra ibcs-${semantica}`}>

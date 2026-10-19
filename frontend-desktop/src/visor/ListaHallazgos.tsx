@@ -17,6 +17,7 @@ import { construirHalos, estiloDeHallazgo } from "./halos";
 import { parsearCelda } from "./celdas";
 import type { CeldaRef } from "./hojaVisor";
 import { IconoDeSeveridad } from "./iconos";
+import { montosEnFormatoUnico } from "./montos";
 
 interface Props {
   hallazgos: HallazgoLibroRespuesta[];
@@ -68,7 +69,9 @@ function TablaHallazgos({ etiqueta, hallazgos, indices, seleccionado, alElegir }
             </span>
             <span className="silice-codigo">{h.codigo}</span>
           </div>
-          <div className="hallazgo__descripcion cds--type-body-compact-01">{h.descripcion}</div>
+          <div className="hallazgo__descripcion cds--type-body-compact-01" title={h.descripcion}>
+            {montosEnFormatoUnico(h.descripcion)}
+          </div>
           {h.celda && <div className="hallazgo__celda silice-codigo cds--type-label-01">{h.celda}</div>}
         </div>
       ),
@@ -76,7 +79,9 @@ function TablaHallazgos({ etiqueta, hallazgos, indices, seleccionado, alElegir }
         h.impacto === null ? (
           <span className="silice-oculto">sin impacto</span>
         ) : (
-          <span className="silice-cifra cds--type-body-compact-01">{h.impacto}</span>
+          <span className="silice-cifra cds--type-body-compact-01" title={h.impacto}>
+            {montosEnFormatoUnico(h.impacto)}
+          </span>
         ),
     };
   });

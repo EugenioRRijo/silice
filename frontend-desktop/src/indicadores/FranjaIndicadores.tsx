@@ -7,6 +7,7 @@ import type { ConteoPorSeveridad, IndicadorRespuesta, Severidad } from "./tipos"
 interface Props {
   indicadores: IndicadorRespuesta[];
   porSeveridad: ConteoPorSeveridad;
+  rotuloMeta?: string;
 }
 
 const SEVERIDADES: {
@@ -22,12 +23,12 @@ const SEVERIDADES: {
 
 // Franja densa de 64 px bajo la cabecera: indicadores separados por divisores de 1 px y, al final, los conteos
 // de hallazgos por severidad. Un conteo no es una variacion: no lleva colores IBCS.
-export function FranjaIndicadores({ indicadores, porSeveridad }: Props) {
+export function FranjaIndicadores({ indicadores, porSeveridad, rotuloMeta }: Props) {
   return (
     <section className="franja-indicadores" aria-label="Indicadores del libro">
       <div className="franja-indicadores__lista">
         {indicadores.map((i) => (
-          <IndicadorFiori key={i.clave} indicador={i} />
+          <IndicadorFiori key={i.clave} indicador={i} rotuloMeta={rotuloMeta} />
         ))}
       </div>
       <div className="franja-indicadores__severidad" role="group" aria-label="Hallazgos por severidad">

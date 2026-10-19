@@ -330,3 +330,36 @@ body {
   color: var(--silice-texto-secundario);
   overflow-wrap: anywhere;
 }
+
+// Pagina «Libro de la empresa»: el titulo va sobre el visor, con el mismo margen de 16 px que las demas paginas, y
+// el visor ocupa el resto del alto (sin desplazamiento de la pagina).
+.silice-pagina-libro {
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  block-size: calc(100vh - 3rem);
+  min-block-size: 0;
+
+  > h1 {
+    flex: none;
+    margin: 0;
+    padding: 1.5rem 1rem 0.75rem;
+  }
+
+  .visor {
+    flex: 1;
+    block-size: auto;
+  }
+
+  .visor__barra {
+    margin-inline: 1rem;
+  }
+}
+
+// La franja de indicadores conserva su alto propio y todo el ancho: dentro del visor (flex en columna, con
+// overflow oculto) se encogia y recortaba las cifras.
+.visor > .franja-indicadores {
+  flex: none;
+  inline-size: 100%;
+  box-sizing: border-box;
+}
