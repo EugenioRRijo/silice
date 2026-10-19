@@ -519,6 +519,14 @@ def test_la_variacion_atipica_trae_insumo_porcentaje_y_tramo(sesion, insumo) -> 
     assert atipicos.variaciones_atipicas(None) == []
 
 
+def test_la_variacion_atipica_trae_tambien_el_porcentaje_exacto(sesion, insumo) -> None:
+    """DESIGN.md: ninguna cifra redondeada sin el exacto a la vista. Memoria `atipicos_s3.md` §1:
+    (257 − 256) / 256 = 0,00390625, es decir 0,390625 % (sin redondear ni ceros de relleno)."""
+    _sembrar(sesion, insumo, SERIE_CON_ATIPICO)
+    [v] = atipicos.variaciones_atipicas(atipicos.atipicos_de_insumos(sesion, ["ATIP-001"]))
+    assert (v.porcentaje, v.porcentaje_exacto) == ("0.39", "0.390625")
+
+
 def test_un_codigo_con_barra_vertical_no_rompe_la_variacion(sesion) -> None:
     """El origen es «código|id»: el id de la variación no lleva «|», el código sí podría."""
     raro = models.Insumo(

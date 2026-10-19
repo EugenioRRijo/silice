@@ -60,6 +60,7 @@ const CON_ATIPICO: Atipicos = {
     {
       insumo: "ATIP-001",
       porcentaje: "0.39",
+      porcentaje_exacto: "0.390625",
       desde: "2026-09-01",
       hasta: "2026-10-01",
       severidad: "ADVERTENCIA",
@@ -307,10 +308,16 @@ describe("Precios de la empresa", () => {
     expect(screen.getByText("Precio en Bs sin tasa, omitido: Lista-Bs demo [sin tasa]")).toBeInTheDocument();
     expect(within(tabla).getByText("ATIP-001")).toBeInTheDocument();
     const variacion = within(tabla).getByText("0,39 %");
-    expect(variacion).toHaveAttribute("title", "0.39"); // el exacto de la API, a un toque
+    // el exacto, a un toque (DESIGN.md): 1/256 = 0,390625 %, memoria atipicos_s3.md §1
+    expect(variacion).toHaveAttribute("title", "0.390625");
     expect(within(tabla).getByText("01/09/2026")).toBeInTheDocument();
     expect(within(tabla).getByText("01/10/2026")).toBeInTheDocument();
     expect(within(tabla).getByText("Advertencia")).toBeInTheDocument();
+    // DESIGN.md: el atipico (RF-100) va en morado, con su icono y su texto, nunca el color solo
+    const severidad = within(tabla).getByText("Advertencia").closest(".silice-sev");
+    expect(severidad?.querySelector("svg.silice-sev__icono")).not.toBeNull();
+    const morado = tabla.closest(".silice-precios-empresa__tabla-atipicos") as HTMLElement;
+    expect(morado.style.getPropertyValue("--silice-sev-advertencia")).toBe("var(--silice-atipico)");
     expect(
       screen.getByText("Cada variación (en USD) se aparta del historial de variaciones del insumo. Nada de esto se guarda ni se bloquea."),
     ).toBeInTheDocument();

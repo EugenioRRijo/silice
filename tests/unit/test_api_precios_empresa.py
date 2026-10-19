@@ -714,6 +714,8 @@ def test_la_serie_sembrada_da_su_unica_variacion_atipica_y_no_escribe_nada(_ento
             {
                 "insumo": INSUMO,
                 "porcentaje": "0.39",
+                # el exacto a la vista (DESIGN.md): 1/256 = 0,390625 % (memoria §1)
+                "porcentaje_exacto": "0.390625",
                 "desde": "2026-09-01",
                 "hasta": "2026-10-01",
                 "severidad": "ADVERTENCIA",
