@@ -185,6 +185,23 @@ TABLA = {
     ("POST", "/v1/precios-empresa/referencia"): PRECIOS,
     ("POST", "/v1/precios-empresa/listas"): PRECIOS,
     ("GET", "/v1/precios-empresa/listas/{lista_id}/hallazgos"): PRECIOS,
+    ("GET", "/v1/precios-empresa/listas/{lista_id}/atipicos"): PRECIOS,  # T4: variaciones atipicas (RF-100)
+    ("GET", "/v1/admin/empresas-registradas"): EMPRESA,  # T5
+    ("POST", "/v1/admin/empresas-registradas"): EMPRESA,
+    ("POST", "/v1/admin/empresas-registradas/leer"): EMPRESA,
+    ("POST", "/v1/admin/empresas-registradas/{empresa_id}/retirar"): EMPRESA,
+    ("POST", "/v1/admin/empresas-registradas/{empresa_id}/revocar"): EMPRESA,
+    ("GET", "/v1/admin/asistente"): EMPRESA,  # T6
+    ("POST", "/v1/admin/asistente/configuracion"): EMPRESA,
+    ("POST", "/v1/admin/asistente/clave"): EMPRESA,
+    ("POST", "/v1/admin/asistente/clave/reactivar"): EMPRESA,
+    ("POST", "/v1/admin/asistente/clave/olvidar"): EMPRESA,
+    ("POST", "/v1/revision/paquete"): REVISAR,  # T7: Revisar un paquete
+    ("POST", "/v1/revision/contra-lista"): REVISAR,
+    ("POST", "/v1/revision/dictamen"): REVISAR,  # ademas, solo con sesion (403 con clave)
+    ("POST", "/v1/revision/excel"): REVISAR,
+    ("GET", "/v1/revision/plantilla"): REVISAR,
+    ("POST", "/v1/revision/excel-externo"): REVISAR,
     ("GET", "/v1/acerca"): CUALQUIERA,
 }
 #: Las de la puerta de entrada: la sesión misma (con su propia regla) y el ping.

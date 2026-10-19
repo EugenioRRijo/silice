@@ -12,8 +12,10 @@ from api import interfaz
 from api.proteccion import opciones_documentacion, proteger
 from api.rutas import (
     acerca,
+    admin_asistente,
     admin_claves_api,
     admin_empresa,
+    admin_empresas_registradas,
     admin_instalacion,
     auditorias,
     casos,
@@ -31,6 +33,7 @@ from api.rutas import (
     proyectos,
     reajuste,
     rendimientos,
+    revision,
     sesion,
     similares,
     simulador,
@@ -101,6 +104,12 @@ app.include_router(admin_instalacion.router)
 # Migracion: «Indices del BCV» (UC-17) y «Precios de la empresa» (UC-17 4-5); ADMINISTRAR_PRECIOS
 app.include_router(indices.router)
 app.include_router(precios_empresa.router)
+# Migracion final (T5): Administracion, «Empresas registradas» (ADMINISTRAR_EMPRESA, solo sesion)
+app.include_router(admin_empresas_registradas.router)
+# Migracion final (T6): Administracion, «Asistente de IA» (ADMINISTRAR_EMPRESA; la clave, solo desde el equipo)
+app.include_router(admin_asistente.router)
+# Migracion final (T7): «Revisar un paquete» (UC-23; REVISAR_PAQUETE con clave o sesion)
+app.include_router(revision.router)
 interfaz.montar(app)
 
 

@@ -4039,7 +4039,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/NuevaClave"
+                "$ref": "#/components/schemas/api__rutas__admin_claves_api__NuevaClave"
               }
             }
           },
@@ -4490,6 +4490,650 @@
         }
       }
     },
+    "/v1/precios-empresa/listas/{lista_id}/atipicos": {
+      "get": {
+        "tags": [
+          "precios-empresa"
+        ],
+        "summary": "Atipicos",
+        "description": "RF-100: las variaciones atipicas de precio de los insumos de la lista de empresa elegida\n(lo que hace el boton de la pagina clasica). Solo lee: nada se guarda ni se bloquea.",
+        "operationId": "atipicos_v1_precios_empresa_listas__lista_id__atipicos_get",
+        "parameters": [
+          {
+            "name": "lista_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Lista Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AtipicosRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/empresas-registradas": {
+      "get": {
+        "tags": [
+          "administracion"
+        ],
+        "summary": "Listar",
+        "operationId": "listar_v1_admin_empresas_registradas_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistradasRespuesta"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "administracion"
+        ],
+        "summary": "Registrar",
+        "description": "Registra la clave de otra empresa con la huella leída por otro canal.",
+        "operationId": "registrar_v1_admin_empresas_registradas_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_registrar_v1_admin_empresas_registradas_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistradasRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/empresas-registradas/leer": {
+      "post": {
+        "tags": [
+          "administracion"
+        ],
+        "summary": "Leer",
+        "description": "Lo que trae el archivo, con la huella que calcula el sistema; no se guarda nada.",
+        "operationId": "leer_v1_admin_empresas_registradas_leer_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_leer_v1_admin_empresas_registradas_leer_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClaveLeida"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/empresas-registradas/{empresa_id}/retirar": {
+      "post": {
+        "tags": [
+          "administracion"
+        ],
+        "summary": "Retirar",
+        "description": "La empresa avisó que cambió de clave: sus paquetes anteriores a la fecha siguen valiendo.",
+        "operationId": "retirar_v1_admin_empresas_registradas__empresa_id__retirar_post",
+        "parameters": [
+          {
+            "name": "empresa_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Empresa Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Retiro"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistradasRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/empresas-registradas/{empresa_id}/revocar": {
+      "post": {
+        "tags": [
+          "administracion"
+        ],
+        "summary": "Revocar",
+        "description": "Ningún paquete con esa clave verifica después de revocarla.",
+        "operationId": "revocar_v1_admin_empresas_registradas__empresa_id__revocar_post",
+        "parameters": [
+          {
+            "name": "empresa_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Empresa Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_revocar_v1_admin_empresas_registradas__empresa_id__revocar_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistradasRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/asistente": {
+      "get": {
+        "tags": [
+          "administracion"
+        ],
+        "summary": "Ver",
+        "operationId": "ver_v1_admin_asistente_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AsistenteEstado"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/asistente/configuracion": {
+      "post": {
+        "tags": [
+          "administracion"
+        ],
+        "summary": "Configurar",
+        "description": "Guarda la configuración; un tope no numérico o no positivo no toca el archivo.",
+        "operationId": "configurar_v1_admin_asistente_configuracion_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Configuracion"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Resultado"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/asistente/clave": {
+      "post": {
+        "tags": [
+          "administracion"
+        ],
+        "summary": "Registrar",
+        "description": "Guarda la clave en el almacén de credenciales (o cifrada, si este no está).",
+        "operationId": "registrar_v1_admin_asistente_clave_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/api__rutas__admin_asistente__NuevaClave"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Resultado"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/asistente/clave/reactivar": {
+      "post": {
+        "tags": [
+          "administracion"
+        ],
+        "summary": "Reactivar",
+        "description": "Trae la clave desde el respaldo cifrado con su contraseña; solo con el asistente activo.",
+        "operationId": "reactivar_v1_admin_asistente_clave_reactivar_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Reactivacion"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Resultado"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/admin/asistente/clave/olvidar": {
+      "post": {
+        "tags": [
+          "administracion"
+        ],
+        "summary": "Olvidar",
+        "description": "Borra la clave del almacén, del respaldo y de la memoria.",
+        "operationId": "olvidar_v1_admin_asistente_clave_olvidar_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Resultado"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/revision/paquete": {
+      "post": {
+        "tags": [
+          "revision"
+        ],
+        "summary": "Revisar Paquete",
+        "description": "Verifica, registra y reaudita el paquete; todo lo que la pantalla clásica muestra.",
+        "operationId": "revisar_paquete_v1_revision_paquete_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_revisar_paquete_v1_revision_paquete_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RevisionRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/revision/contra-lista": {
+      "post": {
+        "tags": [
+          "revision"
+        ],
+        "summary": "Contra Otra Lista",
+        "description": "El paquete revalorado en memoria con otra lista del caso («Contrastar con mi lista»).",
+        "operationId": "contra_otra_lista_v1_revision_contra_lista_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_contra_otra_lista_v1_revision_contra_lista_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContraLista"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/revision/dictamen": {
+      "post": {
+        "tags": [
+          "revision"
+        ],
+        "summary": "Dictaminar",
+        "description": "Guarda el dictamen atado al SHA-256 del archivo (no hace falta reauditar para eso).",
+        "operationId": "dictaminar_v1_revision_dictamen_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_dictaminar_v1_revision_dictamen_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DictamenGuardado"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/revision/excel": {
+      "post": {
+        "tags": [
+          "revision"
+        ],
+        "summary": "Excel",
+        "description": "El Excel del presupuesto o el de la revisión, regenerado aquí (DA-S3-10).",
+        "operationId": "excel_v1_revision_excel_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_excel_v1_revision_excel_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {}
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/revision/plantilla": {
+      "get": {
+        "tags": [
+          "revision"
+        ],
+        "summary": "Plantilla",
+        "description": "La plantilla del formato UC-05, con una fila de ejemplo en cada hoja.",
+        "operationId": "plantilla_v1_revision_plantilla_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {}
+            }
+          }
+        }
+      }
+    },
+    "/v1/revision/excel-externo": {
+      "post": {
+        "tags": [
+          "revision"
+        ],
+        "summary": "Excel Externo",
+        "description": "Audita en memoria un presupuesto en Excel de otra herramienta: nada se guarda.",
+        "operationId": "excel_externo_v1_revision_excel_externo_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_excel_externo_v1_revision_excel_externo_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExcelExternoRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/salud": {
       "get": {
         "tags": [
@@ -4834,6 +5478,125 @@
         ],
         "title": "Anulacion"
       },
+      "AsistenteEstado": {
+        "properties": {
+          "activo": {
+            "type": "boolean",
+            "title": "Activo"
+          },
+          "proveedor": {
+            "type": "string",
+            "title": "Proveedor"
+          },
+          "proveedores": {
+            "items": {
+              "$ref": "#/components/schemas/Proveedor"
+            },
+            "type": "array",
+            "title": "Proveedores"
+          },
+          "modelo_claude": {
+            "type": "string",
+            "title": "Modelo Claude"
+          },
+          "modelo_local": {
+            "type": "string",
+            "title": "Modelo Local"
+          },
+          "anfitrion_ollama": {
+            "type": "string",
+            "title": "Anfitrion Ollama"
+          },
+          "tope_usd": {
+            "type": "string",
+            "title": "Tope Usd"
+          },
+          "clave_registrada": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Clave Registrada"
+          },
+          "clave_guardada": {
+            "type": "boolean",
+            "title": "Clave Guardada"
+          },
+          "pide_contrasena": {
+            "type": "boolean",
+            "title": "Pide Contrasena"
+          },
+          "falta_el_componente": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Falta El Componente"
+          },
+          "aviso_de_nube": {
+            "type": "string",
+            "title": "Aviso De Nube"
+          },
+          "sensible": {
+            "$ref": "#/components/schemas/SensibleEstado"
+          }
+        },
+        "type": "object",
+        "required": [
+          "activo",
+          "proveedor",
+          "proveedores",
+          "modelo_claude",
+          "modelo_local",
+          "anfitrion_ollama",
+          "tope_usd",
+          "clave_registrada",
+          "clave_guardada",
+          "pide_contrasena",
+          "falta_el_componente",
+          "aviso_de_nube",
+          "sensible"
+        ],
+        "title": "AsistenteEstado"
+      },
+      "AtipicosRespuesta": {
+        "properties": {
+          "disponible": {
+            "type": "boolean",
+            "title": "Disponible"
+          },
+          "avisos": {
+            "items": {
+              "$ref": "#/components/schemas/AvisoAtipicos"
+            },
+            "type": "array",
+            "title": "Avisos"
+          },
+          "variaciones": {
+            "items": {
+              "$ref": "#/components/schemas/VariacionAtipicaRespuesta"
+            },
+            "type": "array",
+            "title": "Variaciones"
+          }
+        },
+        "type": "object",
+        "required": [
+          "disponible",
+          "avisos",
+          "variaciones"
+        ],
+        "title": "AtipicosRespuesta",
+        "description": "`disponible` es falso sin el extra `ml`: no se busco nada y un aviso lo dice."
+      },
       "AuditoriaRespuesta": {
         "properties": {
           "fecha_evaluacion": {
@@ -4903,6 +5666,29 @@
           "diferencias"
         ],
         "title": "AuditoriaRespuesta"
+      },
+      "AvisoAtipicos": {
+        "properties": {
+          "nivel": {
+            "type": "string",
+            "enum": [
+              "info",
+              "success"
+            ],
+            "title": "Nivel"
+          },
+          "texto": {
+            "type": "string",
+            "title": "Texto"
+          }
+        },
+        "type": "object",
+        "required": [
+          "nivel",
+          "texto"
+        ],
+        "title": "AvisoAtipicos",
+        "description": "Un aviso de la busqueda, con el nivel de la pagina clasica (`info` o `success`)."
       },
       "BajaDeClave": {
         "properties": {
@@ -5134,6 +5920,25 @@
         ],
         "title": "Body_confirmar_v1_indices_confirmar_post"
       },
+      "Body_contra_otra_lista_v1_revision_contra_lista_post": {
+        "properties": {
+          "paquete": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "Paquete"
+          },
+          "lista": {
+            "type": "integer",
+            "title": "Lista"
+          }
+        },
+        "type": "object",
+        "required": [
+          "paquete",
+          "lista"
+        ],
+        "title": "Body_contra_otra_lista_v1_revision_contra_lista_post"
+      },
       "Body_crear_lista_v1_precios_empresa_listas_post": {
         "properties": {
           "base_id": {
@@ -5266,6 +6071,66 @@
         ],
         "title": "Body_devolver_libro_v1_libros_devolucion_post"
       },
+      "Body_dictaminar_v1_revision_dictamen_post": {
+        "properties": {
+          "paquete": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "Paquete"
+          },
+          "resultado": {
+            "type": "string",
+            "maxLength": 40,
+            "title": "Resultado"
+          },
+          "notas": {
+            "type": "string",
+            "maxLength": 20000,
+            "title": "Notas",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "paquete",
+          "resultado"
+        ],
+        "title": "Body_dictaminar_v1_revision_dictamen_post"
+      },
+      "Body_excel_externo_v1_revision_excel_externo_post": {
+        "properties": {
+          "presupuesto": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "Presupuesto"
+          }
+        },
+        "type": "object",
+        "required": [
+          "presupuesto"
+        ],
+        "title": "Body_excel_externo_v1_revision_excel_externo_post"
+      },
+      "Body_excel_v1_revision_excel_post": {
+        "properties": {
+          "paquete": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "Paquete"
+          },
+          "tipo": {
+            "type": "string",
+            "maxLength": 20,
+            "title": "Tipo"
+          }
+        },
+        "type": "object",
+        "required": [
+          "paquete",
+          "tipo"
+        ],
+        "title": "Body_excel_v1_revision_excel_post"
+      },
       "Body_importar_presupuesto_de_tercero_presupuestos_importar_post": {
         "properties": {
           "archivo": {
@@ -5325,6 +6190,20 @@
         ],
         "title": "Body_informe_de_importacion_v1_control_importar_informe_post"
       },
+      "Body_leer_v1_admin_empresas_registradas_leer_post": {
+        "properties": {
+          "archivo": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "Archivo"
+          }
+        },
+        "type": "object",
+        "required": [
+          "archivo"
+        ],
+        "title": "Body_leer_v1_admin_empresas_registradas_leer_post"
+      },
       "Body_leer_v1_indices_leer_post": {
         "properties": {
           "tipo": {
@@ -5356,6 +6235,35 @@
           "fecha_descarga"
         ],
         "title": "Body_leer_v1_indices_leer_post"
+      },
+      "Body_registrar_v1_admin_empresas_registradas_post": {
+        "properties": {
+          "archivo": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "Archivo"
+          },
+          "huella": {
+            "type": "string",
+            "title": "Huella"
+          },
+          "metodo": {
+            "type": "string",
+            "title": "Metodo"
+          },
+          "comprobada_con": {
+            "type": "string",
+            "title": "Comprobada Con",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "archivo",
+          "huella",
+          "metodo"
+        ],
+        "title": "Body_registrar_v1_admin_empresas_registradas_post"
       },
       "Body_replicar_v1_libros_replica_post": {
         "properties": {
@@ -5436,6 +6344,31 @@
         ],
         "title": "Body_revalorar_presupuesto_presupuestos_revalorar_post"
       },
+      "Body_revisar_paquete_v1_revision_paquete_post": {
+        "properties": {
+          "paquete": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "Paquete"
+          },
+          "lista": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lista"
+          }
+        },
+        "type": "object",
+        "required": [
+          "paquete"
+        ],
+        "title": "Body_revisar_paquete_v1_revision_paquete_post"
+      },
       "Body_revisar_pdf_v1_libros_pdf_post": {
         "properties": {
           "pdf": {
@@ -5450,6 +6383,29 @@
           "pdf"
         ],
         "title": "Body_revisar_pdf_v1_libros_pdf_post"
+      },
+      "Body_revocar_v1_admin_empresas_registradas__empresa_id__revocar_post": {
+        "properties": {
+          "motivo": {
+            "type": "string",
+            "title": "Motivo",
+            "default": ""
+          },
+          "aviso": {
+            "anyOf": [
+              {
+                "type": "string",
+                "contentMediaType": "application/octet-stream"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Aviso"
+          }
+        },
+        "type": "object",
+        "title": "Body_revocar_v1_admin_empresas_registradas__empresa_id__revocar_post"
       },
       "Body_vista_previa_de_lista_listas_precios_vista_previa_post": {
         "properties": {
@@ -5849,6 +6805,24 @@
         ],
         "title": "ClaveDatos"
       },
+      "ClaveLeida": {
+        "properties": {
+          "empresa": {
+            "type": "string",
+            "title": "Empresa"
+          },
+          "huella": {
+            "type": "string",
+            "title": "Huella"
+          }
+        },
+        "type": "object",
+        "required": [
+          "empresa",
+          "huella"
+        ],
+        "title": "ClaveLeida"
+      },
       "ClaveRespuesta": {
         "properties": {
           "id": {
@@ -5963,6 +6937,44 @@
         ],
         "title": "ComposicionRespuesta"
       },
+      "Configuracion": {
+        "properties": {
+          "activo": {
+            "type": "boolean",
+            "title": "Activo"
+          },
+          "proveedor": {
+            "type": "string",
+            "title": "Proveedor"
+          },
+          "modelo_claude": {
+            "type": "string",
+            "title": "Modelo Claude"
+          },
+          "modelo_local": {
+            "type": "string",
+            "title": "Modelo Local",
+            "default": ""
+          },
+          "anfitrion_ollama": {
+            "type": "string",
+            "title": "Anfitrion Ollama"
+          },
+          "tope_usd": {
+            "type": "string",
+            "title": "Tope Usd"
+          }
+        },
+        "type": "object",
+        "required": [
+          "activo",
+          "proveedor",
+          "modelo_claude",
+          "anfitrion_ollama",
+          "tope_usd"
+        ],
+        "title": "Configuracion"
+      },
       "ConfirmacionRespuesta": {
         "properties": {
           "mensajes": {
@@ -5978,6 +6990,35 @@
           "mensajes"
         ],
         "title": "ConfirmacionRespuesta"
+      },
+      "ContraLista": {
+        "properties": {
+          "lista_id": {
+            "type": "integer",
+            "title": "Lista Id"
+          },
+          "diferencia": {
+            "$ref": "#/components/schemas/TablaDeDiferencia"
+          },
+          "no_contrastables": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "No Contrastables"
+          }
+        },
+        "type": "object",
+        "required": [
+          "lista_id",
+          "diferencia",
+          "no_contrastables"
+        ],
+        "title": "ContraLista"
       },
       "ContrasenaTemporal": {
         "properties": {
@@ -6390,6 +7431,108 @@
           "detalle"
         ],
         "title": "Detalle"
+      },
+      "DictamenAnterior": {
+        "properties": {
+          "resultado": {
+            "type": "string",
+            "title": "Resultado"
+          },
+          "usuario": {
+            "type": "string",
+            "title": "Usuario"
+          },
+          "fecha": {
+            "type": "string",
+            "title": "Fecha"
+          },
+          "estado_verificacion": {
+            "type": "string",
+            "title": "Estado Verificacion"
+          },
+          "texto": {
+            "type": "string",
+            "title": "Texto"
+          }
+        },
+        "type": "object",
+        "required": [
+          "resultado",
+          "usuario",
+          "fecha",
+          "estado_verificacion",
+          "texto"
+        ],
+        "title": "DictamenAnterior"
+      },
+      "DictamenGuardado": {
+        "properties": {
+          "mensaje": {
+            "type": "string",
+            "title": "Mensaje"
+          },
+          "dictamenes": {
+            "items": {
+              "$ref": "#/components/schemas/DictamenAnterior"
+            },
+            "type": "array",
+            "title": "Dictamenes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "mensaje",
+          "dictamenes"
+        ],
+        "title": "DictamenGuardado"
+      },
+      "DiferenciaDePrecio": {
+        "properties": {
+          "codigo_partida": {
+            "type": "string",
+            "title": "Codigo Partida"
+          },
+          "campo": {
+            "type": "string",
+            "title": "Campo"
+          },
+          "declarado": {
+            "type": "string",
+            "title": "Declarado"
+          },
+          "declarado_texto": {
+            "type": "string",
+            "title": "Declarado Texto"
+          },
+          "recalculado": {
+            "type": "string",
+            "title": "Recalculado"
+          },
+          "recalculado_texto": {
+            "type": "string",
+            "title": "Recalculado Texto"
+          },
+          "monto": {
+            "type": "string",
+            "title": "Monto"
+          },
+          "monto_texto": {
+            "type": "string",
+            "title": "Monto Texto"
+          }
+        },
+        "type": "object",
+        "required": [
+          "codigo_partida",
+          "campo",
+          "declarado",
+          "declarado_texto",
+          "recalculado",
+          "recalculado_texto",
+          "monto",
+          "monto_texto"
+        ],
+        "title": "DiferenciaDePrecio"
       },
       "DiferenciaRespuesta": {
         "properties": {
@@ -7250,6 +8393,37 @@
         ],
         "title": "EventoRespuesta"
       },
+      "ExcelExternoRespuesta": {
+        "properties": {
+          "aviso": {
+            "type": "string",
+            "title": "Aviso"
+          },
+          "total": {
+            "type": "string",
+            "title": "Total"
+          },
+          "total_texto": {
+            "type": "string",
+            "title": "Total Texto"
+          },
+          "hallazgos": {
+            "items": {
+              "$ref": "#/components/schemas/HallazgoRevision"
+            },
+            "type": "array",
+            "title": "Hallazgos"
+          }
+        },
+        "type": "object",
+        "required": [
+          "aviso",
+          "total",
+          "total_texto",
+          "hallazgos"
+        ],
+        "title": "ExcelExternoRespuesta"
+      },
       "FilaComparativoRespuesta": {
         "properties": {
           "codigo_partida": {
@@ -7627,6 +8801,29 @@
           "accion"
         ],
         "title": "HallazgoLibroRespuesta"
+      },
+      "HallazgoRevision": {
+        "properties": {
+          "regla": {
+            "type": "string",
+            "title": "Regla"
+          },
+          "severidad": {
+            "type": "string",
+            "title": "Severidad"
+          },
+          "descripcion": {
+            "type": "string",
+            "title": "Descripcion"
+          }
+        },
+        "type": "object",
+        "required": [
+          "regla",
+          "severidad",
+          "descripcion"
+        ],
+        "title": "HallazgoRevision"
       },
       "HallazgosRespuesta": {
         "properties": {
@@ -8587,6 +9784,24 @@
         ],
         "title": "ListaCreadaRespuesta"
       },
+      "ListaDelCaso": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "nombre"
+        ],
+        "title": "ListaDelCaso"
+      },
       "ListaEmpresaRespuesta": {
         "properties": {
           "id": {
@@ -8646,6 +9861,27 @@
         "type": "object",
         "title": "ListoRespuesta"
       },
+      "LoteDeHallazgos": {
+        "properties": {
+          "titulo": {
+            "type": "string",
+            "title": "Titulo"
+          },
+          "hallazgos": {
+            "items": {
+              "$ref": "#/components/schemas/HallazgoRevision"
+            },
+            "type": "array",
+            "title": "Hallazgos"
+          }
+        },
+        "type": "object",
+        "required": [
+          "titulo",
+          "hallazgos"
+        ],
+        "title": "LoteDeHallazgos"
+      },
       "MensajeRespuesta": {
         "properties": {
           "mensaje": {
@@ -8658,6 +9894,24 @@
           "mensaje"
         ],
         "title": "MensajeRespuesta"
+      },
+      "Metodo": {
+        "properties": {
+          "valor": {
+            "type": "string",
+            "title": "Valor"
+          },
+          "etiqueta": {
+            "type": "string",
+            "title": "Etiqueta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "valor",
+          "etiqueta"
+        ],
+        "title": "Metodo"
       },
       "ModuloRespuesta": {
         "properties": {
@@ -8676,19 +9930,6 @@
           "instalado"
         ],
         "title": "ModuloRespuesta"
-      },
-      "NuevaClave": {
-        "properties": {
-          "nombre": {
-            "type": "string",
-            "title": "Nombre"
-          }
-        },
-        "type": "object",
-        "required": [
-          "nombre"
-        ],
-        "title": "NuevaClave"
       },
       "NuevosRoles": {
         "properties": {
@@ -8839,6 +10080,59 @@
           "valor"
         ],
         "title": "ParetoRespuesta"
+      },
+      "PartidaDiferente": {
+        "properties": {
+          "codigo_partida": {
+            "type": "string",
+            "title": "Codigo Partida"
+          },
+          "descripcion": {
+            "type": "string",
+            "title": "Descripcion"
+          },
+          "estado": {
+            "type": "string",
+            "title": "Estado"
+          },
+          "desvio_cantidad": {
+            "type": "string",
+            "title": "Desvio Cantidad"
+          },
+          "desvio_cantidad_texto": {
+            "type": "string",
+            "title": "Desvio Cantidad Texto"
+          },
+          "desvio_precio": {
+            "type": "string",
+            "title": "Desvio Precio"
+          },
+          "desvio_precio_texto": {
+            "type": "string",
+            "title": "Desvio Precio Texto"
+          },
+          "desvio_total": {
+            "type": "string",
+            "title": "Desvio Total"
+          },
+          "desvio_total_texto": {
+            "type": "string",
+            "title": "Desvio Total Texto"
+          }
+        },
+        "type": "object",
+        "required": [
+          "codigo_partida",
+          "descripcion",
+          "estado",
+          "desvio_cantidad",
+          "desvio_cantidad_texto",
+          "desvio_precio",
+          "desvio_precio_texto",
+          "desvio_total",
+          "desvio_total_texto"
+        ],
+        "title": "PartidaDiferente"
       },
       "PartidaPresupuestadaRespuesta": {
         "properties": {
@@ -9744,6 +11038,24 @@
         ],
         "title": "PropuestaRespuesta"
       },
+      "Proveedor": {
+        "properties": {
+          "valor": {
+            "type": "string",
+            "title": "Valor"
+          },
+          "etiqueta": {
+            "type": "string",
+            "title": "Etiqueta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "valor",
+          "etiqueta"
+        ],
+        "title": "Proveedor"
+      },
       "ProyectoDelCasoRespuesta": {
         "properties": {
           "codigo": {
@@ -9904,6 +11216,109 @@
         ],
         "title": "PuntoRespuesta"
       },
+      "Reactivacion": {
+        "properties": {
+          "contrasena": {
+            "type": "string",
+            "title": "Contrasena"
+          }
+        },
+        "type": "object",
+        "required": [
+          "contrasena"
+        ],
+        "title": "Reactivacion"
+      },
+      "ReauditoriaRevision": {
+        "properties": {
+          "termino": {
+            "type": "boolean",
+            "title": "Termino"
+          },
+          "avisos": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Avisos"
+          },
+          "total_recalculado": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Recalculado"
+          },
+          "total_recalculado_texto": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Recalculado Texto"
+          },
+          "reglas": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reglas"
+          },
+          "precios_coinciden": {
+            "type": "boolean",
+            "title": "Precios Coinciden"
+          },
+          "mensaje_precios": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mensaje Precios"
+          },
+          "diferencias": {
+            "items": {
+              "$ref": "#/components/schemas/DiferenciaDePrecio"
+            },
+            "type": "array",
+            "title": "Diferencias"
+          },
+          "hallazgos": {
+            "items": {
+              "$ref": "#/components/schemas/LoteDeHallazgos"
+            },
+            "type": "array",
+            "title": "Hallazgos"
+          }
+        },
+        "type": "object",
+        "required": [
+          "termino",
+          "avisos",
+          "total_recalculado",
+          "total_recalculado_texto",
+          "reglas",
+          "precios_coinciden",
+          "mensaje_precios",
+          "diferencias",
+          "hallazgos"
+        ],
+        "title": "ReauditoriaRevision"
+      },
       "RechazoRespuesta": {
         "properties": {
           "lugar": {
@@ -9921,6 +11336,68 @@
           "motivo"
         ],
         "title": "RechazoRespuesta"
+      },
+      "Registrada": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "empresa": {
+            "type": "string",
+            "title": "Empresa"
+          },
+          "huella": {
+            "type": "string",
+            "title": "Huella"
+          },
+          "estado": {
+            "type": "string",
+            "title": "Estado"
+          },
+          "comprobada_con": {
+            "type": "string",
+            "title": "Comprobada Con"
+          },
+          "metodo": {
+            "type": "string",
+            "title": "Metodo"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "empresa",
+          "huella",
+          "estado",
+          "comprobada_con",
+          "metodo"
+        ],
+        "title": "Registrada"
+      },
+      "RegistradasRespuesta": {
+        "properties": {
+          "registradas": {
+            "items": {
+              "$ref": "#/components/schemas/Registrada"
+            },
+            "type": "array",
+            "title": "Registradas"
+          },
+          "metodos": {
+            "items": {
+              "$ref": "#/components/schemas/Metodo"
+            },
+            "type": "array",
+            "title": "Metodos"
+          }
+        },
+        "type": "object",
+        "required": [
+          "registradas",
+          "metodos"
+        ],
+        "title": "RegistradasRespuesta"
       },
       "RegistrarValuacion": {
         "properties": {
@@ -10246,6 +11723,23 @@
         ],
         "title": "RespaldoCreado"
       },
+      "Resultado": {
+        "properties": {
+          "mensaje": {
+            "type": "string",
+            "title": "Mensaje"
+          },
+          "estado": {
+            "$ref": "#/components/schemas/AsistenteEstado"
+          }
+        },
+        "type": "object",
+        "required": [
+          "mensaje",
+          "estado"
+        ],
+        "title": "Resultado"
+      },
       "ResultadoRespuesta": {
         "properties": {
           "cuenta": {
@@ -10354,6 +11848,20 @@
           "viaja_con"
         ],
         "title": "ResumenRespuesta"
+      },
+      "Retiro": {
+        "properties": {
+          "fecha": {
+            "type": "string",
+            "format": "date",
+            "title": "Fecha"
+          }
+        },
+        "type": "object",
+        "required": [
+          "fecha"
+        ],
+        "title": "Retiro"
       },
       "RevaloracionRespuesta": {
         "properties": {
@@ -10468,6 +11976,202 @@
           "informe"
         ],
         "title": "RevaloracionRespuesta"
+      },
+      "RevisionRespuesta": {
+        "properties": {
+          "sha256": {
+            "type": "string",
+            "title": "Sha256"
+          },
+          "estado": {
+            "type": "string",
+            "title": "Estado"
+          },
+          "motivo": {
+            "type": "string",
+            "title": "Motivo"
+          },
+          "color": {
+            "type": "string",
+            "title": "Color"
+          },
+          "banner": {
+            "type": "string",
+            "title": "Banner"
+          },
+          "legible": {
+            "type": "boolean",
+            "title": "Legible"
+          },
+          "banner_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Banner Version"
+          },
+          "ayuda_registro": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ayuda Registro"
+          },
+          "avisos": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Avisos"
+          },
+          "retroactiva": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retroactiva"
+          },
+          "aviso_armo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Aviso Armo"
+          },
+          "reauditoria": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReauditoriaRevision"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "entrega_anterior": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TablaDeDiferencia"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sin_entrega_anterior": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sin Entrega Anterior"
+          },
+          "listas": {
+            "items": {
+              "$ref": "#/components/schemas/ListaDelCaso"
+            },
+            "type": "array",
+            "title": "Listas"
+          },
+          "sin_listas": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sin Listas"
+          },
+          "contra_lista": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ContraLista"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "cambios_titulo": {
+            "type": "string",
+            "title": "Cambios Titulo"
+          },
+          "cambios": {
+            "items": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Cambios"
+          },
+          "dictamenes": {
+            "items": {
+              "$ref": "#/components/schemas/DictamenAnterior"
+            },
+            "type": "array",
+            "title": "Dictamenes"
+          },
+          "resultados": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Resultados"
+          },
+          "nota_excel": {
+            "type": "string",
+            "title": "Nota Excel"
+          }
+        },
+        "type": "object",
+        "required": [
+          "sha256",
+          "estado",
+          "motivo",
+          "color",
+          "banner",
+          "legible",
+          "banner_version",
+          "ayuda_registro",
+          "avisos",
+          "retroactiva",
+          "aviso_armo",
+          "reauditoria",
+          "entrega_anterior",
+          "sin_entrega_anterior",
+          "listas",
+          "sin_listas",
+          "contra_lista",
+          "cambios_titulo",
+          "cambios",
+          "dictamenes",
+          "resultados",
+          "nota_excel"
+        ],
+        "title": "RevisionRespuesta"
       },
       "Rol": {
         "type": "string",
@@ -10805,6 +12509,62 @@
         ],
         "title": "SugerenciaRespuesta"
       },
+      "TablaDeDiferencia": {
+        "properties": {
+          "titulo": {
+            "type": "string",
+            "title": "Titulo"
+          },
+          "total_antes": {
+            "type": "string",
+            "title": "Total Antes"
+          },
+          "total_antes_texto": {
+            "type": "string",
+            "title": "Total Antes Texto"
+          },
+          "total_despues": {
+            "type": "string",
+            "title": "Total Despues"
+          },
+          "total_despues_texto": {
+            "type": "string",
+            "title": "Total Despues Texto"
+          },
+          "diferencia": {
+            "type": "string",
+            "title": "Diferencia"
+          },
+          "diferencia_texto": {
+            "type": "string",
+            "title": "Diferencia Texto"
+          },
+          "por_cantidad_y_precio": {
+            "type": "string",
+            "title": "Por Cantidad Y Precio"
+          },
+          "partidas": {
+            "items": {
+              "$ref": "#/components/schemas/PartidaDiferente"
+            },
+            "type": "array",
+            "title": "Partidas"
+          }
+        },
+        "type": "object",
+        "required": [
+          "titulo",
+          "total_antes",
+          "total_antes_texto",
+          "total_despues",
+          "total_despues_texto",
+          "diferencia",
+          "diferencia_texto",
+          "por_cantidad_y_precio",
+          "partidas"
+        ],
+        "title": "TablaDeDiferencia"
+      },
       "Tablas": {
         "properties": {
           "materiales": {
@@ -11138,6 +12898,52 @@
         ],
         "title": "ValuacionesRespuesta"
       },
+      "VariacionAtipicaRespuesta": {
+        "properties": {
+          "insumo": {
+            "type": "string",
+            "title": "Insumo"
+          },
+          "porcentaje": {
+            "type": "string",
+            "title": "Porcentaje"
+          },
+          "porcentaje_exacto": {
+            "type": "string",
+            "title": "Porcentaje Exacto"
+          },
+          "desde": {
+            "type": "string",
+            "format": "date",
+            "title": "Desde"
+          },
+          "hasta": {
+            "type": "string",
+            "format": "date",
+            "title": "Hasta"
+          },
+          "severidad": {
+            "type": "string",
+            "title": "Severidad"
+          },
+          "descripcion": {
+            "type": "string",
+            "title": "Descripcion"
+          }
+        },
+        "type": "object",
+        "required": [
+          "insumo",
+          "porcentaje",
+          "porcentaje_exacto",
+          "desde",
+          "hasta",
+          "severidad",
+          "descripcion"
+        ],
+        "title": "VariacionAtipicaRespuesta",
+        "description": "Un hallazgo de RF-100: `porcentaje` es la variacion en por ciento con dos decimales, como\ntexto (la de la descripcion), y `porcentaje_exacto` la misma sin redondear (el exacto a la\nvista); `desde` y `hasta`, las fechas de los dos precios."
+      },
       "VersionEntregable": {
         "properties": {
           "codigo": {
@@ -11354,6 +13160,43 @@
           "plan_por_defecto"
         ],
         "title": "CalculoRespuesta"
+      },
+      "api__rutas__admin_asistente__NuevaClave": {
+        "properties": {
+          "clave": {
+            "type": "string",
+            "title": "Clave"
+          },
+          "contrasena_respaldo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contrasena Respaldo"
+          }
+        },
+        "type": "object",
+        "required": [
+          "clave"
+        ],
+        "title": "NuevaClave"
+      },
+      "api__rutas__admin_claves_api__NuevaClave": {
+        "properties": {
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          }
+        },
+        "type": "object",
+        "required": [
+          "nombre"
+        ],
+        "title": "NuevaClave"
       },
       "api__rutas__admin_empresa__AvisoRespuesta": {
         "properties": {
