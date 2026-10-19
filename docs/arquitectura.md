@@ -172,10 +172,10 @@ de los demás.
 | UC‑10, UC‑11 | `ui.composicion` (`composicion_desde_tablas`; `desglose` → `core.costing.calcular_apu`) y `ui.elaboracion.guardar_composicion` → `Catalogo.cargar_composicion` o `Catalogo.reemplazar_composicion` | «Componer una partida» (`ui/paginas/componer.py`); sin ruta HTTP |
 | UC‑12 | `ui.app` (`PAGINAS`, `paginas_visibles`, `marco`), `ui.caso` (`ruta_caso`, `estado_caso`) y `ui.recorridos` (`RECORRIDOS`, `paso_siguiente`); el caso vacío se siembra con `scripts.seed_demo.main` | «Inicio» (`ui/paginas/inicio.py`) y el marco común de las diez pantallas; sin ruta HTTP |
 
-Las pantallas «Catalogo de partidas e insumos», «Simulador de listas» y «Visor 3D del modelo» no
-realizan un caso de uso propio: la primera consulta el catálogo, la segunda genera listas de precios
-de ensayo (`scripts.simular_lista.simular`) y la tercera muestra el modelo IFC que lee
-`AdaptadorCivilIFC`, como apoyo a UC‑01.
+Las pantallas «Catalogo de partidas e insumos» y «Simulador de listas» no realizan un caso de uso
+propio: la primera consulta el catálogo y la segunda genera listas de precios de ensayo
+(`scripts.simular_lista.simular`). El «Visor 3D del modelo» se retiró el 2026-10-19 (decisión de
+Eugenio): el modelo IFC lo sigue leyendo `AdaptadorCivilIFC`, sin vista 3D.
 
 ## 2. Vista lógica
 
@@ -1017,8 +1017,8 @@ Todos exponen la misma operación, la del contrato: `extraer(self, fuente: Path 
 `AdaptadorCivilIFC` es la entrada de la compuerta G1, **cruzada con salvedad**: reproduce exacto el
 cálculo manual sobre `tanquilla.ifc`, pero ese modelo lo generó `scripts/generar_tanquilla_ifc.py`, no
 un modelador BIM real ([bitácora F.1](bitacora/2026-08-31-F1-api-3d.md)). Es el único adaptador con
-tercero declarado (`ifcopenshell`, extra `civil`), y la API (`api/rutas/computos.py::_adaptador`) y
-el visor (`ui/paginas/visor.py`) lo importan de forma perezosa.
+tercero declarado (`ifcopenshell`, extra `civil`), y y la API (`api/rutas/computos.py::_adaptador`)
+lo importa de forma perezosa (el visor 3D que también lo importaba se retiró el 2026-10-19).
 
 El adaptador civil añade sus reglas paramétricas como texto trazable
 (`REGLA_CONCRETO_TANQUILLA`, `REGLA_ENCOFRADO_TANQUILLA`, `REGLA_EXCAVACION_TANQUILLA`,
@@ -1049,8 +1049,8 @@ Debajo de las diez pantallas de `ui/paginas/` hay una capa sin pantalla (INV‑0
 | `ui/recorridos.py` | declara una sola vez los recorridos guiados de UC‑12 (`RECORRIDOS`, `Paso`, `Recorrido`, `recorrido_por_nombre`, `paso_siguiente`), sin Streamlit ni base de datos: solo importa `dataclasses` | `streamlit`, `sqlalchemy`, `core.catalog`, `ui.caso`, `ui.app` |
 
 Completan la capa dos módulos sin lista propia en `PROHIBIDOS_EN_UI`: `ui/caso.py` (el caso abierto de
-la sesión y el recorrido activo: `ruta_caso`, `estado_caso`, `resumen_caso`) y `ui/visor3d.py`
-(`mallas`, la teselación del IFC que pinta el «Visor 3D del modelo»). La tabla es, fila por fila, el
+la sesión y el recorrido activo: `ruta_caso`, `estado_caso`, `resumen_caso`; `ui/visor3d.py`, la
+teselación del IFC del «Visor 3D», se retiró el 2026-10-19). La tabla es, fila por fila, el
 diccionario `PROHIBIDOS_EN_UI` (`tests/unit/test_arquitectura.py:196-209`) salvo las dos páginas,
 `ui/paginas/componer.py` y `ui/paginas/elaborar.py`, que se tratan en el párrafo siguiente.
 
@@ -1421,8 +1421,7 @@ enumeran dominios fuera del núcleo. Son estos, y ninguno más:
 | `scripts/seed_telecom.py`, `scripts/seed_industrial.py`, `scripts/seed_sistemas.py` (y `scripts/seed.py` para civil) | el catálogo y el presupuesto de muestra de cada dominio |
 | `core.contracts.Dominio` | los cuatro valores de la enumeración: un **quinto dominio** es un cambio de contrato, no de adaptador |
 
-`ui/paginas/visor.py` es específica del dominio civil (lee IFC con `AdaptadorCivilIFC`), no una lista
-de despacho. La guía para cablear un adaptador nuevo está en el
+El adaptador IFC (`AdaptadorCivilIFC`) es específico del dominio civil, no una lista de despacho. La guía para cablear un adaptador nuevo está en el
 [manual técnico §4](manual_tecnico.md#4-escribir-un-adaptador-de-dominio-nuevo).
 
 `scripts/` es un conjunto de utilidades de siembra, simulación y auditoría de metas, no un componente
@@ -1465,11 +1464,11 @@ Ninguna prueba prohíbe la arista `ui → scripts`, que es deliberada; `tests` y
 
 Ejecución **local, sin servidor y sin credenciales** (RNF‑08 de
 [ERS §3.3](ERS.md#33-requisitos-no-funcionales-isoiec-25010)): un solo equipo, procesos que arrancan y
-terminan con el usuario, y un archivo SQLite como toda la base de datos. Hay dos accesos de red en
-tiempo de ejecución, ambos declarados: la descarga inicial del modelo de `sentence-transformers`
-(Sesión I2, extra `ml`), que se cachea localmente, y la carga de three.js desde `cdnjs.cloudflare.com`
-que hace el navegador cada vez que pinta el «Visor 3D del modelo» (`ui/paginas/visor.py`, versión
-fija `r128`).
+terminan con el usuario, y un archivo SQLite como toda la base de datos. El acceso de red
+en tiempo de ejecución que declara el diseño original es la descarga inicial del modelo de
+`sentence-transformers` (Sesión I2, extra `ml`), que se cachea localmente. La carga de three.js desde
+`cdnjs.cloudflare.com` que hacía el «Visor 3D del modelo» desapareció: el visor se retiró el
+2026-10-19 y el producto ya no distribuye three.js.
 
 La **compuerta G1 está cruzada con salvedad**
 ([NORMAS.md §8.2](../NORMAS.md#8-compuertas-y-criterios-de-degradación);
@@ -1507,7 +1506,6 @@ flowchart TB
         end
         navegador["navegador del usuario<br/>pinta la interfaz de Streamlit"]
     end
-    cdn["cdnjs.cloudflare.com<br/>three.js r128"]
 
     revit -.->|"archivo IFC 4 (no ejercitado)"| samples
     streamlit --> paquetes
@@ -1522,7 +1520,6 @@ flowchart TB
     base -.->|"fuente del catalogo sembrado"| seed
     paquetes -->|"openpyxl"| salidas
     streamlit --> navegador
-    navegador -.->|"visor 3D"| cdn
 ```
 
 Decisiones de despliegue y sus consecuencias:
@@ -1535,7 +1532,7 @@ Decisiones de despliegue y sus consecuencias:
 | Artefactos | el código se ejecuta desde el checkout, sin instalar paquete; `tests/fixtures/` (con `tests/__init__.py` y `tests/fixtures/__init__.py`) se despliega junto al código | la interfaz importa `scripts.seed`, que importa la línea base de `tests/fixtures/apu_linea_base.py` (§4): un despliegue que podara `tests/` dejaría a Streamlit sin arrancar. La API no lo necesita |
 | Entorno | `uv sync` (RNF‑07), extras por capa: `ui`, `api`, `civil`, `ml` | el equipo del proyectista no necesita `ifcopenshell` ni `torch` para presupuestar; sin el extra, las ayudas de `ml` y la entrada IFC degradan con un aviso |
 | Pruebas | SQLite **en memoria**; ninguna prueba escribe en `data/` salvo con `tmp_path` | la base del usuario nunca se altera al correr la suite |
-| Seguridad | sin credenciales y sin datos fuera del equipo; los dos accesos de red declarados arriba | RNF‑08; el respaldo es copiar un archivo |
+| Seguridad | sin credenciales y sin datos fuera del equipo; el acceso de red declarado arriba | RNF‑08; el respaldo es copiar un archivo |
 | Escalado | ninguno: un usuario, un proceso | si el trabajo se colaboriza, `api/` (existe desde F.1) más PostgreSQL es el camino, y solo cambia `crear_motor` |
 
 ## 6. Decisiones de arquitectura

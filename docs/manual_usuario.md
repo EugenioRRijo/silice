@@ -75,7 +75,7 @@ Con el instalador no hace falta sembrar nada a mano; Inicio ofrece el caso de de
 
    **Modo entrega.** Para mostrar solo la sección **Trabajo** (Inicio y las cinco pantallas que
    usa quien presupuesta: catálogo, componer, elaborar, actualizar precios e histórico) y omitir la
-   sección **Investigacion** (escenarios, partidas similares, simulador y visor 3D), se arranca con
+   sección **Investigacion** (escenarios, partidas similares y simulador), se arranca con
    la variable `SILICE_MODO_ENTREGA` en `1` (exactamente `1`; cualquier otro valor la deja apagada):
 
    ```
@@ -116,7 +116,6 @@ cálculo interno redondea**: el redondeo es solo de presentación.
 | Investigacion | **Escenarios de sensibilidad** | UC‑08 | Recalcular un presupuesto bajo supuestos («¿y si…?») sin alterarlo |
 | Investigacion | **Partidas similares** | UC‑03 | Buscar en texto libre partidas parecidas para reutilizar su desglose |
 | Investigacion | **Simulador de listas** | apoyo | Generar listas de precios de prueba, deterministas |
-| Investigacion | **Visor 3D del modelo** | apoyo a UC‑01 | Ver el modelo IFC junto a la tabla elemento ↔ partida |
 
 Con `SILICE_CASO=<ruta>` la aplicación fija ese caso sin tener que abrirlo en el Inicio (la
 aplicación sigue arrancando en el Inicio).
@@ -195,7 +194,7 @@ proyecto** lo muestra abierto en su versión vigente.
    produjo. En esta pantalla todos los dominios se cargan en **CSV**; en el civil, el CSV pide
    asociar cada tipo de elemento a una partida del catálogo. El `.ifc`, que trae sus códigos de
    partida en el propio modelo, no entra por esta pantalla: entra por la API
-   (`POST /computos/civil`) y se ve en el **Visor 3D del modelo**.
+   (`POST /computos/civil`); el **Visor 3D del modelo** se retiró el 2026-10-19.
 
    **Si el archivo no se puede leer, no se presupuesta nada** y el mensaje nombra el archivo (sin
    la carpeta) y, si el problema es de una fila, la fila y la columna. Los mensajes son de esta
@@ -908,7 +907,7 @@ de la versión. Están en la sección 3.9.
 
 | Archivo | Dominio | Para probar |
 |---|---|---|
-| `data/samples/tanquilla.ifc` | civil (IFC) | UC‑01 y visor 3D; cantidades exactas al cálculo manual |
+| `data/samples/tanquilla.ifc` | civil (IFC) | UC‑01; cantidades exactas al cálculo manual |
 | `data/samples/civil/tanquillas_y_zanja.csv` | civil (tabular) | UC‑01 con mapeo de códigos |
 | `data/samples/telecom/topologia_arenaza.csv` | telecom | nodos y enlaces con reserva de cable |
 | `data/samples/industrial/activos_planta.csv` | industrial | activos con frecuencia de intervención |

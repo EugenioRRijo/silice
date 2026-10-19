@@ -217,7 +217,7 @@ ml/
   anomaly/        Isolation Forest sobre precios y rendimientos           — I6.1
   prediction/     sistema de reglas; técnica según compuerta G2 (sección 8.1) — I6.3
 ui/               Streamlit: app.py (enrutador), paginas/ (diez pantallas) y los módulos sin pantalla
-                  composicion, elaboracion, resultado, caso, recorridos, visor3d — I1, F.1;
+                  composicion, elaboracion, resultado, caso, recorridos — I1, F.1 (visor3d, retirado el 2026-10-19);
                   SF agrega hoja.py (lógica de la hoja, sin Streamlit), barra.py (barra superior,
                   solo la importa app.py) y paginas/hoja.py
                   S2 (0.7.0, en construcción) agrega control.py (sin Streamlit) y paginas/control.py

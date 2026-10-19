@@ -30,7 +30,7 @@ ruta antes de escribirlos; nunca se reutiliza un número.
 | 2 | Actualizar precios, Elaborar un presupuesto, Escenarios | casi cubierta | media |
 | 3 | Componer una partida, Índices del BCV, Precios de la empresa, Inicio | por construir | alta / media |
 | 4 | Tablero, Control de obra, Entregar paquete, Reajuste | por construir | alta |
-| 5 | Administración (cuentas, empresa y firma, claves de API, instalación), Similares, Simulador, Visor 3D | por construir | muy alta / baja |
+| 5 | Administración (cuentas, empresa y firma, claves de API, instalación), Similares, Simulador (el Visor 3D se retiró el 2026-10-19) | por construir | muy alta / baja |
 | — | Hoja, Libro de la empresa, Revisar, Asistente (RM-6) | — | fuera |
 
 ## 3. Reglas para trabajar en paralelo
@@ -81,7 +81,9 @@ página «Libro de la empresa».
 
 ### Ola 4: Tablero, Control de obra, Entregar, Reajuste · ídem; un solo dueño de los gráficos
 
-### Ola 5: Administración (sin la pestaña del asistente), Similares, Simulador, Visor 3D
+### Ola 5: Administración (sin la pestaña del asistente), Similares, Simulador
+
+> **Visor 3D retirado el 2026-10-19 (decisión de Eugenio):** la página era ilustración, cargaba three.js y contradecía el RNF-08; ya no se migra y se eliminó de Streamlit y del registro del front (quedan 20 páginas; 17 en modo entrega). El adaptador IFC sigue vivo.
 
 Cada ola tiene su plan detallado de tareas (archivos, contrato y pruebas) escrito por el orquestador antes de
 despacharla, con lo que deje la ola anterior.

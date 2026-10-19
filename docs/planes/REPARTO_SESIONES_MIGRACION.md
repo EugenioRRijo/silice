@@ -8,7 +8,7 @@
 
 | Sesión | Ola | Páginas Streamlit | Worktrees / ramas propios |
 |---|---|---|---|
-| **S2-orq** (la de origen) | cierre de la sesión 2 (1.2.0), ola 0 (en curso), ola 1, ola 5 e integración | Catálogo, Histórico, Acerca de; Administración (sin el asistente), Similares, Simulador, Visor 3D | `.worktrees/s2`, `s2a`…`s2h`, `s2m`, `s2m1`, `s2m2`; ramas `inc/ruta-s2-*`, `inc/ruta-s2-mig`, `inc/ruta-s2-mig-backend-base`, `inc/ruta-s2-mig-shell` |
+| **S2-orq** (la de origen) | cierre de la sesión 2 (1.2.0), ola 0 (en curso), ola 1, ola 5 e integración | Catálogo, Histórico, Acerca de; Administración (sin el asistente), Similares, Simulador (Visor 3D retirado el 2026-10-19) | `.worktrees/s2`, `s2a`…`s2h`, `s2m`, `s2m1`, `s2m2`; ramas `inc/ruta-s2-*`, `inc/ruta-s2-mig`, `inc/ruta-s2-mig-backend-base`, `inc/ruta-s2-mig-shell` |
 | **S2-A** | ola 2 | Actualizar precios (`ui/paginas/actualizacion.py`), Elaborar un presupuesto (`elaborar.py`), Escenarios (`escenarios.py`) | `.worktrees/s2ma*`; ramas `inc/ruta-s2-mig-a-*` |
 | **S2-B** | ola 3 | Componer una partida (`componer.py`), Índices del BCV (`indices.py`), Precios de la empresa (`precios_empresa.py`), Inicio (`inicio.py`) | `.worktrees/s2mb*`; ramas `inc/ruta-s2-mig-b-*` |
 | **S2-C** | ola 4 | Tablero (`tablero.py`), Control de obra (`control.py`), Entregar paquete (`entregar.py`), Reajuste (`reajuste.py`) | `.worktrees/s2mc*`; ramas `inc/ruta-s2-mig-c-*` |

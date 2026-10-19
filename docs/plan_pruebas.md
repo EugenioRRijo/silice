@@ -35,7 +35,7 @@ encargo de QA de GC6 (`eb06e96`), y los commits posteriores solo tocan documento
 | `adapters/{civil,telecom,industrial,sistemas}` | extracción de cantidades | unitario + arquitectura |
 | `ml/{normalization,anomaly,prediction}` | RF‑15/17, RF‑27/29, RF‑28 | unitario |
 | `api/` | 18 operaciones FastAPI (`docs/api.json`) + OpenAPI | integración (TestClient) |
-| `ui/` | Streamlit multipágina y visor 3D | unitario con `streamlit.testing.v1.AppTest` + humo (importación) |
+| `ui/` | Streamlit multipágina | unitario con `streamlit.testing.v1.AppTest` + humo (importación) |
 | `scripts/` | seed, simulador, generadores, metas | unitario + ejecución directa |
 
 ## 3. Características a probar y a no probar
@@ -217,7 +217,7 @@ al informe de la versión revalorada (UC‑07 5, INV‑099, con el alcance vigen
 
 Las demás pruebas de la suite no demuestran un RF concreto: guardias de arquitectura y de la base de
 trabajo, metas de sprint, scripts, referencias de precios, dominios del sprint multidominio, API
-(OpenAPI y errores HTTP) y visor 3D. Su recuento es el de la sección 10.
+(OpenAPI y errores HTTP); el visor 3D se retiró el 2026-10-19 con sus pruebas. Su recuento es el de la sección 10.
 
 ### 8.0 Filas del sprint final (SF): RF‑44 a RF‑63
 
@@ -668,7 +668,7 @@ Fuente: [spec S5 §12](especificaciones/2026-10-11-silice-s5-producto-instalador
 | RNF‑05 núcleo cerrado | `git diff --stat core/` vacío tras I5 y tras cada adaptador; `test_arquitectura.py` verde | cumple |
 | RNF‑06 cobertura | cobertura de `core/` en la corrida de §10 (meta ≥ 80 %, que la CI exige con `--fail-under=80`) | cumple |
 | RNF‑07 portabilidad | `uv sync --locked --all-extras` sin pasos manuales y la suite completa en verde en Linux y en Windows en la corrida de §10 ([36520879630](https://github.com/EugenioRRijo/tesis-apu-multidominio/actions/runs/36520879630)) | cumple |
-| RNF‑08 seguridad | inspección: 0 credenciales versionadas, 0 llamadas de red en operación salvo las dos excepciones que declara la ERS: la descarga inicial del modelo (cacheada) y three.js desde `cdnjs.cloudflare.com` en el Visor 3D (INV‑077) | cumple, con las dos excepciones declaradas, con las excepciones declaradas por la ERS, entre ellas el asistente de IA en modo nube (apagado por defecto) |
+| RNF‑08 seguridad | inspección: 0 credenciales versionadas, 0 llamadas de red en operación salvo las dos excepciones que declara la ERS: la descarga inicial del modelo (cacheada) y el asistente de IA en modo nube (apagado por defecto); la carga de three.js del Visor 3D (INV‑077) desapareció al retirarse el visor el 2026-10-19 | cumple, con las dos excepciones declaradas, con las excepciones declaradas por la ERS, entre ellas el asistente de IA en modo nube (apagado por defecto) |
 | RNF‑09 compatibilidad IFC | G1 con salvedad: exacto contra modelo programático; faltan exports de ≥ 2 modeladores | parcial |
 | RNF‑10 aprendizaje de la interfaz | caso con persona CP‑07 ([guion_prueba_arenia.md](guion_prueba_arenia.md)), dos escenarios con personas distintas, bloque B del anexo A | pendiente (GU1b, fase Med) |
 | RNF‑11 desempeño de la hoja | `scripts/medir_rnf11.py` con el generador determinista de 500 puntos (SF0): desde aplicar una edición hasta tener presupuesto, informe y PE, sin persistir, en `ui.hoja` sin Streamlit; mediana de cinco corridas tras una de calentamiento ≤ 2 s. Veredicto en el equipo de desarrollo (como RNF‑03); la CI registra la cifra en Linux y Windows sin romper la corrida | **cumple en el equipo de desarrollo**: mediana 0,125 s (2026‑10‑05, §10 «Medición de RNF‑11»); la CI solo registra |
