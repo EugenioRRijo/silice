@@ -153,3 +153,39 @@ jobs:
           uv run --no-sync python scripts/exportar_openapi.py
           uv run --no-sync python scripts/generar_resultados_ml.py
           git diff --exit-code -- docs/api.json docs/resultados_ml.md
+
+  interfaz:
+    name: interfaz (frontend-desktop)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+        working-directory: frontend-desktop
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Instalar Node 22
+        uses: actions/setup-node@v6.5.0 # etiqueta exacta, sin v6 flotante
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend-desktop/package-lock.json
+
+      - name: Instalar dependencias (reproducible, desde el lock)
+        run: npm ci
+
+      - name: Licencias permisivas y sin @univerjs-pro (RNF-22)
+        run: npm run licencias
+
+      - name: Lint y tipos
+        run: npm run lint
+
+      - name: Pruebas
+        run: npm test
+
+      - name: Compilar
+        run: npm run build
+
+      - name: Control del dist (sin URLs externas, tamano <= 15 MB; RNF-22, RNF-23)
+        run: npm run dist

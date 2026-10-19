@@ -81,3 +81,7 @@ docs/piloto_*.json
 docs/piloto_asistente_corridas.json
 docs/auditoria/**/expectativas.json
 docs/auditoria/expectativas.json
+
+# Interfaz nueva (frontend-desktop): dependencias y compilado no se versionan (el lock si)
+frontend-desktop/node_modules/
+frontend-desktop/dist/

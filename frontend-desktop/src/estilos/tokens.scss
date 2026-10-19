@@ -1,0 +1,41 @@
+// Tema Carbon g10 (claro) y alias --silice-* (DESIGN.md). Los alias solo apuntan a colores y tokens de
+// Carbon: ningun valor hexadecimal se escribe a mano aqui.
+@use "@carbon/styles/scss/config" with (
+  $css--font-face: false,
+  $use-akamai-cdn: false
+);
+@use "@carbon/styles/scss/colors";
+@use "@carbon/styles/scss/themes";
+@use "@carbon/styles/scss/theme" with (
+  $theme: themes.$g10
+);
+@use "@carbon/styles";
+@use "@carbon/styles/scss/type";
+
+// Carbon v11 no emite las clases .cds--type-* por si solo: se piden aqui (heading-03, body-compact-01, label-01...).
+@include type.type-classes();
+
+:root {
+  // Tema g10 en la raiz: el fondo del body y los alias --silice-* leen --cds-* fuera del componente Theme.
+  @include theme.theme();
+
+  // Severidad: halos de la hoja y etiquetas de la lista de hallazgos.
+  --silice-sev-critico: #{colors.$red-60};
+  --silice-sev-error: #{colors.$orange-50};
+  --silice-sev-advertencia: #{colors.$yellow-30};
+  --silice-sev-info: #{colors.$blue-60};
+  --silice-atipico: #{colors.$purple-60};
+  --silice-verificado: #{colors.$green-50};
+
+  // Variacion IBCS: solo cifras de variacion de indicadores y graficos.
+  --silice-ibcs-favorable: #{colors.$green-50};
+  --silice-ibcs-desfavorable: #{colors.$red-60};
+  --silice-ibcs-neutro: #{colors.$gray-70};
+
+  // Aliases de tokens de tema Carbon, para que el resto del CSS propio no repita var(--cds-*).
+  --silice-fondo: var(--cds-background);
+  --silice-texto: var(--cds-text-primary);
+  --silice-texto-secundario: var(--cds-text-secondary);
+  --silice-divisor: var(--cds-border-subtle);
+  --silice-interactivo: var(--cds-interactive);
+}

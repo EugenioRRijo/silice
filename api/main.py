@@ -3,6 +3,7 @@
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 
+from api import interfaz
 from api.proteccion import exigir_clave_api, opciones_documentacion, proteger
 from api.rutas import (
     auditorias,
@@ -12,9 +13,14 @@ from api.rutas import (
     listas,
     presupuestos,
     rendimientos,
+    sesion,
 )
+from api.sesion_web import exigir_clave_o_sesion
 from core.catalog import CatalogoIncompleto
 from operacion.version import version
+from seguridad.permisos import Accion
+
+LEER_PROYECTO = Accion.LEER_PROYECTO  # arma o revisa (RS2-5)
 
 DESCRIPCION = """API HTTP sobre el nucleo del sistema de Analisis de Precios Unitarios (APU).
 
@@ -35,8 +41,12 @@ app.include_router(computos.router, dependencies=CON_CLAVE)
 app.include_router(presupuestos.router, dependencies=CON_CLAVE)
 app.include_router(rendimientos.router, dependencies=CON_CLAVE)
 app.include_router(auditorias.router, dependencies=CON_CLAVE)  # S3 §10: POST /v1/auditorias
-# 1.5: /v1/libros (auditoria, devolucion y pdf)
-app.include_router(libros.router, dependencies=CON_CLAVE)
+# 1.5: /v1/libros (auditoria, devolucion y pdf); 1.2.0: replica, y clave o sesión (RS2-5)
+app.include_router(libros.router, dependencies=[Depends(exigir_clave_o_sesion(LEER_PROYECTO))])
+# 1.2.0 (RT-9): acceso del navegador por cuenta y cookie; sin clave de API a propósito
+app.include_router(sesion.router)
+# 1.2.0 (RT-2): la interfaz nueva, estática y sin secretos, en /app con CSP
+interfaz.montar(app)
 
 
 @app.get("/salud", tags=["catalogo"])

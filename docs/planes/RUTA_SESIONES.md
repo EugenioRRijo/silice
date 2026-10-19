@@ -248,6 +248,7 @@ Cada sesión corre en **su propia conversación de Claude Code**, abierta por Eu
 | Carpetas | cada sesión usa solo `.worktrees/s<N>*` y ramas `inc/ruta-s<N>-*`; nunca toca las de otra |
 | `git stash` | prohibido el `stash` simple (la pila es común a todas): `git stash push -u -m "<etiqueta única>"` y `apply` por SHA, o un commit WIP |
 | Numeración de la ERS | S1: **RF-141** (R17, RS-11; cierra además RF-100 y RF-95 en parte) · S2: **UC-26, RF-111–RF-118, RNF-22–RNF-23** · S3: **UC-27, RF-119–RF-126, RNF-24** · S4: **UC-28–UC-29, RF-127–RF-136, RNF-25** · S5: **RF-137–RF-140, RNF-26–RNF-27** |
+| Numeración de la ERS (migración 2b) | **RF-142 a RF-150** reservados al plan [PLAN_SESION_2B_MIGRACION.md](./PLAN_SESION_2B_MIGRACION.md) (las páginas Streamlit que se migren); hasta RF-141 está ocupado |
 | Versión | la toma al fusionar (RT-8): `pyproject.toml` se cambia en el último commit, justo antes del PR, tras traer `main` |
 | `CHANGELOG.md` | solo líneas nuevas bajo «Sin publicar»; al chocar se conservan las dos |
 | `api/main.py`, `tests/unit/test_arquitectura.py` | solo agregar líneas; `docs/api.json` se **regenera** después de traer `main`, nunca se fusiona a mano |
