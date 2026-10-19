@@ -10,7 +10,7 @@ from decimal import Decimal
 
 import pytest
 
-from adapters.bcv.informe import InformeImportacion, SerieLeida, ValorLeido
+from adapters.bcv.informe import InformeImportacion, Rechazo, SerieLeida, ValorLeido
 from aplicacion import indices
 from core.catalog.indices import DefinicionSerie
 
@@ -95,3 +95,57 @@ def test_ui_indices_reexporta_la_capa_de_aplicacion():
 
     for nombre in ("TIPOS", "leer", "confirmar", "filas_del_informe"):
         assert getattr(ui_indices, nombre) is getattr(indices, nombre)
+
+
+def _con_rechazos(cuantos: int) -> InformeImportacion:
+    rechazos = tuple(Rechazo(f"a.csv:{n}", "valor no numerico " + "x" * 40) for n in range(cuantos))
+    return InformeImportacion(
+        "a.csv",
+        "0" * 64,
+        "f",
+        date(2026, 10, 11),
+        (_serie("S", "2026-01-01"),),
+        rechazos,
+        ("una advertencia",),
+    )
+
+
+def test_un_informe_corto_se_guarda_tal_cual() -> None:
+    informe = _con_rechazos(3)
+    assert indices.texto_del_informe(informe) == informe.texto()
+    assert indices.texto_del_informe(informe).count("rechazo ") == 3
+
+
+def test_un_informe_enorme_se_acota_y_cuenta_los_rechazos_omitidos() -> None:
+    """BAJO-5: el texto guardado en la base no crece sin limite con los rechazos."""
+    informe = _con_rechazos(5000)  # ~ 80 B por linea: unos 400 000 caracteres enteros
+    assert len(informe.texto()) > 300_000
+    texto = indices.texto_del_informe(informe)
+    lineas = texto.split("\n")
+    guardados = sum(1 for linea in lineas if linea.startswith("rechazo "))
+    assert 0 < guardados < 5000
+    assert len(texto) <= indices.MAXIMO_TEXTO_INFORME + 100
+    assert lineas[0] == "S: 1 valores" and "una advertencia" in lineas
+    assert f"(+{5000 - guardados} rechazos omitidos)" in lineas
+
+
+def test_confirmar_guarda_el_informe_acotado(monkeypatch) -> None:
+    capturado = {}
+
+    class Sesion:
+        def commit(self) -> None: ...
+
+        def rollback(self) -> None: ...
+
+    def registrar(_sesion, _definicion, _obs, **datos):
+        capturado.update(datos)
+
+    monkeypatch.setattr(indices, "registrar_importacion", registrar)
+    indices.confirmar(
+        Sesion(),
+        _con_rechazos(5000),
+        responsable="Admin <admin>",
+        definiciones_csv={"S": DefinicionSerie("S", "n", "o", "u", "mensual")},
+    )
+    assert capturado["informe"] == indices.texto_del_informe(_con_rechazos(5000))
+    assert len(capturado["informe"]) <= indices.MAXIMO_TEXTO_INFORME + 100

@@ -35,6 +35,27 @@ MENSAJE_SIN_XLRD = (
     "No se puede leer un archivo .xls: falta el componente xlrd (extra «bcv» de la instalación). "
     "Instálelo, o use el .xlsx o el CSV canónico."
 )
+MAXIMO_TEXTO_INFORME = 50_000  # lo que se guarda del informe en la base; los rechazos se acotan
+
+
+def texto_del_informe(informe: InformeImportacion, maximo: int = MAXIMO_TEXTO_INFORME) -> str:
+    """El texto del informe que se guarda con la importacion. Las series y las advertencias van
+    siempre; los rechazos entran mientras quepan en `maximo` caracteres y el resto se cuenta."""
+    completo = informe.texto()
+    if len(completo) <= maximo:
+        return completo
+    cabeza = [f"{s.clave}: {len(s.valores)} valores" for s in informe.series]
+    cola = list(informe.advertencias)
+    usado = sum(len(linea) + 1 for linea in cabeza + cola) + 40  # 40: la linea de omitidos
+    rechazos: list[str] = []
+    for r in informe.rechazos:
+        linea = f"rechazo {r.lugar}: {r.motivo}"
+        if usado + len(linea) + 1 > maximo:
+            break
+        rechazos.append(linea)
+        usado += len(linea) + 1
+    omitidos = len(informe.rechazos) - len(rechazos)
+    return "\n".join([*cabeza, *rechazos, f"(+{omitidos} rechazos omitidos)", *cola])
 
 
 def _abrir(ruta: Path):
@@ -136,7 +157,7 @@ def confirmar(sesion, informe, *, responsable, definiciones_csv=None, ahora=None
                 responsable=responsable,
                 filas_leidas=informe.filas_leidas,
                 filas_rechazadas=informe.filas_rechazadas,
-                informe=informe.texto(),
+                informe=texto_del_informe(informe),
                 ahora=ahora or datetime.now(),
             )
             mensajes.append(
@@ -160,9 +181,11 @@ __all__ = [
     "ROTULOS_TIPO",
     "TIPOS",
     "UNIDAD_INDICE_BS",
+    "MAXIMO_TEXTO_INFORME",
     "confirmar",
     "definiciones_desde_filas",
     "filas_del_informe",
     "leer",
     "resumen_de_series",
+    "texto_del_informe",
 ]
