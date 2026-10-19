@@ -8,6 +8,7 @@ etiquetar, las líneas pasan a la sección de la versión. La historia anterior 
 
 ### Agregado
 
+- Interfaz nueva, ola 1: página «Acerca de Sílice» sobre `GET /v1/acerca` (versión, revisiones de las dos bases, módulos; la carpeta de datos solo para quien administra o por clave de API).
 - Migración del front, ola 3 (S2-B), backend de «Componer una partida» (UC‑10, UC‑11): seis rutas `/v1/composicion/*` (`opciones`, `evaluar`, `partidas/{codigo}`, `referencia`, `similares`, `guardar`) con `EDITAR_HOJA`, montos como texto y los mensajes de la página clásica; la lógica (y `guardar_composicion`, antes en `ui/elaboracion.py`) vive en `aplicacion/composicion.py`, que `ui/` reexporta.
 - Interfaz nueva, ola 4 (sesión 2b): la entrega del paquete auditado por la API (`GET /v1/entregas/versiones` y `/resumen`, `POST /v1/entregas`, descarga binaria del `.silice`; `ENTREGAR_PAQUETE`, y firmar solo desde el propio equipo, RM-4) y su página «Entregar paquete»; la lógica de `ui/entrega.py` pasó a `aplicacion/entrega.py` (RM-1) y `ui/entrega.py` la reexporta.
 - Interfaz nueva, migración de páginas (sesión 2b): marco con menú por rol, caso y proyecto por sesión web, página de Inicio y «Partidas similares» (`POST /v1/similares`); la lógica de las páginas pasa a `aplicacion/` y `ui/` la reexporta.
