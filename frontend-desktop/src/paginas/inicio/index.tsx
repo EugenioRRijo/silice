@@ -1,8 +1,9 @@
 import { Button } from "@carbon/react";
 import { useState } from "react";
-import { useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { SubidaArchivo } from "../../comun/SubidaArchivo";
 import { useAplicacion } from "../../shell/contexto";
+import { RECORRIDO_AUDITAR, iniciarRecorrido, useRecorrido } from "../../shell/recorrido";
 import { fijarArchivoPendiente } from "./archivoPendiente";
 import type { ModoDeAuditoria } from "./archivoPendiente";
 import { PanelArenera } from "./PanelArenera";
@@ -24,9 +25,13 @@ export default function PaginaInicio() {
   const arenera = useCarga<ExistenciaRespuesta[]>(RUTA_ARENERA, alExpirar);
   const auditorias = useCarga<AuditoriaGuardadaRespuesta[]>(RUTA_AUDITORIAS, alExpirar);
 
+  const recorrido = useRecorrido();
+  const siguiente = recorrido?.pasos[1];
+
   const auditar = (modo: ModoDeAuditoria) => {
     if (!archivo) return;
     fijarArchivoPendiente(archivo, modo);
+    if (modo === "guiado") iniciarRecorrido(RECORRIDO_AUDITAR);
     void navegar("/libros");
   };
 
@@ -73,6 +78,14 @@ export default function PaginaInicio() {
           {`Caso abierto: ${caso?.nombre ?? "ninguno"}`}
           {proyecto ? ` · Proyecto: ${nombreProyecto ?? proyecto}` : ""}
         </p>
+        {recorrido && siguiente && (
+          <p className="silice-inicio__nota cds--type-body-compact-01">
+            {`Recorrido en curso: ${recorrido.titulo}. `}
+            <Link className="cds--link" to={`/${siguiente.pagina}`}>
+              {`Seguir con el paso 2: ${siguiente.titulo}`}
+            </Link>
+          </p>
+        )}
         <UltimasAuditorias carga={auditorias} />
       </section>
     </div>
