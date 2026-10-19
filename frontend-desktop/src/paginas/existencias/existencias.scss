@@ -1,0 +1,91 @@
+// Existencias de la arenera. Sin tarjetas ni sombras (DESIGN.md): bloques separados por espacio, el estado con icono
+// y texto, y el color solo acompana.
+
+// El marco (rejilla, margen y ritmo) es `.silice-pagina`; aqui solo el ancho propio de esta pagina.
+.existencias {
+  max-inline-size: 72rem;
+}
+
+.existencias-bloque {
+  display: grid;
+  gap: 1rem;
+  padding-block-start: 1rem;
+  min-inline-size: 0;
+}
+
+.existencias-formulario {
+  display: grid;
+  gap: 1rem;
+  align-content: start;
+  max-inline-size: 28rem;
+}
+
+.existencias-pesaje {
+  padding-block-start: 1rem;
+  border-block-start: 1px solid var(--silice-divisor);
+}
+
+.existencias-acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.existencias-nota {
+  max-inline-size: 65ch;
+  color: var(--silice-texto-secundario);
+}
+
+.existencias-filtro {
+  max-inline-size: 14rem;
+}
+
+.existencias-resumen {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem 3rem;
+}
+
+.existencias-dato {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.existencias-dato__rotulo {
+  color: var(--silice-texto-secundario);
+}
+
+.existencias-dato__valor {
+  text-align: start;
+}
+
+.existencias-leyenda {
+  display: grid;
+  gap: 0.25rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--silice-texto-secundario);
+}
+
+.existencias-estado {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.existencias-estado__icono {
+  flex: none;
+}
+
+.existencias-estado--normal .existencias-estado__icono {
+  fill: var(--silice-verificado);
+}
+
+.existencias-estado--queda_poco .existencias-estado__icono {
+  fill: var(--silice-sev-advertencia);
+}
+
+.existencias-estado--negativa .existencias-estado__icono {
+  fill: var(--silice-sev-critico);
+}

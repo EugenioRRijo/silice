@@ -29,12 +29,16 @@ from api.sesion_web import COOKIE
 from core.catalog import abrir_sesion, crear_motor
 from operacion.base_datos import ErrorDeBase, preparar_base
 from operacion.config import ruta_caso_por_defecto
+from operacion.instalacion import motor_de_instalacion, sesion_de_instalacion
 from seguridad import claves_api, sesiones
 
 VARIABLE_BASE = "APU_BASE"
 _PREFIJO_ARCHIVO = "sqlite:///"
 #: El `usuario` de lo que crean las rutas antiguas, que S3 no protege con clave (S5 decide).
 USUARIO_SIN_CLAVE = "api (sin clave)"
+#: El `usuario` de lo que escriben las rutas con clave (RT-S4-4): `exigir_clave_api` no entrega la
+#: identidad de la clave a la ruta, así que la bitácora dice solo que fue por la API.
+USUARIO_API = "api (clave de API)"
 _motores: dict[str, Engine] = {}
 _cerrojo = threading.Lock()
 
@@ -106,3 +110,31 @@ def sesion_api(request: Request) -> Iterator[Session]:
 #: Alias de tipo para inyectar la sesion en las rutas sin disparar B008 (ruff): un `Depends(...)`
 #: como valor por defecto es una llamada en la firma; dentro de `Annotated` no lo es.
 SesionDep = Annotated[Session, Depends(sesion_api)]
+
+
+def sesion_instalacion_api() -> Iterator[Session]:
+    """Sesión de `instalacion.db` por petición (arenera, RT-S4-1). Cada petición es una transacción:
+    al terminar bien hace `commit`; si la ruta lanza cualquier excepción (un 4xx incluido), hace
+    `rollback` y la vuelve a lanzar. Los servicios de `produccion/` solo hacen `flush`.
+
+    Se abre la transacción con un `BEGIN` explícito: `pysqlite` no emite `BEGIN` antes de un
+    `SAVEPOINT` (solo antes de un `INSERT`/`UPDATE`/`DELETE`) y, sin él, el `RELEASE` del primer
+    `begin_nested()` de un servicio confirmaría todo y el `rollback` posterior no deshace nada."""
+    try:
+        motor_de_instalacion()  # la prepara y migra una vez por proceso; una base mala es un 503
+    except ErrorDeBase as error:
+        raise HTTPException(status_code=503, detail=str(error)) from error
+    with sesion_de_instalacion() as sesion:
+        sesion.connection().exec_driver_sql("BEGIN")
+        try:
+            yield sesion
+            sesion.commit()
+        except BaseException:
+            sesion.rollback()
+            raise
+
+
+#: `scope="function"`: la salida del generador (el `commit`) corre al volver la ruta, ANTES de
+#: enviar la respuesta; con el alcance por omisión correría después y un cliente podría leer antes
+#: del commit.
+SesionInstalacionDep = Annotated[Session, Depends(sesion_instalacion_api, scope="function")]

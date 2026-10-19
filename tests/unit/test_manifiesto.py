@@ -68,6 +68,7 @@ def test_el_manifiesto_declara_lo_que_decide_el_spec() -> None:
         "auditoria",
         "fusion",
         "aplicacion",  # RM-1 (sesion 2b): la ui y la api la importan
+        "produccion",
     }
     assert "instalador" not in m.paquetes  # herramienta de construcción: no viaja
     assert set(m.archivos) == {"pyproject.toml", "LICENSE"}

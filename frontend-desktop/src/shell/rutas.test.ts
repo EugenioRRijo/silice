@@ -17,6 +17,7 @@ const COMO_STREAMLIT: [string, string, string | null][] = [
   ["control", "Trabajo", "control_de_obra"],
   ["acerca", "Trabajo", null],
   ["entregar", "Trabajo", "entregar_paquete"],
+  ["existencias", "Trabajo", "operar_arenera"],
   ["revisar", "Revisión", "revisar_paquete"],
   ["libros", "Revisión", "leer_proyecto"],
   ["escenarios", "Investigación", "editar_hoja"],
@@ -26,7 +27,7 @@ const COMO_STREAMLIT: [string, string, string | null][] = [
 ];
 
 describe("registro de paginas", () => {
-  test("tiene las 20 paginas de Streamlit, en su orden, con su seccion y su accion", () => {
+  test("tiene las 21 paginas de Streamlit, en su orden, con su seccion y su accion", () => {
     expect(PAGINAS.map((p) => [p.id, p.seccion, p.accion])).toEqual(COMO_STREAMLIT);
   });
 
@@ -50,6 +51,7 @@ describe("registro de paginas", () => {
       "control",
       "acerca",
       "entregar",
+      "existencias",
       "libros",
       "escenarios",
       "similares",
@@ -59,10 +61,18 @@ describe("registro de paginas", () => {
     const libro = paginaPorId("libros");
     expect(libro?.titulo).toBe("Libro de la empresa");
     expect(typeof libro?.cargar).toBe("function");
+    const existencias = paginaPorId("existencias");
+    expect(existencias).toMatchObject({
+      titulo: "Existencias de la arenera",
+      seccion: "Trabajo",
+      accion: "operar_arenera",
+    });
+    expect(typeof existencias?.cargar).toBe("function");
   });
 
   test("la ruta de una pagina es su id", () => {
     expect(rutaDe(paginaPorId("libros")!)).toBe("/libros");
+    expect(rutaDe(paginaPorId("existencias")!)).toBe("/existencias");
     expect(paginaPorId("no_existe")).toBeUndefined();
   });
 });
@@ -74,13 +84,13 @@ describe("quien ve que", () => {
     expect(PAGINAS.filter((p) => visible(p, [], false)).map((p) => p.id)).toEqual(["inicio", "acerca"]);
   });
 
-  test("con todas las acciones se ven las 20", () => {
-    expect(PAGINAS.filter((p) => visible(p, todas, false))).toHaveLength(20);
+  test("con todas las acciones se ven las 21", () => {
+    expect(PAGINAS.filter((p) => visible(p, todas, false))).toHaveLength(21);
   });
 
   test("el modo entrega esconde Investigacion y nada mas", () => {
     const sinInvestigacion = PAGINAS.filter((p) => visible(p, todas, true));
-    expect(sinInvestigacion).toHaveLength(17);
+    expect(sinInvestigacion).toHaveLength(18);
     expect(sinInvestigacion.some((p) => p.seccion === "Investigación")).toBe(false);
   });
 
@@ -90,6 +100,17 @@ describe("quien ve que", () => {
     expect(secciones.map((s) => s.seccion)).toEqual(["Trabajo", "Revisión"]);
     expect(secciones[0].paginas.map((p) => p.id)).toEqual(["inicio", "tablero", "catalogo", "historico", "acerca"]);
     expect(secciones[1].paginas.map((p) => p.id)).toEqual(["revisar", "libros"]);
+  });
+
+  test("Existencias de la arenera solo la ve quien puede operar la arenera", () => {
+    const existencias = paginaPorId("existencias")!;
+    expect(visible(existencias, ["leer_proyecto", "editar_hoja"], false)).toBe(false);
+    expect(visible(existencias, ["operar_arenera"], false)).toBe(true);
+    expect(seccionesVisibles(["operar_arenera"], false)[0].paginas.map((p) => p.id)).toEqual([
+      "inicio",
+      "acerca",
+      "existencias",
+    ]);
   });
 
   test("el administrador sin acciones de trabajo solo ve su seccion y lo comun", () => {

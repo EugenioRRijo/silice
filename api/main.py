@@ -16,6 +16,7 @@ from api.rutas import (
     admin_empresa,
     admin_instalacion,
     auditorias,
+    auditorias_libro,
     casos,
     catalogo,
     composicion,
@@ -28,6 +29,7 @@ from api.rutas import (
     listas,
     precios_empresa,
     presupuestos,
+    produccion,
     proyectos,
     reajuste,
     rendimientos,
@@ -70,6 +72,10 @@ app.include_router(libros.router, dependencies=[Depends(exigir_clave_o_sesion(LE
 app.include_router(
     simulador.router, dependencies=[Depends(exigir_clave_o_sesion(Accion.EDITAR_HOJA))]
 )
+# 1.2.0 (sesion 4, historial): /v1/auditorias-libro, lo que se auditó en «Libro de la empresa»
+app.include_router(
+    auditorias_libro.router, dependencies=[Depends(exigir_clave_o_sesion(LEER_PROYECTO))]
+)
 # 1.2.0 (RT-9): acceso del navegador por cuenta y cookie; sin clave de API a propósito
 app.include_router(sesion.router)
 # Ola 1 (sesion 2b): GET /v1/acerca, con la clave de API o la sesion de cualquier rol
@@ -102,6 +108,9 @@ app.include_router(admin_instalacion.router)
 app.include_router(indices.router)
 app.include_router(precios_empresa.router)
 interfaz.montar(app)
+# 1.4 (sesion 4 de la ruta): /v1/produccion, existencias de la arenera y bascula; clave o sesion
+# (Accion.OPERAR_ARENERA): la dependencia vive en el router, que la comparte con el `usuario`
+app.include_router(produccion.router)
 
 
 @app.get("/salud", tags=["catalogo"])

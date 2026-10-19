@@ -79,6 +79,7 @@ from ui.paginas import (
     elaborar,
     entregar,
     escenarios,
+    existencias,
     historico,
     hoja,
     indices,
@@ -157,6 +158,10 @@ PAGINAS: tuple[DefinicionPagina, ...] = (
     DefinicionPagina(acerca.render, "Acerca de Sílice", SECCION_TRABAJO),
     DefinicionPagina(entregar.render, "Entregar paquete", SECCION_TRABAJO, "UC-22",
                      Accion.ENTREGAR_PAQUETE),
+    # Sesion 4 (RT-S4-3): existencias de la arenera y bandeja de la bascula; la ven quien arma y
+    # quien administra (OPERAR_ARENERA).
+    DefinicionPagina(existencias.render, "Existencias de la arenera", SECCION_TRABAJO,
+                     "UC-28 / UC-29", Accion.OPERAR_ARENERA),
     DefinicionPagina(revisar.render, "Revisar un paquete", SECCION_REVISION, "UC-23",
                      Accion.REVISAR_PAQUETE),
     # 1.5 (UC-25): el libro de Excel de la empresa, auditado y devuelto calcado (o solo un PDF

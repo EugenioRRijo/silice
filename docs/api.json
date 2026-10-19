@@ -1612,6 +1612,99 @@
         }
       }
     },
+    "/v1/auditorias-libro": {
+      "get": {
+        "tags": [
+          "auditorias-libro"
+        ],
+        "summary": "Listar Auditorias",
+        "description": "Las auditorias mas recientes de la instalacion, la ultima primero.",
+        "operationId": "listar_auditorias_v1_auditorias_libro_get",
+        "parameters": [
+          {
+            "name": "limite",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 20,
+              "title": "Limite"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AuditoriaResumenRespuesta"
+                  },
+                  "title": "Response Listar Auditorias V1 Auditorias Libro Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/auditorias-libro/{auditoria_id}": {
+      "get": {
+        "tags": [
+          "auditorias-libro"
+        ],
+        "summary": "Ver Auditoria",
+        "description": "El resumen y los hallazgos compactos de una auditoria guardada.",
+        "operationId": "ver_auditoria_v1_auditorias_libro__auditoria_id__get",
+        "parameters": [
+          {
+            "name": "auditoria_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Auditoria Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditoriaDetalleRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/sesion": {
       "get": {
         "tags": [
@@ -4490,6 +4583,347 @@
         }
       }
     },
+    "/v1/produccion/materiales": {
+      "get": {
+        "tags": [
+          "produccion"
+        ],
+        "summary": "Listar Materiales",
+        "description": "Los materiales de la arenera, por código.",
+        "operationId": "listar_materiales_v1_produccion_materiales_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/MaterialRespuesta"
+                  },
+                  "type": "array",
+                  "title": "Response Listar Materiales V1 Produccion Materiales Get"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "produccion"
+        ],
+        "summary": "Crear Un Material",
+        "description": "Da de alta un material. La densidad es dato de la empresa (sin valor por defecto). Código\nrepetido: 409; datos inválidos: 422.",
+        "operationId": "crear_un_material_v1_produccion_materiales_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MaterialEntrada"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaterialRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/produccion/movimientos": {
+      "post": {
+        "tags": [
+          "produccion"
+        ],
+        "summary": "Registrar Un Movimiento",
+        "description": "Registra una entrada (producción), un despacho o un ajuste por conteo. En el ajuste,\n`cantidad` es el **conteo físico** y se guarda la diferencia con la existencia a esa fecha; si\nno hay diferencia responde 200 con `null`. Un despacho nunca se bloquea por dejar la\nexistencia negativa (RT-S4-2).",
+        "operationId": "registrar_un_movimiento_v1_produccion_movimientos_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MovimientoEntrada"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/MovimientoRespuesta"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Registrar Un Movimiento V1 Produccion Movimientos Post"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Ajuste sin diferencia: el conteo coincide con la existencia (`null`)."
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/produccion/existencias": {
+      "get": {
+        "tags": [
+          "produccion"
+        ],
+        "summary": "Ver Existencias",
+        "description": "El tablero «cuánto hay y cuánto queda» de los materiales activos, por código.",
+        "operationId": "ver_existencias_v1_produccion_existencias_get",
+        "parameters": [
+          {
+            "name": "a_fecha",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Existencia a esa fecha, ISO; sin ella, la de hoy en adelante",
+              "title": "A Fecha"
+            },
+            "description": "Existencia a esa fecha, ISO; sin ella, la de hoy en adelante"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ExistenciaRespuesta"
+                  },
+                  "title": "Response Ver Existencias V1 Produccion Existencias Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/produccion/bascula/importar": {
+      "post": {
+        "tags": [
+          "produccion"
+        ],
+        "summary": "Importar Reporte",
+        "description": "Importa un reporte de báscula: lo leído y coherente son despachos; lo dudoso va a la bandeja\nde pesajes sospechosos. Idempotente: reimportar el mismo reporte no duplica nada. Sin unidad\ndel peso (ni en el encabezado ni en `unidad_peso`) no se importa nada.",
+        "operationId": "importar_reporte_v1_produccion_bascula_importar_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_importar_reporte_v1_produccion_bascula_importar_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportacionRespuesta"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "El cuerpo pasa de 20 MiB."
+          },
+          "415": {
+            "description": "La extensión no es .csv ni .xlsx."
+          },
+          "422": {
+            "description": "Archivo rechazado, unidad ausente o mapeo necesario (`faltan`)."
+          }
+        }
+      }
+    },
+    "/v1/produccion/pesajes-sospechosos": {
+      "get": {
+        "tags": [
+          "produccion"
+        ],
+        "summary": "Listar Sospechosos",
+        "description": "Los pesajes sospechosos pendientes, en el orden en que llegaron.",
+        "operationId": "listar_sospechosos_v1_produccion_pesajes_sospechosos_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SospechosoRespuesta"
+                  },
+                  "type": "array",
+                  "title": "Response Listar Sospechosos V1 Produccion Pesajes Sospechosos Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/produccion/pesajes-sospechosos/{id_sospechoso}/resolver": {
+      "post": {
+        "tags": [
+          "produccion"
+        ],
+        "summary": "Resolver Sospechoso",
+        "description": "Crea el despacho con los valores corregidos y cierra el sospechoso como resuelto. Ya cerrado\no ticket ya registrado: 409; inexistente: 404.",
+        "operationId": "resolver_sospechoso_v1_produccion_pesajes_sospechosos__id_sospechoso__resolver_post",
+        "parameters": [
+          {
+            "name": "id_sospechoso",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Id Sospechoso"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolverEntrada"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MovimientoRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/produccion/pesajes-sospechosos/{id_sospechoso}/descartar": {
+      "post": {
+        "tags": [
+          "produccion"
+        ],
+        "summary": "Descartar Sospechoso",
+        "description": "Cierra el sospechoso como descartado, sin crear ningún despacho. Ya cerrado: 409.",
+        "operationId": "descartar_sospechoso_v1_produccion_pesajes_sospechosos__id_sospechoso__descartar_post",
+        "parameters": [
+          {
+            "name": "id_sospechoso",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Id Sospechoso"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DescartarEntrada"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/salud": {
       "get": {
         "tags": [
@@ -4834,6 +5268,117 @@
         ],
         "title": "Anulacion"
       },
+      "AuditoriaDetalleRespuesta": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "archivo": {
+            "type": "string",
+            "title": "Archivo"
+          },
+          "fecha": {
+            "type": "string",
+            "title": "Fecha"
+          },
+          "tipo": {
+            "type": "string",
+            "enum": [
+              "libro",
+              "pdf"
+            ],
+            "title": "Tipo"
+          },
+          "errores": {
+            "type": "integer",
+            "title": "Errores"
+          },
+          "advertencias": {
+            "type": "integer",
+            "title": "Advertencias"
+          },
+          "usuario": {
+            "type": "string",
+            "title": "Usuario"
+          },
+          "sha256": {
+            "type": "string",
+            "title": "Sha256"
+          },
+          "fecha_libro": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fecha Libro"
+          },
+          "total_libro": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Libro"
+          },
+          "total_silice": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Silice"
+          },
+          "informativos": {
+            "type": "integer",
+            "title": "Informativos"
+          },
+          "atipicos": {
+            "type": "integer",
+            "title": "Atipicos"
+          },
+          "recortado": {
+            "type": "boolean",
+            "title": "Recortado"
+          },
+          "hallazgos": {
+            "items": {
+              "$ref": "#/components/schemas/HallazgoGuardadoRespuesta"
+            },
+            "type": "array",
+            "title": "Hallazgos"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "archivo",
+          "fecha",
+          "tipo",
+          "errores",
+          "advertencias",
+          "usuario",
+          "sha256",
+          "fecha_libro",
+          "total_libro",
+          "total_silice",
+          "informativos",
+          "atipicos",
+          "recortado",
+          "hallazgos"
+        ],
+        "title": "AuditoriaDetalleRespuesta"
+      },
       "AuditoriaRespuesta": {
         "properties": {
           "fecha_evaluacion": {
@@ -4903,6 +5448,48 @@
           "diferencias"
         ],
         "title": "AuditoriaRespuesta"
+      },
+      "AuditoriaResumenRespuesta": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "archivo": {
+            "type": "string",
+            "title": "Archivo"
+          },
+          "fecha": {
+            "type": "string",
+            "title": "Fecha"
+          },
+          "tipo": {
+            "type": "string",
+            "enum": [
+              "libro",
+              "pdf"
+            ],
+            "title": "Tipo"
+          },
+          "errores": {
+            "type": "integer",
+            "title": "Errores"
+          },
+          "advertencias": {
+            "type": "integer",
+            "title": "Advertencias"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "archivo",
+          "fecha",
+          "tipo",
+          "errores",
+          "advertencias"
+        ],
+        "title": "AuditoriaResumenRespuesta"
       },
       "BajaDeClave": {
         "properties": {
@@ -5286,6 +5873,51 @@
           "proyecto"
         ],
         "title": "Body_importar_presupuesto_de_tercero_presupuestos_importar_post"
+      },
+      "Body_importar_reporte_v1_produccion_bascula_importar_post": {
+        "properties": {
+          "archivo": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "Archivo",
+            "description": "Reporte de la báscula (.csv o .xlsx)"
+          },
+          "fecha_referencia": {
+            "type": "string",
+            "title": "Fecha Referencia",
+            "description": "«Hoy» para detectar fechas futuras, ISO (AAAA-MM-DD). Obligatoria."
+          },
+          "unidad_peso": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unidad Peso",
+            "description": "kg o t, si el encabezado del peso no la trae"
+          },
+          "mapeo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mapeo",
+            "description": "JSON {\"campo\": índice de columna (desde 0)}, opcional"
+          }
+        },
+        "type": "object",
+        "required": [
+          "archivo",
+          "fecha_referencia"
+        ],
+        "title": "Body_importar_reporte_v1_produccion_bascula_importar_post"
       },
       "Body_importar_v1_control_importar_post": {
         "properties": {
@@ -6296,6 +6928,19 @@
         ],
         "title": "DeclararRendimientoRespuesta"
       },
+      "DescartarEntrada": {
+        "properties": {
+          "ahora": {
+            "type": "string",
+            "title": "Ahora"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ahora"
+        ],
+        "title": "DescartarEntrada"
+      },
       "DescarteRespuesta": {
         "properties": {
           "codigo": {
@@ -7250,6 +7895,49 @@
         ],
         "title": "EventoRespuesta"
       },
+      "ExistenciaRespuesta": {
+        "properties": {
+          "codigo": {
+            "type": "string",
+            "title": "Codigo"
+          },
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          },
+          "unidad_venta": {
+            "type": "string",
+            "title": "Unidad Venta"
+          },
+          "existencia": {
+            "type": "string",
+            "title": "Existencia"
+          },
+          "minima": {
+            "type": "string",
+            "title": "Minima"
+          },
+          "queda_poco": {
+            "type": "boolean",
+            "title": "Queda Poco"
+          },
+          "negativa": {
+            "type": "boolean",
+            "title": "Negativa"
+          }
+        },
+        "type": "object",
+        "required": [
+          "codigo",
+          "nombre",
+          "unidad_venta",
+          "existencia",
+          "minima",
+          "queda_poco",
+          "negativa"
+        ],
+        "title": "ExistenciaRespuesta"
+      },
       "FilaComparativoRespuesta": {
         "properties": {
           "codigo_partida": {
@@ -7584,6 +8272,39 @@
         "type": "object",
         "title": "HTTPValidationError"
       },
+      "HallazgoGuardadoRespuesta": {
+        "properties": {
+          "regla": {
+            "type": "string",
+            "title": "Regla"
+          },
+          "hoja": {
+            "type": "string",
+            "title": "Hoja"
+          },
+          "celda": {
+            "type": "string",
+            "title": "Celda"
+          },
+          "severidad": {
+            "type": "string",
+            "title": "Severidad"
+          },
+          "mensaje": {
+            "type": "string",
+            "title": "Mensaje"
+          }
+        },
+        "type": "object",
+        "required": [
+          "regla",
+          "hoja",
+          "celda",
+          "severidad",
+          "mensaje"
+        ],
+        "title": "HallazgoGuardadoRespuesta"
+      },
       "HallazgoLibroRespuesta": {
         "properties": {
           "codigo": {
@@ -7748,6 +8469,34 @@
         ],
         "title": "HojaVisualRespuesta",
         "description": "Espejo de `visual.HojaVisual`. En `anchos` y `altos` la columna o la fila (base 1) va como\ntexto: las claves de un objeto JSON son texto."
+      },
+      "ImportacionRespuesta": {
+        "properties": {
+          "registrados": {
+            "type": "integer",
+            "title": "Registrados"
+          },
+          "ya_registrados": {
+            "type": "integer",
+            "title": "Ya Registrados"
+          },
+          "a_la_bandeja": {
+            "type": "integer",
+            "title": "A La Bandeja"
+          },
+          "huella": {
+            "type": "string",
+            "title": "Huella"
+          }
+        },
+        "type": "object",
+        "required": [
+          "registrados",
+          "ya_registrados",
+          "a_la_bandeja",
+          "huella"
+        ],
+        "title": "ImportacionRespuesta"
       },
       "ImportadasRespuesta": {
         "properties": {
@@ -8646,6 +9395,95 @@
         "type": "object",
         "title": "ListoRespuesta"
       },
+      "MaterialEntrada": {
+        "properties": {
+          "codigo": {
+            "type": "string",
+            "title": "Codigo"
+          },
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          },
+          "unidad_venta": {
+            "type": "string",
+            "title": "Unidad Venta"
+          },
+          "existencia_minima": {
+            "type": "string",
+            "title": "Existencia Minima"
+          },
+          "densidad_t_m3": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Densidad T M3"
+          }
+        },
+        "type": "object",
+        "required": [
+          "codigo",
+          "nombre",
+          "unidad_venta",
+          "existencia_minima"
+        ],
+        "title": "MaterialEntrada"
+      },
+      "MaterialRespuesta": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "codigo": {
+            "type": "string",
+            "title": "Codigo"
+          },
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          },
+          "unidad_venta": {
+            "type": "string",
+            "title": "Unidad Venta"
+          },
+          "densidad_t_m3": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Densidad T M3"
+          },
+          "existencia_minima": {
+            "type": "string",
+            "title": "Existencia Minima"
+          },
+          "activo": {
+            "type": "boolean",
+            "title": "Activo"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "codigo",
+          "nombre",
+          "unidad_venta",
+          "densidad_t_m3",
+          "existencia_minima",
+          "activo"
+        ],
+        "title": "MaterialRespuesta"
+      },
       "MensajeRespuesta": {
         "properties": {
           "mensaje": {
@@ -8676,6 +9514,114 @@
           "instalado"
         ],
         "title": "ModuloRespuesta"
+      },
+      "MovimientoEntrada": {
+        "properties": {
+          "material_codigo": {
+            "type": "string",
+            "title": "Material Codigo"
+          },
+          "tipo": {
+            "type": "string",
+            "title": "Tipo"
+          },
+          "fecha": {
+            "type": "string",
+            "title": "Fecha"
+          },
+          "cantidad": {
+            "type": "string",
+            "title": "Cantidad"
+          },
+          "nota": {
+            "type": "string",
+            "title": "Nota",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "material_codigo",
+          "tipo",
+          "fecha",
+          "cantidad"
+        ],
+        "title": "MovimientoEntrada"
+      },
+      "MovimientoRespuesta": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "material_codigo": {
+            "type": "string",
+            "title": "Material Codigo"
+          },
+          "fecha": {
+            "type": "string",
+            "title": "Fecha"
+          },
+          "tipo": {
+            "type": "string",
+            "title": "Tipo"
+          },
+          "cantidad": {
+            "type": "string",
+            "title": "Cantidad"
+          },
+          "ticket": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ticket"
+          },
+          "placa": {
+            "type": "string",
+            "title": "Placa"
+          },
+          "cliente": {
+            "type": "string",
+            "title": "Cliente"
+          },
+          "nota": {
+            "type": "string",
+            "title": "Nota"
+          },
+          "origen": {
+            "type": "string",
+            "title": "Origen"
+          },
+          "usuario": {
+            "type": "string",
+            "title": "Usuario"
+          },
+          "registrado": {
+            "type": "string",
+            "title": "Registrado"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "material_codigo",
+          "fecha",
+          "tipo",
+          "cantidad",
+          "ticket",
+          "placa",
+          "cliente",
+          "nota",
+          "origen",
+          "usuario",
+          "registrado"
+        ],
+        "title": "MovimientoRespuesta"
       },
       "NuevaClave": {
         "properties": {
@@ -10233,6 +11179,39 @@
         "title": "RendimientosRespuesta",
         "description": "El historico completo de una partida, con dispersion y propuesta (RF-26)."
       },
+      "ResolverEntrada": {
+        "properties": {
+          "material_codigo": {
+            "type": "string",
+            "title": "Material Codigo"
+          },
+          "fecha": {
+            "type": "string",
+            "title": "Fecha"
+          },
+          "neto_t": {
+            "type": "string",
+            "title": "Neto T"
+          },
+          "ticket": {
+            "type": "string",
+            "title": "Ticket"
+          },
+          "ahora": {
+            "type": "string",
+            "title": "Ahora"
+          }
+        },
+        "type": "object",
+        "required": [
+          "material_codigo",
+          "fecha",
+          "neto_t",
+          "ticket",
+          "ahora"
+        ],
+        "title": "ResolverEntrada"
+      },
       "RespaldoCreado": {
         "properties": {
           "nombre": {
@@ -10778,6 +11757,74 @@
           "descripcion"
         ],
         "title": "SolicitudSimilares"
+      },
+      "SospechosoRespuesta": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "huella_archivo": {
+            "type": "string",
+            "title": "Huella Archivo"
+          },
+          "fila": {
+            "type": "integer",
+            "title": "Fila"
+          },
+          "ticket": {
+            "type": "string",
+            "title": "Ticket"
+          },
+          "fecha_texto": {
+            "type": "string",
+            "title": "Fecha Texto"
+          },
+          "placa": {
+            "type": "string",
+            "title": "Placa"
+          },
+          "material_texto": {
+            "type": "string",
+            "title": "Material Texto"
+          },
+          "bruto_texto": {
+            "type": "string",
+            "title": "Bruto Texto"
+          },
+          "tara_texto": {
+            "type": "string",
+            "title": "Tara Texto"
+          },
+          "neto_texto": {
+            "type": "string",
+            "title": "Neto Texto"
+          },
+          "motivo": {
+            "type": "string",
+            "title": "Motivo"
+          },
+          "estado": {
+            "type": "string",
+            "title": "Estado"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "huella_archivo",
+          "fila",
+          "ticket",
+          "fecha_texto",
+          "placa",
+          "material_texto",
+          "bruto_texto",
+          "tara_texto",
+          "neto_texto",
+          "motivo",
+          "estado"
+        ],
+        "title": "SospechosoRespuesta"
       },
       "SugerenciaRespuesta": {
         "properties": {

@@ -55,11 +55,13 @@ ACCIONES = {
         "control_de_obra",
         "decidir_recuperacion",
         "entregar_paquete",
+        "operar_arenera",
         "leer_proyecto",
         "cambiar_caso",
     ],
     "rita": ["leer_proyecto", "revisar_paquete"],
     "admin": [
+        "operar_arenera",
         "cambiar_caso",
         "administrar_cuentas",
         "administrar_empresa",

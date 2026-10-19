@@ -6,6 +6,7 @@
 @use "../shell/shell";
 @use "../comun/comun";
 @use "../paginas/inicio/inicio";
+@use "../paginas/existencias/existencias";
 
 html {
   // Barras de desplazamiento y seleccion con la paleta, no con los valores del navegador.
