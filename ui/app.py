@@ -35,7 +35,7 @@ la entrega), Precios, Auditar, Guardar version, Exportar Excel y Recorrido guiad
 modulo importa `ui.barra`; la barra lateral queda para el caso abierto y el paso del recorrido.
 
 Modo entrega (Sesion P5.1 del prototipo). Con `SILICE_MODO_ENTREGA=1` (exactamente `"1"`) el
-menu **omite** la seccion Investigacion —escenarios, similares, simulador y visor 3D—; la seccion
+menu **omite** la seccion Investigacion —escenarios, similares y simulador—; la seccion
 Trabajo queda completa (RF-43). Se omite en vez de plegarse: la barra de herramientas y el resto
 del marco no cambian. Las variables se leen con `ui.entorno.leer_variable`.
 
@@ -90,7 +90,6 @@ from ui.paginas import (
     similares,
     simulador,
     tablero,
-    visor,
 )
 from ui.recorridos import RUTA_INICIO, Recorrido, paso_siguiente, recorrido_por_nombre
 
@@ -171,7 +170,6 @@ PAGINAS: tuple[DefinicionPagina, ...] = (
         similares.render, "Partidas similares", SECCION_INVESTIGACION, "UC-03", _EDITA
     ),
     DefinicionPagina(simulador.render, "Simulador de listas", SECCION_INVESTIGACION, accion=_EDITA),
-    DefinicionPagina(visor.render, "Visor 3D del modelo", SECCION_INVESTIGACION, accion=_EDITA),
     # S3-3: cuentas, empresa y claves, accesos y (pestaña «Instalación») red, API y respaldos.
     # RF-42 (S3 §5.7): su propia seccion, la cuarta, que solo ve el rol administrador.
     DefinicionPagina(administracion.render, "Administración", SECCION_ADMINISTRACION, "UC-21",

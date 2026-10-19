@@ -1,8 +1,8 @@
 """Navegador sin interfaz de la prueba de humo (spec S5 §11.2 paso 5; solo en la CI).
 
 Carga páginas de Sílice con Edge sin interfaz (Playwright) y anota **toda** petición y todo
-websocket: la lista de anfitriones fuera de 127.0.0.1 debe quedar vacía (telemetría de Streamlit y
-three.js son del navegador y el proxy no los ve). Sale con 1 si hay alguno.
+websocket: la lista de anfitriones fuera de 127.0.0.1 debe quedar vacía (telemetría de Streamlit es
+del navegador y el proxy no la ve). Sale con 1 si hay alguno.
 
     uv run --no-project --with playwright python instalador/navegador.py \\
         --url http://127.0.0.1:8501 --salida humo-salida/peticiones.json
@@ -50,7 +50,7 @@ def recorrer(url: str, paginas: list[str]) -> list[str]:
 def main(argv: list[str] | None = None) -> int:
     analizador = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     analizador.add_argument("--url", required=True)
-    analizador.add_argument("--paginas", nargs="+", default=["", "visor", "similares"])
+    analizador.add_argument("--paginas", nargs="+", default=["", "similares", "simulador"])
     analizador.add_argument("--salida", type=Path, required=True)
     argumentos = analizador.parse_args(argv)
     vistas = recorrer(argumentos.url.rstrip("/"), argumentos.paginas)

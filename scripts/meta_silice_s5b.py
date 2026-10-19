@@ -68,7 +68,7 @@ PARES_S5B: tuple[ParTDD, ...] = (
     ParTDD("tests/integration/test_api_clave.py", "api/proteccion.py", "S5-2"),
     ParTDD("tests/unit/test_eventos_perdidos.py", "operacion/eventos_perdidos.py", "S5-2"),
     ParTDD("tests/unit/test_ui_cliente.py", "ui/cliente.py", "S5-2"),
-    ParTDD("tests/unit/test_ui_sin_cdn.py", "ui/estaticos/three.min.js", "S5-2"),
+    ParTDD("tests/unit/test_ui_sin_cdn.py", "ui/app.py", "S5-2"),
     ParTDD("tests/unit/test_ui_acerca.py", "ui/paginas/acerca.py", "S5-2"),
     ParTDD("tests/unit/test_ui_instalacion.py", "ui/paginas/instalacion.py", "S5-2"),
     ParTDD("tests/unit/test_manifiesto.py", "instalador/manifiesto.py", "S5-3"),

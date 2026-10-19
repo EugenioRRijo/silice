@@ -3,7 +3,7 @@ r"""Guardado seguro de los archivos que el usuario sube a Streamlit (A-1, INV-12
 `UploadedFile.name` lo manda el navegador tal cual. Unirlo a una carpeta (`Path(carpeta) /
 archivo.name`) deja que `..\..\x`, `/etc/passwd` o `C:\...` saquen el archivo de la carpeta
 temporal, y que un nombre reservado de Windows (`CON`, `NUL`, `COM1`...) falle al escribirse. Esta
-es la unica funcion de guardado de las pantallas con subida (`actualizacion`, `elaborar`, `visor`).
+es la unica funcion de guardado de las pantallas con subida (`actualizacion` y `elaborar`).
 
 Imita las reglas de `api/archivos.py:guardar_subida` (que es para `fastapi.UploadFile` y no se
 reutiliza tal cual: `ui` no importa `api`): se conserva solo el **ultimo componente** del nombre,
