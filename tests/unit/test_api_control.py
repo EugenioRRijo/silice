@@ -519,3 +519,16 @@ def test_control_con_un_codigo_inexistente_da_404_con_el_mensaje_de_siempre() ->
     respuesta = _con_clave().get("/v1/control/linea-base", params={"proyecto": "987654"})
     assert respuesta.status_code == 404
     assert respuesta.json()["detalle"] == "El proyecto «987654» no existe en este caso."
+
+
+def test_las_opciones_de_la_api_salen_con_tildes_en_titulo_motivo_y_requisitos() -> None:
+    navegador, cabeceras = _arma()
+    opciones = {o["clave"]: o for o in _opciones(navegador, cabeceras).json()["opciones"]}
+    assert opciones["cuadrillas"]["titulo"] == "Más cuadrillas"
+    assert opciones["cuadrillas"]["fila"]["Opcion"] == "Más cuadrillas"
+    assert opciones["paralelo"]["motivo"] == (
+        "ninguna partida sin empezar con inicio posterior al período siguiente"
+    )
+    assert opciones["horas_extra"]["requisitos"] == [
+        "permiso de la Inspectoría del Trabajo (LOTTT art. 182) para las horas extra"
+    ]

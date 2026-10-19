@@ -5,7 +5,7 @@ import type { SesionRespuesta } from "../../api/tipos";
 import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
 import PaginaPreciosEmpresa from "./index";
-import type { Estado, Hallazgos, ListaCreada } from "./logica";
+import type { Atipicos, Estado, Hallazgos, ListaCreada } from "./logica";
 import { hoyIso } from "./logica";
 
 function json(cuerpo: unknown, estado = 200): Response {
@@ -48,12 +48,41 @@ const HALLAZGOS: Hallazgos = {
   nota: "Sin version, el impacto es por unidad de insumo. Nada de esto se guarda.",
 };
 
+// Textos de la pagina clasica (aplicacion/atipicos.py), escritos a mano.
+const BOTON_ATIPICOS = "Buscar variaciones atípicas de precio";
+const NADA_ATIPICO = "Ninguna variación atípica de precio (una serie de menos de 8 variaciones no se juzga).";
+const SIN_ML =
+  "La búsqueda de variaciones atípicas necesita el extra `ml` (scikit-learn), que no está instalado en este equipo. No se buscó nada y nada se bloquea.";
+const CON_ATIPICO: Atipicos = {
+  disponible: true,
+  avisos: [{ nivel: "info", texto: "Precio en Bs sin tasa, omitido: Lista-Bs demo [sin tasa]" }],
+  variaciones: [
+    {
+      insumo: "ATIP-001",
+      porcentaje: "0.39",
+      porcentaje_exacto: "0.390625",
+      desde: "2026-09-01",
+      hasta: "2026-10-01",
+      severidad: "ADVERTENCIA",
+      descripcion: "ATIP-001: variación de 0.39 % entre 2026-09-01 y 2026-10-01 (en USD) se aparta del historial de variaciones del insumo",
+    },
+  ],
+};
+const DOS_LISTAS: Estado = {
+  ...SOLO_BASES,
+  listas: [
+    { id: 5, nombre: "Contratista Demo, C.A. 2026-09-20" },
+    { id: 6, nombre: "Lista Demo de la obra" },
+  ],
+};
+
 describe("Precios de la empresa", () => {
   const fetchFalso = vi.fn<typeof fetch>();
   let estado: () => Response;
   let referencia: () => Response;
   let crear: () => Response;
   let hallazgos: () => Response;
+  let atipicos: () => Response;
 
   beforeEach(() => {
     vi.stubGlobal("fetch", fetchFalso);
@@ -62,6 +91,7 @@ describe("Precios de la empresa", () => {
     referencia = () => json({ mensaje: "Referencia «MaPreX julio 2026 en Bs» cargada con 111 precios." });
     crear = () => json(CREADA, 201);
     hallazgos = () => json(HALLAZGOS);
+    atipicos = () => json(CON_ATIPICO);
     fetchFalso.mockImplementation(async (ruta, opciones) => {
       const url = String(ruta);
       const metodo = opciones?.method ?? "GET";
@@ -69,6 +99,7 @@ describe("Precios de la empresa", () => {
       if (url === "/v1/precios-empresa/referencia" && metodo === "POST") return referencia();
       if (url === "/v1/precios-empresa/listas" && metodo === "POST") return crear();
       if (url.includes("/hallazgos?fecha=")) return hallazgos();
+      if (/^\/v1\/precios-empresa\/listas\/\d+\/atipicos$/.test(url) && metodo === "GET") return atipicos();
       return json({ detalle: "ruta inesperada " + url }, 404);
     });
   });
@@ -249,6 +280,92 @@ describe("Precios de la empresa", () => {
     hallazgos = () => json({ detalle: "la lista 5 no es una lista de empresa de este caso" }, 404);
     montar();
     expect(await screen.findByText("la lista 5 no es una lista de empresa de este caso")).toBeInTheDocument();
+  });
+
+  // --- RF-100: variaciones atipicas de precio (T4 de la migracion final) ---------------------------
+
+  test("sin pulsar el boton no se buscan variaciones atipicas", async () => {
+    estado = () => json(CON_LISTA);
+    montar();
+    expect(await screen.findByRole("button", { name: BOTON_ATIPICOS })).toBeInTheDocument();
+    await screen.findByText("ARENA LAVADA: precio vencido");
+    expect(llamadas("/atipicos")).toHaveLength(0);
+  });
+
+  test("sin listas de empresa no hay boton de atipicos", async () => {
+    montar();
+    await screen.findByText("Todavia no hay listas de empresa en este caso.");
+    expect(screen.queryByRole("button", { name: BOTON_ATIPICOS })).toBeNull();
+  });
+
+  test("al pulsar busca en la lista elegida y muestra los avisos y la tabla en es-VE", async () => {
+    estado = () => json(CON_LISTA);
+    montar();
+    const usuario = userEvent.setup();
+    await usuario.click(await screen.findByRole("button", { name: BOTON_ATIPICOS }));
+    const tabla = await screen.findByRole("table", { name: "Variaciones atípicas de precio" });
+    expect(llamadas("/v1/precios-empresa/listas/5/atipicos")).toHaveLength(1);
+    expect(screen.getByText("Precio en Bs sin tasa, omitido: Lista-Bs demo [sin tasa]")).toBeInTheDocument();
+    expect(within(tabla).getByText("ATIP-001")).toBeInTheDocument();
+    const variacion = within(tabla).getByText("0,39 %");
+    // el exacto, a un toque (DESIGN.md): 1/256 = 0,390625 %, memoria atipicos_s3.md §1
+    expect(variacion).toHaveAttribute("title", "0.390625");
+    expect(within(tabla).getByText("01/09/2026")).toBeInTheDocument();
+    expect(within(tabla).getByText("01/10/2026")).toBeInTheDocument();
+    expect(within(tabla).getByText("Advertencia")).toBeInTheDocument();
+    // DESIGN.md: el atipico (RF-100) va en morado, con su icono y su texto, nunca el color solo
+    const severidad = within(tabla).getByText("Advertencia").closest(".silice-sev");
+    expect(severidad?.querySelector("svg.silice-sev__icono")).not.toBeNull();
+    const morado = tabla.closest(".silice-precios-empresa__tabla-atipicos") as HTMLElement;
+    expect(morado.style.getPropertyValue("--silice-sev-advertencia")).toBe("var(--silice-atipico)");
+    expect(
+      screen.getByText("Cada variación (en USD) se aparta del historial de variaciones del insumo. Nada de esto se guarda ni se bloquea."),
+    ).toBeInTheDocument();
+  });
+
+  test("sin variaciones atipicas lo dice como la pagina clasica y no pinta tabla", async () => {
+    estado = () => json(CON_LISTA);
+    atipicos = () => json({ disponible: true, avisos: [{ nivel: "success", texto: NADA_ATIPICO }], variaciones: [] });
+    montar();
+    const usuario = userEvent.setup();
+    await usuario.click(await screen.findByRole("button", { name: BOTON_ATIPICOS }));
+    expect(await screen.findByText(NADA_ATIPICO)).toBeInTheDocument();
+    expect(screen.queryByRole("table", { name: "Variaciones atípicas de precio" })).toBeNull();
+  });
+
+  test("sin el extra ml lo dice y no pinta tabla", async () => {
+    estado = () => json(CON_LISTA);
+    atipicos = () => json({ disponible: false, avisos: [{ nivel: "info", texto: SIN_ML }], variaciones: [] });
+    montar();
+    const usuario = userEvent.setup();
+    await usuario.click(await screen.findByRole("button", { name: BOTON_ATIPICOS }));
+    expect(await screen.findByText(SIN_ML)).toBeInTheDocument();
+    expect(screen.queryByRole("table", { name: "Variaciones atípicas de precio" })).toBeNull();
+  });
+
+  test("un error de la busqueda sale con su detalle y la sesion vencida avisa al shell", async () => {
+    estado = () => json(CON_LISTA);
+    atipicos = () => json({ detalle: "No se pudo leer o escribir el caso abierto." }, 503);
+    const alExpirar = montar();
+    const usuario = userEvent.setup();
+    await usuario.click(await screen.findByRole("button", { name: BOTON_ATIPICOS }));
+    expect(await screen.findByText("No se pudo leer o escribir el caso abierto.")).toBeInTheDocument();
+    atipicos = () => json({ detalle: "Sesion vencida." }, 401);
+    await usuario.click(screen.getByRole("button", { name: BOTON_ATIPICOS }));
+    await waitFor(() => expect(alExpirar).toHaveBeenCalled());
+  });
+
+  test("al cambiar de lista el resultado anterior se retira y se busca en la nueva", async () => {
+    estado = () => json(DOS_LISTAS);
+    montar();
+    const usuario = userEvent.setup();
+    await usuario.click(await screen.findByRole("button", { name: BOTON_ATIPICOS }));
+    await screen.findByRole("table", { name: "Variaciones atípicas de precio" });
+    await usuario.selectOptions(screen.getByLabelText("Lista"), "6");
+    expect(screen.queryByRole("table", { name: "Variaciones atípicas de precio" })).toBeNull();
+    await usuario.click(screen.getByRole("button", { name: BOTON_ATIPICOS }));
+    await screen.findByRole("table", { name: "Variaciones atípicas de precio" });
+    expect(llamadas("/v1/precios-empresa/listas/6/atipicos")).toHaveLength(1);
   });
 
   test("nada de lo escrito queda en el almacenamiento del navegador", async () => {

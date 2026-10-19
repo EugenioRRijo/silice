@@ -122,7 +122,13 @@ export const PAGINAS: readonly PaginaDef[] = [
     accion: "operar_arenera",
     cargar: () => import("../paginas/existencias"),
   },
-  { id: "revisar", titulo: "Revisar un paquete", seccion: "Revisión", accion: "revisar_paquete" },
+  {
+    id: "revisar",
+    titulo: "Revisar un paquete",
+    seccion: "Revisión",
+    accion: "revisar_paquete",
+    cargar: () => import("../paginas/revisar"),
+  },
   {
     id: "libros",
     titulo: "Libro de la empresa",

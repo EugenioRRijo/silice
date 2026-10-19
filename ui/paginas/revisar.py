@@ -16,15 +16,12 @@ from __future__ import annotations
 
 import hashlib
 import tempfile
-from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
 import streamlit as st
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from core import models
 from core.budget.comparacion import Diferencia
 from core.catalog import abrir_sesion_de_escritura, crear_motor
 from core.verification.texto import formatear_decimal
@@ -41,9 +38,7 @@ from ui.caso import ruta_caso
 from ui.texto_seguro import texto_seguro
 
 COLORES = {"verde": st.success, "ambar": st.warning, "rojo": st.error}
-CARPETA_PAQUETES = "paquetes"
 CLAVE_ESTADO = "revisar_estado"  # lo analizado de un archivo: no es clave de ningún widget
-AVISO_YA_RECIBIDO = "Ya recibió este mismo paquete"
 CLAVE_EXCEL = "revisar_excel"  # (sha, nombre, octetos) del Excel pedido
 
 
@@ -58,18 +53,7 @@ def servicios_de_la_instalacion(caso: Session) -> revision.Servicios:
     return armar(caso)
 
 
-@dataclass(frozen=True, slots=True)
-class Analisis:
-    """Todo lo que se calcula de un archivo: sale de él y de la base de quien revisa."""
-
-    sha_del_archivo: str
-    login: str  # quien lo analizó: otro usuario en la misma pestaña recalcula
-    recibido: revision.Recibido
-    reauditoria: revision.Reauditoria | None
-    previa: revision.EntregaAnterior | None
-    diferencia: Diferencia | None
-    cambios: tuple[dict, ...]
-    armo: tuple[str, ...]  # versiones en que quien revisa figura como quien armó
+Analisis = revision.Analisis  # vive en la capa de aplicación (T7): la comparte la API
 
 
 # --- piezas de la pantalla ------------------------------------------------------------------
@@ -81,10 +65,7 @@ def _tabla_diferencia(d: Diferencia, titulo: str) -> None:
     columnas[0].metric("Total antes", formatear_decimal(d.total_1, 2))
     columnas[1].metric("Total después", formatear_decimal(d.total_2, 2))
     columnas[2].metric("Diferencia", formatear_decimal(d.total_2 - d.total_1, 2))
-    st.caption(
-        f"Por cantidad: {formatear_decimal(d.desvio_cantidad, 2)}. "
-        f"Por precio: {formatear_decimal(d.desvio_precio, 2)}."
-    )
+    st.caption(texto_seguro(revision.texto_por_cantidad_y_precio(d)))
     st.dataframe(
         [
             {
@@ -103,11 +84,8 @@ def _tabla_diferencia(d: Diferencia, titulo: str) -> None:
 
 
 def _hallazgos(r: revision.Reauditoria) -> None:
-    for titulo, lote in (
-        ("El emisor no los declaró", r.nuevos),
-        ("Los declaró y ya no aparecen", r.ya_no),
-        ("En común", r.comunes),
-    ):
+    for campo, titulo in revision.TITULOS_DE_HALLAZGOS:
+        lote = getattr(r, campo)
         st.subheader(f"{titulo} ({len(lote)})")
         st.dataframe(
             [
@@ -124,9 +102,9 @@ def _hallazgos(r: revision.Reauditoria) -> None:
 
 def _diferencias_de_precio(r: revision.Reauditoria) -> None:
     if not r.diferencias:
-        st.success("Los precios y totales que declara el paquete coinciden con los recalculados.")
+        st.success(revision.PRECIOS_COINCIDEN)
         return
-    st.error("Hay precios o totales declarados que no coinciden con el recálculo.")
+    st.error(revision.PRECIOS_NO_COINCIDEN)
     st.dataframe(
         [
             {
@@ -143,14 +121,9 @@ def _diferencias_de_precio(r: revision.Reauditoria) -> None:
 
 
 def _contra_mi_lista(caso: Session, r: revision.Reauditoria) -> None:
-    listas = {
-        x.id: x
-        for x in caso.scalars(
-            select(models.ListaPrecios).order_by(models.ListaPrecios.fecha_vigencia.desc())
-        )
-    }
+    listas = {x.id: x for x in revision.listas_del_caso(caso)}
     if not listas:
-        st.caption("Este caso no tiene listas de precios para contrastar.")
+        st.caption(revision.SIN_LISTAS)
         return
     eleccion = st.selectbox(
         "Contrastar con mi lista",
@@ -158,18 +131,15 @@ def _contra_mi_lista(caso: Session, r: revision.Reauditoria) -> None:
         key="rev_lista",
         format_func=lambda i: texto_seguro(listas[i].nombre),
     )
-    precios = revision.precios_de_lista(caso, listas[eleccion])
-    diferencia, revalorado = revision.contra_la_base_del_revisor(r.documento, precios)
-    _tabla_diferencia(diferencia, "El paquete con los precios de mi lista")
-    if revalorado.no_contrastables:
-        st.caption(
-            "No contrastables (no están en mi lista; no suman): "
-            + ", ".join(texto_seguro(str(n.insumo)) for n in revalorado.no_contrastables)
-        )
+    diferencia, revalorado = revision.contra_mi_lista(caso, r.documento, listas[eleccion])
+    _tabla_diferencia(diferencia, revision.TITULO_CONTRA_MI_LISTA)
+    no_contrastables = revision.texto_de_no_contrastables(revalorado)
+    if no_contrastables:
+        st.caption(texto_seguro(no_contrastables))
 
 
 def _cambios(a: Analisis) -> None:
-    st.subheader("Quién cambió qué" + (" desde la entrega anterior" if a.previa else ""))
+    st.subheader(texto_seguro(revision.titulo_de_cambios(a.previa is not None)))
     st.dataframe(
         [{k: texto_seguro(str(x)) for k, x in c.items()} for c in a.cambios], hide_index=True
     )
@@ -178,11 +148,7 @@ def _cambios(a: Analisis) -> None:
 def _dictamen(caso: Session, a: Analisis, revisor: str) -> None:
     sha = a.recibido.verificacion.sha256
     for d in paq.dictamenes_de(caso, sha):
-        st.caption(
-            f"Dictamen anterior: {texto_seguro(d['resultado'])} · "
-            f"{texto_seguro(d['usuario'])} · {d['fecha']:%Y-%m-%d %H:%M} · "
-            f"verificación entonces: {texto_seguro(d['estado_verificacion'])}"
-        )
+        st.caption(texto_seguro(revision.texto_de_dictamen(d)))
     with st.form("rev_dictamen", clear_on_submit=True):
         resultado = st.radio("Dictamen", paq.RESULTADOS, key="rev_resultado")
         notas = st.text_area("Notas", key="rev_notas")
@@ -202,7 +168,7 @@ def _dictamen(caso: Session, a: Analisis, revisor: str) -> None:
     except ValueError as error:
         st.error(texto_seguro(str(error)))
         return
-    st.success("Dictamen guardado, atado al SHA-256 de este archivo.")
+    st.success(revision.DICTAMEN_GUARDADO)
 
 
 def _excel(a: Analisis) -> None:
@@ -213,13 +179,13 @@ def _excel(a: Analisis) -> None:
     if columnas[0].button("Preparar el Excel del presupuesto", key="rev_preparar_presupuesto"):
         st.session_state[CLAVE_EXCEL] = (
             sha,
-            f"presupuesto-{sha[:12]}.xlsx",
+            revision.nombre_de_excel("presupuesto", sha),
             revision.excel_de_presupuesto(r),
         )
     if columnas[1].button("Preparar el Excel de la revisión", key="rev_preparar_revision"):
         st.session_state[CLAVE_EXCEL] = (
             sha,
-            f"revision-{sha[:12]}.xlsx",
+            revision.nombre_de_excel("revision", sha),
             revision.excel_de_revision(a.recibido.verificacion, r, a.diferencia, list(a.cambios)),
         )
     listo = st.session_state.get(CLAVE_EXCEL)
@@ -230,40 +196,24 @@ def _excel(a: Analisis) -> None:
             file_name=listo[1],
             key="rev_bajar_excel",
         )
-        st.caption(
-            "Este Excel se regeneró aquí desde presupuesto.json; el del emisor no se ofrece."
-        )
+        st.caption(revision.NOTA_EXCEL)
 
 
 # --- el flujo del paquete -------------------------------------------------------------------
 
 
 def _analizar(datos: bytes, nombre: str, caso: Session, bd: Session, sesion) -> Analisis:
-    mi_empresa = revision.empresa_propia_para_revisar(bd)
-    recibido = revision.recibir(
+    return revision.analizar(
         datos,
         nombre,
         caso=caso,
         instalacion=bd,
-        carpeta_paquetes=carpeta_datos() / CARPETA_PAQUETES,
+        carpeta_paquetes=carpeta_datos() / revision.CARPETA_PAQUETES,
         revisor=sesion.usuario,
+        login=sesion.login,
         ahora=_ahora(),
-        mi_empresa=mi_empresa,
+        servicios=lambda: servicios_de_la_instalacion(caso),
     )
-    sha = hashlib.sha256(datos).hexdigest()
-    v = recibido.verificacion
-    if not v.legible:
-        return Analisis(sha, sesion.login, recibido, None, None, None, (), ())
-    armo = tuple(revision.revisor_armo(v, login_revisor=sesion.login, empresa_propia=mi_empresa))
-    r = revision.reauditar(v, servicios_de_la_instalacion(caso))
-    if r.resultado is None:
-        return Analisis(sha, sesion.login, recibido, r, None, None, (), armo)
-    previa = revision.entrega_anterior(caso, bd, v)
-    diferencia = (
-        revision.contra_la_entrega_anterior(r.documento, previa.documento) if previa else None
-    )
-    cambios = revision.cambios_nuevos(v.cadena, previa.huellas if previa else ())
-    return Analisis(sha, sesion.login, recibido, r, previa, diferencia, tuple(cambios), armo)
 
 
 def _encabezado(a: Analisis) -> None:
@@ -272,24 +222,18 @@ def _encabezado(a: Analisis) -> None:
     COLORES.get(color, st.error)(texto)
     if v.manifiesto is not None:
         st.caption(texto_seguro(revision.banner_de_version(a.recibido)))
-    if v.estado == "no_verificado" and v.motivo == "empresa_no_registrada":
-        st.caption(
-            "Para que sus paquetes salgan verificados, el administrador debe registrar la clave "
-            "de esa empresa (Administración), comprobando su huella por otro canal."
-        )
-    for aviso in a.recibido.avisos:
-        if not aviso.startswith(AVISO_YA_RECIBIDO):  # ya lo dice el banner de versión
-            st.warning(texto_seguro(aviso))
+    ayuda = revision.ayuda_de_registro(v)
+    if ayuda:
+        st.caption(texto_seguro(ayuda))
+    for aviso in revision.avisos_visibles(a.recibido):  # «ya recibió» lo dice el banner de versión
+        st.warning(texto_seguro(aviso))
     if v.cadena:
         retroactiva = revision.declaracion_retroactiva(v.cadena)
         if retroactiva:
             st.caption(texto_seguro(retroactiva))
-    if a.armo:
-        st.warning(
-            "Usted armó o cambió este presupuesto: lo está revisando la misma persona que lo "
-            "armó (figura en la versión " + ", ".join(texto_seguro(c) for c in a.armo) + "). "
-            "Su dictamen lo dejará registrado; no se le impide darlo."
-        )
+    aviso_armo = revision.aviso_de_quien_armo(a.armo)
+    if aviso_armo:
+        st.warning(texto_seguro(aviso_armo))
 
 
 def _paquete(sesion) -> None:
@@ -330,22 +274,16 @@ def _paquete(sesion) -> None:
             if r.resultado is None:
                 return
             st.metric("Total recalculado", formatear_decimal(r.total_recalculado, 2))
-            st.caption(
-                "Reglas corridas a la fecha de emisión ("
-                + f"{r.fecha_evaluacion:%Y-%m-%d}"
-                + "): "
-                + ", ".join(texto_seguro(c) for c in r.contextos)
-                + "."
-            )
+            st.caption(texto_seguro(revision.texto_de_reglas(r)))
             _diferencias_de_precio(r)
             _hallazgos(r)
             if guardado.previa is not None and guardado.diferencia is not None:
                 _tabla_diferencia(
                     guardado.diferencia,
-                    f"Contra la entrega anterior ({texto_seguro(guardado.previa.codigo)})",
+                    texto_seguro(revision.titulo_contra_anterior(guardado.previa.codigo)),
                 )
             else:
-                st.caption("Esta instalación no recibió una entrega anterior de este proyecto.")
+                st.caption(revision.SIN_ENTREGA_ANTERIOR)
             _contra_mi_lista(caso, r)
             _cambios(guardado)
             _excel(guardado)
@@ -374,7 +312,7 @@ def _excel_externo() -> None:
         except (ValueError, KeyError) as error:
             st.error(texto_seguro(str(error)))
             return
-    st.warning("No verificado: un Excel no trae cadena ni firma. Se audita igual.")
+    st.warning(revision.EXCEL_NO_VERIFICADO)
     st.metric("Total", formatear_decimal(importado.presupuesto.total, 2))
     st.dataframe(
         [

@@ -1,4 +1,4 @@
-import { Button, Checkbox, InlineNotification, Select, SelectItem, TextInput } from "@carbon/react";
+import { Button, Checkbox, InlineNotification, Select, SelectItem, Tab, TabList, TabPanel, TabPanels, Tabs, TextInput } from "@carbon/react";
 import { useRef, useState } from "react";
 import { ErrorDeApi, pedir } from "../../api/cliente";
 import { AvisoError } from "../../comun/AvisoError";
@@ -55,17 +55,18 @@ const COLUMNAS_COMPONENTE: ColumnaEditable[] = [
   { clave: "peso", titulo: "Peso" },
 ];
 const COLUMNAS_PERIODO: ColumnaEditable[] = [
-  { clave: "desde", titulo: "Desde", ayuda: "AAAA-MM-DD" },
-  { clave: "hasta", titulo: "Hasta", ayuda: "AAAA-MM-DD" },
+  { clave: "desde", titulo: "Desde", tipo: "fecha" },
+  { clave: "hasta", titulo: "Hasta", tipo: "fecha" },
   { clave: "version_comprobacion", titulo: "Versión de comprobación" },
   { clave: "excepcion", titulo: "Excepción" },
 ];
 const COLUMNAS_EJECUTADO: ColumnaEditable[] = [
-  { clave: "periodo", titulo: "Periodo" },
+  { clave: "periodo", titulo: "Período" },
   { clave: "partida", titulo: "Partida" },
   { clave: "cantidad", titulo: "Cantidad" },
   { clave: "fuente", titulo: "Fuente" },
 ];
+const PASOS = ["1. La cláusula", "2. Períodos y lo ejecutado"];
 const ETIQUETA_RESULTADO = "Escalatoria y comprobación, lado a lado";
 
 // 2027-02-10 -> 10/02/2027, como se ve en la pantalla de Streamlit.
@@ -142,6 +143,7 @@ function Formulario({
   const [reemplaza, setReemplaza] = useState("");
   // Cuenta las ediciones: una respuesta que llega despues de editar corresponde a datos viejos y se descarta.
   const edicion = useRef(0);
+  const [paso, setPaso] = useState(0);
 
   // Todo cambio del formulario retira el resultado y el aviso de guardado: ya no corresponden a lo escrito.
   const editar = (cambio: (f: Formulario) => Formulario) => {
@@ -202,113 +204,147 @@ function Formulario({
         ))}
       </Select>
 
-      <section className="silice-reajuste__bloque" aria-labelledby="reajuste-clausula">
-        <h2 id="reajuste-clausula" className="cds--type-heading-compact-02">
-          1. La cláusula de reajuste (a cotejar con la Gaceta)
-        </h2>
-        <div className="silice-reajuste__rejilla">
-          <TextInput id="rj-inicio" labelText="Inicio del contrato" placeholder="AAAA-MM-DD" value={form.clausula.fecha_inicio} onChange={(e) => campo("fecha_inicio", e.target.value)} />
-          <TextInput id="rj-duracion" labelText="Duración (meses)" value={form.clausula.duracion_meses} onChange={(e) => campo("duracion_meses", e.target.value)} />
-          <TextInput id="rj-primer" labelText="El primer año corre desde" helperText="Por defecto, el inicio del contrato (a cotejar)." placeholder="AAAA-MM-DD" value={form.clausula.fecha_referencia_primer_anio} onChange={(e) => campo("fecha_referencia_primer_anio", e.target.value)} />
-          <Select id="rj-periodicidad" labelText="Periodicidad" value={form.clausula.periodicidad} onChange={(e) => campo("periodicidad", e.target.value)}>
-            {contexto.periodicidades.map((p) => (
-              <SelectItem key={p} value={p} text={p} />
-            ))}
-          </Select>
-          <Select id="rj-mecanismo" labelText="Mecanismo" value={form.clausula.mecanismo} onChange={(e) => campo("mecanismo", e.target.value)}>
-            {contexto.mecanismos.map((m) => (
-              <SelectItem key={m} value={m} text={m} />
-            ))}
-          </Select>
-          <Select id="rj-pagadero" labelText="Mecanismo pagadero (solo con «ambos»)" value={form.clausula.mecanismo_pagadero} onChange={(e) => campo("mecanismo_pagadero", e.target.value)}>
-            <SelectItem value="" text="" />
-            {contexto.mecanismos
-              .filter((m) => m !== "ambos")
-              .map((m) => (
-                <SelectItem key={m} value={m} text={m} />
-              ))}
-          </Select>
-          <TextInput id="rj-fuente-pagadero" labelText="Fuente del mecanismo pagadero" value={form.clausula.fuente_pagadero} onChange={(e) => campo("fuente_pagadero", e.target.value)} />
-          <Select id="rj-estructura" labelText="Estructura" value={form.clausula.estructura} onChange={(e) => campo("estructura", e.target.value)}>
-            {contexto.estructuras.map((x) => (
-              <SelectItem key={x} value={x} text={x} />
-            ))}
-          </Select>
-          <TextInput id="rj-base" labelText="Mes base de los índices" placeholder="AAAA-MM-DD" value={form.clausula.fecha_base_indices} onChange={(e) => campo("fecha_base_indices", e.target.value)} />
-          <TextInput id="rj-r" labelText="R (fracción no reajustable)" value={form.clausula.r} onChange={(e) => campo("r", e.target.value)} />
-          <TextInput id="rj-fuente-r" labelText="Fuente de R" helperText="Si el contrato no la trae, escriba 0 y declárelo." value={form.clausula.fuente_r} onChange={(e) => campo("fuente_r", e.target.value)} />
-          <TextInput id="rj-fuente" labelText="Fuente de la cláusula" helperText="Contrato, número, fecha." value={form.clausula.fuente} onChange={(e) => campo("fuente", e.target.value)} />
-          <TextInput id="rj-responsable" labelText="Responsable" helperText="En blanco, su nombre de usuario." value={form.clausula.responsable} onChange={(e) => campo("responsable", e.target.value)} />
-        </div>
-        <Checkbox
-          id="rj-r-comprobacion"
-          labelText="La cláusula aplica R también a la comprobación"
-          checked={form.clausula.r_en_comprobacion === "si"}
-          onChange={(_, { checked }) => campo("r_en_comprobacion", checked ? "si" : "no")}
-        />
-        <p className="silice-reajuste__nota cds--type-body-compact-01">
-          Componentes: la serie de cada uno y, si la estructura es declarada, su peso.
-        </p>
-        <FilasEditables
-          etiqueta="Componentes"
-          columnas={COLUMNAS_COMPONENTE}
-          filas={form.componentes}
-          fijas
-          alCambiar={(filas) => editar((f) => ({ ...f, componentes: filas }))}
-        />
-      </section>
-
-      <section className="silice-reajuste__bloque" aria-labelledby="reajuste-periodos">
-        <h2 id="reajuste-periodos" className="cds--type-heading-compact-02">
-          2. Periodos y lo ejecutado (con su fuente)
-        </h2>
-        <p className="silice-reajuste__nota cds--type-body-compact-01">
-          {`Versiones revaloradas para la comprobación directa: ${
-            revaloradas.length > 0 ? revaloradas.join(", ") : "ninguna (la comprobación quedará «no disponible»)"
-          }`}
-        </p>
-        <FilasEditables
-          etiqueta="Periodos"
-          columnas={COLUMNAS_PERIODO}
-          filas={form.periodos}
-          alCambiar={(filas) => editar((f) => ({ ...f, periodos: filas }))}
-        />
-        <Checkbox
-          id="rj-valuaciones"
-          labelText="Tomar lo ejecutado de las valuaciones registradas (cada una al periodo de su fecha hasta)"
-          checked={form.con_valuaciones}
-          onChange={(_, { checked }) => editar((f) => ({ ...f, con_valuaciones: checked }))}
-        />
-        {form.con_valuaciones ? (
-          <p className="silice-reajuste__nota cds--type-body-compact-01">
-            Lo ejecutado sale de las valuaciones no anuladas y el estudio las cita.
-          </p>
-        ) : (
-          <>
-            <FilasEditables
-              etiqueta="Ejecutado"
-              columnas={COLUMNAS_EJECUTADO}
-              filas={form.ejecutado}
-              alCambiar={(filas) => editar((f) => ({ ...f, ejecutado: filas }))}
-            />
-            <p className="silice-reajuste__nota cds--type-body-compact-01">
-              Fechas en AAAA-MM-DD. «Periodo» es el número de la fila de periodos (1, 2, ...).
-            </p>
-          </>
-        )}
-        <div>
-          <Button kind="primary" size="md" disabled={ocupado} onClick={() => void calcular()}>
-            Calcular
-          </Button>
-        </div>
-      </section>
+      <Tabs selectedIndex={paso} onChange={({ selectedIndex }) => setPaso(selectedIndex)}>
+        <TabList aria-label="Pasos del estudio de reajuste" contained>
+          {PASOS.map((p) => (
+            <Tab key={p}>{p}</Tab>
+          ))}
+        </TabList>
+        <TabPanels>
+          <TabPanel>
+            {paso === 0 && (
+              <section className="silice-reajuste__bloque" aria-labelledby="reajuste-clausula">
+                <h2 id="reajuste-clausula" className="cds--type-heading-compact-02">
+                  La cláusula de reajuste (a cotejar con la Gaceta)
+                </h2>
+                <fieldset className="silice-reajuste__grupo">
+                  <legend className="cds--type-label-01">Plazo del contrato</legend>
+                  <div className="silice-reajuste__rejilla">
+                    <TextInput id="rj-inicio" type="date" labelText="Inicio del contrato" value={form.clausula.fecha_inicio} onChange={(e) => campo("fecha_inicio", e.target.value)} />
+                    <TextInput id="rj-duracion" labelText="Duración (meses)" value={form.clausula.duracion_meses} onChange={(e) => campo("duracion_meses", e.target.value)} />
+                    <TextInput id="rj-primer" type="date" labelText="El primer año corre desde" helperText="Por defecto, el inicio del contrato (a cotejar)." value={form.clausula.fecha_referencia_primer_anio} onChange={(e) => campo("fecha_referencia_primer_anio", e.target.value)} />
+                    <TextInput id="rj-base" type="date" labelText="Mes base de los índices" value={form.clausula.fecha_base_indices} onChange={(e) => campo("fecha_base_indices", e.target.value)} />
+                  </div>
+                </fieldset>
+                <fieldset className="silice-reajuste__grupo">
+                  <legend className="cds--type-label-01">Cómo se reajusta</legend>
+                  <div className="silice-reajuste__rejilla">
+                    <Select id="rj-periodicidad" labelText="Periodicidad" value={form.clausula.periodicidad} onChange={(e) => campo("periodicidad", e.target.value)}>
+                      {contexto.periodicidades.map((p) => (
+                        <SelectItem key={p} value={p} text={p} />
+                      ))}
+                    </Select>
+                    <Select id="rj-mecanismo" labelText="Mecanismo" value={form.clausula.mecanismo} onChange={(e) => campo("mecanismo", e.target.value)}>
+                      {contexto.mecanismos.map((m) => (
+                        <SelectItem key={m} value={m} text={m} />
+                      ))}
+                    </Select>
+                    <Select id="rj-pagadero" labelText="Mecanismo pagadero (solo con «ambos»)" value={form.clausula.mecanismo_pagadero} onChange={(e) => campo("mecanismo_pagadero", e.target.value)}>
+                      <SelectItem value="" text="" />
+                      {contexto.mecanismos
+                        .filter((m) => m !== "ambos")
+                        .map((m) => (
+                          <SelectItem key={m} value={m} text={m} />
+                        ))}
+                    </Select>
+                    <TextInput id="rj-fuente-pagadero" labelText="Fuente del mecanismo pagadero" value={form.clausula.fuente_pagadero} onChange={(e) => campo("fuente_pagadero", e.target.value)} />
+                    <Select id="rj-estructura" labelText="Estructura" value={form.clausula.estructura} onChange={(e) => campo("estructura", e.target.value)}>
+                      {contexto.estructuras.map((x) => (
+                        <SelectItem key={x} value={x} text={x} />
+                      ))}
+                    </Select>
+                  </div>
+                </fieldset>
+                <fieldset className="silice-reajuste__grupo">
+                  <legend className="cds--type-label-01">Parte que no se reajusta y fuentes</legend>
+                  <div className="silice-reajuste__rejilla">
+                    <TextInput id="rj-r" labelText="R (fracción no reajustable)" value={form.clausula.r} onChange={(e) => campo("r", e.target.value)} />
+                    <TextInput id="rj-fuente-r" labelText="Fuente de R" helperText="Si el contrato no la trae, escriba 0 y declárelo." value={form.clausula.fuente_r} onChange={(e) => campo("fuente_r", e.target.value)} />
+                    <TextInput id="rj-fuente" labelText="Fuente de la cláusula" helperText="Contrato, número, fecha." value={form.clausula.fuente} onChange={(e) => campo("fuente", e.target.value)} />
+                    <TextInput id="rj-responsable" labelText="Responsable" helperText="En blanco, su nombre de usuario." value={form.clausula.responsable} onChange={(e) => campo("responsable", e.target.value)} />
+                  </div>
+                  <Checkbox
+                    id="rj-r-comprobacion"
+                    labelText="La cláusula aplica R también a la comprobación"
+                    checked={form.clausula.r_en_comprobacion === "si"}
+                    onChange={(_, { checked }) => campo("r_en_comprobacion", checked ? "si" : "no")}
+                  />
+                </fieldset>
+                <p className="silice-reajuste__nota cds--type-body-compact-01">
+                  Componentes: la serie de cada uno y, si la estructura es declarada, su peso.
+                </p>
+                <FilasEditables
+                  etiqueta="Componentes"
+                  columnas={COLUMNAS_COMPONENTE}
+                  filas={form.componentes}
+                  fijas
+                  alCambiar={(filas) => editar((f) => ({ ...f, componentes: filas }))}
+                />
+                <div>
+                  <Button kind="tertiary" size="md" onClick={() => setPaso(1)}>
+                    Siguiente: períodos y lo ejecutado
+                  </Button>
+                </div>
+              </section>
+            )}
+          </TabPanel>
+          <TabPanel>
+            {paso === 1 && (
+              <section className="silice-reajuste__bloque" aria-labelledby="reajuste-periodos">
+                <h2 id="reajuste-periodos" className="cds--type-heading-compact-02">
+                  Períodos y lo ejecutado (con su fuente)
+                </h2>
+                <p className="silice-reajuste__nota cds--type-body-compact-01">
+                  {`Versiones revaloradas para la comprobación directa: ${
+                    revaloradas.length > 0 ? revaloradas.join(", ") : "ninguna (la comprobación quedará «no disponible»)"
+                  }`}
+                </p>
+                <FilasEditables
+                  etiqueta="Períodos"
+                  columnas={COLUMNAS_PERIODO}
+                  filas={form.periodos}
+                  alCambiar={(filas) => editar((f) => ({ ...f, periodos: filas }))}
+                />
+                <Checkbox
+                  id="rj-valuaciones"
+                  labelText="Tomar lo ejecutado de las valuaciones registradas (cada una al período de su fecha hasta)"
+                  checked={form.con_valuaciones}
+                  onChange={(_, { checked }) => editar((f) => ({ ...f, con_valuaciones: checked }))}
+                />
+                {form.con_valuaciones ? (
+                  <p className="silice-reajuste__nota cds--type-body-compact-01">
+                    Lo ejecutado sale de las valuaciones no anuladas y el estudio las cita.
+                  </p>
+                ) : (
+                  <>
+                    <FilasEditables
+                      etiqueta="Ejecutado"
+                      columnas={COLUMNAS_EJECUTADO}
+                      filas={form.ejecutado}
+                      alCambiar={(filas) => editar((f) => ({ ...f, ejecutado: filas }))}
+                    />
+                    <p className="silice-reajuste__nota cds--type-body-compact-01">
+                      «Período» es el número de la fila de períodos (1, 2, ...).
+                    </p>
+                  </>
+                )}
+                <div>
+                  <Button kind="primary" size="md" disabled={ocupado} onClick={() => void calcular()}>
+                    Calcular
+                  </Button>
+                </div>
+              </section>
+            )}
+          </TabPanel>
+        </TabPanels>
+      </Tabs>
 
       <AvisoError error={error} titulo="No se pudo completar" alCerrar={() => setError(null)} />
 
       {calculo && (
         <section className="silice-reajuste__bloque" aria-labelledby="reajuste-resultado">
           <h2 id="reajuste-resultado" className="cds--type-heading-compact-02">
-            3. Escalatoria y comprobación, lado a lado
+            Escalatoria y comprobación, lado a lado
           </h2>
           <TablaDensa
             etiqueta={ETIQUETA_RESULTADO}
@@ -322,7 +358,7 @@ function Formulario({
             <InlineNotification kind="info" title="Estudio parcial" subtitle={calculo.mensaje_parcial} lowContrast hideCloseButton />
           )}
 
-          <h2 className="cds--type-heading-compact-02">4. Guardar el estudio</h2>
+          <h2 className="cds--type-heading-compact-02">Guardar el estudio</h2>
           <div className="silice-reajuste__rejilla">
             <TextInput id="rj-estudio-fuente" labelText="Fuente del estudio" value={fuente} onChange={(e) => setFuente(e.target.value)} />
             <TextInput id="rj-estudio-responsable" labelText="Responsable del estudio" helperText="En blanco, su nombre de usuario." value={responsable} onChange={(e) => setResponsable(e.target.value)} />

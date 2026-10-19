@@ -147,13 +147,33 @@ describe("Control de obra", () => {
     const [numero, periodo, indice, fin] = columnasDe(["Numero", "Periodo", "Indice", "Fin (dia habil)"]);
     expect([numero!.titulo, periodo!.titulo, indice!.titulo, fin!.titulo]).toEqual([
       "Número",
-      "Periodo",
+      "Período",
       "Índice",
       "Fin (día hábil)",
     ]);
     expect([numero!.clave, indice!.clave, fin!.clave]).toEqual(["Numero", "Indice", "Fin (dia habil)"]);
     expect(columnasDe(["Columna nueva"])[0]!.titulo).toBe("Columna nueva");
     expect(TITULOS_VISIBLES["Retraso (dias)"]).toBe("Retraso (días)");
+  });
+
+  test("las cifras de las tablas de resultados se leen en es-VE y el exacto queda en el title", () => {
+    const [, valor] = columnasDe(["Indicador", "Valor"], ["Valor"]);
+    expect(valor!.presentar!("4358.20")).toBe("4.358,20");
+    expect(valor!.presentar!("no disponible")).toBe("no disponible");
+    expect(valor!.numerica).toBe(true);
+  });
+
+  test("las fechas de los formularios usan el selector de fecha y no piden escribir AAAA-MM-DD", async () => {
+    const u = montar();
+    await screen.findByText(/perspectiva costo/);
+    expect(screen.getByLabelText("Vigente desde")).toHaveAttribute("type", "date");
+    expect(screen.getByLabelText("Inicio de obra")).toHaveAttribute("type", "date");
+    await u.click(await screen.findByRole("tab", { name: "Valuaciones" }));
+    await screen.findByRole("table", { name: "Valuaciones registradas" });
+    for (const nombre of ["Período desde", "Período hasta", "Fecha de la valuación"]) {
+      expect(screen.getByLabelText(nombre)).toHaveAttribute("type", "date");
+    }
+    expect(document.body.textContent).not.toContain("AAAA-MM-DD");
   });
 
   test("las tablas de valuaciones muestran los encabezados con tilde (V-20)", async () => {
@@ -222,8 +242,8 @@ describe("Control de obra", () => {
   test("declarar la linea base manda los textos tal cual y confirma", async () => {
     const u = montar();
     await screen.findByText(/perspectiva costo/);
-    await u.type(screen.getByLabelText("Vigente desde (AAAA-MM-DD)"), "2026-11-02");
-    await u.type(screen.getByLabelText("Inicio de obra (AAAA-MM-DD)"), "2026-11-02");
+    await u.type(screen.getByLabelText("Vigente desde"), "2026-11-02");
+    await u.type(screen.getByLabelText("Inicio de obra"), "2026-11-02");
     await u.type(screen.getByLabelText("Fuente de la línea base"), "acta 1");
     await u.click(screen.getByRole("button", { name: "Declarar línea base" }));
     expect(await screen.findByText("Línea base declarada.")).toBeInTheDocument();
@@ -249,8 +269,8 @@ describe("Control de obra", () => {
     await u.click(await screen.findByRole("tab", { name: "Valuaciones" }));
     await screen.findByRole("table", { name: "Valuaciones registradas" });
     await u.type(screen.getByLabelText("Número"), "V-03");
-    await u.type(screen.getByLabelText("Periodo desde (AAAA-MM-DD)"), "2026-11-16");
-    await u.type(screen.getByLabelText("Periodo hasta (AAAA-MM-DD)"), "2026-11-20");
+    await u.type(screen.getByLabelText("Período desde"), "2026-11-16");
+    await u.type(screen.getByLabelText("Período hasta"), "2026-11-20");
     await u.type(screen.getByLabelText("Partida 1"), "OB-A");
     await u.type(screen.getByLabelText("Cantidad 1"), "50");
     await u.click(screen.getByRole("button", { name: "Agregar linea" }));
@@ -281,11 +301,15 @@ describe("Control de obra", () => {
     const u = montar();
     await u.click(await screen.findByRole("tab", { name: "Valor ganado" }));
     const tabla = await screen.findByRole("table", { name: "Indicadores de valor ganado" });
-    expect(within(tabla).getByText("4000.00")).toBeInTheDocument();
+    expect(within(tabla).getByText("4.000,00")).toHaveAttribute("title", "4000.00");
+    expect(within(tabla).queryByText("4000.00")).toBeNull();
+    expect(within(tabla).getByText("4.000,00").closest("td")).toHaveClass("silice-cifra");
     expect(screen.getByText(/no tiene tasa aplicable/)).toBeInTheDocument();
     expect(await screen.findByTestId("grafico-linea")).toBeInTheDocument();
     // el AC que falta se ve como guion en la tabla de la curva, no como cero
-    expect(screen.getByRole("table", { name: "Montos de PV, EV y AC" })).toBeInTheDocument();
+    const montos = screen.getByRole("table", { name: "Montos de PV, EV y AC" });
+    expect(within(montos).getByRole("columnheader", { name: "Período" })).toBeInTheDocument();
+    expect(within(montos).getByText("1.000,00")).toHaveAttribute("title", "1000.00");
   });
 
   test("alertas y reproyeccion: terminos, estudios y plan", async () => {
@@ -294,7 +318,7 @@ describe("Control de obra", () => {
     const alertas = await screen.findByRole("table", { name: "Alertas" });
     expect(within(alertas).getByText("Retraso (SPI)")).toHaveAttribute("title", "AL-1");
     expect(within(alertas).queryByText("AL-1")).toBeNull();
-    expect(within(alertas).getByText("0.8500 (supuesto declarado)")).toBeInTheDocument();
+    expect(within(alertas).getByText("0,8500 (supuesto declarado)")).toHaveAttribute("title", "0.8500 (SUPUESTO_DECLARADO)");
     expect(screen.getByText("Término por el índice: dia 12 (2026-11-18)")).toBeInTheDocument();
     expect(screen.getByText(/Punto de equilibrio proyectado: no disponible/)).toBeInTheDocument();
     expect(screen.getByText(/V' = V/)).toBeInTheDocument();

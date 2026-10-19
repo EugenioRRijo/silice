@@ -31,6 +31,12 @@
   align-items: flex-start;
 }
 
+.silice-precios-empresa__atipicos {
+  display: grid;
+  gap: 1rem;
+  min-inline-size: 0;
+}
+
 .silice-precios-empresa__nota {
   color: var(--silice-texto-secundario);
 }

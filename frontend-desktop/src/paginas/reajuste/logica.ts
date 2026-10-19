@@ -1,5 +1,6 @@
 // Logica pura de «Reajuste de precios»: arma lo que se manda a la API con el texto que escribe la persona y lo que
 // se muestra con el texto que devuelve. No calcula ni redondea nada (RB-2): el estudio lo hace el servidor.
+import { formatoMontoEsVe } from "../../indicadores/formatoEsVe";
 import type { ColumnaDensa, FilaDensa } from "../../comun/TablaDensa";
 
 export type Fila = Record<string, string>;
@@ -123,7 +124,10 @@ function ejecutadoConDatos(fila: Fila): boolean {
 }
 
 export function columnasDeResultado(columnas: string[]): ColumnaDensa[] {
-  return columnas.map((titulo) => ({ clave: titulo, titulo, numerica: !COLUMNAS_DE_TEXTO.has(titulo) }));
+  return columnas.map((titulo) => ({ clave: titulo, titulo, numerica: !COLUMNAS_DE_TEXTO.has(titulo),
+    // Montos y tasas en es-VE; el texto exacto de la API queda en el title de la celda.
+    presentar: COLUMNAS_DE_TEXTO.has(titulo) ? undefined : formatoMontoEsVe,
+  }));
 }
 
 export function filasDeResultado(filas: Fila[]): FilaDensa[] {

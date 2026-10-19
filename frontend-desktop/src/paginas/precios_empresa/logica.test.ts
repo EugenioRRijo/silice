@@ -1,7 +1,12 @@
 import { describe, expect, test } from "vitest";
 import {
+  columnasAtipicos,
   columnasHallazgos,
   etiquetaBase,
+  fechaCorta,
+  filasAtipicos,
+  porcentajeEsVe,
+  rutaAtipicos,
   faltaAlgo,
   filasDesconocidos,
   filasHallazgos,
@@ -77,6 +82,63 @@ describe("logica de Precios de la empresa", () => {
     expect(filasDesconocidos(["A", "B"])).toEqual([
       { id: "0", insumo: "A" },
       { id: "1", insumo: "B" },
+    ]);
+  });
+
+  // RF-100: el boton «Buscar variaciones atipicas de precio» de la pagina clasica.
+  test("la ruta de los atipicos es la de la lista de empresa elegida", () => {
+    expect(rutaAtipicos(5)).toBe("/v1/precios-empresa/listas/5/atipicos");
+  });
+
+  test("el porcentaje se lee en es-VE sin pasar por Number y conserva sus cifras", () => {
+    expect(porcentajeEsVe("0.39")).toBe("0,39 %");
+    expect(porcentajeEsVe("-12.50")).toBe("-12,50 %");
+    expect(porcentajeEsVe("1234.05")).toBe("1.234,05 %");
+    expect(porcentajeEsVe("12345678901234567890.01")).toBe("12.345.678.901.234.567.890,01 %");
+  });
+
+  test("la fecha corta es DD/MM/AAAA, como en la pantalla de Streamlit", () => {
+    expect(fechaCorta("2026-09-01")).toBe("01/09/2026");
+    expect(fechaCorta("no es fecha")).toBe("no es fecha");
+  });
+
+  // DESIGN.md: ninguna cifra redondeada sin el exacto a la vista. Memoria atipicos_s3.md §1: 1/256 = 0,390625 %.
+  const CON_EXACTO = {
+    disponible: true,
+    avisos: [],
+    variaciones: [
+      {
+        insumo: "ATIP-001",
+        porcentaje: "0.39",
+        porcentaje_exacto: "0.390625",
+        desde: "2026-09-01",
+        hasta: "2026-10-01",
+        severidad: "ADVERTENCIA",
+        descripcion: "ATIP-001: variación de 0.39 % entre 2026-09-01 y 2026-10-01 (en USD) se aparta del historial de variaciones del insumo",
+      },
+    ],
+  };
+
+  test("las columnas de los atipicos: la variacion es numerica y la severidad lleva su icono", () => {
+    const columnas = columnasAtipicos(CON_EXACTO);
+    expect(columnas.map((c) => [c.clave, c.titulo, c.numerica, c.celda])).toEqual([
+      ["insumo", "Insumo", undefined, undefined],
+      ["porcentaje", "Variación (en USD)", true, undefined],
+      ["desde", "Desde", undefined, undefined],
+      ["hasta", "Hasta", undefined, undefined],
+      ["severidad", "Severidad", undefined, "severidad"],
+    ]);
+    const [, porcentaje, desde] = columnas;
+    expect(desde.presentar?.("2026-09-01")).toBe("01/09/2026");
+    // se ve el redondeo que hizo la API y el valor de la celda (su title) es el exacto
+    expect(porcentaje.presentar?.("0.390625")).toBe("0,39 %");
+    // un exacto que no vino en la respuesta se muestra entero, sin que la interfaz redondee
+    expect(porcentaje.presentar?.("1.2345")).toBe("1,2345 %");
+  });
+
+  test("las filas de los atipicos llevan un id, el exacto como valor y el texto tal como llega", () => {
+    expect(filasAtipicos(CON_EXACTO)).toEqual([
+      { id: "0", insumo: "ATIP-001", porcentaje: "0.390625", desde: "2026-09-01", hasta: "2026-10-01", severidad: "ADVERTENCIA" },
     ]);
   });
 });

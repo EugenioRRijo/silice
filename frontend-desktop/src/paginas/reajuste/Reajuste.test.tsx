@@ -123,12 +123,18 @@ describe("Reajuste de precios", () => {
     return llamada ? (JSON.parse(String(llamada[1]?.body)) as Record<string, unknown>) : undefined;
   }
 
+  type Usuario = ReturnType<typeof userEvent.setup>;
+  async function irA(u: Usuario, paso: "1. La cláusula" | "2. Períodos y lo ejecutado") {
+    await u.click(screen.getByRole("tab", { name: paso }));
+  }
+
   async function llenar(u: ReturnType<typeof userEvent.setup>) {
     await u.type(screen.getByLabelText("Inicio del contrato"), "2026-01-15");
     await u.type(screen.getByLabelText("Duración (meses)"), "24");
     await u.type(screen.getByLabelText("R (fracción no reajustable)"), "0.10");
     await u.type(screen.getByLabelText("Serie, Componentes fila 1"), "FIC-MAT");
-    await u.type(screen.getByLabelText("Desde, Periodos fila 1"), "2027-02-01");
+    await irA(u, "2. Períodos y lo ejecutado");
+    await u.type(screen.getByLabelText("Desde, Períodos fila 1"), "2027-02-01");
   }
 
   test("sin proyecto abierto dice qué hacer", async () => {
@@ -143,12 +149,14 @@ describe("Reajuste de precios", () => {
   });
 
   test("arranca con la versión más antigua, la cláusula, los componentes y las revaloradas", async () => {
+    const u = userEvent.setup();
     montar();
     expect(await screen.findByLabelText("Versión del contrato")).toHaveValue("001");
-    expect(screen.getByText("Versiones revaloradas para la comprobación directa: 002")).toBeInTheDocument();
     expect(screen.getByLabelText("Periodicidad")).toHaveValue("mensual");
     expect(screen.getByLabelText("Componente, Componentes fila 2")).toHaveValue("equipos");
     expect(screen.getByLabelText("Componente, Componentes fila 2")).toHaveAttribute("readonly");
+    await irA(u, "2. Períodos y lo ejecutado");
+    expect(screen.getByText("Versiones revaloradas para la comprobación directa: 002")).toBeInTheDocument();
   });
 
   test("los textos visibles no llevan jerga interna de las especificaciones (V-17)", async () => {
@@ -160,7 +168,10 @@ describe("Reajuste de precios", () => {
   });
   test("sin revaloradas avisa que la comprobación quedará no disponible", async () => {
     contexto = () => json({ ...CONTEXTO, versiones: [{ codigo: "001", motivo: "", revalorada: false }] });
+    const u = userEvent.setup();
     montar();
+    await screen.findByLabelText("Versión del contrato");
+    await irA(u, "2. Períodos y lo ejecutado");
     expect(await screen.findByText(/ninguna \(la comprobación quedará «no disponible»\)/)).toBeInTheDocument();
   });
 
@@ -171,7 +182,9 @@ describe("Reajuste de precios", () => {
     await llenar(u);
     await u.click(screen.getByRole("button", { name: "Calcular" }));
     const tabla = await screen.findByRole("table", { name: "Escalatoria y comprobación, lado a lado" });
-    expect(within(tabla).getAllByText("15300.00").length).toBeGreaterThan(0);
+    expect(within(tabla).getAllByText("15.300,00").length).toBeGreaterThan(0);
+    expect(within(tabla).getAllByText("15.300,00")[0]).toHaveAttribute("title", "15300.00");
+    expect(within(tabla).queryByText("15300.00")).toBeNull();
     expect(within(tabla).getByText("Total")).toBeInTheDocument();
     const cuerpo = post("/v1/reajuste/calcular") as {
       proyecto: string;
@@ -207,6 +220,7 @@ describe("Reajuste de precios", () => {
     const u = userEvent.setup();
     montar();
     await screen.findByLabelText("Versión del contrato");
+    await irA(u, "2. Períodos y lo ejecutado");
     await u.click(screen.getByRole("button", { name: "Calcular" }));
     expect(await screen.findByText(/La comprobación del periodo 2 no está disponible/)).toBeInTheDocument();
     expect(screen.getByText(/El ultimo periodo aun no cierra/)).toBeInTheDocument();
@@ -217,6 +231,7 @@ describe("Reajuste de precios", () => {
     const u = userEvent.setup();
     montar();
     await screen.findByLabelText("Versión del contrato");
+    await irA(u, "2. Períodos y lo ejecutado");
     await u.click(screen.getByRole("button", { name: "Calcular" }));
     expect((await alertaConTexto()).textContent).toContain("Escriba «Inicio del contrato»");
     expect(screen.queryByRole("table", { name: "Escalatoria y comprobación, lado a lado" })).not.toBeInTheDocument();
@@ -226,8 +241,10 @@ describe("Reajuste de precios", () => {
     const u = userEvent.setup();
     montar();
     await screen.findByLabelText("Versión del contrato");
+    await irA(u, "2. Períodos y lo ejecutado");
     await u.click(screen.getByRole("button", { name: "Calcular" }));
     await screen.findByRole("table", { name: "Escalatoria y comprobación, lado a lado" });
+    await irA(u, "1. La cláusula");
     await u.type(screen.getByLabelText("Duración (meses)"), "2");
     expect(screen.queryByRole("table", { name: "Escalatoria y comprobación, lado a lado" })).not.toBeInTheDocument();
   });
@@ -236,6 +253,7 @@ describe("Reajuste de precios", () => {
     const u = userEvent.setup();
     montar();
     await screen.findByLabelText("Versión del contrato");
+    await irA(u, "2. Períodos y lo ejecutado");
     await u.click(screen.getByRole("button", { name: "Calcular" }));
     await screen.findByLabelText("Fuente del estudio");
     await u.type(screen.getByLabelText("Fuente del estudio"), "memoria");
@@ -253,6 +271,7 @@ describe("Reajuste de precios", () => {
     const u = userEvent.setup();
     montar();
     await screen.findByLabelText("Versión del contrato");
+    await irA(u, "2. Períodos y lo ejecutado");
     await u.click(screen.getByRole("button", { name: "Calcular" }));
     const lista = await screen.findByLabelText("Reemplaza al estudio parcial");
     expect(within(lista).getByRole("option", { name: "3 (calculado el 10/02/2027)" })).toBeInTheDocument();
@@ -266,6 +285,7 @@ describe("Reajuste de precios", () => {
     const u = userEvent.setup();
     montar();
     await screen.findByLabelText("Versión del contrato");
+    await irA(u, "2. Períodos y lo ejecutado");
     await u.click(screen.getByRole("button", { name: "Calcular" }));
     await u.click(await screen.findByRole("button", { name: "Guardar estudio" }));
     await screen.findByText("Estudio 7 guardado (cerrado).");
@@ -278,9 +298,12 @@ describe("Reajuste de precios", () => {
     const u = userEvent.setup();
     montar();
     await screen.findByLabelText("Versión del contrato");
+    await irA(u, "2. Períodos y lo ejecutado");
     await u.click(screen.getByRole("button", { name: "Calcular" }));
+    await irA(u, "1. La cláusula");
     await u.type(screen.getByLabelText("Duración (meses)"), "2");
     soltar(json(calculo()));
+    await irA(u, "2. Períodos y lo ejecutado");
     await waitFor(() => expect(screen.getByRole("button", { name: "Calcular" })).toBeEnabled());
     expect(screen.queryByRole("table", { name: "Escalatoria y comprobación, lado a lado" })).not.toBeInTheDocument();
   });
@@ -289,6 +312,7 @@ describe("Reajuste de precios", () => {
     const u = userEvent.setup();
     montar();
     await screen.findByLabelText("Versión del contrato");
+    await irA(u, "2. Períodos y lo ejecutado");
     await u.click(screen.getByRole("button", { name: "Calcular" }));
     await u.click(await screen.findByRole("button", { name: "Descargar Excel" }));
     await waitFor(() => expect(guardado).toHaveBeenCalledWith("reajuste_001.xlsx"));
@@ -299,6 +323,7 @@ describe("Reajuste de precios", () => {
     const u = userEvent.setup();
     montar();
     await screen.findByLabelText("Versión del contrato");
+    await irA(u, "2. Períodos y lo ejecutado");
     expect(screen.getByRole("table", { name: "Ejecutado" })).toBeInTheDocument();
     await u.click(screen.getByLabelText(/Tomar lo ejecutado de las valuaciones registradas/));
     expect(screen.queryByRole("table", { name: "Ejecutado" })).not.toBeInTheDocument();
@@ -311,15 +336,40 @@ describe("Reajuste de precios", () => {
     const u = userEvent.setup();
     montar();
     await screen.findByLabelText("Versión del contrato");
-    await u.click(screen.getByRole("button", { name: "Agregar fila a Periodos" }));
-    expect(screen.getByLabelText("Desde, Periodos fila 2")).toBeInTheDocument();
-    await u.click(screen.getByRole("button", { name: "Quitar Periodos fila 2" }));
-    expect(screen.queryByLabelText("Desde, Periodos fila 2")).not.toBeInTheDocument();
+    await irA(u, "2. Períodos y lo ejecutado");
+    await u.click(screen.getByRole("button", { name: "Agregar fila a Períodos" }));
+    expect(screen.getByLabelText("Desde, Períodos fila 2")).toBeInTheDocument();
+    await u.click(screen.getByRole("button", { name: "Quitar Períodos fila 2" }));
+    expect(screen.queryByLabelText("Desde, Períodos fila 2")).not.toBeInTheDocument();
   });
 
   test("un 401 avisa que la sesión venció", async () => {
     contexto = () => json({ detalle: "Sesión ausente o vencida." }, 401);
     montar();
     await waitFor(() => expect(alExpirar).toHaveBeenCalled());
+  });
+
+  test("las fechas usan el selector de fecha y el formulario se agrupa en pasos", async () => {
+    const u = userEvent.setup();
+    montar();
+    await screen.findByLabelText("Versión del contrato");
+    for (const nombre of ["Inicio del contrato", "El primer año corre desde", "Mes base de los índices"]) {
+      expect(screen.getByLabelText(nombre)).toHaveAttribute("type", "date");
+    }
+    expect(screen.getByRole("tab", { name: "1. La cláusula" })).toBeInTheDocument();
+    await irA(u, "2. Períodos y lo ejecutado");
+    for (const nombre of ["Desde, Períodos fila 1", "Hasta, Períodos fila 1"]) {
+      expect(screen.getByLabelText(nombre)).toHaveAttribute("type", "date");
+    }
+    expect(document.body.textContent).not.toContain("AAAA-MM-DD");
+  });
+
+  test("Período con tilde en la interfaz", async () => {
+    const u = userEvent.setup();
+    montar();
+    await screen.findByLabelText("Versión del contrato");
+    await irA(u, "2. Períodos y lo ejecutado");
+    expect(screen.queryAllByText(/Periodos?/)).toHaveLength(0);
+    expect(screen.getByRole("button", { name: "Agregar fila a Períodos" })).toBeInTheDocument();
   });
 });

@@ -522,10 +522,13 @@ def calculo(
             eac_sistema=logica.texto_monto(ind.eac_sistema)
             + ("" if ind.eac_sistema is None else f" {moneda}"),
         ),
-        motivo_termino="" if rep.termino is not None else rep.motivo_termino,
+        motivo_termino="" if rep.termino is not None else logica.con_tildes(rep.motivo_termino),
         equilibrio=None
         if equilibrio is None
-        else Equilibrio(punto=logica.texto_monto(equilibrio.punto), mensaje=equilibrio.mensaje),
+        else Equilibrio(
+            punto=logica.texto_monto(equilibrio.punto),
+            mensaje=logica.con_tildes(equilibrio.mensaje),
+        ),
         estudios=logica.estudios_que_suma(resultado),
         reproyeccion=logica.filas_de_reproyeccion(resultado),
         plan=PlanReproyectado(columnas=list(columnas), filas=plan),
@@ -576,10 +579,10 @@ def opciones(sesion: SesionDep, peticion: PeticionOpciones) -> OpcionesRespuesta
         opciones=[
             OpcionRespuesta(
                 clave=o.nombre,
-                titulo=o.titulo,
+                titulo=logica.con_tildes(o.titulo),
                 aplica=o.aplica,
-                motivo=o.motivo,
-                requisitos=list(o.requisitos),
+                motivo=logica.con_tildes(o.motivo),
+                requisitos=[logica.con_tildes(r) for r in o.requisitos],
                 requiere_declaracion=o.requiere_declaracion,
                 fila=logica.filas_de_opciones([o])[0],
             )

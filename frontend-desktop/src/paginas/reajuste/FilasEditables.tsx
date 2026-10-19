@@ -8,6 +8,8 @@ export interface ColumnaEditable {
   titulo: string;
   // Texto de ayuda dentro del campo vacio (por ejemplo el formato de una fecha).
   ayuda?: string;
+  // «fecha»: el selector de fecha del navegador (el valor sigue siendo AAAA-MM-DD, tal como lo espera la API).
+  tipo?: "fecha";
   // Solo se lee: el nombre de un componente no se escribe.
   fija?: boolean;
 }
@@ -55,6 +57,7 @@ export function FilasEditables({ etiqueta, columnas, filas, alCambiar, fijas = f
                     labelText={`${c.titulo}, ${etiqueta} fila ${i + 1}`}
                     hideLabel
                     size="sm"
+                    type={c.tipo === "fecha" ? "date" : undefined}
                     value={fila[c.clave] ?? ""}
                     placeholder={c.ayuda}
                     readOnly={c.fija}

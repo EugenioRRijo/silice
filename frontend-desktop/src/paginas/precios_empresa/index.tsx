@@ -1,6 +1,6 @@
 import { Button, InlineLoading, InlineNotification, Select, SelectItem, TextInput } from "@carbon/react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { FormEvent } from "react";
+import type { CSSProperties, FormEvent } from "react";
 import { ErrorDeApi, pedir } from "../../api/cliente";
 import { AvisoError } from "../../comun/AvisoError";
 import { EsqueletoPagina } from "../../comun/EsqueletoPagina";
@@ -11,9 +11,12 @@ import { useAplicacion } from "../../shell/contexto";
 import {
   AYUDA,
   COLUMNAS_DESCONOCIDOS,
+  ETIQUETA_ATIPICOS,
   EXTENSIONES,
   MENSAJE_FALTA,
   MONEDAS,
+  NOTA_ATIPICOS,
+  ROTULO_ATIPICOS,
   ROTULO_REFERENCIA,
   SIN_BASES,
   SIN_LISTAS,
@@ -21,16 +24,19 @@ import {
   TITULO_HALLAZGOS,
   TITULO_LISTA,
   TITULO_REFERENCIA,
+  columnasAtipicos,
   columnasHallazgos,
   etiquetaBase,
   faltaAlgo,
+  filasAtipicos,
   filasDesconocidos,
   filasHallazgos,
   formularioLista,
   hoyIso,
+  rutaAtipicos,
   rutaHallazgos,
 } from "./logica";
-import type { Base, Estado, Hallazgos, ListaCreada, ListaEmpresa } from "./logica";
+import type { Atipicos, Base, Estado, Hallazgos, ListaCreada, ListaEmpresa } from "./logica";
 import "./precios_empresa.scss";
 
 type Lectura =
@@ -49,6 +55,16 @@ type Creacion =
   | { tipo: "enviando" }
   | { tipo: "falta" }
   | { tipo: "listo"; creada: ListaCreada }
+  | { tipo: "error"; error: unknown };
+
+// DESIGN.md: el atipico (RF-100) va en morado. La severidad sigue diciendo «Advertencia» con su icono; solo su color
+// toma el token de los atipicos (como los halos del visor), nunca el color solo.
+const MORADO_ATIPICO = { "--silice-sev-advertencia": "var(--silice-atipico)" } as CSSProperties;
+
+type Busqueda =
+  | { tipo: "ninguna" }
+  | { tipo: "buscando" }
+  | { tipo: "listo"; atipicos: Atipicos }
   | { tipo: "error"; error: unknown };
 
 // La respuesta lleva la clave (lista y fecha) que la pidio: si ya no es la vigente, se esta cargando otra.
@@ -319,8 +335,79 @@ function SeccionHallazgos({ listas, alExpirar }: PropsSeccion & { listas: ListaE
               />
             </>
           )}
+          {listaId !== "" && <BuscarAtipicos key={listaId} listaId={Number(listaId)} alExpirar={alExpirar} />}
         </>
       )}
     </section>
+  );
+}
+
+// RF-100: el boton «Buscar variaciones atipicas de precio» de la pagina clasica, sobre los insumos de la lista
+// elegida. Solo lee y solo cuando se pulsa; cada variacion es una advertencia que no impide nada. Al cambiar de lista
+// el resultado se retira (el componente se monta de nuevo con su `key`).
+function BuscarAtipicos({ listaId, alExpirar }: PropsSeccion & { listaId: number }) {
+  const [busqueda, setBusqueda] = useState<Busqueda>({ tipo: "ninguna" });
+  const vigente = useRef(true);
+
+  useEffect(() => {
+    vigente.current = true;
+    return () => {
+      vigente.current = false;
+    };
+  }, []);
+
+  const buscar = () => {
+    setBusqueda({ tipo: "buscando" });
+    pedir<Atipicos>(rutaAtipicos(listaId)).then(
+      (atipicos) => {
+        if (vigente.current) setBusqueda({ tipo: "listo", atipicos });
+      },
+      (error: unknown) => {
+        if (!vigente.current) return;
+        alExpirar(error);
+        setBusqueda({ tipo: "error", error });
+      },
+    );
+  };
+
+  return (
+    <div className="silice-precios-empresa__atipicos">
+      <div className="silice-precios-empresa__acciones">
+        <Button kind="tertiary" size="md" onClick={buscar} disabled={busqueda.tipo === "buscando"}>
+          {ROTULO_ATIPICOS}
+        </Button>
+        {busqueda.tipo === "buscando" && <InlineLoading description="Buscando variaciones atípicas..." status="active" />}
+      </div>
+      <div aria-live="polite" aria-atomic="true">
+        {busqueda.tipo === "error" && <AvisoError error={busqueda.error} titulo="No se buscaron las variaciones atípicas" />}
+        {busqueda.tipo === "listo" && (
+          <>
+            {busqueda.atipicos.avisos.map((aviso, i) => (
+              <InlineNotification
+                key={i}
+                kind={aviso.nivel}
+                role="status"
+                title={aviso.nivel === "success" ? "Sin variaciones atípicas" : "Aviso"}
+                subtitle={aviso.texto}
+                lowContrast
+                hideCloseButton
+              />
+            ))}
+            {busqueda.atipicos.variaciones.length > 0 && (
+              <>
+                <p className="silice-precios-empresa__nota cds--type-label-01">{NOTA_ATIPICOS}</p>
+                <div className="silice-precios-empresa__tabla-atipicos" style={MORADO_ATIPICO}>
+                  <TablaDensa
+                    etiqueta={ETIQUETA_ATIPICOS}
+                    columnas={columnasAtipicos(busqueda.atipicos)}
+                    filas={filasAtipicos(busqueda.atipicos)}
+                  />
+                </div>
+              </>
+            )}
+          </>
+        )}
+      </div>
+    </div>
   );
 }

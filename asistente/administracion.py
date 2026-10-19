@@ -10,18 +10,58 @@ pasa en `es_administrador`.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, replace
 from decimal import Decimal
 from pathlib import Path
 
 from asistente.clave import ClaveDeIA, ClaveNoRegistrable
 from asistente.configuracion import ConfiguracionIA, guardar, leer
+from asistente.instalacion import cargar_clave_guardada
 
 AVISO_DE_NUBE = (
     "Con el modo en la nube activo, el pedido y el resumen del borrador viajan al proveedor "
     "(sin precios, montos ni nombres de proyecto, empresa o usuarios). Es una excepción declarada "
     "a la ejecución local; el modo local no envía nada fuera del equipo."
 )
+
+
+#: Los textos de la pestaña «Asistente de IA»: los muestran la clásica
+#: (`ui/paginas/administracion.py`) y la interfaz nueva por `api/rutas/admin_asistente.py` (T6 de
+#: la migración final); viven aquí una sola vez.
+ETIQUETAS_DE_PROVEEDOR = {
+    "claude": "Claude (en la nube, con la clave de la empresa)",
+    "ollama": "Ollama (local, en este equipo)",
+}
+SIN_EXTRA_IA = (
+    "Falta el componente del asistente de IA en este equipo. Instálelo con «uv sync --extra ia» "
+    "y vuelva a abrir Sílice."
+)
+CONFIGURACION_GUARDADA = "Configuración del asistente guardada."
+CONFIGURACION_NO_GUARDADA = (
+    "No se pudo guardar la configuración en la carpeta de datos: revise que exista y que "
+    "se pueda escribir en ella."
+)
+CLAVE_NO_GUARDADA = (
+    "No se pudo guardar la clave: el almacén de credenciales o la carpeta de datos no "
+    "responden. Pruebe de nuevo o indique una contraseña para el respaldo cifrado."
+)
+RESPALDO_NO_LEIDO = (
+    "No se pudo leer el respaldo cifrado de la clave en la carpeta de datos: revise que "
+    "exista y que se pueda leer."
+)
+CLAVE_OLVIDADA = "La clave de IA se olvidó: ya no está en este equipo."
+#: El evento de seguridad por un intento fallido de reactivar (S3 §7.4): sin contraseña ni clave.
+EVENTO_REACTIVAR_FALLIDA = "clave de ia no reactivada"
+DETALLE_REACTIVAR_FALLIDA = "la contraseña no abrió el respaldo cifrado de la clave de IA"
+
+
+def clave_registrada_aviso(mostrada: str) -> str:
+    return f"Clave de IA registrada ({mostrada})."
+
+
+def clave_reactivada_aviso(mostrada: str) -> str:
+    return f"Clave de IA reactivada ({mostrada})."
 
 
 class SinPermiso(PermissionError):  # noqa: N818
@@ -134,3 +174,44 @@ def reactivar_clave(
 def olvidar_clave(clave: ClaveDeIA, empresa_id: str, *, es_administrador: bool) -> None:
     _exigir(es_administrador)
     clave.olvidar(empresa_id)
+
+
+@dataclass(frozen=True, slots=True)
+class VistaDeLaPestana:
+    """Lo que la pestaña muestra de la clave, con el extra `ia` instalado."""
+
+    configuracion: ConfiguracionIA
+    clave_registrada: str | None  # solo los últimos 4 caracteres
+    #: Hay una guardada, pero no se carga mientras el asistente esté apagado (§8.3).
+    clave_guardada: bool
+    #: Solo queda el respaldo cifrado: su contraseña la trae de vuelta (`reactivar_clave`).
+    pide_contrasena: bool
+
+
+def _sin_fallar(pregunta: Callable[[], bool]) -> bool:
+    """Un almacén que falla cuenta como «no»: el backend de keyring en Windows falla de muchas
+    formas y no debe tumbar la pestaña."""
+    try:
+        return pregunta()
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def vista_de_la_pestana(ruta: Path, clave: ClaveDeIA, empresa_id: str) -> VistaDeLaPestana:
+    """Con el asistente activo trae la clave guardada a la memoria (apagado, no: §8.3) y dice qué
+    mostrar: la clave enmascarada, si hay una guardada sin cargar o si solo queda el respaldo."""
+    if leer(ruta).activo:
+        cargar_clave_guardada(clave, empresa_id)
+    visto = estado(ruta, clave)
+    configuracion, registrada = visto.configuracion, visto.clave_registrada
+    guardada = (
+        registrada is None
+        and not configuracion.activo
+        and _sin_fallar(lambda: clave.hay_guardada(empresa_id))
+    )
+    pide = (
+        registrada is None
+        and configuracion.activo
+        and _sin_fallar(lambda: clave.pide_contrasena(empresa_id))
+    )
+    return VistaDeLaPestana(configuracion, registrada, guardada, pide)

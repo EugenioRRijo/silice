@@ -66,6 +66,7 @@ describe("registro de paginas", () => {
       "acerca",
       "entregar",
       "existencias",
+      "revisar",
       "libros",
       "historial",
       "escenarios",

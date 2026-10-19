@@ -16,6 +16,7 @@ redondea. Sin Streamlit, sin `pandas` y sin `ui.caso`; lo vigila
 
 from __future__ import annotations
 
+import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, replace
 from datetime import date
@@ -82,7 +83,9 @@ __all__ = [
     "PARAMETROS_EDITABLES",
     "ControlInvalido",
     "PrecioElegido",
+    "PLANTILLAS_DEL_NUCLEO",
     "alertas_en_filas",
+    "con_tildes",
     "corte_por_defecto",
     "describir_linea_base",
     "dia_con_fecha",
@@ -583,22 +586,22 @@ def filas_de_indicadores(sesion: Session, resultado: ResultadoControl) -> list[d
         monto("BAC", ind.bac),
         monto("PV", ind.pv),
         monto("EV", ind.ev),
-        monto("AC", ind.ac, no.get("AC", "")),
+        monto("AC", ind.ac, con_tildes(no.get("AC", ""))),
         monto("SV (plazo)", ind.sv),
-        monto("CV", ind.cv, no.get("CV", "")),
-        indice("SPI", ind.spi, no.get("SPI", "")),
-        indice("CPI", ind.cpi, no.get("CPI", "")),
-        monto("EAC (indice BAC/CPI)", ind.eac_indice, no.get("EAC", "")),
-        monto("EAC (sistema)", ind.eac_sistema, no.get("EAC", "")),
-        monto("VAC", ind.vac, no.get("VAC", "")),
+        monto("CV", ind.cv, con_tildes(no.get("CV", ""))),
+        indice("SPI", ind.spi, con_tildes(no.get("SPI", ""))),
+        indice("CPI", ind.cpi, con_tildes(no.get("CPI", ""))),
+        monto("EAC (indice BAC/CPI)", ind.eac_indice, con_tildes(no.get("EAC", ""))),
+        monto("EAC (sistema)", ind.eac_sistema, con_tildes(no.get("EAC", ""))),
+        monto("VAC", ind.vac, con_tildes(no.get("VAC", ""))),
         {
             "Indicador": "Termino por el indice (dia habil)",
             "Valor": NO_APLICA if ind.termino_indice is None else str(ind.termino_indice),
             "En la otra moneda": "",
             "Nota": "",
         },
-        monto("Desvio de precio", sep.precio, sep.no_disponible.get("precio", "")),
-        monto("Desvio de consumo", sep.consumo, sep.no_disponible.get("consumo", "")),
+        monto("Desvio de precio", sep.precio, con_tildes(sep.no_disponible.get("precio", ""))),
+        monto("Desvio de consumo", sep.consumo, con_tildes(sep.no_disponible.get("consumo", ""))),
     ]
     if sep.metodo:
         filas.append(
@@ -621,13 +624,229 @@ def filas_de_indicadores(sesion: Session, resultado: ResultadoControl) -> list[d
     return filas
 
 
+# --- tildes de las alertas ---------------------------------------------------------------------
+#
+# El texto de las alertas y de sus motivos nace en `core/budget/valor_ganado.py` y
+# `core/budget/equilibrio.py` sin tildes, y `core/` no se toca. Aquí se restituyen sobre las FRASES
+# FIJAS del núcleo, nunca sobre palabras sueltas: lo que escribió el usuario (código o nombre de una
+# partida, montos, fechas) entra en un hueco `{nombre}` y sale tal cual. Una frase que el catálogo
+# no conoce pasa sin cambios; la prueba de guardia (tests/unit/test_control_alertas_tildes.py)
+# lista las frases del núcleo que falten aquí.
+
+#: (frase tal como la emite el núcleo, la misma con tildes). Los huecos `{x}` son datos.
+PLANTILLAS_DEL_NUCLEO: tuple[tuple[str, str], ...] = (
+    # AL-1 y AL-2
+    ("retraso: SPI {spi}", "retraso: SPI {spi}"),
+    ("sobrecosto: CPI {cpi}", "sobrecosto: CPI {cpi}"),
+    # AL-3
+    (
+        "el termino proyectado (dia {termino}) pasa {retraso} dia(s) habil(es) del plan base "
+        "(dia {plan})",
+        "el término proyectado (día {termino}) pasa {retraso} día(s) hábil(es) del plan base "
+        "(día {plan})",
+    ),
+    # AL-4: el mensaje del punto de equilibrio que cierra la frase
+    (
+        "el punto de equilibrio proyectado: no existe punto de equilibrio: el margen de "
+        "contribucion no es positivo",
+        "el punto de equilibrio proyectado: no existe punto de equilibrio: el margen de "
+        "contribución no es positivo",
+    ),
+    (
+        "el punto de equilibrio proyectado: el punto de equilibrio no se alcanza dentro del "
+        "contrato",
+        "el punto de equilibrio proyectado: el punto de equilibrio no se alcanza dentro del "
+        "contrato",
+    ),
+    (
+        "el punto de equilibrio proyectado: el presupuesto no tiene ventas: no aplica",
+        "el punto de equilibrio proyectado: el presupuesto no tiene ventas: no aplica",
+    ),
+    (
+        "el punto de equilibrio proyectado: se alcanza en {periodo}",
+        "el punto de equilibrio proyectado: se alcanza en {periodo}",
+    ),
+    (
+        "el punto de equilibrio proyectado: sin curva de inversion: el punto de equilibrio no "
+        "se ubica en el plan",
+        "el punto de equilibrio proyectado: sin curva de inversión: el punto de equilibrio no "
+        "se ubica en el plan",
+    ),
+    (
+        "el punto de equilibrio proyectado sube mas de {puntos} puntos porcentuales sobre el de "
+        "la linea base",
+        "el punto de equilibrio proyectado sube más de {puntos} puntos porcentuales sobre el de "
+        "la línea base",
+    ),
+    # AL-5
+    (
+        "evaluar el reajuste (S1; LCP art. 133, a cotejar): el precio del corte desvia {precio} "
+        "sobre un valor ganado de {ev}",
+        "evaluar el reajuste (S1; LCP art. 133, a cotejar): el precio del corte desvía {precio} "
+        "sobre un valor ganado de {ev}",
+    ),
+    # AL-6
+    (
+        "la partida {codigo} tiene trabajo planificado y ningun avance (detenida)",
+        "la partida {codigo} tiene trabajo planificado y ningún avance (detenida)",
+    ),
+    # Motivos de las alertas sin evaluar
+    ("SPI no aplica", "SPI no aplica"),
+    ("CPI no disponible", "CPI no disponible"),
+    ("AC no disponible", "AC no disponible"),
+    ("EAC no disponible", "EAC no disponible"),
+    (
+        "el punto de equilibrio no aplica o AC no esta disponible",
+        "el punto de equilibrio no aplica o AC no está disponible",
+    ),
+    ("sin avance ejecutado", "sin avance ejecutado"),
+    ("sin costos reales declarados", "sin costos reales declarados"),
+    ("sin tasa aplicable para: {cortes}", "sin tasa aplicable para: {cortes}"),
+    (
+        "PV = 0: el corte es anterior a todo trabajo planificado",
+        "PV = 0: el corte es anterior a todo trabajo planificado",
+    ),
+    ("AC = 0: aun no hay costos reales", "AC = 0: aún no hay costos reales"),
+    ("sin precios del corte", "sin precios del corte"),
+    (
+        "sin precios del corte (S1): la separacion no esta disponible",
+        "sin precios del corte (S1): la separación no está disponible",
+    ),
+    (
+        "sin precio del corte para la partida {codigo}",
+        "sin precio del corte para la partida {codigo}",
+    ),
+    ("sin precio del corte para {partidas}", "sin precio del corte para {partidas}"),
+    (
+        "sin avance o sin costos reales: el rendimiento del consumo no existe",
+        "sin avance o sin costos reales: el rendimiento del consumo no existe",
+    ),
+    ("no proyectable: {partidas}", "no proyectable: {partidas}"),
+    (
+        "nada queda pendiente: la fecha de la ultima valuacion",
+        "nada queda pendiente: la fecha de la última valuación",
+    ),
+    # Motivos por partida de la reproyección
+    ("la partida no esta en el plan", "la partida no está en el plan"),
+    (
+        "el SPI global es 0: sin ritmo no se proyecta",
+        "el SPI global es 0: sin ritmo no se proyecta",
+    ),
+    # Recuperación (opciones), supuestos, requisitos y mensajes sueltos del punto de equilibrio
+    ("Mas cuadrillas", "Más cuadrillas"),
+    ("Horas extra", "Horas extra"),
+    ("Partidas en paralelo", "Partidas en paralelo"),
+    ("Aceptar el retraso", "Aceptar el retraso"),
+    ("ninguna partida pasa del objetivo", "ninguna partida pasa del objetivo"),
+    (
+        "ninguna partida sin empezar con inicio posterior al periodo siguiente",
+        "ninguna partida sin empezar con inicio posterior al período siguiente",
+    ),
+    ("no aplica ({lista})", "no aplica ({lista})"),
+    ("sin composicion de APU", "sin composición de APU"),
+    ("sin rendimiento", "sin rendimiento"),
+    ("sin mano de obra a jornal", "sin mano de obra a jornal"),
+    (
+        "sin fuente: ninguna norma verificada la fija",
+        "sin fuente: ninguna norma verificada la fija",
+    ),
+    (
+        "permiso de la Inspectoria del Trabajo (LOTTT art. 182) para las horas extra",
+        "permiso de la Inspectoría del Trabajo (LOTTT art. 182) para las horas extra",
+    ),
+    ("penalizacion diaria", "penalización diaria"),
+    ("composiciones de la linea base", "composiciones de la línea base"),
+    ("costo diario de la cuadrilla", "costo diario de la cuadrilla"),
+    ("costo fijo en el tiempo", "costo fijo en el tiempo"),
+    ("CF' = CF · D'/D", "CF' = CF · D'/D"),
+    ("eta de cuadrillas", "eta de cuadrillas"),
+    (
+        "Lee (2022) es la base del metodo, no del valor",
+        "Lee (2022) es la base del método, no del valor",
+    ),
+    ("cuadrillas maximas", "cuadrillas máximas"),
+    ("horas extra por dia", "horas extra por día"),
+    ("tope legal 2 h", "tope legal 2 h"),
+    ("eta de horas extra", "eta de horas extra"),
+    ("LOTTT art. 118: por lo menos 50 %", "LOTTT art. 118: por lo menos 50 %"),
+    ("FCAS sobre las horas extra", "FCAS sobre las horas extra"),
+    ("si", "sí"),
+    (
+        "interpretacion de los arts. 104 y 178; decide el tutor",
+        "interpretación de los arts. 104 y 178; decide el tutor",
+    ),
+    ("jornada ordinaria", "jornada ordinaria"),
+    ("LOTTT art. 173", "LOTTT art. 173"),
+    ("limites de horas extra", "límites de horas extra"),
+    ("10 h por semana, 100 h por año", "10 h por semana, 100 h por año"),
+    ("LOTTT art. 178", "LOTTT art. 178"),
+    ("independencia de las partidas", "independencia de las partidas"),
+    (
+        "el plan no tiene dependencias: el usuario lo declara con su fuente (S2-R4)",
+        "el plan no tiene dependencias: el usuario lo declara con su fuente (S2-R4)",
+    ),
+    (
+        "LOTTT G.O. 6.076 Ext. 07-05-2012 (docs/fuentes/LOTTT_GO_6076_Ext_2012-05-07.txt)",
+        "LOTTT G.O. 6.076 Ext. 07-05-2012 (docs/fuentes/LOTTT_GO_6076_Ext_2012-05-07.txt)",
+    ),
+    (
+        "no existe punto de equilibrio: el margen de contribucion no es positivo",
+        "no existe punto de equilibrio: el margen de contribución no es positivo",
+    ),
+    (
+        "el punto de equilibrio no se alcanza dentro del contrato",
+        "el punto de equilibrio no se alcanza dentro del contrato",
+    ),
+    ("el presupuesto no tiene ventas: no aplica", "el presupuesto no tiene ventas: no aplica"),
+    ("se alcanza en {periodo}", "se alcanza en {periodo}"),
+    (
+        "sin curva de inversion: el punto de equilibrio no se ubica en el plan",
+        "sin curva de inversión: el punto de equilibrio no se ubica en el plan",
+    ),
+)
+
+
+def _compilar(crudo: str) -> re.Pattern[str]:
+    """La frase del núcleo como expresión: el texto fijo literal, cada hueco `{x}` un dato."""
+    partes = re.split(r"\{(\w+)\}", crudo)
+    patron = "".join(f"(?P<{p}>.+)" if i % 2 else re.escape(p) for i, p in enumerate(partes))
+    return re.compile(patron, re.DOTALL)
+
+
+_NO_APLICA = re.compile(r"no aplica \((?P<lista>.+)\)", re.DOTALL)
+_CATALOGO_COMPILADO = tuple(
+    (_compilar(crudo), con_tilde) for crudo, con_tilde in PLANTILLAS_DEL_NUCLEO
+)
+
+
+def con_tildes(texto: str) -> str:
+    """Restituye las tildes de una frase fija del núcleo; cualquier otro texto pasa sin cambios.
+
+    Función pura. Solo actúa si la frase COMPLETA coincide con una plantilla del catálogo, de modo
+    que un nombre de partida con «dia» o «ningun» puesto por el usuario no se altera.
+    """
+    lista = _NO_APLICA.fullmatch(texto)
+    if lista is not None:
+        # «no aplica (cod: motivo; cod: motivo)»: el código es del usuario, el motivo es del núcleo.
+        items = []
+        for item in lista.group("lista").split("; "):
+            codigo, separador, motivo = item.partition(": ")
+            items.append(codigo + separador + con_tildes(motivo) if separador else item)
+        return "no aplica (" + "; ".join(items) + ")"
+    for patron, con_tilde in _CATALOGO_COMPILADO:
+        calce = patron.fullmatch(texto)
+        if calce is not None:
+            return con_tilde.format(**calce.groupdict())
+    return texto
+
+
 def alertas_en_filas(resultado: ResultadoControl) -> list[dict[str, str]]:
     """Las alertas que saltaron y, aparte, las que no se pudieron evaluar con su motivo."""
     filas = [
         {
             "Alerta": a.codigo,
             "Severidad": a.severidad.name,
-            "Descripcion": a.descripcion,
+            "Descripcion": con_tildes(a.descripcion),
             "Observado": ""
             if a.valor_observado is None
             else formatear_decimal(a.valor_observado, 4),
@@ -640,7 +859,7 @@ def alertas_en_filas(resultado: ResultadoControl) -> list[dict[str, str]]:
         {
             "Alerta": codigo,
             "Severidad": "sin evaluar",
-            "Descripcion": motivo,
+            "Descripcion": con_tildes(motivo),
             "Observado": "",
             "Umbral": "",
         }
@@ -655,7 +874,7 @@ def filas_de_reproyeccion(resultado: ResultadoControl) -> list[dict[str, str]]:
     for p in resultado.reproyeccion.partidas:
         if p.pendiente == 0:
             continue
-        nota = p.motivo or (
+        nota = con_tildes(p.motivo) or (
             "detenida"
             if p.detenida
             else "sin evidencia propia: SPI global"
@@ -679,23 +898,26 @@ def filas_de_opciones(todas: Sequence[Opcion]) -> list[dict[str, str]]:
     for o in todas:
         if not o.aplica:
             filas.append(
-                {"Opcion": o.titulo, "Nota": o.motivo}
+                {"Opcion": con_tildes(o.titulo), "Nota": con_tildes(o.motivo)}
                 | dict.fromkeys(COLUMNAS_OPCIONES[1:-1], NO_APLICA)
             )
             continue
         pe = NO_APLICA
         if o.equilibrio is not None:
-            pe = _monto(o.equilibrio.punto) + f" ({o.equilibrio.mensaje})"
+            pe = _monto(o.equilibrio.punto) + f" ({con_tildes(o.equilibrio.mensaje)})"
         filas.append(
             {
-                "Opcion": o.titulo,
+                "Opcion": con_tildes(o.titulo),
                 "Termino": f"día {o.termino}",
                 "Retraso (dias)": str(o.retraso),
                 "Costo directo adicional": _monto(o.costo_directo_adicional),
                 "Costo indirecto": _monto(o.costo_indirecto),
                 "Penalizacion": _monto(o.penalizacion),
                 "Punto de equilibrio": pe,
-                "Nota": "; ".join(f"{s.nombre}: {s.valor} ({s.naturaleza})" for s in o.supuestos),
+                "Nota": "; ".join(
+                    f"{con_tildes(s.nombre)}: {con_tildes(s.valor)} ({s.naturaleza})"
+                    for s in o.supuestos
+                ),
             }
         )
     return filas

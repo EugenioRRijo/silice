@@ -46,7 +46,7 @@ export function BarraDeCorte({
     >
       <TextInput
         id="corte-fecha"
-        labelText="Fecha de corte (AAAA-MM-DD, vacía: la última valuación)"
+        type="date" labelText="Fecha de corte (vacía: la última valuación)"
         value={borrador.corte}
         onChange={(e) => setBorrador({ ...borrador, corte: e.target.value })}
       />
@@ -105,7 +105,7 @@ export function ValorGanado({ calculo }: { calculo: Calculo }) {
       {curva.length > 0 && (
         <section className="silice-control__bloque" aria-labelledby="control-curva">
           <h2 id="control-curva" className="cds--type-heading-compact-02">
-            PV, EV y AC al cierre de cada periodo
+            PV, EV y AC al cierre de cada período
           </h2>
           <CurvaPlanAvance
             titulo="PV, EV y AC"
