@@ -103,3 +103,29 @@ export interface LibroVisualRespuesta {
   hojas: HojaVisualRespuesta[];
   estilos: EstiloVisualRespuesta[];
 }
+
+// Informe de auditoria como JSON (ola 2 de la migracion; api/esquemas_informe.py). Los montos ya vienen con los dos
+// decimales del sistema; la interfaz los muestra tal cual.
+export interface HallazgoInformeRespuesta {
+  numero: number;
+  regla: string;
+  severidad: string;
+  partida: string | null;
+  descripcion: string;
+  impacto: string | null;
+  observado: string | null;
+  esperado: string | null;
+  origen: string[];
+}
+
+export interface InformeAuditoriaRespuesta {
+  codigo_presupuesto: string;
+  cumple: boolean;
+  veredicto: string;
+  total_hallazgos: number;
+  por_severidad: { severidad: string; total: number }[];
+  reglas_evaluadas: { regla: string; nombre: string; hallazgos: number }[];
+  hallazgos: HallazgoInformeRespuesta[];
+  // El texto que declara que se verifico y no hubo nada (UC-05 5a); null si hay hallazgos.
+  sin_hallazgos: string | null;
+}
