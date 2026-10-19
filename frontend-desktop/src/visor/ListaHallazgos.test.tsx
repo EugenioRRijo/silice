@@ -151,6 +151,19 @@ describe("ListaHallazgos", () => {
     expect(fila("El total no coincide con la suma de las partidas").tabIndex).toBe(-1);
   });
 
+  test("la fila elegida dice de que fila de la hoja habla el hallazgo, aunque la hoja no deje ver esa columna (M1)", () => {
+    const contextoDe = vi.fn((c: { hoja: string; fila0: number }) => `Fila ${c.fila0 + 1}: Friso liso (ficticio)`);
+    montar({ seleccionado: 1, contextoDeCelda: contextoDe });
+    const elegida = fila("Precio unitario distinto al de INSUMOS");
+    expect(within(elegida).getByText("Fila 48: Friso liso (ficticio)")).toHaveClass("hallazgo__contexto");
+    expect(within(fila("El total no coincide con la suma de las partidas")).queryByText(/Friso liso/)).toBeNull();
+  });
+
+  test("sin texto de contexto no se pinta la linea", () => {
+    montar({ seleccionado: 1, contextoDeCelda: () => null });
+    expect(document.querySelector(".hallazgo__contexto")).toBeNull();
+  });
+
   test("los filtros por severidad llevan icono ademas del texto y el numero (el color nunca va solo)", () => {
     montar();
     const boton = screen.getByRole("button", { name: "Crítico 1" });

@@ -55,6 +55,16 @@ describe("estilos del visor", () => {
     expect(regla(".fiori-kpi__tooltip")).toMatch(/overflow:\s*visible/);
   });
 
+  test("las dos cifras exactas del tooltip van una debajo de la otra, no corridas en una sola linea", () => {
+    expect(regla(".fiori-kpi__exacto")).toMatch(/display:\s*grid/);
+  });
+
+  test("la cabecera de la lista (una sola columna) solo queda para lectores de pantalla y no deja una banda gris", () => {
+    const r = regla(".lista-hallazgos__tabla thead");
+    expect(r).toMatch(/position:\s*absolute/);
+    expect(r).toMatch(/clip-path:\s*inset\(50%\)/);
+  });
+
   test("el valor con cifras exactas no se pinta como boton nativo y senala que revela algo (B2)", () => {
     const valor = regla(".fiori-kpi__valor");
     expect(valor).toMatch(/appearance:\s*none/);
@@ -100,6 +110,11 @@ describe("estilos del visor", () => {
   test("la descripcion de la lista se recorta a 3 lineas y solo la fila elegida la muestra completa (M5)", () => {
     expect(regla(".hallazgo__descripcion")).toMatch(/-webkit-line-clamp:\s*3/);
     expect(regla(".lista-hallazgos__fila--elegida .hallazgo__descripcion")).toMatch(/-webkit-line-clamp:\s*unset/);
+  });
+
+  test("el esqueleto de carga no hace desplazar la pagina: recorta lo suyo, no lo de la franja (B1 sin overflow en .visor)", () => {
+    expect(regla(".visor__esqueleto")).toMatch(/overflow:\s*hidden/);
+    expect(regla(".visor__esqueleto-hoja")).toMatch(/overflow:\s*hidden/);
   });
 
   test("las pestanas con conteo, el cargando y la ranura de la cabecera tienen estilo (M2, m4, M3)", () => {

@@ -102,6 +102,14 @@
   overflow: visible;
 }
 
+// Las dos cifras exactas, una debajo de la otra (si no, corren en una linea y se salen de la caja del tooltip).
+.fiori-kpi__exacto {
+  display: grid;
+  gap: 0.25rem;
+  text-align: start;
+  white-space: nowrap;
+}
+
 .fiori-kpi__valor {
   display: block;
   max-inline-size: 100%;

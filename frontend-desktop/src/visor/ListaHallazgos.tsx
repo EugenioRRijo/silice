@@ -32,6 +32,9 @@ interface Props {
   // El filtro por severidad viene de afuera al volver a montar la lista y sale hacia afuera al cambiar.
   filtroInicial?: Severidad[];
   alFiltrar?: (filtro: Severidad[]) => void;
+  // El texto de la fila de la celda (su descripcion), para decir de que fila habla el hallazgo elegido aunque la hoja
+  // no deje ver esa columna junto a la celda marcada.
+  contextoDeCelda?: (celda: CeldaRef) => string | null;
   irACelda: (celda: CeldaRef, indice: number) => void;
   onElegir: (indice: number) => void;
 }
@@ -51,13 +54,16 @@ interface TablaProps {
   motivos?: ReadonlyMap<number, string>;
   // La fila que entra en el orden de Tab (las demas se alcanzan con las flechas).
   paradaDeTab: number | null;
+  contextoDeCelda?: (celda: CeldaRef) => string | null;
 }
 
-function TablaHallazgos({ etiqueta, hallazgos, indices, seleccionado, alElegir, motivos, paradaDeTab }: TablaProps) {
+function TablaHallazgos({ etiqueta, hallazgos, indices, seleccionado, alElegir, motivos, paradaDeTab, contextoDeCelda }: TablaProps) {
   const filas = indices.map((indice) => {
     const h = hallazgos[indice];
     const estilo = estiloDeHallazgo(h);
     const motivo = motivos?.get(indice);
+    const celda = seleccionado === indice && contextoDeCelda ? parsearCelda(h.celda) : null;
+    const contexto = celda ? contextoDeCelda?.(celda) : null;
     return {
       id: String(indice),
       hallazgo: (
@@ -82,6 +88,7 @@ function TablaHallazgos({ etiqueta, hallazgos, indices, seleccionado, alElegir, 
             )}
           </div>
           <div className="hallazgo__descripcion cds--type-body-compact-01">{h.descripcion}</div>
+          {contexto && <div className="hallazgo__contexto cds--type-label-01">{contexto}</div>}
           {motivo && <div className="hallazgo__motivo cds--type-label-01">{motivo}</div>}
         </div>
       ),
@@ -148,6 +155,7 @@ export function ListaHallazgos({
   seleccionado,
   enfocar,
   hojas,
+  contextoDeCelda,
   filtroInicial,
   alFiltrar,
   irACelda,
@@ -291,6 +299,7 @@ export function ListaHallazgos({
               seleccionado={seleccionado}
               alElegir={elegir}
               paradaDeTab={paradaDeTab}
+              contextoDeCelda={contextoDeCelda}
             />
           </section>
         )}
@@ -309,6 +318,7 @@ export function ListaHallazgos({
                 alElegir={elegir}
                 motivos={motivos}
                 paradaDeTab={paradaDeTab}
+                contextoDeCelda={contextoDeCelda}
               />
             )}
           </section>
@@ -327,6 +337,7 @@ export function ListaHallazgos({
                 seleccionado={seleccionado}
                 alElegir={elegir}
                 paradaDeTab={paradaDeTab}
+                contextoDeCelda={contextoDeCelda}
               />
             )}
           </section>

@@ -33,3 +33,20 @@ export function columnaDeDescripcion(hoja: HojaVisualRespuesta, fila0: number, c
   }
   return mejor;
 }
+
+const LARGO_DEL_CONTEXTO = 70;
+
+// "Fila 5: Friso liso en paredes": de que fila habla un hallazgo, para decirlo en la lista aunque la hoja no deje ver
+// esa columna junto a la celda marcada. null si la fila no tiene texto a la izquierda de la celda.
+export function contextoDeFila(hoja: HojaVisualRespuesta, fila0: number, columnaDeLaCelda0: number): string | null {
+  const columna0 = columnaDeDescripcion(hoja, fila0, columnaDeLaCelda0);
+  if (columna0 === null) return null;
+  const celda = hoja.celdas.find((c) => {
+    const pos = parsearA1(c.ref);
+    return pos?.fila0 === fila0 && pos.columna0 === columna0;
+  });
+  if (!celda) return null;
+  const texto = celda.mostrado.trim().replace(/\s+/g, " ");
+  const corto = texto.length > LARGO_DEL_CONTEXTO ? `${texto.slice(0, LARGO_DEL_CONTEXTO - 1)}…` : texto;
+  return `Fila ${aFilaExcel(fila0)}: ${corto}`;
+}

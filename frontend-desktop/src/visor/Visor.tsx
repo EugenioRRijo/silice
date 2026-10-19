@@ -20,6 +20,7 @@ import { estiloDeSeveridad } from "../severidad/severidad";
 import { crearAlmacen } from "./almacen";
 import type { AlmacenDelVisor } from "./almacen";
 import { CapaHalos } from "./CapaHalos";
+import { contextoDeFila } from "./celdas";
 import { construirHalos, resumenPorHoja } from "./halos";
 import type { CeldaRef, CrearHojaVisor, HojaVisor } from "./hojaVisor";
 import { ListaHallazgos } from "./ListaHallazgos";
@@ -245,6 +246,13 @@ export function Visor({ crearHoja = crearHojaUniver, alExpirar, almacen, ranuraC
   }, [visor, halos]);
 
   const irACelda = (celda: CeldaRef) => visor?.irA(celda);
+  const contextoDeCelda = useCallback(
+    (celda: CeldaRef) => {
+      const hojaDelLibro = replica?.hojas.find((h) => h.nombre === celda.hoja);
+      return hojaDelLibro ? contextoDeFila(hojaDelLibro, celda.fila0, celda.columna0) : null;
+    },
+    [replica],
+  );
   const indiceDePestana = Math.max(
     0,
     hojasVisibles.findIndex((h) => h.nombre === hojaActiva),
@@ -396,6 +404,7 @@ export function Visor({ crearHoja = crearHojaUniver, alExpirar, almacen, ranuraC
               seleccionado={seleccionado}
               enfocar={enfocar}
               irACelda={irACelda}
+              contextoDeCelda={contextoDeCelda}
               onElegir={setSeleccionado}
             />
           </aside>
