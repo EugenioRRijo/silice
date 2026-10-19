@@ -1,0 +1,42 @@
+// Actualizar precios. Sin tarjetas con sombra ni animaciones (DESIGN.md).
+
+.silice-actualizacion {
+  display: grid;
+  gap: 1.5rem;
+  padding: 1.5rem 1rem 2rem;
+  max-inline-size: 72rem;
+  min-inline-size: 0;
+}
+
+.silice-actualizacion__formulario {
+  display: grid;
+  gap: 1rem;
+}
+
+.silice-actualizacion__campos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: 1rem;
+}
+
+.silice-actualizacion__acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.silice-actualizacion__resultado {
+  display: grid;
+  gap: 1rem;
+  min-inline-size: 0;
+}
+
+.silice-actualizacion__metrica {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.silice-actualizacion__nota {
+  color: var(--silice-texto-secundario);
+}
