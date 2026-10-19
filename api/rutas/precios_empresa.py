@@ -31,7 +31,6 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, s
 from pydantic import BaseModel
 from sqlalchemy.exc import SQLAlchemyError
 
-from adapters.hoja_empresa.guardia import MAX_BYTES
 from api.admin_acceso import administrar
 from api.archivos import guardar_subida
 from api.dependencias import SesionDep
@@ -45,15 +44,15 @@ MENSAJE_INVALIDO = "Los datos enviados no son válidos."
 MENSAJE_CASO = "No se pudo leer o escribir el caso abierto."
 MENSAJE_FALTA = "Elija la moneda de la lista y el archivo de precios: no tienen valor por defecto."
 MENSAJE_FORMATO = "No se creo la lista: el archivo debe ser CSV o XLSX."
-MENSAJE_TAMANO = "No se creo la lista: el archivo pesa mas del maximo permitido (25 MiB)."
+MENSAJE_TAMANO = "No se creo la lista: el archivo pesa mas del maximo permitido (20 MiB)."
 MENSAJE_REFERENCIA_ILEGIBLE = (
     "No se cargo la referencia: no se pudo leer el archivo de la referencia."
 )
 AVISO_DESCONOCIDOS = "Estos insumos no estan en el catalogo y no entraron a la lista (UC-17 4a):"
 NOTA_HALLAZGOS = "Sin version, el impacto es por unidad de insumo. Nada de esto se guarda."
 SUFIJOS = (".csv", ".xlsx")
-#: Lo mismo que la guardia de los libros (25 MiB): un CSV no necesita mas.
-TOPE_BYTES = MAX_BYTES
+#: El tope real del cuerpo de cualquier peticion (`LimiteDeCuerpo`, api/proteccion.py): 20 MiB.
+TOPE_BYTES = 20 * 2**20
 LARGO_MAXIMO_DEL_MOTIVO = 500
 
 #: Escribir es de una persona con rol: la clave de API recibe 403 (MEDIO-1).
