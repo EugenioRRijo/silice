@@ -188,8 +188,7 @@ export default function PaginaComponer() {
       <p className="silice-componer__nota cds--type-body-compact-01">
         Componga una partida a mano: declare su cabecera y sus tres tablas de insumos, vea el precio unitario
         desglosarse en vivo (sin necesidad de guardar) y guarde la composición. Si la partida ya existe, sus tablas se
-        precargan al teclear su código y guardar reemplaza su composición vigente (UC-11); si no existe, la crea
-        (UC-10).
+        precargan al teclear su código y guardar reemplaza su composición vigente; si no existe, la crea.
       </p>
       <AvisoError error={errorOpciones} titulo="No se pudieron cargar las opciones" />
 
@@ -259,7 +258,7 @@ export default function PaginaComponer() {
           <TextInput
             id="componer-rendimiento-valor"
             size="sm"
-            labelText="Rendimiento — unidades por día"
+            labelText="Rendimiento: unidades por día"
             value={cabecera.rendimiento}
             onChange={(e) => cambiarCabecera({ rendimiento: e.target.value })}
           />
@@ -273,7 +272,7 @@ export default function PaginaComponer() {
         <TextArea
           id="componer-condiciones"
           labelText="Condiciones del rendimiento"
-          helperText="Obligatorio (RF-33): el sistema no persiste una composición cuyo rendimiento no se declare junto con las condiciones en que se obtuvo."
+          helperText="Obligatorio: el sistema no persiste una composición cuyo rendimiento no se declare junto con las condiciones en que se obtuvo."
           rows={2}
           value={condiciones}
           onChange={(e) => {

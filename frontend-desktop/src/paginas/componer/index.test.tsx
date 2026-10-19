@@ -124,7 +124,7 @@ describe("Componer una partida", () => {
   test("trae las etiquetas de la página clásica y el aviso de formulario vacío", async () => {
     montar();
     expect(screen.getByRole("heading", { name: "Componer una partida" })).toBeInTheDocument();
-    expect(screen.getByLabelText("Rendimiento — unidades por día")).toBeInTheDocument();
+    expect(screen.getByLabelText("Rendimiento: unidades por día")).toBeInTheDocument();
     expect(screen.getByLabelText("Condiciones del rendimiento")).toBeInTheDocument();
     expect(screen.getByRole("columnheader", { name: "Consumo por unidad" })).toBeInTheDocument();
     expect(await screen.findByText(/Comience por la cabecera/, {}, ESPERA)).toBeInTheDocument();
@@ -145,7 +145,7 @@ describe("Componer una partida", () => {
     evaluacion = () => json(valida("29.70"));
     montar();
     await usuario.type(screen.getByLabelText("Código"), "FIC-1");
-    await usuario.type(screen.getByLabelText("Rendimiento — unidades por día"), "10");
+    await usuario.type(screen.getByLabelText("Rendimiento: unidades por día"), "10");
     await usuario.click(screen.getByRole("button", { name: "Agregar fila a Materiales" }));
     await usuario.type(screen.getByLabelText("Precio, fila 1"), "40.00");
     expect(await screen.findByText("29.70", {}, ESPERA)).toBeInTheDocument();
@@ -188,16 +188,16 @@ describe("Componer una partida", () => {
     montar();
     await usuario.type(screen.getByLabelText("Código"), "FIC-1");
     await waitFor(() => expect(screen.getAllByLabelText("Descripción, fila 1")[0]).toHaveValue("Arena ficticia"), ESPERA);
-    expect(screen.getByLabelText("Rendimiento — unidades por día")).toHaveValue("10.50");
+    expect(screen.getByLabelText("Rendimiento: unidades por día")).toHaveValue("10.50");
     expect(screen.getAllByLabelText(/^Descripción, fila 1$/)).toHaveLength(2); // materiales y mano de obra
     expect(de("/v1/composicion/partidas/")).toHaveLength(1);
 
-    await usuario.clear(screen.getByLabelText("Rendimiento — unidades por día"));
-    await usuario.type(screen.getByLabelText("Rendimiento — unidades por día"), "12");
+    await usuario.clear(screen.getByLabelText("Rendimiento: unidades por día"));
+    await usuario.type(screen.getByLabelText("Rendimiento: unidades por día"), "12");
     await usuario.type(screen.getAllByLabelText("Descripción, fila 1")[0], " nueva");
     await new Promise((r) => setTimeout(r, 450));
     expect(de("/v1/composicion/partidas/")).toHaveLength(1);
-    expect(screen.getByLabelText("Rendimiento — unidades por día")).toHaveValue("12");
+    expect(screen.getByLabelText("Rendimiento: unidades por día")).toHaveValue("12");
     expect(screen.getAllByLabelText("Descripción, fila 1")[0]).toHaveValue("Arena ficticia nueva");
   });
 
@@ -296,5 +296,13 @@ describe("Componer una partida", () => {
     await usuario.type(screen.getByLabelText("Descripción"), "muro");
     expect(await screen.findByText("0.91 · FIC-009 · Muro ficticio", {}, ESPERA)).toBeInTheDocument();
     expect(de("/v1/composicion/similares")[0].ruta).toBe("/v1/composicion/similares?dominio=civil&descripcion=muro");
+  });
+
+  test("el texto visible no usa jerga interna (UC-10, UC-11, RF-33) ni rayas", async () => {
+    montar();
+    await screen.findByRole("heading", { name: "Componer una partida" });
+    const texto = document.body.textContent ?? "";
+    expect(texto).not.toMatch(/UC-\d|RF-\d/);
+    expect(texto).not.toContain("—");
   });
 });

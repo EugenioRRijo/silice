@@ -27,7 +27,7 @@ describe("Guardar", () => {
   test("sin condiciones del rendimiento el botón está deshabilitado y dice por qué", () => {
     montar({ sinCondiciones: true });
     expect(screen.getByRole("button", { name: "Guardar composición" })).toBeDisabled();
-    expect(screen.getByText(/obligatorias para guardar \(RF-33\)/)).toBeInTheDocument();
+    expect(screen.getByText(/obligatorias para guardar/)).toBeInTheDocument();
   });
 
   test("con condiciones se puede guardar y entrega justificación nula", async () => {
@@ -47,7 +47,7 @@ describe("Guardar", () => {
   test("con advertencia de rendimiento aparece y viaja al guardar", async () => {
     const usuario = userEvent.setup();
     const props = montar({ requiereJustificacion: true });
-    await usuario.type(screen.getByLabelText("Justificación de la advertencia (UC-06, flujo 4a)"), "Cuadrilla reforzada.");
+    await usuario.type(screen.getByLabelText("Justificación de la advertencia"), "Cuadrilla reforzada.");
     await usuario.click(screen.getByRole("button", { name: "Guardar composición" }));
     expect(props.alGuardar).toHaveBeenCalledWith("Cuadrilla reforzada.");
   });

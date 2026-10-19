@@ -27,15 +27,15 @@ export function Guardar({ sinCondiciones, requiereJustificacion, guardando, resu
       {requiereJustificacion && (
         <TextInput
           id="componer-justificacion"
-          labelText="Justificación de la advertencia (UC-06, flujo 4a)"
-          helperText="Opcional: el motivo con el que acepta el rendimiento pese a la advertencia. Se guarda junto al rendimiento que registre este guardado; la advertencia no impide guardar (RF-27)."
+          labelText="Justificación de la advertencia"
+          helperText="Opcional: el motivo con el que acepta el rendimiento pese a la advertencia. Se guarda junto al rendimiento que registre este guardado; la advertencia no impide guardar."
           value={justificacion}
           onChange={(e) => setJustificacion(e.target.value)}
         />
       )}
       {sinCondiciones && (
         <p className="silice-componer__nota cds--type-body-compact-01">
-          Las condiciones del rendimiento son obligatorias para guardar (RF-33): el botón de guardar permanece
+          Las condiciones del rendimiento son obligatorias para guardar: el botón de guardar permanece
           deshabilitado hasta que se declaren.
         </p>
       )}
