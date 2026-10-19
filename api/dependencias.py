@@ -119,7 +119,11 @@ def sesion_instalacion_api() -> Iterator[Session]:
 
     Se abre la transacción con un `BEGIN` explícito: `pysqlite` no emite `BEGIN` antes de un
     `SAVEPOINT` (solo antes de un `INSERT`/`UPDATE`/`DELETE`) y, sin él, el `RELEASE` del primer
-    `begin_nested()` de un servicio confirmaría todo y el `rollback` posterior no deshace nada."""
+    `begin_nested()` de un servicio confirmaría todo y el `rollback` posterior no deshace nada.
+
+    Las rutas bajo esta dependencia no deben convertir una `HTTPException` en respuesta
+    (`RutaSinCache` la relanza): si lo hacen, la sesión ve una salida normal y confirma lo
+    escrito a medias."""
     try:
         motor_de_instalacion()  # la prepara y migra una vez por proceso; una base mala es un 503
     except ErrorDeBase as error:

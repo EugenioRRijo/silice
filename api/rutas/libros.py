@@ -43,7 +43,7 @@ la guardia (`ArchivoRechazado`, F-D10) o libro que no se puede interpretar (`Lib
 `LibroDemasiadoGrande`, que es un `ArchivoRechazado`); cualquier otro fallo al procesar 500 con un
 mensaje fijo y el detalle solo en el registro del servidor (`logging`), nunca en la respuesta. El
 tope del cuerpo y los hosts permitidos los pone `api.proteccion` para toda la aplicación; el acceso
-lo exige `api.main` con `exigir_clave_o_sesion(Accion.LEER_PROYECTO)` (RS2-5): con la cabecera
+lo exige `api.main` con `ACCESO_LIBROS` (clave o sesión, `LEER_PROYECTO`, RS2-5): con la cabecera
 `X-Silice-Clave`, como antes; sin ella, la cookie de sesión del navegador con CSRF y un rol que
 arma o revisa.
 
@@ -433,12 +433,14 @@ async def _procesar(entrada: _Entrada, contexto: ContextoPrecios) -> ResultadoFu
 
 # --- Historial (RM-6) ----------------------------------------------------------------------------
 
-#: Misma puerta que el router en `api.main` (clave de API o sesión que arma o revisa). Es otra
-#: instancia: se vuelve a evaluar, sin efectos, para saber QUIÉN audita.
-_ACCESO = exigir_clave_o_sesion(Accion.LEER_PROYECTO)
+#: La puerta de los libros: clave de API o sesión que arma o revisa. Una sola instancia, la usan
+#: el router en `api.main` y `_usuario`, así FastAPI la evalúa una vez por petición (no cachea
+#: instancias distintas). Validarla tiene efectos menores: renueva `ultima_actividad` de la sesión
+#: o `ultimo_uso` de la clave.
+ACCESO_LIBROS = exigir_clave_o_sesion(Accion.LEER_PROYECTO)
 
 
-def _usuario(activa: Annotated[SesionActiva | None, Depends(_ACCESO)]) -> str:
+def _usuario(activa: Annotated[SesionActiva | None, Depends(ACCESO_LIBROS)]) -> str:
     """Quién audita: la cuenta de la sesión web, o `USUARIO_API` si entró con clave."""
     return USUARIO_API if activa is None else activa.usuario
 

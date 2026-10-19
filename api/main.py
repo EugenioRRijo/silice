@@ -67,7 +67,7 @@ app.include_router(presupuestos.router)
 app.include_router(rendimientos.router)
 app.include_router(auditorias.router)  # S3 §10: POST /v1/auditorias
 # 1.5: /v1/libros (auditoria, devolucion y pdf); 1.2.0: replica, y clave o sesión (RS2-5)
-app.include_router(libros.router, dependencies=[Depends(exigir_clave_o_sesion(LEER_PROYECTO))])
+app.include_router(libros.router, dependencies=[Depends(libros.ACCESO_LIBROS)])
 # Migracion: el simulador de listas (no escribe en la base); clave o sesion con EDITAR_HOJA
 app.include_router(
     simulador.router, dependencies=[Depends(exigir_clave_o_sesion(Accion.EDITAR_HOJA))]
