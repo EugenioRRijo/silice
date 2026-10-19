@@ -29,10 +29,12 @@ administrador activo.»), 409 si la sesión no tiene cuenta, 503 si la base no a
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from typing import Annotated
+import threading
+from collections.abc import Callable, Coroutine
+from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -66,8 +68,35 @@ ERRORES_ESPERADOS = (
 )
 
 
-def _sin_cache(response: Response) -> None:
-    response.headers["Cache-Control"] = "no-store"
+class _RutaCuentas(_RutaSinEco):
+    """`_RutaSinEco` (el 422 sin eco) y, además, `Cache-Control: no-store` en TODA respuesta de
+    estas rutas, también en las de error (401, 403, 404, 409, 422, 503): el `HTTPException` se
+    vuelve la misma respuesta `{"detalle": ...}` de la aplicación, con la cabecera."""
+
+    def get_route_handler(self) -> Callable[[Request], Coroutine[Any, Any, Response]]:
+        original = super().get_route_handler()
+
+        async def manejador(request: Request) -> Response:
+            try:
+                respuesta = await original(request)
+            except HTTPException as error:
+                respuesta = JSONResponse(
+                    status_code=error.status_code,
+                    content={"detalle": error.detail},
+                    headers=error.headers,
+                )
+            respuesta.headers["Cache-Control"] = "no-store"
+            return respuesta
+
+        return manejador
+
+
+# Las mutaciones se serializan: `seguridad.cuentas` comprueba «queda otro administrador» y escribe
+# en dos pasos que no son atómicos, así que dos administradores que se desactivan a la vez podrían
+# dejar cero. El defecto de raíz está en `seguridad/cuentas.py` (se reporta aparte); este candado
+# cubre lo que pasa por la API en un solo proceso. Se libera siempre (`with`), también ante
+# excepciones.
+_CANDADO = threading.Lock()
 
 
 def _administrador(
@@ -80,7 +109,7 @@ def _administrador(
 
 Administrador = Annotated[SesionActiva, Depends(_administrador)]
 
-router = APIRouter(tags=["cuentas"], route_class=_RutaSinEco, dependencies=[Depends(_sin_cache)])
+router = APIRouter(tags=["cuentas"], route_class=_RutaCuentas)
 
 
 class CuentaRespuesta(BaseModel):
@@ -162,12 +191,14 @@ def _actuar(
     """Corre `accion(bd, actor)` como la sesión del administrador. El mensaje de un error esperado
     sale tal cual (sin traza); la cuenta resultante se lee de la base (nunca de la petición)."""
     try:
-        with sesion_de_instalacion() as bd:
+        with _CANDADO, sesion_de_instalacion() as bd:
             actor = bd.get(Usuario, activa.usuario_id)
             if actor is None:
                 raise HTTPException(status_code=409, detail=MENSAJE_SIN_CUENTA)
             try:
                 resultado = accion(bd, actor)
+            except ErrorDeBase:
+                raise  # hereda de ValueError: va antes que los errores esperados (503, no 422)
             except ERRORES_ESPERADOS as error:
                 raise HTTPException(status_code=_estado(error), detail=str(error)) from None
             destino = resultado
