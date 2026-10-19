@@ -48,11 +48,6 @@ describe("registro de paginas", () => {
       "similares",
       "simulador",
     ]);
-      "libros",
-      "escenarios",
-      "similares",
-      "simulador",
-    ]);
     const libro = paginaPorId("libros");
     expect(libro?.titulo).toBe("Libro de la empresa");
     expect(typeof libro?.cargar).toBe("function");

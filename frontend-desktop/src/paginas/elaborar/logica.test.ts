@@ -69,10 +69,10 @@ describe("logica de Elaborar", () => {
       },
     };
     expect(textoPropuestaRendimiento(entrada)).toBe(
-      "rendimiento propuesto 8.123456 unidades por dia (estimado del 2026-01-02)",
+      "rendimiento propuesto 8.123456 unidades por día (estimado del 2026-01-02)",
     );
     expect(textoDispersion(entrada)).toBe(
-      "Dispersion del historico: 3 observaciones (1 medidas, 2 estimadas), media 8.10, rango [7.50, 9.00].",
+      "Dispersión del histórico: 3 observaciones (1 medidas, 2 estimadas), media 8.10, rango [7.50, 9.00].",
     );
   });
 });

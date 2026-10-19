@@ -67,3 +67,19 @@
 .silice-escenarios__resultados .silice-tabla {
   overflow-x: auto;
 }
+
+// La tabla del detalle usa todo el ancho del acordeon (Carbon reserva el 25 % a la derecha del contenido).
+.silice-escenarios .cds--accordion__content {
+  padding-inline: 1rem;
+  inline-size: 100%;
+  box-sizing: border-box;
+}
+
+.silice-escenarios__detalle,
+.silice-escenarios__detalle .silice-tabla {
+  inline-size: 100%;
+}
+
+.silice-escenarios__cabecera {
+  color: var(--silice-texto-secundario);
+}

@@ -52,6 +52,10 @@ const REVALORACION: Revaloracion = {
   codigo_nuevo: "002",
   moneda: "USD",
   resumen: "1000.00 -> 1100.00 USD  (variacion 100.00 USD, 10.00 %)",
+  total_anterior: "1000.00",
+  total_nuevo: "1100.00",
+  variacion: "100.00",
+  variacion_pct: "10.00",
   filas: [
     {
       codigo_partida: "FIC-01",
@@ -166,7 +170,7 @@ describe("Actualizar precios", () => {
   test("sin presupuestos guardados muestra el estado vacio", async () => {
     presupuestos = () => json([]);
     montar();
-    expect(await screen.findByText("No hay presupuestos guardados todavia")).toBeInTheDocument();
+    expect(await screen.findByText("No hay presupuestos guardados todavía")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Revalorar presupuesto" })).toBeNull();
   });
 
@@ -175,7 +179,7 @@ describe("Actualizar precios", () => {
     await subir();
     expect(
       await screen.findByText(
-        /El archivo trae 2 insumo\(s\) que no estan en el catalogo \(UC-02, flujo 2a\): Tornillo ficticio \(material, u\), Arandela ficticia \(material, u\)\. Elija en "Dar de alta"/,
+        /El archivo trae 2 insumo\(s\) que no están en el catálogo: Tornillo ficticio \(material, u\), Arandela ficticia \(material, u\)\. Elija en "Dar de alta"/,
       ),
     ).toBeInTheDocument();
     const [ruta, opciones] = llamada("vista-previa")!;
@@ -259,6 +263,7 @@ describe("Actualizar precios", () => {
     });
     await usuario.click(screen.getByRole("button", { name: "Revalorar presupuesto" }));
     expect(await screen.findByText("Revalorando...")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Revalorar presupuesto" })).toBeDisabled();
     soltar(json(REVALORACION));
     expect(await screen.findByText("Comparativo por partida")).toBeInTheDocument();
   });
@@ -276,13 +281,13 @@ describe("Actualizar precios", () => {
     expect(within(tabla).getAllByRole("columnheader")).toHaveLength(9);
     expect(within(tabla).getByText("1100.00")).toBeInTheDocument();
     expect(
-      screen.getByText("Se dieron de alta en el catalogo, con precio solo en la lista nueva (UC-02, flujo 2a): Tornillo ficticio"),
+      screen.getByText("Se dieron de alta en el catálogo, con precio solo en la lista nueva: Tornillo ficticio"),
     ).toBeInTheDocument();
     expect(screen.getByText(/Se ignoraron los insumos del archivo.*: Arandela ficticia/)).toBeInTheDocument();
     expect(
-      screen.getByText(/Se rechazaron las filas cuyo insumo esta en el catalogo con otra unidad \(UC-02, flujo 2b.*: Clavo ficticio \(material, kg\)/),
+      screen.getByText(/Se rechazaron las filas cuyo insumo está en el catálogo con otra unidad.*: Clavo ficticio \(material, kg\)/),
     ).toBeInTheDocument();
-    expect(screen.getByText("Informe de auditoria de la version nueva")).toBeInTheDocument();
+    expect(screen.getByText("Informe de auditoría de la versión nueva")).toBeInTheDocument();
     expect(screen.getByText("Se verificaron las reglas y no hubo hallazgos.")).toBeInTheDocument();
   });
 
@@ -305,21 +310,51 @@ describe("Actualizar precios", () => {
     await usuario.click(screen.getByRole("button", { name: "Revalorar presupuesto" }));
     await screen.findByText("Comparativo por partida");
     expect(screen.queryByRole("button", { name: "Exportar a Excel" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "Descartar version" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Descartar versión" })).toBeNull();
   });
 
   test("descartar reemplaza el boton por el aviso", async () => {
     montar();
     const { usuario } = await subir();
     await usuario.click(screen.getByRole("button", { name: "Revalorar presupuesto" }));
-    await usuario.click(await screen.findByRole("button", { name: "Descartar version" }));
+    await usuario.click(await screen.findByRole("button", { name: "Descartar versión" }));
+    await usuario.click(screen.getByRole("button", { name: "Confirmar descarte" }));
     expect(
-      await screen.findByText("Version 002 descartada: sigue guardada como documento y su historial de cambios se conserva (UC-02, flujo 7a)."),
+      await screen.findByText("Versión 002 descartada: sigue guardada como documento y su historial de cambios se conserva."),
     ).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Descartar version" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Descartar versión" })).toBeNull();
     const [ruta, opciones] = llamada("/descartar")!;
     expect(ruta).toBe("/presupuestos/002/descartar?proyecto=Obra%20ficticia%20A");
     expect(opciones?.method).toBe("POST");
+  });
+
+  test("descartar pide confirmacion en linea y Cancelar no llama a la API", async () => {
+    montar();
+    const { usuario } = await subir();
+    await usuario.click(screen.getByRole("button", { name: "Revalorar presupuesto" }));
+    await usuario.click(await screen.findByRole("button", { name: "Descartar versión" }));
+    expect(screen.getByText("¿Descartar la versión 002? La versión sigue guardada y su historial se conserva.")).toBeInTheDocument();
+    expect(llamada("/descartar")).toBeUndefined();
+    await usuario.click(screen.getByRole("button", { name: "Cancelar" }));
+    expect(screen.queryByRole("button", { name: "Confirmar descarte" })).toBeNull();
+    expect(llamada("/descartar")).toBeUndefined();
+    expect(screen.getByRole("button", { name: "Descartar versión" })).toBeEnabled();
+  });
+
+  test("el total se muestra en cuatro datos con la variacion y el foco va al titulo del resultado", async () => {
+    montar();
+    const { usuario } = await subir();
+    await usuario.click(screen.getByRole("button", { name: "Revalorar presupuesto" }));
+    const titulo = await screen.findByRole("heading", { name: "Comparativo por partida" });
+    await waitFor(() => expect(titulo).toHaveFocus());
+    const total = screen.getByRole("region", { name: "Total del presupuesto" });
+    for (const rotulo of ["Anterior", "Nuevo", "Variación", "Variación %"]) {
+      expect(within(total).getByText(rotulo)).toBeInTheDocument();
+    }
+    expect(within(total).getByText("1000.00")).toBeInTheDocument();
+    expect(within(total).getByText("1100.00")).toBeInTheDocument();
+    expect(within(total).getByText("100.00")).toBeInTheDocument();
+    expect(within(total).getAllByText(/desfavorable/).length).toBeGreaterThan(0);
   });
 
   test("un error al descartar se muestra y el boton sigue", async () => {
@@ -327,19 +362,21 @@ describe("Actualizar precios", () => {
     montar();
     const { usuario } = await subir();
     await usuario.click(screen.getByRole("button", { name: "Revalorar presupuesto" }));
-    await usuario.click(await screen.findByRole("button", { name: "Descartar version" }));
+    await usuario.click(await screen.findByRole("button", { name: "Descartar versión" }));
+    await usuario.click(screen.getByRole("button", { name: "Confirmar descarte" }));
     expect(await screen.findByText("La version ya no existe.")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Descartar version" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Descartar versión" })).toBeInTheDocument();
   });
 
   test("una revaloracion nueva olvida el descarte anterior", async () => {
     montar();
     const { usuario } = await subir();
     await usuario.click(screen.getByRole("button", { name: "Revalorar presupuesto" }));
-    await usuario.click(await screen.findByRole("button", { name: "Descartar version" }));
+    await usuario.click(await screen.findByRole("button", { name: "Descartar versión" }));
+    await usuario.click(screen.getByRole("button", { name: "Confirmar descarte" }));
     await screen.findByText(/descartada/);
     await usuario.click(screen.getByRole("button", { name: "Revalorar presupuesto" }));
-    expect(await screen.findByRole("button", { name: "Descartar version" })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Descartar versión" })).toBeInTheDocument();
     expect(screen.queryByText(/descartada/)).toBeNull();
   });
 
