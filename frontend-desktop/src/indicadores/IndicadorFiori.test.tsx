@@ -25,6 +25,15 @@ describe("IndicadorFiori", () => {
     expect(screen.getByText(/-61,59/)).toBeInTheDocument();
   });
 
+  test("el rotulo de la meta es «Meta» por omision y se puede cambiar con rotuloMeta (V-15)", () => {
+    const { rerender } = render(<IndicadorFiori indicador={indicador()} />);
+    expect(screen.getByText(/^Meta/)).toBeInTheDocument();
+    rerender(<IndicadorFiori indicador={indicador()} rotuloMeta="Según Sílice" />);
+    expect(screen.queryByText(/^Meta/)).toBeNull();
+    expect(screen.getByText(/^Según Sílice/)).toBeInTheDocument();
+    expect(screen.getByText("1.500,00")).toBeInTheDocument();
+  });
+
   test("el exacto del libro y de Silice, en es-VE y sin redondear, es la descripcion accesible del valor", () => {
     render(
       <IndicadorFiori

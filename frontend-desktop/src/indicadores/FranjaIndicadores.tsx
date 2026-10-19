@@ -6,12 +6,13 @@ interface Props {
   // El exacto de cada total, por la misma clave que el indicador (SUBSINIVA, IVATOT, TOTALGEN).
   totalesLibro?: Record<string, string>;
   totalesSilice?: Record<string, string>;
+  rotuloMeta?: string;
 }
 
 // Franja de 64 px bajo la cabecera: indicadores separados por divisores de 1 px. Nunca crece mas de su alto: los
 // textos se recortan con elipsis (el valor completo queda en el tooltip y en el texto accesible). Los conteos por
 // severidad no estan aqui: salen una sola vez, en los filtros de la lista de hallazgos.
-export function FranjaIndicadores({ indicadores, totalesLibro, totalesSilice }: Props) {
+export function FranjaIndicadores({ indicadores, totalesLibro, totalesSilice, rotuloMeta }: Props) {
   return (
     <section className="franja-indicadores" aria-label="Indicadores del libro">
       <div className="franja-indicadores__lista">
@@ -21,6 +22,7 @@ export function FranjaIndicadores({ indicadores, totalesLibro, totalesSilice }: 
             indicador={i}
             exactoLibro={totalesLibro?.[i.clave]}
             exactoSilice={totalesSilice?.[i.clave]}
+            rotuloMeta={rotuloMeta}
           />
         ))}
       </div>

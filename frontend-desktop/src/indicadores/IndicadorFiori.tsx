@@ -9,6 +9,8 @@ interface Props {
   // El valor exacto del total (de totales_libro / totales_silice): la API manda los montos en centesimas.
   exactoLibro?: string;
   exactoSilice?: string;
+  // Rotulo de la referencia: «Meta» para el Tablero; el Libro la rotula «Según Sílice» (V-15).
+  rotuloMeta?: string;
 }
 
 // Proporciones solo para dibujar la barra (no es dinero): real y meta contra el mayor de los dos. Sin barra si la
@@ -27,7 +29,7 @@ function proporciones(actual: string, meta: string): { real: number; meta: numbe
 // Patron SAP Fiori: valor actual, meta y desviacion. Los montos se presentan en es-VE (4.358,21) sobre el
 // texto decimal de la API, sin pasar por numero. El exacto de los dos totales (tambien en es-VE, sin redondear) va
 // en un Tooltip de Carbon que se abre con el foco del teclado y con el raton, y es la descripcion accesible.
-export function IndicadorFiori({ indicador, exactoLibro, exactoSilice }: Props) {
+export function IndicadorFiori({ indicador, exactoLibro, exactoSilice, rotuloMeta = "Meta" }: Props) {
   const { titulo, actual, meta, delta, delta_pct: deltaPct, sentido } = indicador;
   const semantica = semanticaIbcs(delta, sentido);
   const barra = proporciones(actual, meta);
@@ -38,7 +40,7 @@ export function IndicadorFiori({ indicador, exactoLibro, exactoSilice }: Props) 
     <div className="fiori-kpi" role="group" aria-label={titulo}>
       <span className="fiori-kpi__titulo cds--type-label-01">{titulo}</span>
       <span className="fiori-kpi__meta cds--type-label-01 silice-cifra">
-        Meta <span>{formatoEsVe(meta)}</span>
+        {rotuloMeta} <span>{formatoEsVe(meta)}</span>
       </span>
       {hayExacto ? (
         <Tooltip

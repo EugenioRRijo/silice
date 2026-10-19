@@ -148,6 +148,9 @@ describe("Visor", () => {
     await soltar(usuario);
     const franja = await screen.findByRole("region", { name: "Indicadores del libro" });
     expect(within(franja).getByText("1.738,407")).toBeInTheDocument();
+    // V-15: en el Libro la referencia es el total de Silice, no una «Meta».
+    expect(within(franja).queryByText(/^Meta/)).toBeNull();
+    expect(within(franja).getAllByText(/^Según Sílice/).length).toBeGreaterThan(0);
     // Los conteos por severidad salen una sola vez: en los filtros de la lista, no en la franja (M3).
     expect(within(franja).queryByRole("group", { name: "Hallazgos por severidad" })).toBeNull();
     const filtros = screen.getByRole("group", { name: "Filtrar por severidad" });
