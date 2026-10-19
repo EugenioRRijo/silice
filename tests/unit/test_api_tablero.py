@@ -36,7 +36,7 @@ from tests.fixtures.sesion_web import (
     plantilla_con_cuentas,
 )
 
-SIN_LINEA_BASE = "Sin linea base de control: declarela en Control de obra."
+SIN_LINEA_BASE = "Sin línea base de control: declárela en Control de obra."
 
 
 def _base(ruta: Path, *, con_control: bool, con_version: bool = True) -> Path:
@@ -144,7 +144,7 @@ def test_el_encabezado_y_las_tarjetas_del_presupuesto() -> None:
         "Total del contrato",
         "Costo directo",
         "Punto de equilibrio",
-        "Auditoria",
+        "Auditoría",
     ]
     assert tarjetas["Total del contrato"]["valor"] == "5060.00 USD"
     assert tarjetas["Costo directo"]["valor"] == "4000.00 USD"
@@ -165,7 +165,7 @@ def test_el_control_trae_los_tres_anillos_y_las_tarjetas_del_corte() -> None:
     assert (anillos["CPI (costo)"]["texto"], anillos["CPI (costo)"]["favorable"]) == ("0.94", False)
     assert float(anillos["CPI (costo)"]["fraccion"]) == pytest.approx(0.9375)
     tarjetas = {t["rotulo"]: t["valor"] for t in control["tarjetas"]}
-    assert tarjetas["Avance fisico (EV/BAC)"] == "30.0 %"
+    assert tarjetas["Avance físico (EV/BAC)"] == "30.0 %"
     assert tarjetas["EAC (costo final estimado)"] == "4266.67 USD"
 
 
@@ -189,7 +189,7 @@ def test_el_desglose_suma_el_total_del_contrato() -> None:
         "Materiales": "1800.00 USD",
         "Equipos": "210.00 USD",
         "Mano de obra": "1990.00 USD",
-        "Administracion": "600.00 USD",
+        "Administración": "600.00 USD",
         "Utilidad": "460.00 USD",
     }
     assert sum(float(f["valor"]) for f in desglose) == pytest.approx(5060.0, abs=0.005)

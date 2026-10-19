@@ -111,9 +111,9 @@ def leer_tablero(sesion: Session, catalogo: Catalogo, proyecto: str) -> DatosTab
 def leer_control(sesion: Session, catalogo: Catalogo, proyecto: str) -> DatosControl:
     """El control al corte por defecto (la ultima valuacion), sin escribir."""
     if not control.tiene_linea_base(sesion, proyecto):
-        return DatosControl(None, [], "Sin linea base de control: declarela en Control de obra.")
+        return DatosControl(None, [], "Sin línea base de control: declárela en Control de obra.")
     if not control.hay_valuaciones(sesion, proyecto):
-        return DatosControl(None, [], "La linea base esta declarada; falta la primera valuacion.")
+        return DatosControl(None, [], "La línea base está declarada; falta la primera valuación.")
     try:
         resultado = control.calcular_el_control(
             sesion, proyecto, catalogo, corte=control.corte_por_defecto(sesion, proyecto)
@@ -184,7 +184,7 @@ def tarjetas_del_presupuesto(datos: DatosTablero) -> list[Tarjeta]:
             pe.mensaje,
         ),
         Tarjeta(
-            "Auditoria",
+            "Auditoría",
             "CUMPLE" if informe.cumple else "NO CUMPLE",
             detalle or "sin hallazgos",
         ),
@@ -205,7 +205,7 @@ def tarjetas_de_control(datos: DatosControl, moneda: str) -> list[Tarjeta]:
         return []
     motivo = ind.no_disponible
     return [
-        Tarjeta("Avance fisico (EV/BAC)", porcentaje(avance_fisico(ind))),
+        Tarjeta("Avance físico (EV/BAC)", porcentaje(avance_fisico(ind))),
         Tarjeta("SPI (plazo)", indice(ind.spi), motivo.get("SPI", "")),
         Tarjeta("CPI (costo)", indice(ind.cpi), motivo.get("CPI") or motivo.get("AC", "")),
         Tarjeta(
@@ -231,14 +231,14 @@ def filas_de_desglose(presupuesto: Presupuesto) -> list[dict[str, object]]:
     Lista vacia si el total es cero.
     """
     montos = dict.fromkeys(
-        ("Materiales", "Equipos", "Mano de obra", "Administracion", "Utilidad"), CERO
+        ("Materiales", "Equipos", "Mano de obra", "Administración", "Utilidad"), CERO
     )
     for partida in presupuesto.partidas:
         q, r = partida.item.cantidad, partida.resultado
         montos["Materiales"] += q * r.materiales
         montos["Equipos"] += q * r.equipos
         montos["Mano de obra"] += q * r.mano_obra
-        montos["Administracion"] += q * (r.con_administracion - r.costo_directo)
+        montos["Administración"] += q * (r.con_administracion - r.costo_directo)
         montos["Utilidad"] += q * (r.precio_unitario - r.con_administracion)
     total = presupuesto.total
     if total == CERO:
@@ -285,7 +285,7 @@ def filas_pareto(presupuesto: Presupuesto, n: int = PARTIDAS_EN_PARETO) -> list[
         filas.append(
             {
                 "Partida": f"Resto ({len(orden) - n})",
-                "Descripcion": "las demas partidas",
+                "Descripcion": "las demás partidas",
                 "Total": dinero(resto, presupuesto.moneda),
                 "Peso": porcentaje(resto / total),
                 "Acumulado": porcentaje(Decimal(1)),

@@ -90,7 +90,7 @@ def test_la_paleta_es_hexadecimal_y_cubre_los_rubros_y_las_series_del_tablero():
         "Materiales",
         "Equipos",
         "Mano de obra",
-        "Administracion",
+        "Administración",
         "Utilidad",
     ]
     assert list(estilo.COLORES_SERIE) == ["Plan", "PV", "EV", "AC"]

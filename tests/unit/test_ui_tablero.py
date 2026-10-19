@@ -51,8 +51,8 @@ from ui.texto_seguro import texto_seguro
 D = Decimal
 CELDA = 0.005  # tolerancia por monto presentado (los gráficos reciben `float`)
 SCRIPT = "from ui.paginas.tablero import render\n\nrender()\n"
-SIN_LINEA_BASE = "Sin linea base de control: declarela en Control de obra."
-SIN_VALUACION = "La linea base esta declarada; falta la primera valuacion."
+SIN_LINEA_BASE = "Sin línea base de control: declárela en Control de obra."
+SIN_VALUACION = "La línea base está declarada; falta la primera valuación."
 
 
 # --- utilidades --------------------------------------------------------------------------------
@@ -96,7 +96,7 @@ def test_el_desglose_de_ob_s2_es_el_de_la_memoria_y_suma_el_total():
         ("Materiales", "1800.00 USD", "35.6 %"),  # 200 × 3 + 100 × 12
         ("Equipos", "210.00 USD", "4.2 %"),  # 100 × 1,20 + 200 × 0,15 + 100 × 0,60
         ("Mano de obra", "1990.00 USD", "39.3 %"),  # 100 × 8,80 + 200 × 1,85 + 100 × 7,40
-        ("Administracion", "600.00 USD", "11.9 %"),  # 4 000 × 0,15
+        ("Administración", "600.00 USD", "11.9 %"),  # 4 000 × 0,15
         ("Utilidad", "460.00 USD", "9.1 %"),  # 4 600 × 0,10
     ]
     assert abs(sum(f["monto"] for f in filas) - 5060.0) <= CELDA
@@ -131,7 +131,7 @@ def test_el_pareto_con_resto_suma_el_total_y_cierra_en_cien():
         ("OB-A", "1265.00 USD", "25.0 %", "75.0 %"),
         ("Resto (1)", "1265.00 USD", "25.0 %", "100.0 %"),
     ]
-    assert filas[-1]["Descripcion"] == "las demas partidas"
+    assert filas[-1]["Descripcion"] == "las demás partidas"
     assert abs(sum(f["monto"] for f in filas) - 5060.0) <= CELDA
 
 
@@ -197,7 +197,7 @@ def test_sin_indicadores_no_hay_tarjetas_de_control():
 def test_las_tarjetas_de_control_de_ob_s2_al_corte():
     tarjetas = _tarjetas(_indicadores())
     assert [(t.rotulo, t.valor, t.detalle) for t in tarjetas.values()] == [
-        ("Avance fisico (EV/BAC)", "30.0 %", ""),  # 1 200 / 4 000
+        ("Avance físico (EV/BAC)", "30.0 %", ""),  # 1 200 / 4 000
         ("SPI (plazo)", "0.80", ""),
         ("CPI (costo)", "0.94", ""),  # 0,9375 sube a 0,94
         ("EAC (costo final estimado)", "4266.67 USD", ""),  # 4 000 / 0,9375
@@ -258,7 +258,7 @@ def test_sin_pv_el_spi_dice_su_motivo_y_el_avance_con_bac_cero_no_esta():
     )
     assert tablero.avance_fisico(_indicadores(bac=D(0))) is None
     assert tablero.avance_fisico(None) is None
-    assert _tarjetas(_indicadores(bac=D(0)))["Avance fisico (EV/BAC)"].valor == "no disponible"
+    assert _tarjetas(_indicadores(bac=D(0)))["Avance físico (EV/BAC)"].valor == "no disponible"
 
 
 # --- lectura desde la base ---------------------------------------------------------------------
@@ -279,7 +279,7 @@ def test_el_tablero_sin_linea_base_trae_el_presupuesto_y_dice_por_que_no_hay_con
     assert tarjetas["Costo directo"].valor == "4000.00 USD"
     assert tarjetas["Punto de equilibrio"].valor == "56.60 %"  # 2 864,15 / 5 060 (memoria §1)
     # El informe de OB-S2 trae R1 en ADVERTENCIA por partida (rendimientos supuestos): cumple.
-    auditoria = tarjetas["Auditoria"]
+    auditoria = tarjetas["Auditoría"]
     assert (auditoria.valor, auditoria.detalle) == ("CUMPLE", "3 advertencia")
 
 
@@ -443,7 +443,7 @@ def test_sin_control_pinta_el_presupuesto_el_plan_y_el_motivo(monkeypatch, tmp_p
         "Total del contrato": "5060.00 USD",
         "Costo directo": "4000.00 USD",
         "Punto de equilibrio": "56.60 %",
-        "Auditoria": "CUMPLE",
+        "Auditoría": "CUMPLE",
     }
     assert texto_seguro(SIN_LINEA_BASE) in [i.value for i in at.info]
     rotulos = [m.value for m in at.markdown]
@@ -467,7 +467,7 @@ def test_con_control_pinta_anillos_tarjetas_y_la_curva_pv_ev_ac(monkeypatch, tmp
     ruta = _caso(tmp_path, linea_base=True, valuaciones=True, monkeypatch=monkeypatch)
     at = _pantalla(monkeypatch, ruta)
     metricas = _metricas(at)
-    assert metricas["Avance fisico (EV/BAC)"] == "30.0 %"
+    assert metricas["Avance físico (EV/BAC)"] == "30.0 %"
     assert metricas["SPI (plazo)"] == "0.80"
     assert metricas["CPI (costo)"] == "0.94"
     assert metricas["EAC (costo final estimado)"] == "4266.67 USD"

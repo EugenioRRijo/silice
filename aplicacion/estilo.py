@@ -22,7 +22,7 @@ COLORES_RUBRO: dict[str, str] = {
     "Materiales": "#1F4E79",
     "Equipos": "#5B8DB8",
     "Mano de obra": "#D9A441",
-    "Administracion": "#7A7F87",
+    "Administración": "#7A7F87",
     "Utilidad": "#2E7D5B",
 }
 COLORES_SERIE: dict[str, str] = {
