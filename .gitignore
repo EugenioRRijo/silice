@@ -34,3 +34,25 @@ Thumbs.db
 
 # Salida de la prueba descartable del editor de tablas (SF0)
 scripts/_salida_prueba_editor.log
+
+# Paquetes portables de distribucion
+dist_portable/
+
+
+# Presupuestos reales de clientes: confidenciales, nunca al repositorio (Silice 1.5, V-D3, 2026-10-13)
+docs/auditoria/*.xlsx
+docs/auditoria/*.xlsm
+docs/auditoria/*.xls
+docs/auditoria/*.pdf
+data/confidencial/
+
+# Locales: artefactos de compilacion, registros y documentos personales o de terceros (decision 2026-10-19)
+demo_dist/
+junit_*.xml
+suite_final.txt
+npm_ci_*.log
+COMPARTIR_ONLINE.bat
+docs/Carta de aceptacion*.docx
+docs/Informe - *.docx
+docs/tesis/anteproyecto/
+MANUAL de la USM*.pdf
