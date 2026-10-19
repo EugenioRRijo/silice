@@ -15,7 +15,6 @@ exportación a Excel: esta capa no inventa su propio redondeo.
 
 from __future__ import annotations
 
-import importlib.util
 import os
 import tempfile
 from collections.abc import Mapping, Sequence
@@ -26,7 +25,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, Response
 from sqlalchemy import select
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 from starlette.background import BackgroundTask
 
@@ -58,6 +57,8 @@ from api.esquemas import (
 )
 from api.esquemas_informe import informe_a_respuesta
 from api.esquemas_ola2 import (
+    MAX_ESCENARIOS,
+    MAX_PRECIOS_POR_ESCENARIO,
     AvisoRespuesta,
     CalculoPeticion,
     CalculoRespuesta,
@@ -69,6 +70,7 @@ from api.esquemas_ola2 import (
     PendienteConPropuestasRespuesta,
     PresupuestoConProyectoRespuesta,
     RevaloracionRespuesta,
+    exigir_codigo,
 )
 from api.rutas.listas import _elegidos, comprobar_libro_legible
 from api.rutas.rendimientos import propuesta_respuesta
@@ -426,6 +428,7 @@ def revalorar_presupuesto(
     dice en `avisos` con `version_guardada: null`. Un código nuevo repetido es 409. La versión
     guardada se puede descartar con `POST /presupuestos/{codigo}/descartar` (flujo 7a).
     """
+    exigir_codigo(codigo_nuevo, "codigo_nuevo")
     with tempfile.TemporaryDirectory() as directorio:
         ruta = guardar_subida(directorio, archivo)
         comprobar_libro_legible(ruta)
@@ -448,8 +451,15 @@ def revalorar_presupuesto(
             )
         except SQLAlchemyError as error:
             sesion.rollback()
+            # El texto del error de base nombra tablas y columnas: no sale por la API.
             raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT, detail=str(getattr(error, "orig", error))
+                status_code=status.HTTP_409_CONFLICT,
+                detail=(
+                    "No se pudo guardar la version nueva: ya existe una version con ese codigo en "
+                    "el proyecto o una lista de precios con ese nombre."
+                    if isinstance(error, IntegrityError)
+                    else "No se pudo guardar la version nueva por un conflicto en la base de datos."
+                ),
             ) from error
     comparativo = resultado.comparativo
     return RevaloracionRespuesta(
@@ -528,23 +538,7 @@ def calcular_presupuesto(
         partidas=_partidas_respuesta(presupuesto),
         por_severidad=informe_a_respuesta(resultado.informe).por_severidad,
         informe=informe_a_respuesta(resultado.informe),
-        pendientes=[
-            PendienteConPropuestasRespuesta(
-                **_campos_pendiente(entrada.item),
-                propuestas=[
-                    PropuestaPartidaRespuesta(
-                        codigo=similar.codigo,
-                        descripcion=similar.descripcion,
-                        puntaje=similar.puntaje,
-                    )
-                    for similar in entrada.similares
-                ],
-                falla=entrada.falla,
-            )
-            for entrada in aplicacion_elaboracion.propuestas_de_pendientes(
-                descripciones, resultado.pendientes
-            )
-        ],
+        pendientes=_pendientes_con_propuestas(descripciones, resultado.pendientes),
         plan_por_defecto=[
             FilaPlan(**fila)
             for fila in aplicacion_elaboracion.filas_del_plan_por_defecto(presupuesto)
@@ -682,16 +676,59 @@ def escenarios_en_csv(
     cuerpo y mismos errores que `POST /presupuestos/{codigo}/escenarios`; no guarda nada."""
     _modelo, elaboracion, escenarios = _generar_escenarios(sesion, codigo, proyecto, peticion)
     tabla = comparar_escenarios(elaboracion.presupuesto, escenarios)
+    # El nombre de un escenario y el codigo del base son texto de la persona: Excel evaluaria como
+    # formula uno que empiece por = + - @ (mismo criterio que el libro, core/budget/excel.py).
+    tabla["escenario"] = [_neutralizar_formula(texto) for texto in tabla["escenario"]]
+    nombre = aplicacion_elaboracion.nombre_de_archivo("escenarios", codigo, "csv")
     return Response(
         content=tabla.to_csv(index=False),
         media_type="text/csv",
-        headers={"Content-Disposition": f'attachment; filename="escenarios_{codigo}.csv"'},
+        headers={"Content-Disposition": f'attachment; filename="{nombre}"'},
     )
 
 
 # ---------------------------------------------------------------------------------------------
 # Ayudantes
 # ---------------------------------------------------------------------------------------------
+
+
+MAX_PENDIENTES_CON_PROPUESTAS = 50
+
+
+def _pendientes_con_propuestas(
+    descripciones: Mapping[str, str], pendientes: Sequence[ItemComputo]
+) -> list[PendienteConPropuestasRespuesta]:
+    """Los pendientes con sus partidas similares. El emparejamiento cuesta tiempo por item, asi que
+    solo los primeros `MAX_PENDIENTES_CON_PROPUESTAS` lo piden; el resto se declara sin propuestas
+    y con el motivo en `falla`."""
+    con = aplicacion_elaboracion.propuestas_de_pendientes(
+        descripciones, pendientes[:MAX_PENDIENTES_CON_PROPUESTAS]
+    )
+    respuestas = [
+        PendienteConPropuestasRespuesta(
+            **_campos_pendiente(entrada.item),
+            propuestas=[
+                PropuestaPartidaRespuesta(
+                    codigo=similar.codigo, descripcion=similar.descripcion, puntaje=similar.puntaje
+                )
+                for similar in entrada.similares
+            ],
+            falla=entrada.falla,
+        )
+        for entrada in con
+    ]
+    respuestas.extend(
+        PendienteConPropuestasRespuesta(
+            **_campos_pendiente(item),
+            propuestas=[],
+            falla=(
+                f"Sin propuestas: solo se calculan para los primeros "
+                f"{MAX_PENDIENTES_CON_PROPUESTAS} pendientes."
+            ),
+        )
+        for item in pendientes[MAX_PENDIENTES_CON_PROPUESTAS:]
+    )
+    return respuestas
 
 
 def _elaborar_sin_guardar(
@@ -755,6 +792,11 @@ def _partidas_respuesta(presupuesto: Presupuesto) -> list[PartidaPresupuestadaRe
     ]
 
 
+def _neutralizar_formula(texto: str) -> str:
+    """Antepone `'` al texto que una hoja de calculo leeria como formula."""
+    return f"'{texto}" if texto.startswith(("=", "+", "-", "@", "\t", "\r")) else texto
+
+
 def _generar_escenarios(
     sesion: Session, codigo: str, proyecto: str | None, peticion: EscenariosPeticion
 ) -> tuple[models.Presupuesto, ResultadoElaboracion, list[Escenario]]:
@@ -763,6 +805,14 @@ def _generar_escenarios(
     # contrato `Presupuesto` no lleva los pendientes y `generar_escenario` solo recalcula los
     # renglones valorados (lo mismo hace la página de escenarios). El informe propio de cada
     # escenario no los declara: ruling C4-3 (limitaciones), sin cambio de `core/` en C4.
+    if len(peticion.escenarios) > MAX_ESCENARIOS:
+        raise ValueError(f"se admiten como maximo {MAX_ESCENARIOS} escenarios por peticion")
+    for datos in peticion.escenarios:
+        if len(datos.precios) > MAX_PRECIOS_POR_ESCENARIO:
+            raise ValueError(
+                f"el escenario {datos.nombre!r} trae mas de {MAX_PRECIOS_POR_ESCENARIO} precios "
+                "de ensayo"
+            )
     modelo = _buscar_modelo(sesion, codigo, proyecto)
     catalogo = Catalogo(sesion)
     elaboracion = cargar_elaboracion(sesion, modelo.proyecto.nombre, codigo, catalogo)
@@ -789,21 +839,9 @@ def _generar_escenarios(
 
 
 def _detector_de_atipicos() -> DetectorAtipicos | None:
-    """`ml.anomaly.precios_atipicos` con import perezoso, o `None` sin el extra `ml` (el mismo
-    criterio que `_veredicto_bosque` en `api/rutas/rendimientos.py`): `core/` recibe el detector
-    como parámetro porque no importa `ml/` (expediente C6.5).
-
-    El extra se reconoce por `scikit-learn`, no por `ml.anomaly`: ese paquete se importa solo con
-    `numpy` y el detector importa `sklearn` al llamarlo, con 8 o más variaciones. Mirar solo la
-    importación dejaba un 500 sin el extra (ronda 1 de la pista A, H3).
-    """
-    if importlib.util.find_spec("sklearn") is None:
-        return None
-    try:
-        from ml.anomaly import precios_atipicos
-    except ImportError:
-        return None
-    return precios_atipicos
+    """`aplicacion.actualizacion.detector_de_atipicos`: una sola definicion del detector (UC-07,
+    paso 5) para la pagina de Streamlit y la API."""
+    return aplicacion_actualizacion.detector_de_atipicos()
 
 
 def _proyecto(sesion: Session, nombre: str) -> models.Proyecto:

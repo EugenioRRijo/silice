@@ -112,7 +112,12 @@ def vista_previa_de_lista(
         try:
             comprobar_libro_legible(ruta)
             ofrecidos = insumos_desconocidos(sesion, ruta)
-        except (LookupError, ValueError, ArithmeticError, SQLAlchemyError) as error:
+        except SQLAlchemyError:
+            # El texto de un error de base lleva el SQL y sus parametros: no sale por la API.
+            return VistaPreviaRespuesta(
+                desconocidos=[], motivo="No se pudo consultar el catalogo del caso."
+            )
+        except (LookupError, ValueError, ArithmeticError) as error:
             return VistaPreviaRespuesta(desconocidos=[], motivo=str(error))
     return VistaPreviaRespuesta(
         desconocidos=[

@@ -2986,6 +2986,7 @@
         "properties": {
           "codigo": {
             "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._ -]{0,63}$",
             "title": "Codigo"
           },
           "fecha": {
@@ -3003,6 +3004,7 @@
               "$ref": "#/components/schemas/ItemComputoPeticion"
             },
             "type": "array",
+            "maxItems": 2000,
             "title": "Items"
           },
           "plan": {
@@ -3011,7 +3013,8 @@
                 "items": {
                   "$ref": "#/components/schemas/FilaPlan"
                 },
-                "type": "array"
+                "type": "array",
+                "maxItems": 5000
               },
               {
                 "type": "null"

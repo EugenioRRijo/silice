@@ -44,7 +44,7 @@ from pandas import DataFrame
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from aplicacion import actualizacion
+from aplicacion import actualizacion, elaboracion
 from core.budget import (
     DetectorAtipicos,
     descartar_version,
@@ -304,16 +304,14 @@ def _actualizar(
     for aviso in revaloracion.avisos:
         (st.warning if aviso.nivel == "advertencia" else st.info)(aviso.texto)
     nuevo = revaloracion.nuevo
-    libro = exportar_excel(
-        nuevo.presupuesto, nuevo.informe, carpeta / f"presupuesto_{nuevo.presupuesto.codigo}.xlsx"
-    )
+    libro = exportar_excel(nuevo.presupuesto, nuevo.informe, carpeta / "presupuesto.xlsx")
     return Presentacion(
         tabla=_para_presentar(revaloracion.comparativo.tabla),
         resumen=revaloracion.resumen,
         informe=nuevo.informe.a_markdown(),
         ignorados=revaloracion.ignorados,
         libro=libro.read_bytes(),
-        nombre_libro=libro.name,
+        nombre_libro=elaboracion.nombre_de_archivo("presupuesto", nuevo.presupuesto.codigo, "xlsx"),
         proyecto=str(parametros["proyecto"]),
         version_guardada=revaloracion.version_guardada,
         ruta=Path(parametros["ruta"]),
