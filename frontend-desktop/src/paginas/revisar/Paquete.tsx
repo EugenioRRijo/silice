@@ -95,8 +95,8 @@ function Resultado({ archivo, r, alExpirar }: { archivo: File; r: Revision; alEx
       />
       {r.banner_version && <p className="silice-revisar__nota cds--type-body-compact-01">{r.banner_version}</p>}
       {r.ayuda_registro && <p className="silice-revisar__nota cds--type-body-compact-01">{r.ayuda_registro}</p>}
-      {r.avisos.map((aviso) => (
-        <InlineNotification key={aviso} kind="warning" title="" subtitle={aviso} lowContrast hideCloseButton />
+      {r.avisos.map((aviso, i) => (
+        <InlineNotification key={i} kind="warning" title="" subtitle={aviso} lowContrast hideCloseButton />
       ))}
       {r.retroactiva && <p className="silice-revisar__nota cds--type-body-compact-01">{r.retroactiva}</p>}
       {r.aviso_armo && (
@@ -120,8 +120,8 @@ function Reauditoria({
 }) {
   return (
     <>
-      {re.avisos.map((aviso) => (
-        <InlineNotification key={aviso} kind="warning" title="" subtitle={aviso} lowContrast hideCloseButton />
+      {re.avisos.map((aviso, i) => (
+        <InlineNotification key={i} kind="warning" title="" subtitle={aviso} lowContrast hideCloseButton />
       ))}
       {re.termino && re.total_recalculado && re.total_recalculado_texto && (
         <>
@@ -188,7 +188,13 @@ function Reauditoria({
             </div>
             <p className="silice-revisar__nota cds--type-body-compact-01">{r.nota_excel}</p>
           </section>
-          <Dictamen archivo={archivo} resultados={r.resultados} iniciales={r.dictamenes} alExpirar={alExpirar} />
+          {r.admite_dictamen ? (
+            <Dictamen archivo={archivo} resultados={r.resultados} iniciales={r.dictamenes} alExpirar={alExpirar} />
+          ) : (
+            r.sin_dictamen && (
+              <InlineNotification kind="warning" title="" subtitle={r.sin_dictamen} lowContrast hideCloseButton />
+            )
+          )}
         </>
       )}
     </>
@@ -200,19 +206,29 @@ function DiferenciasDePrecio({ re }: { re: ReauditoriaRevision }) {
   if (re.precios_coinciden) {
     return <InlineNotification kind="success" title="" subtitle={re.mensaje_precios} lowContrast hideCloseButton />;
   }
-  const ver = presentador(
-    re.diferencias.flatMap((d) => [
-      [d.declarado, d.declarado_texto],
-      [d.recalculado, d.recalculado_texto],
-      [d.monto, d.monto_texto],
-    ]) as [string, string][],
-  );
+  // Un presentador por columna: lo declarado y lo recalculado van a cuatro decimales y la diferencia a dos, aunque
+  // dos celdas compartan el exacto.
   const columnas: ColumnaDensa[] = [
     { clave: "codigo_partida", titulo: "Partida" },
     { clave: "campo", titulo: "Campo" },
-    { clave: "declarado", titulo: "Declarado", numerica: true, presentar: ver },
-    { clave: "recalculado", titulo: "Recalculado", numerica: true, presentar: ver },
-    { clave: "monto", titulo: "Diferencia", numerica: true, presentar: ver },
+    {
+      clave: "declarado",
+      titulo: "Declarado",
+      numerica: true,
+      presentar: presentador(re.diferencias.map((d) => [d.declarado, d.declarado_texto])),
+    },
+    {
+      clave: "recalculado",
+      titulo: "Recalculado",
+      numerica: true,
+      presentar: presentador(re.diferencias.map((d) => [d.recalculado, d.recalculado_texto])),
+    },
+    {
+      clave: "monto",
+      titulo: "Diferencia",
+      numerica: true,
+      presentar: presentador(re.diferencias.map((d) => [d.monto, d.monto_texto])),
+    },
   ];
   return (
     <>
@@ -328,8 +344,8 @@ function Dictamen({
       <h2 id="revisar-dictamen" className="cds--type-heading-compact-02">
         Dictamen
       </h2>
-      {anteriores.map((d) => (
-        <p key={`${d.fecha}|${d.usuario}|${d.resultado}`} className="silice-revisar__nota cds--type-body-compact-01">
+      {anteriores.map((d, i) => (
+        <p key={i} className="silice-revisar__nota cds--type-body-compact-01">
           {d.texto}
         </p>
       ))}

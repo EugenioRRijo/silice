@@ -35,6 +35,7 @@ from typing import Any
 
 from openpyxl import Workbook
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from aplicacion.subidas import nombre_seguro
@@ -91,12 +92,14 @@ from seguridad.modelo import EmpresaRegistrada
 __all__ = [
     "AVISO_YA_RECIBIDO",
     "AYUDA_EMPRESA_NO_REGISTRADA",
+    "CARPETA_PAQUETES",
     "DICTAMEN_GUARDADO",
     "EXCEL_NO_VERIFICADO",
     "LIMITE_SEGUNDOS",
     "NOTA_EXCEL",
     "PRECIOS_COINCIDEN",
     "PRECIOS_NO_COINCIDEN",
+    "SIN_DICTAMEN",
     "SIN_ENTREGA_ANTERIOR",
     "SIN_LISTAS",
     "TIPOS_DE_EXCEL",
@@ -145,6 +148,8 @@ __all__ = [
     "titulo_de_cambios",
 ]
 
+#: La carpeta (dentro de la de datos) donde se guarda cada archivo recibido.
+CARPETA_PAQUETES = "paquetes"
 #: Los textos fijos de la pantalla (`ui/paginas/revisar.py` antes de T7), en un solo lugar.
 AVISO_YA_RECIBIDO = "Ya recibió este mismo paquete"  # el banner de versión ya lo dice
 AYUDA_EMPRESA_NO_REGISTRADA = (
@@ -159,6 +164,12 @@ TITULO_CONTRA_MI_LISTA = "El paquete con los precios de mi lista"
 DICTAMEN_GUARDADO = "Dictamen guardado, atado al SHA-256 de este archivo."
 NOTA_EXCEL = "Este Excel se regeneró aquí desde presupuesto.json; el del emisor no se ofrece."
 EXCEL_NO_VERIFICADO = "No verificado: un Excel no trae cadena ni firma. Se audita igual."
+#: Un paquete que `recibir` no registró (alterado sin cadena) no tiene a qué atar un dictamen
+#: (decisión del orquestador en la ronda 1 de T7: la más conservadora y reversible).
+SIN_DICTAMEN = (
+    "Este paquete no quedó registrado (está alterado o no trae los datos mínimos): no admite "
+    "dictamen. Pida al emisor uno nuevo."
+)
 #: (campo de `Reauditoria`, título de su tabla), en el orden en que se muestran.
 TITULOS_DE_HALLAZGOS = (
     ("nuevos", "El emisor no los declaró"),
@@ -432,26 +443,45 @@ def recibir(
     archivo = _nombre_de_archivo(nombre)
     ruta = carpeta_paquetes / f"{v.sha256}-{archivo}"
     ruta.write_bytes(datos)
-    identificador = paq.registrar_recibido(
-        caso,
-        archivo=archivo,
-        huella_archivo=v.sha256,
-        paquete_id=paquete_id,
-        destinatario=str(m.get("destinatario") or ""),
-        ruta=str(ruta),
-        empresa_declarada=str(v.empresa_declarada or ""),
-        empresa_verificada=str(v.empresa_verificada or ""),
-        huella_clave=huella_clave,
-        estado=v.estado,
-        proyecto=proyecto,
-        codigo=codigo,
-        emitido=emitido,
-        cadena=json.dumps(eslabones),
-        huellas_anexos=json.dumps(anexos_huellas),
-        recibido_por=revisor,
-        fecha=ahora,
-    )
-    caso.commit()
+    try:
+        identificador = paq.registrar_recibido(
+            caso,
+            archivo=archivo,
+            huella_archivo=v.sha256,
+            paquete_id=paquete_id,
+            destinatario=str(m.get("destinatario") or ""),
+            ruta=str(ruta),
+            empresa_declarada=str(v.empresa_declarada or ""),
+            empresa_verificada=str(v.empresa_verificada or ""),
+            huella_clave=huella_clave,
+            estado=v.estado,
+            proyecto=proyecto,
+            codigo=codigo,
+            emitido=emitido,
+            cadena=json.dumps(eslabones),
+            huellas_anexos=json.dumps(anexos_huellas),
+            recibido_por=revisor,
+            fecha=ahora,
+        )
+        caso.commit()
+    except IntegrityError:
+        # Carrera: otra recepción del mismo archivo lo registró entre la búsqueda por huella y la
+        # inserción (UNIQUE de `huella_archivo`). Se relee lo registrado: es «ya recibido».
+        caso.rollback()
+        existente = paq.buscar_por_huella(caso, v.sha256)
+        if existente is None:
+            raise
+        if Path(existente["ruta"]) != ruta:
+            ruta.unlink(missing_ok=True)  # la copia de esta petición, con otro nombre, sobra
+        return Recibido(
+            v,
+            existente["id"],
+            Path(existente["ruta"]),
+            True,
+            avisos,
+            anterioridad.ultima_recibida,
+            existente["fecha"].date().isoformat(),
+        )
     return Recibido(v, identificador, ruta, False, avisos, anterioridad.ultima_recibida)
 
 
@@ -465,7 +495,10 @@ def dictaminar(
     ahora: datetime,
     armo: bool,
 ) -> int:
-    """El dictamen, atado al SHA-256 del archivo y al estado de verificación de ESE momento."""
+    """El dictamen, atado al SHA-256 del archivo y al estado de verificación de ESE momento.
+    `ValueError` (`SIN_DICTAMEN`) si el paquete no quedó registrado: no hay a qué atarlo."""
+    if recibido.paquete_id == 0:
+        raise ValueError(SIN_DICTAMEN)
     identificador = paq.registrar_dictamen(
         caso,
         paquete_id=recibido.paquete_id,

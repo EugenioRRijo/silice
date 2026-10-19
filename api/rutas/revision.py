@@ -59,12 +59,10 @@ from seguridad.json_estricto import JsonRechazado
 from seguridad.permisos import Accion
 from seguridad.sesiones import SesionActiva
 
-CARPETA_PAQUETES = "paquetes"  # la misma carpeta de la pantalla clásica
 TOPE_PAQUETE = LIMITE_ARCHIVO  # 20 MiB: lo que `abrir_zip` admite
 TOPE_EXCEL = min(MAX_BYTES, LIMITE_CUERPO)  # 20 MiB: el cuerpo entero no pasa de ahí
 MENSAJE_TOPE_PAQUETE = (
-    f"El archivo pesa más de {LIMITE_ARCHIVO} bytes y el máximo es {LIMITE_ARCHIVO} (20 MiB). "
-    "Pida al emisor un paquete más pequeño."
+    "El archivo pesa más de 20 MiB, el máximo de un paquete. Pida al emisor un paquete más pequeño."
 )
 MENSAJE_TOPE_EXCEL = "El presupuesto en Excel supera el máximo de 20 MiB."
 MENSAJE_CUERPO_INVALIDO = (
@@ -135,7 +133,10 @@ class TablaDeDiferencia(BaseModel):
     total_despues_texto: str
     diferencia: str
     diferencia_texto: str
-    por_cantidad_y_precio: str
+    desvio_cantidad: str
+    desvio_cantidad_texto: str
+    desvio_precio: str
+    desvio_precio_texto: str
     partidas: list[PartidaDiferente]  # solo las que no quedaron iguales
 
 
@@ -192,6 +193,8 @@ class RevisionRespuesta(BaseModel):
     cambios: list[dict[str, str]]
     dictamenes: list[DictamenAnterior]
     resultados: list[str]
+    admite_dictamen: bool  # lo recibido quedó registrado: hay a qué atar el dictamen
+    sin_dictamen: str | None
     nota_excel: str
 
 
@@ -235,7 +238,10 @@ def _tabla(d: Diferencia, titulo: str) -> TablaDeDiferencia:
         total_despues_texto=formatear_decimal(d.total_2, 2),
         diferencia=_exacto(d.total_2 - d.total_1),
         diferencia_texto=formatear_decimal(d.total_2 - d.total_1, 2),
-        por_cantidad_y_precio=logica.texto_por_cantidad_y_precio(d),
+        desvio_cantidad=_exacto(d.desvio_cantidad),
+        desvio_cantidad_texto=formatear_decimal(d.desvio_cantidad, 2),
+        desvio_precio=_exacto(d.desvio_precio),
+        desvio_precio_texto=formatear_decimal(d.desvio_precio, 2),
         partidas=[
             PartidaDiferente(
                 codigo_partida=p.codigo_partida,
@@ -344,7 +350,7 @@ def _analizar(
                 nombre or "",
                 caso=sesion,
                 instalacion=bd,
-                carpeta_paquetes=carpeta_datos() / CARPETA_PAQUETES,
+                carpeta_paquetes=carpeta_datos() / logica.CARPETA_PAQUETES,
                 revisor=responsable,
                 login=login,
                 ahora=ahora(),
@@ -413,6 +419,8 @@ def revisar_paquete(
         cambios=[{k: str(x) for k, x in c.items()} for c in a.cambios],
         dictamenes=_dictamenes(sesion, v.sha256) if v.legible else [],
         resultados=list(paq.RESULTADOS),
+        admite_dictamen=a.recibido.paquete_id != 0,
+        sin_dictamen=logica.SIN_DICTAMEN if v.legible and a.recibido.paquete_id == 0 else None,
         nota_excel=logica.NOTA_EXCEL,
     )
 
@@ -462,7 +470,7 @@ def dictaminar(
                 paquete.filename or "",
                 caso=sesion,
                 instalacion=bd,
-                carpeta_paquetes=carpeta_datos() / CARPETA_PAQUETES,
+                carpeta_paquetes=carpeta_datos() / logica.CARPETA_PAQUETES,
                 revisor=activa.usuario,
                 ahora=ahora(),
                 mi_empresa=mi_empresa,

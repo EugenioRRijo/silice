@@ -38,7 +38,6 @@ from ui.caso import ruta_caso
 from ui.texto_seguro import texto_seguro
 
 COLORES = {"verde": st.success, "ambar": st.warning, "rojo": st.error}
-CARPETA_PAQUETES = "paquetes"
 CLAVE_ESTADO = "revisar_estado"  # lo analizado de un archivo: no es clave de ningún widget
 CLAVE_EXCEL = "revisar_excel"  # (sha, nombre, octetos) del Excel pedido
 
@@ -209,7 +208,7 @@ def _analizar(datos: bytes, nombre: str, caso: Session, bd: Session, sesion) -> 
         nombre,
         caso=caso,
         instalacion=bd,
-        carpeta_paquetes=carpeta_datos() / CARPETA_PAQUETES,
+        carpeta_paquetes=carpeta_datos() / revision.CARPETA_PAQUETES,
         revisor=sesion.usuario,
         login=sesion.login,
         ahora=_ahora(),

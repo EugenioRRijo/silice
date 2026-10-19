@@ -33,20 +33,29 @@ export function Dato({ rotulo, texto, exacto }: { rotulo: string; texto: string;
 // Una tabla de diferencias (contra la entrega anterior o contra una lista): totales antes y despues, la diferencia,
 // su reparto por cantidad y por precio, y las partidas que no quedaron iguales.
 export function Diferencia({ d, idTitulo, children }: { d: TablaDeDiferencia; idTitulo: string; children?: ReactNode }) {
-  const ver = presentador(
-    d.partidas.flatMap((p) => [
-      [p.desvio_cantidad, p.desvio_cantidad_texto],
-      [p.desvio_precio, p.desvio_precio_texto],
-      [p.desvio_total, p.desvio_total_texto],
-    ]) as [string, string][],
-  );
+  // Un presentador por columna: el texto de cada celda es el de su propia columna (su precision).
   const columnas: ColumnaDensa[] = [
     { clave: "codigo_partida", titulo: "Partida" },
     { clave: "descripcion", titulo: "Descripción" },
     { clave: "estado", titulo: "Estado" },
-    { clave: "desvio_cantidad", titulo: "Δ cantidad", numerica: true, presentar: ver },
-    { clave: "desvio_precio", titulo: "Δ precio", numerica: true, presentar: ver },
-    { clave: "desvio_total", titulo: "Δ total", numerica: true, presentar: ver },
+    {
+      clave: "desvio_cantidad",
+      titulo: "Δ cantidad",
+      numerica: true,
+      presentar: presentador(d.partidas.map((p) => [p.desvio_cantidad, p.desvio_cantidad_texto])),
+    },
+    {
+      clave: "desvio_precio",
+      titulo: "Δ precio",
+      numerica: true,
+      presentar: presentador(d.partidas.map((p) => [p.desvio_precio, p.desvio_precio_texto])),
+    },
+    {
+      clave: "desvio_total",
+      titulo: "Δ total",
+      numerica: true,
+      presentar: presentador(d.partidas.map((p) => [p.desvio_total, p.desvio_total_texto])),
+    },
   ];
   return (
     <section className="silice-revisar__seccion" aria-labelledby={idTitulo}>
@@ -59,7 +68,13 @@ export function Diferencia({ d, idTitulo, children }: { d: TablaDeDiferencia; id
         <Dato rotulo="Total después" texto={d.total_despues_texto} exacto={d.total_despues} />
         <Dato rotulo="Diferencia" texto={d.diferencia_texto} exacto={d.diferencia} />
       </dl>
-      <p className="silice-revisar__nota cds--type-body-compact-01">{d.por_cantidad_y_precio}</p>
+      <p className="silice-revisar__nota silice-revisar__reparto cds--type-body-compact-01">
+        {"Por cantidad: "}
+        <Monto texto={d.desvio_cantidad_texto} exacto={d.desvio_cantidad} />
+        {". Por precio: "}
+        <Monto texto={d.desvio_precio_texto} exacto={d.desvio_precio} />
+        {"."}
+      </p>
       <TablaDensa
         etiqueta={`Partidas: ${d.titulo}`}
         columnas={columnas}
