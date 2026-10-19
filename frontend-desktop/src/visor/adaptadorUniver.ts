@@ -26,6 +26,8 @@ import type { FWorkbook, FWorksheet } from "@univerjs/preset-sheets-core";
 import { createUniver, ICommandService, IConfigService, LocaleType, mergeLocales } from "@univerjs/presets";
 import type { LibroVisualRespuesta } from "../api/tipos";
 import { aUniver } from "../replica/aUniver";
+import { columnaDeDescripcion } from "./celdas";
+import { planDeDesplazamiento, rectanguloEnPantalla } from "./geometria";
 import type { CeldaRef, HojaVisor, RectanguloPx } from "./hojaVisor";
 
 const ESPERA_MAXIMA_MS = 8000;
@@ -109,7 +111,8 @@ export async function crearHojaUniver(contenedor: HTMLElement, libro: LibroVisua
     };
   }
 
-  function rectanguloDe(celda: CeldaRef): RectanguloPx | null {
+  // Lo que hace falta de Univer para ubicar una celda: la cuadricula y el viewport principal de la hoja activa.
+  function contexto(celda: CeldaRef) {
     const hoja = hojaActual();
     if (hoja.getSheetName() !== celda.hoja) return null;
     const r = render();
@@ -118,58 +121,56 @@ export async function crearHojaUniver(contenedor: HTMLElement, libro: LibroVisua
     const canvas = r?.engine.getCanvasElement();
     const zona = area();
     if (!r || !sk || !principal || !canvas || !zona) return null;
-
-    const c = sk.getCellWithCoordByIndex(celda.fila0, celda.columna0);
-    if (c.endX - c.startX <= 0 || c.endY - c.startY <= 0) return null; // fila o columna oculta
-
     const { scaleX, scaleY } = r.scene.getAncestorScale();
     const congelado = hoja.getFreeze();
-    const { startColumn, startRow, xSplit, ySplit } = congelado;
-
-    // Mismo calculo que transformPosition2Offset de sheets-ui: las celdas de la zona congelada no se desplazan.
-    const inicioVista = sk.getNoMergeCellWithCoordByIndex(startRow - ySplit, startColumn - xSplit, false);
-    const finVista = sk.getNoMergeCellWithCoordByIndex(startRow, startColumn, false);
-    const anchoCongelado = finVista.startX - inicioVista.startX;
-    const altoCongelado = finVista.startY - inicioVista.startY;
-    const aX = (x: number) =>
-      (x > principal.left ? x - principal.viewportScrollX : anchoCongelado + sk.rowHeaderWidth - (principal.left - x)) *
-      scaleX;
-    const aY = (y: number) =>
-      (y > principal.top ? y - principal.viewportScrollY : altoCongelado + sk.columnHeaderHeight - (principal.top - y)) *
-      scaleY;
-
-    let izquierda = aX(c.startX);
-    let derecha = aX(c.endX);
-    let arriba = aY(c.startY);
-    let abajo = aY(c.endY);
-
-    // De canvas a pantalla (el canvas puede estar escalado por CSS) y a coordenadas del contenedor.
+    // Lo que ocupan las filas y columnas fijas (sin cabeceras).
+    const inicioVista = sk.getNoMergeCellWithCoordByIndex(congelado.startRow - congelado.ySplit, congelado.startColumn - congelado.xSplit, false);
+    const finVista = sk.getNoMergeCellWithCoordByIndex(congelado.startRow, congelado.startColumn, false);
     const cajaCanvas = canvas.getBoundingClientRect();
     const cajaContenedor = contenedor.getBoundingClientRect();
     const anchoCss = Number.parseFloat(canvas.style.width);
-    const ajuste = anchoCss > 0 ? cajaCanvas.width / anchoCss : 1;
-    const origenX = cajaCanvas.left - cajaContenedor.left;
-    const origenY = cajaCanvas.top - cajaContenedor.top;
-    izquierda = izquierda * ajuste + origenX;
-    derecha = derecha * ajuste + origenX;
-    arriba = arriba * ajuste + origenY;
-    abajo = abajo * ajuste + origenY;
+    return {
+      hoja,
+      sk,
+      principal,
+      zona,
+      escala: { x: scaleX, y: scaleY },
+      congelado: {
+        xSplit: congelado.xSplit,
+        ySplit: congelado.ySplit,
+        startRow: congelado.startRow,
+        startColumn: congelado.startColumn,
+        ancho: finVista.startX - inicioVista.startX,
+        alto: finVista.startY - inicioVista.startY,
+      },
+      // El canvas puede estar escalado por CSS; su origen en pantalla se pasa al contenedor del visor.
+      ajuste: anchoCss > 0 ? cajaCanvas.width / anchoCss : 1,
+      origen: { x: cajaCanvas.left - cajaContenedor.left, y: cajaCanvas.top - cajaContenedor.top },
+    };
+  }
 
-    // Una celda que se desplazo por debajo de la zona congelada no debe verse encima de ella.
-    if (celda.columna0 >= startColumn && xSplit > 0) {
-      const borde = (anchoCongelado + sk.rowHeaderWidth) * scaleX * ajuste + origenX;
-      izquierda = Math.max(izquierda, borde);
-    }
-    if (celda.fila0 >= startRow && ySplit > 0) {
-      const borde = (altoCongelado + sk.columnHeaderHeight) * scaleY * ajuste + origenY;
-      arriba = Math.max(arriba, borde);
-    }
-
-    if (derecha <= izquierda || abajo <= arriba) return null;
+  function rectanguloDe(celda: CeldaRef): RectanguloPx | null {
+    const c = contexto(celda);
+    if (!c) return null;
+    const hoja = c.sk.getCellWithCoordByIndex(celda.fila0, celda.columna0);
+    const r = rectanguloEnPantalla({
+      celda: { fila0: celda.fila0, columna0: celda.columna0, startX: hoja.startX, endX: hoja.endX, startY: hoja.startY, endY: hoja.endY },
+      scroll: { x: c.principal.viewportScrollX, y: c.principal.viewportScrollY },
+      principal: { left: c.principal.left, top: c.principal.top },
+      congelado: c.congelado,
+      cabecera: { ancho: c.sk.rowHeaderWidth, alto: c.sk.columnHeaderHeight },
+      escala: c.escala,
+    });
+    if (!r) return null;
+    const x = r.izquierda * c.ajuste + c.origen.x;
+    const y = r.arriba * c.ajuste + c.origen.y;
+    const ancho = (r.derecha - r.izquierda) * c.ajuste;
+    const alto = (r.abajo - r.arriba) * c.ajuste;
+    const { zona } = c;
     // Fuera de la zona de celdas: no esta a la vista.
-    if (derecha <= zona.x || izquierda >= zona.x + zona.ancho) return null;
-    if (abajo <= zona.y || arriba >= zona.y + zona.alto) return null;
-    return { x: izquierda, y: arriba, ancho: derecha - izquierda, alto: abajo - arriba };
+    if (x + ancho <= zona.x || x >= zona.x + zona.ancho) return null;
+    if (y + alto <= zona.y || y >= zona.y + zona.alto) return null;
+    return { x, y, ancho, alto };
   }
 
   // Avisos de "cambio la vista": varios eventos de Univer pueden llegar juntos, se junta todo en un solo
@@ -211,19 +212,62 @@ export async function crearHojaUniver(contenedor: HTMLElement, libro: LibroVisua
     if (hoja && hojaActual().getSheetName() !== nombre) fLibro.setActiveSheet(hoja);
   }
 
+  // Se ve entera en cada eje (dentro de la zona de celdas y sin recortes por lo fijo).
+  function visibilidad(celda: CeldaRef, c: NonNullable<ReturnType<typeof contexto>>) {
+    const r = rectanguloDe(celda);
+    const g = c.sk.getCellWithCoordByIndex(celda.fila0, celda.columna0);
+    if (!r) return { horizontal: false, vertical: false };
+    const margen = 0.75;
+    const completaX = Math.abs(r.ancho - (g.endX - g.startX) * c.escala.x * c.ajuste) < margen;
+    const completaY = Math.abs(r.alto - (g.endY - g.startY) * c.escala.y * c.ajuste) < margen;
+    const { zona } = c;
+    return {
+      horizontal: completaX && r.x >= zona.x - margen && r.x + r.ancho <= zona.x + zona.ancho + margen,
+      vertical: completaY && r.y >= zona.y - margen && r.y + r.alto <= zona.y + zona.alto + margen,
+    };
+  }
+
+  function desplazarA(celda: CeldaRef): void {
+    const c = contexto(celda);
+    if (!c) return;
+    // La descripcion de la fila (texto largo a la izquierda de la celda) no debe perderse de vista: sin ella la
+    // celda "P5" no dice de que partida habla.
+    const hojaDelLibro = libro.hojas.find((h) => h.nombre === celda.hoja);
+    const descripcion = hojaDelLibro ? columnaDeDescripcion(hojaDelLibro, celda.fila0, celda.columna0) : null;
+    const visibleCelda = visibilidad(celda, c);
+    const visibleDescripcion =
+      descripcion === null ? true : visibilidad({ hoja: celda.hoja, fila0: celda.fila0, columna0: descripcion }, c).horizontal;
+    const estado = c.hoja.getScrollState();
+    const plan = planDeDesplazamiento({
+      celda,
+      ancho: (col) => {
+        const k = c.sk.getNoMergeCellWithCoordByIndex(0, col, false);
+        return k.endX - k.startX;
+      },
+      alto: (fila) => {
+        const k = c.sk.getNoMergeCellWithCoordByIndex(fila, 0, false);
+        return k.endY - k.startY;
+      },
+      area: { ancho: c.zona.ancho / (c.escala.x * c.ajuste), alto: c.zona.alto / (c.escala.y * c.ajuste) },
+      congelado: { startRow: c.congelado.startRow, startColumn: c.congelado.startColumn, ancho: c.congelado.ancho, alto: c.congelado.alto },
+      primeraVisible: {
+        fila0: estado.sheetViewStartRow + c.congelado.ySplit,
+        columna0: estado.sheetViewStartColumn + c.congelado.xSplit,
+      },
+      visible: { ...visibleCelda, descripcion: visibleDescripcion },
+      descripcion: descripcion ?? undefined,
+    });
+    // Sin animacion (duracion 0).
+    if (plan) c.hoja.scrollToCell(plan.fila0, plan.columna0, 0);
+  }
+
   function irA(celda: CeldaRef): void {
     const cambio = hojaActual().getSheetName() !== celda.hoja;
     irAHoja(celda.hoja);
     const colocar = () => {
       const hoja = hojaActual();
       if (hoja.getSheetName() !== celda.hoja) return;
-      const zona = area();
-      const r = rectanguloDe(celda);
-      const dentro =
-        r && zona && r.x >= zona.x && r.y >= zona.y && r.x + r.ancho <= zona.x + zona.ancho && r.y + r.alto <= zona.y + zona.alto;
-      // Solo se desplaza si la celda no se ve entera, y sin animacion (duracion 0); con un par de filas de
-      // contexto por encima para que no quede pegada al borde.
-      if (!dentro) hoja.scrollToCell(Math.max(0, celda.fila0 - 2), Math.max(0, celda.columna0 - 1), 0);
+      desplazarA(celda);
       hoja.getRange(celda.fila0, celda.columna0).activate();
       avisarCambio();
     };

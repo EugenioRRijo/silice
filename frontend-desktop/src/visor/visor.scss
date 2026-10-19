@@ -51,28 +51,51 @@ body {
   max-inline-size: 100vw;
   block-size: calc(100vh - 3rem);
   min-block-size: 0;
-  overflow: hidden;
+}
+
+// Fecha de devolucion, nombre del libro y Cambiar libro van en la cabecera de 48 px (el visor los pinta alli con un
+// portal, en esta ranura). La barra propia solo existe cuando el visor se usa suelto, sin cabecera.
+.silice-cabecera__libro {
+  display: flex;
+  flex: 1 1 0;
+  align-items: center;
+  gap: 1rem;
+  min-inline-size: 0;
+  block-size: 3rem;
+  padding-inline: 1rem;
+}
+
+// La barra global de Carbon (usuario y Salir) cede el ancho a la ranura.
+.silice-cabecera__libro ~ .cds--header__global {
+  flex: none;
 }
 
 .visor__barra {
   display: flex;
   flex: none;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: 0.5rem 1rem;
-  padding: 0.5rem 1rem;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 1rem;
+  block-size: 3rem;
+  box-sizing: border-box;
+  padding: 0 1rem;
   background: var(--cds-layer);
   border-block-end: 1px solid var(--silice-divisor);
 }
 
 .visor__fecha {
-  inline-size: 11rem;
+  flex: none;
+  inline-size: 20rem;
+
+  label {
+    white-space: nowrap;
+  }
 }
 
 .visor__archivo {
-  align-self: center;
-  padding-block: 0.125rem;
-  max-inline-size: 28rem;
+  display: block;
+  flex: 1 1 0;
+  min-inline-size: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -102,6 +125,11 @@ body {
 
 .visor__soltar .cds--file-browse-btn {
   min-block-size: 10rem;
+}
+
+.visor__ayuda-fecha {
+  color: var(--silice-texto-secundario);
+  max-inline-size: 65ch;
 }
 
 .visor__ayuda {
@@ -135,12 +163,17 @@ body {
 .hoja-lienzo {
   position: absolute;
   inset: 0;
+  // Todo lo de Univer (z-index de 1 a 100 adentro) forma un solo plano: la capa de halos, hermana de este
+  // elemento, se compara con el plano entero y no con cada pieza suelta.
+  isolation: isolate;
 }
 
+// La lista no desplaza entera: el encabezado y los filtros quedan fijos y solo el cuerpo desplaza.
 .visor__lista {
+  display: flex;
+  flex-direction: column;
   min-block-size: 0;
-  overflow-x: hidden;
-  overflow-y: auto;
+  overflow: hidden;
   background: var(--cds-layer);
 }
 
@@ -150,6 +183,7 @@ body {
   flex: 1 1 auto;
   grid-template-columns: minmax(0, 1fr) 320px;
   min-block-size: 0;
+  overflow: hidden;
 
   [class*="cds--skeleton"],
   [class*="cds--skeleton"]::before,
@@ -159,13 +193,36 @@ body {
 }
 
 .visor__esqueleto-hoja {
+  display: flex;
+  flex-direction: column;
+  min-block-size: 0;
+  overflow: hidden;
   padding: 0;
   border-inline-end: 1px solid var(--silice-divisor);
 }
 
 .visor__esqueleto-lienzo {
+  flex: 1 1 auto;
   inline-size: 100%;
-  block-size: 100%;
+  block-size: auto;
+  min-block-size: 0;
+  background: var(--cds-skeleton-background);
+}
+
+// Lo que esta pasando, dicho con texto: un esqueleto solo no explica por que se espera.
+.visor__cargando {
+  padding: 1rem;
+  color: var(--silice-texto-secundario);
+}
+
+// Pestana de una hoja con hallazgos: icono de la severidad mas grave y numero (el color nunca va solo; el texto
+// completo va en un span oculto).
+.pestana__conteo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-inline-start: 0.5rem;
+  color: var(--silice-texto);
 }
 
 // Mientras Univer prepara la hoja, el lienzo muestra el esqueleto (sin brillo, como los demas).
@@ -173,6 +230,7 @@ body {
   position: absolute;
   inset: 0;
   z-index: 1;
+  block-size: 100%;
 
   &,
   &::before {
@@ -197,8 +255,12 @@ body {
 
 // --- Capa de halos (RS2-8) ---------------------------------------------------------------------------
 // Encima del lienzo; no recibe el puntero, salvo la insignia, para no estorbar a la hoja.
+// El lienzo de Univer tiene z-index 8 (su capa de contenido): sin z-index propio la capa quedaba DEBAJO y los halos
+// no se veian sobre las celdas con relleno. 20 la deja por encima del lienzo y por debajo de los popups y menus
+// (de Carbon y de Univer, de 1000 en adelante). visor.estilos.test.ts lo vigila.
 .capa-halos {
   position: absolute;
+  z-index: 20;
   overflow: hidden;
   pointer-events: none;
 }
@@ -217,6 +279,15 @@ body {
   outline-offset: -3px;
 }
 
+// El amarillo no alcanza 3:1 sobre el fondo claro: un segundo contorno oscuro de 1 px, pegado por dentro al amarillo.
+.halo--advertencia {
+  box-shadow: inset 0 0 0 3px var(--cds-text-primary);
+}
+
+.halo--advertencia.halo--elegido {
+  box-shadow: inset 0 0 0 4px var(--cds-text-primary);
+}
+
 // La insignia va a caballo de la esquina superior derecha: dentro de la celda taparia el final de los numeros.
 .halo__insignia {
   position: absolute;
@@ -227,6 +298,7 @@ body {
   inline-size: 14px;
   block-size: 14px;
   padding: 1px;
+  border: 0;
   line-height: 0;
   background: var(--cds-background);
   color: var(--halo-color);
@@ -242,10 +314,34 @@ body {
 // --- Lista de hallazgos ------------------------------------------------------------------------------
 .lista-hallazgos {
   display: flex;
+  flex: 1 1 auto;
   flex-direction: column;
+  min-block-size: 0;
+}
+
+.lista-hallazgos__cuerpo {
+  flex: 1 1 auto;
+  min-block-size: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.lista-hallazgos__aviso {
+  max-inline-size: none;
+  inline-size: 100%;
+}
+
+.hallazgo__contexto {
+  color: var(--silice-texto);
+  overflow-wrap: anywhere;
+}
+
+.hallazgo__motivo {
+  color: var(--silice-texto-secundario);
 }
 
 .lista-hallazgos__cabecera {
+  flex: none;
   display: grid;
   gap: 0.5rem;
   padding: 0.75rem;
@@ -305,8 +401,10 @@ body {
 
 .hallazgo__encabezado {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0 0.25rem;
+  color: var(--silice-texto-secundario);
 }
 
 .hallazgo__severidad {
@@ -322,13 +420,41 @@ body {
   fill: var(--halo-color);
 }
 
+// Tres lineas por hallazgo: la fila elegida es la unica que muestra el texto completo (la fila queda entre 80 y
+// 110 px en vez de 250 y el auditor ve cuatro o cinco hallazgos a la vez).
 .hallazgo__descripcion {
+  display: -webkit-box;
+  overflow: hidden;
   overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
 }
 
-.hallazgo__celda {
-  color: var(--silice-texto-secundario);
-  overflow-wrap: anywhere;
+.lista-hallazgos__fila--elegida .hallazgo__descripcion {
+  display: block;
+  overflow: visible;
+  -webkit-line-clamp: unset;
+  line-clamp: unset;
+}
+
+// La tabla es de una sola columna y su cabecera ("Hallazgo") ya la dice el titulo de la lista: se queda solo para
+// los lectores de pantalla.
+.lista-hallazgos__tabla thead {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+// El triangulo amarillo de advertencia (WarningAltFilled): su borde amarillo no alcanza 3:1 sobre fondo claro, asi
+// que el signo de exclamacion va con la tinta principal (#161616 sobre amarillo-30: unos 10:1), como promete
+// DESIGN.md. Aplica a la insignia de la hoja, a la lista y a los conteos de la franja.
+.icono-sev[data-icono="WarningAltFilled"] [data-icon-path="inner-path"] {
+  fill: var(--cds-text-primary);
+  opacity: 1;
 }
 
 // Pagina «Libro de la empresa»: el titulo va sobre el visor, con el mismo margen de 16 px que las demas paginas, y

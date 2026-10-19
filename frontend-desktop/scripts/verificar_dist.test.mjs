@@ -75,6 +75,55 @@ describe("verificarDist", () => {
     expect(verificarDist(dir).problemas).toHaveLength(1);
   });
 
+  test("los textos de mensajes de Carbon Charts pasan solo dentro de su bundle (GraficoCarbon-*.js)", () => {
+    const texto = 'console.warn("Read more here https://charts.carbondesignsystem.com/"); `see: https://github.com/date-fns/date-fns/blob/master/docs/unicodeTokens.md`';
+    writeFileSync(join(dir, "GraficoCarbon-AbC123.js"), texto);
+    expect(verificarDist(dir).problemas).toEqual([]);
+    writeFileSync(join(dir, "otro-AbC123.js"), 'console.warn("https://charts.carbondesignsystem.com/")');
+    const { problemas } = verificarDist(dir);
+    expect(problemas).toHaveLength(1);
+    expect(problemas[0]).toContain("charts.carbondesignsystem.com");
+  });
+
+  test("el bundle de Carbon Charts tampoco puede hablar con otro anfitrion", () => {
+    writeFileSync(join(dir, "GraficoCarbon-AbC123.js"), 'fetch("https://telemetria.example.net/e")');
+    expect(verificarDist(dir).problemas).toHaveLength(1);
+  });
+
+  test("la direccion de bucle local que Administracion escribe en un texto pasa solo dentro de su bundle", () => {
+    const texto = '`Red local: apagada (solo http://127.0.0.1:${e.puerto})`';
+    writeFileSync(join(dir, "administracion-AbC123.js"), texto);
+    expect(verificarDist(dir).problemas).toEqual([]);
+    writeFileSync(join(dir, "otro-AbC123.js"), texto);
+    expect(verificarDist(dir).problemas).toHaveLength(1);
+  });
+
+  test("un WebSocket (ws:// o wss://) hacia afuera hace fallar", () => {
+    writeFileSync(join(dir, "a.js"), 'new WebSocket("wss://telemetria.example.net/canal")');
+    writeFileSync(join(dir, "b.js"), 'new WebSocket("ws://telemetria.example.org/canal")');
+    const { problemas } = verificarDist(dir);
+    expect(problemas).toHaveLength(2);
+    expect(problemas.join(" ")).toContain("telemetria.example.net");
+  });
+
+  test("una URL sin esquema en CSS (url(//host) y @import \"//host\") hace fallar", () => {
+    writeFileSync(join(dir, "a.css"), "@font-face{src:url(//cdn.example.com/f.woff2)}");
+    writeFileSync(join(dir, "b.css"), '@import "//cdn.example.org/x.css";');
+    writeFileSync(join(dir, "c.css"), "a{background:url('//cdn.example.net/i.png')}");
+    const { problemas } = verificarDist(dir);
+    expect(problemas).toHaveLength(3);
+  });
+
+  test("las rutas propias en CSS (url(/app/...) y url(./f.woff2)) pasan", () => {
+    writeFileSync(join(dir, "a.css"), "@font-face{src:url(/app/assets/f.woff2)} b{background:url(./i.png)} c{background:url(data:image/png;base64,AAAA)}");
+    expect(verificarDist(dir).problemas).toEqual([]);
+  });
+
+  test("un src o href sin esquema en el html hace fallar", () => {
+    writeFileSync(join(dir, "index.html"), '<script src="//cdn.example.com/x.js"></script>');
+    expect(verificarDist(dir).problemas).toHaveLength(1);
+  });
+
   test("15 000 001 bytes hacen fallar", () => {
     writeFileSync(join(dir, "grande.bin"), Buffer.alloc(LIMITE_BYTES + 1));
     const { problemas, bytes } = verificarDist(dir);

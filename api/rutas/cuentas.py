@@ -92,11 +92,11 @@ class _RutaCuentas(RutaSinEco):
         return manejador
 
 
-# Las mutaciones se serializan: `seguridad.cuentas` comprueba «queda otro administrador» y escribe
-# en dos pasos que no son atómicos, así que dos administradores que se desactivan a la vez podrían
-# dejar cero. El defecto de raíz está en `seguridad/cuentas.py` (se reporta aparte); este candado
-# cubre lo que pasa por la API en un solo proceso. Se libera siempre (`with`), también ante
-# excepciones.
+# Las mutaciones se serializan por defensa en profundidad. La raíz del «último administrador» ya
+# está corregida en `seguridad/cuentas.py`: `cambiar_roles` y `desactivar` toman el bloqueo de
+# escritura con `BEGIN IMMEDIATE` antes de comprobar y escribir, así que la garantía es de la base
+# y vale para varios procesos y para Streamlit. Este candado solo evita esperas innecesarias dentro
+# de un proceso. Se libera siempre (`with`), también ante excepciones.
 _CANDADO = threading.Lock()
 
 

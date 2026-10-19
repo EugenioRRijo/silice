@@ -1,43 +1,27 @@
-import { ErrorFilled, InformationFilled, WarningAltFilled, WarningFilled } from "@carbon/icons-react";
-import { Tag } from "@carbon/react";
-import type { ComponentType } from "react";
 import { IndicadorFiori } from "./IndicadorFiori";
-import type { ConteoPorSeveridad, IndicadorRespuesta, Severidad } from "./tipos";
+import type { IndicadorRespuesta } from "./tipos";
 
 interface Props {
   indicadores: IndicadorRespuesta[];
-  porSeveridad: ConteoPorSeveridad;
-  rotuloMeta?: string;
+  // El exacto de cada total, por la misma clave que el indicador (SUBSINIVA, IVATOT, TOTALGEN).
+  totalesLibro?: Record<string, string>;
+  totalesSilice?: Record<string, string>;
 }
 
-const SEVERIDADES: {
-  clave: Severidad;
-  texto: string;
-  Icono: ComponentType<{ size?: number; className?: string }>;
-}[] = [
-  { clave: "CRITICO", texto: "Crítico", Icono: ErrorFilled },
-  { clave: "ERROR", texto: "Error", Icono: WarningFilled },
-  { clave: "ADVERTENCIA", texto: "Advertencia", Icono: WarningAltFilled },
-  { clave: "INFO", texto: "Información", Icono: InformationFilled },
-];
-
-// Franja densa de 64 px bajo la cabecera: indicadores separados por divisores de 1 px y, al final, los conteos
-// de hallazgos por severidad. Un conteo no es una variacion: no lleva colores IBCS.
-export function FranjaIndicadores({ indicadores, porSeveridad, rotuloMeta }: Props) {
+// Franja de 64 px bajo la cabecera: indicadores separados por divisores de 1 px. Nunca crece mas de su alto: los
+// textos se recortan con elipsis (el valor completo queda en el tooltip y en el texto accesible). Los conteos por
+// severidad no estan aqui: salen una sola vez, en los filtros de la lista de hallazgos.
+export function FranjaIndicadores({ indicadores, totalesLibro, totalesSilice }: Props) {
   return (
     <section className="franja-indicadores" aria-label="Indicadores del libro">
       <div className="franja-indicadores__lista">
         {indicadores.map((i) => (
-          <IndicadorFiori key={i.clave} indicador={i} rotuloMeta={rotuloMeta} />
-        ))}
-      </div>
-      <div className="franja-indicadores__severidad" role="group" aria-label="Hallazgos por severidad">
-        {SEVERIDADES.map(({ clave, texto, Icono }) => (
-          <Tag key={clave} size="md" type="outline" className={`silice-sev silice-sev--${clave.toLowerCase()}`}>
-            <Icono size={16} className="silice-sev__icono" />
-            <span>{texto}</span>
-            <span className="silice-cifra">{porSeveridad[clave]}</span>
-          </Tag>
+          <IndicadorFiori
+            key={i.clave}
+            indicador={i}
+            exactoLibro={totalesLibro?.[i.clave]}
+            exactoSilice={totalesSilice?.[i.clave]}
+          />
         ))}
       </div>
     </section>

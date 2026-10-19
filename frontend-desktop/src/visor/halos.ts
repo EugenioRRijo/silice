@@ -1,35 +1,18 @@
 // Hallazgos -> halos. Pura, sin DOM ni Univer. La severidad se dice con color (token), icono y texto: el color
 // nunca va solo. El morado es solo para los atipicos del detector (codigo ATIPICO), sea cual sea su severidad.
-import type { HallazgoLibroRespuesta } from "../api/tipos";
+import type { HallazgoLibroRespuesta, HojaVisualRespuesta } from "../api/tipos";
 import type { Severidad } from "../indicadores/tipos";
+import { estiloDeSeveridad, gravedad, normalizarSeveridad } from "../severidad/severidad";
+import type { EstiloDeSeveridad } from "../severidad/severidad";
+import { aFilaExcel, columna0ALetras } from "../replica/coordenadas";
 import { parsearCelda } from "./celdas";
 
-export type NombreDeIcono = "ErrorFilled" | "WarningFilled" | "WarningAltFilled" | "InformationFilled";
-
-export interface EstiloDeHallazgo {
-  token: string;
-  icono: NombreDeIcono;
-  texto: string;
-}
+export type EstiloDeHallazgo = EstiloDeSeveridad;
 
 export const CODIGO_ATIPICO = "ATIPICO";
 
-const POR_SEVERIDAD: Record<Severidad, EstiloDeHallazgo> = {
-  CRITICO: { token: "--silice-sev-critico", icono: "ErrorFilled", texto: "Crítico" },
-  ERROR: { token: "--silice-sev-error", icono: "WarningFilled", texto: "Error" },
-  ADVERTENCIA: { token: "--silice-sev-advertencia", icono: "WarningAltFilled", texto: "Advertencia" },
-  INFO: { token: "--silice-sev-info", icono: "InformationFilled", texto: "Información" },
-};
-
-// Mas grande = mas grave.
-const GRAVEDAD: Record<Severidad, number> = { INFO: 0, ADVERTENCIA: 1, ERROR: 2, CRITICO: 3 };
-
-function severidadDe(h: HallazgoLibroRespuesta): Severidad {
-  return h.severidad in POR_SEVERIDAD ? (h.severidad as Severidad) : "INFO";
-}
-
 export function estiloDeHallazgo(h: HallazgoLibroRespuesta): EstiloDeHallazgo {
-  const base = POR_SEVERIDAD[severidadDe(h)];
+  const base = estiloDeSeveridad(normalizarSeveridad(h.severidad));
   // El icono del atipico es el de su severidad: asi sigue diciendo "informacion", "advertencia"...
   if (h.codigo === CODIGO_ATIPICO) return { ...base, token: "--silice-atipico", texto: "Atípico" };
   return base;
@@ -47,33 +30,57 @@ export interface Halo {
   severidad: Severidad;
 }
 
-export interface ResultadoHalos {
-  halos: Halo[];
-  // Posiciones de los hallazgos que no se pueden marcar en la hoja: sin celda, celda que no es A1, u hoja que el
-  // libro no tiene.
-  sinCelda: number[];
+export interface Oculto {
+  indice: number;
+  // Que esta oculto, dicho como lo ve el auditor: "hoja AUX oculta", "fila 19 oculta", "columna C oculta".
+  motivo: string;
 }
 
-export function construirHalos(hallazgos: HallazgoLibroRespuesta[], hojasDelLibro?: string[]): ResultadoHalos {
+export interface ResultadoHalos {
+  halos: Halo[];
+  // Posiciones de los hallazgos que no se pueden marcar en la hoja porque no hay celda ubicable: sin celda, celda
+  // que no es A1, u hoja que el libro no tiene.
+  sinCelda: number[];
+  // Hallazgos con celda, pero en una hoja, fila o columna oculta del libro: no se ven, y se dice por que.
+  ocultos: Oculto[];
+}
+
+export function construirHalos(hallazgos: HallazgoLibroRespuesta[], hojas?: HojaVisualRespuesta[]): ResultadoHalos {
   const porCelda = new Map<string, Halo>();
   const sinCelda: number[] = [];
-  const hojas = hojasDelLibro ? new Set(hojasDelLibro) : null;
+  const ocultos: Oculto[] = [];
+  const porNombre = hojas ? new Map(hojas.map((h) => [h.nombre, h])) : null;
 
   hallazgos.forEach((h, indice) => {
     const celda = parsearCelda(h.celda);
-    if (!celda || (hojas && !hojas.has(celda.hoja))) {
+    const hoja = celda ? porNombre?.get(celda.hoja) : undefined;
+    if (!celda || (porNombre && !hoja)) {
       sinCelda.push(indice);
       return;
     }
+    if (hoja) {
+      const motivos: string[] = [];
+      if (!hoja.visible) motivos.push(`hoja ${hoja.nombre} oculta`);
+      else {
+        if (hoja.ocultas_filas.includes(aFilaExcel(celda.fila0))) motivos.push(`fila ${aFilaExcel(celda.fila0)} oculta`);
+        if (hoja.ocultas_columnas.includes(aFilaExcel(celda.columna0))) {
+          motivos.push(`columna ${columna0ALetras(celda.columna0)} oculta`);
+        }
+      }
+      if (motivos.length > 0) {
+        ocultos.push({ indice, motivo: motivos.join(" y ") });
+        return;
+      }
+    }
     const clave = `${celda.hoja}!${celda.fila0},${celda.columna0}`;
-    const severidad = severidadDe(h);
+    const severidad = normalizarSeveridad(h.severidad);
     const actual = porCelda.get(clave);
     if (!actual) {
       porCelda.set(clave, { clave, ...celda, indices: [indice], estilo: estiloDeHallazgo(h), severidad });
       return;
     }
     actual.indices.push(indice);
-    const mas = GRAVEDAD[severidad] - GRAVEDAD[actual.severidad];
+    const mas = gravedad(severidad) - gravedad(actual.severidad);
     const desempate = mas === 0 && h.codigo === CODIGO_ATIPICO;
     if (mas > 0 || desempate) {
       actual.estilo = estiloDeHallazgo(h);
@@ -81,5 +88,26 @@ export function construirHalos(hallazgos: HallazgoLibroRespuesta[], hojasDelLibr
     }
   });
 
-  return { halos: [...porCelda.values()], sinCelda };
+  return { halos: [...porCelda.values()], sinCelda, ocultos };
+}
+
+export interface ResumenDeHoja {
+  total: number;
+  // La mas grave de la hoja.
+  severidad: Severidad;
+}
+
+// Cuantos hallazgos se ven en cada hoja y la severidad mas grave: lo que dicen las pestanas del libro.
+export function resumenPorHoja(halos: Halo[]): Map<string, ResumenDeHoja> {
+  const resumen = new Map<string, ResumenDeHoja>();
+  for (const halo of halos) {
+    const actual = resumen.get(halo.hoja);
+    if (!actual) {
+      resumen.set(halo.hoja, { total: halo.indices.length, severidad: halo.severidad });
+      continue;
+    }
+    actual.total += halo.indices.length;
+    if (gravedad(halo.severidad) > gravedad(actual.severidad)) actual.severidad = halo.severidad;
+  }
+  return resumen;
 }

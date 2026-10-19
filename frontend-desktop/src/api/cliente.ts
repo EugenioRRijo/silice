@@ -47,7 +47,7 @@ function detalleDe(cuerpo: unknown, estado: number): string {
     if (typeof detalle === "string" && detalle) return detalle;
     if (typeof detail === "string" && detail) return detail;
   }
-  return `La API respondió con el estado ${estado}.`;
+  return `El programa de Sílice respondió con el estado ${estado}.`;
 }
 
 // Arma la peticion (token CSRF, cuerpo JSON o multipart), la manda y, si la API contesta con error, lanza
@@ -69,7 +69,7 @@ async function enviar(ruta: string, opciones: OpcionesDePeticion): Promise<Respo
   try {
     respuesta = await fetch(ruta, { method: metodo, headers: cabeceras, body: cuerpo, credentials: "same-origin" });
   } catch {
-    throw new ErrorDeApi(0, "No se pudo hablar con el servidor de Sílice. Compruebe que la API esté encendida.");
+    throw new ErrorDeApi(0, "No se pudo hablar con el programa de Sílice. Compruebe que esté encendido.");
   }
 
   if (!respuesta.ok) {

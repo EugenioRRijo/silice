@@ -615,3 +615,20 @@ def test_la_ficha_no_aparece_en_respuestas_ni_registros() -> None:
     assert ficha not in detalles
     texto = (config.carpeta_registros() / "silice.log").read_text(encoding="utf-8")
     assert ficha not in texto
+
+
+@pytest.mark.usefixtures("_sin_dormir")
+def test_el_freno_global_no_guarda_lo_tecleado_que_no_es_un_usuario() -> None:
+    """El evento `bloqueo` del 429 usa la misma clave que `autenticar`: marcador, no el texto."""
+    pegada = "Mi Clave Pegada Por Error 2026!"
+    ahora = sesion_web.ahora()
+    for _ in range(cuentas.FRENO_FALLOS + 1):
+        cuentas.FRENO.registrar_fallo(ahora)
+    assert _entrar(_cliente(), pegada, "cualquiera").status_code == 429
+    with sesion_de_instalacion() as sesion:
+        filas = [
+            f"{e.login_intentado}|{e.ip_cliente}|{e.tipo}|{e.detalle}"
+            for e in sesion.scalars(select(EventoAcceso))
+        ]
+    assert any(f.startswith("(usuario no válido)|") and "|bloqueo|" in f for f in filas)
+    assert not any("clave pegada" in f.casefold() for f in filas)

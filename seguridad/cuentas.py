@@ -27,6 +27,7 @@ from pathlib import Path
 from argon2 import PasswordHasher
 from argon2.exceptions import InvalidHashError, VerificationError
 from sqlalchemy import func, select
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
 from seguridad import eventos, sesiones
@@ -39,6 +40,7 @@ MENSAJE_BLOQUEO = (
     "Demasiados intentos fallidos. Espere 15 minutos o pida al administrador que desbloquee "
     "la cuenta."
 )
+MENSAJE_BASE_OCUPADA = "La base está ocupada; reintente en unos segundos."
 MENSAJE_CODIGO = "El código de instalación no es válido o ya se usó."
 FALLOS_PARA_BLOQUEAR = 5
 BLOQUEO = timedelta(minutes=15)
@@ -54,6 +56,8 @@ CLAVE_INTENTOS_CODIGO = "!codigo-de-instalacion"
 NOMBRE_ARCHIVO_CODIGO = "codigo_instalacion.txt"
 PATRON_LOGIN = re.compile(r"^[a-z0-9][a-z0-9._-]{2,39}$")
 PURGA_DE_INEXISTENTES = timedelta(hours=24)
+#: Lo que se guarda (evento y contador) cuando lo tecleado no puede ser un usuario.
+LOGIN_NO_VALIDO = "(usuario no válido)"
 
 _hasher = PasswordHasher()
 _semaforo = threading.BoundedSemaphore(VERIFICACIONES_SIMULTANEAS)
@@ -138,6 +142,22 @@ def validar_contrasena(contrasena: str, login: str = "") -> None:
         raise ContrasenaInvalida("Esa contraseña es demasiado común; elija otra.")
 
 
+def _tomar_escritura(session: Session) -> None:
+    """Toma el bloqueo de escritura de SQLite (`BEGIN IMMEDIATE`) ANTES de leer lo que se va a
+    comprobar. pysqlite no abre transacción en un SELECT y el motor de `seguridad.base` no
+    controla el `BEGIN`: sin esto, dos administradores que se desactivan a la vez leen ambos
+    «queda otro» y confirman ambos, y no queda ninguno. El segundo espera (`busy_timeout`) hasta
+    que el primero confirma y entonces ve su resultado. Si la sesión ya escribió, su
+    transacción ya tiene el bloqueo y no se repite."""
+    conexion = session.connection()
+    if not conexion.connection.dbapi_connection.in_transaction:
+        try:
+            conexion.exec_driver_sql("BEGIN IMMEDIATE")
+        except OperationalError as error:  # venció `busy_timeout`: otra escritura no termina
+            session.rollback()
+            raise ValueError(MENSAJE_BASE_OCUPADA) from error
+
+
 def _huella(contrasena: str) -> str:
     with _semaforo:
         return _hasher.hash(contrasena)
@@ -209,6 +229,22 @@ def _fallar(session: Session, fila: IntentoAcceso, ahora: datetime, freno: Freno
     return False
 
 
+def clave_de_intento(login: str) -> str:
+    """El login normalizado si puede ser un usuario (`PATRON_LOGIN`); si no, un marcador fijo.
+
+    Lo que un anónimo teclea en el campo usuario se guarda en `evento_acceso` y se muestra al
+    administrador: una contraseña pegada ahí quedaría legible. Una cuenta real siempre cumple el
+    patrón (`validar_login`), así que el marcador nunca es el login de nadie: su contador y su
+    bloqueo, compartidos por todo texto imposible, no pueden negarle el acceso a una persona
+    real, y cada fallo sigue alimentando el freno global (`_fallar`).
+
+    Limitación conocida: una contraseña que cumpla `PATRON_LOGIN` (3 a 40 caracteres de
+    `[a-z0-9._-]`, sin espacios ni mayúsculas) se guarda como si fuera un login; no se distingue
+    de uno. No se resuelve con un hash del marcador (decisión de la revisión)."""
+    normal = normalizar_login(login)
+    return normal if PATRON_LOGIN.fullmatch(normal) else LOGIN_NO_VALIDO
+
+
 def _bloqueado(fila: IntentoAcceso, ahora: datetime) -> bool:
     """Bloqueado mientras `ahora < bloqueado_hasta`; al llegar la hora se libera y se reinicia."""
     if fila.bloqueado_hasta is None:
@@ -238,7 +274,7 @@ def autenticar(
     espera = freno.espera(ahora)
     if espera:
         dormir(espera)
-    clave = normalizar_login(login)[:60]
+    clave = clave_de_intento(login)
     fila = _intento(session, clave)
     if _bloqueado(fila, ahora):
         eventos.registrar(session, "bloqueo", ahora, login=clave, ip=ip, detalle="login bloqueado")
@@ -439,8 +475,11 @@ def crear_usuario(
 def cambiar_roles(
     session: Session, actor: Usuario, usuario_id: int, roles: Iterable[Rol | str], ahora: datetime
 ) -> Usuario:
+    _tomar_escritura(session)
+    session.refresh(actor)  # puede haber sido desactivado mientras tanto
     _exigir_administrador(actor)
     usuario = _usuario(session, usuario_id)
+    session.refresh(usuario)
     nuevos = texto_de_roles(roles)
     if Rol.ADMINISTRADOR in roles_de(usuario.roles) and Rol.ADMINISTRADOR not in roles_de(nuevos):
         _exigir_otro_administrador(session, usuario)
@@ -456,7 +495,9 @@ def cambiar_roles(
 
 def _exigir_otro_administrador(session: Session, usuario: Usuario) -> None:
     otros = [
-        u for u in session.scalars(select(Usuario).where(Usuario.activo.is_(True)))
+        u for u in session.scalars(
+            select(Usuario).where(Usuario.activo.is_(True)).execution_options(populate_existing=True)
+        )
         if u.id != usuario.id and Rol.ADMINISTRADOR in roles_de(u.roles)
     ]
     if not otros:
@@ -465,8 +506,11 @@ def _exigir_otro_administrador(session: Session, usuario: Usuario) -> None:
 
 def desactivar(session: Session, actor: Usuario, usuario_id: int, ahora: datetime) -> None:
     """Las cuentas no se borran: se desactivan, para que sus registros sigan teniendo dueño."""
+    _tomar_escritura(session)
+    session.refresh(actor)  # puede haber sido desactivado mientras tanto
     _exigir_administrador(actor)
     usuario = _usuario(session, usuario_id)
+    session.refresh(usuario)
     if Rol.ADMINISTRADOR in roles_de(usuario.roles):
         _exigir_otro_administrador(session, usuario)
     usuario.activo = False
