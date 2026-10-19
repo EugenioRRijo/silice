@@ -436,7 +436,8 @@ def test_lo_tecleado_que_no_es_un_usuario_posible_no_se_guarda(
             str(c) for i in sesion.query(IntentoAcceso) for c in (i.login_normalizado,)
         )
         assert pegado not in volcado and pegado[:20] not in volcado
-    assert pegado.encode() not in (tmp_path / "instalacion.db").read_bytes()
+    if len(pegado) >= 8:  # un texto de 2 letras aparece por azar en cualquier archivo binario
+        assert pegado.encode() not in (tmp_path / "instalacion.db").read_bytes()
 
 
 def test_un_login_real_cuenta_y_bloquea_igual_y_lo_no_valido_no_bloquea_a_nadie(
@@ -451,9 +452,8 @@ def test_un_login_real_cuenta_y_bloquea_igual_y_lo_no_valido_no_bloquea_a_nadie(
             assert not isinstance(error.value, cuentas.CuentaBloqueada)
         with pytest.raises(cuentas.CuentaBloqueada):
             _entrar(sesion, "ana", MALA, freno)
-        assert [e.login_intentado for e in sesion.query(EventoAcceso).filter_by(tipo="bloqueo")] == [
-            "ana"
-        ]
+        bloqueos = sesion.query(EventoAcceso).filter_by(tipo="bloqueo")
+        assert [e.login_intentado for e in bloqueos] == ["ana"]
         # el bloqueo del marcador (texto imposible como usuario) no alcanza a una cuenta real
         otra = persona(sesion, admin, "luis", ("arma",))
         for i in range(cuentas.FALLOS_PARA_BLOQUEAR):
