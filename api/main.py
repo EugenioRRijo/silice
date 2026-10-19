@@ -16,6 +16,7 @@ from api.rutas import (
     catalogo,
     composicion,
     computos,
+    cuentas,
     libros,
     listas,
     presupuestos,
@@ -68,6 +69,8 @@ app.include_router(
 # Ola 0a (sesion 2b): el caso de la sesion web (RM-2) y los proyectos del caso
 app.include_router(casos.router)
 app.include_router(proyectos.router)
+# Migracion: Administracion, pestañas Cuentas y Accesos (ADMINISTRAR_CUENTAS, solo sesion)
+app.include_router(cuentas.router)
 # Ola 3 (S2-B): «Componer una partida» (UC-10, UC-11)
 app.include_router(composicion.router)
 # 1.2.0 (RT-2): la interfaz nueva, estática y sin secretos, en /app con CSP
