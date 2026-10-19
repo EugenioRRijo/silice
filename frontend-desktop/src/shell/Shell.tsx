@@ -182,6 +182,7 @@ export function Shell({ sesion, alSalir, alExpirar, paginas = PAGINAS, urlClasic
     () => ({
       sesion,
       proyecto,
+      nombreProyecto: proyectos?.find((p) => p.codigo === proyecto)?.nombre ?? null,
       caso: casos?.actual ?? null,
       recargarProyectos,
       alExpirar,
@@ -189,7 +190,7 @@ export function Shell({ sesion, alSalir, alExpirar, paginas = PAGINAS, urlClasic
       ranuraCabecera: ranura,
       crearHojaVisor: crearHoja,
     }),
-    [sesion, proyecto, casos, recargarProyectos, alExpirar, almacen, ranura, crearHoja],
+    [sesion, proyecto, proyectos, casos, recargarProyectos, alExpirar, almacen, ranura, crearHoja],
   );
 
   const primera = paginas.find((p) => estaMigrada(p) && visible(p, acciones, sesion.modo_entrega));

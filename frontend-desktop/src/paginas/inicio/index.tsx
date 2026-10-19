@@ -18,7 +18,7 @@ const RUTA_AUDITORIAS = "/v1/auditorias-libro?limite=5";
 // presupuesto, debajo la arenera y lo ultimo que se audito. Cada bloque responde una pregunta («¿que hago?»,
 // «¿que falta en la arenera?», «¿donde estaba?»); nada de tarjetas de adorno.
 export default function PaginaInicio() {
-  const { alExpirar, caso, proyecto } = useAplicacion();
+  const { alExpirar, caso, proyecto, nombreProyecto } = useAplicacion();
   const navegar = useNavigate();
   const [archivo, setArchivo] = useState<File | null>(null);
   const arenera = useCarga<ExistenciaRespuesta[]>(RUTA_ARENERA, alExpirar);
@@ -71,7 +71,7 @@ export default function PaginaInicio() {
         </h2>
         <p className="silice-inicio__nota cds--type-body-compact-01">
           {`Caso abierto: ${caso?.nombre ?? "ninguno"}`}
-          {proyecto ? ` · Proyecto: ${proyecto}` : ""}
+          {proyecto ? ` · Proyecto: ${nombreProyecto ?? proyecto}` : ""}
         </p>
         <UltimasAuditorias carga={auditorias} />
       </section>

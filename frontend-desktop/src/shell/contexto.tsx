@@ -8,6 +8,8 @@ export interface Aplicacion {
   sesion: SesionRespuesta;
   // Codigo del proyecto elegido en la cabecera, o null si no hay ninguno.
   proyecto: string | null;
+  // Nombre del proyecto elegido (el selector guarda el codigo); null si no hay o aun no carga la lista.
+  nombreProyecto?: string | null;
   // Caso (base de datos) en uso, o null mientras carga o si la API no lo informa.
   caso: CasoRespuesta | null;
   // Para volver a pedir la lista de proyectos (por ejemplo, despues de crear uno).

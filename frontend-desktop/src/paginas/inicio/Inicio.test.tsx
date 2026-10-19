@@ -329,6 +329,15 @@ describe("Inicio, panel del día", () => {
       expect(within(seccion).getByText(/Proyecto: P-01/)).toBeInTheDocument();
     });
 
+    test("muestra el nombre del proyecto y no su código cuando el contexto lo trae (V-23)", async () => {
+      montar({ proyecto: "2", nombreProyecto: "Clínica Demo" });
+      const seccion = await screen.findByRole("region", {
+        name: "Últimas auditorías guardadas",
+      });
+      expect(within(seccion).getByText(/Proyecto: Clínica Demo/)).toBeInTheDocument();
+      expect(within(seccion).queryByText(/Proyecto: 2/)).toBeNull();
+    });
+
     test("lista las últimas auditorías con archivo, fecha y resultado", async () => {
       auditorias = () =>
         json([
