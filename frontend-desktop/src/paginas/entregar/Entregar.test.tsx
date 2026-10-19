@@ -119,7 +119,7 @@ describe("Entregar paquete", () => {
 
   test("elige el proyecto de la cabecera y la versión más nueva, y muestra lo que viajará", async () => {
     montar("2");
-    expect(await screen.findByText("836.8 USD")).toBeInTheDocument();
+    expect(await screen.findByText("836.80 USD")).toBeInTheDocument();
     expect(screen.getByLabelText("Proyecto")).toHaveValue("Oficina");
     expect(screen.getByLabelText("Versión")).toHaveValue("002");
     expect(screen.getByText("3")).toBeInTheDocument(); // hallazgos
@@ -147,7 +147,8 @@ describe("Entregar paquete", () => {
   test("genera el paquete sin firma, muestra su SHA-256 y lo descarga con el nombre de la API", async () => {
     const u = userEvent.setup();
     montar();
-    await screen.findByText("836.8 USD");
+    expect(await screen.findByText("836.80 USD")).toHaveAttribute("title", "Valor exacto: 836.79750000 USD");
+    expect(screen.getByText(/Valor exacto: 836\.79750000 USD/, { selector: "span" })).toBeInTheDocument();
     await u.type(screen.getByLabelText("Para quién es (opcional)"), "Cliente S.A.");
     await u.click(screen.getByRole("button", { name: "Generar paquete" }));
     expect(await screen.findByText("Paquete listo (sin firma).")).toBeInTheDocument();
@@ -176,7 +177,7 @@ describe("Entregar paquete", () => {
       });
     const u = userEvent.setup();
     montar();
-    await screen.findByText("836.8 USD");
+    await screen.findByText("836.80 USD");
     const campo = screen.getByLabelText("Contraseña de la clave de firma");
     expect(campo).toBeEnabled();
     expect(campo).toHaveAttribute("autocomplete", "off");
@@ -193,7 +194,7 @@ describe("Entregar paquete", () => {
     entrega = () => json({ detalle: "La contraseña de la clave no es correcta." }, 400);
     const u = userEvent.setup();
     montar();
-    await screen.findByText("836.8 USD");
+    await screen.findByText("836.80 USD");
     await u.type(screen.getByLabelText("Contraseña de la clave de firma"), "mala");
     await u.click(screen.getByRole("button", { name: "Generar paquete" }));
     expect((await alertaConTexto()).textContent).toContain("La contraseña de la clave no es correcta.");
@@ -206,7 +207,7 @@ describe("Entregar paquete", () => {
     entrega = () => json({ detalle: "Esta operación solo puede hacerse desde el propio equipo." }, 403);
     const u = userEvent.setup();
     montar();
-    await screen.findByText("836.8 USD");
+    await screen.findByText("836.80 USD");
     await u.type(screen.getByLabelText("Contraseña de la clave de firma"), "x");
     await u.click(screen.getByRole("button", { name: "Generar paquete" }));
     expect((await alertaConTexto()).textContent).toContain("solo puede hacerse desde el propio equipo");
@@ -215,12 +216,12 @@ describe("Entregar paquete", () => {
   test("al cambiar de versión desaparece el paquete anterior y se pide el resumen de la nueva", async () => {
     const u = userEvent.setup();
     montar();
-    await screen.findByText("836.8 USD");
+    await screen.findByText("836.80 USD");
     await u.click(screen.getByRole("button", { name: "Generar paquete" }));
     await screen.findByText("Paquete listo (sin firma).");
-    resumenDe = (_p, version) => json(resumen({ version, total_texto: "10.5" }));
+    resumenDe = (_p, version) => json(resumen({ version, total: "4131.1", total_texto: "10.5" }));
     await u.selectOptions(screen.getByLabelText("Versión"), "001");
-    expect(await screen.findByText("10.5 USD")).toBeInTheDocument();
+    expect(await screen.findByText("4,131.10 USD")).toBeInTheDocument();
     expect(screen.queryByText("Paquete listo (sin firma).")).not.toBeInTheDocument();
   });
 

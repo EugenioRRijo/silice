@@ -30,6 +30,10 @@
   }
 }
 
+.silice-entregar__total {
+  font-variant-numeric: tabular-nums;
+}
+
 .silice-entregar__nota {
   max-inline-size: 65ch;
   color: var(--silice-texto-secundario);

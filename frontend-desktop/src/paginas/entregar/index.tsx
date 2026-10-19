@@ -10,6 +10,7 @@ import { EstadoVacio } from "../../comun/EstadoVacio";
 import { useAplicacion } from "../../shell/contexto";
 import { useCarga } from "../inicio/useCarga";
 import type { Carga } from "../inicio/useCarga";
+import { totalPresentado } from "./logica";
 import "./entregar.scss";
 
 interface ProyectoDelCaso {
@@ -195,7 +196,13 @@ function Entrega({ proyecto, version, alExpirar }: { proyecto: string; version: 
       <dl className="silice-entregar__datos">
         <div>
           <dt className="cds--type-label-01">Total</dt>
-          <dd className="cds--type-heading-03">{`${datos.total_texto} ${datos.moneda}`}</dd>
+          <dd
+            className="cds--type-heading-03 silice-entregar__total"
+            title={`Valor exacto: ${datos.total} ${datos.moneda}`}
+          >
+            {`${totalPresentado(datos.total)} ${datos.moneda}`}
+            <span className="cds--visually-hidden">{`. Valor exacto: ${datos.total} ${datos.moneda}`}</span>
+          </dd>
         </div>
         <div>
           <dt className="cds--type-label-01">Hallazgos</dt>
