@@ -1,0 +1,55 @@
+// Entregar paquete. Sin tarjetas con sombra ni animaciones (DESIGN.md): campos y cifras en columna.
+
+.silice-entregar {
+  display: grid;
+  gap: 1.25rem;
+  padding: 1.5rem 1rem 2rem;
+  max-inline-size: 60rem;
+}
+
+.silice-entregar__selectores {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: 1rem;
+}
+
+.silice-entregar__datos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem 3rem;
+  margin: 0;
+  padding-block-end: 1rem;
+  border-block-end: 1px solid var(--silice-divisor);
+
+  dt {
+    color: var(--silice-texto-secundario);
+  }
+
+  dd {
+    margin: 0;
+  }
+}
+
+.silice-entregar__nota {
+  max-inline-size: 65ch;
+  color: var(--silice-texto-secundario);
+}
+
+.silice-entregar__formulario {
+  display: grid;
+  gap: 1rem;
+  max-inline-size: 28rem;
+}
+
+.silice-entregar__listo {
+  display: grid;
+  gap: 0.5rem;
+  justify-items: start;
+  padding-block-start: 1rem;
+  border-block-start: 1px solid var(--silice-divisor);
+}
+
+.silice-entregar__sha {
+  overflow-wrap: anywhere;
+  color: var(--silice-texto-secundario);
+}

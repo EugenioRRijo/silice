@@ -19,13 +19,14 @@ PAQUETES_DE_TERCEROS = {
     "ollama": {"asistente/proveedores/ollama_local.py"},
     "keyring": {"asistente/clave.py"},
 }
-#: Los unicos modulos de `ui` que pueden importar `asistente` (maestro §3.1; `ui.entrega` solo
-#: `asistente.registro`, para el anexo `ia.json`: ruling RP9-6 del plan 0.9.0).
+#: Los unicos modulos de `ui` que pueden importar `asistente` (maestro §3.1).
 IMPORTAN_ASISTENTE = {
     "ui/paginas/hoja.py",
     "ui/paginas/administracion.py",
-    "ui/entrega.py",
 }
+#: En `aplicacion/` solo `entrega` (lo movio de `ui/entrega.py` la ola 4 de la sesion 2b), y solo
+#: `asistente.registro`, para el anexo `ia.json`: ruling RP9-6 del plan 0.9.0.
+IMPORTAN_ASISTENTE_APLICACION = {"aplicacion/entrega.py"}
 
 
 def _raiz(nombre: str) -> str:
@@ -75,9 +76,19 @@ def test_de_ui_solo_las_paginas_de_la_lista_importan_asistente():
     assert importadores <= IMPORTAN_ASISTENTE, importadores - IMPORTAN_ASISTENTE
 
 
-def test_ui_entrega_solo_importa_el_registro_del_asistente():
-    """`ui/entrega.py` lo crea S3-3; hasta entonces el bucle no encuentra nada que vigilar."""
-    for archivo in archivos("ui"):
-        if ruta(archivo) == "ui/entrega.py":
-            de_asistente = {n for n in importaciones(archivo) if _raiz(n) == "asistente"}
-            assert de_asistente <= {"asistente", "asistente.registro"}, de_asistente
+def test_aplicacion_entrega_solo_importa_el_registro_del_asistente():
+    """La guardia ve el archivo (no recorre una lista vacia) y nadie mas de `aplicacion/` importa
+    `asistente`; `ui/entrega.py` es una reexportacion y ya no lo importa."""
+    vistos = {ruta(a): a for a in archivos("aplicacion")}
+    assert "aplicacion/entrega.py" in vistos
+    importadores = {
+        nombre
+        for nombre, archivo in vistos.items()
+        if "asistente" in {_raiz(n) for n in importaciones(archivo)}
+    }
+    assert importadores == IMPORTAN_ASISTENTE_APLICACION, importadores
+    de_asistente = {
+        n for n in importaciones(vistos["aplicacion/entrega.py"]) if _raiz(n) == "asistente"
+    }
+    assert de_asistente <= {"asistente", "asistente.registro"}, de_asistente
+    assert "asistente" not in {_raiz(n) for n in importaciones(RAIZ / "ui" / "entrega.py")}

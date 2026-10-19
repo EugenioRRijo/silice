@@ -16,6 +16,7 @@ from api.rutas import (
     catalogo,
     composicion,
     computos,
+    entregas,
     libros,
     listas,
     presupuestos,
@@ -70,6 +71,8 @@ app.include_router(casos.router)
 app.include_router(proyectos.router)
 # Ola 3 (S2-B): «Componer una partida» (UC-10, UC-11)
 app.include_router(composicion.router)
+# Ola 4 (sesion 2b): entregar el paquete auditado
+app.include_router(entregas.router)
 # 1.2.0 (RT-2): la interfaz nueva, estática y sin secretos, en /app con CSP
 interfaz.montar(app)
 
