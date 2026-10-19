@@ -70,7 +70,7 @@ function Grafico({
           color: { scale: Object.fromEntries(datos.map((d) => [d.group, PALETA_GRAFICOS[0]])) },
         };
   return (
-    <Suspense fallback={<EsqueletoPagina etiqueta="Cargando el grafico" />}>
+    <Suspense fallback={<EsqueletoPagina etiqueta="Cargando el gráfico" />}>
       <GraficoCarbon tipo={tipo} datos={datos} opciones={opciones} />
     </Suspense>
   );
@@ -81,15 +81,15 @@ function Contenido({ datos }: { datos: TableroRespuesta }) {
   if (datos.version === null) {
     return (
       <EstadoVacio
-        titulo="Este proyecto aun no tiene presupuesto guardado"
-        descripcion="Elabore un presupuesto y guardelo para ver aqui su resumen, su curva y su Pareto."
+        titulo="Este proyecto aún no tiene presupuesto guardado"
+        descripcion="Elabore un presupuesto y guárdelo para ver aquí su resumen, su curva y su Pareto."
       />
     );
   }
   return (
     <>
       <p className="silice-tablero__nota cds--type-body-compact-01">
-        {`Version ${datos.version} del ${datos.fecha} · ${datos.renglones} renglones · ${moneda}`}
+        {`Versión ${datos.version} del ${datos.fecha} · ${datos.renglones} renglones · ${moneda}`}
       </p>
       <Tarjetas tarjetas={datos.tarjetas} />
 
@@ -102,7 +102,7 @@ function Contenido({ datos }: { datos: TableroRespuesta }) {
             <Tarjetas tarjetas={datos.control.tarjetas} />
           </>
         ) : (
-          <EstadoVacio titulo="Aun no hay control de obra" descripcion={datos.control?.motivo} />
+          <EstadoVacio titulo="Aún no hay control de obra" descripcion={datos.control?.motivo} />
         )}
       </section>
 
@@ -136,19 +136,19 @@ function Contenido({ datos }: { datos: TableroRespuesta }) {
       {datos.pareto.length > 0 && (
         <section className="silice-tablero__bloque" aria-labelledby="tablero-pareto">
           <h2 id="tablero-pareto" className="cds--type-heading-compact-02">
-            Partidas que mas pesan (Pareto)
+            Partidas que más pesan (Pareto)
           </h2>
           <Grafico
-            titulo="Partidas que mas pesan"
+            titulo="Partidas que más pesan"
             tipo="barras"
             datos={datosDePareto(datos.pareto)}
             eje={{ abajo: `Total (${moneda})`, izquierda: "Partida" }}
           />
           <TablaDensa
-            etiqueta="Partidas que mas pesan"
+            etiqueta="Partidas que más pesan"
             columnas={[
               { clave: "partida", titulo: "Partida" },
-              { clave: "descripcion", titulo: "Descripcion" },
+              { clave: "descripcion", titulo: "Descripción" },
               { clave: "total", titulo: `Total (${moneda})`, numerica: true, presentar: formatoMontoEsVe },
               { clave: "peso", titulo: "Peso", numerica: true },
               { clave: "acumulado", titulo: "Acumulado", numerica: true },
@@ -171,15 +171,15 @@ function Contenido({ datos }: { datos: TableroRespuesta }) {
             Versiones del presupuesto
           </h2>
           <Grafico
-            titulo="Total por version"
+            titulo="Total por versión"
             tipo="barras"
             datos={datosDeVersiones(datos.versiones)}
-            eje={{ abajo: `Total (${moneda})`, izquierda: "Version" }}
+            eje={{ abajo: `Total (${moneda})`, izquierda: "Versión" }}
           />
           <TablaDensa
             etiqueta="Versiones del presupuesto"
             columnas={[
-              { clave: "version", titulo: "Version" },
+              { clave: "version", titulo: "Versión" },
               { clave: "fecha", titulo: "Fecha" },
               { clave: "motivo", titulo: "Motivo" },
               { clave: "costo_directo", titulo: "Costo directo", numerica: true, presentar: formatoMontoEsVe },
@@ -193,7 +193,7 @@ function Contenido({ datos }: { datos: TableroRespuesta }) {
               motivo: v.motivo,
               costo_directo: v.costo_directo,
               total: v.total,
-              vigente: v.vigente ? "si" : "no",
+              vigente: v.vigente ? "sí" : "no",
             }))}
           />
         </section>

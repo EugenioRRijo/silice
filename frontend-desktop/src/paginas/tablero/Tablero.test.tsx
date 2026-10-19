@@ -100,7 +100,7 @@ describe("Tablero del proyecto", () => {
     montar("OB-S2");
     expect(await screen.findByText("Total del contrato")).toBeInTheDocument();
     expect(String(fetchFalso.mock.calls[0]![0])).toContain("/v1/tablero?proyecto=OB-S2");
-    expect(screen.getByText("Version OB-001 del 2026-11-02 · 3 renglones · USD")).toBeInTheDocument();
+    expect(screen.getByText("Versión OB-001 del 2026-11-02 · 3 renglones · USD")).toBeInTheDocument();
     // V-21: un indice (SPI 0,98) no es una parte de un todo: no hay donas de avance, SPI ni CPI, solo los indicadores
     expect(screen.queryByLabelText(/SPI \(plazo\)/)).toBeNull();
     expect(screen.getByText("EAC")).toBeInTheDocument();
@@ -108,7 +108,7 @@ describe("Tablero del proyecto", () => {
     expect(await screen.findByTestId("grafico-linea")).toBeInTheDocument();
     expect(await screen.findAllByTestId("grafico-barras")).toHaveLength(2); // Pareto y versiones
     // cada grafico tiene su tabla con los montos exactos
-    const pareto = screen.getByRole("table", { name: "Partidas que mas pesan" });
+    const pareto = screen.getByRole("table", { name: "Partidas que más pesan" });
     expect(within(pareto).getByText("3.000,00")).toBeInTheDocument();
     expect(within(pareto).getByTitle("3000.00")).toBeInTheDocument(); // el exacto, a un toque (V-19)
     expect(screen.getByRole("table", { name: "Versiones del presupuesto" })).toBeInTheDocument();
@@ -143,7 +143,7 @@ describe("Tablero del proyecto", () => {
       json({ ...TABLERO, control: { disponible: false, motivo: "No hay linea base declarada.", anillos: [], tarjetas: [] } }),
     );
     montar("OB-S2");
-    expect(await screen.findByText("Aun no hay control de obra")).toBeInTheDocument();
+    expect(await screen.findByText("Aún no hay control de obra")).toBeInTheDocument();
     expect(screen.getByText("No hay linea base declarada.")).toBeInTheDocument();
   });
 
@@ -152,7 +152,7 @@ describe("Tablero del proyecto", () => {
       json({ ...TABLERO, version: null, fecha: null, moneda: null, tarjetas: [], control: null, curvas: null, desglose: [], pareto: [], versiones: [] }),
     );
     montar("OB-S2");
-    expect(await screen.findByText("Este proyecto aun no tiene presupuesto guardado")).toBeInTheDocument();
+    expect(await screen.findByText("Este proyecto aún no tiene presupuesto guardado")).toBeInTheDocument();
   });
 
   test("403 y 404 se dicen con palabras, no como error", async () => {

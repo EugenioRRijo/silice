@@ -135,13 +135,13 @@ export const FILTROS_INICIALES: Filtros = { corte: "", precios: PRECIOS_INICIALE
 
 export const ROTULO_DE_METODO: Record<MetodoDePrecios, string> = {
   ninguno: "Sin precios del corte",
-  comprobacion: "Comprobacion directa (version revalorada)",
+  comprobacion: "Comprobación directa (versión revalorada)",
   escalatoria: "Escalatoria (un Km declarado)",
 };
 
 export const PESTANAS = ["Línea base", "Valuaciones", "Valor ganado", "Alertas y reproyección", "Recuperación"] as const;
 
-export const COLUMNAS_VALUACIONES = ["Numero", "Periodo", "Fecha", "Inspector", "Registrada", "Estado"];
+export const COLUMNAS_VALUACIONES = ["Número", "Periodo", "Fecha", "Inspector", "Registrada", "Estado"];
 export const COLUMNAS_INDICADORES = ["Indicador", "Valor", "En la otra moneda", "Nota"];
 export const COLUMNAS_ALERTAS = ["Alerta", "Severidad", "Descripcion", "Observado", "Umbral"];
 export const COLUMNAS_REPROYECCION = ["Partida", "Indice", "Fin (dia habil)", "Nota"];
@@ -158,6 +158,19 @@ export const COLUMNAS_OPCIONES = [
 ];
 
 // Las columnas de una tabla de la API: la clave es el titulo, que es tambien la clave de cada fila.
+// Los titulos que la API manda sin tilde, tal como se leen (la clave de la fila sigue siendo el titulo original).
+export const TITULOS_VISIBLES: Record<string, string> = {
+  Numero: "Número",
+  Descripcion: "Descripción",
+  Indice: "Índice",
+  "Fin (dia habil)": "Fin (día hábil)",
+  Opcion: "Opción",
+  Termino: "Término",
+  "Retraso (dias)": "Retraso (días)",
+  Penalizacion: "Penalización",
+  Version: "Versión",
+};
+
 export function columnasDe(
   titulos: string[],
   numericas: string[] = [],
@@ -165,7 +178,7 @@ export function columnasDe(
 ) {
   return titulos.map((t) => ({
     clave: t,
-    titulo: t,
+    titulo: TITULOS_VISIBLES[t] ?? t,
     numerica: numericas.includes(t),
     ordenable: false,
     presentar: presentar[t],
@@ -246,7 +259,7 @@ export function useAccion(alExpirar: () => void, alTerminar?: () => void) {
   return { estado, ejecutar };
 }
 
-// Como `useCarga`, pero mientras vuelve a pedir tras una escritura deja a la vista lo ultimo que llego: asi el
+// Como `useCarga`, pero mientras vuelve a pedir tras una escritura deja a la vista lo último que llego: asi el
 // formulario que acaba de escribir no se desmonta (y su aviso de exito no se pierde) detras de un esqueleto.
 export function useCargaSuave<T>(ruta: string, alExpirar: () => void): Carga<T> {
   const carga = useCarga<T>(ruta, alExpirar);

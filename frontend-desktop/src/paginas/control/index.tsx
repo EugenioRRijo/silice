@@ -40,10 +40,10 @@ function Resultados({
   if (carga.estado !== "listo") return <AvisoError error={errorDeCarga(carga)} titulo="No se pudo calcular el control" />;
   const calculo = carga.datos;
   if (calculo.estado === "sin_linea_base") {
-    return <EstadoVacio titulo="Declare primero la linea base de control" descripcion="Se hace en la pestaña «Línea base»." />;
+    return <EstadoVacio titulo="Declare primero la línea base de control" descripcion="Se hace en la pestaña «Línea base»." />;
   }
   if (calculo.estado === "sin_valuaciones") {
-    return <EstadoVacio titulo="Registre la primera valuacion para ver el control" descripcion="Se hace en la pestaña «Valuaciones»." />;
+    return <EstadoVacio titulo="Registre la primera valuación para ver el control" descripcion="Se hace en la pestaña «Valuaciones»." />;
   }
   return (
     <>

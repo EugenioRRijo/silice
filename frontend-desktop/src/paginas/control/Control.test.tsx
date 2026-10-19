@@ -6,7 +6,7 @@ import type { SesionRespuesta } from "../../api/tipos";
 import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
 import PaginaControl from "./index";
-import { consultaDeCalculo, errorDeCarga, etiquetaDeCodigo, textoLlano, cuerpoDeOpciones, FILTROS_INICIALES, sinLineasVacias } from "./logica";
+import { TITULOS_VISIBLES, columnasDe, consultaDeCalculo, errorDeCarga, etiquetaDeCodigo, textoLlano, cuerpoDeOpciones, FILTROS_INICIALES, sinLineasVacias } from "./logica";
 import type { Calculo, LineaBase, OpcionDeRecuperacion, Valuaciones } from "./logica";
 
 vi.mock("../../comun/GraficoCarbon", () => ({
@@ -143,6 +143,26 @@ describe("Control de obra", () => {
     expect(errorDeCarga({ estado: "cargando" })).toBeNull();
   });
 
+  test("los titulos de columna de la API se leen con tilde y la clave sigue siendo la original (V-20)", () => {
+    const [numero, periodo, indice, fin] = columnasDe(["Numero", "Periodo", "Indice", "Fin (dia habil)"]);
+    expect([numero!.titulo, periodo!.titulo, indice!.titulo, fin!.titulo]).toEqual([
+      "Número",
+      "Periodo",
+      "Índice",
+      "Fin (día hábil)",
+    ]);
+    expect([numero!.clave, indice!.clave, fin!.clave]).toEqual(["Numero", "Indice", "Fin (dia habil)"]);
+    expect(columnasDe(["Columna nueva"])[0]!.titulo).toBe("Columna nueva");
+    expect(TITULOS_VISIBLES["Retraso (dias)"]).toBe("Retraso (días)");
+  });
+
+  test("las tablas de valuaciones muestran los encabezados con tilde (V-20)", async () => {
+    const u = montar();
+    await u.click(await screen.findByRole("tab", { name: "Valuaciones" }));
+    const tabla = await screen.findByRole("table", { name: "Valuaciones registradas" });
+    expect(within(tabla).getByRole("columnheader", { name: "Número" })).toBeInTheDocument();
+  });
+
   test("cada codigo interno tiene su etiqueta en español y los desconocidos se muestran tal cual (V-22)", () => {
     const esperadas: Record<string, string> = {
       spi_error: "Umbral de SPI para error",
@@ -189,7 +209,7 @@ describe("Control de obra", () => {
   test("la primera pestaña muestra la linea base y los parametros con su naturaleza", async () => {
     montar();
     expect(await screen.findByText(/perspectiva costo, vigente desde 2026-11-02/)).toBeInTheDocument();
-    const tabla = screen.getByRole("table", { name: "Parametros de control" });
+    const tabla = screen.getByRole("table", { name: "Parámetros de control" });
     // V-22: la naturaleza y el parametro se leen en español; el codigo queda en el title
     expect(within(tabla).getAllByText("Supuesto declarado")[0]).toHaveAttribute("title", "SUPUESTO_DECLARADO");
     expect(within(tabla).getByText("Dato del contrato")).toHaveAttribute("title", "DATO_DEL_CONTRATO");
@@ -204,9 +224,9 @@ describe("Control de obra", () => {
     await screen.findByText(/perspectiva costo/);
     await u.type(screen.getByLabelText("Vigente desde (AAAA-MM-DD)"), "2026-11-02");
     await u.type(screen.getByLabelText("Inicio de obra (AAAA-MM-DD)"), "2026-11-02");
-    await u.type(screen.getByLabelText("Fuente de la linea base"), "acta 1");
-    await u.click(screen.getByRole("button", { name: "Declarar linea base" }));
-    expect(await screen.findByText("Linea base declarada.")).toBeInTheDocument();
+    await u.type(screen.getByLabelText("Fuente de la línea base"), "acta 1");
+    await u.click(screen.getByRole("button", { name: "Declarar línea base" }));
+    expect(await screen.findByText("Línea base declarada.")).toBeInTheDocument();
     expect(cuerpoDe("/v1/control/linea-base")).toMatchObject({
       proyecto: "OB-S2",
       version: "OB-001",
@@ -228,7 +248,7 @@ describe("Control de obra", () => {
     const u = montar();
     await u.click(await screen.findByRole("tab", { name: "Valuaciones" }));
     await screen.findByRole("table", { name: "Valuaciones registradas" });
-    await u.type(screen.getByLabelText("Numero"), "V-03");
+    await u.type(screen.getByLabelText("Número"), "V-03");
     await u.type(screen.getByLabelText("Periodo desde (AAAA-MM-DD)"), "2026-11-16");
     await u.type(screen.getByLabelText("Periodo hasta (AAAA-MM-DD)"), "2026-11-20");
     await u.type(screen.getByLabelText("Partida 1"), "OB-A");
@@ -275,7 +295,7 @@ describe("Control de obra", () => {
     expect(within(alertas).getByText("Retraso (SPI)")).toHaveAttribute("title", "AL-1");
     expect(within(alertas).queryByText("AL-1")).toBeNull();
     expect(within(alertas).getByText("0.8500 (supuesto declarado)")).toBeInTheDocument();
-    expect(screen.getByText("Termino por el indice: dia 12 (2026-11-18)")).toBeInTheDocument();
+    expect(screen.getByText("Término por el índice: dia 12 (2026-11-18)")).toBeInTheDocument();
     expect(screen.getByText(/Punto de equilibrio proyectado: no disponible/)).toBeInTheDocument();
     expect(screen.getByText(/V' = V/)).toBeInTheDocument();
     expect(screen.getByRole("table", { name: "Plan reproyectado" })).toBeInTheDocument();
@@ -285,7 +305,7 @@ describe("Control de obra", () => {
     calculo = () => json({ ...CALCULO, estado: "sin_valuaciones" });
     const u = montar();
     await u.click(await screen.findByRole("tab", { name: "Valor ganado" }));
-    expect(await screen.findByText("Registre la primera valuacion para ver el control")).toBeInTheDocument();
+    expect(await screen.findByText("Registre la primera valuación para ver el control")).toBeInTheDocument();
   });
 
   test("cambiar el corte vuelve a calcular con el corte pedido", async () => {
@@ -304,15 +324,15 @@ describe("Control de obra", () => {
     await u.click(await screen.findByRole("tab", { name: "Recuperación" }));
     await screen.findByText(/Las opciones se calculan a pedido/);
     expect(fetchFalso.mock.calls.some(([url]) => String(url).includes("recuperacion"))).toBe(false);
-    await u.type(screen.getByLabelText(/Dia habil objetivo/), "11");
+    await u.type(screen.getByLabelText(/Día hábil objetivo/), "11");
     await u.click(screen.getByRole("button", { name: "Calcular opciones" }));
-    expect(await screen.findByRole("table", { name: "Opciones de recuperacion" })).toBeInTheDocument();
+    expect(await screen.findByRole("table", { name: "Opciones de recuperación" })).toBeInTheDocument();
     expect(screen.queryByRole("radio", { name: "Horas extra" })).toBeNull(); // no aplica: no se puede elegir
     await u.click(screen.getByRole("radio", { name: "Frentes en paralelo" }));
-    await u.type(screen.getByLabelText("Declaro que estas partidas no dependen de las que estan en curso (con su fuente)"), "plano 3");
-    await u.type(screen.getByLabelText("Fuente de la decision"), "reunion");
-    await u.click(screen.getByRole("button", { name: "Elegir y crear la version" }));
-    expect(await screen.findByText("Version OB-002 creada con el plan de la opcion elegida.")).toBeInTheDocument();
+    await u.type(screen.getByLabelText("Declaro que estas partidas no dependen de las que están en curso (con su fuente)"), "plano 3");
+    await u.type(screen.getByLabelText("Fuente de la decisión"), "reunion");
+    await u.click(screen.getByRole("button", { name: "Elegir y crear la versión" }));
+    expect(await screen.findByText("Versión OB-002 creada con el plan de la opción elegida.")).toBeInTheDocument();
     expect(cuerpoDe("/v1/control/recuperacion/elegir")).toMatchObject({
       proyecto: "OB-S2",
       objetivo: "11",
@@ -329,7 +349,7 @@ describe("Control de obra", () => {
     await u.click(await screen.findByRole("tab", { name: "Recuperación" }));
     await u.click(await screen.findByRole("button", { name: "Calcular opciones" }));
     expect(await screen.findByText(/pero no elegir una/)).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Elegir y crear la version" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Elegir y crear la versión" })).toBeNull();
   });
 });
 

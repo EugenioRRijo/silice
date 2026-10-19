@@ -38,8 +38,15 @@ const TEXTO_DE_ROL: Record<RolDeSerie, string> = {
   pronostico: "pronostico (discontinuo)",
 };
 
+// La API nombra los periodos del control «Dia N» (convencion de la regla R7): se leen «Día N».
+export function periodoLegible(periodo: string): string {
+  return periodo.replace(/^Dia (?=[0-9])/, "Día ");
+}
+
 export function filasDeGrafico(series: SerieDeCurva[]): { group: string; key: string; value: number }[] {
-  return series.flatMap((s) => s.puntos.map((p) => ({ group: s.nombre, key: p.periodo, value: Number(p.valor) })));
+  return series.flatMap((s) =>
+    s.puntos.map((p) => ({ group: s.nombre, key: periodoLegible(p.periodo), value: Number(p.valor) })),
+  );
 }
 
 // Los periodos en el orden en que aparecen (la primera serie que los trae manda).
@@ -86,7 +93,7 @@ export function CurvaPlanAvance({ titulo, series, unidad }: Props) {
   ];
   const filas = periodos(series).map((periodo, i) => ({
     id: `p${i}`,
-    periodo,
+    periodo: periodoLegible(periodo),
     ...Object.fromEntries(series.map((s) => [s.nombre, s.puntos.find((p) => p.periodo === periodo)?.valor ?? "—"])),
   }));
 

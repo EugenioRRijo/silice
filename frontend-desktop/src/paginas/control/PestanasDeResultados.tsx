@@ -46,13 +46,13 @@ export function BarraDeCorte({
     >
       <TextInput
         id="corte-fecha"
-        labelText="Fecha de corte (AAAA-MM-DD, vacia: la ultima valuacion)"
+        labelText="Fecha de corte (AAAA-MM-DD, vacía: la última valuación)"
         value={borrador.corte}
         onChange={(e) => setBorrador({ ...borrador, corte: e.target.value })}
       />
       <Select
         id="corte-metodo"
-        labelText="Precios del corte (S1)"
+        labelText="Precios del corte"
         value={precios.metodo}
         onChange={(e) => cambiarPrecios({ metodo: e.target.value as MetodoDePrecios })}
       >
@@ -61,8 +61,8 @@ export function BarraDeCorte({
         ))}
       </Select>
       {precios.metodo === "comprobacion" && (
-        <Select id="corte-version" labelText="Version revalorada" value={precios.version} onChange={(e) => cambiarPrecios({ version: e.target.value })}>
-          <SelectItem value="" text={versiones.length ? "Elija una" : "El proyecto no tiene versiones revaloradas (UC-02)"} />
+        <Select id="corte-version" labelText="Versión revalorada" value={precios.version} onChange={(e) => cambiarPrecios({ version: e.target.value })}>
+          <SelectItem value="" text={versiones.length ? "Elija una" : "El proyecto no tiene versiones revaloradas"} />
           {versiones.map((v) => (
             <SelectItem key={v} value={v} text={v} />
           ))}
@@ -92,7 +92,7 @@ export function ValorGanado({ calculo }: { calculo: Calculo }) {
   return (
     <>
       <p className="silice-control__nota cds--type-helper-text-01">
-        {`Corte ${calculo.corte} (dia habil ${calculo.dia}). Las formulas de valor ganado son definiciones del sistema (S2-R11); el EAC del sistema y la separacion del desvio son propios de este trabajo. Sin proyectar inflacion futura (S2-R12).`}
+        {`Corte ${calculo.corte} (día hábil ${calculo.dia}). Las fórmulas de valor ganado son definiciones del sistema; el EAC del sistema y la separación del desvío son propios de este trabajo. Sin proyectar inflación futura.`}
       </p>
       {calculo.costos_sin_tasa.map((texto) => (
         <InlineNotification key={texto} kind="warning" lowContrast hideCloseButton role="status" title={texto} />
@@ -143,13 +143,13 @@ export function AlertasYReproyeccion({ calculo }: { calculo: Calculo }) {
       </section>
       <section className="silice-control__bloque" aria-labelledby="control-terminos">
         <h2 id="control-terminos" className="cds--type-heading-compact-02">
-          Termino, costo final y punto de equilibrio
+          Término, costo final y punto de equilibrio
         </h2>
         {t && (
           <ul className="cds--type-body-compact-01">
-            <li>{`Termino por el indice: ${t.indice}`}</li>
-            <li>{`Termino por el plan reproyectado: ${t.reproyectado}`}</li>
-            <li>{`Termino del plan base: ${t.plan_base}`}</li>
+            <li>{`Término por el índice: ${t.indice}`}</li>
+            <li>{`Término por el plan reproyectado: ${t.reproyectado}`}</li>
+            <li>{`Término del plan base: ${t.plan_base}`}</li>
             <li>{`EAC (sistema): ${t.eac_sistema}`}</li>
           </ul>
         )}
@@ -163,10 +163,10 @@ export function AlertasYReproyeccion({ calculo }: { calculo: Calculo }) {
       </section>
       <section className="silice-control__bloque" aria-labelledby="control-reproyeccion">
         <h2 id="control-reproyeccion" className="cds--type-heading-compact-02">
-          Reproyeccion por partida
+          Reproyección por partida
         </h2>
         <TablaDensa
-          etiqueta="Reproyeccion por partida"
+          etiqueta="Reproyección por partida"
           columnas={columnasDe(COLUMNAS_REPROYECCION, ["Indice", "Fin (dia habil)"])}
           filas={conId(calculo.reproyeccion)}
         />
@@ -236,17 +236,17 @@ export function Recuperacion({
         },
       });
       setOpciones(null);
-      return `Version ${r.version} creada con el plan de la opcion elegida.`;
+      return `Versión ${r.version} creada con el plan de la opción elegida.`;
     });
 
   return (
     <>
       <p className="silice-control__nota cds--type-helper-text-01">
         Las opciones se calculan a pedido, cada una sola, con el rendimiento y la cuadrilla de cada APU y un factor de
-        eficiencia declarado (supuesto, no dato). Elegir una crea una version nueva; la linea base no cambia.
+        eficiencia declarado (supuesto, no dato). Elegir una crea una versión nueva; la línea base no cambia.
       </p>
       <div className="silice-control__formulario">
-        <TextInput id="rec-objetivo" labelText="Dia habil objetivo (vacio: el fin del plan base)" value={objetivo} onChange={(e) => setObjetivo(e.target.value)} />
+        <TextInput id="rec-objetivo" labelText="Día hábil objetivo (vacío: el fin del plan base)" value={objetivo} onChange={(e) => setObjetivo(e.target.value)} />
         <TextInput id="rec-horas" labelText="Horas extra que el obrero ya acumula en el año" value={horas} onChange={(e) => setHoras(e.target.value)} />
         <div>
           <Button kind="secondary" size="md" disabled={calculando.estado.enviando} onClick={() => void calcular()}>
@@ -258,10 +258,10 @@ export function Recuperacion({
       {opciones && (
         <section className="silice-control__bloque" aria-labelledby="control-opciones">
           <h2 id="control-opciones" className="cds--type-heading-compact-02">
-            Opciones de recuperacion
+            Opciones de recuperación
           </h2>
           <TablaDensa
-            etiqueta="Opciones de recuperacion"
+            etiqueta="Opciones de recuperación"
             columnas={columnasDe(COLUMNAS_OPCIONES, COLUMNAS_OPCIONES.slice(1, 7))}
             filas={conId(opciones.map((o) => o.fila))}
           />
@@ -274,14 +274,14 @@ export function Recuperacion({
               ),
           )}
           {aplican.length === 0 ? (
-            <p className="cds--type-body-compact-01">Ninguna opcion aplica a este corte.</p>
+            <p className="cds--type-body-compact-01">Ninguna opción aplica a este corte.</p>
           ) : !puedeDecidir ? (
             <p className="cds--type-body-compact-01">
               Su cuenta puede ver las opciones, pero no elegir una (decide quien arma la obra).
             </p>
           ) : (
             <div className="silice-control__formulario">
-              <RadioButtonGroup legendText="Opcion a aplicar" name="rec-elegida" valueSelected={elegida} onChange={(v) => setElegida(String(v))} orientation="vertical">
+              <RadioButtonGroup legendText="Opción a aplicar" name="rec-elegida" valueSelected={elegida} onChange={(v) => setElegida(String(v))} orientation="vertical">
                 {aplican.map((o) => (
                   <RadioButton key={o.clave} id={`rec-${o.clave}`} labelText={o.titulo} value={o.clave} />
                 ))}
@@ -289,18 +289,18 @@ export function Recuperacion({
               {actual?.requiere_declaracion && (
                 <TextInput
                   id="rec-independencia"
-                  labelText="Declaro que estas partidas no dependen de las que estan en curso (con su fuente)"
+                  labelText="Declaro que estas partidas no dependen de las que están en curso (con su fuente)"
                   value={declaracion}
                   onChange={(e) => setDeclaracion(e.target.value)}
                 />
               )}
-              <TextInput id="rec-fuente" labelText="Fuente de la decision" value={fuente} onChange={(e) => setFuente(e.target.value)} />
+              <TextInput id="rec-fuente" labelText="Fuente de la decisión" value={fuente} onChange={(e) => setFuente(e.target.value)} />
               <div>
                 <Button kind="primary" size="md" disabled={!elegida || eligiendo.estado.enviando} onClick={() => void elegir()}>
-                  Elegir y crear la version
+                  Elegir y crear la versión
                 </Button>
               </div>
-              <AvisoError error={eligiendo.estado.error} titulo="No se creo la version" />
+              <AvisoError error={eligiendo.estado.error} titulo="No se creó la versión" />
             </div>
           )}
         </section>
@@ -316,7 +316,7 @@ export function Recuperacion({
           <TablaDensa etiqueta="Decisiones tomadas" columnas={columnasDe(COLUMNAS_DECISIONES)} filas={conId(calculo.decisiones)} />
         </section>
       ) : (
-        <EstadoVacio titulo="Aun no se ha tomado ninguna decision de recuperacion" />
+        <EstadoVacio titulo="Aún no se ha tomado ninguna decisión de recuperación" />
       )}
     </>
   );

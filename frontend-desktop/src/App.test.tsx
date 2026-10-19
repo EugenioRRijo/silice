@@ -293,16 +293,17 @@ describe("App", () => {
       await usuario.click(screen.getByRole("button", { name: "Entrar" }));
     }
 
-    test("la fecha de devolucion, el libro y Cambiar libro van en la cabecera del shell (M3)", async () => {
+    test("la fecha de devolucion, el libro y Cambiar libro van en el cuerpo de la pagina, no en la cabecera (V-24)", async () => {
       const usuario = userEvent.setup();
       prepararApi();
       render(<App crearHoja={async () => crearHojaFalsa("PORTADA")} />);
       await screen.findByText("Ana Pérez");
       const cabecera = screen.getByRole("banner");
-      expect(await within(cabecera).findByLabelText("Fecha de devolución")).toBeInTheDocument();
+      const fecha = await screen.findByLabelText("Fecha de devolución");
+      expect(cabecera).not.toContainElement(fecha);
       await subirLibro(usuario);
-      expect(within(cabecera).getByText("libro_minimo.xlsx")).toBeInTheDocument();
-      expect(document.querySelector(".visor__barra")).toBeNull();
+      expect(within(cabecera).queryByText("libro_minimo.xlsx")).toBeNull();
+      expect(document.querySelector(".visor__barra")).toContainElement(screen.getByText("libro_minimo.xlsx"));
     });
 
     test("fuera de Libro de la empresa la cabecera no lleva los controles del libro", async () => {
@@ -333,7 +334,7 @@ describe("App", () => {
       expect(hoja.irAHoja).toHaveBeenCalledWith("PLAN DE PAGOS");
       expect(screen.queryByText("Precio distinto al de INSUMOS")).not.toBeInTheDocument();
       expect(screen.getByRole("button", { name: /^Crítico/ })).toHaveAttribute("aria-pressed", "true");
-      expect(within(screen.getByRole("banner")).getByText("libro_minimo.xlsx")).toBeInTheDocument();
+      expect(screen.getByText("libro_minimo.xlsx")).toBeInTheDocument();
     });
 
     test("si entra otra cuenta, el libro se descarta", async () => {

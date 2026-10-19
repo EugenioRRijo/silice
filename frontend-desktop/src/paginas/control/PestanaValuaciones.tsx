@@ -39,25 +39,25 @@ function Registrar({ proyecto, alCambiar }: { proyecto: string; alCambiar: () =>
         metodo: "POST",
         cuerpo: { proyecto, ...v, lineas: sinLineasVacias(lineas) },
       });
-      return `Valuacion registrada: corte ${r.corte}, ${r.hallazgos} hallazgo(s) de R13-R14 (${r.errores} ERROR).`;
+      return `Valuación registrada: corte ${r.corte}, ${r.hallazgos} hallazgo(s) de R13-R14 (${r.errores} ERROR).`;
     });
   return (
     <details open>
-      <summary className="cds--type-body-compact-01">Registrar una valuacion</summary>
+      <summary className="cds--type-body-compact-01">Registrar una valuación</summary>
       <div className="silice-control__formulario">
-        <TextInput id="val-numero" labelText="Numero" value={v.numero} onChange={campo("numero")} />
+        <TextInput id="val-numero" labelText="Número" value={v.numero} onChange={campo("numero")} />
         <TextInput id="val-desde" labelText="Periodo desde (AAAA-MM-DD)" value={v.desde} onChange={campo("desde")} />
         <TextInput id="val-hasta" labelText="Periodo hasta (AAAA-MM-DD)" value={v.hasta} onChange={campo("hasta")} />
-        <TextInput id="val-fecha" labelText="Fecha de la valuacion (AAAA-MM-DD)" value={v.fecha} onChange={campo("fecha")} />
+        <TextInput id="val-fecha" labelText="Fecha de la valuación (AAAA-MM-DD)" value={v.fecha} onChange={campo("fecha")} />
         <TextInput id="val-inspector" labelText="Inspector" value={v.inspector} onChange={campo("inspector")} />
         <fieldset className="silice-control__lineas">
-          <legend className="cds--type-label-01">Lineas medidas</legend>
+          <legend className="cds--type-label-01">Líneas medidas</legend>
           {lineas.map((l, i) => (
             <div key={i} className="silice-control__linea">
               <TextInput id={`val-p-${i}`} labelText={`Partida ${i + 1}`} value={l.partida} onChange={(e) => cambiarLinea(i, "partida", e.target.value)} />
               <TextInput id={`val-c-${i}`} labelText={`Cantidad ${i + 1}`} value={l.cantidad} onChange={(e) => cambiarLinea(i, "cantidad", e.target.value)} />
-              <TextInput id={`val-m-${i}`} labelText={`Fecha de medicion ${i + 1}`} value={l.fecha_medicion} onChange={(e) => cambiarLinea(i, "fecha_medicion", e.target.value)} />
-              <TextInput id={`val-o-${i}`} labelText={`Observacion ${i + 1}`} value={l.observacion} onChange={(e) => cambiarLinea(i, "observacion", e.target.value)} />
+              <TextInput id={`val-m-${i}`} labelText={`Fecha de medición ${i + 1}`} value={l.fecha_medicion} onChange={(e) => cambiarLinea(i, "fecha_medicion", e.target.value)} />
+              <TextInput id={`val-o-${i}`} labelText={`Observación ${i + 1}`} value={l.observacion} onChange={(e) => cambiarLinea(i, "observacion", e.target.value)} />
             </div>
           ))}
           <Button kind="ghost" size="sm" onClick={() => setLineas([...lineas, { ...LINEA_VACIA }])}>
@@ -153,13 +153,13 @@ function Anular({ proyecto, datos, alCambiar }: { proyecto: string; datos: Valua
         cuerpo: { motivo },
       });
       setMotivo("");
-      return "Valuacion anulada: se conserva y ya no cuenta.";
+      return "Valuación anulada: se conserva y ya no cuenta.";
     });
   return (
     <details>
-      <summary className="cds--type-body-compact-01">Anular una valuacion</summary>
+      <summary className="cds--type-body-compact-01">Anular una valuación</summary>
       <div className="silice-control__formulario" data-proyecto={proyecto}>
-        <Select id="anu-valuacion" labelText="Valuacion" value={elegida} onChange={(e) => setElegida(e.target.value)}>
+        <Select id="anu-valuacion" labelText="Valuación" value={elegida} onChange={(e) => setElegida(e.target.value)}>
           {datos.anulables.map((a) => (
             <SelectItem key={a.id} value={String(a.id)} text={a.rotulo} />
           ))}
@@ -216,7 +216,7 @@ export function PestanaValuaciones({ proyecto, clave, alCambiar }: Props) {
   if (carga.estado !== "listo") return <AvisoError error={errorDeCarga(carga)} titulo="No se pudieron cargar las valuaciones" />;
   const datos = carga.datos;
   if (!datos.tiene_linea_base) {
-    return <EstadoVacio titulo="Declare primero la linea base de control" descripcion="Se hace en la pestaña «Línea base»." />;
+    return <EstadoVacio titulo="Declare primero la línea base de control" descripcion="Se hace en la pestaña «Línea base»." />;
   }
   return (
     <>
@@ -226,13 +226,13 @@ export function PestanaValuaciones({ proyecto, clave, alCambiar }: Props) {
         </h2>
         {datos.aviso && <InlineNotification kind="warning" lowContrast hideCloseButton role="status" title={datos.aviso} />}
         {datos.filas.length === 0 ? (
-          <p className="cds--type-body-compact-01">Aun no hay valuaciones registradas.</p>
+          <p className="cds--type-body-compact-01">Aún no hay valuaciones registradas.</p>
         ) : (
           <TablaDensa etiqueta="Valuaciones registradas" columnas={columnasDe(COLUMNAS_VALUACIONES)} filas={conId(datos.filas)} />
         )}
         <p className="silice-control__nota cds--type-helper-text-01">
-          Una valuacion registrada cuenta desde su registro; solo anularla la saca del calculo (S2-R14). Si el cliente no
-          la aprueba, anulela.
+          Una valuación registrada cuenta desde su registro; solo anularla la saca del calculo (S2-R14). Si el cliente no
+          la aprueba, anúlela.
         </p>
       </section>
       <section className="silice-control__bloque" aria-labelledby="control-escribir">

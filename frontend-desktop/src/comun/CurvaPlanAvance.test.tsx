@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, test, vi } from "vitest";
-import { aplicarTrazos, CurvaPlanAvance, filasDeGrafico, periodos } from "./CurvaPlanAvance";
+import { aplicarTrazos, CurvaPlanAvance, filasDeGrafico, periodoLegible, periodos } from "./CurvaPlanAvance";
 import type { SerieDeCurva } from "./CurvaPlanAvance";
 
 interface OpcionesFalsas {
@@ -32,6 +32,13 @@ describe("CurvaPlanAvance", () => {
   test("pasa al grafico una fila por punto, con el valor como numero", () => {
     expect(filasDeGrafico(SERIES)).toHaveLength(4);
     expect(filasDeGrafico(SERIES)[1]).toEqual({ group: "PV", key: "M2", value: 2500.5 });
+  });
+
+  test("«Dia N» de la API se lee «Día N» y lo demas queda igual (V-20)", () => {
+    expect(periodoLegible("Dia 1")).toBe("Día 1");
+    expect(periodoLegible("Dia 12 [LB-01-EXC]")).toBe("Día 12 [LB-01-EXC]");
+    expect(periodoLegible("M2")).toBe("M2");
+    expect(filasDeGrafico([{ nombre: "PV", rol: "plan", puntos: [{ periodo: "Dia 3", valor: "1" }] }])[0]!.key).toBe("Día 3");
   });
 
   test("los periodos salen una sola vez y en orden", () => {
