@@ -1,8 +1,8 @@
 """Reglas de arquitectura de S2 en su propio archivo (RV-2), con los ayudantes compartidos de
 `tests/fixtures/arquitectura.py` (sección B, Tarea 1).
 
-* `aplicacion/control.py` (antes `ui/control.py`) no pinta: ni Streamlit, ni `pandas`, ni `ui.caso` (la misma regla que
-  `PROHIBIDOS_EN_UI["ui/hoja.py"]` de `test_arquitectura.py`; un módulo de prueba no importa de
+* `aplicacion/control.py` (antes `ui/control.py`) no pinta: ni Streamlit, ni `pandas`, ni `ui.caso`
+  (la misma regla que `PROHIBIDOS_EN_UI["ui/hoja.py"]` de `test_arquitectura.py`; un módulo de prueba no importa de
   otro, así que aquí se declara y la prueba lo ata a la regla de `ui/hoja.py` por su contenido);
 * `valor_ganado`, `calendario` y las opciones de recuperación son puras: sin `sqlalchemy` ni
   `core.models`; la decisión, que escribe, vive en `decision.py`;
