@@ -1,4 +1,4 @@
-import { Tab, TabList, TabPanel, TabPanels, Tabs } from "@carbon/react";
+import { Tab, TabList, TabPanel, TabPanels, Tabs, Tag } from "@carbon/react";
 import { useState } from "react";
 import { EstadoVacio } from "../../comun/EstadoVacio";
 import { useAplicacion } from "../../shell/contexto";
@@ -59,7 +59,20 @@ export default function PaginaAdministracion() {
         <Tabs selectedIndex={activa} onChange={({ selectedIndex }) => setActiva(selectedIndex)}>
           <TabList aria-label="Secciones de Administración" contained>
             {PESTANAS.map((p) => (
-              <Tab key={p.id}>{p.titulo}</Tab>
+              <Tab
+                key={p.id}
+                title={p.migrada ? undefined : `${p.titulo}: todavía en la interfaz clásica de Sílice`}
+              >
+                {p.titulo}
+                {!p.migrada && (
+                  <>
+                    {" "}
+                    <Tag type="gray" size="sm" className="silice-adm__marca">
+                      clásica
+                    </Tag>
+                  </>
+                )}
+              </Tab>
             ))}
           </TabList>
           <TabPanels>

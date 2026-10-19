@@ -93,9 +93,9 @@ describe("Administracion: Cuentas y Accesos", () => {
     expect(screen.getAllByRole("tab").map((t) => t.textContent)).toEqual([
       "Cuentas",
       "Empresa y clave de firma",
-      "Empresas registradas",
+      "Empresas registradas clásica",
       "Claves de API",
-      "Asistente de IA",
+      "Asistente de IA clásica",
       "Accesos",
       "Instalación",
     ]);
@@ -104,9 +104,19 @@ describe("Administracion: Cuentas y Accesos", () => {
     expect(within(tabla).getAllByText("no")).toHaveLength(1);
   });
 
+  test("las pestanas aun en la interfaz clasica llevan la marca «clásica» con texto y titulo (V-9)", () => {
+    montar();
+    for (const nombre of [/Empresas registradas/, /Asistente de IA/]) {
+      const pestana = screen.getByRole("tab", { name: nombre });
+      expect(pestana).toHaveTextContent("clásica");
+      expect(pestana.getAttribute("title")).toMatch(/interfaz clásica/);
+    }
+    expect(screen.getByRole("tab", { name: "Cuentas" })).not.toHaveAttribute("title");
+  });
+
   test("las pestanas aun no migradas nombran cual es, avisan que abren otra pestana y enlazan", async () => {
     montar();
-    await userEvent.setup().click(screen.getByRole("tab", { name: "Empresas registradas" }));
+    await userEvent.setup().click(screen.getByRole("tab", { name: /Empresas registradas/ }));
     expect(await screen.findByText("En la interfaz clásica")).toBeInTheDocument();
     expect(screen.getByText("«Empresas registradas» todavía se administra en la interfaz clásica de Sílice.")).toBeInTheDocument();
     const enlace = screen.getByRole("link", {
@@ -118,7 +128,7 @@ describe("Administracion: Cuentas y Accesos", () => {
 
   test("sin direccion de la interfaz clasica hay un mensaje de respaldo, no un enlace roto", async () => {
     montar({ ...SESION, url_clasica: null });
-    await userEvent.setup().click(screen.getByRole("tab", { name: "Asistente de IA" }));
+    await userEvent.setup().click(screen.getByRole("tab", { name: /Asistente de IA/ }));
     expect(await screen.findByText(/No se conoce la dirección de la interfaz clásica/)).toBeInTheDocument();
     expect(screen.queryByRole("link")).toBeNull();
   });
