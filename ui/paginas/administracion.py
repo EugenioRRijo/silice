@@ -25,11 +25,12 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from asistente import administracion as ia_administracion
+from asistente.administracion import ETIQUETAS_DE_PROVEEDOR as ETIQUETAS_DE_PROVEEDOR
+from asistente.administracion import SIN_EXTRA_IA as SIN_EXTRA_IA
 from asistente.clave import ClaveDeIA, ClaveNoRegistrable, RespaldoNoAbre, enmascarar
 from asistente.configuracion import PROVEEDORES, ConfiguracionIA, leer
 from asistente.instalacion import (
     EMPRESA_DE_LA_CLAVE,
-    cargar_clave_guardada,
     clave_de_la_instalacion,
     ruta_de_configuracion,
 )
@@ -451,14 +452,8 @@ ACCION_DEL_ASISTENTE = Accion.ADMINISTRAR_EMPRESA
 AVISO_CONFIG = "ia_aviso_config"  # no son de widget: el último mensaje de cada sección, una vez
 AVISO_CLAVE = "ia_aviso_clave"
 CLAVES_DEL_FORMULARIO = ("ia_clave_nueva", "ia_contrasena_respaldo", "ia_contrasena_reactivar")
-ETIQUETAS_DE_PROVEEDOR = {
-    "claude": "Claude (en la nube, con la clave de la empresa)",
-    "ollama": "Ollama (local, en este equipo)",
-}
-SIN_EXTRA_IA = (
-    "Falta el componente del asistente de IA en este equipo. Instálelo con «uv sync --extra ia» "
-    "y vuelva a abrir Sílice."
-)
+# Los textos y la vista de la pestaña viven en `asistente.administracion`: la API (T6 de la
+# migración final) muestra los mismos.
 
 
 def _ip_del_cliente() -> str | None:
@@ -476,22 +471,6 @@ def _clave_de_ia() -> ClaveDeIA | None:
         return clave_de_la_instalacion()
     except ImportError:
         return None
-
-
-def _hay_clave_guardada(clave: ClaveDeIA) -> bool:
-    """Si hay una clave guardada sin cargarla en memoria; un almacen que falla cuenta como no."""
-    try:
-        return clave.hay_guardada(EMPRESA_DE_LA_CLAVE)
-    except Exception:  # noqa: BLE001 - el backend de keyring en Windows falla de muchas formas
-        return False
-
-
-def _pide_contrasena(clave: ClaveDeIA) -> bool:
-    """Si solo queda el respaldo cifrado (la clave no está en memoria ni en el almacén)."""
-    try:
-        return clave.pide_contrasena(EMPRESA_DE_LA_CLAVE)
-    except Exception:  # noqa: BLE001 - como `_hay_clave_guardada`: un almacen roto no tumba la pestaña
-        return False
 
 
 def _avisar(destino: str, tipo: str, texto: str) -> None:
@@ -522,14 +501,9 @@ def _guardar_configuracion() -> None:
         _avisar(AVISO_CONFIG, "error", texto_seguro(str(error)))
         return
     except OSError:
-        _avisar(
-            AVISO_CONFIG,
-            "error",
-            "No se pudo guardar la configuración en la carpeta de datos: revise que exista y que "
-            "se pueda escribir en ella.",
-        )
+        _avisar(AVISO_CONFIG, "error", ia_administracion.CONFIGURACION_NO_GUARDADA)
         return
-    _avisar(AVISO_CONFIG, "success", "Configuración del asistente guardada.")
+    _avisar(AVISO_CONFIG, "success", ia_administracion.CONFIGURACION_GUARDADA)
 
 
 def _registrar_clave() -> None:
@@ -559,14 +533,11 @@ def _registrar_clave() -> None:
         _avisar(AVISO_CLAVE, "error", texto_seguro(enmascarar(str(error))))
         return
     except OSError:
-        _avisar(
-            AVISO_CLAVE,
-            "error",
-            "No se pudo guardar la clave: el almacén de credenciales o la carpeta de datos no "
-            "responden. Pruebe de nuevo o indique una contraseña para el respaldo cifrado.",
-        )
+        _avisar(AVISO_CLAVE, "error", ia_administracion.CLAVE_NO_GUARDADA)
         return
-    _avisar(AVISO_CLAVE, "success", texto_seguro(f"Clave de IA registrada ({mostrada})."))
+    _avisar(
+        AVISO_CLAVE, "success", texto_seguro(ia_administracion.clave_registrada_aviso(mostrada))
+    )
 
 
 def _rastro_de_reactivar_fallida(ip: str | None) -> None:
@@ -576,11 +547,11 @@ def _rastro_de_reactivar_fallida(ip: str | None) -> None:
     with ui_sesion.instalacion() as bd:
         eventos.registrar(
             bd,
-            "clave de ia no reactivada",
+            ia_administracion.EVENTO_REACTIVAR_FALLIDA,
             _ahora(),
             login=sesion.login if sesion is not None else "",
             ip=ip or "",
-            detalle="la contraseña no abrió el respaldo cifrado de la clave de IA",
+            detalle=ia_administracion.DETALLE_REACTIVAR_FALLIDA,
         )
         bd.commit()
 
@@ -622,14 +593,11 @@ def _reactivar_clave() -> None:
         _avisar(AVISO_CLAVE, "error", texto_seguro(enmascarar(str(error))))
         return
     except OSError:
-        _avisar(
-            AVISO_CLAVE,
-            "error",
-            "No se pudo leer el respaldo cifrado de la clave en la carpeta de datos: revise que "
-            "exista y que se pueda leer.",
-        )
+        _avisar(AVISO_CLAVE, "error", ia_administracion.RESPALDO_NO_LEIDO)
         return
-    _avisar(AVISO_CLAVE, "success", texto_seguro(f"Clave de IA reactivada ({mostrada})."))
+    _avisar(
+        AVISO_CLAVE, "success", texto_seguro(ia_administracion.clave_reactivada_aviso(mostrada))
+    )
 
 
 def _olvidar_clave() -> None:
@@ -648,7 +616,7 @@ def _olvidar_clave() -> None:
     except ia_administracion.SinPermiso as error:
         _avisar(AVISO_CLAVE, "error", texto_seguro(str(error)))
         return
-    _avisar(AVISO_CLAVE, "success", "La clave de IA se olvidó: ya no está en este equipo.")
+    _avisar(AVISO_CLAVE, "success", ia_administracion.CLAVE_OLVIDADA)
 
 
 def _seccion_configuracion(cfg: ConfiguracionIA) -> None:
@@ -751,21 +719,24 @@ def pestana_asistente() -> None:
         return
     clave = _clave_de_ia()
     if clave is None:
-        configuracion, registrada = leer(ruta_de_configuracion()), None
-    else:
-        if leer(ruta_de_configuracion()).activo:  # apagado, la clave no vuelve a la memoria (§8.3)
-            cargar_clave_guardada(clave)
-        visto = ia_administracion.estado(ruta_de_configuracion(), clave)
-        configuracion, registrada = visto.configuracion, visto.clave_registrada
-    st.warning(ia_administracion.AVISO_DE_NUBE)
-    _seccion_configuracion(configuracion)
-    st.divider()
-    if clave is None:
+        st.warning(ia_administracion.AVISO_DE_NUBE)
+        _seccion_configuracion(leer(ruta_de_configuracion()))
+        st.divider()
         st.error(SIN_EXTRA_IA)
         return
-    guardada = registrada is None and not configuracion.activo and _hay_clave_guardada(clave)
-    pide = registrada is None and configuracion.activo and _pide_contrasena(clave)
-    _seccion_clave(registrada, configuracion.activo, guardada, pide)
+    # Apagado, la clave no vuelve a la memoria (§8.3): lo decide la vista.
+    vista = ia_administracion.vista_de_la_pestana(
+        ruta_de_configuracion(), clave, EMPRESA_DE_LA_CLAVE
+    )
+    st.warning(ia_administracion.AVISO_DE_NUBE)
+    _seccion_configuracion(vista.configuracion)
+    st.divider()
+    _seccion_clave(
+        vista.clave_registrada,
+        vista.configuracion.activo,
+        vista.clave_guardada,
+        vista.pide_contrasena,
+    )
 
 
 def _pestana_asistente(bd: Session, sesion: SesionActiva) -> None:

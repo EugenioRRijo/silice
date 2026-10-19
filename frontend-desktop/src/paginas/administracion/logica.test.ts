@@ -16,10 +16,13 @@ import {
   filasDeRegistradas,
   puedeRevocarRegistrada,
   rolesEnTexto,
+  textoDeLaClaveDeIA,
+  topeParaEditar,
 } from "./logica";
+import type { AsistenteEstado } from "./logica";
 
 describe("logica de Administracion", () => {
-  test("las siete pestanas de Streamlit en su orden; solo el Asistente de IA sigue en la clasica", () => {
+  test("las siete pestanas de Streamlit en su orden, todas migradas", () => {
     expect(PESTANAS.map((p) => p.titulo)).toEqual([
       "Cuentas",
       "Empresa y clave de firma",
@@ -34,6 +37,7 @@ describe("logica de Administracion", () => {
       "empresa",
       "registradas",
       "api",
+      "asistente",
       "accesos",
       "instalacion",
     ]);
@@ -137,5 +141,40 @@ describe("logica de Administracion", () => {
   test("la fecha de hoy en AAAA-MM-DD es la del reloj local, sin zona horaria", () => {
     expect(fechaDeHoy(new Date(2026, 0, 5, 23, 59))).toBe("2026-01-05");
     expect(fechaDeHoy(new Date(2026, 10, 30, 0, 1))).toBe("2026-11-30");
+  });
+
+  describe("asistente de IA", () => {
+    const BASE: AsistenteEstado = {
+      activo: true,
+      proveedor: "claude",
+      proveedores: [],
+      modelo_claude: "claude-opus-5-5",
+      modelo_local: "",
+      anfitrion_ollama: "http://127.0.0.1:11434",
+      tope_usd: "2.50",
+      clave_registrada: null,
+      clave_guardada: false,
+      pide_contrasena: false,
+      falta_el_componente: null,
+      aviso_de_nube: "",
+      sensible: { permitida: true, motivo: "" },
+    };
+
+    test("dice la clave registrada como la clasica: enmascarada, ninguna, guardada sin cargar o en el respaldo", () => {
+      expect(textoDeLaClaveDeIA({ ...BASE, clave_registrada: "…5678" })).toBe("Clave registrada: …5678");
+      expect(textoDeLaClaveDeIA(BASE)).toBe("Clave registrada: ninguna");
+      expect(textoDeLaClaveDeIA({ ...BASE, activo: false, clave_guardada: true })).toBe(
+        "Clave registrada: hay una guardada, pero no se carga mientras el asistente esté apagado (se carga al activarlo).",
+      );
+      expect(textoDeLaClaveDeIA({ ...BASE, pide_contrasena: true })).toBe(
+        "Clave registrada: hay una en el respaldo cifrado (el almacén de credenciales no la tiene); escriba la contraseña del respaldo para cargarla.",
+      );
+    });
+
+    test("el tope se edita con coma decimal y sin convertirlo en numero", () => {
+      expect(topeParaEditar("2.50")).toBe("2,50");
+      expect(topeParaEditar("2")).toBe("2");
+      expect(topeParaEditar("0.0000001")).toBe("0,0000001");
+    });
   });
 });

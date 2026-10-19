@@ -21,8 +21,9 @@ from asistente.administracion import (
     olvidar_clave,
     reactivar_clave,
     registrar_clave,
+    vista_de_la_pestana,
 )
-from asistente.clave import ClaveDeIA, ClaveNoRegistrable
+from asistente.clave import SERVICIO, ClaveDeIA, ClaveNoRegistrable
 from asistente.configuracion import ConfiguracionIA, de_maprex, guardar, leer
 from tests.fixtures.asistente_clave import AlmacenFalso, SecretosFalsos
 
@@ -233,3 +234,53 @@ def test_reactivar_con_el_asistente_apagado_se_rechaza(tmp_path, activo):
             clave, "E", "c" * 12, ruta=ruta, es_administrador=True, ip_cliente="127.0.0.1"
         )
     assert clave.vigente is None
+
+
+# --- lo que muestra la pestaña (la comparten la clásica y la API, T6 de la migración final) -----
+
+
+def test_la_vista_de_fabrica_no_tiene_clave_ni_pide_nada(tmp_path):
+    vista = vista_de_la_pestana(tmp_path / "ia_config.json", clave_de(tmp_path), "E")
+    assert vista.configuracion == ConfiguracionIA()
+    assert vista.clave_registrada is None
+    assert (vista.clave_guardada, vista.pide_contrasena) == (False, False)
+
+
+def test_la_vista_con_el_asistente_activo_carga_la_clave_guardada_y_la_enmascara(tmp_path):
+    almacen = AlmacenFalso()
+    almacen.datos[(SERVICIO, "E")] = "sk-ant-api03-wxyz9876"
+    clave = clave_de(tmp_path, almacen)
+    ruta = tmp_path / "ia_config.json"
+    guardar(ruta, ConfiguracionIA(activo=True))
+    vista = vista_de_la_pestana(ruta, clave, "E")
+    assert vista.clave_registrada == "…9876"
+    assert clave.vigente == "sk-ant-api03-wxyz9876"
+    assert (vista.clave_guardada, vista.pide_contrasena) == (False, False)
+
+
+def test_la_vista_apagada_dice_que_hay_una_guardada_sin_cargarla(tmp_path):
+    almacen = AlmacenFalso()
+    almacen.datos[(SERVICIO, "E")] = "sk-ant-api03-wxyz9876"
+    clave = clave_de(tmp_path, almacen)
+    vista = vista_de_la_pestana(tmp_path / "ia_config.json", clave, "E")
+    assert vista.clave_registrada is None and clave.vigente is None
+    assert (vista.clave_guardada, vista.pide_contrasena) == (True, False)
+
+
+def test_la_vista_con_solo_el_respaldo_pide_la_contrasena(tmp_path):
+    clave, ruta = con_solo_el_respaldo(tmp_path)
+    vista = vista_de_la_pestana(ruta, clave, "E")
+    assert vista.clave_registrada is None
+    assert (vista.clave_guardada, vista.pide_contrasena) == (False, True)
+
+
+def test_la_vista_no_se_cae_si_el_almacen_falla_de_otra_forma(tmp_path):
+    """Como la clásica: un almacén roto (no de `keyring`) cuenta como «no hay» y no la tumba."""
+
+    class Roto(AlmacenFalso):
+        def get_password(self, servicio, usuario):
+            raise RuntimeError("fallo inesperado del almacen")
+
+    clave = clave_de(tmp_path, Roto())
+    vista = vista_de_la_pestana(tmp_path / "ia_config.json", clave, "E")
+    assert (vista.clave_guardada, vista.pide_contrasena) == (False, False)

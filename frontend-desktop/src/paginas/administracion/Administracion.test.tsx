@@ -28,6 +28,21 @@ const ANA: Cuenta = { id: 2, login: "ana", nombre: "Ana", roles: ["arma"], activ
 const LUIS: Cuenta = { id: 3, login: "luis", nombre: "Luis", roles: ["revisa"], activa: false };
 const TEMPORAL = "temporal ficticia 123";
 const PIDE = { timeout: 5000 };
+const ASISTENTE_DE_FABRICA = {
+  activo: false,
+  proveedor: "claude",
+  proveedores: [{ valor: "claude", etiqueta: "Claude (en la nube, con la clave de la empresa)" }],
+  modelo_claude: "claude-opus-5-5",
+  modelo_local: "",
+  anfitrion_ollama: "http://127.0.0.1:11434",
+  tope_usd: "2",
+  clave_registrada: null,
+  clave_guardada: false,
+  pide_contrasena: false,
+  falta_el_componente: null,
+  aviso_de_nube: "Aviso de nube ficticio.",
+  sensible: { permitida: true, motivo: "" },
+};
 
 describe("Administracion: Cuentas y Accesos", () => {
   const fetchFalso = vi.fn<typeof fetch>();
@@ -59,6 +74,7 @@ describe("Administracion: Cuentas y Accesos", () => {
       }
       if (url === "/v1/accesos") return json(accesos);
       if (url === "/v1/admin/empresas-registradas") return json({ registradas: [], metodos: [] });
+      if (url === "/v1/admin/asistente") return json(ASISTENTE_DE_FABRICA);
       return json({ detalle: "no esperada" }, 500);
     });
   });
@@ -96,7 +112,7 @@ describe("Administracion: Cuentas y Accesos", () => {
       "Empresa y clave de firma",
       "Empresas registradas",
       "Claves de API",
-      "Asistente de IA clásica",
+      "Asistente de IA",
       "Accesos",
       "Instalación",
     ]);
@@ -105,27 +121,12 @@ describe("Administracion: Cuentas y Accesos", () => {
     expect(within(tabla).getAllByText("no")).toHaveLength(1);
   });
 
-  test("las pestanas aun en la interfaz clasica llevan la marca «clásica» con texto y titulo (V-9)", () => {
+  test("ninguna pestana queda en la interfaz clasica: ni marca «clásica» ni enlace a ella", () => {
     montar();
-    for (const nombre of [/Asistente de IA/]) {
-      const pestana = screen.getByRole("tab", { name: nombre });
-      expect(pestana).toHaveTextContent("clásica");
-      expect(pestana.getAttribute("title")).toMatch(/interfaz clásica/);
+    for (const pestana of screen.getAllByRole("tab")) {
+      expect(pestana).not.toHaveTextContent("clásica");
+      expect(pestana).not.toHaveAttribute("title");
     }
-    expect(screen.getByRole("tab", { name: "Cuentas" })).not.toHaveAttribute("title");
-    expect(screen.getByRole("tab", { name: "Empresas registradas" })).not.toHaveAttribute("title");
-  });
-
-  test("las pestanas aun no migradas nombran cual es, avisan que abren otra pestana y enlazan", async () => {
-    montar();
-    await userEvent.setup().click(screen.getByRole("tab", { name: /Asistente de IA/ }));
-    expect(await screen.findByText("En la interfaz clásica")).toBeInTheDocument();
-    expect(screen.getByText("«Asistente de IA» todavía se administra en la interfaz clásica de Sílice.")).toBeInTheDocument();
-    const enlace = screen.getByRole("link", {
-      name: "Abrir «Asistente de IA» en la interfaz clásica (se abre en otra pestaña)",
-    });
-    expect(enlace).toHaveAttribute("href", "http://127.0.0.1:8501/administracion");
-    expect(enlace).toHaveAttribute("target", "_blank");
   });
 
   test("«Empresas registradas» ya se administra aqui: la pestana pide sus datos a la API", async () => {
@@ -136,11 +137,12 @@ describe("Administracion: Cuentas y Accesos", () => {
     expect(screen.queryByText("En la interfaz clásica")).toBeNull();
   });
 
-  test("sin direccion de la interfaz clasica hay un mensaje de respaldo, no un enlace roto", async () => {
-    montar({ ...SESION, url_clasica: null });
-    await userEvent.setup().click(screen.getByRole("tab", { name: /Asistente de IA/ }));
-    expect(await screen.findByText(/No se conoce la dirección de la interfaz clásica/)).toBeInTheDocument();
-    expect(screen.queryByRole("link")).toBeNull();
+  test("«Asistente de IA» ya se administra aqui: la pestana pide su estado a la API", async () => {
+    montar();
+    await userEvent.setup().click(screen.getByRole("tab", { name: "Asistente de IA" }));
+    expect(await screen.findByLabelText("Activar el asistente de IA (viene apagado)", {}, PIDE)).toBeInTheDocument();
+    expect(fetchFalso.mock.calls.map(([r]) => String(r))).toContain("/v1/admin/asistente");
+    expect(screen.queryByText("En la interfaz clásica")).toBeNull();
   });
 
   test("sin la accion administrar_cuentas no se ofrece nada", () => {
