@@ -6,6 +6,11 @@ etiquetar, las líneas pasan a la sección de la versión. La historia anterior 
 
 ## [Sin publicar]
 
+### Corregido
+- La prueba de humo del instalador exigía el caso por defecto (`casos\silice.db`) justo después de instalar, pero el diseño lo crea al primer arranque (spec S5 §5.4): ahora lo comprueba tras arrancar, y el instalador deja en su registro el código de `migrar` (`instalador/humo.ps1`, `instalador/silice.iss`). El workflow del instalador no había pasado nunca en la CI por esto.
+
+## [1.2.0] - 2026-10-18
+
 ### Agregado
 
 - Sílice 1.2.0 (ruta, sesión 2; UC‑26, RF‑111 a RF‑118, RNF‑22 y RNF‑23): interfaz nueva y visor de solo lectura. `frontend-desktop/` (Vite, React 19, Carbon g10 y Univer, sin red externa) servida por la API en `/app` con CSP; `POST /v1/libros/replica` y `adapters/hoja_empresa/visual.py` (aspecto del libro con coordenadas de Excel); acceso del navegador por cuenta (`/v1/sesion` con cookie `HttpOnly`, anti‑CSRF y freno global con 429); campo aditivo `indicadores` en `/v1/libros/auditoria` (centésimas, sentido «exactitud», RS2‑12 y RS2‑13); el instalador lleva la interfaz compilada; trabajo `interfaz` en la CI.
@@ -13,8 +18,6 @@ etiquetar, las líneas pasan a la sección de la versión. La historia anterior 
 ### Cambiado
 
 - Para integradores: las rutas `/v1/libros/*` aceptan ahora la clave de API **o** la sesión del navegador (RS2-5). Sin la cabecera `X-Silice-Clave` responden 401 con el mensaje de sesión (antes, el de la clave) y esa llamada ya no queda en el registro de accesos como fallo de clave; con una clave mala, todo sigue igual. RF‑98 ya no exige la clave en `/v1/sesion` ni en `/app` (enmienda 1.2.0 de la ERS).
-### Corregido
-- La prueba de humo del instalador exigía el caso por defecto (`casos\silice.db`) justo después de instalar, pero el diseño lo crea al primer arranque (spec S5 §5.4): ahora lo comprueba tras arrancar, y el instalador deja en su registro el código de `migrar` (`instalador/humo.ps1`, `instalador/silice.iss`). El workflow del instalador no había pasado nunca en la CI por esto.
 
 ## [1.1.0] - 2026-10-18
 
