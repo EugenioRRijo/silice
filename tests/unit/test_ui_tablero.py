@@ -28,6 +28,7 @@ from sqlalchemy import create_engine, event
 from sqlalchemy.pool import StaticPool
 from streamlit.testing.v1 import AppTest
 
+from aplicacion import control, tablero
 from core.budget import crear_proyecto, elaborar
 from core.budget.actualizacion import descartar_version
 from core.budget.valor_ganado import Indicadores
@@ -38,7 +39,6 @@ from tests.fixtures import caso_ti001 as ti
 from tests.fixtures import control_ob_s2 as ob
 from tests.fixtures import reajuste_ob_s2 as rz
 from tests.fixtures.caso_s2 import sembrar_caso_s2
-from aplicacion import control, tablero
 from ui.caso import CLAVE_PROYECTO
 from ui.paginas.tablero import (
     CLAVE_PROYECTO_VISTO,
