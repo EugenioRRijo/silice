@@ -111,7 +111,42 @@ describe("pestañas sensibles de Administración", () => {
       await usuario.click(screen.getByRole("button", { name: "Generar la clave" }));
       await screen.findByText("AB12 CD34");
       expect(fetchFalso.mock.calls[1][0]).toBe("/v1/admin/empresa/clave");
+      expect((fetchFalso.mock.calls[1][1] as RequestInit).method).toBe("POST");
       expect(cuerpo(1)).toEqual({ contrasena: FRASE });
+      expect(document.body.textContent).not.toContain(FRASE);
+      expect(Object.values(localStorage).join()).not.toContain(FRASE);
+      expect(Object.values(sessionStorage).join()).not.toContain(FRASE);
+    });
+
+    test("un rechazo del servidor al generar se muestra sin repetir la contraseña", async () => {
+      const usuario = userEvent.setup();
+      fetchFalso.mockResolvedValueOnce(json(SIN_CLAVE));
+      fetchFalso.mockResolvedValueOnce(json({ detalle: "La contraseña de la clave debe tener al menos 12 caracteres." }, 400));
+      montar(<Empresa />);
+      await usuario.type(await screen.findByLabelText(/Contraseña de la clave \(12/), "corta-123");
+      await usuario.type(screen.getByLabelText("Repítala"), "corta-123");
+      await usuario.click(screen.getByRole("button", { name: "Generar la clave" }));
+      expect(await screen.findByText(/al menos 12 caracteres/)).toBeInTheDocument();
+      expect(document.body.textContent).not.toContain("corta-123");
+    });
+
+    test("revocar con contraseña: la manda, descarga el aviso y vacía el campo", async () => {
+      const usuario = userEvent.setup();
+      const crear = vi.fn(() => "blob:aviso");
+      vi.stubGlobal("URL", { createObjectURL: crear, revokeObjectURL: vi.fn() });
+      fetchFalso.mockResolvedValueOnce(json(CON_CLAVE));
+      fetchFalso.mockResolvedValueOnce(json({ aviso: "AAECAw==" }));
+      fetchFalso.mockResolvedValueOnce(json({ ...CON_CLAVE, clave: null }));
+      montar(<Empresa />);
+      await screen.findByText("AB12 CD34");
+      await usuario.type(screen.getByLabelText("Motivo"), "expuesta");
+      await usuario.type(screen.getByLabelText(/Contraseña de la clave \(para firmar/), FRASE);
+      await usuario.click(screen.getByRole("button", { name: "Revocar" }));
+      await usuario.click(screen.getByRole("button", { name: "Sí, revocar" }));
+      await waitFor(() => expect(fetchFalso.mock.calls[1][0]).toBe("/v1/admin/empresa/clave/revocar"));
+      expect(cuerpo(1)).toEqual({ motivo: "expuesta", contrasena: FRASE });
+      await waitFor(() => expect(crear).toHaveBeenCalledTimes(1));
+      expect(await screen.findByText("Clave revocada: los paquetes firmados con ella dejan de verificar.")).toBeInTheDocument();
       expect(document.body.textContent).not.toContain(FRASE);
     });
 
@@ -176,6 +211,10 @@ describe("pestañas sensibles de Administración", () => {
       expect(fetchFalso.mock.calls[1][0]).toBe("/v1/admin/claves-api");
       expect(cuerpo(1)).toEqual({ nombre: "plugin ficticio" });
       expect(screen.getByRole("table", { name: "Claves de API" })).not.toHaveTextContent("secreto-de-prueba");
+      await usuario.click(screen.getByRole("button", { name: /close|cerrar/i }));
+      expect(screen.queryByTestId("secreto-de-api")).not.toBeInTheDocument();
+      expect(document.body.textContent).not.toContain("secreto-de-prueba");
+      expect(Object.values(localStorage).join()).not.toContain("secreto-de-prueba");
     });
 
     test("un rechazo del servidor (otro equipo) se muestra tal cual", async () => {
@@ -200,8 +239,13 @@ describe("pestañas sensibles de Administración", () => {
       await usuario.selectOptions(elegir, "1");
       await usuario.click(screen.getByRole("button", { name: "Revocar la clave" }));
       expect(fetchFalso).toHaveBeenCalledTimes(1);
+      await usuario.click(screen.getByRole("button", { name: "Cancelar" }));
+      expect(fetchFalso).toHaveBeenCalledTimes(1);
+      await usuario.click(screen.getByRole("button", { name: "Revocar la clave" }));
       await usuario.click(screen.getByRole("button", { name: "Sí, revocar" }));
       await waitFor(() => expect(fetchFalso.mock.calls[1][0]).toBe("/v1/admin/claves-api/1/revocar"));
+      expect((fetchFalso.mock.calls[1][1] as RequestInit).method).toBe("POST");
+      await waitFor(() => expect(fetchFalso).toHaveBeenCalledTimes(3)); // recarga el listado
     });
   });
 

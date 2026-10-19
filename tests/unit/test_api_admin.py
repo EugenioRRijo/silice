@@ -35,9 +35,10 @@ from fastapi.testclient import TestClient
 
 from api import caso_web, dependencias
 from api.main import app
+from api.rutas import entregas as ruta_entregas
 from operacion import config
 from operacion.instalacion import sesion_de_instalacion
-from seguridad import empresas
+from seguridad import cuentas, empresas
 from tests.fixtures.claves_api import CABECERA, crear_clave_de_prueba
 from tests.fixtures.instalacion import AHORA
 from tests.fixtures.sesion_web import (
@@ -66,8 +67,10 @@ def _entorno(_plantilla: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[None
     monkeypatch.delenv(dependencias.VARIABLE_BASE, raising=False)
     copiar_instalacion(_plantilla)
     caso_web.olvidar_todo()
+    ruta_entregas.FRENO_FIRMA.reiniciar()
     yield
     caso_web.olvidar_todo()
+    ruta_entregas.FRENO_FIRMA.reiniciar()
     dependencias.cerrar_motores()
 
 
@@ -440,3 +443,225 @@ def test_revisar_un_evento_que_no_existe_o_con_ruta_ajena() -> None:
     for nombre in ("otro.json", "..%2fsilice.toml"):
         r = navegador.post(f"/v1/admin/instalacion/eventos/{nombre}/revisar", headers=cab)
         assert r.status_code in (404, 400)
+
+
+# --- revision de pruebas: fronteras, freno, red y CSRF -------------------------------------------
+
+ACTIVA = [("activa",)]
+MALA = "mala-larga-123"
+
+
+@pytest.mark.parametrize(("largo", "pasa"), [(11, False), (12, True), (128, True), (129, False)])
+def test_frontera_de_la_contrasena_de_la_clave_de_firma(largo: int, pasa: bool) -> None:
+    _con_empresa()
+    navegador, cab = _admin()
+    contrasena = ("Zx9q" * 40)[:largo]  # ni comun ni parecida al login
+    r = navegador.post("/v1/admin/empresa/clave", json={"contrasena": contrasena}, headers=cab)
+    assert (r.status_code == 200) is pasa, r.text
+    assert contrasena not in r.text
+    if not pasa:
+        assert r.json()["detalle"] in {
+            "La contraseña de la clave debe tener al menos 12 caracteres.",
+            "La contraseña de la clave admite hasta 128.",
+        }
+    assert _filas("SELECT estado FROM clave_empresa") == (ACTIVA if pasa else [])
+
+
+def test_una_contrasena_comun_se_rechaza() -> None:
+    _con_empresa()
+    navegador, cab = _admin()
+    r = navegador.post("/v1/admin/empresa/clave", json={"contrasena": "123456789012"}, headers=cab)
+    assert r.status_code == 400
+    assert r.json() == {"detalle": "Esa contraseña es demasiado común; elija otra."}
+
+
+def test_revocar_con_contrasena_mala_repetida_se_frena(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(cuentas, "FRENO_FALLOS", 2)
+    _con_empresa(clave=True)
+    navegador, cab = _admin()
+    url = "/v1/admin/empresa/clave/revocar"
+    for _ in range(2):
+        mala = navegador.post(url, json={"motivo": "m", "contrasena": MALA}, headers=cab)
+        assert mala.status_code == 400
+    r = navegador.post(url, json={"motivo": "m", "contrasena": FRASE}, headers=cab)
+    assert r.status_code == 429
+    assert int(r.headers["retry-after"]) >= 1
+    assert _filas("SELECT estado FROM clave_empresa") == ACTIVA
+    assert len(_filas("SELECT 1 FROM evento_acceso WHERE tipo = 'fallo'")) == 2
+    # sin contraseña no hay nada que adivinar: el freno no aplica
+    assert navegador.post(url, json={"motivo": "m"}, headers=cab).status_code == 200
+
+
+def test_retirar_y_volver_a_generar_deja_dos_filas_con_huellas_distintas() -> None:
+    _con_empresa(clave=True)
+    navegador, cab = _admin()
+    assert (
+        navegador.post("/v1/admin/empresa/clave/retirar", json={}, headers=cab).status_code == 200
+    )
+    segunda = navegador.post("/v1/admin/empresa/clave/retirar", json={}, headers=cab)
+    assert segunda.status_code == 400
+    assert segunda.json() == {"detalle": "La empresa no tiene una clave de firma activa."}
+    assert navegador.get("/v1/admin/empresa/respaldo-clave").status_code == 400
+    nueva = navegador.post("/v1/admin/empresa/clave", json={"contrasena": FRASE}, headers=cab)
+    assert nueva.status_code == 200
+    filas = _filas("SELECT estado, huella FROM clave_empresa ORDER BY id")
+    assert [f[0] for f in filas] == ["retirada", "activa"]
+    assert filas[0][1] != filas[1][1]
+
+
+def test_la_huella_es_la_de_la_clave_publica_guardada() -> None:
+    from seguridad import firma
+
+    _con_empresa(clave=True)
+    navegador, _ = _admin()
+    (publica,) = _filas("SELECT publica FROM clave_empresa")[0]
+    assert navegador.get("/v1/admin/empresa").json()["clave"]["huella"] == firma.huella_corta(
+        publica
+    )
+
+
+def test_si_la_base_de_la_instalacion_falla_no_se_filtra_la_ruta(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from contextlib import contextmanager
+
+    from api.rutas import admin_empresa
+
+    @contextmanager
+    def rota():
+        raise OSError("no se puede abrir Z:/no/existe/x.db")
+        yield
+
+    navegador, _ = _admin()
+    monkeypatch.setattr(admin_empresa, "sesion_de_instalacion", rota)
+    r = navegador.get("/v1/admin/empresa")
+    assert r.status_code == 500
+    assert "Z:/no/existe" not in r.text
+    assert "Traceback" not in r.text
+
+
+def test_revocar_una_clave_de_api_desde_la_red_y_dos_veces() -> None:
+    local, cab = _admin()
+    uno = local.post("/v1/admin/claves-api", json={"nombre": "uno"}, headers=cab).json()
+    local.post("/v1/admin/claves-api", json={"nombre": "dos"}, headers=cab)
+    remoto, cab_remoto = _admin(ip="203.0.113.7")
+    r = remoto.post(f"/v1/admin/claves-api/{uno['id']}/revocar", headers=cab_remoto)
+    assert (r.status_code, r.json()) == (403, {"detalle": REMOTO})
+    assert [c["estado"] for c in local.get("/v1/admin/claves-api").json()] == ["vigente", "vigente"]
+    revocar = f"/v1/admin/claves-api/{uno['id']}/revocar"
+    assert local.post(revocar, headers=cab).status_code == 200
+    assert local.post(revocar, headers=cab).status_code == 200  # idempotente
+    assert [c["estado"] for c in local.get("/v1/admin/claves-api").json()] == [
+        "revocada",
+        "vigente",
+    ]
+    falta = local.post("/v1/admin/claves-api/9999/revocar", headers=cab)
+    assert (falta.status_code, falta.json()) == (
+        404,
+        {"detalle": "No hay una clave de API con ese número."},
+    )
+
+
+def test_el_secreto_de_api_no_se_guarda_ni_su_parte_secreta() -> None:
+    navegador, cab = _admin()
+    secreto = navegador.post("/v1/admin/claves-api", json={"nombre": "x"}, headers=cab).json()[
+        "secreto"
+    ]
+    parte = secreto.split(".", 1)[1]
+    assert parte not in "".join(str(f) for f in _filas("SELECT * FROM clave_api"))
+
+
+def test_ninguna_contrasena_queda_en_el_registro_ni_en_los_eventos(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    caplog.set_level("DEBUG")
+    _con_empresa()
+    navegador, cab = _admin()
+    navegador.post("/v1/admin/empresa/clave", json={"contrasena": FRASE}, headers=cab)
+    navegador.post(
+        "/v1/admin/empresa/clave/revocar", json={"motivo": "m", "contrasena": MALA}, headers=cab
+    )
+    assert FRASE not in caplog.text and MALA not in caplog.text
+    volcado = "".join(str(f) for f in _filas("SELECT * FROM evento_acceso"))
+    assert FRASE not in volcado and MALA not in volcado
+
+
+@pytest.mark.parametrize(
+    ("ruta", "cuerpo"),
+    [
+        ("/v1/admin/empresa", {"nombre": "X", "rif": "J-1", "ciudad": ""}),
+        ("/v1/admin/empresa/clave", {"contrasena": FRASE}),
+        ("/v1/admin/empresa/clave/retirar", {}),
+        ("/v1/admin/empresa/clave/revocar", {"motivo": "m"}),
+        ("/v1/admin/claves-api", {"nombre": "x"}),
+        ("/v1/admin/claves-api/1/revocar", {}),
+        ("/v1/admin/instalacion/respaldos", {}),
+        ("/v1/admin/instalacion/eventos/x.json/revisar", {}),
+    ],
+)
+def test_todo_post_de_administracion_exige_csrf_y_no_cambia_nada(ruta: str, cuerpo: dict) -> None:
+    _con_empresa(clave=True)
+    navegador, _ = _admin()
+    antes = _filas("SELECT estado FROM clave_empresa")
+    r = navegador.post(ruta, json=cuerpo, headers={"Origin": "http://127.0.0.1:8000"})
+    assert r.status_code == 403
+    assert _filas("SELECT estado FROM clave_empresa") == antes
+    assert _filas("SELECT 1 FROM clave_api") == []
+
+
+@pytest.mark.parametrize(
+    ("metodo", "ruta"),
+    [
+        ("GET", "/v1/admin/empresa"),
+        ("POST", "/v1/admin/empresa"),
+        ("POST", "/v1/admin/empresa/clave"),
+        ("GET", "/v1/admin/empresa/clave-publica"),
+        ("GET", "/v1/admin/empresa/respaldo-clave"),
+        ("POST", "/v1/admin/empresa/clave/retirar"),
+        ("POST", "/v1/admin/empresa/clave/revocar"),
+        ("GET", "/v1/admin/claves-api"),
+        ("POST", "/v1/admin/claves-api"),
+        ("POST", "/v1/admin/claves-api/1/revocar"),
+        ("GET", "/v1/admin/instalacion"),
+        ("POST", "/v1/admin/instalacion/respaldos"),
+        ("GET", "/v1/admin/instalacion/respaldos/x"),
+        ("POST", "/v1/admin/instalacion/eventos/x/revisar"),
+    ],
+)
+def test_la_clave_de_api_no_administra_ninguna_ruta(metodo: str, ruta: str) -> None:
+    secreto = crear_clave_de_prueba()
+    r = cliente(app).request(metodo, ruta, json={}, headers={CABECERA: secreto})
+    assert r.status_code == 403
+    assert r.json() == {
+        "detalle": "Administrar la instalación exige entrar con una cuenta de administrador."
+    }
+
+
+def test_nombres_de_respaldo_y_evento_fuera_de_la_lista_dan_404_exacto() -> None:
+    navegador, cab = _admin()
+    a = navegador.get("/v1/admin/instalacion/respaldos/no-existe")
+    assert (a.status_code, a.json()) == (404, {"detalle": "No hay un respaldo con ese nombre."})
+    b = navegador.post("/v1/admin/instalacion/eventos/no-existe.json/revisar", headers=cab)
+    assert (b.status_code, b.json()) == (
+        404,
+        {"detalle": "No hay un archivo de eventos perdidos pendiente con ese nombre."},
+    )
+
+
+def test_revisar_dos_veces_y_quien_revisa_consta() -> None:
+    archivo = _evento_perdido()
+    navegador, cab = _admin()
+    url = f"/v1/admin/instalacion/eventos/{archivo.name}/revisar"
+    assert navegador.post(url, headers=cab).status_code == 200
+    assert json.loads(archivo.read_text(encoding="utf-8"))["revisado_por"] == "admin"
+    assert navegador.post(url, headers=cab).status_code == 404
+
+
+def test_un_archivo_de_eventos_corrupto_no_tumba_la_pantalla() -> None:
+    archivo = config.carpeta_datos() / "eventos_perdidos_roto.json"
+    archivo.parent.mkdir(parents=True, exist_ok=True)
+    archivo.write_text("{no es json", encoding="utf-8")
+    navegador, _ = _admin()
+    r = navegador.get("/v1/admin/instalacion")
+    assert r.status_code == 200
+    assert r.json()["pendientes"] == [{"nombre": archivo.name, "diferencias": [], "eventos": 0}]

@@ -31,6 +31,14 @@ describe("lógica de las pestañas sensibles", () => {
     expect(Array.from(bytesDeBase64(""))).toEqual([]);
   });
 
+  test("decodifica octetos mayores de 127", () => {
+    expect(Array.from(bytesDeBase64("/+8="))).toEqual([255, 239]);
+  });
+
+  test("un base64 inválido lanza un error", () => {
+    expect(() => bytesDeBase64("@@@")).toThrow();
+  });
+
   test("dice la red y la API como la página clásica", () => {
     expect(textoDeRed(BASE)).toBe("Red local: apagada (solo http://127.0.0.1:8501)");
     expect(textoDeRed({ ...BASE, red_local: true, direccion: "192.168.1.20" })).toBe(

@@ -105,7 +105,10 @@ def manejar_http_exception(_request: Request, exc: HTTPException) -> JSONRespons
     proyectos, o UC-02 sin nada que confirmar): mismo formato `{"detalle": ...}` que el resto de
     la API, en vez del `{"detail": ...}` que usa FastAPI por defecto.
     """
-    return JSONResponse(status_code=exc.status_code, content={"detalle": exc.detail})
+    # Las cabeceras de la excepcion (p. ej. `Retry-After` del 429) viajan con la respuesta.
+    return JSONResponse(
+        status_code=exc.status_code, content={"detalle": exc.detail}, headers=exc.headers
+    )
 
 
 @app.exception_handler(LookupError)
