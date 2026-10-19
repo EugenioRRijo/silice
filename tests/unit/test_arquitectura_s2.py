@@ -2,8 +2,9 @@
 `tests/fixtures/arquitectura.py` (sección B, Tarea 1).
 
 * `aplicacion/control.py` (antes `ui/control.py`) no pinta: ni Streamlit, ni `pandas`, ni `ui.caso`
-  (la misma regla que `PROHIBIDOS_EN_UI["ui/hoja.py"]` de `test_arquitectura.py`; un módulo de prueba no importa de
-  otro, así que aquí se declara y la prueba lo ata a la regla de `ui/hoja.py` por su contenido);
+  (la misma regla que `PROHIBIDOS_EN_UI["ui/hoja.py"]` de `test_arquitectura.py`; un módulo de
+  prueba no importa de otro, así que aquí se declara y la prueba lo ata a la regla de `ui/hoja.py`
+  por su contenido);
 * `valor_ganado`, `calendario` y las opciones de recuperación son puras: sin `sqlalchemy` ni
   `core.models`; la decisión, que escribe, vive en `decision.py`;
 * `core/verification/valuaciones.py` no importa `core.budget` (la capa de reglas queda debajo);
@@ -49,7 +50,7 @@ def test_ui_control_no_pinta_ni_lee_la_sesion_de_streamlit():
 
 
 def test_la_regla_de_ui_control_es_la_misma_que_la_de_ui_hoja():
-    """Si la regla de `ui/hoja.py` cambia, la de `aplicacion/control.py` se revisa junto con ella."""
+    """Si cambia la regla de `ui/hoja.py`, se revisa junto con ella la de `aplicacion/control.py`."""
     texto = (RAIZ / "tests" / "unit" / "test_arquitectura.py").read_text(encoding="utf-8")
     regla = re.search(r'"ui/hoja\.py": \(([^)]*)\)', texto)
     assert regla is not None
