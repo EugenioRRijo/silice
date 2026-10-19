@@ -8,6 +8,11 @@ export default defineConfig({
   server: {
     proxy: {
       "/v1": "http://127.0.0.1:8000",
+      // Rutas de la API sin prefijo que usan las paginas migradas (ola 2): presupuestos, listas, computos, partidas.
+      "/presupuestos": "http://127.0.0.1:8000",
+      "/listas-precios": "http://127.0.0.1:8000",
+      "/computos": "http://127.0.0.1:8000",
+      "/partidas": "http://127.0.0.1:8000",
     },
   },
   build: {

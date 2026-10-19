@@ -58,11 +58,13 @@ from tests.fixtures.sesion_web import (
 LEER, EDITAR, REVISAR, CAMBIAR_CASO, CUALQUIERA = (
     "leer_proyecto", "editar_hoja", "revisar_paquete", "cambiar_caso", "cualquier rol"
 )
+ENTREGAR = "entregar_paquete"
 #: Los roles de cada acción, a mano (spec S3 §5.1).
 ROLES = {
     LEER: {"arma", "revisa"},
     EDITAR: {"arma"},
     REVISAR: {"revisa"},
+    ENTREGAR: {"arma"},
     CAMBIAR_CASO: {"arma", "administrador"},
     CUALQUIERA: {"arma", "revisa", "administrador"},
 }
@@ -114,6 +116,9 @@ TABLA = {
     ("GET", "/v1/composicion/referencia"): EDITAR,
     ("GET", "/v1/composicion/similares"): EDITAR,
     ("POST", "/v1/composicion/guardar"): EDITAR,
+    ("GET", "/v1/entregas/versiones"): ENTREGAR,
+    ("GET", "/v1/entregas/resumen"): ENTREGAR,
+    ("POST", "/v1/entregas"): ENTREGAR,
 }
 #: Las de la puerta de entrada: la sesión misma (con su propia regla) y el ping.
 DE_LA_SESION = {

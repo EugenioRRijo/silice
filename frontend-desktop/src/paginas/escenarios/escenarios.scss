@@ -1,0 +1,69 @@
+// Escenarios de sensibilidad. Sin tarjetas con sombra ni animaciones (DESIGN.md).
+
+.silice-escenarios {
+  display: grid;
+  gap: 1.5rem;
+  padding: 1.5rem 1rem 2rem;
+  max-inline-size: 72rem;
+  min-inline-size: 0;
+}
+
+.silice-escenarios__selector {
+  max-inline-size: 28rem;
+}
+
+.silice-escenarios__formulario,
+.silice-escenarios__resultados,
+.silice-escenarios__detalle {
+  display: grid;
+  gap: 1rem;
+  min-inline-size: 0;
+}
+
+.silice-escenarios__nombre {
+  max-inline-size: 28rem;
+}
+
+.silice-escenarios__parametros {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: 1rem;
+}
+
+.silice-escenarios__precios {
+  display: grid;
+  gap: 0.5rem;
+  max-inline-size: 48rem;
+}
+
+.silice-escenarios__fila-precio {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) auto;
+  gap: 0.5rem;
+  align-items: end;
+}
+
+.silice-escenarios__acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.silice-escenarios__pendientes {
+  display: grid;
+  gap: 0.5rem;
+  ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+}
+
+.silice-escenarios__nota {
+  color: var(--silice-texto-secundario);
+}
+
+.silice-escenarios__resultados .silice-tabla {
+  overflow-x: auto;
+}
