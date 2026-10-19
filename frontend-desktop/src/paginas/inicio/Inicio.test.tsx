@@ -4,6 +4,7 @@ import { MemoryRouter, Route, Routes } from "react-router";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import type { SesionRespuesta } from "../../api/tipos";
 import { ContextoAplicacion } from "../../shell/contexto";
+import { RECORRIDO_AUDITAR, recorridoEnCurso, terminarRecorrido } from "../../shell/recorrido";
 import type { Aplicacion } from "../../shell/contexto";
 import { tomarArchivoPendiente } from "./archivoPendiente";
 import PaginaInicio from "./index";
@@ -70,6 +71,7 @@ describe("Inicio, panel del día", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
     tomarArchivoPendiente();
+    terminarRecorrido();
   });
 
   function montar(aplicacion: Partial<Aplicacion> = {}) {
@@ -133,6 +135,15 @@ describe("Inicio, panel del día", () => {
       expect(pendiente?.modo).toBe("guiado");
     });
 
+    test("«Auditar con recorrido guiado» además pone en curso el recorrido «Auditar un libro de la empresa»", async () => {
+      const usuario = userEvent.setup();
+      montar();
+      expect(recorridoEnCurso()).toBeNull();
+      await usuario.upload(campoArchivo(), new File(["x"], "obra-norte.xlsx"));
+      await usuario.click(screen.getByRole("button", { name: "Auditar con recorrido guiado" }));
+      expect(recorridoEnCurso()).toBe(RECORRIDO_AUDITAR);
+    });
+
     test("«Auditar por mi cuenta» lo deja en modo propio y lleva al libro", async () => {
       const usuario = userEvent.setup();
       montar();
@@ -143,6 +154,7 @@ describe("Inicio, panel del día", () => {
       const pendiente = tomarArchivoPendiente();
       expect(pendiente?.archivo).toBe(archivo);
       expect(pendiente?.modo).toBe("propio");
+      expect(recorridoEnCurso()).toBeNull();
     });
 
     test("un archivo inválido elegido después de uno válido deja intacto el anterior", async () => {
@@ -313,6 +325,23 @@ describe("Inicio, panel del día", () => {
   });
 
   describe("últimas auditorías guardadas", () => {
+    test("con un recorrido en curso lo dice y enlaza al paso que sigue", async () => {
+      const { iniciarRecorrido } = await import("../../shell/recorrido");
+      iniciarRecorrido(RECORRIDO_AUDITAR);
+      montar();
+      const seccion = await screen.findByRole("region", { name: "Últimas auditorías guardadas" });
+      expect(within(seccion).getByText(/Recorrido en curso: Auditar un libro de la empresa/)).toBeInTheDocument();
+      expect(
+        within(seccion).getByRole("link", { name: "Seguir con el paso 2: Lea el resumen y los hallazgos" }),
+      ).toHaveAttribute("href", "/libros");
+    });
+
+    test("sin recorrido en curso no dice nada de recorridos", async () => {
+      montar();
+      const seccion = await screen.findByRole("region", { name: "Últimas auditorías guardadas" });
+      expect(within(seccion).queryByText(/Recorrido en curso/)).not.toBeInTheDocument();
+    });
+
     test("muestra el caso abierto", async () => {
       montar();
       const seccion = await screen.findByRole("region", {
