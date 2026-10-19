@@ -41,9 +41,35 @@ describe("estilos del visor", () => {
     const franja = regla(".franja-indicadores");
     expect(franja).toMatch(/block-size:\s*4rem/);
     expect(franja).toMatch(/flex-wrap:\s*nowrap/);
-    expect(franja).toMatch(/overflow:\s*hidden/);
     // Dentro de la columna de la pantalla no debe encogerse (la franja se comia sus 64 px).
     expect(franja).toMatch(/flex:\s*none/);
+  });
+
+  test("nada de la franja recorta: el tooltip de las cifras exactas se abre por debajo de ella (B1)", () => {
+    for (const selector of [".franja-indicadores", ".franja-indicadores__lista", ".fiori-kpi", ".visor"]) {
+      expect(regla(selector), selector).not.toMatch(/overflow(-x|-y)?:\s*(hidden|clip|auto|scroll)/);
+    }
+  });
+
+  test("el contenedor del tooltip tampoco recorta, aunque comparta la clase de los textos con elipsis", () => {
+    expect(regla(".fiori-kpi__tooltip")).toMatch(/overflow:\s*visible/);
+  });
+
+  test("el valor con cifras exactas no se pinta como boton nativo y senala que revela algo (B2)", () => {
+    const valor = regla(".fiori-kpi__valor");
+    expect(valor).toMatch(/appearance:\s*none/);
+    expect(valor).toMatch(/background:\s*transparent/);
+    expect(valor).toMatch(/border:\s*0/);
+    expect(valor).toMatch(/padding:\s*0/);
+    expect(valor).toMatch(/margin:\s*0/);
+    expect(valor).toMatch(/font:\s*inherit/);
+    expect(valor).toMatch(/color:\s*inherit/);
+    expect(valor).toMatch(/text-align:\s*start/);
+    expect(valor).toMatch(/text-decoration:\s*underline dotted/);
+    expect(valor).toMatch(/cursor:\s*help/);
+    const foco = regla(".fiori-kpi__valor:focus-visible");
+    expect(foco).toMatch(/outline:\s*2px solid var\(--cds-focus\)/);
+    expect(foco).toMatch(/outline-offset:\s*2px/);
   });
 
   test("los conteos por severidad no se encogen y los indicadores si recortan con elipsis", () => {
