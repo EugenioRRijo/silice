@@ -1126,3 +1126,25 @@ def test_una_fecha_mala_en_existencias_tambien_va_sin_cache(http) -> None:
     r = http.get("/v1/produccion/existencias", params={"a_fecha": "no-es-fecha"})
     assert r.status_code == 422
     assert r.headers["Cache-Control"] == "no-store"
+
+
+def test_un_4xx_tras_una_escritura_parcial_no_deja_nada_y_va_sin_cache(http, monkeypatch) -> None:
+    """Un conflicto (409) o un archivo rechazado (422) despues de escribir deshacen la peticion
+    entera: `RutaSinCache` relanza la HTTPException para que la sesion con `yield` haga rollback."""
+    import api.rutas.produccion as rutas
+    from produccion.inventario import Conflicto
+
+    original = rutas.importar
+    errores = {409: Conflicto("ticket repetido (ficticio)"), 422: rutas.ArchivoRechazado("malo")}
+    _catalogo_del_basico(http)
+    for estado, error in errores.items():
+
+        def _escribe_y_falla(sesion, lectura, *, usuario, _error=error):
+            original(sesion, lectura, usuario=usuario)
+            raise _error
+
+        monkeypatch.setattr(rutas, "importar", _escribe_y_falla)
+        r = _importar(http, construir.xlsx_basico())
+        assert r.status_code == estado, r.text
+        assert r.headers["Cache-Control"] == "no-store"
+        assert _contar(Movimiento) == 0 and _contar(PesajeSospechoso) == 0

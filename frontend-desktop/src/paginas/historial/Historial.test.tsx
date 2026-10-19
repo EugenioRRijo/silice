@@ -201,6 +201,15 @@ describe("Historial de auditorías", () => {
     expect(within(tabla).getByText("Advertencia")).toBeInTheDocument(); // la severidad con su nombre
   });
 
+  test("al abrir el detalle el foco pasa a su título", async () => {
+    const u = userEvent.setup();
+    dibujar();
+    await screen.findByText("presupuesto-a.xlsx");
+    await u.click(screen.getByRole("button", { name: "Ver el detalle de presupuesto-a.xlsx" }));
+    await screen.findByRole("region", { name: "Detalle de la auditoría" });
+    expect(screen.getByRole("heading", { level: 2, name: "Detalle de la auditoría" })).toHaveFocus();
+  });
+
   test("el detalle de un PDF no inventa fecha ni totales y dice que no hay hallazgos", async () => {
     const u = userEvent.setup();
     dibujar();

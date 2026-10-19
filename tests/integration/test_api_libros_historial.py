@@ -302,3 +302,20 @@ def test_si_la_base_de_la_instalacion_no_abre_la_auditoria_sigue(
     monkeypatch.setattr("api.rutas.libros.sesion_de_instalacion", _guardado_roto)
     r = _auditar(cliente, limpio.datos)
     assert r.status_code == 200 and r.json()["aviso_historial"] == AVISO
+
+
+def test_la_puerta_de_los_libros_se_declara_una_sola_vez() -> None:
+    """Una sola instancia de `exigir_clave_o_sesion(LEER_PROYECTO)` para el router (en `api.main`)
+    y para saber quien audita: FastAPI no cachea instancias distintas y evaluaria la puerta dos
+    veces por peticion."""
+    from fastapi.dependencies.utils import get_dependant
+
+    from api.rutas import libros
+
+    incluido = next(
+        r for r in app.router.routes if getattr(r, "original_router", None) is libros.router
+    )
+    en_main = [d.dependency for d in incluido.include_context.dependencies]
+    en_usuario = [d.call for d in get_dependant(path="/", call=libros._usuario).dependencies]
+    assert en_main == [libros.ACCESO_LIBROS]
+    assert en_usuario == [libros.ACCESO_LIBROS]
