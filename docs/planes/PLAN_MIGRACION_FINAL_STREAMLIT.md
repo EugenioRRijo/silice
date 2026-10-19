@@ -62,6 +62,7 @@ Orquesta la sesión principal. Documentos de apoyo: `MANUAL_SUBAGENTES_MIGRACION
 ### T3 · Historial de auditorías (UC-30)
 - **Fuentes:** ERS UC-30, RF-142 a RF-146, RNF-28; rutas `/v1/auditorias-libro*` (T1); la página no existe aún en
   Streamlit: se construye directamente en la interfaz nueva.
+- **Hacer primero (parche RM-6, asignado tras el arbitraje de T1):** `api/rutas/libros.py` debe registrar en el historial el resultado de cada auditoria/PDF (`fusion.historial.registrar_resultado` y `registrar_resultado_pdf`), con TDD, sin cambiar el contrato de `/v1/libros/*`; ver `PLAN_SESION_4_HISTORIAL.md` §3. Añade `Cache-Control: no-store` a los GET de `/v1/auditorias-libro` y `/v1/produccion` con prueba.
 - **Hacer:** página `src/paginas/historial/` (lista, filtros, detalle de una auditoría guardada, abrir el informe/PDF
   guardado si la API lo ofrece), registro en `rutas.ts`. Si falta una ruta, la añade en `api/rutas/` con su TDD.
 - **Compartidos permitidos:** `rutas.ts`, `api/main.py` solo si añade router. Depende de T1.
@@ -146,3 +147,4 @@ autorización expresa; el retiro de Streamlit queda como decisión pendiente doc
 
 | Tarea | Implementador | Ronda | Veredicto | SHA |
 |---|---|---|---|---|
+| T1 | subagente T1 | 1 | APROBADO (arbitro independiente) | e79e196 |

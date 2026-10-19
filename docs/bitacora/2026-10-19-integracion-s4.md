@@ -45,3 +45,12 @@ cambios. Una sola cabeza por destino (la comprueban `tests/integration/test_migr
 ## No se corrió
 
 La suite completa y los `test_ui_*` de AppTest (agotan su espera de 3 s en este equipo, también sin cambios).
+
+## Revision del arbitro (ronda 1: APROBADO) y asignacion del parche RM-6
+
+- Veredicto del arbitro sobre e79e196: APROBADO, sin hallazgos BLOQUEANTE ni MAYOR. Suite del front 951/951, ruff limpio,
+  `app.openapi() == docs/api.json`, migraciones lineales, `core/` intacto.
+- RF-142 y RF-144 siguen **pendientes del parche RM-6** (`api/rutas/libros.py` debe llamar a `registrar_resultado` y
+  `registrar_resultado_pdf`, descrito en `PLAN_SESION_4_HISTORIAL.md` §3). Hasta entonces `GET /v1/auditorias-libro`
+  devuelve siempre vacio. **Asignado a T3** (Historial de auditorias): sin ese parche la pagina no tendria datos.
+- Hallazgo menor aceptado: `no-store` en las rutas de produccion y del historial (T3 lo añade al router del historial).
