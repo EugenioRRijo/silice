@@ -26,6 +26,7 @@ import type { FWorkbook, FWorksheet } from "@univerjs/preset-sheets-core";
 import { createUniver, ICommandService, IConfigService, LocaleType, mergeLocales } from "@univerjs/presets";
 import type { LibroVisualRespuesta } from "../api/tipos";
 import { aUniver } from "../replica/aUniver";
+import { columnaDeDescripcion } from "./celdas";
 import { planDeDesplazamiento, rectanguloEnPantalla } from "./geometria";
 import type { CeldaRef, HojaVisor, RectanguloPx } from "./hojaVisor";
 
@@ -229,6 +230,13 @@ export async function crearHojaUniver(contenedor: HTMLElement, libro: LibroVisua
   function desplazarA(celda: CeldaRef): void {
     const c = contexto(celda);
     if (!c) return;
+    // La descripcion de la fila (texto largo a la izquierda de la celda) no debe perderse de vista: sin ella la
+    // celda "P5" no dice de que partida habla.
+    const hojaDelLibro = libro.hojas.find((h) => h.nombre === celda.hoja);
+    const descripcion = hojaDelLibro ? columnaDeDescripcion(hojaDelLibro, celda.fila0, celda.columna0) : null;
+    const visibleCelda = visibilidad(celda, c);
+    const visibleDescripcion =
+      descripcion === null ? true : visibilidad({ hoja: celda.hoja, fila0: celda.fila0, columna0: descripcion }, c).horizontal;
     const estado = c.hoja.getScrollState();
     const plan = planDeDesplazamiento({
       celda,
@@ -246,7 +254,8 @@ export async function crearHojaUniver(contenedor: HTMLElement, libro: LibroVisua
         fila0: estado.sheetViewStartRow + c.congelado.ySplit,
         columna0: estado.sheetViewStartColumn + c.congelado.xSplit,
       },
-      visible: visibilidad(celda, c),
+      visible: { ...visibleCelda, descripcion: visibleDescripcion },
+      descripcion: descripcion ?? undefined,
     });
     // Sin animacion (duracion 0).
     if (plan) c.hoja.scrollToCell(plan.fila0, plan.columna0, 0);

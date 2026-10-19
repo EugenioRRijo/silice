@@ -321,6 +321,26 @@ describe("aUniver: patrones habituales de formato (motor de formatos de Univer)"
     return { celda, patron: (estilo as { n?: { pattern: string } } | undefined)?.n?.pattern };
   }
 
+  test("un numero en notacion cientifica con formato General sale con coma decimal, como lo muestra Excel (N1)", () => {
+    for (const [entrada, valor, esperado] of [
+      ["1.5e-07", 1.5e-7, "1,5E-07"],
+      ["1e+16", 1e16, "1E+16"],
+      ["-2.25E-10", -2.25e-10, "-2,25E-10"],
+    ] as const) {
+      const { celda, patron } = celdaConPatron("General", entrada);
+      expect(celda?.v).toBe(valor);
+      expect(celda?.t).toBe(2);
+      expect(patron).toBeDefined();
+      const texto = numfmt.format(patron as string, valor, { locale: getNumfmtLocaleTag("esES" as never), throws: false });
+      expect(texto).toBe(esperado);
+    }
+  });
+
+  test("con un formato propio, la notacion cientifica usa el patron del libro (no el derivado)", () => {
+    const { patron } = celdaConPatron("0.00", "1.5e-07");
+    expect(patron).toBe("0.00");
+  });
+
   test.each(PATRONES)("%s: %s", (_nombre, patron, entrada, valor, esperado) => {
     const { celda, patron: pasado } = celdaConPatron(patron, entrada);
     expect(pasado).toBe(patron);

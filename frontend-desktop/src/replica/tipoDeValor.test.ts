@@ -14,6 +14,14 @@ describe("tipoDeValor", () => {
     ["Obra ficticia", "texto"],
     ["", "texto"],
     ["1e5", "texto"],
+    // Notacion cientifica (lo que da un decimal muy grande o muy chico): con signo en el exponente o con decimales.
+    ["1.5e-07", "numero"],
+    ["1e+16", "numero"],
+    ["-2.5E-10", "numero"],
+    ["1.2E15", "numero"],
+    ["e+16", "texto"],
+    ["1.5e", "texto"],
+    ["1.5e+", "texto"],
   ])("%j es %s", (valor, tipo) => {
     expect(tipoDeValor(valor)).toBe(tipo);
   });

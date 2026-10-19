@@ -16,7 +16,7 @@ import type { ICellData, IStyleData, IWorkbookData, IWorksheetData } from "@univ
 import type { EstiloVisualRespuesta, HojaVisualRespuesta, LibroVisualRespuesta } from "../api/tipos";
 import { aBase0, parsearA1, parsearRango } from "./coordenadas";
 import { serialDeExcel } from "./fechaSerial";
-import { tipoDeValor } from "./tipoDeValor";
+import { patronCientifico, tipoDeValor } from "./tipoDeValor";
 
 // Excel: ancho en pixeles a 96 dpi con la fuente por omision = ancho guardado * 7 (el guardado ya incluye los
 // 5 px de relleno: trunc((caracteres * 7 + 5) / 7 * 256) / 256).
@@ -47,7 +47,8 @@ const BORDE: Record<string, number> = { hair: 2, dotted: 3, dashed: 4, thin: 1, 
 const NEGRO = "#000000";
 
 // El patron de formato va solo en las celdas que son numero o fecha: un texto no lo necesita.
-type Variante = "base" | "conPatron";
+// "cientifico:0.0E+00": un numero en notacion cientifica con formato General, que Excel muestra con coma decimal.
+type Variante = "base" | "conPatron" | `cientifico:${string}`;
 
 function estiloUniver(e: EstiloVisualRespuesta, variante: Variante): IStyleData {
   const s: Record<string, unknown> = {};
@@ -63,6 +64,7 @@ function estiloUniver(e: EstiloVisualRespuesta, variante: Variante): IStyleData 
   if (e.alineacion_v && V[e.alineacion_v] !== undefined) s.vt = V[e.alineacion_v];
   if (e.ajustar_texto) s.tb = ENVOLVER;
   if (variante === "conPatron") s.n = { pattern: e.formato_numero };
+  else if (variante.startsWith("cientifico:")) s.n = { pattern: variante.slice("cientifico:".length) };
 
   const lados = ["t", "r", "b", "l"] as const;
   const bd: Record<string, { s: number; cl: { rgb: string } }> = {};
@@ -82,6 +84,8 @@ interface Valor {
   v: string | number | boolean;
   t?: number;
   conPatron: boolean;
+  // Patron propio (notacion cientifica con formato General).
+  patron?: string;
 }
 
 // Que le damos a Univer segun lo que parece ser el valor guardado (el contrato lo trae como texto).
@@ -90,8 +94,10 @@ function valorDeUniver(mostrado: string, formato: string): Valor {
   if (formato === "@") return texto; // formato Texto: lo que parece numero es texto
   const conFormato = formato !== GENERAL && formato !== "";
   switch (tipoDeValor(mostrado)) {
-    case "numero":
-      return { v: Number(mostrado), t: NUMERO_UNIVER, conPatron: conFormato };
+    case "numero": {
+      const patron = conFormato ? null : patronCientifico(mostrado);
+      return { v: Number(mostrado), t: NUMERO_UNIVER, conPatron: conFormato, ...(patron ? { patron } : {}) };
+    }
     case "fecha": {
       const serial = conFormato ? serialDeExcel(mostrado) : null;
       return serial === null ? texto : { v: serial, t: NUMERO_UNIVER, conPatron: true };
@@ -117,7 +123,9 @@ function convertirHoja(
     fila[aBase0(c.columna)] = {
       v: valor.v,
       ...(valor.t !== undefined ? { t: valor.t } : {}),
-      s: estilo ? idDeEstilo(c.estilo, valor.conPatron ? "conPatron" : "base") : undefined,
+      s: estilo
+        ? idDeEstilo(c.estilo, valor.patron ? `cientifico:${valor.patron}` : valor.conPatron ? "conPatron" : "base")
+        : undefined,
       custom: { mostrado: c.mostrado, formula: c.formula },
     } as ICellData;
   }
@@ -175,7 +183,7 @@ function convertirHoja(
 export function aUniver(libro: LibroVisualRespuesta): IWorkbookData {
   const styles: Record<string, IStyleData> = {};
   const idDeEstilo = (indice: number, variante: Variante): string => {
-    const id = `e${indice}${variante === "base" ? "" : "n"}`;
+    const id = `e${indice}${variante === "base" ? "" : variante === "conPatron" ? "n" : `c${variante.slice(11)}`}`;
     if (!(id in styles)) styles[id] = estiloUniver(libro.estilos[indice], variante);
     return id;
   };
