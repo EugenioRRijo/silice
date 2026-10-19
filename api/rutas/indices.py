@@ -17,8 +17,9 @@ El contenido de lo que se sube nunca se confía: el nombre se reduce a su últim
 en Windows, el tamaño tiene tope, un `.xlsx` pasa por la guardia (`adapters.hoja_empresa.guardia`)
 antes del lector del BCV, el archivo vive en una carpeta temporal y un 422 de forma no repite lo
 enviado (`RutaSinEco`). Los valores de los índices no viajan en la respuesta: solo recuentos y
-rangos de fechas, como la pantalla clásica. Con sesión, el responsable es SIEMPRE la persona de la
-sesión (RF-82); con clave de API lo dice el formulario.
+rangos de fechas, como la pantalla clásica. Leer (`/contexto`, `/leer`) acepta sesión o clave de
+API; confirmar solo la sesión de una cuenta con el rol (la clave recibe 403) y el responsable
+es SIEMPRE la persona de la sesión (RF-82), nunca el formulario.
 """
 
 from __future__ import annotations
@@ -37,6 +38,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from adapters.bcv.informe import InformeImportacion
 from adapters.bcv.libro import LIMITE_BYTES
 from adapters.hoja_empresa.guardia import ArchivoRechazado, verificar_archivo
+from api.admin_acceso import administrar
 from api.dependencias import SesionDep
 from api.sesion_web import ahora, exigir_clave_o_sesion
 from api.sin_eco import RutaSinEco
@@ -68,6 +70,8 @@ _RESERVADOS = frozenset(
 LONGITUD_NOMBRE = 100
 
 ADMINISTRAR = Depends(exigir_clave_o_sesion(Accion.ADMINISTRAR_PRECIOS))
+#: Escribir es de una persona con rol: la clave de API recibe 403 (MEDIO-1).
+SOLO_CUENTA = Depends(administrar(Accion.ADMINISTRAR_PRECIOS))
 
 
 class _RutaIndices(RutaSinEco):
@@ -271,12 +275,11 @@ def leer(
 @router.post("/confirmar", response_model=ConfirmacionRespuesta)
 def confirmar(
     sesion: SesionDep,
-    activa: Annotated[SesionActiva | None, ADMINISTRAR],
+    activa: Annotated[SesionActiva, SOLO_CUENTA],
     tipo: Annotated[str, Form(max_length=20)],
     archivo: Annotated[UploadFile, File()],
     fecha_descarga: Annotated[date, Form()],
     fuente: Annotated[str, Form(max_length=500)] = "",
-    responsable: Annotated[str, Form(max_length=200)] = "",
     definiciones: Annotated[str, Form(max_length=20000)] = "[]",
     huella: Annotated[str, Form(max_length=64)] = "",
 ) -> ConfirmacionRespuesta:
@@ -286,7 +289,7 @@ def confirmar(
     informe = _leer_archivo(archivo, tipo, fuente, fecha_descarga)
     if huella and huella != informe.huella:
         raise HTTPException(409, MENSAJE_HUELLA)
-    quien = responsable.strip() if activa is None else activa.usuario
+    quien = activa.usuario  # RF-82: siempre la persona de la sesion
     try:
         declaradas = logica.definiciones_desde_filas(filas) if tipo == "csv" else None
         mensajes = logica.confirmar(

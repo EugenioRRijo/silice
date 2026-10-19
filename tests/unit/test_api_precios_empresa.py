@@ -30,6 +30,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import func, select
 
 from api import caso_web, dependencias
+from api.admin_acceso import MENSAJE_SOLO_CUENTA
 from api.main import app
 from api.rutas import precios_empresa as ruta
 from core import models
@@ -451,20 +452,29 @@ def test_sin_sesion_es_401_y_sin_csrf_u_origen_es_403() -> None:
     assert navegador.post(f"{URL}/referencia", headers=ajeno).status_code == 403
 
 
-def test_la_clave_de_api_tambien_pasa_y_una_falsa_no() -> None:
-    con_clave = TestClient(
+def _con_clave(clave: str) -> TestClient:
+    return TestClient(
         app,
         base_url="http://127.0.0.1:8000",
         client=("127.0.0.1", 50000),
         raise_server_exceptions=False,
-        headers={CABECERA: crear_clave_de_prueba()},
+        headers={CABECERA: clave},
     )
-    assert con_clave.get(URL).status_code == 200
-    falsa = TestClient(
-        app,
-        base_url="http://127.0.0.1:8000",
-        client=("127.0.0.1", 50000),
-        raise_server_exceptions=False,
-        headers={CABECERA: "falsa.clave"},
-    )
-    assert falsa.get(URL).status_code == 401
+
+
+def test_la_clave_de_api_lee_y_una_falsa_no() -> None:
+    assert _con_clave(crear_clave_de_prueba()).get(URL).status_code == 200
+    assert _con_clave("falsa.clave").get(URL).status_code == 401
+
+
+def test_la_clave_de_api_no_escribe_es_403_en_cada_ruta_de_escritura(_entorno) -> None:
+    """MEDIO-1: referencia y listas piden la sesion de una cuenta; la clave no basta."""
+    con_clave = _con_clave(crear_clave_de_prueba())
+    antes = _cuantas_listas(_entorno)
+    pedidos = [
+        con_clave.post(f"{URL}/referencia"),
+        con_clave.post(f"{URL}/listas", data=_datos(1), files=_archivo()),
+    ]
+    for r in pedidos:
+        assert (r.status_code, r.json()) == (403, {"detalle": MENSAJE_SOLO_CUENTA}), r.text
+    assert _cuantas_listas(_entorno) == antes

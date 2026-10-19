@@ -1,8 +1,9 @@
 """Precios de la empresa (UC-17 4-5; migracion de `ui/paginas/precios_empresa.py`, sesion 2b).
 
 La logica vive en `aplicacion.precios_empresa` (la misma de la pantalla de Streamlit); aqui solo el
-esquema HTTP. Rol `administrar_precios` (el administrador) en las cuatro rutas; la clave de API
-tambien pasa, como en `exigir_clave_o_sesion`.
+esquema HTTP. Rol `administrar_precios` (el administrador) en las cuatro rutas. Leer (`GET`)
+acepta sesion o clave de API; las dos que escriben (`referencia` y `listas`) solo la sesion de
+una cuenta: la clave recibe 403.
 
 - `GET /v1/precios-empresa` -> `{bases, listas}`: las listas que pueden ser base y las de empresa.
 - `POST /v1/precios-empresa/referencia` -> `{mensaje}`: carga la referencia MaPreX en Bs.
@@ -31,6 +32,7 @@ from pydantic import BaseModel
 from sqlalchemy.exc import SQLAlchemyError
 
 from adapters.hoja_empresa.guardia import MAX_BYTES
+from api.admin_acceso import administrar
 from api.archivos import guardar_subida
 from api.dependencias import SesionDep
 from api.rutas.listas import comprobar_libro_legible
@@ -53,6 +55,9 @@ SUFIJOS = (".csv", ".xlsx")
 #: Lo mismo que la guardia de los libros (25 MiB): un CSV no necesita mas.
 TOPE_BYTES = MAX_BYTES
 LARGO_MAXIMO_DEL_MOTIVO = 500
+
+#: Escribir es de una persona con rol: la clave de API recibe 403 (MEDIO-1).
+SOLO_CUENTA = Depends(administrar(Accion.ADMINISTRAR_PRECIOS))
 
 router = APIRouter(
     prefix="/v1/precios-empresa",
@@ -122,7 +127,7 @@ def estado(sesion: SesionDep) -> EstadoRespuesta:
     )
 
 
-@router.post("/referencia", response_model=MensajeRespuesta)
+@router.post("/referencia", response_model=MensajeRespuesta, dependencies=[SOLO_CUENTA])
 @sin_eco(MENSAJE_INVALIDO)
 def cargar_referencia(sesion: SesionDep) -> MensajeRespuesta:
     """Carga la referencia MaPreX en Bs; una ya cargada no se duplica."""
@@ -136,7 +141,12 @@ def cargar_referencia(sesion: SesionDep) -> MensajeRespuesta:
             raise HTTPException(422, f"No se cargo la referencia: {_motivo(error)}") from None
 
 
-@router.post("/listas", response_model=ListaCreadaRespuesta, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/listas",
+    response_model=ListaCreadaRespuesta,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[SOLO_CUENTA],
+)
 @sin_eco(MENSAJE_INVALIDO)
 def crear_lista(
     sesion: SesionDep,

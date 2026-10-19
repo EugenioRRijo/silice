@@ -31,6 +31,7 @@ import pytest
 from sqlalchemy import select
 
 from api import caso_web, dependencias
+from api.admin_acceso import MENSAJE_SOLO_CUENTA
 from api.main import app
 from api.rutas import indices as ruta_indices
 from core import models
@@ -464,21 +465,17 @@ def test_confirmar_con_la_huella_leida_pasa() -> None:
     assert _confirmar(huella=hashlib.sha256(CSV).hexdigest()).status_code == 200
 
 
-def test_con_clave_de_api_el_responsable_lo_dice_el_formulario(_entorno: Path) -> None:
+def test_confirmar_con_clave_de_api_es_403_y_no_escribe(_entorno: Path) -> None:
+    """MEDIO-1: escribir exige la sesion de una cuenta; la clave de API solo lee."""
     sin = cliente(app)
     clave = {CABECERA: crear_clave_de_prueba()}
-    datos = _campos(definiciones=json.dumps(DEFINICIONES))
-    archivo = {"archivo": ("indices.csv", CSV)}
-    faltante = sin.post("/v1/indices/confirmar", data=datos, files=archivo, headers=clave)
-    assert (faltante.status_code, faltante.json()) == (
-        422,
-        {"detalle": "No se guardo nada: el responsable de la importacion es obligatorio"},
+    datos = _campos(definiciones=json.dumps(DEFINICIONES), responsable="Integracion Demo")
+    r = sin.post(
+        "/v1/indices/confirmar", data=datos, files={"archivo": ("indices.csv", CSV)}, headers=clave
     )
+    assert (r.status_code, r.json()) == (403, {"detalle": MENSAJE_SOLO_CUENTA})
     assert _valores(_entorno) == {}
-    datos["responsable"] = "Integracion Demo"
-    r = sin.post("/v1/indices/confirmar", data=datos, files=archivo, headers=clave)
-    assert r.status_code == 200, r.text
-    assert _responsables(_entorno) == {"Integracion Demo"}
+    assert _responsables(_entorno) == set()
 
 
 def test_un_fallo_de_la_base_no_devuelve_el_sql(monkeypatch, _entorno: Path) -> None:
