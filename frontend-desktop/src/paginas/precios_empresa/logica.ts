@@ -1,6 +1,7 @@
 // Logica pura de «Precios de la empresa» (UC-17 4-5): textos de la pagina clasica y el formulario que recibe la API.
 // No calcula ni redondea: el impacto de cada hallazgo llega como texto y se muestra tal cual.
 import type { ColumnaDensa, FilaDensa } from "../../comun/TablaDensa";
+import { formatoEsVe } from "../../indicadores/formatoEsVe";
 
 export const TITULO = "Precios de la empresa";
 export const AYUDA =
@@ -102,4 +103,65 @@ export function formularioLista(d: DatosLista): FormData {
 
 export function rutaHallazgos(listaId: number, fechaIso: string): string {
   return `/v1/precios-empresa/listas/${listaId}/hallazgos?fecha=${encodeURIComponent(fechaIso)}`;
+}
+
+// --- RF-100: variaciones atipicas de precio (el boton de la pagina clasica) -----------------------
+// El rotulo y los avisos son los de `aplicacion/atipicos.py`; los avisos llegan de la API tal cual.
+export const ROTULO_ATIPICOS = "Buscar variaciones atípicas de precio";
+export const ETIQUETA_ATIPICOS = "Variaciones atípicas de precio";
+// Las palabras de la descripcion de cada hallazgo y del aviso sin el extra `ml` de la pagina clasica.
+export const NOTA_ATIPICOS =
+  "Cada variación (en USD) se aparta del historial de variaciones del insumo. Nada de esto se guarda ni se bloquea.";
+
+export interface AvisoAtipicos {
+  nivel: "info" | "success";
+  texto: string;
+}
+export interface VariacionAtipica {
+  insumo: string;
+  // En por ciento con dos decimales, como texto ("0.39").
+  porcentaje: string;
+  desde: string;
+  hasta: string;
+  severidad: string;
+  descripcion: string;
+}
+export interface Atipicos {
+  disponible: boolean;
+  avisos: AvisoAtipicos[];
+  variaciones: VariacionAtipica[];
+}
+
+export function rutaAtipicos(listaId: number): string {
+  return `/v1/precios-empresa/listas/${listaId}/atipicos`;
+}
+
+// "0.39" -> "0,39 %": formato es-VE sobre el texto, sin Number (la interfaz no calcula).
+export function porcentajeEsVe(porcentaje: string): string {
+  return `${formatoEsVe(porcentaje)} %`;
+}
+
+// 2026-09-01 -> 01/09/2026, como en la pantalla de Streamlit. Lo que no es AAAA-MM-DD queda igual.
+export function fechaCorta(iso: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : iso;
+}
+
+export const COLUMNAS_ATIPICOS: ColumnaDensa[] = [
+  { clave: "insumo", titulo: "Insumo" },
+  { clave: "porcentaje", titulo: "Variación (en USD)", numerica: true, presentar: porcentajeEsVe },
+  { clave: "desde", titulo: "Desde", presentar: fechaCorta },
+  { clave: "hasta", titulo: "Hasta", presentar: fechaCorta },
+  { clave: "severidad", titulo: "Severidad", celda: "severidad" },
+];
+
+export function filasAtipicos(a: Atipicos): FilaDensa[] {
+  return a.variaciones.map((v, i) => ({
+    id: String(i),
+    insumo: v.insumo,
+    porcentaje: v.porcentaje,
+    desde: v.desde,
+    hasta: v.hasta,
+    severidad: v.severidad,
+  }));
 }
