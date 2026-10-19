@@ -866,7 +866,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CalculoRespuesta"
+                  "$ref": "#/components/schemas/api__esquemas_ola2__CalculoRespuesta"
                 }
               }
             }
@@ -2240,7 +2240,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/GuardadoRespuesta"
+                  "$ref": "#/components/schemas/api__rutas__composicion__GuardadoRespuesta"
                 }
               }
             }
@@ -2380,6 +2380,226 @@
             "description": "Successful Response",
             "content": {
               "application/zip": {}
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/reajuste/contexto": {
+      "get": {
+        "tags": [
+          "reajuste"
+        ],
+        "summary": "Contexto",
+        "description": "Las versiones del proyecto (de la más antigua a la más reciente) y las opciones.",
+        "operationId": "contexto_v1_reajuste_contexto_get",
+        "parameters": [
+          {
+            "name": "proyecto",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 200,
+              "title": "Proyecto"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContextoRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/reajuste/parciales": {
+      "get": {
+        "tags": [
+          "reajuste"
+        ],
+        "summary": "Parciales",
+        "operationId": "parciales_v1_reajuste_parciales_get",
+        "parameters": [
+          {
+            "name": "proyecto",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 200,
+              "title": "Proyecto"
+            }
+          },
+          {
+            "name": "version",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 40,
+              "title": "Version"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ParcialRespuesta"
+                  },
+                  "title": "Response Parciales V1 Reajuste Parciales Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/reajuste/calcular": {
+      "post": {
+        "tags": [
+          "reajuste"
+        ],
+        "summary": "Calcular",
+        "operationId": "calcular_v1_reajuste_calcular_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EstudioPeticion"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/api__rutas__reajuste__CalculoRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/reajuste/guardar": {
+      "post": {
+        "tags": [
+          "reajuste"
+        ],
+        "summary": "Guardar",
+        "operationId": "guardar_v1_reajuste_guardar_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GuardarPeticion"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/api__rutas__reajuste__GuardadoRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/reajuste/excel": {
+      "post": {
+        "tags": [
+          "reajuste"
+        ],
+        "summary": "Excel",
+        "operationId": "excel_v1_reajuste_excel_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EstudioPeticion"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {}
             }
           },
           "422": {
@@ -3029,71 +3249,6 @@
         "title": "CalculoPeticion",
         "description": "UC-01 en modo «solo calcular»: nada se guarda. `plan` son las filas de la tabla del\nproyectista; sin ellas, el plan por defecto (`plan_secuencial`)."
       },
-      "CalculoRespuesta": {
-        "properties": {
-          "codigo": {
-            "type": "string",
-            "title": "Codigo"
-          },
-          "fecha": {
-            "type": "string",
-            "format": "date",
-            "title": "Fecha"
-          },
-          "moneda": {
-            "type": "string",
-            "title": "Moneda"
-          },
-          "total": {
-            "type": "string",
-            "title": "Total"
-          },
-          "partidas": {
-            "items": {
-              "$ref": "#/components/schemas/PartidaPresupuestadaRespuesta"
-            },
-            "type": "array",
-            "title": "Partidas"
-          },
-          "por_severidad": {
-            "items": {
-              "$ref": "#/components/schemas/SeveridadRespuesta"
-            },
-            "type": "array",
-            "title": "Por Severidad"
-          },
-          "informe": {
-            "$ref": "#/components/schemas/InformeAuditoriaRespuesta"
-          },
-          "pendientes": {
-            "items": {
-              "$ref": "#/components/schemas/PendienteConPropuestasRespuesta"
-            },
-            "type": "array",
-            "title": "Pendientes"
-          },
-          "plan_por_defecto": {
-            "items": {
-              "$ref": "#/components/schemas/FilaPlan"
-            },
-            "type": "array",
-            "title": "Plan Por Defecto"
-          }
-        },
-        "type": "object",
-        "required": [
-          "codigo",
-          "fecha",
-          "moneda",
-          "total",
-          "partidas",
-          "por_severidad",
-          "informe",
-          "pendientes",
-          "plan_por_defecto"
-        ],
-        "title": "CalculoRespuesta"
-      },
       "CambioDeContrasena": {
         "properties": {
           "actual": {
@@ -3283,6 +3438,97 @@
         "title": "CeldaVisualRespuesta",
         "description": "Espejo de `visual.CeldaVisual`: `fila` y `columna` base 1, `ref` sin `$`."
       },
+      "ClausulaTextos": {
+        "properties": {
+          "fecha_inicio": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Fecha Inicio",
+            "default": ""
+          },
+          "duracion_meses": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Duracion Meses",
+            "default": ""
+          },
+          "fecha_referencia_primer_anio": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Fecha Referencia Primer Anio",
+            "default": ""
+          },
+          "periodicidad": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Periodicidad",
+            "default": ""
+          },
+          "mecanismo": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Mecanismo",
+            "default": ""
+          },
+          "mecanismo_pagadero": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Mecanismo Pagadero",
+            "default": ""
+          },
+          "fuente_pagadero": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Fuente Pagadero",
+            "default": ""
+          },
+          "estructura": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Estructura",
+            "default": ""
+          },
+          "fecha_base_indices": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Fecha Base Indices",
+            "default": ""
+          },
+          "r": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "R",
+            "default": ""
+          },
+          "fuente_r": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Fuente R",
+            "default": ""
+          },
+          "r_en_comprobacion": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "R En Comprobacion",
+            "default": "no"
+          },
+          "fuente": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Fuente",
+            "default": ""
+          },
+          "responsable": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Responsable",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "title": "ClausulaTextos",
+        "description": "Los campos de la cláusula como los escribe la persona (S1 §8.1); se validan al calcular."
+      },
       "ComparativoRespuesta": {
         "properties": {
           "total_anterior": {
@@ -3356,6 +3602,54 @@
           "mano_obra"
         ],
         "title": "ComposicionRespuesta"
+      },
+      "ContextoRespuesta": {
+        "properties": {
+          "versiones": {
+            "items": {
+              "$ref": "#/components/schemas/VersionRespuesta"
+            },
+            "type": "array",
+            "title": "Versiones"
+          },
+          "periodicidades": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Periodicidades"
+          },
+          "mecanismos": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Mecanismos"
+          },
+          "estructuras": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Estructuras"
+          },
+          "componentes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Componentes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "versiones",
+          "periodicidades",
+          "mecanismos",
+          "estructuras",
+          "componentes"
+        ],
+        "title": "ContextoRespuesta"
       },
       "Contraste": {
         "properties": {
@@ -4123,6 +4417,82 @@
         "title": "EstiloVisualRespuesta",
         "description": "Espejo de `visual.EstiloVisual`; `bordes`: arriba, derecha, abajo, izquierda."
       },
+      "EstudioPeticion": {
+        "properties": {
+          "proyecto": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Proyecto"
+          },
+          "version": {
+            "type": "string",
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Version"
+          },
+          "clausula": {
+            "$ref": "#/components/schemas/ClausulaTextos"
+          },
+          "componentes": {
+            "items": {
+              "additionalProperties": {
+                "type": "string",
+                "maxLength": 500
+              },
+              "propertyNames": {
+                "maxLength": 500
+              },
+              "type": "object"
+            },
+            "type": "array",
+            "maxItems": 20,
+            "title": "Componentes"
+          },
+          "periodos": {
+            "items": {
+              "additionalProperties": {
+                "type": "string",
+                "maxLength": 500
+              },
+              "propertyNames": {
+                "maxLength": 500
+              },
+              "type": "object"
+            },
+            "type": "array",
+            "maxItems": 500,
+            "title": "Periodos"
+          },
+          "ejecutado": {
+            "items": {
+              "additionalProperties": {
+                "type": "string",
+                "maxLength": 500
+              },
+              "propertyNames": {
+                "maxLength": 500
+              },
+              "type": "object"
+            },
+            "type": "array",
+            "maxItems": 5000,
+            "title": "Ejecutado"
+          },
+          "con_valuaciones": {
+            "type": "boolean",
+            "title": "Con Valuaciones",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "proyecto",
+          "version",
+          "clausula"
+        ],
+        "title": "EstudioPeticion"
+      },
       "EvaluacionRespuesta": {
         "properties": {
           "estado": {
@@ -4371,36 +4741,104 @@
         ],
         "title": "FilaSimuladaRespuesta"
       },
-      "GuardadoRespuesta": {
+      "GuardarPeticion": {
         "properties": {
-          "precio_unitario": {
+          "proyecto": {
             "type": "string",
-            "title": "Precio Unitario"
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Proyecto"
           },
-          "mensaje": {
+          "version": {
             "type": "string",
-            "title": "Mensaje"
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Version"
           },
-          "justificada": {
-            "type": "boolean",
-            "title": "Justificada"
+          "clausula": {
+            "$ref": "#/components/schemas/ClausulaTextos"
           },
-          "avisos": {
+          "componentes": {
             "items": {
-              "type": "string"
+              "additionalProperties": {
+                "type": "string",
+                "maxLength": 500
+              },
+              "propertyNames": {
+                "maxLength": 500
+              },
+              "type": "object"
             },
             "type": "array",
-            "title": "Avisos"
+            "maxItems": 20,
+            "title": "Componentes"
+          },
+          "periodos": {
+            "items": {
+              "additionalProperties": {
+                "type": "string",
+                "maxLength": 500
+              },
+              "propertyNames": {
+                "maxLength": 500
+              },
+              "type": "object"
+            },
+            "type": "array",
+            "maxItems": 500,
+            "title": "Periodos"
+          },
+          "ejecutado": {
+            "items": {
+              "additionalProperties": {
+                "type": "string",
+                "maxLength": 500
+              },
+              "propertyNames": {
+                "maxLength": 500
+              },
+              "type": "object"
+            },
+            "type": "array",
+            "maxItems": 5000,
+            "title": "Ejecutado"
+          },
+          "con_valuaciones": {
+            "type": "boolean",
+            "title": "Con Valuaciones",
+            "default": false
+          },
+          "fuente": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Fuente",
+            "default": ""
+          },
+          "responsable": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Responsable",
+            "default": ""
+          },
+          "reemplaza_a": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reemplaza A"
           }
         },
         "type": "object",
         "required": [
-          "precio_unitario",
-          "mensaje",
-          "justificada",
-          "avisos"
+          "proyecto",
+          "version",
+          "clausula"
         ],
-        "title": "GuardadoRespuesta"
+        "title": "GuardarPeticion"
       },
       "HTTPValidationError": {
         "properties": {
@@ -5227,6 +5665,24 @@
           "modalidades"
         ],
         "title": "OpcionesRespuesta"
+      },
+      "ParcialRespuesta": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "fecha_calculo": {
+            "type": "string",
+            "title": "Fecha Calculo"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "fecha_calculo"
+        ],
+        "title": "ParcialRespuesta"
       },
       "PartidaPresupuestadaRespuesta": {
         "properties": {
@@ -6890,6 +7346,29 @@
         ],
         "title": "VersionEntregable"
       },
+      "VersionRespuesta": {
+        "properties": {
+          "codigo": {
+            "type": "string",
+            "title": "Codigo"
+          },
+          "motivo": {
+            "type": "string",
+            "title": "Motivo"
+          },
+          "revalorada": {
+            "type": "boolean",
+            "title": "Revalorada"
+          }
+        },
+        "type": "object",
+        "required": [
+          "codigo",
+          "motivo",
+          "revalorada"
+        ],
+        "title": "VersionRespuesta"
+      },
       "VistaPreviaRespuesta": {
         "properties": {
           "desconocidos": {
@@ -7002,6 +7481,71 @@
         ],
         "title": "HallazgoRespuesta"
       },
+      "api__esquemas_ola2__CalculoRespuesta": {
+        "properties": {
+          "codigo": {
+            "type": "string",
+            "title": "Codigo"
+          },
+          "fecha": {
+            "type": "string",
+            "format": "date",
+            "title": "Fecha"
+          },
+          "moneda": {
+            "type": "string",
+            "title": "Moneda"
+          },
+          "total": {
+            "type": "string",
+            "title": "Total"
+          },
+          "partidas": {
+            "items": {
+              "$ref": "#/components/schemas/PartidaPresupuestadaRespuesta"
+            },
+            "type": "array",
+            "title": "Partidas"
+          },
+          "por_severidad": {
+            "items": {
+              "$ref": "#/components/schemas/SeveridadRespuesta"
+            },
+            "type": "array",
+            "title": "Por Severidad"
+          },
+          "informe": {
+            "$ref": "#/components/schemas/InformeAuditoriaRespuesta"
+          },
+          "pendientes": {
+            "items": {
+              "$ref": "#/components/schemas/PendienteConPropuestasRespuesta"
+            },
+            "type": "array",
+            "title": "Pendientes"
+          },
+          "plan_por_defecto": {
+            "items": {
+              "$ref": "#/components/schemas/FilaPlan"
+            },
+            "type": "array",
+            "title": "Plan Por Defecto"
+          }
+        },
+        "type": "object",
+        "required": [
+          "codigo",
+          "fecha",
+          "moneda",
+          "total",
+          "partidas",
+          "por_severidad",
+          "informe",
+          "pendientes",
+          "plan_por_defecto"
+        ],
+        "title": "CalculoRespuesta"
+      },
       "api__rutas__auditorias__HallazgoRespuesta": {
         "properties": {
           "regla": {
@@ -7043,6 +7587,113 @@
           "origen_ids"
         ],
         "title": "HallazgoRespuesta"
+      },
+      "api__rutas__composicion__GuardadoRespuesta": {
+        "properties": {
+          "precio_unitario": {
+            "type": "string",
+            "title": "Precio Unitario"
+          },
+          "mensaje": {
+            "type": "string",
+            "title": "Mensaje"
+          },
+          "justificada": {
+            "type": "boolean",
+            "title": "Justificada"
+          },
+          "avisos": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Avisos"
+          }
+        },
+        "type": "object",
+        "required": [
+          "precio_unitario",
+          "mensaje",
+          "justificada",
+          "avisos"
+        ],
+        "title": "GuardadoRespuesta"
+      },
+      "api__rutas__reajuste__CalculoRespuesta": {
+        "properties": {
+          "estado": {
+            "type": "string",
+            "title": "Estado"
+          },
+          "moneda": {
+            "type": "string",
+            "title": "Moneda"
+          },
+          "columnas": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Columnas"
+          },
+          "filas": {
+            "items": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Filas"
+          },
+          "avisos": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Avisos"
+          },
+          "mensaje_parcial": {
+            "type": "string",
+            "title": "Mensaje Parcial"
+          },
+          "parciales": {
+            "items": {
+              "$ref": "#/components/schemas/ParcialRespuesta"
+            },
+            "type": "array",
+            "title": "Parciales"
+          }
+        },
+        "type": "object",
+        "required": [
+          "estado",
+          "moneda",
+          "columnas",
+          "filas",
+          "avisos",
+          "mensaje_parcial",
+          "parciales"
+        ],
+        "title": "CalculoRespuesta"
+      },
+      "api__rutas__reajuste__GuardadoRespuesta": {
+        "properties": {
+          "estudio": {
+            "type": "integer",
+            "title": "Estudio"
+          },
+          "estado": {
+            "type": "string",
+            "title": "Estado"
+          }
+        },
+        "type": "object",
+        "required": [
+          "estudio",
+          "estado"
+        ],
+        "title": "GuardadoRespuesta"
       }
     }
   }

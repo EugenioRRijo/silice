@@ -59,12 +59,14 @@ LEER, EDITAR, REVISAR, CAMBIAR_CASO, CUALQUIERA = (
     "leer_proyecto", "editar_hoja", "revisar_paquete", "cambiar_caso", "cualquier rol"
 )
 ENTREGAR = "entregar_paquete"
+REAJUSTAR = "convertir_y_reajustar"
 #: Los roles de cada acción, a mano (spec S3 §5.1).
 ROLES = {
     LEER: {"arma", "revisa"},
     EDITAR: {"arma"},
     REVISAR: {"revisa"},
     ENTREGAR: {"arma"},
+    REAJUSTAR: {"arma"},
     CAMBIAR_CASO: {"arma", "administrador"},
     CUALQUIERA: {"arma", "revisa", "administrador"},
 }
@@ -118,6 +120,11 @@ TABLA = {
     ("GET", "/v1/entregas/versiones"): ENTREGAR,
     ("GET", "/v1/entregas/resumen"): ENTREGAR,
     ("POST", "/v1/entregas"): ENTREGAR,
+    ("GET", "/v1/reajuste/contexto"): REAJUSTAR,
+    ("GET", "/v1/reajuste/parciales"): REAJUSTAR,
+    ("POST", "/v1/reajuste/calcular"): REAJUSTAR,
+    ("POST", "/v1/reajuste/guardar"): REAJUSTAR,
+    ("POST", "/v1/reajuste/excel"): REAJUSTAR,
 }
 #: Las de la puerta de entrada: la sesión misma (con su propia regla) y el ping.
 DE_LA_SESION = {
