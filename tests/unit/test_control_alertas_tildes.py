@@ -394,8 +394,8 @@ def test_un_texto_adversarial_vuelve_intacto_en_menos_de_un_segundo(nombre: str,
     salida = con_tildes(texto)
     segundos = time.perf_counter() - inicio
     print(f"{nombre} n={n}: {segundos:.3f} s")
-    if nombre == "no_aplica_via_codigo" and n <= 2_000:
-        # Bajo el tope, el código del usuario queda igual y solo se corrige el motivo del núcleo.
+    if nombre == "no_aplica_via_codigo":
+        # El código del usuario queda igual y solo se corrige el motivo del núcleo.
         assert salida == texto.replace("sin composicion de APU)", "sin composición de APU)")
     else:
         assert salida == texto
@@ -427,3 +427,28 @@ def test_un_codigo_con_separadores_no_se_altera_fuera_de_su_motivo() -> None:
     assert con_tildes(texto) == texto
     anidado = "no aplica (a: no aplica (b: sin composicion de APU))"
     assert con_tildes(anidado) == anidado
+
+
+@pytest.mark.parametrize("partidas", [60, 100, 2_000])
+def test_un_desglose_largo_de_no_aplica_se_corrige_entero_y_rapido(partidas: int) -> None:
+    codigos = [f"P{i:04d}-dia" for i in range(partidas)]
+    emitido = "no aplica (" + "; ".join(f"{c}: sin composicion de APU" for c in codigos) + ")"
+    esperado = "no aplica (" + "; ".join(f"{c}: sin composición de APU" for c in codigos) + ")"
+    assert len(emitido) > 2_000
+    inicio = time.perf_counter()
+    salida = con_tildes(emitido)
+    segundos = time.perf_counter() - inicio
+    print(f"desglose de {partidas} partidas, {len(emitido)} caracteres: {segundos:.3f} s")
+    corregido = salida == esperado  # sin volcar un diff de miles de caracteres si falla
+    assert corregido, f"el desglose de {partidas} partidas no se corrigió entero"
+    assert segundos < LIMITE_DE_SEGUNDOS
+
+
+def test_un_no_aplica_anidado_de_20_000_niveles_es_rapido_e_intacto() -> None:
+    texto = "no aplica (a: " * 20_000 + "x" + ")" * 20_000
+    inicio = time.perf_counter()
+    salida = con_tildes(texto)
+    segundos = time.perf_counter() - inicio
+    print(f"anidado de 20000 niveles: {segundos:.3f} s")
+    assert salida == texto
+    assert segundos < LIMITE_DE_SEGUNDOS
