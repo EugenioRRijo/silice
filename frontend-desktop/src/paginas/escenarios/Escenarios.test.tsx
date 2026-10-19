@@ -21,6 +21,8 @@ const SESION: SesionRespuesta = {
   modo_entrega: false,
 };
 
+const FCAS = "FCAS (fracción; 6.00 = prestaciones del 600 %)";
+
 const LISTA = [
   { codigo: "FIC-1", total: "1000.00", proyecto: "Obra ficticia" },
   { codigo: "FIC-2", total: "2000.00", proyecto: "Otra obra ficticia" },
@@ -65,6 +67,9 @@ function escenario(nombre: string, total: string): EscenarioRespuesta {
     ],
   };
 }
+
+// Carbon antepone al titulo el aviso de ordenacion: se compara el final.
+const titulo = (c: HTMLElement) => (c.textContent ?? "").replace(/^Click to sort rows by .* header in ascending order/, "");
 
 describe("Escenarios de sensibilidad", () => {
   const fetchFalso = vi.fn<typeof fetch>();
@@ -121,14 +126,14 @@ describe("Escenarios de sensibilidad", () => {
   const cuerpoDe = (llamada: (typeof fetchFalso.mock.calls)[number]) => JSON.parse(String(llamada[1]?.body));
 
   async function listo() {
-    await screen.findByLabelText("fcas");
-    await waitFor(() => expect(screen.getByLabelText("fcas")).toHaveValue("6.00"));
+    await screen.findByLabelText(FCAS);
+    await waitFor(() => expect(screen.getByLabelText(FCAS)).toHaveValue("6.00"));
   }
 
   test("lista los presupuestos con etiqueta proyecto / codigo y muestra el texto de ayuda", async () => {
     montar();
     await listo();
-    expect(screen.getByText(/Recalcula un presupuesto guardado variando parametros de costo o precios de insumos/)).toBeInTheDocument();
+    expect(screen.getByText(/Recalcula un presupuesto guardado variando parámetros de costo o precios de insumos/)).toBeInTheDocument();
     const selector = screen.getByLabelText("Presupuesto base");
     expect(within(selector).getByRole("option", { name: "Obra ficticia / FIC-1" })).toBeInTheDocument();
     expect(within(selector).getByRole("option", { name: "Otra obra ficticia / FIC-2" })).toBeInTheDocument();
@@ -138,16 +143,16 @@ describe("Escenarios de sensibilidad", () => {
   test("sin presupuestos guardados muestra el estado vacio", async () => {
     lista = [];
     montar();
-    expect(await screen.findByText("No hay presupuestos guardados todavia: elabore uno primero (UC-01).")).toBeInTheDocument();
+    expect(await screen.findByText("No hay presupuestos guardados todavía: elabore uno primero.")).toBeInTheDocument();
     expect(screen.queryByLabelText("Presupuesto base")).toBeNull();
   });
 
   test("precarga los parametros del base y el nombre por omision", async () => {
     montar();
     await listo();
-    expect(screen.getByLabelText("bono_alimentacion")).toHaveValue("2.50");
-    expect(screen.getByLabelText("administracion")).toHaveValue("0.10");
-    expect(screen.getByLabelText("utilidad")).toHaveValue("0.12");
+    expect(screen.getByLabelText("Bono de alimentación")).toHaveValue("2.50");
+    expect(screen.getByLabelText("Administración")).toHaveValue("0.10");
+    expect(screen.getByLabelText("Utilidad")).toHaveValue("0.12");
     expect(screen.getByLabelText("Nombre del escenario")).toHaveValue("escenario 1");
     expect(fetchFalso).toHaveBeenCalledWith(
       "/presupuestos/FIC-1/escenarios/base?proyecto=Obra%20ficticia",
@@ -163,7 +168,7 @@ describe("Escenarios de sensibilidad", () => {
       ],
     };
     montar();
-    expect(await screen.findByText("El presupuesto base tiene items pendientes, sin partida en el catalogo:")).toBeInTheDocument();
+    expect(await screen.findByText("El presupuesto base tiene ítems pendientes, sin partida en el catálogo:")).toBeInTheDocument();
     expect(screen.getByText("- ITEM-7: X-9 (Algo ficticio)")).toBeInTheDocument();
     expect(screen.getByText(/Pendientes del base: los escenarios solo recalculan los renglones valorados/)).toBeInTheDocument();
   });
@@ -173,13 +178,13 @@ describe("Escenarios de sensibilidad", () => {
     await listo();
     const usuario = userEvent.setup();
     await usuario.click(screen.getByRole("button", { name: "Agregar precio" }));
-    await usuario.type(screen.getByLabelText("insumo 1"), "  Cemento ficticio ");
-    await usuario.type(screen.getByLabelText("precio_nuevo 1"), "18.50");
+    await usuario.type(screen.getByLabelText("Insumo 1"), "  Cemento ficticio ");
+    await usuario.type(screen.getByLabelText("Precio nuevo 1"), "18.50");
     await usuario.click(screen.getByRole("button", { name: "Agregar precio" }));
-    await usuario.type(screen.getByLabelText("precio_nuevo 2"), "99"); // insumo en blanco: se ignora
+    await usuario.type(screen.getByLabelText("Precio nuevo 2"), "99"); // insumo en blanco: se ignora
     await usuario.click(screen.getByRole("button", { name: "Generar escenario" }));
 
-    expect(await screen.findByText("Comparacion contra el base (RF-31)")).toBeInTheDocument();
+    expect(await screen.findByText("Comparación contra el base")).toBeInTheDocument();
     expect(posts()).toHaveLength(1);
     expect(posts()[0][0]).toBe("/presupuestos/FIC-1/escenarios?proyecto=Obra%20ficticia");
     expect(cuerpoDe(posts()[0])).toEqual({
@@ -194,10 +199,10 @@ describe("Escenarios de sensibilidad", () => {
         },
       ],
     });
-    const tabla = screen.getByRole("table", { name: "Comparacion contra el base (RF-31)" });
+    const tabla = screen.getByRole("table", { name: "Comparación contra el base" });
     const filas = within(tabla).getAllByRole("row");
-    expect(within(filas[1]).getAllByRole("cell").map((c) => c.textContent)).toEqual(["FIC-1", "1000.00", "0.00", "0.00"]);
-    expect(within(filas[2]).getAllByRole("cell").map((c) => c.textContent)).toEqual(["escenario 1", "1050.00", "50.00", "5.00"]);
+    expect(within(filas[1]).getAllByRole("cell").map((c) => c.textContent)).toEqual(["FIC-1", "1000.00", "0.00(sin variación)", "0.00(sin variación)"]);
+    expect(within(filas[2]).getAllByRole("cell").map((c) => c.textContent)).toEqual(["escenario 1", "1050.00", "50.00(desfavorable)", "5.00(desfavorable)"]);
 
     // el nombre por omision avanza y el segundo envio lleva los dos
     expect(screen.getByLabelText("Nombre del escenario")).toHaveValue("escenario 2");
@@ -205,7 +210,7 @@ describe("Escenarios de sensibilidad", () => {
     await waitFor(() => expect(posts()).toHaveLength(2));
     expect(cuerpoDe(posts()[1]).escenarios.map((e: { nombre: string }) => e.nombre)).toEqual(["escenario 1", "escenario 2"]);
     await waitFor(() =>
-      expect(within(screen.getByRole("table", { name: "Comparacion contra el base (RF-31)" })).getAllByRole("row")).toHaveLength(4),
+      expect(within(screen.getByRole("table", { name: "Comparación contra el base" })).getAllByRole("row")).toHaveLength(4),
     );
   });
 
@@ -214,10 +219,10 @@ describe("Escenarios de sensibilidad", () => {
     montar();
     await listo();
     const usuario = userEvent.setup();
-    await usuario.clear(screen.getByLabelText("utilidad"));
-    await usuario.type(screen.getByLabelText("utilidad"), "-1");
+    await usuario.clear(screen.getByLabelText("Utilidad"));
+    await usuario.type(screen.getByLabelText("Utilidad"), "-1");
     await usuario.click(screen.getByRole("button", { name: "Generar escenario" }));
-    expect(await screen.findByText("utilidad no puede ser negativa")).toBeInTheDocument();
+    expect((await screen.findAllByText("utilidad no puede ser negativa")).length).toBeGreaterThan(0);
     expect(screen.getByText("Defina un escenario para compararlo contra el presupuesto base.")).toBeInTheDocument();
     expect(screen.getByLabelText("Nombre del escenario")).toHaveValue("escenario 1");
     // corregido, el siguiente envio lleva solo el escenario valido
@@ -228,10 +233,10 @@ describe("Escenarios de sensibilidad", () => {
         pendientes_base: [],
         escenarios: cuerpo.escenarios.map((e) => escenario(e.nombre, "1.00")),
       });
-    await usuario.clear(screen.getByLabelText("utilidad"));
-    await usuario.type(screen.getByLabelText("utilidad"), "0.12");
+    await usuario.clear(screen.getByLabelText("Utilidad"));
+    await usuario.type(screen.getByLabelText("Utilidad"), "0.12");
     await usuario.click(screen.getByRole("button", { name: "Generar escenario" }));
-    await screen.findByText("Comparacion contra el base (RF-31)");
+    await screen.findByText("Comparación contra el base");
     expect(cuerpoDe(posts()[1]).escenarios).toHaveLength(1);
   });
 
@@ -240,9 +245,9 @@ describe("Escenarios de sensibilidad", () => {
     await listo();
     const usuario = userEvent.setup();
     await usuario.click(screen.getByRole("button", { name: "Generar escenario" }));
-    await screen.findByText("Comparacion contra el base (RF-31)");
+    await screen.findByText("Comparación contra el base");
     await usuario.selectOptions(screen.getByLabelText("Presupuesto base"), "FIC-2");
-    await waitFor(() => expect(screen.getByLabelText("fcas")).toHaveValue("5.00"));
+    await waitFor(() => expect(screen.getByLabelText(FCAS)).toHaveValue("5.00"));
     expect(screen.getByText("Defina un escenario para compararlo contra el presupuesto base.")).toBeInTheDocument();
     expect(screen.getByLabelText("Nombre del escenario")).toHaveValue("escenario 1");
   });
@@ -263,10 +268,10 @@ describe("Escenarios de sensibilidad", () => {
     await usuario.selectOptions(await screen.findByLabelText("Presupuesto base"), "FIC-2");
     await waitFor(() => expect(pendientes["FIC-2"]).toBeDefined());
     pendientes["FIC-2"](json(BASE_2));
-    await waitFor(() => expect(screen.getByLabelText("fcas")).toHaveValue("5.00"));
+    await waitFor(() => expect(screen.getByLabelText(FCAS)).toHaveValue("5.00"));
     pendientes["FIC-1"](json(BASE_1));
     await new Promise((r) => setTimeout(r, 20));
-    expect(screen.getByLabelText("fcas")).toHaveValue("5.00");
+    expect(screen.getByLabelText(FCAS)).toHaveValue("5.00");
   });
 
   test("descarga el CSV por POST con el mismo cuerpo", async () => {
@@ -275,7 +280,7 @@ describe("Escenarios de sensibilidad", () => {
     await listo();
     const usuario = userEvent.setup();
     await usuario.click(screen.getByRole("button", { name: "Generar escenario" }));
-    await screen.findByText("Comparacion contra el base (RF-31)");
+    await screen.findByText("Comparación contra el base");
     await usuario.click(screen.getByRole("button", { name: "Descargar tabla (CSV, valores exactos)" }));
     await waitFor(() => expect(posts()).toHaveLength(2));
     expect(posts()[1][0]).toBe("/presupuestos/FIC-1/escenarios/csv?proyecto=Obra%20ficticia");
@@ -287,7 +292,7 @@ describe("Escenarios de sensibilidad", () => {
     await listo();
     const usuario = userEvent.setup();
     await usuario.click(screen.getByRole("button", { name: "Generar escenario" }));
-    await screen.findByText("Comparacion contra el base (RF-31)");
+    await screen.findByText("Comparación contra el base");
     await usuario.click(screen.getByRole("button", { name: "Descartar escenarios" }));
     expect(screen.getByText("Defina un escenario para compararlo contra el presupuesto base.")).toBeInTheDocument();
     expect(screen.getByLabelText("Nombre del escenario")).toHaveValue("escenario 1");
@@ -300,10 +305,20 @@ describe("Escenarios de sensibilidad", () => {
     await usuario.click(screen.getByRole("button", { name: "Generar escenario" }));
     await usuario.click(await screen.findByRole("button", { name: "Detalle por partida: escenario 1" }));
     const tabla = screen.getByRole("table", { name: "Detalle por partida: escenario 1" });
-    expect(within(tabla).getAllByRole("columnheader")).toHaveLength(9);
+    expect(within(tabla).getAllByRole("columnheader").map(titulo)).toEqual([
+      "Partida",
+      "Descripción",
+      "Total anterior",
+      "Total nuevo",
+      "Variación %",
+      "Incidencia %",
+      "P.U. anterior",
+      "P.U. nuevo",
+      "Cantidad",
+    ]);
     expect(within(tabla).getByText("1050.00")).toBeInTheDocument();
     expect(
-      screen.getByText("Hallazgos de la auditoria del escenario: 2 (el informe se genera siempre). Insumos variados: 1."),
+      screen.getByText("Hallazgos de la auditoría del escenario: 2 (el informe se genera siempre). Insumos variados: 1."),
     ).toBeInTheDocument();
   });
 
@@ -320,5 +335,44 @@ describe("Escenarios de sensibilidad", () => {
     await listo();
     await userEvent.setup().click(screen.getByRole("button", { name: "Generar escenario" }));
     await waitFor(() => expect(alExpirar).toHaveBeenCalled());
+  });
+
+  test("los encabezados de la comparacion no llevan snake_case", async () => {
+    montar();
+    await listo();
+    await userEvent.setup().click(screen.getByRole("button", { name: "Generar escenario" }));
+    const tabla = await screen.findByRole("table", { name: "Comparación contra el base" });
+    expect(within(tabla).getAllByRole("columnheader").map(titulo)).toEqual([
+      "Escenario",
+      "Total",
+      "Variación",
+      "Variación %",
+    ]);
+  });
+
+  test("los precios de ensayo enseñan con un ejemplo, tienen cabecera y manejan el foco", async () => {
+    montar();
+    await listo();
+    expect(screen.getByText("p. ej. Cemento Portland → 18.50")).toBeInTheDocument();
+    const usuario = userEvent.setup();
+    await usuario.click(screen.getByRole("button", { name: "Agregar precio" }));
+    expect(screen.getByText("Insumo (descripción exacta)")).toBeInTheDocument();
+    expect(screen.getByLabelText("Insumo 1")).toHaveFocus();
+    await usuario.click(screen.getByRole("button", { name: "Agregar precio" }));
+    expect(screen.getByLabelText("Insumo 2")).toHaveFocus();
+    await usuario.click(screen.getByRole("button", { name: "Quitar precio 1" }));
+    expect(screen.getByLabelText("Insumo 1")).toHaveFocus(); // la que era la segunda
+    await usuario.click(screen.getByRole("button", { name: "Quitar precio 1" }));
+    expect(screen.getByRole("button", { name: "Agregar precio" })).toHaveFocus();
+  });
+
+  test("un 422 que nombra un parametro marca ese campo", async () => {
+    alPostear = () => json({ detalle: "utilidad no puede ser negativa" }, 422);
+    montar();
+    await listo();
+    await userEvent.setup().click(screen.getByRole("button", { name: "Generar escenario" }));
+    await screen.findAllByText("utilidad no puede ser negativa");
+    expect(screen.getByLabelText("Utilidad")).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByLabelText("Administración")).not.toHaveAttribute("aria-invalid", "true");
   });
 });

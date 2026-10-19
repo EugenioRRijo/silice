@@ -9,6 +9,8 @@ import {
   TableRow,
 } from "@carbon/react";
 import { EstadoVacio } from "./EstadoVacio";
+import { Severidad } from "./Severidad";
+import { Variacion } from "./Variacion";
 
 export interface ColumnaDensa {
   clave: string;
@@ -17,6 +19,9 @@ export interface ColumnaDensa {
   numerica?: boolean;
   // Por omision todas se ordenan.
   ordenable?: boolean;
+  // Como se dibuja la celda: "severidad" = icono y nombre de la severidad; "variacion" = cifra de variacion de
+  // costo con la semantica IBCS (flecha, color y texto accesible). Sin esto, el texto tal cual.
+  celda?: "severidad" | "variacion";
 }
 
 // Los valores son texto tal como los manda la API: la tabla no los redondea ni los reformatea.
@@ -66,6 +71,13 @@ export function compararDecimales(a: string, b: string): number {
   return (fx < fy ? -1 : 1) * signo;
 }
 
+function dibujar(tipo: "severidad" | "variacion" | undefined, valor: unknown) {
+  const texto = String(valor ?? "");
+  if (tipo === "severidad" && texto) return <Severidad valor={texto} />;
+  if (tipo === "variacion" && texto) return <Variacion valor={texto} />;
+  return valor as string;
+}
+
 // Tabla de datos de alta densidad (DESIGN.md, Densidad): Carbon DataTable tamano `sm` (32 px).
 export function TablaDensa({ etiqueta, columnas, filas, cargando = false, vacio }: Props) {
   if (cargando) {
@@ -85,6 +97,7 @@ export function TablaDensa({ etiqueta, columnas, filas, cargando = false, vacio 
 
   const numericas = new Set(columnas.filter((c) => c.numerica).map((c) => c.clave));
   const sinOrden = new Set(columnas.filter((c) => c.ordenable === false).map((c) => c.clave));
+  const especial = new Map(columnas.filter((c) => c.celda).map((c) => [c.clave, c.celda]));
   const cabeceras = columnas.map((c) => ({ key: c.clave, header: c.titulo }));
 
   return (
@@ -124,7 +137,7 @@ export function TablaDensa({ etiqueta, columnas, filas, cargando = false, vacio 
                   <TableRow key={key} {...propiedades}>
                     {fila.cells.map((celda) => (
                       <TableCell key={celda.id} className={numericas.has(celda.info.header) ? "silice-cifra" : undefined}>
-                        {celda.value}
+                        {dibujar(especial.get(celda.info.header), celda.value)}
                       </TableCell>
                     ))}
                   </TableRow>

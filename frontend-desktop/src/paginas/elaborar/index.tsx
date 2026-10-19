@@ -1,5 +1,6 @@
-import { Button, Checkbox, RadioButton, RadioButtonGroup, Select, SelectItem, TextInput } from "@carbon/react";
+import { Accordion, AccordionItem, Button, Checkbox, InlineLoading, RadioButton, RadioButtonGroup, Select, SelectItem, TextInput } from "@carbon/react";
 import { useEffect, useRef, useState } from "react";
+import type { ReactNode } from "react";
 import { ErrorDeApi, pedir } from "../../api/cliente";
 import { AvisoError } from "../../comun/AvisoError";
 import { DescargaArchivo } from "../../comun/DescargaArchivo";
@@ -7,7 +8,9 @@ import { InformeAuditoria } from "../../comun/InformeAuditoria";
 import { SubidaArchivo } from "../../comun/SubidaArchivo";
 import { TablaDensa } from "../../comun/TablaDensa";
 import { useAplicacion } from "../../shell/contexto";
-import { PlanDeTrabajo } from "./PlanDeTrabajo";
+import { PlanDeTrabajo, conIds, sinIds } from "./PlanDeTrabajo";
+import type { FilaEditable } from "./PlanDeTrabajo";
+import { Severidad } from "../../comun/Severidad";
 import {
   AVISO_SIN_PARTIDAS_CIVILES,
   AYUDA,
@@ -61,7 +64,7 @@ interface Elaboracion {
   cuerpo: CuerpoCalculo;
 }
 
-function Metrica({ titulo, valor }: { titulo: string; valor: string }) {
+function Metrica({ titulo, valor }: { titulo: ReactNode; valor: string }) {
   return (
     <div className="silice-elaborar__metrica">
       <span className="silice-elaborar__metrica-titulo cds--type-label-01">{titulo}</span>
@@ -148,11 +151,11 @@ export default function PaginaElaborar() {
   const [elegidas, setElegidas] = useState<Record<number, string>>({});
 
   // Plan de trabajo (UC-01 6)
-  const [plan, setPlan] = useState<FilaPlan[]>([]);
+  const [plan, setPlan] = useState<FilaEditable[]>([]);
   const [planReiniciado, setPlanReiniciado] = useState(false);
   // Las filas del plan por defecto de la ultima elaboracion sin plan del proyectista: el aviso compara con ellas.
   const precargado = useRef<FilaPlan[]>([]);
-  const planActual = useRef<FilaPlan[]>([]);
+  const planActual = useRef<FilaEditable[]>([]);
   useEffect(() => {
     planActual.current = plan;
   }, [plan]);
@@ -189,10 +192,15 @@ export default function PaginaElaborar() {
   const hayItems = items !== null && items.length > 0;
 
   function codigoElegido(clave: ClaveCivil): string {
-    return seleccion[clave] ?? partidasCiviles?.[0]?.codigo ?? "";
+    return seleccion[clave] ?? "";
   }
 
-  const puedeExtraer = archivo !== null && !extrayendo && (!esCivil || (partidasCiviles?.length ?? 0) > 0);
+  const civilCompleto =
+    !esCivil ||
+    ((partidasCiviles?.length ?? 0) > 0 &&
+      SELECTORES_CIVIL.every(({ clave }) => codigoElegido(clave) !== "") &&
+      (!conRelleno || codigoElegido("relleno") !== ""));
+  const puedeExtraer = archivo !== null && !extrayendo && civilCompleto;
 
   async function extraer() {
     if (!archivo) return;
@@ -255,9 +263,9 @@ export default function PaginaElaborar() {
         // Editado = distinto del plan por defecto que se precargo, no del nuevo: si el computo cambio, el nuevo
         // difiere aunque nadie haya tocado la tabla.
         const anteriores = planActual.current;
-        setPlanReiniciado(anteriores.length > 0 && !filasIguales(anteriores, precargado.current));
+        setPlanReiniciado(anteriores.length > 0 && !filasIguales(sinIds(anteriores), precargado.current));
         precargado.current = respuesta.plan_por_defecto;
-        setPlan(respuesta.plan_por_defecto);
+        setPlan(conIds(respuesta.plan_por_defecto));
       }
       return true;
     } catch (error) {
@@ -287,7 +295,7 @@ export default function PaginaElaborar() {
       setErrorElaborar(ERROR_SIN_ITEMS_PLAN);
       return;
     }
-    await elaborar(items, plan);
+    await elaborar(items, sinIds(plan));
   }
 
   async function registrar(entrada: RendimientoPorDeclarar) {
@@ -380,8 +388,9 @@ export default function PaginaElaborar() {
                   value={codigoElegido(clave)}
                   onChange={(e) => setSeleccion({ ...seleccion, [clave]: e.target.value })}
                 >
+                  <SelectItem value="" text="Elija una partida" disabled />
                   {partidasCiviles.map((p) => (
-                    <SelectItem key={p.codigo} value={p.codigo} text={`${p.codigo} · ${p.descripcion}`} />
+                    <SelectItem key={p.codigo} value={p.codigo} text={`${p.codigo} · ${p.descripcion}`} title={p.descripcion} />
                   ))}
                 </Select>
               ))}
@@ -399,8 +408,9 @@ export default function PaginaElaborar() {
                   value={codigoElegido("relleno")}
                   onChange={(e) => setSeleccion({ ...seleccion, relleno: e.target.value })}
                 >
+                  <SelectItem value="" text="Elija una partida" disabled />
                   {partidasCiviles.map((p) => (
-                    <SelectItem key={p.codigo} value={p.codigo} text={`${p.codigo} · ${p.descripcion}`} />
+                    <SelectItem key={p.codigo} value={p.codigo} text={`${p.codigo} · ${p.descripcion}`} title={p.descripcion} />
                   ))}
                 </Select>
               )}
@@ -412,14 +422,17 @@ export default function PaginaElaborar() {
       <section className="silice-elaborar__archivo" aria-label="Archivo de muestra">
         <SubidaArchivo
           id="elaborar-archivo"
-          etiqueta="Archivo de muestra (CSV)"
+          etiqueta="Suelte aquí el archivo de muestra (.csv), o haga clic para elegirlo"
           extensiones={[".csv"]}
           alElegir={setArchivo}
         />
         {archivo && <p className="cds--type-label-01">Archivo elegido: {archivo.name}</p>}
-        <Button kind="secondary" size="md" disabled={!puedeExtraer} onClick={() => void extraer()}>
-          {extrayendo ? "Extrayendo..." : "Extraer cómputo"}
-        </Button>
+        <div className="silice-elaborar__fila-accion">
+          <Button kind="tertiary" size="md" disabled={!puedeExtraer} onClick={() => void extraer()}>
+            Extraer cómputo
+          </Button>
+          {extrayendo && <InlineLoading description="Extrayendo..." />}
+        </div>
         <AvisoError error={errorExtraer} titulo="No se pudo extraer el cómputo" alCerrar={() => setErrorExtraer(null)} />
       </section>
 
@@ -429,13 +442,13 @@ export default function PaginaElaborar() {
           <TablaDensa
             etiqueta="Cómputo extraído"
             columnas={[
-              { clave: "codigo_partida", titulo: "codigo_partida" },
-              { clave: "descripcion", titulo: "descripcion" },
-              { clave: "unidad", titulo: "unidad" },
-              { clave: "cantidad", titulo: "cantidad", numerica: true },
-              { clave: "origen_id", titulo: "origen_id" },
-              { clave: "origen_tipo", titulo: "origen_tipo" },
-              { clave: "regla", titulo: "regla" },
+              { clave: "codigo_partida", titulo: "Partida" },
+              { clave: "descripcion", titulo: "Descripción" },
+              { clave: "unidad", titulo: "Unidad" },
+              { clave: "cantidad", titulo: "Cantidad", numerica: true },
+              { clave: "origen_id", titulo: "Origen" },
+              { clave: "origen_tipo", titulo: "Tipo de origen" },
+              { clave: "regla", titulo: "Regla" },
             ]}
             filas={filasDeItems(items)}
           />
@@ -443,10 +456,11 @@ export default function PaginaElaborar() {
       )}
 
       {hayItems && items && (
-        <div className="silice-elaborar__acciones">
+        <div className="silice-elaborar__fila-accion">
           <Button kind="primary" size="md" disabled={elaborando} onClick={() => void elaborar(items)}>
-            {elaborando ? "Elaborando..." : "Elaborar presupuesto"}
+            Elaborar presupuesto
           </Button>
+          {elaborando && <InlineLoading description="Elaborando..." />}
         </div>
       )}
       <AvisoError error={errorElaborar} titulo="No se pudo elaborar el presupuesto" alCerrar={() => setErrorElaborar(null)} />
@@ -494,7 +508,7 @@ export default function PaginaElaborar() {
             <div className="silice-elaborar__metricas" role="group" aria-label="Métricas del presupuesto">
               <Metrica titulo="Total del presupuesto" valor={`${resultado.total} ${resultado.moneda}`} />
               {resultado.por_severidad.map((s) => (
-                <Metrica key={s.severidad} titulo={s.severidad} valor={String(s.total)} />
+                <Metrica key={s.severidad} titulo={<Severidad valor={s.severidad} />} valor={String(s.total)} />
               ))}
             </div>
             {resultado.por_severidad.length === 0 && (
@@ -505,12 +519,12 @@ export default function PaginaElaborar() {
             <TablaDensa
               etiqueta="Partidas del presupuesto"
               columnas={[
-                { clave: "codigo_partida", titulo: "codigo_partida" },
-                { clave: "descripcion", titulo: "descripcion" },
-                { clave: "unidad", titulo: "unidad" },
-                { clave: "cantidad", titulo: "cantidad", numerica: true },
-                { clave: "precio_unitario", titulo: "precio_unitario", numerica: true },
-                { clave: "total", titulo: "total", numerica: true },
+                { clave: "codigo_partida", titulo: "Partida" },
+                { clave: "descripcion", titulo: "Descripción" },
+                { clave: "unidad", titulo: "Unidad" },
+                { clave: "cantidad", titulo: "Cantidad", numerica: true },
+                { clave: "precio_unitario", titulo: "Precio unitario", numerica: true },
+                { clave: "total", titulo: "Total", numerica: true },
               ]}
               filas={filasDePartidas(resultado)}
               vacio={{ titulo: "El presupuesto no tiene partidas valoradas." }}
@@ -525,29 +539,6 @@ export default function PaginaElaborar() {
             />
           </section>
 
-          {resultado.pendientes.length > 0 && (
-            <section aria-label="Pendientes" className="silice-elaborar__bloque">
-              <h2 className="cds--type-heading-03">Pendientes</h2>
-              <p className="cds--type-body-compact-01">{TEXTO_PENDIENTES}</p>
-              {resultado.pendientes.map((p, n) => (
-                <Pendiente
-                  key={`${p.origen_id}-${n}`}
-                  indice={n}
-                  pendiente={p}
-                  elegido={elegidas[n] ?? p.propuestas[0]?.codigo ?? ""}
-                  alElegir={(c) => setElegidas({ ...elegidas, [n]: c })}
-                  alAplicar={() => void aceptar(p, elegidas[n] ?? p.propuestas[0]?.codigo ?? "")}
-                  ocupado={elaborando}
-                />
-              ))}
-            </section>
-          )}
-
-          <section className="silice-elaborar__bloque">
-            <h2 className="cds--type-heading-03">Informe de auditoria</h2>
-            <InformeAuditoria informe={resultado.informe} />
-          </section>
-
           <PlanDeTrabajo
             filas={plan}
             alCambiar={setPlan}
@@ -555,6 +546,32 @@ export default function PaginaElaborar() {
             ocupado={elaborando}
             alAplicar={() => void aplicarPlan()}
           />
+
+          {resultado.pendientes.length > 0 && (
+            <section aria-label="Pendientes" className="silice-elaborar__bloque">
+              <p className="cds--type-body-compact-01">{TEXTO_PENDIENTES}</p>
+              <Accordion size="sm" className="silice-elaborar__pendientes">
+                <AccordionItem title={`Pendientes: ${resultado.pendientes.length}`} open>
+                  {resultado.pendientes.map((p, n) => (
+                    <Pendiente
+                      key={`${p.origen_id}-${n}`}
+                      indice={n}
+                      pendiente={p}
+                      elegido={elegidas[n] ?? p.propuestas[0]?.codigo ?? ""}
+                      alElegir={(c) => setElegidas({ ...elegidas, [n]: c })}
+                      alAplicar={() => void aceptar(p, elegidas[n] ?? p.propuestas[0]?.codigo ?? "")}
+                      ocupado={elaborando}
+                    />
+                  ))}
+                </AccordionItem>
+              </Accordion>
+            </section>
+          )}
+
+          <section className="silice-elaborar__bloque">
+            <h2 className="cds--type-heading-03">Informe de auditoría</h2>
+            <InformeAuditoria informe={resultado.informe} />
+          </section>
         </>
       )}
     </div>

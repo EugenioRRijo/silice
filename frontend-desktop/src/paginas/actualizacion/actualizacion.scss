@@ -40,3 +40,16 @@
 .silice-actualizacion__nota {
   color: var(--silice-texto-secundario);
 }
+
+.silice-actualizacion__datos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem 2rem;
+}
+
+.silice-actualizacion__confirmar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+}

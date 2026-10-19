@@ -14,6 +14,8 @@ interface Props {
   // La API contesto 401: la sesion vencio.
   alExpirar?: () => void;
   kind?: "primary" | "secondary" | "tertiary" | "ghost";
+  // Tamano del boton: "sm" (32 px, densidad de las tablas) o "md".
+  size?: "sm" | "md";
 }
 
 // Guarda un blob en la carpeta de descargas. El enlace se crea y se descarta sin tocar la pagina.
@@ -36,6 +38,7 @@ export function DescargaArchivo({
   nombrePorOmision,
   alExpirar,
   kind = "tertiary",
+  size = "md",
 }: Props) {
   const [bajando, setBajando] = useState(false);
   const [error, setError] = useState<unknown>(null);
@@ -56,7 +59,7 @@ export function DescargaArchivo({
 
   return (
     <div className="silice-descarga">
-      <Button kind={kind} size="md" renderIcon={Download} disabled={bajando} onClick={() => void bajar()}>
+      <Button kind={kind} size={size} renderIcon={Download} disabled={bajando} onClick={() => void bajar()}>
         {bajando ? "Descargando…" : etiqueta}
       </Button>
       <AvisoError error={error} titulo="No se pudo descargar" alCerrar={() => setError(null)} />

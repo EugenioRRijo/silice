@@ -82,6 +82,7 @@ from adapters.espacio.planos import (
 )
 from adapters.espacio.planos.geometria_plano import reglas_plano
 from adapters.espacio.reglas import CantidadEscrita, reglas_espacio
+from aplicacion.errores import HojaInvalida
 from core import models
 from core.budget import (
     CODIGO_PENDIENTE,
@@ -292,10 +293,6 @@ PREFIJO_ORIGEN_IA = "ia:"
 TEXTO_PENDIENTE = "PENDIENTE: sin APU en el catálogo"
 
 _SI, _NO = "si", "no"
-
-
-class HojaInvalida(ValueError):  # noqa: N818
-    """Una fila (o el conjunto) del borrador no forma un espacio valido; dice cual y por que."""
 
 
 @dataclass(frozen=True, slots=True)

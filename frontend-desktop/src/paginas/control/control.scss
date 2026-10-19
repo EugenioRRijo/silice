@@ -1,0 +1,58 @@
+// Control de obra. Sin tarjetas con sombra ni animaciones (DESIGN.md): formularios en columna y bloques con divisor.
+
+.silice-control {
+  display: grid;
+  gap: 1.5rem;
+  padding: 1.5rem 1rem 2rem;
+  max-inline-size: 72rem;
+}
+
+.silice-control__bloque {
+  display: grid;
+  gap: 1rem;
+  padding-block: 1rem 1.5rem;
+  border-block-end: 1px solid var(--silice-divisor);
+}
+
+.silice-control__bloque:last-child {
+  border-block-end: 0;
+}
+
+.silice-control__nota {
+  max-inline-size: 65ch;
+  color: var(--silice-texto-secundario);
+}
+
+.silice-control__formulario {
+  display: grid;
+  gap: 1rem;
+  max-inline-size: 36rem;
+  padding-block: 1rem;
+}
+
+.silice-control__corte {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  align-items: end;
+  gap: 1rem;
+  padding-block: 1rem;
+}
+
+.silice-control__lineas {
+  display: grid;
+  gap: 0.75rem;
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.silice-control__linea {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: 0.5rem;
+}
+
+details > summary {
+  cursor: pointer;
+  padding-block: 0.5rem;
+}

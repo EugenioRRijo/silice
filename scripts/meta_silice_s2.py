@@ -91,7 +91,7 @@ PARES_S2: tuple[ParTDD, ...] = (
         "migraciones/caso/versions/caso_0006_s2_decision.py",
         "S2-3",
     ),
-    ParTDD("tests/integration/test_ui_control.py", "ui/control.py", "S2-4"),
+    ParTDD("tests/integration/test_ui_control.py", "aplicacion/control.py", "S2-4"),
     ParTDD("tests/unit/test_ui_pagina_control.py", "ui/paginas/control.py", "S2-4"),
     ParTDD("tests/unit/test_medir_rnf15.py", "scripts/medir_rnf15.py", "S2-4"),
 )

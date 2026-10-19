@@ -866,7 +866,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CalculoRespuesta"
+                  "$ref": "#/components/schemas/api__esquemas_ola2__CalculoRespuesta"
                 }
               }
             }
@@ -2013,6 +2013,525 @@
         }
       }
     },
+    "/v1/cuentas": {
+      "get": {
+        "tags": [
+          "cuentas"
+        ],
+        "summary": "Listar Cuentas",
+        "description": "Las cuentas por usuario (la tabla de la pestaña Cuentas).",
+        "operationId": "listar_cuentas_v1_cuentas_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CuentasRespuesta"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "cuentas"
+        ],
+        "summary": "Crear Cuenta",
+        "description": "Alta con contraseña temporal: la persona deberá cambiarla al entrar. La contraseña no se\ndevuelve.",
+        "operationId": "crear_cuenta_v1_cuentas_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CuentaNueva"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResultadoRespuesta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sin sesión de administrador, CSRF u origen.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detalle"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No hay una cuenta con ese id.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detalle"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "La sesión no tiene cuenta (acceso apagado).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detalle"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validación o regla de cuentas; sin eco del cuerpo.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detalle"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/cuentas/{usuario_id}/roles": {
+      "post": {
+        "tags": [
+          "cuentas"
+        ],
+        "summary": "Cambiar Roles",
+        "operationId": "cambiar_roles_v1_cuentas__usuario_id__roles_post",
+        "parameters": [
+          {
+            "name": "usuario_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Usuario Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NuevosRoles"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResultadoRespuesta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sin sesión de administrador, CSRF u origen.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detalle"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No hay una cuenta con ese id.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detalle"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "La sesión no tiene cuenta (acceso apagado).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detalle"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validación o regla de cuentas; sin eco del cuerpo.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detalle"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/cuentas/{usuario_id}/desactivar": {
+      "post": {
+        "tags": [
+          "cuentas"
+        ],
+        "summary": "Desactivar Cuenta",
+        "operationId": "desactivar_cuenta_v1_cuentas__usuario_id__desactivar_post",
+        "parameters": [
+          {
+            "name": "usuario_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Usuario Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResultadoRespuesta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sin sesión de administrador, CSRF u origen.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detalle"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No hay una cuenta con ese id.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detalle"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "La sesión no tiene cuenta (acceso apagado).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detalle"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validación o regla de cuentas; sin eco del cuerpo.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detalle"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/cuentas/{usuario_id}/reactivar": {
+      "post": {
+        "tags": [
+          "cuentas"
+        ],
+        "summary": "Reactivar Cuenta",
+        "operationId": "reactivar_cuenta_v1_cuentas__usuario_id__reactivar_post",
+        "parameters": [
+          {
+            "name": "usuario_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Usuario Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResultadoRespuesta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sin sesión de administrador, CSRF u origen.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detalle"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No hay una cuenta con ese id.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detalle"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "La sesión no tiene cuenta (acceso apagado).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detalle"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validación o regla de cuentas; sin eco del cuerpo.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detalle"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/cuentas/{usuario_id}/desbloquear": {
+      "post": {
+        "tags": [
+          "cuentas"
+        ],
+        "summary": "Desbloquear Cuenta",
+        "operationId": "desbloquear_cuenta_v1_cuentas__usuario_id__desbloquear_post",
+        "parameters": [
+          {
+            "name": "usuario_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Usuario Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResultadoRespuesta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sin sesión de administrador, CSRF u origen.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detalle"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No hay una cuenta con ese id.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detalle"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "La sesión no tiene cuenta (acceso apagado).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detalle"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validación o regla de cuentas; sin eco del cuerpo.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detalle"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/cuentas/{usuario_id}/restablecer": {
+      "post": {
+        "tags": [
+          "cuentas"
+        ],
+        "summary": "Restablecer Cuenta",
+        "description": "Contraseña temporal nueva (no se devuelve): cierra las sesiones de la cuenta.",
+        "operationId": "restablecer_cuenta_v1_cuentas__usuario_id__restablecer_post",
+        "parameters": [
+          {
+            "name": "usuario_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Usuario Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContrasenaTemporal"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResultadoRespuesta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sin sesión de administrador, CSRF u origen.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detalle"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No hay una cuenta con ese id.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detalle"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "La sesión no tiene cuenta (acceso apagado).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detalle"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validación o regla de cuentas; sin eco del cuerpo.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detalle"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/accesos": {
+      "get": {
+        "tags": [
+          "cuentas"
+        ],
+        "summary": "Listar Accesos",
+        "description": "Los últimos eventos de acceso, los más nuevos primero. Solo lectura: no hay otro método.",
+        "operationId": "listar_accesos_v1_accesos_get",
+        "parameters": [
+          {
+            "name": "limite",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 200,
+              "title": "Limite"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccesosRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/composicion/opciones": {
       "get": {
         "tags": [
@@ -2027,7 +2546,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/OpcionesRespuesta"
+                  "$ref": "#/components/schemas/api__rutas__composicion__OpcionesRespuesta"
                 }
               }
             }
@@ -2262,7 +2781,633 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/GuardadoRespuesta"
+                  "$ref": "#/components/schemas/api__rutas__composicion__GuardadoRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/tablero": {
+      "get": {
+        "tags": [
+          "tablero"
+        ],
+        "summary": "Leer Tablero",
+        "description": "El tablero de la version vigente del proyecto (`LEER_PROYECTO`).",
+        "operationId": "leer_tablero_v1_tablero_get",
+        "parameters": [
+          {
+            "name": "proyecto",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Nombre del proyecto en el caso abierto.",
+              "title": "Proyecto"
+            },
+            "description": "Nombre del proyecto en el caso abierto."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TableroRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/control/linea-base": {
+      "get": {
+        "tags": [
+          "control"
+        ],
+        "summary": "Linea Base",
+        "description": "La línea base vigente, las versiones que se pueden declarar y los parámetros de control.",
+        "operationId": "linea_base_v1_control_linea_base_get",
+        "parameters": [
+          {
+            "name": "proyecto",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Proyecto"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LineaBaseRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "control"
+        ],
+        "summary": "Declarar Linea Base",
+        "description": "Declara la línea base de control (RF-72).",
+        "operationId": "declarar_linea_base_v1_control_linea_base_post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeclararLineaBase"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DescripcionRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/control/parametros": {
+      "post": {
+        "tags": [
+          "control"
+        ],
+        "summary": "Guardar Parametros",
+        "description": "Guarda los parámetros enviados (los demás quedan igual), con un registro por cada cambio.",
+        "operationId": "guardar_parametros_v1_control_parametros_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GuardarParametros"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CambiadosRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/control/valuaciones": {
+      "get": {
+        "tags": [
+          "control"
+        ],
+        "summary": "Valuaciones",
+        "description": "Las valuaciones guardadas (solo lectura) con su estado, y las que se pueden anular.",
+        "operationId": "valuaciones_v1_control_valuaciones_get",
+        "parameters": [
+          {
+            "name": "proyecto",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Proyecto"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValuacionesRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "control"
+        ],
+        "summary": "Registrar Valuacion",
+        "description": "UC-19 4 y 5: registra la valuación y controla al corte (su fecha *hasta*).",
+        "operationId": "registrar_valuacion_v1_control_valuaciones_post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegistrarValuacion"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistroRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/control/valuaciones/{valuacion_id}/anular": {
+      "post": {
+        "tags": [
+          "control"
+        ],
+        "summary": "Anular Valuacion",
+        "description": "Anula una valuación (UC-19 4c): se conserva y deja de contar.",
+        "operationId": "anular_valuacion_v1_control_valuaciones__valuacion_id__anular_post",
+        "parameters": [
+          {
+            "name": "valuacion_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Valuacion Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Anulacion"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListoRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/control/costos": {
+      "post": {
+        "tags": [
+          "control"
+        ],
+        "summary": "Anotar Costo",
+        "description": "Anota un costo incurrido; se convierte con la tasa de su fecha al calcular.",
+        "operationId": "anotar_costo_v1_control_costos_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnotarCosto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListoRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/control/importar/informe": {
+      "post": {
+        "tags": [
+          "control"
+        ],
+        "summary": "Informe De Importacion",
+        "description": "Lee el XLSX sin escribir nada y da el informe previo. Un archivo malformado se rechaza.",
+        "operationId": "informe_de_importacion_v1_control_importar_informe_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_informe_de_importacion_v1_control_importar_informe_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InformeRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/control/importar": {
+      "post": {
+        "tags": [
+          "control"
+        ],
+        "summary": "Importar",
+        "description": "Registra todas las valuaciones y costos del XLSX, o ninguno.",
+        "operationId": "importar_v1_control_importar_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_importar_v1_control_importar_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportadasRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/control/calculo": {
+      "get": {
+        "tags": [
+          "control"
+        ],
+        "summary": "Calculo",
+        "description": "El control al corte: valor ganado, alertas, términos, reproyección y decisiones tomadas.",
+        "operationId": "calculo_v1_control_calculo_get",
+        "parameters": [
+          {
+            "name": "proyecto",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Proyecto"
+            }
+          },
+          {
+            "name": "corte",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Corte"
+            }
+          },
+          {
+            "name": "metodo",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "ninguno",
+              "title": "Metodo"
+            }
+          },
+          {
+            "name": "version",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Version"
+            }
+          },
+          {
+            "name": "km",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Km"
+            }
+          },
+          {
+            "name": "r",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "0",
+              "title": "R"
+            }
+          },
+          {
+            "name": "fuente",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Fuente"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/api__rutas__control__CalculoRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/control/recuperacion/opciones": {
+      "post": {
+        "tags": [
+          "control"
+        ],
+        "summary": "Opciones",
+        "description": "Las opciones de recuperación a pedido (UC-20 4); no escribe nada.",
+        "operationId": "opciones_v1_control_recuperacion_opciones_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PeticionOpciones"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/api__rutas__control__OpcionesRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/control/recuperacion/elegir": {
+      "post": {
+        "tags": [
+          "control"
+        ],
+        "summary": "Elegir",
+        "description": "UC-20 5 y 6: crea la versión de la opción elegida y guarda la decisión.\n\nRecalcula las opciones con los mismos parámetros: la elección no depende de un cálculo previo\nguardado en el servidor.",
+        "operationId": "elegir_v1_control_recuperacion_elegir_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PeticionElegir"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/api__rutas__control__VersionRespuesta"
                 }
               }
             }
@@ -2402,6 +3547,226 @@
             "description": "Successful Response",
             "content": {
               "application/zip": {}
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/reajuste/contexto": {
+      "get": {
+        "tags": [
+          "reajuste"
+        ],
+        "summary": "Contexto",
+        "description": "Las versiones del proyecto (de la más antigua a la más reciente) y las opciones.",
+        "operationId": "contexto_v1_reajuste_contexto_get",
+        "parameters": [
+          {
+            "name": "proyecto",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 200,
+              "title": "Proyecto"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContextoRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/reajuste/parciales": {
+      "get": {
+        "tags": [
+          "reajuste"
+        ],
+        "summary": "Parciales",
+        "operationId": "parciales_v1_reajuste_parciales_get",
+        "parameters": [
+          {
+            "name": "proyecto",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 200,
+              "title": "Proyecto"
+            }
+          },
+          {
+            "name": "version",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 40,
+              "title": "Version"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ParcialRespuesta"
+                  },
+                  "title": "Response Parciales V1 Reajuste Parciales Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/reajuste/calcular": {
+      "post": {
+        "tags": [
+          "reajuste"
+        ],
+        "summary": "Calcular",
+        "operationId": "calcular_v1_reajuste_calcular_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EstudioPeticion"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/api__rutas__reajuste__CalculoRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/reajuste/guardar": {
+      "post": {
+        "tags": [
+          "reajuste"
+        ],
+        "summary": "Guardar",
+        "operationId": "guardar_v1_reajuste_guardar_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GuardarPeticion"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/api__rutas__reajuste__GuardadoRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/reajuste/excel": {
+      "post": {
+        "tags": [
+          "reajuste"
+        ],
+        "summary": "Excel",
+        "operationId": "excel_v1_reajuste_excel_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EstudioPeticion"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {}
             }
           },
           "422": {
@@ -2903,6 +4268,27 @@
   },
   "components": {
     "schemas": {
+      "AccesosRespuesta": {
+        "properties": {
+          "maximo": {
+            "type": "integer",
+            "title": "Maximo"
+          },
+          "eventos": {
+            "items": {
+              "$ref": "#/components/schemas/EventoRespuesta"
+            },
+            "type": "array",
+            "title": "Eventos"
+          }
+        },
+        "type": "object",
+        "required": [
+          "maximo",
+          "eventos"
+        ],
+        "title": "AccesosRespuesta"
+      },
       "AcercaRespuesta": {
         "properties": {
           "version": {
@@ -3085,6 +4471,117 @@
           "mensaje"
         ],
         "title": "AlertaPrecioRespuesta"
+      },
+      "AnilloRespuesta": {
+        "properties": {
+          "rotulo": {
+            "type": "string",
+            "title": "Rotulo"
+          },
+          "fraccion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fraccion"
+          },
+          "texto": {
+            "type": "string",
+            "title": "Texto"
+          },
+          "favorable": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Favorable"
+          }
+        },
+        "type": "object",
+        "required": [
+          "rotulo",
+          "fraccion",
+          "texto"
+        ],
+        "title": "AnilloRespuesta",
+        "description": "Un anillo de progreso: `texto` es lo que se lee en el centro; `fraccion`, lo que se dibuja\n(nula si no hay dato). `favorable` es verdadero si el indice llega a 1; nulo si no aplica."
+      },
+      "AnotarCosto": {
+        "properties": {
+          "proyecto": {
+            "type": "string",
+            "title": "Proyecto"
+          },
+          "monto": {
+            "type": "string",
+            "title": "Monto"
+          },
+          "moneda": {
+            "type": "string",
+            "title": "Moneda"
+          },
+          "fecha": {
+            "type": "string",
+            "title": "Fecha"
+          },
+          "partida": {
+            "type": "string",
+            "title": "Partida",
+            "default": ""
+          },
+          "fuente": {
+            "type": "string",
+            "title": "Fuente"
+          }
+        },
+        "type": "object",
+        "required": [
+          "proyecto",
+          "monto",
+          "moneda",
+          "fecha",
+          "fuente"
+        ],
+        "title": "AnotarCosto"
+      },
+      "Anulable": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "rotulo": {
+            "type": "string",
+            "title": "Rotulo"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "rotulo"
+        ],
+        "title": "Anulable"
+      },
+      "Anulacion": {
+        "properties": {
+          "motivo": {
+            "type": "string",
+            "title": "Motivo"
+          }
+        },
+        "type": "object",
+        "required": [
+          "motivo"
+        ],
+        "title": "Anulacion"
       },
       "AuditoriaRespuesta": {
         "properties": {
@@ -3411,6 +4908,44 @@
         ],
         "title": "Body_importar_presupuesto_de_tercero_presupuestos_importar_post"
       },
+      "Body_importar_v1_control_importar_post": {
+        "properties": {
+          "archivo": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "Archivo"
+          },
+          "proyecto": {
+            "type": "string",
+            "title": "Proyecto"
+          },
+          "fuente": {
+            "type": "string",
+            "title": "Fuente"
+          }
+        },
+        "type": "object",
+        "required": [
+          "archivo",
+          "proyecto",
+          "fuente"
+        ],
+        "title": "Body_importar_v1_control_importar_post"
+      },
+      "Body_informe_de_importacion_v1_control_importar_informe_post": {
+        "properties": {
+          "archivo": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "Archivo"
+          }
+        },
+        "type": "object",
+        "required": [
+          "archivo"
+        ],
+        "title": "Body_informe_de_importacion_v1_control_importar_informe_post"
+      },
       "Body_replicar_v1_libros_replica_post": {
         "properties": {
           "libro": {
@@ -3523,6 +5058,7 @@
         "properties": {
           "codigo": {
             "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._ -]{0,63}$",
             "title": "Codigo"
           },
           "fecha": {
@@ -3540,6 +5076,7 @@
               "$ref": "#/components/schemas/ItemComputoPeticion"
             },
             "type": "array",
+            "maxItems": 2000,
             "title": "Items"
           },
           "plan": {
@@ -3548,7 +5085,8 @@
                 "items": {
                   "$ref": "#/components/schemas/FilaPlan"
                 },
-                "type": "array"
+                "type": "array",
+                "maxItems": 5000
               },
               {
                 "type": "null"
@@ -3566,70 +5104,18 @@
         "title": "CalculoPeticion",
         "description": "UC-01 en modo «solo calcular»: nada se guarda. `plan` son las filas de la tabla del\nproyectista; sin ellas, el plan por defecto (`plan_secuencial`)."
       },
-      "CalculoRespuesta": {
+      "CambiadosRespuesta": {
         "properties": {
-          "codigo": {
-            "type": "string",
-            "title": "Codigo"
-          },
-          "fecha": {
-            "type": "string",
-            "format": "date",
-            "title": "Fecha"
-          },
-          "moneda": {
-            "type": "string",
-            "title": "Moneda"
-          },
-          "total": {
-            "type": "string",
-            "title": "Total"
-          },
-          "partidas": {
-            "items": {
-              "$ref": "#/components/schemas/PartidaPresupuestadaRespuesta"
-            },
-            "type": "array",
-            "title": "Partidas"
-          },
-          "por_severidad": {
-            "items": {
-              "$ref": "#/components/schemas/SeveridadRespuesta"
-            },
-            "type": "array",
-            "title": "Por Severidad"
-          },
-          "informe": {
-            "$ref": "#/components/schemas/InformeAuditoriaRespuesta"
-          },
-          "pendientes": {
-            "items": {
-              "$ref": "#/components/schemas/PendienteConPropuestasRespuesta"
-            },
-            "type": "array",
-            "title": "Pendientes"
-          },
-          "plan_por_defecto": {
-            "items": {
-              "$ref": "#/components/schemas/FilaPlan"
-            },
-            "type": "array",
-            "title": "Plan Por Defecto"
+          "cambiados": {
+            "type": "integer",
+            "title": "Cambiados"
           }
         },
         "type": "object",
         "required": [
-          "codigo",
-          "fecha",
-          "moneda",
-          "total",
-          "partidas",
-          "por_severidad",
-          "informe",
-          "pendientes",
-          "plan_por_defecto"
+          "cambiados"
         ],
-        "title": "CalculoRespuesta"
+        "title": "CambiadosRespuesta"
       },
       "CambioDeContrasena": {
         "properties": {
@@ -3820,6 +5306,97 @@
         "title": "CeldaVisualRespuesta",
         "description": "Espejo de `visual.CeldaVisual`: `fila` y `columna` base 1, `ref` sin `$`."
       },
+      "ClausulaTextos": {
+        "properties": {
+          "fecha_inicio": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Fecha Inicio",
+            "default": ""
+          },
+          "duracion_meses": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Duracion Meses",
+            "default": ""
+          },
+          "fecha_referencia_primer_anio": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Fecha Referencia Primer Anio",
+            "default": ""
+          },
+          "periodicidad": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Periodicidad",
+            "default": ""
+          },
+          "mecanismo": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Mecanismo",
+            "default": ""
+          },
+          "mecanismo_pagadero": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Mecanismo Pagadero",
+            "default": ""
+          },
+          "fuente_pagadero": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Fuente Pagadero",
+            "default": ""
+          },
+          "estructura": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Estructura",
+            "default": ""
+          },
+          "fecha_base_indices": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Fecha Base Indices",
+            "default": ""
+          },
+          "r": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "R",
+            "default": ""
+          },
+          "fuente_r": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Fuente R",
+            "default": ""
+          },
+          "r_en_comprobacion": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "R En Comprobacion",
+            "default": "no"
+          },
+          "fuente": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Fuente",
+            "default": ""
+          },
+          "responsable": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Responsable",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "title": "ClausulaTextos",
+        "description": "Los campos de la cláusula como los escribe la persona (S1 §8.1); se validan al calcular."
+      },
       "ClaveCreada": {
         "properties": {
           "id": {
@@ -3975,6 +5552,68 @@
         ],
         "title": "ComposicionRespuesta"
       },
+      "ContextoRespuesta": {
+        "properties": {
+          "versiones": {
+            "items": {
+              "$ref": "#/components/schemas/api__rutas__reajuste__VersionRespuesta"
+            },
+            "type": "array",
+            "title": "Versiones"
+          },
+          "periodicidades": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Periodicidades"
+          },
+          "mecanismos": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Mecanismos"
+          },
+          "estructuras": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Estructuras"
+          },
+          "componentes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Componentes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "versiones",
+          "periodicidades",
+          "mecanismos",
+          "estructuras",
+          "componentes"
+        ],
+        "title": "ContextoRespuesta"
+      },
+      "ContrasenaTemporal": {
+        "properties": {
+          "contrasena_temporal": {
+            "type": "string",
+            "maxLength": 1024,
+            "title": "Contrasena Temporal"
+          }
+        },
+        "type": "object",
+        "required": [
+          "contrasena_temporal"
+        ],
+        "title": "ContrasenaTemporal"
+      },
       "Contraste": {
         "properties": {
           "tecnica": {
@@ -4003,6 +5642,38 @@
         ],
         "title": "Contraste"
       },
+      "ControlRespuesta": {
+        "properties": {
+          "disponible": {
+            "type": "boolean",
+            "title": "Disponible"
+          },
+          "motivo": {
+            "type": "string",
+            "title": "Motivo",
+            "default": ""
+          },
+          "anillos": {
+            "items": {
+              "$ref": "#/components/schemas/AnilloRespuesta"
+            },
+            "type": "array",
+            "title": "Anillos"
+          },
+          "tarjetas": {
+            "items": {
+              "$ref": "#/components/schemas/TarjetaRespuesta"
+            },
+            "type": "array",
+            "title": "Tarjetas"
+          }
+        },
+        "type": "object",
+        "required": [
+          "disponible"
+        ],
+        "title": "ControlRespuesta"
+      },
       "Credenciales": {
         "properties": {
           "login": {
@@ -4022,6 +5693,167 @@
           "contrasena"
         ],
         "title": "Credenciales"
+      },
+      "CuentaNueva": {
+        "properties": {
+          "login": {
+            "type": "string",
+            "maxLength": 200,
+            "title": "Login"
+          },
+          "nombre": {
+            "type": "string",
+            "maxLength": 200,
+            "title": "Nombre"
+          },
+          "roles": {
+            "items": {
+              "$ref": "#/components/schemas/Rol"
+            },
+            "type": "array",
+            "maxItems": 6,
+            "title": "Roles"
+          },
+          "contrasena_temporal": {
+            "type": "string",
+            "maxLength": 1024,
+            "title": "Contrasena Temporal"
+          }
+        },
+        "type": "object",
+        "required": [
+          "login",
+          "nombre",
+          "roles",
+          "contrasena_temporal"
+        ],
+        "title": "CuentaNueva"
+      },
+      "CuentaRespuesta": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "login": {
+            "type": "string",
+            "title": "Login"
+          },
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          },
+          "roles": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Roles"
+          },
+          "activa": {
+            "type": "boolean",
+            "title": "Activa"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "login",
+          "nombre",
+          "roles",
+          "activa"
+        ],
+        "title": "CuentaRespuesta"
+      },
+      "CuentasRespuesta": {
+        "properties": {
+          "cuentas": {
+            "items": {
+              "$ref": "#/components/schemas/CuentaRespuesta"
+            },
+            "type": "array",
+            "title": "Cuentas"
+          },
+          "aviso_arma_y_revisa": {
+            "type": "string",
+            "title": "Aviso Arma Y Revisa",
+            "description": "El aviso que Streamlit muestra al elegir `arma` y `revisa` a la vez"
+          }
+        },
+        "type": "object",
+        "required": [
+          "cuentas",
+          "aviso_arma_y_revisa"
+        ],
+        "title": "CuentasRespuesta"
+      },
+      "CurvasRespuesta": {
+        "properties": {
+          "titulo": {
+            "type": "string",
+            "title": "Titulo"
+          },
+          "series": {
+            "items": {
+              "$ref": "#/components/schemas/SerieRespuesta"
+            },
+            "type": "array",
+            "title": "Series"
+          }
+        },
+        "type": "object",
+        "required": [
+          "titulo"
+        ],
+        "title": "CurvasRespuesta"
+      },
+      "DeclararLineaBase": {
+        "properties": {
+          "proyecto": {
+            "type": "string",
+            "title": "Proyecto"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version"
+          },
+          "desde": {
+            "type": "string",
+            "title": "Desde"
+          },
+          "perspectiva": {
+            "type": "string",
+            "title": "Perspectiva"
+          },
+          "inicio": {
+            "type": "string",
+            "title": "Inicio"
+          },
+          "dias_por_periodo": {
+            "type": "string",
+            "title": "Dias Por Periodo",
+            "default": "5"
+          },
+          "feriados": {
+            "type": "string",
+            "title": "Feriados",
+            "default": ""
+          },
+          "fuente": {
+            "type": "string",
+            "title": "Fuente"
+          }
+        },
+        "type": "object",
+        "required": [
+          "proyecto",
+          "version",
+          "desde",
+          "perspectiva",
+          "inicio",
+          "fuente"
+        ],
+        "title": "DeclararLineaBase"
       },
       "DeclararRendimientoPeticion": {
         "properties": {
@@ -4108,6 +5940,26 @@
           "fecha"
         ],
         "title": "DescarteRespuesta"
+      },
+      "DescripcionRespuesta": {
+        "properties": {
+          "descripcion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Descripcion"
+          }
+        },
+        "type": "object",
+        "required": [
+          "descripcion"
+        ],
+        "title": "DescripcionRespuesta"
       },
       "Desglose": {
         "properties": {
@@ -4434,6 +6286,24 @@
           "version"
         ],
         "title": "EntregaPeticion"
+      },
+      "Equilibrio": {
+        "properties": {
+          "punto": {
+            "type": "string",
+            "title": "Punto"
+          },
+          "mensaje": {
+            "type": "string",
+            "title": "Mensaje"
+          }
+        },
+        "type": "object",
+        "required": [
+          "punto",
+          "mensaje"
+        ],
+        "title": "Equilibrio"
       },
       "EscenarioPeticion": {
         "properties": {
@@ -4798,6 +6668,82 @@
         "title": "EstiloVisualRespuesta",
         "description": "Espejo de `visual.EstiloVisual`; `bordes`: arriba, derecha, abajo, izquierda."
       },
+      "EstudioPeticion": {
+        "properties": {
+          "proyecto": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Proyecto"
+          },
+          "version": {
+            "type": "string",
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Version"
+          },
+          "clausula": {
+            "$ref": "#/components/schemas/ClausulaTextos"
+          },
+          "componentes": {
+            "items": {
+              "additionalProperties": {
+                "type": "string",
+                "maxLength": 500
+              },
+              "propertyNames": {
+                "maxLength": 500
+              },
+              "type": "object"
+            },
+            "type": "array",
+            "maxItems": 20,
+            "title": "Componentes"
+          },
+          "periodos": {
+            "items": {
+              "additionalProperties": {
+                "type": "string",
+                "maxLength": 500
+              },
+              "propertyNames": {
+                "maxLength": 500
+              },
+              "type": "object"
+            },
+            "type": "array",
+            "maxItems": 500,
+            "title": "Periodos"
+          },
+          "ejecutado": {
+            "items": {
+              "additionalProperties": {
+                "type": "string",
+                "maxLength": 500
+              },
+              "propertyNames": {
+                "maxLength": 500
+              },
+              "type": "object"
+            },
+            "type": "array",
+            "maxItems": 5000,
+            "title": "Ejecutado"
+          },
+          "con_valuaciones": {
+            "type": "boolean",
+            "title": "Con Valuaciones",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "proyecto",
+          "version",
+          "clausula"
+        ],
+        "title": "EstudioPeticion"
+      },
       "EvaluacionRespuesta": {
         "properties": {
           "estado": {
@@ -4862,6 +6808,44 @@
           "contraste"
         ],
         "title": "EvaluacionRespuesta"
+      },
+      "EventoRespuesta": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "fecha_hora": {
+            "type": "string",
+            "title": "Fecha Hora"
+          },
+          "tipo": {
+            "type": "string",
+            "title": "Tipo"
+          },
+          "usuario": {
+            "type": "string",
+            "title": "Usuario"
+          },
+          "ip": {
+            "type": "string",
+            "title": "Ip"
+          },
+          "detalle": {
+            "type": "string",
+            "title": "Detalle"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "fecha_hora",
+          "tipo",
+          "usuario",
+          "ip",
+          "detalle"
+        ],
+        "title": "EventoRespuesta"
       },
       "FilaComparativoRespuesta": {
         "properties": {
@@ -5059,36 +7043,130 @@
         ],
         "title": "GenerarClave"
       },
-      "GuardadoRespuesta": {
+      "GuardarParametros": {
         "properties": {
-          "precio_unitario": {
+          "proyecto": {
             "type": "string",
-            "title": "Precio Unitario"
+            "title": "Proyecto"
           },
-          "mensaje": {
-            "type": "string",
-            "title": "Mensaje"
-          },
-          "justificada": {
-            "type": "boolean",
-            "title": "Justificada"
-          },
-          "avisos": {
+          "parametros": {
             "items": {
-              "type": "string"
+              "$ref": "#/components/schemas/ValorDeParametro"
             },
             "type": "array",
-            "title": "Avisos"
+            "title": "Parametros"
+          },
+          "fuente": {
+            "type": "string",
+            "title": "Fuente"
           }
         },
         "type": "object",
         "required": [
-          "precio_unitario",
-          "mensaje",
-          "justificada",
-          "avisos"
+          "proyecto",
+          "parametros",
+          "fuente"
         ],
-        "title": "GuardadoRespuesta"
+        "title": "GuardarParametros"
+      },
+      "GuardarPeticion": {
+        "properties": {
+          "proyecto": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Proyecto"
+          },
+          "version": {
+            "type": "string",
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Version"
+          },
+          "clausula": {
+            "$ref": "#/components/schemas/ClausulaTextos"
+          },
+          "componentes": {
+            "items": {
+              "additionalProperties": {
+                "type": "string",
+                "maxLength": 500
+              },
+              "propertyNames": {
+                "maxLength": 500
+              },
+              "type": "object"
+            },
+            "type": "array",
+            "maxItems": 20,
+            "title": "Componentes"
+          },
+          "periodos": {
+            "items": {
+              "additionalProperties": {
+                "type": "string",
+                "maxLength": 500
+              },
+              "propertyNames": {
+                "maxLength": 500
+              },
+              "type": "object"
+            },
+            "type": "array",
+            "maxItems": 500,
+            "title": "Periodos"
+          },
+          "ejecutado": {
+            "items": {
+              "additionalProperties": {
+                "type": "string",
+                "maxLength": 500
+              },
+              "propertyNames": {
+                "maxLength": 500
+              },
+              "type": "object"
+            },
+            "type": "array",
+            "maxItems": 5000,
+            "title": "Ejecutado"
+          },
+          "con_valuaciones": {
+            "type": "boolean",
+            "title": "Con Valuaciones",
+            "default": false
+          },
+          "fuente": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Fuente",
+            "default": ""
+          },
+          "responsable": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Responsable",
+            "default": ""
+          },
+          "reemplaza_a": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reemplaza A"
+          }
+        },
+        "type": "object",
+        "required": [
+          "proyecto",
+          "version",
+          "clausula"
+        ],
+        "title": "GuardarPeticion"
       },
       "HTTPValidationError": {
         "properties": {
@@ -5236,6 +7314,19 @@
         "title": "HojaVisualRespuesta",
         "description": "Espejo de `visual.HojaVisual`. En `anchos` y `altos` la columna o la fila (base 1) va como\ntexto: las claves de un objeto JSON son texto."
       },
+      "ImportadasRespuesta": {
+        "properties": {
+          "importadas": {
+            "type": "integer",
+            "title": "Importadas"
+          }
+        },
+        "type": "object",
+        "required": [
+          "importadas"
+        ],
+        "title": "ImportadasRespuesta"
+      },
       "IndicadorRespuesta": {
         "properties": {
           "clave": {
@@ -5351,6 +7442,22 @@
           "sin_hallazgos"
         ],
         "title": "InformeAuditoriaRespuesta"
+      },
+      "InformeRespuesta": {
+        "properties": {
+          "informe": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Informe"
+          }
+        },
+        "type": "object",
+        "required": [
+          "informe"
+        ],
+        "title": "InformeRespuesta"
       },
       "InstalacionRespuesta": {
         "properties": {
@@ -5867,6 +7974,78 @@
         "title": "LibroVisualRespuesta",
         "description": "Réplica visual del libro (RF-111): espejo del contrato neutro `visual.LibroVisual`."
       },
+      "LineaBaseRespuesta": {
+        "properties": {
+          "tiene_linea_base": {
+            "type": "boolean",
+            "title": "Tiene Linea Base"
+          },
+          "descripcion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Descripcion"
+          },
+          "versiones": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Versiones"
+          },
+          "hay_valuaciones": {
+            "type": "boolean",
+            "title": "Hay Valuaciones"
+          },
+          "parametros": {
+            "items": {
+              "$ref": "#/components/schemas/ParametroRespuesta"
+            },
+            "type": "array",
+            "title": "Parametros"
+          }
+        },
+        "type": "object",
+        "required": [
+          "tiene_linea_base",
+          "descripcion",
+          "versiones",
+          "hay_valuaciones",
+          "parametros"
+        ],
+        "title": "LineaBaseRespuesta"
+      },
+      "LineaDeValuacion": {
+        "properties": {
+          "partida": {
+            "type": "string",
+            "title": "Partida",
+            "default": ""
+          },
+          "cantidad": {
+            "type": "string",
+            "title": "Cantidad",
+            "default": ""
+          },
+          "fecha_medicion": {
+            "type": "string",
+            "title": "Fecha Medicion",
+            "default": ""
+          },
+          "observacion": {
+            "type": "string",
+            "title": "Observacion",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "title": "LineaDeValuacion"
+      },
       "LineaEquipoRespuesta": {
         "properties": {
           "descripcion": {
@@ -5976,6 +8155,17 @@
         "title": "ListaRespuesta",
         "description": "Cabecera de una lista de precios registrada."
       },
+      "ListoRespuesta": {
+        "properties": {
+          "listo": {
+            "type": "boolean",
+            "title": "Listo",
+            "default": true
+          }
+        },
+        "type": "object",
+        "title": "ListoRespuesta"
+      },
       "ModuloRespuesta": {
         "properties": {
           "nombre": {
@@ -6007,29 +8197,155 @@
         ],
         "title": "NuevaClave"
       },
-      "OpcionesRespuesta": {
+      "NuevosRoles": {
         "properties": {
-          "dominios": {
+          "roles": {
             "items": {
-              "type": "string"
+              "$ref": "#/components/schemas/Rol"
             },
             "type": "array",
-            "title": "Dominios"
-          },
-          "modalidades": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Modalidades"
+            "maxItems": 6,
+            "title": "Roles"
           }
         },
         "type": "object",
         "required": [
-          "dominios",
-          "modalidades"
+          "roles"
         ],
-        "title": "OpcionesRespuesta"
+        "title": "NuevosRoles"
+      },
+      "OpcionRespuesta": {
+        "properties": {
+          "clave": {
+            "type": "string",
+            "title": "Clave"
+          },
+          "titulo": {
+            "type": "string",
+            "title": "Titulo"
+          },
+          "aplica": {
+            "type": "boolean",
+            "title": "Aplica"
+          },
+          "motivo": {
+            "type": "string",
+            "title": "Motivo"
+          },
+          "requisitos": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Requisitos"
+          },
+          "requiere_declaracion": {
+            "type": "boolean",
+            "title": "Requiere Declaracion"
+          },
+          "fila": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Fila"
+          }
+        },
+        "type": "object",
+        "required": [
+          "clave",
+          "titulo",
+          "aplica",
+          "motivo",
+          "requisitos",
+          "requiere_declaracion",
+          "fila"
+        ],
+        "title": "OpcionRespuesta"
+      },
+      "ParametroRespuesta": {
+        "properties": {
+          "parametro": {
+            "type": "string",
+            "title": "Parametro"
+          },
+          "que_es": {
+            "type": "string",
+            "title": "Que Es"
+          },
+          "valor": {
+            "type": "string",
+            "title": "Valor"
+          },
+          "naturaleza": {
+            "type": "string",
+            "title": "Naturaleza"
+          }
+        },
+        "type": "object",
+        "required": [
+          "parametro",
+          "que_es",
+          "valor",
+          "naturaleza"
+        ],
+        "title": "ParametroRespuesta"
+      },
+      "ParcialRespuesta": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "fecha_calculo": {
+            "type": "string",
+            "title": "Fecha Calculo"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "fecha_calculo"
+        ],
+        "title": "ParcialRespuesta"
+      },
+      "ParetoRespuesta": {
+        "properties": {
+          "partida": {
+            "type": "string",
+            "title": "Partida"
+          },
+          "descripcion": {
+            "type": "string",
+            "title": "Descripcion"
+          },
+          "total": {
+            "type": "string",
+            "title": "Total"
+          },
+          "peso": {
+            "type": "string",
+            "title": "Peso"
+          },
+          "acumulado": {
+            "type": "string",
+            "title": "Acumulado"
+          },
+          "valor": {
+            "type": "string",
+            "title": "Valor"
+          }
+        },
+        "type": "object",
+        "required": [
+          "partida",
+          "descripcion",
+          "total",
+          "peso",
+          "acumulado",
+          "valor"
+        ],
+        "title": "ParetoRespuesta"
       },
       "PartidaPresupuestadaRespuesta": {
         "properties": {
@@ -6337,6 +8653,58 @@
         "title": "PeriodoPlanPeticion",
         "description": "Un período del plan de trabajo (UC‑01, paso 6): su etiqueta y la fracción de cada partida\nque ejecuta (código → fracción, como texto decimal). Las fracciones de cada partida suman 1\nen todo el plan; si no, `PlanInvalido` responde 422."
       },
+      "PeticionElegir": {
+        "properties": {
+          "proyecto": {
+            "type": "string",
+            "title": "Proyecto"
+          },
+          "corte": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Corte"
+          },
+          "precios": {
+            "$ref": "#/components/schemas/Precios"
+          },
+          "objetivo": {
+            "type": "string",
+            "title": "Objetivo",
+            "default": ""
+          },
+          "horas_previas": {
+            "type": "string",
+            "title": "Horas Previas",
+            "default": "0"
+          },
+          "opcion": {
+            "type": "string",
+            "title": "Opcion"
+          },
+          "fuente": {
+            "type": "string",
+            "title": "Fuente"
+          },
+          "declaracion_independencia": {
+            "type": "string",
+            "title": "Declaracion Independencia",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "proyecto",
+          "opcion",
+          "fuente"
+        ],
+        "title": "PeticionElegir"
+      },
       "PeticionEvaluar": {
         "properties": {
           "materiales": {
@@ -6472,6 +8840,70 @@
         ],
         "title": "PeticionGuardar"
       },
+      "PeticionOpciones": {
+        "properties": {
+          "proyecto": {
+            "type": "string",
+            "title": "Proyecto"
+          },
+          "corte": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Corte"
+          },
+          "precios": {
+            "$ref": "#/components/schemas/Precios"
+          },
+          "objetivo": {
+            "type": "string",
+            "title": "Objetivo",
+            "default": ""
+          },
+          "horas_previas": {
+            "type": "string",
+            "title": "Horas Previas",
+            "default": "0"
+          }
+        },
+        "type": "object",
+        "required": [
+          "proyecto"
+        ],
+        "title": "PeticionOpciones"
+      },
+      "PlanReproyectado": {
+        "properties": {
+          "columnas": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Columnas"
+          },
+          "filas": {
+            "items": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Filas"
+          }
+        },
+        "type": "object",
+        "required": [
+          "columnas",
+          "filas"
+        ],
+        "title": "PlanReproyectado"
+      },
       "PrecargaRespuesta": {
         "properties": {
           "existe": {
@@ -6505,6 +8937,38 @@
           "hay_historial"
         ],
         "title": "PrecargaRespuesta"
+      },
+      "Precios": {
+        "properties": {
+          "metodo": {
+            "type": "string",
+            "title": "Metodo",
+            "default": "ninguno"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version",
+            "default": ""
+          },
+          "km": {
+            "type": "string",
+            "title": "Km",
+            "default": ""
+          },
+          "r": {
+            "type": "string",
+            "title": "R",
+            "default": "0"
+          },
+          "fuente": {
+            "type": "string",
+            "title": "Fuente",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "title": "Precios",
+        "description": "Cómo se toman los precios del corte (S2 §4.3): el nombre del método y sus datos."
       },
       "PresupuestoConProyectoRespuesta": {
         "properties": {
@@ -6889,6 +9353,114 @@
         "title": "ProyectoRespuesta",
         "description": "El proyecto creado, tal como quedo guardado."
       },
+      "PuntoDeCurva": {
+        "properties": {
+          "periodo": {
+            "type": "string",
+            "title": "Periodo"
+          },
+          "pv": {
+            "type": "string",
+            "title": "Pv"
+          },
+          "ev": {
+            "type": "string",
+            "title": "Ev"
+          },
+          "ac": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ac"
+          }
+        },
+        "type": "object",
+        "required": [
+          "periodo",
+          "pv",
+          "ev",
+          "ac"
+        ],
+        "title": "PuntoDeCurva"
+      },
+      "PuntoRespuesta": {
+        "properties": {
+          "orden": {
+            "type": "integer",
+            "title": "Orden"
+          },
+          "periodo": {
+            "type": "string",
+            "title": "Periodo"
+          },
+          "valor": {
+            "type": "string",
+            "title": "Valor"
+          }
+        },
+        "type": "object",
+        "required": [
+          "orden",
+          "periodo",
+          "valor"
+        ],
+        "title": "PuntoRespuesta"
+      },
+      "RegistrarValuacion": {
+        "properties": {
+          "proyecto": {
+            "type": "string",
+            "title": "Proyecto"
+          },
+          "numero": {
+            "type": "string",
+            "title": "Numero"
+          },
+          "desde": {
+            "type": "string",
+            "title": "Desde"
+          },
+          "hasta": {
+            "type": "string",
+            "title": "Hasta"
+          },
+          "fecha": {
+            "type": "string",
+            "title": "Fecha",
+            "default": ""
+          },
+          "inspector": {
+            "type": "string",
+            "title": "Inspector",
+            "default": ""
+          },
+          "lineas": {
+            "items": {
+              "$ref": "#/components/schemas/LineaDeValuacion"
+            },
+            "type": "array",
+            "title": "Lineas"
+          },
+          "fuente": {
+            "type": "string",
+            "title": "Fuente"
+          }
+        },
+        "type": "object",
+        "required": [
+          "proyecto",
+          "numero",
+          "desde",
+          "hasta",
+          "fuente"
+        ],
+        "title": "RegistrarValuacion"
+      },
       "RegistroRendimientoRespuesta": {
         "properties": {
           "rendimiento": {
@@ -6924,6 +9496,29 @@
         ],
         "title": "RegistroRendimientoRespuesta",
         "description": "Lo registrado y la advertencia de RF-27 (o null): advertir nunca es impedir.\n`justificacion` es la que quedo registrada con la advertencia (UC-06, flujo 4a), o null."
+      },
+      "RegistroRespuesta": {
+        "properties": {
+          "corte": {
+            "type": "string",
+            "title": "Corte"
+          },
+          "hallazgos": {
+            "type": "integer",
+            "title": "Hallazgos"
+          },
+          "errores": {
+            "type": "integer",
+            "title": "Errores"
+          }
+        },
+        "type": "object",
+        "required": [
+          "corte",
+          "hallazgos",
+          "errores"
+        ],
+        "title": "RegistroRespuesta"
       },
       "ReglaEvaluadaRespuesta": {
         "properties": {
@@ -7140,6 +9735,34 @@
         ],
         "title": "RespaldoCreado"
       },
+      "ResultadoRespuesta": {
+        "properties": {
+          "cuenta": {
+            "$ref": "#/components/schemas/CuentaRespuesta"
+          },
+          "mensaje": {
+            "type": "string",
+            "title": "Mensaje"
+          },
+          "aviso": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Aviso"
+          }
+        },
+        "type": "object",
+        "required": [
+          "cuenta",
+          "mensaje"
+        ],
+        "title": "ResultadoRespuesta"
+      },
       "ResumenRespuesta": {
         "properties": {
           "proyecto": {
@@ -7335,6 +9958,43 @@
         ],
         "title": "RevaloracionRespuesta"
       },
+      "Rol": {
+        "type": "string",
+        "enum": [
+          "arma",
+          "revisa",
+          "administrador"
+        ],
+        "title": "Rol"
+      },
+      "RubroRespuesta": {
+        "properties": {
+          "rubro": {
+            "type": "string",
+            "title": "Rubro"
+          },
+          "monto": {
+            "type": "string",
+            "title": "Monto"
+          },
+          "peso": {
+            "type": "string",
+            "title": "Peso"
+          },
+          "valor": {
+            "type": "string",
+            "title": "Valor"
+          }
+        },
+        "type": "object",
+        "required": [
+          "rubro",
+          "monto",
+          "peso",
+          "valor"
+        ],
+        "title": "RubroRespuesta"
+      },
       "SensibleEstado": {
         "properties": {
           "permitida": {
@@ -7352,6 +10012,27 @@
           "motivo"
         ],
         "title": "SensibleEstado"
+      },
+      "SerieRespuesta": {
+        "properties": {
+          "serie": {
+            "type": "string",
+            "title": "Serie"
+          },
+          "puntos": {
+            "items": {
+              "$ref": "#/components/schemas/PuntoRespuesta"
+            },
+            "type": "array",
+            "title": "Puntos"
+          }
+        },
+        "type": "object",
+        "required": [
+          "serie",
+          "puntos"
+        ],
+        "title": "SerieRespuesta"
       },
       "SesionRespuesta": {
         "properties": {
@@ -7664,6 +10345,156 @@
         "type": "object",
         "title": "Tablas"
       },
+      "TableroRespuesta": {
+        "properties": {
+          "proyecto": {
+            "type": "string",
+            "title": "Proyecto"
+          },
+          "version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version"
+          },
+          "fecha": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fecha"
+          },
+          "moneda": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Moneda"
+          },
+          "renglones": {
+            "type": "integer",
+            "title": "Renglones",
+            "default": 0
+          },
+          "tarjetas": {
+            "items": {
+              "$ref": "#/components/schemas/TarjetaRespuesta"
+            },
+            "type": "array",
+            "title": "Tarjetas"
+          },
+          "control": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ControlRespuesta"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "curvas": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CurvasRespuesta"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "desglose": {
+            "items": {
+              "$ref": "#/components/schemas/RubroRespuesta"
+            },
+            "type": "array",
+            "title": "Desglose"
+          },
+          "pareto": {
+            "items": {
+              "$ref": "#/components/schemas/ParetoRespuesta"
+            },
+            "type": "array",
+            "title": "Pareto"
+          },
+          "versiones": {
+            "items": {
+              "$ref": "#/components/schemas/api__rutas__tablero__VersionRespuesta"
+            },
+            "type": "array",
+            "title": "Versiones"
+          }
+        },
+        "type": "object",
+        "required": [
+          "proyecto"
+        ],
+        "title": "TableroRespuesta"
+      },
+      "TarjetaRespuesta": {
+        "properties": {
+          "rotulo": {
+            "type": "string",
+            "title": "Rotulo"
+          },
+          "valor": {
+            "type": "string",
+            "title": "Valor"
+          },
+          "detalle": {
+            "type": "string",
+            "title": "Detalle",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "rotulo",
+          "valor"
+        ],
+        "title": "TarjetaRespuesta"
+      },
+      "Terminos": {
+        "properties": {
+          "indice": {
+            "type": "string",
+            "title": "Indice"
+          },
+          "reproyectado": {
+            "type": "string",
+            "title": "Reproyectado"
+          },
+          "plan_base": {
+            "type": "string",
+            "title": "Plan Base"
+          },
+          "eac_sistema": {
+            "type": "string",
+            "title": "Eac Sistema"
+          }
+        },
+        "type": "object",
+        "required": [
+          "indice",
+          "reproyectado",
+          "plan_base",
+          "eac_sistema"
+        ],
+        "title": "Terminos"
+      },
       "TrazaRespuesta": {
         "properties": {
           "dato": {
@@ -7731,6 +10562,73 @@
           "type"
         ],
         "title": "ValidationError"
+      },
+      "ValorDeParametro": {
+        "properties": {
+          "parametro": {
+            "type": "string",
+            "title": "Parametro"
+          },
+          "valor": {
+            "type": "string",
+            "title": "Valor"
+          }
+        },
+        "type": "object",
+        "required": [
+          "parametro",
+          "valor"
+        ],
+        "title": "ValorDeParametro"
+      },
+      "ValuacionesRespuesta": {
+        "properties": {
+          "tiene_linea_base": {
+            "type": "boolean",
+            "title": "Tiene Linea Base"
+          },
+          "filas": {
+            "items": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Filas"
+          },
+          "aviso": {
+            "type": "string",
+            "title": "Aviso",
+            "default": ""
+          },
+          "anulables": {
+            "items": {
+              "$ref": "#/components/schemas/Anulable"
+            },
+            "type": "array",
+            "title": "Anulables"
+          },
+          "corte_por_defecto": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Corte Por Defecto"
+          }
+        },
+        "type": "object",
+        "required": [
+          "tiene_linea_base",
+          "filas",
+          "anulables",
+          "corte_por_defecto"
+        ],
+        "title": "ValuacionesRespuesta"
       },
       "VersionEntregable": {
         "properties": {
@@ -7884,6 +10782,71 @@
         ],
         "title": "AvisoRespuesta"
       },
+      "api__esquemas_ola2__CalculoRespuesta": {
+        "properties": {
+          "codigo": {
+            "type": "string",
+            "title": "Codigo"
+          },
+          "fecha": {
+            "type": "string",
+            "format": "date",
+            "title": "Fecha"
+          },
+          "moneda": {
+            "type": "string",
+            "title": "Moneda"
+          },
+          "total": {
+            "type": "string",
+            "title": "Total"
+          },
+          "partidas": {
+            "items": {
+              "$ref": "#/components/schemas/PartidaPresupuestadaRespuesta"
+            },
+            "type": "array",
+            "title": "Partidas"
+          },
+          "por_severidad": {
+            "items": {
+              "$ref": "#/components/schemas/SeveridadRespuesta"
+            },
+            "type": "array",
+            "title": "Por Severidad"
+          },
+          "informe": {
+            "$ref": "#/components/schemas/InformeAuditoriaRespuesta"
+          },
+          "pendientes": {
+            "items": {
+              "$ref": "#/components/schemas/PendienteConPropuestasRespuesta"
+            },
+            "type": "array",
+            "title": "Pendientes"
+          },
+          "plan_por_defecto": {
+            "items": {
+              "$ref": "#/components/schemas/FilaPlan"
+            },
+            "type": "array",
+            "title": "Plan Por Defecto"
+          }
+        },
+        "type": "object",
+        "required": [
+          "codigo",
+          "fecha",
+          "moneda",
+          "total",
+          "partidas",
+          "por_severidad",
+          "informe",
+          "pendientes",
+          "plan_por_defecto"
+        ],
+        "title": "CalculoRespuesta"
+      },
       "api__rutas__admin_empresa__AvisoRespuesta": {
         "properties": {
           "aviso": {
@@ -7945,6 +10908,384 @@
           "origen_ids"
         ],
         "title": "HallazgoRespuesta"
+      },
+      "api__rutas__composicion__GuardadoRespuesta": {
+        "properties": {
+          "precio_unitario": {
+            "type": "string",
+            "title": "Precio Unitario"
+          },
+          "mensaje": {
+            "type": "string",
+            "title": "Mensaje"
+          },
+          "justificada": {
+            "type": "boolean",
+            "title": "Justificada"
+          },
+          "avisos": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Avisos"
+          }
+        },
+        "type": "object",
+        "required": [
+          "precio_unitario",
+          "mensaje",
+          "justificada",
+          "avisos"
+        ],
+        "title": "GuardadoRespuesta"
+      },
+      "api__rutas__composicion__OpcionesRespuesta": {
+        "properties": {
+          "dominios": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Dominios"
+          },
+          "modalidades": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Modalidades"
+          }
+        },
+        "type": "object",
+        "required": [
+          "dominios",
+          "modalidades"
+        ],
+        "title": "OpcionesRespuesta"
+      },
+      "api__rutas__control__CalculoRespuesta": {
+        "properties": {
+          "estado": {
+            "type": "string",
+            "title": "Estado"
+          },
+          "corte": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Corte"
+          },
+          "dia": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dia"
+          },
+          "moneda": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Moneda"
+          },
+          "indicadores": {
+            "items": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Indicadores"
+          },
+          "costos_sin_tasa": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Costos Sin Tasa"
+          },
+          "curva": {
+            "items": {
+              "$ref": "#/components/schemas/PuntoDeCurva"
+            },
+            "type": "array",
+            "title": "Curva"
+          },
+          "spi_no_aplica": {
+            "type": "boolean",
+            "title": "Spi No Aplica",
+            "default": false
+          },
+          "alertas": {
+            "items": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Alertas"
+          },
+          "terminos": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Terminos"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "motivo_termino": {
+            "type": "string",
+            "title": "Motivo Termino",
+            "default": ""
+          },
+          "equilibrio": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Equilibrio"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "estudios": {
+            "type": "string",
+            "title": "Estudios",
+            "default": ""
+          },
+          "reproyeccion": {
+            "items": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Reproyeccion"
+          },
+          "plan": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PlanReproyectado"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "decisiones": {
+            "items": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Decisiones"
+          },
+          "versiones_revaloradas": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Versiones Revaloradas"
+          }
+        },
+        "type": "object",
+        "required": [
+          "estado"
+        ],
+        "title": "CalculoRespuesta"
+      },
+      "api__rutas__control__OpcionesRespuesta": {
+        "properties": {
+          "opciones": {
+            "items": {
+              "$ref": "#/components/schemas/OpcionRespuesta"
+            },
+            "type": "array",
+            "title": "Opciones"
+          }
+        },
+        "type": "object",
+        "required": [
+          "opciones"
+        ],
+        "title": "OpcionesRespuesta"
+      },
+      "api__rutas__control__VersionRespuesta": {
+        "properties": {
+          "version": {
+            "type": "string",
+            "title": "Version"
+          }
+        },
+        "type": "object",
+        "required": [
+          "version"
+        ],
+        "title": "VersionRespuesta"
+      },
+      "api__rutas__reajuste__CalculoRespuesta": {
+        "properties": {
+          "estado": {
+            "type": "string",
+            "title": "Estado"
+          },
+          "moneda": {
+            "type": "string",
+            "title": "Moneda"
+          },
+          "columnas": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Columnas"
+          },
+          "filas": {
+            "items": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Filas"
+          },
+          "avisos": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Avisos"
+          },
+          "mensaje_parcial": {
+            "type": "string",
+            "title": "Mensaje Parcial"
+          },
+          "parciales": {
+            "items": {
+              "$ref": "#/components/schemas/ParcialRespuesta"
+            },
+            "type": "array",
+            "title": "Parciales"
+          }
+        },
+        "type": "object",
+        "required": [
+          "estado",
+          "moneda",
+          "columnas",
+          "filas",
+          "avisos",
+          "mensaje_parcial",
+          "parciales"
+        ],
+        "title": "CalculoRespuesta"
+      },
+      "api__rutas__reajuste__GuardadoRespuesta": {
+        "properties": {
+          "estudio": {
+            "type": "integer",
+            "title": "Estudio"
+          },
+          "estado": {
+            "type": "string",
+            "title": "Estado"
+          }
+        },
+        "type": "object",
+        "required": [
+          "estudio",
+          "estado"
+        ],
+        "title": "GuardadoRespuesta"
+      },
+      "api__rutas__reajuste__VersionRespuesta": {
+        "properties": {
+          "codigo": {
+            "type": "string",
+            "title": "Codigo"
+          },
+          "motivo": {
+            "type": "string",
+            "title": "Motivo"
+          },
+          "revalorada": {
+            "type": "boolean",
+            "title": "Revalorada"
+          }
+        },
+        "type": "object",
+        "required": [
+          "codigo",
+          "motivo",
+          "revalorada"
+        ],
+        "title": "VersionRespuesta"
+      },
+      "api__rutas__tablero__VersionRespuesta": {
+        "properties": {
+          "version": {
+            "type": "string",
+            "title": "Version"
+          },
+          "fecha": {
+            "type": "string",
+            "title": "Fecha"
+          },
+          "motivo": {
+            "type": "string",
+            "title": "Motivo"
+          },
+          "costo_directo": {
+            "type": "string",
+            "title": "Costo Directo"
+          },
+          "total": {
+            "type": "string",
+            "title": "Total"
+          },
+          "vigente": {
+            "type": "boolean",
+            "title": "Vigente"
+          },
+          "valor": {
+            "type": "string",
+            "title": "Valor"
+          }
+        },
+        "type": "object",
+        "required": [
+          "version",
+          "fecha",
+          "motivo",
+          "costo_directo",
+          "total",
+          "vigente",
+          "valor"
+        ],
+        "title": "VersionRespuesta"
       }
     }
   }

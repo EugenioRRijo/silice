@@ -20,8 +20,9 @@ from pydantic import BaseModel
 from sqlalchemy import select
 
 from api.admin_acceso import administrar, administrar_en_el_equipo, sin_cache
-from api.rutas.sesion import _RutaSinEco, _sin_eco
 from api.sesion_web import ahora
+from api.sin_eco import RutaSinEco as _RutaSinEco
+from api.sin_eco import sin_eco as _sin_eco
 from operacion.instalacion import sesion_de_instalacion
 from seguridad import claves_api
 from seguridad.modelo import ClaveApi

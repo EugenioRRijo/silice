@@ -26,8 +26,9 @@ from pydantic import BaseModel, Field
 
 from api.admin_acceso import administrar, administrar_en_el_equipo, sin_cache
 from api.rutas.entregas import FRENO_FIRMA, MENSAJE_FRENO
-from api.rutas.sesion import _RutaSinEco, _sin_eco
 from api.sesion_web import ahora
+from api.sin_eco import RutaSinEco as _RutaSinEco
+from api.sin_eco import sin_eco as _sin_eco
 from aplicacion.equipo import operacion_sensible_permitida
 from operacion.instalacion import sesion_de_instalacion
 from seguridad import cuentas, empresas, eventos, firma

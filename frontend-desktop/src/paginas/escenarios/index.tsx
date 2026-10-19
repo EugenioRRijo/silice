@@ -1,8 +1,9 @@
 import { Accordion, AccordionItem, Button, InlineNotification, Select, SelectItem, TextInput } from "@carbon/react";
 import { Add, TrashCan } from "@carbon/icons-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { ErrorDeApi, pedir } from "../../api/cliente";
+import { mensajeDeError } from "../../comun/errores";
 import { AvisoError } from "../../comun/AvisoError";
 import { DescargaArchivo } from "../../comun/DescargaArchivo";
 import { EsqueletoPagina } from "../../comun/EsqueletoPagina";
@@ -13,15 +14,18 @@ import {
   AVISO_PENDIENTES,
   AYUDA,
   CAMPOS_PARAMETROS,
+  EJEMPLO_PRECIOS,
   COLUMNAS_COMPARACION,
   COLUMNAS_PARTIDAS,
   NOTA_PARAMETROS,
   NOTA_PENDIENTES,
   NOTA_PRECIOS,
+  ROTULOS_PARAMETROS,
   SIN_ESCENARIOS,
   SIN_PRESUPUESTOS,
   TITULO_COMPARACION,
   armarEscenario,
+  campoNombrado,
   etiquetaDePresupuesto,
   filasComparacion,
   filasPartidas,
@@ -77,6 +81,17 @@ export default function PaginaEscenarios() {
   const [generando, setGenerando] = useState(false);
   const cargaBase = useRef(0);
   const siguienteFila = useRef(1);
+  const focoPendiente = useRef<string | null>(null);
+
+  // Foco tras anadir o quitar una fila de precios: se aplica cuando React ya la pinto.
+  useLayoutEffect(() => {
+    const id = focoPendiente.current;
+    if (id === null) return;
+    focoPendiente.current = null;
+    document.getElementById(id)?.focus();
+  }, [filas]);
+
+  const campoInvalido = errorGenerar === null ? null : campoNombrado(mensajeDeError(errorGenerar));
 
   const falla = (error: unknown) => {
     if (error instanceof ErrorDeApi && error.estado === 401) alExpirar();
@@ -200,7 +215,7 @@ export default function PaginaEscenarios() {
         <Select
           id="escenarios-base"
           labelText="Presupuesto base"
-          size="md"
+          size="sm"
           value={seleccion ? claveDe(seleccion, lista) : ""}
           onChange={(e) => {
             const elegido = lista.find((p) => claveDe(p, lista) === e.target.value);
@@ -237,6 +252,7 @@ export default function PaginaEscenarios() {
             <div className="silice-escenarios__nombre">
               <TextInput
                 id="escenarios-nombre"
+                size="sm"
                 labelText="Nombre del escenario"
                 value={nombre ?? nombrePorOmision(peticiones.length)}
                 onChange={(e) => setNombre(e.target.value)}
@@ -248,7 +264,10 @@ export default function PaginaEscenarios() {
                 <TextInput
                   key={campo}
                   id={`escenarios-${campo}`}
-                  labelText={campo}
+                  size="sm"
+                  labelText={ROTULOS_PARAMETROS[campo]}
+                  invalid={campoInvalido === campo}
+                  invalidText={campoInvalido === campo ? mensajeDeError(errorGenerar) : undefined}
                   value={parametros[campo]}
                   onChange={(e) => setParametros((p) => ({ ...p, [campo]: e.target.value }))}
                 />
@@ -256,46 +275,66 @@ export default function PaginaEscenarios() {
             </div>
             <p className="silice-escenarios__nota cds--type-label-01">{NOTA_PRECIOS}</p>
             <div className="silice-escenarios__precios" role="group" aria-label="Precios de ensayo">
+              {filas.length === 0 ? (
+                <p className="silice-escenarios__nota cds--type-label-01">{EJEMPLO_PRECIOS}</p>
+              ) : (
+                <div className="silice-escenarios__fila-precio silice-escenarios__cabecera" aria-hidden="true">
+                  <span className="cds--type-label-01">Insumo (descripción exacta)</span>
+                  <span className="cds--type-label-01">Precio nuevo</span>
+                  <span />
+                </div>
+              )}
               {filas.map((fila, i) => (
                 <div key={fila.id} className="silice-escenarios__fila-precio">
                   <TextInput
                     id={`escenarios-insumo-${fila.id}`}
-                    labelText={`insumo ${i + 1}`}
-                    hideLabel={i > 0}
+                    size="sm"
+                    labelText={`Insumo ${i + 1}`}
+                    hideLabel
                     value={fila.insumo}
                     onChange={(e) => cambiarFila(fila.id, { insumo: e.target.value })}
                   />
                   <TextInput
                     id={`escenarios-precio-${fila.id}`}
-                    labelText={`precio_nuevo ${i + 1}`}
-                    hideLabel={i > 0}
+                    size="sm"
+                    labelText={`Precio nuevo ${i + 1}`}
+                    hideLabel
                     value={fila.precio}
                     onChange={(e) => cambiarFila(fila.id, { precio: e.target.value })}
                   />
                   <Button
                     kind="ghost"
-                    size="md"
+                    size="sm"
                     hasIconOnly
                     renderIcon={TrashCan}
                     iconDescription={`Quitar precio ${i + 1}`}
                     tooltipPosition="left"
-                    onClick={() => setFilas((actuales) => actuales.filter((f) => f.id !== fila.id))}
+                    onClick={() => {
+                      const siguiente = filas[i + 1];
+                      focoPendiente.current = siguiente ? `escenarios-insumo-${siguiente.id}` : "escenarios-agregar-precio";
+                      setFilas((actuales) => actuales.filter((f) => f.id !== fila.id));
+                    }}
                   />
                 </div>
               ))}
               <div>
                 <Button
+                  id="escenarios-agregar-precio"
                   kind="tertiary"
                   size="sm"
                   renderIcon={Add}
-                  onClick={() => setFilas((actuales) => [...actuales, { id: siguienteFila.current++, insumo: "", precio: "" }])}
+                  onClick={() => {
+                    const id = siguienteFila.current++;
+                    focoPendiente.current = `escenarios-insumo-${id}`;
+                    setFilas((actuales) => [...actuales, { id, insumo: "", precio: "" }]);
+                  }}
                 >
                   Agregar precio
                 </Button>
               </div>
             </div>
             <div>
-              <Button type="submit" kind="primary" size="md" disabled={generando}>
+              <Button type="submit" kind="primary" size="sm" disabled={generando}>
                 Generar escenario
               </Button>
             </div>
@@ -320,10 +359,11 @@ export default function PaginaEscenarios() {
                     etiqueta="Descargar tabla (CSV, valores exactos)"
                     nombrePorOmision={`escenarios_${base.codigo}.csv`}
                     alExpirar={alExpirar}
+                    size="sm"
                   />
                   <Button
                     kind="ghost"
-                    size="md"
+                    size="sm"
                     onClick={() => {
                       setPeticiones([]);
                       setResultado(null);

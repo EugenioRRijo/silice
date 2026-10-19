@@ -20,15 +20,19 @@ from api.rutas import (
     catalogo,
     composicion,
     computos,
+    control,
+    cuentas,
     entregas,
     libros,
     listas,
     presupuestos,
     proyectos,
+    reajuste,
     rendimientos,
     sesion,
     similares,
     simulador,
+    tablero,
 )
 from api.sesion_web import exigir_clave_o_sesion
 from core.catalog import CatalogoIncompleto
@@ -75,10 +79,18 @@ app.include_router(
 # Ola 0a (sesion 2b): el caso de la sesion web (RM-2) y los proyectos del caso
 app.include_router(casos.router)
 app.include_router(proyectos.router)
+# Migracion: Administracion, pestañas Cuentas y Accesos (ADMINISTRAR_CUENTAS, solo sesion)
+app.include_router(cuentas.router)
 # Ola 3 (S2-B): «Componer una partida» (UC-10, UC-11)
 app.include_router(composicion.router)
+# Ola 4 (S2-C): el tablero de la obra (UC-13)
+app.include_router(tablero.router)
+# Ola 4 (S2-C): el control de obra (UC-19, UC-20)
+app.include_router(control.router)
 # Ola 4 (sesion 2b): entregar el paquete auditado
 app.include_router(entregas.router)
+# Ola 4 (sesion 2b): Reajuste de precios
+app.include_router(reajuste.router)
 # 1.2.0 (RT-2): la interfaz nueva, estática y sin secretos, en /app con CSP
 # Ola 5 (sesion 2b): Administracion (empresa y firma, claves de API, instalacion); solo con sesion
 app.include_router(admin_empresa.router)
@@ -121,6 +133,15 @@ def manejar_lookup_error(_request: Request, exc: LookupError) -> JSONResponse:
 def manejar_value_error(_request: Request, exc: ValueError) -> JSONResponse:
     """Datos de entrada invalidos segun las reglas del nucleo."""
     return JSONResponse(status_code=422, content={"detalle": str(exc)})
+
+
+@app.exception_handler(ArithmeticError)
+def manejar_error_aritmetico(_request: Request, _exc: ArithmeticError) -> JSONResponse:
+    """Un importe mal formado o fuera de rango (`decimal.InvalidOperation`, `Overflow`)."""
+    return JSONResponse(
+        status_code=422,
+        content={"detalle": "un importe esta mal formado o fuera de rango"},
+    )
 
 
 proteger(app)  # al final: ya están todas las rutas y los filtros envuelven la aplicación

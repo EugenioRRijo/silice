@@ -14,7 +14,7 @@ activa) exige además el propio equipo y que no haya eventos de seguridad perdid
 hace falta. Lo hace la ruta y no una dependencia porque la misma ruta sirve a las dos entregas.
 
 La contraseña de la clave de firma: no se guarda, no se registra y no vuelve en ningún cuerpo (el
-422 de esta ruta no repite lo enviado: `_RutaSinEco`). Con la clave de API, quien entrega consta
+422 de esta ruta no repite lo enviado: `RutaSinEco`). Con la clave de API, quien entrega consta
 como `USUARIO_SIN_CLAVE`. La base del caso no cambia; solo se escribe el registro de la entrega en
 la base de la instalación. Los montos viajan como texto: `total` exacto y `total_texto` como lo
 escribe la pantalla clásica (dos decimales).
@@ -31,8 +31,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from api.dependencias import USUARIO_SIN_CLAVE, SesionDep
-from api.rutas.sesion import _RutaSinEco, _sin_eco
 from api.sesion_web import ahora, exigir_clave_o_sesion
+from api.sin_eco import RutaSinEco, sin_eco
 from aplicacion import entrega as logica
 from aplicacion.equipo import operacion_sensible_permitida
 from core import models
@@ -58,7 +58,12 @@ MENSAJE_FRENO = (
 FRENO_FIRMA = cuentas.FrenoGlobal()
 SIN_CACHE = {"Cache-Control": "no-store"}  # un paquete y su resumen no se guardan en el navegador
 
-router = APIRouter(prefix="/v1/entregas", tags=["entregas"], route_class=_RutaSinEco)
+
+class _RutaEntregas(RutaSinEco):
+    mensaje_por_omision = MENSAJE_CUERPO_INVALIDO
+
+
+router = APIRouter(prefix="/v1/entregas", tags=["entregas"], route_class=_RutaEntregas)
 ENTREGAR = Depends(exigir_clave_o_sesion(Accion.ENTREGAR_PAQUETE))
 
 
@@ -146,7 +151,7 @@ def resumen(sesion: SesionDep, response: Response, proyecto: str, version: str) 
     responses={200: {"content": {"application/zip": {}}}},
     dependencies=[ENTREGAR],  # antes de abrir la base del caso; FastAPI no la corre dos veces
 )
-@_sin_eco(MENSAJE_CUERPO_INVALIDO)
+@sin_eco(MENSAJE_CUERPO_INVALIDO)
 def entregar(
     sesion: SesionDep,
     peticion: EntregaPeticion,

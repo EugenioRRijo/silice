@@ -55,14 +55,18 @@ from tests.fixtures.sesion_web import (
     protegida,
 )
 
-LEER, EDITAR, REVISAR, CAMBIAR_CASO, CUALQUIERA = (
+LEER, EDITAR, REVISAR, CAMBIAR_CASO, CUALQUIERA, CUENTAS_ADM, CONTROLAR, DECIDIR = (
     "leer_proyecto",
     "editar_hoja",
     "revisar_paquete",
     "cambiar_caso",
     "cualquier rol",
+    "administrar_cuentas",
+    "control_de_obra",
+    "decidir_recuperacion",
 )
 ENTREGAR = "entregar_paquete"
+REAJUSTAR = "convertir_y_reajustar"
 EMPRESA, RED_Y_API = (
     "administrar_empresa",
     "administrar_red_y_api",
@@ -75,8 +79,12 @@ ROLES = {
     ENTREGAR: {"arma"},
     EMPRESA: {"administrador"},
     RED_Y_API: {"administrador"},
+    REAJUSTAR: {"arma"},
     CAMBIAR_CASO: {"arma", "administrador"},
+    CONTROLAR: {"arma"},
+    DECIDIR: {"arma"},
     CUALQUIERA: {"arma", "revisa", "administrador"},
+    CUENTAS_ADM: {"administrador"},
 }
 #: (método, ruta) -> acción. Las rutas sin sesión (`/salud`, `/v1/sesion*`) van aparte.
 TABLA = {
@@ -112,12 +120,33 @@ TABLA = {
     ("POST", "/v1/libros/devolucion"): LEER,
     ("POST", "/v1/libros/pdf"): LEER,
     ("POST", "/v1/libros/replica"): LEER,
+    ("GET", "/v1/tablero"): LEER,  # ola 4: Tablero
+    ("GET", "/v1/control/linea-base"): CONTROLAR,  # ola 4: Control de obra
+    ("POST", "/v1/control/linea-base"): CONTROLAR,
+    ("POST", "/v1/control/parametros"): CONTROLAR,
+    ("GET", "/v1/control/valuaciones"): CONTROLAR,
+    ("POST", "/v1/control/valuaciones"): CONTROLAR,
+    ("POST", "/v1/control/valuaciones/{valuacion_id}/anular"): CONTROLAR,
+    ("POST", "/v1/control/costos"): CONTROLAR,
+    ("POST", "/v1/control/importar/informe"): CONTROLAR,
+    ("POST", "/v1/control/importar"): CONTROLAR,
+    ("GET", "/v1/control/calculo"): CONTROLAR,
+    ("POST", "/v1/control/recuperacion/opciones"): CONTROLAR,
+    ("POST", "/v1/control/recuperacion/elegir"): DECIDIR,
     ("GET", "/v1/casos"): CUALQUIERA,
     ("POST", "/v1/casos/actual"): CAMBIAR_CASO,
     ("GET", "/v1/proyectos"): LEER,
     ("POST", "/v1/similares"): EDITAR,
     ("POST", "/v1/simulador"): EDITAR,
     ("POST", "/v1/simulador/csv"): EDITAR,
+    ("GET", "/v1/cuentas"): CUENTAS_ADM,
+    ("POST", "/v1/cuentas"): CUENTAS_ADM,
+    ("POST", "/v1/cuentas/{usuario_id}/roles"): CUENTAS_ADM,
+    ("POST", "/v1/cuentas/{usuario_id}/desactivar"): CUENTAS_ADM,
+    ("POST", "/v1/cuentas/{usuario_id}/reactivar"): CUENTAS_ADM,
+    ("POST", "/v1/cuentas/{usuario_id}/desbloquear"): CUENTAS_ADM,
+    ("POST", "/v1/cuentas/{usuario_id}/restablecer"): CUENTAS_ADM,
+    ("GET", "/v1/accesos"): CUENTAS_ADM,
     # Ola 3 (S2-B): «Componer una partida» es de quien arma (`ui/paginas/componer.py`)
     ("GET", "/v1/composicion/opciones"): EDITAR,
     ("POST", "/v1/composicion/evaluar"): EDITAR,
@@ -142,6 +171,11 @@ TABLA = {
     ("POST", "/v1/admin/instalacion/respaldos"): RED_Y_API,
     ("GET", "/v1/admin/instalacion/respaldos/{nombre}"): RED_Y_API,
     ("POST", "/v1/admin/instalacion/eventos/{nombre}/revisar"): RED_Y_API,
+    ("GET", "/v1/reajuste/contexto"): REAJUSTAR,
+    ("GET", "/v1/reajuste/parciales"): REAJUSTAR,
+    ("POST", "/v1/reajuste/calcular"): REAJUSTAR,
+    ("POST", "/v1/reajuste/guardar"): REAJUSTAR,
+    ("POST", "/v1/reajuste/excel"): REAJUSTAR,
     ("GET", "/v1/acerca"): CUALQUIERA,
 }
 #: Las de la puerta de entrada: la sesión misma (con su propia regla) y el ping.

@@ -29,7 +29,13 @@ export const PAGINAS: readonly PaginaDef[] = [
     accion: null,
     cargar: () => import("../paginas/inicio"),
   },
-  { id: "tablero", titulo: "Tablero del proyecto", seccion: "Trabajo", accion: "leer_proyecto" },
+  {
+    id: "tablero",
+    titulo: "Tablero del proyecto",
+    seccion: "Trabajo",
+    accion: "leer_proyecto",
+    cargar: () => import("../paginas/tablero"),
+  },
   {
     id: "catalogo",
     titulo: "Catálogo de partidas e insumos",
@@ -68,8 +74,20 @@ export const PAGINAS: readonly PaginaDef[] = [
   },
   { id: "precios_empresa", titulo: "Precios de la empresa", seccion: "Trabajo", accion: "administrar_precios" },
   { id: "indices", titulo: "Índices del BCV", seccion: "Trabajo", accion: "administrar_precios" },
-  { id: "reajuste", titulo: "Reajuste de precios", seccion: "Trabajo", accion: "convertir_y_reajustar" },
-  { id: "control", titulo: "Control de obra", seccion: "Trabajo", accion: "control_de_obra" },
+  {
+    id: "reajuste",
+    titulo: "Reajuste de precios",
+    seccion: "Trabajo",
+    accion: "convertir_y_reajustar",
+    cargar: () => import("../paginas/reajuste"),
+  },
+  {
+    id: "control",
+    titulo: "Control de obra",
+    seccion: "Trabajo",
+    accion: "control_de_obra",
+    cargar: () => import("../paginas/control"),
+  },
   {
     id: "acerca",
     titulo: "Acerca de Sílice",
@@ -114,7 +132,13 @@ export const PAGINAS: readonly PaginaDef[] = [
     cargar: () => import("../paginas/simulador"),
   },
   { id: "visor", titulo: "Visor 3D del modelo", seccion: "Investigación", accion: "editar_hoja" },
-  { id: "administracion", titulo: "Administración", seccion: "Administración", accion: "administrar_cuentas" },
+  {
+    id: "administracion",
+    titulo: "Administración",
+    seccion: "Administración",
+    accion: "administrar_cuentas",
+    cargar: () => import("../paginas/administracion"),
+  },
 ];
 
 export function paginaPorId(id: string, paginas: readonly PaginaDef[] = PAGINAS): PaginaDef | undefined {
