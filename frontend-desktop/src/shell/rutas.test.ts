@@ -33,6 +33,7 @@ const COMO_STREAMLIT: [string, string, string | null][] = [
   ["existencias", "Trabajo", "operar_arenera"],
   ["revisar", "Revisión", "revisar_paquete"],
   ["libros", "Revisión", "leer_proyecto"],
+  ["historial", "Revisión", "leer_proyecto"], // solo existe en la interfaz nueva (UC-30)
   ["escenarios", "Investigación", "editar_hoja"],
   ["similares", "Investigación", "editar_hoja"],
   ["simulador", "Investigación", "editar_hoja"],
@@ -40,7 +41,7 @@ const COMO_STREAMLIT: [string, string, string | null][] = [
 ];
 
 describe("registro de paginas", () => {
-  test("tiene las 21 paginas de Streamlit, en su orden, con su seccion y su accion", () => {
+  test("tiene las 21 paginas de Streamlit mas el historial (22), en su orden, con su seccion y su accion", () => {
     expect(PAGINAS.map((p) => [p.id, p.seccion, p.accion])).toEqual(COMO_STREAMLIT);
   });
 
@@ -66,6 +67,7 @@ describe("registro de paginas", () => {
       "entregar",
       "existencias",
       "libros",
+      "historial",
       "escenarios",
       "similares",
       "simulador",
@@ -97,13 +99,13 @@ describe("quien ve que", () => {
     expect(PAGINAS.filter((p) => visible(p, [], false)).map((p) => p.id)).toEqual(["inicio", "acerca"]);
   });
 
-  test("con todas las acciones se ven las 21", () => {
-    expect(PAGINAS.filter((p) => visible(p, todas, false))).toHaveLength(21);
+  test("con todas las acciones se ven las 22", () => {
+    expect(PAGINAS.filter((p) => visible(p, todas, false))).toHaveLength(22);
   });
 
   test("el modo entrega esconde Investigacion y nada mas", () => {
     const sinInvestigacion = PAGINAS.filter((p) => visible(p, todas, true));
-    expect(sinInvestigacion).toHaveLength(18);
+    expect(sinInvestigacion).toHaveLength(19);
     expect(sinInvestigacion.some((p) => p.seccion === "Investigación")).toBe(false);
   });
 
@@ -112,7 +114,7 @@ describe("quien ve que", () => {
     const secciones = seccionesVisibles(rol, false);
     expect(secciones.map((s) => s.seccion)).toEqual(["Trabajo", "Revisión"]);
     expect(secciones[0].paginas.map((p) => p.id)).toEqual(["inicio", "tablero", "catalogo", "historico", "acerca"]);
-    expect(secciones[1].paginas.map((p) => p.id)).toEqual(["revisar", "libros"]);
+    expect(secciones[1].paginas.map((p) => p.id)).toEqual(["revisar", "libros", "historial"]);
   });
 
   test("Existencias de la arenera solo la ve quien puede operar la arenera", () => {
@@ -194,12 +196,12 @@ describe("areas del menu", () => {
     expect(new Set(todas).size).toBe(todas.length);
   });
 
-  test("con todas las acciones salen las cinco areas y las 21 paginas, ninguna repetida", () => {
+  test("con todas las acciones salen las cinco areas y las 22 paginas, ninguna repetida", () => {
     const todas = PAGINAS.flatMap((p) => (p.accion ? [p.accion] : []));
     const areas = areasVisibles(todas, false);
     expect(areas.map((a) => a.id)).toEqual(["inicio", "auditar", "crear", "produccion", "mas"]);
-    expect(areas.flatMap((a) => a.paginas)).toHaveLength(21);
-    expect(areas[1].paginas.map((p) => p.id)).toEqual(["libros", "revisar"]); // historial aun no esta en el registro
+    expect(areas.flatMap((a) => a.paginas)).toHaveLength(22);
+    expect(areas[1].paginas.map((p) => p.id)).toEqual(["libros", "revisar", "historial"]);
   });
 
   test("una area sin pantallas visibles no se pinta", () => {
@@ -209,10 +211,10 @@ describe("areas del menu", () => {
     expect(areas[3].paginas.map((p) => p.id)).toEqual(["historico", "acerca"]);
   });
 
-  test("el modo entrega quita Escenarios, Partidas similares y Simulador y deja 18", () => {
+  test("el modo entrega quita Escenarios, Partidas similares y Simulador y deja 19", () => {
     const todas = PAGINAS.flatMap((p) => (p.accion ? [p.accion] : []));
     const ids = areasVisibles(todas, true).flatMap((a) => a.paginas.map((p) => p.id));
-    expect(ids).toHaveLength(18);
+    expect(ids).toHaveLength(19);
     for (const fuera of ["escenarios", "similares", "simulador"]) expect(ids).not.toContain(fuera);
   });
 

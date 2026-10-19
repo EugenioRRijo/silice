@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import type { SesionRespuesta } from "../../api/tipos";
 import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
+import { alertaConTexto } from "../../test/ayudas";
 import PaginaHistorial from "./index";
 
 function json(cuerpo: unknown, estado = 200): Response {
@@ -160,7 +161,7 @@ describe("Historial de auditorías", () => {
   test("un error de la API se muestra con su detalle", async () => {
     lista = () => json({ detalle: "La base de la instalación no está disponible." }, 503);
     dibujar();
-    const alerta = await screen.findByRole("alert");
+    const alerta = await alertaConTexto();
     expect(alerta).toHaveTextContent("No se pudo leer el historial");
     expect(alerta).toHaveTextContent("La base de la instalación no está disponible.");
   });
@@ -168,13 +169,13 @@ describe("Historial de auditorías", () => {
   test("sin permiso lo dice con el detalle de la API", async () => {
     lista = () => json({ detalle: "Su cuenta no tiene permiso para esta acción." }, 403);
     dibujar();
-    expect(await screen.findByRole("alert")).toHaveTextContent("Su cuenta no tiene permiso para esta acción.");
+    expect(await alertaConTexto()).toHaveTextContent("Su cuenta no tiene permiso para esta acción.");
   });
 
   test("un 401 avisa de que la sesión venció", async () => {
     lista = () => json({ detalle: "Sesión ausente o vencida: entre de nuevo con su cuenta." }, 401);
     const alExpirar = dibujar();
-    await screen.findByRole("alert");
+    await alertaConTexto();
     expect(alExpirar).toHaveBeenCalled();
   });
 
@@ -228,7 +229,7 @@ describe("Historial de auditorías", () => {
     dibujar();
     await screen.findByText("presupuesto-a.xlsx");
     await u.click(screen.getByRole("button", { name: "Ver el detalle de presupuesto-a.xlsx" }));
-    const alerta = await screen.findByRole("alert");
+    const alerta = await alertaConTexto();
     expect(alerta).toHaveTextContent("No hay una auditoría guardada con el número 1.");
     await u.click(screen.getByRole("button", { name: "Cerrar el detalle" }));
     await waitFor(() =>

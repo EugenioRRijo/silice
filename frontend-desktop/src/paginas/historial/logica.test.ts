@@ -60,6 +60,10 @@ describe("filtrar", () => {
   test("una fecha mal escrita no filtra (la pagina avisa aparte)", () => {
     expect(ids({ desde: "19/10/2026" })).toEqual([5, 4, 3, 2, 1]);
   });
+  test("un rango invertido no filtra por fecha (la pagina avisa aparte), pero si por lo demas", () => {
+    expect(ids({ desde: "2026-10-20", hasta: "2026-10-18" })).toEqual([5, 4, 3, 2, 1]);
+    expect(ids({ desde: "2026-10-20", hasta: "2026-10-18", tipo: "pdf" })).toEqual([4, 2]);
+  });
   test("tipo", () => {
     expect(ids({ tipo: "pdf" })).toEqual([4, 2]);
     expect(ids({ tipo: "libro" })).toEqual([5, 3, 1]);
