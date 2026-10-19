@@ -462,3 +462,60 @@ def test_un_login_real_cuenta_y_bloquea_igual_y_lo_no_valido_no_bloquea_a_nadie(
         assert _entrar(sesion, otra.login, CONTRASENA, freno).login == "luis"
         # y cada fallo, también el del marcador, alimenta el freno global
         assert len(freno._fallos) >= 2 * cuentas.FALLOS_PARA_BLOQUEAR - 1
+
+
+def _dos_administradores(tmp_path: Path):
+    from seguridad.base import crear_motor
+
+    with instalacion(tmp_path) as sesion:
+        a = administrador(sesion, tmp_path, "admina")
+        b = persona(sesion, a, "adminb", ("administrador",))
+        ids = (a.id, b.id)
+    return crear_motor(tmp_path / "instalacion.db"), ids
+
+
+@pytest.mark.parametrize("operacion", ["desactivar", "quitar el rol"])
+def test_una_base_ocupada_da_un_mensaje_y_no_una_traza(tmp_path: Path, operacion: str) -> None:
+    """Si otra conexión retiene el bloqueo de escritura y vence la espera, es un `ValueError`
+    con mensaje (422 en la API), no un `OperationalError` (500)."""
+    from sqlalchemy import text
+
+    from seguridad.base import abrir_sesion
+
+    motor, (id_a, id_b) = _dos_administradores(tmp_path)
+    retenedora = motor.raw_connection()
+    retenedora.isolation_level = None
+    retenedora.execute("BEGIN IMMEDIATE")  # retiene el bloqueo de escritura
+    try:
+        with abrir_sesion(motor) as bd:
+            actor = bd.get(Usuario, id_a)
+            bd.execute(text("PRAGMA busy_timeout=100"))
+            with pytest.raises(ValueError, match="La base está ocupada; reintente"):
+                if operacion == "desactivar":
+                    cuentas.desactivar(bd, actor, id_b, AHORA)
+                else:
+                    cuentas.cambiar_roles(bd, actor, id_b, ["arma"], AHORA)
+    finally:
+        retenedora.execute("ROLLBACK")
+        retenedora.close()
+        motor.dispose()
+
+
+@pytest.mark.parametrize("operacion", ["desactivar", "quitar el rol"])
+def test_un_administrador_desactivado_en_vuelo_no_completa_otra_accion(
+    tmp_path: Path, operacion: str
+) -> None:
+    """El actor cargado antes puede haber sido desactivado por otro: tras tomar el bloqueo se
+    relee y la acción se rechaza."""
+    from seguridad.base import abrir_sesion
+
+    motor, (id_a, id_b) = _dos_administradores(tmp_path)
+    with abrir_sesion(motor) as bd_a, abrir_sesion(motor) as bd_b:
+        actor = bd_a.get(Usuario, id_a)  # cargado y en caché con activo=True
+        cuentas.desactivar(bd_b, bd_b.get(Usuario, id_b), id_a, AHORA)  # b desactiva a a
+        with pytest.raises(PermisoDenegado, match="desactivada"):
+            if operacion == "desactivar":
+                cuentas.desactivar(bd_a, actor, id_b, AHORA)
+            else:
+                cuentas.cambiar_roles(bd_a, actor, id_b, ["arma"], AHORA)
+    motor.dispose()
