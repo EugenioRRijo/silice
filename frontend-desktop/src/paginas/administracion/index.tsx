@@ -13,11 +13,19 @@ function EnLaClasica({ titulo }: { titulo: string }) {
   const pagina = paginaPorId("administracion");
   const enlace = pagina ? enlaceClasico(sesion.url_clasica, pagina) : null;
   return (
-    <EstadoVacio titulo="En la interfaz clásica" descripcion={`«${titulo}» todavía se administra en la interfaz clásica.`}>
-      {enlace && (
+    <EstadoVacio
+      titulo="En la interfaz clásica"
+      descripcion={`«${titulo}» todavía se administra en la interfaz clásica de Sílice.`}
+    >
+      {enlace ? (
         <a href={enlace} target="_blank" rel="noopener noreferrer" className="cds--type-body-compact-01">
-          Abrir la interfaz clásica
+          Abrir «{titulo}» en la interfaz clásica (se abre en otra pestaña)
         </a>
+      ) : (
+        <p className="silice-adm__nota cds--type-body-compact-01">
+          No se conoce la dirección de la interfaz clásica desde aquí: ábrala como lo hace siempre y entre en
+          Administración, pestaña «{titulo}».
+        </p>
       )}
     </EstadoVacio>
   );
