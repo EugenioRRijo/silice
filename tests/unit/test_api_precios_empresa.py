@@ -508,3 +508,20 @@ def test_un_nombre_reservado_de_windows_se_salva_y_no_es_500(_entorno) -> None:
     r = _crear(navegador, cabeceras, base, archivo=_archivo(nombre="a:b.csv"))
     assert r.status_code == 422, r.text
     assert r.json() == {"detalle": "No se creo la lista: el archivo debe ser CSV o XLSX."}
+
+
+@pytest.mark.parametrize(
+    ("campo", "tope"), [("nombre", 200), ("empresa", 200), ("rif", 200), ("fuente", 500)]
+)
+def test_los_campos_de_texto_de_la_lista_tienen_tope(_entorno, campo: str, tope: int) -> None:
+    """BAJO-4: un texto largo no llega al nucleo; el 422 no repite lo enviado."""
+    navegador, cabeceras = _admin()
+    _cargar_referencia(navegador, cabeceras)
+    base = _id_de_la_referencia(navegador)
+    antes = _cuantas_listas(_entorno)
+    r = _crear(navegador, cabeceras, base, **{campo: "Z" * (tope + 1)})
+    assert r.status_code == 422, r.text
+    assert r.json() == {"detalle": MENSAJE_INVALIDO}
+    assert _cuantas_listas(_entorno) == antes
+    r = _crear(navegador, cabeceras, base, **{campo: "Z" * tope})
+    assert r.status_code == 201, r.text

@@ -151,11 +151,11 @@ def crear_lista(
     sesion: SesionDep,
     base_id: Annotated[int, Form()],
     fecha: Annotated[date, Form()],
-    empresa: Annotated[str, Form()] = "",
-    rif: Annotated[str, Form()] = "",
-    fuente: Annotated[str, Form()] = "",
-    moneda: Annotated[str, Form()] = "",
-    nombre: Annotated[str, Form()] = "",
+    empresa: Annotated[str, Form(max_length=200)] = "",
+    rif: Annotated[str, Form(max_length=200)] = "",
+    fuente: Annotated[str, Form(max_length=500)] = "",
+    moneda: Annotated[str, Form(max_length=20)] = "",
+    nombre: Annotated[str, Form(max_length=200)] = "",
     archivo: Annotated[UploadFile | None, File()] = None,
 ) -> ListaCreadaRespuesta:
     """UC-17 4: crea la lista de la empresa sobre una lista base con los precios del archivo.
