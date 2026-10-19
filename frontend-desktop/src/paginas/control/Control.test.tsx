@@ -6,7 +6,7 @@ import type { SesionRespuesta } from "../../api/tipos";
 import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
 import PaginaControl from "./index";
-import { consultaDeCalculo, errorDeCarga, cuerpoDeOpciones, FILTROS_INICIALES, sinLineasVacias } from "./logica";
+import { consultaDeCalculo, errorDeCarga, etiquetaDeCodigo, textoLlano, cuerpoDeOpciones, FILTROS_INICIALES, sinLineasVacias } from "./logica";
 import type { Calculo, LineaBase, OpcionDeRecuperacion, Valuaciones } from "./logica";
 
 vi.mock("../../comun/GraficoCarbon", () => ({
@@ -143,6 +143,43 @@ describe("Control de obra", () => {
     expect(errorDeCarga({ estado: "cargando" })).toBeNull();
   });
 
+  test("cada codigo interno tiene su etiqueta en español y los desconocidos se muestran tal cual (V-22)", () => {
+    const esperadas: Record<string, string> = {
+      spi_error: "Umbral de SPI para error",
+      cpi_error: "Umbral de CPI para error",
+      retraso_error: "Retraso del término para error",
+      precio_info: "Desvío de precio que avisa",
+      equilibrio_puntos: "Subida del punto de equilibrio que advierte",
+      eta_cuadrilla: "Eficiencia de la cuadrilla adicional",
+      cuadrillas_max: "Cuadrillas máximas por frente",
+      eta_horas_extra: "Eficiencia de la hora extra",
+      horas_extra_dia: "Horas extra por día",
+      recargo_horas_extra: "Recargo de las horas extra",
+      fcas_en_horas_extra: "FCAS sobre las horas extra",
+      penalizacion_diaria: "Penalización diaria por retraso",
+      fuente_penalizacion: "Fuente de la penalización",
+      SUPUESTO_DECLARADO: "Supuesto declarado",
+      DATO_DEL_CONTRATO: "Dato del contrato",
+      "AL-1": "Retraso (SPI)",
+      "AL-2": "Sobrecosto (CPI)",
+      "AL-3": "Retraso del término",
+      "AL-4": "Punto de equilibrio",
+      "AL-5": "Desvío de precio",
+      "AL-6": "Partida detenida",
+    };
+    for (const [codigo, etiqueta] of Object.entries(esperadas)) expect(etiquetaDeCodigo(codigo)).toBe(etiqueta);
+    expect(etiquetaDeCodigo("CODIGO_NUEVO")).toBe("CODIGO_NUEVO");
+  });
+
+  test("textoLlano traduce los codigos metidos en un texto y quita los parentesis tecnicos (V-22)", () => {
+    expect(textoLlano("SPI por debajo del cual el retraso es ERROR (AL-1)")).toBe("SPI por debajo del cual el retraso es ERROR");
+    expect(textoLlano("Eficiencia de cada cuadrilla adicional (eta)")).toBe("Eficiencia de cada cuadrilla adicional");
+    expect(textoLlano("Eficiencia de la hora extra (eta_he)")).toBe("Eficiencia de la hora extra");
+    expect(textoLlano("0.8500 (SUPUESTO_DECLARADO)")).toBe("0.8500 (supuesto declarado)");
+    expect(textoLlano("0.5 (DATO_DEL_CONTRATO)")).toBe("0.5 (dato del contrato)");
+    expect(textoLlano("texto sin codigos")).toBe("texto sin codigos");
+  });
+
   test("sin proyecto invita a elegirlo y no pide nada", () => {
     montar(null);
     expect(screen.getByText("Elija un proyecto")).toBeInTheDocument();
@@ -153,8 +190,12 @@ describe("Control de obra", () => {
     montar();
     expect(await screen.findByText(/perspectiva costo, vigente desde 2026-11-02/)).toBeInTheDocument();
     const tabla = screen.getByRole("table", { name: "Parametros de control" });
-    expect(within(tabla).getByText("SUPUESTO_DECLARADO")).toBeInTheDocument();
-    expect(within(tabla).getByText("DATO_DEL_CONTRATO")).toBeInTheDocument();
+    // V-22: la naturaleza y el parametro se leen en español; el codigo queda en el title
+    expect(within(tabla).getAllByText("Supuesto declarado")[0]).toHaveAttribute("title", "SUPUESTO_DECLARADO");
+    expect(within(tabla).getByText("Dato del contrato")).toHaveAttribute("title", "DATO_DEL_CONTRATO");
+    expect(within(tabla).getByText("Umbral de SPI para error")).toHaveAttribute("title", "spi_error");
+    expect(within(tabla).queryByText("spi_error")).toBeNull();
+    expect(within(tabla).queryByText(/AL-1/)).toBeNull();
     expect(String(fetchFalso.mock.calls[0]![0])).toContain("proyecto=OB-S2");
   });
 
@@ -230,7 +271,10 @@ describe("Control de obra", () => {
   test("alertas y reproyeccion: terminos, estudios y plan", async () => {
     const u = montar();
     await u.click(await screen.findByRole("tab", { name: "Alertas y reproyección" }));
-    expect(await screen.findByRole("table", { name: "Alertas" })).toBeInTheDocument();
+    const alertas = await screen.findByRole("table", { name: "Alertas" });
+    expect(within(alertas).getByText("Retraso (SPI)")).toHaveAttribute("title", "AL-1");
+    expect(within(alertas).queryByText("AL-1")).toBeNull();
+    expect(within(alertas).getByText("0.8500 (supuesto declarado)")).toBeInTheDocument();
     expect(screen.getByText("Termino por el indice: dia 12 (2026-11-18)")).toBeInTheDocument();
     expect(screen.getByText(/Punto de equilibrio proyectado: no disponible/)).toBeInTheDocument();
     expect(screen.getByText(/V' = V/)).toBeInTheDocument();

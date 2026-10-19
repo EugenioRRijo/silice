@@ -5,7 +5,7 @@ import { AvisoError } from "../../comun/AvisoError";
 import { EsqueletoPagina } from "../../comun/EsqueletoPagina";
 import { TablaDensa } from "../../comun/TablaDensa";
 import { useAplicacion } from "../../shell/contexto";
-import { errorDeCarga, rutaDe, useAccion, useCargaSuave } from "./logica";
+import { errorDeCarga, etiquetaDeCodigo, rutaDe, textoLlano, useAccion, useCargaSuave } from "./logica";
 import type { LineaBase } from "./logica";
 
 interface Props {
@@ -102,16 +102,16 @@ function Parametros({ proyecto, datos, alCambiar }: { proyecto: string; datos: L
         Parametros de control
       </h2>
       <p className="silice-control__nota cds--type-body-compact-01">
-        Umbrales de las alertas y supuestos de las opciones. Son SUPUESTO_DECLARADO, sin fuente normativa, salvo la
+        Umbrales de las alertas y supuestos de las opciones. Son supuestos declarados, sin fuente normativa, salvo la
         penalizacion (dato del contrato). Cambiarlos deja su registro.
       </p>
       <TablaDensa
         etiqueta="Parametros de control"
         columnas={[
-          { clave: "parametro", titulo: "Parametro", ordenable: false },
-          { clave: "que_es", titulo: "Que es", ordenable: false },
+          { clave: "parametro", titulo: "Parametro", ordenable: false, presentar: etiquetaDeCodigo },
+          { clave: "que_es", titulo: "Que es", ordenable: false, presentar: textoLlano },
           { clave: "valor", titulo: "Valor", ordenable: false },
-          { clave: "naturaleza", titulo: "Naturaleza", ordenable: false },
+          { clave: "naturaleza", titulo: "Naturaleza", ordenable: false, presentar: etiquetaDeCodigo },
         ]}
         filas={datos.parametros.map((p) => ({
           id: p.parametro,
@@ -136,14 +136,14 @@ function Parametros({ proyecto, datos, alCambiar }: { proyecto: string; datos: L
         >
           <SelectItem value="" text="Elija uno" />
           {datos.parametros.map((p) => (
-            <SelectItem key={p.parametro} value={p.parametro} text={p.parametro} />
+            <SelectItem key={p.parametro} value={p.parametro} text={etiquetaDeCodigo(p.parametro)} />
           ))}
         </Select>
         {Object.entries(editados).map(([nombre, valor]) => (
           <TextInput
             key={nombre}
             id={`par-${nombre}`}
-            labelText={`Nuevo valor de ${nombre}`}
+            labelText={`Nuevo valor de ${etiquetaDeCodigo(nombre)}`}
             value={valor}
             onChange={(e) => setEditados({ ...editados, [nombre]: e.target.value })}
           />

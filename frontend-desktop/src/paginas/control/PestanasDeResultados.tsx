@@ -16,6 +16,8 @@ import {
   columnasDe,
   conId,
   cuerpoDeOpciones,
+  etiquetaDeCodigo,
+  textoLlano,
   useAccion,
 } from "./logica";
 import type { Calculo, Filtros, MetodoDePrecios, OpcionDeRecuperacion } from "./logica";
@@ -137,7 +139,7 @@ export function AlertasYReproyeccion({ calculo }: { calculo: Calculo }) {
         <h2 id="control-alertas" className="cds--type-heading-compact-02">
           Alertas
         </h2>
-        <TablaDensa etiqueta="Alertas" columnas={columnasDe(COLUMNAS_ALERTAS, ["Observado", "Umbral"])} filas={conId(calculo.alertas)} />
+        <TablaDensa etiqueta="Alertas" columnas={columnasDe(COLUMNAS_ALERTAS, ["Observado", "Umbral"], { Alerta: etiquetaDeCodigo, Umbral: textoLlano })} filas={conId(calculo.alertas)} />
       </section>
       <section className="silice-control__bloque" aria-labelledby="control-terminos">
         <h2 id="control-terminos" className="cds--type-heading-compact-02">

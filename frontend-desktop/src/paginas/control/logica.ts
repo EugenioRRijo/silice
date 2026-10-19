@@ -17,6 +17,44 @@ export function errorDeCarga(carga: Carga<unknown>): unknown {
   return carga.estado === "sin_permiso" ? "Su cuenta no tiene permiso para ver esto." : "No se encontró lo pedido.";
 }
 
+// V-22: los identificadores internos que la API manda tal cual, en español llano. El codigo original se conserva en el
+// `title` de la celda (trazabilidad) y un codigo que no esta aqui se muestra tal cual.
+const ETIQUETAS_DE_CODIGO: Record<string, string> = {
+  spi_error: "Umbral de SPI para error",
+  cpi_error: "Umbral de CPI para error",
+  retraso_error: "Retraso del término para error",
+  precio_info: "Desvío de precio que avisa",
+  equilibrio_puntos: "Subida del punto de equilibrio que advierte",
+  eta_cuadrilla: "Eficiencia de la cuadrilla adicional",
+  cuadrillas_max: "Cuadrillas máximas por frente",
+  eta_horas_extra: "Eficiencia de la hora extra",
+  horas_extra_dia: "Horas extra por día",
+  recargo_horas_extra: "Recargo de las horas extra",
+  fcas_en_horas_extra: "FCAS sobre las horas extra",
+  penalizacion_diaria: "Penalización diaria por retraso",
+  fuente_penalizacion: "Fuente de la penalización",
+  SUPUESTO_DECLARADO: "Supuesto declarado",
+  DATO_DEL_CONTRATO: "Dato del contrato",
+  "AL-1": "Retraso (SPI)",
+  "AL-2": "Sobrecosto (CPI)",
+  "AL-3": "Retraso del término",
+  "AL-4": "Punto de equilibrio",
+  "AL-5": "Desvío de precio",
+  "AL-6": "Partida detenida",
+};
+
+export function etiquetaDeCodigo(codigo: string): string {
+  return ETIQUETAS_DE_CODIGO[codigo] ?? codigo;
+}
+
+// Un texto con codigos adentro («0.8500 (SUPUESTO_DECLARADO)», «... es ERROR (AL-1)»): los de naturaleza se leen en
+// minuscula y los parentesis tecnicos (AL-n, eta, eta_he) se quitan, porque el texto ya dice de que se trata.
+export function textoLlano(texto: string): string {
+  return texto
+    .replace(/\s*\((?:AL-[0-9]+|eta|eta_he)\)/g, "")
+    .replace(/(SUPUESTO_DECLARADO|DATO_DEL_CONTRATO)/g, (c) => (ETIQUETAS_DE_CODIGO[c] ?? c).toLowerCase());
+}
+
 export interface ParametroDeControl {
   parametro: string;
   que_es: string;
@@ -120,8 +158,18 @@ export const COLUMNAS_OPCIONES = [
 ];
 
 // Las columnas de una tabla de la API: la clave es el titulo, que es tambien la clave de cada fila.
-export function columnasDe(titulos: string[], numericas: string[] = []) {
-  return titulos.map((t) => ({ clave: t, titulo: t, numerica: numericas.includes(t), ordenable: false }));
+export function columnasDe(
+  titulos: string[],
+  numericas: string[] = [],
+  presentar: Record<string, (valor: string) => string> = {},
+) {
+  return titulos.map((t) => ({
+    clave: t,
+    titulo: t,
+    numerica: numericas.includes(t),
+    ordenable: false,
+    presentar: presentar[t],
+  }));
 }
 
 // Las filas con el `id` que pide la tabla (el lugar que ocupan).
