@@ -4,7 +4,8 @@
 Oráculos, ninguno sale del código bajo prueba:
 
 - Libro limpio: fecha de la PORTADA «Julio 2026» = 2026-07-31 (fin de mes), total general
-  5055.52157 en el libro y en Sílice (memoria de cálculo a mano de `tests/fixtures/libros_empresa.py`),
+  5055.52157 en el libro y en Sílice (memoria de cálculo a mano de
+  `tests/fixtures/libros_empresa.py`),
   sin errores ni advertencias y dos hallazgos informativos (R2 y R7).
 - El usuario: la cuenta de la sesión web (`Nombre <login>`, RF-82) o, con la clave de API,
   `api (clave de API)` (RT-S4-4, igual que `/v1/produccion`).
@@ -25,6 +26,7 @@ import logging
 import shutil
 import sqlite3
 from contextlib import closing
+from decimal import Decimal
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -151,7 +153,7 @@ def test_auditar_un_libro_deja_una_fila_con_su_resumen(cliente, historial, limpi
     assert d["usuario"] == "api (clave de API)"
     assert d["sha256"] == hashlib.sha256(limpio.datos).hexdigest()
     assert d["fecha_libro"] == "2026-07-31"
-    assert (d["total_libro"], d["total_silice"]) == ("5055.52157", "5055.52157")
+    assert (Decimal(d["total_libro"]), Decimal(d["total_silice"])) == (Decimal("5055.52157"),) * 2
     assert d["informativos"] == 2 and d["atipicos"] == 0 and d["recortado"] is False
     assert sorted(h["regla"] for h in d["hallazgos"]) == ["R2", "R7"]
 
@@ -256,25 +258,21 @@ def test_el_libro_no_se_guarda_solo_su_nombre_y_huella(cliente, limpio) -> None:
 def test_si_guardar_falla_el_libro_se_audita_igual_con_aviso(
     cliente, historial, limpio, monkeypatch, caplog
 ) -> None:
-    esperado = _auditar(cliente, limpio.datos).json()
+    esperado = _auditar(cliente, limpio.datos, nombre="secreto-ficticio.xlsx").json()
     monkeypatch.setattr("api.rutas.libros.registrar_resultado", _guardado_roto)
     caplog.set_level(logging.ERROR)
     r = _auditar(cliente, limpio.datos, nombre="secreto-ficticio.xlsx")
     assert r.status_code == 200, r.text
     cuerpo = r.json()
     assert cuerpo["aviso_historial"] == AVISO
-    assert {k: v for k, v in cuerpo.items() if k != "libro"} == {
-        k: v for k, v in esperado.items() if k != "libro"
-    } | {"aviso_historial": AVISO}
+    assert cuerpo == esperado | {"aviso_historial": AVISO}
     assert len(_filas_guardadas(historial)) == 1  # solo la primera, la sana
     registro = "\n".join(m.getMessage() for m in caplog.records if m.levelno >= logging.ERROR)
     assert "OperationalError" in registro  # el fallo queda en el registro del servidor
     assert "secreto-ficticio" not in registro and "disco lleno" not in registro
 
 
-def test_si_guardar_falla_el_pdf_se_revisa_igual_con_aviso(
-    cliente, historial, monkeypatch
-) -> None:
+def test_si_guardar_falla_el_pdf_se_revisa_igual_con_aviso(cliente, historial, monkeypatch) -> None:
     _doble_de_pdf(monkeypatch)
     monkeypatch.setattr("api.rutas.libros.registrar_resultado_pdf", _guardado_roto)
     r = _pdf(cliente)

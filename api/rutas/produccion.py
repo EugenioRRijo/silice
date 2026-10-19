@@ -51,6 +51,7 @@ from adapters.hoja_empresa.guardia import ArchivoRechazado, verificar_archivo
 from api.dependencias import USUARIO_API, SesionInstalacionDep
 from api.proteccion import LIMITE_CUERPO
 from api.sesion_web import exigir_clave_o_sesion
+from api.sin_cache import RutaSinCache
 from produccion.conectores.bascula import ReporteRechazado, leer
 from produccion.conectores.detector_columnas import MapeoNecesario
 from produccion.importacion import descartar, importar, pendientes, resolver
@@ -72,7 +73,10 @@ from seguridad.sesiones import SesionActiva
 OPERAR_ARENERA = exigir_clave_o_sesion(Accion.OPERAR_ARENERA)
 
 router = APIRouter(
-    prefix="/v1/produccion", tags=["produccion"], dependencies=[Depends(OPERAR_ARENERA)]
+    prefix="/v1/produccion",
+    tags=["produccion"],
+    dependencies=[Depends(OPERAR_ARENERA)],
+    route_class=RutaSinCache,  # existencias y pesajes no se guardan en el navegador
 )
 
 LOG = logging.getLogger(__name__)

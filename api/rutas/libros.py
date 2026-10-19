@@ -22,8 +22,18 @@ a Sílice (RS2-7, RF-116; `indicadores_de`); `POST /v1/libros/devolucion`, el li
 Excel) y responde en JSON los hallazgos L10 del PDF cotejado consigo mismo. `POST
 /v1/libros/replica` recibe solo `libro` y responde su réplica visual (`LibroVisualRespuesta`,
 espejo del contrato neutro `adapters.hoja_empresa.visual.LibroVisual`, RS2-1). Todo ocurre **en
-memoria** (F-D9): ningún archivo toca el disco y nada se guarda en la base. Los montos viajan como
-texto.
+memoria** (F-D9): ningún archivo toca el disco y nada del libro ni del PDF se guarda en la base del
+caso. Los montos viajan como texto.
+
+**Historial (RM-6; UC-30, RF-142 a RF-144, RNF-28).** `POST /v1/libros/auditoria` y `POST
+/v1/libros/pdf` dejan, después de calcular el informe y antes de responder, una fila en el historial
+de `instalacion.db` (`fusion.historial`): el resumen y los hallazgos compactos, nunca el archivo,
+solo su nombre sin ruta y su huella. El usuario es la cuenta de la sesión web o `USUARIO_API` con
+la clave. Guardar corre en su propia transacción (todo o nada) y **no tumba la auditoría**: si
+falla por lo que sea, se deshace, el fallo queda en el registro del servidor (solo el tipo de
+error, nunca el nombre ni el contenido del archivo) y la respuesta es 200 con el informe y
+`aviso_historial` con el texto para el usuario (`null` si se guardó). `devolucion` y `replica` no
+registran nada.
 
 Errores: extensión equivocada 415; un cuerpo de más de 20 MiB 413 (el tope real lo pone
 `api.proteccion` al cuerpo entero de la petición, sin leerlo; cada archivo se lee además por
@@ -48,23 +58,26 @@ from __future__ import annotations
 import logging
 import re
 import unicodedata
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime
 from decimal import ROUND_HALF_EVEN, Decimal, InvalidOperation
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.responses import Response
 from pydantic import BaseModel
+from sqlalchemy.orm import Session
 from starlette.concurrency import run_in_threadpool
 
 from adapters.hoja_empresa.guardia import MAX_BYTES, ArchivoRechazado
 from adapters.hoja_empresa.modelo import LibroNoInterpretable
 from adapters.hoja_empresa.visual import LibroVisual, replicar_libro
-from api.dependencias import SesionDep
+from api.dependencias import USUARIO_API, SesionDep
 from api.proteccion import LIMITE_CUERPO
+from api.sesion_web import exigir_clave_o_sesion
 from fusion.alertas import ContextoPrecios
+from fusion.historial import registrar_resultado, registrar_resultado_pdf
 from fusion.proceso import (
     ResultadoFusion,
     auditar_pdf_simple,
@@ -72,6 +85,9 @@ from fusion.proceso import (
     procesar_libro,
     servicios_desde_sesion,
 )
+from operacion.instalacion import sesion_de_instalacion
+from seguridad.permisos import Accion
+from seguridad.sesiones import SesionActiva
 
 router = APIRouter(prefix="/v1/libros", tags=["libros"])
 
@@ -87,6 +103,8 @@ UMBRAL_POR_OMISION = Decimal("0.05")
 ERRORES_DEL_USUARIO = (ArchivoRechazado, LibroNoInterpretable)  # su mensaje es para el usuario
 MENSAJE_LIBRO = "El libro no se pudo interpretar."
 MENSAJE_PDF = "El PDF no se pudo interpretar."
+#: El aviso cuando la auditoría salió bien pero no pudo quedar en el historial (RF-144).
+AVISO_HISTORIAL = "No se pudo guardar la auditoría en el historial."
 #: Indicadores de la franja (RS2-7): clave del total -> título, en el orden en que se muestran.
 INDICADORES = {"SUBSINIVA": "Subtotal sin IVA", "IVATOT": "IVA", "TOTALGEN": "Total general"}
 CENTESIMA = Decimal("0.01")
@@ -147,6 +165,9 @@ class IndicadorRespuesta(BaseModel):
 
 
 class LibroAuditadoRespuesta(BaseModel):
+    """`aviso_historial` es `null` si la auditoría quedó en el historial; si no, el texto que la
+    pantalla muestra (la auditoría es válida igual, RF-144)."""
+
     libro: LibroOrigenRespuesta
     fecha_libro: str | None
     fecha_devolucion: str | None
@@ -159,6 +180,7 @@ class LibroAuditadoRespuesta(BaseModel):
     alertas: list[AlertaPrecioRespuesta]
     trazabilidad: list[TrazaRespuesta]
     metadatos: dict[str, str]
+    aviso_historial: str | None = None
 
 
 class PdfOrigenRespuesta(BaseModel):
@@ -178,6 +200,7 @@ class PdfSimpleRespuesta(BaseModel):
     total_impreso: str | None
     notas: list[str]
     hallazgos: list[HallazgoLibroRespuesta]
+    aviso_historial: str | None = None
 
 
 class EstiloVisualRespuesta(BaseModel):
@@ -408,6 +431,45 @@ async def _procesar(entrada: _Entrada, contexto: ContextoPrecios) -> ResultadoFu
         raise _rechazo(error, MENSAJE_LIBRO, "POST /v1/libros") from None
 
 
+# --- Historial (RM-6) ----------------------------------------------------------------------------
+
+#: Misma puerta que el router en `api.main` (clave de API o sesión que arma o revisa). Es otra
+#: instancia: se vuelve a evaluar, sin efectos, para saber QUIÉN audita.
+_ACCESO = exigir_clave_o_sesion(Accion.LEER_PROYECTO)
+
+
+def _usuario(activa: Annotated[SesionActiva | None, Depends(_ACCESO)]) -> str:
+    """Quién audita: la cuenta de la sesión web, o `USUARIO_API` si entró con clave."""
+    return USUARIO_API if activa is None else activa.usuario
+
+
+UsuarioDep = Annotated[str, Depends(_usuario)]
+
+
+def _ahora() -> datetime:
+    """La hora en que queda la fila del historial. Solo la usa el historial: el informe nunca
+    depende del reloj (misma petición, misma respuesta)."""
+    return datetime.now().replace(microsecond=0)
+
+
+def _guardar(registrar: Callable[[Session], object]) -> str | None:
+    """Registra en el historial con su propia transacción y devuelve `None`, o el aviso si falló.
+
+    Todo o nada: se confirma al final y cualquier excepción deshace la fila. No relanza: la
+    auditoría ya está calculada y perderla por no poder anotarla sería peor (RF-144). Se atrapa
+    `Exception` a propósito (la base de la instalación bloqueada, llena, sin abrir, o un dato que
+    el servicio rechaza) y el registro lleva solo el tipo del error: el texto de un error de SQL
+    trae los parámetros, es decir, nombres y hallazgos del archivo (RNF-28)."""
+    try:
+        with sesion_de_instalacion() as sesion:
+            registrar(sesion)
+            sesion.commit()
+    except Exception as error:  # noqa: BLE001 - frontera: guardar el historial nunca tumba el informe
+        LOG.error("No se pudo guardar el historial de auditorías (%s)", type(error).__name__)
+        return AVISO_HISTORIAL
+    return None
+
+
 # --- Serialización -------------------------------------------------------------------------------
 
 
@@ -550,11 +612,18 @@ def _nombre_de_descarga(original: str) -> str:
 
 
 @router.post("/auditoria", response_model=LibroAuditadoRespuesta)
-async def auditar_libro(entrada: EntradaDep, contexto: ContextoDep) -> LibroAuditadoRespuesta:
-    """Audita el libro y responde el informe (hallazgos, alertas y trazabilidad). No guarda
-    nada."""
+async def auditar_libro(
+    entrada: EntradaDep, contexto: ContextoDep, usuario: UsuarioDep
+) -> LibroAuditadoRespuesta:
+    """Audita el libro y responde el informe (hallazgos, alertas y trazabilidad). El libro no se
+    guarda; el resumen y los hallazgos compactos quedan en el historial (RM-6)."""
     r = await _procesar(entrada, contexto)
+    ahora = _ahora()
+    aviso = await run_in_threadpool(
+        _guardar, lambda s: registrar_resultado(s, r, usuario=usuario, ahora=ahora)
+    )
     return LibroAuditadoRespuesta(
+        aviso_historial=aviso,
         libro=LibroOrigenRespuesta(nombre=r.libro.nombre, sha256=r.libro.sha256),
         fecha_libro=_iso(r.fecha_libro),
         fecha_devolucion=_iso(r.fecha_devolucion),
@@ -629,10 +698,11 @@ async def revisar_pdf(
         UploadFile,
         File(description="Presupuesto en PDF simple, sin Excel (formato 001/002)"),
     ],
+    usuario: UsuarioDep,
 ) -> PdfSimpleRespuesta:
     """Revisa solo un PDF simple (el presupuesto impreso, sin el libro de Excel): coteja el PDF
-    consigo mismo (L10) y responde sus hallazgos. Sin libro no hay recálculo ni devolución. No
-    guarda nada."""
+    consigo mismo (L10) y responde sus hallazgos. Sin libro no hay recálculo ni devolución. El PDF
+    no se guarda; el resumen y los hallazgos compactos quedan en el historial (RM-6)."""
     nombre = _nombre(pdf)
     _exigir_extension(nombre, ".pdf", "pdf")
     datos = await _leer(pdf, "pdf")
@@ -640,11 +710,19 @@ async def revisar_pdf(
         r = await run_in_threadpool(auditar_pdf_simple, datos, nombre)
     except Exception as error:  # noqa: BLE001 - frontera: nunca un 500 ni una traza al cliente
         raise _rechazo(error, MENSAJE_PDF, "POST /v1/libros/pdf") from None
+    ahora = _ahora()
+    aviso = await run_in_threadpool(
+        _guardar,
+        lambda s: registrar_resultado_pdf(
+            s, r, usuario=usuario, nombre_archivo=nombre, ahora=ahora
+        ),
+    )
     leido = r.pdf
     por_severidad: dict[str, int] = {}
     for h in r.hallazgos_tabla:
         por_severidad[h.severidad] = por_severidad.get(h.severidad, 0) + 1
     return PdfSimpleRespuesta(
+        aviso_historial=aviso,
         pdf=PdfOrigenRespuesta(
             nombre=nombre, sha256=r.sha256, numero=leido.numero, fecha=leido.fecha
         ),

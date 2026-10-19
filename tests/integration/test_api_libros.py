@@ -24,8 +24,9 @@ Oráculos, ninguno sale de la función bajo prueba:
 - Los mensajes de error de la guardia y del lector son los literales que el spec manda mostrar
   tal cual (F-D10).
 
-Nada se escribe en disco ni en la base (F-D9): se cuentan las filas de todas las tablas antes y
-después, y se vigila toda apertura de archivo para escribir durante las peticiones.
+Nada se escribe en disco ni en la base del caso (F-D9): se cuentan las filas de todas las tablas
+antes y después, y se vigila toda apertura de archivo para escribir durante las peticiones. El
+historial (RM-6) vive en `instalacion.db` y lo cubre `test_api_libros_historial.py`.
 """
 
 from __future__ import annotations

@@ -12,6 +12,7 @@ escribe es `POST /v1/libros/auditoria` y `/pdf`, no esta ruta.
 
 Los montos viajan como texto decimal exacto. El acceso (clave de API, o cuenta que arma o revisa)
 lo exige `api.main` con `exigir_clave_o_sesion(Accion.LEER_PROYECTO)`. Errores: `{"detalle": ...}`.
+Toda respuesta, también las de error, lleva `Cache-Control: no-store` (`api.sin_cache`).
 """
 
 from __future__ import annotations
@@ -24,6 +25,7 @@ from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 
 from api.dependencias import SesionInstalacionDep
+from api.sin_cache import RutaSinCache
 from fusion.historial import (
     AuditoriaGuardada,
     AuditoriaInexistente,
@@ -32,7 +34,9 @@ from fusion.historial import (
     listar,
 )
 
-router = APIRouter(prefix="/v1/auditorias-libro", tags=["auditorias-libro"])
+router = APIRouter(
+    prefix="/v1/auditorias-libro", tags=["auditorias-libro"], route_class=RutaSinCache
+)
 
 LIMITE_POR_OMISION = 20
 LIMITE_MAXIMO = 100
