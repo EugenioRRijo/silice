@@ -48,3 +48,40 @@
 Armar un caso ficticio con un presupuesto guardado y un proyecto (con `scripts/` de datos de prueba de la 1.0.0, no con
 libros reales) y repetir las capturas de Tablero, Control, Elaborar, Entregar y Libro con informe; después revisar
 V-1, V-2, V-3 y V-5, que son lo único que un usuario nota sin buscar.
+
+---
+
+# Segunda pasada: caso ficticio con datos (mismo día, misma rama 3d0effe)
+
+> **Datos:** caso ficticio en la carpeta temporal (nunca `data/`): línea base civil, `DEMO-001` (4131,10 USD según la
+> API), `OBRA-GENERADA` (6 partidas, plan de 10 semanas, 4 valuaciones) y dos libros construidos y ficticios
+> (`libro_limpio` y uno con el APU-02 sin equipos). Cuenta `ana` (rol arma). Capturas en `scratchpad/dis/capturas_obra`
+> y `capturas_libro`. Servidor propio en `127.0.0.1:8123`, cerrado por su PID al terminar.
+
+## Hallazgos nuevos
+
+| # | Gravedad | Página | Hallazgo | Arreglo sugerido |
+|---|---|---|---|---|
+| V-11 | **Bloqueante** | Tablero, Control de obra | Con proyectos reales **no cargan ninguno**. El selector de la cabecera guarda el `codigo` que da `/v1/proyectos` (`str(id)`, p. ej. `3`) y las dos páginas lo mandan así (`/v1/tablero?proyecto=3`, `/v1/control/linea-base?proyecto=3`), pero esas rutas buscan por `Proyecto.nombre` (`api/rutas/tablero.py:240`, `api/rutas/control.py:68`). Resultado: 404 y el texto «Ese proyecto no existe en este caso» o «No se pudo cargar la linea base / no_disponible». Entregar y Actualizar sí funcionan porque listan por nombre. | Unificar: o las rutas aceptan el id que el front ya manda, o el front manda el nombre. Prueba de API con un proyecto real que pase por el selector. |
+| V-12 | Importante | Control de obra | El error muestra el código crudo `no_disponible` en vez de un mensaje en español. | Traducir el código a frase; mantener el `detalle` de la API cuando exista. |
+| V-13 | Importante | Entregar paquete | El total se muestra como **«4131.1 USD»**: sin dos decimales ni separador de miles (DESIGN.md: cifras en centésimas, `tabular-nums`). | Formatear con dos decimales y separador de miles; dejar el exacto en el tooltip accesible. |
+| V-14 | Importante | Libro de la empresa | La franja de indicadores (Subtotal, IVA, Total) queda **recortada**: la barra oscura inferior y un resto de otro elemento asoman bajo las tres cifras. Ocupa solo la mitad del ancho y no hay `h1`. | Dar alto propio a la franja o quitar el `overflow`; poner el título arriba (ya en V-3). |
+| V-15 | Importante | Libro de la empresa | Rótulo «**Meta** 4358.21» en vez de «Total según Sílice» (DESIGN.md pide rótulos que nombren la cosa) y formatos de número mezclados: indicadores con punto decimal («4203.93») y hallazgos en prosa con formato local («4 331,43 USD»). | Rotular «Total del libro» / «Total según Sílice»; un solo formato numérico en toda la pantalla. |
+| V-16 | Informativo | Libro de la empresa | El libro con 3,54 % menos que Sílice se pinta **rojo («desfavorable»)** con triángulo. El spec del Inicio dice que un libro **menor** que Sílice es favorable (verde). Puede ser decisión (subestimar es riesgo), pero contradice el spec. | Confirmar la regla con Eugenio o el tutor; documentarla en la pantalla. |
+| V-17 | Pulido | Reajuste de precios | Jerga interna en pantalla: «S1 §8.1», «S1-R14», «I0». Fechas como texto «AAAA-MM-DD» mientras Libro y Componer usan selector de fecha. Formulario muy largo (1469 px). | Español llano; un solo componente de fecha; agrupar con pasos o pestañas. |
+
+## Lo que sí se verificó con datos
+
+- Sin scroll horizontal en Entregar, Reajuste, Elaborar, Actualizar, Escenarios y Libro (con informe): cumple.
+- Severidad con ícono y texto («Error», círculo naranja con «!»): cumple. Variación en rojo con triángulo y texto
+  «desfavorable» junto al Δ: cumple (IBCS: dos semánticas separadas).
+- Montos de los indicadores del Libro como texto exacto (4203.93, 672.63, 4876.56, Δ -154.28): se leen en el DOM.
+- Libro limpio: «sin variación» en gris y 0 errores: cumple.
+
+## Lo que sigue sin comprobarse
+
+- Tablero y Control con datos: bloqueados por V-11. Se repiten sobre el SHA corregido que avise tesis-76.
+- Elaborar con un resultado calculado, Reajuste con resultado y Entregar generando el paquete (necesita la contraseña de
+  la clave de firma): no se ejecutaron.
+- El tooltip del valor exacto de los indicadores (no se pasó el ratón).
+- 1056 px, teclado y lector de pantalla.
