@@ -12,10 +12,13 @@ una cuenta: la clave recibe 403.
   guardia de `adapters.hoja_empresa` si es un libro, y nada de lo enviado vuelve en un error de
   validacion (`RutaSinEco`).
 - `GET /v1/precios-empresa/listas/{id}/hallazgos?fecha=` -> R11 y R12 de la lista sola, en memoria.
+- `GET /v1/precios-empresa/listas/{id}/atipicos` -> `{disponible, avisos, variaciones}`: el boton
+  «Buscar variaciones atipicas de precio» (RF-100) sobre los insumos de la lista. Solo lee; cada
+  variacion es una ADVERTENCIA y no impide nada. La logica es `aplicacion.atipicos` (T4 de la
+  migracion final), la misma de la pagina clasica; los avisos van sin escapar (aqui no hay
+  Markdown) y los hallazgos, por partes, en `variaciones`.
 
 Los mensajes son los de la pagina clasica. Un error de base no sale con su texto (lleva el SQL).
-La busqueda de variaciones atipicas (RF-100) sigue solo en la pagina clasica: vive en
-`ui/atipicos.py`, que la API no puede importar.
 """
 
 from __future__ import annotations
@@ -25,7 +28,7 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from datetime import date
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from pydantic import BaseModel
@@ -37,6 +40,7 @@ from api.dependencias import SesionDep
 from api.rutas.listas import comprobar_libro_legible
 from api.sesion_web import exigir_clave_o_sesion
 from api.sin_eco import RutaSinEco, sin_eco
+from aplicacion import atipicos as busqueda_atipica
 from aplicacion import precios_empresa as logica
 from seguridad.permisos import Accion
 
@@ -100,6 +104,33 @@ class HallazgosRespuesta(BaseModel):
     nota: str
 
 
+class AvisoAtipicos(BaseModel):
+    """Un aviso de la busqueda, con el nivel de la pagina clasica (`info` o `success`)."""
+
+    nivel: Literal["info", "success"]
+    texto: str
+
+
+class VariacionAtipicaRespuesta(BaseModel):
+    """Un hallazgo de RF-100: `porcentaje` es la variacion en por ciento con dos decimales, como
+    texto (la de la descripcion); `desde` y `hasta`, las fechas de los dos precios."""
+
+    insumo: str
+    porcentaje: str
+    desde: date
+    hasta: date
+    severidad: str
+    descripcion: str
+
+
+class AtipicosRespuesta(BaseModel):
+    """`disponible` es falso sin el extra `ml`: no se busco nada y un aviso lo dice."""
+
+    disponible: bool
+    avisos: list[AvisoAtipicos]
+    variaciones: list[VariacionAtipicaRespuesta]
+
+
 @contextmanager
 def _caso_legible() -> Iterator[None]:
     """El texto de un error de base lleva el SQL y sus parametros: no sale por la API."""
@@ -111,6 +142,12 @@ def _caso_legible() -> Iterator[None]:
 
 def _motivo(error: Exception) -> str:
     return str(error)[:LARGO_MAXIMO_DEL_MOTIVO]
+
+
+def _exigir_lista_de_empresa(sesion, lista_id: int) -> None:
+    """La pagina clasica solo ofrece las listas de empresa: otra lista es un 404."""
+    if lista_id not in {i for i, _ in logica.listas_de_empresa(sesion)}:
+        raise HTTPException(404, f"la lista {lista_id} no es una lista de empresa de este caso")
 
 
 @router.get("", response_model=EstadoRespuesta)
@@ -207,9 +244,38 @@ def crear_lista(
 def hallazgos(lista_id: int, sesion: SesionDep, fecha: date | None = None) -> HallazgosRespuesta:
     """R11 y R12 de la lista sola a `fecha` (hoy si falta). No escribe nada."""
     with _caso_legible():
-        if lista_id not in {i for i, _ in logica.listas_de_empresa(sesion)}:
-            raise HTTPException(404, f"la lista {lista_id} no es una lista de empresa de este caso")
+        _exigir_lista_de_empresa(sesion, lista_id)
         filas = logica.hallazgos_de_lista(sesion, lista_id, fecha or date.today())
     return HallazgosRespuesta(
         columnas=list(logica.COLUMNAS_HALLAZGOS), filas=filas, nota=NOTA_HALLAZGOS
+    )
+
+
+@router.get("/listas/{lista_id}/atipicos", response_model=AtipicosRespuesta)
+@sin_eco(MENSAJE_INVALIDO)
+def atipicos(lista_id: int, sesion: SesionDep) -> AtipicosRespuesta:
+    """RF-100: las variaciones atipicas de precio de los insumos de la lista de empresa elegida
+    (lo que hace el boton de la pagina clasica). Solo lee: nada se guarda ni se bloquea."""
+    with _caso_legible():
+        _exigir_lista_de_empresa(sesion, lista_id)
+        busqueda = busqueda_atipica.atipicos_de_insumos(
+            sesion, busqueda_atipica.codigos_de_la_lista(sesion, lista_id)
+        )
+    return AtipicosRespuesta(
+        disponible=busqueda is not None,
+        avisos=[
+            AvisoAtipicos(nivel=nivel, texto=texto)
+            for nivel, texto in busqueda_atipica.avisos_generales(busqueda)
+        ],
+        variaciones=[
+            VariacionAtipicaRespuesta(
+                insumo=v.insumo,
+                porcentaje=v.porcentaje,
+                desde=v.desde,
+                hasta=v.hasta,
+                severidad=v.severidad.name,
+                descripcion=v.descripcion,
+            )
+            for v in busqueda_atipica.variaciones_atipicas(busqueda)
+        ],
     )

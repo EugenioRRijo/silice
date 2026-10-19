@@ -383,7 +383,7 @@ def test_solo_las_dos_pantallas_de_precios_y_su_ruta_importan_la_busqueda_de_rf_
                 importadores.add(archivo.relative_to(raiz).as_posix())
     assert importadores <= permitidos, importadores - permitidos
     # la guardia no vigila un conjunto vacío: la búsqueda tiene quien la use en cada lado
-    usados = {"aplicacion/atipicos.py", "ui/atipicos.py"}
+    usados = {"aplicacion/atipicos.py", "ui/atipicos.py", "api/rutas/precios_empresa.py"}
     assert usados <= importadores, usados - importadores
 
 

@@ -11,10 +11,13 @@ Contrato de `api/rutas/precios_empresa.py` (paridad con la pagina clasica; rol
   nombre, archivo) -> 201 `{nombre, propios, desconocidos, mensaje, aviso}`.
 - `GET /v1/precios-empresa/listas/{id}/hallazgos?fecha=` -> `{columnas, filas, nota}`: R11 y R12 de
   la lista sola, con el impacto como texto.
+- `GET /v1/precios-empresa/listas/{id}/atipicos` -> `{disponible, avisos, variaciones}`: el boton
+  «Buscar variaciones atipicas de precio» (RF-100) sobre los insumos de la lista; solo lee.
 
 Oraculos escritos a mano: las filas de la memoria `s1_precios_empresa.md` (impacto por unidad), el
-nombre por defecto `<empresa> <fecha>`, las 111 filas de `lista_maprex_bs.csv` contadas con `csv`
-y los mensajes literales de la pagina clasica.
+nombre por defecto `<empresa> <fecha>`, las 111 filas de `lista_maprex_bs.csv` contadas con `csv`,
+la serie de la memoria `atipicos_s3.md` (1, 2, 4 ... 256, 257: un solo atipico, de 256 a 257) y los
+mensajes literales de la pagina clasica.
 """
 
 from __future__ import annotations
@@ -28,6 +31,7 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import func, select
+from sqlalchemy.exc import OperationalError
 
 from api import caso_web, dependencias
 from api.admin_acceso import MENSAJE_SOLO_CUENTA
@@ -35,6 +39,7 @@ from api.main import app
 from api.rutas import precios_empresa as ruta
 from core import models
 from core.catalog import Catalogo, abrir_sesion, crear_motor
+from core.catalog.empresa import crear_lista_de_empresa
 from core.catalog.indices import Observacion, definicion_tasa, registrar_importacion
 from operacion import config
 from operacion.base_datos import preparar_base
@@ -48,6 +53,7 @@ from tests.fixtures.sesion_web import (
     plantilla_con_cuentas,
     protegida,
 )
+from tests.fixtures.sin_extra import SinExtra
 
 RAIZ = Path(__file__).resolve().parents[2]
 CSV_EMPRESA = RAIZ / "tests" / "fixtures" / "precios_empresa_s1.csv"
@@ -437,6 +443,7 @@ def test_solo_el_administrador_administra_los_precios(login) -> None:
         navegador.post(f"{URL}/referencia", headers=cabeceras),
         navegador.post(f"{URL}/listas", data=_datos(1), files=_archivo(), headers=cabeceras),
         navegador.get(f"{URL}/listas/1/hallazgos"),
+        navegador.get(f"{URL}/listas/1/atipicos"),
     ):
         assert r.status_code == 403, r.text
         assert r.json() == {"detalle": MENSAJE_PERMISO}
@@ -616,3 +623,183 @@ def test_ninguna_respuesta_de_error_trae_rutas_del_servidor_ni_sql(_entorno) -> 
     r = navegador.get(f"{URL}/listas/987654/hallazgos")
     assert r.status_code == 404
     _sin_pistas(r)
+
+
+# --- las variaciones atipicas de precio (RF-100, T4 de la migracion final) ----------------------
+
+#: Memoria `atipicos_s3.md`: §1, una serie que se duplica y un paso final de 256 a 257 (+1/256 =
+#: 0,390625 %), el unico atipico; §2, la serie que se duplica hasta 512, nada atipico; §3, ocho
+#: precios (siete variaciones): el detector se abstiene.
+SERIE_CON_ATIPICO = (1, 2, 4, 8, 16, 32, 64, 128, 256, 257)
+SERIE_SIN_ATIPICO = (1, 2, 4, 8, 16, 32, 64, 128, 256, 512)
+SERIE_CORTA = (1, 2, 4, 8, 16, 32, 64, 128)
+INSUMO = "ATIP-001"
+LISTA_ATIPICOS = "Lista Demo de la serie"
+DESCRIPCION_ATIPICA = (
+    "ATIP-001: variación de 0.39 % entre 2026-09-01 y 2026-10-01 (en USD) se aparta del "
+    "historial de variaciones del insumo"
+)
+NADA_ATIPICO = (
+    "Ninguna variación atípica de precio (una serie de menos de 8 variaciones no se juzga)."
+)
+SIN_ML = (
+    "La búsqueda de variaciones atípicas necesita el extra `ml` (scikit-learn), que no está "
+    "instalado en este equipo. No se buscó nada y nada se bloquea."
+)
+
+
+def _sembrar_serie(caso: Path, precios=SERIE_CON_ATIPICO, sin_tasa: str | None = None) -> int:
+    """Un insumo ficticio con un precio en USD por mes (listas globales, enero en adelante) y una
+    lista de empresa sobre la ultima, sin precios propios: lo heredado no repite el punto de la
+    base, asi la serie es exactamente `precios`. `sin_tasa` agrega una lista en Bs sin tasa."""
+    motor = crear_motor(f"sqlite:///{caso.as_posix()}")
+    try:
+        with abrir_sesion(motor) as sesion:
+            insumo = models.Insumo(
+                codigo=INSUMO,
+                tipo=models.TipoInsumo.MATERIAL,
+                descripcion="Arena demo",
+                unidad="m3",
+            )
+            sesion.add(insumo)
+            sesion.flush()
+            filas = [
+                (f"Serie demo {mes:02d}", "USD", date(2026, mes, 1), precio)
+                for mes, precio in enumerate(precios, start=1)
+            ]
+            if sin_tasa is not None:
+                filas.append((sin_tasa, "Bs", date(2026, 11, 1), 720))
+            listas = []
+            for nombre, moneda, vigencia, precio in filas:
+                lista = models.ListaPrecios(
+                    nombre=nombre, moneda=moneda, fecha_vigencia=vigencia, origen="prueba"
+                )
+                sesion.add(lista)
+                sesion.flush()
+                sesion.add(
+                    models.PrecioInsumo(
+                        lista_id=lista.id, insumo_id=insumo.id, precio=Decimal(precio)
+                    )
+                )
+                listas.append(lista)
+            sesion.flush()
+            empresa = crear_lista_de_empresa(
+                sesion,
+                EMPRESA,
+                RIF,
+                listas[len(precios) - 1],
+                [],
+                moneda="USD",
+                fecha=date(2026, 10, 2),
+                fuente=FUENTE,
+                referencia=None,
+                nombre=LISTA_ATIPICOS,
+            )
+            sesion.commit()
+            return empresa.id
+    finally:
+        motor.dispose()
+
+
+def test_la_serie_sembrada_da_su_unica_variacion_atipica_y_no_escribe_nada(_entorno) -> None:
+    lista = _sembrar_serie(_entorno)
+    navegador, _ = _admin()
+    antes = _cuantas_listas(_entorno)
+    r = navegador.get(f"{URL}/listas/{lista}/atipicos")
+    assert r.status_code == 200, r.text
+    assert r.json() == {
+        "disponible": True,
+        "avisos": [],
+        "variaciones": [
+            {
+                "insumo": INSUMO,
+                "porcentaje": "0.39",
+                "desde": "2026-09-01",
+                "hasta": "2026-10-01",
+                "severidad": "ADVERTENCIA",
+                "descripcion": DESCRIPCION_ATIPICA,
+            }
+        ],
+    }
+    assert _cuantas_listas(_entorno) == antes  # solo lee
+
+
+@pytest.mark.parametrize("serie", [SERIE_SIN_ATIPICO, SERIE_CORTA])
+def test_sin_atipicos_o_con_serie_corta_lo_dice_como_la_pagina_clasica(_entorno, serie) -> None:
+    lista = _sembrar_serie(_entorno, serie)
+    navegador, _ = _admin()
+    r = navegador.get(f"{URL}/listas/{lista}/atipicos")
+    assert r.status_code == 200, r.text
+    assert r.json() == {
+        "disponible": True,
+        "avisos": [{"nivel": "success", "texto": NADA_ATIPICO}],
+        "variaciones": [],
+    }
+
+
+def test_un_precio_en_bs_sin_tasa_se_nombra_sin_escapar(_entorno) -> None:
+    """El texto va tal cual: la interfaz nueva no pinta Markdown (la clasica lo escapa, RV-14)."""
+    lista = _sembrar_serie(_entorno, sin_tasa="Lista-Bs demo [sin tasa]")
+    navegador, _ = _admin()
+    cuerpo = navegador.get(f"{URL}/listas/{lista}/atipicos").json()
+    assert cuerpo["avisos"] == [
+        {"nivel": "info", "texto": "Precio en Bs sin tasa, omitido: Lista-Bs demo [sin tasa]"}
+    ]
+    assert [v["descripcion"] for v in cuerpo["variaciones"]] == [DESCRIPCION_ATIPICA]
+
+
+def test_sin_el_extra_ml_no_busca_y_lo_dice(_entorno, monkeypatch) -> None:
+    lista = _sembrar_serie(_entorno)
+    navegador, _ = _admin()
+    relacionados = ("ml", "ml.anomaly", "ml.anomaly.series", "ml.anomaly.detector")
+    with SinExtra(monkeypatch, ("ml",), relacionados):
+        r = navegador.get(f"{URL}/listas/{lista}/atipicos")
+    assert r.status_code == 200, r.text
+    assert r.json() == {
+        "disponible": False,
+        "avisos": [{"nivel": "info", "texto": SIN_ML}],
+        "variaciones": [],
+    }
+
+
+def test_solo_las_listas_de_empresa_se_revisan_y_el_404_no_trae_pistas(_entorno) -> None:
+    _sembrar_serie(_entorno)
+    navegador, _ = _admin()
+    base = navegador.get(URL).json()["bases"][0]["id"]
+    for lista in (base, 987654):
+        r = navegador.get(f"{URL}/listas/{lista}/atipicos")
+        assert r.status_code == 404, r.text
+        assert r.json() == {"detalle": f"la lista {lista} no es una lista de empresa de este caso"}
+        _sin_pistas(r)
+
+
+def test_un_id_de_lista_invalido_no_se_repite() -> None:
+    navegador, _ = _admin()
+    r = navegador.get(f"{URL}/listas/id-secreto/atipicos")
+    assert (r.status_code, r.json()) == (422, {"detalle": MENSAJE_INVALIDO})
+    assert "id-secreto" not in r.text
+
+
+def test_un_error_de_base_al_buscar_no_sale_con_su_sql(_entorno, monkeypatch) -> None:
+    lista = _sembrar_serie(_entorno)
+    navegador, _ = _admin()
+
+    def rota(*_args, **_kwargs):
+        raise OperationalError("SELECT secreto FROM precio_insumo", {}, Exception("rota"))
+
+    monkeypatch.setattr("aplicacion.atipicos.codigos_de_la_lista", rota)
+    r = navegador.get(f"{URL}/listas/{lista}/atipicos")
+    assert (r.status_code, r.json()) == (
+        503,
+        {"detalle": "No se pudo leer o escribir el caso abierto."},
+    )
+    _sin_pistas(r)
+
+
+def test_la_clave_de_api_lee_los_atipicos_y_sin_sesion_es_401(_entorno) -> None:
+    """Solo lectura: cualquiera con acceso a la pagina (sesion del administrador o clave de API)."""
+    lista = _sembrar_serie(_entorno)
+    r = _con_clave(crear_clave_de_prueba()).get(f"{URL}/listas/{lista}/atipicos")
+    assert r.status_code == 200, r.text
+    assert [v["insumo"] for v in r.json()["variaciones"]] == [INSUMO]
+    assert cliente(app).get(f"{URL}/listas/{lista}/atipicos").status_code == 401
