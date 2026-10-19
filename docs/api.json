@@ -12141,6 +12141,21 @@
             "type": "array",
             "title": "Resultados"
           },
+          "admite_dictamen": {
+            "type": "boolean",
+            "title": "Admite Dictamen"
+          },
+          "sin_dictamen": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sin Dictamen"
+          },
           "nota_excel": {
             "type": "string",
             "title": "Nota Excel"
@@ -12169,6 +12184,8 @@
           "cambios",
           "dictamenes",
           "resultados",
+          "admite_dictamen",
+          "sin_dictamen",
           "nota_excel"
         ],
         "title": "RevisionRespuesta"
@@ -12539,9 +12556,21 @@
             "type": "string",
             "title": "Diferencia Texto"
           },
-          "por_cantidad_y_precio": {
+          "desvio_cantidad": {
             "type": "string",
-            "title": "Por Cantidad Y Precio"
+            "title": "Desvio Cantidad"
+          },
+          "desvio_cantidad_texto": {
+            "type": "string",
+            "title": "Desvio Cantidad Texto"
+          },
+          "desvio_precio": {
+            "type": "string",
+            "title": "Desvio Precio"
+          },
+          "desvio_precio_texto": {
+            "type": "string",
+            "title": "Desvio Precio Texto"
           },
           "partidas": {
             "items": {
@@ -12560,7 +12589,10 @@
           "total_despues_texto",
           "diferencia",
           "diferencia_texto",
-          "por_cantidad_y_precio",
+          "desvio_cantidad",
+          "desvio_cantidad_texto",
+          "desvio_precio",
+          "desvio_precio_texto",
           "partidas"
         ],
         "title": "TablaDeDiferencia"
