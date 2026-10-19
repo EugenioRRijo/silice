@@ -36,7 +36,6 @@ describe("registro de paginas", () => {
     expect(SECCIONES).toEqual(["Trabajo", "Revisión", "Investigación", "Administración"]);
   });
 
-<<<<<<< HEAD
   test("estan migradas las paginas ya construidas, con carga perezosa", () => {
     expect(PAGINAS.filter(estaMigrada).map((p) => p.id)).toEqual([
       "inicio",
@@ -45,12 +44,8 @@ describe("registro de paginas", () => {
       "elaborar",
       "actualizacion",
       "historico",
+      "acerca",
       "entregar",
-      "libros",
-      "escenarios",
-      "similares",
-      "simulador",
-    ]);
       "libros",
       "escenarios",
       "similares",

@@ -118,6 +118,7 @@ TABLA = {
     ("GET", "/v1/entregas/versiones"): ENTREGAR,
     ("GET", "/v1/entregas/resumen"): ENTREGAR,
     ("POST", "/v1/entregas"): ENTREGAR,
+    ("GET", "/v1/acerca"): CUALQUIERA,
 }
 #: Las de la puerta de entrada: la sesión misma (con su propia regla) y el ping.
 DE_LA_SESION = {
