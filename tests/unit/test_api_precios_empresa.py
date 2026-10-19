@@ -525,3 +525,94 @@ def test_los_campos_de_texto_de_la_lista_tienen_tope(_entorno, campo: str, tope:
     assert _cuantas_listas(_entorno) == antes
     r = _crear(navegador, cabeceras, base, **{campo: "Z" * tope})
     assert r.status_code == 201, r.text
+
+
+# --- huecos de la revision de seguridad -------------------------------------------------------
+
+PISTAS_PROHIBIDAS = ("Traceback", "SELECT", "INSERT", "Temp", "tmp", ".py", "site-packages", "C:\\")
+
+
+def _sin_pistas(r) -> None:
+    for pista in PISTAS_PROHIBIDAS:
+        assert pista not in r.text, (pista, r.text)
+
+
+def _con_referencia() -> tuple[TestClient, dict[str, str], int]:
+    navegador, cabeceras = _admin()
+    _cargar_referencia(navegador, cabeceras)
+    return navegador, cabeceras, _id_de_la_referencia(navegador)
+
+
+def test_un_archivo_vacio_no_crea_la_lista_y_no_es_500(_entorno) -> None:
+    navegador, cabeceras, base = _con_referencia()
+    antes = _cuantas_listas(_entorno)
+    for nombre in ("vacio.csv", "vacio.xlsx"):
+        r = _crear(navegador, cabeceras, base, archivo=_archivo(b"", nombre))
+        assert r.status_code == 422, r.text
+        assert r.json()["detalle"].startswith("No se creo la lista: ")
+        _sin_pistas(r)
+    assert _cuantas_listas(_entorno) == antes
+
+
+def test_el_tope_exacto_de_la_ruta_pasa_y_un_byte_mas_no(_entorno, monkeypatch) -> None:
+    navegador, cabeceras, base = _con_referencia()
+    contenido = CSV_EMPRESA.read_bytes()
+    monkeypatch.setattr(ruta, "TOPE_BYTES", len(contenido))
+    r = _crear(navegador, cabeceras, base, archivo=_archivo(contenido))
+    assert r.status_code == 201, r.text
+    antes = _cuantas_listas(_entorno)
+    r = _crear(navegador, cabeceras, base, archivo=_archivo(contenido + b"\n"))
+    assert (r.status_code, r.json()) == (422, {"detalle": ruta.MENSAJE_TAMANO})
+    assert _cuantas_listas(_entorno) == antes
+
+
+@pytest.mark.parametrize(
+    ("nombre", "contenido"),
+    [
+        ("falso.xlsx", b"texto plano, no un libro"),
+        ("falso.csv", b"\x00\x01\xff\xfe\x80\x81\x00" * 40),
+        ("falso.csv", b"PK\x03\x04" + b"\x00" * 64),
+    ],
+)
+def test_la_extension_que_no_coincide_con_el_contenido_es_422_sin_traza(
+    _entorno, nombre: str, contenido: bytes
+) -> None:
+    navegador, cabeceras, base = _con_referencia()
+    antes = _cuantas_listas(_entorno)
+    r = _crear(navegador, cabeceras, base, archivo=_archivo(contenido, nombre))
+    assert r.status_code == 422, r.text
+    assert r.json()["detalle"].startswith("No se creo la lista: ")
+    _sin_pistas(r)
+    assert _cuantas_listas(_entorno) == antes
+
+
+@pytest.mark.parametrize("fecha", ["2026-02-30", "11/10/2026", "", "manana-secreto", "2026-13-01"])
+def test_una_fecha_de_la_lista_invalida_es_422_sin_eco(_entorno, fecha: str) -> None:
+    navegador, cabeceras, base = _con_referencia()
+    antes = _cuantas_listas(_entorno)
+    r = _crear(navegador, cabeceras, base, fecha=fecha)
+    assert (r.status_code, r.json()) == (422, {"detalle": MENSAJE_INVALIDO})
+    if fecha:
+        assert fecha not in r.text
+    assert _cuantas_listas(_entorno) == antes
+
+
+def test_ninguna_respuesta_de_error_trae_rutas_del_servidor_ni_sql(_entorno) -> None:
+    navegador, cabeceras, base = _con_referencia()
+    casos = [
+        _archivo(b"hola", "precios.txt"),
+        _archivo(b"no es un zip", "precios.xlsx"),
+        _archivo(b"", "vacio.csv"),
+        _archivo(b"a,b\n1,2\n", "ajeno.csv"),
+        _archivo(nombre=".."),
+    ]
+    for archivo in casos:
+        r = _crear(navegador, cabeceras, base, archivo=archivo)
+        assert r.status_code == 422, (archivo, r.text)
+        _sin_pistas(r)
+    r = _crear(navegador, cabeceras, 987654)  # una base que no existe
+    assert r.status_code in (404, 422), r.text
+    _sin_pistas(r)
+    r = navegador.get(f"{URL}/listas/987654/hallazgos")
+    assert r.status_code == 404
+    _sin_pistas(r)

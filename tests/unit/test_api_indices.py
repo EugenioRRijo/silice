@@ -503,3 +503,115 @@ def test_un_fallo_de_la_base_no_devuelve_el_sql(monkeypatch, _entorno: Path) -> 
     assert r.status_code == 503
     assert r.json() == {"detalle": "No se pudo escribir en el caso: disk I/O error"}
     assert PRIVADO not in r.text and "INSERT" not in r.text
+
+
+# --- huecos de la revision de seguridad -----------------------------------------------------
+
+PISTAS_PROHIBIDAS = ("Traceback", "SELECT", "INSERT", "Temp", "tmp", ".py", "site-packages", "C:\\")
+
+
+def _sin_pistas(r) -> None:
+    for pista in PISTAS_PROHIBIDAS:
+        assert pista not in r.text, (pista, r.text)
+
+
+def test_un_archivo_vacio_es_422_con_mensaje_y_sin_pistas(_entorno: Path) -> None:
+    for ruta in ("leer", "confirmar"):
+        navegador, ficha = _admin()
+        r = _enviar(navegador, ficha, ruta, b"", definiciones="[]")
+        assert r.status_code == 422, r.text
+        assert r.json()["detalle"].startswith("No se importo nada: ")
+        _sin_pistas(r)
+    assert _valores(_entorno) == {}
+
+
+def test_el_tope_exacto_pasa_y_un_byte_mas_no(monkeypatch) -> None:
+    monkeypatch.setattr(ruta_indices, "LIMITE_BYTES", len(CSV))
+    assert _leer(CSV).status_code == 200
+    r = _leer(CSV + b"\n")
+    assert r.status_code == 422 and r.json()["detalle"].startswith("No se importo nada: ")
+
+
+def test_el_tope_real_de_20_mib_es_413_del_middleware(_entorno: Path) -> None:
+    r = _leer(b"x" * (20 * 2**20))  # con el multipart, el cuerpo pasa de 20 MiB
+    assert r.status_code == 413, r.text
+    assert "20 MiB" in r.json()["detalle"]
+    assert _valores(_entorno) == {}
+
+
+@pytest.mark.parametrize(
+    ("nombre", "contenido"),
+    [
+        ("falso.xlsx", b"texto plano, no un libro"),
+        ("falso.csv", b"\x00\x01\xff\xfe\x80\x81\x00" * 40),
+        ("falso.csv", b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1" + b"\x00" * 64),
+    ],
+)
+def test_la_extension_que_no_coincide_con_el_contenido_es_422_sin_traza(
+    nombre: str, contenido: bytes
+) -> None:
+    for ruta in ("leer", "confirmar"):
+        navegador, ficha = _admin()
+        r = _enviar(navegador, ficha, ruta, contenido, nombre, definiciones="[]")
+        assert r.status_code == 422, r.text
+        assert set(r.json()) == {"detalle"}
+        _sin_pistas(r)
+
+
+@pytest.mark.parametrize("fecha", ["2026-02-30", "11/10/2026", "", "mañana", "2026-13-01"])
+def test_una_fecha_de_descarga_invalida_es_422_sin_eco(fecha: str) -> None:
+    r = _leer(fecha_descarga=fecha)
+    assert r.status_code == 422, r.text
+    assert set(r.json()) == {"detalle"}
+    if fecha:
+        assert fecha not in r.text
+
+
+def test_confirmar_dos_veces_el_mismo_archivo_es_idempotente_por_huella(_entorno: Path) -> None:
+    def importaciones() -> int:
+        motor = crear_motor(f"sqlite:///{_entorno.as_posix()}")
+        try:
+            with abrir_sesion(motor) as sesion:
+                return len(list(sesion.scalars(select(models.ImportacionIndice.id))))
+        finally:
+            motor.dispose()
+
+    huella = hashlib.sha256(CSV).hexdigest()
+    assert _confirmar(huella=huella).status_code == 200
+    despues_de_una = (importaciones(), _valores(_entorno))
+    assert despues_de_una[0] == 2  # una importacion por serie
+    otra = _confirmar(huella=huella)
+    assert otra.status_code == 200
+    assert all("ya importado" in m for m in otra.json()["mensajes"])
+    assert (importaciones(), _valores(_entorno)) == despues_de_una
+
+
+def test_confirmar_con_otra_huella_es_409_sin_pistas_y_confirmar_sin_leer_pasa(
+    _entorno: Path,
+) -> None:
+    r = _confirmar(huella="f" * 64)
+    assert r.status_code == 409
+    _sin_pistas(r)
+    assert _valores(_entorno) == {}
+    # Sin huella (sin haber leido antes) el servidor lee el archivo y guarda lo que el archivo dice.
+    assert _confirmar().status_code == 200
+    assert len(_valores(_entorno)) == 3
+
+
+@pytest.mark.parametrize("ruta", ["leer", "confirmar"])
+def test_ninguna_respuesta_de_error_trae_rutas_del_servidor_ni_sql(ruta: str) -> None:
+    casos = [
+        (b"a,b\n1,2\n", "indices.csv", {}),
+        (b"PK\x03\x04no-es-un-zip", "libro.xlsx", {"tipo": "tasa"}),
+        (FIRMA_OLE2 + b"\x00" * 32, "viejo.xls", {"tipo": "tasa"}),
+        (CSV, "notas.txt", {}),
+        (CSV, "..", {}),
+        (b"", "vacio.csv", {}),
+        (CSV, "indices.csv", {"fuente": "https://ejemplo.com/x", "tipo": "tasa"}),
+        (CSV, "indices.csv", {"fecha_descarga": PRIVADO}),
+    ]
+    for contenido, nombre, campos in casos:
+        navegador, ficha = _admin()
+        r = _enviar(navegador, ficha, ruta, contenido, nombre, definiciones="[]", **campos)
+        assert r.status_code in (422, 503), (nombre, r.status_code, r.text)
+        _sin_pistas(r)
