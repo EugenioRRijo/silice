@@ -32,7 +32,7 @@ from pydantic import BaseModel
 from sqlalchemy.exc import SQLAlchemyError
 
 from api.admin_acceso import administrar
-from api.archivos import guardar_subida
+from api.archivos import guardar_subida, nombre_seguro
 from api.dependencias import SesionDep
 from api.rutas.listas import comprobar_libro_legible
 from api.sesion_web import exigir_clave_o_sesion
@@ -166,7 +166,11 @@ def crear_lista(
     """
     if not moneda or archivo is None:
         raise HTTPException(422, MENSAJE_FALTA)
-    if Path(archivo.filename or "").suffix.lower() not in SUFIJOS:
+    try:
+        sufijo = Path(nombre_seguro(archivo.filename)).suffix.lower()
+    except ValueError:
+        sufijo = ""
+    if sufijo not in SUFIJOS:
         raise HTTPException(422, MENSAJE_FORMATO)
     if len(archivo.file.read(TOPE_BYTES + 1)) > TOPE_BYTES:
         raise HTTPException(422, MENSAJE_TAMANO)

@@ -25,7 +25,6 @@ es SIEMPRE la persona de la sesión (RF-82), nunca el formulario.
 from __future__ import annotations
 
 import json
-import re
 import tempfile
 from datetime import date
 from pathlib import Path
@@ -39,6 +38,7 @@ from adapters.bcv.informe import InformeImportacion
 from adapters.bcv.libro import LIMITE_BYTES
 from adapters.hoja_empresa.guardia import ArchivoRechazado, verificar_archivo
 from api.admin_acceso import administrar
+from api.archivos import nombre_seguro
 from api.dependencias import SesionDep
 from api.sesion_web import ahora, exigir_clave_o_sesion
 from api.sin_eco import RutaSinEco
@@ -61,13 +61,6 @@ MAXIMO_MENSAJE = 500
 MAXIMO_DEFINICIONES = 50
 CAMPOS_DEFINICION = ("serie", "nombre", "organismo", "unidad", "periodicidad")
 SIN_CACHE = {"Cache-Control": "no-store"}
-_PROHIBIDOS = re.compile(r'[<>:"|?*\x00-\x1f]')
-_RESERVADOS = frozenset(
-    {"CON", "PRN", "AUX", "NUL"}
-    | {f"COM{n}" for n in range(1, 10)}
-    | {f"LPT{n}" for n in range(1, 10)}
-)
-LONGITUD_NOMBRE = 100
 
 ADMINISTRAR = Depends(exigir_clave_o_sesion(Accion.ADMINISTRAR_PRECIOS))
 #: Escribir es de una persona con rol: la clave de API recibe 403 (MEDIO-1).
@@ -143,21 +136,6 @@ def _lee_xls() -> bool:
         return True
 
 
-def _nombre_seguro(nombre: str | None) -> str:
-    """El último componente del nombre, válido en Windows. `ValueError` si no queda nada."""
-    ultimo = re.split(r"[\\/]", nombre or "")[-1].split(":", 1)[0]
-    limpio = _PROHIBIDOS.sub("_", ultimo).strip().rstrip(" .")
-    if not limpio:
-        raise ValueError(MENSAJE_SIN_NOMBRE)
-    if limpio.split(".")[0].rstrip().upper() in _RESERVADOS:
-        limpio = f"_{limpio}"
-    if len(limpio) > LONGITUD_NOMBRE:
-        extension = Path(limpio).suffix[:16]
-        base = limpio[: len(limpio) - len(Path(limpio).suffix)]
-        limpio = (base[: LONGITUD_NOMBRE - len(extension)].rstrip(" .") or "archivo") + extension
-    return limpio
-
-
 def _corto(error: object) -> str:
     texto = str(error)
     return texto if len(texto) <= MAXIMO_MENSAJE else texto[: MAXIMO_MENSAJE - 1] + "…"
@@ -174,9 +152,9 @@ def _leer_archivo(
     if tipo not in logica.TIPOS:
         raise HTTPException(422, MENSAJE_TIPO)
     try:
-        nombre = _nombre_seguro(archivo.filename)
-    except ValueError as error:
-        raise HTTPException(422, str(error)) from None
+        nombre = nombre_seguro(archivo.filename)
+    except ValueError:
+        raise HTTPException(422, MENSAJE_SIN_NOMBRE) from None
     if Path(nombre).suffix.lower() not in EXTENSIONES:
         raise HTTPException(422, MENSAJE_EXTENSION)
     archivo.file.seek(0, 2)

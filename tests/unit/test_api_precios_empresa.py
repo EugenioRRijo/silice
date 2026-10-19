@@ -493,3 +493,18 @@ def test_el_tope_de_la_ruta_es_el_real_de_20_mib_y_el_413_lo_dice(_entorno) -> N
     assert r.status_code == 413, r.text
     assert "20 MiB" in r.json()["detalle"]
     assert _cuantas_listas(_entorno) == antes
+
+
+def test_un_nombre_reservado_de_windows_se_salva_y_no_es_500(_entorno) -> None:
+    """BAJO-2: CON/NUL/a:b se saneaban solo en Indices; la guardia es la misma en las dos rutas."""
+    navegador, cabeceras = _admin()
+    _cargar_referencia(navegador, cabeceras)
+    base = _id_de_la_referencia(navegador)
+    r = _crear(navegador, cabeceras, base, archivo=_archivo(nombre="CON.csv"))
+    assert r.status_code == 201, r.text
+    r = _crear(navegador, cabeceras, base, archivo=_archivo(b"no es un libro", "NUL.xlsx"))
+    assert r.status_code == 422, r.text
+    assert r.json()["detalle"].startswith("No se creo la lista: _NUL.xlsx: no se puede leer")
+    r = _crear(navegador, cabeceras, base, archivo=_archivo(nombre="a:b.csv"))
+    assert r.status_code == 422, r.text
+    assert r.json() == {"detalle": "No se creo la lista: el archivo debe ser CSV o XLSX."}

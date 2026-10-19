@@ -279,6 +279,18 @@ def test_el_nombre_que_manda_el_cliente_se_queda_en_su_ultimo_componente() -> No
     assert _leer(CSV, "CON.csv").json()["archivo"] == "_CON.csv"
 
 
+def test_nombres_reservados_o_con_dos_puntos_no_son_500() -> None:
+    """BAJO-2: `_nombre_seguro` vive en `api/archivos.py`, comun a las dos rutas de archivos."""
+    r = _leer(_tasa_xlsx(), "NUL.xlsx", tipo="tasa")
+    assert r.status_code == 200, r.text
+    assert r.json()["archivo"] == "_NUL.xlsx"
+    r = _leer(CSV, "a:b.csv")
+    assert (r.status_code, r.json()) == (
+        422,
+        {"detalle": "Solo se aceptan archivos .xls, .xlsx o .csv."},
+    )
+
+
 def test_los_rechazos_se_acotan_y_se_cuenta_los_omitidos(monkeypatch) -> None:
     monkeypatch.setattr(ruta_indices, "MAXIMO_RECHAZOS", 2)
     filas = "".join(f"S,2026-01-01,0,no,f{n}\n" for n in range(5))  # 5 rechazos: valor cero
