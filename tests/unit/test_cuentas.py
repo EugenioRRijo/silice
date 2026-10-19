@@ -384,7 +384,8 @@ def test_dos_administradores_que_se_quitan_a_la_vez_dejan_uno(
 
     with abrir_sesion(motor) as bd:
         activos = [
-            u for u in bd.query(Usuario).filter(Usuario.activo.is_(True))
+            u
+            for u in bd.query(Usuario).filter(Usuario.activo.is_(True))
             if "administrador" in u.roles.split(",")
         ]
     motor.dispose()
