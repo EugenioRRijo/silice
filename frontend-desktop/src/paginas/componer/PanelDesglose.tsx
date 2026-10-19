@@ -64,7 +64,7 @@ function BloqueContraste({ contraste }: { contraste: Contraste }) {
 export function PanelDesglose({ evaluacion, cargando, error }: Props) {
   return (
     <section className="silice-componer__bloque" aria-labelledby="componer-desglose">
-      <h2 id="componer-desglose" className="cds--type-heading-03">
+      <h2 id="componer-desglose" className="cds--type-heading-compact-02">
         Desglose en vivo
       </h2>
       <p role="status" className="silice-componer__nota cds--type-label-01">

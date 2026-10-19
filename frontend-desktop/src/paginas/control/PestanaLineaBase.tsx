@@ -98,7 +98,7 @@ function Parametros({ proyecto, datos, alCambiar }: { proyecto: string; datos: L
     });
   return (
     <section className="silice-control__bloque" aria-labelledby="control-parametros">
-      <h2 id="control-parametros" className="cds--type-heading-03">
+      <h2 id="control-parametros" className="cds--type-heading-compact-02">
         Parametros de control
       </h2>
       <p className="silice-control__nota cds--type-body-compact-01">
@@ -174,7 +174,7 @@ export function PestanaLineaBase({ proyecto, clave, alCambiar }: Props) {
   return (
     <>
       <section className="silice-control__bloque" aria-labelledby="control-lb">
-        <h2 id="control-lb" className="cds--type-heading-03">
+        <h2 id="control-lb" className="cds--type-heading-compact-02">
           Linea base vigente
         </h2>
         <p className="cds--type-body-compact-01">

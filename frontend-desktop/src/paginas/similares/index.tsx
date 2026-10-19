@@ -209,7 +209,7 @@ function Resultado({ respuesta }: { respuesta: SimilaresRespuesta }) {
   }
   return (
     <section aria-labelledby="similares-lista">
-      <h2 id="similares-lista" className="cds--type-heading-03">
+      <h2 id="similares-lista" className="cds--type-heading-compact-02">
         {encabezadoDeLista(respuesta.propuestas.length)}
       </h2>
       <Accordion size="sm">

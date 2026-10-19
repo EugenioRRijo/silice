@@ -132,7 +132,7 @@ function SeccionReferencia({ alCargada, alExpirar }: PropsSeccion & { alCargada:
 
   return (
     <section className="silice-precios-empresa__seccion" aria-labelledby="precios-empresa-referencia">
-      <h2 id="precios-empresa-referencia" className="cds--type-heading-03">
+      <h2 id="precios-empresa-referencia" className="cds--type-heading-compact-02">
         {TITULO_REFERENCIA}
       </h2>
       <div className="silice-precios-empresa__acciones">
@@ -186,7 +186,7 @@ function SeccionLista({ bases, alCreada, alExpirar }: PropsSeccion & { bases: Ba
 
   return (
     <section className="silice-precios-empresa__seccion" aria-labelledby="precios-empresa-lista">
-      <h2 id="precios-empresa-lista" className="cds--type-heading-03">
+      <h2 id="precios-empresa-lista" className="cds--type-heading-compact-02">
         {TITULO_LISTA}
       </h2>
       {bases.length === 0 ? (
@@ -291,7 +291,7 @@ function SeccionHallazgos({ listas, alExpirar }: PropsSeccion & { listas: ListaE
 
   return (
     <section className="silice-precios-empresa__seccion" aria-labelledby="precios-empresa-hallazgos">
-      <h2 id="precios-empresa-hallazgos" className="cds--type-heading-03">
+      <h2 id="precios-empresa-hallazgos" className="cds--type-heading-compact-02">
         {TITULO_HALLAZGOS}
       </h2>
       {listas.length === 0 ? (

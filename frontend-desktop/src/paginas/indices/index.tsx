@@ -259,7 +259,7 @@ function InformePrevio({ lectura, contexto, definiciones, alCambiar, confirmacio
   const enCurso = confirmacion.tipo === "enCurso";
   return (
     <section className="silice-indices__informe" aria-labelledby="indices-informe">
-      <h2 id="indices-informe" ref={titulo} tabIndex={-1} className="cds--type-heading-03">
+      <h2 id="indices-informe" ref={titulo} tabIndex={-1} className="cds--type-heading-compact-02">
         Informe previo (todavía no se guardó nada)
       </h2>
       <section aria-label="Resumen de la lectura">

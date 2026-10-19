@@ -347,7 +347,7 @@ export default function PaginaEscenarios() {
               <InlineNotification kind="info" role="status" title="Sin escenarios" subtitle={SIN_ESCENARIOS} lowContrast hideCloseButton />
             ) : (
               <section className="silice-escenarios__resultados" aria-labelledby="escenarios-comparacion">
-                <h2 id="escenarios-comparacion" className="cds--type-heading-03">
+                <h2 id="escenarios-comparacion" className="cds--type-heading-compact-02">
                   {TITULO_COMPARACION}
                 </h2>
                 <TablaDensa etiqueta={TITULO_COMPARACION} columnas={COLUMNAS_COMPARACION} filas={filasComparacion(resultado)} />

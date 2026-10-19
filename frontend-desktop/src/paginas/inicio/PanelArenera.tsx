@@ -110,7 +110,7 @@ function Cuerpo({ carga }: { carga: Carga<ExistenciaRespuesta[]> }) {
 export function PanelArenera({ carga }: { carga: Carga<ExistenciaRespuesta[]> }) {
   return (
     <section className="silice-inicio__bloque" aria-labelledby="inicio-arenera">
-      <h2 id="inicio-arenera" className="cds--type-heading-03">
+      <h2 id="inicio-arenera" className="cds--type-heading-compact-02">
         Arenera: lo que requiere atención
       </h2>
       <Cuerpo carga={carga} />

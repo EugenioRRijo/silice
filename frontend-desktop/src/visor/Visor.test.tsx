@@ -285,9 +285,9 @@ describe("Visor", () => {
     expect(screen.queryByLabelText("Fecha de devolución")).toBeNull();
   });
 
-  test("la pagina tiene un h1 para lectores de pantalla (m3)", () => {
+  test("el h1 es de la pagina que aloja al visor, no del visor (V-8)", () => {
     render(<Visor crearHoja={crearHoja} />);
-    expect(screen.getByRole("heading", { level: 1 })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { level: 1 })).toBeNull();
   });
 
   test("el estado vacio tiene titulo y explica para que sirve la fecha de devolucion (m5)", () => {

@@ -40,7 +40,7 @@ export default function PaginaAcerca() {
       </section>
     );
   }
-  if (carga.estado !== "listo") return <EsqueletoPagina />;
+  if (carga.estado !== "listo") return <EsqueletoPagina titulo="Acerca de Sílice" />;
   const d = carga.datos;
 
   return (
@@ -48,7 +48,7 @@ export default function PaginaAcerca() {
       <h1 id="acerca-titulo" className="cds--type-heading-04">
         Acerca de Sílice
       </h1>
-      <h2 className="cds--type-heading-03">Sílice {d.semver}</h2>
+      <h2 className="cds--type-heading-compact-02">Sílice {d.semver}</h2>
       <p className="cds--type-body-compact-01">Versión: {d.version}</p>
       <StructuredListWrapper isCondensed aria-label="Bases y carpeta de datos">
         <StructuredListBody>

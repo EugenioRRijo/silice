@@ -290,7 +290,7 @@ export default function Cuentas() {
   return (
     <div className="silice-adm__secciones">
       <section aria-labelledby="adm-cuentas" className="silice-adm__tabla" inert={abierta}>
-        <h2 id="adm-cuentas" className="cds--type-heading-03">
+        <h2 id="adm-cuentas" className="cds--type-heading-compact-02">
           Cuentas
         </h2>
         {errorDeLista !== null && (
@@ -349,7 +349,7 @@ export default function Cuentas() {
       </div>
 
       <section aria-labelledby="adm-crear" className="silice-adm__seccion" inert={abierta}>
-        <h2 id="adm-crear" className="cds--type-heading-03">
+        <h2 id="adm-crear" className="cds--type-heading-compact-02">
           Crear una cuenta
         </h2>
         <form className="silice-adm__seccion" onSubmit={(e) => void crear(e)} autoComplete="off">
@@ -387,7 +387,7 @@ export default function Cuentas() {
 
       {cuentas.length > 0 && (
         <section aria-labelledby="adm-cambiar" className="silice-adm__seccion">
-          <h2 id="adm-cambiar" className="cds--type-heading-03">
+          <h2 id="adm-cambiar" className="cds--type-heading-compact-02">
             {elegida ? `Cambiar la cuenta ${elegida.login}` : "Cambiar una cuenta"}
           </h2>
           <div className="silice-adm__seccion" inert={abierta}>

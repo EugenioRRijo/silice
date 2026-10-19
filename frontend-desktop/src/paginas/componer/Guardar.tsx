@@ -21,7 +21,7 @@ export function Guardar({ sinCondiciones, requiereJustificacion, guardando, resu
 
   return (
     <section className="silice-componer__bloque" aria-labelledby="componer-guardar">
-      <h2 id="componer-guardar" className="cds--type-heading-03">
+      <h2 id="componer-guardar" className="cds--type-heading-compact-02">
         Guardar
       </h2>
       {requiereJustificacion && (

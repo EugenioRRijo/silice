@@ -31,7 +31,7 @@ export default function Accesos() {
 
   return (
     <section className="silice-adm__tabla" aria-labelledby="adm-accesos">
-      <h2 id="adm-accesos" className="cds--type-heading-03">
+      <h2 id="adm-accesos" className="cds--type-heading-compact-02">
         Accesos
       </h2>
       <p className="silice-adm__nota cds--type-body-compact-01">{notaAccesos(datos?.maximo ?? null)}</p>

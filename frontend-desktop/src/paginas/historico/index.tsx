@@ -26,7 +26,7 @@ function rutaDe({ insumo, desde, hasta }: Filtros): string {
   if (fechaValida(desde)) q.set("desde", desde);
   if (fechaValida(hasta)) q.set("hasta", hasta);
   const texto = q.toString();
-  return texto ? `/v1/cambios-precio?${texto}` : "/v1/cambios-precio";
+  return texto ? `/cambios-precio?${texto}` : "/cambios-precio";
 }
 
 const fechaMala = (t: string) => t !== "" && !fechaValida(t);

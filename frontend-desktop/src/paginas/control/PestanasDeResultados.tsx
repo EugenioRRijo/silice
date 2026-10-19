@@ -102,7 +102,7 @@ export function ValorGanado({ calculo }: { calculo: Calculo }) {
       />
       {curva.length > 0 && (
         <section className="silice-control__bloque" aria-labelledby="control-curva">
-          <h2 id="control-curva" className="cds--type-heading-03">
+          <h2 id="control-curva" className="cds--type-heading-compact-02">
             PV, EV y AC al cierre de cada periodo
           </h2>
           <CurvaPlanAvance
@@ -134,13 +134,13 @@ export function AlertasYReproyeccion({ calculo }: { calculo: Calculo }) {
   return (
     <>
       <section className="silice-control__bloque" aria-labelledby="control-alertas">
-        <h2 id="control-alertas" className="cds--type-heading-03">
+        <h2 id="control-alertas" className="cds--type-heading-compact-02">
           Alertas
         </h2>
         <TablaDensa etiqueta="Alertas" columnas={columnasDe(COLUMNAS_ALERTAS, ["Observado", "Umbral"])} filas={conId(calculo.alertas)} />
       </section>
       <section className="silice-control__bloque" aria-labelledby="control-terminos">
-        <h2 id="control-terminos" className="cds--type-heading-03">
+        <h2 id="control-terminos" className="cds--type-heading-compact-02">
           Termino, costo final y punto de equilibrio
         </h2>
         {t && (
@@ -160,7 +160,7 @@ export function AlertasYReproyeccion({ calculo }: { calculo: Calculo }) {
         <p className="silice-control__nota cds--type-helper-text-01">{calculo.estudios}</p>
       </section>
       <section className="silice-control__bloque" aria-labelledby="control-reproyeccion">
-        <h2 id="control-reproyeccion" className="cds--type-heading-03">
+        <h2 id="control-reproyeccion" className="cds--type-heading-compact-02">
           Reproyeccion por partida
         </h2>
         <TablaDensa
@@ -171,7 +171,7 @@ export function AlertasYReproyeccion({ calculo }: { calculo: Calculo }) {
       </section>
       {calculo.plan && (
         <section className="silice-control__bloque" aria-labelledby="control-plan">
-          <h2 id="control-plan" className="cds--type-heading-03">
+          <h2 id="control-plan" className="cds--type-heading-compact-02">
             Plan reproyectado
           </h2>
           <TablaDensa
@@ -255,7 +255,7 @@ export function Recuperacion({
       </div>
       {opciones && (
         <section className="silice-control__bloque" aria-labelledby="control-opciones">
-          <h2 id="control-opciones" className="cds--type-heading-03">
+          <h2 id="control-opciones" className="cds--type-heading-compact-02">
             Opciones de recuperacion
           </h2>
           <TablaDensa
@@ -308,7 +308,7 @@ export function Recuperacion({
       )}
       {calculo.decisiones.length > 0 ? (
         <section className="silice-control__bloque" aria-labelledby="control-decisiones">
-          <h2 id="control-decisiones" className="cds--type-heading-03">
+          <h2 id="control-decisiones" className="cds--type-heading-compact-02">
             Decisiones tomadas
           </h2>
           <TablaDensa etiqueta="Decisiones tomadas" columnas={columnasDe(COLUMNAS_DECISIONES)} filas={conId(calculo.decisiones)} />

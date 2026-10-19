@@ -193,7 +193,7 @@ export default function PaginaComponer() {
       <AvisoError error={errorOpciones} titulo="No se pudieron cargar las opciones" />
 
       <section className="silice-componer__bloque" aria-labelledby="componer-cabecera">
-        <h2 id="componer-cabecera" className="cds--type-heading-03">
+        <h2 id="componer-cabecera" className="cds--type-heading-compact-02">
           Cabecera de la partida
         </h2>
         <div className="silice-componer__rejilla">
@@ -250,7 +250,7 @@ export default function PaginaComponer() {
       <Similares similares={parecidas} />
 
       <section className="silice-componer__bloque" aria-labelledby="componer-rendimiento">
-        <h2 id="componer-rendimiento" className="cds--type-heading-03">
+        <h2 id="componer-rendimiento" className="cds--type-heading-compact-02">
           Rendimiento
         </h2>
         <AvisoError error={errorPrecarga} titulo="No se pudo consultar la partida" />
@@ -283,7 +283,7 @@ export default function PaginaComponer() {
       </section>
 
       <section className="silice-componer__bloque" aria-labelledby="componer-insumos">
-        <h2 id="componer-insumos" className="cds--type-heading-03">
+        <h2 id="componer-insumos" className="cds--type-heading-compact-02">
           Insumos
         </h2>
         {TIPOS.map((tipo) => (

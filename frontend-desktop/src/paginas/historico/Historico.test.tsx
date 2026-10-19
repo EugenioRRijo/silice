@@ -62,7 +62,7 @@ describe("Histórico de cambios de precio", () => {
     const tabla = await screen.findByRole("table", { name: "Cambios de precio" });
     expect(tabla).toHaveTextContent("10.6250");
     expect(tabla).toHaveTextContent("6.25");
-    expect(fetchFalso.mock.calls[0][0]).toBe("/v1/cambios-precio");
+    expect(fetchFalso.mock.calls[0][0]).toBe("/cambios-precio");
   });
 
   test("filtra por insumo y fechas validas", async () => {
@@ -74,7 +74,7 @@ describe("Histórico de cambios de precio", () => {
     await usuario.click(screen.getByRole("button", { name: "Filtrar" }));
     await waitFor(() =>
       expect(fetchFalso).toHaveBeenLastCalledWith(
-        "/v1/cambios-precio?insumo=Cemento+ficticio&desde=2026-01-01",
+        "/cambios-precio?insumo=Cemento+ficticio&desde=2026-01-01",
         expect.anything(),
       ),
     );

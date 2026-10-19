@@ -221,7 +221,7 @@ export function PestanaValuaciones({ proyecto, clave, alCambiar }: Props) {
   return (
     <>
       <section className="silice-control__bloque" aria-labelledby="control-valuaciones">
-        <h2 id="control-valuaciones" className="cds--type-heading-03">
+        <h2 id="control-valuaciones" className="cds--type-heading-compact-02">
           Valuaciones registradas (cuentan desde su registro)
         </h2>
         {datos.aviso && <InlineNotification kind="warning" lowContrast hideCloseButton role="status" title={datos.aviso} />}
@@ -236,7 +236,7 @@ export function PestanaValuaciones({ proyecto, clave, alCambiar }: Props) {
         </p>
       </section>
       <section className="silice-control__bloque" aria-labelledby="control-escribir">
-        <h2 id="control-escribir" className="cds--type-heading-03">
+        <h2 id="control-escribir" className="cds--type-heading-compact-02">
           Registrar, importar, anular y anotar costos
         </h2>
         <Registrar proyecto={proyecto} alCambiar={alCambiar} />

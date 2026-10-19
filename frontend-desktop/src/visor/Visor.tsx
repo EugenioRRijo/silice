@@ -305,7 +305,6 @@ export function Visor({ crearHoja = crearHojaUniver, alExpirar, almacen, ranuraC
 
   return (
     <div className="visor">
-      <h1 className="silice-oculto">Auditoría de libros</h1>
       {cargando && <div className="visor__franja-esqueleto" aria-hidden="true"><SkeletonText width="60%" /></div>}
       {fase === "listo" && auditoria && (
         <FranjaIndicadores

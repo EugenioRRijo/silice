@@ -63,7 +63,7 @@ export function PlanDeTrabajo({ filas, alCambiar, reiniciado, ocupado, alAplicar
 
   return (
     <section className="silice-elaborar__bloque" aria-label="Plan de trabajo">
-      <h2 className="cds--type-heading-03">Plan de trabajo</h2>
+      <h2 className="cds--type-heading-compact-02">Plan de trabajo</h2>
       <p className="cds--type-body-compact-01">{TEXTO_PLAN}</p>
       {reiniciado && (
         <p className="silice-elaborar__nota cds--type-label-01" role="status">

@@ -145,7 +145,7 @@ export default function PaginaSimulador() {
         {estado.fase === "listo" && (
           <>
             <div className="silice-simulador__encabezado">
-              <h2 ref={tituloRef} tabIndex={-1} className="cds--type-heading-03">
+              <h2 ref={tituloRef} tabIndex={-1} className="cds--type-heading-compact-02">
                 Lista simulada
               </h2>
               {estado.filas.length > 0 && (

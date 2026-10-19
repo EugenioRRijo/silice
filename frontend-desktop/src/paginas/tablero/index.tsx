@@ -111,7 +111,7 @@ function Contenido({ datos }: { datos: TableroRespuesta }) {
       <Tarjetas tarjetas={datos.tarjetas} />
 
       <section className="silice-tablero__bloque" aria-labelledby="tablero-control">
-        <h2 id="tablero-control" className="cds--type-heading-03">
+        <h2 id="tablero-control" className="cds--type-heading-compact-02">
           Control de la obra
         </h2>
         {datos.control?.disponible ? (
@@ -130,7 +130,7 @@ function Contenido({ datos }: { datos: TableroRespuesta }) {
 
       {datos.curvas && datos.curvas.series.length > 0 && (
         <section className="silice-tablero__bloque" aria-labelledby="tablero-curva">
-          <h2 id="tablero-curva" className="cds--type-heading-03">
+          <h2 id="tablero-curva" className="cds--type-heading-compact-02">
             Curva del proyecto
           </h2>
           <CurvaPlanAvance titulo={datos.curvas.titulo} series={seriesDeCurva(datos.curvas)} unidad={moneda} />
@@ -139,7 +139,7 @@ function Contenido({ datos }: { datos: TableroRespuesta }) {
 
       {datos.desglose.length > 0 && (
         <section className="silice-tablero__bloque" aria-labelledby="tablero-desglose">
-          <h2 id="tablero-desglose" className="cds--type-heading-03">
+          <h2 id="tablero-desglose" className="cds--type-heading-compact-02">
             Desglose del contrato
           </h2>
           <Grafico titulo="Desglose del contrato" tipo="anillo" datos={datosDeDesglose(datos.desglose)} />
@@ -157,7 +157,7 @@ function Contenido({ datos }: { datos: TableroRespuesta }) {
 
       {datos.pareto.length > 0 && (
         <section className="silice-tablero__bloque" aria-labelledby="tablero-pareto">
-          <h2 id="tablero-pareto" className="cds--type-heading-03">
+          <h2 id="tablero-pareto" className="cds--type-heading-compact-02">
             Partidas que mas pesan (Pareto)
           </h2>
           <Grafico
@@ -189,7 +189,7 @@ function Contenido({ datos }: { datos: TableroRespuesta }) {
 
       {datos.versiones.length > 0 && (
         <section className="silice-tablero__bloque" aria-labelledby="tablero-versiones">
-          <h2 id="tablero-versiones" className="cds--type-heading-03">
+          <h2 id="tablero-versiones" className="cds--type-heading-compact-02">
             Versiones del presupuesto
           </h2>
           <Grafico

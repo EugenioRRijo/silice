@@ -24,8 +24,8 @@ interface Insumo {
 // «Catálogo de partidas e insumos» (solo lectura): las dos tablas de la página clásica, con una búsqueda.
 export default function PaginaCatalogo() {
   const { alExpirar } = useAplicacion();
-  const partidas = useCarga<Partida[]>("/v1/partidas", alExpirar);
-  const insumos = useCarga<Insumo[]>("/v1/insumos", alExpirar);
+  const partidas = useCarga<Partida[]>("/partidas", alExpirar);
+  const insumos = useCarga<Insumo[]>("/insumos", alExpirar);
   const [busqueda, setBusqueda] = useState("");
 
   // 403 y 404 también se dicen, con el detalle de la API tal cual: nunca esqueleto para siempre.
@@ -40,7 +40,7 @@ export default function PaginaCatalogo() {
       </section>
     );
   }
-  if (partidas.estado !== "listo" || insumos.estado !== "listo") return <EsqueletoPagina />;
+  if (partidas.estado !== "listo" || insumos.estado !== "listo") return <EsqueletoPagina titulo="Catálogo de partidas e insumos" />;
 
   const filasPartidas = partidas.datos
     .filter((p) => coincide([p.codigo, p.descripcion, p.unidad, p.dominio], busqueda))

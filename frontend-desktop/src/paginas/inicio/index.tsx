@@ -35,7 +35,7 @@ export default function PaginaInicio() {
       <h1 className="cds--type-heading-04">Inicio</h1>
 
       <section className="silice-inicio__bloque" aria-labelledby="inicio-excel">
-        <h2 id="inicio-excel" className="cds--type-heading-03">
+        <h2 id="inicio-excel" className="cds--type-heading-compact-02">
           Audite un presupuesto
         </h2>
         <p className="silice-inicio__nota cds--type-body-compact-01">
@@ -66,7 +66,7 @@ export default function PaginaInicio() {
       <PanelArenera carga={arenera} />
 
       <section className="silice-inicio__bloque" aria-labelledby="inicio-seguir">
-        <h2 id="inicio-seguir" className="cds--type-heading-03">
+        <h2 id="inicio-seguir" className="cds--type-heading-compact-02">
           Últimas auditorías guardadas
         </h2>
         <p className="silice-inicio__nota cds--type-body-compact-01">

@@ -349,7 +349,7 @@ function ResultadoRevaloracion({
           hideCloseButton
         />
       ))}
-      <h2 ref={titulo} tabIndex={-1} className="cds--type-heading-03">
+      <h2 ref={titulo} tabIndex={-1} className="cds--type-heading-compact-02">
         Comparativo por partida
       </h2>
       <section className="silice-actualizacion__totales" aria-label="Total del presupuesto">
@@ -426,7 +426,7 @@ function ResultadoRevaloracion({
           alExpirar={alExpirar}
         />
       )}
-      <h2 className="cds--type-heading-03">Informe de auditoría de la versión nueva</h2>
+      <h2 className="cds--type-heading-compact-02">Informe de auditoría de la versión nueva</h2>
       <InformeAuditoria informe={respuesta.informe} />
       {guardada !== null && (
         <div className="silice-actualizacion__acciones">

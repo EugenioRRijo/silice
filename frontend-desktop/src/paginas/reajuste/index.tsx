@@ -203,7 +203,7 @@ function Formulario({
       </Select>
 
       <section className="silice-reajuste__bloque" aria-labelledby="reajuste-clausula">
-        <h2 id="reajuste-clausula" className="cds--type-heading-03">
+        <h2 id="reajuste-clausula" className="cds--type-heading-compact-02">
           1. La cláusula de reajuste (a cotejar con la Gaceta)
         </h2>
         <div className="silice-reajuste__rejilla">
@@ -259,7 +259,7 @@ function Formulario({
       </section>
 
       <section className="silice-reajuste__bloque" aria-labelledby="reajuste-periodos">
-        <h2 id="reajuste-periodos" className="cds--type-heading-03">
+        <h2 id="reajuste-periodos" className="cds--type-heading-compact-02">
           2. Periodos y lo ejecutado (con su fuente)
         </h2>
         <p className="silice-reajuste__nota cds--type-body-compact-01">
@@ -307,7 +307,7 @@ function Formulario({
 
       {calculo && (
         <section className="silice-reajuste__bloque" aria-labelledby="reajuste-resultado">
-          <h2 id="reajuste-resultado" className="cds--type-heading-03">
+          <h2 id="reajuste-resultado" className="cds--type-heading-compact-02">
             3. Escalatoria y comprobación, lado a lado
           </h2>
           <TablaDensa
@@ -322,7 +322,7 @@ function Formulario({
             <InlineNotification kind="info" title="Estudio parcial" subtitle={calculo.mensaje_parcial} lowContrast hideCloseButton />
           )}
 
-          <h2 className="cds--type-heading-03">4. Guardar el estudio</h2>
+          <h2 className="cds--type-heading-compact-02">4. Guardar el estudio</h2>
           <div className="silice-reajuste__rejilla">
             <TextInput id="rj-estudio-fuente" labelText="Fuente del estudio" value={fuente} onChange={(e) => setFuente(e.target.value)} />
             <TextInput id="rj-estudio-responsable" labelText="Responsable del estudio" helperText="En blanco, su nombre de usuario." value={responsable} onChange={(e) => setResponsable(e.target.value)} />

@@ -438,7 +438,7 @@ export default function PaginaElaborar() {
 
       {hayItems && items && (
         <section aria-label="Cómputo extraído" className="silice-elaborar__bloque">
-          <h2 className="cds--type-heading-03">Cómputo extraído</h2>
+          <h2 className="cds--type-heading-compact-02">Cómputo extraído</h2>
           <TablaDensa
             etiqueta="Cómputo extraído"
             columnas={[
@@ -467,7 +467,7 @@ export default function PaginaElaborar() {
 
       {rendimientos.length > 0 && (
         <section aria-label="Rendimientos por declarar" className="silice-elaborar__bloque">
-          <h2 className="cds--type-heading-03">Rendimientos por declarar</h2>
+          <h2 className="cds--type-heading-compact-02">Rendimientos por declarar</h2>
           <p className="cds--type-body-compact-01">{TEXTO_RENDIMIENTOS}</p>
           {rendimientos.map((entrada) => {
             const cod = entrada.codigo_partida;
@@ -504,7 +504,7 @@ export default function PaginaElaborar() {
       {resultado && elaboracion && (
         <>
           <section aria-label="Presupuesto elaborado" className="silice-elaborar__bloque">
-            <h2 className="cds--type-heading-03">Presupuesto elaborado</h2>
+            <h2 className="cds--type-heading-compact-02">Presupuesto elaborado</h2>
             <div className="silice-elaborar__metricas" role="group" aria-label="Métricas del presupuesto">
               <Metrica titulo="Total del presupuesto" valor={`${resultado.total} ${resultado.moneda}`} />
               {resultado.por_severidad.map((s) => (
@@ -569,7 +569,7 @@ export default function PaginaElaborar() {
           )}
 
           <section className="silice-elaborar__bloque">
-            <h2 className="cds--type-heading-03">Informe de auditoría</h2>
+            <h2 className="cds--type-heading-compact-02">Informe de auditoría</h2>
             <InformeAuditoria informe={resultado.informe} />
           </section>
         </>

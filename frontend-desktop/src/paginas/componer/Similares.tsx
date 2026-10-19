@@ -18,7 +18,7 @@ export function Similares({ similares }: Props) {
   if (similares.length === 0) return null;
   return (
     <section className="silice-componer__bloque" aria-labelledby="componer-similares">
-      <h2 id="componer-similares" className="cds--type-heading-03">
+      <h2 id="componer-similares" className="cds--type-heading-compact-02">
         Partidas similares del catálogo
       </h2>
       <p className="silice-componer__nota cds--type-body-compact-01">

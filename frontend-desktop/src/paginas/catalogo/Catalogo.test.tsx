@@ -101,6 +101,9 @@ describe("Catálogo de partidas e insumos", () => {
 
   test("el título de la página es un h1", async () => {
     montar();
-    expect(await screen.findByRole("heading", { level: 1, name: "Catálogo de partidas e insumos" })).toBeInTheDocument();
+    // Mientras carga el h1 ya esta (V-8); se espera a la tabla para comprobar el de la pagina completa.
+    expect(screen.getByRole("heading", { level: 1, name: "Catálogo de partidas e insumos" })).toBeInTheDocument();
+    await screen.findByRole("table", { name: "Partidas" });
+    expect(screen.getByRole("heading", { level: 1, name: "Catálogo de partidas e insumos" })).toBeInTheDocument();
   });
 });
