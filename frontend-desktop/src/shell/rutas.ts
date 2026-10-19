@@ -22,10 +22,22 @@ export interface PaginaDef {
 }
 
 export const PAGINAS: readonly PaginaDef[] = [
-  { id: "inicio", titulo: "Inicio", seccion: "Trabajo", accion: null },
+  {
+    id: "inicio",
+    titulo: "Inicio",
+    seccion: "Trabajo",
+    accion: null,
+    cargar: () => import("../paginas/inicio"),
+  },
   { id: "tablero", titulo: "Tablero del proyecto", seccion: "Trabajo", accion: "leer_proyecto" },
   { id: "catalogo", titulo: "Catálogo de partidas e insumos", seccion: "Trabajo", accion: "leer_proyecto" },
-  { id: "componer", titulo: "Componer una partida", seccion: "Trabajo", accion: "editar_hoja" },
+  {
+    id: "componer",
+    titulo: "Componer una partida",
+    seccion: "Trabajo",
+    accion: "editar_hoja",
+    cargar: () => import("../paginas/componer"),
+  },
   { id: "elaborar", titulo: "Elaborar un presupuesto", seccion: "Trabajo", accion: "editar_hoja" },
   { id: "hoja", titulo: "Hoja del proyecto", seccion: "Trabajo", accion: "editar_hoja" },
   { id: "actualizacion", titulo: "Actualizar precios", seccion: "Trabajo", accion: "editar_hoja" },
@@ -35,7 +47,13 @@ export const PAGINAS: readonly PaginaDef[] = [
   { id: "reajuste", titulo: "Reajuste de precios", seccion: "Trabajo", accion: "convertir_y_reajustar" },
   { id: "control", titulo: "Control de obra", seccion: "Trabajo", accion: "control_de_obra" },
   { id: "acerca", titulo: "Acerca de Sílice", seccion: "Trabajo", accion: null },
-  { id: "entregar", titulo: "Entregar paquete", seccion: "Trabajo", accion: "entregar_paquete" },
+  {
+    id: "entregar",
+    titulo: "Entregar paquete",
+    seccion: "Trabajo",
+    accion: "entregar_paquete",
+    cargar: () => import("../paginas/entregar"),
+  },
   { id: "revisar", titulo: "Revisar un paquete", seccion: "Revisión", accion: "revisar_paquete" },
   {
     id: "libros",
@@ -45,8 +63,20 @@ export const PAGINAS: readonly PaginaDef[] = [
     cargar: () => import("../paginas/libros"),
   },
   { id: "escenarios", titulo: "Escenarios de sensibilidad", seccion: "Investigación", accion: "editar_hoja" },
-  { id: "similares", titulo: "Partidas similares", seccion: "Investigación", accion: "editar_hoja" },
-  { id: "simulador", titulo: "Simulador de listas", seccion: "Investigación", accion: "editar_hoja" },
+  {
+    id: "similares",
+    titulo: "Partidas similares",
+    seccion: "Investigación",
+    accion: "editar_hoja",
+    cargar: () => import("../paginas/similares"),
+  },
+  {
+    id: "simulador",
+    titulo: "Simulador de listas",
+    seccion: "Investigación",
+    accion: "editar_hoja",
+    cargar: () => import("../paginas/simulador"),
+  },
   { id: "visor", titulo: "Visor 3D del modelo", seccion: "Investigación", accion: "editar_hoja" },
   { id: "administracion", titulo: "Administración", seccion: "Administración", accion: "administrar_cuentas" },
 ];

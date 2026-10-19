@@ -725,7 +725,7 @@ def test_un_paquete_mas_grande_que_el_limite_no_se_genera_y_el_limite_exacto_si(
     emisor, monkeypatch
 ) -> None:
     caso, bd, _, version, _ = emisor
-    monkeypatch.setattr(entrega.uuid, "uuid4", lambda: ID_FIJO)  # mismo paquete, mismo tamaño
+    monkeypatch.setattr(uuid, "uuid4", lambda: ID_FIJO)  # mismo paquete, mismo tamaño
     tamano = len(_entregar(caso, bd, version).datos)
     assert len(_entregar(caso, bd, version).datos) == tamano  # determinista sin firma
     antes = len(_eventos(bd))

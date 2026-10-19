@@ -36,8 +36,15 @@ describe("registro de paginas", () => {
     expect(SECCIONES).toEqual(["Trabajo", "Revisión", "Investigación", "Administración"]);
   });
 
-  test("hoy solo esta migrado el Libro de la empresa (RM-6) y carga perezosa", () => {
-    expect(PAGINAS.filter(estaMigrada).map((p) => p.id)).toEqual(["libros"]);
+  test("estan migradas Inicio, Componer, Entregar, el Libro de la empresa (RM-6), Similares y el Simulador, con carga perezosa", () => {
+    expect(PAGINAS.filter(estaMigrada).map((p) => p.id)).toEqual([
+      "inicio",
+      "componer",
+      "entregar",
+      "libros",
+      "similares",
+      "simulador",
+    ]);
     const libro = paginaPorId("libros");
     expect(libro?.titulo).toBe("Libro de la empresa");
     expect(typeof libro?.cargar).toBe("function");

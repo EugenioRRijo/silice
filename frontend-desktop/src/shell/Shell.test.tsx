@@ -418,5 +418,14 @@ describe("Shell", () => {
       expect(screen.queryByRole("combobox", { name: "Proyecto" })).not.toBeInTheDocument();
       expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     });
+
+    test("sin ninguna pagina disponible para la cuenta, dice que no hay pantallas en esta interfaz", async () => {
+      render(
+        <MemoryRouter initialEntries={["/"]}>
+          <Shell sesion={sesionCon()} alSalir={alSalir} alExpirar={alExpirar} paginas={[]} />
+        </MemoryRouter>,
+      );
+      expect(await screen.findByText("No hay pantallas disponibles en esta interfaz")).toBeInTheDocument();
+    });
   });
 });

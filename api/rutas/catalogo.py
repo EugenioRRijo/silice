@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
+from api.acceso import LEER
 from api.dependencias import SesionDep
 from api.esquemas import InsumoRespuesta, PartidaRespuesta
 from core.catalog import Catalogo, CatalogoIncompleto
@@ -15,7 +16,7 @@ from core.contracts.dominio import Dominio
 router = APIRouter(tags=["catalogo"])
 
 
-@router.get("/partidas", response_model=list[PartidaRespuesta])
+@router.get("/partidas", response_model=list[PartidaRespuesta], dependencies=LEER)
 def listar_partidas(sesion: SesionDep, dominio: Dominio | None = None) -> list[PartidaRespuesta]:
     """Partidas del catalogo, ordenadas por codigo; filtradas por dominio si se indica."""
     return [
@@ -23,7 +24,7 @@ def listar_partidas(sesion: SesionDep, dominio: Dominio | None = None) -> list[P
     ]
 
 
-@router.get("/insumos", response_model=list[InsumoRespuesta])
+@router.get("/insumos", response_model=list[InsumoRespuesta], dependencies=LEER)
 def listar_insumos(sesion: SesionDep) -> list[InsumoRespuesta]:
     """Insumos del catalogo con su precio en la lista vigente; `None` si no hay lista vigente."""
     catalogo = Catalogo(sesion)
