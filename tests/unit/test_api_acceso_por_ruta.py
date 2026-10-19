@@ -67,6 +67,7 @@ LEER, EDITAR, REVISAR, CAMBIAR_CASO, CUALQUIERA, CUENTAS_ADM, CONTROLAR, DECIDIR
 )
 ENTREGAR = "entregar_paquete"
 REAJUSTAR = "convertir_y_reajustar"
+PRECIOS = "administrar_precios"
 EMPRESA, RED_Y_API = (
     "administrar_empresa",
     "administrar_red_y_api",
@@ -80,6 +81,7 @@ ROLES = {
     EMPRESA: {"administrador"},
     RED_Y_API: {"administrador"},
     REAJUSTAR: {"arma"},
+    PRECIOS: {"administrador"},
     CAMBIAR_CASO: {"arma", "administrador"},
     CONTROLAR: {"arma"},
     DECIDIR: {"arma"},
@@ -176,6 +178,13 @@ TABLA = {
     ("POST", "/v1/reajuste/calcular"): REAJUSTAR,
     ("POST", "/v1/reajuste/guardar"): REAJUSTAR,
     ("POST", "/v1/reajuste/excel"): REAJUSTAR,
+    ("GET", "/v1/indices/contexto"): PRECIOS,
+    ("POST", "/v1/indices/leer"): PRECIOS,
+    ("POST", "/v1/indices/confirmar"): PRECIOS,
+    ("GET", "/v1/precios-empresa"): PRECIOS,
+    ("POST", "/v1/precios-empresa/referencia"): PRECIOS,
+    ("POST", "/v1/precios-empresa/listas"): PRECIOS,
+    ("GET", "/v1/precios-empresa/listas/{lista_id}/hallazgos"): PRECIOS,
     ("GET", "/v1/acerca"): CUALQUIERA,
 }
 #: Las de la puerta de entrada: la sesión misma (con su propia regla) y el ping.

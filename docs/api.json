@@ -3172,7 +3172,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/InformeRespuesta"
+                  "$ref": "#/components/schemas/api__rutas__control__InformeRespuesta"
                 }
               }
             }
@@ -3588,7 +3588,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ContextoRespuesta"
+                  "$ref": "#/components/schemas/api__rutas__reajuste__ContextoRespuesta"
                 }
               }
             }
@@ -4239,6 +4239,257 @@
         }
       }
     },
+    "/v1/indices/contexto": {
+      "get": {
+        "tags": [
+          "indices"
+        ],
+        "summary": "Contexto",
+        "operationId": "contexto_v1_indices_contexto_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/api__rutas__indices__ContextoRespuesta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/indices/leer": {
+      "post": {
+        "tags": [
+          "indices"
+        ],
+        "summary": "Leer",
+        "description": "UC-17 1-2: lee el archivo y muestra lo que se importaría. No escribe nada.",
+        "operationId": "leer_v1_indices_leer_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_leer_v1_indices_leer_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/api__rutas__indices__InformeRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/indices/confirmar": {
+      "post": {
+        "tags": [
+          "indices"
+        ],
+        "summary": "Confirmar",
+        "description": "UC-17 3: guarda las series del archivo con su huella; el mismo archivo dos veces no\nescribe nada. Todo o nada.",
+        "operationId": "confirmar_v1_indices_confirmar_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_confirmar_v1_indices_confirmar_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfirmacionRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/precios-empresa": {
+      "get": {
+        "tags": [
+          "precios-empresa"
+        ],
+        "summary": "Estado",
+        "description": "Las listas que pueden ser base de la de una empresa y las listas de empresa del caso.",
+        "operationId": "estado_v1_precios_empresa_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EstadoRespuesta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/precios-empresa/referencia": {
+      "post": {
+        "tags": [
+          "precios-empresa"
+        ],
+        "summary": "Cargar Referencia",
+        "description": "Carga la referencia MaPreX en Bs; una ya cargada no se duplica.",
+        "operationId": "cargar_referencia_v1_precios_empresa_referencia_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MensajeRespuesta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/precios-empresa/listas": {
+      "post": {
+        "tags": [
+          "precios-empresa"
+        ],
+        "summary": "Crear Lista",
+        "description": "UC-17 4: crea la lista de la empresa sobre una lista base con los precios del archivo.\n\nEmpresa, RIF y fuente vacios llegan al nucleo, que los rechaza con su mensaje (como la pagina\nclasica). Todo o nada: ante cualquier error no queda nada escrito. Los insumos del archivo\nque el catalogo no conoce se informan y no se dan de alta (UC-17 4a).",
+        "operationId": "crear_lista_v1_precios_empresa_listas_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_crear_lista_v1_precios_empresa_listas_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListaCreadaRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/precios-empresa/listas/{lista_id}/hallazgos": {
+      "get": {
+        "tags": [
+          "precios-empresa"
+        ],
+        "summary": "Hallazgos",
+        "description": "R11 y R12 de la lista sola a `fecha` (hoy si falta). No escribe nada.",
+        "operationId": "hallazgos_v1_precios_empresa_listas__lista_id__hallazgos_get",
+        "parameters": [
+          {
+            "name": "lista_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Lista Id"
+            }
+          },
+          {
+            "name": "fecha",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Fecha"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HallazgosRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/salud": {
       "get": {
         "tags": [
@@ -4675,6 +4926,29 @@
         "type": "object",
         "title": "BajaDeClave"
       },
+      "BaseRespuesta": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          },
+          "moneda": {
+            "type": "string",
+            "title": "Moneda"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "nombre",
+          "moneda"
+        ],
+        "title": "BaseRespuesta"
+      },
       "Body_auditar_libro_v1_libros_auditoria_post": {
         "properties": {
           "libro": {
@@ -4816,6 +5090,112 @@
         ],
         "title": "Body_computar_computos__dominio__post"
       },
+      "Body_confirmar_v1_indices_confirmar_post": {
+        "properties": {
+          "tipo": {
+            "type": "string",
+            "maxLength": 20,
+            "title": "Tipo"
+          },
+          "archivo": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "Archivo"
+          },
+          "fecha_descarga": {
+            "type": "string",
+            "format": "date",
+            "title": "Fecha Descarga"
+          },
+          "fuente": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Fuente",
+            "default": ""
+          },
+          "responsable": {
+            "type": "string",
+            "maxLength": 200,
+            "title": "Responsable",
+            "default": ""
+          },
+          "definiciones": {
+            "type": "string",
+            "maxLength": 20000,
+            "title": "Definiciones",
+            "default": "[]"
+          },
+          "huella": {
+            "type": "string",
+            "maxLength": 64,
+            "title": "Huella",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "tipo",
+          "archivo",
+          "fecha_descarga"
+        ],
+        "title": "Body_confirmar_v1_indices_confirmar_post"
+      },
+      "Body_crear_lista_v1_precios_empresa_listas_post": {
+        "properties": {
+          "base_id": {
+            "type": "integer",
+            "title": "Base Id"
+          },
+          "fecha": {
+            "type": "string",
+            "format": "date",
+            "title": "Fecha"
+          },
+          "empresa": {
+            "type": "string",
+            "title": "Empresa",
+            "default": ""
+          },
+          "rif": {
+            "type": "string",
+            "title": "Rif",
+            "default": ""
+          },
+          "fuente": {
+            "type": "string",
+            "title": "Fuente",
+            "default": ""
+          },
+          "moneda": {
+            "type": "string",
+            "title": "Moneda",
+            "default": ""
+          },
+          "nombre": {
+            "type": "string",
+            "title": "Nombre",
+            "default": ""
+          },
+          "archivo": {
+            "anyOf": [
+              {
+                "type": "string",
+                "contentMediaType": "application/octet-stream"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Archivo"
+          }
+        },
+        "type": "object",
+        "required": [
+          "base_id",
+          "fecha"
+        ],
+        "title": "Body_crear_lista_v1_precios_empresa_listas_post"
+      },
       "Body_devolver_libro_v1_libros_devolucion_post": {
         "properties": {
           "libro": {
@@ -4945,6 +5325,38 @@
           "archivo"
         ],
         "title": "Body_informe_de_importacion_v1_control_importar_informe_post"
+      },
+      "Body_leer_v1_indices_leer_post": {
+        "properties": {
+          "tipo": {
+            "type": "string",
+            "maxLength": 20,
+            "title": "Tipo"
+          },
+          "archivo": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "Archivo"
+          },
+          "fecha_descarga": {
+            "type": "string",
+            "format": "date",
+            "title": "Fecha Descarga"
+          },
+          "fuente": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Fuente",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "tipo",
+          "archivo",
+          "fecha_descarga"
+        ],
+        "title": "Body_leer_v1_indices_leer_post"
       },
       "Body_replicar_v1_libros_replica_post": {
         "properties": {
@@ -5552,53 +5964,21 @@
         ],
         "title": "ComposicionRespuesta"
       },
-      "ContextoRespuesta": {
+      "ConfirmacionRespuesta": {
         "properties": {
-          "versiones": {
-            "items": {
-              "$ref": "#/components/schemas/api__rutas__reajuste__VersionRespuesta"
-            },
-            "type": "array",
-            "title": "Versiones"
-          },
-          "periodicidades": {
+          "mensajes": {
             "items": {
               "type": "string"
             },
             "type": "array",
-            "title": "Periodicidades"
-          },
-          "mecanismos": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Mecanismos"
-          },
-          "estructuras": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Estructuras"
-          },
-          "componentes": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Componentes"
+            "title": "Mensajes"
           }
         },
         "type": "object",
         "required": [
-          "versiones",
-          "periodicidades",
-          "mecanismos",
-          "estructuras",
-          "componentes"
+          "mensajes"
         ],
-        "title": "ContextoRespuesta"
+        "title": "ConfirmacionRespuesta"
       },
       "ContrasenaTemporal": {
         "properties": {
@@ -5795,7 +6175,7 @@
           },
           "series": {
             "items": {
-              "$ref": "#/components/schemas/SerieRespuesta"
+              "$ref": "#/components/schemas/api__rutas__tablero__SerieRespuesta"
             },
             "type": "array",
             "title": "Series"
@@ -6513,6 +6893,30 @@
         "title": "EscenariosRespuesta",
         "description": "La comparación completa de UC-08. Nada de esto queda persistido (RF-30).\n\n`pendientes_base` lista los ítems pendientes del presupuesto base (sin partida en el\ncatálogo): ningún escenario los recalcula ni los suma a su total, y los hallazgos de cada\nescenario no los cuentan. Queda vacía si el base no tiene pendientes o si se guardó sin\nregistrarlos."
       },
+      "EstadoRespuesta": {
+        "properties": {
+          "bases": {
+            "items": {
+              "$ref": "#/components/schemas/BaseRespuesta"
+            },
+            "type": "array",
+            "title": "Bases"
+          },
+          "listas": {
+            "items": {
+              "$ref": "#/components/schemas/ListaEmpresaRespuesta"
+            },
+            "type": "array",
+            "title": "Listas"
+          }
+        },
+        "type": "object",
+        "required": [
+          "bases",
+          "listas"
+        ],
+        "title": "EstadoRespuesta"
+      },
       "EstiloVisualRespuesta": {
         "properties": {
           "relleno": {
@@ -7225,6 +7629,38 @@
         ],
         "title": "HallazgoLibroRespuesta"
       },
+      "HallazgosRespuesta": {
+        "properties": {
+          "columnas": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Columnas"
+          },
+          "filas": {
+            "items": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Filas"
+          },
+          "nota": {
+            "type": "string",
+            "title": "Nota"
+          }
+        },
+        "type": "object",
+        "required": [
+          "columnas",
+          "filas",
+          "nota"
+        ],
+        "title": "HallazgosRespuesta"
+      },
       "HojaVisualRespuesta": {
         "properties": {
           "nombre": {
@@ -7442,22 +7878,6 @@
           "sin_hallazgos"
         ],
         "title": "InformeAuditoriaRespuesta"
-      },
-      "InformeRespuesta": {
-        "properties": {
-          "informe": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Informe"
-          }
-        },
-        "type": "object",
-        "required": [
-          "informe"
-        ],
-        "title": "InformeRespuesta"
       },
       "InstalacionRespuesta": {
         "properties": {
@@ -8125,6 +8545,67 @@
         ],
         "title": "LineaMaterialRespuesta"
       },
+      "ListaCreadaRespuesta": {
+        "properties": {
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          },
+          "propios": {
+            "type": "integer",
+            "title": "Propios"
+          },
+          "desconocidos": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Desconocidos"
+          },
+          "mensaje": {
+            "type": "string",
+            "title": "Mensaje"
+          },
+          "aviso": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Aviso"
+          }
+        },
+        "type": "object",
+        "required": [
+          "nombre",
+          "propios",
+          "desconocidos",
+          "mensaje",
+          "aviso"
+        ],
+        "title": "ListaCreadaRespuesta"
+      },
+      "ListaEmpresaRespuesta": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "nombre"
+        ],
+        "title": "ListaEmpresaRespuesta"
+      },
       "ListaRespuesta": {
         "properties": {
           "nombre": {
@@ -8165,6 +8646,19 @@
         },
         "type": "object",
         "title": "ListoRespuesta"
+      },
+      "MensajeRespuesta": {
+        "properties": {
+          "mensaje": {
+            "type": "string",
+            "title": "Mensaje"
+          }
+        },
+        "type": "object",
+        "required": [
+          "mensaje"
+        ],
+        "title": "MensajeRespuesta"
       },
       "ModuloRespuesta": {
         "properties": {
@@ -9411,6 +9905,24 @@
         ],
         "title": "PuntoRespuesta"
       },
+      "RechazoRespuesta": {
+        "properties": {
+          "lugar": {
+            "type": "string",
+            "title": "Lugar"
+          },
+          "motivo": {
+            "type": "string",
+            "title": "Motivo"
+          }
+        },
+        "type": "object",
+        "required": [
+          "lugar",
+          "motivo"
+        ],
+        "title": "RechazoRespuesta"
+      },
       "RegistrarValuacion": {
         "properties": {
           "proyecto": {
@@ -10013,27 +10525,6 @@
         ],
         "title": "SensibleEstado"
       },
-      "SerieRespuesta": {
-        "properties": {
-          "serie": {
-            "type": "string",
-            "title": "Serie"
-          },
-          "puntos": {
-            "items": {
-              "$ref": "#/components/schemas/PuntoRespuesta"
-            },
-            "type": "array",
-            "title": "Puntos"
-          }
-        },
-        "type": "object",
-        "required": [
-          "serie",
-          "puntos"
-        ],
-        "title": "SerieRespuesta"
-      },
       "SesionRespuesta": {
         "properties": {
           "login": {
@@ -10494,6 +10985,24 @@
           "eac_sistema"
         ],
         "title": "Terminos"
+      },
+      "TipoRespuesta": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "rotulo": {
+            "type": "string",
+            "title": "Rotulo"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "rotulo"
+        ],
+        "title": "TipoRespuesta"
       },
       "TrazaRespuesta": {
         "properties": {
@@ -11116,6 +11625,22 @@
         ],
         "title": "CalculoRespuesta"
       },
+      "api__rutas__control__InformeRespuesta": {
+        "properties": {
+          "informe": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Informe"
+          }
+        },
+        "type": "object",
+        "required": [
+          "informe"
+        ],
+        "title": "InformeRespuesta"
+      },
       "api__rutas__control__OpcionesRespuesta": {
         "properties": {
           "opciones": {
@@ -11144,6 +11669,154 @@
           "version"
         ],
         "title": "VersionRespuesta"
+      },
+      "api__rutas__indices__ContextoRespuesta": {
+        "properties": {
+          "tipos": {
+            "items": {
+              "$ref": "#/components/schemas/TipoRespuesta"
+            },
+            "type": "array",
+            "title": "Tipos"
+          },
+          "periodicidades": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Periodicidades"
+          },
+          "unidad_por_defecto": {
+            "type": "string",
+            "title": "Unidad Por Defecto"
+          },
+          "extensiones": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Extensiones"
+          },
+          "lee_xls": {
+            "type": "boolean",
+            "title": "Lee Xls"
+          },
+          "responsable": {
+            "type": "string",
+            "title": "Responsable"
+          }
+        },
+        "type": "object",
+        "required": [
+          "tipos",
+          "periodicidades",
+          "unidad_por_defecto",
+          "extensiones",
+          "lee_xls",
+          "responsable"
+        ],
+        "title": "ContextoRespuesta"
+      },
+      "api__rutas__indices__InformeRespuesta": {
+        "properties": {
+          "archivo": {
+            "type": "string",
+            "title": "Archivo"
+          },
+          "huella": {
+            "type": "string",
+            "title": "Huella"
+          },
+          "fuente": {
+            "type": "string",
+            "title": "Fuente"
+          },
+          "fecha_descarga": {
+            "type": "string",
+            "format": "date",
+            "title": "Fecha Descarga"
+          },
+          "filas_leidas": {
+            "type": "integer",
+            "title": "Filas Leidas"
+          },
+          "filas_rechazadas": {
+            "type": "integer",
+            "title": "Filas Rechazadas"
+          },
+          "provisionales": {
+            "type": "integer",
+            "title": "Provisionales"
+          },
+          "series": {
+            "items": {
+              "$ref": "#/components/schemas/api__rutas__indices__SerieRespuesta"
+            },
+            "type": "array",
+            "title": "Series"
+          },
+          "rechazos": {
+            "items": {
+              "$ref": "#/components/schemas/RechazoRespuesta"
+            },
+            "type": "array",
+            "title": "Rechazos"
+          },
+          "rechazos_omitidos": {
+            "type": "integer",
+            "title": "Rechazos Omitidos"
+          },
+          "advertencias": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Advertencias"
+          }
+        },
+        "type": "object",
+        "required": [
+          "archivo",
+          "huella",
+          "fuente",
+          "fecha_descarga",
+          "filas_leidas",
+          "filas_rechazadas",
+          "provisionales",
+          "series",
+          "rechazos",
+          "rechazos_omitidos",
+          "advertencias"
+        ],
+        "title": "InformeRespuesta"
+      },
+      "api__rutas__indices__SerieRespuesta": {
+        "properties": {
+          "clave": {
+            "type": "string",
+            "title": "Clave"
+          },
+          "valores": {
+            "type": "integer",
+            "title": "Valores"
+          },
+          "desde": {
+            "type": "string",
+            "title": "Desde"
+          },
+          "hasta": {
+            "type": "string",
+            "title": "Hasta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "clave",
+          "valores",
+          "desde",
+          "hasta"
+        ],
+        "title": "SerieRespuesta"
       },
       "api__rutas__reajuste__CalculoRespuesta": {
         "properties": {
@@ -11203,6 +11876,54 @@
         ],
         "title": "CalculoRespuesta"
       },
+      "api__rutas__reajuste__ContextoRespuesta": {
+        "properties": {
+          "versiones": {
+            "items": {
+              "$ref": "#/components/schemas/api__rutas__reajuste__VersionRespuesta"
+            },
+            "type": "array",
+            "title": "Versiones"
+          },
+          "periodicidades": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Periodicidades"
+          },
+          "mecanismos": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Mecanismos"
+          },
+          "estructuras": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Estructuras"
+          },
+          "componentes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Componentes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "versiones",
+          "periodicidades",
+          "mecanismos",
+          "estructuras",
+          "componentes"
+        ],
+        "title": "ContextoRespuesta"
+      },
       "api__rutas__reajuste__GuardadoRespuesta": {
         "properties": {
           "estudio": {
@@ -11243,6 +11964,27 @@
           "revalorada"
         ],
         "title": "VersionRespuesta"
+      },
+      "api__rutas__tablero__SerieRespuesta": {
+        "properties": {
+          "serie": {
+            "type": "string",
+            "title": "Serie"
+          },
+          "puntos": {
+            "items": {
+              "$ref": "#/components/schemas/PuntoRespuesta"
+            },
+            "type": "array",
+            "title": "Puntos"
+          }
+        },
+        "type": "object",
+        "required": [
+          "serie",
+          "puntos"
+        ],
+        "title": "SerieRespuesta"
       },
       "api__rutas__tablero__VersionRespuesta": {
         "properties": {

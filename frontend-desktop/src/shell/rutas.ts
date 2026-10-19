@@ -72,8 +72,20 @@ export const PAGINAS: readonly PaginaDef[] = [
     accion: "leer_proyecto",
     cargar: () => import("../paginas/historico"),
   },
-  { id: "precios_empresa", titulo: "Precios de la empresa", seccion: "Trabajo", accion: "administrar_precios" },
-  { id: "indices", titulo: "Índices del BCV", seccion: "Trabajo", accion: "administrar_precios" },
+  {
+    id: "precios_empresa",
+    titulo: "Precios de la empresa",
+    seccion: "Trabajo",
+    accion: "administrar_precios",
+    cargar: () => import("../paginas/precios_empresa"),
+  },
+  {
+    id: "indices",
+    titulo: "Índices del BCV",
+    seccion: "Trabajo",
+    accion: "administrar_precios",
+    cargar: () => import("../paginas/indices"),
+  },
   {
     id: "reajuste",
     titulo: "Reajuste de precios",

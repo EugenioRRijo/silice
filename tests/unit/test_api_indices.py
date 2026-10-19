@@ -47,11 +47,6 @@ from tests.fixtures.sesion_web import (
     protegida,
 )
 
-# Hasta que el orquestador incluya el router en `api/main.py`, la prueba lo monta en la aplicacion
-# (idempotente: con el router ya incluido no hace nada).
-if not any(getattr(r, "path", "").startswith("/v1/indices") for r in app.routes):
-    app.include_router(ruta_indices.router)
-
 FUENTE = "https://www.bcv.org.ve/estadisticas/tipo-cambio-de-referencia-smc"
 FECHA = "2026-10-11"
 CSV = (

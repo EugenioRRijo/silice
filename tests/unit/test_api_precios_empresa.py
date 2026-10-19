@@ -52,9 +52,6 @@ RAIZ = Path(__file__).resolve().parents[2]
 CSV_EMPRESA = RAIZ / "tests" / "fixtures" / "precios_empresa_s1.csv"
 CSV_REFERENCIA = RAIZ / "data" / "precios" / "maprex_2026-07" / "lista_maprex_bs.csv"
 URL = "/v1/precios-empresa"
-if not any(getattr(r, "path", "") == URL for r in app.routes):
-    # Mientras `api/main.py` no monta el router (lo hace el orquestador), la prueba lo monta.
-    app.include_router(ruta.router)
 EVALUACION = "2026-10-01"
 EMPRESA = "Contratista Demo, C.A."
 RIF = "J-00000000-0"

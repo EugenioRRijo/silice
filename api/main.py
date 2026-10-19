@@ -23,8 +23,10 @@ from api.rutas import (
     control,
     cuentas,
     entregas,
+    indices,
     libros,
     listas,
+    precios_empresa,
     presupuestos,
     proyectos,
     reajuste,
@@ -96,6 +98,9 @@ app.include_router(reajuste.router)
 app.include_router(admin_empresa.router)
 app.include_router(admin_claves_api.router)
 app.include_router(admin_instalacion.router)
+# Migracion: «Indices del BCV» (UC-17) y «Precios de la empresa» (UC-17 4-5); ADMINISTRAR_PRECIOS
+app.include_router(indices.router)
+app.include_router(precios_empresa.router)
 interfaz.montar(app)
 
 

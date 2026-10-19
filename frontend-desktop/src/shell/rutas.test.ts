@@ -44,6 +44,8 @@ describe("registro de paginas", () => {
       "elaborar",
       "actualizacion",
       "historico",
+      "precios_empresa",
+      "indices",
       "reajuste",
       "control",
       "acerca",
