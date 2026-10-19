@@ -6,7 +6,7 @@ import { fijarCsrf } from "../api/cliente";
 import type { SesionRespuesta } from "../api/tipos";
 import { alertaConTexto } from "../test/ayudas";
 import { useAplicacion } from "./contexto";
-import { RECORRIDO_AUDITAR, iniciarRecorrido, terminarRecorrido } from "./recorrido";
+import { RECORRIDO_AUDITAR, iniciarRecorrido, recorridoEnCurso, terminarRecorrido } from "./recorrido";
 import { Shell } from "./Shell";
 import type { PaginaDef } from "./rutas";
 
@@ -193,12 +193,12 @@ describe("Shell", () => {
       const nav = menu();
       const panel = within(nav).getByRole("heading", { name: "Herramientas principales" }).closest("li") as HTMLElement;
       expect(within(panel).getAllByRole("link").map((a) => a.getAttribute("aria-label"))).toEqual([
-        "Auditor de APU",
-        "Creador de APU",
-      ]); // la cuenta de ana no opera la arenera
+        "Libro de la empresa",
+        "Componer una partida",
+      ]); // la cuenta de ana no opera la arenera; la herramienta lleva el nombre de su pantalla
       expect(within(panel).getByText("Suba un Excel y vea lo que no cuadra")).toBeInTheDocument();
-      expect(within(panel).getByRole("link", { name: "Creador de APU" })).toHaveAttribute("href", "/componer");
-      expect(within(panel).getByRole("link", { name: "Auditor de APU" })).toHaveAccessibleDescription(
+      expect(within(panel).getByRole("link", { name: "Componer una partida" })).toHaveAttribute("href", "/componer");
+      expect(within(panel).getByRole("link", { name: "Libro de la empresa" })).toHaveAccessibleDescription(
         "Suba un Excel y vea lo que no cuadra",
       );
       // El panel va antes que las areas.
@@ -222,6 +222,13 @@ describe("Shell", () => {
       const region = within(menu()).getByRole("region", { name: "Recorrido en curso" });
       await usuario.click(within(region).getByRole("button", { name: "Terminar recorrido" }));
       expect(within(menu()).queryByRole("region", { name: "Recorrido en curso" })).not.toBeInTheDocument();
+      await screen.findByRole("heading", { name: "Pantalla del tablero" });
+    });
+
+    test("la descripcion de cada area esta ligada a su lista", async () => {
+      montar();
+      const lista = within(menu()).getByText("Tablero del proyecto").closest("ul") as HTMLElement;
+      expect(lista).toHaveAccessibleDescription("APU, presupuestos y entregas");
       await screen.findByRole("heading", { name: "Pantalla del tablero" });
     });
 
@@ -300,11 +307,45 @@ describe("Shell", () => {
         </MemoryRouter>,
       );
       await screen.findByRole("heading", { name: "Pantalla del tablero" });
-      const enlace = within(menu()).getByRole("link", { name: "Libro de la empresa" });
+      // La herramienta principal y su area llevan el mismo nombre: se prueba con el de su area (el ultimo).
+      const enlace = within(menu()).getAllByRole("link", { name: "Libro de la empresa" }).at(-1)!;
       for (let i = 0; i < 40 && document.activeElement !== enlace; i++) await usuario.tab();
       expect(enlace).toHaveFocus();
       await usuario.keyboard("{Enter}");
       expect(await screen.findByRole("heading", { name: "Pantalla del libro" })).toBeInTheDocument();
+    });
+  });
+
+  describe("fin de sesion y recorrido", () => {
+    test("Salir cierra el recorrido en curso", async () => {
+      const usuario = userEvent.setup();
+      montar();
+      act(() => iniciarRecorrido(RECORRIDO_AUDITAR));
+      onTestFinished(() => terminarRecorrido());
+      expect(within(menu()).getByRole("region", { name: "Recorrido en curso" })).toBeInTheDocument();
+      await usuario.click(screen.getByRole("button", { name: "Salir" }));
+      expect(alSalir).toHaveBeenCalled();
+      expect(within(menu()).queryByRole("region", { name: "Recorrido en curso" })).not.toBeInTheDocument();
+      expect(recorridoEnCurso()).toBeNull();
+    });
+
+    test("una sesion vencida (401) cierra el recorrido en curso", async () => {
+      const usuario = userEvent.setup();
+      fetchFalso.mockImplementation(async (entrada, init) => {
+        const ruta = String(entrada);
+        if (ruta === "/v1/casos" && (init?.method ?? "GET") === "GET") return json(CASOS);
+        if (ruta === "/v1/casos/actual") return json({ detalle: "Sin sesión." }, 401);
+        if (ruta === "/v1/proyectos") return json(PROYECTOS);
+        return json({ detalle: "No encontrado." }, 404);
+      });
+      montar();
+      act(() => iniciarRecorrido(RECORRIDO_AUDITAR));
+      onTestFinished(() => terminarRecorrido());
+      const selector = await screen.findByRole("combobox", { name: "Caso" });
+      await waitFor(() => expect(selector).toHaveValue("clinica"));
+      await usuario.selectOptions(selector, "arenaza");
+      await waitFor(() => expect(alExpirar).toHaveBeenCalled());
+      expect(recorridoEnCurso()).toBeNull();
     });
   });
 

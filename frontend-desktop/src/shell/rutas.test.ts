@@ -224,11 +224,17 @@ describe("areas del menu", () => {
 });
 
 describe("herramientas principales", () => {
-  test("son tres, en este orden, con su linea del spec y su ruta", () => {
-    expect(HERRAMIENTAS_PRINCIPALES.map((h) => [h.pagina, h.titulo, h.ayuda])).toEqual([
-      ["libros", "Auditor de APU", "Suba un Excel y vea lo que no cuadra"],
-      ["componer", "Creador de APU", "Componga una partida o arme un presupuesto"],
-      ["existencias", "Gestor de producción", "Cuánto hay y cuánto queda de cada material"],
+  test("son tres, en este orden, con la linea de ayuda del spec; llevan el nombre de su pantalla", () => {
+    expect(HERRAMIENTAS_PRINCIPALES.map((h) => [h.pagina, h.ayuda])).toEqual([
+      ["libros", "Suba un Excel y vea lo que no cuadra"],
+      ["componer", "Componga una partida o arme un presupuesto"],
+      ["existencias", "Cuánto hay y cuánto queda de cada material"],
+    ]);
+    const todas = PAGINAS.flatMap((p) => (p.accion ? [p.accion] : []));
+    expect(herramientasVisibles(todas, false).map((h) => h.titulo)).toEqual([
+      "Libro de la empresa",
+      "Componer una partida",
+      "Existencias de la arenera",
     ]);
   });
 
@@ -238,5 +244,12 @@ describe("herramientas principales", () => {
     expect(herramientasVisibles(todas, false).map((h) => h.pagina)).toEqual(["libros", "componer", "existencias"]);
     const sinMigrar = PAGINAS.map((p) => (p.id === "componer" ? { ...p, cargar: undefined } : p));
     expect(herramientasVisibles(todas, false, sinMigrar).map((h) => h.pagina)).toEqual(["libros", "existencias"]);
+  });
+});
+
+describe("rutaDe", () => {
+  test("acepta una pagina completa o solo su id", () => {
+    expect(rutaDe({ id: "historial" })).toBe("/historial");
+    expect(rutaDe(paginaPorId("libros")!)).toBe("/libros");
   });
 });

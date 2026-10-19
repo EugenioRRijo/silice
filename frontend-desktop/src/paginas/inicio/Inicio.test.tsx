@@ -4,7 +4,7 @@ import { MemoryRouter, Route, Routes } from "react-router";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import type { SesionRespuesta } from "../../api/tipos";
 import { ContextoAplicacion } from "../../shell/contexto";
-import { RECORRIDO_AUDITAR, recorridoEnCurso, terminarRecorrido } from "../../shell/recorrido";
+import { RECORRIDO_AUDITAR, iniciarRecorrido, recorridoEnCurso, terminarRecorrido } from "../../shell/recorrido";
 import type { Aplicacion } from "../../shell/contexto";
 import { tomarArchivoPendiente } from "./archivoPendiente";
 import PaginaInicio from "./index";
@@ -326,7 +326,6 @@ describe("Inicio, panel del día", () => {
 
   describe("últimas auditorías guardadas", () => {
     test("con un recorrido en curso lo dice y enlaza al paso que sigue", async () => {
-      const { iniciarRecorrido } = await import("../../shell/recorrido");
       iniciarRecorrido(RECORRIDO_AUDITAR);
       montar();
       const seccion = await screen.findByRole("region", { name: "Últimas auditorías guardadas" });
@@ -334,6 +333,14 @@ describe("Inicio, panel del día", () => {
       expect(
         within(seccion).getByRole("link", { name: "Seguir con el paso 2: Lea el resumen y los hallazgos" }),
       ).toHaveAttribute("href", "/libros");
+    });
+
+    test("no enlaza al paso siguiente si la cuenta no puede abrir esa pantalla", async () => {
+      iniciarRecorrido(RECORRIDO_AUDITAR);
+      montar({ sesion: { ...SESION, acciones: ["editar_hoja"] } });
+      const seccion = await screen.findByRole("region", { name: "Últimas auditorías guardadas" });
+      expect(within(seccion).getByText(/Recorrido en curso/)).toBeInTheDocument();
+      expect(within(seccion).queryByRole("link", { name: /Seguir con el paso/ })).not.toBeInTheDocument();
     });
 
     test("sin recorrido en curso no dice nada de recorridos", async () => {
