@@ -55,8 +55,9 @@ from tests.fixtures.sesion_web import (
     protegida,
 )
 
-LEER, EDITAR, REVISAR, CAMBIAR_CASO, CUALQUIERA = (
-    "leer_proyecto", "editar_hoja", "revisar_paquete", "cambiar_caso", "cualquier rol"
+LEER, EDITAR, REVISAR, CAMBIAR_CASO, CUALQUIERA, CUENTAS_ADM = (
+    "leer_proyecto", "editar_hoja", "revisar_paquete", "cambiar_caso", "cualquier rol",
+    "administrar_cuentas",
 )
 ENTREGAR = "entregar_paquete"
 REAJUSTAR = "convertir_y_reajustar"
@@ -69,6 +70,7 @@ ROLES = {
     REAJUSTAR: {"arma"},
     CAMBIAR_CASO: {"arma", "administrador"},
     CUALQUIERA: {"arma", "revisa", "administrador"},
+    CUENTAS_ADM: {"administrador"},
 }
 #: (método, ruta) -> acción. Las rutas sin sesión (`/salud`, `/v1/sesion*`) van aparte.
 TABLA = {
@@ -110,6 +112,14 @@ TABLA = {
     ("POST", "/v1/similares"): EDITAR,
     ("POST", "/v1/simulador"): EDITAR,
     ("POST", "/v1/simulador/csv"): EDITAR,
+    ("GET", "/v1/cuentas"): CUENTAS_ADM,
+    ("POST", "/v1/cuentas"): CUENTAS_ADM,
+    ("POST", "/v1/cuentas/{usuario_id}/roles"): CUENTAS_ADM,
+    ("POST", "/v1/cuentas/{usuario_id}/desactivar"): CUENTAS_ADM,
+    ("POST", "/v1/cuentas/{usuario_id}/reactivar"): CUENTAS_ADM,
+    ("POST", "/v1/cuentas/{usuario_id}/desbloquear"): CUENTAS_ADM,
+    ("POST", "/v1/cuentas/{usuario_id}/restablecer"): CUENTAS_ADM,
+    ("GET", "/v1/accesos"): CUENTAS_ADM,
     # Ola 3 (S2-B): «Componer una partida» es de quien arma (`ui/paginas/componer.py`)
     ("GET", "/v1/composicion/opciones"): EDITAR,
     ("POST", "/v1/composicion/evaluar"): EDITAR,
