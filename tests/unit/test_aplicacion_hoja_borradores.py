@@ -17,8 +17,8 @@ import pytest
 from aplicacion.hoja import Borrador
 from aplicacion.hoja_borradores import (
     BorradorInexistente,
-    RevDesactualizado,
     Registro,
+    RevDesactualizado,
 )
 
 MIB = 1024 * 1024
@@ -113,7 +113,7 @@ def test_el_quinto_borrador_de_una_ficha_descarta_el_primero(registro, reloj):
     for i in range(5):
         reloj.avanzar(minutes=1)
         vivos.append(_crear(registro, proyecto=f"P{i}"))
-    assert [v.id for v in registro.listar("ficha-a")] == [v.id for v in vivos[1:]]
+    assert [v.id for v in registro.listar("ficha-a")] == [v.id for v in reversed(vivos[1:])]
     with pytest.raises(BorradorInexistente):
         registro.obtener("ficha-a", vivos[0].id)
 
