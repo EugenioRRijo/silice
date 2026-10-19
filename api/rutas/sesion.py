@@ -181,7 +181,7 @@ def entrar(
                     momento,
                     ip=_ip(request),
                     detalle="freno global",
-                    login=cuentas.normalizar_login(datos.login)[:60],
+                    login=cuentas.clave_de_intento(datos.login),
                 )
                 sesion.commit()
                 return JSONResponse(

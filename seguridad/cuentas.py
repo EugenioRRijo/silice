@@ -27,6 +27,7 @@ from pathlib import Path
 from argon2 import PasswordHasher
 from argon2.exceptions import InvalidHashError, VerificationError
 from sqlalchemy import func, select
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
 from seguridad import eventos, sesiones
@@ -39,6 +40,7 @@ MENSAJE_BLOQUEO = (
     "Demasiados intentos fallidos. Espere 15 minutos o pida al administrador que desbloquee "
     "la cuenta."
 )
+MENSAJE_BASE_OCUPADA = "La base está ocupada; reintente en unos segundos."
 MENSAJE_CODIGO = "El código de instalación no es válido o ya se usó."
 FALLOS_PARA_BLOQUEAR = 5
 BLOQUEO = timedelta(minutes=15)
@@ -149,7 +151,11 @@ def _tomar_escritura(session: Session) -> None:
     transacción ya tiene el bloqueo y no se repite."""
     conexion = session.connection()
     if not conexion.connection.dbapi_connection.in_transaction:
-        conexion.exec_driver_sql("BEGIN IMMEDIATE")
+        try:
+            conexion.exec_driver_sql("BEGIN IMMEDIATE")
+        except OperationalError as error:  # venció `busy_timeout`: otra escritura no termina
+            session.rollback()
+            raise ValueError(MENSAJE_BASE_OCUPADA) from error
 
 
 def _huella(contrasena: str) -> str:
@@ -223,14 +229,18 @@ def _fallar(session: Session, fila: IntentoAcceso, ahora: datetime, freno: Freno
     return False
 
 
-def _clave_de_intento(login: str) -> str:
+def clave_de_intento(login: str) -> str:
     """El login normalizado si puede ser un usuario (`PATRON_LOGIN`); si no, un marcador fijo.
 
     Lo que un anónimo teclea en el campo usuario se guarda en `evento_acceso` y se muestra al
     administrador: una contraseña pegada ahí quedaría legible. Una cuenta real siempre cumple el
     patrón (`validar_login`), así que el marcador nunca es el login de nadie: su contador y su
     bloqueo, compartidos por todo texto imposible, no pueden negarle el acceso a una persona
-    real, y cada fallo sigue alimentando el freno global (`_fallar`)."""
+    real, y cada fallo sigue alimentando el freno global (`_fallar`).
+
+    Limitación conocida: una contraseña que cumpla `PATRON_LOGIN` (3 a 40 caracteres de
+    `[a-z0-9._-]`, sin espacios ni mayúsculas) se guarda como si fuera un login; no se distingue
+    de uno. No se resuelve con un hash del marcador (decisión de la revisión)."""
     normal = normalizar_login(login)
     return normal if PATRON_LOGIN.fullmatch(normal) else LOGIN_NO_VALIDO
 
@@ -264,7 +274,7 @@ def autenticar(
     espera = freno.espera(ahora)
     if espera:
         dormir(espera)
-    clave = _clave_de_intento(login)
+    clave = clave_de_intento(login)
     fila = _intento(session, clave)
     if _bloqueado(fila, ahora):
         eventos.registrar(session, "bloqueo", ahora, login=clave, ip=ip, detalle="login bloqueado")
@@ -465,8 +475,9 @@ def crear_usuario(
 def cambiar_roles(
     session: Session, actor: Usuario, usuario_id: int, roles: Iterable[Rol | str], ahora: datetime
 ) -> Usuario:
-    _exigir_administrador(actor)
     _tomar_escritura(session)
+    session.refresh(actor)  # puede haber sido desactivado mientras tanto
+    _exigir_administrador(actor)
     usuario = _usuario(session, usuario_id)
     session.refresh(usuario)
     nuevos = texto_de_roles(roles)
@@ -495,8 +506,9 @@ def _exigir_otro_administrador(session: Session, usuario: Usuario) -> None:
 
 def desactivar(session: Session, actor: Usuario, usuario_id: int, ahora: datetime) -> None:
     """Las cuentas no se borran: se desactivan, para que sus registros sigan teniendo dueño."""
-    _exigir_administrador(actor)
     _tomar_escritura(session)
+    session.refresh(actor)  # puede haber sido desactivado mientras tanto
+    _exigir_administrador(actor)
     usuario = _usuario(session, usuario_id)
     session.refresh(usuario)
     if Rol.ADMINISTRADOR in roles_de(usuario.roles):

@@ -369,7 +369,7 @@ def test_dos_administradores_que_se_quitan_a_la_vez_dejan_uno(
                 else:
                     cuentas.cambiar_roles(bd, actor, ids[objetivo_login], ["arma"], AHORA)
                 resultados[actor_login] = "ok"
-            except ValueError as error:
+            except (ValueError, PermisoDenegado) as error:  # el segundo ya ve al otro cambio
                 bd.rollback()
                 resultados[actor_login] = str(error)
 
@@ -389,9 +389,8 @@ def test_dos_administradores_que_se_quitan_a_la_vez_dejan_uno(
         ]
     motor.dispose()
     assert len(activos) == 1, resultados
-    assert sorted(map(str, resultados.values())) == [
-        "Debe quedar al menos un administrador activo.", "ok",
-    ]
+    # exactamente una operación se completa; la otra la rechaza la regla o la cuenta ya inactiva
+    assert sorted(v == "ok" for v in resultados.values()) == [False, True], resultados
 
 
 # --- lo que un anónimo teclea en el usuario no se guarda si no es un usuario posible --------
