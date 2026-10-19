@@ -866,7 +866,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CalculoRespuesta"
+                  "$ref": "#/components/schemas/api__esquemas_ola2__CalculoRespuesta"
                 }
               }
             }
@@ -2005,7 +2005,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/OpcionesRespuesta"
+                  "$ref": "#/components/schemas/api__rutas__composicion__OpcionesRespuesta"
                 }
               }
             }
@@ -2287,6 +2287,586 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/TableroRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/control/linea-base": {
+      "get": {
+        "tags": [
+          "control"
+        ],
+        "summary": "Linea Base",
+        "description": "La línea base vigente, las versiones que se pueden declarar y los parámetros de control.",
+        "operationId": "linea_base_v1_control_linea_base_get",
+        "parameters": [
+          {
+            "name": "proyecto",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Proyecto"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LineaBaseRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "control"
+        ],
+        "summary": "Declarar Linea Base",
+        "description": "Declara la línea base de control (RF-72).",
+        "operationId": "declarar_linea_base_v1_control_linea_base_post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeclararLineaBase"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DescripcionRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/control/parametros": {
+      "post": {
+        "tags": [
+          "control"
+        ],
+        "summary": "Guardar Parametros",
+        "description": "Guarda los parámetros enviados (los demás quedan igual), con un registro por cada cambio.",
+        "operationId": "guardar_parametros_v1_control_parametros_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GuardarParametros"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CambiadosRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/control/valuaciones": {
+      "get": {
+        "tags": [
+          "control"
+        ],
+        "summary": "Valuaciones",
+        "description": "Las valuaciones guardadas (solo lectura) con su estado, y las que se pueden anular.",
+        "operationId": "valuaciones_v1_control_valuaciones_get",
+        "parameters": [
+          {
+            "name": "proyecto",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Proyecto"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValuacionesRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "control"
+        ],
+        "summary": "Registrar Valuacion",
+        "description": "UC-19 4 y 5: registra la valuación y controla al corte (su fecha *hasta*).",
+        "operationId": "registrar_valuacion_v1_control_valuaciones_post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegistrarValuacion"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistroRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/control/valuaciones/{valuacion_id}/anular": {
+      "post": {
+        "tags": [
+          "control"
+        ],
+        "summary": "Anular Valuacion",
+        "description": "Anula una valuación (UC-19 4c): se conserva y deja de contar.",
+        "operationId": "anular_valuacion_v1_control_valuaciones__valuacion_id__anular_post",
+        "parameters": [
+          {
+            "name": "valuacion_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Valuacion Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Anulacion"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListoRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/control/costos": {
+      "post": {
+        "tags": [
+          "control"
+        ],
+        "summary": "Anotar Costo",
+        "description": "Anota un costo incurrido; se convierte con la tasa de su fecha al calcular.",
+        "operationId": "anotar_costo_v1_control_costos_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnotarCosto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListoRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/control/importar/informe": {
+      "post": {
+        "tags": [
+          "control"
+        ],
+        "summary": "Informe De Importacion",
+        "description": "Lee el XLSX sin escribir nada y da el informe previo. Un archivo malformado se rechaza.",
+        "operationId": "informe_de_importacion_v1_control_importar_informe_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_informe_de_importacion_v1_control_importar_informe_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InformeRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/control/importar": {
+      "post": {
+        "tags": [
+          "control"
+        ],
+        "summary": "Importar",
+        "description": "Registra todas las valuaciones y costos del XLSX, o ninguno.",
+        "operationId": "importar_v1_control_importar_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_importar_v1_control_importar_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportadasRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/control/calculo": {
+      "get": {
+        "tags": [
+          "control"
+        ],
+        "summary": "Calculo",
+        "description": "El control al corte: valor ganado, alertas, términos, reproyección y decisiones tomadas.",
+        "operationId": "calculo_v1_control_calculo_get",
+        "parameters": [
+          {
+            "name": "proyecto",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Proyecto"
+            }
+          },
+          {
+            "name": "corte",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Corte"
+            }
+          },
+          {
+            "name": "metodo",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "ninguno",
+              "title": "Metodo"
+            }
+          },
+          {
+            "name": "version",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Version"
+            }
+          },
+          {
+            "name": "km",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Km"
+            }
+          },
+          {
+            "name": "r",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "0",
+              "title": "R"
+            }
+          },
+          {
+            "name": "fuente",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "title": "Fuente"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/api__rutas__control__CalculoRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/control/recuperacion/opciones": {
+      "post": {
+        "tags": [
+          "control"
+        ],
+        "summary": "Opciones",
+        "description": "Las opciones de recuperación a pedido (UC-20 4); no escribe nada.",
+        "operationId": "opciones_v1_control_recuperacion_opciones_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PeticionOpciones"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/api__rutas__control__OpcionesRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/control/recuperacion/elegir": {
+      "post": {
+        "tags": [
+          "control"
+        ],
+        "summary": "Elegir",
+        "description": "UC-20 5 y 6: crea la versión de la opción elegida y guarda la decisión.\n\nRecalcula las opciones con los mismos parámetros: la elección no depende de un cálculo previo\nguardado en el servidor.",
+        "operationId": "elegir_v1_control_recuperacion_elegir_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PeticionElegir"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/api__rutas__control__VersionRespuesta"
                 }
               }
             }
@@ -2637,6 +3217,75 @@
         "title": "AnilloRespuesta",
         "description": "Un anillo de progreso: `texto` es lo que se lee en el centro; `fraccion`, lo que se dibuja\n(nula si no hay dato). `favorable` es verdadero si el indice llega a 1; nulo si no aplica."
       },
+      "AnotarCosto": {
+        "properties": {
+          "proyecto": {
+            "type": "string",
+            "title": "Proyecto"
+          },
+          "monto": {
+            "type": "string",
+            "title": "Monto"
+          },
+          "moneda": {
+            "type": "string",
+            "title": "Moneda"
+          },
+          "fecha": {
+            "type": "string",
+            "title": "Fecha"
+          },
+          "partida": {
+            "type": "string",
+            "title": "Partida",
+            "default": ""
+          },
+          "fuente": {
+            "type": "string",
+            "title": "Fuente"
+          }
+        },
+        "type": "object",
+        "required": [
+          "proyecto",
+          "monto",
+          "moneda",
+          "fecha",
+          "fuente"
+        ],
+        "title": "AnotarCosto"
+      },
+      "Anulable": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "rotulo": {
+            "type": "string",
+            "title": "Rotulo"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "rotulo"
+        ],
+        "title": "Anulable"
+      },
+      "Anulacion": {
+        "properties": {
+          "motivo": {
+            "type": "string",
+            "title": "Motivo"
+          }
+        },
+        "type": "object",
+        "required": [
+          "motivo"
+        ],
+        "title": "Anulacion"
+      },
       "AuditoriaRespuesta": {
         "properties": {
           "fecha_evaluacion": {
@@ -2962,6 +3611,44 @@
         ],
         "title": "Body_importar_presupuesto_de_tercero_presupuestos_importar_post"
       },
+      "Body_importar_v1_control_importar_post": {
+        "properties": {
+          "archivo": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "Archivo"
+          },
+          "proyecto": {
+            "type": "string",
+            "title": "Proyecto"
+          },
+          "fuente": {
+            "type": "string",
+            "title": "Fuente"
+          }
+        },
+        "type": "object",
+        "required": [
+          "archivo",
+          "proyecto",
+          "fuente"
+        ],
+        "title": "Body_importar_v1_control_importar_post"
+      },
+      "Body_informe_de_importacion_v1_control_importar_informe_post": {
+        "properties": {
+          "archivo": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "Archivo"
+          }
+        },
+        "type": "object",
+        "required": [
+          "archivo"
+        ],
+        "title": "Body_informe_de_importacion_v1_control_importar_informe_post"
+      },
       "Body_replicar_v1_libros_replica_post": {
         "properties": {
           "libro": {
@@ -3117,70 +3804,18 @@
         "title": "CalculoPeticion",
         "description": "UC-01 en modo «solo calcular»: nada se guarda. `plan` son las filas de la tabla del\nproyectista; sin ellas, el plan por defecto (`plan_secuencial`)."
       },
-      "CalculoRespuesta": {
+      "CambiadosRespuesta": {
         "properties": {
-          "codigo": {
-            "type": "string",
-            "title": "Codigo"
-          },
-          "fecha": {
-            "type": "string",
-            "format": "date",
-            "title": "Fecha"
-          },
-          "moneda": {
-            "type": "string",
-            "title": "Moneda"
-          },
-          "total": {
-            "type": "string",
-            "title": "Total"
-          },
-          "partidas": {
-            "items": {
-              "$ref": "#/components/schemas/PartidaPresupuestadaRespuesta"
-            },
-            "type": "array",
-            "title": "Partidas"
-          },
-          "por_severidad": {
-            "items": {
-              "$ref": "#/components/schemas/SeveridadRespuesta"
-            },
-            "type": "array",
-            "title": "Por Severidad"
-          },
-          "informe": {
-            "$ref": "#/components/schemas/InformeAuditoriaRespuesta"
-          },
-          "pendientes": {
-            "items": {
-              "$ref": "#/components/schemas/PendienteConPropuestasRespuesta"
-            },
-            "type": "array",
-            "title": "Pendientes"
-          },
-          "plan_por_defecto": {
-            "items": {
-              "$ref": "#/components/schemas/FilaPlan"
-            },
-            "type": "array",
-            "title": "Plan Por Defecto"
+          "cambiados": {
+            "type": "integer",
+            "title": "Cambiados"
           }
         },
         "type": "object",
         "required": [
-          "codigo",
-          "fecha",
-          "moneda",
-          "total",
-          "partidas",
-          "por_severidad",
-          "informe",
-          "pendientes",
-          "plan_por_defecto"
+          "cambiados"
         ],
-        "title": "CalculoRespuesta"
+        "title": "CambiadosRespuesta"
       },
       "CambioDeContrasena": {
         "properties": {
@@ -3545,6 +4180,54 @@
         ],
         "title": "CurvasRespuesta"
       },
+      "DeclararLineaBase": {
+        "properties": {
+          "proyecto": {
+            "type": "string",
+            "title": "Proyecto"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version"
+          },
+          "desde": {
+            "type": "string",
+            "title": "Desde"
+          },
+          "perspectiva": {
+            "type": "string",
+            "title": "Perspectiva"
+          },
+          "inicio": {
+            "type": "string",
+            "title": "Inicio"
+          },
+          "dias_por_periodo": {
+            "type": "string",
+            "title": "Dias Por Periodo",
+            "default": "5"
+          },
+          "feriados": {
+            "type": "string",
+            "title": "Feriados",
+            "default": ""
+          },
+          "fuente": {
+            "type": "string",
+            "title": "Fuente"
+          }
+        },
+        "type": "object",
+        "required": [
+          "proyecto",
+          "version",
+          "desde",
+          "perspectiva",
+          "inicio",
+          "fuente"
+        ],
+        "title": "DeclararLineaBase"
+      },
       "DeclararRendimientoPeticion": {
         "properties": {
           "codigo_partida": {
@@ -3630,6 +4313,26 @@
           "fecha"
         ],
         "title": "DescarteRespuesta"
+      },
+      "DescripcionRespuesta": {
+        "properties": {
+          "descripcion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Descripcion"
+          }
+        },
+        "type": "object",
+        "required": [
+          "descripcion"
+        ],
+        "title": "DescripcionRespuesta"
       },
       "Desglose": {
         "properties": {
@@ -3899,6 +4602,24 @@
           "version"
         ],
         "title": "EntregaPeticion"
+      },
+      "Equilibrio": {
+        "properties": {
+          "punto": {
+            "type": "string",
+            "title": "Punto"
+          },
+          "mensaje": {
+            "type": "string",
+            "title": "Mensaje"
+          }
+        },
+        "type": "object",
+        "required": [
+          "punto",
+          "mensaje"
+        ],
+        "title": "Equilibrio"
       },
       "EscenarioPeticion": {
         "properties": {
@@ -4542,6 +5263,32 @@
         ],
         "title": "GuardadoRespuesta"
       },
+      "GuardarParametros": {
+        "properties": {
+          "proyecto": {
+            "type": "string",
+            "title": "Proyecto"
+          },
+          "parametros": {
+            "items": {
+              "$ref": "#/components/schemas/ValorDeParametro"
+            },
+            "type": "array",
+            "title": "Parametros"
+          },
+          "fuente": {
+            "type": "string",
+            "title": "Fuente"
+          }
+        },
+        "type": "object",
+        "required": [
+          "proyecto",
+          "parametros",
+          "fuente"
+        ],
+        "title": "GuardarParametros"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -4688,6 +5435,19 @@
         "title": "HojaVisualRespuesta",
         "description": "Espejo de `visual.HojaVisual`. En `anchos` y `altos` la columna o la fila (base 1) va como\ntexto: las claves de un objeto JSON son texto."
       },
+      "ImportadasRespuesta": {
+        "properties": {
+          "importadas": {
+            "type": "integer",
+            "title": "Importadas"
+          }
+        },
+        "type": "object",
+        "required": [
+          "importadas"
+        ],
+        "title": "ImportadasRespuesta"
+      },
       "IndicadorRespuesta": {
         "properties": {
           "clave": {
@@ -4803,6 +5563,22 @@
           "sin_hallazgos"
         ],
         "title": "InformeAuditoriaRespuesta"
+      },
+      "InformeRespuesta": {
+        "properties": {
+          "informe": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Informe"
+          }
+        },
+        "type": "object",
+        "required": [
+          "informe"
+        ],
+        "title": "InformeRespuesta"
       },
       "InsumoDesconocidoRespuesta": {
         "properties": {
@@ -5235,6 +6011,78 @@
         "title": "LibroVisualRespuesta",
         "description": "Réplica visual del libro (RF-111): espejo del contrato neutro `visual.LibroVisual`."
       },
+      "LineaBaseRespuesta": {
+        "properties": {
+          "tiene_linea_base": {
+            "type": "boolean",
+            "title": "Tiene Linea Base"
+          },
+          "descripcion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Descripcion"
+          },
+          "versiones": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Versiones"
+          },
+          "hay_valuaciones": {
+            "type": "boolean",
+            "title": "Hay Valuaciones"
+          },
+          "parametros": {
+            "items": {
+              "$ref": "#/components/schemas/ParametroRespuesta"
+            },
+            "type": "array",
+            "title": "Parametros"
+          }
+        },
+        "type": "object",
+        "required": [
+          "tiene_linea_base",
+          "descripcion",
+          "versiones",
+          "hay_valuaciones",
+          "parametros"
+        ],
+        "title": "LineaBaseRespuesta"
+      },
+      "LineaDeValuacion": {
+        "properties": {
+          "partida": {
+            "type": "string",
+            "title": "Partida",
+            "default": ""
+          },
+          "cantidad": {
+            "type": "string",
+            "title": "Cantidad",
+            "default": ""
+          },
+          "fecha_medicion": {
+            "type": "string",
+            "title": "Fecha Medicion",
+            "default": ""
+          },
+          "observacion": {
+            "type": "string",
+            "title": "Observacion",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "title": "LineaDeValuacion"
+      },
       "LineaEquipoRespuesta": {
         "properties": {
           "descripcion": {
@@ -5344,29 +6192,93 @@
         "title": "ListaRespuesta",
         "description": "Cabecera de una lista de precios registrada."
       },
-      "OpcionesRespuesta": {
+      "ListoRespuesta": {
         "properties": {
-          "dominios": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Dominios"
+          "listo": {
+            "type": "boolean",
+            "title": "Listo",
+            "default": true
+          }
+        },
+        "type": "object",
+        "title": "ListoRespuesta"
+      },
+      "OpcionRespuesta": {
+        "properties": {
+          "clave": {
+            "type": "string",
+            "title": "Clave"
           },
-          "modalidades": {
+          "titulo": {
+            "type": "string",
+            "title": "Titulo"
+          },
+          "aplica": {
+            "type": "boolean",
+            "title": "Aplica"
+          },
+          "motivo": {
+            "type": "string",
+            "title": "Motivo"
+          },
+          "requisitos": {
             "items": {
               "type": "string"
             },
             "type": "array",
-            "title": "Modalidades"
+            "title": "Requisitos"
+          },
+          "requiere_declaracion": {
+            "type": "boolean",
+            "title": "Requiere Declaracion"
+          },
+          "fila": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Fila"
           }
         },
         "type": "object",
         "required": [
-          "dominios",
-          "modalidades"
+          "clave",
+          "titulo",
+          "aplica",
+          "motivo",
+          "requisitos",
+          "requiere_declaracion",
+          "fila"
         ],
-        "title": "OpcionesRespuesta"
+        "title": "OpcionRespuesta"
+      },
+      "ParametroRespuesta": {
+        "properties": {
+          "parametro": {
+            "type": "string",
+            "title": "Parametro"
+          },
+          "que_es": {
+            "type": "string",
+            "title": "Que Es"
+          },
+          "valor": {
+            "type": "string",
+            "title": "Valor"
+          },
+          "naturaleza": {
+            "type": "string",
+            "title": "Naturaleza"
+          }
+        },
+        "type": "object",
+        "required": [
+          "parametro",
+          "que_es",
+          "valor",
+          "naturaleza"
+        ],
+        "title": "ParametroRespuesta"
       },
       "ParetoRespuesta": {
         "properties": {
@@ -5686,6 +6598,58 @@
         "title": "PeriodoPlanPeticion",
         "description": "Un período del plan de trabajo (UC‑01, paso 6): su etiqueta y la fracción de cada partida\nque ejecuta (código → fracción, como texto decimal). Las fracciones de cada partida suman 1\nen todo el plan; si no, `PlanInvalido` responde 422."
       },
+      "PeticionElegir": {
+        "properties": {
+          "proyecto": {
+            "type": "string",
+            "title": "Proyecto"
+          },
+          "corte": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Corte"
+          },
+          "precios": {
+            "$ref": "#/components/schemas/Precios"
+          },
+          "objetivo": {
+            "type": "string",
+            "title": "Objetivo",
+            "default": ""
+          },
+          "horas_previas": {
+            "type": "string",
+            "title": "Horas Previas",
+            "default": "0"
+          },
+          "opcion": {
+            "type": "string",
+            "title": "Opcion"
+          },
+          "fuente": {
+            "type": "string",
+            "title": "Fuente"
+          },
+          "declaracion_independencia": {
+            "type": "string",
+            "title": "Declaracion Independencia",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "proyecto",
+          "opcion",
+          "fuente"
+        ],
+        "title": "PeticionElegir"
+      },
       "PeticionEvaluar": {
         "properties": {
           "materiales": {
@@ -5821,6 +6785,70 @@
         ],
         "title": "PeticionGuardar"
       },
+      "PeticionOpciones": {
+        "properties": {
+          "proyecto": {
+            "type": "string",
+            "title": "Proyecto"
+          },
+          "corte": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Corte"
+          },
+          "precios": {
+            "$ref": "#/components/schemas/Precios"
+          },
+          "objetivo": {
+            "type": "string",
+            "title": "Objetivo",
+            "default": ""
+          },
+          "horas_previas": {
+            "type": "string",
+            "title": "Horas Previas",
+            "default": "0"
+          }
+        },
+        "type": "object",
+        "required": [
+          "proyecto"
+        ],
+        "title": "PeticionOpciones"
+      },
+      "PlanReproyectado": {
+        "properties": {
+          "columnas": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Columnas"
+          },
+          "filas": {
+            "items": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Filas"
+          }
+        },
+        "type": "object",
+        "required": [
+          "columnas",
+          "filas"
+        ],
+        "title": "PlanReproyectado"
+      },
       "PrecargaRespuesta": {
         "properties": {
           "existe": {
@@ -5854,6 +6882,38 @@
           "hay_historial"
         ],
         "title": "PrecargaRespuesta"
+      },
+      "Precios": {
+        "properties": {
+          "metodo": {
+            "type": "string",
+            "title": "Metodo",
+            "default": "ninguno"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version",
+            "default": ""
+          },
+          "km": {
+            "type": "string",
+            "title": "Km",
+            "default": ""
+          },
+          "r": {
+            "type": "string",
+            "title": "R",
+            "default": "0"
+          },
+          "fuente": {
+            "type": "string",
+            "title": "Fuente",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "title": "Precios",
+        "description": "Cómo se toman los precios del corte (S2 §4.3): el nombre del método y sus datos."
       },
       "PresupuestoConProyectoRespuesta": {
         "properties": {
@@ -6238,6 +7298,41 @@
         "title": "ProyectoRespuesta",
         "description": "El proyecto creado, tal como quedo guardado."
       },
+      "PuntoDeCurva": {
+        "properties": {
+          "periodo": {
+            "type": "string",
+            "title": "Periodo"
+          },
+          "pv": {
+            "type": "string",
+            "title": "Pv"
+          },
+          "ev": {
+            "type": "string",
+            "title": "Ev"
+          },
+          "ac": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ac"
+          }
+        },
+        "type": "object",
+        "required": [
+          "periodo",
+          "pv",
+          "ev",
+          "ac"
+        ],
+        "title": "PuntoDeCurva"
+      },
       "PuntoRespuesta": {
         "properties": {
           "orden": {
@@ -6260,6 +7355,56 @@
           "valor"
         ],
         "title": "PuntoRespuesta"
+      },
+      "RegistrarValuacion": {
+        "properties": {
+          "proyecto": {
+            "type": "string",
+            "title": "Proyecto"
+          },
+          "numero": {
+            "type": "string",
+            "title": "Numero"
+          },
+          "desde": {
+            "type": "string",
+            "title": "Desde"
+          },
+          "hasta": {
+            "type": "string",
+            "title": "Hasta"
+          },
+          "fecha": {
+            "type": "string",
+            "title": "Fecha",
+            "default": ""
+          },
+          "inspector": {
+            "type": "string",
+            "title": "Inspector",
+            "default": ""
+          },
+          "lineas": {
+            "items": {
+              "$ref": "#/components/schemas/LineaDeValuacion"
+            },
+            "type": "array",
+            "title": "Lineas"
+          },
+          "fuente": {
+            "type": "string",
+            "title": "Fuente"
+          }
+        },
+        "type": "object",
+        "required": [
+          "proyecto",
+          "numero",
+          "desde",
+          "hasta",
+          "fuente"
+        ],
+        "title": "RegistrarValuacion"
       },
       "RegistroRendimientoRespuesta": {
         "properties": {
@@ -6296,6 +7441,29 @@
         ],
         "title": "RegistroRendimientoRespuesta",
         "description": "Lo registrado y la advertencia de RF-27 (o null): advertir nunca es impedir.\n`justificacion` es la que quedo registrada con la advertencia (UC-06, flujo 4a), o null."
+      },
+      "RegistroRespuesta": {
+        "properties": {
+          "corte": {
+            "type": "string",
+            "title": "Corte"
+          },
+          "hallazgos": {
+            "type": "integer",
+            "title": "Hallazgos"
+          },
+          "errores": {
+            "type": "integer",
+            "title": "Errores"
+          }
+        },
+        "type": "object",
+        "required": [
+          "corte",
+          "hallazgos",
+          "errores"
+        ],
+        "title": "RegistroRespuesta"
       },
       "ReglaEvaluadaRespuesta": {
         "properties": {
@@ -7141,7 +8309,7 @@
           },
           "versiones": {
             "items": {
-              "$ref": "#/components/schemas/VersionRespuesta"
+              "$ref": "#/components/schemas/api__rutas__tablero__VersionRespuesta"
             },
             "type": "array",
             "title": "Versiones"
@@ -7175,6 +8343,34 @@
           "valor"
         ],
         "title": "TarjetaRespuesta"
+      },
+      "Terminos": {
+        "properties": {
+          "indice": {
+            "type": "string",
+            "title": "Indice"
+          },
+          "reproyectado": {
+            "type": "string",
+            "title": "Reproyectado"
+          },
+          "plan_base": {
+            "type": "string",
+            "title": "Plan Base"
+          },
+          "eac_sistema": {
+            "type": "string",
+            "title": "Eac Sistema"
+          }
+        },
+        "type": "object",
+        "required": [
+          "indice",
+          "reproyectado",
+          "plan_base",
+          "eac_sistema"
+        ],
+        "title": "Terminos"
       },
       "TrazaRespuesta": {
         "properties": {
@@ -7244,6 +8440,73 @@
         ],
         "title": "ValidationError"
       },
+      "ValorDeParametro": {
+        "properties": {
+          "parametro": {
+            "type": "string",
+            "title": "Parametro"
+          },
+          "valor": {
+            "type": "string",
+            "title": "Valor"
+          }
+        },
+        "type": "object",
+        "required": [
+          "parametro",
+          "valor"
+        ],
+        "title": "ValorDeParametro"
+      },
+      "ValuacionesRespuesta": {
+        "properties": {
+          "tiene_linea_base": {
+            "type": "boolean",
+            "title": "Tiene Linea Base"
+          },
+          "filas": {
+            "items": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Filas"
+          },
+          "aviso": {
+            "type": "string",
+            "title": "Aviso",
+            "default": ""
+          },
+          "anulables": {
+            "items": {
+              "$ref": "#/components/schemas/Anulable"
+            },
+            "type": "array",
+            "title": "Anulables"
+          },
+          "corte_por_defecto": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Corte Por Defecto"
+          }
+        },
+        "type": "object",
+        "required": [
+          "tiene_linea_base",
+          "filas",
+          "anulables",
+          "corte_por_defecto"
+        ],
+        "title": "ValuacionesRespuesta"
+      },
       "VersionEntregable": {
         "properties": {
           "codigo": {
@@ -7261,49 +8524,6 @@
           "moneda"
         ],
         "title": "VersionEntregable"
-      },
-      "VersionRespuesta": {
-        "properties": {
-          "version": {
-            "type": "string",
-            "title": "Version"
-          },
-          "fecha": {
-            "type": "string",
-            "title": "Fecha"
-          },
-          "motivo": {
-            "type": "string",
-            "title": "Motivo"
-          },
-          "costo_directo": {
-            "type": "string",
-            "title": "Costo Directo"
-          },
-          "total": {
-            "type": "string",
-            "title": "Total"
-          },
-          "vigente": {
-            "type": "boolean",
-            "title": "Vigente"
-          },
-          "valor": {
-            "type": "string",
-            "title": "Valor"
-          }
-        },
-        "type": "object",
-        "required": [
-          "version",
-          "fecha",
-          "motivo",
-          "costo_directo",
-          "total",
-          "vigente",
-          "valor"
-        ],
-        "title": "VersionRespuesta"
       },
       "VistaPreviaRespuesta": {
         "properties": {
@@ -7417,6 +8637,71 @@
         ],
         "title": "HallazgoRespuesta"
       },
+      "api__esquemas_ola2__CalculoRespuesta": {
+        "properties": {
+          "codigo": {
+            "type": "string",
+            "title": "Codigo"
+          },
+          "fecha": {
+            "type": "string",
+            "format": "date",
+            "title": "Fecha"
+          },
+          "moneda": {
+            "type": "string",
+            "title": "Moneda"
+          },
+          "total": {
+            "type": "string",
+            "title": "Total"
+          },
+          "partidas": {
+            "items": {
+              "$ref": "#/components/schemas/PartidaPresupuestadaRespuesta"
+            },
+            "type": "array",
+            "title": "Partidas"
+          },
+          "por_severidad": {
+            "items": {
+              "$ref": "#/components/schemas/SeveridadRespuesta"
+            },
+            "type": "array",
+            "title": "Por Severidad"
+          },
+          "informe": {
+            "$ref": "#/components/schemas/InformeAuditoriaRespuesta"
+          },
+          "pendientes": {
+            "items": {
+              "$ref": "#/components/schemas/PendienteConPropuestasRespuesta"
+            },
+            "type": "array",
+            "title": "Pendientes"
+          },
+          "plan_por_defecto": {
+            "items": {
+              "$ref": "#/components/schemas/FilaPlan"
+            },
+            "type": "array",
+            "title": "Plan Por Defecto"
+          }
+        },
+        "type": "object",
+        "required": [
+          "codigo",
+          "fecha",
+          "moneda",
+          "total",
+          "partidas",
+          "por_severidad",
+          "informe",
+          "pendientes",
+          "plan_por_defecto"
+        ],
+        "title": "CalculoRespuesta"
+      },
       "api__rutas__auditorias__HallazgoRespuesta": {
         "properties": {
           "regla": {
@@ -7458,6 +8743,254 @@
           "origen_ids"
         ],
         "title": "HallazgoRespuesta"
+      },
+      "api__rutas__composicion__OpcionesRespuesta": {
+        "properties": {
+          "dominios": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Dominios"
+          },
+          "modalidades": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Modalidades"
+          }
+        },
+        "type": "object",
+        "required": [
+          "dominios",
+          "modalidades"
+        ],
+        "title": "OpcionesRespuesta"
+      },
+      "api__rutas__control__CalculoRespuesta": {
+        "properties": {
+          "estado": {
+            "type": "string",
+            "title": "Estado"
+          },
+          "corte": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Corte"
+          },
+          "dia": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dia"
+          },
+          "moneda": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Moneda"
+          },
+          "indicadores": {
+            "items": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Indicadores"
+          },
+          "costos_sin_tasa": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Costos Sin Tasa"
+          },
+          "curva": {
+            "items": {
+              "$ref": "#/components/schemas/PuntoDeCurva"
+            },
+            "type": "array",
+            "title": "Curva"
+          },
+          "spi_no_aplica": {
+            "type": "boolean",
+            "title": "Spi No Aplica",
+            "default": false
+          },
+          "alertas": {
+            "items": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Alertas"
+          },
+          "terminos": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Terminos"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "motivo_termino": {
+            "type": "string",
+            "title": "Motivo Termino",
+            "default": ""
+          },
+          "equilibrio": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Equilibrio"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "estudios": {
+            "type": "string",
+            "title": "Estudios",
+            "default": ""
+          },
+          "reproyeccion": {
+            "items": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Reproyeccion"
+          },
+          "plan": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PlanReproyectado"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "decisiones": {
+            "items": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Decisiones"
+          },
+          "versiones_revaloradas": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Versiones Revaloradas"
+          }
+        },
+        "type": "object",
+        "required": [
+          "estado"
+        ],
+        "title": "CalculoRespuesta"
+      },
+      "api__rutas__control__OpcionesRespuesta": {
+        "properties": {
+          "opciones": {
+            "items": {
+              "$ref": "#/components/schemas/OpcionRespuesta"
+            },
+            "type": "array",
+            "title": "Opciones"
+          }
+        },
+        "type": "object",
+        "required": [
+          "opciones"
+        ],
+        "title": "OpcionesRespuesta"
+      },
+      "api__rutas__control__VersionRespuesta": {
+        "properties": {
+          "version": {
+            "type": "string",
+            "title": "Version"
+          }
+        },
+        "type": "object",
+        "required": [
+          "version"
+        ],
+        "title": "VersionRespuesta"
+      },
+      "api__rutas__tablero__VersionRespuesta": {
+        "properties": {
+          "version": {
+            "type": "string",
+            "title": "Version"
+          },
+          "fecha": {
+            "type": "string",
+            "title": "Fecha"
+          },
+          "motivo": {
+            "type": "string",
+            "title": "Motivo"
+          },
+          "costo_directo": {
+            "type": "string",
+            "title": "Costo Directo"
+          },
+          "total": {
+            "type": "string",
+            "title": "Total"
+          },
+          "vigente": {
+            "type": "boolean",
+            "title": "Vigente"
+          },
+          "valor": {
+            "type": "string",
+            "title": "Valor"
+          }
+        },
+        "type": "object",
+        "required": [
+          "version",
+          "fecha",
+          "motivo",
+          "costo_directo",
+          "total",
+          "vigente",
+          "valor"
+        ],
+        "title": "VersionRespuesta"
       }
     }
   }

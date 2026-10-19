@@ -386,6 +386,7 @@ def test_alertas_terminos_reproyeccion_y_estudios_vienen_siempre() -> None:
     assert datos["reproyeccion"], "hay partidas con obra pendiente"
     assert datos["plan"]["columnas"][0] == "Periodo"
     assert "V' = V" in datos["estudios"]
+    assert datos["versiones_revaloradas"] == []  # OB-S2 no tiene versiones revaloradas (UC-02)
 
 
 def test_el_corte_pedido_cambia_el_calculo() -> None:

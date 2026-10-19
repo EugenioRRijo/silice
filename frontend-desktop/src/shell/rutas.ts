@@ -63,7 +63,13 @@ export const PAGINAS: readonly PaginaDef[] = [
   { id: "precios_empresa", titulo: "Precios de la empresa", seccion: "Trabajo", accion: "administrar_precios" },
   { id: "indices", titulo: "Índices del BCV", seccion: "Trabajo", accion: "administrar_precios" },
   { id: "reajuste", titulo: "Reajuste de precios", seccion: "Trabajo", accion: "convertir_y_reajustar" },
-  { id: "control", titulo: "Control de obra", seccion: "Trabajo", accion: "control_de_obra" },
+  {
+    id: "control",
+    titulo: "Control de obra",
+    seccion: "Trabajo",
+    accion: "control_de_obra",
+    cargar: () => import("../paginas/control"),
+  },
   { id: "acerca", titulo: "Acerca de Sílice", seccion: "Trabajo", accion: null },
   {
     id: "entregar",

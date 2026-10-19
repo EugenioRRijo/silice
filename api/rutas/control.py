@@ -459,6 +459,7 @@ class CalculoRespuesta(BaseModel):
     reproyeccion: list[Fila] = Field(default_factory=list)
     plan: PlanReproyectado | None = None
     decisiones: list[Fila] = Field(default_factory=list)
+    versiones_revaloradas: list[str] = Field(default_factory=list)
 
 
 def _texto(valor: object) -> str:
@@ -527,6 +528,7 @@ def calculo(
         reproyeccion=logica.filas_de_reproyeccion(resultado),
         plan=PlanReproyectado(columnas=list(columnas), filas=plan),
         decisiones=logica.filas_de_decisiones(sesion, proyecto),
+        versiones_revaloradas=logica.versiones_revaloradas(sesion, proyecto),
     )
 
 
