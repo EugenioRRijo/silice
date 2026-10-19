@@ -4,12 +4,12 @@ import type { SesionRespuesta } from "../../api/tipos";
 import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
 import PaginaTablero from "./index";
-import { datosDeAnillo, datosDeVersiones, rolDeSerie, seriesDeCurva } from "./logica";
+import { datosDeVersiones, rolDeSerie, seriesDeCurva } from "./logica";
 import type { TableroRespuesta } from "./logica";
 
 vi.mock("../../comun/GraficoCarbon", () => ({
-  default: ({ tipo, datos }: { tipo: string; datos: unknown[] }) => (
-    <div data-testid={`grafico-${tipo}`} data-filas={datos.length} />
+  default: ({ tipo, datos, opciones }: { tipo: string; datos: unknown[]; opciones: unknown }) => (
+    <div data-testid={`grafico-${tipo}`} data-filas={datos.length} data-opciones={JSON.stringify(opciones)} />
   ),
 }));
 
@@ -95,9 +95,10 @@ describe("Tablero del proyecto", () => {
     expect(await screen.findByText("Total del contrato")).toBeInTheDocument();
     expect(String(fetchFalso.mock.calls[0]![0])).toContain("/v1/tablero?proyecto=OB-S2");
     expect(screen.getByText("Version OB-001 del 2026-11-02 · 3 renglones · USD")).toBeInTheDocument();
-    // tres anillos con su texto; el que no tiene dato no dibuja grafico
-    expect(screen.getByLabelText("SPI (plazo): 0,80 (desfavorable)")).toBeInTheDocument();
-    expect(await screen.findAllByTestId("grafico-anillo")).toHaveLength(2 + 1); // 2 anillos con dato + el desglose
+    // V-21: un indice (SPI 0,98) no es una parte de un todo: no hay donas de avance, SPI ni CPI, solo los indicadores
+    expect(screen.queryByLabelText(/SPI \(plazo\)/)).toBeNull();
+    expect(screen.getByText("EAC")).toBeInTheDocument();
+    expect(await screen.findAllByTestId("grafico-anillo")).toHaveLength(1); // solo el desglose del contrato
     expect(await screen.findByTestId("grafico-linea")).toBeInTheDocument();
     expect(await screen.findAllByTestId("grafico-barras")).toHaveLength(2); // Pareto y versiones
     // cada grafico tiene su tabla con los montos exactos
@@ -105,6 +106,18 @@ describe("Tablero del proyecto", () => {
     expect(within(pareto).getByText("3000.00")).toBeInTheDocument();
     expect(screen.getByRole("table", { name: "Versiones del presupuesto" })).toBeInTheDocument();
     expect(screen.getByRole("table", { name: "Montos de Valor ganado (PV, EV, AC)" })).toBeInTheDocument();
+  });
+
+  test("los graficos usan la paleta de DESIGN.md: una escala por grupo y nada de morado (V-21)", async () => {
+    fetchFalso.mockImplementation(async () => json(TABLERO));
+    montar("OB-S2");
+    const graficos = await screen.findAllByTestId(/grafico-(anillo|barras)/);
+    expect(graficos.length).toBeGreaterThan(0);
+    for (const g of graficos) {
+      const opciones = JSON.parse(g.getAttribute("data-opciones")!) as { color?: { scale: Record<string, string> } };
+      expect(opciones.color?.scale).toBeDefined();
+      expect(Object.values(opciones.color!.scale).join(" ")).not.toMatch(/8a3ffc|6929c4|a56eff|be95ff/i);
+    }
   });
 
   test("sin control de obra lo dice con su motivo", async () => {
@@ -138,18 +151,6 @@ describe("Tablero del proyecto", () => {
 });
 
 describe("logica del tablero", () => {
-  test("el anillo es una dona de dos porciones con tope en 100 %", () => {
-    expect(datosDeAnillo({ rotulo: "a", fraccion: "0.25", texto: "", favorable: null })).toEqual([
-      { group: "Logrado", value: 0.25 },
-      { group: "Falta", value: 0.75 },
-    ]);
-    expect(datosDeAnillo({ rotulo: "a", fraccion: "1.4", texto: "", favorable: true })).toEqual([
-      { group: "Logrado", value: 1 },
-      { group: "Falta", value: 0 },
-    ]);
-    expect(datosDeAnillo({ rotulo: "a", fraccion: null, texto: "", favorable: null })).toBeNull();
-  });
-
   test("EV y AC son lo real; PV y Plan, lo previsto", () => {
     expect(["PV", "Plan", "EV", "AC"].map(rolDeSerie)).toEqual(["plan", "plan", "real", "real"]);
   });

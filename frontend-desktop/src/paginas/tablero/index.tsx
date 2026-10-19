@@ -4,17 +4,17 @@ import { CurvaPlanAvance } from "../../comun/CurvaPlanAvance";
 import { EsqueletoPagina } from "../../comun/EsqueletoPagina";
 import { EstadoVacio } from "../../comun/EstadoVacio";
 import { TablaDensa } from "../../comun/TablaDensa";
+import { PALETA_GRAFICOS, colorPorGrupo } from "../../comun/paletaGraficos";
 import { useAplicacion } from "../../shell/contexto";
 import { useCarga } from "../inicio/useCarga";
 import {
-  datosDeAnillo,
   datosDeDesglose,
   datosDePareto,
   datosDeVersiones,
   rutaDelTablero,
   seriesDeCurva,
 } from "./logica";
-import type { Anillo, Tarjeta, TableroRespuesta } from "./logica";
+import type { Tarjeta, TableroRespuesta } from "./logica";
 import "./tablero.scss";
 
 const GraficoCarbon = lazy(() => import("../../comun/GraficoCarbon"));
@@ -33,35 +33,6 @@ function Tarjetas({ tarjetas }: { tarjetas: Tarjeta[] }) {
   );
 }
 
-function AnilloDeProgreso({ anillo }: { anillo: Anillo }) {
-  const datos = datosDeAnillo(anillo);
-  const estado = anillo.favorable === null ? "" : anillo.favorable ? " (favorable)" : " (desfavorable)";
-  return (
-    <figure className="silice-tablero__anillo" aria-label={`${anillo.rotulo}: ${anillo.texto}${estado}`}>
-      {datos ? (
-        <Suspense fallback={<EsqueletoPagina etiqueta="Cargando el grafico" />}>
-          <GraficoCarbon
-            tipo="anillo"
-            datos={datos}
-            opciones={{
-              height: "160px",
-              resizable: true,
-              legend: { enabled: false },
-              toolbar: { enabled: false },
-              tooltip: { enabled: false },
-              donut: { center: { label: anillo.rotulo, numberFormatter: () => anillo.texto } },
-            }}
-          />
-        </Suspense>
-      ) : null}
-      <figcaption className="cds--type-body-compact-01">
-        <strong>{anillo.rotulo}:</strong> {anillo.texto}
-        {estado}
-      </figcaption>
-    </figure>
-  );
-}
-
 function Grafico({
   titulo,
   tipo,
@@ -75,7 +46,13 @@ function Grafico({
 }) {
   const opciones =
     tipo === "anillo"
-      ? { title: titulo, height: "300px", resizable: true, donut: { center: { label: "Total" } } }
+      ? {
+          title: titulo,
+          height: "300px",
+          resizable: true,
+          donut: { center: { label: "Total" } },
+          color: colorPorGrupo(datos.map((d) => d.group)),
+        }
       : {
           title: titulo,
           height: "300px",
@@ -85,6 +62,7 @@ function Grafico({
             bottom: { mapsTo: "value", title: eje?.abajo },
           },
           legend: { enabled: false },
+          color: { scale: Object.fromEntries(datos.map((d) => [d.group, PALETA_GRAFICOS[0]])) },
         };
   return (
     <Suspense fallback={<EsqueletoPagina etiqueta="Cargando el grafico" />}>
@@ -116,11 +94,6 @@ function Contenido({ datos }: { datos: TableroRespuesta }) {
         </h2>
         {datos.control?.disponible ? (
           <>
-            <div className="silice-tablero__anillos">
-              {datos.control.anillos.map((a) => (
-                <AnilloDeProgreso key={a.rotulo} anillo={a} />
-              ))}
-            </div>
             <Tarjetas tarjetas={datos.control.tarjetas} />
           </>
         ) : (

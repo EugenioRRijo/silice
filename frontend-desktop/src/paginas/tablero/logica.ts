@@ -80,16 +80,6 @@ export function rutaDelTablero(proyecto: string): string {
   return `${RUTA_TABLERO}?proyecto=${encodeURIComponent(proyecto)}`;
 }
 
-// Un anillo de progreso es una dona de dos porciones: lo hecho y lo que falta (tope en 100 %). Sin dato, null.
-export function datosDeAnillo(anillo: Anillo): { group: string; value: number }[] | null {
-  if (anillo.fraccion === null) return null;
-  const hecho = Math.min(Math.max(Number(anillo.fraccion), 0), 1);
-  return [
-    { group: "Logrado", value: hecho },
-    { group: "Falta", value: 1 - hecho },
-  ];
-}
-
 // El plan (PV) es lo previsto; EV y AC son lo ocurrido. El pronostico aun no viene en el tablero (lo trae Control).
 export function rolDeSerie(nombre: string): SerieDeCurva["rol"] {
   return nombre === "EV" || nombre === "AC" ? "real" : "plan";
