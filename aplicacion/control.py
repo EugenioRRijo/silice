@@ -689,7 +689,7 @@ def filas_de_opciones(todas: Sequence[Opcion]) -> list[dict[str, str]]:
         filas.append(
             {
                 "Opcion": o.titulo,
-                "Termino": f"dia {o.termino}",
+                "Termino": f"día {o.termino}",
                 "Retraso (dias)": str(o.retraso),
                 "Costo directo adicional": _monto(o.costo_directo_adicional),
                 "Costo indirecto": _monto(o.costo_indirecto),
@@ -951,7 +951,7 @@ def dia_con_fecha(resultado: ResultadoControl, dia: int | None) -> str:
         return "no proyectable"
     calendario = resultado.instantanea.calendario
     fecha = dia_habil(calendario.fecha_inicio, dia, frozenset(calendario.feriados))
-    return f"dia {dia} ({fecha.isoformat()})"
+    return f"día {dia} ({fecha.isoformat()})"
 
 
 def filas_del_plan_reproyectado(

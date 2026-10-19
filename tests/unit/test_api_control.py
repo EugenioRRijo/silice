@@ -382,7 +382,7 @@ def test_alertas_terminos_reproyeccion_y_estudios_vienen_siempre() -> None:
     datos = _con_clave().get("/v1/control/calculo", params=P).json()
     assert {a["Alerta"] for a in datos["alertas"]} & {"AL-1", "AL-2", "AL-3"}
     assert set(datos["terminos"]) == {"indice", "reproyectado", "plan_base", "eac_sistema"}
-    assert datos["terminos"]["plan_base"].startswith("dia ")
+    assert datos["terminos"]["plan_base"].startswith("día ")
     assert datos["reproyeccion"], "hay partidas con obra pendiente"
     assert datos["plan"]["columnas"][0] == "Periodo"
     assert "V' = V" in datos["estudios"]

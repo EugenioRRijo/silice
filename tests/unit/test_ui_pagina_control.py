@@ -206,8 +206,8 @@ def test_alertas_y_reproyeccion_se_ven_al_abrir_sin_pedirlas(monkeypatch, tmp_pa
     alertas = {f["Alerta"]: f for f in _tabla(at, "Alerta")}
     assert alertas["AL-1"]["Severidad"] == "ERROR" and alertas["AL-3"]["Severidad"] == "ERROR"
     texto = _texto(at)
-    assert "Termino por el plan reproyectado: dia 23 (2026-12-02)" in texto
-    assert "Termino por el indice: dia 25 (2026-12-04)" in texto
+    assert "Termino por el plan reproyectado: día 23 (2026-12-02)" in texto
+    assert "Termino por el indice: día 25 (2026-12-04)" in texto
     assert "Sin estudio de reajuste guardado: V' = V" in texto
     plan = _tabla(at, "OB-C")
     assert plan[2]["OB-C"] == "0.4000" and len(plan) == 5
@@ -240,7 +240,7 @@ def test_recuperacion_calcula_a_pedido_y_elegir_crea_la_version(monkeypatch, tmp
     at.button(key="control_r_calcular").click().run()
     assert not at.exception, [e.value for e in at.exception]
     filas = {f["Opcion"]: f for f in _tabla(at, "Opcion")}
-    assert filas["Mas cuadrillas"]["Termino"] == "dia 17"
+    assert filas["Mas cuadrillas"]["Termino"] == "día 17"
     assert filas["Partidas en paralelo"]["Nota"].startswith("ninguna partida sin empezar")
     assert any("art. 182" in c.value for c in at.caption)
     at.radio(key="control_r_elegida").set_value(

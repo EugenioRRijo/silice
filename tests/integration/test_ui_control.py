@@ -185,9 +185,9 @@ def test_las_opciones_se_calculan_a_pedido_y_elegir_una_crea_la_version(obra):
     )
     todas = control.calcular_las_opciones(resultado)
     filas = {f["Opcion"]: f for f in control.filas_de_opciones(todas)}
-    assert filas["Mas cuadrillas"]["Termino"] == "dia 17"
+    assert filas["Mas cuadrillas"]["Termino"] == "día 17"
     assert filas["Mas cuadrillas"]["Costo directo adicional"] == "120.00"
-    assert filas["Horas extra"]["Termino"] == "dia 21"
+    assert filas["Horas extra"]["Termino"] == "día 21"
     assert filas["Partidas en paralelo"]["Nota"].startswith("ninguna partida sin empezar")
     assert filas["Aceptar el retraso"]["Costo indirecto"] == "90.00"
     assert "eta de cuadrillas: 0.80 (SUPUESTO_DECLARADO)" in filas["Mas cuadrillas"]["Nota"]
