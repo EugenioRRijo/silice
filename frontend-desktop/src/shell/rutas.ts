@@ -30,7 +30,13 @@ export const PAGINAS: readonly PaginaDef[] = [
     cargar: () => import("../paginas/inicio"),
   },
   { id: "tablero", titulo: "Tablero del proyecto", seccion: "Trabajo", accion: "leer_proyecto" },
-  { id: "catalogo", titulo: "Catálogo de partidas e insumos", seccion: "Trabajo", accion: "leer_proyecto" },
+  {
+    id: "catalogo",
+    titulo: "Catálogo de partidas e insumos",
+    seccion: "Trabajo",
+    accion: "leer_proyecto",
+    cargar: () => import("../paginas/catalogo"),
+  },
   {
     id: "componer",
     titulo: "Componer una partida",
@@ -53,7 +59,13 @@ export const PAGINAS: readonly PaginaDef[] = [
     accion: "editar_hoja",
     cargar: () => import("../paginas/actualizacion"),
   },
-  { id: "historico", titulo: "Histórico de cambios de precio", seccion: "Trabajo", accion: "leer_proyecto" },
+  {
+    id: "historico",
+    titulo: "Histórico de cambios de precio",
+    seccion: "Trabajo",
+    accion: "leer_proyecto",
+    cargar: () => import("../paginas/historico"),
+  },
   { id: "precios_empresa", titulo: "Precios de la empresa", seccion: "Trabajo", accion: "administrar_precios" },
   { id: "indices", titulo: "Índices del BCV", seccion: "Trabajo", accion: "administrar_precios" },
   {
@@ -64,7 +76,13 @@ export const PAGINAS: readonly PaginaDef[] = [
     cargar: () => import("../paginas/reajuste"),
   },
   { id: "control", titulo: "Control de obra", seccion: "Trabajo", accion: "control_de_obra" },
-  { id: "acerca", titulo: "Acerca de Sílice", seccion: "Trabajo", accion: null },
+  {
+    id: "acerca",
+    titulo: "Acerca de Sílice",
+    seccion: "Trabajo",
+    accion: null,
+    cargar: () => import("../paginas/acerca"),
+  },
   {
     id: "entregar",
     titulo: "Entregar paquete",

@@ -125,6 +125,7 @@ TABLA = {
     ("POST", "/v1/reajuste/calcular"): REAJUSTAR,
     ("POST", "/v1/reajuste/guardar"): REAJUSTAR,
     ("POST", "/v1/reajuste/excel"): REAJUSTAR,
+    ("GET", "/v1/acerca"): CUALQUIERA,
 }
 #: Las de la puerta de entrada: la sesión misma (con su propia regla) y el ping.
 DE_LA_SESION = {
