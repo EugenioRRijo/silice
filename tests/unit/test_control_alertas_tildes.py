@@ -120,6 +120,86 @@ CASOS = [
         "el SPI global es 0: sin ritmo no se proyecta",
         "el SPI global es 0: sin ritmo no se proyecta",
     ),
+    # Recuperación (opciones): títulos, supuestos, requisitos y motivos
+    ("Mas cuadrillas", "Más cuadrillas"),
+    ("Horas extra", "Horas extra"),
+    ("Partidas en paralelo", "Partidas en paralelo"),
+    ("Aceptar el retraso", "Aceptar el retraso"),
+    ("ninguna partida pasa del objetivo", "ninguna partida pasa del objetivo"),
+    (
+        "ninguna partida sin empezar con inicio posterior al periodo siguiente",
+        "ninguna partida sin empezar con inicio posterior al período siguiente",
+    ),
+    (
+        "no aplica (01-A: sin composicion de APU; 01-B: sin rendimiento; 01-C: sin mano de obra "
+        "a jornal)",
+        "no aplica (01-A: sin composición de APU; 01-B: sin rendimiento; 01-C: sin mano de obra "
+        "a jornal)",
+    ),
+    ("sin composicion de APU", "sin composición de APU"),
+    ("sin rendimiento", "sin rendimiento"),
+    ("sin mano de obra a jornal", "sin mano de obra a jornal"),
+    (
+        "sin fuente: ninguna norma verificada la fija",
+        "sin fuente: ninguna norma verificada la fija",
+    ),
+    (
+        "permiso de la Inspectoria del Trabajo (LOTTT art. 182) para las horas extra",
+        "permiso de la Inspectoría del Trabajo (LOTTT art. 182) para las horas extra",
+    ),
+    ("penalizacion diaria", "penalización diaria"),
+    ("composiciones de la linea base", "composiciones de la línea base"),
+    ("costo diario de la cuadrilla", "costo diario de la cuadrilla"),
+    ("costo fijo en el tiempo", "costo fijo en el tiempo"),
+    ("CF' = CF · D'/D", "CF' = CF · D'/D"),
+    ("eta de cuadrillas", "eta de cuadrillas"),
+    (
+        "Lee (2022) es la base del metodo, no del valor",
+        "Lee (2022) es la base del método, no del valor",
+    ),
+    ("cuadrillas maximas", "cuadrillas máximas"),
+    ("horas extra por dia", "horas extra por día"),
+    ("tope legal 2 h", "tope legal 2 h"),
+    ("eta de horas extra", "eta de horas extra"),
+    ("LOTTT art. 118: por lo menos 50 %", "LOTTT art. 118: por lo menos 50 %"),
+    ("FCAS sobre las horas extra", "FCAS sobre las horas extra"),
+    ("si", "sí"),
+    (
+        "interpretacion de los arts. 104 y 178; decide el tutor",
+        "interpretación de los arts. 104 y 178; decide el tutor",
+    ),
+    ("jornada ordinaria", "jornada ordinaria"),
+    ("LOTTT art. 173", "LOTTT art. 173"),
+    ("limites de horas extra", "límites de horas extra"),
+    ("10 h por semana, 100 h por año", "10 h por semana, 100 h por año"),
+    ("LOTTT art. 178", "LOTTT art. 178"),
+    ("independencia de las partidas", "independencia de las partidas"),
+    (
+        "el plan no tiene dependencias: el usuario lo declara con su fuente (S2-R4)",
+        "el plan no tiene dependencias: el usuario lo declara con su fuente (S2-R4)",
+    ),
+    (
+        "LOTTT G.O. 6.076 Ext. 07-05-2012 (docs/fuentes/LOTTT_GO_6076_Ext_2012-05-07.txt)",
+        "LOTTT G.O. 6.076 Ext. 07-05-2012 (docs/fuentes/LOTTT_GO_6076_Ext_2012-05-07.txt)",
+    ),
+    # Mensajes del punto de equilibrio sueltos (campo `mensaje` de la API y de las opciones)
+    (
+        "no existe punto de equilibrio: el margen de contribucion no es positivo",
+        "no existe punto de equilibrio: el margen de contribución no es positivo",
+    ),
+    (
+        "el punto de equilibrio no se alcanza dentro del contrato",
+        "el punto de equilibrio no se alcanza dentro del contrato",
+    ),
+    (
+        "el presupuesto no tiene ventas: no aplica",
+        "el presupuesto no tiene ventas: no aplica",
+    ),
+    ("se alcanza en Mes 3", "se alcanza en Mes 3"),
+    (
+        "sin curva de inversion: el punto de equilibrio no se ubica en el plan",
+        "sin curva de inversión: el punto de equilibrio no se ubica en el plan",
+    ),
 ]
 
 
