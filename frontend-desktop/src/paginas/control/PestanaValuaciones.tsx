@@ -7,7 +7,7 @@ import { EstadoVacio } from "../../comun/EstadoVacio";
 import { SubidaArchivo } from "../../comun/SubidaArchivo";
 import { TablaDensa } from "../../comun/TablaDensa";
 import { useAplicacion } from "../../shell/contexto";
-import { COLUMNAS_VALUACIONES, LINEA_VACIA, columnasDe, conId, rutaDe, sinLineasVacias, useAccion, useCargaSuave } from "./logica";
+import { COLUMNAS_VALUACIONES, LINEA_VACIA, columnasDe, conId, errorDeCarga, rutaDe, sinLineasVacias, useAccion, useCargaSuave } from "./logica";
 import type { LineaEditable, Valuaciones } from "./logica";
 
 interface Props {
@@ -213,7 +213,7 @@ export function PestanaValuaciones({ proyecto, clave, alCambiar }: Props) {
   const { alExpirar } = useAplicacion();
   const carga = useCargaSuave<Valuaciones>(rutaDe("/v1/control/valuaciones", proyecto, { n: String(clave) }), alExpirar);
   if (carga.estado === "cargando") return <EsqueletoPagina etiqueta="Cargando las valuaciones" />;
-  if (carga.estado !== "listo") return <AvisoError error={carga.estado === "error" ? carga.error : carga.estado} titulo="No se pudieron cargar las valuaciones" />;
+  if (carga.estado !== "listo") return <AvisoError error={errorDeCarga(carga)} titulo="No se pudieron cargar las valuaciones" />;
   const datos = carga.datos;
   if (!datos.tiene_linea_base) {
     return <EstadoVacio titulo="Declare primero la linea base de control" descripcion="Se hace en la pestaña «Línea base»." />;

@@ -7,7 +7,7 @@ import { useAplicacion } from "../../shell/contexto";
 import { PestanaLineaBase } from "./PestanaLineaBase";
 import { PestanaValuaciones } from "./PestanaValuaciones";
 import { AlertasYReproyeccion, BarraDeCorte, Recuperacion, ValorGanado } from "./PestanasDeResultados";
-import { FILTROS_INICIALES, PESTANAS, consultaDeCalculo, useCargaSuave } from "./logica";
+import { FILTROS_INICIALES, PESTANAS, consultaDeCalculo, errorDeCarga, useCargaSuave } from "./logica";
 import type { Calculo, Filtros } from "./logica";
 import "./control.scss";
 
@@ -37,7 +37,7 @@ function Resultados({
   const barra = <BarraDeCorte filtros={filtros} versiones={versiones} alAplicar={setFiltros} />;
   if (carga.estado === "cargando") return <EsqueletoPagina etiqueta="Calculando el control" />;
   if (carga.estado === "error") return <>{barra}<AvisoError error={carga.error} titulo="No se pudo calcular el control" /></>;
-  if (carga.estado !== "listo") return <AvisoError error={carga.estado} titulo="No se pudo calcular el control" />;
+  if (carga.estado !== "listo") return <AvisoError error={errorDeCarga(carga)} titulo="No se pudo calcular el control" />;
   const calculo = carga.datos;
   if (calculo.estado === "sin_linea_base") {
     return <EstadoVacio titulo="Declare primero la linea base de control" descripcion="Se hace en la pestaña «Línea base»." />;

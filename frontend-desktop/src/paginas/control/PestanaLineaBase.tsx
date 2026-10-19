@@ -5,7 +5,7 @@ import { AvisoError } from "../../comun/AvisoError";
 import { EsqueletoPagina } from "../../comun/EsqueletoPagina";
 import { TablaDensa } from "../../comun/TablaDensa";
 import { useAplicacion } from "../../shell/contexto";
-import { rutaDe, useAccion, useCargaSuave } from "./logica";
+import { errorDeCarga, rutaDe, useAccion, useCargaSuave } from "./logica";
 import type { LineaBase } from "./logica";
 
 interface Props {
@@ -169,7 +169,7 @@ export function PestanaLineaBase({ proyecto, clave, alCambiar }: Props) {
   const { alExpirar } = useAplicacion();
   const carga = useCargaSuave<LineaBase>(rutaDe("/v1/control/linea-base", proyecto, { n: String(clave) }), alExpirar);
   if (carga.estado === "cargando") return <EsqueletoPagina etiqueta="Cargando la linea base" />;
-  if (carga.estado !== "listo") return <AvisoError error={carga.estado === "error" ? carga.error : carga.estado} titulo="No se pudo cargar la linea base" />;
+  if (carga.estado !== "listo") return <AvisoError error={errorDeCarga(carga)} titulo="No se pudo cargar la linea base" />;
   const datos = carga.datos;
   return (
     <>

@@ -7,6 +7,16 @@ import type { Carga } from "../inicio/useCarga";
 
 export type Fila = Record<string, string>;
 
+// V-12: lo que se le pasa a `AvisoError` cuando una carga no llego a `listo`. Los estados `sin_permiso` y
+// `no_disponible` traen el `ErrorDeApi` con su `detalle`: se conserva; si no hay detalle, una frase en español
+// (nunca el codigo interno del estado).
+export function errorDeCarga(carga: Carga<unknown>): unknown {
+  if (carga.estado === "cargando" || carga.estado === "listo") return null;
+  if (carga.estado === "error") return carga.error;
+  if (carga.error instanceof ErrorDeApi && carga.error.detalle) return carga.error;
+  return carga.estado === "sin_permiso" ? "Su cuenta no tiene permiso para ver esto." : "No se encontró lo pedido.";
+}
+
 export interface ParametroDeControl {
   parametro: string;
   que_es: string;

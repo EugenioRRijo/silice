@@ -1,11 +1,12 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+import { ErrorDeApi } from "../../api/cliente";
 import type { SesionRespuesta } from "../../api/tipos";
 import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
 import PaginaControl from "./index";
-import { consultaDeCalculo, cuerpoDeOpciones, FILTROS_INICIALES, sinLineasVacias } from "./logica";
+import { consultaDeCalculo, errorDeCarga, cuerpoDeOpciones, FILTROS_INICIALES, sinLineasVacias } from "./logica";
 import type { Calculo, LineaBase, OpcionDeRecuperacion, Valuaciones } from "./logica";
 
 vi.mock("../../comun/GraficoCarbon", () => ({
@@ -124,6 +125,23 @@ describe("Control de obra", () => {
     const llamada = fetchFalso.mock.calls.find(([u, i]) => String(u) === ruta && (i?.method ?? "GET") === metodo);
     return llamada ? (JSON.parse(String(llamada[1]?.body)) as Record<string, unknown>) : undefined;
   }
+
+  test("un 404 del calculo muestra el detalle de la API y nunca el codigo crudo no_disponible (V-12)", async () => {
+    calculo = () => json({ detalle: "El proyecto «OB-S2» no existe en este caso." }, 404);
+    const usuario = montar();
+    await usuario.click(await screen.findByRole("tab", { name: "Valor ganado" }));
+    expect(await screen.findByText("El proyecto «OB-S2» no existe en este caso.")).toBeInTheDocument();
+    expect(screen.queryByText("no_disponible")).not.toBeInTheDocument();
+  });
+
+  test("errorDeCarga traduce los estados sin detalle a una frase y conserva el detalle si existe", () => {
+    expect(errorDeCarga({ estado: "no_disponible", error: new Error("x") })).toBe("No se encontró lo pedido.");
+    expect(errorDeCarga({ estado: "sin_permiso", error: null })).toBe("Su cuenta no tiene permiso para ver esto.");
+    const conDetalle = new ErrorDeApi(404, "No hay línea base.");
+    expect(errorDeCarga({ estado: "no_disponible", error: conDetalle })).toBe(conDetalle);
+    expect(errorDeCarga({ estado: "error", error: "falla" })).toBe("falla");
+    expect(errorDeCarga({ estado: "cargando" })).toBeNull();
+  });
 
   test("sin proyecto invita a elegirlo y no pide nada", () => {
     montar(null);
