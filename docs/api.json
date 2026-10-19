@@ -2258,6 +2258,52 @@
         }
       }
     },
+    "/v1/tablero": {
+      "get": {
+        "tags": [
+          "tablero"
+        ],
+        "summary": "Leer Tablero",
+        "description": "El tablero de la version vigente del proyecto (`LEER_PROYECTO`).",
+        "operationId": "leer_tablero_v1_tablero_get",
+        "parameters": [
+          {
+            "name": "proyecto",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Nombre del proyecto en el caso abierto.",
+              "title": "Proyecto"
+            },
+            "description": "Nombre del proyecto en el caso abierto."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TableroRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/entregas/versiones": {
       "get": {
         "tags": [
@@ -2548,6 +2594,48 @@
           "mensaje"
         ],
         "title": "AlertaPrecioRespuesta"
+      },
+      "AnilloRespuesta": {
+        "properties": {
+          "rotulo": {
+            "type": "string",
+            "title": "Rotulo"
+          },
+          "fraccion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fraccion"
+          },
+          "texto": {
+            "type": "string",
+            "title": "Texto"
+          },
+          "favorable": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Favorable"
+          }
+        },
+        "type": "object",
+        "required": [
+          "rotulo",
+          "fraccion",
+          "texto"
+        ],
+        "title": "AnilloRespuesta",
+        "description": "Un anillo de progreso: `texto` es lo que se lee en el centro; `fraccion`, lo que se dibuja\n(nula si no hay dato). `favorable` es verdadero si el indice llega a 1; nulo si no aplica."
       },
       "AuditoriaRespuesta": {
         "properties": {
@@ -3385,6 +3473,38 @@
         ],
         "title": "Contraste"
       },
+      "ControlRespuesta": {
+        "properties": {
+          "disponible": {
+            "type": "boolean",
+            "title": "Disponible"
+          },
+          "motivo": {
+            "type": "string",
+            "title": "Motivo",
+            "default": ""
+          },
+          "anillos": {
+            "items": {
+              "$ref": "#/components/schemas/AnilloRespuesta"
+            },
+            "type": "array",
+            "title": "Anillos"
+          },
+          "tarjetas": {
+            "items": {
+              "$ref": "#/components/schemas/TarjetaRespuesta"
+            },
+            "type": "array",
+            "title": "Tarjetas"
+          }
+        },
+        "type": "object",
+        "required": [
+          "disponible"
+        ],
+        "title": "ControlRespuesta"
+      },
       "Credenciales": {
         "properties": {
           "login": {
@@ -3404,6 +3524,26 @@
           "contrasena"
         ],
         "title": "Credenciales"
+      },
+      "CurvasRespuesta": {
+        "properties": {
+          "titulo": {
+            "type": "string",
+            "title": "Titulo"
+          },
+          "series": {
+            "items": {
+              "$ref": "#/components/schemas/SerieRespuesta"
+            },
+            "type": "array",
+            "title": "Series"
+          }
+        },
+        "type": "object",
+        "required": [
+          "titulo"
+        ],
+        "title": "CurvasRespuesta"
       },
       "DeclararRendimientoPeticion": {
         "properties": {
@@ -5228,6 +5368,44 @@
         ],
         "title": "OpcionesRespuesta"
       },
+      "ParetoRespuesta": {
+        "properties": {
+          "partida": {
+            "type": "string",
+            "title": "Partida"
+          },
+          "descripcion": {
+            "type": "string",
+            "title": "Descripcion"
+          },
+          "total": {
+            "type": "string",
+            "title": "Total"
+          },
+          "peso": {
+            "type": "string",
+            "title": "Peso"
+          },
+          "acumulado": {
+            "type": "string",
+            "title": "Acumulado"
+          },
+          "valor": {
+            "type": "string",
+            "title": "Valor"
+          }
+        },
+        "type": "object",
+        "required": [
+          "partida",
+          "descripcion",
+          "total",
+          "peso",
+          "acumulado",
+          "valor"
+        ],
+        "title": "ParetoRespuesta"
+      },
       "PartidaPresupuestadaRespuesta": {
         "properties": {
           "codigo_partida": {
@@ -6060,6 +6238,29 @@
         "title": "ProyectoRespuesta",
         "description": "El proyecto creado, tal como quedo guardado."
       },
+      "PuntoRespuesta": {
+        "properties": {
+          "orden": {
+            "type": "integer",
+            "title": "Orden"
+          },
+          "periodo": {
+            "type": "string",
+            "title": "Periodo"
+          },
+          "valor": {
+            "type": "string",
+            "title": "Valor"
+          }
+        },
+        "type": "object",
+        "required": [
+          "orden",
+          "periodo",
+          "valor"
+        ],
+        "title": "PuntoRespuesta"
+      },
       "RegistroRendimientoRespuesta": {
         "properties": {
           "rendimiento": {
@@ -6493,6 +6694,55 @@
         ],
         "title": "RevaloracionRespuesta"
       },
+      "RubroRespuesta": {
+        "properties": {
+          "rubro": {
+            "type": "string",
+            "title": "Rubro"
+          },
+          "monto": {
+            "type": "string",
+            "title": "Monto"
+          },
+          "peso": {
+            "type": "string",
+            "title": "Peso"
+          },
+          "valor": {
+            "type": "string",
+            "title": "Valor"
+          }
+        },
+        "type": "object",
+        "required": [
+          "rubro",
+          "monto",
+          "peso",
+          "valor"
+        ],
+        "title": "RubroRespuesta"
+      },
+      "SerieRespuesta": {
+        "properties": {
+          "serie": {
+            "type": "string",
+            "title": "Serie"
+          },
+          "puntos": {
+            "items": {
+              "$ref": "#/components/schemas/PuntoRespuesta"
+            },
+            "type": "array",
+            "title": "Puntos"
+          }
+        },
+        "type": "object",
+        "required": [
+          "serie",
+          "puntos"
+        ],
+        "title": "SerieRespuesta"
+      },
       "SesionRespuesta": {
         "properties": {
           "login": {
@@ -6804,6 +7054,128 @@
         "type": "object",
         "title": "Tablas"
       },
+      "TableroRespuesta": {
+        "properties": {
+          "proyecto": {
+            "type": "string",
+            "title": "Proyecto"
+          },
+          "version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version"
+          },
+          "fecha": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fecha"
+          },
+          "moneda": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Moneda"
+          },
+          "renglones": {
+            "type": "integer",
+            "title": "Renglones",
+            "default": 0
+          },
+          "tarjetas": {
+            "items": {
+              "$ref": "#/components/schemas/TarjetaRespuesta"
+            },
+            "type": "array",
+            "title": "Tarjetas"
+          },
+          "control": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ControlRespuesta"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "curvas": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CurvasRespuesta"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "desglose": {
+            "items": {
+              "$ref": "#/components/schemas/RubroRespuesta"
+            },
+            "type": "array",
+            "title": "Desglose"
+          },
+          "pareto": {
+            "items": {
+              "$ref": "#/components/schemas/ParetoRespuesta"
+            },
+            "type": "array",
+            "title": "Pareto"
+          },
+          "versiones": {
+            "items": {
+              "$ref": "#/components/schemas/VersionRespuesta"
+            },
+            "type": "array",
+            "title": "Versiones"
+          }
+        },
+        "type": "object",
+        "required": [
+          "proyecto"
+        ],
+        "title": "TableroRespuesta"
+      },
+      "TarjetaRespuesta": {
+        "properties": {
+          "rotulo": {
+            "type": "string",
+            "title": "Rotulo"
+          },
+          "valor": {
+            "type": "string",
+            "title": "Valor"
+          },
+          "detalle": {
+            "type": "string",
+            "title": "Detalle",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "rotulo",
+          "valor"
+        ],
+        "title": "TarjetaRespuesta"
+      },
       "TrazaRespuesta": {
         "properties": {
           "dato": {
@@ -6889,6 +7261,49 @@
           "moneda"
         ],
         "title": "VersionEntregable"
+      },
+      "VersionRespuesta": {
+        "properties": {
+          "version": {
+            "type": "string",
+            "title": "Version"
+          },
+          "fecha": {
+            "type": "string",
+            "title": "Fecha"
+          },
+          "motivo": {
+            "type": "string",
+            "title": "Motivo"
+          },
+          "costo_directo": {
+            "type": "string",
+            "title": "Costo Directo"
+          },
+          "total": {
+            "type": "string",
+            "title": "Total"
+          },
+          "vigente": {
+            "type": "boolean",
+            "title": "Vigente"
+          },
+          "valor": {
+            "type": "string",
+            "title": "Valor"
+          }
+        },
+        "type": "object",
+        "required": [
+          "version",
+          "fecha",
+          "motivo",
+          "costo_directo",
+          "total",
+          "vigente",
+          "valor"
+        ],
+        "title": "VersionRespuesta"
       },
       "VistaPreviaRespuesta": {
         "properties": {
