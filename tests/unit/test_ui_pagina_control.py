@@ -240,7 +240,7 @@ def test_recuperacion_calcula_a_pedido_y_elegir_crea_la_version(monkeypatch, tmp
     at.button(key="control_r_calcular").click().run()
     assert not at.exception, [e.value for e in at.exception]
     filas = {f["Opcion"]: f for f in _tabla(at, "Opcion")}
-    assert filas["Mas cuadrillas"]["Termino"] == "día 17"
+    assert filas["Más cuadrillas"]["Termino"] == "día 17"
     assert filas["Partidas en paralelo"]["Nota"].startswith("ninguna partida sin empezar")
     assert any("art. 182" in c.value for c in at.caption)
     at.radio(key="control_r_elegida").set_value(

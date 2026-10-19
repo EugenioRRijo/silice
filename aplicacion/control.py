@@ -586,22 +586,22 @@ def filas_de_indicadores(sesion: Session, resultado: ResultadoControl) -> list[d
         monto("BAC", ind.bac),
         monto("PV", ind.pv),
         monto("EV", ind.ev),
-        monto("AC", ind.ac, no.get("AC", "")),
+        monto("AC", ind.ac, con_tildes(no.get("AC", ""))),
         monto("SV (plazo)", ind.sv),
-        monto("CV", ind.cv, no.get("CV", "")),
-        indice("SPI", ind.spi, no.get("SPI", "")),
-        indice("CPI", ind.cpi, no.get("CPI", "")),
-        monto("EAC (indice BAC/CPI)", ind.eac_indice, no.get("EAC", "")),
-        monto("EAC (sistema)", ind.eac_sistema, no.get("EAC", "")),
-        monto("VAC", ind.vac, no.get("VAC", "")),
+        monto("CV", ind.cv, con_tildes(no.get("CV", ""))),
+        indice("SPI", ind.spi, con_tildes(no.get("SPI", ""))),
+        indice("CPI", ind.cpi, con_tildes(no.get("CPI", ""))),
+        monto("EAC (indice BAC/CPI)", ind.eac_indice, con_tildes(no.get("EAC", ""))),
+        monto("EAC (sistema)", ind.eac_sistema, con_tildes(no.get("EAC", ""))),
+        monto("VAC", ind.vac, con_tildes(no.get("VAC", ""))),
         {
             "Indicador": "Termino por el indice (dia habil)",
             "Valor": NO_APLICA if ind.termino_indice is None else str(ind.termino_indice),
             "En la otra moneda": "",
             "Nota": "",
         },
-        monto("Desvio de precio", sep.precio, sep.no_disponible.get("precio", "")),
-        monto("Desvio de consumo", sep.consumo, sep.no_disponible.get("consumo", "")),
+        monto("Desvio de precio", sep.precio, con_tildes(sep.no_disponible.get("precio", ""))),
+        monto("Desvio de consumo", sep.consumo, con_tildes(sep.no_disponible.get("consumo", ""))),
     ]
     if sep.metodo:
         filas.append(
@@ -732,6 +732,77 @@ PLANTILLAS_DEL_NUCLEO: tuple[tuple[str, str], ...] = (
         "el SPI global es 0: sin ritmo no se proyecta",
         "el SPI global es 0: sin ritmo no se proyecta",
     ),
+    # Recuperación (opciones), supuestos, requisitos y mensajes sueltos del punto de equilibrio
+    ("Mas cuadrillas", "Más cuadrillas"),
+    ("Horas extra", "Horas extra"),
+    ("Partidas en paralelo", "Partidas en paralelo"),
+    ("Aceptar el retraso", "Aceptar el retraso"),
+    ("ninguna partida pasa del objetivo", "ninguna partida pasa del objetivo"),
+    (
+        "ninguna partida sin empezar con inicio posterior al periodo siguiente",
+        "ninguna partida sin empezar con inicio posterior al período siguiente",
+    ),
+    ("no aplica ({lista})", "no aplica ({lista})"),
+    ("sin composicion de APU", "sin composición de APU"),
+    ("sin rendimiento", "sin rendimiento"),
+    ("sin mano de obra a jornal", "sin mano de obra a jornal"),
+    (
+        "sin fuente: ninguna norma verificada la fija",
+        "sin fuente: ninguna norma verificada la fija",
+    ),
+    (
+        "permiso de la Inspectoria del Trabajo (LOTTT art. 182) para las horas extra",
+        "permiso de la Inspectoría del Trabajo (LOTTT art. 182) para las horas extra",
+    ),
+    ("penalizacion diaria", "penalización diaria"),
+    ("composiciones de la linea base", "composiciones de la línea base"),
+    ("costo diario de la cuadrilla", "costo diario de la cuadrilla"),
+    ("costo fijo en el tiempo", "costo fijo en el tiempo"),
+    ("CF' = CF · D'/D", "CF' = CF · D'/D"),
+    ("eta de cuadrillas", "eta de cuadrillas"),
+    (
+        "Lee (2022) es la base del metodo, no del valor",
+        "Lee (2022) es la base del método, no del valor",
+    ),
+    ("cuadrillas maximas", "cuadrillas máximas"),
+    ("horas extra por dia", "horas extra por día"),
+    ("tope legal 2 h", "tope legal 2 h"),
+    ("eta de horas extra", "eta de horas extra"),
+    ("LOTTT art. 118: por lo menos 50 %", "LOTTT art. 118: por lo menos 50 %"),
+    ("FCAS sobre las horas extra", "FCAS sobre las horas extra"),
+    ("si", "sí"),
+    (
+        "interpretacion de los arts. 104 y 178; decide el tutor",
+        "interpretación de los arts. 104 y 178; decide el tutor",
+    ),
+    ("jornada ordinaria", "jornada ordinaria"),
+    ("LOTTT art. 173", "LOTTT art. 173"),
+    ("limites de horas extra", "límites de horas extra"),
+    ("10 h por semana, 100 h por año", "10 h por semana, 100 h por año"),
+    ("LOTTT art. 178", "LOTTT art. 178"),
+    ("independencia de las partidas", "independencia de las partidas"),
+    (
+        "el plan no tiene dependencias: el usuario lo declara con su fuente (S2-R4)",
+        "el plan no tiene dependencias: el usuario lo declara con su fuente (S2-R4)",
+    ),
+    (
+        "LOTTT G.O. 6.076 Ext. 07-05-2012 (docs/fuentes/LOTTT_GO_6076_Ext_2012-05-07.txt)",
+        "LOTTT G.O. 6.076 Ext. 07-05-2012 (docs/fuentes/LOTTT_GO_6076_Ext_2012-05-07.txt)",
+    ),
+    (
+        "no existe punto de equilibrio: el margen de contribucion no es positivo",
+        "no existe punto de equilibrio: el margen de contribución no es positivo",
+    ),
+    (
+        "el punto de equilibrio no se alcanza dentro del contrato",
+        "el punto de equilibrio no se alcanza dentro del contrato",
+    ),
+    ("el presupuesto no tiene ventas: no aplica", "el presupuesto no tiene ventas: no aplica"),
+    ("se alcanza en {periodo}", "se alcanza en {periodo}"),
+    (
+        "sin curva de inversion: el punto de equilibrio no se ubica en el plan",
+        "sin curva de inversión: el punto de equilibrio no se ubica en el plan",
+    ),
 )
 
 
@@ -742,6 +813,7 @@ def _compilar(crudo: str) -> re.Pattern[str]:
     return re.compile(patron, re.DOTALL)
 
 
+_NO_APLICA = re.compile(r"no aplica \((?P<lista>.+)\)", re.DOTALL)
 _CATALOGO_COMPILADO = tuple(
     (_compilar(crudo), con_tilde) for crudo, con_tilde in PLANTILLAS_DEL_NUCLEO
 )
@@ -753,6 +825,14 @@ def con_tildes(texto: str) -> str:
     Función pura. Solo actúa si la frase COMPLETA coincide con una plantilla del catálogo, de modo
     que un nombre de partida con «dia» o «ningun» puesto por el usuario no se altera.
     """
+    lista = _NO_APLICA.fullmatch(texto)
+    if lista is not None:
+        # «no aplica (cod: motivo; cod: motivo)»: el código es del usuario, el motivo es del núcleo.
+        items = []
+        for item in lista.group("lista").split("; "):
+            codigo, separador, motivo = item.partition(": ")
+            items.append(codigo + separador + con_tildes(motivo) if separador else item)
+        return "no aplica (" + "; ".join(items) + ")"
     for patron, con_tilde in _CATALOGO_COMPILADO:
         calce = patron.fullmatch(texto)
         if calce is not None:
@@ -794,7 +874,7 @@ def filas_de_reproyeccion(resultado: ResultadoControl) -> list[dict[str, str]]:
     for p in resultado.reproyeccion.partidas:
         if p.pendiente == 0:
             continue
-        nota = p.motivo or (
+        nota = con_tildes(p.motivo) or (
             "detenida"
             if p.detenida
             else "sin evidencia propia: SPI global"
@@ -818,23 +898,26 @@ def filas_de_opciones(todas: Sequence[Opcion]) -> list[dict[str, str]]:
     for o in todas:
         if not o.aplica:
             filas.append(
-                {"Opcion": o.titulo, "Nota": o.motivo}
+                {"Opcion": con_tildes(o.titulo), "Nota": con_tildes(o.motivo)}
                 | dict.fromkeys(COLUMNAS_OPCIONES[1:-1], NO_APLICA)
             )
             continue
         pe = NO_APLICA
         if o.equilibrio is not None:
-            pe = _monto(o.equilibrio.punto) + f" ({o.equilibrio.mensaje})"
+            pe = _monto(o.equilibrio.punto) + f" ({con_tildes(o.equilibrio.mensaje)})"
         filas.append(
             {
-                "Opcion": o.titulo,
+                "Opcion": con_tildes(o.titulo),
                 "Termino": f"día {o.termino}",
                 "Retraso (dias)": str(o.retraso),
                 "Costo directo adicional": _monto(o.costo_directo_adicional),
                 "Costo indirecto": _monto(o.costo_indirecto),
                 "Penalizacion": _monto(o.penalizacion),
                 "Punto de equilibrio": pe,
-                "Nota": "; ".join(f"{s.nombre}: {s.valor} ({s.naturaleza})" for s in o.supuestos),
+                "Nota": "; ".join(
+                    f"{con_tildes(s.nombre)}: {con_tildes(s.valor)} ({s.naturaleza})"
+                    for s in o.supuestos
+                ),
             }
         )
     return filas
