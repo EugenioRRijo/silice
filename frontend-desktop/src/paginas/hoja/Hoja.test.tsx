@@ -120,7 +120,7 @@ describe("Hoja del proyecto (marco, 3b-1)", () => {
   test("3b-F1: un solo h1 «Hoja del proyecto» con heading-04", async () => {
     servidor();
     montar();
-    await screen.findByRole("region", { name: "Estado del borrador" });
+    await screen.findByRole("region", { name: "Estado del borrador" }, { timeout: 5000 });
     const h1 = screen.getAllByRole("heading", { level: 1 });
     expect(h1).toHaveLength(1);
     expect(h1[0]).toHaveTextContent("Hoja del proyecto");

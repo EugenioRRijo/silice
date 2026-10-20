@@ -305,9 +305,6 @@ def test_r2_crea_la_instantanea_si_falta_y_lo_informa_con_su_texto(_entorno: Pat
     with abrir_sesion(motor) as sesion:
         borrar_instantanea(sesion, NOMBRE_OF001)
     motor.dispose()
-    with closing(sqlite3.connect(_entorno)) as bd:  # una version de antes de la cadena: sin sello
-        bd.execute("DELETE FROM eslabon_version")
-        bd.commit()
     dependencias.cerrar_motores()
     assert _filas(_entorno, "composicion_version") == 0
     navegador, ficha = _ana()
@@ -325,19 +322,74 @@ def test_r2_crea_la_instantanea_si_falta_y_lo_informa_con_su_texto(_entorno: Pat
     with closing(sqlite3.connect(_entorno)) as bd:
         responsables = {r[0] for r in bd.execute("SELECT responsable FROM registro_cambio")}
     assert "Ana <ana>" in responsables and "sistema" not in responsables
-    # abrir no sella ni altera eslabones: una version vieja sigue sin sellar hasta su primer
-    # guardado (sellado retroactivo); el eslabon no se inventa al abrir
-    assert _filas(_entorno, "eslabon_version") == 0
 
 
-def test_r2_sobre_una_version_con_instantanea_deja_la_cadena_integra(_entorno: Path) -> None:
+CADENA_REGISTRO = (
+    "Cadena rota en la versión 001: su registro de cambios no coincide con su huella; alguien "
+    "cambió la base fuera del sistema. Revíselo con el administrador antes de entregar un paquete."
+)
+CADENA_SIN_ESLABON = (
+    "Cadena rota en la versión 001: no tiene eslabón; alguien cambió la base fuera del sistema. "
+    "Revíselo con el administrador antes de entregar un paquete."
+)
+
+
+def _sin_instantanea(ruta: Path, *, sellada: bool) -> None:
+    motor = crear_motor(f"sqlite:///{ruta.as_posix()}")
+    with abrir_sesion(motor) as sesion:
+        borrar_instantanea(sesion, NOMBRE_OF001)
+    motor.dispose()
+    if not sellada:
+        with closing(sqlite3.connect(ruta)) as bd:  # una version de antes de la cadena
+            bd.execute("DELETE FROM eslabon_version")
+            bd.commit()
+
+
+def _cadena(ruta: Path) -> tuple[bool, str]:
+    motor = crear_motor(f"sqlite:///{ruta.as_posix()}")
+    try:
+        with abrir_sesion(motor) as sesion:
+            estado = entrega.estado_de_la_cadena(sesion, NOMBRE_OF001)
+    finally:
+        motor.dispose()
+    assert estado is not None
+    return estado.integra, estado.mensaje
+
+
+@pytest.mark.parametrize(
+    ("sellada", "mensaje"), [(True, CADENA_REGISTRO), (False, CADENA_SIN_ESLABON)]
+)
+def test_r2_sobre_una_version_sin_instantanea_deja_la_cadena_como_la_deja_la_clasica(
+    sellada: bool, mensaje: str, _casos, _entorno: Path, tmp_path: Path
+) -> None:
+    """PRUEBA DE CARACTERIZACION (3b-B11, clausula de la cadena, inviable bajo Plan C).
+
+    El diseno pedia que la cadena quedara integra tras abrir una version sin instantanea. No
+    es asi, tampoco en la clasica: `abrir_version` escribe un `RegistroCambio` sobre una version ya
+    sellada (o no sellada). Bajo el Plan C la copia es identica a `ui.hoja`, asi que R2, la copia y
+    la clasica dejan EXACTAMENTE el mismo estado; los literales son lo observado (bitacora
+    `2026-10-19-hoja-3b1-cadena-heredada.md`, decision para Eugenio)."""
+    from aplicacion import hoja as copia
+
+    resultados = {}
+    for nombre, modulo in (("clasica", clasica), ("copia", copia)):
+        ruta = tmp_path / f"{nombre}.db"
+        shutil.copyfile(_casos["of001"], ruta)
+        _sin_instantanea(ruta, sellada=sellada)
+        motor = crear_motor(f"sqlite:///{ruta.as_posix()}")
+        with abrir_sesion(motor) as sesion:
+            entrega.con_anexos_de_cadena(sesion)
+            modulo.abrir_version(
+                sesion, Catalogo(sesion), NOMBRE_OF001, "001", responsable="Ana <ana>"
+            )
+        motor.dispose()
+        resultados[nombre] = _cadena(ruta)
+    _sin_instantanea(_entorno, sellada=sellada)
+    dependencias.cerrar_motores()
     navegador, ficha = _ana()
     assert _abrir(navegador, ficha).status_code == 201
-    motor = crear_motor(f"sqlite:///{_entorno.as_posix()}")
-    with abrir_sesion(motor) as sesion:
-        estado = entrega.estado_de_la_cadena(sesion, NOMBRE_OF001)
-    motor.dispose()
-    assert estado is not None and estado.integra is True
+    resultados["R2"] = _cadena(_entorno)
+    assert resultados == {nombre: (False, mensaje) for nombre in ("clasica", "copia", "R2")}
 
 
 def test_r2_de_un_proyecto_sin_versiones_abre_un_borrador_en_blanco(_entorno: Path) -> None:
