@@ -10941,6 +10941,13 @@
             },
             "type": "object",
             "title": "Fila"
+          },
+          "supuestos": {
+            "items": {
+              "$ref": "#/components/schemas/SupuestoRespuesta"
+            },
+            "type": "array",
+            "title": "Supuestos"
           }
         },
         "type": "object",
@@ -13595,6 +13602,30 @@
           "fila"
         ],
         "title": "SugerenciaRespuesta"
+      },
+      "SupuestoRespuesta": {
+        "properties": {
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          },
+          "valor": {
+            "type": "string",
+            "title": "Valor"
+          },
+          "naturaleza": {
+            "type": "string",
+            "title": "Naturaleza"
+          }
+        },
+        "type": "object",
+        "required": [
+          "nombre",
+          "valor",
+          "naturaleza"
+        ],
+        "title": "SupuestoRespuesta",
+        "description": "Un supuesto de la opción en sus tres ranuras; `naturaleza` es el código del núcleo."
       },
       "TablaDeDiferencia": {
         "properties": {

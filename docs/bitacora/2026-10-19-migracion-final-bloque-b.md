@@ -87,6 +87,58 @@ arquitectura, con `-W error`.
 - Las cabeceras ordenables de Carbon leen en inglés «Click to sort rows by…» a lectores de pantalla.
 - `estilos.test.ts` y `ZonaDeSoltar.test.ts` leen el `.scss` en vez de medir: la medición en navegador es lo que da fe.
 
+## Correcciones del delta de la auditoría visual (VD‑1 a VD‑11), tres paquetes
+
+Informe: `2026-10-20-auditoria-visual-delta-integrada.md` (commit f896fd7, sobre la rama integrada 647c67e). Mismo
+método que antes: carpetas disjuntas, rojo en commit propio antes de cada corrección, un árbitro nuevo por entrega y
+medición en navegador sobre una copia aislada de cada implementador y de cada árbitro.
+
+| Paquete | Hallazgos | Ronda y veredicto | Cabeza |
+|---|---|---|---|
+| 1 Control, Tablero, Reajuste, Precios | VD‑1, 5, 8, 11 | R1 DEVUELTO (MAYOR: `inline-size: 1%` en la papelera de VD‑11 hacía salir el tooltip de la tabla a 1366 px; causa, la propia corrección de VD‑11); R2 APROBADO (16 casos medidos en navegador) | 9f9ee57 (rojo 2bf05ee) |
+| 2 Foco, marco, Inicio, Administración | VD‑2, 3, 4, 7, 10 | R1 DEVUELTO (MAYOR: el efecto del foco tomaba la redirección de la carga inicial por un cambio de página); R2 DEVUELTO (MAYOR: el anillo hacia afuera no se veía en el Libro, causa una decisión del orquestador); R3 APROBADO | b364c22 (rojo 83fc6f8) |
+| 3 Componer | VD‑6 | R1 APROBADO | 1148925 (rojo b27d1f6) |
+
+Lecciones nuevas: (1) un arreglo de geometría o de foco se mide en navegador con el elemento en su estado
+interactivo (tooltip abierto, foco, hover) y con píxeles, no solo con la caja en reposo; los dos MAYOR de este tramo
+(tooltip y anillo) solo los vio una medición así. (2) Una guarda de «primera carga» no basta con la ruta previa: hay
+que contar las redirecciones del enrutador (`REPLACE`). (3) La corrección de un hallazgo puede ser la causa del
+siguiente: cada ronda se juzga contra el estado anterior y no solo contra el hallazgo.
+
+Compartidos aplicados por el orquestador: `docs/api.json` regenerado (campo aditivo `OpcionRespuesta.supuestos` y
+esquema nuevo `SupuestoRespuesta`, 31 líneas) y el CHANGELOG. Verificación en el árbol integrado: front completo 90
+archivos / 1212 pruebas verdes, `npm run lint` limpio, `npm run build` compilado, `ruff check .` limpio y 440 pruebas
+de backend con `-W error` (OpenAPI, acceso, rutas del front, arquitectura, Control y tildes).
+
+### Decisiones nuevas para Eugenio (delta)
+
+- La Nota de las opciones de recuperación de la interfaz nueva dice «eficiencia de la cuadrilla adicional» y
+  «recargo de las horas extra»; la clásica sigue con «eta de cuadrillas: 0.80 (SUPUESTO_DECLARADO)». ¿Se lleva el
+  texto nuevo a la clásica?
+- Se quitó del `title` de rótulos y naturalezas el código original que V‑22 había dejado «para trazabilidad». Si se
+  quiere conservar, hace falta otro medio (texto oculto o ayuda aparte).
+- Inicio omite ahora «Caso abierto» y «Recorrido en curso» para las cuentas sin `leer_proyecto` (el administrador): el
+  caso sigue en la cabecera y esas cuentas no pueden iniciar el recorrido de auditar.
+- El foco al `h1` en un cambio de página se aplica a toda navegación en la que el foco se pierde, no solo a
+  «Auditar por mi cuenta»; no actúa en la carga inicial ni cuando otro control ya tiene el foco.
+
+### Deuda nueva anotada por los árbitros (delta)
+
+- `AreaTexto.tsx` (Componer) duplica unas 15 líneas de `CampoTexto`: subirla a `src/comun/` o parametrizar
+  `CampoTexto`; la prueba de la página no cubre los campos de las filas de la tabla de insumos ni el área de
+  «Condiciones del rendimiento».
+- VD‑6 sigue en Escenarios, Precios, Actualizar, Elaborar, Histórico, Simulador, Índices, Historial, Libro, Existencias
+  y Similares (regiones `role=alert` vacías que monta Carbon): migrarlos a `CampoTexto`; Reajuste (10) ya estaba anotado.
+- `TablaDensa` (`src/comun/TablaDensa.tsx:86-88`) pone `title` en toda celda de columna numérica con `presentar`, también
+  en textos que no son cifras («día 46», «no aplica», «sí»).
+- La regla del anillo del Libro depende de `.silice-pagina-libro`: cuando se migre la Hoja, que comparte el visor,
+  debe reutilizar esa clase o la regla debe generalizarse al h1 con relleno del visor.
+- La búsqueda del h1 espera hasta 240 cuadros (unos 4 s): puede mover el foco tarde si la página carga muy lenta y la
+  persona no interactuó; inocuo.
+- La papelera de las tablas editables de Reajuste queda unos 14 px más arriba que los campos de su fila (anterior).
+- Quedan sin corregir, por ser texto de `core/`: «se alcanza en Dia N» en Control (Opciones y punto de equilibrio
+  proyectado) y los motivos «no aplica» de `LimiteLegal` con cifras con punto y palabras sin tilde.
+
 ## Incidente
 
 El implementador de T8 ejecutó `git checkout -q HEAD -- .` en el árbol compartido y descartó cambios sin commitear de
