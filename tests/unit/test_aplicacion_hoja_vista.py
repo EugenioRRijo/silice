@@ -989,3 +989,75 @@ def test_un_punto_de_agua_sin_fuente_da_r17_advertencia_en_la_auditoria():
     ]
     assert "El punto P2 (lavamanos) no tiene fuente" in r17[0].descripcion
     assert vivo.borrador.reglas_extra == ()  # no se guarda en el borrador
+
+
+# --- 3b-3 · vista de los precios con su origen (R12) ----------------------------------------------
+
+
+def _fila_de_precio(**campos) -> hoja.FilaPrecio:
+    base = {
+        "codigo": "INS-1",
+        "descripcion": "Cemento gris",
+        "tipo": "material",
+        "precio": D("1000"),
+        "lista": "Lista demo",
+        "moneda": "Bs",
+        "fecha": date(2026, 7, 1),
+        "tasa": D("633.3644"),
+        "fecha_tasa": date(2026, 7, 1),
+        "referencia": "MaPreX jul-2026",
+        "cotizacion": "",
+        "alcance": "global",
+        "estado": "OK",
+        "moneda_original": "Bs",
+        "precio_original": D("1000"),
+        "fuente_tasa": "MaPreX",
+        "fuente": "MaPreX jul-2026",
+        "propio": True,
+    }
+    return hoja.FilaPrecio(**{**base, **campos})
+
+
+def test_la_erosion_de_la_memoria_s1_se_ve_en_dos_decimales_y_exacta():
+    """Memoria S1 §9.1.1: erosión 0,4163… USD, 358,1123… Bs y 26,3683…% (P = 1 000 Bs)."""
+    fila = _fila_de_precio(
+        erosion_usd=D("0.416322546891039049840245251"),
+        erosion_bs=D("358.112328384733969891582160"),
+        erosion_pct=D("0.2636838801181148131786370295"),
+    )
+    v = hoja_vista.vista_precios([fila], "Bs", date(2026, 10, 1))
+    f = v.filas[0]
+    assert (f.erosion_usd.texto, f.erosion_usd.exacto) == ("0.42", "0.416322546891039049840245251")
+    assert (f.erosion_bs.texto, f.erosion_bs.exacto) == ("358.11", "358.112328384733969891582160")
+    # el porcentaje se muestra multiplicado por 100 (la clásica: `erosion_pct * 100`)
+    assert (f.erosion_pct.texto, f.erosion_pct.exacto) == ("26.37", "26.36838801181148131786370295")
+    assert (f.precio.texto, f.precio.exacto, f.tasa.exacto) == ("1000.00", "1000", "633.3644")
+    assert (f.fecha_precio, f.fecha_tasa, f.propio) == ("2026-07-01", "2026-07-01", "propio")
+    assert (v.moneda, v.fecha_evaluacion) == ("Bs", "2026-10-01")
+
+
+def test_sin_evaluacion_la_erosion_y_la_tasa_vacias_son_nulas():
+    fila = _fila_de_precio(tasa=None, fecha_tasa=None, propio=None, precio_original=None)
+    f = hoja_vista.vista_precios([fila], "Bs", HOY).filas[0]
+    assert (f.erosion_usd, f.erosion_bs, f.erosion_pct, f.erosion_indice) == (None,) * 4
+    assert (f.tasa, f.fecha_tasa, f.precio_original, f.propio) == (None, None, None, "")
+
+
+def test_un_precio_heredado_de_la_lista_de_empresa_dice_heredado():
+    f = hoja_vista.vista_precios([_fila_de_precio(propio=False)], "Bs", HOY).filas[0]
+    assert f.propio == "heredado"
+
+
+def test_las_columnas_de_precios_son_las_21_de_la_clasica_con_sus_rotulos():
+    columnas = hoja_vista.vista_precios([], "USD", HOY).columnas
+    assert [c.rotulo for c in columnas] == [
+        "Insumo", "Código", "Tipo", "Precio", "Lista", "Moneda", "Fecha del precio", "Tasa",
+        "Fecha de la tasa", "Referencia", "Cotización", "Moneda original", "Precio original",
+        "Fuente de la tasa", "Fuente", "Propio/heredado", "Erosión USD", "Erosión Bs",
+        "Erosión %", "Erosión por índice", "Estado",
+    ]  # fmt: skip
+    assert [c.rotulo for c in columnas] == list(clasica.COLUMNAS_PRECIOS)  # y las de H
+    assert [c.clave for c in columnas if c.numerica] == [
+        "precio", "tasa", "precio_original", "erosion_usd", "erosion_bs", "erosion_pct",
+        "erosion_indice",
+    ]  # fmt: skip

@@ -24,7 +24,7 @@ import sqlite3
 from collections.abc import Iterator
 from contextlib import closing
 from dataclasses import replace
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from pathlib import Path
 
@@ -111,6 +111,7 @@ def _casos(tmp_path_factory) -> dict[str, Path]:
     finally:
         motor.dispose()
     casos["of001_llave"] = _con_cantidad_editada(carpeta / "of001_llave.db", casos["of001"])
+    casos["of001_cotizada"] = _con_cotizacion(carpeta / "of001_cotizada.db", casos["of001"])
     return casos
 
 
@@ -143,6 +144,34 @@ def _con_cantidad_editada(destino: Path, origen: Path) -> Path:
                 fuente=FUENTE_EDICION,
                 responsable=RESPONSABLE,
                 ahora=AHORA,
+            )
+    finally:
+        motor.dispose()
+    return destino
+
+
+COTIZACION = "Ferreteria Demo, C.A., COT-001, 2026-10-05"
+
+
+def _con_cotizacion(destino: Path, origen: Path) -> Path:
+    """OF-001 con la 002 guardada por la clásica al cotizar EQU-001 (Herramientas menores)."""
+    shutil.copyfile(origen, destino)
+    motor = crear_motor(f"sqlite:///{destino.as_posix()}")
+    try:
+        with abrir_sesion(motor) as sesion:
+            entrega.con_anexos_de_cadena(sesion)
+            clasica.cotizar(
+                sesion,
+                Catalogo(sesion),
+                NOMBRE_OF001,
+                "001",
+                insumo="EQU-001",
+                precio=D("15.00"),
+                proveedor="Ferreteria Demo, C.A.",
+                numero="COT-001",
+                fecha=date(2026, 10, 5),
+                responsable=RESPONSABLE,
+                fuente="cotizacion de prueba",
             )
     finally:
         motor.dispose()
@@ -1244,6 +1273,127 @@ def test_r14_la_clave_de_api_puede_leerla_y_no_escribe_nada(_entorno: Path) -> N
     antes = _volcado(_entorno)
     respuesta = cliente(app).get(
         "/v1/hoja/trazabilidad",
+        params={"proyecto": NOMBRE_OF001, "version": "001"},
+        headers={CABECERA: crear_clave_de_prueba()},
+    )
+    assert respuesta.status_code == 200
+    assert _volcado(_entorno) == antes
+
+
+# --- R12: precios con su origen (3b-3) -------------------------------------------------------
+
+#: Las 21 columnas de la pestaña Precios, en el orden y con los rótulos de `COLUMNAS_PRECIOS`
+#: (`ui/hoja.py:2266-2288`), escritos a mano; el último valor dice si la columna es numérica.
+COLUMNAS_DE_PRECIOS = [
+    ("insumo", "Insumo", False),
+    ("codigo", "Código", False),
+    ("tipo", "Tipo", False),
+    ("precio", "Precio", True),
+    ("lista", "Lista", False),
+    ("moneda", "Moneda", False),
+    ("fecha_precio", "Fecha del precio", False),
+    ("tasa", "Tasa", True),
+    ("fecha_tasa", "Fecha de la tasa", False),
+    ("referencia", "Referencia", False),
+    ("cotizacion", "Cotización", False),
+    ("moneda_original", "Moneda original", False),
+    ("precio_original", "Precio original", True),
+    ("fuente_tasa", "Fuente de la tasa", False),
+    ("fuente", "Fuente", False),
+    ("propio", "Propio/heredado", False),
+    ("erosion_usd", "Erosión USD", True),
+    ("erosion_bs", "Erosión Bs", True),
+    ("erosion_pct", "Erosión %", True),
+    ("erosion_indice", "Erosión por índice", True),
+    ("estado", "Estado", False),
+]
+SIN_FUENTE = "Sin referencia ni cotización: el precio no tiene fuente"
+HOY_FIJO = date(2026, 10, 6)
+
+
+@pytest.fixture
+def _hoy_fijo(monkeypatch: pytest.MonkeyPatch) -> date:
+    """La fecha de evaluación que el servidor toma por hoy, fija para que la erosión no cambie."""
+    monkeypatch.setattr("api.rutas.hoja._hoy", lambda: HOY_FIJO)
+    return HOY_FIJO
+
+
+def _precios(navegador: TestClient, proyecto: str = NOMBRE_OF001, version: str = "001"):
+    return navegador.get("/v1/hoja/precios", params={"proyecto": proyecto, "version": version})
+
+
+def test_r12_of001_trae_las_21_columnas_en_el_orden_de_la_clasica(_hoy_fijo) -> None:
+    """3b-B18 / P9."""
+    navegador, _ = _ana()
+    respuesta = _precios(navegador)
+    assert respuesta.status_code == 200, respuesta.text
+    cuerpo = respuesta.json()
+    assert [(c["clave"], c["rotulo"], c["numerica"]) for c in cuerpo["columnas"]] == (
+        COLUMNAS_DE_PRECIOS
+    )
+    assert (cuerpo["moneda"], cuerpo["fecha_evaluacion"]) == ("USD", "2026-10-06")
+
+
+def test_r12_lista_un_insumo_por_fila_ordenado_por_codigo_con_su_origen(_hoy_fijo) -> None:
+    navegador, _ = _ana()
+    filas = _precios(navegador).json()["filas"]
+    # un insumo por cada descripción distinta de las composiciones de OF-001 (fixture, a mano)
+    descripciones = {
+        linea.descripcion
+        for c in caso_of001.COMPOSICIONES.values()
+        for linea in (*c.materiales, *c.equipos, *c.mano_obra)
+    }
+    assert sorted(f["insumo"] for f in filas) == sorted(descripciones)
+    assert [f["codigo"] for f in filas] == sorted(f["codigo"] for f in filas)
+    llave = next(f for f in filas if f["insumo"] == "Llave de paso de bola PVC 1/2 pulg [PLOG26]")
+    assert llave["tipo"] == "material" and llave["moneda"] == "USD"
+    assert llave["precio"] == {"texto": "7.75", "exacto": "7.7483"}  # 7,7483 de caso_of001
+    assert llave["precio_original"] == {"texto": "7.75", "exacto": "7.7483"}
+    assert llave["moneda_original"] == "USD" and llave["fecha_precio"] == "2026-10-05"
+    assert (llave["tasa"], llave["fecha_tasa"], llave["propio"]) == (None, None, "")
+    assert llave["lista"] == "Lista MaPreX jul-2026 (OF-001)"
+
+
+def test_r12_un_precio_en_usd_tiene_erosion_cero_y_la_de_indice_no_viene(_hoy_fijo) -> None:
+    """Memoria S1: «un precio en USD tiene erosión 0 en las dos monedas»; la columna por índice
+    no se llena porque la clásica no le pasa serie (H:2368)."""
+    navegador, _ = _ana()
+    for fila in _precios(navegador).json()["filas"]:
+        for clave in ("erosion_usd", "erosion_bs", "erosion_pct"):
+            assert fila[clave] == {"texto": "0.00", "exacto": "0"}
+        assert fila["erosion_indice"] is None
+
+
+def test_r12_sin_referencia_ni_cotizacion_el_estado_lo_dice_y_una_cotizacion_lo_resuelve(
+    _casos, _hoy_fijo
+) -> None:
+    navegador, _ = _ana()
+    assert {f["estado"] for f in _precios(navegador).json()["filas"]} == {SIN_FUENTE}
+    _poner(_casos["of001_cotizada"])
+    filas = _precios(navegador, version="002").json()["filas"]
+    cotizada = next(f for f in filas if f["codigo"] == "EQU-001")
+    assert cotizada["cotizacion"] == COTIZACION and cotizada["estado"] == "OK"
+    assert cotizada["precio"] == {"texto": "15.00", "exacto": "15.00"}
+    assert {f["estado"] for f in filas if f["codigo"] != "EQU-001"} == {SIN_FUENTE}
+
+
+def test_r12_proyecto_o_version_inexistente_es_404_con_los_textos_de_la_clasica() -> None:
+    navegador, _ = _ana()
+    assert _precios(navegador, "Z").json() == {"detalle": "El proyecto «Z» no existe en este caso."}
+    falta = _precios(navegador, version="009")
+    assert falta.status_code == 404
+    assert falta.json() == {
+        "detalle": f"El proyecto {NOMBRE_OF001!r} no tiene una version '009': "
+        "elija una de la lista."
+    }
+
+
+def test_r12_la_clave_de_api_lee_y_no_escribe_nada(_entorno: Path) -> None:
+    navegador, _ = _ana()
+    assert _versiones(navegador).status_code == 200  # la primera lectura adopta el caso
+    antes = _volcado(_entorno)
+    respuesta = cliente(app).get(
+        "/v1/hoja/precios",
         params={"proyecto": NOMBRE_OF001, "version": "001"},
         headers={CABECERA: crear_clave_de_prueba()},
     )
