@@ -107,7 +107,9 @@ describe("Tablero del proyecto", () => {
     // VB-19: la fecha se lee dd/mm/aaaa
     expect(screen.getByText("Versión OB-001 del 02/11/2026 · 3 renglones · USD")).toBeInTheDocument();
     const versiones = screen.getByRole("table", { name: "Versiones del presupuesto" });
-    expect(within(versiones).getByText("02/11/2026")).toHaveAttribute("title", "2026-11-02");
+    // VD-5: la fecha no lleva su forma ISO en el title; las cifras si llevan su exacto
+    expect(within(versiones).getByText("02/11/2026")).not.toHaveAttribute("title");
+    expect([...versiones.querySelectorAll("[title]")].every((e) => /^-?[0-9]+(\.[0-9]+)?$/.test(e.getAttribute("title") ?? ""))).toBe(true);
     // V-21: un indice (SPI 0,98) no es una parte de un todo: no hay donas de avance, SPI ni CPI, solo los indicadores
     expect(screen.queryByLabelText(/SPI \(plazo\)/)).toBeNull();
     expect(screen.getByText("EAC")).toBeInTheDocument();

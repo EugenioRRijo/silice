@@ -253,7 +253,9 @@ describe("Reajuste de precios", () => {
     ]);
     expect(within(principal).getAllByText("15.300,00")[0]).toHaveAttribute("title", "15300.00");
     expect(within(principal).getAllByText("16.000,00")[0]).toHaveAttribute("title", "16000.00");
-    expect(within(principal).getByTitle("escalatoria")).toHaveTextContent("Escalatoria");
+    // VD-5: el mecanismo se lee con su rotulo y sin el valor interno en el title; solo las cifras llevan el exacto
+    expect(within(principal).getAllByText("Escalatoria", { selector: "td" })[0]).toBeInTheDocument();
+    expect(within(principal).queryByTitle("escalatoria")).toBeNull();
     const otra = screen.getByRole("table", { name: "En la otra moneda" });
     expect(within(otra).getAllByRole("columnheader").map((c) => c.textContent)).toEqual([
       "Período", "Escalatoria", "Comprobación", "Diferencia", "Tasa",

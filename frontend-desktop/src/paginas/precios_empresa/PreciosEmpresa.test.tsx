@@ -313,6 +313,8 @@ describe("Precios de la empresa", () => {
     expect(variacion).toHaveAttribute("title", "0.390625");
     expect(within(tabla).getByText("01/09/2026")).toBeInTheDocument();
     expect(within(tabla).getByText("01/10/2026")).toBeInTheDocument();
+    // VD-5: solo la cifra lleva el exacto en el title; las fechas no muestran su forma ISO al pasar el raton
+    expect([...tabla.querySelectorAll("[title]")].map((e) => e.getAttribute("title"))).toEqual(["0.390625"]);
     expect(within(tabla).getByText("Advertencia")).toBeInTheDocument();
     // DESIGN.md: el atipico (RF-100) va en morado, con su icono y su texto, nunca el color solo
     const severidad = within(tabla).getByText("Advertencia").closest(".silice-sev");

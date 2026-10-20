@@ -86,6 +86,12 @@ const OPCIONES: OpcionDeRecuperacion[] = [
   { clave: "horas_extra", titulo: "Horas extra", aplica: false, motivo: "supera el tope legal", requisitos: [], requiere_declaracion: false, fila: { Opcion: "Horas extra", Nota: "supera el tope legal" } },
 ];
 
+// VD-5: los `title` de una tabla, en orden. El exacto a un toque es para las cifras; un rotulo, un codigo o una fecha
+// no llevan `title` (al pasar el raton mostraban el valor interno).
+function titulosDe(tabla: HTMLElement): string[] {
+  return [...tabla.querySelectorAll("[title]")].map((e) => e.getAttribute("title") ?? "");
+}
+
 describe("Control de obra", () => {
   const fetchFalso = vi.fn<typeof fetch>();
   let calculo: () => Response;
@@ -245,10 +251,12 @@ describe("Control de obra", () => {
     montar();
     expect(await screen.findByText(/perspectiva costo, vigente desde 02\/11\/2026/)).toBeInTheDocument();
     const tabla = screen.getByRole("table", { name: "Parámetros de control" });
-    // V-22: la naturaleza y el parametro se leen en español; el codigo queda en el title
-    expect(within(tabla).getAllByText("Supuesto declarado")[0]).toHaveAttribute("title", "SUPUESTO_DECLARADO");
-    expect(within(tabla).getByText("Dato del contrato")).toHaveAttribute("title", "DATO_DEL_CONTRATO");
-    expect(within(tabla).getByText("Umbral de SPI para error")).toHaveAttribute("title", "spi_error");
+    // V-22: la naturaleza y el parametro se leen en español. VD-5: sin el codigo en el title; solo el valor lo lleva
+    expect(within(tabla).getAllByText("Supuesto declarado")[0]).toBeInTheDocument();
+    expect(within(tabla).getByText("Dato del contrato")).toBeInTheDocument();
+    expect(within(tabla).getByText("Umbral de SPI para error")).toBeInTheDocument();
+    expect(within(tabla).getByText("SPI por debajo del cual el retraso es ERROR")).toBeInTheDocument();
+    expect(titulosDe(tabla)).toEqual(["0.80", "0"]);
     expect(within(tabla).queryByText("spi_error")).toBeNull();
     expect(within(tabla).queryByText(/AL-1/)).toBeNull();
     expect(String(fetchFalso.mock.calls[0]![0])).toContain("proyecto=OB-S2");
@@ -408,9 +416,12 @@ describe("Control de obra", () => {
     const u = montar();
     await u.click(await screen.findByRole("tab", { name: "Alertas y reproyección" }));
     const alertas = await screen.findByRole("table", { name: "Alertas" });
-    expect(within(alertas).getByText("Retraso (SPI)")).toHaveAttribute("title", "AL-1");
+    expect(within(alertas).getByText("Retraso (SPI)")).toBeInTheDocument();
     expect(within(alertas).queryByText("AL-1")).toBeNull();
-    expect(within(alertas).getByText("0,8500 (supuesto declarado)")).toHaveAttribute("title", "0.8500 (SUPUESTO_DECLARADO)");
+    // VD-5: el umbral lleva el exacto de su cifra; la alerta, la descripcion y la naturaleza, ningun title
+    expect(alertas.textContent).toContain("0,8500 (supuesto declarado)");
+    expect(within(alertas).getByText("0,8500")).toHaveAttribute("title", "0.8500");
+    expect(titulosDe(alertas)).toEqual(["0.8000", "0.8500"]);
     expect(screen.getByText("Término por el índice: día 12 (18/11/2026)")).toBeInTheDocument();
     expect(screen.getByText(/Punto de equilibrio proyectado: no disponible/)).toBeInTheDocument();
     expect(screen.getByText(/V' = V/)).toBeInTheDocument();
@@ -435,8 +446,10 @@ describe("Control de obra", () => {
     expect(within(alertas).queryByText("ADVERTENCIA")).toBeNull();
     const sinEvaluar = within(alertas).getByText("Sin evaluar");
     expect(sinEvaluar.closest(".silice-sev")?.querySelector("svg")).not.toBeNull();
-    expect(within(alertas).getByText("retraso: SPI 0,9780")).toHaveAttribute("title", "retraso: SPI 0.9780");
+    expect(within(alertas).getByText("retraso: SPI 0,9780")).toBeInTheDocument();
     expect(within(alertas).queryByText("retraso: SPI 0.9780")).toBeNull();
+    // VD-5: la descripcion es texto (su cifra ya se lee entera); el title queda en Observado y en la cifra del umbral
+    expect(titulosDe(alertas)).toEqual(["0.9780", "0.9500"]);
   });
 
   test("sin valuaciones el calculo dice que hacer", async () => {
