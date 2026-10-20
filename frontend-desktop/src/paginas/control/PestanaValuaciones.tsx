@@ -39,7 +39,7 @@ function Registrar({ proyecto, alCambiar }: { proyecto: string; alCambiar: () =>
         metodo: "POST",
         cuerpo: { proyecto, ...v, lineas: sinLineasVacias(lineas) },
       });
-      return `Valuación registrada: corte ${r.corte}, ${r.hallazgos} hallazgo(s) de R13-R14 (${r.errores} ERROR).`;
+      return `Valuación registrada: corte ${r.corte}, ${r.hallazgos} hallazgo(s) en la revisión de la valuación (${r.errores} con severidad Error).`;
     });
   return (
     <details open>
@@ -61,7 +61,7 @@ function Registrar({ proyecto, alCambiar }: { proyecto: string; alCambiar: () =>
             </div>
           ))}
           <Button kind="ghost" size="sm" onClick={() => setLineas([...lineas, { ...LINEA_VACIA }])}>
-            Agregar linea
+            Agregar línea
           </Button>
         </fieldset>
         <TextInput id="val-fuente" labelText="Fuente (acta, oficio)" value={v.fuente} onChange={campo("fuente")} />
@@ -104,7 +104,7 @@ function Importar({ proyecto, alCambiar }: { proyecto: string; alCambiar: () => 
       const r = await pedir<{ importadas: number }>("/v1/control/importar", { metodo: "POST", cuerpo });
       setInforme(null);
       setArchivo(null);
-      return `${r.importadas} valuacion(es) importada(s).`;
+      return `${r.importadas} valuación(es) importada(s).`;
     });
   return (
     <details>
@@ -126,7 +126,7 @@ function Importar({ proyecto, alCambiar }: { proyecto: string; alCambiar: () => 
                 </li>
               ))}
             </ul>
-            <TextInput id="imp-fuente" labelText="Fuente de la importacion" value={fuente} onChange={(e) => setFuente(e.target.value)} />
+            <TextInput id="imp-fuente" labelText="Fuente de la importación" value={fuente} onChange={(e) => setFuente(e.target.value)} />
             <div>
               <Button kind="primary" size="md" disabled={importacion.estado.enviando} onClick={() => void importar()}>
                 Importar
@@ -231,8 +231,8 @@ export function PestanaValuaciones({ proyecto, clave, alCambiar }: Props) {
           <TablaDensa etiqueta="Valuaciones registradas" columnas={columnasDe(COLUMNAS_VALUACIONES)} filas={conId(datos.filas)} />
         )}
         <p className="silice-control__nota cds--type-helper-text-01">
-          Una valuación registrada cuenta desde su registro; solo anularla la saca del calculo (S2-R14). Si el cliente no
-          la aprueba, anúlela.
+          Una valuación registrada cuenta desde su registro; solo anularla la saca del cálculo. Si el cliente no la
+          aprueba, anúlela.
         </p>
       </section>
       <section className="silice-control__bloque" aria-labelledby="control-escribir">

@@ -94,7 +94,7 @@ class Precios(BaseModel):
 def _precios(sesion: Session, proyecto: str, catalogo: Catalogo, datos: Precios):
     if datos.metodo not in METODOS:
         raise logica.ControlInvalido(
-            f"metodo de precios {datos.metodo!r} desconocido; use " + ", ".join(METODOS)
+            f"método de precios {datos.metodo!r} desconocido; use " + ", ".join(METODOS)
         )
     elegido = logica.PrecioElegido(
         METODOS[datos.metodo], datos.version, datos.km, datos.r, datos.fuente
@@ -218,7 +218,7 @@ def guardar_parametros(
     por_nombre = {f["Parametro"]: f for f in filas}
     for cambio in peticion.parametros:
         if cambio.parametro not in por_nombre:
-            raise logica.ControlInvalido(f"parametro desconocido: {cambio.parametro!r}")
+            raise logica.ControlInvalido(f"parámetro desconocido: {cambio.parametro!r}")
         por_nombre[cambio.parametro]["Valor"] = cambio.valor
     cambiados = logica.guardar_los_parametros(
         sesion,
@@ -387,7 +387,7 @@ def _leer(archivo: UploadFile):
             return logica.leer_excel(guardar_subida(carpeta, archivo))
         except (BadZipFile, InvalidFileException, OSError, KeyError):
             raise logica.ControlInvalido(
-                "El archivo no es un libro .xlsx legible; no se importo nada."
+                "El archivo no es un libro .xlsx legible; no se importó nada."
             ) from None
 
 
@@ -500,7 +500,7 @@ def calculo(
         indicadores=logica.filas_de_indicadores(sesion, resultado),
         costos_sin_tasa=[
             f"El costo de {c.monto} {c.moneda} del {c.fecha.isoformat()} no tiene tasa aplicable "
-            "(mas de 7 dias sin tasa): el AC y lo que depende de el no estan disponibles; "
+            "(más de 7 días sin tasa): el AC y lo que depende de él no están disponibles; "
             "nada se estima."
             for c in resultado.costos_sin_tasa
         ],
@@ -612,7 +612,7 @@ def elegir(sesion: SesionDep, peticion: PeticionElegir, activa: Activa) -> Versi
     elegida = next((o for o in todas if o.nombre == peticion.opcion), None)
     if elegida is None:
         raise logica.ControlInvalido(
-            f"opcion {peticion.opcion!r} desconocida; use " + ", ".join(o.nombre for o in todas)
+            f"opción {peticion.opcion!r} desconocida; use " + ", ".join(o.nombre for o in todas)
         )
     codigo = logica.elegir_opcion(
         sesion,

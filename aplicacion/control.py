@@ -591,22 +591,22 @@ def filas_de_indicadores(sesion: Session, resultado: ResultadoControl) -> list[d
         monto("CV", ind.cv, con_tildes(no.get("CV", ""))),
         indice("SPI", ind.spi, con_tildes(no.get("SPI", ""))),
         indice("CPI", ind.cpi, con_tildes(no.get("CPI", ""))),
-        monto("EAC (indice BAC/CPI)", ind.eac_indice, con_tildes(no.get("EAC", ""))),
+        monto("EAC (índice BAC/CPI)", ind.eac_indice, con_tildes(no.get("EAC", ""))),
         monto("EAC (sistema)", ind.eac_sistema, con_tildes(no.get("EAC", ""))),
         monto("VAC", ind.vac, con_tildes(no.get("VAC", ""))),
         {
-            "Indicador": "Termino por el indice (dia habil)",
+            "Indicador": "Término por el índice (día hábil)",
             "Valor": NO_APLICA if ind.termino_indice is None else str(ind.termino_indice),
             "En la otra moneda": "",
             "Nota": "",
         },
-        monto("Desvio de precio", sep.precio, con_tildes(sep.no_disponible.get("precio", ""))),
-        monto("Desvio de consumo", sep.consumo, con_tildes(sep.no_disponible.get("consumo", ""))),
+        monto("Desvío de precio", sep.precio, con_tildes(sep.no_disponible.get("precio", ""))),
+        monto("Desvío de consumo", sep.consumo, con_tildes(sep.no_disponible.get("consumo", ""))),
     ]
     if sep.metodo:
         filas.append(
             {
-                "Indicador": "Metodo y fuente del precio del corte",
+                "Indicador": "Método y fuente del precio del corte",
                 "Valor": sep.metodo,
                 "En la otra moneda": "",
                 "Nota": sep.fuente,
@@ -618,7 +618,7 @@ def filas_de_indicadores(sesion: Session, resultado: ResultadoControl) -> list[d
                 "Indicador": "Tasa del corte",
                 "Valor": NO_DISPONIBLE,
                 "En la otra moneda": "",
-                "Nota": "sin tasa aplicable a la fecha del corte (S1-R2)",
+                "Nota": "sin tasa aplicable a la fecha del corte",
             }
         )
     return filas
@@ -1068,7 +1068,7 @@ def filas_de_parametros(parametros: ParametrosControl) -> list[dict[str, str]]:
     for campo, que_es, naturaleza in PARAMETROS_EDITABLES:
         valor = getattr(parametros, campo)
         texto = (
-            ("si" if valor else "no")
+            ("sí" if valor else "no")
             if isinstance(valor, bool)
             else format(valor, "f")
             if (isinstance(valor, Decimal))
@@ -1092,9 +1092,9 @@ def parametros_desde_filas(filas: Sequence[Mapping[str, object]]) -> ParametrosC
         base = getattr(muestra, campo)
         texto = valores[campo]
         if isinstance(base, bool):
-            if texto.lower() not in ("si", "no"):
-                raise ControlInvalido(f"{campo}: escriba si o no")
-            leidos[campo] = texto.lower() == "si"
+            if texto.casefold() not in ("si", "sí", "no"):
+                raise ControlInvalido(f"{campo}: escriba sí o no")
+            leidos[campo] = texto.casefold() != "no"
         elif isinstance(base, int):
             numero = _decimal(texto, campo)
             if numero != numero.to_integral_value():
@@ -1184,7 +1184,7 @@ def describir_linea_base(sesion: Session, proyecto: str) -> str | None:
     return (
         f"versión {version.codigo}, perspectiva {fila.perspectiva}, vigente desde "
         f"{fila.desde.isoformat()}; inicio de obra {calendario.fecha_inicio.isoformat()} con "
-        f"{calendario.dias_por_periodo} día(s) hábil(es) por periodo"
+        f"{calendario.dias_por_periodo} día(s) hábil(es) por período"
     )
 
 
@@ -1242,6 +1242,7 @@ def estudios_que_suma(resultado: ResultadoControl) -> str:
         f"#{e.id} ({e.fecha_calculo.isoformat()}, {_monto(e.monto)})" for e in reajuste.estudios
     )
     return (
-        f"V' suma el reajuste reconocido de {len(reajuste.estudios)} estudio(s) de S1 guardado(s): "
+        f"V' suma el reajuste reconocido de {len(reajuste.estudios)} estudio(s) de reajuste "
+        f"guardado(s): "
         f"{detalle}; total {_monto(reajuste.monto)} {reajuste.moneda}."
     )
