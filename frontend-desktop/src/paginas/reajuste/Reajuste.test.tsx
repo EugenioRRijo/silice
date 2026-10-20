@@ -296,6 +296,28 @@ describe("Reajuste de precios", () => {
     expect(screen.queryByRole("table", { name: "Escalatoria y comprobación, lado a lado" })).not.toBeInTheDocument();
   });
 
+  test("tras calcular, el foco va al título del resultado (VB-13)", async () => {
+    const u = userEvent.setup();
+    montar();
+    await screen.findByLabelText("Versión del contrato");
+    await irA(u, "2. Períodos y lo ejecutado");
+    await u.click(screen.getByRole("button", { name: "Calcular" }));
+    const titulo = await screen.findByRole("heading", { name: "Escalatoria y comprobación, lado a lado" });
+    await waitFor(() => expect(titulo).toHaveFocus());
+  });
+
+  test("tras calcular con un dato malo, el foco va al aviso de error (VB-13)", async () => {
+    calcular = () => json({ detalle: "Escriba «Inicio del contrato»: es obligatorio." }, 422);
+    const u = userEvent.setup();
+    montar();
+    await screen.findByLabelText("Versión del contrato");
+    await irA(u, "2. Períodos y lo ejecutado");
+    await u.click(screen.getByRole("button", { name: "Calcular" }));
+    const aviso = await alertaConTexto();
+    await waitFor(() => expect(document.activeElement).not.toBe(document.body));
+    expect(document.activeElement?.contains(aviso)).toBe(true);
+  });
+
   test("cambiar un dato después de calcular retira la tabla: lo guardado sería otra cosa", async () => {
     const u = userEvent.setup();
     montar();
