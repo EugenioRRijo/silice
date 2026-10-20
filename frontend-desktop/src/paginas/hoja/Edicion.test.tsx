@@ -422,6 +422,30 @@ describe("Hoja del proyecto: tablas editables del espacio (3c-1)", () => {
     expect(puestas()[1]!.cuerpo.rev).toBe(5);
   });
 
+  async function conflicto(detalle: string) {
+    alPonerse = () => json({ detalle }, 409);
+    await abrirConRelojFalso();
+    fireEvent.change(celda("Largo (m), Ambientes fila 1"), { target: { value: "7" } });
+    await pausa(400);
+    expect((await esperar(() => aviso())).textContent).toContain(detalle);
+  }
+
+  test("409 de E1 por rev viejo: ofrece recargar, no abrir de nuevo", async () => {
+    await conflicto(REV_VIEJO);
+    expect(screen.getByRole("button", { name: "Recargar el borrador" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Abrir de nuevo" })).toBeNull();
+  });
+
+  test.each([
+    ["el caso cambió", "El caso cambió desde que abrió este borrador: ábralo de nuevo en el caso actual."],
+    ["ya se guardó", "Este borrador ya se guardó como la versión 002; abra esa versión para seguir."],
+  ])("409 de E1 porque %s: recargar no sirve, se ofrece abrir de nuevo", async (_nombre, detalle) => {
+    await conflicto(detalle);
+    expect(screen.queryByRole("button", { name: "Recargar el borrador" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Abrir de nuevo" }));
+    await esperar(() => expect(llamadas("POST", "/v1/hoja/borradores")).toBe(2));
+  });
+
   test("tras un 409 no se manda más hasta recargar", async () => {
     await abrirConRelojFalso();
     alPonerse = () => json({ detalle: REV_VIEJO }, 409);
