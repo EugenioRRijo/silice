@@ -700,3 +700,99 @@ def test_la_api_corre_en_un_solo_proceso_sin_workers_ni_reload() -> None:
 
     orden = orden_uvicorn(Path("python"), "127.0.0.1", 8000)
     assert not [a for a in orden if a.startswith(("--workers", "--reload"))]
+
+
+# --- R5 a R8: las vistas de las pestañas (3b-2) ----------------------------------------------
+
+
+def _vista(navegador: TestClient, id_: str, nombre: str, **params):
+    return navegador.get(f"/v1/hoja/borradores/{id_}/vistas/{nombre}", params=params)
+
+
+def _abierta(navegador: TestClient, ficha: str, **kwargs) -> str:
+    respuesta = _abrir(navegador, ficha, **kwargs)
+    assert respuesta.status_code == 201, respuesta.text
+    return respuesta.json()["id"]
+
+
+def test_r5_of001_da_las_cantidades_derivadas_de_la_memoria() -> None:
+    """3b-B7: AF-LLAVE 3; tubería de drenaje 2" 4,345 y de agua fría 1/2" 8,250 (memoria §2.4)."""
+    navegador, ficha = _ana()
+    respuesta = _vista(navegador, _abierta(navegador, ficha), "espacio")
+    assert respuesta.status_code == 200, respuesta.text
+    cuerpo = respuesta.json()
+    por_partida = {d["partida"]: d for d in cuerpo["derivadas"]}
+    assert D(por_partida["AF-LLAVE"]["cantidad"]["exacto"]) == D("3")
+    assert D(por_partida["DR-TUB-PVC-2"]["cantidad"]["exacto"]) == D("4.345")
+    assert D(por_partida["AF-TUB-PVC-1/2"]["cantidad"]["exacto"]) == D("8.250")
+    assert por_partida["AF-TUB-PVC-1/2"]["cantidad"]["texto"] == "8.25"
+    assert D("2703.85") <= D(cuerpo["total"]["exacto"]) <= D("2703.87")
+    assert (cuerpo["moneda"], cuerpo["pendientes"], cuerpo["vacio_mensaje"]) == ("USD", 0, None)
+
+
+def test_r5_trae_las_cinco_tablas_con_sus_columnas_en_el_orden_de_la_clasica() -> None:
+    navegador, ficha = _ana()
+    cuerpo = _vista(navegador, _abierta(navegador, ficha), "espacio").json()
+    assert [t["clave"] for t in cuerpo["tablas"]] == [
+        "origenes",
+        "ambientes",
+        "fuentes",
+        "puntos",
+        "tramos",
+    ]
+    ambientes = cuerpo["tablas"][1]
+    assert [c["clave"] for c in ambientes["columnas"]] == [
+        "id",
+        "nombre",
+        "x0",
+        "y0",
+        "largo",
+        "ancho",
+        "alto",
+        "origen_id",
+    ]
+    assert ambientes["con_estado"] is True and cuerpo["tablas"][0]["con_estado"] is False
+    superficie = next(c for c in cuerpo["tablas"][3]["columnas"] if c["clave"] == "superficie")
+    assert superficie["lista"] == [
+        {"valor": "pared", "rotulo": "Pared"},
+        {"valor": "techo", "rotulo": "Techo"},
+        {"valor": "piso", "rotulo": "Piso"},
+    ]
+    assert ambientes["columnas"][1]["lista"] is None
+    assert [f["id"] for f in cuerpo["filas"]["ambientes"]] == [
+        "BAN-01",
+        "COC-01",
+        "CT-01",
+        "REC-01",
+        "ZA",
+        "ZB",
+    ]
+
+
+def test_r5_el_estado_de_cada_fila_lleva_severidad_y_texto_de_la_clasica() -> None:
+    navegador, ficha = _ana()
+    cuerpo = _vista(navegador, _abierta(navegador, ficha), "espacio").json()
+    estado = cuerpo["estado"]["esp_ambientes:BAN-01"]
+    assert estado["severidad"] == "ADVERTENCIA"
+    assert estado["texto"].startswith("ADVERTENCIA: ambiente BAN-01: la medida es un supuesto")
+
+
+def test_r5_de_ti001_no_tiene_espacio_ni_cantidades_derivadas_y_lo_dice(_casos) -> None:
+    _poner(_casos["ti001"])
+    navegador, ficha = _ana()
+    id_ = _abierta(navegador, ficha, proyecto=NOMBRE_TI001, version=caso_ti001.CODIGO)
+    cuerpo = _vista(navegador, id_, "espacio").json()
+    assert cuerpo["derivadas"] == [] and cuerpo["estado"] == {}
+    assert cuerpo["vacio_mensaje"].startswith("El borrador todavía no deriva cantidades")
+    assert all(filas == [] for filas in cuerpo["filas"].values())
+    assert (
+        D(cuerpo["total"]["exacto"]) > 0
+    )  # los items de la version cuentan aunque no haya espacio
+
+
+def test_las_vistas_no_escriben_nada_en_la_base(_entorno: Path) -> None:
+    navegador, ficha = _ana()
+    id_ = _abierta(navegador, ficha)
+    antes = _volcado(_entorno)
+    assert _vista(navegador, id_, "espacio").status_code == 200
+    assert _volcado(_entorno) == antes
