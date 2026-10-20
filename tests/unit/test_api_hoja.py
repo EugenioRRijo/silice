@@ -30,6 +30,7 @@ from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import select
 
 from api import caso_web, dependencias
 from api.main import app
@@ -1400,3 +1401,148 @@ def test_r12_la_clave_de_api_lee_y_no_escribe_nada(_entorno: Path) -> None:
     )
     assert respuesta.status_code == 200
     assert _volcado(_entorno) == antes
+
+
+# --- R13: variaciones atípicas de precio (3b-3) ----------------------------------------------
+
+#: Memoria `atipicos_s3.md` §1: una serie que se duplica y un paso final de 256 a 257 (+1/256 =
+#: 0,390625 %), la única variación atípica.
+SERIE_ATIPICA = (1, 2, 4, 8, 16, 32, 64, 128, 256, 257)
+LLAVE_DE_PASO = "Llave de paso de bola PVC 1/2 pulg [PLOG26]"
+NADA_ATIPICO = (
+    "Ninguna variación atípica de precio (una serie de menos de 8 variaciones no se juzga)."
+)
+SIN_ML = (
+    "La búsqueda de variaciones atípicas necesita el extra `ml` (scikit-learn), que no está "
+    "instalado en este equipo. No se buscó nada y nada se bloquea."
+)
+
+
+def _con_serie_atipica(destino: Path, origen: Path) -> Path:
+    """OF-001 donde la llave de paso tiene la serie de la memoria: nueve listas globales (enero a
+    septiembre, 1 a 256 USD) y el precio de la lista de la versión (5 de octubre) en 257."""
+    shutil.copyfile(origen, destino)
+    motor = crear_motor(f"sqlite:///{destino.as_posix()}")
+    try:
+        with abrir_sesion(motor) as sesion:
+            insumo = sesion.scalars(
+                select(models.Insumo).where(models.Insumo.descripcion == LLAVE_DE_PASO)
+            ).one()
+            for mes, precio in enumerate(SERIE_ATIPICA[:-1], start=1):
+                lista = models.ListaPrecios(
+                    nombre=f"Serie demo {mes:02d}",
+                    moneda="USD",
+                    fecha_vigencia=date(2026, mes, 1),
+                    origen="prueba",
+                )
+                sesion.add(lista)
+                sesion.flush()
+                sesion.add(
+                    models.PrecioInsumo(lista_id=lista.id, insumo_id=insumo.id, precio=D(precio))
+                )
+            de_la_version = sesion.scalars(
+                select(models.PrecioInsumo)
+                .join(models.ListaPrecios)
+                .where(
+                    models.ListaPrecios.nombre == "Lista MaPreX jul-2026 (OF-001)",
+                    models.PrecioInsumo.insumo_id == insumo.id,
+                )
+            ).one()
+            de_la_version.precio = D(SERIE_ATIPICA[-1])
+            sesion.commit()
+    finally:
+        motor.dispose()
+    return destino
+
+
+def _atipicos(navegador: TestClient, proyecto: str = NOMBRE_OF001, version: str = "001"):
+    return navegador.get(
+        "/v1/hoja/precios/atipicos", params={"proyecto": proyecto, "version": version}
+    )
+
+
+def test_r13_sin_serie_de_precios_dice_que_nada_es_atipico() -> None:
+    """3b-B19: cada insumo de OF-001 tiene un solo precio, así que no hay variaciones que juzgar."""
+    navegador, _ = _ana()
+    respuesta = _atipicos(navegador)
+    assert respuesta.status_code == 200, respuesta.text
+    assert respuesta.json() == {
+        "disponible": True,
+        "avisos": [{"nivel": "success", "texto": NADA_ATIPICO}],
+        "variaciones": [],
+    }
+
+
+def test_r13_con_la_serie_de_la_memoria_da_su_unica_variacion(_casos, _entorno: Path) -> None:
+    dependencias.cerrar_motores()
+    _con_serie_atipica(_entorno, _casos["of001"])
+    navegador, _ = _ana()
+    codigo = next(
+        f["codigo"] for f in _precios(navegador).json()["filas"] if f["insumo"] == LLAVE_DE_PASO
+    )
+    cuerpo = _atipicos(navegador).json()
+    assert cuerpo == {
+        "disponible": True,
+        "avisos": [],
+        "variaciones": [
+            {
+                "insumo": codigo,
+                "porcentaje": "0.39",
+                "porcentaje_exacto": "0.390625",  # 1/256 en por ciento (memoria §1)
+                "desde": "2026-09-01",
+                "hasta": "2026-10-05",
+                "severidad": "ADVERTENCIA",
+                "descripcion": f"{codigo}: variación de 0.39 % entre 2026-09-01 y 2026-10-05 "
+                "(en USD) se aparta del historial de variaciones del insumo",
+            }
+        ],
+    }
+
+
+def test_r13_busca_sobre_los_insumos_de_la_version_y_no_escribe_nada(
+    _entorno: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from aplicacion import atipicos
+
+    vistos: list[str] = []
+    original = atipicos.atipicos_de_insumos
+
+    def espia(sesion, codigos, *args, **kwargs):
+        codigos = list(codigos)
+        vistos.extend(codigos)
+        return original(sesion, codigos, *args, **kwargs)
+
+    monkeypatch.setattr(atipicos, "atipicos_de_insumos", espia)
+    navegador, _ = _ana()
+    esperados = [f["codigo"] for f in _precios(navegador).json()["filas"]]
+    antes = _volcado(_entorno)
+    assert _atipicos(navegador).status_code == 200
+    assert vistos == esperados and len(vistos) > 0
+    assert _volcado(_entorno) == antes
+
+
+def test_r13_sin_el_extra_ml_no_busca_y_lo_dice(monkeypatch: pytest.MonkeyPatch) -> None:
+    from tests.fixtures.sin_extra import SinExtra
+
+    navegador, _ = _ana()
+    relacionados = ("ml", "ml.anomaly", "ml.anomaly.series", "ml.anomaly.detector")
+    with SinExtra(monkeypatch, ("ml",), relacionados):
+        respuesta = _atipicos(navegador)
+    assert respuesta.status_code == 200, respuesta.text
+    assert respuesta.json() == {
+        "disponible": False,
+        "avisos": [{"nivel": "info", "texto": SIN_ML}],
+        "variaciones": [],
+    }
+
+
+def test_r13_proyecto_o_version_inexistente_es_404_y_la_clave_de_api_lee() -> None:
+    navegador, _ = _ana()
+    assert _atipicos(navegador, "Z").status_code == 404
+    assert _atipicos(navegador, version="009").status_code == 404
+    leida = cliente(app).get(
+        "/v1/hoja/precios/atipicos",
+        params={"proyecto": NOMBRE_OF001, "version": "001"},
+        headers={CABECERA: crear_clave_de_prueba()},
+    )
+    assert leida.status_code == 200
