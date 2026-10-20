@@ -1712,6 +1712,15 @@ def test_paridad_r12_los_precios_son_los_de_la_clasica(
         )
         assert (fila["estado"], fila["propio"]) == (p.estado, clasica.texto_propio(p.propio))
         assert fila["erosion_usd"]["exacto"] == format(p.erosion_usd, "f")
+        assert fila["erosion_bs"]["exacto"] == format(p.erosion_bs, "f")
+        assert (fila["fuente"], fila["fuente_tasa"], fila["moneda_original"]) == (
+            p.fuente,
+            p.fuente_tasa,
+            p.moneda_original,
+        )
+        for campo, valor in (("tasa", p.tasa), ("precio_original", p.precio_original)):
+            assert (fila[campo] and fila[campo]["exacto"]) == (valor and format(valor, "f"))
+        assert fila["fecha_tasa"] == (p.fecha_tasa and p.fecha_tasa.isoformat())
         assert fila["erosion_pct"]["exacto"] == format(p.erosion_pct * 100, "f")
 
 

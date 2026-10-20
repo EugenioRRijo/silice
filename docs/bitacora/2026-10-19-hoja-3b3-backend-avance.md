@@ -54,3 +54,5 @@ la API ni R12 a R14 (leen la base; sin medición propia en esta sub-rebanada).
   `api/esquemas_hoja.py`; un módulo propio evita que las dos rutas dependan una de otra y el nombre en OpenAPI no cambia).
 - `_hoy()` en `api/rutas/hoja.py` es el día de evaluación de R12; las pruebas lo fijan.
 - Deuda de 3b-2 que sigue: `vista_plan` repite la fórmula del porcentaje de `hoja.filas_de_curva`.
+- MENOR 7 del arbitro: el commit 5a9bea8 («docs») tocó además el docstring de `api/rutas/hoja.py`; sin efecto, no se reescribe la historia.
+- MENOR 9 del arbitro: la paridad de R12 ahora compara también `tasa`, `fecha_tasa`, `erosion_bs`, `precio_original`, `fuente`, `fuente_tasa` y `moneda_original` contra `ui.hoja` vivo; ya pasaba (caracterización).
