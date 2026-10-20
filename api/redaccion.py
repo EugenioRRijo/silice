@@ -13,12 +13,13 @@ import re
 __all__ = ["TOPE", "pulir"]
 
 #: Por encima de este largo el texto no se analiza: sale intacto.
-TOPE = 2000
+TOPE = 20_000
 
-# Los huecos no cruzan parentesis: no hay retroceso entre dos huecos.
+# Un hueco admite un nivel de parentesis balanceados («TUBO PVC (1/2)»); las dos alternativas se
+# distinguen por su primer caracter, asi que el costo es lineal.
 _R11 = re.compile(
-    r"(\d+) insumos no contrastables: (\d+) sin referencia MaPreX \(([^()]*)\), "
-    r"(\d+) sin tasa a su fecha \(([^()]*)\)"
+    r"(\d+) insumos no contrastables: (\d+) sin referencia MaPreX \(((?:[^()]|\([^()]*\))*)\), "
+    r"(\d+) sin tasa a su fecha \(((?:[^()]|\([^()]*\))*)\)"
 )
 
 

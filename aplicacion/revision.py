@@ -367,8 +367,11 @@ def banner_de_version(r: Recibido, fecha: Callable[[str], str] = _iso) -> str:
     if r.ya_recibido:
         return f"{inicio}; ya recibió este mismo paquete el {fecha(r.ya_recibido_el)}."
     if r.ultima_recibida:
-        # «versión 004 del 2026-11-03»: el día son los 10 últimos caracteres por construcción
-        ultima = r.ultima_recibida[:-10] + fecha(r.ultima_recibida[-10:])
+        # «versión 004 del 2026-11-03»: el día es la cola tras el último « del »
+        cabeza, separador, cola = r.ultima_recibida.rpartition(" del ")
+        ultima = (
+            cabeza + separador + fecha(cola) if separador and len(cola) == 10 else r.ultima_recibida
+        )
         return f"{inicio}; la última que usted recibió de este proyecto: {ultima}."
     return f"{inicio}; es la primera que recibe de este proyecto."
 
