@@ -1,7 +1,8 @@
-import { Button, Checkbox, InlineNotification, PasswordInput, Select, SelectItem, TextInput } from "@carbon/react";
+import { Button, Checkbox, InlineNotification, PasswordInput, Select, SelectItem } from "@carbon/react";
 import { useCallback, useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { ErrorDeApi, pedir } from "../../api/cliente";
+import { CampoTexto } from "../../comun/CampoTexto";
 import { AvisoError } from "../../comun/AvisoError";
 import { EsqueletoPagina } from "../../comun/EsqueletoPagina";
 import { useAplicacion } from "../../shell/contexto";
@@ -9,6 +10,11 @@ import { textoDeLaClaveDeIA, topeParaEditar } from "./logica";
 import type { AsistenteEstado, ResultadoAsistente } from "./logica";
 
 const RUTA = "/v1/admin/asistente";
+
+// Lo que se le dice a quien administra cuando falta el componente de IA (VB-18). La API manda un texto con el comando
+// de instalacion para desarrolladores; esta pantalla no lo muestra.
+const AVISO_FALTA_EL_COMPONENTE =
+  "Falta un componente opcional del asistente de IA en este equipo. Pídalo a quien instaló Sílice y vuelva a abrir Sílice.";
 
 // Pestaña «Asistente de IA» (S4 §3.1, §8.3): configurar el asistente y registrar, reactivar u olvidar la clave de
 // IA de la empresa. Paridad con `pestana_asistente` de la clásica. La clave y las contraseñas viven solo en el estado
@@ -137,20 +143,20 @@ export default function Asistente() {
             <SelectItem key={p.valor} value={p.valor} text={p.etiqueta} />
           ))}
         </Select>
-        <TextInput id="ia-modelo-claude" labelText="Modelo de Claude" value={modeloClaude} onChange={(e) => setModeloClaude(e.target.value)} />
-        <TextInput
+        <CampoTexto id="ia-modelo-claude" labelText="Modelo de Claude" value={modeloClaude} onChange={(e) => setModeloClaude(e.target.value)} />
+        <CampoTexto
           id="ia-modelo-local"
           labelText="Modelo local (Ollama)"
           helperText="El nombre exacto de un modelo ya instalado en Ollama (el que muestra «ollama list»). Vacío: el modo local no se ofrece."
           value={modeloLocal}
           onChange={(e) => setModeloLocal(e.target.value)}
         />
-        <TextInput id="ia-anfitrion" labelText="Dirección de Ollama" value={anfitrion} onChange={(e) => setAnfitrion(e.target.value)} />
+        <CampoTexto id="ia-anfitrion" labelText="Dirección de Ollama" value={anfitrion} onChange={(e) => setAnfitrion(e.target.value)} />
         <p className="silice-adm__nota cds--type-label-01">
           Si la dirección de Ollama no es de este equipo, el asistente la trata como un servicio en la nube y lo avisa
           antes de enviar nada.
         </p>
-        <TextInput
+        <CampoTexto
           id="ia-tope"
           labelText="Tope de costo por sesión (USD)"
           helperText="Mayor que cero; puede escribir coma o punto decimal."
@@ -164,7 +170,7 @@ export default function Asistente() {
       </form>
 
       {estado.falta_el_componente !== null ? (
-        <InlineNotification kind="error" role="alert" title="Asistente de IA" subtitle={estado.falta_el_componente} lowContrast hideCloseButton />
+        <InlineNotification kind="error" role="alert" title="Asistente de IA" subtitle={AVISO_FALTA_EL_COMPONENTE} lowContrast hideCloseButton />
       ) : (
         <div className="silice-adm__seccion">
           <h2 className="cds--type-heading-compact-02">Clave de IA de la empresa</h2>

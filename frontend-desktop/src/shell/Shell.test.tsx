@@ -138,9 +138,7 @@ describe("Shell", () => {
     test("agrupa por area segun las acciones de la sesion, cada una con su descripcion a la vista", async () => {
       montar();
       const nav = menu();
-      const rotulos = within(nav)
-        .getAllByRole("heading", { level: 2 })
-        .map((h) => h.textContent);
+      const rotulos = [...nav.querySelectorAll(".silice-menu__rotulo")].map((h) => h.textContent);
       expect(rotulos).toEqual(["Crear", "Más"]); // sin revisar_paquete ni operar_arenera no hay Auditar ni Producción
       expect(within(nav).getByText("APU, presupuestos y entregas")).toBeInTheDocument();
       expect(within(nav).getByText("Precios, obra, análisis y ajustes")).toBeInTheDocument();
@@ -191,7 +189,7 @@ describe("Shell", () => {
         </MemoryRouter>,
       );
       const nav = menu();
-      const panel = within(nav).getByRole("heading", { name: "Herramientas principales" }).closest("li") as HTMLElement;
+      const panel = within(nav).getByText("Herramientas principales").closest("li") as HTMLElement;
       expect(within(panel).getAllByRole("link").map((a) => a.getAttribute("aria-label"))).toEqual([
         "Libro de la empresa",
         "Componer una partida",
@@ -202,14 +200,14 @@ describe("Shell", () => {
         "Suba un Excel y vea lo que no cuadra",
       );
       // El panel va antes que las areas.
-      const rotulos = within(nav).getAllByRole("heading", { level: 2 }).map((h) => h.textContent);
+      const rotulos = [...nav.querySelectorAll(".silice-menu__rotulo")].map((h) => h.textContent);
       expect(rotulos[0]).toBe("Herramientas principales");
       await screen.findByRole("heading", { name: "Pantalla del tablero" });
     });
 
     test("sin ninguna herramienta principal disponible el panel no se pinta", async () => {
       montar();
-      expect(within(menu()).queryByRole("heading", { name: "Herramientas principales" })).not.toBeInTheDocument();
+      expect(within(menu()).queryByText("Herramientas principales")).not.toBeInTheDocument();
       await screen.findByRole("heading", { name: "Pantalla del tablero" });
     });
 
@@ -498,6 +496,68 @@ describe("Shell", () => {
     });
   });
 
+  // VB-14 y VB-15 (auditoria visual del bloque B).
+  describe("menu en capa y titulo del documento", () => {
+    test("los rótulos de área del menú no son encabezados (el h1 de la página es el primero que se lee)", async () => {
+      montar();
+      await screen.findByRole("heading", { name: "Pantalla del tablero" });
+      expect(within(menu()).queryAllByRole("heading")).toHaveLength(0);
+      expect(menu().querySelectorAll(".silice-menu__rotulo").length).toBeGreaterThan(0);
+    });
+
+    test("Esc cierra el menú abierto como capa y devuelve el foco al botón", async () => {
+      const usuario = userEvent.setup();
+      montar();
+      await screen.findByRole("heading", { name: "Pantalla del tablero" });
+      await usuario.click(screen.getByRole("button", { name: "Abrir el menú" }));
+      expect(screen.getByRole("button", { name: "Cerrar el menú" })).toHaveAttribute("aria-expanded", "true");
+      // El clic deja el foco en el propio boton: se lleva a un enlace del menu para que el regreso se note.
+      within(menu()).getAllByRole("link")[0].focus();
+      expect(screen.getByRole("button", { name: "Cerrar el menú" })).not.toHaveFocus();
+      await usuario.keyboard("{Escape}");
+      const boton = screen.getByRole("button", { name: "Abrir el menú" });
+      expect(boton).toHaveAttribute("aria-expanded", "false");
+      await waitFor(() => expect(boton).toHaveFocus());
+    });
+
+    test("Esc con el menú cerrado no mueve el foco", async () => {
+      const usuario = userEvent.setup();
+      montar();
+      await screen.findByRole("heading", { name: "Pantalla del tablero" });
+      await usuario.click(screen.getByRole("button", { name: "Salir" }));
+      await usuario.keyboard("{Escape}");
+      expect(screen.getByRole("button", { name: "Salir" })).toHaveFocus();
+    });
+
+    test("document.title es «Página · Sílice» con la página actual y cambia al navegar", async () => {
+      const usuario = userEvent.setup();
+      const dos: PaginaDef[] = [
+        ...PAGINAS,
+        { id: "libros", titulo: "Libro de la empresa", seccion: "Revisión", accion: "leer_proyecto", cargar: async () => ({ default: PaginaA }) },
+      ];
+      render(
+        <MemoryRouter initialEntries={["/tablero"]}>
+          <Shell sesion={sesionCon()} alSalir={alSalir} alExpirar={alExpirar} paginas={dos} />
+        </MemoryRouter>,
+      );
+      await screen.findByRole("heading", { name: "Pantalla del tablero" });
+      expect(document.title).toBe("Tablero del proyecto · Sílice");
+      await usuario.click(screen.getByRole("button", { name: "Abrir el menú" }));
+      await usuario.click(within(menu()).getAllByRole("link", { name: "Libro de la empresa" })[0]);
+      await waitFor(() => expect(document.title).toBe("Libro de la empresa · Sílice"));
+    });
+
+    test("sin página para la ruta el título queda en «Sílice»", async () => {
+      render(
+        <MemoryRouter initialEntries={["/"]}>
+          <Shell sesion={sesionCon()} alSalir={alSalir} alExpirar={alExpirar} paginas={[]} />
+        </MemoryRouter>,
+      );
+      await screen.findByText("No hay pantallas disponibles en esta interfaz");
+      expect(document.title).toBe("Sílice");
+    });
+  });
+
   describe("selector de proyecto", () => {
     test("lista los proyectos y empieza sin ninguno elegido", async () => {
       montar();
@@ -505,8 +565,8 @@ describe("Shell", () => {
       await waitFor(() => expect(within(selector).getAllByRole("option")).toHaveLength(3));
       expect(within(selector).getAllByRole("option").map((o) => o.textContent)).toEqual([
         "Sin proyecto",
-        "P-01 · Clínica Norte",
-        "P-02 · Galpón",
+        "Clínica Norte",
+        "Galpón",
       ]);
       expect(selector).toHaveValue("");
     });
@@ -547,6 +607,39 @@ describe("Shell", () => {
       await waitFor(() => expect(fetchFalso.mock.calls.some((c) => String(c[0]) === "/v1/proyectos")).toBe(true));
       expect(screen.queryByRole("combobox", { name: "Proyecto" })).not.toBeInTheDocument();
       expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    });
+
+    // VB-20: el codigo es un numero interno; la persona elige por el nombre. Si dos proyectos se llaman igual, el
+    // codigo es lo unico que los distingue y se agrega entre parentesis.
+    test("dos proyectos con el mismo nombre se distinguen por su código", async () => {
+      fetchFalso.mockImplementation(async (entrada, init) => {
+        const ruta = String(entrada);
+        if (ruta === "/v1/casos" && (init?.method ?? "GET") === "GET") return json(CASOS);
+        if (ruta === "/v1/proyectos")
+          return json([
+            { codigo: "3", nombre: "OBRA-GENERADA", version_vigente: 1, actualizado: null },
+            { codigo: "4", nombre: "OBRA-GENERADA", version_vigente: 1, actualizado: null },
+            { codigo: "5", nombre: "Galpón", version_vigente: 1, actualizado: null },
+          ]);
+        return json({ detalle: "No encontrado." }, 404);
+      });
+      montar();
+      const selector = await screen.findByRole("combobox", { name: "Proyecto" });
+      await waitFor(() => expect(within(selector).getAllByRole("option")).toHaveLength(4));
+      expect(within(selector).getAllByRole("option").map((o) => o.textContent)).toEqual([
+        "Sin proyecto",
+        "OBRA-GENERADA (3)",
+        "OBRA-GENERADA (4)",
+        "Galpón",
+      ]);
+    });
+
+    // VB-9: sin `leer_proyecto` la API contesta 403; no se pide.
+    test("una cuenta sin la acción leer_proyecto no pide la lista de proyectos", async () => {
+      montar(sesionCon({ acciones: ["administrar_cuentas", "cambiar_caso"] }), "/acerca");
+      await screen.findByRole("combobox", { name: "Caso" });
+      expect(fetchFalso.mock.calls.some((c) => String(c[0]) === "/v1/proyectos")).toBe(false);
+      expect(screen.queryByRole("combobox", { name: "Proyecto" })).not.toBeInTheDocument();
     });
 
     test("sin ninguna pagina disponible para la cuenta, dice que no hay pantallas en esta interfaz", async () => {

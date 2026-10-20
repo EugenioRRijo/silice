@@ -6,6 +6,7 @@ import { EsqueletoPagina } from "../../comun/EsqueletoPagina";
 import { TablaDensa } from "../../comun/TablaDensa";
 import { formatoMontoEsVe } from "../../indicadores/formatoEsVe";
 import { useAplicacion } from "../../shell/contexto";
+import { leerFeriados } from "./fechas";
 import { errorDeCarga, etiquetaDeCodigo, rutaDe, textoLlano, useAccion, useCargaSuave } from "./logica";
 import type { LineaBase } from "./logica";
 
@@ -39,12 +40,18 @@ function Declarar({ proyecto, versiones, alCambiar }: { proyecto: string; versio
     feriados: "",
     fuente: "",
   });
+  const [errorFeriados, setErrorFeriados] = useState("");
   const campo = (k: keyof typeof v) => (e: { target: { value: string } }) => setV({ ...v, [k]: e.target.value });
-  const declarar = () =>
-    ejecutar(async () => {
-      await pedir("/v1/control/linea-base", { metodo: "POST", cuerpo: { proyecto, ...v } });
+  const declarar = () => {
+    // Los feriados se validan aquí: la API los recibe en AAAA-MM-DD y diría otro valor que el escrito.
+    const lectura = leerFeriados(v.feriados);
+    setErrorFeriados("error" in lectura ? lectura.error : "");
+    if ("error" in lectura) return;
+    void ejecutar(async () => {
+      await pedir("/v1/control/linea-base", { metodo: "POST", cuerpo: { proyecto, ...v, feriados: lectura.feriados } });
       return "Línea base declarada.";
     });
+  };
   return (
     <div className="silice-control__formulario">
       <Select id="lb-version" labelText="Versión del contrato" value={v.version} onChange={campo("version")}>
@@ -70,13 +77,14 @@ function Declarar({ proyecto, versiones, alCambiar }: { proyecto: string; versio
         value={v.dias_por_periodo}
         onChange={campo("dias_por_periodo")}
       />
-      <TextArea id="lb-feriados" labelText="Feriados (fechas como 2026-12-25, separadas por comas)" value={v.feriados} onChange={campo("feriados")} />
+      <TextArea id="lb-feriados" labelText="Feriados (fechas como 25/12/2026, separadas por comas)" value={v.feriados} onChange={campo("feriados")} />
       <TextInput id="lb-fuente" labelText="Fuente de la línea base" value={v.fuente} onChange={campo("fuente")} />
       <div>
-        <Button kind="primary" size="md" disabled={estado.enviando} onClick={() => void declarar()}>
+        <Button kind="primary" size="md" disabled={estado.enviando} onClick={declarar}>
           Declarar línea base
         </Button>
       </div>
+      <AvisoError error={errorFeriados || null} titulo="Revise los feriados" />
       <Aviso exito={estado.exito} error={estado.error} />
     </div>
   );

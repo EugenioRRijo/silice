@@ -10,11 +10,13 @@ export type Carga<T> =
   | { estado: "no_disponible"; error: unknown }
   | { estado: "error"; error: unknown };
 
-// Pide `ruta` al montarse. Un 401 avisa a `alExpirar` (la sesion vencio) y queda como error.
-export function useCarga<T>(ruta: string, alExpirar: () => void): Carga<T> {
+// Pide `ruta` al montarse. Con `ruta` null no pide nada (la cuenta no tiene la accion que el recurso exige: la API
+// daria 403 y el navegador lo registraria como error) y queda en `sin_permiso`. Un 401 avisa a `alExpirar` (la sesion vencio) y queda como error.
+export function useCarga<T>(ruta: string | null, alExpirar: () => void): Carga<T> {
   const [carga, setCarga] = useState<{ ruta: string; valor: Carga<T> } | null>(null);
 
   useEffect(() => {
+    if (ruta === null) return;
     let vigente = true;
     pedir<T>(ruta).then(
       (datos) => {
@@ -34,5 +36,6 @@ export function useCarga<T>(ruta: string, alExpirar: () => void): Carga<T> {
     };
   }, [ruta, alExpirar]);
 
+  if (ruta === null) return { estado: "sin_permiso", error: null };
   return carga && carga.ruta === ruta ? carga.valor : { estado: "cargando" };
 }

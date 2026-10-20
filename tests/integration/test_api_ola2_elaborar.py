@@ -9,6 +9,7 @@ y devuelve el informe como JSON. Oráculos: el total auditado de la línea base 
 from __future__ import annotations
 
 import io
+from decimal import Decimal
 
 import openpyxl
 import pytest
@@ -258,3 +259,15 @@ def test_el_libro_de_excel_es_el_del_mismo_calculo(cliente, items_payload):
 @pytest.mark.parametrize("ruta", [RUTA, EXCEL])
 def test_un_cuerpo_sin_items_obligatorios_es_422(cliente, ruta):
     assert cliente.post(ruta, json={"codigo": "P-001"}).status_code == 422
+
+
+def test_el_total_viaja_tambien_exacto_para_el_title_de_la_interfaz(cliente, items_payload):
+    """VB-6: la interfaz lee el total en centésimas y muestra el exacto a un toque. Oráculo a mano
+    con los P.U. exactos del motor (`PRECIO_UNITARIO_EXACTO`): 9,74 × 8,600418750 + 24 ×
+    10,1933700 + 23,68 × 33,237875000 + 1,66 × 242,63965000 + 1,3 × 52,57656250 =
+    83,768078625 + 244,64088 + 787,07288 + 402,781819 + 68,34953125 = 1 586,613188875."""
+    cuerpo = cliente.post(RUTA, json=_cuerpo(items_payload)).json()
+
+    assert cuerpo["total"] == "1586.61"
+    assert Decimal(cuerpo["total_exacto"]) == Decimal("1586.613188875")
+    assert "E" not in cuerpo["total_exacto"].upper()  # texto decimal, sin notación científica

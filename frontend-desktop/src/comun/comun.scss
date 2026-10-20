@@ -37,21 +37,18 @@
   display: grid;
   gap: 0.5rem;
 
-  .cds--file__drop-container {
+  // El MISMO boton lleva `cds--file__drop-container` y `cds--file-browse-btn`: el alto se fija en UNA regla que nombra
+  // las dos clases (mayor especificidad que cualquiera de las dos sueltas de Carbon). Una regla aparte solo de
+  // `.cds--file-browse-btn` con alto en porcentaje anulaba los 6rem y la zona medía 36 px (VB-2).
+  .cds--file__drop-container.cds--file-browse-btn {
     box-sizing: border-box;
     block-size: 6rem;
-    min-block-size: 0;
+    min-block-size: 6rem;
     padding: 0.5rem 1rem;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-  }
-
-  .cds--file-browse-btn {
-    block-size: 100%;
     display: flex;
     align-items: center;
     justify-content: center;
+    text-align: center;
   }
 
   .cds--file,

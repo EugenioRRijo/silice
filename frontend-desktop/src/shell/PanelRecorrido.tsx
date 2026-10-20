@@ -21,9 +21,9 @@ export function PanelRecorrido({ paginas, acciones, modoEntrega }: Props) {
 
   return (
     <section className="silice-recorrido" aria-labelledby="recorrido-titulo">
-      <h2 id="recorrido-titulo" className="silice-menu__rotulo cds--type-label-01">
+      <div id="recorrido-titulo" className="silice-menu__rotulo cds--type-label-01">
         Recorrido en curso
-      </h2>
+      </div>
       <p className="silice-recorrido__nombre cds--type-body-compact-01">{recorrido.titulo}</p>
       {actual !== null && (
         <p className="silice-recorrido__avance cds--type-label-01">{`Paso ${actual + 1} de ${total}`}</p>

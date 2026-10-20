@@ -5,8 +5,9 @@ import { ErrorDeApi } from "../../api/cliente";
 import type { SesionRespuesta } from "../../api/tipos";
 import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
+import { alertaConTexto } from "../../test/ayudas";
 import PaginaControl from "./index";
-import { TITULOS_VISIBLES, columnasDe, consultaDeCalculo, errorDeCarga, etiquetaDeCodigo, textoLlano, cuerpoDeOpciones, FILTROS_INICIALES, sinLineasVacias } from "./logica";
+import { TITULOS_VISIBLES, columnasDe, consultaDeCalculo, descripcionEsVe, errorDeCarga, etiquetaDeCodigo, textoLlano, cuerpoDeOpciones, FILTROS_INICIALES, sinLineasVacias } from "./logica";
 import type { Calculo, LineaBase, OpcionDeRecuperacion, Valuaciones } from "./logica";
 
 vi.mock("../../comun/GraficoCarbon", () => ({
@@ -31,7 +32,7 @@ const SESION: SesionRespuesta = {
 
 const LINEA_BASE: LineaBase = {
   tiene_linea_base: true,
-  descripcion: "version OB-001, perspectiva costo, vigente desde 2026-11-02",
+  descripcion: "versión OB-001, perspectiva costo, vigente desde 02/11/2026",
   versiones: ["OB-001"],
   hay_valuaciones: true,
   parametros: [
@@ -43,10 +44,10 @@ const LINEA_BASE: LineaBase = {
 const VALUACIONES: Valuaciones = {
   tiene_linea_base: true,
   filas: [
-    { Numero: "V-01", Periodo: "2026-11-02 a 2026-11-06", Fecha: "2026-11-09", Inspector: "<b>Ing. Ficticio</b>", Registrada: "2026-11-09 09:00", Estado: "sin hallazgos" },
+    { Numero: "V-01", Periodo: "02/11/2026 a 06/11/2026", Fecha: "09/11/2026", Inspector: "<b>Ing. Ficticio</b>", Registrada: "09/11/2026 09:00", Estado: "sin hallazgos" },
   ],
   aviso: "",
-  anulables: [{ id: 7, rotulo: "V-01 (2026-11-02 a 2026-11-06)" }],
+  anulables: [{ id: 7, rotulo: "V-01 (02/11/2026 a 06/11/2026)" }],
   corte_por_defecto: "2026-11-13",
 };
 
@@ -59,14 +60,14 @@ const CALCULO: Calculo = {
     { Indicador: "BAC (USD)", Valor: "4000.00", "En la otra moneda": "no disponible", Nota: "" },
     { Indicador: "SPI", Valor: "0.8000", "En la otra moneda": "", Nota: "" },
   ],
-  costos_sin_tasa: ["El costo de 10 USD del 2026-11-01 no tiene tasa aplicable."],
+  costos_sin_tasa: ["El costo de 10 USD del 01/11/2026 no tiene tasa aplicable."],
   curva: [
     { periodo: "P1", pv: "1000.00", ev: "800.00", ac: "900.00" },
     { periodo: "P2", pv: "2000.00", ev: "1200.00", ac: null },
   ],
   spi_no_aplica: false,
   alertas: [{ Alerta: "AL-1", Severidad: "ERROR", Descripcion: "Retraso", Observado: "0.8000", Umbral: "0.8500 (SUPUESTO_DECLARADO)" }],
-  terminos: { indice: "dia 12 (2026-11-18)", reproyectado: "dia 13 (2026-11-19)", plan_base: "dia 10 (2026-11-13)", eac_sistema: "no disponible" },
+  terminos: { indice: "día 12 (18/11/2026)", reproyectado: "día 13 (19/11/2026)", plan_base: "día 10 (13/11/2026)", eac_sistema: "no disponible" },
   motivo_termino: "",
   equilibrio: null,
   estudios: "Sin estudio de reajuste guardado: V' = V. Nunca se proyecta un reajuste.",
@@ -85,16 +86,20 @@ const OPCIONES: OpcionDeRecuperacion[] = [
 describe("Control de obra", () => {
   const fetchFalso = vi.fn<typeof fetch>();
   let calculo: () => Response;
+  let valuaciones: () => Response;
+  let lineaBase: () => Response;
 
   beforeEach(() => {
     vi.stubGlobal("fetch", fetchFalso);
     fetchFalso.mockReset();
     calculo = () => json(CALCULO);
+    valuaciones = () => json(VALUACIONES);
+    lineaBase = () => json(LINEA_BASE);
     fetchFalso.mockImplementation(async (entrada, init) => {
       const url = String(entrada);
       const metodo = init?.method ?? "GET";
-      if (url.startsWith("/v1/control/linea-base") && metodo === "GET") return json(LINEA_BASE);
-      if (url.startsWith("/v1/control/valuaciones") && metodo === "GET") return json(VALUACIONES);
+      if (url.startsWith("/v1/control/linea-base") && metodo === "GET") return lineaBase();
+      if (url.startsWith("/v1/control/valuaciones") && metodo === "GET") return valuaciones();
       if (url.startsWith("/v1/control/calculo")) return calculo();
       if (url === "/v1/control/valuaciones") return json({ corte: "2026-11-20", hallazgos: 2, errores: 1 });
       if (url === "/v1/control/recuperacion/opciones") return json({ opciones: OPCIONES });
@@ -183,6 +188,13 @@ describe("Control de obra", () => {
     expect(within(tabla).getByRole("columnheader", { name: "Número" })).toBeInTheDocument();
   });
 
+  test("la columna Número muestra el número que manda la API con la clave Numero (VB-3)", async () => {
+    const u = montar();
+    await u.click(await screen.findByRole("tab", { name: "Valuaciones" }));
+    const tabla = await screen.findByRole("table", { name: "Valuaciones registradas" });
+    expect(within(tabla).getByText("V-01")).toBeInTheDocument();
+  });
+
   test("cada codigo interno tiene su etiqueta en español y los desconocidos se muestran tal cual (V-22)", () => {
     const esperadas: Record<string, string> = {
       spi_error: "Umbral de SPI para error",
@@ -228,7 +240,7 @@ describe("Control de obra", () => {
 
   test("la primera pestaña muestra la linea base y los parametros con su naturaleza", async () => {
     montar();
-    expect(await screen.findByText(/perspectiva costo, vigente desde 2026-11-02/)).toBeInTheDocument();
+    expect(await screen.findByText(/perspectiva costo, vigente desde 02\/11\/2026/)).toBeInTheDocument();
     const tabla = screen.getByRole("table", { name: "Parámetros de control" });
     // V-22: la naturaleza y el parametro se leen en español; el codigo queda en el title
     expect(within(tabla).getAllByText("Supuesto declarado")[0]).toHaveAttribute("title", "SUPUESTO_DECLARADO");
@@ -256,6 +268,81 @@ describe("Control de obra", () => {
     });
   });
 
+  test("la pestaña de valuaciones no muestra codigos de la especificacion y lleva sus tildes (VB-5)", async () => {
+    const u = montar();
+    await u.click(await screen.findByRole("tab", { name: "Valuaciones" }));
+    await screen.findByRole("table", { name: "Valuaciones registradas" });
+    const visible = document.body.textContent ?? "";
+    expect(visible).not.toMatch(/S\d-R\d+|R13-R14|calculo|linea\b|importacion/);
+    expect(screen.getByText(/solo anularla la saca del cálculo\./)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Agregar línea" })).toBeInTheDocument();
+  });
+
+  test("el texto del usuario con forma de fecha sale tal cual: solo se formatean las ranuras de fecha (ronda 1)", async () => {
+    // La API ya escribe dd/mm/aaaa al armar sus frases (tests/unit/test_api_control.py); el número de la valuación y el
+    // código de la versión los escribió el usuario y no se tocan.
+    valuaciones = () =>
+      json({
+        ...VALUACIONES,
+        filas: [{ ...VALUACIONES.filas[0], Numero: "2026-11-10" }],
+        anulables: [{ id: 7, rotulo: "2026-11-10 (02/11/2026 a 06/11/2026)" }],
+      });
+    lineaBase = () => json({ ...LINEA_BASE, descripcion: "versión 2026-11-10, perspectiva costo, vigente desde 02/11/2026" });
+    const u = montar();
+    expect(await screen.findByText("versión 2026-11-10, perspectiva costo, vigente desde 02/11/2026")).toBeInTheDocument();
+    await u.click(screen.getByRole("tab", { name: "Valuaciones" }));
+    const tabla = await screen.findByRole("table", { name: "Valuaciones registradas" });
+    expect(within(tabla).getByText("2026-11-10")).toBeInTheDocument();
+    expect(within(tabla).getByText("02/11/2026 a 06/11/2026")).toBeInTheDocument();
+    const anular = screen.getByLabelText("Valuación");
+    expect(within(anular).getByRole("option", { name: "2026-11-10 (02/11/2026 a 06/11/2026)" })).toHaveValue("7");
+  });
+
+  test("el motivo del término cita partidas del usuario y sale tal cual (ronda 1)", async () => {
+    calculo = () => json({ ...CALCULO, terminos: { ...CALCULO.terminos!, reproyectado: "no proyectable" }, motivo_termino: "no proyectable: 2026-11-10" });
+    const u = montar();
+    await u.click(await screen.findByRole("tab", { name: "Alertas y reproyección" }));
+    expect(await screen.findByText("no proyectable: 2026-11-10")).toBeInTheDocument();
+  });
+
+  test("el corte que la API manda como fecha ISO se lee en dd/mm/aaaa; las decisiones ya vienen así (VB-19)", async () => {
+    calculo = () =>
+      json({
+        ...CALCULO,
+        decisiones: [{ Version: "OB-002", Opcion: "Más cuadrillas", Corte: "13/11/2026", Termino: "27/11/2026", Fuente: "acta 2026-11-10", Responsable: "ana" }],
+      });
+    const u = montar();
+    await u.click(await screen.findByRole("tab", { name: "Valor ganado" }));
+    await screen.findByRole("table", { name: "Indicadores de valor ganado" });
+    expect(screen.getByText(/^Corte 13\/11\/2026 \(día hábil 10\)/)).toBeInTheDocument();
+    expect(screen.getByText(/El costo de 10 USD del 01\/11\/2026/)).toBeInTheDocument();
+    await u.click(screen.getByRole("tab", { name: "Recuperación" }));
+    const decisiones = await screen.findByRole("table", { name: "Decisiones tomadas" });
+    expect(within(decisiones).getByText("13/11/2026")).toBeInTheDocument();
+    expect(within(decisiones).getByText("acta 2026-11-10")).toBeInTheDocument();
+  });
+
+  test("los feriados se escriben en dd/mm/aaaa y viajan a la API en AAAA-MM-DD (VB-19)", async () => {
+    const u = montar();
+    await screen.findByText(/perspectiva costo/);
+    const feriados = screen.getByLabelText("Feriados (fechas como 25/12/2026, separadas por comas)");
+    await u.type(feriados, "25/12/2026, 01/01/2027");
+    await u.click(screen.getByRole("button", { name: "Declarar línea base" }));
+    await screen.findByText("Línea base declarada.");
+    expect(cuerpoDe("/v1/control/linea-base")).toMatchObject({ feriados: "2026-12-25, 2027-01-01" });
+  });
+
+  test("un feriado imposible se rechaza antes de enviar, con la fecha que escribió la persona (ronda 1, punto 2)", async () => {
+    const u = montar();
+    await screen.findByText(/perspectiva costo/);
+    await u.type(screen.getByLabelText("Feriados (fechas como 25/12/2026, separadas por comas)"), "31/02/2026");
+    await u.click(screen.getByRole("button", { name: "Declarar línea base" }));
+    expect((await alertaConTexto()).textContent).toContain(
+      "Escriba los feriados como dd/mm/aaaa, separados por comas: «31/02/2026» no es una fecha.",
+    );
+    expect(cuerpoDe("/v1/control/linea-base")).toBeUndefined();
+  });
+
   test("las valuaciones se muestran como texto, sin interpretar el inspector", async () => {
     const u = montar();
     await u.click(await screen.findByRole("tab", { name: "Valuaciones" }));
@@ -273,10 +360,12 @@ describe("Control de obra", () => {
     await u.type(screen.getByLabelText("Período hasta"), "2026-11-20");
     await u.type(screen.getByLabelText("Partida 1"), "OB-A");
     await u.type(screen.getByLabelText("Cantidad 1"), "50");
-    await u.click(screen.getByRole("button", { name: "Agregar linea" }));
+    await u.click(screen.getByRole("button", { name: "Agregar línea" }));
     await u.type(screen.getByLabelText("Fuente (acta, oficio)"), "acta 3");
     await u.click(screen.getByRole("button", { name: "Registrar y controlar" }));
-    expect(await screen.findByText(/corte 2026-11-20, 2 hallazgo\(s\) de R13-R14 \(1 ERROR\)/)).toBeInTheDocument();
+    expect(
+      await screen.findByText("Valuación registrada: corte 20/11/2026, 2 hallazgo(s) en la revisión de la valuación (1 con severidad Error)."),
+    ).toBeInTheDocument();
     const cuerpo = cuerpoDe("/v1/control/valuaciones");
     expect(cuerpo).toMatchObject({ proyecto: "OB-S2", numero: "V-03", fuente: "acta 3" });
     expect(cuerpo?.lineas).toEqual([{ partida: "OB-A", cantidad: "50", fecha_medicion: "", observacion: "" }]);
@@ -319,10 +408,32 @@ describe("Control de obra", () => {
     expect(within(alertas).getByText("Retraso (SPI)")).toHaveAttribute("title", "AL-1");
     expect(within(alertas).queryByText("AL-1")).toBeNull();
     expect(within(alertas).getByText("0,8500 (supuesto declarado)")).toHaveAttribute("title", "0.8500 (SUPUESTO_DECLARADO)");
-    expect(screen.getByText("Término por el índice: dia 12 (2026-11-18)")).toBeInTheDocument();
+    expect(screen.getByText("Término por el índice: día 12 (18/11/2026)")).toBeInTheDocument();
     expect(screen.getByText(/Punto de equilibrio proyectado: no disponible/)).toBeInTheDocument();
     expect(screen.getByText(/V' = V/)).toBeInTheDocument();
     expect(screen.getByRole("table", { name: "Plan reproyectado" })).toBeInTheDocument();
+  });
+
+  test("la severidad de las alertas va con su icono y su nombre, y la descripcion en es-VE (VB-4)", async () => {
+    // Las severidades tal como las manda la API (`Severidad.name` del nucleo o «sin evaluar»).
+    calculo = () =>
+      json({
+        ...CALCULO,
+        alertas: [
+          { Alerta: "AL-1", Severidad: "ADVERTENCIA", Descripcion: "retraso: SPI 0.9780", Observado: "0.9780", Umbral: "0.9500 (SUPUESTO_DECLARADO)" },
+          { Alerta: "AL-2", Severidad: "sin evaluar", Descripcion: "CPI no disponible", Observado: "", Umbral: "" },
+        ],
+      });
+    const u = montar();
+    await u.click(await screen.findByRole("tab", { name: "Alertas y reproyección" }));
+    const alertas = await screen.findByRole("table", { name: "Alertas" });
+    const advertencia = within(alertas).getByText("Advertencia");
+    expect(advertencia.closest(".silice-sev")?.querySelector("svg")).not.toBeNull();
+    expect(within(alertas).queryByText("ADVERTENCIA")).toBeNull();
+    const sinEvaluar = within(alertas).getByText("Sin evaluar");
+    expect(sinEvaluar.closest(".silice-sev")?.querySelector("svg")).not.toBeNull();
+    expect(within(alertas).getByText("retraso: SPI 0,9780")).toHaveAttribute("title", "retraso: SPI 0.9780");
+    expect(within(alertas).queryByText("retraso: SPI 0.9780")).toBeNull();
   });
 
   test("sin valuaciones el calculo dice que hacer", async () => {
@@ -393,6 +504,43 @@ describe("logica del control", () => {
       horas_previas: "2",
     });
   });
+
+  test("descripcionEsVe pone en es-VE solo las cifras de las frases fijas de las alertas (VB-4)", () => {
+    expect(descripcionEsVe("retraso: SPI 0.9780")).toBe("retraso: SPI 0,9780");
+    expect(descripcionEsVe("sobrecosto: CPI 0.8125")).toBe("sobrecosto: CPI 0,8125");
+    expect(
+      descripcionEsVe(
+        "evaluar el reajuste (S1; LCP art. 133, a cotejar): el precio del corte desvía -1250.50 sobre un valor ganado de 4266.67",
+      ),
+    ).toBe("evaluar el reajuste (S1; LCP art. 133, a cotejar): el precio del corte desvía -1.250,50 sobre un valor ganado de 4.266,67");
+    expect(
+      descripcionEsVe("el punto de equilibrio proyectado sube más de 5.0 puntos porcentuales sobre el de la línea base"),
+    ).toBe("el punto de equilibrio proyectado sube más de 5,0 puntos porcentuales sobre el de la línea base");
+    // el codigo de una partida lo escribe el usuario: no se toca aunque parezca una cifra
+    const detenida = "la partida 1.01 tiene trabajo planificado y ningún avance (detenida)";
+    expect(descripcionEsVe(detenida)).toBe(detenida);
+    expect(descripcionEsVe("CPI no disponible")).toBe("CPI no disponible");
+  });
+
+  test("descripcionEsVe devuelve intacto un texto hostil de 100 000 caracteres en menos de un segundo (ronda 1, punto 5)", () => {
+    const hostiles = [
+      "x" + ": el precio del corte desvía 1 sobre un valor ganado de ".repeat(1_800) + "z",
+      "el punto de equilibrio proyectado sube más de " + "1".repeat(100_000) + "x",
+      ": el precio del corte desvía ".repeat(3_500),
+      // la frase calza y la cifra es enorme: el separador de miles de formatoEsVe es cuadratico en su largo
+      "retraso: SPI " + "1".repeat(100_000),
+      "evaluar el reajuste: el precio del corte desvía " + "9".repeat(50_000) + " sobre un valor ganado de " + "9".repeat(50_000),
+    ];
+    for (const texto of hostiles) {
+      const inicio = performance.now();
+      expect(descripcionEsVe(texto)).toBe(texto);
+      const ms = performance.now() - inicio;
+      console.log(`descripcionEsVe ${texto.length} car.: ${ms.toFixed(1)} ms`);
+      expect(ms).toBeLessThan(1_000);
+    }
+    // por debajo del tope sigue formateando
+    expect(descripcionEsVe("retraso: SPI 0.9780")).toBe("retraso: SPI 0,9780");
+  }, 120_000);
 
   test("las lineas sin partida ni cantidad no se mandan", () => {
     const vacia = { partida: "", cantidad: "", fecha_medicion: "2026-11-01", observacion: "" };

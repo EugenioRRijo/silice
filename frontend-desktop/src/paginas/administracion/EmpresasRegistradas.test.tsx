@@ -233,6 +233,78 @@ describe("Empresas registradas", () => {
       expect(fetchFalso).toHaveBeenCalledTimes(1);
     });
 
+    // VB-12: la confirmacion en linea reemplaza al boton y el foco caia a <body>; el lector de pantalla no la anunciaba.
+    test("al pedir la confirmación el foco va a «Cancelar» y, al cancelar, vuelve al botón que la abrió", async () => {
+      const usuario = userEvent.setup();
+      fetchFalso.mockResolvedValueOnce(json(CON_UNA));
+      montar();
+      await usuario.click(await screen.findByRole("button", { name: "Marcar como retirada" }));
+      expect(screen.getByRole("group", { name: "Confirmar" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Cancelar" })).toHaveFocus();
+      await usuario.click(screen.getByRole("button", { name: "Cancelar" }));
+      expect(screen.getByRole("button", { name: "Marcar como retirada" })).toHaveFocus();
+    });
+
+    test("con «Revocar» pasa igual: foco a «Cancelar» y de vuelta a «Revocar»", async () => {
+      const usuario = userEvent.setup();
+      fetchFalso.mockResolvedValueOnce(json(CON_UNA));
+      montar();
+      await usuario.type(await screen.findByLabelText("Motivo de la revocación"), "clave expuesta");
+      await usuario.click(screen.getByRole("button", { name: "Revocar" }));
+      expect(screen.getByRole("button", { name: "Cancelar" })).toHaveFocus();
+      await usuario.keyboard("{Enter}");
+      expect(screen.getByRole("button", { name: "Revocar" })).toHaveFocus();
+    });
+
+    // VB-22: sobre una clave ya revocada no hay nada que retirar ni que revocar.
+    test("con la clave ya revocada, «Marcar como retirada» y «Revocar» quedan deshabilitados y se explica", async () => {
+      fetchFalso.mockResolvedValueOnce(json({ ...CON_UNA, registradas: [{ ...AJENA, estado: "revocada" }] }));
+      montar();
+      expect(await screen.findByText(/Esta clave ya está revocada/)).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Marcar como retirada" })).toBeDisabled();
+      expect(screen.getByRole("button", { name: "Revocar" })).toBeDisabled();
+    });
+
+    // Punto 5 de la ronda 1: al confirmar, el boton de origen queda deshabilitado y el foco caia a <body>.
+    test("tras confirmar «Sí, revocar» el foco queda en la lista de empresas, no en <body>", async () => {
+      const usuario = userEvent.setup();
+      fetchFalso.mockResolvedValueOnce(json(CON_UNA));
+      fetchFalso.mockResolvedValueOnce(json({ ...CON_UNA, registradas: [{ ...AJENA, estado: "revocada" }] }));
+      montar();
+      await usuario.type(await screen.findByLabelText("Motivo de la revocación"), "clave expuesta");
+      await usuario.click(screen.getByRole("button", { name: "Revocar" }));
+      await usuario.click(screen.getByRole("button", { name: "Sí, revocar" }));
+      await screen.findByText("Clave revocada: los paquetes con ella ya no verifican.");
+      await waitFor(() => expect(screen.getByRole("combobox", { name: "Empresa" })).toHaveFocus());
+    });
+
+    test("tras confirmar «Sí, marcar como retirada» el foco queda en la lista de empresas", async () => {
+      const usuario = userEvent.setup();
+      fetchFalso.mockResolvedValueOnce(json(CON_UNA));
+      fetchFalso.mockResolvedValueOnce(json({ ...CON_UNA, registradas: [{ ...AJENA, estado: "retirada" }] }));
+      montar();
+      await usuario.click(await screen.findByRole("button", { name: "Marcar como retirada" }));
+      await usuario.click(screen.getByRole("button", { name: "Sí, marcar como retirada" }));
+      await screen.findByText("Clave marcada como retirada.");
+      await waitFor(() => expect(screen.getByRole("combobox", { name: "Empresa" })).toHaveFocus());
+    });
+
+    test("la explicación de la clave revocada es la descripción accesible de los botones deshabilitados", async () => {
+      fetchFalso.mockResolvedValueOnce(json({ ...CON_UNA, registradas: [{ ...AJENA, estado: "revocada" }] }));
+      montar();
+      await screen.findByText(/Esta clave ya está revocada/);
+      expect(screen.getByRole("button", { name: "Revocar" })).toHaveAccessibleDescription(/ya está revocada/);
+      expect(screen.getByRole("button", { name: "Marcar como retirada" })).toHaveAccessibleDescription(/ya está revocada/);
+    });
+
+    test("con la clave activa los dos botones siguen disponibles y no hay explicación", async () => {
+      fetchFalso.mockResolvedValueOnce(json(CON_UNA));
+      montar();
+      await screen.findByRole("button", { name: "Revocar" });
+      expect(screen.getByRole("button", { name: "Revocar" })).toBeEnabled();
+      expect(screen.queryByText(/ya está revocada/)).not.toBeInTheDocument();
+    });
+
     test("un rechazo de la API se muestra con su detalle", async () => {
       const usuario = userEvent.setup();
       fetchFalso.mockResolvedValueOnce(json(CON_UNA));

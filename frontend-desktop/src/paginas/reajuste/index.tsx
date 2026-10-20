@@ -1,17 +1,18 @@
 import { Button, Checkbox, InlineNotification, Select, SelectItem, Tab, TabList, TabPanel, TabPanels, Tabs, TextInput } from "@carbon/react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ErrorDeApi, pedir } from "../../api/cliente";
 import { AvisoError } from "../../comun/AvisoError";
 import { DescargaArchivo } from "../../comun/DescargaArchivo";
 import { EsqueletoPagina } from "../../comun/EsqueletoPagina";
 import { EstadoVacio } from "../../comun/EstadoVacio";
 import { TablaDensa } from "../../comun/TablaDensa";
+import { fechaEsVe } from "../../indicadores/formatoEsVe";
 import { useAplicacion } from "../../shell/contexto";
 import { useCarga } from "../inicio/useCarga";
 import type { Carga } from "../inicio/useCarga";
 import { FilasEditables } from "./FilasEditables";
 import type { ColumnaEditable } from "./FilasEditables";
-import { armarCuerpo, columnasDeResultado, filasDeResultado, formularioInicial } from "./logica";
+import { armarCuerpo, filasDeResultado, formularioInicial, marcasPorPeriodo, partirResultado, rotuloDeOpcion } from "./logica";
 import type { ClausulaTextos, Fila, Formulario } from "./logica";
 import "./reajuste.scss";
 
@@ -50,7 +51,7 @@ interface Calculo {
 }
 
 const COLUMNAS_COMPONENTE: ColumnaEditable[] = [
-  { clave: "componente", titulo: "Componente", fija: true },
+  { clave: "componente", titulo: "Componente", fija: true, presentar: rotuloDeOpcion },
   { clave: "serie", titulo: "Serie" },
   { clave: "peso", titulo: "Peso" },
 ];
@@ -69,11 +70,6 @@ const COLUMNAS_EJECUTADO: ColumnaEditable[] = [
 const PASOS = ["1. La cláusula", "2. Períodos y lo ejecutado"];
 const ETIQUETA_RESULTADO = "Escalatoria y comprobación, lado a lado";
 
-// 2027-02-10 -> 10/02/2027, como se ve en la pantalla de Streamlit.
-function fechaCorta(iso: string): string {
-  const [anio, mes, dia] = iso.split("-");
-  return `${dia}/${mes}/${anio}`;
-}
 
 // UC-18 (spec S1 §8): la cláusula de reajuste, los periodos con lo ejecutado y su fuente, la escalatoria y la
 // comprobación directa lado a lado, el guardado del estudio y su Excel. Toda cifra la calcula el servidor (RB-2);
@@ -144,6 +140,19 @@ function Formulario({
   // Cuenta las ediciones: una respuesta que llega despues de editar corresponde a datos viejos y se descarta.
   const edicion = useRef(0);
   const [paso, setPaso] = useState(0);
+  // VB-13: tras «Calcular», el foco va al título del resultado o al aviso de error (si no, se queda en el botón y el
+  // aviso aparece bajo el pliegue sin que nadie lo anuncie).
+  // Cada pedido de foco es un objeto nuevo: siempre provoca el render tras el cual el efecto lo cumple.
+  const [enfocar, setEnfocar] = useState<{ donde: "resultado" | "error" } | null>(null);
+  const tituloResultado = useRef<HTMLHeadingElement>(null);
+  const zonaError = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (enfocar === null) return;
+    const destino = enfocar.donde === "resultado" ? tituloResultado.current : zonaError.current;
+    destino?.focus({ preventScroll: true });
+    // A la vista arriba, sin animar (nada de desplazamiento suave: respeta prefers-reduced-motion por construcción).
+    destino?.scrollIntoView?.({ block: "start", behavior: "instant" });
+  }, [enfocar]);
 
   // Todo cambio del formulario retira el resultado y el aviso de guardado: ya no corresponden a lo escrito.
   const editar = (cambio: (f: Formulario) => Formulario) => {
@@ -165,6 +174,7 @@ function Formulario({
       return await pedir<T>(ruta, { metodo: "POST", cuerpo });
     } catch (e) {
       if (e instanceof ErrorDeApi && e.estado === 401) alExpirar();
+      // El detalle tal cual: las fechas del sistema ya llegan en dd/mm/aaaa (aplicacion/reajuste.py).
       setError(e);
       return undefined;
     } finally {
@@ -177,7 +187,9 @@ function Formulario({
     setReemplaza("");
     const marca = edicion.current;
     const respuesta = await enviar<Calculo>("/v1/reajuste/calcular", armarCuerpo(proyecto, form));
-    if (marca === edicion.current) setCalculo(respuesta ?? null);
+    if (marca !== edicion.current) return;
+    setCalculo(respuesta ?? null);
+    setEnfocar({ donde: respuesta ? "resultado" : "error" });
   }
 
   async function guardar() {
@@ -231,26 +243,26 @@ function Formulario({
                   <div className="silice-reajuste__rejilla">
                     <Select id="rj-periodicidad" labelText="Periodicidad" value={form.clausula.periodicidad} onChange={(e) => campo("periodicidad", e.target.value)}>
                       {contexto.periodicidades.map((p) => (
-                        <SelectItem key={p} value={p} text={p} />
+                        <SelectItem key={p} value={p} text={rotuloDeOpcion(p)} />
                       ))}
                     </Select>
                     <Select id="rj-mecanismo" labelText="Mecanismo" value={form.clausula.mecanismo} onChange={(e) => campo("mecanismo", e.target.value)}>
                       {contexto.mecanismos.map((m) => (
-                        <SelectItem key={m} value={m} text={m} />
+                        <SelectItem key={m} value={m} text={rotuloDeOpcion(m)} />
                       ))}
                     </Select>
                     <Select id="rj-pagadero" labelText="Mecanismo pagadero (solo con «ambos»)" value={form.clausula.mecanismo_pagadero} onChange={(e) => campo("mecanismo_pagadero", e.target.value)}>
-                      <SelectItem value="" text="" />
+                      <SelectItem value="" text="Ninguno" />
                       {contexto.mecanismos
                         .filter((m) => m !== "ambos")
                         .map((m) => (
-                          <SelectItem key={m} value={m} text={m} />
+                          <SelectItem key={m} value={m} text={rotuloDeOpcion(m)} />
                         ))}
                     </Select>
                     <TextInput id="rj-fuente-pagadero" labelText="Fuente del mecanismo pagadero" value={form.clausula.fuente_pagadero} onChange={(e) => campo("fuente_pagadero", e.target.value)} />
                     <Select id="rj-estructura" labelText="Estructura" value={form.clausula.estructura} onChange={(e) => campo("estructura", e.target.value)}>
                       {contexto.estructuras.map((x) => (
-                        <SelectItem key={x} value={x} text={x} />
+                        <SelectItem key={x} value={x} text={rotuloDeOpcion(x)} />
                       ))}
                     </Select>
                   </div>
@@ -339,18 +351,37 @@ function Formulario({
         </TabPanels>
       </Tabs>
 
-      <AvisoError error={error} titulo="No se pudo completar" alCerrar={() => setError(null)} />
+      {error !== null && error !== undefined && (
+        // Solo con un error: vacía, la zona sumaba un hueco de la rejilla.
+        <div ref={zonaError} tabIndex={-1} className="silice-reajuste__zona-error silice-reajuste__enfocable">
+          <AvisoError error={error} titulo="No se pudo completar" alCerrar={() => setError(null)} />
+        </div>
+      )}
 
       {calculo && (
         <section className="silice-reajuste__bloque" aria-labelledby="reajuste-resultado">
-          <h2 id="reajuste-resultado" className="cds--type-heading-compact-02">
+          <h2 id="reajuste-resultado" ref={tituloResultado} tabIndex={-1} className="cds--type-heading-compact-02 silice-reajuste__enfocable">
             Escalatoria y comprobación, lado a lado
           </h2>
           <TablaDensa
             etiqueta={ETIQUETA_RESULTADO}
-            columnas={columnasDeResultado(calculo.columnas)}
+            columnas={partirResultado(calculo.columnas).principal}
             filas={filasDeResultado(calculo.filas)}
           />
+          <h3 className="cds--type-heading-compact-01">En la otra moneda</h3>
+          <TablaDensa
+            etiqueta="En la otra moneda"
+            columnas={partirResultado(calculo.columnas).otra}
+            filas={filasDeResultado(calculo.filas)}
+          />
+          {marcasPorPeriodo(calculo.filas).length > 0 && (
+            <ul aria-label="Marcas por período" className="silice-reajuste__marcas cds--type-body-compact-01">
+              {marcasPorPeriodo(calculo.filas).map((marca) => (
+                <li key={marca}>{marca}</li>
+              ))}
+            </ul>
+          )}
+          <p className="silice-reajuste__nota cds--type-body-compact-01">{`Estado del estudio: ${calculo.estado}.`}</p>
           {calculo.avisos.map((aviso) => (
             <InlineNotification key={aviso} kind="warning" title="Aviso" subtitle={aviso} lowContrast hideCloseButton />
           ))}
@@ -366,7 +397,7 @@ function Formulario({
               <Select id="rj-reemplaza" labelText="Reemplaza al estudio parcial" value={reemplaza} onChange={(e) => setReemplaza(e.target.value)}>
                 <SelectItem value="" text="ninguno" />
                 {calculo.parciales.map((p) => (
-                  <SelectItem key={p.id} value={String(p.id)} text={`${p.id} (calculado el ${fechaCorta(p.fecha_calculo)})`} />
+                  <SelectItem key={p.id} value={String(p.id)} text={`${p.id} (calculado el ${fechaEsVe(p.fecha_calculo)})`} />
                 ))}
               </Select>
             )}

@@ -1,7 +1,8 @@
-import { Button, InlineNotification, Select, SelectItem, TextInput } from "@carbon/react";
-import { useCallback, useEffect, useState } from "react";
+import { Button, InlineNotification, Select, SelectItem } from "@carbon/react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { ErrorDeApi, pedir } from "../../api/cliente";
+import { CampoTexto } from "../../comun/CampoTexto";
 import { AvisoError } from "../../comun/AvisoError";
 import { EsqueletoPagina } from "../../comun/EsqueletoPagina";
 import { SubidaArchivo } from "../../comun/SubidaArchivo";
@@ -35,6 +36,20 @@ export default function EmpresasRegistradas() {
   const [motivo, setMotivo] = useState("");
   const [avisoFirmado, setAvisoFirmado] = useState<File | null>(null);
   const [cambio, setCambio] = useState<Cambio>(null);
+  // Foco de la confirmacion en linea (VB-12): al abrirla va a «Cancelar»; al cerrarla vuelve al boton que la abrio.
+  const cancelarRef = useRef<HTMLButtonElement>(null);
+  const retirarRef = useRef<HTMLButtonElement>(null);
+  const revocarRef = useRef<HTMLButtonElement>(null);
+  const abrio = useRef<Cambio>(null);
+  useEffect(() => {
+    if (cambio !== null) {
+      abrio.current = cambio;
+      cancelarRef.current?.focus();
+    } else if (abrio.current !== null) {
+      (abrio.current === "retirar" ? retirarRef : revocarRef).current?.focus();
+      abrio.current = null;
+    }
+  }, [cambio]);
 
   const fallar = useCallback(
     (e: unknown) => {
@@ -113,7 +128,13 @@ export default function EmpresasRegistradas() {
     setCambio(tipo);
   }
 
+  // Al confirmar, el boton de origen queda deshabilitado mientras se envia: el foco va a la lista de empresas.
+  function alTerminarCambio() {
+    document.getElementById("adm-ajena")?.focus();
+  }
+
   function cambiar(tipo: "retirar" | "revocar") {
+    abrio.current = null;
     setCambio(null);
     if (tipo === "retirar") {
       void enviar(
@@ -122,7 +143,7 @@ export default function EmpresasRegistradas() {
           adoptar(r);
           setAviso("Clave marcada como retirada.");
         },
-      );
+      ).then(alTerminarCambio);
       return;
     }
     const cuerpo = new FormData();
@@ -136,11 +157,13 @@ export default function EmpresasRegistradas() {
         setAvisoFirmado(null);
         setAviso("Clave revocada: los paquetes con ella ya no verifican.");
       },
-    );
+    ).then(alTerminarCambio);
   }
 
   if (datos === null) return error ? <AvisoError error={error} /> : <EsqueletoPagina />;
   const { registradas, metodos } = datos;
+  // Sobre una clave ya revocada no hay nada que retirar ni que revocar (VB-22).
+  const yaRevocada = registradas.find((f) => String(f.id) === elegida)?.estado === "revocada";
 
   return (
     <div className="silice-adm__secciones">
@@ -173,6 +196,7 @@ export default function EmpresasRegistradas() {
             value={elegida}
             onChange={(e) => {
               setElegida(e.target.value);
+              abrio.current = null; // cambiar de empresa no devuelve el foco a ningun boton
               setCambio(null);
             }}
           >
@@ -184,14 +208,14 @@ export default function EmpresasRegistradas() {
             Retirada: la empresa avisó que cambió de clave; sus paquetes anteriores a la fecha siguen valiendo.
             Revocada: ningún paquete con esa clave verifica.
           </p>
-          <TextInput
+          <CampoTexto
             id="adm-ajena-fecha"
             type="date"
             labelText="Fecha del retiro"
             value={fecha}
             onChange={(e) => setFecha(e.target.value)}
           />
-          <TextInput
+          <CampoTexto
             id="adm-ajena-motivo"
             labelText="Motivo de la revocación"
             value={motivo}
@@ -212,12 +236,17 @@ export default function EmpresasRegistradas() {
               </Button>
             </div>
           )}
+          {yaRevocada && (
+            <p id="adm-ajena-revocada" className="silice-adm__nota cds--type-body-compact-01">
+              Esta clave ya está revocada: ningún paquete con ella verifica y no admite más cambios.
+            </p>
+          )}
           {cambio === null ? (
             <div className="silice-adm__acciones">
-              <Button kind="tertiary" size="md" disabled={ocupada || elegida === ""} onClick={() => pedirConfirmacion("retirar")}>
+              <Button ref={retirarRef} kind="tertiary" size="md" disabled={ocupada || elegida === "" || yaRevocada} aria-describedby={yaRevocada ? "adm-ajena-revocada" : undefined} onClick={() => pedirConfirmacion("retirar")}>
                 Marcar como retirada
               </Button>
-              <Button kind="danger--tertiary" size="md" disabled={ocupada || elegida === ""} onClick={() => pedirConfirmacion("revocar")}>
+              <Button ref={revocarRef} kind="danger--tertiary" size="md" disabled={ocupada || elegida === "" || yaRevocada} aria-describedby={yaRevocada ? "adm-ajena-revocada" : undefined} onClick={() => pedirConfirmacion("revocar")}>
                 Revocar
               </Button>
             </div>
@@ -231,7 +260,7 @@ export default function EmpresasRegistradas() {
               <Button kind={cambio === "revocar" ? "danger" : "primary"} size="md" onClick={() => cambiar(cambio)}>
                 {cambio === "retirar" ? "Sí, marcar como retirada" : "Sí, revocar"}
               </Button>
-              <Button kind="ghost" size="md" onClick={() => setCambio(null)}>
+              <Button ref={cancelarRef} kind="ghost" size="md" onClick={() => setCambio(null)}>
                 Cancelar
               </Button>
             </div>
@@ -260,13 +289,13 @@ export default function EmpresasRegistradas() {
               Pida a la otra empresa que le lea su huella por teléfono (u otro canal distinto del que le mandó el
               archivo) y escríbala aquí.
             </p>
-            <TextInput
+            <CampoTexto
               id="adm-huella-leida"
               labelText="Huella leída por otro canal"
               value={huella}
               onChange={(e) => setHuella(e.target.value)}
             />
-            <TextInput
+            <CampoTexto
               id="adm-comprobada-con"
               labelText="Comprobada con (persona)"
               value={conQuien}

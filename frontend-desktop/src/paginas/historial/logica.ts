@@ -22,13 +22,8 @@ export function clasificar(errores: number, advertencias: number): Exclude<Resul
   return advertencias > 0 ? "solo_advertencias" : "limpia";
 }
 
-// «2026-10-18T14:32:05» -> «18/10/2026 14:32»; «2026-07-31» -> «31/07/2026». Lo que no sea ISO queda tal cual.
-export function fechaEsVe(iso: string): string {
-  const m = /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2}))?/.exec(iso);
-  if (!m) return iso;
-  const dia = `${m[3]}/${m[2]}/${m[1]}`;
-  return m[4] ? `${dia} ${m[4]}:${m[5]}` : dia;
-}
+// «2026-10-18T14:32:05» -> «18/10/2026 14:32»; «2026-07-31» -> «31/07/2026». Vive en formatoEsVe (VB-19).
+export { fechaEsVe } from "../../indicadores/formatoEsVe";
 
 // El motivo por el que los filtros de fecha no valen, en palabras de la persona; null si valen.
 export function filtrosInvalidos({ desde, hasta }: FiltrosHistorial): string | null {

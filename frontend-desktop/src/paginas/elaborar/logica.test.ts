@@ -7,8 +7,11 @@ import {
   lineaPendiente,
   lineaPropuesta,
   mapeoCodigos,
+  periodoAlServidor,
+  periodoAVista,
   textoDispersion,
   textoPropuestaRendimiento,
+  veredictoLegible,
 } from "./logica";
 import type { CuerpoCalculo, ItemComputo, RendimientoPorDeclarar } from "./tipos";
 
@@ -56,11 +59,13 @@ describe("logica de Elaborar", () => {
 
   test("las lineas de pendientes y propuestas siguen el texto de Streamlit", () => {
     expect(lineaPendiente({ origen_id: "o1", codigo_partida: "X", descripcion: "Zanja" })).toBe("o1 · X · Zanja");
-    expect(lineaPropuesta({ codigo: "Z", descripcion: "Zanja tipo", puntaje: 0.9137 })).toBe("Z · Zanja tipo (0.91)");
-    expect(lineaPropuesta({ codigo: "Z", descripcion: "d", puntaje: 1 })).toBe("Z · d (1.00)");
+    expect(lineaPropuesta({ codigo: "Z", descripcion: "Zanja tipo", puntaje: 0.9137 })).toBe("Z · Zanja tipo (0,91)");
+    expect(lineaPropuesta({ codigo: "Z", descripcion: "d", puntaje: 1 })).toBe("Z · d (1,00)");
   });
 
-  test("las lineas de rendimiento muestran los textos de la API sin convertirlos", () => {
+  // VB-6: las cifras se leen en es-VE (coma decimal, todos sus decimales) y la fecha dd/mm/aaaa; el rango se separa
+  // con punto y coma para no confundirlo con la coma decimal.
+  test("las lineas de rendimiento muestran las cifras de la API en es-VE, sin redondearlas", () => {
     const entrada: RendimientoPorDeclarar = {
       codigo_partida: "FIC-01",
       propuesta: {
@@ -69,11 +74,30 @@ describe("logica de Elaborar", () => {
       },
     };
     expect(textoPropuestaRendimiento(entrada)).toBe(
-      "rendimiento propuesto 8.123456 unidades por día (estimado del 2026-01-02)",
+      "rendimiento propuesto 8,123456 unidades por día (estimado del 02/01/2026)",
     );
     expect(textoDispersion(entrada)).toBe(
-      "Dispersión del histórico: 3 observaciones (1 medidas, 2 estimadas), media 8.10, rango [7.50, 9.00].",
+      "Dispersión del histórico: 3 observaciones (1 medidas, 2 estimadas), media 8,10, rango [7,50; 9,00].",
     );
+  });
+});
+
+describe("periodos del plan y veredicto (VB-6)", () => {
+  test("«Dia N» del nucleo se lee «Día N» y vuelve al servidor como «Dia N»", () => {
+    expect(periodoAVista("Dia 1")).toBe("Día 1");
+    expect(periodoAVista("Dia 12 [LB-01-EXC]")).toBe("Día 12 [LB-01-EXC]");
+    expect(periodoAlServidor("Día 1")).toBe("Dia 1");
+    expect(periodoAlServidor("Día 12 [LB-01-EXC]")).toBe("Dia 12 [LB-01-EXC]");
+  });
+  test("un periodo escrito a mano que no es «Dia N» no se toca", () => {
+    for (const p of ["Semana 2", "1", "", "Diario 3", "Día de pago"]) {
+      expect(periodoAVista(p)).toBe(p);
+      expect(periodoAlServidor(p)).toBe(p);
+    }
+  });
+  test("el veredicto se lee con mayuscula inicial", () => {
+    expect(veredictoLegible(true)).toBe("Cumple");
+    expect(veredictoLegible(false)).toBe("No cumple");
   });
 });
 

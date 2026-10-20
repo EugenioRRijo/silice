@@ -2,11 +2,14 @@
 // Los textos ya vienen presentados por la API; `valor` y `fraccion` son decimales exactos en texto y solo sirven para
 // dibujar (el numero que se lee es siempre el texto).
 import type { SerieDeCurva } from "../../comun/CurvaPlanAvance";
+import { centesimasEsVe, formatoMontoEsVe } from "../../indicadores/formatoEsVe";
 
 export interface Tarjeta {
   rotulo: string;
   valor: string;
   detalle: string;
+  // El monto sin redondear de una tarjeta de dinero ("" o ausente en las demas): va en el `title` (VB-21).
+  exacto?: string;
 }
 
 export interface Anillo {
@@ -91,6 +94,22 @@ export function seriesDeCurva(curvas: CurvasDelTablero): SerieDeCurva[] {
     rol: rolDeSerie(s.serie),
     puntos: [...s.puntos].sort((a, b) => a.orden - b.orden).map((p) => ({ periodo: p.periodo, valor: p.valor })),
   }));
+}
+
+// La etiqueta de cada porcion del anillo es el peso que manda la API, en es-VE («37,6 %»): no el porcentaje que
+// Carbon Charts recalcula con floats y escribe con punto (VB-21).
+export function etiquetaDePeso(desglose: Rubro[]): (d: { data: { group: string } }) => string {
+  const peso = new Map(desglose.map((r) => [r.rubro, r.peso]));
+  return (d) => formatoMontoEsVe(peso.get(d.data.group) ?? "");
+}
+
+// El numero del centro del anillo: el total del contrato de la API en centesimas («95.066,60»), no la suma en float de
+// las porciones («95.066,60006249999»). Sin la tarjeta del total, null (se deja el del grafico).
+export function centroDelAnillo(tarjetas: Tarjeta[]): string | null {
+  const total = tarjetas.find((t) => t.rotulo === "Total del contrato");
+  if (!total) return null;
+  if (total.exacto) return centesimasEsVe(total.exacto);
+  return formatoMontoEsVe(total.valor.split(" ")[0] ?? total.valor);
 }
 
 export function datosDeDesglose(desglose: Rubro[]): { group: string; value: number }[] {

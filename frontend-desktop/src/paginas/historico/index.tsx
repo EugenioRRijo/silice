@@ -3,6 +3,7 @@ import { useState } from "react";
 import { AvisoError } from "../../comun/AvisoError";
 import { EsqueletoPagina } from "../../comun/EsqueletoPagina";
 import { TablaDensa } from "../../comun/TablaDensa";
+import { fechaEsVe, formatoEsVe } from "../../indicadores/formatoEsVe";
 import { useAplicacion } from "../../shell/contexto";
 import { useCarga } from "../inicio/useCarga";
 import { aPorcentaje, fechaValida, rangoInvertido } from "./porcentaje";
@@ -32,7 +33,8 @@ function rutaDe({ insumo, desde, hasta }: Filtros): string {
 const fechaMala = (t: string) => t !== "" && !fechaValida(t);
 
 // «Histórico de cambios de precio» (UC-02, solo lectura): filtros por insumo y fechas; la tabla muestra los
-// montos tal como los manda la API y la variación en por ciento.
+// montos de la API en es-VE (el texto original queda en el `title`), la fecha dd/mm/aaaa y la variación en por
+// ciento. A la API las fechas se envían AAAA-MM-DD, como las da el selector de fecha (VB-19).
 export default function PaginaHistorico() {
   const { alExpirar } = useAplicacion();
   const [borrador, setBorrador] = useState<Filtros>({ insumo: "", desde: "", hasta: "" });
@@ -64,7 +66,8 @@ export default function PaginaHistorico() {
         <TextInput
           id="hist-desde"
           size="sm"
-          labelText="Desde (AAAA-MM-DD)"
+          type="date"
+          labelText="Desde"
           value={borrador.desde}
           invalid={fechaMala(borrador.desde)}
           invalidText="Fecha inválida"
@@ -73,7 +76,8 @@ export default function PaginaHistorico() {
         <TextInput
           id="hist-hasta"
           size="sm"
-          labelText="Hasta (AAAA-MM-DD)"
+          type="date"
+          labelText="Hasta"
           value={borrador.hasta}
           invalid={fechaMala(borrador.hasta)}
           invalidText="Fecha inválida"
@@ -101,11 +105,11 @@ export default function PaginaHistorico() {
         <TablaDensa
           etiqueta="Cambios de precio"
           columnas={[
-            { clave: "fecha", titulo: "Fecha" },
+            { clave: "fecha", titulo: "Fecha", presentar: fechaEsVe },
             { clave: "insumo", titulo: "Insumo" },
-            { clave: "precio_anterior", titulo: "Precio anterior", numerica: true },
-            { clave: "precio_nuevo", titulo: "Precio nuevo", numerica: true },
-            { clave: "variacion_pct", titulo: "Variación (%)", numerica: true },
+            { clave: "precio_anterior", titulo: "Precio anterior", numerica: true, presentar: formatoEsVe },
+            { clave: "precio_nuevo", titulo: "Precio nuevo", numerica: true, presentar: formatoEsVe },
+            { clave: "variacion_pct", titulo: "Variación (%)", numerica: true, presentar: formatoEsVe },
           ]}
           filas={carga.datos.map((c, i) => ({
             id: String(i),

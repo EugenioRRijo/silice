@@ -15,6 +15,28 @@ interface Acerca {
   modulos: { nombre: string; instalado: boolean }[];
 }
 
+// «ins_0003_auditoria_libro» es el nombre de una migracion: a la persona se le dice si la base esta al dia o en que
+// version va (VB-20).
+function numeroDeVersion(revision: string): number | null {
+  const m = /^[a-z]+_(\d+)/.exec(revision);
+  return m ? Number(m[1]) : null;
+}
+
+const SIN_DATO: Record<string, string> = {
+  "sin base": "Sin base",
+  ilegible: "Ilegible",
+  "sin revisiones": "Sin revisiones",
+  "sin alembic_version": "Sin información de versión",
+};
+
+export function estadoDeLaBase(revision: string, ultima: string): string {
+  const actual = numeroDeVersion(revision);
+  const tope = numeroDeVersion(ultima);
+  if (actual === null) return SIN_DATO[revision] ?? "Versión desconocida";
+  if (tope === null) return `Versión ${actual}`;
+  return actual === tope ? `Al día (versión ${actual})` : `Versión ${actual}; la última es la ${tope}`;
+}
+
 function Fila({ rotulo, valor }: { rotulo: string; valor: string }) {
   return (
     <StructuredListRow>
@@ -52,8 +74,8 @@ export default function PaginaAcerca() {
       <p className="cds--type-body-compact-01">Versión: {d.version}</p>
       <StructuredListWrapper isCondensed aria-label="Bases y carpeta de datos">
         <StructuredListBody>
-          <Fila rotulo="Base de la instalación" valor={`${d.revision_instalacion} (la última es ${d.head_instalacion})`} />
-          <Fila rotulo="Base del caso abierto" valor={`${d.revision_caso} (la última es ${d.head_caso})`} />
+          <Fila rotulo="Base de la instalación" valor={estadoDeLaBase(d.revision_instalacion, d.head_instalacion)} />
+          <Fila rotulo="Base del caso abierto" valor={estadoDeLaBase(d.revision_caso, d.head_caso)} />
           {d.carpeta_datos !== null && <Fila rotulo="Carpeta de datos" valor={d.carpeta_datos} />}
         </StructuredListBody>
       </StructuredListWrapper>

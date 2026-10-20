@@ -15,6 +15,7 @@ valuaciones V-01 y V-02, otra solo con la línea base y otra sin línea base. Lo
 
 from __future__ import annotations
 
+import re
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -37,6 +38,7 @@ from tests.fixtures.sesion_web import (
 )
 
 P = {"proyecto": ob.NOMBRE}
+FRONT_CONTROL = Path(__file__).resolve().parents[2] / "frontend-desktop/src/paginas/control"
 
 
 def _base(ruta: Path, *, linea: bool, valuaciones: bool) -> Path:
@@ -133,6 +135,7 @@ def test_la_linea_base_vigente_y_los_parametros_con_su_naturaleza() -> None:
     datos = _con_clave().get("/v1/control/linea-base", params=P).json()
     assert datos["tiene_linea_base"] is True and datos["hay_valuaciones"] is True
     assert "versión OB-001, perspectiva costo" in datos["descripcion"]
+    assert datos["descripcion"].endswith("día(s) hábil(es) por período")  # VB-5
     assert datos["versiones"] == ["OB-001"]
     por_nombre = {p["parametro"]: p for p in datos["parametros"]}
     assert por_nombre["spi_error"]["naturaleza"] == "SUPUESTO_DECLARADO"
@@ -211,6 +214,28 @@ def test_un_parametro_fuera_de_rango_da_422() -> None:
     )
 
 
+def test_un_parametro_desconocido_y_el_si_con_tilde() -> None:
+    # VB-5: el mensaje acentuado; el «sí» que muestra la línea base se puede mandar de vuelta.
+    navegador, cabeceras = _arma()
+    cuerpo = {**P, "parametros": [{"parametro": "magia", "valor": "1"}], "fuente": "x"}
+    respuesta = navegador.post("/v1/control/parametros", json=cuerpo, headers=cabeceras)
+    assert respuesta.status_code == 422
+    assert respuesta.json()["detalle"] == "parámetro desconocido: 'magia'"
+    valores = {
+        p["parametro"]: p["valor"]
+        for p in navegador.get("/v1/control/linea-base", params=P).json()["parametros"]
+    }
+    assert valores["fcas_en_horas_extra"] == "sí"
+    cuerpo = {
+        **P,
+        "parametros": [{"parametro": "fcas_en_horas_extra", "valor": "no"}],
+        "fuente": "x",
+    }
+    assert navegador.post("/v1/control/parametros", json=cuerpo, headers=cabeceras).json() == {
+        "cambiados": 1
+    }
+
+
 def test_escribir_exige_csrf_y_el_rol_que_controla() -> None:
     navegador, _ = con_cuenta(app, "ana")
     cuerpo = {**P, "parametros": [], "fuente": "x"}
@@ -226,10 +251,56 @@ def test_escribir_exige_csrf_y_el_rol_que_controla() -> None:
 def test_las_valuaciones_guardadas_con_su_estado_y_las_que_se_pueden_anular() -> None:
     datos = _con_clave().get("/v1/control/valuaciones", params=P).json()
     assert [f["Numero"] for f in datos["filas"]] == ["V-01", "V-02"]
-    assert datos["filas"][0]["Periodo"] == "2026-11-02 a 2026-11-06"
+    assert datos["filas"][0]["Periodo"] == "02/11/2026 a 06/11/2026"  # VB-19: dd/mm/aaaa
+    assert datos["filas"][0]["Fecha"] == "09/11/2026"
     assert datos["filas"][0]["Inspector"] == ob.INSPECTOR
     assert [a["rotulo"].split(" ")[0] for a in datos["anulables"]] == ["V-01", "V-02"]
     assert datos["corte_por_defecto"] == "2026-11-13"
+
+
+def _columnas_del_front(nombre: str) -> list[str]:
+    """Los literales de `export const <nombre> = [...]` en `src/paginas/control/logica.ts`."""
+    fuente = (FRONT_CONTROL / "logica.ts").read_text(encoding="utf-8")
+    bloque = re.search(rf"export const {nombre} = \[(.*?)\];", fuente, re.DOTALL)
+    assert bloque is not None, f"{nombre} no esta en logica.ts"
+    return re.findall(r'"([^"]*)"', bloque.group(1))
+
+
+def test_cada_columna_de_valuaciones_del_front_es_una_clave_de_la_respuesta_real() -> None:
+    # VB-3: la tabla busca cada celda por su clave; una clave que la API no manda deja la
+    # columna vacia («Número» contra «Numero»). Oraculo: las filas que devuelve la API de verdad.
+    filas = _con_clave().get("/v1/control/valuaciones", params=P).json()["filas"]
+    assert filas, "la obra OB-S2 trae V-01 y V-02"
+    columnas = _columnas_del_front("COLUMNAS_VALUACIONES")
+    assert columnas, "el front declara las columnas de valuaciones"
+    for fila in filas:
+        assert [c for c in columnas if c not in fila] == []
+
+
+def test_un_numero_de_valuacion_con_forma_de_fecha_no_se_reescribe(
+    _plantillas: dict[str, Path], tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Ronda 1 del árbitro, punto 1: la fecha se formatea solo en su ranura; el número lo escribió
+    # el usuario y sale tal cual en la tabla y en el rótulo de «Anular».
+    _usar(_plantillas, "solo_linea", tmp_path, monkeypatch)
+    navegador, cabeceras = _arma()
+    cuerpo = {
+        **P,
+        "numero": "2026-11-10",
+        "desde": "2026-11-02",
+        "hasta": "2026-11-06",
+        "fecha": "2026-11-09",
+        "lineas": [{"partida": "OB-A", "cantidad": "40"}],
+        "fuente": ob.FUENTE,
+    }
+    respuesta = navegador.post("/v1/control/valuaciones", json=cuerpo, headers=cabeceras)
+    assert respuesta.status_code == 200, respuesta.text
+    datos = navegador.get("/v1/control/valuaciones", params=P).json()
+    assert datos["filas"][0]["Numero"] == "2026-11-10"
+    assert datos["filas"][0]["Periodo"] == "02/11/2026 a 06/11/2026"
+    assert [a["rotulo"] for a in datos["anulables"]] == ["2026-11-10 (02/11/2026 a 06/11/2026)"]
+    calculo = navegador.get("/v1/control/calculo", params=P).json()
+    assert re.fullmatch(r"día \d+ \(\d{2}/\d{2}/\d{4}\)", calculo["terminos"]["plan_base"])
 
 
 def test_registrar_una_valuacion_controla_al_corte_y_el_responsable_sale_de_la_sesion(
@@ -355,6 +426,9 @@ def test_un_archivo_que_no_es_un_libro_se_rechaza_entero_con_422() -> None:
         headers=cabeceras,
     )
     assert respuesta.status_code == 422
+    assert respuesta.json()["detalle"] == (
+        "El archivo no es un libro .xlsx legible; no se importó nada."
+    )
 
 
 # --- cálculo: valor ganado, alertas y reproyección -------------------------------------------
@@ -368,7 +442,7 @@ def test_el_calculo_trae_los_indicadores_de_la_memoria() -> None:
     assert ind["BAC (USD)"]["Valor"] == "4000.00"
     assert ind["SPI"]["Valor"] == "0.8000"
     assert ind["CPI"]["Valor"] == "0.9375"
-    assert ind["EAC (indice BAC/CPI) (USD)"]["Valor"] == "4266.67"
+    assert ind["EAC (índice BAC/CPI) (USD)"]["Valor"] == "4266.67"
 
 
 def test_la_curva_pv_ev_ac_cierra_en_el_corte() -> None:
@@ -410,9 +484,9 @@ def test_la_escalatoria_sin_fuente_da_422() -> None:
 
 
 def test_un_metodo_de_precios_desconocido_da_422() -> None:
-    assert (
-        _con_clave().get("/v1/control/calculo", params={**P, "metodo": "magia"}).status_code == 422
-    )
+    respuesta = _con_clave().get("/v1/control/calculo", params={**P, "metodo": "magia"})
+    assert respuesta.status_code == 422
+    assert respuesta.json()["detalle"].startswith("método de precios 'magia' desconocido")
 
 
 def test_sin_linea_base_o_sin_valuaciones_el_estado_lo_dice(
@@ -491,7 +565,8 @@ def test_elegir_exige_decidir_la_recuperacion_y_una_opcion_conocida() -> None:
     )
     navegador, cabeceras = _arma()
     respuesta = navegador.post("/v1/control/recuperacion/elegir", json=cuerpo, headers=cabeceras)
-    assert respuesta.status_code == 422 and "opcion" in respuesta.json()["detalle"].lower()
+    assert respuesta.status_code == 422
+    assert respuesta.json()["detalle"].startswith("opción 'x' desconocida")
 
 
 # --- V-11: el selector de la cabecera manda el `codigo` de GET /v1/proyectos ----------------

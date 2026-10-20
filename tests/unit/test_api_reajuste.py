@@ -53,9 +53,9 @@ from tests.fixtures.sesion_web import (
 
 CIERRE = datetime(2027, 3, 5, 10, 0)  # después del último día de febrero: el estudio cierra
 A_MITAD = datetime(2027, 2, 10, 10, 0)  # a mitad del periodo: «parcial al corte»
-FALTA_INICIO = "Escriba «Inicio del contrato»: es obligatorio (UC-18)."
-PERIODO_FANTASMA = "Periodo 7: no hay un periodo con ese numero en la tabla."
-SIN_VERSION = f"El proyecto {NOMBRE!r} no tiene una version '009'."
+FALTA_INICIO = "Escriba «Inicio del contrato»: es obligatorio."
+PERIODO_FANTASMA = "Período 7: no hay un período con ese número en la tabla."
+SIN_VERSION = f"El proyecto {NOMBRE!r} no tiene una versión '009'."
 PRIVADO = "texto-que-no-debe-volver-en-un-422"
 
 
@@ -204,8 +204,11 @@ def test_a_mitad_de_periodo_el_estudio_es_parcial_y_lo_dice(monkeypatch) -> None
     monkeypatch.setattr(ruta_reajuste, "ahora", lambda: A_MITAD)
     cuerpo = _post("calcular").json()
     assert cuerpo["estado"] == "parcial al corte"
-    assert cuerpo["mensaje_parcial"].startswith("El ultimo periodo aun no cierra")
-    assert "(S1-R21)" in cuerpo["mensaje_parcial"]
+    # VB-5: con tildes y sin el código de la especificación; la fecha del corte en dd/mm/aaaa.
+    assert cuerpo["mensaje_parcial"] == (
+        "El último período aún no cierra: el estudio se guardará «parcial al corte» al "
+        "10/02/2027 y se reemplaza al cerrar el mes."
+    )
 
 
 @pytest.mark.parametrize(
@@ -214,7 +217,7 @@ def test_a_mitad_de_periodo_el_estudio_es_parcial_y_lo_dice(monkeypatch) -> None
         ({"clausula": {**CAMPOS, "fecha_inicio": ""}}, FALTA_INICIO),
         (
             {"clausula": {**CAMPOS, "duracion_meses": "dos años"}},
-            "Duracion (meses): escriba un numero entero de meses.",
+            "Duración (meses): escriba un número entero de meses.",
         ),
         (
             {"ejecutado": [{"periodo": "7", "partida": "S1-R01", "cantidad": "1", "fuente": "x"}]},
@@ -226,6 +229,23 @@ def test_a_mitad_de_periodo_el_estudio_es_parcial_y_lo_dice(monkeypatch) -> None
 def test_un_dato_malo_es_422_con_el_mensaje_de_la_pantalla(cambios: dict, dice: str) -> None:
     r = _post("calcular", **cambios)
     assert (r.status_code, r.json()) == (422, {"detalle": dice})
+
+
+def test_un_mensaje_del_nucleo_sale_con_tilde_y_el_codigo_del_usuario_intacto() -> None:
+    # Ronda 1, punto 3: «la partida X no esta en la version…» del núcleo, con tilde; el código
+    # con forma de fecha lo escribió la persona y no se reescribe (punto 1).
+    ejecutado = [{"periodo": "1", "partida": "2026-11-10", "cantidad": "1", "fuente": "AV-01"}]
+    # con la versión 002 de comprobación, el núcleo se queja primero de que no la valora
+    r = _post("calcular", ejecutado=ejecutado)
+    detalle = (
+        "No se pudo calcular: la versión 002 no valora 2026-11-10: no sirve de comprobación "
+        "para ese período"
+    )
+    assert (r.status_code, r.json()) == (422, {"detalle": detalle})
+    sin_comprobacion = [{**PERIODOS[0], "version_comprobacion": ""}]
+    r = _post("calcular", ejecutado=ejecutado, periodos=sin_comprobacion)
+    detalle = "No se pudo calcular: la partida 2026-11-10 no está en la versión del contrato"
+    assert (r.status_code, r.json()) == (422, {"detalle": detalle})
 
 
 def test_un_cuerpo_invalido_es_422_y_no_devuelve_lo_enviado() -> None:

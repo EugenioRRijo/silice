@@ -17,7 +17,7 @@ redondea. Sin Streamlit, sin `pandas` y sin `ui.caso`; lo vigila
 from __future__ import annotations
 
 import re
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, replace
 from datetime import date
 from decimal import Decimal, InvalidOperation
@@ -84,6 +84,7 @@ __all__ = [
     "ControlInvalido",
     "PrecioElegido",
     "PLANTILLAS_DEL_NUCLEO",
+    "catalogo_de_frases",
     "alertas_en_filas",
     "con_tildes",
     "corte_por_defecto",
@@ -533,15 +534,16 @@ def estado_de_valuaciones(resultado: ResultadoControl) -> dict[str, str]:
 
 
 def filas_de_valuaciones(resultado: ResultadoControl) -> list[dict[str, str]]:
-    """Las valuaciones guardadas, en solo lectura, con su fecha de registro y su Estado."""
+    """Las valuaciones guardadas, en solo lectura, con su fecha de registro y su Estado. Las fechas
+    van en dd/mm/aaaa, cada una en su columna: el número y el inspector los escribió el usuario."""
     estados = estado_de_valuaciones(resultado)
     return [
         {
             "Numero": v.numero or f"#{v.id}",
-            "Periodo": f"{v.desde.isoformat()} a {v.hasta.isoformat()}",
-            "Fecha": "" if v.fecha is None else v.fecha.isoformat(),
+            "Periodo": f"{v.desde:%d/%m/%Y} a {v.hasta:%d/%m/%Y}",
+            "Fecha": "" if v.fecha is None else f"{v.fecha:%d/%m/%Y}",
             "Inspector": v.inspector,
-            "Registrada": "" if v.fecha_hora is None else v.fecha_hora.strftime("%Y-%m-%d %H:%M"),
+            "Registrada": "" if v.fecha_hora is None else v.fecha_hora.strftime("%d/%m/%Y %H:%M"),
             "Estado": estados.get(v.clave, "sin hallazgos"),
         }
         for v in resultado.instantanea.valuaciones
@@ -591,22 +593,22 @@ def filas_de_indicadores(sesion: Session, resultado: ResultadoControl) -> list[d
         monto("CV", ind.cv, con_tildes(no.get("CV", ""))),
         indice("SPI", ind.spi, con_tildes(no.get("SPI", ""))),
         indice("CPI", ind.cpi, con_tildes(no.get("CPI", ""))),
-        monto("EAC (indice BAC/CPI)", ind.eac_indice, con_tildes(no.get("EAC", ""))),
+        monto("EAC (índice BAC/CPI)", ind.eac_indice, con_tildes(no.get("EAC", ""))),
         monto("EAC (sistema)", ind.eac_sistema, con_tildes(no.get("EAC", ""))),
         monto("VAC", ind.vac, con_tildes(no.get("VAC", ""))),
         {
-            "Indicador": "Termino por el indice (dia habil)",
+            "Indicador": "Término por el índice (día hábil)",
             "Valor": NO_APLICA if ind.termino_indice is None else str(ind.termino_indice),
             "En la otra moneda": "",
             "Nota": "",
         },
-        monto("Desvio de precio", sep.precio, con_tildes(sep.no_disponible.get("precio", ""))),
-        monto("Desvio de consumo", sep.consumo, con_tildes(sep.no_disponible.get("consumo", ""))),
+        monto("Desvío de precio", sep.precio, con_tildes(sep.no_disponible.get("precio", ""))),
+        monto("Desvío de consumo", sep.consumo, con_tildes(sep.no_disponible.get("consumo", ""))),
     ]
     if sep.metodo:
         filas.append(
             {
-                "Indicador": "Metodo y fuente del precio del corte",
+                "Indicador": "Método y fuente del precio del corte",
                 "Valor": sep.metodo,
                 "En la otra moneda": "",
                 "Nota": sep.fuente,
@@ -618,7 +620,7 @@ def filas_de_indicadores(sesion: Session, resultado: ResultadoControl) -> list[d
                 "Indicador": "Tasa del corte",
                 "Valor": NO_DISPONIBLE,
                 "En la otra moneda": "",
-                "Nota": "sin tasa aplicable a la fecha del corte (S1-R2)",
+                "Nota": "sin tasa aplicable a la fecha del corte",
             }
         )
     return filas
@@ -811,10 +813,14 @@ PLANTILLAS_DEL_NUCLEO: tuple[tuple[str, str], ...] = (
 #: desglose «no aplica (...)» no usa esas regex y no lleva tope.
 LARGO_MAXIMO_A_CORREGIR = 2_000
 
+#: Un hueco acotado: su expresión y, si lo que calza se presenta de otra forma (una fecha del
+#: sistema en dd/mm/aaaa), la función que lo presenta.
+Hueco = str | tuple[str, Callable[[str], str]]
+
 #: Huecos con forma conocida: las cifras que el núcleo imprime. Acotarlos por clase hace lineal la
 #: coincidencia (un `.+` voraz encadenado sería cúbico). Todo hueco no listado es texto del usuario
 #: y cada plantilla tiene a lo sumo uno, de modo que tampoco encadena.
-_HUECOS_NUMERICOS = {
+_HUECOS_NUMERICOS: dict[str, Hueco] = {
     "termino": r"\d+",
     "retraso": r"\d+",
     "plan": r"\d+",
@@ -833,24 +839,59 @@ _MOTIVOS_POR_PARTIDA = {
 }
 
 
-def _compilar(crudo: str) -> re.Pattern[str]:
+def _expresion(hueco: Hueco) -> str:
+    return hueco if isinstance(hueco, str) else hueco[0]
+
+
+def _compilar(crudo: str, huecos: Mapping[str, Hueco] = _HUECOS_NUMERICOS) -> re.Pattern[str]:
     """La frase del núcleo como expresión: el texto fijo literal, cada hueco `{x}` un dato."""
     partes = re.split(r"\{(\w+)\}", crudo)
-    huecos = partes[1::2]
-    libres = [h for h in huecos if h not in _HUECOS_NUMERICOS]
+    libres = [h for h in partes[1::2] if h not in huecos]
     if len(libres) > 1:
         raise ValueError(f"la plantilla {crudo!r} encadena huecos de texto libre")
     patron = "".join(
-        f"(?P<{p}>{_HUECOS_NUMERICOS.get(p, '.+')})" if i % 2 else re.escape(p)
+        f"(?P<{p}>{_expresion(huecos[p]) if p in huecos else '.+'})" if i % 2 else re.escape(p)
         for i, p in enumerate(partes)
     )
     return re.compile(patron, re.DOTALL)
 
 
+def catalogo_de_frases(
+    plantillas: Sequence[tuple[str, str]],
+    huecos: Mapping[str, Hueco] = _HUECOS_NUMERICOS,
+    *,
+    largo_maximo: int = LARGO_MAXIMO_A_CORREGIR,
+) -> Callable[[str], str]:
+    """El corrector de un catálogo de frases fijas del núcleo (T8b; lo usa también Reajuste).
+
+    Devuelve una función pura que, si el texto COMPLETO calza con una plantilla, lo reescribe con su
+    versión con tildes; si no, lo devuelve igual. Lo que calza en un hueco libre (texto del usuario)
+    vuelve tal cual; un hueco acotado con función (una fecha) se presenta con ella. Más largo que
+    `largo_maximo` vuelve intacto sin probar ninguna expresión. Cada plantilla lleva a lo sumo un
+    hueco libre (`_compilar` lo exige), así que el costo es lineal en el largo.
+    """
+    compilado = tuple((_compilar(crudo, huecos), con_tilde) for crudo, con_tilde in plantillas)
+    presentar = {nombre: h[1] for nombre, h in huecos.items() if not isinstance(h, str)}
+
+    def corregir(texto: str) -> str:
+        if len(texto) > largo_maximo:
+            return texto
+        for patron, con_tilde in compilado:
+            calce = patron.fullmatch(texto)
+            if calce is not None:
+                return con_tilde.format(
+                    **{
+                        nombre: presentar[nombre](valor) if nombre in presentar else valor
+                        for nombre, valor in calce.groupdict().items()
+                    }
+                )
+        return texto
+
+    return corregir
+
+
 _NO_APLICA = re.compile(r"no aplica \((?P<lista>.+)\)", re.DOTALL)
-_CATALOGO_COMPILADO = tuple(
-    (_compilar(crudo), con_tilde) for crudo, con_tilde in PLANTILLAS_DEL_NUCLEO
-)
+_CORREGIR_FRASE = catalogo_de_frases(PLANTILLAS_DEL_NUCLEO)
 
 
 def con_tildes(texto: str) -> str:
@@ -875,13 +916,7 @@ def con_tildes(texto: str) -> str:
             corregido = _MOTIVOS_POR_PARTIDA.get(motivo)
             items.append(f"{codigo}{separador}{corregido}" if separador and corregido else item)
         return "no aplica (" + "; ".join(items) + ")"
-    if len(texto) > LARGO_MAXIMO_A_CORREGIR:
-        return texto
-    for patron, con_tilde in _CATALOGO_COMPILADO:
-        calce = patron.fullmatch(texto)
-        if calce is not None:
-            return con_tilde.format(**calce.groupdict())
-    return texto
+    return _CORREGIR_FRASE(texto)
 
 
 def alertas_en_filas(resultado: ResultadoControl) -> list[dict[str, str]]:
@@ -973,8 +1008,8 @@ def filas_de_decisiones(sesion: Session, proyecto: str) -> list[dict[str, str]]:
         {
             "Version": d.version,
             "Opcion": d.opcion,
-            "Corte": d.fecha_corte.isoformat(),
-            "Termino": d.termino.isoformat(),
+            "Corte": f"{d.fecha_corte:%d/%m/%Y}",
+            "Termino": f"{d.termino:%d/%m/%Y}",
             "Fuente": d.fuente,
             "Responsable": d.responsable,
         }
@@ -1068,7 +1103,7 @@ def filas_de_parametros(parametros: ParametrosControl) -> list[dict[str, str]]:
     for campo, que_es, naturaleza in PARAMETROS_EDITABLES:
         valor = getattr(parametros, campo)
         texto = (
-            ("si" if valor else "no")
+            ("sí" if valor else "no")
             if isinstance(valor, bool)
             else format(valor, "f")
             if (isinstance(valor, Decimal))
@@ -1092,9 +1127,9 @@ def parametros_desde_filas(filas: Sequence[Mapping[str, object]]) -> ParametrosC
         base = getattr(muestra, campo)
         texto = valores[campo]
         if isinstance(base, bool):
-            if texto.lower() not in ("si", "no"):
-                raise ControlInvalido(f"{campo}: escriba si o no")
-            leidos[campo] = texto.lower() == "si"
+            if texto.casefold() not in ("si", "sí", "no"):
+                raise ControlInvalido(f"{campo}: escriba sí o no")
+            leidos[campo] = texto.casefold() != "no"
         elif isinstance(base, int):
             numero = _decimal(texto, campo)
             if numero != numero.to_integral_value():
@@ -1183,8 +1218,8 @@ def describir_linea_base(sesion: Session, proyecto: str) -> str | None:
     calendario = fila.calendario
     return (
         f"versión {version.codigo}, perspectiva {fila.perspectiva}, vigente desde "
-        f"{fila.desde.isoformat()}; inicio de obra {calendario.fecha_inicio.isoformat()} con "
-        f"{calendario.dias_por_periodo} día(s) hábil(es) por periodo"
+        f"{fila.desde:%d/%m/%Y}; inicio de obra {calendario.fecha_inicio:%d/%m/%Y} con "
+        f"{calendario.dias_por_periodo} día(s) hábil(es) por período"
     )
 
 
@@ -1201,7 +1236,7 @@ def corte_por_defecto(sesion: Session, proyecto: str) -> date:
 def valuaciones_para_anular(sesion: Session, proyecto: str) -> list[tuple[int, str]]:
     """`(id, rótulo)` de las valuaciones que cuentan y se pueden anular."""
     return [
-        (v.id, f"{v.numero or '#' + str(v.id)} ({v.desde.isoformat()} a {v.hasta.isoformat()})")
+        (v.id, f"{v.numero or '#' + str(v.id)} ({v.desde:%d/%m/%Y} a {v.hasta:%d/%m/%Y})")
         for v in valuaciones_registradas(sesion, proyecto)
     ]
 
@@ -1212,12 +1247,12 @@ def parametros_actuales(sesion: Session, proyecto: str) -> ParametrosControl:
 
 
 def dia_con_fecha(resultado: ResultadoControl, dia: int | None) -> str:
-    """«día N (AAAA-MM-DD)» en el calendario de la línea base; «no proyectable» si no hay día."""
+    """«día N (dd/mm/aaaa)» en el calendario de la línea base; «no proyectable» si no hay día."""
     if dia is None:
         return "no proyectable"
     calendario = resultado.instantanea.calendario
     fecha = dia_habil(calendario.fecha_inicio, dia, frozenset(calendario.feriados))
-    return f"día {dia} ({fecha.isoformat()})"
+    return f"día {dia} ({fecha:%d/%m/%Y})"
 
 
 def filas_del_plan_reproyectado(
@@ -1239,9 +1274,10 @@ def estudios_que_suma(resultado: ResultadoControl) -> str:
     if not reajuste.estudios:
         return "Sin estudio de reajuste guardado: V' = V. Nunca se proyecta un reajuste."
     detalle = ", ".join(
-        f"#{e.id} ({e.fecha_calculo.isoformat()}, {_monto(e.monto)})" for e in reajuste.estudios
+        f"#{e.id} ({e.fecha_calculo:%d/%m/%Y}, {_monto(e.monto)})" for e in reajuste.estudios
     )
     return (
-        f"V' suma el reajuste reconocido de {len(reajuste.estudios)} estudio(s) de S1 guardado(s): "
+        f"V' suma el reajuste reconocido de {len(reajuste.estudios)} estudio(s) de reajuste "
+        f"guardado(s): "
         f"{detalle}; total {_monto(reajuste.monto)} {reajuste.moneda}."
     )

@@ -25,6 +25,68 @@ Compartidos aplicados por el orquestador: `30819c7` (routers, tabla de acceso, C
 (api.json tras la ronda 1 de T7). Verificación tras `30819c7`: 268 pruebas verdes de acceso, OpenAPI, rutas del front y
 arquitectura.
 
+## Correcciones de la auditoría visual (VB‑2 a VB‑23), cuatro paquetes
+
+Informe de la auditoría: `2026-10-19-auditoria-visual-bloque-b.md` (commit 9efba7d). Cada paquete trabajó en carpetas
+disjuntas del mismo árbol, con su rojo en commit propio antes de cada corrección, y un árbitro nuevo por entrega.
+
+| Paquete | Hallazgos | Ronda y veredicto | Cabeza |
+|---|---|---|---|
+| A Control y Reajuste | VB‑3, 4, 5, 10, 13, fechas de VB‑19 | R1 DEVUELTO (MAYOR: `fechasEsVe` reescribía fechas de datos del usuario); R2 DEVUELTO (MAYOR: el foco quedaba bajo la cabecera fija, medido en navegador; causa, una instrucción del orquestador); R3 APROBADO | a3fc664 (rojo b68344a) |
+| B Elaborar, Historial, Tablero, Entregar | VB‑6, 7, 8, 16 (Entregar, Tablero), 19, 21 | R1 APROBADO | db2badf |
+| C Marco, Inicio, Administración | VB‑2, 9, 12, 14, 15, 18, 20, 22, 23 | R1 DEVUELTO (MAYOR: la prueba de Esc no protegía la devolución del foco; mutante); R2 APROBADO | 5a563d6 (rojo 1f63ae8) |
+| D Componer, Precios, Revisar | VB‑11, 16 (Precios, Revisar), 17, 19 (Revisar) | R1 DEVUELTO (3 MAYOR: regex cuadrática, sustituciones sobre datos del usuario, fechas por regex sobre texto armado); R2 APROBADO; cierre de MENOR verificado por el orquestador | 4ac64fd |
+
+Lección repetida que conviene fijar: toda regla que reescribe texto con datos del usuario (regex, `strptime`, sustitución
+de palabras) debe actuar solo sobre su ranura o su plantilla fija, con costo lineal, tope de longitud y una prueba
+adversarial de 100 000 caracteres. Lo aprendieron T8b, el paquete D y el paquete A, en ese orden. Segunda lección: una
+prueba de jsdom no ve la geometría ni el foco; VB‑2 y el foco bajo la cabecera de VB‑13 solo aparecieron al medir en
+navegador.
+
+Compartidos aplicados por el orquestador: `docs/api.json` regenerado (solo cambian `CalculoRespuesta.total_exacto` y
+`TarjetaRespuesta.exacto`; 10 líneas) y el CHANGELOG. Verificación: 281 pruebas de OpenAPI, acceso, rutas del front y
+arquitectura, con `-W error`.
+
+### Decisiones nuevas para Eugenio
+
+- Un administrador ya no ve la zona de soltar de Inicio: no tiene `leer_proyecto` (`seguridad/permisos.py`). Si quieres
+  que pueda auditar hay que darle esa acción, que es un cambio de requisito.
+- «Día 3» escrito a mano en Elaborar se guarda «Dia 3» (convención del núcleo, `core/budget/curva.py:30`); la tilde
+  exigiría cambiar el núcleo y el aval del tutor.
+- El texto «uv sync --extra ia» vive en dos lugares (`asistente/administracion.py` y el front del Asistente); la
+  pantalla clásica lo sigue mostrando.
+- Quedan sin tilde en `aplicacion/composicion.py` mensajes de paridad letra por letra con la clásica («codigo»,
+  «descripcion», «composicion», «estimacion») y jerga en `api/rutas/precios_empresa.py` («UC‑17 4a»): acentuarlos
+  obliga a cambiar pruebas de la clásica.
+- Jerga del núcleo que solo recibió tildes y sigue a la vista: «(S1)», «(S1‑R2)», «(S1‑R10)», «(S1‑R21)», «(S2‑R4)»,
+  «UC‑17», «UC‑18», «RNF‑14», `mecanismo_pagadero`, `por_partida`, `mano_obra`. Quitarla exige tocar `core/` o un
+  catálogo de reescritura.
+- Textos del núcleo sin tilde o con defecto de redacción solo registrados (no se tocan en `core/`):
+  `core/verification/reglas.py:254, 263, 296, 335, 626, 648‑649`; `core/budget/equilibrio.py:123`;
+  `core/verification/precios.py:174‑176` (paréntesis vacíos); `core/verification/informe.py:131` y
+  `api/esquemas_informe.py:62` («CUMPLE / NO CUMPLE» en mayúsculas); `core/budget/reajuste.py:45` («INDICIO:»).
+  «Sílice» sin tilde en `fusion/alertas.py:158`, `fusion/mapeo.py:214`, `fusion/proceso.py:328 y 574` y
+  `adapters/hoja_empresa/` (reglas, plantilla, escritor).
+- El corte `[:10]` de `aplicacion/control.py:165` pierde un segundo feriado separado por espacio; desde React ya no se
+  alcanza, desde la API directa y la clásica sí.
+- La hoja «Decisiones» del Excel pasó a texto dd/mm/aaaa; conviene celdas de fecha reales tomadas de `decisiones()`.
+
+### Deuda nueva anotada por los árbitros (MENOR)
+
+- Un componente común para el patrón «exacto en `title` más texto oculto» (4 copias) y reusar el estilo del indicador
+  del Libro en el Tooltip del Historial.
+- `aplicacion/reajuste.py` importa `Hueco` y `catalogo_de_frases` de `aplicacion/control.py`: llevarlos a un módulo
+  neutro de frases del núcleo.
+- `fechaEsVe` de `formatoEsVe.ts` reformatea fechas imposibles («2026‑13‑45»); `fechaDeRanura` de Control sí las
+  rechaza: unificar.
+- La regex de miles de `formatoEsVe` es cuadrática con más de 30 000 dígitos (anterior y no realista con `Decimal(28)`).
+- `InformeAuditoria.tsx`: las columnas Impacto, Observado y Esperado se ven con punto decimal.
+- VB‑18 en Reajuste: 11 `TextInput` con regiones vivas vacías; usar `CampoTexto` de `comun/`.
+- `titulos.test.tsx` («inicio: un solo h1», hasta 21 s en frío) y `App.test` («#/libros», `findBy` de 5 s) son frágiles
+  bajo carga desde antes: cargar la página en un `beforeAll`.
+- Las cabeceras ordenables de Carbon leen en inglés «Click to sort rows by…» a lectores de pantalla.
+- `estilos.test.ts` y `ZonaDeSoltar.test.ts` leen el `.scss` en vez de medir: la medición en navegador es lo que da fe.
+
 ## Incidente
 
 El implementador de T8 ejecutó `git checkout -q HEAD -- .` en el árbol compartido y descartó cambios sin commitear de

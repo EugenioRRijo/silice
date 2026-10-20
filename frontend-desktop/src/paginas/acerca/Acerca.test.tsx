@@ -24,10 +24,10 @@ const SESION: SesionRespuesta = {
 const DATOS = {
   version: "1.2.0.dev0",
   semver: "1.2.0-dev0",
-  revision_instalacion: "ins_0002",
-  head_instalacion: "ins_0002",
+  revision_instalacion: "ins_0003_auditoria_libro",
+  head_instalacion: "ins_0003_auditoria_libro",
   revision_caso: "caso_0008",
-  head_caso: "caso_0008",
+  head_caso: "caso_0009_s3_paquete",
   carpeta_datos: "D:/datos-ficticios",
   modulos: [
     { nombre: "Planos DXF", instalado: true },
@@ -69,7 +69,10 @@ describe("Acerca de Sílice", () => {
     fetchFalso.mockResolvedValue(json(DATOS));
     montar();
     expect(await screen.findByText("Sílice 1.2.0-dev0")).toBeInTheDocument();
-    expect(screen.getByText("caso_0008 (la última es caso_0008)")).toBeInTheDocument();
+    // VB-20: sin nombres de migracion; al dia o el numero de version (de «ins_0003_…» a 3).
+    expect(screen.getByText("Al día (versión 3)")).toBeInTheDocument();
+    expect(screen.getByText("Versión 8; la última es la 9")).toBeInTheDocument();
+    expect(document.body.textContent).not.toMatch(/ins_0003|caso_000|auditoria_libro|s3_paquete/);
     expect(screen.getByText("D:/datos-ficticios")).toBeInTheDocument();
     expect(screen.getByText("Planos DXF")).toBeInTheDocument();
     expect(screen.getByText("instalado")).toBeInTheDocument();
@@ -92,5 +95,25 @@ describe("Acerca de Sílice", () => {
     expect(screen.queryByText(/pyproject/)).not.toBeInTheDocument();
     expect(screen.getByText(/^Versión:/)).toBeInTheDocument();
     expect(container.querySelector(".silice-pagina")).not.toBeNull();
+  });
+
+  test("una base ausente o ilegible se dice en palabras, sin el código interno", async () => {
+    fetchFalso.mockResolvedValue(json({ ...DATOS, revision_instalacion: "sin base", revision_caso: "ilegible" }));
+    montar();
+    await screen.findByText("Sílice 1.2.0-dev0");
+    expect(screen.getByText("Sin base")).toBeInTheDocument();
+    expect(screen.getByText("Ilegible")).toBeInTheDocument();
+  });
+
+  // Punto 6 de la ronda 1: ni el nombre crudo de una migracion ni «alembic_version» llegan a la persona.
+  test("sin dato de la última versión se dice solo la versión en que va; «sin alembic_version» se explica", async () => {
+    fetchFalso.mockResolvedValue(
+      json({ ...DATOS, revision_caso: "caso_0008_s3_paquete", head_caso: "sin revisiones", revision_instalacion: "sin alembic_version" }),
+    );
+    montar();
+    await screen.findByText("Sílice 1.2.0-dev0");
+    expect(screen.getByText("Versión 8")).toBeInTheDocument();
+    expect(screen.getByText("Sin información de versión")).toBeInTheDocument();
+    expect(document.body.textContent).not.toMatch(/alembic|Caso_0008|s3_paquete/i);
   });
 });

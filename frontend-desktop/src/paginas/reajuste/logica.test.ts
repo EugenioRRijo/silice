@@ -5,6 +5,8 @@ import {
   filasDeResultado,
   filasVacias,
   formularioInicial,
+  marcasPorPeriodo,
+  partirResultado,
   hayFilaConDatos,
   quitarFilaVacia,
 } from "./logica";
@@ -116,5 +118,31 @@ describe("resultado", () => {
     const resultado = filasDeResultado(filas);
     expect(resultado.map((f) => f.id)).toEqual(["0", "1"]);
     expect(resultado[0].Escalatoria).toBe("15300.00");
+  });
+});
+
+describe("partirResultado (VB-10)", () => {
+  const columnas = ["Período", "Escalatoria", "Comprobación", "Diferencia", "Reconocido", "Mecanismo", "Moneda", "Escalatoria (otra)", "Comprobación (otra)", "Diferencia (otra)", "Tasa", "Marcas"];
+
+  test("la principal sin la otra moneda ni Marcas; la segunda con el período, la otra moneda y la tasa", () => {
+    const { principal, otra } = partirResultado(columnas);
+    expect(principal.map((c) => c.titulo)).toEqual(["Período", "Escalatoria", "Comprobación", "Diferencia", "Reconocido", "Mecanismo", "Moneda"]);
+    expect(otra.map((c) => [c.clave, c.titulo])).toEqual([
+      ["Período", "Período"],
+      ["Escalatoria (otra)", "Escalatoria"],
+      ["Comprobación (otra)", "Comprobación"],
+      ["Diferencia (otra)", "Diferencia"],
+      ["Tasa", "Tasa"],
+    ]);
+    expect(principal.find((c) => c.clave === "Mecanismo")!.presentar!("comprobacion")).toBe("Comprobación directa");
+  });
+
+  test("las marcas de cada período (no las del total) como nota", () => {
+    const filas = [
+      { Período: "01/02/2027 a 28/02/2027", Marcas: "provisional; excepción declarada" },
+      { Período: "01/03/2027 a 31/03/2027", Marcas: "" },
+      { Período: "Total", Marcas: "estado: cerrado; aviso" },
+    ];
+    expect(marcasPorPeriodo(filas)).toEqual(["01/02/2027 a 28/02/2027: provisional; excepción declarada"]);
   });
 });

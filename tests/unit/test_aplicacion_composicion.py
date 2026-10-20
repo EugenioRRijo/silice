@@ -140,9 +140,9 @@ def test_el_formulario_en_blanco_es_vacio_con_la_bienvenida_de_la_pagina(base: P
         evaluacion = _evaluar(sesion, "", "", "", "", ([{}], [], []))
     assert evaluacion.estado == "vacio"
     assert evaluacion.aviso == (
-        "Comience por la cabecera (codigo y descripcion) y declare al menos un insumo en alguna "
-        "de las tres tablas de abajo, o busquelo en la referencia MaPreX: el desglose se calcula "
-        "aqui automaticamente, sin necesidad de guardar."
+        "Comience por la cabecera (código y descripción) y declare al menos un insumo en alguna "
+        "de las tres tablas de abajo, o búsquelo en la referencia MaPreX: el desglose se calcula "
+        "aquí automáticamente, sin necesidad de guardar."
     )
     assert evaluacion.aviso == MENSAJE_FORMULARIO_VACIO
     assert evaluacion.resultado is None

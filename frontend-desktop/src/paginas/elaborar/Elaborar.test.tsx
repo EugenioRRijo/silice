@@ -68,6 +68,7 @@ function calculo(extra: Partial<CalculoRespuesta> = {}): CalculoRespuesta {
     fecha: "2026-10-18",
     moneda: "USD",
     total: "1234.50",
+    total_exacto: "1234.5012500",
     partidas: [
       {
         codigo_partida: "FIC-T1",
@@ -317,7 +318,9 @@ describe("Elaborar un presupuesto", () => {
     for (const titulo of ["Partida", "Descripción", "Unidad", "Cantidad", "Origen", "Tipo de origen", "Regla"]) {
       expect(within(tabla).getByText(titulo)).toBeInTheDocument();
     }
-    expect(within(tabla).getByText("12.5000")).toBeInTheDocument();
+    // VB-6: la cantidad del computo en es-VE con sus propios decimales (sin redondear)
+    expect(within(tabla).getByText("12,5000")).toHaveAttribute("title", "12.5000");
+    expect(within(tabla).getByText("3,0000")).toBeInTheDocument();
     expect(within(tabla).getByText("Descripcion fila-2")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Elaborar presupuesto" })).toBeEnabled();
   });
@@ -346,7 +349,10 @@ describe("Elaborar un presupuesto", () => {
       items: ITEMS,
     });
     expect(screen.getByText("Total del presupuesto")).toBeInTheDocument();
-    expect(screen.getByText("1234.50 USD")).toBeInTheDocument();
+    // VB-6: el total en es-VE y el exacto de la API a un toque (title) y para el lector de pantalla
+    const total = screen.getByText("1.234,50 USD");
+    expect(total).toHaveAttribute("title", "Valor exacto: 1234.5012500 USD");
+    expect(screen.getByText(/Valor exacto: 1234\.5012500 USD/, { selector: "span.cds--visually-hidden" })).toBeInTheDocument();
     const metricas = screen.getByRole("group", { name: "Métricas del presupuesto" });
     expect(within(metricas).getByText("Error")).toBeInTheDocument();
     expect(within(metricas).getByText("2")).toBeInTheDocument();
@@ -355,8 +361,14 @@ describe("Elaborar un presupuesto", () => {
     expect(screen.queryByText(/Sin hallazgos: la auditoria/)).toBeNull();
     const tabla = screen.getByRole("table", { name: "Partidas del presupuesto" });
     expect(within(tabla).getByText("Precio unitario")).toBeInTheDocument();
-    expect(within(tabla).getByText("1000.00")).toBeInTheDocument();
+    // cifras de la tabla en es-VE con el texto de la API en el title
+    expect(within(tabla).getByText("1.000,00")).toHaveAttribute("title", "1000.00");
+    expect(within(tabla).getByText("80,00")).toHaveAttribute("title", "80.00");
+    expect(within(tabla).getByText("12,50")).toHaveAttribute("title", "12.50");
     expect(screen.getByRole("heading", { name: "Informe de auditoría" })).toBeInTheDocument();
+    // el veredicto con mayuscula inicial, no «NO CUMPLE»
+    expect(screen.getByText(/Resultado:\s*No cumple/)).toBeInTheDocument();
+    expect(screen.queryByText(/NO CUMPLE/)).toBeNull();
     expect(screen.getByText("Hallazgo ficticio uno")).toBeInTheDocument();
   });
 
@@ -414,8 +426,8 @@ describe("Elaborar un presupuesto", () => {
     expect(screen.getByText("fila-9 · FIC-X · Zanja inexistente")).toBeInTheDocument();
     expect(screen.getByText("fila-10 · FIC-Y · Muro raro")).toBeInTheDocument();
     expect(screen.getByText("El modelo de similitud no esta disponible.")).toBeInTheDocument();
-    expect(screen.getByText("FIC-Z1 · Zanja tipo uno (0.91)")).toBeInTheDocument();
-    expect(screen.getByText("FIC-Z2 · Zanja tipo dos (0.50)")).toBeInTheDocument();
+    expect(screen.getByText("FIC-Z1 · Zanja tipo uno (0,91)")).toBeInTheDocument();
+    expect(screen.getByText("FIC-Z2 · Zanja tipo dos (0,50)")).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: "Aplicar y volver a elaborar" })).toHaveLength(1);
 
     rutas["POST /presupuestos/calcular"] = () => json(calculo());
@@ -451,6 +463,33 @@ describe("Elaborar un presupuesto", () => {
     expect(screen.getByLabelText("Partida, fila 2")).toHaveValue("FIC-T2");
     expect(screen.getByLabelText("Fracción, fila 2")).toHaveValue("1");
     expect(screen.queryByText(/el plan editado antes se descarto/)).toBeNull();
+  });
+
+  test("el plan por defecto del nucleo («Dia N») se lee «Día N» y viaja de vuelta como «Dia N» (VB-6)", async () => {
+    rutas["POST /presupuestos/calcular"] = () =>
+      json(
+        calculo({
+          plan_por_defecto: [
+            { periodo: "Dia 1", codigo_partida: "FIC-T1", fraccion: "1" },
+            { periodo: "Dia 2", codigo_partida: "FIC-T2", fraccion: "1" },
+          ],
+        }),
+      );
+    const { usuario } = montar();
+    await extraerTelecom(usuario);
+    await elaborar(usuario);
+    expect(screen.getByLabelText("Período, fila 1")).toHaveValue("Día 1");
+    expect(screen.getByLabelText("Período, fila 2")).toHaveValue("Día 2");
+    await usuario.click(screen.getByRole("button", { name: "Aplicar plan y volver a elaborar" }));
+    await waitFor(() => expect(llamadas("POST /presupuestos/calcular")).toHaveLength(2));
+    expect(cuerpoJson("POST /presupuestos/calcular", 1).plan).toEqual([
+      { periodo: "Dia 1", codigo_partida: "FIC-T1", fraccion: "1" },
+      { periodo: "Dia 2", codigo_partida: "FIC-T2", fraccion: "1" },
+    ]);
+    // nadie edito la tabla: volver a elaborar sin plan no avisa de un plan descartado
+    await usuario.click(screen.getByRole("button", { name: "Elaborar presupuesto" }));
+    await waitFor(() => expect(llamadas("POST /presupuestos/calcular")).toHaveLength(3));
+    expect(screen.queryByText(/el plan editado antes se descartó/)).toBeNull();
   });
 
   test("aplicar el plan manda las filas editadas en plan y recalcula", async () => {
@@ -516,7 +555,7 @@ describe("Elaborar un presupuesto", () => {
     await usuario.click(screen.getByRole("button", { name: "Aplicar plan y volver a elaborar" }));
     expect(await alertaConTexto()).toHaveTextContent("Las fracciones de FIC-T1 no suman 1.");
     expect(screen.getByText("Presupuesto elaborado")).toBeInTheDocument();
-    expect(screen.getByText("1234.50 USD")).toBeInTheDocument();
+    expect(screen.getByText("1.234,50 USD")).toBeInTheDocument();
     expect(screen.getByLabelText("Período, fila 1")).toBeInTheDocument();
   });
 
@@ -573,10 +612,10 @@ describe("Elaborar un presupuesto", () => {
       expect(await screen.findByRole("heading", { name: "Rendimientos por declarar" })).toBeInTheDocument();
       expect(screen.getByText(/Estas partidas no tienen rendimiento estimado vigente/)).toBeInTheDocument();
       expect(screen.getByText("FIC-T1", { selector: "strong" })).toBeInTheDocument();
-      expect(screen.getByText(/rendimiento propuesto 8.5 unidades por día \(estimado del 2026-01-02\)/)).toBeInTheDocument();
+      expect(screen.getByText(/rendimiento propuesto 8,5 unidades por día \(estimado del 02\/01\/2026\)/)).toBeInTheDocument();
       expect(
         screen.getByText(
-          "Dispersión del histórico: 3 observaciones (1 medidas, 2 estimadas), media 8.40, rango [7.00, 9.50].",
+          "Dispersión del histórico: 3 observaciones (1 medidas, 2 estimadas), media 8,40, rango [7,00; 9,50].",
         ),
       ).toBeInTheDocument();
       const grupo = screen.getByRole("radiogroup", { name: "Tipo declarado del rendimiento de FIC-T1" });

@@ -72,7 +72,7 @@ from tests.fixtures.sesion_web import (
 PAR = firma.generar_par()
 TOTAL = "836.7975"  # 20 m3 x 41,839875 USD/m3, la memoria del ejemplo mínimo
 VERIFICADO = (
-    "Verificado: emitido por Contratista Demo, C.A. el 2026-11-10. No se alteró desde que se firmó."
+    "Verificado: emitido por Contratista Demo, C.A. el 10/11/2026. No se alteró desde que se firmó."
 )
 NO_VERIFICADO_SIN_FIRMA = (
     "No verificado: dice venir de Contratista Demo, C.A., pero no se pudo comprobar. El paquete "
@@ -82,10 +82,10 @@ NO_VERIFICADO_SIN_FIRMA = (
 RECHAZADO_ZIP = (
     "Rechazado: El archivo no es un paquete de Silice válido (el ZIP está dañado). Pida uno nuevo."
 )
-PRIMERA = "Versión 005 del 2026-11-10; es la primera que recibe de este proyecto."
+PRIMERA = "Versión 005 del 10/11/2026; es la primera que recibe de este proyecto."
 SIN_ANTERIOR = "Esta instalación no recibió una entrega anterior de este proyecto."
 PRECIOS_OK = "Los precios y totales que declara el paquete coinciden con los recalculados."
-REGLAS = "Reglas corridas a la fecha de emisión (2026-11-10): R1-R7, R11-R12."
+REGLAS = "Reglas corridas a la fecha de emisión (10/11/2026): R1-R7, R11-R12."
 NOTAS_FALTAN = "Un dictamen con observaciones o de rechazo necesita notas."
 GUARDADO = "Dictamen guardado, atado al SHA-256 de este archivo."
 EXCEL_EXTERNO = "No verificado: un Excel no trae cadena ni firma. Se audita igual."
@@ -285,9 +285,9 @@ def test_el_mismo_paquete_otra_vez_no_se_duplica_y_el_banner_lo_dice() -> None:
     datos = _firmado(destinatario="Obra Norte")
     _subir(navegador, ficha, datos)
     cuerpo = _subir(navegador, ficha, datos).json()
-    hoy = date.today().isoformat()  # el reloj de la sesión, como `ui_sesion.ahora`
+    hoy = date.today().strftime("%d/%m/%Y")  # el reloj de la sesión, como `ui_sesion.ahora`
     assert cuerpo["banner_version"] == (
-        f"Versión 005 del 2026-11-10; ya recibió este mismo paquete el {hoy}."
+        f"Versión 005 del 10/11/2026; ya recibió este mismo paquete el {hoy}."
     )
     # «Ya recibió…» ya lo dice el banner de versión: no se repite entre los avisos
     assert cuerpo["avisos"] == ["Este paquete se emitió para Obra Norte."]
@@ -549,7 +549,7 @@ def test_el_mismo_archivo_dos_veces_a_la_vez_no_es_un_500(monkeypatch) -> None:
     monkeypatch.setattr(modelo, "buscar_por_huella", ciega_una_vez)
     r = _subir(navegador, ficha, datos)
     assert r.status_code == 200, r.text
-    assert r.json()["banner_version"].startswith("Versión 005 del 2026-11-10; ya recibió")
+    assert r.json()["banner_version"].startswith("Versión 005 del 10/11/2026; ya recibió")
     assert len(_filas("paq_recibido")) == 1
 
 
@@ -619,15 +619,8 @@ def test_la_plantilla_se_audita_como_excel_externo_y_se_dice_no_verificado() -> 
     cuerpo = r.json()
     assert cuerpo["aviso"] == EXCEL_EXTERNO
     assert Decimal(cuerpo["total"]) == Decimal(TOTAL) and cuerpo["total_texto"] == "836.80"
-    # La plantilla: 20 m3 sin regla (R1) y un plan «Dia 1» que no nombra la partida (R7, dos)
-    assert [(h["regla"], h["severidad"]) for h in cuerpo["hallazgos"]] == [
-        ("R1", "ADVERTENCIA"),
-        ("R7", "ADVERTENCIA"),
-        ("R7", "ADVERTENCIA"),
-    ]
-    r1, r7_periodo, r7_partida = (h["descripcion"] for h in cuerpo["hallazgos"])
-    assert r1.startswith("la cantidad de EJ-P1 (20 m3) es manual")
-    assert "'Dia 1'" in r7_periodo and "EJ-P1 no aparece" in r7_partida
+    # VB-17: la plantilla oficial pasa su propia auditoria, sin una sola advertencia
+    assert [h for h in cuerpo["hallazgos"] if h["severidad"] != "INFO"] == []
     assert _filas("paq_recibido") == []  # en memoria: nada se guarda
 
 
@@ -654,3 +647,45 @@ def test_un_excel_externo_de_mas_del_tope_es_413(monkeypatch) -> None:
         413,
         {"detalle": "El presupuesto en Excel supera el máximo de 20 MiB."},
     )
+
+
+def test_el_error_de_un_excel_externo_nombra_el_archivo_recibido() -> None:
+    import io
+
+    import openpyxl
+
+    libro = openpyxl.Workbook()
+    libro.active.title = "Otra"
+    buffer = io.BytesIO()
+    libro.save(buffer)
+    navegador, ficha = _rita()
+    r = navegador.post(
+        "/v1/revision/excel-externo",
+        files={"presupuesto": ("limpio.xlsx", buffer.getvalue(), XLSX)},
+        headers=protegida(ficha),
+    )
+    assert r.status_code == 422
+    assert r.json()["detalle"].startswith("limpio.xlsx")
+    assert "externo.xlsx" not in r.json()["detalle"]
+
+
+def test_el_banner_de_verificacion_formatea_la_fecha_y_no_al_emisor() -> None:
+    from dataclasses import replace
+
+    from paquete.verificar import Verificacion
+
+    v = Verificacion(
+        "verificado",
+        "ok",
+        "",
+        "0" * 64,
+        manifiesto={"emitido": "2026-11-10T08:00:00"},
+        empresa_declarada="Obras 2026-01-01, C.A.",
+        empresa_verificada="Obras 2026-01-01, C.A.",
+    )
+    _, texto = ruta_revision._banner_es(v)
+    assert texto == (
+        "Verificado: emitido por Obras 2026-01-01, C.A. el 10/11/2026. "
+        "No se alteró desde que se firmó."
+    )
+    assert replace(v).manifiesto == {"emitido": "2026-11-10T08:00:00"}  # el original no cambia

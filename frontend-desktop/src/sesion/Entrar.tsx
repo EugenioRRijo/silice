@@ -2,6 +2,7 @@ import { Button, Form, InlineNotification, PasswordInput, TextInput } from "@car
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { mensajeDeError } from "../comun/errores";
+import { useTituloDelDocumento } from "../comun/tituloDelDocumento";
 
 interface Props {
   onEntrar: (login: string, contrasena: string) => Promise<void>;
@@ -10,6 +11,7 @@ interface Props {
 }
 
 export function Entrar({ onEntrar, aviso }: Props) {
+  useTituloDelDocumento("Entrar");
   const [login, setLogin] = useState("");
   const [contrasena, setContrasena] = useState("");
   const [enviando, setEnviando] = useState(false);
@@ -32,7 +34,7 @@ export function Entrar({ onEntrar, aviso }: Props) {
 
   return (
     <main className="silice-entrada">
-      <h1 className="cds--type-heading-03">Entrar</h1>
+      <h1 className="cds--type-heading-04">Entrar</h1>
       <p className="silice-entrada__texto cds--type-body-compact-01">
         Entre con su cuenta de Sílice para ver y auditar el libro de presupuesto de la empresa.
       </p>

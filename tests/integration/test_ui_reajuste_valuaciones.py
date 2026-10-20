@@ -66,7 +66,7 @@ def test_guardar_con_valuaciones_cita_cada_una_y_confirma(con_valuaciones):
 
 
 def test_guardar_sin_fuente_se_rechaza_y_no_deja_estudio(con_valuaciones):
-    with pytest.raises(HojaInvalida, match="No se guardo el estudio"):
+    with pytest.raises(HojaInvalida, match="No se guardó el estudio"):
         reajuste.guardar_con_valuaciones(
             con_valuaciones, ob.NOMBRE, ob.CODIGO, rz.CLAUSULA, FILAS,
             fecha_calculo=date(2026, 11, 13), fuente="", responsable="Ing.",

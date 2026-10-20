@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
@@ -60,9 +60,21 @@ describe("Histórico de cambios de precio", () => {
   test("lista los cambios con los montos de la API y la variacion en por ciento", async () => {
     montar();
     const tabla = await screen.findByRole("table", { name: "Cambios de precio" });
-    expect(tabla).toHaveTextContent("10.6250");
-    expect(tabla).toHaveTextContent("6.25");
+    // VB-19: la fecha se lee dd/mm/aaaa; los precios y la variacion, en es-VE con el texto de la API en el title
+    expect(within(tabla).getByText("01/02/2026")).toHaveAttribute("title", "2026-02-01");
+    expect(within(tabla).getByText("10,6250")).toHaveAttribute("title", "10.6250");
+    expect(within(tabla).getByText("10,0000")).toHaveAttribute("title", "10.0000");
+    expect(within(tabla).getByText("6,25")).toBeInTheDocument();
+    expect(tabla).not.toHaveTextContent("2026-02-01");
     expect(fetchFalso.mock.calls[0][0]).toBe("/cambios-precio");
+  });
+
+  test("los filtros de fecha son selectores de fecha y se envian AAAA-MM-DD (VB-19)", async () => {
+    montar();
+    await screen.findByRole("table", { name: "Cambios de precio" });
+    expect(screen.getByLabelText("Desde")).toHaveAttribute("type", "date");
+    expect(screen.getByLabelText("Hasta")).toHaveAttribute("type", "date");
+    expect(screen.queryByLabelText(/AAAA-MM-DD/)).toBeNull();
   });
 
   test("filtra por insumo y fechas validas", async () => {
@@ -70,7 +82,7 @@ describe("Histórico de cambios de precio", () => {
     montar();
     await screen.findByRole("table", { name: "Cambios de precio" });
     await usuario.type(screen.getByLabelText("Insumo (descripción exacta)"), "Cemento ficticio");
-    await usuario.type(screen.getByLabelText("Desde (AAAA-MM-DD)"), "2026-01-01");
+    await usuario.type(screen.getByLabelText("Desde"), "2026-01-01");
     await usuario.click(screen.getByRole("button", { name: "Filtrar" }));
     await waitFor(() =>
       expect(fetchFalso).toHaveBeenLastCalledWith(
@@ -84,8 +96,8 @@ describe("Histórico de cambios de precio", () => {
     const usuario = userEvent.setup();
     montar();
     await screen.findByRole("table", { name: "Cambios de precio" });
-    await usuario.type(screen.getByLabelText("Desde (AAAA-MM-DD)"), "2026-03-01");
-    await usuario.type(screen.getByLabelText("Hasta (AAAA-MM-DD)"), "2026-02-01");
+    await usuario.type(screen.getByLabelText("Desde"), "2026-03-01");
+    await usuario.type(screen.getByLabelText("Hasta"), "2026-02-01");
     expect(screen.getByText("Rango invertido")).toBeInTheDocument();
     await usuario.click(screen.getByRole("button", { name: "Filtrar" }));
     expect(fetchFalso).toHaveBeenCalledTimes(1);

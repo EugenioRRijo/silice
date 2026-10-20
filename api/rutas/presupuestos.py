@@ -535,6 +535,7 @@ def calcular_presupuesto(
         fecha=presupuesto.fecha,
         moneda=presupuesto.moneda,
         total=formatear_decimal(presupuesto.total, DECIMALES_PRESENTACION),
+        total_exacto=f"{presupuesto.total:f}",
         partidas=_partidas_respuesta(presupuesto),
         por_severidad=informe_a_respuesta(resultado.informe).por_severidad,
         informe=informe_a_respuesta(resultado.informe),

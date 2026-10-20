@@ -153,7 +153,7 @@ describe("Reajuste de precios", () => {
     montar();
     expect(await screen.findByLabelText("Versión del contrato")).toHaveValue("001");
     expect(screen.getByLabelText("Periodicidad")).toHaveValue("mensual");
-    expect(screen.getByLabelText("Componente, Componentes fila 2")).toHaveValue("equipos");
+    expect(screen.getByLabelText("Componente, Componentes fila 2")).toHaveValue("Equipos");
     expect(screen.getByLabelText("Componente, Componentes fila 2")).toHaveAttribute("readonly");
     await irA(u, "2. Períodos y lo ejecutado");
     expect(screen.getByText("Versiones revaloradas para la comprobación directa: 002")).toBeInTheDocument();
@@ -166,6 +166,29 @@ describe("Reajuste de precios", () => {
     expect(visible).not.toMatch(/S1 §|S1-R\d+|\(I0\)/);
     expect(screen.getByText(/La cláusula de reajuste \(a cotejar con la Gaceta\)/)).toBeInTheDocument();
   });
+  test("los desplegables y los componentes muestran rótulos en español y mandan el valor interno (VB-5)", async () => {
+    const u = userEvent.setup();
+    montar();
+    await screen.findByLabelText("Versión del contrato");
+    const visible = () => document.body.textContent ?? "";
+    expect(visible()).not.toMatch(/comprobacion|por_partida|mano_obra/);
+    expect(screen.getByLabelText("Componente, Componentes fila 3")).toHaveValue("Mano de obra");
+    const mecanismo = screen.getByLabelText("Mecanismo");
+    expect(within(mecanismo).getByRole("option", { name: "Comprobación directa" })).toHaveValue("comprobacion");
+    expect(within(mecanismo).getByRole("option", { name: "Ambos (escalatoria y comprobación)" })).toHaveValue("ambos");
+    const estructura = screen.getByLabelText("Estructura");
+    expect(within(estructura).getByRole("option", { name: "Por partida" })).toHaveValue("por_partida");
+    expect(within(screen.getByLabelText("Periodicidad")).getByRole("option", { name: "Mensual" })).toHaveValue("mensual");
+    expect(within(screen.getByLabelText(/Mecanismo pagadero/)).getByRole("option", { name: "Ninguno" })).toHaveValue("");
+    await u.selectOptions(mecanismo, "Comprobación directa");
+    await irA(u, "2. Períodos y lo ejecutado");
+    await u.click(screen.getByRole("button", { name: "Calcular" }));
+    await screen.findByRole("table", { name: "Escalatoria y comprobación, lado a lado" });
+    const cuerpo = post("/v1/reajuste/calcular") as { clausula: Record<string, string>; componentes: Record<string, string>[] };
+    expect(cuerpo.clausula.mecanismo).toBe("comprobacion");
+    expect(cuerpo.componentes[2]).toEqual({ componente: "mano_obra", serie: "", peso: "" });
+  });
+
   test("sin revaloradas avisa que la comprobación quedará no disponible", async () => {
     contexto = () => json({ ...CONTEXTO, versiones: [{ codigo: "001", motivo: "", revalorada: false }] });
     const u = userEvent.setup();
@@ -208,6 +231,42 @@ describe("Reajuste de precios", () => {
     expect(cuerpo.con_valuaciones).toBe(false);
   });
 
+  test("el resultado va en dos tablas cortas y las marcas como nota por período (VB-10)", async () => {
+    // Las 12 columnas y las filas tal como las manda la API (aplicacion/reajuste.COLUMNAS_REAJUSTE); los oraculos
+    // 15.300,00 / 16.000,00 / -0,82 son los de tests/unit/test_ui_reajuste.py.
+    const columnas = ["Período", "Escalatoria", "Comprobación", "Diferencia", "Reconocido", "Mecanismo", "Moneda", "Escalatoria (otra)", "Comprobación (otra)", "Diferencia (otra)", "Tasa", "Marcas"];
+    const periodo = {
+      Período: "01/02/2027 a 28/02/2027", Escalatoria: "15300.00", Comprobación: "16000.00", Diferencia: "700.00",
+      Reconocido: "15300.00", Mecanismo: "escalatoria", Moneda: "Bs", "Escalatoria (otra)": "17.88",
+      "Comprobación (otra)": "18.70", "Diferencia (otra)": "-0.82", Tasa: "855.70", Marcas: "precios fijos el primer año (art. 134, a cotejar)",
+    };
+    const total = { ...periodo, Período: "Total", Mecanismo: "", Tasa: "", Marcas: "estado: cerrado; Nota de reconsideración" };
+    calcular = () => json(calculo({ columnas, filas: [periodo, total], avisos: ["Nota de reconsideración"] }));
+    const u = userEvent.setup();
+    montar();
+    await screen.findByLabelText("Versión del contrato");
+    await irA(u, "2. Períodos y lo ejecutado");
+    await u.click(screen.getByRole("button", { name: "Calcular" }));
+    const principal = await screen.findByRole("table", { name: "Escalatoria y comprobación, lado a lado" });
+    expect(within(principal).getAllByRole("columnheader").map((c) => c.textContent)).toEqual([
+      "Período", "Escalatoria", "Comprobación", "Diferencia", "Reconocido", "Mecanismo", "Moneda",
+    ]);
+    expect(within(principal).getAllByText("15.300,00")[0]).toHaveAttribute("title", "15300.00");
+    expect(within(principal).getAllByText("16.000,00")[0]).toHaveAttribute("title", "16000.00");
+    expect(within(principal).getByTitle("escalatoria")).toHaveTextContent("Escalatoria");
+    const otra = screen.getByRole("table", { name: "En la otra moneda" });
+    expect(within(otra).getAllByRole("columnheader").map((c) => c.textContent)).toEqual([
+      "Período", "Escalatoria", "Comprobación", "Diferencia", "Tasa",
+    ]);
+    expect(within(otra).getAllByText("-0,82")[0]).toHaveAttribute("title", "-0.82");
+    expect(screen.queryByRole("columnheader", { name: "Marcas" })).toBeNull();
+    const marcas = screen.getByRole("list", { name: "Marcas por período" });
+    expect(within(marcas).getAllByRole("listitem").map((l) => l.textContent)).toEqual([
+      "01/02/2027 a 28/02/2027: precios fijos el primer año (art. 134, a cotejar)",
+    ]);
+    expect(screen.getByText("Estado del estudio: cerrado.")).toBeInTheDocument();
+  });
+
   test("los avisos y el estudio parcial se dicen", async () => {
     calcular = () =>
       json(
@@ -235,6 +294,85 @@ describe("Reajuste de precios", () => {
     await u.click(screen.getByRole("button", { name: "Calcular" }));
     expect((await alertaConTexto()).textContent).toContain("Escriba «Inicio del contrato»");
     expect(screen.queryByRole("table", { name: "Escalatoria y comprobación, lado a lado" })).not.toBeInTheDocument();
+  });
+
+  test("tras calcular, el foco va al título del resultado (VB-13)", async () => {
+    const u = userEvent.setup();
+    montar();
+    await screen.findByLabelText("Versión del contrato");
+    await irA(u, "2. Períodos y lo ejecutado");
+    await u.click(screen.getByRole("button", { name: "Calcular" }));
+    const titulo = await screen.findByRole("heading", { name: "Escalatoria y comprobación, lado a lado" });
+    await waitFor(() => expect(titulo).toHaveFocus());
+  });
+
+  test("tras calcular, el título del resultado se lleva a la vista sin animación (ronda 1, punto 4)", async () => {
+    const alVer = vi.fn();
+    Element.prototype.scrollIntoView = alVer;
+    const u = userEvent.setup();
+    montar();
+    await screen.findByLabelText("Versión del contrato");
+    await irA(u, "2. Períodos y lo ejecutado");
+    await u.click(screen.getByRole("button", { name: "Calcular" }));
+    const titulo = await screen.findByRole("heading", { name: "Escalatoria y comprobación, lado a lado" });
+    await waitFor(() => expect(alVer).toHaveBeenCalledWith({ block: "start", behavior: "instant" }));
+    expect(alVer.mock.contexts.at(-1)).toBe(titulo);
+    // ronda 2: «start» se detiene en su scroll-margin, que deja libre la cabecera fija (estilos.test.ts; medido en
+    // navegador a 1366 y 1056 en el informe): el titulo lleva esa clase y no queda tapado.
+    expect(titulo).toHaveClass("silice-reajuste__enfocable");
+    expect(titulo).toHaveFocus();
+  });
+
+  test("tras un error, la zona del aviso se lleva a la vista igual, bajo la cabecera fija (ronda 2)", async () => {
+    const alVer = vi.fn();
+    Element.prototype.scrollIntoView = alVer;
+    calcular = () => json({ detalle: "Escriba «Inicio del contrato»: es obligatorio." }, 422);
+    const u = userEvent.setup();
+    const { container } = montar();
+    await screen.findByLabelText("Versión del contrato");
+    await irA(u, "2. Períodos y lo ejecutado");
+    await u.click(screen.getByRole("button", { name: "Calcular" }));
+    await alertaConTexto();
+    const zona = container.querySelector(".silice-reajuste__zona-error");
+    await waitFor(() => expect(zona).toHaveFocus());
+    expect(zona).toHaveClass("silice-reajuste__enfocable");
+    expect(alVer).toHaveBeenCalledWith({ block: "start", behavior: "instant" });
+    expect(alVer.mock.contexts.at(-1)).toBe(zona);
+  });
+
+  test("la zona del aviso de error solo existe cuando hay un error: sin hueco vacío en la rejilla (ronda 1, punto 4)", async () => {
+    const u = userEvent.setup();
+    const { container } = montar();
+    await screen.findByLabelText("Versión del contrato");
+    expect(container.querySelector(".silice-reajuste__zona-error")).toBeNull();
+    await irA(u, "2. Períodos y lo ejecutado");
+    await u.click(screen.getByRole("button", { name: "Calcular" }));
+    await screen.findByRole("table", { name: "Escalatoria y comprobación, lado a lado" });
+    expect(container.querySelector(".silice-reajuste__zona-error")).toBeNull();
+  });
+
+  test("tras calcular con un dato malo, el foco va al aviso de error (VB-13)", async () => {
+    calcular = () => json({ detalle: "Escriba «Inicio del contrato»: es obligatorio." }, 422);
+    const u = userEvent.setup();
+    montar();
+    await screen.findByLabelText("Versión del contrato");
+    await irA(u, "2. Períodos y lo ejecutado");
+    await u.click(screen.getByRole("button", { name: "Calcular" }));
+    const aviso = await alertaConTexto();
+    await waitFor(() => expect(document.activeElement).not.toBe(document.body));
+    expect(document.activeElement?.contains(aviso)).toBe(true);
+  });
+
+  test("el detalle de un error se muestra tal cual: el código del usuario con forma de fecha no cambia (ronda 1)", async () => {
+    // Las fechas del sistema ya llegan en dd/mm/aaaa desde aplicacion/ (tests/unit/test_ui_reajuste.py).
+    const detalle = "No se pudo calcular: la partida 2026-11-10 no está en la versión del contrato";
+    calcular = () => json({ detalle }, 422);
+    const u = userEvent.setup();
+    montar();
+    await screen.findByLabelText("Versión del contrato");
+    await irA(u, "2. Períodos y lo ejecutado");
+    await u.click(screen.getByRole("button", { name: "Calcular" }));
+    expect((await alertaConTexto()).textContent).toContain(detalle);
   });
 
   test("cambiar un dato después de calcular retira la tabla: lo guardado sería otra cosa", async () => {

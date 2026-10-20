@@ -37,3 +37,14 @@
   font-family: var(--cds-code-02-font-family, monospace);
   overflow-wrap: anywhere;
 }
+
+// El total del detalle (VB-7): un boton sin apariencia de boton que abre el Tooltip con el exacto, como en el Libro.
+.silice-historial__monto-valor {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  cursor: help;
+}

@@ -12,6 +12,8 @@ export interface ColumnaEditable {
   tipo?: "fecha";
   // Solo se lee: el nombre de un componente no se escribe.
   fija?: boolean;
+  // Como se lee el valor de una columna fija (su rotulo en español); el valor de la fila no cambia.
+  presentar?: (valor: string) => string;
 }
 
 interface Props {
@@ -58,7 +60,7 @@ export function FilasEditables({ etiqueta, columnas, filas, alCambiar, fijas = f
                     hideLabel
                     size="sm"
                     type={c.tipo === "fecha" ? "date" : undefined}
-                    value={fila[c.clave] ?? ""}
+                    value={c.fija && c.presentar ? c.presentar(fila[c.clave] ?? "") : (fila[c.clave] ?? "")}
                     placeholder={c.ayuda}
                     readOnly={c.fija}
                     onChange={(e) => cambiar(i, c.clave, e.target.value)}

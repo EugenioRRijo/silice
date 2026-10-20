@@ -126,16 +126,24 @@ describe("Historial de auditorías", () => {
     expect(screen.queryByText("revision.pdf")).not.toBeInTheDocument();
   });
 
+  test("los filtros de fecha son selectores de fecha (VB-19)", async () => {
+    dibujar();
+    await screen.findByText("presupuesto-c.xlsx");
+    expect(screen.getByLabelText("Desde")).toHaveAttribute("type", "date");
+    expect(screen.getByLabelText("Hasta")).toHaveAttribute("type", "date");
+    expect(screen.queryByLabelText(/AAAA-MM-DD/)).toBeNull();
+  });
+
   test("filtra por fechas y avisa de un rango invertido sin filtrar con él", async () => {
     const u = userEvent.setup();
     dibujar();
     await screen.findByText("presupuesto-c.xlsx");
-    await u.type(screen.getByLabelText("Desde (AAAA-MM-DD)"), "2026-10-18");
-    await u.type(screen.getByLabelText("Hasta (AAAA-MM-DD)"), "2026-10-18");
+    await u.type(screen.getByLabelText("Desde"), "2026-10-18");
+    await u.type(screen.getByLabelText("Hasta"), "2026-10-18");
     expect(screen.getByText("revision.pdf")).toBeInTheDocument();
     expect(screen.queryByText("presupuesto-a.xlsx")).not.toBeInTheDocument();
-    await u.clear(screen.getByLabelText("Hasta (AAAA-MM-DD)"));
-    await u.type(screen.getByLabelText("Hasta (AAAA-MM-DD)"), "2026-10-01");
+    await u.clear(screen.getByLabelText("Hasta"));
+    await u.type(screen.getByLabelText("Hasta"), "2026-10-01");
     expect(screen.getByText("La fecha «Desde» es posterior a «Hasta».")).toBeInTheDocument();
     expect(screen.getAllByRole("row")).toHaveLength(4); // con un rango invertido no se filtra con él
   });
@@ -144,7 +152,7 @@ describe("Historial de auditorías", () => {
     const u = userEvent.setup();
     dibujar();
     await screen.findByText("presupuesto-c.xlsx");
-    await u.type(screen.getByLabelText("Desde (AAAA-MM-DD)"), "2027-01-01");
+    await u.type(screen.getByLabelText("Desde"), "2027-01-01");
     expect(screen.getByText("Ninguna auditoría coincide con esos filtros")).toBeInTheDocument();
     await u.click(screen.getByRole("button", { name: "Quitar los filtros" }));
     expect(screen.getByText("presupuesto-c.xlsx")).toBeInTheDocument();
@@ -189,16 +197,32 @@ describe("Historial de auditorías", () => {
     expect(within(panel).getByText("Ana Pérez <ana>")).toBeInTheDocument();
     expect(within(panel).getByText("ab".repeat(32))).toBeInTheDocument();
     expect(within(panel).getByText("31/07/2026")).toBeInTheDocument();
-    const total = within(panel).getByText("1.234.567,891000");
-    expect(total).toHaveAttribute("title", "Valor exacto: 1234567.891000");
-    expect(
-      within(panel).getByText(/Valor exacto: 1234567\.891000/, { selector: "span.cds--visually-hidden" }),
-    ).toBeInTheDocument();
-    expect(within(panel).getByText("1.234.500,5")).toBeInTheDocument();
+    // VB-7: como el Libro, el total en centesimas y el exacto (en es-VE, sin redondear) en un Tooltip que se abre
+    // con el teclado y es la descripcion accesible del valor
+    const total = within(panel).getByRole("button", { name: "1.234.567,89" });
+    expect(total).toHaveAccessibleDescription("Valor exacto: 1.234.567,891000");
+    const silice = within(panel).getByRole("button", { name: "1.234.500,50" });
+    expect(silice).toHaveAccessibleDescription("Valor exacto: 1.234.500,5");
+    expect(within(panel).queryByText("1.234.567,891000", { selector: "button" })).toBeNull();
     const tabla = within(panel).getByRole("table", { name: "Hallazgos guardados" });
     expect(within(tabla).getByText("El CD no cuadra con la suma.")).toBeInTheDocument();
     expect(within(tabla).getByText("APU-02")).toBeInTheDocument();
     expect(within(tabla).getByText("Advertencia")).toBeInTheDocument(); // la severidad con su nombre
+  });
+
+  test("los totales de la auditoria visual se leen en centesimas (VB-7)", async () => {
+    detalle = () => json({ ...DETALLE_LIBRO, total_libro: "4876.56257", total_silice: "5055.521570000" });
+    const u = userEvent.setup();
+    dibujar();
+    await screen.findByText("presupuesto-a.xlsx");
+    await u.click(screen.getByRole("button", { name: "Ver el detalle de presupuesto-a.xlsx" }));
+    const panel = await screen.findByRole("region", { name: "Detalle de la auditoría" });
+    expect(within(panel).getByRole("button", { name: "4.876,56" })).toHaveAccessibleDescription(
+      "Valor exacto: 4.876,56257",
+    );
+    expect(within(panel).getByRole("button", { name: "5.055,52" })).toHaveAccessibleDescription(
+      "Valor exacto: 5.055,521570000",
+    );
   });
 
   test("al abrir el detalle el foco pasa a su título", async () => {

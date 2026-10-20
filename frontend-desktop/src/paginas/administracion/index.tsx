@@ -1,4 +1,4 @@
-import { Tab, TabList, TabPanel, TabPanels, Tabs } from "@carbon/react";
+import { Layer, Tab, TabList, TabPanel, TabPanels, Tabs } from "@carbon/react";
 import { useState } from "react";
 import type { ComponentType } from "react";
 import { EstadoVacio } from "../../comun/EstadoVacio";
@@ -49,7 +49,16 @@ export default function PaginaAdministracion() {
           <TabPanels>
             {PESTANAS.map((p, i) => {
               const Contenido = CONTENIDOS[p.id];
-              return <TabPanel key={p.id}>{i === activa && <Contenido />}</TabPanel>;
+              // Un nivel de capa mas: los campos de texto toman `$field-02` y se distinguen del blanco de la pestana (VB-23).
+              return (
+                <TabPanel key={p.id}>
+                  {i === activa && (
+                    <Layer>
+                      <Contenido />
+                    </Layer>
+                  )}
+                </TabPanel>
+              );
             })}
           </TabPanels>
         </Tabs>

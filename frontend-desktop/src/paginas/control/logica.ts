@@ -2,7 +2,7 @@
 // Los textos de las tablas ya vienen presentados por la API; aqui no se recalcula ningun monto.
 import { useCallback, useState } from "react";
 import { ErrorDeApi } from "../../api/cliente";
-import { formatoMontoEsVe } from "../../indicadores/formatoEsVe";
+import { formatoEsVe, formatoMontoEsVe } from "../../indicadores/formatoEsVe";
 import { useCarga } from "../inicio/useCarga";
 import type { Carga } from "../inicio/useCarga";
 
@@ -54,6 +54,36 @@ export function textoLlano(texto: string): string {
   return texto
     .replace(/\s*\((?:AL-[0-9]+|eta|eta_he)\)/g, "")
     .replace(/\b(SUPUESTO_DECLARADO|DATO_DEL_CONTRATO)\b/g, (c) => (ETIQUETAS_DE_CODIGO[c] ?? c).toLowerCase());
+}
+
+// VB-4: las cifras de las descripciones de las alertas, en es-VE. Solo en las frases fijas del nucleo que llevan un
+// numero (AL-1, AL-2, AL-4 y AL-5) y solo en el hueco de la cifra: el resto (un codigo de partida que escribio el
+// usuario, «art. 133») queda tal cual. Los grupos alternan texto y cifra.
+const CIFRA = "([-+]?[0-9]+(?:\\.[0-9]+)?)";
+const FRASES_CON_CIFRAS = [
+  new RegExp(`^(retraso: SPI )${CIFRA}$`),
+  new RegExp(`^(sobrecosto: CPI )${CIFRA}$`),
+  new RegExp(`^(el punto de equilibrio proyectado sube más de )${CIFRA}( puntos porcentuales .*)$`),
+  new RegExp(`^(.*: el precio del corte desvía )${CIFRA}( sobre un valor ganado de )${CIFRA}$`),
+];
+
+// Mas largo que esto no es una descripcion del nucleo (la mas larga mide ~150 caracteres): vuelve intacto sin probar
+// ninguna expresion ni formatear cifras (el separador de miles de formatoEsVe es cuadratico en el largo de la cifra).
+const LARGO_MAXIMO_DESCRIPCION = 2_000;
+
+export function descripcionEsVe(texto: string): string {
+  if (texto.length > LARGO_MAXIMO_DESCRIPCION) return texto;
+  for (const frase of FRASES_CON_CIFRAS) {
+    const m = frase.exec(texto);
+    if (m) return m.slice(1).map((parte, i) => (i % 2 === 1 ? formatoEsVe(parte) : parte)).join("");
+  }
+  return texto;
+}
+
+// La severidad que manda la API («ADVERTENCIA», «sin evaluar») para el componente comun: las del nucleo pasan tal
+// cual (el componente les pone su nombre e icono) y «sin evaluar» se lee con mayuscula inicial.
+export function severidadVisible(valor: string): string {
+  return valor === "sin evaluar" ? "Sin evaluar" : valor;
 }
 
 export interface ParametroDeControl {
@@ -142,7 +172,8 @@ export const ROTULO_DE_METODO: Record<MetodoDePrecios, string> = {
 
 export const PESTANAS = ["Línea base", "Valuaciones", "Valor ganado", "Alertas y reproyección", "Recuperación"] as const;
 
-export const COLUMNAS_VALUACIONES = ["Número", "Periodo", "Fecha", "Inspector", "Registrada", "Estado"];
+// Son las claves de cada fila tal como las manda la API (sin tilde); el título visible sale de TITULOS_VISIBLES.
+export const COLUMNAS_VALUACIONES = ["Numero", "Periodo", "Fecha", "Inspector", "Registrada", "Estado"];
 export const COLUMNAS_INDICADORES = ["Indicador", "Valor", "En la otra moneda", "Nota"];
 export const COLUMNAS_ALERTAS = ["Alerta", "Severidad", "Descripcion", "Observado", "Umbral"];
 export const COLUMNAS_REPROYECCION = ["Partida", "Indice", "Fin (dia habil)", "Nota"];

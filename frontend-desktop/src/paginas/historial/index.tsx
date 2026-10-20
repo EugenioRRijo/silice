@@ -65,7 +65,8 @@ export default function PaginaHistorial() {
             <TextInput
               id="historial-desde"
               size="sm"
-              labelText="Desde (AAAA-MM-DD)"
+              type="date"
+              labelText="Desde"
               value={filtros.desde}
               invalid={fechaMala(filtros.desde)}
               invalidText="Fecha inválida"
@@ -74,7 +75,8 @@ export default function PaginaHistorial() {
             <TextInput
               id="historial-hasta"
               size="sm"
-              labelText="Hasta (AAAA-MM-DD)"
+              type="date"
+              labelText="Hasta"
               value={filtros.hasta}
               invalid={fechaMala(filtros.hasta)}
               invalidText="Fecha inválida"

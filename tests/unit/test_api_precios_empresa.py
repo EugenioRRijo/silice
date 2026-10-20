@@ -230,7 +230,7 @@ def test_una_referencia_ilegible_dice_el_motivo_sin_la_ruta_del_servidor(monkeyp
     r = navegador.post(f"{URL}/referencia", headers=cabeceras)
     assert r.status_code == 422, r.text
     assert r.json() == {
-        "detalle": "No se cargo la referencia: no se pudo leer el archivo de la referencia."
+        "detalle": "No se cargó la referencia: no se pudo leer el archivo de la referencia."
     }
     assert "secreto" not in r.text
 
@@ -281,7 +281,7 @@ def test_un_insumo_que_el_catalogo_no_conoce_se_informa_y_no_entra(_entorno) -> 
     assert cuerpo["desconocidos"] == ["INSUMO INEXISTENTE DEMO"]
     assert (
         cuerpo["aviso"]
-        == "Estos insumos no estan en el catalogo y no entraron a la lista (UC-17 4a):"
+        == "Estos insumos no están en el catálogo y no entraron a la lista (UC-17 4a):"
     )
 
 
@@ -303,10 +303,10 @@ def test_sin_moneda_o_sin_archivo_no_hay_valor_por_defecto(_entorno, campo) -> N
 @pytest.mark.parametrize(
     ("cambios", "mensaje"),
     [
-        ({"moneda": "EUR"}, "No se creo la lista: "),
-        ({"empresa": "  "}, "No se creo la lista: la empresa (nombre y RIF)"),
-        ({"fuente": ""}, "No se creo la lista: la empresa (nombre y RIF)"),
-        ({"base_id": 9999}, "No se creo la lista: la lista base 9999 no existe en este caso"),
+        ({"moneda": "EUR"}, "No se creó la lista: "),
+        ({"empresa": "  "}, "No se creó la lista: la empresa (nombre y RIF)"),
+        ({"fuente": ""}, "No se creó la lista: la empresa (nombre y RIF)"),
+        ({"base_id": 9999}, "No se creó la lista: la lista base 9999 no existe en este caso"),
     ],
 )
 def test_los_errores_del_nucleo_llegan_con_el_prefijo_de_la_pagina(
@@ -329,15 +329,15 @@ def test_un_archivo_de_otro_formato_o_corrupto_o_enorme_se_rechaza(_entorno, mon
     antes = _cuantas_listas(_entorno)
     r = _crear(navegador, cabeceras, base, archivo=_archivo(b"hola", "precios.txt"))
     assert r.status_code == 422, r.text
-    assert r.json() == {"detalle": "No se creo la lista: el archivo debe ser CSV o XLSX."}
+    assert r.json() == {"detalle": "No se creó la lista: el archivo debe ser CSV o XLSX."}
     r = _crear(navegador, cabeceras, base, archivo=_archivo(b"no es un zip", "precios.xlsx"))
     assert r.status_code == 422, r.text
-    assert r.json()["detalle"].startswith("No se creo la lista: precios.xlsx: no se puede leer")
+    assert r.json()["detalle"].startswith("No se creó la lista: precios.xlsx: no se puede leer")
     monkeypatch.setattr(ruta, "TOPE_BYTES", 100)
     r = _crear(navegador, cabeceras, base)
     assert r.status_code == 422, r.text
     assert r.json() == {
-        "detalle": "No se creo la lista: el archivo pesa mas del maximo permitido (20 MiB)."
+        "detalle": "No se creó la lista: el archivo pesa más del máximo permitido (20 MiB)."
     }
     assert _cuantas_listas(_entorno) == antes
 
@@ -387,7 +387,7 @@ def test_los_hallazgos_son_los_de_la_memoria_por_unidad(_entorno) -> None:
     cuerpo = r.json()
     assert cuerpo["columnas"] == ["Regla", "Severidad", "Descripción", "Impacto"]
     assert (
-        cuerpo["nota"] == "Sin version, el impacto es por unidad de insumo. Nada de esto se guarda."
+        cuerpo["nota"] == "Sin versión, el impacto es por unidad de insumo. Nada de esto se guarda."
     )
     assert all(list(fila) == cuerpo["columnas"] for fila in cuerpo["filas"])
     for (regla, severidad, insumo), impacto in DE_LA_MEMORIA.items():
@@ -511,10 +511,10 @@ def test_un_nombre_reservado_de_windows_se_salva_y_no_es_500(_entorno) -> None:
     assert r.status_code == 201, r.text
     r = _crear(navegador, cabeceras, base, archivo=_archivo(b"no es un libro", "NUL.xlsx"))
     assert r.status_code == 422, r.text
-    assert r.json()["detalle"].startswith("No se creo la lista: _NUL.xlsx: no se puede leer")
+    assert r.json()["detalle"].startswith("No se creó la lista: _NUL.xlsx: no se puede leer")
     r = _crear(navegador, cabeceras, base, archivo=_archivo(nombre="a:b.csv"))
     assert r.status_code == 422, r.text
-    assert r.json() == {"detalle": "No se creo la lista: el archivo debe ser CSV o XLSX."}
+    assert r.json() == {"detalle": "No se creó la lista: el archivo debe ser CSV o XLSX."}
 
 
 @pytest.mark.parametrize(
@@ -556,7 +556,7 @@ def test_un_archivo_vacio_no_crea_la_lista_y_no_es_500(_entorno) -> None:
     for nombre in ("vacio.csv", "vacio.xlsx"):
         r = _crear(navegador, cabeceras, base, archivo=_archivo(b"", nombre))
         assert r.status_code == 422, r.text
-        assert r.json()["detalle"].startswith("No se creo la lista: ")
+        assert r.json()["detalle"].startswith("No se creó la lista: ")
         _sin_pistas(r)
     assert _cuantas_listas(_entorno) == antes
 
@@ -588,7 +588,7 @@ def test_la_extension_que_no_coincide_con_el_contenido_es_422_sin_traza(
     antes = _cuantas_listas(_entorno)
     r = _crear(navegador, cabeceras, base, archivo=_archivo(contenido, nombre))
     assert r.status_code == 422, r.text
-    assert r.json()["detalle"].startswith("No se creo la lista: ")
+    assert r.json()["detalle"].startswith("No se creó la lista: ")
     _sin_pistas(r)
     assert _cuantas_listas(_entorno) == antes
 

@@ -47,6 +47,25 @@ export const CLAVES_EJECUTADO = ["periodo", "partida", "cantidad", "fuente"];
 // Columnas del resultado que son texto y no cifra (el resto se alinea a la derecha como monto o tasa).
 const COLUMNAS_DE_TEXTO = new Set(["Período", "Mecanismo", "Moneda", "Marcas"]);
 
+// VB-5: los valores internos de los desplegables y de los componentes (los del nucleo, que la API espera tal cual)
+// con su rotulo en español. El valor que se manda no cambia; uno que no esta aqui se muestra tal cual.
+const ROTULOS_DE_OPCION: Record<string, string> = {
+  mensual: "Mensual",
+  trimestral: "Trimestral",
+  escalatoria: "Escalatoria",
+  comprobacion: "Comprobación directa",
+  ambos: "Ambos (escalatoria y comprobación)",
+  por_partida: "Por partida",
+  declarada: "Declarada",
+  materiales: "Materiales",
+  equipos: "Equipos",
+  mano_obra: "Mano de obra",
+};
+
+export function rotuloDeOpcion(valor: string): string {
+  return ROTULOS_DE_OPCION[valor] ?? valor;
+}
+
 export function filasVacias(claves: string[], cantidad: number): Fila[] {
   return Array.from({ length: cantidad }, () => Object.fromEntries(claves.map((c) => [c, ""])));
 }
@@ -125,9 +144,34 @@ function ejecutadoConDatos(fila: Fila): boolean {
 
 export function columnasDeResultado(columnas: string[]): ColumnaDensa[] {
   return columnas.map((titulo) => ({ clave: titulo, titulo, numerica: !COLUMNAS_DE_TEXTO.has(titulo),
-    // Montos y tasas en es-VE; el texto exacto de la API queda en el title de la celda.
-    presentar: COLUMNAS_DE_TEXTO.has(titulo) ? undefined : formatoMontoEsVe,
+    // Montos y tasas en es-VE; el texto exacto de la API queda en el title de la celda. El mecanismo, con su rotulo.
+    presentar: titulo === "Mecanismo" ? rotuloDeOpcion : COLUMNAS_DE_TEXTO.has(titulo) ? undefined : formatoMontoEsVe,
   }));
+}
+
+// VB-10: las 12 columnas de la API no caben a 1366 px. La tabla principal lleva la moneda del estudio; la segunda,
+// el período con la otra moneda y la tasa (sus titulos sin «(otra)», la tabla ya lo dice). «Marcas» sale de las
+// tablas y se lee como nota por período (`marcasPorPeriodo`). Las cifras no cambian: son las mismas celdas.
+const OTRA = " (otra)";
+
+export function partirResultado(columnas: string[]): { principal: ColumnaDensa[]; otra: ColumnaDensa[] } {
+  // Sin orden: la fila Total va siempre al final.
+  const todas = columnasDeResultado(columnas.filter((c) => c !== "Marcas")).map((c) => ({ ...c, ordenable: false }));
+  const enOtra = (c: ColumnaDensa) => c.clave.endsWith(OTRA) || c.clave === "Tasa";
+  return {
+    principal: todas.filter((c) => !enOtra(c)),
+    otra: todas
+      .filter((c) => c.clave === "Período" || enOtra(c))
+      .map((c) => ({ ...c, titulo: c.clave.endsWith(OTRA) ? c.clave.slice(0, -OTRA.length) : c.titulo })),
+  };
+}
+
+// Las marcas de cada período («Período: marcas»). Las de la fila Total son el estado y los avisos, que la pagina ya
+// muestra aparte.
+export function marcasPorPeriodo(filas: Fila[]): string[] {
+  return filas
+    .filter((f) => f["Período"] !== "Total" && (f.Marcas ?? "").trim() !== "")
+    .map((f) => `${f["Período"]}: ${f.Marcas}`);
 }
 
 export function filasDeResultado(filas: Fila[]): FilaDensa[] {

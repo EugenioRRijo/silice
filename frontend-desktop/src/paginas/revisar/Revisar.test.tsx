@@ -336,7 +336,7 @@ describe("Revisar un paquete", () => {
     const tabla = await screen.findByRole("table", { name: "Precios y totales que no coinciden" });
     const [, celdas] = within(tabla).getAllByRole("row");
     const textos = within(celdas).getAllByRole("cell").map((c) => c.textContent);
-    expect(textos).toEqual(["MIN-001", "precio_unitario", "10,1235", "9,5000", "10,12"]);
+    expect(textos).toEqual(["MIN-001", "Precio unitario", "10,1235", "9,5000", "10,12"]);
   });
 
   test("avisos repetidos no repiten la clave de React", async () => {

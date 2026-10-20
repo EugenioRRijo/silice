@@ -15500,6 +15500,11 @@
             "type": "string",
             "title": "Detalle",
             "default": ""
+          },
+          "exacto": {
+            "type": "string",
+            "title": "Exacto",
+            "default": ""
           }
         },
         "type": "object",
@@ -16370,6 +16375,10 @@
             "type": "string",
             "title": "Total"
           },
+          "total_exacto": {
+            "type": "string",
+            "title": "Total Exacto"
+          },
           "partidas": {
             "items": {
               "$ref": "#/components/schemas/PartidaPresupuestadaRespuesta"
@@ -16408,6 +16417,7 @@
           "fecha",
           "moneda",
           "total",
+          "total_exacto",
           "partidas",
           "por_severidad",
           "informe",

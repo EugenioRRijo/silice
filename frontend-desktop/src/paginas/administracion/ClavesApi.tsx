@@ -1,7 +1,8 @@
-import { Button, InlineNotification, Select, SelectItem, TextInput } from "@carbon/react";
+import { Button, InlineNotification, Select, SelectItem } from "@carbon/react";
 import { useCallback, useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { ErrorDeApi, pedir } from "../../api/cliente";
+import { CampoTexto } from "../../comun/CampoTexto";
 import { AvisoError } from "../../comun/AvisoError";
 import { EsqueletoPagina } from "../../comun/EsqueletoPagina";
 import { TablaDensa } from "../../comun/TablaDensa";
@@ -91,7 +92,7 @@ export default function ClavesApi() {
         vacio={{ titulo: "Todavía no hay claves de API" }}
       />
       <form className="silice-adm__seccion" onSubmit={(e) => void crear(e)}>
-        <TextInput
+        <CampoTexto
           id="adm-api-nombre"
           labelText="Para qué es esta clave (por ejemplo, el plugin que la usa)"
           value={nombre}
