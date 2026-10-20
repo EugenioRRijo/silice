@@ -235,7 +235,15 @@ def test_un_mensaje_del_nucleo_sale_con_tilde_y_el_codigo_del_usuario_intacto() 
     # Ronda 1, punto 3: «la partida X no esta en la version…» del núcleo, con tilde; el código
     # con forma de fecha lo escribió la persona y no se reescribe (punto 1).
     ejecutado = [{"periodo": "1", "partida": "2026-11-10", "cantidad": "1", "fuente": "AV-01"}]
+    # con la versión 002 de comprobación, el núcleo se queja primero de que no la valora
     r = _post("calcular", ejecutado=ejecutado)
+    detalle = (
+        "No se pudo calcular: la versión 002 no valora 2026-11-10: no sirve de comprobación "
+        "para ese período"
+    )
+    assert (r.status_code, r.json()) == (422, {"detalle": detalle})
+    sin_comprobacion = [{**PERIODOS[0], "version_comprobacion": ""}]
+    r = _post("calcular", ejecutado=ejecutado, periodos=sin_comprobacion)
     detalle = "No se pudo calcular: la partida 2026-11-10 no está en la versión del contrato"
     assert (r.status_code, r.json()) == (422, {"detalle": detalle})
 

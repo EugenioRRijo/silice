@@ -21,6 +21,7 @@ from pathlib import Path
 from sqlalchemy import select
 
 from aplicacion.composicion import ComposicionInvalida, decimal_desde_texto, texto_de_celda
+from aplicacion.control import Hueco, catalogo_de_frases
 from aplicacion.errores import HojaInvalida
 from core import models
 from core.budget import TablaExportable, cargar_elaboracion, exportar_hoja
@@ -84,17 +85,136 @@ ROTULOS = {
     "partida": "Partida (ejecutado)",
     "cantidad": "Cantidad ejecutada",
 }
-#: Las reglas de la cláusula que el núcleo (`core/budget/reajuste.py`, intocable) escribe sin
-#: tildes, con las tildes restituidas. Solo tildes: los códigos que traen (S1-R10,
-#: mecanismo_pagadero) son del núcleo y quedan. Un mensaje que no está aquí pasa tal cual.
-REGLAS_DEL_NUCLEO_CON_TILDES = {
-    "la duracion del contrato debe ser positiva": "la duración del contrato debe ser positiva",
-    "el mes base de los indices se declara con su primer dia (S1-R10)": (
-        "el mes base de los índices se declara con su primer día (S1-R10)"
-    ),
-    "la clausula exige fuente y responsable": "la cláusula exige fuente y responsable",
-    "componente repetido en la clausula": "componente repetido en la cláusula",
+
+
+def _fecha_del_sistema(iso: str) -> str:
+    """«2027-01-15» -> «15/01/2027»; lo que no es una fecha real queda como vino."""
+    try:
+        return f"{date.fromisoformat(iso):%d/%m/%Y}"
+    except ValueError:
+        return iso
+
+
+_FECHA_ISO: Hueco = (r"\d{4}-\d{2}-\d{2}", _fecha_del_sistema)
+_FECHA_ES = r"\d{2}/\d{2}/\d{4}"
+
+#: Los huecos acotados de los mensajes de Reajuste: fechas del sistema (las ISO se presentan en
+#: dd/mm/aaaa), números de estudio e importación, la suma de los pesos y el código de una versión
+#: sin espacios. Todo otro hueco (`codigo`, `series`, `partidas`, `serie`) es texto del usuario,
+#: uno por plantilla, y sale tal cual.
+HUECOS_DE_REAJUSTE: dict[str, Hueco] = {
+    "desde": _FECHA_ISO,
+    "hasta": _FECHA_ISO,
+    "aniversario": _FECHA_ISO,
+    "desde_es": _FECHA_ES,
+    "hasta_es": _FECHA_ES,
+    "fecha_es": _FECHA_ES,
+    "estudio": r"\d+",
+    "importacion": r"\d+",
+    "suma": r"[-+0-9.E]+",
+    "version": r"\S+",
 }
+
+#: (mensaje tal como lo emite `core/budget/reajuste.py`, el mismo con tildes). Solo tildes: los
+#: códigos que traen (S1-R10, UC-18 3b, mecanismo_pagadero) son del núcleo y quedan (ver el
+#: informe). La guardia `tests/unit/test_reajuste_tildes.py` falla si el núcleo emite un mensaje
+#: que no está aquí.
+PLANTILLAS_DE_REAJUSTE: tuple[tuple[str, str], ...] = (
+    (
+        "una partida con costo directo cero no tiene pesos por componente",
+        "una partida con costo directo cero no tiene pesos por componente",
+    ),
+    ("el estudio necesita al menos un periodo", "el estudio necesita al menos un período"),
+    ("los periodos van en orden y sin solaparse", "los períodos van en orden y sin solaparse"),
+    (
+        "las series {series} no estan importadas (UC-17)",
+        "las series {series} no están importadas (UC-17)",
+    ),
+    (
+        "la version de comprobacion {codigo} no existe en el proyecto (UC-18 4)",
+        "la versión de comprobación {codigo} no existe en el proyecto (UC-18 4)",
+    ),
+    (
+        "la version {version} no valora {partidas}: no sirve de comprobacion para ese periodo",
+        "la versión {version} no valora {partidas}: no sirve de comprobación para ese período",
+    ),
+    (
+        "el estudio {estudio} no es de la version {codigo}",
+        "el estudio {estudio} no es de la versión {codigo}",
+    ),
+    (
+        "el estudio {estudio} esta cerrado: solo un parcial se reemplaza",
+        "el estudio {estudio} está cerrado: solo un parcial se reemplaza",
+    ),
+    (
+        "un parcial se reemplaza una sola vez (S1-R21)",
+        "un parcial se reemplaza una sola vez (S1-R21)",
+    ),
+    (
+        "el estudio que reemplaza a un parcial debe estar cerrado (S1-R21)",
+        "el estudio que reemplaza a un parcial debe estar cerrado (S1-R21)",
+    ),
+    (
+        "el estudio exige fuente y responsable (UC-18 6)",
+        "el estudio exige fuente y responsable (UC-18 6)",
+    ),
+    (
+        "cada cantidad ejecutada exige su fuente: acta o valuacion (UC-18 2)",
+        "cada cantidad ejecutada exige su fuente: acta o valuación (UC-18 2)",
+    ),
+    ("no hay ningun estudio de reajuste {estudio}", "no hay ningún estudio de reajuste {estudio}"),
+    ("la duracion del contrato debe ser positiva", "la duración del contrato debe ser positiva"),
+    (
+        "el mes base de los indices se declara con su primer dia (S1-R10)",
+        "el mes base de los índices se declara con su primer día (S1-R10)",
+    ),
+    ("R va en [0, 1) con su fuente (S1-R8)", "R va en [0, 1) con su fuente (S1-R8)"),
+    ("la clausula exige fuente y responsable", "la cláusula exige fuente y responsable"),
+    (
+        "mecanismo_pagadero solo con 'ambos', uno de los dos y con su fuente",
+        "mecanismo_pagadero solo con 'ambos', uno de los dos y con su fuente",
+    ),
+    ("componente repetido en la clausula", "componente repetido en la cláusula"),
+    (
+        "la cantidad ejecutada de {codigo} no puede ser negativa",
+        "la cantidad ejecutada de {codigo} no puede ser negativa",
+    ),
+    (
+        "el periodo {desde_es}-{hasta_es} del estudio {estudio} no recalcula igual a lo guardado "
+        "(RNF-14)",
+        "el período {desde_es}-{hasta_es} del estudio {estudio} no recalcula igual a lo guardado "
+        "(RNF-14)",
+    ),
+    (
+        "por_partida exige materiales, equipos y mano_obra con su serie",
+        "por_partida exige materiales, equipos y mano_obra con su serie",
+    ),
+    (
+        "la estructura declarada exige el peso de cada componente",
+        "la estructura declarada exige el peso de cada componente",
+    ),
+    (
+        "los pesos de la estructura declarada suman {suma}, no 1 (§8.1)",
+        "los pesos de la estructura declarada suman {suma}, no 1 (§8.1)",
+    ),
+    (
+        "la partida {codigo} no esta en la version del contrato",
+        "la partida {codigo} no está en la versión del contrato",
+    ),
+    (
+        "el periodo {desde}\u2013{hasta} cruza el aniversario {aniversario}: partalo (UC-18 3b)",
+        "el período {desde}\u2013{hasta} cruza el aniversario {aniversario}: pártalo (UC-18 3b)",
+    ),
+    (
+        "el estudio {estudio} cita la importacion {importacion} de {serie} al {fecha_es}, que ya "
+        "no esta en la base",
+        "el estudio {estudio} cita la importación {importacion} de {serie} al {fecha_es}, que ya "
+        "no está en la base",
+    ),
+)
+
+#: Restituye las tildes de un mensaje del núcleo de reajuste; otro texto pasa sin cambios.
+con_tildes_de_reajuste = catalogo_de_frases(PLANTILLAS_DE_REAJUSTE, HUECOS_DE_REAJUSTE)
 
 
 def _rotulo(campo: str) -> str:
@@ -185,8 +305,9 @@ def clausula_desde_textos(
     except HojaInvalida:
         raise
     except ValueError as error:  # las reglas de la clausula (pesos que no suman 1, R, ...)
-        regla = REGLAS_DEL_NUCLEO_CON_TILDES.get(str(error), str(error))
-        raise HojaInvalida(f"La cláusula no es válida: {regla}") from None
+        raise HojaInvalida(
+            f"La cláusula no es válida: {con_tildes_de_reajuste(str(error))}"
+        ) from None
 
 
 def periodos_desde_filas(
@@ -263,7 +384,7 @@ def calcular(
     except HojaInvalida:
         raise
     except ValueError as error:
-        raise HojaInvalida(f"No se pudo calcular: {error}") from error
+        raise HojaInvalida(f"No se pudo calcular: {con_tildes_de_reajuste(str(error))}") from error
     finally:
         sesion.rollback()
 
@@ -298,7 +419,9 @@ def guardar(
         raise
     except ValueError as error:
         sesion.rollback()
-        raise HojaInvalida(f"No se guardó el estudio: {error}") from error
+        raise HojaInvalida(
+            f"No se guardó el estudio: {con_tildes_de_reajuste(str(error))}"
+        ) from error
     except BaseException:
         sesion.rollback()
         raise
@@ -360,7 +483,9 @@ def guardar_con_valuaciones(
         raise
     except ValueError as error:
         sesion.rollback()
-        raise HojaInvalida(f"No se guardó el estudio: {error}") from error
+        raise HojaInvalida(
+            f"No se guardó el estudio: {con_tildes_de_reajuste(str(error))}"
+        ) from error
     except BaseException:
         sesion.rollback()
         raise

@@ -291,7 +291,8 @@ def excel(
             sesion, peticion.proyecto, peticion.version, resultado, periodos
         )
     except (HojaInvalida, ValueError) as error:
-        raise HTTPException(422, f"No se pudo preparar el Excel: {error}") from None
+        detalle = logica.con_tildes_de_reajuste(str(error))
+        raise HTTPException(422, f"No se pudo preparar el Excel: {detalle}") from None
     return Response(
         content=contenido,
         media_type=XLSX,
