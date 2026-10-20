@@ -38,7 +38,6 @@ const FALTA =
 const REV_VIEJO = "El borrador cambió en otra ventana: vuelva a cargarlo.";
 const CASO_CAMBIO = "El caso cambió desde que abrió este borrador: ábralo de nuevo en el caso actual.";
 const YA_GUARDADO = "Este borrador ya se guardó como la versión 002; abra esa versión para seguir.";
-const FRASE = "La hoja sigue con el último borrador válido.";
 const VERSIONES: VersionesRespuesta = {
   proyecto: "OF-001",
   moneda: "USD",
@@ -208,6 +207,8 @@ describe("Hoja del proyecto: cantidades, parámetros y plan editables (3c-2)", (
     nombre: string;
     pestana: string;
     seccion: Seccion;
+    // Lo que la clásica agrega tras el error de cada sección (diseño §4.4; ui/paginas/hoja.py:1674, 1773, 1827, 2053).
+    frase: string;
     abrir: () => Promise<void>;
     // El campo que se edita y su valor sembrado.
     campo: () => HTMLElement;
@@ -223,6 +224,7 @@ describe("Hoja del proyecto: cantidades, parámetros y plan editables (3c-2)", (
       nombre: "Parámetros",
       pestana: "Parámetros",
       seccion: "parametros",
+      frase: "La hoja sigue con los últimos parámetros válidos.",
       abrir: async () => {
         await irA("Parámetros");
         await screen.findByRole("textbox", { name: /^Administración/ });
@@ -240,6 +242,7 @@ describe("Hoja del proyecto: cantidades, parámetros y plan editables (3c-2)", (
       nombre: "Presupuesto (cantidades)",
       pestana: "Presupuesto",
       seccion: "cantidades",
+      frase: "La hoja sigue con las últimas cantidades válidas.",
       abrir: async () => {
         await irA("Presupuesto");
         await screen.findByRole("textbox", { name: "Cantidad, Presupuesto fila 1" });
@@ -255,6 +258,7 @@ describe("Hoja del proyecto: cantidades, parámetros y plan editables (3c-2)", (
       nombre: "Plan y curva",
       pestana: "Plan y curva",
       seccion: "plan",
+      frase: "La hoja sigue con el último plan válido.",
       abrir: async () => {
         await irA("Plan y curva");
         await screen.findByRole("textbox", { name: "Día 1, Plan de trabajo fila 1" });
@@ -451,7 +455,7 @@ describe("Hoja del proyecto: cantidades, parámetros y plan editables (3c-2)", (
       alPoner[e.seccion] = () => json({ detalle: "El detalle de la clásica" }, 422);
       fireEvent.change(e.campo(), { target: { value: "x" } });
       await pausa(400);
-      expect(await esperar(() => aviso())).toHaveTextContent(`El detalle de la clásica. ${FRASE}`);
+      expect(await esperar(() => aviso())).toHaveTextContent(`El detalle de la clásica. ${e.frase}`);
       expect(e.campo()).toHaveValue("x");
       // El borrador no avanzó: el total y los cambios son los de antes.
       expect(within(regionDeEstado()).getByTitle("2703.860232344044033333333333")).toBeInTheDocument();

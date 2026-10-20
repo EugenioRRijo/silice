@@ -4,6 +4,7 @@ import {
   CAMPOS_DE_PARAMETROS,
   cambiarCantidad,
   cambiarFraccion,
+  FRASES_DE_RECHAZO,
   claseDeConflicto,
   cuerpoDeCantidades,
   cuerpoDeParametros,
@@ -19,6 +20,7 @@ import {
   ubicarErrorDeParametro,
   ubicarErrorDePlan,
 } from "./logicaSecciones";
+import { mensajeDeRechazo } from "./logica";
 
 // Rebanada 3c-2 (cantidades, parámetros y plan): lógica pura. Los literales salen del diseño (§4.4 E2 a E5, §2.5.3,
 // §2.5.4, §2.5.7, §6.2 3c-B2, B5, B12) y de la página clásica (ui/hoja.py: H:855-863 cantidades, H:1124 parámetros,
@@ -168,5 +170,23 @@ describe("edición por sección (3c-2): clases de conflicto (409)", () => {
     expect(claseDeConflicto("El caso cambió desde que abrió este borrador: ábralo de nuevo en el caso actual.")).toBe("perdido");
     expect(claseDeConflicto("Este borrador ya se guardó como la versión 002; abra esa versión para seguir.")).toBe("perdido");
     expect(claseDeConflicto("Cualquier otra cosa")).toBe("otro");
+  });
+});
+
+describe("edición por sección (3c-2): frase tras el rechazo", () => {
+  test("cada sección dice con qué sigue la hoja (la clásica, ui/paginas/hoja.py:1674, 1773, 1827, 2053)", () => {
+    expect(FRASES_DE_RECHAZO).toEqual({
+      cantidades: "La hoja sigue con las últimas cantidades válidas.",
+      parametros: "La hoja sigue con los últimos parámetros válidos.",
+      plan: "La hoja sigue con el último plan válido.",
+    });
+  });
+
+  test("el mensaje es el detalle del servidor sin su punto final, una frase y nada más; sin frase, la del borrador", () => {
+    expect(mensajeDeRechazo("parametros: utilidad: 'mucho' no es un numero decimal valido", FRASES_DE_RECHAZO.parametros)).toBe(
+      "parametros: utilidad: 'mucho' no es un numero decimal valido. La hoja sigue con los últimos parámetros válidos.",
+    );
+    expect(mensajeDeRechazo("Algo pasó.", FRASES_DE_RECHAZO.plan)).toBe("Algo pasó. La hoja sigue con el último plan válido.");
+    expect(mensajeDeRechazo("Algo pasó")).toBe("Algo pasó. La hoja sigue con el último borrador válido.");
   });
 });
