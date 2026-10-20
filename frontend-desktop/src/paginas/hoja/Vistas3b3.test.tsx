@@ -184,6 +184,14 @@ describe("Hoja del proyecto: Equilibrio, Parámetros, Auditoría, Precios y Traz
     expect(await screen.findByText(/1\.234\.567\.890\.123\.456\.789\.012\.345,123456789012 USD/)).toBeInTheDocument();
   });
 
+  test("3b-F9: la moneda que manda la vista es la de las cifras", async () => {
+    servidor({ vistas: { equilibrio: () => json(vistaEquilibrio({ moneda: "Bs" })) } });
+    montar();
+    await irA("Punto de equilibrio");
+    expect(await screen.findByText("Ventas (contrato)")).toBeInTheDocument();
+    expect(screen.getByTitle("1530.4912345")).toHaveTextContent("1.530,49 Bs");
+  });
+
   // --- Parámetros ---------------------------------------------------------------------------------
 
   test("Parámetros: los cuatro parámetros de costo en lectura, con es-VE y su valor escrito en el title", async () => {

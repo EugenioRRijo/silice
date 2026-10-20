@@ -84,6 +84,7 @@ describe("lógica de la hoja, 3b-3", () => {
   test("las fechas ISO se leen día/mes/año; lo que no es una fecha queda igual", () => {
     expect(fechaCorta("2026-07-01")).toBe("01/07/2026");
     expect(fechaCorta("2026-10-06 09:30:00")).toBe("06/10/2026 09:30:00");
+    expect(fechaCorta("2026-10-06T09:30:00")).toBe("06/10/2026 09:30:00"); // la hora ISO del servidor
     expect(fechaCorta("")).toBe("");
     expect(fechaCorta("hoy")).toBe("hoy");
   });
