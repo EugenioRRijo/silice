@@ -689,7 +689,16 @@ def plantilla_uc05() -> bytes:
         ],
         HOJA_PRESUPUESTO: [
             COLUMNAS_PRESUPUESTO,
-            ("EJ-P1", "Relleno de ejemplo", "m3", "20", "FILA-1", "", "{}", "{}"),
+            (
+                "EJ-P1",
+                "Relleno de ejemplo",
+                "m3",
+                "20",
+                "FILA-1",
+                "largo * ancho * alto",
+                '{"largo": 5, "ancho": 4, "alto": 1}',
+                "{}",
+            ),
         ],
         HOJA_APU: [COLUMNAS_APU, ("EJ-P1", "Relleno de ejemplo", "m3", "8")],
         HOJA_INSUMOS: [
@@ -698,7 +707,7 @@ def plantilla_uc05() -> bytes:
             ("EJ-P1", "equipo", "Compactadora", "", "1", "71.00", "0.10", ""),
             ("EJ-P1", "mano de obra", "Obrero", "", "2", "10.25", "", "jornal"),
         ],
-        HOJA_CURVA: [COLUMNAS_CURVA, ("Dia 1", "836.7975", "836.7975")],
+        HOJA_CURVA: [COLUMNAS_CURVA, ("Día 1 [EJ-P1]", "836.7975", "836.7975")],
     }
     for nombre, lineas in filas.items():
         hoja = datos if nombre == HOJA_DATOS else libro.create_sheet(nombre)

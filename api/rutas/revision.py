@@ -31,6 +31,7 @@ recalculado de una diferencia de precio).
 
 from __future__ import annotations
 
+import re
 import tempfile
 from decimal import Decimal
 from pathlib import Path
@@ -41,6 +42,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from adapters.hoja_empresa.guardia import MAX_BYTES, ArchivoRechazado, verificar_archivo
+from api.archivos import nombre_seguro
 from api.dependencias import USUARIO_SIN_CLAVE, SesionDep
 from api.proteccion import LIMITE_CUERPO
 from api.rutas.auditorias import ServiciosDep
@@ -278,7 +280,7 @@ def _reauditoria(r: logica.Reauditoria) -> ReauditoriaRevision:
         avisos=list(r.avisos),
         total_recalculado=_exacto(r.total_recalculado),
         total_recalculado_texto=formatear_decimal(r.total_recalculado, 2),
-        reglas=logica.texto_de_reglas(r),
+        reglas=_es(logica.texto_de_reglas(r)),
         precios_coinciden=not r.diferencias,
         mensaje_precios=logica.PRECIOS_NO_COINCIDEN if r.diferencias else logica.PRECIOS_COINCIDEN,
         diferencias=[
@@ -308,7 +310,7 @@ def _dictamenes(caso: Session, sha256: str) -> list[DictamenAnterior]:
             usuario=d["usuario"],
             fecha=d["fecha"].isoformat(timespec="minutes"),
             estado_verificacion=d["estado_verificacion"],
-            texto=logica.texto_de_dictamen(d),
+            texto=_es(logica.texto_de_dictamen(d)) or "",
         )
         for d in paq.dictamenes_de(caso, sha256)
     ]
@@ -328,6 +330,14 @@ def _contra(caso: Session, documento, lista: models.ListaPrecios) -> ContraLista
         diferencia=_tabla(diferencia, logica.TITULO_CONTRA_MI_LISTA),
         no_contrastables=logica.texto_de_no_contrastables(revalorado),
     )
+
+
+_FECHA_ISO = re.compile(r"(?<![\d-])(\d{4})-(\d{2})-(\d{2})(?![\d-])")
+
+
+def _es(texto: str | None) -> str | None:
+    """Las fechas AAAA-MM-DD de un texto que se MUESTRA, en dd/mm/aaaa (es-VE)."""
+    return None if texto is None else _FECHA_ISO.sub(r"\3/\2/\1", texto)
 
 
 def _quien(activa: SesionActiva | None) -> tuple[str, str]:
@@ -398,12 +408,14 @@ def revisar_paquete(
         estado=v.estado,
         motivo=v.motivo,
         color=color,
-        banner=texto,
+        banner=_es(texto) or "",
         legible=v.legible,
-        banner_version=(logica.banner_de_version(a.recibido) if v.manifiesto is not None else None),
+        banner_version=_es(
+            logica.banner_de_version(a.recibido) if v.manifiesto is not None else None
+        ),
         ayuda_registro=logica.ayuda_de_registro(v),
         avisos=logica.avisos_visibles(a.recibido),
-        retroactiva=logica.declaracion_retroactiva(v.cadena) if v.cadena else None,
+        retroactiva=_es(logica.declaracion_retroactiva(v.cadena) if v.cadena else None),
         aviso_armo=logica.aviso_de_quien_armo(a.armo),
         reauditoria=_reauditoria(r) if r is not None else None,
         entrega_anterior=(
@@ -560,7 +572,7 @@ def excel_externo(
     with tempfile.TemporaryDirectory() as carpeta:
         try:
             verificar_archivo(datos, nombre)  # la guardia, antes de que openpyxl lo abra
-            ruta = Path(carpeta) / "externo.xlsx"
+            ruta = Path(carpeta) / nombre_seguro(nombre)  # el error nombra el archivo recibido
             ruta.write_bytes(datos)
             importado, informe = logica.auditar_excel_externo(ruta)
         except (ArchivoRechazado, ValueError, KeyError) as error:

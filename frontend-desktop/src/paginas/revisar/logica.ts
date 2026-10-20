@@ -73,3 +73,10 @@ export const COLUMNAS_HALLAZGOS: ColumnaDensa[] = [
   { clave: "severidad", titulo: "Severidad", celda: "severidad" },
   { clave: "descripcion", titulo: "Descripción" },
 ];
+
+// El campo que la reauditoria compara llega como identificador interno («precio_unitario»): se lee como rotulo.
+const ROTULOS_DE_CAMPO: Record<string, string> = { precio_unitario: "Precio unitario", total: "Total" };
+
+export function rotuloDeCampo(campo: string): string {
+  return ROTULOS_DE_CAMPO[campo] ?? campo;
+}

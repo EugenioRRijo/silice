@@ -27,6 +27,7 @@ import {
   formularioExcel,
   formularioPaquete,
   presentador,
+  rotuloDeCampo,
   tipoDeBanner,
   tituloDeLote,
 } from "./logica";
@@ -210,7 +211,7 @@ function DiferenciasDePrecio({ re }: { re: ReauditoriaRevision }) {
   // dos celdas compartan el exacto.
   const columnas: ColumnaDensa[] = [
     { clave: "codigo_partida", titulo: "Partida" },
-    { clave: "campo", titulo: "Campo" },
+    { clave: "campo", titulo: "Campo", presentar: rotuloDeCampo },
     {
       clave: "declarado",
       titulo: "Declarado",
