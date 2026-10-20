@@ -6,6 +6,9 @@ import { ContextoAplicacion } from "./contexto";
 import type { Aplicacion } from "./contexto";
 import { PAGINAS } from "./rutas";
 
+// Importar cada página en frío (Carbon, Univer) tarda más de 20 s en una máquina cargada: solo este archivo espera 60 s.
+vi.setConfig({ testTimeout: 60_000 });
+
 // Recorre el registro: cada pagina migrada se dibuja con exactamente un h1 en heading-04, y ningun h2 de las
 // paginas usa otro tamano que heading-compact-02 (V-8 de la auditoria visual).
 const ACCIONES = [...new Set(PAGINAS.flatMap((p) => (p.accion ? [p.accion] : [])))];

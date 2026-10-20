@@ -29,8 +29,15 @@ Declarado: no incluye `abrir` por la API ni las vistas R9 a R11 (llegan en 3b-3,
 - Los textos que componen las vistas llevan tildes (ayuda, «Orígenes de medida», «Vértices de recorridos», vacíos); los que
   salen de `aplicacion/hoja.py` van idénticos a la clásica, sin tildes («+ Administracion», «Dia 1»); en pantalla
   la etiqueta de período se lee «Día 1» (`periodoLegible`).
-- Tras ver la prueba en rojo se corrigieron expectativas propias de las pruebas del front (totales con el mismo
-  exacto que el encabezado, «Día», cifras repetidas, estructura de Carbon: grupo y no radiogroup, «13,20 USD»); no se
-  tocó el comportamiento.
+- Correcciones de pruebas del front: `d418108` (aún en rojo) arregló totales con el mismo exacto que el encabezado, «Día» y
+  cifras repetidas. Dos más se hicieron **tras ver verde**, en `28725f7`: la lista de partidas es `group` en Carbon (no
+  `radiogroup`) y la cifra con unidad se lee «13,20 USD». Ninguna cambió el comportamiento.
+- Seguimiento del árbitro (ronda 1, MENOR): la tabla paginada vuelve a la primera página al cambiar el número de filas, el
+  texto del Estado envuelve en vez de cortarse, la regex de 3b-F5 detecta también `toFixed` y el `+` unario, y
+  `src/shell/titulos.test.tsx` espera 60 s (importación en frío bajo carga).
+- Deuda: el campo `estados` del APU muestra el código crudo («Estado de AF-CODO-3/4|esp_fuentes:F1: …»), igual que la
+  clásica; mostrar solo el texto del estado en 3c o T11.
+- Deuda: `vista_plan` repite la fórmula del porcentaje de `hoja.filas_de_curva` (acumulado ÷ total × 100) para dar
+  el exacto; se retira con Streamlit (la prueba compara ambos textos).
 - La columna fija (sticky) de las tablas anchas y el aviso «foco no oculto» (T11) quedan para la auditoría visual.
 - Sin el enlace «Ver en Auditoría» (3b-F6b, de la 3b-3).
