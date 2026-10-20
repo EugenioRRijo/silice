@@ -5,7 +5,8 @@ espacio vigente (`tests/unit/test_ui_hoja_conexion.py`). En la interfaz nueva es
 `aplicacion.hoja_vista.elaborar`. Esta prueba lee el codigo (AST, sin importar nada del producto)
 y falla si una funcion publica de `aplicacion/hoja.py` que llega a `elaborar_hoja` no esta
 clasificada, o si la API o las vistas la usan por otra via. La segunda clausula de 3b-B21 (un punto
-de agua sin fuente da R17 ADVERTENCIA en la auditoria) llega con la vista de auditoria (3b-3).
+de agua sin fuente da R17 ADVERTENCIA en la auditoria) esta en `test_aplicacion_hoja_vista.py` y
+`test_api_hoja.py` (R11, 3b-3); aqui solo se vigila que la auditoria salga de `calculo`.
 """
 
 from __future__ import annotations
@@ -87,17 +88,28 @@ def test_elaborar_borrador_solo_se_llama_desde_hoja_vista_elaborar():
 
 
 def test_las_vistas_leen_siempre_el_calculo_que_agrega_r17():
-    """Cada `vista_*` pide el resultado a `calculo` (que elabora con R17), no a `elaborar_*`."""
+    """Cada vista del borrador vivo (`vista_*(vivo, ...)` y el informe de la auditoria) pide el
+    resultado a `calculo` (que elabora con R17), no a `elaborar_*`. Las que leen la base (precios y
+    trazabilidad, 3b-3) no reciben un borrador y no elaboran nada."""
     arbol = ast.parse((RAIZ / "aplicacion" / "hoja_vista.py").read_text(encoding="utf-8"))
-    vistas = [
-        f for f in arbol.body if isinstance(f, ast.FunctionDef) and f.name.startswith("vista_")
+    funciones = [f for f in arbol.body if isinstance(f, ast.FunctionDef)]
+    del_borrador = [
+        f
+        for f in funciones
+        if (f.name.startswith("vista_") and f.args.args and f.args.args[0].arg == "vivo")
+        or f.name == "informe_de_auditoria"
     ]
-    assert {f.name for f in vistas} >= {
+    assert {f.name for f in del_borrador} >= {
         "vista_espacio",
         "vista_presupuesto",
         "vista_apu",
         "vista_plan",
+        "vista_equilibrio",
+        "vista_parametros",
+        "informe_de_auditoria",  # 3b-B21, segunda clausula: la auditoria sale de la via con R17
     }
-    for f in vistas:
+    for f in del_borrador:
         assert "calculo" in _llamadas(f), f.name
-        assert not _llamadas(f) & {"elaborar_borrador", "elaborar_hoja"}, f.name
+    for f in funciones:
+        if f.name != "elaborar":
+            assert not _llamadas(f) & {"elaborar_borrador", "elaborar_hoja"}, f.name
