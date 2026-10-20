@@ -10,7 +10,7 @@ import { EstadoVacio } from "../../comun/EstadoVacio";
 import { useAplicacion } from "../../shell/contexto";
 import { useCarga } from "../inicio/useCarga";
 import type { Carga } from "../inicio/useCarga";
-import { totalPresentado } from "./logica";
+import { textoDeHallazgos, totalPresentado } from "./logica";
 import "./entregar.scss";
 
 interface ProyectoDelCaso {
@@ -43,13 +43,6 @@ interface PaqueteListo {
   nombre: string;
   sha256: string;
   firmado: boolean;
-}
-
-// Los hallazgos como los escribe la pantalla clasica: «2 advertencia, 1 error» (la API ya los manda en orden).
-function textoDeHallazgos(porSeveridad: Record<string, number>): string {
-  return Object.entries(porSeveridad)
-    .map(([severidad, n]) => `${n} ${severidad.toLowerCase()}`)
-    .join(", ");
 }
 
 // UC-22 (spec S3 §8.2; RF-85): el rol «arma» elige proyecto y version, ve lo que va a viajar y descarga el .silice.
@@ -213,7 +206,7 @@ function Entrega({ proyecto, version, alExpirar }: { proyecto: string; version: 
         </div>
         <div>
           <dt className="cds--type-label-01">Cadena</dt>
-          <dd className="cds--type-heading-03">{datos.cadena_integra ? "íntegra" : "ROTA"}</dd>
+          <dd className="cds--type-heading-03">{datos.cadena_integra ? "Íntegra" : "Rota"}</dd>
         </div>
       </dl>
       {!datos.cadena_integra && (
