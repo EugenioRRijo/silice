@@ -36,9 +36,10 @@
     outline: none;
   }
 
+  // Hacia adentro: el h1 queda pegado a la cabecera fija y un anillo hacia afuera quedaria tapado por ella.
   h1[tabindex="-1"]:focus-visible {
     outline: 2px solid var(--cds-focus);
-    outline-offset: 2px;
+    outline-offset: -2px;
   }
 
   @media (min-width: 66rem) {
