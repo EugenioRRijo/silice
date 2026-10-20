@@ -439,3 +439,84 @@ def test_un_borrador_en_blanco_no_deriva_cantidades_y_lo_dice():
     assert all(filas == [] for filas in v.filas.values())
     assert v.estado == {}
     assert (v.total.texto, Decimal(v.total.exacto)) == ("0.00", D("0"))
+
+
+# --- 3b-2 · vista del presupuesto (R6) ----------------------------------------------------------
+
+#: A mano, con la fórmula de NORMAS.md §4 y los precios de `tests/fixtures/caso_of001.py` (USD a 4
+#: decimales): materiales 7,7483; equipos 14,3046 ÷ 20 = 0,71523; mano de obra (2,1877 + 1,7816) ×
+#: (1 + 6,00) = 27,7851 más bono 5,81 × 2 = 11,62, todo ÷ 20 = 1,970255; costo directo 10,433785;
+#: × 1,15 × 1,10 = 13,19874 (el precio unitario de AF-LLAVE).
+PU_DE_AF_LLAVE = D("13.19874")
+
+
+def _fila_de(vista, partida):
+    return next(f for f in vista.filas if f.partida == partida)
+
+
+def test_las_filas_del_presupuesto_son_las_de_la_clasica_con_su_monto_exacto(_of001):
+    v = hoja_vista.vista_presupuesto(_vivo(_of001))
+    clasicas = clasica.filas_del_presupuesto(
+        _elaborada_por_la_clasica(_como_clasica(_of001.borrador))
+    )
+    assert [
+        (f.clave, f.partida, f.descripcion, f.unidad, f.cantidad, f.estado.texto) for f in v.filas
+    ] == [
+        (c["clave"], c["partida"], c["descripcion"], c["unidad"], c["cantidad"], c["estado"])
+        for c in clasicas
+    ]
+    assert [(f.pu.texto, f.total.texto) for f in v.filas] == [
+        (c["pu"], c["total"]) for c in clasicas
+    ]
+    assert len(v.filas) == 30
+    assert abs(Decimal(v.total.exacto) - D("2703.86")) <= D("0.01")
+    assert (v.moneda, v.vacio_mensaje) == ("USD", None)
+
+
+def test_el_precio_unitario_de_una_partida_es_el_de_la_cascada_a_mano(_of001):
+    llave = _fila_de(hoja_vista.vista_presupuesto(_vivo(_of001)), "AF-LLAVE")
+    assert abs(Decimal(llave.pu.exacto) - PU_DE_AF_LLAVE) <= D("0.0001")
+    assert llave.pu.texto == "13.20"
+    assert llave.cantidad == "3" and llave.cantidad_calculada == "3" and llave.escrita is False
+    assert abs(Decimal(llave.total.exacto) - 3 * PU_DE_AF_LLAVE) <= D("0.001")
+    assert (llave.estado.severidad, llave.estado.texto) == (None, "OK")
+
+
+def test_una_cantidad_escrita_a_mano_se_marca_y_conserva_la_calculada(_of001):
+    clave = next(
+        c
+        for c in clasica.claves_de_items(clasica.items_sin_escribir(_como_clasica(_of001.borrador)))
+        if c.startswith("AF-LLAVE|")
+    )
+    editado = replace(_of001.borrador, cantidades={clave: D("5")})
+    antes = hoja_vista.vista_presupuesto(_vivo(_of001))
+    v = hoja_vista.vista_presupuesto(_vivo(_of001, editado))
+    llave = _fila_de(v, "AF-LLAVE")
+    assert (llave.cantidad, llave.cantidad_calculada, llave.escrita) == ("5", "3", True)
+    assert llave.estado.severidad == "ADVERTENCIA"  # R8: escrita a mano
+    # 3c-B3: la diferencia del total son 2 unidades más a 13,19874 (confirmado por el árbitro)
+    delta = Decimal(v.total.exacto) - Decimal(antes.total.exacto)
+    assert abs(delta - 2 * PU_DE_AF_LLAVE) <= D("0.001")
+    assert [f.escrita for f in v.filas].count(True) == 1
+
+
+def test_una_partida_sin_apu_no_tiene_precio_ni_total_y_queda_pendiente(_of001):
+    sin_apu = replace(
+        _of001.borrador,
+        composiciones={k: c for k, c in _of001.borrador.composiciones.items() if k != "AF-SALIDA"},
+    )
+    v = hoja_vista.vista_presupuesto(_vivo(_of001, sin_apu))
+    salida = _fila_de(v, "AF-SALIDA")
+    assert (salida.pu, salida.total) == (None, None)
+    assert salida.estado.severidad == "ERROR"
+    assert salida.estado.texto.startswith("PENDIENTE: sin APU en el catálogo (AF-SALIDA)")
+    assert len(v.filas) == 30
+
+
+def test_un_presupuesto_sin_renglones_lo_dice():
+    v = hoja_vista.vista_presupuesto(
+        Registro().crear("f", "c", "N", None, hoja.Borrador(fecha=HOY), None)
+    )
+    assert v.filas == ()
+    assert v.vacio_mensaje == "El presupuesto no tiene renglones todavía."
+    assert (v.total.texto, v.moneda) == ("0.00", "USD")

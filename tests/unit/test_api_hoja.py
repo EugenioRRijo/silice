@@ -797,3 +797,28 @@ def test_las_vistas_no_escriben_nada_en_la_base(_entorno: Path) -> None:
     antes = _volcado(_entorno)
     assert _vista(navegador, id_, "espacio").status_code == 200
     assert _volcado(_entorno) == antes
+
+
+def test_r6_of001_lista_los_30_renglones_con_cantidad_texto_y_montos_exactos() -> None:
+    navegador, ficha = _ana()
+    respuesta = _vista(navegador, _abierta(navegador, ficha), "presupuesto")
+    assert respuesta.status_code == 200, respuesta.text
+    cuerpo = respuesta.json()
+    assert len(cuerpo["filas"]) == 30
+    llave = next(f for f in cuerpo["filas"] if f["partida"] == "AF-LLAVE")
+    # a mano: costo directo 10,433785 × 1,15 × 1,10 = 13,19874 (NORMAS.md §4)
+    assert abs(D(llave["pu"]["exacto"]) - D("13.19874")) <= D("0.0001")
+    assert llave["pu"]["texto"] == "13.20" and llave["total"]["texto"] == "39.60"
+    assert (llave["cantidad"], llave["cantidad_calculada"], llave["escrita"]) == ("3", "3", False)
+    assert llave["estado"] == {"severidad": None, "texto": "OK"}
+    assert D("2703.85") <= D(cuerpo["total"]["exacto"]) <= D("2703.87")
+    assert (cuerpo["moneda"], cuerpo["vacio_mensaje"]) == ("USD", None)
+
+
+def test_r6_de_ti001_usa_los_renglones_de_la_version_y_el_total_del_caso(_casos) -> None:
+    _poner(_casos["ti001"])
+    navegador, ficha = _ana()
+    id_ = _abierta(navegador, ficha, proyecto=NOMBRE_TI001, version=caso_ti001.CODIGO)
+    cuerpo = _vista(navegador, id_, "presupuesto").json()
+    assert {f["partida"] for f in cuerpo["filas"]} == set(caso_ti001.COMPOSICIONES)
+    assert D(cuerpo["total"]["exacto"]) == caso_ti001.elaborar_caso().presupuesto.total
