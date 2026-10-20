@@ -219,6 +219,7 @@ TABLA = {
     ("POST", "/v1/hoja/borradores"): EDITAR,  # ademas, solo con sesion (403 con clave)
     ("GET", "/v1/hoja/borradores/{id}"): EDITAR,  # ademas, solo con sesion
     ("DELETE", "/v1/hoja/borradores/{id}"): EDITAR,  # ademas, solo con sesion
+    ("PUT", "/v1/hoja/borradores/{id}/espacio"): EDITAR,  # T10 3c-1 (E1); ademas, solo con sesion
     ("GET", "/v1/hoja/borradores/{id}/vistas/espacio"): EDITAR,  # T10 3b-2 (R5); solo con sesion
     ("GET", "/v1/hoja/borradores/{id}/vistas/presupuesto"): EDITAR,  # R6; solo con sesion
     ("GET", "/v1/hoja/borradores/{id}/vistas/apu"): EDITAR,  # R7; solo con sesion
