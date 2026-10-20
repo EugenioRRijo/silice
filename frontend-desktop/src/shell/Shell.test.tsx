@@ -5,7 +5,9 @@ import { afterEach, beforeEach, describe, expect, onTestFinished, test, vi } fro
 import { fijarCsrf } from "../api/cliente";
 import type { SesionRespuesta } from "../api/tipos";
 import { alertaConTexto } from "../test/ayudas";
+import { useState, useEffect } from "react";
 import { useAplicacion } from "./contexto";
+import { EsqueletoPagina } from "../comun/EsqueletoPagina";
 import { RECORRIDO_AUDITAR, iniciarRecorrido, recorridoEnCurso, terminarRecorrido } from "./recorrido";
 import { Shell } from "./Shell";
 import type { PaginaDef } from "./rutas";
@@ -704,6 +706,56 @@ describe("Shell", () => {
       await screen.findByRole("heading", { name: "Pantalla de origen" });
       await new Promise((r) => setTimeout(r, 80));
       expect(document.body).toHaveFocus();
+    });
+
+    // Ronda 1 del arbitro: la entrada real es «/» (o una ruta que no existe) y ambas REDIRIGEN con `replace` a la primera
+    // pagina; eso es la carga inicial, no un cambio de pagina: el foco sigue en <body> y el primer Tab es «Saltar».
+    test.each(["/", "/ruta-inexistente"])("al cargar en %s (redirige a la primera página) no roba el foco", async (entrada) => {
+      const usuario = userEvent.setup();
+      render(
+        <MemoryRouter initialEntries={[entrada]}>
+          <Shell sesion={sesionCon()} alSalir={alSalir} alExpirar={alExpirar} paginas={DOS} />
+        </MemoryRouter>,
+      );
+      await screen.findByRole("heading", { name: "Pantalla de origen" });
+      await new Promise((r) => setTimeout(r, 120));
+      expect(document.body).toHaveFocus();
+      await usuario.tab();
+      expect(screen.getByRole("button", { name: "Saltar al contenido" })).toHaveFocus();
+    });
+
+    // Acerca: el h1 del esqueleto recibia el foco y la pagina real lo sustituia, dejando el foco en <body>.
+    test("si la página nueva dibuja primero un esqueleto con h1, el foco va al h1 real", async () => {
+      const usuario = userEvent.setup();
+      function Lenta() {
+        const [lista, setLista] = useState(false);
+        useEffect(() => {
+          const t = setTimeout(() => setLista(true), 60);
+          return () => clearTimeout(t);
+        }, []);
+        return lista ? <h1>Pantalla lenta lista</h1> : <EsqueletoPagina titulo="Pantalla lenta" />;
+      }
+      const TRES: PaginaDef[] = [
+        ...DOS,
+        { id: "lenta", titulo: "Lenta de prueba", seccion: "Trabajo", accion: null, cargar: async () => ({ default: Lenta }) },
+      ];
+      function Va() {
+        const ir = useNavigate();
+        return (
+          <button type="button" onClick={() => void ir("/lenta")}>
+            Ir a la lenta
+          </button>
+        );
+      }
+      TRES[0] = { ...DOS[0], cargar: async () => ({ default: Va }) };
+      render(
+        <MemoryRouter initialEntries={["/origen"]}>
+          <Shell sesion={sesionCon()} alSalir={alSalir} alExpirar={alExpirar} paginas={TRES} />
+        </MemoryRouter>,
+      );
+      await usuario.click(await screen.findByRole("button", { name: "Ir a la lenta" }));
+      const real = await screen.findByRole("heading", { name: "Pantalla lenta lista" });
+      await waitFor(() => expect(real).toHaveFocus());
     });
 
     test("«Terminar recorrido» con Enter deja el foco en el primer enlace del menú, no en <body>", async () => {
