@@ -31,6 +31,16 @@
     outline: none;
   }
 
+  // El h1 que recibe el foco al cambiar de pagina (VD-7) lo muestra con el anillo de Carbon, no con el del navegador.
+  h1[tabindex="-1"]:focus {
+    outline: none;
+  }
+
+  h1[tabindex="-1"]:focus-visible {
+    outline: 2px solid var(--cds-focus);
+    outline-offset: 2px;
+  }
+
   @media (min-width: 66rem) {
     margin-inline-start: 16rem;
   }

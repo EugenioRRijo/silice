@@ -1,5 +1,5 @@
 import { InlineNotification } from "@carbon/react";
-import { Suspense, createElement, lazy, useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, createElement, lazy, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactElement } from "react";
 import { Navigate, Route, Routes, useLocation } from "react-router";
 import { ErrorDeApi, pedir } from "../api/cliente";
@@ -118,6 +118,31 @@ export function Shell({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
   }, [alExpirarDeApp]);
 
   useTituloDelDocumento(paginas.find((p) => rutaDe(p) === ubicacion.pathname)?.titulo ?? null);
+
+  // VD-7: si al cambiar de pagina el foco se perdio (lo tenia un control de la pagina anterior, p. ej. «Auditar por mi
+  // cuenta», que desaparece con ella), pasa al h1 de la nueva: el lector de pantalla la anuncia y el siguiente Tab
+  // parte de ahi. Si lo tiene otro control (un enlace del menu), no se toca. La primera carga tampoco: ahi el primer
+  // Tab debe ser «Saltar al contenido». La pagina se carga a demanda: se espera su h1 unos cuadros.
+  const rutaPrevia = useRef(ubicacion.pathname);
+  useEffect(() => {
+    if (rutaPrevia.current === ubicacion.pathname) return;
+    rutaPrevia.current = ubicacion.pathname;
+    let cuadro = 0;
+    let intento = 0;
+    const buscar = () => {
+      const activo = document.activeElement;
+      if (activo && activo !== document.body) return;
+      const titulo = document.querySelector<HTMLElement>("#contenido h1");
+      if (titulo) {
+        titulo.tabIndex = -1;
+        titulo.focus({ preventScroll: true });
+        return;
+      }
+      if (++intento < 60) cuadro = requestAnimationFrame(buscar);
+    };
+    cuadro = requestAnimationFrame(buscar);
+    return () => cancelAnimationFrame(cuadro);
+  }, [ubicacion.pathname]);
 
   // Esc cierra el menu abierto como capa y devuelve el foco a su boton (VB-14).
   useEffect(() => {
