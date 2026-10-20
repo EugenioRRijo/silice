@@ -35,6 +35,7 @@ function ContenidoParametros({ id, rev, moneda, vista, alAusente, alAceptar, alR
   const { alExpirar } = useAplicacion();
   const idDelError = useId();
   const edicion = useEdicionDeSeccion<ValoresDeParametros, UbicacionDeParametro>({
+    borrador: id,
     inicial: sembrarParametros(vista.campos),
     rev,
     peticion: (r, valores) => ({ ruta: rutaDeParametros(id), metodo: "PUT", cuerpo: cuerpoDeParametros(r, valores) }),

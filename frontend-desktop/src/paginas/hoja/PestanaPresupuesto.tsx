@@ -47,6 +47,7 @@ function EditorDePresupuesto({ id, rev, vista, alAusente, alAceptar, alRecargarB
   const { alExpirar } = useAplicacion();
   const idDelError = useId();
   const edicion = useEdicionDeSeccion<EdicionDeCantidades, number>({
+    borrador: id,
     inicial: sembrarCantidades(vista.filas),
     rev,
     peticion: (r, cantidades) => ({ ruta: rutaDeCantidades(id), metodo: "PUT", cuerpo: cuerpoDeCantidades(r, cantidades) }),

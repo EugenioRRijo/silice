@@ -128,6 +128,7 @@ function EditorDeApu({ id, rev, moneda, detalle, alAusente, alAceptar, alRecarga
   const { alExpirar } = useAplicacion();
   const idDelError = useId();
   const edicion = useEdicionDeSeccion<EdicionDeApu, UbicacionDeApu>({
+    borrador: id,
     inicial: sembrarApu(detalle),
     rev,
     peticion: (r, apu) => ({ ruta: rutaDeApu(id, detalle.codigo), metodo: "PUT", cuerpo: cuerpoDeApu(r, apu) }),

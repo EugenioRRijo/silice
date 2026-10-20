@@ -1,11 +1,14 @@
 import { Button, InlineNotification, Select, SelectItem, Tab, TabList, TabPanel, TabPanels, Tabs } from "@carbon/react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { ErrorDeApi, pedir } from "../../api/cliente";
 import { AvisoError } from "../../comun/AvisoError";
 import { EsqueletoPagina } from "../../comun/EsqueletoPagina";
 import { EstadoVacio } from "../../comun/EstadoVacio";
 import { formatoEsVe } from "../../indicadores/formatoEsVe";
 import { useAplicacion } from "../../shell/contexto";
 import { useCarga } from "../inicio/useCarga";
+import { DialogoDeVersion } from "./DialogoDeVersion";
+import { OfertaDeRetomar as OfertaDeRetomarVista } from "./OfertaDeRetomar";
 import {
   PESTANAS,
   SIN_VERSIONES,
@@ -17,6 +20,8 @@ import {
   versionesOfrecidas,
 } from "./logica";
 import type { BorradorAbierto, Resumen, VersionesRespuesta } from "./logica";
+import { RUTA_DE_BORRADORES, borradorExistente, ofertasDeRetomar } from "./logicaRetomar";
+import type { OfertaDeRetomar } from "./logicaRetomar";
 import { ContextoAuditoria } from "./ContextoAuditoria";
 import type { FiltroDeAuditoria } from "./ContextoAuditoria";
 import { PestanaApu } from "./PestanaApu";
@@ -174,19 +179,128 @@ function ContenidoDePestana({
   return <PestanaTrazabilidad key={llave} proyecto={borrador.base.proyecto} version={borrador.base.version} alAusente={alAusente} />;
 }
 
+type Ofertas = { estado: "buscando" } | { estado: "listo"; lista: OfertaDeRetomar[] };
+
+// Los borradores con cambios que el servidor conserva de este proyecto (E10): se piden al abrir la hoja, antes de abrir uno
+// nuevo. Si la lectura falla no se ofrece nada: abrir la hoja no depende de ella.
+function useOfertas(proyecto: string, alExpirar: () => void) {
+  const [intento, setIntento] = useState(0);
+  const [res, setRes] = useState<{ clave: string; lista: OfertaDeRetomar[] } | null>(null);
+  const clave = JSON.stringify([proyecto, intento]);
+  useEffect(() => {
+    let vigente = true;
+    pedir<unknown>(RUTA_DE_BORRADORES).then(
+      (r) => {
+        if (vigente) setRes({ clave, lista: ofertasDeRetomar(r, proyecto) });
+      },
+      (error: unknown) => {
+        if (!vigente) return;
+        if (error instanceof ErrorDeApi && error.estado === 401) alExpirar();
+        setRes({ clave, lista: [] });
+      },
+    );
+    return () => {
+      vigente = false;
+    };
+  }, [clave, proyecto, alExpirar]);
+  const recargar = useCallback(() => setIntento((n) => n + 1), []);
+  const ofertas: Ofertas = res?.clave === clave ? { estado: "listo", lista: res.lista } : { estado: "buscando" };
+  return { ofertas, recargar };
+}
+
+function textoDeCambiarVersion(cambios: number): string {
+  return `Tiene ${textoDeCambios(cambios)}. Si abre otra versión se pierden: guarde primero o descarte.`;
+}
+
 function HojaDeProyecto({ proyecto }: { proyecto: string }) {
   const { alExpirar } = useAplicacion();
   const versiones = useCarga<VersionesRespuesta>(rutaDeVersiones(proyecto), alExpirar);
+  const { ofertas, recargar: recargarOfertas } = useOfertas(proyecto, alExpirar);
   const [elegida, setElegida] = useState<{ proyecto: string; codigo: string } | null>(null);
+  // El borrador que la persona decidió retomar (en vez de abrir uno nuevo) y el proyecto cuyas ofertas ya no valen.
+  const [retomando, setRetomando] = useState<{ proyecto: string; id: string; version: string | null } | null>(null);
+  const [sinOfertas, setSinOfertas] = useState<string | null>(null);
+  const [descartando, setDescartando] = useState(false);
+  const [falloAlDescartar, setFalloAlDescartar] = useState<unknown>(null);
+  // La versión que la persona pidió con cambios sin guardar: espera su confirmación.
+  const [versionPendiente, setVersionPendiente] = useState<string | null>(null);
+
+  const retomado = retomando?.proyecto === proyecto ? retomando : null;
+  const ofrecidos = ofertas.estado === "listo" && retomado === null && sinOfertas !== proyecto ? ofertas.lista : [];
 
   const datos = versiones.estado === "listo" ? versiones.datos : null;
   const ofrecidas = datos ? versionesOfrecidas(datos.versiones) : [];
   const delProyecto = elegida?.proyecto === proyecto ? elegida.codigo : null;
   const codigo =
-    datos === null ? undefined : ofrecidas.some((v) => v.codigo === delProyecto) ? delProyecto : (datos.por_omision ?? null);
+    datos === null || ofertas.estado !== "listo" || ofrecidos.length > 0
+      ? undefined
+      : retomado !== null
+        ? retomado.version
+        : ofrecidas.some((v) => v.codigo === delProyecto)
+          ? delProyecto
+          : (datos.por_omision ?? null);
 
-  const { estado, refrescar, reabrir, aplicar, descartarCambios } = useBorrador(proyecto, codigo, alExpirar);
+  const { estado, refrescar, reabrir, aplicar, descartarCambios, descartarActual } = useBorrador(
+    proyecto,
+    codigo,
+    alExpirar,
+    retomado?.id ?? null,
+  );
   const hayCambios = estado.estado === "listo" && estado.borrador.resumen.cambios > 0;
+
+  // E11: si al abrir el servidor dice que ya hay un borrador con cambios de esa versión, se ofrece retomarlo.
+  const existente = estado.estado === "error" ? borradorExistente(estado.error) : null;
+  useEffect(() => {
+    if (existente === null) return;
+    setSinOfertas(null);
+    recargarOfertas();
+  }, [existente, recargarOfertas]);
+
+  const abrirVersion = (nueva: string) => {
+    setRetomando(null);
+    setElegida({ proyecto, codigo: nueva });
+  };
+  const pedirVersion = (nueva: string) => {
+    if (nueva === codigo) return;
+    if (hayCambios && estado.estado === "listo") setVersionPendiente(nueva);
+    else abrirVersion(nueva);
+  };
+  const devolverFocoAlSelector = () => document.getElementById("hoja-version")?.focus();
+  const seguirEditando = useCallback(() => {
+    setVersionPendiente(null);
+    devolverFocoAlSelector();
+  }, []);
+  const descartarYAbrir = async () => {
+    const nueva = versionPendiente;
+    setVersionPendiente(null);
+    if (nueva === null) return;
+    if (await descartarActual()) abrirVersion(nueva);
+    devolverFocoAlSelector();
+  };
+  const retomar = (oferta: OfertaDeRetomar) => {
+    setFalloAlDescartar(null);
+    setRetomando({ proyecto, id: oferta.id, version: oferta.version });
+  };
+  const descartarOfrecidos = async () => {
+    setDescartando(true);
+    setFalloAlDescartar(null);
+    try {
+      await Promise.all(ofrecidos.map((o) => pedir(`${RUTA_DE_BORRADORES}/${o.id}`, { metodo: "DELETE" })));
+      setSinOfertas(proyecto);
+    } catch (error) {
+      if (error instanceof ErrorDeApi && error.estado === 401) alExpirar();
+      setFalloAlDescartar(error);
+    } finally {
+      setDescartando(false);
+    }
+  };
+  // «Abrir de nuevo» (el borrador ya no está o ya no sirve): se abre uno nuevo de la versión, sin volver a ofrecer los viejos.
+  const reabrirNuevo = () => {
+    setRetomando(null);
+    setSinOfertas(proyecto);
+    reabrir();
+  };
+
   const [pestana, setPestana] = useState(0);
   // «Ver en Auditoría» desde el Estado de una fila: va a esa pestaña con el filtro de la fila.
   const [filtro, setFiltro] = useState<FiltroDeAuditoria | null>(null);
@@ -219,31 +333,38 @@ function HojaDeProyecto({ proyecto }: { proyecto: string }) {
 
   return (
     <>
-      {ofrecidas.length > 0 ? (
-        <Select
-          id="hoja-version"
-          labelText="Versión"
-          value={codigo ?? ""}
-          onChange={(e) => setElegida({ proyecto, codigo: e.target.value })}
-        >
-          {ofrecidas.map((v) => (
-            <SelectItem key={v.codigo} value={v.codigo} text={rotuloDeVersion(v)} />
-          ))}
-        </Select>
-      ) : (
-        <EstadoVacio titulo={SIN_VERSIONES} descripcion="Se abre un borrador en blanco para describir el espacio." />
+    <div className="silice-hoja__contenido" inert={versionPendiente !== null}>
+      {ofrecidos.length > 0 && (
+        <OfertaDeRetomarVista
+          proyecto={proyecto}
+          ofertas={ofrecidos}
+          alRetomar={retomar}
+          alDescartar={() => void descartarOfrecidos()}
+          ocupado={descartando}
+        />
       )}
+      {falloAlDescartar !== null && <AvisoError error={falloAlDescartar} titulo="No se pudo descartar el borrador" />}
+      {ofrecidos.length === 0 &&
+        (ofrecidas.length > 0 ? (
+          <Select id="hoja-version" labelText="Versión" value={codigo ?? ""} onChange={(e) => pedirVersion(e.target.value)}>
+            {ofrecidas.map((v) => (
+              <SelectItem key={v.codigo} value={v.codigo} text={rotuloDeVersion(v)} />
+            ))}
+          </Select>
+        ) : (
+          <EstadoVacio titulo={SIN_VERSIONES} descripcion="Se abre un borrador en blanco para describir el espacio." />
+        ))}
 
       {estado.estado === "abriendo" && <EsqueletoPagina etiqueta="Abriendo el borrador" />}
       {estado.estado === "error" &&
         (esBorradorAusente(estado.error) ? (
           <div className="silice-hoja__ausente">
             <AvisoError error={estado.error} titulo="El borrador ya no está" />
-            <Button kind="tertiary" size="sm" onClick={reabrir}>
+            <Button kind="tertiary" size="sm" onClick={reabrirNuevo}>
               Abrir de nuevo
             </Button>
           </div>
-        ) : (
+        ) : existente !== null && ofrecidos.length > 0 ? null : (
           <AvisoError error={estado.error} titulo="No se pudo abrir la hoja" />
         ))}
       {estado.estado === "listo" && (
@@ -280,11 +401,11 @@ function HojaDeProyecto({ proyecto }: { proyecto: string }) {
                 {i === pestana && (
                   <ContenidoDePestana
                     indice={i}
-                      borrador={estado.estado === "listo" ? estado.borrador : null}
+                    borrador={estado.estado === "listo" ? estado.borrador : null}
                     alAusente={refrescar}
                     alAceptar={aplicar}
                     alRecargarBorrador={refrescar}
-                    alReabrir={reabrir}
+                    alReabrir={reabrirNuevo}
                     filtro={filtro}
                     alQuitarFiltro={() => setFiltro(null)}
                   />
@@ -296,6 +417,17 @@ function HojaDeProyecto({ proyecto }: { proyecto: string }) {
       </ContextoAuditoria.Provider>
       {/* Punto de acoplamiento del asistente de IA (diseño §2.10): vacío y oculto hasta que exista. */}
       <aside aria-label="Asistente de IA" hidden />
+    </div>
+    {versionPendiente !== null && estado.estado === "listo" && (
+      <DialogoDeVersion
+        titulo="Descartar los cambios"
+        texto={textoDeCambiarVersion(estado.borrador.resumen.cambios)}
+        textoConfirmar="Descartar y abrir"
+        textoCancelar="Seguir editando"
+        alConfirmar={() => void descartarYAbrir()}
+        alCancelar={seguirEditando}
+      />
+    )}
     </>
   );
 }

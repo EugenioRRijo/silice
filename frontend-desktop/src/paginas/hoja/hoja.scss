@@ -183,3 +183,61 @@
   gap: 0.25rem;
   min-inline-size: 7rem;
 }
+
+// APU editable (3c-3): el cambio de insumo se pliega; sus campos se apilan.
+.silice-hoja__insumo-cuerpo {
+  display: grid;
+  gap: 0.75rem;
+  max-inline-size: 32rem;
+
+  &[hidden] {
+    display: none;
+  }
+}
+
+.silice-hoja__acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+// Retomar un borrador (3c-3): un bloque con el borde de acción, sin sombra ni animación.
+.silice-hoja__retomar {
+  display: grid;
+  gap: 0.75rem;
+  max-inline-size: 48rem;
+  padding: 1rem;
+  border: 1px solid var(--silice-divisor);
+  border-inline-start: 4px solid var(--silice-interactivo);
+}
+
+// Diálogo de confirmación al cambiar de versión con cambios sin guardar: cubre la página, sin animación.
+.silice-hoja__dialogo-fondo {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgb(22 22 22 / 50%);
+}
+
+.silice-hoja__dialogo {
+  display: grid;
+  gap: 0.75rem;
+  max-inline-size: 36rem;
+  padding: 1rem 1.5rem;
+  background: var(--cds-layer, #fff);
+  border-inline-start: 4px solid var(--silice-sev-critico, #da1e28);
+
+  &:focus {
+    outline: 2px solid var(--silice-interactivo, #0f62fe);
+  }
+}
+
+.silice-hoja__contenido {
+  display: grid;
+  gap: 1.5rem;
+  align-content: start;
+  min-inline-size: 0;
+}

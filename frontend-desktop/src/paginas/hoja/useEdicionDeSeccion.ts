@@ -3,6 +3,7 @@ import { ErrorDeApi, pedir } from "../../api/cliente";
 import { mensajeDeError } from "../../comun/errores";
 import { PAUSA_DE_EDICION_MS, esBorradorAusente, mensajeDeRechazo } from "./logica";
 import type { RespuestaDeEdicion, Resumen } from "./logica";
+import { registrarEnvio } from "./envioPendiente";
 import { claseDeConflicto } from "./logicaSecciones";
 
 export type EnvioDeSeccion = "quieto" | "pendiente" | "enviando";
@@ -25,6 +26,8 @@ export interface Peticion {
 }
 
 interface Opciones<E, U> {
+  // El borrador que se edita: lo que sale al irse de la pestaña se anota a su nombre (ver `envioPendiente`).
+  borrador: string;
   // Lo que se edita al montar (las celdas como texto). Solo se lee la primera vez.
   inicial: E;
   // El `rev` con que está el borrador según la página (sube al aceptar una edición o recargarlo).
@@ -66,7 +69,7 @@ export function useEdicionDeSeccion<E, U>(opciones: Opciones<E, U>) {
     volver: false,
     bloqueado: false,
     // Lo que se está mandando ahora (para esperarlo antes de una acción que no puede adelantarse).
-    envioEnCurso: null as Promise<void> | null,
+    envioEnCurso: null as Promise<Resumen | null> | null,
   });
   const actuales = useRef(opciones);
 
@@ -138,7 +141,7 @@ export function useEdicionDeSeccion<E, U>(opciones: Opciones<E, U>) {
       }
       return aceptado;
     })();
-    m.envioEnCurso = envio.then(() => undefined);
+    m.envioEnCurso = envio;
     return envio;
   }, []);
 
@@ -184,10 +187,13 @@ export function useEdicionDeSeccion<E, U>(opciones: Opciones<E, U>) {
   useEffect(() => {
     const m = motor.current;
     return () => {
-      if (m.temporizador === null) return;
-      clearTimeout(m.temporizador);
-      m.temporizador = null;
-      void enviarEdicion();
+      if (m.temporizador !== null) {
+        clearTimeout(m.temporizador);
+        m.temporizador = null;
+        void enviarEdicion();
+      }
+      // Lo que va en vuelo (o acaba de salir) se anota para que quien descarte el borrador espere a que termine.
+      if (m.enVuelo && m.envioEnCurso !== null) registrarEnvio(actuales.current.borrador, m.envioEnCurso);
     };
   }, [enviarEdicion]);
 

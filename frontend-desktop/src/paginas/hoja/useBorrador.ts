@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ErrorDeApi, pedir } from "../../api/cliente";
+import { esperarEnvios } from "./envioPendiente";
 import type { BorradorAbierto, BorradorVivo, Resumen } from "./logica";
 
 // El borrador vivo de la hoja vive en el servidor (diseño §3.1): aquí solo se abre, se vuelve a leer y se descarta.
@@ -19,23 +20,48 @@ function descartar(id: string): void {
   pedir(`/v1/hoja/borradores/${id}`, { metodo: "DELETE" }).catch(() => undefined);
 }
 
+// Al irse de la página sin cambios en el borrador: se descarta, pero primero terminan las ediciones que salieron al desmontar
+// (la pausa de 400 ms no llegó a cumplirse). Si alguna dejó cambios, el borrador se conserva para retomarlo. Los envíos se anotan
+// en el mismo desmontaje, así que basta esperar un turno antes de mirar cuáles hay.
+function descartarSiNoQuedanCambios(id: string): void {
+  void Promise.resolve()
+    .then(() => esperarEnvios(id))
+    .then((resumenes) => {
+      if (resumenes.some((r) => r !== null && r.cambios > 0)) return;
+      descartar(id);
+    });
+}
+
 // Abre `version` del `proyecto` (null = proyecto sin versiones; undefined = todavía no se sabe) y descarta el
-// borrador al cambiar o al desmontar, salvo que tenga cambios sin guardar: esos se conservan para retomarlos (3c).
-export function useBorrador(proyecto: string | null, version: string | null | undefined, alExpirar: () => void) {
+// borrador al cambiar o al desmontar, salvo que tenga cambios sin guardar: esos se conservan para retomarlos. Con
+// `retomarId` no abre uno nuevo: retoma ese borrador (el que ya tiene el servidor, con sus cambios).
+export function useBorrador(
+  proyecto: string | null,
+  version: string | null | undefined,
+  alExpirar: () => void,
+  retomarId: string | null = null,
+) {
   const [intento, setIntento] = useState(0);
   // El resultado lleva la clave de lo que se pidió: si ya no es la de ahora, lo visible es «abriendo».
   const [resultado, setResultado] = useState<{ clave: string; valor: EstadoBorrador } | null>(null);
   const abierto = useRef<Abierto | null>(null);
   const clave =
-    proyecto === null || version === undefined ? null : JSON.stringify([proyecto, version, intento]);
+    proyecto === null || version === undefined ? null : JSON.stringify([proyecto, version, intento, retomarId]);
 
   useEffect(() => {
     if (proyecto === null || version === undefined || clave === null) return;
     let vigente = true;
-    pedir<BorradorAbierto>("/v1/hoja/borradores", { metodo: "POST", cuerpo: { proyecto, version } }).then(
+    const apertura =
+      retomarId !== null
+        ? pedir<BorradorVivo>(`/v1/hoja/borradores/${retomarId}`).then(
+            (vivo): BorradorAbierto => ({ ...vivo, instantanea: { creadas: 0, mensaje: null } }),
+          )
+        : pedir<BorradorAbierto>("/v1/hoja/borradores", { metodo: "POST", cuerpo: { proyecto, version } });
+    apertura.then(
       (borrador) => {
         if (!vigente) {
-          descartar(borrador.id); // la persona ya se fue a otra versión: nadie lo va a usar
+          // La persona ya se fue a otra versión: nadie lo va a usar (un borrador retomado tiene cambios y se conserva).
+          if (retomarId === null) descartar(borrador.id);
           return;
         }
         abierto.current = { id: borrador.id, cambios: borrador.resumen.cambios };
@@ -51,9 +77,9 @@ export function useBorrador(proyecto: string | null, version: string | null | un
       vigente = false;
       const propio = abierto.current;
       abierto.current = null;
-      if (propio !== null && propio.cambios === 0) descartar(propio.id);
+      if (propio !== null && propio.cambios === 0) descartarSiNoQuedanCambios(propio.id);
     };
-  }, [proyecto, version, clave, alExpirar]);
+  }, [proyecto, version, clave, retomarId, alExpirar]);
 
   // Vuelve a leer el borrador del servidor (por ejemplo al volver a la pestaña del navegador): si ya no está, lo dice.
   const refrescar = useCallback((): Promise<void> => {
@@ -94,22 +120,27 @@ export function useBorrador(proyecto: string | null, version: string | null | un
     );
   }, []);
 
-  // «Descartar cambios»: se borra el borrador del servidor y se abre otro desde la versión guardada.
-  const descartarCambios = useCallback(async () => {
+  // Borra el borrador del servidor. Devuelve si lo logró; si no, deja el error a la vista y el borrador como estaba.
+  const borrarActual = useCallback(async (): Promise<boolean> => {
     const propio = abierto.current;
-    if (propio === null) return;
+    if (propio === null) return false;
     try {
       await pedir(`/v1/hoja/borradores/${propio.id}`, { metodo: "DELETE" });
     } catch (error) {
       if (error instanceof ErrorDeApi && error.estado === 401) alExpirar();
       setResultado((anterior) => (anterior === null ? anterior : { clave: anterior.clave, valor: { estado: "error", error } }));
-      return;
+      return false;
     }
     abierto.current = null; // ya no está: la limpieza al reabrir no lo vuelve a descartar
-    setIntento((n) => n + 1);
+    return true;
   }, [alExpirar]);
+
+  // «Descartar cambios»: se borra el borrador del servidor y se abre otro desde la versión guardada.
+  const descartarCambios = useCallback(async () => {
+    if (await borrarActual()) setIntento((n) => n + 1);
+  }, [borrarActual]);
 
   let estado: EstadoBorrador = { estado: "inactivo" };
   if (clave !== null) estado = resultado?.clave === clave ? resultado.valor : { estado: "abriendo" };
-  return { estado, refrescar, reabrir, aplicar, descartarCambios };
+  return { estado, refrescar, reabrir, aplicar, descartarCambios, descartarActual: borrarActual };
 }

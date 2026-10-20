@@ -12,6 +12,7 @@ import {
   sembrarTablas,
   ubicarError,
 } from "./logica";
+import { registrarEnvio } from "./envioPendiente";
 import type { FilaEditable, RespuestaDeEdicion, Resumen, TablasEditables, UbicacionDeError, VistaEspacio } from "./logica";
 
 export type EnvioDelEspacio = "quieto" | "pendiente" | "enviando";
@@ -57,6 +58,7 @@ export function useEdicionDelEspacio({ id, vista, rev, alAceptar, alRelectura, a
     enVuelo: false,
     volver: false,
     bloqueado: false,
+    envioEnCurso: null as Promise<Resumen | null> | null,
   });
   const llamadas = useRef({ alAceptar, alRelectura, alRecargarBorrador, alAusente, alExpirar });
 
@@ -70,48 +72,57 @@ export function useEdicionDelEspacio({ id, vista, rev, alAceptar, alRelectura, a
     llamadas.current = { alAceptar, alRelectura, alRecargarBorrador, alAusente, alExpirar };
   });
 
-  const enviar = useCallback(async () => {
+  // Manda las tablas y devuelve el resumen que contestó el servidor, o null si no se aceptó (o ya había una petición en vuelo).
+  const enviar = useCallback(async (): Promise<Resumen | null> => {
     const m = motor.current;
-    if (m.bloqueado) return;
+    if (m.bloqueado) return null;
     if (m.enVuelo) {
       m.volver = true;
-      return;
+      return null;
     }
     m.enVuelo = true;
     setEnvio("enviando");
-    try {
-      do {
+    const envio = (async (): Promise<Resumen | null> => {
+      let aceptado: Resumen | null = null;
+      try {
+        do {
+          m.volver = false;
+          const enviadas = m.tablas;
+          const respuesta = await pedir<RespuestaDeEdicion>(rutaDeEspacio(id), {
+            metodo: "PUT",
+            cuerpo: cuerpoDeEdicionDelEspacio(m.rev, m.vista.tablas, enviadas),
+          });
+          m.rev = respuesta.rev;
+          m.aceptadas = enviadas;
+          aceptado = respuesta.resumen;
+          setError(null);
+          llamadas.current.alAceptar(respuesta.resumen);
+          llamadas.current.alRelectura();
+        } while (m.volver);
+      } catch (e) {
         m.volver = false;
-        const enviadas = m.tablas;
-        const respuesta = await pedir<RespuestaDeEdicion>(rutaDeEspacio(id), {
-          metodo: "PUT",
-          cuerpo: cuerpoDeEdicionDelEspacio(m.rev, m.vista.tablas, enviadas),
-        });
-        m.rev = respuesta.rev;
-        m.aceptadas = enviadas;
-        setError(null);
-        llamadas.current.alAceptar(respuesta.resumen);
-        llamadas.current.alRelectura();
-      } while (m.volver);
-    } catch (e) {
-      m.volver = false;
-      if (e instanceof ErrorDeApi && e.estado === 401) {
-        llamadas.current.alExpirar();
-      } else if (esBorradorAusente(e)) {
-        llamadas.current.alAusente();
-      } else if (e instanceof ErrorDeApi && e.estado === 409) {
-        m.bloqueado = true; // hasta recargar (o abrir de nuevo) no se manda más
-        // Solo el 409 de `rev` viejo se arregla recargando; «el caso cambió» y «ya se guardó» también fallarían al recargar.
-        setError({ tipo: e.detalle.startsWith("El borrador cambió") ? "conflicto" : "perdido", mensaje: e.detalle, ubicacion: null });
-      } else if (e instanceof ErrorDeApi && e.estado === 422) {
-        setError({ tipo: "rechazo", mensaje: mensajeDeRechazo(e.detalle), ubicacion: ubicarError(e.detalle, m.vista.tablas) });
-      } else {
-        setError({ tipo: "otro", mensaje: mensajeDeError(e), ubicacion: null });
+        aceptado = null;
+        if (e instanceof ErrorDeApi && e.estado === 401) {
+          llamadas.current.alExpirar();
+        } else if (esBorradorAusente(e)) {
+          llamadas.current.alAusente();
+        } else if (e instanceof ErrorDeApi && e.estado === 409) {
+          m.bloqueado = true; // hasta recargar (o abrir de nuevo) no se manda más
+          // Solo el 409 de `rev` viejo se arregla recargando; «el caso cambió» y «ya se guardó» también fallarían al recargar.
+          setError({ tipo: e.detalle.startsWith("El borrador cambió") ? "conflicto" : "perdido", mensaje: e.detalle, ubicacion: null });
+        } else if (e instanceof ErrorDeApi && e.estado === 422) {
+          setError({ tipo: "rechazo", mensaje: mensajeDeRechazo(e.detalle), ubicacion: ubicarError(e.detalle, m.vista.tablas) });
+        } else {
+          setError({ tipo: "otro", mensaje: mensajeDeError(e), ubicacion: null });
+        }
+      } finally {
+        m.enVuelo = false;
+        setEnvio(m.temporizador !== null ? "pendiente" : "quieto");
       }
-    } finally {
-      m.enVuelo = false;
-      setEnvio(m.temporizador !== null ? "pendiente" : "quieto");
-    }
+      return aceptado;
+    })();
+    m.envioEnCurso = envio;
+    return envio;
   }, [id]);
 
   const cambiarFilas = useCallback(
@@ -134,12 +145,15 @@ export function useEdicionDelEspacio({ id, vista, rev, alAceptar, alRelectura, a
   useEffect(() => {
     const m = motor.current;
     return () => {
-      if (m.temporizador === null) return;
-      clearTimeout(m.temporizador);
-      m.temporizador = null;
-      void enviar();
+      if (m.temporizador !== null) {
+        clearTimeout(m.temporizador);
+        m.temporizador = null;
+        void enviar();
+      }
+      // Lo que va en vuelo (o acaba de salir) se anota para que quien descarte el borrador espere a que termine.
+      if (m.enVuelo && m.envioEnCurso !== null) registrarEnvio(id, m.envioEnCurso);
     };
-  }, [enviar]);
+  }, [enviar, id]);
 
   // Tras un 409: se vuelve a leer el borrador y las tablas del servidor, y se vuelve a sembrar lo que se ve.
   const recargar = useCallback(async () => {

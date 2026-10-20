@@ -94,6 +94,7 @@ function EditorDelPlan({ id, rev, vista, alAusente, alAceptar, alRecargarBorrado
   const { alExpirar } = useAplicacion();
   const idDelError = useId();
   const edicion = useEdicionDeSeccion<EdicionDelPlan, string>({
+    borrador: id,
     inicial: sembrarPlan(vista),
     rev,
     peticion: (r, plan) => ({ ruta: rutaDePlan(id), metodo: "PUT", cuerpo: cuerpoDelPlan(r, plan) }),
@@ -192,6 +193,7 @@ function ContenidoPlan(props: PropsContenido) {
   // «Crear plan secuencial» (E5) no espera la pausa. Su motor vive aquí para que su aviso siga a la vista cuando el plan
   // aparece (por ejemplo, «ya tiene plan» porque otra ventana lo creó).
   const creacion = useEdicionDeSeccion<null, never>({
+    borrador: id,
     inicial: null,
     rev,
     peticion: (r) => crearPlan(r, id),
