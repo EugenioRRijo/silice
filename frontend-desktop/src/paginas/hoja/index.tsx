@@ -23,6 +23,7 @@ import { PestanaApu } from "./PestanaApu";
 import { PestanaAuditoria } from "./PestanaAuditoria";
 import { PestanaEquilibrio } from "./PestanaEquilibrio";
 import { PestanaEspacio } from "./PestanaEspacio";
+import { PestanaPrecios } from "./PestanaPrecios";
 import { PestanaParametros } from "./PestanaParametros";
 import { PestanaPlan } from "./PestanaPlan";
 import { PestanaPresupuesto } from "./PestanaPresupuesto";
@@ -71,7 +72,10 @@ function ContenidoDePestana({
   if (indice === 1) return <PestanaApu key={llave} id={borrador.id} moneda={moneda} alAusente={alAusente} />;
   if (indice === 2) return <PestanaPresupuesto key={llave} id={borrador.id} alAusente={alAusente} />;
   if (indice === 3) return <PestanaPlan key={llave} id={borrador.id} alAusente={alAusente} />;
-  if (indice === 4) return <PestanaEquilibrio key={llave} id={borrador.id} moneda={moneda} alAusente={alAusente} />;
+  if (indice === 4) return <PestanaEquilibrio key={llave} id={borrador.id} alAusente={alAusente} />;
+  if (indice === 5) {
+    return <PestanaPrecios key={llave} proyecto={borrador.base.proyecto} version={borrador.base.version} alAusente={alAusente} />;
+  }
   if (indice === 6) return <PestanaParametros key={llave} id={borrador.id} moneda={moneda} alAusente={alAusente} />;
   if (indice === 7) {
     return <PestanaAuditoria key={llave} id={borrador.id} alAusente={alAusente} filtro={filtro} alQuitarFiltro={alQuitarFiltro} />;

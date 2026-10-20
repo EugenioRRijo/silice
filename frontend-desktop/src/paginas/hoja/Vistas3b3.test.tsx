@@ -108,6 +108,10 @@ describe("Hoja del proyecto: Equilibrio, Parámetros, Auditoría, Precios y Traz
     });
   }
 
+  function pedidas(trozo: string): string[] {
+    return fetchFalso.mock.calls.map(([r]) => String(r)).filter((r) => r.includes(trozo));
+  }
+
   function montar() {
     const valor: Aplicacion = {
       sesion: SESION,

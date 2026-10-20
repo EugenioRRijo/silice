@@ -273,6 +273,7 @@ export const FILAS_POR_PAGINA = 50;
 
 export interface VistaEquilibrio {
   estado: string;
+  moneda: string;
   venta: Monto;
   costo_variable: Monto;
   costo_fijo: Monto;
@@ -427,5 +428,5 @@ export function partirColumnasDePrecios(
 // 2026-07-01 -> 01/07/2026 (y «2026-10-06 09:30:00» -> «06/10/2026 09:30:00»); lo que no empieza por una fecha queda igual.
 export function fechaCorta(texto: string): string {
   const m = /^(\d{4})-(\d{2})-(\d{2})(.*)$/.exec(texto);
-  return m ? `${m[3]}/${m[2]}/${m[1]}${m[4]}` : texto;
+  return m ? `${m[3]}/${m[2]}/${m[1]}${m[4]!.replace(/^T/, " ")}` : texto;
 }

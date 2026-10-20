@@ -6,7 +6,6 @@ import type { VistaEquilibrio } from "./logica";
 
 interface Props {
   id: string;
-  moneda: string;
   alAusente: () => void;
 }
 
@@ -19,7 +18,8 @@ function Metrica({ rotulo, children }: { rotulo: string; children: React.ReactNo
   );
 }
 
-function ContenidoEquilibrio({ vista, moneda }: { vista: VistaEquilibrio; moneda: string }) {
+function ContenidoEquilibrio({ vista }: { vista: VistaEquilibrio }) {
+  const moneda = vista.moneda;
   return (
     <div className="silice-hoja__pestana">
       <p className="cds--type-body-compact-01">
@@ -60,10 +60,10 @@ function ContenidoEquilibrio({ vista, moneda }: { vista: VistaEquilibrio; moneda
 }
 
 // Pestaña «Punto de equilibrio»: solo lectura (se mueve con las cantidades, los precios, los parámetros y el plan).
-export function PestanaEquilibrio({ id, moneda, alAusente }: Props) {
+export function PestanaEquilibrio({ id, alAusente }: Props) {
   return (
     <VistaCarga<VistaEquilibrio> ruta={rutaDeVista(id, "equilibrio")} etiqueta="Punto de equilibrio" alAusente={alAusente}>
-      {(vista) => <ContenidoEquilibrio vista={vista} moneda={moneda} />}
+      {(vista) => <ContenidoEquilibrio vista={vista} />}
     </VistaCarga>
   );
 }
