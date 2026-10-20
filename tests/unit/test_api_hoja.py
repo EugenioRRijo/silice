@@ -24,6 +24,7 @@ import sqlite3
 from collections.abc import Iterator
 from contextlib import closing
 from dataclasses import replace
+from datetime import datetime
 from decimal import Decimal
 from pathlib import Path
 
@@ -109,7 +110,43 @@ def _casos(tmp_path_factory) -> dict[str, Path]:
             )
     finally:
         motor.dispose()
+    casos["of001_llave"] = _con_cantidad_editada(carpeta / "of001_llave.db", casos["of001"])
     return casos
+
+
+#: La edición de la aceptación SF (`test_aceptacion_sf.py:329-347`): AF-LLAVE de 3 a 5.
+FUENTE_EDICION = "criterio del ingeniero residente: cinco llaves de paso, acta 12"
+RESPONSABLE = "Ing. Prueba"
+AHORA = datetime(2026, 10, 5, 16, 30, 0)
+
+
+def _con_cantidad_editada(destino: Path, origen: Path) -> Path:
+    """OF-001 con la 002 guardada por la clásica: la cantidad de AF-LLAVE escrita a 5."""
+    shutil.copyfile(origen, destino)
+    motor = crear_motor(f"sqlite:///{destino.as_posix()}")
+    try:
+        with abrir_sesion(motor) as sesion:
+            entrega.con_anexos_de_cadena(sesion)
+            catalogo = Catalogo(sesion)
+            abierta = clasica.abrir_version(sesion, catalogo, NOMBRE_OF001, "001")
+            items = clasica.items_sin_escribir(abierta.borrador)
+            llave = next(
+                c
+                for c, i in zip(clasica.claves_de_items(items), items, strict=True)
+                if i.codigo_partida == "AF-LLAVE"
+            )
+            clasica.guardar_version(
+                sesion,
+                catalogo,
+                abierta,
+                replace(abierta.borrador, cantidades={llave: D("5")}),
+                fuente=FUENTE_EDICION,
+                responsable=RESPONSABLE,
+                ahora=AHORA,
+            )
+    finally:
+        motor.dispose()
+    return destino
 
 
 @pytest.fixture(autouse=True)
@@ -1084,3 +1121,127 @@ def test_r10_de_un_proyecto_sin_versiones_no_tiene_moneda_ni_conversion(_entorno
     id_ = _abierta(navegador, ficha, proyecto="Proyecto nuevo", version=None)
     cuerpo = _vista(navegador, id_, "parametros").json()
     assert (cuerpo["moneda_proyecto"], cuerpo["puede_convertir"]) == (None, False)
+
+
+# --- R11: auditoría (3b-3) -------------------------------------------------------------------
+
+
+def _sin_fuente_en_p1(destino: Path, origen: Path) -> Path:
+    """Copia OF-001 y le quita al punto de agua P1 (lavamanos) su fuente F1 en la base."""
+    shutil.copyfile(origen, destino)
+    with closing(sqlite3.connect(destino.as_posix())) as bd:
+        bd.execute("UPDATE esp_puntos SET fuente_id = NULL WHERE id = 'P1'")
+        bd.commit()
+    return destino
+
+
+def test_r11_of001_es_el_informe_de_la_clasica_y_evalua_r17() -> None:
+    navegador, ficha = _ana()
+    id_ = _abierta(navegador, ficha)
+    respuesta = _vista(navegador, id_, "auditoria")
+    assert respuesta.status_code == 200, respuesta.text
+    cuerpo = respuesta.json()
+    resumen = navegador.get(f"/v1/hoja/borradores/{id_}").json()["resumen"]
+    assert cuerpo["total_hallazgos"] == sum(h["total"] for h in resumen["hallazgos"])
+    reglas = {r["regla"]: r["hallazgos"] for r in cuerpo["reglas_evaluadas"]}
+    assert reglas["R17"] == 0  # OF-001 conecta todos sus puntos: R17 corre y no encuentra nada
+    assert cuerpo["veredicto"] in ("CUMPLE", "NO CUMPLE") and isinstance(cuerpo["cumple"], bool)
+    assert cuerpo["total_hallazgos"] == len(cuerpo["hallazgos"])
+    assert [h["numero"] for h in cuerpo["hallazgos"]] == list(
+        range(1, len(cuerpo["hallazgos"]) + 1)
+    )
+
+
+def test_r11_un_punto_de_agua_sin_fuente_da_el_hallazgo_r17_advertencia(
+    _casos, _entorno: Path
+) -> None:
+    """3b-B21 (cláusula «R17 en R11»): nombra el punto y lo que le falta."""
+    dependencias.cerrar_motores()
+    _sin_fuente_en_p1(_entorno, _casos["of001"])
+    navegador, ficha = _ana()
+    cuerpo = _vista(navegador, _abierta(navegador, ficha), "auditoria").json()
+    r17 = [h for h in cuerpo["hallazgos"] if h["regla"] == "R17"]
+    assert [(h["severidad"], h["origen"]) for h in r17] == [("ADVERTENCIA", ["esp_puntos:P1"])]
+    assert "El punto P1 (lavamanos) no tiene fuente" in r17[0]["descripcion"]
+    assert {r["regla"]: r["hallazgos"] for r in cuerpo["reglas_evaluadas"]}["R17"] == 1
+    assert cuerpo["por_severidad"] != [] and cuerpo["sin_hallazgos"] is None
+
+
+# --- R14: trazabilidad (3b-3) ----------------------------------------------------------------
+
+
+def _traza(navegador: TestClient, proyecto: str = NOMBRE_OF001, version: str = "001"):
+    return navegador.get("/v1/hoja/trazabilidad", params={"proyecto": proyecto, "version": version})
+
+
+def test_r14_la_version_002_trae_exactamente_el_registro_de_la_celda_editada(_casos) -> None:
+    """3b-B20 / P10: literal de `test_aceptacion_sf.py:329-347`."""
+    _poner(_casos["of001_llave"])
+    navegador, _ = _ana()
+    respuesta = _traza(navegador, version="002")
+    assert respuesta.status_code == 200, respuesta.text
+    cuerpo = respuesta.json()
+    registros = cuerpo["registros"]
+    assert [
+        (r["objeto"], r["campo"], r["antes"], r["despues"], r["fuente"], r["responsable"])
+        for r in registros
+    ] == [("cantidad", "cantidad", "3", "5", FUENTE_EDICION, RESPONSABLE)]
+    assert registros[0]["clave"].split("|")[0] == "AF-LLAVE"
+    assert registros[0]["fecha_hora"] == "2026-10-05T16:30:00"
+    assert cuerpo["vacio_mensaje"] is None
+    assert [
+        (v["codigo"], v["motivo"], v["origen"], v["vigente"], v["cambios"])
+        for v in cuerpo["versiones"]
+    ] == [
+        ("001", "", "", False, 0),
+        ("002", "edicion", "001", True, 1),
+    ]
+
+
+def test_r14_una_version_sin_edicion_no_tiene_registros_y_lo_dice() -> None:
+    navegador, _ = _ana()
+    cuerpo = _traza(navegador).json()
+    assert cuerpo["registros"] == []
+    assert normalizar_texto(cuerpo["vacio_mensaje"]) == normalizar_texto(
+        "Esta version no nacio de una edicion: no tiene registros de cambio."
+    )
+    assert [v["codigo"] for v in cuerpo["versiones"]] == ["001"]
+
+
+def test_r14_de_las_tres_versiones_trae_el_historial_completo(_casos) -> None:
+    _poner(_casos["of001_tres"])
+    navegador, _ = _ana()
+    cuerpo = _traza(navegador, version="003").json()
+    assert [(v["codigo"], v["motivo"], v["origen"], v["vigente"]) for v in cuerpo["versiones"]] == [
+        ("001", "", "", False),
+        ("002", "edicion", "001", False),
+        ("003", "restauracion", "001", True),
+    ]
+    # la 002 cambió la administración de 0,15 a 0,20 (fixture `_casos`)
+    assert [
+        (r["objeto"], r["clave"], r["campo"], r["antes"], r["despues"])
+        for r in _traza(navegador, version="002").json()["registros"]
+    ] == [("parametro", "administracion", "valor", "0.15", "0.20")]
+
+
+def test_r14_proyecto_o_version_inexistente_es_404_con_los_textos_de_la_clasica() -> None:
+    navegador, _ = _ana()
+    assert _traza(navegador, "Z").status_code == 404
+    assert _traza(navegador, "Z").json() == {"detalle": "El proyecto «Z» no existe en este caso."}
+    falta = _traza(navegador, version="009")
+    assert falta.status_code == 404
+    assert falta.json() == {
+        "detalle": f"El proyecto {NOMBRE_OF001!r} no tiene una version '009': "
+        "elija una de la lista."
+    }
+
+
+def test_r14_la_clave_de_api_puede_leerla_y_no_escribe_nada(_entorno: Path) -> None:
+    antes = _volcado(_entorno)
+    respuesta = cliente(app).get(
+        "/v1/hoja/trazabilidad",
+        params={"proyecto": NOMBRE_OF001, "version": "001"},
+        headers={CABECERA: crear_clave_de_prueba()},
+    )
+    assert respuesta.status_code == 200
+    assert _volcado(_entorno) == antes

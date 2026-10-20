@@ -965,3 +965,27 @@ def test_sin_version_abierta_no_hay_moneda_del_proyecto_ni_se_puede_convertir():
 
 def test_sin_el_permiso_de_convertir_la_vista_no_lo_ofrece(_of001):
     assert hoja_vista.vista_parametros(_vivo(_of001), "USD", False).puede_convertir is False
+
+
+# --- 3b-3 · informe de auditoria (R11) y R17 ------------------------------------------------------
+
+
+def test_el_informe_de_la_auditoria_es_el_de_la_clasica_y_evalua_r17(_of001):
+    """3b-B21 (segunda clausula): la auditoria sale de `elaborar` (con R17) y no de la base."""
+    informe = hoja_vista.informe_de_auditoria(_vivo(_of001))
+    esperado = _elaborada_por_la_clasica(_como_clasica(_of001.borrador)).elaboracion.informe
+    assert [(h.regla, h.severidad, h.descripcion) for h in informe.hallazgos] == [
+        (h.regla, h.severidad, h.descripcion) for h in esperado.hallazgos
+    ]
+    assert "R17" in [codigo for codigo, _, _ in informe.cuenta_por_regla_evaluada()]
+
+
+def test_un_punto_de_agua_sin_fuente_da_r17_advertencia_en_la_auditoria():
+    borrador = hoja.Borrador(fecha=HOY, espacio=_espacio_con_un_punto_sin_fuente())
+    vivo = Registro().crear("f", "c", "N", None, borrador, None)
+    r17 = [h for h in hoja_vista.informe_de_auditoria(vivo).hallazgos if h.regla == "R17"]
+    assert [(h.severidad, h.origen_ids) for h in r17] == [
+        (Severidad.ADVERTENCIA, ("esp_puntos:P2",))
+    ]
+    assert "El punto P2 (lavamanos) no tiene fuente" in r17[0].descripcion
+    assert vivo.borrador.reglas_extra == ()  # no se guarda en el borrador
