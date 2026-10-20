@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { formatoEsVe, formatoMontoEsVe } from "./formatoEsVe";
+import { centesimasEsVe, fechaEsVe, formatoEsVe, formatoMontoEsVe } from "./formatoEsVe";
 
 describe("formatoEsVe", () => {
   test("miles con punto y decimales con coma", () => {
@@ -52,5 +52,46 @@ describe("formatoMontoEsVe (V-19)", () => {
     expect(formatoMontoEsVe("123456789012345678901234567890.12 USD")).toBe(
       "123.456.789.012.345.678.901.234.567.890,12 USD",
     );
+  });
+});
+
+// Oraculos a mano: redondeo «mitad hacia arriba» en valor absoluto (el de Entregar, V-13) y los totales del
+// Historial que vio la auditoria visual (VB-7): 4.876,56257 y 5.055,521570000.
+describe("centesimasEsVe (VB-7)", () => {
+  test.each([
+    ["4876.56257", "4.876,56"],
+    ["5055.521570000", "5.055,52"],
+    ["1234567.891000", "1.234.567,89"],
+    ["1234500.5", "1.234.500,50"],
+    ["0", "0,00"],
+    ["0.005", "0,01"],
+    ["0.004999", "0,00"],
+    ["999.995", "1.000,00"],
+    ["-1234.5", "-1.234,50"],
+    ["-0.004", "0,00"],
+    ["-0.005", "-0,01"],
+    ["12345678901234567890.125", "12.345.678.901.234.567.890,13"],
+  ])("%s se lee %s", (exacto, esperado) => {
+    expect(centesimasEsVe(exacto)).toBe(esperado);
+  });
+
+  test("lo que no es un decimal llega tal cual", () => {
+    expect(centesimasEsVe("n/d")).toBe("n/d");
+    expect(centesimasEsVe("")).toBe("");
+  });
+});
+
+describe("fechaEsVe (VB-19)", () => {
+  test("una fecha ISO se lee dd/mm/aaaa", () => {
+    expect(fechaEsVe("2026-11-02")).toBe("02/11/2026");
+    expect(fechaEsVe("2026-07-31")).toBe("31/07/2026");
+  });
+  test("con hora, se lee dd/mm/aaaa hh:mm (sin segundos)", () => {
+    expect(fechaEsVe("2026-10-18T14:32:05")).toBe("18/10/2026 14:32");
+  });
+  test("lo que no es una fecha ISO se devuelve tal cual", () => {
+    expect(fechaEsVe("ayer")).toBe("ayer");
+    expect(fechaEsVe("")).toBe("");
+    expect(fechaEsVe("02/11/2026")).toBe("02/11/2026");
   });
 });
