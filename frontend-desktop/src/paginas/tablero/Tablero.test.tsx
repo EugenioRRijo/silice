@@ -4,7 +4,7 @@ import type { SesionRespuesta } from "../../api/tipos";
 import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
 import PaginaTablero from "./index";
-import { datosDeVersiones, rolDeSerie, seriesDeCurva } from "./logica";
+import { datosDeVersiones, detalleDeTarjeta, rolDeSerie, seriesDeCurva } from "./logica";
 import type { TableroRespuesta } from "./logica";
 
 interface Ejes {
@@ -174,6 +174,16 @@ describe("Tablero del proyecto", () => {
     expect(anillo).toHaveAttribute("data-centro", "95.066,60");
   });
 
+  test("el punto de equilibrio nombra el período con el mismo arreglo que el eje de la curva: «Día 1» (VD-8)", async () => {
+    // El texto tal como lo manda la API para DEMO-001 (core/budget/equilibrio.py arma «se alcanza en {periodo}» y
+    // core/budget/curva.py nombra el periodo «Dia N [partida]»).
+    const equilibrio = { rotulo: "Punto de equilibrio", valor: "82.10 %", detalle: "se alcanza en Dia 1 [DEMO-01-INST]" };
+    fetchFalso.mockImplementation(async () => json({ ...TABLERO, tarjetas: [...TABLERO.tarjetas, equilibrio] }));
+    montar("DEMO-001");
+    expect(await screen.findByText("se alcanza en Día 1 [DEMO-01-INST]")).toBeInTheDocument();
+    expect(screen.queryByText(/Dia 1/)).toBeNull();
+  });
+
   test("sin control de obra lo dice con su motivo", async () => {
     fetchFalso.mockImplementation(async () =>
       json({ ...TABLERO, control: { disponible: false, motivo: "No hay linea base declarada.", anillos: [], tarjetas: [] } }),
@@ -205,6 +215,32 @@ describe("Tablero del proyecto", () => {
 });
 
 describe("logica del tablero", () => {
+  test("detalleDeTarjeta solo toca el período de la frase fija del punto de equilibrio (VD-8)", () => {
+    const pe = (detalle: string) => ({ rotulo: "Punto de equilibrio", valor: "50.00 %", detalle });
+    expect(detalleDeTarjeta(pe("se alcanza en Dia 12 [A-1]"))).toBe("se alcanza en Día 12 [A-1]");
+    // un periodo que escribio el usuario y que no es «Dia N» queda igual
+    expect(detalleDeTarjeta(pe("se alcanza en Mes 3"))).toBe("se alcanza en Mes 3");
+    expect(detalleDeTarjeta(pe("se alcanza en Diario 1"))).toBe("se alcanza en Diario 1");
+    // otras frases del nucleo y otras tarjetas no se tocan aunque digan «Dia 1»
+    const sinCurva = "sin curva de inversion: el punto de equilibrio no se ubica en el plan";
+    expect(detalleDeTarjeta(pe(sinCurva))).toBe(sinCurva);
+    expect(detalleDeTarjeta(pe("Dia 1 se alcanza en Dia 1"))).toBe("Dia 1 se alcanza en Dia 1");
+    expect(detalleDeTarjeta({ rotulo: "Auditoría", valor: "Cumple", detalle: "se alcanza en Dia 1" })).toBe("se alcanza en Dia 1");
+  });
+
+  test("detalleDeTarjeta devuelve en menos de un segundo un detalle hostil de 100 000 caracteres (VD-8)", () => {
+    const hostiles = ["se alcanza en " + "Dia 1 ".repeat(20_000), "Dia ".repeat(25_000), "se alcanza en Dia " + "9".repeat(100_000)];
+    for (const detalle of hostiles) {
+      const inicio = performance.now();
+      const visto = detalleDeTarjeta({ rotulo: "Punto de equilibrio", valor: "", detalle });
+      const ms = performance.now() - inicio;
+      console.log(`detalleDeTarjeta ${detalle.length} car.: ${ms.toFixed(1)} ms`);
+      expect(ms).toBeLessThan(1_000);
+      // mas largo que el tope, sale tal cual
+      expect(visto).toBe(detalle);
+    }
+  }, 120_000);
+
   test("EV y AC son lo real; PV y Plan, lo previsto", () => {
     expect(["PV", "Plan", "EV", "AC"].map(rolDeSerie)).toEqual(["plan", "plan", "real", "real"]);
   });
