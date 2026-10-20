@@ -522,6 +522,26 @@ describe("logica del control", () => {
     expect(descripcionEsVe("CPI no disponible")).toBe("CPI no disponible");
   });
 
+  test("descripcionEsVe devuelve intacto un texto hostil de 100 000 caracteres en menos de un segundo (ronda 1, punto 5)", () => {
+    const hostiles = [
+      "x" + ": el precio del corte desvía 1 sobre un valor ganado de ".repeat(1_800) + "z",
+      "el punto de equilibrio proyectado sube más de " + "1".repeat(100_000) + "x",
+      ": el precio del corte desvía ".repeat(3_500),
+      // la frase calza y la cifra es enorme: el separador de miles de formatoEsVe es cuadratico en su largo
+      "retraso: SPI " + "1".repeat(100_000),
+      "evaluar el reajuste: el precio del corte desvía " + "9".repeat(50_000) + " sobre un valor ganado de " + "9".repeat(50_000),
+    ];
+    for (const texto of hostiles) {
+      const inicio = performance.now();
+      expect(descripcionEsVe(texto)).toBe(texto);
+      const ms = performance.now() - inicio;
+      console.log(`descripcionEsVe ${texto.length} car.: ${ms.toFixed(1)} ms`);
+      expect(ms).toBeLessThan(1_000);
+    }
+    // por debajo del tope sigue formateando
+    expect(descripcionEsVe("retraso: SPI 0.9780")).toBe("retraso: SPI 0,9780");
+  }, 120_000);
+
   test("las lineas sin partida ni cantidad no se mandan", () => {
     const vacia = { partida: "", cantidad: "", fecha_medicion: "2026-11-01", observacion: "" };
     const llena = { partida: "A", cantidad: "", fecha_medicion: "", observacion: "" };
