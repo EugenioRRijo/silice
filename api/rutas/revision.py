@@ -31,8 +31,8 @@ recalculado de una diferencia de precio).
 
 from __future__ import annotations
 
-import re
 import tempfile
+from dataclasses import replace
 from decimal import Decimal
 from pathlib import Path
 from typing import Annotated
@@ -283,7 +283,7 @@ def _reauditoria(r: logica.Reauditoria) -> ReauditoriaRevision:
         avisos=list(r.avisos),
         total_recalculado=_exacto(r.total_recalculado),
         total_recalculado_texto=formatear_decimal(r.total_recalculado, 2),
-        reglas=_es(logica.texto_de_reglas(r)),
+        reglas=logica.texto_de_reglas(r, logica.fecha_es),
         precios_coinciden=not r.diferencias,
         mensaje_precios=logica.PRECIOS_NO_COINCIDEN if r.diferencias else logica.PRECIOS_COINCIDEN,
         diferencias=[
@@ -313,7 +313,7 @@ def _dictamenes(caso: Session, sha256: str) -> list[DictamenAnterior]:
             usuario=d["usuario"],
             fecha=d["fecha"].isoformat(timespec="minutes"),
             estado_verificacion=d["estado_verificacion"],
-            texto=_es(logica.texto_de_dictamen(d)) or "",
+            texto=logica.texto_de_dictamen(d, logica.fecha_es),
         )
         for d in paq.dictamenes_de(caso, sha256)
     ]
@@ -335,12 +335,13 @@ def _contra(caso: Session, documento, lista: models.ListaPrecios) -> ContraLista
     )
 
 
-_FECHA_ISO = re.compile(r"(?<![\d-])(\d{4})-(\d{2})-(\d{2})(?![\d-])")
-
-
-def _es(texto: str | None) -> str | None:
-    """Las fechas AAAA-MM-DD de un texto que se MUESTRA, en dd/mm/aaaa (es-VE)."""
-    return None if texto is None else _FECHA_ISO.sub(r"\3/\2/\1", texto)
+def _banner_es(v) -> tuple[str, str]:
+    """El banner de verificacion con el dia de emision en dd/mm/aaaa, formateado en su ranura
+    (el manifiesto), no buscado en el texto: el emisor y el codigo quedan como vienen."""
+    if v.manifiesto is None:
+        return banner(v)
+    dia = logica.fecha_es(str(v.manifiesto.get("emitido", ""))[:10])
+    return banner(replace(v, manifiesto={**v.manifiesto, "emitido": dia}))
 
 
 def _quien(activa: SesionActiva | None) -> tuple[str, str]:
@@ -398,7 +399,7 @@ def revisar_paquete(
     datos = _leer(paquete, TOPE_PAQUETE, MENSAJE_TOPE_PAQUETE)
     a = _analizar(sesion, activa, datos, paquete.filename, servicios)
     v = a.recibido.verificacion
-    color, texto = banner(v)
+    color, texto = _banner_es(v)
     listas = logica.listas_del_caso(sesion) if v.legible else []
     contra = None
     r = a.reauditoria
@@ -411,14 +412,18 @@ def revisar_paquete(
         estado=v.estado,
         motivo=v.motivo,
         color=color,
-        banner=_es(texto) or "",
+        banner=texto,
         legible=v.legible,
-        banner_version=_es(
-            logica.banner_de_version(a.recibido) if v.manifiesto is not None else None
+        banner_version=(
+            logica.banner_de_version(a.recibido, logica.fecha_es)
+            if v.manifiesto is not None
+            else None
         ),
         ayuda_registro=logica.ayuda_de_registro(v),
         avisos=logica.avisos_visibles(a.recibido),
-        retroactiva=_es(logica.declaracion_retroactiva(v.cadena) if v.cadena else None),
+        retroactiva=(
+            logica.declaracion_retroactiva(v.cadena, logica.fecha_es) if v.cadena else None
+        ),
         aviso_armo=logica.aviso_de_quien_armo(a.armo),
         reauditoria=_reauditoria(r) if r is not None else None,
         entrega_anterior=(

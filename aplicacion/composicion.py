@@ -761,7 +761,7 @@ def contrastar_precio_con_reglas(
 # mensajes son los de la página clásica, letra por letra (paridad, plan de la sesión 2b §3).
 # Ninguna función confirma: el `commit` es de quien llama, y solo con resultado.
 
-#: La bienvenida del formulario en blanco (`ui/paginas/componer.py`, `_desglose_en_vivo`).
+#: La bienvenida del formulario en blanco (la de `ui/paginas/componer.py`, `_desglose_en_vivo`, con tildes).
 MENSAJE_FORMULARIO_VACIO = (
     "Comience por la cabecera (código y descripción) y declare al menos un insumo "
     "en alguna de las tres tablas de abajo, o búsquelo en la referencia MaPreX: el "

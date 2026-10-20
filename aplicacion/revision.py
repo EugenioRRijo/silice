@@ -119,6 +119,7 @@ __all__ = [
     "aviso_de_quien_armo",
     "ayuda_de_registro",
     "banner_de_version",
+    "fecha_es",
     "cambios_nuevos",
     "contra_la_base_del_revisor",
     "contra_la_entrega_anterior",
@@ -213,6 +214,18 @@ def reauditar(
     )
 
 
+def _iso(dia: str) -> str:
+    return dia
+
+
+def fecha_es(dia: str) -> str:
+    """Un día `AAAA-MM-DD` en dd/mm/aaaa (es-VE); cualquier otro texto, tal cual."""
+    try:
+        return datetime.strptime(dia, "%Y-%m-%d").strftime("%d/%m/%Y")
+    except ValueError:
+        return dia
+
+
 def _emitido(manifiesto: Mapping[str, Any] | None) -> datetime:
     """La fecha de emisión del manifiesto, sin zona horaria (la base guarda fechas ingenuas)."""
     return datetime.fromisoformat(str((manifiesto or {})["emitido"])).replace(tzinfo=None)
@@ -248,7 +261,9 @@ def contra_la_base_del_revisor(
     return diferencia_entre_versiones(filas_de(doc), revalorado.filas), revalorado
 
 
-def declaracion_retroactiva(cadena: Mapping[str, Any]) -> str | None:
+def declaracion_retroactiva(
+    cadena: Mapping[str, Any], fecha: Callable[[str], str] = _iso
+) -> str | None:
     """S3 §6.5: «Versiones 001 a 004 selladas el …», si la cadena del paquete trae eslabones
     retroactivos; `None` si no. Es la misma declaración de la hoja, leída del paquete."""
     retro = [e for e in cadena["eslabones"] if e.get("tipo") == "retroactivo"]
@@ -259,7 +274,7 @@ def declaracion_retroactiva(cadena: Mapping[str, Any]) -> str | None:
     cuando = min(str(e["fecha_hora"]) for e in retro)[:10]
     plural = "Versión" if len(codigos) == 1 else "Versiones"
     return (
-        f"{plural} {rango} selladas el {cuando}: prueban que no cambiaron desde esa fecha; "
+        f"{plural} {rango} selladas el {fecha(cuando)}: prueban que no cambiaron desde esa fecha; "
         "antes no hay garantía."
     )
 
@@ -343,16 +358,18 @@ class Recibido:
     ya_recibido_el: str = ""  # el día en que se recibió este mismo archivo, si ya se había
 
 
-def banner_de_version(r: Recibido) -> str:
+def banner_de_version(r: Recibido, fecha: Callable[[str], str] = _iso) -> str:
     """El banner de versión, siempre (S3 §8.3 paso 7): «Versión 005 del 2026-11-10; la última que
     usted recibió de este proyecto: versión 004 del 2026-11-03», o «es la primera que recibe», o
     «ya recibió este mismo paquete el …». Lo que viene del paquete lo escapa quien lo pinta."""
     m = r.verificacion.manifiesto or {}
-    inicio = f"Versión {m.get('codigo', '')} del {str(m.get('emitido', ''))[:10]}"
+    inicio = f"Versión {m.get('codigo', '')} del {fecha(str(m.get('emitido', ''))[:10])}"
     if r.ya_recibido:
-        return f"{inicio}; ya recibió este mismo paquete el {r.ya_recibido_el}."
+        return f"{inicio}; ya recibió este mismo paquete el {fecha(r.ya_recibido_el)}."
     if r.ultima_recibida:
-        return f"{inicio}; la última que usted recibió de este proyecto: {r.ultima_recibida}."
+        # «versión 004 del 2026-11-03»: el día son los 10 últimos caracteres por construcción
+        ultima = r.ultima_recibida[:-10] + fecha(r.ultima_recibida[-10:])
+        return f"{inicio}; la última que usted recibió de este proyecto: {ultima}."
     return f"{inicio}; es la primera que recibe de este proyecto."
 
 
@@ -775,11 +792,11 @@ def aviso_de_quien_armo(armo: Sequence[str]) -> str | None:
     )
 
 
-def texto_de_reglas(r: Reauditoria) -> str:
+def texto_de_reglas(r: Reauditoria, fecha: Callable[[str], str] = _iso) -> str:
     """«Reglas corridas a la fecha de emisión (AAAA-MM-DD): R1-R7, R11-R12.»"""
     return (
         "Reglas corridas a la fecha de emisión ("
-        + f"{r.fecha_evaluacion:%Y-%m-%d}"
+        + fecha(f"{r.fecha_evaluacion:%Y-%m-%d}")
         + "): "
         + ", ".join(r.contextos)
         + "."
@@ -811,11 +828,11 @@ def titulo_de_cambios(con_entrega_anterior: bool) -> str:
     return "Quién cambió qué" + (" desde la entrega anterior" if con_entrega_anterior else "")
 
 
-def texto_de_dictamen(d: Mapping[str, Any]) -> str:
+def texto_de_dictamen(d: Mapping[str, Any], fecha: Callable[[str], str] = _iso) -> str:
     """Un dictamen anterior del mismo archivo (`paq.dictamenes_de`), en una línea."""
     return (
         f"Dictamen anterior: {d['resultado']} · "
-        f"{d['usuario']} · {d['fecha']:%Y-%m-%d %H:%M} · "
+        f"{d['usuario']} · {fecha(f'{d["fecha"]:%Y-%m-%d}')} {d['fecha']:%H:%M} · "
         f"verificación entonces: {d['estado_verificacion']}"
     )
 
