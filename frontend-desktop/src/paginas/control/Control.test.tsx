@@ -235,7 +235,7 @@ describe("Control de obra", () => {
 
   test("la primera pestaña muestra la linea base y los parametros con su naturaleza", async () => {
     montar();
-    expect(await screen.findByText(/perspectiva costo, vigente desde 2026-11-02/)).toBeInTheDocument();
+    expect(await screen.findByText(/perspectiva costo, vigente desde 02\/11\/2026/)).toBeInTheDocument();
     const tabla = screen.getByRole("table", { name: "Parámetros de control" });
     // V-22: la naturaleza y el parametro se leen en español; el codigo queda en el title
     expect(within(tabla).getAllByText("Supuesto declarado")[0]).toHaveAttribute("title", "SUPUESTO_DECLARADO");
@@ -273,6 +273,45 @@ describe("Control de obra", () => {
     expect(screen.getByRole("button", { name: "Agregar línea" })).toBeInTheDocument();
   });
 
+  test("las fechas de las valuaciones se leen en dd/mm/aaaa y el valor de la API queda en el title (VB-19)", async () => {
+    const u = montar();
+    await u.click(await screen.findByRole("tab", { name: "Valuaciones" }));
+    const tabla = await screen.findByRole("table", { name: "Valuaciones registradas" });
+    expect(within(tabla).getByText("02/11/2026 a 06/11/2026")).toHaveAttribute("title", "2026-11-02 a 2026-11-06");
+    expect(within(tabla).getByText("09/11/2026")).toHaveAttribute("title", "2026-11-09");
+    expect(within(tabla).getByText("09/11/2026 09:00")).toHaveAttribute("title", "2026-11-09 09:00");
+    const anular = screen.getByLabelText("Valuación");
+    expect(within(anular).getByRole("option", { name: "V-01 (02/11/2026 a 06/11/2026)" })).toHaveValue("7");
+  });
+
+  test("valor ganado y decisiones muestran las fechas en dd/mm/aaaa (VB-19)", async () => {
+    calculo = () =>
+      json({
+        ...CALCULO,
+        decisiones: [{ Version: "OB-002", Opcion: "Más cuadrillas", Corte: "2026-11-13", Termino: "2026-11-27", Fuente: "acta", Responsable: "ana" }],
+      });
+    const u = montar();
+    await u.click(await screen.findByRole("tab", { name: "Valor ganado" }));
+    await screen.findByRole("table", { name: "Indicadores de valor ganado" });
+    expect(screen.getByText(/^Corte 13\/11\/2026 \(día hábil 10\)/)).toBeInTheDocument();
+    expect(screen.getByText(/El costo de 10 USD del 01\/11\/2026/)).toBeInTheDocument();
+    await u.click(screen.getByRole("tab", { name: "Recuperación" }));
+    const decisiones = await screen.findByRole("table", { name: "Decisiones tomadas" });
+    expect(within(decisiones).getByText("13/11/2026")).toHaveAttribute("title", "2026-11-13");
+    expect(within(decisiones).getByText("27/11/2026")).toHaveAttribute("title", "2026-11-27");
+    expect(document.body.textContent).not.toMatch(/\d{4}-\d{2}-\d{2}/);
+  });
+
+  test("los feriados se escriben en dd/mm/aaaa y viajan a la API en AAAA-MM-DD (VB-19)", async () => {
+    const u = montar();
+    await screen.findByText(/perspectiva costo/);
+    const feriados = screen.getByLabelText("Feriados (fechas como 25/12/2026, separadas por comas)");
+    await u.type(feriados, "25/12/2026, 01/01/2027");
+    await u.click(screen.getByRole("button", { name: "Declarar línea base" }));
+    await screen.findByText("Línea base declarada.");
+    expect(cuerpoDe("/v1/control/linea-base")).toMatchObject({ feriados: "2026-12-25, 2027-01-01" });
+  });
+
   test("las valuaciones se muestran como texto, sin interpretar el inspector", async () => {
     const u = montar();
     await u.click(await screen.findByRole("tab", { name: "Valuaciones" }));
@@ -294,7 +333,7 @@ describe("Control de obra", () => {
     await u.type(screen.getByLabelText("Fuente (acta, oficio)"), "acta 3");
     await u.click(screen.getByRole("button", { name: "Registrar y controlar" }));
     expect(
-      await screen.findByText("Valuación registrada: corte 2026-11-20, 2 hallazgo(s) en la revisión de la valuación (1 con severidad Error)."),
+      await screen.findByText("Valuación registrada: corte 20/11/2026, 2 hallazgo(s) en la revisión de la valuación (1 con severidad Error)."),
     ).toBeInTheDocument();
     const cuerpo = cuerpoDe("/v1/control/valuaciones");
     expect(cuerpo).toMatchObject({ proyecto: "OB-S2", numero: "V-03", fuente: "acta 3" });
@@ -338,7 +377,7 @@ describe("Control de obra", () => {
     expect(within(alertas).getByText("Retraso (SPI)")).toHaveAttribute("title", "AL-1");
     expect(within(alertas).queryByText("AL-1")).toBeNull();
     expect(within(alertas).getByText("0,8500 (supuesto declarado)")).toHaveAttribute("title", "0.8500 (SUPUESTO_DECLARADO)");
-    expect(screen.getByText("Término por el índice: dia 12 (2026-11-18)")).toBeInTheDocument();
+    expect(screen.getByText("Término por el índice: dia 12 (18/11/2026)")).toBeInTheDocument();
     expect(screen.getByText(/Punto de equilibrio proyectado: no disponible/)).toBeInTheDocument();
     expect(screen.getByText(/V' = V/)).toBeInTheDocument();
     expect(screen.getByRole("table", { name: "Plan reproyectado" })).toBeInTheDocument();

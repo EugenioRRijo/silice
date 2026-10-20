@@ -318,6 +318,20 @@ describe("Reajuste de precios", () => {
     expect(document.activeElement?.contains(aviso)).toBe(true);
   });
 
+  test("las fechas ISO de los mensajes y avisos del núcleo se leen en dd/mm/aaaa (VB-19)", async () => {
+    calcular = () =>
+      json({ detalle: "No se pudo calcular: el periodo 2027-02-01–2027-03-31 cruza el aniversario 2027-01-15: partalo (UC-18 3b)" }, 422);
+    const u = userEvent.setup();
+    montar();
+    await screen.findByLabelText("Versión del contrato");
+    await irA(u, "2. Períodos y lo ejecutado");
+    await u.click(screen.getByRole("button", { name: "Calcular" }));
+    expect((await alertaConTexto()).textContent).toContain("el periodo 01/02/2027–31/03/2027 cruza el aniversario 15/01/2027");
+    calcular = () => json(calculo({ avisos: ["La tasa del 2027-02-28 es provisional."] }));
+    await u.click(screen.getByRole("button", { name: "Calcular" }));
+    expect(await screen.findByText("La tasa del 28/02/2027 es provisional.")).toBeInTheDocument();
+  });
+
   test("cambiar un dato después de calcular retira la tabla: lo guardado sería otra cosa", async () => {
     const u = userEvent.setup();
     montar();
