@@ -45,6 +45,7 @@ from adapters.hoja_empresa.guardia import MAX_BYTES, ArchivoRechazado, verificar
 from api.archivos import nombre_seguro
 from api.dependencias import USUARIO_SIN_CLAVE, SesionDep
 from api.proteccion import LIMITE_CUERPO
+from api.redaccion import pulir
 from api.rutas.auditorias import ServiciosDep
 from api.sesion_web import ahora, exigir_clave_o_sesion
 from api.sin_eco import RutaSinEco, sin_eco
@@ -228,7 +229,9 @@ def _exacto(valor: Decimal) -> str:
 
 
 def _hallazgo(h) -> HallazgoRevision:
-    return HallazgoRevision(regla=h.regla, severidad=h.severidad.name, descripcion=h.descripcion)
+    return HallazgoRevision(
+        regla=h.regla, severidad=h.severidad.name, descripcion=pulir(h.descripcion)
+    )
 
 
 def _tabla(d: Diferencia, titulo: str) -> TablaDeDiferencia:

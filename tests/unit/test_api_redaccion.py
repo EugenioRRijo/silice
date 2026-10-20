@@ -9,7 +9,9 @@ import pytest
 
 from api.redaccion import pulir
 
-R11 = "{n} insumos no contrastables: {a} sin referencia MaPreX ({la}), {b} sin tasa a su fecha ({lb})"
+R11 = (
+    "{n} insumos no contrastables: {a} sin referencia MaPreX ({la}), {b} sin tasa a su fecha ({lb})"
+)
 
 
 def test_un_insumo_sin_tasa_va_en_singular_y_sin_el_grupo_vacio() -> None:

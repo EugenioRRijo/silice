@@ -37,6 +37,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from api.admin_acceso import administrar
 from api.archivos import guardar_subida, nombre_seguro
 from api.dependencias import SesionDep
+from api.redaccion import pulir
 from api.rutas.listas import comprobar_libro_legible
 from api.sesion_web import exigir_clave_o_sesion
 from api.sin_eco import RutaSinEco, sin_eco
@@ -248,6 +249,7 @@ def hallazgos(lista_id: int, sesion: SesionDep, fecha: date | None = None) -> Ha
     with _caso_legible():
         _exigir_lista_de_empresa(sesion, lista_id)
         filas = logica.hallazgos_de_lista(sesion, lista_id, fecha or date.today())
+    filas = [{**f, "Descripción": pulir(f["Descripción"])} for f in filas]
     return HallazgosRespuesta(
         columnas=list(logica.COLUMNAS_HALLAZGOS), filas=filas, nota=NOTA_HALLAZGOS
     )
