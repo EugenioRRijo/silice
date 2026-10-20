@@ -1,5 +1,5 @@
 import { Button, InlineNotification, Select, SelectItem, Tab, TabList, TabPanel, TabPanels, Tabs } from "@carbon/react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ErrorDeApi, pedir } from "../../api/cliente";
 import { AvisoError } from "../../comun/AvisoError";
 import { EsqueletoPagina } from "../../comun/EsqueletoPagina";
@@ -267,17 +267,25 @@ function HojaDeProyecto({ proyecto }: { proyecto: string }) {
     if (hayCambios && estado.estado === "listo") setVersionPendiente(nueva);
     else abrirVersion(nueva);
   };
-  const devolverFocoAlSelector = () => document.getElementById("hoja-version")?.focus();
+  // El foco vuelve al selector cuando el diálogo ya se cerró y el `inert` se quitó (en un navegador real no se puede enfocar
+  // dentro de un subárbol inert): se pide aquí y lo cumple el efecto, tras el commit.
+  const devolverFoco = useRef(false);
+  useEffect(() => {
+    if (versionPendiente === null && devolverFoco.current) {
+      devolverFoco.current = false;
+      document.getElementById("hoja-version")?.focus();
+    }
+  }, [versionPendiente]);
   const seguirEditando = useCallback(() => {
     setVersionPendiente(null);
-    devolverFocoAlSelector();
+    devolverFoco.current = true;
   }, []);
   const descartarYAbrir = async () => {
     const nueva = versionPendiente;
     setVersionPendiente(null);
+    devolverFoco.current = true;
     if (nueva === null) return;
     if (await descartarActual()) abrirVersion(nueva);
-    devolverFocoAlSelector();
   };
   const retomar = (oferta: OfertaDeRetomar) => {
     setFalloAlDescartar(null);

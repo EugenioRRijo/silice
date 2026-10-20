@@ -122,5 +122,5 @@ export function insumosVisibles(respuesta: InsumosRespuesta): { insumos: InsumoC
 // El servidor arma «Estado de {clave}: {estado}» (ui/paginas/hoja.py:1738); a la persona solo le sirve el estado. La clave
 // trae «:» pero no «: », así que el estado empieza donde sigue una palabra en mayúsculas con dos puntos (ERROR:, PENDIENTE:…).
 export function textoDeEstado(estado: string): string {
-  return estado.replace(/^Estado de .*?: (?=[A-ZÁÉÍÓÚÑ]+:)/, "");
+  return estado.replace(/^Estado de .*?: (?=[A-ZÁÉÍÓÚÑ]+(?::| \|))/, "");
 }

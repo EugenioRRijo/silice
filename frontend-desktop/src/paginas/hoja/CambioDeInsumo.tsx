@@ -140,7 +140,7 @@ export function CambioDeInsumo({ id, detalle, alCambiar, alAusente, alExpirar }:
                 </Select>
                 <TextInput
                   id={`${idCuerpo}-buscar`}
-                  labelText="Buscar insumo (código o descripción)"
+                  labelText="Buscar insumo (por descripción)"
                   size="sm"
                   value={escrito}
                   maxLength={LARGO_DE_CELDA}
