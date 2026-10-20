@@ -65,7 +65,7 @@ describe("Componer: regiones vivas vacías (VD-6)", () => {
     const { container } = montar();
     await waitFor(() => expect(screen.getByLabelText("Dominio")).toHaveValue("civil"));
     expect(container.querySelectorAll('[role="alert"]:empty')).toHaveLength(0);
-    expect(container.querySelectorAll(".cds--text-input__counter-alert[role]")).toHaveLength(0);
+    expect(container.querySelectorAll("[class*=\"counter-alert\"][role]")).toHaveLength(0);
   });
 
   test.each(NOMBRES)("el campo «%s» conserva su nombre accesible", async (nombre) => {

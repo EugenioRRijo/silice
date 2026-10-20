@@ -1,4 +1,5 @@
-import { Button, Select, SelectItem, TextInput } from "@carbon/react";
+import { Button, Select, SelectItem } from "@carbon/react";
+import { CampoTexto } from "../../comun/CampoTexto";
 import { useEffect, useRef, useState } from "react";
 import { ErrorDeApi } from "../../api/cliente";
 import { AvisoError } from "../../comun/AvisoError";
@@ -59,7 +60,7 @@ export function BuscadorReferencia({ tipo, alUsar, alExpirar }: Props) {
   const actual = resultados?.[elegido];
   return (
     <div className="silice-componer__buscador">
-      <TextInput
+      <CampoTexto
         id={`buscar-${tipo}`}
         size="sm"
         labelText={`Buscar en la referencia MaPreX (${TITULOS[tipo].toLowerCase()})`}
