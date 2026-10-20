@@ -7,6 +7,7 @@ import type { CasosRespuesta, ProyectoRespuesta, SesionRespuesta } from "../api/
 import { AvisoError } from "../comun/AvisoError";
 import { EsqueletoPagina } from "../comun/EsqueletoPagina";
 import { EstadoVacio } from "../comun/EstadoVacio";
+import { useTituloDelDocumento } from "../comun/tituloDelDocumento";
 import { Cabecera } from "./Cabecera";
 import { ContextoAplicacion } from "./contexto";
 import type { Aplicacion } from "./contexto";
@@ -115,6 +116,21 @@ export function Shell({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
     terminarRecorrido();
     alExpirarDeApp();
   }, [alExpirarDeApp]);
+
+  useTituloDelDocumento(paginas.find((p) => rutaDe(p) === ubicacion.pathname)?.titulo ?? null);
+
+  // Esc cierra el menu abierto como capa y devuelve el foco a su boton (VB-14).
+  useEffect(() => {
+    if (!menuAbierto) return;
+    const alTeclear = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      setMenuAbierto(false);
+      // El boton cambia de nombre al cerrarse; se le manda el foco cuando React ya lo repinto.
+      requestAnimationFrame(() => document.querySelector<HTMLElement>(".cds--header__menu-toggle")?.focus());
+    };
+    document.addEventListener("keydown", alTeclear);
+    return () => document.removeEventListener("keydown", alTeclear);
+  }, [menuAbierto]);
 
   const acciones = sesion.acciones;
   const puedeCambiarCaso = acciones.includes("cambiar_caso");

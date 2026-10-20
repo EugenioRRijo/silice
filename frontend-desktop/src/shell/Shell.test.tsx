@@ -540,7 +540,7 @@ describe("Shell", () => {
       await screen.findByRole("heading", { name: "Pantalla del tablero" });
       expect(document.title).toBe("Tablero del proyecto · Sílice");
       await usuario.click(screen.getByRole("button", { name: "Abrir el menú" }));
-      await usuario.click(within(menu()).getByRole("link", { name: "Libro de la empresa" }));
+      await usuario.click(within(menu()).getAllByRole("link", { name: "Libro de la empresa" })[0]);
       await waitFor(() => expect(document.title).toBe("Libro de la empresa · Sílice"));
     });
 

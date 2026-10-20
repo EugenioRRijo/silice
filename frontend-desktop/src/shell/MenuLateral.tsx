@@ -65,7 +65,7 @@ function Area({ area, urlClasica, alCerrar, plegable }: PropsArea) {
   const idLista = `menu-lista-${area.id}`;
   return (
     <li className="silice-menu__seccion">
-      <h2 id={idRotulo} className="silice-menu__rotulo cds--type-label-01">
+      <div id={idRotulo} className="silice-menu__rotulo cds--type-label-01">
         {plegable ? (
           <button
             type="button"
@@ -80,7 +80,7 @@ function Area({ area, urlClasica, alCerrar, plegable }: PropsArea) {
         ) : (
           area.titulo
         )}
-      </h2>
+      </div>
       <p id={`${idRotulo}-ayuda`} className="silice-menu__descripcion cds--type-helper-text-01">
         {area.descripcion}
       </p>
@@ -101,6 +101,8 @@ function Area({ area, urlClasica, alCerrar, plegable }: PropsArea) {
   );
 }
 
+// Los rotulos de area son texto, no encabezados: el unico h1 de la pagina es lo primero que se anuncia y no hay h2 de
+// 12 px antes de el (VB-15).
 // Menu por rol y modo entrega, en cinco areas con su descripcion (spec del Inicio, §2.2) y, arriba, las tres
 // herramientas principales (§2.3). Un solo menu lateral: la barra superior del spec nacio para Streamlit; aqui su
 // equivalente es este SideNav. Las paginas aun no migradas se ven deshabilitadas (que la persona sepa que existen) y,
@@ -125,9 +127,9 @@ export function MenuLateral({ paginas, acciones, modoEntrega, urlClasica, abiert
       <SideNavItems>
         {herramientas.length > 0 && (
           <li className="silice-menu__seccion silice-menu__herramientas">
-            <h2 id="menu-herramientas" className="silice-menu__rotulo cds--type-label-01">
+            <div id="menu-herramientas" className="silice-menu__rotulo cds--type-label-01">
               Herramientas principales
-            </h2>
+            </div>
             <ul aria-labelledby="menu-herramientas" className="silice-menu__lista">
               {herramientas.map((h) => (
                 <SideNavLink
