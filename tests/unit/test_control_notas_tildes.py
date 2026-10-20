@@ -235,3 +235,8 @@ def test_los_supuestos_de_una_opcion_por_ranura_con_tilde_y_el_codigo_del_usuari
         supuestos=(Supuesto("eta de cuadrillas", "0.80", "SUPUESTO_DECLARADO"),),
     )
     assert control.supuestos_de_opcion(sin_aplicar) == []
+
+
+def test_supuestos_de_opcion_es_parte_de_la_interfaz_publica_del_modulo() -> None:
+    # Ronda 1 del árbitro (MENOR): la API la importa como `logica.supuestos_de_opcion`.
+    assert "supuestos_de_opcion" in control.__all__
