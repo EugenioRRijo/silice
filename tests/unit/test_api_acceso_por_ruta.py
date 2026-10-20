@@ -219,6 +219,7 @@ TABLA = {
     ("POST", "/v1/hoja/borradores"): EDITAR,  # ademas, solo con sesion (403 con clave)
     ("GET", "/v1/hoja/borradores/{id}"): EDITAR,  # ademas, solo con sesion
     ("DELETE", "/v1/hoja/borradores/{id}"): EDITAR,  # ademas, solo con sesion
+    ("GET", "/v1/hoja/borradores/{id}/vistas/espacio"): EDITAR,  # T10 3b-2 (R5); solo con sesion
 }
 #: Las de la puerta de entrada: la sesión misma (con su propia regla) y el ping.
 DE_LA_SESION = {

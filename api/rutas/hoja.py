@@ -38,8 +38,10 @@ from api.esquemas_hoja import (
     InstantaneaHojaRespuesta,
     VersionesHojaRespuesta,
     VersionHojaRespuesta,
+    VistaEspacioRespuesta,
     base_a_respuesta,
     resumen_a_respuesta,
+    vista_espacio_a_respuesta,
 )
 from api.sesion_web import exigir_clave_o_sesion
 from api.sin_cache import RutaSinCache
@@ -223,3 +225,11 @@ def descartar_borrador(id: IdDeBorrador, request: Request, activa: CuentaDeLaHoj
         raise
     hoja_borradores.descartar(activa.huella_ficha, id)
     return Response(status_code=204)
+
+
+@router.get("/borradores/{id}/vistas/espacio", response_model=VistaEspacioRespuesta)
+def vista_espacio(
+    id: IdDeBorrador, request: Request, activa: CuentaDeLaHoja
+) -> VistaEspacioRespuesta:
+    """R5: Espacio y metrajes en lectura (tablas, Estado por fila, cantidades derivadas)."""
+    return vista_espacio_a_respuesta(hoja_vista.vista_espacio(_vivo(request, activa, id)))

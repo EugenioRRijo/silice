@@ -8,7 +8,9 @@ conexion de cada punto) ligada al espacio que se elabora, sin guardarla en el bo
 `{texto, exacto}`: `texto` a dos decimales, como la clasica, y `exacto` sin notacion cientifica;
 la interfaz no calcula ni redondea. Sin FastAPI ni Streamlit.
 
-Las 3b-2 y 3b-3 anaden aqui las vistas de cada pestana.
+La 3b-2 anade las vistas de Espacio y metrajes, APU, Presupuesto y Plan y curva (`vista_*`): cada
+una lee el borrador vivo (no la base), usa solo funciones de `aplicacion.hoja` (la copia del Plan C)
+y devuelve dataclasses que la API serializa. La 3b-3 anade las demas pestanas.
 """
 
 from __future__ import annotations
@@ -18,6 +20,14 @@ from dataclasses import dataclass, replace
 from decimal import Decimal, localcontext
 
 from adapters.espacio.conexion import con_conexion
+from adapters.espacio.modelo import (
+    Especialidad,
+    SuperficiePunto,
+    SuperficieTramo,
+    TipoFuente,
+    TipoPunto,
+)
+from adapters.espacio.origen import TipoOrigen
 from aplicacion import hoja
 from aplicacion.hoja_borradores import BorradorVivo
 from core.contracts import Severidad
@@ -150,4 +160,153 @@ def base(vivo: BorradorVivo, vigente: str | None) -> BaseAbierta:
         espacio_de=None if abierta is None else abierta.espacio_de,
         solo_lectura=False if abierta is None else abierta.solo_lectura,
         moneda=vivo.borrador.moneda,
+    )
+
+
+# --- Estado de una fila (compartido por las vistas) ---------------------------------------------
+
+
+@dataclass(frozen=True, slots=True)
+class EstadoDeFila:
+    """`EstadoFila` del contrato: la peor severidad (`None` si esta limpia) y su texto."""
+
+    severidad: str | None
+    texto: str
+
+
+def estado_de_fila(estado: hoja.EstadoFila) -> EstadoDeFila:
+    return EstadoDeFila(None if estado.severidad is None else estado.severidad.name, estado.texto)
+
+
+# --- Espacio y metrajes (R5) --------------------------------------------------------------------
+
+AYUDA_ESPACIO = (
+    "Describa el espacio en metros (eje z hacia arriba desde el piso terminado). Cada fila cita un "
+    "origen de medida; un punto de agua fría sin recorrido declarado usa el recorrido propuesto. "
+    "Los vértices se escriben como «x,y,z; x,y,z» y la longitud de cada tramo se calcula."
+)
+SIN_CANTIDADES = (
+    "El borrador todavía no deriva cantidades: agregue un ambiente, una fuente y los puntos de "
+    "agua, de datos o de electricidad."
+)
+
+#: Rotulo de cada tabla para la persona (en los mensajes de error van los de `hoja.ROTULOS`).
+ROTULOS_DE_TABLA = {
+    "origenes": "Orígenes de medida",
+    "ambientes": "Ambientes",
+    "fuentes": "Fuentes",
+    "puntos": "Puntos",
+    "tramos": "Vértices de recorridos",
+}
+
+#: Las columnas con lista cerrada (P:1113-1137): sus valores internos, en el orden de la lista.
+_LISTAS: dict[str, dict[str, tuple[str, ...]]] = {
+    "origenes": {"tipo": tuple(m.value for m in TipoOrigen)},
+    "fuentes": {
+        "especialidad": tuple(m.value for m in Especialidad),
+        "tipo": tuple(m.value for m in TipoFuente),
+    },
+    "puntos": {
+        "especialidad": tuple(m.value for m in Especialidad),
+        "tipo": tuple(m.value for m in TipoPunto),
+        "superficie": tuple(m.value for m in SuperficiePunto),
+    },
+    "tramos": {
+        "superficie": tuple(m.value for m in SuperficieTramo),
+        "empotrado": ("", "si", "no"),
+    },
+}
+
+
+@dataclass(frozen=True, slots=True)
+class OpcionDeLista:
+    """Un valor de una lista cerrada: el interno (lo que se guarda) y su rotulo."""
+
+    valor: str
+    rotulo: str
+
+
+@dataclass(frozen=True, slots=True)
+class ColumnaDeTabla:
+    clave: str
+    rotulo: str
+    lista: tuple[OpcionDeLista, ...] | None
+
+
+@dataclass(frozen=True, slots=True)
+class TablaDelEspacio:
+    clave: str
+    rotulo: str
+    columnas: tuple[ColumnaDeTabla, ...]
+    con_estado: bool
+
+
+@dataclass(frozen=True, slots=True)
+class CantidadDerivada:
+    partida: str
+    descripcion: str
+    unidad: str
+    cantidad: Monto
+    origen: str
+
+
+@dataclass(frozen=True, slots=True)
+class VistaEspacio:
+    ayuda: str
+    tablas: tuple[TablaDelEspacio, ...]
+    filas: dict[str, list[dict[str, str]]]
+    estado: dict[str, EstadoDeFila]
+    derivadas: tuple[CantidadDerivada, ...]
+    total: Monto
+    moneda: str
+    pendientes: int
+    vacio_mensaje: str | None
+
+
+def _tabla(clave: str) -> TablaDelEspacio:
+    listas = _LISTAS.get(clave, {})
+    rotulos = hoja.ROTULOS_DE_COLUMNA[clave]
+    return TablaDelEspacio(
+        clave=clave,
+        rotulo=ROTULOS_DE_TABLA[clave],
+        columnas=tuple(
+            ColumnaDeTabla(
+                clave=columna,
+                rotulo=rotulos[columna],
+                lista=(
+                    tuple(OpcionDeLista(v, hoja.rotulo_de_valor(v)) for v in listas[columna])
+                    if columna in listas
+                    else None
+                ),
+            )
+            for columna in hoja.COLUMNAS[clave]
+        ),
+        con_estado=clave in hoja.TABLAS_CON_ESTADO,
+    )
+
+
+def vista_espacio(vivo: BorradorVivo) -> VistaEspacio:
+    """La pestana Espacio y metrajes en lectura (P:1190-1233): las cinco tablas con su Estado por
+    fila, las cantidades derivadas, el total y los pendientes del catalogo."""
+    resultado, _ = calculo(vivo)
+    presupuesto = resultado.elaboracion.presupuesto
+    return VistaEspacio(
+        ayuda=AYUDA_ESPACIO,
+        tablas=tuple(_tabla(clave) for clave in hoja.COLUMNAS),
+        filas=hoja.filas_desde_espacio(vivo.borrador.espacio),
+        estado={clave: estado_de_fila(e) for clave, e in resultado.estado.items()},
+        derivadas=tuple(
+            CantidadDerivada(
+                partida=i.codigo_partida,
+                descripcion=i.descripcion,
+                unidad=i.unidad,
+                cantidad=monto(i.cantidad),
+                origen=i.origen_id,
+            )
+            for i in resultado.items
+        ),
+        total=monto(presupuesto.total),
+        moneda=presupuesto.moneda,
+        pendientes=len(resultado.elaboracion.pendientes),
+        vacio_mensaje=None if resultado.items else SIN_CANTIDADES,
     )

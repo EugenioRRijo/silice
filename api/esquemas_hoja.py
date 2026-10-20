@@ -11,7 +11,7 @@ from typing import Annotated
 
 from pydantic import BaseModel, Field
 
-from aplicacion.hoja_vista import BaseAbierta, Monto, ResumenHoja
+from aplicacion.hoja_vista import BaseAbierta, Monto, ResumenHoja, VistaEspacio
 
 #: Cada texto de celda o de código llega acotado (diseño §4.1): ≤ 500 caracteres.
 Texto500 = Annotated[str, Field(max_length=500)]
@@ -118,3 +118,53 @@ def resumen_a_respuesta(resumen: ResumenHoja) -> ResumenHojaRespuesta:
         version_mas_nueva=resumen.version_mas_nueva,
         guardado_como=resumen.guardado_como,
     )
+
+
+# --- las vistas de las pestanas (3b-2) -------------------------------------------------------
+
+
+class EstadoFilaRespuesta(BaseModel):
+    severidad: str | None
+    texto: str
+
+
+class OpcionListaRespuesta(BaseModel):
+    valor: str
+    rotulo: str
+
+
+class ColumnaTablaRespuesta(BaseModel):
+    clave: str
+    rotulo: str
+    lista: list[OpcionListaRespuesta] | None
+
+
+class TablaEspacioRespuesta(BaseModel):
+    clave: str
+    rotulo: str
+    columnas: list[ColumnaTablaRespuesta]
+    con_estado: bool
+
+
+class CantidadDerivadaRespuesta(BaseModel):
+    partida: str
+    descripcion: str
+    unidad: str
+    cantidad: MontoHojaRespuesta
+    origen: str
+
+
+class VistaEspacioRespuesta(BaseModel):
+    ayuda: str
+    tablas: list[TablaEspacioRespuesta]
+    filas: dict[str, list[dict[str, str]]]
+    estado: dict[str, EstadoFilaRespuesta]
+    derivadas: list[CantidadDerivadaRespuesta]
+    total: MontoHojaRespuesta
+    moneda: str
+    pendientes: int
+    vacio_mensaje: str | None
+
+
+def vista_espacio_a_respuesta(vista: VistaEspacio) -> VistaEspacioRespuesta:
+    return VistaEspacioRespuesta.model_validate(vista, from_attributes=True)

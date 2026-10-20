@@ -5397,6 +5397,52 @@
         }
       }
     },
+    "/v1/hoja/borradores/{id}/vistas/espacio": {
+      "get": {
+        "tags": [
+          "hoja"
+        ],
+        "summary": "Vista Espacio",
+        "description": "R5: Espacio y metrajes en lectura (tablas, Estado por fila, cantidades derivadas).",
+        "operationId": "vista_espacio_v1_hoja_borradores__id__vistas_espacio_get",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 16,
+              "maxLength": 64,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "title": "Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VistaEspacioRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/produccion/materiales": {
       "get": {
         "tags": [
@@ -7486,6 +7532,38 @@
         "title": "CambioRespuesta",
         "description": "Un cambio de precio del historial (UC-02)."
       },
+      "CantidadDerivadaRespuesta": {
+        "properties": {
+          "partida": {
+            "type": "string",
+            "title": "Partida"
+          },
+          "descripcion": {
+            "type": "string",
+            "title": "Descripcion"
+          },
+          "unidad": {
+            "type": "string",
+            "title": "Unidad"
+          },
+          "cantidad": {
+            "$ref": "#/components/schemas/MontoHojaRespuesta"
+          },
+          "origen": {
+            "type": "string",
+            "title": "Origen"
+          }
+        },
+        "type": "object",
+        "required": [
+          "partida",
+          "descripcion",
+          "unidad",
+          "cantidad",
+          "origen"
+        ],
+        "title": "CantidadDerivadaRespuesta"
+      },
       "CargaListaRespuesta": {
         "properties": {
           "lista": {
@@ -7809,6 +7887,39 @@
           "ultimo_uso"
         ],
         "title": "ClaveRespuesta"
+      },
+      "ColumnaTablaRespuesta": {
+        "properties": {
+          "clave": {
+            "type": "string",
+            "title": "Clave"
+          },
+          "rotulo": {
+            "type": "string",
+            "title": "Rotulo"
+          },
+          "lista": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/OpcionListaRespuesta"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lista"
+          }
+        },
+        "type": "object",
+        "required": [
+          "clave",
+          "rotulo",
+          "lista"
+        ],
+        "title": "ColumnaTablaRespuesta"
       },
       "ComparativoRespuesta": {
         "properties": {
@@ -8994,6 +9105,31 @@
         ],
         "title": "EscenariosRespuesta",
         "description": "La comparación completa de UC-08. Nada de esto queda persistido (RF-30).\n\n`pendientes_base` lista los ítems pendientes del presupuesto base (sin partida en el\ncatálogo): ningún escenario los recalcula ni los suma a su total, y los hallazgos de cada\nescenario no los cuentan. Queda vacía si el base no tiene pendientes o si se guardó sin\nregistrarlos."
+      },
+      "EstadoFilaRespuesta": {
+        "properties": {
+          "severidad": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Severidad"
+          },
+          "texto": {
+            "type": "string",
+            "title": "Texto"
+          }
+        },
+        "type": "object",
+        "required": [
+          "severidad",
+          "texto"
+        ],
+        "title": "EstadoFilaRespuesta"
       },
       "EstadoRespuesta": {
         "properties": {
@@ -11281,6 +11417,24 @@
           "roles"
         ],
         "title": "NuevosRoles"
+      },
+      "OpcionListaRespuesta": {
+        "properties": {
+          "valor": {
+            "type": "string",
+            "title": "Valor"
+          },
+          "rotulo": {
+            "type": "string",
+            "title": "Rotulo"
+          }
+        },
+        "type": "object",
+        "required": [
+          "valor",
+          "rotulo"
+        ],
+        "title": "OpcionListaRespuesta"
       },
       "OpcionRespuesta": {
         "properties": {
@@ -14112,6 +14266,37 @@
         ],
         "title": "TablaDeDiferencia"
       },
+      "TablaEspacioRespuesta": {
+        "properties": {
+          "clave": {
+            "type": "string",
+            "title": "Clave"
+          },
+          "rotulo": {
+            "type": "string",
+            "title": "Rotulo"
+          },
+          "columnas": {
+            "items": {
+              "$ref": "#/components/schemas/ColumnaTablaRespuesta"
+            },
+            "type": "array",
+            "title": "Columnas"
+          },
+          "con_estado": {
+            "type": "boolean",
+            "title": "Con Estado"
+          }
+        },
+        "type": "object",
+        "required": [
+          "clave",
+          "rotulo",
+          "columnas",
+          "con_estado"
+        ],
+        "title": "TablaEspacioRespuesta"
+      },
       "Tablas": {
         "properties": {
           "materiales": {
@@ -14589,6 +14774,83 @@
           "versiones"
         ],
         "title": "VersionesHojaRespuesta"
+      },
+      "VistaEspacioRespuesta": {
+        "properties": {
+          "ayuda": {
+            "type": "string",
+            "title": "Ayuda"
+          },
+          "tablas": {
+            "items": {
+              "$ref": "#/components/schemas/TablaEspacioRespuesta"
+            },
+            "type": "array",
+            "title": "Tablas"
+          },
+          "filas": {
+            "additionalProperties": {
+              "items": {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              "type": "array"
+            },
+            "type": "object",
+            "title": "Filas"
+          },
+          "estado": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/EstadoFilaRespuesta"
+            },
+            "type": "object",
+            "title": "Estado"
+          },
+          "derivadas": {
+            "items": {
+              "$ref": "#/components/schemas/CantidadDerivadaRespuesta"
+            },
+            "type": "array",
+            "title": "Derivadas"
+          },
+          "total": {
+            "$ref": "#/components/schemas/MontoHojaRespuesta"
+          },
+          "moneda": {
+            "type": "string",
+            "title": "Moneda"
+          },
+          "pendientes": {
+            "type": "integer",
+            "title": "Pendientes"
+          },
+          "vacio_mensaje": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vacio Mensaje"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ayuda",
+          "tablas",
+          "filas",
+          "estado",
+          "derivadas",
+          "total",
+          "moneda",
+          "pendientes",
+          "vacio_mensaje"
+        ],
+        "title": "VistaEspacioRespuesta"
       },
       "VistaPreviaRespuesta": {
         "properties": {
