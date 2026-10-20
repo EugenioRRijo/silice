@@ -12,13 +12,15 @@ interface Props<T> {
   etiqueta: string;
   // El servidor ya no tiene el borrador: la página lo dice una sola vez y ofrece abrirlo de nuevo.
   alAusente: () => void;
+  // Sube cada vez que hay que volver a leer la vista (por ejemplo tras una edición); la anterior sigue a la vista.
+  recarga?: number;
   children: (datos: T, actualizando: boolean) => ReactNode;
 }
 
 // Estados de carga, error y listo de una vista de la hoja.
-export function VistaCarga<T>({ ruta, etiqueta, alAusente, children }: Props<T>) {
+export function VistaCarga<T>({ ruta, etiqueta, alAusente, recarga = 0, children }: Props<T>) {
   const { alExpirar } = useAplicacion();
-  const vista = useVista<T>(ruta, alExpirar);
+  const vista = useVista<T>(ruta, alExpirar, recarga);
   const ausente = vista.estado === "error" && esBorradorAusente(vista.error);
 
   useEffect(() => {

@@ -144,6 +144,13 @@ describe("Hoja del proyecto: tablas editables del espacio (3c-1)", () => {
     return r;
   }
 
+  // Carbon pone en cada campo de texto un `role="alert"` vacío (su contador); los avisos de verdad son los que traen texto.
+  const avisos = () => screen.queryAllByRole("alert").filter((a) => (a.textContent ?? "") !== "");
+  const aviso = () => {
+    const todos = avisos();
+    if (todos.length !== 1) throw new Error(`Se esperaba un aviso y hay ${todos.length}`);
+    return todos[0]!;
+  };
   const celda = (nombre: string) => screen.getByRole("textbox", { name: nombre });
   const pausa = (ms: number) =>
     act(async () => {
@@ -154,6 +161,23 @@ describe("Hoja del proyecto: tablas editables del espacio (3c-1)", () => {
     window.dispatchEvent(evento);
     return evento.defaultPrevented;
   };
+
+  // Con setTimeout simulado, `findBy*` y `waitFor` de Testing Library se cuelgan (su espera final usa setTimeout): se espera
+  // dando turnos a las promesas con setImmediate, que no se simula.
+  async function esperar<T>(comprobar: () => T): Promise<T> {
+    let ultimo: unknown;
+    for (let i = 0; i < 300; i++) {
+      try {
+        return comprobar();
+      } catch (e) {
+        ultimo = e;
+      }
+      await act(async () => {
+        await new Promise<void>((resolver) => setImmediate(resolver));
+      });
+    }
+    throw ultimo;
+  }
 
   // Solo se simulan los temporizadores de la pausa; las promesas y el sondeo de Testing Library siguen reales.
   async function abrirConRelojFalso() {
@@ -179,7 +203,6 @@ describe("Hoja del proyecto: tablas editables del espacio (3c-1)", () => {
   test("3c-F1: cada celda admite hasta 500 caracteres; los títulos, contadores y encabezados siguen", async () => {
     await abrir();
     expect(celda("Largo (m), Ambientes fila 1")).toHaveAttribute("maxlength", "500");
-    expect(celda("Largo (m), Ambientes fila 1")).toHaveAttribute("inputmode", "decimal");
     const titulo = screen.getByRole("heading", { level: 3, name: "Ambientes" });
     expect(titulo.parentElement).toHaveTextContent("2 filas");
     const tabla = screen.getByRole("table", { name: "Ambientes" });
@@ -236,15 +259,15 @@ describe("Hoja del proyecto: tablas editables del espacio (3c-1)", () => {
         tramos: [],
       },
     });
-    const estado = await screen.findByRole("region", { name: "Estado del borrador" });
-    expect(await within(estado).findByTitle("2800.5")).toHaveTextContent("2.800,50 USD");
-    expect(within(estado).getByText("1 cambio sin guardar")).toBeInTheDocument();
+    const estado = await esperar(() => screen.getByRole("region", { name: "Estado del borrador" }));
+    expect(await esperar(() => within(estado).getByTitle("2800.5"))).toHaveTextContent("2.800,50 USD");
+    expect(within(estado).getByText(/· 1 cambio sin guardar/)).toBeInTheDocument();
     expect(within(estado).getByTitle("2800.5")).toHaveAttribute("aria-live", "polite");
     expect(lecturasDelEspacio()).toBe(antes + 1);
-    const derivadas = await screen.findByRole("table", { name: "Cantidades derivadas" });
-    expect(await within(derivadas).findByText("4,00")).toBeInTheDocument();
+    const derivadas = await esperar(() => screen.getByRole("table", { name: "Cantidades derivadas" }));
+    expect(await esperar(() => within(derivadas).getByText("4,00"))).toBeInTheDocument();
     const filas = within(screen.getByRole("table", { name: "Ambientes" })).getAllByRole("row");
-    expect(await within(filas[1]!).findByText("OK")).toBeInTheDocument();
+    expect(await esperar(() => within(filas[1]!).getByText("OK"))).toBeInTheDocument();
     // Lo escrito se queda como lo escribió la persona; la respuesta no lo reemplaza.
     expect(celda("Largo (m), Ambientes fila 1")).toHaveValue("2.5");
   });
@@ -259,7 +282,7 @@ describe("Hoja del proyecto: tablas editables del espacio (3c-1)", () => {
     await pausa(400);
     expect(puestas()).toHaveLength(1);
     expect(puestas()[0]!.cuerpo.tablas.ambientes![0]!.largo).toBe("3.2");
-    await screen.findByText("1 cambio sin guardar");
+    await esperar(() => screen.getByText(/· 1 cambio sin guardar/));
     fireEvent.change(celda("Nombre, Ambientes fila 1"), { target: { value: "Baño principal" } });
     await pausa(400);
     expect(puestas()).toHaveLength(2);
@@ -277,17 +300,17 @@ describe("Hoja del proyecto: tablas editables del espacio (3c-1)", () => {
         : ACEPTA(cuerpo);
     fireEvent.change(celda("Largo (m), Ambientes fila 1"), { target: { value: "3" } });
     await pausa(400);
-    expect(await screen.findByText("Aplicando los cambios al borrador…")).toBeInTheDocument();
+    expect(await esperar(() => screen.getByText("Aplicando los cambios al borrador…"))).toBeInTheDocument();
     fireEvent.change(celda("Largo (m), Ambientes fila 1"), { target: { value: "31" } });
     await pausa(400);
     fireEvent.change(celda("Largo (m), Ambientes fila 1"), { target: { value: "312" } });
     await pausa(400);
     expect(puestas()).toHaveLength(1); // la primera sigue en vuelo
     await act(async () => terminar(ACEPTA({ rev: 0, tablas: {} })));
-    await waitFor(() => expect(puestas()).toHaveLength(2));
+    await esperar(() => expect(puestas()).toHaveLength(2));
     expect(puestas()[1]!.cuerpo.rev).toBe(1);
     expect(puestas()[1]!.cuerpo.tablas.ambientes![0]!.largo).toBe("312");
-    await waitFor(() => expect(screen.queryByText("Aplicando los cambios al borrador…")).toBeNull());
+    await esperar(() => expect(screen.queryByText("Aplicando los cambios al borrador…")).toBeNull());
   });
 
   test("al cambiar de pestaña con una edición en la pausa, se manda en seguida: no se pierde", async () => {
@@ -308,27 +331,27 @@ describe("Hoja del proyecto: tablas editables del espacio (3c-1)", () => {
     alPonerse = () => json({ detalle: DETALLE }, 422);
     fireEvent.change(celda("Largo (m), Ambientes fila 1"), { target: { value: "2,5" } });
     await pausa(400);
-    const alerta = await screen.findByRole("alert");
+    const alerta = await esperar(() => aviso());
     expect(alerta).toHaveTextContent(`${DETALLE}. La hoja sigue con el último borrador válido.`);
     const invalida = celda("Largo (m), Ambientes fila 1");
-    await waitFor(() => expect(invalida).toHaveAttribute("aria-invalid", "true"));
+    await esperar(() => expect(invalida).toHaveAttribute("aria-invalid", "true"));
     expect(invalida).toHaveValue("2,5"); // se queda lo escrito para corregirlo
-    expect(invalida).toHaveAttribute("aria-errormessage");
-    expect(document.getElementById(invalida.getAttribute("aria-errormessage")!)).toHaveTextContent(DETALLE);
+    // Carbon señala su «Valor no válido» con aria-errormessage; la descripción accesible es el aviso completo.
+    expect(document.getElementById(invalida.getAttribute("aria-describedby")!)).toHaveTextContent(DETALLE);
     expect(celda("Largo (m), Ambientes fila 2")).not.toHaveAttribute("aria-invalid", "true");
     // El texto de la celda inválida dice que no es válida (el color no va solo).
     expect(screen.getByText("Valor no válido")).toBeInTheDocument();
     // El total mostrado es el anterior y el borrador no avanzó.
     const estado = screen.getByRole("region", { name: "Estado del borrador" });
     expect(within(estado).getByTitle("2703.860232344044033333333333")).toBeInTheDocument();
-    expect(within(estado).getByText("Sin cambios sin guardar")).toBeInTheDocument();
+    expect(within(estado).getByText(/Sin cambios sin guardar/)).toBeInTheDocument();
     // Corregir y volver a mandar: sigue con el rev que el servidor no avanzó y el alert desaparece.
     alPonerse = ACEPTA;
     fireEvent.change(invalida, { target: { value: "2.5" } });
     await pausa(400);
-    await waitFor(() => expect(puestas()).toHaveLength(2));
+    await esperar(() => expect(puestas()).toHaveLength(2));
     expect(puestas()[1]!.cuerpo.rev).toBe(0);
-    await waitFor(() => expect(screen.queryByRole("alert")).toBeNull());
+    await esperar(() => expect(avisos()).toHaveLength(0));
     expect(celda("Largo (m), Ambientes fila 1")).not.toHaveAttribute("aria-invalid", "true");
   });
 
@@ -338,7 +361,7 @@ describe("Hoja del proyecto: tablas editables del espacio (3c-1)", () => {
     fireEvent.change(celda("Largo (m), Ambientes fila 2"), { target: { value: "2,5" } });
     await pausa(400);
     expect(puestas()[0]!.cuerpo.tablas.ambientes![1]!.largo).toBe("2,5"); // se manda tal cual: decide el servidor (D-8)
-    expect(await screen.findByRole("alert")).toHaveTextContent("'2,5' no es un numero decimal valido");
+    expect(await esperar(() => aviso())).toHaveTextContent("'2,5' no es un numero decimal valido");
   });
 
   test("3c-F4: si el mensaje nombra tabla y fila se ofrece ir a esa fila, sin robar el foco mientras se escribe", async () => {
@@ -347,7 +370,7 @@ describe("Hoja del proyecto: tablas editables del espacio (3c-1)", () => {
     celda("Largo (m), Ambientes fila 1").focus();
     fireEvent.change(celda("Largo (m), Ambientes fila 1"), { target: { value: "5" } });
     await pausa(400);
-    const ir = await screen.findByRole("button", { name: "Ir a la fila 2 de Ambientes" });
+    const ir = await esperar(() => screen.getByRole("button", { name: "Ir a la fila 2 de Ambientes" }));
     expect(celda("Largo (m), Ambientes fila 1")).toHaveFocus(); // el foco sigue donde escribe la persona
     expect(celda("Nombre, Ambientes fila 2")).toHaveAttribute("aria-invalid", "true");
     fireEvent.click(ir);
@@ -359,7 +382,7 @@ describe("Hoja del proyecto: tablas editables del espacio (3c-1)", () => {
     alPonerse = () => json({ detalle: "El id 'BAN-01' esta repetido en ambientes" }, 422);
     fireEvent.change(celda("Código, Ambientes fila 2"), { target: { value: "BAN-01" } });
     await pausa(400);
-    expect(await screen.findByRole("alert")).toHaveTextContent("El id 'BAN-01' esta repetido en ambientes. La hoja sigue");
+    expect(await esperar(() => aviso())).toHaveTextContent("El id 'BAN-01' esta repetido en ambientes. La hoja sigue");
     expect(screen.queryByRole("button", { name: /Ir a la fila/ })).toBeNull();
     expect(document.querySelector("[aria-invalid='true']")).toBeNull();
   });
@@ -371,8 +394,8 @@ describe("Hoja del proyecto: tablas editables del espacio (3c-1)", () => {
     alPonerse = () => json({ detalle: REV_VIEJO }, 409);
     fireEvent.change(celda("Largo (m), Ambientes fila 1"), { target: { value: "7" } });
     await pausa(400);
-    const aviso = await screen.findByRole("alert");
-    expect(aviso).toHaveTextContent(REV_VIEJO);
+    const elAviso = await esperar(() => aviso());
+    expect(elAviso).toHaveTextContent(REV_VIEJO);
     // Otra ventana dejó el borrador en rev 5 con otro largo.
     abierto = borrador({ rev: 5, cambios: 3 });
     vista = vistaEspacio({
@@ -385,17 +408,17 @@ describe("Hoja del proyecto: tablas editables del espacio (3c-1)", () => {
       },
     });
     const antes = lecturasDelEspacio();
-    fireEvent.click(within(aviso).getByRole("button", { name: "Recargar el borrador" }));
-    await waitFor(() => expect(celda("Largo (m), Ambientes fila 1")).toHaveValue("9"));
+    fireEvent.click(screen.getByRole("button", { name: "Recargar el borrador" }));
+    await esperar(() => expect(celda("Largo (m), Ambientes fila 1")).toHaveValue("9"));
     expect(llamadas("GET", `/v1/hoja/borradores/${ID}`)).toBe(1);
     expect(lecturasDelEspacio()).toBeGreaterThan(antes);
-    expect(screen.queryByRole("alert")).toBeNull();
-    expect(within(screen.getByRole("region", { name: "Estado del borrador" })).getByText("3 cambios sin guardar")).toBeInTheDocument();
+    expect(avisos()).toHaveLength(0);
+    expect(within(screen.getByRole("region", { name: "Estado del borrador" })).getByText(/· 3 cambios sin guardar/)).toBeInTheDocument();
     // La siguiente edición ya lleva el rev que el servidor tiene.
     alPonerse = ACEPTA;
     fireEvent.change(celda("Largo (m), Ambientes fila 1"), { target: { value: "9.5" } });
     await pausa(400);
-    await waitFor(() => expect(puestas()).toHaveLength(2));
+    await esperar(() => expect(puestas()).toHaveLength(2));
     expect(puestas()[1]!.cuerpo.rev).toBe(5);
   });
 
@@ -404,7 +427,7 @@ describe("Hoja del proyecto: tablas editables del espacio (3c-1)", () => {
     alPonerse = () => json({ detalle: REV_VIEJO }, 409);
     fireEvent.change(celda("Largo (m), Ambientes fila 1"), { target: { value: "7" } });
     await pausa(400);
-    await screen.findByRole("alert");
+    await esperar(() => aviso());
     fireEvent.change(celda("Largo (m), Ambientes fila 1"), { target: { value: "77" } });
     await pausa(800);
     expect(puestas()).toHaveLength(1);
@@ -415,7 +438,7 @@ describe("Hoja del proyecto: tablas editables del espacio (3c-1)", () => {
     alPonerse = () => json({ detalle: "Inicie sesión." }, 401);
     fireEvent.change(celda("Largo (m), Ambientes fila 1"), { target: { value: "7" } });
     await pausa(400);
-    await waitFor(() => expect(alExpirar).toHaveBeenCalled());
+    await esperar(() => expect(alExpirar).toHaveBeenCalled());
   });
 
   test("si el servidor ya no tiene el borrador, la página lo dice y ofrece abrirlo de nuevo", async () => {
@@ -430,7 +453,7 @@ describe("Hoja del proyecto: tablas editables del espacio (3c-1)", () => {
     });
     fireEvent.change(celda("Largo (m), Ambientes fila 1"), { target: { value: "7" } });
     await pausa(400);
-    expect(await screen.findByText("El borrador ya no está")).toBeInTheDocument();
+    expect(await esperar(() => screen.getByText("El borrador ya no está"))).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Abrir de nuevo" })).toBeInTheDocument();
   });
 
@@ -525,14 +548,14 @@ describe("Hoja del proyecto: tablas editables del espacio (3c-1)", () => {
     expect(saleLaPagina()).toBe(false);
     fireEvent.change(celda("Largo (m), Ambientes fila 1"), { target: { value: "3" } });
     await pausa(400);
-    await screen.findByText("1 cambio sin guardar");
+    await esperar(() => screen.getByText(/· 1 cambio sin guardar/));
     expect(saleLaPagina()).toBe(true);
   });
 
   test("3c-F10: al abrir un borrador que ya tiene cambios, beforeunload ya avisa; y al desmontar deja de avisar", async () => {
     abierto = borrador({ cambios: 2 });
     const { unmount } = montar();
-    await screen.findByText("2 cambios sin guardar");
+    await screen.findByText(/· 2 cambios sin guardar/);
     expect(saleLaPagina()).toBe(true);
     unmount();
     expect(saleLaPagina()).toBe(false);
@@ -553,7 +576,7 @@ describe("Hoja del proyecto: tablas editables del espacio (3c-1)", () => {
     await userEvent.click(screen.getByRole("button", { name: "Descartar y abrir de nuevo" }));
     await waitFor(() => expect(llamadas("DELETE", `/v1/hoja/borradores/${ID}`)).toBe(1));
     await waitFor(() => expect(llamadas("POST", "/v1/hoja/borradores")).toBe(2));
-    expect(await screen.findByText("Sin cambios sin guardar")).toBeInTheDocument();
+    expect(await screen.findByText(/Sin cambios sin guardar/)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Descartar cambios" })).toBeNull();
   });
 

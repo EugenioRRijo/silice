@@ -1,56 +1,87 @@
+import { Button, InlineNotification } from "@carbon/react";
+import { useCallback, useId, useState } from "react";
 import { TablaPaginada } from "./TablaPaginada";
-import type { ColumnaDensa } from "../../comun/TablaDensa";
+import { TablaEditable } from "./TablaEditable";
+import type { IrA } from "./TablaEditable";
 import { Cifra } from "./Cifra";
-import { EstadoDeFila } from "./EstadoDeFila";
 import { VistaCarga } from "./VistaCarga";
-import { filasDeTabla, rotuloDeOrigen, rutaDeVista, textoDeFilas } from "./logica";
-import type { TablaEspacio, VistaEspacio } from "./logica";
+import { useAplicacion } from "../../shell/contexto";
+import { rutaDeVista } from "./logica";
+import type { Resumen, VistaEspacio } from "./logica";
+import { useEdicionDelEspacio } from "./useEdicionDelEspacio";
 
 interface Props {
   id: string;
+  // El `rev` del borrador según la página.
+  rev: number;
   alAusente: () => void;
+  // El servidor aceptó una edición: su resumen pasa a la barra de estado de la página.
+  alAceptar: (resumen: Resumen) => void;
+  alRecargarBorrador: () => Promise<void>;
 }
 
-function TablaDelEspacio({ tabla, vista }: { tabla: TablaEspacio; vista: VistaEspacio }) {
-  const filas = vista.filas[tabla.clave] ?? [];
-  const columnas: ColumnaDensa[] = tabla.columnas.map((c) => ({ clave: `c_${c.clave}`, titulo: c.rotulo, ordenable: false }));
-  if (tabla.con_estado) {
-    columnas.push({
-      clave: "estado",
-      titulo: "Estado",
-      ordenable: false,
-      celda: (f) => (
-        <EstadoDeFila
-          estado={{ severidad: f.estado_severidad === "" ? null : f.estado_severidad!, texto: f.estado_texto! }}
-          claves={f.estado_origen ? [f.estado_origen] : undefined}
-          rotulo={f.estado_origen ? rotuloDeOrigen(f.estado_origen) : undefined}
-        />
-      ),
-    });
-  }
-  return (
-    <section className="silice-hoja__seccion">
-      <div className="silice-hoja__titulo-tabla">
-        <h3 className="cds--type-heading-compact-01">{tabla.rotulo}</h3>
-        <span className="cds--type-helper-text-01">{textoDeFilas(filas.length)}</span>
-      </div>
-      <TablaPaginada
-        etiqueta={tabla.rotulo}
-        columnas={columnas}
-        filas={filasDeTabla(tabla, filas, vista.estado)}
-        vacio={{ titulo: "Sin filas" }}
-        desplazable
-      />
-    </section>
-  );
+interface PropsContenido extends Props {
+  vista: VistaEspacio;
+  alRelectura: () => void;
 }
 
-function ContenidoEspacio({ vista }: { vista: VistaEspacio }) {
+function ContenidoEspacio({ id, rev, vista, alAusente, alAceptar, alRecargarBorrador, alRelectura }: PropsContenido) {
+  const { alExpirar } = useAplicacion();
+  const idDelError = useId();
+  const [irA, setIrA] = useState<(IrA & { tabla: string }) | null>(null);
+  const edicion = useEdicionDelEspacio({ id, vista, rev, alAceptar, alRelectura, alRecargarBorrador, alAusente, alExpirar });
+  const { error } = edicion;
+  const ubicacion = error?.ubicacion ?? null;
+  const rotuloDe = (clave: string) => vista.tablas.find((t) => t.clave === clave)?.rotulo ?? clave;
+
   return (
     <div className="silice-hoja__pestana">
       <p className="cds--type-body-compact-01">{vista.ayuda}</p>
+      <p className="cds--type-helper-text-01">
+        Decimales con punto, por ejemplo 2.5: la coma no se acepta. Los cambios se aplican al borrador cuando deja de escribir; no se
+        guardan como versión hasta que lo pida.
+      </p>
+      <p className="cds--type-helper-text-01" aria-live="polite">
+        {edicion.envio === "quieto" ? "" : "Aplicando los cambios al borrador…"}
+      </p>
+      {error !== null && (
+        <div id={idDelError} className="silice-hoja__aviso-edicion">
+          <InlineNotification
+            kind={error.tipo === "conflicto" ? "warning" : "error"}
+            role="alert"
+            lowContrast
+            hideCloseButton
+            title={error.tipo === "conflicto" ? "El borrador cambió" : "No se aplicó el cambio"}
+            subtitle={error.mensaje}
+          />
+          {error.tipo === "conflicto" && (
+            <Button kind="tertiary" size="sm" onClick={() => void edicion.recargar()}>
+              Recargar el borrador
+            </Button>
+          )}
+          {ubicacion !== null && (
+            <Button
+              kind="ghost"
+              size="sm"
+              onClick={() => setIrA((previo) => ({ tabla: ubicacion.tabla, fila: ubicacion.fila, columna: ubicacion.columna, vez: (previo?.vez ?? 0) + 1 }))}
+            >
+              {`Ir a la fila ${ubicacion.fila} de ${rotuloDe(ubicacion.tabla)}`}
+            </Button>
+          )}
+        </div>
+      )}
       {vista.tablas.map((t) => (
-        <TablaDelEspacio key={t.clave} tabla={t} vista={vista} />
+        <TablaEditable
+          key={t.clave}
+          tabla={t}
+          filas={edicion.tablas[t.clave] ?? []}
+          estado={vista.estado}
+          invalida={ubicacion !== null && ubicacion.tabla === t.clave ? { fila: ubicacion.fila, columna: ubicacion.columna } : null}
+          idDelError={idDelError}
+          irA={irA !== null && irA.tabla === t.clave ? irA : null}
+          alCambiarFilas={(filas) => edicion.cambiarFilas(t.clave, filas)}
+          valorAceptado={(filaClave, columna) => edicion.valorAceptado(t.clave, filaClave, columna)}
+        />
       ))}
       <section className="silice-hoja__seccion">
         <h2 className="cds--type-heading-compact-02">Cantidades derivadas</h2>
@@ -97,11 +128,14 @@ function ContenidoEspacio({ vista }: { vista: VistaEspacio }) {
   );
 }
 
-// Pestaña «Espacio y metrajes» en lectura (la edición llega en la rebanada 3c).
-export function PestanaEspacio({ id, alAusente }: Props) {
+// Pestaña «Espacio y metrajes»: las cinco tablas se editan (rebanada 3c-1) y se aplican al borrador del servidor.
+export function PestanaEspacio(props: Props) {
+  // Sube cada vez que hay que volver a leer la vista tras una edición: la anterior sigue a la vista mientras llega.
+  const [lecturas, setLecturas] = useState(0);
+  const alRelectura = useCallback(() => setLecturas((n) => n + 1), []);
   return (
-    <VistaCarga<VistaEspacio> ruta={rutaDeVista(id, "espacio")} etiqueta="Espacio y metrajes" alAusente={alAusente}>
-      {(vista) => <ContenidoEspacio vista={vista} />}
+    <VistaCarga<VistaEspacio> ruta={rutaDeVista(props.id, "espacio")} etiqueta="Espacio y metrajes" alAusente={props.alAusente} recarga={lecturas}>
+      {(vista) => <ContenidoEspacio {...props} vista={vista} alRelectura={alRelectura} />}
     </VistaCarga>
   );
 }

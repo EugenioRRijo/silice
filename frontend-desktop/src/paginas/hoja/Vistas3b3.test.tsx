@@ -311,7 +311,7 @@ describe("Hoja del proyecto: Equilibrio, Parámetros, Auditoría, Precios y Traz
     montar();
     const tabla = await screen.findByRole("table", { name: "Ambientes" });
     expect(within(tabla).getByRole("button", { name: "Ver en Auditoría: Ambiente BAN-01" })).toBeInTheDocument();
-    expect(within(tabla).getAllByRole("button")).toHaveLength(1); // COC-01 está OK
+    expect(within(tabla).getAllByRole("button", { name: /Ver en Auditoría/ })).toHaveLength(1); // COC-01 está OK
   });
 
   test("3b-F6b: una fila cuyos hallazgos no están en el informe lo dice, sin tabla vacía", async () => {

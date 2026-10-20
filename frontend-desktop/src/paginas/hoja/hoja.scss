@@ -121,3 +121,49 @@
     outline-offset: 2px;
   }
 }
+
+// Tablas editables del espacio (3c-1). La primera columna es fija; el desplazamiento por foco deja un margen del ancho de
+// esa columna para que el campo enfocado no quede detrás de ella (WCAG 2.4.11, foco no oculto).
+.silice-hoja__editable {
+  scroll-padding-inline-start: 9rem;
+
+  th:first-child,
+  td:first-child {
+    z-index: 1;
+    inline-size: 8rem;
+    min-inline-size: 8rem;
+    max-inline-size: 8rem;
+  }
+
+  td {
+    padding-block: 0.25rem;
+    vertical-align: top;
+    min-inline-size: 7rem;
+  }
+
+  .cds--form-item {
+    min-inline-size: 0;
+  }
+}
+
+.silice-hoja__sin-evaluar {
+  opacity: 0.6;
+}
+
+.silice-hoja__agregar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.silice-hoja__aviso-edicion,
+.silice-hoja__confirmar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+
+  > :first-child {
+    flex-basis: 100%;
+  }
+}

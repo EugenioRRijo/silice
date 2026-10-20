@@ -145,6 +145,7 @@ describe("Hoja del proyecto: Espacio, APU, Presupuesto y Plan (3b-2)", () => {
       "Nombre",
       "Largo (m)",
       "Estado",
+      "Acciones",
     ]);
     expect(screen.getByText(/^Describa el espacio en metros/)).toBeInTheDocument();
   });

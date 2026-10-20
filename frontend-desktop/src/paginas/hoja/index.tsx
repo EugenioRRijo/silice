@@ -16,7 +16,7 @@ import {
   textoDeCambios,
   versionesOfrecidas,
 } from "./logica";
-import type { BorradorAbierto, VersionesRespuesta } from "./logica";
+import type { BorradorAbierto, Resumen, VersionesRespuesta } from "./logica";
 import { ContextoAuditoria } from "./ContextoAuditoria";
 import type { FiltroDeAuditoria } from "./ContextoAuditoria";
 import { PestanaApu } from "./PestanaApu";
@@ -31,8 +31,9 @@ import { PestanaPresupuesto } from "./PestanaPresupuesto";
 import { useBorrador } from "./useBorrador";
 import "./hoja.scss";
 
-function EstadoDelBorrador({ borrador }: { borrador: BorradorAbierto }) {
+function EstadoDelBorrador({ borrador, alDescartar }: { borrador: BorradorAbierto; alDescartar: () => void }) {
   const { base, resumen } = borrador;
+  const [confirmando, setConfirmando] = useState(false);
   return (
     <section className="silice-hoja__estado" role="region" aria-label="Estado del borrador">
       <h2 className="cds--type-heading-compact-02">Estado del borrador</h2>
@@ -46,6 +47,28 @@ function EstadoDelBorrador({ borrador }: { borrador: BorradorAbierto }) {
       {resumen.version_mas_nueva !== null && (
         <p className="cds--type-helper-text-01">La versión vigente ahora es la {resumen.version_mas_nueva}.</p>
       )}
+      {resumen.cambios > 0 && !confirmando && (
+        <div>
+          <Button kind="ghost" size="sm" onClick={() => setConfirmando(true)}>
+            Descartar cambios
+          </Button>
+        </div>
+      )}
+      {resumen.cambios > 0 && confirmando && (
+        <div className="silice-hoja__confirmar" role="group" aria-label="Descartar cambios">
+          <p className="cds--type-body-compact-01">
+            {resumen.cambios === 1
+              ? "¿Descartar el cambio sin guardar? No se puede recuperar."
+              : `¿Descartar los ${resumen.cambios} cambios sin guardar? No se pueden recuperar.`}
+          </p>
+          <Button kind="danger--tertiary" size="sm" onClick={alDescartar}>
+            Descartar y abrir de nuevo
+          </Button>
+          <Button kind="secondary" size="sm" onClick={() => setConfirmando(false)}>
+            Seguir editando
+          </Button>
+        </div>
+      )}
     </section>
   );
 }
@@ -55,19 +78,35 @@ function ContenidoDePestana({
   indice,
   borrador,
   alAusente,
+  alAceptar,
+  alRecargarBorrador,
   filtro,
   alQuitarFiltro,
 }: {
   indice: number;
   borrador: BorradorAbierto | null;
   alAusente: () => void;
+  alAceptar: (resumen: Resumen) => void;
+  alRecargarBorrador: () => Promise<void>;
   filtro: FiltroDeAuditoria | null;
   alQuitarFiltro: () => void;
 }) {
   if (borrador === null) return null;
   const llave = `${borrador.id}-${borrador.resumen.rev}`;
   const moneda = borrador.resumen.moneda;
-  if (indice === 0) return <PestanaEspacio key={llave} id={borrador.id} alAusente={alAusente} />;
+  // La del espacio se edita: no se vuelve a montar con cada `rev` (perdería lo que se está escribiendo); ella misma vuelve a leer su vista.
+  if (indice === 0) {
+    return (
+      <PestanaEspacio
+        key={borrador.id}
+        id={borrador.id}
+        rev={borrador.resumen.rev}
+        alAusente={alAusente}
+        alAceptar={alAceptar}
+        alRecargarBorrador={alRecargarBorrador}
+      />
+    );
+  }
   if (indice === 1) return <PestanaApu key={llave} id={borrador.id} moneda={moneda} alAusente={alAusente} />;
   if (indice === 2) return <PestanaPresupuesto key={llave} id={borrador.id} alAusente={alAusente} />;
   if (indice === 3) return <PestanaPlan key={llave} id={borrador.id} alAusente={alAusente} />;
@@ -93,7 +132,8 @@ function HojaDeProyecto({ proyecto }: { proyecto: string }) {
   const codigo =
     datos === null ? undefined : ofrecidas.some((v) => v.codigo === delProyecto) ? delProyecto : (datos.por_omision ?? null);
 
-  const { estado, refrescar, reabrir } = useBorrador(proyecto, codigo, alExpirar);
+  const { estado, refrescar, reabrir, aplicar, descartarCambios } = useBorrador(proyecto, codigo, alExpirar);
+  const hayCambios = estado.estado === "listo" && estado.borrador.resumen.cambios > 0;
   const [pestana, setPestana] = useState(0);
   // «Ver en Auditoría» desde el Estado de una fila: va a esa pestaña con el filtro de la fila.
   const [filtro, setFiltro] = useState<FiltroDeAuditoria | null>(null);
@@ -109,6 +149,17 @@ function HojaDeProyecto({ proyecto }: { proyecto: string }) {
     document.addEventListener("visibilitychange", alVolver);
     return () => document.removeEventListener("visibilitychange", alVolver);
   }, [refrescar]);
+
+  // Con cambios sin guardar, el navegador avisa antes de cerrar o recargar la ventana (la clásica no podía).
+  useEffect(() => {
+    if (!hayCambios) return;
+    const avisar = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", avisar);
+    return () => window.removeEventListener("beforeunload", avisar);
+  }, [hayCambios]);
 
   if (versiones.estado === "cargando") return <EsqueletoPagina etiqueta="Cargando las versiones" />;
   if (versiones.estado !== "listo") return <AvisoError error={versiones.error} />;
@@ -153,7 +204,7 @@ function HojaDeProyecto({ proyecto }: { proyecto: string }) {
               subtitle={estado.borrador.instantanea.mensaje}
             />
           )}
-          <EstadoDelBorrador borrador={estado.borrador} />
+          <EstadoDelBorrador borrador={estado.borrador} alDescartar={() => void descartarCambios()} />
         </>
       )}
 
@@ -178,6 +229,8 @@ function HojaDeProyecto({ proyecto }: { proyecto: string }) {
                     indice={i}
                       borrador={estado.estado === "listo" ? estado.borrador : null}
                     alAusente={refrescar}
+                    alAceptar={aplicar}
+                    alRecargarBorrador={refrescar}
                     filtro={filtro}
                     alQuitarFiltro={() => setFiltro(null)}
                   />

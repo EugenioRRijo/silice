@@ -509,6 +509,14 @@ export const PAUSA_DE_EDICION_MS = 400;
 
 export const FRASE_DE_RECHAZO = "La hoja sigue con el último borrador válido.";
 
+let consecutivoDeFila = 0;
+
+// Una clave de fila que no se repite en esta sesión del navegador (las filas del servidor no tienen identidad propia).
+export function nuevaClaveDeFila(): number {
+  consecutivoDeFila += 1;
+  return consecutivoDeFila;
+}
+
 export function rutaDeEspacio(id: string): string {
   return `/v1/hoja/borradores/${id}/espacio`;
 }
