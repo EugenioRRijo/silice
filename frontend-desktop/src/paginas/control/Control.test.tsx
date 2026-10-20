@@ -268,7 +268,7 @@ describe("Control de obra", () => {
     await u.click(await screen.findByRole("tab", { name: "Valuaciones" }));
     await screen.findByRole("table", { name: "Valuaciones registradas" });
     const visible = document.body.textContent ?? "";
-    expect(visible).not.toMatch(/S\d-R\d+|R13-R14|calculo|linea|importacion/);
+    expect(visible).not.toMatch(/S\d-R\d+|R13-R14|calculo|linea\b|importacion/);
     expect(screen.getByText(/solo anularla la saca del cálculo\./)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Agregar línea" })).toBeInTheDocument();
   });

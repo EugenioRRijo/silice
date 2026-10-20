@@ -9,6 +9,7 @@ import { TablaDensa } from "../../comun/TablaDensa";
 import { useAplicacion } from "../../shell/contexto";
 import { useCarga } from "../inicio/useCarga";
 import type { Carga } from "../inicio/useCarga";
+import { fechasEsVe } from "../control/fechas";
 import { FilasEditables } from "./FilasEditables";
 import type { ColumnaEditable } from "./FilasEditables";
 import { armarCuerpo, filasDeResultado, formularioInicial, marcasPorPeriodo, partirResultado, rotuloDeOpcion } from "./logica";
@@ -69,11 +70,6 @@ const COLUMNAS_EJECUTADO: ColumnaEditable[] = [
 const PASOS = ["1. La cláusula", "2. Períodos y lo ejecutado"];
 const ETIQUETA_RESULTADO = "Escalatoria y comprobación, lado a lado";
 
-// 2027-02-10 -> 10/02/2027, como se ve en la pantalla de Streamlit.
-function fechaCorta(iso: string): string {
-  const [anio, mes, dia] = iso.split("-");
-  return `${dia}/${mes}/${anio}`;
-}
 
 // UC-18 (spec S1 §8): la cláusula de reajuste, los periodos con lo ejecutado y su fuente, la escalatoria y la
 // comprobación directa lado a lado, el guardado del estudio y su Excel. Toda cifra la calcula el servidor (RB-2);
@@ -146,13 +142,13 @@ function Formulario({
   const [paso, setPaso] = useState(0);
   // VB-13: tras «Calcular», el foco va al título del resultado o al aviso de error (si no, se queda en el botón y el
   // aviso aparece bajo el pliegue sin que nadie lo anuncie).
-  const [enfocar, setEnfocar] = useState<"resultado" | "error" | null>(null);
+  // Cada pedido de foco es un objeto nuevo: siempre provoca el render tras el cual el efecto lo cumple.
+  const [enfocar, setEnfocar] = useState<{ donde: "resultado" | "error" } | null>(null);
   const tituloResultado = useRef<HTMLHeadingElement>(null);
   const zonaError = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (enfocar === null) return;
-    (enfocar === "resultado" ? tituloResultado.current : zonaError.current)?.focus();
-    setEnfocar(null);
+    (enfocar.donde === "resultado" ? tituloResultado.current : zonaError.current)?.focus();
   }, [enfocar]);
 
   // Todo cambio del formulario retira el resultado y el aviso de guardado: ya no corresponden a lo escrito.
@@ -175,7 +171,8 @@ function Formulario({
       return await pedir<T>(ruta, { metodo: "POST", cuerpo });
     } catch (e) {
       if (e instanceof ErrorDeApi && e.estado === 401) alExpirar();
-      setError(e);
+      // VB-19: los mensajes del nucleo traen fechas ISO; se leen en dd/mm/aaaa.
+      setError(e instanceof ErrorDeApi ? new ErrorDeApi(e.estado, fechasEsVe(e.detalle), e.reintentarEnSegundos, e.cuerpo) : e);
       return undefined;
     } finally {
       setOcupado(false);
@@ -189,7 +186,7 @@ function Formulario({
     const respuesta = await enviar<Calculo>("/v1/reajuste/calcular", armarCuerpo(proyecto, form));
     if (marca !== edicion.current) return;
     setCalculo(respuesta ?? null);
-    setEnfocar(respuesta ? "resultado" : "error");
+    setEnfocar({ donde: respuesta ? "resultado" : "error" });
   }
 
   async function guardar() {
@@ -374,16 +371,16 @@ function Formulario({
           {marcasPorPeriodo(calculo.filas).length > 0 && (
             <ul aria-label="Marcas por período" className="silice-reajuste__marcas cds--type-body-compact-01">
               {marcasPorPeriodo(calculo.filas).map((marca) => (
-                <li key={marca}>{marca}</li>
+                <li key={marca}>{fechasEsVe(marca)}</li>
               ))}
             </ul>
           )}
           <p className="silice-reajuste__nota cds--type-body-compact-01">{`Estado del estudio: ${calculo.estado}.`}</p>
           {calculo.avisos.map((aviso) => (
-            <InlineNotification key={aviso} kind="warning" title="Aviso" subtitle={aviso} lowContrast hideCloseButton />
+            <InlineNotification key={aviso} kind="warning" title="Aviso" subtitle={fechasEsVe(aviso)} lowContrast hideCloseButton />
           ))}
           {calculo.mensaje_parcial && (
-            <InlineNotification kind="info" title="Estudio parcial" subtitle={calculo.mensaje_parcial} lowContrast hideCloseButton />
+            <InlineNotification kind="info" title="Estudio parcial" subtitle={fechasEsVe(calculo.mensaje_parcial)} lowContrast hideCloseButton />
           )}
 
           <h2 className="cds--type-heading-compact-02">Guardar el estudio</h2>
@@ -394,7 +391,7 @@ function Formulario({
               <Select id="rj-reemplaza" labelText="Reemplaza al estudio parcial" value={reemplaza} onChange={(e) => setReemplaza(e.target.value)}>
                 <SelectItem value="" text="ninguno" />
                 {calculo.parciales.map((p) => (
-                  <SelectItem key={p.id} value={String(p.id)} text={`${p.id} (calculado el ${fechaCorta(p.fecha_calculo)})`} />
+                  <SelectItem key={p.id} value={String(p.id)} text={`${p.id} (calculado el ${fechasEsVe(p.fecha_calculo)})`} />
                 ))}
               </Select>
             )}

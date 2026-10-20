@@ -6,6 +6,7 @@ import { EsqueletoPagina } from "../../comun/EsqueletoPagina";
 import { TablaDensa } from "../../comun/TablaDensa";
 import { formatoMontoEsVe } from "../../indicadores/formatoEsVe";
 import { useAplicacion } from "../../shell/contexto";
+import { feriadosParaEnviar, fechasEsVe } from "./fechas";
 import { errorDeCarga, etiquetaDeCodigo, rutaDe, textoLlano, useAccion, useCargaSuave } from "./logica";
 import type { LineaBase } from "./logica";
 
@@ -42,7 +43,7 @@ function Declarar({ proyecto, versiones, alCambiar }: { proyecto: string; versio
   const campo = (k: keyof typeof v) => (e: { target: { value: string } }) => setV({ ...v, [k]: e.target.value });
   const declarar = () =>
     ejecutar(async () => {
-      await pedir("/v1/control/linea-base", { metodo: "POST", cuerpo: { proyecto, ...v } });
+      await pedir("/v1/control/linea-base", { metodo: "POST", cuerpo: { proyecto, ...v, feriados: feriadosParaEnviar(v.feriados) } });
       return "Línea base declarada.";
     });
   return (
@@ -70,7 +71,7 @@ function Declarar({ proyecto, versiones, alCambiar }: { proyecto: string; versio
         value={v.dias_por_periodo}
         onChange={campo("dias_por_periodo")}
       />
-      <TextArea id="lb-feriados" labelText="Feriados (fechas como 2026-12-25, separadas por comas)" value={v.feriados} onChange={campo("feriados")} />
+      <TextArea id="lb-feriados" labelText="Feriados (fechas como 25/12/2026, separadas por comas)" value={v.feriados} onChange={campo("feriados")} />
       <TextInput id="lb-fuente" labelText="Fuente de la línea base" value={v.fuente} onChange={campo("fuente")} />
       <div>
         <Button kind="primary" size="md" disabled={estado.enviando} onClick={() => void declarar()}>
@@ -179,7 +180,7 @@ export function PestanaLineaBase({ proyecto, clave, alCambiar }: Props) {
           Línea base vigente
         </h2>
         <p className="cds--type-body-compact-01">
-          {datos.descripcion ?? "El proyecto no tiene línea base de control. Declárela abajo."}
+          {datos.descripcion ? fechasEsVe(datos.descripcion) : "El proyecto no tiene línea base de control. Declárela abajo."}
         </p>
         <details open={!datos.tiene_linea_base}>
           <summary className="cds--type-body-compact-01">Declarar una línea base</summary>
