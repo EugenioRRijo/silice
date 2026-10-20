@@ -611,9 +611,10 @@ describe("Hoja del proyecto: cantidades, parámetros y plan editables (3c-2)", (
       fireEvent.change(campo("Cantidad, Presupuesto fila 1"), { target: { value: "5" } });
       await pausa(400);
       expect(escrituras("cantidades")).toEqual([{ rev: 0, filas: [{ clave: "AF-LLAVE|esp_puntos:P1", cantidad: "5" }] }]);
-      const fila1 = async () => within(await screen.findByRole("table", { name: "Presupuesto" })).getAllByRole("row")[1]!;
-      expect(await esperar(async () => within(await fila1()).getByText("(calculada: 3)"))).toBeInTheDocument();
-      expect(screen.getByTitle("2730.2577124")).toHaveTextContent("2.730,26 USD");
+      const fila1 = () => within(screen.getByRole("table", { name: "Presupuesto" })).getAllByRole("row")[1]!;
+      expect(await esperar(() => within(fila1()).getByText("(calculada: 3)"))).toBeInTheDocument();
+      expect(screen.getAllByTitle("2730.2577124")).toHaveLength(2); // el estado del borrador y el total de la pestaña
+      expect(screen.getAllByTitle("2730.2577124")[0]).toHaveTextContent("2.730,26 USD");
       expect(campo("Cantidad, Presupuesto fila 1")).toHaveValue("5");
     });
 
