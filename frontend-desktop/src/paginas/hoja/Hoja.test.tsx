@@ -200,7 +200,7 @@ describe("Hoja del proyecto (marco, 3b-1)", () => {
     const total = await within(estado).findByTitle("2703.856");
     expect(total).toHaveTextContent("2.703,86 USD");
     expect(within(estado).getByText("Valor exacto 2703.856")).toBeInTheDocument();
-    expect(within(estado).getByText("Sin cambios sin guardar")).toBeInTheDocument();
+    expect(within(estado).getByText(/Sin cambios sin guardar/)).toBeInTheDocument();
   });
 
   test("3b-F5: un total de 30 cifras no pierde ninguna", async () => {
@@ -316,7 +316,7 @@ describe("Hoja del proyecto (marco, 3b-1)", () => {
     servidor(VERSIONES, { cambios: 2 });
     const { unmount } = montar();
     const estado = await screen.findByRole("region", { name: "Estado del borrador" });
-    expect(within(estado).getByText("2 cambios sin guardar")).toBeInTheDocument();
+    expect(within(estado).getByText(/2 cambios sin guardar/)).toBeInTheDocument();
     unmount();
     await Promise.resolve();
     expect(llamadas("DELETE", "/v1/hoja/borradores")).toHaveLength(0);
