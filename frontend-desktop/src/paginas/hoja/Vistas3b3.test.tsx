@@ -143,8 +143,8 @@ describe("Hoja del proyecto: Equilibrio, Parámetros, Auditoría, Precios y Traz
     const dl = rotulo.closest("dl")!;
     expect(within(dl).getByText("Ventas (contrato)").nextElementSibling).toHaveTextContent("2.703,86 USD");
     expect(within(dl).getByText("Costo variable").nextElementSibling).toHaveTextContent("2.137,44 USD");
-    expect(within(dl).getByText("Costo fijo").nextElementSibling).toHaveTextContent("427,49 USD");
-    expect(within(dl).getByText("Utilidad").nextElementSibling).toHaveTextContent("138,93 USD");
+    expect(within(dl).getByText("Costo fijo").nextElementSibling).toHaveTextContent("320,62 USD");
+    expect(within(dl).getByText("Utilidad").nextElementSibling).toHaveTextContent("245,81 USD");
     expect(within(dl).getByText("Punto de equilibrio").nextElementSibling).toHaveTextContent("1.530,49 USD");
     expect(within(dl).getByText("Como % de las ventas").nextElementSibling).toHaveTextContent("56,60 %");
     expect(within(dl).getByText("Se alcanza en").nextElementSibling).toHaveTextContent("Día 23");
@@ -197,6 +197,23 @@ describe("Hoja del proyecto: Equilibrio, Parámetros, Auditoría, Precios y Traz
     expect(screen.getByTitle("1530.4912345")).toHaveTextContent("1.530,49 Bs");
   });
 
+  test("3b-F9: el período se lee sin los códigos entre corchetes que le pone el servidor", async () => {
+    servidor({ vistas: { equilibrio: () => json(vistaEquilibrio({ periodo: "Dia 6 [TI-PTO, TI-UTP, TI-LAP]" })) } });
+    montar();
+    await irA("Punto de equilibrio");
+    const dd = (await screen.findByText("Se alcanza en")).nextElementSibling!;
+    expect(dd).toHaveTextContent("Día 6");
+    expect(dd).not.toHaveTextContent(/TI-PTO|\[/);
+  });
+
+  test("Parámetros: el texto de ayuda habla de lectura, no de edición", async () => {
+    servidor();
+    montar();
+    await irA("Parámetros");
+    expect(await screen.findByText(/solo se leen/)).toBeInTheDocument();
+    expect(screen.queryByText(/Cambiarlos recalcula/)).toBeNull();
+  });
+
   // --- Parámetros ---------------------------------------------------------------------------------
 
   test("Parámetros: los cuatro parámetros de costo en lectura, con es-VE y su valor escrito en el title", async () => {
@@ -207,8 +224,8 @@ describe("Hoja del proyecto: Equilibrio, Parámetros, Auditoría, Precios y Traz
     const fila = (rotulo: RegExp) => within(lista).getByText(rotulo).nextElementSibling!;
     expect(fila(/^FCAS/)).toHaveTextContent("6,00");
     expect(fila(/^FCAS/).querySelector('[title="6.00"]')).not.toBeNull();
-    expect(fila(/^Bono de alimentación/)).toHaveTextContent("3,5");
-    expect(fila(/^Administración/)).toHaveTextContent("0,20");
+    expect(fila(/^Bono de alimentación/)).toHaveTextContent("5,8100");
+    expect(fila(/^Administración/)).toHaveTextContent("0,15");
     expect(fila(/^Utilidad/)).toHaveTextContent("0,10");
     // En esta entrega solo se leen: editarlos es de la rebanada 3c.
     expect(screen.queryAllByRole("textbox")).toEqual([]);
@@ -279,7 +296,7 @@ describe("Hoja del proyecto: Equilibrio, Parámetros, Auditoría, Precios y Traz
     await userEvent.click(within(tabla).getByRole("button", { name: "Ver en Auditoría: Fuente F1" }));
     expect(await screen.findByRole("tab", { name: "Auditoría", selected: true })).toBeInTheDocument();
     const informe = await screen.findByRole("region", { name: "Informe de auditoría" });
-    expect(screen.getByText("Hallazgos de Fuente F1")).toBeInTheDocument();
+    expect(screen.getByText("Hallazgos de Fuente F1").parentElement).toHaveFocus();
     const hallazgos = within(informe).getByRole("table", { name: "Hallazgos" });
     expect(within(hallazgos).getAllByRole("row")).toHaveLength(2);
     expect(within(hallazgos).getByText(/Fuente F1: falta el origen/)).toBeInTheDocument();
@@ -533,7 +550,11 @@ describe("Hoja del proyecto: Equilibrio, Parámetros, Auditoría, Precios y Traz
       "Fecha y hora",
     ]);
     const fila = within(tabla).getAllByRole("row")[1]!;
-    expect(within(fila).getByText("AF-LLAVE, Punto P1")).toHaveAttribute("title", "AF-LLAVE|esp_puntos:P1");
+    expect(within(fila).getByText("AF-LLAVE, Fuente F1, Fuente FC1, Punto P1, Punto P2, Punto PC1")).toHaveAttribute(
+      "title",
+      "AF-LLAVE|esp_fuentes:F1;esp_fuentes:FC1;esp_puntos:P1;esp_puntos:P2;esp_puntos:PC1",
+    );
+    expect(within(fila).queryByText(/esp_/)).toBeNull();
     expect(within(fila).getByText("3")).toBeInTheDocument();
     expect(within(fila).getByText("5")).toBeInTheDocument();
     expect(within(fila).getByText("Plano revisado en obra")).toBeInTheDocument();

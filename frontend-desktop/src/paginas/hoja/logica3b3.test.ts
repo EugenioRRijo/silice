@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 import {
   clavesDeAuditoria,
+  periodoSinCodigos,
   fechaCorta,
   hallazgosDeOrigen,
   partirColumnasDePrecios,
@@ -32,12 +33,39 @@ describe("lógica de la hoja, 3b-3", () => {
     expect(rotuloDeOrigen("AF-LLAVE")).toBe("AF-LLAVE");
   });
 
+  test("una clave con varios orígenes unidos por «;» nombra cada uno en palabras (clave real de R14)", () => {
+    expect(rotuloDeOrigen("AF-LLAVE|esp_fuentes:F1;esp_fuentes:FC1;esp_puntos:P1;esp_puntos:P2;esp_puntos:PC1")).toBe(
+      "AF-LLAVE, Fuente F1, Fuente FC1, Punto P1, Punto P2, Punto PC1",
+    );
+    expect(rotuloDeOrigen("esp_fuentes:F1;esp_puntos:P1")).toBe("Fuente F1, Punto P1");
+    // Segmentos: llevan «|» con coordenadas y «;+n» con los que no caben.
+    expect(rotuloDeOrigen("AF-TUB|esp_segmentos:F1|0.000,0.000,0.000|0.000,0.000,2.500;+4")).toBe("AF-TUB, Segmento F1 y 4 más");
+    expect(rotuloDeOrigen("AF-TUB|esp_segmentos:F1|0.000,0.000,0.000|0.000,0.000,2.500")).toBe("AF-TUB, Segmento F1");
+  });
+
+  test("el período se lee sin los códigos entre corchetes", () => {
+    expect(periodoSinCodigos("Dia 23 [EL-CAJA]")).toBe("Dia 23");
+    expect(periodoSinCodigos("Dia 6 [TI-PTO, TI-UTP, TI-LAP]")).toBe("Dia 6");
+    expect(periodoSinCodigos("Dia 7")).toBe("Dia 7");
+  });
+
   test("las claves con que un renglón del presupuesto se busca en la auditoría", () => {
-    expect(clavesDeAuditoria("AF-LLAVE|esp_puntos:P1")).toEqual(["AF-LLAVE|esp_puntos:P1", "esp_puntos:P1"]);
+    expect(clavesDeAuditoria("AF-LLAVE|esp_puntos:P1")).toEqual(["AF-LLAVE|esp_puntos:P1", "esp_puntos:P1", "AF-LLAVE"]);
     expect(clavesDeAuditoria("AF-LLAVE|esp_puntos:P1#2")).toEqual([
       "AF-LLAVE|esp_puntos:P1#2",
       "AF-LLAVE|esp_puntos:P1",
       "esp_puntos:P1",
+      "AF-LLAVE",
+    ]);
+    // Una fila con varios orígenes se busca por cada uno de ellos y por su partida.
+    expect(clavesDeAuditoria("AF-LLAVE|esp_fuentes:F1;esp_fuentes:FC1;esp_puntos:P1;esp_puntos:P2;esp_puntos:PC1")).toEqual([
+      "AF-LLAVE|esp_fuentes:F1;esp_fuentes:FC1;esp_puntos:P1;esp_puntos:P2;esp_puntos:PC1",
+      "esp_fuentes:F1",
+      "esp_fuentes:FC1",
+      "esp_puntos:P1",
+      "esp_puntos:P2",
+      "esp_puntos:PC1",
+      "AF-LLAVE",
     ]);
     expect(clavesDeAuditoria("esp_fuentes:F1")).toEqual(["esp_fuentes:F1"]);
   });
@@ -47,6 +75,8 @@ describe("lógica de la hoja, 3b-3", () => {
     expect(hallazgosDeOrigen(hallazgos, ["esp_fuentes:F1"]).map((h) => h.numero)).toEqual([1]);
     expect(hallazgosDeOrigen(hallazgos, ["AF-LLAVE|esp_puntos:P1", "esp_puntos:P1"]).map((h) => h.numero)).toEqual([2]);
     expect(hallazgosDeOrigen(hallazgos, ["esp_puntos:P9"])).toEqual([]);
+    // Como la clásica, también se atribuyen por la partida del renglón.
+    expect(hallazgosDeOrigen(hallazgos, ["esp_puntos:P9", "AF-LLAVE"]).map((h) => h.numero)).toEqual([2]);
   });
 
   test("3b-F10: la tabla de precios muestra las columnas principales y el resto va al detalle del insumo", () => {

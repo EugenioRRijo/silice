@@ -249,11 +249,11 @@ export function vistaEquilibrio(extra: Partial<VistaEquilibrio> = {}): VistaEqui
     moneda: "USD",
     venta: m("2703.86", "2703.860232344044"),
     costo_variable: m("2137.44", "2137.4400000000001"),
-    costo_fijo: m("427.49", "427.488"),
-    utilidad: m("138.93", "138.93"),
+    costo_fijo: m("320.62", "320.62"),
+    utilidad: m("245.81", "245.81"),
     punto: m("1530.49", "1530.4912345"),
     porcentaje: m("56.60", "56.6012345"),
-    periodo: "Dia 23",
+    periodo: "Dia 23 [EL-CAJA]",
     fraccion_periodo: "0.5",
     mensaje: "Se alcanza en Dia 23, al 50 % de ese periodo.",
     ...extra,
@@ -264,8 +264,8 @@ export function vistaParametros(extra: Partial<VistaParametros> = {}): VistaPara
   return {
     campos: [
       { clave: "fcas", rotulo: "FCAS (fracción: 6.00 = prestaciones del 600 %)", valor: "6.00" },
-      { clave: "bono_alimentacion", rotulo: "Bono de alimentación (por obrero y día)", valor: "3.5" },
-      { clave: "administracion", rotulo: "Administración (fracción del costo directo)", valor: "0.20" },
+      { clave: "bono_alimentacion", rotulo: "Bono de alimentación (por obrero y día)", valor: "5.8100" },
+      { clave: "administracion", rotulo: "Administración (fracción del costo directo)", valor: "0.15" },
       { clave: "utilidad", rotulo: "Utilidad (fracción, en cascada sobre la administración)", valor: "0.10" },
     ],
     moneda_proyecto: "USD",
@@ -427,7 +427,7 @@ export function trazabilidadRespuesta(extra: Partial<TrazabilidadRespuesta> = {}
     registros: [
       {
         objeto: "cantidad",
-        clave: "AF-LLAVE|esp_puntos:P1",
+        clave: "AF-LLAVE|esp_fuentes:F1;esp_fuentes:FC1;esp_puntos:P1;esp_puntos:P2;esp_puntos:PC1",
         campo: "cantidad",
         antes: "3",
         despues: "5",
