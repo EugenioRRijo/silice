@@ -528,7 +528,7 @@ def test_e1_un_id_con_forma_invalida_es_422_sin_eco() -> None:
     assert respuesta.status_code == 422 and "corto" not in respuesta.text
 
 
-def test_e1_un_cuerpo_de_mas_de_20_mib_es_413_con_el_texto_de_la_proteccion() -> None:
+def test_e1_un_cuerpo_de_mas_de_20_mib_declarado_o_por_trozos_es_413() -> None:
     navegador, ficha = _ana()
     id_ = _abrir(navegador, ficha)
     cabeceras = {**protegida(ficha), "Content-Type": "application/json"}
@@ -541,14 +541,8 @@ def test_e1_un_cuerpo_de_mas_de_20_mib_es_413_con_el_texto_de_la_proteccion() ->
         yield enorme[: 10 * MIB]
         yield enorme[10 * MIB :]
 
-    # HALLAZGO (api/proteccion.py, compartido; no se toca aqui): con el cuerpo por partes el
-    # middleware corta la lectura, pero FastAPI convierte esa excepcion en un 400 «There was an
-    # error parsing the body» antes de que el middleware responda 413. El diseno (3c-B17) pedia
-    # 413 tambien aqui: se acepta 400 o 413 hasta que se arregle el middleware; en ambos casos el
-    # cuerpo se corta, no se repite lo enviado y el borrador no cambia.
     chunked = navegador.put(ruta, content=trozos(), headers=cabeceras)
-    assert chunked.status_code in (400, 413), chunked.text
-    assert "xxxxxxxx" not in chunked.text and '"id"' not in chunked.text
+    assert chunked.status_code == 413 and chunked.json() == {"detalle": EXCEDE}
     assert _resumen(navegador, id_)["rev"] == 0  # y el borrador sigue como estaba
 
 

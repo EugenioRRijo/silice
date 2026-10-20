@@ -18,12 +18,11 @@ El contrato exacto de la ruta está en `2026-10-19-hoja-3c1-contrato-rutas.md` (
   circuito inexistente: 'C2'» (un borrador en blanco no tiene circuitos; se declaran al importar un plano). Fue un error de
   mi prueba, no del código: ahora envía las tablas de OF-001 sin `circuito_id` (`_sin_circuitos`) y compara contra las
   partidas que el propio espacio deriva (más de 20), no contra 30.
-- `test_e1_un_cuerpo_de_mas_de_20_mib…`: el diseño (3c-B17) pide 413 también con el cuerpo por partes. En la aplicación real
-  da **400** «There was an error parsing the body» (FastAPI convierte la excepción con que `LimiteDeCuerpo` corta la lectura
-  antes de que el middleware conteste). Con `Content-Length` declarado sí da 413 con el texto exacto. La prueba del cuerpo por
-  partes acepta 400 o 413 (el cuerpo se corta, no se repite lo enviado y el borrador no cambia). **Hallazgo para el
-  orquestador:** el arreglo está en `api/proteccion.py` (archivo compartido que no toco): marcar en `recibir` que se excedió el
-  tope y, en `enviar`, sustituir por el 413 cualquier respuesta que empiece después.
+- `test_e1_un_cuerpo_de_mas_de_20_mib…`: el cuerpo por trozos daba 400 «There was an error parsing the body» en vez de
+  413 (FastAPI convertía la excepción con que `LimiteDeCuerpo` corta la lectura). Primero aceptaba 400 o 413; el árbitro lo
+  señaló (MENOR) y se arregló la CAUSA: prueba en rojo en `test_api_proteccion.py` y corrección en `api/proteccion.py`
+  (`enviar` sustituye por el 413 fijo, JSON `{"detalle": ...}`, lo que la app conteste tras exceder el tope). Afecta a todas
+  las subidas; la prueba de la hoja exige ahora 413 con el texto exacto.
 - Sanidad de las pruebas (mutaciones con el código restaurado después): sin la comprobación de `rev` falla el orden «rev antes
   que el contenido» (la comprobación del registro la sigue cubriendo, doble defensa); sin `completar_composiciones` fallan las
   dos pruebas de B9 que usan un catálogo con la partida.
