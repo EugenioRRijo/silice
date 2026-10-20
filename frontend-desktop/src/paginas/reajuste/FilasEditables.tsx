@@ -76,6 +76,9 @@ export function FilasEditables({ etiqueta, columnas, filas, alCambiar, fijas = f
                     hasIconOnly
                     renderIcon={TrashCan}
                     iconDescription={`Quitar ${etiqueta} fila ${i + 1}`}
+                    // VD-11, ronda 1: pegada al borde derecho del contenedor con desplazamiento, la papelera abre su
+                    // tooltip hacia la izquierda (sobre la fila); centrado arriba salia del contenedor y lo desplazaba.
+                    tooltipPosition="left"
                     onClick={() => quitar(i)}
                   />
                 </td>
