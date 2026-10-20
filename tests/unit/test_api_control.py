@@ -607,3 +607,69 @@ def test_las_opciones_de_la_api_salen_con_tildes_en_titulo_motivo_y_requisitos()
     assert opciones["horas_extra"]["requisitos"] == [
         "permiso de la Inspectoría del Trabajo (LOTTT art. 182) para las horas extra"
     ]
+
+
+# --- VD-1: los supuestos de cada opción, por ranura ------------------------------------------
+
+#: La respuesta real de las opciones de OB-S2 que usa la prueba del front (`Control.test.tsx`).
+OPCIONES_DEL_FRONT = FRONT_CONTROL / "opciones_ob_s2.json"
+
+
+def test_las_opciones_traen_sus_supuestos_por_ranura_y_la_nota_se_arma_con_ellos() -> None:
+    # VD-1: la «Nota» llega como un solo texto con los códigos de naturaleza y los nombres del
+    # núcleo; el front no puede ponerla en español sin reescribir texto que trae códigos del
+    # usuario. Cada supuesto viaja en sus tres ranuras. Oráculo: los valores por omisión de
+    # `ParametrosControl` (η = 0.80, 3 cuadrillas, η_he = 0.80, 2 h, recargo 0.50, penalización
+    # 0) y los nombres de `core/budget/recuperacion.py`, con las tildes de `con_tildes`.
+    navegador, cabeceras = _arma()
+    opciones = {o["clave"]: o for o in _opciones(navegador, cabeceras).json()["opciones"]}
+    comunes = [
+        {"nombre": "penalización diaria", "valor": "0", "naturaleza": "DATO_DEL_CONTRATO"},
+        {
+            "nombre": "costo diario de la cuadrilla",
+            "valor": "composiciones de la línea base",
+            "naturaleza": "SUPUESTO_DECLARADO",
+        },
+        {
+            "nombre": "costo fijo en el tiempo",
+            "valor": "CF' = CF · D'/D",
+            "naturaleza": "SUPUESTO_DECLARADO",
+        },
+    ]
+    assert opciones["cuadrillas"]["supuestos"] == [
+        {"nombre": "eta de cuadrillas", "valor": "0.80", "naturaleza": "SUPUESTO_DECLARADO"},
+        {"nombre": "cuadrillas máximas", "valor": "3", "naturaleza": "SUPUESTO_DECLARADO"},
+        *comunes,
+    ]
+    assert opciones["horas_extra"]["supuestos"] == [
+        {"nombre": "horas extra por día", "valor": "2", "naturaleza": "SUPUESTO_DECLARADO"},
+        {"nombre": "eta de horas extra", "valor": "0.80", "naturaleza": "SUPUESTO_DECLARADO"},
+        {"nombre": "recargo", "valor": "0.50", "naturaleza": "FUENTE_VERIFICADA"},
+        {"nombre": "FCAS sobre las horas extra", "valor": "sí", "naturaleza": "SUPUESTO_DECLARADO"},
+        {"nombre": "jornada ordinaria", "valor": "8 h", "naturaleza": "FUENTE_VERIFICADA"},
+        {
+            "nombre": "límites de horas extra",
+            "valor": "10 h por semana, 100 h por año",
+            "naturaleza": "FUENTE_VERIFICADA",
+        },
+        *comunes,
+    ]
+    assert opciones["aceptar"]["supuestos"] == comunes
+    # La que no aplica no lista supuestos: su nota es el motivo.
+    assert opciones["paralelo"]["supuestos"] == []
+    # La nota de la clásica sigue igual y sale de las mismas ranuras.
+    for o in opciones.values():
+        if o["aplica"]:
+            assert o["fila"]["Nota"] == "; ".join(
+                f"{s['nombre']}: {s['valor']} ({s['naturaleza']})" for s in o["supuestos"]
+            )
+
+
+def test_la_respuesta_de_opciones_del_front_es_la_de_la_api_real() -> None:
+    # La prueba del front monta la tabla con este JSON: si la API cambia, este archivo se
+    # regenera con la respuesta real y la prueba del front se vuelve a mirar.
+    import json
+
+    navegador, cabeceras = _arma()
+    real = _opciones(navegador, cabeceras).json()
+    assert json.loads(OPCIONES_DEL_FRONT.read_text(encoding="utf-8")) == real
