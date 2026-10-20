@@ -24,6 +24,7 @@ import { PestanaAuditoria } from "./PestanaAuditoria";
 import { PestanaEquilibrio } from "./PestanaEquilibrio";
 import { PestanaEspacio } from "./PestanaEspacio";
 import { PestanaPrecios } from "./PestanaPrecios";
+import { PestanaTrazabilidad } from "./PestanaTrazabilidad";
 import { PestanaParametros } from "./PestanaParametros";
 import { PestanaPlan } from "./PestanaPlan";
 import { PestanaPresupuesto } from "./PestanaPresupuesto";
@@ -52,14 +53,12 @@ function EstadoDelBorrador({ borrador }: { borrador: BorradorAbierto }) {
 // Solo se monta la pestaña activa y solo cuando el borrador está abierto: así solo se pide su vista.
 function ContenidoDePestana({
   indice,
-  nombre,
   borrador,
   alAusente,
   filtro,
   alQuitarFiltro,
 }: {
   indice: number;
-  nombre: string;
   borrador: BorradorAbierto | null;
   alAusente: () => void;
   filtro: FiltroDeAuditoria | null;
@@ -80,7 +79,7 @@ function ContenidoDePestana({
   if (indice === 7) {
     return <PestanaAuditoria key={llave} id={borrador.id} alAusente={alAusente} filtro={filtro} alQuitarFiltro={alQuitarFiltro} />;
   }
-  return <p className="cds--type-body-compact-01">La sección «{nombre}» llega en la siguiente entrega.</p>;
+  return <PestanaTrazabilidad key={llave} proyecto={borrador.base.proyecto} version={borrador.base.version} alAusente={alAusente} />;
 }
 
 function HojaDeProyecto({ proyecto }: { proyecto: string }) {
@@ -177,8 +176,7 @@ function HojaDeProyecto({ proyecto }: { proyecto: string }) {
                 {i === pestana && (
                   <ContenidoDePestana
                     indice={i}
-                    nombre={p}
-                    borrador={estado.estado === "listo" ? estado.borrador : null}
+                      borrador={estado.estado === "listo" ? estado.borrador : null}
                     alAusente={refrescar}
                     filtro={filtro}
                     alQuitarFiltro={() => setFiltro(null)}
