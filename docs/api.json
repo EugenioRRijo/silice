@@ -5453,6 +5453,230 @@
         }
       }
     },
+    "/v1/hoja/borradores/{id}/cantidades": {
+      "put": {
+        "tags": [
+          "hoja"
+        ],
+        "summary": "Editar Cantidades",
+        "description": "E2: escribe a mano las cantidades de los renglones tocados (solo esas filas) y devuelve el\npresupuesto recalculado. El servidor arma la tabla completa para que `fila {n}` del error sea\nla de la clásica; un valor igual al calculado deja de ser «escrito» (3c-B3 a B5).",
+        "operationId": "editar_cantidades_v1_hoja_borradores__id__cantidades_put",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 16,
+              "maxLength": 64,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "title": "Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EdicionCantidades"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EdicionCantidadesRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/hoja/borradores/{id}/parametros": {
+      "put": {
+        "tags": [
+          "hoja"
+        ],
+        "summary": "Editar Parametros",
+        "description": "E3: aplica los cuatro parámetros de costo (texto exacto) y devuelve la vista de\nparámetros; un cambio válido recalcula todos los APU (3c-B1, 3c-B2).",
+        "operationId": "editar_parametros_v1_hoja_borradores__id__parametros_put",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 16,
+              "maxLength": 64,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "title": "Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EdicionParametros"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EdicionParametrosRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/hoja/borradores/{id}/plan": {
+      "put": {
+        "tags": [
+          "hoja"
+        ],
+        "summary": "Editar Plan",
+        "description": "E4: aplica la matriz partida por periodo (cada partida suma exactamente 1) y devuelve el\nplan y la curva recalculados. Sin plan, 409: se crea primero el secuencial (3c-B12).",
+        "operationId": "editar_plan_v1_hoja_borradores__id__plan_put",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 16,
+              "maxLength": 64,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "title": "Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EdicionPlan"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EdicionPlanRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/hoja/borradores/{id}/plan/secuencial": {
+      "post": {
+        "tags": [
+          "hoja"
+        ],
+        "summary": "Crear Plan Secuencial",
+        "description": "E5: crea el plan secuencial (una partida por periodo) de un borrador sin plan; con plan,\n409 (3c-B12).",
+        "operationId": "crear_plan_secuencial_v1_hoja_borradores__id__plan_secuencial_post",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 16,
+              "maxLength": 64,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "title": "Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EdicionSecuencial"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EdicionPlanRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/hoja/borradores/{id}/vistas/espacio": {
       "get": {
         "tags": [
@@ -9346,6 +9570,53 @@
         ],
         "title": "Dominio"
       },
+      "EdicionCantidades": {
+        "properties": {
+          "rev": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Rev"
+          },
+          "filas": {
+            "items": {
+              "$ref": "#/components/schemas/FilaDeCantidad"
+            },
+            "type": "array",
+            "maxItems": 20000,
+            "title": "Filas"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "rev",
+          "filas"
+        ],
+        "title": "EdicionCantidades",
+        "description": "Solo los renglones TOCADOS: el servidor arma la tabla completa del presupuesto."
+      },
+      "EdicionCantidadesRespuesta": {
+        "properties": {
+          "rev": {
+            "type": "integer",
+            "title": "Rev"
+          },
+          "resumen": {
+            "$ref": "#/components/schemas/ResumenHojaRespuesta"
+          },
+          "presupuesto": {
+            "$ref": "#/components/schemas/VistaPresupuestoRespuesta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "rev",
+          "resumen",
+          "presupuesto"
+        ],
+        "title": "EdicionCantidadesRespuesta",
+        "description": "El borrador ya recalculado: su `rev` nuevo, el resumen y la vista del presupuesto (R6)."
+      },
       "EdicionEspacio": {
         "properties": {
           "rev": {
@@ -9386,6 +9657,141 @@
         ],
         "title": "EdicionEspacioRespuesta",
         "description": "El borrador ya recalculado: su `rev` nuevo, el resumen y la vista del espacio (como R5)."
+      },
+      "EdicionParametros": {
+        "properties": {
+          "rev": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Rev"
+          },
+          "fcas": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Fcas"
+          },
+          "bono_alimentacion": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Bono Alimentacion"
+          },
+          "administracion": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Administracion"
+          },
+          "utilidad": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Utilidad"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "rev",
+          "fcas",
+          "bono_alimentacion",
+          "administracion",
+          "utilidad"
+        ],
+        "title": "EdicionParametros",
+        "description": "Los CUATRO parametros de costo, como los textos de los cuadros de la clásica."
+      },
+      "EdicionParametrosRespuesta": {
+        "properties": {
+          "rev": {
+            "type": "integer",
+            "title": "Rev"
+          },
+          "resumen": {
+            "$ref": "#/components/schemas/ResumenHojaRespuesta"
+          },
+          "parametros": {
+            "$ref": "#/components/schemas/VistaParametrosRespuesta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "rev",
+          "resumen",
+          "parametros"
+        ],
+        "title": "EdicionParametrosRespuesta",
+        "description": "El borrador ya recalculado: su `rev` nuevo, el resumen y la vista de parámetros (R10)."
+      },
+      "EdicionPlan": {
+        "properties": {
+          "rev": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Rev"
+          },
+          "etiquetas": {
+            "items": {
+              "type": "string",
+              "maxLength": 500
+            },
+            "type": "array",
+            "maxItems": 500,
+            "minItems": 1,
+            "title": "Etiquetas"
+          },
+          "filas": {
+            "items": {
+              "$ref": "#/components/schemas/FilaDePlanCuerpo"
+            },
+            "type": "array",
+            "maxItems": 5000,
+            "title": "Filas"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "rev",
+          "etiquetas",
+          "filas"
+        ],
+        "title": "EdicionPlan",
+        "description": "La matriz partida por periodo. Las etiquetas son distintas entre sí y ninguna es «partida»\n(es la columna de la partida en la matriz de la clásica)."
+      },
+      "EdicionPlanRespuesta": {
+        "properties": {
+          "rev": {
+            "type": "integer",
+            "title": "Rev"
+          },
+          "resumen": {
+            "$ref": "#/components/schemas/ResumenHojaRespuesta"
+          },
+          "plan": {
+            "$ref": "#/components/schemas/VistaPlanRespuesta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "rev",
+          "resumen",
+          "plan"
+        ],
+        "title": "EdicionPlanRespuesta",
+        "description": "El borrador ya recalculado: su `rev` nuevo, el resumen y la vista del plan (R8)."
+      },
+      "EdicionSecuencial": {
+        "properties": {
+          "rev": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Rev"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "rev"
+        ],
+        "title": "EdicionSecuencial"
       },
       "EjecucionPeticion": {
         "properties": {
@@ -10338,6 +10744,55 @@
         ],
         "title": "FilaComparativoRespuesta",
         "description": "Una fila de `core.budget.Comparativo`, con todos sus montos presentados a dos decimales."
+      },
+      "FilaDeCantidad": {
+        "properties": {
+          "clave": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Clave"
+          },
+          "cantidad": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Cantidad"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "clave",
+          "cantidad"
+        ],
+        "title": "FilaDeCantidad"
+      },
+      "FilaDePlanCuerpo": {
+        "properties": {
+          "partida": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Partida"
+          },
+          "valores": {
+            "additionalProperties": {
+              "type": "string",
+              "maxLength": 500
+            },
+            "propertyNames": {
+              "maxLength": 500
+            },
+            "type": "object",
+            "maxProperties": 500,
+            "title": "Valores"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "partida",
+          "valores"
+        ],
+        "title": "FilaDePlanCuerpo"
       },
       "FilaEquipo": {
         "properties": {

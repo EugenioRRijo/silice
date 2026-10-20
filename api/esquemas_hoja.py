@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from aplicacion.hoja import FilaVersion
 from aplicacion.hoja_vista import (
@@ -441,3 +441,108 @@ class EdicionEspacioRespuesta(BaseModel):
     rev: int
     resumen: ResumenHojaRespuesta
     espacio: VistaEspacioRespuesta
+
+
+# --- la edicion de las cantidades, los parametros y el plan (3c-2, E2 a E5) ---------------------
+#
+# Topes (D-9, SUPUESTOS declarados): cada texto ≤ 500 caracteres; hasta 20000 renglones de
+# cantidades (más que los 5000 puntos del espacio: un punto deriva varias partidas); de 1 a 500
+# periodos y hasta 5000 filas de plan (una por partida). `extra` prohibido: un campo desconocido es
+# un cuerpo con otra forma.
+
+
+class FilaDeCantidad(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    clave: Texto500
+    cantidad: Texto500
+
+
+class EdicionCantidades(BaseModel):
+    """Solo los renglones TOCADOS: el servidor arma la tabla completa del presupuesto."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    rev: Annotated[int, Field(strict=True, ge=0)]
+    filas: Annotated[list[FilaDeCantidad], Field(max_length=20000)]
+
+    def como_filas(self) -> list[dict[str, str]]:
+        return [{"clave": f.clave, "cantidad": f.cantidad} for f in self.filas]
+
+
+class EdicionCantidadesRespuesta(BaseModel):
+    """El borrador ya recalculado: su `rev` nuevo, el resumen y la vista del presupuesto (R6)."""
+
+    rev: int
+    resumen: ResumenHojaRespuesta
+    presupuesto: VistaPresupuestoRespuesta
+
+
+class EdicionParametros(BaseModel):
+    """Los CUATRO parametros de costo, como los textos de los cuadros de la clásica."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    rev: Annotated[int, Field(strict=True, ge=0)]
+    fcas: Texto500
+    bono_alimentacion: Texto500
+    administracion: Texto500
+    utilidad: Texto500
+
+    def como_textos(self) -> dict[str, str]:
+        return {
+            "fcas": self.fcas,
+            "bono_alimentacion": self.bono_alimentacion,
+            "administracion": self.administracion,
+            "utilidad": self.utilidad,
+        }
+
+
+class EdicionParametrosRespuesta(BaseModel):
+    """El borrador ya recalculado: su `rev` nuevo, el resumen y la vista de parámetros (R10)."""
+
+    rev: int
+    resumen: ResumenHojaRespuesta
+    parametros: VistaParametrosRespuesta
+
+
+class FilaDePlanCuerpo(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    partida: Texto500
+    valores: Annotated[dict[Texto500, Texto500], Field(max_length=500)]
+
+
+class EdicionPlan(BaseModel):
+    """La matriz partida por periodo. Las etiquetas son distintas entre sí y ninguna es «partida»
+    (es la columna de la partida en la matriz de la clásica)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    rev: Annotated[int, Field(strict=True, ge=0)]
+    etiquetas: Annotated[list[Texto500], Field(min_length=1, max_length=500)]
+    filas: Annotated[list[FilaDePlanCuerpo], Field(max_length=5000)]
+
+    @field_validator("etiquetas")
+    @classmethod
+    def _distintas(cls, etiquetas: list[str]) -> list[str]:
+        if len(set(etiquetas)) != len(etiquetas) or "partida" in etiquetas:
+            raise ValueError("etiquetas repetidas o reservadas")
+        return etiquetas
+
+    def como_filas(self) -> list[dict[str, str]]:
+        return [{**f.valores, "partida": f.partida} for f in self.filas]
+
+
+class EdicionPlanRespuesta(BaseModel):
+    """El borrador ya recalculado: su `rev` nuevo, el resumen y la vista del plan (R8)."""
+
+    rev: int
+    resumen: ResumenHojaRespuesta
+    plan: VistaPlanRespuesta
+
+
+class EdicionSecuencial(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    rev: Annotated[int, Field(strict=True, ge=0)]

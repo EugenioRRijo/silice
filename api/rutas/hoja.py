@@ -28,8 +28,9 @@ primera atrapa el `RequestValidationError` antes y devuelve el 422 con eco).
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import date
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request, Response
 from sqlalchemy.exc import SQLAlchemyError
@@ -41,8 +42,15 @@ from api.esquemas_hoja import (
     BorradorAbierto,
     BorradorHojaRespuesta,
     BorradorNuevo,
+    EdicionCantidades,
+    EdicionCantidadesRespuesta,
     EdicionEspacio,
     EdicionEspacioRespuesta,
+    EdicionParametros,
+    EdicionParametrosRespuesta,
+    EdicionPlan,
+    EdicionPlanRespuesta,
+    EdicionSecuencial,
     InstantaneaHojaRespuesta,
     PreciosHojaRespuesta,
     TrazabilidadHojaRespuesta,
@@ -102,6 +110,21 @@ MENSAJE_FORMA_ESPACIO = (
     "500 caracteres y no pase de 5000 orígenes, 1000 ambientes, 1000 fuentes, 5000 puntos y "
     "20000 vértices."
 )
+FORMA_CANTIDADES = (
+    "Las cantidades no tienen la forma esperada: envíe cada renglón como clave y cantidad en "
+    "texto de hasta 500 caracteres, con no más de 20000 renglones."
+)
+FORMA_PARAMETROS = (
+    "Los parámetros no tienen la forma esperada: envíe fcas, bono_alimentacion, administracion y "
+    "utilidad, cada uno como texto de hasta 500 caracteres."
+)
+FORMA_PLAN = (
+    "El plan no tiene la forma esperada: envíe periodos distintos (de 1 a 500) y cada fracción "
+    "como texto de hasta 500 caracteres, con no más de 5000 partidas."
+)
+FORMA_REV = "La petición debe traer el rev del borrador, un número entero."
+MENSAJE_SIN_PLAN = "Esta versión no tiene plan de trabajo: cree primero el plan secuencial."
+MENSAJE_YA_TIENE_PLAN = "Esta versión ya tiene plan de trabajo: edítelo en la matriz del plan."
 
 
 class _RutaHoja(RutaSinCache, RutaSinEco):
@@ -266,6 +289,45 @@ def descartar_borrador(id: IdDeBorrador, request: Request, activa: CuentaDeLaHoj
     return Response(status_code=204)
 
 
+def _editar(
+    sesion,
+    vivo: BorradorVivo,
+    editar: Callable[[], BorradorVivo],
+    vista_de: Callable[[BorradorVivo], Any],
+) -> tuple[Any, Any]:
+    """El esqueleto común de E1 a E5: una petición a la vez por borrador (su cerrojo) y, dentro,
+    la edición y las dos piezas de la respuesta (el resumen y la vista de la pestaña), de modo que
+    ambas son las del `rev` que ESTA edición produjo. Los errores de la edición se traducen aquí:
+    404 (ya no existe), 409 (`rev` viejo, ya guardado, el estado del plan), 422 (el texto de la
+    clásica, sin repetirlo en ningún otro lado) y 503 (la base)."""
+    try:
+        with vivo.cerrojo:
+            try:
+                editado = editar()
+            except BorradorInexistente:
+                raise HTTPException(status_code=404, detail=MENSAJE_FALTA) from None
+            except RevDesactualizado:
+                raise HTTPException(status_code=409, detail=MENSAJE_REV) from None
+            except hoja_edicion.BorradorYaGuardado as error:
+                raise HTTPException(
+                    status_code=409,
+                    detail=(
+                        f"Este borrador ya se guardó como la versión {error.codigo}; "
+                        "abra esa versión para seguir."
+                    ),
+                ) from None
+            except hoja_edicion.SinPlan:
+                raise HTTPException(status_code=409, detail=MENSAJE_SIN_PLAN) from None
+            except hoja_edicion.YaTienePlan:
+                raise HTTPException(status_code=409, detail=MENSAJE_YA_TIENE_PLAN) from None
+            except HojaInvalida as error:
+                raise HTTPException(status_code=422, detail=str(error)) from None
+            mas_nueva = _mas_nueva(editado, hoja.codigo_vigente(sesion, editado.proyecto))
+            return hoja_vista.resumen(editado, mas_nueva), vista_de(editado)
+    except SQLAlchemyError:
+        raise HTTPException(status_code=503, detail=MENSAJE_BASE) from None
+
+
 @router.put("/borradores/{id}/espacio", response_model=EdicionEspacioRespuesta)
 @sin_eco(MENSAJE_FORMA_ESPACIO)
 def editar_espacio(
@@ -281,35 +343,128 @@ def editar_espacio(
     dato inválido, 422 con el texto de la clásica y el borrador intacto. Una petición a la vez por
     borrador: se toma su cerrojo y la respuesta es la del `rev` que esta edición produjo."""
     vivo = _vivo(request, activa, id)
-    try:
-        with vivo.cerrojo:
-            try:
-                editado = hoja_edicion.editar_espacio(
-                    sesion, activa.huella_ficha, id, datos.rev, datos.tablas.como_filas()
-                )
-            except BorradorInexistente:
-                raise HTTPException(status_code=404, detail=MENSAJE_FALTA) from None
-            except RevDesactualizado:
-                raise HTTPException(status_code=409, detail=MENSAJE_REV) from None
-            except hoja_edicion.BorradorYaGuardado as error:
-                raise HTTPException(
-                    status_code=409,
-                    detail=(
-                        f"Este borrador ya se guardó como la versión {error.codigo}; "
-                        "abra esa versión para seguir."
-                    ),
-                ) from None
-            except HojaInvalida as error:
-                raise HTTPException(status_code=422, detail=str(error)) from None
-            mas_nueva = _mas_nueva(editado, hoja.codigo_vigente(sesion, editado.proyecto))
-            resumen = hoja_vista.resumen(editado, mas_nueva)
-            vista = hoja_vista.vista_espacio(editado)
-    except SQLAlchemyError:
-        raise HTTPException(status_code=503, detail=MENSAJE_BASE) from None
+    resumen, vista = _editar(
+        sesion,
+        vivo,
+        lambda: hoja_edicion.editar_espacio(
+            sesion, activa.huella_ficha, id, datos.rev, datos.tablas.como_filas()
+        ),
+        hoja_vista.vista_espacio,
+    )
     return EdicionEspacioRespuesta(
         rev=resumen.rev,
         resumen=resumen_a_respuesta(resumen),
         espacio=vista_espacio_a_respuesta(vista),
+    )
+
+
+@router.put("/borradores/{id}/cantidades", response_model=EdicionCantidadesRespuesta)
+@sin_eco(FORMA_CANTIDADES)
+def editar_cantidades(
+    id: IdDeBorrador,
+    datos: EdicionCantidades,
+    request: Request,
+    activa: CuentaDeLaHoja,
+    sesion: SesionDep,
+) -> EdicionCantidadesRespuesta:
+    """E2: escribe a mano las cantidades de los renglones tocados (solo esas filas) y devuelve el
+    presupuesto recalculado. El servidor arma la tabla completa para que `fila {n}` del error sea
+    la de la clásica; un valor igual al calculado deja de ser «escrito» (3c-B3 a B5)."""
+    vivo = _vivo(request, activa, id)
+    resumen, vista = _editar(
+        sesion,
+        vivo,
+        lambda: hoja_edicion.editar_cantidades(
+            sesion, activa.huella_ficha, id, datos.rev, datos.como_filas()
+        ),
+        hoja_vista.vista_presupuesto,
+    )
+    return EdicionCantidadesRespuesta(
+        rev=resumen.rev,
+        resumen=resumen_a_respuesta(resumen),
+        presupuesto=vista_presupuesto_a_respuesta(vista),
+    )
+
+
+@router.put("/borradores/{id}/parametros", response_model=EdicionParametrosRespuesta)
+@sin_eco(FORMA_PARAMETROS)
+def editar_parametros(
+    id: IdDeBorrador,
+    datos: EdicionParametros,
+    request: Request,
+    activa: CuentaDeLaHoja,
+    sesion: SesionDep,
+) -> EdicionParametrosRespuesta:
+    """E3: aplica los cuatro parámetros de costo (texto exacto) y devuelve la vista de
+    parámetros; un cambio válido recalcula todos los APU (3c-B1, 3c-B2)."""
+    vivo = _vivo(request, activa, id)
+
+    def vista_de(editado: BorradorVivo):
+        moneda = moneda_del_proyecto(sesion, _proyecto(sesion, editado.proyecto))
+        return hoja_vista.vista_parametros(
+            editado, moneda, permitido(activa.roles, Accion.CONVERTIR_Y_REAJUSTAR)
+        )
+
+    resumen, vista = _editar(
+        sesion,
+        vivo,
+        lambda: hoja_edicion.editar_parametros(
+            sesion, activa.huella_ficha, id, datos.rev, datos.como_textos()
+        ),
+        vista_de,
+    )
+    return EdicionParametrosRespuesta(
+        rev=resumen.rev,
+        resumen=resumen_a_respuesta(resumen),
+        parametros=vista_parametros_a_respuesta(vista),
+    )
+
+
+@router.put("/borradores/{id}/plan", response_model=EdicionPlanRespuesta)
+@sin_eco(FORMA_PLAN)
+def editar_plan(
+    id: IdDeBorrador,
+    datos: EdicionPlan,
+    request: Request,
+    activa: CuentaDeLaHoja,
+    sesion: SesionDep,
+) -> EdicionPlanRespuesta:
+    """E4: aplica la matriz partida por periodo (cada partida suma exactamente 1) y devuelve el
+    plan y la curva recalculados. Sin plan, 409: se crea primero el secuencial (3c-B12)."""
+    vivo = _vivo(request, activa, id)
+    resumen, vista = _editar(
+        sesion,
+        vivo,
+        lambda: hoja_edicion.editar_plan(
+            sesion, activa.huella_ficha, id, datos.rev, datos.etiquetas, datos.como_filas()
+        ),
+        hoja_vista.vista_plan,
+    )
+    return EdicionPlanRespuesta(
+        rev=resumen.rev, resumen=resumen_a_respuesta(resumen), plan=vista_plan_a_respuesta(vista)
+    )
+
+
+@router.post("/borradores/{id}/plan/secuencial", response_model=EdicionPlanRespuesta)
+@sin_eco(FORMA_REV)
+def crear_plan_secuencial(
+    id: IdDeBorrador,
+    datos: EdicionSecuencial,
+    request: Request,
+    activa: CuentaDeLaHoja,
+    sesion: SesionDep,
+) -> EdicionPlanRespuesta:
+    """E5: crea el plan secuencial (una partida por periodo) de un borrador sin plan; con plan,
+    409 (3c-B12)."""
+    vivo = _vivo(request, activa, id)
+    resumen, vista = _editar(
+        sesion,
+        vivo,
+        lambda: hoja_edicion.crear_plan_secuencial(sesion, activa.huella_ficha, id, datos.rev),
+        hoja_vista.vista_plan,
+    )
+    return EdicionPlanRespuesta(
+        rev=resumen.rev, resumen=resumen_a_respuesta(resumen), plan=vista_plan_a_respuesta(vista)
     )
 
 
