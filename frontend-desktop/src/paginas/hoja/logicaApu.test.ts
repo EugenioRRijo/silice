@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { vistaApu } from "./datosDePrueba";
+import { mensajeDeRechazo } from "./logica";
 import {
   FRASE_DE_APU,
   LIMITE_DE_INSUMOS,
@@ -139,5 +140,18 @@ describe("los candidatos de insumo", () => {
 
   test("si el servidor dice que hay más, se pide acotar aunque vengan menos", () => {
     expect(insumosVisibles({ insumos: [insumo(1)], hay_mas: true }).hayMas).toBe(true);
+  });
+});
+
+describe("el rechazo del cambio de insumo", () => {
+  test("la clásica muestra el mensaje solo (ui/paginas/hoja.py:1519): con la frase vacía no se agrega nada", () => {
+    expect(mensajeDeRechazo("El insumo MAT-010 no está en la lista de precios de la versión.", "")).toBe(
+      "El insumo MAT-010 no está en la lista de precios de la versión.",
+    );
+    expect(mensajeDeRechazo("sin punto final", "")).toBe("sin punto final");
+  });
+
+  test("con frase sigue agregándola tras quitar el punto final", () => {
+    expect(mensajeDeRechazo("fila 1: mal.", FRASE_DE_APU)).toBe("fila 1: mal. La hoja sigue con el último APU válido.");
   });
 });
