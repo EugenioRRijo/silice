@@ -1,6 +1,17 @@
 // Respuestas de ejemplo de las vistas de la hoja para las pruebas (caso ficticio OF-001, cifras de su memoria).
 // Solo las importan pruebas; ninguna pagina las usa.
-import type { VistaApu, VistaEspacio, VistaPlan, VistaPresupuesto } from "./logica";
+import type { InformeAuditoriaRespuesta } from "../../api/tipos";
+import type {
+  AtipicosRespuesta,
+  PreciosRespuesta,
+  TrazabilidadRespuesta,
+  VistaApu,
+  VistaEquilibrio,
+  VistaEspacio,
+  VistaParametros,
+  VistaPlan,
+  VistaPresupuesto,
+} from "./logica";
 
 const m = (texto: string, exacto = texto) => ({ texto, exacto });
 
@@ -232,6 +243,203 @@ export function vistaPlan(extra: Partial<VistaPlan> = {}): VistaPlan {
   };
 }
 
+export function vistaEquilibrio(extra: Partial<VistaEquilibrio> = {}): VistaEquilibrio {
+  return {
+    estado: "alcanzado",
+    venta: m("2703.86", "2703.860232344044"),
+    costo_variable: m("2137.44", "2137.4400000000001"),
+    costo_fijo: m("427.49", "427.488"),
+    utilidad: m("138.93", "138.93"),
+    punto: m("1530.49", "1530.4912345"),
+    porcentaje: m("56.60", "56.6012345"),
+    periodo: "Dia 23",
+    fraccion_periodo: "0.5",
+    mensaje: "Se alcanza en Dia 23, al 50 % de ese periodo.",
+    ...extra,
+  };
+}
+
+export function vistaParametros(extra: Partial<VistaParametros> = {}): VistaParametros {
+  return {
+    campos: [
+      { clave: "fcas", rotulo: "FCAS (fracción: 6.00 = prestaciones del 600 %)", valor: "6.00" },
+      { clave: "bono_alimentacion", rotulo: "Bono de alimentación (por obrero y día)", valor: "3.5" },
+      { clave: "administracion", rotulo: "Administración (fracción del costo directo)", valor: "0.20" },
+      { clave: "utilidad", rotulo: "Utilidad (fracción, en cascada sobre la administración)", valor: "0.10" },
+    ],
+    moneda_proyecto: "USD",
+    total: m("2703.86", "2703.860232344044"),
+    puede_convertir: true,
+    ...extra,
+  };
+}
+
+export function informeAuditoria(extra: Partial<InformeAuditoriaRespuesta> = {}): InformeAuditoriaRespuesta {
+  return {
+    codigo_presupuesto: "OF-001-001",
+    cumple: false,
+    veredicto: "NO CUMPLE",
+    total_hallazgos: 2,
+    por_severidad: [
+      { severidad: "ERROR", total: 1 },
+      { severidad: "ADVERTENCIA", total: 1 },
+    ],
+    reglas_evaluadas: [
+      { regla: "R3", nombre: "Origen de la medida", hallazgos: 1 },
+      { regla: "R17", nombre: "Conexión de cada punto", hallazgos: 1 },
+    ],
+    hallazgos: [
+      {
+        numero: 1,
+        regla: "R3",
+        severidad: "ERROR",
+        partida: null,
+        descripcion: "Fuente F1: falta el origen ![x](http://ejemplo.invalid/a.png)",
+        impacto: null,
+        observado: null,
+        esperado: null,
+        origen: ["esp_fuentes:F1"],
+      },
+      {
+        numero: 2,
+        regla: "R17",
+        severidad: "ADVERTENCIA",
+        partida: "AF-LLAVE",
+        descripcion: "El punto P1 no tiene fuente que lo alimente",
+        impacto: null,
+        observado: null,
+        esperado: null,
+        origen: ["esp_puntos:P1"],
+      },
+    ],
+    sin_hallazgos: null,
+    ...extra,
+  };
+}
+
+const COLUMNAS_PRECIOS: Array<[string, string, boolean]> = [
+  ["insumo", "Insumo", false],
+  ["codigo", "Código", false],
+  ["tipo", "Tipo", false],
+  ["precio", "Precio", true],
+  ["lista", "Lista", false],
+  ["moneda", "Moneda", false],
+  ["fecha", "Fecha del precio", false],
+  ["tasa", "Tasa", true],
+  ["fecha_tasa", "Fecha de la tasa", false],
+  ["referencia", "Referencia", false],
+  ["cotizacion", "Cotización", false],
+  ["moneda_original", "Moneda original", false],
+  ["precio_original", "Precio original", true],
+  ["fuente_tasa", "Fuente de la tasa", false],
+  ["fuente", "Fuente", false],
+  ["propio", "Propio/heredado", false],
+  ["erosion_usd", "Erosión USD", true],
+  ["erosion_bs", "Erosión Bs", true],
+  ["erosion_pct", "Erosión %", true],
+  ["erosion_indice", "Erosión por índice", true],
+  ["estado", "Estado", false],
+];
+
+export function preciosRespuesta(extra: Partial<PreciosRespuesta> = {}): PreciosRespuesta {
+  return {
+    moneda: "USD",
+    fecha_evaluacion: "2026-10-20",
+    columnas: COLUMNAS_PRECIOS.map(([clave, rotulo, numerica]) => ({ clave, rotulo, numerica })),
+    filas: [
+      {
+        insumo: "Tubo PVC 1/2",
+        codigo: "MAT-001",
+        tipo: "material",
+        precio: m("3.10", "3.1034"),
+        lista: "Lista MaPreX",
+        moneda: "USD",
+        fecha: "2026-07-01",
+        tasa: m("633.3644", "633.3644"),
+        fecha_tasa: "2026-07-01",
+        referencia: "MaPreX jul-2026",
+        cotizacion: "",
+        moneda_original: "Bs",
+        precio_original: m("1963.43", "1963.4296"),
+        fuente_tasa: "BCV",
+        fuente: "MaPreX",
+        propio: "heredado",
+        erosion_usd: m("0.12", "0.1234"),
+        erosion_bs: m("78.15", "78.1500"),
+        erosion_pct: m("3.98", "3.9800"),
+        erosion_indice: null,
+        estado: "OK",
+      },
+      {
+        insumo: "Llave de paso",
+        codigo: "MAT-002",
+        tipo: "material",
+        precio: m("9.50", "9.5"),
+        lista: "Lista MaPreX",
+        moneda: "USD",
+        fecha: "2026-07-01",
+        tasa: null,
+        fecha_tasa: null,
+        referencia: "",
+        cotizacion: "",
+        moneda_original: "USD",
+        precio_original: m("9.50", "9.5"),
+        fuente_tasa: "",
+        fuente: "",
+        propio: "heredado",
+        erosion_usd: null,
+        erosion_bs: null,
+        erosion_pct: null,
+        erosion_indice: null,
+        estado: "Sin referencia ni cotización: el precio no tiene fuente",
+      },
+    ],
+    ...extra,
+  };
+}
+
+export function atipicosRespuesta(extra: Partial<AtipicosRespuesta> = {}): AtipicosRespuesta {
+  return {
+    disponible: true,
+    avisos: [{ nivel: "info", texto: "Se revisaron 2 insumos con serie de precios." }],
+    variaciones: [
+      {
+        insumo: "MAT-001",
+        porcentaje: "38.40",
+        porcentaje_exacto: "38.4000123",
+        desde: "2026-01-01",
+        hasta: "2026-07-01",
+        severidad: "ADVERTENCIA",
+        descripcion: "El precio de MAT-001 varió 38,40 % entre las dos fechas",
+      },
+    ],
+    ...extra,
+  };
+}
+
+export function trazabilidadRespuesta(extra: Partial<TrazabilidadRespuesta> = {}): TrazabilidadRespuesta {
+  return {
+    versiones: [
+      { codigo: "001", fecha: "2026-10-05", motivo: "", origen: "", vigente: false, descartada: false, cambios: 0 },
+      { codigo: "002", fecha: "2026-10-06", motivo: "edicion", origen: "001", vigente: true, descartada: false, cambios: 1 },
+    ],
+    registros: [
+      {
+        objeto: "cantidad",
+        clave: "AF-LLAVE|esp_puntos:P1",
+        campo: "cantidad",
+        antes: "3",
+        despues: "5",
+        fuente: "Plano revisado en obra",
+        responsable: "Ana Pérez <ana>",
+        fecha_hora: "2026-10-06 09:30:00",
+      },
+    ],
+    vacio_mensaje: null,
+    ...extra,
+  };
+}
+
 // El cuerpo que daría el servidor a `GET /v1/hoja/borradores/{id}/vistas/{nombre}`, o null si la ruta no es de una vista.
 export function cuerpoDeVista(url: string): unknown {
   const nombre = /\/vistas\/([a-z]+)/.exec(url)?.[1];
@@ -239,5 +447,8 @@ export function cuerpoDeVista(url: string): unknown {
   if (nombre === "presupuesto") return vistaPresupuesto();
   if (nombre === "apu") return vistaApu();
   if (nombre === "plan") return vistaPlan();
+  if (nombre === "equilibrio") return vistaEquilibrio();
+  if (nombre === "parametros") return vistaParametros();
+  if (nombre === "auditoria") return informeAuditoria();
   return null;
 }
