@@ -60,9 +60,7 @@ def test_lista_1_excluye_los_cuatro_casos_del_modulo():
     assert len(excluidos) == CANTIDAD_EXCLUIDOS
     ajustes = [d for d, m in excluidos.items() if m == listas.MOTIVO_AJUSTE]
     globales = [d for d, m in excluidos.items() if m == listas.MOTIVO_SUMA_GLOBAL]
-    contradichos = [
-        d for d, m in excluidos.items() if m.startswith("el total impreso contradice")
-    ]
+    contradichos = [d for d, m in excluidos.items() if m.startswith("el total impreso contradice")]
     dos_precios = [d for d, m in excluidos.items() if m.startswith("dos precios distintos")]
 
     assert len(ajustes) == 2 and all(d.startswith(MARCA_AJUSTE) for d in ajustes)

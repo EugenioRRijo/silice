@@ -179,8 +179,18 @@ def test_un_caso_que_no_esta_en_la_carpeta_da_404() -> None:
 
 @pytest.mark.parametrize(
     "nombre",
-    ["../instalacion.db", "..", "casos/anexo.db", "casos\\anexo.db", "C:\\x\\anexo.db",
-     "/tmp/anexo.db", "\\\\servidor\\c\\anexo.db", "anexo.db:flujo", "", "   "],
+    [
+        "../instalacion.db",
+        "..",
+        "casos/anexo.db",
+        "casos\\anexo.db",
+        "C:\\x\\anexo.db",
+        "/tmp/anexo.db",
+        "\\\\servidor\\c\\anexo.db",
+        "anexo.db:flujo",
+        "",
+        "   ",
+    ],
 )
 def test_un_nombre_con_rutas_da_422_sin_cambiar(nombre: str, _entorno: Path) -> None:
     navegador, ficha = con_cuenta(app, "ana")

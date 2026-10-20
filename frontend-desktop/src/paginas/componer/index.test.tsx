@@ -141,28 +141,43 @@ describe("Componer una partida", () => {
   });
 
   test("el desglose se pide una sola vez, 300 ms después de la última edición, con las tablas como texto", async () => {
-    const usuario = userEvent.setup();
-    evaluacion = () => json(valida("29.70"));
-    montar();
-    await usuario.type(screen.getByLabelText("Código"), "FIC-1");
-    await usuario.type(screen.getByLabelText("Rendimiento: unidades por día"), "10");
-    await usuario.click(screen.getByRole("button", { name: "Agregar fila a Materiales" }));
-    await usuario.type(screen.getByLabelText("Precio, fila 1"), "40.00");
-    expect(await screen.findByText("29.70", {}, ESPERA)).toBeInTheDocument();
-    const evaluaciones = de("/v1/composicion/evaluar");
-    // Con el equipo cargado una pausa entre teclas puede pasar de 300 ms: lo firme es que no se pide
-    // una vez por tecla (12 pulsaciones) y que la ultima peticion lleva las tablas completas.
-    expect(evaluaciones.length).toBeLessThan(12);
-    const ultima = evaluaciones[evaluaciones.length - 1];
-    expect(ultima.metodo).toBe("POST");
-    expect(ultima.cuerpo).toMatchObject({
-      codigo: "FIC-1",
-      dominio: "civil",
-      rendimiento: "10",
-      materiales: [{ descripcion: "", unidad: "", cantidad: "", precio: "40.00" }],
-      equipos: [],
-      mano_obra: [],
-    });
+    // Temporizadores falsos: el retardo de 300 ms se avanza a mano, sin esperas reales ni tiempos holgados.
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    // Testing Library solo reconoce temporizadores falsos si existe un `jest` global (si no, su espera interna
+    // con setTimeout queda colgada); se le da el avance de Vitest. afterEach deshace el stub.
+    vi.stubGlobal("jest", { advanceTimersByTime: vi.advanceTimersByTime.bind(vi) });
+    try {
+      const usuario = userEvent.setup({ delay: null, advanceTimers: vi.advanceTimersByTime.bind(vi) });
+      evaluacion = () => json(valida("29.70"));
+      montar();
+      await usuario.type(screen.getByLabelText("Código"), "FIC-1");
+      await usuario.type(screen.getByLabelText("Rendimiento: unidades por día"), "10");
+      await usuario.click(screen.getByRole("button", { name: "Agregar fila a Materiales" }));
+      await usuario.type(screen.getByLabelText("Precio, fila 1"), "40.00");
+      // Cada edición reinició el temporizador: a 299 ms de la última no se ha pedido ningún desglose.
+      await vi.advanceTimersByTimeAsync(299);
+      expect(de("/v1/composicion/evaluar")).toHaveLength(0);
+      // Al cumplirse los 300 ms se pide exactamente una vez (12 pulsaciones, una sola petición).
+      await vi.advanceTimersByTimeAsync(1);
+      const evaluaciones = de("/v1/composicion/evaluar");
+      expect(evaluaciones).toHaveLength(1);
+      expect(evaluaciones[0].metodo).toBe("POST");
+      expect(evaluaciones[0].cuerpo).toMatchObject({
+        codigo: "FIC-1",
+        dominio: "civil",
+        rendimiento: "10",
+        materiales: [{ descripcion: "", unidad: "", cantidad: "", precio: "40.00" }],
+        equipos: [],
+        mano_obra: [],
+      });
+      await vi.advanceTimersByTimeAsync(0);
+      expect(screen.getByText("29.70")).toBeInTheDocument();
+      // Sin más ediciones no se vuelve a pedir.
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(de("/v1/composicion/evaluar")).toHaveLength(1);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   test("descarta la respuesta de una petición vieja", async () => {

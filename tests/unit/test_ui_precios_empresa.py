@@ -106,9 +106,7 @@ CON_ATIPICO = (1, 2, 4, 8, 16, 32, 64, 128, 256, 257)
 SIN_ATIPICO = (1, 2, 4, 8, 16, 32, 64, 128, 256, 512)
 
 
-def _caso_con_la_serie(
-    monkeypatch, tmp_path: Path, precios, bs_sin_tasa: bool = False
-) -> AppTest:
+def _caso_con_la_serie(monkeypatch, tmp_path: Path, precios, bs_sin_tasa: bool = False) -> AppTest:
     ruta = tmp_path / "caso.db"
     preparar_base(ruta)
     motor = crear_motor(f"sqlite:///{ruta.as_posix()}")
@@ -195,9 +193,7 @@ def test_sin_atipico_la_lista_de_la_empresa_no_advierte(monkeypatch, tmp_path):
 
 def test_la_lista_de_la_empresa_nombra_el_precio_en_bs_sin_tasa_que_omitio(monkeypatch, tmp_path):
     at = _pulsar_atipicos(_caso_con_la_serie(monkeypatch, tmp_path, CON_ATIPICO, bs_sin_tasa=True))
-    assert [i.value for i in at.info] == [
-        r"Precio en Bs sin tasa, omitido: Lista en Bs sin tasa"
-    ]
+    assert [i.value for i in at.info] == [r"Precio en Bs sin tasa, omitido: Lista en Bs sin tasa"]
     assert len(at.warning) == 1  # la serie de la memoria sigue dando su unico hallazgo
 
 

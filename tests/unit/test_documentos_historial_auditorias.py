@@ -16,8 +16,19 @@ GUION_NO_SEPARABLE = "‑"
 
 CODIGOS_HISTORIAL = ("UC-30", *(f"RF-{n}" for n in range(142, 147)), "RNF-28")
 COLUMNAS = (
-    "fecha_hora", "usuario", "tipo", "nombre_archivo", "sha256", "fecha_libro", "total_libro",
-    "total_silice", "errores", "advertencias", "informativos", "atipicos", "recortado",
+    "fecha_hora",
+    "usuario",
+    "tipo",
+    "nombre_archivo",
+    "sha256",
+    "fecha_libro",
+    "total_libro",
+    "total_silice",
+    "errores",
+    "advertencias",
+    "informativos",
+    "atipicos",
+    "recortado",
     "hallazgos",
 )
 

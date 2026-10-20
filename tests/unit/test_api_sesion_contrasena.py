@@ -222,9 +222,9 @@ def test_cambiar_la_contrasena_abre_una_ficha_normal_y_cierra_las_demas() -> Non
     for texto in (TEMPORAL, PROPIA, ficha, nueva):
         assert texto not in respuesta.text
     with sesion_de_instalacion() as sesion:
-        tipos = list(sesion.scalars(select(EventoAcceso.tipo).where(
-            EventoAcceso.login_intentado == "tomas"
-        )))
+        tipos = list(
+            sesion.scalars(select(EventoAcceso.tipo).where(EventoAcceso.login_intentado == "tomas"))
+        )
     assert "cambio de clave" in tipos
 
 
@@ -285,17 +285,20 @@ def test_un_cuerpo_invalido_da_422_sin_repetir_lo_enviado(cuerpo: dict) -> None:
 
 def test_sin_sesion_da_401_y_sin_csrf_u_origen_da_403() -> None:
     sin_sesion = cliente(app).post(
-        "/v1/sesion/contrasena", json={"actual": TEMPORAL, "nueva": PROPIA},
+        "/v1/sesion/contrasena",
+        json={"actual": TEMPORAL, "nueva": PROPIA},
         headers={"Origin": ORIGEN},
     )
     assert sin_sesion.status_code == 401
     navegador, ficha = _tomas_dentro()
     sin_csrf = navegador.post(
-        "/v1/sesion/contrasena", json={"actual": TEMPORAL, "nueva": PROPIA},
+        "/v1/sesion/contrasena",
+        json={"actual": TEMPORAL, "nueva": PROPIA},
         headers={"Origin": ORIGEN},
     )
     ajeno = navegador.post(
-        "/v1/sesion/contrasena", json={"actual": TEMPORAL, "nueva": PROPIA},
+        "/v1/sesion/contrasena",
+        json={"actual": TEMPORAL, "nueva": PROPIA},
         headers=protegida(ficha, "http://atacante.ejemplo"),
     )
     assert (sin_csrf.status_code, ajeno.status_code) == (403, 403)

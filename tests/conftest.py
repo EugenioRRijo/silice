@@ -27,6 +27,13 @@ os.environ["STREAMLIT_CLIENT_SHOW_ERROR_DETAILS"] = "full"
 os.environ["HF_HUB_OFFLINE"] = "1"
 os.environ.setdefault("HF_HUB_DISABLE_SYMLINKS_WARNING", "1")
 
+#: Piso del `default_timeout` de AppTest (T9). Streamlit trae 3 s; con el equipo cargado (OneDrive,
+#: antivirus, arranque en frio) una pagina con la barra superior puede agotar esos 3 s y la prueba
+#: fallar sin defecto real. Es un piso PREVENTIVO: en la sesion de T9 no se reprodujo el
+#: agotamiento. Las pruebas que ya declaran 60 o 120 no cambian; las que no declaran nada (o
+#: menos) suben aqui, en un solo lugar, sin tocarlas una a una.
+PISO_TIMEOUT_APPTEST = 60
+
 #: Destinos a los que una prueba puede conectarse (maestro §6.3, RV-17): el bucle local.
 DESTINOS_PERMITIDOS = frozenset({"127.0.0.1", "::1", "localhost"})
 
@@ -211,3 +218,21 @@ def _guardia_de_red() -> Iterator[None]:
     mensaje = veredicto_de_la_guardia(INTENTOS_BLOQUEADOS)
     if mensaje is not None:
         pytest.fail(mensaje, pytrace=False)
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _piso_de_timeout_de_apptest() -> Iterator[None]:
+    """Sube a `PISO_TIMEOUT_APPTEST` el `default_timeout` de todo `AppTest` de la sesion."""
+    from streamlit.testing.v1 import AppTest
+
+    original = AppTest.__init__
+
+    def con_piso(self, *args, **kwargs):
+        original(self, *args, **kwargs)
+        self.default_timeout = max(self.default_timeout, PISO_TIMEOUT_APPTEST)
+
+    AppTest.__init__ = con_piso  # type: ignore[method-assign]
+    try:
+        yield
+    finally:
+        AppTest.__init__ = original  # type: ignore[method-assign]

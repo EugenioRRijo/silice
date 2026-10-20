@@ -445,7 +445,7 @@ def _alertas_y_reproyeccion(resultado) -> None:
         f"- EAC (sistema): {control.texto_monto(ind.eac_sistema)} {resultado.instantanea.moneda}"
     )
     if rep.termino is None:
-        st.caption(rep.motivo_termino)
+        st.caption(control.con_tildes(rep.motivo_termino))
     equilibrio = resultado.equilibrio_proyectado
     if equilibrio is None:
         st.caption("Punto de equilibrio proyectado: no disponible (perspectiva precio o AC/EAC).")
@@ -499,7 +499,10 @@ def _elegir(sesion, catalogo: Catalogo, resultado, todas) -> None:
     _tabla(control.filas_de_opciones(todas), control.COLUMNAS_OPCIONES)
     for opcion in todas:
         if opcion.requisitos:
-            st.caption(f"{opcion.titulo}: requiere " + "; ".join(opcion.requisitos))
+            st.caption(
+                f"{control.con_tildes(opcion.titulo)}: requiere "
+                + "; ".join(control.con_tildes(r) for r in opcion.requisitos)
+            )
     aplican = [o for o in todas if o.aplica]
     if not aplican:
         st.info("Ninguna opcion aplica a este corte.")
@@ -508,7 +511,10 @@ def _elegir(sesion, catalogo: Catalogo, resultado, todas) -> None:
         st.info("Su cuenta puede ver las opciones, pero no elegir una (decide quien arma la obra).")
         return
     elegida = st.radio(
-        "Opcion a aplicar", aplican, format_func=lambda o: o.titulo, key="control_r_elegida"
+        "Opcion a aplicar",
+        aplican,
+        format_func=lambda o: control.con_tildes(o.titulo),
+        key="control_r_elegida",
     )
     declaracion = ""
     if elegida.requiere_declaracion:

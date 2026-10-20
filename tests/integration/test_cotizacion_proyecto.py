@@ -535,8 +535,14 @@ def test_cotizar_y_retirar_conservan_el_hallazgo_externo_y_el_informe_recargado_
     _cotizar(sesion, cemento, "20")
     sesion.commit()
     retirar_cotizacion(
-        sesion, NOMBRE_PROYECTO, "002", "003", Catalogo(sesion),
-        insumo=cemento, fuente="el proveedor no mantuvo el precio", responsable=RESPONSABLE,
+        sesion,
+        NOMBRE_PROYECTO,
+        "002",
+        "003",
+        Catalogo(sesion),
+        insumo=cemento,
+        fuente="el proveedor no mantuvo el precio",
+        responsable=RESPONSABLE,
     )
     sesion.commit()
     sesion.expunge_all()

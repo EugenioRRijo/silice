@@ -318,6 +318,8 @@ def test_revalorar_desde_la_pantalla_conserva_el_plan_guardado_de_la_version(mon
             )
     finally:
         motor.dispose()
+
+
 # --- un nombre inutilizable no se confunde con «sin ofertas» (revision de usabilidad) -----------
 
 

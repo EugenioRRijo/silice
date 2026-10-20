@@ -22,8 +22,9 @@ def un_punto(x: str):
 REFERENCIA = un_punto("1")
 
 
-@pytest.mark.parametrize("x,tipo", [("1.10", None), ("1.11", "desplazado"), ("2.00", "desplazado"),
-                                    ("2.01", "faltante")])
+@pytest.mark.parametrize(
+    "x,tipo", [("1.10", None), ("1.11", "desplazado"), ("2.00", "desplazado"), ("2.01", "faltante")]
+)
 def test_fronteras_de_tolerancia_y_de_radio(x: str, tipo: str | None) -> None:
     """0,10 m emparejado / 0,11 desplazado; 1,00 desplazado / 1,01 faltante y sobrante."""
     contraste = contrastar(un_punto(x), REFERENCIA)
@@ -40,23 +41,25 @@ def test_fronteras_de_tolerancia_y_de_radio(x: str, tipo: str | None) -> None:
 
 def test_un_elemento_borrado_entre_las_dos_fuentes_es_faltante() -> None:
     plano = espacio([ambiente("A", largo="10")], [punto_de_datos("P1", "1")])
-    levantamiento = espacio([ambiente("A", largo="10")],
-                            [punto_de_datos("P1", "1"), punto_de_datos("P2", "5")])
+    levantamiento = espacio(
+        [ambiente("A", largo="10")], [punto_de_datos("P1", "1"), punto_de_datos("P2", "5")]
+    )
     [d] = contrastar(plano, levantamiento).diferencias
-    assert (d.tipo, d.id_plano, d.id_referencia, d.clase) == (
-        "faltante", None, "P2", "datos/datos")
+    assert (d.tipo, d.id_plano, d.id_referencia, d.clase) == ("faltante", None, "P2", "datos/datos")
 
 
 def test_un_elemento_que_solo_esta_en_el_plano_es_sobrante() -> None:
-    plano = espacio([ambiente("A", largo="10")],
-                    [punto_de_datos("P1", "1"), punto_de_datos("P9", "7")])
+    plano = espacio(
+        [ambiente("A", largo="10")], [punto_de_datos("P1", "1"), punto_de_datos("P9", "7")]
+    )
     [d] = contrastar(plano, REFERENCIA).diferencias
     assert (d.tipo, d.id_plano, d.id_referencia) == ("sobrante", "P9", None)
 
 
 def test_el_emparejamiento_es_uno_a_uno_y_por_el_vecino_mas_cercano() -> None:
-    plano = espacio([ambiente("A", largo="10")],
-                    [punto_de_datos("N1", "1.05"), punto_de_datos("N2", "1.5")])
+    plano = espacio(
+        [ambiente("A", largo="10")], [punto_de_datos("N1", "1.05"), punto_de_datos("N2", "1.5")]
+    )
     levantamiento = espacio([ambiente("A", largo="10")], [punto_de_datos("L1", "1")])
     contraste = contrastar(plano, levantamiento)
     tipos = {(d.tipo, d.id_plano, d.id_referencia) for d in contraste.diferencias}
@@ -83,8 +86,9 @@ def test_el_resultado_no_depende_del_orden_de_las_filas() -> None:
     uno = contrastar(
         espacio([ambiente("A", largo="10")], a), espacio([ambiente("A", largo="10")], b)
     )
-    otro = contrastar(espacio([ambiente("A", largo="10")], a[::-1]),
-                      espacio([ambiente("A", largo="10")], b[::-1]))
+    otro = contrastar(
+        espacio([ambiente("A", largo="10")], a[::-1]), espacio([ambiente("A", largo="10")], b[::-1])
+    )
     assert uno == otro
 
 

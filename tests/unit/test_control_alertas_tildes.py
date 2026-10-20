@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import ast
 import re
+import time
 from decimal import Decimal
 from pathlib import Path
 from types import SimpleNamespace
@@ -332,6 +333,7 @@ def test_ninguna_frase_del_nucleo_queda_sin_catalogar() -> None:
             RAIZ / "core" / "budget" / "valor_ganado.py",
             RAIZ / "core" / "budget" / "equilibrio.py",
             RAIZ / "core" / "budget" / "recuperacion.py",
+            RAIZ / "core" / "budget" / "control.py",
         )
         for trozo in _fragmentos_de_texto(ruta)
         if not any(trozo.strip() in crudo for crudo in crudos)
@@ -350,3 +352,103 @@ def _calza(crudo: str, texto: str) -> bool:
     patron = re.escape(crudo)
     patron = re.sub(r"\\\{[a-z_]+\\\}", ".+", patron)
     return re.fullmatch(patron, texto) is not None
+
+
+# --- robustez: el texto del usuario puede ser hostil (largo, anidado, con separadores) ----------
+
+LIMITE_DE_SEGUNDOS = 1.0
+N = 100_000
+
+
+def _adversariales(n: int) -> dict[str, str]:
+    al3 = "el termino proyectado (dia "
+    al5 = (
+        "evaluar el reajuste (S1; LCP art. 133, a cotejar): el precio del corte desvia "
+        + " sobre un valor ganado de " * (n // 26)
+        + "\n!"
+    )
+    codigo = "X: el termino proyectado (dia " + "9) pasa 3 dia(s) habil(es) del plan base (dia " * (
+        n // 46
+    )
+    return {
+        "al3_sin_cierre": al3 + "1) pasa " * (n // 8) + "x",
+        "al3_separadores": al3 + "9) pasa 3 dia(s) habil(es) del plan base (dia " * (n // 46) + "X",
+        "al3_mezcla": al3 + ") pasa  dia(s) habil(es) del plan base (dia " * (n // 44) + "Z",
+        "al5": al5,
+        "al6": "la partida "
+        + "tiene trabajo planificado y ningun avance (detenida) " * (n // 52)
+        + "Q",
+        "no_aplica_via_codigo": f"no aplica ({codigo}: sin composicion de APU)",
+        "no_aplica_largo": "no aplica (" + "a: b; " * (n // 6) + ")",
+    }
+
+
+@pytest.mark.parametrize("n", [N, 1_900])
+@pytest.mark.parametrize(
+    "nombre", ["al3_sin_cierre", "al3_separadores", "al3_mezcla", "al5", "al6",
+               "no_aplica_via_codigo", "no_aplica_largo"],
+)  # fmt: skip
+def test_un_texto_adversarial_vuelve_intacto_en_menos_de_un_segundo(nombre: str, n: int) -> None:
+    texto = _adversariales(n)[nombre]
+    inicio = time.perf_counter()
+    salida = con_tildes(texto)
+    segundos = time.perf_counter() - inicio
+    print(f"{nombre} n={n}: {segundos:.3f} s")
+    if nombre == "no_aplica_via_codigo":
+        # El código del usuario queda igual y solo se corrige el motivo del núcleo.
+        assert salida == texto.replace("sin composicion de APU)", "sin composición de APU)")
+    else:
+        assert salida == texto
+    assert segundos < LIMITE_DE_SEGUNDOS
+
+
+@pytest.mark.parametrize("profundidad", [100, 2_000])
+def test_un_no_aplica_anidado_no_revienta_y_vuelve_intacto(profundidad: int) -> None:
+    texto = "no aplica (a: " * profundidad + "x" + ")" * profundidad
+    assert con_tildes(texto) == texto
+    via_codigo = f"no aplica ({texto}: sin rendimiento)"
+    assert con_tildes(via_codigo) == via_codigo
+
+
+def test_un_codigo_con_separadores_no_se_altera_fuera_de_su_motivo() -> None:
+    # Fuera de un «no aplica (...)» no es una frase del núcleo: intacto.
+    assert con_tildes("Z: sin composicion de APU; W") == "Z: sin composicion de APU; W"
+    # Dentro, solo el motivo del núcleo (a la derecha del último «: ») se corrige.
+    assert con_tildes("no aplica (A: B: sin composicion de APU)") == (
+        "no aplica (A: B: sin composición de APU)"
+    )
+    assert con_tildes("no aplica (Z: sin composicion de APU; W: sin rendimiento)") == (
+        "no aplica (Z: sin composición de APU; W: sin rendimiento)"
+    )
+    # Un motivo que no es del núcleo deja el item intacto, aunque parezca una plantilla.
+    texto = (
+        "no aplica (a: el termino proyectado (dia 1) pasa 2 dia(s) habil(es) del plan base (dia 3))"
+    )
+    assert con_tildes(texto) == texto
+    anidado = "no aplica (a: no aplica (b: sin composicion de APU))"
+    assert con_tildes(anidado) == anidado
+
+
+@pytest.mark.parametrize("partidas", [60, 100, 2_000])
+def test_un_desglose_largo_de_no_aplica_se_corrige_entero_y_rapido(partidas: int) -> None:
+    codigos = [f"P{i:04d}-dia" for i in range(partidas)]
+    emitido = "no aplica (" + "; ".join(f"{c}: sin composicion de APU" for c in codigos) + ")"
+    esperado = "no aplica (" + "; ".join(f"{c}: sin composición de APU" for c in codigos) + ")"
+    assert len(emitido) > 2_000
+    inicio = time.perf_counter()
+    salida = con_tildes(emitido)
+    segundos = time.perf_counter() - inicio
+    print(f"desglose de {partidas} partidas, {len(emitido)} caracteres: {segundos:.3f} s")
+    corregido = salida == esperado  # sin volcar un diff de miles de caracteres si falla
+    assert corregido, f"el desglose de {partidas} partidas no se corrigió entero"
+    assert segundos < LIMITE_DE_SEGUNDOS
+
+
+def test_un_no_aplica_anidado_de_20_000_niveles_es_rapido_e_intacto() -> None:
+    texto = "no aplica (a: " * 20_000 + "x" + ")" * 20_000
+    inicio = time.perf_counter()
+    salida = con_tildes(texto)
+    segundos = time.perf_counter() - inicio
+    print(f"anidado de 20000 niveles: {segundos:.3f} s")
+    assert salida == texto
+    assert segundos < LIMITE_DE_SEGUNDOS

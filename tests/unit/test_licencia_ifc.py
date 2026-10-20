@@ -13,8 +13,19 @@ import pytest
 
 RAIZ = Path(__file__).resolve().parents[2]
 DOCUMENTO = RAIZ / "docs" / "licencias_ifc.md"
-CARPETAS_DE_PRODUCTO = ("adapters", "api", "auditoria", "core", "migraciones", "ml", "operacion",
-                        "paquete", "scripts", "seguridad", "ui")
+CARPETAS_DE_PRODUCTO = (
+    "adapters",
+    "api",
+    "auditoria",
+    "core",
+    "migraciones",
+    "ml",
+    "operacion",
+    "paquete",
+    "scripts",
+    "seguridad",
+    "ui",
+)
 #: Lo que de `ifctester` el producto NO puede importar: arrastra `bcf-client` (GPLv3).
 PROHIBIDOS = ("bcf", "ifctester.reporter")
 
@@ -39,8 +50,11 @@ def _importados(ruta: Path) -> set[str]:
 def test_ifctester_solo_vive_en_el_extra_ifc_y_no_en_las_dependencias_base() -> None:
     proyecto = tomllib.loads((RAIZ / "pyproject.toml").read_text(encoding="utf-8"))["project"]
     assert not any(r.startswith("ifctester") for r in proyecto["dependencies"])
-    donde = [extra for extra, requisitos in _extras().items()
-             if any(r.startswith("ifctester") for r in requisitos)]
+    donde = [
+        extra
+        for extra, requisitos in _extras().items()
+        if any(r.startswith("ifctester") for r in requisitos)
+    ]
     assert donde == ["ifc"]
 
 
@@ -55,15 +69,21 @@ def test_el_producto_no_importa_bcf_ni_el_reporte_bcf_de_ifctester() -> None:
 
 
 def test_la_guardia_de_licencia_ve_las_formas_de_importar_bcf(tmp_path: Path) -> None:
-    for fuente in ("import bcf\n", "from bcf.v2.bcfxml import BcfXml\n",
-                   "from ifctester.reporter import Bcf\n", "from ifctester import reporter\n"):
+    for fuente in (
+        "import bcf\n",
+        "from bcf.v2.bcfxml import BcfXml\n",
+        "from ifctester.reporter import Bcf\n",
+        "from ifctester import reporter\n",
+    ):
         archivo = tmp_path / "x.py"
         archivo.write_text(fuente, encoding="utf-8")
-        assert any(n == p or n.startswith(p + ".") for n in _importados(archivo)
-                   for p in PROHIBIDOS), fuente
+        assert any(
+            n == p or n.startswith(p + ".") for n in _importados(archivo) for p in PROHIBIDOS
+        ), fuente
     archivo.write_text("from ifctester import ids\n", encoding="utf-8")
-    assert not any(n == p or n.startswith(p + ".") for n in _importados(archivo)
-                   for p in PROHIBIDOS)
+    assert not any(
+        n == p or n.startswith(p + ".") for n in _importados(archivo) for p in PROHIBIDOS
+    )
 
 
 def _licencia(distribucion: str) -> str:

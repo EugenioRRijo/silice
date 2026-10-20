@@ -41,8 +41,15 @@ MENSAJE_SIN_CLAVE = "Clave de API ausente, desconocida o revocada."
 MENSAJE_PERMISO = "Su cuenta no tiene permiso para esta acción."
 CLAVES_DE_LA_LISTA = {"id", "archivo", "fecha", "tipo", "errores", "advertencias"}
 CLAVES_DEL_DETALLE = CLAVES_DE_LA_LISTA | {
-    "usuario", "sha256", "fecha_libro", "total_libro", "total_silice", "informativos",
-    "atipicos", "recortado", "hallazgos",
+    "usuario",
+    "sha256",
+    "fecha_libro",
+    "total_libro",
+    "total_silice",
+    "informativos",
+    "atipicos",
+    "recortado",
+    "hallazgos",
 }
 CLAVES_DEL_HALLAZGO = {"regla", "hoja", "celda", "severidad", "mensaje"}
 SHA = "cd" * 32
@@ -104,8 +111,7 @@ def _sembrar(cuantas: int, *, tipo: str = "libro") -> None:
     with sesion_de_instalacion() as sesion:
         for n in range(1, cuantas + 1):
             hallazgos = [
-                HallazgoCompacto("L4", "APU-02", f"G{i}", "ERROR", f"error {i}")
-                for i in range(n)
+                HallazgoCompacto("L4", "APU-02", f"G{i}", "ERROR", f"error {i}") for i in range(n)
             ] + [HallazgoCompacto("L2", "PRESUPUESTO", "P6", "ADVERTENCIA", "advertencia")]
             registrar_auditoria(
                 sesion,
@@ -131,16 +137,28 @@ def test_la_lista_tiene_exactamente_las_claves_que_consume_el_inicio(http) -> No
     assert r.status_code == 200, r.text
     assert r.json() == [
         {
-            "id": 3, "archivo": "libro-3.xlsx", "fecha": "2026-10-18T10:03:00", "tipo": "libro",
-            "errores": 3, "advertencias": 1,
+            "id": 3,
+            "archivo": "libro-3.xlsx",
+            "fecha": "2026-10-18T10:03:00",
+            "tipo": "libro",
+            "errores": 3,
+            "advertencias": 1,
         },
         {
-            "id": 2, "archivo": "libro-2.xlsx", "fecha": "2026-10-18T10:02:00", "tipo": "libro",
-            "errores": 2, "advertencias": 1,
+            "id": 2,
+            "archivo": "libro-2.xlsx",
+            "fecha": "2026-10-18T10:02:00",
+            "tipo": "libro",
+            "errores": 2,
+            "advertencias": 1,
         },
         {
-            "id": 1, "archivo": "libro-1.xlsx", "fecha": "2026-10-18T10:01:00", "tipo": "libro",
-            "errores": 1, "advertencias": 1,
+            "id": 1,
+            "archivo": "libro-1.xlsx",
+            "fecha": "2026-10-18T10:01:00",
+            "tipo": "libro",
+            "errores": 1,
+            "advertencias": 1,
         },
     ]
     for fila in r.json():
@@ -188,22 +206,41 @@ def test_el_detalle_trae_el_resumen_y_los_hallazgos_compactos(http) -> None:
     cuerpo = r.json()
     assert set(cuerpo) == CLAVES_DEL_DETALLE
     assert {k: v for k, v in cuerpo.items() if k != "hallazgos"} == {
-        "id": 2, "archivo": "libro-2.xlsx", "fecha": "2026-10-18T10:02:00", "tipo": "libro",
-        "errores": 2, "advertencias": 1, "informativos": 0, "atipicos": 0,
-        "usuario": "Ana <ana>", "sha256": SHA, "fecha_libro": "2026-10-01",
-        "total_libro": "1586.61", "total_silice": "1500.00", "recortado": False,
+        "id": 2,
+        "archivo": "libro-2.xlsx",
+        "fecha": "2026-10-18T10:02:00",
+        "tipo": "libro",
+        "errores": 2,
+        "advertencias": 1,
+        "informativos": 0,
+        "atipicos": 0,
+        "usuario": "Ana <ana>",
+        "sha256": SHA,
+        "fecha_libro": "2026-10-01",
+        "total_libro": "1586.61",
+        "total_silice": "1500.00",
+        "recortado": False,
     }
     assert cuerpo["hallazgos"] == [
         {
-            "regla": "L4", "hoja": "APU-02", "celda": "G0", "severidad": "ERROR",
+            "regla": "L4",
+            "hoja": "APU-02",
+            "celda": "G0",
+            "severidad": "ERROR",
             "mensaje": "error 0",
         },
         {
-            "regla": "L4", "hoja": "APU-02", "celda": "G1", "severidad": "ERROR",
+            "regla": "L4",
+            "hoja": "APU-02",
+            "celda": "G1",
+            "severidad": "ERROR",
             "mensaje": "error 1",
         },
         {
-            "regla": "L2", "hoja": "PRESUPUESTO", "celda": "P6", "severidad": "ADVERTENCIA",
+            "regla": "L2",
+            "hoja": "PRESUPUESTO",
+            "celda": "P6",
+            "severidad": "ADVERTENCIA",
             "mensaje": "advertencia",
         },
     ]
@@ -215,7 +252,9 @@ def test_el_detalle_de_un_pdf_lleva_nulos_los_totales_y_la_fecha_del_libro(http)
     cuerpo = http.get(f"{RUTA}/1").json()
     assert cuerpo["tipo"] == "pdf"
     assert (cuerpo["fecha_libro"], cuerpo["total_libro"], cuerpo["total_silice"]) == (
-        None, None, None,
+        None,
+        None,
+        None,
     )
 
 
