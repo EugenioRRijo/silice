@@ -80,6 +80,7 @@ function ContenidoDePestana({
   alAusente,
   alAceptar,
   alRecargarBorrador,
+  alReabrir,
   filtro,
   alQuitarFiltro,
 }: {
@@ -88,6 +89,7 @@ function ContenidoDePestana({
   alAusente: () => void;
   alAceptar: (resumen: Resumen) => void;
   alRecargarBorrador: () => Promise<void>;
+  alReabrir: () => void;
   filtro: FiltroDeAuditoria | null;
   alQuitarFiltro: () => void;
 }) {
@@ -104,6 +106,7 @@ function ContenidoDePestana({
         alAusente={alAusente}
         alAceptar={alAceptar}
         alRecargarBorrador={alRecargarBorrador}
+        alReabrir={alReabrir}
       />
     );
   }
@@ -231,6 +234,7 @@ function HojaDeProyecto({ proyecto }: { proyecto: string }) {
                     alAusente={refrescar}
                     alAceptar={aplicar}
                     alRecargarBorrador={refrescar}
+                    alReabrir={reabrir}
                     filtro={filtro}
                     alQuitarFiltro={() => setFiltro(null)}
                   />

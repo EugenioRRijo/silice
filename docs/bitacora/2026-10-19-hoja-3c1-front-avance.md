@@ -61,3 +61,16 @@ se muestra con la frase de rechazo.
 - Si se sale de la página (no de la pestaña) con una edición en la pausa, la página descarta el borrador si el conteo viejo era
   cero y la edición se pierde. Borde estrecho (<400 ms), declarado.
 - La Hoja sigue sin activarse en el menú (`rutas.ts` no se tocó).
+
+## Cierre tras la aprobación del árbitro (ronda 1)
+
+- **409 distinguidos** (MENOR 2): solo el de `rev` viejo («El borrador cambió…») ofrece «Recargar el borrador»; «El caso cambió…» y
+  «Este borrador ya se guardó…» ofrecen «Abrir de nuevo» (recargar también fallaría). Prueba en rojo `9895d75` y luego la
+  implementación. Se distingue por el comienzo del `detalle`: el contrato no trae un código aparte; si el servidor cambia esos textos,
+  el 409 desconocido cae en «Abrir de nuevo».
+- **Deuda para 3c-3** (MENOR 3): si la persona sale de la página dentro de los 400 ms de una edición, el PUT del vaciado compite con el
+  DELETE del descarte al desmontar y, si gana el DELETE, la edición se pierde. Solución: retomar borradores o esperar el vaciado antes
+  del DELETE.
+- **Verificar en T11** (MENOR 6): `.silice-hoja__sin-evaluar { opacity: 0.6 }` rebaja el contraste del ícono de «Sin evaluar»; el texto
+  acompaña, pero hay que medir el contraste del ícono.
+- MENOR 5 anotado: los cambios de pruebas ajenas no deben ir en el commit de implementación.

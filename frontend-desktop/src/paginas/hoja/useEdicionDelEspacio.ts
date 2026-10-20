@@ -17,8 +17,8 @@ import type { FilaEditable, RespuestaDeEdicion, Resumen, TablasEditables, Ubicac
 export type EnvioDelEspacio = "quieto" | "pendiente" | "enviando";
 
 export interface ErrorDeEdicion {
-  // «rechazo»: el servidor no aceptó el texto (422); «conflicto»: el borrador cambió (409); «otro»: cualquier otro fallo.
-  tipo: "rechazo" | "conflicto" | "otro";
+  // «rechazo»: el servidor no aceptó el texto (422); «conflicto»: el `rev` es viejo (409), se recarga; «perdido»: el caso cambió o el borrador ya se guardó (409), solo se abre de nuevo; «otro»: cualquier otro fallo.
+  tipo: "rechazo" | "conflicto" | "perdido" | "otro";
   mensaje: string;
   ubicacion: UbicacionDeError | null;
 }
@@ -100,8 +100,9 @@ export function useEdicionDelEspacio({ id, vista, rev, alAceptar, alRelectura, a
       } else if (esBorradorAusente(e)) {
         llamadas.current.alAusente();
       } else if (e instanceof ErrorDeApi && e.estado === 409) {
-        m.bloqueado = true; // hasta recargar no se manda más: el rev que se vio ya no vale
-        setError({ tipo: "conflicto", mensaje: e.detalle, ubicacion: null });
+        m.bloqueado = true; // hasta recargar (o abrir de nuevo) no se manda más
+        // Solo el 409 de `rev` viejo se arregla recargando; «el caso cambió» y «ya se guardó» también fallarían al recargar.
+        setError({ tipo: e.detalle.startsWith("El borrador cambió") ? "conflicto" : "perdido", mensaje: e.detalle, ubicacion: null });
       } else if (e instanceof ErrorDeApi && e.estado === 422) {
         setError({ tipo: "rechazo", mensaje: mensajeDeRechazo(e.detalle), ubicacion: ubicarError(e.detalle, m.vista.tablas) });
       } else {

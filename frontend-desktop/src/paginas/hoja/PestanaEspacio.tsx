@@ -18,6 +18,8 @@ interface Props {
   // El servidor aceptó una edición: su resumen pasa a la barra de estado de la página.
   alAceptar: (resumen: Resumen) => void;
   alRecargarBorrador: () => Promise<void>;
+  // Descarta lo que se ve y abre otro borrador de la versión (cuando recargar no sirve).
+  alReabrir: () => void;
 }
 
 interface PropsContenido extends Props {
@@ -25,7 +27,7 @@ interface PropsContenido extends Props {
   alRelectura: () => void;
 }
 
-function ContenidoEspacio({ id, rev, vista, alAusente, alAceptar, alRecargarBorrador, alRelectura }: PropsContenido) {
+function ContenidoEspacio({ id, rev, vista, alAusente, alAceptar, alRecargarBorrador, alReabrir, alRelectura }: PropsContenido) {
   const { alExpirar } = useAplicacion();
   const idDelError = useId();
   const [irA, setIrA] = useState<(IrA & { tabla: string }) | null>(null);
@@ -47,16 +49,21 @@ function ContenidoEspacio({ id, rev, vista, alAusente, alAceptar, alRecargarBorr
       {error !== null && (
         <div id={idDelError} className="silice-hoja__aviso-edicion">
           <InlineNotification
-            kind={error.tipo === "conflicto" ? "warning" : "error"}
+            kind={error.tipo === "conflicto" || error.tipo === "perdido" ? "warning" : "error"}
             role="alert"
             lowContrast
             hideCloseButton
-            title={error.tipo === "conflicto" ? "El borrador cambió" : "No se aplicó el cambio"}
+            title={error.tipo === "conflicto" ? "El borrador cambió" : error.tipo === "perdido" ? "Este borrador ya no sirve" : "No se aplicó el cambio"}
             subtitle={error.mensaje}
           />
           {error.tipo === "conflicto" && (
             <Button kind="tertiary" size="sm" onClick={() => void edicion.recargar()}>
               Recargar el borrador
+            </Button>
+          )}
+          {error.tipo === "perdido" && (
+            <Button kind="tertiary" size="sm" onClick={alReabrir}>
+              Abrir de nuevo
             </Button>
           )}
           {ubicacion !== null && (
