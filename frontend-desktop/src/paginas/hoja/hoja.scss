@@ -23,3 +23,91 @@
   gap: 0.75rem;
   justify-items: start;
 }
+
+.silice-hoja__pestana {
+  display: grid;
+  gap: 1.5rem;
+  min-inline-size: 0;
+}
+
+.silice-hoja__seccion {
+  display: grid;
+  gap: 0.5rem;
+  min-inline-size: 0;
+}
+
+.silice-hoja__titulo-tabla {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+}
+
+// Una tabla ancha (13 columnas) se desplaza dentro de su región; la página no. La primera columna queda fija.
+.silice-hoja__desplazable {
+  min-inline-size: 0;
+  overflow-x: auto;
+
+  &:focus-visible {
+    outline: 2px solid var(--cds-focus, #0f62fe);
+    outline-offset: -2px;
+  }
+
+  th:first-child,
+  td:first-child {
+    position: sticky;
+    inset-inline-start: 0;
+    background: var(--cds-layer, #fff);
+  }
+}
+
+.silice-hoja__estado-fila {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-inline-size: 0;
+}
+
+.silice-hoja__estado-texto {
+  max-inline-size: 22rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// APU: lista · tabla · cierre. Bajo ~1200 px se apilan en vez de comprimirse.
+.silice-hoja__apu {
+  display: grid;
+  grid-template-columns: 14rem minmax(0, 1fr) 18rem;
+  gap: 1.5rem;
+  align-items: start;
+
+  @media (max-width: 75rem) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.silice-hoja__apu-lista {
+  display: grid;
+  gap: 0.5rem;
+  max-block-size: 32rem;
+  overflow-y: auto;
+}
+
+.silice-hoja__apu-centro,
+.silice-hoja__apu-cierre {
+  display: grid;
+  gap: 1rem;
+  min-inline-size: 0;
+}
+
+.silice-hoja__metricas {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin: 0;
+
+  dd {
+    margin: 0;
+    font-variant-numeric: tabular-nums;
+  }
+}

@@ -17,6 +17,10 @@ import {
   versionesOfrecidas,
 } from "./logica";
 import type { BorradorAbierto, VersionesRespuesta } from "./logica";
+import { PestanaApu } from "./PestanaApu";
+import { PestanaEspacio } from "./PestanaEspacio";
+import { PestanaPlan } from "./PestanaPlan";
+import { PestanaPresupuesto } from "./PestanaPresupuesto";
 import { useBorrador } from "./useBorrador";
 import "./hoja.scss";
 
@@ -39,6 +43,28 @@ function EstadoDelBorrador({ borrador }: { borrador: BorradorAbierto }) {
   );
 }
 
+// Solo se monta la pestaña activa y solo cuando el borrador está abierto: así solo se pide su vista.
+function ContenidoDePestana({
+  indice,
+  nombre,
+  borrador,
+  alAusente,
+}: {
+  indice: number;
+  nombre: string;
+  borrador: BorradorAbierto | null;
+  alAusente: () => void;
+}) {
+  if (borrador === null) return null;
+  const llave = `${borrador.id}-${borrador.resumen.rev}`;
+  const moneda = borrador.resumen.moneda;
+  if (indice === 0) return <PestanaEspacio key={llave} id={borrador.id} alAusente={alAusente} />;
+  if (indice === 1) return <PestanaApu key={llave} id={borrador.id} moneda={moneda} alAusente={alAusente} />;
+  if (indice === 2) return <PestanaPresupuesto key={llave} id={borrador.id} alAusente={alAusente} />;
+  if (indice === 3) return <PestanaPlan key={llave} id={borrador.id} alAusente={alAusente} />;
+  return <p className="cds--type-body-compact-01">La sección «{nombre}» llega en la siguiente entrega.</p>;
+}
+
 function HojaDeProyecto({ proyecto }: { proyecto: string }) {
   const { alExpirar } = useAplicacion();
   const versiones = useCarga<VersionesRespuesta>(rutaDeVersiones(proyecto), alExpirar);
@@ -51,6 +77,7 @@ function HojaDeProyecto({ proyecto }: { proyecto: string }) {
     datos === null ? undefined : ofrecidas.some((v) => v.codigo === delProyecto) ? delProyecto : (datos.por_omision ?? null);
 
   const { estado, refrescar, reabrir } = useBorrador(proyecto, codigo, alExpirar);
+  const [pestana, setPestana] = useState(0);
 
   useEffect(() => {
     const alVolver = () => {
@@ -107,16 +134,23 @@ function HojaDeProyecto({ proyecto }: { proyecto: string }) {
         </>
       )}
 
-      <Tabs>
+      <Tabs selectedIndex={pestana} onChange={({ selectedIndex }) => setPestana(selectedIndex)}>
         <TabList aria-label="Secciones de la hoja">
           {PESTANAS.map((p) => (
             <Tab key={p}>{p}</Tab>
           ))}
         </TabList>
         <TabPanels>
-          {PESTANAS.map((p) => (
+          {PESTANAS.map((p, i) => (
             <TabPanel key={p}>
-              <p className="cds--type-body-compact-01">La sección «{p}» llega en la siguiente entrega.</p>
+              {i === pestana && (
+                <ContenidoDePestana
+                  indice={i}
+                  nombre={p}
+                  borrador={estado.estado === "listo" ? estado.borrador : null}
+                  alAusente={refrescar}
+                />
+              )}
             </TabPanel>
           ))}
         </TabPanels>

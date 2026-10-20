@@ -227,7 +227,7 @@ describe("Hoja del proyecto: Espacio, APU, Presupuesto y Plan (3b-2)", () => {
     servidor();
     montar();
     await irA("APU");
-    const lista = await screen.findByRole("radiogroup", { name: "Partidas" });
+    const lista = await screen.findByRole("group", { name: "Partidas" });
     const radios = within(lista).getAllByRole("radio");
     expect(radios).toHaveLength(2);
     expect(radios[1]).toBeChecked();
@@ -260,7 +260,7 @@ describe("Hoja del proyecto: Espacio, APU, Presupuesto y Plan (3b-2)", () => {
       "+ Utilidad",
       "= Precio unitario",
     ]);
-    expect(within(filas[7]!).getByText("13,20")).toBeInTheDocument();
+    expect(within(filas[7]!).getByText("13,20 USD")).toBeInTheDocument();
     expect(within(filas[7]!).getByTitle("13.198738025")).toBeInTheDocument();
     expect(within(filas[2]!).getByText("FCAS 6 y bono 5.81, entre el rendimiento")).toBeInTheDocument();
   });
@@ -277,13 +277,13 @@ describe("Hoja del proyecto: Espacio, APU, Presupuesto y Plan (3b-2)", () => {
     servidor();
     montar();
     await irA("APU");
-    await screen.findByRole("radiogroup", { name: "Partidas" });
+    await screen.findByRole("group", { name: "Partidas" });
     await userEvent.type(screen.getByRole("searchbox", { name: "Buscar partida" }), "pic");
     await waitFor(() => expect(vistasPedidas().some((u) => u.includes("/vistas/apu?buscar=pic"))).toBe(true), {
       timeout: 3000,
     });
     // la lista anterior sigue a la vista mientras llega la nueva
-    expect(screen.getByRole("radiogroup", { name: "Partidas" })).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "Partidas" })).toBeInTheDocument();
   });
 
   test("3b-F7: sin coincidencias avisa que se muestran todas", async () => {
@@ -297,7 +297,7 @@ describe("Hoja del proyecto: Espacio, APU, Presupuesto y Plan (3b-2)", () => {
     servidor();
     montar();
     await irA("APU");
-    const lista = await screen.findByRole("radiogroup", { name: "Partidas" });
+    const lista = await screen.findByRole("group", { name: "Partidas" });
     await userEvent.click(within(lista).getByLabelText(/^AF-CODO-1\/2/));
     await waitFor(() => expect(vistasPedidas().some((u) => u.includes("partida=AF-CODO-1%2F2"))).toBe(true));
   });
@@ -316,7 +316,7 @@ describe("Hoja del proyecto: Espacio, APU, Presupuesto y Plan (3b-2)", () => {
     montar();
     await irA("APU");
     expect(await screen.findByText(mensaje)).toBeInTheDocument();
-    expect(screen.queryByRole("radiogroup")).toBeNull();
+    expect(screen.queryByRole("radio")).toBeNull();
   });
 
   // --- Presupuesto ----------------------------------------------------------------------------

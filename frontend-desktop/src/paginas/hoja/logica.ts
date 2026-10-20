@@ -101,3 +101,161 @@ export function textoDeCambios(cambios: number): string {
 export function esBorradorAusente(error: unknown): boolean {
   return error instanceof ErrorDeApi && error.estado === 404 && error.detalle.startsWith("Ese borrador ya no está");
 }
+
+// --- vistas de las pestañas (rebanada 3b-2): lo que contesta `GET /v1/hoja/borradores/{id}/vistas/{nombre}` ---
+
+export type NombreDeVista = "espacio" | "presupuesto" | "apu" | "plan";
+
+export function rutaDeVista(
+  id: string,
+  nombre: NombreDeVista,
+  parametros: Record<string, string | undefined> = {},
+): string {
+  const consulta = new URLSearchParams();
+  for (const [clave, valor] of Object.entries(parametros)) if (valor) consulta.set(clave, valor);
+  const texto = consulta.toString();
+  return `/v1/hoja/borradores/${id}/vistas/${nombre}${texto ? `?${texto}` : ""}`;
+}
+
+export interface EstadoFila {
+  // Peor severidad de la fila (CRITICO, ERROR, ADVERTENCIA, INFO) o null si ningún hallazgo la toca.
+  severidad: string | null;
+  texto: string;
+}
+
+export interface OpcionLista {
+  valor: string;
+  rotulo: string;
+}
+
+export interface ColumnaTabla {
+  clave: string;
+  rotulo: string;
+  lista: OpcionLista[] | null;
+}
+
+export interface TablaEspacio {
+  clave: string;
+  rotulo: string;
+  columnas: ColumnaTabla[];
+  con_estado: boolean;
+}
+
+export interface CantidadDerivada {
+  partida: string;
+  descripcion: string;
+  unidad: string;
+  cantidad: Monto;
+  origen: string;
+}
+
+export interface VistaEspacio {
+  ayuda: string;
+  tablas: TablaEspacio[];
+  filas: Record<string, Array<Record<string, string>>>;
+  estado: Record<string, EstadoFila>;
+  derivadas: CantidadDerivada[];
+  total: Monto;
+  moneda: string;
+  pendientes: number;
+  vacio_mensaje: string | null;
+}
+
+export interface FilaPresupuesto {
+  clave: string;
+  partida: string;
+  descripcion: string;
+  unidad: string;
+  cantidad: string;
+  cantidad_calculada: string;
+  escrita: boolean;
+  pu: Monto | null;
+  total: Monto | null;
+  estado: EstadoFila;
+}
+
+export interface VistaPresupuesto {
+  filas: FilaPresupuesto[];
+  total: Monto;
+  moneda: string;
+  vacio_mensaje: string | null;
+}
+
+export interface PartidaDeLista {
+  codigo: string;
+  descripcion: string;
+}
+
+export interface GrupoApu {
+  clave: string;
+  rotulo: string;
+  columnas: Array<{ clave: string; rotulo: string }>;
+  filas: Array<Record<string, string>>;
+  subtotal: Monto;
+}
+
+export interface DetalleApu {
+  codigo: string;
+  descripcion: string;
+  unidad: string;
+  rendimiento: string;
+  grupos: GrupoApu[];
+  cierre: Array<{ concepto: string; monto: Monto; nota: string }>;
+  metricas: { materiales: Monto; equipos: Monto; mano_obra: Monto; precio_unitario: Monto };
+  estados: string[];
+  solo_lectura_insumos: boolean;
+}
+
+export interface VistaApu {
+  partidas: PartidaDeLista[];
+  sin_coincidencias: boolean;
+  seleccionada: string | null;
+  detalle: DetalleApu | null;
+  vacio_mensaje: string | null;
+}
+
+export interface VistaPlan {
+  hay_plan: boolean;
+  etiquetas: string[];
+  filas: Array<{ partida: string; valores: Record<string, string> }>;
+  curva: Array<{ periodo: string; monto: Monto; acumulado: Monto; porcentaje: Monto }>;
+  moneda: string;
+  mensaje: string | null;
+}
+
+// Prefijo con que el servidor nombra el Estado de cada fila editable (`esp_puntos:P1`).
+export const PREFIJO_DE_ESTADO: Record<string, string> = {
+  ambientes: "esp_ambientes",
+  fuentes: "esp_fuentes",
+  puntos: "esp_puntos",
+};
+
+export function textoDeFilas(n: number): string {
+  return n === 1 ? "1 fila" : `${n} filas`;
+}
+
+// El valor de una celda como lo ve la persona: el rótulo de su lista cerrada, o el texto tal cual.
+export function celdaVisible(columna: ColumnaTabla, valor: string): string {
+  if (columna.lista === null) return valor;
+  return columna.lista.find((o) => o.valor === valor)?.rotulo ?? valor;
+}
+
+// Filas de una tabla del espacio listas para `TablaDensa`: sus columnas llevan prefijo (`c_id`) porque `id` es de la fila.
+export function filasDeTabla(
+  tabla: TablaEspacio,
+  filas: Array<Record<string, string>>,
+  estado: Record<string, EstadoFila>,
+): Array<{ id: string } & Record<string, string>> {
+  const prefijo = PREFIJO_DE_ESTADO[tabla.clave];
+  return filas.map((fila, i) => {
+    const salida: { id: string } & Record<string, string> = { id: `${tabla.clave}-${i}` };
+    for (const c of tabla.columnas) salida[`c_${c.clave}`] = celdaVisible(c, fila[c.clave] ?? "");
+    const e = prefijo ? estado[`${prefijo}:${fila.id ?? ""}`] : undefined;
+    salida.estado_severidad = e?.severidad ?? "";
+    salida.estado_texto = e?.texto ?? "";
+    return salida;
+  });
+}
+
+export const LIMITE_SIN_PAGINAR = 100;
+export const FILAS_POR_PAGINA = 50;
