@@ -367,13 +367,16 @@ const NOMBRE_DE_PREFIJO: Record<string, string> = {
   esp_puntos: "Punto",
   esp_tramos: "Tramo",
   esp_segmentos: "Segmento",
+  esp_circuitos: "Circuito",
+  esp_recorridos: "Recorrido",
+  esp_sobrescrituras: "Sobrescritura",
 };
 
 // Un origen suelto («esp_puntos:P1»; el de un segmento lleva además «|coordenadas», que no se muestran).
 function rotuloDeFila(texto: string): string {
-  const m = /^(esp_[a-z]+):([^|]+)/.exec(texto);
-  const nombre = m ? NOMBRE_DE_PREFIJO[m[1]!] : undefined;
-  return m && nombre ? `${nombre} ${m[2]}` : texto;
+  const m = /^(esp_[a-z_]+):([^|]+)/.exec(texto);
+  // Un prefijo esp_* sin nombre nunca llega a pantalla como código: cae a «Origen X».
+  return m ? `${NOMBRE_DE_PREFIJO[m[1]!] ?? "Origen"} ${m[2]}` : texto;
 }
 
 // La clave de un renglón o de un registro: «partida|origen;origen;…#2». Los orígenes van unidos por «;»; los segmentos
@@ -381,7 +384,8 @@ function rotuloDeFila(texto: string): string {
 function partirClave(clave: string): { partida: string | null; origenes: string[]; mas: string; repetido: string } {
   const rep = /^(.*)#(\d+)$/.exec(clave);
   const base = rep ? rep[1]! : clave;
-  const barra = base.indexOf("|");
+  // Una clave sin partida que empieza por un origen de segmento («esp_segmentos:F1|coordenadas») no tiene partida.
+  const barra = /^esp_[a-z_]+:/.test(base) ? -1 : base.indexOf("|");
   const resto = barra < 0 ? base : base.slice(barra + 1);
   const origenes: string[] = [];
   let mas = "";
@@ -414,10 +418,12 @@ export function clavesDeAuditoria(clave: string): string[] {
   return claves;
 }
 
-// Como la clásica (`estado_de_items`), los hallazgos se atribuyen por el origen o por la partida del renglón.
+// Como la clásica (`estado_de_items`), los hallazgos se atribuyen por el origen o por la partida del renglón (un PENDIENTE solo al renglón que lo cita).
 export function hallazgosDeOrigen(hallazgos: HallazgoInformeRespuesta[], claves: string[]): HallazgoInformeRespuesta[] {
   return hallazgos.filter(
-    (h) => h.origen.some((o) => claves.includes(o)) || (h.partida !== null && claves.includes(h.partida)),
+    (h) =>
+      h.origen.some((o) => claves.includes(o)) ||
+      (h.regla !== "PENDIENTE" && h.partida !== null && claves.includes(h.partida)),
   );
 }
 

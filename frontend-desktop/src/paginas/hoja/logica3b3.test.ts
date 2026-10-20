@@ -144,7 +144,7 @@ describe("lógica de la hoja, 3b-3", () => {
       if (/^hoja.*\.py$/.test(e)) archivos.push(resolve(raiz, "aplicacion", e));
     }
     const barridos = new Set<string>();
-    for (const a of archivos) for (const m of readFileSync(a, "utf-8").matchAll(/(esp_[a-z_]+):/g)) barridos.add(m[1]!);
+    for (const a of archivos) for (const m of readFileSync(a, "utf-8").matchAll(/\b(esp_[a-z_]+):/g)) barridos.add(m[1]!);
     // Lista escrita a mano (los nombres de las tablas esp_* del espacio) contrastada con el barrido.
     const conocidos = [
       "esp_ambientes",
