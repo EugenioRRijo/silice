@@ -384,3 +384,181 @@ def vista_presupuesto(vivo: BorradorVivo) -> VistaPresupuesto:
         moneda=presupuesto.moneda,
         vacio_mensaje=None if filas else SIN_RENGLONES,
     )
+
+
+# --- APU (R7) -----------------------------------------------------------------------------------
+
+SIN_PARTIDAS = "Todavía no hay partidas valoradas: derive cantidades en Espacio y metrajes."
+
+#: Los tres rubros de un APU y las columnas de cada uno (P:1490-1494, `_GRUPOS_APU`).
+_GRUPOS_APU: tuple[tuple[str, str, tuple[tuple[str, str], ...]], ...] = (
+    (
+        "materiales",
+        "Materiales",
+        (
+            ("descripcion", "Descripción"),
+            ("unidad", "Unidad"),
+            ("cantidad", "Cantidad"),
+            ("precio", "Precio"),
+        ),
+    ),
+    (
+        "equipos",
+        "Equipos",
+        (
+            ("descripcion", "Descripción"),
+            ("cantidad", "Cantidad"),
+            ("precio", "Precio"),
+            ("depreciacion", "Depreciación"),
+        ),
+    ),
+    (
+        "mano de obra",
+        "Mano de obra",
+        (
+            ("descripcion", "Descripción"),
+            ("cantidad", "Cantidad"),
+            ("sueldo", "Sueldo"),
+            ("modalidad", "Modalidad"),
+        ),
+    ),
+)
+
+
+@dataclass(frozen=True, slots=True)
+class PartidaDeLista:
+    codigo: str
+    descripcion: str
+
+
+@dataclass(frozen=True, slots=True)
+class ColumnaDeApu:
+    clave: str
+    rotulo: str
+
+
+@dataclass(frozen=True, slots=True)
+class GrupoDeApu:
+    """Un rubro del APU: sus lineas como texto (la cantidad es lo unico que se edita en 3c) y el
+    subtotal por unidad de partida."""
+
+    clave: str
+    rotulo: str
+    columnas: tuple[ColumnaDeApu, ...]
+    filas: list[dict[str, str]]
+    subtotal: Monto
+
+
+@dataclass(frozen=True, slots=True)
+class FilaDeCierre:
+    concepto: str
+    monto: Monto
+    nota: str
+
+
+@dataclass(frozen=True, slots=True)
+class MetricasDeApu:
+    materiales: Monto
+    equipos: Monto
+    mano_obra: Monto
+    precio_unitario: Monto
+
+
+@dataclass(frozen=True, slots=True)
+class DetalleDeApu:
+    codigo: str
+    descripcion: str
+    unidad: str
+    rendimiento: str
+    grupos: tuple[GrupoDeApu, ...]
+    cierre: tuple[FilaDeCierre, ...]
+    metricas: MetricasDeApu
+    estados: tuple[str, ...]
+    solo_lectura_insumos: bool
+
+
+@dataclass(frozen=True, slots=True)
+class VistaApu:
+    partidas: tuple[PartidaDeLista, ...]
+    sin_coincidencias: bool
+    seleccionada: str | None
+    detalle: DetalleDeApu | None
+    vacio_mensaje: str | None
+
+
+def _detalle_de_apu(vivo: BorradorVivo, resultado: hoja.ResultadoHoja, codigo: str) -> DetalleDeApu:
+    borrador = vivo.borrador
+    composicion = borrador.composiciones[codigo]
+    presupuesto = resultado.elaboracion.presupuesto
+    r = next(p.resultado for p in presupuesto.partidas if p.item.codigo_partida == codigo)
+    tablas = hoja.filas_de_apu(composicion)
+    subtotales = (r.materiales, r.equipos, r.mano_obra)
+    # montos del cierre, en el orden de `hoja.filas_de_cierre` (la cascada de `calcular_apu`)
+    montos = (
+        r.materiales,
+        r.equipos,
+        r.mano_obra,
+        r.costo_directo,
+        r.con_administracion - r.costo_directo,
+        r.con_administracion,
+        r.precio_unitario - r.con_administracion,
+        r.precio_unitario,
+    )
+    cierre = hoja.filas_de_cierre(r, borrador.parametros, presupuesto.moneda)
+    return DetalleDeApu(
+        codigo=codigo,
+        descripcion=composicion.descripcion,
+        unidad=composicion.unidad,
+        rendimiento=hoja.texto_numero(composicion.rendimiento),
+        grupos=tuple(
+            GrupoDeApu(
+                clave=clave,
+                rotulo=rotulo,
+                columnas=tuple(ColumnaDeApu(c, t) for c, t in columnas),
+                filas=filas,
+                subtotal=monto(subtotal),
+            )
+            for (clave, rotulo, columnas), filas, subtotal in zip(
+                _GRUPOS_APU, tablas, subtotales, strict=True
+            )
+        ),
+        cierre=tuple(
+            FilaDeCierre(f["Concepto"], monto(valor), f["Nota"])
+            for f, valor in zip(cierre, montos, strict=True)
+        ),
+        metricas=MetricasDeApu(*(monto(v) for v in (*subtotales, r.precio_unitario))),
+        estados=tuple(
+            f"Estado de {fila['clave']}: {fila['estado']}"
+            for fila in hoja.filas_del_presupuesto(resultado)
+            if fila["partida"] == codigo and fila["estado"] != hoja.TEXTO_OK
+        ),
+        solo_lectura_insumos=vivo.abierta is None,
+    )
+
+
+def vista_apu(
+    vivo: BorradorVivo, partida: str | None = None, buscar: str | None = None
+) -> VistaApu:
+    """La pestana APU en lectura (P:1488-1738): la lista de partidas valoradas (con su buscador),
+    la seleccionada y su detalle: tres rubros con subtotal, cierre paso a paso y metricas.
+
+    Sin coincidencias en el buscador se muestran todas (P:1599); una `partida` que no esta entre
+    las visibles se ignora y se toma la primera (el radio de la clasica nunca queda fuera de la
+    lista, P:1604)."""
+    resultado, _ = calculo(vivo)
+    valoradas = resultado.elaboracion.presupuesto.partidas
+    codigos = list(dict.fromkeys(p.item.codigo_partida for p in valoradas))
+    if not codigos:
+        return VistaApu((), False, None, None, SIN_PARTIDAS)
+    descripciones = {p.item.codigo_partida: p.apu.descripcion for p in valoradas}
+    visibles = hoja.filtrar_partidas(codigos, descripciones, buscar or "")
+    sin_coincidencias = not visibles
+    visibles = visibles or codigos
+    seleccionada = partida if partida in visibles else visibles[0]
+    return VistaApu(
+        partidas=tuple(PartidaDeLista(c, descripciones.get(c, "")) for c in visibles),
+        sin_coincidencias=sin_coincidencias,
+        seleccionada=seleccionada,
+        detalle=_detalle_de_apu(vivo, resultado, seleccionada),
+        vacio_mensaje=None,
+    )

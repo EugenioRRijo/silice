@@ -38,10 +38,12 @@ from api.esquemas_hoja import (
     InstantaneaHojaRespuesta,
     VersionesHojaRespuesta,
     VersionHojaRespuesta,
+    VistaApuRespuesta,
     VistaEspacioRespuesta,
     VistaPresupuestoRespuesta,
     base_a_respuesta,
     resumen_a_respuesta,
+    vista_apu_a_respuesta,
     vista_espacio_a_respuesta,
     vista_presupuesto_a_respuesta,
 )
@@ -243,3 +245,16 @@ def vista_presupuesto(
 ) -> VistaPresupuestoRespuesta:
     """R6: Presupuesto en lectura (renglones, cantidad calculada y escrita, PU, total, Estado)."""
     return vista_presupuesto_a_respuesta(hoja_vista.vista_presupuesto(_vivo(request, activa, id)))
+
+
+@router.get("/borradores/{id}/vistas/apu", response_model=VistaApuRespuesta)
+def vista_apu(
+    id: IdDeBorrador,
+    request: Request,
+    activa: CuentaDeLaHoja,
+    partida: Annotated[str | None, Query(max_length=500)] = None,
+    buscar: Annotated[str | None, Query(max_length=500)] = None,
+) -> VistaApuRespuesta:
+    """R7: APU en lectura (lista con buscador, tres rubros, cierre). La búsqueda la hace el
+    servidor; sin coincidencias se devuelven todas las partidas."""
+    return vista_apu_a_respuesta(hoja_vista.vista_apu(_vivo(request, activa, id), partida, buscar))

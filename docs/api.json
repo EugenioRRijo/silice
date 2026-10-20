@@ -5489,6 +5489,86 @@
         }
       }
     },
+    "/v1/hoja/borradores/{id}/vistas/apu": {
+      "get": {
+        "tags": [
+          "hoja"
+        ],
+        "summary": "Vista Apu",
+        "description": "R7: APU en lectura (lista con buscador, tres rubros, cierre). La búsqueda la hace el\nservidor; sin coincidencias se devuelven todas las partidas.",
+        "operationId": "vista_apu_v1_hoja_borradores__id__vistas_apu_get",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 16,
+              "maxLength": 64,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "title": "Id"
+            }
+          },
+          {
+            "name": "partida",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 500
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Partida"
+            }
+          },
+          {
+            "name": "buscar",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 500
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Buscar"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VistaApuRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/produccion/materiales": {
       "get": {
         "tags": [
@@ -7934,6 +8014,24 @@
         ],
         "title": "ClaveRespuesta"
       },
+      "ColumnaApuRespuesta": {
+        "properties": {
+          "clave": {
+            "type": "string",
+            "title": "Clave"
+          },
+          "rotulo": {
+            "type": "string",
+            "title": "Rotulo"
+          }
+        },
+        "type": "object",
+        "required": [
+          "clave",
+          "rotulo"
+        ],
+        "title": "ColumnaApuRespuesta"
+      },
       "ColumnaTablaRespuesta": {
         "properties": {
           "clave": {
@@ -8548,6 +8646,67 @@
           "detalle"
         ],
         "title": "Detalle"
+      },
+      "DetalleApuRespuesta": {
+        "properties": {
+          "codigo": {
+            "type": "string",
+            "title": "Codigo"
+          },
+          "descripcion": {
+            "type": "string",
+            "title": "Descripcion"
+          },
+          "unidad": {
+            "type": "string",
+            "title": "Unidad"
+          },
+          "rendimiento": {
+            "type": "string",
+            "title": "Rendimiento"
+          },
+          "grupos": {
+            "items": {
+              "$ref": "#/components/schemas/GrupoApuRespuesta"
+            },
+            "type": "array",
+            "title": "Grupos"
+          },
+          "cierre": {
+            "items": {
+              "$ref": "#/components/schemas/FilaCierreRespuesta"
+            },
+            "type": "array",
+            "title": "Cierre"
+          },
+          "metricas": {
+            "$ref": "#/components/schemas/MetricasApuRespuesta"
+          },
+          "estados": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Estados"
+          },
+          "solo_lectura_insumos": {
+            "type": "boolean",
+            "title": "Solo Lectura Insumos"
+          }
+        },
+        "type": "object",
+        "required": [
+          "codigo",
+          "descripcion",
+          "unidad",
+          "rendimiento",
+          "grupos",
+          "cierre",
+          "metricas",
+          "estados",
+          "solo_lectura_insumos"
+        ],
+        "title": "DetalleApuRespuesta"
       },
       "DictamenAnterior": {
         "properties": {
@@ -9609,6 +9768,28 @@
         ],
         "title": "ExistenciaRespuesta"
       },
+      "FilaCierreRespuesta": {
+        "properties": {
+          "concepto": {
+            "type": "string",
+            "title": "Concepto"
+          },
+          "monto": {
+            "$ref": "#/components/schemas/MontoHojaRespuesta"
+          },
+          "nota": {
+            "type": "string",
+            "title": "Nota"
+          }
+        },
+        "type": "object",
+        "required": [
+          "concepto",
+          "monto",
+          "nota"
+        ],
+        "title": "FilaCierreRespuesta"
+      },
       "FilaComparativoRespuesta": {
         "properties": {
           "codigo_partida": {
@@ -9873,6 +10054,47 @@
           "contrasena"
         ],
         "title": "GenerarClave"
+      },
+      "GrupoApuRespuesta": {
+        "properties": {
+          "clave": {
+            "type": "string",
+            "title": "Clave"
+          },
+          "rotulo": {
+            "type": "string",
+            "title": "Rotulo"
+          },
+          "columnas": {
+            "items": {
+              "$ref": "#/components/schemas/ColumnaApuRespuesta"
+            },
+            "type": "array",
+            "title": "Columnas"
+          },
+          "filas": {
+            "items": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Filas"
+          },
+          "subtotal": {
+            "$ref": "#/components/schemas/MontoHojaRespuesta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "clave",
+          "rotulo",
+          "columnas",
+          "filas",
+          "subtotal"
+        ],
+        "title": "GrupoApuRespuesta"
       },
       "GuardarParametros": {
         "properties": {
@@ -11372,6 +11594,30 @@
         ],
         "title": "Metodo"
       },
+      "MetricasApuRespuesta": {
+        "properties": {
+          "materiales": {
+            "$ref": "#/components/schemas/MontoHojaRespuesta"
+          },
+          "equipos": {
+            "$ref": "#/components/schemas/MontoHojaRespuesta"
+          },
+          "mano_obra": {
+            "$ref": "#/components/schemas/MontoHojaRespuesta"
+          },
+          "precio_unitario": {
+            "$ref": "#/components/schemas/MontoHojaRespuesta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "materiales",
+          "equipos",
+          "mano_obra",
+          "precio_unitario"
+        ],
+        "title": "MetricasApuRespuesta"
+      },
       "ModuloRespuesta": {
         "properties": {
           "nombre": {
@@ -11736,6 +11982,24 @@
           "desvio_total_texto"
         ],
         "title": "PartidaDiferente"
+      },
+      "PartidaListaRespuesta": {
+        "properties": {
+          "codigo": {
+            "type": "string",
+            "title": "Codigo"
+          },
+          "descripcion": {
+            "type": "string",
+            "title": "Descripcion"
+          }
+        },
+        "type": "object",
+        "required": [
+          "codigo",
+          "descripcion"
+        ],
+        "title": "PartidaListaRespuesta"
       },
       "PartidaPresupuestadaRespuesta": {
         "properties": {
@@ -14889,6 +15153,62 @@
           "versiones"
         ],
         "title": "VersionesHojaRespuesta"
+      },
+      "VistaApuRespuesta": {
+        "properties": {
+          "partidas": {
+            "items": {
+              "$ref": "#/components/schemas/PartidaListaRespuesta"
+            },
+            "type": "array",
+            "title": "Partidas"
+          },
+          "sin_coincidencias": {
+            "type": "boolean",
+            "title": "Sin Coincidencias"
+          },
+          "seleccionada": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seleccionada"
+          },
+          "detalle": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DetalleApuRespuesta"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "vacio_mensaje": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vacio Mensaje"
+          }
+        },
+        "type": "object",
+        "required": [
+          "partidas",
+          "sin_coincidencias",
+          "seleccionada",
+          "detalle",
+          "vacio_mensaje"
+        ],
+        "title": "VistaApuRespuesta"
       },
       "VistaEspacioRespuesta": {
         "properties": {

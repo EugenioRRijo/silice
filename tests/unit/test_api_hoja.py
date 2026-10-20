@@ -691,6 +691,7 @@ def test_docs_api_json_esta_al_dia() -> None:
         "/v1/hoja/versiones",
         "/v1/hoja/borradores",
         "/v1/hoja/borradores/{id}",
+        "/v1/hoja/borradores/{id}/vistas/apu",
         "/v1/hoja/borradores/{id}/vistas/espacio",
         "/v1/hoja/borradores/{id}/vistas/presupuesto",
     }

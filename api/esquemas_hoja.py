@@ -15,6 +15,7 @@ from aplicacion.hoja_vista import (
     BaseAbierta,
     Monto,
     ResumenHoja,
+    VistaApu,
     VistaEspacio,
     VistaPresupuesto,
 )
@@ -198,3 +199,58 @@ class VistaPresupuestoRespuesta(BaseModel):
 
 def vista_presupuesto_a_respuesta(vista: VistaPresupuesto) -> VistaPresupuestoRespuesta:
     return VistaPresupuestoRespuesta.model_validate(vista, from_attributes=True)
+
+
+class PartidaListaRespuesta(BaseModel):
+    codigo: str
+    descripcion: str
+
+
+class ColumnaApuRespuesta(BaseModel):
+    clave: str
+    rotulo: str
+
+
+class GrupoApuRespuesta(BaseModel):
+    clave: str
+    rotulo: str
+    columnas: list[ColumnaApuRespuesta]
+    filas: list[dict[str, str]]
+    subtotal: MontoHojaRespuesta
+
+
+class FilaCierreRespuesta(BaseModel):
+    concepto: str
+    monto: MontoHojaRespuesta
+    nota: str
+
+
+class MetricasApuRespuesta(BaseModel):
+    materiales: MontoHojaRespuesta
+    equipos: MontoHojaRespuesta
+    mano_obra: MontoHojaRespuesta
+    precio_unitario: MontoHojaRespuesta
+
+
+class DetalleApuRespuesta(BaseModel):
+    codigo: str
+    descripcion: str
+    unidad: str
+    rendimiento: str
+    grupos: list[GrupoApuRespuesta]
+    cierre: list[FilaCierreRespuesta]
+    metricas: MetricasApuRespuesta
+    estados: list[str]
+    solo_lectura_insumos: bool
+
+
+class VistaApuRespuesta(BaseModel):
+    partidas: list[PartidaListaRespuesta]
+    sin_coincidencias: bool
+    seleccionada: str | None
+    detalle: DetalleApuRespuesta | None
+    vacio_mensaje: str | None
+
+
+def vista_apu_a_respuesta(vista: VistaApu) -> VistaApuRespuesta:
+    return VistaApuRespuesta.model_validate(vista, from_attributes=True)
