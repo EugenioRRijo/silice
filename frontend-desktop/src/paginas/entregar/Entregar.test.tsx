@@ -123,8 +123,8 @@ describe("Entregar paquete", () => {
     expect(screen.getByLabelText("Proyecto")).toHaveValue("Oficina");
     expect(screen.getByLabelText("Versión")).toHaveValue("002");
     expect(screen.getByText("3")).toBeInTheDocument(); // hallazgos
-    expect(screen.getByText("2 advertencia, 1 error")).toBeInTheDocument();
-    expect(screen.getByText("íntegra")).toBeInTheDocument();
+    expect(screen.getByText("2 advertencias, 1 error")).toBeInTheDocument(); // VB-16
+    expect(screen.getByText("Íntegra")).toBeInTheDocument();
     expect(screen.getByText("Viaja con: presupuesto, informe, cadena.")).toBeInTheDocument();
     expect(screen.getByText(/el paquete saldrá SIN FIRMA/)).toBeInTheDocument();
     expect(screen.getByLabelText("Contraseña de la clave de firma")).toBeDisabled();
@@ -140,7 +140,7 @@ describe("Entregar paquete", () => {
     resumenDe = () => json(resumen({ cadena_integra: false, mensaje_de_cadena: "Cadena rota en la versión 001." }));
     montar();
     expect(await screen.findByText("Cadena rota en la versión 001.")).toBeInTheDocument();
-    expect(screen.getByText("ROTA")).toBeInTheDocument();
+    expect(screen.getByText("Rota")).toBeInTheDocument(); // VB-16: mayúscula inicial, no «ROTA»
     expect(screen.getByRole("button", { name: "Generar paquete" })).toBeDisabled();
   });
 
