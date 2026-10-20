@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import type { SesionRespuesta } from "../../api/tipos";
 import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
+import { cuerpoDeVista } from "./datosDePrueba";
 import PaginaHoja from "./index";
 import type { BorradorAbierto, VersionesRespuesta } from "./logica";
 
@@ -93,6 +94,7 @@ describe("Hoja del proyecto (marco, 3b-1)", () => {
       const url = String(ruta);
       const metodo = init?.method ?? "GET";
       if (url.startsWith("/v1/hoja/versiones")) return json(versiones);
+      if (cuerpoDeVista(url) !== null) return json(cuerpoDeVista(url));
       if (url === "/v1/hoja/borradores" && metodo === "POST") {
         const cuerpo = JSON.parse(String(init?.body)) as { version: string | null };
         return json(borrador(`id-${cuerpo.version ?? "blanco"}-aaaaaaaaaa`, cuerpo.version, extra), 201);
@@ -208,6 +210,7 @@ describe("Hoja del proyecto (marco, 3b-1)", () => {
     fetchFalso.mockImplementation(async (ruta, init) => {
       const url = String(ruta);
       if (url.startsWith("/v1/hoja/versiones")) return json(VERSIONES);
+      if (cuerpoDeVista(url) !== null) return json(cuerpoDeVista(url));
       if ((init?.method ?? "GET") === "POST") {
         const b = borrador("id-largo-aaaaaaaaaaaa", "002");
         b.resumen.total = { texto: `${largo}.12`, exacto: `${largo}.1234` };
@@ -234,6 +237,7 @@ describe("Hoja del proyecto (marco, 3b-1)", () => {
     fetchFalso.mockImplementation(async (ruta, init) => {
       const url = String(ruta);
       if (url.startsWith("/v1/hoja/versiones")) return json(VERSIONES);
+      if (cuerpoDeVista(url) !== null) return json(cuerpoDeVista(url));
       if ((init?.method ?? "GET") === "POST") {
         const b = borrador("id-instantanea-aaaaaaa", "002");
         b.instantanea = { creadas: 4, mensaje: "Se creó y registró la instantánea (4 partidas)." };
@@ -264,6 +268,7 @@ describe("Hoja del proyecto (marco, 3b-1)", () => {
   test("3b-F13: un error al abrir muestra el detalle tal cual", async () => {
     fetchFalso.mockImplementation(async (ruta, init) => {
       if (String(ruta).startsWith("/v1/hoja/versiones")) return json(VERSIONES);
+      if (cuerpoDeVista(String(ruta)) !== null) return json(cuerpoDeVista(String(ruta)));
       if ((init?.method ?? "GET") === "POST") return json({ detalle: "El proyecto «Z» no existe en este caso." }, 404);
       return new Response(null, { status: 204 });
     });
@@ -328,6 +333,7 @@ describe("Hoja del proyecto (marco, 3b-1)", () => {
       const url = String(ruta);
       const metodo = init?.method ?? "GET";
       if (url.startsWith("/v1/hoja/versiones")) return json(VERSIONES);
+      if (cuerpoDeVista(url) !== null) return json(cuerpoDeVista(url));
       if (url === "/v1/hoja/borradores" && metodo === "POST") {
         const cuerpo = JSON.parse(String(init?.body)) as { version: string };
         if (cuerpo.version === "002") return new Promise<Response>((r) => (soltar = r));
