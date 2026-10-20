@@ -1,5 +1,5 @@
 import { Button, Checkbox, InlineNotification, Select, SelectItem, Tab, TabList, TabPanel, TabPanels, Tabs, TextInput } from "@carbon/react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ErrorDeApi, pedir } from "../../api/cliente";
 import { AvisoError } from "../../comun/AvisoError";
 import { DescargaArchivo } from "../../comun/DescargaArchivo";
@@ -144,6 +144,16 @@ function Formulario({
   // Cuenta las ediciones: una respuesta que llega despues de editar corresponde a datos viejos y se descarta.
   const edicion = useRef(0);
   const [paso, setPaso] = useState(0);
+  // VB-13: tras «Calcular», el foco va al título del resultado o al aviso de error (si no, se queda en el botón y el
+  // aviso aparece bajo el pliegue sin que nadie lo anuncie).
+  const [enfocar, setEnfocar] = useState<"resultado" | "error" | null>(null);
+  const tituloResultado = useRef<HTMLHeadingElement>(null);
+  const zonaError = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (enfocar === null) return;
+    (enfocar === "resultado" ? tituloResultado.current : zonaError.current)?.focus();
+    setEnfocar(null);
+  }, [enfocar]);
 
   // Todo cambio del formulario retira el resultado y el aviso de guardado: ya no corresponden a lo escrito.
   const editar = (cambio: (f: Formulario) => Formulario) => {
@@ -177,7 +187,9 @@ function Formulario({
     setReemplaza("");
     const marca = edicion.current;
     const respuesta = await enviar<Calculo>("/v1/reajuste/calcular", armarCuerpo(proyecto, form));
-    if (marca === edicion.current) setCalculo(respuesta ?? null);
+    if (marca !== edicion.current) return;
+    setCalculo(respuesta ?? null);
+    setEnfocar(respuesta ? "resultado" : "error");
   }
 
   async function guardar() {
@@ -339,11 +351,13 @@ function Formulario({
         </TabPanels>
       </Tabs>
 
-      <AvisoError error={error} titulo="No se pudo completar" alCerrar={() => setError(null)} />
+      <div ref={zonaError} tabIndex={-1} className="silice-reajuste__zona-error">
+        <AvisoError error={error} titulo="No se pudo completar" alCerrar={() => setError(null)} />
+      </div>
 
       {calculo && (
         <section className="silice-reajuste__bloque" aria-labelledby="reajuste-resultado">
-          <h2 id="reajuste-resultado" className="cds--type-heading-compact-02">
+          <h2 id="reajuste-resultado" ref={tituloResultado} tabIndex={-1} className="cds--type-heading-compact-02">
             Escalatoria y comprobación, lado a lado
           </h2>
           <TablaDensa
