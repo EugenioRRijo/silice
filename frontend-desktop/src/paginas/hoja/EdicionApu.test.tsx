@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import type { SesionRespuesta } from "../../api/tipos";
 import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
-import { informeAuditoria, vistaApu, vistaParametros } from "./datosDePrueba";
+import { informeAuditoria, vistaApu, vistaEspacio, vistaParametros } from "./datosDePrueba";
 import PaginaHoja from "./index";
 import type { BorradorAbierto, DetalleApu, Resumen, VersionesRespuesta, VistaApu, VistaParametros } from "./logica";
 import type { InsumoCandidato, InsumosRespuesta } from "./logicaApu";
@@ -158,6 +158,7 @@ describe("Hoja del proyecto: APU editable y cambio de insumo (3c-3)", () => {
         }
         return json(apu);
       }
+      if (camino.endsWith("/vistas/espacio")) return json(vistaEspacio());
       if (camino.endsWith("/vistas/parametros")) return json(parametros);
       if (camino.endsWith("/vistas/auditoria")) return json(informeAuditoria());
       return new Response(null, { status: 204 });
@@ -171,7 +172,7 @@ describe("Hoja del proyecto: APU editable y cambio de insumo (3c-3)", () => {
   const llamadasA = (metodo: string, patron: RegExp) =>
     fetchFalso.mock.calls.filter(([r, init]) => (init?.method ?? "GET") === metodo && patron.test(decodeURIComponent(String(r))));
   const escriturasDeApu = (): Cuerpo[] =>
-    llamadasA("PUT", /\/apu\/[^/]+$/).map(([, init]) => JSON.parse(String(init?.body)) as Cuerpo);
+    llamadasA("PUT", /\/apu\/.+$/).map(([, init]) => JSON.parse(String(init?.body)) as Cuerpo);
   const escriturasDeInsumo = (): Cuerpo[] =>
     llamadasA("POST", /\/apu\/.+\/insumo$/).map(([, init]) => JSON.parse(String(init?.body)) as Cuerpo);
   const urlsDeInsumos = () => fetchFalso.mock.calls.map(([r]) => String(r)).filter((u) => u.includes("/insumos?"));
@@ -265,7 +266,7 @@ describe("Hoja del proyecto: APU editable y cambio de insumo (3c-3)", () => {
     await esperar(() => within(regionDeEstado()).getByText(/· 1 cambio sin guardar/));
     // El subtotal se vuelve a leer del servidor; lo escrito se queda como lo escribió la persona.
     await esperar(() => expect(lecturasDeApu()).toBeGreaterThan(lecturas));
-    await esperar(() => screen.getByText("15,50"));
+    await esperar(() => screen.getByTitle("15.5"));
     expect(campo("Cantidad, Materiales fila 1")).toHaveValue("2.5");
   });
 

@@ -311,7 +311,9 @@ describe("Hoja del proyecto: Espacio, APU, Presupuesto y Plan (3b-2)", () => {
     servidor({ apu: () => json(vistaApu({ detalle: { ...detalle, estados: ["Estado de AF-LLAVE|x: ADVERTENCIA: algo"] } })) });
     montar();
     await irA("APU");
-    expect(await screen.findByText("Estado de AF-LLAVE|x: ADVERTENCIA: algo")).toBeInTheDocument();
+    // 3c-3: solo el texto del estado, sin el «Estado de {clave}: » crudo que arma el servidor.
+    expect(await screen.findByText("ADVERTENCIA: algo")).toBeInTheDocument();
+    expect(screen.queryByText(/Estado de AF-LLAVE/)).toBeNull();
   });
 
   test("APU: sin partidas valoradas muestra el mensaje y no el detalle", async () => {
