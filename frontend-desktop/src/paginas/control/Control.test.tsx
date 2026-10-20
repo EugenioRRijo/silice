@@ -183,6 +183,13 @@ describe("Control de obra", () => {
     expect(within(tabla).getByRole("columnheader", { name: "Número" })).toBeInTheDocument();
   });
 
+  test("la columna Número muestra el número que manda la API con la clave Numero (VB-3)", async () => {
+    const u = montar();
+    await u.click(await screen.findByRole("tab", { name: "Valuaciones" }));
+    const tabla = await screen.findByRole("table", { name: "Valuaciones registradas" });
+    expect(within(tabla).getByText("V-01")).toBeInTheDocument();
+  });
+
   test("cada codigo interno tiene su etiqueta en español y los desconocidos se muestran tal cual (V-22)", () => {
     const esperadas: Record<string, string> = {
       spi_error: "Umbral de SPI para error",

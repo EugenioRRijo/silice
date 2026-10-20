@@ -15,6 +15,7 @@ valuaciones V-01 y V-02, otra solo con la línea base y otra sin línea base. Lo
 
 from __future__ import annotations
 
+import re
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -37,6 +38,7 @@ from tests.fixtures.sesion_web import (
 )
 
 P = {"proyecto": ob.NOMBRE}
+FRONT_CONTROL = Path(__file__).resolve().parents[2] / "frontend-desktop" / "src" / "paginas" / "control"
 
 
 def _base(ruta: Path, *, linea: bool, valuaciones: bool) -> Path:
@@ -230,6 +232,25 @@ def test_las_valuaciones_guardadas_con_su_estado_y_las_que_se_pueden_anular() ->
     assert datos["filas"][0]["Inspector"] == ob.INSPECTOR
     assert [a["rotulo"].split(" ")[0] for a in datos["anulables"]] == ["V-01", "V-02"]
     assert datos["corte_por_defecto"] == "2026-11-13"
+
+
+def _columnas_del_front(nombre: str) -> list[str]:
+    """Los literales de `export const <nombre> = [...]` en `src/paginas/control/logica.ts`."""
+    fuente = (FRONT_CONTROL / "logica.ts").read_text(encoding="utf-8")
+    bloque = re.search(rf"export const {nombre} = \[(.*?)\];", fuente, re.DOTALL)
+    assert bloque is not None, f"{nombre} no esta en logica.ts"
+    return re.findall(r'"([^"]*)"', bloque.group(1))
+
+
+def test_cada_columna_de_valuaciones_del_front_es_una_clave_de_la_respuesta_real() -> None:
+    # VB-3: la tabla busca cada celda por su clave; una clave que la API no manda deja la
+    # columna vacia («Número» contra «Numero»). Oraculo: las filas que devuelve la API de verdad.
+    filas = _con_clave().get("/v1/control/valuaciones", params=P).json()["filas"]
+    assert filas, "la obra OB-S2 trae V-01 y V-02"
+    columnas = _columnas_del_front("COLUMNAS_VALUACIONES")
+    assert columnas, "el front declara las columnas de valuaciones"
+    for fila in filas:
+        assert [c for c in columnas if c not in fila] == []
 
 
 def test_registrar_una_valuacion_controla_al_corte_y_el_responsable_sale_de_la_sesion(
