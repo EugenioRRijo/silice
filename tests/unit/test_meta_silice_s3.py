@@ -40,7 +40,8 @@ def test_rf_100_solo_se_exige_con_la_fase_s3_6() -> None:
 
 def test_la_ers_de_s3_0_pide_cada_uc_rf_y_rnf_de_la_version() -> None:
     assert set(REQUISITOS_S3_0) == {f"UC-{n}" for n in (21, 22, 23)} | {
-        f"RF-{n}" for n in range(80, 90)} | {"RNF-16", "RNF-17"}
+        f"RF-{n}" for n in range(80, 90)
+    } | {"RNF-16", "RNF-17"}
 
 
 def test_los_pares_nombran_archivos_del_repositorio_cuando_su_fase_ya_se_construyo() -> None:
@@ -98,9 +99,9 @@ def test_el_literal_de_of001_limpio_exige_items_y_hallazgos(tmp_path: Path) -> N
     ruta.write_text('LIMPIO = {"dxf": {"items": (), "hallazgos": ()}}\n', encoding="utf-8")
     assert evaluar_literal_of001(ruta)[0] is Estado.FALLA
     ruta.write_text(
-        'LIMPIO = {"dxf": {"items": (("a", "b", "c"),), '
-        '"hallazgos": (("R8", "A", "d"),)}}\n',
-        encoding="utf-8")
+        'LIMPIO = {"dxf": {"items": (("a", "b", "c"),), "hallazgos": (("R8", "A", "d"),)}}\n',
+        encoding="utf-8",
+    )
     assert evaluar_literal_of001(ruta)[0] is Estado.OK
 
 
@@ -111,8 +112,9 @@ def test_unsafe_allow_html_se_detecta_en_cualquier_carpeta_vigilada(tmp_path: Pa
     (tmp_path / "ui").mkdir()
     (tmp_path / "ui" / "ok.py").write_text("st.markdown('x')\n", encoding="utf-8")
     assert evaluar_html_inseguro(tmp_path, ("ui", "api"))[0] is Estado.OK
-    (tmp_path / "ui" / "mal.py").write_text("st.markdown(x, unsafe_allow_html=True)\n",
-                                            encoding="utf-8")
+    (tmp_path / "ui" / "mal.py").write_text(
+        "st.markdown(x, unsafe_allow_html=True)\n", encoding="utf-8"
+    )
     estado, detalle = evaluar_html_inseguro(tmp_path, ("ui", "api"))
     assert estado is Estado.FALLA and "ui/mal.py" in detalle
 
@@ -120,11 +122,14 @@ def test_unsafe_allow_html_se_detecta_en_cualquier_carpeta_vigilada(tmp_path: Pa
 # --- S3-M4: cobertura en la CI ----------------------------------------------------------------
 
 
-@pytest.mark.parametrize("texto,esperado", [
-    (None, Estado.PENDIENTE),
-    ("run: coverage report --include=\"core/*\" --fail-under=80\n", Estado.FALLA),
-    ("run: coverage report --include=\"seguridad/*,paquete/*\" --fail-under=80\n", Estado.OK),
-])
+@pytest.mark.parametrize(
+    "texto,esperado",
+    [
+        (None, Estado.PENDIENTE),
+        ('run: coverage report --include="core/*" --fail-under=80\n', Estado.FALLA),
+        ('run: coverage report --include="seguridad/*,paquete/*" --fail-under=80\n', Estado.OK),
+    ],
+)
 def test_la_cobertura_de_seguridad_y_paquete_se_exige_en_la_ci(texto, esperado) -> None:
     assert evaluar_cobertura_en_ci(texto)[0] is esperado
 
@@ -136,6 +141,7 @@ def test_las_ramas_sin_nucleo_dan_ok_solo_con_diffs_vacios() -> None:
     assert evaluar_ramas_sin_nucleo({})[0] is Estado.PENDIENTE
     assert evaluar_ramas_sin_nucleo({"Merge inc/080-s3-5-planos": None})[0] is Estado.PENDIENTE
     assert evaluar_ramas_sin_nucleo({"Merge inc/080-s3-5-planos": ""})[0] is Estado.OK
-    estado, detalle = evaluar_ramas_sin_nucleo({
-        "Merge inc/080-s3-5-planos": "", "Merge inc/080-s3-6-anomalias": " core/x.py | 2 +-\n"})
+    estado, detalle = evaluar_ramas_sin_nucleo(
+        {"Merge inc/080-s3-5-planos": "", "Merge inc/080-s3-6-anomalias": " core/x.py | 2 +-\n"}
+    )
     assert estado is Estado.FALLA and "s3-6" in detalle

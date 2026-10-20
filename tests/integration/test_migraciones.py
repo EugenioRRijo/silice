@@ -38,7 +38,14 @@ RAIZ = Path(__file__).resolve().parents[2]
 METADATAS = {Destino.CASO: METADATAS_CASO, Destino.INSTALACION: METADATAS_INSTALACION}
 #: Paquetes donde puede vivir una `MetaData` con tablas (spec S5 §4.3, RNF-20).
 PAQUETES_CON_TABLAS = (
-    "core", "adapters", "ui", "seguridad", "paquete", "asistente", "produccion", "fusion",
+    "core",
+    "adapters",
+    "ui",
+    "seguridad",
+    "paquete",
+    "asistente",
+    "produccion",
+    "fusion",
 )
 
 
@@ -270,10 +277,21 @@ def test_la_instalacion_nace_con_las_tablas_de_seguridad_y_su_alembic_version(
             n for (n,) in conexion.execute("SELECT name FROM sqlite_master WHERE type = 'table'")
         }
         assert tablas == {
-            "alembic_version", "usuario", "intento_acceso", "sesion", "evento_acceso",
-            "codigo_instalacion", "empresa_propia", "clave_empresa", "empresa_registrada",
-            "clave_api", "prod_material", "prod_movimiento", "prod_pesaje_sospechoso",
+            "alembic_version",
+            "usuario",
+            "intento_acceso",
+            "sesion",
+            "evento_acceso",
+            "codigo_instalacion",
+            "empresa_propia",
+            "clave_empresa",
+            "empresa_registrada",
+            "clave_api",
+            "prod_material",
+            "prod_movimiento",
+            "prod_pesaje_sospechoso",
             "auditoria_libro",
         }
         assert conexion.execute("SELECT version_num FROM alembic_version").fetchall() == [
-            ("ins_0003_auditoria_libro",)]
+            ("ins_0003_auditoria_libro",)
+        ]

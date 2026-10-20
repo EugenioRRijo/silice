@@ -18,8 +18,15 @@ from produccion.modelo import METADATA_PRODUCCION
 from seguridad.modelo import Base
 
 TABLAS = {
-    "usuario", "intento_acceso", "sesion", "evento_acceso", "codigo_instalacion", "empresa_propia",
-    "clave_empresa", "empresa_registrada", "clave_api",
+    "usuario",
+    "intento_acceso",
+    "sesion",
+    "evento_acceso",
+    "codigo_instalacion",
+    "empresa_propia",
+    "clave_empresa",
+    "empresa_registrada",
+    "clave_api",
 }
 NUEVAS = {"prod_material", "prod_movimiento", "prod_pesaje_sospechoso", "auditoria_libro"}
 

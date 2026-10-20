@@ -300,9 +300,7 @@ def test_cargar_composicion_registra_las_condiciones_declaradas(sesion):
     sesion.flush()
 
     registrado = sesion.scalars(
-        select(models.Rendimiento)
-        .join(models.Partida)
-        .where(models.Partida.codigo == "LB-97-NUE")
+        select(models.Rendimiento).join(models.Partida).where(models.Partida.codigo == "LB-97-NUE")
     ).one()
     assert registrado.condiciones == "cuadrilla de cuatro, suelo seco"
     assert registrado.tipo == contracts.TipoRendimiento.ESTIMADO

@@ -78,16 +78,18 @@ def test_puntos_de_otro_tipo_en_el_mismo_sitio_no_son_duplicados() -> None:
 
 
 def test_el_duplicado_se_mide_en_tres_dimensiones() -> None:
-    e = espacio([ambiente("A")], [punto_de_datos("P1", "1", z="0.3"),
-                                  punto_de_datos("P2", "1", z="0.3009")])
+    e = espacio(
+        [ambiente("A")], [punto_de_datos("P1", "1", z="0.3"), punto_de_datos("P2", "1", z="0.3009")]
+    )
     assert len(r15(e)) == 1
 
 
 # --- escala imposible (ADVERTENCIA) ------------------------------------------------------------
 
 
-@pytest.mark.parametrize("lado,falla", [("0.300", False), ("0.299", True), ("200.000", False),
-                                        ("200.001", True)])
+@pytest.mark.parametrize(
+    "lado,falla", [("0.300", False), ("0.299", True), ("200.000", False), ("200.001", True)]
+)
 def test_el_lado_de_un_ambiente_tiene_fronteras_inclusivas(lado: str, falla: bool) -> None:
     hallazgos = r15(espacio([ambiente("A", largo=lado, ancho="1")]))
     assert bool(hallazgos) is falla
@@ -96,8 +98,9 @@ def test_el_lado_de_un_ambiente_tiene_fronteras_inclusivas(lado: str, falla: boo
         assert "largo" in hallazgos[0].descripcion
 
 
-@pytest.mark.parametrize("alto,falla", [("2.000", False), ("1.999", True), ("12.000", False),
-                                        ("12.001", True)])
+@pytest.mark.parametrize(
+    "alto,falla", [("2.000", False), ("1.999", True), ("12.000", False), ("12.001", True)]
+)
 def test_la_altura_de_un_ambiente_tiene_fronteras_inclusivas(alto: str, falla: bool) -> None:
     hallazgos = r15(espacio([ambiente("A", alto=alto)]))
     assert bool(hallazgos) is falla
@@ -111,8 +114,11 @@ def test_la_altura_de_un_ambiente_tiene_fronteras_inclusivas(alto: str, falla: b
 
 @pytest.mark.parametrize("x,falla", [("100", False), ("100.001", True)])
 def test_la_distancia_a_la_fuente(x: str, falla: bool) -> None:
-    e = espacio([ambiente("A", largo="200")], [punto_de_datos("P1", x, y="0", z="0", fuente="R1")],
-                [rack("R1", "0", "0", "0")])
+    e = espacio(
+        [ambiente("A", largo="200")],
+        [punto_de_datos("P1", x, y="0", z="0", fuente="R1")],
+        [rack("R1", "0", "0", "0")],
+    )
     hallazgos = r15(e)
     assert bool(hallazgos) is falla
     if falla:

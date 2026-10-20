@@ -188,6 +188,4 @@ def test_un_escenario_exige_composicion_para_todo_renglon_del_base():
     comparable con su base. `generar_escenario` exige composición antes de elaborar."""
     incompletas = {codigo: apu for codigo, apu in COMPOSICIONES.items() if codigo != CONCRETO}
     with pytest.raises(ValueError, match=CONCRETO):
-        generar_escenario(
-            "sin-concreto", _base(), incompletas, linea_base.PARAMETROS_LINEA_BASE
-        )
+        generar_escenario("sin-concreto", _base(), incompletas, linea_base.PARAMETROS_LINEA_BASE)

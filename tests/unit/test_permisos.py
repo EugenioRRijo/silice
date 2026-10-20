@@ -45,9 +45,7 @@ def test_cada_fila_de_la_matriz(accion: Accion, arma: bool, revisa: bool, admin:
     assert permitido({Rol.REVISA}, accion) is revisa
     assert permitido({Rol.ADMINISTRADOR}, accion) is admin
     # varios roles suman
-    assert permitido({Rol.ARMA, Rol.REVISA, Rol.ADMINISTRADOR}, accion) is (
-        arma or revisa or admin
-    )
+    assert permitido({Rol.ARMA, Rol.REVISA, Rol.ADMINISTRADOR}, accion) is (arma or revisa or admin)
 
 
 def test_exigir_rechaza_con_un_mensaje_llano() -> None:

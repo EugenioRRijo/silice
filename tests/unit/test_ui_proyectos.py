@@ -133,15 +133,19 @@ def test_proyecto_nuevo_con_moneda_declara_moneda_proyecto(base):
                 select(models.Proyecto).where(models.Proyecto.nombre == "Obra en Bs")
             ).one()
             filas = sesion.scalars(
-                select(models.MonedaProyecto)
-                .where(models.MonedaProyecto.proyecto_id == proyecto.id)
+                select(models.MonedaProyecto).where(
+                    models.MonedaProyecto.proyecto_id == proyecto.id
+                )
             ).all()
             assert [fila.moneda for fila in filas] == ["Bs"]
             with pytest.raises(hoja.HojaInvalida, match="Bs"):
                 hoja.crear_primera_version(
-                    sesion, Catalogo(sesion), "Obra en Bs",
+                    sesion,
+                    Catalogo(sesion),
+                    "Obra en Bs",
                     hoja.Borrador(fecha=linea_base.FECHA_LINEA_BASE),
-                    fuente="plano A-01", responsable="Ing. Prueba",
+                    fuente="plano A-01",
+                    responsable="Ing. Prueba",
                 )
     finally:
         motor.dispose()
@@ -156,4 +160,3 @@ def test_sin_moneda_el_proyecto_no_declara_ninguna(base):
             assert not sesion.scalars(select(models.MonedaProyecto)).all()
     finally:
         motor.dispose()
-

@@ -98,8 +98,9 @@ def test_un_archivo_que_no_existe_da_404_con_cabeceras(dist: Path) -> None:
     _cabeceras_de_seguridad(respuesta)
 
 
-@pytest.mark.parametrize("ruta", ["/app/%2e%2e/secreto.txt", "/app/..%2fsecreto.txt",
-                                  "/app/%2e%2e%5csecreto.txt"])
+@pytest.mark.parametrize(
+    "ruta", ["/app/%2e%2e/secreto.txt", "/app/..%2fsecreto.txt", "/app/%2e%2e%5csecreto.txt"]
+)
 def test_app_no_sale_de_su_carpeta(dist: Path, ruta: str) -> None:
     respuesta = _cliente().get(ruta)
     assert respuesta.status_code == 404
@@ -152,4 +153,3 @@ def test_la_csp_no_permite_unsafe_eval_ni_anfitriones_externos() -> None:
     assert directivas["object-src"] == ["'none'"]
     assert directivas["frame-ancestors"] == ["'none'"]
     assert directivas["base-uri"] == ["'none'"]
-

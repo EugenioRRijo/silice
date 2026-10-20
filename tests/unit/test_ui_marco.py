@@ -29,23 +29,55 @@ def _rutas(roles) -> list[str]:
 
 def test_el_rol_arma_ve_lo_de_trabajo_y_no_ve_la_administracion() -> None:
     rutas = set(_rutas({Rol.ARMA}))
-    assert {"inicio", "catalogo", "componer", "elaborar", "hoja", "actualizacion", "historico",
-            "escenarios", "similares", "simulador"} <= rutas
+    assert {
+        "inicio",
+        "catalogo",
+        "componer",
+        "elaborar",
+        "hoja",
+        "actualizacion",
+        "historico",
+        "escenarios",
+        "similares",
+        "simulador",
+    } <= rutas
     assert "administracion" not in rutas
 
 
 def test_el_rol_revisa_ve_la_lectura_y_nada_que_escriba() -> None:
     rutas = set(_rutas({Rol.REVISA}))
     assert {"inicio", "catalogo", "historico"} <= rutas
-    assert not {"componer", "elaborar", "hoja", "actualizacion", "escenarios", "similares",
-                "simulador"} & rutas
+    assert (
+        not {
+            "componer",
+            "elaborar",
+            "hoja",
+            "actualizacion",
+            "escenarios",
+            "similares",
+            "simulador",
+        }
+        & rutas
+    )
 
 
 def test_el_administrador_no_ve_ninguna_pantalla_de_trabajo() -> None:
     rutas = set(_rutas({Rol.ADMINISTRADOR}))
     assert "inicio" in rutas
-    assert not {"catalogo", "componer", "elaborar", "hoja", "actualizacion", "historico",
-                "escenarios", "similares", "simulador"} & rutas
+    assert (
+        not {
+            "catalogo",
+            "componer",
+            "elaborar",
+            "hoja",
+            "actualizacion",
+            "historico",
+            "escenarios",
+            "similares",
+            "simulador",
+        }
+        & rutas
+    )
 
 
 def test_varios_roles_suman_sus_pantallas_sin_repetir() -> None:
@@ -66,8 +98,10 @@ def test_un_recorrido_omite_los_pasos_de_pantallas_que_el_rol_no_ve() -> None:
     recorrido = next(r for r in RECORRIDOS if len(r.pasos) >= 3)
     visibles = {recorrido.pasos[0].pagina, recorrido.pasos[2].pagina}
     filtrado = recorrido.visible_en(visibles)
-    assert [p.pagina for p in filtrado.pasos] == [recorrido.pasos[0].pagina,
-                                                  recorrido.pasos[2].pagina]
+    assert [p.pagina for p in filtrado.pasos] == [
+        recorrido.pasos[0].pagina,
+        recorrido.pasos[2].pagina,
+    ]
     assert recorrido.visible_en(set()) is None
     assert all(isinstance(p, Paso) for p in filtrado.pasos) and isinstance(filtrado, Recorrido)
 
@@ -82,8 +116,9 @@ def _primera_instruccion(pagina) -> str:
     return ast.unparse(cuerpo[0])
 
 
-@pytest.mark.parametrize("pagina", [p for p in PAGINAS if p.accion is not None],
-                         ids=lambda p: p.ruta_url)
+@pytest.mark.parametrize(
+    "pagina", [p for p in PAGINAS if p.accion is not None], ids=lambda p: p.ruta_url
+)
 def test_cada_render_exige_su_accion_en_la_primera_linea(pagina) -> None:
     esperada = f"ui_sesion.exigir(Accion.{pagina.accion.name})"
     assert _primera_instruccion(pagina) in {esperada, f"sesion = {esperada}"}

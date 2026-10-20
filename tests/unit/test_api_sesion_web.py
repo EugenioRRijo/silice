@@ -63,8 +63,14 @@ MENSAJE_PERMISO = "Su cuenta no tiene permiso para esta acción."
 _ESTADO_DE_ARMA = {
     "debe_cambiar_clave": False,
     "acciones": [
-        "editar_hoja", "convertir_y_reajustar", "control_de_obra", "decidir_recuperacion",
-        "entregar_paquete", "operar_arenera", "leer_proyecto", "cambiar_caso",
+        "editar_hoja",
+        "convertir_y_reajustar",
+        "control_de_obra",
+        "decidir_recuperacion",
+        "entregar_paquete",
+        "operar_arenera",
+        "leer_proyecto",
+        "cambiar_caso",
     ],
     "modo_entrega": False,
     "url_clasica": "http://127.0.0.1:8501/",
@@ -204,7 +210,10 @@ def test_entrar_pone_cookie_httponly_samesite_strict_y_devuelve_csrf() -> None:
     assert respuesta.status_code == 200, respuesta.text
     ficha = _ficha(respuesta)
     assert respuesta.json() == {
-        "login": "ana", "nombre": "Ana", "roles": ["arma"], "csrf": _csrf(ficha),
+        "login": "ana",
+        "nombre": "Ana",
+        "roles": ["arma"],
+        "csrf": _csrf(ficha),
         **_ESTADO_DE_ARMA,
     }
     galleta = respuesta.headers["set-cookie"]
@@ -405,9 +414,14 @@ def test_get_sesion_con_cookie_da_el_usuario() -> None:
     respuesta = cliente.get("/v1/sesion")
     assert respuesta.status_code == 200
     assert respuesta.json() == {
-        "login": "rita", "nombre": "Rita", "roles": ["revisa"], "csrf": _csrf(ficha),
-        "debe_cambiar_clave": False, "acciones": ["leer_proyecto", "revisar_paquete"],
-        "modo_entrega": False, "url_clasica": "http://127.0.0.1:8501/",
+        "login": "rita",
+        "nombre": "Rita",
+        "roles": ["revisa"],
+        "csrf": _csrf(ficha),
+        "debe_cambiar_clave": False,
+        "acciones": ["leer_proyecto", "revisar_paquete"],
+        "modo_entrega": False,
+        "url_clasica": "http://127.0.0.1:8501/",
     }
     assert ficha not in respuesta.text
 
@@ -509,8 +523,12 @@ def test_post_con_csrf_no_ascii_da_403_y_no_500() -> None:
 
 def test_post_con_csrf_y_origin_ajeno_da_403() -> None:
     cliente, ficha = _con_cuenta("ana", PRUEBA)
-    for origen in ("http://atacante.ejemplo", "http://127.0.0.1:9999", "https://127.0.0.1:8000",
-                   "null"):
+    for origen in (
+        "http://atacante.ejemplo",
+        "http://127.0.0.1:9999",
+        "https://127.0.0.1:8000",
+        "null",
+    ):
         respuesta = cliente.post("/sonda", headers=_protegida(ficha, origen))
         assert respuesta.status_code == 403, origen
         assert respuesta.json() == {"detalle": sesion_web.MENSAJE_ORIGEN}

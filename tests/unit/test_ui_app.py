@@ -97,7 +97,11 @@ def test_sin_modo_entrega_cuatro_secciones_en_el_orden_del_trabajo() -> None:
     """RF-42 enmendado por S3 §5.7: Trabajo, Revisión, Investigación y Administración."""
     secciones = secciones_visibles(False)
     assert tuple(secciones) == (
-        SECCION_TRABAJO, SECCION_REVISION, SECCION_INVESTIGACION, SECCION_ADMINISTRACION)
+        SECCION_TRABAJO,
+        SECCION_REVISION,
+        SECCION_INVESTIGACION,
+        SECCION_ADMINISTRACION,
+    )
     assert _titulos(secciones[SECCION_TRABAJO]) == TITULOS_TRABAJO
     assert _titulos(secciones[SECCION_REVISION]) == TITULOS_REVISION
     assert _titulos(secciones[SECCION_INVESTIGACION]) == TITULOS_INVESTIGACION
@@ -150,11 +154,15 @@ def test_la_ruta_vacia_de_la_pagina_por_defecto_es_el_inicio() -> None:
 
 def test_cada_pagina_tiene_una_ruta_url_propia() -> None:
     rutas = [pagina.ruta_url for pagina in paginas_visibles(False)]
-    assert len(set(rutas)) == len(rutas) == (
-        len(TITULOS_TRABAJO)
-        + len(TITULOS_REVISION)
-        + len(TITULOS_INVESTIGACION)
-        + len(TITULOS_ADMINISTRACION)
+    assert (
+        len(set(rutas))
+        == len(rutas)
+        == (
+            len(TITULOS_TRABAJO)
+            + len(TITULOS_REVISION)
+            + len(TITULOS_INVESTIGACION)
+            + len(TITULOS_ADMINISTRACION)
+        )
     )
     assert "componer" in rutas
 
@@ -360,7 +368,11 @@ def test_la_aplicacion_declara_la_navegacion_arriba_con_los_dos_grupos(
     paginas, kwargs = llamadas[0]
     assert kwargs.get("position") == "top"
     assert list(paginas) == [
-        SECCION_TRABAJO, SECCION_REVISION, SECCION_INVESTIGACION, SECCION_ADMINISTRACION]
+        SECCION_TRABAJO,
+        SECCION_REVISION,
+        SECCION_INVESTIGACION,
+        SECCION_ADMINISTRACION,
+    ]
 
 
 def test_modo_entrega_declara_solo_el_grupo_trabajo_en_la_navegacion_superior(

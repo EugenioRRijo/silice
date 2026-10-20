@@ -72,9 +72,7 @@ def test_un_rendimiento_cero_o_negativo_se_rechaza():
 
 
 def test_la_unidad_con_alias_se_normaliza():
-    composicion = composicion_desde_tablas(
-        "P-01", "Prueba", "m³", "8", MATERIALES, [], MANO_OBRA
-    )
+    composicion = composicion_desde_tablas("P-01", "Prueba", "m³", "8", MATERIALES, [], MANO_OBRA)
 
     assert composicion.unidad == "m3"
 
@@ -475,6 +473,6 @@ def test_desglose_de_la_tuberia_da_el_precio_de_la_linea_base():
     (costo directo 8,058; PU 10,19 a dos decimales)."""
     resultado = desglose(APU_TUBERIA)
     assert resultado.costo_directo == Decimal("8.058")
-    assert resultado.precio_unitario.quantize(Decimal("0.01")) == PRECIO_UNITARIO_ESPERADO[
-        "LB-02-TUB"
-    ]
+    assert (
+        resultado.precio_unitario.quantize(Decimal("0.01")) == PRECIO_UNITARIO_ESPERADO["LB-02-TUB"]
+    )

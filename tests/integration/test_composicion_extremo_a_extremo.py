@@ -134,9 +134,7 @@ def _presupuesto_tecleado() -> Presupuesto:
     return con_curva(borrador, linea_base.CURVA_AUDITADA)
 
 
-@pytest.mark.parametrize(
-    "apu", linea_base.APUS_LINEA_BASE, ids=lambda apu: apu.codigo_partida
-)
+@pytest.mark.parametrize("apu", linea_base.APUS_LINEA_BASE, ids=lambda apu: apu.codigo_partida)
 def test_la_composicion_tecleada_es_la_de_la_linea_base(apu: ComposicionAPU) -> None:
     """Cada uno de los cinco APU, tecleado en la pantalla, es el APU de la fixture.
 

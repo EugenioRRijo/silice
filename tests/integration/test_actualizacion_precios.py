@@ -314,13 +314,15 @@ def test_un_precio_anterior_nulo_no_hace_fallar_el_registro_de_cambios(sesion, t
         fecha_vigencia=date(2026, 5, 15),
     ).lista
     nueva = crear_lista_desde_archivo(
-        sesion, MUESTRA, nombre=NOMBRE_LISTA_NUEVA, moneda=linea_base.MONEDA,
+        sesion,
+        MUESTRA,
+        nombre=NOMBRE_LISTA_NUEVA,
+        moneda=linea_base.MONEDA,
         fecha_vigencia=FECHA_NUEVA,
     ).lista
 
     cambios = {
-        cambio.insumo.descripcion: cambio
-        for cambio in registrar_cambios(sesion, intermedia, nueva)
+        cambio.insumo.descripcion: cambio for cambio in registrar_cambios(sesion, intermedia, nueva)
     }
 
     assert cambios[CEMENTO].precio_anterior == Decimal("0")

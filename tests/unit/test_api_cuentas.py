@@ -766,8 +766,12 @@ def test_accesos_no_muestra_lo_tecleado_que_no_es_un_usuario_posible(admin) -> N
     try:
         with pytest.raises(nucleo_cuentas.ErrorDeAcceso):
             nucleo_cuentas.autenticar(
-                sesion, pegada, "no importa la clave", datetime(2026, 11, 10, 9, 0),
-                freno=nucleo_cuentas.FrenoGlobal(), dormir=lambda s: None,
+                sesion,
+                pegada,
+                "no importa la clave",
+                datetime(2026, 11, 10, 9, 0),
+                freno=nucleo_cuentas.FrenoGlobal(),
+                dormir=lambda s: None,
             )
     finally:
         sesion.close()

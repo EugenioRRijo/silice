@@ -1,4 +1,5 @@
 """RF-64, RF-65 (S1 §9.2). Oráculo independiente: homogeneidad del PU (total × T)."""
+
 from dataclasses import replace
 from datetime import date
 from decimal import Decimal
@@ -30,8 +31,17 @@ def clinica(sesion):
 
 
 def _convertir(sesion, nombre, codigo="001", nuevo="002", moneda="Bs", tasa=TASA):
-    return convertir_version(sesion, nombre, codigo, nuevo, moneda, tasa, fuente="cambio pedido",
-                             responsable="Ing. Prueba", catalogo=Catalogo(sesion))
+    return convertir_version(
+        sesion,
+        nombre,
+        codigo,
+        nuevo,
+        moneda,
+        tasa,
+        fuente="cambio pedido",
+        responsable="Ing. Prueba",
+        catalogo=Catalogo(sesion),
+    )
 
 
 def _total(sesion, nombre, codigo):
@@ -56,10 +66,15 @@ def test_la_clinica_en_bs_es_el_total_por_la_tasa_y_el_origen_no_cambia(clinica)
 def test_registra_moneda_del_proyecto_y_registro_de_cambio(clinica):
     sesion, nombre = clinica
     nueva = _convertir(sesion, nombre)
-    registro = sesion.scalars(select(models.RegistroCambio).where(
-        models.RegistroCambio.version_resultante_id == nueva.id)).one()
+    registro = sesion.scalars(
+        select(models.RegistroCambio).where(models.RegistroCambio.version_resultante_id == nueva.id)
+    ).one()
     assert (registro.objeto, registro.valor_anterior, registro.valor_nuevo, registro.fuente) == (
-        "moneda", "USD", "Bs", "importacion:1")
+        "moneda",
+        "USD",
+        "Bs",
+        "importacion:1",
+    )
     assert moneda_del_proyecto(sesion, nueva.proyecto) == "Bs"
     assert sesion.get(models.VersionOrigen, nueva.id).motivo == "conversion"
 
@@ -86,8 +101,12 @@ def test_lista_de_otra_moneda_se_rechaza_al_guardar_y_al_revalorar(clinica):
     sesion.add(lista_bs)
     sesion.flush()
     with pytest.raises(ValueError, match="RF-65"):
-        guardar_001(sesion, sesion.scalars(select(models.Proyecto)).one(),
-                    replace(elaborar_001(sesion, codigo="009")), lista=lista_bs)
+        guardar_001(
+            sesion,
+            sesion.scalars(select(models.Proyecto)).one(),
+            replace(elaborar_001(sesion, codigo="009")),
+            lista=lista_bs,
+        )
     antes = sesion.scalar(select(func.count()).select_from(models.CambioPrecio))
     with pytest.raises(ValueError, match="RF-65"):
         actualizar_precios(sesion, nombre, "001", lista_bs, "010")
@@ -99,8 +118,9 @@ def test_moneda_cambiada_con_versiones_previas_no_se_restauran_en_la_vieja(clini
     sesion, nombre = clinica
     _convertir(sesion, nombre)
     with pytest.raises(ValueError, match="convierta"):
-        restaurar_version(sesion, nombre, "001", "004", Catalogo(sesion), fuente="x",
-                          responsable="y")
+        restaurar_version(
+            sesion, nombre, "001", "004", Catalogo(sesion), fuente="x", responsable="y"
+        )
 
 
 def test_tasa_incompleta_se_rechaza_sin_escribir(clinica):

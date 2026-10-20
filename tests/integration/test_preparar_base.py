@@ -254,9 +254,19 @@ def test_la_base_de_la_instalacion_nace_con_las_tablas_de_seguridad() -> None:
             n for (n,) in conexion.execute("SELECT name FROM sqlite_master WHERE type = 'table'")
         }
     assert tablas == {
-        "alembic_version", "usuario", "intento_acceso", "sesion", "evento_acceso",
-        "codigo_instalacion", "empresa_propia", "clave_empresa", "empresa_registrada",
-        "clave_api", "prod_material", "prod_movimiento", "prod_pesaje_sospechoso",
+        "alembic_version",
+        "usuario",
+        "intento_acceso",
+        "sesion",
+        "evento_acceso",
+        "codigo_instalacion",
+        "empresa_propia",
+        "clave_empresa",
+        "empresa_registrada",
+        "clave_api",
+        "prod_material",
+        "prod_movimiento",
+        "prod_pesaje_sospechoso",
         "auditoria_libro",
     }
     segundo = preparar_base(ruta, Destino.INSTALACION)

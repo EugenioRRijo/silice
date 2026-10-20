@@ -177,8 +177,9 @@ def test_una_partida_nueva_se_persiste_y_se_relee(tmp_path: Path) -> None:
         )
         sesion.commit()  # la prueba confirma, como la pagina: guardar_composicion no lo hace
     assert guardado.motivo is None
-    assert guardado.resultado.precio_unitario.quantize(Decimal("0.01")) == (
-        PRECIO_UNITARIO_ESPERADO["LB-02-TUB"]
+    assert (
+        guardado.resultado.precio_unitario.quantize(Decimal("0.01"))
+        == (PRECIO_UNITARIO_ESPERADO["LB-02-TUB"])
     )
     with _catalogo(base) as catalogo:  # motor propio: relee lo confirmado
         releida = catalogo.composicion("XX-01-NUE", fecha=FECHA_LINEA_BASE)

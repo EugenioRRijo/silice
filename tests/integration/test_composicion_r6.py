@@ -92,9 +92,7 @@ def _presupuesto_persistido(sesion, composiciones: dict[str, ComposicionAPU]) ->
         )
         for codigo, composicion in composiciones.items()
     )
-    return Presupuesto(
-        codigo="PRUEBA-R6", fecha=FECHA, moneda=linea_base.MONEDA, partidas=partidas
-    )
+    return Presupuesto(codigo="PRUEBA-R6", fecha=FECHA, moneda=linea_base.MONEDA, partidas=partidas)
 
 
 def test_mismo_factor_de_la_referencia_r6_no_emite_hallazgo(sesion):
