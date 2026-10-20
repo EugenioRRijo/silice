@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor, within } from "@testing-library/react";
+import { act, configure, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import type { SesionRespuesta } from "../../api/tipos";
@@ -7,6 +7,9 @@ import type { Aplicacion } from "../../shell/contexto";
 import { vistaApu, vistaEspacio, vistaPlan, vistaPresupuesto } from "./datosDePrueba";
 import PaginaHoja from "./index";
 import type { BorradorAbierto, VersionesRespuesta } from "./logica";
+
+// La primera vista tarda en una máquina cargada (importa Carbon y la tabla): se espera más que el 1 s por omisión.
+configure({ asyncUtilTimeout: 5000 });
 
 // El gráfico de Carbon no se dibuja en jsdom: se deja una marca con las filas que recibiría.
 vi.mock("../../comun/GraficoCarbon", () => ({
