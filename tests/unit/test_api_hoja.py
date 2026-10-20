@@ -996,3 +996,49 @@ def test_las_vistas_cuentan_el_mismo_total_que_el_resumen_del_borrador() -> None
     resumen = navegador.get(f"/v1/hoja/borradores/{id_}").json()["resumen"]["total"]
     assert _vista(navegador, id_, "espacio").json()["total"] == resumen
     assert _vista(navegador, id_, "presupuesto").json()["total"] == resumen
+
+
+# --- R9: punto de equilibrio (3b-3) ----------------------------------------------------------
+
+
+def test_r9_of001_da_el_equilibrio_de_la_memoria() -> None:
+    """3b-B8 / P3: CV 2137,44; PE 1530,49 ±0,01; 56,60 % ±0,01; Día 23 (aceptación SF)."""
+    navegador, ficha = _ana()
+    respuesta = _vista(navegador, _abierta(navegador, ficha), "equilibrio")
+    assert respuesta.status_code == 200, respuesta.text
+    cuerpo = respuesta.json()
+    assert (cuerpo["estado"], cuerpo["moneda"]) == ("calculado", "USD")
+    assert cuerpo["costo_variable"]["texto"] == "2137.44"
+    assert abs(D(cuerpo["punto"]["exacto"]) - D("1530.49")) <= D("0.01")
+    assert abs(D(cuerpo["porcentaje"]["exacto"]) - D("56.60")) <= D("0.01")
+    assert cuerpo["periodo"].startswith("Dia 23")
+    assert cuerpo["mensaje"].startswith("Se alcanza en Dia 23, al ")
+
+
+def test_r9_de_la_version_002_con_administracion_020_da_las_cifras_de_p13(_casos) -> None:
+    _poner(_casos["of001_tres"])
+    navegador, ficha = _ana()
+    id_ = _abierta(navegador, ficha, version="002")
+    cuerpo = _vista(navegador, id_, "equilibrio").json()
+    assert abs(D(cuerpo["venta"]["exacto"]) - D("2821.42")) <= D("0.01")
+    assert abs(D(cuerpo["punto"]["exacto"]) - D("1763.39")) <= D("0.01")
+    assert abs(D(cuerpo["porcentaje"]["exacto"]) - D("62.50")) <= D("0.01")
+
+
+def test_r9_de_ti001_se_alcanza_en_el_dia_6_con_el_punto_de_la_clasica(_casos) -> None:
+    """Literales de `test_ui_hoja.py:580-611` (la clásica): «Se alcanza en Dia 6», PE 28586,7…"""
+    _poner(_casos["ti001"])
+    navegador, ficha = _ana()
+    id_ = _abierta(navegador, ficha, proyecto=NOMBRE_TI001, version=caso_ti001.CODIGO)
+    cuerpo = _vista(navegador, id_, "equilibrio").json()
+    assert cuerpo["mensaje"].startswith("Se alcanza en Dia 6")
+    assert cuerpo["punto"]["exacto"].startswith("28586.7")
+
+
+def test_r9_de_un_proyecto_sin_versiones_no_aplica_y_lo_dice(_entorno: Path) -> None:
+    _con_proyecto_nuevo(_entorno)
+    navegador, ficha = _ana()
+    id_ = _abierta(navegador, ficha, proyecto="Proyecto nuevo", version=None)
+    cuerpo = _vista(navegador, id_, "equilibrio").json()
+    assert cuerpo["estado"] == "no_aplicable" and cuerpo["punto"] is None
+    assert cuerpo["mensaje"] == "El presupuesto no tiene ventas: el punto de equilibrio no aplica."

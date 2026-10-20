@@ -772,3 +772,134 @@ def test_sin_plan_no_hay_curva_y_el_mensaje_es_el_de_la_clasica():
         "Esta versión no tiene plan de trabajo, así que no hay curva de inversión."
     )
     assert v.moneda == "USD"
+
+
+# --- 3b-3 · vista del punto de equilibrio (R9) ----------------------------------------------------
+
+from core.budget.equilibrio import equilibrio as _pe_de_core  # noqa: E402
+from core.contracts.presupuesto import PuntoCurva  # noqa: E402
+
+
+def test_el_equilibrio_de_of001_es_el_de_la_memoria(_of001):
+    """3b-B8 / P3: CV 2137,44; PE 1530,49 (±0,01); 56,60 % (±0,01); se alcanza en el Dia 23."""
+    v = hoja_vista.vista_equilibrio(_vivo(_of001))
+    assert v.estado == "calculado" and v.moneda == "USD"
+    assert v.costo_variable.texto == "2137.44"
+    assert abs(Decimal(v.punto.exacto) - D("1530.49")) <= D("0.01")
+    assert abs(Decimal(v.porcentaje.exacto) - D("56.60")) <= D("0.01")
+    assert v.periodo is not None and v.periodo.startswith("Dia 23")
+    assert v.mensaje.startswith("Se alcanza en Dia 23, al ") and v.mensaje.endswith(" % de ese período.")
+    assert D("0") < Decimal(v.fraccion_periodo) <= D("1")
+    # a mano: ventas 2703,86; CF = CV × 0,15 = 320,616; utilidad = V − CV − CF = 245,80
+    assert abs(Decimal(v.venta.exacto) - D("2703.86")) <= D("0.01")
+    assert abs(Decimal(v.costo_fijo.exacto) - D("320.616")) <= D("0.002")
+    assert abs(Decimal(v.utilidad.exacto) - D("245.80")) <= D("0.02")
+
+
+def test_con_administracion_020_el_equilibrio_sube_a_la_memoria(_of001):
+    """P13 (las cifras que confirmo el arbitro): total 2821,42; PE 1763,39; 62,50 %."""
+    editado = replace(
+        _of001.borrador, parametros=replace(_of001.borrador.parametros, administracion=D("0.20"))
+    )
+    v = hoja_vista.vista_equilibrio(_vivo(_of001, editado))
+    assert abs(Decimal(v.venta.exacto) - D("2821.42")) <= D("0.01")
+    assert abs(Decimal(v.punto.exacto) - D("1763.39")) <= D("0.01")
+    assert abs(Decimal(v.porcentaje.exacto) - D("62.50")) <= D("0.01")
+
+
+def test_el_equilibrio_de_of001_es_el_de_la_clasica_con_la_misma_frase(_of001):
+    v = hoja_vista.vista_equilibrio(_vivo(_of001))
+    pe = _elaborada_por_la_clasica(_como_clasica(_of001.borrador)).equilibrio
+    assert v.mensaje == clasica.texto_equilibrio(pe)
+    assert (v.venta.exacto, v.costo_variable.exacto, v.costo_fijo.exacto, v.utilidad.exacto) == (
+        format(pe.venta, "f"),
+        format(pe.costo_variable, "f"),
+        format(pe.costo_fijo, "f"),
+        format(pe.utilidad, "f"),
+    )
+    assert (v.punto.exacto, v.porcentaje.exacto, v.periodo) == (
+        format(pe.punto, "f"),
+        format(pe.porcentaje, "f"),
+        pe.periodo,
+    )
+
+
+CURVA = (
+    PuntoCurva("Dia 1", D("10"), D("10")),
+    PuntoCurva("Dia 2", D("30"), D("40")),
+    PuntoCurva("Dia 3", D("60"), D("100")),
+)
+
+
+@pytest.mark.parametrize(
+    ("venta", "cv", "cf", "curva", "estado", "frase"),
+    [
+        # V = 0: no aplica (texto de H:1221-1238)
+        (
+            D("0"),
+            D("0"),
+            D("0"),
+            (),
+            "no_aplicable",
+            "El presupuesto no tiene ventas: el punto de equilibrio no aplica.",
+        ),
+        # m = (100 − 100) / 100 = 0 → no hay punto
+        (
+            D("100"),
+            D("100"),
+            D("10"),
+            CURVA,
+            "no_existe",
+            "No existe punto de equilibrio: el margen de contribución no es positivo "
+            "(los costos directos igualan o superan las ventas).",
+        ),
+        # PE = 60 × 100 / (100 − 50) = 120 > 100 → no se alcanza
+        (
+            D("100"),
+            D("50"),
+            D("60"),
+            CURVA,
+            "no_se_alcanza",
+            "El punto de equilibrio (120.00) no se alcanza dentro del contrato (100.00).",
+        ),
+        # PE = 10 × 100 / 50 = 20 y sin curva → no se ubica
+        (
+            D("100"),
+            D("50"),
+            D("10"),
+            (),
+            "calculado",
+            "Sin curva de inversión: el punto de equilibrio no se ubica en el plan.",
+        ),
+        # PE = 20: acumulado del Dia 1 = 10 < 20 <= 40; fracción (20 − 10) / 30 = 1/3 → 33 %
+        (
+            D("100"),
+            D("50"),
+            D("10"),
+            CURVA,
+            "calculado",
+            "Se alcanza en Dia 2, al 33 % de ese período.",
+        ),
+    ],
+)
+def test_los_cuatro_casos_limite_del_equilibrio_dicen_su_frase(
+    venta, cv, cf, curva, estado, frase
+):
+    """3b-B9 / P4: cada caso límite, con montos escritos a mano."""
+    pe = _pe_de_core(venta, cv, cf, curva)
+    v = hoja_vista.equilibrio_a_vista(pe, "USD")
+    assert v.estado == estado and v.mensaje == frase
+    assert v.mensaje == clasica.texto_equilibrio(pe)  # y es la de la clásica
+
+
+def test_sin_punto_no_hay_punto_ni_porcentaje_ni_periodo():
+    v = hoja_vista.equilibrio_a_vista(_pe_de_core(D("0"), D("0"), D("0"), ()), "USD")
+    assert (v.punto, v.porcentaje, v.periodo, v.fraccion_periodo) == (None, None, None, None)
+    v = hoja_vista.equilibrio_a_vista(_pe_de_core(D("100"), D("50"), D("60"), CURVA), "USD")
+    assert (v.punto.texto, v.porcentaje.texto, v.periodo) == ("120.00", "120.00", None)
+
+
+def test_el_equilibrio_de_un_borrador_en_blanco_no_aplica():
+    v = hoja_vista.vista_equilibrio(Registro().crear("f", "c", "N", None, hoja.Borrador(fecha=HOY), None))
+    assert v.estado == "no_aplicable" and v.punto is None
+    assert v.mensaje == "El presupuesto no tiene ventas: el punto de equilibrio no aplica."
