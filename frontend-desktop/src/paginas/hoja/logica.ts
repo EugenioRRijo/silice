@@ -418,13 +418,24 @@ export function clavesDeAuditoria(clave: string): string[] {
   return claves;
 }
 
-// Como la clásica (`estado_de_items`), los hallazgos se atribuyen por el origen o por la partida del renglón (un PENDIENTE solo al renglón que lo cita).
+// Como la clásica (`estado_de_items`), un hallazgo toca un renglón si cita su origen o si el informe lo atribuye a su
+// partida. Un PENDIENTE es la excepción: llega con `origen = [partida, origen_id]` y solo es del renglón cuya tupla es
+// exactamente esa (ni de otro renglón de la partida ni de otra partida con ese origen).
 export function hallazgosDeOrigen(hallazgos: HallazgoInformeRespuesta[], claves: string[]): HallazgoInformeRespuesta[] {
-  return hallazgos.filter(
-    (h) =>
-      h.origen.some((o) => claves.includes(o)) ||
-      (h.regla !== "PENDIENTE" && h.partida !== null && claves.includes(h.partida)),
-  );
+  const { partida, resto } = partirRenglon(claves[0] ?? "");
+  return hallazgos.filter((h) => {
+    if (h.regla === "PENDIENTE") {
+      return partida !== null && h.origen.length === 2 && h.origen[0] === partida && h.origen[1] === resto;
+    }
+    return h.origen.some((o) => claves.includes(o)) || (h.partida !== null && claves.includes(h.partida));
+  });
+}
+
+// La partida y el origen_id de un renglón del presupuesto («partida|origen#2»); sin «|» no hay partida.
+function partirRenglon(clave: string): { partida: string | null; resto: string } {
+  const base = clave.replace(/#\d+$/, "");
+  const barra = /^esp_[a-z_]+:/.test(base) ? -1 : base.indexOf("|");
+  return barra < 0 ? { partida: null, resto: base } : { partida: base.slice(0, barra), resto: base.slice(barra + 1) };
 }
 
 // El período de la curva llega con los códigos de las partidas que lo cierran («Dia 23 [EL-CAJA]»): se muestran sin ellos.

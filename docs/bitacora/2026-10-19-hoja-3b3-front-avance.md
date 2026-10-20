@@ -57,4 +57,10 @@ El contrato de rutas es `2026-10-19-hoja-3b3-contrato-rutas.md` (`aa9fbd7`); lo 
   `esp_recorridos`, `esp_sobrescrituras` y `esp_tramos`. Todos tienen nombre en `rotuloDeOrigen`; uno desconocido cae a
   «Origen X» y una prueba recorre el barrido.
 - Una clave sin partida que empieza por un segmento ya no toma su «|» por la partida.
-- Diferencia B4 resuelta: un hallazgo PENDIENTE no se atribuye a toda la partida (solo al renglón que lo cita), como la clásica.
+- PENDIENTE (ronda 3): la clásica atribuye un PENDIENTE solo al renglón cuya tupla `(partida, origen_id)` es igual a
+  `hallazgo.origen_ids`; el servidor lo manda como `origen = [partida, origen_id]`. Mi primera versión (excluir PENDIENTE de la
+  atribución por partida) no coincidía: seguía casando por `origen[0]`. Ahora `hallazgosDeOrigen` exige esa tupla exacta para
+  PENDIENTE (ni otro renglón de la partida, ni otra partida con ese origen, ni filas del espacio). Rojo genuino por
+  comportamiento en un commit de prueba aparte.
+- Nota de proceso: el rojo del commit `fbefe9d` en la prueba del barrido de prefijos fue por una regex defectuosa (carácter de
+  control en lugar de ``), no por comportamiento; las otras cuatro pruebas de ese commit sí fallaban por comportamiento.
