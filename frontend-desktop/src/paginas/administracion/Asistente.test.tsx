@@ -248,6 +248,32 @@ describe("Asistente de IA", () => {
     expect(screen.getByText("Clave registrada: ninguna")).toBeInTheDocument();
   });
 
+  // VD-2: la confirmacion en linea reemplaza al boton y el foco caia a <body> (mismo defecto que VB-12).
+  test("al pedir olvidar la clave el foco va a «Cancelar» y, al cancelar, vuelve a «Olvidar la clave»", async () => {
+    const usuario = userEvent.setup();
+    fetchFalso.mockResolvedValueOnce(json({ ...FABRICA, activo: true, clave_registrada: "…5678" }));
+    montar();
+    await usuario.click(await screen.findByRole("button", { name: "Olvidar la clave" }));
+    expect(screen.getByRole("button", { name: "Cancelar" })).toHaveFocus();
+    await usuario.keyboard("{Enter}");
+    expect(screen.queryByRole("group", { name: "Confirmar" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Olvidar la clave" })).toHaveFocus();
+    expect(fetchFalso).toHaveBeenCalledTimes(1);
+  });
+
+  test("tras confirmar «Sí, olvidar la clave» el foco queda en el campo para registrar otra clave, no en <body>", async () => {
+    const usuario = userEvent.setup();
+    fetchFalso.mockResolvedValueOnce(json({ ...FABRICA, activo: true, clave_registrada: "…5678" }));
+    fetchFalso.mockResolvedValueOnce(
+      json({ mensaje: "La clave de IA se olvidó: ya no está en este equipo.", estado: { ...FABRICA, activo: true } }),
+    );
+    montar();
+    await usuario.click(await screen.findByRole("button", { name: "Olvidar la clave" }));
+    await usuario.click(screen.getByRole("button", { name: "Sí, olvidar la clave" }));
+    await screen.findByText("La clave de IA se olvidó: ya no está en este equipo.");
+    await waitFor(() => expect(screen.getByLabelText("Clave de IA de la empresa")).toHaveFocus());
+  });
+
   // VB-18: el aviso es para quien administra, no para quien desarrolla: sin comandos de consola.
   test("sin el componente de IA lo dice en lenguaje llano y no ofrece la sección de la clave", async () => {
     fetchFalso.mockResolvedValueOnce(
