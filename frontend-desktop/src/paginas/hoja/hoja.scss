@@ -167,3 +167,10 @@
     flex-basis: 100%;
   }
 }
+
+// Parámetros editables (3c-2): los cuatro campos en dos columnas, con su etiqueta a la vista.
+.silice-hoja__campos {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}

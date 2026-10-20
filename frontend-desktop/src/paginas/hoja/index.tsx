@@ -96,7 +96,6 @@ function ContenidoDePestana({
   if (borrador === null) return null;
   const llave = `${borrador.id}-${borrador.resumen.rev}`;
   const moneda = borrador.resumen.moneda;
-  // La del espacio se edita: no se vuelve a montar con cada `rev` (perdería lo que se está escribiendo); ella misma vuelve a leer su vista.
   if (indice === 0) {
     return (
       <PestanaEspacio
@@ -117,7 +116,21 @@ function ContenidoDePestana({
   if (indice === 5) {
     return <PestanaPrecios key={llave} proyecto={borrador.base.proyecto} version={borrador.base.version} alAusente={alAusente} />;
   }
-  if (indice === 6) return <PestanaParametros key={llave} id={borrador.id} moneda={moneda} alAusente={alAusente} />;
+  // Las que se editan no se vuelven a montar con cada `rev` (perdería lo escrito); cada una vuelve a leer su vista.
+  if (indice === 6) {
+    return (
+      <PestanaParametros
+        key={borrador.id}
+        id={borrador.id}
+        rev={borrador.resumen.rev}
+        moneda={moneda}
+        alAusente={alAusente}
+        alAceptar={alAceptar}
+        alRecargarBorrador={alRecargarBorrador}
+        alReabrir={alReabrir}
+      />
+    );
+  }
   if (indice === 7) {
     return <PestanaAuditoria key={llave} id={borrador.id} alAusente={alAusente} filtro={filtro} alQuitarFiltro={alQuitarFiltro} />;
   }

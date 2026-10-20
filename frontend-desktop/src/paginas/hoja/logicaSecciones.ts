@@ -11,6 +11,13 @@ export const rutaDeParametros = (id: string) => `${rutaDelBorrador(id)}/parametr
 export const rutaDePlan = (id: string) => `${rutaDelBorrador(id)}/plan`;
 export const rutaDePlanSecuencial = (id: string) => `${rutaDelBorrador(id)}/plan/secuencial`;
 
+// Lo que la clásica agrega tras el error de cada sección (ui/paginas/hoja.py:1674, 1773, 1827, 2053).
+export const FRASES_DE_RECHAZO = {
+  cantidades: "La hoja sigue con las últimas cantidades válidas.",
+  parametros: "La hoja sigue con los últimos parámetros válidos.",
+  plan: "La hoja sigue con el último plan válido.",
+} as const;
+
 // Cómo reparte el texto de un 409 (los tres que puede dar una edición): solo el `rev` viejo se arregla recargando;
 // si el caso cambió o el borrador ya se guardó, recargar también fallaría y solo queda abrir de nuevo.
 export type ClaseDeConflicto = "rev" | "perdido" | "otro";

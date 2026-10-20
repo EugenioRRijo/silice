@@ -567,9 +567,9 @@ export function cuerpoDeEdicionDelEspacio(
 }
 
 // La clásica agrega esta frase tras el error de la edición (ui/paginas/hoja.py:1217) y el borrador queda como estaba.
-export function mensajeDeRechazo(detalle: string): string {
+export function mensajeDeRechazo(detalle: string, frase: string = FRASE_DE_RECHAZO): string {
   const sinPunto = detalle.trimEnd().replace(/\.$/, "");
-  return `${sinPunto}. ${FRASE_DE_RECHAZO}`;
+  return `${sinPunto}. ${frase}`;
 }
 
 function sinTildes(texto: string): string {
