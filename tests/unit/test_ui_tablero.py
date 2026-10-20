@@ -280,7 +280,12 @@ def test_el_tablero_sin_linea_base_trae_el_presupuesto_y_dice_por_que_no_hay_con
     assert tarjetas["Punto de equilibrio"].valor == "56.60 %"  # 2 864,15 / 5 060 (memoria §1)
     # El informe de OB-S2 trae R1 en ADVERTENCIA por partida (rendimientos supuestos): cumple.
     auditoria = tarjetas["Auditoría"]
-    assert (auditoria.valor, auditoria.detalle) == ("CUMPLE", "3 advertencia")
+    # VB-16: el veredicto con mayúscula inicial y la cuenta en plural («3 advertencias»).
+    assert (auditoria.valor, auditoria.detalle) == ("Cumple", "3 advertencias")
+    # VB-21: el total y el costo directo llevan también su valor exacto (memoria §1: 5 060 y 4 000).
+    assert Decimal(tarjetas["Total del contrato"].exacto) == Decimal("5060")
+    assert Decimal(tarjetas["Costo directo"].exacto) == Decimal("4000")
+    assert tarjetas["Punto de equilibrio"].exacto == ""
 
 
 def test_con_linea_base_y_sin_valuaciones_el_control_lo_dice(sesion):
@@ -443,7 +448,7 @@ def test_sin_control_pinta_el_presupuesto_el_plan_y_el_motivo(monkeypatch, tmp_p
         "Total del contrato": "5060.00 USD",
         "Costo directo": "4000.00 USD",
         "Punto de equilibrio": "56.60 %",
-        "Auditoría": "CUMPLE",
+        "Auditoría": "Cumple",
     }
     assert texto_seguro(SIN_LINEA_BASE) in [i.value for i in at.info]
     rotulos = [m.value for m in at.markdown]

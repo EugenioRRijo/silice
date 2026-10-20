@@ -9,12 +9,16 @@ import type { TableroRespuesta } from "./logica";
 
 interface Ejes {
   axes?: { bottom?: { ticks?: { formatter?: (n: number) => string } } };
+  pie?: { labels?: { formatter?: (d: { data: { group: string } }) => string } };
+  donut?: { center?: { numberFormatter?: (n: number) => string } };
 }
 
 vi.mock("../../comun/GraficoCarbon", () => ({
   default: ({ tipo, datos, opciones }: { tipo: string; datos: unknown[]; opciones: unknown }) => (
     <div data-testid={`grafico-${tipo}`} data-filas={datos.length} data-opciones={JSON.stringify(opciones)}
       data-eje={(opciones as Ejes).axes?.bottom?.ticks?.formatter?.(4131)}
+      data-etiqueta={(opciones as Ejes).pie?.labels?.formatter?.({ data: { group: "Costo directo" } })}
+      data-centro={(opciones as Ejes).donut?.center?.numberFormatter?.(5060.000000001)}
     />
   ),
 }));
@@ -57,9 +61,9 @@ const TABLERO: TableroRespuesta = {
       { serie: "EV", puntos: [{ orden: 1, periodo: "M1", valor: "800" }] },
     ],
   },
-  desglose: [{ rubro: "Costo directo", monto: "4000.00", peso: "79,0 %", valor: "4000" }],
+  desglose: [{ rubro: "Costo directo", monto: "4000.00", peso: "79.0 %", valor: "4000" }],
   pareto: [
-    { partida: "P-01", descripcion: "Concreto", total: "3000.00", peso: "59,3 %", acumulado: "59,3 %", valor: "3000" },
+    { partida: "P-01", descripcion: "Concreto", total: "3000.00", peso: "59.3 %", acumulado: "61.4 %", valor: "3000" },
   ],
   versiones: [
     { version: "OB-001", fecha: "2026-11-02", motivo: "Inicial", costo_directo: "4000.00", total: "5060.00", vigente: true, valor: "5060" },
@@ -100,7 +104,10 @@ describe("Tablero del proyecto", () => {
     montar("OB-S2");
     expect(await screen.findByText("Total del contrato")).toBeInTheDocument();
     expect(String(fetchFalso.mock.calls[0]![0])).toContain("/v1/tablero?proyecto=OB-S2");
-    expect(screen.getByText("Versión OB-001 del 2026-11-02 · 3 renglones · USD")).toBeInTheDocument();
+    // VB-19: la fecha se lee dd/mm/aaaa
+    expect(screen.getByText("Versión OB-001 del 02/11/2026 · 3 renglones · USD")).toBeInTheDocument();
+    const versiones = screen.getByRole("table", { name: "Versiones del presupuesto" });
+    expect(within(versiones).getByText("02/11/2026")).toHaveAttribute("title", "2026-11-02");
     // V-21: un indice (SPI 0,98) no es una parte de un todo: no hay donas de avance, SPI ni CPI, solo los indicadores
     expect(screen.queryByLabelText(/SPI \(plazo\)/)).toBeNull();
     expect(screen.getByText("EAC")).toBeInTheDocument();
@@ -136,6 +143,33 @@ describe("Tablero del proyecto", () => {
     expect(tarjeta).toHaveAttribute("title", "95066.60 USD");
     const barras = await screen.findAllByTestId("grafico-barras");
     for (const b of barras) expect(b).toHaveAttribute("data-eje", "4.131");
+  });
+
+  test("porcentajes del desglose y del Pareto con coma es-VE, tambien en el anillo (VB-21)", async () => {
+    fetchFalso.mockImplementation(async () => json(TABLERO));
+    montar("OB-S2");
+    const desglose = await screen.findByRole("table", { name: "Desglose del contrato" });
+    expect(within(desglose).getByText("79,0 %")).toHaveAttribute("title", "79.0 %");
+    const pareto = screen.getByRole("table", { name: "Partidas que más pesan" });
+    expect(within(pareto).getByText("59,3 %")).toHaveAttribute("title", "59.3 %");
+    expect(within(pareto).getByText("61,4 %")).toHaveAttribute("title", "61.4 %");
+    // la etiqueta de la porcion es el peso de la API, no un porcentaje recalculado por el grafico
+    const [anillo] = await screen.findAllByTestId("grafico-anillo");
+    expect(anillo).toHaveAttribute("data-etiqueta", "79,0 %");
+  });
+
+  test("el total lleva el exacto de la API en el title y el centro del anillo no muestra decimales de float (VB-21)", async () => {
+    fetchFalso.mockImplementation(async () =>
+      json({
+        ...TABLERO,
+        tarjetas: [{ rotulo: "Total del contrato", valor: "95066.60 USD", detalle: "", exacto: "95066.60006250" }],
+      }),
+    );
+    montar("OB-S2");
+    const tarjeta = await screen.findByText("95.066,60 USD");
+    expect(tarjeta).toHaveAttribute("title", "Valor exacto: 95066.60006250 USD");
+    const [anillo] = await screen.findAllByTestId("grafico-anillo");
+    expect(anillo).toHaveAttribute("data-centro", "95.066,60");
   });
 
   test("sin control de obra lo dice con su motivo", async () => {

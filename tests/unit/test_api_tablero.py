@@ -16,6 +16,7 @@ Los valores esperados estan escritos a mano; ninguno sale del codigo bajo prueba
 from __future__ import annotations
 
 from collections.abc import Iterator
+from decimal import Decimal
 from pathlib import Path
 
 import pytest
@@ -149,6 +150,15 @@ def test_el_encabezado_y_las_tarjetas_del_presupuesto() -> None:
     assert tarjetas["Total del contrato"]["valor"] == "5060.00 USD"
     assert tarjetas["Costo directo"]["valor"] == "4000.00 USD"
     assert tarjetas["Punto de equilibrio"]["valor"] == "56.60 %"
+    # VB-21: el exacto del total y del costo directo viaja aparte, para el title (5 060 y 4 000)
+    assert Decimal(tarjetas["Total del contrato"]["exacto"]) == Decimal("5060")
+    assert Decimal(tarjetas["Costo directo"]["exacto"]) == Decimal("4000")
+    assert tarjetas["Punto de equilibrio"]["exacto"] == ""
+    # VB-16: veredicto con mayúscula inicial y la cuenta de hallazgos en plural
+    assert (tarjetas["Auditoría"]["valor"], tarjetas["Auditoría"]["detalle"]) == (
+        "Cumple",
+        "3 advertencias",
+    )
 
 
 def test_el_control_trae_los_tres_anillos_y_las_tarjetas_del_corte() -> None:
