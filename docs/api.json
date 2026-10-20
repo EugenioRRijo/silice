@@ -5569,6 +5569,52 @@
         }
       }
     },
+    "/v1/hoja/borradores/{id}/vistas/plan": {
+      "get": {
+        "tags": [
+          "hoja"
+        ],
+        "summary": "Vista Plan",
+        "description": "R8: Plan y curva en lectura (matriz partida por periodo y curva de inversión).",
+        "operationId": "vista_plan_v1_hoja_borradores__id__vistas_plan_get",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 16,
+              "maxLength": 64,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "title": "Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VistaPlanRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/produccion/materiales": {
       "get": {
         "tags": [
@@ -9945,6 +9991,27 @@
         "title": "FilaPlan",
         "description": "Una fila de la tabla del plan de trabajo; los textos pueden venir en blanco (fila nueva)."
       },
+      "FilaPlanRespuesta": {
+        "properties": {
+          "partida": {
+            "type": "string",
+            "title": "Partida"
+          },
+          "valores": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Valores"
+          }
+        },
+        "type": "object",
+        "required": [
+          "partida",
+          "valores"
+        ],
+        "title": "FilaPlanRespuesta"
+      },
       "FilaPresupuestoRespuesta": {
         "properties": {
           "clave": {
@@ -13036,6 +13103,31 @@
         "title": "ProyectoRespuesta",
         "description": "El proyecto creado, tal como quedo guardado."
       },
+      "PuntoCurvaRespuesta": {
+        "properties": {
+          "periodo": {
+            "type": "string",
+            "title": "Periodo"
+          },
+          "monto": {
+            "$ref": "#/components/schemas/MontoHojaRespuesta"
+          },
+          "acumulado": {
+            "$ref": "#/components/schemas/MontoHojaRespuesta"
+          },
+          "porcentaje": {
+            "$ref": "#/components/schemas/MontoHojaRespuesta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "periodo",
+          "monto",
+          "acumulado",
+          "porcentaje"
+        ],
+        "title": "PuntoCurvaRespuesta"
+      },
       "PuntoDeCurva": {
         "properties": {
           "periodo": {
@@ -15286,6 +15378,60 @@
           "vacio_mensaje"
         ],
         "title": "VistaEspacioRespuesta"
+      },
+      "VistaPlanRespuesta": {
+        "properties": {
+          "hay_plan": {
+            "type": "boolean",
+            "title": "Hay Plan"
+          },
+          "etiquetas": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Etiquetas"
+          },
+          "filas": {
+            "items": {
+              "$ref": "#/components/schemas/FilaPlanRespuesta"
+            },
+            "type": "array",
+            "title": "Filas"
+          },
+          "curva": {
+            "items": {
+              "$ref": "#/components/schemas/PuntoCurvaRespuesta"
+            },
+            "type": "array",
+            "title": "Curva"
+          },
+          "moneda": {
+            "type": "string",
+            "title": "Moneda"
+          },
+          "mensaje": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mensaje"
+          }
+        },
+        "type": "object",
+        "required": [
+          "hay_plan",
+          "etiquetas",
+          "filas",
+          "curva",
+          "moneda",
+          "mensaje"
+        ],
+        "title": "VistaPlanRespuesta"
       },
       "VistaPresupuestoRespuesta": {
         "properties": {

@@ -17,6 +17,7 @@ from aplicacion.hoja_vista import (
     ResumenHoja,
     VistaApu,
     VistaEspacio,
+    VistaPlan,
     VistaPresupuesto,
 )
 
@@ -254,3 +255,28 @@ class VistaApuRespuesta(BaseModel):
 
 def vista_apu_a_respuesta(vista: VistaApu) -> VistaApuRespuesta:
     return VistaApuRespuesta.model_validate(vista, from_attributes=True)
+
+
+class FilaPlanRespuesta(BaseModel):
+    partida: str
+    valores: dict[str, str]
+
+
+class PuntoCurvaRespuesta(BaseModel):
+    periodo: str
+    monto: MontoHojaRespuesta
+    acumulado: MontoHojaRespuesta
+    porcentaje: MontoHojaRespuesta
+
+
+class VistaPlanRespuesta(BaseModel):
+    hay_plan: bool
+    etiquetas: list[str]
+    filas: list[FilaPlanRespuesta]
+    curva: list[PuntoCurvaRespuesta]
+    moneda: str
+    mensaje: str | None
+
+
+def vista_plan_a_respuesta(vista: VistaPlan) -> VistaPlanRespuesta:
+    return VistaPlanRespuesta.model_validate(vista, from_attributes=True)

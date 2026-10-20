@@ -40,11 +40,13 @@ from api.esquemas_hoja import (
     VersionHojaRespuesta,
     VistaApuRespuesta,
     VistaEspacioRespuesta,
+    VistaPlanRespuesta,
     VistaPresupuestoRespuesta,
     base_a_respuesta,
     resumen_a_respuesta,
     vista_apu_a_respuesta,
     vista_espacio_a_respuesta,
+    vista_plan_a_respuesta,
     vista_presupuesto_a_respuesta,
 )
 from api.sesion_web import exigir_clave_o_sesion
@@ -258,3 +260,9 @@ def vista_apu(
     """R7: APU en lectura (lista con buscador, tres rubros, cierre). La búsqueda la hace el
     servidor; sin coincidencias se devuelven todas las partidas."""
     return vista_apu_a_respuesta(hoja_vista.vista_apu(_vivo(request, activa, id), partida, buscar))
+
+
+@router.get("/borradores/{id}/vistas/plan", response_model=VistaPlanRespuesta)
+def vista_plan(id: IdDeBorrador, request: Request, activa: CuentaDeLaHoja) -> VistaPlanRespuesta:
+    """R8: Plan y curva en lectura (matriz partida por periodo y curva de inversión)."""
+    return vista_plan_a_respuesta(hoja_vista.vista_plan(_vivo(request, activa, id)))

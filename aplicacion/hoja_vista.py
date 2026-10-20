@@ -562,3 +562,65 @@ def vista_apu(
         detalle=_detalle_de_apu(vivo, resultado, seleccionada),
         vacio_mensaje=None,
     )
+
+
+# --- Plan y curva (R8) --------------------------------------------------------------------------
+
+SIN_PLAN = "Esta versión no tiene plan de trabajo, así que no hay curva de inversión."
+
+
+@dataclass(frozen=True, slots=True)
+class FilaDePlan:
+    """Una partida y la fraccion (texto) que se ejecuta en cada periodo (clave: la etiqueta)."""
+
+    partida: str
+    valores: dict[str, str]
+
+
+@dataclass(frozen=True, slots=True)
+class PuntoDeCurvaHoja:
+    periodo: str
+    monto: Monto
+    acumulado: Monto
+    porcentaje: Monto
+
+
+@dataclass(frozen=True, slots=True)
+class VistaPlan:
+    hay_plan: bool
+    etiquetas: tuple[str, ...]
+    filas: tuple[FilaDePlan, ...]
+    curva: tuple[PuntoDeCurvaHoja, ...]
+    moneda: str
+    mensaje: str | None
+
+
+def vista_plan(vivo: BorradorVivo) -> VistaPlan:
+    """La pestana Plan y curva en lectura (P:1796-1848): la matriz partida por periodo y la curva
+    de inversion (periodo, monto, acumulado y % acumulado)."""
+    resultado, _ = calculo(vivo)
+    presupuesto = resultado.elaboracion.presupuesto
+    if vivo.borrador.plan is None:
+        return VistaPlan(False, (), (), (), presupuesto.moneda, SIN_PLAN)
+    codigos = list(dict.fromkeys(p.item.codigo_partida for p in presupuesto.partidas))
+    etiquetas, filas = hoja.plan_como_filas(resultado.plan or (), codigos)
+    textos = hoja.filas_de_curva(presupuesto)
+    curva = []
+    for texto, punto in zip(textos, presupuesto.curva, strict=True):
+        porcion = punto.acumulado / presupuesto.total * 100 if presupuesto.total else Decimal(0)
+        curva.append(
+            PuntoDeCurvaHoja(
+                periodo=texto["periodo"],
+                monto=monto(punto.monto),
+                acumulado=monto(punto.acumulado),
+                porcentaje=monto(porcion),
+            )
+        )
+    return VistaPlan(
+        hay_plan=True,
+        etiquetas=tuple(etiquetas),
+        filas=tuple(FilaDePlan(f["partida"], {e: f[e] for e in etiquetas}) for f in filas),
+        curva=tuple(curva),
+        moneda=presupuesto.moneda,
+        mensaje=None,
+    )
