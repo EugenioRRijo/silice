@@ -250,11 +250,13 @@ function HojaDeProyecto({ proyecto }: { proyecto: string }) {
 
   // E11: si al abrir el servidor dice que ya hay un borrador con cambios de esa versión, se ofrece retomarlo.
   const existente = estado.estado === "error" ? borradorExistente(estado.error) : null;
-  useEffect(() => {
-    if (existente === null) return;
+  const [existenteVisto, setExistenteVisto] = useState<string | null>(null);
+  if (existente !== null && existente !== existenteVisto) {
+    // Ajuste durante el render (react.dev, «You might not need an effect»): se vuelve a leer la lista, que ya lo incluye.
+    setExistenteVisto(existente);
     setSinOfertas(null);
     recargarOfertas();
-  }, [existente, recargarOfertas]);
+  }
 
   const abrirVersion = (nueva: string) => {
     setRetomando(null);

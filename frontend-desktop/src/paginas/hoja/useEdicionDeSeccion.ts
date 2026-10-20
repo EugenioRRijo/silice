@@ -111,7 +111,7 @@ export function useEdicionDeSeccion<E, U>(opciones: Opciones<E, U>) {
         } while (m.volver);
       } catch (e) {
         m.volver = false;
-        aceptado = null;
+        // Si una vuelta anterior ya se aceptó, `aceptado` es lo último que el servidor tiene; si no, sigue en null.
         if (e instanceof ErrorDeApi && e.estado === 401) {
           actuales.current.alExpirar();
         } else if (esBorradorAusente(e)) {
