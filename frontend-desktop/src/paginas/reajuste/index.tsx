@@ -148,7 +148,10 @@ function Formulario({
   const zonaError = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (enfocar === null) return;
-    (enfocar.donde === "resultado" ? tituloResultado.current : zonaError.current)?.focus();
+    const destino = enfocar.donde === "resultado" ? tituloResultado.current : zonaError.current;
+    destino?.focus({ preventScroll: true });
+    // A la vista arriba, sin animar (nada de desplazamiento suave: respeta prefers-reduced-motion por construcción).
+    destino?.scrollIntoView?.({ block: "start", behavior: "instant" });
   }, [enfocar]);
 
   // Todo cambio del formulario retira el resultado y el aviso de guardado: ya no corresponden a lo escrito.
@@ -348,13 +351,16 @@ function Formulario({
         </TabPanels>
       </Tabs>
 
-      <div ref={zonaError} tabIndex={-1} className="silice-reajuste__zona-error">
-        <AvisoError error={error} titulo="No se pudo completar" alCerrar={() => setError(null)} />
-      </div>
+      {error !== null && error !== undefined && (
+        // Solo con un error: vacía, la zona sumaba un hueco de la rejilla.
+        <div ref={zonaError} tabIndex={-1} className="silice-reajuste__zona-error silice-reajuste__enfocable">
+          <AvisoError error={error} titulo="No se pudo completar" alCerrar={() => setError(null)} />
+        </div>
+      )}
 
       {calculo && (
         <section className="silice-reajuste__bloque" aria-labelledby="reajuste-resultado">
-          <h2 id="reajuste-resultado" ref={tituloResultado} tabIndex={-1} className="cds--type-heading-compact-02">
+          <h2 id="reajuste-resultado" ref={tituloResultado} tabIndex={-1} className="cds--type-heading-compact-02 silice-reajuste__enfocable">
             Escalatoria y comprobación, lado a lado
           </h2>
           <TablaDensa

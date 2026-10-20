@@ -78,3 +78,9 @@
     color: var(--silice-texto-secundario);
   }
 }
+
+// Lo que recibe el foco tras «Calcular» (el titulo del resultado y la zona del aviso, VB-13): el anillo de Carbon.
+.silice-reajuste__enfocable:focus {
+  outline: 2px solid var(--cds-focus);
+  outline-offset: 2px;
+}
