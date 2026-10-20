@@ -1,8 +1,8 @@
-import { Button, SkeletonText } from "@carbon/react";
+import { Button, SkeletonText, Tooltip } from "@carbon/react";
 import { useEffect, useRef } from "react";
 import { AvisoError } from "../../comun/AvisoError";
 import { TablaDensa } from "../../comun/TablaDensa";
-import { formatoEsVe } from "../../indicadores/formatoEsVe";
+import { centesimasEsVe, formatoEsVe } from "../../indicadores/formatoEsVe";
 import { useCarga } from "../inicio/useCarga";
 import { fechaEsVe } from "./logica";
 
@@ -43,13 +43,16 @@ function Dato({ rotulo, children }: { rotulo: string; children: React.ReactNode 
   );
 }
 
-// El monto en es-VE a la vista y el exacto en el tooltip y para el lector de pantalla.
+// El mismo indicador que el Libro (VB-7): el monto en centesimas y es-VE a la vista, y el exacto (es-VE, sin
+// redondear) en un Tooltip de Carbon que se abre con el foco del teclado y con el raton; es la descripcion
+// accesible del valor.
 function Monto({ exacto }: { exacto: string }) {
   return (
-    <span title={`Valor exacto: ${exacto}`} className="silice-cifra">
-      {formatoEsVe(exacto)}
-      <span className="cds--visually-hidden">{`. Valor exacto: ${exacto}`}</span>
-    </span>
+    <Tooltip align="bottom-start" description={`Valor exacto: ${formatoEsVe(exacto)}`} className="silice-historial__monto">
+      <button type="button" className="silice-historial__monto-valor silice-cifra">
+        {centesimasEsVe(exacto)}
+      </button>
+    </Tooltip>
   );
 }
 
