@@ -6,10 +6,10 @@ import { DescargaArchivo } from "../../comun/DescargaArchivo";
 import { EsqueletoPagina } from "../../comun/EsqueletoPagina";
 import { EstadoVacio } from "../../comun/EstadoVacio";
 import { TablaDensa } from "../../comun/TablaDensa";
+import { fechaEsVe } from "../../indicadores/formatoEsVe";
 import { useAplicacion } from "../../shell/contexto";
 import { useCarga } from "../inicio/useCarga";
 import type { Carga } from "../inicio/useCarga";
-import { fechasEsVe } from "../control/fechas";
 import { FilasEditables } from "./FilasEditables";
 import type { ColumnaEditable } from "./FilasEditables";
 import { armarCuerpo, filasDeResultado, formularioInicial, marcasPorPeriodo, partirResultado, rotuloDeOpcion } from "./logica";
@@ -171,8 +171,8 @@ function Formulario({
       return await pedir<T>(ruta, { metodo: "POST", cuerpo });
     } catch (e) {
       if (e instanceof ErrorDeApi && e.estado === 401) alExpirar();
-      // VB-19: los mensajes del nucleo traen fechas ISO; se leen en dd/mm/aaaa.
-      setError(e instanceof ErrorDeApi ? new ErrorDeApi(e.estado, fechasEsVe(e.detalle), e.reintentarEnSegundos, e.cuerpo) : e);
+      // El detalle tal cual: las fechas del sistema ya llegan en dd/mm/aaaa (aplicacion/reajuste.py).
+      setError(e);
       return undefined;
     } finally {
       setOcupado(false);
@@ -371,16 +371,16 @@ function Formulario({
           {marcasPorPeriodo(calculo.filas).length > 0 && (
             <ul aria-label="Marcas por período" className="silice-reajuste__marcas cds--type-body-compact-01">
               {marcasPorPeriodo(calculo.filas).map((marca) => (
-                <li key={marca}>{fechasEsVe(marca)}</li>
+                <li key={marca}>{marca}</li>
               ))}
             </ul>
           )}
           <p className="silice-reajuste__nota cds--type-body-compact-01">{`Estado del estudio: ${calculo.estado}.`}</p>
           {calculo.avisos.map((aviso) => (
-            <InlineNotification key={aviso} kind="warning" title="Aviso" subtitle={fechasEsVe(aviso)} lowContrast hideCloseButton />
+            <InlineNotification key={aviso} kind="warning" title="Aviso" subtitle={aviso} lowContrast hideCloseButton />
           ))}
           {calculo.mensaje_parcial && (
-            <InlineNotification kind="info" title="Estudio parcial" subtitle={fechasEsVe(calculo.mensaje_parcial)} lowContrast hideCloseButton />
+            <InlineNotification kind="info" title="Estudio parcial" subtitle={calculo.mensaje_parcial} lowContrast hideCloseButton />
           )}
 
           <h2 className="cds--type-heading-compact-02">Guardar el estudio</h2>
@@ -391,7 +391,7 @@ function Formulario({
               <Select id="rj-reemplaza" labelText="Reemplaza al estudio parcial" value={reemplaza} onChange={(e) => setReemplaza(e.target.value)}>
                 <SelectItem value="" text="ninguno" />
                 {calculo.parciales.map((p) => (
-                  <SelectItem key={p.id} value={String(p.id)} text={`${p.id} (calculado el ${fechasEsVe(p.fecha_calculo)})`} />
+                  <SelectItem key={p.id} value={String(p.id)} text={`${p.id} (calculado el ${fechaEsVe(p.fecha_calculo)})`} />
                 ))}
               </Select>
             )}

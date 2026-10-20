@@ -6,7 +6,7 @@ import { EsqueletoPagina } from "../../comun/EsqueletoPagina";
 import { TablaDensa } from "../../comun/TablaDensa";
 import { formatoMontoEsVe } from "../../indicadores/formatoEsVe";
 import { useAplicacion } from "../../shell/contexto";
-import { feriadosParaEnviar, fechasEsVe } from "./fechas";
+import { feriadosParaEnviar } from "./fechas";
 import { errorDeCarga, etiquetaDeCodigo, rutaDe, textoLlano, useAccion, useCargaSuave } from "./logica";
 import type { LineaBase } from "./logica";
 
@@ -180,7 +180,7 @@ export function PestanaLineaBase({ proyecto, clave, alCambiar }: Props) {
           Línea base vigente
         </h2>
         <p className="cds--type-body-compact-01">
-          {datos.descripcion ? fechasEsVe(datos.descripcion) : "El proyecto no tiene línea base de control. Declárela abajo."}
+          {datos.descripcion ?? "El proyecto no tiene línea base de control. Declárela abajo."}
         </p>
         <details open={!datos.tiene_linea_base}>
           <summary className="cds--type-body-compact-01">Declarar una línea base</summary>

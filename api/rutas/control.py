@@ -499,7 +499,7 @@ def calculo(
         moneda=moneda,
         indicadores=logica.filas_de_indicadores(sesion, resultado),
         costos_sin_tasa=[
-            f"El costo de {c.monto} {c.moneda} del {c.fecha.isoformat()} no tiene tasa aplicable "
+            f"El costo de {c.monto} {c.moneda} del {c.fecha:%d/%m/%Y} no tiene tasa aplicable "
             "(más de 7 días sin tasa): el AC y lo que depende de él no están disponibles; "
             "nada se estima."
             for c in resultado.costos_sin_tasa

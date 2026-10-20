@@ -25,7 +25,7 @@ import {
   useAccion,
 } from "./logica";
 import type { Calculo, Filtros, MetodoDePrecios, OpcionDeRecuperacion } from "./logica";
-import { fechasEsVe } from "./fechas";
+import { fechaDeRanura } from "./fechas";
 
 // --- el corte y los precios del corte, comunes a las tres pestañas ---------------------------
 
@@ -97,10 +97,10 @@ export function ValorGanado({ calculo }: { calculo: Calculo }) {
   return (
     <>
       <p className="silice-control__nota cds--type-helper-text-01">
-        {`Corte ${fechasEsVe(calculo.corte ?? "")} (día hábil ${calculo.dia}). Las fórmulas de valor ganado son definiciones del sistema; el EAC del sistema y la separación del desvío son propios de este trabajo. Sin proyectar inflación futura.`}
+        {`Corte ${fechaDeRanura(calculo.corte ?? "")} (día hábil ${calculo.dia}). Las fórmulas de valor ganado son definiciones del sistema; el EAC del sistema y la separación del desvío son propios de este trabajo. Sin proyectar inflación futura.`}
       </p>
       {calculo.costos_sin_tasa.map((texto) => (
-        <InlineNotification key={texto} kind="warning" lowContrast hideCloseButton role="status" title={fechasEsVe(texto)} />
+        <InlineNotification key={texto} kind="warning" lowContrast hideCloseButton role="status" title={texto} />
       ))}
       <TablaDensa
         etiqueta="Indicadores de valor ganado"
@@ -163,19 +163,19 @@ export function AlertasYReproyeccion({ calculo }: { calculo: Calculo }) {
         </h2>
         {t && (
           <ul className="cds--type-body-compact-01">
-            <li>{`Término por el índice: ${fechasEsVe(t.indice)}`}</li>
-            <li>{`Término por el plan reproyectado: ${fechasEsVe(t.reproyectado)}`}</li>
-            <li>{`Término del plan base: ${fechasEsVe(t.plan_base)}`}</li>
+            <li>{`Término por el índice: ${t.indice}`}</li>
+            <li>{`Término por el plan reproyectado: ${t.reproyectado}`}</li>
+            <li>{`Término del plan base: ${t.plan_base}`}</li>
             <li>{`EAC (sistema): ${t.eac_sistema}`}</li>
           </ul>
         )}
-        {calculo.motivo_termino && <p className="silice-control__nota cds--type-helper-text-01">{fechasEsVe(calculo.motivo_termino)}</p>}
+        {calculo.motivo_termino && <p className="silice-control__nota cds--type-helper-text-01">{calculo.motivo_termino}</p>}
         <p className="cds--type-body-compact-01">
           {calculo.equilibrio
             ? `Punto de equilibrio proyectado: ${calculo.equilibrio.punto} (${calculo.equilibrio.mensaje})`
             : "Punto de equilibrio proyectado: no disponible (perspectiva precio o AC/EAC)."}
         </p>
-        <p className="silice-control__nota cds--type-helper-text-01">{fechasEsVe(calculo.estudios)}</p>
+        <p className="silice-control__nota cds--type-helper-text-01">{calculo.estudios}</p>
       </section>
       <section className="silice-control__bloque" aria-labelledby="control-reproyeccion">
         <h2 id="control-reproyeccion" className="cds--type-heading-compact-02">
@@ -329,7 +329,7 @@ export function Recuperacion({
           <h2 id="control-decisiones" className="cds--type-heading-compact-02">
             Decisiones tomadas
           </h2>
-          <TablaDensa etiqueta="Decisiones tomadas" columnas={columnasDe(COLUMNAS_DECISIONES, [], { Corte: fechasEsVe, Termino: fechasEsVe })} filas={conId(calculo.decisiones)} />
+          <TablaDensa etiqueta="Decisiones tomadas" columnas={columnasDe(COLUMNAS_DECISIONES)} filas={conId(calculo.decisiones)} />
         </section>
       ) : (
         <EstadoVacio titulo="Aún no se ha tomado ninguna decisión de recuperación" />

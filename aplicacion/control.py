@@ -533,15 +533,16 @@ def estado_de_valuaciones(resultado: ResultadoControl) -> dict[str, str]:
 
 
 def filas_de_valuaciones(resultado: ResultadoControl) -> list[dict[str, str]]:
-    """Las valuaciones guardadas, en solo lectura, con su fecha de registro y su Estado."""
+    """Las valuaciones guardadas, en solo lectura, con su fecha de registro y su Estado. Las fechas
+    van en dd/mm/aaaa, cada una en su columna: el número y el inspector los escribió el usuario."""
     estados = estado_de_valuaciones(resultado)
     return [
         {
             "Numero": v.numero or f"#{v.id}",
-            "Periodo": f"{v.desde.isoformat()} a {v.hasta.isoformat()}",
-            "Fecha": "" if v.fecha is None else v.fecha.isoformat(),
+            "Periodo": f"{v.desde:%d/%m/%Y} a {v.hasta:%d/%m/%Y}",
+            "Fecha": "" if v.fecha is None else f"{v.fecha:%d/%m/%Y}",
             "Inspector": v.inspector,
-            "Registrada": "" if v.fecha_hora is None else v.fecha_hora.strftime("%Y-%m-%d %H:%M"),
+            "Registrada": "" if v.fecha_hora is None else v.fecha_hora.strftime("%d/%m/%Y %H:%M"),
             "Estado": estados.get(v.clave, "sin hallazgos"),
         }
         for v in resultado.instantanea.valuaciones
@@ -973,8 +974,8 @@ def filas_de_decisiones(sesion: Session, proyecto: str) -> list[dict[str, str]]:
         {
             "Version": d.version,
             "Opcion": d.opcion,
-            "Corte": d.fecha_corte.isoformat(),
-            "Termino": d.termino.isoformat(),
+            "Corte": f"{d.fecha_corte:%d/%m/%Y}",
+            "Termino": f"{d.termino:%d/%m/%Y}",
             "Fuente": d.fuente,
             "Responsable": d.responsable,
         }
@@ -1183,7 +1184,7 @@ def describir_linea_base(sesion: Session, proyecto: str) -> str | None:
     calendario = fila.calendario
     return (
         f"versión {version.codigo}, perspectiva {fila.perspectiva}, vigente desde "
-        f"{fila.desde.isoformat()}; inicio de obra {calendario.fecha_inicio.isoformat()} con "
+        f"{fila.desde:%d/%m/%Y}; inicio de obra {calendario.fecha_inicio:%d/%m/%Y} con "
         f"{calendario.dias_por_periodo} día(s) hábil(es) por período"
     )
 
@@ -1201,7 +1202,7 @@ def corte_por_defecto(sesion: Session, proyecto: str) -> date:
 def valuaciones_para_anular(sesion: Session, proyecto: str) -> list[tuple[int, str]]:
     """`(id, rótulo)` de las valuaciones que cuentan y se pueden anular."""
     return [
-        (v.id, f"{v.numero or '#' + str(v.id)} ({v.desde.isoformat()} a {v.hasta.isoformat()})")
+        (v.id, f"{v.numero or '#' + str(v.id)} ({v.desde:%d/%m/%Y} a {v.hasta:%d/%m/%Y})")
         for v in valuaciones_registradas(sesion, proyecto)
     ]
 
@@ -1212,12 +1213,12 @@ def parametros_actuales(sesion: Session, proyecto: str) -> ParametrosControl:
 
 
 def dia_con_fecha(resultado: ResultadoControl, dia: int | None) -> str:
-    """«día N (AAAA-MM-DD)» en el calendario de la línea base; «no proyectable» si no hay día."""
+    """«día N (dd/mm/aaaa)» en el calendario de la línea base; «no proyectable» si no hay día."""
     if dia is None:
         return "no proyectable"
     calendario = resultado.instantanea.calendario
     fecha = dia_habil(calendario.fecha_inicio, dia, frozenset(calendario.feriados))
-    return f"día {dia} ({fecha.isoformat()})"
+    return f"día {dia} ({fecha:%d/%m/%Y})"
 
 
 def filas_del_plan_reproyectado(
@@ -1239,7 +1240,7 @@ def estudios_que_suma(resultado: ResultadoControl) -> str:
     if not reajuste.estudios:
         return "Sin estudio de reajuste guardado: V' = V. Nunca se proyecta un reajuste."
     detalle = ", ".join(
-        f"#{e.id} ({e.fecha_calculo.isoformat()}, {_monto(e.monto)})" for e in reajuste.estudios
+        f"#{e.id} ({e.fecha_calculo:%d/%m/%Y}, {_monto(e.monto)})" for e in reajuste.estudios
     )
     return (
         f"V' suma el reajuste reconocido de {len(reajuste.estudios)} estudio(s) de reajuste "

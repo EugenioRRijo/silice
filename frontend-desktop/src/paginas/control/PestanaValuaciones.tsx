@@ -9,7 +9,7 @@ import { TablaDensa } from "../../comun/TablaDensa";
 import { useAplicacion } from "../../shell/contexto";
 import { COLUMNAS_VALUACIONES, LINEA_VACIA, columnasDe, conId, errorDeCarga, rutaDe, sinLineasVacias, useAccion, useCargaSuave } from "./logica";
 import type { LineaEditable, Valuaciones } from "./logica";
-import { fechasEsVe } from "./fechas";
+import { fechaDeRanura } from "./fechas";
 
 interface Props {
   proyecto: string;
@@ -40,7 +40,7 @@ function Registrar({ proyecto, alCambiar }: { proyecto: string; alCambiar: () =>
         metodo: "POST",
         cuerpo: { proyecto, ...v, lineas: sinLineasVacias(lineas) },
       });
-      return `Valuación registrada: corte ${fechasEsVe(r.corte)}, ${r.hallazgos} hallazgo(s) en la revisión de la valuación (${r.errores} con severidad Error).`;
+      return `Valuación registrada: corte ${fechaDeRanura(r.corte)}, ${r.hallazgos} hallazgo(s) en la revisión de la valuación (${r.errores} con severidad Error).`;
     });
   return (
     <details open>
@@ -162,7 +162,7 @@ function Anular({ proyecto, datos, alCambiar }: { proyecto: string; datos: Valua
       <div className="silice-control__formulario" data-proyecto={proyecto}>
         <Select id="anu-valuacion" labelText="Valuación" value={elegida} onChange={(e) => setElegida(e.target.value)}>
           {datos.anulables.map((a) => (
-            <SelectItem key={a.id} value={String(a.id)} text={fechasEsVe(a.rotulo)} />
+            <SelectItem key={a.id} value={String(a.id)} text={a.rotulo} />
           ))}
         </Select>
         <TextInput id="anu-motivo" labelText="Motivo" value={motivo} onChange={(e) => setMotivo(e.target.value)} />
@@ -229,7 +229,7 @@ export function PestanaValuaciones({ proyecto, clave, alCambiar }: Props) {
         {datos.filas.length === 0 ? (
           <p className="cds--type-body-compact-01">Aún no hay valuaciones registradas.</p>
         ) : (
-          <TablaDensa etiqueta="Valuaciones registradas" columnas={columnasDe(COLUMNAS_VALUACIONES, [], { Periodo: fechasEsVe, Fecha: fechasEsVe, Registrada: fechasEsVe })} filas={conId(datos.filas)} />
+          <TablaDensa etiqueta="Valuaciones registradas" columnas={columnasDe(COLUMNAS_VALUACIONES)} filas={conId(datos.filas)} />
         )}
         <p className="silice-control__nota cds--type-helper-text-01">
           Una valuación registrada cuenta desde su registro; solo anularla la saca del cálculo. Si el cliente no la

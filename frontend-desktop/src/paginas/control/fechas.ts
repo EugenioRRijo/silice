@@ -1,14 +1,21 @@
-// VB-19: las fechas ISO que la API manda dentro de un texto («2026-11-02 a 2026-11-06», «día 12 (2026-11-18)») se
-// leen en dd/mm/aaaa. Solo para mostrar: lo que se envia a la API sigue siendo AAAA-MM-DD. Cada fecha pasa por
-// `fechaEsVe` (formatoEsVe.ts); una hora «HH:MM» pegada a la fecha se conserva. Lo que no es una fecha no se toca.
+// Fechas de Control (VB-19 y ronda 1 del árbitro). Una fecha se formatea solo en su ranura: un campo de la API que es
+// una fecha ISO y nada más (el corte, el corte de una valuación registrada). Las frases que arma la API ya traen sus
+// fechas en dd/mm/aaaa; el texto del usuario (un número de valuación, un código) nunca se reescribe.
 import { fechaEsVe } from "../../indicadores/formatoEsVe";
 
-const FECHA_EN_TEXTO = /(?<![\d-])(\d{4}-\d{2}-\d{2})(?:[T ](\d{2}:\d{2})(?::\d{2})?)?(?![\d-])/g;
+const ISO = /^(\d{4})-(\d{2})-(\d{2})$/;
 
-export function fechasEsVe(texto: string): string {
-  return texto.replace(FECHA_EN_TEXTO, (_, fecha: string, hora?: string) =>
-    hora ? `${fechaEsVe(fecha)} ${hora}` : fechaEsVe(fecha),
-  );
+// La fecha del calendario, o null si el día o el mes no existen («2026-02-30», «1234-56-78»).
+function fechaReal(anio: number, mes: number, dia: number): boolean {
+  const d = new Date(Date.UTC(anio, mes - 1, dia));
+  return d.getUTCFullYear() === anio && d.getUTCMonth() === mes - 1 && d.getUTCDate() === dia;
+}
+
+// «2026-11-13» -> «13/11/2026». Lo que no es exactamente una fecha ISO real se devuelve tal cual.
+export function fechaDeRanura(texto: string): string {
+  const m = ISO.exec(texto);
+  if (!m || !fechaReal(Number(m[1]), Number(m[2]), Number(m[3]))) return texto;
+  return fechaEsVe(texto);
 }
 
 // Los feriados se escriben como se leen (25/12/2026) y viajan como los espera la API (2026-12-25). Lo que no parece
