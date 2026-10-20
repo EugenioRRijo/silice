@@ -22,7 +22,7 @@ const SESION: SesionRespuesta = {
   roles: ["arma"],
   csrf: "tok",
   debe_cambiar_clave: false,
-  acciones: ["editar_hoja", "leer_proyecto"],
+  acciones: ["editar_hoja", "leer_proyecto", "operar_arenera"],
   modo_entrega: false,
 };
 
@@ -445,6 +445,49 @@ describe("Inicio, panel del día", () => {
       auditorias = () => json({ detalle: "Sesión vencida." }, 401);
       montar({ alExpirar });
       await waitFor(() => expect(alExpirar).toHaveBeenCalled());
+    });
+  });
+  // VB-9 (auditoria visual del bloque B): cada recurso se pide solo si la cuenta tiene la accion que lo permite, y a
+  // quien no puede auditar no se le ofrece auditar. Las acciones salen de seguridad/permisos.py (a mano): el
+  // administrador tiene operar_arenera y no leer_proyecto; quien revisa tiene leer_proyecto y no operar_arenera.
+  describe("lo que ofrece y lo que pide según las acciones de la cuenta", () => {
+    const ADMIN = { ...SESION, login: "admin", roles: ["administrador"], acciones: ["administrar_cuentas", "operar_arenera", "cambiar_caso"] };
+    const REVISA = { ...SESION, login: "rita", roles: ["revisa"], acciones: ["leer_proyecto", "revisar_paquete"] };
+
+    function rutasPedidas(): string[] {
+      return fetchFalso.mock.calls.map((c) => String(c[0]));
+    }
+
+    test("el administrador no ve «Audite un presupuesto» ni la zona de soltar, y se le dice quién audita", async () => {
+      montar({ sesion: ADMIN });
+      expect(await screen.findByText(/audita quien arma o revisa presupuestos/i)).toBeInTheDocument();
+      expect(screen.queryByRole("heading", { name: "Audite un presupuesto" })).not.toBeInTheDocument();
+      expect(document.querySelector('input[type="file"]')).toBeNull();
+    });
+
+    test("el administrador no pide el historial de auditorías (daría 403) pero sí la arenera", async () => {
+      montar({ sesion: ADMIN });
+      expect(await screen.findByText("Aún no hay materiales")).toBeInTheDocument();
+      expect(rutasPedidas()).toContain("/v1/produccion/existencias");
+      expect(rutasPedidas().some((r) => r.startsWith("/v1/auditorias-libro"))).toBe(false);
+      expect(screen.getByText("Sin historial de auditorías para su cuenta")).toBeInTheDocument();
+    });
+
+    test("quien revisa conserva la zona del Excel y el historial, y no pide la arenera (daría 403)", async () => {
+      montar({ sesion: REVISA });
+      expect(screen.getByRole("heading", { name: "Audite un presupuesto" })).toBeInTheDocument();
+      expect(await screen.findByText("Sin datos de la arenera para su cuenta")).toBeInTheDocument();
+      await waitFor(() => expect(rutasPedidas()).toContain("/v1/auditorias-libro?limite=5"));
+      expect(rutasPedidas()).not.toContain("/v1/produccion/existencias");
+    });
+
+    test("quien arma lo pide todo", async () => {
+      montar();
+      expect(screen.getByRole("heading", { name: "Audite un presupuesto" })).toBeInTheDocument();
+      await waitFor(() => {
+        expect(rutasPedidas()).toContain("/v1/produccion/existencias");
+        expect(rutasPedidas()).toContain("/v1/auditorias-libro?limite=5");
+      });
     });
   });
 });

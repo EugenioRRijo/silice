@@ -505,8 +505,8 @@ describe("Shell", () => {
       await waitFor(() => expect(within(selector).getAllByRole("option")).toHaveLength(3));
       expect(within(selector).getAllByRole("option").map((o) => o.textContent)).toEqual([
         "Sin proyecto",
-        "P-01 · Clínica Norte",
-        "P-02 · Galpón",
+        "Clínica Norte",
+        "Galpón",
       ]);
       expect(selector).toHaveValue("");
     });
@@ -547,6 +547,39 @@ describe("Shell", () => {
       await waitFor(() => expect(fetchFalso.mock.calls.some((c) => String(c[0]) === "/v1/proyectos")).toBe(true));
       expect(screen.queryByRole("combobox", { name: "Proyecto" })).not.toBeInTheDocument();
       expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    });
+
+    // VB-20: el codigo es un numero interno; la persona elige por el nombre. Si dos proyectos se llaman igual, el
+    // codigo es lo unico que los distingue y se agrega entre parentesis.
+    test("dos proyectos con el mismo nombre se distinguen por su código", async () => {
+      fetchFalso.mockImplementation(async (entrada, init) => {
+        const ruta = String(entrada);
+        if (ruta === "/v1/casos" && (init?.method ?? "GET") === "GET") return json(CASOS);
+        if (ruta === "/v1/proyectos")
+          return json([
+            { codigo: "3", nombre: "OBRA-GENERADA", version_vigente: 1, actualizado: null },
+            { codigo: "4", nombre: "OBRA-GENERADA", version_vigente: 1, actualizado: null },
+            { codigo: "5", nombre: "Galpón", version_vigente: 1, actualizado: null },
+          ]);
+        return json({ detalle: "No encontrado." }, 404);
+      });
+      montar();
+      const selector = await screen.findByRole("combobox", { name: "Proyecto" });
+      await waitFor(() => expect(within(selector).getAllByRole("option")).toHaveLength(4));
+      expect(within(selector).getAllByRole("option").map((o) => o.textContent)).toEqual([
+        "Sin proyecto",
+        "OBRA-GENERADA (3)",
+        "OBRA-GENERADA (4)",
+        "Galpón",
+      ]);
+    });
+
+    // VB-9: sin `leer_proyecto` la API contesta 403; no se pide.
+    test("una cuenta sin la acción leer_proyecto no pide la lista de proyectos", async () => {
+      montar(sesionCon({ acciones: ["administrar_cuentas", "cambiar_caso"] }), "/acerca");
+      await screen.findByRole("combobox", { name: "Caso" });
+      expect(fetchFalso.mock.calls.some((c) => String(c[0]) === "/v1/proyectos")).toBe(false);
+      expect(screen.queryByRole("combobox", { name: "Proyecto" })).not.toBeInTheDocument();
     });
 
     test("sin ninguna pagina disponible para la cuenta, dice que no hay pantallas en esta interfaz", async () => {
