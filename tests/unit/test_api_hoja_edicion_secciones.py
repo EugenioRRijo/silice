@@ -89,6 +89,10 @@ RENGLONES = (
 SIN_PLAN = "Esta versión no tiene plan de trabajo: cree primero el plan secuencial."
 YA_TIENE_PLAN = "Esta versión ya tiene plan de trabajo: edítelo en la matriz del plan."
 PARTIDA_REPETIDA = "plan: una partida aparece en más de una fila; deje una sola fila por partida."
+MATRIZ_COMPLETA = (
+    "plan: la matriz debe traer exactamente las partidas del presupuesto, una fila por cada una: "
+    "vuelva a cargarla."
+)
 CENTINELA = "VALOR-CENTINELA"
 ORIGEN = "http://127.0.0.1:8000"
 ID_AJENO = "a" * 22
@@ -594,6 +598,49 @@ def test_e4_dos_filas_de_la_misma_partida_son_422_y_no_duplican_la_ejecucion() -
     assert _resumen(navegador, id_)["rev"] == 0
 
 
+def test_e4_una_partida_desconocida_o_que_falta_es_422_y_el_plan_no_queda_parcial() -> None:
+    """MENOR de 3c-2: la matriz debe cubrir EXACTAMENTE las partidas del presupuesto."""
+    navegador, ficha = _ana()
+    id_ = _abrir(navegador, ficha)
+    antes = _vista(navegador, id_, "plan")
+    etiquetas, filas = _matriz(navegador, id_)
+    desconocida = [*filas, {"partida": "ZZ-NUEVA", "valores": {"Dia 1": "1"}}]
+    falta_una = [f for f in filas if f["partida"] != "AF-LLAVE"]
+    cambiada = [{**f, "partida": "ZZ-NUEVA"} if f["partida"] == "AF-LLAVE" else f for f in filas]
+    for matriz in (desconocida, falta_una, cambiada, [], filas[:1]):
+        respuesta = _plan(navegador, ficha, id_, 0, etiquetas, matriz)
+        assert respuesta.status_code == 422 and respuesta.json() == {"detalle": MATRIZ_COMPLETA}
+        assert respuesta.headers["cache-control"] == "no-store"
+    assert _vista(navegador, id_, "plan") == antes and _resumen(navegador, id_)["rev"] == 0
+    # el rev no se gasto: la matriz completa pasa con el mismo rev
+    assert _plan(navegador, ficha, id_, 0, etiquetas, filas).status_code == 200
+
+
+def test_e4_una_fila_con_la_partida_vacia_se_ignora_y_la_matriz_completa_pasa() -> None:
+    navegador, ficha = _ana()
+    id_ = _abrir(navegador, ficha)
+    etiquetas, filas = _matriz(navegador, id_, **{"AF-LLAVE": {"Dia 3": "0.5", "Dia 4": "0.5"}})
+    respuesta = _plan(
+        navegador, ficha, id_, 0, etiquetas, [*filas, {"partida": "", "valores": {"Dia 1": "7"}}]
+    )
+    assert respuesta.status_code == 200, respuesta.text
+    assert respuesta.json()["rev"] == 1
+
+
+def test_e4_la_cobertura_se_mira_despues_de_las_filas_repetidas_y_antes_de_las_fracciones() -> None:
+    navegador, ficha = _ana()
+    id_ = _abrir(navegador, ficha)
+    etiquetas, filas = _matriz(navegador, id_)
+    # repetida Y sin otra partida: manda el mensaje de la repetida
+    repetida = [filas[0], copy.deepcopy(filas[0])]
+    assert _plan(navegador, ficha, id_, 0, etiquetas, repetida).json() == {
+        "detalle": PARTIDA_REPETIDA
+    }
+    # incompleta Y con una suma mala: manda la cobertura
+    mala = [{**filas[0], "valores": {**filas[0]["valores"], "Dia 1": "7"}}]
+    assert _plan(navegador, ficha, id_, 0, etiquetas, mala).json() == {"detalle": MATRIZ_COMPLETA}
+
+
 def test_e4_sin_plan_es_409_y_se_comprueba_despues_de_rev_y_antes_del_contenido() -> None:
     navegador, ficha = _ana()
     id_ = _abrir(navegador, ficha)
@@ -761,8 +808,10 @@ def test_exactamente_los_topes_de_forma_se_aceptan() -> None:
     assert exacto.status_code == 422 and exacto.json() == {"detalle": RENGLONES}
     etiquetas = [f"E{n}" for n in range(500)]
     plan = _plan(navegador, ficha, id_, 0, etiquetas, [{"partida": "", "valores": {}}] * 5000)
-    assert plan.status_code == 200, plan.text[:300]  # 500 periodos vacios: valido, rev 1
-    assert plan.json()["rev"] == 1
+    # la FORMA es valida (500 periodos, 5000 filas); desde 3c-3 el dominio exige la matriz
+    # completa, asi que las filas vacias (que se ignoran) no cubren las partidas: 422 de dominio
+    assert plan.status_code == 422 and plan.json() == {"detalle": MATRIZ_COMPLETA}
+    assert _resumen(navegador, id_)["rev"] == 0
 
 
 def test_un_id_con_forma_invalida_es_422_sin_eco() -> None:
