@@ -206,29 +206,25 @@ describe("Hoja del proyecto: Equilibrio, Parámetros, Auditoría, Precios y Traz
     expect(dd).not.toHaveTextContent(/TI-PTO|\[/);
   });
 
-  test("Parámetros: el texto de ayuda habla de lectura, no de edición", async () => {
+  test("Parámetros: desde 3c-2 el texto de ayuda habla de edición (cambiarlos recalcula), ya no de lectura", async () => {
     servidor();
     montar();
     await irA("Parámetros");
-    expect(await screen.findByText(/solo se leen/)).toBeInTheDocument();
-    expect(screen.queryByText(/Cambiarlos recalcula/)).toBeNull();
+    expect(await screen.findByText(/Cambiarlos recalcula/)).toBeInTheDocument();
+    expect(screen.queryByText(/solo se leen/)).toBeNull();
   });
 
   // --- Parámetros ---------------------------------------------------------------------------------
 
-  test("Parámetros: los cuatro parámetros de costo en lectura, con es-VE y su valor escrito en el title", async () => {
+  test("Parámetros: los cuatro parámetros de costo como campos de texto con su valor tal como llegó (3c-2)", async () => {
     servidor();
     montar();
     await irA("Parámetros");
-    const lista = (await screen.findByText(/^FCAS/)).closest("dl")!;
-    const fila = (rotulo: RegExp) => within(lista).getByText(rotulo).nextElementSibling!;
-    expect(fila(/^FCAS/)).toHaveTextContent("6,00");
-    expect(fila(/^FCAS/).querySelector('[title="6.00"]')).not.toBeNull();
-    expect(fila(/^Bono de alimentación/)).toHaveTextContent("5,8100");
-    expect(fila(/^Administración/)).toHaveTextContent("0,15");
-    expect(fila(/^Utilidad/)).toHaveTextContent("0,10");
-    // En esta entrega solo se leen: editarlos es de la rebanada 3c.
-    expect(screen.queryAllByRole("textbox")).toEqual([]);
+    expect(await screen.findByRole("textbox", { name: /^FCAS/ })).toHaveValue("6.00");
+    expect(screen.getByRole("textbox", { name: /^Bono de alimentación/ })).toHaveValue("5.8100");
+    expect(screen.getByRole("textbox", { name: /^Administración/ })).toHaveValue("0.15");
+    expect(screen.getByRole("textbox", { name: /^Utilidad/ })).toHaveValue("0.10");
+    expect(screen.getAllByRole("textbox")).toHaveLength(4);
   });
 
   test("Parámetros: la moneda del proyecto y el total del presupuesto", async () => {

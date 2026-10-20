@@ -353,7 +353,9 @@ describe("Hoja del proyecto: Espacio, APU, Presupuesto y Plan (3b-2)", () => {
     await irA("Presupuesto");
     const tabla = await screen.findByRole("table", { name: "Presupuesto" });
     const pendiente = within(tabla).getAllByRole("row")[2]!;
-    expect(within(pendiente).getByText("5 (calculada: 3)")).toBeInTheDocument();
+    // Desde 3c-2 la cantidad es un campo editable y la calculada se dice al lado.
+    expect(within(pendiente).getByRole("textbox", { name: "Cantidad, Presupuesto fila 2" })).toHaveValue("5");
+    expect(within(pendiente).getByText("(calculada: 3)")).toBeInTheDocument();
     expect(within(pendiente).getAllByText("Pendiente")).toHaveLength(2); // sin precio unitario ni total
     expect(within(pendiente).getByText("Error")).toBeInTheDocument();
   });
@@ -374,11 +376,10 @@ describe("Hoja del proyecto: Espacio, APU, Presupuesto y Plan (3b-2)", () => {
     await irA("Plan y curva");
     const matriz = await screen.findByRole("table", { name: "Plan de trabajo" });
     expect(within(matriz).getAllByRole("columnheader").map((c) => c.textContent)).toEqual(["Partida", "Día 1", "Día 2"]);
-    expect(within(within(matriz).getAllByRole("row")[1]!).getAllByRole("cell").map((c) => c.textContent)).toEqual([
-      "AF-CODO-1/2",
-      "1",
-      "0",
-    ]);
+    // Desde 3c-2 las fracciones son campos editables (su valor es el texto que llegó).
+    const filaUno = within(matriz).getAllByRole("row")[1]!;
+    expect(within(filaUno).getAllByRole("cell")[0]).toHaveTextContent("AF-CODO-1/2");
+    expect(within(filaUno).getAllByRole("textbox").map((c) => (c as HTMLInputElement).value)).toEqual(["1", "0"]);
     expect(await screen.findByTestId("grafico")).toHaveAttribute("data-filas", "2");
     expect(screen.getByRole("heading", { level: 2, name: "Curva de inversión" })).toHaveClass("cds--type-heading-compact-02");
     const curva = screen.getByRole("table", { name: "Curva de inversión: montos" });
