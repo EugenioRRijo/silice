@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import type { SesionRespuesta } from "../../api/tipos";
 import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
-import { vistaEspacio, vistaParametros, vistaPlan, vistaPresupuesto } from "./datosDePrueba";
+import { informeAuditoria, vistaEspacio, vistaParametros, vistaPlan, vistaPresupuesto } from "./datosDePrueba";
 import PaginaHoja from "./index";
 import type { BorradorAbierto, Resumen, VersionesRespuesta, VistaParametros, VistaPlan, VistaPresupuesto } from "./logica";
 
@@ -126,6 +126,7 @@ describe("Hoja del proyecto: cantidades, parámetros y plan editables (3c-2)", (
       if (url.endsWith("/vistas/presupuesto")) return json(presupuesto);
       if (url.endsWith("/vistas/parametros")) return json(parametros);
       if (url.endsWith("/vistas/plan")) return json(plan);
+      if (url.endsWith("/vistas/auditoria")) return json(informeAuditoria());
       return new Response(null, { status: 204 });
     });
   });
@@ -507,12 +508,12 @@ describe("Hoja del proyecto: cantidades, parámetros y plan editables (3c-2)", (
         total: nuevo,
       });
       alPoner.parametros = (c) => acepta(c, { total: nuevo });
+      const antes = lecturas("parametros");
       fireEvent.change(campo(/^Administración/), { target: { value: "0.20" } });
       await pausa(400);
       expect(escrituras("parametros")).toEqual([
         { rev: 0, fcas: "6.00", bono_alimentacion: "5.8100", administracion: "0.20", utilidad: "0.10" },
       ]);
-      const antes = lecturas("parametros");
       await esperar(() => expect(screen.getAllByTitle("2821.4208")).toHaveLength(2)); // el estado y el total de la pestaña
       expect(screen.getAllByTitle("2821.4208")[0]).toHaveTextContent("2.821,42 USD");
       expect(lecturas("parametros")).toBe(antes + 1);
