@@ -16,6 +16,14 @@ async function llenarYEnviar(usuario: ReturnType<typeof userEvent.setup>) {
 }
 
 describe("Entrar", () => {
+  // VB-15: «Entrar» es la página; lleva el mismo h1 heading-04 que las demás y su título de documento.
+  test("el título es un h1 en heading-04 y el documento se llama «Entrar · Sílice»", () => {
+    render(<Entrar onEntrar={vi.fn()} />);
+    const h1 = screen.getByRole("heading", { level: 1, name: "Entrar" });
+    expect(h1.className).toContain("cds--type-heading-04");
+    expect(document.title).toBe("Entrar · Sílice");
+  });
+
   test("manda el usuario y la contrasena a onEntrar", async () => {
     const usuario = userEvent.setup();
     const onEntrar = vi.fn().mockResolvedValue(undefined);
