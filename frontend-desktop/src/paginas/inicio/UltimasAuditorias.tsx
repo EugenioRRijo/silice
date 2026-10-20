@@ -1,6 +1,7 @@
 import { SkeletonText, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@carbon/react";
 import { AvisoError } from "../../comun/AvisoError";
 import { EstadoVacio } from "../../comun/EstadoVacio";
+import { fechaEsVe } from "../../indicadores/formatoEsVe";
 import type { Carga } from "./useCarga";
 
 // Una auditoria guardada (GET /v1/auditorias-libro). Solo resumen: el libro y el PDF nunca se guardan.
@@ -21,11 +22,6 @@ function plural(n: number, uno: string, varios: string): string {
 export function resultadoEnUnaLinea(errores: number, advertencias: number): string {
   if (errores === 0 && advertencias === 0) return "Sin errores ni advertencias";
   return `${plural(errores, "error", "errores")}, ${plural(advertencias, "advertencia", "advertencias")}`;
-}
-
-// «2026-10-18T14:32:00» -> «2026-10-18 14:32»
-export function fechaConHora(iso: string): string {
-  return iso.replace("T", " ").slice(0, 16);
 }
 
 export function UltimasAuditorias({ carga }: { carga: Carga<AuditoriaGuardadaRespuesta[]> }) {
@@ -70,7 +66,7 @@ export function UltimasAuditorias({ carga }: { carga: Carga<AuditoriaGuardadaRes
             <TableRow key={a.id}>
               <TableCell>{a.archivo}</TableCell>
               <TableCell>{a.tipo === "pdf" ? "PDF" : "Libro"}</TableCell>
-              <TableCell className="silice-inicio__sinquiebre">{fechaConHora(a.fecha)}</TableCell>
+              <TableCell className="silice-inicio__sinquiebre">{fechaEsVe(a.fecha)}</TableCell>
               <TableCell className="silice-inicio__sinquiebre">
                 {resultadoEnUnaLinea(a.errores, a.advertencias)}
               </TableCell>

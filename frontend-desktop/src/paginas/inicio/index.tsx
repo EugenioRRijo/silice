@@ -25,8 +25,11 @@ export default function PaginaInicio() {
   const [archivo, setArchivo] = useState<File | null>(null);
   // Cada recurso se pide solo si la cuenta tiene la accion que lo permite (la API contestaria 403): la arenera es de
   // quien la opera; auditar y el historial, de quien puede leer proyectos (VB-9).
+  // Y quien no la tiene no ve la seccion vacia: se omite (VD-10). Un 403 de la API con la accion presente sigue
+  // diciendo «sin datos».
   const puedeAuditar = sesion.acciones.includes("leer_proyecto");
-  const arenera = useCarga<ExistenciaRespuesta[]>(sesion.acciones.includes("operar_arenera") ? RUTA_ARENERA : null, alExpirar);
+  const puedeVerArenera = sesion.acciones.includes("operar_arenera");
+  const arenera = useCarga<ExistenciaRespuesta[]>(puedeVerArenera ? RUTA_ARENERA : null, alExpirar);
   const auditorias = useCarga<AuditoriaGuardadaRespuesta[]>(puedeAuditar ? RUTA_AUDITORIAS : null, alExpirar);
 
   const recorrido = useRecorrido();
@@ -92,8 +95,9 @@ export default function PaginaInicio() {
         </section>
       )}
 
-      <PanelArenera carga={arenera} />
+      {puedeVerArenera && <PanelArenera carga={arenera} />}
 
+      {puedeAuditar && (
       <section className="silice-inicio__bloque" aria-labelledby="inicio-seguir">
         <h2 id="inicio-seguir" className="cds--type-heading-compact-02">
           Últimas auditorías guardadas
@@ -117,6 +121,7 @@ export default function PaginaInicio() {
         )}
         <UltimasAuditorias carga={auditorias} />
       </section>
+      )}
     </div>
   );
 }

@@ -337,10 +337,12 @@ describe("Inicio, panel del día", () => {
 
     test("no enlaza al paso siguiente si la cuenta no puede abrir esa pantalla", async () => {
       iniciarRecorrido(RECORRIDO_AUDITAR);
+      // El paso siguiente (Libro) pide `leer_proyecto`, igual que la sección donde se anuncia el recorrido (VD-10): sin
+      // la acción la sección se omite y no hay enlace que lleve a una pantalla sin permiso.
       montar({ sesion: { ...SESION, acciones: ["editar_hoja"] } });
-      const seccion = await screen.findByRole("region", { name: "Últimas auditorías guardadas" });
-      expect(within(seccion).getByText(/Recorrido en curso/)).toBeInTheDocument();
-      expect(within(seccion).queryByRole("link", { name: /Seguir con el paso/ })).not.toBeInTheDocument();
+      await screen.findByRole("heading", { name: "Inicio" });
+      expect(screen.queryByRole("region", { name: "Últimas auditorías guardadas" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("link", { name: /Seguir con el paso/ })).not.toBeInTheDocument();
     });
 
     test("sin recorrido en curso no dice nada de recorridos", async () => {
