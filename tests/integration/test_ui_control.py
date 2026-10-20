@@ -124,7 +124,7 @@ def test_la_tabla_de_valuaciones_muestra_la_fecha_de_registro_y_el_peor_hallazgo
     resultado = control.calcular_el_control(obra, ob.NOMBRE, Catalogo(obra), corte=ob.CORTE_DE_VS)
     filas = control.filas_de_valuaciones(resultado)
     assert [f["Numero"] for f in filas] == ["V-01", "V-02", "V-03"]
-    assert filas[0]["Registrada"] == "2026-11-09 09:00" and filas[0]["Estado"] == "sin hallazgos"
+    assert filas[0]["Registrada"] == "09/11/2026 09:00" and filas[0]["Estado"] == "sin hallazgos"
     # V-S trae seis hallazgos, todos ERROR (memoria §10); el informe lista primero R13 y, ante un
     # empate de severidad, la columna conserva el primero.
     assert filas[2]["Estado"] == "ERROR: R13"
@@ -197,7 +197,7 @@ def test_las_opciones_se_calculan_a_pedido_y_elegir_una_crea_la_version(obra):
     assert version == "OB-002"
     (decision,) = control.filas_de_decisiones(obra, ob.NOMBRE)
     assert (decision["Version"], decision["Opcion"], decision["Termino"]) == (
-        "OB-002", "cuadrillas", "2026-11-24",
+        "OB-002", "cuadrillas", "24/11/2026",
     )  # fmt: skip
 
 

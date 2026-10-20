@@ -31,7 +31,7 @@ const SESION: SesionRespuesta = {
 
 const LINEA_BASE: LineaBase = {
   tiene_linea_base: true,
-  descripcion: "version OB-001, perspectiva costo, vigente desde 2026-11-02",
+  descripcion: "versión OB-001, perspectiva costo, vigente desde 02/11/2026",
   versiones: ["OB-001"],
   hay_valuaciones: true,
   parametros: [
@@ -43,10 +43,10 @@ const LINEA_BASE: LineaBase = {
 const VALUACIONES: Valuaciones = {
   tiene_linea_base: true,
   filas: [
-    { Numero: "V-01", Periodo: "2026-11-02 a 2026-11-06", Fecha: "2026-11-09", Inspector: "<b>Ing. Ficticio</b>", Registrada: "2026-11-09 09:00", Estado: "sin hallazgos" },
+    { Numero: "V-01", Periodo: "02/11/2026 a 06/11/2026", Fecha: "09/11/2026", Inspector: "<b>Ing. Ficticio</b>", Registrada: "09/11/2026 09:00", Estado: "sin hallazgos" },
   ],
   aviso: "",
-  anulables: [{ id: 7, rotulo: "V-01 (2026-11-02 a 2026-11-06)" }],
+  anulables: [{ id: 7, rotulo: "V-01 (02/11/2026 a 06/11/2026)" }],
   corte_por_defecto: "2026-11-13",
 };
 
@@ -59,14 +59,14 @@ const CALCULO: Calculo = {
     { Indicador: "BAC (USD)", Valor: "4000.00", "En la otra moneda": "no disponible", Nota: "" },
     { Indicador: "SPI", Valor: "0.8000", "En la otra moneda": "", Nota: "" },
   ],
-  costos_sin_tasa: ["El costo de 10 USD del 2026-11-01 no tiene tasa aplicable."],
+  costos_sin_tasa: ["El costo de 10 USD del 01/11/2026 no tiene tasa aplicable."],
   curva: [
     { periodo: "P1", pv: "1000.00", ev: "800.00", ac: "900.00" },
     { periodo: "P2", pv: "2000.00", ev: "1200.00", ac: null },
   ],
   spi_no_aplica: false,
   alertas: [{ Alerta: "AL-1", Severidad: "ERROR", Descripcion: "Retraso", Observado: "0.8000", Umbral: "0.8500 (SUPUESTO_DECLARADO)" }],
-  terminos: { indice: "dia 12 (2026-11-18)", reproyectado: "dia 13 (2026-11-19)", plan_base: "dia 10 (2026-11-13)", eac_sistema: "no disponible" },
+  terminos: { indice: "día 12 (18/11/2026)", reproyectado: "día 13 (19/11/2026)", plan_base: "día 10 (13/11/2026)", eac_sistema: "no disponible" },
   motivo_termino: "",
   equilibrio: null,
   estudios: "Sin estudio de reajuste guardado: V' = V. Nunca se proyecta un reajuste.",
@@ -85,16 +85,20 @@ const OPCIONES: OpcionDeRecuperacion[] = [
 describe("Control de obra", () => {
   const fetchFalso = vi.fn<typeof fetch>();
   let calculo: () => Response;
+  let valuaciones: () => Response;
+  let lineaBase: () => Response;
 
   beforeEach(() => {
     vi.stubGlobal("fetch", fetchFalso);
     fetchFalso.mockReset();
     calculo = () => json(CALCULO);
+    valuaciones = () => json(VALUACIONES);
+    lineaBase = () => json(LINEA_BASE);
     fetchFalso.mockImplementation(async (entrada, init) => {
       const url = String(entrada);
       const metodo = init?.method ?? "GET";
-      if (url.startsWith("/v1/control/linea-base") && metodo === "GET") return json(LINEA_BASE);
-      if (url.startsWith("/v1/control/valuaciones") && metodo === "GET") return json(VALUACIONES);
+      if (url.startsWith("/v1/control/linea-base") && metodo === "GET") return lineaBase();
+      if (url.startsWith("/v1/control/valuaciones") && metodo === "GET") return valuaciones();
       if (url.startsWith("/v1/control/calculo")) return calculo();
       if (url === "/v1/control/valuaciones") return json({ corte: "2026-11-20", hallazgos: 2, errores: 1 });
       if (url === "/v1/control/recuperacion/opciones") return json({ opciones: OPCIONES });
@@ -273,22 +277,38 @@ describe("Control de obra", () => {
     expect(screen.getByRole("button", { name: "Agregar línea" })).toBeInTheDocument();
   });
 
-  test("las fechas de las valuaciones se leen en dd/mm/aaaa y el valor de la API queda en el title (VB-19)", async () => {
+  test("el texto del usuario con forma de fecha sale tal cual: solo se formatean las ranuras de fecha (ronda 1)", async () => {
+    // La API ya escribe dd/mm/aaaa al armar sus frases (tests/unit/test_api_control.py); el número de la valuación y el
+    // código de la versión los escribió el usuario y no se tocan.
+    valuaciones = () =>
+      json({
+        ...VALUACIONES,
+        filas: [{ ...VALUACIONES.filas[0], Numero: "2026-11-10" }],
+        anulables: [{ id: 7, rotulo: "2026-11-10 (02/11/2026 a 06/11/2026)" }],
+      });
+    lineaBase = () => json({ ...LINEA_BASE, descripcion: "versión 2026-11-10, perspectiva costo, vigente desde 02/11/2026" });
     const u = montar();
-    await u.click(await screen.findByRole("tab", { name: "Valuaciones" }));
+    expect(await screen.findByText("versión 2026-11-10, perspectiva costo, vigente desde 02/11/2026")).toBeInTheDocument();
+    await u.click(screen.getByRole("tab", { name: "Valuaciones" }));
     const tabla = await screen.findByRole("table", { name: "Valuaciones registradas" });
-    expect(within(tabla).getByText("02/11/2026 a 06/11/2026")).toHaveAttribute("title", "2026-11-02 a 2026-11-06");
-    expect(within(tabla).getByText("09/11/2026")).toHaveAttribute("title", "2026-11-09");
-    expect(within(tabla).getByText("09/11/2026 09:00")).toHaveAttribute("title", "2026-11-09 09:00");
+    expect(within(tabla).getByText("2026-11-10")).toBeInTheDocument();
+    expect(within(tabla).getByText("02/11/2026 a 06/11/2026")).toBeInTheDocument();
     const anular = screen.getByLabelText("Valuación");
-    expect(within(anular).getByRole("option", { name: "V-01 (02/11/2026 a 06/11/2026)" })).toHaveValue("7");
+    expect(within(anular).getByRole("option", { name: "2026-11-10 (02/11/2026 a 06/11/2026)" })).toHaveValue("7");
   });
 
-  test("valor ganado y decisiones muestran las fechas en dd/mm/aaaa (VB-19)", async () => {
+  test("el motivo del término cita partidas del usuario y sale tal cual (ronda 1)", async () => {
+    calculo = () => json({ ...CALCULO, terminos: { ...CALCULO.terminos!, reproyectado: "no proyectable" }, motivo_termino: "no proyectable: 2026-11-10" });
+    const u = montar();
+    await u.click(await screen.findByRole("tab", { name: "Alertas y reproyección" }));
+    expect(await screen.findByText("no proyectable: 2026-11-10")).toBeInTheDocument();
+  });
+
+  test("el corte que la API manda como fecha ISO se lee en dd/mm/aaaa; las decisiones ya vienen así (VB-19)", async () => {
     calculo = () =>
       json({
         ...CALCULO,
-        decisiones: [{ Version: "OB-002", Opcion: "Más cuadrillas", Corte: "2026-11-13", Termino: "2026-11-27", Fuente: "acta", Responsable: "ana" }],
+        decisiones: [{ Version: "OB-002", Opcion: "Más cuadrillas", Corte: "13/11/2026", Termino: "27/11/2026", Fuente: "acta 2026-11-10", Responsable: "ana" }],
       });
     const u = montar();
     await u.click(await screen.findByRole("tab", { name: "Valor ganado" }));
@@ -297,9 +317,8 @@ describe("Control de obra", () => {
     expect(screen.getByText(/El costo de 10 USD del 01\/11\/2026/)).toBeInTheDocument();
     await u.click(screen.getByRole("tab", { name: "Recuperación" }));
     const decisiones = await screen.findByRole("table", { name: "Decisiones tomadas" });
-    expect(within(decisiones).getByText("13/11/2026")).toHaveAttribute("title", "2026-11-13");
-    expect(within(decisiones).getByText("27/11/2026")).toHaveAttribute("title", "2026-11-27");
-    expect(document.body.textContent).not.toMatch(/\d{4}-\d{2}-\d{2}/);
+    expect(within(decisiones).getByText("13/11/2026")).toBeInTheDocument();
+    expect(within(decisiones).getByText("acta 2026-11-10")).toBeInTheDocument();
   });
 
   test("los feriados se escriben en dd/mm/aaaa y viajan a la API en AAAA-MM-DD (VB-19)", async () => {
@@ -377,7 +396,7 @@ describe("Control de obra", () => {
     expect(within(alertas).getByText("Retraso (SPI)")).toHaveAttribute("title", "AL-1");
     expect(within(alertas).queryByText("AL-1")).toBeNull();
     expect(within(alertas).getByText("0,8500 (supuesto declarado)")).toHaveAttribute("title", "0.8500 (SUPUESTO_DECLARADO)");
-    expect(screen.getByText("Término por el índice: dia 12 (18/11/2026)")).toBeInTheDocument();
+    expect(screen.getByText("Término por el índice: día 12 (18/11/2026)")).toBeInTheDocument();
     expect(screen.getByText(/Punto de equilibrio proyectado: no disponible/)).toBeInTheDocument();
     expect(screen.getByText(/V' = V/)).toBeInTheDocument();
     expect(screen.getByRole("table", { name: "Plan reproyectado" })).toBeInTheDocument();

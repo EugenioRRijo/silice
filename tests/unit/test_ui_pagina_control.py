@@ -145,7 +145,7 @@ def test_las_valuaciones_se_listan_con_su_fecha_de_registro_y_su_estado(monkeypa
     at = _pestana(_pantalla(monkeypatch, _caso(tmp_path)), "Valuaciones")
     filas = _tabla(at, "Registrada")
     assert [f["Numero"] for f in filas] == ["V-01", "V-02"]
-    assert filas[0]["Registrada"] == "2026-11-09 09:00" and filas[0]["Estado"] == "sin hallazgos"
+    assert filas[0]["Registrada"] == "09/11/2026 09:00" and filas[0]["Estado"] == "sin hallazgos"
     assert "solo anularla la saca del calculo" in _texto(at)
 
 
@@ -206,8 +206,8 @@ def test_alertas_y_reproyeccion_se_ven_al_abrir_sin_pedirlas(monkeypatch, tmp_pa
     alertas = {f["Alerta"]: f for f in _tabla(at, "Alerta")}
     assert alertas["AL-1"]["Severidad"] == "ERROR" and alertas["AL-3"]["Severidad"] == "ERROR"
     texto = _texto(at)
-    assert "Termino por el plan reproyectado: día 23 (2026-12-02)" in texto
-    assert "Termino por el indice: día 25 (2026-12-04)" in texto
+    assert "Termino por el plan reproyectado: día 23 (02/12/2026)" in texto
+    assert "Termino por el indice: día 25 (04/12/2026)" in texto
     assert "Sin estudio de reajuste guardado: V' = V" in texto
     plan = _tabla(at, "OB-C")
     assert plan[2]["OB-C"] == "0.4000" and len(plan) == 5

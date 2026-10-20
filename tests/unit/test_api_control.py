@@ -251,7 +251,8 @@ def test_escribir_exige_csrf_y_el_rol_que_controla() -> None:
 def test_las_valuaciones_guardadas_con_su_estado_y_las_que_se_pueden_anular() -> None:
     datos = _con_clave().get("/v1/control/valuaciones", params=P).json()
     assert [f["Numero"] for f in datos["filas"]] == ["V-01", "V-02"]
-    assert datos["filas"][0]["Periodo"] == "2026-11-02 a 2026-11-06"
+    assert datos["filas"][0]["Periodo"] == "02/11/2026 a 06/11/2026"  # VB-19: dd/mm/aaaa
+    assert datos["filas"][0]["Fecha"] == "09/11/2026"
     assert datos["filas"][0]["Inspector"] == ob.INSPECTOR
     assert [a["rotulo"].split(" ")[0] for a in datos["anulables"]] == ["V-01", "V-02"]
     assert datos["corte_por_defecto"] == "2026-11-13"
@@ -274,6 +275,32 @@ def test_cada_columna_de_valuaciones_del_front_es_una_clave_de_la_respuesta_real
     assert columnas, "el front declara las columnas de valuaciones"
     for fila in filas:
         assert [c for c in columnas if c not in fila] == []
+
+
+def test_un_numero_de_valuacion_con_forma_de_fecha_no_se_reescribe(
+    _plantillas: dict[str, Path], tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Ronda 1 del árbitro, punto 1: la fecha se formatea solo en su ranura; el número lo escribió
+    # el usuario y sale tal cual en la tabla y en el rótulo de «Anular».
+    _usar(_plantillas, "solo_linea", tmp_path, monkeypatch)
+    navegador, cabeceras = _arma()
+    cuerpo = {
+        **P,
+        "numero": "2026-11-10",
+        "desde": "2026-11-02",
+        "hasta": "2026-11-06",
+        "fecha": "2026-11-09",
+        "lineas": [{"partida": "OB-A", "cantidad": "40"}],
+        "fuente": ob.FUENTE,
+    }
+    respuesta = navegador.post("/v1/control/valuaciones", json=cuerpo, headers=cabeceras)
+    assert respuesta.status_code == 200, respuesta.text
+    datos = navegador.get("/v1/control/valuaciones", params=P).json()
+    assert datos["filas"][0]["Numero"] == "2026-11-10"
+    assert datos["filas"][0]["Periodo"] == "02/11/2026 a 06/11/2026"
+    assert [a["rotulo"] for a in datos["anulables"]] == ["2026-11-10 (02/11/2026 a 06/11/2026)"]
+    calculo = navegador.get("/v1/control/calculo", params=P).json()
+    assert re.fullmatch(r"día \d+ \(\d{2}/\d{2}/\d{4}\)", calculo["terminos"]["plan_base"])
 
 
 def test_registrar_una_valuacion_controla_al_corte_y_el_responsable_sale_de_la_sesion(

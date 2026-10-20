@@ -62,5 +62,36 @@ def test_los_estudios_que_suma_no_nombran_la_spec() -> None:
     texto = control.estudios_que_suma(resultado)  # type: ignore[arg-type]
     assert texto == (
         "V' suma el reajuste reconocido de 1 estudio(s) de reajuste guardado(s): "
-        "#3 (2027-03-01, 120.50); total 120.50 Bs."
+        "#3 (01/03/2027, 120.50); total 120.50 Bs."
     )
+
+
+def test_la_descripcion_de_la_linea_base_formatea_solo_sus_fechas(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Ronda 1, punto 1: el código de la versión lo escribió el usuario («2026-11-10») y no cambia;
+    # las dos fechas del sistema (vigente desde, inicio de obra) salen en dd/mm/aaaa.
+    fila = SimpleNamespace(
+        presupuesto_id=1,
+        perspectiva="costo",
+        desde=date(2026, 11, 2),
+        calendario=SimpleNamespace(fecha_inicio=date(2026, 11, 3), dias_por_periodo=5),
+    )
+    monkeypatch.setattr(control, "linea_base_vigente", lambda sesion, proyecto, dia: fila)
+    sesion = SimpleNamespace(get=lambda modelo, ident: SimpleNamespace(codigo="2026-11-10"))
+    assert control.describir_linea_base(sesion, "P") == (  # type: ignore[arg-type]
+        "versión 2026-11-10, perspectiva costo, vigente desde 02/11/2026; inicio de obra "
+        "03/11/2026 con 5 día(s) hábil(es) por período"
+    )
+
+
+def test_el_dia_con_fecha_lleva_la_fecha_en_dd_mm_aaaa() -> None:
+    resultado = SimpleNamespace(
+        instantanea=SimpleNamespace(
+            calendario=SimpleNamespace(fecha_inicio=date(2026, 11, 2), feriados=())
+        )
+    )
+    # día 1 = lunes 02/11/2026; día 6 = lunes 09/11/2026 (sábado y domingo no son hábiles)
+    assert control.dia_con_fecha(resultado, 1) == "día 1 (02/11/2026)"  # type: ignore[arg-type]
+    assert control.dia_con_fecha(resultado, 6) == "día 6 (09/11/2026)"  # type: ignore[arg-type]
+    assert control.dia_con_fecha(resultado, None) == "no proyectable"  # type: ignore[arg-type]

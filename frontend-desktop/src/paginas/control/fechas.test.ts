@@ -1,18 +1,13 @@
 import { describe, expect, test } from "vitest";
-import { feriadosParaEnviar, fechasEsVe } from "./fechas";
+import { fechaDeRanura, feriadosParaEnviar } from "./fechas";
 
 describe("fechas de Control y Reajuste (VB-19)", () => {
-  test("fechasEsVe cambia cada fecha ISO de un texto a dd/mm/aaaa y deja el resto igual", () => {
-    expect(fechasEsVe("2026-11-02 a 2026-11-06")).toBe("02/11/2026 a 06/11/2026");
-    expect(fechasEsVe("2026-11-09 09:00")).toBe("09/11/2026 09:00");
-    expect(fechasEsVe("dia 12 (2026-11-18)")).toBe("dia 12 (18/11/2026)");
-    expect(fechasEsVe("versión OB-001, vigente desde 2026-11-02; inicio de obra 2026-11-02")).toBe(
-      "versión OB-001, vigente desde 02/11/2026; inicio de obra 02/11/2026",
-    );
-    expect(fechasEsVe("el periodo 2027-02-01–2027-03-31 cruza")).toBe("el periodo 01/02/2027–31/03/2027 cruza");
-    // lo que no es una fecha (un codigo, una cifra) no se toca
-    expect(fechasEsVe("V-01 4358.20 OB-2026-11")).toBe("V-01 4358.20 OB-2026-11");
-    expect(fechasEsVe("")).toBe("");
+  test("fechaDeRanura lee en dd/mm/aaaa una fecha ISO real y deja intacto lo demás (ronda 1)", () => {
+    expect(fechaDeRanura("2026-11-13")).toBe("13/11/2026");
+    expect(fechaDeRanura("2028-02-29")).toBe("29/02/2028");
+    for (const intacto of ["1234-56-78", "9999-99-99", "2026-13-01", "2026-02-30", "2027-02-29", "2026-11-13 a", "x2026-11-13", "", "no disponible"]) {
+      expect(fechaDeRanura(intacto)).toBe(intacto);
+    }
   });
 
   test("los feriados se escriben en dd/mm/aaaa y se mandan en AAAA-MM-DD", () => {
