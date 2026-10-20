@@ -1,7 +1,7 @@
 import { InlineNotification } from "@carbon/react";
 import { Suspense, createElement, lazy, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactElement } from "react";
-import { Navigate, Route, Routes, useLocation } from "react-router";
+import { Navigate, Route, Routes, useLocation, useNavigationType } from "react-router";
 import { ErrorDeApi, pedir } from "../api/cliente";
 import type { CasosRespuesta, ProyectoRespuesta, SesionRespuesta } from "../api/tipos";
 import { AvisoError } from "../comun/AvisoError";
@@ -123,26 +123,31 @@ export function Shell({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
   // cuenta», que desaparece con ella), pasa al h1 de la nueva: el lector de pantalla la anuncia y el siguiente Tab
   // parte de ahi. Si lo tiene otro control (un enlace del menu), no se toca. La primera carga tampoco: ahi el primer
   // Tab debe ser «Saltar al contenido». La pagina se carga a demanda: se espera su h1 unos cuadros.
+  // Las redirecciones del indice («/») y de la ruta inexistente son `replace`: son la carga inicial, no un cambio de
+  // pagina de la persona (ronda 1 del arbitro). Los enlaces, `navigate` y atras/adelante son PUSH o POP.
   const rutaPrevia = useRef(ubicacion.pathname);
+  const tipoNavegacion = useNavigationType();
   useEffect(() => {
     if (rutaPrevia.current === ubicacion.pathname) return;
     rutaPrevia.current = ubicacion.pathname;
+    if (tipoNavegacion === "REPLACE") return;
     let cuadro = 0;
     let intento = 0;
     const buscar = () => {
       const activo = document.activeElement;
       if (activo && activo !== document.body) return;
-      const titulo = document.querySelector<HTMLElement>("#contenido h1");
+      // Sin el h1 del esqueleto: lo sustituye el de la pagina real y el foco quedaria en <body>.
+      const titulo = document.querySelector<HTMLElement>("#contenido h1:not([data-esqueleto])");
       if (titulo) {
         titulo.tabIndex = -1;
         titulo.focus({ preventScroll: true });
         return;
       }
-      if (++intento < 60) cuadro = requestAnimationFrame(buscar);
+      if (++intento < 240) cuadro = requestAnimationFrame(buscar);
     };
     cuadro = requestAnimationFrame(buscar);
     return () => cancelAnimationFrame(cuadro);
-  }, [ubicacion.pathname]);
+  }, [ubicacion.pathname, tipoNavegacion]);
 
   // Esc cierra el menu abierto como capa y devuelve el foco a su boton (VB-14).
   useEffect(() => {

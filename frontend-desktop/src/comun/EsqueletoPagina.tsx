@@ -12,7 +12,9 @@ export function EsqueletoPagina({ etiqueta = "Cargando la pantalla", titulo }: {
   if (!titulo) return esqueleto;
   return (
     <section className="silice-pagina">
-      <h1 className="cds--type-heading-04">{titulo}</h1>
+      <h1 className="cds--type-heading-04" data-esqueleto="">
+        {titulo}
+      </h1>
       {esqueleto}
     </section>
   );
