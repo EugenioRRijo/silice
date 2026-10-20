@@ -151,4 +151,7 @@ autorización expresa; el retiro de Streamlit queda como decisión pendiente doc
 | T2 | subagente T2 | 1 | APROBADO; 6 menores corregidos | 70ffa25 |
 | T3 | subagente T3 | 1 | APROBADO; 3 menores corregidos | d91ff44 |
 | T4 a T8 | tesis-b9 con sus subagentes | 1 a 2 | APROBADO (arbitros independientes; T4 y T7 con una devolucion) | 3a1dda3 (fusionado en 275946c) |
+| T10 3b-1 (Hoja: copia, vista, borradores, R1-R4) | subagente 3b-1 | 2 | APROBADO (arbitro independiente, ronda 2; defecto heredado de la cadena registrado para Eugenio) | cde1423 |
+| T10 3b-2 (R5-R8 y 4 pestañas) | subagente 3b-2 | 1 | APROBADO (arbitro independiente); 5 menores corregidos | 146dc59 |
+| T10 3b-3 (R9-R14 y 5 pestañas; backend y front en paralelo) | 2 subagentes | 3 | APROBADO POR EL ORQUESTADOR tras 3 rondas (1 MAYOR latente de paridad, PENDIENTE, corregido y verificado por el) | 04784a9 |
 | T10a (diseno de la Hoja) | subagente T10a | 3 + 1 | APROBADO POR EL ORQUESTADOR tras 3 rondas (3 MAYOR de texto, verificados por el) | 0e0427c |
