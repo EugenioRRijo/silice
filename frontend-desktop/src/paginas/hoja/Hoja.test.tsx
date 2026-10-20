@@ -229,7 +229,7 @@ describe("Hoja del proyecto (marco, 3b-1)", () => {
     const propios = Object.entries(fuentes).filter(([ruta]) => !/\.test\.tsx?$/.test(ruta));
     expect(propios.length).toBeGreaterThanOrEqual(3);
     for (const [ruta, fuente] of propios) {
-      expect(fuente, ruta).not.toMatch(/\bNumber\s*\(|\bparseFloat\s*\(|\bparseInt\s*\(|\bunary\b/);
+      expect(fuente, ruta).not.toMatch(/\bNumber\s*\(|\bparseFloat\s*\(|\bparseInt\s*\(|\.toFixed\s*\(|(?:[=(,:?]|\breturn)\s*\+\s*[A-Za-z_$(]/);
     }
   });
 
