@@ -186,7 +186,7 @@ def test_valor_ganado_muestra_la_tabla_y_la_curva(monkeypatch, tmp_path):
     filas = {f["Indicador"]: f for f in _tabla(at, "Indicador")}
     assert filas["PV (USD)"]["Valor"] == "1500.00" and filas["EV (USD)"]["Valor"] == "1200.00"
     assert filas["SPI"]["Valor"] == "0.8000" and filas["CPI"]["Valor"] == "0.9375"
-    assert filas["Desvio de precio (USD)"]["Valor"] == "no disponible"  # sin precios del corte
+    assert filas["Desvío de precio (USD)"]["Valor"] == "no disponible"  # sin precios del corte
     assert "definiciones del sistema (S2-R11)" in _texto(at)
     assert len(at.get("vega_lite_chart")) == 1
 
@@ -197,8 +197,8 @@ def test_con_la_comprobacion_directa_la_separacion_aparece(monkeypatch, tmp_path
     at.selectbox(key="control_pc_version").select("OB-R01").run()
     assert not at.exception, [e.value for e in at.exception]
     filas = {f["Indicador"]: f for f in _tabla(at, "Indicador")}
-    assert filas["Desvio de precio (USD)"]["Valor"] == "-60.00"
-    assert filas["Desvio de consumo (USD)"]["Valor"] == "-20.00"
+    assert filas["Desvío de precio (USD)"]["Valor"] == "-60.00"
+    assert filas["Desvío de consumo (USD)"]["Valor"] == "-20.00"
 
 
 def test_alertas_y_reproyeccion_se_ven_al_abrir_sin_pedirlas(monkeypatch, tmp_path):

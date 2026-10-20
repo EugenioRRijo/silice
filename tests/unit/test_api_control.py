@@ -135,6 +135,7 @@ def test_la_linea_base_vigente_y_los_parametros_con_su_naturaleza() -> None:
     datos = _con_clave().get("/v1/control/linea-base", params=P).json()
     assert datos["tiene_linea_base"] is True and datos["hay_valuaciones"] is True
     assert "versión OB-001, perspectiva costo" in datos["descripcion"]
+    assert datos["descripcion"].endswith("día(s) hábil(es) por período")  # VB-5
     assert datos["versiones"] == ["OB-001"]
     por_nombre = {p["parametro"]: p for p in datos["parametros"]}
     assert por_nombre["spi_error"]["naturaleza"] == "SUPUESTO_DECLARADO"
@@ -211,6 +212,28 @@ def test_un_parametro_fuera_de_rango_da_422() -> None:
     assert (
         navegador.post("/v1/control/parametros", json=cuerpo, headers=cabeceras).status_code == 422
     )
+
+
+def test_un_parametro_desconocido_y_el_si_con_tilde() -> None:
+    # VB-5: el mensaje acentuado; el «sí» que muestra la línea base se puede mandar de vuelta.
+    navegador, cabeceras = _arma()
+    cuerpo = {**P, "parametros": [{"parametro": "magia", "valor": "1"}], "fuente": "x"}
+    respuesta = navegador.post("/v1/control/parametros", json=cuerpo, headers=cabeceras)
+    assert respuesta.status_code == 422
+    assert respuesta.json()["detalle"] == "parámetro desconocido: 'magia'"
+    valores = {
+        p["parametro"]: p["valor"]
+        for p in navegador.get("/v1/control/linea-base", params=P).json()["parametros"]
+    }
+    assert valores["fcas_en_horas_extra"] == "sí"
+    cuerpo = {
+        **P,
+        "parametros": [{"parametro": "fcas_en_horas_extra", "valor": "no"}],
+        "fuente": "x",
+    }
+    assert navegador.post("/v1/control/parametros", json=cuerpo, headers=cabeceras).json() == {
+        "cambiados": 1
+    }
 
 
 def test_escribir_exige_csrf_y_el_rol_que_controla() -> None:
@@ -376,6 +399,9 @@ def test_un_archivo_que_no_es_un_libro_se_rechaza_entero_con_422() -> None:
         headers=cabeceras,
     )
     assert respuesta.status_code == 422
+    assert respuesta.json()["detalle"] == (
+        "El archivo no es un libro .xlsx legible; no se importó nada."
+    )
 
 
 # --- cálculo: valor ganado, alertas y reproyección -------------------------------------------
@@ -389,7 +415,7 @@ def test_el_calculo_trae_los_indicadores_de_la_memoria() -> None:
     assert ind["BAC (USD)"]["Valor"] == "4000.00"
     assert ind["SPI"]["Valor"] == "0.8000"
     assert ind["CPI"]["Valor"] == "0.9375"
-    assert ind["EAC (indice BAC/CPI) (USD)"]["Valor"] == "4266.67"
+    assert ind["EAC (índice BAC/CPI) (USD)"]["Valor"] == "4266.67"
 
 
 def test_la_curva_pv_ev_ac_cierra_en_el_corte() -> None:
@@ -431,9 +457,9 @@ def test_la_escalatoria_sin_fuente_da_422() -> None:
 
 
 def test_un_metodo_de_precios_desconocido_da_422() -> None:
-    assert (
-        _con_clave().get("/v1/control/calculo", params={**P, "metodo": "magia"}).status_code == 422
-    )
+    respuesta = _con_clave().get("/v1/control/calculo", params={**P, "metodo": "magia"})
+    assert respuesta.status_code == 422
+    assert respuesta.json()["detalle"].startswith("método de precios 'magia' desconocido")
 
 
 def test_sin_linea_base_o_sin_valuaciones_el_estado_lo_dice(
@@ -512,7 +538,8 @@ def test_elegir_exige_decidir_la_recuperacion_y_una_opcion_conocida() -> None:
     )
     navegador, cabeceras = _arma()
     respuesta = navegador.post("/v1/control/recuperacion/elegir", json=cuerpo, headers=cabeceras)
-    assert respuesta.status_code == 422 and "opcion" in respuesta.json()["detalle"].lower()
+    assert respuesta.status_code == 422
+    assert respuesta.json()["detalle"].startswith("opción 'x' desconocida")
 
 
 # --- V-11: el selector de la cabecera manda el `codigo` de GET /v1/proyectos ----------------

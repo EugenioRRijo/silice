@@ -263,6 +263,16 @@ describe("Control de obra", () => {
     });
   });
 
+  test("la pestaña de valuaciones no muestra codigos de la especificacion y lleva sus tildes (VB-5)", async () => {
+    const u = montar();
+    await u.click(await screen.findByRole("tab", { name: "Valuaciones" }));
+    await screen.findByRole("table", { name: "Valuaciones registradas" });
+    const visible = document.body.textContent ?? "";
+    expect(visible).not.toMatch(/S\d-R\d+|R13-R14|calculo|linea|importacion/);
+    expect(screen.getByText(/solo anularla la saca del cálculo\./)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Agregar línea" })).toBeInTheDocument();
+  });
+
   test("las valuaciones se muestran como texto, sin interpretar el inspector", async () => {
     const u = montar();
     await u.click(await screen.findByRole("tab", { name: "Valuaciones" }));
@@ -280,10 +290,12 @@ describe("Control de obra", () => {
     await u.type(screen.getByLabelText("Período hasta"), "2026-11-20");
     await u.type(screen.getByLabelText("Partida 1"), "OB-A");
     await u.type(screen.getByLabelText("Cantidad 1"), "50");
-    await u.click(screen.getByRole("button", { name: "Agregar linea" }));
+    await u.click(screen.getByRole("button", { name: "Agregar línea" }));
     await u.type(screen.getByLabelText("Fuente (acta, oficio)"), "acta 3");
     await u.click(screen.getByRole("button", { name: "Registrar y controlar" }));
-    expect(await screen.findByText(/corte 2026-11-20, 2 hallazgo\(s\) de R13-R14 \(1 ERROR\)/)).toBeInTheDocument();
+    expect(
+      await screen.findByText("Valuación registrada: corte 2026-11-20, 2 hallazgo(s) en la revisión de la valuación (1 con severidad Error)."),
+    ).toBeInTheDocument();
     const cuerpo = cuerpoDe("/v1/control/valuaciones");
     expect(cuerpo).toMatchObject({ proyecto: "OB-S2", numero: "V-03", fuente: "acta 3" });
     expect(cuerpo?.lineas).toEqual([{ partida: "OB-A", cantidad: "50", fecha_medicion: "", observacion: "" }]);

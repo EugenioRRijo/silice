@@ -83,12 +83,41 @@ def test_las_notas_de_los_indicadores_salen_con_tilde(monkeypatch: pytest.Monkey
         for f in control.filas_de_indicadores(None, resultado)  # type: ignore[arg-type]
     }
     assert filas["CPI"]["Nota"] == "AC = 0: aún no hay costos reales"
-    assert filas["Desvio de precio (USD)"]["Nota"] == (
+    # El «(S1)» es texto del núcleo (`core/budget/valor_ganado.py`): solo se le restituyen tildes.
+    assert filas["Desvío de precio (USD)"]["Nota"] == (
         "sin precios del corte (S1): la separación no está disponible"
     )
     # La fuente del precio la escribió el usuario: no se toca.
-    fuente = filas["Metodo y fuente del precio del corte"]["Nota"]
+    fuente = filas["Método y fuente del precio del corte"]["Nota"]
     assert fuente == "Nota del usuario: dia ningun termino"
+
+
+def test_los_nombres_de_los_indicadores_llevan_tilde_y_sin_codigos_de_la_spec(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # VB-5: los rótulos que arma aplicacion/ (no el núcleo). Oráculo escrito a mano.
+    monkeypatch.setattr(control, "_otra_moneda", lambda sesion, resultado: ("Bs", None))
+    resultado = _resultado_de_indicadores({}, {}, fuente="f")
+    filas = control.filas_de_indicadores(None, resultado)  # type: ignore[arg-type]
+    assert [f["Indicador"] for f in filas] == [
+        "BAC (USD)",
+        "PV (USD)",
+        "EV (USD)",
+        "AC (USD)",
+        "SV (plazo) (USD)",
+        "CV (USD)",
+        "SPI",
+        "CPI",
+        "EAC (índice BAC/CPI) (USD)",
+        "EAC (sistema) (USD)",
+        "VAC (USD)",
+        "Término por el índice (día hábil)",
+        "Desvío de precio (USD)",
+        "Desvío de consumo (USD)",
+        "Método y fuente del precio del corte",
+        "Tasa del corte",
+    ]
+    assert filas[-1]["Nota"] == "sin tasa aplicable a la fecha del corte"
 
 
 def test_la_nota_de_las_opciones_sale_con_tilde_y_los_codigos_del_usuario_no_cambian() -> None:
