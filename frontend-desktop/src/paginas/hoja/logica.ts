@@ -568,6 +568,7 @@ export function cuerpoDeEdicionDelEspacio(
 
 // La clásica agrega esta frase tras el error de la edición (ui/paginas/hoja.py:1217) y el borrador queda como estaba.
 export function mensajeDeRechazo(detalle: string, frase: string = FRASE_DE_RECHAZO): string {
+  if (frase === "") return detalle; // algunos rechazos (el cambio de insumo) la clásica los muestra solos
   const sinPunto = detalle.trimEnd().replace(/\.$/, "");
   return `${sinPunto}. ${frase}`;
 }
