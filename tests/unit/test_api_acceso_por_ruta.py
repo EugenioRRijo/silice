@@ -225,6 +225,8 @@ TABLA = {
     ("GET", "/v1/hoja/borradores/{id}/vistas/plan"): EDITAR,  # R8; solo con sesion
     ("GET", "/v1/hoja/borradores/{id}/vistas/equilibrio"): EDITAR,  # T10 3b-3 (R9); solo con sesion
     ("GET", "/v1/hoja/borradores/{id}/vistas/parametros"): EDITAR,  # R10; solo con sesion
+    ("GET", "/v1/hoja/borradores/{id}/vistas/auditoria"): EDITAR,  # R11; solo con sesion
+    ("GET", "/v1/hoja/trazabilidad"): EDITAR,  # R14; clave o sesion (lee una version guardada)
 }
 #: Las de la puerta de entrada: la sesión misma (con su propia regla) y el ping.
 DE_LA_SESION = {

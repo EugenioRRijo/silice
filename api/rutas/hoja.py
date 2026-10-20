@@ -36,8 +36,8 @@ from api.esquemas_hoja import (
     BorradorHojaRespuesta,
     BorradorNuevo,
     InstantaneaHojaRespuesta,
+    TrazabilidadHojaRespuesta,
     VersionesHojaRespuesta,
-    VersionHojaRespuesta,
     VistaApuRespuesta,
     VistaEquilibrioRespuesta,
     VistaEspacioRespuesta,
@@ -46,6 +46,8 @@ from api.esquemas_hoja import (
     VistaPresupuestoRespuesta,
     base_a_respuesta,
     resumen_a_respuesta,
+    trazabilidad_a_respuesta,
+    version_a_respuesta,
     vista_apu_a_respuesta,
     vista_equilibrio_a_respuesta,
     vista_espacio_a_respuesta,
@@ -53,6 +55,7 @@ from api.esquemas_hoja import (
     vista_plan_a_respuesta,
     vista_presupuesto_a_respuesta,
 )
+from api.esquemas_informe import InformeAuditoriaRespuesta, informe_a_respuesta
 from api.sesion_web import exigir_clave_o_sesion
 from api.sin_cache import RutaSinCache
 from api.sin_eco import RutaSinEco
@@ -144,18 +147,7 @@ def listar_versiones(
         proyecto=encontrado.nombre,
         moneda=moneda,
         por_omision=hoja_vista.version_por_omision(filas),
-        versiones=[
-            VersionHojaRespuesta(
-                codigo=f.codigo,
-                fecha=f.fecha.isoformat(),
-                motivo=f.motivo,
-                origen=f.origen,
-                vigente=f.vigente,
-                descartada=f.descartada,
-                cambios=f.cambios,
-            )
-            for f in filas
-        ],
+        versiones=[version_a_respuesta(f) for f in filas],
     )
 
 
@@ -295,3 +287,36 @@ def vista_parametros(
             vivo, moneda, permitido(activa.roles, Accion.CONVERTIR_Y_REAJUSTAR)
         )
     )
+
+
+@router.get("/borradores/{id}/vistas/auditoria", response_model=InformeAuditoriaRespuesta)
+def vista_auditoria(
+    id: IdDeBorrador, request: Request, activa: CuentaDeLaHoja
+) -> InformeAuditoriaRespuesta:
+    """R11: el informe de auditoría del borrador, con todas las reglas y R17 (conexión de cada
+    punto) ligada a su espacio; texto plano, sin Markdown."""
+    return informe_a_respuesta(hoja_vista.informe_de_auditoria(_vivo(request, activa, id)))
+
+
+@router.get("/trazabilidad", response_model=TrazabilidadHojaRespuesta, dependencies=[LEER])
+def trazabilidad(
+    sesion: SesionDep,
+    proyecto: Annotated[str, Query(min_length=1, max_length=500)],
+    version: Annotated[str, Query(min_length=1, max_length=500)],
+) -> TrazabilidadHojaRespuesta:
+    """R14: el historial del proyecto y los registros de cambio de una versión guardada. Clave de
+    API o sesión con `EDITAR_HOJA`; solo lee."""
+    try:
+        nombre = _proyecto(sesion, proyecto).nombre
+        try:
+            hoja.lista_de_version(sesion, nombre, version)  # el 404 de la clásica (H:1572)
+        except HojaInvalida as error:
+            raise HTTPException(status_code=404, detail=str(error)) from None
+        return trazabilidad_a_respuesta(
+            hoja_vista.vista_trazabilidad(
+                hoja.historial_de_versiones(sesion, nombre),
+                hoja.registros_de_version(sesion, nombre, version),
+            )
+        )
+    except SQLAlchemyError:
+        raise HTTPException(status_code=503, detail=MENSAJE_BASE) from None

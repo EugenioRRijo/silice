@@ -11,6 +11,7 @@ from typing import Annotated
 
 from pydantic import BaseModel, Field
 
+from aplicacion.hoja import FilaVersion
 from aplicacion.hoja_vista import (
     BaseAbierta,
     Monto,
@@ -21,6 +22,7 @@ from aplicacion.hoja_vista import (
     VistaParametros,
     VistaPlan,
     VistaPresupuesto,
+    VistaTrazabilidad,
 )
 
 #: Cada texto de celda o de código llega acotado (diseño §4.1): ≤ 500 caracteres.
@@ -67,6 +69,18 @@ class VersionHojaRespuesta(BaseModel):
     vigente: bool
     descartada: bool
     cambios: int
+
+
+def version_a_respuesta(fila: FilaVersion) -> VersionHojaRespuesta:
+    return VersionHojaRespuesta(
+        codigo=fila.codigo,
+        fecha=fila.fecha.isoformat(),
+        motivo=fila.motivo,
+        origen=fila.origen,
+        vigente=fila.vigente,
+        descartada=fila.descartada,
+        cambios=fila.cambios,
+    )
 
 
 class VersionesHojaRespuesta(BaseModel):
@@ -317,3 +331,30 @@ class VistaParametrosRespuesta(BaseModel):
 
 def vista_parametros_a_respuesta(vista: VistaParametros) -> VistaParametrosRespuesta:
     return VistaParametrosRespuesta.model_validate(vista, from_attributes=True)
+
+
+class RegistroCambioRespuesta(BaseModel):
+    objeto: str
+    clave: str
+    campo: str
+    antes: str
+    despues: str
+    fuente: str
+    responsable: str
+    fecha_hora: str
+
+
+class TrazabilidadHojaRespuesta(BaseModel):
+    versiones: list[VersionHojaRespuesta]
+    registros: list[RegistroCambioRespuesta]
+    vacio_mensaje: str | None
+
+
+def trazabilidad_a_respuesta(vista: VistaTrazabilidad) -> TrazabilidadHojaRespuesta:
+    return TrazabilidadHojaRespuesta(
+        versiones=[version_a_respuesta(v) for v in vista.versiones],
+        registros=[
+            RegistroCambioRespuesta.model_validate(r, from_attributes=True) for r in vista.registros
+        ],
+        vacio_mensaje=vista.vacio_mensaje,
+    )

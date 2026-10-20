@@ -5707,6 +5707,108 @@
         }
       }
     },
+    "/v1/hoja/borradores/{id}/vistas/auditoria": {
+      "get": {
+        "tags": [
+          "hoja"
+        ],
+        "summary": "Vista Auditoria",
+        "description": "R11: el informe de auditoría del borrador, con todas las reglas y R17 (conexión de cada\npunto) ligada a su espacio; texto plano, sin Markdown.",
+        "operationId": "vista_auditoria_v1_hoja_borradores__id__vistas_auditoria_get",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 16,
+              "maxLength": 64,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "title": "Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InformeAuditoriaRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/hoja/trazabilidad": {
+      "get": {
+        "tags": [
+          "hoja"
+        ],
+        "summary": "Trazabilidad",
+        "description": "R14: el historial del proyecto y los registros de cambio de una versión guardada. Clave de\nAPI o sesión con `EDITAR_HOJA`; solo lee.",
+        "operationId": "trazabilidad_v1_hoja_trazabilidad_get",
+        "parameters": [
+          {
+            "name": "proyecto",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500,
+              "title": "Proyecto"
+            }
+          },
+          {
+            "name": "version",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500,
+              "title": "Version"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrazabilidadHojaRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/produccion/materiales": {
       "get": {
         "tags": [
@@ -13534,6 +13636,54 @@
         ],
         "title": "RegistrarValuacion"
       },
+      "RegistroCambioRespuesta": {
+        "properties": {
+          "objeto": {
+            "type": "string",
+            "title": "Objeto"
+          },
+          "clave": {
+            "type": "string",
+            "title": "Clave"
+          },
+          "campo": {
+            "type": "string",
+            "title": "Campo"
+          },
+          "antes": {
+            "type": "string",
+            "title": "Antes"
+          },
+          "despues": {
+            "type": "string",
+            "title": "Despues"
+          },
+          "fuente": {
+            "type": "string",
+            "title": "Fuente"
+          },
+          "responsable": {
+            "type": "string",
+            "title": "Responsable"
+          },
+          "fecha_hora": {
+            "type": "string",
+            "title": "Fecha Hora"
+          }
+        },
+        "type": "object",
+        "required": [
+          "objeto",
+          "clave",
+          "campo",
+          "antes",
+          "despues",
+          "fuente",
+          "responsable",
+          "fecha_hora"
+        ],
+        "title": "RegistroCambioRespuesta"
+      },
       "RegistroRendimientoRespuesta": {
         "properties": {
           "rendimiento": {
@@ -15108,6 +15258,42 @@
           "origen"
         ],
         "title": "TrazaRespuesta"
+      },
+      "TrazabilidadHojaRespuesta": {
+        "properties": {
+          "versiones": {
+            "items": {
+              "$ref": "#/components/schemas/VersionHojaRespuesta"
+            },
+            "type": "array",
+            "title": "Versiones"
+          },
+          "registros": {
+            "items": {
+              "$ref": "#/components/schemas/RegistroCambioRespuesta"
+            },
+            "type": "array",
+            "title": "Registros"
+          },
+          "vacio_mensaje": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vacio Mensaje"
+          }
+        },
+        "type": "object",
+        "required": [
+          "versiones",
+          "registros",
+          "vacio_mensaje"
+        ],
+        "title": "TrazabilidadHojaRespuesta"
       },
       "ValidationError": {
         "properties": {

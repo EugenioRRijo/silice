@@ -733,11 +733,13 @@ def test_docs_api_json_esta_al_dia() -> None:
         "/v1/hoja/borradores",
         "/v1/hoja/borradores/{id}",
         "/v1/hoja/borradores/{id}/vistas/apu",
+        "/v1/hoja/borradores/{id}/vistas/auditoria",
         "/v1/hoja/borradores/{id}/vistas/equilibrio",
         "/v1/hoja/borradores/{id}/vistas/espacio",
         "/v1/hoja/borradores/{id}/vistas/parametros",
         "/v1/hoja/borradores/{id}/vistas/plan",
         "/v1/hoja/borradores/{id}/vistas/presupuesto",
+        "/v1/hoja/trazabilidad",
     }
 
 
@@ -1237,6 +1239,8 @@ def test_r14_proyecto_o_version_inexistente_es_404_con_los_textos_de_la_clasica(
 
 
 def test_r14_la_clave_de_api_puede_leerla_y_no_escribe_nada(_entorno: Path) -> None:
+    navegador, _ = _ana()
+    assert _versiones(navegador).status_code == 200  # la primera lectura adopta el caso (esquema)
     antes = _volcado(_entorno)
     respuesta = cliente(app).get(
         "/v1/hoja/trazabilidad",

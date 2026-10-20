@@ -33,7 +33,7 @@ from aplicacion import hoja
 from aplicacion.hoja_borradores import BorradorVivo
 from core.budget.equilibrio import PuntoEquilibrio
 from core.contracts import Severidad
-from core.verification.informe import DECIMALES_PRESENTACION
+from core.verification.informe import DECIMALES_PRESENTACION, InformeAuditoria
 from core.verification.texto import formatear_decimal
 
 
@@ -719,4 +719,64 @@ def vista_parametros(
         moneda_proyecto=moneda_proyecto if abierta else None,
         total=monto(resultado.elaboracion.presupuesto.total),
         puede_convertir=abierta and puede_convertir,
+    )
+
+
+# --- Auditoria (R11) ----------------------------------------------------------------------------
+
+
+def informe_de_auditoria(vivo: BorradorVivo) -> InformeAuditoria:
+    """El informe de la pestana Auditoria (P:2124-2128): todas las reglas sobre el borrador vigente,
+    con R17 (viene de `elaborar`, no de la base). La API lo serializa con `informe_a_respuesta`."""
+    resultado, _ = calculo(vivo)
+    return resultado.elaboracion.informe
+
+
+# --- Trazabilidad (R14) -------------------------------------------------------------------------
+
+SIN_REGISTROS = "Esta versión no nació de una edición: no tiene registros de cambio."
+
+
+@dataclass(frozen=True, slots=True)
+class RegistroDeTraza:
+    """Un `RegistroCambio` de la version como lo muestra la pestana (P:2176-2196)."""
+
+    objeto: str
+    clave: str
+    campo: str
+    antes: str
+    despues: str
+    fuente: str
+    responsable: str
+    fecha_hora: str
+
+
+@dataclass(frozen=True, slots=True)
+class VistaTrazabilidad:
+    versiones: tuple[hoja.FilaVersion, ...]
+    registros: tuple[RegistroDeTraza, ...]
+    vacio_mensaje: str | None
+
+
+def vista_trazabilidad(
+    versiones: Sequence[hoja.FilaVersion], registros: Sequence[hoja.FilaRegistro]
+) -> VistaTrazabilidad:
+    """El historial del proyecto y los registros de la version pedida, en el orden en que se
+    guardaron. Sin registros, el mensaje de la clasica (P:2199)."""
+    return VistaTrazabilidad(
+        versiones=tuple(versiones),
+        registros=tuple(
+            RegistroDeTraza(
+                r.objeto,
+                r.clave,
+                r.campo,
+                r.valor_anterior,
+                r.valor_nuevo,
+                r.fuente,
+                r.responsable,
+                r.fecha_hora.isoformat(),
+            )
+            for r in registros
+        ),
+        vacio_mensaje=None if registros else SIN_REGISTROS,
     )
