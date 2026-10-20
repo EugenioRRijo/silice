@@ -63,6 +63,14 @@
     padding: 0.125rem 0.5rem 0.125rem 0;
     min-inline-size: 9rem;
   }
+
+  // VD-11: la celda de la papelera (un boton de 32 px) no hereda el minimo de las celdas de campo; con el, la tabla
+  // «Periodos» desbordaba 49 px su contenedor a 1056 px. `inline-size: 1%` la deja al ancho de su boton.
+  .silice-filas__quitar {
+    min-inline-size: 0;
+    inline-size: 1%;
+    padding-inline-end: 0;
+  }
 }
 
 .silice-reajuste__grupo {

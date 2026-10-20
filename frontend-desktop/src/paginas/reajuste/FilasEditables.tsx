@@ -46,7 +46,7 @@ export function FilasEditables({ etiqueta, columnas, filas, alCambiar, fijas = f
                 {c.titulo}
               </th>
             ))}
-            {!fijas && <th aria-hidden="true" />}
+            {!fijas && <th aria-hidden="true" className="silice-filas__quitar" />}
           </tr>
         </thead>
         <tbody>
@@ -68,7 +68,8 @@ export function FilasEditables({ etiqueta, columnas, filas, alCambiar, fijas = f
                 </td>
               ))}
               {!fijas && (
-                <td>
+                // VD-11: la papelera en su columna angosta (sin el minimo de 9rem de las celdas de campo).
+                <td className="silice-filas__quitar">
                   <Button
                     kind="ghost"
                     size="sm"
