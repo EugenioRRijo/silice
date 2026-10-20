@@ -18,6 +18,12 @@ interface Props {
 export function TablaPaginada({ etiqueta, columnas, filas, vacio, desplazable = false }: Props) {
   const [pagina, setPagina] = useState(1);
   const [tamano, setTamano] = useState(FILAS_POR_PAGINA);
+  // Si cambia el número de filas (una edición, otra búsqueda) se vuelve a la primera página.
+  const [largo, setLargo] = useState(filas.length);
+  if (largo !== filas.length) {
+    setLargo(filas.length);
+    setPagina(1);
+  }
   const paginar = filas.length > LIMITE_SIN_PAGINAR;
   const visibles = paginar ? filas.slice((pagina - 1) * tamano, pagina * tamano) : filas;
   const tabla = <TablaDensa etiqueta={etiqueta} columnas={columnas} filas={visibles} vacio={vacio} />;

@@ -68,10 +68,9 @@
 }
 
 .silice-hoja__estado-texto {
-  max-inline-size: 22rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  // El texto completo se ve y se lee con el teclado: envuelve, no se recorta.
+  max-inline-size: 28rem;
+  overflow-wrap: anywhere;
 }
 
 // APU: lista · tabla · cierre. Bajo ~1200 px se apilan en vez de comprimirse.

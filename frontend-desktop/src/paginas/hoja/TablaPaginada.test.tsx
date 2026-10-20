@@ -1,15 +1,12 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { describe, expect, test } from "vitest";
 import { TablaPaginada } from "./TablaPaginada";
 
 const columnas = [{ clave: "codigo", titulo: "Código", ordenable: false }];
 const filasDe = (n: number) => Array.from({ length: n }, (_, i) => ({ id: `f${i}`, codigo: `A${i + 1}` }));
-
-const hojaScss = import.meta.glob("./hoja.scss", { query: "?raw", import: "default", eager: true }) as Record<
-  string,
-  string
->;
 
 describe("TablaPaginada", () => {
   test("vuelve a la primera página cuando cambia el número de filas", async () => {
@@ -27,7 +24,7 @@ describe("TablaPaginada", () => {
   });
 
   test("el texto del Estado no se recorta con puntos suspensivos: se lee completo con el teclado", () => {
-    const css = Object.values(hojaScss)[0]!;
+    const css = readFileSync(resolve(process.cwd(), "src/paginas/hoja/hoja.scss"), "utf-8");
     const bloque = /\.silice-hoja__estado-texto\s*\{[^}]*\}/.exec(css)?.[0] ?? "";
     expect(bloque).not.toBe("");
     expect(bloque).not.toMatch(/text-overflow|nowrap/);
