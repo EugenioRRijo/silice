@@ -104,4 +104,16 @@ describe("Acerca de Sílice", () => {
     expect(screen.getByText("Sin base")).toBeInTheDocument();
     expect(screen.getByText("Ilegible")).toBeInTheDocument();
   });
+
+  // Punto 6 de la ronda 1: ni el nombre crudo de una migracion ni «alembic_version» llegan a la persona.
+  test("sin dato de la última versión se dice solo la versión en que va; «sin alembic_version» se explica", async () => {
+    fetchFalso.mockResolvedValue(
+      json({ ...DATOS, revision_caso: "caso_0008_s3_paquete", head_caso: "sin revisiones", revision_instalacion: "sin alembic_version" }),
+    );
+    montar();
+    await screen.findByText("Sílice 1.2.0-dev0");
+    expect(screen.getByText("Versión 8")).toBeInTheDocument();
+    expect(screen.getByText("Sin información de versión")).toBeInTheDocument();
+    expect(document.body.textContent).not.toMatch(/alembic|Caso_0008|s3_paquete/i);
+  });
 });

@@ -481,6 +481,14 @@ describe("Inicio, panel del día", () => {
       expect(rutasPedidas()).not.toContain("/v1/produccion/existencias");
     });
 
+    // Sin `leer_proyecto` no siempre es el administrador (una API anterior no manda acciones): el texto de
+    // «administra Sílice» es solo para quien tiene ese rol.
+    test("una cuenta sin la acción de auditar que no es administradora recibe un texto neutro", async () => {
+      montar({ sesion: { ...SESION, roles: ["arma"], acciones: [] } });
+      expect(await screen.findByText(/no tiene permiso para auditar presupuestos/i)).toBeInTheDocument();
+      expect(screen.queryByText(/administra Sílice/)).not.toBeInTheDocument();
+    });
+
     test("quien arma lo pide todo", async () => {
       montar();
       expect(screen.getByRole("heading", { name: "Audite un presupuesto" })).toBeInTheDocument();

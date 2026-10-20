@@ -14,7 +14,7 @@ function json(cuerpo: unknown, estado = 200): Response {
 const sesion = {
   login: "ana",
   nombre: "Ana Pérez",
-  roles: ["revisa"],
+  roles: ["arma"],
   csrf: "tok",
   debe_cambiar_clave: false,
   acciones: ["leer_proyecto", "revisar_paquete", "cambiar_caso", "operar_arenera"],

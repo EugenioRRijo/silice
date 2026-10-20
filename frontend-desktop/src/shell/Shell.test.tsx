@@ -511,10 +511,13 @@ describe("Shell", () => {
       await screen.findByRole("heading", { name: "Pantalla del tablero" });
       await usuario.click(screen.getByRole("button", { name: "Abrir el menú" }));
       expect(screen.getByRole("button", { name: "Cerrar el menú" })).toHaveAttribute("aria-expanded", "true");
+      // El clic deja el foco en el propio boton: se lleva a un enlace del menu para que el regreso se note.
+      within(menu()).getAllByRole("link")[0].focus();
+      expect(screen.getByRole("button", { name: "Cerrar el menú" })).not.toHaveFocus();
       await usuario.keyboard("{Escape}");
       const boton = screen.getByRole("button", { name: "Abrir el menú" });
       expect(boton).toHaveAttribute("aria-expanded", "false");
-      expect(boton).toHaveFocus();
+      await waitFor(() => expect(boton).toHaveFocus());
     });
 
     test("Esc con el menú cerrado no mueve el foco", async () => {

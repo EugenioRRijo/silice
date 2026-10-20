@@ -24,4 +24,9 @@ describe("CampoTexto", () => {
     );
     expect(container.querySelectorAll('[role="alert"]').length).toBeGreaterThan(0);
   });
+
+  test("con maxCount aunque no se pida el contador la región viva de Carbon se conserva", () => {
+    const { container } = render(<CampoTexto id="c4" labelText="Corto" value="abc" onChange={() => {}} maxCount={10} />);
+    expect(container.querySelectorAll('[role="alert"]').length).toBeGreaterThan(0);
+  });
 });
