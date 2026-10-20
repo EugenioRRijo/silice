@@ -475,3 +475,124 @@ export function fechaCorta(texto: string): string {
   const m = /^(\d{4})-(\d{2})-(\d{2})(.*)$/.exec(texto);
   return m ? `${m[3]}/${m[2]}/${m[1]}${m[4]!.replace(/^T/, " ")}` : texto;
 }
+
+// --- rebanada 3c-1: edición del espacio (E1, `PUT /v1/hoja/borradores/{id}/espacio`) ---
+
+// Una fila editable: `clave` es propia del navegador (identifica la fila al agregar, quitar y enfocar) y `valores` el
+// texto de cada columna, tal cual lo escribió la persona. La interfaz nunca lo convierte en número.
+export interface FilaEditable {
+  clave: number;
+  valores: Record<string, string>;
+}
+
+export type TablasEditables = Record<string, FilaEditable[]>;
+
+export interface RespuestaDeEdicion {
+  rev: number;
+  resumen: Resumen;
+}
+
+// Topes de filas por tabla (diseño §4.1 y D-9, supuestos declarados); el servidor los impone con un 422.
+export const LIMITE_DE_FILAS: Record<string, number> = {
+  origenes: 5000,
+  ambientes: 1000,
+  fuentes: 1000,
+  puntos: 5000,
+  tramos: 20000,
+};
+
+// Cada celda admite hasta 500 caracteres (diseño §4.1).
+export const LARGO_DE_CELDA = 500;
+
+// Pausa tras la última tecla antes de mandar la tabla (diseño §6.2, 3c-F2).
+export const PAUSA_DE_EDICION_MS = 400;
+
+export const FRASE_DE_RECHAZO = "La hoja sigue con el último borrador válido.";
+
+export function rutaDeEspacio(id: string): string {
+  return `/v1/hoja/borradores/${id}/espacio`;
+}
+
+export function puedeAgregarFila(tabla: string, filas: number): boolean {
+  const tope = LIMITE_DE_FILAS[tabla];
+  return tope !== undefined && filas < tope;
+}
+
+export function filaEnBlanco(tabla: TablaEspacio, clave: number): FilaEditable {
+  const valores: Record<string, string> = {};
+  for (const c of tabla.columnas) valores[c.clave] = "";
+  return { clave, valores };
+}
+
+// Las filas que mandó el servidor, como filas editables (con todas las columnas, vacías si no vinieron).
+export function sembrarTablas(
+  tablas: TablaEspacio[],
+  filas: Record<string, Array<Record<string, string>>>,
+  nuevaClave: () => number,
+): TablasEditables {
+  const salida: TablasEditables = {};
+  for (const tabla of tablas) {
+    salida[tabla.clave] = (filas[tabla.clave] ?? []).map((fila) => {
+      const editable = filaEnBlanco(tabla, nuevaClave());
+      for (const c of tabla.columnas) editable.valores[c.clave] = fila[c.clave] ?? "";
+      return editable;
+    });
+  }
+  return salida;
+}
+
+// El cuerpo de E1: `rev` y las cinco tablas completas (una tabla ausente contaría como vacía en el servidor).
+export function cuerpoDeEdicionDelEspacio(
+  rev: number,
+  tablas: TablaEspacio[],
+  editables: TablasEditables,
+): { rev: number; tablas: Record<string, Array<Record<string, string>>> } {
+  const salida: Record<string, Array<Record<string, string>>> = {};
+  for (const tabla of tablas) {
+    salida[tabla.clave] = (editables[tabla.clave] ?? []).map((fila) => {
+      const celdas: Record<string, string> = {};
+      for (const c of tabla.columnas) celdas[c.clave] = fila.valores[c.clave] ?? "";
+      return celdas;
+    });
+  }
+  return { rev, tablas: salida };
+}
+
+// La clásica agrega esta frase tras el error de la edición (ui/paginas/hoja.py:1217) y el borrador queda como estaba.
+export function mensajeDeRechazo(detalle: string): string {
+  const sinPunto = detalle.trimEnd().replace(/\.$/, "");
+  return `${sinPunto}. ${FRASE_DE_RECHAZO}`;
+}
+
+function sinTildes(texto: string): string {
+  return texto.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+}
+
+// El número de fila de un mensaje (un índice, no un monto), leído dígito a dígito: en esta carpeta nada usa Number ni parseInt.
+function enteroDeDigitos(digitos: string): number {
+  return [...digitos].reduce((acumulado, d) => acumulado * 10 + "0123456789".indexOf(d), 0);
+}
+
+export interface UbicacionDeError {
+  tabla: string;
+  // Número de fila desde 1, como la nombra el mensaje de la clásica.
+  fila: number;
+  // La columna que nombra el mensaje («alto: …»), o null si no es una de la tabla.
+  columna: string | null;
+}
+
+// Los errores de fila de la clásica son «{tabla}, fila {n}: {campo}: …» con el rótulo de la tabla sin tildes
+// (ui/hoja.py:518). Devuelve dónde está, o null si el mensaje no nombra tabla y fila conocidas.
+export function ubicarError(detalle: string, tablas: TablaEspacio[]): UbicacionDeError | null {
+  const m = /^(.+?), fila (\d+): (?:([A-Za-z_]+): )?/.exec(detalle);
+  if (!m) return null;
+  const nombre = sinTildes(m[1]!);
+  const tabla = tablas.find((t) => sinTildes(t.rotulo) === nombre || t.clave === nombre);
+  if (!tabla) return null;
+  const campo = m[3];
+  return {
+    tabla: tabla.clave,
+    fila: enteroDeDigitos(m[2]!),
+    columna: campo !== undefined && tabla.columnas.some((c) => c.clave === campo) ? campo : null,
+  };
+}
