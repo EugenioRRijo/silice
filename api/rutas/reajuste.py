@@ -231,8 +231,8 @@ def _respuesta(sesion, p: EstudioPeticion, resultado) -> CalculoRespuesta:
     parcial = ""
     if resultado.estado is EstadoEstudio.PARCIAL:
         parcial = (
-            f"El ultimo periodo aun no cierra: el estudio se guardara «parcial al corte» al "
-            f"{resultado.fecha_corte:%d/%m/%Y} y se reemplaza al cerrar el mes (S1-R21)."
+            f"El último período aún no cierra: el estudio se guardará «parcial al corte» al "
+            f"{resultado.fecha_corte:%d/%m/%Y} y se reemplaza al cerrar el mes."
         )
     return CalculoRespuesta(
         estado=resultado.estado.value,

@@ -47,6 +47,25 @@ export const CLAVES_EJECUTADO = ["periodo", "partida", "cantidad", "fuente"];
 // Columnas del resultado que son texto y no cifra (el resto se alinea a la derecha como monto o tasa).
 const COLUMNAS_DE_TEXTO = new Set(["Período", "Mecanismo", "Moneda", "Marcas"]);
 
+// VB-5: los valores internos de los desplegables y de los componentes (los del nucleo, que la API espera tal cual)
+// con su rotulo en español. El valor que se manda no cambia; uno que no esta aqui se muestra tal cual.
+const ROTULOS_DE_OPCION: Record<string, string> = {
+  mensual: "Mensual",
+  trimestral: "Trimestral",
+  escalatoria: "Escalatoria",
+  comprobacion: "Comprobación directa",
+  ambos: "Ambos (escalatoria y comprobación)",
+  por_partida: "Por partida",
+  declarada: "Declarada",
+  materiales: "Materiales",
+  equipos: "Equipos",
+  mano_obra: "Mano de obra",
+};
+
+export function rotuloDeOpcion(valor: string): string {
+  return ROTULOS_DE_OPCION[valor] ?? valor;
+}
+
 export function filasVacias(claves: string[], cantidad: number): Fila[] {
   return Array.from({ length: cantidad }, () => Object.fromEntries(claves.map((c) => [c, ""])));
 }

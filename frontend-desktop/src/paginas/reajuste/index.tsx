@@ -11,7 +11,7 @@ import { useCarga } from "../inicio/useCarga";
 import type { Carga } from "../inicio/useCarga";
 import { FilasEditables } from "./FilasEditables";
 import type { ColumnaEditable } from "./FilasEditables";
-import { armarCuerpo, columnasDeResultado, filasDeResultado, formularioInicial } from "./logica";
+import { armarCuerpo, columnasDeResultado, filasDeResultado, formularioInicial, rotuloDeOpcion } from "./logica";
 import type { ClausulaTextos, Fila, Formulario } from "./logica";
 import "./reajuste.scss";
 
@@ -50,7 +50,7 @@ interface Calculo {
 }
 
 const COLUMNAS_COMPONENTE: ColumnaEditable[] = [
-  { clave: "componente", titulo: "Componente", fija: true },
+  { clave: "componente", titulo: "Componente", fija: true, presentar: rotuloDeOpcion },
   { clave: "serie", titulo: "Serie" },
   { clave: "peso", titulo: "Peso" },
 ];
@@ -231,26 +231,26 @@ function Formulario({
                   <div className="silice-reajuste__rejilla">
                     <Select id="rj-periodicidad" labelText="Periodicidad" value={form.clausula.periodicidad} onChange={(e) => campo("periodicidad", e.target.value)}>
                       {contexto.periodicidades.map((p) => (
-                        <SelectItem key={p} value={p} text={p} />
+                        <SelectItem key={p} value={p} text={rotuloDeOpcion(p)} />
                       ))}
                     </Select>
                     <Select id="rj-mecanismo" labelText="Mecanismo" value={form.clausula.mecanismo} onChange={(e) => campo("mecanismo", e.target.value)}>
                       {contexto.mecanismos.map((m) => (
-                        <SelectItem key={m} value={m} text={m} />
+                        <SelectItem key={m} value={m} text={rotuloDeOpcion(m)} />
                       ))}
                     </Select>
                     <Select id="rj-pagadero" labelText="Mecanismo pagadero (solo con «ambos»)" value={form.clausula.mecanismo_pagadero} onChange={(e) => campo("mecanismo_pagadero", e.target.value)}>
-                      <SelectItem value="" text="" />
+                      <SelectItem value="" text="Ninguno" />
                       {contexto.mecanismos
                         .filter((m) => m !== "ambos")
                         .map((m) => (
-                          <SelectItem key={m} value={m} text={m} />
+                          <SelectItem key={m} value={m} text={rotuloDeOpcion(m)} />
                         ))}
                     </Select>
                     <TextInput id="rj-fuente-pagadero" labelText="Fuente del mecanismo pagadero" value={form.clausula.fuente_pagadero} onChange={(e) => campo("fuente_pagadero", e.target.value)} />
                     <Select id="rj-estructura" labelText="Estructura" value={form.clausula.estructura} onChange={(e) => campo("estructura", e.target.value)}>
                       {contexto.estructuras.map((x) => (
-                        <SelectItem key={x} value={x} text={x} />
+                        <SelectItem key={x} value={x} text={rotuloDeOpcion(x)} />
                       ))}
                     </Select>
                   </div>

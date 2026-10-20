@@ -62,27 +62,38 @@ _SI = {"si", "sí", "true", "1"}
 #: Como se llama cada campo en la pantalla: los mensajes usan estos nombres, no los internos.
 ROTULOS = {
     "fecha_inicio": "Inicio del contrato",
-    "duracion_meses": "Duracion (meses)",
+    "duracion_meses": "Duración (meses)",
     "fecha_referencia_primer_anio": "El primer año corre desde",
     "periodicidad": "Periodicidad",
     "mecanismo": "Mecanismo",
     "mecanismo_pagadero": "Mecanismo pagadero",
     "fuente_pagadero": "Fuente del mecanismo pagadero",
     "estructura": "Estructura",
-    "fecha_base_indices": "Mes base de los indices (I0)",
-    "r": "R (fraccion no reajustable)",
+    "fecha_base_indices": "Mes base de los índices",
+    "r": "R (fracción no reajustable)",
     "fuente_r": "Fuente de R",
-    "fuente": "Fuente de la clausula",
+    "fuente": "Fuente de la cláusula",
     "responsable": "Responsable",
     "componente": "Componente",
     "serie": "Serie del componente",
     "peso": "Peso del componente",
-    "desde": "Periodo, desde",
-    "hasta": "Periodo, hasta",
-    "version_comprobacion": "Version de comprobacion",
-    "periodo": "Numero del periodo (ejecutado)",
+    "desde": "Período, desde",
+    "hasta": "Período, hasta",
+    "version_comprobacion": "Versión de comprobación",
+    "periodo": "Número del período (ejecutado)",
     "partida": "Partida (ejecutado)",
     "cantidad": "Cantidad ejecutada",
+}
+#: Las reglas de la cláusula que el núcleo (`core/budget/reajuste.py`, intocable) escribe sin
+#: tildes, con las tildes restituidas. Solo tildes: los códigos que traen (S1-R10,
+#: mecanismo_pagadero) son del núcleo y quedan. Un mensaje que no está aquí pasa tal cual.
+REGLAS_DEL_NUCLEO_CON_TILDES = {
+    "la duracion del contrato debe ser positiva": "la duración del contrato debe ser positiva",
+    "el mes base de los indices se declara con su primer dia (S1-R10)": (
+        "el mes base de los índices se declara con su primer día (S1-R10)"
+    ),
+    "la clausula exige fuente y responsable": "la cláusula exige fuente y responsable",
+    "componente repetido en la clausula": "componente repetido en la cláusula",
 }
 
 
@@ -98,7 +109,7 @@ def _campo(
 ) -> str:
     texto = texto_de_celda(fila, campo)
     if obligatorio and not texto:
-        raise HojaInvalida(f"Escriba «{rotulo or _rotulo(campo)}»: es obligatorio (UC-18).")
+        raise HojaInvalida(f"Escriba «{rotulo or _rotulo(campo)}»: es obligatorio.")
     return texto
 
 
@@ -136,7 +147,7 @@ def clausula_desde_textos(
     try:
         duracion = int(_campo(campos, "duracion_meses"))
     except ValueError:
-        raise HojaInvalida("Duracion (meses): escriba un numero entero de meses.") from None
+        raise HojaInvalida("Duración (meses): escriba un número entero de meses.") from None
     lista = []
     for fila in (f for f in componentes if _con_datos(f)):
         componente = _campo(fila, "componente")
@@ -174,7 +185,8 @@ def clausula_desde_textos(
     except HojaInvalida:
         raise
     except ValueError as error:  # las reglas de la clausula (pesos que no suman 1, R, ...)
-        raise HojaInvalida(f"La clausula no es valida: {error}") from None
+        regla = REGLAS_DEL_NUCLEO_CON_TILDES.get(str(error), str(error))
+        raise HojaInvalida(f"La cláusula no es válida: {regla}") from None
 
 
 def periodos_desde_filas(
@@ -189,10 +201,10 @@ def periodos_desde_filas(
             numero = int(_campo(fila, "periodo"))
         except ValueError:
             raise HojaInvalida(
-                "Numero del periodo (ejecutado): escriba 1, 2, ... segun la fila de periodos."
+                "Número del período (ejecutado): escriba 1, 2, ... según la fila de períodos."
             ) from None
         if numero not in por_periodo:
-            raise HojaInvalida(f"Periodo {numero}: no hay un periodo con ese numero en la tabla.")
+            raise HojaInvalida(f"Período {numero}: no hay un período con ese número en la tabla.")
         partida = _campo(fila, "partida")
         por_periodo[numero].append(
             Ejecutado(
@@ -223,7 +235,7 @@ def _version(sesion, proyecto: str, codigo: str) -> models.Presupuesto:
         .where(models.Proyecto.nombre == proyecto, models.Presupuesto.codigo == codigo)
     ).one_or_none()
     if version is None:
-        raise HojaInvalida(f"El proyecto {proyecto!r} no tiene una version {codigo!r}.")
+        raise HojaInvalida(f"El proyecto {proyecto!r} no tiene una versión {codigo!r}.")
     return version
 
 
@@ -286,7 +298,7 @@ def guardar(
         raise
     except ValueError as error:
         sesion.rollback()
-        raise HojaInvalida(f"No se guardo el estudio: {error}") from error
+        raise HojaInvalida(f"No se guardó el estudio: {error}") from error
     except BaseException:
         sesion.rollback()
         raise
@@ -348,7 +360,7 @@ def guardar_con_valuaciones(
         raise
     except ValueError as error:
         sesion.rollback()
-        raise HojaInvalida(f"No se guardo el estudio: {error}") from error
+        raise HojaInvalida(f"No se guardó el estudio: {error}") from error
     except BaseException:
         sesion.rollback()
         raise
