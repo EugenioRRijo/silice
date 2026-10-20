@@ -55,10 +55,10 @@ def test_lado_a_lado_guardado_y_excel_con_sus_totales(tmp_path):
     [
         ({"fecha_inicio": ""}, "Escriba «Inicio del contrato»"),
         ({"fecha_inicio": "15/01/2026"}, "Inicio del contrato: '15/01/2026' no es una fecha"),
-        ({"duracion_meses": "dos años"}, "Duracion (meses): escriba un numero entero"),
+        ({"duracion_meses": "dos años"}, "Duración (meses): escriba un número entero"),
         ({"mecanismo": "ninguno"}, "Mecanismo: 'ninguno'; se espera uno de"),
-        ({"r": "0,10"}, "R (fraccion no reajustable)"),
-        ({"fuente": ""}, "Escriba «Fuente de la clausula»"),
+        ({"r": "0,10"}, "R (fracción no reajustable)"),
+        ({"fuente": ""}, "Escriba «Fuente de la cláusula»"),
     ],
 )
 def test_un_campo_malo_se_nombra_como_lo_ve_la_persona(cambio, dice):
@@ -70,14 +70,69 @@ def test_un_campo_malo_se_nombra_como_lo_ve_la_persona(cambio, dice):
 
 def test_pesos_que_no_suman_uno_se_rechazan_con_la_regla_de_la_clausula():
     componentes = [{**COMPONENTES[0], "peso": "0.9"}, *COMPONENTES[1:]]
-    with pytest.raises(HojaInvalida, match="La clausula no es valida"):
+    with pytest.raises(HojaInvalida, match="La cláusula no es válida"):
         reajuste.clausula_desde_textos(CAMPOS, componentes)
 
 
 def test_lo_ejecutado_de_un_periodo_inexistente_o_sin_fuente_se_rechaza():
-    with pytest.raises(HojaInvalida, match="Periodo 2: no hay un periodo"):
+    with pytest.raises(HojaInvalida, match="Período 2: no hay un período"):
         reajuste.periodos_desde_filas(PERIODOS, [{**EJECUTADO[0], "periodo": "2"}])
     with pytest.raises(HojaInvalida, match="Escriba «Fuente de lo ejecutado»"):
         reajuste.periodos_desde_filas(PERIODOS, [{**EJECUTADO[0], "fuente": ""}])
     with pytest.raises(HojaInvalida, match="cantidad de S1-R01"):
         reajuste.periodos_desde_filas(PERIODOS, [{**EJECUTADO[0], "cantidad": "1.000,5"}])
+
+
+@pytest.mark.parametrize(
+    ("cambio", "dice"),
+    [
+        # VB-5: las reglas de la cláusula vienen del núcleo sin tildes; aquí solo se restituyen.
+        (
+            {"duracion_meses": "0"},
+            "La cláusula no es válida: la duración del contrato debe ser positiva",
+        ),
+        (
+            {"fecha_base_indices": "2026-01-15"},
+            "La cláusula no es válida: el mes base de los índices se declara con su primer día "
+            "(S1-R10)",
+        ),
+        (
+            {
+                "mecanismo": "escalatoria",
+                "mecanismo_pagadero": "comprobacion",
+                "fuente_pagadero": "x",
+            },
+            "La cláusula no es válida: mecanismo_pagadero solo con 'ambos', uno de los dos y con "
+            "su fuente",
+        ),
+    ],
+)
+def test_las_reglas_de_la_clausula_del_nucleo_salen_con_tildes(cambio, dice):
+    with pytest.raises(HojaInvalida) as error:
+        reajuste.clausula_desde_textos({**CAMPOS, **cambio}, COMPONENTES)
+    assert str(error.value) == dice
+
+
+def test_los_rotulos_de_los_campos_llevan_tildes_y_no_nombran_la_spec():
+    assert {
+        campo: reajuste.ROTULOS[campo]
+        for campo in (
+            "duracion_meses",
+            "fecha_base_indices",
+            "r",
+            "fuente",
+            "desde",
+            "hasta",
+            "version_comprobacion",
+            "periodo",
+        )
+    } == {
+        "duracion_meses": "Duración (meses)",
+        "fecha_base_indices": "Mes base de los índices",
+        "r": "R (fracción no reajustable)",
+        "fuente": "Fuente de la cláusula",
+        "desde": "Período, desde",
+        "hasta": "Período, hasta",
+        "version_comprobacion": "Versión de comprobación",
+        "periodo": "Número del período (ejecutado)",
+    }

@@ -67,7 +67,7 @@ def test_calcular_con_la_clausula_vacia_dice_que_campo_falta(monkeypatch, tmp_pa
     at.button[0].click().run()
     assert not at.exception, [e.value for e in at.exception]
     mensajes = [e.value for e in at.error]
-    assert any("Duracion" in m and "entero" in m for m in mensajes), mensajes
+    assert any("Duración" in m and "entero" in m for m in mensajes), mensajes
     assert CLAVE_CALCULO not in at.session_state
 
 

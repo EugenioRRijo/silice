@@ -53,9 +53,9 @@ from tests.fixtures.sesion_web import (
 
 CIERRE = datetime(2027, 3, 5, 10, 0)  # después del último día de febrero: el estudio cierra
 A_MITAD = datetime(2027, 2, 10, 10, 0)  # a mitad del periodo: «parcial al corte»
-FALTA_INICIO = "Escriba «Inicio del contrato»: es obligatorio (UC-18)."
-PERIODO_FANTASMA = "Periodo 7: no hay un periodo con ese numero en la tabla."
-SIN_VERSION = f"El proyecto {NOMBRE!r} no tiene una version '009'."
+FALTA_INICIO = "Escriba «Inicio del contrato»: es obligatorio."
+PERIODO_FANTASMA = "Período 7: no hay un período con ese número en la tabla."
+SIN_VERSION = f"El proyecto {NOMBRE!r} no tiene una versión '009'."
 PRIVADO = "texto-que-no-debe-volver-en-un-422"
 
 
@@ -204,8 +204,11 @@ def test_a_mitad_de_periodo_el_estudio_es_parcial_y_lo_dice(monkeypatch) -> None
     monkeypatch.setattr(ruta_reajuste, "ahora", lambda: A_MITAD)
     cuerpo = _post("calcular").json()
     assert cuerpo["estado"] == "parcial al corte"
-    assert cuerpo["mensaje_parcial"].startswith("El ultimo periodo aun no cierra")
-    assert "(S1-R21)" in cuerpo["mensaje_parcial"]
+    # VB-5: con tildes y sin el código de la especificación; la fecha del corte en dd/mm/aaaa.
+    assert cuerpo["mensaje_parcial"] == (
+        "El último período aún no cierra: el estudio se guardará «parcial al corte» al "
+        "10/02/2027 y se reemplaza al cerrar el mes."
+    )
 
 
 @pytest.mark.parametrize(
@@ -214,7 +217,7 @@ def test_a_mitad_de_periodo_el_estudio_es_parcial_y_lo_dice(monkeypatch) -> None
         ({"clausula": {**CAMPOS, "fecha_inicio": ""}}, FALTA_INICIO),
         (
             {"clausula": {**CAMPOS, "duracion_meses": "dos años"}},
-            "Duracion (meses): escriba un numero entero de meses.",
+            "Duración (meses): escriba un número entero de meses.",
         ),
         (
             {"ejecutado": [{"periodo": "7", "partida": "S1-R01", "cantidad": "1", "fuente": "x"}]},

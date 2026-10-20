@@ -153,7 +153,7 @@ describe("Reajuste de precios", () => {
     montar();
     expect(await screen.findByLabelText("Versión del contrato")).toHaveValue("001");
     expect(screen.getByLabelText("Periodicidad")).toHaveValue("mensual");
-    expect(screen.getByLabelText("Componente, Componentes fila 2")).toHaveValue("equipos");
+    expect(screen.getByLabelText("Componente, Componentes fila 2")).toHaveValue("Equipos");
     expect(screen.getByLabelText("Componente, Componentes fila 2")).toHaveAttribute("readonly");
     await irA(u, "2. Períodos y lo ejecutado");
     expect(screen.getByText("Versiones revaloradas para la comprobación directa: 002")).toBeInTheDocument();
@@ -166,6 +166,29 @@ describe("Reajuste de precios", () => {
     expect(visible).not.toMatch(/S1 §|S1-R\d+|\(I0\)/);
     expect(screen.getByText(/La cláusula de reajuste \(a cotejar con la Gaceta\)/)).toBeInTheDocument();
   });
+  test("los desplegables y los componentes muestran rótulos en español y mandan el valor interno (VB-5)", async () => {
+    const u = userEvent.setup();
+    montar();
+    await screen.findByLabelText("Versión del contrato");
+    const visible = () => document.body.textContent ?? "";
+    expect(visible()).not.toMatch(/comprobacion|por_partida|mano_obra/);
+    expect(screen.getByLabelText("Componente, Componentes fila 3")).toHaveValue("Mano de obra");
+    const mecanismo = screen.getByLabelText("Mecanismo");
+    expect(within(mecanismo).getByRole("option", { name: "Comprobación directa" })).toHaveValue("comprobacion");
+    expect(within(mecanismo).getByRole("option", { name: "Ambos (escalatoria y comprobación)" })).toHaveValue("ambos");
+    const estructura = screen.getByLabelText("Estructura");
+    expect(within(estructura).getByRole("option", { name: "Por partida" })).toHaveValue("por_partida");
+    expect(within(screen.getByLabelText("Periodicidad")).getByRole("option", { name: "Mensual" })).toHaveValue("mensual");
+    expect(within(screen.getByLabelText(/Mecanismo pagadero/)).getByRole("option", { name: "Ninguno" })).toHaveValue("");
+    await u.selectOptions(mecanismo, "Comprobación directa");
+    await irA(u, "2. Períodos y lo ejecutado");
+    await u.click(screen.getByRole("button", { name: "Calcular" }));
+    await screen.findByRole("table", { name: "Escalatoria y comprobación, lado a lado" });
+    const cuerpo = post("/v1/reajuste/calcular") as { clausula: Record<string, string>; componentes: Record<string, string>[] };
+    expect(cuerpo.clausula.mecanismo).toBe("comprobacion");
+    expect(cuerpo.componentes[2]).toEqual({ componente: "mano_obra", serie: "", peso: "" });
+  });
+
   test("sin revaloradas avisa que la comprobación quedará no disponible", async () => {
     contexto = () => json({ ...CONTEXTO, versiones: [{ codigo: "001", motivo: "", revalorada: false }] });
     const u = userEvent.setup();
