@@ -6,7 +6,7 @@ import type { SesionRespuesta } from "../../api/tipos";
 import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
 import PaginaControl from "./index";
-import { TITULOS_VISIBLES, columnasDe, consultaDeCalculo, errorDeCarga, etiquetaDeCodigo, textoLlano, cuerpoDeOpciones, FILTROS_INICIALES, sinLineasVacias } from "./logica";
+import { TITULOS_VISIBLES, columnasDe, consultaDeCalculo, descripcionEsVe, errorDeCarga, etiquetaDeCodigo, textoLlano, cuerpoDeOpciones, FILTROS_INICIALES, sinLineasVacias } from "./logica";
 import type { Calculo, LineaBase, OpcionDeRecuperacion, Valuaciones } from "./logica";
 
 vi.mock("../../comun/GraficoCarbon", () => ({
@@ -332,6 +332,28 @@ describe("Control de obra", () => {
     expect(screen.getByRole("table", { name: "Plan reproyectado" })).toBeInTheDocument();
   });
 
+  test("la severidad de las alertas va con su icono y su nombre, y la descripcion en es-VE (VB-4)", async () => {
+    // Las severidades tal como las manda la API (`Severidad.name` del nucleo o «sin evaluar»).
+    calculo = () =>
+      json({
+        ...CALCULO,
+        alertas: [
+          { Alerta: "AL-1", Severidad: "ADVERTENCIA", Descripcion: "retraso: SPI 0.9780", Observado: "0.9780", Umbral: "0.9500 (SUPUESTO_DECLARADO)" },
+          { Alerta: "AL-2", Severidad: "sin evaluar", Descripcion: "CPI no disponible", Observado: "", Umbral: "" },
+        ],
+      });
+    const u = montar();
+    await u.click(await screen.findByRole("tab", { name: "Alertas y reproyección" }));
+    const alertas = await screen.findByRole("table", { name: "Alertas" });
+    const advertencia = within(alertas).getByText("Advertencia");
+    expect(advertencia.closest(".silice-sev")?.querySelector("svg")).not.toBeNull();
+    expect(within(alertas).queryByText("ADVERTENCIA")).toBeNull();
+    const sinEvaluar = within(alertas).getByText("Sin evaluar");
+    expect(sinEvaluar.closest(".silice-sev")?.querySelector("svg")).not.toBeNull();
+    expect(within(alertas).getByText("retraso: SPI 0,9780")).toHaveAttribute("title", "retraso: SPI 0.9780");
+    expect(within(alertas).queryByText("retraso: SPI 0.9780")).toBeNull();
+  });
+
   test("sin valuaciones el calculo dice que hacer", async () => {
     calculo = () => json({ ...CALCULO, estado: "sin_valuaciones" });
     const u = montar();
@@ -399,6 +421,23 @@ describe("logica del control", () => {
       objetivo: "11",
       horas_previas: "2",
     });
+  });
+
+  test("descripcionEsVe pone en es-VE solo las cifras de las frases fijas de las alertas (VB-4)", () => {
+    expect(descripcionEsVe("retraso: SPI 0.9780")).toBe("retraso: SPI 0,9780");
+    expect(descripcionEsVe("sobrecosto: CPI 0.8125")).toBe("sobrecosto: CPI 0,8125");
+    expect(
+      descripcionEsVe(
+        "evaluar el reajuste (S1; LCP art. 133, a cotejar): el precio del corte desvía -1250.50 sobre un valor ganado de 4266.67",
+      ),
+    ).toBe("evaluar el reajuste (S1; LCP art. 133, a cotejar): el precio del corte desvía -1.250,50 sobre un valor ganado de 4.266,67");
+    expect(
+      descripcionEsVe("el punto de equilibrio proyectado sube más de 5.0 puntos porcentuales sobre el de la línea base"),
+    ).toBe("el punto de equilibrio proyectado sube más de 5,0 puntos porcentuales sobre el de la línea base");
+    // el codigo de una partida lo escribe el usuario: no se toca aunque parezca una cifra
+    const detenida = "la partida 1.01 tiene trabajo planificado y ningún avance (detenida)";
+    expect(descripcionEsVe(detenida)).toBe(detenida);
+    expect(descripcionEsVe("CPI no disponible")).toBe("CPI no disponible");
   });
 
   test("las lineas sin partida ni cantidad no se mandan", () => {
