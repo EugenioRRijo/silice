@@ -19,6 +19,8 @@ implementadores: `docs/planes/MANUAL_SUBAGENTES_FINAL_B.md`. Sin push ni PR; la 
 | T8b alertas del núcleo con tilde | Sonnet | 1 | DEVUELTO (MAYOR: huecos `.+` encadenados, costo cúbico y recursión en el desglose «no aplica») | f5310e8 |
 | T8b | Sonnet | 2 | APROBADO (MENOR: el tope de 2 000 caracteres dejaba sin corregir desgloses largos; cerrado y verificado por el orquestador) | d58e251; cierre 5a05957 (rojo 02d563e) |
 
+| T9 calidad de pruebas | Sonnet | 1 | APROBADO (MENOR: piso de AppTest preventivo sin rojo real, declarado) | deec248 (a3b7d19, 680a3fe, cfd92b4) |
+
 Compartidos aplicados por el orquestador: `30819c7` (routers, tabla de acceso, CHANGELOG, api.json) y `b49ccf0`
 (api.json tras la ronda 1 de T7). Verificación tras `30819c7`: 268 pruebas verdes de acceso, OpenAPI, rutas del front y
 arquitectura.
@@ -70,4 +72,16 @@ la ruta, con claves que usan las pruebas y el front: «Desvio de precio», «Fin
 
 ## Pendiente
 
-T9 (calidad de pruebas) espera el aviso de `tesis-8d` de que su T1 (arenera) está integrada.
+- Verificación manual pendiente (T9): correr en un equipo con `xlrd` (`uv sync --extra bcv`) las 3 pruebas con
+  archivo `.xls` real del BCV: `tests/unit/adapters/test_bcv_libro.py::test_el_libro_real_abre_con_su_huella`,
+  `tests/unit/adapters/test_bcv_tasa.py::test_el_archivo_real_da_n_hojas_y_coincide_con_la_transcripcion_a_mano` y
+  `tests/unit/adapters/test_bcv_inpc.py::test_el_archivo_real_coincide_con_la_transcripcion_a_mano`. En este equipo no
+  hay `xlrd` y fallan con `ModuleNotFoundError` (sin skip a propósito); la lógica del lector queda cubierta con el
+  `xlrd` falso. La CI (`uv sync --locked --all-extras`, `ci.yml:105`) debe correrlas.
+- Decisión para Eugenio: esas 3 pruebas dejan la suite roja en un equipo local sin el extra `bcv`, por la regla de
+  cero omitidas (`scripts/verificar_omitidas.py` rechaza cualquier omisión). La alternativa de fondo es hacer
+  obligatorio el extra `bcv` en el entorno de desarrollo.
+- El piso de 60 s para `default_timeout` de AppTest es preventivo: en la sesión de T9 no se reprodujo el
+  agotamiento de 3 s. Si reaparece, medir con la máquina cargada antes de subirlo más.
+- Formato: `ruff format --check .` seguirá listando 41 archivos (5 de `tests/fixtures`, que no se formatearon por
+  precaución ante huellas, y 36 ajenos de producción) hasta que alguien decida formatearlos.

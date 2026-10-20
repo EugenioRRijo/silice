@@ -27,9 +27,10 @@ os.environ["STREAMLIT_CLIENT_SHOW_ERROR_DETAILS"] = "full"
 os.environ["HF_HUB_OFFLINE"] = "1"
 os.environ.setdefault("HF_HUB_DISABLE_SYMLINKS_WARNING", "1")
 
-#: Piso del `default_timeout` de AppTest (T9). Streamlit trae 3 s; en este equipo (OneDrive,
-#: antivirus, arranque en frio) una pagina con la barra superior agota esos 3 s y la prueba falla
-#: sin defecto real. Las pruebas que ya declaran 60 o 120 no cambian; las que no declaran nada (o
+#: Piso del `default_timeout` de AppTest (T9). Streamlit trae 3 s; con el equipo cargado (OneDrive,
+#: antivirus, arranque en frio) una pagina con la barra superior puede agotar esos 3 s y la prueba
+#: fallar sin defecto real. Es un piso PREVENTIVO: en la sesion de T9 no se reprodujo el
+#: agotamiento. Las pruebas que ya declaran 60 o 120 no cambian; las que no declaran nada (o
 #: menos) suben aqui, en un solo lugar, sin tocarlas una a una.
 PISO_TIMEOUT_APPTEST = 60
 
