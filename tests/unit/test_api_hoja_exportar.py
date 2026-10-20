@@ -39,6 +39,7 @@ from aplicacion import hoja_borradores
 from core.budget import crear_proyecto
 from core.catalog import Catalogo, abrir_sesion, crear_esquema, crear_motor
 from operacion import config
+from operacion.base_datos import preparar_base
 from seguridad import sesiones
 from tests.fixtures import control_ob_s2 as ob
 from tests.fixtures.app_de_prueba import app_con
@@ -307,7 +308,9 @@ def test_b3_la_trazabilidad_y_los_precios_son_los_de_la_version_abierta(app: Fas
     precios = list(libro["Precios"].iter_rows(values_only=True))
     assert precios[0][0] == "Insumo" and len(precios) > 1
     trazabilidad = list(libro["Trazabilidad"].iter_rows(values_only=True))
-    assert len(trazabilidad) > 1
+    assert trazabilidad[0][:2] == ("Versión de origen", "Versión resultante")
+    # la version 001 se guardo sin cambios previos: la hoja lleva solo su encabezado
+    assert len(trazabilidad) == 1
 
 
 def test_b3_con_linea_base_y_valuaciones_lleva_las_hojas_de_control(
@@ -320,7 +323,7 @@ def test_b3_con_linea_base_y_valuaciones_lleva_las_hojas_de_control(
     assert set(HOJAS_DE_CONTROL) <= set(libro.sheetnames)
     valuaciones = [c.value for c in libro["Valuaciones"][1]]
     assert valuaciones[:3] == ["Numero", "Desde", "Hasta"]
-    assert libro["Valuaciones"].max_row == 3  # encabezado + V-01 + V-02
+    assert libro["Valuaciones"].max_row == 4  # encabezado + A 40, A 50 y B 60 (V-01 y V-02)
 
 
 def test_b3_sin_linea_base_no_hay_hojas_de_control(app: FastAPI) -> None:
@@ -429,6 +432,7 @@ def test_un_borrador_abierto_en_otro_caso_es_409_y_no_toca_ninguna_base(
     id_ = _abrir(navegador, ficha)
     otro = tmp_path / "otro.db"
     shutil.copyfile(_casos["ti001"], otro)
+    preparar_base(otro)  # migrada de antemano: abrirla por primera vez la modificaria
     antes = _volcado(_entorno), _volcado(otro)
     caso_web._elegidos[_huella(ficha)] = otro.resolve()
     respuesta = _excel(navegador, id_)
@@ -565,7 +569,7 @@ def _libro_de_la_clasica(origen: Path, destino: Path, proyecto: str, version: st
     ("caso", "proyecto", "version"),
     [
         ("of001", NOMBRE_OF001, "001"),
-        ("ti001", NOMBRE_TI001, "001"),
+        ("ti001", NOMBRE_TI001, "TI-001"),
         ("ob", ob.NOMBRE, ob.CODIGO),
     ],
 )
