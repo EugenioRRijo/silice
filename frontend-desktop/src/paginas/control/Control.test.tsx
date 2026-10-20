@@ -5,6 +5,7 @@ import { ErrorDeApi } from "../../api/cliente";
 import type { SesionRespuesta } from "../../api/tipos";
 import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
+import { alertaConTexto } from "../../test/ayudas";
 import PaginaControl from "./index";
 import { TITULOS_VISIBLES, columnasDe, consultaDeCalculo, descripcionEsVe, errorDeCarga, etiquetaDeCodigo, textoLlano, cuerpoDeOpciones, FILTROS_INICIALES, sinLineasVacias } from "./logica";
 import type { Calculo, LineaBase, OpcionDeRecuperacion, Valuaciones } from "./logica";
@@ -329,6 +330,17 @@ describe("Control de obra", () => {
     await u.click(screen.getByRole("button", { name: "Declarar línea base" }));
     await screen.findByText("Línea base declarada.");
     expect(cuerpoDe("/v1/control/linea-base")).toMatchObject({ feriados: "2026-12-25, 2027-01-01" });
+  });
+
+  test("un feriado imposible se rechaza antes de enviar, con la fecha que escribió la persona (ronda 1, punto 2)", async () => {
+    const u = montar();
+    await screen.findByText(/perspectiva costo/);
+    await u.type(screen.getByLabelText("Feriados (fechas como 25/12/2026, separadas por comas)"), "31/02/2026");
+    await u.click(screen.getByRole("button", { name: "Declarar línea base" }));
+    expect((await alertaConTexto()).textContent).toContain(
+      "Escriba los feriados como dd/mm/aaaa, separados por comas: «31/02/2026» no es una fecha.",
+    );
+    expect(cuerpoDe("/v1/control/linea-base")).toBeUndefined();
   });
 
   test("las valuaciones se muestran como texto, sin interpretar el inspector", async () => {
