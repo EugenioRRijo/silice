@@ -231,6 +231,42 @@ describe("Reajuste de precios", () => {
     expect(cuerpo.con_valuaciones).toBe(false);
   });
 
+  test("el resultado va en dos tablas cortas y las marcas como nota por período (VB-10)", async () => {
+    // Las 12 columnas y las filas tal como las manda la API (aplicacion/reajuste.COLUMNAS_REAJUSTE); los oraculos
+    // 15.300,00 / 16.000,00 / -0,82 son los de tests/unit/test_ui_reajuste.py.
+    const columnas = ["Período", "Escalatoria", "Comprobación", "Diferencia", "Reconocido", "Mecanismo", "Moneda", "Escalatoria (otra)", "Comprobación (otra)", "Diferencia (otra)", "Tasa", "Marcas"];
+    const periodo = {
+      Período: "01/02/2027 a 28/02/2027", Escalatoria: "15300.00", Comprobación: "16000.00", Diferencia: "700.00",
+      Reconocido: "15300.00", Mecanismo: "escalatoria", Moneda: "Bs", "Escalatoria (otra)": "17.88",
+      "Comprobación (otra)": "18.70", "Diferencia (otra)": "-0.82", Tasa: "855.70", Marcas: "precios fijos el primer año (art. 134, a cotejar)",
+    };
+    const total = { ...periodo, Período: "Total", Mecanismo: "", Tasa: "", Marcas: "estado: cerrado; Nota de reconsideración" };
+    calcular = () => json(calculo({ columnas, filas: [periodo, total], avisos: ["Nota de reconsideración"] }));
+    const u = userEvent.setup();
+    montar();
+    await screen.findByLabelText("Versión del contrato");
+    await irA(u, "2. Períodos y lo ejecutado");
+    await u.click(screen.getByRole("button", { name: "Calcular" }));
+    const principal = await screen.findByRole("table", { name: "Escalatoria y comprobación, lado a lado" });
+    expect(within(principal).getAllByRole("columnheader").map((c) => c.textContent)).toEqual([
+      "Período", "Escalatoria", "Comprobación", "Diferencia", "Reconocido", "Mecanismo", "Moneda",
+    ]);
+    expect(within(principal).getAllByText("15.300,00")[0]).toHaveAttribute("title", "15300.00");
+    expect(within(principal).getAllByText("16.000,00")[0]).toHaveAttribute("title", "16000.00");
+    expect(within(principal).getByText("Escalatoria")).toHaveAttribute("title", "escalatoria");
+    const otra = screen.getByRole("table", { name: "En la otra moneda" });
+    expect(within(otra).getAllByRole("columnheader").map((c) => c.textContent)).toEqual([
+      "Período", "Escalatoria", "Comprobación", "Diferencia", "Tasa",
+    ]);
+    expect(within(otra).getAllByText("-0,82")[0]).toHaveAttribute("title", "-0.82");
+    expect(screen.queryByRole("columnheader", { name: "Marcas" })).toBeNull();
+    const marcas = screen.getByRole("list", { name: "Marcas por período" });
+    expect(within(marcas).getAllByRole("listitem").map((l) => l.textContent)).toEqual([
+      "01/02/2027 a 28/02/2027: precios fijos el primer año (art. 134, a cotejar)",
+    ]);
+    expect(screen.getByText("Estado del estudio: cerrado.")).toBeInTheDocument();
+  });
+
   test("los avisos y el estudio parcial se dicen", async () => {
     calcular = () =>
       json(
