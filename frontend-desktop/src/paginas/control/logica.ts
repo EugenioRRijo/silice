@@ -36,6 +36,7 @@ const ETIQUETAS_DE_CODIGO: Record<string, string> = {
   fuente_penalizacion: "Fuente de la penalización",
   SUPUESTO_DECLARADO: "Supuesto declarado",
   DATO_DEL_CONTRATO: "Dato del contrato",
+  FUENTE_VERIFICADA: "Fuente verificada",
   "AL-1": "Retraso (SPI)",
   "AL-2": "Sobrecosto (CPI)",
   "AL-3": "Retraso del término",
@@ -136,6 +137,13 @@ export interface Calculo {
   versiones_revaloradas: string[];
 }
 
+// Un supuesto de una opcion en sus tres ranuras: nombre y valor ya con tilde, la naturaleza como codigo del nucleo.
+export interface SupuestoDeOpcion {
+  nombre: string;
+  valor: string;
+  naturaleza: string;
+}
+
 export interface OpcionDeRecuperacion {
   clave: string;
   titulo: string;
@@ -144,6 +152,49 @@ export interface OpcionDeRecuperacion {
   requisitos: string[];
   requiere_declaracion: boolean;
   fila: Fila;
+  // VD-1: los supuestos de `fila.Nota`, por ranura (vacia si la opcion no aplica).
+  supuestos?: SupuestoDeOpcion[];
+}
+
+// VD-1: la «Nota» de una opcion, en español, armada ranura por ranura con la misma forma que la API
+// («nombre: valor (naturaleza)», separados por «; »). Ninguna regla mira dentro de un texto armado: el nombre se
+// cambia solo si es uno del catalogo fijo del nucleo (las «eta» se leen «eficiencia», como en los parametros), la
+// naturaleza solo si es un codigo conocido, y la cifra se pone en es-VE solo en los supuestos numericos del nucleo y
+// solo si TODA la ranura es una cifra. Lo demas (la lista de partidas del usuario, por ejemplo) sale tal cual. La
+// opcion que no aplica, o una respuesta sin ranuras, muestra su nota tal cual.
+const NOMBRES_DE_SUPUESTO: Record<string, string> = {
+  "eta de cuadrillas": "eficiencia de la cuadrilla adicional",
+  "eta de horas extra": "eficiencia de la hora extra",
+  recargo: "recargo de las horas extra",
+};
+const SUPUESTOS_NUMERICOS = new Set([
+  "eta de cuadrillas",
+  "cuadrillas máximas",
+  "eta de horas extra",
+  "horas extra por día",
+  "recargo",
+  "penalización diaria",
+]);
+const CIFRA_SOLA = /^[-+]?[0-9]{1,30}(?:\.[0-9]{1,30})?$/;
+// Una ranura numerica del nucleo mide unas decenas de caracteres: mas larga, no se prueba ninguna expresion.
+const LARGO_MAXIMO_RANURA = 64;
+const NATURALEZAS = new Set(["SUPUESTO_DECLARADO", "DATO_DEL_CONTRATO", "FUENTE_VERIFICADA"]);
+
+function valorDeSupuesto(s: SupuestoDeOpcion): string {
+  if (!SUPUESTOS_NUMERICOS.has(s.nombre) || s.valor.length > LARGO_MAXIMO_RANURA) return s.valor;
+  return CIFRA_SOLA.test(s.valor) ? formatoEsVe(s.valor) : s.valor;
+}
+
+export function notaDeOpcion(opcion: OpcionDeRecuperacion): string {
+  const supuestos = opcion.supuestos ?? [];
+  if (!opcion.aplica || supuestos.length === 0) return opcion.fila.Nota ?? "";
+  return supuestos
+    .map((s) => {
+      const nombre = NOMBRES_DE_SUPUESTO[s.nombre] ?? s.nombre;
+      const naturaleza = NATURALEZAS.has(s.naturaleza) ? etiquetaDeCodigo(s.naturaleza).toLowerCase() : s.naturaleza;
+      return `${nombre}: ${valorDeSupuesto(s)} (${naturaleza})`;
+    })
+    .join("; ");
 }
 
 export type MetodoDePrecios = "ninguno" | "comprobacion" | "escalatoria";

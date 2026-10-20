@@ -20,6 +20,7 @@ import {
   cuerpoDeOpciones,
   descripcionEsVe,
   etiquetaDeCodigo,
+  notaDeOpcion,
   severidadVisible,
   textoLlano,
   useAccion,
@@ -279,7 +280,7 @@ export function Recuperacion({
           <TablaDensa
             etiqueta="Opciones de recuperación"
             columnas={columnasDe(COLUMNAS_OPCIONES, COLUMNAS_OPCIONES.slice(1, 7))}
-            filas={conId(opciones.map((o) => o.fila))}
+            filas={conId(opciones.map((o) => ({ ...o.fila, Nota: notaDeOpcion(o) })))}
           />
           {opciones.map(
             (o) =>

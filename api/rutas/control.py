@@ -548,6 +548,14 @@ class PeticionOpciones(BaseModel):
     horas_previas: str = "0"
 
 
+class SupuestoRespuesta(BaseModel):
+    """Un supuesto de la opción en sus tres ranuras; `naturaleza` es el código del núcleo."""
+
+    nombre: str
+    valor: str
+    naturaleza: str
+
+
 class OpcionRespuesta(BaseModel):
     clave: str
     titulo: str
@@ -556,6 +564,8 @@ class OpcionRespuesta(BaseModel):
     requisitos: list[str]
     requiere_declaracion: bool
     fila: Fila
+    # VD-1: los mismos supuestos de `fila["Nota"]`, por ranura; vacía si la opción no aplica.
+    supuestos: list[SupuestoRespuesta] = Field(default_factory=list)
 
 
 class OpcionesRespuesta(BaseModel):
@@ -585,6 +595,7 @@ def opciones(sesion: SesionDep, peticion: PeticionOpciones) -> OpcionesRespuesta
                 requisitos=[logica.con_tildes(r) for r in o.requisitos],
                 requiere_declaracion=o.requiere_declaracion,
                 fila=logica.filas_de_opciones([o])[0],
+                supuestos=[SupuestoRespuesta(**s) for s in logica.supuestos_de_opcion(o)],
             )
             for o in todas
         ]
