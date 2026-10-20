@@ -872,3 +872,48 @@ def test_r7_un_texto_de_mas_de_500_caracteres_es_422_sin_eco() -> None:
         respuesta = _vista(navegador, id_, "apu", **{parametro: CENTINELA * 60})
         assert respuesta.status_code == 422 and CENTINELA not in respuesta.text
         assert respuesta.headers["cache-control"] == "no-store"
+
+
+def test_r8_of001_trae_la_matriz_del_plan_y_la_curva_que_cierra_en_el_total() -> None:
+    navegador, ficha = _ana()
+    respuesta = _vista(navegador, _abierta(navegador, ficha), "plan")
+    assert respuesta.status_code == 200, respuesta.text
+    cuerpo = respuesta.json()
+    assert cuerpo["hay_plan"] is True and cuerpo["mensaje"] is None and cuerpo["moneda"] == "USD"
+    assert cuerpo["etiquetas"][:3] == ["Dia 1", "Dia 2", "Dia 3"] and len(cuerpo["etiquetas"]) == 30
+    assert cuerpo["filas"][0]["partida"] == "AF-CODO-1/2"
+    assert cuerpo["filas"][0]["valores"]["Dia 1"] == "1"
+    ultimo = cuerpo["curva"][-1]
+    assert D("2703.85") <= D(ultimo["acumulado"]["exacto"]) <= D("2703.87")
+    assert ultimo["porcentaje"]["texto"] == "100.00"
+    assert cuerpo["curva"][22]["periodo"] == "Dia 23"  # el punto de equilibrio de la memoria
+
+
+def test_r8_de_ti001_usa_su_propio_plan(_casos) -> None:
+    _poner(_casos["ti001"])
+    navegador, ficha = _ana()
+    id_ = _abierta(navegador, ficha, proyecto=NOMBRE_TI001, version=caso_ti001.CODIGO)
+    cuerpo = _vista(navegador, id_, "plan").json()
+    assert cuerpo["hay_plan"] is True and len(cuerpo["etiquetas"]) == len(caso_ti001.PLAN)
+    total = caso_ti001.elaborar_caso().presupuesto.total
+    assert D(cuerpo["curva"][-1]["acumulado"]["exacto"]) == total
+
+
+def test_r8_de_un_proyecto_sin_versiones_no_tiene_plan_y_lo_dice(_entorno: Path) -> None:
+    _con_proyecto_nuevo(_entorno)
+    navegador, ficha = _ana()
+    id_ = _abierta(navegador, ficha, proyecto="Proyecto nuevo", version=None)
+    cuerpo = _vista(navegador, id_, "plan").json()
+    assert (cuerpo["hay_plan"], cuerpo["etiquetas"], cuerpo["filas"], cuerpo["curva"]) == (
+        False,
+        [],
+        [],
+        [],
+    )
+    assert cuerpo["mensaje"] == (
+        "Esta versión no tiene plan de trabajo, así que no hay curva de inversión."
+    )
+    # el resto de las vistas de un borrador en blanco responde vacío y no falla
+    assert _vista(navegador, id_, "presupuesto").json()["vacio_mensaje"] is not None
+    assert _vista(navegador, id_, "apu").json()["detalle"] is None
+    assert _vista(navegador, id_, "espacio").json()["derivadas"] == []

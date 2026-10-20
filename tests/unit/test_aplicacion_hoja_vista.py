@@ -717,3 +717,58 @@ def test_sin_partidas_valoradas_no_hay_detalle_y_se_dice():
     assert v.vacio_mensaje == (
         "Todavía no hay partidas valoradas: derive cantidades en Espacio y metrajes."
     )
+
+
+# --- 3b-2 · vista del plan y la curva (R8) ----------------------------------------------------
+
+
+def test_el_plan_de_of001_es_secuencial_una_partida_por_dia_y_es_el_de_la_clasica(_of001):
+    v = hoja_vista.vista_plan(_vivo(_of001))
+    assert v.hay_plan is True and v.mensaje is None and v.moneda == "USD"
+    assert list(v.etiquetas) == [f"Dia {n}" for n in range(1, 31)]
+    # a mano: el plan secuencial pone cada partida, al 100 %, en su propio dia y en el orden del
+    # presupuesto (la primera es AF-CODO-1/2, la segunda AF-CODO-3/4)
+    primera, segunda = v.filas[0], v.filas[1]
+    assert primera.partida == "AF-CODO-1/2" and segunda.partida == "AF-CODO-3/4"
+    assert primera.valores["Dia 1"] == "1" and primera.valores["Dia 2"] == "0"
+    assert segunda.valores["Dia 2"] == "1" and segunda.valores["Dia 1"] == "0"
+    assert [f.partida for f in v.filas] == CODIGOS_DE_OF001
+    plan = _elaborada_por_la_clasica(_como_clasica(_of001.borrador)).plan
+    etiquetas, filas = clasica.plan_como_filas(plan, CODIGOS_DE_OF001)
+    assert list(v.etiquetas) == etiquetas
+    assert [{"partida": f.partida, **f.valores} for f in v.filas] == filas
+
+
+def test_la_curva_de_of001_acumula_los_montos_y_cierra_en_el_total_y_en_100(_of001):
+    v = hoja_vista.vista_plan(_vivo(_of001))
+    total = Decimal(hoja_vista.vista_presupuesto(_vivo(_of001)).total.exacto)
+    assert len(v.curva) == 30
+    acumulado = D(0)
+    for punto in v.curva:
+        acumulado += Decimal(punto.monto.exacto)
+        assert Decimal(punto.acumulado.exacto) == acumulado
+        # el porcentaje es lo acumulado entre el total por 100 (lo declara la tabla de la clásica)
+        assert abs(Decimal(punto.porcentaje.exacto) - acumulado / total * 100) <= D("0.000001")
+    assert abs(Decimal(v.curva[-1].acumulado.exacto) - total) <= D("0.000001")
+    assert v.curva[-1].porcentaje.texto == "100.00"
+    # la memoria de OF-001: el punto de equilibrio se alcanza en el día 23 de la curva
+    assert v.curva[22].periodo == "Dia 23"
+
+
+def test_la_curva_muestra_los_mismos_textos_que_la_clasica(_of001):
+    v = hoja_vista.vista_plan(_vivo(_of001))
+    elaborada = _elaborada_por_la_clasica(_como_clasica(_of001.borrador))
+    esperado = clasica.filas_de_curva(elaborada.elaboracion.presupuesto)
+    assert [(p.periodo, p.monto.texto, p.acumulado.texto, p.porcentaje.texto) for p in v.curva] == [
+        (f["periodo"], f["monto"], f["acumulado"], f["porcentaje"]) for f in esperado
+    ]
+    assert v.curva[0].monto.texto == "11.18" and v.curva[1].acumulado.texto == "21.05"
+
+
+def test_sin_plan_no_hay_curva_y_el_mensaje_es_el_de_la_clasica():
+    v = hoja_vista.vista_plan(Registro().crear("f", "c", "N", None, hoja.Borrador(fecha=HOY), None))
+    assert (v.hay_plan, v.etiquetas, v.filas, v.curva) == (False, (), (), ())
+    assert v.mensaje == (
+        "Esta versión no tiene plan de trabajo, así que no hay curva de inversión."
+    )
+    assert v.moneda == "USD"
