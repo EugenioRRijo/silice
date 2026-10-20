@@ -167,9 +167,9 @@ def test_evaluar_el_formulario_en_blanco_es_vacio_con_la_bienvenida(api: TestCli
     assert respuesta.json() == {
         "estado": "vacio",
         "aviso": (
-            "Comience por la cabecera (codigo y descripcion) y declare al menos un insumo en "
-            "alguna de las tres tablas de abajo, o busquelo en la referencia MaPreX: el desglose "
-            "se calcula aqui automaticamente, sin necesidad de guardar."
+            "Comience por la cabecera (código y descripción) y declare al menos un insumo en "
+            "alguna de las tres tablas de abajo, o búsquelo en la referencia MaPreX: el desglose "
+            "se calcula aquí automáticamente, sin necesidad de guardar."
         ),
         "desglose": None,
         "advertencias": [],

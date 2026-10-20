@@ -45,7 +45,7 @@ const HALLAZGOS: Hallazgos = {
     { Regla: "R11", Severidad: "ADVERTENCIA", Descripción: "ARENA LAVADA: precio vencido", Impacto: "11328.78" },
     { Regla: "R12", Severidad: "ERROR", Descripción: "PEGAMENTO: fuera de rango", Impacto: "" },
   ],
-  nota: "Sin version, el impacto es por unidad de insumo. Nada de esto se guarda.",
+  nota: "Sin versión, el impacto es por unidad de insumo. Nada de esto se guarda.",
 };
 
 // Textos de la pagina clasica (aplicacion/atipicos.py), escritos a mano.
@@ -153,12 +153,12 @@ describe("Precios de la empresa", () => {
     expect(screen.getByRole("option", { name: "Linea base 01/01/2026 (USD)" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Precios de la empresa" })).toBeInTheDocument();
     expect(screen.getByText(/La lista de su empresa: una copia de la lista base/)).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "1. La referencia MaPreX en bolivares" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "1. La referencia MaPreX en bolívares" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "2. La lista de la empresa" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "3. Precios vencidos o fuera de rango (R11 y R12)" })).toBeInTheDocument();
     expect(screen.getByLabelText("Fecha de la lista")).toHaveValue(hoyIso());
     expect(screen.getByLabelText("Moneda de la lista")).toHaveValue("");
-    expect(screen.getByText("Todavia no hay listas de empresa en este caso.")).toBeInTheDocument();
+    expect(screen.getByText("Todavía no hay listas de empresa en este caso.")).toBeInTheDocument();
   });
 
   test("sin listas de precios en el caso no ofrece el formulario", async () => {
@@ -191,11 +191,11 @@ describe("Precios de la empresa", () => {
   });
 
   test("un error al cargar la referencia sale como aviso", async () => {
-    referencia = () => json({ detalle: "No se cargo la referencia: algo ficticio." }, 422);
+    referencia = () => json({ detalle: "No se cargó la referencia: algo ficticio." }, 422);
     montar();
     const usuario = userEvent.setup();
     await usuario.click(await screen.findByRole("button", { name: "Cargar la referencia MaPreX en Bs" }));
-    expect(await screen.findByText("No se cargo la referencia: algo ficticio.")).toBeInTheDocument();
+    expect(await screen.findByText("No se cargó la referencia: algo ficticio.")).toBeInTheDocument();
   });
 
   test.each([
@@ -239,22 +239,22 @@ describe("Precios de la empresa", () => {
           propios: 1,
           desconocidos: ["INSUMO INEXISTENTE DEMO"],
           mensaje: "Lista «X» creada con 1 precios propios.",
-          aviso: "Estos insumos no estan en el catalogo y no entraron a la lista (UC-17 4a):",
+          aviso: "Estos insumos no están en el catálogo y no entraron a la lista (UC-17 4a):",
         },
         201,
       );
     montar();
     await llenarYEnviar();
-    expect(await screen.findByText("Estos insumos no estan en el catalogo y no entraron a la lista (UC-17 4a):")).toBeInTheDocument();
+    expect(await screen.findByText("Estos insumos no están en el catálogo y no entraron a la lista (UC-17 4a):")).toBeInTheDocument();
     const tabla = screen.getByRole("table", { name: "Insumos que no entraron a la lista" });
     expect(within(tabla).getByText("INSUMO INEXISTENTE DEMO")).toBeInTheDocument();
   });
 
   test("un rechazo del servidor sale como aviso con su detalle", async () => {
-    crear = () => json({ detalle: "No se creo la lista: moneda 'EUR': la lista se rechaza (UC-17 4b)" }, 422);
+    crear = () => json({ detalle: "No se creó la lista: moneda 'EUR': la lista se rechaza (UC-17 4b)" }, 422);
     montar();
     await llenarYEnviar();
-    expect(await screen.findByText(/No se creo la lista: moneda 'EUR'/)).toBeInTheDocument();
+    expect(await screen.findByText(/No se creó la lista: moneda 'EUR'/)).toBeInTheDocument();
     expect(screen.queryByText(/creada con/)).toBeNull();
   });
 
@@ -265,11 +265,11 @@ describe("Precios de la empresa", () => {
     const [ruta] = llamadas("/listas/5/hallazgos?fecha=")[0];
     expect(String(ruta)).toBe(`/v1/precios-empresa/listas/5/hallazgos?fecha=${hoyIso()}`);
     expect(screen.getByText("11328.78")).toBeInTheDocument();
-    expect(screen.getByText("Sin version, el impacto es por unidad de insumo. Nada de esto se guarda.")).toBeInTheDocument();
+    expect(screen.getByText("Sin versión, el impacto es por unidad de insumo. Nada de esto se guarda.")).toBeInTheDocument();
     expect(screen.getByText("Advertencia")).toBeInTheDocument();
     expect(screen.getByText("Error")).toBeInTheDocument();
     const usuario = userEvent.setup();
-    const fecha = screen.getByLabelText("Fecha de evaluacion");
+    const fecha = screen.getByLabelText("Fecha de evaluación");
     await usuario.clear(fecha);
     await usuario.type(fecha, "2026-10-01");
     await waitFor(() => expect(llamadas("/listas/5/hallazgos?fecha=2026-10-01")).toHaveLength(1));
@@ -294,7 +294,7 @@ describe("Precios de la empresa", () => {
 
   test("sin listas de empresa no hay boton de atipicos", async () => {
     montar();
-    await screen.findByText("Todavia no hay listas de empresa en este caso.");
+    await screen.findByText("Todavía no hay listas de empresa en este caso.");
     expect(screen.queryByRole("button", { name: BOTON_ATIPICOS })).toBeNull();
   });
 
