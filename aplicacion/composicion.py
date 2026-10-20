@@ -763,9 +763,9 @@ def contrastar_precio_con_reglas(
 
 #: La bienvenida del formulario en blanco (`ui/paginas/componer.py`, `_desglose_en_vivo`).
 MENSAJE_FORMULARIO_VACIO = (
-    "Comience por la cabecera (codigo y descripcion) y declare al menos un insumo "
-    "en alguna de las tres tablas de abajo, o busquelo en la referencia MaPreX: el "
-    "desglose se calcula aqui automaticamente, sin necesidad de guardar."
+    "Comience por la cabecera (código y descripción) y declare al menos un insumo "
+    "en alguna de las tres tablas de abajo, o búsquelo en la referencia MaPreX: el "
+    "desglose se calcula aquí automáticamente, sin necesidad de guardar."
 )
 #: RF-33: la página deshabilita el botón de guardar sin condiciones; la API lo dice con esto
 #: (la primera frase es la de la página; la segunda, la ayuda de su campo).

@@ -320,7 +320,7 @@ function SeccionHallazgos({ listas, alExpirar }: PropsSeccion & { listas: ListaE
                 <SelectItem key={l.id} value={String(l.id)} text={l.nombre} />
               ))}
             </Select>
-            <TextInput id="precios-empresa-evaluacion" type="date" labelText="Fecha de evaluacion" size="sm" value={evaluacion} onChange={(e) => setEvaluacion(e.target.value)} />
+            <TextInput id="precios-empresa-evaluacion" type="date" labelText="Fecha de evaluación" size="sm" value={evaluacion} onChange={(e) => setEvaluacion(e.target.value)} />
           </div>
           {lectura?.tipo === "error" && <AvisoError error={lectura.error} titulo="No se pudieron leer los hallazgos" />}
           {lectura === null && evaluacion !== "" && <TablaDensa etiqueta="Hallazgos de la lista" columnas={columnasHallazgos(["Regla", "Severidad", "Descripción", "Impacto"])} filas={[]} cargando />}

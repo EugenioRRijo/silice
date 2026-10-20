@@ -5,13 +5,13 @@ import { formatoEsVe } from "../../indicadores/formatoEsVe";
 
 export const TITULO = "Precios de la empresa";
 export const AYUDA =
-  "La lista de su empresa: una copia de la lista base con sus precios encima, cada uno con su fecha y su fuente. No cambia la valoracion de ningun proyecto que no la use.";
-export const TITULO_REFERENCIA = "1. La referencia MaPreX en bolivares";
+  "La lista de su empresa: una copia de la lista base con sus precios encima, cada uno con su fecha y su fuente. No cambia la valoración de ningún proyecto que no la use.";
+export const TITULO_REFERENCIA = "1. La referencia MaPreX en bolívares";
 export const ROTULO_REFERENCIA = "Cargar la referencia MaPreX en Bs";
 export const TITULO_LISTA = "2. La lista de la empresa";
 export const SIN_BASES = "El caso no tiene listas de precios: cargue una en Actualizar precios.";
 export const TITULO_HALLAZGOS = "3. Precios vencidos o fuera de rango (R11 y R12)";
-export const SIN_LISTAS = "Todavia no hay listas de empresa en este caso.";
+export const SIN_LISTAS = "Todavía no hay listas de empresa en este caso.";
 export const MENSAJE_FALTA = "Elija la moneda de la lista y el archivo de precios: no tienen valor por defecto.";
 export const EXTENSIONES = [".csv", ".xlsx"];
 export const MONEDAS = ["Bs", "USD"];

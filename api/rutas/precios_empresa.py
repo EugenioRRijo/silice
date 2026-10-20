@@ -47,13 +47,13 @@ from seguridad.permisos import Accion
 MENSAJE_INVALIDO = "Los datos enviados no son válidos."
 MENSAJE_CASO = "No se pudo leer o escribir el caso abierto."
 MENSAJE_FALTA = "Elija la moneda de la lista y el archivo de precios: no tienen valor por defecto."
-MENSAJE_FORMATO = "No se creo la lista: el archivo debe ser CSV o XLSX."
-MENSAJE_TAMANO = "No se creo la lista: el archivo pesa mas del maximo permitido (20 MiB)."
+MENSAJE_FORMATO = "No se creó la lista: el archivo debe ser CSV o XLSX."
+MENSAJE_TAMANO = "No se creó la lista: el archivo pesa más del máximo permitido (20 MiB)."
 MENSAJE_REFERENCIA_ILEGIBLE = (
-    "No se cargo la referencia: no se pudo leer el archivo de la referencia."
+    "No se cargó la referencia: no se pudo leer el archivo de la referencia."
 )
-AVISO_DESCONOCIDOS = "Estos insumos no estan en el catalogo y no entraron a la lista (UC-17 4a):"
-NOTA_HALLAZGOS = "Sin version, el impacto es por unidad de insumo. Nada de esto se guarda."
+AVISO_DESCONOCIDOS = "Estos insumos no están en el catálogo y no entraron a la lista (UC-17 4a):"
+NOTA_HALLAZGOS = "Sin versión, el impacto es por unidad de insumo. Nada de esto se guarda."
 SUFIJOS = (".csv", ".xlsx")
 #: El tope real del cuerpo de cualquier peticion (`LimiteDeCuerpo`, api/proteccion.py): 20 MiB.
 TOPE_BYTES = 20 * 2**20
@@ -176,7 +176,7 @@ def cargar_referencia(sesion: SesionDep) -> MensajeRespuesta:
             # El texto de un OSError lleva la ruta del servidor.
             raise HTTPException(422, MENSAJE_REFERENCIA_ILEGIBLE) from None
         except ValueError as error:
-            raise HTTPException(422, f"No se cargo la referencia: {_motivo(error)}") from None
+            raise HTTPException(422, f"No se cargó la referencia: {_motivo(error)}") from None
 
 
 @router.post(
@@ -231,7 +231,7 @@ def crear_lista(
                     nombre=nombre,
                 )
         except ValueError as error:
-            raise HTTPException(422, f"No se creo la lista: {_motivo(error)}") from None
+            raise HTTPException(422, f"No se creó la lista: {_motivo(error)}") from None
     return ListaCreadaRespuesta(
         nombre=resumen.nombre,
         propios=resumen.propios,
