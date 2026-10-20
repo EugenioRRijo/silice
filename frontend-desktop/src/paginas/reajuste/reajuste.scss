@@ -79,7 +79,14 @@
   }
 }
 
-// Lo que recibe el foco tras «Calcular» (el titulo del resultado y la zona del aviso, VB-13): el anillo de Carbon.
+// Lo que recibe el foco tras «Calcular» (el titulo del resultado y la zona del aviso, VB-13). La ventana se desplaza
+// bajo la cabecera fija del marco (3rem): `scrollIntoView({ block: "start" })` se detiene en este margen, que deja
+// libre la cabecera y el anillo de foco (2 px + 2 px de separacion), mas 4 px de aire (WCAG 2.4.11).
+.silice-reajuste__enfocable {
+  scroll-margin-block-start: calc(3rem + 0.5rem);
+}
+
+// El anillo de Carbon.
 .silice-reajuste__enfocable:focus {
   outline: 2px solid var(--cds-focus);
   outline-offset: 2px;
