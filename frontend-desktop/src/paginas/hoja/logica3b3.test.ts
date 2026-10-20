@@ -1,3 +1,5 @@
+import { readdirSync, readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { describe, expect, test } from "vitest";
 import {
   clavesDeAuditoria,
@@ -117,5 +119,65 @@ describe("lógica de la hoja, 3b-3", () => {
     expect(fechaCorta("2026-10-06T09:30:00")).toBe("06/10/2026 09:30:00"); // la hora ISO del servidor
     expect(fechaCorta("")).toBe("");
     expect(fechaCorta("hoy")).toBe("hoy");
+  });
+
+  test("una clave con circuitos (OF-001 real) los nombra en palabras", () => {
+    expect(rotuloDeOrigen("EL-PROT|esp_fuentes:T1;esp_circuitos:C1;esp_circuitos:C2")).toBe(
+      "EL-PROT, Fuente T1, Circuito C1, Circuito C2",
+    );
+    expect(rotuloDeOrigen("EL-COND-12-AWG|esp_fuentes:T1;esp_circuitos:C1")).toBe("EL-COND-12-AWG, Fuente T1, Circuito C1");
+  });
+
+  test("ningún prefijo esp_* de los adaptadores y de la hoja se cuela como código: todos tienen nombre", () => {
+    // Barrido de lo que emiten el servidor (`esp_xxx:`) en adapters/espacio y aplicacion/hoja*.py.
+    const raiz = resolve(process.cwd(), "..");
+    const archivos: string[] = [];
+    const recorrer = (dir: string) => {
+      for (const e of readdirSync(dir, { withFileTypes: true })) {
+        const ruta = resolve(dir, e.name);
+        if (e.isDirectory()) recorrer(ruta);
+        else if (e.name.endsWith(".py")) archivos.push(ruta);
+      }
+    };
+    recorrer(resolve(raiz, "adapters", "espacio"));
+    for (const e of readdirSync(resolve(raiz, "aplicacion"))) {
+      if (/^hoja.*\.py$/.test(e)) archivos.push(resolve(raiz, "aplicacion", e));
+    }
+    const barridos = new Set<string>();
+    for (const a of archivos) for (const m of readFileSync(a, "utf-8").matchAll(/(esp_[a-z_]+):/g)) barridos.add(m[1]!);
+    // Lista escrita a mano (los nombres de las tablas esp_* del espacio) contrastada con el barrido.
+    const conocidos = [
+      "esp_ambientes",
+      "esp_circuitos",
+      "esp_fuentes",
+      "esp_origenes",
+      "esp_puntos",
+      "esp_recorridos",
+      "esp_segmentos",
+      "esp_sobrescrituras",
+      "esp_tramos",
+    ];
+    expect(barridos.size).toBeGreaterThan(3);
+    for (const p of barridos) expect(conocidos, p).toContain(p);
+    for (const p of conocidos) {
+      expect(rotuloDeOrigen(`${p}:X1`), p).not.toMatch(/esp_/);
+      expect(rotuloDeOrigen(`AF-X|${p}:X1`), p).not.toMatch(/esp_/);
+    }
+  });
+
+  test("un prefijo esp_* desconocido nunca llega como código: cae a «Origen X»", () => {
+    expect(rotuloDeOrigen("esp_zzz:Q9")).toBe("Origen Q9");
+    expect(rotuloDeOrigen("AF-X|esp_zzz:Q9;esp_puntos:P1")).toBe("AF-X, Origen Q9, Punto P1");
+  });
+
+  test("una clave sin partida con un segmento no toma el «|» del segmento por la partida", () => {
+    expect(rotuloDeOrigen("esp_segmentos:F1|0.000,0.000,0.000|0.000,0.000,2.500;+4")).toBe("Segmento F1 y 4 más");
+  });
+
+  test("como la clásica, un hallazgo PENDIENTE no se atribuye a toda la partida, solo al renglón que lo cita", () => {
+    const base = informeAuditoria().hallazgos[1]!;
+    const pendiente = { ...base, numero: 9, regla: "PENDIENTE", partida: "AF-SALIDA", origen: ["esp_puntos:P2"] };
+    expect(hallazgosDeOrigen([pendiente], ["AF-SALIDA|esp_puntos:P3", "esp_puntos:P3", "AF-SALIDA"])).toEqual([]);
+    expect(hallazgosDeOrigen([pendiente], ["AF-SALIDA|esp_puntos:P2", "esp_puntos:P2", "AF-SALIDA"])).toHaveLength(1);
   });
 });
