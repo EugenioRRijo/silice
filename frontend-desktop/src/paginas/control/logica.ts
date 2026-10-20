@@ -19,8 +19,9 @@ export function errorDeCarga(carga: Carga<unknown>): unknown {
   return carga.estado === "sin_permiso" ? "Su cuenta no tiene permiso para ver esto." : "No se encontró lo pedido.";
 }
 
-// V-22: los identificadores internos que la API manda tal cual, en español llano. El codigo original se conserva en el
-// `title` de la celda (trazabilidad) y un codigo que no esta aqui se muestra tal cual.
+// V-22: los identificadores internos que la API manda tal cual, en español llano; un codigo que no esta aqui se muestra
+// tal cual. Desde VD-5 el codigo original ya no va en el `title` de la celda (el `title` es solo para el exacto de las
+// cifras): se pinta con `celda` (ver `sinTitulo`) y el valor de la fila no cambia.
 const ETIQUETAS_DE_CODIGO: Record<string, string> = {
   spi_error: "Umbral de SPI para error",
   cpi_error: "Umbral de CPI para error",
