@@ -483,6 +483,25 @@ describe("Reajuste de precios", () => {
     expect(screen.queryByLabelText("Desde, Períodos fila 2")).not.toBeInTheDocument();
   });
 
+  test("la papelera va en su columna angosta y no en una de 9rem (VD-11)", async () => {
+    // Medido en navegador a 1056 px: la tabla «Períodos» medía 770 px en un contenedor de 721 porque la celda de la
+    // papelera (un boton de 32 px) heredaba el minimo de 9rem de las celdas de campo. jsdom no mide: aqui se fija la
+    // estructura (la celda y su cabecera llevan la clase de la columna angosta) y el estilo se comprueba en estilos.test.
+    const u = userEvent.setup();
+    montar();
+    await screen.findByLabelText("Versión del contrato");
+    await irA(u, "2. Períodos y lo ejecutado");
+    for (const nombre of ["Períodos", "Ejecutado"]) {
+      const tabla = screen.getByRole("table", { name: nombre });
+      const quitar = within(tabla).getByRole("button", { name: `Quitar ${nombre} fila 1` });
+      expect(quitar.closest("td")).toHaveClass("silice-filas__quitar");
+      const cabeceras = tabla.querySelectorAll("thead th");
+      expect(cabeceras[cabeceras.length - 1]).toHaveClass("silice-filas__quitar");
+      // las celdas de campo no la llevan
+      expect(within(tabla).getAllByRole("textbox")[0]!.closest("td")).not.toHaveClass("silice-filas__quitar");
+    }
+  });
+
   test("un 401 avisa que la sesión venció", async () => {
     contexto = () => json({ detalle: "Sesión ausente o vencida." }, 401);
     montar();
