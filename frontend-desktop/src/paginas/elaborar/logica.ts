@@ -1,7 +1,9 @@
 // Logica pura de «Elaborar un presupuesto» (UC-01): arma cuerpos, textos y filas con lo que manda la API. No calcula
 // ni redondea montos (llegan como texto); el unico numero es el puntaje de una propuesta, que se muestra a 2 decimales.
+// Las cifras se leen en es-VE con todos los decimales que trae la API (VB-6).
 import { ErrorDeApi } from "../../api/cliente";
 import type { FilaDensa } from "../../comun/TablaDensa";
+import { fechaEsVe, formatoEsVe } from "../../indicadores/formatoEsVe";
 import type {
   CalculoRespuesta,
   CuerpoCalculo,
@@ -86,6 +88,21 @@ export function aceptarPropuesta(
   return items.map((i, n) => (n === posicion ? { ...i, codigo_partida: elegido } : i));
 }
 
+// El nucleo nombra los periodos del plan por defecto «Dia N» (core/budget/curva.py): se leen «Día N» y vuelven al
+// servidor como «Dia N», asi la etiqueta guardada no cambia. Otro periodo escrito a mano no se toca (VB-6).
+export function periodoAVista(periodo: string): string {
+  return periodo.replace(/^Dia (?=[0-9])/, "Día ");
+}
+
+export function periodoAlServidor(periodo: string): string {
+  return periodo.replace(/^Día (?=[0-9])/, "Dia ");
+}
+
+// El veredicto del informe con mayuscula inicial («No cumple»), no en mayusculas como lo manda la API (VB-6).
+export function veredictoLegible(cumple: boolean): string {
+  return cumple ? "Cumple" : "No cumple";
+}
+
 export function filasIguales(a: FilaPlan[], b: FilaPlan[]): boolean {
   return (
     a.length === b.length &&
@@ -101,13 +118,13 @@ export function lineaPendiente(p: Pick<PendienteConPropuestas, "origen_id" | "co
 
 // El puntaje es una similitud adimensional del normalizador (no un monto): dos decimales.
 export function lineaPropuesta(s: PropuestaPartida): string {
-  return `${s.codigo} · ${s.descripcion} (${s.puntaje.toFixed(2)})`;
+  return `${s.codigo} · ${s.descripcion} (${formatoEsVe(s.puntaje.toFixed(2))})`;
 }
 
 export function textoPropuestaRendimiento(e: RendimientoPorDeclarar): string {
   const r = e.propuesta?.rendimiento;
   if (!r) return "";
-  return `rendimiento propuesto ${r.valor} unidades por día (${r.tipo} del ${r.fecha})`;
+  return `rendimiento propuesto ${formatoEsVe(r.valor)} unidades por día (${r.tipo} del ${fechaEsVe(r.fecha)})`;
 }
 
 export function textoDispersion(e: RendimientoPorDeclarar): string {
@@ -115,7 +132,7 @@ export function textoDispersion(e: RendimientoPorDeclarar): string {
   if (!d) return "";
   return (
     `Dispersión del histórico: ${d.observaciones} observaciones (${d.medidos} medidas, ${d.estimados} estimadas), ` +
-    `media ${d.media}, rango [${d.minimo}, ${d.maximo}].`
+    `media ${formatoEsVe(d.media)}, rango [${formatoEsVe(d.minimo)}; ${formatoEsVe(d.maximo)}].`
   );
 }
 

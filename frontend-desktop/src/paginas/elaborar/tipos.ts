@@ -72,6 +72,8 @@ export interface CalculoRespuesta {
   fecha: string;
   moneda: string;
   total: string;
+  // El total sin redondear, para el `title` (VB-6).
+  total_exacto: string;
   partidas: PartidaPresupuestada[];
   por_severidad: { severidad: string; total: number }[];
   informe: InformeAuditoriaRespuesta;

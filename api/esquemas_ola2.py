@@ -145,6 +145,8 @@ class CalculoRespuesta(BaseModel):
     fecha: date
     moneda: str
     total: str
+    #: El mismo total sin redondear (texto decimal exacto), para mostrarlo a un toque (VB-6).
+    total_exacto: str
     partidas: list[PartidaPresupuestadaRespuesta]
     por_severidad: list[SeveridadRespuesta]
     informe: InformeAuditoriaRespuesta

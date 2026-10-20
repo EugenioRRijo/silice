@@ -11,6 +11,7 @@ import { useAplicacion } from "../../shell/contexto";
 import { PlanDeTrabajo, conIds, sinIds } from "./PlanDeTrabajo";
 import type { FilaEditable } from "./PlanDeTrabajo";
 import { Severidad } from "../../comun/Severidad";
+import { formatoEsVe } from "../../indicadores/formatoEsVe";
 import {
   AVISO_SIN_PARTIDAS_CIVILES,
   AYUDA,
@@ -36,6 +37,7 @@ import {
   mapeoCodigos,
   textoDispersion,
   textoPropuestaRendimiento,
+  veredictoLegible,
 } from "./logica";
 import type {
   CalculoRespuesta,
@@ -64,11 +66,18 @@ interface Elaboracion {
   cuerpo: CuerpoCalculo;
 }
 
-function Metrica({ titulo, valor }: { titulo: ReactNode; valor: string }) {
+// Con `exacto`, el valor exacto va en el `title` y para el lector de pantalla (VB-6, como en Entregar).
+function Metrica({ titulo, valor, exacto }: { titulo: ReactNode; valor: string; exacto?: string }) {
   return (
     <div className="silice-elaborar__metrica">
       <span className="silice-elaborar__metrica-titulo cds--type-label-01">{titulo}</span>
-      <span className="silice-elaborar__metrica-valor cds--type-heading-03">{valor}</span>
+      <span
+        className="silice-elaborar__metrica-valor cds--type-heading-03 silice-cifra"
+        title={exacto !== undefined ? `Valor exacto: ${exacto}` : undefined}
+      >
+        {valor}
+        {exacto !== undefined && <span className="cds--visually-hidden">{`. Valor exacto: ${exacto}`}</span>}
+      </span>
     </div>
   );
 }
@@ -445,7 +454,7 @@ export default function PaginaElaborar() {
               { clave: "codigo_partida", titulo: "Partida" },
               { clave: "descripcion", titulo: "Descripción" },
               { clave: "unidad", titulo: "Unidad" },
-              { clave: "cantidad", titulo: "Cantidad", numerica: true },
+              { clave: "cantidad", titulo: "Cantidad", numerica: true, presentar: formatoEsVe },
               { clave: "origen_id", titulo: "Origen" },
               { clave: "origen_tipo", titulo: "Tipo de origen" },
               { clave: "regla", titulo: "Regla" },
@@ -506,7 +515,11 @@ export default function PaginaElaborar() {
           <section aria-label="Presupuesto elaborado" className="silice-elaborar__bloque">
             <h2 className="cds--type-heading-compact-02">Presupuesto elaborado</h2>
             <div className="silice-elaborar__metricas" role="group" aria-label="Métricas del presupuesto">
-              <Metrica titulo="Total del presupuesto" valor={`${resultado.total} ${resultado.moneda}`} />
+              <Metrica
+                titulo="Total del presupuesto"
+                valor={`${formatoEsVe(resultado.total)} ${resultado.moneda}`}
+                exacto={`${resultado.total_exacto ?? resultado.total} ${resultado.moneda}`}
+              />
               {resultado.por_severidad.map((s) => (
                 <Metrica key={s.severidad} titulo={<Severidad valor={s.severidad} />} valor={String(s.total)} />
               ))}
@@ -522,9 +535,9 @@ export default function PaginaElaborar() {
                 { clave: "codigo_partida", titulo: "Partida" },
                 { clave: "descripcion", titulo: "Descripción" },
                 { clave: "unidad", titulo: "Unidad" },
-                { clave: "cantidad", titulo: "Cantidad", numerica: true },
-                { clave: "precio_unitario", titulo: "Precio unitario", numerica: true },
-                { clave: "total", titulo: "Total", numerica: true },
+                { clave: "cantidad", titulo: "Cantidad", numerica: true, presentar: formatoEsVe },
+                { clave: "precio_unitario", titulo: "Precio unitario", numerica: true, presentar: formatoEsVe },
+                { clave: "total", titulo: "Total", numerica: true, presentar: formatoEsVe },
               ]}
               filas={filasDePartidas(resultado)}
               vacio={{ titulo: "El presupuesto no tiene partidas valoradas." }}
@@ -570,7 +583,9 @@ export default function PaginaElaborar() {
 
           <section className="silice-elaborar__bloque">
             <h2 className="cds--type-heading-compact-02">Informe de auditoría</h2>
-            <InformeAuditoria informe={resultado.informe} />
+            <InformeAuditoria
+              informe={{ ...resultado.informe, veredicto: veredictoLegible(resultado.informe.cumple) }}
+            />
           </section>
         </>
       )}
