@@ -472,3 +472,16 @@ def test_el_texto_de_dictamen_formatea_la_fecha_y_no_el_login() -> None:
         "Dictamen anterior: conforme · rita_2026-01-15 · 12/11/2026 10:05 · "
         "verificación entonces: verificado"
     )
+
+
+def test_la_ultima_recibida_solo_se_formatea_si_la_cola_es_un_dia_iso() -> None:
+    from aplicacion import revision
+
+    rara = _recibido(ultima_recibida="versión 2026-01-01 de otro modo 12345")
+    assert revision.banner_de_version(rara, fecha=revision.fecha_es).endswith(
+        "de este proyecto: versión 2026-01-01 de otro modo 12345."
+    )
+    corta = _recibido(ultima_recibida="versión 004 del 2026-1")
+    assert revision.banner_de_version(corta, fecha=revision.fecha_es).endswith(
+        "de este proyecto: versión 004 del 2026-1."
+    )

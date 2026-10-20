@@ -83,3 +83,44 @@ def test_un_texto_adversarial_de_100000_caracteres_tarda_menos_de_un_segundo(tex
     salida = pulir(texto)
     assert time.perf_counter() - t0 < 1.0
     assert salida == texto  # por encima del tope de longitud el texto queda intacto
+
+
+@pytest.mark.parametrize(
+    ("insumo", "esperado"),
+    [
+        ("CEMENTO GRIS (SACO 42,5 KG)", "CEMENTO GRIS (SACO 42,5 KG)"),
+        ("TUBO PVC (1/2)", "TUBO PVC (1/2)"),
+        ("TUBO (1/2) CODO (3/4)", "TUBO (1/2) CODO (3/4)"),
+    ],
+)
+def test_los_parentesis_del_nombre_del_insumo_no_impiden_corregir_r11(
+    insumo: str, esperado: str
+) -> None:
+    texto = R11.format(n=1, a=1, la=insumo, b=0, lb="")
+    assert pulir(texto) == f"1 insumo no contrastable: 1 sin referencia MaPreX ({esperado})"
+
+
+def test_un_parentesis_sin_cerrar_deja_el_texto_intacto() -> None:
+    texto = R11.format(n=1, a=1, la="TUBO (1/2", b=0, lb="")
+    assert pulir(texto) == texto
+
+
+@pytest.mark.parametrize("largo", [1_999, 19_999])
+@pytest.mark.parametrize(
+    "relleno",
+    ["(x", "x)", "((x)", "(x)" + "(", MEDIO],
+    ids=["abiertos", "cerrados", "anidados", "mixtos", "delimitadores"],
+)
+def test_la_regex_con_parentesis_desbalanceados_tarda_menos_de_un_segundo(
+    largo: int, relleno: str
+) -> None:
+    texto = (CABEZA + relleno * largo)[:largo]
+    t0 = time.perf_counter()
+    pulir(texto)
+    assert time.perf_counter() - t0 < 1.0
+
+
+def test_el_tope_sube_a_veinte_mil_caracteres() -> None:
+    from api.redaccion import TOPE
+
+    assert TOPE == 20_000
