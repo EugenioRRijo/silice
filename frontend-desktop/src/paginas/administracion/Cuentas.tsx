@@ -1,7 +1,8 @@
-import { Button, Checkbox, InlineNotification, PasswordInput, Select, SelectItem, TextInput } from "@carbon/react";
+import { Button, Checkbox, InlineNotification, PasswordInput, Select, SelectItem } from "@carbon/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { FormEvent, KeyboardEvent } from "react";
 import { ErrorDeApi, pedir } from "../../api/cliente";
+import { CampoTexto } from "../../comun/CampoTexto";
 import { TablaDensa } from "../../comun/TablaDensa";
 import { mensajeDeError } from "../../comun/errores";
 import { useAplicacion } from "../../shell/contexto";
@@ -353,7 +354,7 @@ export default function Cuentas() {
           Crear una cuenta
         </h2>
         <form className="silice-adm__seccion" onSubmit={(e) => void crear(e)} autoComplete="off">
-          <TextInput
+          <CampoTexto
             id="adm-login"
             labelText="Usuario"
             helperText={AYUDA_USUARIO}
@@ -361,7 +362,7 @@ export default function Cuentas() {
             value={login}
             onChange={(e) => setLogin(e.target.value)}
           />
-          <TextInput id="adm-nombre" labelText="Nombre de la persona" required value={nombre} onChange={(e) => setNombre(e.target.value)} />
+          <CampoTexto id="adm-nombre" labelText="Nombre de la persona" required value={nombre} onChange={(e) => setNombre(e.target.value)} />
           <SelectorDeRoles idBase="adm-roles" leyenda="Qué puede hacer" elegidos={rolesNuevos} alCambiar={setRolesNuevos} />
           {avisoEnAlta && <p className="silice-adm__nota cds--type-label-01">{avisoEnAlta}</p>}
           <PasswordInput

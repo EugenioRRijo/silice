@@ -1,7 +1,8 @@
-import { Button, InlineNotification, Select, SelectItem, TextInput } from "@carbon/react";
+import { Button, InlineNotification, Select, SelectItem } from "@carbon/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { ErrorDeApi, pedir } from "../../api/cliente";
+import { CampoTexto } from "../../comun/CampoTexto";
 import { AvisoError } from "../../comun/AvisoError";
 import { EsqueletoPagina } from "../../comun/EsqueletoPagina";
 import { SubidaArchivo } from "../../comun/SubidaArchivo";
@@ -201,14 +202,14 @@ export default function EmpresasRegistradas() {
             Retirada: la empresa avisó que cambió de clave; sus paquetes anteriores a la fecha siguen valiendo.
             Revocada: ningún paquete con esa clave verifica.
           </p>
-          <TextInput
+          <CampoTexto
             id="adm-ajena-fecha"
             type="date"
             labelText="Fecha del retiro"
             value={fecha}
             onChange={(e) => setFecha(e.target.value)}
           />
-          <TextInput
+          <CampoTexto
             id="adm-ajena-motivo"
             labelText="Motivo de la revocación"
             value={motivo}
@@ -282,13 +283,13 @@ export default function EmpresasRegistradas() {
               Pida a la otra empresa que le lea su huella por teléfono (u otro canal distinto del que le mandó el
               archivo) y escríbala aquí.
             </p>
-            <TextInput
+            <CampoTexto
               id="adm-huella-leida"
               labelText="Huella leída por otro canal"
               value={huella}
               onChange={(e) => setHuella(e.target.value)}
             />
-            <TextInput
+            <CampoTexto
               id="adm-comprobada-con"
               labelText="Comprobada con (persona)"
               value={conQuien}

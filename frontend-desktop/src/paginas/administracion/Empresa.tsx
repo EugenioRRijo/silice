@@ -1,7 +1,8 @@
-import { Button, InlineNotification, PasswordInput, TextInput } from "@carbon/react";
+import { Button, InlineNotification, PasswordInput } from "@carbon/react";
 import { useCallback, useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { ErrorDeApi, pedir } from "../../api/cliente";
+import { CampoTexto } from "../../comun/CampoTexto";
 import { AvisoError } from "../../comun/AvisoError";
 import { DescargaArchivo, guardarBlob } from "../../comun/DescargaArchivo";
 import { EsqueletoPagina } from "../../comun/EsqueletoPagina";
@@ -140,9 +141,9 @@ export default function Empresa() {
       )}
       <form className="silice-adm__seccion" onSubmit={guardarEmpresa}>
         <h2 className="cds--type-heading-compact-02">La empresa</h2>
-        <TextInput id="adm-empresa-nombre" labelText="Nombre de la empresa" value={nombre} onChange={(e) => setNombre(e.target.value)} />
-        <TextInput id="adm-empresa-rif" labelText="RIF" value={rif} onChange={(e) => setRif(e.target.value)} />
-        <TextInput id="adm-empresa-ciudad" labelText="Ciudad" value={ciudad} onChange={(e) => setCiudad(e.target.value)} />
+        <CampoTexto id="adm-empresa-nombre" labelText="Nombre de la empresa" value={nombre} onChange={(e) => setNombre(e.target.value)} />
+        <CampoTexto id="adm-empresa-rif" labelText="RIF" value={rif} onChange={(e) => setRif(e.target.value)} />
+        <CampoTexto id="adm-empresa-ciudad" labelText="Ciudad" value={ciudad} onChange={(e) => setCiudad(e.target.value)} />
         <Button type="submit" kind="primary" size="md" disabled={ocupada}>
           Guardar la empresa
         </Button>
@@ -212,7 +213,7 @@ export default function Empresa() {
             los paquetes firmados con ella dejan de verificar. En ambos casos se destruye la clave privada de este
             equipo.
           </p>
-          <TextInput id="adm-motivo-clave" labelText="Motivo" value={motivo} onChange={(e) => setMotivo(e.target.value)} />
+          <CampoTexto id="adm-motivo-clave" labelText="Motivo" value={motivo} onChange={(e) => setMotivo(e.target.value)} />
           <PasswordInput
             id="adm-clave-revocar"
             labelText="Contraseña de la clave (para firmar el aviso de revocación; opcional)"
