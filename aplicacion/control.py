@@ -108,6 +108,7 @@ __all__ = [
     "filas_de_parametros",
     "filas_de_indicadores",
     "filas_de_opciones",
+    "supuestos_de_opcion",
     "filas_de_reproyeccion",
     "filas_de_valuaciones",
     "guardar_los_parametros",
