@@ -144,8 +144,10 @@ function ejecutadoConDatos(fila: Fila): boolean {
 
 export function columnasDeResultado(columnas: string[]): ColumnaDensa[] {
   return columnas.map((titulo) => ({ clave: titulo, titulo, numerica: !COLUMNAS_DE_TEXTO.has(titulo),
-    // Montos y tasas en es-VE; el texto exacto de la API queda en el title de la celda. El mecanismo, con su rotulo.
-    presentar: titulo === "Mecanismo" ? rotuloDeOpcion : COLUMNAS_DE_TEXTO.has(titulo) ? undefined : formatoMontoEsVe,
+    // Montos y tasas en es-VE; el texto exacto de la API queda en el title de la celda.
+    presentar: COLUMNAS_DE_TEXTO.has(titulo) ? undefined : formatoMontoEsVe,
+    // El mecanismo, con su rotulo y sin el valor interno en el title (VD-5: `presentar` lo pondria).
+    celda: titulo === "Mecanismo" ? (fila: FilaDensa) => (fila.Mecanismo ? rotuloDeOpcion(fila.Mecanismo) : "") : undefined,
   }));
 }
 

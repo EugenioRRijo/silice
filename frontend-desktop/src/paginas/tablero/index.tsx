@@ -204,7 +204,8 @@ function Contenido({ datos }: { datos: TableroRespuesta }) {
             etiqueta="Versiones del presupuesto"
             columnas={[
               { clave: "version", titulo: "Versión" },
-              { clave: "fecha", titulo: "Fecha", presentar: fechaEsVe },
+              // VD-5: la fecha sin su forma ISO en el title (`presentar` la pondria); el title es de las cifras
+              { clave: "fecha", titulo: "Fecha", celda: (f) => fechaEsVe(f.fecha ?? "") },
               { clave: "motivo", titulo: "Motivo" },
               { clave: "costo_directo", titulo: "Costo directo", numerica: true, presentar: formatoMontoEsVe },
               { clave: "total", titulo: "Total", numerica: true, presentar: formatoMontoEsVe },

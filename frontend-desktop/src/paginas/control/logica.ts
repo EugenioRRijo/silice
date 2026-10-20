@@ -2,6 +2,7 @@
 // Los textos de las tablas ya vienen presentados por la API; aqui no se recalcula ningun monto.
 import { useCallback, useState } from "react";
 import { ErrorDeApi } from "../../api/cliente";
+import type { FilaDensa } from "../../comun/TablaDensa";
 import { formatoEsVe, formatoMontoEsVe } from "../../indicadores/formatoEsVe";
 import { useCarga } from "../inicio/useCarga";
 import type { Carga } from "../inicio/useCarga";
@@ -255,21 +256,46 @@ export const TITULOS_VISIBLES: Record<string, string> = {
   Periodo: "Período",
 };
 
+// VD-5: `TablaDensa` pone el texto original en el `title` de toda celda con `presentar`. Eso es el exacto de una
+// cifra, pero en un rotulo, un codigo o una fecha mostraba el valor interno al pasar el raton («spi_error», «AL-1»).
+// Una columna de texto se presenta con `celda`, que no lleva `title`; el orden sigue usando el valor de la fila.
+export function sinTitulo(clave: string, presentar: (valor: string) => string): (fila: FilaDensa) => string {
+  return (fila) => {
+    const valor = fila[clave] ?? "";
+    return valor ? presentar(valor) : valor;
+  };
+}
+
 export function columnasDe(
   titulos: string[],
   numericas: string[] = [],
   presentar: Record<string, (valor: string) => string> = {},
 ) {
-  return titulos.map((t) => ({
-    clave: t,
-    titulo: TITULOS_VISIBLES[t] ?? t,
-    numerica: numericas.includes(t),
-    ordenable: false,
-    // Las cifras se leen en es-VE (el exacto queda en el title); una columna con texto propio lo compone encima.
-    presentar: numericas.includes(t)
-      ? (valor: string) => formatoMontoEsVe((presentar[t] ?? ((v: string) => v))(valor))
-      : presentar[t],
-  }));
+  return titulos.map((t) => {
+    const propio = presentar[t];
+    const numerica = numericas.includes(t);
+    return {
+      clave: t,
+      titulo: TITULOS_VISIBLES[t] ?? t,
+      numerica,
+      ordenable: false,
+      // Las cifras se leen en es-VE (el exacto queda en el title); una columna con texto propio lo compone encima.
+      presentar: numerica ? (valor: string) => formatoMontoEsVe((propio ?? ((v: string) => v))(valor)) : undefined,
+      celda: !numerica && propio ? sinTitulo(t, propio) : undefined,
+    };
+  });
+}
+
+// VD-5: el umbral de una alerta tiene la forma fija «0.9000 (SUPUESTO_DECLARADO)» (`alertas_en_filas` de
+// aplicacion/control.py; sin cifra si el umbral no aplica). Se parte solo esa forma, para que el exacto vaya en el
+// title de la cifra y no el codigo de la naturaleza; otra cosa (o un texto mas largo que el tope) devuelve null.
+const UMBRAL = /^([-+]?[0-9]{1,30}(?:\.[0-9]{1,30})?)? ?\(([A-Z_]{1,40})\)$/;
+const LARGO_MAXIMO_UMBRAL = 128;
+
+export function partirUmbral(texto: string): { cifra: string; naturaleza: string } | null {
+  if (texto.length > LARGO_MAXIMO_UMBRAL) return null;
+  const m = UMBRAL.exec(texto);
+  return m ? { cifra: m[1] ?? "", naturaleza: m[2]! } : null;
 }
 
 // Las filas con el `id` que pide la tabla (el lugar que ocupan).

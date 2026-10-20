@@ -160,8 +160,9 @@ export function columnasAtipicos(a: Atipicos): ColumnaDensa[] {
       numerica: true,
       presentar: (exacto) => porcentajeEsVe(redondeo.get(exacto) ?? exacto),
     },
-    { clave: "desde", titulo: "Desde", presentar: fechaCorta },
-    { clave: "hasta", titulo: "Hasta", presentar: fechaCorta },
+    // VD-5: la fecha se lee dd/mm/aaaa sin su forma ISO en el title (`presentar` la pondria); el title es de la cifra
+    { clave: "desde", titulo: "Desde", celda: (f) => fechaCorta(f.desde ?? "") },
+    { clave: "hasta", titulo: "Hasta", celda: (f) => fechaCorta(f.hasta ?? "") },
     { clave: "severidad", titulo: "Severidad", celda: "severidad" },
   ];
 }
