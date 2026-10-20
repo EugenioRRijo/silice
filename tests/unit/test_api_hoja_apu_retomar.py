@@ -39,7 +39,9 @@ from fastapi.testclient import TestClient
 
 from api import caso_web, dependencias
 from api.main import app
+from api.rutas import hoja as hoja_ruta
 from aplicacion import hoja_borradores
+from aplicacion.errores import HojaInvalida
 from aplicacion.hoja import cambios_entre
 from core.budget import crear_proyecto
 from core.catalog import abrir_sesion, crear_motor
@@ -882,15 +884,27 @@ def test_e11_un_borrador_con_cambios_revertidos_tampoco_estorba() -> None:
     assert _abrir_con(navegador, ficha).status_code == 201
 
 
-def test_e11_si_abrir_falla_el_anterior_queda_intacto() -> None:
+def test_e11_si_abrir_falla_el_anterior_queda_intacto(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Abrir la MISMA version falla (aqui, como si la version ya no se pudiera abrir): con
+    `reemplazar` el borrador anterior, con sus cambios, no se pierde."""
     navegador, ficha = _ana()
     id_ = _abrir(navegador, ficha)
     _parametros(navegador, ficha, id_, 0, utilidad="0.12")
-    respuesta = _abrir_con(navegador, ficha, version="999", reemplazar=True)
-    assert respuesta.status_code == 404
-    assert _resumen(navegador, id_)["cambios"] == 1 and [b["id"] for b in _listar(navegador)] == [
-        id_
-    ]
+
+    def no_se_puede(*_a, **_k):
+        raise HojaInvalida("no se puede abrir esta version")
+
+    with monkeypatch.context() as parche:
+        parche.setattr(hoja_ruta.hoja, "abrir_version", no_se_puede)
+        respuesta = _abrir_con(navegador, ficha, reemplazar=True)
+    assert respuesta.status_code == 409 and respuesta.json() == {
+        "detalle": "no se puede abrir esta version"
+    }
+    assert _resumen(navegador, id_)["cambios"] == 1
+    assert [b["id"] for b in _listar(navegador)] == [id_]
+    # y una version que no existe tampoco toca al anterior
+    assert _abrir_con(navegador, ficha, version="999", reemplazar=True).status_code == 404
+    assert _resumen(navegador, id_)["cambios"] == 1
 
 
 def test_e11_cambiar_de_version_no_descarta_nada_p23() -> None:
@@ -1327,12 +1341,17 @@ def test_put_espacio_con_500_puntos_y_resumen_la_mediana_se_registra() -> None:
     id_ = _abrir(navegador, ficha)
     tablas = copy.deepcopy(_vista(navegador, id_, "espacio")["filas"])
     modelo = next(p for p in tablas["puntos"] if p["tipo"] == "agua_fria")
-    adicionales = [{**modelo, "id": f"X{n:03d}"} for n in range(500)]
+    # 500 puntos en una cuadricula de 25 x 20 (cada uno en su sitio): iguales entre si dispararian
+    # la regla de puntos duplicados, que es cuadratica, y no mediria el caso real
+    adicionales = [
+        {**modelo, "id": f"X{n:03d}", "x": str(n % 25 * 0.04), "y": str(n // 25 * 0.05)}
+        for n in range(500)
+    ]
     tablas["puntos"] = [*tablas["puntos"], *adicionales]
     estado = {"rev": 0}
 
     def edicion(i: int) -> None:
-        tablas["puntos"][-1]["x"] = str(i)  # cada corrida cambia algo: el borrador cambia
+        tablas["puntos"][-1]["z"] = str(i / 100)  # cada corrida cambia algo: el borrador cambia
         respuesta = navegador.put(
             f"/v1/hoja/borradores/{id_}/espacio",
             json={"rev": estado["rev"], "tablas": tablas},
