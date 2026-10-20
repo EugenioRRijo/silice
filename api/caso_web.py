@@ -11,12 +11,18 @@ al cambiar la contraseña pasa a la ficha nueva (es la misma persona). Al reinic
 vuelven al caso por defecto (costo declarado en RM-2). Una ficha cerrada desde otro sitio (otro
 navegador que cambió la contraseña, el administrador) deja su entrada hasta que ese navegador
 vuelva: es inofensiva, porque una ficha cerrada no vuelve a validar.
+
+Los borradores vivos de la hoja (`aplicacion.hoja_borradores`, T10) siguen la misma vida que la
+elección: cambiar de caso, salir o expirar los descarta (un borrador jamás sobrevive a un cambio de
+caso) y cambiar la contraseña los pasa a la ficha nueva.
 """
 
 from __future__ import annotations
 
 import threading
 from pathlib import Path
+
+from aplicacion import hoja_borradores
 
 _elegidos: dict[str, Path] = {}
 _cerrojo = threading.Lock()
@@ -31,11 +37,13 @@ def elegido(huella: str) -> Path | None:
 def fijar(huella: str, ruta: Path) -> None:
     with _cerrojo:
         _elegidos[huella] = ruta
+    hoja_borradores.olvidar(huella)  # los borradores son del caso con que se abrieron
 
 
 def olvidar(huella: str) -> None:
     with _cerrojo:
         _elegidos.pop(huella, None)
+    hoja_borradores.olvidar(huella)
 
 
 def heredar(anterior: str, nueva: str) -> None:
@@ -44,9 +52,11 @@ def heredar(anterior: str, nueva: str) -> None:
         ruta = _elegidos.pop(anterior, None)
         if ruta is not None:
             _elegidos[nueva] = ruta
+    hoja_borradores.heredar(anterior, nueva)
 
 
 def olvidar_todo() -> None:
     """Solo para las pruebas: ninguna hereda la elección de otra."""
     with _cerrojo:
         _elegidos.clear()
+    hoja_borradores.olvidar_todo()
