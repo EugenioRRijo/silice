@@ -885,3 +885,35 @@ se añadirán explícitamente si el perfilado de I1 los reclama.
   como **texto** con el valor del `StrEnum`, y `severidad` como **entero** con el valor del `IntEnum`.
   No se usa `sqlalchemy.Enum`: el tipo nativo obligaría a una migración de esquema cada vez que se
   añade un dominio, y el sistema está diseñado para admitir dominios nuevos sin tocar el núcleo.
+
+## 9. Tablas de la arenera (base de la instalación, revisión `ins_0002_produccion`)
+
+Sesión 4 de la ruta (UC‑28 y UC‑29). Viven en `instalacion.db` y no en un caso: la arenera es de la empresa, no de
+un proyecto. Las cantidades son texto decimal exacto (como `DecimalExacto`); `produccion/` no importa `core`.
+
+| Tabla | Columnas | Restricciones |
+|---|---|---|
+| `prod_material` | `id` PK, `codigo` UK (40), `nombre` (120), `unidad_venta` (`m3` \| `t`), `densidad_t_m3` (nula), `existencia_minima`, `activo` | `CHECK unidad_venta IN ('m3','t')` |
+| `prod_movimiento` | `id` PK, `material_id` FK, `fecha`, `tipo` (`entrada` \| `despacho` \| `ajuste`), `cantidad` (en la unidad de venta; con signo solo en `ajuste`), `ticket` UK (nulo), `placa`, `cliente`, `nota`, `origen` (`manual` \| `bascula`), `usuario`, `registrado` | `CHECK tipo IN (...)`; los `NULL` de `ticket` no chocan |
+| `prod_pesaje_sospechoso` | `id` PK, `huella_archivo` (64), `fila`, `ticket`, `fecha_texto`, `placa`, `material_texto`, `bruto_texto`, `tara_texto`, `neto_texto`, `motivo`, `estado` (`pendiente` \| `resuelto` \| `descartado`), `resuelto_por`, `resuelto_en` | UK (`huella_archivo`, `fila`) |
+
+Existencia = Σ entradas − Σ despachos ± ajustes, por material y fecha (RF‑128). Un despacho que deja la existencia
+negativa se guarda y el tablero lo señala (RF‑129).
+
+## 10. Historial de auditorías de «Libro de la empresa» (base de la instalación, revisión `ins_0003_auditoria_libro`)
+
+Sesión 4 de la ruta (UC‑25 y UC‑30; RF‑142 a RF‑146, RNF‑28). Vive en `instalacion.db`: el historial es de la
+instalación entera y cada fila lleva a su usuario. Se guarda el resumen y los hallazgos compactos; **nunca el libro ni
+el PDF**, por eso la tabla no tiene ninguna columna binaria, solo la huella SHA‑256 del archivo. Los totales son texto
+decimal exacto (`String(40)`, como `Cantidad` de la arenera), nunca `float`. El modelo está en
+`fusion/historial_modelo.py` (`METADATA_HISTORIAL`, registrada en `METADATAS_INSTALACION`) y el servicio en
+`fusion/historial.py`.
+
+| Tabla | Columnas | Restricciones |
+|---|---|---|
+| `auditoria_libro` | `id` PK, `fecha_hora` (indexada), `usuario` (120), `tipo` (`libro` \| `pdf`), `nombre_archivo` (255, sin ruta), `sha256` (64, hexadecimal minúsculo), `fecha_libro` (nula en un PDF o sin fecha legible), `total_libro` y `total_silice` (texto decimal; nulos en un PDF), `errores` (ERROR y CRITICO), `advertencias`, `informativos`, `atipicos` (la regla `ATIPICO`, de severidad ADVERTENCIA, se cuenta aparte), `recortado` (verdadero si hubo más de 500 hallazgos), `hallazgos` (JSON en texto) | `CHECK tipo IN ('libro','pdf')`; índice `ix_auditoria_libro_fecha_hora`; sin clave única: repetir una auditoría deja otra fila |
+
+Los conteos son los de **todos** los hallazgos de la auditoría y reparten sin repetir (`errores + advertencias +
+informativos + atipicos` = total). `hallazgos` guarda a lo sumo 500, en el orden en que llegaron, como una lista JSON de
+objetos con exactamente cinco claves (`regla`, `hoja`, `celda`, `severidad`, `mensaje`); el mensaje se corta a 500
+caracteres. El orden del historial es `fecha_hora` descendente y, a igual fecha, `id` descendente.

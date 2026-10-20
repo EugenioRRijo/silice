@@ -97,6 +97,123 @@
   margin: 0;
   padding: 0;
   list-style: none;
+
+  &[hidden] {
+    display: none;
+  }
+}
+
+// Descripcion siempre visible bajo el nombre de cada area.
+.silice-menu__descripcion {
+  margin: 0;
+  padding: 0 1rem 0.25rem;
+  color: var(--silice-texto-secundario);
+}
+
+// «Más»: el rotulo es un boton que pliega su lista; mismo aspecto que los otros rotulos.
+.silice-menu__plegar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  inline-size: 100%;
+  min-block-size: 2rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-weight: 600;
+  text-align: start;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--cds-layer-hover);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--cds-focus);
+    outline-offset: -2px;
+  }
+}
+
+// Herramientas principales: nombre y su linea de ayuda, en dos renglones dentro del enlace.
+.silice-menu__herramienta {
+  display: grid;
+  gap: 0.125rem;
+  padding-block: 0.375rem;
+  min-inline-size: 0;
+}
+
+.silice-menu__herramienta-nombre {
+  font-weight: 600;
+}
+
+.silice-menu__ayuda {
+  color: var(--silice-texto-secundario);
+  white-space: normal;
+}
+
+// Recorrido en curso: pasos en lista, el actual con su detalle.
+.silice-menu__recorrido {
+  list-style: none;
+}
+
+.silice-recorrido {
+  padding: 0.5rem 1rem;
+  border-block: 1px solid var(--cds-border-subtle);
+
+  .silice-menu__rotulo {
+    padding-inline: 0;
+  }
+
+  &__nombre {
+    margin: 0;
+    font-weight: 600;
+  }
+
+  &__avance {
+    margin: 0;
+    color: var(--silice-texto-secundario);
+  }
+
+  &__pasos {
+    margin: 0.25rem 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  &__paso {
+    padding-block: 0.25rem;
+    border-inline-start: 2px solid transparent;
+    padding-inline-start: 0.5rem;
+
+    &[aria-current="step"] {
+      border-inline-start-color: var(--cds-border-interactive);
+      font-weight: 600;
+    }
+  }
+
+  &__enlace {
+    color: var(--cds-link-primary);
+    text-decoration: none;
+
+    &:hover {
+      text-decoration: underline;
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--cds-focus);
+      outline-offset: 1px;
+    }
+  }
+
+  &__detalle {
+    margin-block-start: 0.25rem;
+    font-weight: 400;
+
+    p {
+      margin: 0 0 0.25rem;
+    }
+  }
 }
 
 // Paginas que aun viven en la interfaz clasica: una linea de 32 px, sin ser enlaces de esta interfaz.

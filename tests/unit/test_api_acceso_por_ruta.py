@@ -67,6 +67,7 @@ LEER, EDITAR, REVISAR, CAMBIAR_CASO, CUALQUIERA, CUENTAS_ADM, CONTROLAR, DECIDIR
 )
 ENTREGAR = "entregar_paquete"
 REAJUSTAR = "convertir_y_reajustar"
+OPERAR = "operar_arenera"
 PRECIOS = "administrar_precios"
 EMPRESA, RED_Y_API = (
     "administrar_empresa",
@@ -82,6 +83,7 @@ ROLES = {
     RED_Y_API: {"administrador"},
     REAJUSTAR: {"arma"},
     PRECIOS: {"administrador"},
+    OPERAR: {"arma", "administrador"},
     CAMBIAR_CASO: {"arma", "administrador"},
     CONTROLAR: {"arma"},
     DECIDIR: {"arma"},
@@ -185,7 +187,7 @@ TABLA = {
     ("POST", "/v1/precios-empresa/referencia"): PRECIOS,
     ("POST", "/v1/precios-empresa/listas"): PRECIOS,
     ("GET", "/v1/precios-empresa/listas/{lista_id}/hallazgos"): PRECIOS,
-    ("GET", "/v1/precios-empresa/listas/{lista_id}/atipicos"): PRECIOS,  # T4: variaciones atipicas (RF-100)
+    ("GET", "/v1/precios-empresa/listas/{lista_id}/atipicos"): PRECIOS,  # T4: atipicas
     ("GET", "/v1/admin/empresas-registradas"): EMPRESA,  # T5
     ("POST", "/v1/admin/empresas-registradas"): EMPRESA,
     ("POST", "/v1/admin/empresas-registradas/leer"): EMPRESA,
@@ -203,6 +205,16 @@ TABLA = {
     ("GET", "/v1/revision/plantilla"): REVISAR,
     ("POST", "/v1/revision/excel-externo"): REVISAR,
     ("GET", "/v1/acerca"): CUALQUIERA,
+    ("GET", "/v1/auditorias-libro"): LEER,  # sesion 4: historial de auditorias del libro
+    ("GET", "/v1/auditorias-libro/{auditoria_id}"): LEER,
+    ("GET", "/v1/produccion/materiales"): OPERAR,  # sesion 4: arenera (UC-28, UC-29)
+    ("POST", "/v1/produccion/materiales"): OPERAR,
+    ("POST", "/v1/produccion/movimientos"): OPERAR,
+    ("GET", "/v1/produccion/existencias"): OPERAR,
+    ("POST", "/v1/produccion/bascula/importar"): OPERAR,
+    ("GET", "/v1/produccion/pesajes-sospechosos"): OPERAR,
+    ("POST", "/v1/produccion/pesajes-sospechosos/{id_sospechoso}/resolver"): OPERAR,
+    ("POST", "/v1/produccion/pesajes-sospechosos/{id_sospechoso}/descartar"): OPERAR,
 }
 #: Las de la puerta de entrada: la sesión misma (con su propia regla) y el ping.
 DE_LA_SESION = {

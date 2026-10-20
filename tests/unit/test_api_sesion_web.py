@@ -64,7 +64,7 @@ _ESTADO_DE_ARMA = {
     "debe_cambiar_clave": False,
     "acciones": [
         "editar_hoja", "convertir_y_reajustar", "control_de_obra", "decidir_recuperacion",
-        "entregar_paquete", "leer_proyecto", "cambiar_caso",
+        "entregar_paquete", "operar_arenera", "leer_proyecto", "cambiar_caso",
     ],
     "modo_entrega": False,
     "url_clasica": "http://127.0.0.1:8501/",

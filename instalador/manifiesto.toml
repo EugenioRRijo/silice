@@ -18,7 +18,7 @@ similitud = ["similitud"]
 [codigo]
 paquetes = [
   "core", "adapters", "ml", "ui", "api", "operacion", "migraciones",
-  "seguridad", "asistente", "paquete", "auditoria", "fusion",
+  "seguridad", "asistente", "paquete", "auditoria", "fusion", "produccion",
   "aplicacion",  # RM-1 (sesion 2b): capa de aplicacion que importan ui/ y api/
 ]
 archivos = ["pyproject.toml", "LICENSE"]

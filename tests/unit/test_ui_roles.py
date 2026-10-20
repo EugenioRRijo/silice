@@ -44,13 +44,21 @@ RUTAS_ARMA = [
     "control",
     "acerca",
     "entregar",
+    "existencias",
     "libros",
     "escenarios",
     "similares",
     "simulador",
 ]
 RUTAS_REVISA = ["inicio", "tablero", "catalogo", "historico", "acerca", "revisar", "libros"]
-RUTAS_ADMINISTRADOR = ["inicio", "precios_empresa", "indices", "acerca", "administracion"]
+RUTAS_ADMINISTRADOR = [
+    "inicio",
+    "precios_empresa",
+    "indices",
+    "acerca",
+    "existencias",
+    "administracion",
+]
 
 
 @pytest.fixture(autouse=True)

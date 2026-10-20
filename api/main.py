@@ -18,6 +18,7 @@ from api.rutas import (
     admin_empresas_registradas,
     admin_instalacion,
     auditorias,
+    auditorias_libro,
     casos,
     catalogo,
     composicion,
@@ -30,6 +31,7 @@ from api.rutas import (
     listas,
     precios_empresa,
     presupuestos,
+    produccion,
     proyectos,
     reajuste,
     rendimientos,
@@ -68,10 +70,14 @@ app.include_router(presupuestos.router)
 app.include_router(rendimientos.router)
 app.include_router(auditorias.router)  # S3 §10: POST /v1/auditorias
 # 1.5: /v1/libros (auditoria, devolucion y pdf); 1.2.0: replica, y clave o sesión (RS2-5)
-app.include_router(libros.router, dependencies=[Depends(exigir_clave_o_sesion(LEER_PROYECTO))])
+app.include_router(libros.router, dependencies=[Depends(libros.ACCESO_LIBROS)])
 # Migracion: el simulador de listas (no escribe en la base); clave o sesion con EDITAR_HOJA
 app.include_router(
     simulador.router, dependencies=[Depends(exigir_clave_o_sesion(Accion.EDITAR_HOJA))]
+)
+# 1.2.0 (sesion 4, historial): /v1/auditorias-libro, lo que se auditó en «Libro de la empresa»
+app.include_router(
+    auditorias_libro.router, dependencies=[Depends(exigir_clave_o_sesion(LEER_PROYECTO))]
 )
 # 1.2.0 (RT-9): acceso del navegador por cuenta y cookie; sin clave de API a propósito
 app.include_router(sesion.router)
@@ -106,11 +112,14 @@ app.include_router(indices.router)
 app.include_router(precios_empresa.router)
 # Migracion final (T5): Administracion, «Empresas registradas» (ADMINISTRAR_EMPRESA, solo sesion)
 app.include_router(admin_empresas_registradas.router)
-# Migracion final (T6): Administracion, «Asistente de IA» (ADMINISTRAR_EMPRESA; la clave, solo desde el equipo)
+# Migracion final (T6): Administracion, «Asistente de IA» (clave solo desde el equipo)
 app.include_router(admin_asistente.router)
 # Migracion final (T7): «Revisar un paquete» (UC-23; REVISAR_PAQUETE con clave o sesion)
 app.include_router(revision.router)
 interfaz.montar(app)
+# 1.4 (sesion 4 de la ruta): /v1/produccion, existencias de la arenera y bascula; clave o sesion
+# (Accion.OPERAR_ARENERA): la dependencia vive en el router, que la comparte con el `usuario`
+app.include_router(produccion.router)
 
 
 @app.get("/salud", tags=["catalogo"])

@@ -8,6 +8,7 @@ import {
   TableHeader,
   TableRow,
 } from "@carbon/react";
+import type { ReactNode } from "react";
 import { EstadoVacio } from "./EstadoVacio";
 import { Severidad } from "./Severidad";
 import { Variacion } from "./Variacion";
@@ -19,9 +20,11 @@ export interface ColumnaDensa {
   numerica?: boolean;
   // Por omision todas se ordenan.
   ordenable?: boolean;
-  // Como se dibuja la celda: "severidad" = icono y nombre de la severidad; "variacion" = cifra de variacion de
-  // costo con la semantica IBCS (flecha, color y texto accesible). Sin esto, el texto tal cual.
-  celda?: "severidad" | "variacion";
+  // Como se dibuja la celda. Dos formas: un nombre ("severidad" = icono y nombre de la severidad; "variacion" = cifra
+  // de variacion de costo con la semantica IBCS: flecha, color y texto accesible) o una funcion que recibe la fila
+  // y devuelve lo que se pinta (un icono con su texto, un boton, una cifra con coma decimal). Sin ella, el texto
+  // tal cual. El orden sigue usando siempre el texto de la fila, no lo que devuelva la funcion.
+  celda?: "severidad" | "variacion" | ((fila: FilaDensa) => ReactNode);
   // Como se lee el texto de la celda (formato es-VE, etiqueta en espanol llano). El valor original queda en el
   // `title` para trazabilidad y el orden sigue siendo el del valor original.
   presentar?: (valor: string) => string;
@@ -108,9 +111,18 @@ export function TablaDensa({ etiqueta, columnas, filas, cargando = false, vacio 
 
   const numericas = new Set(columnas.filter((c) => c.numerica).map((c) => c.clave));
   const sinOrden = new Set(columnas.filter((c) => c.ordenable === false).map((c) => c.clave));
-  const especial = new Map(columnas.filter((c) => c.celda).map((c) => [c.clave, c.celda]));
+  const especial = new Map(
+    columnas.flatMap((c) => (typeof c.celda === "string" ? [[c.clave, c.celda] as const] : [])),
+  );
   const presentacion = new Map(columnas.filter((c) => c.presentar).map((c) => [c.clave, c.presentar]));
   const cabeceras = columnas.map((c) => ({ key: c.clave, header: c.titulo }));
+  const pintores = new Map(columnas.flatMap((c) => (typeof c.celda === "function" ? [[c.clave, c.celda] as const] : [])));
+  const filaPorId = new Map(filas.map((f) => [f.id, f]));
+  const pintar = (clave: string, valor: ReactNode, original: FilaDensa | undefined): ReactNode => {
+    const pinta = pintores.get(clave);
+    if (pinta && original) return pinta(original);
+    return dibujar(especial.get(clave), valor, presentacion.get(clave)) as ReactNode;
+  };
 
   return (
     <div className="silice-tabla">
@@ -149,7 +161,7 @@ export function TablaDensa({ etiqueta, columnas, filas, cargando = false, vacio 
                   <TableRow key={key} {...propiedades}>
                     {fila.cells.map((celda) => (
                       <TableCell key={celda.id} className={numericas.has(celda.info.header) ? "silice-cifra" : undefined}>
-                        {dibujar(especial.get(celda.info.header), celda.value, presentacion.get(celda.info.header))}
+                        {pintar(celda.info.header, celda.value, filaPorId.get(fila.id))}
                       </TableCell>
                     ))}
                   </TableRow>

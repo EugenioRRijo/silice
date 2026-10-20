@@ -24,10 +24,6 @@ LITERAL = re.compile(
     r"""["'`](/(?:v1/[A-Za-z0-9_\-/${}.*]+|partidas|insumos|cambios-precio|listas-precios)"""
     r"""[^"'`\s]*)["'`]"""
 )
-#: V-4 de la auditoria visual: el Inicio pide rutas que solo existen en las ramas
-#: inc/ruta-s4-arenera e inc/ruta-s4-existencias-react. Se quitan de aqui al integrarlas: la prueba
-#: debe quedar sin excepciones.
-PENDIENTES_V4 = ("/v1/produccion/existencias", "/v1/auditorias-libro")
 
 
 def _a_patron(ruta: str) -> re.Pattern[str]:
@@ -44,7 +40,7 @@ def test_cada_ruta_que_el_front_pide_existe_en_la_api() -> None:
             continue
         for literal in LITERAL.findall(archivo.read_text(encoding="utf-8")):
             ruta = literal.split("?", 1)[0].rstrip("/")
-            if ruta in PENDIENTES_V4 or "*" in ruta:
+            if "*" in ruta:
                 continue  # `/v1/control/*` es un comentario de prefijo, no una ruta
             if any(r.startswith(ruta + "/") for r in rutas):
                 continue  # un prefijo que el front completa al concatenar

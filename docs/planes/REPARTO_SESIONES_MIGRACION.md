@@ -28,7 +28,7 @@
 | `frontend-desktop/src/shell/rutas.ts` | cada sesión agrega **una línea por página** (el formato lo fija la ola 0b) |
 | `package.json` / `package-lock.json` | **nadie** los cambia: la ola 0b ya agrega `react-router` y `@carbon/charts-react`. Si hace falta otra dependencia, se pide a S2-orq |
 | `docs/api.json` | se **regenera** con `uv run python scripts/exportar_openapi.py`, nunca se fusiona a mano |
-| `docs/ERS.md` | numeración reservada a la migración RF-142–RF-150: S2-A RF-142–RF-144, S2-B RF-145–RF-147, S2-C RF-148–RF-150 (solo si la página pide un requisito nuevo; reproducir una página no lo exige) |
+| `docs/ERS.md` | numeración reservada a la migración RF-147–RF-155 (ruling T1: RF-142–RF-146 son del historial): S2-A RF-147–RF-149, S2-B RF-150–RF-152, S2-C RF-153–RF-155 (solo si la página pide un requisito nuevo; reproducir una página no lo exige) |
 | `CHANGELOG.md` | una línea por página bajo «Sin publicar»; al chocar se conservan las dos |
 
 ## 3. Orden de trabajo de cada sesión

@@ -80,7 +80,7 @@ describe("App", () => {
     render(<App />);
     expect(await screen.findByText("Ana Pérez")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Salir" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Libro de la empresa" })).toBeInTheDocument();
+    expect(screen.getAllByRole("link", { name: "Libro de la empresa" }).length).toBeGreaterThan(0);
     // La pagina llega por import() dinamico: con la suite entera en marcha tarda mas que el plazo por omision.
     expect(await screen.findByRole("heading", { name: "Audite un presupuesto" }, { timeout: 5000 })).toBeInTheDocument();
     expect(window.location.hash).toBe("#/inicio");

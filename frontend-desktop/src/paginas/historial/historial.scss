@@ -1,0 +1,39 @@
+// Historial de auditorias: filtros en una fila que cabe en 1366 px, resumen en rejilla de datos y huella que corta.
+.silice-historial__filtros {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 14rem));
+  gap: 1rem;
+  align-items: start;
+}
+
+.silice-historial__detalle {
+  display: grid;
+  gap: 1rem;
+  padding: 1rem;
+  background: var(--cds-layer-01);
+  border: 1px solid var(--cds-border-subtle-01);
+  min-inline-size: 0;
+}
+
+.silice-historial__encabezado {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.silice-historial__datos {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
+  gap: 0.75rem 1.5rem;
+  margin: 0;
+
+  dd {
+    margin: 0;
+  }
+}
+
+.silice-historial__huella {
+  font-family: var(--cds-code-02-font-family, monospace);
+  overflow-wrap: anywhere;
+}

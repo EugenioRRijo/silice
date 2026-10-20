@@ -12,6 +12,7 @@ import { ContextoAplicacion } from "./contexto";
 import type { Aplicacion } from "./contexto";
 import { LimiteDeError } from "./LimiteDeError";
 import { MenuLateral } from "./MenuLateral";
+import { terminarRecorrido } from "./recorrido";
 import { PAGINAS, enlaceClasico, estaMigrada, rutaDe, visible } from "./rutas";
 import type { PaginaDef } from "./rutas";
 import { SelectorCaso, SelectorProyecto } from "./Selectores";
@@ -92,7 +93,7 @@ function esSinPermiso(e: unknown): boolean {
 }
 
 // Marco de la interfaz: cabecera con caso y proyecto, menu por rol y modo entrega, y la pagina de la ruta.
-export function Shell({ sesion, alSalir, alExpirar, paginas = PAGINAS, urlClasica, almacen, crearHoja }: Props) {
+export function Shell({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp, paginas = PAGINAS, urlClasica, almacen, crearHoja }: Props) {
   const ubicacion = useLocation();
   const [menuAbierto, setMenuAbierto] = useState(false);
   const [casos, setCasos] = useState<CasosRespuesta | null>(null);
@@ -104,6 +105,16 @@ export function Shell({ sesion, alSalir, alExpirar, paginas = PAGINAS, urlClasic
   const [aviso, setAviso] = useState<string | null>(null);
   // Cambia con el caso: las paginas se vuelven a montar y piden sus datos de nuevo.
   const [generacion, setGeneracion] = useState(0);
+
+  // Un recorrido en curso no sobrevive a la sesion: al salir o vencer se cierra (vive fuera del arbol de React).
+  const alSalir = useCallback(() => {
+    terminarRecorrido();
+    alSalirDeApp();
+  }, [alSalirDeApp]);
+  const alExpirar = useCallback(() => {
+    terminarRecorrido();
+    alExpirarDeApp();
+  }, [alExpirarDeApp]);
 
   const acciones = sesion.acciones;
   const puedeCambiarCaso = acciones.includes("cambiar_caso");

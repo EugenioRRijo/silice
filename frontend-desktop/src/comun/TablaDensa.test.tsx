@@ -104,6 +104,26 @@ describe("TablaDensa", () => {
     expect(screen.queryByText("1586.61")).not.toBeInTheDocument();
   });
 
+  test("una columna con `celda` pinta lo que esa funcion devuelve, y el orden sigue usando el texto de la fila", async () => {
+    const usuario = userEvent.setup();
+    const conCelda: ColumnaDensa[] = [
+      { clave: "codigo", titulo: "Código" },
+      {
+        clave: "monto",
+        titulo: "Monto (Bs)",
+        numerica: true,
+        celda: (fila) => <span data-testid="monto-formateado">{fila.monto.replace(".", ",")}</span>,
+      },
+    ];
+    render(<TablaDensa etiqueta="Partidas" columnas={conCelda} filas={filas} />);
+    expect(screen.getByText("1586,61")).toBeInTheDocument();
+    expect(screen.queryByText("1586.61")).not.toBeInTheDocument();
+    expect(screen.getAllByTestId("monto-formateado")).toHaveLength(4);
+    await usuario.click(screen.getByRole("button", { name: /Monto/ }));
+    expect(codigosEnOrden()).toEqual(["P-04", "P-03", "P-02", "P-01"]); // -3, 9.10, 9.5, 1586.61 (texto de la fila)
+    expect(screen.getByText("1586,61").closest("td")).toHaveClass("silice-cifra");
+  });
+
   test("el nombre accesible de la tabla es su etiqueta", () => {
     render(<TablaDensa etiqueta="Partidas" columnas={columnas} filas={filas} />);
     expect(screen.getByRole("table", { name: "Partidas" })).toBeInTheDocument();
