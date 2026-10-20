@@ -467,7 +467,7 @@ describe("Inicio, panel del día", () => {
 
     test("el administrador no pide el historial de auditorías (daría 403) pero sí la arenera", async () => {
       montar({ sesion: ADMIN });
-      expect(await screen.findByText("Aún no hay materiales")).toBeInTheDocument();
+      expect(await screen.findByText("Todo sobre el mínimo")).toBeInTheDocument();
       expect(rutasPedidas()).toContain("/v1/produccion/existencias");
       expect(rutasPedidas().some((r) => r.startsWith("/v1/auditorias-libro"))).toBe(false);
       expect(screen.getByText("Sin historial de auditorías para su cuenta")).toBeInTheDocument();

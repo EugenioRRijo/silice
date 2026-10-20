@@ -38,6 +38,11 @@ interface PropsProyecto {
 }
 
 // El proyecto elegido vive en el estado de la aplicacion, no en el navegador (RT-9).
+// El codigo es un numero interno: se elige por el nombre. Solo si dos se llaman igual, el codigo los distingue.
+export function rotuloDeProyecto(p: ProyectoRespuesta, todos: ProyectoRespuesta[]): string {
+  return todos.filter((q) => q.nombre === p.nombre).length > 1 ? `${p.nombre} (${p.codigo})` : p.nombre;
+}
+
 export function SelectorProyecto({ proyectos, elegido, alElegir }: PropsProyecto) {
   return (
     <div className="silice-selector">
@@ -51,7 +56,7 @@ export function SelectorProyecto({ proyectos, elegido, alElegir }: PropsProyecto
       >
         <SelectItem value="" text="Sin proyecto" />
         {proyectos.map((p) => (
-          <SelectItem key={p.codigo} value={p.codigo} text={`${p.codigo} · ${p.nombre}`} />
+          <SelectItem key={p.codigo} value={p.codigo} text={rotuloDeProyecto(p, proyectos)} />
         ))}
       </Select>
     </div>

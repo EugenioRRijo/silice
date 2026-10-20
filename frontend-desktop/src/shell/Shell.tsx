@@ -143,7 +143,10 @@ export function Shell({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
     };
   }, [fallo]);
 
+  // Sin `leer_proyecto` la API contesta 403: no se pide (VB-9).
+  const puedeLeerProyectos = acciones.includes("leer_proyecto");
   useEffect(() => {
+    if (!puedeLeerProyectos) return;
     let vigente = true;
     pedir<ProyectoRespuesta[]>("/v1/proyectos")
       .then((respuesta) => {
@@ -160,7 +163,7 @@ export function Shell({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
     return () => {
       vigente = false;
     };
-  }, [fallo, casoActual, recarga]);
+  }, [fallo, casoActual, recarga, puedeLeerProyectos]);
 
   const cambiarCaso = useCallback(
     async (nombre: string) => {
