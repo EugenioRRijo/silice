@@ -5227,6 +5227,176 @@
         }
       }
     },
+    "/v1/hoja/versiones": {
+      "get": {
+        "tags": [
+          "hoja"
+        ],
+        "summary": "Listar Versiones",
+        "description": "R1: las versiones del proyecto (código de `/v1/proyectos` o nombre) y la preseleccionada.",
+        "operationId": "listar_versiones_v1_hoja_versiones_get",
+        "parameters": [
+          {
+            "name": "proyecto",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500,
+              "title": "Proyecto"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VersionesHojaRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/hoja/borradores": {
+      "post": {
+        "tags": [
+          "hoja"
+        ],
+        "summary": "Abrir Borrador",
+        "description": "R2: abre la versión como borrador vivo. Escribe la instantánea si faltaba (UC-15e).\n\nEn la firma `activa` va antes que `sesion`: FastAPI resuelve en ese orden y el acceso (401,\n403) debe responder antes de abrir la base del caso.",
+        "operationId": "abrir_borrador_v1_hoja_borradores_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BorradorNuevo"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BorradorAbierto"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/hoja/borradores/{id}": {
+      "get": {
+        "tags": [
+          "hoja"
+        ],
+        "summary": "Leer Borrador",
+        "description": "R3: el estado del borrador vivo (su base y su resumen).",
+        "operationId": "leer_borrador_v1_hoja_borradores__id__get",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 16,
+              "maxLength": 64,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "title": "Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BorradorHojaRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "hoja"
+        ],
+        "summary": "Descartar Borrador",
+        "description": "R4: descarta el borrador. Idempotente: un id desconocido, vencido o ajeno también es 204.",
+        "operationId": "descartar_borrador_v1_hoja_borradores__id__delete",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 16,
+              "maxLength": 64,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "title": "Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/produccion/materiales": {
       "get": {
         "tags": [
@@ -6299,6 +6469,77 @@
         "type": "object",
         "title": "BajaDeClave"
       },
+      "BaseAbiertaRespuesta": {
+        "properties": {
+          "proyecto": {
+            "type": "string",
+            "title": "Proyecto"
+          },
+          "version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version"
+          },
+          "vigente": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vigente"
+          },
+          "lista": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lista"
+          },
+          "espacio_de": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Espacio De"
+          },
+          "solo_lectura": {
+            "type": "boolean",
+            "title": "Solo Lectura"
+          },
+          "moneda": {
+            "type": "string",
+            "title": "Moneda"
+          }
+        },
+        "type": "object",
+        "required": [
+          "proyecto",
+          "version",
+          "vigente",
+          "lista",
+          "espacio_de",
+          "solo_lectura",
+          "moneda"
+        ],
+        "title": "BaseAbiertaRespuesta"
+      },
       "BaseRespuesta": {
         "properties": {
           "id": {
@@ -7052,6 +7293,80 @@
           "archivo"
         ],
         "title": "Body_vista_previa_de_lista_listas_precios_vista_previa_post"
+      },
+      "BorradorAbierto": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "base": {
+            "$ref": "#/components/schemas/BaseAbiertaRespuesta"
+          },
+          "resumen": {
+            "$ref": "#/components/schemas/ResumenHojaRespuesta"
+          },
+          "instantanea": {
+            "$ref": "#/components/schemas/InstantaneaHojaRespuesta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "base",
+          "resumen",
+          "instantanea"
+        ],
+        "title": "BorradorAbierto"
+      },
+      "BorradorHojaRespuesta": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "base": {
+            "$ref": "#/components/schemas/BaseAbiertaRespuesta"
+          },
+          "resumen": {
+            "$ref": "#/components/schemas/ResumenHojaRespuesta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "base",
+          "resumen"
+        ],
+        "title": "BorradorHojaRespuesta"
+      },
+      "BorradorNuevo": {
+        "properties": {
+          "proyecto": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Proyecto"
+          },
+          "version": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version"
+          }
+        },
+        "type": "object",
+        "required": [
+          "proyecto"
+        ],
+        "title": "BorradorNuevo",
+        "description": "`version: null` abre un borrador en blanco para un proyecto que aún no tiene versiones."
       },
       "CalculoPeticion": {
         "properties": {
@@ -9546,6 +9861,24 @@
         ],
         "title": "HallazgoRevision"
       },
+      "HallazgosHojaRespuesta": {
+        "properties": {
+          "severidad": {
+            "type": "string",
+            "title": "Severidad"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          }
+        },
+        "type": "object",
+        "required": [
+          "severidad",
+          "total"
+        ],
+        "title": "HallazgosHojaRespuesta"
+      },
       "HallazgosRespuesta": {
         "properties": {
           "columnas": {
@@ -9884,6 +10217,31 @@
           "sensible"
         ],
         "title": "InstalacionRespuesta"
+      },
+      "InstantaneaHojaRespuesta": {
+        "properties": {
+          "creadas": {
+            "type": "integer",
+            "title": "Creadas"
+          },
+          "mensaje": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mensaje"
+          }
+        },
+        "type": "object",
+        "required": [
+          "creadas",
+          "mensaje"
+        ],
+        "title": "InstantaneaHojaRespuesta"
       },
       "InsumoDesconocidoRespuesta": {
         "properties": {
@@ -10780,6 +11138,24 @@
           "instalado"
         ],
         "title": "ModuloRespuesta"
+      },
+      "MontoHojaRespuesta": {
+        "properties": {
+          "texto": {
+            "type": "string",
+            "title": "Texto"
+          },
+          "exacto": {
+            "type": "string",
+            "title": "Exacto"
+          }
+        },
+        "type": "object",
+        "required": [
+          "texto",
+          "exacto"
+        ],
+        "title": "MontoHojaRespuesta"
       },
       "MovimientoEntrada": {
         "properties": {
@@ -12770,6 +13146,75 @@
         ],
         "title": "ResultadoRespuesta"
       },
+      "ResumenHojaRespuesta": {
+        "properties": {
+          "rev": {
+            "type": "integer",
+            "title": "Rev"
+          },
+          "moneda": {
+            "type": "string",
+            "title": "Moneda"
+          },
+          "total": {
+            "$ref": "#/components/schemas/MontoHojaRespuesta"
+          },
+          "cambios": {
+            "type": "integer",
+            "title": "Cambios"
+          },
+          "pendientes_catalogo": {
+            "type": "integer",
+            "title": "Pendientes Catalogo"
+          },
+          "hallazgos": {
+            "items": {
+              "$ref": "#/components/schemas/HallazgosHojaRespuesta"
+            },
+            "type": "array",
+            "title": "Hallazgos"
+          },
+          "hay_plan": {
+            "type": "boolean",
+            "title": "Hay Plan"
+          },
+          "version_mas_nueva": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version Mas Nueva"
+          },
+          "guardado_como": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Guardado Como"
+          }
+        },
+        "type": "object",
+        "required": [
+          "rev",
+          "moneda",
+          "total",
+          "cambios",
+          "pendientes_catalogo",
+          "hallazgos",
+          "hay_plan",
+          "version_mas_nueva",
+          "guardado_como"
+        ],
+        "title": "ResumenHojaRespuesta"
+      },
       "ResumenRespuesta": {
         "properties": {
           "proyecto": {
@@ -14063,6 +14508,87 @@
           "moneda"
         ],
         "title": "VersionEntregable"
+      },
+      "VersionHojaRespuesta": {
+        "properties": {
+          "codigo": {
+            "type": "string",
+            "title": "Codigo"
+          },
+          "fecha": {
+            "type": "string",
+            "title": "Fecha"
+          },
+          "motivo": {
+            "type": "string",
+            "title": "Motivo"
+          },
+          "origen": {
+            "type": "string",
+            "title": "Origen"
+          },
+          "vigente": {
+            "type": "boolean",
+            "title": "Vigente"
+          },
+          "descartada": {
+            "type": "boolean",
+            "title": "Descartada"
+          },
+          "cambios": {
+            "type": "integer",
+            "title": "Cambios"
+          }
+        },
+        "type": "object",
+        "required": [
+          "codigo",
+          "fecha",
+          "motivo",
+          "origen",
+          "vigente",
+          "descartada",
+          "cambios"
+        ],
+        "title": "VersionHojaRespuesta"
+      },
+      "VersionesHojaRespuesta": {
+        "properties": {
+          "proyecto": {
+            "type": "string",
+            "title": "Proyecto"
+          },
+          "moneda": {
+            "type": "string",
+            "title": "Moneda"
+          },
+          "por_omision": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Por Omision"
+          },
+          "versiones": {
+            "items": {
+              "$ref": "#/components/schemas/VersionHojaRespuesta"
+            },
+            "type": "array",
+            "title": "Versiones"
+          }
+        },
+        "type": "object",
+        "required": [
+          "proyecto",
+          "moneda",
+          "por_omision",
+          "versiones"
+        ],
+        "title": "VersionesHojaRespuesta"
       },
       "VistaPreviaRespuesta": {
         "properties": {

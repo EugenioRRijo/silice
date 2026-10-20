@@ -26,6 +26,7 @@ from api.rutas import (
     control,
     cuentas,
     entregas,
+    hoja,
     indices,
     libros,
     listas,
@@ -116,6 +117,9 @@ app.include_router(admin_empresas_registradas.router)
 app.include_router(admin_asistente.router)
 # Migracion final (T7): «Revisar un paquete» (UC-23; REVISAR_PAQUETE con clave o sesion)
 app.include_router(revision.router)
+# Migracion final (T10 · 3b): «Hoja del proyecto»; lecturas con clave o sesion, borradores
+# solo con sesion
+app.include_router(hoja.router)
 interfaz.montar(app)
 # 1.4 (sesion 4 de la ruta): /v1/produccion, existencias de la arenera y bascula; clave o sesion
 # (Accion.OPERAR_ARENERA): la dependencia vive en el router, que la comparte con el `usuario`

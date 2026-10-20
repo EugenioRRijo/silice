@@ -215,6 +215,10 @@ TABLA = {
     ("GET", "/v1/produccion/pesajes-sospechosos"): OPERAR,
     ("POST", "/v1/produccion/pesajes-sospechosos/{id_sospechoso}/resolver"): OPERAR,
     ("POST", "/v1/produccion/pesajes-sospechosos/{id_sospechoso}/descartar"): OPERAR,
+    ("GET", "/v1/hoja/versiones"): EDITAR,  # T10 3b-1: Hoja del proyecto; clave o sesion
+    ("POST", "/v1/hoja/borradores"): EDITAR,  # ademas, solo con sesion (403 con clave)
+    ("GET", "/v1/hoja/borradores/{id}"): EDITAR,  # ademas, solo con sesion
+    ("DELETE", "/v1/hoja/borradores/{id}"): EDITAR,  # ademas, solo con sesion
 }
 #: Las de la puerta de entrada: la sesión misma (con su propia regla) y el ping.
 DE_LA_SESION = {

@@ -25,16 +25,25 @@ def sin_cache(response: Response) -> None:
 
 
 def _solo_cuenta(
-    base: Callable[[Request], SesionActiva | None], nombre: str
+    base: Callable[[Request], SesionActiva | None],
+    nombre: str,
+    mensaje: str = MENSAJE_SOLO_CUENTA,
 ) -> Callable[[Request], SesionActiva]:
     def dependencia(request: Request) -> SesionActiva:
         activa = base(request)
         if activa is None:
-            raise HTTPException(status_code=403, detail=MENSAJE_SOLO_CUENTA)
+            raise HTTPException(status_code=403, detail=mensaje)
         return activa
 
     dependencia.__name__ = nombre
     return dependencia
+
+
+def cuenta_con(accion: Accion, mensaje: str) -> Callable[[Request], SesionActiva]:
+    """Sesión con el rol de `accion` y la clave de API rechazada con 403 y `mensaje` (la hoja del
+    proyecto, T10: «se edita y se guarda con una cuenta»). `administrar` es el caso particular con
+    el mensaje de Administración."""
+    return _solo_cuenta(exigir_clave_o_sesion(accion), f"cuenta_con_{accion.value}", mensaje)
 
 
 def administrar(accion: Accion) -> Callable[[Request], SesionActiva]:

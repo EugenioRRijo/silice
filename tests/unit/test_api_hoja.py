@@ -38,6 +38,7 @@ from core.budget import crear_proyecto
 from core.catalog import Catalogo, abrir_sesion, crear_motor
 from core.verification.texto import normalizar_texto
 from operacion import config
+from operacion.base_datos import preparar_base
 from seguridad import sesiones
 from tests.fixtures import caso_of001, caso_ti001
 from tests.fixtures.claves_api import CABECERA, crear_clave_de_prueba
@@ -285,6 +286,7 @@ def test_r2_abre_of001_v001_con_el_total_de_la_memoria() -> None:
 
 def test_r2_sobre_ti001_no_tiene_espacio_y_no_escribe_versiones_ni_filas_esp(_casos) -> None:
     ruta = _poner(_casos["ti001"])
+    preparar_base(ruta)  # la primera peticion la migra; lo que se compara es lo que ESCRIBE abrir
     antes = _volcado(ruta)
     navegador, ficha = _ana()
     respuesta = _abrir(navegador, ficha, NOMBRE_TI001, caso_ti001.CODIGO)
@@ -303,6 +305,9 @@ def test_r2_crea_la_instantanea_si_falta_y_lo_informa_con_su_texto(_entorno: Pat
     with abrir_sesion(motor) as sesion:
         borrar_instantanea(sesion, NOMBRE_OF001)
     motor.dispose()
+    with closing(sqlite3.connect(_entorno)) as bd:  # una version de antes de la cadena: sin sello
+        bd.execute("DELETE FROM eslabon_version")
+        bd.commit()
     dependencias.cerrar_motores()
     assert _filas(_entorno, "composicion_version") == 0
     navegador, ficha = _ana()
@@ -320,7 +325,14 @@ def test_r2_crea_la_instantanea_si_falta_y_lo_informa_con_su_texto(_entorno: Pat
     with closing(sqlite3.connect(_entorno)) as bd:
         responsables = {r[0] for r in bd.execute("SELECT responsable FROM registro_cambio")}
     assert "Ana <ana>" in responsables and "sistema" not in responsables
-    # y la cadena queda integra sin haber guardado nada
+    # abrir no sella ni altera eslabones: una version vieja sigue sin sellar hasta su primer
+    # guardado (sellado retroactivo); el eslabon no se inventa al abrir
+    assert _filas(_entorno, "eslabon_version") == 0
+
+
+def test_r2_sobre_una_version_con_instantanea_deja_la_cadena_integra(_entorno: Path) -> None:
+    navegador, ficha = _ana()
+    assert _abrir(navegador, ficha).status_code == 201
     motor = crear_motor(f"sqlite:///{_entorno.as_posix()}")
     with abrir_sesion(motor) as sesion:
         estado = entrega.estado_de_la_cadena(sesion, NOMBRE_OF001)
@@ -569,6 +581,8 @@ def test_cambiar_de_caso_olvida_los_borradores_y_ninguna_base_recibe_filas(
 ) -> None:
     navegador, ficha = _ana()
     otro = _otro_caso(_casos["ti001"])
+    preparar_base(_entorno)
+    preparar_base(otro)
     id_ = _abrir(navegador, ficha).json()["id"]
     antes_a, antes_b = _volcado(_entorno), _volcado(otro)
     cambio = navegador.post(
@@ -588,6 +602,8 @@ def test_un_borrador_que_sobrevive_a_un_cambio_de_caso_da_409_fijo_y_no_toca_nin
     """Defensa en profundidad: si el caso de la ficha difiere del de apertura, R3 y R4 dan 409."""
     navegador, ficha = _ana()
     otro = _otro_caso(_casos["ti001"])
+    preparar_base(_entorno)
+    preparar_base(otro)
     id_ = _abrir(navegador, ficha).json()["id"]
     antes_a, antes_b = _volcado(_entorno), _volcado(otro)
     caso_web._elegidos[_huella(ficha)] = otro.resolve()  # el cambio sin pasar por `fijar`

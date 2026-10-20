@@ -306,6 +306,14 @@ LLAMADORES = {
     ("core/budget/decision.py", "guardar_edicion"),
     ("ui/hoja.py", "convertir_version"),
     ("aplicacion/control.py", "aplicar_decision"),
+    # T10 (hoja en la interfaz nueva, Plan C): la copia de `ui/hoja.py` llama lo mismo que ella
+    ("aplicacion/hoja.py", "guardar_edicion"),
+    ("aplicacion/hoja.py", "guardar_presupuesto"),
+    ("aplicacion/hoja.py", "restaurar_version"),
+    ("aplicacion/hoja.py", "cotizar_insumo"),
+    ("aplicacion/hoja.py", "_retirar_cotizacion"),
+    ("aplicacion/hoja.py", "convertir_version"),
+    ("api/rutas/hoja.py", "abrir_version"),  # R2: responsable = la persona de la sesion
     ("scripts/generar_obra_control.py", "guardar_presupuesto"),
 }
 

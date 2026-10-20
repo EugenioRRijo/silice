@@ -30,9 +30,10 @@ from __future__ import annotations
 
 import pickle
 import secrets
+import sys
 import threading
-from collections.abc import Callable
-from dataclasses import dataclass, field
+from collections.abc import Callable, Mapping
+from dataclasses import dataclass, field, fields, is_dataclass
 from datetime import datetime, timedelta
 from typing import Any
 
@@ -52,8 +53,28 @@ class RevDesactualizado(Exception):  # noqa: N818
     """Quien escribe vio un `rev` que ya no es el del borrador (otra ventana lo cambio)."""
 
 
+def _recorrido(objeto: Any, visto: set[int]) -> int:
+    """Suma `sys.getsizeof` de lo que cuelga de `objeto` (cada objeto una vez)."""
+    if id(objeto) in visto:
+        return 0
+    visto.add(id(objeto))
+    total = sys.getsizeof(objeto)
+    if isinstance(objeto, Mapping):
+        total += sum(_recorrido(k, visto) + _recorrido(v, visto) for k, v in objeto.items())
+    elif isinstance(objeto, list | tuple | set | frozenset):
+        total += sum(_recorrido(v, visto) for v in objeto)
+    elif is_dataclass(objeto) and not isinstance(objeto, type):
+        total += sum(_recorrido(getattr(objeto, f.name), visto) for f in fields(objeto))
+    return total
+
+
 def _tamano_estimado(borrador: Borrador) -> int:
-    return len(pickle.dumps(borrador))
+    """`len(pickle.dumps(borrador))`; si algo del borrador no se serializa (TI-001 trae un
+    `mappingproxy`), una estimacion por recorrido de objetos."""
+    try:
+        return len(pickle.dumps(borrador))
+    except (TypeError, pickle.PicklingError, AttributeError):
+        return _recorrido(borrador, set())
 
 
 @dataclass(eq=False)
