@@ -248,14 +248,30 @@ describe("Asistente de IA", () => {
     expect(screen.getByText("Clave registrada: ninguna")).toBeInTheDocument();
   });
 
-  test("sin el componente de IA lo dice y no ofrece la sección de la clave", async () => {
-    const falta =
-      "Falta el componente del asistente de IA en este equipo. Instálelo con «uv sync --extra ia» y vuelva a abrir Sílice.";
-    fetchFalso.mockResolvedValueOnce(json({ ...FABRICA, falta_el_componente: falta }));
+  // VB-18: el aviso es para quien administra, no para quien desarrolla: sin comandos de consola.
+  test("sin el componente de IA lo dice en lenguaje llano y no ofrece la sección de la clave", async () => {
+    fetchFalso.mockResolvedValueOnce(
+      json({
+        ...FABRICA,
+        falta_el_componente:
+          "Falta el componente del asistente de IA en este equipo. Instálelo con «uv sync --extra ia» y vuelva a abrir Sílice.",
+      }),
+    );
     montar();
-    expect(await screen.findByText(falta)).toBeInTheDocument();
+    expect(await screen.findByText(/Falta un componente opcional del asistente de IA/)).toHaveTextContent(
+      "Pídalo a quien instaló Sílice",
+    );
+    expect(document.body.textContent).not.toMatch(/uv sync|--extra/);
     expect(screen.getByLabelText("Activar el asistente de IA (viene apagado)")).toBeInTheDocument();
     expect(screen.queryByLabelText("Clave de IA de la empresa")).toBeNull();
+  });
+
+  test("la pestaña no deja regiones role=alert vacías", async () => {
+    fetchFalso.mockResolvedValueOnce(json(FABRICA));
+    montar();
+    await screen.findByLabelText("Modelo de Claude");
+    const vacias = screen.queryAllByRole("alert").filter((a) => (a.textContent ?? "").trim() === "");
+    expect(vacias).toHaveLength(0);
   });
 
   test("una sesión vencida avisa al marco", async () => {

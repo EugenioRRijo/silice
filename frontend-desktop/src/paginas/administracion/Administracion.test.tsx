@@ -489,3 +489,35 @@ describe("Administracion: Cuentas y Accesos", () => {
     });
   });
 });
+
+// VB-23: el campo de texto sobre la capa blanca de la pestaña lleva el token de campo de la capa (`$field-02`): el
+// contenido de la pestaña va dentro de un <Layer> de Carbon, que sube un nivel de capa.
+describe("Administracion: capa de los campos", () => {
+  const fetchFalso = vi.fn<typeof fetch>();
+  beforeEach(() => {
+    vi.stubGlobal("fetch", fetchFalso);
+    fetchFalso.mockReset();
+    fijarCsrf("tok");
+    fetchFalso.mockImplementation(async (entrada) => {
+      const ruta = String(entrada);
+      if (ruta === "/v1/admin/cuentas") return json({ cuentas: [], roles: [], aviso_de_roles: null });
+      return json({ detalle: "No encontrado." }, 404);
+    });
+  });
+  afterEach(() => {
+    fijarCsrf(null);
+    vi.unstubAllGlobals();
+  });
+
+  test("el contenido de la pestaña activa está dentro de una capa de nivel dos", async () => {
+    const valor: Aplicacion = { sesion: SESION, proyecto: null, caso: null, recargarProyectos: vi.fn(), alExpirar: vi.fn() };
+    render(
+      <ContextoAplicacion.Provider value={valor}>
+        <PaginaAdministracion />
+      </ContextoAplicacion.Provider>,
+    );
+    const panel = await screen.findByRole("tabpanel");
+    await waitFor(() => expect(panel.querySelector(".cds--layer-two")).not.toBeNull());
+  });
+});
+
