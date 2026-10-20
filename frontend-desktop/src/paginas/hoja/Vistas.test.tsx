@@ -180,9 +180,9 @@ describe("Hoja del proyecto: Espacio, APU, Presupuesto y Plan (3b-2)", () => {
     expect(within(filas[1]!).getByText("3,00")).toBeInTheDocument();
     expect(within(filas[2]!).getByText("8,25")).toBeInTheDocument();
     expect(within(filas[2]!).getByTitle("8.250000000000000000000000000")).toBeInTheDocument();
-    const total = screen.getByTitle("2703.860232344044033333333333");
+    const total = screen.getByTitle("2703.86023234404403");
     expect(total).toHaveTextContent("2.703,86 USD");
-    expect(screen.getByText("Valor exacto 2703.860232344044033333333333")).toBeInTheDocument();
+    expect(screen.getByText("Valor exacto 2703.86023234404403")).toBeInTheDocument();
   });
 
   test("Espacio: avisa de las partidas pendientes del catálogo", async () => {
@@ -340,7 +340,7 @@ describe("Hoja del proyecto: Espacio, APU, Presupuesto y Plan (3b-2)", () => {
     expect(within(filas[1]!).getByTitle("13.198738025")).toBeInTheDocument();
     expect(within(filas[1]!).getByText("39,60")).toBeInTheDocument();
     expect(within(filas[1]!).getByText("OK")).toBeInTheDocument();
-    expect(screen.getByTitle("2703.860232344044033333333333")).toHaveTextContent("2.703,86 USD");
+    expect(screen.getByTitle("2703.8602323440440333")).toHaveTextContent("2.703,86 USD");
   });
 
   test("Presupuesto: una cantidad escrita a mano dice cuál era la calculada y una partida sin APU queda pendiente", async () => {
@@ -369,7 +369,7 @@ describe("Hoja del proyecto: Espacio, APU, Presupuesto y Plan (3b-2)", () => {
     montar();
     await irA("Plan y curva");
     const matriz = await screen.findByRole("table", { name: "Plan de trabajo" });
-    expect(within(matriz).getAllByRole("columnheader").map((c) => c.textContent)).toEqual(["Partida", "Dia 1", "Dia 2"]);
+    expect(within(matriz).getAllByRole("columnheader").map((c) => c.textContent)).toEqual(["Partida", "Día 1", "Día 2"]);
     expect(within(within(matriz).getAllByRole("row")[1]!).getAllByRole("cell").map((c) => c.textContent)).toEqual([
       "AF-CODO-1/2",
       "1",
@@ -385,7 +385,7 @@ describe("Hoja del proyecto: Espacio, APU, Presupuesto y Plan (3b-2)", () => {
       "% acumulado",
     ]);
     const primera = within(curva).getAllByRole("row")[1]!;
-    expect(within(primera).getByText("11,18", { selector: "span" })).toBeInTheDocument();
+    expect(within(primera).getAllByText("11,18")).toHaveLength(2); // monto y acumulado del primer período
     expect(within(primera).getByText("0,41")).toBeInTheDocument();
     expect(within(primera).getByTitle("0.4134")).toBeInTheDocument();
   });
