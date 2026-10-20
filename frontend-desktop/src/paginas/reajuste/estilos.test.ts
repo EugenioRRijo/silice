@@ -17,4 +17,18 @@ describe("Reajuste: anillo de foco de Carbon en lo que recibe el foco tras calcu
     const regla = fuente.slice(i, fuente.indexOf("}", i));
     expect(regla).toMatch(/outline:\s*2px solid var\(--cds-focus\)/);
   });
+
+  // Ronda 2: la pagina (la ventana) se desplaza bajo la cabecera fija del marco (3rem = 48 px, `position: fixed`).
+  // `scrollIntoView({ block: "start" })` dejaba el titulo enfocado en y=0, tapado (WCAG 2.4.11). El margen de
+  // desplazamiento tiene que cubrir la cabecera mas el anillo (2 px de borde y 2 px de separacion): al menos 52 px.
+  test("lo que recibe el foco se detiene bajo la cabecera fija con su anillo: scroll-margin-block-start >= 52 px", () => {
+    const i = fuente.indexOf(".silice-reajuste__enfocable {");
+    expect(i).toBeGreaterThanOrEqual(0);
+    const regla = fuente.slice(i, fuente.indexOf("}", i));
+    const valor = /scroll-margin-block-start:\s*([^;]+);/.exec(regla)?.[1] ?? "";
+    // solo sumas de rem y px (16 px por rem)
+    expect(valor).toMatch(/^(calc\()?[\d.]+(rem|px)(\s*\+\s*[\d.]+(rem|px))*\)?$/);
+    const px = [...valor.matchAll(/([\d.]+)(rem|px)/g)].reduce((s, m) => s + Number(m[1]) * (m[2] === "rem" ? 16 : 1), 0);
+    expect(px).toBeGreaterThanOrEqual(52);
+  });
 });

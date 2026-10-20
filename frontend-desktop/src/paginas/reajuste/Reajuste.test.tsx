@@ -317,6 +317,27 @@ describe("Reajuste de precios", () => {
     const titulo = await screen.findByRole("heading", { name: "Escalatoria y comprobación, lado a lado" });
     await waitFor(() => expect(alVer).toHaveBeenCalledWith({ block: "start", behavior: "instant" }));
     expect(alVer.mock.contexts.at(-1)).toBe(titulo);
+    // ronda 2: «start» se detiene en su scroll-margin, que deja libre la cabecera fija (estilos.test.ts; medido en
+    // navegador a 1366 y 1056 en el informe): el titulo lleva esa clase y no queda tapado.
+    expect(titulo).toHaveClass("silice-reajuste__enfocable");
+    expect(titulo).toHaveFocus();
+  });
+
+  test("tras un error, la zona del aviso se lleva a la vista igual, bajo la cabecera fija (ronda 2)", async () => {
+    const alVer = vi.fn();
+    Element.prototype.scrollIntoView = alVer;
+    calcular = () => json({ detalle: "Escriba «Inicio del contrato»: es obligatorio." }, 422);
+    const u = userEvent.setup();
+    const { container } = montar();
+    await screen.findByLabelText("Versión del contrato");
+    await irA(u, "2. Períodos y lo ejecutado");
+    await u.click(screen.getByRole("button", { name: "Calcular" }));
+    await alertaConTexto();
+    const zona = container.querySelector(".silice-reajuste__zona-error");
+    await waitFor(() => expect(zona).toHaveFocus());
+    expect(zona).toHaveClass("silice-reajuste__enfocable");
+    expect(alVer).toHaveBeenCalledWith({ block: "start", behavior: "instant" });
+    expect(alVer.mock.contexts.at(-1)).toBe(zona);
   });
 
   test("la zona del aviso de error solo existe cuando hay un error: sin hueco vacío en la rejilla (ronda 1, punto 4)", async () => {
