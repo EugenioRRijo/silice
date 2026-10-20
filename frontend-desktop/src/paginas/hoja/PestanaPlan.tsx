@@ -224,7 +224,7 @@ function ContenidoPlan(props: PropsContenido) {
               disabled={creacion.envio === "enviando"}
               onClick={() => void creacion.accionar((r) => crearPlan(r, id))}
             >
-              Crear plan secuencial (una partida por periodo)
+              Crear plan secuencial (una partida por período)
             </Button>
           </div>
         </div>
