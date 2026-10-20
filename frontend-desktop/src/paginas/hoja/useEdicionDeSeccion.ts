@@ -52,7 +52,7 @@ interface Opciones<E, U> {
 // El motor de la edición de una sección (cantidades, parámetros, plan): guarda lo editable como texto, espera la pausa de
 // 400 ms tras la última tecla, manda con el `rev` que vio (una sola petición en vuelo; lo escrito entre tanto sale en
 // otra) y deja el error del servidor para mostrarlo. No guarda nada: solo edita el borrador del servidor. Es el mismo
-// comportamiento que `useEdicionDelEspacio` (3c-1) para un estado `E` cualquiera.
+// comportamiento de la edición del espacio (3c-1), que ya lo usa, para un estado `E` cualquiera.
 export function useEdicionDeSeccion<E, U>(opciones: Opciones<E, U>) {
   const [estado, setEstado] = useState<E>(opciones.inicial);
   const [envio, setEnvio] = useState<EnvioDeSeccion>("quieto");

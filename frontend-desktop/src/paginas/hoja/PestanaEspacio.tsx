@@ -1,14 +1,24 @@
-import { Button, InlineNotification } from "@carbon/react";
+import { Button } from "@carbon/react";
 import { useCallback, useId, useState } from "react";
+import { pedir } from "../../api/cliente";
+import { AvisoDeEdicion, AvisoDeEnvio } from "./AvisoDeEdicion";
 import { TablaPaginada } from "./TablaPaginada";
 import { TablaEditable } from "./TablaEditable";
 import type { IrA } from "./TablaEditable";
 import { Cifra } from "./Cifra";
 import { VistaCarga } from "./VistaCarga";
 import { useAplicacion } from "../../shell/contexto";
-import { rutaDeVista } from "./logica";
-import type { Resumen, VistaEspacio } from "./logica";
-import { useEdicionDelEspacio } from "./useEdicionDelEspacio";
+import {
+  FRASE_DE_RECHAZO,
+  cuerpoDeEdicionDelEspacio,
+  nuevaClaveDeFila,
+  rutaDeEspacio,
+  rutaDeVista,
+  sembrarTablas,
+  ubicarError,
+} from "./logica";
+import type { FilaEditable, Resumen, TablasEditables, UbicacionDeError, VistaEspacio } from "./logica";
+import { useEdicionDeSeccion } from "./useEdicionDeSeccion";
 
 interface Props {
   id: string;
@@ -31,7 +41,26 @@ function ContenidoEspacio({ id, rev, vista, alAusente, alAceptar, alRecargarBorr
   const { alExpirar } = useAplicacion();
   const idDelError = useId();
   const [irA, setIrA] = useState<(IrA & { tabla: string }) | null>(null);
-  const edicion = useEdicionDelEspacio({ id, vista, rev, alAceptar, alRelectura, alRecargarBorrador, alAusente, alExpirar });
+  const edicion = useEdicionDeSeccion<TablasEditables, UbicacionDeError>({
+    borrador: id,
+    inicial: sembrarTablas(vista.tablas, vista.filas, nuevaClaveDeFila),
+    rev,
+    peticion: (r, tablas) => ({ ruta: rutaDeEspacio(id), metodo: "PUT", cuerpo: cuerpoDeEdicionDelEspacio(r, vista.tablas, tablas) }),
+    ubicar: (detalle) => ubicarError(detalle, vista.tablas),
+    frase: FRASE_DE_RECHAZO,
+    leerFresca: async () => {
+      const fresca = await pedir<VistaEspacio>(rutaDeVista(id, "espacio"));
+      return sembrarTablas(fresca.tablas, fresca.filas, nuevaClaveDeFila);
+    },
+    alAceptar,
+    alRelectura,
+    alRecargarBorrador,
+    alAusente,
+    alExpirar,
+  });
+  const cambiarFilas = (tabla: string, filas: FilaEditable[]) => edicion.cambiar((previo) => ({ ...previo, [tabla]: filas }));
+  const valorAceptado = (tabla: string, filaClave: number, columna: string): string =>
+    edicion.aceptado()[tabla]?.find((f) => f.clave === filaClave)?.valores[columna] ?? "";
   const { error } = edicion;
   const ubicacion = error?.ubicacion ?? null;
   const rotuloDe = (clave: string) => vista.tablas.find((t) => t.clave === clave)?.rotulo ?? clave;
@@ -43,29 +72,9 @@ function ContenidoEspacio({ id, rev, vista, alAusente, alAceptar, alRecargarBorr
         Decimales con punto, por ejemplo 2.5: la coma no se acepta. Los cambios se aplican al borrador cuando deja de escribir; no se
         guardan como versión hasta que lo pida.
       </p>
-      <p className="cds--type-helper-text-01" aria-live="polite">
-        {edicion.envio === "quieto" ? "" : "Aplicando los cambios al borrador…"}
-      </p>
+      <AvisoDeEnvio envio={edicion.envio} />
       {error !== null && (
-        <div id={idDelError} className="silice-hoja__aviso-edicion">
-          <InlineNotification
-            kind={error.tipo === "conflicto" || error.tipo === "perdido" ? "warning" : "error"}
-            role="alert"
-            lowContrast
-            hideCloseButton
-            title={error.tipo === "conflicto" ? "El borrador cambió" : error.tipo === "perdido" ? "Este borrador ya no sirve" : "No se aplicó el cambio"}
-            subtitle={error.mensaje}
-          />
-          {error.tipo === "conflicto" && (
-            <Button kind="tertiary" size="sm" onClick={() => void edicion.recargar()}>
-              Recargar el borrador
-            </Button>
-          )}
-          {error.tipo === "perdido" && (
-            <Button kind="tertiary" size="sm" onClick={alReabrir}>
-              Abrir de nuevo
-            </Button>
-          )}
+        <AvisoDeEdicion error={error} id={idDelError} alRecargar={() => void edicion.recargar()} alReabrir={alReabrir}>
           {ubicacion !== null && (
             <Button
               kind="ghost"
@@ -75,19 +84,19 @@ function ContenidoEspacio({ id, rev, vista, alAusente, alAceptar, alRecargarBorr
               {`Ir a la fila ${ubicacion.fila} de ${rotuloDe(ubicacion.tabla)}`}
             </Button>
           )}
-        </div>
+        </AvisoDeEdicion>
       )}
       {vista.tablas.map((t) => (
         <TablaEditable
           key={t.clave}
           tabla={t}
-          filas={edicion.tablas[t.clave] ?? []}
+          filas={edicion.estado[t.clave] ?? []}
           estado={vista.estado}
           invalida={ubicacion !== null && ubicacion.tabla === t.clave ? { fila: ubicacion.fila, columna: ubicacion.columna } : null}
           idDelError={idDelError}
           irA={irA !== null && irA.tabla === t.clave ? irA : null}
-          alCambiarFilas={(filas) => edicion.cambiarFilas(t.clave, filas)}
-          valorAceptado={(filaClave, columna) => edicion.valorAceptado(t.clave, filaClave, columna)}
+          alCambiarFilas={(filas) => cambiarFilas(t.clave, filas)}
+          valorAceptado={(filaClave, columna) => valorAceptado(t.clave, filaClave, columna)}
         />
       ))}
       <section className="silice-hoja__seccion">
