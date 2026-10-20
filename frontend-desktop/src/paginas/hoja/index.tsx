@@ -110,7 +110,19 @@ function ContenidoDePestana({
     );
   }
   if (indice === 1) return <PestanaApu key={llave} id={borrador.id} moneda={moneda} alAusente={alAusente} />;
-  if (indice === 2) return <PestanaPresupuesto key={llave} id={borrador.id} alAusente={alAusente} />;
+  if (indice === 2) {
+    return (
+      <PestanaPresupuesto
+        key={borrador.id}
+        id={borrador.id}
+        rev={borrador.resumen.rev}
+        alAusente={alAusente}
+        alAceptar={alAceptar}
+        alRecargarBorrador={alRecargarBorrador}
+        alReabrir={alReabrir}
+      />
+    );
+  }
   if (indice === 3) return <PestanaPlan key={llave} id={borrador.id} alAusente={alAusente} />;
   if (indice === 4) return <PestanaEquilibrio key={llave} id={borrador.id} alAusente={alAusente} />;
   if (indice === 5) {
