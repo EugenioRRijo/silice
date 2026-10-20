@@ -306,6 +306,30 @@ describe("Reajuste de precios", () => {
     await waitFor(() => expect(titulo).toHaveFocus());
   });
 
+  test("tras calcular, el título del resultado se lleva a la vista sin animación (ronda 1, punto 4)", async () => {
+    const alVer = vi.fn();
+    Element.prototype.scrollIntoView = alVer;
+    const u = userEvent.setup();
+    montar();
+    await screen.findByLabelText("Versión del contrato");
+    await irA(u, "2. Períodos y lo ejecutado");
+    await u.click(screen.getByRole("button", { name: "Calcular" }));
+    const titulo = await screen.findByRole("heading", { name: "Escalatoria y comprobación, lado a lado" });
+    await waitFor(() => expect(alVer).toHaveBeenCalledWith({ block: "start", behavior: "instant" }));
+    expect(alVer.mock.contexts.at(-1)).toBe(titulo);
+  });
+
+  test("la zona del aviso de error solo existe cuando hay un error: sin hueco vacío en la rejilla (ronda 1, punto 4)", async () => {
+    const u = userEvent.setup();
+    const { container } = montar();
+    await screen.findByLabelText("Versión del contrato");
+    expect(container.querySelector(".silice-reajuste__zona-error")).toBeNull();
+    await irA(u, "2. Períodos y lo ejecutado");
+    await u.click(screen.getByRole("button", { name: "Calcular" }));
+    await screen.findByRole("table", { name: "Escalatoria y comprobación, lado a lado" });
+    expect(container.querySelector(".silice-reajuste__zona-error")).toBeNull();
+  });
+
   test("tras calcular con un dato malo, el foco va al aviso de error (VB-13)", async () => {
     calcular = () => json({ detalle: "Escriba «Inicio del contrato»: es obligatorio." }, 422);
     const u = userEvent.setup();
