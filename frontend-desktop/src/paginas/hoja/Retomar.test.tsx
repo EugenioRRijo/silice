@@ -419,6 +419,29 @@ describe("Hoja del proyecto: retomar el borrador y cambiar de versión (3c-3)", 
     expect(within(estado()).getByText(/· 2 cambios sin guardar/)).toBeInTheDocument();
   });
 
+  test.each([
+    ["Seguir editando", async () => fireEvent.click(await screen.findByRole("button", { name: "Seguir editando" }))],
+    ["Esc", async () => userEvent.keyboard("{Escape}")],
+    ["Descartar y abrir", async () => fireEvent.click(await screen.findByRole("button", { name: "Descartar y abrir" }))],
+  ])("el foco vuelve al selector DESPUÉS de quitar el inert (%s): un navegador real no enfoca dentro de un subárbol inert", async (_n, cerrar) => {
+    await abrirConCambios(2);
+    elegirVersion("001");
+    await screen.findByRole("alertdialog");
+    const enfocados: Array<{ id: string; inerte: boolean }> = [];
+    const original = HTMLElement.prototype.focus;
+    HTMLElement.prototype.focus = function (this: HTMLElement, ...args: Parameters<HTMLElement["focus"]>) {
+      if (this.id === "hoja-version") enfocados.push({ id: this.id, inerte: this.closest("[inert]") !== null });
+      return original.apply(this, args);
+    };
+    try {
+      await cerrar();
+      await esperar(() => expect(enfocados.length).toBeGreaterThan(0));
+      expect(enfocados.every((e) => !e.inerte)).toBe(true);
+    } finally {
+      HTMLElement.prototype.focus = original;
+    }
+  });
+
   test("Esc equivale a «Seguir editando»", async () => {
     await abrirConCambios(2);
     elegirVersion("001");

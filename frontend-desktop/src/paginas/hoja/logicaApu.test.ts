@@ -117,6 +117,10 @@ describe("el Estado de la partida", () => {
     expect(textoDeEstado("Estado de AF-LLAVE|esp_puntos:P1: ADVERTENCIA: a; b | ERROR: c")).toBe("ADVERTENCIA: a; b | ERROR: c");
   });
 
+  test("también quita el prefijo cuando el estado es «OK | …» (partida propuesta por la IA)", () => {
+    expect(textoDeEstado("Estado de AF-LLAVE|esp_puntos:P1: OK | Propuesta de IA (sesion x)")).toBe("OK | Propuesta de IA (sesion x)");
+  });
+
   test("un texto que no trae el prefijo queda igual", () => {
     expect(textoDeEstado("ERROR: algo")).toBe("ERROR: algo");
   });

@@ -537,13 +537,21 @@ describe("Hoja del proyecto: APU editable y cambio de insumo (3c-3)", () => {
     await screen.findByRole("option", { name: /MAT-010/ });
     relojFalso();
     candidatos = () => ({ insumos: [], hay_mas: false });
-    fireEvent.change(screen.getByRole("textbox", { name: "Buscar insumo (código o descripción)" }), { target: { value: " zzz " } });
+    fireEvent.change(screen.getByRole("textbox", { name: "Buscar insumo (por descripción)" }), { target: { value: " zzz " } });
     await pausa(299);
     expect(urlsDeInsumos()).toHaveLength(1);
     await pausa(1);
     await esperar(() => expect(urlsDeInsumos().at(-1)).toBe(`/v1/hoja/borradores/${ID}/insumos?tipo=material&texto=zzz&limite=301`));
     expect(await esperar(() => screen.getByText("Ningún insumo de la lista coincide: pruebe con otra palabra."))).toBeInTheDocument();
     expect(screen.queryByRole("combobox", { name: "Insumo" })).toBeNull();
+  });
+
+  test("la etiqueta de la búsqueda promete solo lo que E8 hace: filtrar por descripción, no por código", async () => {
+    await irAApu();
+    await abrirInsumo();
+    await screen.findByRole("option", { name: /MAT-010/ });
+    expect(screen.getByRole("textbox", { name: "Buscar insumo (por descripción)" })).toBeInTheDocument();
+    expect(screen.queryByText(/código o descripción/i)).toBeNull();
   });
 
   test("con más de 300 candidatos se muestran 300 y se pide acotar por descripción (como la clásica)", async () => {
