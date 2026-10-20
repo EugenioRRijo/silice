@@ -98,29 +98,29 @@ export default function PaginaInicio() {
       {puedeVerArenera && <PanelArenera carga={arenera} />}
 
       {puedeAuditar && (
-      <section className="silice-inicio__bloque" aria-labelledby="inicio-seguir">
-        <h2 id="inicio-seguir" className="cds--type-heading-compact-02">
-          Últimas auditorías guardadas
-        </h2>
-        <p className="silice-inicio__nota cds--type-body-compact-01">
-          {`Caso abierto: ${caso?.nombre ?? "ninguno"}`}
-          {proyecto ? ` · Proyecto: ${nombreProyecto ?? proyecto}` : ""}
-        </p>
-        {recorrido && (
+        <section className="silice-inicio__bloque" aria-labelledby="inicio-seguir">
+          <h2 id="inicio-seguir" className="cds--type-heading-compact-02">
+            Últimas auditorías guardadas
+          </h2>
           <p className="silice-inicio__nota cds--type-body-compact-01">
-            {`Recorrido en curso: ${recorrido.titulo}.`}
-            {siguiente && paginaSiguiente && puedeSeguir && (
-              <>
-                {" "}
-                <Link className="cds--link" to={rutaDe(paginaSiguiente)}>
-                  {`Seguir con el paso ${(posicion ?? 0) + 2}: ${siguiente.titulo}`}
-                </Link>
-              </>
-            )}
+            {`Caso abierto: ${caso?.nombre ?? "ninguno"}`}
+            {proyecto ? ` · Proyecto: ${nombreProyecto ?? proyecto}` : ""}
           </p>
-        )}
-        <UltimasAuditorias carga={auditorias} />
-      </section>
+          {recorrido && (
+            <p className="silice-inicio__nota cds--type-body-compact-01">
+              {`Recorrido en curso: ${recorrido.titulo}.`}
+              {siguiente && paginaSiguiente && puedeSeguir && (
+                <>
+                  {" "}
+                  <Link className="cds--link" to={rutaDe(paginaSiguiente)}>
+                    {`Seguir con el paso ${(posicion ?? 0) + 2}: ${siguiente.titulo}`}
+                  </Link>
+                </>
+              )}
+            </p>
+          )}
+          <UltimasAuditorias carga={auditorias} />
+        </section>
       )}
     </div>
   );
