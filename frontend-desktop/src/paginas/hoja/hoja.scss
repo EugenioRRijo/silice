@@ -110,3 +110,14 @@
     font-variant-numeric: tabular-nums;
   }
 }
+
+.silice-hoja__filtro {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+
+  &:focus-visible {
+    outline: 2px solid var(--cds-focus, #0f62fe);
+    outline-offset: 2px;
+  }
+}

@@ -17,7 +17,10 @@ import {
   versionesOfrecidas,
 } from "./logica";
 import type { BorradorAbierto, VersionesRespuesta } from "./logica";
+import { ContextoAuditoria } from "./ContextoAuditoria";
+import type { FiltroDeAuditoria } from "./ContextoAuditoria";
 import { PestanaApu } from "./PestanaApu";
+import { PestanaAuditoria } from "./PestanaAuditoria";
 import { PestanaEquilibrio } from "./PestanaEquilibrio";
 import { PestanaEspacio } from "./PestanaEspacio";
 import { PestanaParametros } from "./PestanaParametros";
@@ -51,11 +54,15 @@ function ContenidoDePestana({
   nombre,
   borrador,
   alAusente,
+  filtro,
+  alQuitarFiltro,
 }: {
   indice: number;
   nombre: string;
   borrador: BorradorAbierto | null;
   alAusente: () => void;
+  filtro: FiltroDeAuditoria | null;
+  alQuitarFiltro: () => void;
 }) {
   if (borrador === null) return null;
   const llave = `${borrador.id}-${borrador.resumen.rev}`;
@@ -66,6 +73,9 @@ function ContenidoDePestana({
   if (indice === 3) return <PestanaPlan key={llave} id={borrador.id} alAusente={alAusente} />;
   if (indice === 4) return <PestanaEquilibrio key={llave} id={borrador.id} moneda={moneda} alAusente={alAusente} />;
   if (indice === 6) return <PestanaParametros key={llave} id={borrador.id} moneda={moneda} alAusente={alAusente} />;
+  if (indice === 7) {
+    return <PestanaAuditoria key={llave} id={borrador.id} alAusente={alAusente} filtro={filtro} alQuitarFiltro={alQuitarFiltro} />;
+  }
   return <p className="cds--type-body-compact-01">La sección «{nombre}» llega en la siguiente entrega.</p>;
 }
 
@@ -82,6 +92,12 @@ function HojaDeProyecto({ proyecto }: { proyecto: string }) {
 
   const { estado, refrescar, reabrir } = useBorrador(proyecto, codigo, alExpirar);
   const [pestana, setPestana] = useState(0);
+  // «Ver en Auditoría» desde el Estado de una fila: va a esa pestaña con el filtro de la fila.
+  const [filtro, setFiltro] = useState<FiltroDeAuditoria | null>(null);
+  const verEnAuditoria = (f: FiltroDeAuditoria) => {
+    setFiltro(f);
+    setPestana(PESTANAS.indexOf("Auditoría"));
+  };
 
   useEffect(() => {
     const alVolver = () => {
@@ -138,27 +154,37 @@ function HojaDeProyecto({ proyecto }: { proyecto: string }) {
         </>
       )}
 
-      <Tabs selectedIndex={pestana} onChange={({ selectedIndex }) => setPestana(selectedIndex)}>
-        <TabList aria-label="Secciones de la hoja">
-          {PESTANAS.map((p) => (
-            <Tab key={p}>{p}</Tab>
-          ))}
-        </TabList>
-        <TabPanels>
-          {PESTANAS.map((p, i) => (
-            <TabPanel key={p}>
-              {i === pestana && (
-                <ContenidoDePestana
-                  indice={i}
-                  nombre={p}
-                  borrador={estado.estado === "listo" ? estado.borrador : null}
-                  alAusente={refrescar}
-                />
-              )}
-            </TabPanel>
-          ))}
-        </TabPanels>
-      </Tabs>
+      <ContextoAuditoria.Provider value={verEnAuditoria}>
+        <Tabs
+          selectedIndex={pestana}
+          onChange={({ selectedIndex }) => {
+            setFiltro(null);
+            setPestana(selectedIndex);
+          }}
+        >
+          <TabList aria-label="Secciones de la hoja">
+            {PESTANAS.map((p) => (
+              <Tab key={p}>{p}</Tab>
+            ))}
+          </TabList>
+          <TabPanels>
+            {PESTANAS.map((p, i) => (
+              <TabPanel key={p}>
+                {i === pestana && (
+                  <ContenidoDePestana
+                    indice={i}
+                    nombre={p}
+                    borrador={estado.estado === "listo" ? estado.borrador : null}
+                    alAusente={refrescar}
+                    filtro={filtro}
+                    alQuitarFiltro={() => setFiltro(null)}
+                  />
+                )}
+              </TabPanel>
+            ))}
+          </TabPanels>
+        </Tabs>
+      </ContextoAuditoria.Provider>
       {/* Punto de acoplamiento del asistente de IA (diseño §2.10): vacío y oculto hasta que exista. */}
       <aside aria-label="Asistente de IA" hidden />
     </>

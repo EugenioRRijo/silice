@@ -3,7 +3,7 @@ import type { ColumnaDensa } from "../../comun/TablaDensa";
 import { Cifra } from "./Cifra";
 import { EstadoDeFila } from "./EstadoDeFila";
 import { VistaCarga } from "./VistaCarga";
-import { filasDeTabla, rutaDeVista, textoDeFilas } from "./logica";
+import { filasDeTabla, rotuloDeOrigen, rutaDeVista, textoDeFilas } from "./logica";
 import type { TablaEspacio, VistaEspacio } from "./logica";
 
 interface Props {
@@ -20,7 +20,11 @@ function TablaDelEspacio({ tabla, vista }: { tabla: TablaEspacio; vista: VistaEs
       titulo: "Estado",
       ordenable: false,
       celda: (f) => (
-        <EstadoDeFila estado={{ severidad: f.estado_severidad === "" ? null : f.estado_severidad!, texto: f.estado_texto! }} />
+        <EstadoDeFila
+          estado={{ severidad: f.estado_severidad === "" ? null : f.estado_severidad!, texto: f.estado_texto! }}
+          claves={f.estado_origen ? [f.estado_origen] : undefined}
+          rotulo={f.estado_origen ? rotuloDeOrigen(f.estado_origen) : undefined}
+        />
       ),
     });
   }

@@ -261,6 +261,7 @@ export function filasDeTabla(
     const e = prefijo ? estado[`${prefijo}:${fila.id ?? ""}`] : undefined;
     salida.estado_severidad = e?.severidad ?? "";
     salida.estado_texto = e?.texto ?? "";
+    salida.estado_origen = prefijo && fila.id ? `${prefijo}:${fila.id}` : "";
     return salida;
   });
 }

@@ -3,7 +3,7 @@ import { Cifra } from "./Cifra";
 import { EstadoDeFila } from "./EstadoDeFila";
 import { TablaPaginada } from "./TablaPaginada";
 import { VistaCarga } from "./VistaCarga";
-import { rutaDeVista } from "./logica";
+import { clavesDeAuditoria, rotuloDeOrigen, rutaDeVista } from "./logica";
 import type { VistaPresupuesto } from "./logica";
 
 interface Props {
@@ -51,12 +51,15 @@ function ContenidoPresupuesto({ vista }: { vista: VistaPresupuesto }) {
             celda: (f) => (
               <EstadoDeFila
                 estado={{ severidad: f.estado_severidad === "" ? null : f.estado_severidad!, texto: f.estado_texto! }}
+                claves={clavesDeAuditoria(f.clave!)}
+                rotulo={rotuloDeOrigen(f.clave!)}
               />
             ),
           },
         ]}
         filas={vista.filas.map((f, i) => ({
           id: `renglon-${i}`,
+          clave: f.clave,
           partida: f.partida,
           descripcion: f.descripcion,
           unidad: f.unidad,
