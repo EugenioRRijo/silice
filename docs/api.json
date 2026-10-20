@@ -5865,6 +5865,62 @@
         }
       }
     },
+    "/v1/hoja/precios/atipicos": {
+      "get": {
+        "tags": [
+          "hoja"
+        ],
+        "summary": "Precios Atipicos",
+        "description": "R13: «Buscar variaciones atípicas de precio» (RF-100) sobre los insumos de una versión\nguardada, como el botón de la pestaña Precios. Solo lee: nada se guarda ni se bloquea. Sin el\nextra `ml` responde `disponible: false` y lo dice. Clave de API o sesión con `EDITAR_HOJA`.",
+        "operationId": "precios_atipicos_v1_hoja_precios_atipicos_get",
+        "parameters": [
+          {
+            "name": "proyecto",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500,
+              "title": "Proyecto"
+            }
+          },
+          {
+            "name": "version",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500,
+              "title": "Version"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AtipicosRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/produccion/materiales": {
       "get": {
         "tags": [

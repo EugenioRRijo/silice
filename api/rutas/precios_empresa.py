@@ -28,7 +28,7 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from datetime import date
 from pathlib import Path
-from typing import Annotated, Literal
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from pydantic import BaseModel
@@ -37,6 +37,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from api.admin_acceso import administrar
 from api.archivos import guardar_subida, nombre_seguro
 from api.dependencias import SesionDep
+from api.esquemas_atipicos import AtipicosRespuesta, atipicos_a_respuesta
 from api.rutas.listas import comprobar_libro_legible
 from api.sesion_web import exigir_clave_o_sesion
 from api.sin_eco import RutaSinEco, sin_eco
@@ -102,35 +103,6 @@ class HallazgosRespuesta(BaseModel):
     columnas: list[str]
     filas: list[dict[str, str]]
     nota: str
-
-
-class AvisoAtipicos(BaseModel):
-    """Un aviso de la busqueda, con el nivel de la pagina clasica (`info` o `success`)."""
-
-    nivel: Literal["info", "success"]
-    texto: str
-
-
-class VariacionAtipicaRespuesta(BaseModel):
-    """Un hallazgo de RF-100: `porcentaje` es la variacion en por ciento con dos decimales, como
-    texto (la de la descripcion), y `porcentaje_exacto` la misma sin redondear (el exacto a la
-    vista); `desde` y `hasta`, las fechas de los dos precios."""
-
-    insumo: str
-    porcentaje: str
-    porcentaje_exacto: str
-    desde: date
-    hasta: date
-    severidad: str
-    descripcion: str
-
-
-class AtipicosRespuesta(BaseModel):
-    """`disponible` es falso sin el extra `ml`: no se busco nada y un aviso lo dice."""
-
-    disponible: bool
-    avisos: list[AvisoAtipicos]
-    variaciones: list[VariacionAtipicaRespuesta]
 
 
 @contextmanager
@@ -263,22 +235,4 @@ def atipicos(lista_id: int, sesion: SesionDep) -> AtipicosRespuesta:
         busqueda = busqueda_atipica.atipicos_de_insumos(
             sesion, busqueda_atipica.codigos_de_la_lista(sesion, lista_id)
         )
-    return AtipicosRespuesta(
-        disponible=busqueda is not None,
-        avisos=[
-            AvisoAtipicos(nivel=nivel, texto=texto)
-            for nivel, texto in busqueda_atipica.avisos_generales(busqueda)
-        ],
-        variaciones=[
-            VariacionAtipicaRespuesta(
-                insumo=v.insumo,
-                porcentaje=v.porcentaje,
-                porcentaje_exacto=v.porcentaje_exacto,
-                desde=v.desde,
-                hasta=v.hasta,
-                severidad=v.severidad.name,
-                descripcion=v.descripcion,
-            )
-            for v in busqueda_atipica.variaciones_atipicas(busqueda)
-        ],
-    )
+    return atipicos_a_respuesta(busqueda)

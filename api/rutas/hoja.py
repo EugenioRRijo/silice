@@ -31,6 +31,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from api.admin_acceso import cuenta_con
 from api.dependencias import SesionDep, url_de_la_peticion
+from api.esquemas_atipicos import AtipicosRespuesta, atipicos_a_respuesta
 from api.esquemas_hoja import (
     BorradorAbierto,
     BorradorHojaRespuesta,
@@ -61,6 +62,7 @@ from api.esquemas_informe import InformeAuditoriaRespuesta, informe_a_respuesta
 from api.sesion_web import exigir_clave_o_sesion
 from api.sin_cache import RutaSinCache
 from api.sin_eco import RutaSinEco
+from aplicacion import atipicos as busqueda_atipica
 from aplicacion import hoja, hoja_borradores, hoja_vista
 from aplicacion.entrega import con_anexos_de_cadena
 from aplicacion.errores import HojaInvalida
@@ -350,3 +352,23 @@ def precios(
     except SQLAlchemyError:
         raise HTTPException(status_code=503, detail=MENSAJE_BASE) from None
     return precios_a_respuesta(hoja_vista.vista_precios(filas, lista.moneda, hoy))
+
+
+@router.get("/precios/atipicos", response_model=AtipicosRespuesta, dependencies=[LEER])
+def precios_atipicos(
+    sesion: SesionDep,
+    proyecto: Annotated[str, Query(min_length=1, max_length=500)],
+    version: Annotated[str, Query(min_length=1, max_length=500)],
+) -> AtipicosRespuesta:
+    """R13: «Buscar variaciones atípicas de precio» (RF-100) sobre los insumos de una versión
+    guardada, como el botón de la pestaña Precios. Solo lee: nada se guarda ni se bloquea. Sin el
+    extra `ml` responde `disponible: false` y lo dice. Clave de API o sesión con `EDITAR_HOJA`."""
+    try:
+        nombre, _ = _version_guardada(sesion, proyecto, version)
+        precios_de_la_version = hoja.precios_de_version(sesion, nombre, version)
+        busqueda = busqueda_atipica.atipicos_de_insumos(
+            sesion, [p.codigo for p in precios_de_la_version]
+        )
+    except SQLAlchemyError:
+        raise HTTPException(status_code=503, detail=MENSAJE_BASE) from None
+    return atipicos_a_respuesta(busqueda)
