@@ -808,7 +808,7 @@ describe("Hoja del proyecto: cantidades, parámetros y plan editables (3c-2)", (
       await irA("Plan y curva");
       expect(await screen.findByText(SIN_PLAN)).toBeInTheDocument();
       expect(screen.queryByRole("table", { name: "Plan de trabajo" })).toBeNull();
-      const boton = screen.getByRole("button", { name: "Crear plan secuencial (una partida por periodo)" });
+      const boton = screen.getByRole("button", { name: "Crear plan secuencial (una partida por período)" });
       alPoner.secuencial = (c) => {
         plan = vistaPlan();
         return acepta(c, { hay_plan: true });
