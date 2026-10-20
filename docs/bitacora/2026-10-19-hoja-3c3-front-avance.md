@@ -88,3 +88,11 @@ Escribí las pruebas con el diseño §4.4 antes de existir el contrato; luego lo
 - `Cuentas.tsx` y `DialogoDeVersion.tsx` repiten el patrón de diálogo; extraerlo a `src/comun` queda como deuda (fuera de la carpeta del encargo).
 - Sin medición de 1366x768 en navegador (T11); el APU a ≥1200 px usa tres paneles y los de la derecha ganaron los factores (más altos).
 - La Hoja sigue sin activarse en el menú (`rutas.ts` no se tocó). No se guarda nada (3d).
+
+## Ronda 1 del árbitro (devuelta; corregida)
+
+- MAYOR 1: el foco volvía al selector en el mismo tick en que se quitaba el `inert` (en un navegador real no se mueve). Ahora lo mueve un efecto tras el
+  commit; prueba con espía de `HTMLElement.prototype.focus` que falla si el selector sigue dentro de `[inert]` (rojo visto en «Seguir editando» y Esc).
+- MAYOR 2: la etiqueta ahora es «Buscar insumo (por descripción)» (E8 filtra solo por descripción); prueba que fija la etiqueta (rojo visto).
+- MENOR 3: `textoDeEstado` también quita el prefijo con estados «OK | …» (rojo visto).
+- Deuda declarada de nuevo: `DialogoDeVersion.tsx` repite el patrón de diálogo de `Cuentas.tsx`; extraerlo a `src/comun` queda pendiente.
