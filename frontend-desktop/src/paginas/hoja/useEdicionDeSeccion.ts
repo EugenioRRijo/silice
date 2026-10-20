@@ -19,7 +19,7 @@ export interface ErrorDeSeccion<U> {
 export interface Peticion {
   ruta: string;
   metodo: "PUT" | "POST";
-  cuerpo: unknown;
+  cuerpo: object;
 }
 
 interface Opciones<E, U> {
