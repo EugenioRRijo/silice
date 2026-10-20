@@ -12,6 +12,9 @@ Ciclo de vida y memoria acotada (valores SUPUESTOS a ratificar, D-9):
 * como maximo `POR_FICHA` borradores por ficha: el `POR_FICHA + 1` descarta el menos usado;
 * como maximo `GLOBALES` en el proceso, y `BYTES_MAXIMOS` estimados (`len(pickle.dumps(borrador))`)
   en total: se expulsa el menos usado hasta bajar (un borrador solo, por grande que sea, se queda);
+* el tamano se estima al crear y se vuelve a estimar cada `RE_ESTIMAR_CADA` cambios aceptados
+  (la edicion lo hace crecer); si el total pasa el tope se expulsa el menos usado, nunca el que se
+  esta editando;
 * vence a las `VIGENCIA` sin uso; no hay hilo de fondo, el barrido es perezoso en cada `crear` y en
   cada `obtener`;
 * se olvidan al cambiar de caso, cerrar sesion o vencer la ficha (`api.caso_web` llama a
@@ -43,6 +46,8 @@ POR_FICHA = 4
 GLOBALES = 64
 BYTES_MAXIMOS = 256 * 1024 * 1024
 VIGENCIA = timedelta(hours=8)
+#: Cada cuantos cambios aceptados se vuelve a estimar el tamano de un borrador (diseno §3.1).
+RE_ESTIMAR_CADA = 20
 
 
 class BorradorInexistente(LookupError):  # noqa: N818
@@ -115,6 +120,7 @@ class Registro:
         bytes_maximos: int = BYTES_MAXIMOS,
         vigencia: timedelta = VIGENCIA,
         medir: Callable[[Borrador], int] = _tamano_estimado,
+        re_estimar_cada: int = RE_ESTIMAR_CADA,
     ) -> None:
         self._reloj = reloj
         self._por_ficha = por_ficha
@@ -122,6 +128,7 @@ class Registro:
         self._bytes_maximos = bytes_maximos
         self._vigencia = vigencia
         self._medir = medir
+        self._re_estimar_cada = re_estimar_cada
         self._vivos: dict[str, BorradorVivo] = {}
         self._cerrojo = threading.RLock()
 
@@ -133,6 +140,13 @@ class Registro:
 
     def _expulsar_al_menos_usado(self, entre: list[BorradorVivo]) -> None:
         del self._vivos[min(entre, key=lambda v: v.tocado).id]
+
+    def _expulsar_hasta_caber(self, quedarse: BorradorVivo) -> None:
+        """Expulsa el menos usado (menos `quedarse`) hasta que el total de bytes estimados quepa."""
+        while len(self._vivos) > 1 and (
+            sum(v.tamano for v in self._vivos.values()) > self._bytes_maximos
+        ):
+            self._expulsar_al_menos_usado([v for v in self._vivos.values() if v is not quedarse])
 
     def _de(self, huella: str) -> list[BorradorVivo]:
         return [v for v in self._vivos.values() if v.huella == huella]
@@ -169,10 +183,7 @@ class Registro:
             while len(self._vivos) >= self._globales:
                 self._expulsar_al_menos_usado(list(self._vivos.values()))
             self._vivos[vivo.id] = vivo
-            while len(self._vivos) > 1 and (
-                sum(v.tamano for v in self._vivos.values()) > self._bytes_maximos
-            ):
-                self._expulsar_al_menos_usado([v for v in self._vivos.values() if v is not vivo])
+            self._expulsar_hasta_caber(vivo)
             return vivo
 
     def obtener(self, huella: str, id: str) -> BorradorVivo:
@@ -187,7 +198,9 @@ class Registro:
             return vivo
 
     def reemplazar(self, huella: str, id: str, borrador: Borrador, rev: int) -> BorradorVivo:
-        """Fija el borrador nuevo si `rev` es el vigente: sube `rev` e invalida la cache."""
+        """Fija el borrador nuevo si `rev` es el vigente: sube `rev` e invalida la cache. Cada
+        `re_estimar_cada` cambios vuelve a estimar el tamano y, si el total ya no cabe, expulsa
+        el menos usado (nunca este)."""
         vivo = self.obtener(huella, id)
         with vivo.cerrojo:
             if vivo.rev != rev:
@@ -195,6 +208,11 @@ class Registro:
             vivo.borrador = borrador
             vivo.rev += 1
             vivo.calculo = None
+            if vivo.rev % self._re_estimar_cada == 0:
+                vivo.tamano = self._medir(borrador)
+                with self._cerrojo:  # primero el del borrador y luego el del registro, siempre
+                    if self._vivos.get(vivo.id) is vivo:
+                        self._expulsar_hasta_caber(vivo)
             return vivo
 
     def descartar(self, huella: str, id: str) -> None:
