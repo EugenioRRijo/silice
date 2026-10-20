@@ -1043,3 +1043,43 @@ def test_r9_de_un_proyecto_sin_versiones_no_aplica_y_lo_dice(_entorno: Path) -> 
     cuerpo = _vista(navegador, id_, "equilibrio").json()
     assert cuerpo["estado"] == "no_aplicable" and cuerpo["punto"] is None
     assert cuerpo["mensaje"] == "El presupuesto no tiene ventas: el punto de equilibrio no aplica."
+
+
+# --- R10: parámetros (3b-3) ------------------------------------------------------------------
+
+
+def test_r10_of001_trae_los_cuatro_parametros_la_moneda_y_el_total() -> None:
+    navegador, ficha = _ana()
+    respuesta = _vista(navegador, _abierta(navegador, ficha), "parametros")
+    assert respuesta.status_code == 200, respuesta.text
+    cuerpo = respuesta.json()
+    assert [c["clave"] for c in cuerpo["campos"]] == [
+        "fcas",
+        "bono_alimentacion",
+        "administracion",
+        "utilidad",
+    ]
+    valores = {c["clave"]: D(c["valor"]) for c in cuerpo["campos"]}
+    assert (valores["fcas"], valores["administracion"], valores["utilidad"]) == (
+        D("6.00"),
+        D("0.15"),
+        D("0.10"),
+    )
+    assert D("2703.85") <= D(cuerpo["total"]["exacto"]) <= D("2703.87")
+    assert (cuerpo["moneda_proyecto"], cuerpo["puede_convertir"]) == ("USD", True)
+
+
+def test_r10_de_la_version_002_trae_la_administracion_editada(_casos) -> None:
+    _poner(_casos["of001_tres"])
+    navegador, ficha = _ana()
+    cuerpo = _vista(navegador, _abierta(navegador, ficha, version="002"), "parametros").json()
+    assert {c["clave"]: c["valor"] for c in cuerpo["campos"]}["administracion"] == "0.20"
+    assert abs(D(cuerpo["total"]["exacto"]) - D("2821.42")) <= D("0.01")
+
+
+def test_r10_de_un_proyecto_sin_versiones_no_tiene_moneda_ni_conversion(_entorno: Path) -> None:
+    _con_proyecto_nuevo(_entorno)
+    navegador, ficha = _ana()
+    id_ = _abierta(navegador, ficha, proyecto="Proyecto nuevo", version=None)
+    cuerpo = _vista(navegador, id_, "parametros").json()
+    assert (cuerpo["moneda_proyecto"], cuerpo["puede_convertir"]) == (None, False)

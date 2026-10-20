@@ -905,3 +905,63 @@ def test_el_equilibrio_de_un_borrador_en_blanco_no_aplica():
     )
     assert v.estado == "no_aplicable" and v.punto is None
     assert v.mensaje == "El presupuesto no tiene ventas: el punto de equilibrio no aplica."
+
+
+# --- 3b-3 · vista de los parametros (R10) ---------------------------------------------------------
+
+#: Los rotulos de la pagina clasica (`ui/paginas/hoja.py:2030-2035`), escritos a mano y sin tildes;
+#: la nueva los lleva con tildes (D-3), asi que se comparan normalizados.
+ROTULOS_DE_LA_CLASICA = {
+    "fcas": "FCAS (fraccion: 6.00 = prestaciones del 600 %)",
+    "bono_alimentacion": "Bono de alimentacion (por obrero y dia)",
+    "administracion": "Administracion (fraccion del costo directo)",
+    "utilidad": "Utilidad (fraccion, en cascada sobre la administracion)",
+}
+
+
+def test_los_parametros_de_of001_son_los_cuatro_de_la_clasica_con_su_texto_exacto(_of001):
+    from tests.fixtures import caso_ti001
+
+    v = hoja_vista.vista_parametros(_vivo(_of001), "USD", True)
+    assert [c.clave for c in v.campos] == [
+        "fcas",
+        "bono_alimentacion",
+        "administracion",
+        "utilidad",
+    ]
+    valores = {c.clave: Decimal(c.valor) for c in v.campos}
+    assert valores["fcas"] == D("6.00") and valores["administracion"] == D("0.15")
+    assert valores["utilidad"] == D("0.10")
+    assert valores["bono_alimentacion"] == caso_ti001.PARAMETROS.bono_alimentacion
+    assert abs(Decimal(v.total.exacto) - D("2703.86")) <= D("0.01")
+    assert (v.moneda_proyecto, v.puede_convertir) == ("USD", True)
+
+
+def test_los_rotulos_de_los_parametros_son_los_de_la_clasica_con_tildes(_of001):
+    from core.verification.texto import normalizar_texto
+
+    v = hoja_vista.vista_parametros(_vivo(_of001), "USD", True)
+    assert {c.clave: normalizar_texto(c.rotulo) for c in v.campos} == {
+        k: normalizar_texto(r) for k, r in ROTULOS_DE_LA_CLASICA.items()
+    }
+    assert v.campos[2].rotulo == "Administración (fracción del costo directo)"  # con tildes
+
+
+def test_un_parametro_editado_se_ve_con_su_texto_y_mueve_el_total(_of001):
+    editado = replace(
+        _of001.borrador, parametros=replace(_of001.borrador.parametros, administracion=D("0.20"))
+    )
+    v = hoja_vista.vista_parametros(_vivo(_of001, editado), "USD", True)
+    assert {c.clave: c.valor for c in v.campos}["administracion"] == "0.20"
+    assert abs(Decimal(v.total.exacto) - D("2821.42")) <= D("0.01")
+
+
+def test_sin_version_abierta_no_hay_moneda_del_proyecto_ni_se_puede_convertir():
+    vivo = Registro().crear("f", "c", "N", None, hoja.Borrador(fecha=HOY), None)
+    v = hoja_vista.vista_parametros(vivo, "USD", True)
+    assert (v.moneda_proyecto, v.puede_convertir) == (None, False)
+    assert v.total.exacto == "0" and [c.valor for c in v.campos][2] == "0.15"  # los del contrato
+
+
+def test_sin_el_permiso_de_convertir_la_vista_no_lo_ofrece(_of001):
+    assert hoja_vista.vista_parametros(_vivo(_of001), "USD", False).puede_convertir is False
