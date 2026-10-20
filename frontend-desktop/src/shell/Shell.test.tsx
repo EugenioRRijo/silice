@@ -1,6 +1,6 @@
 import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router";
+import { MemoryRouter, useNavigate } from "react-router";
 import { afterEach, beforeEach, describe, expect, onTestFinished, test, vi } from "vitest";
 import { fijarCsrf } from "../api/cliente";
 import type { SesionRespuesta } from "../api/tipos";
@@ -649,6 +649,74 @@ describe("Shell", () => {
         </MemoryRouter>,
       );
       expect(await screen.findByText("No hay pantallas disponibles en esta interfaz")).toBeInTheDocument();
+    });
+  });
+  // VD-7: cuando la accion quita el control que tenia el foco, el foco cae a <body>. Una prueba de jsdom no ve la
+  // geometria pero si el foco: cada una de estas debe fallar si se quita la linea que lo mueve.
+  describe("el foco no se pierde cuando la accion quita el control", () => {
+    function Origen() {
+      const ir = useNavigate();
+      return (
+        <div>
+          <h1>Pantalla de origen</h1>
+          <button type="button" onClick={() => void ir("/destino")}>
+            Ir al destino
+          </button>
+        </div>
+      );
+    }
+    const Destino = () => <h1>Pantalla de destino</h1>;
+    const DOS: PaginaDef[] = [
+      { id: "origen", titulo: "Origen de prueba", seccion: "Trabajo", accion: null, cargar: async () => ({ default: Origen }) },
+      { id: "destino", titulo: "Destino de prueba", seccion: "Trabajo", accion: null, cargar: async () => ({ default: Destino }) },
+    ];
+    function montarDos() {
+      return render(
+        <MemoryRouter initialEntries={["/origen"]}>
+          <Shell sesion={sesionCon()} alSalir={alSalir} alExpirar={alExpirar} paginas={DOS} />
+        </MemoryRouter>,
+      );
+    }
+
+    test("un botón de la página que lleva a otra deja el foco en el único h1 de la página nueva", async () => {
+      const usuario = userEvent.setup();
+      montarDos();
+      await usuario.click(await screen.findByRole("button", { name: "Ir al destino" }));
+      const titulo = await screen.findByRole("heading", { name: "Pantalla de destino" });
+      await waitFor(() => expect(titulo).toHaveFocus());
+      expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+      expect(titulo).toHaveAttribute("tabindex", "-1");
+    });
+
+    test("un enlace del menú conserva el foco: solo se mueve si se perdió", async () => {
+      const usuario = userEvent.setup();
+      montarDos();
+      await screen.findByRole("heading", { name: "Pantalla de origen" });
+      const enlace = within(menu()).getByRole("link", { name: "Destino de prueba" });
+      await usuario.click(enlace);
+      await screen.findByRole("heading", { name: "Pantalla de destino" });
+      await new Promise((r) => setTimeout(r, 80));
+      expect(enlace).toHaveFocus();
+    });
+
+    test("al cargar la primera vez no roba el foco: «Saltar al contenido» sigue siendo el primer Tab", async () => {
+      montarDos();
+      await screen.findByRole("heading", { name: "Pantalla de origen" });
+      await new Promise((r) => setTimeout(r, 80));
+      expect(document.body).toHaveFocus();
+    });
+
+    test("«Terminar recorrido» con Enter deja el foco en el primer enlace del menú, no en <body>", async () => {
+      const usuario = userEvent.setup();
+      montar();
+      await screen.findByRole("heading", { name: "Pantalla del tablero" });
+      act(() => iniciarRecorrido(RECORRIDO_AUDITAR));
+      onTestFinished(() => terminarRecorrido());
+      const region = within(menu()).getByRole("region", { name: "Recorrido en curso" });
+      within(region).getByRole("button", { name: "Terminar recorrido" }).focus();
+      await usuario.keyboard("{Enter}");
+      expect(within(menu()).queryByRole("region", { name: "Recorrido en curso" })).not.toBeInTheDocument();
+      expect(within(menu()).getAllByRole("link")[0]).toHaveFocus();
     });
   });
 });
