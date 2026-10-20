@@ -5,7 +5,7 @@ import { fechaEsVe } from "../../indicadores/formatoEsVe";
 
 const ISO = /^(\d{4})-(\d{2})-(\d{2})$/;
 
-// La fecha del calendario, o null si el día o el mes no existen («2026-02-30», «1234-56-78»).
+// Si el día y el mes existen en ese año («2026-02-30» y «1234-56-78» no).
 function fechaReal(anio: number, mes: number, dia: number): boolean {
   const d = new Date(Date.UTC(anio, mes - 1, dia));
   return d.getUTCFullYear() === anio && d.getUTCMonth() === mes - 1 && d.getUTCDate() === dia;
@@ -18,12 +18,24 @@ export function fechaDeRanura(texto: string): string {
   return fechaEsVe(texto);
 }
 
-// Los feriados se escriben como se leen (25/12/2026) y viajan como los espera la API (2026-12-25). Lo que no parece
-// una fecha dd/mm/aaaa pasa tal cual: la API dice que esta mal.
-const FECHA_ES_VE = /\b(\d{1,2})\/(\d{1,2})\/(\d{4})\b/g;
+// Los feriados se escriben como se leen (25/12/2026; también se acepta 2026-12-25) separados por comas, punto y coma
+// o saltos de línea, y viajan como los espera la API (2026-12-25, separados por comas). Uno que no es una fecha real
+// se rechaza aquí, con lo que escribió la persona, para que el mensaje no muestre un valor que no escribió.
+const FECHA_ES_VE = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/;
+const DOS = (n: number) => String(n).padStart(2, "0");
 
-export function feriadosParaEnviar(texto: string): string {
-  return texto.replace(FECHA_ES_VE, (_, dia: string, mes: string, anio: string) =>
-    `${anio}-${mes.padStart(2, "0")}-${dia.padStart(2, "0")}`,
-  );
+export function leerFeriados(texto: string): { feriados: string } | { error: string } {
+  const leidos: string[] = [];
+  for (const parte of texto.split(/[,;\n]/)) {
+    const escrito = parte.trim();
+    if (escrito === "") continue;
+    const es = FECHA_ES_VE.exec(escrito);
+    const iso = ISO.exec(escrito);
+    const [anio, mes, dia] = es ? [es[3], es[2], es[1]].map(Number) : iso ? [iso[1], iso[2], iso[3]].map(Number) : [0, 0, 0];
+    if ((!es && !iso) || !fechaReal(anio, mes, dia)) {
+      return { error: `Escriba los feriados como dd/mm/aaaa, separados por comas: «${escrito}» no es una fecha.` };
+    }
+    leidos.push(`${anio}-${DOS(mes)}-${DOS(dia)}`);
+  }
+  return { feriados: leidos.join(", ") };
 }
