@@ -1,5 +1,5 @@
 import { Button, InlineNotification, Select, SelectItem, TextInput } from "@carbon/react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { ErrorDeApi, pedir } from "../../api/cliente";
 import { AvisoError } from "../../comun/AvisoError";
@@ -35,6 +35,20 @@ export default function EmpresasRegistradas() {
   const [motivo, setMotivo] = useState("");
   const [avisoFirmado, setAvisoFirmado] = useState<File | null>(null);
   const [cambio, setCambio] = useState<Cambio>(null);
+  // Foco de la confirmacion en linea (VB-12): al abrirla va a «Cancelar»; al cerrarla vuelve al boton que la abrio.
+  const cancelarRef = useRef<HTMLButtonElement>(null);
+  const retirarRef = useRef<HTMLButtonElement>(null);
+  const revocarRef = useRef<HTMLButtonElement>(null);
+  const abrio = useRef<Cambio>(null);
+  useEffect(() => {
+    if (cambio !== null) {
+      abrio.current = cambio;
+      cancelarRef.current?.focus();
+    } else if (abrio.current !== null) {
+      (abrio.current === "retirar" ? retirarRef : revocarRef).current?.focus();
+      abrio.current = null;
+    }
+  }, [cambio]);
 
   const fallar = useCallback(
     (e: unknown) => {
@@ -141,6 +155,8 @@ export default function EmpresasRegistradas() {
 
   if (datos === null) return error ? <AvisoError error={error} /> : <EsqueletoPagina />;
   const { registradas, metodos } = datos;
+  // Sobre una clave ya revocada no hay nada que retirar ni que revocar (VB-22).
+  const yaRevocada = registradas.find((f) => String(f.id) === elegida)?.estado === "revocada";
 
   return (
     <div className="silice-adm__secciones">
@@ -173,6 +189,7 @@ export default function EmpresasRegistradas() {
             value={elegida}
             onChange={(e) => {
               setElegida(e.target.value);
+              abrio.current = null; // cambiar de empresa no devuelve el foco a ningun boton
               setCambio(null);
             }}
           >
@@ -212,12 +229,17 @@ export default function EmpresasRegistradas() {
               </Button>
             </div>
           )}
+          {yaRevocada && (
+            <p className="silice-adm__nota cds--type-body-compact-01">
+              Esta clave ya está revocada: ningún paquete con ella verifica y no admite más cambios.
+            </p>
+          )}
           {cambio === null ? (
             <div className="silice-adm__acciones">
-              <Button kind="tertiary" size="md" disabled={ocupada || elegida === ""} onClick={() => pedirConfirmacion("retirar")}>
+              <Button ref={retirarRef} kind="tertiary" size="md" disabled={ocupada || elegida === "" || yaRevocada} onClick={() => pedirConfirmacion("retirar")}>
                 Marcar como retirada
               </Button>
-              <Button kind="danger--tertiary" size="md" disabled={ocupada || elegida === ""} onClick={() => pedirConfirmacion("revocar")}>
+              <Button ref={revocarRef} kind="danger--tertiary" size="md" disabled={ocupada || elegida === "" || yaRevocada} onClick={() => pedirConfirmacion("revocar")}>
                 Revocar
               </Button>
             </div>
@@ -231,7 +253,7 @@ export default function EmpresasRegistradas() {
               <Button kind={cambio === "revocar" ? "danger" : "primary"} size="md" onClick={() => cambiar(cambio)}>
                 {cambio === "retirar" ? "Sí, marcar como retirada" : "Sí, revocar"}
               </Button>
-              <Button kind="ghost" size="md" onClick={() => setCambio(null)}>
+              <Button ref={cancelarRef} kind="ghost" size="md" onClick={() => setCambio(null)}>
                 Cancelar
               </Button>
             </div>
