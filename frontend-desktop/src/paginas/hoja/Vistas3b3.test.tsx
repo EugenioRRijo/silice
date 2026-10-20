@@ -318,4 +318,150 @@ describe("Hoja del proyecto: Equilibrio, Parámetros, Auditoría, Precios y Traz
     expect(within(hallazgos).getAllByRole("row")).toHaveLength(2);
     expect(within(hallazgos).getByText("El punto P2 sin APU")).toBeInTheDocument();
   });
+
+  // --- Precios ------------------------------------------------------------------------------------
+
+  test("Precios: sin versión abierta lo dice y no pide nada", async () => {
+    servidor({ version: null });
+    montar();
+    await irA("Precios");
+    expect(await screen.findByText("Abra una versión guardada para ver el origen de sus precios.")).toBeInTheDocument();
+    expect(pedidas("/v1/hoja/precios")).toEqual([]);
+  });
+
+  test("3b-F10: la tabla muestra las columnas principales y el detalle de cada insumo lleva el resto", async () => {
+    servidor();
+    montar();
+    await irA("Precios");
+    const tabla = await screen.findByRole("table", { name: "Precios" });
+    expect(within(tabla).getAllByRole("columnheader").map((c) => c.textContent)).toEqual([
+      "Insumo",
+      "Código",
+      "Precio",
+      "Lista",
+      "Moneda",
+      "Fecha del precio",
+      "Referencia",
+      "Cotización",
+      "Estado",
+      "Detalle",
+    ]);
+    const fila = within(tabla).getAllByRole("row")[1]!;
+    expect(within(fila).getByText("Tubo PVC 1/2")).toBeInTheDocument();
+    expect(within(fila).getByTitle("3.1034")).toHaveTextContent("3,10");
+    expect(within(fila).getByText("01/07/2026")).toBeInTheDocument();
+    expect(within(fila).getByText("OK")).toBeInTheDocument();
+    // Lo que no es principal no está en la tabla.
+    expect(within(tabla).queryByText("Tasa")).toBeNull();
+    await userEvent.click(within(fila).getByRole("button", { name: "Detalle de MAT-001" }));
+    const detalle = await screen.findByRole("region", { name: "Detalle de MAT-001" });
+    const campo = (rotulo: string) => within(detalle).getByText(rotulo, { selector: "dt" }).nextElementSibling!;
+    expect(campo("Tipo")).toHaveTextContent("material");
+    expect(campo("Tasa")).toHaveTextContent("633,3644");
+    expect(campo("Fecha de la tasa")).toHaveTextContent("01/07/2026");
+    expect(campo("Moneda original")).toHaveTextContent("Bs");
+    expect(campo("Precio original")).toHaveTextContent("1.963,43");
+    expect(campo("Fuente de la tasa")).toHaveTextContent("BCV");
+    expect(campo("Fuente")).toHaveTextContent("MaPreX");
+    expect(campo("Propio/heredado")).toHaveTextContent("heredado");
+    expect(campo("Erosión USD")).toHaveTextContent("0,12");
+    expect(campo("Erosión Bs")).toHaveTextContent("78,15");
+    expect(campo("Erosión %")).toHaveTextContent("3,98 %");
+    expect(within(detalle).getByTitle("78.1500")).toBeInTheDocument();
+    expect(within(detalle).queryByText("Erosión por índice")).toBeNull();
+  });
+
+  test("3b-F10: el detalle se abre y se cierra con su botón, que dice si está abierto", async () => {
+    servidor();
+    montar();
+    await irA("Precios");
+    const boton = await screen.findByRole("button", { name: "Detalle de MAT-001" });
+    expect(boton).toHaveAttribute("aria-expanded", "false");
+    await userEvent.click(boton);
+    expect(boton).toHaveAttribute("aria-expanded", "true");
+    await userEvent.click(boton);
+    expect(boton).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByRole("region", { name: "Detalle de MAT-001" })).toBeNull();
+  });
+
+  test("3b-F10: lo que no tiene dato se lee «Sin dato» en el detalle y el Estado sin fuente lleva ícono", async () => {
+    servidor();
+    montar();
+    await irA("Precios");
+    const tabla = await screen.findByRole("table", { name: "Precios" });
+    const fila = within(tabla).getAllByRole("row")[2]!;
+    expect(within(fila).getByText("Sin referencia ni cotización: el precio no tiene fuente")).toBeInTheDocument();
+    expect(within(fila).getByText("Advertencia")).toBeInTheDocument();
+    await userEvent.click(within(fila).getByRole("button", { name: "Detalle de MAT-002" }));
+    const detalle = await screen.findByRole("region", { name: "Detalle de MAT-002" });
+    expect(within(detalle).getByText("Tasa", { selector: "dt" }).nextElementSibling).toHaveTextContent("Sin dato");
+    expect(within(detalle).getByText("Erosión USD", { selector: "dt" }).nextElementSibling).toHaveTextContent("Sin dato");
+  });
+
+  test("3b-F10: «Erosión por índice» aparece en el detalle solo si algún valor viene", async () => {
+    const base = preciosRespuesta();
+    const filas = base.filas.map((f, i) => (i === 0 ? { ...f, erosion_indice: { texto: "1.25", exacto: "1.2512" } } : f));
+    servidor({ precios: () => json({ ...base, filas }) });
+    montar();
+    await irA("Precios");
+    await userEvent.click(await screen.findByRole("button", { name: "Detalle de MAT-001" }));
+    const detalle = await screen.findByRole("region", { name: "Detalle de MAT-001" });
+    expect(within(detalle).getByText("Erosión por índice", { selector: "dt" }).nextElementSibling).toHaveTextContent("1,25");
+  });
+
+  test("Precios: un error de la vista se muestra tal cual", async () => {
+    servidor({ precios: () => json({ detalle: "El proyecto «OF-001» no tiene una version «002»: elija una de la lista." }, 404) });
+    montar();
+    await irA("Precios");
+    expect(await screen.findByText(/no tiene una version «002»/)).toBeInTheDocument();
+  });
+
+  test("Precios: la ayuda dice que la tabla es la versión guardada, evaluada a la fecha del servidor", async () => {
+    servidor();
+    montar();
+    await irA("Precios");
+    expect(await screen.findByText(/versión guardada, no los cambios sin guardar/)).toBeInTheDocument();
+    expect(screen.getByText(/Evaluada al 20\/10\/2026/)).toBeInTheDocument();
+  });
+
+  test("3b-F10: «Buscar variaciones atípicas de precio» solo pide al pulsarlo y muestra avisos y la tabla en morado", async () => {
+    servidor();
+    montar();
+    await irA("Precios");
+    const boton = await screen.findByRole("button", { name: "Buscar variaciones atípicas de precio" });
+    expect(pedidas("/precios/atipicos")).toEqual([]);
+    await userEvent.click(boton);
+    expect(await screen.findByText("Se revisaron 2 insumos con serie de precios.")).toBeInTheDocument();
+    expect(pedidas("/precios/atipicos")).toEqual(["/v1/hoja/precios/atipicos?proyecto=OF-001&version=002"]);
+    const tabla = await screen.findByRole("table", { name: "Variaciones atípicas de precio" });
+    const fila = within(tabla).getAllByRole("row")[1]!;
+    expect(within(fila).getByText("MAT-001")).toBeInTheDocument();
+    expect(within(fila).getByTitle("38.4000123")).toHaveTextContent("38,40 %");
+    expect(within(fila).getByText("01/01/2026")).toBeInTheDocument();
+    expect(within(fila).getByText("01/07/2026")).toBeInTheDocument();
+    // La severidad dice «Advertencia» con su ícono; solo su color es el de los atípicos (DESIGN.md).
+    expect(within(fila).getByText("Advertencia")).toBeInTheDocument();
+    expect(tabla.closest<HTMLElement>(".silice-hoja__atipicos")!.style.getPropertyValue("--silice-sev-advertencia")).toBe(
+      "var(--silice-atipico)",
+    );
+  });
+
+  test("3b-F10: sin el extra de aprendizaje automático solo hay el aviso, sin tabla", async () => {
+    const aviso = "La búsqueda de variaciones atípicas necesita el extra ml.";
+    servidor({ atipicos: () => json(atipicosRespuesta({ disponible: false, avisos: [{ nivel: "info", texto: aviso }], variaciones: [] })) });
+    montar();
+    await irA("Precios");
+    await userEvent.click(await screen.findByRole("button", { name: "Buscar variaciones atípicas de precio" }));
+    expect(await screen.findByText(aviso)).toBeInTheDocument();
+    expect(screen.queryByRole("table", { name: "Variaciones atípicas de precio" })).toBeNull();
+  });
+
+  test("3b-F10: un error de la búsqueda se muestra tal cual y la tabla de precios sigue a la vista", async () => {
+    servidor({ atipicos: () => json({ detalle: "No se pudo leer el caso." }, 503) });
+    montar();
+    await irA("Precios");
+    await userEvent.click(await screen.findByRole("button", { name: "Buscar variaciones atípicas de precio" }));
+    expect(await screen.findByText("No se pudo leer el caso.")).toBeInTheDocument();
+    expect(screen.getByRole("table", { name: "Precios" })).toBeInTheDocument();
+  });
 });
