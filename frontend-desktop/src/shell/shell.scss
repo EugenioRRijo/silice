@@ -36,13 +36,19 @@
     outline: none;
   }
 
-  // Hacia afuera (offset 2px) como el resto de anillos de la interfaz: medido a 1366x768 y scrollY 0, el h1 queda 24 px
-  // por debajo de la cabecera fija en casi todas las paginas, asi que el anillo se ve completo; hacia adentro tocaba la
-  // primera letra. Solo en Libro de la empresa (h1 con relleno propio, pegado a la cabecera) el borde superior de 2 px
-  // queda bajo la cabecera.
+  // Hacia afuera (offset 2px) como el resto de anillos: a 1366x768 y scrollY 0 el h1 queda 24 px bajo la cabecera fija
+  // y el anillo se ve completo sin tocar la primera letra.
   h1[tabindex="-1"]:focus-visible {
     outline: 2px solid var(--cds-focus);
     outline-offset: 2px;
+  }
+
+  // «Libro de la empresa»: su h1 tiene relleno propio y la caja empieza pegada a la cabecera fija (arriba), al menu
+  // (izquierda) y a la banda de indicadores (abajo): hacia afuera el anillo quedaba tapado por los tres (medido, ronda 2).
+  // Hacia adentro cae sobre su relleno y se ve completo.
+  .silice-pagina-libro > h1[tabindex="-1"]:focus-visible {
+    outline: 2px solid var(--cds-focus);
+    outline-offset: -2px;
   }
 
   @media (min-width: 66rem) {
