@@ -42,6 +42,8 @@ class TarjetaRespuesta(BaseModel):
     rotulo: str
     valor: str
     detalle: str = ""
+    #: El monto sin redondear (texto decimal) de una tarjeta de dinero; vacío en las demás (VB-21).
+    exacto: str = ""
 
 
 class AnilloRespuesta(BaseModel):
@@ -124,7 +126,10 @@ def _numero(valor: object) -> str:
 
 
 def _tarjetas(tarjetas: list[tablero.Tarjeta]) -> list[TarjetaRespuesta]:
-    return [TarjetaRespuesta(rotulo=t.rotulo, valor=t.valor, detalle=t.detalle) for t in tarjetas]
+    return [
+        TarjetaRespuesta(rotulo=t.rotulo, valor=t.valor, detalle=t.detalle, exacto=t.exacto)
+        for t in tarjetas
+    ]
 
 
 def _fraccion(valor: Decimal | None) -> str | None:

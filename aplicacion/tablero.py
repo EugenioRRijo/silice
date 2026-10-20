@@ -39,11 +39,30 @@ PARTIDAS_EN_PARETO = 10
 
 @dataclass(frozen=True, slots=True)
 class Tarjeta:
-    """Una tarjeta del tablero: etiqueta del sistema, valor y una ayuda opcional."""
+    """Una tarjeta del tablero: etiqueta del sistema, valor y una ayuda opcional.
+
+    `exacto` es el monto sin redondear (texto decimal), solo en las tarjetas de dinero del
+    presupuesto: la interfaz lo muestra a un toque (VB-21). Vacío en las demás."""
 
     rotulo: str
     valor: str
     detalle: str = ""
+    exacto: str = ""
+
+
+#: Cómo se cuenta cada severidad en el detalle de la tarjeta «Auditoría»: singular y plural (VB-16).
+_NOMBRE_DE_SEVERIDAD = {
+    Severidad.CRITICO: ("crítico", "críticos"),
+    Severidad.ERROR: ("error", "errores"),
+    Severidad.ADVERTENCIA: ("advertencia", "advertencias"),
+    Severidad.INFO: ("informativo", "informativos"),
+}
+
+
+def _cuenta(n: int, severidad: Severidad) -> str:
+    """«1 advertencia», «3 advertencias»."""
+    singular, plural = _NOMBRE_DE_SEVERIDAD[severidad]
+    return f"{n} {singular if n == 1 else plural}"
 
 
 @dataclass(frozen=True, slots=True)
@@ -174,10 +193,15 @@ def tarjetas_del_presupuesto(datos: DatosTablero) -> list[Tarjeta]:
     pe = datos.equilibrio
     informe = datos.elaboracion.informe
     cuenta = Counter(h.severidad for h in informe.hallazgos)
-    detalle = ", ".join(f"{cuenta[s]} {s.name.lower()}" for s in reversed(Severidad) if cuenta[s])
+    detalle = ", ".join(_cuenta(cuenta[s], s) for s in reversed(Severidad) if cuenta[s])
+    directo = _costo_directo(presupuesto)
     return [
-        Tarjeta("Total del contrato", dinero(presupuesto.total, moneda)),
-        Tarjeta("Costo directo", dinero(_costo_directo(presupuesto), moneda)),
+        Tarjeta(
+            "Total del contrato",
+            dinero(presupuesto.total, moneda),
+            exacto=f"{presupuesto.total:f}",
+        ),
+        Tarjeta("Costo directo", dinero(directo, moneda), exacto=f"{directo:f}"),
         Tarjeta(
             "Punto de equilibrio",
             NO_DISPONIBLE if pe.porcentaje is None else f"{formatear_decimal(pe.porcentaje, 2)} %",
@@ -185,7 +209,7 @@ def tarjetas_del_presupuesto(datos: DatosTablero) -> list[Tarjeta]:
         ),
         Tarjeta(
             "Auditoría",
-            "CUMPLE" if informe.cumple else "NO CUMPLE",
+            "Cumple" if informe.cumple else "No cumple",
             detalle or "sin hallazgos",
         ),
     ]

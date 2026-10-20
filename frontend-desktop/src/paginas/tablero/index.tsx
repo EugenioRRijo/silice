@@ -5,13 +5,15 @@ import { EsqueletoPagina } from "../../comun/EsqueletoPagina";
 import { EstadoVacio } from "../../comun/EstadoVacio";
 import { TablaDensa } from "../../comun/TablaDensa";
 import { PALETA_GRAFICOS, colorPorGrupo, formatoNumeroEsVe } from "../../comun/paletaGraficos";
-import { formatoMontoEsVe } from "../../indicadores/formatoEsVe";
+import { fechaEsVe, formatoMontoEsVe } from "../../indicadores/formatoEsVe";
 import { useAplicacion } from "../../shell/contexto";
 import { useCarga } from "../inicio/useCarga";
 import {
+  centroDelAnillo,
   datosDeDesglose,
   datosDePareto,
   datosDeVersiones,
+  etiquetaDePeso,
   rutaDelTablero,
   seriesDeCurva,
 } from "./logica";
@@ -20,14 +22,22 @@ import "./tablero.scss";
 
 const GraficoCarbon = lazy(() => import("../../comun/GraficoCarbon"));
 
-function Tarjetas({ tarjetas }: { tarjetas: Tarjeta[] }) {
+// Una tarjeta de dinero con su exacto lo lleva en el `title` y para el lector de pantalla (VB-21); las demas, el
+// texto de la API en el `title`.
+function Tarjetas({ tarjetas, moneda }: { tarjetas: Tarjeta[]; moneda: string }) {
   return (
     <dl className="silice-tablero__tarjetas">
       {tarjetas.map((t) => (
         <div key={t.rotulo} className="silice-tablero__tarjeta">
           <dt className="cds--type-label-01">{t.rotulo}</dt>
-          <dd className="cds--type-heading-04" title={t.valor}>
+          <dd
+            className="cds--type-heading-04"
+            title={t.exacto ? `Valor exacto: ${t.exacto} ${moneda}`.trim() : t.valor}
+          >
             {formatoMontoEsVe(t.valor)}
+            {t.exacto && (
+              <span className="cds--visually-hidden">{`. Valor exacto: ${t.exacto} ${moneda}`.trimEnd()}</span>
+            )}
           </dd>
           {t.detalle && <dd className="cds--type-helper-text-01">{t.detalle}</dd>}
         </div>
@@ -41,11 +51,16 @@ function Grafico({
   tipo,
   datos,
   eje,
+  etiqueta,
+  centro,
 }: {
   titulo: string;
   tipo: "anillo" | "barras";
   datos: { group: string; value: number }[];
   eje?: { abajo: string; izquierda: string };
+  // Solo el anillo: la etiqueta de cada porcion y el numero del centro, ya en es-VE desde la API (VB-21).
+  etiqueta?: (d: { data: { group: string } }) => string;
+  centro?: string | null;
 }) {
   const opciones =
     tipo === "anillo"
@@ -53,7 +68,10 @@ function Grafico({
           title: titulo,
           height: "300px",
           resizable: true,
-          donut: { center: { label: "Total", numberFormatter: formatoNumeroEsVe } },
+          ...(etiqueta ? { pie: { labels: { formatter: etiqueta } } } : {}),
+          donut: {
+            center: { label: "Total", numberFormatter: centro ? () => centro : formatoNumeroEsVe },
+          },
           tooltip: { valueFormatter: formatoNumeroEsVe },
           color: colorPorGrupo(datos.map((d) => d.group)),
         }
@@ -89,9 +107,9 @@ function Contenido({ datos }: { datos: TableroRespuesta }) {
   return (
     <>
       <p className="silice-tablero__nota cds--type-body-compact-01">
-        {`Versión ${datos.version} del ${datos.fecha} · ${datos.renglones} renglones · ${moneda}`}
+        {`Versión ${datos.version} del ${fechaEsVe(datos.fecha ?? "")} · ${datos.renglones} renglones · ${moneda}`}
       </p>
-      <Tarjetas tarjetas={datos.tarjetas} />
+      <Tarjetas tarjetas={datos.tarjetas} moneda={moneda} />
 
       <section className="silice-tablero__bloque" aria-labelledby="tablero-control">
         <h2 id="tablero-control" className="cds--type-heading-compact-02">
@@ -99,7 +117,7 @@ function Contenido({ datos }: { datos: TableroRespuesta }) {
         </h2>
         {datos.control?.disponible ? (
           <>
-            <Tarjetas tarjetas={datos.control.tarjetas} />
+            <Tarjetas tarjetas={datos.control.tarjetas} moneda={moneda} />
           </>
         ) : (
           <EstadoVacio titulo="Aún no hay control de obra" descripcion={datos.control?.motivo} />
@@ -120,13 +138,19 @@ function Contenido({ datos }: { datos: TableroRespuesta }) {
           <h2 id="tablero-desglose" className="cds--type-heading-compact-02">
             Desglose del contrato
           </h2>
-          <Grafico titulo="Desglose del contrato" tipo="anillo" datos={datosDeDesglose(datos.desglose)} />
+          <Grafico
+            titulo="Desglose del contrato"
+            tipo="anillo"
+            datos={datosDeDesglose(datos.desglose)}
+            etiqueta={etiquetaDePeso(datos.desglose)}
+            centro={centroDelAnillo(datos.tarjetas)}
+          />
           <TablaDensa
             etiqueta="Desglose del contrato"
             columnas={[
               { clave: "rubro", titulo: "Rubro" },
               { clave: "monto", titulo: `Monto (${moneda})`, numerica: true, presentar: formatoMontoEsVe },
-              { clave: "peso", titulo: "Peso", numerica: true },
+              { clave: "peso", titulo: "Peso", numerica: true, presentar: formatoMontoEsVe },
             ]}
             filas={datos.desglose.map((r) => ({ id: r.rubro, rubro: r.rubro, monto: r.monto, peso: r.peso }))}
           />
@@ -150,8 +174,8 @@ function Contenido({ datos }: { datos: TableroRespuesta }) {
               { clave: "partida", titulo: "Partida" },
               { clave: "descripcion", titulo: "Descripción" },
               { clave: "total", titulo: `Total (${moneda})`, numerica: true, presentar: formatoMontoEsVe },
-              { clave: "peso", titulo: "Peso", numerica: true },
-              { clave: "acumulado", titulo: "Acumulado", numerica: true },
+              { clave: "peso", titulo: "Peso", numerica: true, presentar: formatoMontoEsVe },
+              { clave: "acumulado", titulo: "Acumulado", numerica: true, presentar: formatoMontoEsVe },
             ]}
             filas={datos.pareto.map((f) => ({
               id: f.partida,
@@ -180,7 +204,7 @@ function Contenido({ datos }: { datos: TableroRespuesta }) {
             etiqueta="Versiones del presupuesto"
             columnas={[
               { clave: "version", titulo: "Versión" },
-              { clave: "fecha", titulo: "Fecha" },
+              { clave: "fecha", titulo: "Fecha", presentar: fechaEsVe },
               { clave: "motivo", titulo: "Motivo" },
               { clave: "costo_directo", titulo: "Costo directo", numerica: true, presentar: formatoMontoEsVe },
               { clave: "total", titulo: "Total", numerica: true, presentar: formatoMontoEsVe },
