@@ -484,6 +484,10 @@ _RUTAS = [
     ("POST", "/v1/hoja/borradores", False),
     ("GET", "/v1/hoja/borradores/" + ID_AJENO, False),
     ("DELETE", "/v1/hoja/borradores/" + ID_AJENO, False),
+    *[
+        ("GET", f"/v1/hoja/borradores/{ID_AJENO}/vistas/{v}", False)
+        for v in ("espacio", "presupuesto", "apu", "plan")
+    ],
 ]
 
 
@@ -918,3 +922,77 @@ def test_r8_de_un_proyecto_sin_versiones_no_tiene_plan_y_lo_dice(_entorno: Path)
     assert _vista(navegador, id_, "presupuesto").json()["vacio_mensaje"] is not None
     assert _vista(navegador, id_, "apu").json()["detalle"] is None
     assert _vista(navegador, id_, "espacio").json()["derivadas"] == []
+
+
+# --- 3b-B12 a B17 y B28 ampliadas a las vistas R5 a R8 ---------------------------------------
+
+_VISTAS = ["espacio", "presupuesto", "apu", "plan"]
+
+
+@pytest.mark.parametrize("nombre", _VISTAS)
+def test_vistas_el_borrador_de_otra_ficha_no_existe_y_el_id_ajeno_dice_lo_mismo(
+    nombre: str,
+) -> None:
+    ana, ficha_ana = _ana()
+    id_ = _abierta(ana, ficha_ana)
+    tomas, _ = con_cuenta(app, "tomas")  # sin permiso: 403, nunca confirma el id
+    assert tomas.get(f"/v1/hoja/borradores/{id_}/vistas/{nombre}").status_code == 403
+    # otra cuenta con permiso (otra ficha de ana): 404 con el texto fijo, igual que un id inventado
+    otro, _ = _ana()
+    ajeno = _vista(otro, id_, nombre)
+    inventado = _vista(otro, ID_AJENO, nombre)
+    assert ajeno.status_code == inventado.status_code == 404
+    assert ajeno.json() == inventado.json() == {"detalle": FALTA}
+
+
+@pytest.mark.parametrize("nombre", _VISTAS)
+def test_vistas_no_store_en_exito_404_y_422(nombre: str) -> None:
+    navegador, ficha = _ana()
+    id_ = _abierta(navegador, ficha)
+    exito = _vista(navegador, id_, nombre)
+    falta = _vista(navegador, ID_AJENO, nombre)
+    forma = _vista(navegador, "corto", nombre)  # un id que no tiene la forma: 422
+    assert [r.status_code for r in (exito, falta, forma)] == [200, 404, 422]
+    assert all(r.headers["cache-control"] == "no-store" for r in (exito, falta, forma))
+    assert forma.json() == {"detalle": MENSAJE_FORMA} and "corto" not in forma.text
+
+
+@pytest.mark.parametrize("nombre", _VISTAS)
+def test_vistas_ningun_numero_del_json_es_float(nombre: str) -> None:
+    navegador, ficha = _ana()
+    respuesta = _vista(navegador, _abierta(navegador, ficha), nombre)
+    _sin_float(json.loads(respuesta.text, parse_float=lambda t: float("nan")))
+
+
+@pytest.mark.parametrize("nombre", _VISTAS)
+def test_vistas_tras_un_cambio_de_caso_forzado_dan_409_fijo_y_no_tocan_ninguna_base(
+    nombre: str, _casos, _entorno
+) -> None:
+    navegador, ficha = _ana()
+    otro = _otro_caso(_casos["ti001"])
+    preparar_base(_entorno)
+    preparar_base(otro)
+    id_ = _abierta(navegador, ficha)
+    antes_a, antes_b = _volcado(_entorno), _volcado(otro)
+    caso_web._elegidos[_huella(ficha)] = otro.resolve()
+    respuesta = _vista(navegador, id_, nombre)
+    assert respuesta.status_code == 409 and respuesta.json() == {"detalle": OTRO_CASO}
+    assert respuesta.headers["cache-control"] == "no-store"
+    assert _volcado(_entorno) == antes_a and _volcado(otro) == antes_b
+
+
+def test_las_cuatro_vistas_no_escriben_nada_en_la_base(_entorno: Path) -> None:
+    navegador, ficha = _ana()
+    id_ = _abierta(navegador, ficha)
+    antes = _volcado(_entorno)
+    for nombre in _VISTAS:
+        assert _vista(navegador, id_, nombre).status_code == 200
+    assert _volcado(_entorno) == antes
+
+
+def test_las_vistas_cuentan_el_mismo_total_que_el_resumen_del_borrador() -> None:
+    navegador, ficha = _ana()
+    id_ = _abierta(navegador, ficha)
+    resumen = navegador.get(f"/v1/hoja/borradores/{id_}").json()["resumen"]["total"]
+    assert _vista(navegador, id_, "espacio").json()["total"] == resumen
+    assert _vista(navegador, id_, "presupuesto").json()["total"] == resumen
