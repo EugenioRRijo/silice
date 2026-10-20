@@ -1,4 +1,4 @@
-"""`/v1/hoja`: la hoja del proyecto en la interfaz nueva, lectura y navegación (T10, rebanada 3b-1).
+"""`/v1/hoja`: la hoja del proyecto en la interfaz nueva, lectura y navegación (T10, rebanada 3b).
 
 Es la página `ui/paginas/hoja.py` hecha servicio sobre `aplicacion.hoja` (la COPIA del Plan C: la
 clásica y su módulo están en el congelado del experimento y no se tocan), `aplicacion.hoja_vista`
@@ -12,6 +12,11 @@ y `aplicacion.hoja_borradores`. Esta rebanada trae las rutas R1 a R4 del diseño
   instantánea de las composiciones si faltaba (UC-15e), a nombre de la persona de la sesión.
   `version: null` es un proyecto sin versiones: borrador en blanco.
 - `GET /v1/hoja/borradores/{id}` y `DELETE` (204, idempotente).
+- Vistas del borrador vivo (solo cuenta): R5 a R8 (3b-2: espacio, presupuesto, APU, plan) y R9 a R11
+  (3b-3: `/vistas/equilibrio`, `/vistas/parametros`, `/vistas/auditoria`, esta con R17).
+- Lecturas de una versión GUARDADA (3b-3; clave de API o sesión con `EDITAR_HOJA`; sin borrador y
+  solo leen): R12 `GET /precios?proyecto=&version=`, R13 `GET /precios/atipicos?...` y R14
+  `GET /trazabilidad?...`.
 
 Los borradores y todo lo que los toca son **solo de una cuenta** (RF-82: el responsable es la
 persona de la sesión, nunca un campo): con `X-Silice-Clave`, 403. Un borrador de otra ficha no
