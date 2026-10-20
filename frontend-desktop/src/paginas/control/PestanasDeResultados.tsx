@@ -4,7 +4,9 @@ import { pedir } from "../../api/cliente";
 import { AvisoError } from "../../comun/AvisoError";
 import { CurvaPlanAvance } from "../../comun/CurvaPlanAvance";
 import { EstadoVacio } from "../../comun/EstadoVacio";
+import { Severidad } from "../../comun/Severidad";
 import { TablaDensa } from "../../comun/TablaDensa";
+import type { FilaDensa } from "../../comun/TablaDensa";
 import { useAplicacion } from "../../shell/contexto";
 import {
   COLUMNAS_ALERTAS,
@@ -16,7 +18,9 @@ import {
   columnasDe,
   conId,
   cuerpoDeOpciones,
+  descripcionEsVe,
   etiquetaDeCodigo,
+  severidadVisible,
   textoLlano,
   useAccion,
 } from "./logica";
@@ -139,7 +143,18 @@ export function AlertasYReproyeccion({ calculo }: { calculo: Calculo }) {
         <h2 id="control-alertas" className="cds--type-heading-compact-02">
           Alertas
         </h2>
-        <TablaDensa etiqueta="Alertas" columnas={columnasDe(COLUMNAS_ALERTAS, ["Observado", "Umbral"], { Alerta: etiquetaDeCodigo, Umbral: textoLlano })} filas={conId(calculo.alertas)} />
+        <TablaDensa
+          etiqueta="Alertas"
+          columnas={columnasDe(COLUMNAS_ALERTAS, ["Observado", "Umbral"], {
+            Alerta: etiquetaDeCodigo,
+            Descripcion: descripcionEsVe,
+            Umbral: textoLlano,
+          }).map((c) =>
+            // VB-4: la severidad con el componente comun (icono y nombre); el color nunca va solo.
+            c.clave === "Severidad" ? { ...c, celda: (fila: FilaDensa) => <Severidad valor={severidadVisible(fila.Severidad ?? "")} /> } : c,
+          )}
+          filas={conId(calculo.alertas)}
+        />
       </section>
       <section className="silice-control__bloque" aria-labelledby="control-terminos">
         <h2 id="control-terminos" className="cds--type-heading-compact-02">
