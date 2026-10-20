@@ -401,3 +401,74 @@ def test_la_ayuda_de_registro_solo_va_con_una_empresa_no_registrada(tmp_path: Pa
         recibido_en=RECIBIDO,
     )
     assert revision.ayuda_de_registro(sin_firma) is None
+
+
+# --- VB-19: la fecha se formatea EN SU RANURA, nunca con una busqueda sobre el texto -----------
+
+
+def _recibido(**campos):
+    from types import SimpleNamespace
+
+    manifiesto = {"codigo": "2026-11-10", "emitido": "2026-11-10T08:00:00"}
+    base = dict(
+        verificacion=SimpleNamespace(manifiesto=manifiesto),
+        ya_recibido=False,
+        ya_recibido_el="",
+        ultima_recibida="",
+    )
+    return SimpleNamespace(**{**base, **campos})
+
+
+def test_fecha_es_pasa_la_fecha_iso_a_dd_mm_aaaa_y_deja_lo_que_no_lo_es() -> None:
+    from aplicacion import revision
+
+    assert revision.fecha_es("2026-11-10") == "10/11/2026"
+    assert revision.fecha_es("V2026-01-01") == "V2026-01-01"
+    assert revision.fecha_es("") == ""
+
+
+def test_el_banner_de_version_formatea_solo_las_ranuras_de_fecha() -> None:
+    from aplicacion import revision
+
+    primera = _recibido()
+    assert revision.banner_de_version(primera) == (
+        "Versión 2026-11-10 del 2026-11-10; es la primera que recibe de este proyecto."
+    )  # por omision, ISO como la clasica
+    assert revision.banner_de_version(primera, fecha=revision.fecha_es) == (
+        "Versión 2026-11-10 del 10/11/2026; es la primera que recibe de este proyecto."
+    )  # el codigo con forma de fecha queda intacto
+    otra = _recibido(ya_recibido=True, ya_recibido_el="2026-11-12")
+    assert revision.banner_de_version(otra, fecha=revision.fecha_es).endswith(
+        "ya recibió este mismo paquete el 12/11/2026."
+    )
+    previa = _recibido(ultima_recibida="versión 2026-01-01 del 2026-11-03")
+    assert revision.banner_de_version(previa, fecha=revision.fecha_es).endswith(
+        "la última que usted recibió de este proyecto: versión 2026-01-01 del 03/11/2026."
+    )
+
+
+def test_la_declaracion_retroactiva_formatea_la_fecha_y_no_el_codigo() -> None:
+    from aplicacion import revision
+
+    cadena = {
+        "eslabones": [
+            {"tipo": "retroactivo", "codigo": "2026-01-01", "fecha_hora": "2026-11-05T09:00"}
+        ]
+    }
+    texto = revision.declaracion_retroactiva(cadena, fecha=revision.fecha_es)
+    assert texto.startswith("Versión 2026-01-01 ") and " el 05/11/2026:" in texto
+
+
+def test_el_texto_de_dictamen_formatea_la_fecha_y_no_el_login() -> None:
+    from aplicacion import revision
+
+    fila = {
+        "resultado": "conforme",
+        "usuario": "rita_2026-01-15",
+        "fecha": datetime(2026, 11, 12, 10, 5, 59),
+        "estado_verificacion": "verificado",
+    }
+    assert revision.texto_de_dictamen(fila, fecha=revision.fecha_es) == (
+        "Dictamen anterior: conforme · rita_2026-01-15 · 12/11/2026 10:05 · "
+        "verificación entonces: verificado"
+    )

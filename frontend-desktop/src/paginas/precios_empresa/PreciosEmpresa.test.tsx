@@ -153,6 +153,7 @@ describe("Precios de la empresa", () => {
     expect(screen.getByRole("option", { name: "Linea base 01/01/2026 (USD)" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Precios de la empresa" })).toBeInTheDocument();
     expect(screen.getByText(/La lista de su empresa: una copia de la lista base/)).toBeInTheDocument();
+    expect(screen.getByText(/No cambia la valoración de ningún proyecto que no la use\./)).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "1. La referencia MaPreX en bolívares" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "2. La lista de la empresa" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "3. Precios vencidos o fuera de rango (R11 y R12)" })).toBeInTheDocument();

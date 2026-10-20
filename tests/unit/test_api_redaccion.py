@@ -1,9 +1,11 @@
-"""VB-16: la prosa de los hallazgos que muestran Revisar y Precios (concordancia y mayusculas).
+"""VB-16: la prosa de R11 que muestran Revisar y Precios (concordancia y lista vacia).
 
-Oraculos escritos a mano; los insumos son ficticios.
+Oraculos escritos a mano; los insumos son ficticios. Ninguna palabra del usuario cambia.
 """
 
 from __future__ import annotations
+
+import time
 
 import pytest
 
@@ -31,14 +33,53 @@ def test_varios_insumos_de_los_dos_grupos_conservan_ambos() -> None:
     )
 
 
+def test_un_grupo_con_cuenta_y_lista_vacia_conserva_la_cuenta_para_que_la_suma_cuadre() -> None:
+    texto = R11.format(n=2, a=1, la="", b=1, lb="Z")
+    assert pulir(texto) == (
+        "2 insumos no contrastables: 1 sin referencia MaPreX, 1 sin tasa a su fecha (Z)"
+    )
+
+
 @pytest.mark.parametrize(
-    ("crudo", "esperado"),
+    "texto",
     [
-        ("INDICIO: los reajustes superan el 10 %", "Indicio: los reajustes superan el 10 %"),
-        ("Resultado: NO CUMPLE", "Resultado: No cumple"),
-        ("Resultado: CUMPLE", "Resultado: Cumple"),
-        ("la cantidad de EJ-P1 es manual", "la cantidad de EJ-P1 es manual"),
+        "CEMENTO NO CUMPLE NORMA",
+        "TUBO CUMPLE-01",
+        "ARENA INDICIO",
+        "INDICIO: los reajustes superan el 10 %",
+        "Resultado: NO CUMPLE",
+        R11.format(n=2, a=1, la="TUBO CUMPLE-01", b=1, lb="ARENA INDICIO"),
+        "la cantidad de EJ-P1 es manual",
     ],
 )
-def test_las_mayusculas_de_indicio_y_cumple_pasan_a_inicial(crudo: str, esperado: str) -> None:
-    assert pulir(crudo) == esperado
+def test_las_palabras_del_usuario_salen_intactas(texto: str) -> None:
+    esperado = (
+        texto
+        if "insumos no" not in texto
+        else (
+            "2 insumos no contrastables: 1 sin referencia MaPreX (TUBO CUMPLE-01), "
+            "1 sin tasa a su fecha (ARENA INDICIO)"
+        )
+    )
+    assert pulir(texto) == esperado
+
+
+CABEZA = "1 insumos no contrastables: 1 sin referencia MaPreX ("
+MEDIO = "), 1 sin tasa a su fecha ("
+
+
+@pytest.mark.parametrize(
+    "texto",
+    [
+        CABEZA + MEDIO * 3800,
+        CABEZA + "x" * 100_000,
+        "x" * 100_000,
+        "1 insumos no contrastables: 1 sin referencia MaPreX (" + "(" * 100_000,
+    ],
+    ids=["delimitadores", "x_tras_cabeza", "solo_x", "parentesis"],
+)
+def test_un_texto_adversarial_de_100000_caracteres_tarda_menos_de_un_segundo(texto: str) -> None:
+    t0 = time.perf_counter()
+    salida = pulir(texto)
+    assert time.perf_counter() - t0 < 1.0
+    assert salida == texto  # por encima del tope de longitud el texto queda intacto

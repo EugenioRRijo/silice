@@ -667,3 +667,25 @@ def test_el_error_de_un_excel_externo_nombra_el_archivo_recibido() -> None:
     assert r.status_code == 422
     assert r.json()["detalle"].startswith("limpio.xlsx")
     assert "externo.xlsx" not in r.json()["detalle"]
+
+
+def test_el_banner_de_verificacion_formatea_la_fecha_y_no_al_emisor() -> None:
+    from dataclasses import replace
+
+    from paquete.verificar import Verificacion
+
+    v = Verificacion(
+        "verificado",
+        "ok",
+        "",
+        "0" * 64,
+        manifiesto={"emitido": "2026-11-10T08:00:00"},
+        empresa_declarada="Obras 2026-01-01, C.A.",
+        empresa_verificada="Obras 2026-01-01, C.A.",
+    )
+    _, texto = ruta_revision._banner_es(v)
+    assert texto == (
+        "Verificado: emitido por Obras 2026-01-01, C.A. el 10/11/2026. "
+        "No se alteró desde que se firmó."
+    )
+    assert replace(v).manifiesto == {"emitido": "2026-11-10T08:00:00"}  # el original no cambia
