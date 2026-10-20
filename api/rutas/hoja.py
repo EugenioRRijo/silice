@@ -39,12 +39,14 @@ from api.esquemas_hoja import (
     VersionesHojaRespuesta,
     VersionHojaRespuesta,
     VistaApuRespuesta,
+    VistaEquilibrioRespuesta,
     VistaEspacioRespuesta,
     VistaPlanRespuesta,
     VistaPresupuestoRespuesta,
     base_a_respuesta,
     resumen_a_respuesta,
     vista_apu_a_respuesta,
+    vista_equilibrio_a_respuesta,
     vista_espacio_a_respuesta,
     vista_plan_a_respuesta,
     vista_presupuesto_a_respuesta,
@@ -266,3 +268,11 @@ def vista_apu(
 def vista_plan(id: IdDeBorrador, request: Request, activa: CuentaDeLaHoja) -> VistaPlanRespuesta:
     """R8: Plan y curva en lectura (matriz partida por periodo y curva de inversión)."""
     return vista_plan_a_respuesta(hoja_vista.vista_plan(_vivo(request, activa, id)))
+
+
+@router.get("/borradores/{id}/vistas/equilibrio", response_model=VistaEquilibrioRespuesta)
+def vista_equilibrio(
+    id: IdDeBorrador, request: Request, activa: CuentaDeLaHoja
+) -> VistaEquilibrioRespuesta:
+    """R9: Punto de equilibrio en lectura (ventas, costos, utilidad, punto y la frase del caso)."""
+    return vista_equilibrio_a_respuesta(hoja_vista.vista_equilibrio(_vivo(request, activa, id)))

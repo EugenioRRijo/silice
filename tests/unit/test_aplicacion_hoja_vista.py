@@ -788,7 +788,9 @@ def test_el_equilibrio_de_of001_es_el_de_la_memoria(_of001):
     assert abs(Decimal(v.punto.exacto) - D("1530.49")) <= D("0.01")
     assert abs(Decimal(v.porcentaje.exacto) - D("56.60")) <= D("0.01")
     assert v.periodo is not None and v.periodo.startswith("Dia 23")
-    assert v.mensaje.startswith("Se alcanza en Dia 23, al ") and v.mensaje.endswith(" % de ese período.")
+    assert v.mensaje.startswith("Se alcanza en Dia 23, al ") and v.mensaje.endswith(
+        " % de ese período."
+    )
     assert D("0") < Decimal(v.fraccion_periodo) <= D("1")
     # a mano: ventas 2703,86; CF = CV × 0,15 = 320,616; utilidad = V − CV − CF = 245,80
     assert abs(Decimal(v.venta.exacto) - D("2703.86")) <= D("0.01")
@@ -882,9 +884,7 @@ CURVA = (
         ),
     ],
 )
-def test_los_cuatro_casos_limite_del_equilibrio_dicen_su_frase(
-    venta, cv, cf, curva, estado, frase
-):
+def test_los_cuatro_casos_limite_del_equilibrio_dicen_su_frase(venta, cv, cf, curva, estado, frase):
     """3b-B9 / P4: cada caso límite, con montos escritos a mano."""
     pe = _pe_de_core(venta, cv, cf, curva)
     v = hoja_vista.equilibrio_a_vista(pe, "USD")
@@ -900,6 +900,8 @@ def test_sin_punto_no_hay_punto_ni_porcentaje_ni_periodo():
 
 
 def test_el_equilibrio_de_un_borrador_en_blanco_no_aplica():
-    v = hoja_vista.vista_equilibrio(Registro().crear("f", "c", "N", None, hoja.Borrador(fecha=HOY), None))
+    v = hoja_vista.vista_equilibrio(
+        Registro().crear("f", "c", "N", None, hoja.Borrador(fecha=HOY), None)
+    )
     assert v.estado == "no_aplicable" and v.punto is None
     assert v.mensaje == "El presupuesto no tiene ventas: el punto de equilibrio no aplica."

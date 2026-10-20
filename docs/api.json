@@ -5615,6 +5615,52 @@
         }
       }
     },
+    "/v1/hoja/borradores/{id}/vistas/equilibrio": {
+      "get": {
+        "tags": [
+          "hoja"
+        ],
+        "summary": "Vista Equilibrio",
+        "description": "R9: Punto de equilibrio en lectura (ventas, costos, utilidad, punto y la frase del caso).",
+        "operationId": "vista_equilibrio_v1_hoja_borradores__id__vistas_equilibrio_get",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 16,
+              "maxLength": 64,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "title": "Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VistaEquilibrioRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/produccion/materiales": {
       "get": {
         "tags": [
@@ -15301,6 +15347,91 @@
           "vacio_mensaje"
         ],
         "title": "VistaApuRespuesta"
+      },
+      "VistaEquilibrioRespuesta": {
+        "properties": {
+          "estado": {
+            "type": "string",
+            "title": "Estado"
+          },
+          "moneda": {
+            "type": "string",
+            "title": "Moneda"
+          },
+          "venta": {
+            "$ref": "#/components/schemas/MontoHojaRespuesta"
+          },
+          "costo_variable": {
+            "$ref": "#/components/schemas/MontoHojaRespuesta"
+          },
+          "costo_fijo": {
+            "$ref": "#/components/schemas/MontoHojaRespuesta"
+          },
+          "utilidad": {
+            "$ref": "#/components/schemas/MontoHojaRespuesta"
+          },
+          "punto": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MontoHojaRespuesta"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "porcentaje": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MontoHojaRespuesta"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "periodo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Periodo"
+          },
+          "fraccion_periodo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fraccion Periodo"
+          },
+          "mensaje": {
+            "type": "string",
+            "title": "Mensaje"
+          }
+        },
+        "type": "object",
+        "required": [
+          "estado",
+          "moneda",
+          "venta",
+          "costo_variable",
+          "costo_fijo",
+          "utilidad",
+          "punto",
+          "porcentaje",
+          "periodo",
+          "fraccion_periodo",
+          "mensaje"
+        ],
+        "title": "VistaEquilibrioRespuesta"
       },
       "VistaEspacioRespuesta": {
         "properties": {

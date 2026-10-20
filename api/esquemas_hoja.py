@@ -16,6 +16,7 @@ from aplicacion.hoja_vista import (
     Monto,
     ResumenHoja,
     VistaApu,
+    VistaEquilibrio,
     VistaEspacio,
     VistaPlan,
     VistaPresupuesto,
@@ -280,3 +281,21 @@ class VistaPlanRespuesta(BaseModel):
 
 def vista_plan_a_respuesta(vista: VistaPlan) -> VistaPlanRespuesta:
     return VistaPlanRespuesta.model_validate(vista, from_attributes=True)
+
+
+class VistaEquilibrioRespuesta(BaseModel):
+    estado: str
+    moneda: str
+    venta: MontoHojaRespuesta
+    costo_variable: MontoHojaRespuesta
+    costo_fijo: MontoHojaRespuesta
+    utilidad: MontoHojaRespuesta
+    punto: MontoHojaRespuesta | None
+    porcentaje: MontoHojaRespuesta | None
+    periodo: str | None
+    fraccion_periodo: str | None
+    mensaje: str
+
+
+def vista_equilibrio_a_respuesta(vista: VistaEquilibrio) -> VistaEquilibrioRespuesta:
+    return VistaEquilibrioRespuesta.model_validate(vista, from_attributes=True)

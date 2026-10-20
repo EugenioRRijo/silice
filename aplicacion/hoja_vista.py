@@ -10,7 +10,8 @@ la interfaz no calcula ni redondea. Sin FastAPI ni Streamlit.
 
 La 3b-2 anade las vistas de Espacio y metrajes, APU, Presupuesto y Plan y curva (`vista_*`): cada
 una lee el borrador vivo (no la base), usa solo funciones de `aplicacion.hoja` (la copia del Plan C)
-y devuelve dataclasses que la API serializa. La 3b-3 anade las demas pestanas.
+y devuelve dataclasses que la API serializa. La 3b-3 anade las demas pestanas: Punto de equilibrio,
+Parametros, Auditoria, Precios y Trazabilidad.
 """
 
 from __future__ import annotations
@@ -30,6 +31,7 @@ from adapters.espacio.modelo import (
 from adapters.espacio.origen import TipoOrigen
 from aplicacion import hoja
 from aplicacion.hoja_borradores import BorradorVivo
+from core.budget.equilibrio import PuntoEquilibrio
 from core.contracts import Severidad
 from core.verification.informe import DECIMALES_PRESENTACION
 from core.verification.texto import formatear_decimal
@@ -624,3 +626,47 @@ def vista_plan(vivo: BorradorVivo) -> VistaPlan:
         moneda=presupuesto.moneda,
         mensaje=None,
     )
+
+
+# --- Punto de equilibrio (R9) -------------------------------------------------------------------
+
+
+@dataclass(frozen=True, slots=True)
+class VistaEquilibrio:
+    """Las cuatro metricas, el punto (si existe) y la frase del caso (P:1854-1868). `porcentaje` es
+    el punto como % de las ventas; `fraccion_periodo`, de 0 a 1, exacta y como texto."""
+
+    estado: str
+    moneda: str
+    venta: Monto
+    costo_variable: Monto
+    costo_fijo: Monto
+    utilidad: Monto
+    punto: Monto | None
+    porcentaje: Monto | None
+    periodo: str | None
+    fraccion_periodo: str | None
+    mensaje: str
+
+
+def equilibrio_a_vista(pe: PuntoEquilibrio, moneda: str) -> VistaEquilibrio:
+    """El punto de equilibrio de `core` como vista; la frase es `hoja.texto_equilibrio`."""
+    return VistaEquilibrio(
+        estado=pe.estado.value,
+        moneda=moneda,
+        venta=monto(pe.venta),
+        costo_variable=monto(pe.costo_variable),
+        costo_fijo=monto(pe.costo_fijo),
+        utilidad=monto(pe.utilidad),
+        punto=None if pe.punto is None else monto(pe.punto),
+        porcentaje=None if pe.porcentaje is None else monto(pe.porcentaje),
+        periodo=pe.periodo,
+        fraccion_periodo=None if pe.fraccion_periodo is None else format(pe.fraccion_periodo, "f"),
+        mensaje=hoja.texto_equilibrio(pe),
+    )
+
+
+def vista_equilibrio(vivo: BorradorVivo) -> VistaEquilibrio:
+    """La pestana Punto de equilibrio (no se edita, RS-4): sale del calculo del borrador vivo."""
+    resultado, _ = calculo(vivo)
+    return equilibrio_a_vista(resultado.equilibrio, resultado.elaboracion.presupuesto.moneda)
