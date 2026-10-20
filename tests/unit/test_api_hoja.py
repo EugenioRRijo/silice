@@ -823,3 +823,51 @@ def test_r6_de_ti001_usa_los_renglones_de_la_version_y_el_total_del_caso(_casos)
     cuerpo = _vista(navegador, id_, "presupuesto").json()
     assert {f["partida"] for f in cuerpo["filas"]} == set(caso_ti001.COMPOSICIONES)
     assert D(cuerpo["total"]["exacto"]) == caso_ti001.elaborar_caso().presupuesto.total
+
+
+def test_r7_sin_parametros_selecciona_la_primera_partida_y_trae_su_cierre() -> None:
+    navegador, ficha = _ana()
+    respuesta = _vista(navegador, _abierta(navegador, ficha), "apu")
+    assert respuesta.status_code == 200, respuesta.text
+    cuerpo = respuesta.json()
+    assert len(cuerpo["partidas"]) == 30 and cuerpo["sin_coincidencias"] is False
+    assert cuerpo["seleccionada"] == "AF-CODO-1/2"
+    assert cuerpo["detalle"]["codigo"] == "AF-CODO-1/2" and cuerpo["vacio_mensaje"] is None
+    assert [c["concepto"] for c in cuerpo["detalle"]["cierre"]][-1] == "= Precio unitario"
+
+
+def test_r7_con_partida_da_la_cascada_a_mano_de_af_llave() -> None:
+    navegador, ficha = _ana()
+    cuerpo = _vista(navegador, _abierta(navegador, ficha), "apu", partida="AF-LLAVE").json()
+    detalle = cuerpo["detalle"]
+    assert cuerpo["seleccionada"] == "AF-LLAVE" and detalle["rendimiento"] == "20"
+    assert [g["subtotal"]["exacto"] for g in detalle["grupos"]] == ["7.7483", "0.71523", "1.970255"]
+    # costo directo 10,433785 × 1,15 × 1,10 = 13,198738025 (a mano; NORMAS.md §4)
+    assert abs(D(detalle["metricas"]["precio_unitario"]["exacto"]) - D("13.198738025")) <= D(
+        "0.000001"
+    )
+    assert detalle["metricas"]["precio_unitario"]["texto"] == "13.20"
+    assert detalle["estados"] == [] and detalle["solo_lectura_insumos"] is False
+
+
+def test_r7_buscar_filtra_y_sin_coincidencias_devuelve_todas() -> None:
+    navegador, ficha = _ana()
+    id_ = _abierta(navegador, ficha)
+    picado = _vista(navegador, id_, "apu", buscar="picado").json()
+    assert [p["codigo"] for p in picado["partidas"]] == [
+        "AF-PICADO-PARED",
+        "DR-PICADO-PARED",
+        "DR-PICADO-PISO",
+    ]
+    assert picado["seleccionada"] == "AF-PICADO-PARED"
+    ninguna = _vista(navegador, id_, "apu", buscar="zzz").json()
+    assert ninguna["sin_coincidencias"] is True and len(ninguna["partidas"]) == 30
+
+
+def test_r7_un_texto_de_mas_de_500_caracteres_es_422_sin_eco() -> None:
+    navegador, ficha = _ana()
+    id_ = _abierta(navegador, ficha)
+    for parametro in ("partida", "buscar"):
+        respuesta = _vista(navegador, id_, "apu", **{parametro: CENTINELA * 60})
+        assert respuesta.status_code == 422 and CENTINELA not in respuesta.text
+        assert respuesta.headers["cache-control"] == "no-store"

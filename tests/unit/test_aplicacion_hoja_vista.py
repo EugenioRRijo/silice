@@ -520,3 +520,200 @@ def test_un_presupuesto_sin_renglones_lo_dice():
     assert v.filas == ()
     assert v.vacio_mensaje == "El presupuesto no tiene renglones todavía."
     assert (v.total.texto, v.moneda) == ("0.00", "USD")
+
+
+# --- 3b-2 · vista del APU (R7) -------------------------------------------------------------------
+
+CODIGOS_DE_OF001 = [
+    "AF-CODO-1/2",
+    "AF-CODO-3/4",
+    "AF-LLAVE",
+    "AF-PICADO-PARED",
+    "AF-SALIDA",
+    "AF-TEE-3/4",
+    "AF-TUB-PVC-1/2",
+    "AF-TUB-PVC-3/4",
+    "DR-CODO-1-1/2",
+    "DR-CODO-2",
+    "DR-PICADO-PARED",
+    "DR-PICADO-PISO",
+    "DR-SALIDA",
+    "DR-TUB-PVC-1-1/2",
+    "DR-TUB-PVC-2",
+    "DT-CAJA",
+    "DT-CAN-EMT-1/2",
+    "DT-CAN-EMT-3/4",
+    "DT-CERT",
+    "DT-FACEPLATE",
+    "DT-JACK",
+    "DT-UTP-CAT-6",
+    "EL-CAJA",
+    "EL-COND-12-AWG",
+    "EL-COND-14-AWG",
+    "EL-PROT",
+    "EL-SALIDA-ILUM",
+    "EL-SALIDA-TOMA",
+    "EL-TUB-EMT-1/2",
+    "EL-TUB-EMT-3/4",
+]
+
+
+def test_la_lista_de_partidas_trae_las_valoradas_con_su_descripcion_y_selecciona_la_primera(
+    _of001,
+):
+    v = hoja_vista.vista_apu(_vivo(_of001))
+    assert [p.codigo for p in v.partidas] == CODIGOS_DE_OF001
+    assert v.partidas[2].descripcion == "Llave de paso de agua fria instalada"
+    assert (v.sin_coincidencias, v.seleccionada, v.vacio_mensaje) == (False, "AF-CODO-1/2", None)
+    assert v.detalle is not None and v.detalle.codigo == "AF-CODO-1/2"
+
+
+@pytest.mark.parametrize(
+    ("buscar", "esperados"),
+    [
+        ("picado", ["AF-PICADO-PARED", "DR-PICADO-PARED", "DR-PICADO-PISO"]),
+        ("PICADO", ["AF-PICADO-PARED", "DR-PICADO-PARED", "DR-PICADO-PISO"]),
+        ("sifón", ["DR-SALIDA"]),  # sin tildes ni mayúsculas: «sifon» en la descripción
+        ("af-llave", ["AF-LLAVE"]),  # por código
+        ("  ", CODIGOS_DE_OF001),
+    ],
+)
+def test_buscar_filtra_por_codigo_o_descripcion_sin_tildes_ni_mayusculas(_of001, buscar, esperados):
+    v = hoja_vista.vista_apu(_vivo(_of001), buscar=buscar)
+    assert [p.codigo for p in v.partidas] == esperados
+    assert v.sin_coincidencias is False
+    assert v.seleccionada == esperados[0]
+
+
+def test_sin_coincidencias_se_muestran_todas_y_se_avisa(_of001):
+    v = hoja_vista.vista_apu(_vivo(_of001), buscar="zzz")
+    assert v.sin_coincidencias is True
+    assert [p.codigo for p in v.partidas] == CODIGOS_DE_OF001
+    assert v.seleccionada == "AF-CODO-1/2"
+
+
+def test_la_partida_pedida_se_selecciona_y_una_ajena_a_la_lista_cae_a_la_primera(_of001):
+    vivo = _vivo(_of001)
+    assert hoja_vista.vista_apu(vivo, partida="AF-LLAVE").seleccionada == "AF-LLAVE"
+    assert hoja_vista.vista_apu(vivo, partida="NO-EXISTE").seleccionada == "AF-CODO-1/2"
+    # filtrada fuera de la lista visible: la primera visible, como el radio de la clásica (P:1604)
+    v = hoja_vista.vista_apu(vivo, partida="AF-LLAVE", buscar="picado")
+    assert v.seleccionada == "AF-PICADO-PARED"
+
+
+def test_el_detalle_de_af_llave_trae_los_tres_rubros_de_la_composicion(_of001):
+    d = hoja_vista.vista_apu(_vivo(_of001), partida="AF-LLAVE").detalle
+    assert (d.codigo, d.unidad, d.rendimiento) == ("AF-LLAVE", "unidad", "20")
+    assert d.descripcion == "Llave de paso de agua fria instalada"
+    assert [(g.clave, g.rotulo) for g in d.grupos] == [
+        ("materiales", "Materiales"),
+        ("equipos", "Equipos"),
+        ("mano de obra", "Mano de obra"),
+    ]
+    materiales, equipos, mano_obra = d.grupos
+    assert [c.clave for c in materiales.columnas] == ["descripcion", "unidad", "cantidad", "precio"]
+    assert [c.clave for c in equipos.columnas] == [
+        "descripcion",
+        "cantidad",
+        "precio",
+        "depreciacion",
+    ]
+    assert [c.clave for c in mano_obra.columnas] == [
+        "descripcion",
+        "cantidad",
+        "sueldo",
+        "modalidad",
+    ]
+    assert materiales.filas == [
+        {
+            "descripcion": "Llave de paso de bola PVC 1/2 pulg [PLOG26]",
+            "unidad": "pieza",
+            "cantidad": "1",
+            "precio": "7.7483",
+        }
+    ]
+    assert [f["descripcion"] for f in mano_obra.filas] == [
+        "Plomero de 1ra N5 [19-212]",
+        "Ayudante N2 [1-1.2]",
+    ]
+    assert mano_obra.filas[0]["sueldo"] == "2.1877" and mano_obra.filas[0]["modalidad"] == "jornal"
+
+
+def test_los_subtotales_y_el_cierre_de_af_llave_son_la_cascada_a_mano(_of001):
+    """Hecha a mano con `caso_of001.py` (ver el test del presupuesto): materiales 7,7483; equipos
+    14,3046 ÷ 20 = 0,71523; mano de obra ((2,1877 + 1,7816) × 7 + 2 × 5,81) ÷ 20 = 1,970255;
+    costo directo 10,433785; administración 15 % = 1,56506775; con administración 11,99885275;
+    utilidad 10 % en cascada = 1,199885275; precio unitario 13,198738025."""
+    d = hoja_vista.vista_apu(_vivo(_of001), partida="AF-LLAVE").detalle
+    subtotales = [Decimal(g.subtotal.exacto) for g in d.grupos]
+    assert subtotales == [D("7.7483"), D("0.71523"), D("1.970255")]
+    assert [g.subtotal.texto for g in d.grupos] == ["7.75", "0.72", "1.97"]
+    esperado = [
+        ("Materiales", "7.7483", "completos"),
+        ("Equipos", "0.71523", "entre el rendimiento"),
+        ("Mano de obra", "1.970255", "FCAS 6 y bono 5.81, entre el rendimiento"),
+        ("= Costo directo", "10.433785", ""),
+        ("+ Administracion", "1.56506775", "15.0 % del costo directo"),
+        ("= Con administracion", "11.99885275", ""),
+        ("+ Utilidad", "1.199885275", "10.0 % en cascada"),
+        ("= Precio unitario", "13.198738025", ""),
+    ]
+    assert [(c.concepto, c.nota) for c in d.cierre] == [(c, n) for c, _, n in esperado]
+    for fila, (_, exacto, _) in zip(d.cierre, esperado, strict=True):
+        assert abs(Decimal(fila.monto.exacto) - D(exacto)) <= D("0.000001")
+    assert [c.monto.texto for c in d.cierre] == [
+        "7.75",
+        "0.72",
+        "1.97",
+        "10.43",
+        "1.57",
+        "12.00",
+        "1.20",
+        "13.20",
+    ]
+    m = d.metricas
+    assert (m.materiales.texto, m.equipos.texto, m.mano_obra.texto) == ("7.75", "0.72", "1.97")
+    assert abs(Decimal(m.precio_unitario.exacto) - D("13.198738025")) <= D("0.000001")
+
+
+def test_el_cierre_y_las_tablas_son_los_de_la_clasica_en_todas_las_partidas(_of001):
+    vivo = _vivo(_of001)
+    elaborada = _elaborada_por_la_clasica(_como_clasica(_of001.borrador))
+    renglones = {p.item.codigo_partida: p for p in elaborada.elaboracion.presupuesto.partidas}
+    for codigo in CODIGOS_DE_OF001:
+        d = hoja_vista.vista_apu(vivo, partida=codigo).detalle
+        composicion = _of001.borrador.composiciones[codigo]
+        materiales, equipos, mano_obra = clasica.filas_de_apu(composicion)
+        assert [g.filas for g in d.grupos] == [materiales, equipos, mano_obra], codigo
+        assert d.rendimiento == clasica.texto_numero(composicion.rendimiento), codigo
+        cierre = clasica.filas_de_cierre(
+            renglones[codigo].resultado, _of001.borrador.parametros, "USD"
+        )
+        assert [(c.concepto, c.nota, c.monto.texto + " USD") for c in d.cierre] == [
+            (f["Concepto"], f["Nota"], f["Monto"]) for f in cierre
+        ], codigo
+
+
+def test_el_estado_de_la_partida_se_dice_solo_si_no_esta_ok(_of001):
+    vivo = _vivo(_of001)
+    limpio = hoja_vista.vista_apu(vivo, partida="AF-LLAVE").detalle
+    assert limpio.estados == ()
+    advertido = hoja_vista.vista_apu(vivo, partida="AF-CODO-3/4").detalle
+    assert len(advertido.estados) == 1
+    assert advertido.estados[0].startswith(
+        "Estado de AF-CODO-3/4|esp_fuentes:F1: ADVERTENCIA: fuente F1: la medida es un supuesto"
+    )
+
+
+def test_cambiar_el_insumo_solo_se_ofrece_con_una_version_abierta(_of001):
+    assert hoja_vista.vista_apu(_vivo(_of001)).detalle.solo_lectura_insumos is False
+    sin_version = Registro().crear("f", "c", "N", None, _of001.borrador, None)
+    assert hoja_vista.vista_apu(sin_version).detalle.solo_lectura_insumos is True
+
+
+def test_sin_partidas_valoradas_no_hay_detalle_y_se_dice():
+    v = hoja_vista.vista_apu(Registro().crear("f", "c", "N", None, hoja.Borrador(fecha=HOY), None))
+    assert (v.partidas, v.seleccionada, v.detalle) == ((), None, None)
+    assert v.vacio_mensaje == (
+        "Todavía no hay partidas valoradas: derive cantidades en Espacio y metrajes."
+    )
