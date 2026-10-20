@@ -67,7 +67,12 @@ const FRASES_CON_CIFRAS = [
   new RegExp(`^(.*: el precio del corte desvía )${CIFRA}( sobre un valor ganado de )${CIFRA}$`),
 ];
 
+// Mas largo que esto no es una descripcion del nucleo (la mas larga mide ~150 caracteres): vuelve intacto sin probar
+// ninguna expresion ni formatear cifras (el separador de miles de formatoEsVe es cuadratico en el largo de la cifra).
+const LARGO_MAXIMO_DESCRIPCION = 2_000;
+
 export function descripcionEsVe(texto: string): string {
+  if (texto.length > LARGO_MAXIMO_DESCRIPCION) return texto;
   for (const frase of FRASES_CON_CIFRAS) {
     const m = frase.exec(texto);
     if (m) return m.slice(1).map((parte, i) => (i % 2 === 1 ? formatoEsVe(parte) : parte)).join("");
