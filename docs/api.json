@@ -5397,6 +5397,62 @@
         }
       }
     },
+    "/v1/hoja/borradores/{id}/espacio": {
+      "put": {
+        "tags": [
+          "hoja"
+        ],
+        "summary": "Editar Espacio",
+        "description": "E1: aplica las cinco tablas del editor al espacio del borrador y lo devuelve recalculado.\n\nSolo cambia el borrador en memoria (nada a la base: el guardado es 3d). `rev` viejo, 409; un\ndato inválido, 422 con el texto de la clásica y el borrador intacto. Una petición a la vez por\nborrador: se toma su cerrojo y la respuesta es la del `rev` que esta edición produjo.",
+        "operationId": "editar_espacio_v1_hoja_borradores__id__espacio_put",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 16,
+              "maxLength": 64,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "title": "Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EdicionEspacio"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EdicionEspacioRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/hoja/borradores/{id}/vistas/espacio": {
       "get": {
         "tags": [
@@ -9289,6 +9345,47 @@
           "sistemas"
         ],
         "title": "Dominio"
+      },
+      "EdicionEspacio": {
+        "properties": {
+          "rev": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Rev"
+          },
+          "tablas": {
+            "$ref": "#/components/schemas/TablasEspacioCuerpo"
+          }
+        },
+        "type": "object",
+        "required": [
+          "rev",
+          "tablas"
+        ],
+        "title": "EdicionEspacio",
+        "description": "`rev` es el que la persona vio (`ResumenHoja.rev`); un entero, no texto ni decimal."
+      },
+      "EdicionEspacioRespuesta": {
+        "properties": {
+          "rev": {
+            "type": "integer",
+            "title": "Rev"
+          },
+          "resumen": {
+            "$ref": "#/components/schemas/ResumenHojaRespuesta"
+          },
+          "espacio": {
+            "$ref": "#/components/schemas/VistaEspacioRespuesta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "rev",
+          "resumen",
+          "espacio"
+        ],
+        "title": "EdicionEspacioRespuesta",
+        "description": "El borrador ya recalculado: su `rev` nuevo, el resumen y la vista del espacio (como R5)."
       },
       "EjecucionPeticion": {
         "properties": {
@@ -15386,6 +15483,94 @@
         },
         "type": "object",
         "title": "Tablas"
+      },
+      "TablasEspacioCuerpo": {
+        "properties": {
+          "origenes": {
+            "items": {
+              "additionalProperties": {
+                "type": "string",
+                "maxLength": 500
+              },
+              "propertyNames": {
+                "maxLength": 64
+              },
+              "type": "object",
+              "maxProperties": 40
+            },
+            "type": "array",
+            "maxItems": 5000,
+            "title": "Origenes"
+          },
+          "ambientes": {
+            "items": {
+              "additionalProperties": {
+                "type": "string",
+                "maxLength": 500
+              },
+              "propertyNames": {
+                "maxLength": 64
+              },
+              "type": "object",
+              "maxProperties": 40
+            },
+            "type": "array",
+            "maxItems": 1000,
+            "title": "Ambientes"
+          },
+          "fuentes": {
+            "items": {
+              "additionalProperties": {
+                "type": "string",
+                "maxLength": 500
+              },
+              "propertyNames": {
+                "maxLength": 64
+              },
+              "type": "object",
+              "maxProperties": 40
+            },
+            "type": "array",
+            "maxItems": 1000,
+            "title": "Fuentes"
+          },
+          "puntos": {
+            "items": {
+              "additionalProperties": {
+                "type": "string",
+                "maxLength": 500
+              },
+              "propertyNames": {
+                "maxLength": 64
+              },
+              "type": "object",
+              "maxProperties": 40
+            },
+            "type": "array",
+            "maxItems": 5000,
+            "title": "Puntos"
+          },
+          "tramos": {
+            "items": {
+              "additionalProperties": {
+                "type": "string",
+                "maxLength": 500
+              },
+              "propertyNames": {
+                "maxLength": 64
+              },
+              "type": "object",
+              "maxProperties": 40
+            },
+            "type": "array",
+            "maxItems": 20000,
+            "title": "Tramos"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "TablasEspacioCuerpo",
+        "description": "Las cinco tablas del editor del espacio, completas; una ausente cuenta como vacía."
       },
       "TableroRespuesta": {
         "properties": {

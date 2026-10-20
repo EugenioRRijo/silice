@@ -41,6 +41,8 @@ from api.esquemas_hoja import (
     BorradorAbierto,
     BorradorHojaRespuesta,
     BorradorNuevo,
+    EdicionEspacio,
+    EdicionEspacioRespuesta,
     InstantaneaHojaRespuesta,
     PreciosHojaRespuesta,
     TrazabilidadHojaRespuesta,
@@ -66,12 +68,12 @@ from api.esquemas_hoja import (
 from api.esquemas_informe import InformeAuditoriaRespuesta, informe_a_respuesta
 from api.sesion_web import exigir_clave_o_sesion
 from api.sin_cache import RutaSinCache
-from api.sin_eco import RutaSinEco
+from api.sin_eco import RutaSinEco, sin_eco
 from aplicacion import atipicos as busqueda_atipica
-from aplicacion import hoja, hoja_borradores, hoja_vista
+from aplicacion import hoja, hoja_borradores, hoja_edicion, hoja_vista
 from aplicacion.entrega import con_anexos_de_cadena
 from aplicacion.errores import HojaInvalida
-from aplicacion.hoja_borradores import BorradorInexistente, BorradorVivo
+from aplicacion.hoja_borradores import BorradorInexistente, BorradorVivo, RevDesactualizado
 from aplicacion.proyectos import resolver_proyecto
 from core.budget.moneda import moneda_del_proyecto
 from core.catalog import Catalogo
@@ -94,6 +96,12 @@ MENSAJE_BASE = (
     "programa."
 )
 MENSAJE_CON_VERSIONES = "Este proyecto ya tiene versiones: elija una de la lista."
+MENSAJE_REV = "El borrador cambió en otra ventana: vuelva a cargarlo."
+MENSAJE_FORMA_ESPACIO = (
+    "Los datos del espacio no tienen la forma esperada: escriba cada celda como texto de hasta "
+    "500 caracteres y no pase de 5000 orígenes, 1000 ambientes, 1000 fuentes, 5000 puntos y "
+    "20000 vértices."
+)
 
 
 class _RutaHoja(RutaSinCache, RutaSinEco):
@@ -146,9 +154,14 @@ def _vivo(request: Request, activa: SesionActiva, id_: str) -> BorradorVivo:
     return vivo
 
 
+def _mas_nueva(vivo: BorradorVivo, vigente: str | None) -> str | None:
+    """La versión vigente si es otra que la abierta (alguien guardó después de que se abrió)."""
+    return vigente if vivo.version is not None and vigente != vivo.version else None
+
+
 def _respuesta(sesion, vivo: BorradorVivo) -> dict:
     vigente = hoja.codigo_vigente(sesion, vivo.proyecto)
-    mas_nueva = vigente if vivo.version is not None and vigente != vivo.version else None
+    mas_nueva = _mas_nueva(vivo, vigente)
     return {
         "id": vivo.id,
         "base": base_a_respuesta(hoja_vista.base(vivo, vigente)),
@@ -251,6 +264,53 @@ def descartar_borrador(id: IdDeBorrador, request: Request, activa: CuentaDeLaHoj
         raise
     hoja_borradores.descartar(activa.huella_ficha, id)
     return Response(status_code=204)
+
+
+@router.put("/borradores/{id}/espacio", response_model=EdicionEspacioRespuesta)
+@sin_eco(MENSAJE_FORMA_ESPACIO)
+def editar_espacio(
+    id: IdDeBorrador,
+    datos: EdicionEspacio,
+    request: Request,
+    activa: CuentaDeLaHoja,
+    sesion: SesionDep,
+) -> EdicionEspacioRespuesta:
+    """E1: aplica las cinco tablas del editor al espacio del borrador y lo devuelve recalculado.
+
+    Solo cambia el borrador en memoria (nada a la base: el guardado es 3d). `rev` viejo, 409; un
+    dato inválido, 422 con el texto de la clásica y el borrador intacto. Una petición a la vez por
+    borrador: se toma su cerrojo y la respuesta es la del `rev` que esta edición produjo."""
+    vivo = _vivo(request, activa, id)
+    try:
+        with vivo.cerrojo:
+            try:
+                editado = hoja_edicion.editar_espacio(
+                    sesion, activa.huella_ficha, id, datos.rev, datos.tablas.como_filas()
+                )
+            except BorradorInexistente:
+                raise HTTPException(status_code=404, detail=MENSAJE_FALTA) from None
+            except RevDesactualizado:
+                raise HTTPException(status_code=409, detail=MENSAJE_REV) from None
+            except hoja_edicion.BorradorYaGuardado as error:
+                raise HTTPException(
+                    status_code=409,
+                    detail=(
+                        f"Este borrador ya se guardó como la versión {error.codigo}; "
+                        "abra esa versión para seguir."
+                    ),
+                ) from None
+            except HojaInvalida as error:
+                raise HTTPException(status_code=422, detail=str(error)) from None
+            mas_nueva = _mas_nueva(editado, hoja.codigo_vigente(sesion, editado.proyecto))
+            resumen = hoja_vista.resumen(editado, mas_nueva)
+            vista = hoja_vista.vista_espacio(editado)
+    except SQLAlchemyError:
+        raise HTTPException(status_code=503, detail=MENSAJE_BASE) from None
+    return EdicionEspacioRespuesta(
+        rev=resumen.rev,
+        resumen=resumen_a_respuesta(resumen),
+        espacio=vista_espacio_a_respuesta(vista),
+    )
 
 
 @router.get("/borradores/{id}/vistas/espacio", response_model=VistaEspacioRespuesta)

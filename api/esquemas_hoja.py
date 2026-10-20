@@ -2,14 +2,15 @@
 
 Los montos viajan como `Monto {texto, exacto}`: `texto` a dos decimales (como la página clásica) y
 `exacto` sin redondear; ningún `float` en el JSON. Los conteos son enteros. Las rebanadas 3b-2 y
-3b-3 añaden aquí las vistas de cada pestaña.
+3b-3 añaden aquí las vistas de cada pestaña; la 3c-1, el cuerpo y la respuesta de la edición del
+espacio (E1).
 """
 
 from __future__ import annotations
 
 from typing import Annotated
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from aplicacion.hoja import FilaVersion
 from aplicacion.hoja_vista import (
@@ -400,3 +401,43 @@ class PreciosHojaRespuesta(BaseModel):
 
 def precios_a_respuesta(vista: VistaPrecios) -> PreciosHojaRespuesta:
     return PreciosHojaRespuesta.model_validate(vista, from_attributes=True)
+
+
+# --- la edicion del espacio (3c-1, E1) ---------------------------------------------------------
+#
+# Topes del diseño (§4.1, D-9, SUPUESTOS declarados): una celda ≤ 500 caracteres y filas por tabla
+# ≤ 5000 orígenes, 1000 ambientes, 1000 fuentes, 5000 puntos y 20000 vértices. Una fila admite
+# hasta 40 columnas de nombre ≤ 64 caracteres (hardening: la mayor tiene 13).
+
+NombreDeColumna = Annotated[str, Field(max_length=64)]
+FilaDeTabla = Annotated[dict[NombreDeColumna, Texto500], Field(max_length=40)]
+
+
+class TablasEspacioCuerpo(BaseModel):
+    """Las cinco tablas del editor del espacio, completas; una ausente cuenta como vacía."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    origenes: Annotated[list[FilaDeTabla], Field(max_length=5000)] = Field(default_factory=list)
+    ambientes: Annotated[list[FilaDeTabla], Field(max_length=1000)] = Field(default_factory=list)
+    fuentes: Annotated[list[FilaDeTabla], Field(max_length=1000)] = Field(default_factory=list)
+    puntos: Annotated[list[FilaDeTabla], Field(max_length=5000)] = Field(default_factory=list)
+    tramos: Annotated[list[FilaDeTabla], Field(max_length=20000)] = Field(default_factory=list)
+
+    def como_filas(self) -> dict[str, list[dict[str, str]]]:
+        return {nombre: getattr(self, nombre) for nombre in type(self).model_fields}
+
+
+class EdicionEspacio(BaseModel):
+    """`rev` es el que la persona vio (`ResumenHoja.rev`); un entero, no texto ni decimal."""
+
+    rev: Annotated[int, Field(strict=True, ge=0)]
+    tablas: TablasEspacioCuerpo
+
+
+class EdicionEspacioRespuesta(BaseModel):
+    """El borrador ya recalculado: su `rev` nuevo, el resumen y la vista del espacio (como R5)."""
+
+    rev: int
+    resumen: ResumenHojaRespuesta
+    espacio: VistaEspacioRespuesta
