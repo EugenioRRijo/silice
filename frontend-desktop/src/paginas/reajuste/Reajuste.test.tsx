@@ -483,6 +483,24 @@ describe("Reajuste de precios", () => {
     expect(screen.queryByLabelText("Desde, Períodos fila 2")).not.toBeInTheDocument();
   });
 
+  test("el tooltip de la papelera se abre a la izquierda, dentro de la tabla (VD-11, ronda 1)", async () => {
+    // Arbitro, ronda 1: con la papelera pegada al borde derecho de `.silice-filas` (overflow-x: auto), el tooltip
+    // centrado arriba (lo que Carbon pone por omision) salia del contenedor y lo hacia desplazarse (medido a 1366 px:
+    // 1016/1083). A la izquierda se abre sobre la propia fila, hacia dentro. jsdom no mide: se fija la alineacion
+    // (clase del popover de Carbon); el rectangulo se mide en navegador.
+    const u = userEvent.setup();
+    montar();
+    await screen.findByLabelText("Versión del contrato");
+    await irA(u, "2. Períodos y lo ejecutado");
+    for (const nombre of ["Períodos", "Ejecutado"]) {
+      const tabla = screen.getByRole("table", { name: nombre });
+      const quitar = within(tabla).getByRole("button", { name: `Quitar ${nombre} fila 1` });
+      const popover = quitar.closest(".cds--popover-container");
+      expect(popover).toHaveClass("cds--popover--left");
+      expect(popover).not.toHaveClass("cds--popover--top");
+    }
+  });
+
   test("la papelera va en su columna angosta y no en una de 9rem (VD-11)", async () => {
     // Medido en navegador a 1056 px: la tabla «Períodos» medía 770 px en un contenedor de 721 porque la celda de la
     // papelera (un boton de 32 px) heredaba el minimo de 9rem de las celdas de campo. jsdom no mide: aqui se fija la
