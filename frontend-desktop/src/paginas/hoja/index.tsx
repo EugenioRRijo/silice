@@ -18,7 +18,9 @@ import {
 } from "./logica";
 import type { BorradorAbierto, VersionesRespuesta } from "./logica";
 import { PestanaApu } from "./PestanaApu";
+import { PestanaEquilibrio } from "./PestanaEquilibrio";
 import { PestanaEspacio } from "./PestanaEspacio";
+import { PestanaParametros } from "./PestanaParametros";
 import { PestanaPlan } from "./PestanaPlan";
 import { PestanaPresupuesto } from "./PestanaPresupuesto";
 import { useBorrador } from "./useBorrador";
@@ -62,6 +64,8 @@ function ContenidoDePestana({
   if (indice === 1) return <PestanaApu key={llave} id={borrador.id} moneda={moneda} alAusente={alAusente} />;
   if (indice === 2) return <PestanaPresupuesto key={llave} id={borrador.id} alAusente={alAusente} />;
   if (indice === 3) return <PestanaPlan key={llave} id={borrador.id} alAusente={alAusente} />;
+  if (indice === 4) return <PestanaEquilibrio key={llave} id={borrador.id} moneda={moneda} alAusente={alAusente} />;
+  if (indice === 6) return <PestanaParametros key={llave} id={borrador.id} moneda={moneda} alAusente={alAusente} />;
   return <p className="cds--type-body-compact-01">La sección «{nombre}» llega en la siguiente entrega.</p>;
 }
 
