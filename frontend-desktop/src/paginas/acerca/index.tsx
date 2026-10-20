@@ -22,10 +22,18 @@ function numeroDeVersion(revision: string): number | null {
   return m ? Number(m[1]) : null;
 }
 
+const SIN_DATO: Record<string, string> = {
+  "sin base": "Sin base",
+  ilegible: "Ilegible",
+  "sin revisiones": "Sin revisiones",
+  "sin alembic_version": "Sin información de versión",
+};
+
 export function estadoDeLaBase(revision: string, ultima: string): string {
   const actual = numeroDeVersion(revision);
   const tope = numeroDeVersion(ultima);
-  if (actual === null || tope === null) return revision.charAt(0).toUpperCase() + revision.slice(1);
+  if (actual === null) return SIN_DATO[revision] ?? "Versión desconocida";
+  if (tope === null) return `Versión ${actual}`;
   return actual === tope ? `Al día (versión ${actual})` : `Versión ${actual}; la última es la ${tope}`;
 }
 

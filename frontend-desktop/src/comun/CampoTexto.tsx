@@ -8,7 +8,8 @@ import { useEffect, useRef } from "react";
 // `display: contents` mantiene al campo como hijo directo de la rejilla de su formulario.
 export function CampoTexto(props: ComponentProps<typeof TextInput>) {
   const raiz = useRef<HTMLDivElement>(null);
-  const conContador = props.enableCounter === true;
+  // Con `maxCount` Carbon llena la region aunque no se pida el contador: se conserva.
+  const conContador = props.enableCounter === true || props.maxCount !== undefined;
   useEffect(() => {
     if (conContador) return;
     raiz.current?.querySelectorAll(".cds--text-input__counter-alert").forEach((region) => {

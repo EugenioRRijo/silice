@@ -128,7 +128,13 @@ export default function EmpresasRegistradas() {
     setCambio(tipo);
   }
 
+  // Al confirmar, el boton de origen queda deshabilitado mientras se envia: el foco va a la lista de empresas.
+  function alTerminarCambio() {
+    document.getElementById("adm-ajena")?.focus();
+  }
+
   function cambiar(tipo: "retirar" | "revocar") {
+    abrio.current = null;
     setCambio(null);
     if (tipo === "retirar") {
       void enviar(
@@ -137,7 +143,7 @@ export default function EmpresasRegistradas() {
           adoptar(r);
           setAviso("Clave marcada como retirada.");
         },
-      );
+      ).then(alTerminarCambio);
       return;
     }
     const cuerpo = new FormData();
@@ -151,7 +157,7 @@ export default function EmpresasRegistradas() {
         setAvisoFirmado(null);
         setAviso("Clave revocada: los paquetes con ella ya no verifican.");
       },
-    );
+    ).then(alTerminarCambio);
   }
 
   if (datos === null) return error ? <AvisoError error={error} /> : <EsqueletoPagina />;
@@ -231,16 +237,16 @@ export default function EmpresasRegistradas() {
             </div>
           )}
           {yaRevocada && (
-            <p className="silice-adm__nota cds--type-body-compact-01">
+            <p id="adm-ajena-revocada" className="silice-adm__nota cds--type-body-compact-01">
               Esta clave ya está revocada: ningún paquete con ella verifica y no admite más cambios.
             </p>
           )}
           {cambio === null ? (
             <div className="silice-adm__acciones">
-              <Button ref={retirarRef} kind="tertiary" size="md" disabled={ocupada || elegida === "" || yaRevocada} onClick={() => pedirConfirmacion("retirar")}>
+              <Button ref={retirarRef} kind="tertiary" size="md" disabled={ocupada || elegida === "" || yaRevocada} aria-describedby={yaRevocada ? "adm-ajena-revocada" : undefined} onClick={() => pedirConfirmacion("retirar")}>
                 Marcar como retirada
               </Button>
-              <Button ref={revocarRef} kind="danger--tertiary" size="md" disabled={ocupada || elegida === "" || yaRevocada} onClick={() => pedirConfirmacion("revocar")}>
+              <Button ref={revocarRef} kind="danger--tertiary" size="md" disabled={ocupada || elegida === "" || yaRevocada} aria-describedby={yaRevocada ? "adm-ajena-revocada" : undefined} onClick={() => pedirConfirmacion("revocar")}>
                 Revocar
               </Button>
             </div>

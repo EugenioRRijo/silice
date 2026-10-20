@@ -85,8 +85,9 @@ export default function PaginaInicio() {
             Quién audita los presupuestos
           </h2>
           <p className="silice-inicio__nota cds--type-body-compact-01">
-            Su cuenta administra Sílice y no audita presupuestos: audita quien arma o revisa presupuestos. Pídale que
-            suba el Excel desde su cuenta.
+            {sesion.roles.includes("administrador")
+              ? "Su cuenta administra Sílice y no audita presupuestos: audita quien arma o revisa presupuestos. Pídale que suba el Excel desde su cuenta."
+              : "Su cuenta no tiene permiso para auditar presupuestos. Pídale a quien arma o revisa presupuestos que suba el Excel desde su cuenta."}
           </p>
         </section>
       )}
