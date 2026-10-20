@@ -20,6 +20,8 @@ export interface Peticion {
   ruta: string;
   metodo: "PUT" | "POST";
   cuerpo: object;
+  // Lo que la clásica agrega tras el error de esta petición; si falta, el de la sección. "" = el `detalle` solo.
+  frase?: string;
 }
 
 interface Opciones<E, U> {
@@ -63,6 +65,8 @@ export function useEdicionDeSeccion<E, U>(opciones: Opciones<E, U>) {
     enVuelo: false,
     volver: false,
     bloqueado: false,
+    // Lo que se está mandando ahora (para esperarlo antes de una acción que no puede adelantarse).
+    envioEnCurso: null as Promise<void> | null,
   });
   const actuales = useRef(opciones);
 
@@ -75,56 +79,67 @@ export function useEdicionDeSeccion<E, U>(opciones: Opciones<E, U>) {
     actuales.current = opciones;
   });
 
-  const mandar = useCallback(async (construir: (rev: number, estado: E) => Peticion, repetir: boolean) => {
+  // Manda una petición y devuelve el resumen que contestó el servidor, o null si no se aceptó (o ya había una en vuelo).
+  const mandar = useCallback(async (construir: (rev: number, estado: E) => Peticion, repetir: boolean): Promise<Resumen | null> => {
     const m = motor.current;
-    if (m.bloqueado) return;
+    if (m.bloqueado) return null;
     if (m.enVuelo) {
       if (repetir) m.volver = true;
-      return;
+      return null;
     }
     m.enVuelo = true;
     setEnvio("enviando");
-    try {
-      do {
-        m.volver = false;
-        const enviado = m.estado;
-        const peticion = construir(m.rev, enviado);
-        const respuesta = await pedir<RespuestaDeEdicion>(peticion.ruta, { metodo: peticion.metodo, cuerpo: peticion.cuerpo });
-        m.rev = respuesta.rev;
-        m.aceptado = enviado;
-        setError(null);
-        actuales.current.alAceptar(respuesta.resumen);
-        actuales.current.alRelectura();
-      } while (m.volver);
-    } catch (e) {
-      m.volver = false;
-      if (e instanceof ErrorDeApi && e.estado === 401) {
-        actuales.current.alExpirar();
-      } else if (esBorradorAusente(e)) {
-        actuales.current.alAusente();
-      } else if (e instanceof ErrorDeApi && e.estado === 409) {
-        const clase = claseDeConflicto(e.detalle);
-        if (clase === "otro") {
-          // Un conflicto de contenido (por ejemplo «ya tiene plan»): no bloquea; se vuelve a leer lo que hay.
-          setError({ tipo: "otro", mensaje: e.detalle, ubicacion: null });
+    const envio = (async (): Promise<Resumen | null> => {
+      let frase = actuales.current.frase;
+      let aceptado: Resumen | null = null;
+      try {
+        do {
+          m.volver = false;
+          const enviado = m.estado;
+          const peticion = construir(m.rev, enviado);
+          frase = peticion.frase ?? actuales.current.frase;
+          const respuesta = await pedir<RespuestaDeEdicion>(peticion.ruta, { metodo: peticion.metodo, cuerpo: peticion.cuerpo });
+          m.rev = respuesta.rev;
+          m.aceptado = enviado;
+          aceptado = respuesta.resumen;
+          setError(null);
+          actuales.current.alAceptar(respuesta.resumen);
           actuales.current.alRelectura();
+        } while (m.volver);
+      } catch (e) {
+        m.volver = false;
+        aceptado = null;
+        if (e instanceof ErrorDeApi && e.estado === 401) {
+          actuales.current.alExpirar();
+        } else if (esBorradorAusente(e)) {
+          actuales.current.alAusente();
+        } else if (e instanceof ErrorDeApi && e.estado === 409) {
+          const clase = claseDeConflicto(e.detalle);
+          if (clase === "otro") {
+            // Un conflicto de contenido (por ejemplo «ya tiene plan»): no bloquea; se vuelve a leer lo que hay.
+            setError({ tipo: "otro", mensaje: e.detalle, ubicacion: null });
+            actuales.current.alRelectura();
+          } else {
+            m.bloqueado = true; // hasta recargar (o abrir de nuevo) no se manda más
+            setError({ tipo: clase === "rev" ? "conflicto" : "perdido", mensaje: e.detalle, ubicacion: null });
+          }
+        } else if (e instanceof ErrorDeApi && e.estado === 422) {
+          setError({
+            tipo: "rechazo",
+            mensaje: mensajeDeRechazo(e.detalle, frase),
+            ubicacion: actuales.current.ubicar(e.detalle),
+          });
         } else {
-          m.bloqueado = true; // hasta recargar (o abrir de nuevo) no se manda más
-          setError({ tipo: clase === "rev" ? "conflicto" : "perdido", mensaje: e.detalle, ubicacion: null });
+          setError({ tipo: "otro", mensaje: mensajeDeError(e), ubicacion: null });
         }
-      } else if (e instanceof ErrorDeApi && e.estado === 422) {
-        setError({
-          tipo: "rechazo",
-          mensaje: mensajeDeRechazo(e.detalle, actuales.current.frase),
-          ubicacion: actuales.current.ubicar(e.detalle),
-        });
-      } else {
-        setError({ tipo: "otro", mensaje: mensajeDeError(e), ubicacion: null });
+      } finally {
+        m.enVuelo = false;
+        setEnvio(m.temporizador !== null ? "pendiente" : "quieto");
       }
-    } finally {
-      m.enVuelo = false;
-      setEnvio(m.temporizador !== null ? "pendiente" : "quieto");
-    }
+      return aceptado;
+    })();
+    m.envioEnCurso = envio.then(() => undefined);
+    return envio;
   }, []);
 
   const enviarEdicion = useCallback(() => mandar((rev, e) => actuales.current.peticion(rev, e), true), [mandar]);
@@ -148,6 +163,22 @@ export function useEdicionDeSeccion<E, U>(opciones: Opciones<E, U>) {
 
   // Una acción que no espera la pausa (por ejemplo «Crear plan secuencial»). Con una petición en vuelo no se repite.
   const accionar = useCallback((peticion: (rev: number) => Peticion) => mandar((rev) => peticion(rev), false), [mandar]);
+
+  // Una acción que no puede adelantarse a lo escrito (por ejemplo «Usar este insumo»): primero sale la edición que espera la
+  // pausa, se espera a la que va en vuelo y solo entonces se manda la acción con el `rev` que contestó el servidor.
+  const accionarEnOrden = useCallback(
+    async (peticion: (rev: number) => Peticion): Promise<Resumen | null> => {
+      const m = motor.current;
+      if (m.temporizador !== null) {
+        clearTimeout(m.temporizador);
+        m.temporizador = null;
+        await enviarEdicion();
+      }
+      while (m.enVuelo && m.envioEnCurso !== null) await m.envioEnCurso;
+      return mandar((rev) => peticion(rev), false);
+    },
+    [mandar, enviarEdicion],
+  );
 
   // Al irse de la pestaña con una edición esperando la pausa, se manda en seguida para no perderla.
   useEffect(() => {
@@ -186,5 +217,5 @@ export function useEdicionDeSeccion<E, U>(opciones: Opciones<E, U>) {
   // Lo último que aceptó el servidor (Esc devuelve un campo a eso).
   const aceptado = useCallback((): E => motor.current.aceptado, []);
 
-  return { estado, envio, error, cambiar, accionar, recargar, aceptado };
+  return { estado, envio, error, cambiar, accionar, accionarEnOrden, recargar, aceptado };
 }
