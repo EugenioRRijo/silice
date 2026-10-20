@@ -18,6 +18,7 @@ from aplicacion.hoja_vista import (
     VistaApu,
     VistaEquilibrio,
     VistaEspacio,
+    VistaParametros,
     VistaPlan,
     VistaPresupuesto,
 )
@@ -299,3 +300,20 @@ class VistaEquilibrioRespuesta(BaseModel):
 
 def vista_equilibrio_a_respuesta(vista: VistaEquilibrio) -> VistaEquilibrioRespuesta:
     return VistaEquilibrioRespuesta.model_validate(vista, from_attributes=True)
+
+
+class CampoParametroRespuesta(BaseModel):
+    clave: str
+    rotulo: str
+    valor: str
+
+
+class VistaParametrosRespuesta(BaseModel):
+    campos: list[CampoParametroRespuesta]
+    moneda_proyecto: str | None
+    total: MontoHojaRespuesta
+    puede_convertir: bool
+
+
+def vista_parametros_a_respuesta(vista: VistaParametros) -> VistaParametrosRespuesta:
+    return VistaParametrosRespuesta.model_validate(vista, from_attributes=True)

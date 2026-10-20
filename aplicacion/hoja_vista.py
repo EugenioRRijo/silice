@@ -670,3 +670,53 @@ def vista_equilibrio(vivo: BorradorVivo) -> VistaEquilibrio:
     """La pestana Punto de equilibrio (no se edita, RS-4): sale del calculo del borrador vivo."""
     resultado, _ = calculo(vivo)
     return equilibrio_a_vista(resultado.equilibrio, resultado.elaboracion.presupuesto.moneda)
+
+
+# --- Parametros (R10) ---------------------------------------------------------------------------
+
+#: Los rotulos de los cuatro cuadros (P:2030-2035), con tildes: son texto de la interfaz nueva.
+ROTULOS_PARAMETROS = {
+    "fcas": "FCAS (fracción: 6.00 = prestaciones del 600 %)",
+    "bono_alimentacion": "Bono de alimentación (por obrero y día)",
+    "administracion": "Administración (fracción del costo directo)",
+    "utilidad": "Utilidad (fracción, en cascada sobre la administración)",
+}
+
+
+@dataclass(frozen=True, slots=True)
+class CampoDeParametro:
+    clave: str
+    rotulo: str
+    valor: str
+
+
+@dataclass(frozen=True, slots=True)
+class VistaParametros:
+    campos: tuple[CampoDeParametro, ...]
+    moneda_proyecto: str | None
+    total: Monto
+    puede_convertir: bool
+
+
+def vista_parametros(
+    vivo: BorradorVivo, moneda_proyecto: str, puede_convertir: bool
+) -> VistaParametros:
+    """La pestana Parametros en lectura (P:2028-2118): los cuatro factores como texto exacto
+    (`str(Decimal)`, lo que el cuadro de la clasica siembra) y el total. La moneda del proyecto y
+    el cambio de moneda solo existen con una version abierta (P:2073); `moneda_proyecto` la lee la
+    ruta de la base y `puede_convertir` es el permiso de quien pregunta."""
+    resultado, _ = calculo(vivo)
+    abierta = vivo.abierta is not None
+    return VistaParametros(
+        campos=tuple(
+            CampoDeParametro(
+                clave=c,
+                rotulo=ROTULOS_PARAMETROS[c],
+                valor=str(getattr(vivo.borrador.parametros, c)),
+            )
+            for c in hoja.CAMPOS_PARAMETROS
+        ),
+        moneda_proyecto=moneda_proyecto if abierta else None,
+        total=monto(resultado.elaboracion.presupuesto.total),
+        puede_convertir=abierta and puede_convertir,
+    )

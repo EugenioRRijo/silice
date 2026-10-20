@@ -41,6 +41,7 @@ from api.esquemas_hoja import (
     VistaApuRespuesta,
     VistaEquilibrioRespuesta,
     VistaEspacioRespuesta,
+    VistaParametrosRespuesta,
     VistaPlanRespuesta,
     VistaPresupuestoRespuesta,
     base_a_respuesta,
@@ -48,6 +49,7 @@ from api.esquemas_hoja import (
     vista_apu_a_respuesta,
     vista_equilibrio_a_respuesta,
     vista_espacio_a_respuesta,
+    vista_parametros_a_respuesta,
     vista_plan_a_respuesta,
     vista_presupuesto_a_respuesta,
 )
@@ -61,7 +63,7 @@ from aplicacion.hoja_borradores import BorradorInexistente, BorradorVivo
 from aplicacion.proyectos import resolver_proyecto
 from core.budget.moneda import moneda_del_proyecto
 from core.catalog import Catalogo
-from seguridad.permisos import Accion
+from seguridad.permisos import Accion, permitido
 from seguridad.sesiones import SesionActiva
 
 MENSAJE_FORMA = "Los datos de la hoja no tienen la forma esperada: escriba cada celda como texto."
@@ -276,3 +278,20 @@ def vista_equilibrio(
 ) -> VistaEquilibrioRespuesta:
     """R9: Punto de equilibrio en lectura (ventas, costos, utilidad, punto y la frase del caso)."""
     return vista_equilibrio_a_respuesta(hoja_vista.vista_equilibrio(_vivo(request, activa, id)))
+
+
+@router.get("/borradores/{id}/vistas/parametros", response_model=VistaParametrosRespuesta)
+def vista_parametros(
+    id: IdDeBorrador, request: Request, activa: CuentaDeLaHoja, sesion: SesionDep
+) -> VistaParametrosRespuesta:
+    """R10: Parámetros en lectura (los cuatro factores, el total y la moneda del proyecto)."""
+    vivo = _vivo(request, activa, id)
+    try:
+        moneda = moneda_del_proyecto(sesion, _proyecto(sesion, vivo.proyecto))
+    except SQLAlchemyError:
+        raise HTTPException(status_code=503, detail=MENSAJE_BASE) from None
+    return vista_parametros_a_respuesta(
+        hoja_vista.vista_parametros(
+            vivo, moneda, permitido(activa.roles, Accion.CONVERTIR_Y_REAJUSTAR)
+        )
+    )

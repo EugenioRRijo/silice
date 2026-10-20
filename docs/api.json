@@ -5661,6 +5661,52 @@
         }
       }
     },
+    "/v1/hoja/borradores/{id}/vistas/parametros": {
+      "get": {
+        "tags": [
+          "hoja"
+        ],
+        "summary": "Vista Parametros",
+        "description": "R10: Parámetros en lectura (los cuatro factores, el total y la moneda del proyecto).",
+        "operationId": "vista_parametros_v1_hoja_borradores__id__vistas_parametros_get",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 16,
+              "maxLength": 64,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "title": "Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VistaParametrosRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/produccion/materiales": {
       "get": {
         "tags": [
@@ -7749,6 +7795,29 @@
         ],
         "title": "CambioRespuesta",
         "description": "Un cambio de precio del historial (UC-02)."
+      },
+      "CampoParametroRespuesta": {
+        "properties": {
+          "clave": {
+            "type": "string",
+            "title": "Clave"
+          },
+          "rotulo": {
+            "type": "string",
+            "title": "Rotulo"
+          },
+          "valor": {
+            "type": "string",
+            "title": "Valor"
+          }
+        },
+        "type": "object",
+        "required": [
+          "clave",
+          "rotulo",
+          "valor"
+        ],
+        "title": "CampoParametroRespuesta"
       },
       "CantidadDerivadaRespuesta": {
         "properties": {
@@ -15509,6 +15578,43 @@
           "vacio_mensaje"
         ],
         "title": "VistaEspacioRespuesta"
+      },
+      "VistaParametrosRespuesta": {
+        "properties": {
+          "campos": {
+            "items": {
+              "$ref": "#/components/schemas/CampoParametroRespuesta"
+            },
+            "type": "array",
+            "title": "Campos"
+          },
+          "moneda_proyecto": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Moneda Proyecto"
+          },
+          "total": {
+            "$ref": "#/components/schemas/MontoHojaRespuesta"
+          },
+          "puede_convertir": {
+            "type": "boolean",
+            "title": "Puede Convertir"
+          }
+        },
+        "type": "object",
+        "required": [
+          "campos",
+          "moneda_proyecto",
+          "total",
+          "puede_convertir"
+        ],
+        "title": "VistaParametrosRespuesta"
       },
       "VistaPlanRespuesta": {
         "properties": {
