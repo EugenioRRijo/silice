@@ -27,7 +27,7 @@ export function fijarCsrf(valor: string | null): void {
 }
 
 export interface OpcionesDePeticion {
-  metodo?: "GET" | "POST" | "DELETE";
+  metodo?: "GET" | "POST" | "PUT" | "DELETE";
   cuerpo?: FormData | object;
 }
 
@@ -43,7 +43,7 @@ export interface DescargaBinaria {
   cabeceras: Headers;
 }
 
-const CON_TOKEN = new Set(["POST", "DELETE"]);
+const CON_TOKEN = new Set(["POST", "PUT", "DELETE"]);
 
 function detalleDe(cuerpo: unknown, estado: number): string {
   if (cuerpo && typeof cuerpo === "object") {
