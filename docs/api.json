@@ -5273,12 +5273,32 @@
       }
     },
     "/v1/hoja/borradores": {
+      "get": {
+        "tags": [
+          "hoja"
+        ],
+        "summary": "Listar Borradores",
+        "description": "E10: los borradores de MI ficha abiertos en el caso de ahora (sin los ya guardados), el\nusado más recientemente primero: lo que se puede retomar tras recargar o cambiar de proyecto.\nListar no renueva el plazo de ninguno.",
+        "operationId": "listar_borradores_v1_hoja_borradores_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BorradoresHojaRespuesta"
+                }
+              }
+            }
+          }
+        }
+      },
       "post": {
         "tags": [
           "hoja"
         ],
         "summary": "Abrir Borrador",
-        "description": "R2: abre la versión como borrador vivo. Escribe la instantánea si faltaba (UC-15e).\n\nEn la firma `activa` va antes que `sesion`: FastAPI resuelve en ese orden y el acceso (401,\n403) debe responder antes de abrir la base del caso.",
+        "description": "R2: abre la versión como borrador vivo. Escribe la instantánea si faltaba (UC-15e).\n\nE11: si ya hay un borrador de esa misma versión con cambios sin guardar y `reemplazar` es\nfalso, 409 con el id de ese borrador (`borrador_id`) y no se abre ni se escribe nada; con\n`reemplazar` se descartan los de esa versión y se abre uno nuevo. Un borrador sin cambios no\nestorba (se abre otro, como siempre: el tope por ficha acota). Abrir OTRA versión no descarta\nnada.\n\nEn la firma `activa` va antes que `sesion`: FastAPI resuelve en ese orden y el acceso (401,\n403) debe responder antes de abrir la base del caso.",
         "operationId": "abrir_borrador_v1_hoja_borradores_post",
         "requestBody": {
           "content": {
@@ -5660,6 +5680,269 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/EdicionPlanRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/hoja/borradores/{id}/apu/{partida}": {
+      "put": {
+        "tags": [
+          "hoja"
+        ],
+        "summary": "Editar Apu",
+        "description": "E6: escribe el rendimiento y la cantidad de cada línea del APU de una partida (en la copia\nde la versión, DA-SF-7) y devuelve el APU recalculado (3c-B10). Una partida sin APU en el\nborrador es 404; un APU igual al vigente no sube `rev`.",
+        "operationId": "editar_apu_v1_hoja_borradores__id__apu__partida__put",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 16,
+              "maxLength": 64,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "title": "Id"
+            }
+          },
+          {
+            "name": "partida",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500,
+              "title": "Partida"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EdicionApu"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EdicionApuRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/hoja/borradores/{id}/apu/{partida}/insumo": {
+      "post": {
+        "tags": [
+          "hoja"
+        ],
+        "summary": "Cambiar Insumo",
+        "description": "E7: la línea `indice` del rubro `tipo` pasa al insumo `insumo` (código) de la lista de\nprecios de la versión: toma descripción, unidad y precio y conserva la cantidad (3c-B11).\nSin versión abierta, 409; un insumo que la lista no valora, 422.",
+        "operationId": "cambiar_insumo_v1_hoja_borradores__id__apu__partida__insumo_post",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 16,
+              "maxLength": 64,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "title": "Id"
+            }
+          },
+          {
+            "name": "partida",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500,
+              "title": "Partida"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CambioDeInsumo"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EdicionApuRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/hoja/borradores/{id}/insumos": {
+      "get": {
+        "tags": [
+          "hoja"
+        ],
+        "summary": "Buscar Insumos",
+        "description": "E8: los insumos de la lista de precios de la versión que se pueden elegir para una línea\n(del `tipo`, con `texto` en la descripción; ordenados por descripción). A lo sumo `limite`\n(301 se trata como 300, el tope de la clásica) y `hay_mas` si había más.",
+        "operationId": "buscar_insumos_v1_hoja_borradores__id__insumos_get",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 16,
+              "maxLength": 64,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "title": "Id"
+            }
+          },
+          {
+            "name": "tipo",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "enum": [
+                "material",
+                "equipo",
+                "mano_obra"
+              ],
+              "type": "string",
+              "title": "Tipo"
+            }
+          },
+          {
+            "name": "texto",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 500,
+              "default": "",
+              "title": "Texto"
+            }
+          },
+          {
+            "name": "limite",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 301,
+              "minimum": 1,
+              "default": 300,
+              "title": "Limite"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InsumosHojaRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/hoja/borradores/{id}/cambios": {
+      "get": {
+        "tags": [
+          "hoja"
+        ],
+        "summary": "Cambios Del Borrador",
+        "description": "E9: la lista de cambios entre la versión abierta y el borrador (la que cuenta\n`resumen.cambios`), con el `rev` con que se calculó.",
+        "operationId": "cambios_del_borrador_v1_hoja_borradores__id__cambios_get",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 16,
+              "maxLength": 64,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "title": "Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CambiosHojaRespuesta"
                 }
               }
             }
@@ -8163,6 +8446,11 @@
               }
             ],
             "title": "Version"
+          },
+          "reemplazar": {
+            "type": "boolean",
+            "title": "Reemplazar",
+            "default": false
           }
         },
         "type": "object",
@@ -8171,6 +8459,67 @@
         ],
         "title": "BorradorNuevo",
         "description": "`version: null` abre un borrador en blanco para un proyecto que aún no tiene versiones."
+      },
+      "BorradorRetomableRespuesta": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "proyecto": {
+            "type": "string",
+            "title": "Proyecto"
+          },
+          "version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version"
+          },
+          "cambios": {
+            "type": "integer",
+            "title": "Cambios"
+          },
+          "rev": {
+            "type": "integer",
+            "title": "Rev"
+          },
+          "tocado": {
+            "type": "string",
+            "title": "Tocado"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "proyecto",
+          "version",
+          "cambios",
+          "rev",
+          "tocado"
+        ],
+        "title": "BorradorRetomableRespuesta"
+      },
+      "BorradoresHojaRespuesta": {
+        "properties": {
+          "borradores": {
+            "items": {
+              "$ref": "#/components/schemas/BorradorRetomableRespuesta"
+            },
+            "type": "array",
+            "title": "Borradores"
+          }
+        },
+        "type": "object",
+        "required": [
+          "borradores"
+        ],
+        "title": "BorradoresHojaRespuesta"
       },
       "CalculoPeticion": {
         "properties": {
@@ -8255,6 +8604,74 @@
         ],
         "title": "CambioDeContrasena"
       },
+      "CambioDeInsumo": {
+        "properties": {
+          "rev": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Rev"
+          },
+          "tipo": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Tipo"
+          },
+          "indice": {
+            "type": "integer",
+            "maximum": 1000000.0,
+            "minimum": 0.0,
+            "title": "Indice"
+          },
+          "insumo": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Insumo"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "rev",
+          "tipo",
+          "indice",
+          "insumo"
+        ],
+        "title": "CambioDeInsumo",
+        "description": "`tipo` y `indice` los valida la hoja con el texto de la clasica; aqui solo la forma."
+      },
+      "CambioHojaRespuesta": {
+        "properties": {
+          "objeto": {
+            "type": "string",
+            "title": "Objeto"
+          },
+          "clave": {
+            "type": "string",
+            "title": "Clave"
+          },
+          "campo": {
+            "type": "string",
+            "title": "Campo"
+          },
+          "antes": {
+            "type": "string",
+            "title": "Antes"
+          },
+          "despues": {
+            "type": "string",
+            "title": "Despues"
+          }
+        },
+        "type": "object",
+        "required": [
+          "objeto",
+          "clave",
+          "campo",
+          "antes",
+          "despues"
+        ],
+        "title": "CambioHojaRespuesta"
+      },
       "CambioRespuesta": {
         "properties": {
           "insumo": {
@@ -8289,6 +8706,27 @@
         ],
         "title": "CambioRespuesta",
         "description": "Un cambio de precio del historial (UC-02)."
+      },
+      "CambiosHojaRespuesta": {
+        "properties": {
+          "rev": {
+            "type": "integer",
+            "title": "Rev"
+          },
+          "cambios": {
+            "items": {
+              "$ref": "#/components/schemas/CambioHojaRespuesta"
+            },
+            "type": "array",
+            "title": "Cambios"
+          }
+        },
+        "type": "object",
+        "required": [
+          "rev",
+          "cambios"
+        ],
+        "title": "CambiosHojaRespuesta"
       },
       "CampoParametroRespuesta": {
         "properties": {
@@ -9569,6 +10007,80 @@
           "sistemas"
         ],
         "title": "Dominio"
+      },
+      "EdicionApu": {
+        "properties": {
+          "rev": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Rev"
+          },
+          "rendimiento": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Rendimiento"
+          },
+          "materiales": {
+            "items": {
+              "type": "string",
+              "maxLength": 500
+            },
+            "type": "array",
+            "maxItems": 500,
+            "title": "Materiales"
+          },
+          "equipos": {
+            "items": {
+              "type": "string",
+              "maxLength": 500
+            },
+            "type": "array",
+            "maxItems": 500,
+            "title": "Equipos"
+          },
+          "mano_obra": {
+            "items": {
+              "type": "string",
+              "maxLength": 500
+            },
+            "type": "array",
+            "maxItems": 500,
+            "title": "Mano Obra"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "rev",
+          "rendimiento",
+          "materiales",
+          "equipos",
+          "mano_obra"
+        ],
+        "title": "EdicionApu",
+        "description": "El rendimiento y UNA cantidad por linea de cada rubro, en el orden del APU."
+      },
+      "EdicionApuRespuesta": {
+        "properties": {
+          "rev": {
+            "type": "integer",
+            "title": "Rev"
+          },
+          "resumen": {
+            "$ref": "#/components/schemas/ResumenHojaRespuesta"
+          },
+          "apu": {
+            "$ref": "#/components/schemas/VistaApuRespuesta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "rev",
+          "resumen",
+          "apu"
+        ],
+        "title": "EdicionApuRespuesta",
+        "description": "El borrador ya recalculado: su `rev` nuevo, el resumen y la vista del APU (como R7)."
       },
       "EdicionCantidades": {
         "properties": {
@@ -11882,6 +12394,33 @@
         ],
         "title": "InsumoDesconocidoRespuesta"
       },
+      "InsumoHojaRespuesta": {
+        "properties": {
+          "codigo": {
+            "type": "string",
+            "title": "Codigo"
+          },
+          "descripcion": {
+            "type": "string",
+            "title": "Descripcion"
+          },
+          "unidad": {
+            "type": "string",
+            "title": "Unidad"
+          },
+          "precio": {
+            "$ref": "#/components/schemas/MontoHojaRespuesta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "codigo",
+          "descripcion",
+          "unidad",
+          "precio"
+        ],
+        "title": "InsumoHojaRespuesta"
+      },
       "InsumoRespuesta": {
         "properties": {
           "codigo": {
@@ -11929,6 +12468,27 @@
         ],
         "title": "InsumoRespuesta",
         "description": "Un insumo del catalogo, con su precio en la lista vigente si la hay."
+      },
+      "InsumosHojaRespuesta": {
+        "properties": {
+          "insumos": {
+            "items": {
+              "$ref": "#/components/schemas/InsumoHojaRespuesta"
+            },
+            "type": "array",
+            "title": "Insumos"
+          },
+          "hay_mas": {
+            "type": "boolean",
+            "title": "Hay Mas"
+          }
+        },
+        "type": "object",
+        "required": [
+          "insumos",
+          "hay_mas"
+        ],
+        "title": "InsumosHojaRespuesta"
       },
       "ItemComputoPeticion": {
         "properties": {

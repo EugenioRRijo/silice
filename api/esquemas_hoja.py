@@ -10,9 +10,10 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, StrictBool, field_validator
 
-from aplicacion.hoja import FilaVersion
+from aplicacion.hoja import CambioEditado, FilaInsumo, FilaVersion
+from aplicacion.hoja_borradores import BorradorVivo
 from aplicacion.hoja_vista import (
     BaseAbierta,
     Monto,
@@ -25,6 +26,7 @@ from aplicacion.hoja_vista import (
     VistaPrecios,
     VistaPresupuesto,
     VistaTrazabilidad,
+    monto,
 )
 
 #: Cada texto de celda o de código llega acotado (diseño §4.1): ≤ 500 caracteres.
@@ -97,6 +99,8 @@ class BorradorNuevo(BaseModel):
 
     proyecto: Annotated[str, Field(min_length=1, max_length=500)]
     version: Texto500 | None = None
+    #: E11: descartar el borrador de esa version que ya tenga cambios sin guardar (sin esto, 409).
+    reemplazar: StrictBool = False
 
 
 class InstantaneaHojaRespuesta(BaseModel):
@@ -546,3 +550,127 @@ class EdicionSecuencial(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     rev: Annotated[int, Field(strict=True, ge=0)]
+
+
+# --- el APU, el cambio de insumo, los cambios y retomar (3c-3, E6 a E11) -----------------------
+#
+# Topes (D-9, SUPUESTOS declarados): cada texto ≤ 500 caracteres y a lo sumo 500 lineas por rubro de
+# un APU (el mayor del caso medido tiene 4). `extra` prohibido.
+
+LineasDeApu = Annotated[list[Texto500], Field(max_length=500)]
+
+
+class EdicionApu(BaseModel):
+    """El rendimiento y UNA cantidad por linea de cada rubro, en el orden del APU."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    rev: Annotated[int, Field(strict=True, ge=0)]
+    rendimiento: Texto500
+    materiales: LineasDeApu
+    equipos: LineasDeApu
+    mano_obra: LineasDeApu
+
+
+class EdicionApuRespuesta(BaseModel):
+    """El borrador ya recalculado: su `rev` nuevo, el resumen y la vista del APU (como R7)."""
+
+    rev: int
+    resumen: ResumenHojaRespuesta
+    apu: VistaApuRespuesta
+
+
+class CambioDeInsumo(BaseModel):
+    """`tipo` y `indice` los valida la hoja con el texto de la clasica; aqui solo la forma."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    rev: Annotated[int, Field(strict=True, ge=0)]
+    tipo: Texto500
+    indice: Annotated[int, Field(strict=True, ge=0, le=1_000_000)]
+    insumo: Texto500
+
+
+class InsumoHojaRespuesta(BaseModel):
+    codigo: str
+    descripcion: str
+    unidad: str
+    precio: MontoHojaRespuesta
+
+
+class InsumosHojaRespuesta(BaseModel):
+    insumos: list[InsumoHojaRespuesta]
+    hay_mas: bool
+
+
+def insumos_a_respuesta(filas: list[FilaInsumo], hay_mas: bool) -> InsumosHojaRespuesta:
+    return InsumosHojaRespuesta(
+        insumos=[
+            InsumoHojaRespuesta(
+                codigo=f.codigo,
+                descripcion=f.descripcion,
+                unidad=f.unidad,
+                precio=monto_a_respuesta(monto(f.precio)),
+            )
+            for f in filas
+        ],
+        hay_mas=hay_mas,
+    )
+
+
+class CambioHojaRespuesta(BaseModel):
+    objeto: str
+    clave: str
+    campo: str
+    antes: str
+    despues: str
+
+
+class CambiosHojaRespuesta(BaseModel):
+    rev: int
+    cambios: list[CambioHojaRespuesta]
+
+
+def cambios_a_respuesta(rev: int, cambios: list[CambioEditado]) -> CambiosHojaRespuesta:
+    return CambiosHojaRespuesta(
+        rev=rev,
+        cambios=[
+            CambioHojaRespuesta(
+                objeto=c.objeto,
+                clave=c.clave,
+                campo=c.campo,
+                antes=c.valor_anterior,
+                despues=c.valor_nuevo,
+            )
+            for c in cambios
+        ],
+    )
+
+
+class BorradorRetomableRespuesta(BaseModel):
+    id: str
+    proyecto: str
+    version: str | None
+    cambios: int
+    rev: int
+    tocado: str
+
+
+class BorradoresHojaRespuesta(BaseModel):
+    borradores: list[BorradorRetomableRespuesta]
+
+
+def borradores_a_respuesta(filas: list[tuple[BorradorVivo, int]]) -> BorradoresHojaRespuesta:
+    return BorradoresHojaRespuesta(
+        borradores=[
+            BorradorRetomableRespuesta(
+                id=vivo.id,
+                proyecto=vivo.proyecto,
+                version=vivo.version,
+                cambios=cambios,
+                rev=vivo.rev,
+                tocado=vivo.tocado.isoformat(timespec="seconds"),
+            )
+            for vivo, cambios in filas
+        ]
+    )

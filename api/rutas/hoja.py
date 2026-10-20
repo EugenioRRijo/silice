@@ -14,6 +14,10 @@ y `aplicacion.hoja_borradores`. Esta rebanada trae las rutas R1 a R4 del diseño
 - `GET /v1/hoja/borradores/{id}` y `DELETE` (204, idempotente).
 - Vistas del borrador vivo (solo cuenta): R5 a R8 (3b-2: espacio, presupuesto, APU, plan) y R9 a R11
   (3b-3: `/vistas/equilibrio`, `/vistas/parametros`, `/vistas/auditoria`, esta con R17).
+- Edición del borrador vivo (3c): E1 a E5 (espacio, cantidades, parámetros, plan), E6
+  `PUT /apu/{partida}` y E7 `POST /apu/{partida}/insumo`, la lectura de los candidatos E8
+  (`/insumos`) y de los cambios E9 (`/cambios`), E10 `GET /borradores` (retomar) y E11, el
+  `reemplazar` de R2 (3c-3). Nada de esto escribe en la base: el guardado es 3d.
 - Lecturas de una versión GUARDADA (3b-3; clave de API o sesión con `EDITAR_HOJA`; sin borrador y
   solo leen): R12 `GET /precios?proyecto=&version=`, R13 `GET /precios/atipicos?...` y R14
   `GET /trazabilidad?...`.
@@ -30,9 +34,10 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from datetime import date
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request, Response
+from fastapi.responses import JSONResponse
 from sqlalchemy.exc import SQLAlchemyError
 
 from api.admin_acceso import cuenta_con
@@ -40,8 +45,13 @@ from api.dependencias import SesionDep, url_de_la_peticion
 from api.esquemas_atipicos import AtipicosRespuesta, atipicos_a_respuesta
 from api.esquemas_hoja import (
     BorradorAbierto,
+    BorradoresHojaRespuesta,
     BorradorHojaRespuesta,
     BorradorNuevo,
+    CambioDeInsumo,
+    CambiosHojaRespuesta,
+    EdicionApu,
+    EdicionApuRespuesta,
     EdicionCantidades,
     EdicionCantidadesRespuesta,
     EdicionEspacio,
@@ -52,6 +62,7 @@ from api.esquemas_hoja import (
     EdicionPlanRespuesta,
     EdicionSecuencial,
     InstantaneaHojaRespuesta,
+    InsumosHojaRespuesta,
     PreciosHojaRespuesta,
     TrazabilidadHojaRespuesta,
     VersionesHojaRespuesta,
@@ -62,6 +73,9 @@ from api.esquemas_hoja import (
     VistaPlanRespuesta,
     VistaPresupuestoRespuesta,
     base_a_respuesta,
+    borradores_a_respuesta,
+    cambios_a_respuesta,
+    insumos_a_respuesta,
     precios_a_respuesta,
     resumen_a_respuesta,
     trazabilidad_a_respuesta,
@@ -123,6 +137,21 @@ FORMA_PLAN = (
     "como texto de hasta 500 caracteres, con no más de 5000 partidas."
 )
 FORMA_REV = "La petición debe traer el rev del borrador, un número entero."
+FORMA_APU = (
+    "El APU no tiene la forma esperada: envíe el rendimiento y las cantidades de materiales, "
+    "equipos y mano de obra, cada una como texto de hasta 500 caracteres, con no más de 500 "
+    "líneas por rubro."
+)
+FORMA_INSUMO = (
+    "El cambio de insumo no tiene la forma esperada: envíe tipo, indice (entero), insumo "
+    "(código) y rev."
+)
+FORMA_BUSQUEDA = (
+    "La búsqueda de insumos no tiene la forma esperada: indique tipo (material, equipo o "
+    "mano_obra), un texto de hasta 500 caracteres y un límite de 1 a 301."
+)
+MENSAJE_PARTIDA = "Esa partida no tiene APU en este borrador: vuelva a cargar la lista de partidas."
+MENSAJE_SIN_VERSION = "Abra una version guardada: los insumos se eligen de su lista de precios."
 MENSAJE_SIN_PLAN = "Esta versión no tiene plan de trabajo: cree primero el plan secuencial."
 MENSAJE_YA_TIENE_PLAN = "Esta versión ya tiene plan de trabajo: edítelo en la matriz del plan."
 
@@ -140,6 +169,8 @@ CuentaDeLaHoja = Annotated[
     SesionActiva, Depends(cuenta_con(Accion.EDITAR_HOJA, MENSAJE_SOLO_CUENTA))
 ]
 IdDeBorrador = Annotated[str, Path(min_length=16, max_length=64, pattern=r"^[A-Za-z0-9_-]+$")]
+#: El código de una partida puede traer «/» (`EL-TUB-EMT-3/4`): se admite como segmento con barras.
+CodigoDePartida = Annotated[str, Path(min_length=1, max_length=500)]
 
 
 def _proyecto(sesion, referencia: str):
@@ -211,17 +242,55 @@ def listar_versiones(
     )
 
 
+def _pendiente_sin_guardar(vivo: BorradorVivo, cambios: int) -> JSONResponse:
+    """E11: el 409 que lleva, además del texto, el id del borrador que se puede retomar."""
+    cuantos = "1 cambio" if cambios == 1 else f"{cambios} cambios"
+    return JSONResponse(
+        status_code=409,
+        content={
+            "detalle": (
+                f"Ya tiene un borrador de esta versión con {cuantos} sin guardar: "
+                "retómelo o reemplácelo."
+            ),
+            "borrador_id": vivo.id,
+        },
+    )
+
+
+@router.get("/borradores", response_model=BorradoresHojaRespuesta)
+def listar_borradores(request: Request, activa: CuentaDeLaHoja) -> BorradoresHojaRespuesta:
+    """E10: los borradores de MI ficha abiertos en el caso de ahora (sin los ya guardados), el
+    usado más recientemente primero: lo que se puede retomar tras recargar o cambiar de proyecto.
+    Listar no renueva el plazo de ninguno."""
+    return borradores_a_respuesta(
+        hoja_edicion.borradores_para_retomar(activa.huella_ficha, url_de_la_peticion(request))
+    )
+
+
 @router.post("/borradores", response_model=BorradorAbierto, status_code=201)
 def abrir_borrador(
     datos: BorradorNuevo, request: Request, activa: CuentaDeLaHoja, sesion: SesionDep
-) -> BorradorAbierto:
+) -> BorradorAbierto | JSONResponse:
     """R2: abre la versión como borrador vivo. Escribe la instantánea si faltaba (UC-15e).
+
+    E11: si ya hay un borrador de esa misma versión con cambios sin guardar y `reemplazar` es
+    falso, 409 con el id de ese borrador (`borrador_id`) y no se abre ni se escribe nada; con
+    `reemplazar` se descartan los de esa versión y se abre uno nuevo. Un borrador sin cambios no
+    estorba (se abre otro, como siempre: el tope por ficha acota). Abrir OTRA versión no descarta
+    nada.
 
     En la firma `activa` va antes que `sesion`: FastAPI resuelve en ese orden y el acceso (401,
     403) debe responder antes de abrir la base del caso."""
     try:
         con_anexos_de_cadena(sesion)  # el sello de lo que se escriba cubre los anexos (§1.2)
         nombre = _proyecto(sesion, datos.proyecto).nombre
+        caso = url_de_la_peticion(request)
+        if not datos.reemplazar:  # E11: antes de escribir nada (la instantánea de abajo)
+            pendiente = hoja_edicion.pendiente_de_la_version(
+                activa.huella_ficha, caso, nombre, datos.version
+            )
+            if pendiente is not None:
+                return _pendiente_sin_guardar(*pendiente)
         filas = hoja.historial_de_versiones(sesion, nombre)
         creadas = 0
         if datos.version is None:
@@ -245,9 +314,11 @@ def abrir_borrador(
             except HojaInvalida as error:
                 raise HTTPException(status_code=409, detail=str(error)) from None
             borrador, creadas = abierta.borrador, len(abierta.instantanea.creadas)
+        if datos.reemplazar:  # recién ahora, cuando abrir ya no puede fallar: si falla, queda
+            hoja_edicion.descartar_de_la_version(activa.huella_ficha, caso, nombre, datos.version)
         vivo = hoja_borradores.crear(
             activa.huella_ficha,
-            url_de_la_peticion(request),
+            caso,
             nombre,
             datos.version,
             borrador,
@@ -295,11 +366,12 @@ def _editar(
     editar: Callable[[], BorradorVivo],
     vista_de: Callable[[BorradorVivo], Any],
 ) -> tuple[Any, Any]:
-    """El esqueleto común de E1 a E5: una petición a la vez por borrador (su cerrojo) y, dentro,
+    """El esqueleto común de E1 a E7: una petición a la vez por borrador (su cerrojo) y, dentro,
     la edición y las dos piezas de la respuesta (el resumen y la vista de la pestaña), de modo que
     ambas son las del `rev` que ESTA edición produjo. Los errores de la edición se traducen aquí:
-    404 (ya no existe), 409 (`rev` viejo, ya guardado, el estado del plan), 422 (el texto de la
-    clásica, sin repetirlo en ningún otro lado) y 503 (la base)."""
+    404 (ya no existe el borrador ni la partida), 409 (`rev` viejo, ya guardado, el estado del
+    plan, sin versión abierta), 422 (el texto de la clásica, sin repetirlo en ningún otro lado) y
+    503 (la base)."""
     try:
         with vivo.cerrojo:
             try:
@@ -320,6 +392,10 @@ def _editar(
                 raise HTTPException(status_code=409, detail=MENSAJE_SIN_PLAN) from None
             except hoja_edicion.YaTienePlan:
                 raise HTTPException(status_code=409, detail=MENSAJE_YA_TIENE_PLAN) from None
+            except hoja_edicion.SinVersionAbierta:
+                raise HTTPException(status_code=409, detail=MENSAJE_SIN_VERSION) from None
+            except hoja_edicion.PartidaSinApu:
+                raise HTTPException(status_code=404, detail=MENSAJE_PARTIDA) from None
             except HojaInvalida as error:
                 raise HTTPException(status_code=422, detail=str(error)) from None
             mas_nueva = _mas_nueva(editado, hoja.codigo_vigente(sesion, editado.proyecto))
@@ -466,6 +542,112 @@ def crear_plan_secuencial(
     return EdicionPlanRespuesta(
         rev=resumen.rev, resumen=resumen_a_respuesta(resumen), plan=vista_plan_a_respuesta(vista)
     )
+
+
+@router.put("/borradores/{id}/apu/{partida:path}", response_model=EdicionApuRespuesta)
+@sin_eco(FORMA_APU)
+def editar_apu(
+    id: IdDeBorrador,
+    partida: CodigoDePartida,
+    datos: EdicionApu,
+    request: Request,
+    activa: CuentaDeLaHoja,
+    sesion: SesionDep,
+) -> EdicionApuRespuesta:
+    """E6: escribe el rendimiento y la cantidad de cada línea del APU de una partida (en la copia
+    de la versión, DA-SF-7) y devuelve el APU recalculado (3c-B10). Una partida sin APU en el
+    borrador es 404; un APU igual al vigente no sube `rev`."""
+    vivo = _vivo(request, activa, id)
+    resumen, vista = _editar(
+        sesion,
+        vivo,
+        lambda: hoja_edicion.editar_apu(
+            sesion,
+            activa.huella_ficha,
+            id,
+            datos.rev,
+            partida,
+            datos.rendimiento,
+            datos.materiales,
+            datos.equipos,
+            datos.mano_obra,
+        ),
+        lambda editado: hoja_vista.vista_apu(editado, partida),
+    )
+    return EdicionApuRespuesta(
+        rev=resumen.rev, resumen=resumen_a_respuesta(resumen), apu=vista_apu_a_respuesta(vista)
+    )
+
+
+@router.post("/borradores/{id}/apu/{partida:path}/insumo", response_model=EdicionApuRespuesta)
+@sin_eco(FORMA_INSUMO)
+def cambiar_insumo(
+    id: IdDeBorrador,
+    partida: CodigoDePartida,
+    datos: CambioDeInsumo,
+    request: Request,
+    activa: CuentaDeLaHoja,
+    sesion: SesionDep,
+) -> EdicionApuRespuesta:
+    """E7: la línea `indice` del rubro `tipo` pasa al insumo `insumo` (código) de la lista de
+    precios de la versión: toma descripción, unidad y precio y conserva la cantidad (3c-B11).
+    Sin versión abierta, 409; un insumo que la lista no valora, 422."""
+    vivo = _vivo(request, activa, id)
+    resumen, vista = _editar(
+        sesion,
+        vivo,
+        lambda: hoja_edicion.cambiar_insumo_de_linea(
+            sesion,
+            activa.huella_ficha,
+            id,
+            datos.rev,
+            partida,
+            datos.tipo,
+            datos.indice,
+            datos.insumo,
+        ),
+        lambda editado: hoja_vista.vista_apu(editado, partida),
+    )
+    return EdicionApuRespuesta(
+        rev=resumen.rev, resumen=resumen_a_respuesta(resumen), apu=vista_apu_a_respuesta(vista)
+    )
+
+
+@router.get("/borradores/{id}/insumos", response_model=InsumosHojaRespuesta)
+@sin_eco(FORMA_BUSQUEDA)
+def buscar_insumos(
+    id: IdDeBorrador,
+    request: Request,
+    activa: CuentaDeLaHoja,
+    sesion: SesionDep,
+    tipo: Annotated[Literal["material", "equipo", "mano_obra"], Query()],
+    texto: Annotated[str, Query(max_length=500)] = "",
+    limite: Annotated[int, Query(ge=1, le=hoja_edicion.LIMITE_INSUMOS + 1)] = (
+        hoja_edicion.LIMITE_INSUMOS
+    ),
+) -> InsumosHojaRespuesta:
+    """E8: los insumos de la lista de precios de la versión que se pueden elegir para una línea
+    (del `tipo`, con `texto` en la descripción; ordenados por descripción). A lo sumo `limite`
+    (301 se trata como 300, el tope de la clásica) y `hay_mas` si había más."""
+    vivo = _vivo(request, activa, id)
+    try:
+        filas, hay_mas = hoja_edicion.candidatos_de_insumo(
+            sesion, vivo, tipo, texto, min(limite, hoja_edicion.LIMITE_INSUMOS)
+        )
+    except hoja_edicion.SinVersionAbierta:
+        raise HTTPException(status_code=409, detail=MENSAJE_SIN_VERSION) from None
+    except SQLAlchemyError:
+        raise HTTPException(status_code=503, detail=MENSAJE_BASE) from None
+    return insumos_a_respuesta(filas, hay_mas)
+
+
+@router.get("/borradores/{id}/cambios", response_model=CambiosHojaRespuesta)
+def cambios_del_borrador(
+    id: IdDeBorrador, request: Request, activa: CuentaDeLaHoja
+) -> CambiosHojaRespuesta:
+    """E9: la lista de cambios entre la versión abierta y el borrador (la que cuenta
+    `resumen.cambios`), con el `rev` con que se calculó."""
+    return cambios_a_respuesta(*hoja_edicion.cambios_del_borrador(_vivo(request, activa, id)))
 
 
 @router.get("/borradores/{id}/vistas/espacio", response_model=VistaEspacioRespuesta)

@@ -129,7 +129,9 @@ El cuerpo de R2 gana un campo opcional: `{ "proyecto": str, "version": str|null,
   (`{n}` = 1 → «1 cambio»). `borrador_id` es el del más reciente con cambios.
 - Con `reemplazar: true` se descartan los borradores de esa `(proyecto, versión)` de mi ficha y se abre uno nuevo (201, como R2). Si
   abrir falla (404 de la versión, etc.) el anterior queda intacto.
-- Un borrador de la misma versión SIN cambios no estorba: se descarta en silencio y se abre el nuevo.
+- Un borrador de la misma versión SIN cambios no estorba y no se toca: se abre otro, como siempre (el tope de 4 por ficha acota;
+  el más antiguo se descarta al pasar de 4). E10 puede, pues, listar varios de la misma versión con `cambios: 0`: el front solo
+  ofrece «Retomar» los que tienen `cambios > 0`.
 - **Cambiar de versión (o de proyecto) con un borrador abierto no descarta nada:** el borrador de la otra versión sigue vivo y
   aparece en E10 (tope de 4 por ficha; el más antiguo se descarta al pasar de 4, como siempre). La advertencia «Tiene {n} cambios sin
   guardar…» es de pantalla: el front la compone con `resumen.cambios`.

@@ -752,7 +752,12 @@ def test_e9_en_un_borrador_en_blanco_todo_lo_escrito_cuenta() -> None:
     assert _cambios(navegador, id_).json() == {"rev": 0, "cambios": []}
     assert _parametros(navegador, ficha, id_, 0, administracion="0.20").status_code == 200
     cambios = _cambios(navegador, id_).json()["cambios"]
-    assert [(c["objeto"], c["clave"]) for c in cambios] == [("parametro", "administracion")]
+    # el borrador en blanco parte de los parametros por omision de `Borrador`, no de los de OF-001:
+    # cada parametro que el cuerpo escribe distinto es una celda cambiada
+    assert {c["objeto"] for c in cambios} == {"parametro"}
+    administracion = next(c for c in cambios if c["clave"] == "administracion")
+    assert administracion["despues"] == "0.20"
+    assert len(cambios) == _resumen(navegador, id_)["cambios"]
 
 
 # --- E10 y E11: retomar, reemplazar y cambiar de version (3c-B14, P23) ---
@@ -859,13 +864,14 @@ def test_e11_reemplazar_descarta_el_anterior_y_abre_uno_nuevo_sin_cambios() -> N
     assert [b["id"] for b in _listar(navegador)] == [nuevo]
 
 
-def test_e11_sin_cambios_el_borrador_anterior_no_estorba_y_se_reemplaza_en_silencio() -> None:
+def test_e11_sin_cambios_el_borrador_anterior_no_estorba_y_sigue_vivo() -> None:
+    """Como siempre (el quinto descarta al primero, 3b-B15): abrir de nuevo no toca al anterior."""
     navegador, ficha = _ana()
     id_ = _abrir(navegador, ficha)
     respuesta = _abrir_con(navegador, ficha)  # reemplazar por omision: falso
     assert respuesta.status_code == 201
-    assert navegador.get(f"/v1/hoja/borradores/{id_}").status_code == 404
-    assert len(_listar(navegador)) == 1
+    assert navegador.get(f"/v1/hoja/borradores/{id_}").status_code == 200
+    assert {b["id"] for b in _listar(navegador)} == {id_, respuesta.json()["id"]}
 
 
 def test_e11_un_borrador_con_cambios_revertidos_tampoco_estorba() -> None:
