@@ -34,6 +34,17 @@ describe("cliente de la API", () => {
     expect(cabeceras.get("X-Silice-CSRF")).toBe("abc123");
   });
 
+  test("un PUT manda su cuerpo JSON con el token CSRF y el metodo PUT", async () => {
+    fijarCsrf("abc123");
+    fetchFalso.mockImplementation(async () => respuesta(200, { rev: 1 }));
+    await expect(pedir("/v1/hoja/borradores/x/espacio", { metodo: "PUT", cuerpo: { rev: 0 } })).resolves.toEqual({ rev: 1 });
+    const init = fetchFalso.mock.calls[0][1];
+    expect(init?.method).toBe("PUT");
+    expect(new Headers(init?.headers).get("X-Silice-CSRF")).toBe("abc123");
+    expect(new Headers(init?.headers).get("Content-Type")).toBe("application/json");
+    expect(init?.body).toBe('{"rev":0}');
+  });
+
   test("un DELETE tambien lleva el token y un GET no", async () => {
     fijarCsrf("abc123");
     fetchFalso.mockImplementation(async () => respuesta(204));
