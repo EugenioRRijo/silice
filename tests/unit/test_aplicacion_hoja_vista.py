@@ -171,7 +171,8 @@ def test_elaborar_agrega_r17_y_no_la_deja_en_el_borrador():
 def test_la_cache_del_calculo_se_reutiliza_por_rev(_of001):
     vivo = Registro().crear("f", "caso", NOMBRE_OF001, "001", _of001.borrador, _of001)
     primero = hoja_vista.calculo(vivo)
-    assert hoja_vista.calculo(vivo) is primero
+    segundo = hoja_vista.calculo(vivo)
+    assert segundo[0] is primero[0] and segundo[1] is primero[1]
     assert vivo.calculo is not None and vivo.calculo[0] == 0
 
 
