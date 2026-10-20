@@ -109,3 +109,12 @@
 .silice-pagina > p {
   margin: 0;
 }
+
+// Anillo de foco de Carbon (2 px, token de foco, separado 2 px) en los controles que no son de Carbon y mostraban el del
+// navegador (`outline: auto 1px`, esquinas redondeadas): los `<summary>` de Control y de la curva y el boton que abre
+// el exacto en el Historial (VD-4). Una sola regla, sin tocar las paginas.
+summary:focus-visible,
+.silice-historial__monto-valor:focus-visible {
+  outline: 2px solid var(--cds-focus);
+  outline-offset: 2px;
+}
