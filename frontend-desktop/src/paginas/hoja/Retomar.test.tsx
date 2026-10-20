@@ -240,15 +240,15 @@ describe("Hoja del proyecto: retomar el borrador y cambiar de versión (3c-3)", 
     // Las tablas salen del borrador del servidor (no de la versión guardada).
     expect(await screen.findByRole("textbox", { name: "Largo (m), Ambientes fila 1" })).toHaveValue("2");
     // Y la siguiente edición lleva el rev con que quedó el borrador.
-    relojFalso();
-    await userEvent.setup({ delay: null, advanceTimers: vi.advanceTimersByTime }).click(screen.getByRole("tab", { name: "Parámetros" }));
-    const campo = await esperar(() => screen.getByRole("textbox", { name: /^Administración/ }));
-    fireEvent.change(campo, { target: { value: "0.20" } });
+    await userEvent.click(screen.getByRole("tab", { name: "Parámetros" }));
+    const campo = await screen.findByRole("textbox", { name: /^Administración/ });
     const cuerpos: Array<{ rev: number }> = [];
     alPonerParametros = (c) => {
       cuerpos.push(c);
       return json({ rev: c.rev + 1, resumen: resumen({ rev: c.rev + 1, cambios: 3 }) });
     };
+    relojFalso();
+    fireEvent.change(campo, { target: { value: "0.20" } });
     await pausa(400);
     await esperar(() => expect(cuerpos).toHaveLength(1));
     expect(cuerpos[0]!.rev).toBe(4);
@@ -285,7 +285,8 @@ describe("Hoja del proyecto: retomar el borrador y cambiar de versión (3c-3)", 
     montar();
     await screen.findByRole("region", { name: "Estado del borrador" });
     expect(aperturas()).toHaveLength(1);
-    expect(screen.queryByRole("alert")).toBeNull();
+    // Carbon pone en cada campo un `role="alert"` vacío (su contador): los avisos de verdad son los que traen texto.
+    expect(screen.queryAllByRole("alert").filter((a) => (a.textContent ?? "") !== "")).toHaveLength(0);
   });
 
   test("un 401 al pedir la lista avisa al marco para que pida la sesión de nuevo", async () => {
@@ -329,7 +330,7 @@ describe("Hoja del proyecto: retomar el borrador y cambiar de versión (3c-3)", 
       json({ detalle: "Ya hay un borrador de esa versión con cambios sin guardar.", borrador_id: ID }, 409);
     montar();
     expect(await screen.findByRole("button", { name: "Retomar borrador de OF-001 (2 cambios)" })).toBeInTheDocument();
-    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.queryAllByRole("alert").filter((a) => (a.textContent ?? "") !== "")).toHaveLength(0);
     expect(aperturas()).toHaveLength(1); // no vuelve a intentarlo solo
   });
 
