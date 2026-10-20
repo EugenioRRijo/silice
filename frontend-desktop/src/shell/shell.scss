@@ -36,10 +36,13 @@
     outline: none;
   }
 
-  // Hacia adentro: el h1 queda pegado a la cabecera fija y un anillo hacia afuera quedaria tapado por ella.
+  // Hacia afuera (offset 2px) como el resto de anillos de la interfaz: medido a 1366x768 y scrollY 0, el h1 queda 24 px
+  // por debajo de la cabecera fija en casi todas las paginas, asi que el anillo se ve completo; hacia adentro tocaba la
+  // primera letra. Solo en Libro de la empresa (h1 con relleno propio, pegado a la cabecera) el borde superior de 2 px
+  // queda bajo la cabecera.
   h1[tabindex="-1"]:focus-visible {
     outline: 2px solid var(--cds-focus);
-    outline-offset: -2px;
+    outline-offset: 2px;
   }
 
   @media (min-width: 66rem) {
