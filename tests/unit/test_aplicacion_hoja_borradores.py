@@ -246,3 +246,13 @@ def test_el_modulo_ofrece_las_funciones_de_la_capa_sobre_un_registro_del_proceso
     hb.olvidar("ficha-y")
     hb.olvidar_todo()
     assert hb.listar("ficha-y") == []
+
+
+def test_un_borrador_que_pickle_no_puede_serializar_igual_se_mide(registro):
+    """TI-001 trae un `mappingproxy` en sus composiciones: `pickle` falla y la estimacion cae a un
+    recorrido de objetos; crear el borrador no puede fallar por eso."""
+    from types import MappingProxyType
+
+    borrador = Borrador(fecha=date(2026, 10, 19), composiciones=MappingProxyType({"A": "x" * 1000}))
+    vivo = registro.crear("ficha-a", "caso-1", "P", "001", borrador, None)
+    assert vivo.tamano >= 1000
