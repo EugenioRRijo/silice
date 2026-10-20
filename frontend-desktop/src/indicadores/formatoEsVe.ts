@@ -20,3 +20,27 @@ export function formatoMontoEsVe(texto: string): string {
   if (!m) return texto;
   return `${formatoEsVe(m[1]!)}${m[2] ?? ""}`;
 }
+
+// Un total exacto de la API ("4876.56257") en centesimas y es-VE ("4.876,56"), para leerlo; el exacto va aparte (en el
+// `title` o en un Tooltip). Solo cadena y BigInt, nunca float: redondeo «mitad hacia arriba» en valor absoluto, y un
+// negativo que queda en cero se lee sin signo. Lo que no es un decimal se devuelve tal cual (VB-7).
+export function centesimasEsVe(exacto: string): string {
+  const m = DECIMAL.exec(exacto.trim());
+  if (!m) return exacto;
+  const [, signo, entera, fraccion = ""] = m;
+  const centesimas = BigInt(entera + (fraccion + "00").slice(0, 2));
+  const sube = fraccion.length > 2 && fraccion.charCodeAt(2) >= 53 ? 1n : 0n; // el tercer decimal es 5 o mas
+  const total = (centesimas + sube).toString().padStart(3, "0");
+  const texto = `${total.slice(0, -2)}.${total.slice(-2)}`;
+  return formatoEsVe(signo === "-" && /[1-9]/.test(total) ? `-${texto}` : texto);
+}
+
+// Una fecha ISO de la API a como se lee en es-VE: «2026-11-02» -> «02/11/2026» y «2026-10-18T14:32:05» ->
+// «18/10/2026 14:32». Lo que se envia a la API sigue siendo AAAA-MM-DD; esto es solo para leer (VB-19). Lo que no es
+// una fecha ISO se devuelve tal cual.
+export function fechaEsVe(iso: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2}))?/.exec(iso);
+  if (!m) return iso;
+  const dia = `${m[3]}/${m[2]}/${m[1]}`;
+  return m[4] ? `${dia} ${m[4]}:${m[5]}` : dia;
+}
