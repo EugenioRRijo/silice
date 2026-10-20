@@ -577,7 +577,7 @@ function sinTildes(texto: string): string {
 }
 
 // El número de fila de un mensaje (un índice, no un monto), leído dígito a dígito: en esta carpeta nada usa Number ni parseInt.
-function enteroDeDigitos(digitos: string): number {
+export function enteroDeDigitos(digitos: string): number {
   return [...digitos].reduce((acumulado, d) => acumulado * 10 + "0123456789".indexOf(d), 0);
 }
 
