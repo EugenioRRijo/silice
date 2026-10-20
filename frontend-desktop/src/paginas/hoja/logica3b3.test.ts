@@ -174,10 +174,14 @@ describe("lógica de la hoja, 3b-3", () => {
     expect(rotuloDeOrigen("esp_segmentos:F1|0.000,0.000,0.000|0.000,0.000,2.500;+4")).toBe("Segmento F1 y 4 más");
   });
 
-  test("como la clásica, un hallazgo PENDIENTE no se atribuye a toda la partida, solo al renglón que lo cita", () => {
+  test("como la clásica, un PENDIENTE (origen = [partida, origen_id]) es solo del renglón con esa misma tupla", () => {
     const base = informeAuditoria().hallazgos[1]!;
-    const pendiente = { ...base, numero: 9, regla: "PENDIENTE", partida: "AF-SALIDA", origen: ["esp_puntos:P2"] };
-    expect(hallazgosDeOrigen([pendiente], ["AF-SALIDA|esp_puntos:P3", "esp_puntos:P3", "AF-SALIDA"])).toEqual([]);
-    expect(hallazgosDeOrigen([pendiente], ["AF-SALIDA|esp_puntos:P2", "esp_puntos:P2", "AF-SALIDA"])).toHaveLength(1);
+    const pendiente = { ...base, numero: 9, regla: "PENDIENTE", partida: "AF-SALIDA", origen: ["AF-SALIDA", "esp_puntos:P2"] };
+    const de = (clave: string) => hallazgosDeOrigen([pendiente], clavesDeAuditoria(clave)).length;
+    expect(de("AF-SALIDA|esp_puntos:P2")).toBe(1);
+    expect(de("AF-SALIDA|esp_puntos:P2#2")).toBe(1);
+    expect(de("AF-SALIDA|esp_puntos:P3")).toBe(0); // otro renglón de la misma partida
+    expect(de("AF-LLAVE|esp_puntos:P2")).toBe(0); // otra partida con ese origen
+    expect(de("esp_puntos:P2")).toBe(0); // una fila del espacio no recibe PENDIENTE
   });
 });
