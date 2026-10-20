@@ -1,6 +1,7 @@
 // Lógica pura de «Hoja del proyecto» (marco de la rebanada 3b-1). Los montos llegan como texto
 // `{texto, exacto}` y la página solo los formatea: no calcula ni convierte nada a número.
 import { ErrorDeApi } from "../../api/cliente";
+import type { HallazgoInformeRespuesta, InformeAuditoriaRespuesta } from "../../api/tipos";
 
 export const TITULO = "Hoja del proyecto";
 export const SIN_VERSIONES = "Este proyecto aún no tiene versiones";
@@ -104,7 +105,14 @@ export function esBorradorAusente(error: unknown): boolean {
 
 // --- vistas de las pestañas (rebanada 3b-2): lo que contesta `GET /v1/hoja/borradores/{id}/vistas/{nombre}` ---
 
-export type NombreDeVista = "espacio" | "presupuesto" | "apu" | "plan";
+export type NombreDeVista =
+  | "espacio"
+  | "presupuesto"
+  | "apu"
+  | "plan"
+  | "equilibrio"
+  | "parametros"
+  | "auditoria";
 
 export function rutaDeVista(
   id: string,
@@ -259,3 +267,164 @@ export function filasDeTabla(
 
 export const LIMITE_SIN_PAGINAR = 100;
 export const FILAS_POR_PAGINA = 50;
+
+// --- rebanada 3b-3: Punto de equilibrio, Parámetros, Auditoría, Precios y Trazabilidad ---
+
+export interface VistaEquilibrio {
+  estado: string;
+  venta: Monto;
+  costo_variable: Monto;
+  costo_fijo: Monto;
+  utilidad: Monto;
+  // Sin punto (no hay ventas, el margen no es positivo...) el servidor manda null y la frase que lo explica.
+  punto: Monto | null;
+  porcentaje: Monto | null;
+  periodo: string | null;
+  fraccion_periodo: string | null;
+  mensaje: string;
+}
+
+export interface VistaParametros {
+  campos: Array<{ clave: string; rotulo: string; valor: string }>;
+  moneda_proyecto: string | null;
+  total: Monto;
+  puede_convertir: boolean;
+}
+
+export type VistaAuditoria = InformeAuditoriaRespuesta;
+
+export interface ColumnaPrecio {
+  clave: string;
+  rotulo: string;
+  numerica: boolean;
+}
+
+// Cada celda llega como texto, como `{texto, exacto}` (los montos) o null (sin dato).
+export type CeldaPrecio = string | Monto | null;
+
+export interface PreciosRespuesta {
+  moneda: string;
+  fecha_evaluacion: string;
+  columnas: ColumnaPrecio[];
+  filas: Array<Record<string, CeldaPrecio>>;
+}
+
+export interface AvisoAtipicos {
+  nivel: "info" | "success";
+  texto: string;
+}
+
+export interface VariacionAtipica {
+  insumo: string;
+  porcentaje: string;
+  porcentaje_exacto: string;
+  desde: string;
+  hasta: string;
+  severidad: string;
+  descripcion: string;
+}
+
+export interface AtipicosRespuesta {
+  disponible: boolean;
+  avisos: AvisoAtipicos[];
+  variaciones: VariacionAtipica[];
+}
+
+export interface RegistroDeCambio {
+  objeto: string;
+  clave: string;
+  campo: string;
+  antes: string;
+  despues: string;
+  fuente: string;
+  responsable: string;
+  fecha_hora: string;
+}
+
+export interface TrazabilidadRespuesta {
+  versiones: VersionFila[];
+  registros: RegistroDeCambio[];
+  vacio_mensaje: string | null;
+}
+
+function consultaDeVersion(proyecto: string, version: string): string {
+  return new URLSearchParams({ proyecto, version }).toString();
+}
+
+export const rutaDePrecios = (proyecto: string, version: string) =>
+  `/v1/hoja/precios?${consultaDeVersion(proyecto, version)}`;
+export const rutaDeAtipicos = (proyecto: string, version: string) =>
+  `/v1/hoja/precios/atipicos?${consultaDeVersion(proyecto, version)}`;
+export const rutaDeTrazabilidad = (proyecto: string, version: string) =>
+  `/v1/hoja/trazabilidad?${consultaDeVersion(proyecto, version)}`;
+
+const NOMBRE_DE_PREFIJO: Record<string, string> = {
+  esp_origenes: "Origen",
+  esp_ambientes: "Ambiente",
+  esp_fuentes: "Fuente",
+  esp_puntos: "Punto",
+  esp_tramos: "Tramo",
+};
+
+function rotuloDeFila(texto: string): string {
+  const m = /^(esp_[a-z]+):(.+)$/.exec(texto);
+  const nombre = m ? NOMBRE_DE_PREFIJO[m[1]!] : undefined;
+  return m && nombre ? `${nombre} ${m[2]}` : texto;
+}
+
+// La clave de fila del servidor («esp_puntos:P1», «AF-LLAVE|esp_puntos:P1#2») como la nombra la persona.
+export function rotuloDeOrigen(origen: string): string {
+  const repetido = /^(.*)#(\d+)$/.exec(origen);
+  const base = repetido ? repetido[1]! : origen;
+  const sufijo = repetido ? ` (${repetido[2]})` : "";
+  const barra = base.indexOf("|");
+  const texto = barra < 0 ? rotuloDeFila(base) : `${base.slice(0, barra)}, ${rotuloDeFila(base.slice(barra + 1))}`;
+  return texto + sufijo;
+}
+
+// Con qué claves se busca, en el origen de los hallazgos, un renglón del presupuesto (`partida|origen#2`).
+export function clavesDeAuditoria(clave: string): string[] {
+  const claves = [clave];
+  const sinRepeticion = clave.replace(/#\d+$/, "");
+  if (sinRepeticion !== clave) claves.push(sinRepeticion);
+  const barra = sinRepeticion.indexOf("|");
+  if (barra >= 0) claves.push(sinRepeticion.slice(barra + 1));
+  return claves;
+}
+
+export function hallazgosDeOrigen(hallazgos: HallazgoInformeRespuesta[], claves: string[]): HallazgoInformeRespuesta[] {
+  return hallazgos.filter((h) => h.origen.some((o) => claves.includes(o)));
+}
+
+const PRINCIPALES_DE_PRECIOS = [
+  "Insumo",
+  "Código",
+  "Precio",
+  "Lista",
+  "Moneda",
+  "Fecha del precio",
+  "Referencia",
+  "Cotización",
+  "Estado",
+];
+const EROSION_POR_INDICE = "Erosión por índice";
+
+// Las columnas que van en la tabla y las que se leen en el detalle del insumo. «Erosión por índice» solo se ofrece si
+// algún valor viene (DV-11): la clásica nunca la llenaba.
+export function partirColumnasDePrecios(
+  columnas: ColumnaPrecio[],
+  hayIndice: boolean,
+): { principales: ColumnaPrecio[]; detalle: ColumnaPrecio[] } {
+  return {
+    principales: columnas.filter((c) => PRINCIPALES_DE_PRECIOS.includes(c.rotulo)),
+    detalle: columnas.filter(
+      (c) => !PRINCIPALES_DE_PRECIOS.includes(c.rotulo) && (c.rotulo !== EROSION_POR_INDICE || hayIndice),
+    ),
+  };
+}
+
+// 2026-07-01 -> 01/07/2026 (y «2026-10-06 09:30:00» -> «06/10/2026 09:30:00»); lo que no empieza por una fecha queda igual.
+export function fechaCorta(texto: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})(.*)$/.exec(texto);
+  return m ? `${m[3]}/${m[2]}/${m[1]}${m[4]}` : texto;
+}
