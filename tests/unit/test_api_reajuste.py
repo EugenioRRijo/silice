@@ -231,6 +231,15 @@ def test_un_dato_malo_es_422_con_el_mensaje_de_la_pantalla(cambios: dict, dice: 
     assert (r.status_code, r.json()) == (422, {"detalle": dice})
 
 
+def test_un_mensaje_del_nucleo_sale_con_tilde_y_el_codigo_del_usuario_intacto() -> None:
+    # Ronda 1, punto 3: «la partida X no esta en la version…» del núcleo, con tilde; el código
+    # con forma de fecha lo escribió la persona y no se reescribe (punto 1).
+    ejecutado = [{"periodo": "1", "partida": "2026-11-10", "cantidad": "1", "fuente": "AV-01"}]
+    r = _post("calcular", ejecutado=ejecutado)
+    detalle = "No se pudo calcular: la partida 2026-11-10 no está en la versión del contrato"
+    assert (r.status_code, r.json()) == (422, {"detalle": detalle})
+
+
 def test_un_cuerpo_invalido_es_422_y_no_devuelve_lo_enviado() -> None:
     navegador, ficha = _ana()
     r = navegador.post(
