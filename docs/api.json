@@ -5443,6 +5443,52 @@
         }
       }
     },
+    "/v1/hoja/borradores/{id}/vistas/presupuesto": {
+      "get": {
+        "tags": [
+          "hoja"
+        ],
+        "summary": "Vista Presupuesto",
+        "description": "R6: Presupuesto en lectura (renglones, cantidad calculada y escrita, PU, total, Estado).",
+        "operationId": "vista_presupuesto_v1_hoja_borradores__id__vistas_presupuesto_get",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 16,
+              "maxLength": 64,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "title": "Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VistaPresupuestoRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/produccion/materiales": {
       "get": {
         "tags": [
@@ -9717,6 +9763,75 @@
         "type": "object",
         "title": "FilaPlan",
         "description": "Una fila de la tabla del plan de trabajo; los textos pueden venir en blanco (fila nueva)."
+      },
+      "FilaPresupuestoRespuesta": {
+        "properties": {
+          "clave": {
+            "type": "string",
+            "title": "Clave"
+          },
+          "partida": {
+            "type": "string",
+            "title": "Partida"
+          },
+          "descripcion": {
+            "type": "string",
+            "title": "Descripcion"
+          },
+          "unidad": {
+            "type": "string",
+            "title": "Unidad"
+          },
+          "cantidad": {
+            "type": "string",
+            "title": "Cantidad"
+          },
+          "cantidad_calculada": {
+            "type": "string",
+            "title": "Cantidad Calculada"
+          },
+          "escrita": {
+            "type": "boolean",
+            "title": "Escrita"
+          },
+          "pu": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MontoHojaRespuesta"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "total": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MontoHojaRespuesta"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "estado": {
+            "$ref": "#/components/schemas/EstadoFilaRespuesta"
+          }
+        },
+        "type": "object",
+        "required": [
+          "clave",
+          "partida",
+          "descripcion",
+          "unidad",
+          "cantidad",
+          "cantidad_calculada",
+          "escrita",
+          "pu",
+          "total",
+          "estado"
+        ],
+        "title": "FilaPresupuestoRespuesta"
       },
       "FilaSimuladaRespuesta": {
         "properties": {
@@ -14851,6 +14966,43 @@
           "vacio_mensaje"
         ],
         "title": "VistaEspacioRespuesta"
+      },
+      "VistaPresupuestoRespuesta": {
+        "properties": {
+          "filas": {
+            "items": {
+              "$ref": "#/components/schemas/FilaPresupuestoRespuesta"
+            },
+            "type": "array",
+            "title": "Filas"
+          },
+          "total": {
+            "$ref": "#/components/schemas/MontoHojaRespuesta"
+          },
+          "moneda": {
+            "type": "string",
+            "title": "Moneda"
+          },
+          "vacio_mensaje": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vacio Mensaje"
+          }
+        },
+        "type": "object",
+        "required": [
+          "filas",
+          "total",
+          "moneda",
+          "vacio_mensaje"
+        ],
+        "title": "VistaPresupuestoRespuesta"
       },
       "VistaPreviaRespuesta": {
         "properties": {

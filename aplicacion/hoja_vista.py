@@ -310,3 +310,77 @@ def vista_espacio(vivo: BorradorVivo) -> VistaEspacio:
         pendientes=len(resultado.elaboracion.pendientes),
         vacio_mensaje=None if resultado.items else SIN_CANTIDADES,
     )
+
+
+# --- Presupuesto (R6) ---------------------------------------------------------------------------
+
+SIN_RENGLONES = "El presupuesto no tiene renglones todavía."
+
+
+@dataclass(frozen=True, slots=True)
+class FilaDePresupuesto:
+    """Un renglon: `cantidad` es la vigente (texto, la que se edita) y `cantidad_calculada` la del
+    sistema; `pu` y `total` son `None` en una partida pendiente (sin APU en el catalogo)."""
+
+    clave: str
+    partida: str
+    descripcion: str
+    unidad: str
+    cantidad: str
+    cantidad_calculada: str
+    escrita: bool
+    pu: Monto | None
+    total: Monto | None
+    estado: EstadoDeFila
+
+
+@dataclass(frozen=True, slots=True)
+class VistaPresupuesto:
+    filas: tuple[FilaDePresupuesto, ...]
+    total: Monto
+    moneda: str
+    vacio_mensaje: str | None
+
+
+def vista_presupuesto(vivo: BorradorVivo) -> VistaPresupuesto:
+    """La pestana Presupuesto en lectura (P:1744-1790): una fila por renglon con su cantidad, la
+    calculada, el precio unitario, el total y el Estado."""
+    resultado, _ = calculo(vivo)
+    presupuesto = resultado.elaboracion.presupuesto
+    valorados = dict(
+        zip(
+            hoja.claves_de_items([p.item for p in presupuesto.partidas]),
+            presupuesto.partidas,
+            strict=True,
+        )
+    )
+    sin_escribir = hoja.items_sin_escribir(vivo.borrador)
+    calculadas = dict(zip(hoja.claves_de_items(sin_escribir), sin_escribir, strict=True))
+    escritas = vivo.borrador.cantidades
+    filas = []
+    for texto in hoja.filas_del_presupuesto(resultado):
+        clave = texto["clave"]
+        renglon = valorados.get(clave)
+        calculada = calculadas[clave].cantidad
+        filas.append(
+            FilaDePresupuesto(
+                clave=clave,
+                partida=texto["partida"],
+                descripcion=texto["descripcion"],
+                unidad=texto["unidad"],
+                cantidad=texto["cantidad"],
+                cantidad_calculada=hoja.texto_numero(calculada),
+                escrita=clave in escritas and escritas[clave] != calculada,
+                pu=None if renglon is None else monto(renglon.resultado.precio_unitario),
+                total=None if renglon is None else monto(renglon.total),
+                estado=estado_de_fila(
+                    resultado.estado_items.get(clave, hoja.EstadoFila(None, hoja.TEXTO_OK))
+                ),
+            )
+        )
+    return VistaPresupuesto(
+        filas=tuple(filas),
+        total=monto(presupuesto.total),
+        moneda=presupuesto.moneda,
+        vacio_mensaje=None if filas else SIN_RENGLONES,
+    )

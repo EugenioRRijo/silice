@@ -11,7 +11,13 @@ from typing import Annotated
 
 from pydantic import BaseModel, Field
 
-from aplicacion.hoja_vista import BaseAbierta, Monto, ResumenHoja, VistaEspacio
+from aplicacion.hoja_vista import (
+    BaseAbierta,
+    Monto,
+    ResumenHoja,
+    VistaEspacio,
+    VistaPresupuesto,
+)
 
 #: Cada texto de celda o de código llega acotado (diseño §4.1): ≤ 500 caracteres.
 Texto500 = Annotated[str, Field(max_length=500)]
@@ -168,3 +174,27 @@ class VistaEspacioRespuesta(BaseModel):
 
 def vista_espacio_a_respuesta(vista: VistaEspacio) -> VistaEspacioRespuesta:
     return VistaEspacioRespuesta.model_validate(vista, from_attributes=True)
+
+
+class FilaPresupuestoRespuesta(BaseModel):
+    clave: str
+    partida: str
+    descripcion: str
+    unidad: str
+    cantidad: str
+    cantidad_calculada: str
+    escrita: bool
+    pu: MontoHojaRespuesta | None
+    total: MontoHojaRespuesta | None
+    estado: EstadoFilaRespuesta
+
+
+class VistaPresupuestoRespuesta(BaseModel):
+    filas: list[FilaPresupuestoRespuesta]
+    total: MontoHojaRespuesta
+    moneda: str
+    vacio_mensaje: str | None
+
+
+def vista_presupuesto_a_respuesta(vista: VistaPresupuesto) -> VistaPresupuestoRespuesta:
+    return VistaPresupuestoRespuesta.model_validate(vista, from_attributes=True)

@@ -39,9 +39,11 @@ from api.esquemas_hoja import (
     VersionesHojaRespuesta,
     VersionHojaRespuesta,
     VistaEspacioRespuesta,
+    VistaPresupuestoRespuesta,
     base_a_respuesta,
     resumen_a_respuesta,
     vista_espacio_a_respuesta,
+    vista_presupuesto_a_respuesta,
 )
 from api.sesion_web import exigir_clave_o_sesion
 from api.sin_cache import RutaSinCache
@@ -233,3 +235,11 @@ def vista_espacio(
 ) -> VistaEspacioRespuesta:
     """R5: Espacio y metrajes en lectura (tablas, Estado por fila, cantidades derivadas)."""
     return vista_espacio_a_respuesta(hoja_vista.vista_espacio(_vivo(request, activa, id)))
+
+
+@router.get("/borradores/{id}/vistas/presupuesto", response_model=VistaPresupuestoRespuesta)
+def vista_presupuesto(
+    id: IdDeBorrador, request: Request, activa: CuentaDeLaHoja
+) -> VistaPresupuestoRespuesta:
+    """R6: Presupuesto en lectura (renglones, cantidad calculada y escrita, PU, total, Estado)."""
+    return vista_presupuesto_a_respuesta(hoja_vista.vista_presupuesto(_vivo(request, activa, id)))
