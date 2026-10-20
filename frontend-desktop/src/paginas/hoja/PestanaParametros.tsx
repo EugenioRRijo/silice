@@ -13,8 +13,7 @@ function ContenidoParametros({ vista, moneda }: { vista: VistaParametros; moneda
   return (
     <div className="silice-hoja__pestana">
       <p className="cds--type-body-compact-01">
-        Los parámetros de costo de esta versión. Cambiarlos recalcula todos sus APU; el cambio queda en el registro con su
-        fuente.
+        Los parámetros de costo del borrador. Aquí solo se leen; editarlos llega en una entrega posterior.
       </p>
       <dl className="silice-hoja__metricas">
         {vista.campos.map((c) => (

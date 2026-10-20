@@ -366,36 +366,64 @@ const NOMBRE_DE_PREFIJO: Record<string, string> = {
   esp_fuentes: "Fuente",
   esp_puntos: "Punto",
   esp_tramos: "Tramo",
+  esp_segmentos: "Segmento",
 };
 
+// Un origen suelto («esp_puntos:P1»; el de un segmento lleva además «|coordenadas», que no se muestran).
 function rotuloDeFila(texto: string): string {
-  const m = /^(esp_[a-z]+):(.+)$/.exec(texto);
+  const m = /^(esp_[a-z]+):([^|]+)/.exec(texto);
   const nombre = m ? NOMBRE_DE_PREFIJO[m[1]!] : undefined;
   return m && nombre ? `${nombre} ${m[2]}` : texto;
 }
 
-// La clave de fila del servidor («esp_puntos:P1», «AF-LLAVE|esp_puntos:P1#2») como la nombra la persona.
-export function rotuloDeOrigen(origen: string): string {
-  const repetido = /^(.*)#(\d+)$/.exec(origen);
-  const base = repetido ? repetido[1]! : origen;
-  const sufijo = repetido ? ` (${repetido[2]})` : "";
+// La clave de un renglón o de un registro: «partida|origen;origen;…#2». Los orígenes van unidos por «;»; los segmentos
+// llevan «|» con sus coordenadas y un «;+n» final con los que no caben.
+function partirClave(clave: string): { partida: string | null; origenes: string[]; mas: string; repetido: string } {
+  const rep = /^(.*)#(\d+)$/.exec(clave);
+  const base = rep ? rep[1]! : clave;
   const barra = base.indexOf("|");
-  const texto = barra < 0 ? rotuloDeFila(base) : `${base.slice(0, barra)}, ${rotuloDeFila(base.slice(barra + 1))}`;
-  return texto + sufijo;
+  const resto = barra < 0 ? base : base.slice(barra + 1);
+  const origenes: string[] = [];
+  let mas = "";
+  for (const trozo of resto.split(";")) {
+    const m = /^\+(\d+)$/.exec(trozo);
+    if (m) mas = m[1]!;
+    else if (trozo !== "") origenes.push(trozo);
+  }
+  return { partida: barra < 0 ? null : base.slice(0, barra), origenes, mas, repetido: rep ? rep[2]! : "" };
 }
 
-// Con qué claves se busca, en el origen de los hallazgos, un renglón del presupuesto (`partida|origen#2`).
+// La clave de fila del servidor («esp_puntos:P1», «AF-LLAVE|esp_fuentes:F1;esp_puntos:P1#2») como la nombra la persona.
+export function rotuloDeOrigen(origen: string): string {
+  const { partida, origenes, mas, repetido } = partirClave(origen);
+  const nombres = origenes.map(rotuloDeFila);
+  if (partida !== null && partida !== "") nombres.unshift(partida);
+  let texto = nombres.join(", ");
+  if (mas !== "") texto += ` y ${mas} más`;
+  return repetido ? `${texto} (${repetido})` : texto;
+}
+
+// Con qué claves se busca, en los hallazgos, un renglón del presupuesto: la clave entera, sin «#n», cada origen y su partida.
 export function clavesDeAuditoria(clave: string): string[] {
+  const { partida, origenes } = partirClave(clave);
   const claves = [clave];
   const sinRepeticion = clave.replace(/#\d+$/, "");
   if (sinRepeticion !== clave) claves.push(sinRepeticion);
-  const barra = sinRepeticion.indexOf("|");
-  if (barra >= 0) claves.push(sinRepeticion.slice(barra + 1));
+  for (const o of origenes) if (!claves.includes(o)) claves.push(o);
+  if (partida !== null && partida !== "") claves.push(partida);
   return claves;
 }
 
+// Como la clásica (`estado_de_items`), los hallazgos se atribuyen por el origen o por la partida del renglón.
 export function hallazgosDeOrigen(hallazgos: HallazgoInformeRespuesta[], claves: string[]): HallazgoInformeRespuesta[] {
-  return hallazgos.filter((h) => h.origen.some((o) => claves.includes(o)));
+  return hallazgos.filter(
+    (h) => h.origen.some((o) => claves.includes(o)) || (h.partida !== null && claves.includes(h.partida)),
+  );
+}
+
+// El período de la curva llega con los códigos de las partidas que lo cierran («Dia 23 [EL-CAJA]»): se muestran sin ellos.
+export function periodoSinCodigos(periodo: string): string {
+  return periodo.replace(/\s*\[[^\]]*\]\s*$/, "");
 }
 
 const PRINCIPALES_DE_PRECIOS = [

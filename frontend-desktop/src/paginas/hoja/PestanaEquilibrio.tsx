@@ -1,7 +1,7 @@
 import { periodoLegible } from "../../comun/CurvaPlanAvance";
 import { Cifra } from "./Cifra";
 import { VistaCarga } from "./VistaCarga";
-import { rutaDeVista } from "./logica";
+import { periodoSinCodigos, rutaDeVista } from "./logica";
 import type { VistaEquilibrio } from "./logica";
 
 interface Props {
@@ -49,7 +49,7 @@ function ContenidoEquilibrio({ vista }: { vista: VistaEquilibrio }) {
           </Metrica>
         )}
         {vista.punto !== null && vista.periodo !== null && (
-          <Metrica rotulo="Se alcanza en">{periodoLegible(vista.periodo)}</Metrica>
+          <Metrica rotulo="Se alcanza en">{periodoLegible(periodoSinCodigos(vista.periodo))}</Metrica>
         )}
       </dl>
       <p className="cds--type-body-compact-01" role="status">
