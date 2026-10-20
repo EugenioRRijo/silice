@@ -1,6 +1,7 @@
 // Tablero del proyecto (UC-13): contrato de `GET /v1/tablero` y las funciones puras que arman lo que se dibuja.
 // Los textos ya vienen presentados por la API; `valor` y `fraccion` son decimales exactos en texto y solo sirven para
 // dibujar (el numero que se lee es siempre el texto).
+import { periodoLegible } from "../../comun/CurvaPlanAvance";
 import type { SerieDeCurva } from "../../comun/CurvaPlanAvance";
 import { centesimasEsVe, formatoMontoEsVe } from "../../indicadores/formatoEsVe";
 
@@ -78,6 +79,20 @@ export interface TableroRespuesta {
 }
 
 export const RUTA_TABLERO = "/v1/tablero";
+
+// VD-8: el detalle de la tarjeta «Punto de equilibrio» es la frase fija del nucleo «se alcanza en {periodo}»
+// (core/budget/equilibrio.py), con el periodo de la curva («Dia N [partida]», core/budget/curva.py). Se lee con el
+// mismo arreglo que el eje de la curva (`periodoLegible`), solo en esa ranura y solo en esa tarjeta: el resto, y un
+// detalle mas largo que el tope, sale tal cual. Es solo la vista: el valor guardado no cambia.
+const FRASE_DEL_EQUILIBRIO = "se alcanza en ";
+const LARGO_MAXIMO_DETALLE = 2_000;
+
+export function detalleDeTarjeta(tarjeta: Tarjeta): string {
+  const { rotulo, detalle } = tarjeta;
+  if (rotulo !== "Punto de equilibrio" || detalle.length > LARGO_MAXIMO_DETALLE) return detalle;
+  if (!detalle.startsWith(FRASE_DEL_EQUILIBRIO)) return detalle;
+  return FRASE_DEL_EQUILIBRIO + periodoLegible(detalle.slice(FRASE_DEL_EQUILIBRIO.length));
+}
 
 export function rutaDelTablero(proyecto: string): string {
   return `${RUTA_TABLERO}?proyecto=${encodeURIComponent(proyecto)}`;

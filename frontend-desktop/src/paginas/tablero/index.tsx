@@ -11,6 +11,7 @@ import { useCarga } from "../inicio/useCarga";
 import {
   centroDelAnillo,
   datosDeDesglose,
+  detalleDeTarjeta,
   datosDePareto,
   datosDeVersiones,
   etiquetaDePeso,
@@ -39,7 +40,7 @@ function Tarjetas({ tarjetas, moneda }: { tarjetas: Tarjeta[]; moneda: string })
               <span className="cds--visually-hidden">{`. Valor exacto: ${t.exacto} ${moneda}`.trimEnd()}</span>
             )}
           </dd>
-          {t.detalle && <dd className="cds--type-helper-text-01">{t.detalle}</dd>}
+          {t.detalle && <dd className="cds--type-helper-text-01">{detalleDeTarjeta(t)}</dd>}
         </div>
       ))}
     </dl>
