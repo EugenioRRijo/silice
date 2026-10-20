@@ -38,7 +38,7 @@ from tests.fixtures.sesion_web import (
 )
 
 P = {"proyecto": ob.NOMBRE}
-FRONT_CONTROL = Path(__file__).resolve().parents[2] / "frontend-desktop" / "src" / "paginas" / "control"
+FRONT_CONTROL = Path(__file__).resolve().parents[2] / "frontend-desktop/src/paginas/control"
 
 
 def _base(ruta: Path, *, linea: bool, valuaciones: bool) -> Path:

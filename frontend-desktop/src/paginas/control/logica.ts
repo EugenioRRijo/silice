@@ -142,7 +142,8 @@ export const ROTULO_DE_METODO: Record<MetodoDePrecios, string> = {
 
 export const PESTANAS = ["Línea base", "Valuaciones", "Valor ganado", "Alertas y reproyección", "Recuperación"] as const;
 
-export const COLUMNAS_VALUACIONES = ["Número", "Periodo", "Fecha", "Inspector", "Registrada", "Estado"];
+// Son las claves de cada fila tal como las manda la API (sin tilde); el título visible sale de TITULOS_VISIBLES.
+export const COLUMNAS_VALUACIONES = ["Numero", "Periodo", "Fecha", "Inspector", "Registrada", "Estado"];
 export const COLUMNAS_INDICADORES = ["Indicador", "Valor", "En la otra moneda", "Nota"];
 export const COLUMNAS_ALERTAS = ["Alerta", "Severidad", "Descripcion", "Observado", "Umbral"];
 export const COLUMNAS_REPROYECCION = ["Partida", "Indice", "Fin (dia habil)", "Nota"];
