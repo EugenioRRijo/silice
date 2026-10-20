@@ -28,6 +28,13 @@
   color: var(--silice-texto-secundario);
 }
 
+.silice-reajuste__marcas {
+  max-inline-size: 65ch;
+  margin: 0;
+  padding-inline-start: 1rem;
+  list-style: disc;
+}
+
 .silice-reajuste__acciones {
   display: flex;
   flex-wrap: wrap;

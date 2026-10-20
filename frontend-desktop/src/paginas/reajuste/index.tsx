@@ -11,7 +11,7 @@ import { useCarga } from "../inicio/useCarga";
 import type { Carga } from "../inicio/useCarga";
 import { FilasEditables } from "./FilasEditables";
 import type { ColumnaEditable } from "./FilasEditables";
-import { armarCuerpo, columnasDeResultado, filasDeResultado, formularioInicial, rotuloDeOpcion } from "./logica";
+import { armarCuerpo, filasDeResultado, formularioInicial, marcasPorPeriodo, partirResultado, rotuloDeOpcion } from "./logica";
 import type { ClausulaTextos, Fila, Formulario } from "./logica";
 import "./reajuste.scss";
 
@@ -348,9 +348,23 @@ function Formulario({
           </h2>
           <TablaDensa
             etiqueta={ETIQUETA_RESULTADO}
-            columnas={columnasDeResultado(calculo.columnas)}
+            columnas={partirResultado(calculo.columnas).principal}
             filas={filasDeResultado(calculo.filas)}
           />
+          <h3 className="cds--type-heading-compact-01">En la otra moneda</h3>
+          <TablaDensa
+            etiqueta="En la otra moneda"
+            columnas={partirResultado(calculo.columnas).otra}
+            filas={filasDeResultado(calculo.filas)}
+          />
+          {marcasPorPeriodo(calculo.filas).length > 0 && (
+            <ul aria-label="Marcas por período" className="silice-reajuste__marcas cds--type-body-compact-01">
+              {marcasPorPeriodo(calculo.filas).map((marca) => (
+                <li key={marca}>{marca}</li>
+              ))}
+            </ul>
+          )}
+          <p className="silice-reajuste__nota cds--type-body-compact-01">{`Estado del estudio: ${calculo.estado}.`}</p>
           {calculo.avisos.map((aviso) => (
             <InlineNotification key={aviso} kind="warning" title="Aviso" subtitle={aviso} lowContrast hideCloseButton />
           ))}
