@@ -21,6 +21,7 @@ from aplicacion.hoja_vista import (
     VistaEspacio,
     VistaParametros,
     VistaPlan,
+    VistaPrecios,
     VistaPresupuesto,
     VistaTrazabilidad,
 )
@@ -358,3 +359,44 @@ def trazabilidad_a_respuesta(vista: VistaTrazabilidad) -> TrazabilidadHojaRespue
         ],
         vacio_mensaje=vista.vacio_mensaje,
     )
+
+
+class ColumnaPrecioRespuesta(BaseModel):
+    clave: str
+    rotulo: str
+    numerica: bool
+
+
+class FilaPrecioRespuesta(BaseModel):
+    insumo: str
+    codigo: str
+    tipo: str
+    precio: MontoHojaRespuesta
+    lista: str
+    moneda: str
+    fecha_precio: str
+    tasa: MontoHojaRespuesta | None
+    fecha_tasa: str | None
+    referencia: str
+    cotizacion: str
+    moneda_original: str
+    precio_original: MontoHojaRespuesta | None
+    fuente_tasa: str
+    fuente: str
+    propio: str
+    erosion_usd: MontoHojaRespuesta | None
+    erosion_bs: MontoHojaRespuesta | None
+    erosion_pct: MontoHojaRespuesta | None
+    erosion_indice: MontoHojaRespuesta | None
+    estado: str
+
+
+class PreciosHojaRespuesta(BaseModel):
+    moneda: str
+    fecha_evaluacion: str
+    columnas: list[ColumnaPrecioRespuesta]
+    filas: list[FilaPrecioRespuesta]
+
+
+def precios_a_respuesta(vista: VistaPrecios) -> PreciosHojaRespuesta:
+    return PreciosHojaRespuesta.model_validate(vista, from_attributes=True)

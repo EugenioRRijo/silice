@@ -36,6 +36,7 @@ from api.esquemas_hoja import (
     BorradorHojaRespuesta,
     BorradorNuevo,
     InstantaneaHojaRespuesta,
+    PreciosHojaRespuesta,
     TrazabilidadHojaRespuesta,
     VersionesHojaRespuesta,
     VistaApuRespuesta,
@@ -45,6 +46,7 @@ from api.esquemas_hoja import (
     VistaPlanRespuesta,
     VistaPresupuestoRespuesta,
     base_a_respuesta,
+    precios_a_respuesta,
     resumen_a_respuesta,
     trazabilidad_a_respuesta,
     version_a_respuesta,
@@ -109,6 +111,21 @@ def _proyecto(sesion, referencia: str):
             status_code=404, detail=f"El proyecto «{referencia}» no existe en este caso."
         )
     return encontrado
+
+
+def _hoy() -> date:
+    """El dia de la evaluacion de los precios: hoy (las pruebas lo fijan)."""
+    return date.today()
+
+
+def _version_guardada(sesion, proyecto: str, version: str):
+    """El nombre del proyecto y la lista de precios de una version GUARDADA; 404 con los textos de
+    la clasica si el proyecto o la version no existen (H:1572)."""
+    nombre = _proyecto(sesion, proyecto).nombre
+    try:
+        return nombre, hoja.lista_de_version(sesion, nombre, version)
+    except HojaInvalida as error:
+        raise HTTPException(status_code=404, detail=str(error)) from None
 
 
 def _vivo(request: Request, activa: SesionActiva, id_: str) -> BorradorVivo:
@@ -307,11 +324,7 @@ def trazabilidad(
     """R14: el historial del proyecto y los registros de cambio de una versión guardada. Clave de
     API o sesión con `EDITAR_HOJA`; solo lee."""
     try:
-        nombre = _proyecto(sesion, proyecto).nombre
-        try:
-            hoja.lista_de_version(sesion, nombre, version)  # el 404 de la clásica (H:1572)
-        except HojaInvalida as error:
-            raise HTTPException(status_code=404, detail=str(error)) from None
+        nombre, _ = _version_guardada(sesion, proyecto, version)
         return trazabilidad_a_respuesta(
             hoja_vista.vista_trazabilidad(
                 hoja.historial_de_versiones(sesion, nombre),
@@ -320,3 +333,20 @@ def trazabilidad(
         )
     except SQLAlchemyError:
         raise HTTPException(status_code=503, detail=MENSAJE_BASE) from None
+
+
+@router.get("/precios", response_model=PreciosHojaRespuesta, dependencies=[LEER])
+def precios(
+    sesion: SesionDep,
+    proyecto: Annotated[str, Query(min_length=1, max_length=500)],
+    version: Annotated[str, Query(min_length=1, max_length=500)],
+) -> PreciosHojaRespuesta:
+    """R12: el origen de cada precio de una versión guardada, evaluado a hoy (erosión y avisos de
+    R11 y R12 en memoria). Clave de API o sesión con `EDITAR_HOJA`; solo lee."""
+    try:
+        nombre, lista = _version_guardada(sesion, proyecto, version)
+        hoy = _hoy()
+        filas = hoja.precios_de_version(sesion, nombre, version, fecha_evaluacion=hoy)
+    except SQLAlchemyError:
+        raise HTTPException(status_code=503, detail=MENSAJE_BASE) from None
+    return precios_a_respuesta(hoja_vista.vista_precios(filas, lista.moneda, hoy))

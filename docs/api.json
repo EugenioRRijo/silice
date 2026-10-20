@@ -5809,6 +5809,62 @@
         }
       }
     },
+    "/v1/hoja/precios": {
+      "get": {
+        "tags": [
+          "hoja"
+        ],
+        "summary": "Precios",
+        "description": "R12: el origen de cada precio de una versión guardada, evaluado a hoy (erosión y avisos de\nR11 y R12 en memoria). Clave de API o sesión con `EDITAR_HOJA`; solo lee.",
+        "operationId": "precios_v1_hoja_precios_get",
+        "parameters": [
+          {
+            "name": "proyecto",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500,
+              "title": "Proyecto"
+            }
+          },
+          {
+            "name": "version",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500,
+              "title": "Version"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PreciosHojaRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/produccion/materiales": {
       "get": {
         "tags": [
@@ -8295,6 +8351,29 @@
         ],
         "title": "ColumnaApuRespuesta"
       },
+      "ColumnaPrecioRespuesta": {
+        "properties": {
+          "clave": {
+            "type": "string",
+            "title": "Clave"
+          },
+          "rotulo": {
+            "type": "string",
+            "title": "Rotulo"
+          },
+          "numerica": {
+            "type": "boolean",
+            "title": "Numerica"
+          }
+        },
+        "type": "object",
+        "required": [
+          "clave",
+          "rotulo",
+          "numerica"
+        ],
+        "title": "ColumnaPrecioRespuesta"
+      },
       "ColumnaTablaRespuesta": {
         "properties": {
           "clave": {
@@ -10228,6 +10307,161 @@
           "valores"
         ],
         "title": "FilaPlanRespuesta"
+      },
+      "FilaPrecioRespuesta": {
+        "properties": {
+          "insumo": {
+            "type": "string",
+            "title": "Insumo"
+          },
+          "codigo": {
+            "type": "string",
+            "title": "Codigo"
+          },
+          "tipo": {
+            "type": "string",
+            "title": "Tipo"
+          },
+          "precio": {
+            "$ref": "#/components/schemas/MontoHojaRespuesta"
+          },
+          "lista": {
+            "type": "string",
+            "title": "Lista"
+          },
+          "moneda": {
+            "type": "string",
+            "title": "Moneda"
+          },
+          "fecha_precio": {
+            "type": "string",
+            "title": "Fecha Precio"
+          },
+          "tasa": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MontoHojaRespuesta"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "fecha_tasa": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fecha Tasa"
+          },
+          "referencia": {
+            "type": "string",
+            "title": "Referencia"
+          },
+          "cotizacion": {
+            "type": "string",
+            "title": "Cotizacion"
+          },
+          "moneda_original": {
+            "type": "string",
+            "title": "Moneda Original"
+          },
+          "precio_original": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MontoHojaRespuesta"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "fuente_tasa": {
+            "type": "string",
+            "title": "Fuente Tasa"
+          },
+          "fuente": {
+            "type": "string",
+            "title": "Fuente"
+          },
+          "propio": {
+            "type": "string",
+            "title": "Propio"
+          },
+          "erosion_usd": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MontoHojaRespuesta"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "erosion_bs": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MontoHojaRespuesta"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "erosion_pct": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MontoHojaRespuesta"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "erosion_indice": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MontoHojaRespuesta"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "estado": {
+            "type": "string",
+            "title": "Estado"
+          }
+        },
+        "type": "object",
+        "required": [
+          "insumo",
+          "codigo",
+          "tipo",
+          "precio",
+          "lista",
+          "moneda",
+          "fecha_precio",
+          "tasa",
+          "fecha_tasa",
+          "referencia",
+          "cotizacion",
+          "moneda_original",
+          "precio_original",
+          "fuente_tasa",
+          "fuente",
+          "propio",
+          "erosion_usd",
+          "erosion_bs",
+          "erosion_pct",
+          "erosion_indice",
+          "estado"
+        ],
+        "title": "FilaPrecioRespuesta"
       },
       "FilaPresupuestoRespuesta": {
         "properties": {
@@ -12918,6 +13152,40 @@
         "type": "object",
         "title": "Precios",
         "description": "Cómo se toman los precios del corte (S2 §4.3): el nombre del método y sus datos."
+      },
+      "PreciosHojaRespuesta": {
+        "properties": {
+          "moneda": {
+            "type": "string",
+            "title": "Moneda"
+          },
+          "fecha_evaluacion": {
+            "type": "string",
+            "title": "Fecha Evaluacion"
+          },
+          "columnas": {
+            "items": {
+              "$ref": "#/components/schemas/ColumnaPrecioRespuesta"
+            },
+            "type": "array",
+            "title": "Columnas"
+          },
+          "filas": {
+            "items": {
+              "$ref": "#/components/schemas/FilaPrecioRespuesta"
+            },
+            "type": "array",
+            "title": "Filas"
+          }
+        },
+        "type": "object",
+        "required": [
+          "moneda",
+          "fecha_evaluacion",
+          "columnas",
+          "filas"
+        ],
+        "title": "PreciosHojaRespuesta"
       },
       "PresupuestoConProyectoRespuesta": {
         "properties": {

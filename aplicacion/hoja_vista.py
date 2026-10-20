@@ -18,6 +18,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass, replace
+from datetime import date
 from decimal import Decimal, localcontext
 
 from adapters.espacio.conexion import con_conexion
@@ -779,4 +780,124 @@ def vista_trazabilidad(
             for r in registros
         ),
         vacio_mensaje=None if registros else SIN_REGISTROS,
+    )
+
+
+# --- Precios con su origen (R12) ----------------------------------------------------------------
+
+#: Clave y numericidad de cada columna, en el orden de `hoja.COLUMNAS_PRECIOS` (cuyos rotulos se
+#: usan tal cual: una sola fuente).
+_CLAVES_DE_PRECIOS: tuple[tuple[str, bool], ...] = (
+    ("insumo", False),
+    ("codigo", False),
+    ("tipo", False),
+    ("precio", True),
+    ("lista", False),
+    ("moneda", False),
+    ("fecha_precio", False),
+    ("tasa", True),
+    ("fecha_tasa", False),
+    ("referencia", False),
+    ("cotizacion", False),
+    ("moneda_original", False),
+    ("precio_original", True),
+    ("fuente_tasa", False),
+    ("fuente", False),
+    ("propio", False),
+    ("erosion_usd", True),
+    ("erosion_bs", True),
+    ("erosion_pct", True),
+    ("erosion_indice", True),
+    ("estado", False),
+)
+
+
+@dataclass(frozen=True, slots=True)
+class ColumnaDePrecio:
+    clave: str
+    rotulo: str
+    numerica: bool
+
+
+@dataclass(frozen=True, slots=True)
+class FilaDePrecioVista:
+    """El origen del precio de un insumo (P:1913-1944). `erosion_pct` ya va multiplicada por 100,
+    como la muestra la clasica; las erosiones son `None` sin evaluacion o sin alguna tasa."""
+
+    insumo: str
+    codigo: str
+    tipo: str
+    precio: Monto
+    lista: str
+    moneda: str
+    fecha_precio: str
+    tasa: Monto | None
+    fecha_tasa: str | None
+    referencia: str
+    cotizacion: str
+    moneda_original: str
+    precio_original: Monto | None
+    fuente_tasa: str
+    fuente: str
+    propio: str
+    erosion_usd: Monto | None
+    erosion_bs: Monto | None
+    erosion_pct: Monto | None
+    erosion_indice: Monto | None
+    estado: str
+
+
+@dataclass(frozen=True, slots=True)
+class VistaPrecios:
+    moneda: str
+    fecha_evaluacion: str
+    columnas: tuple[ColumnaDePrecio, ...]
+    filas: tuple[FilaDePrecioVista, ...]
+
+
+def _monto_o_nada(valor: Decimal | None) -> Monto | None:
+    return None if valor is None else monto(valor)
+
+
+def _fila_de_precio(p: hoja.FilaPrecio) -> FilaDePrecioVista:
+    return FilaDePrecioVista(
+        insumo=p.descripcion,
+        codigo=p.codigo,
+        tipo=p.tipo,
+        precio=monto(p.precio),
+        lista=p.lista,
+        moneda=p.moneda,
+        fecha_precio=p.fecha.isoformat(),
+        tasa=_monto_o_nada(p.tasa),
+        fecha_tasa=None if p.fecha_tasa is None else p.fecha_tasa.isoformat(),
+        referencia=p.referencia,
+        cotizacion=p.cotizacion,
+        moneda_original=p.moneda_original,
+        precio_original=_monto_o_nada(p.precio_original),
+        fuente_tasa=p.fuente_tasa,
+        fuente=p.fuente,
+        propio=hoja.texto_propio(p.propio),
+        erosion_usd=_monto_o_nada(p.erosion_usd),
+        erosion_bs=_monto_o_nada(p.erosion_bs),
+        erosion_pct=None if p.erosion_pct is None else monto(p.erosion_pct * 100),
+        erosion_indice=_monto_o_nada(p.erosion_indice),
+        estado=p.estado,
+    )
+
+
+def vista_precios(
+    precios: Sequence[hoja.FilaPrecio], moneda: str, fecha_evaluacion: date
+) -> VistaPrecios:
+    """La pestana Precios (P:1899-2025) sobre la version GUARDADA, evaluada a `fecha_evaluacion`
+    (hoy). `precios` ya viene ordenado por codigo de insumo (`hoja.precios_de_version`)."""
+    return VistaPrecios(
+        moneda=moneda,
+        fecha_evaluacion=fecha_evaluacion.isoformat(),
+        columnas=tuple(
+            ColumnaDePrecio(clave, rotulo, numerica)
+            for (clave, numerica), rotulo in zip(
+                _CLAVES_DE_PRECIOS, hoja.COLUMNAS_PRECIOS, strict=True
+            )
+        ),
+        filas=tuple(_fila_de_precio(p) for p in precios),
     )
