@@ -47,6 +47,18 @@ ajustan aquí cuando la construcción los fije.
   identificación la da el ícono con glifo oscuro, nunca el borde solo.
 - Libro contra Sílice (decisión de Eugenio, V-16): el libro menor que Sílice es favorable (verde, flecha abajo) y el mayor,
   desfavorable (rojo, flecha arriba); la palabra «favorable» o «desfavorable» se ve siempre, el color no va solo.
+- **Etiqueta de advertencia pegada** (V-16, Eugenio 2026-10-21): el verde del libro contra Sílice significa «el libro declara menos»,
+  y un libro que omite costos también sale menor, así que ese verde no puede leerse como «todo bien». Cuando el indicador es de
+  sentido «exactitud» con delta negativo lleva, **dentro de la misma tarjeta y bajo la cifra**, una nota (`role="note"`) con el
+  ícono `WarningAltFilled`, texto en la tinta normal sobre `--silice-aviso-fondo` (yellow-10, 16,4:1) y franja de 4 px en
+  `--silice-aviso-borde` (yellow-50, 3,02:1 como gráfico). Reglas del patrón: siempre visible (nunca tooltip, nunca tras un clic), sin
+  botón de cerrar, ícono y texto juntos (nunca solo color), el texto baja de línea y no se recorta, entra en el nombre accesible del
+  indicador («Total general. Libro menor: …»), conserva el color al imprimir (`print-color-adjust: exact`) y con colores forzados
+  lleva borde propio. Aparece **solo** en ese caso (no con libro mayor, igual ni en los sentidos de costo o rendimiento) para no
+  volverse papel tapiz. Con datos de omisión de la API (`partidas_con_omision`) dice «revise si omite N partidas (n.º …)»; sin
+  ellos, la frase fija «puede deberse a partidas omitidas; revise antes de aceptar». Ninguna acción se bloquea: es un acuse visible.
+- La tarjeta del indicador es una columna de dos filas que bajan de línea (título y meta; cifra y variación): con la letra Muy
+  grande la variación ya no desplaza a la cifra a 0 px, y la franja crece lo que pida la etiqueta (alto mínimo de 64 px).
 - Real = relleno sólido; plan/meta = contorno; pronóstico = achurado (IBCS). El acento de interacción es el azul
   de Carbon (`$interactive`) y solo en acciones, foco y selección.
 

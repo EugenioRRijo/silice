@@ -56,6 +56,8 @@ export interface LibroAuditadoRespuesta {
   hallazgos: HallazgoLibroRespuesta[];
   // Campo aditivo de la 2.3b: una API anterior no lo trae.
   indicadores?: IndicadorRespuesta[];
+  // Campo aditivo de V-16: numeros de las partidas con el costo directo incompleto (L4). Una API anterior no lo trae.
+  partidas_con_omision?: number[];
 }
 
 export interface EstiloVisualRespuesta {

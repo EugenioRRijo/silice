@@ -32,6 +32,9 @@
   --silice-ibcs-favorable-texto: #{colors.$green-60};
   --silice-ibcs-desfavorable: #{colors.$red-60};
   --silice-ibcs-neutro: #{colors.$gray-70};
+  // Etiqueta de advertencia pegada (V-16, libro menor): fondo amarillo claro y franja/icono ambar (3:1); el texto va en la tinta normal.
+  --silice-aviso-fondo: #{colors.$yellow-10};
+  --silice-aviso-borde: #{colors.$yellow-50};
 
   // Escala del texto (control «Tamaño de letra»): 1 normal, 1.25 grande, 1.5 muy grande. La fija preferenciaDeLetra.ts.
   --silice-escala-letra: 1;

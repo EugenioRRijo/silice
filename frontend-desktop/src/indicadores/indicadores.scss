@@ -21,7 +21,7 @@
   flex: none; // la pantalla es una columna: sin esto la franja se encoge y se come los 64 px
   flex-wrap: nowrap;
   align-items: stretch;
-  block-size: 4rem;
+  min-block-size: 4rem; // 64 px; solo crece si un indicador lleva la etiqueta del libro menor (V-16), que se ve completa
   background: var(--cds-layer);
   border-block-end: 1px solid var(--silice-divisor);
 }
@@ -34,20 +34,25 @@
 
 .fiori-kpi {
   position: relative;
-  display: grid;
+  display: flex;
   flex: 1 1 0;
-  grid-template-columns: minmax(0, 1fr) minmax(0, auto);
-  grid-template-areas:
-    "titulo meta"
-    "actual delta"
-    "barra barra";
-  align-content: center;
-  align-items: baseline;
-  column-gap: 0.75rem;
+  flex-direction: column;
+  justify-content: center;
   row-gap: 0.125rem;
   min-inline-size: 0;
   padding: 0.25rem 0.75rem;
   border-inline-end: 1px solid var(--silice-divisor);
+}
+
+// Cada par (titulo y meta; cifra y variacion) comparte una fila que baja de linea cuando no caben: antes eran dos
+// columnas de rejilla y, con la letra Muy grande, la variacion se comia la columna de la cifra (0 px, V-16).
+.fiori-kpi__fila {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  column-gap: 0.75rem;
+  min-inline-size: 0;
 }
 
 .fiori-kpi:last-child {
@@ -66,17 +71,14 @@
 }
 
 .fiori-kpi__titulo {
-  grid-area: titulo;
   color: var(--silice-texto-secundario);
 }
 
 .fiori-kpi__meta {
-  grid-area: meta;
   color: var(--silice-texto-secundario);
 }
 
 .fiori-kpi__actual {
-  grid-area: actual;
   color: var(--silice-texto);
   text-align: start;
 }
@@ -123,16 +125,50 @@
 }
 
 .fiori-kpi__delta {
-  grid-area: delta;
   display: inline-flex;
   align-items: center;
-  justify-self: end;
+  margin-inline-start: auto;
   gap: 0.125rem;
+}
+
+// V-16, etiqueta de advertencia pegada: el libro menor sale en verde, pero un libro que omite costos tambien sale menor.
+// Va dentro del indicador, bajo la cifra, siempre visible: icono, texto en la tinta normal (AA sobre el fondo amarillo
+// claro) y franja ambar de 4 px; el verde solo no basta. Sin boton de cierre. El texto baja de linea y no se recorta.
+.fiori-kpi__aviso {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.25rem;
+  min-inline-size: 0;
+  margin-block-start: 0.125rem;
+  padding: 0.125rem 0.5rem;
+  color: var(--silice-texto);
+  background: var(--silice-aviso-fondo);
+  border-inline-start: 4px solid var(--silice-aviso-borde);
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+
+.fiori-kpi__aviso-icono {
+  flex: none;
+  margin-block-start: 0.125rem;
+  fill: var(--silice-aviso-borde);
+}
+
+.fiori-kpi__aviso-texto {
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+}
+
+// Con colores forzados (alto contraste de Windows) el fondo y la franja se pierden: el borde propio conserva la forma.
+@media (forced-colors: active) {
+  .fiori-kpi__aviso {
+    border: 1px solid CanvasText;
+    border-inline-start-width: 4px;
+  }
 }
 
 // Barras IBCS: real con relleno sólido, meta con contorno.
 .fiori-kpi__barra {
-  grid-area: barra;
   position: relative;
   display: block;
   block-size: 6px;

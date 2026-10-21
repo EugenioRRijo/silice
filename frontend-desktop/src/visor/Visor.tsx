@@ -309,6 +309,7 @@ export function Visor({ crearHoja = crearHojaUniver, alExpirar, almacen, ranuraC
           indicadores={auditoria.indicadores ?? []}
           totalesLibro={auditoria.totales_libro}
           totalesSilice={auditoria.totales_silice}
+          partidasConOmision={auditoria.partidas_con_omision}
           rotuloMeta="Según Sílice"
         />
       )}
