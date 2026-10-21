@@ -1,7 +1,7 @@
 """Guardia del retiro de Streamlit (PLAN_RETIRO_STREAMLIT F1).
 
 Nada fuera de `ui/` y `tests/` importa `ui`; la unica excepcion son los archivos de `PENDIENTES`,
-que bajan a vacio en F7. La lectura es por `ast` (no por texto): cuenta tambien los imports dentro
+que bajaron a vacio en F7. La lectura es por `ast` (no por texto): cuenta tambien los imports dentro
 de funciones, bajo `if TYPE_CHECKING:` y las llamadas `importlib.import_module("ui...")` con
 cadena literal.
 """
@@ -18,21 +18,8 @@ from tests.fixtures.arquitectura import RAIZ, ruta
 #: Carpetas que no se vigilan: `ui/` y `tests/` pueden importar `ui`; las otras no son codigo.
 EXCLUIDAS = {"ui", "tests", "frontend-desktop", "data", "node_modules", "__pycache__"}
 
-#: Archivos que todavia importan `ui` (F7 los pasa a `aplicacion` y vacia esta lista).
-#: `asistente/` recibe y devuelve el `Borrador` de `ui.hoja` (otra clase que
-#: `aplicacion.hoja.Borrador`): moverlos de a uno rompe el contrato entre ellos.
-#: `scripts/prueba_real_asistente.py` pasa a `hoja.elaborar_borrador` el `Borrador` de `ui.hoja` que
-#: le entrega `asistente.experimento.banco.borrador_de_partida`: se mueve con `asistente/` (F7).
-PENDIENTES = {
-    "asistente/experimento/banco.py",
-    "asistente/experimento/ejecucion.py",
-    "asistente/orquestador.py",
-    "asistente/privacidad.py",
-    "asistente/propuestas.py",
-    "asistente/servicio.py",
-    "asistente/validacion.py",
-    "scripts/prueba_real_asistente.py",
-}
+#: Archivos que todavia importan `ui` fuera de `ui/` y `tests/`: ninguno desde F7 (la lista bajo a vacio).
+PENDIENTES: set[str] = set()
 
 
 def _es_ui(modulo: str) -> bool:
