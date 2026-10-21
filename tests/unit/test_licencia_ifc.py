@@ -16,6 +16,8 @@ DOCUMENTO = RAIZ / "docs" / "licencias_ifc.md"
 CARPETAS_DE_PRODUCTO = (
     "adapters",
     "api",
+    "aplicacion",
+    "asistente",
     "auditoria",
     "core",
     "migraciones",
@@ -24,7 +26,6 @@ CARPETAS_DE_PRODUCTO = (
     "paquete",
     "scripts",
     "seguridad",
-    "ui",
 )
 #: Lo que de `ifctester` el producto NO puede importar: arrastra `bcf-client` (GPLv3).
 PROHIBIDOS = ("bcf", "ifctester.reporter")
