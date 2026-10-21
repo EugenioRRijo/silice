@@ -12,7 +12,6 @@ import pytest
 
 from aplicacion import entorno
 from operacion import config
-from ui import entorno as entorno_ui
 
 ENTORNOS = [
     ({}, False),
@@ -27,8 +26,8 @@ ENTORNOS = [
 ]
 
 
-def test_la_variable_es_la_misma_que_lee_la_interfaz_clasica() -> None:
-    assert entorno.VARIABLE_MODO_ENTREGA == entorno_ui.VARIABLE_MODO_ENTREGA
+def test_la_variable_del_modo_entrega_es_la_documentada() -> None:
+    assert entorno.VARIABLE_MODO_ENTREGA == "SILICE_MODO_ENTREGA"
 
 
 @pytest.mark.parametrize(("variables", "esperado"), ENTORNOS, ids=lambda v: repr(v))

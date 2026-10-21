@@ -143,7 +143,7 @@ class Comprobacion:
 PARTE_T0 = Parte(
     nombre="T0 transversal",
     pares_tdd=(
-        ParTDD("tests/unit/test_entorno_silice.py", "ui/entorno.py", "T0"),
+        ParTDD("tests/unit/test_entorno_silice.py", "aplicacion/entorno.py", "T0"),
         ParTDD("tests/unit/test_nombre_silice.py", "LICENSE", "T0"),
         ParTDD("tests/unit/test_descargar_modelo.py", "scripts/descargar_modelo.py", "T0"),
         ParTDD("tests/unit/test_meta_silice.py", "scripts/meta_silice.py", "T0"),

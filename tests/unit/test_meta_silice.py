@@ -125,7 +125,10 @@ def test_orden_tdd() -> None:
 
 
 def test_el_orden_de_a1_se_lee_del_historial_real() -> None:
-    assert orden_de_par(ParTDD("tests/unit/test_entorno_silice.py", "ui/entorno.py", "T0")) is True
+    assert (
+        orden_de_par(ParTDD("tests/unit/test_entorno_silice.py", "aplicacion/entorno.py", "T0"))
+        is True
+    )
 
 
 def test_diff_vacio() -> None:

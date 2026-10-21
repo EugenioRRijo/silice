@@ -34,7 +34,7 @@ NOMBRE_HISTORICO = "AREN.IA (hoy Sílice)"
 _NOMBRE_VIEJO = re.compile(r"AREN\.IA(?! \(hoy Sílice\))")
 _VARIABLE_VIEJA = re.compile(r"ARENIA_(?:CASO|MODO_ENTREGA)")
 PERMITEN_VARIABLE_VIEJA = frozenset(
-    {"ui/entorno.py", "docs/manual_usuario.md", "docs/manual_tecnico.md"}
+    {"aplicacion/entorno.py", "docs/manual_usuario.md", "docs/manual_tecnico.md"}
 )
 LICENCIA = "Copyright (c) 2026 Eugenio Rijo. Todos los derechos reservados.\n"
 

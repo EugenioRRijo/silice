@@ -15,13 +15,13 @@ from pathlib import Path
 import pytest
 from packaging.version import Version
 
-from aplicacion.entorno import modo_entrega_activo
-from ui.entorno import (
+from aplicacion.entorno import (
     ALIAS_ANTERIORES,
     ULTIMA_VERSION_CON_ALIAS,
     VARIABLE_CASO,
     VARIABLE_MODO_ENTREGA,
     leer_variable,
+    modo_entrega_activo,
 )
 
 RAIZ = Path(__file__).resolve().parents[2]
@@ -80,8 +80,9 @@ def test_el_alias_se_retira_despues_de_la_0_6_0() -> None:
     )
 
 
-def test_el_ayudante_solo_usa_la_biblioteca_estandar() -> None:
-    arbol = ast.parse((RAIZ / "ui" / "entorno.py").read_text(encoding="utf-8"))
+def test_el_ayudante_solo_usa_la_biblioteca_estandar_y_operacion() -> None:
+    """`tests/conftest.py` lo importa antes que nada: no puede arrastrar `ui`, `api` ni terceros."""
+    arbol = ast.parse((RAIZ / "aplicacion" / "entorno.py").read_text(encoding="utf-8"))
     importados = {
         alias.name.split(".")[0]
         for nodo in ast.walk(arbol)
@@ -92,4 +93,4 @@ def test_el_ayudante_solo_usa_la_biblioteca_estandar() -> None:
         for nodo in ast.walk(arbol)
         if isinstance(nodo, ast.ImportFrom) and nodo.module
     }
-    assert importados <= set(sys.stdlib_module_names) | {"__future__"}
+    assert importados <= set(sys.stdlib_module_names) | {"__future__", "operacion"}

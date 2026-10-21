@@ -13,8 +13,8 @@ from pathlib import Path
 
 import pytest
 
+from aplicacion.entorno import ALIAS_ANTERIORES, VARIABLE_CASO, VARIABLE_MODO_ENTREGA
 from tests.fixtures import apu_linea_base as linea_base
-from ui.entorno import ALIAS_ANTERIORES, VARIABLE_CASO, VARIABLE_MODO_ENTREGA
 
 #: La suite corre sin red: Hugging Face lee esta variable al importarse y la guardia de red
 #: bloquearia cualquier descarga. El modelo se baja antes, una vez, con
