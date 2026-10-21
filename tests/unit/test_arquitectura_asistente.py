@@ -75,7 +75,7 @@ def test_de_ui_solo_las_paginas_de_la_lista_importan_asistente():
 
 def test_aplicacion_entrega_solo_importa_el_registro_del_asistente():
     """La guardia ve el archivo (no recorre una lista vacia) y nadie mas de `aplicacion/` importa
-    `asistente`; `ui/entrega.py` es una reexportacion y ya no lo importa."""
+    `asistente` (F5: se retiro el puente `ui/entrega.py`)."""
     vistos = {ruta(a): a for a in archivos("aplicacion")}
     assert "aplicacion/entrega.py" in vistos
     importadores = {
@@ -88,4 +88,3 @@ def test_aplicacion_entrega_solo_importa_el_registro_del_asistente():
         n for n in importaciones(vistos["aplicacion/entrega.py"]) if _raiz(n) == "asistente"
     }
     assert de_asistente <= {"asistente", "asistente.registro"}, de_asistente
-    assert "asistente" not in {_raiz(n) for n in importaciones(RAIZ / "ui" / "entrega.py")}
