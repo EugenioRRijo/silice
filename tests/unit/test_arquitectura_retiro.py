@@ -11,6 +11,7 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
+from instalador import manifiesto
 from tests.fixtures.arquitectura import RAIZ, ruta
 
 #: Carpetas que no se vigilan: `ui/` y `tests/` pueden importar `ui`; las otras no son codigo.
@@ -94,3 +95,33 @@ def test_la_guardia_ve_los_imports_dentro_de_funciones_y_los_dinamicos() -> None
         "ui.hoja"
     ]
     assert modulos_ui_importados("from interfaz import ui\nimport uix\n") == []
+
+
+def _modulos_del_producto() -> list[str]:
+    """Las raices que el instalador empaqueta: el cierre del manifiesto, la API y `operacion`."""
+    raices = list(manifiesto.cargar().cierre_desde) + ["api.main"]
+    raices += [
+        ".".join(a.relative_to(RAIZ).with_suffix("").parts)
+        for a in (RAIZ / "operacion").rglob("*.py")
+    ]
+    return raices
+
+
+def cierre_que_toca_ui(raices: list[str], permitidos: set[str]) -> list[str]:
+    """Archivos del cierre transitivo de `raices` que son de `ui/` o que importan `ui`.
+
+    Atrapa lo que la lectura archivo por archivo no ve: un modulo empaquetado que importa un
+    `tests/fixtures/*.py` que a su vez importa `ui` (el instalador no lleva `ui/`). Los
+    `permitidos` (PENDIENTES de `asistente/`) bajan a vacio en F7."""
+    cierre = manifiesto.cierre_de_importaciones(RAIZ, raices)
+    return sorted(
+        ruta_relativa.as_posix()
+        for ruta_relativa in cierre
+        if ruta_relativa.as_posix() not in permitidos
+        if ruta_relativa.parts[0] == "ui"
+        or modulos_ui_importados((RAIZ / ruta_relativa).read_text(encoding="utf-8"))
+    )
+
+
+def test_el_cierre_de_importaciones_del_instalador_no_toca_ui() -> None:
+    assert cierre_que_toca_ui(_modulos_del_producto(), PENDIENTES) == []
