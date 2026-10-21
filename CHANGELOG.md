@@ -7,6 +7,7 @@ etiquetar, las líneas pasan a la sección de la versión. La historia anterior 
 ## [Sin publicar]
 
 ### Agregado
+- Hoja (cierre 3e-3): la region con foco de las tablas anchas es el desplazador (las flechas mueven Precios, Ambientes, Fuentes, Puntos y Cantidades derivadas); «Retomar borrador» se ofrece cuando el servidor dice el nombre del proyecto y la cabecera su codigo; pruebas de cierre de paridad y dos guardias de integracion al dia.
 - Hoja del proyecto en React (3d-1 y 3d-2, front): modal «Guardar versión» y primera versión, restaurar, cotizar, retirar cotización, convertir moneda y cadena de sellos, con diálogos accesibles; Cancelar y Esc no cierran el diálogo mientras se envía; la Hoja queda activada en el menú.
 
 ### Corregido
