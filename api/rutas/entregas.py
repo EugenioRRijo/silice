@@ -36,6 +36,7 @@ from api.sin_eco import RutaSinEco, sin_eco
 from aplicacion import entrega as logica
 from aplicacion.equipo import operacion_sensible_permitida
 from core import models
+from core.budget import canonico
 from core.verification.texto import formatear_decimal
 from operacion.instalacion import sesion_de_instalacion
 from operacion.version import version as version_de_silice
@@ -133,7 +134,7 @@ def resumen(sesion: SesionDep, response: Response, proyecto: str, version: str) 
         proyecto=proyecto,
         version=datos.codigo,
         moneda=elegida.moneda,
-        total=format(datos.total, "f"),
+        total=canonico.texto_decimal(datos.total) or "0",
         total_texto=formatear_decimal(datos.total.quantize(Decimal("0.01"))),
         hallazgos_total=sum(datos.hallazgos_por_severidad.values()),
         hallazgos_por_severidad=dict(sorted(datos.hallazgos_por_severidad.items())),

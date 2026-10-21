@@ -75,8 +75,7 @@ en `canonico.formato_legado()` (serialización sin cuantizar). Una alteración r
 formas y se sigue detectando (`test_una_version_sellada_antes…`, con alteración posterior). `formato_legado` es un
 contexto de solo transición, exportado pero no usado para escribir. Límite declarado: Entregar de una versión sellada antes
 con 29 decimales produciría un `presupuesto.json` cuantizado cuya huella no es la sellada (`aplicacion/entrega.py` usa
-`canonico.estructura`); se resuelve creando una versión nueva (que sella ya cuantizada) o con un cambio en `aplicacion/`,
-fuera de este alcance; pendiente de decisión.
+`canonico.estructura`). **Resuelto en el remedio (abajo).**
 
 ## Prueba que lo demuestra (rojo visto antes de implementar)
 `tests/unit/test_canonico_cuantizacion.py` (cifras `1/12`, `1/15`, `1/3`, `2/3`, `1/7`, `1E-27`, `±1E-29`, empates a
@@ -87,6 +86,11 @@ Commit del rojo: ver el informe; 15 pruebas fallaban.
 
 ## Costo si es erróneo
 Una cifra firmada que difiere en < 1E-28 del valor del motor: invisible a 2 decimales salvo el caso patológico del punto 3.
+**Punto ciego (hallazgo 3 del árbitro, inherente a la opción (a)):** una versión sellada DESPUÉS de VB-1 cuyo valor tiene
+29 o más decimales no distingue cambios en el decimal 29 en adelante (< 0,5E-28): la huella se calcula sobre el texto
+cuantizado, y dos valores que cuantizan igual son la misma huella. Es la misma pérdida que se aceptó al elegir (a); no es
+una manipulación reconocible porque ningún monto presentable (2 decimales) la nota. (Las versiones selladas ANTES, con el
+texto de 29 decimales, no tienen este punto ciego: el formato legado las distingue; ver prueba del decimal 29.)
 Si hubiera que revertir: se revierte el commit; los paquetes emitidos entre tanto (cuantizados) siguen siendo válidos para
 cualquier lector. Una cifra con más de 20 enteros tras redondear (por ejemplo `99999999999999999999.99999999999999999999999999999`
 → `1E+20`) sigue siendo rechazada por el lector: falla fuerte, no en silencio; no es alcanzable con montos reales.
@@ -101,3 +105,27 @@ cualquier lector. Una cifra con más de 20 enteros tras redondear (por ejemplo `
 Eugenio declara que el tutor avala todo lo pendiente de esta migracion (VB-1 incluido, y el retiro de Streamlit, el descongelado
 y el retiro definitivo del Visor 3D). Es una declaracion de Eugenio; no hay acta ni documento del tutor en el repositorio. Si el
 tutor lo confirma por escrito, adjuntar el acta en `docs/` y enlazarla aqui.
+
+## Remedio del límite abierto (2026-10-21, diseño del árbitro aprobado)
+Antes: una versión sellada antes de VB-1 con 29 decimales abría (cadena íntegra por el formato legado) pero **Entregar**
+emitía un paquete verificable e irrevisable (la huella de `presupuesto.json` cuantizado no es la sellada). Ahora:
+- `core/budget/cadena.py::formato_de_sellado(session, version) -> "actual" | "legado" | "roto"`: huella moderna de
+  `documento()`; si coincide con el eslabón, `actual`; si no, bajo `canonico.formato_legado()`; si coincide, `legado`; si
+  no (o sin eslabón), `roto`. `verificar_cadena` usa el mismo cálculo (`_formato_de_sellado`), sin duplicarlo y con el
+  mismo resultado (`roto` es el fallo `contenido`).
+- `aplicacion/entrega.py::entregar` rechaza con `EntregaRechazada` («La versión X se selló antes de la corrección de cifras
+  y no puede entregarse tal cual; confirme una versión nueva (quedará sellada con la cifra corregida) y entregue esa.»);
+  no se emite paquete legado. `resumen_de_entrega` añade el aviso al `mensaje_de_cadena` (que el front muestra tal cual) y
+  `Resumen.entregable = False`; `cadena_integra` sigue verdadera (la base abre). La API devuelve 409 con ese texto.
+- `formato_legado` solo lo usan `cadena.py` (y lo define `canonico.py`): guardia en `tests/unit/test_arquitectura.py`.
+- Hallazgo 4: el `total` del manifiesto (`entregar`) y de `/entregas/resumen` salía con `format(total, "f")`; con un total
+  de 29 decimales el manifiesto quedaba fuera del patrón estricto (probado con un total 1/12 resellado). Ahora usa
+  `canonico.texto_decimal`. Con totales de 2 decimales (lo real) es idéntico byte a byte.
+- Pruebas: `tests/integration/test_vb1_remedio_legado.py` (rojo visto: 7 de 10 fallaban; las de contextvar ya pasaban y
+  quedan como guardia), siembra compartida en `tests/fixtures/vb1_fraccionario.py`.
+
+### Cómo contar versiones selladas en formato legado en una base de casos (sin abrir `data/`)
+Solo lectura, por quien posea la base: abrir cada caso con la sesión del núcleo y, para cada versión, llamar
+`cadena.formato_de_sellado(sesion, version)`; contar las que dan `"legado"`. Equivale a: versiones cuyo documento actual
+tiene una cifra con más de 28 decimales (`texto_decimal` ≠ `format(valor, "f")` en algún renglón: equipos = tarifa /
+rendimiento con cociente menor que 1 no terminal). No se corrió sobre ninguna base de Eugenio (instrucción de la tarea).

@@ -72,9 +72,6 @@ def test_formato_de_sellado_distingue_actual_legado_y_roto(motor) -> None:
     with abrir_sesion(motor) as caso:
         _, version = _legada(caso)
         assert cadena.formato_de_sellado(caso, version) == "legado"
-    with abrir_sesion(motor) as otro:
-        _, nueva = sembrar_fraccionaria(otro)
-        assert cadena.formato_de_sellado(otro, nueva) == "actual"
 
 
 def test_una_version_legada_alterada_es_rota(motor) -> None:
@@ -116,11 +113,14 @@ def test_el_resumen_de_entrega_avisa_antes_de_pedir_la_contrasena(motor, tmp_pat
         assert resumen.cadena_integra  # la base abre: no es una cadena rota
         assert not resumen.entregable
         assert AVISO in resumen.mensaje_de_cadena
-    with abrir_sesion(motor) as otro, instalacion(tmp_path / "emisor2") as bd2:
-        _, nueva = sembrar_fraccionaria(otro, anexos_de=entrega.anexos_de_cadena)
-        resumen = entrega.resumen_de_entrega(otro, bd2, nueva)
-        assert resumen.entregable
-        assert "selló antes" not in resumen.mensaje_de_cadena
+
+
+def test_el_resumen_de_una_version_actual_es_entregable(motor, tmp_path: Path) -> None:
+    with abrir_sesion(motor) as caso, instalacion(tmp_path / "emisor") as bd:
+        _, version = sembrar_fraccionaria(caso, anexos_de=entrega.anexos_de_cadena)
+        resumen = entrega.resumen_de_entrega(caso, bd, version)
+    assert resumen.entregable
+    assert "selló antes" not in resumen.mensaje_de_cadena
 
 
 def test_tras_una_excepcion_dentro_de_formato_legado_se_vuelve_a_cuantizar() -> None:
