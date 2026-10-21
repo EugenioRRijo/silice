@@ -50,6 +50,8 @@ const BORRADOR: BorradorAbierto = {
   instantanea: { creadas: 0, mensaje: null },
 };
 
+const RESUMEN_FUSIONADO = { ...BORRADOR.resumen, rev: 1, cambios: 3, total: { texto: "3000.50", exacto: "3000.50" } };
+
 describe("Hoja: importar plano en la pestaña Espacio (3e-2)", () => {
   const fetchFalso = vi.fn<typeof fetch>();
   const alExpirar = vi.fn();
@@ -65,11 +67,11 @@ describe("Hoja: importar plano en la pestaña Espacio (3e-2)", () => {
       if (camino === "/v1/hoja/versiones") return json(VERSIONES);
       if (camino === "/v1/hoja/borradores" && metodo === "GET") return json({ borradores: [] });
       if (camino === "/v1/hoja/borradores" && metodo === "POST") return json(BORRADOR, 201);
-      if (camino === `/v1/hoja/borradores/${ID}` && metodo === "GET") return json({ id: ID, base: BORRADOR.base, resumen: BORRADOR.resumen });
+      if (camino === `/v1/hoja/borradores/${ID}` && metodo === "GET") return json({ id: ID, base: BORRADOR.base, resumen: fusionado ? RESUMEN_FUSIONADO : BORRADOR.resumen });
       if (camino === `/v1/hoja/borradores/${ID}/plano` && metodo === "POST") return json(importada());
       if (camino === `/v1/hoja/borradores/${ID}/plano/fusionar`) {
         fusionado = true;
-        return json({ ...respuestaDeFusion(1), resumen: { ...BORRADOR.resumen, rev: 1, cambios: 3, total: { texto: "3000.50", exacto: "3000.50" } } });
+        return json({ ...respuestaDeFusion(1), resumen: RESUMEN_FUSIONADO });
       }
       if (camino.endsWith("/vistas/espacio")) {
         return json(

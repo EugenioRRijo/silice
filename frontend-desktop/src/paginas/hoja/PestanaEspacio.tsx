@@ -18,6 +18,7 @@ import {
   ubicarError,
 } from "./logica";
 import type { FilaEditable, Resumen, TablasEditables, UbicacionDeError, VistaEspacio } from "./logica";
+import { ImportarPlano } from "./ImportarPlano";
 import { useEdicionDeSeccion } from "./useEdicionDeSeccion";
 
 interface Props {
@@ -72,6 +73,16 @@ function ContenidoEspacio({ id, rev, vista, alAusente, alAceptar, alRecargarBorr
         Decimales con punto, por ejemplo 2.5: la coma no se acepta. Los cambios se aplican al borrador cuando deja de escribir; no se
         guardan como versión hasta que lo pida.
       </p>
+      <ImportarPlano
+        id={id}
+        rev={rev}
+        ocupadoPorEdicion={edicion.envio !== "quieto"}
+        alAusente={alAusente}
+        alAceptar={alAceptar}
+        alRecargar={edicion.recargar}
+        alReabrir={alReabrir}
+        alExpirar={alExpirar}
+      />
       <AvisoDeEnvio envio={edicion.envio} />
       {error !== null && (
         <AvisoDeEdicion error={error} id={idDelError} alRecargar={() => void edicion.recargar()} alReabrir={alReabrir}>
