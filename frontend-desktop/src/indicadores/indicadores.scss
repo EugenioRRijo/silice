@@ -12,19 +12,6 @@
   white-space: nowrap;
 }
 
-// El mismo texto solo para lectores, pero DENTRO de una linea de texto: un inline-block no es de nivel bloque, asi
-// que al leer o copiar el texto no se parte la linea (el .silice-oculto absoluto si la parte).
-.silice-oculto-en-linea {
-  display: inline-block;
-  inline-size: 1px;
-  block-size: 1px;
-  margin: -1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  vertical-align: top;
-  white-space: nowrap;
-}
-
 // La franja mide 64 px y no crece: los indicadores se reparten el ancho que queda y cada texto recorta con elipsis
 // lo que no cabe (el valor completo esta en el tooltip, que se abre con el teclado); los conteos por severidad no
 // se encogen ni se mueven, asi que se ven siempre, a 1366 y a 1920. NADA de la franja ni de sus contenedores
@@ -170,8 +157,14 @@
   background: transparent;
 }
 
+// Favorable (verde): la cifra en green-60 (4.5:1 como texto) y el icono en el token del sistema, --silice-verificado (3:1
+// como grafico). La palabra «favorable» va siempre visible: el color no es el unico portador (V-16).
 .ibcs-favorable {
-  color: var(--silice-ibcs-favorable);
+  color: var(--silice-ibcs-favorable-texto);
+
+  svg {
+    fill: var(--silice-verificado);
+  }
 }
 
 .ibcs-desfavorable {

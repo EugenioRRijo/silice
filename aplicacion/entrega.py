@@ -63,6 +63,14 @@ class EntregaRechazada(ValueError):  # noqa: N818
     """No se puede entregar; el mensaje dice por qué (22c, 22e, 22f)."""
 
 
+def _aviso_de_sellado_legado(version: models.Presupuesto) -> str:
+    return (
+        f"La versión {version.codigo} se selló antes de la corrección de cifras y no puede "
+        "entregarse tal cual; confirme una versión nueva (quedará sellada con la cifra "
+        "corregida) y entregue esa."
+    )
+
+
 def anexos_de_cadena(session: Session, version: models.Presupuesto) -> Mapping[str, bytes]:
     """Los anexos que la cadena cubre: solo el espacio, y solo si la versión lo tiene."""
     espacio = cargar_espacio(session, version.id)
@@ -179,12 +187,17 @@ class Resumen:
     empresa: str | None
     firma_disponible: bool
     anexos: tuple[str, ...]
+    entregable: bool = True  # False: sellada antes de VB-1; el mensaje de cadena lo explica
 
 
 def resumen_de_entrega(
     session: Session, instalacion: Session, version: models.Presupuesto
 ) -> Resumen:
     resultado = cadena.verificar_cadena(session, version.proyecto, anexos_de=anexos_de_cadena)
+    mensaje = cadena.mensaje_de_cadena(resultado)
+    entregable = True
+    if resultado.integra and cadena.formato_de_sellado(session, version) == "legado":
+        entregable, mensaje = False, f"{mensaje}. {_aviso_de_sellado_legado(version)}"
     empresa = empresas.empresa_propia(instalacion)
     severidades: dict[str, int] = {}
     for h in session.scalars(
@@ -197,10 +210,11 @@ def resumen_de_entrega(
         total=sum((r.total for r in version.partidas), Decimal(0)),
         hallazgos_por_severidad=severidades,
         cadena_integra=resultado.integra,
-        mensaje_de_cadena=cadena.mensaje_de_cadena(resultado),
+        mensaje_de_cadena=mensaje,
         empresa=empresa.nombre if empresa else None,
         firma_disponible=empresas.clave_activa(instalacion) is not None,
         anexos=tuple(sorted(anexos_del_paquete(session, version))),
+        entregable=entregable,
     )
 
 
@@ -246,6 +260,9 @@ def entregar(
     eslabon = session.get(EslabonVersion, version.id)
     if eslabon is None:
         raise EntregaRechazada(f"La versión {version.codigo} no está sellada.")
+    if cadena.formato_de_sellado(session, version) == "legado":
+        # Entregarla reintroduciria VB-1: un paquete verificable pero que Revisar no puede leer.
+        raise EntregaRechazada(_aviso_de_sellado_legado(version))
     estructura = canonico.estructura(session, version)
     privada, huella_clave = None, None
     if contrasena_clave is not None:
@@ -271,7 +288,7 @@ def entregar(
         proyecto=version.proyecto.nombre,
         codigo=version.codigo,
         moneda=version.moneda,
-        total=format(total, "f"),
+        total=canonico.texto_decimal(total) or "0",
         ultima_huella=eslabon.huella_eslabon,
         ahora=ahora,
         version_silice=version_silice,

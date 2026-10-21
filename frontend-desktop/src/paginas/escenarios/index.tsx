@@ -1,4 +1,4 @@
-import { Accordion, AccordionItem, Button, InlineNotification, Select, SelectItem, TextInput } from "@carbon/react";
+import { Accordion, AccordionItem, Button, InlineNotification, Select, SelectItem } from "@carbon/react";
 import { Add, TrashCan } from "@carbon/icons-react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
@@ -43,6 +43,7 @@ import type {
   PresupuestoResumen,
 } from "./tipos";
 import "./escenarios.scss";
+import { CampoTexto } from "../../comun/CampoTexto";
 
 type Parametros = Record<CampoParametro, string>;
 
@@ -250,7 +251,7 @@ export default function PaginaEscenarios() {
 
           <form className="silice-escenarios__formulario" onSubmit={generar}>
             <div className="silice-escenarios__nombre">
-              <TextInput
+              <CampoTexto
                 id="escenarios-nombre"
                 size="sm"
                 labelText="Nombre del escenario"
@@ -261,7 +262,7 @@ export default function PaginaEscenarios() {
             <p className="silice-escenarios__nota cds--type-label-01">{NOTA_PARAMETROS}</p>
             <div className="silice-escenarios__parametros">
               {CAMPOS_PARAMETROS.map((campo) => (
-                <TextInput
+                <CampoTexto
                   key={campo}
                   id={`escenarios-${campo}`}
                   size="sm"
@@ -286,7 +287,7 @@ export default function PaginaEscenarios() {
               )}
               {filas.map((fila, i) => (
                 <div key={fila.id} className="silice-escenarios__fila-precio">
-                  <TextInput
+                  <CampoTexto
                     id={`escenarios-insumo-${fila.id}`}
                     size="sm"
                     labelText={`Insumo ${i + 1}`}
@@ -294,7 +295,7 @@ export default function PaginaEscenarios() {
                     value={fila.insumo}
                     onChange={(e) => cambiarFila(fila.id, { insumo: e.target.value })}
                   />
-                  <TextInput
+                  <CampoTexto
                     id={`escenarios-precio-${fila.id}`}
                     size="sm"
                     labelText={`Precio nuevo ${i + 1}`}

@@ -1,4 +1,4 @@
-import { Button, InlineNotification, RadioButton, RadioButtonGroup, Select, SelectItem, TextInput } from "@carbon/react";
+import { Button, InlineNotification, RadioButton, RadioButtonGroup, Select, SelectItem } from "@carbon/react";
 import { useState } from "react";
 import { formatoEsVe } from "../../indicadores/formatoEsVe";
 import { pedir } from "../../api/cliente";
@@ -28,6 +28,7 @@ import {
 } from "./logica";
 import type { Calculo, Filtros, MetodoDePrecios, OpcionDeRecuperacion } from "./logica";
 import { fechaDeRanura } from "./fechas";
+import { CampoTexto } from "../../comun/CampoTexto";
 
 // --- el corte y los precios del corte, comunes a las tres pestañas ---------------------------
 
@@ -51,7 +52,7 @@ export function BarraDeCorte({
         alAplicar(borrador);
       }}
     >
-      <TextInput
+      <CampoTexto
         id="corte-fecha"
         type="date" labelText="Fecha de corte (vacía: la última valuación)"
         value={borrador.corte}
@@ -77,9 +78,9 @@ export function BarraDeCorte({
       )}
       {precios.metodo === "escalatoria" && (
         <>
-          <TextInput id="corte-km" labelText="Km declarado" value={precios.km} onChange={(e) => cambiarPrecios({ km: e.target.value })} />
-          <TextInput id="corte-r" labelText="R declarado" value={precios.r} onChange={(e) => cambiarPrecios({ r: e.target.value })} />
-          <TextInput id="corte-fuente" labelText="Fuente de Km y R" value={precios.fuente} onChange={(e) => cambiarPrecios({ fuente: e.target.value })} />
+          <CampoTexto id="corte-km" labelText="Km declarado" value={precios.km} onChange={(e) => cambiarPrecios({ km: e.target.value })} />
+          <CampoTexto id="corte-r" labelText="R declarado" value={precios.r} onChange={(e) => cambiarPrecios({ r: e.target.value })} />
+          <CampoTexto id="corte-fuente" labelText="Fuente de Km y R" value={precios.fuente} onChange={(e) => cambiarPrecios({ fuente: e.target.value })} />
         </>
       )}
       <div>
@@ -281,8 +282,8 @@ export function Recuperacion({
         eficiencia declarado (supuesto, no dato). Elegir una crea una versión nueva; la línea base no cambia.
       </p>
       <div className="silice-control__formulario">
-        <TextInput id="rec-objetivo" labelText="Día hábil objetivo (vacío: el fin del plan base)" value={objetivo} onChange={(e) => setObjetivo(e.target.value)} />
-        <TextInput id="rec-horas" labelText="Horas extra que el obrero ya acumula en el año" value={horas} onChange={(e) => setHoras(e.target.value)} />
+        <CampoTexto id="rec-objetivo" labelText="Día hábil objetivo (vacío: el fin del plan base)" value={objetivo} onChange={(e) => setObjetivo(e.target.value)} />
+        <CampoTexto id="rec-horas" labelText="Horas extra que el obrero ya acumula en el año" value={horas} onChange={(e) => setHoras(e.target.value)} />
         <div>
           <Button kind="secondary" size="md" disabled={calculando.estado.enviando} onClick={() => void calcular()}>
             Calcular opciones
@@ -322,14 +323,14 @@ export function Recuperacion({
                 ))}
               </RadioButtonGroup>
               {actual?.requiere_declaracion && (
-                <TextInput
+                <CampoTexto
                   id="rec-independencia"
                   labelText="Declaro que estas partidas no dependen de las que están en curso (con su fuente)"
                   value={declaracion}
                   onChange={(e) => setDeclaracion(e.target.value)}
                 />
               )}
-              <TextInput id="rec-fuente" labelText="Fuente de la decisión" value={fuente} onChange={(e) => setFuente(e.target.value)} />
+              <CampoTexto id="rec-fuente" labelText="Fuente de la decisión" value={fuente} onChange={(e) => setFuente(e.target.value)} />
               <div>
                 <Button kind="primary" size="md" disabled={!elegida || eligiendo.estado.enviando} onClick={() => void elegir()}>
                   Elegir y crear la versión

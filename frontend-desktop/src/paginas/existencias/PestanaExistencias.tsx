@@ -1,4 +1,4 @@
-import { Button, InlineNotification, TextInput } from "@carbon/react";
+import { Button, InlineNotification } from "@carbon/react";
 import { AvisoError } from "../../comun/AvisoError";
 import { EstadoVacio } from "../../comun/EstadoVacio";
 import { TablaDensa } from "../../comun/TablaDensa";
@@ -9,6 +9,7 @@ import type { Estado } from "./EstadoExistencia";
 import { mostrarCantidad, rotuloUnidad } from "./formato";
 import type { ExistenciaRespuesta } from "./tipos";
 import type { Recurso } from "./useRecurso";
+import { CampoTexto } from "../../comun/CampoTexto";
 
 interface Props {
   existencias: Recurso<ExistenciaRespuesta[]>;
@@ -45,7 +46,7 @@ function aFila(f: ExistenciaRespuesta): FilaDensa {
 export function PestanaExistencias({ existencias, fecha, alCambiarFecha, alReintentar, alCrearMaterial }: Props) {
   const filtro = (
     <div className="existencias-filtro">
-      <TextInput
+      <CampoTexto
         id="existencias-al"
         type="date"
         labelText="Existencia al"

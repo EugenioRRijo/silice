@@ -15,6 +15,8 @@ interface Props {
   urlClasica?: string | null;
   abierto: boolean;
   alCerrar: () => void;
+  // Quien tiene la sesion: con la letra grande la cabecera no da para su nombre y el menu en capa lo dice al pie.
+  nombre?: string;
 }
 
 // Una linea por pagina (32 px): el texto «En la interfaz clásica» se dice una vez, visible, sobre el grupo, y en cada
@@ -107,7 +109,7 @@ function Area({ area, urlClasica, alCerrar, plegable }: PropsArea) {
 // herramientas principales (§2.3). Un solo menu lateral: la barra superior del spec nacio para Streamlit; aqui su
 // equivalente es este SideNav. Las paginas aun no migradas se ven deshabilitadas (que la persona sepa que existen) y,
 // si se conoce, enlazan a la interfaz clasica.
-export function MenuLateral({ paginas, acciones, modoEntrega, urlClasica, abierto, alCerrar }: Props) {
+export function MenuLateral({ paginas, acciones, modoEntrega, urlClasica, abierto, alCerrar, nombre }: Props) {
   const { pathname } = useLocation();
   const recorrido = useRecorrido();
   const areas = areasVisibles(acciones, modoEntrega, paginas);
@@ -166,6 +168,7 @@ export function MenuLateral({ paginas, acciones, modoEntrega, urlClasica, abiert
             plegable={area.id === "mas" ? { abierto: masAbierto, alternar: () => setMasAbierto((a) => !a) } : undefined}
           />
         ))}
+        {nombre && <li className="silice-menu__sesion cds--type-helper-text-01">Sesión de {nombre}</li>}
       </SideNavItems>
     </SideNav>
   );

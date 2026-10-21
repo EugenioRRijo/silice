@@ -69,7 +69,11 @@ de la cadena). La carrera entre dos guardados se resuelve dentro de la base (BEG
 - **D-5, versión más nueva:** la clásica guardaba «de la versión abierta» aunque ya existiera una más nueva (la nueva versión quedaba
   vigente sin lo de la otra persona). S1 lo comprueba **dentro de la transacción** y responde 409 salvo confirmación. La regla es la
   de `Resumen.version_mas_nueva`: la vigente de ahora es distinta de la versión abierta (también si se abrió a propósito una versión
-  vieja: hay que confirmar).
+  vieja: hay que confirmar). **AFINADA el 2026-10-21 (Eugenio, ola de decisiones):** la regla compara la vigente de AHORA con la
+  vigente que había AL ABRIR el borrador (`BorradorVivo.vigente_al_abrir`, leída en R2 antes de abrir la versión). Abrir a propósito
+  una versión vieja o descartada ya NO pide confirmar si nadie guardó entretanto, y el texto «Otra persona guardó la versión X…»
+  es cierto. Una sola regla, `hoja_vista.version_mas_nueva`, para el resumen (`version_mas_nueva`) y para S1. Un borrador en blanco
+  nunca avisa. El registro vive en memoria: tras un reinicio el borrador no existe (404) y no se «rehidrata».
 - **Sin cambios:** la clásica deshabilitaba el botón y, si se forzaba, `guardar_version` devolvía `None` («No hay cambios para
   guardar.», nota informativa). S1 responde 422 con el texto del motivo de H:1802.
 - **Errores de base:** el 503 no repite `error.orig` (C1). Un `ValueError`/`CatalogoIncompleto` va como 409 `No se guardó nada: …`.

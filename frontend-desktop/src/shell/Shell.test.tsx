@@ -113,7 +113,7 @@ describe("Shell", () => {
       const usuario = userEvent.setup();
       montar();
       expect(await screen.findByText("Ana Pérez")).toBeInTheDocument();
-      await usuario.click(screen.getByRole("button", { name: "Salir" }));
+      await usuario.click(screen.getByRole("button", { name: /^Salir/ }));
       expect(alSalir).toHaveBeenCalled();
     });
 
@@ -323,7 +323,7 @@ describe("Shell", () => {
       act(() => iniciarRecorrido(RECORRIDO_AUDITAR));
       onTestFinished(() => terminarRecorrido());
       expect(within(menu()).getByRole("region", { name: "Recorrido en curso" })).toBeInTheDocument();
-      await usuario.click(screen.getByRole("button", { name: "Salir" }));
+      await usuario.click(screen.getByRole("button", { name: /^Salir/ }));
       expect(alSalir).toHaveBeenCalled();
       expect(within(menu()).queryByRole("region", { name: "Recorrido en curso" })).not.toBeInTheDocument();
       expect(recorridoEnCurso()).toBeNull();
@@ -526,9 +526,9 @@ describe("Shell", () => {
       const usuario = userEvent.setup();
       montar();
       await screen.findByRole("heading", { name: "Pantalla del tablero" });
-      await usuario.click(screen.getByRole("button", { name: "Salir" }));
+      await usuario.click(screen.getByRole("button", { name: /^Salir/ }));
       await usuario.keyboard("{Escape}");
-      expect(screen.getByRole("button", { name: "Salir" })).toHaveFocus();
+      expect(screen.getByRole("button", { name: /^Salir/ })).toHaveFocus();
     });
 
     test("document.title es «Página · Sílice» con la página actual y cambia al navegar", async () => {

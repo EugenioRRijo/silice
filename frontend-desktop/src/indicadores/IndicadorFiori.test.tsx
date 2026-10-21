@@ -76,10 +76,14 @@ describe("IndicadorFiori", () => {
     expect(screen.getByText("desfavorable")).toBeInTheDocument();
   });
 
-  test("exactitud con delta negativo tambien es desfavorable", () => {
+  test("exactitud con delta negativo (libro menor que Silice) es favorable: verde, con la palabra visible y la flecha abajo (V-16)", () => {
     const { container } = render(<IndicadorFiori indicador={indicador({ delta: "-3.10", delta_pct: "-0.2" })} />);
-    expect(container.querySelector(".ibcs-desfavorable")).not.toBeNull();
-    expect(container.querySelector(".ibcs-favorable")).toBeNull();
+    expect(container.querySelector(".ibcs-favorable")).not.toBeNull();
+    expect(container.querySelector(".ibcs-desfavorable")).toBeNull();
+    // El color nunca va solo: la palabra se ve (no es solo para lectores) y la flecha dice el sentido.
+    const palabra = screen.getByText("favorable");
+    expect(palabra.className).not.toContain("oculto");
+    expect(container.querySelector("[data-sentido]")?.getAttribute("data-sentido")).toBe("baja");
   });
 
   test("costo negativo es favorable aunque el signo sea menos", () => {
@@ -114,9 +118,9 @@ describe("IndicadorFiori", () => {
   test("el texto accesible va en la misma linea que la cifra, sin salto intermedio", () => {
     const { container } = render(<IndicadorFiori indicador={indicador({ delta: "12.50" })} />);
     const linea = container.querySelector(".fiori-kpi__delta-texto") as HTMLElement;
-    // La palabra oculta es hija de la misma linea de texto (no un elemento aparte del contenedor flex: eso
+    // La palabra es hija de la misma linea de texto (no un elemento aparte del contenedor flex: eso
     // produce un salto de linea al leer o copiar el texto).
-    expect(linea.querySelector(".silice-oculto-en-linea")?.textContent).toBe("desfavorable");
+    expect(linea.querySelector(".fiori-kpi__semantica")?.textContent).toBe("desfavorable");
     expect(linea.textContent).toBe("desfavorable Δ 12,50 (15,89 %)");
   });
 

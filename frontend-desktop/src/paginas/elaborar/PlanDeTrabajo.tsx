@@ -1,8 +1,9 @@
-import { Button, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TextInput } from "@carbon/react";
+import { Button, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@carbon/react";
 import { Add, TrashCan } from "@carbon/icons-react";
 import { useEffect, useRef } from "react";
 import { AVISO_PLAN_REINICIADO, TEXTO_PLAN, periodoAVista, periodoAlServidor } from "./logica";
 import type { FilaPlan } from "./tipos";
+import { CampoTexto } from "../../comun/CampoTexto";
 
 // Una fila del plan con un id propio y estable: la clave de React y el foco no dependen de la posicion.
 export type FilaEditable = FilaPlan & { id: number };
@@ -92,7 +93,7 @@ export function PlanDeTrabajo({ filas, alCambiar, reiniciado, ocupado, alAplicar
               <TableRow key={fila.id}>
                 {CAMPOS.map((c) => (
                   <TableCell key={c.clave}>
-                    <TextInput
+                    <CampoTexto
                       id={`elaborar-plan-${c.clave}-${fila.id}`}
                       labelText={`${c.etiqueta}, fila ${n + 1}`}
                       hideLabel

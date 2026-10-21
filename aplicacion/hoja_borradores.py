@@ -96,6 +96,9 @@ class BorradorVivo:
     ficha: un borrador jamas guarda en un caso ajeno). `abierta` es la `VersionAbierta` (o `None`:
     proyecto sin versiones, borrador en blanco); `calculo` es la cache `(rev, ResultadoHoja,
     cambios)` de la vista, que `reemplazar` invalida. `guardado_como` se llena al guardar (3d).
+    `vigente_al_abrir` es el codigo de la version vigente del proyecto al abrir (D-5): guardar
+    pide confirmar solo si la vigente de AHORA es otra que esa, o sea, si alguien guardo despues
+    de abrir (abrir a proposito una version vieja no cuenta).
     """
 
     id: str
@@ -110,6 +113,7 @@ class BorradorVivo:
     tamano: int
     rev: int = 0
     guardado_como: str | None = None
+    vigente_al_abrir: str | None = None
     calculo: tuple[int, Any, list] | None = None
     cerrojo: threading.RLock = field(default_factory=threading.RLock, repr=False)
 
@@ -193,6 +197,8 @@ class Registro:
         version: str | None,
         borrador: Borrador,
         abierta: VersionAbierta | None,
+        *,
+        vigente_al_abrir: str | None = None,
     ) -> BorradorVivo:
         """Registra un borrador nuevo de la ficha `huella`; respeta topes y barre los vencidos."""
         with self._exclusivo():
@@ -206,6 +212,7 @@ class Registro:
                 version=version,
                 borrador=borrador,
                 abierta=abierta,
+                vigente_al_abrir=vigente_al_abrir,
                 creado=ahora,
                 tocado=ahora,
                 tamano=self._medir(borrador),

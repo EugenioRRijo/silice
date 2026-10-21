@@ -1,4 +1,4 @@
-import { Button, Select, SelectItem, TextInput } from "@carbon/react";
+import { Button, Select, SelectItem } from "@carbon/react";
 import { useEffect, useId, useState } from "react";
 import { ErrorDeApi, pedir } from "../../api/cliente";
 import { AvisoError } from "../../comun/AvisoError";
@@ -8,6 +8,7 @@ import type { DetalleApu, Resumen } from "./logica";
 import { TIPOS_DE_LINEA, cuerpoDeInsumo, insumosVisibles, rutaDeInsumo, rutaDeInsumos } from "./logicaApu";
 import type { InsumoCandidato, InsumosRespuesta } from "./logicaApu";
 import type { Peticion } from "./useEdicionDeSeccion";
+import { CampoTexto } from "../../comun/CampoTexto";
 
 // Espera tras la última tecla antes de pedir los candidatos acotados al servidor.
 const PAUSA_DE_BUSQUEDA_MS = 300;
@@ -138,7 +139,7 @@ export function CambioDeInsumo({ id, detalle, alCambiar, alAusente, alExpirar }:
                     <SelectItem key={i} value={String(i)} text={`${i + 1}. ${l.descripcion ?? ""}`} />
                   ))}
                 </Select>
-                <TextInput
+                <CampoTexto
                   id={`${idCuerpo}-buscar`}
                   labelText="Buscar insumo (por descripción)"
                   size="sm"

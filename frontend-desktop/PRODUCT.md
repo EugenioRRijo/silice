@@ -39,7 +39,7 @@ interfaz no calcula montos.
 ## Capabilities and Constraints
 
 - Sin red externa (RNF-08): nada de CDN, fuentes alojadas en el propio servidor.
-- Sin secretos en el navegador (RT-9): cookie de sesión `HttpOnly`, nunca claves en `localStorage` ni en el HTML.
+- Sin secretos en el navegador (RT-9): cookie de sesión `HttpOnly`, nunca claves en `localStorage` ni en el HTML, salvo la preferencia de tamaño de letra, que no es un secreto (`silice.tamano-letra`, con `try/catch`: sin almacenamiento funciona en Normal).
 - Severidades del núcleo: INFO, ADVERTENCIA, ERROR, CRITICO (`core.contracts.verificacion.Severidad`).
 - Montos como texto decimal (`"1586.61"`), nunca `float`.
 - Fuera de esta versión: corregir celdas (Capa Delta, sesión 3), arenera (sesión 4), escritorio Tauri (sesión 5).

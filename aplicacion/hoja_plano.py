@@ -38,8 +38,11 @@ import re
 import shutil
 import tempfile
 import threading
-from collections.abc import Mapping, Sequence
+import time
+from collections.abc import Iterator, Mapping, Sequence
+from contextlib import contextmanager
 from dataclasses import dataclass, replace
+from datetime import timedelta
 from pathlib import Path
 
 from sqlalchemy.orm import Session
@@ -52,18 +55,25 @@ from aplicacion.subidas import Subida
 
 __all__ = [
     "AVISO_PENDIENTES",
+    "BYTES_MAXIMOS_DE_PLANO",
     "DIRECTORIO_TEMPORAL",
     "IMPORTACIONES",
+    "LECTURAS_SIMULTANEAS",
     "MENSAJE_ALTURAS_AJENAS",
     "MENSAJE_CIRCUITOS_AJENOS",
+    "MENSAJE_LECTURAS_OCUPADAS",
     "MENSAJE_NO_DETENIDA",
     "MENSAJE_SIN_IMPORTACION",
     "MENSAJE_UNIDAD",
     "PREFIJO_CARPETA",
     "Fusion",
     "ImportacionNoFusionable",
+    "LecturasOcupadas",
     "NoDetenida",
+    "PlanoDemasiadoGrande",
     "SinImportacion",
+    "barrer_al_arrancar",
+    "barrer_huerfanas",
     "cargar_alturas",
     "declarar_circuitos",
     "descartar",
@@ -106,6 +116,59 @@ MENSAJE_CIRCUITOS_AJENOS = (
 )
 MENSAJE_NO_DETENIDA = "Esta importación no está detenida: no hace falta elegir una unidad."
 MENSAJE_NO_GUARDADO = f"No se pudo guardar el plano en el servidor. {RENOMBRE}"
+
+# --- los topes del lector (ola de decisiones, 2026-10-21) ---------------------------------------
+#
+# El lector no tenia tope: un DXF de 13,6 MiB tardaba 26,5 s (unos 2 s por MiB) y 40 lecturas a la
+# vez agotaban el grupo de 40 hilos de las rutas sincronas (17 a 29 minutos paradas). Un hilo no se
+# puede matar sin riesgo, asi que el tiempo se acota por tres vias: el tamano (antes de escribir
+# nada), las lecturas a la vez (la de mas se rechaza sin esperar, asi el grupo de hilos nunca se
+# agota) y el barrido de lo que deja una caida.
+
+#: Bytes maximos de un plano por formato. DXF: 8 MiB (unos 15 s de lectura); IFC: el tope de cuerpo
+#: de la API (`api/proteccion.py`, 20 MiB).
+BYTES_MAXIMOS_DE_PLANO = {"dxf": 8 * 1024 * 1024, "ifc": 20 * 1024 * 1024}
+#: Lecturas de plano a la vez en todo el proceso (la lectura es de CPU, de un solo hilo).
+LECTURAS_SIMULTANEAS = 2
+#: Cada cuanto se barren las carpetas huerfanas mientras el proceso vive, y desde cuando lo es una.
+INTERVALO_DE_BARRIDO = timedelta(minutes=15)
+PLAZO_DE_ARRANQUE = timedelta(hours=1)  # un proceso hermano recien nacido tendria carpetas nuevas
+MENSAJE_LECTURAS_OCUPADAS = (
+    "Sílice está leyendo otros planos en este momento: espere unos segundos y vuelva a subirlo."
+)
+
+_CUPOS = threading.BoundedSemaphore(LECTURAS_SIMULTANEAS)
+#: Instante (reloj monotono) del ultimo barrido; `None` hasta que el proceso arranca (`barrer_al_
+#: arrancar`): sin arranque, `leer` no barre nada (las pruebas no tocan el `%TEMP%` real).
+_ultimo_barrido: float | None = None
+
+
+class PlanoDemasiadoGrande(Exception):  # noqa: N818
+    """El plano pesa mas que el maximo de su formato; `mensaje` es el texto fijo (sin nombres)."""
+
+    def __init__(self, formato: str, tope: int) -> None:
+        mib = tope // (1024 * 1024)
+        self.mensaje = (
+            f"El plano {formato.upper()} pesa más de {mib} MiB, el máximo que Sílice lee en un "
+            "tiempo razonable. Purgue las capas y bloques que no use, o divida el dibujo por "
+            "plantas, y vuelva a subirlo."
+        )
+        super().__init__(self.mensaje)
+
+
+class LecturasOcupadas(Exception):  # noqa: N818
+    """Ya hay `LECTURAS_SIMULTANEAS` planos leyendose: esta lectura no espera, se rechaza."""
+
+
+@contextmanager
+def _cupo_de_lectura() -> Iterator[None]:
+    """Un cupo de lectura sin esperar; se devuelve ocurra lo que ocurra."""
+    if not _CUPOS.acquire(blocking=False):
+        raise LecturasOcupadas(MENSAJE_LECTURAS_OCUPADAS)
+    try:
+        yield
+    finally:
+        _CUPOS.release()
 
 
 class SinImportacion(Exception):  # noqa: N818
@@ -178,6 +241,11 @@ class _Importaciones:
         if anterior is not None and anterior.carpeta != nueva.carpeta:
             _borrar(anterior.carpeta)
 
+    def carpetas(self) -> set[Path]:
+        """Las carpetas de las importaciones vivas (el barrido no las toca)."""
+        with self._cerrojo:
+            return {i.carpeta for i in self._de.values()}
+
     def quitar(self, id_: str) -> None:
         """Olvida la importacion del borrador `id_` y borra su carpeta (idempotente)."""
         with self._cerrojo:
@@ -234,6 +302,65 @@ def _sin_rutas(resultado: ResultadoImportacion, carpeta: Path) -> ResultadoImpor
     return resultado
 
 
+def _es_enlace(carpeta: Path) -> bool:
+    """Un enlace simbolico o una junction de Windows (que `is_symlink` no ve y `is_dir` sigue)."""
+    return carpeta.is_symlink() or carpeta.is_junction()
+
+
+def barrer_huerfanas(antiguedad: timedelta) -> int:
+    """Borra las carpetas `silice_planos_*` de mas de `antiguedad` que ninguna importacion viva
+    usa (las que deja un proceso que cayo) y devuelve cuantas. Solo carpetas de verdad (ni
+    enlaces simbolicos, ni junctions de Windows, ni archivos) con el prefijo, dentro del
+    directorio temporal de los planos. Tolera un directorio ausente o ilegible, y lo que no se
+    pueda borrar (otro proceso lo tiene abierto)."""
+    raiz = Path(DIRECTORIO_TEMPORAL or tempfile.gettempdir())
+    limite = time.time() - antiguedad.total_seconds()
+    vivas = IMPORTACIONES.carpetas()
+    borradas = 0
+    try:
+        candidatas = [p for p in raiz.iterdir() if p.name.startswith(PREFIJO_CARPETA)]
+    except OSError:
+        return 0
+    for carpeta in candidatas:
+        try:
+            if _es_enlace(carpeta) or not carpeta.is_dir() or carpeta in vivas:
+                continue
+            if carpeta.stat().st_mtime > limite:
+                continue
+        except OSError:
+            continue
+        _borrar(carpeta)
+        borradas += not carpeta.exists()
+    return borradas
+
+
+def barrer_al_arrancar() -> int:
+    """El barrido del arranque del proceso (`startup` del router): las de mas de una hora. Marca
+    el barrido para que `leer` repita el trabajo cada `INTERVALO_DE_BARRIDO`."""
+    global _ultimo_barrido
+    _ultimo_barrido = time.monotonic()
+    return barrer_huerfanas(PLAZO_DE_ARRANQUE)
+
+
+def _barrer_si_toca() -> None:
+    """Barrido periodico con el plazo de vida de un borrador: una carpeta mas vieja que eso no
+    puede ser de una importacion viva (la vencida ya la borro `al_quitar`). Solo despues del
+    arranque."""
+    global _ultimo_barrido
+    ahora = time.monotonic()
+    if _ultimo_barrido is None or ahora - _ultimo_barrido < INTERVALO_DE_BARRIDO.total_seconds():
+        return
+    _ultimo_barrido = ahora
+    barrer_huerfanas(hoja_borradores.VIGENCIA)
+
+
+def _tamano_de(subida: Subida) -> int:
+    """Los bytes de la subida. Si sabe medirse (`tamano()`, como la de la API sobre su archivo
+    temporal) no se cargan en memoria para juzgar el tope; si no, se miden con `getvalue()`."""
+    medir = getattr(subida, "tamano", None)
+    return medir() if callable(medir) else len(subida.getvalue())
+
+
 def leer(vivo: BorradorVivo, rev: int, subida: Subida) -> ResultadoImportacion:
     """P1: guarda el plano subido en una carpeta nueva del borrador y lo lee (`subir_plano`).
 
@@ -245,22 +372,27 @@ def leer(vivo: BorradorVivo, rev: int, subida: Subida) -> ResultadoImportacion:
     """
     with vivo.cerrojo:
         _exigir_rev(vivo, rev)
-        hoja.formato_de_plano(subida.name or "")
-        carpeta = Path(tempfile.mkdtemp(prefix=PREFIJO_CARPETA, dir=DIRECTORIO_TEMPORAL))
-        try:
+        formato = hoja.formato_de_plano(subida.name or "")
+        tope = BYTES_MAXIMOS_DE_PLANO[formato]
+        if _tamano_de(subida) > tope:  # antes de escribir nada y de ocupar un cupo
+            raise PlanoDemasiadoGrande(formato, tope)
+        _barrer_si_toca()
+        with _cupo_de_lectura():
+            carpeta = Path(tempfile.mkdtemp(prefix=PREFIJO_CARPETA, dir=DIRECTORIO_TEMPORAL))
             try:
-                ruta, resultado = hoja.subir_plano(subida, carpeta)
-            except HojaInvalida:
+                try:
+                    ruta, resultado = hoja.subir_plano(subida, carpeta)
+                except HojaInvalida:
+                    raise
+                except ValueError as error:  # el nombre no deja nada utilizable (P:1293)
+                    raise HojaInvalida(f"{error}. {RENOMBRE}") from None
+                except OSError:  # su texto trae la ruta del servidor: no se repite
+                    raise HojaInvalida(MENSAJE_NO_GUARDADO) from None
+                resultado = _sin_rutas(resultado, carpeta)
+                IMPORTACIONES.poner(vivo, Importacion(carpeta, ruta, resultado))
+            except BaseException:
+                _borrar(carpeta)
                 raise
-            except ValueError as error:  # el nombre no deja nada utilizable (P:1293)
-                raise HojaInvalida(f"{error}. {RENOMBRE}") from None
-            except OSError:  # su texto trae la ruta del servidor: no se repite
-                raise HojaInvalida(MENSAJE_NO_GUARDADO) from None
-            resultado = _sin_rutas(resultado, carpeta)
-            IMPORTACIONES.poner(vivo, Importacion(carpeta, ruta, resultado))
-        except BaseException:
-            _borrar(carpeta)
-            raise
         return resultado
 
 
@@ -280,7 +412,9 @@ def reanudar(vivo: BorradorVivo, rev: int, unidades: str) -> ResultadoImportacio
         if not actual.ruta.is_file():  # alguien limpio la carpeta temporal: como la clasica
             IMPORTACIONES.quitar(vivo.id)
             raise SinImportacion
-        resultado = _sin_rutas(hoja.leer_plano(actual.ruta, unidades=unidades), actual.carpeta)
+        with _cupo_de_lectura():
+            leido = hoja.leer_plano(actual.ruta, unidades=unidades)
+        resultado = _sin_rutas(leido, actual.carpeta)
         IMPORTACIONES.poner(vivo, replace(actual, resultado=resultado))
         return resultado
 

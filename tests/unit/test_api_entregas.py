@@ -38,6 +38,7 @@ from api.main import app
 from api.rutas import entregas as ruta_entregas
 from aplicacion.entrega import anexos_de_cadena, nombre_de_archivo
 from core import models
+from core.budget import canonico
 from core.catalog import abrir_sesion, crear_motor
 from operacion import config
 from operacion.base_datos import preparar_base
@@ -54,6 +55,7 @@ from tests.fixtures.sesion_web import (
     plantilla_con_cuentas,
     protegida,
 )
+from tests.fixtures.vb1_fraccionario import sembrar_fraccionaria
 
 CLAVE_DE_FIRMA = "frase de firma larga y propia"
 EMPRESA = "Contratista Demo, C.A."
@@ -228,6 +230,57 @@ def test_una_cadena_rota_se_dice_y_no_deja_entregar() -> None:
     assert cuerpo["cadena_integra"] is False and cuerpo["mensaje_de_cadena"] == CADENA_ROTA
     r = _pedir(navegador, ficha)
     assert (r.status_code, r.json()) == (409, {"detalle": CADENA_ROTA})
+    assert all(t != "paquete exportado" for t, _ in _eventos())
+
+
+AVISO_LEGADO = (
+    "La versión 001 se selló antes de la corrección de cifras y no puede entregarse tal cual; "
+    "confirme una versión nueva (quedará sellada con la cifra corregida) y entregue esa."
+)
+
+
+def _sembrar_fraccionaria(caso: Path, *, legada: bool) -> None:
+    """Un segundo proyecto, FRA-001, con 1/12 a 29 decimales: sellado con el formato de antes de
+    VB-1 (`legada`) o con el actual."""
+    motor = crear_motor(f"sqlite:///{caso.as_posix()}")
+    try:
+        with abrir_sesion(motor) as sesion:
+            if legada:
+                with canonico.formato_legado():
+                    sembrar_fraccionaria(sesion, anexos_de=anexos_de_cadena)
+            else:
+                sembrar_fraccionaria(sesion, anexos_de=anexos_de_cadena)
+    finally:
+        motor.dispose()
+
+
+def test_el_resumen_de_una_version_actual_es_entregable() -> None:
+    navegador, _ = _ana()
+    cuerpo = navegador.get(
+        "/v1/entregas/resumen", params={"proyecto": "MIN-001", "version": "001"}
+    ).json()
+    assert cuerpo["entregable"] is True and AVISO_LEGADO[:20] not in cuerpo["mensaje_de_cadena"]
+
+
+def test_el_resumen_de_una_version_fraccionaria_sellada_ahora_es_entregable(_entorno) -> None:
+    _sembrar_fraccionaria(_entorno, legada=False)
+    navegador, _ = _ana()
+    cuerpo = navegador.get(
+        "/v1/entregas/resumen", params={"proyecto": "FRA-001", "version": "001"}
+    ).json()
+    assert cuerpo["cadena_integra"] is True and cuerpo["entregable"] is True
+
+
+def test_el_resumen_de_una_version_sellada_antes_de_vb1_avisa_y_no_es_entregable(_entorno) -> None:
+    _sembrar_fraccionaria(_entorno, legada=True)
+    navegador, ficha = _ana()
+    cuerpo = navegador.get(
+        "/v1/entregas/resumen", params={"proyecto": "FRA-001", "version": "001"}
+    ).json()
+    assert cuerpo["cadena_integra"] is True and cuerpo["entregable"] is False
+    assert cuerpo["mensaje_de_cadena"].endswith(AVISO_LEGADO)  # el aviso viaja en el mensaje
+    r = _pedir(navegador, ficha, proyecto="FRA-001")  # y entregar la rechaza con ese mismo texto
+    assert (r.status_code, r.json()) == (409, {"detalle": AVISO_LEGADO})
     assert all(t != "paquete exportado" for t, _ in _eventos())
 
 

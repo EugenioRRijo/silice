@@ -696,12 +696,19 @@ def test_los_precios_se_evaluan_a_la_fecha_de_hoy_de_la_ruta(
     )
 
 
-def test_un_caracter_ilegal_en_una_celda_es_422_con_no_store_y_sin_500(app: FastAPI) -> None:
-    """U+0001 se acepta al editar el espacio (E1) pero openpyxl no lo escribe en un .xlsx."""
+@pytest.mark.parametrize(
+    "caracter", ["\x01", chr(0xFFFE), chr(0xFFFF), "\x00", "\x1f"], ids=lambda c: f"U+{ord(c):04X}"
+)
+def test_un_caracter_que_un_xlsx_no_admite_se_sustituye_y_el_libro_abre(
+    app: FastAPI, caracter: str
+) -> None:
+    """Ola de decisiones: E1 acepta el caracter al editar el espacio (como la clasica) y X1 lo
+    sustituye por U+FFFD en el punto de salida. Antes: U+0001 daba 422 y U+FFFE/U+FFFF un libro que
+    openpyxl no podia leer. El borrador vivo conserva lo escrito y `rev` no cambia."""
     navegador, ficha = _ana(app)
     id_ = _abrir(navegador, ficha)
     tablas = navegador.get(f"/v1/hoja/borradores/{id_}/vistas/espacio").json()["filas"]
-    tablas["ambientes"][0]["nombre"] = "Baño"
+    tablas["ambientes"][0]["nombre"] = f"Ba{caracter}ño"
     editado = navegador.put(
         f"/v1/hoja/borradores/{id_}/espacio",
         json={"rev": 0, "tablas": tablas},
@@ -709,9 +716,52 @@ def test_un_caracter_ilegal_en_una_celda_es_422_con_no_store_y_sin_500(app: Fast
     )
     assert editado.status_code == 200, editado.text
     respuesta = _excel(navegador, id_)
-    assert respuesta.status_code == 422, respuesta.text[:200]
+    assert respuesta.status_code == 200, respuesta.text[:200]
+    assert respuesta.headers["cache-control"] == "no-store"
+    celdas = [c for hoja in _celdas(respuesta.content).values() for fila in hoja for c in fila]
+    assert (
+        "Ba" + chr(0xFFFD) + "ño" in celdas
+    )  # el libro abre y la celda lleva el sustituto en su sitio
+    assert not any(isinstance(c, str) and caracter in c for c in celdas)
+    # lo escrito sigue en el borrador (se sanea la salida, no la edicion) y nada cambio
+    vista = navegador.get(f"/v1/hoja/borradores/{id_}/vistas/espacio").json()
+    assert vista["filas"]["ambientes"][0]["nombre"] == f"Ba{caracter}ño"
+    assert navegador.get(f"/v1/hoja/borradores/{id_}").json()["resumen"]["rev"] == 1
+
+
+def test_sin_caracteres_prohibidos_el_saneado_no_cambia_ni_una_celda(app: FastAPI) -> None:
+    """La paridad celda por celda con la clasica (arriba) sigue valiendo: el saneado es identidad
+    sobre un libro limpio. Aqui, ademas, con tildes, eñes, un tabulador y un emoji en el nombre."""
+    navegador, ficha = _ana(app)
+    id_ = _abrir(navegador, ficha)
+    tablas = navegador.get(f"/v1/hoja/borradores/{id_}/vistas/espacio").json()["filas"]
+    tablas["ambientes"][0]["nombre"] = "Baño ñandú \U0001f600\t(2)"
+    editado = navegador.put(
+        f"/v1/hoja/borradores/{id_}/espacio",
+        json={"rev": 0, "tablas": tablas},
+        headers=protegida(ficha),
+    )
+    assert editado.status_code == 200, editado.text
+    celdas = [c for h in _celdas(_excel(navegador, id_).content).values() for f in h for c in f]
+    assert "Baño ñandú \U0001f600\t(2)" in celdas
+
+
+def test_la_red_de_seguridad_un_caracter_ilegal_que_se_escape_sigue_siendo_422(
+    app: FastAPI, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Si algun texto se escapara del saneado (un tipo que no se recorre), openpyxl lo rechaza y la
+    respuesta sigue siendo un 422 limpio con `no-store`, nunca un 500."""
+    from openpyxl.utils.exceptions import IllegalCharacterError
+
+    def romper(*_args, **_kwargs):
+        raise IllegalCharacterError("texto con la celda adentro")
+
+    monkeypatch.setattr("aplicacion.hoja.excel_de_hoja_en_bytes", romper)
+    navegador, ficha = _ana(app)
+    id_ = _abrir(navegador, ficha)
+    respuesta = _excel(navegador, id_)
+    assert respuesta.status_code == 422
     assert respuesta.headers["cache-control"] == "no-store"
     detalle = respuesta.json()["detalle"]
     assert detalle.startswith("No se pudo preparar el Excel: ")
-    assert "Traceback" not in detalle and "C:\\" not in detalle
-    assert _excel(navegador, id_).status_code == 422  # sigue siendo un error limpio, no un 500
+    assert "celda adentro" not in detalle and "Traceback" not in detalle

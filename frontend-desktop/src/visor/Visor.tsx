@@ -1,14 +1,4 @@
-import {
-  FileUploaderButton,
-  FileUploaderDropContainer,
-  InlineNotification,
-  SkeletonPlaceholder,
-  SkeletonText,
-  Tab,
-  TabList,
-  Tabs,
-  TextInput,
-} from "@carbon/react";
+import { FileUploaderButton, FileUploaderDropContainer, InlineNotification, SkeletonPlaceholder, SkeletonText, Tab, TabList, Tabs } from "@carbon/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { ErrorDeApi, pedir } from "../api/cliente";
@@ -26,6 +16,7 @@ import { construirHalos, resumenPorHoja } from "./halos";
 import type { CeldaRef, CrearHojaVisor, HojaVisor } from "./hojaVisor";
 import { ListaHallazgos } from "./ListaHallazgos";
 import { UniverGrid } from "./UniverGrid";
+import { CampoTexto } from "../comun/CampoTexto";
 
 // Univer es pesado: se baja en un archivo aparte y solo cuando hay un libro que dibujar.
 const crearHojaUniver: CrearHojaVisor = (contenedor, libro) =>
@@ -274,7 +265,7 @@ export function Visor({ crearHoja = crearHojaUniver, alExpirar, almacen, ranuraC
   const controles = (
     <>
       <div className="visor__fecha">
-        <TextInput
+        <CampoTexto
           id="visor-fecha"
           type="date"
           size="sm"

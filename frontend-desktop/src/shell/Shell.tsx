@@ -283,6 +283,7 @@ export function Shell({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
         urlClasica={urlClasica}
         abierto={menuAbierto}
         alCerrar={() => setMenuAbierto(false)}
+        nombre={sesion.nombre}
       />
       <main id="contenido" className="silice-contenido" tabIndex={-1}>
         {(error !== null || aviso) && (

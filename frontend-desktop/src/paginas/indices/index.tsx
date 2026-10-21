@@ -1,4 +1,4 @@
-import { Button, InlineLoading, InlineNotification, Select, SelectItem, TextInput } from "@carbon/react";
+import { Button, InlineLoading, InlineNotification, Select, SelectItem } from "@carbon/react";
 import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { ErrorDeApi, pedir } from "../../api/cliente";
@@ -25,6 +25,7 @@ import {
 } from "./logica";
 import type { Confirmacion, Contexto, Definicion, Informe, Lectura } from "./logica";
 import "./indices.scss";
+import { CampoTexto } from "../../comun/CampoTexto";
 
 type CargaContexto =
   | { tipo: "cargando" }
@@ -157,14 +158,14 @@ export default function PaginaIndices() {
                 <SelectItem key={t.id} value={t.id} text={t.rotulo} />
               ))}
             </Select>
-            <TextInput
+            <CampoTexto
               id="indices-fuente"
               labelText="Dirección de la página del BCV de donde lo bajó"
               size="sm"
               value={fuente}
               onChange={(e) => setFuente(e.target.value)}
             />
-            <TextInput
+            <CampoTexto
               id="indices-fecha"
               type="date"
               labelText="Fecha de descarga"
@@ -303,21 +304,21 @@ function InformePrevio({ lectura, contexto, definiciones, alCambiar, confirmacio
           <fieldset key={d.serie} className="silice-indices__serie">
             <legend className="cds--type-heading-compact-01">Serie {d.serie}</legend>
             <div className="silice-indices__campos">
-              <TextInput
+              <CampoTexto
                 id={`indices-nombre-${i}`}
                 labelText={`Nombre de ${d.serie}`}
                 size="sm"
                 value={d.nombre}
                 onChange={(e) => alCambiar(i, "nombre", e.target.value)}
               />
-              <TextInput
+              <CampoTexto
                 id={`indices-organismo-${i}`}
                 labelText={`Organismo de ${d.serie}`}
                 size="sm"
                 value={d.organismo}
                 onChange={(e) => alCambiar(i, "organismo", e.target.value)}
               />
-              <TextInput
+              <CampoTexto
                 id={`indices-unidad-${i}`}
                 labelText={`Unidad de ${d.serie}`}
                 size="sm"

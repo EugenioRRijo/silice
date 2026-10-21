@@ -118,3 +118,65 @@ summary:focus-visible,
   outline: 2px solid var(--cds-focus);
   outline-offset: 2px;
 }
+
+// «Tamaño de letra» de la cabecera: tres botones cuadrados con una A de tamaño creciente. El elegido lleva fondo y una raya
+// inferior de 2 px (no solo color) y el foco usa el anillo de Carbon. Los tamaños de la A van en rem, como todo el texto.
+.silice-letra {
+  display: inline-flex;
+  align-items: stretch;
+  block-size: 3rem;
+  padding-inline: 0.25rem;
+  border-inline-start: 1px solid var(--silice-divisor);
+}
+
+.silice-letra__opcion {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 2.5rem;
+  padding: 0;
+  border: 0;
+  border-block-end: 2px solid transparent;
+  background: transparent;
+  color: var(--silice-texto);
+  font-family: inherit;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--cds-layer-hover);
+  }
+
+  &[aria-pressed="true"] {
+    background: var(--cds-layer-selected);
+    border-block-end-color: var(--silice-interactivo);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--cds-focus);
+    outline-offset: -2px;
+  }
+}
+
+.silice-letra__opcion--normal {
+  font-size: 0.875rem;
+}
+
+.silice-letra__opcion--grande {
+  font-size: 1.125rem;
+}
+
+.silice-letra__opcion--muy-grande {
+  font-size: 1.375rem;
+}
+
+// Carbon Charts fija el texto de sus graficos en 12 px (leyendas, ejes, tooltips, rotulos del anillo): no crece con la
+// letra. Se pasa a rem (0,75 rem = 12 px con la letra de Carbon, 14 px con el tamano base de Silice) para que siga al
+// control «Tamano de letra». `!important` porque la libreria escribe tambien estilos en linea en el SVG.
+html .cds--cc--chart-wrapper text,
+html .cds--cc--chart-wrapper p,
+html div.cds--cc--legend div.legend-item p,
+html .cds--cc--tooltip p {
+  font-size: 0.75rem !important;
+}

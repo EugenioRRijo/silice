@@ -635,3 +635,34 @@ def test_la_elaboracion_toma_el_guardado_de_la_composicion():
         if isinstance(nodo, ast.FunctionDef | ast.ClassDef | ast.AsyncFunctionDef)
     }
     assert definidos.isdisjoint({"Guardado", "guardar_composicion"})
+
+
+def test_solo_cadena_usa_formato_legado():
+    """VB-1: `formato_legado` es un contexto de solo transicion (reconocer huellas selladas antes);
+    solo `core/budget/cadena.py` lo usa, `canonico.py` lo define;
+    `aplicacion/entrega.py` pregunta con `cadena.formato_de_sellado`.
+    Nadie mas (adapters, ui, api, otro modulo del nucleo) puede escribir con el."""
+    permitidos = {
+        "core/budget/canonico.py",
+        "core/budget/cadena.py",
+    }
+    usan: set[str] = set()
+    for paquete in ("core", "aplicacion", *PAQUETES_FUERA_DEL_NUCLEO):
+        if paquete == "tests":
+            continue
+        for archivo in _archivos(paquete):
+            arbol = ast.parse(archivo.read_text(encoding="utf-8"), filename=str(archivo))
+            for nodo in ast.walk(arbol):
+                nombre = (
+                    nodo.id
+                    if isinstance(nodo, ast.Name)
+                    else nodo.attr
+                    if isinstance(nodo, ast.Attribute)
+                    else nodo.name
+                    if isinstance(nodo, ast.alias)
+                    else None
+                )
+                if nombre == "formato_legado":
+                    usan.add(_ruta(archivo))
+    assert usan <= permitidos, f"usan formato_legado sin permiso: {sorted(usan - permitidos)}"
+    assert "core/budget/cadena.py" in usan  # la guardia no queda vacia

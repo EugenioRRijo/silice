@@ -1,4 +1,5 @@
 import { Select, SelectItem } from "@carbon/react";
+import { useEffect, useRef } from "react";
 import type { CasosRespuesta, ProyectoRespuesta } from "../api/tipos";
 
 interface PropsCaso {
@@ -44,6 +45,15 @@ export function rotuloDeProyecto(p: ProyectoRespuesta, todos: ProyectoRespuesta[
 }
 
 export function SelectorProyecto({ proyectos, elegido, alElegir }: PropsProyecto) {
+  // El selector se acota con la letra grande y recorta el nombre: el nombre completo va en el titulo (Carbon lo fija solo al
+  // montar y al elegir (y su estado pisa a la prop `title`), no cuando el proyecto cambia desde fuera: se asienta en el
+  // <select> en cada cambio.
+  const lista = useRef<HTMLSelectElement>(null);
+  const actual = proyectos.find((p) => p.codigo === elegido);
+  const titulo = actual ? rotuloDeProyecto(actual, proyectos) : "Sin proyecto";
+  useEffect(() => {
+    if (lista.current) lista.current.title = titulo;
+  }, [titulo]);
   return (
     <div className="silice-selector">
       <Select
@@ -51,7 +61,9 @@ export function SelectorProyecto({ proyectos, elegido, alElegir }: PropsProyecto
         labelText="Proyecto"
         inline
         size="sm"
+        ref={lista}
         value={elegido ?? ""}
+        title={titulo}
         onChange={(e) => alElegir(e.target.value || null)}
       >
         <SelectItem value="" text="Sin proyecto" />

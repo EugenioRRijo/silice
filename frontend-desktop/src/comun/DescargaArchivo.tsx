@@ -1,6 +1,6 @@
 import { Button } from "@carbon/react";
 import { Download } from "@carbon/icons-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ErrorDeApi, pedirBinario } from "../api/cliente";
 import { AvisoError } from "./AvisoError";
 
@@ -42,8 +42,23 @@ export function DescargaArchivo({
 }: Props) {
   const [bajando, setBajando] = useState(false);
   const [error, setError] = useState<unknown>(null);
+  const boton = useRef<HTMLButtonElement>(null);
+  const habiaFoco = useRef(false);
+
+  // El boton se deshabilita mientras baja y el navegador le quita el foco (H-5): al terminar se lo devolvemos, salvo que
+  // la persona ya lo haya llevado a otro control.
+  // Limite conocido (MENOR-6, aceptado): si durante la descarga la persona hace clic en el cuerpo de la pagina (no en un
+  // control), el foco ya esta en el body y tambien se le devuelve al boton. Distinguirlo exigiria seguir cada clic; no se
+  // cambia la conducta.
+  useEffect(() => {
+    if (bajando || !habiaFoco.current) return;
+    habiaFoco.current = false;
+    const activo = document.activeElement;
+    if (activo === null || activo === document.body) boton.current?.focus();
+  }, [bajando]);
 
   async function bajar() {
+    habiaFoco.current = true;
     setBajando(true);
     setError(null);
     try {
@@ -59,7 +74,7 @@ export function DescargaArchivo({
 
   return (
     <div className="silice-descarga">
-      <Button kind={kind} size={size} renderIcon={Download} disabled={bajando} onClick={() => void bajar()}>
+      <Button ref={boton} kind={kind} size={size} renderIcon={Download} disabled={bajando} onClick={() => void bajar()}>
         {bajando ? "Descargando…" : etiqueta}
       </Button>
       <AvisoError error={error} titulo="No se pudo descargar" alCerrar={() => setError(null)} />

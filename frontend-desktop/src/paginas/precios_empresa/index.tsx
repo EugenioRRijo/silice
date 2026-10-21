@@ -1,4 +1,4 @@
-import { Button, InlineLoading, InlineNotification, Select, SelectItem, TextInput } from "@carbon/react";
+import { Button, InlineLoading, InlineNotification, Select, SelectItem } from "@carbon/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { CSSProperties, FormEvent } from "react";
 import { ErrorDeApi, pedir } from "../../api/cliente";
@@ -38,6 +38,7 @@ import {
 } from "./logica";
 import type { Atipicos, Base, Estado, Hallazgos, ListaCreada, ListaEmpresa } from "./logica";
 import "./precios_empresa.scss";
+import { CampoTexto } from "../../comun/CampoTexto";
 
 type Lectura =
   | { tipo: "cargando" }
@@ -210,8 +211,8 @@ function SeccionLista({ bases, alCreada, alExpirar }: PropsSeccion & { bases: Ba
       ) : (
         <form className="silice-precios-empresa__formulario" onSubmit={crear}>
           <div className="silice-precios-empresa__campos">
-            <TextInput id="precios-empresa-empresa" labelText="Empresa (nombre)" size="sm" value={empresa} onChange={(e) => setEmpresa(e.target.value)} />
-            <TextInput id="precios-empresa-rif" labelText="RIF" size="sm" value={rif} onChange={(e) => setRif(e.target.value)} />
+            <CampoTexto id="precios-empresa-empresa" labelText="Empresa (nombre)" size="sm" value={empresa} onChange={(e) => setEmpresa(e.target.value)} />
+            <CampoTexto id="precios-empresa-rif" labelText="RIF" size="sm" value={rif} onChange={(e) => setRif(e.target.value)} />
             <Select id="precios-empresa-base" labelText="Lista base" size="sm" value={baseId} onChange={(e) => setBaseElegida(e.target.value)}>
               {bases.map((b) => (
                 <SelectItem key={b.id} value={String(b.id)} text={etiquetaBase(b)} />
@@ -223,15 +224,15 @@ function SeccionLista({ bases, alCreada, alExpirar }: PropsSeccion & { bases: Ba
                 <SelectItem key={m} value={m} text={m} />
               ))}
             </Select>
-            <TextInput id="precios-empresa-fecha" type="date" labelText="Fecha de la lista" size="sm" value={fecha} onChange={(e) => setFecha(e.target.value)} />
-            <TextInput
+            <CampoTexto id="precios-empresa-fecha" type="date" labelText="Fecha de la lista" size="sm" value={fecha} onChange={(e) => setFecha(e.target.value)} />
+            <CampoTexto
               id="precios-empresa-fuente"
               labelText="Fuente de la lista (de donde salen estos precios)"
               size="sm"
               value={fuente}
               onChange={(e) => setFuente(e.target.value)}
             />
-            <TextInput id="precios-empresa-nombre" labelText="Nombre de la lista (opcional)" size="sm" value={nombre} onChange={(e) => setNombre(e.target.value)} />
+            <CampoTexto id="precios-empresa-nombre" labelText="Nombre de la lista (opcional)" size="sm" value={nombre} onChange={(e) => setNombre(e.target.value)} />
           </div>
 
           <SubidaArchivo
@@ -320,7 +321,7 @@ function SeccionHallazgos({ listas, alExpirar }: PropsSeccion & { listas: ListaE
                 <SelectItem key={l.id} value={String(l.id)} text={l.nombre} />
               ))}
             </Select>
-            <TextInput id="precios-empresa-evaluacion" type="date" labelText="Fecha de evaluación" size="sm" value={evaluacion} onChange={(e) => setEvaluacion(e.target.value)} />
+            <CampoTexto id="precios-empresa-evaluacion" type="date" labelText="Fecha de evaluación" size="sm" value={evaluacion} onChange={(e) => setEvaluacion(e.target.value)} />
           </div>
           {lectura?.tipo === "error" && <AvisoError error={lectura.error} titulo="No se pudieron leer los hallazgos" />}
           {lectura === null && evaluacion !== "" && <TablaDensa etiqueta="Hallazgos de la lista" columnas={columnasHallazgos(["Regla", "Severidad", "Descripción", "Impacto"])} filas={[]} cargando />}

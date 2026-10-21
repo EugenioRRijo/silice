@@ -1,14 +1,4 @@
-import {
-  Button,
-  Form,
-  InlineLoading,
-  InlineNotification,
-  RadioButton,
-  RadioButtonGroup,
-  Select,
-  SelectItem,
-  TextArea,
-} from "@carbon/react";
+import { Button, Form, InlineLoading, InlineNotification, RadioButton, RadioButtonGroup, Select, SelectItem } from "@carbon/react";
 import { useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { ErrorDeApi, pedir } from "../../api/cliente";
@@ -33,6 +23,7 @@ import {
 } from "./logica";
 import { Dato, Diferencia } from "./piezas";
 import type { ContraLista, DictamenAnterior, DictamenGuardado, ReauditoriaRevision, Revision } from "./tipos";
+import { AreaTexto } from "../../comun/AreaTexto";
 
 type Estado =
   | { tipo: "ninguno" }
@@ -361,7 +352,7 @@ function Dictamen({
             <RadioButton key={x} id={`revisar-resultado-${x.replace(/\s+/g, "-")}`} labelText={x} value={x} />
           ))}
         </RadioButtonGroup>
-        <TextArea id="revisar-notas" labelText="Notas" value={notas} rows={3} onChange={(e) => setNotas(e.target.value)} />
+        <AreaTexto id="revisar-notas" labelText="Notas" value={notas} rows={3} onChange={(e) => setNotas(e.target.value)} />
         <Button type="submit" kind="primary" size="md" disabled={guardando}>
           {guardando ? "Guardando…" : "Guardar dictamen"}
         </Button>

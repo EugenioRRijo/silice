@@ -1,4 +1,4 @@
-import { Button, InlineNotification, Select, SelectItem, TextArea, TextInput } from "@carbon/react";
+import { Button, InlineNotification, Select, SelectItem } from "@carbon/react";
 import { useState } from "react";
 import { pedir } from "../../api/cliente";
 import { AvisoError } from "../../comun/AvisoError";
@@ -9,6 +9,8 @@ import { useAplicacion } from "../../shell/contexto";
 import { leerFeriados } from "./fechas";
 import { errorDeCarga, etiquetaDeCodigo, rutaDe, sinTitulo, textoLlano, useAccion, useCargaSuave } from "./logica";
 import type { LineaBase } from "./logica";
+import { CampoTexto } from "../../comun/CampoTexto";
+import { AreaTexto } from "../../comun/AreaTexto";
 
 interface Props {
   proyecto: string;
@@ -59,7 +61,7 @@ function Declarar({ proyecto, versiones, alCambiar }: { proyecto: string; versio
           <SelectItem key={c} value={c} text={c} />
         ))}
       </Select>
-      <TextInput id="lb-desde" type="date" labelText="Vigente desde" value={v.desde} onChange={campo("desde")} />
+      <CampoTexto id="lb-desde" type="date" labelText="Vigente desde" value={v.desde} onChange={campo("desde")} />
       <Select
         id="lb-perspectiva"
         labelText="Perspectiva"
@@ -70,15 +72,15 @@ function Declarar({ proyecto, versiones, alCambiar }: { proyecto: string; versio
         <SelectItem value="costo" text="costo" />
         <SelectItem value="precio" text="precio" />
       </Select>
-      <TextInput id="lb-inicio" type="date" labelText="Inicio de obra" value={v.inicio} onChange={campo("inicio")} />
-      <TextInput
+      <CampoTexto id="lb-inicio" type="date" labelText="Inicio de obra" value={v.inicio} onChange={campo("inicio")} />
+      <CampoTexto
         id="lb-dias"
         labelText="Días hábiles por período"
         value={v.dias_por_periodo}
         onChange={campo("dias_por_periodo")}
       />
-      <TextArea id="lb-feriados" labelText="Feriados (fechas como 25/12/2026, separadas por comas)" value={v.feriados} onChange={campo("feriados")} />
-      <TextInput id="lb-fuente" labelText="Fuente de la línea base" value={v.fuente} onChange={campo("fuente")} />
+      <AreaTexto id="lb-feriados" labelText="Feriados (fechas como 25/12/2026, separadas por comas)" value={v.feriados} onChange={campo("feriados")} />
+      <CampoTexto id="lb-fuente" labelText="Fuente de la línea base" value={v.fuente} onChange={campo("fuente")} />
       <div>
         <Button kind="primary" size="md" disabled={estado.enviando} onClick={declarar}>
           Declarar línea base
@@ -150,7 +152,7 @@ function Parametros({ proyecto, datos, alCambiar }: { proyecto: string; datos: L
           ))}
         </Select>
         {Object.entries(editados).map(([nombre, valor]) => (
-          <TextInput
+          <CampoTexto
             key={nombre}
             id={`par-${nombre}`}
             labelText={`Nuevo valor de ${etiquetaDeCodigo(nombre)}`}
@@ -158,7 +160,7 @@ function Parametros({ proyecto, datos, alCambiar }: { proyecto: string; datos: L
             onChange={(e) => setEditados({ ...editados, [nombre]: e.target.value })}
           />
         ))}
-        <TextInput id="par-fuente" labelText="Fuente del cambio de parámetros" value={fuente} onChange={(e) => setFuente(e.target.value)} />
+        <CampoTexto id="par-fuente" labelText="Fuente del cambio de parámetros" value={fuente} onChange={(e) => setFuente(e.target.value)} />
         <div>
           <Button
             kind="primary"

@@ -1,8 +1,9 @@
-import { Button, Form, InlineNotification, PasswordInput, TextInput } from "@carbon/react";
+import { Button, Form, InlineNotification, PasswordInput } from "@carbon/react";
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { mensajeDeError } from "../comun/errores";
 import { useTituloDelDocumento } from "../comun/tituloDelDocumento";
+import { CampoTexto } from "../comun/CampoTexto";
 
 interface Props {
   onEntrar: (login: string, contrasena: string) => Promise<void>;
@@ -40,7 +41,7 @@ export function Entrar({ onEntrar, aviso }: Props) {
       </p>
       {aviso && <p className="silice-entrada__texto cds--type-body-compact-01">{aviso}</p>}
       <Form className="silice-entrada__formulario" onSubmit={enviar} noValidate>
-        <TextInput
+        <CampoTexto
           id="entrar-usuario"
           labelText="Usuario"
           autoComplete="username"

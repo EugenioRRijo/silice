@@ -56,6 +56,20 @@ def registro(reloj: Reloj) -> Registro:
     return Registro(reloj=reloj)
 
 
+def test_la_vigente_al_abrir_se_guarda_al_crear_y_sobrevive_a_editar_y_a_retomar(registro):
+    """D-5: el borrador recuerda la version vigente de cuando se abrio; ni `reemplazar` ni
+    `obtener` (retomar) la renuevan. Sin decirla, queda en `None`."""
+    sin_decir = _crear(registro)
+    assert sin_decir.vigente_al_abrir is None
+    vivo = registro.crear(
+        "ficha-a", "caso-1", "P", "001", _borrador(), None, vigente_al_abrir="002"
+    )
+    assert vivo.vigente_al_abrir == "002"
+    registro.reemplazar("ficha-a", vivo.id, _borrador("Bs"), 0)
+    assert registro.obtener("ficha-a", vivo.id).vigente_al_abrir == "002"
+    assert [v.vigente_al_abrir for v in registro.listar("ficha-a") if v.id == vivo.id] == ["002"]
+
+
 def test_un_borrador_nuevo_tiene_id_impredecible_rev_cero_y_es_de_su_ficha(registro):
     uno, otro = _crear(registro), _crear(registro, proyecto="Q")
     assert uno.id != otro.id

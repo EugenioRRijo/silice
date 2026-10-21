@@ -1,23 +1,14 @@
 import { TextInput } from "@carbon/react";
 import type { ComponentProps } from "react";
-import { useEffect, useRef } from "react";
+import { useSinRegionVacia } from "./useSinRegionVacia";
 
-// El TextInput de Carbon monta siempre un <span role="alert" aria-live> vacío (el anuncio del contador de caracteres),
-// aunque no haya contador: con 4 a 8 campos por página el lector de pantalla encuentra otras tantas regiones vivas sin
-// contenido (VB-18). Este campo las deja solo si el contador está activo; el resto del comportamiento es el de Carbon.
+// El TextInput de Carbon monta siempre un <span role="alert" aria-live> vacío (VB-18): este campo lo deja solo si el
+// contador está activo (ver useSinRegionVacia); el resto del comportamiento es el de Carbon.
 // `display: contents` mantiene al campo como hijo directo de la rejilla de su formulario.
 export function CampoTexto(props: ComponentProps<typeof TextInput>) {
-  const raiz = useRef<HTMLDivElement>(null);
   // Con `maxCount` Carbon llena la region aunque no se pida el contador: se conserva.
   const conContador = props.enableCounter === true || props.maxCount !== undefined;
-  useEffect(() => {
-    if (conContador) return;
-    raiz.current?.querySelectorAll(".cds--text-input__counter-alert").forEach((region) => {
-      region.removeAttribute("role");
-      region.removeAttribute("aria-live");
-      region.removeAttribute("aria-atomic");
-    });
-  });
+  const raiz = useSinRegionVacia<HTMLDivElement>(".cds--text-input__counter-alert", conContador);
   return (
     <div ref={raiz} style={{ display: "contents" }}>
       <TextInput {...props} />

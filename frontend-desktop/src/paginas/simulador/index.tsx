@@ -1,4 +1,4 @@
-import { Button, TextInput } from "@carbon/react";
+import { Button } from "@carbon/react";
 import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { ErrorDeApi, pedir } from "../../api/cliente";
@@ -21,6 +21,7 @@ import {
 } from "./logica";
 import type { CuerpoSimulacion, FilaSimulada } from "./logica";
 import "./simulador.scss";
+import { CampoTexto } from "../../comun/CampoTexto";
 
 const COLUMNAS: ColumnaDensa[] = [
   { clave: "tipo", titulo: "Tipo" },
@@ -89,7 +90,7 @@ export default function PaginaSimulador() {
       <p className="silice-simulador__nota cds--type-body-compact-01">{AVISO_HERRAMIENTA}</p>
 
       <form className="silice-simulador__formulario" onSubmit={(e) => void generar(e)} noValidate>
-        <TextInput
+        <CampoTexto
           id="simulador-semilla"
           labelText="Semilla"
           helperText="Mismo número, misma lista: sirve para repetir un resultado."
@@ -100,7 +101,7 @@ export default function PaginaSimulador() {
           invalidText={errorSemilla ?? ""}
           onChange={(e) => setSemilla(e.target.value)}
         />
-        <TextInput
+        <CampoTexto
           id="simulador-variacion"
           labelText="Variación máxima (%)"
           helperText="Cada precio sube o baja, como máximo, este porcentaje."
@@ -111,7 +112,7 @@ export default function PaginaSimulador() {
           invalidText={errorVariacion ?? ""}
           onChange={(e) => setVariacion(e.target.value)}
         />
-        <TextInput
+        <CampoTexto
           id="simulador-insumos"
           labelText="Insumos"
           helperText="Separados por coma; vacío = todos."

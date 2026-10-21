@@ -1,4 +1,4 @@
-import { Accordion, AccordionItem, Button, Checkbox, InlineLoading, RadioButton, RadioButtonGroup, Select, SelectItem, TextInput } from "@carbon/react";
+import { Accordion, AccordionItem, Button, Checkbox, InlineLoading, RadioButton, RadioButtonGroup, Select, SelectItem } from "@carbon/react";
 import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { ErrorDeApi, pedir } from "../../api/cliente";
@@ -51,6 +51,7 @@ import type {
   TipoRendimiento,
 } from "./tipos";
 import "./elaborar.scss";
+import { CampoTexto } from "../../comun/CampoTexto";
 
 type ClaveCivil = "concreto" | "encofrado" | "excavacion" | "tuberia" | "relleno";
 const SELECTORES_CIVIL: { clave: ClaveCivil; titulo: string }[] = [
@@ -352,14 +353,14 @@ export default function PaginaElaborar() {
             <SelectItem key={d} value={d} text={d} />
           ))}
         </Select>
-        <TextInput
+        <CampoTexto
           id="elaborar-codigo"
           labelText="Código del presupuesto"
           size="sm"
           value={codigo}
           onChange={(e) => setCodigo(e.target.value)}
         />
-        <TextInput
+        <CampoTexto
           id="elaborar-fecha"
           labelText="Fecha"
           size="sm"
@@ -367,7 +368,7 @@ export default function PaginaElaborar() {
           value={fecha}
           onChange={(e) => setFecha(e.target.value)}
         />
-        <TextInput
+        <CampoTexto
           id="elaborar-moneda"
           labelText="Moneda"
           size="sm"

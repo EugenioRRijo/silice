@@ -1,4 +1,11 @@
-import { Button, Form, InlineNotification, PasswordInput, Select, SelectItem, TextInput } from "@carbon/react";
+import {
+  Button,
+  Form,
+  InlineNotification,
+  PasswordInput,
+  Select,
+  SelectItem,
+} from "@carbon/react";
 import { Download } from "@carbon/icons-react";
 import { useState } from "react";
 import type { FormEvent } from "react";
@@ -12,6 +19,7 @@ import { useCarga } from "../inicio/useCarga";
 import type { Carga } from "../inicio/useCarga";
 import { textoDeHallazgos, totalPresentado } from "./logica";
 import "./entregar.scss";
+import { CampoTexto } from "../../comun/CampoTexto";
 
 interface ProyectoDelCaso {
   codigo: string;
@@ -33,6 +41,8 @@ interface ResumenEntrega {
   hallazgos_por_severidad: Record<string, number>;
   cadena_integra: boolean;
   mensaje_de_cadena: string;
+  // false = la version se sello antes de la correccion de cifras de VB-1: la cadena abre pero el servidor no la entrega (409).
+  entregable: boolean;
   empresa: string | null;
   firma_disponible: boolean;
   viaja_con: string[];
@@ -55,7 +65,9 @@ export default function PaginaEntregar() {
   return (
     <div className="silice-entregar silice-pagina">
       <h1 className="cds--type-heading-04">Entregar paquete</h1>
-      {proyectos.estado === "cargando" && <EsqueletoPagina etiqueta="Cargando los proyectos" />}
+      {proyectos.estado === "cargando" && (
+        <EsqueletoPagina etiqueta="Cargando los proyectos" />
+      )}
       {proyectos.estado === "listo" && proyectos.datos.length === 0 && (
         <EstadoVacio
           titulo="Este caso todavía no tiene proyectos."
@@ -63,7 +75,11 @@ export default function PaginaEntregar() {
         />
       )}
       {proyectos.estado === "listo" && proyectos.datos.length > 0 && (
-        <Seleccion proyectos={proyectos.datos} codigoAbierto={codigoAbierto} alExpirar={alExpirar} />
+        <Seleccion
+          proyectos={proyectos.datos}
+          codigoAbierto={codigoAbierto}
+          alExpirar={alExpirar}
+        />
       )}
       <MensajeDeCarga carga={proyectos} />
     </div>
@@ -71,11 +87,20 @@ export default function PaginaEntregar() {
 }
 
 function MensajeDeCarga({ carga }: { carga: Carga<unknown> }) {
-  if (carga.estado === "error") return <AvisoError error={carga.error} titulo="No se pudo cargar" />;
+  if (carga.estado === "error")
+    return <AvisoError error={carga.error} titulo="No se pudo cargar" />;
   if (carga.estado === "sin_permiso") {
-    return <AvisoError error="Su cuenta no tiene permiso para esta acción." titulo="Sin permiso" />;
+    return (
+      <AvisoError
+        error="Su cuenta no tiene permiso para esta acción."
+        titulo="Sin permiso"
+      />
+    );
   }
-  if (carga.estado === "no_disponible") return <AvisoError error="No se encontró lo pedido." titulo="No disponible" />;
+  if (carga.estado === "no_disponible")
+    return (
+      <AvisoError error="No se encontró lo pedido." titulo="No disponible" />
+    );
   return null;
 }
 
@@ -88,7 +113,8 @@ function Seleccion({
   codigoAbierto: string | null;
   alExpirar: () => void;
 }) {
-  const inicial = proyectos.find((p) => p.codigo === codigoAbierto) ?? proyectos[0];
+  const inicial =
+    proyectos.find((p) => p.codigo === codigoAbierto) ?? proyectos[0];
   const [nombre, setNombre] = useState(inicial.nombre);
   const [version, setVersion] = useState("");
   const versiones = useCarga<VersionEntregable[]>(
@@ -97,7 +123,9 @@ function Seleccion({
   );
   const lista = versiones.estado === "listo" ? versiones.datos : [];
   // La version elegida si sigue en la lista; si no (otro proyecto), la mas nueva.
-  const elegida = lista.some((v) => v.codigo === version) ? version : (lista[0]?.codigo ?? "");
+  const elegida = lista.some((v) => v.codigo === version)
+    ? version
+    : (lista[0]?.codigo ?? "");
 
   return (
     <>
@@ -127,17 +155,34 @@ function Seleccion({
           ))}
         </Select>
       </div>
-      {versiones.estado === "cargando" && <EsqueletoPagina etiqueta="Cargando las versiones" />}
+      {versiones.estado === "cargando" && (
+        <EsqueletoPagina etiqueta="Cargando las versiones" />
+      )}
       {versiones.estado === "listo" && lista.length === 0 && (
         <EstadoVacio titulo="Este proyecto todavía no tiene versiones." />
       )}
       <MensajeDeCarga carga={versiones} />
-      {elegida && <Entrega key={`${nombre}|${elegida}`} proyecto={nombre} version={elegida} alExpirar={alExpirar} />}
+      {elegida && (
+        <Entrega
+          key={`${nombre}|${elegida}`}
+          proyecto={nombre}
+          version={elegida}
+          alExpirar={alExpirar}
+        />
+      )}
     </>
   );
 }
 
-function Entrega({ proyecto, version, alExpirar }: { proyecto: string; version: string; alExpirar: () => void }) {
+function Entrega({
+  proyecto,
+  version,
+  alExpirar,
+}: {
+  proyecto: string;
+  version: string;
+  alExpirar: () => void;
+}) {
   const resumen = useCarga<ResumenEntrega>(
     `/v1/entregas/resumen?proyecto=${encodeURIComponent(proyecto)}&version=${encodeURIComponent(version)}`,
     alExpirar,
@@ -148,7 +193,8 @@ function Entrega({ proyecto, version, alExpirar }: { proyecto: string; version: 
   const [error, setError] = useState<unknown>(null);
   const [listo, setListo] = useState<PaqueteListo | null>(null);
 
-  if (resumen.estado === "cargando") return <EsqueletoPagina etiqueta="Cargando el resumen" />;
+  if (resumen.estado === "cargando")
+    return <EsqueletoPagina etiqueta="Cargando el resumen" />;
   if (resumen.estado !== "listo") return <MensajeDeCarga carga={resumen} />;
   const datos = resumen.datos;
 
@@ -184,6 +230,8 @@ function Entrega({ proyecto, version, alExpirar }: { proyecto: string; version: 
     }
   }
 
+  const sinEntregar = datos.cadena_integra && !datos.entregable;
+
   return (
     <>
       <dl className="silice-entregar__datos">
@@ -201,12 +249,16 @@ function Entrega({ proyecto, version, alExpirar }: { proyecto: string; version: 
           <dt className="cds--type-label-01">Hallazgos</dt>
           <dd className="cds--type-heading-03">{datos.hallazgos_total}</dd>
           {datos.hallazgos_total > 0 && (
-            <dd className="cds--type-body-compact-01">{textoDeHallazgos(datos.hallazgos_por_severidad)}</dd>
+            <dd className="cds--type-body-compact-01">
+              {textoDeHallazgos(datos.hallazgos_por_severidad)}
+            </dd>
           )}
         </div>
         <div>
           <dt className="cds--type-label-01">Cadena</dt>
-          <dd className="cds--type-heading-03">{datos.cadena_integra ? "Íntegra" : "Rota"}</dd>
+          <dd className="cds--type-heading-03">
+            {datos.cadena_integra ? "Íntegra" : "Rota"}
+          </dd>
         </div>
       </dl>
       {!datos.cadena_integra && (
@@ -220,10 +272,23 @@ function Entrega({ proyecto, version, alExpirar }: { proyecto: string; version: 
             hideCloseButton
           />
           <p className="silice-entregar__nota cds--type-body-compact-01">
-            Un paquete con la cadena rota no se entrega: restaure la base desde un respaldo (Administración, pestaña
-            Instalación) o avise a quien administra Sílice.
+            Un paquete con la cadena rota no se entrega: restaure la base desde
+            un respaldo (Administración, pestaña Instalación) o avise a quien
+            administra Sílice.
           </p>
         </>
+      )}
+      {sinEntregar && (
+        <div id="entregar-motivo">
+          <InlineNotification
+            kind="warning"
+            role="status"
+            title="Esta versión no se puede entregar"
+            subtitle={datos.mensaje_de_cadena}
+            lowContrast
+            hideCloseButton
+          />
+        </div>
       )}
       <p className="silice-entregar__nota cds--type-body-compact-01">{`Viaja con: ${datos.viaja_con.join(", ")}.`}</p>
       {datos.empresa === null && (
@@ -245,8 +310,11 @@ function Entrega({ proyecto, version, alExpirar }: { proyecto: string; version: 
         />
       )}
 
-      <Form onSubmit={(e) => void generar(e)} className="silice-entregar__formulario">
-        <TextInput
+      <Form
+        onSubmit={(e) => void generar(e)}
+        className="silice-entregar__formulario"
+      >
+        <CampoTexto
           id="entregar-destino"
           labelText="Para quién es (opcional)"
           value={destinatario}
@@ -261,19 +329,36 @@ function Entrega({ proyecto, version, alExpirar }: { proyecto: string; version: 
           disabled={!datos.firma_disponible}
           onChange={(e) => setContrasena(e.target.value)}
         />
-        <Button type="submit" kind="primary" size="md" disabled={!datos.cadena_integra || generando}>
+        <Button
+          type="submit"
+          kind="primary"
+          size="md"
+          disabled={!datos.cadena_integra || sinEntregar || generando}
+          aria-describedby={sinEntregar ? "entregar-motivo" : undefined}
+        >
           {generando ? "Generando…" : "Generar paquete"}
         </Button>
       </Form>
 
-      <AvisoError error={error} titulo="No se pudo generar el paquete" alCerrar={() => setError(null)} />
+      <AvisoError
+        error={error}
+        titulo="No se pudo generar el paquete"
+        alCerrar={() => setError(null)}
+      />
       {listo && (
         <div className="silice-entregar__listo" role="status">
           <p className="cds--type-heading-compact-01">
-            {listo.firmado ? "Paquete listo y firmado." : "Paquete listo (sin firma)."}
+            {listo.firmado
+              ? "Paquete listo y firmado."
+              : "Paquete listo (sin firma)."}
           </p>
           <p className="silice-entregar__sha cds--type-code-01">{`SHA-256: ${listo.sha256}`}</p>
-          <Button kind="tertiary" size="md" renderIcon={Download} onClick={() => guardarBlob(listo.blob, listo.nombre)}>
+          <Button
+            kind="tertiary"
+            size="md"
+            renderIcon={Download}
+            onClick={() => guardarBlob(listo.blob, listo.nombre)}
+          >
             Descargar el paquete
           </Button>
         </div>

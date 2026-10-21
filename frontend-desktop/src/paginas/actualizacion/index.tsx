@@ -1,13 +1,4 @@
-import {
-  Button,
-  Checkbox,
-  CheckboxGroup,
-  InlineLoading,
-  InlineNotification,
-  Select,
-  SelectItem,
-  TextInput,
-} from "@carbon/react";
+import { Button, Checkbox, CheckboxGroup, InlineLoading, InlineNotification, Select, SelectItem } from "@carbon/react";
 import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { ErrorDeApi, pedir } from "../../api/cliente";
@@ -45,6 +36,7 @@ import {
 } from "./logica";
 import type { InsumoDesconocido, PresupuestoListado, Revaloracion, VistaPrevia } from "./logica";
 import "./actualizacion.scss";
+import { CampoTexto } from "../../comun/CampoTexto";
 
 type Presupuestos =
   | { tipo: "cargando" }
@@ -209,14 +201,14 @@ export default function PaginaActualizacion() {
                 <SelectItem key={`${p.proyecto}/${p.codigo}`} value={String(i)} text={etiquetaPresupuesto(p)} />
               ))}
             </Select>
-            <TextInput
+            <CampoTexto
               id="actualizacion-codigo-nuevo"
               labelText="Código de la versión nueva"
               size="sm"
               value={codigoNuevo}
               onChange={(e) => setCodigoNuevo(e.target.value)}
             />
-            <TextInput
+            <CampoTexto
               id="actualizacion-vigencia"
               type="date"
               labelText="Fecha de vigencia"
@@ -224,14 +216,14 @@ export default function PaginaActualizacion() {
               value={vigencia}
               onChange={(e) => setVigencia(e.target.value)}
             />
-            <TextInput
+            <CampoTexto
               id="actualizacion-moneda"
               labelText="Moneda"
               size="sm"
               value={moneda}
               onChange={(e) => setMoneda(e.target.value)}
             />
-            <TextInput
+            <CampoTexto
               id="actualizacion-nombre"
               labelText="Nombre de la lista"
               size="sm"

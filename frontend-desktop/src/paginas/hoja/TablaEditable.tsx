@@ -1,5 +1,5 @@
 import { CheckmarkOutline } from "@carbon/icons-react";
-import { Button, Pagination, Select, SelectItem, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TextInput } from "@carbon/react";
+import { Button, Pagination, Select, SelectItem, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@carbon/react";
 import { useEffect, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
 import { EstadoDeFila } from "./EstadoDeFila";
@@ -16,6 +16,7 @@ import {
   textoDeFilas,
 } from "./logica";
 import type { EstadoFila, FilaEditable, TablaEspacio } from "./logica";
+import { CampoTexto } from "../../comun/CampoTexto";
 
 // A qué celda ir desde fuera (por ejemplo desde «Ir a la fila 2»); `vez` sube para repetir el mismo destino.
 export interface IrA {
@@ -199,7 +200,7 @@ export function TablaEditable({ tabla, filas, estado, invalida, idDelError, irA,
                             ))}
                           </Select>
                         ) : (
-                          <TextInput
+                          <CampoTexto
                             {...comunes}
                             value={valor}
                             maxLength={LARGO_DE_CELDA}

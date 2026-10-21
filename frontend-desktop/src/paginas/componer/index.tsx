@@ -1,6 +1,6 @@
 import { Select, SelectItem } from "@carbon/react";
 import { CampoTexto } from "../../comun/CampoTexto";
-import { AreaTexto } from "./AreaTexto";
+import { AreaTexto } from "../../comun/AreaTexto";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ErrorDeApi } from "../../api/cliente";
 import { AvisoError } from "../../comun/AvisoError";

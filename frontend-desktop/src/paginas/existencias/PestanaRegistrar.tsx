@@ -1,16 +1,4 @@
-import {
-  Button,
-  InlineNotification,
-  Select,
-  SelectItem,
-  SkeletonText,
-  Tab,
-  TabList,
-  TabPanel,
-  TabPanels,
-  Tabs,
-  TextInput,
-} from "@carbon/react";
+import { Button, InlineNotification, Select, SelectItem, SkeletonText, Tab, TabList, TabPanel, TabPanels, Tabs } from "@carbon/react";
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { pedir } from "../../api/cliente";
@@ -20,6 +8,7 @@ import type { Reacciones } from "./fallos";
 import { fechaIsoDe, hoyISO, leerCantidad, mostrarCantidad, rotuloUnidad } from "./formato";
 import type { MaterialRespuesta, MovimientoRespuesta, TipoDeMovimiento } from "./tipos";
 import type { Recurso } from "./useRecurso";
+import { CampoTexto } from "../../comun/CampoTexto";
 
 interface Props {
   materiales: Recurso<MaterialRespuesta[]>;
@@ -139,7 +128,7 @@ function FormularioMovimiento({ tipo, materiales, alRegistrar, reacciones }: Pro
           <SelectItem key={m.codigo} value={m.codigo} text={`${m.codigo} · ${m.nombre}`} />
         ))}
       </Select>
-      <TextInput
+      <CampoTexto
         id={`mov-${tipo}-cantidad`}
         labelText={descripcion.rotuloCantidad(unidad)}
         inputMode="decimal"
@@ -149,7 +138,7 @@ function FormularioMovimiento({ tipo, materiales, alRegistrar, reacciones }: Pro
         invalid={errorCantidad !== null}
         invalidText={errorCantidad ?? ""}
       />
-      <TextInput
+      <CampoTexto
         id={`mov-${tipo}-fecha`}
         type="date"
         labelText="Fecha"
@@ -158,7 +147,7 @@ function FormularioMovimiento({ tipo, materiales, alRegistrar, reacciones }: Pro
         invalid={errorFecha !== null}
         invalidText={errorFecha ?? ""}
       />
-      <TextInput
+      <CampoTexto
         id={`mov-${tipo}-nota`}
         labelText="Nota (opcional)"
         autoComplete="off"
@@ -255,7 +244,7 @@ function FormularioMaterial({ alCrear, reacciones }: PropsMaterialNuevo) {
         La existencia mínima y la densidad son datos de la empresa: Sílice no pone ningún valor por defecto. La
         densidad solo hace falta para convertir pesos de la báscula a metros cúbicos.
       </p>
-      <TextInput
+      <CampoTexto
         id="material-codigo"
         labelText="Código"
         autoComplete="off"
@@ -264,7 +253,7 @@ function FormularioMaterial({ alCrear, reacciones }: PropsMaterialNuevo) {
         invalid={errores.codigo !== undefined}
         invalidText={errores.codigo ?? ""}
       />
-      <TextInput
+      <CampoTexto
         id="material-nombre"
         labelText="Nombre"
         autoComplete="off"
@@ -277,7 +266,7 @@ function FormularioMaterial({ alCrear, reacciones }: PropsMaterialNuevo) {
         <SelectItem value="m3" text="m³" />
         <SelectItem value="t" text="t" />
       </Select>
-      <TextInput
+      <CampoTexto
         id="material-minima"
         labelText="Existencia mínima"
         inputMode="decimal"
@@ -288,7 +277,7 @@ function FormularioMaterial({ alCrear, reacciones }: PropsMaterialNuevo) {
         invalid={errores.minima !== undefined}
         invalidText={errores.minima ?? ""}
       />
-      <TextInput
+      <CampoTexto
         id="material-densidad"
         labelText="Densidad (t/m³, opcional)"
         inputMode="decimal"

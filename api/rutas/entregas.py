@@ -36,6 +36,7 @@ from api.sin_eco import RutaSinEco, sin_eco
 from aplicacion import entrega as logica
 from aplicacion.equipo import operacion_sensible_permitida
 from core import models
+from core.budget import canonico
 from core.verification.texto import formatear_decimal
 from operacion.instalacion import sesion_de_instalacion
 from operacion.version import version as version_de_silice
@@ -73,6 +74,11 @@ class VersionEntregable(BaseModel):
 
 
 class ResumenRespuesta(BaseModel):
+    """`entregable` es `false` si la versión se selló antes de la corrección de cifras (VB-1): la
+    cadena sigue íntegra, pero entregarla se rechaza (409) y hay que confirmar una versión nueva.
+    El texto del aviso ya viaja al final de `mensaje_de_cadena`; la pantalla debe mostrarlo y
+    deshabilitar «Entregar» cuando `entregable` es `false`."""
+
     proyecto: str
     version: str
     moneda: str
@@ -82,6 +88,7 @@ class ResumenRespuesta(BaseModel):
     hallazgos_por_severidad: dict[str, int]
     cadena_integra: bool
     mensaje_de_cadena: str
+    entregable: bool
     empresa: str | None
     firma_disponible: bool
     viaja_con: list[str]
@@ -133,12 +140,13 @@ def resumen(sesion: SesionDep, response: Response, proyecto: str, version: str) 
         proyecto=proyecto,
         version=datos.codigo,
         moneda=elegida.moneda,
-        total=format(datos.total, "f"),
+        total=canonico.texto_decimal(datos.total) or "0",
         total_texto=formatear_decimal(datos.total.quantize(Decimal("0.01"))),
         hallazgos_total=sum(datos.hallazgos_por_severidad.values()),
         hallazgos_por_severidad=dict(sorted(datos.hallazgos_por_severidad.items())),
         cadena_integra=datos.cadena_integra,
         mensaje_de_cadena=datos.mensaje_de_cadena,
+        entregable=datos.entregable,
         empresa=datos.empresa,
         firma_disponible=datos.firma_disponible,
         viaja_con=["presupuesto", "informe", "cadena", *anexos],

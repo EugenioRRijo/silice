@@ -7,9 +7,9 @@ describe("semanticaIbcs", () => {
     expect(semanticaIbcs("-3.10", "costo")).toBe("favorable");
   });
 
-  test("exactitud: cualquier desviacion distinta de cero es desfavorable, sea cual sea el signo", () => {
+  test("exactitud (decision de Eugenio, V-16): el libro mayor que Silice es desfavorable y el libro menor, favorable", () => {
     expect(semanticaIbcs("12.50", "exactitud")).toBe("desfavorable");
-    expect(semanticaIbcs("-3.10", "exactitud")).toBe("desfavorable");
+    expect(semanticaIbcs("-3.10", "exactitud")).toBe("favorable");
   });
 
   test.each(["0", "0.00", "-0.00"])("exactitud: el cero %j sigue siendo sin variacion", (cero) => {

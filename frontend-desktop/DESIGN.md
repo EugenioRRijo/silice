@@ -22,7 +22,13 @@ ajustan aquí cuando la construcción los fije.
   oscuro (g100) queda diferido.
 - **Tipografía:** IBM Plex Sans para todo; IBM Plex Mono para referencias de celda (`PRESUPUESTO!F12`) y códigos de
   regla. Cifras con `font-variant-numeric: tabular-nums`, alineadas a la derecha. Escala productiva de Carbon
-  (`body-compact-01` 14 px, `label-01` 12 px, `heading-03` 20 px para el valor de un indicador). IBM Plex es la
+  (`body-compact-01` 14 px, `label-01` 12 px, `heading-03` 20 px para el valor de un indicador).
+  **Tamaño base por presbicia (Eugenio, 2026-10-21):** la raíz mide 116,6667 % de la letra del navegador, así que el cuerpo de
+  Carbon (14 px) sale a 16 px y la etiqueta más pequeña (12 px) a 14 px; todo va en rem. El control «Tamaño de letra» de la
+  cabecera (Normal 100 %, Grande 125 %, Muy grande 150 %, guardado en el navegador) multiplica ese tamaño por la variable
+  `--silice-escala-letra`. Con Grande y Muy grande el menú lateral pasa a ser capa (botón de la cabecera) por debajo de
+  1536 y 1920 px, y la cabecera cede el nombre de la persona a los selectores. El texto de los gráficos de Carbon Charts
+  también sigue la escala; el lienzo de la hoja de Excel (Univer) dibuja en píxeles y se acerca con el zoom del navegador. IBM Plex es la
   cara nativa de Carbon, que el brief fija: se aloja en el propio servidor, sin CDN.
 - **Forma:** esquinas rectas (radio 0, como Carbon); separación con divisores de 1 px `$border-subtle` y espacio,
   no con tarjetas con sombra. Sin gradientes, sin sombras decorativas, sin vidrio.
@@ -34,11 +40,13 @@ ajustan aquí cuando la construcción los fije.
 | Semántica | Dónde | Tokens |
 |---|---|---|
 | **Severidad** (halos de la hoja, etiquetas de la lista) | celdas y filas de hallazgos | CRITICO `red-60` #da1e28 · ERROR `orange-50` #eb6200 · ADVERTENCIA `yellow-30` #f1c21b · INFO `blue-60` #0f62fe · atípico (RF-100) `purple-60` #8a3ffc · verificado `green-50` #24a148 |
-| **Variación IBCS** | solo cifras Δ y Δ% de indicadores y gráficos | desfavorable `red-60` · favorable `green-50` · sin variación `gray-70` |
+| **Variación IBCS** | solo cifras Δ y Δ% de indicadores y gráficos | desfavorable `red-60` · favorable `green-50` en el ícono (3:1) y `green-60` en la cifra (4.5:1, AA) · sin variación `gray-70` |
 
 - Cada severidad lleva su ícono de Carbon (`ErrorFilled`, `WarningFilled`, `WarningAltFilled`,
   `InformationFilled`) y su nombre en texto accesible; el amarillo no alcanza 3:1 sobre blanco, así que su
   identificación la da el ícono con glifo oscuro, nunca el borde solo.
+- Libro contra Sílice (decisión de Eugenio, V-16): el libro menor que Sílice es favorable (verde, flecha abajo) y el mayor,
+  desfavorable (rojo, flecha arriba); la palabra «favorable» o «desfavorable» se ve siempre, el color no va solo.
 - Real = relleno sólido; plan/meta = contorno; pronóstico = achurado (IBCS). El acento de interacción es el azul
   de Carbon (`$interactive`) y solo en acciones, foco y selección.
 

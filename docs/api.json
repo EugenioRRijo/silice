@@ -13201,7 +13201,7 @@
           "sentido"
         ],
         "title": "IndicadorRespuesta",
-        "description": "Un total del libro (`actual`) frente al de Sílice (`meta`), RS2-7: `delta = actual - meta`.\nEs presentación (RS2-12, NORMAS §2.3): los tres montos y `delta_pct` van en centésimas al par;\nel exacto está en `totales_libro` y `totales_silice`. `delta_pct` es nulo si la meta es cero.\n`sentido = \"exactitud\"` (RS2-13): la meta es el valor correcto, así que cualquier desviación es\ndesfavorable (IBCS), en un sentido o en el otro."
+        "description": "Un total del libro (`actual`) frente al de Sílice (`meta`), RS2-7: `delta = actual - meta`.\nEs presentación (RS2-12, NORMAS §2.3): los tres montos y `delta_pct` van en centésimas al par;\nel exacto está en `totales_libro` y `totales_silice`. `delta_pct` es nulo si la meta es cero.\n`sentido = \"exactitud\"` (RS2-13) es el libro contra Sílice (la meta es el total de Sílice).\nDecisión de Eugenio, V-16 (2026-10-21), que supera a la lectura anterior de «toda desviación\nes desfavorable»: `delta = actual - meta`, y un `delta` negativo (libro menor que Sílice) es\nfavorable (verde) y uno positivo (libro mayor), desfavorable (rojo). Riesgo aceptado: un libro\nque omite costos sale en verde. El color lo pinta el front; la API solo manda el signo."
       },
       "InformeAuditoriaRespuesta": {
         "properties": {
@@ -16647,6 +16647,10 @@
             "type": "string",
             "title": "Mensaje De Cadena"
           },
+          "entregable": {
+            "type": "boolean",
+            "title": "Entregable"
+          },
           "empresa": {
             "anyOf": [
               {
@@ -16681,11 +16685,13 @@
           "hallazgos_por_severidad",
           "cadena_integra",
           "mensaje_de_cadena",
+          "entregable",
           "empresa",
           "firma_disponible",
           "viaja_con"
         ],
-        "title": "ResumenRespuesta"
+        "title": "ResumenRespuesta",
+        "description": "`entregable` es `false` si la versión se selló antes de la corrección de cifras (VB-1): la\ncadena sigue íntegra, pero entregarla se rechaza (409) y hay que confirmar una versión nueva.\nEl texto del aviso ya viaja al final de `mensaje_de_cadena`; la pantalla debe mostrarlo y\ndeshabilitar «Entregar» cuando `entregable` es `false`."
       },
       "RetirarCotizacion": {
         "properties": {

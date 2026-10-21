@@ -1,4 +1,4 @@
-import { Button, Checkbox, InlineNotification, Select, SelectItem, Tab, TabList, TabPanel, TabPanels, Tabs, TextInput } from "@carbon/react";
+import { Button, Checkbox, InlineNotification, Select, SelectItem, Tab, TabList, TabPanel, TabPanels, Tabs } from "@carbon/react";
 import { useEffect, useRef, useState } from "react";
 import { ErrorDeApi, pedir } from "../../api/cliente";
 import { AvisoError } from "../../comun/AvisoError";
@@ -15,6 +15,7 @@ import type { ColumnaEditable } from "./FilasEditables";
 import { armarCuerpo, filasDeResultado, formularioInicial, marcasPorPeriodo, partirResultado, rotuloDeOpcion } from "./logica";
 import type { ClausulaTextos, Fila, Formulario } from "./logica";
 import "./reajuste.scss";
+import { CampoTexto } from "../../comun/CampoTexto";
 
 interface ProyectoDelCaso {
   codigo: string;
@@ -232,10 +233,10 @@ function Formulario({
                 <fieldset className="silice-reajuste__grupo">
                   <legend className="cds--type-label-01">Plazo del contrato</legend>
                   <div className="silice-reajuste__rejilla">
-                    <TextInput id="rj-inicio" type="date" labelText="Inicio del contrato" value={form.clausula.fecha_inicio} onChange={(e) => campo("fecha_inicio", e.target.value)} />
-                    <TextInput id="rj-duracion" labelText="Duración (meses)" value={form.clausula.duracion_meses} onChange={(e) => campo("duracion_meses", e.target.value)} />
-                    <TextInput id="rj-primer" type="date" labelText="El primer año corre desde" helperText="Por defecto, el inicio del contrato (a cotejar)." value={form.clausula.fecha_referencia_primer_anio} onChange={(e) => campo("fecha_referencia_primer_anio", e.target.value)} />
-                    <TextInput id="rj-base" type="date" labelText="Mes base de los índices" value={form.clausula.fecha_base_indices} onChange={(e) => campo("fecha_base_indices", e.target.value)} />
+                    <CampoTexto id="rj-inicio" type="date" labelText="Inicio del contrato" value={form.clausula.fecha_inicio} onChange={(e) => campo("fecha_inicio", e.target.value)} />
+                    <CampoTexto id="rj-duracion" labelText="Duración (meses)" value={form.clausula.duracion_meses} onChange={(e) => campo("duracion_meses", e.target.value)} />
+                    <CampoTexto id="rj-primer" type="date" labelText="El primer año corre desde" helperText="Por defecto, el inicio del contrato (a cotejar)." value={form.clausula.fecha_referencia_primer_anio} onChange={(e) => campo("fecha_referencia_primer_anio", e.target.value)} />
+                    <CampoTexto id="rj-base" type="date" labelText="Mes base de los índices" value={form.clausula.fecha_base_indices} onChange={(e) => campo("fecha_base_indices", e.target.value)} />
                   </div>
                 </fieldset>
                 <fieldset className="silice-reajuste__grupo">
@@ -259,7 +260,7 @@ function Formulario({
                           <SelectItem key={m} value={m} text={rotuloDeOpcion(m)} />
                         ))}
                     </Select>
-                    <TextInput id="rj-fuente-pagadero" labelText="Fuente del mecanismo pagadero" value={form.clausula.fuente_pagadero} onChange={(e) => campo("fuente_pagadero", e.target.value)} />
+                    <CampoTexto id="rj-fuente-pagadero" labelText="Fuente del mecanismo pagadero" value={form.clausula.fuente_pagadero} onChange={(e) => campo("fuente_pagadero", e.target.value)} />
                     <Select id="rj-estructura" labelText="Estructura" value={form.clausula.estructura} onChange={(e) => campo("estructura", e.target.value)}>
                       {contexto.estructuras.map((x) => (
                         <SelectItem key={x} value={x} text={rotuloDeOpcion(x)} />
@@ -270,10 +271,10 @@ function Formulario({
                 <fieldset className="silice-reajuste__grupo">
                   <legend className="cds--type-label-01">Parte que no se reajusta y fuentes</legend>
                   <div className="silice-reajuste__rejilla">
-                    <TextInput id="rj-r" labelText="R (fracción no reajustable)" value={form.clausula.r} onChange={(e) => campo("r", e.target.value)} />
-                    <TextInput id="rj-fuente-r" labelText="Fuente de R" helperText="Si el contrato no la trae, escriba 0 y declárelo." value={form.clausula.fuente_r} onChange={(e) => campo("fuente_r", e.target.value)} />
-                    <TextInput id="rj-fuente" labelText="Fuente de la cláusula" helperText="Contrato, número, fecha." value={form.clausula.fuente} onChange={(e) => campo("fuente", e.target.value)} />
-                    <TextInput id="rj-responsable" labelText="Responsable" helperText="En blanco, su nombre de usuario." value={form.clausula.responsable} onChange={(e) => campo("responsable", e.target.value)} />
+                    <CampoTexto id="rj-r" labelText="R (fracción no reajustable)" value={form.clausula.r} onChange={(e) => campo("r", e.target.value)} />
+                    <CampoTexto id="rj-fuente-r" labelText="Fuente de R" helperText="Si el contrato no la trae, escriba 0 y declárelo." value={form.clausula.fuente_r} onChange={(e) => campo("fuente_r", e.target.value)} />
+                    <CampoTexto id="rj-fuente" labelText="Fuente de la cláusula" helperText="Contrato, número, fecha." value={form.clausula.fuente} onChange={(e) => campo("fuente", e.target.value)} />
+                    <CampoTexto id="rj-responsable" labelText="Responsable" helperText="En blanco, su nombre de usuario." value={form.clausula.responsable} onChange={(e) => campo("responsable", e.target.value)} />
                   </div>
                   <Checkbox
                     id="rj-r-comprobacion"
@@ -391,8 +392,8 @@ function Formulario({
 
           <h2 className="cds--type-heading-compact-02">Guardar el estudio</h2>
           <div className="silice-reajuste__rejilla">
-            <TextInput id="rj-estudio-fuente" labelText="Fuente del estudio" value={fuente} onChange={(e) => setFuente(e.target.value)} />
-            <TextInput id="rj-estudio-responsable" labelText="Responsable del estudio" helperText="En blanco, su nombre de usuario." value={responsable} onChange={(e) => setResponsable(e.target.value)} />
+            <CampoTexto id="rj-estudio-fuente" labelText="Fuente del estudio" value={fuente} onChange={(e) => setFuente(e.target.value)} />
+            <CampoTexto id="rj-estudio-responsable" labelText="Responsable del estudio" helperText="En blanco, su nombre de usuario." value={responsable} onChange={(e) => setResponsable(e.target.value)} />
             {calculo.estado === "cerrado" && calculo.parciales.length > 0 && (
               <Select id="rj-reemplaza" labelText="Reemplaza al estudio parcial" value={reemplaza} onChange={(e) => setReemplaza(e.target.value)}>
                 <SelectItem value="" text="ninguno" />

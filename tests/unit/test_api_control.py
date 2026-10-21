@@ -529,29 +529,39 @@ def test_calcular_las_opciones_devuelve_las_cuatro_con_su_fila_y_no_escribe() ->
     assert navegador.get("/v1/control/calculo", params=P).json()["decisiones"] == []
 
 
-def test_elegir_una_opcion_crea_la_version_y_deja_la_decision_con_el_responsable_de_la_sesion() -> (
-    None
-):
+@pytest.mark.parametrize("clave", ["cuadrillas", "horas_extra", "aceptar"])
+def test_elegir_una_opcion_crea_la_version_y_deja_la_decision_con_el_responsable_de_la_sesion(
+    clave: str,
+) -> None:
+    """Las tres opciones que aplican al corte de la memoria de OB-S2 (cuadrillas: dia 17, horas
+    extra: dia 21, aceptar el retraso: dia 23; solo `paralelo` no aplica, `test_recuperacion`).
+    Antes la prueba se omitia si ninguna aplicaba; el escenario lo garantiza y aqui se exige."""
     navegador, cabeceras = _arma()
-    aplican = [o for o in _opciones(navegador, cabeceras).json()["opciones"] if o["aplica"]]
-    if not aplican:
-        pytest.skip("ninguna opcion aplica al corte de la memoria")
-    elegida = aplican[0]
+    por_clave = {o["clave"]: o for o in _opciones(navegador, cabeceras).json()["opciones"]}
+    elegida = por_clave[clave]
+    assert elegida["aplica"] is True, elegida["motivo"]
+    assert elegida["requiere_declaracion"] is False  # las que aplican aqui no la piden
     cuerpo = {
         **P,
         "objetivo": "",
         "horas_previas": "0",
-        "opcion": elegida["clave"],
+        "opcion": clave,
         "fuente": "reunion de obra",
-        "declaracion_independencia": "las partidas no dependen entre si (plano 3)"
-        if elegida["requiere_declaracion"]
-        else "",
+        "declaracion_independencia": "",
     }
     respuesta = navegador.post("/v1/control/recuperacion/elegir", json=cuerpo, headers=cabeceras)
     assert respuesta.status_code == 200, respuesta.text
     codigo = respuesta.json()["version"]
     decisiones = navegador.get("/v1/control/calculo", params=P).json()["decisiones"]
     assert [(d["Version"], "<ana>" in d["Responsable"]) for d in decisiones] == [(codigo, True)]
+
+
+def test_en_el_corte_de_la_memoria_solo_paralelo_no_aplica() -> None:
+    """El escenario de la fixture garantiza que hay opciones que aplican (oraculo a mano, memoria
+    de OB-S2 §1 y `tests/integration/test_contexto_de_recuperacion.py`)."""
+    navegador, cabeceras = _arma()
+    aplica = {o["clave"]: o["aplica"] for o in _opciones(navegador, cabeceras).json()["opciones"]}
+    assert aplica == {"cuadrillas": True, "horas_extra": True, "aceptar": True, "paralelo": False}
 
 
 def test_elegir_exige_decidir_la_recuperacion_y_una_opcion_conocida() -> None:
