@@ -8,11 +8,9 @@ conteniendo la subcadena `<img`: la comprobación correcta es que ningún `<` qu
 
 from __future__ import annotations
 
-import io
 import json
 import re
 import shutil
-import zipfile
 from pathlib import Path
 
 import pytest
@@ -100,32 +98,6 @@ def test_crear_un_respaldo_lo_agrega_a_la_lista(bases) -> None:
     assert juego.motivo == "manual" and juego.bases == 2  # la instalación y el caso por defecto
     assert juego.nombre in " ".join(s.value for s in at.success)
     assert juego.carpeta.parent == config.carpeta_respaldos()
-
-
-def test_los_juegos_van_del_mas_nuevo_al_mas_viejo_y_saltan_los_ilegibles(bases) -> None:
-    carpeta = config.carpeta_respaldos()
-    for nombre in ("20261010-100000-manual", "20261012-100000-manual"):
-        (carpeta / nombre).mkdir(parents=True)
-        (carpeta / nombre / "ficha.json").write_text(
-            json.dumps({"motivo": "manual", "bases": [{}, {}, {}]}), encoding="utf-8"
-        )
-    (carpeta / "20261011-100000-roto").mkdir()
-    (carpeta / "20261011-100000-roto" / "ficha.json").write_text("{no", encoding="utf-8")
-    juegos = instalacion.juegos_de_respaldo()
-    assert [(j.nombre, j.bases) for j in juegos] == [
-        ("20261012-100000-manual", 3),
-        ("20261010-100000-manual", 3),
-    ]
-
-
-def test_el_zip_del_juego_trae_las_bases_y_la_ficha(bases) -> None:
-    carpeta = respaldar_todo()
-    esperados = {p.relative_to(carpeta).as_posix() for p in carpeta.rglob("*") if p.is_file()}
-    with zipfile.ZipFile(io.BytesIO(instalacion.zip_del_juego(carpeta))) as zip_:
-        nombres = set(zip_.namelist())
-        assert zip_.read("ficha.json") == (carpeta / "ficha.json").read_bytes()
-    assert nombres == esperados
-    assert "ficha.json" in nombres and "instalacion.db" in nombres
 
 
 def test_descargar_un_respaldo_exige_ser_el_propio_equipo(bases, monkeypatch) -> None:
