@@ -87,3 +87,10 @@
   flex-wrap: wrap;
   gap: 0.75rem;
 }
+
+// Las etiquetas ocultas de Carbon (`cds--visually-hidden`, position: absolute) de las celdas editables se colocaban respecto de
+// un ancestro fuera de la región desplazable y alargaban la PÁGINA (1700 px a 1366 px de ancho) sin verse. Con la región como
+// referencia quedan dentro y se desplazan con ella (3e-F5; medido en navegador).
+.silice-hoja__desplazable {
+  position: relative;
+}
