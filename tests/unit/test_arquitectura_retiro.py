@@ -19,6 +19,8 @@ EXCLUIDAS = {"ui", "tests", "frontend-desktop", "data", "node_modules", "__pycac
 #: Archivos que todavia importan `ui` (F7 los pasa a `aplicacion` y vacia esta lista).
 #: `asistente/` recibe y devuelve el `Borrador` de `ui.hoja` (otra clase que
 #: `aplicacion.hoja.Borrador`): moverlos de a uno rompe el contrato entre ellos.
+#: `scripts/prueba_real_asistente.py` pasa a `hoja.elaborar_borrador` el `Borrador` de `ui.hoja` que
+#: le entrega `asistente.experimento.banco.borrador_de_partida`: se mueve con `asistente/` (F7).
 PENDIENTES = {
     "asistente/experimento/banco.py",
     "asistente/experimento/ejecucion.py",
@@ -27,6 +29,7 @@ PENDIENTES = {
     "asistente/propuestas.py",
     "asistente/servicio.py",
     "asistente/validacion.py",
+    "scripts/prueba_real_asistente.py",
 }
 
 
