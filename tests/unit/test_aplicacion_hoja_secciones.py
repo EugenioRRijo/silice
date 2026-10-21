@@ -381,4 +381,13 @@ def test_las_filas_de_la_curva_de_of001_dan_monto_acumulado_y_porcentaje(_of001)
         "11.18",
         "0.41",
     )
+    # Dia 2 = AF-CODO-3/4 (2 u): monto = PU x cantidad = 4,935 x 2 = 9,87, distinto del acumulado
+    # (11,18 + 9,87 = 21,05, la cifra de la memoria que fija `test_aplicacion_hoja_vista`); 0,78 %.
+    assert (filas[1]["periodo"], filas[1]["monto"], filas[1]["acumulado"]) == (
+        "Dia 2",
+        "9.87",
+        "21.05",
+    )
+    assert filas[1]["porcentaje"] == "0.78"
+    assert D(filas[0]["monto"]) + D(filas[1]["monto"]) == D(filas[1]["acumulado"])
     assert (filas[-1]["acumulado"], filas[-1]["porcentaje"]) == ("2703.86", "100.00")
