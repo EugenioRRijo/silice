@@ -60,3 +60,18 @@
 4. **Aviso al tutor** pendiente (por escrito) del retiro del Visor 3D y de Streamlit; la ERS lo declara con «palabra de Eugenio, sin acta».
 5. **F11 pendiente:** `protocolo.json` y `congelado.json` (rutas definitivas del auditor); la guardia del congelado sigue roja hasta entonces y **no se debe fusionar antes de F11**. `docs/protocolo_asistente.md` ya cita `aplicacion/hoja.py`.
 6. Para verificar: `uv run start.py` abre `http://127.0.0.1:8501/app/` con un solo proceso; `python scripts/meta_datos.py`; las guardias de documentos de §5.
+
+## 7. Menores de F10 atendidos y pendientes
+
+**Atendidos** (un commit cada uno):
+- `frontend-desktop/src/shell/sinClasica.test.ts`: el barrido de `.scss` pasaba en vacío (con `css: false` el `?raw` de un `.scss` llega vacío); ahora los lee con `node:fs` y una afirmación comprueba que no están vacíos. Rojo visto con una copia que añade `.silice-menu__clasica {}` a `shell.scss`.
+- `frontend-desktop/src/paginas/hoja/estilosDialogos.test.ts`: normaliza CRLF al leer (fallaba 1 de 3 en Windows con `autocrlf`; ahora pasan 3 de 3).
+- `docs/plan_pruebas.md`: se restaura «`::función` a secas», se reformula que las no marcadas «(retirada)» existen y pasan, y cada continuación `::prueba (retirada)` nombra su archivo retirado (`test_ui_…`); la convención queda declarada en la enmienda inicial.
+- `docs/ERS.md`: la enmienda cita el plan de migración (no existen RF-147 a RF-155) y añade RF-97 (h), RF-98 (criterio) y RF-81 (criterio) como filas de «texto de criterio ajustado por el retiro», sin cambiar cifras.
+- `Shell.tsx` (comentario huérfano de Streamlit y sangría) y `rutas.ts` (cita la API en lugar de `ui_sesion.exigir`).
+
+**Pendientes:**
+- **Decisión de Eugenio y del tutor:** el texto de RF-98 «API apagada». Con un solo proceso ya no hay «API apagada»; la ERS lo marca PENDIENTE DE DECISIÓN y no fija el texto.
+- `manual_usuario`, `arquitectura` y el guion de pruebas: repasarlos con la interfaz final.
+- Unos 20 comentarios «la clásica» en `frontend-desktop/src/paginas` quedan como registro de paridad con la interfaz anterior (no son código vivo).
+- El árbol de `NORMAS.md` §6 omite `auditoria/`, `instalador/`, `migraciones/`, `paquete/`, `produccion/`, `seguridad/` y `start.py`, desde antes del retiro.
