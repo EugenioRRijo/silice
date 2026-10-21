@@ -10,6 +10,7 @@ describe("TamanoLetra (control de la cabecera)", () => {
   beforeEach(() => {
     localStorage.clear();
     document.documentElement.removeAttribute("style");
+    delete document.documentElement.dataset.siliceLetra;
   });
   afterEach(() => {
     vi.restoreAllMocks();
@@ -81,5 +82,40 @@ describe("TamanoLetra (control de la cabecera)", () => {
       expect(b).toHaveAttribute("title", nombre);
       expect(b.textContent).toContain("A");
     }
+  });
+
+  // MENOR-7: lo que manda es lo que esta aplicado en la raiz (main.tsx lo fija antes de pintar), no lo que diga el
+  // almacenamiento: con el almacenamiento bloqueado la eleccion vale para la pantalla pero no se guarda, y el control del
+  // shell (otra instancia, montada al entrar) debe arrancar marcando lo que se ve.
+  test("empieza marcando lo aplicado en la raíz aunque el almacenamiento esté bloqueado", () => {
+    vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+      throw new DOMException("bloqueado", "SecurityError");
+    });
+    document.documentElement.dataset.siliceLetra = "grande";
+    render(<TamanoLetra />);
+    expect(screen.getByRole("button", { name: "Grande" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "Normal" })).toHaveAttribute("aria-pressed", "false");
+  });
+
+  test("pantalla de entrada y shell: con el almacenamiento bloqueado, la segunda instancia hereda la elección de la primera", async () => {
+    vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+      throw new DOMException("bloqueado", "SecurityError");
+    });
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new DOMException("bloqueado", "SecurityError");
+    });
+    const usuario = userEvent.setup();
+    const entrada = render(<TamanoLetra />);
+    await usuario.click(screen.getByRole("button", { name: "Muy grande" }));
+    entrada.unmount();
+    render(<TamanoLetra />);
+    expect(screen.getByRole("button", { name: "Muy grande" })).toHaveAttribute("aria-pressed", "true");
+    expect(escala()).toBe("1.5");
+  });
+
+  test("sin nada aplicado ni guardado empieza en Normal", () => {
+    delete document.documentElement.dataset.siliceLetra;
+    render(<TamanoLetra />);
+    expect(screen.getByRole("button", { name: "Normal" })).toHaveAttribute("aria-pressed", "true");
   });
 });

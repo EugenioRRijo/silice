@@ -1,12 +1,12 @@
 import { useState } from "react";
-import { TAMANOS_DE_LETRA, aplicarTamanoLetra, guardarTamanoLetra, leerTamanoLetra } from "./preferenciaDeLetra";
+import { TAMANOS_DE_LETRA, aplicarTamanoLetra, guardarTamanoLetra, tamanoAplicado } from "./preferenciaDeLetra";
 import type { TamanoDeLetra } from "./preferenciaDeLetra";
 
 // «Tamaño de letra» en la cabecera: tres botones con una A cada vez más grande. Es un grupo de botones de dos estados
 // (aria-pressed), así que Tab los recorre y Enter o Espacio eligen. El elegido se distingue por una raya inferior y el
 // fondo, no solo por el color. Elegir aplica la variable de la raíz y lo recuerda; mostrar el control no escribe nada.
 export function TamanoLetra() {
-  const [tamano, setTamano] = useState<TamanoDeLetra>(leerTamanoLetra);
+  const [tamano, setTamano] = useState<TamanoDeLetra>(tamanoAplicado);
 
   function elegir(nuevo: TamanoDeLetra) {
     setTamano(nuevo);

@@ -33,6 +33,14 @@ export function leerTamanoLetra(): TamanoDeLetra {
   }
 }
 
+// El tamano que de verdad se ve: el que `aplicarTamanoLetra` dejo en la raiz (main.tsx lo fija antes de pintar y cada
+// eleccion lo actualiza). Sin el, el guardado. Asi, con el almacenamiento bloqueado, el control que se monta despues
+// (pantalla de entrada y luego shell) marca lo que se ve y no vuelve a «Normal».
+export function tamanoAplicado(): TamanoDeLetra {
+  const puesto = document.documentElement.dataset.siliceLetra;
+  return TAMANOS_DE_LETRA.find((t) => t.valor === puesto)?.valor ?? leerTamanoLetra();
+}
+
 export function guardarTamanoLetra(tamano: TamanoDeLetra): void {
   try {
     window.localStorage.setItem(CLAVE_TAMANO_LETRA, tamano);
