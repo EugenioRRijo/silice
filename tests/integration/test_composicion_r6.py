@@ -16,6 +16,7 @@ from __future__ import annotations
 
 from decimal import Decimal
 
+from aplicacion.composicion import buscar_referencia
 from core.catalog import Catalogo
 from core.contracts import (
     ComposicionAPU,
@@ -29,7 +30,6 @@ from core.contracts import (
 from core.costing import calcular_apu
 from core.verification.reglas import CriterioDepreciacion
 from tests.fixtures import apu_linea_base as linea_base
-from ui.composicion import buscar_referencia
 
 FECHA = linea_base.FECHA_LINEA_BASE
 

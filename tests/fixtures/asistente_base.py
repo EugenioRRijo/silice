@@ -13,6 +13,8 @@ from datetime import date
 from decimal import Decimal
 from pathlib import Path
 
+from aplicacion import hoja
+from aplicacion.hoja import Borrador
 from asistente.orquestador import Servicios
 from asistente.propuestas import EstadoPropuesta
 from asistente.proveedores.base import (
@@ -29,8 +31,6 @@ from asistente.servicio import decidir, proponer
 from core.catalog import crear_motor
 from tests.fixtures.asistente_pedidos import AMBIENTE, PEDIDO, catalogo
 from tests.fixtures.hoja_en_base import NOMBRE_OF001, plantilla_of001
-from ui import hoja
-from ui.hoja import Borrador
 
 FECHA = date(2026, 10, 5)
 PROYECTO = NOMBRE_OF001

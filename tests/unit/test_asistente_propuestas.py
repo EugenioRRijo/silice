@@ -5,6 +5,8 @@ from __future__ import annotations
 from decimal import Decimal
 
 from adapters.espacio import ModoRecorrido, TipoOrigen
+from aplicacion import hoja
+from aplicacion.hoja import Borrador
 from asistente.propuestas import (
     EstadoPropuesta,
     Pendientes,
@@ -15,8 +17,6 @@ from asistente.validacion import Propuesta, Rechazo, validar_llamada
 from core.contracts import Severidad
 from core.contracts.item_computo import OrigenTipo
 from tests.fixtures.asistente_pedidos import AMBIENTE, FECHA, ORIGEN, catalogo, contexto
-from ui import hoja
-from ui.hoja import Borrador
 
 TEXTO = "Bano de 2,4 x 1,5 m con alto de 2,5 m, con un lavamanos a 60 cm del piso. Cantidad 2."
 FUENTE = {

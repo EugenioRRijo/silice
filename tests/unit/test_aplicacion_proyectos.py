@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 from sqlalchemy import select
 
-from aplicacion import proyectos
+from aplicacion import hoja, proyectos
 from aplicacion.proyectos import ProyectoInvalido
 from core import models
 from core.catalog import Catalogo, abrir_sesion, crear_motor
@@ -19,7 +19,6 @@ from core.contracts import Severidad
 from scripts.seed import NOMBRE_PROYECTO
 from tests.fixtures import apu_linea_base as linea_base
 from tests.fixtures.base_con_pendiente import guardar_base_con_pendiente
-from ui import hoja
 
 
 @pytest.fixture

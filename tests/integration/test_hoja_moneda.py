@@ -4,11 +4,11 @@ from decimal import Decimal
 import pytest
 from sqlalchemy import select
 
+from aplicacion import hoja
 from core import models
 from core.catalog import Catalogo
 from core.catalog.indices import Observacion, definicion_tasa, registrar_importacion
 from tests.fixtures.versiones import elaborar_001, guardar_001
-from ui import hoja
 
 
 @pytest.fixture

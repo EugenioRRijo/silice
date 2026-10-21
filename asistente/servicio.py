@@ -2,8 +2,9 @@
 
 La pantalla guarda UNA `SesionDeAsistente` en `st.session_state`; aceptar, rechazar y el resultado
 hipotetico salen de aqui. Rechazar todo deja el borrador identico al de antes de la sesion (9h).
-Guardar sigue siendo `ui.hoja.guardar_version`: este modulo solo prepara la fuente que el sistema
-prellena («propuesta de IA, sesion N, proveedor/modelo»); el responsable es siempre una persona.
+Guardar sigue siendo `aplicacion.hoja.guardar_version`: este modulo solo prepara la fuente que el
+sistema prellena («propuesta de IA, sesion N, proveedor/modelo»); el responsable es siempre una
+persona.
 """
 
 from __future__ import annotations
@@ -14,6 +15,8 @@ from dataclasses import dataclass, replace
 from decimal import Decimal
 from typing import Any
 
+from aplicacion import hoja
+from aplicacion.hoja import Borrador, HojaInvalida
 from asistente.catalogo import CatalogoVista
 from asistente.orquestador import ResultadoSesion, Servicios, Topes, continuar, ejecutar
 from asistente.propuestas import (
@@ -26,8 +29,6 @@ from asistente.propuestas import (
 )
 from asistente.proveedores.base import ProveedorIA, Tarifa, Uso
 from asistente.registro import RegistroIA
-from ui import hoja
-from ui.hoja import Borrador, HojaInvalida
 
 #: Cota superior por tarea de §8.4: <= 12 turnos; ~10 000 fichas de entrada sin cache, ~6 000 de
 #: cache y ~3 000 de salida por turno. El panel la muestra ANTES de enviar.

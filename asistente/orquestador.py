@@ -21,6 +21,7 @@ from decimal import Decimal
 from enum import StrEnum
 from typing import Any
 
+from aplicacion.hoja import Borrador, HojaInvalida
 from asistente.catalogo import CatalogoVista
 from asistente.herramientas import (
     HERRAMIENTAS,
@@ -56,7 +57,6 @@ from asistente.proveedores.base import (
 from asistente.registro import RegistroIA
 from asistente.validacion import Contexto, Rechazo, validar_llamada
 from core.verification.informe import InformeAuditoria
-from ui.hoja import Borrador, HojaInvalida
 
 
 class MotivoFin(StrEnum):

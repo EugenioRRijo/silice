@@ -20,7 +20,7 @@ import openpyxl
 import pytest
 from sqlalchemy.orm import Session
 
-from aplicacion.composicion import Guardado, guardar_composicion
+from aplicacion.composicion import Guardado, desglose, guardar_composicion
 from aplicacion.elaboracion import (
     elaborar_desde_catalogo,
     items_desde_filas,
@@ -37,7 +37,6 @@ from tests.fixtures.apu_linea_base import (
     TOTAL_EXACTO_LINEA_BASE,
 )
 from tests.fixtures.computo_auditado import items_auditados
-from ui.composicion import desglose
 
 
 def _sembrar(base: Path) -> Path:

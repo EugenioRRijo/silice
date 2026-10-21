@@ -19,8 +19,8 @@ from pathlib import Path
 
 import pytest
 
+from aplicacion import hoja
 from migraciones.metadatos import METADATAS_CASO, METADATAS_INSTALACION
-from ui import hoja
 
 RAIZ = Path(__file__).resolve().parents[2]
 

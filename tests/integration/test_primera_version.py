@@ -19,6 +19,7 @@ from openpyxl import load_workbook
 from sqlalchemy import func, select, text
 
 from adapters.espacio import cargar_espacio
+from aplicacion import hoja
 from core import models
 from core.budget import crear_proyecto
 from core.budget.instantanea import composiciones_de_version
@@ -27,7 +28,6 @@ from core.contracts import ParametrosCosto
 from tests.fixtures import caso_of001, caso_ti001
 from tests.fixtures.espacio_of001 import espacio_of001
 from tests.fixtures.hoja_en_base import NOMBRE_OF001, plantilla_of001
-from ui import hoja
 
 D = Decimal
 NUEVO = "Proyecto nuevo: bano de la oficina"

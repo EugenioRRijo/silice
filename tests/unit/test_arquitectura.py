@@ -628,24 +628,6 @@ def test_importar_la_capa_de_aplicacion_no_carga_interfaz_api_guiones_ni_pruebas
     assert salida.stdout.strip() == "[]", salida.stdout
 
 
-def test_ui_composicion_reexporta_la_capa_de_aplicacion():
-    """RM-1 (ola 3, S2-B): `ui/composicion.py` quedo como reexportacion explicita de
-    `aplicacion/composicion.py`: los mismos objetos y ninguna definicion propia."""
-    import aplicacion.composicion as original
-    import ui.composicion as reexportado
-
-    assert reexportado.__all__ and set(reexportado.__all__) <= set(vars(original))
-    for nombre in reexportado.__all__:
-        assert getattr(reexportado, nombre) is getattr(original, nombre), nombre
-    arbol = ast.parse((RAIZ / "ui" / "composicion.py").read_text(encoding="utf-8"))
-    definiciones = [
-        nodo.name
-        for nodo in arbol.body
-        if isinstance(nodo, ast.FunctionDef | ast.ClassDef | ast.AsyncFunctionDef)
-    ]
-    assert definiciones == []
-
-
 def test_la_elaboracion_toma_el_guardado_de_la_composicion():
     """RB-3 (ola 3, S2-B): `guardar_composicion` y `Guardado` viven en `aplicacion/composicion.py`
     (la ruta de guardado de la API no puede importar `ui/`); `aplicacion/elaboracion.py` no los

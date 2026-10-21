@@ -19,10 +19,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from core.contracts import Hallazgo, Severidad
-from ml.normalization import Propuesta
-from tests.fixtures.sin_extra import SinExtra
-from ui.composicion import (
+from aplicacion.composicion import (
     ContrasteAace,
     advertencia_precio_atipico,
     composicion_desde_tablas,
@@ -30,6 +27,9 @@ from ui.composicion import (
     sugerir_partidas_similares,
     veredicto_ml_rendimiento,
 )
+from core.contracts import Hallazgo, Severidad
+from ml.normalization import Propuesta
+from tests.fixtures.sin_extra import SinExtra
 
 
 def _que_falla(*_args, **_kwargs):
@@ -388,7 +388,6 @@ _MODULOS_RELACIONADOS_CON_ML = (
     "ml.prediction",
     "ml.prediction.reglas",
     "aplicacion.composicion",
-    "ui.composicion",
 )
 
 
@@ -400,7 +399,7 @@ def test_la_composicion_se_importa_sin_el_extra_ml(monkeypatch):
     import importlib
 
     with SinExtra(monkeypatch, ("ml",), _MODULOS_RELACIONADOS_CON_ML):
-        modulo_composicion = importlib.import_module("ui.composicion")
+        modulo_composicion = importlib.import_module("aplicacion.composicion")
 
     # INV-024: `is not None` no afirma nada; se exige el punto de entrada de cada modulo.
     assert callable(modulo_composicion.sugerir_partidas_similares)

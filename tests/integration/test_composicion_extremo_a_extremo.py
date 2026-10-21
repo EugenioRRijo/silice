@@ -39,6 +39,7 @@ from decimal import Decimal
 import pytest
 from openpyxl import load_workbook
 
+from aplicacion.composicion import composicion_desde_tablas
 from core.budget import con_curva, elaborar, exportar_excel, generar_presupuesto, plan_secuencial
 from core.budget.excel import HOJA_APU, HOJA_AUDITORIA, HOJA_CURVA, HOJA_PRESUPUESTO
 from core.contracts import ComposicionAPU, ModalidadManoObra, Presupuesto
@@ -58,7 +59,6 @@ from tests.fixtures.presupuesto_auditado import (
     items_con_trazas,
     presupuesto_con_siete_inconsistencias,
 )
-from ui.composicion import composicion_desde_tablas
 
 #: Tolerancia del total contra `TOTAL_PRESUPUESTO_AUDITADO`: un presupuesto se lee en centavos y
 #: los `Decimal` del modelo no se redondean hasta presentarlos (NORMAS.md §2.3 y §4). No se

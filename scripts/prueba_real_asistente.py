@@ -101,7 +101,7 @@ def auditar(borrador):
     from dataclasses import replace
 
     from adapters.espacio.conexion import con_conexion
-    from ui import hoja
+    from aplicacion import hoja
 
     ligado = replace(borrador, reglas_extra=con_conexion(borrador.reglas_extra, borrador.espacio))
     return hoja.elaborar_borrador(ligado).elaboracion.informe

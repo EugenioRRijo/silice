@@ -8,10 +8,10 @@ import openpyxl
 import pytest
 
 from aplicacion import reajuste
+from aplicacion.hoja import HojaInvalida
 from core.catalog import abrir_sesion, crear_esquema, crear_motor
 from tests.fixtures.reajuste_pantalla import CAMPOS, COMPONENTES, EJECUTADO, PERIODOS
 from tests.fixtures.reajuste_s1 import NOMBRE, sembrar
-from ui.hoja import HojaInvalida
 
 
 def test_lado_a_lado_guardado_y_excel_con_sus_totales(tmp_path):
