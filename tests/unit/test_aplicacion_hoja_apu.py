@@ -1,12 +1,10 @@
-"""3b-B3C (T10, 3c-3): `composicion_con_cantidades` y `cambiar_insumo` (con `insumos_candidatos`)
-contra `ui.hoja` VIVO.
+"""3b-B3C (T10, 3c-3): `composicion_con_cantidades` y `cambiar_insumo` (con `insumos_candidatos`).
 
-`aplicacion/hoja.py` es una copia de `ui/hoja.py` (Plan C: la clasica esta en el congelado del
-experimento y no se toca). Esta prueba (que SI puede importar `ui`) corre en las dos las funciones
-que validan las rutas E6 y E7 y compara lo que producen (el APU resultante y los textos de error,
-igualdad exacta de cadena), con OF-001 y TI-001, y fija los valores contra literales a mano.
+Corre las funciones que validan las rutas E6 y E7 con OF-001 y TI-001 y fija lo que producen (el
+APU resultante y los textos de error, igualdad exacta de cadena) contra literales a mano. Ya no
+compara contra `ui.hoja` (retiro de Streamlit, F6).
 
-Oraculos a mano (ninguno sale de la copia). AF-LLAVE de OF-001 (memoria `of001.md` y
+Oraculos a mano (ninguno sale del codigo). AF-LLAVE de OF-001 (memoria `of001.md` y
 `tests/fixtures/caso_of001.py`: llave 4 907,50 Bs, herramientas 9 060,00 Bs, plomero 1 385,63 Bs,
 ayudante 1 128,42 Bs, bono 3 679,85 Bs, todo a 633,3644 Bs/USD y 4 decimales; FCAS 6,00;
 administracion 0,15; utilidad 0,10; rendimiento 20):
@@ -21,8 +19,7 @@ administracion 0,15; utilidad 0,10; rendimiento 20):
   37,254885 (PU 47,1274295250); el tecnico de redes (10,0000) en lugar del plomero: CD = 10,433785 +
   (10 - 2,1877) x 7 / 20 = 13,168090 (PU 16,657633850)
 
-Si la copia y la clasica divergen, la unica que se corrige es la copia: `ui/hoja.py` esta
-congelado. Un cambio legitimo del comportamiento exige cambiar esta prueba con el aval de Eugenio.
+Un cambio legitimo del comportamiento exige cambiar esta prueba con el aval de Eugenio.
 """
 
 from __future__ import annotations
@@ -33,7 +30,7 @@ from pathlib import Path
 
 import pytest
 
-from aplicacion import hoja as copia
+from aplicacion import hoja
 from aplicacion.errores import HojaInvalida
 from core.catalog import Catalogo, abrir_sesion, crear_motor
 from core.costing.motor import calcular_apu
@@ -44,10 +41,8 @@ from tests.fixtures.hoja_en_base import (
     plantilla_of001,
     plantilla_ti001,
 )
-from ui import hoja as clasica
 
 D = Decimal
-MODULOS = [pytest.param(clasica, id="clasica"), pytest.param(copia, id="copia")]
 FACTOR = D("1.15") * D("1.10")  # administracion y utilidad en cascada
 TOLERANCIA = D("0.0000001")
 
@@ -58,13 +53,13 @@ def _plantillas(tmp_path_factory) -> tuple[Path, Path]:
     return plantilla_of001(carpeta / "of001.db"), plantilla_ti001(carpeta / "ti001.db")
 
 
-def _abrir(plantilla: Path, destino: Path, modulo, nombre: str, codigo: str):
-    copiada = destino / f"{modulo.__name__}.db"
+def _abrir(plantilla: Path, destino: Path, nombre: str, codigo: str):
+    copiada = destino / f"{nombre[:6]}.db"
     shutil.copyfile(plantilla, copiada)
     motor = crear_motor(f"sqlite:///{copiada.as_posix()}")
     try:
         with abrir_sesion(motor) as sesion:
-            return modulo.abrir_version(
+            return hoja.abrir_version(
                 sesion, Catalogo(sesion), nombre, codigo, fecha_evaluacion=caso_of001.FECHA
             ).borrador
     finally:
@@ -72,18 +67,15 @@ def _abrir(plantilla: Path, destino: Path, modulo, nombre: str, codigo: str):
 
 
 @pytest.fixture(scope="module")
-def _of001(_plantillas, tmp_path_factory) -> dict:
+def _of001(_plantillas, tmp_path_factory):
     destino = tmp_path_factory.mktemp("of001_apu")
-    return {m: _abrir(_plantillas[0], destino, m, NOMBRE_OF001, "001") for m in (clasica, copia)}
+    return _abrir(_plantillas[0], destino, NOMBRE_OF001, "001")
 
 
 @pytest.fixture(scope="module")
-def _ti001(_plantillas, tmp_path_factory) -> dict:
+def _ti001(_plantillas, tmp_path_factory):
     destino = tmp_path_factory.mktemp("ti001_apu")
-    return {
-        m: _abrir(_plantillas[1], destino, m, NOMBRE_TI001, caso_ti001.CODIGO)
-        for m in (clasica, copia)
-    }
+    return _abrir(_plantillas[1], destino, NOMBRE_TI001, caso_ti001.CODIGO)
 
 
 def _tablas(*cantidades: tuple[str, ...]) -> tuple[list[dict[str, str]], ...]:
@@ -101,28 +93,23 @@ def _pu(composicion) -> Decimal:
 # --- composicion_con_cantidades ---------------------------------------------------------------
 
 
-@pytest.mark.parametrize("modulo", MODULOS)
-def test_la_llave_de_oficina_cuesta_10_433785_y_su_precio_unitario_13_198738025(
-    modulo, _of001
-) -> None:
-    base = _of001[modulo].composiciones["AF-LLAVE"]
+def test_la_llave_de_oficina_cuesta_10_433785_y_su_precio_unitario_13_198738025(_of001) -> None:
+    base = _of001.composiciones["AF-LLAVE"]
     assert abs(_cd(base) - D("10.433785")) <= TOLERANCIA
     assert abs(_pu(base) - D("13.198738025")) <= TOLERANCIA
     assert abs(2 * _pu(base) - D("26.39747605")) <= TOLERANCIA  # el delta de 3 a 5 unidades
 
 
-@pytest.mark.parametrize("modulo", MODULOS)
-def test_las_tablas_sin_tocar_devuelven_el_mismo_apu(modulo, _of001) -> None:
-    base = _of001[modulo].composiciones["AF-LLAVE"]
+def test_las_tablas_sin_tocar_devuelven_el_mismo_apu(_of001) -> None:
+    base = _of001.composiciones["AF-LLAVE"]
     materiales, equipos, mano = _tablas(("1",), ("1",), ("1", "1"))
-    assert modulo.composicion_con_cantidades(base, materiales, equipos, mano, "20") == base
+    assert hoja.composicion_con_cantidades(base, materiales, equipos, mano, "20") == base
 
 
-@pytest.mark.parametrize("modulo", MODULOS)
-def test_dos_llaves_por_unidad_dan_cd_18_182085(modulo, _of001) -> None:
-    base = _of001[modulo].composiciones["AF-LLAVE"]
+def test_dos_llaves_por_unidad_dan_cd_18_182085(_of001) -> None:
+    base = _of001.composiciones["AF-LLAVE"]
     materiales, equipos, mano = _tablas(("2",), ("1",), ("1", "1"))
-    nueva = modulo.composicion_con_cantidades(base, materiales, equipos, mano, "20")
+    nueva = hoja.composicion_con_cantidades(base, materiales, equipos, mano, "20")
     assert nueva.materiales[0].cantidad == D(2) and nueva.rendimiento == D(20)
     assert nueva.materiales[0].precio == base.materiales[0].precio  # solo cambia la cantidad
     assert nueva.materiales[0].descripcion == base.materiales[0].descripcion
@@ -130,11 +117,10 @@ def test_dos_llaves_por_unidad_dan_cd_18_182085(modulo, _of001) -> None:
     assert abs(_pu(nueva) - D("23.000337525")) <= TOLERANCIA
 
 
-@pytest.mark.parametrize("modulo", MODULOS)
-def test_rendimiento_10_da_cd_13_11927(modulo, _of001) -> None:
-    base = _of001[modulo].composiciones["AF-LLAVE"]
+def test_rendimiento_10_da_cd_13_11927(_of001) -> None:
+    base = _of001.composiciones["AF-LLAVE"]
     materiales, equipos, mano = _tablas(("1",), ("1",), ("1", "1"))
-    nueva = modulo.composicion_con_cantidades(base, materiales, equipos, mano, "10")
+    nueva = hoja.composicion_con_cantidades(base, materiales, equipos, mano, "10")
     assert nueva.rendimiento == D(10)
     assert abs(_cd(nueva) - D("13.11927")) <= TOLERANCIA
     assert abs(_pu(nueva) - D("16.59587655")) <= TOLERANCIA
@@ -182,111 +168,97 @@ def test_rendimiento_10_da_cd_13_11927(modulo, _of001) -> None:
         ),
     ],
 )
-@pytest.mark.parametrize("modulo", MODULOS)
-def test_los_errores_dicen_la_tabla_la_fila_y_el_campo_con_el_texto_de_la_clasica(
-    modulo, _of001, tablas, rendimiento, mensaje
+def test_los_errores_dicen_la_tabla_la_fila_y_el_campo(
+    _of001, tablas, rendimiento, mensaje
 ) -> None:
-    base = _of001[modulo].composiciones["AF-LLAVE"]
+    base = _of001.composiciones["AF-LLAVE"]
     with pytest.raises(HojaInvalida) as error:
-        modulo.composicion_con_cantidades(base, *_tablas(*tablas), rendimiento)
+        hoja.composicion_con_cantidades(base, *_tablas(*tablas), rendimiento)
     assert str(error.value) == mensaje
 
 
 @pytest.mark.parametrize("rendimiento", ["0", "-5"])
-def test_un_rendimiento_que_el_modelo_rechaza_da_el_mismo_texto_en_las_dos(
+def test_un_rendimiento_que_el_modelo_rechaza_dice_que_debe_ser_mayor_que_cero(
     rendimiento, _of001
 ) -> None:
-    mensajes = []
-    for modulo in (clasica, copia):
-        base = _of001[modulo].composiciones["AF-LLAVE"]
-        with pytest.raises(HojaInvalida) as error:
-            modulo.composicion_con_cantidades(
-                base, *_tablas(("1",), ("1",), ("1", "1")), rendimiento
-            )
-        mensajes.append(str(error.value))
-    assert mensajes[0] == mensajes[1] and mensajes[0]
+    base = _of001.composiciones["AF-LLAVE"]
+    with pytest.raises(HojaInvalida) as error:
+        hoja.composicion_con_cantidades(base, *_tablas(("1",), ("1",), ("1", "1")), rendimiento)
+    assert str(error.value) == f"rendimiento debe ser mayor que cero: {rendimiento}"
 
 
-@pytest.mark.parametrize("modulo", MODULOS)
-def test_en_ti001_cada_partida_acepta_sus_propias_lineas(modulo, _ti001) -> None:
+def test_en_ti001_cada_partida_acepta_sus_propias_lineas(_ti001) -> None:
     """TI-001: reenviar las cantidades de cada APU tal cual no lo cambia."""
-    for codigo, base in _ti001[modulo].composiciones.items():
+    assert len(_ti001.composiciones) == 10  # las 10 partidas de TI-001
+    for codigo, base in _ti001.composiciones.items():
         materiales = [{"cantidad": str(linea.cantidad)} for linea in base.materiales]
         equipos = [{"cantidad": str(linea.cantidad)} for linea in base.equipos]
         mano = [{"cantidad": str(linea.cantidad)} for linea in base.mano_obra]
         assert (
-            modulo.composicion_con_cantidades(
-                base, materiales, equipos, mano, str(base.rendimiento)
-            )
+            hoja.composicion_con_cantidades(base, materiales, equipos, mano, str(base.rendimiento))
             == base
         ), codigo
 
 
-def test_las_dos_dan_el_mismo_apu_en_todas_las_partidas_de_ti001_y_de_oficina(
+def test_cada_partida_de_oficina_y_de_ti001_toma_las_cantidades_y_el_rendimiento_enviados(
     _of001, _ti001
 ) -> None:
+    """Contrato (diseno §5.6): solo cambian cantidades y rendimiento; precios y textos no."""
     for casos in (_of001, _ti001):
-        for codigo in casos[clasica].composiciones:
-            resultados = []
-            for modulo in (clasica, copia):
-                base = casos[modulo].composiciones[codigo]
-                materiales = [{"cantidad": "3"} for _ in base.materiales]
-                equipos = [{"cantidad": "2"} for _ in base.equipos]
-                mano = [{"cantidad": "1.5"} for _ in base.mano_obra]
-                resultados.append(
-                    modulo.composicion_con_cantidades(base, materiales, equipos, mano, "7")
-                )
-            assert resultados[0] == resultados[1], codigo
+        for codigo, base in casos.composiciones.items():
+            materiales = [{"cantidad": "3"} for _ in base.materiales]
+            equipos = [{"cantidad": "2"} for _ in base.equipos]
+            mano = [{"cantidad": "1.5"} for _ in base.mano_obra]
+            nueva = hoja.composicion_con_cantidades(base, materiales, equipos, mano, "7")
+            assert nueva.rendimiento == D(7), codigo
+            assert [x.cantidad for x in nueva.materiales] == [D(3)] * len(base.materiales), codigo
+            assert [x.cantidad for x in nueva.equipos] == [D(2)] * len(base.equipos), codigo
+            assert [x.cantidad for x in nueva.mano_obra] == [D("1.5")] * len(base.mano_obra), codigo
+            assert [x.precio for x in nueva.materiales] == [x.precio for x in base.materiales]
+            assert [x.precio for x in nueva.equipos] == [x.precio for x in base.equipos]
+            assert [x.sueldo for x in nueva.mano_obra] == [x.sueldo for x in base.mano_obra]
+            assert [x.descripcion for x in nueva.materiales] == [
+                x.descripcion for x in base.materiales
+            ]
 
 
 # --- insumos_candidatos y cambiar_insumo ------------------------------------------------------
 
 
-def _candidatos(plantilla: Path, modulo, tipo: str, texto: str = "", limite: int = 20):
+def _candidatos(plantilla: Path, tipo: str, texto: str = "", limite: int = 20):
     motor = crear_motor(f"sqlite:///{plantilla.as_posix()}")
     try:
         with abrir_sesion(motor) as sesion:
-            return modulo.insumos_candidatos(
-                sesion, NOMBRE_OF001, "001", tipo, texto, limite=limite
-            )
+            return hoja.insumos_candidatos(sesion, NOMBRE_OF001, "001", tipo, texto, limite=limite)
     finally:
         motor.dispose()
 
 
 @pytest.mark.parametrize(("tipo", "total"), [("material", 38), ("equipo", 6), ("mano_obra", 5)])
-def test_los_candidatos_son_los_mismos_y_el_ultimo_tipo_trae_los_conteos_de_la_lista(
-    tipo, total, _plantillas
-) -> None:
-    de_clasica = _candidatos(_plantillas[0], clasica, tipo, limite=400)
-    de_copia = _candidatos(_plantillas[0], copia, tipo, limite=400)
-    assert [(f.codigo, f.descripcion, f.unidad, f.precio) for f in de_clasica] == [
-        (f.codigo, f.descripcion, f.unidad, f.precio) for f in de_copia
-    ]
-    assert len(de_copia) == total  # la lista de OF-001 trae 38 materiales, 6 equipos y 5 oficios
+def test_los_candidatos_traen_los_conteos_de_la_lista_de_precios(tipo, total, _plantillas) -> None:
+    candidatos = _candidatos(_plantillas[0], tipo, limite=400)
+    assert len(candidatos) == total  # la lista de OF-001 trae 38 materiales, 6 equipos y 5 oficios
+    assert len({f.codigo for f in candidatos}) == total  # sin repetidos
 
 
 def test_el_buscador_acota_por_descripcion_y_el_limite_corta(_plantillas) -> None:
-    for modulo in (clasica, copia):
-        pegamento = _candidatos(_plantillas[0], modulo, "material", "pegamento")
-        assert [(f.codigo, f.unidad, f.precio) for f in pegamento] == [
-            ("MAT-002", "env", D("34.5694"))
-        ]
-        assert len(_candidatos(_plantillas[0], modulo, "material", "", limite=10)) == 10
-        assert _candidatos(_plantillas[0], modulo, "material", "no existe jamas") == []
+    pegamento = _candidatos(_plantillas[0], "material", "pegamento")
+    assert [(f.codigo, f.unidad, f.precio) for f in pegamento] == [("MAT-002", "env", D("34.5694"))]
+    assert len(_candidatos(_plantillas[0], "material", "", limite=10)) == 10
+    assert _candidatos(_plantillas[0], "material", "no existe jamas") == []
 
 
-def _fila(modulo, plantilla: Path, tipo: str, texto: str):
-    (fila,) = _candidatos(plantilla, modulo, tipo, texto)
+def _fila(plantilla: Path, tipo: str, texto: str):
+    (fila,) = _candidatos(plantilla, tipo, texto)
     return fila
 
 
-@pytest.mark.parametrize("modulo", MODULOS)
 def test_cambiar_el_material_por_el_pegamento_da_cd_37_254885_y_conserva_la_cantidad(
-    modulo, _of001, _plantillas
+    _of001, _plantillas
 ) -> None:
-    base = _of001[modulo].composiciones["AF-LLAVE"]
-    pegamento = _fila(modulo, _plantillas[0], "material", "pegamento")
-    nueva = modulo.cambiar_insumo(base, "material", 0, pegamento)
+    base = _of001.composiciones["AF-LLAVE"]
+    pegamento = _fila(_plantillas[0], "material", "pegamento")
+    nueva = hoja.cambiar_insumo(base, "material", 0, pegamento)
     linea = nueva.materiales[0]
     assert (linea.descripcion, linea.unidad, linea.precio, linea.cantidad) == (
         "Pegamento para PVC 1/4 gl [MT539]",
@@ -299,24 +271,22 @@ def test_cambiar_el_material_por_el_pegamento_da_cd_37_254885_y_conserva_la_cant
     assert nueva.equipos == base.equipos and nueva.mano_obra == base.mano_obra
 
 
-@pytest.mark.parametrize("modulo", MODULOS)
 def test_cambiar_el_plomero_por_el_tecnico_cambia_el_sueldo_y_no_la_cantidad(
-    modulo, _of001, _plantillas
+    _of001, _plantillas
 ) -> None:
-    base = _of001[modulo].composiciones["AF-LLAVE"]
-    tecnico = _fila(modulo, _plantillas[0], "mano_obra", "Tecnico")
-    nueva = modulo.cambiar_insumo(base, "mano_obra", 0, tecnico)
+    base = _of001.composiciones["AF-LLAVE"]
+    tecnico = _fila(_plantillas[0], "mano_obra", "Tecnico")
+    nueva = hoja.cambiar_insumo(base, "mano_obra", 0, tecnico)
     assert nueva.mano_obra[0].sueldo == D("10.0000") and nueva.mano_obra[0].cantidad == D(1)
     assert nueva.mano_obra[1] == base.mano_obra[1]
     assert abs(_cd(nueva) - D("13.16809")) <= TOLERANCIA
     assert abs(_pu(nueva) - D("16.65763385")) <= TOLERANCIA
 
 
-@pytest.mark.parametrize("modulo", MODULOS)
-def test_cambiar_el_equipo_conserva_la_depreciacion(modulo, _of001, _plantillas) -> None:
-    base = _of001[modulo].composiciones["AF-LLAVE"]
-    escalera = _fila(modulo, _plantillas[0], "equipo", "Escalera")
-    nueva = modulo.cambiar_insumo(base, "equipo", 0, escalera)
+def test_cambiar_el_equipo_conserva_la_depreciacion(_of001, _plantillas) -> None:
+    base = _of001.composiciones["AF-LLAVE"]
+    escalera = _fila(_plantillas[0], "equipo", "Escalera")
+    nueva = hoja.cambiar_insumo(base, "equipo", 0, escalera)
     assert nueva.equipos[0].precio == D("247.9457")
     assert nueva.equipos[0].depreciacion == base.equipos[0].depreciacion
     assert nueva.equipos[0].cantidad == base.equipos[0].cantidad
@@ -335,12 +305,11 @@ def test_cambiar_el_equipo_conserva_la_depreciacion(modulo, _of001, _plantillas)
         ("material", -1, "la linea 0 no existe: el grupo material tiene 1 lineas"),
     ],
 )
-@pytest.mark.parametrize("modulo", MODULOS)
-def test_los_errores_de_cambiar_insumo_son_los_de_la_clasica(
-    modulo, _of001, _plantillas, tipo, indice, mensaje
+def test_los_errores_de_cambiar_insumo_dicen_el_tipo_y_la_linea(
+    _of001, _plantillas, tipo, indice, mensaje
 ) -> None:
-    base = _of001[modulo].composiciones["AF-LLAVE"]
-    pegamento = _fila(modulo, _plantillas[0], "material", "pegamento")
+    base = _of001.composiciones["AF-LLAVE"]
+    pegamento = _fila(_plantillas[0], "material", "pegamento")
     with pytest.raises(HojaInvalida) as error:
-        modulo.cambiar_insumo(base, tipo, indice, pegamento)
+        hoja.cambiar_insumo(base, tipo, indice, pegamento)
     assert str(error.value) == mensaje
