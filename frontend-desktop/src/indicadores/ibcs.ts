@@ -11,9 +11,10 @@ const CERO = /^[-+]?0*(\.0*)?$/;
 export function semanticaIbcs(delta: string, sentido: SentidoIndicador): SemanticaIbcs {
   const texto = delta.trim();
   if (CERO.test(texto)) return "neutro";
-  if (sentido === "exactitud") return "desfavorable"; // el signo solo mueve la flecha
   const sube = haySubida(texto);
-  if (sentido === "costo") return sube ? "desfavorable" : "favorable";
+  // «exactitud» (el libro contra Silice): decision de Eugenio (V-16), el libro menor es favorable (verde) y el mayor,
+  // desfavorable (rojo); como en un costo, el signo decide el color y la flecha dice el sentido.
+  if (sentido === "costo" || sentido === "exactitud") return sube ? "desfavorable" : "favorable";
   return sube ? "favorable" : "desfavorable";
 }
 

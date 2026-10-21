@@ -29,6 +29,8 @@
 
   // Variacion IBCS: solo cifras de variacion de indicadores y graficos.
   --silice-ibcs-favorable: #{colors.$green-50};
+  // El texto de 12 px necesita 4.5:1 (WCAG 1.4.3): green-50 solo llega a 3:1, que basta para el icono y no para la cifra.
+  --silice-ibcs-favorable-texto: #{colors.$green-60};
   --silice-ibcs-desfavorable: #{colors.$red-60};
   --silice-ibcs-neutro: #{colors.$gray-70};
 

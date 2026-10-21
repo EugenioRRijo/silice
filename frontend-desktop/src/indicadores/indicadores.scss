@@ -170,8 +170,14 @@
   background: transparent;
 }
 
+// Favorable (verde): la cifra en green-60 (4.5:1 como texto) y el icono en el token del sistema, --silice-verificado (3:1
+// como grafico). La palabra «favorable» va siempre visible: el color no es el unico portador (V-16).
 .ibcs-favorable {
-  color: var(--silice-ibcs-favorable);
+  color: var(--silice-ibcs-favorable-texto);
+
+  svg {
+    fill: var(--silice-verificado);
+  }
 }
 
 .ibcs-desfavorable {

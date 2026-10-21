@@ -68,7 +68,7 @@ export function IndicadorFiori({ indicador, exactoLibro, exactoSilice, rotuloMet
             <CaretDown size={16} aria-hidden="true" data-sentido="baja" />
           ))}
         <span className="fiori-kpi__delta-texto">
-          <span className="silice-oculto-en-linea">{TEXTO_SEMANTICA[semantica]}</span>{" "}
+          <span className="fiori-kpi__semantica">{TEXTO_SEMANTICA[semantica]}</span>{" "}
           Δ {formatoEsVe(delta)}
           {deltaPct !== null ? ` (${formatoEsVe(deltaPct)} %)` : ""}
         </span>
