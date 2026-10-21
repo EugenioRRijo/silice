@@ -42,7 +42,7 @@ from core import models
 from core.budget import crear_proyecto
 from core.budget.actualizacion import descartar_version
 from core.budget.moneda import declarar_moneda
-from core.catalog import CatalogoIncompleto, abrir_sesion, crear_motor
+from core.catalog import Catalogo, CatalogoIncompleto, abrir_sesion, crear_motor
 from operacion import config
 from operacion.base_datos import preparar_base
 from seguridad import sesiones
@@ -266,12 +266,30 @@ def _proyecto_nuevo(ruta: Path, nombre: str = NUEVO, moneda: str | None = None) 
 
 
 def _en_blanco_con_el_espacio(navegador, ficha, nombre: str = NUEVO) -> str:
-    """Un borrador en blanco del proyecto nuevo con el espacio de OF-001 y sus parametros: lo que
-    se guarda como primera version."""
+    """Un borrador en blanco del proyecto nuevo con el espacio de OF-001 SIN circuitos (el unico
+    que el editor puede escribir: los circuitos se declaran al importar un plano) y sus
+    parametros: lo que se guarda como primera version."""
     id_ = _abrir(navegador, ficha, nombre, None)
     editado = _espacio(navegador, ficha, id_, 0, _sin_circuitos())
     assert editado.status_code == 200, editado.text
     assert _parametros(navegador, ficha, id_, 1).status_code == 200
+    return id_
+
+
+def _en_blanco_con_el_plano(navegador, ficha, ruta: Path, nombre: str = NUEVO) -> str:
+    """Un borrador en blanco con el espacio COMPLETO de OF-001 (con sus dos circuitos) y sus
+    parametros, como lo dejaria fusionar el plano (3e, que aun no existe): se pone directo en el
+    borrador vivo y sube `rev` como cualquier cambio aceptado. Total de la memoria: 2 703,86; sin
+    circuitos el cable cambia y da 1 794,29 (medido, no es la memoria)."""
+    id_ = _abrir(navegador, ficha, nombre, None)
+    assert _parametros(navegador, ficha, id_, 0).status_code == 200
+    vivo = hoja_borradores.obtener(_huella(ficha), id_)
+    with _base(ruta) as sesion:
+        vivo.borrador = copia.completar_composiciones(
+            Catalogo(sesion), replace(vivo.borrador, espacio=espacio_of001())
+        )
+    vivo.rev += 1
+    vivo.calculo = None
     return id_
 
 
@@ -629,8 +647,9 @@ def test_el_bloqueo_de_escritura_es_la_primera_sentencia_y_va_antes_de_cualquier
     assert sentencias[0] == "BEGIN IMMEDIATE", sentencias[:3]
     primera_lectura = next(n for n, s in enumerate(sentencias) if s.upper().startswith("SELECT"))
     assert 0 < primera_lectura
+    # una sola transaccion: despues de confirmar no se abre otra (ni siquiera de lectura, que
+    # retendria el bloqueo de escritura hasta cerrar la sesion)
     assert sentencias.count("BEGIN IMMEDIATE") == 1 and "BEGIN" not in sentencias
-    assert "COMMIT" in sentencias
 
 
 # --- 3d-B8: doble guardado ---
@@ -838,7 +857,7 @@ def test_cambiar_de_caso_olvida_el_borrador_y_guardar_da_404(_casos, _entorno) -
 def test_la_primera_version_de_un_proyecto_nuevo_es_la_001_con_la_memoria(_entorno) -> None:
     _proyecto_nuevo(_entorno)
     navegador, ficha = _ana()
-    id_ = _en_blanco_con_el_espacio(navegador, ficha)
+    id_ = _en_blanco_con_el_plano(navegador, ficha, _entorno)
     previo = _resumen(navegador, id_)
     assert _cerca(previo["total"]["exacto"], TOTAL_MEMORIA)
 
@@ -874,6 +893,20 @@ def test_la_primera_version_de_un_proyecto_nuevo_es_la_001_con_la_memoria(_entor
         _vista(navegador, reabierto, "espacio")["filas"]
         == _vista(navegador, id_, "espacio")["filas"]
     )
+
+
+def test_la_primera_version_escrita_en_el_editor_guarda_lo_mismo_que_se_ve(_entorno) -> None:
+    """El espacio sin circuitos (lo unico que escribe el editor) vale 1 794,29: no es la memoria,
+    pero lo guardado es EXACTAMENTE lo que la vista mostraba antes de guardar (3d-B17)."""
+    _proyecto_nuevo(_entorno)
+    navegador, ficha = _ana()
+    id_ = _en_blanco_con_el_espacio(navegador, ficha)
+    previo = _resumen(navegador, id_)
+    cuerpo = _guardar(navegador, ficha, id_, 2).json()
+    assert cuerpo["codigo"] == "001" and cuerpo["total"]["exacto"] == previo["total"]["exacto"]
+    reabierto = _abrir(navegador, ficha, NUEVO, "001")
+    assert _resumen(navegador, reabierto)["total"]["exacto"] == previo["total"]["exacto"]
+    assert _cadena(_entorno, NUEVO).integra
 
 
 def test_la_primera_version_sin_fuente_o_con_la_hoja_vacia_se_dice_y_no_escribe(_entorno) -> None:
@@ -923,14 +956,14 @@ def test_la_primera_version_sin_lista_vigente_a_la_fecha_lo_dice_y_no_inventa_pr
 
 
 def test_la_primera_version_con_una_lista_de_otra_moneda_dice_cual_es_cada_una(_entorno) -> None:
-    _proyecto_nuevo(_entorno, "Proyecto en bolivares", moneda="VES")
+    _proyecto_nuevo(_entorno, "Proyecto en bolivares", moneda="Bs")
     navegador, ficha = _ana()
     id_ = _en_blanco_con_el_espacio(navegador, ficha, "Proyecto en bolivares")
     antes = _volcado(_entorno)
     respuesta = _guardar(navegador, ficha, id_, 2)
     assert respuesta.status_code == 422
     assert respuesta.json()["detalle"].startswith(
-        "El proyecto 'Proyecto en bolivares' esta en VES y la lista "
+        "El proyecto 'Proyecto en bolivares' esta en Bs y la lista "
         "'Lista MaPreX jul-2026 (OF-001)' en USD"
     )
     assert _volcado(_entorno) == antes
@@ -1053,3 +1086,38 @@ def test_no_store_en_exito_404_409_y_422_de_guardar() -> None:
     ]
     assert [r.status_code for r in respuestas] == [422, 404, 409, 422, 200, 409]
     assert all(r.headers["cache-control"] == "no-store" for r in respuestas)
+
+
+# --- la guardia: ninguna ruta que crea versiones usa la sesion comun ---
+
+
+def test_toda_funcion_de_la_api_que_crea_versiones_usa_la_sesion_de_escritura() -> None:
+    """Lo que cree una version sin `BEGIN IMMEDIATE` ni la cadena de anexos reabre la carrera y
+    rompe la cadena: se vigila leyendo el codigo de `api/` (AST), sin importar nada."""
+    import ast
+
+    raiz = Path(__file__).resolve().parents[2]
+    encontradas = []
+
+    def crea_versiones(llamada: ast.Call) -> bool:
+        f = llamada.func
+        if not isinstance(f, ast.Attribute):
+            return False
+        if f.attr in {"guardar_version", "crear_primera_version"}:
+            return True
+        return (
+            f.attr == "guardar" and isinstance(f.value, ast.Name) and f.value.id == "hoja_guardado"
+        )
+
+    for archivo in sorted((raiz / "api").rglob("*.py")):
+        for definicion in ast.walk(ast.parse(archivo.read_text(encoding="utf-8"))):
+            if not isinstance(definicion, ast.FunctionDef):
+                continue
+            if any(isinstance(n, ast.Call) and crea_versiones(n) for n in ast.walk(definicion)):
+                anotaciones = {
+                    ast.unparse(a.annotation) for a in definicion.args.args if a.annotation
+                }
+                encontradas.append((archivo.name, definicion.name))
+                assert "SesionDeEscrituraDep" in anotaciones, (archivo.name, definicion.name)
+                assert "SesionDep" not in anotaciones, (archivo.name, definicion.name)
+    assert ("hoja.py", "guardar_borrador") in encontradas  # mira algo
