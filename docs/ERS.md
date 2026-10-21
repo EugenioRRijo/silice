@@ -1628,10 +1628,14 @@ miden o se realizan los requisitos; **no agrega requisitos ni cambia ninguna cif
 | RNF‑08 | Visor 3D retirado el 2026‑10‑19 (pendiente de ratificar) | retiro definitivo del Visor 3D; las excepciones declaradas de RNF‑08 no cambian |
 | RNF‑11 | medido en `ui.hoja` | medido en `aplicacion.hoja`, mismo escenario y mismo umbral (≤ 2 s) |
 | RNF‑15 | medido en `ui.control` | medido en `aplicacion.control`, mismo escenario y mismo umbral (≤ 2 s) |
+| RF‑97 (h) | el manifiesto excluía la carpeta `ui/` y `.streamlit/` | texto de criterio de aceptación ajustado por el retiro (sin cambiar cifras ni umbrales): ya no hay `ui/` ni `.streamlit/` que excluir; el manifiesto sigue siendo exacto |
+| RF‑98 (criterio) | la prueba por defecto también cubría la orden de Streamlit | texto de criterio de aceptación ajustado por el retiro (sin cambiar cifras ni umbrales): la orden de Uvicorn es la única que se comprueba |
+| RF‑98 («API apagada») | red local apagada y API apagada, activable por separado | **PENDIENTE DE DECISIÓN (Eugenio / tutor):** con un solo proceso Uvicorn que sirve API y front, ya no existe una «API apagada»; este documento no fija su texto nuevo |
+| RF‑81 (criterio) | la verificación de la sesión se hacía con AppTest | texto de criterio de aceptación ajustado por el retiro (sin cambiar cifras ni umbrales): la verificación pasa a las pruebas de la API |
 
 Lectura del resto del documento: las menciones de Streamlit, `ui/`, `AppTest` y «pantalla» en UC‑12, RF‑36 a RF‑43, RF‑60, RF‑82,
 RF‑97, RF‑98, RF‑100 y los criterios que de ellas dependen describen la interfaz anterior y se leen sobre la interfaz de React
-(RF‑147 a RF‑155 y la migración). Su criterio de aceptación con `AppTest` ya no existe; el homólogo en React de los recorridos
+(véase el plan de la migración, [PLAN_SESION_2B_MIGRACION.md](planes/PLAN_SESION_2B_MIGRACION.md)). Su criterio de aceptación con `AppTest` ya no existe; el homólogo en React de los recorridos
 guiados y de algunas funciones de `ui.libros` **no está comprobado** (ver `docs/bitacora/2026-10-21-retiro-f3-triaje.md` §7b y
 `docs/bitacora/2026-10-21-retiro-streamlit-cierre.md`). El asistente de IA de la Hoja queda sin interfaz (deuda registrada).
 
