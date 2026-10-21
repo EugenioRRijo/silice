@@ -30,7 +30,6 @@ interface Props {
   alExpirar: () => void;
   // Se puede cambiar solo en las pruebas.
   paginas?: readonly PaginaDef[];
-  // Base de la interfaz Streamlit (por ejemplo http://127.0.0.1:8501), si se conoce.
   // Lo abierto en «Libro de la empresa», guardado por encima de la puerta de sesion (UC-26).
   almacen?: AlmacenDelVisor;
   // Solo en pruebas: el visor de hojas (por omision, Univer).
@@ -309,7 +308,7 @@ export function Shell({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
                       pagina={pagina}
                       acciones={acciones}
                       modoEntrega={sesion.modo_entrega}
-                                  />
+                    />
                   }
                 />
               ))}

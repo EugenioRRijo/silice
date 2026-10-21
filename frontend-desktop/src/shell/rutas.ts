@@ -14,7 +14,7 @@ export interface PaginaDef {
   id: string;
   titulo: string;
   seccion: Seccion;
-  // La `Accion` de seguridad/permisos.py que exige la pagina (ui_sesion.exigir); null = toda cuenta la ve.
+  // La `Accion` de seguridad/permisos.py que exige la pagina (la declara su router en api/acceso.py); null = toda cuenta la ve.
   accion: string | null;
   // Carga perezosa: un archivo aparte en el dist, que solo se baja al abrir la pagina.
   cargar: () => Promise<{ default: ComponentType }>;
