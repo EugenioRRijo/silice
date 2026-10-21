@@ -6,9 +6,9 @@
 
 - Archivos revisados: **45** (los de `tests/unit` que usan `AppTest` o `streamlit`, sin `conftest.py`, `tests/fixtures/paginas_s3.py` ni `test_meta_sf.py`; coinciden con la lista de §2.1 del plan).
 - Funciones `test_*` de esos archivos: **524**. Sin `AppTest`/`streamlit` (ni directo ni por ayudante, fixture o importacion de `ui.paginas.*` del mismo archivo): **126** (el plan estimaba 121; la diferencia es del metodo: aqui se cuentan tambien 11 funciones que no usan `AppTest` pero importan una pagina `ui.paginas.*`; sin ellas, 115).
-- **MOVIDAS: 49 funciones (63 items)** a 9 archivos `tests/unit/test_aplicacion_*.py` (7 nuevos, 2 ampliados). **RETIRADAS con su modulo: 77 funciones (124 items)**. **Bloqueadas: 0** (ninguna depende de un modulo de `ui/` sin homologo en `aplicacion/` y a la vez prueba logica que sobreviva; las que quedaron sin homologo son de pantallas o modulos que el plan retira).
-- Regla `movidos + retirados = items de origen sin AppTest`: **63 + 124 = 187** (49 + 77 = 126 funciones). Las funciones con AppTest (los otros 477 items de los 45 archivos) **no se tocan**: se borran en F4.
-- Conteo real con `pytest --collect-only -q` de los 45 archivos: **antes 664 items, despues 601** (−63 = los 63 items movidos). Los 9 destinos suman **86** items, de los cuales 63 son los movidos (los otros 23 eran de `test_aplicacion_entorno.py` y `test_aplicacion_precios_empresa.py` antes). Suite completa del proyecto: no corrida (otros agentes tienen cambios en curso en `operacion/`, `instalador/`).
+- **MOVIDAS: 50 funciones (64 items)** a 9 archivos `tests/unit/test_aplicacion_*.py` (7 nuevos, 2 ampliados). **RETIRADAS con su modulo: 76 funciones (123 items)**. **Bloqueadas: 0** (ninguna depende de un modulo de `ui/` sin homologo en `aplicacion/` y a la vez prueba logica que sobreviva; las que quedaron sin homologo son de pantallas o modulos que el plan retira).
+- Regla `movidos + retirados = items de origen sin AppTest`: **64 + 123 = 187** (50 + 76 = 126 funciones). Las funciones con AppTest (los otros 477 items de los 45 archivos) **no se tocan**: se borran en F4.
+- Conteo real con `pytest --collect-only -q` de los 45 archivos: **antes 664 items, despues 600** (−64 = los 64 items movidos). Los 9 destinos suman **87** items, de los cuales 64 son los movidos (los otros 23 eran de `test_aplicacion_entorno.py` y `test_aplicacion_precios_empresa.py` antes). Suite completa del proyecto: no corrida (otros agentes tienen cambios en curso en `operacion/`, `instalador/`).
 
 ## 2. Criterio
 
@@ -28,7 +28,7 @@
 | `test_ui_app.py` | 70 | 14 | 1 | 13 | 56 | 69 |
 | `test_ui_barra.py` | 36 | 3 | 0 | 3 | 33 | 36 |
 | `test_ui_barra_con_la_hoja.py` | 13 | 1 | 0 | 1 | 12 | 13 |
-| `test_ui_cliente.py` | 25 | 19 | 11 | 8 | 6 | 14 |
+| `test_ui_cliente.py` | 25 | 19 | 12 | 7 | 6 | 13 |
 | `test_ui_elaborar.py` | 13 | 5 | 5 | 0 | 8 | 8 |
 | `test_ui_elaborar_plan_y_rendimiento.py` | 15 | 1 | 1 | 0 | 14 | 14 |
 | `test_ui_existencias.py` | 16 | 9 | 0 | 9 | 7 | 16 |
@@ -66,7 +66,7 @@
 | `test_ui_similares_modulo.py` | 3 | 0 | 0 | 0 | 3 | 3 |
 | `test_ui_similares_uc03.py` | 2 | 0 | 0 | 0 | 2 | 2 |
 | `test_apptest_timeout_comun.py` | 3 | 0 | 0 | 0 | 3 | 3 |
-| **Total** | **664** | **187** | **63** | **124** | **477** | **601** |
+| **Total** | **664** | **187** | **64** | **123** | **477** | **600** |
 
 ## 4. Tabla funcion por funcion
 
@@ -115,7 +115,7 @@ Items = casos de pytest (las parametrizadas cuentan una vez por caso).
 | `test_ui_cliente.py` | `test_una_operacion_sensible_se_bloquea_con_eventos_sin_revisar` | 1 | MOVIDA | `test_aplicacion_equipo.py` (IP explicita en vez de `monkeypatch` de `ui.cliente.ip_del_cliente`) |
 | `test_ui_cliente.py` | `test_remota_y_con_pendientes_manda_el_motivo_remoto` | 1 | MOVIDA | `test_aplicacion_equipo.py` (IP explicita en vez de `monkeypatch` de `ui.cliente.ip_del_cliente`) |
 | `test_ui_cliente.py` | `test_administracion_exige_el_propio_equipo_antes_de_crear_una_clave_de_api` | 1 | RETIRADA | lee el codigo de `ui/paginas/administracion.py` (pagina retirada); la API usa `exigir_equipo_propio` |
-| `test_ui_cliente.py` | `test_ningun_modulo_de_ui_ni_api_llama_a_es_local_de_seguridad_directamente` | 1 | RETIRADA | guardia sobre `ui/` y `api/`; la mitad `api/` merece conservarse (ver hallazgos) |
+| `test_ui_cliente.py` | `test_ningun_modulo_de_ui_ni_api_llama_a_es_local_de_seguridad_directamente` | 1 | MOVIDA | `tests/unit/test_aplicacion_equipo.py` como `test_ningun_modulo_de_api_ni_aplicacion_llama_a_es_local_de_seguridad_directamente` (misma logica AST; recorre `api` y `aplicacion` en vez de `ui` y `api`) |
 | `test_ui_cliente.py` | `test_la_pantalla_de_acceso_de_s3_usa_el_aviso_de_s5` | 1 | RETIRADA | lee `ui/acceso.py` (pantalla retirada) |
 | `test_ui_elaborar.py` | `test_aceptar_cambia_solo_el_item_pendiente` | 1 | MOVIDA | `test_aplicacion_elaboracion.py` |
 | `test_ui_elaborar.py` | `test_aceptar_un_item_que_no_esta_es_un_error` | 1 | MOVIDA | `test_aplicacion_elaboracion.py` |
@@ -213,20 +213,33 @@ Tres funciones movidas elegidas al azar (`random.seed(20261021)` sobre las 49). 
 
 Nota honesta: el primer mutante que se probo para la segunda funcion fue quitar la guarda `if not pendientes: return ()`; **sobrevivio**, porque `ml.normalization.propuestas_para` repite la misma guarda (equivalente a efectos de conducta, no un hueco de la prueba). Se sustituyo por el mutante de la tabla, que si cambia el comportamiento de la rama que la prueba cubre.
 
+## 5b. Mutante de la guardia de `es_local` (copia fuera del repo)
+
+Copia de `api/`, `aplicacion/` y `tests/fixtures/arquitectura.py` en el scratchpad, con la prueba extraida a `tests/unit/test_arq.py`. Control sin mutar: `1 passed`. Mutante: `from seguridad.red import es_local` insertado como primera linea de `api/__init__.py` de la copia: `AssertionError: assert ['api/__init__.py:1'] == []` (detectado).
+
 ## 6. Verificacion
 
-- `pytest -W error -p no:cacheprovider -o addopts=""` de los 9 destinos y los 10 originales tocados: primera pasada (con `-x`) 149 passed y 1 failed; segunda pasada sobre el resto, 96 passed y 2 failed. Los **2 failed distintos** no son de esta fase: `tests/unit/test_ui_instalacion.py::test_muestra_el_estado_de_la_red_y_de_la_api` y `::test_con_la_red_apagada_lo_dice` (dos pruebas AppTest, que no se tocaron) fallan por `Ajustes.__init__() got an unexpected keyword argument 'api_activa'`, es decir, por el cambio sin commitear de `operacion/config.py` de otro agente (F2); se borran en F4 de todos modos. Los 9 destinos y el resto de originales, en verde.
+- `pytest -W error -p no:cacheprovider -o addopts=""` de los 9 destinos y los 10 originales tocados: **149 passed + 96 passed**, y **3 failed** que no son de esta fase: `tests/unit/test_ui_instalacion.py::test_muestra_el_estado_de_la_red_y_de_la_api` y `::test_con_la_red_apagada_lo_dice` (dos pruebas AppTest, que no se tocaron) fallan por el texto de la pagina: esperan `API: apagada (puerto 8000)` y reciben `API: activa (puerto 8501)`, consecuencia del commit F2 `cd158d0a` (un solo proceso uvicorn, la API siempre activa en el puerto unico). La primera pasada citaba el kwarg `api_activa` como causa: era el mismo defecto visto desde otra prueba de ese archivo, no la causa raiz. Se borran en F4 de todos modos. Los 9 destinos y el resto de originales, en verde.
 - `ruff check` y `ruff format --check` de todos los archivos tocados: limpios (tras un `ruff format` de `test_ui_tablero.py`, commit aparte).
-- Commits (uno por grupo): `bbfc0627` (tablero), `64261f98` (elaboracion), `2ec0e6c4` (hoja trabajo), `f8c2dedf` (equipo), `f7a555bb` (instalacion), `a52bf57c` (acerca), `2bca7813` (actualizacion y entorno), `4b889d9c` (precios de empresa), mas el de formato de `test_ui_tablero.py`.
+- Commits (uno por grupo): `bbfc0627` (tablero), `64261f98` (elaboracion), `2ec0e6c4` (hoja trabajo), `f8c2dedf` (equipo), `f7a555bb` (instalacion), `a52bf57c` (acerca), `2bca7813` (actualizacion y entorno), `4b889d9c` (precios de empresa), `af9a4343` (guardia de `es_local`: ver 5b), mas el de formato de `test_ui_tablero.py`.
 
 ## 7. Hallazgos fuera de la fase
 
-1. **Guardia de arquitectura a medias.** `test_ui_cliente.py::test_ningun_modulo_de_ui_ni_api_llama_a_es_local_de_seguridad_directamente` recorre `ui` y `api`. Se retira con `ui/`, pero la mitad `api/` (nadie llama `seguridad.red.es_local` directo; todo pasa por `aplicacion.equipo`) sigue siendo valida. Propuesta para el dueno de `test_arquitectura*`: conservarla solo para `api` (y `aplicacion`).
+1. **Guardia de arquitectura (resuelta en la ronda 1).** `test_ningun_modulo_de_ui_ni_api_llama_a_es_local_de_seguridad_directamente` ya no se pierde: su mitad `api/` se movio a `test_aplicacion_equipo.py` (commit `af9a4343`), recorriendo `api` y `aplicacion`. Mutante en 5b.
 2. **Visibilidad por rol del menu.** `test_ui_marco.py` y `test_ui_roles.py` (15 funciones) probaban que cada rol ve solo sus pantallas (`ui.app.paginas_visibles`). Ese criterio vivia en el enrutador Streamlit; en la API y en React la cobertura equivalente es de otros archivos (no medida aqui). Conviene que el arbitro confirme que `frontend-desktop` o `api/` tienen su propia prueba de roles antes de F4.
 3. **`ui.app.modo_entrega_activo`** solo estaba cubierto con valores `"0"` y `"si"` por la prueba de paridad circular; se movio a `test_aplicacion_entorno.py`, donde ahora esta asertado contra literales (F6 podra borrar la paridad sin perder cobertura).
 4. **`aplicacion/equipo.py` no tenia prueba directa** (solo a traves de `ui.cliente`); ahora tiene `test_aplicacion_equipo.py`.
 5. Quedan en los originales constantes y ayudantes huerfanos (p. ej. `_MODULOS_RELACIONADOS_CON_ML` en `test_ui_actualizacion_alta.py`); se van con el archivo en F4.
 
+## 7b. Decisiones para Eugenio
+
+Estas funciones se retiran con su modulo, pero **no se comprobo que React tenga homologo**; el retiro de su cobertura es una decision de producto, no de este triaje:
+
+1. **`ui.libros`: 22 funciones** de `test_ui_libros.py` (hallazgos resaltados en la vista calcada del libro, filtros y orden de la tabla de hallazgos, totales, marcas por hoja, tope de celdas combinadas). La API usa `adapters.hoja_empresa.visual`, pero no se verifico que React reproduzca el resaltado de hallazgos ni los filtros/orden de la tabla.
+2. **Recorridos de Streamlit** (`ui.recorridos`; probados en `test_ui_app`, `test_ui_marco`, `test_ui_roles`): demostracion, presupuesto, precios y paquete. En React solo existe el recorrido «Auditar un libro de la empresa» (`shell/recorrido.ts`); los otros cuatro no tienen homologo comprobado. Si deben sobrevivir, hay que construirlos y probarlos antes de F4.
+
+Decision pedida: aceptar la perdida de esas coberturas o abrir tarea para que React las tenga.
+
 ## 8. Propuesta de linea para `CHANGELOG.md` (la anota el orquestador)
 
-`- Retiro de Streamlit, F3: 49 funciones (63 items) de pruebas de logica que vivian dentro de archivos AppTest pasan a tests/unit/test_aplicacion_{tablero,elaboracion,hoja_trabajo,equipo,instalacion,acerca,actualizacion,entorno,precios_empresa}.py; 77 funciones (124 items) se retiran con su modulo.`
+`- Retiro de Streamlit, F3: 50 funciones (64 items) de pruebas de logica que vivian dentro de archivos AppTest pasan a tests/unit/test_aplicacion_{tablero,elaboracion,hoja_trabajo,equipo,instalacion,acerca,actualizacion,entorno,precios_empresa}.py; 76 funciones (123 items) se retiran con su modulo.`
