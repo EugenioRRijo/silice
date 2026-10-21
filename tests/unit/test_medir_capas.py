@@ -180,3 +180,7 @@ def test_main_escribe_el_json_y_la_tabla_sin_medir_de_verdad(
     assert pedidas == [cargar().python]  # por defecto, la misma versión que el manifiesto (T13)
     assert json.loads(salida.read_text(encoding="utf-8")) == datos
     assert "| basica | 42 | 231,2 | 45,8 |" in capsys.readouterr().out
+
+
+def test_ninguna_capa_medida_incluye_el_extra_ui_retirado() -> None:
+    assert all("ui" not in extras for extras in mc.CAPAS.values())
