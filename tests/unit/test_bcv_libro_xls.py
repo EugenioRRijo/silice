@@ -165,3 +165,61 @@ def test_el_inpc_se_lee_por_el_nombre_de_su_hoja(monkeypatch, tmp_path):
     libro = modulo.abrir_libro(_xls(tmp_path))
     assert [h.nombre for h in libro.hojas] == ["Base Diciembre 2007"]
     assert llamadas["libro"].pedidas == [1]
+
+
+# --- MENOR-4 del arbitro: el informe dice QUE hojas se ignoraron ---
+
+
+def test_el_aviso_de_hojas_ajenas_nombra_hasta_diez_y_cuenta_el_resto(monkeypatch, tmp_path):
+    hojas = [_Hoja("01072026", 1, 1)] + [_Hoja(f"Notas{n:02d}", 1, 1) for n in range(13)]
+    _xlrd_falso(monkeypatch, hojas)
+    libro = modulo.abrir_libro(_xls(tmp_path))
+    nombres = ", ".join(f"Notas{n:02d}" for n in range(10))
+    assert libro.avisos[0] == f"hojas ajenas no leidas: 13 ({nombres} y 3 mas)"
+
+
+def test_el_aviso_acota_cada_nombre_y_quita_los_caracteres_de_control(monkeypatch, tmp_path):
+    hojas = [_Hoja("01072026", 1, 1), _Hoja("X" * 100, 1, 1), _Hoja("a\x00b\nc", 1, 1)]
+    _xlrd_falso(monkeypatch, hojas)
+    aviso = modulo.abrir_libro(_xls(tmp_path)).avisos[0]
+    assert aviso == f"hojas ajenas no leidas: 2 ({'X' * 40}..., abc)"
+
+
+def test_los_nombres_de_las_hojas_ajenas_llegan_al_informe_de_la_tasa(monkeypatch, tmp_path):
+    from dataclasses import replace
+    from datetime import date
+
+    from adapters.bcv.tasa import leer_tasa
+    from tests.fixtures.bcv_cuadriculas import hoja_tasa, libro
+
+    _xlrd_falso(monkeypatch, [_Hoja("01072026", 1, 1), _Hoja("Resumen", 1, 1)])
+    (aviso,) = modulo.abrir_libro(_xls(tmp_path)).avisos[:1]
+    assert aviso == "hojas ajenas no leidas: 1 (Resumen)"
+    informe = leer_tasa(
+        replace(libro(hoja_tasa("01102026")), avisos=(aviso,)),
+        fuente="https://www.bcv.org.ve/x",
+        fecha_descarga=date(2026, 10, 15),
+        trimestre_por_letra={"c": 3},
+    )
+    assert aviso in informe.advertencias
+    assert aviso in informe.texto()
+
+
+# --- MENOR-5 del arbitro: tope del TOTAL de celdas entre todas las hojas ---
+
+
+def test_el_total_de_celdas_declaradas_entre_todas_las_hojas_tiene_tope(monkeypatch, tmp_path):
+    assert modulo.MAX_CELDAS_TOTAL == 20_000_000
+    monkeypatch.setattr(modulo, "MAX_CELDAS_TOTAL", 10)
+    hojas = [_Hoja(_dia(n), 2, 2) for n in range(3)]  # 4 + 4 + 4 = 12 > 10
+    _xlrd_falso(monkeypatch, hojas)
+    with pytest.raises(FormatoNoReconocido, match="entre todas las hojas") as error:
+        modulo.abrir_libro(_xls(tmp_path))
+    assert "tasa.xls" in str(error.value) and "10" in str(error.value)
+    assert hojas[2].leidas == 0  # la que no cabe ni se recorre
+
+
+def test_un_total_justo_en_el_tope_se_lee(monkeypatch, tmp_path):
+    monkeypatch.setattr(modulo, "MAX_CELDAS_TOTAL", 12)
+    _xlrd_falso(monkeypatch, [_Hoja(_dia(n), 2, 2) for n in range(3)])
+    assert len(modulo.abrir_libro(_xls(tmp_path)).hojas) == 3

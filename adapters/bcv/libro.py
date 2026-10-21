@@ -25,6 +25,9 @@ MAX_DESCOMPRIMIDO = 60 * 1024 * 1024
 MAX_PIEZA = 30 * 1024 * 1024
 MAX_RAZON = 200
 MAX_CELDAS_XLS = 2_000_000  # filas x columnas declaradas por hoja de un .xls
+MAX_CELDAS_TOTAL = 20_000_000  # celdas leidas entre TODAS las hojas (xls: declaradas; xlsx: vistas)
+MAX_NOMBRES_AJENOS = 10  # nombres de hojas ignoradas que el aviso enumera (el resto se cuenta)
+MAX_LARGO_NOMBRE = 40
 # Hojas del libro: una por dia en la tasa (un trimestre trae hasta 92) y una en el INPC. Solo se
 # leen las necesarias (nombre DDMMAAAA o la hoja del INPC); el tope se mide sobre las LEIDAS y,
 # aparte, el total declarado se acota para no recorrer los indices de un libro hostil.
@@ -58,9 +61,31 @@ def _elegir_hojas(nombres: list[str], archivo: str) -> tuple[list[int], tuple[st
             f"{archivo}: tiene {len(elegidas)} hojas necesarias; supera el maximo de "
             f"{MAX_HOJAS_LEIDAS}"
         )
-    ajenas = len(nombres) - len(elegidas)
-    avisos = (f"hojas ajenas no leidas: {ajenas}",) if ajenas else ()
-    return elegidas, avisos
+    usadas = set(elegidas)
+    return elegidas, _aviso_de_ajenas([n for i, n in enumerate(nombres) if i not in usadas])
+
+
+def _nombre_para_aviso(nombre: str) -> str:
+    """El nombre de una hoja ajena como se muestra: viene del libro (no es de fiar), asi que sin
+    caracteres de control y acotado."""
+    limpio = "".join(c for c in nombre if c.isprintable()).strip()
+    return limpio[:MAX_LARGO_NOMBRE] + ("..." if len(limpio) > MAX_LARGO_NOMBRE else "")
+
+
+def _aviso_de_ajenas(ajenas: list[str]) -> tuple[str, ...]:
+    """«hojas ajenas no leidas: N (a, b, ...)»: cuales se ignoraron, hasta `MAX_NOMBRES_AJENOS`."""
+    if not ajenas:
+        return ()
+    nombres = ", ".join(_nombre_para_aviso(n) for n in ajenas[:MAX_NOMBRES_AJENOS])
+    resto = len(ajenas) - MAX_NOMBRES_AJENOS
+    cola = f" y {resto} mas" if resto > 0 else ""
+    return (f"hojas ajenas no leidas: {len(ajenas)} ({nombres}{cola})",)
+
+
+def _demasiadas_celdas(archivo: str) -> FormatoNoReconocido:
+    return FormatoNoReconocido(
+        f"{archivo}: supera el maximo de {MAX_CELDAS_TOTAL} celdas leidas entre todas las hojas"
+    )
 
 
 def _verificar_xlsx_seguro(contenido: bytes, nombre: str) -> None:
@@ -169,7 +194,7 @@ def _xls(contenido: bytes, nombre: str) -> tuple[tuple[Hoja, ...], int, tuple[st
         raise FormatoNoReconocido(f"{nombre}: no se pudo abrir ({error})") from None
     try:
         elegidas, avisos_hojas = _elegir_hojas(list(libro.sheet_names()), nombre)
-        floats, hojas = 0, []
+        floats, hojas, declaradas = 0, [], 0
         for indice in elegidas:
             hoja = libro.sheet_by_index(indice)
             if hoja.nrows * hoja.ncols > MAX_CELDAS_XLS:
@@ -177,6 +202,9 @@ def _xls(contenido: bytes, nombre: str) -> tuple[tuple[Hoja, ...], int, tuple[st
                     f"{nombre}: la hoja {hoja.name!r} declara {hoja.nrows} filas x {hoja.ncols} "
                     f"columnas; supera el maximo de {MAX_CELDAS_XLS} celdas"
                 )
+            declaradas += hoja.nrows * hoja.ncols
+            if declaradas > MAX_CELDAS_TOTAL:
+                raise _demasiadas_celdas(nombre)
             filas = []
             for r in range(hoja.nrows):
                 fila: list[Celda] = []
@@ -208,13 +236,16 @@ def _xlsx(ruta: Path) -> tuple[tuple[Hoja, ...], int, tuple[str, ...]]:
         libro = openpyxl.load_workbook(ruta, read_only=True, data_only=True)
     except Exception as error:
         raise FormatoNoReconocido(f"{ruta.name}: no se pudo abrir ({error})") from error
-    floats, hojas = 0, []
+    floats, hojas, vistas = 0, [], 0
     try:
         elegidas, avisos_hojas = _elegir_hojas(list(libro.sheetnames), ruta.name)
         for indice in elegidas:
             hoja = libro[libro.sheetnames[indice]]
             filas = []
             for valores in hoja.iter_rows(values_only=True):
+                vistas += len(valores)
+                if vistas > MAX_CELDAS_TOTAL:  # se corta al pasarse, no al terminar de leer
+                    raise _demasiadas_celdas(ruta.name)
                 fila: list[Celda] = []
                 for v in valores:
                     if isinstance(v, float):

@@ -56,3 +56,19 @@ def test_un_xlsx_sin_hojas_necesarias_o_con_miles_se_rechaza(tmp_path):
         abrir_libro(_xlsx_con(tmp_path, ["Notas"]))
     with pytest.raises(FormatoNoReconocido, match="hojas; supera el maximo"):
         abrir_libro(_xlsx_con(tmp_path, [f"01{n:06d}" for n in range(300)]))
+
+
+def test_el_aviso_de_un_xlsx_nombra_las_hojas_ignoradas(tmp_path):
+    libro = abrir_libro(_xlsx_con(tmp_path, ["01072026", "Notas", "Resumen"]))
+    assert "hojas ajenas no leidas: 2 (Notas, Resumen)" in libro.avisos
+
+
+def test_un_xlsx_con_mas_celdas_que_el_tope_total_se_rechaza(tmp_path, monkeypatch):
+    from adapters.bcv import libro as modulo
+
+    assert modulo.MAX_CELDAS_TOTAL == 20_000_000
+    monkeypatch.setattr(modulo, "MAX_CELDAS_TOTAL", 5)
+    with pytest.raises(FormatoNoReconocido, match="entre todas las hojas"):
+        abrir_libro(_xlsx_con(tmp_path, ["01072026", "02072026", "03072026"]))  # 2 celdas c/u = 6
+    monkeypatch.setattr(modulo, "MAX_CELDAS_TOTAL", 6)
+    assert len(abrir_libro(_xlsx_con(tmp_path, ["01072026", "02072026", "03072026"])).hojas) == 3
