@@ -57,6 +57,7 @@ describe("registro de paginas", () => {
       "catalogo",
       "componer",
       "elaborar",
+      "hoja",
       "actualizacion",
       "historico",
       "precios_empresa",
@@ -77,6 +78,9 @@ describe("registro de paginas", () => {
     const libro = paginaPorId("libros");
     expect(libro?.titulo).toBe("Libro de la empresa");
     expect(typeof libro?.cargar).toBe("function");
+    const hoja = paginaPorId("hoja");
+    expect(hoja).toMatchObject({ titulo: "Hoja del proyecto", seccion: "Trabajo", accion: "editar_hoja" });
+    expect(typeof hoja?.cargar).toBe("function");
     const existencias = paginaPorId("existencias");
     expect(existencias).toMatchObject({
       titulo: "Existencias de la arenera",
