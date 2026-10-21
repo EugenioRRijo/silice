@@ -22,6 +22,7 @@ import {
 import type { BorradorAbierto, Resumen, VersionesRespuesta } from "./logica";
 import { RUTA_DE_BORRADORES, borradorExistente, ofertasDeRetomar } from "./logicaRetomar";
 import type { OfertaDeRetomar } from "./logicaRetomar";
+import { BotonExcel } from "./BotonExcel";
 import { ContextoAuditoria } from "./ContextoAuditoria";
 import type { FiltroDeAuditoria } from "./ContextoAuditoria";
 import { PestanaApu } from "./PestanaApu";
@@ -381,6 +382,7 @@ function HojaDeProyecto({ proyecto }: { proyecto: string }) {
             />
           )}
           <EstadoDelBorrador borrador={estado.borrador} alDescartar={() => void descartarCambios()} />
+          <BotonExcel id={estado.borrador.id} />
         </>
       )}
 

@@ -97,7 +97,7 @@ describe("Botón «Descargar Excel» de la hoja (3e-F4)", () => {
   });
 
   test("respeta el nombre del servidor aunque traiga una ruta, y usa el de respaldo si falta", async () => {
-    fetchFalso.mockResolvedValueOnce(libro("..\..\hoja_001.xlsx"));
+    fetchFalso.mockResolvedValueOnce(libro("../../hoja_001.xlsx"));
     fetchFalso.mockResolvedValueOnce(new Response(new Uint8Array([1]), { status: 200 }));
     montar();
     await userEvent.click(boton());
