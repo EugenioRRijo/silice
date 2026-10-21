@@ -619,6 +619,48 @@ describe("Hoja del proyecto: restaurar, cotizar, retirar, convertir y la cadena 
     });
   });
 
+  // --- 3e-3: un diálogo abierto cuyo panel se vuelve a montar por un cambio de rev no deja la página inerte ----------------
+
+  describe("3e-3: el rev cambia con un diálogo abierto (otra ventana) y la página no queda [inert]", () => {
+    const hacerQueElServidorTengaOtroRev = () => {
+      const previa = fetchFalso.getMockImplementation();
+      fetchFalso.mockImplementation(async (ruta, init) => {
+        const url = new URL(String(ruta), "http://silice.local");
+        if (url.pathname === `/v1/hoja/borradores/${ID}` && (init?.method ?? "GET") === "GET") {
+          const b = borrador("002", { rev: 4, cambios: 0 });
+          return json({ id: ID, base: b.base, resumen: b.resumen });
+        }
+        return previa!(ruta, init);
+      });
+    };
+    const volverALaVentana = async () => {
+      Object.defineProperty(document, "visibilityState", { configurable: true, get: () => "visible" });
+      await act(async () => {
+        document.dispatchEvent(new Event("visibilitychange"));
+      });
+    };
+
+    test.each([
+      ["Precios", "Registrar una cotización…", "Registrar una cotización"],
+      ["Trazabilidad", "Restaurar una versión…", "Restaurar una versión"],
+    ])("%s: el diálogo se cierra con el panel y nada queda inerte ni se pierde el contador", async (pestana, boton, nombre) => {
+      montar();
+      await irA(pestana);
+      const dialogo = await abrirDialogo(boton);
+      expect(dialogo).toHaveAccessibleName(nombre);
+      expect(document.querySelector("[inert]")).not.toBeNull();
+      hacerQueElServidorTengaOtroRev();
+      await volverALaVentana();
+      await esperar(() => expect(screen.queryByRole("dialog")).toBeNull());
+      await esperar(() => expect(document.querySelector("[inert]")).toBeNull());
+      // la página sigue usable: el mismo botón abre otro diálogo y Cancelar vuelve a dejarla libre
+      const otro = await abrirDialogo(boton);
+      expect(otro.closest("[inert]")).toBeNull();
+      fireEvent.click(await screen.findByRole("button", { name: "Cancelar" }));
+      await esperar(() => expect(document.querySelector("[inert]")).toBeNull());
+    });
+  });
+
   // --- Estática ---------------------------------------------------------------------------------------------------------------
 
   test("los archivos de 3d-2 están bajo la prueba estática (sin Number, parseFloat, toFixed ni + unario)", () => {
