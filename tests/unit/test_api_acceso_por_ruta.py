@@ -220,6 +220,13 @@ TABLA = {
     ("GET", "/v1/hoja/borradores/{id}"): EDITAR,  # ademas, solo con sesion
     ("DELETE", "/v1/hoja/borradores/{id}"): EDITAR,  # ademas, solo con sesion
     ("POST", "/v1/hoja/borradores/{id}/guardar"): EDITAR,  # T10 3d-1 (S1); escribe; solo sesion
+    ("GET", "/v1/hoja/borradores/{id}/excel"): EDITAR,  # T10 3e-1 (X1); ademas, solo con sesion
+    ("POST", "/v1/hoja/borradores/{id}/plano"): EDITAR,  # T10 3e-2; ademas, solo con sesion
+    ("POST", "/v1/hoja/borradores/{id}/plano/unidad"): EDITAR,  # T10 3e-2; ademas, solo con sesion
+    ("POST", "/v1/hoja/borradores/{id}/plano/alturas"): EDITAR,  # T10 3e-2; ademas, solo con sesion
+    ("POST", "/v1/hoja/borradores/{id}/plano/circuitos"): EDITAR,  # T10 3e-2; solo sesion
+    ("POST", "/v1/hoja/borradores/{id}/plano/fusionar"): EDITAR,  # T10 3e-2; solo sesion
+    ("DELETE", "/v1/hoja/borradores/{id}/plano"): EDITAR,  # T10 3e-2; ademas, solo con sesion
     ("PUT", "/v1/hoja/borradores/{id}/espacio"): EDITAR,  # T10 3c-1 (E1); ademas, solo con sesion
     ("PUT", "/v1/hoja/borradores/{id}/cantidades"): EDITAR,  # T10 3c-2 (E2); solo sesion
     ("PUT", "/v1/hoja/borradores/{id}/parametros"): EDITAR,  # E3; ademas, solo con sesion

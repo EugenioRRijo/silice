@@ -26,6 +26,7 @@ import type { OfertaDeRetomar } from "./logicaRetomar";
 import { usuarioDeSesion } from "./logicaGuardar";
 import { useGuardadoDeLaPagina } from "./useGuardadoDeLaPagina";
 import { useVersiones } from "./useVersiones";
+import { BotonExcel } from "./BotonExcel";
 import { ContextoAuditoria } from "./ContextoAuditoria";
 import { ContextoDeDialogos } from "./ContextoDeDialogos";
 import type { AlCrearVersion } from "./OperacionesDePrecios";
@@ -463,6 +464,7 @@ function HojaDeProyecto({ proyecto }: { proyecto: string }) {
             />
           )}
           <EstadoDelBorrador borrador={estado.borrador} alDescartar={() => void descartarCambios()} alGuardar={guardado.abrir} />
+          <BotonExcel id={estado.borrador.id} />
         </>
       )}
 

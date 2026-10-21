@@ -46,6 +46,8 @@
 .silice-hoja__desplazable {
   min-inline-size: 0;
   overflow-x: auto;
+  // Las etiquetas ocultas de Carbon (position: absolute) de las celdas se quedan dentro de la región y no alargan la página.
+  position: relative;
 
   &:focus-visible {
     outline: 2px solid var(--cds-focus, #0f62fe);

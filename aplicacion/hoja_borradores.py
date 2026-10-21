@@ -20,6 +20,11 @@ Ciclo de vida y memoria acotada (valores SUPUESTOS a ratificar, D-9):
 * se olvidan al cambiar de caso, cerrar sesion o vencer la ficha (`api.caso_web` llama a
   `olvidar`, `heredar` y `olvidar_todo`).
 
+Cada borrador que sale del registro, por cualquiera de esos caminos, se avisa una vez a cada funcion
+de `al_quitar` (3e-2: la importacion de un plano borra asi su carpeta temporal). El aviso llega
+FUERA del cerrojo del registro, para que quien lo recibe tome el suyo sin abrazo mortal; un aviso
+que falla no deja a los demas sin el suyo ni hace fallar la operacion.
+
 Un borrador de otra ficha **no existe** (`BorradorInexistente`, que la ruta traduce a 404 y no a
 403, para no confirmar ids ajenos). Cada borrador lleva un cerrojo y un contador `rev` que sube con
 cada cambio aceptado: quien escribe manda el `rev` que vio y, si no coincide, `RevDesactualizado`.
@@ -35,7 +40,8 @@ import pickle
 import secrets
 import sys
 import threading
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Iterator, Mapping
+from contextlib import contextmanager
 from dataclasses import dataclass, field, fields, is_dataclass
 from datetime import datetime, timedelta
 from typing import Any
@@ -131,15 +137,41 @@ class Registro:
         self._re_estimar_cada = re_estimar_cada
         self._vivos: dict[str, BorradorVivo] = {}
         self._cerrojo = threading.RLock()
+        #: A quien se avisa de cada borrador que sale del registro (fuera del cerrojo).
+        self.al_quitar: list[Callable[[BorradorVivo], None]] = []
+        self._quitados: list[BorradorVivo] = []
 
     # --- barrido y topes (siempre con el cerrojo tomado) ---------------------------------------
 
+    @contextmanager
+    def _exclusivo(self) -> Iterator[None]:
+        """El cerrojo del registro y, ya soltado, el aviso de los borradores que salieron."""
+        try:
+            with self._cerrojo:
+                yield
+        finally:
+            self._avisar()
+
+    def _quitar(self, vivo: BorradorVivo) -> None:
+        del self._vivos[vivo.id]
+        self._quitados.append(vivo)
+
+    def _avisar(self) -> None:
+        with self._cerrojo:
+            quitados, self._quitados = self._quitados, []
+        for vivo in quitados:
+            for aviso in list(self.al_quitar):
+                try:
+                    aviso(vivo)
+                except Exception:  # noqa: BLE001 - un aviso que falla no frena a los demas
+                    pass
+
     def _barrer(self, ahora: datetime) -> None:
         for vivo in [v for v in self._vivos.values() if ahora - v.tocado >= self._vigencia]:
-            del self._vivos[vivo.id]
+            self._quitar(vivo)
 
     def _expulsar_al_menos_usado(self, entre: list[BorradorVivo]) -> None:
-        del self._vivos[min(entre, key=lambda v: v.tocado).id]
+        self._quitar(min(entre, key=lambda v: v.tocado))
 
     def _expulsar_hasta_caber(self, quedarse: BorradorVivo) -> None:
         """Expulsa el menos usado (menos `quedarse`) hasta que el total de bytes estimados quepa."""
@@ -163,7 +195,7 @@ class Registro:
         abierta: VersionAbierta | None,
     ) -> BorradorVivo:
         """Registra un borrador nuevo de la ficha `huella`; respeta topes y barre los vencidos."""
-        with self._cerrojo:
+        with self._exclusivo():
             ahora = self._reloj()
             self._barrer(ahora)
             vivo = BorradorVivo(
@@ -188,7 +220,7 @@ class Registro:
 
     def obtener(self, huella: str, id: str) -> BorradorVivo:
         """El borrador `id` de la ficha `huella` (y renueva su plazo); `BorradorInexistente`."""
-        with self._cerrojo:
+        with self._exclusivo():
             ahora = self._reloj()
             self._barrer(ahora)
             vivo = self._vivos.get(id)
@@ -210,28 +242,28 @@ class Registro:
             vivo.calculo = None
             if vivo.rev % self._re_estimar_cada == 0:
                 vivo.tamano = self._medir(borrador)
-                with self._cerrojo:  # primero el del borrador y luego el del registro, siempre
+                with self._exclusivo():  # primero el del borrador y luego el del registro
                     if self._vivos.get(vivo.id) is vivo:
                         self._expulsar_hasta_caber(vivo)
             return vivo
 
     def descartar(self, huella: str, id: str) -> None:
         """Idempotente: un id desconocido, vencido o ajeno no falla ni borra nada ajeno."""
-        with self._cerrojo:
+        with self._exclusivo():
             vivo = self._vivos.get(id)
             if vivo is not None and vivo.huella == huella:
-                del self._vivos[id]
+                self._quitar(vivo)
 
     def listar(self, huella: str) -> list[BorradorVivo]:
         """Los borradores de la ficha, el mas reciente (por uso) primero."""
-        with self._cerrojo:
+        with self._exclusivo():
             self._barrer(self._reloj())
             return sorted(self._de(huella), key=lambda v: v.tocado, reverse=True)
 
     def olvidar(self, huella: str) -> None:
-        with self._cerrojo:
+        with self._exclusivo():
             for vivo in self._de(huella):
-                del self._vivos[vivo.id]
+                self._quitar(vivo)
 
     def heredar(self, anterior: str, nueva: str) -> None:
         """La ficha `nueva` sigue con los borradores de `anterior` (cambio de contrasena)."""
@@ -241,8 +273,9 @@ class Registro:
 
     def olvidar_todo(self) -> None:
         """Solo para las pruebas: ninguna hereda los borradores de otra."""
-        with self._cerrojo:
-            self._vivos.clear()
+        with self._exclusivo():
+            for vivo in list(self._vivos.values()):
+                self._quitar(vivo)
 
 
 REGISTRO = Registro()
@@ -254,3 +287,4 @@ listar = REGISTRO.listar
 olvidar = REGISTRO.olvidar
 heredar = REGISTRO.heredar
 olvidar_todo = REGISTRO.olvidar_todo
+al_quitar = REGISTRO.al_quitar
