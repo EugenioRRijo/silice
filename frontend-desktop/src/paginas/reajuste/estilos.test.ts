@@ -18,6 +18,15 @@ describe("Reajuste: anillo de foco de Carbon en lo que recibe el foco tras calcu
     expect(regla).toMatch(/outline:\s*2px solid var\(--cds-focus\)/);
   });
 
+  // VD-11: la celda de la papelera no hereda el minimo de 9rem de las celdas de campo (a 1056 px la tabla
+  // «Períodos» desbordaba su contenedor 49 px). La medida que da fe es la del navegador (informe de VD-11).
+  test("la columna de la papelera anula el minimo de ancho de las celdas de campo", () => {
+    const i = fuente.indexOf(".silice-filas__quitar");
+    expect(i).toBeGreaterThanOrEqual(0);
+    const regla = fuente.slice(i, fuente.indexOf("}", i));
+    expect(regla).toMatch(/min-inline-size:\s*0/);
+  });
+
   // Ronda 2: la pagina (la ventana) se desplaza bajo la cabecera fija del marco (3rem = 48 px, `position: fixed`).
   // `scrollIntoView({ block: "start" })` dejaba el titulo enfocado en y=0, tapado (WCAG 2.4.11). El margen de
   // desplazamiento tiene que cubrir la cabecera mas el anillo (2 px de borde y 2 px de separacion): al menos 52 px.

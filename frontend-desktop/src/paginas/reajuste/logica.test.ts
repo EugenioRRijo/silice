@@ -134,7 +134,12 @@ describe("partirResultado (VB-10)", () => {
       ["Diferencia (otra)", "Diferencia"],
       ["Tasa", "Tasa"],
     ]);
-    expect(principal.find((c) => c.clave === "Mecanismo")!.presentar!("comprobacion")).toBe("Comprobación directa");
+    // VD-5: el mecanismo se pinta con `celda` (sin title con el valor interno), no con `presentar`
+    const mecanismo = principal.find((c) => c.clave === "Mecanismo")!;
+    expect(mecanismo.presentar).toBeUndefined();
+    const pintar = mecanismo.celda as (fila: { id: string } & Record<string, string>) => unknown;
+    expect(pintar({ id: "0", Mecanismo: "comprobacion" })).toBe("Comprobación directa");
+    expect(pintar({ id: "1", Mecanismo: "" })).toBe("");
   });
 
   test("las marcas de cada período (no las del total) como nota", () => {

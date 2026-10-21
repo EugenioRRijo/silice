@@ -46,7 +46,7 @@ export function FilasEditables({ etiqueta, columnas, filas, alCambiar, fijas = f
                 {c.titulo}
               </th>
             ))}
-            {!fijas && <th aria-hidden="true" />}
+            {!fijas && <th aria-hidden="true" className="silice-filas__quitar" />}
           </tr>
         </thead>
         <tbody>
@@ -68,13 +68,17 @@ export function FilasEditables({ etiqueta, columnas, filas, alCambiar, fijas = f
                 </td>
               ))}
               {!fijas && (
-                <td>
+                // VD-11: la papelera en su columna angosta (sin el minimo de 9rem de las celdas de campo).
+                <td className="silice-filas__quitar">
                   <Button
                     kind="ghost"
                     size="sm"
                     hasIconOnly
                     renderIcon={TrashCan}
                     iconDescription={`Quitar ${etiqueta} fila ${i + 1}`}
+                    // VD-11, ronda 1: pegada al borde derecho del contenedor con desplazamiento, la papelera abre su
+                    // tooltip hacia la izquierda (sobre la fila); centrado arriba salia del contenedor y lo desplazaba.
+                    tooltipPosition="left"
                     onClick={() => quitar(i)}
                   />
                 </td>

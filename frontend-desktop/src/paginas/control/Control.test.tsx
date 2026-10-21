@@ -7,8 +7,11 @@ import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
 import { alertaConTexto } from "../../test/ayudas";
 import PaginaControl from "./index";
-import { TITULOS_VISIBLES, columnasDe, consultaDeCalculo, descripcionEsVe, errorDeCarga, etiquetaDeCodigo, textoLlano, cuerpoDeOpciones, FILTROS_INICIALES, sinLineasVacias } from "./logica";
+import { TITULOS_VISIBLES, columnasDe, consultaDeCalculo, descripcionEsVe, errorDeCarga, etiquetaDeCodigo, textoLlano, cuerpoDeOpciones, FILTROS_INICIALES, notaDeOpcion, sinLineasVacias } from "./logica";
 import type { Calculo, LineaBase, OpcionDeRecuperacion, Valuaciones } from "./logica";
+// VD-1: la respuesta real de POST /v1/control/recuperacion/opciones para OB-S2 (la compara con la API
+// `tests/unit/test_api_control.py::test_la_respuesta_de_opciones_del_front_es_la_de_la_api_real`).
+import opcionesReales from "./opciones_ob_s2.json";
 
 vi.mock("../../comun/GraficoCarbon", () => ({
   default: ({ tipo, datos }: { tipo: string; datos: unknown[] }) => (
@@ -82,6 +85,12 @@ const OPCIONES: OpcionDeRecuperacion[] = [
   { clave: "frentes", titulo: "Frentes en paralelo", aplica: true, motivo: "", requisitos: ["plano de interferencias"], requiere_declaracion: true, fila: { Opcion: "Frentes en paralelo", Termino: "dia 10", "Retraso (dias)": "0", "Costo directo adicional": "50.00", "Costo indirecto": "0.00", Penalizacion: "0.00", "Punto de equilibrio": "no aplica", Nota: "" } },
   { clave: "horas_extra", titulo: "Horas extra", aplica: false, motivo: "supera el tope legal", requisitos: [], requiere_declaracion: false, fila: { Opcion: "Horas extra", Nota: "supera el tope legal" } },
 ];
+
+// VD-5: los `title` de una tabla, en orden. El exacto a un toque es para las cifras; un rotulo, un codigo o una fecha
+// no llevan `title` (al pasar el raton mostraban el valor interno).
+function titulosDe(tabla: HTMLElement): string[] {
+  return [...tabla.querySelectorAll("[title]")].map((e) => e.getAttribute("title") ?? "");
+}
 
 describe("Control de obra", () => {
   const fetchFalso = vi.fn<typeof fetch>();
@@ -242,10 +251,12 @@ describe("Control de obra", () => {
     montar();
     expect(await screen.findByText(/perspectiva costo, vigente desde 02\/11\/2026/)).toBeInTheDocument();
     const tabla = screen.getByRole("table", { name: "Parámetros de control" });
-    // V-22: la naturaleza y el parametro se leen en español; el codigo queda en el title
-    expect(within(tabla).getAllByText("Supuesto declarado")[0]).toHaveAttribute("title", "SUPUESTO_DECLARADO");
-    expect(within(tabla).getByText("Dato del contrato")).toHaveAttribute("title", "DATO_DEL_CONTRATO");
-    expect(within(tabla).getByText("Umbral de SPI para error")).toHaveAttribute("title", "spi_error");
+    // V-22: la naturaleza y el parametro se leen en español. VD-5: sin el codigo en el title; solo el valor lo lleva
+    expect(within(tabla).getAllByText("Supuesto declarado")[0]).toBeInTheDocument();
+    expect(within(tabla).getByText("Dato del contrato")).toBeInTheDocument();
+    expect(within(tabla).getByText("Umbral de SPI para error")).toBeInTheDocument();
+    expect(within(tabla).getByText("SPI por debajo del cual el retraso es ERROR")).toBeInTheDocument();
+    expect(titulosDe(tabla)).toEqual(["0.80", "0"]);
     expect(within(tabla).queryByText("spi_error")).toBeNull();
     expect(within(tabla).queryByText(/AL-1/)).toBeNull();
     expect(String(fetchFalso.mock.calls[0]![0])).toContain("proyecto=OB-S2");
@@ -405,9 +416,12 @@ describe("Control de obra", () => {
     const u = montar();
     await u.click(await screen.findByRole("tab", { name: "Alertas y reproyección" }));
     const alertas = await screen.findByRole("table", { name: "Alertas" });
-    expect(within(alertas).getByText("Retraso (SPI)")).toHaveAttribute("title", "AL-1");
+    expect(within(alertas).getByText("Retraso (SPI)")).toBeInTheDocument();
     expect(within(alertas).queryByText("AL-1")).toBeNull();
-    expect(within(alertas).getByText("0,8500 (supuesto declarado)")).toHaveAttribute("title", "0.8500 (SUPUESTO_DECLARADO)");
+    // VD-5: el umbral lleva el exacto de su cifra; la alerta, la descripcion y la naturaleza, ningun title
+    expect(alertas.textContent).toContain("0,8500 (supuesto declarado)");
+    expect(within(alertas).getByText("0,8500")).toHaveAttribute("title", "0.8500");
+    expect(titulosDe(alertas)).toEqual(["0.8000", "0.8500"]);
     expect(screen.getByText("Término por el índice: día 12 (18/11/2026)")).toBeInTheDocument();
     expect(screen.getByText(/Punto de equilibrio proyectado: no disponible/)).toBeInTheDocument();
     expect(screen.getByText(/V' = V/)).toBeInTheDocument();
@@ -432,8 +446,10 @@ describe("Control de obra", () => {
     expect(within(alertas).queryByText("ADVERTENCIA")).toBeNull();
     const sinEvaluar = within(alertas).getByText("Sin evaluar");
     expect(sinEvaluar.closest(".silice-sev")?.querySelector("svg")).not.toBeNull();
-    expect(within(alertas).getByText("retraso: SPI 0,9780")).toHaveAttribute("title", "retraso: SPI 0.9780");
+    expect(within(alertas).getByText("retraso: SPI 0,9780")).toBeInTheDocument();
     expect(within(alertas).queryByText("retraso: SPI 0.9780")).toBeNull();
+    // VD-5: la descripcion es texto (su cifra ya se lee entera); el title queda en Observado y en la cifra del umbral
+    expect(titulosDe(alertas)).toEqual(["0.9780", "0.9500"]);
   });
 
   test("sin valuaciones el calculo dice que hacer", async () => {
@@ -477,6 +493,41 @@ describe("Control de obra", () => {
       declaracion_independencia: "plano 3",
       precios: { metodo: "ninguno" },
     });
+  });
+
+  test("la nota de las opciones reales se lee en español: sin códigos, «eficiencia» y cifras en es-VE (VD-1)", async () => {
+    const reales = opcionesReales.opciones as OpcionDeRecuperacion[];
+    fetchFalso.mockImplementation(async (entrada, init) => {
+      const url = String(entrada);
+      if (url === "/v1/control/recuperacion/opciones") return json(opcionesReales);
+      if (url.startsWith("/v1/control/linea-base") && (init?.method ?? "GET") === "GET") return lineaBase();
+      if (url.startsWith("/v1/control/calculo")) return calculo();
+      return json({ detalle: `ruta inesperada ${url}` }, 500);
+    });
+    expect(reales).toHaveLength(4);
+    const u = montar();
+    await u.click(await screen.findByRole("tab", { name: "Recuperación" }));
+    await u.click(await screen.findByRole("button", { name: "Calcular opciones" }));
+    const tabla = await screen.findByRole("table", { name: "Opciones de recuperación" });
+    // Oráculos escritos a mano: los supuestos de `core/budget/recuperacion.py` con los valores por omisión de
+    // `ParametrosControl` (η = 0,80; 3 cuadrillas; 2 h; recargo 0,50; penalización 0).
+    const comunes =
+      "penalización diaria: 0 (dato del contrato); costo diario de la cuadrilla: composiciones de la línea base " +
+      "(supuesto declarado); costo fijo en el tiempo: CF' = CF · D'/D (supuesto declarado)";
+    const notas = [
+      "eficiencia de la cuadrilla adicional: 0,80 (supuesto declarado); cuadrillas máximas: 3 (supuesto declarado); " + comunes,
+      "horas extra por día: 2 (supuesto declarado); eficiencia de la hora extra: 0,80 (supuesto declarado); " +
+        "recargo de las horas extra: 0,50 (fuente verificada); FCAS sobre las horas extra: sí (supuesto declarado); " +
+        "jornada ordinaria: 8 h (fuente verificada); límites de horas extra: 10 h por semana, 100 h por año " +
+        "(fuente verificada); " + comunes,
+      "ninguna partida sin empezar con inicio posterior al período siguiente",
+      comunes,
+    ];
+    for (const nota of notas) expect(within(tabla).getByText(nota)).toBeInTheDocument();
+    const texto = tabla.textContent ?? "";
+    for (const crudo of ["SUPUESTO_DECLARADO", "DATO_DEL_CONTRATO", "FUENTE_VERIFICADA", "eta de", "0.80", "0.50"]) {
+      expect(texto).not.toContain(crudo);
+    }
   });
 
   test("quien no puede decidir ve las opciones pero no el boton de elegir", async () => {
@@ -540,6 +591,52 @@ describe("logica del control", () => {
     }
     // por debajo del tope sigue formateando
     expect(descripcionEsVe("retraso: SPI 0.9780")).toBe("retraso: SPI 0,9780");
+  }, 120_000);
+
+  test("notaDeOpcion presenta cada ranura por separado y deja intacto lo que escribió el usuario (VD-1)", () => {
+    const base = opcionesReales.opciones[0] as OpcionDeRecuperacion;
+    const con = (supuestos: { nombre: string; valor: string; naturaleza: string }[]): OpcionDeRecuperacion => ({
+      ...base,
+      supuestos,
+    });
+    // la independencia lista códigos de partida del usuario: ni sus códigos ni sus cifras cambian
+    const independencia = "dia, SUPUESTO_DECLARADO, 1.50, eta de cuadrillas";
+    expect(
+      notaDeOpcion(con([{ nombre: "independencia de las partidas", valor: independencia, naturaleza: "SUPUESTO_DECLARADO" }])),
+    ).toBe(`independencia de las partidas: ${independencia} (supuesto declarado)`);
+    // la cifra se pone en es-VE solo en los supuestos numéricos del núcleo, y solo si toda la ranura es una cifra
+    expect(notaDeOpcion(con([{ nombre: "penalización diaria", valor: "1500.25", naturaleza: "DATO_DEL_CONTRATO" }]))).toBe(
+      "penalización diaria: 1.500,25 (dato del contrato)",
+    );
+    expect(notaDeOpcion(con([{ nombre: "recargo", valor: "0.50 por hora", naturaleza: "FUENTE_VERIFICADA" }]))).toBe(
+      "recargo de las horas extra: 0.50 por hora (fuente verificada)",
+    );
+    expect(notaDeOpcion(con([{ nombre: "otro supuesto", valor: "0.80", naturaleza: "NATURALEZA_NUEVA" }]))).toBe(
+      "otro supuesto: 0.80 (NATURALEZA_NUEVA)",
+    );
+    // la que no aplica (o una API sin ranuras) muestra su nota tal cual
+    const sinAplicar = opcionesReales.opciones[2] as OpcionDeRecuperacion;
+    expect(notaDeOpcion(sinAplicar)).toBe(sinAplicar.fila.Nota);
+    expect(notaDeOpcion({ ...base, supuestos: undefined })).toBe(base.fila.Nota);
+  });
+
+  test("notaDeOpcion con ranuras hostiles de 100 000 caracteres responde en menos de un segundo (VD-1)", () => {
+    const base = opcionesReales.opciones[0] as OpcionDeRecuperacion;
+    const hostiles = [
+      { nombre: "penalización diaria", valor: "9".repeat(100_000), naturaleza: "DATO_DEL_CONTRATO" },
+      { nombre: "independencia de las partidas", valor: "SUPUESTO_DECLARADO; ".repeat(5_000), naturaleza: "SUPUESTO_DECLARADO" },
+      { nombre: "eta de cuadrillas".repeat(6_000), valor: "0.80", naturaleza: "SUPUESTO_DECLARADO" },
+      { nombre: "recargo", valor: "1." + "0".repeat(100_000) + "x", naturaleza: "F".repeat(100_000) },
+    ];
+    for (const s of hostiles) {
+      const inicio = performance.now();
+      const nota = notaDeOpcion({ ...base, supuestos: [s] });
+      const ms = performance.now() - inicio;
+      console.log(`notaDeOpcion ${s.nombre.length + s.valor.length + s.naturaleza.length} car.: ${ms.toFixed(1)} ms`);
+      expect(ms).toBeLessThan(1_000);
+      // una ranura fuera de tope sale tal cual
+      expect(nota).toContain(s.valor);
+    }
   }, 120_000);
 
   test("las lineas sin partida ni cantidad no se mandan", () => {

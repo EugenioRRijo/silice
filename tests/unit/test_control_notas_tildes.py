@@ -197,3 +197,46 @@ def test_la_nota_de_las_opciones_sale_con_tilde_y_los_codigos_del_usuario_no_cam
 )
 def test_titulos_requisitos_y_mensajes_sueltos_del_nucleo(emitido: str, esperado: str) -> None:
     assert control.con_tildes(emitido) == esperado
+
+
+def test_los_supuestos_de_una_opcion_por_ranura_con_tilde_y_el_codigo_del_usuario_intacto() -> None:
+    # VD-1: las tres ranuras de cada supuesto, para que el front las presente por separado. El
+    # valor de la independencia son códigos de partida del usuario: no se tocan aunque traigan
+    # un código de naturaleza o una cifra. Oráculos escritos a mano.
+    aplicada = Opcion(
+        "paralelo",
+        True,
+        "",
+        termino=20,
+        retraso=0,
+        supuestos=(
+            Supuesto("eta de cuadrillas", "0.80", "SUPUESTO_DECLARADO", "Lee (2022)"),
+            Supuesto("horas extra por dia", "2", "SUPUESTO_DECLARADO"),
+            Supuesto(
+                "independencia de las partidas",
+                "dia, SUPUESTO_DECLARADO, 1.50",
+                "SUPUESTO_DECLARADO",
+            ),
+        ),
+    )
+    assert control.supuestos_de_opcion(aplicada) == [
+        {"nombre": "eta de cuadrillas", "valor": "0.80", "naturaleza": "SUPUESTO_DECLARADO"},
+        {"nombre": "horas extra por día", "valor": "2", "naturaleza": "SUPUESTO_DECLARADO"},
+        {
+            "nombre": "independencia de las partidas",
+            "valor": "dia, SUPUESTO_DECLARADO, 1.50",
+            "naturaleza": "SUPUESTO_DECLARADO",
+        },
+    ]
+    sin_aplicar = Opcion(
+        "cuadrillas",
+        False,
+        "ninguna partida pasa del objetivo",
+        supuestos=(Supuesto("eta de cuadrillas", "0.80", "SUPUESTO_DECLARADO"),),
+    )
+    assert control.supuestos_de_opcion(sin_aplicar) == []
+
+
+def test_supuestos_de_opcion_es_parte_de_la_interfaz_publica_del_modulo() -> None:
+    # Ronda 1 del árbitro (MENOR): la API la importa como `logica.supuestos_de_opcion`.
+    assert "supuestos_de_opcion" in control.__all__

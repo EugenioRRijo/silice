@@ -108,6 +108,7 @@ __all__ = [
     "filas_de_parametros",
     "filas_de_indicadores",
     "filas_de_opciones",
+    "supuestos_de_opcion",
     "filas_de_reproyeccion",
     "filas_de_valuaciones",
     "guardar_los_parametros",
@@ -971,6 +972,18 @@ def filas_de_reproyeccion(resultado: ResultadoControl) -> list[dict[str, str]]:
     return filas
 
 
+def supuestos_de_opcion(opcion: Opcion) -> list[dict[str, str]]:
+    """Los supuestos de una opción que aplica, cada uno en sus tres ranuras (nombre y valor con
+    tilde, naturaleza tal cual): así el front los presenta por separado sin reescribir un texto
+    armado que trae códigos del usuario (VD-1). La que no aplica no lista supuestos."""
+    if not opcion.aplica:
+        return []
+    return [
+        {"nombre": con_tildes(s.nombre), "valor": con_tildes(s.valor), "naturaleza": s.naturaleza}
+        for s in opcion.supuestos
+    ]
+
+
 def filas_de_opciones(todas: Sequence[Opcion]) -> list[dict[str, str]]:
     """Una fila por opción con su término, sus costos, su punto de equilibrio y sus supuestos."""
     filas = []
@@ -994,8 +1007,8 @@ def filas_de_opciones(todas: Sequence[Opcion]) -> list[dict[str, str]]:
                 "Penalizacion": _monto(o.penalizacion),
                 "Punto de equilibrio": pe,
                 "Nota": "; ".join(
-                    f"{con_tildes(s.nombre)}: {con_tildes(s.valor)} ({s.naturaleza})"
-                    for s in o.supuestos
+                    f"{s['nombre']}: {s['valor']} ({s['naturaleza']})"
+                    for s in supuestos_de_opcion(o)
                 ),
             }
         )

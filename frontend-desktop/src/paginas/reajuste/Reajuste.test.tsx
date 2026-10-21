@@ -253,7 +253,9 @@ describe("Reajuste de precios", () => {
     ]);
     expect(within(principal).getAllByText("15.300,00")[0]).toHaveAttribute("title", "15300.00");
     expect(within(principal).getAllByText("16.000,00")[0]).toHaveAttribute("title", "16000.00");
-    expect(within(principal).getByTitle("escalatoria")).toHaveTextContent("Escalatoria");
+    // VD-5: el mecanismo se lee con su rotulo y sin el valor interno en el title; solo las cifras llevan el exacto
+    expect(within(principal).getAllByText("Escalatoria", { selector: "td" })[0]).toBeInTheDocument();
+    expect(within(principal).queryByTitle("escalatoria")).toBeNull();
     const otra = screen.getByRole("table", { name: "En la otra moneda" });
     expect(within(otra).getAllByRole("columnheader").map((c) => c.textContent)).toEqual([
       "Período", "Escalatoria", "Comprobación", "Diferencia", "Tasa",
@@ -479,6 +481,43 @@ describe("Reajuste de precios", () => {
     expect(screen.getByLabelText("Desde, Períodos fila 2")).toBeInTheDocument();
     await u.click(screen.getByRole("button", { name: "Quitar Períodos fila 2" }));
     expect(screen.queryByLabelText("Desde, Períodos fila 2")).not.toBeInTheDocument();
+  });
+
+  test("el tooltip de la papelera se abre a la izquierda, dentro de la tabla (VD-11, ronda 1)", async () => {
+    // Arbitro, ronda 1: con la papelera pegada al borde derecho de `.silice-filas` (overflow-x: auto), el tooltip
+    // centrado arriba (lo que Carbon pone por omision) salia del contenedor y lo hacia desplazarse (medido a 1366 px:
+    // 1016/1083). A la izquierda se abre sobre la propia fila, hacia dentro. jsdom no mide: se fija la alineacion
+    // (clase del popover de Carbon); el rectangulo se mide en navegador.
+    const u = userEvent.setup();
+    montar();
+    await screen.findByLabelText("Versión del contrato");
+    await irA(u, "2. Períodos y lo ejecutado");
+    for (const nombre of ["Períodos", "Ejecutado"]) {
+      const tabla = screen.getByRole("table", { name: nombre });
+      const quitar = within(tabla).getByRole("button", { name: `Quitar ${nombre} fila 1` });
+      const popover = quitar.closest(".cds--popover-container");
+      expect(popover).toHaveClass("cds--popover--left");
+      expect(popover).not.toHaveClass("cds--popover--top");
+    }
+  });
+
+  test("la papelera va en su columna angosta y no en una de 9rem (VD-11)", async () => {
+    // Medido en navegador a 1056 px: la tabla «Períodos» medía 770 px en un contenedor de 721 porque la celda de la
+    // papelera (un boton de 32 px) heredaba el minimo de 9rem de las celdas de campo. jsdom no mide: aqui se fija la
+    // estructura (la celda y su cabecera llevan la clase de la columna angosta) y el estilo se comprueba en estilos.test.
+    const u = userEvent.setup();
+    montar();
+    await screen.findByLabelText("Versión del contrato");
+    await irA(u, "2. Períodos y lo ejecutado");
+    for (const nombre of ["Períodos", "Ejecutado"]) {
+      const tabla = screen.getByRole("table", { name: nombre });
+      const quitar = within(tabla).getByRole("button", { name: `Quitar ${nombre} fila 1` });
+      expect(quitar.closest("td")).toHaveClass("silice-filas__quitar");
+      const cabeceras = tabla.querySelectorAll("thead th");
+      expect(cabeceras[cabeceras.length - 1]).toHaveClass("silice-filas__quitar");
+      // las celdas de campo no la llevan
+      expect(within(tabla).getAllByRole("textbox")[0]!.closest("td")).not.toHaveClass("silice-filas__quitar");
+    }
   });
 
   test("un 401 avisa que la sesión venció", async () => {

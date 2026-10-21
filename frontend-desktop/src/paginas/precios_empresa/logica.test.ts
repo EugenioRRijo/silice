@@ -121,15 +121,18 @@ describe("logica de Precios de la empresa", () => {
 
   test("las columnas de los atipicos: la variacion es numerica y la severidad lleva su icono", () => {
     const columnas = columnasAtipicos(CON_EXACTO);
-    expect(columnas.map((c) => [c.clave, c.titulo, c.numerica, c.celda])).toEqual([
-      ["insumo", "Insumo", undefined, undefined],
-      ["porcentaje", "Variación (en USD)", true, undefined],
-      ["desde", "Desde", undefined, undefined],
-      ["hasta", "Hasta", undefined, undefined],
-      ["severidad", "Severidad", undefined, "severidad"],
+    // VD-5: las fechas se pintan con `celda` (sin su forma ISO en el title); la cifra, con `presentar` (su exacto)
+    expect(columnas.map((c) => [c.clave, c.titulo, c.numerica, typeof c.celda, typeof c.presentar])).toEqual([
+      ["insumo", "Insumo", undefined, "undefined", "undefined"],
+      ["porcentaje", "Variación (en USD)", true, "undefined", "function"],
+      ["desde", "Desde", undefined, "function", "undefined"],
+      ["hasta", "Hasta", undefined, "function", "undefined"],
+      ["severidad", "Severidad", undefined, "string", "undefined"],
     ]);
-    const [, porcentaje, desde] = columnas;
-    expect(desde.presentar?.("2026-09-01")).toBe("01/09/2026");
+    const [, porcentaje, desde, hasta] = columnas;
+    const fila = { id: "0", desde: "2026-09-01", hasta: "2026-10-01" };
+    expect((desde.celda as (f: typeof fila) => unknown)(fila)).toBe("01/09/2026");
+    expect((hasta.celda as (f: typeof fila) => unknown)(fila)).toBe("01/10/2026");
     // se ve el redondeo que hizo la API y el valor de la celda (su title) es el exacto
     expect(porcentaje.presentar?.("0.390625")).toBe("0,39 %");
     // un exacto que no vino en la respuesta se muestra entero, sin que la interfaz redondee

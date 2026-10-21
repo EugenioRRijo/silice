@@ -1,5 +1,5 @@
 import { Button, Checkbox, InlineNotification, PasswordInput, Select, SelectItem } from "@carbon/react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { ErrorDeApi, pedir } from "../../api/cliente";
 import { CampoTexto } from "../../comun/CampoTexto";
@@ -38,6 +38,20 @@ export default function Asistente() {
   const [respaldo, setRespaldo] = useState("");
   const [contrasena, setContrasena] = useState("");
   const [confirmarOlvido, setConfirmarOlvido] = useState(false);
+  // Foco de la confirmacion en linea (VD-2, igual que VB-12): al abrirla va a «Cancelar»; al cancelarla vuelve a
+  // «Olvidar la clave».
+  const cancelarOlvidoRef = useRef<HTMLButtonElement>(null);
+  const olvidarRef = useRef<HTMLButtonElement>(null);
+  const abrioOlvido = useRef(false);
+  useEffect(() => {
+    if (confirmarOlvido) {
+      abrioOlvido.current = true;
+      cancelarOlvidoRef.current?.focus();
+    } else if (abrioOlvido.current) {
+      abrioOlvido.current = false;
+      olvidarRef.current?.focus();
+    }
+  }, [confirmarOlvido]);
 
   const adoptar = useCallback((e: AsistenteEstado) => {
     setEstado(e);
@@ -113,9 +127,13 @@ export default function Asistente() {
     void enviar(`${RUTA}/clave/reactivar`, cuerpo);
   }
 
-  function olvidar() {
+  // Al confirmar, el boton de origen queda deshabilitado mientras se envia: el foco va al campo para registrar otra
+  // clave (o, si la cuenta no puede, queda donde estaba).
+  async function olvidar() {
+    abrioOlvido.current = false;
     setConfirmarOlvido(false);
-    void enviar(`${RUTA}/clave/olvidar`);
+    await enviar(`${RUTA}/clave/olvidar`);
+    document.getElementById("ia-clave-nueva")?.focus();
   }
 
   if (estado === null) return error ? <AvisoError error={error} /> : <EsqueletoPagina />;
@@ -219,7 +237,7 @@ export default function Asistente() {
           </form>
           {!confirmarOlvido ? (
             <div className="silice-adm__acciones">
-              <Button kind="danger--tertiary" size="md" disabled={ocupada || !permitida} onClick={() => setConfirmarOlvido(true)}>
+              <Button ref={olvidarRef} kind="danger--tertiary" size="md" disabled={ocupada || !permitida} onClick={() => setConfirmarOlvido(true)}>
                 Olvidar la clave
               </Button>
             </div>
@@ -228,10 +246,10 @@ export default function Asistente() {
               <p className="cds--type-body-compact-01">
                 La clave de IA se borrará de este equipo (del almacén de credenciales y del respaldo cifrado). ¿Olvidarla?
               </p>
-              <Button kind="danger" size="md" onClick={olvidar}>
+              <Button kind="danger" size="md" onClick={() => void olvidar()}>
                 Sí, olvidar la clave
               </Button>
-              <Button kind="ghost" size="md" onClick={() => setConfirmarOlvido(false)}>
+              <Button ref={cancelarOlvidoRef} kind="ghost" size="md" onClick={() => setConfirmarOlvido(false)}>
                 Cancelar
               </Button>
             </div>

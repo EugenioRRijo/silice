@@ -1,5 +1,6 @@
 import { Button, InlineNotification, RadioButton, RadioButtonGroup, Select, SelectItem, TextInput } from "@carbon/react";
 import { useState } from "react";
+import { formatoEsVe } from "../../indicadores/formatoEsVe";
 import { pedir } from "../../api/cliente";
 import { AvisoError } from "../../comun/AvisoError";
 import { CurvaPlanAvance } from "../../comun/CurvaPlanAvance";
@@ -20,8 +21,9 @@ import {
   cuerpoDeOpciones,
   descripcionEsVe,
   etiquetaDeCodigo,
+  notaDeOpcion,
+  partirUmbral,
   severidadVisible,
-  textoLlano,
   useAccion,
 } from "./logica";
 import type { Calculo, Filtros, MetodoDePrecios, OpcionDeRecuperacion } from "./logica";
@@ -136,6 +138,20 @@ export function ValorGanado({ calculo }: { calculo: Calculo }) {
 
 // --- Alertas y reproyección ------------------------------------------------------------------
 
+// VD-5: el umbral con el exacto solo en su cifra y la naturaleza en español, sin el codigo en el title. Lo que no
+// tiene la forma fija del umbral sale tal cual.
+function CeldaDeUmbral({ texto }: { texto: string }) {
+  const partes = partirUmbral(texto);
+  if (!partes) return <>{texto}</>;
+  const naturaleza = `(${etiquetaDeCodigo(partes.naturaleza).toLowerCase()})`;
+  if (!partes.cifra) return <>{naturaleza}</>;
+  return (
+    <>
+      <span title={partes.cifra}>{formatoEsVe(partes.cifra)}</span> {naturaleza}
+    </>
+  );
+}
+
 export function AlertasYReproyeccion({ calculo }: { calculo: Calculo }) {
   const t = calculo.terminos;
   return (
@@ -149,10 +165,13 @@ export function AlertasYReproyeccion({ calculo }: { calculo: Calculo }) {
           columnas={columnasDe(COLUMNAS_ALERTAS, ["Observado", "Umbral"], {
             Alerta: etiquetaDeCodigo,
             Descripcion: descripcionEsVe,
-            Umbral: textoLlano,
           }).map((c) =>
             // VB-4: la severidad con el componente comun (icono y nombre); el color nunca va solo.
-            c.clave === "Severidad" ? { ...c, celda: (fila: FilaDensa) => <Severidad valor={severidadVisible(fila.Severidad ?? "")} /> } : c,
+            c.clave === "Severidad"
+              ? { ...c, celda: (fila: FilaDensa) => <Severidad valor={severidadVisible(fila.Severidad ?? "")} /> }
+              : c.clave === "Umbral"
+                ? { ...c, presentar: undefined, celda: (fila: FilaDensa) => (fila.Umbral ? <CeldaDeUmbral texto={fila.Umbral} /> : "") }
+                : c,
           )}
           filas={conId(calculo.alertas)}
         />
@@ -279,7 +298,7 @@ export function Recuperacion({
           <TablaDensa
             etiqueta="Opciones de recuperación"
             columnas={columnasDe(COLUMNAS_OPCIONES, COLUMNAS_OPCIONES.slice(1, 7))}
-            filas={conId(opciones.map((o) => o.fila))}
+            filas={conId(opciones.map((o) => ({ ...o.fila, Nota: notaDeOpcion(o) })))}
           />
           {opciones.map(
             (o) =>

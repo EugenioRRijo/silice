@@ -1,11 +1,13 @@
 import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router";
+import { MemoryRouter, useNavigate } from "react-router";
 import { afterEach, beforeEach, describe, expect, onTestFinished, test, vi } from "vitest";
 import { fijarCsrf } from "../api/cliente";
 import type { SesionRespuesta } from "../api/tipos";
 import { alertaConTexto } from "../test/ayudas";
+import { useState, useEffect } from "react";
 import { useAplicacion } from "./contexto";
+import { EsqueletoPagina } from "../comun/EsqueletoPagina";
 import { RECORRIDO_AUDITAR, iniciarRecorrido, recorridoEnCurso, terminarRecorrido } from "./recorrido";
 import { Shell } from "./Shell";
 import type { PaginaDef } from "./rutas";
@@ -649,6 +651,124 @@ describe("Shell", () => {
         </MemoryRouter>,
       );
       expect(await screen.findByText("No hay pantallas disponibles en esta interfaz")).toBeInTheDocument();
+    });
+  });
+  // VD-7: cuando la accion quita el control que tenia el foco, el foco cae a <body>. Una prueba de jsdom no ve la
+  // geometria pero si el foco: cada una de estas debe fallar si se quita la linea que lo mueve.
+  describe("el foco no se pierde cuando la accion quita el control", () => {
+    function Origen() {
+      const ir = useNavigate();
+      return (
+        <div>
+          <h1>Pantalla de origen</h1>
+          <button type="button" onClick={() => void ir("/destino")}>
+            Ir al destino
+          </button>
+        </div>
+      );
+    }
+    const Destino = () => <h1>Pantalla de destino</h1>;
+    const DOS: PaginaDef[] = [
+      { id: "origen", titulo: "Origen de prueba", seccion: "Trabajo", accion: null, cargar: async () => ({ default: Origen }) },
+      { id: "destino", titulo: "Destino de prueba", seccion: "Trabajo", accion: null, cargar: async () => ({ default: Destino }) },
+    ];
+    function montarDos() {
+      return render(
+        <MemoryRouter initialEntries={["/origen"]}>
+          <Shell sesion={sesionCon()} alSalir={alSalir} alExpirar={alExpirar} paginas={DOS} />
+        </MemoryRouter>,
+      );
+    }
+
+    test("un botón de la página que lleva a otra deja el foco en el único h1 de la página nueva", async () => {
+      const usuario = userEvent.setup();
+      montarDos();
+      await usuario.click(await screen.findByRole("button", { name: "Ir al destino" }));
+      const titulo = await screen.findByRole("heading", { name: "Pantalla de destino" });
+      await waitFor(() => expect(titulo).toHaveFocus());
+      expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+      expect(titulo).toHaveAttribute("tabindex", "-1");
+    });
+
+    test("un enlace del menú conserva el foco: solo se mueve si se perdió", async () => {
+      const usuario = userEvent.setup();
+      montarDos();
+      await screen.findByRole("heading", { name: "Pantalla de origen" });
+      const enlace = within(menu()).getByRole("link", { name: "Destino de prueba" });
+      await usuario.click(enlace);
+      await screen.findByRole("heading", { name: "Pantalla de destino" });
+      await new Promise((r) => setTimeout(r, 80));
+      expect(enlace).toHaveFocus();
+    });
+
+    test("al cargar la primera vez no roba el foco: «Saltar al contenido» sigue siendo el primer Tab", async () => {
+      montarDos();
+      await screen.findByRole("heading", { name: "Pantalla de origen" });
+      await new Promise((r) => setTimeout(r, 80));
+      expect(document.body).toHaveFocus();
+    });
+
+    // Ronda 1 del arbitro: la entrada real es «/» (o una ruta que no existe) y ambas REDIRIGEN con `replace` a la primera
+    // pagina; eso es la carga inicial, no un cambio de pagina: el foco sigue en <body> y el primer Tab es «Saltar».
+    test.each(["/", "/ruta-inexistente"])("al cargar en %s (redirige a la primera página) no roba el foco", async (entrada) => {
+      const usuario = userEvent.setup();
+      render(
+        <MemoryRouter initialEntries={[entrada]}>
+          <Shell sesion={sesionCon()} alSalir={alSalir} alExpirar={alExpirar} paginas={DOS} />
+        </MemoryRouter>,
+      );
+      await screen.findByRole("heading", { name: "Pantalla de origen" });
+      await new Promise((r) => setTimeout(r, 120));
+      expect(document.body).toHaveFocus();
+      await usuario.tab();
+      expect(screen.getByRole("button", { name: "Saltar al contenido" })).toHaveFocus();
+    });
+
+    // Acerca: el h1 del esqueleto recibia el foco y la pagina real lo sustituia, dejando el foco en <body>.
+    test("si la página nueva dibuja primero un esqueleto con h1, el foco va al h1 real", async () => {
+      const usuario = userEvent.setup();
+      function Lenta() {
+        const [lista, setLista] = useState(false);
+        useEffect(() => {
+          const t = setTimeout(() => setLista(true), 60);
+          return () => clearTimeout(t);
+        }, []);
+        return lista ? <h1>Pantalla lenta lista</h1> : <EsqueletoPagina titulo="Pantalla lenta" />;
+      }
+      const TRES: PaginaDef[] = [
+        ...DOS,
+        { id: "lenta", titulo: "Lenta de prueba", seccion: "Trabajo", accion: null, cargar: async () => ({ default: Lenta }) },
+      ];
+      function Va() {
+        const ir = useNavigate();
+        return (
+          <button type="button" onClick={() => void ir("/lenta")}>
+            Ir a la lenta
+          </button>
+        );
+      }
+      TRES[0] = { ...DOS[0], cargar: async () => ({ default: Va }) };
+      render(
+        <MemoryRouter initialEntries={["/origen"]}>
+          <Shell sesion={sesionCon()} alSalir={alSalir} alExpirar={alExpirar} paginas={TRES} />
+        </MemoryRouter>,
+      );
+      await usuario.click(await screen.findByRole("button", { name: "Ir a la lenta" }));
+      const real = await screen.findByRole("heading", { name: "Pantalla lenta lista" });
+      await waitFor(() => expect(real).toHaveFocus());
+    });
+
+    test("«Terminar recorrido» con Enter deja el foco en el primer enlace del menú, no en <body>", async () => {
+      const usuario = userEvent.setup();
+      montar();
+      await screen.findByRole("heading", { name: "Pantalla del tablero" });
+      act(() => iniciarRecorrido(RECORRIDO_AUDITAR));
+      onTestFinished(() => terminarRecorrido());
+      const region = within(menu()).getByRole("region", { name: "Recorrido en curso" });
+      within(region).getByRole("button", { name: "Terminar recorrido" }).focus();
+      await usuario.keyboard("{Enter}");
+      expect(within(menu()).queryByRole("region", { name: "Recorrido en curso" })).not.toBeInTheDocument();
+      expect(within(menu()).getAllByRole("link")[0]).toHaveFocus();
     });
   });
 });

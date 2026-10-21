@@ -7,7 +7,7 @@ import { TablaDensa } from "../../comun/TablaDensa";
 import { formatoMontoEsVe } from "../../indicadores/formatoEsVe";
 import { useAplicacion } from "../../shell/contexto";
 import { leerFeriados } from "./fechas";
-import { errorDeCarga, etiquetaDeCodigo, rutaDe, textoLlano, useAccion, useCargaSuave } from "./logica";
+import { errorDeCarga, etiquetaDeCodigo, rutaDe, sinTitulo, textoLlano, useAccion, useCargaSuave } from "./logica";
 import type { LineaBase } from "./logica";
 
 interface Props {
@@ -117,10 +117,11 @@ function Parametros({ proyecto, datos, alCambiar }: { proyecto: string; datos: L
       <TablaDensa
         etiqueta="Parámetros de control"
         columnas={[
-          { clave: "parametro", titulo: "Parámetro", ordenable: false, presentar: etiquetaDeCodigo },
-          { clave: "que_es", titulo: "Qué es", ordenable: false, presentar: textoLlano },
+          // VD-5: el title (el exacto) solo en la cifra; el parametro, el texto y la naturaleza, sin el codigo interno
+          { clave: "parametro", titulo: "Parámetro", ordenable: false, celda: sinTitulo("parametro", etiquetaDeCodigo) },
+          { clave: "que_es", titulo: "Qué es", ordenable: false, celda: sinTitulo("que_es", textoLlano) },
           { clave: "valor", titulo: "Valor", numerica: true, ordenable: false, presentar: formatoMontoEsVe },
-          { clave: "naturaleza", titulo: "Naturaleza", ordenable: false, presentar: etiquetaDeCodigo },
+          { clave: "naturaleza", titulo: "Naturaleza", ordenable: false, celda: sinTitulo("naturaleza", etiquetaDeCodigo) },
         ]}
         filas={datos.parametros.map((p) => ({
           id: p.parametro,

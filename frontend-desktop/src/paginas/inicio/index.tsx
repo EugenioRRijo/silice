@@ -25,8 +25,11 @@ export default function PaginaInicio() {
   const [archivo, setArchivo] = useState<File | null>(null);
   // Cada recurso se pide solo si la cuenta tiene la accion que lo permite (la API contestaria 403): la arenera es de
   // quien la opera; auditar y el historial, de quien puede leer proyectos (VB-9).
+  // Y quien no la tiene no ve la seccion vacia: se omite (VD-10). Un 403 de la API con la accion presente sigue
+  // diciendo «sin datos».
   const puedeAuditar = sesion.acciones.includes("leer_proyecto");
-  const arenera = useCarga<ExistenciaRespuesta[]>(sesion.acciones.includes("operar_arenera") ? RUTA_ARENERA : null, alExpirar);
+  const puedeVerArenera = sesion.acciones.includes("operar_arenera");
+  const arenera = useCarga<ExistenciaRespuesta[]>(puedeVerArenera ? RUTA_ARENERA : null, alExpirar);
   const auditorias = useCarga<AuditoriaGuardadaRespuesta[]>(puedeAuditar ? RUTA_AUDITORIAS : null, alExpirar);
 
   const recorrido = useRecorrido();
@@ -92,31 +95,33 @@ export default function PaginaInicio() {
         </section>
       )}
 
-      <PanelArenera carga={arenera} />
+      {puedeVerArenera && <PanelArenera carga={arenera} />}
 
-      <section className="silice-inicio__bloque" aria-labelledby="inicio-seguir">
-        <h2 id="inicio-seguir" className="cds--type-heading-compact-02">
-          Últimas auditorías guardadas
-        </h2>
-        <p className="silice-inicio__nota cds--type-body-compact-01">
-          {`Caso abierto: ${caso?.nombre ?? "ninguno"}`}
-          {proyecto ? ` · Proyecto: ${nombreProyecto ?? proyecto}` : ""}
-        </p>
-        {recorrido && (
+      {puedeAuditar && (
+        <section className="silice-inicio__bloque" aria-labelledby="inicio-seguir">
+          <h2 id="inicio-seguir" className="cds--type-heading-compact-02">
+            Últimas auditorías guardadas
+          </h2>
           <p className="silice-inicio__nota cds--type-body-compact-01">
-            {`Recorrido en curso: ${recorrido.titulo}.`}
-            {siguiente && paginaSiguiente && puedeSeguir && (
-              <>
-                {" "}
-                <Link className="cds--link" to={rutaDe(paginaSiguiente)}>
-                  {`Seguir con el paso ${(posicion ?? 0) + 2}: ${siguiente.titulo}`}
-                </Link>
-              </>
-            )}
+            {`Caso abierto: ${caso?.nombre ?? "ninguno"}`}
+            {proyecto ? ` · Proyecto: ${nombreProyecto ?? proyecto}` : ""}
           </p>
-        )}
-        <UltimasAuditorias carga={auditorias} />
-      </section>
+          {recorrido && (
+            <p className="silice-inicio__nota cds--type-body-compact-01">
+              {`Recorrido en curso: ${recorrido.titulo}.`}
+              {siguiente && paginaSiguiente && puedeSeguir && (
+                <>
+                  {" "}
+                  <Link className="cds--link" to={rutaDe(paginaSiguiente)}>
+                    {`Seguir con el paso ${(posicion ?? 0) + 2}: ${siguiente.titulo}`}
+                  </Link>
+                </>
+              )}
+            </p>
+          )}
+          <UltimasAuditorias carga={auditorias} />
+        </section>
+      )}
     </div>
   );
 }

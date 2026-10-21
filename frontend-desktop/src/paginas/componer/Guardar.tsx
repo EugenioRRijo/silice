@@ -1,4 +1,5 @@
-import { Button, InlineNotification, TextInput } from "@carbon/react";
+import { Button, InlineNotification } from "@carbon/react";
+import { CampoTexto } from "../../comun/CampoTexto";
 import { useState } from "react";
 import { Link } from "react-router";
 import { AvisoError } from "../../comun/AvisoError";
@@ -25,7 +26,7 @@ export function Guardar({ sinCondiciones, requiereJustificacion, guardando, resu
         Guardar
       </h2>
       {requiereJustificacion && (
-        <TextInput
+        <CampoTexto
           id="componer-justificacion"
           labelText="Justificación de la advertencia"
           helperText="Opcional: el motivo con el que acepta el rendimiento pese a la advertencia. Se guarda junto al rendimiento que registre este guardado; la advertencia no impide guardar."

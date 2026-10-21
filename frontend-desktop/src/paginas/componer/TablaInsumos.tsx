@@ -8,8 +8,8 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-  TextInput,
 } from "@carbon/react";
+import { CampoTexto } from "../../comun/CampoTexto";
 import { COLUMNAS, TITULOS } from "./tablas";
 import type { Fila, TipoTabla } from "./tablas";
 
@@ -65,7 +65,7 @@ export function TablaInsumos({ tipo, filas, modalidades, alCambiar, alAgregar, a
                           ))}
                         </Select>
                       ) : (
-                        <TextInput
+                        <CampoTexto
                           id={`${tipo}-${i}-${c.clave}`}
                           size="sm"
                           labelText={nombre}

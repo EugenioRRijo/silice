@@ -31,6 +31,26 @@
     outline: none;
   }
 
+  // El h1 que recibe el foco al cambiar de pagina (VD-7) lo muestra con el anillo de Carbon, no con el del navegador.
+  h1[tabindex="-1"]:focus {
+    outline: none;
+  }
+
+  // Hacia afuera (offset 2px) como el resto de anillos: a 1366x768 y scrollY 0 el h1 queda 24 px bajo la cabecera fija
+  // y el anillo se ve completo sin tocar la primera letra.
+  h1[tabindex="-1"]:focus-visible {
+    outline: 2px solid var(--cds-focus);
+    outline-offset: 2px;
+  }
+
+  // «Libro de la empresa»: su h1 tiene relleno propio y la caja empieza pegada a la cabecera fija (arriba), al menu
+  // (izquierda) y a la banda de indicadores (abajo): hacia afuera el anillo quedaba tapado por los tres (medido, ronda 2).
+  // Hacia adentro cae sobre su relleno y se ve completo.
+  .silice-pagina-libro > h1[tabindex="-1"]:focus-visible {
+    outline: 2px solid var(--cds-focus);
+    outline-offset: -2px;
+  }
+
   @media (min-width: 66rem) {
     margin-inline-start: 16rem;
   }

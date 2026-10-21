@@ -337,10 +337,12 @@ describe("Inicio, panel del día", () => {
 
     test("no enlaza al paso siguiente si la cuenta no puede abrir esa pantalla", async () => {
       iniciarRecorrido(RECORRIDO_AUDITAR);
+      // El paso siguiente (Libro) pide `leer_proyecto`, igual que la sección donde se anuncia el recorrido (VD-10): sin
+      // la acción la sección se omite y no hay enlace que lleve a una pantalla sin permiso.
       montar({ sesion: { ...SESION, acciones: ["editar_hoja"] } });
-      const seccion = await screen.findByRole("region", { name: "Últimas auditorías guardadas" });
-      expect(within(seccion).getByText(/Recorrido en curso/)).toBeInTheDocument();
-      expect(within(seccion).queryByRole("link", { name: /Seguir con el paso/ })).not.toBeInTheDocument();
+      await screen.findByRole("heading", { name: "Inicio" });
+      expect(screen.queryByRole("region", { name: "Últimas auditorías guardadas" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("link", { name: /Seguir con el paso/ })).not.toBeInTheDocument();
     });
 
     test("sin recorrido en curso no dice nada de recorridos", async () => {
@@ -397,7 +399,10 @@ describe("Inicio, panel del día", () => {
       await within(seccion).findByText("obra-norte.xlsx");
       const filas = within(seccion).getAllByRole("row").slice(1);
       expect(filas[0]).toHaveTextContent("obra-norte.xlsx");
-      expect(filas[0]).toHaveTextContent("2026-10-18 14:32");
+      // VD-3: la misma fecha y hora que Historial («dd/mm/aaaa hh:mm»), no la ISO.
+      expect(filas[0]).toHaveTextContent("18/10/2026 14:32");
+      expect(filas[0]).not.toHaveTextContent("2026-10-18");
+      expect(filas[1]).toHaveTextContent("17/10/2026 09:05");
       expect(filas[0]).toHaveTextContent("1 error, 3 advertencias");
       expect(filas[1]).toHaveTextContent("galpon.xlsx");
       expect(filas[1]).toHaveTextContent("Sin errores ni advertencias");
@@ -470,14 +475,20 @@ describe("Inicio, panel del día", () => {
       expect(await screen.findByText("Todo sobre el mínimo")).toBeInTheDocument();
       expect(rutasPedidas()).toContain("/v1/produccion/existencias");
       expect(rutasPedidas().some((r) => r.startsWith("/v1/auditorias-libro"))).toBe(false);
-      expect(screen.getByText("Sin historial de auditorías para su cuenta")).toBeInTheDocument();
+      // VD-10: la sección que la cuenta no puede usar se omite, no se muestra vacía.
+      expect(screen.queryByText("Sin historial de auditorías para su cuenta")).not.toBeInTheDocument();
+      expect(screen.queryByRole("region", { name: "Últimas auditorías guardadas" })).not.toBeInTheDocument();
+      expect(screen.getByRole("region", { name: "Arenera: lo que requiere atención" })).toBeInTheDocument();
     });
 
     test("quien revisa conserva la zona del Excel y el historial, y no pide la arenera (daría 403)", async () => {
       montar({ sesion: REVISA });
       expect(screen.getByRole("heading", { name: "Audite un presupuesto" })).toBeInTheDocument();
-      expect(await screen.findByText("Sin datos de la arenera para su cuenta")).toBeInTheDocument();
       await waitFor(() => expect(rutasPedidas()).toContain("/v1/auditorias-libro?limite=5"));
+      // VD-10: sin `operar_arenera` la sección de la arenera no existe (ni vacía ni con «Sin datos»).
+      expect(screen.queryByText("Sin datos de la arenera para su cuenta")).not.toBeInTheDocument();
+      expect(screen.queryByRole("region", { name: "Arenera: lo que requiere atención" })).not.toBeInTheDocument();
+      expect(screen.getByRole("region", { name: "Últimas auditorías guardadas" })).toBeInTheDocument();
       expect(rutasPedidas()).not.toContain("/v1/produccion/existencias");
     });
 

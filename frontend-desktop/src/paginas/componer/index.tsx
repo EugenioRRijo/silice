@@ -1,4 +1,6 @@
-import { Select, SelectItem, TextArea, TextInput } from "@carbon/react";
+import { Select, SelectItem } from "@carbon/react";
+import { CampoTexto } from "../../comun/CampoTexto";
+import { AreaTexto } from "./AreaTexto";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ErrorDeApi } from "../../api/cliente";
 import { AvisoError } from "../../comun/AvisoError";
@@ -197,14 +199,14 @@ export default function PaginaComponer() {
           Cabecera de la partida
         </h2>
         <div className="silice-componer__rejilla">
-          <TextInput
+          <CampoTexto
             id="componer-codigo"
             size="sm"
             labelText="Código"
             value={cabecera.codigo}
             onChange={(e) => cambiarCabecera({ codigo: e.target.value })}
           />
-          <TextInput
+          <CampoTexto
             id="componer-descripcion"
             size="sm"
             labelText="Descripción"
@@ -214,7 +216,7 @@ export default function PaginaComponer() {
               if (!e.target.value.trim()) setParecidas([]);
             }}
           />
-          <TextInput
+          <CampoTexto
             id="componer-unidad"
             size="sm"
             labelText="Unidad"
@@ -232,7 +234,7 @@ export default function PaginaComponer() {
               <SelectItem key={d} value={d} text={d} />
             ))}
           </Select>
-          <TextInput
+          <CampoTexto
             id="componer-fecha"
             size="sm"
             type="date"
@@ -255,7 +257,7 @@ export default function PaginaComponer() {
         </h2>
         <AvisoError error={errorPrecarga} titulo="No se pudo consultar la partida" />
         <div className="silice-componer__rejilla">
-          <TextInput
+          <CampoTexto
             id="componer-rendimiento-valor"
             size="sm"
             labelText="Rendimiento: unidades por día"
@@ -269,7 +271,7 @@ export default function PaginaComponer() {
             error. Declare el rendimiento con sus condiciones.
           </p>
         )}
-        <TextArea
+        <AreaTexto
           id="componer-condiciones"
           labelText="Condiciones del rendimiento"
           helperText="Obligatorio: el sistema no persiste una composición cuyo rendimiento no se declare junto con las condiciones en que se obtuvo."
