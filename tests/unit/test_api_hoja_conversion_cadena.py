@@ -1,6 +1,6 @@
 """S5 (convertir la moneda) y S6 (`GET /v1/hoja/cadena`) de la hoja (T10, 3d-2).
 
-Contrato: `docs/bitacora/2026-10-20-hoja-3d2-contrato-rutas.md` (diseno §4.5, §6.3 fila 3d-2, §9 P33).
+Contrato: `docs/bitacora/2026-10-20-hoja-3d2-contrato-rutas.md` (diseno §4.5, §6.3, §9 P33).
 Lo comun a S2 a S5 (BEGIN IMMEDIATE, todo o nada, acceso, forma del cuerpo, cambio de caso) esta en
 `test_api_hoja_versiones.py`; aqui, lo propio de la conversion y de la lectura de la cadena.
 
@@ -34,6 +34,7 @@ from core import models
 from core.budget.cadena import sellar_historial
 from core.catalog import Catalogo, abrir_sesion, crear_motor
 from operacion import config
+from operacion.base_datos import preparar_base
 from tests.fixtures.claves_api import CABECERA, crear_clave_de_prueba
 from tests.fixtures.hoja_en_base import (
     NOMBRE_OF001,
@@ -121,15 +122,14 @@ def _casos(tmp_path_factory) -> dict[str, Path]:
 
 
 @pytest.fixture(autouse=True)
-def _entorno(
-    _casos: dict[str, Path], monkeypatch: pytest.MonkeyPatch
-) -> Iterator[Path]:
+def _entorno(_casos: dict[str, Path], monkeypatch: pytest.MonkeyPatch) -> Iterator[Path]:
     monkeypatch.delenv(dependencias.VARIABLE_BASE, raising=False)
     monkeypatch.setattr("api.rutas.hoja._hoy", lambda: HOY)
     copiar_instalacion(_casos["instalacion"])
     ruta = config.ruta_caso_por_defecto()
     ruta.parent.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(_casos["of001"], ruta)
+    preparar_base(ruta)
     caso_web.olvidar_todo()
     yield ruta
     caso_web.olvidar_todo()
@@ -140,6 +140,7 @@ def _poner(origen: Path) -> Path:
     dependencias.cerrar_motores()
     ruta = config.ruta_caso_por_defecto()
     shutil.copyfile(origen, ruta)
+    preparar_base(ruta)  # migrada ya: el volcado de «antes» es el de despues de abrir
     return ruta
 
 
@@ -198,22 +199,29 @@ def test_convertir_a_bs_crea_la_002_con_la_tasa_de_venta_y_el_total_de_la_memori
     assert registro[6] == "Ana <ana>" and registro[5] != ""
     with base(ruta) as sesion:
         fila = sesion.execute(
-            select(models.MonedaProyecto.moneda, models.MonedaProyecto.responsable, models.MonedaProyecto.fuente)
-            .order_by(models.MonedaProyecto.id.desc())
+            select(
+                models.MonedaProyecto.moneda,
+                models.MonedaProyecto.responsable,
+                models.MonedaProyecto.fuente,
+            ).order_by(models.MonedaProyecto.id.desc())
         ).first()
     assert tuple(fila) == ("Bs", "Ana <ana>", FUENTE)
     estado = cadena(ruta, NOMBRE_OF001)  # antes de abrir nada: abrir tambien escribe
     assert estado.integra, estado.mensaje
     versiones = _versiones(navegador)
     assert versiones["moneda"] == "Bs" and versiones["por_omision"] == "002"
-    assert [(v["codigo"], v["motivo"], v["origen"], v["vigente"]) for v in versiones["versiones"]] == [
+    assert [
+        (v["codigo"], v["motivo"], v["origen"], v["vigente"]) for v in versiones["versiones"]
+    ] == [
         ("001", "", "", False),
         ("002", "conversion", "001", True),
     ]
     # P33: el total en Bs / la tasa vuelve al de la memoria (a +-0,01 USD)
     total_bs = D(_total_de(navegador, ficha, "002"))
     assert abs(total_bs / TASA_VENTA - TOTAL_MEMORIA) <= TOLERANCIA
-    assert _total_de(navegador, ficha, "001") != _total_de(navegador, ficha, "002")  # la 001, en USD
+    assert _total_de(navegador, ficha, "001") != _total_de(
+        navegador, ficha, "002"
+    )  # la 001, en USD
 
 
 def test_el_lado_compra_usa_la_tasa_de_compra(_casos) -> None:
@@ -330,21 +338,27 @@ def test_la_cadena_sigue_integra_tras_restaurar_cotizar_y_convertir(_casos) -> N
     navegador, ficha = _ana()
     cabeceras = protegida(ficha)
     cuerpo = {"proyecto": NOMBRE_OF001, "version": "001"}
-    assert navegador.post(
-        "/v1/hoja/versiones/restaurar", json={**cuerpo, "fuente": "x"}, headers=cabeceras
-    ).json()["codigo"] == "002"
-    assert navegador.post(
-        "/v1/hoja/versiones/cotizar",
-        json={
-            **cuerpo,
-            "insumo": "EQU-001",
-            "precio": "99.5",
-            "proveedor": "Ferreteria Demo, C.A.",
-            "numero": "C-1",
-            "fecha": "2026-10-05",
-        },
-        headers=cabeceras,
-    ).json()["codigo"] == "003"
+    assert (
+        navegador.post(
+            "/v1/hoja/versiones/restaurar", json={**cuerpo, "fuente": "x"}, headers=cabeceras
+        ).json()["codigo"]
+        == "002"
+    )
+    assert (
+        navegador.post(
+            "/v1/hoja/versiones/cotizar",
+            json={
+                **cuerpo,
+                "insumo": "EQU-001",
+                "precio": "99.5",
+                "proveedor": "Ferreteria Demo, C.A.",
+                "numero": "C-1",
+                "fecha": "2026-10-05",
+            },
+            headers=cabeceras,
+        ).json()["codigo"]
+        == "003"
+    )
     assert _convertir(navegador, ficha, version="003").json()["codigo"] == "004"
     assert _cadena(navegador).json() == {
         "integra": True,

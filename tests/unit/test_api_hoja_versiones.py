@@ -11,8 +11,8 @@ la historia de la aceptacion SF 001 / 002 (edicion) / 003 (restauracion) de
 `test_aceptacion_sf.py:378-383`; el registro de una restauracion es (version, <restaurada>,
 restauracion, <vigente de antes>, <nueva>); el de una cotizacion (precio, <insumo>, cotizacion,
 <antes>, <despues>); la 002 con administracion 0,20 vale 2 137,44 x 1,20 x 1,10 = 2 821,4208.
-"Nada escrito" se comprueba con el volcado completo de la base antes y despues; las versiones sembradas
-las guarda la clasica (`ui.hoja`), no las rutas que se prueban.
+"Nada escrito" se comprueba con el volcado completo de la base antes y despues; las versiones
+sembradas las guarda la clasica (`ui.hoja`), no las rutas que se prueban.
 """
 
 from __future__ import annotations
@@ -116,7 +116,8 @@ FORMA_CONVERTIR = (
     "compra) y la fuente como texto de hasta 300 caracteres."
 )
 
-#: Para cada operacion: la ruta, un cuerpo valido SOBRE LA 002 de `completa`, la forma fija de su 422
+#: Para cada operacion: la ruta, un cuerpo valido SOBRE LA 002 de `completa`, la forma fija de su
+#: 422
 #: y la funcion del nucleo (en `aplicacion.hoja`) que escribe la version.
 CUERPOS = {
     "restaurar": (
@@ -222,9 +223,7 @@ def _casos(tmp_path_factory) -> dict[str, Path]:
 
 
 @pytest.fixture(autouse=True)
-def _entorno(
-    _casos: dict[str, Path], monkeypatch: pytest.MonkeyPatch
-) -> Iterator[Path]:
+def _entorno(_casos: dict[str, Path], monkeypatch: pytest.MonkeyPatch) -> Iterator[Path]:
     """La instalacion con cuentas y OF-001 (version 001) como caso por defecto, en la carpeta de
     datos temporal de la prueba: nada toca `data/`. El «hoy» del servidor, fijo."""
     monkeypatch.delenv(dependencias.VARIABLE_BASE, raising=False)
@@ -233,6 +232,7 @@ def _entorno(
     ruta = config.ruta_caso_por_defecto()
     ruta.parent.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(_casos["of001"], ruta)
+    preparar_base(ruta)
     caso_web.olvidar_todo()
     yield ruta
     caso_web.olvidar_todo()
@@ -244,6 +244,7 @@ def _poner(origen: Path) -> Path:
     dependencias.cerrar_motores()
     ruta = config.ruta_caso_por_defecto()
     shutil.copyfile(origen, ruta)
+    preparar_base(ruta)  # migrada ya: el volcado de «antes» es el de despues de abrir
     return ruta
 
 
@@ -297,9 +298,7 @@ def _codigos(navegador, proyecto=NOMBRE_OF001) -> list[str]:
 
 
 def _precios(navegador, version: str, proyecto=NOMBRE_OF001) -> list[dict]:
-    respuesta = navegador.get(
-        "/v1/hoja/precios", params={"proyecto": proyecto, "version": version}
-    )
+    respuesta = navegador.get("/v1/hoja/precios", params={"proyecto": proyecto, "version": version})
     assert respuesta.status_code == 200, respuesta.text
     return respuesta.json()["filas"]
 
@@ -347,7 +346,9 @@ def test_restaurar_la_001_crea_la_003_copia_de_la_001_y_la_deja_vigente(_casos) 
     ]
     # la historia de la aceptacion SF: nada se borra y la nueva es la vigente
     versiones = _versiones(navegador)
-    assert [(v["codigo"], v["motivo"], v["origen"], v["vigente"]) for v in versiones["versiones"]] == [
+    assert [
+        (v["codigo"], v["motivo"], v["origen"], v["vigente"]) for v in versiones["versiones"]
+    ] == [
         ("001", "", "", False),
         ("002", "edicion", "001", False),
         ("003", "restauracion", "001", True),
@@ -394,9 +395,7 @@ def test_proyecto_o_version_inexistente_es_404_y_se_juzga_antes_que_el_dato(_ent
     assert navegador.post(RESTAURAR, json={}, headers=protegida(ficha)).json() == {
         "detalle": FORMA_RESTAURAR
     }
-    assert all(
-        r.headers["cache-control"] == "no-store" for r in (sin_proyecto, sin_version)
-    )
+    assert all(r.headers["cache-control"] == "no-store" for r in (sin_proyecto, sin_version))
     assert volcado(_entorno) == antes
 
 
@@ -432,7 +431,9 @@ def test_restaurar_ti001_sin_espacio_da_la_ti_002_con_el_total_del_caso(_casos) 
         ("version", "TI-001", "restauracion", "TI-001", "TI-002", FUENTE, "Ana <ana>")
     ]
     assert cadena(ruta, NOMBRE_TI001).integra
-    assert _cerca(_resumen_de(navegador, ficha, "TI-002", NOMBRE_TI001)["total"]["exacto"], TOTAL_TI001)
+    assert _cerca(
+        _resumen_de(navegador, ficha, "TI-002", NOMBRE_TI001)["total"]["exacto"], TOTAL_TI001
+    )
 
 
 # --- S3 / 3d-B12 / P32: cotizar ---
@@ -468,7 +469,12 @@ def test_cotizar_crea_la_version_nueva_con_ese_insumo_y_conserva_el_plan(_entorn
     assert cotizada["estado"] == "OK"  # la cotizacion le da fuente
     for fila in despues:
         if fila["codigo"] != "EQU-001":
-            assert fila == _fila(antes_precios, fila["codigo"])
+            # todo igual salvo el nombre de la lista: la nueva es la del proyecto, con cotizaciones
+            previa = _fila(antes_precios, fila["codigo"])
+            assert {k: v for k, v in fila.items() if k != "lista"} == {
+                k: v for k, v in previa.items() if k != "lista"
+            }
+            assert fila["lista"].startswith(previa["lista"] + " + cotizaciones de ")
     # la 001 sigue con su precio de lista; la nueva sale de ella
     assert _fila(_precios(navegador, "001"), "EQU-001") == lista_antes
     assert D(_resumen_de(navegador, ficha, "002")["total"]["exacto"]) > D(total_antes)
@@ -522,7 +528,9 @@ def test_la_evidencia_se_agrega_a_la_fuente_del_registro(_entorno) -> None:
         "Cotizacion COT-001 de Ferreteria Demo, C.A. (2026-10-05). factura 77 del proveedor"
     )
     # null y ausente valen lo mismo
-    assert _cotizar(navegador, ficha, version="002", precio="1000", evidencia=None).status_code == 200
+    assert (
+        _cotizar(navegador, ficha, version="002", precio="1000", evidencia=None).status_code == 200
+    )
     assert registros(_entorno, NOMBRE_OF001, "003")[0][5] == (
         "Cotizacion COT-001 de Ferreteria Demo, C.A. (2026-10-05)."
     )
@@ -590,7 +598,10 @@ def test_cotizar_proyecto_o_version_inexistente_es_404_antes_que_el_precio(_ento
     assert sin_proyecto.status_code == 404
     assert sin_proyecto.json() == {"detalle": "El proyecto «Z» no existe en este caso."}
     sin_version = _cotizar(navegador, ficha, version="009", precio="abc")
-    assert sin_version.status_code == 404 and "no tiene una version '009'" in sin_version.json()["detalle"]
+    assert (
+        sin_version.status_code == 404
+        and "no tiene una version '009'" in sin_version.json()["detalle"]
+    )
     assert volcado(_entorno) == antes
 
 
@@ -841,9 +852,7 @@ def test_un_rechazo_antes_de_escribir_suelta_el_bloqueo_de_escritura(_entorno) -
 
 
 @pytest.mark.parametrize("operacion", OPERACIONES)
-def test_tras_cambiar_de_caso_la_operacion_escribe_solo_en_el_caso_nuevo(
-    operacion, _casos
-) -> None:
+def test_tras_cambiar_de_caso_la_operacion_escribe_solo_en_el_caso_nuevo(operacion, _casos) -> None:
     viejo = _poner(_casos["completa"])
     nuevo = config.carpeta_casos() / "Otro caso.db"
     shutil.copyfile(_casos["completa"], nuevo)
@@ -869,9 +878,12 @@ def test_si_el_proyecto_no_esta_en_el_caso_nuevo_es_404_y_ninguna_base_cambia(_c
     preparar_base(viejo)
     preparar_base(nuevo)
     navegador, ficha = _ana()
-    assert navegador.post(
-        "/v1/casos/actual", json={"nombre": nuevo.name}, headers=protegida(ficha)
-    ).status_code == 200
+    assert (
+        navegador.post(
+            "/v1/casos/actual", json={"nombre": nuevo.name}, headers=protegida(ficha)
+        ).status_code
+        == 200
+    )
     antes_viejo, antes_nuevo = volcado(viejo), volcado(nuevo)
     respuesta = _restaurar(navegador, ficha)  # el proyecto es el de OF-001
     assert respuesta.status_code == 404
@@ -1026,13 +1038,19 @@ def test_convertir_exige_convertir_y_reajustar_y_las_otras_tres_editar_la_hoja(
     solo de `arma`, asi que se separan a proposito para ver que cada ruta pide la suya."""
     _poner(_casos["completa"])
     navegador, ficha = _ana()
-    sin_convertir = {**permisos.PERMISOS, permisos.Accion.CONVERTIR_Y_REAJUSTAR: frozenset({permisos.Rol.REVISA})}
+    sin_convertir = {
+        **permisos.PERMISOS,
+        permisos.Accion.CONVERTIR_Y_REAJUSTAR: frozenset({permisos.Rol.REVISA}),
+    }
     with monkeypatch.context() as parche:
         parche.setattr(permisos, "PERMISOS", sin_convertir)
         convertir = _hacer(navegador, ficha, "convertir")
         assert convertir.status_code == 403 and convertir.json() == {"detalle": MENSAJE_PERMISO}
         assert _hacer(navegador, ficha, "restaurar").status_code == 200
-    sin_editar = {**permisos.PERMISOS, permisos.Accion.EDITAR_HOJA: frozenset({permisos.Rol.REVISA})}
+    sin_editar = {
+        **permisos.PERMISOS,
+        permisos.Accion.EDITAR_HOJA: frozenset({permisos.Rol.REVISA}),
+    }
     with monkeypatch.context() as parche:
         parche.setattr(permisos, "PERMISOS", sin_editar)
         for operacion in ("restaurar", "cotizar", "retirar"):
@@ -1068,7 +1086,7 @@ def test_ningun_numero_del_json_es_float_y_todo_es_texto(operacion, _casos) -> N
 # --- la guardia: la API no crea versiones con la sesion comun ---
 
 
-def test_toda_funcion_de_la_api_que_crea_versiones_desde_una_guardada_usa_la_sesion_de_escritura() -> None:
+def test_toda_funcion_de_la_api_que_crea_versiones_usa_la_sesion_de_escritura() -> None:
     """Lo que cree una version sin `BEGIN IMMEDIATE` reabre la carrera por el codigo: se vigila
     leyendo el codigo de `api/` (AST), sin importar nada."""
     import ast

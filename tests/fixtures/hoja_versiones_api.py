@@ -1,5 +1,5 @@
-"""Ayudas de las pruebas de S2 a S6 de la hoja (T10, 3d-2): lo que comparten la prueba de la API y la
-de paridad contra la clasica.
+"""Ayudas de las pruebas de S2 a S6 de la hoja (T10, 3d-2): lo que comparten la prueba de la API
+y la de paridad contra la clasica.
 
 Nada de esto sale del codigo bajo prueba: el volcado y los registros se leen de la base con
 consultas propias (sqlite3 y `models.*`), la cadena con `estado_de_la_cadena` y las tasas se

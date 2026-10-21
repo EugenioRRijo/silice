@@ -1,4 +1,4 @@
-"""3b-B3C (T10, 3d-2): `restaurar`, `cotizar`, `retirar_cotizacion` y `convertir` contra `ui.hoja` VIVO.
+"""3b-B3C (T10, 3d-2): las cuatro operaciones contra `ui.hoja` VIVO.
 
 Corre las cuatro operaciones en TRES sabores sobre COPIAS de la misma base y compara lo que dejan:
 
@@ -12,8 +12,9 @@ cadena), todas las filas de la base (menos las columnas que dependen del reloj d
 estado de la cadena. Casos: OF-001 (con espacio) y TI-001 (sin espacio, otra moneda de codigo).
 
 Oraculos a mano (ninguno sale de las tres): la restauracion deja el registro (version, <restaurada>,
-restauracion, <vigente>, <nueva>); la cotizacion, (precio, <insumo>, cotizacion, <antes>, <despues>);
-la conversion, (moneda, <proyecto>, moneda, USD, Bs); y los textos de error del nucleo de `core.budget`
+restauracion, <vigente>, <nueva>); la cotizacion, (precio, <insumo>, cotizacion, <antes>,
+<despues>); la conversion, (moneda, <proyecto>, moneda, USD, Bs); y los textos de error de
+`core.budget`
 (`la fuente del cambio es obligatoria...`, `el proveedor de la cotizacion es obligatorio`, ...).
 Si las tres divergen, la unica que se corrige es la copia o la capa nueva: `ui/hoja.py` esta
 congelado.
@@ -53,13 +54,15 @@ RESPONSABLE = "Ana <ana>"
 PROVEEDOR = "Ferreteria Demo, C.A."
 SIN_FUENTE = "la fuente del cambio es obligatoria: diga por que y con que respaldo"
 HOY = date(2026, 10, 6)
-#: Columnas que dependen del reloj de la corrida y no del contenido: la hora del sello, las huellas que
-#: la incluyen (el registro de cambios lleva su fecha y hora), la hora del registro y el momento en que
-#: empieza a regir una moneda. Que el sello sea valido lo dice `estado_de_la_cadena`, que SI se compara.
+#: Columnas que dependen del reloj de la corrida y no del contenido: la hora del sello, las
+#: huellas que la incluyen (el registro de cambios lleva su fecha y hora), la hora del registro y
+#: el momento en que empieza a regir una moneda. Que el sello sea valido lo dice
+#: `estado_de_la_cadena`, que SI se compara.
 RELOJ = {
     ("eslabon_version", "fecha_hora"),
     ("eslabon_version", "huella_eslabon"),
     ("eslabon_version", "huella_cambios"),
+    ("eslabon_version", "anterior"),  # la huella del eslabon previo, que lleva su hora
     ("registro_cambio", "fecha_hora"),
     ("moneda_proyecto", "desde"),
 }
@@ -86,7 +89,7 @@ CASOS = [
 
 @dataclass
 class _Corrida:
-    """El resultado de una operacion: lo que devolvio o el texto del error, y el estado de la base."""
+    """Lo que dio una operacion (codigo o texto del error) y el estado en que dejo la base."""
 
     resultado: tuple
     volcado: dict[str, list[tuple]]
@@ -308,7 +311,9 @@ def test_restaurar_deja_lo_mismo_en_los_tres_y_el_registro_de_la_memoria(
     )
     unica = _iguales(corridas)
     assert unica.resultado == ("ok", nueva)
-    assert unica.registros == [("version", origen, "restauracion", origen, nueva, FUENTE, RESPONSABLE)]
+    assert unica.registros == [
+        ("version", origen, "restauracion", origen, nueva, FUENTE, RESPONSABLE)
+    ]
     assert unica.cadena[0] is True
 
 
@@ -365,7 +370,10 @@ def test_cotizar_con_un_dato_malo_dice_lo_mismo_en_los_tres_y_no_escribe(
 ) -> None:
     antes = abrir_caso(_plantillas["of001"], "clasica", "antes").volcado()
     corridas = _en_los_tres(
-        abrir_caso, _plantillas["of001"], NOMBRE_OF001, lambda c: c.cotizar(NOMBRE_OF001, "001", **datos)
+        abrir_caso,
+        _plantillas["of001"],
+        NOMBRE_OF001,
+        lambda c: c.cotizar(NOMBRE_OF001, "001", **datos),
     )
     unica = _iguales(corridas)
     assert unica.resultado == ("error", texto)
@@ -375,7 +383,9 @@ def test_cotizar_con_un_dato_malo_dice_lo_mismo_en_los_tres_y_no_escribe(
 def test_cotizar_al_precio_que_ya_tiene_la_lista_dice_lo_mismo(_plantillas, abrir_caso) -> None:
     caso = abrir_caso(_plantillas["of001"], "clasica", "antes")
     de_lista = next(
-        p.precio for p in clasica.precios_de_version(caso.sesion, NOMBRE_OF001, "001") if p.codigo == "EQU-001"
+        p.precio
+        for p in clasica.precios_de_version(caso.sesion, NOMBRE_OF001, "001")
+        if p.codigo == "EQU-001"
     )
     corridas = _en_los_tres(
         abrir_caso,
@@ -384,7 +394,10 @@ def test_cotizar_al_precio_que_ya_tiene_la_lista_dice_lo_mismo(_plantillas, abri
         lambda c: c.cotizar(NOMBRE_OF001, "001", precio=str(de_lista)),
     )
     unica = _iguales(corridas)
-    assert unica.resultado == ("error", f"el insumo EQU-001 ya vale {de_lista} en la lista de la version")
+    assert unica.resultado == (
+        "error",
+        f"el insumo EQU-001 ya vale {de_lista} en la lista de la version",
+    )
 
 
 def test_retirar_la_cotizacion_deja_lo_mismo_en_los_tres(_plantillas, abrir_caso) -> None:
@@ -395,7 +408,13 @@ def test_retirar_la_cotizacion_deja_lo_mismo_en_los_tres(_plantillas, abrir_caso
     corridas = _en_los_tres(abrir_caso, _plantillas["of001"], NOMBRE_OF001, cotizar_y_retirar)
     unica = _iguales(corridas)
     assert unica.resultado == ("ok", "003")
-    assert unica.registros[0][:5] == ("precio", "EQU-001", "cotizacion", "999.5", unica.registros[0][4])
+    assert unica.registros[0][:5] == (
+        "precio",
+        "EQU-001",
+        "cotizacion",
+        "999.5",
+        unica.registros[0][4],
+    )
     assert unica.registros[0][5:] == (MOTIVO, RESPONSABLE)
     assert unica.cadena[0] is True
 
@@ -495,7 +514,5 @@ def test_la_capa_nueva_dice_que_proyecto_o_version_falta_con_los_textos_de_la_cl
         f"El proyecto {NOMBRE_OF001!r} no tiene una version '009': elija una de la lista."
     )
     with pytest.raises(hoja_versiones.ProyectoInexistente) as sin_proyecto:
-        hoja_versiones.restaurar(
-            caso.sesion, "Z", "001", fuente=FUENTE, responsable=RESPONSABLE
-        )
+        hoja_versiones.restaurar(caso.sesion, "Z", "001", fuente=FUENTE, responsable=RESPONSABLE)
     assert str(sin_proyecto.value) == "El proyecto «Z» no existe en este caso."
