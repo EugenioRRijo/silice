@@ -15,8 +15,11 @@ import socket
 import subprocess
 import sys
 import time
+import urllib.error
 import urllib.request
 from pathlib import Path
+
+import pytest
 
 from operacion import config
 from operacion.config import Ajustes
@@ -39,8 +42,8 @@ def _salud(puerto: int) -> bool:
         with urllib.request.urlopen(  # noqa: S310 (bucle local)
             f"http://127.0.0.1:{puerto}/salud", timeout=2
         ) as respuesta:
-            return respuesta.status == 200
-    except OSError:
+            return respuesta.status == 200 and json.loads(respuesta.read()) == {"estado": "ok"}
+    except (OSError, ValueError):
         return False
 
 
@@ -78,12 +81,17 @@ def test_arranca_en_el_bucle_local_y_se_detiene() -> None:
         pids_propios = tuple(int(p) for p in estado["pids"])
         assert estado["direccion"] == "127.0.0.1" and estado["puerto"] == puerto
         assert "puerto_api" not in estado and len(pids_propios) == 2  # lanzador + Uvicorn
-        if (RAIZ / "frontend-desktop" / "dist" / "index.html").is_file():  # compilada (CI: no)
-            with urllib.request.urlopen(  # noqa: S310 (bucle local)
-                f"http://127.0.0.1:{puerto}/app/", timeout=5
-            ) as interfaz:  # la interfaz de React, en el mismo puerto
+        url_app = f"http://127.0.0.1:{puerto}/app/"
+        if (RAIZ / "frontend-desktop" / "dist" / "index.html").is_file():  # compilada
+            with urllib.request.urlopen(url_app, timeout=5) as interfaz:  # noqa: S310
                 assert interfaz.status == 200
                 assert interfaz.headers["content-type"].startswith("text/html")
+        else:  # la montura existe aunque no esté compilada (CI de pruebas): 404 con el mensaje
+            with pytest.raises(urllib.error.HTTPError) as sin_compilar:
+                urllib.request.urlopen(url_app, timeout=5)  # noqa: S310
+            assert sin_compilar.value.code == 404
+            detalle = json.loads(sin_compilar.value.read())["detalle"]
+            assert detalle.startswith("La interfaz nueva no está compilada")
         # Una segunda orden «arrancar» no lanza otra instancia: ve la viva y sale con 0.
         segunda = subprocess.run(
             [sys.executable, *BANDERAS, "arrancar", "--sin-navegador"],
