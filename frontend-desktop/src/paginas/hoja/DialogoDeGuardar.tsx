@@ -8,7 +8,7 @@ import {
   TableHeader,
   TableRow,
 } from "@carbon/react";
-import { useId, useRef } from "react";
+import { useCallback, useId, useRef } from "react";
 import { CampoTexto } from "../../comun/CampoTexto";
 import { formatoEsVe } from "../../indicadores/formatoEsVe";
 import { rotuloDeOrigen } from "./logica";
@@ -111,7 +111,12 @@ export function DialogoDeGuardar(p: Props) {
   const idResumen = useId();
   const idMotivo = useId();
   const idFuente = useId();
-  const { atrapar } = useDialogo(caja, p.alCancelar, () => document.getElementById(idFuente));
+  // Mientras el guardado está en vuelo no se cierra (Esc ni Cancelar): el diálogo es donde se vería el error del servidor.
+  const { alCancelar, enviando } = p;
+  const cancelar = useCallback(() => {
+    if (!enviando) alCancelar();
+  }, [alCancelar, enviando]);
+  const { atrapar } = useDialogo(caja, cancelar, () => document.getElementById(idFuente));
   const primera = p.version === null;
   const titulo = primera ? "Guardar primera versión" : "Guardar versión";
   const motivo = motivoParaNoGuardar({ fuente: p.fuente, primera, cambios: p.cambiosSinGuardar, soloLectura: p.soloLectura });
@@ -199,7 +204,7 @@ export function DialogoDeGuardar(p: Props) {
           </div>
         )}
         <div className="silice-hoja__acciones">
-          <Button kind="secondary" size="md" onClick={p.alCancelar}>
+          <Button kind="secondary" size="md" disabled={p.enviando} onClick={cancelar}>
             Cancelar
           </Button>
           <Button
