@@ -17,7 +17,13 @@ import {
   sembrarTablas,
   ubicarError,
 } from "./logica";
-import type { FilaEditable, Resumen, TablasEditables, UbicacionDeError, VistaEspacio } from "./logica";
+import type {
+  FilaEditable,
+  Resumen,
+  TablasEditables,
+  UbicacionDeError,
+  VistaEspacio,
+} from "./logica";
 import { ImportarPlano } from "./ImportarPlano";
 import { useEdicionDeSeccion } from "./useEdicionDeSeccion";
 
@@ -38,7 +44,16 @@ interface PropsContenido extends Props {
   alRelectura: () => void;
 }
 
-function ContenidoEspacio({ id, rev, vista, alAusente, alAceptar, alRecargarBorrador, alReabrir, alRelectura }: PropsContenido) {
+function ContenidoEspacio({
+  id,
+  rev,
+  vista,
+  alAusente,
+  alAceptar,
+  alRecargarBorrador,
+  alReabrir,
+  alRelectura,
+}: PropsContenido) {
   const { alExpirar } = useAplicacion();
   const idDelError = useId();
   const [irA, setIrA] = useState<(IrA & { tabla: string }) | null>(null);
@@ -48,7 +63,11 @@ function ContenidoEspacio({ id, rev, vista, alAusente, alAceptar, alRecargarBorr
     borrador: id,
     inicial: sembrarTablas(vista.tablas, vista.filas, nuevaClaveDeFila),
     rev,
-    peticion: (r, tablas) => ({ ruta: rutaDeEspacio(id), metodo: "PUT", cuerpo: cuerpoDeEdicionDelEspacio(r, vista.tablas, tablas) }),
+    peticion: (r, tablas) => ({
+      ruta: rutaDeEspacio(id),
+      metodo: "PUT",
+      cuerpo: cuerpoDeEdicionDelEspacio(r, vista.tablas, tablas),
+    }),
     ubicar: (detalle) => ubicarError(detalle, vista.tablas),
     frase: FRASE_DE_RECHAZO,
     leerFresca: async () => {
@@ -61,19 +80,28 @@ function ContenidoEspacio({ id, rev, vista, alAusente, alAceptar, alRecargarBorr
     alAusente,
     alExpirar,
   });
-  const cambiarFilas = (tabla: string, filas: FilaEditable[]) => edicion.cambiar((previo) => ({ ...previo, [tabla]: filas }));
-  const valorAceptado = (tabla: string, filaClave: number, columna: string): string =>
-    edicion.aceptado()[tabla]?.find((f) => f.clave === filaClave)?.valores[columna] ?? "";
+  const cambiarFilas = (tabla: string, filas: FilaEditable[]) =>
+    edicion.cambiar((previo) => ({ ...previo, [tabla]: filas }));
+  const valorAceptado = (
+    tabla: string,
+    filaClave: number,
+    columna: string,
+  ): string =>
+    edicion.aceptado()[tabla]?.find((f) => f.clave === filaClave)?.valores[
+      columna
+    ] ?? "";
   const { error } = edicion;
   const ubicacion = error?.ubicacion ?? null;
-  const rotuloDe = (clave: string) => vista.tablas.find((t) => t.clave === clave)?.rotulo ?? clave;
+  const rotuloDe = (clave: string) =>
+    vista.tablas.find((t) => t.clave === clave)?.rotulo ?? clave;
 
   return (
     <div className="silice-hoja__pestana">
       <p className="cds--type-body-compact-01">{vista.ayuda}</p>
       <p className="cds--type-helper-text-01">
-        Decimales con punto, por ejemplo 2.5: la coma no se acepta. Los cambios se aplican al borrador cuando deja de escribir; no se
-        guardan como versión hasta que lo pida.
+        Decimales con punto, por ejemplo 2.5: la coma no se acepta. Los cambios
+        se aplican al borrador cuando deja de escribir; no se guardan como
+        versión hasta que lo pida.
       </p>
       <ImportarPlano
         id={id}
@@ -88,32 +116,54 @@ function ContenidoEspacio({ id, rev, vista, alAusente, alAceptar, alRecargarBorr
       />
       <AvisoDeEnvio envio={edicion.envio} />
       {error !== null && (
-        <AvisoDeEdicion error={error} id={idDelError} alRecargar={() => void edicion.recargar()} alReabrir={alReabrir}>
+        <AvisoDeEdicion
+          error={error}
+          id={idDelError}
+          alRecargar={() => void edicion.recargar()}
+          alReabrir={alReabrir}
+        >
           {ubicacion !== null && (
             <Button
               kind="ghost"
               size="sm"
-              onClick={() => setIrA((previo) => ({ tabla: ubicacion.tabla, fila: ubicacion.fila, columna: ubicacion.columna, vez: (previo?.vez ?? 0) + 1 }))}
+              onClick={() =>
+                setIrA((previo) => ({
+                  tabla: ubicacion.tabla,
+                  fila: ubicacion.fila,
+                  columna: ubicacion.columna,
+                  vez: (previo?.vez ?? 0) + 1,
+                }))
+              }
             >
               {`Ir a la fila ${ubicacion.fila} de ${rotuloDe(ubicacion.tabla)}`}
             </Button>
           )}
         </AvisoDeEdicion>
       )}
-      <fieldset disabled={fusionando} className="silice-hoja__bloqueable">
-      {vista.tablas.map((t) => (
-        <TablaEditable
-          key={t.clave}
-          tabla={t}
-          filas={edicion.estado[t.clave] ?? []}
-          estado={vista.estado}
-          invalida={ubicacion !== null && ubicacion.tabla === t.clave ? { fila: ubicacion.fila, columna: ubicacion.columna } : null}
-          idDelError={idDelError}
-          irA={irA !== null && irA.tabla === t.clave ? irA : null}
-          alCambiarFilas={(filas) => cambiarFilas(t.clave, filas)}
-          valorAceptado={(filaClave, columna) => valorAceptado(t.clave, filaClave, columna)}
-        />
-      ))}
+      <fieldset
+        disabled={fusionando}
+        aria-label="Tablas del espacio"
+        className="silice-hoja__bloqueable"
+      >
+        {vista.tablas.map((t) => (
+          <TablaEditable
+            key={t.clave}
+            tabla={t}
+            filas={edicion.estado[t.clave] ?? []}
+            estado={vista.estado}
+            invalida={
+              ubicacion !== null && ubicacion.tabla === t.clave
+                ? { fila: ubicacion.fila, columna: ubicacion.columna }
+                : null
+            }
+            idDelError={idDelError}
+            irA={irA !== null && irA.tabla === t.clave ? irA : null}
+            alCambiarFilas={(filas) => cambiarFilas(t.clave, filas)}
+            valorAceptado={(filaClave, columna) =>
+              valorAceptado(t.clave, filaClave, columna)
+            }
+          />
+        ))}
       </fieldset>
       <section className="silice-hoja__seccion">
         <h2 className="cds--type-heading-compact-02">Cantidades derivadas</h2>
@@ -132,7 +182,11 @@ function ContenidoEspacio({ id, rev, vista, alAusente, alAceptar, alRecargarBorr
                 titulo: "Cantidad",
                 numerica: true,
                 ordenable: false,
-                celda: (f) => <Cifra monto={{ texto: f.cantidad!, exacto: f.cantidad_exacto! }} />,
+                celda: (f) => (
+                  <Cifra
+                    monto={{ texto: f.cantidad!, exacto: f.cantidad_exacto! }}
+                  />
+                ),
               },
               { clave: "origen", titulo: "Origen", ordenable: false },
             ]}
@@ -149,11 +203,13 @@ function ContenidoEspacio({ id, rev, vista, alAusente, alAceptar, alRecargarBorr
         )}
       </section>
       <p className="silice-hoja__total cds--type-heading-03">
-        Total del presupuesto <Cifra monto={vista.total} unidad={vista.moneda} />
+        Total del presupuesto{" "}
+        <Cifra monto={vista.total} unidad={vista.moneda} />
       </p>
       {vista.pendientes > 0 && (
         <p className="cds--type-body-compact-01">
-          {vista.pendientes} partida(s) no tienen composición en el catálogo del caso: quedan pendientes y no suman al total.
+          {vista.pendientes} partida(s) no tienen composición en el catálogo del
+          caso: quedan pendientes y no suman al total.
         </p>
       )}
     </div>
@@ -166,8 +222,15 @@ export function PestanaEspacio(props: Props) {
   const [lecturas, setLecturas] = useState(0);
   const alRelectura = useCallback(() => setLecturas((n) => n + 1), []);
   return (
-    <VistaCarga<VistaEspacio> ruta={rutaDeVista(props.id, "espacio")} etiqueta="Espacio y metrajes" alAusente={props.alAusente} recarga={lecturas}>
-      {(vista) => <ContenidoEspacio {...props} vista={vista} alRelectura={alRelectura} />}
+    <VistaCarga<VistaEspacio>
+      ruta={rutaDeVista(props.id, "espacio")}
+      etiqueta="Espacio y metrajes"
+      alAusente={props.alAusente}
+      recarga={lecturas}
+    >
+      {(vista) => (
+        <ContenidoEspacio {...props} vista={vista} alRelectura={alRelectura} />
+      )}
     </VistaCarga>
   );
 }
