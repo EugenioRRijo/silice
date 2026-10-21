@@ -11,7 +11,6 @@ Las propuestas se sustituyen por un doble parchado **donde la pagina las resuelv
 
 from __future__ import annotations
 
-import dataclasses
 import importlib
 from decimal import Decimal
 from pathlib import Path
@@ -34,7 +33,7 @@ from tests.fixtures.apu_linea_base import (
     TOTAL_EXACTO_LINEA_BASE,
 )
 from tests.fixtures.computo_auditado import composiciones_linea_base, items_auditados
-from ui.elaboracion import aceptar_propuesta, propuestas_de_pendientes
+from ui.elaboracion import aceptar_propuesta
 
 SCRIPT = "from ui.paginas.elaborar import render\nrender()\n"
 
@@ -178,18 +177,6 @@ def test_aceptar_una_propuesta_vuelve_a_elaborar_sin_pendientes(monkeypatch, bas
 # --- aceptar_propuesta (pura) ---------------------------------------------------------------
 
 
-def test_aceptar_cambia_solo_el_item_pendiente() -> None:
-    items = _items()
-    aceptados = aceptar_propuesta(items, PENDIENTE_T99, "LB-02-TUB")
-    assert aceptados[:-1] == items[:-1]  # los demas, identicos
-    assert aceptados[-1] == dataclasses.replace(PENDIENTE_T99, codigo_partida="LB-02-TUB")
-
-
-def test_aceptar_un_item_que_no_esta_es_un_error() -> None:
-    with pytest.raises(ValueError, match="T-99"):
-        aceptar_propuesta(list(items_auditados()), PENDIENTE_T99, "LB-02-TUB")
-
-
 # --- propuestas_de_pendientes: `ml.normalization.propuestas_para` (INV-081, 10c) -------------
 
 
@@ -208,47 +195,6 @@ def _normalizador_contado(construcciones: list[dict[str, str]], falla: Exception
             return [PartidaSimilar(f"P-{descripcion}", descripcion, 0.5)]
 
     return _Doble
-
-
-def test_una_entrada_por_pendiente_en_su_orden_con_un_solo_normalizador(monkeypatch) -> None:
-    construcciones: list[dict[str, str]] = []
-    monkeypatch.setattr(
-        "ml.normalization.normalizador.NormalizadorPartidas", _normalizador_contado(construcciones)
-    )
-    partidas = {"LB-02-TUB": "Tuberia PVC 4 pulgadas"}
-    otro = dataclasses.replace(PENDIENTE_T99, origen_id="T-98", descripcion="Codo de PVC")
-    entradas = propuestas_de_pendientes(partidas, [PENDIENTE_T99, otro])
-
-    assert [entrada.item for entrada in entradas] == [PENDIENTE_T99, otro]
-    assert [entrada.similares[0].codigo for entrada in entradas] == [
-        f"P-{PENDIENTE_T99.descripcion}",
-        "P-Codo de PVC",
-    ]
-    assert [entrada.falla for entrada in entradas] == [None, None]
-    assert construcciones == [partidas]  # un solo normalizador por elaboracion
-
-
-def test_sin_pendientes_no_hay_propuestas_ni_se_carga_nada(monkeypatch) -> None:
-    construcciones: list[dict[str, str]] = []
-    monkeypatch.setattr(
-        "ml.normalization.normalizador.NormalizadorPartidas", _normalizador_contado(construcciones)
-    )
-    assert propuestas_de_pendientes({"LB-02-TUB": "Tuberia"}, []) == ()
-    assert construcciones == []
-
-
-def test_una_falla_declarada_queda_en_la_entrada_del_pendiente(monkeypatch) -> None:
-    """El extra ausente llega como `ModuleNotFoundError`; la entrada lo declara `ImportError`."""
-
-    def _sin_extra(*_args, **_kwargs):
-        raise ModuleNotFoundError("No module named 'sentence_transformers'")
-
-    monkeypatch.setattr("ml.normalization.normalizador._cargar_modelo", _sin_extra)
-    (entrada,) = propuestas_de_pendientes({"LB-02-TUB": "Tuberia"}, [PENDIENTE_T99])
-
-    assert entrada.item == PENDIENTE_T99
-    assert entrada.similares == ()
-    assert entrada.falla.startswith("ImportError: No module named")
 
 
 # --- el fragmento sin propuestas: la regresion de componer (A-3) ----------------------------

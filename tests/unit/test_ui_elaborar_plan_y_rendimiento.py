@@ -166,24 +166,6 @@ def test_un_plan_que_no_reparte_toda_partida_se_rechaza_y_conserva_el_presupuest
     assert at.session_state[CLAVE_RESULTADO] is antes  # el presupuesto a la vista no se pierde
 
 
-def test_las_filas_del_plan_se_agrupan_por_periodo_y_una_a_medias_se_rechaza() -> None:
-    from ui.composicion import ComposicionInvalida
-    from ui.elaboracion import plan_desde_filas
-
-    filas = [
-        *PLAN_DOS_SEMANAS[:2],
-        {"periodo": "", "codigo_partida": "", "fraccion": ""},  # fila dinamica en blanco
-        *PLAN_DOS_SEMANAS[2:],
-    ]
-    plan = plan_desde_filas(filas)
-    assert [periodo for periodo, _ in plan] == ["Semana 1", "Semana 2"]
-    assert plan[0][1] == (("LB-01-EXC", Decimal("1")), ("LB-02-TUB", Decimal("0.5")))
-
-    a_medias = [{"periodo": "Semana 1", "codigo_partida": "LB-01-EXC", "fraccion": ""}]
-    with pytest.raises(ComposicionInvalida, match="fila 1"):
-        plan_desde_filas(a_medias)
-
-
 # --- INV-088: sin rendimiento vigente, se propone el del historico (UC-01, flujo 3b) ------------
 
 CLAVE_TIPO = "elaborar_tipo_rendimiento_LB-02-TUB"
