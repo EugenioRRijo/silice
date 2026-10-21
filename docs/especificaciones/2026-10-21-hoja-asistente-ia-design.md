@@ -224,7 +224,7 @@ sus resultados). Con la clase `Borrador` compartida ya no convierte borradores; 
 1. **Punto de contacto único**: `proponer`, `decidir`, `responder`, `hipotetico`, `resumen_hipotetico`, `descripcion`, `vista_previa`,
    `estimar_costo`, `fuente_del_cambio` y los re-exportes `Servicios`, `Topes`, `ESPERAR`, `EstadoPropuesta`, `MotivoFin`,
    `DependenciaPendiente`. Si el motor cambia, cambia aquí.
-2. **Copia saneada para P7** (`para_el_motor(borrador, nube)` / `del_motor(resultado, real)`), §4.1.
+2. **Copia saneada y catálogo envuelto para P7** (`para_el_motor(borrador, nube)`, `catalogo_para_el_motor`, `del_motor(resultado, real, catalogo_real)`), §4.1.
 3. **Cliente acotado** (`acotar(proveedor, plazo)`), §3.3.
 4. **Guardia**: la prueba 4a-B1 comprueba que `asistente.servicio.Borrador is aplicacion.hoja.Borrador` (la identidad es lo que permite
    no convertir); si algún día difirieran, la prueba falla y obliga a decidir (no hay conversión muerta que mantener).
@@ -274,6 +274,7 @@ importarlo** (duck typing, §3.3).
 
 `aplicacion/hoja_asistente_trabajo.py`:
 
+- **Traspaso del cupo.** El semáforo se toma en la ruta (`acquire(blocking=False)`) y su «testigo» (un token de un solo uso que sabe liberarlo una vez) **viaja con el hilo principal del trabajo y de ahí al hilo auxiliar de cada turno**: el hilo auxiliar lo libera en su `finally`, es decir, cuando el turno **de verdad regresa** (no cuando se abandona por plazo), y el principal lo libera si termina sin haber lanzado ningún turno. Un solo liberador por token (si dos lo intentan, el segundo no hace nada). B9 prueba: con un turno abandonado el cupo **sigue ocupado hasta que regresa** y entonces se libera exactamente una vez; y que fallar al arrancar el hilo libera el cupo.
 - **Hilos demonio propios, sin `ThreadPoolExecutor`.** Cada propuesta arranca un `threading.Thread(daemon=True)`. El **cupo** es un
   `threading.BoundedSemaphore(EN_VUELO)` con `EN_VUELO = 2` (D-4) que `POST` toma **sin esperar** (`acquire(blocking=False)`; si no hay, 503) y
   que el hilo libera al terminar **o al abandonar** (un turno vencido libera su cupo cuando su hilo auxiliar regresa, §abajo). Así un hilo
@@ -374,7 +375,7 @@ existe, así que no hay hoja a la que no se aplicó); la ruta responde 404 `MENS
 **Cómo encaja `cambiar`.** `hoja_edicion._cambiar` pasa a público (`cambiar`) y gana `antes_de_reemplazar: Callable[[hoja.Borrador], None] | None
 = None`. Orden dentro: guardado, `rev`, `construir`, `completar_composiciones`, `antes_de_reemplazar`, `reemplazar`. Los pasos 3 y 4 de arriba
 caben así (el 3 en `construir`, el 4 en `antes_de_reemplazar`). Cambio aditivo: valor por omisión `None`; los **8 consumidores** (las siete
-ediciones de `hoja_edicion.py` y `hoja_plano.fusionar`, `hoja_plano.py:486`) se actualizan a `cambiar` y no cambian de comportamiento.
+ediciones de `hoja_edicion.py` y `hoja_plano.fusionar`, `hoja_plano.py`: `:486` aquí, `:352` tras el retiro) se actualizan a `cambiar` y no cambian de comportamiento.
 
 **`sin_partida` (y cualquier decisión que deje el borrador igual).** `aplicar()` ignora `SIN_PARTIDA` (`propuestas.py:132-133`) y `_cambiar`
 devuelve antes de `antes_de_reemplazar` si `nuevo == vivo.borrador`. **Ruling (lo menos invasivo):** `cambiar` llama a `antes_de_reemplazar`
@@ -382,7 +383,7 @@ devuelve antes de `antes_de_reemplazar` si `nuevo == vivo.borrador`. **Ruling (l
 las otras ediciones no lo pasan y su comportamiento no cambia). Efecto en `decidir`: se registra la decisión, la propuesta deja de estar
 pendiente, **`rev` no sube** y el `resumen` es el mismo. **Sí cuenta en `aceptadas`** (como en la clásica, que agrega la sesión cuando el
 estado no es `RECHAZADA`, aunque `_poner_borrador` no cambie nada): la necesidad sin partida es un hallazgo que la persona *aceptó* y que
-`ia.json` debe poder mostrar. Rechazarla tampoco cambia el borrador y se registra igual.
+`ia.json` debe poder mostrar. Rechazarla tampoco cambia el borrador y se registra igual; como `rechazada` no exige `rev` del cliente, la ruta pasa a `cambiar` el **`vivo.rev` actual leído dentro del cerrojo** (con un `rev` viejo `cambiar` daría 409 `RevDesactualizado` a un rechazo que no toca nada). B20 lo prueba: rechazar con un `rev` viejo funciona.
 
 **Aceptar y editar** (`editada`): entra al borrador igual que `aceptada`; la persona retoca a mano. Dónde, según el tipo (tabla en
 `logica.ts`): `ambiente`, `fuente`, `punto` → pestaña «Espacio y metrajes»; `recorrido` declarado → «Espacio y metrajes» (vértices de
@@ -433,9 +434,22 @@ lleva un `avisos` aditivo (`list[str]`, vacío de fábrica) con el texto de la c
   `prefijos_de_maprex` lleva `descripcion = ""` (queda código, unidad y cantidad). Con un proveedor local no se sanea. No se toca ningún
   archivo congelado.
   - `para_el_motor(borrador, nube)` hace la copia; el motor trabaja con ella (`proponer`, `decidir`, `hipotetico`, `auditar`).
-  - `del_motor(resultado, real)` **devuelve las descripciones reales** al resultado antes de usarlo: toma `real.items_base` sin los ítems de
-    origen IA, más, en el orden del motor, los ítems IA del resultado, usando la versión de `real` si ese `origen_id` ya estaba (para que una
-    partida MaPreX aceptada antes conserve la descripción del catálogo) y la del motor si es nueva. Los demás campos son los del resultado.
+  - **Segunda fuga que cerrar: los ítems que el propio motor crea.** `propuestas._item` (`propuestas.py:165-178`) arma el `ItemComputo` de una
+    partida propuesta con `partida.descripcion` de `CatalogoDeLaBase.partida()` (`catalogo.py:52`), que devuelve la descripción **real**
+    aunque `de_maprex=True`. Escenario: nube, prefijos `("ELE-",)`, el modelo busca `ELE-001`, llama `proponer_partida` y luego
+    `consultar_borrador`: `resumen_del_borrador(self.hipotetico())` (`orquestador.py:262-263`) enviaría la descripción MaPreX real y quedaría
+    en el historial que se reenvía en cada turno. Por eso el puente entrega al motor, además de la copia del borrador, un **catálogo
+    envuelto** (`catalogo_para_el_motor(catalogo_real, nube)`): su `partida(codigo)` devuelve la `PartidaVista` con `descripcion=""` cuando
+    `nube and de_maprex`, y su `buscar` igual (`describir_partida` ya oculta la descripción; el envoltorio cubre el camino de `_item`).
+    El envoltorio es el `catalogo` de `Servicios` y de la `SesionDeAsistente`, así que lo usan `proponer`, `decidir` e `hipotetico`.
+  - `del_motor(resultado, real, catalogo_real)` **devuelve las descripciones reales** al resultado antes de usarlo: toma `real.items_base` sin
+    los ítems de origen IA, más, en el orden del motor, los ítems IA del resultado, usando la versión de `real` si ese `origen_id` ya estaba
+    (una partida MaPreX aceptada antes conserva su descripción) y, **si es nueva, la descripción real por código desde el catálogo REAL**
+    (`catalogo_real.partida(codigo).descripcion`; sin ese paso quedaría en blanco). Los demás campos son los del resultado.
+  - **Alcance honesto de P7:** queda cubierto todo lo que el motor envía y que sale de `items_base` o del catálogo: `consultar_borrador`,
+    `pedir_informe_auditoria` (el informe se elabora sobre la copia saneada y los ítems nuevos nacen con descripción vacía), `buscar_partidas`
+    y `consultar_partida`. No es «P7 antes de cualquier envío» de cualquier texto: los nombres libres y el pedido siguen su regla propia (límites
+    de más abajo).
   - **Si `prefijos_de_maprex` está vacío** (el valor de fábrica) con un proveedor de nube, nada es MaPreX y las descripciones viajan: A0 lo
     avisa (`aviso_maprex`), el panel lo muestra junto a la estimación y **no bloquea** (D-8: el administrador los configura).
 - **El catálogo que ve la IA** se arma con `CatalogoDeLaBase` sobre `PartidaVista(codigo, descripcion, unidad, dominio, de_maprex)`: ningún
@@ -790,7 +804,7 @@ cero omitidas; **ninguna prueba abre la red**. Casos: OF-001 y TI-001 (`tests/fi
 | B6 | A2 feliz: 202 → sondeo → `lista` con 1 propuesta; el borrador no cambia (igualdad y mismo `rev`) | guion `AMBIENTE`; filas `ia_*` esperadas |
 | B7 | pedido vacío, de 4 001 caracteres y con `sk-ant-`: 422 sin eco; el de la clave no llama al proveedor ni crea fila `ia_sesiones` | conteo SQL y `recibidos == []` |
 | B8 | precondiciones: solo lectura, sin proveedor, desconocido, sin tarifa, sin extra, cliente sin `with_options`, ya hay una petición | textos de §5.4 |
-| B9 | concurrencia y ritmo: dos POST simultáneos al mismo borrador → 202 y 409; con `EN_VUELO=2` ocupados, un tercero → 503 con `Retry-After`; la 21.ª en una hora → 429 (reloj inyectado); **el contador es por `usuario_id`: cerrar sesión y abrir otra ficha con la misma cuenta NO lo reinicia** | hilos y barreras, sin `sleep` |
+| B9 | concurrencia y ritmo: dos POST simultáneos al mismo borrador → 202 y 409; con `EN_VUELO=2` ocupados, un tercero → 503 con `Retry-After`; la 21.ª en una hora → 429 (reloj inyectado); **el contador es por `usuario_id`: cerrar sesión y abrir otra ficha con la misma cuenta NO lo reinicia** | hilos y barreras, sin `sleep`; **traspaso y liberación única del cupo (arriba)** |
 | B10 | plazos: proveedor colgado → `error` categoría `tiempo` con plazos pequeños; propuestas previas conservadas; **otra edición E3 funciona mientras se espera** | |
 | B11 | cancelar: DELETE durante `pensando` → 204 y `sin_sesion`; al volver el hilo el resultado no reaparece (testigo); `ia_sesiones.motivo_fin = "cancelado"` (no `error_de_proveedor`); borrador intacto | volcado `ia_*` |
 | B12 | ciclo de vida: DELETE del borrador, E11, 8 h, expulsión, `olvidar`, cambio de caso, cierre de sesión → la sesión desaparece y el trabajo se cancela; otra ficha en A2 a A7 → 404; **`aceptadas` sobrevive a descartar la sesión** | reloj inyectado |
@@ -801,13 +815,13 @@ cero omitidas; **ninguna prueba abre la red**. Casos: OF-001 y TI-001 (`tests/fi
 | B17 | `pregunta`: guion con `preguntar_al_usuario` → estado `pregunta`; decidir da 409; el texto no se interpreta | |
 | B18 | **ningún proveedor real**: sin la costura, `proveedores_de_la_instalacion` y `ProveedorClaude.turno` fallan (prueba negativa) | |
 | B19 | aceptar: `rev`+1; fila con `OrigenMedida` `ia` y referencia literal `modelo=claude-opus-5-5; propuesta=P1; proveedor=claude; sesion=N`; partida en `items_base` con `ia:N:P1` y su APU del catálogo. **Ampliada: aceptar una `sin_partida`** deja el borrador igual y `rev` igual, **registra la decisión** (`ia_propuestas.estado = aceptada`, `decidida_por`), la propuesta deja de estar pendiente y la sesión entra en `aceptadas` | construido a mano; OF-001 y TI-001 |
-| B20 | rechazar (incluida una `sin_partida`): borrador idéntico y `rev` igual; `ia_propuestas.estado = rechazada`, `decidida_por = "Nombre <login>"` | volcado `ia_*` |
+| B20 | rechazar (incluida una `sin_partida`, **y con un `rev` viejo del cliente: no da 409**): borrador idéntico y `rev` igual; `ia_propuestas.estado = rechazada`, `decidida_por = "Nombre <login>"` | volcado `ia_*` |
 | B21 | `rev` viejo → 409 y nada decidido ni registrado; doble decisión (también de `sin_partida`) → 409; dependencia → 409; no cabe en la hoja editada → 409; base que falla → 503 sin decisión registrada; **borrador expulsado entre el registro y el reemplazo → 404 y se anota que la decisión quedó registrada (daño solo de auditoría)** | volcado `ia_*` |
-| B22 | **hipotético completa composiciones**: una partida propuesta cuyo APU está en el catálogo pero no en `composiciones` no da `CODIGO_PENDIENTE` y su costo suma; `total_si_acepta` es **igual** al total del borrador tras aceptar de verdad (misma partida, misma lista de precios); una partida sin APU en el catálogo cuenta en `partidas_sin_apu` y no suma; `disponible=false` con `HojaInvalida`; `diferencia` exacta en `Decimal`; caché por `(estados, rev)` | **oráculo a mano**: OF-001 total_actual `2703.86`; el incremento de la partida = cantidad × precio unitario del cierre de partida (memoria OF-001), calculado en la prueba con literales |
+| B22 | **hipotético completa composiciones**: una partida propuesta cuyo APU está en el catálogo pero no en `composiciones` no da `CODIGO_PENDIENTE` y su costo suma; `total_si_acepta` es **igual** al total del borrador tras aceptar de verdad (misma partida, misma lista de precios); una partida sin APU en el catálogo cuenta en `partidas_sin_apu` y no suma; `disponible=false` con `HojaInvalida`; `diferencia` exacta en `Decimal`; caché por `(estados, rev)` | **oráculo a mano**: el literal sale de la **memoria OF-001** (`tests/fixtures/memorias/of001.md`), no del código: `total_actual = 2703.86`, y el incremento de la partida = cantidad × precio unitario de la memoria **con sus indirectos** (administración y utilidad, como en el cierre de partida), escrito en la prueba como literal; además `total_si_acepta` **==** el total que da el borrador tras aceptar de verdad (sin atajos) |
 | B23 | responsable: un campo `usuario`/`responsable` en el cuerpo → 422 sin eco; la decisión lleva la cuenta | |
 | B24 | trazabilidad e2e: aceptar y guardar por S1 → versión con `esp_origenes` tipo `ia`, `RegistroCambio.responsable` = la cuenta, cadena íntegra, `ia_sesiones.version_guardada` = la nueva (gancho D-3), `anexo_ia` incluye la sesión; si el gancho falla, la versión sigue guardada y S1 trae `avisos`. **B24b: tras aceptar y «Descartar lo pendiente» (o reemplazar la sesión), `fuente_sugerida` sigue citando todas las sesiones aceptadas** (también en `sin_sesion`) | patrón de `tests/unit/test_api_hoja_guardado.py` |
 | B25 | tope de costo: el turno exacto en que el costo alcanza el tope (a mano con la tarifa), `motivo = tope_de_costo`, propuestas conservadas; turnos 12 y llamadas 60 en la frontera | RF-94 |
-| B26 | **privacidad e2e**: lo que recibe el proveedor en todos los turnos no contiene ninguna cifra de precio ni total de OF-001 (lista literal), ni los nombres del proyecto, de la empresa ni `ana`, ni la clave; sí el alias `P1`. **Caso MaPreX**: `prefijos_de_maprex = ("ELE-",)`, proveedor `claude` (nube) y un `items_base` con `ELE-001` ("descripción de prueba") y `AF-SALIDA`: el proveedor recibe `ELE-001` con su unidad y cantidad **y la descripción vacía**, y recibe la descripción de `AF-SALIDA`; con proveedor local las dos viajan; con prefijos vacíos y nube la descripción de `ELE-001` viaja (y A0 avisa); tras aceptar una propuesta, la descripción real de `ELE-001` en el borrador **se conserva** (`del_motor`); una partida MaPreX aceptada antes conserva la descripción del catálogo | lista literal a mano |
+| B26 | **privacidad e2e**: lo que recibe el proveedor en todos los turnos no contiene ninguna cifra de precio ni total de OF-001 (lista literal), ni los nombres del proyecto, de la empresa ni `ana`, ni la clave; sí el alias `P1`. **Caso MaPreX**: `prefijos_de_maprex = ("ELE-",)`, proveedor `claude` (nube) y un `items_base` con `ELE-001` ("descripción de prueba") y `AF-SALIDA`: el proveedor recibe `ELE-001` con su unidad y cantidad **y la descripción vacía**, y recibe la descripción de `AF-SALIDA`; con proveedor local las dos viajan; con prefijos vacíos y nube la descripción de `ELE-001` viaja (y A0 avisa); tras aceptar una propuesta, la descripción real de `ELE-001` en el borrador **se conserva** (`del_motor`); una partida MaPreX aceptada antes conserva la descripción del catálogo. **Caso exacto de N1**: nube, prefijos `("ELE-",)`, el guion busca `ELE-001`, llama `proponer_partida` y luego `consultar_borrador` y `pedir_informe_auditoria`: lo que recibe el proveedor **en ese turno y en los siguientes (el historial reenviado)** no contiene la descripción real de `ELE-001` en ninguna parte (se busca la cadena literal en todos los `recibidos`), y tras aceptar la propuesta el `ItemComputo` del borrador **sí la conserva** (restaurada por código desde el catálogo real); con proveedor local la descripción viaja en todos esos envíos | lista literal a mano |
 | B27 | la clave de IA nunca aparece en la base, `ia_*`, registros (`caplog`), el 422 ni `docs/api.json` | RNF-18 c |
 | B28 | `hoja_edicion.cambiar`: las siete ediciones y `hoja_plano.fusionar` pasan sin cambios; un fallo en `antes_de_reemplazar` no cambia el borrador; **sin cambio de borrador, `antes_de_reemplazar` se llama y `rev` no sube** | |
 | B29 | **apagado y demonio**: `apagar()` vuelve en < 1 s con un turno bloqueado y fija `cancelado`; un subproceso que arranca un trabajo bloqueado y termina, sale sin esperarlo; después de `apagar()` un POST da 503 | |
@@ -881,7 +895,7 @@ alcanzable; el desplegable no empuja las pestañas fuera de pantalla.
 | P-16 | Guardar tras aceptar deja versión con origen IA, responsable humano, cadena íntegra, sesión marcada y `ia.json`; la fuente sigue citando a la IA tras descartar | B24, B24b | 4a-2 |
 | P-17 | El tope de costo detiene la sesión en el turno exacto y conserva lo propuesto | B25 | 4a-2 |
 | P-18 | Paridad con el motor directo en OF-001 y TI-001 | §7.3 | 4a-5 |
-| P-19 | Lo que recibe el proveedor cumple la lista blanca **y la regla P7 con prefijos configurados** | B26 | 4a-5 |
+| P-19 | Lo que recibe el proveedor cumple la lista blanca **y la regla P7 con prefijos configurados**, incluidos los ítems que el propio motor crea al proponer y `pedir_informe_auditoria` (con las salvedades de §4.1: nombres libres, pedido y heurística de secretos) | B26 | 4a-5 |
 | P-20 | `git diff <base>..HEAD -- asistente core` vacío; el resultado de `test_experimento_congelado_vigente.py` no cambia | `git diff` | todas |
 | P-21 | Formulario, progreso y errores accesibles y completos; un fallo de A0/A3 no pinta `alert` | F1 a F6, F12, F14 | 4a-3 |
 | P-22 | Lista, decisiones, foco y anuncios | F7 a F9, F11 | 4a-4 |
@@ -950,7 +964,7 @@ acumulado (D-6) con `ia_turnos` comprobado en A2 antes de reservar cupo; las ses
 | # | Riesgo | Efecto | Mitigación | Estado |
 |---|---|---|---|---|
 | R-A1 | **Orden de fusión**: construir 4a-1 antes del retiro | habría dos clases `Borrador` y la capa sin puente de conversión | 4a-1 no empieza hasta que `f2b3c5e5` y `1e1f976e` estén en la rama; B1 falla si las clases difieren | mitigado |
-| R-A2 | **Turno colgado** | cupo ocupado, cobro no registrado | cliente acotado a 120 s sin reintentos, hilos demonio, cupo por semáforo, apagado que no espera; Ollama/dobles solo con la envoltura | declarado |
+| R-A2 | **Turno colgado** | cupo ocupado, cobro no registrado | cliente acotado a 120 s sin reintentos, hilos demonio, cupo por semáforo, apagado que no espera; Ollama/dobles solo con la envoltura | declarado; **un `read` de 120 s sin reintentos puede cortar un turno legítimo de Opus con razonamiento largo: se paga y se pierde, y la sesión termina en `error`/`tiempo` conservando lo propuesto. El valor se mide en 4a-6/4a-7 sin cambiar el diseño** |
 | R-A3 | **Gasto**: una sesión consume hasta el tope aunque la persona se vaya | USD | tope por sesión, estimación, cancelar, ritmo, tope acumulado en etapa 3 | declarado |
 | R-A4 | **Pérdida de la sesión** al salir o reiniciar | propuestas pagadas y no decididas | `beforeunload`; aviso; el borrador con aceptadas se conserva con su registro; `ia_*` queda | declarado |
 | R-A5 | **Texto ajeno** en pantalla | exfiltración por renderizado | solo texto escapado, sin `a`/`img`; F11 | mitigado |
@@ -977,7 +991,7 @@ acumulado (D-6) con `ia_turnos` comprobado en A2 antes de reservar cupo; las ses
 | **D-1** | **Resuelta por ruling del orquestador:** primero el retiro de Streamlit (F7 repuntó `asistente/*` a `aplicacion.hoja`, F8 borró `ui/`), después 4a. La opción **R** de la ronda 1 ya está construida allá; la capa nueva no convierte borradores. Se pide a Eugenio **confirmar el orden de fusión** | Eugenio | confirmar | si 4a fuera antes del retiro habría que reintroducir la conversión de clases (la ronda 1 de este documento la describía) |
 | **D-2** | Autorización de gasto para la **prueba real** (4a-7) y para cualquier demostración con un proveedor real | Eugenio | **No autorizar todavía**; cuando se autorice, tope explícito (por ejemplo ≤ 3 USD), una sola sesión sobre OF-001 y el costo real anotado | 4a-7 se adelanta; el resto no cambia |
 | **D-3** | **Adelantar el cierre de sesión al guardar** (solo servidor, sin pantalla) a la etapa 1 para no dejar versiones con origen IA cuya sesión no sale en `ia.json` | Eugenio | **Sí** (~20 líneas en `hoja_guardado.py`) | No: el panel debe avisar «No guarde versiones con propuestas de la IA hasta la etapa 2» y la ERS declara el hueco |
-| **D-4** | Topes y plazos supuestos: `EN_VUELO = 2`, 20 por hora por `usuario_id`, `PLAZO_POR_TURNO = 120 s`, `PLAZO_TOTAL = 300 s`, pedido ≤ 4 000 caracteres, sondeo cada 2 s, tope de fábrica 2 USD | Eugenio | adoptarlos como supuestos y ajustarlos con 4a-6 y la prueba real | cambiar números en `hoja_asistente_trabajo.py` y `api/esquemas_hoja_asistente.py` |
+| **D-4** | Topes y plazos supuestos: `EN_VUELO = 2`, 20 por hora por `usuario_id`, `PLAZO_POR_TURNO = 120 s`, `PLAZO_TOTAL = 300 s`, pedido ≤ 4 000 caracteres, sondeo cada 2 s, tope de fábrica 2 USD | Eugenio | adoptarlos como supuestos y ajustarlos con 4a-6 y la prueba real (en particular `PLAZO_POR_TURNO = 120 s`: un turno legítimo de Opus puede tardar más; cortarlo se paga y se pierde) | cambiar números en `hoja_asistente_trabajo.py` y `api/esquemas_hoja_asistente.py` |
 | **D-5** | Plazo real del cliente de Claude. **Ya no requiere editar `claude.py`:** la capa nueva inyecta un cliente acotado (`with_options(timeout=…, max_retries=0)`) sobre dos atributos privados del proveedor | Eugenio solo si prefiere editar el archivo congelado | dejarlo así; si el SDK no ofrece `with_options` la propuesta falla cerrado (409) | editar `claude.py` y re-congelar |
 | **D-6** | Tope de costo **acumulado** por instalación | Eugenio | etapa 3, leyendo `ia_turnos` | adelantarlo: consulta en A2 y campo en la configuración |
 | **D-7** | ¿«Aceptar todas»? | Eugenio | **No** (RF-92: una por una) | botón con confirmación que llame A5 en orden |
@@ -1002,7 +1016,7 @@ desplegable propio con `h2 > button`; lista y no tabla; citas visibles; un fallo
 | DV-IA-8 | Mensajes compuestos por la capa nueva con tildes; los del motor, tal cual | misma regla que D-3 de la hoja |
 | DV-IA-9 | Los motivos de las sesiones detenidas usan una tabla con tildes | los del motor están congelados sin tildes |
 | DV-IA-10 | Confirmación en línea al descartar pendientes | las propuestas costaron dinero |
-| DV-IA-11 | La regla P7 de MaPreX se aplica también a los `items_base` (la clásica solo al catálogo) | §1.8 |
+| DV-IA-11 | La regla P7 de MaPreX se aplica también a los `items_base` y a los ítems que el motor crea al proponer (catálogo envuelto); la clásica solo la aplicaba a las respuestas de las herramientas de catálogo | §1.8, §4.1 |
 | DV-IA-12 | «retirada por la IA» se distingue de «rechazada» | §1.9-3 |
 | DV-IA-13 | La fuente sugerida se arma con todas las sesiones aceptadas | la clásica solo con la vigente |
 
@@ -1048,8 +1062,10 @@ desplegable propio con `h2 > button`; lista y no tabla; citas visibles; un fallo
 
 ## 13. Lo que no pude determinar
 
-1. Los números del SDK (`DEFAULT_TIMEOUT`, 2 reintentos) son del coordinador (`anthropic` 1.17); no los medí. Tampoco verifiqué que
-   `with_options` exista con esa firma: B33 lo comprueba con un doble y 4a-1 con el SDK instalado.
+1. Los números del SDK (`DEFAULT_TIMEOUT`, 2 reintentos) y que `with_options(timeout=120, max_retries=0)` devuelve un cliente con `timeout=120` y
+   `max_retries=0` los **verificó el coordinador con `anthropic` 1.17**; yo no los medí. B33 lo sigue comprobando con un doble y 4a-1 con el SDK instalado.
+   Límite conocido de la fuente sugerida: se corta a 300 caracteres (el tope de S1) y con muchas sesiones aceptadas **pierde la cola**; se mantienen
+   primero las sesiones más antiguas y la persona la puede reescribir.
 2. Si `ProveedorOllama.disponible()` hace la comprobación de versión por HTTP en cada llamada (deducido de `ollama_local.py:149`, no probado).
 3. El comportamiento de `exigir_clave_o_sesion` con CSRF y `Origin`: lo tomo del diseño de la hoja y de `api/rutas/hoja.py`; no abrí `api/sesion_web.py`.
 4. El tiempo real de A4 (completar composiciones + R17 + `elaborar`) con cientos de puntos: RNF-11 midió 0,125 s sin R17. Lo mide 4a-2.
@@ -1082,3 +1098,15 @@ desplegable propio con `h2 > button`; lista y no tabla; citas visibles; un fallo
 | 12 | MENOR | orden de bloqueos, testigo, corrección de «no pueden fallar» | §3.2, §3.3, §3.5 | B32, B21 | 4a-1, 4a-2 |
 | 13 | MENOR | `fuente_sugerida` de todas las sesiones | §3.2 (`aceptadas`), §3.5 | B24b; F15 | 4a-2, 4a-4 |
 | 14 | MENOR | textos: «orientativa», frase por tipo, `h2` fuera del botón, `alAplicar`, `hoja_vista` en 4a-2, reemplazo de §2.10, dónde se construyen `Servicios`/`CatalogoDeLaBase`, costo estimado, `Intl.NumberFormat` | encabezado, §2.3, §4.3, §6.1, §6.2, §6.4, §6.5, §8 | F7, F10, F15 | 4a-2, 4a-3, 4a-4 |
+
+## 15. Registro de la ronda 3
+
+| # | Severidad | Hallazgo | Dónde quedó | Prueba | Sub-rebanada |
+|---|---|---|---|---|---|
+| N1 | MAYOR | P7 incompleto: el motor crea ítems con la descripción real del catálogo | §4.1 (catálogo envuelto, `del_motor` con catálogo real, alcance honesto), DV-IA-11, P-19 | B26 (caso exacto: `proponer_partida` + `consultar_borrador` + `pedir_informe_auditoria`) | 4a-1, 4a-5 |
+| M1 | MENOR | rechazo de `sin_partida` con `rev` viejo | §3.5 | B20 | 4a-2 |
+| M2 | MENOR | traspaso del testigo del semáforo | §3.3 | B9 | 4a-1 |
+| M3 | MENOR | 120 s puede cortar un turno legítimo | D-4, R-A2 | 4a-6/4a-7 (medición) | 4a-6 |
+| M4 | MENOR | línea de `hoja_plano.fusionar` | §3.5 | — | — |
+| M5 | MENOR | literal de B22/P-15 desde la memoria OF-001, con indirectos | B22 | B22 | 4a-2 |
+| M6 | MENOR | §13.1 y cola de `fuente_sugerida` | §13 | — | — |
