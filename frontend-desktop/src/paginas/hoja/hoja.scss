@@ -234,8 +234,14 @@
 .silice-hoja__dialogo {
   display: grid;
   gap: 0.75rem;
+  align-content: start;
   max-inline-size: 36rem;
-  padding: 1rem 1.5rem;
+  // Cabe siempre en la ventana (a 1366x768 y con la letra grande): el cuerpo se desplaza y el pie queda fijo (H-4).
+  max-block-size: calc(100vh - 2rem);
+  max-block-size: calc(100dvh - 2rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 1rem 1.5rem 0;
   background: var(--cds-layer, #fff);
   border-inline-start: 4px solid var(--silice-sev-critico, #da1e28);
 
@@ -244,12 +250,22 @@
   }
 }
 
+// El pie con Cancelar y la acción principal no se desplaza con el cuerpo: siempre a la vista, sobre fondo opaco y con un
+// divisor (H-4). Es el último hijo directo del diálogo; los avisos de error con acciones propias no son el pie.
+.silice-hoja__dialogo > .silice-hoja__acciones:last-child {
+  position: sticky;
+  inset-block-end: 0;
+  z-index: 1;
+  margin-inline: -1.5rem;
+  padding: 0.75rem 1.5rem 1rem;
+  background: var(--cds-layer, #fff);
+  border-block-start: 1px solid var(--silice-divisor);
+}
+
 // El modal «Guardar versión»: más ancho que la confirmación, con borde de acción (no de peligro) y desplazamiento propio.
 .silice-hoja__dialogo--guardar {
   inline-size: min(56rem, 100%);
   max-inline-size: none;
-  max-block-size: 90vh;
-  overflow-y: auto;
   border-inline-start-color: var(--silice-interactivo, #0f62fe);
 }
 
@@ -278,8 +294,6 @@
 // Restaurar, cotizar, retirar y convertir: un formulario corto, de una columna, con desplazamiento propio.
 .silice-hoja__dialogo--operacion {
   inline-size: min(32rem, 100%);
-  max-block-size: 90vh;
-  overflow-y: auto;
   border-inline-start-color: var(--silice-interactivo, #0f62fe);
 }
 
