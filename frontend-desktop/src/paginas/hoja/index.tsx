@@ -230,7 +230,7 @@ type Ofertas = { estado: "buscando" } | { estado: "listo"; lista: OfertaDeRetoma
 
 // Los borradores con cambios que el servidor conserva de este proyecto (E10): se piden al abrir la hoja, antes de abrir uno
 // nuevo. Si la lectura falla no se ofrece nada: abrir la hoja no depende de ella.
-function useOfertas(proyecto: string, alExpirar: () => void) {
+function useOfertas(proyecto: string, nombre: string | null, alExpirar: () => void) {
   const [intento, setIntento] = useState(0);
   const [res, setRes] = useState<{ clave: string; lista: OfertaDeRetomar[] } | null>(null);
   const clave = JSON.stringify([proyecto, intento]);
@@ -238,7 +238,7 @@ function useOfertas(proyecto: string, alExpirar: () => void) {
     let vigente = true;
     pedir<unknown>(RUTA_DE_BORRADORES).then(
       (r) => {
-        if (vigente) setRes({ clave, lista: ofertasDeRetomar(r, proyecto) });
+        if (vigente) setRes({ clave, lista: ofertasDeRetomar(r, proyecto, nombre) });
       },
       (error: unknown) => {
         if (!vigente) return;
@@ -249,7 +249,7 @@ function useOfertas(proyecto: string, alExpirar: () => void) {
     return () => {
       vigente = false;
     };
-  }, [clave, proyecto, alExpirar]);
+  }, [clave, proyecto, nombre, alExpirar]);
   const recargar = useCallback(() => setIntento((n) => n + 1), []);
   const ofertas: Ofertas = res?.clave === clave ? { estado: "listo", lista: res.lista } : { estado: "buscando" };
   return { ofertas, recargar };
@@ -259,10 +259,10 @@ function textoDeCambiarVersion(cambios: number): string {
   return `Tiene ${textoDeCambios(cambios)}. Si abre otra versión se pierden: guarde primero o descarte.`;
 }
 
-function HojaDeProyecto({ proyecto }: { proyecto: string }) {
+function HojaDeProyecto({ proyecto, nombreProyecto }: { proyecto: string; nombreProyecto: string | null }) {
   const { alExpirar, sesion } = useAplicacion();
   const versiones = useCarga<VersionesRespuesta>(rutaDeVersiones(proyecto), alExpirar);
-  const { ofertas, recargar: recargarOfertas } = useOfertas(proyecto, alExpirar);
+  const { ofertas, recargar: recargarOfertas } = useOfertas(proyecto, nombreProyecto, alExpirar);
   const [elegida, setElegida] = useState<{ proyecto: string; codigo: string } | null>(null);
   // El borrador que la persona decidió retomar (en vez de abrir uno nuevo) y el proyecto cuyas ofertas ya no valen.
   const [retomando, setRetomando] = useState<{ proyecto: string; id: string; version: string | null } | null>(null);
@@ -421,7 +421,7 @@ function HojaDeProyecto({ proyecto }: { proyecto: string }) {
       )}
       {ofrecidos.length > 0 && (
         <OfertaDeRetomarVista
-          proyecto={proyecto}
+          proyecto={nombreProyecto ?? proyecto}
           ofertas={ofrecidos}
           alRetomar={retomar}
           alDescartar={() => void descartarOfrecidos()}
@@ -546,14 +546,14 @@ function HojaDeProyecto({ proyecto }: { proyecto: string }) {
 }
 
 export default function PaginaHoja() {
-  const { proyecto } = useAplicacion();
+  const { proyecto, nombreProyecto } = useAplicacion();
   return (
     <section className="silice-pagina silice-hoja">
       <h1 className="cds--type-heading-04">{TITULO}</h1>
       {proyecto === null ? (
         <EstadoVacio titulo="Elija un proyecto" descripcion="Use el selector de la cabecera para abrir su hoja." />
       ) : (
-        <HojaDeProyecto proyecto={proyecto} />
+        <HojaDeProyecto proyecto={proyecto} nombreProyecto={nombreProyecto ?? null} />
       )}
     </section>
   );

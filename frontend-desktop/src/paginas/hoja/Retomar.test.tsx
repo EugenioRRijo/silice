@@ -133,10 +133,12 @@ describe("Hoja del proyecto: retomar el borrador y cambiar de versión (3c-3)", 
   const orden = () => fetchFalso.mock.calls.map(([r, i]) => `${i?.method ?? "GET"} ${String(r)}`);
 
   let proyectoActual = "OF-001";
+  let nombreActual: string | null = null;
   function valor(): Aplicacion {
     return {
       sesion: SESION,
       proyecto: proyectoActual,
+      nombreProyecto: nombreActual,
       caso: { nombre: "obra", ruta_relativa: "data/obra.db" },
       recargarProyectos: vi.fn(),
       alExpirar,
@@ -162,6 +164,7 @@ describe("Hoja del proyecto: retomar el borrador y cambiar de versión (3c-3)", 
   }
   beforeEach(() => {
     proyectoActual = "OF-001";
+    nombreActual = null;
   });
 
   const estado = () => screen.getByRole("region", { name: "Estado del borrador" });
@@ -209,6 +212,16 @@ describe("Hoja del proyecto: retomar el borrador y cambiar de versión (3c-3)", 
     expect(o.indexOf("GET /v1/hoja/borradores")).toBeGreaterThanOrEqual(0);
     expect(o.indexOf("GET /v1/hoja/borradores")).toBeLessThan(o.indexOf("POST /v1/hoja/borradores"));
     expect(screen.queryByRole("button", { name: /Retomar borrador/ })).toBeNull();
+  });
+
+  test("el servidor lista el borrador con el NOMBRE del proyecto y la cabecera tiene su código: igual se ofrece retomarlo", async () => {
+    const nombre = "OF-001: oficina con baño, cocineta y puestos (caso de prueba)";
+    nombreActual = nombre;
+    lista = () => json({ borradores: [guardado({ proyecto: nombre })] });
+    montar();
+    // el rótulo dice el nombre del proyecto (el código puede ser un número interno que nadie reconoce)
+    expect(await screen.findByRole("button", { name: `Retomar borrador de ${nombre} (2 cambios)` })).toBeInTheDocument();
+    expect(aperturas()).toEqual([]); // nada se abre hasta que la persona decida
   });
 
   test("con un borrador con cambios se ofrece «Retomar borrador de OF-001 (2 cambios)» y no se abre otro hasta decidir", async () => {

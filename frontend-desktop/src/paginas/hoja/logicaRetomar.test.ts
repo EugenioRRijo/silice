@@ -24,6 +24,16 @@ describe("qué borradores se ofrecen para retomar", () => {
     expect(ofertasDeRetomar(lista, "OF-001").map((o) => o.id)).toEqual(["id-borrador-aaaaaaaaaaaa"]);
   });
 
+  // La API (E10) llama `proyecto` al NOMBRE del proyecto; la cabecera trae el CÓDIGO. Con datos reales (OF-001 se llama
+  // «OF-001: oficina con baño…») la oferta nunca coincidía y la persona quedaba sin poder retomar (auditoría visual 3e-3).
+  test("el servidor dice el nombre del proyecto y la cabecera el código: se ofrece por el nombre", () => {
+    const nombre = "OF-001: oficina con baño, cocineta y puestos (caso de prueba)";
+    const lista = [fila({ proyecto: nombre }), fila({ id: "id-borrador-bbbbbbbbbbbb", proyecto: "TI-001: telecom" })];
+    expect(ofertasDeRetomar(lista, "OF-001", nombre).map((o) => o.id)).toEqual(["id-borrador-aaaaaaaaaaaa"]);
+    expect(ofertasDeRetomar(lista, "OF-001", null)).toEqual([]);
+    expect(ofertasDeRetomar([fila()], "OF-001", nombre)).toHaveLength(1); // y el código solo sigue valiendo
+  });
+
   test("acepta la lista sola o envuelta en `borradores`", () => {
     expect(ofertasDeRetomar({ borradores: [fila()] }, "OF-001")).toHaveLength(1);
     expect(ofertasDeRetomar([fila()], "OF-001")).toHaveLength(1);

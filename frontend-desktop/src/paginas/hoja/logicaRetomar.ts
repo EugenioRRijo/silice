@@ -25,12 +25,13 @@ function esOferta(x: unknown): x is OfertaDeRetomar {
 }
 
 // Los borradores de esta ficha que son del proyecto abierto y tienen cambios sin guardar. Si la respuesta no es una lista no se
-// ofrece nada: abrir la hoja no puede depender de esta lectura.
-export function ofertasDeRetomar(respuesta: unknown, proyecto: string): OfertaDeRetomar[] {
+// ofrece nada: abrir la hoja no puede depender de esta lectura. El servidor llama `proyecto` al NOMBRE del proyecto y la
+// cabecera trae su CÓDIGO: vale cualquiera de los dos.
+export function ofertasDeRetomar(respuesta: unknown, proyecto: string, nombre: string | null = null): OfertaDeRetomar[] {
   const lista =
     Array.isArray(respuesta) ? respuesta : respuesta !== null && typeof respuesta === "object" ? (respuesta as Record<string, unknown>)["borradores"] : null;
   if (!Array.isArray(lista)) return [];
-  return lista.filter(esOferta).filter((o) => o.proyecto === proyecto && o.cambios > 0);
+  return lista.filter(esOferta).filter((o) => (o.proyecto === proyecto || o.proyecto === nombre) && o.cambios > 0);
 }
 
 // «Retomar borrador de OF-001 (2 cambios)»; con varios del proyecto, cada uno dice su versión.
