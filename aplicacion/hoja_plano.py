@@ -214,8 +214,8 @@ _MARCAS_DE_OSERROR = ("[Errno ", "[WinError ")
 def _rastros_de_la_raiz(raiz: Path) -> tuple[str, ...]:
     """La raiz temporal y su comienzo (el ancla mas el primer componente, p. ej. la unidad con
     `Users`, o `/tmp`), en las tres escrituras en que puede salir: tal cual, con las barras
-    dobladas de `repr` y con barras normales. El comienzo no depende del largo de la raiz: sale aunque el lector recorte el
-    texto (`en_una_linea`, 120 caracteres) dentro de ella."""
+    dobladas de `repr` y con barras normales. El comienzo no depende del largo de la raiz:
+    sale aunque el lector recorte el texto (`en_una_linea`, 120 caracteres) dentro de ella."""
     comienzo = str(Path(*raiz.parts[:2])) if len(raiz.parts) > 1 else str(raiz)
     rastros = []
     for texto in (str(raiz), comienzo):
