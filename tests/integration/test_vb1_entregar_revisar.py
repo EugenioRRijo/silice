@@ -155,15 +155,20 @@ def test_una_version_sellada_antes_de_la_correccion_no_aparece_como_cadena_rota(
             assert UN_DOCEAVO_29 in canonico.documento(caso, version).decode()
         assert UN_DOCEAVO_28 in canonico.documento(caso, version).decode()
         resultado = cadena.verificar_cadena(caso, proyecto)
-        assert resultado.ok, resultado
+        assert resultado.integra, resultado
         # y una alteracion real sigue detectandose
-        version.renglones[0].materiales = Decimal("15")
+        fila = caso.scalars(
+            select(models.PartidaPresupuestada).where(
+                models.PartidaPresupuestada.presupuesto_id == version.id
+            )
+        ).one()
+        fila.materiales = Decimal("15")
         caso.flush()
-        assert not cadena.verificar_cadena(caso, proyecto).ok
+        assert not cadena.verificar_cadena(caso, proyecto).integra
 
 
 def test_una_version_nueva_sella_con_la_cifra_cuantizada(motor) -> None:
     with abrir_sesion(motor) as caso:
         proyecto, version = _sembrar(caso)
         assert UN_DOCEAVO_29 not in canonico.documento(caso, version).decode()
-        assert cadena.verificar_cadena(caso, proyecto).ok
+        assert cadena.verificar_cadena(caso, proyecto).integra

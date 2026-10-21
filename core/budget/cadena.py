@@ -398,6 +398,13 @@ def verificar_cadena(
         if eslabon is None:
             return _roto(numero, version, "sin_sellar")
         contenido = canonico.huella(canonico.documento(session, version))
+        if contenido != eslabon.huella_contenido:
+            # Sellada antes de VB-1: sus cifras de 29 decimales no se cuantizaban (expediente
+            # 2026-10-21-VB1). Se acepta SOLO si coincide con esa forma; una alteración no.
+            with canonico.formato_legado():
+                legado = canonico.huella(canonico.documento(session, version))
+            if legado == eslabon.huella_contenido:
+                contenido = legado
         cambios = huella_de_cambios(_registros(session, version))
         anexos = huella_de_anexos(anexos_de(session, version))
         if contenido != eslabon.huella_contenido:

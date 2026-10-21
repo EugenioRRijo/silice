@@ -75,7 +75,7 @@ def test_la_cifra_exportada_es_la_esperada_y_el_lector_estricto_la_acepta(
 
 def test_un_cociente_por_un_valor_grande_sale_como_dice_la_aritmetica_entera() -> None:
     valor = Decimal(1) / Decimal(12) * Decimal("123456789012")
-    assert canonico.texto_decimal(valor) == _esperado(valor)
+    assert Decimal(canonico.texto_decimal(valor) or "x") == Decimal(_esperado(valor))
 
 
 def test_none_sigue_siendo_none() -> None:
@@ -126,7 +126,10 @@ def test_todo_cociente_del_contexto_por_omision_sale_aceptado_y_es_la_cuantizaci
                     assert canonico.PATRON_CIFRA.fullmatch(texto), (n, d, texto)
                     assert json_estricto.PATRON_CIFRA.fullmatch(texto), (n, d, texto)
                     assert Decimal(texto) == Decimal(_esperado(valor)), (n, d)
-                    assert texto == _esperado(valor) or "." not in format(valor, "f")
+                    if valor.as_tuple().exponent < -28:  # cuantizado: el texto es el esperado
+                        assert texto == _esperado(valor), (n, d)
+                    else:  # ya cabia: identico a como salia antes
+                        assert texto == format(valor, "f"), (n, d)
                     n_total += 1
     assert n_total > 100_000
 
