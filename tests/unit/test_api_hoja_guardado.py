@@ -236,6 +236,10 @@ def _guardar(navegador, ficha, id_, rev, fuente=FUENTE, **extra):
     )
 
 
+def _versiones(navegador, proyecto: str = NOMBRE_OF001) -> list[dict]:
+    return navegador.get("/v1/hoja/versiones", params={"proyecto": proyecto}).json()["versiones"]
+
+
 def _con_administracion(navegador, ficha, valor="0.20", **abrir) -> str:
     """Un borrador de OF-001 v001 con la administracion cambiada: `rev` 1, un cambio."""
     id_ = _abrir(navegador, ficha, **abrir)
@@ -546,9 +550,12 @@ def test_una_version_mas_nueva_pide_confirmar_y_con_la_confirmacion_guarda(_ento
     assert _cadena(_entorno).integra
 
 
-def test_una_version_descartada_se_abre_y_guardar_desde_ella_pide_confirmar(_entorno) -> None:
-    """Limite declarado: la regla es la de `Resumen.version_mas_nueva` (la vigente es otra que la
-    abierta). Abrir a proposito una version descartada tambien pide confirmar."""
+def test_abrir_a_proposito_una_version_descartada_no_pide_confirmar_si_nadie_guardo(
+    _entorno,
+) -> None:
+    """D-5 afinada (Eugenio, 2026-10-21): la regla compara la vigente de AHORA con la vigente que
+    habia AL ABRIR. Abrir a proposito una version descartada (la vigente es la 001) y guardar sin
+    que nadie haya guardado entretanto NO pide confirmar: nadie se adelanto."""
     navegador, ficha = _ana()
     id_ = _con_administracion(navegador, ficha)
     assert _guardar(navegador, ficha, id_, 1).json()["codigo"] == "002"
@@ -561,12 +568,105 @@ def test_una_version_descartada_se_abre_y_guardar_desde_ella_pide_confirmar(_ent
         ("002", True, False),
     ]
     descartada = _abrir(navegador, ficha, version="002")
+    assert _resumen(navegador, descartada)["version_mas_nueva"] is None  # la pantalla no avisa
     assert _parametros(navegador, ficha, descartada, 0, administracion="0.30").status_code == 200
-    pide = _guardar(navegador, ficha, descartada, 1)
-    assert pide.status_code == 409 and pide.json()["version_mas_nueva"] == "001"
-    ok = _guardar(navegador, ficha, descartada, 1, confirmar_version_mas_nueva=True)
+    assert _resumen(navegador, descartada)["version_mas_nueva"] is None
+    ok = _guardar(navegador, ficha, descartada, 1)  # sin confirmar
     assert ok.status_code == 200 and ok.json()["codigo"] == "003"
     assert _cadena(_entorno).integra
+
+
+def test_abrir_una_version_vieja_a_proposito_no_pide_confirmar_si_nadie_guardo(_entorno) -> None:
+    """Misma regla con una version vieja no descartada: la vigente es la 002 y se abre la 001."""
+    navegador, ficha = _ana()
+    primero = _con_administracion(navegador, ficha)
+    assert _guardar(navegador, ficha, primero, 1).json()["codigo"] == "002"
+    vieja = _con_administracion(navegador, ficha, "0.30", version="001")
+    assert _resumen(navegador, vieja)["version_mas_nueva"] is None
+    ok = _guardar(navegador, ficha, vieja, 1)
+    assert ok.status_code == 200 and ok.json()["codigo"] == "003"
+    assert [v["codigo"] for v in _versiones(navegador)] == ["001", "002", "003"]
+    assert _cadena(_entorno).integra
+
+
+def test_si_alguien_guarda_despues_de_abrir_una_version_vieja_si_pide_confirmar(_entorno) -> None:
+    """Se abre la 001 con la 002 vigente; otra persona guarda la 003; el texto «Otra persona
+    guardo la 003 despues de que usted abrio la 001» es cierto y la pantalla lo sabe."""
+    uno, ficha_uno = _ana()
+    otro, ficha_otro = _ana()
+    primero = _con_administracion(uno, ficha_uno)
+    assert _guardar(uno, ficha_uno, primero, 1).json()["codigo"] == "002"
+    mio = _con_administracion(uno, ficha_uno, "0.30", version="001")  # a proposito: la vieja
+    de_otro = _con_administracion(otro, ficha_otro, "0.25", version="002")
+    assert _guardar(otro, ficha_otro, de_otro, 1).json()["codigo"] == "003"  # se me adelantan
+    assert _resumen(uno, mio)["version_mas_nueva"] == "003"
+    antes = _volcado(_entorno)
+
+    pide = _guardar(uno, ficha_uno, mio, 1)
+    assert pide.status_code == 409
+    assert pide.json() == {
+        "detalle": (
+            "Otra persona guardó la versión 003 después de que usted abrió la 001. Si guarda, su "
+            "versión saldrá de la 001 y quedará como vigente sin lo de la 003."
+        ),
+        "version_mas_nueva": "003",
+    }
+    assert _volcado(_entorno) == antes
+    ok = _guardar(uno, ficha_uno, mio, 1, confirmar_version_mas_nueva=True)
+    assert ok.status_code == 200 and ok.json()["codigo"] == "004"
+    assert _cadena(_entorno).integra
+
+
+def test_dos_personas_que_abrieron_la_vieja_a_proposito_guardan_a_la_vez_uno_gana(
+    _entorno,
+) -> None:
+    """La carrera con la regla afinada: ambas abrieron la 001 con la 002 vigente (vigente al
+    abrir = 002). La que llegue primera guarda la 003 sin confirmar; la segunda ve la 003 y recibe
+    el 409 (con `BEGIN IMMEDIATE` no hay dos 003 ni 503)."""
+    uno, ficha_uno = _ana()
+    otro, ficha_otro = _ana()
+    base = _con_administracion(uno, ficha_uno)
+    assert _guardar(uno, ficha_uno, base, 1).json()["codigo"] == "002"
+    a = _con_administracion(uno, ficha_uno, "0.20", version="001")
+    b = _con_administracion(otro, ficha_otro, "0.30", version="001")
+    respuestas = _a_la_vez(
+        lambda: _guardar(uno, ficha_uno, a, 1), lambda: _guardar(otro, ficha_otro, b, 1)
+    )
+    assert sorted(r.status_code for r in respuestas) == [200, 409], [r.text for r in respuestas]
+    assert next(r for r in respuestas if r.status_code == 200).json()["codigo"] == "003"
+    assert next(r for r in respuestas if r.status_code == 409).json()["version_mas_nueva"] == "003"
+    assert [v["codigo"] for v in _versiones(uno)] == ["001", "002", "003"]
+    assert _cadena(_entorno).integra
+
+
+def test_un_borrador_retomado_conserva_la_vigente_de_cuando_se_abrio(_entorno) -> None:
+    """Retomar (E10 y R3) devuelve el MISMO borrador vivo: la vigente al abrir no se renueva. Si
+    otra persona guardo mientras tanto, guardar el retomado sigue pidiendo confirmar."""
+    uno, ficha = _ana()
+    otro, ficha_otro = _ana()
+    id_ = _con_administracion(uno, ficha)
+    retomable = uno.get("/v1/hoja/borradores", headers=protegida(ficha)).json()
+    assert [b["id"] for b in retomable["borradores"]] == [id_]
+    de_otro = _con_administracion(otro, ficha_otro, "0.20")
+    assert _guardar(otro, ficha_otro, de_otro, 1).json()["codigo"] == "002"
+    leido = uno.get(f"/v1/hoja/borradores/{id_}").json()  # R3 tras «recargar la pagina»
+    assert leido["resumen"]["version_mas_nueva"] == "002"
+    assert _guardar(uno, ficha, id_, 1).status_code == 409
+
+
+def test_un_borrador_perdido_por_un_reinicio_no_se_guarda_ni_se_rehidrata(_entorno) -> None:
+    """El registro vive en la memoria del proceso: tras un reinicio el borrador ya no existe y no
+    se reconstruye con la vigente de ahora (eso taparia un adelantamiento). Guardar da 404 con el
+    texto de siempre y no escribe nada; abrir otra vez lee la vigente de ese momento."""
+    navegador, ficha = _ana()
+    id_ = _con_administracion(navegador, ficha)
+    antes = _volcado(_entorno)
+    hoja_borradores.olvidar_todo()  # lo que hace un reinicio de Silice
+    perdido = _guardar(navegador, ficha, id_, 1)
+    assert perdido.status_code == 404 and perdido.json() == {"detalle": FALTA}
+    assert _volcado(_entorno) == antes
+    nuevo = _con_administracion(navegador, ficha, "0.30")
+    assert _guardar(navegador, ficha, nuevo, 1).json()["codigo"] == "002"
 
 
 # --- 3d-B7: la carrera ---

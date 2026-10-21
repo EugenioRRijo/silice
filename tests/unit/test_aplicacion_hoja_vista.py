@@ -111,6 +111,31 @@ def _of001(tmp_path_factory):
     return abierta
 
 
+@pytest.mark.parametrize(
+    ("vigente_ahora", "vigente_al_abrir", "esperado"),
+    [
+        ("002", "002", None),  # nadie guardo: abrir a proposito una vieja no avisa
+        ("003", "002", "003"),  # alguien guardo despues de abrir
+        ("001", "001", None),
+        ("002", None, "002"),  # no habia vigente al abrir (todas descartadas) y ahora si
+        (None, "002", None),  # ahora todas descartadas: no hay version mas nueva que ofrecer
+        (None, None, None),
+    ],
+)
+def test_version_mas_nueva_compara_la_vigente_de_ahora_con_la_de_cuando_se_abrio(
+    _of001, vigente_ahora, vigente_al_abrir, esperado
+):
+    vivo = Registro().crear(
+        "f", "caso", NOMBRE_OF001, "001", _of001.borrador, _of001, vigente_al_abrir=vigente_al_abrir
+    )
+    assert hoja_vista.version_mas_nueva(vivo, vigente_ahora) == esperado
+
+
+def test_un_borrador_en_blanco_nunca_avisa_de_una_version_mas_nueva():
+    vivo = Registro().crear("f", "caso", "Nuevo", None, hoja.Borrador(fecha=HOY), None)
+    assert hoja_vista.version_mas_nueva(vivo, "001") is None
+
+
 def test_el_resumen_de_of001_da_el_total_de_la_memoria_sin_cambios(_of001):
     vivo = Registro().crear("f", "caso", NOMBRE_OF001, "001", _of001.borrador, _of001)
     r = hoja_vista.resumen(vivo)
