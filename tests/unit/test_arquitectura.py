@@ -260,9 +260,9 @@ def test_produccion_respeta_su_regla(tmp_path):
 #: `if TYPE_CHECKING:`). Eran las reglas de `ui/composicion.py` y `ui/hoja.py`; con el retiro de
 #: Streamlit (F8) pasan a sus destinos definitivos en `aplicacion/`.
 PROHIBIDOS_EN_LA_HOJA: dict[str, tuple[str, ...]] = {
-    # RA-2 ya no vigila `core.catalog` ni `core.budget`: `aplicacion/composicion.py` guarda la
-    # composicion (`guardar_composicion`), asi que los usa a proposito. Sigue sin tocar SQL a mano.
-    "aplicacion/composicion.py": ("streamlit", "pandas", "sqlalchemy"),
+    # RA-2: no escribe presupuestos (`core.budget`) ni toca SQL a mano. `core.catalog` ya no se
+    # vigila: `aplicacion/composicion.py` guarda la composicion (`guardar_composicion`) con el.
+    "aplicacion/composicion.py": ("streamlit", "pandas", "sqlalchemy", "core.budget"),
     # SF 1.8: la hoja orquesta el borrador y la elaboracion sin pintar (FR-5: sin Streamlit).
     "aplicacion/hoja.py": ("streamlit", "pandas"),
 }
