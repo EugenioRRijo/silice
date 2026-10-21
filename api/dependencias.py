@@ -26,7 +26,7 @@ from sqlalchemy.orm import Session
 
 from api import caso_web
 from api.sesion_web import COOKIE
-from core.catalog import abrir_sesion, crear_motor
+from core.catalog import abrir_sesion, abrir_sesion_de_escritura, crear_motor
 from operacion.base_datos import ErrorDeBase, preparar_base
 from operacion.config import ruta_caso_por_defecto
 from operacion.instalacion import motor_de_instalacion, sesion_de_instalacion
@@ -107,9 +107,21 @@ def sesion_api(request: Request) -> Iterator[Session]:
         yield sesion
 
 
+def sesion_de_escritura_api(request: Request) -> Iterator[Session]:
+    """La sesion de una ruta que CREA UNA VERSION (SL-E12, diseno §4.5): su transaccion empieza con
+    `BEGIN IMMEDIATE` en la primera sentencia, asi que quien guarda toma el bloqueo de escritura
+    antes de leer la version vigente y el ultimo codigo (el otro espera). No confirma por si
+    misma: confirma o deshace la funcion de aplicacion que escribe (todo o nada), y al salir se
+    cierra (lo que quede sin confirmar se deshace). Quien la usa envuelve la cadena de anexos."""
+    with abrir_sesion_de_escritura(obtener_motor(url_de_la_peticion(request))) as sesion:
+        yield sesion
+
+
 #: Alias de tipo para inyectar la sesion en las rutas sin disparar B008 (ruff): un `Depends(...)`
 #: como valor por defecto es una llamada en la firma; dentro de `Annotated` no lo es.
 SesionDep = Annotated[Session, Depends(sesion_api)]
+#: La de escritura (`BEGIN IMMEDIATE`): solo para las rutas que crean versiones.
+SesionDeEscrituraDep = Annotated[Session, Depends(sesion_de_escritura_api)]
 
 
 def sesion_instalacion_api() -> Iterator[Session]:

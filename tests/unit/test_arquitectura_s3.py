@@ -314,6 +314,9 @@ LLAMADORES = {
     ("aplicacion/hoja.py", "_retirar_cotizacion"),
     ("aplicacion/hoja.py", "convertir_version"),
     ("api/rutas/hoja.py", "abrir_version"),  # R2: responsable = la persona de la sesion
+    # 3d-1 (S1): guardar el borrador vivo; el responsable es la persona de la sesion, no el cuerpo
+    ("aplicacion/hoja_guardado.py", "guardar_version"),
+    ("aplicacion/hoja_guardado.py", "crear_primera_version"),
     ("scripts/generar_obra_control.py", "guardar_presupuesto"),
 }
 

@@ -107,11 +107,17 @@ def mensaje_instantanea(creadas: int) -> str | None:
     )
 
 
+def con_r17(borrador: hoja.Borrador) -> hoja.Borrador:
+    """El borrador con R17 (la conexion de cada punto) ligada a SU espacio; reemplaza una R17 vieja.
+    Las reglas extra no cuentan como cambios (`Borrador.reglas_extra` no se compara). Es el
+    `_con_conexion` de la pagina clasica: la usan `elaborar` y el guardado (3d-1)."""
+    return replace(borrador, reglas_extra=con_conexion(borrador.reglas_extra, borrador.espacio))
+
+
 def elaborar(borrador: hoja.Borrador) -> hoja.ResultadoHoja:
     """Elabora el borrador con R17 del espacio vigente; la reemplaza si ya traia una vieja y no
     toca el borrador (las reglas extra no cuentan como cambios)."""
-    ligado = replace(borrador, reglas_extra=con_conexion(borrador.reglas_extra, borrador.espacio))
-    return hoja.elaborar_borrador(ligado)
+    return hoja.elaborar_borrador(con_r17(borrador))
 
 
 def _base_de_comparacion(vivo: BorradorVivo) -> hoja.Borrador:

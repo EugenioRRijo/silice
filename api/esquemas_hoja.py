@@ -14,6 +14,7 @@ from pydantic import BaseModel, ConfigDict, Field, StrictBool, field_validator
 
 from aplicacion.hoja import CambioEditado, FilaInsumo, FilaVersion
 from aplicacion.hoja_borradores import BorradorVivo
+from aplicacion.hoja_guardado import Guardado
 from aplicacion.hoja_vista import (
     BaseAbierta,
     Monto,
@@ -673,4 +674,38 @@ def borradores_a_respuesta(filas: list[tuple[BorradorVivo, int]]) -> BorradoresH
             )
             for vivo, cambios in filas
         ]
+    )
+
+
+# --- guardar el borrador como version (3d-1, S1) ----------------------------------------------
+#
+# Tope (D-9, SUPUESTO declarado): la fuente del cambio llega acotada a 300 caracteres, el ancho de
+# `RegistroCambio.fuente`. `extra` prohibido: el responsable NO viaja en el cuerpo (RF-82).
+
+
+class GuardarVersion(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    rev: Annotated[int, Field(strict=True, ge=0)]
+    fuente: Annotated[str, Field(strict=True, max_length=300)]
+    confirmar_version_mas_nueva: StrictBool = False
+
+
+class GuardadoRespuesta(BaseModel):
+    codigo: str
+    proyecto: str
+    cambios: int
+    total: MontoHojaRespuesta
+    primera: bool
+    mensaje: str
+
+
+def guardado_a_respuesta(guardado: Guardado) -> GuardadoRespuesta:
+    return GuardadoRespuesta(
+        codigo=guardado.codigo,
+        proyecto=guardado.proyecto,
+        cambios=guardado.cambios,
+        total=monto_a_respuesta(guardado.total),
+        primera=guardado.primera,
+        mensaje=guardado.mensaje,
     )

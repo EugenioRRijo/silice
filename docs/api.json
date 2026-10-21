@@ -5417,6 +5417,62 @@
         }
       }
     },
+    "/v1/hoja/borradores/{id}/guardar": {
+      "post": {
+        "tags": [
+          "hoja"
+        ],
+        "summary": "Guardar Borrador",
+        "description": "S1: guarda el borrador como versión nueva (o como la primera si el proyecto no tenía\nversiones) y lo cierra. ESCRIBE en la base del caso, en una sola transacción que empieza con\n`BEGIN IMMEDIATE` y con la cadena de sellos cubriendo el espacio (3d-B3, B7).\n\nEl responsable es la persona de la sesión, nunca un campo del cuerpo (RF-82). Todo o nada: ante\ncualquier error no queda ninguna fila. Con una versión más nueva que la abierta, 409 (con\n`version_mas_nueva`) salvo `confirmar_version_mas_nueva`. `activa` va antes que `sesion`: el\nacceso (401, 403) responde antes de abrir la base del caso.",
+        "operationId": "guardar_borrador_v1_hoja_borradores__id__guardar_post",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 16,
+              "maxLength": 64,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "title": "Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GuardarVersion"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/api__esquemas_hoja__GuardadoRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/hoja/borradores/{id}/espacio": {
       "put": {
         "tags": [
@@ -11859,6 +11915,32 @@
         ],
         "title": "GuardarPeticion"
       },
+      "GuardarVersion": {
+        "properties": {
+          "rev": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Rev"
+          },
+          "fuente": {
+            "type": "string",
+            "maxLength": 300,
+            "title": "Fuente"
+          },
+          "confirmar_version_mas_nueva": {
+            "type": "boolean",
+            "title": "Confirmar Version Mas Nueva",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "rev",
+          "fuente"
+        ],
+        "title": "GuardarVersion"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -17480,6 +17562,43 @@
         ],
         "title": "VistaPreviaRespuesta",
         "description": "Los insumos del archivo que se pueden dar de alta (flujo 2a), sin escribir nada. Un archivo\nque no se puede leer no ofrece nada y trae su motivo; el mismo fallo se informa al revalorar."
+      },
+      "api__esquemas_hoja__GuardadoRespuesta": {
+        "properties": {
+          "codigo": {
+            "type": "string",
+            "title": "Codigo"
+          },
+          "proyecto": {
+            "type": "string",
+            "title": "Proyecto"
+          },
+          "cambios": {
+            "type": "integer",
+            "title": "Cambios"
+          },
+          "total": {
+            "$ref": "#/components/schemas/MontoHojaRespuesta"
+          },
+          "primera": {
+            "type": "boolean",
+            "title": "Primera"
+          },
+          "mensaje": {
+            "type": "string",
+            "title": "Mensaje"
+          }
+        },
+        "type": "object",
+        "required": [
+          "codigo",
+          "proyecto",
+          "cambios",
+          "total",
+          "primera",
+          "mensaje"
+        ],
+        "title": "GuardadoRespuesta"
       },
       "api__esquemas_informe__HallazgoRespuesta": {
         "properties": {

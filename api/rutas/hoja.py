@@ -41,7 +41,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.exc import SQLAlchemyError
 
 from api.admin_acceso import cuenta_con
-from api.dependencias import SesionDep, url_de_la_peticion
+from api.dependencias import SesionDeEscrituraDep, SesionDep, url_de_la_peticion
 from api.esquemas_atipicos import AtipicosRespuesta, atipicos_a_respuesta
 from api.esquemas_hoja import (
     BorradorAbierto,
@@ -61,6 +61,8 @@ from api.esquemas_hoja import (
     EdicionPlan,
     EdicionPlanRespuesta,
     EdicionSecuencial,
+    GuardadoRespuesta,
+    GuardarVersion,
     InstantaneaHojaRespuesta,
     InsumosHojaRespuesta,
     PreciosHojaRespuesta,
@@ -75,6 +77,7 @@ from api.esquemas_hoja import (
     base_a_respuesta,
     borradores_a_respuesta,
     cambios_a_respuesta,
+    guardado_a_respuesta,
     insumos_a_respuesta,
     precios_a_respuesta,
     resumen_a_respuesta,
@@ -92,13 +95,13 @@ from api.sesion_web import exigir_clave_o_sesion
 from api.sin_cache import RutaSinCache
 from api.sin_eco import RutaSinEco, sin_eco
 from aplicacion import atipicos as busqueda_atipica
-from aplicacion import hoja, hoja_borradores, hoja_edicion, hoja_vista
+from aplicacion import hoja, hoja_borradores, hoja_edicion, hoja_guardado, hoja_vista
 from aplicacion.entrega import con_anexos_de_cadena
 from aplicacion.errores import HojaInvalida
 from aplicacion.hoja_borradores import BorradorInexistente, BorradorVivo, RevDesactualizado
 from aplicacion.proyectos import resolver_proyecto
 from core.budget.moneda import moneda_del_proyecto
-from core.catalog import Catalogo
+from core.catalog import Catalogo, CatalogoIncompleto
 from seguridad.permisos import Accion, permitido
 from seguridad.sesiones import SesionActiva
 
@@ -150,6 +153,10 @@ FORMA_BUSQUEDA = (
     "La búsqueda de insumos no tiene la forma esperada: indique tipo (material, equipo o "
     "mano_obra), un texto de hasta 500 caracteres y un límite de 1 a 301."
 )
+FORMA_GUARDAR = (
+    "El guardado no tiene la forma esperada: envíe rev (entero) y la fuente como texto de hasta "
+    "300 caracteres."
+)
 MENSAJE_PARTIDA = "Esa partida no tiene APU en este borrador: vuelva a cargar la lista de partidas."
 MENSAJE_SIN_VERSION = "Abra una version guardada: los insumos se eligen de su lista de precios."
 MENSAJE_SIN_PLAN = "Esta versión no tiene plan de trabajo: cree primero el plan secuencial."
@@ -195,6 +202,16 @@ def _version_guardada(sesion, proyecto: str, version: str):
         return nombre, hoja.lista_de_version(sesion, nombre, version)
     except HojaInvalida as error:
         raise HTTPException(status_code=404, detail=str(error)) from None
+
+
+def _ya_guardado(codigo: str) -> HTTPException:
+    """409: el borrador ya se guardó como la versión `codigo` (E1 a E7 y S1)."""
+    return HTTPException(
+        status_code=409,
+        detail=(
+            f"Este borrador ya se guardó como la versión {codigo}; abra esa versión para seguir."
+        ),
+    )
 
 
 def _vivo(request: Request, activa: SesionActiva, id_: str) -> BorradorVivo:
@@ -381,13 +398,7 @@ def _editar(
             except RevDesactualizado:
                 raise HTTPException(status_code=409, detail=MENSAJE_REV) from None
             except hoja_edicion.BorradorYaGuardado as error:
-                raise HTTPException(
-                    status_code=409,
-                    detail=(
-                        f"Este borrador ya se guardó como la versión {error.codigo}; "
-                        "abra esa versión para seguir."
-                    ),
-                ) from None
+                raise _ya_guardado(error.codigo) from None
             except hoja_edicion.SinPlan:
                 raise HTTPException(status_code=409, detail=MENSAJE_SIN_PLAN) from None
             except hoja_edicion.YaTienePlan:
@@ -402,6 +413,55 @@ def _editar(
             return hoja_vista.resumen(editado, mas_nueva), vista_de(editado)
     except SQLAlchemyError:
         raise HTTPException(status_code=503, detail=MENSAJE_BASE) from None
+
+
+@router.post("/borradores/{id}/guardar", response_model=GuardadoRespuesta)
+@sin_eco(FORMA_GUARDAR)
+def guardar_borrador(
+    id: IdDeBorrador,
+    datos: GuardarVersion,
+    request: Request,
+    activa: CuentaDeLaHoja,
+    sesion: SesionDeEscrituraDep,
+) -> GuardadoRespuesta | JSONResponse:
+    """S1: guarda el borrador como versión nueva (o como la primera si el proyecto no tenía
+    versiones) y lo cierra. ESCRIBE en la base del caso, en una sola transacción que empieza con
+    `BEGIN IMMEDIATE` y con la cadena de sellos cubriendo el espacio (3d-B3, B7).
+
+    El responsable es la persona de la sesión, nunca un campo del cuerpo (RF-82). Todo o nada: ante
+    cualquier error no queda ninguna fila. Con una versión más nueva que la abierta, 409 (con
+    `version_mas_nueva`) salvo `confirmar_version_mas_nueva`. `activa` va antes que `sesion`: el
+    acceso (401, 403) responde antes de abrir la base del caso."""
+    _vivo(request, activa, id)  # 404 (otra ficha), 409 (otro caso): sin tocar ninguna base
+    try:
+        guardado = hoja_guardado.guardar(
+            sesion,
+            activa.huella_ficha,
+            id,
+            datos.rev,
+            fuente=datos.fuente,
+            responsable=activa.usuario,
+            confirmar_version_mas_nueva=datos.confirmar_version_mas_nueva,
+        )
+    except BorradorInexistente:
+        raise HTTPException(status_code=404, detail=MENSAJE_FALTA) from None
+    except RevDesactualizado:
+        raise HTTPException(status_code=409, detail=MENSAJE_REV) from None
+    except hoja_guardado.BorradorYaGuardado as error:
+        raise _ya_guardado(error.codigo) from None
+    except hoja_guardado.VersionMasNueva as error:
+        return JSONResponse(
+            status_code=409, content={"detalle": str(error), "version_mas_nueva": error.vigente}
+        )
+    except hoja_guardado.VersionSoloLectura as error:
+        raise HTTPException(status_code=409, detail=str(error)) from None
+    except HojaInvalida as error:  # antes que ValueError: es una subclase
+        raise HTTPException(status_code=422, detail=str(error)) from None
+    except (ValueError, CatalogoIncompleto) as error:
+        raise HTTPException(status_code=409, detail=f"No se guardó nada: {error}") from None
+    except SQLAlchemyError:
+        raise HTTPException(status_code=503, detail=MENSAJE_BASE) from None
+    return guardado_a_respuesta(guardado)
 
 
 @router.put("/borradores/{id}/espacio", response_model=EdicionEspacioRespuesta)
