@@ -2,8 +2,9 @@
 
 `UploadedFile.name` lo manda el navegador y llega tal cual: `..\\..\\x`, `/etc/passwd`, `C:\\...`,
 `CON.csv`. Los oraculos son literales escritos a mano (el nombre que debe quedar), no la salida de
-la propia funcion. Las pantallas con subida (`actualizacion`, `elaborar`) deben usarla en
-lugar de unir el nombre del cliente a una carpeta (`Path(carpeta) / archivo.name`).
+la propia funcion. (Retiro de Streamlit, F4: se fueron con las paginas `actualizacion` y
+`elaborar` las dos pruebas que vigilaban que usaran `guardar_subida` y no unieran el nombre del
+cliente a una carpeta.)
 """
 
 from __future__ import annotations
@@ -127,24 +128,6 @@ def test_guardar_con_nombre_vacio_no_escribe_nada(tmp_path):
     with pytest.raises(ValueError, match="nombre utilizable"):
         guardar_subida(tmp_path, Subida(""))
     assert list(tmp_path.iterdir()) == []
-
-
-# --- las dos pantallas con subida usan la funcion unica ---------------------------------------
-
-PAGINAS_CON_SUBIDA = ("actualizacion", "elaborar")
-
-
-@pytest.mark.parametrize("pagina", PAGINAS_CON_SUBIDA)
-def test_las_pantallas_con_subida_usan_el_guardado_seguro(pagina):
-    texto = (RAIZ / "ui" / "paginas" / f"{pagina}.py").read_text(encoding="utf-8")
-    assert "guardar_subida(" in texto
-    assert "from ui.subidas import" in texto
-
-
-@pytest.mark.parametrize("pagina", PAGINAS_CON_SUBIDA)
-def test_ninguna_pantalla_une_el_nombre_del_cliente_a_una_carpeta(pagina):
-    texto = (RAIZ / "ui" / "paginas" / f"{pagina}.py").read_text(encoding="utf-8")
-    assert "/ archivo.name" not in texto
 
 
 @pytest.mark.parametrize(
