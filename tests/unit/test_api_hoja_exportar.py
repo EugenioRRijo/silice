@@ -34,6 +34,7 @@ from openpyxl import load_workbook
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
+from adapters.espacio.conexion import con_conexion
 from api import caso_web, dependencias
 from api.rutas import hoja as hoja_ruta
 from aplicacion import entrega, hoja_borradores
@@ -571,7 +572,6 @@ def _libro_de_la_clasica(
     """Lo que hace `_preparar_excel` (P:556-573) sobre una COPIA del caso, con `ui.hoja` vivo."""
     from ui import control
     from ui import hoja as clasica
-    from ui.paginas import hoja as pagina
 
     hoy = hoy or date.today()
     shutil.copyfile(origen, destino)
@@ -586,7 +586,13 @@ def _libro_de_la_clasica(
                 fecha_evaluacion=hoy,
                 responsable="ana",
             )
-            resultado = pagina._elaborar(abierta.borrador)
+            # `_elaborar` de la pagina retirada (F4): elaborar_borrador con R17 del espacio vigente
+            borrador = abierta.borrador
+            resultado = clasica.elaborar_borrador(
+                replace(
+                    borrador, reglas_extra=con_conexion(borrador.reglas_extra, borrador.espacio)
+                )
+            )
             trazabilidad = clasica.tabla_de_trazabilidad(sesion, abierta.proyecto, abierta.codigo)
             precios = clasica.precios_de_version(
                 sesion, abierta.proyecto, abierta.codigo, fecha_evaluacion=hoy

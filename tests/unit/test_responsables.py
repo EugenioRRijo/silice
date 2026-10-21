@@ -2,11 +2,14 @@
 
 Vigilancias: (1) la lista de toda columna `responsable` de los metadatos, cada una con la prueba
 que dice que la escribe el usuario de la sesión (una columna nueva sin dueño hace fallar la lista);
-(2) ninguna pantalla pide «Responsable» con un cuadro propio: todas pasan por
-`ui.sesion.caja_de_responsable`; (3) el literal `"sistema"` aparece una sola vez en `ui/`
-(`ui.hoja.RESPONSABLE_POR_OMISION`); (4) ningún llamador de `ui/` pasa como `responsable=` o
-`usuario=` un texto fijo (salvo esa constante, de la transición RP8-4). Y el comportamiento de los
-dos ayudantes de `ui.sesion` con el acceso encendido y apagado.
+(2) el literal `"sistema"` aparece una sola vez en `ui/` (`ui.hoja.RESPONSABLE_POR_OMISION`);
+(3) ningún llamador de `ui/` pasa como `responsable=` o `usuario=` un texto fijo (salvo esa
+constante, de la transición RP8-4).
+
+Retiro de Streamlit (F4): se fueron con las pantallas la vigilancia de los cuadros «Responsable»
+propios, la de la caja `ui.sesion.caja_de_responsable` y las pruebas de los dos ayudantes de
+`ui.sesion`. Las pruebas que demuestran que cada tabla escribe al usuario de la sesión son ahora
+las de la API (`COBERTURA`).
 """
 
 from __future__ import annotations
@@ -18,31 +21,54 @@ import pytest
 
 from migraciones.metadatos import METADATAS_CASO, METADATAS_INSTALACION
 from ui import hoja
-from ui import sesion as ui_sesion
 
 RAIZ = Path(__file__).resolve().parents[2]
 
-#: tabla -> «archivo::prueba» que demuestra que la escribe el usuario de la sesión. Las tablas de
-#: S1 y S2 entran en cuanto existen en los metadatos; su prueba la agrega la tarea que cablea su
-#: pantalla (`ui.sesion.caja_de_responsable`), siguiendo el patrón de `test_ui_hoja_responsable`.
-_HOJA = "tests/unit/test_ui_hoja_responsable.py::test_guardar_registra_al_usuario"
-_CAJA = "tests/unit/test_responsables.py::test_las_pantallas_de_s1_y_s2_usan_la_caja"
+
+#: tabla -> «archivo::prueba» que demuestra que la escribe el usuario de la sesión (rutas de la API:
+#: el responsable sale de la sesión y el cuerpo no puede decir otro). Tras el retiro de Streamlit,
+#: `linea_base_control`, `anulacion_valuacion` y `costo_real` quedan apuntadas a la prueba de la
+#: valuación de la misma ruta (`api/rutas/control.py` usa `_responsable(activa)` en las tres): no
+#: hay una prueba propia de cada una.
+def _api(archivo: str, prueba: str) -> str:
+    return f"tests/unit/{archivo}::{prueba}"
+
+
+_HOJA = _api(
+    "test_api_hoja_guardado.py",
+    "test_el_responsable_de_lo_guardado_es_quien_tiene_la_sesion",
+)
+_INDICES = _api(
+    "test_api_indices.py",
+    "test_confirmar_un_csv_guarda_los_valores_exactos_y_repetirlo_no_escribe",
+)
+_MONEDA = _api(
+    "test_api_hoja_conversion_cadena.py",
+    "test_convertir_a_bs_crea_la_002_con_la_tasa_de_venta_y_el_total_de_la_memoria_por_la_tasa",
+)
+_REAJUSTE = _api(
+    "test_api_reajuste.py",
+    "test_guardar_sin_responsable_usa_la_sesion",
+)
+_CONTROL = _api(
+    "test_api_control.py",
+    "test_registrar_una_valuacion_controla_al_corte_y_el_responsable_sale_de_la_sesion",
+)
+_DECISION = _api(
+    "test_api_control.py",
+    "test_elegir_una_opcion_crea_la_version_y_deja_la_decision_con_el_responsable_de_la_sesion",
+)
 COBERTURA = {
     "registro_cambio": _HOJA,
-    **dict.fromkeys(
-        (
-            "importacion_indice",
-            "moneda_proyecto",
-            "clausula_reajuste",
-            "estudio_reajuste",
-            "linea_base_control",
-            "valuacion",
-            "anulacion_valuacion",
-            "costo_real",
-            "decision_recuperacion",
-        ),
-        _CAJA,
-    ),
+    "importacion_indice": _INDICES,
+    "moneda_proyecto": _MONEDA,
+    "clausula_reajuste": _REAJUSTE,
+    "estudio_reajuste": _REAJUSTE,
+    "linea_base_control": _CONTROL,
+    "valuacion": _CONTROL,
+    "anulacion_valuacion": _CONTROL,
+    "costo_real": _CONTROL,
+    "decision_recuperacion": _DECISION,
 }
 
 #: Las tablas que nombra RF-82 en la ERS (docs/ERS.md, RF-82), copiadas a mano: la lista de los
@@ -59,15 +85,6 @@ TABLAS_DE_RF82 = {
     "costo_real",
     "decision_recuperacion",
 }
-
-#: Las pantallas de S1 y S2 que la bitácora de la 0.8.0 («S3-3, primer PR: tarea 18») dice que
-#: piden el responsable con `ui.sesion.caja_de_responsable`.
-PANTALLAS_CON_CAJA = (
-    "ui/paginas/hoja.py",
-    "ui/paginas/control.py",
-    "ui/paginas/reajuste.py",
-    "ui/paginas/indices.py",
-)
 
 
 def _tablas_con_responsable() -> set[str]:
@@ -119,87 +136,7 @@ def test_la_lista_no_nombra_tablas_que_no_son_de_responsable(tabla: str) -> None
     assert tabla in _tablas_con_responsable() or tabla not in todas
 
 
-# --- (2) ningún cuadro «Responsable» propio ------------------------------------------------------
-
-
-def _rotulo(nodo: ast.Call) -> str | None:
-    """El rótulo literal de un `text_input`/`text_area`: el primer argumento o `label=`."""
-    candidatos = [*nodo.args[:1], *(k.value for k in nodo.keywords if k.arg == "label")]
-    for valor in candidatos:
-        if isinstance(valor, ast.Constant) and isinstance(valor.value, str):
-            return valor.value
-    return None
-
-
-def _cuadros_de_texto(archivo: Path):
-    arbol = ast.parse(archivo.read_text(encoding="utf-8"))
-    for nodo in ast.walk(arbol):
-        if (
-            isinstance(nodo, ast.Call)
-            and isinstance(nodo.func, ast.Attribute)
-            and nodo.func.attr in ("text_input", "text_area")
-            and _rotulo(nodo) is not None
-        ):
-            yield nodo
-
-
-def _cuadros_de_responsable(archivo: Path) -> list[str]:
-    return [
-        _donde(archivo, nodo)
-        for nodo in _cuadros_de_texto(archivo)
-        if _rotulo(nodo).strip().lower().startswith("responsable")
-    ]
-
-
-def test_las_pantallas_de_s1_y_s2_usan_la_caja() -> None:
-    """Ninguna pantalla de `ui/` pide «Responsable» con su propio `text_input` o `text_area`:
-    todas pasan por `ui.sesion.caja_de_responsable` (que con el acceso encendido no es un
-    cuadro). `ui/sesion.py` es la caja misma."""
-    propios = sorted(
-        donde
-        for archivo in _archivos_de_ui()
-        if archivo.name != "sesion.py"
-        for donde in _cuadros_de_responsable(archivo)
-    )
-    assert propios == []
-
-
-@pytest.mark.parametrize("pantalla", PANTALLAS_CON_CAJA)
-def test_cada_pantalla_de_s1_y_s2_llama_a_la_caja(pantalla: str) -> None:
-    """La vigilancia de arriba no pasa en vacío: las pantallas que guardan con responsable lo
-    piden por la caja de la sesión."""
-    arbol = ast.parse((RAIZ / pantalla).read_text(encoding="utf-8"))
-    llamadas = [
-        n
-        for n in ast.walk(arbol)
-        if isinstance(n, ast.Call)
-        and isinstance(n.func, ast.Attribute)
-        and n.func.attr == "caja_de_responsable"
-    ]
-    assert llamadas, f"{pantalla} no llama a ui.sesion.caja_de_responsable"
-
-
-def test_la_vigilancia_de_cuadros_propios_ve_el_cuadro(tmp_path: Path) -> None:
-    archivo = tmp_path / "x.py"
-    archivo.write_text(
-        'st.text_input("Responsable ")\n'
-        'st.text_input("Fuente")\n'
-        'col.text_area(label="responsable del cambio")\n'
-        'st.text_input("Quien responde")\n'
-        "st.text_input(rotulo)\n",
-        encoding="utf-8",
-    )
-    vistos = [n.lineno for n in _cuadros_de_texto(archivo)]
-    assert vistos == [1, 2, 3, 4]  # el rótulo variable (línea 5) no se puede leer
-    marcados = [
-        n.lineno
-        for n in _cuadros_de_texto(archivo)
-        if _rotulo(n).strip().lower().startswith("responsable")
-    ]
-    assert marcados == [1, 3]
-
-
-# --- (3) el literal «sistema» --------------------------------------------------------------------
+# --- (2) el literal «sistema» --------------------------------------------------------------------
 
 
 def _literales_sistema() -> list[str]:
@@ -222,7 +159,7 @@ def test_el_literal_sistema_aparece_una_sola_vez_en_ui() -> None:
     assert hoja.RESPONSABLE_POR_OMISION == "sistema"
 
 
-# --- (4) ningún responsable fijo en los llamadores de ui/ ---------------------------------------
+# --- (3) ningún responsable fijo en los llamadores de ui/ ---------------------------------------
 
 
 def _es_texto_fijo(valor: ast.expr) -> bool:
@@ -288,67 +225,3 @@ def test_la_vigilancia_de_responsables_fijos_ve_cada_forma(tmp_path: Path) -> No
     )
     lineas = sorted(int(d.rsplit(":", 1)[1]) for d in _responsables_fijos(archivo))
     assert lineas == [1, 2, 3, 5]
-
-
-# --- los ayudantes de `ui.sesion` ---------------------------------------------------------------
-
-
-class _Contenedor:
-    """Doble de `st` o de una columna: anota lo que se le pide."""
-
-    def __init__(self) -> None:
-        self.llamadas: list[tuple] = []
-
-    def caption(self, texto: str) -> None:
-        self.llamadas.append(("caption", texto))
-
-    def text_input(self, rotulo: str, key: str | None = None) -> str:
-        self.llamadas.append(("text_input", rotulo, key))
-        return "lo escrito a mano"
-
-
-@pytest.fixture
-def acceso_encendido(monkeypatch):
-    monkeypatch.setenv(ui_sesion.VARIABLE_ACCESO, "1")
-    monkeypatch.setattr(ui_sesion, "responsable_actual", lambda: "Ana Pérez <ana>")
-
-
-@pytest.fixture
-def acceso_apagado(monkeypatch):
-    monkeypatch.setenv(ui_sesion.VARIABLE_ACCESO, "0")
-
-    def _no_debe_llamarse() -> str:
-        raise AssertionError("con el acceso apagado manda lo escrito")
-
-    monkeypatch.setattr(ui_sesion, "responsable_actual", _no_debe_llamarse)
-
-
-def test_con_el_acceso_encendido_el_responsable_es_la_sesion_diga_lo_que_diga_el_cuadro(
-    acceso_encendido,
-) -> None:
-    assert ui_sesion.responsable_de_la_hoja("Otro Nombre") == "Ana Pérez <ana>"
-    assert ui_sesion.responsable_de_la_hoja("") == "Ana Pérez <ana>"
-
-
-def test_con_el_acceso_apagado_manda_lo_escrito(acceso_apagado) -> None:
-    assert ui_sesion.responsable_de_la_hoja("Luis Gómez") == "Luis Gómez"
-    assert ui_sesion.responsable_de_la_hoja("") == ""
-
-
-def test_la_caja_con_el_acceso_encendido_no_es_un_cuadro(acceso_encendido) -> None:
-    contenedor = _Contenedor()
-    quien = ui_sesion.caja_de_responsable(
-        "Responsable ", key="x_responsable", contenedor=contenedor
-    )
-    assert quien == "Ana Pérez <ana>"
-    # «Ana Pérez <ana>» con `<` y `>` escapados para Markdown (RV-14)
-    assert contenedor.llamadas == [("caption", "Responsable: Ana Pérez \\<ana\\>")]
-
-
-def test_la_caja_con_el_acceso_apagado_es_el_cuadro_de_siempre(acceso_apagado) -> None:
-    contenedor = _Contenedor()
-    quien = ui_sesion.caja_de_responsable(
-        "Responsable del cambio", key="x_responsable", contenedor=contenedor
-    )
-    assert quien == "lo escrito a mano"
-    assert contenedor.llamadas == [("text_input", "Responsable del cambio", "x_responsable")]

@@ -15,8 +15,7 @@ from pathlib import Path
 import pytest
 from packaging.version import Version
 
-from ui.app import modo_entrega_activo
-from ui.caso import resolver_ruta
+from aplicacion.entorno import modo_entrega_activo
 from ui.entorno import (
     ALIAS_ANTERIORES,
     ULTIMA_VERSION_CON_ALIAS,
@@ -61,10 +60,7 @@ def test_la_variable_nueva_en_blanco_no_cede_a_la_vieja(nueva: str, vieja: str) 
     assert leer_variable({nueva: "  "}, nueva) is None
 
 
-def test_el_caso_y_el_modo_entrega_leen_con_el_ayudante() -> None:
-    assert resolver_ruta(None, {"ARENIA_CASO": "viejo.db"}, "d.db") == Path("d.db")
-    entorno = {"SILICE_CASO": "nuevo.db", "ARENIA_CASO": "viejo.db"}
-    assert resolver_ruta(None, entorno, "d.db") == Path("nuevo.db")
+def test_el_modo_entrega_ignora_el_alias_retirado() -> None:
     assert modo_entrega_activo({"ARENIA_MODO_ENTREGA": "1"}) is False
     assert modo_entrega_activo({"SILICE_MODO_ENTREGA": "0", "ARENIA_MODO_ENTREGA": "1"}) is False
     assert modo_entrega_activo({"SILICE_MODO_ENTREGA": "1"}) is True

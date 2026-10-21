@@ -74,11 +74,9 @@ def test_los_manuales_anuncian_el_retiro_del_alias() -> None:
         assert "ya no se aceptan desde la 0.7.0" in texto, ruta
 
 
-def test_la_interfaz_la_api_y_el_readme_se_llaman_silice() -> None:
+def test_la_api_y_el_readme_se_llaman_silice() -> None:
     from api.main import app
-    from ui.app import TITULO_APP
 
-    assert TITULO_APP == "Sílice"
     assert app.title == "Sílice"
     assert _texto("README.md").startswith("# Sílice\n")
 

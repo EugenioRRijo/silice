@@ -1,10 +1,9 @@
 """`aplicacion.entorno.modo_entrega_activo`: la API informa el modo entrega sin importar `ui/`
 (punto 7 de la ola 0a, sesión 2b).
 
-Duplica a propósito `ui.app.modo_entrega_activo` (que lee con `ui.entorno.leer_variable`, y
-`ui/entorno.py` solo puede usar la biblioteca estándar: no puede importar `aplicacion`). El oráculo
-es la función de Streamlit: las dos dicen lo mismo en cada entorno de la tabla, y la variable se
-llama igual.
+Duplicaba a propósito `ui.app.modo_entrega_activo` (retirada con Streamlit, F4). El oráculo son los
+valores literales de la tabla `ENTORNOS`, que eran los que devolvía la función de Streamlit: solo
+el valor exacto `1` de `SILICE_MODO_ENTREGA` lo enciende.
 """
 
 from __future__ import annotations
@@ -14,18 +13,17 @@ import pytest
 from aplicacion import entorno
 from operacion import config
 from ui import entorno as entorno_ui
-from ui.app import modo_entrega_activo as de_streamlit
 
 ENTORNOS = [
-    {},
-    {"SILICE_MODO_ENTREGA": "1"},
-    {"SILICE_MODO_ENTREGA": "0"},
-    {"SILICE_MODO_ENTREGA": ""},
-    {"SILICE_MODO_ENTREGA": "  "},
-    {"SILICE_MODO_ENTREGA": " 1"},
-    {"SILICE_MODO_ENTREGA": "si"},
-    {"SILICE_MODO_ENTREGA": "true"},
-    {"ARENIA_MODO_ENTREGA": "1"},  # el alias retirado en la 0.7.0 ya no cuenta
+    ({}, False),
+    ({"SILICE_MODO_ENTREGA": "1"}, True),
+    ({"SILICE_MODO_ENTREGA": "0"}, False),
+    ({"SILICE_MODO_ENTREGA": ""}, False),
+    ({"SILICE_MODO_ENTREGA": "  "}, False),
+    ({"SILICE_MODO_ENTREGA": " 1"}, False),
+    ({"SILICE_MODO_ENTREGA": "si"}, False),
+    ({"SILICE_MODO_ENTREGA": "true"}, False),
+    ({"ARENIA_MODO_ENTREGA": "1"}, False),  # el alias retirado en la 0.7.0 ya no cuenta
 ]
 
 
@@ -33,9 +31,9 @@ def test_la_variable_es_la_misma_que_lee_la_interfaz_clasica() -> None:
     assert entorno.VARIABLE_MODO_ENTREGA == entorno_ui.VARIABLE_MODO_ENTREGA
 
 
-@pytest.mark.parametrize("variables", ENTORNOS, ids=repr)
-def test_dice_lo_mismo_que_la_interfaz_clasica(variables: dict[str, str]) -> None:
-    assert entorno.modo_entrega_activo(variables) is de_streamlit(variables)
+@pytest.mark.parametrize(("variables", "esperado"), ENTORNOS, ids=lambda v: repr(v))
+def test_dice_lo_que_dice_la_tabla(variables: dict[str, str], esperado: bool) -> None:
+    assert entorno.modo_entrega_activo(variables) is esperado
 
 
 def test_solo_el_valor_exacto_1_lo_enciende() -> None:

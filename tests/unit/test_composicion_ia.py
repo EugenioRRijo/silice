@@ -373,7 +373,7 @@ def test_ninguna_ayuda_modifica_las_filas_ni_la_composicion_resultante(monkeypat
 
 
 # ---------------------------------------------------------------------------------------------
-# La pagina arranca y compone sin el extra `ml` (no solo las funciones puras: la pagina completa)
+# La composicion arranca sin el extra `ml` (no solo las funciones puras: el modulo completo)
 # ---------------------------------------------------------------------------------------------
 
 #: Modulos que un import perezoso mal hecho dejaria en cache con `ml` ya cargado; se limpian antes
@@ -389,20 +389,18 @@ _MODULOS_RELACIONADOS_CON_ML = (
     "ml.prediction.reglas",
     "aplicacion.composicion",
     "ui.composicion",
-    "ui.paginas.componer",
 )
 
 
-def test_la_pagina_de_componer_se_importa_sin_el_extra_ml(monkeypatch):
-    """RF de arranque (spec §3.7): la interfaz sigue arrancando sin el extra `ml`; las cuatro
+def test_la_composicion_se_importa_sin_el_extra_ml(monkeypatch):
+    """RF de arranque (spec §3.7): la composición sigue importándose sin el extra `ml`; las cuatro
     ayudas simplemente no aparecen (cada una degrada a "sin sugerencia" al intentar usarse).
+    (Retiro de Streamlit, F4: ya no se importa la página de componer, que se fue con `ui/paginas/`.)
     """
     import importlib
 
     with SinExtra(monkeypatch, ("ml",), _MODULOS_RELACIONADOS_CON_ML):
         modulo_composicion = importlib.import_module("ui.composicion")
-        modulo_pagina = importlib.import_module("ui.paginas.componer")
 
     # INV-024: `is not None` no afirma nada; se exige el punto de entrada de cada modulo.
     assert callable(modulo_composicion.sugerir_partidas_similares)
-    assert callable(modulo_pagina.render)
