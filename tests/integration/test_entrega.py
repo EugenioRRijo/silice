@@ -31,6 +31,7 @@ from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 
 from adapters.espacio import crear_esquema_espacio, guardar_espacio
+from aplicacion import entrega
 from core import models
 from core.catalog import abrir_sesion
 from paquete import formato
@@ -49,7 +50,6 @@ from tests.fixtures.canonico.ejemplo_v1 import BYTES_EJEMPLO_V1, HUELLA_EJEMPLO_
 from tests.fixtures.canonico_minimo import USUARIO, guardar_otra, sembrar_minimo
 from tests.fixtures.espacio_of001 import espacio_of001
 from tests.fixtures.instalacion import AHORA, instalacion
-from ui import entrega
 
 CLAVE = "frase de firma larga y propia"
 EMPRESA = "Contratista Demo, C.A."

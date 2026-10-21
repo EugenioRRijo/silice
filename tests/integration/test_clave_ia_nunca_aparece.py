@@ -29,6 +29,7 @@ import httpx2 as httpx
 import pytest
 from sqlalchemy import select
 
+from aplicacion import entrega
 from asistente.clave import ClaveDeIA, es_bucle_local
 from asistente.orquestador import MotivoFin, Servicios
 from asistente.propuestas import EstadoPropuesta
@@ -44,7 +45,7 @@ from tests.fixtures.asistente_clave import AlmacenFalso, SecretosFalsos
 from tests.fixtures.asistente_pedidos import AMBIENTE, FECHA, PEDIDO, catalogo
 from tests.fixtures.hoja_en_base import plantilla_of001
 from tests.fixtures.instalacion import instalacion
-from ui import entrega, hoja
+from ui import hoja
 from ui.hoja import Borrador
 
 CLAVE = "sk-ant-api03-CLAVE-QUE-NO-DEBE-APARECER-9999"
