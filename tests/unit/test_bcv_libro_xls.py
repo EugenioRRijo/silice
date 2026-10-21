@@ -1,6 +1,6 @@
 """Guardia de tamano del lector `.xls` del BCV (MEDIO-2 de la revision de seguridad).
 
-`xlrd` no esta instalado en este equipo: se inyecta un modulo falso en `sys.modules` cuyas hojas
+Se inyecta un modulo falso en `sys.modules` cuyas hojas
 declaran dimensiones enormes (un `.xls` de pocos KB puede declarar 65 536 x 256 celdas por hoja, y
 un libro puede traer cientos de hojas). El lector debe rechazarlo ANTES del doble bucle, con un
 mensaje claro (`FormatoNoReconocido`), sin recorrer celdas.
@@ -44,11 +44,16 @@ class _Libro:
         self._hojas = hojas
         self.nsheets = len(hojas)
         self.descargadas: list[int] = []
+        self.pedidas: list[int] = []
 
     def sheets(self) -> list[_Hoja]:
         return list(self._hojas)
 
+    def sheet_names(self) -> list[str]:
+        return [h.name for h in self._hojas]
+
     def sheet_by_index(self, i: int) -> _Hoja:
+        self.pedidas.append(i)
         return self._hojas[i]
 
     def release_resources(self) -> None:
@@ -82,39 +87,81 @@ def _xls(tmp_path: Path) -> Path:
 
 
 def test_una_hoja_con_dimensiones_enormes_se_rechaza_sin_recorrerla(monkeypatch, tmp_path):
-    hoja = _Hoja("H", 65_536, 256)  # 16 777 216 celdas declaradas
+    hoja = _Hoja("01072026", 65_536, 256)  # 16 777 216 celdas declaradas
     llamadas = _xlrd_falso(monkeypatch, [hoja])
     with pytest.raises(FormatoNoReconocido) as error:
         modulo.abrir_libro(_xls(tmp_path))
     texto = str(error.value)
-    assert "tasa.xls" in texto and "H" in texto
+    assert "tasa.xls" in texto and "01072026" in texto
     assert "2000000" in texto
     assert hoja.leidas == 0
     assert llamadas["libro"].nsheets == 1
 
 
-def test_mas_de_50_hojas_se_rechaza_antes_de_cargar_ninguna(monkeypatch, tmp_path):
-    hojas = [_Hoja(f"H{n}", 1, 1) for n in range(51)]
-    _xlrd_falso(monkeypatch, hojas)
-    with pytest.raises(FormatoNoReconocido) as error:
-        modulo.abrir_libro(_xls(tmp_path))
-    assert "51 hojas" in str(error.value) and "50" in str(error.value)
-    assert all(h.leidas == 0 for h in hojas)
-
-
 def test_una_celda_por_encima_del_tope_se_rechaza(monkeypatch, tmp_path):
-    de_mas = _Hoja("M", 2_000_001, 1)
+    de_mas = _Hoja("01072026", 2_000_001, 1)
     _xlrd_falso(monkeypatch, [de_mas])
     with pytest.raises(FormatoNoReconocido):
         modulo.abrir_libro(_xls(tmp_path))
     assert de_mas.leidas == 0
 
 
-def test_50_hojas_pequenas_se_leen_y_se_abre_bajo_demanda(monkeypatch, tmp_path):
-    hojas = [_Hoja(f"H{n}", 2, 2) for n in range(50)]
+def _dia(n: int) -> str:
+    return f"{n % 28 + 1:02d}{n // 28 + 1:02d}2026"
+
+
+def test_un_libro_de_64_hojas_con_las_necesarias_se_lee_y_no_se_piden_las_ajenas(
+    monkeypatch, tmp_path
+):
+    hojas = [_Hoja(_dia(n), 2, 2) for n in range(60)]
+    hojas[10:10] = [_Hoja(f"Notas{n}", 2, 2) for n in range(4)]
     llamadas = _xlrd_falso(monkeypatch, hojas)
     libro = modulo.abrir_libro(_xls(tmp_path))
-    assert len(libro.hojas) == 50
+    assert len(libro.hojas) == 60
     assert libro.hojas[0].filas == ((Decimal("1.5"),) * 2,) * 2
     assert llamadas["on_demand"] is True
-    assert llamadas["libro"].descargadas == list(range(50))
+    ajenas = {i for i, h in enumerate(hojas) if h.name.startswith("Notas")}
+    assert ajenas and not ajenas & set(llamadas["libro"].pedidas)
+    assert all(h.leidas == 0 for h in hojas if h.name.startswith("Notas"))
+    assert any("hojas ajenas no leidas: 4" in a for a in libro.avisos)
+    assert sorted(llamadas["libro"].descargadas) == sorted(llamadas["libro"].pedidas)
+
+
+def test_el_tope_de_hojas_se_mide_sobre_las_leidas_no_sobre_el_total(monkeypatch, tmp_path):
+    hojas = [_Hoja(_dia(n), 1, 1) for n in range(modulo.MAX_HOJAS_LEIDAS)]
+    hojas += [_Hoja(f"Ajena{n}", 1, 1) for n in range(100)]  # total 200 <= 256
+    _xlrd_falso(monkeypatch, hojas)
+    assert len(modulo.abrir_libro(_xls(tmp_path)).hojas) == modulo.MAX_HOJAS_LEIDAS
+
+
+def test_mas_hojas_necesarias_que_el_tope_se_rechaza_sin_leer_ninguna(monkeypatch, tmp_path):
+    hojas = [_Hoja(_dia(n), 1, 1) for n in range(modulo.MAX_HOJAS_LEIDAS + 1)]
+    llamadas = _xlrd_falso(monkeypatch, hojas)
+    with pytest.raises(FormatoNoReconocido, match="hojas necesarias"):
+        modulo.abrir_libro(_xls(tmp_path))
+    assert llamadas["libro"].pedidas == []
+
+
+def test_sin_hojas_necesarias_el_error_es_claro(monkeypatch, tmp_path):
+    hojas = [_Hoja("Resumen", 1, 1), _Hoja("Notas", 1, 1)]
+    llamadas = _xlrd_falso(monkeypatch, hojas)
+    with pytest.raises(FormatoNoReconocido, match="ninguna hoja necesaria"):
+        modulo.abrir_libro(_xls(tmp_path))
+    assert llamadas["libro"].pedidas == []
+
+
+def test_un_libro_hostil_con_miles_de_hojas_se_rechaza_sin_pedir_ninguna(monkeypatch, tmp_path):
+    hojas = [_Hoja(_dia(n), 1, 1) for n in range(5000)]
+    llamadas = _xlrd_falso(monkeypatch, hojas)
+    with pytest.raises(FormatoNoReconocido, match="5000 hojas") as error:
+        modulo.abrir_libro(_xls(tmp_path))
+    assert str(modulo.MAX_HOJAS_DECLARADAS) in str(error.value)
+    assert llamadas["libro"].pedidas == []
+
+
+def test_el_inpc_se_lee_por_el_nombre_de_su_hoja(monkeypatch, tmp_path):
+    hojas = [_Hoja("Otra", 1, 1), _Hoja("Base Diciembre 2007", 1, 1)]
+    llamadas = _xlrd_falso(monkeypatch, hojas)
+    libro = modulo.abrir_libro(_xls(tmp_path))
+    assert [h.nombre for h in libro.hojas] == ["Base Diciembre 2007"]
+    assert llamadas["libro"].pedidas == [1]
