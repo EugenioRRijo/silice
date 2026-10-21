@@ -54,6 +54,13 @@
     outline-offset: -2px;
   }
 
+  // El desplazador es esta región (la que recibe el foco y responde a las flechas): ni el contenedor de `TablaDensa`
+  // (`.silice-tabla`) ni el de Carbon desplazan por su cuenta, o las flechas no mueven nada (auditoría visual 3e-3, H-1).
+  .silice-tabla,
+  .cds--data-table-content {
+    overflow-x: visible;
+  }
+
   th:first-child,
   td:first-child {
     position: sticky;

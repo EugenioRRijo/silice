@@ -21,4 +21,8 @@ describe("estilos de las tablas editables del espacio", () => {
   test("la región desplazable no deja salir la tabla de la página", () => {
     expect(estilos).toMatch(/\.silice-hoja__desplazable\s*\{[^}]*overflow-x:\s*auto/);
   });
+
+  test("el desplazador es la región con foco: el contenedor interno de Carbon no desplaza por su cuenta (3e-3, H-1)", () => {
+    expect(estilos).toMatch(/\.silice-hoja__desplazable\s*\{[\s\S]*?\.silice-tabla,\s*\.cds--data-table-content\s*\{[^}]*overflow-x:\s*visible/);
+  });
 });
