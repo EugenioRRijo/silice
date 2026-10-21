@@ -45,6 +45,8 @@ Resultados en el informe del implementador (16 mutantes; 2 sobrevivieron y se re
 
 ## Hallazgos fuera de alcance
 
-- `restaurar` no copia las tablas `esp_*` a la version nueva de OF-001 (comportamiento heredado de
-  `ui.hoja`; antes solo se afirmaba la igualdad). No se fija en ninguna prueba.
+- `restaurar` no copia las tablas `esp_*` a la version nueva: es INTENCIONAL (UC-02, herencia por
+  `version_origen`). `ui/hoja.py` de la base lo documenta («su espacio es el de la restaurada (no
+  copia filas esp_*)»), lo fija la spec `docs/especificaciones/2026-10-19-hoja-react-design.md:359`
+  y lo asierta `tests/integration/test_hoja_versiones.py` (lineas 415 y 431).
 - Siguen importando `ui.hoja` / `ui.composicion` como SUJETO o para sembrar: pruebas de F7.
