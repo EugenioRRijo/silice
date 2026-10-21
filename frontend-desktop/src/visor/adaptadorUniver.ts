@@ -27,7 +27,7 @@ import { createUniver, ICommandService, IConfigService, LocaleType, mergeLocales
 import type { LibroVisualRespuesta } from "../api/tipos";
 import { aUniver } from "../replica/aUniver";
 import { columnaDeDescripcion } from "./celdas";
-import { RAZON_MAXIMA_UNIVER, RAZON_MINIMA_UNIVER } from "./zoomHoja";
+import { RAZON_MAXIMA_UNIVER, RAZON_MINIMA_UNIVER, debeReaplicarZoom } from "./zoomHoja";
 import { planDeDesplazamiento, rectanguloEnPantalla } from "./geometria";
 import type { CeldaRef, HojaVisor, RectanguloPx } from "./hojaVisor";
 
@@ -96,20 +96,28 @@ export async function crearHojaUniver(contenedor: HTMLElement, libro: LibroVisua
 
   // Zoom del lienzo (facade FWorksheet.zoom, 0,1 a 4): es por hoja, asi que se pone en todas para que al cambiar de
   // pestana siga igual; Univer redibuja la activa y deja la seleccion y el desplazamiento donde estaban.
+  // Reintentos de la racha actual (la decision, con su tope, vive en `debeReaplicarZoom`).
+  let reintentosZoom = 0;
   let razonVigente = Math.min(RAZON_MAXIMA_UNIVER, Math.max(RAZON_MINIMA_UNIVER, zoomInicial));
   function aplicarZoom(): void {
     for (const hoja of fLibro.getSheets()) hoja.zoom(razonVigente);
   }
   function fijarZoom(razon: number): void {
     razonVigente = Math.min(RAZON_MAXIMA_UNIVER, Math.max(RAZON_MINIMA_UNIVER, razon));
+    reintentosZoom = 0;
     aplicarZoom();
     avisarCambio();
   }
   // Univer puede dejar la escena sin acercamiento tras armarse o redimensionarse (verificado en el navegador: la
   // razon pedida al abrir se perdia). Si lo que se dibuja no es la razon vigente, se vuelve a pedir.
   function asegurarZoom(): void {
-    const escala = render()?.scene.getAncestorScale().scaleX;
-    if (escala !== undefined && Math.abs(escala - razonVigente) > 0.001) aplicarZoom();
+    const escalaDibujada = render()?.scene.getAncestorScale().scaleX;
+    if (debeReaplicarZoom({ escalaDibujada, razonVigente, intentos: reintentosZoom })) {
+      reintentosZoom += 1;
+      aplicarZoom();
+    } else if (escalaDibujada !== undefined && Math.abs(escalaDibujada - razonVigente) <= 0.001) {
+      reintentosZoom = 0;
+    }
   }
 
   function area(): RectanguloPx | null {

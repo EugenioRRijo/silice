@@ -56,9 +56,36 @@ export function guardarZoomHoja(zoom: number): void {
   }
 }
 
-// Rueda hacia arriba (delta negativo) acerca; hacia abajo aleja.
-export function pasoDeRueda(acumulado: number, delta: number): { paso: number; resto: number } {
-  const total = acumulado + delta;
+// Rueda hacia arriba (delta negativo) acerca; hacia abajo aleja. `deltaMode` del WheelEvent: 0 pixeles, 1 lineas (Firefox
+// da ±3 por muesca), 2 paginas; se lleva todo a pixeles para comparar con el umbral.
+const PIXELES_POR_LINEA = 40;
+const PIXELES_POR_PAGINA = 800;
+export function pasoDeRueda(acumulado: number, delta: number, deltaMode = 0): { paso: number; resto: number } {
+  const px = deltaMode === 1 ? delta * PIXELES_POR_LINEA : deltaMode === 2 ? delta * PIXELES_POR_PAGINA : delta;
+  const total = acumulado + px;
   if (Math.abs(total) >= UMBRAL_DE_RUEDA) return { paso: total < 0 ? 1 : -1, resto: 0 };
   return { paso: 0, resto: total };
+}
+
+// Subir solo tiene sentido si cambia lo dibujado: no en el tope propio y no cuando Univer ya esta en su tope (con
+// «Muy grande», de 270 % en adelante la razon es 4 y un paso mas no se veria).
+export function puedeSubirZoom(zoom: number, factor: number): boolean {
+  if (zoom >= ZOOM_MAXIMO) return false;
+  return razonEfectiva(zoom + ZOOM_PASO, factor) !== razonEfectiva(zoom, factor);
+}
+
+// Cada pedido de zoom a Univer ejecuta un comando que vuelve a avisar un cambio: sin tope, una escala que nunca iguala a la
+// pedida (contenedor de tamano 0, otra version de Univer) haria un ciclo a 60 Hz. Se reintenta pocas veces por racha.
+export const MAX_REINTENTOS_ZOOM = 3;
+const TOLERANCIA_DE_ESCALA = 0.001;
+
+export function debeReaplicarZoom(entrada: {
+  escalaDibujada: number | undefined;
+  razonVigente: number;
+  intentos: number;
+}): boolean {
+  const { escalaDibujada, razonVigente, intentos } = entrada;
+  if (escalaDibujada === undefined || !Number.isFinite(escalaDibujada)) return false;
+  if (Math.abs(escalaDibujada - razonVigente) <= TOLERANCIA_DE_ESCALA) return false;
+  return intentos < MAX_REINTENTOS_ZOOM;
 }

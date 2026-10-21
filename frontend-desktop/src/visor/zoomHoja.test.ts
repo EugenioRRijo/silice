@@ -8,7 +8,10 @@ import {
   factorDeLetra,
   guardarZoomHoja,
   leerZoomHoja,
+  MAX_REINTENTOS_ZOOM,
+  debeReaplicarZoom,
   pasoDeRueda,
+  puedeSubirZoom,
   razonEfectiva,
 } from "./zoomHoja";
 
@@ -91,5 +94,46 @@ describe("zoomHoja (logica pura)", () => {
     }
     expect(pasos).toBe(1);
     expect(pasoDeRueda(0, 0)).toEqual({ paso: 0, resto: 0 });
+  });
+
+  test("pasoDeRueda normaliza por deltaMode: una linea (modo 1) y una pagina (modo 2) ya son un paso", () => {
+    // Firefox da deltaY = ±3 lineas por muesca: sin normalizar, 3 no llegaria al umbral.
+    expect(pasoDeRueda(0, -3, 1)).toEqual({ paso: 1, resto: 0 });
+    expect(pasoDeRueda(0, 1, 1)).toEqual({ paso: -1, resto: 0 });
+    expect(pasoDeRueda(0, -1, 2)).toEqual({ paso: 1, resto: 0 });
+    // En pixeles (modo 0) no cambia.
+    expect(pasoDeRueda(0, -3, 0)).toEqual({ paso: 0, resto: -3 });
+  });
+
+  test("puedeSubirZoom: no en el tope propio y no cuando subir no cambiaria lo dibujado (tope de Univer)", () => {
+    expect(puedeSubirZoom(100, 1)).toBe(true);
+    expect(puedeSubirZoom(300, 1)).toBe(false);
+    expect(puedeSubirZoom(250, 1.5)).toBe(true); // 3,75 -> 3,9
+    expect(puedeSubirZoom(260, 1.5)).toBe(true); // 3,9 -> 4 (cambia)
+    expect(puedeSubirZoom(270, 1.5)).toBe(false); // 4 -> 4: no se veria nada
+    expect(puedeSubirZoom(290, 1.5)).toBe(false);
+  });
+});
+
+describe("debeReaplicarZoom (decision pura del adaptador)", () => {
+  test("escala igual a la vigente (con la tolerancia): no reaplica", () => {
+    expect(debeReaplicarZoom({ escalaDibujada: 1.25, razonVigente: 1.25, intentos: 0 })).toBe(false);
+    expect(debeReaplicarZoom({ escalaDibujada: 1.2504, razonVigente: 1.25, intentos: 0 })).toBe(false);
+  });
+
+  test("escala distinta: reaplica mientras queden reintentos", () => {
+    expect(debeReaplicarZoom({ escalaDibujada: 1, razonVigente: 2, intentos: 0 })).toBe(true);
+    expect(debeReaplicarZoom({ escalaDibujada: 1, razonVigente: 2, intentos: MAX_REINTENTOS_ZOOM - 1 })).toBe(true);
+  });
+
+  test("con el tope de reintentos alcanzado no reaplica (no hay bucle a 60 Hz)", () => {
+    expect(MAX_REINTENTOS_ZOOM).toBe(3);
+    expect(debeReaplicarZoom({ escalaDibujada: 1, razonVigente: 2, intentos: MAX_REINTENTOS_ZOOM })).toBe(false);
+  });
+
+  test("sin render (escala indefinida, NaN o infinita) no reaplica", () => {
+    expect(debeReaplicarZoom({ escalaDibujada: undefined, razonVigente: 2, intentos: 0 })).toBe(false);
+    expect(debeReaplicarZoom({ escalaDibujada: Number.NaN, razonVigente: 2, intentos: 0 })).toBe(false);
+    expect(debeReaplicarZoom({ escalaDibujada: Number.POSITIVE_INFINITY, razonVigente: 2, intentos: 0 })).toBe(false);
   });
 });
