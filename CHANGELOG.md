@@ -7,6 +7,8 @@ etiquetar, las líneas pasan a la sección de la versión. La historia anterior 
 ## [Sin publicar]
 
 ### Agregado
+- Ola de decisiones (2026-10-21): VB-1 corregido cuantizando a 28 decimales al exportar (`core/budget/canonico.py`, `cadena.py`; Entregar rechaza las versiones selladas antes con 29 decimales y el resumen expone `entregable`); D-5 afinada (la confirmacion de «version mas nueva» compara con la vigente al abrir el borrador); lector de planos con tope de tamano, de lecturas simultaneas y barrido de carpetas huerfanas; el Excel de la Hoja sustituye los caracteres que un .xlsx no admite; el lector del BCV lee solo las hojas necesarias (tope 100 leidas, 256 declaradas, 20 millones de celdas); se retira el ultimo `skip` de las pruebas.
+- Interfaz: control «Tamano de letra» (Normal/Grande/Muy grande, base de 16 px) para presbicia, libro menor en verde (V-16), pie fijo en los dialogos de la Hoja, foco al boton tras descargar, sin regiones `role=alert` vacias, aviso y bloqueo de Entregar para versiones selladas antes de VB-1.
 - Hoja (cierre 3e-3): la region con foco de las tablas anchas es el desplazador (las flechas mueven Precios, Ambientes, Fuentes, Puntos y Cantidades derivadas); «Retomar borrador» se ofrece cuando el servidor dice el nombre del proyecto y la cabecera su codigo; pruebas de cierre de paridad y dos guardias de integracion al dia.
 - Hoja del proyecto en React (3d-1 y 3d-2, front): modal «Guardar versión» y primera versión, restaurar, cotizar, retirar cotización, convertir moneda y cadena de sellos, con diálogos accesibles; Cancelar y Esc no cierran el diálogo mientras se envía; la Hoja queda activada en el menú.
 
