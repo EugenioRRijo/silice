@@ -58,7 +58,13 @@ export const PAGINAS: readonly PaginaDef[] = [
     accion: "editar_hoja",
     cargar: () => import("../paginas/elaborar"),
   },
-  { id: "hoja", titulo: "Hoja del proyecto", seccion: "Trabajo", accion: "editar_hoja" },
+  {
+    id: "hoja",
+    titulo: "Hoja del proyecto",
+    seccion: "Trabajo",
+    accion: "editar_hoja",
+    cargar: () => import("../paginas/hoja"),
+  },
   {
     id: "actualizacion",
     titulo: "Actualizar precios",
