@@ -67,9 +67,9 @@ PARES_S3: tuple[ParTDD, ...] = (
     ParTDD("tests/unit/test_paquete_formato.py", "paquete/formato.py", "S3-3"),
     ParTDD("tests/unit/test_paquete_verificar.py", "paquete/verificar.py", "S3-3"),
     ParTDD("tests/unit/test_paquete_anterioridad.py", "paquete/verificar.py", "S3-3"),
-    ParTDD("tests/integration/test_entrega.py", "ui/entrega.py", "S3-3"),
-    ParTDD("tests/unit/test_ui_revision.py", "ui/revision.py", "S3-4"),
-    ParTDD("tests/integration/test_revision_recibir.py", "ui/revision.py", "S3-4"),
+    ParTDD("tests/integration/test_entrega.py", "aplicacion/entrega.py", "S3-3"),
+    ParTDD("tests/unit/test_ui_revision.py", "aplicacion/revision.py", "S3-4"),
+    ParTDD("tests/integration/test_revision_recibir.py", "aplicacion/revision.py", "S3-4"),
     ParTDD("tests/integration/test_api_auditorias.py", "api/rutas/auditorias.py", "S3-4"),
     ParTDD("tests/unit/test_claves_api_y_red.py", "seguridad/claves_api.py", "S3-3"),
     ParTDD("tests/unit/test_r15_geometria_plano.py",
@@ -79,7 +79,7 @@ PARES_S3: tuple[ParTDD, ...] = (
     ParTDD("tests/unit/test_planos_auditoria_s3.py", "adapters/espacio/planos/ids.py", "S3-5"),
     ParTDD("tests/unit/test_deteccion_planos.py", "scripts/medir_deteccion_planos.py", "S3-5"),
     ParTDD("tests/unit/test_series_atipicas.py", "ml/anomaly/series.py", "S3-6"),
-    ParTDD("tests/integration/test_atipicos.py", "ui/atipicos.py", "S3-6"),
+    ParTDD("tests/integration/test_atipicos.py", "aplicacion/atipicos.py", "S3-6"),
 )
 
 

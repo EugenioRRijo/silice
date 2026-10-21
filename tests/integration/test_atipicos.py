@@ -1,10 +1,9 @@
 """RF-100 sobre las listas del caso: ADVERTENCIA, nunca ERROR; listas de proyecto fuera; la tasa
 de cada precio; y sin el extra `ml`, nada (S3 §3.2 y §13.2).
 
-La logica vive en `aplicacion/atipicos.py` (RM-1, T4 de la migracion final): la usan las dos
-pantallas de Streamlit (por `ui/atipicos.py`, que la reexporta) y la ruta
-`GET /v1/precios-empresa/listas/{id}/atipicos`. Solo `avisos` sigue en `ui/`: escapa el texto para
-el Markdown de Streamlit (RV-14)."""
+La logica vive en `aplicacion/atipicos.py` (RM-1, T4 de la migracion final): la usan la ruta
+`GET /v1/precios-empresa/listas/{id}/atipicos` y la pestana Precios de la hoja. El escape Markdown
+de Streamlit (`ui.atipicos.avisos`) se retiro con la interfaz (F5)."""
 
 from __future__ import annotations
 
@@ -23,7 +22,6 @@ from core.catalog.empresa import PrecioPropio, crear_lista_de_empresa
 from core.contracts.verificacion import Severidad
 from ml.anomaly.series import a_usd, variaciones
 from tests.fixtures.sin_extra import SinExtra
-from ui import atipicos as atipicos_ui
 
 D = Decimal
 SERIE_CON_ATIPICO = [1, 2, 4, 8, 16, 32, 64, 128, 256, 257]
@@ -356,21 +354,18 @@ def test_la_busqueda_no_escribe_nada_en_la_base(sesion, insumo) -> None:
 def test_solo_las_dos_pantallas_de_precios_y_su_ruta_importan_la_busqueda_de_rf_100() -> None:
     """RF-100 no entra al informe de verificación, a la entrega ni al guardado: ningún módulo de
     `core/`, `paquete/`, `api/`, `seguridad/`, `operacion/`, `asistente/`, `aplicacion/`, `ui/` ni
-    `ml/` importa `aplicacion.atipicos`, `ui.atipicos` ni `ml.anomaly.series`, salvo la búsqueda
-    misma (`aplicacion/atipicos.py` y su reexportación `ui/atipicos.py`), las dos pantallas de
-    precios y la ruta de «Precios de la empresa» (T4 de la migración final)."""
+    `ml/` importa `aplicacion.atipicos` ni `ml.anomaly.series`, salvo la búsqueda misma
+    (`aplicacion/atipicos.py`) y las rutas de «Precios de la empresa» y de la hoja (T4 de la
+    migración final)."""
     raiz = Path(__file__).resolve().parents[2]
     permitidos = {
         "aplicacion/atipicos.py",
-        "ui/atipicos.py",
-        "ui/paginas/hoja.py",
-        "ui/paginas/precios_empresa.py",
         "api/rutas/precios_empresa.py",
         # La pestaña Precios de la hoja (R13, 3b-3) usa la misma búsqueda y su esquema.
         "api/rutas/hoja.py",
         "api/esquemas_atipicos.py",
     }
-    vigilados = {"aplicacion.atipicos", "ui.atipicos", "ml.anomaly.series"}
+    vigilados = {"aplicacion.atipicos", "ml.anomaly.series"}
     carpetas = ("core", "paquete", "api", "seguridad", "operacion", "asistente", "aplicacion")
     importadores = set()
     for carpeta in (*carpetas, "ui", "ml"):
@@ -386,33 +381,8 @@ def test_solo_las_dos_pantallas_de_precios_y_su_ruta_importan_la_busqueda_de_rf_
                 importadores.add(archivo.relative_to(raiz).as_posix())
     assert importadores <= permitidos, importadores - permitidos
     # la guardia no vigila un conjunto vacío: la búsqueda tiene quien la use en cada lado
-    usados = {"aplicacion/atipicos.py", "ui/atipicos.py", "api/rutas/precios_empresa.py"}
+    usados = {"aplicacion/atipicos.py", "api/rutas/precios_empresa.py"}
     assert usados <= importadores, usados - importadores
-
-
-def test_ui_atipicos_reexporta_la_capa_de_aplicacion() -> None:
-    """RM-1: `ui/atipicos.py` reexporta los mismos objetos de `aplicacion/atipicos.py` (no copias)
-    y su única definición propia es `avisos`, que escapa el texto para Streamlit (RV-14)."""
-    raiz = Path(__file__).resolve().parents[2]
-    propios = {"avisos"}
-    assert set(atipicos_ui.__all__) - propios <= set(atipicos.__all__)
-    for nombre in set(atipicos_ui.__all__) - propios:
-        assert getattr(atipicos_ui, nombre) is getattr(atipicos, nombre), nombre
-    arbol = ast.parse((raiz / "ui" / "atipicos.py").read_text(encoding="utf-8"))
-    definiciones = [
-        nodo.name
-        for nodo in arbol.body
-        if isinstance(nodo, ast.FunctionDef | ast.ClassDef | ast.AsyncFunctionDef)
-    ]
-    assert definiciones == ["avisos"]
-    # lo que las dos pantallas de Streamlit usan sigue al alcance por `ui.atipicos`
-    for nombre in (
-        "ROTULO_BOTON",
-        "BusquedaAtipicos",
-        "atipicos_de_insumos",
-        "codigos_de_la_lista",
-    ):
-        assert nombre in atipicos_ui.__all__, nombre
 
 
 def test_un_propio_igual_al_de_la_base_pero_de_otra_fecha_no_es_herencia(sesion, insumo) -> None:
@@ -452,19 +422,16 @@ def test_una_moneda_invalida_no_tumba_la_busqueda_de_los_demas_insumos(sesion, i
     assert [h.origen_ids for h in busqueda.hallazgos] == [("ATIP-001|2026-09-01>2026-10-01#8",)]
     [(codigo, motivo)] = busqueda.no_analizados
     assert codigo == "ATIP-002" and "EUR" in motivo
-    avisos = atipicos_ui.avisos(busqueda)
-    assert avisos[0][0] == "info" and avisos[0][1].startswith("ATIP\\-002: no se pudo analizar")
+    avisos = atipicos.avisos(busqueda)
+    assert avisos[0][0] == "info" and avisos[0][1].startswith("ATIP-002: no se pudo analizar")
     assert [nivel for nivel, _ in avisos[1:]] == ["warning"]
 
 
-# --- lo que comparten Streamlit y la API (T4 de la migración final) ---------------------------
+# --- los avisos que manda la API (T4 de la migración final) ------------------------------------
 
 
-def test_los_avisos_de_la_aplicacion_dicen_el_texto_tal_cual_y_los_de_ui_lo_escapan(
-    sesion, insumo
-) -> None:
-    """Los mismos avisos y en el mismo orden; la API los manda sin escapar (React no pinta
-    Markdown) y la pantalla de Streamlit, escapados (RV-14)."""
+def test_los_avisos_de_la_aplicacion_dicen_el_texto_tal_cual(sesion, insumo) -> None:
+    """La API los manda sin escapar: React no pinta Markdown."""
     otro = _otro_insumo(sesion)
     _precio(sesion, _lista(sesion, 1, "Lista en euros", "EUR"), otro, 5)
     _precio(sesion, _lista(sesion, 2, "Lista-Bs sin tasa", "Bs"), insumo, 720)
@@ -479,16 +446,11 @@ def test_los_avisos_de_la_aplicacion_dicen_el_texto_tal_cual_y_los_de_ui_lo_esca
             "juzga).",
         ),
     ]
-    assert atipicos_ui.avisos(busqueda)[0] == (
-        "info",
-        "Precio en Bs sin tasa, omitido: Lista\\-Bs sin tasa",
-    )
     sin_ml = (
         "La búsqueda de variaciones atípicas necesita el extra `ml` (scikit-learn), que no está "
         "instalado en este equipo. No se buscó nada y nada se bloquea."
     )
     assert atipicos.avisos(None) == [("info", sin_ml)]
-    assert atipicos_ui.avisos(None) == [("info", sin_ml)]
 
 
 def test_los_avisos_generales_no_repiten_los_hallazgos(sesion, insumo) -> None:

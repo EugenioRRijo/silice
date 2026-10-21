@@ -1747,7 +1747,7 @@ def test_paridad_r12_los_precios_son_los_de_la_clasica(
 
 @pytest.mark.parametrize(("clave", "proyecto", "version"), CASOS_DE_PARIDAD)
 def test_paridad_r13_los_avisos_son_los_de_la_clasica(_casos, _entorno, clave, proyecto, version):
-    from ui import atipicos as atipicos_clasica
+    from aplicacion import atipicos as atipicos_clasica
 
     _poner(_casos[clave])
     navegador, _ = _ana()

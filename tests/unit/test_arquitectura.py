@@ -260,7 +260,8 @@ def test_produccion_respeta_su_regla(tmp_path):
 #: Lo que cada modulo de ui/ no importa en tiempo de ejecucion (fuera de `if TYPE_CHECKING:`).
 #: Reglas de interfaz del plan de C3 (Global Constraints). Retiro de Streamlit (F4): se fueron con
 #: sus modulos las reglas de las paginas, de `ui/resultado.py`, `ui/recorridos.py` y
-#: `ui/existencias.py`.
+#: `ui/existencias.py`. F5: tambien las de los puentes `ui/elaboracion.py`, `ui/proyectos.py` y
+#: `ui/atipicos.py` (la capa de aplicacion tiene las suyas: `PROHIBIDOS_EN_APLICACION`).
 PROHIBIDOS_EN_UI: dict[str, tuple[str, ...]] = {
     # RA-2: "no escribe en la base" vigilado tambien por core.catalog, core.budget y sqlalchemy.
     "ui/composicion.py": (
@@ -271,13 +272,8 @@ PROHIBIDOS_EN_UI: dict[str, tuple[str, ...]] = {
         "core.catalog",
         "core.budget",
     ),
-    "ui/elaboracion.py": ("streamlit", "pandas", "ui.caso"),
     # SF 1.8: la hoja orquesta el borrador y la elaboracion sin pintar (FR-5: sin Streamlit).
     "ui/hoja.py": ("streamlit", "pandas", "ui.caso"),
-    # SF4: las operaciones sobre proyectos no pintan ni leen la sesion de Streamlit.
-    "ui/proyectos.py": ("streamlit", "pandas", "ui.caso", "ui.app", "ui.barra"),
-    # RF-100 (S3-6): la serie de precios de un insumo se arma sin pintar; la pintan las pantallas.
-    "ui/atipicos.py": ("streamlit", "pandas"),
 }
 
 
@@ -632,24 +628,6 @@ def test_importar_la_capa_de_aplicacion_no_carga_interfaz_api_guiones_ni_pruebas
     assert salida.stdout.strip() == "[]", salida.stdout
 
 
-def test_ui_proyectos_reexporta_la_capa_de_aplicacion():
-    """RM-1: `ui/proyectos.py` quedo como reexportacion explicita de `aplicacion/proyectos.py`:
-    los mismos objetos (no copias), y ninguna definicion propia."""
-    import aplicacion.proyectos as original
-    import ui.proyectos as reexportado
-
-    assert reexportado.__all__ and set(reexportado.__all__) <= set(vars(original))
-    for nombre in reexportado.__all__:
-        assert getattr(reexportado, nombre) is getattr(original, nombre), nombre
-    arbol = ast.parse((RAIZ / "ui" / "proyectos.py").read_text(encoding="utf-8"))
-    definiciones = [
-        nodo.name
-        for nodo in arbol.body
-        if isinstance(nodo, ast.FunctionDef | ast.ClassDef | ast.AsyncFunctionDef)
-    ]
-    assert definiciones == []
-
-
 def test_ui_composicion_reexporta_la_capa_de_aplicacion():
     """RM-1 (ola 3, S2-B): `ui/composicion.py` quedo como reexportacion explicita de
     `aplicacion/composicion.py`: los mismos objetos y ninguna definicion propia."""
@@ -668,16 +646,11 @@ def test_ui_composicion_reexporta_la_capa_de_aplicacion():
     assert definiciones == []
 
 
-def test_ui_elaboracion_toma_el_guardado_de_la_capa_de_aplicacion():
+def test_la_elaboracion_toma_el_guardado_de_la_composicion():
     """RB-3 (ola 3, S2-B): `guardar_composicion` y `Guardado` viven en `aplicacion/composicion.py`
-    (la ruta de guardado de la API no puede importar `ui/`); `ui/elaboracion.py` los reexporta y
-    ya no los define."""
-    import aplicacion.composicion as original
-    import ui.elaboracion as elaboracion
-
-    assert elaboracion.Guardado is original.Guardado
-    assert elaboracion.guardar_composicion is original.guardar_composicion
-    arbol = ast.parse((RAIZ / "ui" / "elaboracion.py").read_text(encoding="utf-8"))
+    (la ruta de guardado de la API no puede importar `ui/`); `aplicacion/elaboracion.py` no los
+    define. (F5: se retiro el puente `ui/elaboracion.py` que los reexportaba.)"""
+    arbol = ast.parse((RAIZ / "aplicacion" / "elaboracion.py").read_text(encoding="utf-8"))
     definidos = {
         nodo.name
         for nodo in arbol.body

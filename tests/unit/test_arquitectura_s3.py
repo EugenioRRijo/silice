@@ -64,9 +64,7 @@ def test_la_api_no_importa_la_interfaz() -> None:
         assert not (_raices(ruta) & {"ui", "streamlit"}), ruta.name
 
 
-@pytest.mark.parametrize(
-    "modulo", ["aplicacion/entrega.py", "ui/entrega.py", "ui/revision.py", "ui/texto_seguro.py"]
-)
+@pytest.mark.parametrize("modulo", ["aplicacion/entrega.py", "aplicacion/revision.py"])
 def test_las_orquestaciones_de_s3_no_usan_streamlit(modulo: str) -> None:
     assert "streamlit" not in _raices(RAIZ / modulo)
 

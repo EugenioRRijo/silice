@@ -5,7 +5,11 @@ import pytest
 
 from tests.fixtures.arquitectura import RAIZ, importaciones
 
-SIN_PINTAR = ("ui/indices.py", "ui/precios_empresa.py", "ui/reajuste.py", "ui/texto_seguro.py")
+SIN_PINTAR = (
+    "aplicacion/indices.py",
+    "aplicacion/precios_empresa.py",
+    "aplicacion/reajuste.py",
+)
 
 
 @pytest.mark.parametrize("modulo", [m for m in SIN_PINTAR if (RAIZ / m).exists()])
