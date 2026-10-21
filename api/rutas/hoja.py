@@ -48,8 +48,11 @@ from api.esquemas_hoja import (
     BorradoresHojaRespuesta,
     BorradorHojaRespuesta,
     BorradorNuevo,
+    CadenaHojaRespuesta,
     CambioDeInsumo,
     CambiosHojaRespuesta,
+    ConvertirVersion,
+    CotizarVersion,
     EdicionApu,
     EdicionApuRespuesta,
     EdicionCantidades,
@@ -66,8 +69,11 @@ from api.esquemas_hoja import (
     InstantaneaHojaRespuesta,
     InsumosHojaRespuesta,
     PreciosHojaRespuesta,
+    RestaurarVersion,
+    RetirarCotizacion,
     TrazabilidadHojaRespuesta,
     VersionesHojaRespuesta,
+    VersionNuevaRespuesta,
     VistaApuRespuesta,
     VistaEquilibrioRespuesta,
     VistaEspacioRespuesta,
@@ -76,6 +82,7 @@ from api.esquemas_hoja import (
     VistaPresupuestoRespuesta,
     base_a_respuesta,
     borradores_a_respuesta,
+    cadena_a_respuesta,
     cambios_a_respuesta,
     guardado_a_respuesta,
     insumos_a_respuesta,
@@ -83,6 +90,7 @@ from api.esquemas_hoja import (
     resumen_a_respuesta,
     trazabilidad_a_respuesta,
     version_a_respuesta,
+    version_nueva_a_respuesta,
     vista_apu_a_respuesta,
     vista_equilibrio_a_respuesta,
     vista_espacio_a_respuesta,
@@ -95,10 +103,18 @@ from api.sesion_web import exigir_clave_o_sesion
 from api.sin_cache import RutaSinCache
 from api.sin_eco import RutaSinEco, sin_eco
 from aplicacion import atipicos as busqueda_atipica
-from aplicacion import hoja, hoja_borradores, hoja_edicion, hoja_guardado, hoja_vista
+from aplicacion import (
+    hoja,
+    hoja_borradores,
+    hoja_edicion,
+    hoja_guardado,
+    hoja_versiones,
+    hoja_vista,
+)
 from aplicacion.entrega import con_anexos_de_cadena
 from aplicacion.errores import HojaInvalida
 from aplicacion.hoja_borradores import BorradorInexistente, BorradorVivo, RevDesactualizado
+from aplicacion.hoja_versiones import ProyectoInexistente, VersionInexistente, VersionNueva
 from aplicacion.proyectos import resolver_proyecto
 from core.budget.moneda import moneda_del_proyecto
 from core.catalog import Catalogo, CatalogoIncompleto
@@ -157,6 +173,23 @@ FORMA_GUARDAR = (
     "El guardado no tiene la forma esperada: envíe rev (entero) y la fuente como texto de hasta "
     "300 caracteres."
 )
+FORMA_RESTAURAR = (
+    "La restauración no tiene la forma esperada: envíe proyecto, version y la fuente como texto "
+    "de hasta 300 caracteres."
+)
+FORMA_COTIZAR = (
+    "La cotización no tiene la forma esperada: envíe proyecto, version, insumo, precio (texto), "
+    "proveedor, numero, fecha (AAAA-MM-DD) y, si quiere, la evidencia; cada texto con su tope."
+)
+FORMA_RETIRAR = (
+    "El retiro no tiene la forma esperada: envíe proyecto, version, insumo (código) y el motivo "
+    "como texto de hasta 300 caracteres."
+)
+FORMA_CONVERTIR = (
+    "La conversión no tiene la forma esperada: envíe proyecto, version, moneda, lado (venta o "
+    "compra) y la fuente como texto de hasta 300 caracteres."
+)
+FORMA_CADENA = "Indique el proyecto (código o nombre) de hasta 500 caracteres."
 MENSAJE_PARTIDA = "Esa partida no tiene APU en este borrador: vuelva a cargar la lista de partidas."
 MENSAJE_SIN_VERSION = "Abra una version guardada: los insumos se eligen de su lista de precios."
 MENSAJE_SIN_PLAN = "Esta versión no tiene plan de trabajo: cree primero el plan secuencial."
@@ -174,6 +207,9 @@ router = APIRouter(prefix="/v1/hoja", tags=["hoja"], route_class=_RutaHoja)
 LEER = Depends(exigir_clave_o_sesion(Accion.EDITAR_HOJA))
 CuentaDeLaHoja = Annotated[
     SesionActiva, Depends(cuenta_con(Accion.EDITAR_HOJA, MENSAJE_SOLO_CUENTA))
+]
+CuentaQueConvierte = Annotated[
+    SesionActiva, Depends(cuenta_con(Accion.CONVERTIR_Y_REAJUSTAR, MENSAJE_SOLO_CUENTA))
 ]
 IdDeBorrador = Annotated[str, Path(min_length=16, max_length=64, pattern=r"^[A-Za-z0-9_-]+$")]
 #: El código de una partida puede traer «/» (`EL-TUB-EMT-3/4`): se admite como segmento con barras.
@@ -834,3 +870,120 @@ def precios_atipicos(
     except SQLAlchemyError:
         raise HTTPException(status_code=503, detail=MENSAJE_BASE) from None
     return atipicos_a_respuesta(busqueda)
+
+
+# --- S2 a S6 (3d-2): versiones nuevas desde una guardada y la cadena -------------------------
+
+
+def _crear_version(operacion: Callable[[], VersionNueva]) -> VersionNuevaRespuesta:
+    """Corre una operacion que crea una version y traduce sus errores: 404 (el proyecto o la
+    version no existen), 422 (un dato de dominio, con el texto de la clasica), 409
+    (`CatalogoIncompleto`: falta una composicion) y 503 (la base). Lo inesperado sube: tras
+    deshacer, FastAPI responde su 500 generico sin detalle."""
+    try:
+        return version_nueva_a_respuesta(operacion())
+    except (ProyectoInexistente, VersionInexistente) as error:
+        raise HTTPException(status_code=404, detail=str(error)) from None
+    except HojaInvalida as error:  # antes que ValueError: es una subclase
+        raise HTTPException(status_code=422, detail=str(error)) from None
+    except (ValueError, CatalogoIncompleto) as error:
+        raise HTTPException(status_code=409, detail=f"No se guardó nada: {error}") from None
+    except SQLAlchemyError:
+        raise HTTPException(status_code=503, detail=MENSAJE_BASE) from None
+
+
+@router.post("/versiones/restaurar", response_model=VersionNuevaRespuesta)
+@sin_eco(FORMA_RESTAURAR)
+def restaurar_version(
+    datos: RestaurarVersion, activa: CuentaDeLaHoja, sesion: SesionDeEscrituraDep
+) -> VersionNuevaRespuesta:
+    """S2: restaura una versión anterior como versión nueva y vigente (RF-54). Escribe en una
+    transacción con `BEGIN IMMEDIATE` y la cadena de sellos cubriendo los anexos; el responsable
+    es la persona de la sesión. `activa` va antes que `sesion`: el acceso responde antes de abrir
+    la base del caso."""
+    return _crear_version(
+        lambda: hoja_versiones.restaurar(
+            sesion,
+            datos.proyecto,
+            datos.version,
+            fuente=datos.fuente,
+            responsable=activa.usuario,
+        )
+    )
+
+
+@router.post("/versiones/cotizar", response_model=VersionNuevaRespuesta)
+@sin_eco(FORMA_COTIZAR)
+def cotizar_insumo(
+    datos: CotizarVersion, activa: CuentaDeLaHoja, sesion: SesionDeEscrituraDep
+) -> VersionNuevaRespuesta:
+    """S3: cotiza un insumo para el proyecto y guarda la versión nueva (RF-56). El precio llega
+    como texto; solo cambia ese insumo en ese proyecto."""
+    return _crear_version(
+        lambda: hoja_versiones.cotizar(
+            sesion,
+            datos.proyecto,
+            datos.version,
+            insumo=datos.insumo,
+            precio=datos.precio,
+            proveedor=datos.proveedor,
+            numero=datos.numero,
+            fecha=datos.fecha,
+            evidencia=datos.evidencia,
+            responsable=activa.usuario,
+        )
+    )
+
+
+@router.post("/versiones/retirar-cotizacion", response_model=VersionNuevaRespuesta)
+@sin_eco(FORMA_RETIRAR)
+def retirar_cotizacion(
+    datos: RetirarCotizacion, activa: CuentaDeLaHoja, sesion: SesionDeEscrituraDep
+) -> VersionNuevaRespuesta:
+    """S4: retira la cotización de un insumo; la versión nueva vuelve al precio de la lista base."""
+    return _crear_version(
+        lambda: hoja_versiones.retirar_cotizacion(
+            sesion,
+            datos.proyecto,
+            datos.version,
+            insumo=datos.insumo,
+            motivo=datos.motivo,
+            responsable=activa.usuario,
+        )
+    )
+
+
+@router.post("/versiones/convertir", response_model=VersionNuevaRespuesta)
+@sin_eco(FORMA_CONVERTIR)
+def convertir_version(
+    datos: ConvertirVersion, activa: CuentaQueConvierte, sesion: SesionDeEscrituraDep
+) -> VersionNuevaRespuesta:
+    """S5: convierte la versión a otra moneda con la tasa del BCV de hoy (RF-64). Exige
+    `CONVERTIR_Y_REAJUSTAR` (la matriz de permisos), no solo editar la hoja."""
+    return _crear_version(
+        lambda: hoja_versiones.convertir(
+            sesion,
+            datos.proyecto,
+            datos.version,
+            datos.moneda,
+            lado=datos.lado,
+            fecha=_hoy(),
+            fuente=datos.fuente,
+            responsable=activa.usuario,
+        )
+    )
+
+
+@router.get("/cadena", response_model=CadenaHojaRespuesta, dependencies=[LEER])
+@sin_eco(FORMA_CADENA)
+def cadena_de_sellos(
+    sesion: SesionDep, proyecto: Annotated[str, Query(min_length=1, max_length=500)]
+) -> CadenaHojaRespuesta:
+    """S6: el estado de integridad de la cadena de sellos del proyecto (recalcula cada huella).
+    Clave de API o sesión con `EDITAR_HOJA`; solo lee."""
+    try:
+        return cadena_a_respuesta(hoja_versiones.estado_de_la_cadena(sesion, proyecto))
+    except ProyectoInexistente as error:
+        raise HTTPException(status_code=404, detail=str(error)) from None
+    except SQLAlchemyError:
+        raise HTTPException(status_code=503, detail=MENSAJE_BASE) from None

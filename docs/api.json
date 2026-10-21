@@ -6540,6 +6540,219 @@
         }
       }
     },
+    "/v1/hoja/versiones/restaurar": {
+      "post": {
+        "tags": [
+          "hoja"
+        ],
+        "summary": "Restaurar Version",
+        "description": "S2: restaura una versión anterior como versión nueva y vigente (RF-54). Escribe en una\ntransacción con `BEGIN IMMEDIATE` y la cadena de sellos cubriendo los anexos; el responsable\nes la persona de la sesión. `activa` va antes que `sesion`: el acceso responde antes de abrir\nla base del caso.",
+        "operationId": "restaurar_version_v1_hoja_versiones_restaurar_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RestaurarVersion"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VersionNuevaRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/hoja/versiones/cotizar": {
+      "post": {
+        "tags": [
+          "hoja"
+        ],
+        "summary": "Cotizar Insumo",
+        "description": "S3: cotiza un insumo para el proyecto y guarda la versión nueva (RF-56). El precio llega\ncomo texto; solo cambia ese insumo en ese proyecto.",
+        "operationId": "cotizar_insumo_v1_hoja_versiones_cotizar_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CotizarVersion"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VersionNuevaRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/hoja/versiones/retirar-cotizacion": {
+      "post": {
+        "tags": [
+          "hoja"
+        ],
+        "summary": "Retirar Cotizacion",
+        "description": "S4: retira la cotización de un insumo; la versión nueva vuelve al precio de la lista base.",
+        "operationId": "retirar_cotizacion_v1_hoja_versiones_retirar_cotizacion_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RetirarCotizacion"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VersionNuevaRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/hoja/versiones/convertir": {
+      "post": {
+        "tags": [
+          "hoja"
+        ],
+        "summary": "Convertir Version",
+        "description": "S5: convierte la versión a otra moneda con la tasa del BCV de hoy (RF-64). Exige\n`CONVERTIR_Y_REAJUSTAR` (la matriz de permisos), no solo editar la hoja.",
+        "operationId": "convertir_version_v1_hoja_versiones_convertir_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConvertirVersion"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VersionNuevaRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/hoja/cadena": {
+      "get": {
+        "tags": [
+          "hoja"
+        ],
+        "summary": "Cadena De Sellos",
+        "description": "S6: el estado de integridad de la cadena de sellos del proyecto (recalcula cada huella).\nClave de API o sesión con `EDITAR_HOJA`; solo lee.",
+        "operationId": "cadena_de_sellos_v1_hoja_cadena_get",
+        "parameters": [
+          {
+            "name": "proyecto",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500,
+              "title": "Proyecto"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CadenaHojaRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/produccion/materiales": {
       "get": {
         "tags": [
@@ -8577,6 +8790,36 @@
         ],
         "title": "BorradoresHojaRespuesta"
       },
+      "CadenaHojaRespuesta": {
+        "properties": {
+          "integra": {
+            "type": "boolean",
+            "title": "Integra"
+          },
+          "mensaje": {
+            "type": "string",
+            "title": "Mensaje"
+          },
+          "declaracion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Declaracion"
+          }
+        },
+        "type": "object",
+        "required": [
+          "integra",
+          "mensaje",
+          "declaracion"
+        ],
+        "title": "CadenaHojaRespuesta"
+      },
       "CalculoPeticion": {
         "properties": {
           "codigo": {
@@ -9467,6 +9710,117 @@
           "disponible"
         ],
         "title": "ControlRespuesta"
+      },
+      "ConvertirVersion": {
+        "properties": {
+          "proyecto": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Proyecto"
+          },
+          "version": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Version"
+          },
+          "moneda": {
+            "type": "string",
+            "maxLength": 20,
+            "minLength": 1,
+            "title": "Moneda"
+          },
+          "lado": {
+            "type": "string",
+            "enum": [
+              "venta",
+              "compra"
+            ],
+            "title": "Lado"
+          },
+          "fuente": {
+            "type": "string",
+            "maxLength": 300,
+            "title": "Fuente"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "proyecto",
+          "version",
+          "moneda",
+          "lado",
+          "fuente"
+        ],
+        "title": "ConvertirVersion"
+      },
+      "CotizarVersion": {
+        "properties": {
+          "proyecto": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Proyecto"
+          },
+          "version": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Version"
+          },
+          "insumo": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Insumo"
+          },
+          "precio": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Precio"
+          },
+          "proveedor": {
+            "type": "string",
+            "maxLength": 120,
+            "title": "Proveedor"
+          },
+          "numero": {
+            "type": "string",
+            "maxLength": 60,
+            "title": "Numero"
+          },
+          "fecha": {
+            "type": "string",
+            "format": "date",
+            "title": "Fecha"
+          },
+          "evidencia": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 90
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evidencia"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "proyecto",
+          "version",
+          "insumo",
+          "precio",
+          "proveedor",
+          "numero",
+          "fecha"
+        ],
+        "title": "CotizarVersion"
       },
       "Credenciales": {
         "properties": {
@@ -15516,6 +15870,35 @@
         ],
         "title": "RespaldoCreado"
       },
+      "RestaurarVersion": {
+        "properties": {
+          "proyecto": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Proyecto"
+          },
+          "version": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Version"
+          },
+          "fuente": {
+            "type": "string",
+            "maxLength": 300,
+            "title": "Fuente"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "proyecto",
+          "version",
+          "fuente"
+        ],
+        "title": "RestaurarVersion"
+      },
       "Resultado": {
         "properties": {
           "mensaje": {
@@ -15710,6 +16093,42 @@
           "viaja_con"
         ],
         "title": "ResumenRespuesta"
+      },
+      "RetirarCotizacion": {
+        "properties": {
+          "proyecto": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Proyecto"
+          },
+          "version": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Version"
+          },
+          "insumo": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Insumo"
+          },
+          "motivo": {
+            "type": "string",
+            "maxLength": 300,
+            "title": "Motivo"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "proyecto",
+          "version",
+          "insumo",
+          "motivo"
+        ],
+        "title": "RetirarCotizacion"
       },
       "Retiro": {
         "properties": {
@@ -17150,6 +17569,29 @@
           "cambios"
         ],
         "title": "VersionHojaRespuesta"
+      },
+      "VersionNuevaRespuesta": {
+        "properties": {
+          "codigo": {
+            "type": "string",
+            "title": "Codigo"
+          },
+          "proyecto": {
+            "type": "string",
+            "title": "Proyecto"
+          },
+          "mensaje": {
+            "type": "string",
+            "title": "Mensaje"
+          }
+        },
+        "type": "object",
+        "required": [
+          "codigo",
+          "proyecto",
+          "mensaje"
+        ],
+        "title": "VersionNuevaRespuesta"
       },
       "VersionesHojaRespuesta": {
         "properties": {

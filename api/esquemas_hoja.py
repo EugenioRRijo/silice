@@ -8,13 +8,17 @@ espacio (E1).
 
 from __future__ import annotations
 
-from typing import Annotated
+import re
+from datetime import date
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, StrictBool, field_validator
 
+from aplicacion.entrega import EstadoDeLaCadena
 from aplicacion.hoja import CambioEditado, FilaInsumo, FilaVersion
 from aplicacion.hoja_borradores import BorradorVivo
 from aplicacion.hoja_guardado import Guardado
+from aplicacion.hoja_versiones import VersionNueva
 from aplicacion.hoja_vista import (
     BaseAbierta,
     Monto,
@@ -708,4 +712,88 @@ def guardado_a_respuesta(guardado: Guardado) -> GuardadoRespuesta:
         total=monto_a_respuesta(guardado.total),
         primera=guardado.primera,
         mensaje=guardado.mensaje,
+    )
+
+
+# --- S2 a S6 (3d-2): versiones nuevas desde una guardada y la cadena -----------------------------
+#
+# Topes (D-9, SUPUESTO declarado): `fuente` y `motivo` 300 (el ancho de `RegistroCambio.fuente`),
+# `proveedor` 120 y `numero` 60 (las columnas de `cotizacion`) y `evidencia` 90, para que la fuente
+# que arma el nucleo ("Cotizacion {numero} de {proveedor} ({fecha}). {evidencia}") no pase de 300.
+# `extra` prohibido: el responsable NO viaja en el cuerpo (RF-82). Los textos van en `strict`: un
+# numero donde se espera texto (un precio `12.5`) es de otra forma, no un dato.
+
+Referencia = Annotated[str, Field(strict=True, min_length=1, max_length=500)]
+_AAAA_MM_DD = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}")
+
+
+class RestaurarVersion(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    proyecto: Referencia
+    version: Referencia
+    fuente: Annotated[str, Field(strict=True, max_length=300)]
+
+
+class CotizarVersion(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    proyecto: Referencia
+    version: Referencia
+    insumo: Referencia
+    precio: Annotated[str, Field(strict=True, max_length=500)]
+    proveedor: Annotated[str, Field(strict=True, max_length=120)]
+    numero: Annotated[str, Field(strict=True, max_length=60)]
+    fecha: date
+    evidencia: Annotated[str, Field(strict=True, max_length=90)] | None = None
+
+    @field_validator("fecha", mode="before")
+    @classmethod
+    def _fecha_aaaa_mm_dd(cls, valor: object) -> date:
+        """Solo `AAAA-MM-DD` y una fecha que exista (nada de marcas de tiempo ni enteros)."""
+        if not isinstance(valor, str) or not _AAAA_MM_DD.fullmatch(valor):
+            raise ValueError("fecha")
+        return date.fromisoformat(valor)  # ValueError si el dia no existe
+
+
+class RetirarCotizacion(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    proyecto: Referencia
+    version: Referencia
+    insumo: Referencia
+    motivo: Annotated[str, Field(strict=True, max_length=300)]
+
+
+class ConvertirVersion(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    proyecto: Referencia
+    version: Referencia
+    moneda: Annotated[str, Field(strict=True, min_length=1, max_length=20)]
+    lado: Literal["venta", "compra"]
+    fuente: Annotated[str, Field(strict=True, max_length=300)]
+
+
+class VersionNuevaRespuesta(BaseModel):
+    codigo: str
+    proyecto: str
+    mensaje: str
+
+
+def version_nueva_a_respuesta(nueva: VersionNueva) -> VersionNuevaRespuesta:
+    return VersionNuevaRespuesta(
+        codigo=nueva.codigo, proyecto=nueva.proyecto, mensaje=nueva.mensaje
+    )
+
+
+class CadenaHojaRespuesta(BaseModel):
+    integra: bool
+    mensaje: str
+    declaracion: str | None
+
+
+def cadena_a_respuesta(estado: EstadoDeLaCadena) -> CadenaHojaRespuesta:
+    return CadenaHojaRespuesta(
+        integra=estado.integra, mensaje=estado.mensaje, declaracion=estado.declaracion
     )

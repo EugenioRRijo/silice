@@ -240,6 +240,11 @@ TABLA = {
     ("GET", "/v1/hoja/precios"): EDITAR,  # R12; clave o sesion (lee una version guardada)
     ("GET", "/v1/hoja/precios/atipicos"): EDITAR,  # R13; clave o sesion (solo lee)
     ("GET", "/v1/hoja/trazabilidad"): EDITAR,  # R14; clave o sesion (lee una version guardada)
+    ("POST", "/v1/hoja/versiones/restaurar"): EDITAR,  # T10 3d-2 (S2); escribe; solo sesion
+    ("POST", "/v1/hoja/versiones/cotizar"): EDITAR,  # S3; escribe; solo sesion
+    ("POST", "/v1/hoja/versiones/retirar-cotizacion"): EDITAR,  # S4; escribe; solo sesion
+    ("POST", "/v1/hoja/versiones/convertir"): REAJUSTAR,  # S5; escribe; solo sesion
+    ("GET", "/v1/hoja/cadena"): EDITAR,  # S6; clave o sesion (solo lee)
 }
 #: Las de la puerta de entrada: la sesión misma (con su propia regla) y el ping.
 DE_LA_SESION = {
