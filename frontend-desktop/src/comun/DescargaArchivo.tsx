@@ -47,6 +47,9 @@ export function DescargaArchivo({
 
   // El boton se deshabilita mientras baja y el navegador le quita el foco (H-5): al terminar se lo devolvemos, salvo que
   // la persona ya lo haya llevado a otro control.
+  // Limite conocido (MENOR-6, aceptado): si durante la descarga la persona hace clic en el cuerpo de la pagina (no en un
+  // control), el foco ya esta en el body y tambien se le devuelve al boton. Distinguirlo exigiria seguir cada clic; no se
+  // cambia la conducta.
   useEffect(() => {
     if (bajando || !habiaFoco.current) return;
     habiaFoco.current = false;

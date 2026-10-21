@@ -8,7 +8,6 @@ interface Fs {
 }
 interface Ruta {
   join(...partes: string[]): string;
-  basename(ruta: string): string;
   relative(de: string, a: string): string;
 }
 
@@ -26,21 +25,63 @@ function fuentes(carpeta: string): string[] {
   for (const e of fs.readdirSync(carpeta, { withFileTypes: true })) {
     const completa = ruta.join(carpeta, e.name);
     if (e.isDirectory()) salida.push(...fuentes(completa));
-    else if (/\.tsx$/.test(e.name) && !/\.test\.tsx$/.test(e.name)) salida.push(completa);
+    else if (/\.tsx?$/.test(e.name) && !/\.test\.tsx?$/.test(e.name)) salida.push(completa);
   }
   return salida;
+}
+
+// Las unicas rutas que pueden tocar TextInput / TextArea de Carbon, por ruta exacta relativa a la raiz del front (un
+// archivo con el mismo nombre en otra carpeta NO queda permitido).
+const PERMITIDOS = new Set(["src/comun/CampoTexto.tsx", "src/comun/AreaTexto.tsx"]);
+
+// Detecta cualquier via de llegar a los componentes de Carbon que montan la region viva vacia: importarlos por nombre
+// (con o sin alias), importar el paquete entero o por defecto (`C.TextInput`), usar una ruta profunda del paquete,
+// `require` / `import()` dinamicos del paquete, o crearlos con `createElement` / JSX.
+export function usaCamposDeCarbon(codigo: string): boolean {
+  const importaNombre = /import\s*(?:type\s*)?\{[^}]*\b(TextInput|TextArea)\b[^}]*\}\s*from\s*["']@carbon\/react["']/;
+  const importaTodo = /import\s+(?:\*\s+as\s+\w+|\w+)(?:\s*,\s*\{[^}]*\})?\s+from\s*["']@carbon\/react["']/;
+  const rutaProfunda = /["']@carbon\/react\/[^"']*(TextInput|TextArea)/;
+  const dinamico = /(?:require\(|import\()\s*["']@carbon\/react["']/;
+  const jsxOCrear = /<\s*(?:\w+\.)?(TextInput|TextArea)[\s>/]|createElement\(\s*(?:\w+\.)?(TextInput|TextArea)\b/;
+  return [importaNombre, importaTodo, rutaProfunda, dinamico, jsxOCrear].some((r) => r.test(codigo));
 }
 
 // 3e-3, H-3: el TextInput de Carbon monta un <span role="alert"> vacío por campo (900 en el Plan). Solo `CampoTexto`
 // (y `AreaTexto`) pueden usar los componentes de Carbon que lo montan; el resto de la interfaz pasa por ellos.
 describe("regiones vivas vacías (H-3)", () => {
-  test("ningún componente usa TextInput ni TextArea de Carbon directamente", () => {
-    const permitidos = new Set(["CampoTexto.tsx", "AreaTexto.tsx"]);
+  test("ningún componente usa TextInput ni TextArea de Carbon directamente (por ruta exacta)", () => {
     const infractores = fuentes(`${nodo.cwd()}/src`)
-      .filter((f) => !permitidos.has(ruta.basename(f)))
-      .filter((f) => /<(TextInput|TextArea)[\s>]/.test(fs.readFileSync(f, "utf-8")))
-      .map((f) => ruta.relative(nodo.cwd(), f));
+      .map((f) => ruta.relative(nodo.cwd(), f).split("\\").join("/"))
+      .filter((rel) => !PERMITIDOS.has(rel))
+      .filter((rel) => usaCamposDeCarbon(fs.readFileSync(ruta.join(nodo.cwd(), rel), "utf-8")));
     expect(infractores).toEqual([]);
+  });
+
+  test("las dos rutas permitidas existen y sí usan los de Carbon", () => {
+    for (const rel of PERMITIDOS) expect(usaCamposDeCarbon(fs.readFileSync(ruta.join(nodo.cwd(), rel), "utf-8"))).toBe(true);
+  });
+
+  test("el detector ve alias, importación del paquete entero, rutas profundas y createElement", () => {
+    const malos = [
+      'import { TextInput } from "@carbon/react";',
+      'import { Button, TextArea as Area } from "@carbon/react";',
+      "import {\n  TextInput as Campo,\n} from '@carbon/react';",
+      'import * as C from "@carbon/react"; const x = <C.TextInput id="a" />;',
+      'import Carbon from "@carbon/react"; Carbon.TextArea;',
+      'import TextInput from "@carbon/react/lib/components/TextInput";',
+      'const { TextInput } = require("@carbon/react");',
+      'const m = await import("@carbon/react");',
+      'createElement(TextInput, {})',
+      "<TextArea\n id=\"x\" />",
+    ];
+    for (const m of malos) expect(usaCamposDeCarbon(m), m).toBe(true);
+    const buenos = [
+      'import { Button, Select } from "@carbon/react";',
+      'import { CampoTexto } from "../../comun/CampoTexto";',
+      'import { AreaTexto } from "../../comun/AreaTexto";',
+      "<CampoTexto id=\"a\" />",
+    ];
+    for (const b of buenos) expect(usaCamposDeCarbon(b), b).toBe(false);
   });
 
   test("una tabla de celdas editables no deja ninguna región role=alert vacía", () => {

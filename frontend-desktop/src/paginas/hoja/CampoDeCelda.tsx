@@ -1,4 +1,3 @@
-
 import type { KeyboardEvent } from "react";
 import { LARGO_DE_CELDA } from "./logica";
 import { CampoTexto } from "../../comun/CampoTexto";
