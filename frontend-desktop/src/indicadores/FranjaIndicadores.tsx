@@ -1,3 +1,4 @@
+import { esLibroMenor } from "./ibcs";
 import { IndicadorFiori } from "./IndicadorFiori";
 import type { IndicadorRespuesta } from "./tipos";
 
@@ -11,11 +12,14 @@ interface Props {
   partidasConOmision?: readonly number[];
 }
 
-// Franja de 64 px bajo la cabecera: indicadores separados por divisores de 1 px. Solo crece si un indicador lleva la
-// etiqueta del libro menor (V-16), que se ve completa. Fuera de eso no crece: los
-// textos se recortan con elipsis (el valor completo queda en el tooltip y en el texto accesible). Los conteos por
-// severidad no estan aqui: salen una sola vez, en los filtros de la lista de hallazgos.
+// Franja bajo la cabecera: indicadores separados por divisores de 1 px, con un alto minimo de 4 rem que crece solo si un
+// indicador lleva la etiqueta del libro menor (V-16): la completa en «Total general» (o en el primer indicador menor si
+// ese no lo es) y un marcador de un renglon en los demas. Los textos de la tarjeta se recortan con elipsis (el valor
+// completo queda en el tooltip y en el texto accesible). Los conteos por severidad no estan aqui: salen una sola vez,
+// en los filtros de la lista de hallazgos.
 export function FranjaIndicadores({ indicadores, totalesLibro, totalesSilice, rotuloMeta, partidasConOmision }: Props) {
+  const menores = indicadores.filter((i) => esLibroMenor(i.delta, i.sentido));
+  const conFrase = (menores.find((i) => i.clave === "TOTALGEN") ?? menores[0])?.clave;
   return (
     <section className="franja-indicadores" aria-label="Indicadores del libro">
       <div className="franja-indicadores__lista">
@@ -27,6 +31,7 @@ export function FranjaIndicadores({ indicadores, totalesLibro, totalesSilice, ro
             exactoSilice={totalesSilice?.[i.clave]}
             rotuloMeta={rotuloMeta}
             partidasConOmision={partidasConOmision}
+            etiquetaBreve={i.clave !== conFrase}
           />
         ))}
       </div>

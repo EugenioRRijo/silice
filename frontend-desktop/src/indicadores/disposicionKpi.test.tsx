@@ -9,7 +9,7 @@ const nodo = (
 ).process;
 const estilos = nodo.getBuiltinModule("node:fs").readFileSync(`${nodo.cwd()}/src/indicadores/indicadores.scss`, "utf-8");
 const regla = (selector: string) => {
-  const desde = estilos.indexOf(`\n${selector} {`);
+  const desde = estilos.lastIndexOf(`\n${selector} {`);
   return desde < 0 ? "" : estilos.slice(desde, estilos.indexOf("}", desde));
 };
 
@@ -34,5 +34,21 @@ describe("disposicion del indicador: la cifra nunca desaparece", () => {
     expect(regla(".fiori-kpi__fila")).toMatch(/display:\s*flex/);
     expect(regla(".fiori-kpi__fila")).toMatch(/flex-wrap:\s*wrap/);
     expect(regla(".fiori-kpi")).not.toMatch(/grid-template-columns/);
+  });
+
+  test("la tarjeta con la frase completa del libro menor se lleva mas ancho que las de marcador breve (menos lineas, menos alto)", () => {
+    const menor = { clave: "T", titulo: "Total", actual: "1.00", meta: "2.00", delta: "-1.00", delta_pct: "-50.00", sentido: "exactitud" as const };
+    const { container, rerender } = render(<IndicadorFiori indicador={menor} partidasConOmision={[2]} />);
+    expect(container.querySelector(".fiori-kpi")).toHaveClass("fiori-kpi--frase");
+    rerender(<IndicadorFiori indicador={menor} partidasConOmision={[2]} etiquetaBreve />);
+    expect(container.querySelector(".fiori-kpi")).not.toHaveClass("fiori-kpi--frase");
+    rerender(<IndicadorFiori indicador={{ ...menor, delta: "1.00" }} />);
+    expect(container.querySelector(".fiori-kpi")).not.toHaveClass("fiori-kpi--frase");
+    expect(regla(".fiori-kpi--frase")).toMatch(/flex:\s*2\.5 1 0/);
+  });
+
+  test("la variacion baja de linea en vez de recortarse con elipsis (las tarjetas con marcador son estrechas)", () => {
+    expect(regla(".fiori-kpi__delta")).toMatch(/white-space:\s*normal/);
+    expect(regla(".fiori-kpi__delta")).toMatch(/overflow:\s*visible/);
   });
 });

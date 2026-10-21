@@ -7,7 +7,7 @@ OWN-WORLD: IBM Carbon g10 nativo (paquete oficial @carbon/react), IBM Plex Sans 
 divisores de 1 px, severidad con ícono, morado solo para atípicos, verde/rojo IBCS solo en cifras de variación.
 STORY: el auditor suelta el libro, lo ve como en Excel con las celdas marcadas, toca un hallazgo, cae en su
 celda y lee libro contra Sílice.
-FIRST VIEWPORT: cabecera de 48 px; franja de indicadores Fiori de 64 px; la hoja ocupa el resto a la izquierda;
+FIRST VIEWPORT: cabecera de 48 px; franja de indicadores Fiori de 64 px como mínimo (crece con la etiqueta del libro menor); la hoja ocupa el resto a la izquierda;
 panel de hallazgos de 320 px a la derecha (tabla Carbon `sm`).
 FORM: gramática nativa de Carbon, fijada por el brief (RS-6); sin sorteo de direcciones.
 -->
@@ -52,13 +52,19 @@ ajustan aquí cuando la construcción los fije.
   sentido «exactitud» con delta negativo lleva, **dentro de la misma tarjeta y bajo la cifra**, una nota (`role="note"`) con el
   ícono `WarningAltFilled`, texto en la tinta normal sobre `--silice-aviso-fondo` (yellow-10, 16,4:1) y franja de 4 px en
   `--silice-aviso-borde` (yellow-50, 3,02:1 como gráfico). Reglas del patrón: siempre visible (nunca tooltip, nunca tras un clic), sin
-  botón de cerrar, ícono y texto juntos (nunca solo color), el texto baja de línea y no se recorta, entra en el nombre accesible del
-  indicador («Total general. Libro menor: …»), conserva el color al imprimir (`print-color-adjust: exact`) y con colores forzados
-  lleva borde propio. Aparece **solo** en ese caso (no con libro mayor, igual ni en los sentidos de costo o rendimiento) para no
-  volverse papel tapiz. Con datos de omisión de la API (`partidas_con_omision`) dice «revise si omite N partidas (n.º …)»; sin
-  ellos, la frase fija «puede deberse a partidas omitidas; revise antes de aceptar». Ninguna acción se bloquea: es un acuse visible.
+  botón de cerrar, ícono y texto juntos (nunca solo color), el texto baja de línea y no se recorta, conserva el color al imprimir
+  (`print-color-adjust: exact`) y con colores forzados lleva borde propio. Es la descripción accesible del indicador
+  (`aria-describedby`; el nombre sigue siendo el título): la lectora lo dice una vez, con la cifra. Aparece **solo** en ese caso (no con
+  libro mayor, igual ni en los sentidos de costo o rendimiento) para no volverse papel tapiz.
+  **Dos tamaños:** la etiqueta completa solo en «Total general» (o en el primer indicador menor si ese no lo es) y, en subtotal e IVA,
+  un marcador de un renglón con el mismo ícono, los mismos tokens y la palabra «Libro menor». Con datos de la API
+  (`partidas_con_omision`, partidas cuyo costo directo queda incompleto, regla L4) la completa dice «N partida(s) con costo directo
+  incompleto (n.º …). Puede faltar además alguna partida; revise antes de aceptar»; sin ellos, la frase fija «puede deberse a partidas
+  omitidas; revise antes de aceptar». El número cuenta partidas presentes con L4, nunca partidas ausentes (de esas el comparador no
+  sabe nada). Ninguna acción se bloquea: es un acuse visible.
 - La tarjeta del indicador es una columna de dos filas que bajan de línea (título y meta; cifra y variación): con la letra Muy
-  grande la variación ya no desplaza a la cifra a 0 px, y la franja crece lo que pida la etiqueta (alto mínimo de 64 px).
+  grande la variación ya no desplaza a la cifra a 0 px. La franja de indicadores tiene un alto mínimo de 64 px y **crece** lo que
+  pida la etiqueta (una línea más con el marcador, varias con la completa).
 - Real = relleno sólido; plan/meta = contorno; pronóstico = achurado (IBCS). El acento de interacción es el azul
   de Carbon (`$interactive`) y solo en acciones, foco y selección.
 

@@ -59,7 +59,7 @@ describe("Visor con libro menor (V-16)", () => {
 
   test("con partidas_con_omision de la API, la etiqueta dice cuantas y cuales", async () => {
     const franja = await abrir(auditoria({ partidas_con_omision: [2] }));
-    expect(within(franja).getByRole("note").textContent).toBe("Libro menor: revise si omite 1 partida (n.º\u00a02)");
+    expect(within(franja).getByRole("note").textContent).toContain("1 partida con costo directo incompleto (n.º"+String.fromCharCode(160)+"2)");
   });
 
   test("sin el campo (API anterior) o con la lista vacia, la etiqueta fija", async () => {
