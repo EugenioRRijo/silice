@@ -13,6 +13,11 @@ Las reglas son las del resto de los borradores (`api/rutas/hoja.py`, de donde se
 otro caso da 409, `rev` se comprueba antes que el contenido (409), todo `no-store` y el 422 de forma
 no repite lo enviado (`_RutaPlano` combina `RutaSinCache` y `RutaSinEco` en ESE orden). El tope de
 20 MiB es el de `LimiteDeCuerpo` (413 tambien por trozos); no hay middleware propio.
+
+Topes del lector (ola de decisiones, `aplicacion.hoja_plano`): un plano de mas bytes que el maximo
+de su formato (DXF 8 MiB, IFC 20 MiB) es 413 de texto fijo; con `LECTURAS_SIMULTANEAS` planos ya
+leyendose, P1 y P2 responden 503 de texto fijo con `Retry-After` sin esperar (asi el grupo de hilos
+de las rutas sincronas no se agota); al arrancar se barren las carpetas huerfanas.
 """
 
 from __future__ import annotations
@@ -72,7 +77,17 @@ class _RutaPlano(RutaSinCache, RutaSinEco):
     mensaje_por_omision = FORMA_PLANO
 
 
-router = APIRouter(prefix="/v1/hoja", tags=["hoja"], route_class=_RutaPlano)
+#: Segundos que se sugieren esperar cuando ya hay `LECTURAS_SIMULTANEAS` planos leyendose.
+REINTENTAR_EN = "10"
+
+# `on_startup`: al arrancar el servidor se barren las carpetas `silice_planos_*` que dejo un proceso
+# caido (el plano de una persona no debe quedar para siempre en el disco).
+router = APIRouter(
+    prefix="/v1/hoja",
+    tags=["hoja"],
+    route_class=_RutaPlano,
+    on_startup=[hoja_plano.barrer_al_arrancar],
+)
 
 
 class _Subida:
@@ -113,6 +128,14 @@ def _traducir() -> Iterator[None]:
                 f"Este borrador ya se guardó como la versión {error.codigo}; "
                 "abra esa versión para seguir."
             ),
+        ) from None
+    except hoja_plano.PlanoDemasiadoGrande as error:
+        raise HTTPException(status_code=413, detail=error.mensaje) from None
+    except hoja_plano.LecturasOcupadas:
+        raise HTTPException(
+            status_code=503,
+            detail=hoja_plano.MENSAJE_LECTURAS_OCUPADAS,
+            headers={"Retry-After": REINTENTAR_EN},
         ) from None
     except hoja_plano.SinImportacion:
         raise HTTPException(status_code=409, detail=hoja_plano.MENSAJE_SIN_IMPORTACION) from None
