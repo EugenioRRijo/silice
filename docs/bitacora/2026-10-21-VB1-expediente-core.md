@@ -96,3 +96,8 @@ cualquier lector. Una cifra con más de 20 enteros tras redondear (por ejemplo `
   (a revisar si alimentan JSON leído con `PATRON_CIFRA`); `api/rutas/{auditorias,auditorias_libro,control,entregas}.py` y
   `adapters/*` son de otros encargos y no se tocaron. Ver el informe.
 - Aval del tutor: pendiente.
+
+## Aval del tutor (declarado por Eugenio, 2026-10-21)
+Eugenio declara que el tutor avala todo lo pendiente de esta migracion (VB-1 incluido, y el retiro de Streamlit, el descongelado
+y el retiro definitivo del Visor 3D). Es una declaracion de Eugenio; no hay acta ni documento del tutor en el repositorio. Si el
+tutor lo confirma por escrito, adjuntar el acta en `docs/` y enlazarla aqui.
