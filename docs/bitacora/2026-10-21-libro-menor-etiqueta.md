@@ -65,5 +65,16 @@ Tres libros: con H1 (Δ −3,54 %, L4 en la partida 2), menor sin L4 (P de APU-0
 
 ## Pruebas
 
-Rojo visto: API (3 pruebas, `KeyError: 'partidas_con_omision'`), `EtiquetaLibroMenor` (módulo inexistente), contraste y estilos (5 fallas), cableado del Visor (1 falla al quitar la
-línea) y disposición (1 falla antes del SCSS). Conteos de la corrida final en el informe de la sesión.
+Rojo visto: API (3 pruebas, `KeyError: 'partidas_con_omision'`), `EtiquetaLibroMenor` (módulo inexistente), contraste y estilos (5 fallas), cableado del Visor (1 falla al
+quitar la línea) y disposición (1 falla antes del SCSS).
+
+Commits: `7ed27b25` (API, `docs/api.json`, pruebas) y `a4d7cb9b` (frente, DESIGN.md y esta bitácora).
+
+Corrida final (con el árbol de los otros frentes presente):
+
+- `pytest -W error` de `test_api_libros`, `test_api_libros_historial`, `test_api_libros_replica`, `test_api_acceso_por_ruta`, `test_front_rutas_api` y `test_arquitectura`: 422 verdes, 0 rojas;
+  `test_arquitectura_asistente`, `_s1`, `_s2`, `_s3` y `_s5`: 283 verdes. `app.openapi() == docs/api.json`; `ruff check` y `ruff format --check` limpios.
+- `npx vitest run src` completo: 130 archivos, 1899 pruebas, 1897 verdes y 2 rojas por el límite de 5 s con la máquina cargada (`App.test.tsx > una dirección con #/libros abre esa página` y
+  `PlanoEnHoja.test.tsx > con una edición del espacio en la pausa…`, esta última de la Hoja, no de esta zona): aisladas, App da 19 de 19 y PlanoEnHoja 4 de 4. Lo tocado
+  (`src/indicadores`, `VisorLibroMenor`, `visor.estilos`): 121 de 121.
+- `npm run lint` y `npm run build` limpios; `npm run dist`: 161 archivos, 14 043 807 bytes, sin URLs externas. `git diff -- core/ seguridad/` vacío.
