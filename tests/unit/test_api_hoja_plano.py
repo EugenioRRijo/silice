@@ -570,10 +570,13 @@ def test_p2_p3_y_p4_sin_importacion_son_409() -> None:
         assert respuesta.json() == {"detalle": SIN_IMPORTACION}
 
 
-def test_p2_si_el_archivo_guardado_ya_no_esta_es_409_sin_la_ruta_del_servidor(planos) -> None:
+def test_p2_si_el_archivo_guardado_ya_no_esta_es_409_sin_la_ruta_del_servidor(
+    planos, tmp_path
+) -> None:
     navegador, ficha = _ana()
     id_ = _abrir(navegador, ficha)
-    _subir(navegador, ficha, id_)
+    sin_unidad = dxf_sin_unidad(tmp_path / "sin_unidad.dxf").read_bytes()
+    assert _subir(navegador, ficha, id_, "sin_unidad.dxf", sin_unidad).json()["pide_unidad"]
     for archivo in _carpetas(planos)[0].iterdir():
         archivo.unlink()
     respuesta = _pedir(navegador, ficha, id_, "/unidad", {"rev": 0, "unidades": "m"})
@@ -599,6 +602,103 @@ def test_un_mensaje_del_lector_con_la_ruta_del_servidor_no_la_devuelve(monkeypat
         respuesta.text
     )
     assert respuesta.json()["mensaje"] == hoja_plano.mensaje_sin_ruta("of001.dxf")
+
+
+# --- ronda 1 del arbitro: la ruta recortada, P2 solo si esta detenida, heredar ---
+
+NO_DETENIDA = "Esta importación no está detenida: no hace falta elegir una unidad."
+
+
+def _errores_con_ruta():
+    """Tres `OSError` como los que lanza el lector con la ruta del archivo en su texto."""
+    return [
+        lambda ruta: PermissionError(13, "Permission denied", str(ruta)),
+        lambda ruta: FileNotFoundError(2, "No such file or directory", str(ruta)),
+        lambda ruta: OSError(
+            None, "El archivo esta siendo utilizado por otro proceso", str(ruta), 32
+        ),
+    ]
+
+
+def _raiz_larga(tmp_path: Path, monkeypatch) -> Path:
+    raiz = tmp_path / ("r" * 60) / ("s" * 60)
+    raiz.mkdir(parents=True)
+    assert len(str(raiz)) >= 120
+    monkeypatch.setattr(hoja_plano, "DIRECTORIO_TEMPORAL", str(raiz))
+    return raiz
+
+
+def _lector_que_falla(monkeypatch, error) -> None:
+    """El lector real de DXF ve `error` al abrir: el recorte a 120 caracteres es el REAL
+    (`en_una_linea`), no uno inyectado."""
+    from adapters.espacio.planos import auditoria_archivo
+
+    def falla(ruta, *_a, **_k):
+        raise error(ruta)
+
+    monkeypatch.setattr(auditoria_archivo.ezdxf, "readfile", falla)
+    monkeypatch.setattr(auditoria_archivo.recover, "readfile", falla)
+
+
+def _sin_fragmentos_de(raiz: Path, texto: str) -> None:
+    assert "Users" not in texto
+    for parte in raiz.parts[1:]:
+        assert parte[:6] not in texto, parte
+
+
+@pytest.mark.parametrize("indice", [0, 1, 2], ids=["permiso", "no-existe", "winerror-32"])
+def test_p1_un_error_del_lector_con_la_ruta_recortada_no_la_devuelve(
+    indice, tmp_path, monkeypatch
+) -> None:
+    raiz = _raiz_larga(tmp_path, monkeypatch)
+    _lector_que_falla(monkeypatch, _errores_con_ruta()[indice])
+    navegador, ficha = _ana()
+    id_ = _abrir(navegador, ficha)
+    respuesta = _subir(navegador, ficha, id_)
+    assert respuesta.status_code == 200 and respuesta.json()["estado"] == "rechazada"
+    _sin_fragmentos_de(raiz, respuesta.text)
+    assert respuesta.json()["mensaje"] == hoja_plano.mensaje_sin_ruta("of001.dxf")
+
+
+@pytest.mark.parametrize("indice", [0, 1, 2], ids=["permiso", "no-existe", "winerror-32"])
+def test_p2_un_error_del_lector_con_la_ruta_recortada_no_la_devuelve(
+    indice, tmp_path, monkeypatch
+) -> None:
+    raiz = _raiz_larga(tmp_path, monkeypatch)
+    navegador, ficha = _ana()
+    id_ = _abrir(navegador, ficha)
+    sin_unidad = dxf_sin_unidad(tmp_path / "sin_unidad.dxf").read_bytes()
+    assert _subir(navegador, ficha, id_, "sin_unidad.dxf", sin_unidad).json()["pide_unidad"]
+    _lector_que_falla(monkeypatch, _errores_con_ruta()[indice])
+    respuesta = _pedir(navegador, ficha, id_, "/unidad", {"rev": 0, "unidades": "m"})
+    assert respuesta.status_code == 200 and respuesta.json()["estado"] == "rechazada"
+    _sin_fragmentos_de(raiz, respuesta.text)
+    assert respuesta.json()["mensaje"] == hoja_plano.mensaje_sin_ruta("sin_unidad.dxf")
+
+
+def test_p2_sobre_una_importacion_que_no_esta_detenida_es_409_y_nada_cambia() -> None:
+    navegador, ficha = _ana()
+    id_ = _abrir(navegador, ficha)
+    _subir(navegador, ficha, id_)
+    assert _alturas(navegador, ficha, id_, _todas_las_alturas()).status_code == 200
+    respuesta = _pedir(navegador, ficha, id_, "/unidad", {"rev": 0, "unidades": "m"})
+    assert respuesta.status_code == 409 and respuesta.json() == {"detalle": NO_DETENIDA}
+    assert respuesta.headers["cache-control"] == "no-store"
+    assert _alturas(navegador, ficha, id_, {}).json()["alturas_pendientes"] == []  # siguen
+
+
+def test_la_importacion_sigue_a_su_borrador_al_heredar_la_ficha(planos) -> None:
+    """Cambio de contrasena: la ficha nueva hereda los borradores (`caso_web.heredar`) y con
+    ellos su importacion; la ficha vieja ya no la alcanza."""
+    vieja, ficha_vieja = _ana()
+    nueva, ficha_nueva = _ana()
+    id_ = _abrir(vieja, ficha_vieja)
+    _listo(vieja, ficha_vieja, id_)
+    caso_web.heredar(_huella(ficha_vieja), _huella(ficha_nueva))
+    assert _fusionar(vieja, ficha_vieja, id_).json() == {"detalle": FALTA}
+    respuesta = _fusionar(nueva, ficha_nueva, id_)
+    assert respuesta.status_code == 200, respuesta.text
+    assert _carpetas(planos) == []
 
 
 # --- 3e-B10: rechazada ---
@@ -1040,7 +1140,9 @@ def test_p1_durante_el_descarte_del_borrador_no_deja_restos(monkeypatch, planos)
     assert _carpetas(planos) == []
 
 
-def test_el_cerrojo_de_la_importacion_nunca_se_toma_antes_que_el_del_borrador(monkeypatch) -> None:
+def test_el_cerrojo_de_la_importacion_nunca_se_toma_antes_que_el_del_borrador(
+    monkeypatch, tmp_path
+) -> None:
     """Orden de bloqueos: borrador, importacion y registro; nunca al reves (sin abrazo mortal)."""
     navegador, ficha = _ana()
     id_ = _abrir(navegador, ficha)
@@ -1078,7 +1180,8 @@ def test_el_cerrojo_de_la_importacion_nunca_se_toma_antes_que_el_del_borrador(mo
     vivo.cerrojo = Espia(vivo.cerrojo, "borrador")
     monkeypatch.setattr(hoja_plano.IMPORTACIONES, "_cerrojo", Espia(threading.RLock(), "plano"))
     _listo(navegador, ficha, id_)
-    _subir(navegador, ficha, id_)
+    sin_unidad = dxf_sin_unidad(tmp_path / "sin_unidad.dxf").read_bytes()
+    _subir(navegador, ficha, id_, "sin_unidad.dxf", sin_unidad)
     assert _pedir(navegador, ficha, id_, "/unidad", {"rev": 0, "unidades": "m"}).status_code == 200
     assert _fusionar(navegador, ficha, id_).status_code == 200  # con alturas provisionales
     assert navegador.delete(_url(id_), headers=protegida(ficha)).status_code == 204
