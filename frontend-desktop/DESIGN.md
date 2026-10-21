@@ -28,7 +28,7 @@ ajustan aquí cuando la construcción los fije.
   cabecera (Normal 100 %, Grande 125 %, Muy grande 150 %, guardado en el navegador) multiplica ese tamaño por la variable
   `--silice-escala-letra`. Con Grande y Muy grande el menú lateral pasa a ser capa (botón de la cabecera) por debajo de
   1536 y 1920 px, y la cabecera cede el nombre de la persona a los selectores. El texto de los gráficos de Carbon Charts
-  también sigue la escala; el lienzo de la hoja de Excel (Univer) dibuja en píxeles y se acerca con el zoom del navegador. IBM Plex es la
+  también sigue la escala; el lienzo de la hoja de Excel (Univer) dibuja en píxeles y sigue la escala por el acercamiento propio de Univer (zoom efectivo = zoom propio de la hoja × factor de la letra, tope 400 %); la barra de la hoja trae su control de zoom (50 a 300 %). IBM Plex es la
   cara nativa de Carbon, que el brief fija: se aloja en el propio servidor, sin CDN.
 - **Forma:** esquinas rectas (radio 0, como Carbon); separación con divisores de 1 px `$border-subtle` y espacio,
   no con tarjetas con sombra. Sin gradientes, sin sombras decorativas, sin vidrio.

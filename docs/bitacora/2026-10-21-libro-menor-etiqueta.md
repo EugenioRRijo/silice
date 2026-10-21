@@ -81,7 +81,7 @@ Corrida final (con el árbol de los otros frentes presente):
 
 ## Ronda 1 del árbitro (devuelta) y decisión de diseño del orquestador
 
-El árbitro aprobó con B1 y B2 corregidos; el orquestador (por delegación de Eugenio) decidió además adoptar su recomendación de diseño. Lo anterior (texto «revise si omite N
+El árbitro DEVOLVIÓ en la ronda 1 (aprobaba con B1 y B2 corregidos); el orquestador (por delegación de Eugenio) decidió además adoptar su recomendación de diseño. Lo anterior (texto «revise si omite N
 partidas», etiqueta igual en los tres indicadores, nombre accesible con el texto, franja con alto de 138 a 277 px) queda **superado** por esto:
 
 - **B1.** El texto con datos ya no sugiere partidas ausentes, porque N cuenta partidas PRESENTES con L4: «Libro menor: N partida(s) con costo directo incompleto (n.º 2, 5).
