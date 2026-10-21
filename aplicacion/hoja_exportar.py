@@ -8,7 +8,10 @@ abierta solo salen las hojas del borrador.
 
 No escribe nada: ni en la base, ni en el borrador (`rev` no cambia), ni deja archivos temporales
 (`excel_de_hoja_en_bytes` arma el libro en una carpeta que borra al terminar). Sin FastAPI ni
-Streamlit (RM-1): los errores (`ValueError`, `SQLAlchemyError`) los traduce la ruta.
+Streamlit (RM-1): los errores (`ValueError`, `SQLAlchemyError`) los traduce la ruta. Un caracter de
+control en una celda (openpyxl lo rechaza con `IllegalCharacterError`, que no es `ValueError`)
+sale como `ValueError` con un texto fijo: la clasica se cae ahi y E1 lo acepta (sugerencia para
+quien edite E1: validarlo al escribir).
 """
 
 from __future__ import annotations
@@ -16,6 +19,7 @@ from __future__ import annotations
 import re
 from datetime import date
 
+from openpyxl.utils.exceptions import IllegalCharacterError
 from sqlalchemy.orm import Session
 
 from aplicacion import control, hoja, hoja_vista
@@ -29,6 +33,10 @@ _NO_SEGURO = re.compile(r"[^A-Za-z0-9._-]")
 #: sustitucion: el costo no depende del largo de lo escrito.
 LARGO_MAXIMO_DEL_CODIGO = 100
 NOMBRE_SIN_VERSION = "hoja_borrador.xlsx"
+CARACTER_ILEGAL = (
+    "una celda trae un carácter de control que Excel no admite (por ejemplo, uno pegado desde otro "
+    "programa): quítelo del espacio y vuelva a intentarlo."
+)
 
 
 def nombre_de_archivo(codigo: str | None) -> str:
@@ -55,11 +63,14 @@ def excel_del_borrador(vivo: BorradorVivo, sesion: Session, hoy: date) -> tuple[
             sesion, abierta.proyecto, abierta.codigo, fecha_evaluacion=hoy
         )
         hojas_de_control = control.tablas_de_control(sesion, abierta.proyecto, Catalogo(sesion))
-    contenido = hoja.excel_de_hoja_en_bytes(
-        resultado,
-        borrador,
-        trazabilidad=trazabilidad,
-        precios=precios,
-        control=hojas_de_control,
-    )
+    try:
+        contenido = hoja.excel_de_hoja_en_bytes(
+            resultado,
+            borrador,
+            trazabilidad=trazabilidad,
+            precios=precios,
+            control=hojas_de_control,
+        )
+    except IllegalCharacterError:  # no es un ValueError; el texto de openpyxl repetiria la celda
+        raise ValueError(CARACTER_ILEGAL) from None
     return nombre_de_archivo(abierta.codigo if abierta is not None else None), contenido
