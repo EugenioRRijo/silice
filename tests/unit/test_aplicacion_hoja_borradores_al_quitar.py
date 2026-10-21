@@ -1,8 +1,9 @@
-"""El aviso `al_quitar` del registro de borradores (T10, 3e-2; contrato `2026-10-20-hoja-3e-contrato-rutas.md`).
+"""El aviso `al_quitar` del registro de borradores (T10, 3e-2).
 
-La importacion de un plano vive aparte del borrador, con su carpeta temporal (`aplicacion.hoja_plano`).
-Cuando un borrador sale del registro, por CUALQUIER camino (descartar, vencer, expulsion por los topes
-por ficha, global o de bytes, olvidar la ficha, olvidar todo), el registro avisa una vez a cada
+Contrato: `docs/bitacora/2026-10-20-hoja-3e-contrato-rutas.md`. La importacion de un plano vive
+aparte del borrador, con su carpeta temporal (`aplicacion.hoja_plano`). Cuando un borrador sale del
+registro, por CUALQUIER camino (descartar, vencer, expulsion por los topes por ficha, global o de
+bytes, olvidar la ficha, olvidar todo), el registro avisa una vez a cada
 funcion de `al_quitar` con el borrador que salio, para que nada quede en el disco. Heredar no quita
 nada. El aviso ocurre FUERA del cerrojo del registro: quien recibe el aviso puede tomar su propio
 cerrojo sin arriesgar un abrazo mortal con otro hilo que tenga ese cerrojo y espere al registro.
