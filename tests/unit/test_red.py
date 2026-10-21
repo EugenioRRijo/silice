@@ -212,7 +212,7 @@ def test_activar_con_una_ip_que_no_es_del_equipo_se_rechaza(tmp_path: Path) -> N
 
 def test_activar_guarda_la_ip_y_avisa_sin_cifrar(tmp_path: Path) -> None:
     ruta = tmp_path / "silice.toml"
-    config.guardar_ajustes(ruta, config.Ajustes(puerto=8600, api_activa=True))
+    config.guardar_ajustes(ruta, config.Ajustes(puerto=8600))
     gastadas: list[list[str]] = []
     resultado = red.activar(
         "192.168.1.20",
@@ -225,7 +225,7 @@ def test_activar_guarda_la_ip_y_avisa_sin_cifrar(tmp_path: Path) -> None:
     )
     ajustes = config.cargar_ajustes(ruta)
     assert resultado.ok and ajustes.red_local and ajustes.direccion == "192.168.1.20"
-    assert (ajustes.puerto, ajustes.api_activa) == (8600, True)  # lo demás no cambia
+    assert ajustes.puerto == 8600  # lo demás no cambia
     assert red.AVISO_SIN_CIFRAR in resultado.mensaje
     assert "http://192.168.1.20:8600" in resultado.mensaje
     assert [o[9] for o in gastadas] == ["localport=8000", "localport=8600"]

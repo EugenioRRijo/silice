@@ -1,8 +1,9 @@
 """Arranque y parada (RF-98; spec S5 §5.4, §8.1 y §10.1). Ningún proceso real.
 
 Un solo proceso (Uvicorn, `api.main:app`) sirve la API y la interfaz de React en `/app/`; la sonda
-es `GET /salud`. El plazo de salud (60 s) se recorre con un reloj de mentira que avanza un segundo por consulta, para probar la
-frontera exacta (salud en la consulta 59 → arranca; nunca antes de 60 → se detiene).
+es `GET /salud`. El plazo de salud (60 s) se recorre con un reloj de mentira que avanza un segundo
+por consulta, para probar la frontera exacta (salud en la consulta 59 → arranca; nunca antes de 60
+→ se detiene).
 """
 
 from __future__ import annotations
@@ -288,9 +289,7 @@ def test_la_ip_que_ya_no_existe_arranca_en_el_bucle_local_y_lo_avisa(entorno) ->
 
 
 def test_una_sola_instancia_abre_el_navegador_y_no_lanza_otra(entorno) -> None:
-    lanzador.escribir_estado(
-        lanzador.EstadoServidor((1, 2), "127.0.0.1", 8501, "ayer"), entorno
-    )
+    lanzador.escribir_estado(lanzador.EstadoServidor((1, 2), "127.0.0.1", 8501, "ayer"), entorno)
     escenario = Escenario(salud=[True])
     assert escenario.correr(entorno) == 0
     assert escenario.lanzados == [] and escenario.abiertas == ["http://127.0.0.1:8501/app/"]
@@ -298,9 +297,7 @@ def test_una_sola_instancia_abre_el_navegador_y_no_lanza_otra(entorno) -> None:
 
 
 def test_un_estado_huerfano_se_borra_y_se_arranca(entorno) -> None:
-    lanzador.escribir_estado(
-        lanzador.EstadoServidor((1, 2), "127.0.0.1", 8501, "ayer"), entorno
-    )
+    lanzador.escribir_estado(lanzador.EstadoServidor((1, 2), "127.0.0.1", 8501, "ayer"), entorno)
     escenario = Escenario(salud=[False, True])
     assert escenario.correr(entorno) == 0 and len(escenario.lanzados) == 1
 
@@ -368,9 +365,7 @@ def test_el_codigo_de_instalacion_se_muestra_y_no_llega_al_registro(entorno) -> 
 
 def test_parar_no_mata_nada_si_la_salud_no_responde(entorno) -> None:
     """PID reutilizado: un estado viejo no autoriza a matar un proceso ajeno."""
-    lanzador.escribir_estado(
-        lanzador.EstadoServidor((4242, 4243), "127.0.0.1", 8501, "x"), entorno
-    )
+    lanzador.escribir_estado(lanzador.EstadoServidor((4242, 4243), "127.0.0.1", 8501, "x"), entorno)
     muertos: list[int] = []
     salida: list[str] = []
     codigo = lanzador.parar(

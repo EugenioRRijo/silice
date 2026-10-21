@@ -1,6 +1,8 @@
 """`silice.toml`: valores por defecto y archivo dañado (RF-98; spec S5 §8.1).
 
-Los valores esperados son literales del spec (8501, 8000, `INFO`, red y API apagadas); ninguno se
+Un solo proceso y un solo puerto (decisión de Eugenio, 2026-10-21): `[servidor] puerto` es el de
+Uvicorn, que sirve la API y la interfaz; `[api] activa` y `[api] puerto` se ignoran con un aviso.
+Los valores esperados son literales (8501, `INFO`, red apagada); ninguno se
 lee de `Ajustes()` para comparar consigo mismo, salvo la igualdad de «sin archivo» con los
 defectos, que es justo lo que se exige.
 """
@@ -20,11 +22,11 @@ def _escribir(ruta: Path, texto: str) -> Path:
     return ruta
 
 
-def test_los_valores_por_defecto_apagan_la_red_y_la_api(tmp_path: Path) -> None:
+def test_los_valores_por_defecto_apagan_la_red(tmp_path: Path) -> None:
     ajustes = cargar_ajustes(tmp_path / "no_existe.toml")
     assert ajustes == Ajustes()
-    assert (ajustes.red_local, ajustes.api_activa, ajustes.mostrar_investigacion) == (False,) * 3
-    assert (ajustes.puerto, ajustes.puerto_api, ajustes.nivel_registro) == (8501, 8000, "INFO")
+    assert (ajustes.red_local, ajustes.mostrar_investigacion) == (False, False)
+    assert (ajustes.puerto, ajustes.nivel_registro) == (8501, "INFO")
     assert ajustes.direccion == "" and ajustes.avisos == ()
     assert not (tmp_path / "no_existe.toml").exists()  # leer no crea el archivo
 
@@ -39,13 +41,19 @@ def test_guardar_y_volver_a_leer_da_lo_mismo(tmp_path: Path) -> None:
         puerto=8600,
         red_local=True,
         direccion="192.168.1.20",
-        api_activa=True,
-        puerto_api=8010,
         mostrar_investigacion=True,
         nivel_registro="WARNING",
     )
     guardar_ajustes(ruta, esperados)
     assert cargar_ajustes(ruta) == esperados
+
+
+def test_lo_guardado_ya_no_lleva_la_tabla_api(tmp_path: Path) -> None:
+    ruta = tmp_path / "silice.toml"
+    guardar_ajustes(ruta, Ajustes(puerto=8600))
+    texto = ruta.read_text(encoding="utf-8")
+    assert "[api]" not in texto and "activa" not in texto
+    assert "[servidor]" in texto and "puerto = 8600" in texto
 
 
 def test_lo_guardado_nunca_lleva_los_avisos(tmp_path: Path) -> None:
@@ -67,7 +75,7 @@ def test_lo_guardado_nunca_lleva_los_avisos(tmp_path: Path) -> None:
 )
 def test_un_archivo_danado_da_defectos_y_nunca_red_encendida(tmp_path: Path, texto: str) -> None:
     ajustes = cargar_ajustes(_escribir(tmp_path / "silice.toml", texto))
-    assert ajustes.red_local is False and ajustes.api_activa is False
+    assert ajustes.red_local is False
     assert ajustes.direccion == "" and len(ajustes.avisos) == 1
     assert "valores por defecto" in ajustes.avisos[0]
     assert replace(ajustes, avisos=()) == Ajustes()
@@ -154,29 +162,39 @@ def test_los_puertos_frontera_validos_se_aceptan(tmp_path: Path, puerto: int) ->
     assert ajustes.puerto == puerto and ajustes.avisos == ()
 
 
-def test_el_puerto_de_la_api_invalido_vuelve_a_8000(tmp_path: Path) -> None:
-    ajustes = cargar_ajustes(_escribir(tmp_path / "silice.toml", "[api]\npuerto = 1023\n"))
-    assert ajustes.puerto_api == 8000 and len(ajustes.avisos) == 1
-
-
-def test_los_dos_puertos_iguales_se_corrigen(tmp_path: Path) -> None:
-    ruta = _escribir(tmp_path / "silice.toml", "[servidor]\npuerto = 8600\n[api]\npuerto = 8600\n")
+def test_la_tabla_api_de_un_silice_toml_viejo_se_ignora_con_un_aviso(tmp_path: Path) -> None:
+    ruta = _escribir(
+        tmp_path / "silice.toml", "[servidor]\npuerto = 8600\n[api]\nactiva = true\npuerto = 8010\n"
+    )
     ajustes = cargar_ajustes(ruta)
-    assert ajustes.puerto == 8600 and ajustes.puerto_api == 8000
-    assert len(ajustes.avisos) == 1 and "mismo puerto" in ajustes.avisos[0]
+    assert ajustes.puerto == 8600  # el único puerto es el de [servidor]
+    assert len(ajustes.avisos) == 1 and "[api]" in ajustes.avisos[0]
+    assert "8600" in ajustes.avisos[0]
+    assert replace(ajustes, avisos=()) == Ajustes(puerto=8600)
 
 
-def test_la_interfaz_en_8000_aparta_la_api_al_8001(tmp_path: Path) -> None:
-    """Frontera: la interfaz en 8000 y la API sin puerto (8000 por defecto). La API no puede
-    «volver» a 8000, que es el mismo: pasa al 8001 (hallazgo de la auditoría final)."""
+def test_sin_la_tabla_api_no_hay_aviso(tmp_path: Path) -> None:
+    ajustes = cargar_ajustes(_escribir(tmp_path / "silice.toml", "[servidor]\npuerto = 8600\n"))
+    assert ajustes.avisos == ()
+
+
+def test_la_tabla_api_vacia_o_con_basura_tambien_se_ignora_sin_romper(tmp_path: Path) -> None:
+    for texto in ("[api]\n", "[api]\nactiva = 1\npuerto = 1023\n", "api = true\n"):
+        ajustes = cargar_ajustes(_escribir(tmp_path / "silice.toml", texto))
+        assert ajustes.puerto == 8501 and ajustes.red_local is False
+        assert replace(ajustes, avisos=()) == Ajustes()
+
+
+def test_los_puertos_de_la_api_siguen_leyendose_para_quien_los_consulta(tmp_path: Path) -> None:
+    """`api/rutas/admin_instalacion.py` aún lee `api_activa` y `puerto_api`: describen la verdad
+    nueva (la API siempre está activa y vive en el único puerto)."""
+    ajustes = cargar_ajustes(_escribir(tmp_path / "silice.toml", "[servidor]\npuerto = 8600\n"))
+    assert ajustes.api_activa is True and ajustes.puerto_api == 8600
+
+
+def test_el_puerto_8000_ya_no_choca_con_nada(tmp_path: Path) -> None:
     ajustes = cargar_ajustes(_escribir(tmp_path / "silice.toml", "[servidor]\npuerto = 8000\n"))
-    assert (ajustes.puerto, ajustes.puerto_api) == (8000, 8001)
-    assert len(ajustes.avisos) == 1 and "8001" in ajustes.avisos[0]
-
-
-def test_la_interfaz_en_8001_deja_la_api_en_8000_sin_aviso(tmp_path: Path) -> None:
-    ajustes = cargar_ajustes(_escribir(tmp_path / "silice.toml", "[servidor]\npuerto = 8001\n"))
-    assert (ajustes.puerto, ajustes.puerto_api, ajustes.avisos) == (8001, 8000, ())
+    assert ajustes.puerto == 8000 and ajustes.avisos == ()
 
 
 @pytest.mark.parametrize("nivel", ["ruido", "CRITICAL", "5"])
@@ -194,12 +212,11 @@ def test_el_nivel_en_minusculas_se_normaliza(tmp_path: Path) -> None:
 def test_las_claves_con_tipo_equivocado_no_encienden_nada(tmp_path: Path) -> None:
     ruta = _escribir(
         tmp_path / "silice.toml",
-        '[servidor]\nred_local = "true"\n[api]\nactiva = 1\n'
-        '[interfaz]\nmostrar_investigacion = "si"\n',
+        '[servidor]\nred_local = "true"\n[interfaz]\nmostrar_investigacion = "si"\n',
     )
     ajustes = cargar_ajustes(ruta)
-    assert (ajustes.red_local, ajustes.api_activa, ajustes.mostrar_investigacion) == (False,) * 3
-    assert len(ajustes.avisos) == 3
+    assert (ajustes.red_local, ajustes.mostrar_investigacion) == (False, False)
+    assert len(ajustes.avisos) == 2
 
 
 def test_una_tabla_que_no_es_tabla_se_ignora(tmp_path: Path) -> None:

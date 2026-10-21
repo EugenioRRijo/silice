@@ -1,9 +1,10 @@
 """Arranque y parada de Sílice (RF-98; spec S5 §5.4, §8.1 y §10.1).
 
 `python -m operacion arrancar` prepara las bases, elige la dirección (siempre el bucle local salvo
-la IP explícita de la red local), lanza Streamlit (y Uvicorn si la API está activa) como procesos
-hijos, espera la salud y abre el navegador. Cerrar la ventana detiene todo; `parar` lo hace desde
-otro proceso. Nunca importa Streamlit ni FastAPI: solo los lanza.
+la IP explícita de la red local), lanza **un solo proceso** hijo (Uvicorn, `api.main:app`, que sirve
+la API y la interfaz de React en `/app/`, todo en un solo puerto), espera `GET /salud` y abre el
+navegador en `/app/`. Cerrar la ventana detiene todo; `parar` lo hace desde otro proceso. Nunca
+importa FastAPI: solo lo lanza.
 """
 
 from __future__ import annotations
@@ -32,18 +33,8 @@ LOOPBACK = "127.0.0.1"
 BANDERAS_PYTHON = ("-E", "-s", "-B", "-X", "utf8")
 PLAZO_SALUD_S = 60
 DIRECCIONES_PROHIBIDAS = frozenset({"", "0.0.0.0", "::"})
-OPCIONES_FIJAS: tuple[tuple[str, str], ...] = (
-    ("server.headless", "true"),
-    ("server.fileWatcherType", "none"),
-    ("server.runOnSave", "false"),
-    ("browser.gatherUsageStats", "false"),
-    ("client.showErrorDetails", "none"),
-    ("client.toolbarMode", "minimal"),
-    ("server.maxUploadSize", "20"),
-    ("global.developmentMode", "false"),
-    ("server.enableCORS", "true"),
-    ("server.enableXsrfProtection", "true"),
-)
+RUTA_INTERFAZ = "/app/"
+RUTA_SALUD = "/salud"
 
 
 def elegir_direccion(
@@ -58,29 +49,6 @@ def elegir_direccion(
         f"La IP {ajustes.direccion} de la red local ya no existe en este equipo (la red cambió): "
         f"Sílice arranca solo en {LOOPBACK}. Vuelva a activar la red local para elegir otra IP.",
     )
-
-
-def opciones_streamlit(direccion: str, puerto: int) -> list[str]:
-    pares = [
-        ("server.address", direccion),
-        ("browser.serverAddress", direccion),
-        ("server.port", str(puerto)),
-        ("browser.serverPort", str(puerto)),
-        *OPCIONES_FIJAS,
-    ]
-    return [parte for clave, valor in pares for parte in (f"--{clave}", valor)]
-
-
-def orden_streamlit(python: Path, direccion: str, puerto: int) -> list[str]:
-    return [
-        str(python),
-        *BANDERAS_PYTHON,
-        "-m",
-        "streamlit",
-        "run",
-        "ui/app.py",
-        *opciones_streamlit(direccion, puerto),
-    ]
 
 
 def orden_uvicorn(python: Path, direccion: str, puerto: int) -> list[str]:
@@ -114,13 +82,13 @@ def entorno_hijos(
     *,
     base: Mapping[str, str] | None = None,
 ) -> dict[str, str]:
-    """El entorno de Streamlit y Uvicorn: ninguna escritura cae en la carpeta del programa y nada
-    del entorno del usuario (`PYTHON*`, `STREAMLIT_*`, `VIRTUAL_ENV`) cambia su comportamiento."""
+    """El entorno de Uvicorn: ninguna escritura cae en la carpeta del programa y nada del entorno
+    del usuario (`PYTHON*`, `VIRTUAL_ENV`) cambia su comportamiento."""
     origen = os.environ if base is None else base
     env = {
         k: v
         for k, v in origen.items()
-        if not k.upper().startswith(("STREAMLIT_", "PYTHON")) and k.upper() != "VIRTUAL_ENV"
+        if not k.upper().startswith("PYTHON") and k.upper() != "VIRTUAL_ENV"
     }
     caso = config.ruta_caso_por_defecto(entorno)
     env.update(
@@ -137,8 +105,7 @@ def entorno_hijos(
         }
     )
     if config.es_producto():
-        # SEG-1 (auditoria 2026-10-13): en el producto el acceso con cuentas siempre esta encendido;
-        # sin esto `ui.sesion` daba los tres roles a cualquiera (VALOR_POR_DEFECTO "0").
+        # SEG-1 (auditoria 2026-10-13): en el producto el acceso con cuentas siempre esta encendido.
         env["SILICE_ACCESO"] = "1"
     env.pop("SILICE_MODO_ENTREGA", None)
     if not ajustes.mostrar_investigacion:
@@ -151,7 +118,6 @@ class EstadoServidor:
     pids: tuple[int, ...]
     direccion: str
     puerto: int
-    puerto_api: int | None
     inicio: str
 
 
@@ -162,7 +128,6 @@ def leer_estado(entorno: Mapping[str, str] | None = None) -> EstadoServidor | No
             tuple(int(p) for p in datos["pids"]),
             str(datos["direccion"]),
             int(datos["puerto"]),
-            None if datos.get("puerto_api") is None else int(datos["puerto_api"]),
             str(datos["inicio"]),
         )
     except (OSError, ValueError, KeyError, TypeError):
@@ -184,10 +149,14 @@ def _url(direccion: str, puerto: int) -> str:
 
 
 def _sonda(url: str) -> bool:
+    """`GET /salud` de Sílice: 200 y `{"estado": "ok"}` (otro programa en ese puerto no pasa)."""
     try:
-        with urllib.request.urlopen(url + "/_stcore/health", timeout=2) as respuesta:  # noqa: S310
-            return bool(respuesta.status == 200)
-    except (urllib.error.URLError, OSError, TimeoutError):
+        with urllib.request.urlopen(url + RUTA_SALUD, timeout=2) as respuesta:  # noqa: S310
+            if respuesta.status != 200:
+                return False
+            cuerpo = json.loads(respuesta.read(1024).decode("utf-8", errors="replace"))
+            return isinstance(cuerpo, dict) and cuerpo.get("estado") == "ok"
+    except (urllib.error.URLError, OSError, TimeoutError, ValueError):
         return False
 
 
@@ -256,9 +225,9 @@ def arrancar(
     if estado is not None:
         url = _url(estado.direccion, estado.puerto)
         if sonda(url):
-            salida(f"Sílice ya está en marcha: {url}")
+            salida(f"Sílice ya está en marcha: {url}{RUTA_INTERFAZ}")
             if not sin_navegador:
-                abrir(url)
+                abrir(url + RUTA_INTERFAZ)
             return 0
         borrar_estado(entorno)  # un registro viejo de una instancia que ya no existe
     ruta_ajustes = config.ruta_ajustes(entorno)
@@ -293,21 +262,15 @@ def arrancar(
     for aviso in avisos:
         logger.warning("%s", aviso)
         salida(f"AVISO: {aviso}")
-    puertos = [("la interfaz", ajustes.puerto)]
-    if ajustes.api_activa:
-        puertos.append(("la API", ajustes.puerto_api))
-    for nombre, puerto in puertos:
-        if not puerto_libre(direccion, puerto):
-            salida(
-                f"El puerto {puerto} de {nombre} lo usa otro programa. Cierre ese programa "
-                f"o cambie el puerto en {ruta_ajustes}."
-            )
-            return 1
+    if not puerto_libre(direccion, ajustes.puerto):
+        salida(
+            f"El puerto {ajustes.puerto} lo usa otro programa. Cierre ese programa "
+            f"o cambie el puerto en {ruta_ajustes}."
+        )
+        return 1
     python = Path(sys.executable)
     env = entorno_hijos(ajustes, direccion, entorno)
-    ordenes = [("streamlit", orden_streamlit(python, direccion, ajustes.puerto))]
-    if ajustes.api_activa:
-        ordenes.append(("api", orden_uvicorn(python, direccion, ajustes.puerto_api)))
+    ordenes = [("uvicorn", orden_uvicorn(python, direccion, ajustes.puerto))]
     procesos = []
     for nombre, orden in ordenes:
         proceso = lanzar(orden, env, config.RAIZ)
@@ -322,7 +285,6 @@ def arrancar(
             (os.getpid(), *(p.pid for p in procesos)),
             direccion,
             ajustes.puerto,
-            ajustes.puerto_api if ajustes.api_activa else None,
             datetime.now().isoformat(timespec="seconds"),
         ),
         entorno,
@@ -332,17 +294,17 @@ def arrancar(
         limite = reloj() + PLAZO_SALUD_S
         while not sonda(url):
             if reloj() >= limite or any(p.poll() is not None for p in procesos):
-                logger.error("Streamlit no respondió en %s s", PLAZO_SALUD_S)
+                logger.error("Uvicorn no respondió en %s s", PLAZO_SALUD_S)
                 salida(
                     f"Sílice no respondió en {PLAZO_SALUD_S} s. Mire el registro en "
                     f"{config.carpeta_registros(entorno)}."
                 )
                 return 1
             dormir(0.5)
-        salida(f"Sílice está en marcha: {url}")
+        salida(f"Sílice está en marcha: {url}{RUTA_INTERFAZ}")
         salida("Para detener Sílice, cierre esta ventana.")
         if not sin_navegador:
-            abrir(url)
+            abrir(url + RUTA_INTERFAZ)
         while all(p.poll() is None for p in procesos):
             dormir(1)
         logger.error("un proceso de Sílice terminó solo")

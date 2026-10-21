@@ -33,10 +33,9 @@ def _demostracion(_argumentos: argparse.Namespace) -> int:
 def _estado_red() -> int:
     ajustes = config.cargar_ajustes(config.ruta_ajustes())
     if ajustes.red_local:
-        print(f"Red local: encendida en http://{ajustes.direccion}:{ajustes.puerto}")
+        print(f"Red local: encendida en http://{ajustes.direccion}:{ajustes.puerto}/app/")
     else:
-        print(f"Red local: apagada (solo http://127.0.0.1:{ajustes.puerto})")
-    print(f"API: {'activa' if ajustes.api_activa else 'apagada'} (puerto {ajustes.puerto_api})")
+        print(f"Red local: apagada (solo http://127.0.0.1:{ajustes.puerto}/app/)")
     return 0
 
 
@@ -77,7 +76,7 @@ def _red_local(argumentos: argparse.Namespace) -> int:
     ):
         return 1
     ajustes = config.cargar_ajustes(ruta)
-    puertos = [ajustes.puerto] + ([ajustes.puerto_api] if ajustes.api_activa else [])
+    puertos = [ajustes.puerto]  # un solo proceso, un solo puerto
     resultado = red.activar(
         elegida.ip,
         programa=Path(sys.executable),
