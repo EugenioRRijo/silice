@@ -2,8 +2,9 @@
 
 Vigilancias: (1) la lista de toda columna `responsable` de los metadatos, cada una con la prueba
 que dice que la escribe el usuario de la sesión (una columna nueva sin dueño hace fallar la lista);
-(2) el literal `"sistema"` aparece una sola vez en `ui/` (`ui.hoja.RESPONSABLE_POR_OMISION`);
-(3) ningún llamador de `ui/` pasa como `responsable=` o `usuario=` un texto fijo (salvo esa
+(2) el literal `"sistema"` aparece una sola vez en `aplicacion/` (`hoja.RESPONSABLE_POR_OMISION`);
+(3) ningún llamador de `aplicacion/` ni de `api/rutas/` pasa como `responsable=` o `usuario=` un
+texto fijo (salvo esa
 constante, de la transición RP8-4).
 
 Retiro de Streamlit (F4): se fueron con las pantallas la vigilancia de los cuadros «Responsable»
@@ -97,12 +98,17 @@ def _tablas_con_responsable() -> set[str]:
     }
 
 
-def _archivos_de_ui() -> list[Path]:
-    return sorted((RAIZ / "ui").rglob("*.py"))
+def _archivos_que_guardan() -> list[Path]:
+    """Las capas que hoy guardan: `aplicacion/` y `api/rutas/` (F8 retiro `ui/`)."""
+    archivos = sorted(
+        [*(RAIZ / "aplicacion").rglob("*.py"), *(RAIZ / "api" / "rutas").rglob("*.py")]
+    )
+    assert archivos, "la guardia no ve aplicacion/ ni api/rutas/"
+    return archivos
 
 
 def _donde(archivo: Path, nodo: ast.AST) -> str:
-    """`ui/x.py:12`; fuera del repositorio (las autopruebas en `tmp_path`), solo el nombre."""
+    """`aplicacion/x.py:12`; fuera del repositorio (autopruebas en `tmp_path`), solo el nombre."""
     nombre = archivo.relative_to(RAIZ).as_posix() if archivo.is_relative_to(RAIZ) else archivo.name
     return f"{nombre}:{nodo.lineno}"
 
@@ -142,7 +148,7 @@ def test_la_lista_no_nombra_tablas_que_no_son_de_responsable(tabla: str) -> None
 def _literales_sistema() -> list[str]:
     return sorted(
         _donde(archivo, nodo)
-        for archivo in _archivos_de_ui()
+        for archivo in _archivos_que_guardan()
         for nodo in ast.walk(ast.parse(archivo.read_text(encoding="utf-8")))
         if isinstance(nodo, ast.Constant)
         and isinstance(nodo.value, str)
@@ -150,16 +156,18 @@ def _literales_sistema() -> list[str]:
     )
 
 
-def test_el_literal_sistema_aparece_una_sola_vez_en_ui() -> None:
+def test_el_literal_sistema_aparece_una_sola_vez_en_la_capa_que_guarda() -> None:
+    """Exactamente una vez, en `aplicacion/hoja.py` (`RESPONSABLE_POR_OMISION`, la transicion
+    RP8-4): ninguna otra ruta ni modulo escribe «sistema» como responsable."""
     donde = _literales_sistema()
-    assert len(donde) == 1 and donde[0].startswith("ui/hoja.py:")
+    assert len(donde) == 1 and donde[0].startswith("aplicacion/hoja.py:")
     linea = int(donde[0].split(":")[1])
-    texto = (RAIZ / "ui/hoja.py").read_text(encoding="utf-8").splitlines()[linea - 1]
+    texto = (RAIZ / "aplicacion/hoja.py").read_text(encoding="utf-8").splitlines()[linea - 1]
     assert texto.startswith("RESPONSABLE_POR_OMISION = ")
     assert hoja.RESPONSABLE_POR_OMISION == "sistema"
 
 
-# --- (3) ningún responsable fijo en los llamadores de ui/ ---------------------------------------
+# --- (3) ningún responsable fijo en los llamadores de aplicacion/ y api/rutas/ ----------------
 
 
 def _es_texto_fijo(valor: ast.expr) -> bool:
@@ -176,7 +184,15 @@ def _es_texto_fijo(valor: ast.expr) -> bool:
     return nombre is not None and nombre.isupper()
 
 
+#: Las rutas de presupuestos escriben sin sesion de persona cuando la API corre sin clave y usan la
+#: constante `USUARIO_SIN_CLAVE` ("api (sin clave)"): excepcion unica, por archivo y por nombre.
+SIN_CLAVE_PERMITIDO = {"api/rutas/presupuestos.py"}
+
+
 def _responsables_fijos(archivo: Path) -> list[str]:
+    sin_clave = archivo.is_relative_to(RAIZ) and (
+        archivo.relative_to(RAIZ).as_posix() in SIN_CLAVE_PERMITIDO
+    )
     salida = []
     for nodo in ast.walk(ast.parse(archivo.read_text(encoding="utf-8"))):
         if not isinstance(nodo, ast.Call):
@@ -190,6 +206,7 @@ def _responsables_fijos(archivo: Path) -> list[str]:
                 v
                 for v in valores
                 if _es_texto_fijo(v)
+                and not (sin_clave and isinstance(v, ast.Name) and v.id == "USUARIO_SIN_CLAVE")
                 # `quien() or hoja.RESPONSABLE_POR_OMISION`: la transición (RP8-4), permitida
                 and not (
                     permitido
@@ -203,11 +220,11 @@ def _responsables_fijos(archivo: Path) -> list[str]:
     return salida
 
 
-def test_ningun_llamador_de_ui_pasa_un_responsable_fijo() -> None:
-    """RF-82: lo que `ui/` guarda lleva al usuario de la sesión, no un texto puesto en el código.
+def test_ningun_llamador_pasa_un_responsable_fijo() -> None:
+    """RF-82: lo que `aplicacion/` y `api/rutas/` guardan lleva al usuario de la sesión.
     Única excepción: el respaldo `... or hoja.RESPONSABLE_POR_OMISION` de la transición RP8-4.
     La caja «Responsable» no ve este camino (no hay cuadro): por eso se vigila aparte."""
-    fijos = sorted(d for archivo in _archivos_de_ui() for d in _responsables_fijos(archivo))
+    fijos = sorted(d for archivo in _archivos_que_guardan() for d in _responsables_fijos(archivo))
     assert fijos == []
 
 
@@ -225,3 +242,15 @@ def test_la_vigilancia_de_responsables_fijos_ve_cada_forma(tmp_path: Path) -> No
     )
     lineas = sorted(int(d.rsplit(":", 1)[1]) for d in _responsables_fijos(archivo))
     assert lineas == [1, 2, 3, 5]
+    # `USUARIO_SIN_CLAVE` solo se perdona en api/rutas/presupuestos.py, nunca en otro archivo
+    otro = tmp_path / "y.py"
+    otro.write_text("f(usuario=USUARIO_SIN_CLAVE)\n", encoding="utf-8")
+    assert len(_responsables_fijos(otro)) == 1
+    permitido = RAIZ / "api" / "rutas" / "presupuestos.py"
+    assert _responsables_fijos(permitido) == []
+
+
+def test_la_guardia_de_responsables_recorre_la_capa_que_guarda() -> None:
+    """No pasa en vacio: ve las dos carpetas y los modulos que llaman a guardar."""
+    nombres = {a.relative_to(RAIZ).as_posix() for a in _archivos_que_guardan()}
+    assert {"aplicacion/hoja.py", "aplicacion/hoja_guardado.py", "api/rutas/hoja.py"} <= nombres

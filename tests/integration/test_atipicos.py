@@ -368,7 +368,7 @@ def test_solo_las_dos_pantallas_de_precios_y_su_ruta_importan_la_busqueda_de_rf_
     vigilados = {"aplicacion.atipicos", "ml.anomaly.series"}
     carpetas = ("core", "paquete", "api", "seguridad", "operacion", "asistente", "aplicacion")
     importadores = set()
-    for carpeta in (*carpetas, "ui", "ml"):
+    for carpeta in (*carpetas, "ml"):
         for archivo in (raiz / carpeta).rglob("*.py"):
             nombres = set()
             for nodo in ast.walk(ast.parse(archivo.read_text(encoding="utf-8"))):

@@ -40,8 +40,8 @@ LICENCIA = "Copyright (c) 2026 Eugenio Rijo. Todos los derechos reservados.\n"
 
 
 def _archivos() -> list[str]:
-    de_ui = [ruta.relative_to(RAIZ).as_posix() for ruta in sorted((RAIZ / "ui").rglob("*.py"))]
-    return [*VIGENTES, *de_ui]
+    assert VIGENTES, "la guardia no recorre una lista vacia"
+    return [*VIGENTES]
 
 
 def _texto(ruta: str) -> str:
