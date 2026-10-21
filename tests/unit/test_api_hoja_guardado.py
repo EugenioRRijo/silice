@@ -1121,3 +1121,37 @@ def test_toda_funcion_de_la_api_que_crea_versiones_usa_la_sesion_de_escritura() 
                 assert "SesionDeEscrituraDep" in anotaciones, (archivo.name, definicion.name)
                 assert "SesionDep" not in anotaciones, (archivo.name, definicion.name)
     assert ("hoja.py", "guardar_borrador") in encontradas  # mira algo
+
+
+# --- el bloqueo de escritura se suelta aunque se rechace antes de escribir ---
+
+
+def test_si_se_rechaza_por_version_mas_nueva_la_transaccion_termina_y_el_bloqueo_queda_libre(
+    _entorno,
+) -> None:
+    """La comprobacion de la version mas nueva es la primera lectura: abre `BEGIN IMMEDIATE`. Si
+    rechaza, la funcion deshace esa transaccion ella misma (no espera a que alguien cierre la
+    sesion): otra conexion puede tomar el bloqueo de escritura sin esperar."""
+    from aplicacion import hoja_guardado
+    from core.catalog import abrir_sesion_de_escritura
+
+    uno, ficha_uno = _ana()
+    otro, ficha_otro = _ana()
+    mio = _con_administracion(uno, ficha_uno, "0.30")
+    de_otro = _con_administracion(otro, ficha_otro, "0.20")
+    assert _guardar(otro, ficha_otro, de_otro, 1).json()["codigo"] == "002"
+    motor = crear_motor(f"sqlite:///{_entorno.as_posix()}")
+    try:
+        with abrir_sesion_de_escritura(motor) as sesion:
+            with pytest.raises(hoja_guardado.VersionMasNueva) as caido:
+                hoja_guardado.guardar(
+                    sesion, _huella(ficha_uno), mio, 1, fuente=FUENTE, responsable="Ana <ana>"
+                )
+            assert (caido.value.vigente, caido.value.abierta) == ("002", "001")
+            assert not sesion.in_transaction()  # la transaccion que abrio la lectura, deshecha
+            with closing(sqlite3.connect(_entorno.as_posix(), timeout=0)) as otra:
+                otra.isolation_level = None
+                otra.execute("BEGIN IMMEDIATE")  # sin esperar: nadie retiene el bloqueo
+                otra.execute("ROLLBACK")
+    finally:
+        motor.dispose()
