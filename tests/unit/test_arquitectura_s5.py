@@ -12,7 +12,7 @@ import pytest
 
 from tests.fixtures.arquitectura import archivos, importaciones, llamadas, ruta
 
-#: Lo único de `operacion` que `ui` y `api` NO pueden importar: arrancar y la CLI (spec S5 §5.2).
+#: Lo único de `operacion` que `aplicacion` y `api` NO pueden importar: arrancar y la CLI (S5 §5.2).
 PRIVADOS_DE_OPERACION = ("operacion.lanzador", "operacion.ordenes_100", "operacion.__main__")
 
 
@@ -48,14 +48,14 @@ def test_migraciones_no_importa_streamlit_ui_api_ni_operacion() -> None:
     assert _infractores(("migraciones",), {"streamlit", "ui", "api", "operacion"}) == []
 
 
-def test_ui_y_api_no_importan_migraciones() -> None:
-    assert _infractores(("ui", "api"), {"migraciones"}) == []
+def test_aplicacion_y_api_no_importan_migraciones() -> None:
+    assert _infractores(("aplicacion", "api"), {"migraciones"}) == []
 
 
-def test_ui_y_api_no_importan_el_lanzador_ni_la_cli() -> None:
+def test_aplicacion_y_api_no_importan_el_lanzador_ni_la_cli() -> None:
     infractores = sorted(
         f"{ruta(archivo)}: {modulo}"
-        for paquete in ("ui", "api")
+        for paquete in ("aplicacion", "api")
         for archivo in archivos(paquete)
         for modulo in importaciones(archivo)
         if any(modulo == p or modulo.startswith(p + ".") for p in PRIVADOS_DE_OPERACION)
@@ -63,11 +63,11 @@ def test_ui_y_api_no_importan_el_lanzador_ni_la_cli() -> None:
     assert infractores == []
 
 
-def test_ni_la_interfaz_ni_la_api_crean_el_esquema() -> None:
+def test_ni_la_aplicacion_ni_la_api_crean_el_esquema() -> None:
     """RV-5: `crear_esquema` queda para las pruebas en memoria y los scripts de siembra."""
     infractores = sorted(
         f"{ruta(archivo)}:{linea}"
-        for paquete in ("ui", "api")
+        for paquete in ("aplicacion", "api")
         for archivo in archivos(paquete)
         for linea in llamadas(archivo, "crear_esquema")
     )
@@ -104,8 +104,8 @@ def _importaciones_al_cargar(archivo, raices: set[str]) -> list[str]:
     return sorted(halladas)
 
 
-@pytest.mark.parametrize("archivo", archivos("ui"), ids=ruta)
-def test_ningun_modulo_de_ui_importa_scripts_ni_fixtures_al_cargar(archivo) -> None:
+@pytest.mark.parametrize("archivo", archivos("aplicacion"), ids=ruta)
+def test_ningun_modulo_de_aplicacion_importa_scripts_ni_fixtures_al_cargar(archivo) -> None:
     assert _importaciones_al_cargar(archivo, {"scripts", "tests"}) == []
 
 

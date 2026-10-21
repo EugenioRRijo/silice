@@ -18,7 +18,6 @@ RAIZ = Path(__file__).resolve().parents[2]
 PAQUETES_FUERA_DEL_NUCLEO = (
     "adapters",
     "ml",
-    "ui",
     "api",
     "scripts",
     "tests",
@@ -257,24 +256,21 @@ def test_produccion_respeta_su_regla(tmp_path):
     assert not {k: v for k, v in hallados.items() if v}
 
 
-#: Lo que cada modulo de ui/ no importa en tiempo de ejecucion (fuera de `if TYPE_CHECKING:`).
-#: Reglas de interfaz del plan de C3 (Global Constraints). Retiro de Streamlit (F4): se fueron con
-#: sus modulos las reglas de las paginas, de `ui/resultado.py`, `ui/recorridos.py` y
-#: `ui/existencias.py`. F5: tambien las de los puentes `ui/elaboracion.py`, `ui/proyectos.py` y
-#: `ui/atipicos.py` (la capa de aplicacion tiene las suyas: `PROHIBIDOS_EN_APLICACION`).
-PROHIBIDOS_EN_UI: dict[str, tuple[str, ...]] = {
-    # RA-2: "no escribe en la base" vigilado tambien por core.catalog, core.budget y sqlalchemy.
-    "ui/composicion.py": (
-        "streamlit",
-        "pandas",
-        "ui.caso",
-        "sqlalchemy",
-        "core.catalog",
-        "core.budget",
-    ),
+#: Lo que cada modulo de la hoja y su composicion no importa en tiempo de ejecucion (fuera de
+#: `if TYPE_CHECKING:`). Eran las reglas de `ui/composicion.py` y `ui/hoja.py`; con el retiro de
+#: Streamlit (F8) pasan a sus destinos definitivos en `aplicacion/`.
+PROHIBIDOS_EN_LA_HOJA: dict[str, tuple[str, ...]] = {
+    # RA-2 ya no vigila `core.catalog` ni `core.budget`: `aplicacion/composicion.py` guarda la
+    # composicion (`guardar_composicion`), asi que los usa a proposito. Sigue sin tocar SQL a mano.
+    "aplicacion/composicion.py": ("streamlit", "pandas", "sqlalchemy"),
     # SF 1.8: la hoja orquesta el borrador y la elaboracion sin pintar (FR-5: sin Streamlit).
-    "ui/hoja.py": ("streamlit", "pandas", "ui.caso"),
+    "aplicacion/hoja.py": ("streamlit", "pandas"),
 }
+
+
+def test_la_carpeta_ui_no_existe():
+    """Retiro de Streamlit (F8): ya no hay interfaz clasica; nada vuelve a crear `ui/`."""
+    assert not (RAIZ / "ui").exists()
 
 
 def _imports_de_ejecucion(ruta: Path) -> set[str]:
@@ -301,26 +297,26 @@ def _imports_de_ejecucion(ruta: Path) -> set[str]:
     return importados
 
 
-@pytest.mark.parametrize("modulo", sorted(PROHIBIDOS_EN_UI))
-def test_ui_respeta_sus_importaciones_prohibidas(modulo):
-    """INV-043 (criterio S, spec de cierre §4) y reglas de interfaz de C3: cada modulo de ui/
-    importa solo lo que su responsabilidad pide."""
+@pytest.mark.parametrize("modulo", sorted(PROHIBIDOS_EN_LA_HOJA))
+def test_la_hoja_respeta_sus_importaciones_prohibidas(modulo):
+    """INV-043 (criterio S, spec de cierre §4) y reglas de C3: cada modulo importa solo lo que su
+    responsabilidad pide."""
     importados = _imports_de_ejecucion(RAIZ / modulo)
     prohibidos = {
         nombre
         for nombre in importados
-        for prefijo in PROHIBIDOS_EN_UI[modulo]
+        for prefijo in PROHIBIDOS_EN_LA_HOJA[modulo]
         if nombre == prefijo or nombre.startswith(prefijo + ".")
     }
     assert not prohibidos, f"{modulo} importa {sorted(prohibidos)}"
 
 
-def test_una_sola_lectura_de_celdas_de_tabla_en_ui():
-    """INV-046: las celdas de las tablas de `st.data_editor` se leen solo con
-    `ui.composicion.texto_de_celda`; ningun modulo de ui/ define su propia copia."""
+def test_una_sola_lectura_de_celdas_de_tabla():
+    """INV-046: las celdas de las tablas se leen solo con `aplicacion.composicion.texto_de_celda`;
+    ningun otro modulo de `aplicacion/` define su propia copia."""
     copias = sorted(
         archivo.relative_to(RAIZ).as_posix()
-        for archivo in (RAIZ / "ui").rglob("*.py")
+        for archivo in (RAIZ / "aplicacion").rglob("*.py")
         for nodo in ast.walk(ast.parse(archivo.read_text(encoding="utf-8")))
         if isinstance(nodo, ast.FunctionDef) and nodo.name in {"_celda_de_cantidad", "_texto"}
     )
@@ -497,7 +493,7 @@ def test_la_guardia_de_scripts_ve_cada_forma_de_importar_tests(tmp_path):
     assert detectadas == fuentes
 
 
-# --- SF1: el grafo de dependencias de adapters/espacio y de ui.hoja no tiene ciclos --------------
+# --- SF1: el grafo de dependencias de adapters/espacio y de aplicacion.hoja no tiene ciclos ----
 
 
 def _modulo_de(archivo: Path) -> str:
@@ -565,9 +561,9 @@ def test_ningun_submodulo_de_espacio_importa_el_paquete_raiz():
     assert not culpables, culpables
 
 
-def test_ui_hoja_depende_de_adapters_espacio_y_este_no_depende_de_ui():
-    """La arista es ui.hoja -> adapters.espacio y no existe la inversa: sin ciclo entre capas."""
-    de_hoja = {m for m in _imports(RAIZ / "ui" / "hoja.py") if m.startswith("adapters")}
+def test_la_hoja_depende_de_adapters_espacio_y_este_no_depende_de_aplicacion():
+    """La arista es aplicacion.hoja -> adapters.espacio y no existe la inversa: sin ciclo."""
+    de_hoja = {m for m in _imports(RAIZ / "aplicacion" / "hoja.py") if m.startswith("adapters")}
     assert de_hoja and all(
         m == "adapters.espacio" or m.startswith("adapters.espacio.") for m in de_hoja
     ), de_hoja
@@ -575,7 +571,7 @@ def test_ui_hoja_depende_de_adapters_espacio_y_este_no_depende_de_ui():
         f"{_ruta(a)}: {m}"
         for a in _archivos("adapters/espacio")
         for m in _imports(a)
-        if m == "ui" or m.startswith("ui.")
+        if m == "ui" or m.startswith(("ui.", "aplicacion"))
     ]
     assert not inversa, inversa
 

@@ -44,8 +44,21 @@ RUTA_CI = RAIZ / ".github" / "workflows" / "ci.yml"
 CARPETAS_SIN_HTML_INSEGURO = ("api", "seguridad", "paquete", "auditoria")
 RAMAS_SIN_NUCLEO = ("inc/080-s3-5", "inc/080-s3-6")
 REQUISITOS_S3_0 = (
-    "UC-21", "UC-22", "UC-23", "RF-80", "RF-81", "RF-82", "RF-83", "RF-84", "RF-85", "RF-86",
-    "RF-87", "RF-88", "RF-89", "RNF-16", "RNF-17",
+    "UC-21",
+    "UC-22",
+    "UC-23",
+    "RF-80",
+    "RF-81",
+    "RF-82",
+    "RF-83",
+    "RF-84",
+    "RF-85",
+    "RF-86",
+    "RF-87",
+    "RF-88",
+    "RF-89",
+    "RNF-16",
+    "RNF-17",
 )
 
 #: Prueba -> implementación, por fase (C3: el commit de la prueba va antes).
@@ -72,10 +85,12 @@ PARES_S3: tuple[ParTDD, ...] = (
     ParTDD("tests/integration/test_revision_recibir.py", "aplicacion/revision.py", "S3-4"),
     ParTDD("tests/integration/test_api_auditorias.py", "api/rutas/auditorias.py", "S3-4"),
     ParTDD("tests/unit/test_claves_api_y_red.py", "seguridad/claves_api.py", "S3-3"),
-    ParTDD("tests/unit/test_r15_geometria_plano.py",
-           "adapters/espacio/planos/geometria_plano.py", "S3-5"),
+    ParTDD(
+        "tests/unit/test_r15_geometria_plano.py",
+        "adapters/espacio/planos/geometria_plano.py",
+        "S3-5",
+    ),
     ParTDD("tests/unit/test_r16_contraste.py", "adapters/espacio/planos/contraste.py", "S3-5"),
-    ParTDD("tests/unit/test_ui_contraste.py", "ui/contraste.py", "S3-5"),
     ParTDD("tests/unit/test_planos_auditoria_s3.py", "adapters/espacio/planos/ids.py", "S3-5"),
     ParTDD("tests/unit/test_deteccion_planos.py", "scripts/medir_deteccion_planos.py", "S3-5"),
     ParTDD("tests/unit/test_series_atipicas.py", "ml/anomaly/series.py", "S3-6"),
@@ -106,7 +121,8 @@ def evaluar_protocolos(raiz: Path, huellas: Path) -> tuple[Estado, str]:
     if malos:
         return Estado.FALLA, "; ".join(malos)
     return Estado.OK, "huella escrita de los protocolos y su lista: " + ", ".join(
-        p.rpartition("/")[2] for p in PROTOCOLOS)
+        p.rpartition("/")[2] for p in PROTOCOLOS
+    )
 
 
 def evaluar_literal_of001(ruta: Path) -> tuple[Estado, str]:

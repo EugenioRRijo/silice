@@ -72,7 +72,7 @@ def test_las_orquestaciones_de_s3_no_usan_streamlit(modulo: str) -> None:
 def test_ningun_modulo_usa_unsafe_allow_html() -> None:
     cuales = [
         ruta.relative_to(RAIZ).as_posix()
-        for carpeta in ("ui", "api", "seguridad", "paquete", "auditoria")
+        for carpeta in ("api", "seguridad", "paquete", "auditoria", "aplicacion")
         for ruta in _archivos(carpeta)
         if "unsafe_allow_html" in ruta.read_text(encoding="utf-8")
     ]
@@ -80,7 +80,7 @@ def test_ningun_modulo_usa_unsafe_allow_html() -> None:
 
 
 #: Nada por usuario en cachés compartidas por el proceso (S3 §4.4): estas son las únicas
-#: cachés de `ui/`, `seguridad/` y `paquete/`, y ninguna guarda datos de una persona.
+#: cachés de `seguridad/` y `paquete/`, y ninguna guarda datos de una persona.
 CACHES_PERMITIDAS = {
     "seguridad/cuentas.py": 1,  # la huella de relleno para usuarios inexistentes
 }
@@ -88,7 +88,7 @@ CACHES_PERMITIDAS = {
 
 def test_ninguna_cache_compartida_guarda_datos_de_una_persona() -> None:
     cuantas: dict[str, int] = {}
-    for carpeta in ("ui", "seguridad", "paquete", "auditoria", "api"):
+    for carpeta in ("aplicacion", "seguridad", "paquete", "auditoria", "api"):
         for ruta in _archivos(carpeta):
             texto = ruta.read_text(encoding="utf-8")
             n = sum(
@@ -136,11 +136,6 @@ LLAMADORES = {
     ("core/budget/cotizacion.py", "guardar_presupuesto"),
     ("core/budget/edicion.py", "guardar_presupuesto"),
     ("core/budget/importacion.py", "guardar_presupuesto"),
-    ("ui/hoja.py", "guardar_edicion"),
-    ("ui/hoja.py", "guardar_presupuesto"),
-    ("ui/hoja.py", "restaurar_version"),
-    ("ui/hoja.py", "cotizar_insumo"),
-    ("ui/hoja.py", "_retirar_cotizacion"),
     ("aplicacion/actualizacion.py", "actualizar_precios"),
     ("api/rutas/presupuestos.py", "guardar_presupuesto"),
     ("api/rutas/presupuestos.py", "actualizar_precios"),
@@ -156,9 +151,8 @@ LLAMADORES = {
     # S1: la conversión de moneda; S2: la decisión de recuperación y la obra de control
     ("core/budget/moneda.py", "guardar_presupuesto"),
     ("core/budget/decision.py", "guardar_edicion"),
-    ("ui/hoja.py", "convertir_version"),
     ("aplicacion/control.py", "aplicar_decision"),
-    # T10 (hoja en la interfaz nueva, Plan C): la copia de `ui/hoja.py` llama lo mismo que ella
+    # T10 (hoja en la interfaz nueva, Plan C): la hoja de `aplicacion/` (ya sin la copia de `ui/`)
     ("aplicacion/hoja.py", "guardar_edicion"),
     ("aplicacion/hoja.py", "guardar_presupuesto"),
     ("aplicacion/hoja.py", "restaurar_version"),
@@ -184,7 +178,6 @@ def _llamadas_del_embudo():
     for carpeta in (
         "core",
         "aplicacion",
-        "ui",
         "api",
         "scripts",
         "adapters",
