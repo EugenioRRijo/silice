@@ -370,8 +370,8 @@ def test_la_instalacion_informa_red_api_y_respaldos_vacios() -> None:
     navegador, _ = _admin()
     cuerpo = navegador.get("/v1/admin/instalacion").json()
     assert cuerpo["red_local"] is False
-    assert cuerpo["api_activa"] is True  # un solo proceso: la API siempre está
-    assert cuerpo["puerto"] > 0 and cuerpo["puerto_api"] == cuerpo["puerto"]
+    assert cuerpo["puerto"] > 0
+    assert "api_activa" not in cuerpo and "puerto_api" not in cuerpo  # un solo proceso (F10)
     assert cuerpo["respaldos"] == []
     assert cuerpo["pendientes"] == []
     assert cuerpo["sensible"] == {"permitida": True, "motivo": ""}

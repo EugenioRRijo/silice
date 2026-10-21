@@ -185,11 +185,9 @@ def test_la_tabla_api_vacia_o_con_basura_tambien_se_ignora_sin_romper(tmp_path: 
         assert replace(ajustes, avisos=()) == Ajustes()
 
 
-def test_los_puertos_de_la_api_siguen_leyendose_para_quien_los_consulta(tmp_path: Path) -> None:
-    """`api/rutas/admin_instalacion.py` aún lee `api_activa` y `puerto_api`: describen la verdad
-    nueva (la API siempre está activa y vive en el único puerto)."""
-    ajustes = cargar_ajustes(_escribir(tmp_path / "silice.toml", "[servidor]\npuerto = 8600\n"))
-    assert ajustes.api_activa is True and ajustes.puerto_api == 8600
+def test_ajustes_ya_no_expone_api_activa_ni_puerto_api() -> None:
+    """Un solo proceso y un puerto (F10): las propiedades de compatibilidad se retiraron."""
+    assert not hasattr(Ajustes, "api_activa") and not hasattr(Ajustes, "puerto_api")
 
 
 def test_el_puerto_8000_ya_no_choca_con_nada(tmp_path: Path) -> None:

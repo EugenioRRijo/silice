@@ -47,25 +47,9 @@ def test_sin_entorno_lee_el_del_proceso(monkeypatch: pytest.MonkeyPatch) -> None
     assert entorno.modo_entrega_activo() is False
 
 
-# --- url_clasica (la interfaz Streamlit, para enlazar las páginas aún no migradas) ------------
-
-
-def test_url_clasica_por_defecto_es_el_bucle_local_con_el_puerto_de_los_ajustes() -> None:
-    assert entorno.url_clasica({}) == "http://127.0.0.1:8501/"
-    config.guardar_ajustes(config.ruta_ajustes(), config.Ajustes(puerto=8600))
-    assert entorno.url_clasica({}) == "http://127.0.0.1:8600/"
-
-
-def test_url_clasica_usa_la_ip_en_la_que_escuchan_las_dos_interfaces() -> None:
-    """El lanzador arranca Streamlit y la API en la misma IP y se la pasa en `SILICE_DIRECCION`."""
-    assert entorno.url_clasica({"SILICE_DIRECCION": "192.168.1.20"}) == "http://192.168.1.20:8501/"
-
-
-@pytest.mark.parametrize(
-    "direccion", ["0.0.0.0", "::", "8.8.8.8", "no-es-ip", "", "fe80::1", "127.0.0.2"]
-)
-def test_url_clasica_no_publica_una_ip_que_no_sea_privada(direccion: str) -> None:
-    assert entorno.url_clasica({"SILICE_DIRECCION": direccion}) == "http://127.0.0.1:8501/"
+def test_url_clasica_ya_no_existe() -> None:
+    """Streamlit se retiro (F10): `aplicacion.entorno` no calcula su direccion."""
+    assert not hasattr(entorno, "url_clasica")
 
 
 def test_modo_entrega_solo_se_activa_con_el_valor_exacto_1() -> None:
