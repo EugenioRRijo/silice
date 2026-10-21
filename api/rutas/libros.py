@@ -152,8 +152,11 @@ class IndicadorRespuesta(BaseModel):
     """Un total del libro (`actual`) frente al de Sílice (`meta`), RS2-7: `delta = actual - meta`.
     Es presentación (RS2-12, NORMAS §2.3): los tres montos y `delta_pct` van en centésimas al par;
     el exacto está en `totales_libro` y `totales_silice`. `delta_pct` es nulo si la meta es cero.
-    `sentido = "exactitud"` (RS2-13): la meta es el valor correcto, así que cualquier desviación es
-    desfavorable (IBCS), en un sentido o en el otro."""
+    `sentido = "exactitud"` (RS2-13) es el libro contra Sílice (la meta es el total de Sílice).
+    Decisión de Eugenio, V-16 (2026-10-21), que supera a la lectura anterior de «toda desviación
+    es desfavorable»: `delta = actual - meta`, y un `delta` negativo (libro menor que Sílice) es
+    favorable (verde) y uno positivo (libro mayor), desfavorable (rojo). Riesgo aceptado: un libro
+    que omite costos sale en verde. El color lo pinta el front; la API solo manda el signo."""
 
     clave: str
     titulo: str

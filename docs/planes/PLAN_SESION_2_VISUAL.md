@@ -89,7 +89,7 @@ anota el ruling; nunca se sube a una más nueva. Acción de CI: `actions/setup-n
 | RS2-10 | Las celdas cubiertas por una combinada no se listan en la réplica salvo que traigan valor o borde propio: Excel dibuja el rango con el estilo de la celda de origen (oráculo de la 2.6). | Bajo |
 | RS2-11 | El freno global del login no duerme en el hilo de la API: `POST /v1/sesion` responde 429 con `Retry-After`; mientras dura el freno no se prueba ninguna contraseña, así que el intento frenado no suma fallo (queda como evento `bloqueo` «freno global»). El 422 de `/v1/sesion` no repite lo enviado. | Bajo |
 | RS2-12 | Los indicadores son presentación (NORMAS §2.3): `actual`, `meta`, `delta` y `delta_pct` en centésimas al par; un Δ de menos de medio centavo es «sin variación» (también su Δ%). El exacto sigue en `totales_libro`/`totales_silice`. Motivo: los libros reales dan totales de 30 cifras (verificación integrada). | Bajo |
-| RS2-13 | **Sentido «exactitud»** en vez de «costo» (a ratificar por Eugenio): la meta es el valor correcto de Sílice, así que cualquier desviación del libro es desfavorable; la flecha dice si sobra o falta. Motivo: con «costo», un libro que omite costos salía verde. | Medio: si se prefiere «más barato = favorable», se revierte en dos líneas |
+| RS2-13 | **Superado por la decisión V-16 de Eugenio (2026-10-21): libro menor = favorable** (`delta = actual − meta`; negativo verde, positivo rojo, cero neutro); riesgo declarado: un libro que omite costos puede salir verde. Texto anterior: **Sentido «exactitud»** en vez de «costo» (a ratificar por Eugenio): la meta es el valor correcto de Sílice, así que cualquier desviación del libro es desfavorable; la flecha dice si sobra o falta. Motivo: con «costo», un libro que omite costos salía verde. | Medio: si se prefiere «más barato = favorable», se revierte en dos líneas |
 | RS2-14 | Las celdas numéricas viajan a Univer como número con el código de formato de Excel (motor de formatos de Univer) en vez de texto preformateado; separadores de es-VE. Motivo: 27-41 % de las celdas de los libros reales usaban códigos fuera del subconjunto propio. | Bajo |
 | RS2-15 | `.npmrc` con `ignore-scripts=true`: ningún script de instalación de npm corre (el de Carbon envía telemetría a IBM, contra RNF-08, y falla en Windows); la compilación no los necesita. | Bajo |
 
@@ -103,7 +103,7 @@ anota el ruling; nunca se sube a una más nueva. Acción de CI: `actions/setup-n
    → 403 con el mensaje de ir a la interfaz clásica; ninguna clave en el HTML ni en `localStorage`.
 3. **IBCS:** `+` en costo es desfavorable (rojo), `-` favorable (verde), `0.00` y `-0.00` sin variación; `Δ%` nulo
    con meta cero; nunca verde por signo.
-   *(Superado por RS2-13: con el sentido «exactitud» toda desviación es desfavorable y `0.00` es neutro; ver ERS RF-116.)*
+   *(Superado por RS2-13: con el sentido «exactitud» toda desviación es desfavorable y `0.00` es neutro; ver ERS RF-116. **Superado a su vez por la decisión V-16 de Eugenio (2026-10-21): libro menor = favorable; libro mayor = desfavorable; `0.00` sigue neutro. Riesgo: un libro que omite costos puede salir verde.**)*
 4. **Sin red externa:** el `dist` no contiene `http://` ni `https://` hacia otro anfitrión (fuentes, mapas de
    fuente, telemetría de Univer apagada); la CSP no tiene `unsafe-eval`.
 5. **Lo que ya funciona:** `/v1/libros/*` con clave responde igual que antes (salvo el campo aditivo); `docs/api.json`
@@ -405,7 +405,7 @@ la lista se resalta y recibe el foco. Íconos de severidad de `@carbon/icons-rea
 
 ### Task 2.5: Tarjeta `IndicadorFiori` con semántica IBCS · `silice-frontend` · Sonnet medium · tras 2.1, en paralelo con 2.4
 
-> **Superado por RS2-13:** `semanticaIbcs` debe aceptar también el sentido `"exactitud"` (toda desviación desfavorable, cero neutro) y el exacto de los totales va en el tooltip de cada indicador (ERS RF-116). Lo que sigue es el contrato original, conservado por trazabilidad.
+> **Superado por RS2-13 y luego por la decisión V-16 de Eugenio (2026-10-21, libro menor = favorable; commit `0cf6e462`):** `semanticaIbcs` acepta también el sentido `"exactitud"` (el signo decide el color como en un costo, cero neutro; antes: toda desviación desfavorable) y el exacto de los totales va en el tooltip de cada indicador (ERS RF-116). Lo que sigue es el contrato original, conservado por trazabilidad.
 
 **Files:** `frontend-desktop/src/indicadores/{ibcs.ts,IndicadorFiori.tsx,FranjaIndicadores.tsx}` y sus pruebas.
 
