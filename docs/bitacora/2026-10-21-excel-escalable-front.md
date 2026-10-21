@@ -81,3 +81,28 @@ Commits: `48649931` (lógica, hooks, control, `HojaVisor`) y `a4f3a35e` (integra
   (prueba unitaria) y por el valor del zoom propio, no viendo al navegador acercar.
 - El texto de las celdas no se pudo leer del canvas; los píxeles de la tabla son cálculo sobre la escala medida. Las capturas están en el scratchpad (`zoom\run2`).
 - El adaptador de Univer no tiene prueba de jsdom (Univer no dibuja allí): lo cubre la medición en navegador; el arreglo de «razón perdida» se verificó con la medición antes y después.
+
+## Ronda 1 del árbitro (devuelto: A1, A2, A3 MAYOR; A5, A6 MENOR)
+
+Commits: `56b573f4` (A3 y A5) y `38a44645` (A1, A2 y A6).
+
+- **A1, lo dibujado ahora se ve.** `ControlZoomHoja` muestra con texto visible, bajo el valor, «dibujado 125 %» (letra Grande o Muy grande) y «dibujado 400 % (tope)» (tope de Univer); el
+  lector de pantalla sigue oyendo la frase completa en un texto oculto (el visible va `aria-hidden` para no leerlo dos veces). «Acercar» queda con `aria-disabled` también cuando subir no
+  cambiaría lo dibujado (`puedeSubirZoom`: con Muy grande, de 270 % en adelante la razón ya es 4), y el hook lo respeta también por atajo. Medido a 1366 y 1056, Muy grande: «dibujado 150 %» con zoom 100 y
+  «dibujado 400 % (tope)» con 300; texto de 21 px; Normal no muestra nada de más; sin desborde de página (1366/1366 y 1056/1056), sin solape entre pestañas y control; a 1056 con Muy grande y 300 % las
+  pestañas se estrechan a 233 px y desplazan con sus flechas.
+- **A2, rojo visto con mutaciones en un árbol ajeno** (`scratchpad\mut`: copia de `frontend-desktop` con `node_modules` por junction, fuera del repositorio; cada mutación se aplica y se restaura allí).
+  `useZoomHoja.test.tsx`: sin `observe` del `MutationObserver` rojas las dos de cambio en vivo (hook y `Visor.test`); sin `disconnect` roja la de desmontaje; en lote (M3 a M12) 13 pruebas rojas: sin
+  `preventDefault` de las teclas, rueda sin filtro de Ctrl, teclas en `document` (sin filtro de foco de la sección), sin quitar el oyente de teclado ni el de rueda, sin guardar, sin `deltaMode`, subir
+  sin `puedeSubir`, sin pedirle la razón al visor, rueda sin captura. `visor.estilos.test.ts`: sin `min-inline-size: 0` en las pestañas, sin cifras tabulares, sin `cursor: not-allowed`, con un color a mano,
+  sin `nowrap` en lo dibujado, sin `flex: none` y sin columna: rojas (4 más 1 de la mutación del color a mano; cada mutación del lote queda atribuida por el nombre de la prueba roja). Pruebas de desmontaje nuevas:
+  `disconnect` del observador, `removeEventListener("keydown")` en la sección y `removeEventListener("wheel", …, { capture: true })` en el lienzo, y que tras desmontar ni la tecla ni la rueda llaman a las acciones.
+- **A3, el reintento ya no puede ciclar.** La decisión vive en `debeReaplicarZoom` (pura, con prueba: escala igual, distinta, sin render, NaN, infinita y tope alcanzado) con `MAX_REINTENTOS_ZOOM = 3` por racha; `fijarZoom` reinicia
+  el contador y una escala igual lo reinicia también. Medido en navegador con un build instrumentado fuera del repositorio (`scratchpad\inst`, con un contador de `aplicarZoom` y un modo que ejecuta el comando pero deja
+  una escala que nunca iguala): un pedido de zoom da exactamente 4 aplicaciones (la pedida y 3 reintentos), 0 al desplazar durante 2 s y 0 en 3 s de reposo; con el contenedor de tamaño 0 (real) 1 aplicación y 0 en reposo.
+- **A5:** `pasoDeRueda(acumulado, delta, deltaMode)` normaliza líneas (x40) y páginas (x800); prueba con el caso de Firefox (±3 líneas).
+- **A6:** reindentado el `<div className="visor__pestanas">` de `Visor.tsx` sin cambiar conducta.
+
+Verificación final de la ronda: `npx vitest run src`: 130 archivos, 1922 pruebas, 1915 verdes y 7 agotadas por la carga de la máquina (Administracion, Sensibles, Elaborar, Edicion, EdicionApu, HojaExcel); los seis
+archivos reejecutados aislados: 142 verdes. `npx eslint src/visor` y `tsc -b --noEmit` limpios (`eslint .` marca un espacio irregular en `src/indicadores/EtiquetaLibroMenor.tsx`, de otro frente); `npm run build` y `npm run dist`
+limpios (161 archivos, 14 044 965 bytes, sin URLs externas).
