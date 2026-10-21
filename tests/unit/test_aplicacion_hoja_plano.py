@@ -85,3 +85,43 @@ def test_un_mensaje_hostil_de_100_000_caracteres_tarda_menos_de_un_segundo(
     (fila,) = hoja_plano.filas_del_informe([_item(mensaje)])
     assert time.perf_counter() - inicio < 1
     assert fila["mensaje"] == esperado
+
+
+# --- ronda 1 del arbitro: cada red de `_sin_rutas` por separado ---
+
+
+def _rechazo(mensaje: str):
+    from adapters.espacio.planos import EstadoImportacion, ResultadoImportacion
+
+    return ResultadoImportacion(
+        formato="dxf", archivo="a.dxf", estado=EstadoImportacion.RECHAZADA, mensaje=mensaje
+    )
+
+
+@pytest.mark.parametrize(
+    "motivo",
+    ["OSError: [Errno 5] Input/output error", "OSError: [WinError 32] El archivo esta en uso"],
+)
+def test_la_marca_de_un_oserror_basta_aunque_no_traiga_la_ruta(motivo, tmp_path) -> None:
+    resultado = hoja_plano._sin_rutas(_rechazo(f"a.dxf: no se pudo leer ({motivo})."), tmp_path)
+    assert resultado.mensaje == hoja_plano.mensaje_sin_ruta("a.dxf")
+
+
+@pytest.mark.parametrize("escritura", ["tal cual", "repr", "barras"])
+def test_el_comienzo_de_la_raiz_basta_aunque_no_haya_marca_ni_raiz_entera(
+    escritura, tmp_path
+) -> None:
+    comienzo = str(tmp_path.parent)[:15]  # ancla y primer componente, recortado como el lector
+    texto = {
+        "tal cual": comienzo,
+        "repr": comienzo.replace("\\", "\\\\"),
+        "barras": comienzo.replace("\\", "/"),
+    }[escritura]
+    carpeta = tmp_path / "silice_planos_x"
+    resultado = hoja_plano._sin_rutas(_rechazo(f"a.dxf: no se pudo leer ('{texto}...)."), carpeta)
+    assert resultado.mensaje == hoja_plano.mensaje_sin_ruta("a.dxf")
+
+
+def test_un_mensaje_sin_rutas_queda_igual(tmp_path) -> None:
+    mensaje = "a.dxf: no se pudo leer como DXF (DXFStructureError: el archivo esta vacio)."
+    assert hoja_plano._sin_rutas(_rechazo(mensaje), tmp_path / "x").mensaje == mensaje
