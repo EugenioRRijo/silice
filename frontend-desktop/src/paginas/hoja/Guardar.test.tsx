@@ -108,7 +108,7 @@ describe("Hoja del proyecto: guardar versión y primera versión (3d-1)", () => 
       const b = borrador("002");
       return json({ id: ID, base: b.base, resumen: b.resumen });
     };
-    alCambios = () => json(CAMBIOS);
+    alCambios = () => json({ rev: 3, cambios: CAMBIOS });
     alGuardar = () => json({ codigo: "003", proyecto: "OF-001", cambios: 2, total: m("2703.86"), primera: false, mensaje: "x" });
     fetchFalso.mockImplementation(async (ruta, init) => {
       const url = new URL(String(ruta), "http://silice.local");
