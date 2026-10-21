@@ -13,6 +13,7 @@ import { ContextoAplicacion } from "./contexto";
 import type { Aplicacion } from "./contexto";
 import { LimiteDeError } from "./LimiteDeError";
 import { MenuLateral } from "./MenuLateral";
+import { olvidarImportaciones } from "../paginas/hoja/useImportacion";
 import { terminarRecorrido } from "./recorrido";
 import { PAGINAS, enlaceClasico, estaMigrada, rutaDe, visible } from "./rutas";
 import type { PaginaDef } from "./rutas";
@@ -110,10 +111,12 @@ export function Shell({ sesion, alSalir: alSalirDeApp, alExpirar: alExpirarDeApp
   // Un recorrido en curso no sobrevive a la sesion: al salir o vencer se cierra (vive fuera del arbol de React).
   const alSalir = useCallback(() => {
     terminarRecorrido();
+    olvidarImportaciones();
     alSalirDeApp();
   }, [alSalirDeApp]);
   const alExpirar = useCallback(() => {
     terminarRecorrido();
+    olvidarImportaciones();
     alExpirarDeApp();
   }, [alExpirarDeApp]);
 
