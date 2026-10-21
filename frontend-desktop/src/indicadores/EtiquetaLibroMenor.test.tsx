@@ -39,17 +39,17 @@ describe("textoLibroMenor", () => {
 
   test("con datos: dice lo que se cuenta (partidas con costo directo incompleto), no partidas ausentes (B1)", () => {
     expect(textoLibroMenor([2])).toBe(
-      "Libro menor: 1 partida con costo directo incompleto (n.º 2). Puede faltar además alguna partida; revise antes de aceptar",
+      "Libro menor: 1 partida con costo directo incompleto (n.º\u00a02). Puede faltar además alguna partida; revise antes de aceptar",
     );
     expect(textoLibroMenor([2, 5])).toBe(
-      "Libro menor: 2 partidas con costo directo incompleto (n.º 2, 5). Puede faltar además alguna partida; revise antes de aceptar",
+      "Libro menor: 2 partidas con costo directo incompleto (n.º\u00a02, 5). Puede faltar además alguna partida; revise antes de aceptar",
     );
     expect(textoLibroMenor([2, 5])).not.toMatch(/omite/);
   });
 
   test("con muchas partidas lista las primeras cinco y cuenta el resto", () => {
     expect(textoLibroMenor([1, 2, 3, 4, 5, 6, 7])).toBe(
-      "Libro menor: 7 partidas con costo directo incompleto (n.º 1, 2, 3, 4, 5 y 2 más). Puede faltar además alguna partida; revise antes de aceptar",
+      "Libro menor: 7 partidas con costo directo incompleto (n.º\u00a01, 2, 3, 4, 5 y 2 más). Puede faltar además alguna partida; revise antes de aceptar",
     );
   });
 
@@ -122,7 +122,7 @@ describe("IndicadorFiori con libro menor (V-16)", () => {
     render(<IndicadorFiori indicador={indicador()} partidasConOmision={[2, 7]} />);
     // El espacio tras «n.º» es duro (no se parte la linea ahi).
     expect(screen.getByRole("note").textContent).toBe(textoLibroMenor([2, 7]));
-    expect(screen.getByRole("note").textContent).toContain("2 partidas con costo directo incompleto (n.º 2, 7)");
+    expect(screen.getByRole("note").textContent).toContain("2 partidas con costo directo incompleto (n.º\u00a02, 7)");
   });
 
   test("con etiquetaBreve: solo «Libro menor», y esa es su descripcion accesible", () => {

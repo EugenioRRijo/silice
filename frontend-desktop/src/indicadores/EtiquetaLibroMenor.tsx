@@ -18,7 +18,7 @@ export function textoLibroMenor(partidas: readonly number[] | undefined): string
   const listadas = partidas.slice(0, MAXIMO_LISTADAS).join(", ");
   const resto = n > MAXIMO_LISTADAS ? ` y ${n - MAXIMO_LISTADAS} más` : "";
   const cuantas = n === 1 ? "1 partida" : `${n} partidas`;
-  return `Libro menor: ${cuantas} con costo directo incompleto (n.º ${listadas}${resto}). Puede faltar además alguna partida; revise antes de aceptar`;
+  return `Libro menor: ${cuantas} con costo directo incompleto (n.º\u00a0${listadas}${resto}). Puede faltar además alguna partida; revise antes de aceptar`;
 }
 
 interface Props {
