@@ -1,4 +1,4 @@
-"""Meta del sprint del prototipo AREN.IA (hoy Sílice): 12 metas agrupadas en seis fases (P0-P5).
+"""Meta del sprint del prototipo AREN.IA (hoy Sílice): 10 metas vivas, dos retiradas, en seis fases.
 
 Se define ANTES de las sesiones de `PLAN_PROTOTIPO.md`, igual que `meta_asistente.py`: las metas
 existen primero y cada fase se trabaja para ponerlas en OK. Reutiliza de `scripts/meta_alpha.py`
@@ -31,10 +31,18 @@ from scripts.meta_alpha import Estado, Fila, _filas_a_json, render_tabla  # noqa
 FASES: dict[str, tuple[str, ...]] = {
     "P0": ("P1", "P2", "P3"),
     "P1": ("P4", "P5", "P6"),
-    "P2": ("P7", "P8"),
+    "P2": ("P7",),
     "P3": ("P9",),
-    "P4": ("P10", "P11"),
+    "P4": ("P11",),
     "P5": ("P12",),
+}
+
+#: Metas retiradas con Streamlit (F4/F8): no se evaluan y NO cuentan ni suman ni restan (el
+#: denominador son las metas vivas). P8 pedia listar `ui.paginas.componer` en
+#: `tests/unit/test_ui_importable.py`; P10, una prueba con `AppTest`. Ya no hay interfaz que probar.
+RETIRADAS: dict[str, str] = {
+    "P8": "(P2) ui.paginas.componer esta listado en tests/unit/test_ui_importable.py",
+    "P10": "(P4) Alguna prueba usa AppTest",
 }
 
 TITULOS: dict[str, str] = {
@@ -45,9 +53,7 @@ TITULOS: dict[str, str] = {
     "P5": "(P1) Los cinco APU de la linea base reproducen su precio unitario esperado",
     "P6": "(P1) Catalogo.reemplazar_composicion existe en core.catalog",
     "P7": "(P2) aplicacion/composicion.py existe y no importa streamlit",
-    "P8": "(P2) RETIRADA: ui.paginas.componer se fue con Streamlit",
     "P9": "(P3) Existe tests/integration/test_composicion_extremo_a_extremo.py",
-    "P10": "(P4) RETIRADA: AppTest se fue con Streamlit",
     "P11": "(P4) Ningun modulo de ml/ referencia el corpus simulado ni su generador",
     "P12": "(P5) Existe la bitacora del sprint en docs/bitacora/",
 }
@@ -213,23 +219,11 @@ def evaluar_p7_composicion(texto: str | None) -> tuple[Estado, str]:
     return Estado.OK, "aplicacion/composicion.py existe y no importa streamlit"
 
 
-def evaluar_p8_retirada() -> tuple[Estado, str]:
-    """P8 pedia listar `ui.paginas.componer` en `test_ui_importable.py`. Ambos se fueron con el
-    retiro de Streamlit (F4/F8); la meta queda retirada (OK declarado), no cumplida."""
-    return Estado.OK, "retirada con Streamlit (F4/F8): la pagina y su prueba ya no existen"
-
-
 def evaluar_p9_prueba_extremo_a_extremo(existe: bool) -> tuple[Estado, str]:
     ruta = "tests/integration/test_composicion_extremo_a_extremo.py"
     if existe:
         return Estado.OK, f"{ruta} existe"
     return Estado.PENDIENTE, f"falta {ruta}"
-
-
-def evaluar_p10_retirada() -> tuple[Estado, str]:
-    """P10 pedia una prueba con `AppTest` (Streamlit). Con el retiro de Streamlit (F8) no existe
-    interfaz que probar asi; la meta queda retirada (OK declarado), no cumplida."""
-    return Estado.OK, "retirada con Streamlit (F8): no hay interfaz que probar con AppTest"
 
 
 def evaluar_p11_ml_sin_corpus_simulado(
@@ -332,9 +326,7 @@ def _evaluar_metas(codigos: list[str]) -> list[Fila]:
         "P5": evaluar_p5_linea_base,
         "P6": lambda: evaluar_p6_reemplazar_composicion(_leer(RUTA_CATALOGO_REPOSITORIO)),
         "P7": lambda: evaluar_p7_composicion(_leer(RUTA_COMPOSICION)),
-        "P8": evaluar_p8_retirada,
         "P9": lambda: evaluar_p9_prueba_extremo_a_extremo(RUTA_PRUEBA_EXTREMO_A_EXTREMO.exists()),
-        "P10": evaluar_p10_retirada,
         "P11": lambda: evaluar_p11_ml_sin_corpus_simulado(
             generador_corpus.relative_to(RAIZ).as_posix() if generador_corpus else None,
             _referencias_ml_a_corpus(RUTA_ML, generador_corpus) if generador_corpus else (),
@@ -353,14 +345,14 @@ def _parsear_args(argv: list[str] | None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         prog="meta_prototipo.py",
         description=(
-            "Evalua las 12 metas del sprint del prototipo AREN.IA (hoy Sílice), agrupadas en P0-P5."
+            "Evalua las 10 metas vivas del sprint del prototipo AREN.IA (hoy Sílice), en P0-P5."
         ),
     )
     parser.add_argument(
         "--hasta",
         choices=list(FASES),
         default=None,
-        help="evalua solo las metas de esta fase y las anteriores (por defecto, las doce)",
+        help="evalua solo las metas de esta fase y las anteriores (por defecto, las diez vivas)",
     )
     parser.add_argument("--json", action="store_true", help="imprime JSON en vez de la tabla")
     return parser.parse_args(argv)
@@ -374,6 +366,8 @@ def main(argv: list[str] | None = None) -> int:
         codigos = [codigo for metas in FASES.values() for codigo in metas]
     filas = _evaluar_metas(codigos)
     print(_filas_a_json(filas) if args.json else render_tabla(filas))
+    if not args.json:
+        print(f"Retiradas (no cuentan): {', '.join(RETIRADAS)}")
     return 0 if all(fila.estado is Estado.OK for fila in filas) else 1
 
 
