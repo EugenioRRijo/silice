@@ -90,3 +90,72 @@ describe("DescargaArchivo", () => {
     expect(screen.getByRole("button", { name: /Descargando/ })).toBeDisabled();
   });
 });
+
+// 3e-3, H-5: el botón se deshabilita mientras baja y el navegador le quita el foco; al terminar, el foco caía en el h1/cuerpo.
+describe("DescargaArchivo: el foco vuelve al botón (H-5)", () => {
+  beforeEach(() => {
+    fijarCsrf("tok");
+    Object.defineProperty(URL, "createObjectURL", { value: () => "blob:falso", configurable: true });
+    Object.defineProperty(URL, "revokeObjectURL", { value: () => {}, configurable: true });
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  // El navegador no deja el foco en un botón que pasa a `disabled`: aquí se imita quitándolo en cuanto sale la petición.
+  function bajarSoltandoElFoco(respuesta: () => Response) {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => {
+        (document.activeElement as HTMLElement | null)?.blur();
+        return Promise.resolve(respuesta());
+      }),
+    );
+  }
+
+  test("tras una descarga correcta el foco está en el botón de descarga", async () => {
+    const usuario = userEvent.setup();
+    bajarSoltandoElFoco(() => new Response("PK", { status: 200 }));
+    render(<DescargaArchivo ruta="/v1/x" etiqueta="Descargar Excel" nombrePorOmision="x.xlsx" />);
+    const boton = screen.getByRole("button", { name: "Descargar Excel" });
+    await usuario.click(boton);
+    await vi.waitFor(() => expect(boton).toHaveFocus());
+  });
+
+  test("tras un fallo también vuelve al botón (el aviso de error no le quita el lugar)", async () => {
+    const usuario = userEvent.setup();
+    bajarSoltandoElFoco(() => new Response(JSON.stringify({ detalle: "No hay libro." }), { status: 404, headers: { "Content-Type": "application/json" } }));
+    render(<DescargaArchivo ruta="/v1/x" etiqueta="Descargar Excel" nombrePorOmision="x.xlsx" />);
+    const boton = screen.getByRole("button", { name: "Descargar Excel" });
+    await usuario.click(boton);
+    await alertaConTexto();
+    expect(boton).toHaveFocus();
+  });
+
+  test("si la persona movió el foco a otro control mientras bajaba, no se lo quita", async () => {
+    const usuario = userEvent.setup();
+    let soltar: (r: Response) => void = () => {};
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => {
+        (document.activeElement as HTMLElement | null)?.blur();
+        return new Promise<Response>((res) => {
+          soltar = res;
+        });
+      }),
+    );
+    render(
+      <>
+        <DescargaArchivo ruta="/v1/x" etiqueta="Descargar Excel" nombrePorOmision="x.xlsx" />
+        <button type="button">Otro</button>
+      </>,
+    );
+    await usuario.click(screen.getByRole("button", { name: "Descargar Excel" }));
+    screen.getByRole("button", { name: "Otro" }).focus();
+    soltar(new Response("PK", { status: 200 }));
+    await vi.waitFor(() => expect(screen.getByRole("button", { name: "Descargar Excel" })).toBeEnabled());
+    expect(screen.getByRole("button", { name: "Otro" })).toHaveFocus();
+  });
+});
