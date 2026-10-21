@@ -68,6 +68,11 @@ a.cds--side-nav__link > .cds--side-nav__link-text {
       .silice-usuario {
         display: none;
       }
+
+      // El nombre sigue en el boton «Salir» (nombre accesible y titulo) y, a la vista, al pie del menu en capa.
+      .silice-menu__sesion {
+        display: block;
+      }
     }
   }
 }
@@ -177,6 +182,16 @@ a.cds--side-nav__link > .cds--side-nav__link-text {
 }
 
 // Menu lateral.
+// Pie con la persona de la sesion: oculto salvo cuando el menu es capa (ver menu-en-capa).
+.silice-menu__sesion {
+  display: none;
+  list-style: none;
+  padding: 0.75rem 1rem;
+  border-block-start: 1px solid var(--cds-border-subtle);
+  color: var(--cds-text-secondary);
+  overflow-wrap: anywhere;
+}
+
 .silice-menu__seccion {
   list-style: none;
   padding-block: 0.5rem 0.25rem;

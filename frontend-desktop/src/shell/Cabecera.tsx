@@ -32,7 +32,13 @@ export function Cabecera({ nombre, alSalir, selectores, menu }: Props) {
         {nombre && (
           <>
             <span className="silice-usuario cds--type-body-compact-01">{nombre}</span>
-            <button type="button" className="silice-salir cds--type-body-compact-01" onClick={alSalir}>
+            <button
+              type="button"
+              className="silice-salir cds--type-body-compact-01"
+              onClick={alSalir}
+              aria-label={`Salir (${nombre})`}
+              title={`Salir (${nombre})`}
+            >
               <Logout size={16} aria-hidden="true" />
               Salir
             </button>

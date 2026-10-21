@@ -66,7 +66,7 @@ describe("App", () => {
     render(<App />);
     expect(await screen.findByRole("heading", { name: "Entrar" })).toBeInTheDocument();
     expect(screen.getByLabelText("Usuario")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Salir" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Salir/ })).not.toBeInTheDocument();
   });
 
   test("mientras comprueba la sesion no muestra el formulario", () => {
@@ -79,7 +79,7 @@ describe("App", () => {
   test("con sesion vigente muestra el nombre, Salir, el menu y aterriza en el Inicio", async () => {
     render(<App />);
     expect(await screen.findByText("Ana Pérez")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Salir" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Salir/ })).toBeInTheDocument();
     expect(screen.getAllByRole("link", { name: "Libro de la empresa" }).length).toBeGreaterThan(0);
     // La pagina llega por import() dinamico: con la suite entera en marcha tarda mas que el plazo por omision.
     expect(await screen.findByRole("heading", { name: "Audite un presupuesto" }, { timeout: 5000 })).toBeInTheDocument();
@@ -130,7 +130,7 @@ describe("App", () => {
   test("Salir cierra la sesion con DELETE y vuelve al formulario", async () => {
     const usuario = userEvent.setup();
     render(<App />);
-    await usuario.click(await screen.findByRole("button", { name: "Salir" }));
+    await usuario.click(await screen.findByRole("button", { name: /^Salir/ }));
     expect(await screen.findByRole("heading", { name: "Entrar" })).toBeInTheDocument();
     const borrado = fetchFalso.mock.calls.find((c) => c[1]?.method === "DELETE");
     expect(new Headers(borrado?.[1]?.headers).get("X-Silice-CSRF")).toBe("tok");
@@ -144,7 +144,7 @@ describe("App", () => {
       render(<App />);
       expect(await screen.findByRole("heading", { name: "Cambie su contraseña" })).toBeInTheDocument();
       expect(screen.queryByRole("navigation", { name: "Menú principal" })).not.toBeInTheDocument();
-      expect(screen.getByRole("button", { name: "Salir" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /^Salir/ })).toBeInTheDocument();
       expect(fetchFalso.mock.calls.some((c) => String(c[0]) === "/v1/casos")).toBe(false);
       expect(fetchFalso.mock.calls.some((c) => String(c[0]) === "/v1/proyectos")).toBe(false);
     });
@@ -356,7 +356,7 @@ describe("App", () => {
       render(<App crearHoja={async () => crearHojaFalsa("PORTADA")} />);
       await screen.findByText("Ana Pérez");
       await subirLibro(usuario);
-      await usuario.click(screen.getByRole("button", { name: "Salir" }));
+      await usuario.click(screen.getByRole("button", { name: /^Salir/ }));
       await screen.findByRole("heading", { name: "Entrar" });
       await volverAEntrar(usuario);
       await screen.findByText("Ana Pérez");
