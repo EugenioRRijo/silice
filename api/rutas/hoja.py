@@ -262,8 +262,9 @@ def _vivo(request: Request, activa: SesionActiva, id_: str) -> BorradorVivo:
 
 
 def _mas_nueva(vivo: BorradorVivo, vigente: str | None) -> str | None:
-    """La versión vigente si es otra que la abierta (alguien guardó después de que se abrió)."""
-    return vigente if vivo.version is not None and vigente != vivo.version else None
+    """La versión vigente si alguien guardó después de que se abrió el borrador (D-5): regla única
+    de `hoja_vista.version_mas_nueva` (la vigente de ahora contra la vigente al abrir)."""
+    return hoja_vista.version_mas_nueva(vivo, vigente)
 
 
 def _respuesta(sesion, vivo: BorradorVivo) -> dict:
@@ -345,6 +346,9 @@ def abrir_borrador(
             if pendiente is not None:
                 return _pendiente_sin_guardar(*pendiente)
         filas = hoja.historial_de_versiones(sesion, nombre)
+        # D-5: la vigente se lee ANTES de abrir; si alguien guarda entre las dos lecturas, la
+        # vigente de ahora diferira de esta y se pedira confirmar (falla hacia lo seguro).
+        vigente_al_abrir = hoja.codigo_vigente(sesion, nombre)
         creadas = 0
         if datos.version is None:
             if filas:
@@ -376,6 +380,7 @@ def abrir_borrador(
             datos.version,
             borrador,
             abierta,
+            vigente_al_abrir=vigente_al_abrir,
         )
         cuerpo = _respuesta(sesion, vivo)
     except SQLAlchemyError:

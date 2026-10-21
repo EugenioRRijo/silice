@@ -136,6 +136,16 @@ def calculo(vivo: BorradorVivo) -> tuple[hoja.ResultadoHoja, list]:
         return vivo.calculo[1], vivo.calculo[2]
 
 
+def version_mas_nueva(vivo: BorradorVivo, vigente: str | None) -> str | None:
+    """La version vigente de AHORA si alguien guardo despues de abrir el borrador (D-5): es la
+    que hay y no la que habia AL ABRIR (`vigente_al_abrir`). Abrir a proposito una version vieja
+    o descartada no cuenta como adelantamiento. Un borrador en blanco (sin version) nunca avisa.
+    Es la unica regla: el resumen y el guardado la usan."""
+    if vivo.abierta is None or vigente is None or vigente == vivo.vigente_al_abrir:
+        return None
+    return vigente
+
+
 def resumen(vivo: BorradorVivo, version_mas_nueva: str | None = None) -> ResumenHoja:
     resultado, cambios = calculo(vivo)
     presupuesto = resultado.elaboracion.presupuesto

@@ -24,8 +24,10 @@ Despues de guardar el borrador queda cerrado (`guardado_como`): ni se edita ni s
 
 Diferencia deliberada con la clasica (D-5): la clasica guardaba «de la version abierta» aunque ya
 existiera una mas nueva (la nueva quedaba vigente sin lo de la otra persona); aqui hace falta
-confirmarlo. La regla es la de `Resumen.version_mas_nueva`: la version vigente es otra que la
-abierta.
+confirmarlo. La regla (afinada por Eugenio el 2026-10-21) es la de `hoja_vista.version_mas_nueva`,
+la misma del `Resumen`: la vigente de AHORA es otra que la vigente AL ABRIR el borrador
+(`BorradorVivo.vigente_al_abrir`). Abrir a proposito una version vieja o descartada no pide
+confirmar si nadie guardo entretanto, y el texto «Otra persona guardó la versión X…» es cierto.
 
 Sin FastAPI ni Streamlit (RM-1).
 """
@@ -158,9 +160,11 @@ def _version(
         raise VersionSoloLectura(MENSAJE_SOLO_LECTURA)
     try:
         if not confirmar:  # la primera lectura: antes, `BEGIN IMMEDIATE` (la sesion de escritura)
-            vigente = hoja.codigo_vigente(sesion, vivo.proyecto)
-            if vigente is not None and vigente != abierta.codigo:
-                raise VersionMasNueva(vigente, abierta.codigo)
+            mas_nueva = hoja_vista.version_mas_nueva(
+                vivo, hoja.codigo_vigente(sesion, vivo.proyecto)
+            )
+            if mas_nueva is not None:
+                raise VersionMasNueva(mas_nueva, abierta.codigo)
         guardada = hoja.guardar_version(
             sesion, Catalogo(sesion), abierta, borrador, fuente=fuente, responsable=responsable
         )
