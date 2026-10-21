@@ -152,6 +152,42 @@ body {
   border-inline-end: 1px solid var(--silice-divisor);
 }
 
+// Fila de pestanas de las hojas y control de zoom: una sola fila; las pestanas (Carbon) ceden y desplazan por dentro
+// cuando el espacio no alcanza, el control conserva su tamano.
+.visor__pestanas {
+  display: flex;
+  flex: none;
+  align-items: stretch;
+  min-inline-size: 0;
+  background: var(--cds-layer);
+  border-block-end: 1px solid var(--silice-divisor);
+
+  > .cds--tabs {
+    flex: 1 1 0;
+    min-inline-size: 0;
+  }
+}
+
+.zoom-hoja {
+  display: flex;
+  flex: none;
+  align-items: center;
+  padding-inline: 0.25rem;
+}
+
+.zoom-hoja__valor {
+  min-inline-size: 3.5rem;
+  text-align: center;
+  color: var(--silice-texto);
+  font-variant-numeric: tabular-nums;
+}
+
+// En su tope el boton sigue siendo enfocable (aria-disabled, no disabled); solo se ve apagado.
+.zoom-hoja__boton[aria-disabled="true"] {
+  color: var(--cds-text-disabled);
+  cursor: not-allowed;
+}
+
 .visor__lienzo {
   position: relative;
   flex: 1 1 auto;

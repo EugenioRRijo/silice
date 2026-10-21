@@ -15,12 +15,14 @@ import { contextoDeFila } from "./celdas";
 import { construirHalos, resumenPorHoja } from "./halos";
 import type { CeldaRef, CrearHojaVisor, HojaVisor } from "./hojaVisor";
 import { ListaHallazgos } from "./ListaHallazgos";
+import { ControlZoomHoja } from "./ControlZoomHoja";
 import { UniverGrid } from "./UniverGrid";
+import { useAtajosZoom, useZoomHoja } from "./useZoomHoja";
 import { CampoTexto } from "../comun/CampoTexto";
 
 // Univer es pesado: se baja en un archivo aparte y solo cuando hay un libro que dibujar.
-const crearHojaUniver: CrearHojaVisor = (contenedor, libro) =>
-  import("./adaptadorUniver").then((m) => m.crearHojaUniver(contenedor, libro));
+const crearHojaUniver: CrearHojaVisor = (contenedor, libro, zoomInicial) =>
+  import("./adaptadorUniver").then((m) => m.crearHojaUniver(contenedor, libro, zoomInicial));
 
 interface Props {
   crearHoja?: CrearHojaVisor;
@@ -88,6 +90,11 @@ export function Visor({ crearHoja = crearHojaUniver, alExpirar, almacen, ranuraC
   const [filtro, setFiltro] = useState<Severidad[]>(guardado?.filtro ?? []);
   const [error, setError] = useState<string | null>(null);
   const [visor, setVisor] = useState<HojaVisor | null>(null);
+  const zoomHoja = useZoomHoja(visor);
+  // Elementos en estado (no refs): la hoja aparece cuando el libro termina de cargar, despues del primer render.
+  const [seccionHoja, setSeccionHoja] = useState<HTMLElement | null>(null);
+  const [lienzoHoja, setLienzoHoja] = useState<HTMLDivElement | null>(null);
+  useAtajosZoom(seccionHoja, lienzoHoja, zoomHoja);
   const [hojaActiva, setHojaActiva] = useState(guardado?.hojaActiva ?? "");
   const [seleccionado, setSeleccionado] = useState<number | null>(guardado?.seleccionado ?? null);
   // La hoja que se veia antes de que venciera la sesion: se restaura cuando el visor nuevo este listo.
@@ -345,7 +352,8 @@ export function Visor({ crearHoja = crearHojaUniver, alExpirar, almacen, ranuraC
 
       {fase === "listo" && replica && (
         <div className="visor__cuerpo">
-          <section className="visor__hoja" aria-label="Hoja del libro">
+          <section className="visor__hoja" aria-label="Hoja del libro" ref={setSeccionHoja}>
+            <div className="visor__pestanas">
             <Tabs
               selectedIndex={indiceDePestana}
               onChange={({ selectedIndex }: { selectedIndex: number }) => {
@@ -382,8 +390,23 @@ export function Visor({ crearHoja = crearHojaUniver, alExpirar, almacen, ranuraC
                 })}
               </TabList>
             </Tabs>
-            <div className="visor__lienzo" role="group" aria-label="Hoja del libro, solo lectura" onContextMenuCapture={(e) => e.preventDefault()}>
-              <UniverGrid libro={replica} crearHoja={crearHoja} alCambiarVisor={alCambiarVisor} alFallar={alFallarVisor} />
+            <ControlZoomHoja
+              zoom={zoomHoja.zoom}
+              razon={zoomHoja.razon}
+              limitado={zoomHoja.limitado}
+              alBajar={zoomHoja.bajar}
+              alSubir={zoomHoja.subir}
+              alRestablecer={zoomHoja.restablecer}
+            />
+            </div>
+            <div className="visor__lienzo" ref={setLienzoHoja} role="group" aria-label="Hoja del libro, solo lectura" onContextMenuCapture={(e) => e.preventDefault()}>
+              <UniverGrid
+                libro={replica}
+                crearHoja={crearHoja}
+                alCambiarVisor={alCambiarVisor}
+                alFallar={alFallarVisor}
+                zoomInicial={zoomHoja.razon}
+              />
               {!visor && <SkeletonPlaceholder className="visor__esqueleto-lienzo visor__esqueleto-sobre" />}
               <CapaHalos
                 halos={halos}

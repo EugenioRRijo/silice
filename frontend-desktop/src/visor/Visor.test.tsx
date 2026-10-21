@@ -7,6 +7,7 @@ import { fijarCsrf } from "../api/cliente";
 import { alertaConTexto } from "../test/ayudas";
 import { hayArchivoPendiente, fijarArchivoPendiente } from "../paginas/inicio/archivoPendiente";
 import { clave, crearHojaFalsa } from "./hojaFalsa";
+import type { CrearHojaVisor } from "./hojaVisor";
 import { Visor } from "./Visor";
 
 const replica = { ...oraculo, sha256: "a".repeat(64) } as unknown as LibroVisualRespuesta;
@@ -67,7 +68,7 @@ async function soltar(usuario: ReturnType<typeof userEvent.setup>, archivo = lib
 describe("Visor", () => {
   const fetchFalso = vi.fn<typeof fetch>();
   const hoja = crearHojaFalsa("PORTADA");
-  const crearHoja = vi.fn(async () => hoja);
+  const crearHoja = vi.fn<CrearHojaVisor>(async () => hoja);
 
   beforeEach(() => {
     vi.stubGlobal("fetch", fetchFalso);
@@ -417,5 +418,77 @@ describe("Visor", () => {
   test("sin archivo pendiente no pide nada al montar", () => {
     render(<Visor crearHoja={crearHoja} />);
     expect(fetchFalso).not.toHaveBeenCalled();
+  });
+
+  describe("zoom de la hoja", () => {
+    beforeEach(() => {
+      hoja.fijarZoom.mockClear();
+      localStorage.clear();
+      document.documentElement.removeAttribute("style");
+      delete document.documentElement.dataset.siliceLetra;
+    });
+
+    async function abierto() {
+      const usuario = userEvent.setup();
+      render(<Visor crearHoja={crearHoja} />);
+      await soltar(usuario);
+      await screen.findByRole("tablist", { name: "Hojas del libro" });
+      await waitFor(() => expect(hoja.fijarZoom).toHaveBeenCalled());
+      return usuario;
+    }
+
+    test("la barra de la hoja trae el control de zoom y la pagina sigue con un solo h1 (o ninguno propio)", async () => {
+      await abierto();
+      expect(screen.getByRole("group", { name: "Zoom de la hoja" })).toBeInTheDocument();
+      expect(document.querySelectorAll("h1").length).toBeLessThanOrEqual(1);
+    });
+
+    test("al crear el lienzo se le pasa la razon vigente como tercer argumento (sin un cuadro al 100 %)", async () => {
+      localStorage.setItem("silice.zoom-hoja", "200");
+      document.documentElement.dataset.siliceLetra = "grande";
+      const usuario = userEvent.setup();
+      render(<Visor crearHoja={crearHoja} />);
+      await soltar(usuario);
+      await waitFor(() => expect(crearHoja).toHaveBeenCalled());
+      expect(crearHoja.mock.calls[0][2]).toBe(2.5);
+    });
+
+    test("los botones cambian el zoom y se lo piden al lienzo sin recrearlo", async () => {
+      const usuario = await abierto();
+      const llamadas = crearHoja.mock.calls.length;
+      await usuario.click(screen.getByRole("button", { name: "Acercar la hoja" }));
+      expect(hoja.fijarZoom).toHaveBeenLastCalledWith(1.1);
+      expect(within(screen.getByRole("group", { name: "Zoom de la hoja" })).getByRole("status")).toHaveTextContent("110 %");
+      await usuario.click(screen.getByRole("button", { name: "Restablecer el zoom de la hoja al 100 %" }));
+      expect(hoja.fijarZoom).toHaveBeenLastCalledWith(1);
+      expect(crearHoja.mock.calls.length).toBe(llamadas);
+      expect(hoja.destruir).not.toHaveBeenCalled();
+    });
+
+    test("al cambiar el tamano de letra el lienzo recibe la nueva razon en vivo, sin recrearse", async () => {
+      await abierto();
+      const llamadas = crearHoja.mock.calls.length;
+      await act(async () => {
+        document.documentElement.dataset.siliceLetra = "muy-grande";
+      });
+      await waitFor(() => expect(hoja.fijarZoom).toHaveBeenLastCalledWith(1.5));
+      expect(crearHoja.mock.calls.length).toBe(llamadas);
+      expect(hoja.destruir).not.toHaveBeenCalled();
+    });
+
+    test("Ctrl + rueda sobre el lienzo y Ctrl + + con el foco en la hoja usan el zoom propio", async () => {
+      await abierto();
+      const lienzo = screen.getByRole("group", { name: "Hoja del libro, solo lectura" });
+      act(() => {
+        lienzo.dispatchEvent(new WheelEvent("wheel", { deltaY: -100, ctrlKey: true, bubbles: true, cancelable: true }));
+      });
+      expect(hoja.fijarZoom).toHaveBeenLastCalledWith(1.1);
+      const boton = screen.getByRole("button", { name: "Acercar la hoja" });
+      boton.focus();
+      act(() => {
+        boton.dispatchEvent(new KeyboardEvent("keydown", { key: "+", ctrlKey: true, bubbles: true, cancelable: true }));
+      });
+      expect(hoja.fijarZoom).toHaveBeenLastCalledWith(1.2);
+    });
   });
 });

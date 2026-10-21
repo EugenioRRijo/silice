@@ -130,6 +130,35 @@ describe("estilos del visor", () => {
   });
 });
 
+describe("zoom de la hoja (estilos)", () => {
+  test("la fila de pestanas y zoom no crece ni desborda: las pestanas ceden y el control no se encoge", () => {
+    expect(regla(".visor__pestanas")).toMatch(/display:\s*flex/);
+    expect(regla(".visor__pestanas")).toMatch(/flex:\s*none/);
+    expect(regla(".visor__pestanas > .cds--tabs")).toMatch(/min-inline-size:\s*0/);
+    expect(regla(".zoom-hoja")).toMatch(/flex:\s*none/);
+  });
+
+  test("el valor del zoom no baila: cifras tabulares y ancho minimo", () => {
+    const r = regla(".zoom-hoja__valor");
+    expect(r).toMatch(/font-variant-numeric:\s*tabular-nums/);
+    expect(r).toMatch(/min-inline-size:\s*3\.5rem/);
+  });
+
+  test("el boton en su tope se ve inactivo con tokens, sin perder el foco", () => {
+    const r = regla(".zoom-hoja__boton[aria-disabled=true]");
+    expect(r).toMatch(/var\(--cds-/);
+    expect(r).toMatch(/cursor:\s*not-allowed/);
+  });
+
+  test("el control no usa colores a mano ni animacion propia (el movimiento reducido ya es global)", () => {
+    const desde = css.indexOf(".visor__pestanas");
+    const hasta = css.indexOf(".zoom-hoja__boton[aria-disabled");
+    const propio = css.slice(desde, hasta + 200);
+    expect(propio).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
+    expect(propio).not.toMatch(/transition|animation/);
+  });
+});
+
 // Contraste WCAG 2.1 entre dos colores #rrggbb.
 function luminancia(hex: string): number {
   const canales = [1, 3, 5].map((i) => {

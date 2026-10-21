@@ -27,6 +27,7 @@ import { createUniver, ICommandService, IConfigService, LocaleType, mergeLocales
 import type { LibroVisualRespuesta } from "../api/tipos";
 import { aUniver } from "../replica/aUniver";
 import { columnaDeDescripcion } from "./celdas";
+import { RAZON_MAXIMA_UNIVER, RAZON_MINIMA_UNIVER } from "./zoomHoja";
 import { planDeDesplazamiento, rectanguloEnPantalla } from "./geometria";
 import type { CeldaRef, HojaVisor, RectanguloPx } from "./hojaVisor";
 
@@ -37,7 +38,7 @@ function esperar(ms: number): Promise<void> {
   return new Promise((resolver) => setTimeout(resolver, ms));
 }
 
-export async function crearHojaUniver(contenedor: HTMLElement, libro: LibroVisualRespuesta): Promise<HojaVisor> {
+export async function crearHojaUniver(contenedor: HTMLElement, libro: LibroVisualRespuesta, zoomInicial = 1): Promise<HojaVisor> {
   const { univer, univerAPI } = createUniver({
     locale: LocaleType.ES_ES,
     locales: { [LocaleType.ES_ES]: mergeLocales(esES) },
@@ -92,6 +93,24 @@ export async function crearHojaUniver(contenedor: HTMLElement, libro: LibroVisua
   fLibro.setEditable(false);
   injector.get(IConfigService).setConfig(SHEETS_UI_PLUGIN_CONFIG_KEY, { disableEdit: true }, { merge: true });
   const hojaActual = (): FWorksheet => fLibro.getActiveSheet();
+
+  // Zoom del lienzo (facade FWorksheet.zoom, 0,1 a 4): es por hoja, asi que se pone en todas para que al cambiar de
+  // pestana siga igual; Univer redibuja la activa y deja la seleccion y el desplazamiento donde estaban.
+  let razonVigente = Math.min(RAZON_MAXIMA_UNIVER, Math.max(RAZON_MINIMA_UNIVER, zoomInicial));
+  function aplicarZoom(): void {
+    for (const hoja of fLibro.getSheets()) hoja.zoom(razonVigente);
+  }
+  function fijarZoom(razon: number): void {
+    razonVigente = Math.min(RAZON_MAXIMA_UNIVER, Math.max(RAZON_MINIMA_UNIVER, razon));
+    aplicarZoom();
+    avisarCambio();
+  }
+  // Univer puede dejar la escena sin acercamiento tras armarse o redimensionarse (verificado en el navegador: la
+  // razon pedida al abrir se perdia). Si lo que se dibuja no es la razon vigente, se vuelve a pedir.
+  function asegurarZoom(): void {
+    const escala = render()?.scene.getAncestorScale().scaleX;
+    if (escala !== undefined && Math.abs(escala - razonVigente) > 0.001) aplicarZoom();
+  }
 
   function area(): RectanguloPx | null {
     const r = render();
@@ -182,6 +201,7 @@ export async function crearHojaUniver(contenedor: HTMLElement, libro: LibroVisua
     pendiente = true;
     requestAnimationFrame(() => {
       pendiente = false;
+      asegurarZoom();
       oyentesCambio.forEach((f) => f());
     });
   };
@@ -206,6 +226,9 @@ export async function crearHojaUniver(contenedor: HTMLElement, libro: LibroVisua
       oyentesSeleccion.forEach((f) => f(celda));
     }),
   );
+
+  // El lienzo sale ya con el acercamiento vigente (zoom propio por factor de letra), sin un cuadro al 100 %.
+  fijarZoom(zoomInicial);
 
   function irAHoja(nombre: string): void {
     const hoja = fLibro.getSheetByName(nombre);
@@ -278,6 +301,8 @@ export async function crearHojaUniver(contenedor: HTMLElement, libro: LibroVisua
 
   return {
     hojaActiva: () => hojaActual().getSheetName(),
+    fijarZoom,
+    zoomActual: () => hojaActual().getZoom(),
     irAHoja,
     irA,
     rectanguloDe,
