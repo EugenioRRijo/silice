@@ -22,9 +22,11 @@ clasica
 
 from __future__ import annotations
 
+import os
 import shutil
 import sys
 import threading
+import time
 from collections.abc import Iterator
 from dataclasses import replace
 from datetime import timedelta
@@ -1187,3 +1189,114 @@ def test_el_cerrojo_de_la_importacion_nunca_se_toma_antes_que_el_del_borrador(
     assert navegador.delete(_url(id_), headers=protegida(ficha)).status_code == 204
     assert violaciones == []
     assert usos["borrador"] > 0 and usos["plano"] > 0
+
+
+# --- ola de decisiones: los topes del lector (bytes, lecturas a la vez, barrido) ---
+
+PLANO_GRANDE = (
+    "El plano DXF pesa más de 8 MiB, el máximo que Sílice lee en un tiempo razonable. Purgue las "
+    "capas y bloques que no use, o divida el dibujo por plantas, y vuelva a subirlo."
+)
+LECTURAS_OCUPADAS = (
+    "Sílice está leyendo otros planos en este momento: espere unos segundos y vuelva a subirlo."
+)
+
+
+def test_p1_un_dxf_de_mas_de_8_mib_es_413_de_texto_fijo_y_no_toca_la_importacion(planos) -> None:
+    navegador, ficha = _ana()
+    id_ = _abrir(navegador, ficha)
+    assert _subir(navegador, ficha, id_).status_code == 200
+    antes = _carpetas(planos)
+    grande = CENTINELA.encode() * ((8 * MIB + 1) // len(CENTINELA) + 1)
+    respuesta = _subir(navegador, ficha, id_, f"{CENTINELA}.dxf", grande[: 8 * MIB + 1])
+    assert respuesta.status_code == 413 and respuesta.json() == {"detalle": PLANO_GRANDE}
+    assert respuesta.headers["cache-control"] == "no-store"
+    assert CENTINELA not in respuesta.text
+    assert _carpetas(planos) == antes  # la importacion anterior sigue y no hay carpeta nueva
+    # la importacion anterior sigue vigente (si se hubiera perdido, P3 daria 409 sin importacion)
+    assert _pedir(navegador, ficha, id_, "/alturas", {"rev": 0, "alturas": {}}).status_code == 200
+
+
+def test_p1_la_lectura_de_mas_es_503_de_texto_fijo_sin_esperar(monkeypatch, planos) -> None:
+    monkeypatch.setattr(hoja_plano, "_CUPOS", threading.BoundedSemaphore(0))
+    navegador, ficha = _ana()
+    id_ = _abrir(navegador, ficha)
+    respuesta = _subir(navegador, ficha, id_)
+    assert respuesta.status_code == 503
+    assert respuesta.json() == {"detalle": LECTURAS_OCUPADAS}
+    assert respuesta.headers["cache-control"] == "no-store"
+    assert respuesta.headers["retry-after"] == "10"
+    assert _carpetas(planos) == []
+
+
+def test_p2_la_lectura_de_mas_es_503_y_la_importacion_detenida_queda(
+    monkeypatch, planos, tmp_path
+) -> None:
+    navegador, ficha = _ana()
+    id_ = _abrir(navegador, ficha)
+    sin_unidad = dxf_sin_unidad(tmp_path / "sin_unidad.dxf").read_bytes()
+    assert _subir(navegador, ficha, id_, "sin_unidad.dxf", sin_unidad).json()["pide_unidad"]
+    monkeypatch.setattr(hoja_plano, "_CUPOS", threading.BoundedSemaphore(0))
+    respuesta = _pedir(navegador, ficha, id_, "/unidad", {"rev": 0, "unidades": "m"})
+    assert respuesta.status_code == 503 and respuesta.json() == {"detalle": LECTURAS_OCUPADAS}
+    monkeypatch.setattr(hoja_plano, "_CUPOS", threading.BoundedSemaphore(1))
+    assert _pedir(navegador, ficha, id_, "/unidad", {"rev": 0, "unidades": "m"}).status_code == 200
+
+
+def test_cuatro_planos_a_la_vez_con_dos_cupos_dos_leen_y_dos_reciben_503_enseguida(
+    monkeypatch, planos
+) -> None:
+    """El fallo medido era que 40 lecturas agotaban el grupo de hilos: con el tope, las de mas
+    vuelven al instante aunque las dos primeras sigan leyendo, y al terminar quedan los cupos."""
+    assert hoja_plano.LECTURAS_SIMULTANEAS == 2
+    monkeypatch.setattr(hoja_plano, "_CUPOS", threading.BoundedSemaphore(2))
+    leyendo, soltar = threading.Semaphore(0), threading.Event()
+    real = copia.subir_plano
+
+    def lenta(subida, carpeta, **kwargs):
+        leyendo.release()
+        assert soltar.wait(timeout=120)
+        return real(subida, carpeta, **kwargs)
+
+    monkeypatch.setattr(copia, "subir_plano", lenta)
+    navegador, ficha = _ana()
+    ids = [_abrir(navegador, ficha) for _ in range(4)]
+    respuestas: dict[int, object] = {}
+
+    def subir(n: int) -> None:
+        respuestas[n] = _subir(navegador, ficha, ids[n])
+
+    primeras = [threading.Thread(target=subir, args=(n,)) for n in (0, 1)]
+    for hilo in primeras:
+        hilo.start()
+    assert leyendo.acquire(timeout=60) and leyendo.acquire(timeout=60)  # las dos estan leyendo
+
+    inicio = time.perf_counter()
+    subir(2)
+    subir(3)
+    assert time.perf_counter() - inicio < 30  # sin esperar a las que leen
+    assert [respuestas[n].status_code for n in (2, 3)] == [503, 503]
+    assert all(respuestas[n].json() == {"detalle": LECTURAS_OCUPADAS} for n in (2, 3))
+
+    soltar.set()
+    for hilo in primeras:
+        hilo.join(timeout=120)
+        assert not hilo.is_alive()
+    assert [respuestas[n].status_code for n in (0, 1)] == [200, 200]
+    monkeypatch.setattr(copia, "subir_plano", real)
+    assert _subir(navegador, ficha, ids[2]).status_code == 200  # el cupo volvio
+    assert len(_carpetas(planos)) == 3
+
+
+def test_al_arrancar_el_servidor_barre_las_carpetas_huerfanas(monkeypatch, planos) -> None:
+    monkeypatch.setattr(hoja_plano, "_ultimo_barrido", None)
+    vieja = planos / "silice_planos_de_una_caida"
+    vieja.mkdir()
+    (vieja / "plano.dxf").write_bytes(b"0")
+    hace_dos_horas = time.time() - 7200
+    os.utime(vieja, (hace_dos_horas, hace_dos_horas))
+    reciente = planos / "silice_planos_reciente"
+    reciente.mkdir()
+    with TestClient(APP):  # el `startup` del router de los planos
+        assert not vieja.exists()
+        assert reciente.exists()
