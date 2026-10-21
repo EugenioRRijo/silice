@@ -760,7 +760,7 @@ def test_ui_elaboracion_toma_el_guardado_de_la_capa_de_aplicacion():
     assert definidos.isdisjoint({"Guardado", "guardar_composicion"})
 
 
-def test_solo_cadena_y_entrega_usan_formato_legado():
+def test_solo_cadena_usa_formato_legado():
     """VB-1: `formato_legado` es un contexto de solo transicion (reconocer huellas selladas antes);
     solo `core/budget/cadena.py` lo usa, `canonico.py` lo define y `aplicacion/entrega.py` puede
     mencionarlo. Nadie mas (adapters, ui, api, otro modulo del nucleo) puede escribir con el."""
