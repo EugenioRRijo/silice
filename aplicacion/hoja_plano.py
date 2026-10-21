@@ -34,6 +34,7 @@ Sin FastAPI ni Streamlit (RM-1).
 
 from __future__ import annotations
 
+import re
 import shutil
 import tempfile
 import threading
@@ -64,6 +65,7 @@ __all__ = [
     "cargar_alturas",
     "declarar_circuitos",
     "descartar",
+    "filas_del_informe",
     "fusionar",
     "leer",
     "mensaje_sin_ruta",
@@ -335,15 +337,37 @@ def descartar(vivo: BorradorVivo) -> None:
 # --- lo que se muestra ----------------------------------------------------------------------------
 
 
-def _filas_del_informe(informe: Sequence[ItemInforme]) -> list[dict[str, str]]:
-    """`filas_del_informe` con las claves de la API (`tipo`, `referencia`, `fila`, `mensaje`)."""
-    claves = ("tipo", "referencia", "fila", "mensaje")
+#: La referencia interna de un mensaje del lector, p. ej. `(SF5-1, SF5-2)`: la misma de
+#: `hoja._REFERENCIA_INTERNA` SIN el `\s*` inicial, que hace cuadratica la sustitucion de la
+#: clasica ante una corrida larga de espacios (100 000 espacios: decenas de segundos).
+_REFERENCIA = re.compile(r"\((?:SF\d+-\d+(?:,\s*)?)+\)")
+
+
+def _sin_referencias(mensaje: str) -> str:
+    """`hoja._REFERENCIA_INTERNA.sub("", mensaje)` en tiempo lineal: quita cada referencia y los
+    espacios que la preceden (los que toma la clase de espacios de `re`, que con texto es la
+    misma que `str.isspace`). Solo actua en la ranura de la referencia; el resto queda igual."""
+    trozos: list[str] = []
+    desde = 0
+    for coincidencia in _REFERENCIA.finditer(mensaje):
+        trozos.append(mensaje[desde : coincidencia.start()].rstrip())
+        desde = coincidencia.end()
+    trozos.append(mensaje[desde:])
+    return "".join(trozos)
+
+
+def filas_del_informe(informe: Sequence[ItemInforme]) -> list[dict[str, str]]:
+    """Las filas de `hoja.filas_del_informe` (mismos rotulos y textos; prueba de paridad con la
+    clasica) con las claves de la API, `tipo`, `referencia`, `fila` y `mensaje`, en tiempo
+    lineal (el mensaje sale del plano subido)."""
     return [
         {
-            clave: fila[columna]
-            for clave, columna in zip(claves, hoja.COLUMNAS_DEL_INFORME, strict=True)
+            "tipo": hoja.ROTULOS_DEL_INFORME[i.tipo],
+            "referencia": i.referencia,
+            "fila": i.fila,
+            "mensaje": _sin_referencias(i.mensaje),
         }
-        for fila in hoja.filas_del_informe(informe)
+        for i in informe
     ]
 
 
@@ -361,7 +385,7 @@ def vista_de_importacion(resultado: ResultadoImportacion) -> dict:
         "conteos": [
             {"rotulo": r, "cantidad": n} for r, n in hoja.resumen_de_importacion(resultado)
         ],
-        "informe": _filas_del_informe(resultado.informe),
+        "informe": filas_del_informe(resultado.informe),
         "alturas_pendientes": [{"id": i, "nombre": n} for i, n in alturas],
         "circuitos_supuestos": [
             {
@@ -388,7 +412,7 @@ def vista_de_fusion(fusion: Fusion) -> dict:
             ],
             "origenes": fusion.resumen.origenes,
         },
-        "informe": _filas_del_informe(fusion.informe),
+        "informe": filas_del_informe(fusion.informe),
         "mensaje": (
             f"Se fusionó «{fusion.resultado.archivo}» con el borrador de la hoja: "
             f"{filas['esp_ambientes']} ambientes, {filas['esp_fuentes']} fuentes y "
