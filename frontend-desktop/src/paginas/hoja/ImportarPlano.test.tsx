@@ -1,4 +1,4 @@
-import { configure, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { cleanup, configure, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import {
@@ -12,6 +12,7 @@ import {
   sinPendientes,
 } from "./datosDePlano";
 import { ImportarPlano } from "./ImportarPlano";
+import { olvidarImportaciones } from "./useImportacion";
 import type { Resumen } from "./logica";
 
 // Rebanada 3e-2 (frente): el flujo «Importar plano (DXF o IFC)» de la pestaña Espacio. El servidor se simula con las
@@ -39,6 +40,7 @@ describe("Importar plano (3e-2)", () => {
   const alRecargar = vi.fn<() => Promise<void>>();
   const alReabrir = vi.fn();
   const alExpirar = vi.fn();
+  const alOcuparse = vi.fn<(ocupada: boolean) => void>();
   // Lo que el servidor simulado contesta a cada ruta; cada prueba lo cambia.
   let alLeer: (cuerpo: FormData) => Response | Promise<Response>;
   let alUnidad: (cuerpo: { rev: number; unidades: string }) => Response | Promise<Response>;
@@ -50,7 +52,7 @@ describe("Importar plano (3e-2)", () => {
   beforeEach(() => {
     vi.stubGlobal("fetch", fetchFalso);
     fetchFalso.mockReset();
-    for (const f of [alAusente, alAceptar, alRecargar, alReabrir, alExpirar]) f.mockReset();
+    for (const f of [alAusente, alAceptar, alRecargar, alReabrir, alExpirar, alOcuparse]) f.mockReset();
     alRecargar.mockResolvedValue(undefined);
     alLeer = () => json(importada());
     alUnidad = () => json(importada());
@@ -94,6 +96,7 @@ describe("Importar plano (3e-2)", () => {
         alRecargar={alRecargar}
         alReabrir={alReabrir}
         alExpirar={alExpirar}
+        alOcuparse={alOcuparse}
       />
     );
     const dibujo = render(propiedades(rev));
@@ -237,14 +240,17 @@ describe("Importar plano (3e-2)", () => {
       alLeer = () => new Promise<Response>((resolver) => (soltar = resolver));
       montar();
       await leer(usuario);
-      const bloque = screen.getByRole("button", { name: "Importar plano (DXF o IFC)" }).closest("section")!;
-      expect(bloque).toHaveAttribute("aria-busy", "true");
-      expect(screen.getByRole("status")).toHaveTextContent("Leyendo el plano…");
+      const cuerpo = document.getElementById(screen.getByRole("button", { name: "Importar plano (DXF o IFC)" }).getAttribute("aria-controls")!)!;
+      expect(cuerpo).toHaveAttribute("aria-busy", "true");
+      // el anuncio no vive dentro de una región ocupada: algunos lectores retienen lo que se anuncia ahí
+      const estado = screen.getByRole("status");
+      expect(estado).toHaveTextContent("Leyendo el plano…");
+      expect(estado.closest('[aria-busy="true"]')).toBeNull();
       expect(screen.getByRole("button", { name: "Leer plano" })).toBeDisabled();
       expect(llamadas()).toHaveLength(1);
       soltar(json(importada()));
       await encabezado("Informe de la importación de of001.dxf");
-      expect(bloque).toHaveAttribute("aria-busy", "false");
+      expect(cuerpo).toHaveAttribute("aria-busy", "false");
     });
   });
 
@@ -531,7 +537,7 @@ describe("Importar plano (3e-2)", () => {
       expect(screen.getByText("Pendiente", { selector: "dt" }).nextElementSibling).toHaveTextContent("6");
       expect(screen.getByText("Filas que entraron al borrador: Ambientes 6 · Fuentes 6 · Puntos 21.")).toBeInTheDocument();
       expect(
-        screen.getByText("1 orígenes de medida del plano, aparte de las filas: cada fila importada cita el suyo."),
+        screen.getByText("33 orígenes de medida del plano, aparte de las filas: cada fila importada cita el suyo."),
       ).toBeInTheDocument();
       expect(within(screen.getByRole("table", { name: "Informe de la fusión" })).getAllByRole("row")).toHaveLength(1 + 48);
     });
@@ -915,6 +921,91 @@ describe("Importar plano (3e-2)", () => {
       montar();
       await abrir(usuario);
       expect(screen.getByRole("button", { name: "Importar plano (DXF o IFC)" })).toHaveFocus();
+    });
+  });
+  describe("ronda 1 del árbitro", () => {
+    test("tras recargar por un 409 de rev, el foco va al encabezado del informe (el botón desapareció)", async () => {
+      const usuario = userEvent.setup();
+      alAlturas = () => json({ detalle: REV_VIEJO }, 409);
+      montar();
+      await leer(usuario);
+      await encabezado("Alturas pendientes");
+      await usuario.click(screen.getByRole("button", { name: "Cargar alturas" }));
+      await usuario.click(await screen.findByRole("button", { name: "Recargar el borrador" }));
+      const h = await encabezado("Informe de la importación de of001.dxf");
+      await waitFor(() => expect(h).toHaveFocus());
+    });
+
+    test("tras recargar sin importación a la vista, el foco va a «Leer plano»", async () => {
+      const usuario = userEvent.setup();
+      alLeer = () => json({ detalle: REV_VIEJO }, 409);
+      montar();
+      await leer(usuario);
+      await usuario.click(await screen.findByRole("button", { name: "Recargar el borrador" }));
+      await waitFor(() => expect(screen.getByRole("button", { name: "Leer plano" })).toHaveFocus());
+    });
+
+    test("«Leer plano» sin archivo lleva el foco al aviso", async () => {
+      const usuario = userEvent.setup();
+      montar();
+      await abrir(usuario);
+      await usuario.click(screen.getByRole("button", { name: "Leer plano" }));
+      const aviso = screen.getByText("Elija primero un archivo de plano (DXF o IFC) y pulse Leer plano.").closest("[tabindex]");
+      await waitFor(() => expect(aviso).toHaveFocus());
+    });
+
+    test("413 (plano demasiado grande) y 403 (sin permiso): el texto del servidor tal cual y el foco en el aviso", async () => {
+      const usuario = userEvent.setup();
+      for (const [estado, texto] of [
+        [413, "El archivo es demasiado grande: el tope es de 20 MiB."],
+        [403, "Su cuenta no tiene permiso para esta acción."],
+      ] as const) {
+        alLeer = () => json({ detalle: texto }, estado);
+        const { unmount } = montar();
+        await leer(usuario);
+        const aviso = (await screen.findByText(texto)).closest("[tabindex]");
+        await waitFor(() => expect(aviso).toHaveFocus());
+        expect(alExpirar).not.toHaveBeenCalled();
+        unmount();
+      }
+    });
+
+    test("una sesión vencida (401) olvida lo recordado; también `olvidarImportaciones`", async () => {
+      const usuario = userEvent.setup();
+      const { unmount } = montar();
+      const mismo = id;
+      await leer(usuario);
+      await encabezado("Alturas pendientes");
+      alAlturas = () => json({ detalle: "Sesión vencida." }, 401);
+      await usuario.click(screen.getByRole("button", { name: "Cargar alturas" }));
+      await waitFor(() => expect(alExpirar).toHaveBeenCalledTimes(1));
+      unmount();
+      montar(3, { id: mismo });
+      expect(screen.getByRole("button", { name: "Importar plano (DXF o IFC)" })).toHaveAttribute("aria-expanded", "false");
+      // y por orden explícita
+      const segundo = userEvent.setup();
+      await leer(segundo);
+      await encabezado("Informe de la importación de of001.dxf");
+      olvidarImportaciones();
+      screen.getByRole("button", { name: "Descartar la importación" }); // sigue a la vista mientras la página no se va
+      cleanup();
+      montar(3, { id: mismo });
+      expect(screen.getByRole("button", { name: "Importar plano (DXF o IFC)" })).toHaveAttribute("aria-expanded", "false");
+    });
+
+    test("al fusionar avisa a la página que ocupa el espacio y no lo suelta hasta que la relectura termina", async () => {
+      const usuario = userEvent.setup();
+      let terminar: () => void = () => undefined;
+      alRecargar.mockImplementation(() => new Promise<void>((resolver) => (terminar = resolver)));
+      montar();
+      await leer(usuario);
+      await usuario.click(await screen.findByRole("button", { name: "Fusionar con el espacio del borrador" }));
+      await screen.findByText(MENSAJE_DE_FUSION);
+      expect(alOcuparse).toHaveBeenLastCalledWith(true);
+      expect(screen.getByRole("button", { name: "Leer plano" })).toBeDisabled();
+      terminar();
+      await waitFor(() => expect(alOcuparse).toHaveBeenLastCalledWith(false));
+      await waitFor(() => expect(screen.getByRole("button", { name: "Leer plano" })).toBeEnabled());
     });
   });
 });

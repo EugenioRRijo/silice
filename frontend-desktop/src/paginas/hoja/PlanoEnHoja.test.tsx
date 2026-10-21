@@ -1,4 +1,4 @@
-import { configure, render, screen, within } from "@testing-library/react";
+import { configure, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import type { SesionRespuesta } from "../../api/tipos";
@@ -56,17 +56,25 @@ describe("Hoja: importar plano en la pestaña Espacio (3e-2)", () => {
   const fetchFalso = vi.fn<typeof fetch>();
   const alExpirar = vi.fn();
   let fusionado = false;
+  // Si no es null, el GET del borrador (la relectura tras fusionar) espera a que se abra.
+  let compuerta: Promise<void> | null = null;
 
   beforeEach(() => {
     vi.stubGlobal("fetch", fetchFalso);
     fetchFalso.mockReset();
     fusionado = false;
+    compuerta = null;
     fetchFalso.mockImplementation(async (ruta, init) => {
       const camino = new URL(String(ruta), "http://silice.local").pathname;
       const metodo = init?.method ?? "GET";
       if (camino === "/v1/hoja/versiones") return json(VERSIONES);
       if (camino === "/v1/hoja/borradores" && metodo === "GET") return json({ borradores: [] });
       if (camino === "/v1/hoja/borradores" && metodo === "POST") return json(BORRADOR, 201);
+      if (camino === `/v1/hoja/borradores/${ID}` && metodo === "GET" && compuerta !== null) await compuerta;
+      if (camino === `/v1/hoja/borradores/${ID}/espacio` && metodo === "PUT") {
+        const { rev } = JSON.parse(String(init?.body)) as { rev: number };
+        return json({ rev: rev + 1, resumen: { ...BORRADOR.resumen, rev: rev + 1, cambios: 1 } });
+      }
       if (camino === `/v1/hoja/borradores/${ID}` && metodo === "GET") return json({ id: ID, base: BORRADOR.base, resumen: fusionado ? RESUMEN_FUSIONADO : BORRADOR.resumen });
       if (camino === `/v1/hoja/borradores/${ID}/plano` && metodo === "POST") return json(importada());
       if (camino === `/v1/hoja/borradores/${ID}/plano/fusionar`) {
@@ -128,5 +136,46 @@ describe("Hoja: importar plano en la pestaña Espacio (3e-2)", () => {
     const tabla = screen.getByRole("table", { name: /Ambientes/ });
     expect(await within(tabla).findByDisplayValue("PLN-01")).toBeInTheDocument();
     expect(within(tabla).queryByDisplayValue("BAN-01")).toBeNull();
+  });
+  async function hastaLeido(usuario: ReturnType<typeof userEvent.setup>) {
+    render(
+      <ContextoAplicacion.Provider value={valor()}>
+        <PaginaHoja />
+      </ContextoAplicacion.Provider>,
+    );
+    await usuario.click(await screen.findByRole("button", { name: "Importar plano (DXF o IFC)" }));
+    await usuario.upload(document.querySelector('input[type="file"]') as HTMLInputElement, new File(["x"], "of001.dxf"));
+    await usuario.click(screen.getByRole("button", { name: "Leer plano" }));
+    await screen.findByRole("button", { name: "Fusionar con el espacio del borrador" });
+  }
+  const puts = () => fetchFalso.mock.calls.filter(([r, i]) => String(r).endsWith("/espacio") && i?.method === "PUT");
+
+  test("con una edición del espacio en la pausa, «Fusionar» no se puede pulsar (el enganche ocupadoPorEdicion)", async () => {
+    const usuario = userEvent.setup();
+    await hastaLeido(usuario);
+    const tabla = screen.getByRole("table", { name: /Ambientes/ });
+    await usuario.type(within(tabla).getAllByRole("textbox")[1]!, "9");
+    expect(screen.getByRole("button", { name: "Fusionar con el espacio del borrador" })).toBeDisabled();
+    await waitFor(() => expect(puts()).toHaveLength(1)); // la edición sale; luego se puede fusionar
+    await waitFor(() => expect(screen.getByRole("button", { name: "Fusionar con el espacio del borrador" })).toBeEnabled());
+  });
+
+  test("desde «Fusionar» hasta que la relectura termina, las tablas no se editan: ningún PUT sale con el rev nuevo y las filas viejas", async () => {
+    const usuario = userEvent.setup();
+    await hastaLeido(usuario);
+    let abrirCompuerta: () => void = () => undefined;
+    compuerta = new Promise<void>((resolver) => (abrirCompuerta = resolver));
+    await usuario.click(screen.getByRole("button", { name: "Fusionar con el espacio del borrador" }));
+    await screen.findByText(/Se fusionó «of001.dxf»/); // el aviso ya está y la relectura sigue en vuelo
+    const tabla = screen.getByRole("table", { name: /Ambientes/ });
+    const celda = within(tabla).getAllByRole("textbox")[1]!;
+    expect(celda).toBeDisabled();
+    await usuario.type(celda, "zzz");
+    await new Promise((r) => setTimeout(r, 700)); // más que la pausa de 400 ms
+    expect(puts()).toHaveLength(0);
+    abrirCompuerta();
+    expect(await within(screen.getByRole("table", { name: /Ambientes/ })).findByDisplayValue("PLN-01")).toBeInTheDocument();
+    await waitFor(() => expect(within(screen.getByRole("table", { name: /Ambientes/ })).getAllByRole("textbox")[1]).toBeEnabled());
+    expect(puts()).toHaveLength(0);
   });
 });

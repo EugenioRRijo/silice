@@ -104,7 +104,7 @@ export const FUSION_OF001: ResumenDeFusionRespuesta = {
     { rotulo: "Fuentes", cantidad: 6 },
     { rotulo: "Puntos", cantidad: 21 },
   ],
-  origenes: 1,
+  origenes: 33, // el backend real con OF-001 (tests/unit/test_ui_hoja_planos.py y la medición de 3e-2)
 };
 
 export const MENSAJE_DE_FUSION =
