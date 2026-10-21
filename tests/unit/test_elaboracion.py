@@ -1,7 +1,8 @@
 """La orquestacion de la elaboracion fuera de la pagina de componer (INV-043, 11b y 11c).
 
-`ui/elaboracion.py` no importa Streamlit: se prueba como funciones sobre una base en `tmp_path`
-sembrada con `scripts.seed.sembrar` (la salvaguarda de `tests/conftest.py` vigila `data/apu.db`).
+`aplicacion/elaboracion.py` no importa Streamlit: se prueba como funciones sobre una base en
+`tmp_path` sembrada con `scripts.seed.sembrar` (la salvaguarda de `tests/conftest.py` vigila
+`data/apu.db`).
 Los oraculos son la fixture de la linea base, no el nucleo que se orquesta.
 """
 
@@ -19,6 +20,12 @@ import openpyxl
 import pytest
 from sqlalchemy.orm import Session
 
+from aplicacion.composicion import Guardado, guardar_composicion
+from aplicacion.elaboracion import (
+    elaborar_desde_catalogo,
+    items_desde_filas,
+    libro_excel,
+)
 from core.catalog import Catalogo, abrir_sesion, crear_esquema, crear_motor
 from core.contracts import Dominio
 from scripts.seed import sembrar
@@ -31,13 +38,6 @@ from tests.fixtures.apu_linea_base import (
 )
 from tests.fixtures.computo_auditado import items_auditados
 from ui.composicion import desglose
-from ui.elaboracion import (
-    Guardado,
-    elaborar_desde_catalogo,
-    guardar_composicion,
-    items_desde_filas,
-    libro_excel,
-)
 
 
 def _sembrar(base: Path) -> Path:

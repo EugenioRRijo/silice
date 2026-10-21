@@ -1,6 +1,6 @@
 """Proyectos del caso abierto (RF-63, spec §9.7): crear con nombre unico y no vacio, listar, version
-vigente y resumen de auditoria. `ui.proyectos` no importa Streamlit: se prueba como funcion pura
-sobre una base en `tmp_path`.
+vigente y resumen de auditoria. `aplicacion.proyectos` no importa Streamlit: se prueba como
+funcion pura sobre una base en `tmp_path`.
 """
 
 from __future__ import annotations
@@ -11,14 +11,15 @@ from pathlib import Path
 import pytest
 from sqlalchemy import select
 
+from aplicacion import proyectos
+from aplicacion.proyectos import ProyectoInvalido
 from core import models
 from core.catalog import Catalogo, abrir_sesion, crear_motor
 from core.contracts import Severidad
 from scripts.seed import NOMBRE_PROYECTO
 from tests.fixtures import apu_linea_base as linea_base
 from tests.fixtures.base_con_pendiente import guardar_base_con_pendiente
-from ui import hoja, proyectos
-from ui.proyectos import ProyectoInvalido
+from ui import hoja
 
 
 @pytest.fixture

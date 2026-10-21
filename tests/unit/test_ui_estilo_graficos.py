@@ -1,9 +1,12 @@
-"""`ui/estilo.py` (PLAN_SILICE_UI, tarea 1; RU-1: sin prueba hasta la auditoría final, 2026-10-13).
+"""`aplicacion/estilo.py` (PLAN_SILICE_UI, tarea 1; RU-1: sin prueba hasta la auditoría final,
+2026-10-13).
 
 * Los formatos redondean a la mitad hacia arriba solo al presentar (NORMAS.md §2) y dicen «no
   disponible» ante `None`; las fronteras se escriben a mano (x,xx5 sube; x,xx49 baja).
-* La paleta es una sola copia: los rubros y las series son exactamente los que arma `ui.tablero`.
-* `ui/estilo.py` y `ui/tablero.py` no importan Streamlit ni pandas (restricción global del plan).
+* La paleta es una sola copia: los rubros y las series son exactamente los que arma
+  `aplicacion.tablero`.
+* `aplicacion/estilo.py` y `aplicacion/tablero.py` no importan Streamlit ni pandas (restricción
+  global del plan).
 
 Retiro de Streamlit (F4): se fueron con `ui/graficos.py` y `.streamlit/config.toml` las pruebas de
 los gráficos de Altair y del tema de Streamlit.
@@ -16,13 +19,13 @@ from decimal import Decimal
 
 import pytest
 
+from aplicacion import estilo
 from tests.fixtures.arquitectura import RAIZ, importaciones
-from ui import estilo
 
 D = Decimal
 
 
-# --- ui/estilo.py ---------------------------------------------------------------------------------
+# --- aplicacion/estilo.py -------------------------------------------------------------------
 
 
 @pytest.mark.parametrize(
@@ -79,7 +82,7 @@ def test_la_paleta_es_hexadecimal_y_cubre_los_rubros_y_las_series_del_tablero():
         *estilo.COLORES_SERIE.values(),
     ]
     assert all(re.fullmatch(r"#[0-9A-F]{6}", c) for c in colores), colores
-    # Los cinco rubros del desglose y las cuatro series de la curva (`ui.tablero`).
+    # Los cinco rubros del desglose y las cuatro series de la curva (`aplicacion.tablero`).
     assert list(estilo.COLORES_RUBRO) == [
         "Materiales",
         "Equipos",
@@ -91,7 +94,7 @@ def test_la_paleta_es_hexadecimal_y_cubre_los_rubros_y_las_series_del_tablero():
     assert len(set(estilo.COLORES_SERIE.values())) == 4  # cada serie se distingue
 
 
-@pytest.mark.parametrize("modulo", ["ui/estilo.py", "ui/tablero.py"])
+@pytest.mark.parametrize("modulo", ["aplicacion/estilo.py", "aplicacion/tablero.py"])
 def test_los_modulos_del_tablero_no_importan_streamlit_ni_pandas(modulo):
     prohibidos = {
         m for m in importaciones(RAIZ / modulo) if m.split(".")[0] in ("streamlit", "pandas")

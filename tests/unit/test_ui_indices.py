@@ -2,10 +2,10 @@ from datetime import date
 
 from sqlalchemy import func, select
 
+from aplicacion import indices
 from core import models
 from core.catalog import abrir_sesion, crear_esquema, crear_motor
 from tests.fixtures.bcv_cuadriculas import CARPETA, campo
-from ui import indices
 
 
 def test_leer_no_escribe_y_confirmar_es_idempotente(tmp_path):
