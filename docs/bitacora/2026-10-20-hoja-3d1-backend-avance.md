@@ -55,6 +55,8 @@ Guion en el scratchpad, no versionado; cada mutación rompe una línea, corre la
   *distinta* de la abierta. Consecuencia: abrir a propósito una versión vieja o una descartada también pide confirmar (el texto «Otra
   persona guardó la versión X después de que usted abrió la Y» no es literalmente cierto en ese caso). Falla hacia el lado seguro; se
   fija con una prueba. Alternativa si Eugenio la prefiere: exigir además que la vigente sea posterior a la abierta.
+  **Superada el 2026-10-21** por la afinación aprobada de la ola de decisiones (vigente de ahora contra vigente al abrir; ver
+  `2026-10-21-ola-decisiones-backend-avance.md`): abrir a propósito una versión vieja ya no pide confirmar.
 - **Sin cambios → 422** con el texto de `motivo_para_no_guardar` (la clásica devolvía `None` y mostraba una nota informativa). Se juzga
   antes que la falta de fuente (el orden del motivo, H:1801) y la falta de fuente antes que «solo lectura» (como la clásica).
 - **Solo lectura → 409** (la clásica lanzaba `HojaInvalida`); el diseño §4.5 lo pide así.
