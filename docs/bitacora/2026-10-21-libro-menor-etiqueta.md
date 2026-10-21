@@ -78,3 +78,38 @@ Corrida final (con el árbol de los otros frentes presente):
   `PlanoEnHoja.test.tsx > con una edición del espacio en la pausa…`, esta última de la Hoja, no de esta zona): aisladas, App da 19 de 19 y PlanoEnHoja 4 de 4. Lo tocado
   (`src/indicadores`, `VisorLibroMenor`, `visor.estilos`): 121 de 121.
 - `npm run lint` y `npm run build` limpios; `npm run dist`: 161 archivos, 14 043 807 bytes, sin URLs externas. `git diff -- core/ seguridad/` vacío.
+
+## Ronda 1 del árbitro (devuelta) y decisión de diseño del orquestador
+
+El árbitro aprobó con B1 y B2 corregidos; el orquestador (por delegación de Eugenio) decidió además adoptar su recomendación de diseño. Lo anterior (texto «revise si omite N
+partidas», etiqueta igual en los tres indicadores, nombre accesible con el texto, franja con alto de 138 a 277 px) queda **superado** por esto:
+
+- **B1.** El texto con datos ya no sugiere partidas ausentes, porque N cuenta partidas PRESENTES con L4: «Libro menor: N partida(s) con costo directo incompleto (n.º 2, 5).
+  Puede faltar además alguna partida; revise antes de aceptar» (singular y plural, cinco primeras y «y K más», espacio duro tras «n.º»). La frase fija sin datos no cambia.
+- **B2.** `partidas_con_omision` usa `setdefault` (la primera partida de una hoja APU compartida, como `reglas._Contexto.partida_de_apu`). Prueba con un resultado de cuatro
+  partidas donde la 3 y la 7 comparten `APU-02` (rojo visto: daba 7; ahora 3). Es una prueba sobre un resultado armado a mano (`SimpleNamespace`), no sobre un libro de Excel:
+  el constructor de libros ficticios no deja que dos partidas compartan APU.
+- **B3.** El nombre accesible del grupo es solo el título; la etiqueta es su descripción (`aria-describedby`): la lectora la dice una vez.
+- **B4.** El comentario de `FranjaIndicadores` y el encabezado de `DESIGN.md` ya no dan la franja por fija en 64 px (alto mínimo, crece).
+- **Decisión de diseño.** Etiqueta COMPLETA solo en «Total general» (o en el primer indicador menor si ese no lo es) y, en subtotal e IVA, un marcador de un renglón con el mismo
+  ícono, los mismos tokens, `role="note"`, sin cierre ni tooltip y la palabra «Libro menor» (descripción accesible). La tarjeta con la frase completa se lleva más ancho
+  (`.fiori-kpi--frase`, `flex: 2.5 1 0`) y la variación baja de línea en vez de recortarse con elipsis (con tarjetas estrechas se recortaba).
+
+Medición en el navegador (Chromium 151 por DevTools, Node 22; API en 127.0.0.1:8011, DevTools en 9336, `SILICE_DATOS` temporal; libro de V-16, H1 en la partida 2), sin desborde
+(`scrollWidth == clientWidth`), etiqueta dentro de su tarjeta (3 de 3), cifra, título y variación sin recorte:
+
+| Tamaño y ancho | Franja | Marcador / frase completa | Panel de la hoja |
+|---|---|---|---|
+| Normal 1366 | 138 px | 23 / 42 px | 434 px |
+| Normal 1056 | 156 px | 23 / 61 px | 416 px |
+| Muy grande 1366 | 231 px | 35 / 63 px | 243 px |
+| Muy grande 1056 | 259 px | 35 / 119 px | 215 px |
+
+Con la etiqueta igual en las tres tarjetas, a Muy grande 1056 el panel de la hoja quedaba en 197 px; con la frase completa en una sola tarjeta sin ensancharla bajó a 131 px,
+y con el ensanche y la variación que baja de línea queda en 215 px. Es poco más de lo que había: la causa es la letra Muy grande en 1056 px de ancho (el título de la página y
+la barra de fecha ya ocupan ~300 px), no la etiqueta. Libro limpio, sin etiqueta: 123 px (Muy grande 1366) y 151 px (Muy grande 1056).
+
+Verificación de la ronda: `pytest -W error` de `test_api_libros*`, `test_api_acceso_por_ruta`, `test_front_rutas_api` y `test_arquitectura*`: 706 verdes; `app.openapi() == docs/api.json`;
+`ruff` limpio; `npm run lint` y `npm run build` limpios; `npm run dist`: 161 archivos, 14 044 965 bytes, sin URLs externas; `npx vitest run src`: 130 archivos, 1922 pruebas, 1916 verdes y 6
+rojas por el límite de tiempo con la máquina saturada (Administracion, Asistente, HojaExcel, PlanoEnHoja y Edicion, ninguna de esta zona): aisladas pasan todas (21, 30 y 31 de 31 con
+`-t 3c-F10`; Edicion entera dio una roja distinta en una corrida cargada y pasa aislada).
