@@ -179,8 +179,8 @@ def test_la_respuesta_solo_suma_el_aviso_al_contrato(cliente, limpio) -> None:
     r = _auditar(cliente, limpio.datos).json()
     assert set(r) == {
         "libro", "fecha_libro", "fecha_devolucion", "cumple", "por_severidad", "totales_libro",
-        "totales_silice", "indicadores", "hallazgos", "alertas", "trazabilidad", "metadatos",
-        "aviso_historial",
+        "totales_silice", "indicadores", "partidas_con_omision", "hallazgos", "alertas",
+        "trazabilidad", "metadatos", "aviso_historial",
     }  # fmt: skip
 
 

@@ -13201,7 +13201,7 @@
           "sentido"
         ],
         "title": "IndicadorRespuesta",
-        "description": "Un total del libro (`actual`) frente al de Sílice (`meta`), RS2-7: `delta = actual - meta`.\nEs presentación (RS2-12, NORMAS §2.3): los tres montos y `delta_pct` van en centésimas al par;\nel exacto está en `totales_libro` y `totales_silice`. `delta_pct` es nulo si la meta es cero.\n`sentido = \"exactitud\"` (RS2-13) es el libro contra Sílice (la meta es el total de Sílice).\nDecisión de Eugenio, V-16 (2026-10-21), que supera a la lectura anterior de «toda desviación\nes desfavorable»: `delta = actual - meta`, y un `delta` negativo (libro menor que Sílice) es\nfavorable (verde) y uno positivo (libro mayor), desfavorable (rojo). Riesgo aceptado: un libro\nque omite costos sale en verde. El color lo pinta el front; la API solo manda el signo."
+        "description": "Un total del libro (`actual`) frente al de Sílice (`meta`), RS2-7: `delta = actual - meta`.\nEs presentación (RS2-12, NORMAS §2.3): los tres montos y `delta_pct` van en centésimas al par;\nel exacto está en `totales_libro` y `totales_silice`. `delta_pct` es nulo si la meta es cero.\n`sentido = \"exactitud\"` (RS2-13) es el libro contra Sílice (la meta es el total de Sílice).\nDecisión de Eugenio, V-16 (2026-10-21), que supera a la lectura anterior de «toda desviación\nes desfavorable»: `delta = actual - meta`, y un `delta` negativo (libro menor que Sílice) es\nfavorable (verde) y uno positivo (libro mayor), desfavorable (rojo). Riesgo aceptado: un libro\nque omite costos sale en verde; por eso el front pega una etiqueta fija al indicador cuando es\nmenor (con `partidas_con_omision` de la respuesta si hay datos). El color lo pinta el front;\nla API solo manda el signo."
       },
       "InformeAuditoriaRespuesta": {
         "properties": {
@@ -13756,6 +13756,14 @@
             "type": "array",
             "title": "Indicadores"
           },
+          "partidas_con_omision": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Partidas Con Omision",
+            "default": []
+          },
           "hallazgos": {
             "items": {
               "$ref": "#/components/schemas/HallazgoLibroRespuesta"
@@ -13812,7 +13820,7 @@
           "metadatos"
         ],
         "title": "LibroAuditadoRespuesta",
-        "description": "`aviso_historial` es `null` si la auditoría quedó en el historial; si no, el texto que la\npantalla muestra (la auditoría es válida igual, RF-144)."
+        "description": "`aviso_historial` es `null` si la auditoría quedó en el historial; si no, el texto que la\npantalla muestra (la auditoría es válida igual, RF-144).\n\n`partidas_con_omision` (V-16, etiqueta del libro menor): los números de las partidas cuyo\nAPU tiene un hallazgo L4 (el costo directo del libro deja fuera componentes o no es la suma de\nellos), ordenados y sin repetir. Es el único rastro de «costos omitidos» que el auditor deja de\nforma estructurada; una lista vacía NO prueba que el libro esté completo (una partida\nentera que falta en el libro no tiene contraparte que comparar). Campo aditivo."
       },
       "LibroOrigenRespuesta": {
         "properties": {
