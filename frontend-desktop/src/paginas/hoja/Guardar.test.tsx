@@ -369,6 +369,31 @@ describe("Hoja del proyecto: guardar versión y primera versión (3d-1)", () => 
     expect(guardados()).toHaveLength(1);
   });
 
+  test("mientras se guarda, Cancelar está deshabilitado y Esc no cierra: el error del servidor no se pierde (MENOR del árbitro de 3d-1)", async () => {
+    let contestar: (r: Response) => void = () => undefined;
+    alGuardar = () =>
+      new Promise<Response>((resolver) => {
+        contestar = resolver;
+      });
+    montar();
+    const dialogo = await abrirModal();
+    await escribirFuente(dialogo);
+    fireEvent.click(confirmar(dialogo));
+    await esperar(() => expect(guardados()).toHaveLength(1));
+    expect(within(dialogo).getByRole("button", { name: "Cancelar" })).toBeDisabled();
+    await userEvent.keyboard("{Escape}");
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    await act(async () =>
+      contestar(json({ detalle: "No hay cambios para guardar: edite alguna celda primero." }, 422)),
+    );
+    expect(await within(screen.getByRole("dialog")).findByText("No hay cambios para guardar: edite alguna celda primero.")).toBeInTheDocument();
+    expect(campoFuente(screen.getByRole("dialog"))).toHaveValue(FUENTE);
+    // Ya no hay petición en vuelo: Cancelar y Esc vuelven a funcionar.
+    expect(within(screen.getByRole("dialog")).getByRole("button", { name: "Cancelar" })).toBeEnabled();
+    await userEvent.keyboard("{Escape}");
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
   test("el foco queda en el selector de versión tras guardar (el botón ya no existe)", async () => {
     montar();
     const dialogo = await abrirModal();
