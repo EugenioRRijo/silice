@@ -1,4 +1,4 @@
-import { Button, InlineNotification, RadioButton, RadioButtonGroup, TextInput } from "@carbon/react";
+import { Button, InlineNotification, RadioButton, RadioButtonGroup } from "@carbon/react";
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { ErrorDeApi, pedir } from "../../api/cliente";
@@ -9,6 +9,7 @@ import { reaccionar } from "./fallos";
 import type { Reacciones } from "./fallos";
 import { fechaIsoDe, hoyISO } from "./formato";
 import type { ImportacionRespuesta } from "./tipos";
+import { CampoTexto } from "../../comun/CampoTexto";
 
 interface Props {
   // Se importo un reporte: hay que volver a leer el tablero.
@@ -149,7 +150,7 @@ export function PestanaImportar({ alImportar, alVerSospechosos, reacciones }: Pr
           <RadioButton id="unidad-kg" labelText="kg" value="kg" />
           <RadioButton id="unidad-t" labelText="t" value="t" />
         </RadioButtonGroup>
-        <TextInput
+        <CampoTexto
           id="importar-fecha"
           type="date"
           labelText="Fecha de referencia"
@@ -168,7 +169,7 @@ export function PestanaImportar({ alImportar, alVerSospechosos, reacciones }: Pr
             Escriba en qué número de columna está cada una en el archivo (1 = la primera columna).
           </p>
           {faltan.map((campo) => (
-            <TextInput
+            <CampoTexto
               key={campo}
               id={`columna-${campo}`}
               labelText={`Columna de ${rotuloDeCampo(campo)}`}

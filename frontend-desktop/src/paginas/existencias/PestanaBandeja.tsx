@@ -1,4 +1,4 @@
-import { Button, InlineNotification, Select, SelectItem, TextInput } from "@carbon/react";
+import { Button, InlineNotification, Select, SelectItem } from "@carbon/react";
 import { useCallback, useState } from "react";
 import type { FormEvent } from "react";
 import { pedir } from "../../api/cliente";
@@ -12,6 +12,7 @@ import { ahoraLocalISO, fechaIsoDe, leerCantidad } from "./formato";
 import type { MaterialRespuesta, MovimientoRespuesta, SospechosoRespuesta } from "./tipos";
 import { useRecurso } from "./useRecurso";
 import type { Recurso } from "./useRecurso";
+import { CampoTexto } from "../../comun/CampoTexto";
 
 interface Props {
   materiales: Recurso<MaterialRespuesta[]>;
@@ -127,7 +128,7 @@ function FormularioPesaje({ sospechoso, materiales, ocupado, alResolver, alDesca
           <SelectItem key={m.codigo} value={m.codigo} text={`${m.codigo} · ${m.nombre}`} />
         ))}
       </Select>
-      <TextInput
+      <CampoTexto
         id={`pesaje-${sospechoso.id}-fecha`}
         type="date"
         labelText="Fecha"
@@ -136,7 +137,7 @@ function FormularioPesaje({ sospechoso, materiales, ocupado, alResolver, alDesca
         invalid={errores.fecha !== undefined}
         invalidText={errores.fecha ?? ""}
       />
-      <TextInput
+      <CampoTexto
         id={`pesaje-${sospechoso.id}-ticket`}
         labelText="Ticket"
         autoComplete="off"
@@ -145,7 +146,7 @@ function FormularioPesaje({ sospechoso, materiales, ocupado, alResolver, alDesca
         invalid={errores.ticket !== undefined}
         invalidText={errores.ticket ?? ""}
       />
-      <TextInput
+      <CampoTexto
         id={`pesaje-${sospechoso.id}-neto`}
         labelText="Peso neto (t)"
         inputMode="decimal"

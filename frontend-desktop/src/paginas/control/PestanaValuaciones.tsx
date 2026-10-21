@@ -1,4 +1,4 @@
-import { Button, InlineNotification, Select, SelectItem, TextInput } from "@carbon/react";
+import { Button, InlineNotification, Select, SelectItem } from "@carbon/react";
 import { useState } from "react";
 import { pedir } from "../../api/cliente";
 import { AvisoError } from "../../comun/AvisoError";
@@ -10,6 +10,7 @@ import { useAplicacion } from "../../shell/contexto";
 import { COLUMNAS_VALUACIONES, LINEA_VACIA, columnasDe, conId, errorDeCarga, rutaDe, sinLineasVacias, useAccion, useCargaSuave } from "./logica";
 import type { LineaEditable, Valuaciones } from "./logica";
 import { fechaDeRanura } from "./fechas";
+import { CampoTexto } from "../../comun/CampoTexto";
 
 interface Props {
   proyecto: string;
@@ -46,26 +47,26 @@ function Registrar({ proyecto, alCambiar }: { proyecto: string; alCambiar: () =>
     <details open>
       <summary className="cds--type-body-compact-01">Registrar una valuación</summary>
       <div className="silice-control__formulario">
-        <TextInput id="val-numero" labelText="Número" value={v.numero} onChange={campo("numero")} />
-        <TextInput id="val-desde" type="date" labelText="Período desde" value={v.desde} onChange={campo("desde")} />
-        <TextInput id="val-hasta" type="date" labelText="Período hasta" value={v.hasta} onChange={campo("hasta")} />
-        <TextInput id="val-fecha" type="date" labelText="Fecha de la valuación" value={v.fecha} onChange={campo("fecha")} />
-        <TextInput id="val-inspector" labelText="Inspector" value={v.inspector} onChange={campo("inspector")} />
+        <CampoTexto id="val-numero" labelText="Número" value={v.numero} onChange={campo("numero")} />
+        <CampoTexto id="val-desde" type="date" labelText="Período desde" value={v.desde} onChange={campo("desde")} />
+        <CampoTexto id="val-hasta" type="date" labelText="Período hasta" value={v.hasta} onChange={campo("hasta")} />
+        <CampoTexto id="val-fecha" type="date" labelText="Fecha de la valuación" value={v.fecha} onChange={campo("fecha")} />
+        <CampoTexto id="val-inspector" labelText="Inspector" value={v.inspector} onChange={campo("inspector")} />
         <fieldset className="silice-control__lineas">
           <legend className="cds--type-label-01">Líneas medidas</legend>
           {lineas.map((l, i) => (
             <div key={i} className="silice-control__linea">
-              <TextInput id={`val-p-${i}`} labelText={`Partida ${i + 1}`} value={l.partida} onChange={(e) => cambiarLinea(i, "partida", e.target.value)} />
-              <TextInput id={`val-c-${i}`} labelText={`Cantidad ${i + 1}`} value={l.cantidad} onChange={(e) => cambiarLinea(i, "cantidad", e.target.value)} />
-              <TextInput id={`val-m-${i}`} type="date" labelText={`Fecha de medición ${i + 1}`} value={l.fecha_medicion} onChange={(e) => cambiarLinea(i, "fecha_medicion", e.target.value)} />
-              <TextInput id={`val-o-${i}`} labelText={`Observación ${i + 1}`} value={l.observacion} onChange={(e) => cambiarLinea(i, "observacion", e.target.value)} />
+              <CampoTexto id={`val-p-${i}`} labelText={`Partida ${i + 1}`} value={l.partida} onChange={(e) => cambiarLinea(i, "partida", e.target.value)} />
+              <CampoTexto id={`val-c-${i}`} labelText={`Cantidad ${i + 1}`} value={l.cantidad} onChange={(e) => cambiarLinea(i, "cantidad", e.target.value)} />
+              <CampoTexto id={`val-m-${i}`} type="date" labelText={`Fecha de medición ${i + 1}`} value={l.fecha_medicion} onChange={(e) => cambiarLinea(i, "fecha_medicion", e.target.value)} />
+              <CampoTexto id={`val-o-${i}`} labelText={`Observación ${i + 1}`} value={l.observacion} onChange={(e) => cambiarLinea(i, "observacion", e.target.value)} />
             </div>
           ))}
           <Button kind="ghost" size="sm" onClick={() => setLineas([...lineas, { ...LINEA_VACIA }])}>
             Agregar línea
           </Button>
         </fieldset>
-        <TextInput id="val-fuente" labelText="Fuente (acta, oficio)" value={v.fuente} onChange={campo("fuente")} />
+        <CampoTexto id="val-fuente" labelText="Fuente (acta, oficio)" value={v.fuente} onChange={campo("fuente")} />
         <div>
           <Button kind="primary" size="md" disabled={estado.enviando} onClick={() => void registrar()}>
             Registrar y controlar
@@ -127,7 +128,7 @@ function Importar({ proyecto, alCambiar }: { proyecto: string; alCambiar: () => 
                 </li>
               ))}
             </ul>
-            <TextInput id="imp-fuente" labelText="Fuente de la importación" value={fuente} onChange={(e) => setFuente(e.target.value)} />
+            <CampoTexto id="imp-fuente" labelText="Fuente de la importación" value={fuente} onChange={(e) => setFuente(e.target.value)} />
             <div>
               <Button kind="primary" size="md" disabled={importacion.estado.enviando} onClick={() => void importar()}>
                 Importar
@@ -165,7 +166,7 @@ function Anular({ proyecto, datos, alCambiar }: { proyecto: string; datos: Valua
             <SelectItem key={a.id} value={String(a.id)} text={a.rotulo} />
           ))}
         </Select>
-        <TextInput id="anu-motivo" labelText="Motivo" value={motivo} onChange={(e) => setMotivo(e.target.value)} />
+        <CampoTexto id="anu-motivo" labelText="Motivo" value={motivo} onChange={(e) => setMotivo(e.target.value)} />
         <div>
           <Button kind="danger--tertiary" size="md" disabled={estado.enviando} onClick={() => void anular()}>
             Anular
@@ -191,14 +192,14 @@ function Costo({ proyecto, alCambiar }: { proyecto: string; alCambiar: () => voi
     <details>
       <summary className="cds--type-body-compact-01">Anotar un costo incurrido</summary>
       <div className="silice-control__formulario">
-        <TextInput id="cos-monto" labelText="Monto" value={v.monto} onChange={campo("monto")} />
+        <CampoTexto id="cos-monto" labelText="Monto" value={v.monto} onChange={campo("monto")} />
         <Select id="cos-moneda" labelText="Moneda" value={v.moneda} onChange={campo("moneda")}>
           <SelectItem value="USD" text="USD" />
           <SelectItem value="Bs" text="Bs" />
         </Select>
-        <TextInput id="cos-fecha" type="date" labelText="Fecha" value={v.fecha} onChange={campo("fecha")} />
-        <TextInput id="cos-partida" labelText="Partida (opcional)" value={v.partida} onChange={campo("partida")} />
-        <TextInput id="cos-fuente" labelText="Fuente del costo" value={v.fuente} onChange={campo("fuente")} />
+        <CampoTexto id="cos-fecha" type="date" labelText="Fecha" value={v.fecha} onChange={campo("fecha")} />
+        <CampoTexto id="cos-partida" labelText="Partida (opcional)" value={v.partida} onChange={campo("partida")} />
+        <CampoTexto id="cos-fuente" labelText="Fuente del costo" value={v.fuente} onChange={campo("fuente")} />
         <div>
           <Button kind="primary" size="md" disabled={estado.enviando} onClick={() => void anotar()}>
             Anotar costo

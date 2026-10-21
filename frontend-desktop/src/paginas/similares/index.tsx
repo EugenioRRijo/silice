@@ -1,10 +1,4 @@
-import {
-  Accordion,
-  AccordionItem,
-  Button,
-  InlineNotification,
-  TextInput,
-} from "@carbon/react";
+import { Accordion, AccordionItem, Button, InlineNotification } from "@carbon/react";
 import { useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { ErrorDeApi, pedir } from "../../api/cliente";
@@ -31,6 +25,7 @@ import {
 } from "./logica";
 import type { Composicion, Propuesta, SimilaresRespuesta } from "./logica";
 import "./similares.scss";
+import { CampoTexto } from "../../comun/CampoTexto";
 
 type Estado =
   | { tipo: "inicial" }
@@ -156,7 +151,7 @@ export default function PaginaSimilares() {
       <p className="cds--type-body-compact-01">{AYUDA}</p>
       <form className="silice-similares__formulario" onSubmit={buscar}>
         <div className="silice-similares__campo">
-          <TextInput
+          <CampoTexto
             id="similares-descripcion"
             labelText="Descripción de la partida"
             value={descripcion}

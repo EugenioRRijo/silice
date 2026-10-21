@@ -1,6 +1,7 @@
-import { TextInput } from "@carbon/react";
+
 import type { KeyboardEvent } from "react";
 import { LARGO_DE_CELDA } from "./logica";
+import { CampoTexto } from "../../comun/CampoTexto";
 
 interface Props {
   id: string;
@@ -48,7 +49,7 @@ export function CampoDeCelda({
     }
   };
   return (
-    <TextInput
+    <CampoTexto
       id={id}
       labelText={etiqueta}
       hideLabel={!etiquetaVisible}

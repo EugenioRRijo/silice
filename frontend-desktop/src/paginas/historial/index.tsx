@@ -1,4 +1,4 @@
-import { Button, Select, SelectItem, TextInput } from "@carbon/react";
+import { Button, Select, SelectItem } from "@carbon/react";
 import { useState } from "react";
 import { Link } from "react-router";
 import { AvisoError } from "../../comun/AvisoError";
@@ -20,6 +20,7 @@ import {
   type ResultadoFiltro,
   type TipoFiltro,
 } from "./logica";
+import { CampoTexto } from "../../comun/CampoTexto";
 
 // La API devuelve hasta 100 (su maximo): los filtros de la pagina actuan sobre esas.
 const RUTA_LISTA = "/v1/auditorias-libro?limite=100";
@@ -62,7 +63,7 @@ export default function PaginaHistorial() {
       {carga.estado === "listo" && carga.datos.length > 0 && (
         <>
           <form className="silice-historial__filtros" onSubmit={(e) => e.preventDefault()} aria-label="Filtros">
-            <TextInput
+            <CampoTexto
               id="historial-desde"
               size="sm"
               type="date"
@@ -72,7 +73,7 @@ export default function PaginaHistorial() {
               invalidText="Fecha inválida"
               onChange={(e) => setFiltros({ ...filtros, desde: e.target.value.trim() })}
             />
-            <TextInput
+            <CampoTexto
               id="historial-hasta"
               size="sm"
               type="date"

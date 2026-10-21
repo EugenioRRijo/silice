@@ -1,4 +1,4 @@
-import { Button, Form, InlineNotification, PasswordInput, Select, SelectItem, TextInput } from "@carbon/react";
+import { Button, Form, InlineNotification, PasswordInput, Select, SelectItem } from "@carbon/react";
 import { Download } from "@carbon/icons-react";
 import { useState } from "react";
 import type { FormEvent } from "react";
@@ -12,6 +12,7 @@ import { useCarga } from "../inicio/useCarga";
 import type { Carga } from "../inicio/useCarga";
 import { textoDeHallazgos, totalPresentado } from "./logica";
 import "./entregar.scss";
+import { CampoTexto } from "../../comun/CampoTexto";
 
 interface ProyectoDelCaso {
   codigo: string;
@@ -246,7 +247,7 @@ function Entrega({ proyecto, version, alExpirar }: { proyecto: string; version: 
       )}
 
       <Form onSubmit={(e) => void generar(e)} className="silice-entregar__formulario">
-        <TextInput
+        <CampoTexto
           id="entregar-destino"
           labelText="Para quién es (opcional)"
           value={destinatario}

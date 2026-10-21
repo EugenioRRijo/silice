@@ -1,4 +1,4 @@
-import { Button, InlineNotification, TextInput } from "@carbon/react";
+import { Button, InlineNotification } from "@carbon/react";
 import { useState } from "react";
 import { AvisoError } from "../../comun/AvisoError";
 import { EsqueletoPagina } from "../../comun/EsqueletoPagina";
@@ -7,6 +7,7 @@ import { fechaEsVe, formatoEsVe } from "../../indicadores/formatoEsVe";
 import { useAplicacion } from "../../shell/contexto";
 import { useCarga } from "../inicio/useCarga";
 import { aPorcentaje, fechaValida, rangoInvertido } from "./porcentaje";
+import { CampoTexto } from "../../comun/CampoTexto";
 
 interface Cambio {
   insumo: string;
@@ -56,14 +57,14 @@ export default function PaginaHistorico() {
           if (!invertido && !fechaMala(borrador.desde) && !fechaMala(borrador.hasta)) setAplicado(borrador);
         }}
       >
-        <TextInput
+        <CampoTexto
           id="hist-insumo"
           size="sm"
           labelText="Insumo (descripción exacta)"
           value={borrador.insumo}
           onChange={(e) => setBorrador({ ...borrador, insumo: e.target.value })}
         />
-        <TextInput
+        <CampoTexto
           id="hist-desde"
           size="sm"
           type="date"
@@ -73,7 +74,7 @@ export default function PaginaHistorico() {
           invalidText="Fecha inválida"
           onChange={(e) => setBorrador({ ...borrador, desde: e.target.value })}
         />
-        <TextInput
+        <CampoTexto
           id="hist-hasta"
           size="sm"
           type="date"

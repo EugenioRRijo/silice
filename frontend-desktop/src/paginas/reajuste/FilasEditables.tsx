@@ -1,7 +1,8 @@
-import { Button, TextInput } from "@carbon/react";
+import { Button } from "@carbon/react";
 import { Add, TrashCan } from "@carbon/icons-react";
 import { filasVacias } from "./logica";
 import type { Fila } from "./logica";
+import { CampoTexto } from "../../comun/CampoTexto";
 
 export interface ColumnaEditable {
   clave: string;
@@ -54,7 +55,7 @@ export function FilasEditables({ etiqueta, columnas, filas, alCambiar, fijas = f
             <tr key={i}>
               {columnas.map((c) => (
                 <td key={c.clave}>
-                  <TextInput
+                  <CampoTexto
                     id={`${etiqueta}-${c.clave}-${i}`}
                     labelText={`${c.titulo}, ${etiqueta} fila ${i + 1}`}
                     hideLabel
