@@ -90,6 +90,28 @@ describe("useZoomHoja", () => {
     expect(hoja.fijarZoom).toHaveBeenLastCalledWith(4);
   });
 
+  test("con Muy grande, de 270 % en adelante no se puede subir: el lienzo ya esta en su tope y no se veria nada", () => {
+    aplicarTamanoLetra("muy-grande");
+    localStorage.setItem(CLAVE_ZOOM_HOJA, "270");
+    const hoja = crearHojaFalsa();
+    const { result } = renderHook(() => useZoomHoja(hoja));
+    expect(result.current.puedeSubir).toBe(false);
+    act(() => result.current.subir());
+    expect(result.current.zoom).toBe(270);
+    act(() => result.current.bajar());
+    expect(result.current.zoom).toBe(260);
+    expect(result.current.puedeSubir).toBe(true);
+  });
+
+  test("al desmontarse desconecta el observador del tamano de letra", () => {
+    const desconectar = vi.spyOn(MutationObserver.prototype, "disconnect");
+    const hoja = crearHojaFalsa();
+    const { unmount } = renderHook(() => useZoomHoja(hoja));
+    const antes = desconectar.mock.calls.length;
+    unmount();
+    expect(desconectar.mock.calls.length).toBeGreaterThan(antes);
+  });
+
   test("sin almacenamiento la hoja sigue funcionando", () => {
     vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
       throw new Error("x");
@@ -173,6 +195,34 @@ describe("useAtajosZoom", () => {
     const abajo = new WheelEvent("wheel", { deltaY: 100, ctrlKey: true, bubbles: true, cancelable: true });
     lienzo.dispatchEvent(abajo);
     expect(a.bajar).toHaveBeenCalledTimes(1);
+  });
+
+  test("una muesca en lineas (Firefox, deltaMode 1) tambien da un paso", () => {
+    const a = montar();
+    screen.getByTestId("lienzo").dispatchEvent(new WheelEvent("wheel", { deltaY: -3, deltaMode: 1, ctrlKey: true, bubbles: true, cancelable: true }));
+    expect(a.subir).toHaveBeenCalledTimes(1);
+  });
+
+  test("al desmontarse quita los dos oyentes (teclado en la seccion y rueda en el lienzo, en captura)", () => {
+    const { unmount } = render(<Banco acciones={{ subir: vi.fn(), bajar: vi.fn(), restablecer: vi.fn() }} />);
+    const seccion = screen.getByRole("region", { name: "seccion" });
+    const lienzo = screen.getByTestId("lienzo");
+    const quitarSeccion = vi.spyOn(seccion, "removeEventListener");
+    const quitarLienzo = vi.spyOn(lienzo, "removeEventListener");
+    unmount();
+    expect(quitarSeccion).toHaveBeenCalledWith("keydown", expect.any(Function));
+    expect(quitarLienzo).toHaveBeenCalledWith("wheel", expect.any(Function), { capture: true });
+  });
+
+  test("tras desmontar, ni la tecla ni la rueda llaman a las acciones", () => {
+    const acciones = { subir: vi.fn(), bajar: vi.fn(), restablecer: vi.fn() };
+    const { unmount } = render(<Banco acciones={acciones} />);
+    const seccion = screen.getByRole("region", { name: "seccion" });
+    const lienzo = screen.getByTestId("lienzo");
+    unmount();
+    seccion.dispatchEvent(new KeyboardEvent("keydown", { key: "+", ctrlKey: true, bubbles: true, cancelable: true }));
+    lienzo.dispatchEvent(new WheelEvent("wheel", { deltaY: -100, ctrlKey: true, bubbles: true, cancelable: true }));
+    expect(acciones.subir).not.toHaveBeenCalled();
   });
 
   test("la rueda sin Ctrl sigue siendo desplazamiento: no se toca", () => {

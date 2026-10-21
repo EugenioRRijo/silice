@@ -8,6 +8,7 @@ import {
   guardarZoomHoja,
   leerZoomHoja,
   pasoDeRueda,
+  puedeSubirZoom,
   razonEfectiva,
 } from "./zoomHoja";
 
@@ -40,12 +41,19 @@ export function useZoomHoja(visor: HojaVisor | null) {
     setZoom(ajustado);
     guardarZoomHoja(ajustado);
   }, []);
-  const subir = useCallback(() => fijar(vigente.current + ZOOM_PASO), [fijar]);
+  // Con el lienzo ya en el tope de Univer, subir no se veria: no se hace (ni por boton ni por atajo).
+  const factorVigente = useRef(factor);
+  useEffect(() => {
+    factorVigente.current = factor;
+  }, [factor]);
+  const subir = useCallback(() => {
+    if (puedeSubirZoom(vigente.current, factorVigente.current)) fijar(vigente.current + ZOOM_PASO);
+  }, [fijar]);
   const bajar = useCallback(() => fijar(vigente.current - ZOOM_PASO), [fijar]);
   const restablecer = useCallback(() => fijar(ZOOM_INICIAL), [fijar]);
 
   return useMemo(
-    () => ({ zoom, factor, razon, limitado, subir, bajar, restablecer }),
+    () => ({ zoom, factor, razon, limitado, puedeSubir: puedeSubirZoom(zoom, factor), subir, bajar, restablecer }),
     [zoom, factor, razon, limitado, subir, bajar, restablecer],
   );
 }
@@ -90,7 +98,7 @@ export function useAtajosZoom(seccion: HTMLElement | null, lienzo: HTMLElement |
       if (!(e.ctrlKey || e.metaKey)) return;
       e.preventDefault();
       e.stopPropagation();
-      const { paso, resto } = pasoDeRueda(acumulado, e.deltaY);
+      const { paso, resto } = pasoDeRueda(acumulado, e.deltaY, e.deltaMode);
       acumulado = resto;
       if (paso > 0) ultimas.current.subir();
       else if (paso < 0) ultimas.current.bajar();

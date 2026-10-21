@@ -144,6 +144,13 @@ describe("zoom de la hoja (estilos)", () => {
     expect(r).toMatch(/min-inline-size:\s*3\.5rem/);
   });
 
+  test("lo dibujado cuando no es el zoom propio va visible, en secundario y sin partirse", () => {
+    const r = regla(".zoom-hoja__dibujado");
+    expect(r).toMatch(/color:\s*var\(--silice-texto-secundario\)/);
+    expect(r).toMatch(/white-space:\s*nowrap/);
+    expect(regla(".zoom-hoja__valor")).toMatch(/flex-direction:\s*column/);
+  });
+
   test("el boton en su tope se ve inactivo con tokens, sin perder el foco", () => {
     const r = regla(".zoom-hoja__boton[aria-disabled=true]");
     expect(r).toMatch(/var\(--cds-/);

@@ -355,50 +355,51 @@ export function Visor({ crearHoja = crearHojaUniver, alExpirar, almacen, ranuraC
         <div className="visor__cuerpo">
           <section className="visor__hoja" aria-label="Hoja del libro" ref={setSeccionHoja}>
             <div className="visor__pestanas">
-            <Tabs
-              selectedIndex={indiceDePestana}
-              onChange={({ selectedIndex }: { selectedIndex: number }) => {
-                const hoja = hojasVisibles[selectedIndex];
-                if (hoja) visor?.irAHoja(hoja.nombre);
-              }}
-            >
-              <TabList aria-label="Hojas del libro" contained>
-                {hojasVisibles.map((h) => {
-                  const resumen = resumenHojas.get(h.nombre);
-                  return (
-                    <Tab key={h.nombre}>
-                      {h.nombre}
-                      {resumen && (
-                        <>
-                          <span
-                            className={`pestana__conteo silice-sev--${resumen.severidad.toLowerCase()}`}
-                            aria-hidden="true"
-                          >
-                            <IconoDeSeveridad
-                              nombre={estiloDeSeveridad(resumen.severidad).icono}
-                              size={16}
-                              className="silice-sev__icono"
-                            />
-                            {resumen.total}
-                          </span>
-                          <span className="silice-oculto">
-                            {` ${resumen.total} ${resumen.total === 1 ? "hallazgo" : "hallazgos"}, el más grave: ${estiloDeSeveridad(resumen.severidad).texto}`}
-                          </span>
-                        </>
-                      )}
-                    </Tab>
-                  );
-                })}
-              </TabList>
-            </Tabs>
-            <ControlZoomHoja
-              zoom={zoomHoja.zoom}
-              razon={zoomHoja.razon}
-              limitado={zoomHoja.limitado}
-              alBajar={zoomHoja.bajar}
-              alSubir={zoomHoja.subir}
-              alRestablecer={zoomHoja.restablecer}
-            />
+              <Tabs
+                selectedIndex={indiceDePestana}
+                onChange={({ selectedIndex }: { selectedIndex: number }) => {
+                  const hoja = hojasVisibles[selectedIndex];
+                  if (hoja) visor?.irAHoja(hoja.nombre);
+                }}
+              >
+                <TabList aria-label="Hojas del libro" contained>
+                  {hojasVisibles.map((h) => {
+                    const resumen = resumenHojas.get(h.nombre);
+                    return (
+                      <Tab key={h.nombre}>
+                        {h.nombre}
+                        {resumen && (
+                          <>
+                            <span
+                              className={`pestana__conteo silice-sev--${resumen.severidad.toLowerCase()}`}
+                              aria-hidden="true"
+                            >
+                              <IconoDeSeveridad
+                                nombre={estiloDeSeveridad(resumen.severidad).icono}
+                                size={16}
+                                className="silice-sev__icono"
+                              />
+                              {resumen.total}
+                            </span>
+                            <span className="silice-oculto">
+                              {` ${resumen.total} ${resumen.total === 1 ? "hallazgo" : "hallazgos"}, el más grave: ${estiloDeSeveridad(resumen.severidad).texto}`}
+                            </span>
+                          </>
+                        )}
+                      </Tab>
+                    );
+                  })}
+                </TabList>
+              </Tabs>
+              <ControlZoomHoja
+                zoom={zoomHoja.zoom}
+                razon={zoomHoja.razon}
+                limitado={zoomHoja.limitado}
+                puedeSubir={zoomHoja.puedeSubir}
+                alBajar={zoomHoja.bajar}
+                alSubir={zoomHoja.subir}
+                alRestablecer={zoomHoja.restablecer}
+              />
             </div>
             <div className="visor__lienzo" ref={setLienzoHoja} role="group" aria-label="Hoja del libro, solo lectura" onContextMenuCapture={(e) => e.preventDefault()}>
               <UniverGrid

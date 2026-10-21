@@ -1,6 +1,6 @@
 import { IconButton } from "@carbon/react";
 import { Add, Reset, Subtract } from "@carbon/icons-react";
-import { ZOOM_INICIAL, ZOOM_MAXIMO, ZOOM_MINIMO } from "./zoomHoja";
+import { ZOOM_INICIAL, ZOOM_MINIMO } from "./zoomHoja";
 
 interface Props {
   // Zoom propio de la hoja, en porcentaje (50 a 300).
@@ -9,6 +9,8 @@ interface Props {
   razon: number;
   // Univer recortó la razón a su tope.
   limitado: boolean;
+  // Subir cambiaria lo dibujado (no en el tope propio ni con el lienzo ya en el tope de Univer).
+  puedeSubir: boolean;
   alBajar: () => void;
   alSubir: () => void;
   alRestablecer: () => void;
@@ -17,7 +19,7 @@ interface Props {
 // Control de zoom de la barra de la hoja: − / valor / + / restablecer. El valor es una región viva educada
 // (aria-live) para que el cambio se anuncie. En los topes el botón se marca con aria-disabled en vez de `disabled`:
 // así el foco no se pierde al llegar al límite con el teclado.
-export function ControlZoomHoja({ zoom, razon, limitado, alBajar, alSubir, alRestablecer }: Props) {
+export function ControlZoomHoja({ zoom, razon, limitado, puedeSubir, alBajar, alSubir, alRestablecer }: Props) {
   const dibujado = Math.round(razon * 100);
   const distinto = dibujado !== zoom;
   return (
@@ -34,7 +36,12 @@ export function ControlZoomHoja({ zoom, razon, limitado, alBajar, alSubir, alRes
         <Subtract />
       </IconButton>
       <output className="zoom-hoja__valor cds--type-body-compact-01" role="status" aria-live="polite" aria-atomic="true">
-        {zoom} %
+        <span className="zoom-hoja__numero">{zoom} %</span>
+        {distinto && (
+          <span className="zoom-hoja__dibujado cds--type-label-01" aria-hidden="true">
+            {`dibujado ${dibujado} %${limitado ? " (tope)" : ""}`}
+          </span>
+        )}
         {distinto && (
           <span className="silice-oculto">
             {`, la hoja se dibuja al ${dibujado} % por el tamaño de letra${limitado ? " (tope del lienzo)" : ""}`}
@@ -47,8 +54,8 @@ export function ControlZoomHoja({ zoom, razon, limitado, alBajar, alSubir, alRes
         size="sm"
         align="bottom"
         className="zoom-hoja__boton"
-        aria-disabled={zoom >= ZOOM_MAXIMO}
-        onClick={() => zoom < ZOOM_MAXIMO && alSubir()}
+        aria-disabled={!puedeSubir}
+        onClick={() => puedeSubir && alSubir()}
       >
         <Add />
       </IconButton>

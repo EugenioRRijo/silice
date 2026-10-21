@@ -5,7 +5,7 @@ import { ControlZoomHoja } from "./ControlZoomHoja";
 
 function montar(propios: Partial<React.ComponentProps<typeof ControlZoomHoja>> = {}) {
   const acciones = { alSubir: vi.fn(), alBajar: vi.fn(), alRestablecer: vi.fn() };
-  render(<ControlZoomHoja zoom={100} razon={1} limitado={false} {...acciones} {...propios} />);
+  render(<ControlZoomHoja zoom={100} razon={1} limitado={false} puedeSubir {...acciones} {...propios} />);
   return acciones;
 }
 
@@ -31,7 +31,7 @@ describe("ControlZoomHoja", () => {
 
   test("en el tope se marca aria-disabled y no se pierde el foco ni se llama", async () => {
     const usuario = userEvent.setup();
-    const a = montar({ zoom: 300 });
+    const a = montar({ zoom: 300, puedeSubir: false });
     const acercar = screen.getByRole("button", { name: "Acercar la hoja" });
     expect(acercar).toHaveAttribute("aria-disabled", "true");
     expect(acercar).not.toBeDisabled();
@@ -59,15 +59,35 @@ describe("ControlZoomHoja", () => {
     expect(a.alSubir).toHaveBeenCalledTimes(1);
   });
 
-  test("si el tamano de letra cambia lo que se dibuja, el valor lo dice con texto (no solo el numero)", () => {
+  test("si el tamano de letra cambia lo que se dibuja, el valor lo dice con texto VISIBLE (no solo con el numero)", () => {
     montar({ zoom: 100, razon: 1.25 });
     expect(screen.getByRole("status")).toHaveTextContent("100 %");
-    expect(screen.getByRole("status")).toHaveTextContent("se dibuja al 125 %");
+    const visible = screen.getByText("dibujado 125 %");
+    expect(visible.closest(".silice-oculto")).toBeNull();
   });
 
-  test("cuando Univer recorta, lo avisa", () => {
+  test("cuando Univer recorta, el texto visible lo avisa con el tope", () => {
+    montar({ zoom: 300, razon: 4, limitado: true });
+    const visible = screen.getByText("dibujado 400 % (tope)");
+    expect(visible.closest(".silice-oculto")).toBeNull();
+  });
+
+  test("cuando lo dibujado es el zoom propio no hay texto de mas", () => {
+    montar({ zoom: 120, razon: 1.2 });
+    expect(screen.queryByText(/dibujado/)).toBeNull();
+  });
+
+  test("el lector de pantalla tambien oye lo dibujado", () => {
     montar({ zoom: 300, razon: 4, limitado: true });
     expect(screen.getByRole("status")).toHaveTextContent("se dibuja al 400 %");
-    expect(screen.getByRole("status")).toHaveTextContent("tope");
+  });
+
+  test("acercar queda inactivo (aria-disabled) cuando no cambiaria lo dibujado, aunque el zoom propio no este en 300", async () => {
+    const usuario = userEvent.setup();
+    const a = montar({ zoom: 270, razon: 4, limitado: true, puedeSubir: false });
+    const acercar = screen.getByRole("button", { name: "Acercar la hoja" });
+    expect(acercar).toHaveAttribute("aria-disabled", "true");
+    await usuario.click(acercar);
+    expect(a.alSubir).not.toHaveBeenCalled();
   });
 });
