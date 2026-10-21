@@ -469,14 +469,22 @@ def test_p5_sobre_un_borrador_en_blanco_da_el_total_y_las_cantidades_de_la_memor
     assert _carpetas(planos) == []
 
 
-def test_p5_sobre_of001_las_filas_se_emparejan_y_sube_rev(planos) -> None:
+def test_p5_sobre_of001_las_filas_ya_escritas_se_omiten_y_rev_no_sube(planos) -> None:
+    """La hoja de OF-001 ya tiene los 33 ids del plano (escritos a mano, sin origen DXF): la fusion
+    los OMITE (`adapters/espacio/planos/informe.py`, docstring) y el borrador no cambia, asi que
+    `rev` no sube (como la clasica: `_poner_borrador` no hace nada si el borrador es el mismo).
+    La importacion se descarta igual."""
     navegador, ficha = _ana()
     id_ = _abrir(navegador, ficha)
     _listo(navegador, ficha, id_)
     respuesta = _fusionar(navegador, ficha, id_)
     assert respuesta.status_code == 200, respuesta.text
-    assert respuesta.json()["rev"] == 1 == _rev(navegador, id_)
+    cuerpo = respuesta.json()
+    assert cuerpo["rev"] == 0 == _rev(navegador, id_) and cuerpo["resumen"]["cambios"] == 0
+    por_tipo = {f["rotulo"]: f["cantidad"] for f in cuerpo["fusion"]["por_tipo"]}
+    assert por_tipo["Omitido"] == IMPORTADOS_OF001 and cuerpo["fusion"]["filas_por_tabla"] == []
     assert _carpetas(planos) == []
+    assert _fusionar(navegador, ficha, id_).json() == {"detalle": SIN_IMPORTACION}
 
 
 def test_p5_con_un_rev_viejo_es_409_y_la_importacion_queda() -> None:
@@ -958,16 +966,21 @@ def test_un_id_mal_formado_es_422_sin_eco() -> None:
 # --- concurrencia ---
 
 
-def test_dos_p5_con_el_mismo_rev_gana_exactamente_uno() -> None:
+def test_dos_p5_con_el_mismo_rev_gana_exactamente_uno(_entorno) -> None:
+    """Sobre un borrador en blanco (la fusion SI lo cambia): uno sube `rev` y el otro ve el 409."""
+    _con_proyecto_nuevo(_entorno)
     navegador, ficha = _ana()
-    id_ = _abrir(navegador, ficha)
+    id_ = _abrir(navegador, ficha, proyecto="Proyecto nuevo", version=None)
     _listo(navegador, ficha, id_)
     barrera = threading.Barrier(2)
     codigos: list[int] = []
+    detalles: list[dict] = []
 
     def fusionar() -> None:
         barrera.wait()
-        codigos.append(_fusionar(navegador, ficha, id_).status_code)
+        respuesta = _fusionar(navegador, ficha, id_)
+        codigos.append(respuesta.status_code)
+        detalles.append(respuesta.json())
 
     hilos = [threading.Thread(target=fusionar) for _ in range(2)]
     for hilo in hilos:
@@ -975,6 +988,7 @@ def test_dos_p5_con_el_mismo_rev_gana_exactamente_uno() -> None:
     for hilo in hilos:
         hilo.join(timeout=60)
     assert sorted(codigos) == [200, 409]
+    assert {"detalle": REV_VIEJO} in detalles
     assert _rev(navegador, id_) == 1
 
 
