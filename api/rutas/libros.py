@@ -156,7 +156,9 @@ class IndicadorRespuesta(BaseModel):
     Decisión de Eugenio, V-16 (2026-10-21), que supera a la lectura anterior de «toda desviación
     es desfavorable»: `delta = actual - meta`, y un `delta` negativo (libro menor que Sílice) es
     favorable (verde) y uno positivo (libro mayor), desfavorable (rojo). Riesgo aceptado: un libro
-    que omite costos sale en verde. El color lo pinta el front; la API solo manda el signo."""
+    que omite costos sale en verde; por eso el front pega una etiqueta fija al indicador cuando es
+    menor (con `partidas_con_omision` de la respuesta si hay datos). El color lo pinta el front;
+    la API solo manda el signo."""
 
     clave: str
     titulo: str
@@ -169,7 +171,13 @@ class IndicadorRespuesta(BaseModel):
 
 class LibroAuditadoRespuesta(BaseModel):
     """`aviso_historial` es `null` si la auditoría quedó en el historial; si no, el texto que la
-    pantalla muestra (la auditoría es válida igual, RF-144)."""
+    pantalla muestra (la auditoría es válida igual, RF-144).
+
+    `partidas_con_omision` (V-16, etiqueta del libro menor): los números de las partidas cuyo
+    APU tiene un hallazgo L4 (el costo directo del libro deja fuera componentes o no es la suma de
+    ellos), ordenados y sin repetir. Es el único rastro de «costos omitidos» que el auditor deja de
+    forma estructurada; una lista vacía NO prueba que el libro esté completo (una partida
+    entera que falta en el libro no tiene contraparte que comparar). Campo aditivo."""
 
     libro: LibroOrigenRespuesta
     fecha_libro: str | None
@@ -179,6 +187,7 @@ class LibroAuditadoRespuesta(BaseModel):
     totales_libro: dict[str, str]
     totales_silice: dict[str, str]
     indicadores: list[IndicadorRespuesta]
+    partidas_con_omision: list[int] = []
     hallazgos: list[HallazgoLibroRespuesta]
     alertas: list[AlertaPrecioRespuesta]
     trazabilidad: list[TrazaRespuesta]
@@ -553,6 +562,21 @@ def indicadores_de(
     return indicadores
 
 
+def partidas_con_omision(resultado: ResultadoFusion) -> list[int]:
+    """Números de las partidas con un hallazgo L4 (V-16). La celda del hallazgo es `HOJA!REF` de su
+    APU; la partida es la que apunta a esa hoja (`hoja_apu`). No se lee el texto del hallazgo."""
+    por_hoja: dict[str, int] = {}
+    for p in resultado.libro.partidas:
+        if p.hoja_apu:
+            por_hoja.setdefault(p.hoja_apu, p.numero)  # la primera, como `reglas.partida_de_apu`
+    numeros = {
+        por_hoja[hoja]
+        for h in resultado.hallazgos_tabla
+        if h.codigo == "L4" and (hoja := h.celda.rsplit("!", 1)[0]) in por_hoja
+    }
+    return sorted(numeros)
+
+
 def _visual(libro: LibroVisual) -> LibroVisualRespuesta:
     """`LibroVisual` -> su espejo Pydantic; las claves int de `anchos` y `altos` pasan a texto."""
     return LibroVisualRespuesta(
@@ -637,6 +661,7 @@ async def auditar_libro(
         totales_libro=_montos(r.libro.totales),
         totales_silice=_montos(r.totales_silice),
         indicadores=indicadores_de(r.libro.totales or {}, r.totales_silice or {}),
+        partidas_con_omision=partidas_con_omision(r),
         hallazgos=[
             HallazgoLibroRespuesta(
                 codigo=h.codigo,

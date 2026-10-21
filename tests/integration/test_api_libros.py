@@ -504,6 +504,63 @@ def test_indicadores_con_h1_bajo_el_costo_de_silice(cliente, con_h1) -> None:
     }
 
 
+# --- Libro menor (V-16): las partidas con el costo directo que no suma sus componentes (L4) ---
+
+
+def test_partidas_con_omision_del_libro_con_h1_es_la_partida_2(cliente, con_h1) -> None:
+    """H1 quita los equipos del CD de APU-02, que es la partida 2: el libro es menor (Δ < 0) y el
+    único hallazgo L4 cae en esa partida. El número sale de la partida cuya hoja APU es la de la
+    celda del hallazgo (`APU-02!G..`), no del texto."""
+    d = _auditar(cliente, con_h1.datos).json()
+    assert d["partidas_con_omision"] == [2]
+    assert d["indicadores"][0]["delta"].startswith("-")
+
+
+def test_partidas_con_omision_vacio_si_el_libro_cuadra_o_sobra(cliente, limpio) -> None:
+    assert _auditar(cliente, limpio.datos).json()["partidas_con_omision"] == []
+    sobreprecio = construir_libro(siembra=Siembra(p_guardado={1: Decimal("15")}))
+    assert _auditar(cliente, sobreprecio.datos).json()["partidas_con_omision"] == []
+
+
+def test_partidas_con_omision_dos_partidas_con_el_mismo_apu_cuenta_la_primera() -> None:
+    """Como `reglas._Contexto.partida_de_apu` (la PRIMERA partida que apunta a una hoja APU), no la
+    última: si las partidas 3 y 7 comparten `APU-02`, el L4 de `APU-02` es de la partida 3."""
+    from types import SimpleNamespace
+
+    from api.rutas.libros import partidas_con_omision
+
+    def partida(numero: int, hoja: str | None):
+        return SimpleNamespace(numero=numero, hoja_apu=hoja)
+
+    resultado = SimpleNamespace(
+        libro=SimpleNamespace(
+            partidas=[
+                partida(1, "APU-01"),
+                partida(3, "APU-02"),
+                partida(7, "APU-02"),
+                partida(9, None),
+            ]
+        ),
+        hallazgos_tabla=[
+            SimpleNamespace(codigo="L4", celda="APU-02!G36"),
+            SimpleNamespace(codigo="L2", celda="APU-01!G36"),
+            SimpleNamespace(codigo="L4", celda="APU-99!G36"),
+        ],
+    )
+    assert partidas_con_omision(resultado) == [3]
+
+
+def test_libro_menor_sin_l4_no_inventa_omisiones(cliente) -> None:
+    """P guardado de APU-01 = 14 (Silice: 14,486725): el libro sale menor sin que ningún APU deje
+    componentes fuera de su CD. Sin dato de omisión, la lista va vacía (la etiqueta del frente es la
+    fija, sin números)."""
+    menor = construir_libro(siembra=Siembra(p_guardado={1: Decimal("14")}))
+    d = _auditar(cliente, menor.datos).json()
+    assert d["indicadores"][0]["delta"].startswith("-")
+    assert "L4" not in {h["codigo"] for h in d["hallazgos"]}
+    assert d["partidas_con_omision"] == []
+
+
 def test_libro_y_pdf_simple_juntos_suman_l10_informado(cliente, limpio) -> None:
     pdf = _pdf_simple([RENGLON_MAL], "1446,65")
     d = _auditar(cliente, limpio.datos, archivos={"pdf": ("entregado.pdf", pdf)}).json()

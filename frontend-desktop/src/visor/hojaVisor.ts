@@ -32,7 +32,13 @@ export interface HojaVisor {
   alCambiar(devolucion: () => void): () => void;
   // Se llama cuando el usuario selecciona una celda en el lienzo.
   alSeleccionar(devolucion: (celda: CeldaRef) => void): () => void;
+  // Pide el acercamiento del lienzo (1 = 100 %) para todas las hojas del libro, sin tocar seleccion ni desplazamiento.
+  // Es la razon efectiva (zoom propio por factor del tamano de letra); el adaptador la recorta al rango de Univer.
+  fijarZoom(razon: number): void;
+  // El acercamiento que tiene ahora la hoja a la vista.
+  zoomActual(): number;
   destruir(): void;
 }
 
-export type CrearHojaVisor = (contenedor: HTMLElement, libro: LibroVisualRespuesta) => Promise<HojaVisor>;
+// `zoomInicial` es la razon con la que ya sale dibujado el lienzo (sin un cuadro al 100 %).
+export type CrearHojaVisor = (contenedor: HTMLElement, libro: LibroVisualRespuesta, zoomInicial?: number) => Promise<HojaVisor>;

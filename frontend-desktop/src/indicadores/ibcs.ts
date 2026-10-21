@@ -27,3 +27,9 @@ export const TEXTO_SEMANTICA: Record<SemanticaIbcs, string> = {
   desfavorable: "desfavorable",
   neutro: "sin variación",
 };
+
+// V-16: el verde del libro contra Silice es, en realidad, «el libro declara menos que Silice». Un libro que omite costos
+// tambien sale menor, asi que ese verde pide una etiqueta que no se pueda ignorar (EtiquetaLibroMenor).
+export function esLibroMenor(delta: string, sentido: SentidoIndicador): boolean {
+  return sentido === "exactitud" && semanticaIbcs(delta, sentido) === "favorable";
+}

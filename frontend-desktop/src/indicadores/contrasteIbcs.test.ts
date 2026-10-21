@@ -1,4 +1,4 @@
-import { green50, green60, gray10, gray70, red60, white } from "@carbon/colors";
+import { gray100, green50, green60, gray10, gray70, red60, white, yellow10, yellow50 } from "@carbon/colors";
 import { describe, expect, test } from "vitest";
 
 const nodo = (
@@ -47,5 +47,45 @@ describe("contraste de la variacion IBCS (V-16)", () => {
   test("el texto favorable usa el token de texto y su icono el token del sistema --silice-verificado", () => {
     expect(estilos).toMatch(/\.ibcs-favorable\s*\{[^}]*color:\s*var\(--silice-ibcs-favorable-texto\)/);
     expect(estilos).toMatch(/\.ibcs-favorable\s*\{[^}]*svg\s*\{[^}]*fill:\s*var\(--silice-verificado\)/);
+  });
+});
+
+// V-16 (etiqueta del libro menor): texto de 12 a 14 px sobre un fondo propio, con AA (4.5:1); la franja y el icono, 3:1 contra
+// el fondo del indicador (blanco o gris 10) para que el verde no se lea como «todo bien» (forma, no solo color).
+describe("contraste de la etiqueta del libro menor (V-16)", () => {
+  test("el texto de la etiqueta llega a 4.5:1 sobre su fondo", () => {
+    expect(contraste(gray100, yellow10)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  test("la franja y el icono llegan a 3:1 sobre el fondo de la etiqueta y sobre los fondos del indicador", () => {
+    for (const fondo of [yellow10, white, gray10]) expect(contraste(yellow50, fondo)).toBeGreaterThanOrEqual(3);
+  });
+
+  test("los tokens son colores de Carbon, no hexadecimales a mano", () => {
+    expect(tokens).toMatch(/--silice-aviso-fondo:\s*#\{colors\.\$yellow-10\}/);
+    expect(tokens).toMatch(/--silice-aviso-borde:\s*#\{colors\.\$yellow-50\}/);
+  });
+
+  test("los estilos usan los tokens, texto en la tinta normal, sin hexadecimales y con franja y borde", () => {
+    const regla = estilos.match(/\.fiori-kpi__aviso\s*\{[^}]*\}/)?.[0] ?? "";
+    expect(regla).toMatch(/background:\s*var\(--silice-aviso-fondo\)/);
+    expect(regla).toMatch(/border-inline-start:\s*4px solid var\(--silice-aviso-borde\)/);
+    expect(regla).toMatch(/color:\s*var\(--silice-texto\)/);
+    expect(regla).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
+  });
+
+  test("el texto se ve completo: ni elipsis ni recorte, y baja de linea", () => {
+    const regla = estilos.match(/\.fiori-kpi__aviso\s*\{[^}]*\}/)?.[0] ?? "";
+    expect(regla).not.toMatch(/overflow:\s*hidden|text-overflow|nowrap/);
+  });
+
+  test("al imprimir, los colores se conservan (la etiqueta sale en el papel); con colores forzados lleva borde propio", () => {
+    expect(estilos).toMatch(/\.fiori-kpi__aviso\s*\{[^}]*print-color-adjust:\s*exact/);
+    expect(estilos).toMatch(/@media \(forced-colors: active\)\s*\{[^}]*\.fiori-kpi__aviso/);
+  });
+
+  test("la franja crece solo lo que pide la etiqueta: alto minimo de 4rem, no fijo", () => {
+    expect(estilos).toMatch(/\.franja-indicadores\s*\{[^}]*min-block-size:\s*4rem/);
+    expect(estilos).not.toMatch(/\.franja-indicadores\s*\{[^}]*[^-]block-size:\s*4rem/);
   });
 });
