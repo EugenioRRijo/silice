@@ -50,28 +50,9 @@ def _definiciones(ruta: Path) -> list[str]:
     ]
 
 
-@pytest.mark.parametrize(
-    ("reexportado", "original", "archivo"),
-    [
-        ("ui.revision", "aplicacion.revision", "ui/revision.py"),
-        ("ui.subidas", "aplicacion.subidas", "ui/subidas.py"),
-    ],
-)
-def test_ui_reexporta_la_capa_de_aplicacion(reexportado: str, original: str, archivo: str) -> None:
-    """RM-1: los mismos objetos (no copias) y ninguna definición propia en `ui/`."""
-    import importlib
-
-    de_ui = importlib.import_module(reexportado)
-    de_aplicacion = importlib.import_module(original)
-    assert de_ui.__all__ and set(de_ui.__all__) <= set(vars(de_aplicacion))
-    for nombre in de_ui.__all__:
-        assert getattr(de_ui, nombre) is getattr(de_aplicacion, nombre), nombre
-    assert _definiciones(RAIZ / archivo) == []
-
-
-def test_ui_revision_sigue_ofreciendo_lo_que_usaban_la_pantalla_y_las_pruebas() -> None:
+def test_revision_sigue_ofreciendo_lo_que_usaban_la_pantalla_y_las_pruebas() -> None:
     """Lo que `ui/revision.py` exportaba antes de la mudanza sigue ahí (lista escrita a mano)."""
-    from ui import revision
+    from aplicacion import revision
 
     antes = {
         "LIMITE_SEGUNDOS",
@@ -105,8 +86,8 @@ def test_ui_revision_sigue_ofreciendo_lo_que_usaban_la_pantalla_y_las_pruebas() 
     assert antes <= set(revision.__all__)
 
 
-def test_ui_subidas_sigue_ofreciendo_el_nombre_seguro() -> None:
-    from ui import subidas
+def test_subidas_sigue_ofreciendo_el_nombre_seguro() -> None:
+    from aplicacion import subidas
 
     assert {"LONGITUD_MAXIMA", "Subida", "guardar_subida", "nombre_seguro"} <= set(subidas.__all__)
     assert subidas.nombre_seguro("..\\..\\CON.silice") == "_CON.silice"

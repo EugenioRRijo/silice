@@ -1,4 +1,4 @@
-"""A-1 (INV-123, RNF-12): guardado seguro de las subidas de Streamlit en `ui/subidas.py`.
+"""A-1 (INV-123, RNF-12): guardado seguro de las subidas en `aplicacion/subidas.py`.
 
 `UploadedFile.name` lo manda el navegador y llega tal cual: `..\\..\\x`, `/etc/passwd`, `C:\\...`,
 `CON.csv`. Los oraculos son literales escritos a mano (el nombre que debe quedar), no la salida de
@@ -13,7 +13,7 @@ from pathlib import Path
 
 import pytest
 
-from ui.subidas import LONGITUD_MAXIMA, guardar_subida, nombre_seguro
+from aplicacion.subidas import LONGITUD_MAXIMA, guardar_subida, nombre_seguro
 
 RAIZ = Path(__file__).resolve().parents[2]
 
