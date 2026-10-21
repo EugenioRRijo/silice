@@ -186,6 +186,8 @@ def test_la_api_y_la_interfaz_se_importan_solo_con_el_arbol_del_manifiesto(arbol
         "scripts.seed",
         "scripts.seed_demo",
         "scripts.simular_lista",
+        # el cierre de importaciones que empaqueta el manifiesto (RV-25): nada de `ui`
+        *mf.cargar().cierre_desde,
     ]
     # Además de los pedidos, todo módulo cargado que venga del repositorio delata un hueco del
     # manifiesto (el repositorio no está en sys.path del hijo, pero un .pth podría ponerlo).
