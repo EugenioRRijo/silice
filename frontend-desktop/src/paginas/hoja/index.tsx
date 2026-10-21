@@ -1,5 +1,5 @@
 import { Button, InlineNotification, Select, SelectItem, Tab, TabList, TabPanel, TabPanels, Tabs } from "@carbon/react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ErrorDeApi, pedir } from "../../api/cliente";
 import { AvisoError } from "../../comun/AvisoError";
 import { EsqueletoPagina } from "../../comun/EsqueletoPagina";
@@ -27,6 +27,8 @@ import { usuarioDeSesion } from "./logicaGuardar";
 import { useGuardadoDeLaPagina } from "./useGuardadoDeLaPagina";
 import { useVersiones } from "./useVersiones";
 import { ContextoAuditoria } from "./ContextoAuditoria";
+import { ContextoDeDialogos } from "./ContextoDeDialogos";
+import type { AlCrearVersion } from "./OperacionesDePrecios";
 import type { FiltroDeAuditoria } from "./ContextoAuditoria";
 import { PestanaApu } from "./PestanaApu";
 import { PestanaAuditoria } from "./PestanaAuditoria";
@@ -105,6 +107,7 @@ function ContenidoDePestana({
   alReabrir,
   filtro,
   alQuitarFiltro,
+  alCrearVersion,
 }: {
   indice: number;
   borrador: BorradorAbierto | null;
@@ -114,6 +117,8 @@ function ContenidoDePestana({
   alReabrir: () => void;
   filtro: FiltroDeAuditoria | null;
   alQuitarFiltro: () => void;
+  // Se creó una versión nueva (restaurar, cotizar, retirar, convertir): la página la abre.
+  alCrearVersion: AlCrearVersion;
 }) {
   if (borrador === null) return null;
   const llave = `${borrador.id}-${borrador.resumen.rev}`;
@@ -173,7 +178,16 @@ function ContenidoDePestana({
   }
   if (indice === 4) return <PestanaEquilibrio key={llave} id={borrador.id} alAusente={alAusente} />;
   if (indice === 5) {
-    return <PestanaPrecios key={llave} proyecto={borrador.base.proyecto} version={borrador.base.version} alAusente={alAusente} />;
+    return (
+      <PestanaPrecios
+        key={llave}
+        proyecto={borrador.base.proyecto}
+        version={borrador.base.version}
+        alAusente={alAusente}
+        cambios={borrador.resumen.cambios}
+        alCrearVersion={alCrearVersion}
+      />
+    );
   }
   // Las que se editan no se vuelven a montar con cada `rev` (perdería lo escrito); cada una vuelve a leer su vista.
   if (indice === 6) {
@@ -187,13 +201,28 @@ function ContenidoDePestana({
         alAceptar={alAceptar}
         alRecargarBorrador={alRecargarBorrador}
         alReabrir={alReabrir}
+        conversion={{
+          proyecto: borrador.base.proyecto,
+          version: borrador.base.version,
+          cambios: borrador.resumen.cambios,
+          alCrearVersion,
+        }}
       />
     );
   }
   if (indice === 7) {
     return <PestanaAuditoria key={llave} id={borrador.id} alAusente={alAusente} filtro={filtro} alQuitarFiltro={alQuitarFiltro} />;
   }
-  return <PestanaTrazabilidad key={llave} proyecto={borrador.base.proyecto} version={borrador.base.version} alAusente={alAusente} />;
+  return (
+    <PestanaTrazabilidad
+      key={llave}
+      proyecto={borrador.base.proyecto}
+      version={borrador.base.version}
+      alAusente={alAusente}
+      cambios={borrador.resumen.cambios}
+      alCrearVersion={alCrearVersion}
+    />
+  );
 }
 
 type Ofertas = { estado: "buscando" } | { estado: "listo"; lista: OfertaDeRetomar[] };
@@ -291,7 +320,15 @@ function HojaDeProyecto({ proyecto }: { proyecto: string }) {
     else abrirVersion(nueva);
   };
   const olvidarOfertas = useCallback(() => setSinOfertas(proyecto), [proyecto]);
-  const { guardado, exito, quitarExito, cancelarYDevolverFoco, abrirDesdeElGuardado, devolverFocoA } = useGuardadoDeLaPagina({
+  // Los diálogos de restaurar, cotizar, retirar y convertir los abre una pestaña pero se pintan aquí, fuera del contenido inerte.
+  const [anfitrion, setAnfitrion] = useState<HTMLElement | null>(null);
+  const [dialogosAbiertos, setDialogosAbiertos] = useState(0);
+  const registrarDialogo = useCallback((delta: number) => setDialogosAbiertos((n) => n + delta), []);
+  const dialogos = useMemo(
+    () => ({ anfitrion, abiertos: dialogosAbiertos, registrar: registrarDialogo }),
+    [anfitrion, dialogosAbiertos, registrarDialogo],
+  );
+  const { guardado, exito, quitarExito, cancelarYDevolverFoco, abrirDesdeElGuardado, alCrearVersion, devolverFocoA } = useGuardadoDeLaPagina({
     proyecto,
     id: estado.estado === "listo" ? estado.borrador.id : null,
     rev: estado.estado === "listo" ? estado.borrador.resumen.rev : 0,
@@ -301,7 +338,7 @@ function HojaDeProyecto({ proyecto }: { proyecto: string }) {
     olvidarOfertas,
     elegirVersion,
     pedirVersion,
-    hayConfirmacion: versionPendiente !== null,
+    hayConfirmacion: versionPendiente !== null || dialogosAbiertos > 0,
   });
   const seguirEditando = useCallback(() => {
     setVersionPendiente(null);
@@ -369,8 +406,8 @@ function HojaDeProyecto({ proyecto }: { proyecto: string }) {
   if (versiones.estado !== "listo") return <AvisoError error={versiones.error} />;
 
   return (
-    <>
-    <div className="silice-hoja__contenido" inert={versionPendiente !== null || guardado.abierto}>
+    <ContextoDeDialogos.Provider value={dialogos}>
+    <div className="silice-hoja__contenido" inert={versionPendiente !== null || guardado.abierto || dialogosAbiertos > 0}>
       {exito !== null && exito.proyecto === proyecto && (
         <InlineNotification
           kind="success"
@@ -455,6 +492,7 @@ function HojaDeProyecto({ proyecto }: { proyecto: string }) {
                     alReabrir={reabrirNuevo}
                     filtro={filtro}
                     alQuitarFiltro={() => setFiltro(null)}
+                    alCrearVersion={alCrearVersion}
                   />
                 )}
               </TabPanel>
@@ -499,7 +537,9 @@ function HojaDeProyecto({ proyecto }: { proyecto: string }) {
         alCancelar={seguirEditando}
       />
     )}
-    </>
+    {/* Aquí se pintan los diálogos de las operaciones sobre versiones: fuera del contenido, que queda inerte mientras haya uno. */}
+    <div ref={setAnfitrion} className="silice-hoja__anfitrion" />
+    </ContextoDeDialogos.Provider>
   );
 }
 

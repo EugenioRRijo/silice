@@ -26,6 +26,13 @@ export interface CadenaRespuesta {
   declaracion: string | null;
 }
 
+// La respuesta de S6 con la forma del contrato (una respuesta vacía o ajena no se pinta).
+export function esCadena(x: unknown): x is CadenaRespuesta {
+  if (x === null || typeof x !== "object") return false;
+  const c = x as Record<string, unknown>;
+  return typeof c["integra"] === "boolean" && typeof c["mensaje"] === "string" && (c["declaracion"] === null || typeof c["declaracion"] === "string" || c["declaracion"] === undefined);
+}
+
 // El responsable nunca viaja: lo pone el servidor desde la sesión (RF-82).
 export function cuerpoDeRestaurar(proyecto: string, version: string, fuente: string) {
   return { proyecto, version, fuente };

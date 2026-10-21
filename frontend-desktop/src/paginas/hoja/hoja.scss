@@ -260,3 +260,42 @@
   align-content: start;
   min-inline-size: 0;
 }
+
+// El lugar donde se pintan los diálogos de las operaciones sobre versiones (3d-2): no ocupa lugar en la rejilla de la página.
+.silice-hoja__anfitrion {
+  display: contents;
+}
+
+// Restaurar, cotizar, retirar y convertir: un formulario corto, de una columna, con desplazamiento propio.
+.silice-hoja__dialogo--operacion {
+  inline-size: min(32rem, 100%);
+  max-block-size: 90vh;
+  overflow-y: auto;
+  border-inline-start-color: var(--silice-interactivo, #0f62fe);
+}
+
+.silice-hoja__campos-operacion {
+  display: grid;
+  gap: 1rem;
+}
+
+// Estado de la cadena de sellos: ícono y texto en la misma línea; el color solo acompaña.
+.silice-hoja__cadena {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.silice-hoja__cadena-estado {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+}
+
+.silice-hoja__cadena-integra {
+  fill: var(--silice-ok, #198038);
+}
+
+.silice-hoja__cadena-rota {
+  fill: var(--silice-sev-critico, #da1e28);
+}

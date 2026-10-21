@@ -4,6 +4,8 @@ import { useAplicacion } from "../../shell/contexto";
 import { AvisoDeEdicion, AvisoDeEnvio } from "./AvisoDeEdicion";
 import { CampoDeCelda } from "./CampoDeCelda";
 import { Cifra } from "./Cifra";
+import { ConvertirMoneda } from "./ConvertirMoneda";
+import type { AlCrearVersion } from "./OperacionesDePrecios";
 import { VistaCarga } from "./VistaCarga";
 import { rutaDeVista } from "./logica";
 import type { Resumen, VistaParametros } from "./logica";
@@ -24,14 +26,24 @@ interface Props {
   alReabrir: () => void;
 }
 
+// Lo que hace falta para convertir la moneda (S5): la versión guardada abierta, los cambios sin guardar y qué hacer al crearse
+// una versión. Solo la pestaña «Parámetros» lo ofrece; los factores del APU no.
+export interface Conversion {
+  proyecto: string;
+  version: string | null;
+  cambios: number;
+  alCrearVersion: AlCrearVersion;
+}
+
 interface PropsContenido extends Props {
+  conversion?: Conversion;
   vista: VistaParametros;
   alRelectura: () => void;
   // En el APU solo van los campos: sin explicación larga, sin moneda del proyecto y sin total.
   compacto?: boolean;
 }
 
-function ContenidoParametros({ id, rev, moneda, vista, alAusente, alAceptar, alRecargarBorrador, alReabrir, alRelectura, compacto = false }: PropsContenido) {
+function ContenidoParametros({ id, rev, moneda, vista, alAusente, alAceptar, alRecargarBorrador, alReabrir, alRelectura, conversion, compacto = false }: PropsContenido) {
   const { alExpirar } = useAplicacion();
   const idDelError = useId();
   const edicion = useEdicionDeSeccion<ValoresDeParametros, UbicacionDeParametro>({
@@ -80,6 +92,16 @@ function ContenidoParametros({ id, rev, moneda, vista, alAusente, alAceptar, alR
       {!compacto && vista.moneda_proyecto !== null && (
         <p className="cds--type-body-compact-01">Moneda del proyecto: {vista.moneda_proyecto}</p>
       )}
+      {!compacto && conversion !== undefined && (
+        <ConvertirMoneda
+          proyecto={conversion.proyecto}
+          version={conversion.version}
+          monedaActual={vista.moneda_proyecto}
+          puedeConvertir={vista.puede_convertir}
+          cambios={conversion.cambios}
+          alCrearVersion={conversion.alCrearVersion}
+        />
+      )}
       {!compacto && (
         <p className="silice-hoja__total cds--type-heading-03">
           Total del presupuesto <Cifra monto={vista.total} unidad={moneda} />
@@ -90,8 +112,8 @@ function ContenidoParametros({ id, rev, moneda, vista, alAusente, alAceptar, alR
 }
 
 // Pestaña «Parámetros»: los cuatro se editan como texto (rebanada 3c-2) y se aplican al borrador del servidor; convertir la
-// moneda llega en la rebanada 3d.
-export function PestanaParametros(props: Props) {
+// moneda crea una versión nueva desde la guardada (3d-2).
+export function PestanaParametros(props: Props & { conversion: Conversion }) {
   // Sube cada vez que hay que volver a leer la vista tras una edición: la anterior sigue a la vista mientras llega.
   const [lecturas, setLecturas] = useState(0);
   const alRelectura = useCallback(() => setLecturas((n) => n + 1), []);

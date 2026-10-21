@@ -1,3 +1,6 @@
+import { EstadoDeLaCadena } from "./EstadoDeLaCadena";
+import { RestaurarVersion } from "./RestaurarVersion";
+import type { AlCrearVersion } from "./OperacionesDePrecios";
 import { TablaPaginada } from "./TablaPaginada";
 import { VistaCarga } from "./VistaCarga";
 import { fechaCorta, rotuloDeOrigen, rutaDeTrazabilidad } from "./logica";
@@ -8,11 +11,26 @@ interface Props {
   // null = borrador en blanco: no hay versión guardada de la que ver el historial.
   version: string | null;
   alAusente: () => void;
+  // Los cambios sin guardar del borrador (con alguno no se restaura) y qué hacer al crearse una versión.
+  cambios: number;
+  alCrearVersion: AlCrearVersion;
 }
 
 const SIN_VERSION = "Abra una versión guardada para ver su historial y sus registros de cambio.";
 
-function ContenidoTrazabilidad({ vista, version }: { vista: TrazabilidadRespuesta; version: string }) {
+function ContenidoTrazabilidad({
+  vista,
+  version,
+  proyecto,
+  cambios,
+  alCrearVersion,
+}: {
+  vista: TrazabilidadRespuesta;
+  version: string;
+  proyecto: string;
+  cambios: number;
+  alCrearVersion: AlCrearVersion;
+}) {
   const titulo = `Registro de cambios de la versión ${version}`;
   return (
     <div className="silice-hoja__pestana">
@@ -40,6 +58,7 @@ function ContenidoTrazabilidad({ vista, version }: { vista: TrazabilidadRespuest
           }))}
         />
       </section>
+      <EstadoDeLaCadena proyecto={proyecto} />
       <section className="silice-hoja__seccion">
         <h2 className="cds--type-heading-compact-02">{titulo}</h2>
         {vista.registros.length === 0 ? (
@@ -77,17 +96,20 @@ function ContenidoTrazabilidad({ vista, version }: { vista: TrazabilidadRespuest
           />
         )}
       </section>
+      <RestaurarVersion proyecto={proyecto} versiones={vista.versiones.map((v) => v.codigo)} cambios={cambios} alCrearVersion={alCrearVersion} />
     </div>
   );
 }
 
 // Pestaña «Trazabilidad»: las versiones del proyecto y el registro de cambios de la versión abierta (guardada). Restaurar
-// una versión llega en la rebanada 3d.
-export function PestanaTrazabilidad({ proyecto, version, alAusente }: Props) {
+// una versión (3d-2) y la cadena de sellos viven aquí.
+export function PestanaTrazabilidad({ proyecto, version, alAusente, cambios, alCrearVersion }: Props) {
   if (version === null) return <p className="cds--type-body-compact-01">{SIN_VERSION}</p>;
   return (
     <VistaCarga<TrazabilidadRespuesta> ruta={rutaDeTrazabilidad(proyecto, version)} etiqueta="Trazabilidad" alAusente={alAusente}>
-      {(vista) => <ContenidoTrazabilidad vista={vista} version={version} />}
+      {(vista) => (
+        <ContenidoTrazabilidad vista={vista} version={version} proyecto={proyecto} cambios={cambios} alCrearVersion={alCrearVersion} />
+      )}
     </VistaCarga>
   );
 }

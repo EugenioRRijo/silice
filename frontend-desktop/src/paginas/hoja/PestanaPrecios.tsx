@@ -7,6 +7,8 @@ import { useAplicacion } from "../../shell/contexto";
 import { Cifra } from "./Cifra";
 import { EstadoDeFila } from "./EstadoDeFila";
 import { TablaPaginada } from "./TablaPaginada";
+import { OperacionesDePrecios } from "./OperacionesDePrecios";
+import type { AlCrearVersion } from "./OperacionesDePrecios";
 import { VistaCarga } from "./VistaCarga";
 import { fechaCorta, partirColumnasDePrecios, rutaDeAtipicos, rutaDePrecios } from "./logica";
 import type { AtipicosRespuesta, CeldaPrecio, ColumnaPrecio, PreciosRespuesta } from "./logica";
@@ -16,6 +18,9 @@ interface Props {
   // null = borrador en blanco: no hay versión guardada de la que ver los precios.
   version: string | null;
   alAusente: () => void;
+  // Los cambios sin guardar del borrador (con alguno no se cotiza ni se retira) y qué hacer al crearse una versión.
+  cambios: number;
+  alCrearVersion: AlCrearVersion;
 }
 
 const SIN_VERSION = "Abra una versión guardada para ver el origen de sus precios.";
@@ -216,8 +221,8 @@ function BuscarAtipicos({ proyecto, version }: { proyecto: string; version: stri
 }
 
 // Pestaña «Precios»: el origen del precio de cada insumo de la versión GUARDADA (no del borrador), evaluado a la fecha
-// del servidor. Cotizar y retirar una cotización llegan en la rebanada 3d.
-export function PestanaPrecios({ proyecto, version, alAusente }: Props) {
+// del servidor. Registrar y retirar una cotización crean una versión nueva (3d-2).
+export function PestanaPrecios({ proyecto, version, alAusente, cambios, alCrearVersion }: Props) {
   if (version === null) return <p className="cds--type-body-compact-01">{SIN_VERSION}</p>;
   return (
     <VistaCarga<PreciosRespuesta> ruta={rutaDePrecios(proyecto, version)} etiqueta="Precios" alAusente={alAusente}>
@@ -233,6 +238,7 @@ export function PestanaPrecios({ proyecto, version, alAusente }: Props) {
           </p>
           <TablaDePrecios vista={vista} />
           <BuscarAtipicos proyecto={proyecto} version={version} />
+          <OperacionesDePrecios proyecto={proyecto} version={version} filas={vista.filas} cambios={cambios} alCrearVersion={alCrearVersion} />
         </div>
       )}
     </VistaCarga>
