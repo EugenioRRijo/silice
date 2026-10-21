@@ -5,6 +5,8 @@ para el proyectista. No hace falta saber programar: todo se opera desde la inter
 Qué es el sistema y por qué calcula como calcula está en [NORMAS.md](../NORMAS.md) y en la
 [ERS](ERS.md); este manual solo explica **cómo usarlo**.
 
+> **Enmienda del 2026‑10‑21.** La interfaz ya no es la de Streamlit: es la interfaz de React que sirve la propia aplicación en `/app/` (un solo proceso, un solo puerto). Los nombres de pantallas, botones y pasos de este manual se escribieron para la interfaz anterior; donde difieran de lo que ve en pantalla, manda la pantalla y debe corregirse el manual (pendiente de repaso con la interfaz final). El Visor 3D del modelo se retiró de forma definitiva.
+
 ## 1. Instalación
 
 La forma normal de instalar Sílice es el instalador de Windows (`Silice-<versión>.exe`, o
@@ -50,7 +52,7 @@ Con el instalador no hace falta sembrar nada a mano; Inicio ofrece el caso de de
 
 > **Nombres de las variables.** Desde la 0.6.0 se llaman `SILICE_CASO` y `SILICE_MODO_ENTREGA`.
 > Los nombres anteriores, `ARENIA_CASO` y `ARENIA_MODO_ENTREGA`, se aceptaron como alias hasta la
-> 0.6.0 y ya no se aceptan desde la 0.7.0 (`ui/entorno.py`).
+> 0.6.0 y ya no se aceptan desde la 0.7.0 (`aplicacion/entorno.py`).
 
    **Dejar lista la aplicación para componer partidas.** Una sola orden siembra
    la línea base de la clínica, tres partidas de demostración (`DEMO-01-INST`, `DEMO-02-VALV`,
@@ -70,7 +72,7 @@ Con el instalador no hace falta sembrar nada a mano; Inicio ofrece el caso de de
 2. **Abrir la interfaz** (se abre en el navegador, en el equipo local):
 
    ```
-   uv run python -m streamlit run ui/app.py
+   uv run uvicorn api.main:app --host 127.0.0.1 --port 8501
    ```
 
    **Modo entrega.** Para mostrar solo la sección **Trabajo** (Inicio y las cinco pantallas que
@@ -79,8 +81,8 @@ Con el instalador no hace falta sembrar nada a mano; Inicio ofrece el caso de de
    la variable `SILICE_MODO_ENTREGA` en `1` (exactamente `1`; cualquier otro valor la deja apagada):
 
    ```
-   SILICE_MODO_ENTREGA=1 uv run python -m streamlit run ui/app.py                  # bash
-   $env:SILICE_MODO_ENTREGA = "1"; uv run python -m streamlit run ui/app.py        # PowerShell
+   SILICE_MODO_ENTREGA=1 uv run uvicorn api.main:app --host 127.0.0.1 --port 8501                  # bash
+   $env:SILICE_MODO_ENTREGA = "1"; uv run uvicorn api.main:app --host 127.0.0.1 --port 8501        # PowerShell
    ```
 
 3. **API HTTP** (opcional, para integrar con otro software):
@@ -194,7 +196,7 @@ proyecto** lo muestra abierto en su versión vigente.
    produjo. En esta pantalla todos los dominios se cargan en **CSV**; en el civil, el CSV pide
    asociar cada tipo de elemento a una partida del catálogo. El `.ifc`, que trae sus códigos de
    partida en el propio modelo, no entra por esta pantalla: entra por la API
-   (`POST /computos/civil`); el **Visor 3D del modelo** se retiró el 2026-10-19.
+   (`POST /computos/civil`); el **Visor 3D del modelo** se retiró (2026-10-19; definitivo desde el 2026-10-21).
 
    **Si el archivo no se puede leer, no se presupuesta nada** y el mensaje nombra el archivo (sin
    la carpeta) y, si el problema es de una fila, la fila y la columna. Los mensajes son de esta
@@ -543,7 +545,7 @@ libro de la hoja y **Descargar Excel** lo entrega (`hoja_<código>.xlsx`): las h
 proyecto con sus fórmulas vivas, más una hoja por tabla del espacio. El libro se genera solo al pedirlo.
 
 **Limitaciones del prototipo.** (1) Cerrar la pestaña del navegador con
-cambios sin guardar los pierde: Streamlit no deja avisar. (2) Los datos de ejemplo (OF‑001) son un caso
+cambios sin guardar los pierde en las pantallas que no lo avisan (la Hoja sí avisa al cerrar la pestaña). (2) Los datos de ejemplo (OF‑001) son un caso
 construido, no una obra ejecutada.
 
 ### 3.9 Moneda, precios de la empresa, índices del BCV y reajuste (UC‑17 y UC‑18)

@@ -24,6 +24,8 @@
 > [docs/linea_base.md](linea_base.md) (principio DRY,
 > [metodologia.md §5](metodologia.md#5-dry)).
 
+> **Enmienda del 2026‑10‑21 (retiro de Streamlit y del Visor 3D).** La capa `ui/` (Streamlit) y el extra `ui` ya no existen. El producto es **un solo proceso Uvicorn** (`api.main:app`) que sirve la API y la interfaz de React (`frontend-desktop/dist`) en `/app/`, por el puerto de `[servidor]` de `silice.toml`; la tabla `[api]` de `silice.toml` se ignora con aviso. La lógica que vivía en `ui/` está en `aplicacion/` (sin Streamlit ni FastAPI), y la usan `api/` y `asistente/`. Las vistas y secciones que describen las pantallas de Streamlit (`ui/paginas/*`, `ui.app`, `ui.caso`, `ui.recorridos`, la barra) se conservan como **registro del diseño con que se construyó el sistema**; léase `ui.X` como `aplicacion.X` donde el módulo existe. Los diagramas de despliegue y de componentes y las filas de "Presentación" ya están actualizados.
+
 | Campo | Valor |
 |---|---|
 | Versión | 1.3 (actualización de C6; la 1.2 es la de C5 y la 1.1, la regeneración de C4) |
@@ -35,7 +37,7 @@
 
 Núcleo cerrado con adaptadores de dominio (puertos y adaptadores): `core/contracts/` define los
 puertos; `adapters/*` los implementan y `ml.prediction` los consume (`ml.normalization` y
-`ml.anomaly` trabajan con datos planos y no importan nada de `core`); `ui/` y `api/` orquestan. El
+`ml.anomaly` trabajan con datos planos y no importan nada de `core`); `aplicacion/` y `api/` orquestan. El
 motor de costos es una función pura; la verificación es independiente del aprendizaje automático.
 Las capas de procesamiento (Bases del anteproyecto §9.1) se mapean así:
 
@@ -48,7 +50,7 @@ Las capas de procesamiento (Bases del anteproyecto §9.1) se mapean así:
 | Presupuesto y curva | `core/budget` |
 | Aprendizaje automático | `ml/normalization`, `ml/anomaly`, `ml/prediction` |
 | Verificación | `core/verification` |
-| Presentación | `ui/` (Streamlit), `api/` (FastAPI) |
+| Presentación | `frontend-desktop/` (React), `aplicacion/` (lógica sin interfaz), `api/` (FastAPI; sirve la interfaz en `/app/`) |
 
 ## 1. Vista de casos de uso
 
@@ -118,7 +120,7 @@ Las cuatro relaciones `«extend»` son flujos alternativos del ERS; no todas se 
 - **UC‑03 → UC‑01 (3a), realizada.** `elaborar` deja fuera del presupuesto el ítem cuya partida no
   tiene composición, lo devuelve en `ResultadoElaboracion.pendientes` y el informe lo declara con un
   hallazgo `CODIGO_PENDIENTE`; después, `ml.normalization.propuestas_para` propone partidas similares
-  y `ui.elaboracion.aceptar_propuesta` reasigna el ítem y se vuelve a elaborar. El orden real es
+  y `aplicacion.elaboracion.aceptar_propuesta` reasigna el ítem y se vuelve a elaborar. El orden real es
   **elaborar primero y proponer después**, no el que redacta el ERS («propone… y si no se acepta
   ninguna»); la corrección de la redacción es de la ERS (ruling C3‑10 de la
   [bitácora del cierre](bitacora/2026-09-23-cierre.md)).
@@ -128,9 +130,9 @@ Las cuatro relaciones `«extend»` son flujos alternativos del ERS; no todas se 
   sin lista vigente el error es de la lista y no de 3b, y se deja subir; después, las partidas sin
   un ESTIMADO de fecha no posterior a la del presupuesto, cada una con
   `core.catalog.proponer_rendimiento` (el rendimiento del histórico y su dispersión). La pantalla
-  las lleva al bloque «Rendimientos por declarar» (`ui.elaboracion.rendimientos_por_declarar`),
+  las lleva al bloque «Rendimientos por declarar» (`aplicacion.elaboracion.rendimientos_por_declarar`),
   exige el tipo, registra el propuesto declarado ESTIMADO con `core.catalog.registrar_rendimiento`
-  (`ui.elaboracion.declarar_rendimiento`, sin confirmar: el `commit` es de la página) y vuelve a
+  (`aplicacion.elaboracion.declarar_rendimiento`, sin confirmar: el `commit` es de la página) y vuelve a
   elaborar. La API responde 409 sin guardar, con la propuesta por partida
   (`api.rutas.presupuestos._rendimientos_por_declarar`); el tipo se declara con
   `POST /partidas/{codigo}/rendimientos` y el presupuesto se reenvía. Un MEDIDO declarado no
@@ -149,9 +151,9 @@ Las cuatro relaciones `«extend»` son flujos alternativos del ERS; no todas se 
   cualquier otro informe (elaborar, componer, importar) no entran, y el contraste AACE
   (`ml.prediction.contrastar_aace`, que devuelve un `Hallazgo`) sigue solo en la pantalla de
   componer.
-- **UC‑11 → UC‑10 (7a), realizada.** `ui.elaboracion.guardar_composicion` decide: si la partida no
+- **UC‑11 → UC‑10 (7a), realizada.** `aplicacion.elaboracion.guardar_composicion` decide: si la partida no
   existe, `Catalogo.cargar_composicion` (UC‑10); si existe, `Catalogo.reemplazar_composicion`
-  (UC‑11), salvo que `ui.composicion.motivo_para_no_reemplazar` lo impida.
+  (UC‑11), salvo que `aplicacion.composicion.motivo_para_no_reemplazar` lo impida.
 
 Dos reutilizaciones más que el ERS menciona no se dibujan porque son de un paso, no entre casos de uso
 completos: UC‑04 *2a* reimporta el modelo con el paso 2 de UC‑01 (`adapters.civil.recalculo.emparejar`
@@ -161,15 +163,15 @@ de los demás.
 
 | UC | Realizado por | Pantalla (`ui/app.py`, `PAGINAS`) y ruta HTTP |
 |---|---|---|
-| UC‑01 | Paso 1 (INV‑086, C6): `api.rutas.presupuestos.crear_proyecto_de_presupuestos` → `core.budget.crear_proyecto`. `AdaptadorDominio.extraer` del dominio → `ui.elaboracion.elaborar_desde_catalogo` o `api.rutas.presupuestos.crear_presupuesto` → `Catalogo.composiciones` de las partidas existentes → `core.budget.elaborar(..., plan=...)` con el plan del proyectista o, sin él, `plan_secuencial` (`ui.elaboracion.plan_de` y `plan_desde_filas`; `api.rutas.presupuestos._plan`; paso 6, INV‑087) → `core.budget.exportar_excel`. Flujo 3b: `ui.elaboracion.rendimientos_por_declarar` y `declarar_rendimiento`, o el 409 de `api.rutas.presupuestos._rendimientos_por_declarar` (INV‑088). Persiste (`core.budget.guardar_presupuesto`) la API y los sembradores; la pantalla elabora, muestra y exporta, pero no guarda el presupuesto | «Elaborar un presupuesto» (`ui/paginas/elaborar.py`; civil solo tabular; tabla «Plan de trabajo» y bloque «Rendimientos por declarar») y «Componer una partida»; `POST /proyectos` (paso 1; la interfaz no crea proyectos), `POST /computos/{dominio}` (civil: `.ifc` o tabular) y `POST /presupuestos` (campo `plan`; 409 de 3b) |
+| UC‑01 | Paso 1 (INV‑086, C6): `api.rutas.presupuestos.crear_proyecto_de_presupuestos` → `core.budget.crear_proyecto`. `AdaptadorDominio.extraer` del dominio → `aplicacion.elaboracion.elaborar_desde_catalogo` o `api.rutas.presupuestos.crear_presupuesto` → `Catalogo.composiciones` de las partidas existentes → `core.budget.elaborar(..., plan=...)` con el plan del proyectista o, sin él, `plan_secuencial` (`aplicacion.elaboracion.plan_de` y `plan_desde_filas`; `api.rutas.presupuestos._plan`; paso 6, INV‑087) → `core.budget.exportar_excel`. Flujo 3b: `aplicacion.elaboracion.rendimientos_por_declarar` y `declarar_rendimiento`, o el 409 de `api.rutas.presupuestos._rendimientos_por_declarar` (INV‑088). Persiste (`core.budget.guardar_presupuesto`) la API y los sembradores; la pantalla elabora, muestra y exporta, pero no guarda el presupuesto | «Elaborar un presupuesto» (`ui/paginas/elaborar.py`; civil solo tabular; tabla «Plan de trabajo» y bloque «Rendimientos por declarar») y «Componer una partida»; `POST /proyectos` (paso 1; la interfaz no crea proyectos), `POST /computos/{dominio}` (civil: `.ifc` o tabular) y `POST /presupuestos` (campo `plan`; 409 de 3b) |
 | UC‑02 | `core.catalog.crear_lista_desde_archivo` → `core.budget.actualizar_precios` → `Comparativo`; 7a: `core.budget.descartar_version`. Flujo 2a (INV‑090, C6): la vista previa `core.catalog.insumos_desconocidos` (no escribe) y el argumento `dar_de_alta` de `crear_lista_desde_archivo`, que da de alta con `Catalogo.dar_de_alta_insumo`; los ignorados (2a) y los rechazados (2b) los separa quien llama, comparando `ResumenLista.desconocidos` con la vista previa. Paso 5 de UC‑07 (INV‑099): el detector de atípicos entra como `detectar_atipicos` | «Actualizar precios» (`ui/paginas/actualizacion.py`, con «Dar de alta») e «Historico de cambios de precio» (`core.catalog.cambios_precio`); `POST /listas-precios` (campo `dar_de_alta`), `POST /presupuestos/{codigo}/actualizacion`, `GET /cambios-precio` |
-| UC‑03 | `ml.normalization` (`NormalizadorPartidas`, `proponedor`, `propuestas_para`) sobre pares código–descripción que la capa de presentación lee de `core.catalog`; la persistencia de la partida nueva es UC‑10 | «Partidas similares» (`ui/paginas/similares.py`, vía `ui.composicion.sugerir_partidas_similares`); dentro de UC‑01 3a en «Elaborar un presupuesto» y en `POST /presupuestos` |
+| UC‑03 | `ml.normalization` (`NormalizadorPartidas`, `proponedor`, `propuestas_para`) sobre pares código–descripción que la capa de presentación lee de `core.catalog`; la persistencia de la partida nueva es UC‑10 | «Partidas similares» (`ui/paginas/similares.py`, vía `aplicacion.composicion.sugerir_partidas_similares`); dentro de UC‑01 3a en «Elaborar un presupuesto» y en `POST /presupuestos` |
 | UC‑04 | `adapters.civil.recalculo` (`recalcular`, `emparejar`) y `core.budget.elaborar` por quien llama. El paso 5 (diferencial, RF‑20) no está implementado | sin pantalla ni ruta HTTP |
 | UC‑05 | `core.verification.auditar` sobre un `Presupuesto`. En las pantallas y la API corre siempre dentro de `core.budget.elaborar` y de `core.budget.cargar_elaboracion`. La excepción son los resúmenes impresos de tres sembradores, que arman `ResultadoElaboracion(presupuesto, auditar(presupuesto))` sobre `core.budget.generar_presupuesto` y llaman a `auditar` directamente, sin pendientes: `scripts/seed_telecom.py:580` (el presupuesto de un tercero), `scripts/seed_industrial.py:260` y `scripts/seed_sistemas.py:253`. El hallazgo `PENDIENTE` no lo emite `auditar`: lo agrega la elaboración (`_declarar_pendientes`), así que quien llame a `auditar` directamente no lo ve | el informe acompaña a toda elaboración en pantalla y en la hoja «Auditoria» del libro; `GET /presupuestos/{codigo}/informe`. El archivo tabular de un tercero (RF‑24, INV‑076, C6) entra por `POST /presupuestos/importar` → `core.budget.importar_presupuesto` (`core/budget/importacion.py`: lee, audita siempre y guarda con su informe; §3.3), sin pantalla (ruling C6‑3); los presupuestos de terceros de los sembradores y de las pruebas se siguen armando en código (`scripts/seed_telecom.py`, `tests/fixtures/presupuesto_auditado.py`) |
 | UC‑06 | `core.catalog.rendimientos` (`registrar_ejecucion`, `registrar_rendimiento`, `dispersion_rendimientos`, `proponer_rendimiento`, `advertencia_rendimiento` y, desde C6, `justificar_rendimiento`, flujo 4a, INV‑093) y, con el extra `ml`, `ml.anomaly.evaluar_rendimiento` | propuesta, advertencia y, desde C6, la justificación de la advertencia por rango en «Componer una partida»; la justificación, también en el campo `justificacion` de `POST /partidas/{codigo}/rendimientos`; la propuesta, también en el flujo 3b de «Elaborar un presupuesto» y en el 409 de `POST /presupuestos`; el registro de un rendimiento medido, solo por HTTP: `POST /ejecuciones`, `GET /ejecuciones`, `GET` y `POST /partidas/{codigo}/rendimientos` |
-| UC‑07 | `ml.anomaly.precios_atipicos` y `ml.prediction` (`tecnica_para`, `predecir_por_reglas`, `metricas`, `contrastar_aace`) | ayudas 2 y 4 de «Componer una partida» (`ui.composicion.advertencia_precio_atipico`, `ui.composicion.contrastar_precio_con_reglas`; para una partida nueva, sin PU anterior del que partir, la ayuda 4 avisa que el contraste no es posible, flujo 3a, INV‑094); `scripts/generar_resultados_ml.py` escribe `docs/resultados_ml.md`. Paso 5 (INV‑099, C6): `ml.anomaly.precios_atipicos` como `DetectorAtipicos` de `core.budget.actualizar_precios`, en «Actualizar precios» y en `POST /presupuestos/{codigo}/actualizacion`; ninguna otra ruta HTTP |
+| UC‑07 | `ml.anomaly.precios_atipicos` y `ml.prediction` (`tecnica_para`, `predecir_por_reglas`, `metricas`, `contrastar_aace`) | ayudas 2 y 4 de «Componer una partida» (`aplicacion.composicion.advertencia_precio_atipico`, `aplicacion.composicion.contrastar_precio_con_reglas`; para una partida nueva, sin PU anterior del que partir, la ayuda 4 avisa que el contraste no es posible, flujo 3a, INV‑094); `scripts/generar_resultados_ml.py` escribe `docs/resultados_ml.md`. Paso 5 (INV‑099, C6): `ml.anomaly.precios_atipicos` como `DetectorAtipicos` de `core.budget.actualizar_precios`, en «Actualizar precios» y en `POST /presupuestos/{codigo}/actualizacion`; ninguna otra ruta HTTP |
 | UC‑08 | `core.budget.escenarios` (`generar_escenario`, `comparar_escenarios`, `comparar_por_partida`). Nada se persiste; el informe de un escenario no declara los pendientes del base (ruling C4‑3 de la bitácora del cierre, a limitaciones) | «Escenarios de sensibilidad» (`ui/paginas/escenarios.py`, que lee el base con `cargar_elaboracion` y avisa de sus pendientes); `POST /presupuestos/{codigo}/escenarios`, cuya respuesta los declara en `pendientes_base` (INV‑083, pista C de C4) |
-| UC‑10, UC‑11 | `ui.composicion` (`composicion_desde_tablas`; `desglose` → `core.costing.calcular_apu`) y `ui.elaboracion.guardar_composicion` → `Catalogo.cargar_composicion` o `Catalogo.reemplazar_composicion` | «Componer una partida» (`ui/paginas/componer.py`); sin ruta HTTP |
+| UC‑10, UC‑11 | `aplicacion.composicion` (`composicion_desde_tablas`; `desglose` → `core.costing.calcular_apu`) y `aplicacion.elaboracion.guardar_composicion` → `Catalogo.cargar_composicion` o `Catalogo.reemplazar_composicion` | «Componer una partida» (`ui/paginas/componer.py`); sin ruta HTTP |
 | UC‑12 | `ui.app` (`PAGINAS`, `paginas_visibles`, `marco`), `ui.caso` (`ruta_caso`, `estado_caso`) y `ui.recorridos` (`RECORRIDOS`, `paso_siguiente`); el caso vacío se siembra con `scripts.seed_demo.main` | «Inicio» (`ui/paginas/inicio.py`) y el marco común de las diez pantallas; sin ruta HTTP |
 
 Las pantallas «Catalogo de partidas e insumos» y «Simulador de listas» no realizan un caso de uso
@@ -1035,7 +1037,7 @@ Spec [S1 §4.2](especificaciones/2026-10-11-silice-s1-moneda-reajuste-design.md)
 
 #### Sílice 0.7.0 (S2): control de obra (previsto)
 
-Spec [S2 §5](especificaciones/2026-10-11-silice-s2-presupuesto-vivo-design.md) y rulings RP7‑2 y RP7‑3 del plan de la 0.7.0. **Ningún contrato de `core/contracts/` cambia**: valuaciones, costos reales, alertas y opciones son tipos de `core/budget`; R13 y R14 subclasifican `ReglaVerificacion` tal como es y quedan **fuera de `REGLAS`**. Módulos nuevos, cada uno con el expediente (SL‑E4 a SL‑E6) que lo autoriza: `core/models/control.py` (las nueve tablas de modelo_datos §2.6); `core/budget/calendario.py` (días hábiles, puro; entra con SL‑E4 porque R14 lo necesita); `core/budget/valuaciones.py` (registro, anulación, instantánea de control, importación de Excel); `core/budget/puente.py` (lo ejecutado por período para S1 y el estudio con valuaciones citadas); `core/budget/valor_ganado.py` (funciones puras: indicadores, separación del desvío, reproyección, alertas, PE proyectado); `core/budget/control.py` (orquesta la instantánea, el estado y los precios del corte, para que `valor_ganado.py` no toque la base); `core/budget/recuperacion.py` (opciones, puras) y `core/budget/decision.py` (aplica la decisión por `guardar_edicion(motivo="recuperacion")`); `core/verification/valuaciones.py` (R13, R14 y los tipos de valuación); `ui/control.py` (sin Streamlit) y `ui/paginas/control.py`. **Dependencias nuevas:** `core/budget` importa los tipos de valuación de `core/verification/valuaciones.py` (así no hay ciclo entre `budget` y `verification`); `core/verification` no importa `core/budget`, así que el contador de días hábiles se **inyecta** en la instantánea (`habiles_entre`). `valor_ganado.py`, `calendario.py` y las funciones de opción de `recuperacion.py` no importan `sqlalchemy`. `core/` no importa `adapters/` ni `ui/`. Este párrafo declara la vista antes de su código; se implementa en S2‑1 a S2‑4.
+Spec [S2 §5](especificaciones/2026-10-11-silice-s2-presupuesto-vivo-design.md) y rulings RP7‑2 y RP7‑3 del plan de la 0.7.0. **Ningún contrato de `core/contracts/` cambia**: valuaciones, costos reales, alertas y opciones son tipos de `core/budget`; R13 y R14 subclasifican `ReglaVerificacion` tal como es y quedan **fuera de `REGLAS`**. Módulos nuevos, cada uno con el expediente (SL‑E4 a SL‑E6) que lo autoriza: `core/models/control.py` (las nueve tablas de modelo_datos §2.6); `core/budget/calendario.py` (días hábiles, puro; entra con SL‑E4 porque R14 lo necesita); `core/budget/valuaciones.py` (registro, anulación, instantánea de control, importación de Excel); `core/budget/puente.py` (lo ejecutado por período para S1 y el estudio con valuaciones citadas); `core/budget/valor_ganado.py` (funciones puras: indicadores, separación del desvío, reproyección, alertas, PE proyectado); `core/budget/control.py` (orquesta la instantánea, el estado y los precios del corte, para que `valor_ganado.py` no toque la base); `core/budget/recuperacion.py` (opciones, puras) y `core/budget/decision.py` (aplica la decisión por `guardar_edicion(motivo="recuperacion")`); `core/verification/valuaciones.py` (R13, R14 y los tipos de valuación); `aplicacion/control.py` (sin Streamlit) y `ui/paginas/control.py`. **Dependencias nuevas:** `core/budget` importa los tipos de valuación de `core/verification/valuaciones.py` (así no hay ciclo entre `budget` y `verification`); `core/verification` no importa `core/budget`, así que el contador de días hábiles se **inyecta** en la instantánea (`habiles_entre`). `valor_ganado.py`, `calendario.py` y las funciones de opción de `recuperacion.py` no importan `sqlalchemy`. `core/` no importa `adapters/` ni `ui/`. Este párrafo declara la vista antes de su código; se implementa en S2‑1 a S2‑4.
 
 ### 2.4 Composición y elaboración en la interfaz (`ui/`, Sesión P2.1 y fase C3)
 
@@ -1043,8 +1045,8 @@ Debajo de las diez pantallas de `ui/paginas/` hay una capa sin pantalla (INV‑0
 
 | Módulo | Qué hace | Qué no importa (`PROHIBIDOS_EN_UI`) |
 |---|---|---|
-| `ui/composicion.py` | lógica pura: arma y valida una `ComposicionAPU` a partir de las tablas que teclea el proyectista (`composicion_desde_tablas`, con la modalidad por línea de la decisión D9) y calcula su desglose (`desglose` → `core.costing.calcular_apu`); envuelve las ayudas de `ml/` con importación perezosa | `streamlit`, `pandas`, `ui.caso`, `sqlalchemy`, `core.catalog`, `core.budget` |
-| `ui/elaboracion.py` | orquesta «cantidades → elaborar → exportar» (`items_desde_filas`, `elaborar_desde_catalogo`, `libro_excel`), guarda composiciones sin confirmar (`guardar_composicion`) y resuelve UC‑01 3a (`propuestas_de_pendientes`, `aceptar_propuesta`), 6 (el plan del proyectista: `plan_de`, `plan_desde_filas`, `filas_desde_plan`, `filas_del_plan_por_defecto`) y 3b (`rendimientos_por_declarar`, `declarar_rendimiento`, este último sin confirmar) | `streamlit`, `pandas`, `ui.caso` |
+| `aplicacion/composicion.py` | lógica pura: arma y valida una `ComposicionAPU` a partir de las tablas que teclea el proyectista (`composicion_desde_tablas`, con la modalidad por línea de la decisión D9) y calcula su desglose (`desglose` → `core.costing.calcular_apu`); envuelve las ayudas de `ml/` con importación perezosa | `streamlit`, `pandas`, `ui.caso`, `sqlalchemy`, `core.catalog`, `core.budget` |
+| `aplicacion/elaboracion.py` | orquesta «cantidades → elaborar → exportar» (`items_desde_filas`, `elaborar_desde_catalogo`, `libro_excel`), guarda composiciones sin confirmar (`guardar_composicion`) y resuelve UC‑01 3a (`propuestas_de_pendientes`, `aceptar_propuesta`), 6 (el plan del proyectista: `plan_de`, `plan_desde_filas`, `filas_desde_plan`, `filas_del_plan_por_defecto`) y 3b (`rendimientos_por_declarar`, `declarar_rendimiento`, este último sin confirmar) | `streamlit`, `pandas`, `ui.caso` |
 | `ui/resultado.py` | el fragmento de Streamlit que pinta un presupuesto elaborado, su informe y sus pendientes (`mostrar_elaboracion`), compartido por componer y elaborar | `sqlalchemy.orm`, `core.costing`, `core.catalog` |
 | `ui/recorridos.py` | declara una sola vez los recorridos guiados de UC‑12 (`RECORRIDOS`, `Paso`, `Recorrido`, `recorrido_por_nombre`, `paso_siguiente`), sin Streamlit ni base de datos: solo importa `dataclasses` | `streamlit`, `sqlalchemy`, `core.catalog`, `ui.caso`, `ui.app` |
 
@@ -1055,18 +1057,18 @@ diccionario `PROHIBIDOS_EN_UI` (`tests/unit/test_arquitectura.py:196-209`) salvo
 `ui/paginas/componer.py` y `ui/paginas/elaborar.py`, que se tratan en el párrafo siguiente.
 
 `ui/paginas/componer.py` **pinta y confirma**: arma las tablas y el formulario, llama a
-`ui.composicion` para el cálculo en vivo, a `ui.elaboracion` para guardar y elaborar, y es quien hace
+`aplicacion.composicion` para el cálculo en vivo, a `aplicacion.elaboracion` para guardar y elaborar, y es quien hace
 `sesion.commit()` tras un guardado con resultado. En tiempo de ejecución no importa `core.budget`,
 `core.costing`, `sqlalchemy.orm` ni `tempfile`: lo vigila
 `tests/unit/test_arquitectura.py::test_ui_respeta_sus_importaciones_prohibidas`, parametrizada con
 `PROHIBIDOS_EN_UI`. Sí lee el catálogo (`core.catalog`) para precargar tablas, proponer rendimientos
-(UC‑06) y mostrar el histórico de precios. `ui/elaboracion.py` es el único módulo de `ui/` sin pantalla
+(UC‑06) y mostrar el histórico de precios. `aplicacion/elaboracion.py` es el único módulo de `ui/` sin pantalla
 que **escribe filas** en la base (`guardar_composicion` y, desde C5, `declarar_rendimiento`, los dos
 sin confirmar: el `sesion.commit()` es de la página, `componer.py` o `elaborar.py`);
 `ui.caso.estado_caso` solo crea el esquema si falta (`crear_esquema`, DDL). Desde C5 (U‑6 de la
 revisión de la pista U), `ui/paginas/elaborar.py` tampoco importa `core.budget`, y lo vigila
-`PROHIBIDOS_EN_UI` (A‑2 de GC5): el plan por defecto lo decide `ui.elaboracion.plan_de`. El grafo de `ui/` es acíclico:
-`ui.app` → `ui.paginas.*` → `ui.elaboracion` → `ui.composicion` → `core`, y `ui.paginas.*` →
+`PROHIBIDOS_EN_UI` (A‑2 de GC5): el plan por defecto lo decide `aplicacion.elaboracion.plan_de`. El grafo de `ui/` es acíclico:
+`ui.app` → `ui.paginas.*` → `aplicacion.elaboracion` → `aplicacion.composicion` → `core`, y `ui.paginas.*` →
 `ui.resultado`; ninguna página importa `ui.app`.
 
 El hallazgo `PENDIENTE` de UC‑01 3a vive **fuera** de `auditar`: lo agrega `core.budget.elaborar`
@@ -1076,7 +1078,7 @@ porque el `Presupuesto` no lleva los ítems pendientes.
 
 Las ayudas de aprendizaje automático (las cuatro de componer: partidas similares, precio atípico,
 rendimiento atípico y contraste AACE; el buscador de la referencia de mercado de RF‑35 no usa `ml`) se invocan **desde `ui/`, con importación perezosa, nunca desde `core/`**:
-`ui/composicion.py` las carga con `_importar_normalizacion`, `_importar_anomalia` e
+`aplicacion/composicion.py` las carga con `_importar_normalizacion`, `_importar_anomalia` e
 `_importar_prediccion`, y la API hace lo mismo con `ml.anomaly` en `api/rutas/rendimientos.py`
 (`docs/bitacora/2026-08-31-sprint-i6.md`). Desde C6 hay dos raíces de composición más para el
 detector de atípicos de la revaloración (UC‑07 5): `ui/paginas/actualizacion.py::_detector_de_atipicos`
@@ -1085,7 +1087,7 @@ Las dos preguntan primero por `scikit-learn` con `importlib.util.find_spec("skle
 `ml.anomaly` se importa solo con `numpy` y el bosque importa `sklearn` al evaluar; sin el extra el
 detector es `None` y el informe no lleva `ATIPICO`. `api/rutas/rendimientos.py::_veredicto_bosque`
 usa la misma guarda. `core/` no importa `ml` (ADR 5, NORMAS.md §2); si
-`ui/composicion.py` llegara a necesitar que el núcleo conociera `ml`, sería un hallazgo para
+`aplicacion/composicion.py` llegara a necesitar que el núcleo conociera `ml`, sería un hallazgo para
 documentar en `docs/bitacora/`, no un import que se agrega en silencio.
 
 ## 3. Vista de proceso
@@ -1096,7 +1098,7 @@ transacción de base de datos.
 
 ### 3.1 UC‑01 con UC‑05 incluido — elaborar y auditar un presupuesto
 
-Mensajes tomados de `ui/elaboracion.py::elaborar_desde_catalogo`,
+Mensajes tomados de `aplicacion/elaboracion.py::elaborar_desde_catalogo`,
 `api/rutas/presupuestos.py::crear_presupuesto`, `core/budget/presupuesto.py::elaborar`,
 `core/verification/informe.py::auditar` y `core/budget/persistencia.py::guardar_presupuesto`. La
 pantalla y la API siguen el mismo protocolo hasta el `ResultadoElaboracion`; difieren al final.
@@ -1106,7 +1108,7 @@ El flujo 3b (partida sin rendimiento estimado vigente) se dibuja como la rama `o
 ```mermaid
 sequenceDiagram
     actor P as Proyectista
-    participant PRE as ui.elaboracion / api.rutas.presupuestos
+    participant PRE as aplicacion.elaboracion / api.rutas.presupuestos
     participant AD as adapters por dominio
     participant CAT as core.catalog.Catalogo
     participant BUD as core.budget
@@ -1177,11 +1179,11 @@ Cinco detalles del orden real que el diagrama fija y que conviene no perder:
 2. **Ninguna regla aborta el informe.** `auditar` recorre las siete y concatena sus hallazgos; una
    expresión inevaluable produce un `Hallazgo`, no una excepción.
 3. **Primero se elabora y después se propone** (UC‑01 3a). La pantalla propone antes de exportar
-   (`ui.elaboracion.propuestas_de_pendientes`); la API, **después de confirmar**: la ruta hace
+   (`aplicacion.elaboracion.propuestas_de_pendientes`); la API, **después de confirmar**: la ruta hace
    `elaborar`, `guardar_presupuesto` y `sesion.commit()`, y solo al construir la respuesta llama a
    `_pendientes`, que invoca `propuestas_para` (`api/rutas/presupuestos.py:160-184` y `:476-503`), de
    modo que el presupuesto queda guardado aunque el modelo de propuestas falle. Si el usuario acepta
-   una propuesta, `ui.elaboracion.aceptar_propuesta` reasigna el ítem y la pantalla vuelve a llamar a
+   una propuesta, `aplicacion.elaboracion.aceptar_propuesta` reasigna el ítem y la pantalla vuelve a llamar a
    `elaborar_desde_catalogo`: una elaboración completa nueva, con su informe.
 4. **`guardar_presupuesto` hace `flush`, no `commit`**: la transacción pertenece a quien llama, de
    modo que el presupuesto puede formar parte de una operación mayor (la de UC‑02, §3.2). Rechaza con
@@ -1355,7 +1357,8 @@ flowchart TB
         prediction["ml.prediction"]
     end
     subgraph presentacion["presentación"]
-        ui["ui (Streamlit)"]
+        ui["aplicacion (lógica sin interfaz)"]
+        front["frontend-desktop (React)"]
         api["api (FastAPI)"]
     end
     scripts["scripts/<br/>siembra, simulación, metas"]
@@ -1368,7 +1371,7 @@ flowchart TB
     ui --> core
     ui --> adapters
     ui --> ml
-    ui --> scripts
+    api --> ui
     api --> core
     api --> adapters
     api --> ml
@@ -1376,6 +1379,7 @@ flowchart TB
     scripts --> adapters
     scripts --> ml
     scripts --> ui
+    front --> api
     scripts --> api
     scripts --> fixtures
 ```
@@ -1394,11 +1398,11 @@ Interfaces provistas y requeridas:
 | `ml.normalization` | `NormalizadorPartidas`, `proponedor`, `propuestas_para`, `Propuesta`, `FALLAS_DE_LA_PROPUESTA` | nada de `core`; `sentence-transformers` (extra `ml`) solo al cargar el modelo |
 | `ml.anomaly` | `precios_atipicos` (cumple `DetectorAtipicos` de `core.budget`), `evaluar_rendimiento` | nada de `core`; `numpy` y, al ajustar el bosque, `scikit-learn` (extra `ml`) |
 | `ml.prediction` | `tecnica_para`, `predecir_por_reglas`, `metricas`, `contrastar_aace` | `core.contracts` (`Hallazgo`, `Severidad`) |
-| `ui` | las diez pantallas de `ui/app.py` (§1) | `core`, `adapters`, `ml` (perezoso) y `scripts`; de forma transitiva, `tests.fixtures` (vía `scripts.seed`, ver abajo) |
+| `aplicacion` | la lógica sin interfaz que usan `api` y `asistente` (antes, la capa sin pantalla de `ui/`) | `core`, `adapters` y `ml` (perezoso); no importa `scripts` ni `api` |
 | `api` | las rutas HTTP de `api/rutas/` (§1; esquema en `docs/api.json`) | `core`, `adapters` (perezoso), `ml` |
-| `scripts` | siembra de las bases, simulación de listas, metas de cada sprint, `docs/resultados_ml.md` y `docs/api.json` | `core`, `adapters`, `ml`, `ui`, `api` y `tests.fixtures` (solo los fixtures) |
+| `scripts` | siembra de las bases, simulación de listas, metas de cada sprint, `docs/resultados_ml.md` y `docs/api.json` | `core`, `adapters`, `ml`, `aplicacion`, `api` y `tests.fixtures` (solo los fixtures) |
 
-Regla de dependencia: ninguna flecha sale de `core/` hacia `adapters/`, `ml/`, `ui/`, `api/`,
+Regla de dependencia: ninguna flecha sale de `core/` hacia `adapters/`, `ml/`, `aplicacion/`, `api/`,
 `scripts/` ni `tests/` (`test_el_nucleo_no_conoce_a_los_demas_paquetes`, con la tupla
 `PAQUETES_FUERA_DEL_NUCLEO`), y las que entran desde `adapters/` y `ml/` llegan solo a
 `core.contracts` (`test_un_adaptador_solo_importa_contratos_su_paquete_y_sus_terceros`,
@@ -1432,9 +1436,9 @@ que no sea `core.contracts`, su propio paquete, la biblioteca estándar o sus te
 sentidos con `ui/`, sin ciclo de módulos: `ui/paginas/actualizacion.py` importa `scripts.seed`
 (`sembrar`, para la demo desde la pantalla), `ui/paginas/simulador.py` importa `scripts.simular_lista`
 (`simular`) e `ui/paginas/inicio.py` importa `scripts.seed_demo` (`main`, para sembrar el caso vacío
-desde el Inicio); en sentido contrario, `scripts/simular_corpus.py` importa `ui.composicion`
+desde el Inicio); en sentido contrario, `scripts/simular_corpus.py` importa `aplicacion.composicion`
 (`buscar_referencia`, para sortear insumos del corpus simulado). No hay ciclo porque ninguno de los
-módulos importados (`scripts.seed`, `scripts.simular_lista`, `scripts.seed_demo`, `ui.composicion`)
+módulos importados (`scripts.seed`, `scripts.simular_lista`, `scripts.seed_demo`, `aplicacion.composicion`)
 importa de vuelta al paquete que lo importa. `scripts/exportar_openapi.py` importa `api.main` para
 escribir `docs/api.json`.
 
@@ -1445,8 +1449,8 @@ escribir `docs/api.json`.
 `scripts/seed.py:42` importa `tests.fixtures.apu_linea_base` al cargarse el módulo. Es una
 dependencia **deliberada**: el fixture es la única copia de la línea base
 ([NORMAS.md §2](../NORMAS.md#2-principios), principio 1; `docs/manual_tecnico.md:252`), y copiarla en
-`scripts/` sería la duplicación que el principio prohíbe. La consecuencia es de despliegue: `ui.app`
-importa las diez páginas al cargarse (`ui/app.py:61-72`), y tres de ellas llegan a `scripts.seed`:
+`scripts/` sería la duplicación que el principio prohíbe. La consecuencia (de la interfaz de Streamlit, retirada el 2026‑10‑21; hoy solo queda la parte de la siembra) era de despliegue: `ui.app`
+importaba las diez páginas al cargarse (`ui/app.py:61-72`), y tres de ellas llegan a `scripts.seed`:
 `ui/paginas/actualizacion.py:44` directamente, `ui/paginas/inicio.py:18` a través de
 `scripts.seed_demo` (`scripts/seed_demo.py:109`) y `ui/paginas/simulador.py:22` a través de
 `scripts.simular_lista` (`scripts/simular_lista.py:30`). Por eso **la aplicación Streamlit necesita
@@ -1487,14 +1491,13 @@ flowchart TB
 
     subgraph equipo["Nodo: equipo del usuario (Windows 11 o Linux, Python 3.13, uv)"]
         subgraph procesos["Procesos"]
-            streamlit["uv run python -m streamlit run ui/app.py<br/>«proceso» interfaz"]
-            fastapi["uv run uvicorn api.main:app<br/>«proceso» API (extra api)"]
+            streamlit["uv run start.py · uv run uvicorn api.main:app --host 127.0.0.1 --port 8501<br/>«proceso» único: la API y la interfaz de React en /app/"]
             seed["uv run python scripts/seed.py · scripts/seed_demo.py<br/>«proceso» carga inicial"]
             pytest["uv run pytest<br/>«proceso» suite de pruebas"]
         end
         subgraph artefactos["Artefactos desplegados"]
-            paquetes["core/ · adapters/ · ml/ · ui/ · api/ · scripts/<br/>codigo fuente, sin instalacion"]
-            fixtures["tests/fixtures/ (con tests/__init__.py)<br/>linea base, fuente unica<br/>la interfaz no arranca sin el"]
+            paquetes["core/ · adapters/ · ml/ · aplicacion/ · api/ · scripts/<br/>codigo fuente, sin instalacion"]
+            fixtures["tests/fixtures/ (con tests/__init__.py)<br/>linea base, fuente unica<br/>la siembra de demostración no corre sin el"]
             venv[".venv/<br/>dependencias resueltas por uv sync"]
         end
         subgraph datos["Almacenamiento local"]
@@ -1504,7 +1507,7 @@ flowchart TB
             base["data/linea_base/APUS_CLINICA.pdf<br/>evidencia primaria"]
             salidas["presupuesto_*.xlsx<br/>con la hoja Auditoria"]
         end
-        navegador["navegador del usuario<br/>pinta la interfaz de Streamlit"]
+        navegador["navegador del usuario<br/>pinta la interfaz de React"]
     end
 
     revit -.->|"archivo IFC 4 (no ejercitado)"| samples
@@ -1516,7 +1519,7 @@ flowchart TB
     paquetes -->|"scripts.seed importa tests.fixtures.apu_linea_base"| fixtures
     paquetes -->|"SQLAlchemy + DecimalExacto"| db
     samples -->|"AdaptadorDominio.extraer"| paquetes
-    referencia -->|"ui.composicion.buscar_referencia"| paquetes
+    referencia -->|"aplicacion.composicion.buscar_referencia"| paquetes
     base -.->|"fuente del catalogo sembrado"| seed
     paquetes -->|"openpyxl"| salidas
     streamlit --> navegador
@@ -1526,11 +1529,11 @@ Decisiones de despliegue y sus consecuencias:
 
 | Aspecto | Decisión | Consecuencia |
 |---|---|---|
-| Base de datos | SQLite en `data/apu.db`, URL por defecto de `core.catalog.sesion.crear_motor`; la interfaz abre el caso que fija el Inicio (`ui.caso.ruta_caso`) | sin instalación de servidor; `.gitignore` ignora `*.db` (en cualquier carpeta) y la base se regenera con `uv run python scripts/seed.py` o `scripts/seed_demo.py` |
+| Base de datos | SQLite en `data/apu.db`, URL por defecto de `core.catalog.sesion.crear_motor`; la interfaz abre el caso que fija la sesión (`operacion.config.ruta_caso_por_defecto`) | sin instalación de servidor; `.gitignore` ignora `*.db` (en cualquier carpeta) y la base se regenera con `uv run python scripts/seed.py` o `scripts/seed_demo.py` |
 | Integridad referencial | `PRAGMA foreign_keys=ON` en cada conexión SQLite | sin él, el motor ignora las claves foráneas y el esquema deja de ser el documentado |
 | Portabilidad del motor | PostgreSQL se activa cambiando la URL y sustituyendo `DecimalExacto` por `Numeric(18, 6)` | ningún modelo cambia (ADR 7) |
-| Artefactos | el código se ejecuta desde el checkout, sin instalar paquete; `tests/fixtures/` (con `tests/__init__.py` y `tests/fixtures/__init__.py`) se despliega junto al código | la interfaz importa `scripts.seed`, que importa la línea base de `tests/fixtures/apu_linea_base.py` (§4): un despliegue que podara `tests/` dejaría a Streamlit sin arrancar. La API no lo necesita |
-| Entorno | `uv sync` (RNF‑07), extras por capa: `ui`, `api`, `civil`, `ml` | el equipo del proyectista no necesita `ifcopenshell` ni `torch` para presupuestar; sin el extra, las ayudas de `ml` y la entrada IFC degradan con un aviso |
+| Artefactos | el código se ejecuta desde el checkout, sin instalar paquete; `tests/fixtures/` (con `tests/__init__.py` y `tests/fixtures/__init__.py`) se despliega junto al código | `scripts.seed` (que usa `start.py` para sembrar la demostración) importa la línea base de `tests/fixtures/apu_linea_base.py` (§4): un despliegue que podara `tests/` dejaría sin sembrar la demostración. La API no lo necesita |
+| Entorno | `uv sync` (RNF‑07), extras por capa: `api`, `civil`, `ml` (el extra `ui` se retiró el 2026‑10‑21) | el equipo del proyectista no necesita `ifcopenshell` ni `torch` para presupuestar; sin el extra, las ayudas de `ml` y la entrada IFC degradan con un aviso |
 | Pruebas | SQLite **en memoria**; ninguna prueba escribe en `data/` salvo con `tmp_path` | la base del usuario nunca se altera al correr la suite |
 | Seguridad | sin credenciales y sin datos fuera del equipo; el acceso de red declarado arriba | RNF‑08; el respaldo es copiar un archivo |
 | Escalado | ninguno: un usuario, un proceso | si el trabajo se colaboriza, `api/` (existe desde F.1) más PostgreSQL es el camino, y solo cambia `crear_motor` |
@@ -1562,7 +1565,7 @@ rodeadas y documentadas, y son entrada de la revisión de contratos posterior a 
 |---|---|---|
 | Evaluador de expresiones en cinco copias: núcleo y los cuatro adaptadores (INV‑006) | prueba de equivalencia civil–núcleo; R1 reevalúa con el del núcleo las expresiones de todo dominio. Aceptado por decisión de arquitectura registrada, pendiente del aval del tutor | [I3.2](bitacora/2026-08-29-I3.2-civil.md) h.1, [I4](bitacora/2026-08-29-I4-verificacion.md) h.1, bitácoras de I5 ([industrial](bitacora/2026-08-29-I5-industrial.md), [sistemas](bitacora/2026-08-29-I5-sistemas.md), [telecom](bitacora/2026-08-29-I5-telecom.md)), [expediente C1 §A.3](bitacora/2026-09-23-C1-expedientes.md) |
 | El lector del CSV en cuatro copias: `_leer_filas`, `_decimal` y `_parsear_especificaciones` en `adapters/civil/tabular.py`, `adapters/industrial/adaptador.py`, `adapters/sistemas/adaptador.py` y `adapters/telecom/adaptador.py` (A‑1 de la revisión de la pista P de C5; `_parsear_especificaciones` es INV‑041) | forzadas por la misma regla que el evaluador: ningún adaptador importa de otro (`test_arquitectura.py`), `core.contracts` es estable y C5 no admite archivos nuevos bajo `adapters/`. No son idénticas: `_leer_filas` y `_parsear_especificaciones` sí lo son en los cuatro, pero `_decimal` de industrial nombra la fila por `id_activo` y el de telecom recibe la ubicación ya armada (`_ubicacion`, con la línea) y no el archivo. La equivalencia de conducta la vigila `tests/unit/test_fuentes_ilegibles.py` (el binario y la muestra de otro dominio, en los cuatro adaptadores). Cierre previsto: un módulo común de lectura tabular cuando se autorice un archivo nuevo en `adapters/`, o `core.contracts` si el tutor avala INV‑006 | [inventario](auditoria/2026-09-inventario.md), INV‑041 e INV‑089; bitácora de C5 ([cierre](bitacora/2026-09-23-cierre.md), «Fase C5») |
-| El criterio «rendimiento estimado vigente» (un ESTIMADO de fecha no posterior a la del presupuesto) escrito fuera de `core/`: `ui.elaboracion.rendimientos_por_declarar` y `api.rutas.presupuestos._rendimientos_por_declarar` repiten la política de `Catalogo._rendimiento_estimado` (U‑5 de la revisión de la pista U de C5) | la API no puede importar `ui/` y C5 no autoriza tocar `core.catalog`; la docstring de la API cita la de `ui/`, y las dos llaman antes a `Catalogo.lista_vigente` para no confundir la falta de lista con el flujo 3b. Si la política cambia, hay tres sitios que cambiar. Cierre previsto, después del cierre: un `Catalogo.rendimiento_vigente(codigo, fecha) -> Rendimiento \| None` público sobre `_rendimiento_estimado` (excepción de `core/`, sin contrato) | bitácora de C5 ([cierre](bitacora/2026-09-23-cierre.md), «Fase C5») |
+| El criterio «rendimiento estimado vigente» (un ESTIMADO de fecha no posterior a la del presupuesto) escrito fuera de `core/`: `aplicacion.elaboracion.rendimientos_por_declarar` y `api.rutas.presupuestos._rendimientos_por_declarar` repiten la política de `Catalogo._rendimiento_estimado` (U‑5 de la revisión de la pista U de C5) | la API no puede importar `ui/` y C5 no autoriza tocar `core.catalog`; la docstring de la API cita la de `ui/`, y las dos llaman antes a `Catalogo.lista_vigente` para no confundir la falta de lista con el flujo 3b. Si la política cambia, hay tres sitios que cambiar. Cierre previsto, después del cierre: un `Catalogo.rendimiento_vigente(codigo, fecha) -> Rendimiento \| None` público sobre `_rendimiento_estimado` (excepción de `core/`, sin contrato) | bitácora de C5 ([cierre](bitacora/2026-09-23-cierre.md), «Fase C5») |
 | `Hallazgo` no lleva `codigo_partida` | desde C5 (INV‑095), **la regla que emite el hallazgo declara su partida**: R1, R3, R4, R5 y R7 implementan `ReglaAtribuible.atribuir(presupuesto) -> list[(Hallazgo, codigo \| None)]` (un `Protocol` de `core/verification/reglas.py`, no un contrato), su `evaluar` devuelve los mismos hallazgos sin la partida, y `auditar` guarda la declaración en `InformeAuditoria.partida_por_hallazgo`, que `partida_de` consulta primero. Para lo que ninguna regla declara (R2, R6, el `PENDIENTE` de `core.budget` o una regla ajena) queda el índice `partida_por_origen`, que ya no registra un `origen_id` citado por varias partidas: el informe pinta «-» en vez de adivinar. La columna *Partida* es un **ancla**: una conciliación de R7 que abarca varias partidas va a la primera en el orden del presupuesto y R6 a su primer código (la del factor minoritario); la descripción las nombra todas. Descartada la clave `(codigo_partida, origen_id)` en `origen_ids`: cambiaba la salida de cinco reglas, la columna *Orígenes* del Excel y los hallazgos persistidos (15 pruebas en 4 archivos). `ReglaAtribuible` es el rodeo explícito de la insuficiencia, candidato a entrar en el contrato en una versión futura, no en este proyecto | [I4](bitacora/2026-08-29-I4-verificacion.md) h.2; [inventario](auditoria/2026-09-inventario.md), INV‑095; [expediente C5.1](bitacora/2026-09-28-C5-expedientes.md) |
 | `PuntoCurva` no lleva `codigo_partida` | códigos entre corchetes en la etiqueta (ADR 11) | [I4](bitacora/2026-08-29-I4-verificacion.md) h.3 |
 | El criterio de amortización no es declarable en `LineaEquipo` | R6 verifica solo la mitad verificable (factor único por insumo) y lo dice en el hallazgo | [I4](bitacora/2026-08-29-I4-verificacion.md) h.4 |
@@ -1583,7 +1586,7 @@ SF‑E2 (edición, registro de cambios, restaurar), SF‑E3 (punto de equilibrio
 y escape M‑1), SF‑E6 (instantánea de composiciones, rendimientos y plan) y SF‑E7 (origen de precios y
 cotizaciones por proyecto) están **implementadas en el núcleo** y con sus pruebas; SF‑E1 (reglas
 externas) y SF‑E5 (R4) llegaron en fases anteriores. **Sigue pendiente**: la hoja del proyecto
-(`ui/hoja.py`, `ui/paginas/hoja.py`), la barra (`ui/barra.py`), `adapters/espacio` y sus tablas
+(`aplicacion/hoja.py`, `ui/paginas/hoja.py`), la barra (`ui/barra.py`), `adapters/espacio` y sus tablas
 `esp_*`, y la adopción de `composiciones_de_presupuesto` por la API y por escenarios. Cada pieza pasa
 a las secciones 1 a 6 cuando se fusiona. Plan: [PLAN_SF.md](../PLAN_SF.md).
 
@@ -1603,8 +1606,8 @@ electricidad: por eso no contradice RNF‑05 ni RF‑09. Cada expediente lo argu
 | `adapters/espacio/especialidades/` | `agua.py`, `datos.py`, `electricidad.py` | `core.contracts` | no |
 | `adapters/espacio/planos/` | `dxf.py` (ezdxf), `ifc.py` (ifcopenshell; duplica lo necesario de `adapters/civil/ifc.py`, porque un adaptador no importa otro) | `core.contracts`, `ezdxf` (`dxf.py`), `ifcopenshell` (`ifc.py`) | no |
 | `adapters/telecom/` | M‑3: deja de emitir `origen` y `destino` como especificaciones (los traza `origen_id`) | `core.contracts` | no |
-| `ui/hoja.py` (nuevo, sin Streamlit) | borrador en memoria, derivación, elaboración con reglas extra, PE, guardado en una sola transacción, restauración, exportación | `adapters.espacio`, `core` | no |
-| `ui/barra.py` (nuevo) | barra de herramientas; la importa solo `ui/app.py`; delega las acciones en `ui.hoja` | `ui.hoja`, `ui.caso` | no |
+| `aplicacion/hoja.py` (nuevo, sin Streamlit) | borrador en memoria, derivación, elaboración con reglas extra, PE, guardado en una sola transacción, restauración, exportación | `adapters.espacio`, `core` | no |
+| `ui/barra.py` (nuevo) | barra de herramientas; la importa solo `ui/app.py`; delega las acciones en `aplicacion.hoja` | `aplicacion.hoja`, `ui.caso` | no |
 | `ui/paginas/hoja.py` (nueva) | la pantalla de la hoja | `ui.*` | no |
 | `core/budget/presupuesto.py` | `elaborar(..., reglas=REGLAS)` | — | SF‑E1 |
 | `core/budget/persistencia.py`, `actualizacion.py`, `escenarios.py`, `importacion.py` | conservan los hallazgos guardados de reglas externas | — | SF‑E1 |
@@ -1623,7 +1626,7 @@ cantidades» con su propia interfaz `derivar(espacio, especialidad) -> list[Item
 
 ```
 usuario edita una celda de entrada
-  -> ui.hoja aplica el cambio al borrador (st.session_state, clave que no es de widget)
+  -> aplicacion.hoja aplica el cambio al borrador (st.session_state, clave que no es de widget)
   -> adapters.espacio deriva los ItemComputo (si cambió el espacio)
   -> core.budget.elaborar(items, composiciones de la versión, parámetros, plan,
                           reglas = REGLAS + reglas_espacio(instantánea del espacio))
@@ -1638,7 +1641,7 @@ usuario pulsa «Guardar versión»
 Cerrar sin guardar no deja rastro (aviso UC‑15c). Restaurar es RF‑54. Restaurar, cotizar y revalorar
 por UC‑02 crean versiones fuera del guardado de la hoja y no copian filas `esp_*`: su espacio es el de
 su `version_origen`, subiendo por la cadena hasta la primera con filas propias. Cuando la hoja abre una
-versión con espacio, `ui.hoja` vuelve a auditar con R8–R10 y esa auditoría **reemplaza** los hallazgos
+versión con espacio, `aplicacion.hoja` vuelve a auditar con R8–R10 y esa auditoría **reemplaza** los hallazgos
 guardados de esas reglas; no se suman.
 
 ### 7.4 Vista de desarrollo y física
@@ -1650,7 +1653,7 @@ guardados de esas reglas; no se suman.
   clave foránea y las crea `crear_esquema_espacio()`
   ([modelo_datos.md §2.4](modelo_datos.md#24-enmienda-del-sprint-final-sf-diseño-aún-no-implementado)).
 - `tests/unit/test_arquitectura.py`: `TERCEROS_POR_ADAPTADOR` agrega `"espacio": {sqlalchemy, ezdxf,
-  ifcopenshell}` (primer adaptador con base de datos); `PROHIBIDOS_EN_UI` agrega `ui/hoja.py`
+  ifcopenshell}` (primer adaptador con base de datos); `PROHIBIDOS_EN_UI` agrega `aplicacion/hoja.py`
   (`streamlit`, `pandas`, `ui.caso`); `ui/barra.py` solo la importa `ui/app.py`.
 - Rendimiento en Streamlit: la pestaña activa se elige con `st.segmented_control` o se aísla con
   `st.fragment`, para no ejecutar las ocho en cada edición; las composiciones de la versión se guardan
@@ -1688,17 +1691,17 @@ Fuente: [spec S4](especificaciones/2026-10-11-silice-s4-asistente-ia-design.md) 
 | `asistente/proveedores/claude.py` | adaptador de Claude con el SDK oficial `anthropic` (import diferido, extra `ia`) | `anthropic`, `base` | no |
 | `asistente/proveedores/ollama_local.py` | adaptador del modelo local con el cliente oficial de Ollama para Python (a confirmar en S4.0) | `ollama` (a confirmar), `base` | no |
 | `asistente/proveedores/guionado.py` | doble de prueba: reproduce turnos grabados (JSON) | `base` | no |
-| `asistente/herramientas.py` | modelos Pydantic de cada herramienta (§6), su esquema JSON y su ejecución | `pydantic`, `ui.hoja`, `adapters.espacio`, `ml.normalization` (opcional) | no |
+| `asistente/herramientas.py` | modelos Pydantic de cada herramienta (§6), su esquema JSON y su ejecución | `pydantic`, `aplicacion.hoja`, `adapters.espacio`, `ml.normalization` (opcional) | no |
 | `asistente/validacion.py` | validación semántica y de citas (§7) | `asistente.herramientas` | no |
-| `asistente/propuestas.py` | lista de propuestas pendientes; aplicar las aceptadas al `Borrador` (`dataclasses.replace`) | `ui.hoja`, `adapters.espacio` | no |
+| `asistente/propuestas.py` | lista de propuestas pendientes; aplicar las aceptadas al `Borrador` (`dataclasses.replace`) | `aplicacion.hoja`, `adapters.espacio` | no |
 | `asistente/orquestador.py` | el bucle de §5.3, topes, registro | todos los anteriores | no |
-| `asistente/privacidad.py` | lista blanca y vista previa de lo enviado (§8.1, §8.2); limpieza de textos ajenos, delimitación de resultados de herramientas, filtro de secretos y tope de partidas por sesión (§8.7) | `ui.hoja` | no |
+| `asistente/privacidad.py` | lista blanca y vista previa de lo enviado (§8.1, §8.2); limpieza de textos ajenos, delimitación de resultados de herramientas, filtro de secretos y tope de partidas por sesión (§8.7) | `aplicacion.hoja` | no |
 | `asistente/clave.py` | guardar y leer la clave de IA de la empresa (§8.3). **No reimplementa el cifrado**: el respaldo cifrado con contraseña lo hace `seguridad/secretos.py` (RV‑13), el mismo que usa la clave de firma de S3 | `keyring` (a confirmar), `seguridad.secretos` | no |
 | `asistente/registro.py` | tablas `ia_*` y su escritura; exportación de `anexos/ia.json` para el paquete (§5.5) | `sqlalchemy` | no |
-| `asistente/experimento/` | banco de tareas, comparador con la referencia y métricas (§9) | `asistente`, `ui.hoja` | no |
+| `asistente/experimento/` | banco de tareas, comparador con la referencia y métricas (§9) | `asistente`, `aplicacion.hoja` | no |
 | `adapters/espacio/origen.py` | `TipoOrigen.IA` y su referencia obligatoria (§5.4) | — | no |
 | `adapters/espacio/reglas.py` | R8 lee los supuestos de un origen IA (§5.4) | `core.contracts` | no |
-| `ui/paginas/hoja.py` | panel del asistente: pedido, vista previa, costo, diff de propuestas, aceptar o rechazar; todo texto del modelo se muestra con `texto_seguro()` (RV‑14) | `asistente`, `ui.hoja` | no |
+| `ui/paginas/hoja.py` | panel del asistente: pedido, vista previa, costo, diff de propuestas, aceptar o rechazar; todo texto del modelo se muestra con `texto_seguro()` (RV‑14) | `asistente`, `aplicacion.hoja` | no |
 | `ui/paginas/administracion.py` (de S3; S5 le agrega la pestaña Instalación) | activar el asistente, registrar la clave de IA de la empresa (solo desde el propio equipo, §8.3), elegir proveedor y modelo, tope de costo (solo el administrador de la instalación) | `asistente.clave` | no |
 
 **Guardia de arquitectura** (reglas de S4 en su propio archivo, `tests/unit/test_arquitectura_asistente.py`, con
@@ -1706,15 +1709,15 @@ los ayudantes compartidos de `tests/unit/test_arquitectura.py`, RV‑2; entra en
 - `asistente` entra en `PAQUETES_FUERA_DEL_NUCLEO` (el núcleo no lo importa), junto con `seguridad`, `paquete` y
   `operacion` que agregan S3 y S5 (RV‑22); lo exige ya
   `test_la_guardia_cubre_todo_paquete_de_primer_nivel_fuera_del_nucleo`.
-- **Capas (RV‑22, ARQ‑H8):** `ui.hoja` queda **debajo** de `asistente`, y `asistente` **debajo** de `ui.paginas`.
-  De `ui`, `asistente` solo importa `ui.hoja`; de `ui`, solo `ui.paginas.hoja` y `ui.paginas.administracion`
-  importan `asistente`. `ui/hoja.py` y `adapters/` no importan `asistente`. Así no hay ciclo de paquetes.
+- **Capas (RV‑22, ARQ‑H8):** `aplicacion.hoja` queda **debajo** de `asistente`, y `asistente` **debajo** de `ui.paginas`.
+  De `ui`, `asistente` solo importa `aplicacion.hoja`; de `ui`, solo `ui.paginas.hoja` y `ui.paginas.administracion`
+  importan `asistente`. `aplicacion/hoja.py` y `adapters/` no importan `asistente`. Así no hay ciclo de paquetes.
 - De `seguridad`, `asistente` solo importa `seguridad.secretos`.
 - `asistente` no importa `streamlit`; `anthropic` solo se importa en `asistente/proveedores/claude.py` y el cliente
   de Ollama solo en `ollama_local.py`.
 - Ningún módulo usa `unsafe_allow_html` (prueba común de RV‑14).
 
-**RP9-3 (ruling, pendiente de Eugenio):** `ui.entrega` (S3) es un tercer importador de `asistente`, limitado a `asistente.registro`, para armar `anexos/ia.json`; si no se ratifica, el anexo se inyecta desde `ui.paginas.hoja`.
+**RP9-3 (ruling, pendiente de Eugenio):** `aplicacion.entrega` (S3) es un tercer importador de `asistente`, limitado a `asistente.registro`, para armar `anexos/ia.json`; si no se ratifica, el anexo se inyecta desde `ui.paginas.hoja`.
 
 ### El bucle neutral (S4 §5.3)
 
@@ -1797,7 +1800,7 @@ S5 no toca `core/` (NORMAS §2): lo que agrega vive fuera del núcleo y el núcl
 
 `python.exe -E -s -B -X utf8 -m operacion arrancar`: una sola instancia (`servidor.json` y la
 salud), `silice.toml`, `preparar_base` de la instalación y del caso, dirección (`127.0.0.1` o la IP
-elegida si sigue existiendo), Streamlit (y Uvicorn si la API está activa) como hijos con las
+elegida si sigue existiendo), un solo Uvicorn (la API y la interfaz) como hijo con las
 opciones fijas de §10.1, espera de la salud (≤ 60 s) y navegador. Cerrar la ventana o `parar`
 lo detiene todo.
 Actualizar es ejecutar el instalador nuevo: detiene Sílice, borra `python\`, `modulos\` y
