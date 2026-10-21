@@ -16,6 +16,7 @@ export interface CambioDeVersion {
 
 export interface GuardadoRespuesta {
   codigo: string;
+  proyecto: string;
   cambios: number;
   total: Monto;
   primera: boolean;
@@ -105,6 +106,13 @@ export interface ErrorDeGuardado {
 export const MENSAJE_DE_BASE =
   "No se pudo leer o escribir el caso. Revise que el archivo exista y no esté abierto en otro programa.";
 
+// La versión nueva que trae el 409 como segundo campo del cuerpo (contrato 3d-1), o null.
+function versionDelCuerpo(cuerpo: unknown): string | null {
+  if (cuerpo === null || typeof cuerpo !== "object") return null;
+  const v = (cuerpo as Record<string, unknown>)["version_mas_nueva"];
+  return typeof v === "string" && v !== "" ? v : null;
+}
+
 function versionDe(detalle: string, patron: RegExp): string | null {
   return patron.exec(detalle)?.[1] ?? null;
 }
@@ -116,7 +124,7 @@ export function clasificarErrorDeGuardado(error: unknown): ErrorDeGuardado {
   if (error.estado === 404 && esBorradorAusente(error)) return { clase: "ausente", mensaje, version: null };
   if (error.estado === 409) {
     if (d.startsWith("Otra persona guardó")) {
-      return { clase: "mas-nueva", mensaje, version: versionDe(d, /guardó la versión ([^\s.,;]+)/) };
+      return { clase: "mas-nueva", mensaje, version: versionDelCuerpo(error.cuerpo) ?? versionDe(d, /guardó la versión ([^\s.,;]+)/) };
     }
     if (d.startsWith("El borrador cambió")) return { clase: "rev", mensaje, version: null };
     if (d.startsWith("Este borrador ya se guardó")) {

@@ -76,12 +76,12 @@ describe("textos", () => {
     expect(textoDeCambiosAGuardar(3)).toBe("3 cambios");
   });
   test("éxito de una versión (P:497-500, con tildes)", () => {
-    const r = { codigo: "004", cambios: 3, total: { texto: "2703.86", exacto: "2703.860232" }, primera: false, mensaje: "x" };
+    const r = { codigo: "004", proyecto: "OF-001", cambios: 3, total: { texto: "2703.86", exacto: "2703.860232" }, primera: false, mensaje: "x" };
     expect(textoDeExito(r, "OF-001")).toBe("Se guardó la versión 004 con 3 cambios registrados.");
     expect(textoDeExito({ ...r, cambios: 1 }, "OF-001")).toBe("Se guardó la versión 004 con 1 cambio registrado.");
   });
   test("éxito de la primera versión (P:539-544), con el total en es-VE", () => {
-    const r = { codigo: "001", cambios: 1, total: { texto: "2703.86", exacto: "2703.860232" }, primera: true, mensaje: "x" };
+    const r = { codigo: "001", proyecto: "OF-001", cambios: 1, total: { texto: "2703.86", exacto: "2703.860232" }, primera: true, mensaje: "x" };
     expect(textoDeExito(r, "OF-001")).toBe(
       "Se guardó la primera versión 001 del proyecto OF-001 (total 2.703,86). Quedó registrada su creación, con su fuente y su responsable.",
     );
