@@ -232,7 +232,7 @@ data/
   civil/  telecom/  industrial/  sistemas/   plantilla de precios de cada dominio; fuentes/ salvo civil
 tests/
   fixtures/       apu_linea_base.py — única copia de la línea base; los demás datos compartidos de prueba.
-                  scripts/ también los importa (scripts.seed, que usa start.py): el arranque de demostración no siembra sin ellos
+                  scripts/ también los importa, y start.py lee tests/fixtures/bases: el arranque de demostración no siembra sin ellos
   unit/           contratos, arquitectura, línea base, costing, adaptadores, ml, aplicacion, api y scripts
   integration/    persistencia, API y flujos completos
 docs/             README, ERS, modelo_datos, arquitectura, plan_pruebas, calidad_iso25010,
