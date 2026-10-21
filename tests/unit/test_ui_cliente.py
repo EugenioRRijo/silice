@@ -15,7 +15,7 @@ import pytest
 from streamlit.testing.v1 import AppTest
 
 from operacion import config, red
-from tests.fixtures.arquitectura import RAIZ, archivos, ruta
+from tests.fixtures.arquitectura import RAIZ
 from ui import cliente
 
 
@@ -111,23 +111,6 @@ def test_administracion_exige_el_propio_equipo_antes_de_crear_una_clave_de_api()
             )
             return
     pytest.fail("administracion.py no crea claves de API: ¿se movió la pantalla?")
-
-
-def test_ningun_modulo_de_ui_ni_api_llama_a_es_local_de_seguridad_directamente() -> None:
-    infractores = []
-    for paquete in ("ui", "api"):
-        for archivo in archivos(paquete):
-            for nodo in ast.walk(ast.parse(archivo.read_text(encoding="utf-8"))):
-                usa_import = isinstance(nodo, ast.ImportFrom) and nodo.module == "seguridad.red"
-                usa_llamada = (
-                    isinstance(nodo, ast.Call)
-                    and isinstance(nodo.func, (ast.Name, ast.Attribute))
-                    and ast.unparse(nodo.func)
-                    in {"es_local", "red.es_local", "seguridad.red.es_local"}
-                )
-                if usa_import or usa_llamada:
-                    infractores.append(f"{ruta(archivo)}:{nodo.lineno}")
-    assert infractores == []
 
 
 def test_la_pantalla_de_acceso_de_s3_usa_el_aviso_de_s5() -> None:

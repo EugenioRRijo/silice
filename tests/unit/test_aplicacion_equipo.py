@@ -10,10 +10,13 @@ cada prueba conserva su caso y su aserción; solo cambia el modo de dar la IP (a
 
 from __future__ import annotations
 
+import ast
+
 import pytest
 
 from aplicacion import equipo
 from operacion import config
+from tests.fixtures.arquitectura import archivos, ruta
 
 
 @pytest.fixture
@@ -78,3 +81,22 @@ def test_remota_y_con_pendientes_manda_el_motivo_remoto(con_red_local) -> None:
     pendiente.parent.mkdir(parents=True, exist_ok=True)
     pendiente.write_text('{"revisado": false}', encoding="utf-8")
     assert equipo.operacion_sensible_permitida("192.168.1.30") == (False, equipo.MENSAJE_REMOTO)
+
+
+def test_ningun_modulo_de_api_ni_aplicacion_llama_a_es_local_de_seguridad_directamente() -> None:
+    """Movida de `test_ui_cliente.py` (F3): antes recorria `ui` y `api`; `ui/` se retira, asi
+    que ahora `api` y `aplicacion`. Todo pasa por `aplicacion.equipo`, no por `es_local`."""
+    infractores = []
+    for paquete in ("api", "aplicacion"):
+        for archivo in archivos(paquete):
+            for nodo in ast.walk(ast.parse(archivo.read_text(encoding="utf-8"))):
+                usa_import = isinstance(nodo, ast.ImportFrom) and nodo.module == "seguridad.red"
+                usa_llamada = (
+                    isinstance(nodo, ast.Call)
+                    and isinstance(nodo.func, (ast.Name, ast.Attribute))
+                    and ast.unparse(nodo.func)
+                    in {"es_local", "red.es_local", "seguridad.red.es_local"}
+                )
+                if usa_import or usa_llamada:
+                    infractores.append(f"{ruta(archivo)}:{nodo.lineno}")
+    assert infractores == []
