@@ -763,7 +763,7 @@ def test_ui_elaboracion_toma_el_guardado_de_la_capa_de_aplicacion():
 def test_solo_cadena_y_entrega_usan_formato_legado():
     """VB-1: `formato_legado` es un contexto de solo transicion (reconocer huellas selladas antes);
     solo `core/budget/cadena.py` lo usa, `canonico.py` lo define y `aplicacion/entrega.py` puede
-    mencionarlo. Nadie mas (ni adapters, ui, api ni otro modulo del nucleo) puede escribir con el."""
+    mencionarlo. Nadie mas (adapters, ui, api, otro modulo del nucleo) puede escribir con el."""
     permitidos = {
         "core/budget/canonico.py",
         "core/budget/cadena.py",

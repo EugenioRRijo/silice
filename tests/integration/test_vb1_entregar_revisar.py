@@ -17,90 +17,30 @@ from decimal import Decimal
 from pathlib import Path
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session
 
 from auditoria.reauditoria import leer_documento
 from core import models
 from core.budget import (
     cadena,
     canonico,
-    crear_proyecto,
-    elaborar,
-    guardar_presupuesto,
-    plan_secuencial,
 )
-from core.catalog import Catalogo, abrir_sesion
-from core.contracts.apu import (
-    ComposicionAPU,
-    LineaEquipo,
-    LineaManoObra,
-    LineaMaterial,
-    ParametrosCosto,
-)
-from core.contracts.dominio import Dominio
-from core.contracts.item_computo import ItemComputo, OrigenTipo
+from core.catalog import abrir_sesion
 from paquete.verificar import VERIFICADO, EmpresaConocida, verificar
 from seguridad import empresas, firma
 from seguridad.modelo import EmpresaRegistrada
-from tests.fixtures.canonico_minimo import FECHA, USUARIO
+from tests.fixtures.canonico_minimo import USUARIO
 from tests.fixtures.instalacion import AHORA, instalacion
+from tests.fixtures.vb1_fraccionario import (
+    UN_DOCEAVO_28,
+    UN_DOCEAVO_29,
+    sembrar_fraccionaria,
+)
 from ui import entrega
 
 CLAVE = "frase de firma larga y propia"
 EMPRESA = "Contratista Demo, C.A."
 CUANDO = datetime(2026, 11, 10, 9, 30)
 RECIBIDO = datetime(2026, 11, 11, 8, 0)
-UN_DOCEAVO_28 = "0.0833333333333333333333333333"
-UN_DOCEAVO_29 = "0.08333333333333333333333333333"
-
-FRACCIONARIA = ComposicionAPU(
-    codigo_partida="FRA-001",
-    descripcion="Equipo fraccionario",
-    unidad="m3",
-    rendimiento=Decimal("12"),
-    materiales=(LineaMaterial("Arena", "m3", Decimal("1.00"), Decimal("14.00")),),
-    equipos=(LineaEquipo("Compactadora", Decimal("1"), Decimal("1.00"), Decimal("1")),),
-    mano_obra=(LineaManoObra("Obrero", Decimal("2"), Decimal("10.25")),),
-)
-
-
-def _sembrar(caso: Session, **opciones):
-    lista = models.ListaPrecios(nombre="Lista", moneda="USD", fecha_vigencia=FECHA, origen="prueba")
-    caso.add(lista)
-    caso.flush()
-    Catalogo(caso).cargar_composicion(FRACCIONARIA, lista, Dominio.CIVIL, FECHA, "prueba")
-    proyecto = crear_proyecto(caso, "FRA-001", dominio=Dominio.CIVIL)
-    item = ItemComputo(
-        codigo_partida="FRA-001",
-        descripcion="Equipo fraccionario",
-        unidad="m3",
-        cantidad=Decimal("20"),
-        origen_id="FILA-1",
-        origen_tipo=OrigenTipo.TABULAR,
-        dominio=Dominio.CIVIL,
-    )
-    r = elaborar(
-        [item],
-        {"FRA-001": FRACCIONARIA},
-        ParametrosCosto(),
-        codigo="001",
-        fecha=FECHA,
-        moneda="USD",
-        plan=plan_secuencial,
-    )
-    version = guardar_presupuesto(
-        caso,
-        r.presupuesto,
-        r.informe,
-        proyecto=proyecto,
-        lista=lista,
-        parametros=ParametrosCosto(),
-        pendientes=r.pendientes,
-        usuario=USUARIO,
-        **opciones,
-    )
-    caso.commit()
-    return proyecto, version
 
 
 def _equipos_del_documento(datos: bytes) -> str:
@@ -110,7 +50,7 @@ def _equipos_del_documento(datos: bytes) -> str:
 def test_entregar_y_revisar_un_equipo_fraccionario_verifica_la_firma(motor, tmp_path: Path) -> None:
     with abrir_sesion(motor) as caso, instalacion(tmp_path / "emisor") as bd:
         empresas.guardar_empresa_propia(bd, EMPRESA, "J-00000000-0", "", "ana", AHORA)
-        _, version = _sembrar(caso, anexos_de=entrega.anexos_de_cadena)
+        _, version = sembrar_fraccionaria(caso, anexos_de=entrega.anexos_de_cadena)
         empresas.generar_clave(bd, CLAVE, "ana", AHORA)
         e = entrega.entregar(
             caso,
@@ -151,7 +91,7 @@ def test_entregar_y_revisar_un_equipo_fraccionario_verifica_la_firma(motor, tmp_
 def test_una_version_sellada_antes_de_la_correccion_no_aparece_como_cadena_rota(motor) -> None:
     with abrir_sesion(motor) as caso:
         with canonico.formato_legado():  # como se sellaba antes: 29 decimales en la huella
-            proyecto, version = _sembrar(caso)
+            proyecto, version = sembrar_fraccionaria(caso)
             assert UN_DOCEAVO_29 in canonico.documento(caso, version).decode()
         assert UN_DOCEAVO_28 in canonico.documento(caso, version).decode()
         resultado = cadena.verificar_cadena(caso, proyecto)
@@ -169,6 +109,6 @@ def test_una_version_sellada_antes_de_la_correccion_no_aparece_como_cadena_rota(
 
 def test_una_version_nueva_sella_con_la_cifra_cuantizada(motor) -> None:
     with abrir_sesion(motor) as caso:
-        proyecto, version = _sembrar(caso)
+        proyecto, version = sembrar_fraccionaria(caso)
         assert UN_DOCEAVO_29 not in canonico.documento(caso, version).decode()
         assert cadena.verificar_cadena(caso, proyecto).integra

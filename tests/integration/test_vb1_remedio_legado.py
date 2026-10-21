@@ -1,4 +1,5 @@
-"""Remedio del limite abierto de VB-1 (expediente `docs/bitacora/2026-10-21-VB1-expediente-core.md`).
+"""Remedio del limite abierto de VB-1 (expediente
+`docs/bitacora/2026-10-21-VB1-expediente-core.md`).
 
 Una version sellada ANTES de VB-1 con una cifra de 29 decimales abre sin «cadena rota», pero
 Entregar produciria un `presupuesto.json` cuantizado cuya huella no es la sellada (verificable
@@ -27,11 +28,7 @@ from core.catalog import abrir_sesion
 from core.models.cadena import EslabonVersion
 from tests.fixtures.canonico_minimo import USUARIO
 from tests.fixtures.instalacion import instalacion
-from tests.integration.test_vb1_entregar_revisar import (
-    UN_DOCEAVO_28,
-    UN_DOCEAVO_29,
-    _sembrar,
-)
+from tests.fixtures.vb1_fraccionario import UN_DOCEAVO_28, UN_DOCEAVO_29, sembrar_fraccionaria
 from ui import entrega
 
 CUANDO = datetime(2026, 11, 10, 9, 30)
@@ -43,7 +40,7 @@ AVISO = (
 
 def _legada(caso):
     with canonico.formato_legado():
-        return _sembrar(caso, anexos_de=entrega.anexos_de_cadena)
+        return sembrar_fraccionaria(caso, anexos_de=entrega.anexos_de_cadena)
 
 
 def _entregar(caso, bd, version):
@@ -64,7 +61,7 @@ def test_la_misma_version_sellada_con_formato_actual_entrega_y_verifica(
     motor, tmp_path: Path
 ) -> None:
     with abrir_sesion(motor) as caso, instalacion(tmp_path / "emisor") as bd:
-        proyecto, version = _sembrar(caso, anexos_de=entrega.anexos_de_cadena)
+        proyecto, version = sembrar_fraccionaria(caso, anexos_de=entrega.anexos_de_cadena)
         assert cadena.formato_de_sellado(caso, version) == "actual"
         e = _entregar(caso, bd, version)
         assert cadena.verificar_cadena(caso, proyecto, anexos_de=entrega.anexos_de_cadena).integra
@@ -76,7 +73,7 @@ def test_formato_de_sellado_distingue_actual_legado_y_roto(motor) -> None:
         _, version = _legada(caso)
         assert cadena.formato_de_sellado(caso, version) == "legado"
     with abrir_sesion(motor) as otro:
-        _, nueva = _sembrar(otro)
+        _, nueva = sembrar_fraccionaria(otro)
         assert cadena.formato_de_sellado(otro, nueva) == "actual"
 
 
@@ -120,7 +117,7 @@ def test_el_resumen_de_entrega_avisa_antes_de_pedir_la_contrasena(motor, tmp_pat
         assert not resumen.entregable
         assert AVISO in resumen.mensaje_de_cadena
     with abrir_sesion(motor) as otro, instalacion(tmp_path / "emisor2") as bd2:
-        _, nueva = _sembrar(otro, anexos_de=entrega.anexos_de_cadena)
+        _, nueva = sembrar_fraccionaria(otro, anexos_de=entrega.anexos_de_cadena)
         resumen = entrega.resumen_de_entrega(otro, bd2, nueva)
         assert resumen.entregable
         assert "selló antes" not in resumen.mensaje_de_cadena
@@ -158,7 +155,7 @@ def test_formato_legado_no_se_filtra_a_otro_hilo() -> None:
 def test_el_total_del_manifiesto_cabe_en_el_patron_estricto(motor, tmp_path: Path) -> None:
     """Hallazgo 4: el total sale de `sum(r.total)`; si fuera fraccionario debe ser leible."""
     with abrir_sesion(motor) as caso, instalacion(tmp_path / "emisor") as bd:
-        _, version = _sembrar(caso, anexos_de=entrega.anexos_de_cadena)
+        _, version = sembrar_fraccionaria(caso, anexos_de=entrega.anexos_de_cadena)
         fila = caso.scalars(
             select(models.PartidaPresupuestada).where(
                 models.PartidaPresupuestada.presupuesto_id == version.id
