@@ -92,7 +92,12 @@ def test_hay_rutas_que_proteger_y_estan_las_de_s3() -> None:
 
 def test_el_recorrido_ve_todas_las_rutas_del_esquema() -> None:
     """Ninguna ruta del OpenAPI queda fuera del recorrido (y la única sin clave es `/salud`)."""
-    recorridas = {(r.path, m.lower()) for r in RUTAS for m in r.methods - {"HEAD", "OPTIONS"}}
+    # El OpenAPI no lleva el convertidor: `{partida:path}` sale como `{partida}`.
+    recorridas = {
+        (re.sub(r"\{([^}:]+):[^}]+\}", r"{\1}", r.path), m.lower())
+        for r in RUTAS
+        for m in r.methods - {"HEAD", "OPTIONS"}
+    }
     esquema = {
         (camino, metodo)
         for camino, operaciones in app.openapi()["paths"].items()

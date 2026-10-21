@@ -366,6 +366,9 @@ def test_solo_las_dos_pantallas_de_precios_y_su_ruta_importan_la_busqueda_de_rf_
         "ui/paginas/hoja.py",
         "ui/paginas/precios_empresa.py",
         "api/rutas/precios_empresa.py",
+        # La pestaña Precios de la hoja (R13, 3b-3) usa la misma búsqueda y su esquema.
+        "api/rutas/hoja.py",
+        "api/esquemas_atipicos.py",
     }
     vigilados = {"aplicacion.atipicos", "ui.atipicos", "ml.anomaly.series"}
     carpetas = ("core", "paquete", "api", "seguridad", "operacion", "asistente", "aplicacion")
