@@ -88,12 +88,6 @@
   gap: 0.75rem;
 }
 
-// Las etiquetas ocultas de Carbon (`cds--visually-hidden`, position: absolute) de las celdas editables se colocaban respecto de
-// un ancestro fuera de la región desplazable y alargaban la PÁGINA (1700 px a 1366 px de ancho) sin verse. Con la región como
-// referencia quedan dentro y se desplazan con ella (3e-F5; medido en navegador).
-.silice-hoja__desplazable {
-  position: relative;
-}
 
 // Las tablas editables van en un `fieldset` para dejarlas de solo lectura mientras se fusiona el plano; se ve como antes: una
 // columna con el mismo espacio entre tablas, sin borde.
