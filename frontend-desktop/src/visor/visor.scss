@@ -140,7 +140,7 @@ body {
 .visor__cuerpo {
   display: grid;
   flex: 1 1 auto;
-  grid-template-columns: minmax(0, 1fr) 320px;
+  grid-template-columns: minmax(0, 1fr) min(20rem, 40vw);
   min-block-size: 0;
 }
 
@@ -181,7 +181,7 @@ body {
 .visor__esqueleto {
   display: grid;
   flex: 1 1 auto;
-  grid-template-columns: minmax(0, 1fr) 320px;
+  grid-template-columns: minmax(0, 1fr) min(20rem, 40vw);
   min-block-size: 0;
   overflow: hidden;
 

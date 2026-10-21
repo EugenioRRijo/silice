@@ -34,6 +34,9 @@
   --silice-ibcs-desfavorable: #{colors.$red-60};
   --silice-ibcs-neutro: #{colors.$gray-70};
 
+  // Escala del texto (control «Tamaño de letra»): 1 normal, 1.25 grande, 1.5 muy grande. La fija preferenciaDeLetra.ts.
+  --silice-escala-letra: 1;
+
   // Aliases de tokens de tema Carbon, para que el resto del CSS propio no repita var(--cds-*).
   --silice-fondo: var(--cds-background);
   --silice-texto: var(--cds-text-primary);

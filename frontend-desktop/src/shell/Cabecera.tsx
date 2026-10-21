@@ -1,6 +1,7 @@
 import { Logout } from "@carbon/icons-react";
 import { Header, HeaderGlobalBar, HeaderMenuButton, HeaderName } from "@carbon/react";
 import type { ReactNode } from "react";
+import { TamanoLetra } from "../comun/TamanoLetra";
 
 interface Props {
   nombre?: string;
@@ -25,16 +26,19 @@ export function Cabecera({ nombre, alSalir, selectores, menu }: Props) {
       <HeaderName href="#/" prefix="">
         Sílice
       </HeaderName>
-      {nombre && (
-        <HeaderGlobalBar>
-          {selectores}
-          <span className="silice-usuario cds--type-body-compact-01">{nombre}</span>
-          <button type="button" className="silice-salir cds--type-body-compact-01" onClick={alSalir}>
-            <Logout size={16} aria-hidden="true" />
-            Salir
-          </button>
-        </HeaderGlobalBar>
-      )}
+      <HeaderGlobalBar>
+        {nombre && selectores}
+        <TamanoLetra />
+        {nombre && (
+          <>
+            <span className="silice-usuario cds--type-body-compact-01">{nombre}</span>
+            <button type="button" className="silice-salir cds--type-body-compact-01" onClick={alSalir}>
+              <Logout size={16} aria-hidden="true" />
+              Salir
+            </button>
+          </>
+        )}
+      </HeaderGlobalBar>
     </Header>
   );
 }

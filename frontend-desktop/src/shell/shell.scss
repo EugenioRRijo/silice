@@ -1,6 +1,80 @@
 // Marco de la interfaz: menu lateral de 16 rem (fijo desde lg, abre con el boton de la cabecera en pantallas mas
 // angostas), contenido a su derecha y selectores en la cabecera. Sin sombras, sin animacion (DESIGN.md).
 
+// El menu mide 16 rem, pero Carbon no tiene en cuenta que la letra crece: se acota a la cuarta parte del ancho de la
+// pantalla (misma medida en el menu y en el margen del contenido) y su alto resta la cabecera en rem, no en 48 px.
+:root {
+  --silice-ancho-menu: min(16rem, 25vw);
+}
+
+@media (min-width: 66rem) {
+  .cds--side-nav--ux,
+  .cds--side-nav--expanded {
+    inline-size: var(--silice-ancho-menu);
+  }
+}
+
+.cds--header ~ .cds--side-nav {
+  block-size: calc(100% - 3rem);
+}
+
+// En pantallas angostas el menu abierto es una capa: puede ser mas ancha que la cuarta parte, pero no cubre todo.
+@media (max-width: 65.99rem) {
+  .cds--side-nav--expanded {
+    inline-size: min(16rem, 85vw);
+  }
+}
+
+// Los nombres largos del menu pasan a la linea siguiente en vez de cortarse con puntos suspensivos.
+a.cds--side-nav__link > .cds--side-nav__link-text {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+// Con la letra grande el menu fijo se come la pantalla: el punto en que pasa a ser una capa (boton de la cabecera) sube con
+// la escala, como al acercar con el zoom del navegador. Carbon lo decide con una consulta en rem que no sigue a la letra
+// de la raiz, asi que aqui se repite en px para cada escala (Normal conserva los 1056 px de Carbon).
+@mixin menu-en-capa($escala, $hasta) {
+  @media (max-width: $hasta) {
+    html[data-silice-letra="#{$escala}"] {
+      .cds--side-nav--ux:not(.cds--side-nav--expanded) {
+        inline-size: 0;
+        visibility: hidden;
+      }
+
+      .cds--side-nav--expanded {
+        inline-size: min(16rem, 85vw);
+      }
+
+      .cds--header__menu-toggle__hidden {
+        display: flex;
+      }
+
+      .cds--side-nav__overlay-active {
+        z-index: 8000;
+        background-color: var(--cds-overlay);
+        block-size: 100vh;
+        inline-size: 100vw;
+        opacity: 1;
+      }
+
+      .silice-contenido {
+        margin-inline-start: 0;
+      }
+
+      // La cabecera no da para tanto con la letra grande: el nombre de la persona cede su lugar a los selectores.
+      .silice-usuario {
+        display: none;
+      }
+    }
+  }
+}
+
+@include menu-en-capa("grande", 1535.98px);
+@include menu-en-capa("muy-grande", 1919.98px);
+
 .silice-saltar {
   position: fixed;
   inset-block-start: 0;
@@ -51,8 +125,10 @@
     outline-offset: -2px;
   }
 
+  // El menu mide 16 rem, pero con la letra grande no puede comerse la pantalla: nunca pasa de la cuarta parte del ancho
+  // (a 1056 px, 16 rem de la letra normal ya son 298 px). Misma medida en el menu y en el margen del contenido.
   @media (min-width: 66rem) {
-    margin-inline-start: 16rem;
+    margin-inline-start: var(--silice-ancho-menu);
   }
 }
 
@@ -95,7 +171,7 @@
   }
 
   .cds--select-input {
-    max-inline-size: 13rem;
+    max-inline-size: min(13rem, 18vw);
     text-overflow: ellipsis;
   }
 }

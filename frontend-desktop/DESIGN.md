@@ -22,7 +22,13 @@ ajustan aquí cuando la construcción los fije.
   oscuro (g100) queda diferido.
 - **Tipografía:** IBM Plex Sans para todo; IBM Plex Mono para referencias de celda (`PRESUPUESTO!F12`) y códigos de
   regla. Cifras con `font-variant-numeric: tabular-nums`, alineadas a la derecha. Escala productiva de Carbon
-  (`body-compact-01` 14 px, `label-01` 12 px, `heading-03` 20 px para el valor de un indicador). IBM Plex es la
+  (`body-compact-01` 14 px, `label-01` 12 px, `heading-03` 20 px para el valor de un indicador).
+  **Tamaño base por presbicia (Eugenio, 2026-10-21):** la raíz mide 116,6667 % de la letra del navegador, así que el cuerpo de
+  Carbon (14 px) sale a 16 px y la etiqueta más pequeña (12 px) a 14 px; todo va en rem. El control «Tamaño de letra» de la
+  cabecera (Normal 100 %, Grande 125 %, Muy grande 150 %, guardado en el navegador) multiplica ese tamaño por la variable
+  `--silice-escala-letra`. Con Grande y Muy grande el menú lateral pasa a ser capa (botón de la cabecera) por debajo de
+  1536 y 1920 px, y la cabecera cede el nombre de la persona a los selectores. El texto de los gráficos de Carbon Charts
+  también sigue la escala; el lienzo de la hoja de Excel (Univer) dibuja en píxeles y se acerca con el zoom del navegador. IBM Plex es la
   cara nativa de Carbon, que el brief fija: se aloja en el propio servidor, sin CDN.
 - **Forma:** esquinas rectas (radio 0, como Carbon); separación con divisores de 1 px `$border-subtle` y espacio,
   no con tarjetas con sombra. Sin gradientes, sin sombras decorativas, sin vidrio.
