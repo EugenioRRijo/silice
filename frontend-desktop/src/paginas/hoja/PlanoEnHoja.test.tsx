@@ -7,6 +7,7 @@ import type { Aplicacion } from "../../shell/contexto";
 import { importada, respuestaDeFusion } from "./datosDePlano";
 import { informeAuditoria, vistaEspacio } from "./datosDePrueba";
 import PaginaHoja from "./index";
+import { olvidarImportaciones } from "./useImportacion";
 import type { BorradorAbierto, VersionesRespuesta } from "./logica";
 
 // Rebanada 3e-2: el enganche del flujo «Importar plano» en la pestaña Espacio de la página. Tras fusionar, el borrador cambió:
@@ -64,6 +65,7 @@ describe("Hoja: importar plano en la pestaña Espacio (3e-2)", () => {
     fetchFalso.mockReset();
     fusionado = false;
     compuerta = null;
+    olvidarImportaciones(); // lo último que se leyó de un borrador se recuerda por id: cada prueba parte de cero
     fetchFalso.mockImplementation(async (ruta, init) => {
       const camino = new URL(String(ruta), "http://silice.local").pathname;
       const metodo = init?.method ?? "GET";

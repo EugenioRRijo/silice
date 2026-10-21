@@ -42,6 +42,8 @@ function ContenidoEspacio({ id, rev, vista, alAusente, alAceptar, alRecargarBorr
   const { alExpirar } = useAplicacion();
   const idDelError = useId();
   const [irA, setIrA] = useState<(IrA & { tabla: string }) | null>(null);
+  // El plano se fusiona y se vuelve a leer el espacio: hasta que termina, las tablas no se editan (3e-2).
+  const [fusionando, setFusionando] = useState(false);
   const edicion = useEdicionDeSeccion<TablasEditables, UbicacionDeError>({
     borrador: id,
     inicial: sembrarTablas(vista.tablas, vista.filas, nuevaClaveDeFila),
@@ -82,6 +84,7 @@ function ContenidoEspacio({ id, rev, vista, alAusente, alAceptar, alRecargarBorr
         alRecargar={edicion.recargar}
         alReabrir={alReabrir}
         alExpirar={alExpirar}
+        alOcuparse={setFusionando}
       />
       <AvisoDeEnvio envio={edicion.envio} />
       {error !== null && (
@@ -97,6 +100,7 @@ function ContenidoEspacio({ id, rev, vista, alAusente, alAceptar, alRecargarBorr
           )}
         </AvisoDeEdicion>
       )}
+      <fieldset disabled={fusionando} className="silice-hoja__bloqueable">
       {vista.tablas.map((t) => (
         <TablaEditable
           key={t.clave}
@@ -110,6 +114,7 @@ function ContenidoEspacio({ id, rev, vista, alAusente, alAceptar, alRecargarBorr
           valorAceptado={(filaClave, columna) => valorAceptado(t.clave, filaClave, columna)}
         />
       ))}
+      </fieldset>
       <section className="silice-hoja__seccion">
         <h2 className="cds--type-heading-compact-02">Cantidades derivadas</h2>
         {vista.vacio_mensaje !== null ? (

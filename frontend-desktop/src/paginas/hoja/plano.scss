@@ -94,3 +94,14 @@
 .silice-hoja__desplazable {
   position: relative;
 }
+
+// Las tablas editables van en un `fieldset` para dejarlas de solo lectura mientras se fusiona el plano; se ve como antes: una
+// columna con el mismo espacio entre tablas, sin borde.
+.silice-hoja__bloqueable {
+  display: grid;
+  gap: 1.5rem;
+  min-inline-size: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}

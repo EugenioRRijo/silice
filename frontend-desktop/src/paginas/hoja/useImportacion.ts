@@ -63,6 +63,11 @@ function recordar(id: string, datos: DatosDelPlano): void {
   while (recuerdos.size > TOPE_DE_RECUERDOS) recuerdos.delete(recuerdos.keys().next().value!);
 }
 
+// La sesión terminó o venció: nada de lo recordado debe quedar en memoria (lo llama también el marco al salir).
+export function olvidarImportaciones(): void {
+  recuerdos.clear();
+}
+
 interface Opciones {
   id: string;
   // El `rev` del borrador según la página; cada petición manda el vigente.
@@ -73,6 +78,9 @@ interface Opciones {
   // Vuelve a leer el borrador y las tablas del espacio (tras un 409 de `rev` y tras fusionar, que cambia el borrador).
   alRecargar: () => Promise<void>;
   alExpirar: () => void;
+  // Avisa a la página que el flujo ocupa el espacio (desde que se pulsa «Fusionar» hasta que se vuelve a leer): mientras tanto
+  // las tablas del espacio no se editan. Una edición que saliera con el `rev` nuevo y las filas de antes borraría lo fusionado.
+  alOcuparse?: (ocupada: boolean) => void;
 }
 
 // El estado del flujo «Importar plano» (P1 a P6): guarda la última respuesta, manda una petición a la vez con el `rev`
@@ -103,6 +111,7 @@ export function useImportacion(opciones: Opciones) {
     (e: unknown, titulo: string) => {
       const o = actuales.current;
       if (e instanceof ErrorDeApi && e.estado === 401) {
+        olvidarImportaciones();
         o.alExpirar();
       } else if (esBorradorAusente(e)) {
         recordar(o.id, VACIO);
@@ -126,19 +135,27 @@ export function useImportacion(opciones: Opciones) {
 
   // Una petición a la vez: con otra en vuelo (o detenido por un conflicto) no se manda nada.
   const ejecutar = useCallback(
-    async <T>(titulo: string, ocupadoCon: string, llamar: (rev: number) => Promise<T>, alExito: (respuesta: T) => void) => {
+    async <T>(
+      titulo: string,
+      ocupadoCon: string,
+      llamar: (rev: number) => Promise<T>,
+      alExito: (respuesta: T) => void | Promise<void>,
+      bloqueaElEspacio = false,
+    ) => {
       const m = motor.current;
       if (m.enVuelo || m.detenido) return;
       m.enVuelo = true;
       setOcupado(ocupadoCon);
       setError(null);
       setAviso(null);
+      if (bloqueaElEspacio) actuales.current.alOcuparse?.(true);
       try {
-        alExito(await llamar(actuales.current.rev));
+        await alExito(await llamar(actuales.current.rev));
       } catch (e) {
         tratar(e, titulo);
       } finally {
         m.enVuelo = false;
+        if (bloqueaElEspacio) actuales.current.alOcuparse?.(false);
         setOcupado(null);
         setFoco((n) => n + 1);
       }
@@ -212,7 +229,7 @@ export function useImportacion(opciones: Opciones) {
         "No se pudo fusionar",
         "Fusionando con el espacio del borrador…",
         (rev) => pedir<RespuestaDeFusion>(rutaDeFusion(actuales.current.id), { metodo: "POST", cuerpo: { rev } }),
-        (r) => {
+        async (r) => {
           aplicar({
             importacion: null,
             fusion: { mensaje: r.mensaje, fusion: r.fusion, informe: r.informe },
@@ -220,8 +237,10 @@ export function useImportacion(opciones: Opciones) {
           });
           // La fusión cambió el borrador: la página toma su resumen y el espacio vuelve a leer sus tablas.
           actuales.current.alAceptar(r.resumen);
-          actuales.current.alRecargar().catch(() => undefined);
+          // Hasta que la relectura termina el flujo sigue ocupado y el espacio sin editar.
+          await actuales.current.alRecargar().catch(() => undefined);
         },
+        true,
       ),
     [ejecutar, aplicar],
   );
@@ -248,6 +267,7 @@ export function useImportacion(opciones: Opciones) {
       motor.current.detenido = false;
       setDetenido(false);
       setError(null);
+      setFoco((n) => n + 1); // el botón «Recargar el borrador» desaparece: el foco va al resultado vigente
     }
   }, []);
 

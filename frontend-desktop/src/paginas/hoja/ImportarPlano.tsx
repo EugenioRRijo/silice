@@ -47,6 +47,8 @@ interface Props {
   // Descarta lo que se ve y abre otro borrador de la versión.
   alReabrir: () => void;
   alExpirar: () => void;
+  // El flujo ocupa el espacio mientras fusiona y vuelve a leerlo: la página no deja editar las tablas.
+  alOcuparse?: (ocupada: boolean) => void;
 }
 
 function Conteos({ conteos }: { conteos: ConteoDePlano[] }) {
@@ -216,8 +218,8 @@ function Resultado({ activo, children }: { activo: boolean; children: ReactNode 
 // «Importar plano (DXF o IFC)» de la pestaña Espacio y metrajes (RF-50, RF-51; ui/paginas/hoja.py:1225-1485): subir un .dxf o
 // .ifc, leerlo (P1), pedir la unidad si falta (P2), cargar las alturas (P3) y declarar los circuitos (P4), fusionar con el
 // borrador (P5) o descartar (P6). La importación vive en el servidor, aparte del borrador, hasta fusionarla.
-export function ImportarPlano({ id, rev, ocupadoPorEdicion = false, alAusente, alAceptar, alRecargar, alReabrir, alExpirar }: Props) {
-  const imp = useImportacion({ id, rev, alAusente, alAceptar, alRecargar, alExpirar });
+export function ImportarPlano({ id, rev, ocupadoPorEdicion = false, alAusente, alAceptar, alRecargar, alReabrir, alExpirar, alOcuparse }: Props) {
+  const imp = useImportacion({ id, rev, alAusente, alAceptar, alRecargar, alExpirar, alOcuparse });
   const idCuerpo = useId();
   const cuerpo = useRef<HTMLDivElement>(null);
   const { importacion, fusion, lectura } = imp.datos;
@@ -228,7 +230,9 @@ export function ImportarPlano({ id, rev, ocupadoPorEdicion = false, alAusente, a
   // Tras leer, cargar alturas, declarar circuitos, fusionar o descartar (o fallar), el foco va al resultado: el botón que lo
   // tenía puede haber desaparecido y no debe quedar en `body`.
   useEffect(() => {
-    if (imp.foco > 0) cuerpo.current?.querySelector<HTMLElement>("[data-resultado]")?.focus();
+    if (imp.foco === 0) return;
+    // Sin resultado a la vista (por ejemplo tras recargar con la primera lectura fallida) el foco va a «Leer plano».
+    (cuerpo.current?.querySelector<HTMLElement>("[data-resultado]") ?? cuerpo.current?.querySelector<HTMLElement>("[data-leer]"))?.focus();
   }, [imp.foco]);
 
   // El primero de estos que exista es el que recibe el foco: el error, el aviso de la acción, o la importación vigente.
@@ -241,14 +245,18 @@ export function ImportarPlano({ id, rev, ocupadoPorEdicion = false, alAusente, a
   const circuitos = importacion?.circuitos_supuestos ?? [];
 
   return (
-    <section className="silice-hoja__seccion silice-plano" aria-busy={imp.ocupado !== null}>
+    <section className="silice-hoja__seccion silice-plano">
       <h2 className="cds--type-heading-compact-02">
         <Button kind="ghost" size="sm" aria-expanded={abierto} aria-controls={idCuerpo} onClick={() => setAbierto((a) => !a)}>
           {ROTULO_IMPORTAR}
         </Button>
       </h2>
+      {/* Fuera del cuerpo ocupado (aria-busy): algunos lectores retienen lo que se anuncia dentro de una región ocupada. */}
+      <p className="cds--type-helper-text-01" role="status">
+        {imp.ocupado ?? ""}
+      </p>
       {abierto && (
-        <div id={idCuerpo} ref={cuerpo} className="silice-plano__cuerpo">
+        <div id={idCuerpo} ref={cuerpo} className="silice-plano__cuerpo" aria-busy={imp.ocupado !== null}>
           <p className="cds--type-body-compact-01">{AYUDA_PLANO}</p>
           <SubidaArchivo etiqueta={ETIQUETA_DE_SUBIDA} extensiones={EXTENSIONES_DE_PLANO} alElegir={setArchivo} deshabilitada={bloqueado} />
           {archivo !== null && <p className="cds--type-body-compact-01">Archivo elegido: {archivo.name}</p>}
@@ -257,6 +265,7 @@ export function ImportarPlano({ id, rev, ocupadoPorEdicion = false, alAusente, a
               kind="primary"
               size="sm"
               disabled={bloqueado}
+              data-leer=""
               onClick={() => {
                 if (archivo === null) imp.faltaArchivo();
                 else void imp.leer(archivo);
@@ -265,10 +274,6 @@ export function ImportarPlano({ id, rev, ocupadoPorEdicion = false, alAusente, a
               {ROTULO_LEER_PLANO}
             </Button>
           </div>
-          <p className="cds--type-helper-text-01" role="status">
-            {imp.ocupado ?? ""}
-          </p>
-
           {imp.error !== null && (
             <Resultado activo={marca("error")}>
               {imp.error.tipo === "otro" ? (
