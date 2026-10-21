@@ -7,6 +7,7 @@ import { EstadoVacio } from "../../comun/EstadoVacio";
 import { formatoEsVe } from "../../indicadores/formatoEsVe";
 import { useAplicacion } from "../../shell/contexto";
 import { useCarga } from "../inicio/useCarga";
+import { DialogoDeGuardar } from "./DialogoDeGuardar";
 import { DialogoDeVersion } from "./DialogoDeVersion";
 import { OfertaDeRetomar as OfertaDeRetomarVista } from "./OfertaDeRetomar";
 import {
@@ -22,6 +23,9 @@ import {
 import type { BorradorAbierto, Resumen, VersionesRespuesta } from "./logica";
 import { RUTA_DE_BORRADORES, borradorExistente, ofertasDeRetomar } from "./logicaRetomar";
 import type { OfertaDeRetomar } from "./logicaRetomar";
+import { conVersionGuardada, textoDeExito, usuarioDeSesion } from "./logicaGuardar";
+import type { GuardadoRespuesta } from "./logicaGuardar";
+import { useGuardado } from "./useGuardado";
 import { ContextoAuditoria } from "./ContextoAuditoria";
 import type { FiltroDeAuditoria } from "./ContextoAuditoria";
 import { PestanaApu } from "./PestanaApu";
@@ -36,7 +40,15 @@ import { PestanaPresupuesto } from "./PestanaPresupuesto";
 import { useBorrador } from "./useBorrador";
 import "./hoja.scss";
 
-function EstadoDelBorrador({ borrador, alDescartar }: { borrador: BorradorAbierto; alDescartar: () => void }) {
+function EstadoDelBorrador({
+  borrador,
+  alDescartar,
+  alGuardar,
+}: {
+  borrador: BorradorAbierto;
+  alDescartar: () => void;
+  alGuardar: () => void;
+}) {
   const { base, resumen } = borrador;
   const [confirmando, setConfirmando] = useState(false);
   return (
@@ -52,11 +64,16 @@ function EstadoDelBorrador({ borrador, alDescartar }: { borrador: BorradorAbiert
       {resumen.version_mas_nueva !== null && (
         <p className="cds--type-helper-text-01">La versión vigente ahora es la {resumen.version_mas_nueva}.</p>
       )}
-      {resumen.cambios > 0 && !confirmando && (
-        <div>
-          <Button kind="ghost" size="sm" onClick={() => setConfirmando(true)}>
-            Descartar cambios
+      {(resumen.cambios > 0 || base.version === null) && !confirmando && (
+        <div className="silice-hoja__acciones">
+          <Button id="hoja-guardar-version" kind="primary" size="sm" onClick={alGuardar}>
+            {base.version === null ? "Guardar primera versión…" : "Guardar versión…"}
           </Button>
+          {resumen.cambios > 0 && (
+            <Button kind="ghost" size="sm" onClick={() => setConfirmando(true)}>
+              Descartar cambios
+            </Button>
+          )}
         </div>
       )}
       {resumen.cambios > 0 && confirmando && (
@@ -213,7 +230,7 @@ function textoDeCambiarVersion(cambios: number): string {
 }
 
 function HojaDeProyecto({ proyecto }: { proyecto: string }) {
-  const { alExpirar } = useAplicacion();
+  const { alExpirar, sesion } = useAplicacion();
   const versiones = useCarga<VersionesRespuesta>(rutaDeVersiones(proyecto), alExpirar);
   const { ofertas, recargar: recargarOfertas } = useOfertas(proyecto, alExpirar);
   const [elegida, setElegida] = useState<{ proyecto: string; codigo: string } | null>(null);
@@ -228,7 +245,15 @@ function HojaDeProyecto({ proyecto }: { proyecto: string }) {
   const retomado = retomando?.proyecto === proyecto ? retomando : null;
   const ofrecidos = ofertas.estado === "listo" && retomado === null && sinOfertas !== proyecto ? ofertas.lista : [];
 
-  const datos = versiones.estado === "listo" ? versiones.datos : null;
+  // Tras guardar se vuelve a leer la lista de versiones sin desmontar la página (valen mientras la carga inicial sea la misma).
+  const [frescas, setFrescas] = useState<{ proyecto: string; sobre: VersionesRespuesta; datos: VersionesRespuesta } | null>(null);
+  const cargadas = versiones.estado === "listo" ? versiones.datos : null;
+  const datos = frescas !== null && frescas.proyecto === proyecto && frescas.sobre === cargadas ? frescas.datos : cargadas;
+  const datosActuales = useRef(datos);
+  useEffect(() => {
+    datosActuales.current = datos;
+  });
+  const [exito, setExito] = useState<{ proyecto: string; texto: string } | null>(null);
   const ofrecidas = datos ? versionesOfrecidas(datos.versiones) : [];
   const delProyecto = elegida?.proyecto === proyecto ? elegida.codigo : null;
   const codigo =
@@ -240,7 +265,7 @@ function HojaDeProyecto({ proyecto }: { proyecto: string }) {
           ? delProyecto
           : (datos.por_omision ?? null);
 
-  const { estado, refrescar, reabrir, aplicar, descartarCambios, descartarActual } = useBorrador(
+  const { estado, refrescar, reabrir, aplicar, descartarCambios, descartarActual, cerrarGuardado } = useBorrador(
     proyecto,
     codigo,
     alExpirar,
@@ -267,25 +292,86 @@ function HojaDeProyecto({ proyecto }: { proyecto: string }) {
     if (hayCambios && estado.estado === "listo") setVersionPendiente(nueva);
     else abrirVersion(nueva);
   };
-  // El foco vuelve al selector cuando el diálogo ya se cerró y el `inert` se quitó (en un navegador real no se puede enfocar
-  // dentro de un subárbol inert): se pide aquí y lo cumple el efecto, tras el commit.
-  const devolverFoco = useRef(false);
+  // El foco vuelve a su sitio cuando el diálogo ya se cerró y el `inert` se quitó (en un navegador real no se puede enfocar
+  // dentro de un subárbol inert): quien cierra el diálogo anota adónde, y este efecto (tras cada commit) lo cumple.
+  const devolverFoco = useRef<"version" | "guardar" | null>(null);
+  // Vuelve a leer la lista de versiones sin desmontar nada. Con `nueva`, si no se pudo leer, se agrega esa versión a mano para
+  // que el selector la tenga (la persona no pierde su sitio por un fallo de lectura).
+  const recargarVersiones = useCallback(
+    async (nueva?: string) => {
+      const sobre = cargadas;
+      if (sobre === null) return;
+      try {
+        const frescos = await pedir<VersionesRespuesta>(rutaDeVersiones(proyecto));
+        setFrescas({ proyecto, sobre, datos: frescos });
+      } catch (error) {
+        if (error instanceof ErrorDeApi && error.estado === 401) alExpirar();
+        if (nueva !== undefined) setFrescas({ proyecto, sobre, datos: conVersionGuardada(datosActuales.current ?? sobre, nueva) });
+      }
+    },
+    [cargadas, proyecto, alExpirar],
+  );
+  // El servidor guardó la versión `nueva` (o ya estaba guardada): el borrador viejo ya no sirve y se abre la nueva, en la misma
+  // pestaña. No vuelve a ofrecer retomar nada: lo que había se resolvió al guardar.
+  const abrirGuardada = useCallback(
+    async (nueva: string) => {
+      cerrarGuardado();
+      setSinOfertas(proyecto);
+      await recargarVersiones(nueva);
+      setRetomando(null);
+      setElegida({ proyecto, codigo: nueva });
+      devolverFoco.current = "version";
+    },
+    [cerrarGuardado, proyecto, recargarVersiones],
+  );
+  const alGuardada = useCallback(
+    async (r: GuardadoRespuesta) => {
+      setExito({ proyecto, texto: textoDeExito(r, r.proyecto) });
+      await abrirGuardada(r.codigo);
+    },
+    [proyecto, abrirGuardada],
+  );
+  const guardado = useGuardado({
+    id: estado.estado === "listo" ? estado.borrador.id : null,
+    rev: estado.estado === "listo" ? estado.borrador.resumen.rev : 0,
+    proyecto,
+    alExpirar,
+    alGuardada,
+  });
+  const cancelarGuardado = guardado.cerrar;
+  const cancelarYDevolverFoco = useCallback(() => {
+    devolverFoco.current = "guardar";
+    cancelarGuardado();
+  }, [cancelarGuardado]);
   useEffect(() => {
-    if (versionPendiente === null && devolverFoco.current) {
-      devolverFoco.current = false;
-      document.getElementById("hoja-version")?.focus();
-    }
-  }, [versionPendiente]);
+    if (versionPendiente !== null || guardado.abierto || devolverFoco.current === null) return;
+    const destino = devolverFoco.current;
+    devolverFoco.current = null;
+    const boton = destino === "guardar" ? document.getElementById("hoja-guardar-version") : null;
+    (boton ?? document.getElementById("hoja-version"))?.focus();
+  });
   const seguirEditando = useCallback(() => {
     setVersionPendiente(null);
-    devolverFoco.current = true;
+    devolverFoco.current = "version";
   }, []);
   const descartarYAbrir = async () => {
     const nueva = versionPendiente;
     setVersionPendiente(null);
-    devolverFoco.current = true;
+    devolverFoco.current = "version";
     if (nueva === null) return;
     if (await descartarActual()) abrirVersion(nueva);
+  };
+  // Un fallo del guardado que pide ir a otra versión. Con «versión más nueva» la persona aún tiene cambios: pasa por la misma
+  // confirmación de descartar que el selector. Con «ya se guardó» no hay nada que perder.
+  const abrirDesdeElGuardado = async (nueva: string) => {
+    const yaGuardado = guardado.error?.clase === "ya-guardado";
+    cancelarYDevolverFoco();
+    if (yaGuardado) {
+      await abrirGuardada(nueva);
+      return;
+    }
+    await recargarVersiones();
+    pedirVersion(nueva);
   };
   const retomar = (oferta: OfertaDeRetomar) => {
     setFalloAlDescartar(null);
@@ -343,7 +429,17 @@ function HojaDeProyecto({ proyecto }: { proyecto: string }) {
 
   return (
     <>
-    <div className="silice-hoja__contenido" inert={versionPendiente !== null}>
+    <div className="silice-hoja__contenido" inert={versionPendiente !== null || guardado.abierto}>
+      {exito !== null && exito.proyecto === proyecto && (
+        <InlineNotification
+          kind="success"
+          role="status"
+          lowContrast
+          title="Versión guardada"
+          subtitle={exito.texto}
+          onCloseButtonClick={() => setExito(null)}
+        />
+      )}
       {ofrecidos.length > 0 && (
         <OfertaDeRetomarVista
           proyecto={proyecto}
@@ -388,7 +484,7 @@ function HojaDeProyecto({ proyecto }: { proyecto: string }) {
               subtitle={estado.borrador.instantanea.mensaje}
             />
           )}
-          <EstadoDelBorrador borrador={estado.borrador} alDescartar={() => void descartarCambios()} />
+          <EstadoDelBorrador borrador={estado.borrador} alDescartar={() => void descartarCambios()} alGuardar={guardado.abrir} />
         </>
       )}
 
@@ -428,6 +524,30 @@ function HojaDeProyecto({ proyecto }: { proyecto: string }) {
       {/* Punto de acoplamiento del asistente de IA (diseño §2.10): vacío y oculto hasta que exista. */}
       <aside aria-label="Asistente de IA" hidden />
     </div>
+    {guardado.abierto && estado.estado === "listo" && (
+      <DialogoDeGuardar
+        proyecto={estado.borrador.base.proyecto}
+        version={estado.borrador.base.version}
+        soloLectura={estado.borrador.base.solo_lectura}
+        cambiosSinGuardar={estado.borrador.resumen.cambios}
+        total={estado.borrador.resumen.total}
+        moneda={estado.borrador.resumen.moneda}
+        usuario={usuarioDeSesion(sesion)}
+        fuente={guardado.fuente}
+        alCambiarFuente={guardado.escribir}
+        cambios={guardado.cambios}
+        enviando={guardado.enviando}
+        error={guardado.error}
+        alGuardar={(confirmar) => void guardado.guardar(confirmar)}
+        alCancelar={cancelarYDevolverFoco}
+        alRecargar={() => void refrescar().then(guardado.limpiarError)}
+        alAbrirVersion={(v) => void abrirDesdeElGuardado(v)}
+        alAbrirDeNuevo={() => {
+          cancelarYDevolverFoco();
+          reabrirNuevo();
+        }}
+      />
+    )}
     {versionPendiente !== null && estado.estado === "listo" && (
       <DialogoDeVersion
         titulo="Descartar los cambios"

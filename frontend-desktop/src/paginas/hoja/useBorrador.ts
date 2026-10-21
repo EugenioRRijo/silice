@@ -120,6 +120,11 @@ export function useBorrador(
     );
   }, []);
 
+  // El servidor guardó este borrador como una versión: ya no sirve y se descarta al abrir otra (sin cambios que conservar).
+  const cerrarGuardado = useCallback(() => {
+    if (abierto.current !== null) abierto.current = { ...abierto.current, cambios: 0 };
+  }, []);
+
   // Borra el borrador del servidor. Devuelve si lo logró; si no, deja el error a la vista y el borrador como estaba.
   const borrarActual = useCallback(async (): Promise<boolean> => {
     const propio = abierto.current;
@@ -142,5 +147,5 @@ export function useBorrador(
 
   let estado: EstadoBorrador = { estado: "inactivo" };
   if (clave !== null) estado = resultado?.clave === clave ? resultado.valor : { estado: "abriendo" };
-  return { estado, refrescar, reabrir, aplicar, descartarCambios, descartarActual: borrarActual };
+  return { estado, refrescar, reabrir, aplicar, descartarCambios, descartarActual: borrarActual, cerrarGuardado };
 }

@@ -510,7 +510,7 @@ describe("Hoja del proyecto: guardar versión y primera versión (3d-1)", () => 
 
   test("409 «ya se guardó como la versión 004»: ofrece abrirla (sin pedir descartar, ya está guardado)", async () => {
     alGuardar = () => json({ detalle: "Este borrador ya se guardó como la versión 004; abra esa versión para seguir." }, 409);
-    versiones = { ...VERSIONES, por_omision: "004", versiones: [fila("004", true, "002"), ...VERSIONES.versiones] };
+    versiones = { ...VERSIONES, versiones: [fila("004", true, "002"), ...VERSIONES.versiones] };
     montar();
     const dialogo = await abrirModal();
     await escribirFuente(dialogo);

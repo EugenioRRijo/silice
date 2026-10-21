@@ -235,6 +235,25 @@
   }
 }
 
+// El modal «Guardar versión»: más ancho que la confirmación, con borde de acción (no de peligro) y desplazamiento propio.
+.silice-hoja__dialogo--guardar {
+  inline-size: min(56rem, 100%);
+  max-inline-size: none;
+  max-block-size: 90vh;
+  overflow-y: auto;
+  border-inline-start-color: var(--silice-interactivo, #0f62fe);
+}
+
+.silice-hoja__cambios {
+  max-block-size: 40vh;
+  overflow: auto;
+}
+
+.silice-hoja__cambios-guardar {
+  display: grid;
+  gap: 0.5rem;
+}
+
 .silice-hoja__contenido {
   display: grid;
   gap: 1.5rem;

@@ -4,7 +4,7 @@ import { ErrorDeApi } from "../../api/cliente";
 import { mensajeDeError } from "../../comun/errores";
 import { formatoEsVe } from "../../indicadores/formatoEsVe";
 import { esBorradorAusente } from "./logica";
-import type { Monto } from "./logica";
+import type { Monto, VersionesRespuesta } from "./logica";
 
 export interface CambioDeVersion {
   objeto: string;
@@ -137,4 +137,13 @@ export function clasificarErrorDeGuardado(error: unknown): ErrorDeGuardado {
   if (error.estado === 422) return { clase: "rechazo", mensaje, version: null };
   if (error.estado === 503) return { clase: "base", mensaje: d === "" ? MENSAJE_DE_BASE : mensaje, version: null };
   return { clase: "otro", mensaje, version: null };
+}
+
+// La lista de versiones con la `codigo` recién guardada (vigente y por omisión) cuando no se pudo volver a leer del servidor:
+// así el selector la tiene y la hoja abre la versión nueva en vez de caer en otra.
+export function conVersionGuardada(lista: VersionesRespuesta, codigo: string): VersionesRespuesta {
+  const resto = lista.versiones.filter((v) => v.codigo !== codigo).map((v) => ({ ...v, vigente: false }));
+  const propia = lista.versiones.find((v) => v.codigo === codigo);
+  const nueva = { codigo: "", fecha: "", motivo: "", origen: "", vigente: true, descartada: false, cambios: 0, ...propia };
+  return { ...lista, por_omision: codigo, versiones: [{ ...nueva, codigo, vigente: true }, ...resto] };
 }

@@ -1,6 +1,6 @@
 import { Button } from "@carbon/react";
-import { useEffect, useId, useRef } from "react";
-import type { KeyboardEvent } from "react";
+import { useId, useRef } from "react";
+import { useDialogo } from "./useDialogo";
 
 interface Props {
   titulo: string;
@@ -18,30 +18,7 @@ export function DialogoDeVersion({ titulo, texto, textoConfirmar, textoCancelar,
   const caja = useRef<HTMLDivElement>(null);
   const idTitulo = useId();
   const idTexto = useId();
-  useEffect(() => {
-    caja.current?.focus();
-    const alTeclear = (e: globalThis.KeyboardEvent) => {
-      if (e.key === "Escape") alCancelar();
-    };
-    document.addEventListener("keydown", alTeclear);
-    return () => document.removeEventListener("keydown", alTeclear);
-  }, [alCancelar]);
-
-  const atrapar = (e: KeyboardEvent<HTMLDivElement>) => {
-    if (e.key !== "Tab" || !caja.current) return;
-    const botones = Array.from(caja.current.querySelectorAll<HTMLElement>("button:not([disabled])"));
-    const primero = botones[0];
-    const ultimo = botones[botones.length - 1];
-    if (primero === undefined || ultimo === undefined) return;
-    const activo = document.activeElement;
-    if (e.shiftKey && (activo === primero || activo === caja.current)) {
-      e.preventDefault();
-      ultimo.focus();
-    } else if (!e.shiftKey && activo === ultimo) {
-      e.preventDefault();
-      primero.focus();
-    }
-  };
+  const { atrapar } = useDialogo(caja, alCancelar);
 
   return (
     <div className="silice-hoja__dialogo-fondo">
