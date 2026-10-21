@@ -1,8 +1,8 @@
 """Reglas de arquitectura de S4 en su propio archivo (S4 §5.2, maestro §3.1 RV-22; plan 0.9.0).
 
-Capas: `ui.hoja` queda DEBAJO de `asistente`, y `asistente` DEBAJO de `ui.paginas`. De `ui`,
-`asistente` solo importa `ui.hoja` (y `ui.texto_seguro` no: el texto ajeno lo muestra la pantalla);
-de `ui`, solo `ui.paginas.hoja`, `ui.paginas.administracion` y `ui.entrega` importan `asistente`.
+Capas: `ui.hoja` queda DEBAJO de `asistente`. De `ui`, `asistente` solo importa `ui.hoja`. Retiro de
+Streamlit (F4): las dos paginas que importaban `asistente` (`ui.paginas.hoja` y
+`ui.paginas.administracion`) se borraron, de modo que ningun modulo de `ui` lo importa.
 `anthropic` solo en `claude.py`; el cliente de Ollama solo en `ollama_local.py`; `keyring` solo en
 `clave.py`; `streamlit` en ningun modulo del paquete.
 """
@@ -19,11 +19,8 @@ PAQUETES_DE_TERCEROS = {
     "ollama": {"asistente/proveedores/ollama_local.py"},
     "keyring": {"asistente/clave.py"},
 }
-#: Los unicos modulos de `ui` que pueden importar `asistente` (maestro §3.1).
-IMPORTAN_ASISTENTE = {
-    "ui/paginas/hoja.py",
-    "ui/paginas/administracion.py",
-}
+#: Los unicos modulos de `ui` que pueden importar `asistente` (maestro §3.1): ninguno, tras F4.
+IMPORTAN_ASISTENTE: set[str] = set()
 #: En `aplicacion/` solo `entrega` (lo movio de `ui/entrega.py` la ola 4 de la sesion 2b), y solo
 #: `asistente.registro`, para el anexo `ia.json`: ruling RP9-6 del plan 0.9.0.
 IMPORTAN_ASISTENTE_APLICACION = {"aplicacion/entrega.py"}

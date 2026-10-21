@@ -32,7 +32,7 @@ SOLO_AGREGAR = (
     "core/budget/puente.py",
     "core/budget/decision.py",
 )
-PAGINAS_DE_S2 = ("aplicacion/control.py", "ui/paginas/control.py")
+PAGINAS_DE_S2 = ("aplicacion/control.py",)  # `ui/paginas/control.py` se fue con Streamlit (F4)
 
 
 def _coincide(modulo: str, prefijo: str) -> bool:

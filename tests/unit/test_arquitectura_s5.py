@@ -10,7 +10,7 @@ import ast
 
 import pytest
 
-from tests.fixtures.arquitectura import RAIZ, archivos, importaciones, llamadas, ruta
+from tests.fixtures.arquitectura import archivos, importaciones, llamadas, ruta
 
 #: Lo único de `operacion` que `ui` y `api` NO pueden importar: arrancar y la CLI (spec S5 §5.2).
 PRIVADOS_DE_OPERACION = ("operacion.lanzador", "operacion.ordenes_100", "operacion.__main__")
@@ -63,28 +63,6 @@ def test_ui_y_api_no_importan_el_lanzador_ni_la_cli() -> None:
     assert infractores == []
 
 
-#: Las trece páginas que abren el caso con un motor propio (spec S5 §1.2): todas lo preparan.
-PAGINAS_QUE_ABREN_EL_CASO = (
-    "actualizacion",
-    "catalogo",
-    "componer",
-    "control",
-    "elaborar",
-    "entregar",
-    "escenarios",
-    "historico",
-    "hoja",
-    "indices",
-    "libros",
-    "precios_empresa",
-    "reajuste",
-    "revisar",
-    "similares",
-    "simulador",
-    "tablero",
-)
-
-
 def test_ni_la_interfaz_ni_la_api_crean_el_esquema() -> None:
     """RV-5: `crear_esquema` queda para las pruebas en memoria y los scripts de siembra."""
     infractores = sorted(
@@ -94,20 +72,6 @@ def test_ni_la_interfaz_ni_la_api_crean_el_esquema() -> None:
         for linea in llamadas(archivo, "crear_esquema")
     )
     assert infractores == []
-
-
-def test_la_lista_de_paginas_que_abren_el_caso_esta_completa() -> None:
-    con_motor = sorted(
-        archivo.stem
-        for archivo in (RAIZ / "ui" / "paginas").glob("*.py")
-        if llamadas(archivo, "crear_motor")
-    )
-    assert con_motor == sorted(PAGINAS_QUE_ABREN_EL_CASO)
-
-
-@pytest.mark.parametrize("pagina", PAGINAS_QUE_ABREN_EL_CASO)
-def test_cada_pagina_que_abre_el_caso_lo_prepara(pagina: str) -> None:
-    assert llamadas(RAIZ / "ui" / "paginas" / f"{pagina}.py", "preparar_base")
 
 
 # --- Tarea 11 (RV-25): `scripts/` y `tests/fixtures` viajan solo por el manifiesto ------------
@@ -164,19 +128,3 @@ def test_el_detector_de_importaciones_al_cargar_ve_lo_que_debe(tmp_path) -> None
         "scripts.simular_lista",
         "tests.fixtures",
     ]
-
-
-@pytest.mark.parametrize(
-    ("pagina", "diferida"),
-    [
-        ("inicio", "scripts.seed_demo"),
-        ("actualizacion", "scripts.seed"),
-        ("simulador", "scripts.simular_lista"),
-    ],
-)
-def test_las_tres_paginas_de_la_tarea_11_importan_scripts_solo_al_usarlo(
-    pagina: str, diferida: str
-) -> None:
-    archivo = RAIZ / "ui" / "paginas" / f"{pagina}.py"
-    assert _importaciones_al_cargar(archivo, {"scripts"}) == []
-    assert diferida in importaciones(archivo)  # sigue usándolo, dentro de una función
