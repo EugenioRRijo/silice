@@ -6,6 +6,9 @@ etiquetar, las líneas pasan a la sección de la versión. La historia anterior 
 
 ## [Sin publicar]
 
+### Agregado
+- Hoja del proyecto en React (3d-1 y 3d-2, front): modal «Guardar versión» y primera versión, restaurar, cotizar, retirar cotización, convertir moneda y cadena de sellos, con diálogos accesibles; Cancelar y Esc no cierran el diálogo mientras se envía; la Hoja queda activada en el menú.
+
 ### Corregido
 - El cuerpo por trozos (chunked) que excede el tope de 20 MiB responde 413 con el texto fijo y la clave `detalle` en todas las rutas con cuerpo JSON o de subida (antes FastAPI lo convertía en un 400 «There was an error parsing the body», sin `Cache-Control`; `api/proteccion.py`).
 - Delta de la auditoría visual, Control, Tablero, Reajuste y Precios (VD‑1, VD‑5, VD‑8, VD‑11): la columna «Nota» de las opciones de recuperación se lee en español (sin SUPUESTO_DECLARADO, DATO_DEL_CONTRATO ni FUENTE_VERIFICADA, «eficiencia» en lugar de «eta» y cifras en es‑VE), armada por ranura con los supuestos que `POST /v1/control/recuperacion/opciones` manda ahora aparte (`supuestos`, campo aditivo), sin reescribir los códigos de partida del usuario; el `title` con el exacto queda solo en las cifras (los rótulos, códigos y fechas de Control, Precios de la empresa, Tablero y Reajuste ya no muestran el valor interno al pasar el ratón); el punto de equilibrio del Tablero nombra el período «Día N», como el eje de la curva (solo la vista; `core/` no cambia); la papelera de las tablas editables de Reajuste va en una columna angosta y «Períodos» ya no desborda a 1056 px (770 → 721 px en un contenedor de 721, medido en navegador), con su tooltip abierto hacia la izquierda para que no salga de la tabla.

@@ -49,8 +49,7 @@ convertida; la actual no cambia»). Después del verde solo se añadieron esas 2
 
 ## Diferencias entre el contrato real y lo simulado
 
-1. El contrato dice «extra prohibido» en S2, pero `api/esquemas_hoja.py` declara `RestaurarVersion` con `extra="ignore"` (los demás, `forbid`). No
-   afecta al front, que no manda campos de más. Lo debe mirar el árbitro del backend.
+1. (Rectificado por el arbitro) `RestaurarVersion` tiene `extra="forbid"` como las demas; la nota inicial de `extra="ignore"` era un error.
 2. El `mensaje` de las 200 lo compone el servidor con tildes; el front lo usa tal cual (en 3d-1 componía el suyo porque el del servidor decía «1
    cambios»). El texto de repuesto del cliente solo se usa si llegara vacío.
 3. Los 422 de dominio de S3 y S4 llegan sin prefijo (el contrato lo deja al front): el front pone el título «No se guardó nada» y el `detalle`
