@@ -31,7 +31,7 @@ from adapters.espacio import ModoRecorrido, Recorrido
 from api import caso_web, dependencias
 from api.main import app
 from aplicacion import hoja_borradores
-from aplicacion.hoja import cambios_entre
+from aplicacion.hoja import cambios_entre, filas_desde_espacio
 from core.budget import crear_proyecto
 from core.catalog import abrir_sesion, crear_motor
 from operacion import config
@@ -52,7 +52,6 @@ from tests.fixtures.sesion_web import (
     plantilla_con_cuentas,
     protegida,
 )
-from ui import hoja as clasica
 
 D = Decimal
 SOLO_CUENTA = "La hoja del proyecto se edita y se guarda con una cuenta; la clave de API no sirve."
@@ -159,7 +158,7 @@ def _con_alto(tablas: dict, alto: str, ambiente: str = "COC-01") -> dict:
 def _sin_circuitos() -> dict[str, list[dict[str, str]]]:
     """Las tablas de OF-001 sin circuitos: un borrador en blanco no los tiene (se declaran al
     importar un plano) y un punto no puede citar uno que no existe."""
-    tablas = copy.deepcopy(clasica.filas_desde_espacio(espacio_of001()))
+    tablas = copy.deepcopy(filas_desde_espacio(espacio_of001()))
     for punto in tablas["puntos"]:
         punto["circuito_id"] = ""
     return tablas
@@ -228,7 +227,7 @@ def test_e1_deja_en_el_borrador_exactamente_la_celda_cambiada() -> None:
     ]
 
 
-def test_e1_el_alto_con_coma_es_422_con_el_texto_de_la_clasica_y_el_borrador_no_cambia() -> None:
+def test_e1_el_alto_con_coma_es_422_con_el_texto_escrito_y_el_borrador_no_cambia() -> None:
     navegador, ficha = _ana()
     id_ = _abrir(navegador, ficha)
     tablas = _tablas(navegador, id_)

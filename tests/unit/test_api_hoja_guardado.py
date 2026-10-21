@@ -57,7 +57,6 @@ from tests.fixtures.sesion_web import (
     plantilla_con_cuentas,
     protegida,
 )
-from ui import hoja as clasica
 
 D = Decimal
 SOLO_CUENTA = "La hoja del proyecto se edita y se guarda con una cuenta; la clave de API no sirve."
@@ -250,7 +249,7 @@ def _cerca(texto: str, esperado: Decimal) -> bool:
 def _sin_circuitos() -> dict[str, list[dict[str, str]]]:
     """El espacio de OF-001 sin circuitos: un borrador en blanco no los tiene (se declaran al
     importar un plano) y un punto no puede citar uno que no existe."""
-    tablas = copy.deepcopy(clasica.filas_desde_espacio(espacio_of001()))
+    tablas = copy.deepcopy(copia.filas_desde_espacio(espacio_of001()))
     for punto in tablas["puntos"]:
         punto["circuito_id"] = ""
     return tablas
@@ -315,9 +314,7 @@ def _a_la_vez(*peticiones) -> list:
 
 
 @pytest.mark.parametrize("fuente", ["", "   ", "\t\n"])
-def test_guardar_sin_fuente_es_422_con_el_texto_de_la_clasica_y_no_escribe_nada(
-    fuente, _entorno
-) -> None:
+def test_guardar_sin_fuente_es_422_con_el_texto_escrito_y_no_escribe_nada(fuente, _entorno) -> None:
     navegador, ficha = _ana()
     id_ = _con_administracion(navegador, ficha)
     antes = _volcado(_entorno)
