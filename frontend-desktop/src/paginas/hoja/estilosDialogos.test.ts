@@ -6,7 +6,8 @@ const nodo = (
     process: { cwd(): string; getBuiltinModule(nombre: string): { readFileSync(ruta: string, codificacion: string): string } };
   }
 ).process;
-const estilos = nodo.getBuiltinModule("node:fs").readFileSync(`${nodo.cwd()}/src/paginas/hoja/hoja.scss`, "utf-8");
+const estilos = nodo.getBuiltinModule("node:fs").readFileSync(`${nodo.cwd()}/src/paginas/hoja/hoja.scss`, "utf-8")
+  .replace(/\r\n/g, "\n"); // autocrlf de Windows
 
 function bloque(selector: string): string {
   const inicio = estilos.indexOf(`${selector} {`);
