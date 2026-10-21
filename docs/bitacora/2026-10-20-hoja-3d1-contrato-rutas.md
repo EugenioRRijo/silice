@@ -58,6 +58,7 @@ versión nueva con R2 (`POST /borradores {proyecto, version: "004"}`).
 | 422 | primera versión: el proyecto ya tiene versiones (otra persona la creó), no hay lista vigente, la moneda de la lista no coincide | los textos de la clásica: `El proyecto 'P' ya tiene versiones: abra una y use Guardar version.` · `No hay una lista de precios vigente al dd/mm/aaaa: …` · `El proyecto 'P' esta en USD y la lista 'L' en VES: …` |
 | 409 | otro `ValueError` o `CatalogoIncompleto` del núcleo | `No se guardó nada: {mensaje}` |
 | 503 | la base no se pudo leer o escribir (incluido un cerrojo que SQLite no concede en 5 s) | `No se pudo leer o escribir el caso. Revise que el archivo exista y no esté abierto en otro programa.` (sin SQL ni rutas) |
+| 500 | una excepción inesperada (ni de dominio ni de la base): se deshace todo y FastAPI responde su 500 genérico, sin detalle | `Internal Server Error` (no es contrato: solo garantiza que no queda nada escrito) |
 | 413 | cuerpo > 20 MiB | `El cuerpo de la peticion excede el maximo de 20 MiB.` |
 
 **Todo o nada:** ante cualquier error posterior a la validación, ninguna fila nueva (versión, `RegistroCambio`, filas `esp_*`, eslabón
