@@ -56,11 +56,13 @@ __all__ = [
     "IMPORTACIONES",
     "MENSAJE_ALTURAS_AJENAS",
     "MENSAJE_CIRCUITOS_AJENOS",
+    "MENSAJE_NO_DETENIDA",
     "MENSAJE_SIN_IMPORTACION",
     "MENSAJE_UNIDAD",
     "PREFIJO_CARPETA",
     "Fusion",
     "ImportacionNoFusionable",
+    "NoDetenida",
     "SinImportacion",
     "cargar_alturas",
     "declarar_circuitos",
@@ -102,11 +104,16 @@ MENSAJE_ALTURAS_AJENAS = (
 MENSAJE_CIRCUITOS_AJENOS = (
     "Los circuitos enviados no son los supuestos de esta importación: vuelva a cargarla."
 )
+MENSAJE_NO_DETENIDA = "Esta importación no está detenida: no hace falta elegir una unidad."
 MENSAJE_NO_GUARDADO = f"No se pudo guardar el plano en el servidor. {RENOMBRE}"
 
 
 class SinImportacion(Exception):  # noqa: N818
     """El borrador no tiene una importacion vigente (o su archivo ya no esta)."""
+
+
+class NoDetenida(Exception):  # noqa: N818
+    """Se pide la unidad del dibujo de una importacion que no la pide."""
 
 
 class ImportacionNoFusionable(Exception):  # noqa: N818
@@ -200,12 +207,29 @@ def mensaje_sin_ruta(archivo: str) -> str:
     return f"{archivo}: no se pudo leer el plano guardado en el servidor; vuelva a subirlo."
 
 
+#: Lo que lleva el texto de todo `OSError` con numero de error (`[Errno 13] ...: 'C:\...'`).
+_MARCAS_DE_OSERROR = ("[Errno ", "[WinError ")
+
+
+def _rastros_de_la_raiz(raiz: Path) -> tuple[str, ...]:
+    """La raiz temporal y su comienzo (el ancla mas el primer componente, p. ej. la unidad con
+    `Users`, o `/tmp`), en las tres escrituras en que puede salir: tal cual, con las barras
+    dobladas de `repr` y con barras normales. El comienzo no depende del largo de la raiz: sale aunque el lector recorte el
+    texto (`en_una_linea`, 120 caracteres) dentro de ella."""
+    comienzo = str(Path(*raiz.parts[:2])) if len(raiz.parts) > 1 else str(raiz)
+    rastros = []
+    for texto in (str(raiz), comienzo):
+        rastros += [texto, texto.replace("\\", "\\\\"), texto.replace("\\", "/")]
+    return tuple(rastros)
+
+
 def _sin_rutas(resultado: ResultadoImportacion, carpeta: Path) -> ResultadoImportacion:
-    """El lector repite el texto de su excepcion (un `OSError` trae la ruta, a veces recortada):
-    si el mensaje cita la carpeta temporal de los planos, se cambia entero por uno fijo. Solo se
-    BUSCAN dos textos fijos del servidor (`in`, costo lineal); el mensaje no se reescribe."""
-    raiz = str(carpeta.parent)
-    if raiz in resultado.mensaje or raiz.replace("\\", "\\\\") in resultado.mensaje:
+    """El lector repite el texto de su excepcion, recortado a 120 caracteres: un `OSError` trae la
+    ruta del servidor. Si el mensaje trae la marca de un `OSError` (`[Errno `, `[WinError `) o un
+    rastro de la raiz temporal, se cambia ENTERO por uno fijo. Solo se BUSCAN textos fijos (`in`,
+    costo lineal); el mensaje no se reescribe por trozos."""
+    mensaje = resultado.mensaje
+    if any(m in mensaje for m in (*_MARCAS_DE_OSERROR, *_rastros_de_la_raiz(carpeta.parent))):
         return replace(resultado, mensaje=mensaje_sin_ruta(resultado.archivo))
     return resultado
 
@@ -243,12 +267,16 @@ def leer(vivo: BorradorVivo, rev: int, subida: Subida) -> ResultadoImportacion:
 def reanudar(vivo: BorradorVivo, rev: int, unidades: str) -> ResultadoImportacion:
     """P2: vuelve a leer el plano guardado con la unidad del dibujo (`_continuar_con_unidad`,
     P:1301-1311). `HojaInvalida(MENSAJE_UNIDAD)` si no es una de `UNIDADES_DE_PLANO`;
-    `SinImportacion` sin importacion o si su archivo ya no esta en el disco."""
+    `SinImportacion` sin importacion o si su archivo ya no esta en el disco; `NoDetenida` si la
+    importacion no pide la unidad (la clasica solo la ofrece entonces: volver a leer perderia las
+    alturas y los circuitos ya cargados)."""
     with vivo.cerrojo:
         _exigir_rev(vivo, rev)
         if unidades not in hoja.UNIDADES_DE_PLANO:
             raise HojaInvalida(MENSAJE_UNIDAD)
         actual = _vigente(vivo)
+        if not actual.resultado.pide_unidad:
+            raise NoDetenida
         if not actual.ruta.is_file():  # alguien limpio la carpeta temporal: como la clasica
             IMPORTACIONES.quitar(vivo.id)
             raise SinImportacion

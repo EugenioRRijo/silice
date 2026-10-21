@@ -116,6 +116,8 @@ def _traducir() -> Iterator[None]:
         ) from None
     except hoja_plano.SinImportacion:
         raise HTTPException(status_code=409, detail=hoja_plano.MENSAJE_SIN_IMPORTACION) from None
+    except hoja_plano.NoDetenida:
+        raise HTTPException(status_code=409, detail=hoja_plano.MENSAJE_NO_DETENIDA) from None
     except hoja_plano.ImportacionNoFusionable as error:
         raise HTTPException(status_code=409, detail=error.mensaje) from None
     except ValueError as error:  # `HojaInvalida` y el espacio que no vale: el texto del dominio
