@@ -317,6 +317,13 @@ LLAMADORES = {
     # 3d-1 (S1): guardar el borrador vivo; el responsable es la persona de la sesion, no el cuerpo
     ("aplicacion/hoja_guardado.py", "guardar_version"),
     ("aplicacion/hoja_guardado.py", "crear_primera_version"),
+    # 3d-2 (S2 a S4): restaurar, cotizar y retirar desde una guardada; el responsable es la sesion
+    ("aplicacion/hoja_versiones.py", "restaurar"),
+    ("aplicacion/hoja_versiones.py", "cotizar"),
+    ("aplicacion/hoja_versiones.py", "retirar_cotizacion"),
+    ("api/rutas/hoja.py", "restaurar"),
+    ("api/rutas/hoja.py", "cotizar"),
+    ("api/rutas/hoja.py", "retirar_cotizacion"),
     ("scripts/generar_obra_control.py", "guardar_presupuesto"),
 }
 
