@@ -9,6 +9,7 @@ cadena literal.
 from __future__ import annotations
 
 import ast
+import os
 from pathlib import Path
 
 from instalador import manifiesto
@@ -125,3 +126,79 @@ def cierre_que_toca_ui(raices: list[str], permitidos: set[str]) -> list[str]:
 
 def test_el_cierre_de_importaciones_del_instalador_no_toca_ui() -> None:
     assert cierre_que_toca_ui(_modulos_del_producto(), PENDIENTES) == []
+
+
+# --- F4: la capa Streamlit ya no existe ----------------------------------------------------------
+
+#: Paquetes de la interfaz retirada: ningun `.py` del repo (tampoco `tests/`) los importa.
+PAQUETES_RETIRADOS = {"streamlit", "altair"}
+
+
+def _es_retirado(modulo: str) -> bool:
+    return modulo.split(".")[0] in PAQUETES_RETIRADOS
+
+
+def importa_paquetes_retirados(fuente: str) -> list[str]:
+    """Los modulos `streamlit*` o `altair*` que importa `fuente` (tambien dentro de funciones y
+    con `importlib.import_module("...")` de cadena literal)."""
+    encontrados: list[str] = []
+    for nodo in ast.walk(ast.parse(fuente)):
+        if isinstance(nodo, ast.Import):
+            encontrados += [a.name for a in nodo.names if _es_retirado(a.name)]
+        elif isinstance(nodo, ast.ImportFrom) and nodo.level == 0 and nodo.module:
+            if _es_retirado(nodo.module):
+                encontrados.append(nodo.module)
+        elif isinstance(nodo, ast.Call):
+            f = nodo.func
+            nombre = f.attr if isinstance(f, ast.Attribute) else getattr(f, "id", "")
+            if nombre == "import_module" and nodo.args:
+                a = nodo.args[0]
+                if (
+                    isinstance(a, ast.Constant)
+                    and isinstance(a.value, str)
+                    and _es_retirado(a.value)
+                ):
+                    encontrados.append(a.value)
+    return encontrados
+
+
+def todos_los_py_del_repo() -> list[Path]:
+    """Todo `.py` versionable del repo, `tests/` y `ui/` incluidos (sin venv, `.worktrees`,
+    `node_modules` ni carpetas ocultas)."""
+    salida = []
+    for carpeta, subcarpetas, nombres in os.walk(RAIZ):
+        subcarpetas[:] = [
+            d
+            for d in subcarpetas
+            if not d.startswith(".") and d not in {"node_modules", "__pycache__"}
+        ]
+        salida += [Path(carpeta) / n for n in nombres if n.endswith(".py")]
+    return sorted(salida)
+
+
+def test_ui_paginas_no_existe() -> None:
+    assert not (RAIZ / "ui" / "paginas").exists()
+
+
+def test_ningun_py_del_repo_importa_streamlit_ni_altair() -> None:
+    infractores_ = sorted(
+        f"{ruta(a)}: {', '.join(sorted(set(mods)))}"
+        for a in todos_los_py_del_repo()
+        if (mods := importa_paquetes_retirados(a.read_text(encoding="utf-8")))
+    )
+    assert infractores_ == []
+
+
+def test_la_guardia_de_streamlit_ve_cada_forma_de_importar() -> None:
+    assert importa_paquetes_retirados("import streamlit as st\n") == ["streamlit"]
+    assert importa_paquetes_retirados(
+        "def f():\n    from streamlit.testing.v1 import AppTest\n"
+    ) == ["streamlit.testing.v1"]
+    assert importa_paquetes_retirados("import altair\n") == ["altair"]
+    assert importa_paquetes_retirados("import importlib\nimportlib.import_module('altair')\n") == [
+        "altair"
+    ]
+    assert (
+        importa_paquetes_retirados("import streamlit_extras\nfrom aplicacion import altairx\n")
+        == []
+    )
