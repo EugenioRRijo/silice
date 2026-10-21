@@ -23,6 +23,7 @@ import tempfile
 import time
 from collections.abc import Iterator
 from contextlib import closing
+from dataclasses import replace
 from datetime import date
 from decimal import Decimal
 from pathlib import Path
@@ -35,7 +36,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from api import caso_web, dependencias
 from api.rutas import hoja as hoja_ruta
-from aplicacion import hoja_borradores
+from aplicacion import entrega, hoja_borradores
 from core.budget import crear_proyecto
 from core.catalog import Catalogo, abrir_sesion, crear_esquema, crear_motor
 from operacion import config
@@ -109,15 +110,49 @@ def _plantilla_ob_s2(ruta: Path) -> Path:
     return ruta
 
 
+def _con_tres_versiones(ruta: Path) -> Path:
+    """OF-001 con la 002 (administracion 0,20, un cambio) y la 003 (restauracion de la 001):
+    versiones con filas de trazabilidad. Mismo armado que `test_api_hoja.py`, sobre una copia."""
+    from ui import hoja as clasica
+
+    motor = crear_motor(f"sqlite:///{ruta.as_posix()}")
+    try:
+        with abrir_sesion(motor) as sesion:
+            entrega.con_anexos_de_cadena(sesion)
+            catalogo = Catalogo(sesion)
+            abierta = clasica.abrir_version(sesion, catalogo, NOMBRE_OF001, "001")
+            clasica.guardar_version(
+                sesion,
+                catalogo,
+                abierta,
+                replace(
+                    abierta.borrador,
+                    parametros=replace(abierta.borrador.parametros, administracion=D("0.20")),
+                ),
+                fuente="criterio del residente, acta 12",
+                responsable="Ing. Prueba",
+            )
+            clasica.restaurar(
+                sesion, catalogo, NOMBRE_OF001, "001", fuente="volver a la 001", responsable="X"
+            )
+    finally:
+        motor.dispose()
+    return ruta
+
+
 @pytest.fixture(scope="module")
 def _casos(tmp_path_factory) -> dict[str, Path]:
     carpeta = tmp_path_factory.mktemp("api_hoja_exportar")
-    return {
+    casos = {
         "instalacion": plantilla_con_cuentas(carpeta),
         "of001": plantilla_of001(carpeta / "of001.db"),
         "ti001": plantilla_ti001(carpeta / "ti001.db"),
         "ob": _plantilla_ob_s2(carpeta / "ob.db"),
     }
+    casos["of001_tres"] = _con_tres_versiones(
+        Path(shutil.copyfile(casos["of001"], carpeta / "of001_tres.db"))
+    )
+    return casos
 
 
 @pytest.fixture(autouse=True)
@@ -530,12 +565,15 @@ def test_exportar_no_deja_archivos_temporales(
 # --- paridad contra ui.hoja VIVO ---
 
 
-def _libro_de_la_clasica(origen: Path, destino: Path, proyecto: str, version: str) -> bytes:
+def _libro_de_la_clasica(
+    origen: Path, destino: Path, proyecto: str, version: str, hoy: date | None = None
+) -> bytes:
     """Lo que hace `_preparar_excel` (P:556-573) sobre una COPIA del caso, con `ui.hoja` vivo."""
     from ui import control
     from ui import hoja as clasica
     from ui.paginas import hoja as pagina
 
+    hoy = hoy or date.today()
     shutil.copyfile(origen, destino)
     motor = crear_motor(f"sqlite:///{destino.as_posix()}")
     try:
@@ -545,13 +583,13 @@ def _libro_de_la_clasica(origen: Path, destino: Path, proyecto: str, version: st
                 Catalogo(sesion),
                 proyecto,
                 version,
-                fecha_evaluacion=date.today(),
+                fecha_evaluacion=hoy,
                 responsable="ana",
             )
             resultado = pagina._elaborar(abierta.borrador)
             trazabilidad = clasica.tabla_de_trazabilidad(sesion, abierta.proyecto, abierta.codigo)
             precios = clasica.precios_de_version(
-                sesion, abierta.proyecto, abierta.codigo, fecha_evaluacion=date.today()
+                sesion, abierta.proyecto, abierta.codigo, fecha_evaluacion=hoy
             )
             hojas = control.tablas_de_control(sesion, abierta.proyecto, Catalogo(sesion))
             return clasica.excel_de_hoja_en_bytes(
@@ -571,6 +609,8 @@ def _libro_de_la_clasica(origen: Path, destino: Path, proyecto: str, version: st
         ("of001", NOMBRE_OF001, "001"),
         ("ti001", NOMBRE_TI001, "TI-001"),
         ("ob", ob.NOMBRE, ob.CODIGO),
+        ("of001_tres", NOMBRE_OF001, "002"),
+        ("of001_tres", NOMBRE_OF001, "003"),
     ],
 )
 def test_paridad_el_libro_es_celda_por_celda_el_de_la_clasica(
@@ -587,3 +627,90 @@ def test_paridad_el_libro_es_celda_por_celda_el_de_la_clasica(
     for hoja in esperado:
         assert obtenido[hoja] == esperado[hoja], hoja
     assert sum(len(f) for f in esperado.values()) > 50  # no se compararon libros vacios
+
+
+# --- ronda 1 del arbitro: trazabilidad de la version abierta, fecha de los precios, caracteres ---
+
+#: Lo que la 002 de OF-001 registro al subir la administracion de 0,15 a 0,20 (a mano, de la
+#: edicion de `_con_tres_versiones`): version de origen, version resultante, objeto, clave, campo,
+#: valor anterior y nuevo.
+CAMBIO_DE_LA_002 = ("001", "002", "parametro", "administracion", "valor", "0.15", "0.20")
+
+
+def test_la_trazabilidad_de_una_version_con_cambios_llega_al_libro(
+    app: FastAPI, _casos: dict[str, Path], tmp_path: Path
+) -> None:
+    from ui import hoja as clasica
+
+    _poner(_casos["of001_tres"])
+    navegador, ficha = _ana(app)
+    id_ = _abrir(navegador, ficha, version="002")
+    filas = list(load_workbook(io.BytesIO(_excel(navegador, id_).content))["Trazabilidad"].values)
+    assert len(filas) >= 2, "la hoja Trazabilidad solo trae el encabezado"
+    assert tuple(str(c) for c in filas[1][:7]) == CAMBIO_DE_LA_002
+    # y es, celda por celda, la tabla de la clasica VIVA para esa version
+    copia = tmp_path / "clasica.db"
+    shutil.copyfile(_casos["of001_tres"], copia)
+    motor = crear_motor(f"sqlite:///{copia.as_posix()}")
+    try:
+        with abrir_sesion(motor) as sesion:
+            tabla = clasica.tabla_de_trazabilidad(sesion, NOMBRE_OF001, "002")
+    finally:
+        motor.dispose()
+
+    esperado = [list(tabla.columnas)] + [list(f) for f in tabla.filas]
+    assert len(filas) == len(esperado)
+    for obtenida, buscada in zip(filas[1:], esperado[1:], strict=True):
+        assert list(obtenida[:-1]) == buscada[:-1]
+        # la marca de tiempo: Excel la guarda al milisegundo (redondea)
+        assert abs((obtenida[-1] - buscada[-1]).total_seconds()) <= 0.001
+    assert list(filas[0]) == esperado[0]
+
+
+def test_la_trazabilidad_de_la_restauracion_tambien_llega_al_libro(
+    app: FastAPI, _casos: dict[str, Path]
+) -> None:
+    _poner(_casos["of001_tres"])
+    navegador, ficha = _ana(app)
+    id_ = _abrir(navegador, ficha, version="003")
+    filas = list(load_workbook(io.BytesIO(_excel(navegador, id_).content))["Trazabilidad"].values)
+    assert len(filas) >= 2
+    assert all(str(f[1]) == "003" for f in filas[1:])  # cada fila es de la version resultante
+
+
+def test_los_precios_se_evaluan_a_la_fecha_de_hoy_de_la_ruta(
+    app: FastAPI, _casos: dict[str, Path], tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    lejana, pasada = date(2035, 1, 1), date(2000, 1, 1)
+    monkeypatch.setattr(hoja_ruta, "_hoy", lambda: lejana)
+    navegador, ficha = _ana(app)
+    obtenido = _celdas(_excel(navegador, _abrir(navegador, ficha)).content)["Precios"]
+    de_lejana = _celdas(
+        _libro_de_la_clasica(_casos["of001"], tmp_path / "a.db", NOMBRE_OF001, "001", lejana)
+    )["Precios"]
+    de_pasada = _celdas(
+        _libro_de_la_clasica(_casos["of001"], tmp_path / "b.db", NOMBRE_OF001, "001", pasada)
+    )["Precios"]
+    assert de_lejana != de_pasada, "la fecha no cambia la hoja Precios: la prueba no distingue"
+    assert obtenido == de_lejana
+
+
+def test_un_caracter_ilegal_en_una_celda_es_422_con_no_store_y_sin_500(app: FastAPI) -> None:
+    """U+0001 se acepta al editar el espacio (E1) pero openpyxl no lo escribe en un .xlsx."""
+    navegador, ficha = _ana(app)
+    id_ = _abrir(navegador, ficha)
+    tablas = navegador.get(f"/v1/hoja/borradores/{id_}/vistas/espacio").json()["filas"]
+    tablas["ambientes"][0]["nombre"] = "Baño"
+    editado = navegador.put(
+        f"/v1/hoja/borradores/{id_}/espacio",
+        json={"rev": 0, "tablas": tablas},
+        headers=protegida(ficha),
+    )
+    assert editado.status_code == 200, editado.text
+    respuesta = _excel(navegador, id_)
+    assert respuesta.status_code == 422, respuesta.text[:200]
+    assert respuesta.headers["cache-control"] == "no-store"
+    detalle = respuesta.json()["detalle"]
+    assert detalle.startswith("No se pudo preparar el Excel: ")
+    assert "Traceback" not in detalle and "C:\\" not in detalle
+    assert _excel(navegador, id_).status_code == 422  # sigue siendo un error limpio, no un 500
