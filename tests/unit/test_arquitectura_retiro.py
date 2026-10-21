@@ -277,3 +277,18 @@ def test_la_guardia_de_submodulos_ve_cada_forma_de_importar() -> None:
     ]
     assert submodulos_ui_importados("import uix\nfrom interfaz import ui\n") == []
     assert _submodulo_raiz("ui.hoja.Borrador") == "ui.hoja"
+
+
+# --- F8: `ui/` y `.streamlit/` ya no existen -------------------------------------------------------
+
+
+def test_no_existe_ui_ni_streamlit() -> None:
+    """La carpeta `ui/`, `.streamlit/` y el config de Streamlit del instalador desaparecieron."""
+    assert not (RAIZ / "ui").exists()
+    assert not (RAIZ / ".streamlit").exists()
+    assert not (RAIZ / "instalador" / "streamlit_config.toml").exists()
+
+
+def test_ningun_py_del_repo_importa_ui() -> None:
+    """Ni el producto ni `tests/`: no queda nada de `ui` que importar."""
+    assert infractores(todos_los_py_del_repo(), set()) == []
