@@ -202,3 +202,91 @@ def test_la_guardia_de_streamlit_ve_cada_forma_de_importar() -> None:
         importa_paquetes_retirados("import streamlit_extras\nfrom aplicacion import altairx\n")
         == []
     )
+
+
+# --- F5: ya no hay puentes `ui/<modulo>.py` -> `aplicacion` -------------------------------------
+
+#: Lo unico que sigue siendo de `ui/` (la copia de la hoja y su composicion; F6-F8 los retiran).
+UI_DE_LA_HOJA = {"__init__.py", "hoja.py", "composicion.py"}
+
+#: `ui/hoja.py` (congelado hasta F8) todavia importa estos dos; salen de `ui/` cuando `hoja.py` pase
+#: a `aplicacion.estilo` y `aplicacion.subidas`. La lista solo baja.
+SOPORTE_DE_LA_HOJA = {"estilo.py", "subidas.py"}
+
+#: Los unicos submodulos de `ui` que puede importar un `.py` de fuera de `ui/`.
+SUBMODULOS_PERMITIDOS = {"ui.hoja", "ui.composicion"}
+
+
+def submodulos_ui_importados(fuente: str) -> list[str]:
+    """Como `modulos_ui_importados`, pero `from ui import x` cuenta como `ui.x`."""
+    encontrados: list[str] = []
+    for nodo in ast.walk(ast.parse(fuente)):
+        if isinstance(nodo, ast.ImportFrom) and nodo.level == 0 and nodo.module == "ui":
+            encontrados += [f"ui.{a.name}" for a in nodo.names]
+        elif isinstance(nodo, ast.Import):
+            encontrados += [a.name for a in nodo.names if _es_ui(a.name)]
+        elif isinstance(nodo, ast.ImportFrom) and nodo.level == 0 and nodo.module:
+            if _es_ui(nodo.module):
+                encontrados.append(nodo.module)
+        elif isinstance(nodo, ast.Call):
+            f = nodo.func
+            nombre = f.attr if isinstance(f, ast.Attribute) else getattr(f, "id", "")
+            if nombre == "import_module" and nodo.args:
+                a = nodo.args[0]
+                if isinstance(a, ast.Constant) and isinstance(a.value, str) and _es_ui(a.value):
+                    encontrados.append(a.value)
+    return encontrados
+
+
+def _submodulo_raiz(modulo: str) -> str:
+    return ".".join(modulo.split(".")[:2])
+
+
+def test_ui_solo_contiene_lo_de_la_hoja() -> None:
+    archivos = {a.name for a in (RAIZ / "ui").glob("*.py")}
+    assert archivos - UI_DE_LA_HOJA - SOPORTE_DE_LA_HOJA == set()
+    carpetas = {d.name for d in (RAIZ / "ui").iterdir() if d.is_dir() and d.name != "__pycache__"}
+    assert carpetas == set()
+
+
+def test_el_soporte_de_la_hoja_sigue_siendo_importado_por_la_hoja() -> None:
+    """Un soporte que `ui/hoja.py` ya no importa debe borrarse y salir de la lista."""
+    importados = {
+        _submodulo_raiz(m)
+        for m in submodulos_ui_importados((RAIZ / "ui" / "hoja.py").read_text(encoding="utf-8"))
+    }
+    for nombre in sorted(SOPORTE_DE_LA_HOJA):
+        assert f"ui.{nombre[:-3]}" in importados, nombre
+        assert (RAIZ / "ui" / nombre).is_file(), nombre
+
+
+def infractores_de_submodulos(archivos: list[Path]) -> list[str]:
+    salida = []
+    for a in archivos:
+        if a.relative_to(RAIZ).parts[0] == "ui":
+            continue
+        malos = {
+            _submodulo_raiz(m)
+            for m in submodulos_ui_importados(a.read_text(encoding="utf-8"))
+            if _submodulo_raiz(m) not in SUBMODULOS_PERMITIDOS
+        }
+        if malos:
+            salida.append(f"{ruta(a)}: {', '.join(sorted(malos))}")
+    return sorted(salida)
+
+
+def test_ningun_py_fuera_de_ui_importa_un_submodulo_que_no_sea_la_hoja() -> None:
+    assert infractores_de_submodulos(todos_los_py_del_repo()) == []
+
+
+def test_la_guardia_de_submodulos_ve_cada_forma_de_importar() -> None:
+    assert submodulos_ui_importados("from ui import proyectos\n") == ["ui.proyectos"]
+    assert submodulos_ui_importados("def f():\n    from ui.proyectos import x\n") == [
+        "ui.proyectos"
+    ]
+    assert submodulos_ui_importados("import ui.entorno\n") == ["ui.entorno"]
+    assert submodulos_ui_importados("import importlib\nimportlib.import_module('ui.estilo')\n") == [
+        "ui.estilo"
+    ]
+    assert submodulos_ui_importados("import uix\nfrom interfaz import ui\n") == []
+    assert _submodulo_raiz("ui.hoja.Borrador") == "ui.hoja"
