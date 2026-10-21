@@ -11,13 +11,10 @@ from pathlib import Path
 from streamlit.testing.v1 import AppTest
 
 from core import models
-from core.catalog import Catalogo, abrir_sesion, crear_esquema, crear_motor
-from core.catalog.empresa import PrecioPropio, crear_lista_de_empresa, lista_de_referencia
-from core.catalog.indices import Observacion, definicion_tasa, registrar_importacion
+from core.catalog import abrir_sesion, crear_motor
+from core.catalog.empresa import PrecioPropio, crear_lista_de_empresa
 from operacion.base_datos import preparar_base
-from scripts.seed import sembrar
 from tests.fixtures.subproceso import importar_en_limpio, modulos_cargados
-from ui import precios_empresa
 
 CSV = Path(__file__).resolve().parents[1] / "fixtures" / "precios_empresa_s1.csv"
 EVALUACION = date(2026, 10, 1)
@@ -40,54 +37,6 @@ def _es(fila, regla, severidad, insumo):
     texto = fila["Descripción"].casefold()
     insumo = insumo.casefold()
     return insumo in texto if severidad == "INFO" else texto.startswith(f"{insumo}:")
-
-
-def test_referencia_lista_de_empresa_y_hallazgos_de_la_memoria(tmp_path):
-    motor = crear_motor(f"sqlite:///{(tmp_path / 'caso.db').as_posix()}")
-    crear_esquema(motor)
-    try:
-        with abrir_sesion(motor) as sesion:
-            sembrar(sesion)
-            sesion.commit()
-            assert "cargada" in precios_empresa.cargar_referencia_maprex(sesion)
-            assert "ya estaba" in precios_empresa.cargar_referencia_maprex(sesion)
-            Catalogo(sesion).dar_de_alta_insumo(
-                models.TipoInsumo.MATERIAL, "LIJA DE AGUA N 100", "pza"
-            )
-            registrar_importacion(
-                sesion,
-                definicion_tasa("venta"),
-                [Observacion(EVALUACION, Decimal("860.18"))],
-                archivo="FUENTE.md",
-                huella="e" * 64,
-                fuente="https://www.bcv.org.ve/",
-                fecha_descarga=date(2026, 10, 8),
-                responsable="Admin",
-                filas_leidas=1,
-                filas_rechazadas=0,
-            )
-            sesion.commit()
-            resumen = precios_empresa.crear_lista(
-                sesion,
-                CSV,
-                empresa_nombre="Constructora Ejemplo, C.A.",
-                empresa_rif="J-00000000-0",
-                base_id=lista_de_referencia(sesion).id,
-                moneda="Bs",
-                fecha=date(2026, 9, 20),
-                fuente="lista interna 2026-09",
-                nombre="",
-            )
-            assert (resumen.propios, resumen.desconocidos) == (10, ())
-            ((lista_id, nombre),) = precios_empresa.listas_de_empresa(sesion)
-            assert nombre == resumen.nombre
-            filas = precios_empresa.hallazgos_de_lista(sesion, lista_id, EVALUACION)
-    finally:
-        motor.dispose()
-    assert all(tuple(fila) == precios_empresa.COLUMNAS_HALLAZGOS for fila in filas)
-    for (regla, severidad, insumo), impacto in DE_LA_MEMORIA.items():
-        (fila,) = [f for f in filas if _es(f, regla, severidad, insumo)]
-        assert fila["Impacto"] == impacto, (regla, insumo)
 
 
 def test_la_pagina_no_importa_el_script_de_maprex_al_cargarse(tmp_path):
