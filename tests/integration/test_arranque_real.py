@@ -1,4 +1,4 @@
-"""Arranque real de Streamlit con las opciones del spec (confirma §10.1 y la salud de §11.2).
+"""Arranque real de Uvicorn (`api.main:app`): la salud de §11.2 en `/salud`, la interfaz en `/app/`.
 
 Acotada: puerto libre elegido por el sistema, un plazo máximo para la salud, la parada por la
 orden del producto (`operacion parar`) y, si algo queda vivo, se terminan SOLO los procesos que
@@ -23,7 +23,7 @@ from operacion.config import Ajustes
 
 RAIZ = Path(__file__).resolve().parents[2]
 BANDERAS = ["-E", "-s", "-B", "-X", "utf8", "-m", "operacion"]
-#: Streamlit tarda 10-60 s en arrancar en frío (más con cobertura): margen holgado y acotado.
+#: Uvicorn con la API tarda unos segundos en frío (más con cobertura): margen holgado y acotado.
 PLAZO_ARRANQUE_S = 150
 PLAZO_PARADA_S = 60
 
@@ -37,7 +37,7 @@ def _puerto_libre() -> int:
 def _salud(puerto: int) -> bool:
     try:
         with urllib.request.urlopen(  # noqa: S310 (bucle local)
-            f"http://127.0.0.1:{puerto}/_stcore/health", timeout=2
+            f"http://127.0.0.1:{puerto}/salud", timeout=2
         ) as respuesta:
             return respuesta.status == 200
     except OSError:
@@ -56,7 +56,7 @@ def test_arranca_en_el_bucle_local_y_se_detiene() -> None:
     config.guardar_ajustes(
         config.ruta_ajustes(), Ajustes(puerto=puerto, mostrar_investigacion=True)
     )
-    entorno = {k: v for k, v in os.environ.items() if not k.startswith(("PYTHON", "STREAMLIT_"))}
+    entorno = {k: v for k, v in os.environ.items() if not k.startswith("PYTHON")}
     servidor = subprocess.Popen(
         [sys.executable, *BANDERAS, "arrancar", "--sin-navegador"],
         cwd=RAIZ,
@@ -71,13 +71,19 @@ def test_arranca_en_el_bucle_local_y_se_detiene() -> None:
         while time.monotonic() < limite and not _salud(puerto) and servidor.poll() is None:
             time.sleep(1)
         assert _salud(puerto), (
-            f"Streamlit no respondió en {PLAZO_ARRANQUE_S} s (código del lanzador: "
-            f"{servidor.poll()}): ¿rechazó alguna opción de la orden?"
+            f"Uvicorn no respondió en {PLAZO_ARRANQUE_S} s (código del lanzador: "
+            f"{servidor.poll()}): ¿falló api.main:app al importarse?"
         )
         estado = json.loads(config.ruta_estado().read_text(encoding="utf-8"))
         pids_propios = tuple(int(p) for p in estado["pids"])
         assert estado["direccion"] == "127.0.0.1" and estado["puerto"] == puerto
-        assert estado["puerto_api"] is None and len(pids_propios) == 2  # lanzador + Streamlit
+        assert "puerto_api" not in estado and len(pids_propios) == 2  # lanzador + Uvicorn
+        if (RAIZ / "frontend-desktop" / "dist" / "index.html").is_file():  # compilada (CI: no)
+            with urllib.request.urlopen(  # noqa: S310 (bucle local)
+                f"http://127.0.0.1:{puerto}/app/", timeout=5
+            ) as interfaz:  # la interfaz de React, en el mismo puerto
+                assert interfaz.status == 200
+                assert interfaz.headers["content-type"].startswith("text/html")
         # Una segunda orden «arrancar» no lanza otra instancia: ve la viva y sale con 0.
         segunda = subprocess.run(
             [sys.executable, *BANDERAS, "arrancar", "--sin-navegador"],
