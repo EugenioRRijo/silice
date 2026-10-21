@@ -18,14 +18,14 @@ from operacion import config, programa
 
 @pytest.fixture
 def app(tmp_path: Path) -> Path:
-    (tmp_path / "codigo" / "ui").mkdir(parents=True)
+    (tmp_path / "codigo" / "api").mkdir(parents=True)
     (tmp_path / "python").mkdir()
     # bytes, no texto: en Windows `write_text` cambiaría el salto de línea y el tamaño
-    (tmp_path / "codigo" / "ui" / "app.py").write_bytes(b"print('hola')\n")
+    (tmp_path / "codigo" / "api" / "main.py").write_bytes(b"print('hola')\n")
     (tmp_path / "codigo" / "pyproject.toml").write_text("[project]\n", encoding="utf-8")
     (tmp_path / "python" / "python.exe").write_bytes(b"MZ fake")
     programa.escribir(
-        tmp_path, ["codigo/ui/app.py", "codigo/pyproject.toml", "python/python.exe"], "1.0.0"
+        tmp_path, ["codigo/api/main.py", "codigo/pyproject.toml", "python/python.exe"], "1.0.0"
     )
     return tmp_path
 
@@ -38,14 +38,14 @@ def test_el_manifiesto_lista_cada_archivo_con_ruta_tamano_y_huella(app: Path) ->
         list(por_ruta)
         == sorted(por_ruta)
         == [
+            "codigo/api/main.py",
             "codigo/pyproject.toml",
-            "codigo/ui/app.py",
             "python/python.exe",
         ]
     )
     contenido = b"print('hola')\n"  # 14 bytes, los que escribió la fixture
-    assert por_ruta["codigo/ui/app.py"] == {
-        "ruta": "codigo/ui/app.py",
+    assert por_ruta["codigo/api/main.py"] == {
+        "ruta": "codigo/api/main.py",
         "tamano": 14,
         "sha256": hashlib.sha256(contenido).hexdigest(),
     }
@@ -53,10 +53,10 @@ def test_el_manifiesto_lista_cada_archivo_con_ruta_tamano_y_huella(app: Path) ->
 
 
 def test_las_rutas_se_escriben_con_barra_y_sin_repetir(tmp_path: Path) -> None:
-    (tmp_path / "codigo" / "ui").mkdir(parents=True)
-    (tmp_path / "codigo" / "ui" / "app.py").write_bytes(b"x")
-    programa.escribir(tmp_path, [Path("codigo") / "ui" / "app.py", "codigo/ui/app.py"], "1.0.0")
-    assert [a["ruta"] for a in programa.leer(tmp_path)["archivos"]] == ["codigo/ui/app.py"]
+    (tmp_path / "codigo" / "api").mkdir(parents=True)
+    (tmp_path / "codigo" / "api" / "main.py").write_bytes(b"x")
+    programa.escribir(tmp_path, [Path("codigo") / "api" / "main.py", "codigo/api/main.py"], "1.0.0")
+    assert [a["ruta"] for a in programa.leer(tmp_path)["archivos"]] == ["codigo/api/main.py"]
 
 
 def test_un_programa_intacto_no_tiene_diferencias(app: Path) -> None:
@@ -64,19 +64,19 @@ def test_un_programa_intacto_no_tiene_diferencias(app: Path) -> None:
 
 
 def test_verificar_detecta_distinto_falta_y_sobra(app: Path) -> None:
-    (app / "codigo" / "ui" / "app.py").write_text("print('otro')\n", encoding="utf-8")
+    (app / "codigo" / "api" / "main.py").write_text("print('otro')\n", encoding="utf-8")
     (app / "python" / "python.exe").unlink()
     (app / "codigo" / "extra.py").write_text("x = 1\n", encoding="utf-8")
     assert programa.verificar(app) == [
-        "distinto codigo/ui/app.py",
+        "distinto codigo/api/main.py",
         "falta python/python.exe",
         "sobra codigo/extra.py",
     ]
 
 
 def test_el_mismo_tamano_con_otro_contenido_es_distinto(app: Path) -> None:
-    (app / "codigo" / "ui" / "app.py").write_bytes(b"print('HOLA')\n")  # 14 bytes
-    assert programa.verificar(app) == ["distinto codigo/ui/app.py"]
+    (app / "codigo" / "api" / "main.py").write_bytes(b"print('HOLA')\n")  # 14 bytes
+    assert programa.verificar(app) == ["distinto codigo/api/main.py"]
 
 
 def test_lo_que_sobra_fuera_de_codigo_no_cuenta(app: Path) -> None:

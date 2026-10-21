@@ -3,7 +3,7 @@
 Lista blanca (`manifiesto.toml`): los paquetes del producto completos, de `scripts/` y
 `tests/fixtures/` solo el cierre de importaciones de los sembradores y del simulador (calculado
 leyendo el árbol sintáctico), la lista blanca de `data/`, `pyproject.toml` y `LICENSE`, más el
-`config.toml` oficial. Todo lo demás (`.venv`, `*.db`, `docs/`, los `.xls` del BCV, las bases de
+que el producto necesita. Todo lo demás (`.venv`, `*.db`, `docs/`, los `.xls` del BCV, las bases de
 prueba) está prohibido y, si algo lo trae, el armado falla en vez de copiarlo.
 """
 
@@ -18,13 +18,11 @@ from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parents[1]
 RUTA_MANIFIESTO = Path(__file__).with_name("manifiesto.toml")
-RUTA_CONFIG_OFICIAL = Path(__file__).with_name("streamlit_config.toml")
 RAICES_PROPIAS = frozenset(
     {
         "core",
         "adapters",
         "ml",
-        "ui",
         "api",
         "operacion",
         "migraciones",
@@ -196,17 +194,14 @@ def archivos_de_codigo(raiz: Path, m: Manifiesto) -> list[Path]:
 
 
 def armar_arbol(raiz: Path, destino: Path, m: Manifiesto) -> list[Path]:
-    """Copia los archivos del manifiesto a `destino` (= `{app}\\codigo`) y deja el `config.toml`
-    oficial como único `.streamlit/config.toml`. Devuelve las rutas relativas copiadas."""
+    """Copia los archivos del manifiesto a `destino` (= `{app}\\codigo`). No añade nada más: ya no
+    hay `.streamlit/config.toml`. Devuelve las rutas relativas copiadas."""
     archivos = archivos_de_codigo(raiz, m)
     for relativa in archivos:
         origen, copia = raiz / relativa, destino / relativa
         copia.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(origen, copia)
-    oficial = destino / ".streamlit" / "config.toml"
-    oficial.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(RUTA_CONFIG_OFICIAL, oficial)
-    return [*archivos, Path(".streamlit/config.toml")]
+    return list(archivos)
 
 
 def copiar_interfaz(raiz: Path, destino: Path, m: Manifiesto) -> list[Path]:

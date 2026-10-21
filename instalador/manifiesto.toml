@@ -8,7 +8,7 @@ version = "3.13.13"
 # Extras de pyproject.toml de la capa básica. `xgboost` y `ml` nunca (ningún código los importa).
 # `pdf` (1.5: PDF simples e impresos de la empresa): pdfplumber y pdfminer.six (MIT) y pypdfium2
 # (Apache-2.0 o BSD-3-Clause), todas permisivas.
-basica = ["ui", "api", "planos", "informes", "bcv", "civil", "anomalias", "ia", "pdf"]
+basica = ["api", "planos", "informes", "bcv", "civil", "anomalias", "ia", "pdf"]
 # `ifctester` (extra `ifc`) arrastra `bcf-client`, GPLv3, incompatible con la licencia propietaria
 # (RP10-4). Pasa a true solo con un ruling que cite la resolución de S3-0.
 ifc = false
@@ -17,9 +17,9 @@ similitud = ["similitud"]
 
 [codigo]
 paquetes = [
-  "core", "adapters", "ml", "ui", "api", "operacion", "migraciones",
+  "core", "adapters", "ml", "api", "operacion", "migraciones",
   "seguridad", "asistente", "paquete", "auditoria", "fusion", "produccion",
-  "aplicacion",  # RM-1 (sesion 2b): capa de aplicacion que importan ui/ y api/
+  "aplicacion",  # RM-1 (sesion 2b): capa de aplicacion que importa api/
 ]
 archivos = ["pyproject.toml", "LICENSE"]
 # De scripts/ y tests/fixtures/ viaja solo el cierre de importaciones de estos módulos (RV-25).
@@ -30,7 +30,7 @@ cierre_desde = [
 ]
 
 [interfaz]
-# Interfaz nueva (RF-112) ya compilada por la CI (`npm ci && npm run build` en frontend-desktop).
+# La interfaz (React, RF-112) la sirve el mismo Uvicorn que la API, en /app/. Ya compilada por la CI (`npm ci && npm run build` en frontend-desktop).
 # Viaja en `codigo\frontend-desktop\dist`, donde `api/interfaz.py` la busca (RAIZ = {app}\codigo).
 # Python nunca la compila; si falta o esta vacia, la construccion falla.
 dist = "frontend-desktop/dist"

@@ -8,8 +8,8 @@
 Siembra en `data/casos/` (carpeta de datos de desarrollo, no versionada) cinco casos DIDÁCTICOS,
 todos ficticios (NORMAS.md §1): `demo`, `of001`, `ti001`, `s1` (copias de las bases de prueba de
 la 0.6.0) y `obra_control` (una obra generada con valuaciones y costos para Control de obra).
-Nunca toca `data/apu.db`. La aplicación escucha solo en 127.0.0.1 y sin telemetría
-(`.streamlit/config.toml`).
+Nunca toca `data/apu.db`. Un solo proceso (Uvicorn, `api.main:app`) sirve la API y la interfaz
+de React (`/app/`, compilada con `npm run build` en frontend-desktop) y escucha solo en 127.0.0.1.
 """
 
 from __future__ import annotations
@@ -33,6 +33,8 @@ if str(RAIZ) not in sys.path:
 CASOS_COPIADOS = ("demo", "of001", "ti001", "s1")
 BASES_PRUEBA = RAIZ / "tests" / "fixtures" / "bases" / "v0_6_0"
 PUERTO_POR_OMISION = 8501
+RUTA_INTERFAZ = "/app/"
+RUTA_SALUD = "/salud"
 
 
 def carpeta_casos() -> Path:
@@ -91,9 +93,9 @@ def _abrir_navegador_cuando_responda(puerto: int) -> None:
     direccion = f"http://127.0.0.1:{puerto}"
     for _ in range(120):
         try:
-            with urllib.request.urlopen(f"{direccion}/_stcore/health", timeout=1) as respuesta:
+            with urllib.request.urlopen(f"{direccion}{RUTA_SALUD}", timeout=1) as respuesta:
                 if respuesta.status == 200:
-                    webbrowser.open(direccion)
+                    webbrowser.open(f"{direccion}{RUTA_INTERFAZ}")
                     return
         except (urllib.error.URLError, OSError):
             time.sleep(0.5)
@@ -112,7 +114,7 @@ def main(argv: list[str] | None = None) -> int:
         sembrados = preparar_demo(reiniciar=args.reiniciar_demo)
         print(f"  casos sembrados: {', '.join(sembrados) if sembrados else 'ya estaban todos'}")
     print(f"  carpeta de casos: {carpeta_casos()}")
-    print(f"  http://127.0.0.1:{args.puerto}   (Ctrl+C para detener)")
+    print(f"  http://127.0.0.1:{args.puerto}{RUTA_INTERFAZ}   (Ctrl+C para detener)")
 
     if not args.sin_navegador:
         threading.Thread(
@@ -121,13 +123,13 @@ def main(argv: list[str] | None = None) -> int:
     orden = [
         sys.executable,
         "-m",
-        "streamlit",
-        "run",
-        str(RAIZ / "ui" / "app.py"),
-        "--server.port",
+        "uvicorn",
+        "api.main:app",
+        "--host",
+        "127.0.0.1",
+        "--port",
         str(args.puerto),
-        "--server.headless",
-        "true",
+        "--no-access-log",
     ]
     try:
         return subprocess.call(orden, cwd=RAIZ, env=dict(os.environ))
