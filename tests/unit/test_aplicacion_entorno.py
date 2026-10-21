@@ -69,3 +69,13 @@ def test_url_clasica_usa_la_ip_en_la_que_escuchan_las_dos_interfaces() -> None:
 )
 def test_url_clasica_no_publica_una_ip_que_no_sea_privada(direccion: str) -> None:
     assert entorno.url_clasica({"SILICE_DIRECCION": direccion}) == "http://127.0.0.1:8501/"
+
+
+def test_modo_entrega_solo_se_activa_con_el_valor_exacto_1() -> None:
+    """Movida de `tests/unit/test_ui_app.py` (retiro de Streamlit, F3): la prueba de `ui.app`
+    con los cuatro valores literales, sobre `aplicacion.entorno` (el objeto que sobrevive)."""
+    variable = entorno.VARIABLE_MODO_ENTREGA
+    assert entorno.modo_entrega_activo({variable: "1"}) is True
+    assert entorno.modo_entrega_activo({}) is False
+    assert entorno.modo_entrega_activo({variable: "0"}) is False
+    assert entorno.modo_entrega_activo({variable: "si"}) is False

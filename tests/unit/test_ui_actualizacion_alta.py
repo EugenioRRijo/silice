@@ -36,7 +36,6 @@ from tests.conftest import RUTA_BASE_REAL, huella
 from tests.fixtures.actualizacion_uc02 import PRECIOS_NUEVOS, VARIACIONES
 from tests.fixtures.base_con_pendiente import emitir
 from tests.fixtures.computo_auditado import items_auditados
-from tests.fixtures.sin_extra import SinExtra
 
 RAIZ = Path(__file__).resolve().parents[2]
 MUESTRA = RAIZ / "data" / "samples" / "precios" / "lista_2026-06-01.csv"
@@ -379,20 +378,6 @@ _MODULOS_RELACIONADOS_CON_ML = (
     "ml.anomaly.detector",
     "ui.paginas.actualizacion",
 )
-
-
-def test_el_detector_es_el_de_ml_y_sin_el_extra_no_hay(monkeypatch):
-    """El import perezoso: con el extra `ml`, `ml.anomaly.precios_atipicos`; sin el, `None` y la
-    pagina se importa igual."""
-    import ml.anomaly
-
-    pagina = importlib.import_module("ui.paginas.actualizacion")
-    assert pagina._detector_de_atipicos() is ml.anomaly.precios_atipicos
-
-    with SinExtra(monkeypatch, ("ml",), _MODULOS_RELACIONADOS_CON_ML):
-        sin_ml = importlib.import_module("ui.paginas.actualizacion")
-        assert callable(sin_ml.render)
-        assert sin_ml._detector_de_atipicos() is None
 
 
 def _sin_sklearn(monkeypatch) -> None:

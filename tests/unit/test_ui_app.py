@@ -29,7 +29,6 @@ from ui.app import (
     SECCION_REVISION,
     SECCION_TRABAJO,
     VARIABLE_MODO_ENTREGA,
-    modo_entrega_activo,
     pagina_por_ruta,
     paginas_visibles,
     ruta_actual,
@@ -118,13 +117,6 @@ def test_paginas_visibles_es_la_concatenacion_de_las_secciones() -> None:
     for modo in (False, True):
         concatenadas = tuple(p for grupo in secciones_visibles(modo).values() for p in grupo)
         assert paginas_visibles(modo) == concatenadas
-
-
-def test_modo_entrega_solo_se_activa_con_el_valor_exacto_1() -> None:
-    assert modo_entrega_activo({VARIABLE_MODO_ENTREGA: "1"}) is True
-    assert modo_entrega_activo({}) is False
-    assert modo_entrega_activo({VARIABLE_MODO_ENTREGA: "0"}) is False
-    assert modo_entrega_activo({VARIABLE_MODO_ENTREGA: "si"}) is False
 
 
 def test_ningun_titulo_lleva_codigo_de_caso_de_uso() -> None:
