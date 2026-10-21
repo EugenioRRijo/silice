@@ -6484,6 +6484,365 @@
         }
       }
     },
+    "/v1/hoja/borradores/{id}/excel": {
+      "get": {
+        "tags": [
+          "hoja"
+        ],
+        "summary": "Exportar Excel",
+        "description": "X1: el libro del borrador vivo. En la firma `activa` va antes que `sesion`: el acceso (401,\n403) debe responder antes de abrir la base del caso.",
+        "operationId": "exportar_excel_v1_hoja_borradores__id__excel_get",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 16,
+              "maxLength": 64,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "title": "Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "El libro .xlsx del borrador.",
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {}
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/hoja/borradores/{id}/plano": {
+      "post": {
+        "tags": [
+          "hoja"
+        ],
+        "summary": "Leer Plano",
+        "description": "P1: guarda el plano en una carpeta temporal del borrador y lo lee. La extension se mira\nANTES de escribir; un archivo corrupto es `estado: \"rechazada\"` con 200. No cambia el borrador\nni su `rev`; reemplaza la importacion anterior.",
+        "operationId": "leer_plano_v1_hoja_borradores__id__plano_post",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 16,
+              "maxLength": 64,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "title": "Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_leer_plano_v1_hoja_borradores__id__plano_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/api__esquemas_hoja_plano__ImportacionRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "hoja"
+        ],
+        "summary": "Descartar Plano",
+        "description": "P6: descarta la importacion y su carpeta temporal. Idempotente; no cambia el borrador.",
+        "operationId": "descartar_plano_v1_hoja_borradores__id__plano_delete",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 16,
+              "maxLength": 64,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "title": "Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/hoja/borradores/{id}/plano/unidad": {
+      "post": {
+        "tags": [
+          "hoja"
+        ],
+        "summary": "Reanudar Con Unidad",
+        "description": "P2: vuelve a leer el plano detenido con la unidad del dibujo (m, cm, mm, dm, in o ft).",
+        "operationId": "reanudar_con_unidad_v1_hoja_borradores__id__plano_unidad_post",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 16,
+              "maxLength": 64,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "title": "Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UnidadDelPlano"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/api__esquemas_hoja_plano__ImportacionRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/hoja/borradores/{id}/plano/alturas": {
+      "post": {
+        "tags": [
+          "hoja"
+        ],
+        "summary": "Cargar Alturas",
+        "description": "P3: carga las alturas de los ambientes pendientes, todo o nada (en blanco, pendiente).",
+        "operationId": "cargar_alturas_v1_hoja_borradores__id__plano_alturas_post",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 16,
+              "maxLength": 64,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "title": "Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AlturasDelPlano"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/api__esquemas_hoja_plano__ImportacionRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/hoja/borradores/{id}/plano/circuitos": {
+      "post": {
+        "tags": [
+          "hoja"
+        ],
+        "summary": "Declarar Circuitos",
+        "description": "P4: declara los circuitos supuestos (fase, neutro, tierra, puntos maximos), todo o nada.",
+        "operationId": "declarar_circuitos_v1_hoja_borradores__id__plano_circuitos_post",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 16,
+              "maxLength": 64,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "title": "Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CircuitosDelPlano"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/api__esquemas_hoja_plano__ImportacionRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/hoja/borradores/{id}/plano/fusionar": {
+      "post": {
+        "tags": [
+          "hoja"
+        ],
+        "summary": "Fusionar Plano",
+        "description": "P5: funde la importacion con el espacio del borrador (completa las composiciones como la\nedicion del espacio y sube `rev`) y la descarta. Detenida o rechazada, 409; sin importacion,\n409; un espacio que no vale, 422 y el borrador intacto.",
+        "operationId": "fusionar_plano_v1_hoja_borradores__id__plano_fusionar_post",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 16,
+              "maxLength": 64,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "title": "Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FusionDelPlano"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FusionRespuesta"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/produccion/materiales": {
       "get": {
         "tags": [
@@ -6683,7 +7042,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ImportacionRespuesta"
+                  "$ref": "#/components/schemas/api__rutas__produccion__ImportacionRespuesta"
                 }
               }
             }
@@ -7057,6 +7416,53 @@
           "mensaje"
         ],
         "title": "AlertaPrecioRespuesta"
+      },
+      "AlturaPendienteRespuesta": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "nombre": {
+            "type": "string",
+            "title": "Nombre"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "nombre"
+        ],
+        "title": "AlturaPendienteRespuesta"
+      },
+      "AlturasDelPlano": {
+        "properties": {
+          "rev": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Rev"
+          },
+          "alturas": {
+            "additionalProperties": {
+              "type": "string",
+              "maxLength": 500
+            },
+            "propertyNames": {
+              "maxLength": 500
+            },
+            "type": "object",
+            "maxProperties": 5000,
+            "title": "Alturas"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "rev",
+          "alturas"
+        ],
+        "title": "AlturasDelPlano",
+        "description": "P3: id del ambiente pendiente -> su altura en metros (texto; coma o punto)."
       },
       "AnilloRespuesta": {
         "properties": {
@@ -8150,6 +8556,26 @@
         ],
         "title": "Body_informe_de_importacion_v1_control_importar_informe_post"
       },
+      "Body_leer_plano_v1_hoja_borradores__id__plano_post": {
+        "properties": {
+          "archivo": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "Archivo"
+          },
+          "rev": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Rev"
+          }
+        },
+        "type": "object",
+        "required": [
+          "archivo",
+          "rev"
+        ],
+        "title": "Body_leer_plano_v1_hoja_borradores__id__plano_post"
+      },
       "Body_leer_v1_admin_empresas_registradas_leer_post": {
         "properties": {
           "archivo": {
@@ -8917,6 +9343,73 @@
         "title": "CeldaVisualRespuesta",
         "description": "Espejo de `visual.CeldaVisual`: `fila` y `columna` base 1, `ref` sin `$`."
       },
+      "CircuitoSupuestoRespuesta": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "fase": {
+            "type": "string",
+            "title": "Fase"
+          },
+          "neutro": {
+            "type": "string",
+            "title": "Neutro"
+          },
+          "tierra": {
+            "type": "string",
+            "title": "Tierra"
+          },
+          "puntos": {
+            "type": "string",
+            "title": "Puntos"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "fase",
+          "neutro",
+          "tierra",
+          "puntos"
+        ],
+        "title": "CircuitoSupuestoRespuesta"
+      },
+      "CircuitosDelPlano": {
+        "properties": {
+          "rev": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Rev"
+          },
+          "circuitos": {
+            "additionalProperties": {
+              "items": {
+                "type": "string",
+                "maxLength": 500
+              },
+              "type": "array",
+              "maxItems": 4,
+              "minItems": 4
+            },
+            "propertyNames": {
+              "maxLength": 500
+            },
+            "type": "object",
+            "maxProperties": 5000,
+            "title": "Circuitos"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "rev",
+          "circuitos"
+        ],
+        "title": "CircuitosDelPlano",
+        "description": "P4: id del circuito supuesto -> [fase, neutro, tierra, puntos maximos] (texto)."
+      },
       "ClausulaTextos": {
         "properties": {
           "fecha_inicio": {
@@ -9308,6 +9801,24 @@
           "mensajes"
         ],
         "title": "ConfirmacionRespuesta"
+      },
+      "ConteoRespuesta": {
+        "properties": {
+          "rotulo": {
+            "type": "string",
+            "title": "Rotulo"
+          },
+          "cantidad": {
+            "type": "integer",
+            "title": "Cantidad"
+          }
+        },
+        "type": "object",
+        "required": [
+          "rotulo",
+          "cantidad"
+        ],
+        "title": "ConteoRespuesta"
       },
       "ContraLista": {
         "properties": {
@@ -11332,6 +11843,35 @@
         "type": "object",
         "title": "FilaEquipo"
       },
+      "FilaInformeRespuesta": {
+        "properties": {
+          "tipo": {
+            "type": "string",
+            "title": "Tipo"
+          },
+          "referencia": {
+            "type": "string",
+            "title": "Referencia"
+          },
+          "fila": {
+            "type": "string",
+            "title": "Fila"
+          },
+          "mensaje": {
+            "type": "string",
+            "title": "Mensaje"
+          }
+        },
+        "type": "object",
+        "required": [
+          "tipo",
+          "referencia",
+          "fila",
+          "mensaje"
+        ],
+        "title": "FilaInformeRespuesta",
+        "description": "Una linea del informe: tipo, lo que era en el plano, la fila de la hoja y que paso."
+      },
       "FilaManoObra": {
         "properties": {
           "descripcion": {
@@ -11679,6 +12219,57 @@
           "precio"
         ],
         "title": "FilaSimuladaRespuesta"
+      },
+      "FusionDelPlano": {
+        "properties": {
+          "rev": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Rev"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "rev"
+        ],
+        "title": "FusionDelPlano",
+        "description": "P5: el `rev` que vio quien fusiona."
+      },
+      "FusionRespuesta": {
+        "properties": {
+          "rev": {
+            "type": "integer",
+            "title": "Rev"
+          },
+          "resumen": {
+            "$ref": "#/components/schemas/ResumenHojaRespuesta"
+          },
+          "fusion": {
+            "$ref": "#/components/schemas/ResumenDeFusionRespuesta"
+          },
+          "informe": {
+            "items": {
+              "$ref": "#/components/schemas/FilaInformeRespuesta"
+            },
+            "type": "array",
+            "title": "Informe"
+          },
+          "mensaje": {
+            "type": "string",
+            "title": "Mensaje"
+          }
+        },
+        "type": "object",
+        "required": [
+          "rev",
+          "resumen",
+          "fusion",
+          "informe",
+          "mensaje"
+        ],
+        "title": "FusionRespuesta",
+        "description": "P5: el `rev` NUEVO (= `resumen.rev`), el resumen, el informe de la fusion y el mensaje."
       },
       "GenerarClave": {
         "properties": {
@@ -12110,34 +12701,6 @@
         ],
         "title": "HojaVisualRespuesta",
         "description": "Espejo de `visual.HojaVisual`. En `anchos` y `altos` la columna o la fila (base 1) va como\ntexto: las claves de un objeto JSON son texto."
-      },
-      "ImportacionRespuesta": {
-        "properties": {
-          "registrados": {
-            "type": "integer",
-            "title": "Registrados"
-          },
-          "ya_registrados": {
-            "type": "integer",
-            "title": "Ya Registrados"
-          },
-          "a_la_bandeja": {
-            "type": "integer",
-            "title": "A La Bandeja"
-          },
-          "huella": {
-            "type": "string",
-            "title": "Huella"
-          }
-        },
-        "type": "object",
-        "required": [
-          "registrados",
-          "ya_registrados",
-          "a_la_bandeja",
-          "huella"
-        ],
-        "title": "ImportacionRespuesta"
       },
       "ImportadasRespuesta": {
         "properties": {
@@ -15472,6 +16035,36 @@
         ],
         "title": "ResultadoRespuesta"
       },
+      "ResumenDeFusionRespuesta": {
+        "properties": {
+          "por_tipo": {
+            "items": {
+              "$ref": "#/components/schemas/ConteoRespuesta"
+            },
+            "type": "array",
+            "title": "Por Tipo"
+          },
+          "filas_por_tabla": {
+            "items": {
+              "$ref": "#/components/schemas/ConteoRespuesta"
+            },
+            "type": "array",
+            "title": "Filas Por Tabla"
+          },
+          "origenes": {
+            "type": "integer",
+            "title": "Origenes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "por_tipo",
+          "filas_por_tabla",
+          "origenes"
+        ],
+        "title": "ResumenDeFusionRespuesta",
+        "description": "`ResumenDeFusion`: el informe de la fusion contado una sola vez."
+      },
       "ResumenHojaRespuesta": {
         "properties": {
           "rev": {
@@ -16824,6 +17417,28 @@
         ],
         "title": "TrazabilidadHojaRespuesta"
       },
+      "UnidadDelPlano": {
+        "properties": {
+          "rev": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Rev"
+          },
+          "unidades": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Unidades"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "rev",
+          "unidades"
+        ],
+        "title": "UnidadDelPlano",
+        "description": "P2: la unidad del dibujo con que se vuelve a leer el plano detenido."
+      },
       "ValidationError": {
         "properties": {
           "loc": {
@@ -17449,6 +18064,92 @@
         ],
         "title": "VistaPreviaRespuesta",
         "description": "Los insumos del archivo que se pueden dar de alta (flujo 2a), sin escribir nada. Un archivo\nque no se puede leer no ofrece nada y trae su motivo; el mismo fallo se informa al revalorar."
+      },
+      "api__esquemas_hoja_plano__ImportacionRespuesta": {
+        "properties": {
+          "estado": {
+            "type": "string",
+            "enum": [
+              "importada",
+              "detenida",
+              "rechazada"
+            ],
+            "title": "Estado"
+          },
+          "archivo": {
+            "type": "string",
+            "title": "Archivo"
+          },
+          "mensaje": {
+            "type": "string",
+            "title": "Mensaje"
+          },
+          "pide_unidad": {
+            "type": "boolean",
+            "title": "Pide Unidad"
+          },
+          "unidades": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Unidades"
+          },
+          "conteos": {
+            "items": {
+              "$ref": "#/components/schemas/ConteoRespuesta"
+            },
+            "type": "array",
+            "title": "Conteos"
+          },
+          "informe": {
+            "items": {
+              "$ref": "#/components/schemas/FilaInformeRespuesta"
+            },
+            "type": "array",
+            "title": "Informe"
+          },
+          "alturas_pendientes": {
+            "items": {
+              "$ref": "#/components/schemas/AlturaPendienteRespuesta"
+            },
+            "type": "array",
+            "title": "Alturas Pendientes"
+          },
+          "circuitos_supuestos": {
+            "items": {
+              "$ref": "#/components/schemas/CircuitoSupuestoRespuesta"
+            },
+            "type": "array",
+            "title": "Circuitos Supuestos"
+          },
+          "aviso_pendientes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Aviso Pendientes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "estado",
+          "archivo",
+          "mensaje",
+          "pide_unidad",
+          "unidades",
+          "conteos",
+          "informe",
+          "alturas_pendientes",
+          "circuitos_supuestos",
+          "aviso_pendientes"
+        ],
+        "title": "ImportacionRespuesta",
+        "description": "La importacion vigente del borrador (P1 a P4)."
       },
       "api__esquemas_informe__HallazgoRespuesta": {
         "properties": {
@@ -18124,6 +18825,34 @@
           "hasta"
         ],
         "title": "SerieRespuesta"
+      },
+      "api__rutas__produccion__ImportacionRespuesta": {
+        "properties": {
+          "registrados": {
+            "type": "integer",
+            "title": "Registrados"
+          },
+          "ya_registrados": {
+            "type": "integer",
+            "title": "Ya Registrados"
+          },
+          "a_la_bandeja": {
+            "type": "integer",
+            "title": "A La Bandeja"
+          },
+          "huella": {
+            "type": "string",
+            "title": "Huella"
+          }
+        },
+        "type": "object",
+        "required": [
+          "registrados",
+          "ya_registrados",
+          "a_la_bandeja",
+          "huella"
+        ],
+        "title": "ImportacionRespuesta"
       },
       "api__rutas__reajuste__CalculoRespuesta": {
         "properties": {

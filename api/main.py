@@ -27,6 +27,8 @@ from api.rutas import (
     cuentas,
     entregas,
     hoja,
+    hoja_exportar,
+    hoja_plano,
     indices,
     libros,
     listas,
@@ -120,6 +122,10 @@ app.include_router(revision.router)
 # Migracion final (T10 · 3b): «Hoja del proyecto»; lecturas con clave o sesion, borradores
 # solo con sesion
 app.include_router(hoja.router)
+# Migracion final (T10 · 3e-1): «Descargar Excel» de la hoja (X1), solo con sesion
+app.include_router(hoja_exportar.router)
+# Migracion final (T10 · 3e-2): importar un plano a la hoja (P1 a P6), solo con sesion
+app.include_router(hoja_plano.router)
 interfaz.montar(app)
 # 1.4 (sesion 4 de la ruta): /v1/produccion, existencias de la arenera y bascula; clave o sesion
 # (Accion.OPERAR_ARENERA): la dependencia vive en el router, que la comparte con el `usuario`
