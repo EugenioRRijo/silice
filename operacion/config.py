@@ -130,16 +130,6 @@ class Ajustes:
     nivel_registro: str = "INFO"
     avisos: tuple[str, ...] = ()
 
-    @property
-    def api_activa(self) -> bool:
-        """La API ya no se enciende ni apaga: siempre está (la lee `admin_instalacion`)."""
-        return True
-
-    @property
-    def puerto_api(self) -> int:
-        """La API vive en el único puerto (la lee `api.rutas.admin_instalacion`)."""
-        return self.puerto
-
 
 def _direccion_valida(texto: str) -> bool:
     try:

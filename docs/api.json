@@ -13281,14 +13281,6 @@
             "type": "integer",
             "title": "Puerto"
           },
-          "api_activa": {
-            "type": "boolean",
-            "title": "Api Activa"
-          },
-          "puerto_api": {
-            "type": "integer",
-            "title": "Puerto Api"
-          },
           "avisos": {
             "items": {
               "type": "string"
@@ -13319,8 +13311,6 @@
           "red_local",
           "direccion",
           "puerto",
-          "api_activa",
-          "puerto_api",
           "avisos",
           "respaldos",
           "pendientes",
@@ -17163,18 +17153,6 @@
             "type": "boolean",
             "title": "Modo Entrega",
             "description": "`SILICE_MODO_ENTREGA` está encendido"
-          },
-          "url_clasica": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Url Clasica",
-            "description": "La interfaz Streamlit, para las páginas aún no migradas (`null` si no hay)"
           }
         },
         "type": "object",
@@ -17185,8 +17163,7 @@
           "csrf",
           "debe_cambiar_clave",
           "acciones",
-          "modo_entrega",
-          "url_clasica"
+          "modo_entrega"
         ],
         "title": "SesionRespuesta"
       },

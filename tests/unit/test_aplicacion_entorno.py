@@ -11,7 +11,6 @@ from __future__ import annotations
 import pytest
 
 from aplicacion import entorno
-from operacion import config
 
 ENTORNOS = [
     ({}, False),

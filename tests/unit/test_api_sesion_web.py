@@ -420,7 +420,7 @@ def test_get_sesion_con_cookie_da_el_usuario() -> None:
         "debe_cambiar_clave": False,
         "acciones": ["leer_proyecto", "revisar_paquete"],
         "modo_entrega": False,
-        }
+    }
     assert ficha not in respuesta.text
 
 

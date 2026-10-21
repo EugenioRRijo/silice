@@ -6,7 +6,7 @@ con su freno global, el bloqueo de 15 minutos tras cinco fallos y el mismo mensa
 el usuario; la IP del cliente queda en el registro de accesos.
 
 - `POST` `{login, contrasena}` → 200 `{login, nombre, roles, csrf, debe_cambiar_clave, acciones,
-  modo_entrega, url_clasica}` y la cookie de sesión; 401 credenciales malas, 423 bloqueada, 403
+  modo_entrega}` y la cookie de sesión; 401 credenciales malas, 423 bloqueada, 403
   si un `Origin` presente no es el de la instalación (CSRF de acceso), 429 con `Retry-After` si el
   freno global pide esperar (RS2-11: la API no duerme en su hilo; el intento frenado no llega a
   verificar la contraseña) y 422 con un mensaje fijo, sin repetir lo enviado, si el cuerpo no es
@@ -23,8 +23,7 @@ Ola 0a (sesión 2b): la cuenta con la contraseña temporal ya no recibe un 403 a
 en la interfaz clásica»): entra con `debe_cambiar_clave: true`, `acciones: []` y una ficha que
 `api.sesion_web.exigir_sesion` rechaza en toda otra ruta (la «cookie restringida»). `acciones` son
 las `Accion` que su rol permite (`seguridad.permisos.permitido`), en el orden de la matriz, para que
-el menú no repita la matriz; `modo_entrega` es `SILICE_MODO_ENTREGA` y `url_clasica` la dirección
-de la interfaz Streamlit (los dos de `aplicacion.entorno`).
+el menú no repita la matriz; `modo_entrega` es `SILICE_MODO_ENTREGA` (de `aplicacion.entorno`).
 """
 
 from __future__ import annotations
@@ -50,7 +49,7 @@ from api.sesion_web import (
     sesion_vigente,
 )
 from api.sin_eco import RutaSinEco, sin_eco
-from aplicacion.entorno import modo_entrega_activo, url_clasica
+from aplicacion.entorno import modo_entrega_activo
 from operacion.base_datos import ErrorDeBase
 from operacion.instalacion import sesion_de_instalacion
 from seguridad import cuentas, eventos, sesiones
@@ -113,9 +112,6 @@ class SesionRespuesta(BaseModel):
         description="Las acciones que permite su rol (vacía con la contraseña temporal)"
     )
     modo_entrega: bool = Field(description="`SILICE_MODO_ENTREGA` está encendido")
-    url_clasica: str | None = Field(
-        description="La interfaz Streamlit, para las páginas aún no migradas (`null` si no hay)"
-    )
 
 
 class Detalle(BaseModel):
@@ -136,7 +132,6 @@ def _cuerpo(ficha: str, activa: SesionActiva) -> SesionRespuesta:
         debe_cambiar_clave=activa.debe_cambiar_clave,
         acciones=acciones,
         modo_entrega=modo_entrega_activo(),
-        url_clasica=url_clasica(),
     )
 
 
