@@ -3,6 +3,7 @@ import { ErrorDeApi } from "../../api/cliente";
 import {
   cambiosDeRespuesta,
   clasificarErrorDeGuardado,
+  conVersionGuardada,
   cuerpoDeGuardado,
   motivoParaNoGuardar,
   rutaDeCambios,
@@ -137,5 +138,31 @@ describe("qué le pasó al guardar", () => {
   });
   test("lo que no es de la API no deja pasar su mensaje", () => {
     expect(clasificarErrorDeGuardado(new Error("SELECT * FROM x")).mensaje).toBe("Ocurrió un error inesperado. Inténtelo de nuevo.");
+  });
+});
+
+describe("la lista de versiones cuando no se pudo volver a leer tras guardar", () => {
+  const v = (codigo: string, vigente: boolean) => ({
+    codigo,
+    fecha: "2026-10-06",
+    motivo: "",
+    origen: "",
+    vigente,
+    descartada: false,
+    cambios: 0,
+  });
+  const lista = { proyecto: "OF-001", moneda: "USD", por_omision: "002", versiones: [v("002", true), v("001", false)] };
+
+  test("la versión guardada se agrega la primera, vigente y por omisión; la que era vigente deja de serlo", () => {
+    const r = conVersionGuardada(lista, "003");
+    expect(r.por_omision).toBe("003");
+    expect(r.versiones.map((x) => [x.codigo, x.vigente])).toEqual([
+      ["003", true],
+      ["002", false],
+      ["001", false],
+    ]);
+  });
+  test("si ya estaba, no se repite", () => {
+    expect(conVersionGuardada(lista, "002").versiones.map((x) => x.codigo)).toEqual(["002", "001"]);
   });
 });
