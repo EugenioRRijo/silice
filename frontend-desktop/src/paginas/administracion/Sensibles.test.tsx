@@ -254,8 +254,6 @@ describe("pestañas sensibles de Administración", () => {
       red_local: false,
       direccion: "",
       puerto: 8501,
-      api_activa: false,
-      puerto_api: 8000,
       avisos: [],
       respaldos: [{ nombre: "20261110-090000", motivo: "manual", bases: 2 }],
       pendientes: [],
@@ -266,7 +264,8 @@ describe("pestañas sensibles de Administración", () => {
       fetchFalso.mockResolvedValue(json(BASE));
       montar(<Instalacion />);
       expect(await screen.findByText("Red local: apagada (solo http://127.0.0.1:8501)")).toBeInTheDocument();
-      expect(screen.getByText("API: apagada (puerto 8000)")).toBeInTheDocument();
+      expect(screen.queryByText(/^API:/)).toBeNull();
+      expect(screen.queryByText(/silice\.toml/)).toBeNull();
       expect(screen.getByText("20261110-090000 (manual, 2 bases)")).toBeInTheDocument();
       expect(screen.getByRole("button", { name: "Descargar 20261110-090000 (.zip)" })).toBeInTheDocument();
     });
