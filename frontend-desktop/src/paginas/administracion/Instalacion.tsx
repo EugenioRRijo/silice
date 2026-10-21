@@ -5,7 +5,7 @@ import { AvisoError } from "../../comun/AvisoError";
 import { DescargaArchivo } from "../../comun/DescargaArchivo";
 import { EsqueletoPagina } from "../../comun/EsqueletoPagina";
 import { useAplicacion } from "../../shell/contexto";
-import { textoDeApi, textoDeRed } from "./sensibles";
+import { textoDeRed } from "./sensibles";
 import type { InstalacionEstado, Pendiente } from "./sensibles";
 
 // Pestaña «Instalación» (RF-98; spec S5 §5.2 y §6.5): red y API en lectura (los cambios de red no se hacen desde el
@@ -69,10 +69,8 @@ export default function Instalacion() {
       ))}
       <section className="silice-adm__seccion">
         <p className="cds--type-body-compact-01">{textoDeRed(estado)}</p>
-        <p className="cds--type-body-compact-01">{textoDeApi(estado)}</p>
         <p className="silice-adm__nota cds--type-label-01">
-          Para cambiar la red local use, en el equipo servidor, el acceso «Sílice: red local (administrador)». La API
-          se activa en silice.toml y entra en vigor al reiniciar.
+          Para cambiar la red local use, en el equipo servidor, el acceso «Sílice: red local (administrador)».
         </p>
       </section>
 

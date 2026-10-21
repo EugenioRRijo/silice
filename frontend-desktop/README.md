@@ -17,7 +17,7 @@ npm ci            # instala exactamente lo que dice package-lock.json
 npm run dev       # servidor de desarrollo; /v1 se reenvía a http://127.0.0.1:8000 (la API encendida)
 ```
 
-La interfaz compilada la sirve el FastAPI en `/app` (`http://127.0.0.1:<puerto_api>/app/`).
+La interfaz compilada la sirve el FastAPI en `/app` (`http://127.0.0.1:<puerto>/app/`; un solo proceso sirve la API y esta interfaz).
 
 ## Cómo probar
 
@@ -64,16 +64,15 @@ en solo lectura, con un halo de severidad sobre la celda de cada hallazgo.
 `src/shell/` es el marco: cabecera de Carbon (nombre, selector de **caso** y de **proyecto**, «Salir»), menú lateral por
 rol y modo entrega, y la ruta de cada página. La navegación es de hash (`/app/#/libros`): el servidor de `/app` es
 estático y no responde `index.html` a `/app/libros`. El menú, las rutas y los permisos salen de **una** lista:
-`src/shell/rutas.ts` (21 páginas, las de `ui/app.py`, con su sección y su `Accion`). Lo que la persona puede ver sale de
+`src/shell/rutas.ts` (22 páginas, con su sección y su `Accion`). Lo que la persona puede ver sale de
 `acciones` y `modo_entrega` de `GET /v1/sesion`; la API vuelve a exigir cada acción.
 
-Para migrar una página (id = nombre del módulo de Streamlit, p. ej. `catalogo`):
+Para agregar una página (el id es su ruta, p. ej. `catalogo`):
 
 1. Crear `src/paginas/<id>/index.tsx` con un `export default` (el componente, sin props). Lo que necesita sale de
    `useAplicacion()` (`src/shell/contexto.tsx`): `sesion`, `proyecto` elegido (código o `null`), `caso`,
    `recargarProyectos()` y `alExpirar()` (llamarlo ante un 401).
-2. En `rutas.ts`, a su línea, agregar `cargar: () => import("../paginas/<id>")`. Sin `cargar` el menú la muestra
-   deshabilitada con «En la interfaz clásica». Cada página es un archivo aparte en el `dist`.
+2. En `rutas.ts`, a su línea, agregar `cargar: () => import("../paginas/<id>")` (es obligatorio). Cada página es un archivo aparte en el `dist`.
 3. Hablar con la API solo con `pedir` / `pedirBinario` de `src/api/cliente.ts`; los montos llegan como texto y se
    muestran tal cual. Si cambia el caso, el marco vuelve a montar la página (pedir los datos al montar basta).
 4. Usar `src/comun/`: `TablaDensa` (Carbon `sm`, montos a la derecha, orden decimal exacto, esqueleto y estado vacío),

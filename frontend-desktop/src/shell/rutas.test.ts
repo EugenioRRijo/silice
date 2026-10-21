@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vitest";
 import * as rutas from "./rutas";
+import type { PaginaDef } from "./rutas";
 import {
   AREAS,
   HERRAMIENTAS_PRINCIPALES,
@@ -181,7 +182,7 @@ describe("areas del menu", () => {
   });
 
   test("una pagina fuera de toda area cae al final de «Más» en vez de perderse", () => {
-    const extra = { id: "nueva", titulo: "Nueva", seccion: "Trabajo", accion: null } as const;
+    const extra: PaginaDef = { id: "nueva", titulo: "Nueva", seccion: "Trabajo", accion: null, cargar: PAGINAS[0].cargar };
     const mas = areasVisibles([], false, [...PAGINAS, extra]).find((a) => a.id === "mas")!;
     expect(mas.paginas.map((p) => p.id).at(-1)).toBe("nueva");
   });

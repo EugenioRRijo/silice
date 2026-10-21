@@ -1,25 +1,23 @@
-// Registro de paginas de la interfaz nueva (plan de la sesion 2b). Es la unica lista que el menu, el enrutador y
-// los permisos leen: espeja las 21 paginas de Streamlit (ui/app.py: PAGINAS) con su seccion y su accion, mas el
-// historial de auditorias, que solo existe aqui (22 en total).
+// Registro de paginas de la interfaz (plan de la sesion 2b). Es la unica lista que el menu, el enrutador y los
+// permisos leen: 22 paginas con su seccion y su accion.
 //
-// Como se migra una pagina: crear `src/paginas/<id>/index.tsx` con un `export default` (el componente de la
-// pagina, sin props: lo que necesita sale de `useAplicacion()`) y agregar a su linea de abajo
-// `cargar: () => import("../paginas/<id>")`. Mientras no tenga `cargar`, el menu la muestra deshabilitada con el
-// texto «En la interfaz clásica».
+// Como se agrega una pagina: crear `src/paginas/<id>/index.tsx` con un `export default` (el componente de la
+// pagina, sin props: lo que necesita sale de `useAplicacion()`) y agregar su linea de abajo con
+// `cargar: () => import("../paginas/<id>")`.
 import type { ComponentType } from "react";
 
 export const SECCIONES = ["Trabajo", "Revisión", "Investigación", "Administración"] as const;
 export type Seccion = (typeof SECCIONES)[number];
 
 export interface PaginaDef {
-  // Es el nombre del modulo de Streamlit (ui/paginas/<id>.py): la ruta de aqui es `/<id>` y la de alla tambien.
+  // La ruta de la pagina es `/<id>`.
   id: string;
   titulo: string;
   seccion: Seccion;
   // La `Accion` de seguridad/permisos.py que exige la pagina (ui_sesion.exigir); null = toda cuenta la ve.
   accion: string | null;
-  // Carga perezosa: un archivo aparte en el dist, que solo se baja al abrir la pagina. Sin esto no esta migrada.
-  cargar?: () => Promise<{ default: ComponentType }>;
+  // Carga perezosa: un archivo aparte en el dist, que solo se baja al abrir la pagina.
+  cargar: () => Promise<{ default: ComponentType }>;
 }
 
 export const PAGINAS: readonly PaginaDef[] = [
@@ -142,7 +140,7 @@ export const PAGINAS: readonly PaginaDef[] = [
     accion: "leer_proyecto",
     cargar: () => import("../paginas/libros"),
   },
-  // Pagina nueva de esta interfaz (UC-30): Streamlit no tiene historial de auditorias.
+  // Pagina propia de esta interfaz (UC-30): el historial de auditorias.
   {
     id: "historial",
     titulo: "Historial de auditorías",
@@ -186,10 +184,6 @@ export function paginaPorId(id: string, paginas: readonly PaginaDef[] = PAGINAS)
 
 export function rutaDe(pagina: Pick<PaginaDef, "id">): string {
   return `/${pagina.id}`;
-}
-
-export function estaMigrada(pagina: PaginaDef): boolean {
-  return pagina.cargar !== undefined;
 }
 
 // La navegacion no es el control (S3 5.1): la API vuelve a exigir cada accion. Aqui solo se decide que se muestra.
@@ -301,7 +295,7 @@ export const HERRAMIENTAS_PRINCIPALES: readonly HerramientaPrincipal[] = [
   { pagina: "existencias", ayuda: "Cuánto hay y cuánto queda de cada material" },
 ];
 
-// Solo las que esta cuenta puede usar y que ya viven en esta interfaz (las demas salen en su area, como «clásica»).
+// Solo las que esta cuenta puede usar.
 export function herramientasVisibles(
   acciones: readonly string[],
   modoEntrega: boolean,
@@ -309,23 +303,8 @@ export function herramientasVisibles(
 ): HerramientaVisible[] {
   return HERRAMIENTAS_PRINCIPALES.flatMap((h) => {
     const pagina = paginaPorId(h.pagina, paginas);
-    return pagina !== undefined && estaMigrada(pagina) && visible(pagina, acciones, modoEntrega)
+    return pagina !== undefined && visible(pagina, acciones, modoEntrega)
       ? [{ ...h, titulo: pagina.titulo }]
       : [];
   });
-}
-
-// Direccion de la pagina en la interfaz Streamlit, o null si no se conoce la base (solo http o https). En
-// Streamlit la pagina de inicio es la raiz.
-export function enlaceClasico(base: string | null | undefined, pagina: PaginaDef): string | null {
-  if (!base) return null;
-  let url: URL;
-  try {
-    url = new URL(base);
-  } catch {
-    return null;
-  }
-  if (url.protocol !== "http:" && url.protocol !== "https:") return null;
-  const raiz = url.href.replace(/\/+$/, "");
-  return pagina.id === "inicio" ? `${raiz}/` : `${raiz}/${pagina.id}`;
 }

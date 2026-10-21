@@ -10,10 +10,6 @@ import { crearAlmacen } from "./visor/almacen";
 import type { AlmacenDelVisor } from "./visor/almacen";
 import type { CrearHojaVisor } from "./visor/hojaVisor";
 
-// Direccion de la interfaz Streamlit para el enlace de las pantallas aun no migradas. Se fija al compilar
-// (VITE_URL_CLASICA); si no se conoce, el menu solo dice «En la interfaz clásica».
-const URL_CLASICA_DE_COMPILACION: string | undefined = import.meta.env.VITE_URL_CLASICA;
-
 // El enrutador es de hash (`/app/#/libros`): el servidor de /app es estatico y no devuelve index.html para
 // /app/libros al recargar, y asi tampoco hace falta tocarlo cuando la interfaz vaya dentro de Tauri.
 interface Props {
@@ -49,7 +45,6 @@ export function App({ crearHoja }: Props = {}) {
             sesion={estado.sesion}
             alSalir={alSalir}
             alExpirar={expirar}
-            urlClasica={estado.sesion.url_clasica ?? URL_CLASICA_DE_COMPILACION}
             almacen={almacen}
             crearHoja={crearHoja}
           />
