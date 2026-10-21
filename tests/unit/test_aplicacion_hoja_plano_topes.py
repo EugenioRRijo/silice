@@ -19,6 +19,7 @@ Los tres topes (oraculos a mano, escritos aqui; ninguno sale del codigo bajo pru
 from __future__ import annotations
 
 import os
+import subprocess
 import threading
 import time
 from collections.abc import Iterator
@@ -100,6 +101,35 @@ def test_un_plano_de_exactamente_el_tope_se_lee(monkeypatch, _entorno) -> None:
     with pytest.raises(hoja_plano.PlanoDemasiadoGrande):
         hoja_plano.leer(vivo, 0, _Subida("a.dxf", b"x" * 101))
     assert len(_carpetas(_entorno)) == 1  # la de la importacion vigente, no la del rechazo
+
+
+class _SubidaMedible:
+    """Una subida que sabe su tamano sin cargarlo: leer sus bytes revienta la prueba."""
+
+    def __init__(self, nombre: str, tamano: int) -> None:
+        self.name = nombre
+        self._tamano = tamano
+
+    def tamano(self) -> int:
+        return self._tamano
+
+    def getvalue(self) -> bytes:
+        raise AssertionError("el tope se mide sin cargar los bytes en memoria")
+
+
+def test_el_tope_se_mide_sin_cargar_los_bytes_cuando_la_subida_sabe_su_tamano(_entorno) -> None:
+    vivo = _vivo()
+    with pytest.raises(hoja_plano.PlanoDemasiadoGrande):
+        hoja_plano.leer(vivo, 0, _SubidaMedible("a.dxf", 8 * MIB + 1))
+    assert _carpetas(_entorno) == []
+
+
+def test_el_orden_de_errores_se_mantiene_con_una_subida_medible() -> None:
+    vivo = _vivo()
+    with pytest.raises(hoja_borradores.RevDesactualizado):
+        hoja_plano.leer(vivo, 7, _SubidaMedible("a.dxf", 21 * MIB))
+    with pytest.raises(ValueError, match="no es un plano"):
+        hoja_plano.leer(vivo, 0, _SubidaMedible("a.txt", 21 * MIB))
 
 
 def test_el_rev_y_el_formato_se_juzgan_antes_que_el_tamano() -> None:
@@ -205,6 +235,56 @@ def test_el_barrido_borra_solo_las_huerfanas_con_el_prefijo_y_mas_viejas_que_el_
     assert borradas == 1
     assert not vieja.exists()
     assert reciente.exists() and ajena.exists() and suelto.exists()
+
+
+def _enlazar(enlace: Path, destino: Path) -> None:
+    """Un enlace de verdad: junction en Windows (no pide privilegios) y simbolico en el resto."""
+    if os.name == "nt":
+        hecho = subprocess.run(  # noqa: S603
+            ["cmd", "/c", "mklink", "/J", str(enlace), str(destino)],  # noqa: S607
+            capture_output=True,
+            check=False,
+        )
+        assert hecho.returncode == 0, hecho.stdout
+    else:
+        enlace.symlink_to(destino, target_is_directory=True)
+
+
+def test_el_barrido_no_sigue_ni_borra_un_enlace_a_una_victima(
+    monkeypatch, _entorno, tmp_path
+) -> None:
+    intentos: list[Path] = []
+    monkeypatch.setattr(hoja_plano, "_borrar", intentos.append)
+    victima = tmp_path / "victima"
+    victima.mkdir()
+    (victima / "importante.txt").write_text("no me borres")
+    enlace = _entorno / "silice_planos_enlace"
+    _enlazar(enlace, victima)
+    try:
+        antes = time.time() - 30 * HORA
+        os.utime(victima, (antes, antes))  # el enlace "parece" viejo por su destino
+
+        borradas = hoja_plano.barrer_huerfanas(timedelta(0))
+
+        assert borradas == 0
+        assert intentos == []  # ni siquiera se intento borrarlo (rmtree falla en silencio)
+        assert (victima / "importante.txt").read_text() == "no me borres"
+    finally:
+        os.rmdir(enlace) if os.name == "nt" else enlace.unlink()  # solo el enlace, no el destino
+
+
+def test_el_barrido_salta_lo_que_el_sistema_dice_que_es_un_enlace(
+    monkeypatch, _entorno, tmp_path
+) -> None:
+    """El enlace simbolico no se puede crear sin privilegios en Windows: se simula con la
+    pregunta que hace el barrido (`is_symlink`) sobre una carpeta que tiene el prefijo."""
+    victima = _vieja(_entorno, "silice_planos_victima", 30)
+    intentos: list[Path] = []
+    monkeypatch.setattr(hoja_plano, "_borrar", intentos.append)
+    monkeypatch.setattr(Path, "is_symlink", lambda self: self.name == victima.name)
+
+    assert hoja_plano.barrer_huerfanas(timedelta(0)) == 0
+    assert intentos == [] and (victima / "plano.dxf").exists()
 
 
 def test_el_barrido_no_toca_la_carpeta_de_una_importacion_viva_aunque_sea_vieja(_entorno) -> None:

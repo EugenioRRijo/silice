@@ -97,6 +97,15 @@ class _Subida:
         self.name = archivo.filename or ""
         self._archivo = archivo
 
+    def tamano(self) -> int:
+        """Los bytes del archivo sin cargarlos (el tope de `hoja_plano.leer` se juzga con esto)."""
+        archivo = self._archivo.file
+        archivo.seek(0, 2)
+        try:
+            return archivo.tell()
+        finally:
+            archivo.seek(0)
+
     def getvalue(self) -> bytes:
         self._archivo.file.seek(0)
         return self._archivo.file.read()

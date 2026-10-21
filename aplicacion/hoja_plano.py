@@ -302,11 +302,17 @@ def _sin_rutas(resultado: ResultadoImportacion, carpeta: Path) -> ResultadoImpor
     return resultado
 
 
+def _es_enlace(carpeta: Path) -> bool:
+    """Un enlace simbolico o una junction de Windows (que `is_symlink` no ve y `is_dir` sigue)."""
+    return carpeta.is_symlink() or carpeta.is_junction()
+
+
 def barrer_huerfanas(antiguedad: timedelta) -> int:
     """Borra las carpetas `silice_planos_*` de mas de `antiguedad` que ninguna importacion viva
     usa (las que deja un proceso que cayo) y devuelve cuantas. Solo carpetas de verdad (ni
-    enlaces ni archivos) con el prefijo, dentro del directorio temporal de los planos. Tolera un
-    directorio ausente o ilegible, y lo que no se pueda borrar (otro proceso lo tiene abierto)."""
+    enlaces simbolicos, ni junctions de Windows, ni archivos) con el prefijo, dentro del
+    directorio temporal de los planos. Tolera un directorio ausente o ilegible, y lo que no se
+    pueda borrar (otro proceso lo tiene abierto)."""
     raiz = Path(DIRECTORIO_TEMPORAL or tempfile.gettempdir())
     limite = time.time() - antiguedad.total_seconds()
     vivas = IMPORTACIONES.carpetas()
@@ -317,7 +323,7 @@ def barrer_huerfanas(antiguedad: timedelta) -> int:
         return 0
     for carpeta in candidatas:
         try:
-            if carpeta.is_symlink() or not carpeta.is_dir() or carpeta in vivas:
+            if _es_enlace(carpeta) or not carpeta.is_dir() or carpeta in vivas:
                 continue
             if carpeta.stat().st_mtime > limite:
                 continue
@@ -348,6 +354,13 @@ def _barrer_si_toca() -> None:
     barrer_huerfanas(hoja_borradores.VIGENCIA)
 
 
+def _tamano_de(subida: Subida) -> int:
+    """Los bytes de la subida. Si sabe medirse (`tamano()`, como la de la API sobre su archivo
+    temporal) no se cargan en memoria para juzgar el tope; si no, se miden con `getvalue()`."""
+    medir = getattr(subida, "tamano", None)
+    return medir() if callable(medir) else len(subida.getvalue())
+
+
 def leer(vivo: BorradorVivo, rev: int, subida: Subida) -> ResultadoImportacion:
     """P1: guarda el plano subido en una carpeta nueva del borrador y lo lee (`subir_plano`).
 
@@ -361,7 +374,7 @@ def leer(vivo: BorradorVivo, rev: int, subida: Subida) -> ResultadoImportacion:
         _exigir_rev(vivo, rev)
         formato = hoja.formato_de_plano(subida.name or "")
         tope = BYTES_MAXIMOS_DE_PLANO[formato]
-        if len(subida.getvalue()) > tope:  # antes de escribir nada y de ocupar un cupo
+        if _tamano_de(subida) > tope:  # antes de escribir nada y de ocupar un cupo
             raise PlanoDemasiadoGrande(formato, tope)
         _barrer_si_toca()
         with _cupo_de_lectura():
