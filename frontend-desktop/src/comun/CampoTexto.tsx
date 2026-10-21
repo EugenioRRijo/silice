@@ -17,7 +17,9 @@ export function CampoTexto(props: ComponentProps<typeof TextInput>) {
       region.removeAttribute("aria-live");
       region.removeAttribute("aria-atomic");
     });
-  });
+    // Una sola vez al montar: React no vuelve a escribir atributos que no cambian, y con cientos de campos (900 en el Plan)
+    // repetirlo en cada render pesaba.
+  }, [conContador]);
   return (
     <div ref={raiz} style={{ display: "contents" }}>
       <TextInput {...props} />
