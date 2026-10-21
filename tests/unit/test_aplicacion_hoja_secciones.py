@@ -358,3 +358,27 @@ def test_el_plan_secuencial_es_una_partida_por_periodo_y_la_curva_cierra_en_el_t
     resultado = hoja.elaborar_borrador(con_plan)
     assert abs(resultado.elaboracion.presupuesto.curva[-1].acumulado - D("2703.86")) <= D("0.01")
     assert resultado.elaboracion.presupuesto.curva[-1].periodo.split(" [")[0] == "Dia 30"
+
+
+def test_una_fraccion_con_ceros_de_relleno_se_dice_sin_ellos(_of001) -> None:
+    """«0.50» suma 0.5, no 0.50: el texto del error no arrastra ceros (3c-B12)."""
+    etiquetas, filas = _matriz(_of001, **{"AF-LLAVE": {"Dia 3": "0.50"}})
+    with pytest.raises(HojaInvalida) as error:
+        hoja.plan_desde_filas(filas, etiquetas)
+    assert str(error.value) == (
+        "plan, partida AF-LLAVE: las fracciones suman 0.5 y deben sumar exactamente 1; "
+        "repartala entre los periodos hasta completar 1"
+    )
+
+
+def test_las_filas_de_la_curva_de_of001_dan_monto_acumulado_y_porcentaje(_of001) -> None:
+    """Plan secuencial: el Dia 1 es AF-CODO-1/2 (11,18 de 2 703,86 = 0,41 %) y el Dia 30 cierra."""
+    curva = hoja.elaborar_borrador(_of001).elaboracion.presupuesto.curva
+    filas = hoja.filas_de_curva(hoja.elaborar_borrador(_of001).elaboracion.presupuesto)
+    assert len(filas) == len(curva) == 30
+    assert (filas[0]["monto"], filas[0]["acumulado"], filas[0]["porcentaje"]) == (
+        "11.18",
+        "11.18",
+        "0.41",
+    )
+    assert (filas[-1]["acumulado"], filas[-1]["porcentaje"]) == ("2703.86", "100.00")
