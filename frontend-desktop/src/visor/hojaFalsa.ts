@@ -11,6 +11,7 @@ export interface HojaFalsa extends HojaVisor {
   irA: ReturnType<typeof vi.fn<(celda: CeldaRef) => void>>;
   irAHoja: ReturnType<typeof vi.fn<(nombre: string) => void>>;
   destruir: ReturnType<typeof vi.fn<() => void>>;
+  fijarZoom: ReturnType<typeof vi.fn<(razon: number) => void>>;
 }
 
 export function clave(c: CeldaRef): string {
@@ -22,6 +23,7 @@ export function crearHojaFalsa(hojaInicial = "PRESUPUESTO"): HojaFalsa {
   const posiciones = new Map<string, RectanguloPx | null>();
   const avisosCambio = new Set<() => void>();
   const avisosSeleccion = new Set<(c: CeldaRef) => void>();
+  let razonActual = 1;
   return {
     posiciones,
     hojaActiva: () => hojaActual,
@@ -43,6 +45,11 @@ export function crearHojaFalsa(hojaInicial = "PRESUPUESTO"): HojaFalsa {
       avisosSeleccion.add(f);
       return () => avisosSeleccion.delete(f);
     },
+    fijarZoom: vi.fn((razon: number) => {
+      razonActual = razon;
+      avisosCambio.forEach((f) => f());
+    }),
+    zoomActual: () => razonActual,
     destruir: vi.fn(),
     cambiar: () => avisosCambio.forEach((f) => f()),
     seleccionar: (c) => avisosSeleccion.forEach((f) => f(c)),
