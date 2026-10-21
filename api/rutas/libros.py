@@ -565,7 +565,10 @@ def indicadores_de(
 def partidas_con_omision(resultado: ResultadoFusion) -> list[int]:
     """Números de las partidas con un hallazgo L4 (V-16). La celda del hallazgo es `HOJA!REF` de su
     APU; la partida es la que apunta a esa hoja (`hoja_apu`). No se lee el texto del hallazgo."""
-    por_hoja = {p.hoja_apu: p.numero for p in resultado.libro.partidas if p.hoja_apu}
+    por_hoja: dict[str, int] = {}
+    for p in resultado.libro.partidas:
+        if p.hoja_apu:
+            por_hoja.setdefault(p.hoja_apu, p.numero)  # la primera, como `reglas.partida_de_apu`
     numeros = {
         por_hoja[hoja]
         for h in resultado.hallazgos_tabla
