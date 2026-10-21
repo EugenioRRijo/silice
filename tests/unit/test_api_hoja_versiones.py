@@ -1119,3 +1119,80 @@ def test_toda_funcion_de_la_api_que_crea_versiones_usa_la_sesion_de_escritura() 
         "restaurar_version",
         "retirar_cotizacion",
     ]
+
+
+# --- 3e-3: lo que el arbitro de 3d-2 dejo como menor y la paridad de P13 tras S2 y S3 ---
+
+PE_V002 = D("1763.388")  # 0,825 x CV (2 137,44): memoria of001.md con administracion 0,20
+PORCENTAJE_V002 = D("62.50")
+
+
+def _equilibrio(navegador, ficha, version: str) -> dict:
+    id_ = _abierto(navegador, ficha, version)
+    respuesta = navegador.get(f"/v1/hoja/borradores/{id_}/vistas/equilibrio")
+    assert respuesta.status_code == 200, respuesta.text
+    return respuesta.json()
+
+
+def test_restaurar_la_002_deja_el_punto_de_equilibrio_de_p13_en_la_003(_casos) -> None:
+    """La 003 es copia de la 002: total 2 821,42, PE 1 763,39 y 62,50 % de las ventas (P13), y la
+    001 sigue con 1 530,49 y 56,60 % (P3). Oraculos de la memoria, a mano."""
+    _poner(_casos["dos"])
+    navegador, ficha = _ana()
+    respuesta = _restaurar(navegador, ficha, version="002")
+    assert respuesta.status_code == 200, respuesta.text
+    assert respuesta.json()["codigo"] == "003"
+    equilibrio = _equilibrio(navegador, ficha, "003")
+    assert _cerca(equilibrio["punto"]["exacto"], PE_V002)  # 1 763,39
+    assert _cerca(equilibrio["porcentaje"]["exacto"], PORCENTAJE_V002)  # 62,50 %
+    assert _cerca(_resumen_de(navegador, ficha, "003")["total"]["exacto"], D("2821.4208"))
+    primera = _equilibrio(navegador, ficha, "001")
+    assert _cerca(primera["punto"]["exacto"], D("1530.49"))
+    assert _cerca(primera["porcentaje"]["exacto"], D("56.60"))
+
+
+def test_cotizar_sobre_la_002_sube_el_punto_pero_el_porcentaje_sigue_en_62_50(_casos) -> None:
+    """Con administracion 0,20 y utilidad 0,10 el PE es 0,825 x CV y las ventas 1,32 x CV: el
+    porcentaje (0,825 / 1,32 = 62,50 %) no depende del costo; el punto si, y sube con la cotizacion
+    (EQU-001 a 999,5 en vez de su precio de lista)."""
+    _poner(_casos["dos"])
+    registrar_tasa(config.ruta_caso_por_defecto(), date(2026, 10, 5), "860.18")
+    navegador, ficha = _ana()
+    antes = _equilibrio(navegador, ficha, "002")
+    assert _cerca(antes["punto"]["exacto"], PE_V002)
+    respuesta = _hacer(navegador, ficha, "cotizar")
+    assert respuesta.status_code == 200, respuesta.text
+    assert respuesta.json()["codigo"] == "003"
+    despues = _equilibrio(navegador, ficha, "003")
+    assert D(despues["punto"]["exacto"]) > PE_V002
+    assert _cerca(despues["porcentaje"]["exacto"], PORCENTAJE_V002)  # 62,50 % se mantiene
+    total = D(_resumen_de(navegador, ficha, "003")["total"]["exacto"])
+    assert abs(D(despues["punto"]["exacto"]) - total / D("1.32") * D("0.825")) <= TOLERANCIA
+
+
+@pytest.mark.parametrize("operacion", OPERACIONES)
+def test_cada_operacion_pasa_por_con_anexos_de_cadena_de_crear(
+    operacion, _casos, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """M1 de 3d-2 sobrevivia (con o sin el envoltorio la cadena sale igual en estas cuatro
+    operaciones). Se vigila la LLAMADA: `_crear` envuelve la sesion antes de comprobar nada y de
+    escribir, y las cuatro operaciones pasan por `_crear` (diseno §1.2)."""
+    from aplicacion import hoja_versiones
+
+    ruta = _poner(_casos["dos"])
+    registrar_tasa(ruta, date(2026, 10, 5), "860.18")
+    llamadas: list[object] = []
+    original = hoja_versiones.con_anexos_de_cadena
+
+    def espia(sesion):
+        llamadas.append(sesion)
+        return original(sesion)
+
+    monkeypatch.setattr(hoja_versiones, "con_anexos_de_cadena", espia)
+    navegador, ficha = _ana()
+    respuesta = _hacer(navegador, ficha, operacion)
+    if operacion == "retirar":  # no hay cotizacion que retirar en la 002 de `dos`: se rechaza
+        assert respuesta.status_code == 422, respuesta.text
+    else:
+        assert respuesta.status_code == 200, respuesta.text
+    assert len(llamadas) == 1, operacion  # una vez por operacion, haya salido bien o mal
