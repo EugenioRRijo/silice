@@ -11,9 +11,10 @@ Contrato del diseno (`docs/especificaciones/2026-10-19-hoja-react-design.md`, §
   borrador de otra ficha no existe (404) y uno abierto en otro caso da 409 con mensaje fijo.
 
 Oraculos a mano: los literales de la memoria de OF-001 (total 2 703,86 USD) y de la prueba de
-aceptacion SF (historial 001 / 002 edicion / 003 restauracion), los textos de la pagina clasica
-(`ui/paginas/hoja.py:346-351`, `ui/hoja.py:1572`) y los recuentos de filas con `sqlite3` directo.
-Las pruebas de paridad pueden importar `ui` (aqui solo para sembrar con la clasica).
+aceptacion SF (historial 001 / 002 edicion / 003 restauracion), los textos de error escritos a
+mano y los recuentos de filas con `sqlite3` directo. Las versiones sembradas las guarda
+`aplicacion.hoja`, no las rutas que se prueban. Ya no se compara contra `ui.hoja` (retiro de
+Streamlit, F6): las cifras de R9 a R14 de TI-001 son literales de las fixtures hechas a mano.
 """
 
 from __future__ import annotations
@@ -22,7 +23,7 @@ import json
 import shutil
 import sqlite3
 from collections.abc import Iterator
-from contextlib import closing, contextmanager
+from contextlib import closing
 from dataclasses import replace
 from datetime import date, datetime
 from decimal import Decimal
@@ -31,12 +32,10 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import select
-from sqlalchemy.orm import Session
 
-from adapters.espacio.conexion import con_conexion
 from api import caso_web, dependencias
 from api.main import app
-from aplicacion import entrega, hoja_borradores
+from aplicacion import entrega, hoja, hoja_borradores
 from core import models
 from core.budget import crear_proyecto
 from core.catalog import Catalogo, abrir_sesion, crear_motor
@@ -61,7 +60,6 @@ from tests.fixtures.sesion_web import (
     plantilla_con_cuentas,
     protegida,
 )
-from ui import hoja as clasica
 
 D = Decimal
 RAIZ = Path(__file__).resolve().parents[2]
@@ -96,8 +94,8 @@ def _casos(tmp_path_factory) -> dict[str, Path]:
         with abrir_sesion(motor) as sesion:
             entrega.con_anexos_de_cadena(sesion)
             catalogo = Catalogo(sesion)
-            abierta = clasica.abrir_version(sesion, catalogo, NOMBRE_OF001, "001")
-            clasica.guardar_version(
+            abierta = hoja.abrir_version(sesion, catalogo, NOMBRE_OF001, "001")
+            hoja.guardar_version(
                 sesion,
                 catalogo,
                 abierta,
@@ -108,7 +106,7 @@ def _casos(tmp_path_factory) -> dict[str, Path]:
                 fuente="criterio del residente, acta 12",
                 responsable="Ing. Prueba",
             )
-            clasica.restaurar(
+            hoja.restaurar(
                 sesion, catalogo, NOMBRE_OF001, "001", fuente="volver a la 001", responsable="X"
             )
     finally:
@@ -125,21 +123,21 @@ AHORA = datetime(2026, 10, 5, 16, 30, 0)
 
 
 def _con_cantidad_editada(destino: Path, origen: Path) -> Path:
-    """OF-001 con la 002 guardada por la clásica: la cantidad de AF-LLAVE escrita a 5."""
+    """OF-001 con la 002 guardada por `aplicacion.hoja`: la cantidad de AF-LLAVE escrita a 5."""
     shutil.copyfile(origen, destino)
     motor = crear_motor(f"sqlite:///{destino.as_posix()}")
     try:
         with abrir_sesion(motor) as sesion:
             entrega.con_anexos_de_cadena(sesion)
             catalogo = Catalogo(sesion)
-            abierta = clasica.abrir_version(sesion, catalogo, NOMBRE_OF001, "001")
-            items = clasica.items_sin_escribir(abierta.borrador)
+            abierta = hoja.abrir_version(sesion, catalogo, NOMBRE_OF001, "001")
+            items = hoja.items_sin_escribir(abierta.borrador)
             llave = next(
                 c
-                for c, i in zip(clasica.claves_de_items(items), items, strict=True)
+                for c, i in zip(hoja.claves_de_items(items), items, strict=True)
                 if i.codigo_partida == "AF-LLAVE"
             )
-            clasica.guardar_version(
+            hoja.guardar_version(
                 sesion,
                 catalogo,
                 abierta,
@@ -157,13 +155,13 @@ COTIZACION = "Ferreteria Demo, C.A., COT-001, 2026-10-05"
 
 
 def _con_cotizacion(destino: Path, origen: Path) -> Path:
-    """OF-001 con la 002 guardada por la clásica al cotizar EQU-001 (Herramientas menores)."""
+    """OF-001 con la 002 guardada por `aplicacion.hoja` al cotizar EQU-001."""
     shutil.copyfile(origen, destino)
     motor = crear_motor(f"sqlite:///{destino.as_posix()}")
     try:
         with abrir_sesion(motor) as sesion:
             entrega.con_anexos_de_cadena(sesion)
-            clasica.cotizar(
+            hoja.cotizar(
                 sesion,
                 Catalogo(sesion),
                 NOMBRE_OF001,
@@ -428,37 +426,30 @@ def _cadena(ruta: Path) -> tuple[bool, str]:
 @pytest.mark.parametrize(
     ("sellada", "mensaje"), [(True, CADENA_REGISTRO), (False, CADENA_SIN_ESLABON)]
 )
-def test_r2_sobre_una_version_sin_instantanea_deja_la_cadena_como_la_deja_la_clasica(
+def test_r2_sobre_una_version_sin_instantanea_deja_la_cadena_como_la_deja_abrir_version(
     sellada: bool, mensaje: str, _casos, _entorno: Path, tmp_path: Path
 ) -> None:
     """PRUEBA DE CARACTERIZACION (3b-B11, clausula de la cadena, inviable bajo Plan C).
 
     El diseno pedia que la cadena quedara integra tras abrir una version sin instantanea. No
-    es asi, tampoco en la clasica: `abrir_version` escribe un `RegistroCambio` sobre una version ya
-    sellada (o no sellada). Bajo el Plan C la copia es identica a `ui.hoja`, asi que R2, la copia y
-    la clasica dejan EXACTAMENTE el mismo estado; los literales son lo observado (bitacora
-    `2026-10-19-hoja-3b1-cadena-heredada.md`, decision para Eugenio)."""
-    from aplicacion import hoja as copia
-
-    resultados = {}
-    for nombre, modulo in (("clasica", clasica), ("copia", copia)):
-        ruta = tmp_path / f"{nombre}.db"
-        shutil.copyfile(_casos["of001"], ruta)
-        _sin_instantanea(ruta, sellada=sellada)
-        motor = crear_motor(f"sqlite:///{ruta.as_posix()}")
-        with abrir_sesion(motor) as sesion:
-            entrega.con_anexos_de_cadena(sesion)
-            modulo.abrir_version(
-                sesion, Catalogo(sesion), NOMBRE_OF001, "001", responsable="Ana <ana>"
-            )
-        motor.dispose()
-        resultados[nombre] = _cadena(ruta)
+    es asi: `abrir_version` escribe un `RegistroCambio` sobre una version ya sellada (o no sellada).
+    R2 y `aplicacion.hoja.abrir_version` dejan EXACTAMENTE el mismo estado; los literales son lo
+    observado (bitacora `2026-10-19-hoja-3b1-cadena-heredada.md`, decision para Eugenio)."""
+    ruta = tmp_path / "hoja.db"
+    shutil.copyfile(_casos["of001"], ruta)
+    _sin_instantanea(ruta, sellada=sellada)
+    motor = crear_motor(f"sqlite:///{ruta.as_posix()}")
+    with abrir_sesion(motor) as sesion:
+        entrega.con_anexos_de_cadena(sesion)
+        hoja.abrir_version(sesion, Catalogo(sesion), NOMBRE_OF001, "001", responsable="Ana <ana>")
+    motor.dispose()
+    resultados = {"hoja": _cadena(ruta)}
     _sin_instantanea(_entorno, sellada=sellada)
     dependencias.cerrar_motores()
     navegador, ficha = _ana()
     assert _abrir(navegador, ficha).status_code == 201
     resultados["R2"] = _cadena(_entorno)
-    assert resultados == {nombre: (False, mensaje) for nombre in ("clasica", "copia", "R2")}
+    assert resultados == {nombre: (False, mensaje) for nombre in ("hoja", "R2")}
 
 
 def test_r2_de_un_proyecto_sin_versiones_abre_un_borrador_en_blanco(_entorno: Path) -> None:
@@ -485,7 +476,7 @@ def test_r2_sin_version_en_un_proyecto_que_ya_las_tiene_es_409() -> None:
     assert "ya tiene versiones" in respuesta.json()["detalle"]
 
 
-def test_r2_proyecto_o_version_inexistente_es_404_con_los_textos_de_la_clasica() -> None:
+def test_r2_proyecto_o_version_inexistente_es_404_con_los_textos_escritos() -> None:
     navegador, ficha = _ana()
     sin_proyecto = _abrir(navegador, ficha, "Z", "001")
     assert sin_proyecto.status_code == 404
@@ -838,7 +829,7 @@ def test_r5_of001_da_las_cantidades_derivadas_de_la_memoria() -> None:
     assert (cuerpo["moneda"], cuerpo["pendientes"], cuerpo["vacio_mensaje"]) == ("USD", 0, None)
 
 
-def test_r5_trae_las_cinco_tablas_con_sus_columnas_en_el_orden_de_la_clasica() -> None:
+def test_r5_trae_las_cinco_tablas_con_sus_columnas_en_el_orden_escrito() -> None:
     navegador, ficha = _ana()
     cuerpo = _vista(navegador, _abierta(navegador, ficha), "espacio").json()
     assert [t["clave"] for t in cuerpo["tablas"]] == [
@@ -877,7 +868,7 @@ def test_r5_trae_las_cinco_tablas_con_sus_columnas_en_el_orden_de_la_clasica() -
     ]
 
 
-def test_r5_el_estado_de_cada_fila_lleva_severidad_y_texto_de_la_clasica() -> None:
+def test_r5_el_estado_de_cada_fila_lleva_severidad_y_texto() -> None:
     navegador, ficha = _ana()
     cuerpo = _vista(navegador, _abierta(navegador, ficha), "espacio").json()
     estado = cuerpo["estado"]["esp_ambientes:BAN-01"]
@@ -1125,8 +1116,8 @@ def test_r9_de_la_version_002_con_administracion_020_da_las_cifras_de_p13(_casos
     assert abs(D(cuerpo["porcentaje"]["exacto"]) - D("62.50")) <= D("0.01")
 
 
-def test_r9_de_ti001_se_alcanza_en_el_dia_6_con_el_punto_de_la_clasica(_casos) -> None:
-    """Literales de `test_ui_hoja.py:580-611` (la clásica): «Se alcanza en Dia 6», PE 28586,7…"""
+def test_r9_de_ti001_se_alcanza_en_el_dia_6_con_el_punto_de_la_memoria(_casos) -> None:
+    """RF-58 (`test_hoja_versiones.py`): «Se alcanza en Dia 6», PE 28 586,76 USD (56,60 %)."""
     _poner(_casos["ti001"])
     navegador, ficha = _ana()
     id_ = _abierta(navegador, ficha, proyecto=NOMBRE_TI001, version=caso_ti001.CODIGO)
@@ -1196,7 +1187,7 @@ def _sin_fuente_en_p1(destino: Path, origen: Path) -> Path:
     return destino
 
 
-def test_r11_of001_es_el_informe_de_la_clasica_y_evalua_r17() -> None:
+def test_r11_of001_evalua_r17_y_cuenta_sus_hallazgos() -> None:
     navegador, ficha = _ana()
     id_ = _abierta(navegador, ficha)
     respuesta = _vista(navegador, id_, "auditoria")
@@ -1285,7 +1276,7 @@ def test_r14_de_las_tres_versiones_trae_el_historial_completo(_casos) -> None:
     ] == [("parametro", "administracion", "valor", "0.15", "0.20")]
 
 
-def test_r14_proyecto_o_version_inexistente_es_404_con_los_textos_de_la_clasica() -> None:
+def test_r14_proyecto_o_version_inexistente_es_404_con_los_textos_escritos() -> None:
     navegador, _ = _ana()
     assert _traza(navegador, "Z").status_code == 404
     assert _traza(navegador, "Z").json() == {"detalle": "El proyecto «Z» no existe en este caso."}
@@ -1313,7 +1304,7 @@ def test_r14_la_clave_de_api_puede_leerla_y_no_escribe_nada(_entorno: Path) -> N
 # --- R12: precios con su origen (3b-3) -------------------------------------------------------
 
 #: Las 21 columnas de la pestaña Precios, en el orden y con los rótulos de `COLUMNAS_PRECIOS`
-#: (`ui/hoja.py:2266-2288`), escritos a mano; el último valor dice si la columna es numérica.
+#: (`COLUMNAS_PRECIOS`), escritos a mano; el último valor dice si la columna es numérica.
 COLUMNAS_DE_PRECIOS = [
     ("insumo", "Insumo", False),
     ("codigo", "Código", False),
@@ -1352,7 +1343,7 @@ def _precios(navegador: TestClient, proyecto: str = NOMBRE_OF001, version: str =
     return navegador.get("/v1/hoja/precios", params={"proyecto": proyecto, "version": version})
 
 
-def test_r12_of001_trae_las_21_columnas_en_el_orden_de_la_clasica(_hoy_fijo) -> None:
+def test_r12_of001_trae_las_21_columnas_en_el_orden_escrito(_hoy_fijo) -> None:
     """3b-B18 / P9."""
     navegador, _ = _ana()
     respuesta = _precios(navegador)
@@ -1386,7 +1377,7 @@ def test_r12_lista_un_insumo_por_fila_ordenado_por_codigo_con_su_origen(_hoy_fij
 
 def test_r12_un_precio_en_usd_tiene_erosion_cero_y_la_de_indice_no_viene(_hoy_fijo) -> None:
     """Memoria S1: «un precio en USD tiene erosión 0 en las dos monedas»; la columna por índice
-    no se llena porque la clásica no le pasa serie (H:2368)."""
+    no se llena porque la hoja no le pasa serie."""
     navegador, _ = _ana()
     for fila in _precios(navegador).json()["filas"]:
         for clave in ("erosion_usd", "erosion_bs", "erosion_pct"):
@@ -1407,7 +1398,7 @@ def test_r12_sin_referencia_ni_cotizacion_el_estado_lo_dice_y_una_cotizacion_lo_
     assert {f["estado"] for f in filas if f["codigo"] != "EQU-001"} == {SIN_FUENTE}
 
 
-def test_r12_proyecto_o_version_inexistente_es_404_con_los_textos_de_la_clasica() -> None:
+def test_r12_proyecto_o_version_inexistente_es_404_con_los_textos_escritos() -> None:
     navegador, _ = _ana()
     assert _precios(navegador, "Z").json() == {"detalle": "El proyecto «Z» no existe en este caso."}
     falta = _precios(navegador, version="009")
@@ -1617,10 +1608,9 @@ def test_lecturas_de_una_version_ajena_a_la_ficha_siguen_siendo_del_caso(ruta: s
     assert _leer(navegador, ruta, NOMBRE_OF001).status_code == 404  # OF-001 no está en este caso
 
 
-# --- paridad con `ui.hoja` VIVO: R9 a R14 sobre OF-001 y TI-001 (diseño §9, P3 P4 P9 P10 P11) -----
-# Cada prueba abre el mismo caso por la API y con la lógica de la página clásica (`ui.hoja`, que el
-# Plan C deja intacta) y compara cifras y textos; los literales de la memoria van en las pruebas de
-# arriba, de modo que ninguno de los dos lados es el oráculo de sí mismo.
+# --- R10 a R14 sobre TI-001 con literales a mano (antes: paridad contra `ui.hoja`) ---------------
+# Los de OF-001 estan arriba. Las cifras de TI-001 salen de `caso_ti001` (Bs de MaPreX / tasa
+# 633,3644, a cuatro decimales) y de RF-58 (50 503,27 USD); ninguna sale del codigo probado.
 
 CASOS_DE_PARIDAD = [
     pytest.param("of001", NOMBRE_OF001, "001", id="OF-001"),
@@ -1628,157 +1618,101 @@ CASOS_DE_PARIDAD = [
 ]
 
 
-@contextmanager
-def _sesion_clasica(ruta: Path) -> Iterator[Session]:
-    motor = crear_motor(f"sqlite:///{ruta.as_posix()}")
-    try:
-        with abrir_sesion(motor) as sesion:
-            yield sesion
-    finally:
-        motor.dispose()
-
-
-def _abierta_por_la_clasica(sesion: Session, proyecto: str, version: str):
-    """Lo que hace la página clásica al abrir (P:330-360): `abrir_version` a la fecha de hoy."""
-    abierta = clasica.abrir_version(
-        sesion, Catalogo(sesion), proyecto, version, fecha_evaluacion=date.today()
-    )
-    ligado = replace(
-        abierta.borrador,
-        reglas_extra=con_conexion(abierta.borrador.reglas_extra, abierta.borrador.espacio),
-    )
-    return abierta, clasica.elaborar_borrador(ligado)  # `_elaborar` de la clásica (P:286-296)
-
-
-def _abrir_caso(_casos, _entorno, clave: str, proyecto: str, version: str):
+def _abrir_caso(_casos, clave: str, proyecto: str, version: str):
     _poner(_casos[clave])
     navegador, ficha = _ana()
     return navegador, _abierta(navegador, ficha, proyecto=proyecto, version=version)
 
 
-@pytest.mark.parametrize(("clave", "proyecto", "version"), CASOS_DE_PARIDAD)
-def test_paridad_r9_el_equilibrio_es_el_de_la_clasica(_casos, _entorno, clave, proyecto, version):
-    navegador, id_ = _abrir_caso(_casos, _entorno, clave, proyecto, version)
-    cuerpo = _vista(navegador, id_, "equilibrio").json()
-    with _sesion_clasica(config.ruta_caso_por_defecto()) as sesion:
-        resultado = _abierta_por_la_clasica(sesion, proyecto, version)[1]
-    pe = resultado.equilibrio
-    assert cuerpo["estado"] == pe.estado.value
-    assert cuerpo["mensaje"] == clasica.texto_equilibrio(pe)
-    for clave_ in ("venta", "costo_variable", "costo_fijo", "utilidad"):
-        assert cuerpo[clave_]["exacto"] == format(getattr(pe, clave_), "f")
-    assert cuerpo["punto"]["exacto"] == format(pe.punto, "f")
-    assert cuerpo["porcentaje"]["exacto"] == format(pe.porcentaje, "f")
-    assert cuerpo["periodo"] == pe.periodo
-
-
-@pytest.mark.parametrize(("clave", "proyecto", "version"), CASOS_DE_PARIDAD)
-def test_paridad_r10_los_parametros_son_los_de_la_clasica(
-    _casos, _entorno, clave, proyecto, version
-):
-    navegador, id_ = _abrir_caso(_casos, _entorno, clave, proyecto, version)
+def test_r10_de_ti001_trae_los_parametros_y_el_total_de_rf58(_casos) -> None:
+    navegador, id_ = _abrir_caso(_casos, "ti001", NOMBRE_TI001, caso_ti001.CODIGO)
     cuerpo = _vista(navegador, id_, "parametros").json()
-    with _sesion_clasica(config.ruta_caso_por_defecto()) as sesion:
-        abierta, resultado = _abierta_por_la_clasica(sesion, proyecto, version)
-    assert [(c["clave"], c["valor"]) for c in cuerpo["campos"]] == [
-        (c, str(getattr(abierta.borrador.parametros, c))) for c in clasica.CAMPOS_PARAMETROS
-    ]
-    assert cuerpo["total"]["exacto"] == format(resultado.elaboracion.presupuesto.total, "f")
-    assert cuerpo["moneda_proyecto"] == resultado.elaboracion.presupuesto.moneda
-
-
-@pytest.mark.parametrize(("clave", "proyecto", "version"), CASOS_DE_PARIDAD)
-def test_paridad_r11_la_auditoria_es_la_de_la_clasica_con_r17(
-    _casos, _entorno, clave, proyecto, version
-):
-    navegador, id_ = _abrir_caso(_casos, _entorno, clave, proyecto, version)
-    cuerpo = _vista(navegador, id_, "auditoria").json()
-    with _sesion_clasica(config.ruta_caso_por_defecto()) as sesion:
-        informe = _abierta_por_la_clasica(sesion, proyecto, version)[1].elaboracion.informe
-    assert [
-        (h["regla"], h["severidad"], h["descripcion"], tuple(h["origen"]))
-        for h in cuerpo["hallazgos"]
-    ] == [(h.regla, h.severidad.name, h.descripcion, h.origen_ids) for h in informe.hallazgos]
-    assert [(r["regla"], r["nombre"], r["hallazgos"]) for r in cuerpo["reglas_evaluadas"]] == list(
-        informe.cuenta_por_regla_evaluada()
-    )
-    assert cuerpo["cumple"] == informe.cumple
-
-
-@pytest.mark.parametrize(("clave", "proyecto", "version"), CASOS_DE_PARIDAD)
-def test_paridad_r12_los_precios_son_los_de_la_clasica(
-    _casos, _entorno, clave, proyecto, version, _hoy_fijo
-):
-    _poner(_casos[clave])
-    navegador, _ = _ana()
-    filas = _precios(navegador, proyecto, version).json()["filas"]
-    with _sesion_clasica(config.ruta_caso_por_defecto()) as sesion:
-        esperadas = clasica.precios_de_version(
-            sesion, proyecto, version, fecha_evaluacion=_hoy_fijo
-        )
-    assert len(filas) == len(esperadas) > 0
-    for fila, p in zip(filas, esperadas, strict=True):
-        assert (fila["insumo"], fila["codigo"], fila["tipo"], fila["lista"], fila["moneda"]) == (
-            p.descripcion,
-            p.codigo,
-            p.tipo,
-            p.lista,
-            p.moneda,
-        )
-        assert fila["precio"]["exacto"] == format(p.precio, "f")
-        assert (fila["fecha_precio"], fila["referencia"], fila["cotizacion"]) == (
-            p.fecha.isoformat(),
-            p.referencia,
-            p.cotizacion,
-        )
-        assert (fila["estado"], fila["propio"]) == (p.estado, clasica.texto_propio(p.propio))
-        assert fila["erosion_usd"]["exacto"] == format(p.erosion_usd, "f")
-        assert fila["erosion_bs"]["exacto"] == format(p.erosion_bs, "f")
-        assert (fila["fuente"], fila["fuente_tasa"], fila["moneda_original"]) == (
-            p.fuente,
-            p.fuente_tasa,
-            p.moneda_original,
-        )
-        for campo, valor in (("tasa", p.tasa), ("precio_original", p.precio_original)):
-            assert (fila[campo] and fila[campo]["exacto"]) == (valor and format(valor, "f"))
-        assert fila["fecha_tasa"] == (p.fecha_tasa and p.fecha_tasa.isoformat())
-        assert fila["erosion_pct"]["exacto"] == format(p.erosion_pct * 100, "f")
-
-
-@pytest.mark.parametrize(("clave", "proyecto", "version"), CASOS_DE_PARIDAD)
-def test_paridad_r13_los_avisos_son_los_de_la_clasica(_casos, _entorno, clave, proyecto, version):
-    from aplicacion import atipicos as atipicos_clasica
-
-    _poner(_casos[clave])
-    navegador, _ = _ana()
-    cuerpo = _atipicos(navegador, proyecto, version).json()
-    with _sesion_clasica(config.ruta_caso_por_defecto()) as sesion:
-        precios = clasica.precios_de_version(
-            sesion, proyecto, version, fecha_evaluacion=date.today()
-        )
-        busqueda = atipicos_clasica.atipicos_de_insumos(sesion, [p.codigo for p in precios])
-    esperados = atipicos_clasica.avisos(busqueda)
-    assert [(a["nivel"], a["texto"]) for a in cuerpo["avisos"]] + [
-        ("warning", v["descripcion"]) for v in cuerpo["variaciones"]
-    ] == esperados
+    assert {c["clave"]: D(c["valor"]) for c in cuerpo["campos"]} == {
+        "fcas": D("6.00"),
+        "bono_alimentacion": D("5.8100"),  # 3 679,85 Bs / 633,3644
+        "administracion": D("0.15"),
+        "utilidad": D("0.10"),
+    }
+    assert abs(D(cuerpo["total"]["exacto"]) - D("50503.27")) <= D("0.01")
+    assert (cuerpo["moneda_proyecto"], cuerpo["puede_convertir"]) == ("USD", True)
 
 
 @pytest.mark.parametrize(
-    ("clave", "proyecto", "version"),
+    ("clave", "proyecto", "version", "insumos"),
     [
-        *CASOS_DE_PARIDAD,
-        pytest.param("of001_llave", NOMBRE_OF001, "002", id="OF-001 v002"),
+        pytest.param("of001", NOMBRE_OF001, "001", 49, id="OF-001"),  # 38 materiales + 6 + 5
+        pytest.param("ti001", NOMBRE_TI001, caso_ti001.CODIGO, 39, id="TI-001"),  # 28 + 7 + 4
     ],
 )
-def test_paridad_r14_la_trazabilidad_es_la_de_la_clasica(
-    _casos, _entorno, clave, proyecto, version
-):
+def test_r11_los_hallazgos_son_los_de_la_memoria(_casos, clave, proyecto, version, insumos) -> None:
+    """OF-001: R8 advierte los 33 elementos del espacio (6 + 6 + 21) y R11 informa de los
+    insumos sin referencia MaPreX; TI-001 no tiene espacio: solo el R11 informativo."""
+    navegador, id_ = _abrir_caso(_casos, clave, proyecto, version)
+    cuerpo = _vista(navegador, id_, "auditoria").json()
+    por_regla: dict[str, list] = {}
+    for h in cuerpo["hallazgos"]:
+        por_regla.setdefault(h["regla"], []).append(h)
+    r8 = len(por_regla.get("R8", []))
+    assert r8 == (33 if clave == "of001" else 0)
+    assert {h["severidad"] for h in por_regla.get("R8", [])} <= {"ADVERTENCIA"}
+    (r11,) = por_regla["R11"]
+    assert r11["severidad"] == "INFO"
+    assert r11["descripcion"].startswith(
+        f"{insumos} insumos no contrastables: {insumos} sin referencia MaPreX"
+    )
+    assert set(por_regla) == ({"R8", "R11"} if clave == "of001" else {"R11"})
+    assert cuerpo["total_hallazgos"] == r8 + 1 and cuerpo["cumple"] is True
+
+
+def test_r12_de_ti001_trae_los_precios_de_caso_ti001(_casos, _hoy_fijo) -> None:
+    _poner(_casos["ti001"])
+    navegador, _ = _ana()
+    filas = _precios(navegador, NOMBRE_TI001, caso_ti001.CODIGO).json()["filas"]
+    assert len(filas) == 39  # 28 materiales + 7 equipos + 4 oficios de las composiciones
+    por_insumo = {f["insumo"]: f for f in filas}
+    for descripcion, usd in (
+        ("UPS 3000 VA 45 minutos para rack [ELC012]", "1575.8859"),  # 998 110,00 Bs / 633,3644
+        ("Maestro electricista N7 [24-216]", "2.3215"),  # 1 470,34 Bs / 633,3644
+        ("Electricista de 1ra N5 [19-215]", "2.1877"),  # 1 385,63 Bs / 633,3644
+    ):
+        assert por_insumo[descripcion]["precio"]["exacto"] == usd, descripcion
+    assert {f["moneda"] for f in filas} == {"USD"}
+    assert {f["estado"] for f in filas} == {SIN_FUENTE}
+    assert {f["lista"] for f in filas} == {"Lista MaPreX jul-2026 (TI-001)"}
+
+
+def test_r12_de_of001_trae_los_precios_de_las_memorias(_hoy_fijo) -> None:
+    """Los de `test_aplicacion_hoja_apu.py` (herramientas, plomero, ayudante, tecnico...)."""
+    navegador, _ = _ana()
+    filas = _precios(navegador).json()["filas"]
+    assert len(filas) == 49
+    por_codigo = {f["codigo"]: f["precio"]["exacto"] for f in filas}
+    assert por_codigo["EQU-001"] == "14.3046"  # herramientas menores
+    assert por_codigo["EQU-002"] == "247.9457"  # escalera de aluminio
+    assert por_codigo["MAT-002"] == "34.5694"  # pegamento, 21 895,00 Bs
+    assert por_codigo["MO-001"] == "2.1877"  # plomero
+    assert por_codigo["MO-002"] == "1.7816"  # ayudante
+    assert por_codigo["MO-005"] == "10.0000"  # tecnico de redes
+
+
+@pytest.mark.parametrize(("clave", "proyecto", "version"), CASOS_DE_PARIDAD)
+def test_r13_sin_serie_los_avisos_dicen_que_nada_es_atipico(
+    _casos, clave, proyecto, version
+) -> None:
+    """Cada insumo tiene un solo precio (menos de 8 variaciones): el literal de `NADA_ATIPICO`."""
     _poner(_casos[clave])
     navegador, _ = _ana()
-    cuerpo = _traza(navegador, proyecto, version).json()
-    with _sesion_clasica(config.ruta_caso_por_defecto()) as sesion:
-        historial = clasica.historial_de_versiones(sesion, proyecto)
-        registros = clasica.registros_de_version(sesion, proyecto, version)
+    assert _atipicos(navegador, proyecto, version).json() == {
+        "disponible": True,
+        "avisos": [{"nivel": "success", "texto": NADA_ATIPICO}],
+        "variaciones": [],
+    }
+
+
+def test_r14_de_ti001_trae_una_sola_version_vigente_sin_registros(_casos) -> None:
+    _poner(_casos["ti001"])
+    navegador, _ = _ana()
+    cuerpo = _traza(navegador, NOMBRE_TI001, caso_ti001.CODIGO).json()
     assert [
         (
             v["codigo"],
@@ -1790,22 +1724,5 @@ def test_paridad_r14_la_trazabilidad_es_la_de_la_clasica(
             v["cambios"],
         )
         for v in cuerpo["versiones"]
-    ] == [
-        (v.codigo, v.fecha.isoformat(), v.motivo, v.origen, v.vigente, v.descartada, v.cambios)
-        for v in historial
-    ]
-    assert [
-        (
-            r["objeto"],
-            r["clave"],
-            r["campo"],
-            r["antes"],
-            r["despues"],
-            r["fuente"],
-            r["responsable"],
-        )
-        for r in cuerpo["registros"]
-    ] == [
-        (r.objeto, r.clave, r.campo, r.valor_anterior, r.valor_nuevo, r.fuente, r.responsable)
-        for r in registros
-    ]
+    ] == [(caso_ti001.CODIGO, "2026-09-30", "", "", True, False, 0)]
+    assert cuerpo["registros"] == []
