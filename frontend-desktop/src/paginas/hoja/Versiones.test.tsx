@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import type { SesionRespuesta } from "../../api/tipos";
 import { ContextoAplicacion } from "../../shell/contexto";
 import type { Aplicacion } from "../../shell/contexto";
-import { atipicosRespuesta, preciosRespuesta, trazabilidadRespuesta, vistaParametros } from "./datosDePrueba";
+import { atipicosRespuesta, cuerpoDeVista, preciosRespuesta, trazabilidadRespuesta, vistaParametros } from "./datosDePrueba";
 import PaginaHoja from "./index";
 import type { BorradorAbierto, PreciosRespuesta, Resumen, VersionesRespuesta } from "./logica";
 
@@ -131,6 +131,7 @@ describe("Hoja del proyecto: restaurar, cotizar, retirar, convertir y la cadena 
       if (camino === "/v1/hoja/trazabilidad") return json(trazabilidadRespuesta());
       if (camino === "/v1/hoja/cadena") return cadena();
       if (camino.endsWith("/vistas/parametros")) return json(parametros);
+      if (camino.includes("/vistas/")) return json(cuerpoDeVista(camino));
       const propio = /^\/v1\/hoja\/borradores\/([^/]+)$/.exec(camino);
       if (propio && metodo === "GET") {
         const b = borrador("002", { cambios: cambiosSinGuardar });
@@ -186,7 +187,9 @@ describe("Hoja del proyecto: restaurar, cotizar, retirar, convertir y la cadena 
     fireEvent.click(await screen.findByRole("button", { name: boton }));
     return screen.findByRole("dialog");
   };
-  const campo = (dialogo: HTMLElement, nombre: string | RegExp) => within(dialogo).getByRole("textbox", { name: nombre });
+  // Un <input type="date"> no tiene rol «textbox»: la fecha se busca por su etiqueta.
+  const campo = (dialogo: HTMLElement, nombre: string | RegExp) =>
+    nombre === "Fecha de la cotización" ? within(dialogo).getByLabelText(nombre) : within(dialogo).getByRole("textbox", { name: nombre });
   const escribir = (dialogo: HTMLElement, nombre: string | RegExp, texto: string) =>
     fireEvent.change(campo(dialogo, nombre), { target: { value: texto } });
   const boton = (dialogo: HTMLElement, nombre: string) => within(dialogo).getByRole("button", { name: nombre });
@@ -599,6 +602,19 @@ describe("Hoja del proyecto: restaurar, cotizar, retirar, convertir y la cadena 
       montar();
       await irA("Trazabilidad");
       expect(await screen.findByText("El proyecto «OF-001» no existe en este caso.")).toBeInTheDocument();
+      expect(screen.getByRole("table", { name: "Versiones del proyecto" })).toBeInTheDocument();
+    });
+  });
+
+  describe("3d-F7: una respuesta de la cadena que no tiene la forma del contrato no se pinta", () => {
+    test.each([
+      ["vacía", () => new Response(null, { status: 204 })],
+      ["sin integra", () => json({ mensaje: "x" })],
+    ])("%s: lo dice y la pestaña sigue entera", async (_n, respuesta) => {
+      cadena = respuesta;
+      montar();
+      await irA("Trazabilidad");
+      expect(await screen.findByText("La respuesta de la cadena de sellos no tiene la forma esperada.")).toBeInTheDocument();
       expect(screen.getByRole("table", { name: "Versiones del proyecto" })).toBeInTheDocument();
     });
   });
