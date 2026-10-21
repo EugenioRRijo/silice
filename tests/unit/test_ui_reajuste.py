@@ -7,10 +7,10 @@ from io import BytesIO
 import openpyxl
 import pytest
 
+from aplicacion import reajuste
 from core.catalog import abrir_sesion, crear_esquema, crear_motor
 from tests.fixtures.reajuste_pantalla import CAMPOS, COMPONENTES, EJECUTADO, PERIODOS
 from tests.fixtures.reajuste_s1 import NOMBRE, sembrar
-from ui import reajuste
 from ui.hoja import HojaInvalida
 
 

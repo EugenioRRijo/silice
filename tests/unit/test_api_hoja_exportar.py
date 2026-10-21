@@ -570,7 +570,7 @@ def _libro_de_la_clasica(
     origen: Path, destino: Path, proyecto: str, version: str, hoy: date | None = None
 ) -> bytes:
     """Lo que hace `_preparar_excel` (P:556-573) sobre una COPIA del caso, con `ui.hoja` vivo."""
-    from ui import control
+    from aplicacion import control
     from ui import hoja as clasica
 
     hoy = hoy or date.today()

@@ -12,12 +12,12 @@ from decimal import Decimal
 import pytest
 from sqlalchemy import func, select
 
+from aplicacion import reajuste
 from core import models
 from core.budget.puente import valuaciones_citadas
 from core.budget.reajuste import cargar_estudio
 from tests.fixtures import control_ob_s2 as ob
 from tests.fixtures import reajuste_ob_s2 as rz
-from ui import reajuste
 from ui.hoja import HojaInvalida
 
 D = Decimal
