@@ -114,6 +114,33 @@ def test_el_saneado_llega_a_los_textos_anidados_y_no_toca_lo_que_no_es_texto() -
     assert fila.nombre == sucio  # el original (el borrador vivo) no cambia
 
 
+def test_dos_claves_que_se_sanean_al_mismo_texto_no_se_pierden_en_silencio() -> None:
+    """MENOR-3 del arbitro: {"a\x00": 1, "a\x01": 2} daba {"a\ufffd": 2} y perdia el 1. La que
+    ya estaba limpia conserva su nombre; las demas toman el sufijo " (n)", n desde 2, en el orden
+    de entrada (oraculo a mano)."""
+    entrada = {"a" + chr(0): 1, "a" + chr(1): 2, "a" + SUSTITUTO: 3, "b": 4}
+    esperado = {
+        "a" + SUSTITUTO + " (2)": 1,
+        "a" + SUSTITUTO + " (3)": 2,
+        "a" + SUSTITUTO: 3,
+        "b": 4,
+    }
+    resultado = hoja_exportar.sanear_para_xlsx(entrada)
+    assert resultado == esperado
+    assert list(resultado) == list(esperado)  # el orden de entrada
+    assert sorted(resultado.values()) == [1, 2, 3, 4]  # no se pierde ningun valor
+
+
+def test_el_sufijo_de_una_clave_repetida_no_choca_con_otra_clave_limpia() -> None:
+    entrada = {"a" + chr(0): 1, "a" + chr(1): 2, "a" + SUSTITUTO + " (2)": 3}
+    resultado = hoja_exportar.sanear_para_xlsx(entrada)
+    assert resultado == {
+        "a" + SUSTITUTO: 1,
+        "a" + SUSTITUTO + " (3)": 2,
+        "a" + SUSTITUTO + " (2)": 3,
+    }
+
+
 def test_si_no_hay_nada_que_sanear_se_devuelve_el_mismo_objeto() -> None:
     fila = _Fila("Baño", Decimal("1"), ("a",), {"b": "c"})
     contenedor = [fila, (fila, "x")]

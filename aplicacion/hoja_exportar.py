@@ -98,6 +98,7 @@ def _sanear(valor: Any) -> Any:
         pares = [(_sanear(k), _sanear(v)) for k, v in valor.items()]
         if all(k is a and v is b for (k, v), (a, b) in zip(pares, valor.items(), strict=True)):
             return valor
+        pares = _sin_choques(pares, list(valor))
         return type(valor)(pares) if isinstance(valor, dict) else dict(pares)
     if isinstance(valor, (list, tuple, set, frozenset)):
         elementos = [_sanear(e) for e in valor]
@@ -107,6 +108,25 @@ def _sanear(valor: Any) -> Any:
             return type(valor)(*elementos)
         return type(valor)(elementos)
     return valor
+
+
+def _sin_choques(pares: list[tuple[Any, Any]], originales: list[Any]) -> list[tuple[Any, Any]]:
+    """Las claves de un diccionario que se saneo: dos claves distintas que se sanean al mismo texto
+    (`"a\x00"` y `"a\x01"` pasan ambas a `"a\ufffd"`) NO se funden en una (se perderia un valor
+    sin aviso). La que ya estaba limpia conserva su nombre; las otras que chocan toman el sufijo
+    `" (n)"`, con la `n` menor desde 2 que no este tomada, en el orden de entrada. Solo se
+    puede sufijar una clave de texto; otra clave (tupla, numero) no cambia al sanearse."""
+    tomadas = {k for (k, _), original in zip(pares, originales, strict=True) if k is original}
+    resultado = []
+    for (clave, valor), original in zip(pares, originales, strict=True):
+        if clave is not original and isinstance(clave, str):
+            base, n = clave, 2
+            while clave in tomadas:
+                clave = f"{base} ({n})"
+                n += 1
+            tomadas.add(clave)
+        resultado.append((clave, valor))
+    return resultado
 
 
 def nombre_de_archivo(codigo: str | None) -> str:
