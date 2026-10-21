@@ -15,7 +15,8 @@ copia del Plan C, identica a `ui.hoja`) y cuida lo mismo que `hoja_guardado.guar
 * **Todo o nada**, tambien en lo que se rechaza ANTES de escribir (proyecto o version inexistentes,
   un precio mal escrito): se deshace la transaccion que abrio la primera lectura, para que el
   bloqueo de escritura no quede retenido hasta que alguien cierre la sesion.
-* `expire_on_commit = False`: leer un atributo despues de confirmar abriria otra transaccion.
+* Nada se lee de la sesion despues de confirmar (solo cadenas ya leidas): si no, el commit expiraria
+  los objetos y la lectura abriria otra transaccion que retendria el bloqueo.
 
 El responsable lo da quien llama (la persona de la sesion, RF-82). Sin FastAPI ni Streamlit (RM-1).
 """
@@ -84,7 +85,6 @@ def _crear(
     `escribir(nombre)` cree la version y devuelva (codigo, mensaje). Ante cualquier error deshace
     la transaccion y lo deja subir."""
     con_anexos_de_cadena(sesion)  # el sello de lo que se escriba cubre el espacio (§1.2)
-    sesion.expire_on_commit = False
     try:
         nombre = _proyecto(sesion, referencia)
         try:

@@ -83,7 +83,7 @@ que arma el núcleo (`Cotizacion {numero} de {proveedor} ({fecha}). {evidencia}`
 422 FORMA: `La cotización no tiene la forma esperada: envíe proyecto, version, insumo, precio (texto), proveedor, numero, fecha (AAAA-MM-DD) y, si quiere, la evidencia; cada texto con su tope.`
 422 de dominio (el texto de la clásica, en el orden en que el núcleo los juzga; el precio se juzga primero):
 `precio: '{x}' no es un numero decimal valido` · `precio: '{x}' no es un monto finito` · `el proveedor de la cotizacion es obligatorio` ·
-`el numero de la cotizacion es obligatorio` · `la fuente del cambio es obligatoria…` (no ocurre: el núcleo la arma con proveedor y número) ·
+`el numero de la cotizacion es obligatorio` ·
 `el precio cotizado debe ser un Decimal no negativo, no …` · `no hay ningun insumo con codigo '{c}'` · `la version '{v}' no usa el insumo {c}` ·
 `el insumo {c} ya vale {p} en la lista de la version`.
 
