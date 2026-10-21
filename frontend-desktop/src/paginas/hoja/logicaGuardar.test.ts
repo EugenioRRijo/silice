@@ -97,6 +97,10 @@ describe("qué le pasó al guardar", () => {
   test("409 versión más nueva: nunca se sobrescribe en silencio; trae la versión nueva", () => {
     expect(clasificarErrorDeGuardado(e(409, MAS_NUEVA))).toEqual({ clase: "mas-nueva", mensaje: MAS_NUEVA, version: "004" });
   });
+  test("409 versión más nueva: la versión sale del campo `version_mas_nueva` del contrato (3d-1) y, sin él, del texto", () => {
+    expect(clasificarErrorDeGuardado(e(409, MAS_NUEVA, { detalle: MAS_NUEVA, version_mas_nueva: "007" })).version).toBe("007");
+    expect(clasificarErrorDeGuardado(e(409, MAS_NUEVA, { detalle: MAS_NUEVA })).version).toBe("004");
+  });
   test("409 rev viejo", () => {
     const d = "El borrador cambió en otra ventana: vuelva a cargarlo.";
     expect(clasificarErrorDeGuardado(e(409, d))).toEqual({ clase: "rev", mensaje: d, version: null });
