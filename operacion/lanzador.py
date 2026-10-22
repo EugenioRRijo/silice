@@ -27,7 +27,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from operacion import base_datos, config, red, registro
+from operacion import base_datos, config, primer_arranque, red, registro
 
 LOOPBACK = "127.0.0.1"
 BANDERAS_PYTHON = ("-E", "-s", "-B", "-X", "utf8")
@@ -207,6 +207,19 @@ def _terminar(procesos: Iterable[Any]) -> None:
             proceso.kill()
 
 
+def _abrir_con_el_sistema(ruta: Path) -> None:
+    """Abre `ruta` con el programa de Windows para su tipo (el Bloc de notas para un `.txt`).
+    Solo existe `os.startfile` en Windows; en otro sistema, o si falla, no hace nada: el código
+    sigue en la consola y en el archivo."""
+    abrir = getattr(os, "startfile", None)
+    if abrir is None:
+        return
+    try:
+        abrir(str(ruta))
+    except OSError:
+        pass
+
+
 def arrancar(
     entorno: Mapping[str, str] | None = None,
     *,
@@ -220,6 +233,10 @@ def arrancar(
     dormir: Callable[[float], None] = time.sleep,
     reloj: Callable[[], float] = time.monotonic,
     salida: Callable[[str], Any] = print,
+    asegurar: Callable[[Mapping[str, str] | None], bool] = (
+        primer_arranque.asegurar_codigo_de_la_instalacion
+    ),
+    abrir_archivo: Callable[[Path], Any] = _abrir_con_el_sistema,
 ) -> int:
     estado = leer_estado(entorno)
     if estado is not None:
@@ -252,11 +269,19 @@ def arrancar(
         logger.error("no se pudieron preparar las bases: %s", error)
         salida(f"Sílice no arrancó: {error}")
         return 1
+    emitido = False
+    try:
+        emitido = asegurar(entorno)  # sin cuentas y sin archivo: emite el código (primer arranque)
+    except Exception as error:  # noqa: BLE001 - sin el código se sigue sirviendo el acceso normal
+        logger.error("no se pudo asegurar el código de instalación: %s", type(error).__name__)
     codigo = config.ruta_codigo_instalacion(entorno)
     if codigo.is_file():
         texto = codigo.read_text(encoding="utf-8").strip()
         registro.registrar_secreto(texto)  # a la consola, nunca al registro
         salida(f"Código de instalación (un solo uso, para crear el primer administrador): {texto}")
+        salida(f"También está en el archivo {codigo}")
+        if emitido and config.es_producto():
+            abrir_archivo(codigo)  # el acceso directo del instalador deja esta ventana minimizada
     direccion, de_direccion = elegir_direccion(ajustes, ips())
     avisos.extend(de_direccion)
     for aviso in avisos:

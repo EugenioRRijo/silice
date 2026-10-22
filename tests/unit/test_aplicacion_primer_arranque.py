@@ -1,5 +1,5 @@
-"""`operacion/primer_arranque.py`: emitir el código al arrancar y devolver el acceso (BCP-1; B1, B10,
-B23 del diseño §10.2).
+"""`operacion/primer_arranque.py`: emitir el código al arrancar y devolver el acceso (BCP-1; B1 y
+B10 del diseño §10.2).
 
 Oráculos a mano: el archivo del código es `XXXX-XXXX-XXXX-XXXX-XXXX` + salto de línea (24 + 1
 caracteres), con solo el alfabeto base32; la base guarda una fila por código y exactamente una
@@ -88,7 +88,8 @@ def test_el_estado_dice_solo_tres_cosas(tmp_path: Path, monkeypatch: pytest.Monk
     with instalacion(tmp_path) as sesion:
         monkeypatch.setattr(config, "es_producto", lambda raiz=None: False)
         vacio = primer_arranque.estado(sesion, tmp_path)
-        assert (vacio.sin_cuentas, vacio.archivo_presente, vacio.modo) == (True, False, "desarrollo")
+        assert (vacio.sin_cuentas, vacio.archivo_presente) == (True, False)
+        assert vacio.modo == "desarrollo"
         primer_arranque.asegurar_codigo(sesion, tmp_path, AHORA)
         con_archivo = primer_arranque.estado(sesion, tmp_path)
         assert (con_archivo.sin_cuentas, con_archivo.archivo_presente) == (True, True)
@@ -113,7 +114,7 @@ def test_emitir_restablecimiento_devuelve_el_codigo_y_el_archivo(tmp_path: Path)
         assert fila.usado is None and fila.creado == AHORA
 
 
-# --- sobre la instalación de la carpeta de datos ---------------------------------------------------
+# --- sobre la instalación de la carpeta de datos -------------------------------------------
 
 
 @pytest.fixture
