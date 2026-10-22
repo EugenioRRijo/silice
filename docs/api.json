@@ -1912,6 +1912,140 @@
         }
       }
     },
+    "/v1/primer-arranque": {
+      "get": {
+        "tags": [
+          "primer-arranque"
+        ],
+        "summary": "Estado Del Primer Arranque",
+        "description": "Lo que la bienvenida puede saber antes de entrar. Solo desde el propio equipo; no escribe.",
+        "operationId": "estado_del_primer_arranque_v1_primer_arranque_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrimerArranqueRespuesta"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "No es el propio equipo.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detalle"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "La base de la instalación no abre.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detalle"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/primer-arranque/reclamo": {
+      "post": {
+        "tags": [
+          "primer-arranque"
+        ],
+        "summary": "Reclamar",
+        "description": "Canjea el código: crea el primer administrador (o devuelve el acceso con un código de\nrestablecimiento) y abre su sesión.",
+        "operationId": "reclamar_v1_primer_arranque_reclamo_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReclamoDeInstalacion"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SesionRespuesta"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Código no válido, usado o caducado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detalle"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sin `Origin` propio, o no es el propio equipo.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detalle"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Cuerpo inválido o contraseña fuera de la política.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detalle"
+                }
+              }
+            }
+          },
+          "423": {
+            "description": "Cinco códigos errados: bloqueado 15 minutos.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detalle"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Freno global: reintentar tras `Retry-After`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detalle"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "La base de la instalación está ocupada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detalle"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/acerca": {
       "get": {
         "tags": [
@@ -15259,6 +15393,26 @@
         ],
         "title": "PlanReproyectado"
       },
+      "PoliticaDeContrasena": {
+        "properties": {
+          "minimo": {
+            "type": "integer",
+            "title": "Minimo",
+            "description": "Caracteres mínimos de una contraseña"
+          },
+          "maximo": {
+            "type": "integer",
+            "title": "Maximo",
+            "description": "Caracteres máximos de una contraseña"
+          }
+        },
+        "type": "object",
+        "required": [
+          "minimo",
+          "maximo"
+        ],
+        "title": "PoliticaDeContrasena"
+      },
       "PrecargaRespuesta": {
         "properties": {
           "existe": {
@@ -15547,6 +15701,40 @@
         ],
         "title": "PresupuestoPeticion",
         "description": "Lo que hace falta para elaborar un presupuesto (UC-01/05): items ya extraídos por un\nadaptador o construidos a mano, y los cuatro parámetros de costo, opcionales (por defecto los\nde `ParametrosCosto`, la línea base de NORMAS.md §4).\n\n`plan` es el plan de trabajo del proyectista (UC‑01, paso 6); sin él, una partida por día en\nel orden del presupuesto (`plan_secuencial`)."
+      },
+      "PrimerArranqueRespuesta": {
+        "properties": {
+          "sin_cuentas": {
+            "type": "boolean",
+            "title": "Sin Cuentas",
+            "description": "La instalación no tiene ninguna cuenta"
+          },
+          "archivo_presente": {
+            "type": "boolean",
+            "title": "Archivo Presente",
+            "description": "Existe `codigo_instalacion.txt` en la carpeta de datos"
+          },
+          "modo": {
+            "type": "string",
+            "enum": [
+              "producto",
+              "desarrollo"
+            ],
+            "title": "Modo",
+            "description": "`producto` si la instalación es la del instalador"
+          },
+          "politica": {
+            "$ref": "#/components/schemas/PoliticaDeContrasena"
+          }
+        },
+        "type": "object",
+        "required": [
+          "sin_cuentas",
+          "archivo_presente",
+          "modo",
+          "politica"
+        ],
+        "title": "PrimerArranqueRespuesta"
       },
       "PropuestaPartidaRespuesta": {
         "properties": {
@@ -15963,6 +16151,45 @@
           "motivo"
         ],
         "title": "RechazoRespuesta"
+      },
+      "ReclamoDeInstalacion": {
+        "properties": {
+          "codigo": {
+            "type": "string",
+            "maxLength": 64,
+            "title": "Codigo",
+            "description": "El código de instalación o de restablecimiento"
+          },
+          "usuario": {
+            "type": "string",
+            "maxLength": 120,
+            "title": "Usuario"
+          },
+          "nombre": {
+            "type": "string",
+            "maxLength": 120,
+            "title": "Nombre"
+          },
+          "contrasena": {
+            "type": "string",
+            "maxLength": 128,
+            "title": "Contrasena"
+          },
+          "tambien_arma": {
+            "type": "boolean",
+            "title": "Tambien Arma",
+            "description": "La cuenta nueva también arma presupuestos (solo vale para una cuenta nueva)",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "codigo",
+          "usuario",
+          "nombre",
+          "contrasena"
+        ],
+        "title": "ReclamoDeInstalacion"
       },
       "Registrada": {
         "properties": {

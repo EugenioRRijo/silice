@@ -5,8 +5,14 @@ con la accion de su pagina Streamlit; la tabla ruta -> accion esta en `api/acces
 routers se incluyen sin dependencias propias, salvo los de libros (RS2-5).
 """
 
+import logging
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+from datetime import datetime
+
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
+from starlette.concurrency import run_in_threadpool
 
 from api import interfaz
 from api.proteccion import opciones_documentacion, proteger
@@ -44,8 +50,13 @@ from api.rutas import (
     simulador,
     tablero,
 )
+from api.rutas import (
+    primer_arranque as rutas_primer_arranque,
+)
 from api.sesion_web import exigir_clave_o_sesion
 from core.catalog import CatalogoIncompleto
+from operacion import config, primer_arranque
+from operacion.instalacion import sesion_de_instalacion
 from operacion.version import version
 from seguridad.permisos import Accion
 
@@ -60,8 +71,31 @@ DESCRIPCION = """API HTTP sobre el nucleo del sistema de Analisis de Precios Uni
 la perdida de precision de `float` en JSON (regla 3 de NORMAS.md).
 """
 
+def _preparar_primer_arranque() -> None:
+    """Sin cuentas y sin `codigo_instalacion.txt`, emite el código de instalación (BCP-1). Un fallo
+    se registra (nunca con el código) y no impide servir: el acceso normal sigue funcionando."""
+    try:
+        with sesion_de_instalacion() as sesion:
+            primer_arranque.asegurar_codigo(sesion, config.carpeta_datos(), datetime.now())
+    except Exception:  # noqa: BLE001
+        logging.getLogger("silice.api").exception("no se pudo preparar el primer arranque")
+
+
+@asynccontextmanager
+async def _arranque(_aplicacion: FastAPI) -> AsyncIterator[None]:
+    """El ÚNICO gancho de ciclo de vida de la API (RULING del diseño §14): al arrancar prepara el
+    primer arranque. Costura: el asistente de la Hoja registra después, tras el `yield`, su
+    `apagar()`; no abre un segundo `lifespan`."""
+    await run_in_threadpool(_preparar_primer_arranque)
+    yield
+
+
 app = FastAPI(
-    title="Sílice", version=version(), description=DESCRIPCION, **opciones_documentacion()
+    title="Sílice",
+    version=version(),
+    description=DESCRIPCION,
+    lifespan=_arranque,
+    **opciones_documentacion(),
 )
 # RF-98: clave (o, desde la ola 0a, sesion) en todas las rutas salvo /salud. El `CON_CLAVE` por
 # router se retiro (RM-3): cada ruta declara `exigir_clave_o_sesion(<accion>)` (`api/acceso.py`),
@@ -84,6 +118,8 @@ app.include_router(
 )
 # 1.2.0 (RT-9): acceso del navegador por cuenta y cookie; sin clave de API a propósito
 app.include_router(sesion.router)
+# BCP-1: el primer administrador de una instalación nueva (P0 y P1); públicas, solo el propio equipo
+app.include_router(rutas_primer_arranque.router)
 # Ola 1 (sesion 2b): GET /v1/acerca, con la clave de API o la sesion de cualquier rol
 app.include_router(acerca.router)
 # 2b: «Partidas similares» de la interfaz nueva (UC-03); clave o sesión con editar_hoja
