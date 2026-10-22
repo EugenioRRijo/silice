@@ -1617,7 +1617,7 @@ RNF‑28 → Sílice 1.2.0 (sesión 4 de la ruta). Pruebas: `tests/integration/t
 
 ## Enmienda Sílice 1.5 (2026-10-21): retiro definitivo de Streamlit y del Visor 3D
 
-**Ruling de Eugenio: retiro definitivo de Streamlit y del Visor 3D; el tutor lo avala (palabra de Eugenio, sin acta). PENDIENTE: avisar al tutor por escrito.**
+**Ruling de Eugenio: retiro definitivo de Streamlit y del Visor 3D; Eugenio informa que el tutor lo avalaría; no consta por escrito; falta avisarle.**
 Plan: [PLAN_RETIRO_STREAMLIT.md](planes/PLAN_RETIRO_STREAMLIT.md). La enmienda cambia solo la tecnología y la superficie donde se
 miden o se realizan los requisitos; **no agrega requisitos ni cambia ninguna cifra o umbral**.
 

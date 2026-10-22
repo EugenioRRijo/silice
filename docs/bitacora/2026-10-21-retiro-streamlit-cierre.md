@@ -14,7 +14,7 @@
 
 1. Un solo proceso y un solo puerto sirviendo API y front.
 2. **El asistente de IA de la Hoja queda sin interfaz.** Era un panel de la página de Streamlit de la Hoja; React no lo tiene. `asistente/servicio.py` conserva su lógica y sus pruebas, pero **no tiene llamador de producción**. **DEUDA pendiente de Eugenio** (decidir si se construye en React o se da de baja el servicio).
-3. Retiro definitivo de Streamlit y del Visor 3D; el tutor lo avala (palabra de Eugenio, sin acta). **PENDIENTE: avisar al tutor por escrito.**
+3. Retiro definitivo de Streamlit y del Visor 3D; Eugenio informa que el tutor lo avalaría; no consta por escrito; falta avisarle. **PENDIENTE: avisar al tutor por escrito.**
 4. Sin subir versión ni etiquetar.
 5. **Sin homólogo comprobado en React** (decisión de producto, `docs/bitacora/2026-10-21-retiro-f3-triaje.md` §7b): (a) los **recorridos guiados** de Streamlit (demostración, presupuesto, precios, paquete; en React solo existe «Auditar un libro de la empresa»); (b) **22 funciones de `ui.libros`** (hallazgos resaltados en la vista calcada del libro, filtros y orden de la tabla de hallazgos, totales, marcas por hoja, tope de celdas combinadas). Su cobertura de prueba se retiró con el módulo. Queda pendiente aceptar la pérdida o abrir tarea. Además, el triaje (§7, punto 2) señala que la **visibilidad del menú por rol** (`ui.app.paginas_visibles`, 15 funciones) no se comprobó en `frontend-desktop/` ni en `api/`.
 6. **Dos asuntos que el encargo dejaba «pendientes de permiso»** (`url_clasica`, `api_activa`, `PaginaSinMigrar`): ya están retirados en commits del carril de código de F10 (arriba). Se anota para que el orquestador confirme que el permiso existía.
